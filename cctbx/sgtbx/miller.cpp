@@ -15,7 +15,7 @@
 
 namespace sgtbx {
 
-  bool SgOps::isSysAbsent(const Miller::Index& H) const
+  bool SpaceGroup::isSysAbsent(const Miller::Index& H) const
   {
     // systematically absent reflection: if HR == H and HT != 0 mod 1
     // restricted phase: if HR == -H: phi(H) = pi*HT + n*pi
@@ -60,7 +60,7 @@ namespace sgtbx {
     return false;
   }
 
-  bool SgOps::isCentric(const Miller::Index& H) const
+  bool SpaceGroup::isCentric(const Miller::Index& H) const
   {
     if (isCentric()) return true;
     rangei(m_nSMx) {
@@ -69,7 +69,8 @@ namespace sgtbx {
     return false;
   }
 
-  PhaseRestriction SgOps::getPhaseRestriction(const Miller::Index& H) const
+  PhaseRestriction
+  SpaceGroup::getPhaseRestriction(const Miller::Index& H) const
   {
     // restricted phase: if HR == -H: phi(H) = pi*HT + n*pi
     if (isCentric()) {
@@ -83,7 +84,7 @@ namespace sgtbx {
     return PhaseRestriction(-1, TBF()); // no restriction
   }
 
-  int SgOps::epsilon(const Miller::Index& H) const
+  int SpaceGroup::epsilon(const Miller::Index& H) const
   {
     int result = 0;
     rangei(m_nSMx) {
@@ -95,7 +96,7 @@ namespace sgtbx {
     return result;
   }
 
-  int SgOps::multiplicity(const Miller::Index& H, bool FriedelSym) const
+  int SpaceGroup::multiplicity(const Miller::Index& H, bool FriedelSym) const
   {
     if (H.is000()) return 1;
     int Centro = (isCentric() || FriedelSym);
@@ -124,7 +125,7 @@ namespace sgtbx {
   }
 
   SymEquivMillerIndices
-  SgOps::getEquivMillerIndices(const Miller::Index& H) const
+  SpaceGroup::getEquivMillerIndices(const Miller::Index& H) const
   {
     SymEquivMillerIndices SEMI(TBF(), OrderP());
     int iInv;
@@ -197,19 +198,19 @@ namespace sgtbx {
       return m + 1;
     }
 
-    int SetCheckCutPRange(const SgOps& sgo)
+    int SetCheckCutPRange(const SpaceGroup& SgOps)
     {
       int Range = 0;
       int iSMx;
-      for(iSMx=0;iSMx<sgo.nSMx();iSMx++) {
-                int m = OneMxCutPRange(sgo[iSMx].Rpart());
+      for(iSMx=0;iSMx<SgOps.nSMx();iSMx++) {
+                int m = OneMxCutPRange(SgOps[iSMx].Rpart());
         if (Range < m)
             Range = m;
       }
       return Range;
     }
 
-    int CheckCutParam(const SgOps& sgo, Miller::Vec3 CutP,
+    int CheckCutParam(const SpaceGroup& SgOps, Miller::Vec3 CutP,
                       int Range, int FullBlock)
     {
       Miller::Vec3 AdjRange;
@@ -226,7 +227,7 @@ namespace sgtbx {
         {
           // search for equivalent hkl in an active octant
           SymEquivMillerIndices
-          SEMI = sgo.getEquivMillerIndices(H);
+          SEMI = SgOps.getEquivMillerIndices(H);
           int iEq;
           for (iEq = 0; iEq < SEMI.N(); iEq++) {
             int i;
@@ -248,7 +249,7 @@ namespace sgtbx {
 
   } // namespace <anonymous>
 
-  Miller::Vec3 SgOps::getCutParameters() const
+  Miller::Vec3 SpaceGroup::getCutParameters() const
   {
     const int nTrials = 8;
     static const Miller::Vec3 ListTrialCutP[nTrials] = {
@@ -305,7 +306,7 @@ namespace sgtbx {
   }
 
   Miller::MasterIndex
-  SgOps::getMasterIndex(const Miller::Index& H,
+  SpaceGroup::getMasterIndex(const Miller::Index& H,
                         bool Pretty) const
   {
     SymEquivMillerIndices SEMI = getEquivMillerIndices(H);
@@ -313,7 +314,7 @@ namespace sgtbx {
   }
 
   Miller::MasterIndex
-  SgOps::getMasterIndex(const Miller::Index& H, const Miller::Vec3& CutP,
+  SpaceGroup::getMasterIndex(const Miller::Index& H, const Miller::Vec3& CutP,
                         bool Pretty) const
   {
     SymEquivMillerIndices SEMI = getEquivMillerIndices(H);

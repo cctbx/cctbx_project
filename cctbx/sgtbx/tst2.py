@@ -6,43 +6,43 @@ import sgtbx
 def parse(hall_symbol):
   s = sgtbx.parse_string(hall_symbol)
   try:
-    return sgtbx.SgOps(s)
+    return sgtbx.SpaceGroup(s)
   except RuntimeError, e:
     print "-->" + s.string() + "<--"
     print ("-" * (s.where() + 3)) + "^"
     print e.args[0]
     return None
 
-def show(sgo):
-  print "nLTr:", sgo.nLTr();
-  print "fInv:", sgo.fInv();
-  print "nSMx:", sgo.nSMx();
-  for iLIS in xrange(sgo.OrderZ()):
-    print sgo(iLIS).as_xyz()
+def show(SgOps):
+  print "nLTr:", SgOps.nLTr();
+  print "fInv:", SgOps.fInv();
+  print "nSMx:", SgOps.nSMx();
+  for iLIS in xrange(SgOps.OrderZ()):
+    print SgOps(iLIS).as_xyz()
 
-def show_RotMxInfo(sgo):
-  for iLIS in xrange(sgo.OrderZ()):
-    info = sgo(iLIS).getRotMxInfo()
+def show_RotMxInfo(SgOps):
+  for iLIS in xrange(SgOps.OrderZ()):
+    info = SgOps(iLIS).getRotMxInfo()
     print "Rtype =", info.Rtype(),
     print "EV =", info.EV(),
     print "SenseOfRotation =", info.SenseOfRotation()
 
-def hkl(sgo):
+def hkl(SgOps):
   H = (1,2,-3)
-  semi = sgo.getEquivMillerIndices(H)
+  semi = SgOps.getEquivMillerIndices(H)
   for iList in xrange(semi.M(0)):
     print semi(iList)
   for iList in xrange(semi.N()):
     print semi[iList].HR(), semi[iList].HT()
-  CutP = sgo.getCutParameters()
+  CutP = SgOps.getCutParameters()
   print 'CutParameters =', CutP
-  Master = sgo.getMasterIndex(H, CutP, 1)
+  Master = SgOps.getMasterIndex(H, CutP, 1)
   print Master.H()
   print Master.iMate()
   for Pretty in xrange(2):
-    Master = sgo.getMasterIndex(H, CutP, Pretty)
+    Master = SgOps.getMasterIndex(H, CutP, Pretty)
     for iList in xrange(semi.M(0)):
-      assert(Master.H() == sgo.getMasterIndex(semi(iList), CutP, Pretty).H())
+      assert(Master.H() == SgOps.getMasterIndex(semi(iList), CutP, Pretty).H())
 
 def BuildIndices(SgOps):
   import uctbx
@@ -52,9 +52,9 @@ def BuildIndices(SgOps):
   for H in MIG: print H
 
 if (__name__ == '__main__'):
-  sgo = parse(sys.argv[1])
-  if (sgo):
-    show(sgo)
-    #show_RotMxInfo(sgo)
-    #hkl(sgo)
-    BuildIndices(sgo)
+  SgOps = parse(sys.argv[1])
+  if (SgOps):
+    show(SgOps)
+    #show_RotMxInfo(SgOps)
+    #hkl(SgOps)
+    BuildIndices(SgOps)

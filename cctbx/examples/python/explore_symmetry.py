@@ -182,7 +182,7 @@ try:
 
   try:
     ps = sgtbx.parse_string(HallSymbol)
-    SgOps = sgtbx.SgOps(ps)
+    SgOps = sgtbx.SpaceGroup(ps)
   except RuntimeError, e:
     print "--&gt;" + ps.string() + "&lt;--"
     print ("-" * (ps.where() + 3)) + "^"

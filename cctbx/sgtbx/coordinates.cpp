@@ -17,12 +17,12 @@ namespace sgtbx {
 
   namespace detail {
 
-    void SetUniqueOps(const SgOps& sgo,
+    void SetUniqueOps(const SpaceGroup& SgOps,
                       const RTMx& SpecialOp,
                       std::vector<RTMx>& UniqueOps)
     {
-      for(int i=0;i<sgo.OrderZ();i++) {
-        RTMx SS = sgo(i).multiply(SpecialOp).modPositive();
+      for(int i=0;i<SgOps.OrderZ();i++) {
+        RTMx SS = SgOps(i).multiply(SpecialOp).modPositive();
         if (std::find(UniqueOps.begin(),
                       UniqueOps.end(), SS) == UniqueOps.end()) {
           UniqueOps.push_back(SS);
@@ -122,23 +122,23 @@ namespace sgtbx {
   void SpecialPosition::BuildSpecialOp(detail::RT_PointGroup& SiteSymmetry)
   {
     const uctbx::UnitCell& uc = m_Parameters.m_UnitCell;
-    const SgOps& sgo = m_Parameters.m_SgOps;
-    int TBF = sgo.TBF();
+    const SpaceGroup& SgOps = m_Parameters.m_SgOps;
+    int TBF = SgOps.TBF();
     m_ShortestDistance2 = uc.getLongestVector2();
     std::vector<detail::CloseMate> CloseMates;
-    CloseMates.push_back(detail::CloseMate(sgo[0], 0.));
-    for (int iOp = 1; iOp < sgo.OrderP(); iOp++) {
-      RTMx M = sgo(iOp);
+    CloseMates.push_back(detail::CloseMate(SgOps[0], 0.));
+    for (int iOp = 1; iOp < SgOps.OrderP(); iOp++) {
+      RTMx M = SgOps(iOp);
       RotMx CumR = M.Rpart().accumulate();
       fractional<double> Mate0 = M * m_SnapPosition;
-      for (int iLTr = 0; iLTr < sgo.nLTr(); iLTr++) {
-        fractional<double> Mate = Mate0 + sgo.LTr(iLTr);
+      for (int iLTr = 0; iLTr < SgOps.nLTr(); iLTr++) {
+        fractional<double> Mate = Mate0 + SgOps.LTr(iLTr);
         fractional<double> Delta0 = Mate - m_SnapPosition;
         Delta0 = Delta0.modShort();
         TrVec
         UShifts = detail::getUnitShifts((m_SnapPosition + Delta0) - Mate);
         UShifts = UShifts.scale(TBF);
-        TrVec MT = M.Tpart() + sgo.LTr(iLTr) + UShifts;
+        TrVec MT = M.Tpart() + SgOps.LTr(iLTr) + UShifts;
         bool special = false;
         double SD2 = m_ShortestDistance2;
         for (UShifts[0] = -TBF; UShifts[0] <= TBF; UShifts[0] += TBF)
@@ -172,8 +172,8 @@ namespace sgtbx {
             m_ShortestDistance2 = CloseMates[i].CartDelta2;
       }
     }
-    cctbx_assert(sgo.OrderZ() % SiteSymmetry.Matrices.size() == 0);
-    m_M = sgo.OrderZ() / SiteSymmetry.Matrices.size();
+    cctbx_assert(SgOps.OrderZ() % SiteSymmetry.Matrices.size() == 0);
+    m_M = SgOps.OrderZ() / SiteSymmetry.Matrices.size();
     m_SpecialOp = SiteSymmetry.accumulate();
     m_SnapPosition = m_SpecialOp * m_OriginalPosition;
   }
@@ -202,7 +202,7 @@ namespace sgtbx {
       throw error("SpecialPosition: MinMateDistance too large.");
     }
     if (determinePointGroupType) {
-      SgOps SiteSgOps;
+      SpaceGroup SiteSgOps;
       for(std::size_t i=0;i<SiteSymmetry.Matrices.size();i++) {
         SiteSgOps.expandSMx(SiteSymmetry.Matrices[i]);
       }

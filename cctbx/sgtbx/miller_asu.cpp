@@ -284,9 +284,9 @@ namespace sgtbx {
   }
 
   MillerIndexGenerator::MillerIndexGenerator(const uctbx::UnitCell& uc,
-                                             const SgOps& sgo,
+                                             const SpaceGroup& SgOps,
                                              double Resolution_d_min)
-    : m_UnitCell(uc), m_SgOps(sgo)
+    : m_UnitCell(uc), m_SgOps(SgOps)
   {
     if (Resolution_d_min <= 0.) {
       throw error("Resolution limit must be greater than zero.");
@@ -296,7 +296,7 @@ namespace sgtbx {
     SpaceGroupType SgType = m_SgOps.getSpaceGroupType();
     uctbx::UnitCell
     ReferenceUnitCell = m_UnitCell.ChangeBasis(SgType.CBOp().InvM().Rpart());
-    SgOps ReferenceSgOps = SgOps(SpaceGroupSymbols(SgType.SgNumber()).Hall());
+    SpaceGroup ReferenceSgOps(SpaceGroupSymbols(SgType.SgNumber()).Hall());
     m_ASU = ReciprocalSpaceASU(SgType);
     Miller::Vec3 CutP = m_ASU.ReferenceASU()->getCutParameters();
     Miller::Index
@@ -344,14 +344,14 @@ namespace sgtbx {
 namespace cctbx {
   namespace Miller {
 
-    SymUniqueIndex::SymUniqueIndex(const sgtbx::SgOps& sgo,
+    SymUniqueIndex::SymUniqueIndex(const sgtbx::SpaceGroup& SgOps,
                                    const sgtbx::ReciprocalSpaceASU& ASU,
                                    const Index& H)
     {
-      m_TBF = sgo.TBF();
-      for(int iInv=0;iInv<sgo.fInv();iInv++) {
-        for(int iSMx=0;iSMx<sgo.nSMx();iSMx++) {
-          sgtbx::RTMx M = sgo(0, iInv, iSMx);
+      m_TBF = SgOps.TBF();
+      for(int iInv=0;iInv<SgOps.fInv();iInv++) {
+        for(int iSMx=0;iSMx<SgOps.nSMx();iSMx++) {
+          sgtbx::RTMx M = SgOps(0, iInv, iSMx);
           m_HR = H * M.Rpart();
           if (ASU.isInASU(m_HR)) {
             m_HT = H * M.Tpart();
@@ -361,9 +361,9 @@ namespace cctbx {
           }
         }
       }
-      cctbx_assert(!sgo.isCentric());
-      for(int iSMx=0;iSMx<sgo.nSMx();iSMx++) {
-        sgtbx::RTMx M = sgo(0, 0, iSMx);
+      cctbx_assert(!SgOps.isCentric());
+      for(int iSMx=0;iSMx<SgOps.nSMx();iSMx++) {
+        sgtbx::RTMx M = SgOps(0, 0, iSMx);
         m_HR = H * M.Rpart();
         Miller::Index HRF = m_HR.FriedelMate();
         if (ASU.isInASU(HRF)) {

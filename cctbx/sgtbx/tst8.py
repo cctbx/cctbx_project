@@ -4,7 +4,7 @@ import uctbx
 import sgtbx
 
 uc = uctbx.UnitCell([])
-sg = sgtbx.SgOps("F 4 2")
+sg = sgtbx.SpaceGroup("F 4 2")
 sgtype = sg.getSpaceGroupType()
 print sg.BuildLookupSymbol(sgtype)
 WTab = sgtbx.WyckoffTable(sgtype)

@@ -28,13 +28,13 @@ def OneCycle():
     if (StandardOnly and LookupSymbol[:5] == "Hall:"): continue
     SgSymbols = sgtbx.SpaceGroupSymbols(LookupSymbol)
     HSym = SgSymbols.Hall()
-    SgOps = sgtbx.SgOps(HSym)
+    SgOps = sgtbx.SpaceGroup(HSym)
     SgNumber = SgOps.getSpaceGroupType().SgNumber()
-    RefSgOps = sgtbx.SgOps(sgtbx.SpaceGroupSymbols(SgNumber).Hall())
+    RefSgOps = sgtbx.SpaceGroup(sgtbx.SpaceGroupSymbols(SgNumber).Hall())
     if (SgNumber < 75):
-      RotOps = sgtbx.SgOps('P 1')
+      RotOps = sgtbx.SpaceGroup('P 1')
     else:
-      RotOps = sgtbx.SgOps('P 3*')
+      RotOps = sgtbx.SpaceGroup('P 3*')
     for Rot in RotOps:
       CBOpRot = sgtbx.ChOfBasisOp(Rot)
       SgOpsRot = SgOps.ChangeBasis(CBOpRot)
@@ -57,7 +57,7 @@ def OneCycle():
             h = s.BuildHallSymbol(t, TidyCBOp)
             print "BuildHallSymbol:", h
             if (not QuickMode):
-              assert s == sgtbx.SgOps(h)
+              assert s == sgtbx.SpaceGroup(h)
             print
 
 while 1:

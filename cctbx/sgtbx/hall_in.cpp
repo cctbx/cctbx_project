@@ -158,8 +158,8 @@ namespace sgtbx {
 
   } // namespace hall
 
-  int SgOps::ParseHallSymbolCBOp(parse_string& HSym, ChOfBasisOp& CBOp,
-                                 bool Pedantic, bool NoCType)
+  int SpaceGroup::ParseHallSymbolCBOp(parse_string& HSym, ChOfBasisOp& CBOp,
+                                      bool Pedantic, bool NoCType)
   {
     using namespace hall;
 
@@ -380,26 +380,27 @@ namespace sgtbx {
     return nAddedMx;
   }
 
-  int SgOps::ParseHallSymbol(parse_string& HSym, bool Pedantic, bool NoCType)
+  int
+  SpaceGroup::ParseHallSymbol(parse_string& HSym, bool Pedantic, bool NoCType)
   {
     ChOfBasisOp CBOp(0, 0);
     int nAddedMx = ParseHallSymbolCBOp(HSym, CBOp, Pedantic, NoCType);
     if (CBOp.isValid()) {
-      SgOps NewSgOps = ChangeBasis(CBOp);
+      SpaceGroup NewSgOps = ChangeBasis(CBOp);
       *this = NewSgOps;
     }
     return nAddedMx;
   }
 
-  SgOps::SgOps(parse_string& HSym, bool Pedantic, bool NoCType,
-               bool NoExpand)
+  SpaceGroup::SpaceGroup(parse_string& HSym, bool Pedantic, bool NoCType,
+                         bool NoExpand)
     : m_NoExpand(NoExpand)
   {
     reset();
     ParseHallSymbol(HSym, Pedantic, NoCType);
   }
 
-  SgOps::SgOps(const std::string& HSym, bool Pedantic, bool NoCType,
+  SpaceGroup::SpaceGroup(const std::string& HSym, bool Pedantic, bool NoCType,
                bool NoExpand)
     : m_NoExpand(NoExpand)
   {
@@ -408,7 +409,7 @@ namespace sgtbx {
     ParseHallSymbol(HSymPS, Pedantic, NoCType);
   }
 
-  SgOps::SgOps(const char* HSym, bool Pedantic, bool NoCType,
+  SpaceGroup::SpaceGroup(const char* HSym, bool Pedantic, bool NoCType,
                bool NoExpand)
     : m_NoExpand(NoExpand)
   {

@@ -40,7 +40,7 @@ namespace sgtbx {
       return uc.Length2(fractional<T>(Diff).modShort());
     }
 
-    void SetUniqueOps(const SgOps& sgo,
+    void SetUniqueOps(const SpaceGroup& SgOps,
                       const RTMx& SpecialOp,
                       std::vector<RTMx>& UniqueOps);
 
@@ -71,25 +71,25 @@ namespace sgtbx {
           because of this condition. SpecialPosition::isWellBehaved()
           can be used to query the status.
           <p>
-          For efficiency, the UnitCell object and the SgOps object are
+          For efficiency, the UnitCell object and the SpaceGroup object are
           only copied by reference.  This is, these objects must exist
           as long as the SpecialPositionSnapParameters are in use.
           <p>
           See also: SpecialPositionTolerances
        */
       SpecialPositionSnapParameters(const uctbx::UnitCell& uc,
-                                    const SgOps& sgo,
+                                    const SpaceGroup& SgOps,
                                     bool MustBeWellBehaved = true,
                                     double MinMateDistance = 0.5)
         : m_UnitCell(uc),
-          m_SgOps(sgo),
+          m_SgOps(SgOps),
           m_MustBeWellBehaved(MustBeWellBehaved),
           m_MinMateDistance2(MinMateDistance * MinMateDistance) {}
     private:
       friend class SpecialPosition;
       friend class WyckoffTable;
       const uctbx::UnitCell& m_UnitCell;
-      const SgOps& m_SgOps;
+      const SpaceGroup& m_SgOps;
       bool m_MustBeWellBehaved;
       double m_MinMateDistance2;
   };
@@ -128,16 +128,16 @@ namespace sgtbx {
           Tolerance. Only under this condition are the results
           guaranteed to be correct.
           <p>
-          For efficiency, the UnitCell object and the SgOps object are
+          For efficiency, the UnitCell object and the SpaceGroup object are
           only copied by reference.  This is, these objects must exist
           as long as the SpecialPositionTolerances are in use.
        */
       SpecialPositionTolerances(const uctbx::UnitCell& uc,
-                                const SgOps& sgo,
+                                const SpaceGroup& SgOps,
                                 double MinimumDistance = 0.5,
                                 double Tolerance = 0.01)
         : m_UnitCell(uc),
-          m_SgOps(sgo),
+          m_SgOps(SgOps),
           m_MinimumDistance2(MinimumDistance * MinimumDistance),
           m_Tolerance2(Tolerance * Tolerance) {
         cctbx_assert(m_MinimumDistance2 >= m_Tolerance2);
@@ -150,7 +150,7 @@ namespace sgtbx {
       friend class SymEquivCoordinates<double>;
 # endif
       const uctbx::UnitCell& m_UnitCell;
-      const SgOps& m_SgOps;
+      const SpaceGroup& m_SgOps;
       double m_MinimumDistance2;
       double m_Tolerance2;
   };
@@ -316,8 +316,8 @@ namespace sgtbx {
           <p>
           See also: WyckoffTable::expand()
        */
-      inline void expand(const SgOps& sgo) {
-        detail::SetUniqueOps(sgo, m_SpecialOp, m_UniqueOps);
+      inline void expand(const SpaceGroup& SgOps) {
+        detail::SetUniqueOps(SgOps, m_SpecialOp, m_UniqueOps);
         cctbx_assert(m_UniqueOps.size() == m_M);
       }
       //! Test if expand() has been called.
@@ -434,24 +434,24 @@ namespace sgtbx {
       //! Constructor without implicit call of expand().
       /*! The Wyckoff positions for the 230 reference settings are
           tabulated. The change-of-basis matrix obtained with
-          SgOps::getSpaceGroupType() is used to transform the
+          SpaceGroup::getSpaceGroupType() is used to transform the
           tabulated settings to the given setting.
        */
       WyckoffTable(const SpaceGroupType& SgType);
       //! Constructor with implicit call of expand().
       /*! The Wyckoff positions for the 230 reference settings are
           tabulated. The change-of-basis matrix obtained with
-          SgOps::getSpaceGroupType() is used to transform the
-          tabulated settings to the given setting. sgo is
+          SpaceGroup::getSpaceGroupType() is used to transform the
+          tabulated settings to the given setting. SgOps is
           used to expand the representative special position
           symmetry operations to lists of unique operations.
           See also: expand(), WyckoffPosition::expand()
        */
-      WyckoffTable(const SgOps& sgo, const SpaceGroupType& SgType);
+      WyckoffTable(const SpaceGroup& SgOps, const SpaceGroupType& SgType);
       //! Call expand() for all Wyckoff positions.
       /*! See also: WyckoffPosition::expand()
        */
-      void expand(const SgOps& sgo);
+      void expand(const SpaceGroup& SgOps);
       //! The number of Wyckoff positions for the given space group.
       /*! This number varies between 1 and 27.
        */
@@ -506,9 +506,9 @@ namespace sgtbx {
           by using this overload is also faster than the alternative.
           Usage:<pre>
           uctbx::UnitCell uc = ...;
-          sgtbx::SgOps sgo = ...;
+          sgtbx::SpaceGroup SgOps = ...;
           fractional<double> X = ...;
-          SpecialPositionSnapParameters SnapParameters(uc, sgo);
+          SpecialPositionSnapParameters SnapParameters(uc, SgOps);
           SpecialPosition SP = SpecialPosition(SnapParameters, X);
           WyckoffMapping WM = getWyckoffMapping(SP);</pre>
        */
@@ -520,7 +520,7 @@ namespace sgtbx {
        */
       const WyckoffMapping
       getWyckoffMapping(const uctbx::UnitCell& uc,
-                        const SgOps& sgo,
+                        const SpaceGroup& SgOps,
                         const fractional<double>& X,
                         double SnapRadius = 0.5) const;
     private:
@@ -637,18 +637,18 @@ namespace sgtbx {
        */
       /*! The symmetry operations are applied to X. Duplicates on
           special positions are not removed. The multiplicty M() will
-          always be equal to SgOps::OrderZ(). This algorithm is
+          always be equal to SpaceGroup::OrderZ(). This algorithm is
           therefore very fast and is suitable for structures with most
           atoms on a general position (e.g. protein structures).
           The true multiplicity of X can be tabulated and used
           as a weight in structure factor calculations.
        */
-      SymEquivCoordinates(const SgOps& sgo,
+      SymEquivCoordinates(const SpaceGroup& SgOps,
                           const fractional<T>& X)
       {
         m_Coordinates.push_back(X);
-        for(int i=1;i<sgo.OrderZ();i++) {
-          fractional<T> SX = sgo(i) * X;
+        for(int i=1;i<SgOps.OrderZ();i++) {
+          fractional<T> SX = SgOps(i) * X;
           m_Coordinates.push_back(SX);
         }
       }

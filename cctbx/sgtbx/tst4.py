@@ -14,31 +14,31 @@ def parse_xyz(xyz):
     print e.args[0]
     return None
 
-def recycle(sgo):
+def recycle(SgOps):
   Decimal = 0
   TrFirst = 0
   LettersXYZ = "xyz"
   Separator = ","
-  newsgo = sgtbx.SgOps()
-  for iLIS in xrange(sgo.OrderZ()):
-    xyz = sgo(iLIS).as_xyz(Decimal, TrFirst, LettersXYZ, Separator)
+  newSgOps = sgtbx.SpaceGroup()
+  for iLIS in xrange(SgOps.OrderZ()):
+    xyz = SgOps(iLIS).as_xyz(Decimal, TrFirst, LettersXYZ, Separator)
     rtmx = parse_xyz(xyz)
     if (not rtmx): return
     if (xyz != rtmx.as_xyz(Decimal, TrFirst, LettersXYZ, Separator)):
       print "Error: xyz mismatch."
       print xyz
       print rtmx.as_xyz(Decimal, TrFirst, LettersXYZ, Separator)
-    newsgo.expandSMx(rtmx)
+    newSgOps.expandSMx(rtmx)
   print xyz
-  if (   sgo.nLTr() != newsgo.nLTr()
-      or sgo.fInv() != newsgo.fInv()
-      or sgo.nSMx() != newsgo.nSMx()):
-    print "Error: newsgo mismatch."
-    print    sgo.nLTr(),    sgo.fInv(),    sgo.nSMx()
-    print newsgo.nLTr(), newsgo.fInv(), newsgo.nSMx()
+  if (   SgOps.nLTr() != newSgOps.nLTr()
+      or SgOps.fInv() != newSgOps.fInv()
+      or SgOps.nSMx() != newSgOps.nSMx()):
+    print "Error: newSgOps mismatch."
+    print    SgOps.nLTr(),    SgOps.fInv(),    SgOps.nSMx()
+    print newSgOps.nLTr(), newSgOps.fInv(), newSgOps.nSMx()
 
 for hsym in table_hall_std530:
   print hsym
-  sgo = parse(hsym[6:])
-  if (sgo):
-    recycle(sgo)
+  SgOps = parse(hsym[6:])
+  if (SgOps):
+    recycle(SgOps)

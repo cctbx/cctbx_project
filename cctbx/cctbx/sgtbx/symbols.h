@@ -33,7 +33,7 @@ namespace sgtbx {
   /*! The purpose of this class is to convert several conventional
       space group notations to Hall() symbols by using lookup tables.
       The Hall symbols can then be used to initialize objects
-      of class SgOps.
+      of class SpaceGroup.
       <p>
       Supported space group notations are:
       <ul>
@@ -242,7 +242,7 @@ namespace sgtbx {
           any 3-dimensional crystallographic space group representation
           can be described by a Hall symbol.<br>
           The most common use of Hall symbols in this implementation
-          is to initialize objects of class SgOps.
+          is to initialize objects of class SpaceGroup.
        */
       inline const std::string& Hall() const { return m_Hall; }
     private:

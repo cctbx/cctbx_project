@@ -13,13 +13,13 @@
 namespace sgtbx {
   namespace detail {
 
-    AnyGenerators::AnyGenerators(const SgOps& sgo) : nGen(0)
+    AnyGenerators::AnyGenerators(const SpaceGroup& SgOps) : nGen(0)
     {
       using namespace tables::CrystalSystem;
 
-      Z2POp = sgo.getZ2POp();
+      Z2POp = SgOps.getZ2POp();
 
-      ZInvT = sgo.InvT(true);
+      ZInvT = SgOps.InvT(true);
       PInvT = TrVec(0);
       int i;
       for(i=0;i<2;i++) ZGen[i] = RTMx(0, 0);
@@ -27,20 +27,20 @@ namespace sgtbx {
 
       int PrincipalProperOrder = 0;
 
-      tables::MatrixGroup::Code PG_MGC = sgo.getPointGroupType();
+      tables::MatrixGroup::Code PG_MGC = SgOps.getPointGroupType();
       switch (PG_MGC.CrystalSystem())
       {
         case Triclinic:
           break;
 
         case Monoclinic:
-          ZGen[0] = sgo[1];
+          ZGen[0] = SgOps[1];
           nGen = 1;
           break;
 
         case Orthorhombic:
-          ZGen[0] = sgo[1];
-          ZGen[1] = sgo[2];
+          ZGen[0] = SgOps[1];
+          ZGen[1] = SgOps[2];
           nGen = 2;
           break;
 
@@ -52,11 +52,11 @@ namespace sgtbx {
           if (!PrincipalProperOrder) PrincipalProperOrder = 6;
           {
             RotMxInfo PrincipalRI;
-            for(i = 1; i < sgo.nSMx(); i++) {
-              PrincipalRI = sgo[i].Rpart().getInfo();
+            for(i = 1; i < SgOps.nSMx(); i++) {
+              PrincipalRI = SgOps[i].Rpart().getInfo();
               if (std::abs(PrincipalRI.Rtype()) == PrincipalProperOrder) {
                 if (PrincipalRI.SenseOfRotation() > 0) {
-                  ZGen[0] = sgo[i];
+                  ZGen[0] = SgOps[i];
                   nGen++;
                   break;
                 }
@@ -64,12 +64,12 @@ namespace sgtbx {
             }
             cctbx_assert(nGen == 1);
             int iPrincipal = i;
-            for(i = 1; i < sgo.nSMx(); i++) {
+            for(i = 1; i < SgOps.nSMx(); i++) {
               if (i == iPrincipal) continue;
-              RotMxInfo RI = sgo[i].Rpart().getInfo();
+              RotMxInfo RI = SgOps[i].Rpart().getInfo();
               if (std::abs(RI.Rtype()) == 2) {
                 if (PrincipalRI.EV() != RI.EV()) {
-                  ZGen[1] = sgo[i];
+                  ZGen[1] = SgOps[i];
                   nGen++;
                   break;
                 }
@@ -79,21 +79,21 @@ namespace sgtbx {
           break;
 
         case Cubic:
-          for(i = 1; i < sgo.nSMx(); i++) {
-            RotMxInfo RI = sgo[i].Rpart().getInfo();
+          for(i = 1; i < SgOps.nSMx(); i++) {
+            RotMxInfo RI = SgOps[i].Rpart().getInfo();
             if      (std::abs(RI.Rtype()) == 3) {
               if (RI.SenseOfRotation() > 0) {
                 if (!ZGen[0].isValid()) {
-                  ZGen[0] = sgo[i];
+                  ZGen[0] = SgOps[i];
                   nGen++;
                   if (nGen == 2) break;
                 }
               }
             }
-            else if (std::abs(RI.Rtype()) == sgo.nSMx() / 6) {
+            else if (std::abs(RI.Rtype()) == SgOps.nSMx() / 6) {
               if (RI.SenseOfRotation() >= 0) {
                 if (!ZGen[1].isValid()) {
-                  ZGen[1] = sgo[i];
+                  ZGen[1] = SgOps[i];
                   nGen++;
                   if (nGen == 2) break;
                 }
@@ -118,7 +118,7 @@ namespace sgtbx {
       }
     }
 
-    StdGenerators::StdGenerators(const SgOps& WorkSgOps,
+    StdGenerators::StdGenerators(const SpaceGroup& WorkSgOps,
                                  const tables::MatrixGroup::Code& PG_MGC)
       : AnyGenerators()
     {

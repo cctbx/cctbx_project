@@ -38,14 +38,14 @@ namespace sgtbx {
       bool m_Off;
   };
 
-  class SgOps;
+  class SpaceGroup;
   class SpaceGroupType;
 
   //! Parallelepiped that contains an asymmetric unit.
   /*! A "Brick" is a parallelepiped that contains an asymmetric unit
       and is optimized for memory allocation.
       <p>
-      A Brick is the result of SgOps::getBrick().
+      A Brick is the result of SpaceGroup::getBrick().
       <p>
       Bricks for 530 conventional settings (see class
       SpaceGroupSymbols) and an additional 223 primitive settings of
@@ -106,10 +106,10 @@ namespace sgtbx {
        */
       bool isInBrick(const boost::array<rational, 3>& P) const;
     private:
-      friend class SgOps;
-      Brick(const SgOps& sgo, const SpaceGroupType& SgType);
-      Brick(const SgOps& sgo);
-      void initialize(const SgOps& sgo, const SpaceGroupType& SgType);
+      friend class SpaceGroup;
+      Brick(const SpaceGroup& SgOps, const SpaceGroupType& SgType);
+      Brick(const SpaceGroup& SgOps);
+      void initialize(const SpaceGroup& SgOps, const SpaceGroupType& SgType);
       BrickPoint m_Points[3][2];
   };
 

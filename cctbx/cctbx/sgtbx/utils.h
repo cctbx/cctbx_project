@@ -18,15 +18,16 @@
 namespace sgtbx {
 
   //! class for communicating string parsing errors.
-  /*! This class is used by functions such as sgtbx::SgOps::ParseHallSymbol()
+  /*! This class is used by functions such as
+      sgtbx::SpaceGroup::ParseHallSymbol()
       or a constructor of class sgtbx::RTMx to communitcate errors
       that are detected during the interpretation of an input string.<br>
       Intended use:<pre>
       using namespace sgtbx;
       parse_string HSym("P x");
-      SgOps sgops;
+      SpaceGroup SgOps;
       try {
-        sgops.ParseHallSymbol(HSym);
+        SgOps.ParseHallSymbol(HSym);
       }
       catch (const error& e) {
         std::cout << e.what() << std::endl;

@@ -153,10 +153,10 @@ namespace sgtbx {
 
   } // namespace detail
 
-  ChOfBasisOp SgOps::ConstructZ2POp(int RBF, int TBF) const
+  ChOfBasisOp SpaceGroup::ConstructZ2POp(int RBF, int TBF) const
   {
     ChOfBasisOp result;
-    SgOps PrimitiveSgOps;
+    SpaceGroup PrimitiveSgOps;
     const int RBF3 = RBF * RBF * RBF;
     std::auto_ptr<std::vector<TrVec> >
     TLT = detail::BuildListTotLTr(m_LTr, RBF);
@@ -187,7 +187,7 @@ namespace sgtbx {
     throw cctbx_internal_error();
   }
 
-  ChOfBasisOp SgOps::getZ2POp(int RBF, int TBF) const
+  ChOfBasisOp SpaceGroup::getZ2POp(int RBF, int TBF) const
   {
     ChOfBasisOp CBOp = m_LTr.getConventionalZ2POp(RBF, TBF);
     if (CBOp.isValid()) return CBOp;

@@ -21,7 +21,7 @@
 
 namespace sgtbx {
 
-  std::map<int, int> SgOps::CountRtypes() const
+  std::map<int, int> SpaceGroup::CountRtypes() const
   {
     std::map<int, int> result;
     rangei(nSMx()) {
@@ -30,7 +30,7 @@ namespace sgtbx {
     return result;
   }
 
-  tables::MatrixGroup::Code SgOps::getPointGroupType() const
+  tables::MatrixGroup::Code SpaceGroup::getPointGroupType() const
   {
     using namespace tables::MatrixGroup;
 
@@ -125,7 +125,7 @@ namespace sgtbx {
   namespace ConstructCBOpRpart {
 
     tables::MatrixGroup::Code
-    GetMatrixGroupType(const SgOps& StdSgOps,
+    GetMatrixGroupType(const SpaceGroup& StdSgOps,
                        tables::MatrixGroup::Code PointGroupType)
     {
       using namespace tables::MatrixGroup;
@@ -173,7 +173,7 @@ namespace sgtbx {
 
     struct BasisBuilder {
       BasisBuilder(const tables::MatrixGroup::Code& LaueGroupType);
-      void PickEigenVectors(const SgOps& RawSgOps);
+      void PickEigenVectors(const SpaceGroup& RawSgOps);
       RotMx UniAxialBasis();
       RotMx TwoAxialBasis();
       const tables::CrystalSystem::Code CrystalSystem;
@@ -226,7 +226,7 @@ namespace sgtbx {
       }
     }
 
-    void BasisBuilder::PickEigenVectors(const SgOps& RawSgOps)
+    void BasisBuilder::PickEigenVectors(const SpaceGroup& RawSgOps)
     {
       int iWtd;
       for (iWtd = 0; iWtd < nWtd; iWtd++) RMx[iWtd] = RotMx(0);
@@ -333,7 +333,7 @@ namespace sgtbx {
       return result;
     }
 
-    RotMx StdBasis(const SgOps& RawSgOps, tables::MatrixGroup::Code MGC)
+    RotMx StdBasis(const SpaceGroup& RawSgOps, tables::MatrixGroup::Code MGC)
     {
       BasisBuilder BB(MGC.LaueGroupType());
       if (BB.nWtd == 0) return RotMx();
@@ -342,7 +342,7 @@ namespace sgtbx {
       return BB.TwoAxialBasis();
     }
 
-    bool m3b100Glide(const SgOps& WorkSgOps)
+    bool m3b100Glide(const SpaceGroup& WorkSgOps)
     {
       cctbx_assert(WorkSgOps.isCentric());
       for (int iSMx = 1; iSMx < WorkSgOps.nSMx(); iSMx++) {
@@ -490,7 +490,7 @@ namespace sgtbx {
     }
 
     ChOfBasisOp MatchGenerators(int RBF, int TBF,
-                                const SgOps& WorkSgOps,
+                                const SpaceGroup& WorkSgOps,
                                 const tables::MatrixGroup::Code& PG_MGC,
                                 char TabZ,
                                 const detail::StdGenerators& TabGenerators)
@@ -534,7 +534,7 @@ namespace sgtbx {
           if (i2fold) CBOp = CBOp_2fold;
           for (int i3fold = 0; i3fold < 3; i3fold++) {
             if (i3fold) CBOp.update(CBOp_3fold);
-            SgOps TstSgOps = WorkSgOps.ChangeBasis(CBOp);
+            SpaceGroup TstSgOps = WorkSgOps.ChangeBasis(CBOp);
             const char TstZ = TstSgOps.getConventionalCentringTypeSymbol();
             cctbx_assert(TstZ != '\0' && TstZ != 'Q');
             if (TstZ != TabZ)
@@ -570,7 +570,7 @@ namespace sgtbx {
     }
 
     void TidyCBOpT(const detail::StdGenerators& TargetGenerators,
-                   const SgOps& GivenSgOps,
+                   const SpaceGroup& GivenSgOps,
                    const tables::MatrixGroup::Code& PG_MGC,
                    ChOfBasisOp& TrialCBOp)
     {
@@ -583,7 +583,7 @@ namespace sgtbx {
       // done if space group is P 1
       if (GivenSgOps.nSMx() == 1 && !GivenSgOps.isCentric()) return;
 
-      SgOps TransformedSgOps = GivenSgOps.ChangeBasis(TrialCBOp);
+      SpaceGroup TransformedSgOps = GivenSgOps.ChangeBasis(TrialCBOp);
       detail::StdGenerators TransformedGenerators(TransformedSgOps, PG_MGC);
       TransformedGenerators.setPrimitive();
       TrVec
@@ -644,18 +644,18 @@ namespace sgtbx {
        independent of the order of symmetry operations
        and indepenent of the RawCBOp.
      */
-    ChOfBasisOp FindBestCBOp(const SgOps& GivenSgOps,
+    ChOfBasisOp FindBestCBOp(const SpaceGroup& GivenSgOps,
                              const tables::MatrixGroup::Code& PG_MGC,
                              int SgNumber,
                              const ChOfBasisOp& RefCBOp,
-                             const SgOps& TargetSgOps,
+                             const SpaceGroup& TargetSgOps,
                              const detail::StdGenerators& TargetGenerators,
                              const ChOfBasisOp& RawCBOp)
     {
       std::vector<RTMx>
       AddlG = ReferenceSettings::GetNormAddlG(SgNumber, true, true, true);
       ChOfBasisOp CBOp = RefCBOp.swap();
-      SgOps NormSgOps = TargetSgOps;
+      SpaceGroup NormSgOps = TargetSgOps;
       int OldOrderP = NormSgOps.OrderP();
       for(int i=0;i<AddlG.size();i++) {
         RTMx M = CBOp(AddlG[i]);
@@ -727,15 +727,15 @@ namespace sgtbx {
 
   } // namespace ConstructCBOpTpart
 
-  SpaceGroupType SgOps::getSpaceGroupType(bool TidyCBOp,
-                                          int RBF, int TBF) const
+  SpaceGroupType SpaceGroup::getSpaceGroupType(bool TidyCBOp,
+                                               int RBF, int TBF) const
   {
     tables::MatrixGroup::Code PG_MGC = getPointGroupType();
     tables::MatrixGroup::Code LG_MGC = PG_MGC.LaueGroupType();
     tables::CrystalSystem::Code CrystalSystem = PG_MGC.CrystalSystem();
 
-    SgOps ZPointGroup = BuildDerivedGroup(false, false);
-    SgOps WorkSgOps = ZPointGroup;
+    SpaceGroup ZPointGroup = BuildDerivedGroup(false, false);
+    SpaceGroup WorkSgOps = ZPointGroup;
     ChOfBasisOp TotCBOp(RBF, TBF);
     char Z = '\0';
     int RunAwayCounter = 0;
@@ -805,9 +805,9 @@ namespace sgtbx {
       if (tables::ReferenceSettings::MatrixGroupCodes[SgNumber] != MGC)
         continue;
 
-      SgOps TabSgOps;
+      SpaceGroup TabSgOps;
       try {
-        TabSgOps = SgOps(HallSymbol, true);
+        TabSgOps = SpaceGroup(HallSymbol, true);
       }
       catch (const error&) {
         throw cctbx_internal_error();
@@ -833,14 +833,14 @@ namespace sgtbx {
     throw cctbx_internal_error();
   }
 
-  std::string SgOps::BuildHallSymbol(const SpaceGroupType& SgType,
-                                     bool TidyCBOp) const
+  std::string SpaceGroup::BuildHallSymbol(const SpaceGroupType& SgType,
+                                          bool TidyCBOp) const
   {
     cctbx_assert(0 < SgType.SgNumber() && SgType.SgNumber() <= 230);
     std::string
     HallSymbol(tables::ReferenceSettings::HallSymbols[SgType.SgNumber()]);
     parse_string ps(HallSymbol);
-    SgOps TargetSgOps;
+    SpaceGroup TargetSgOps;
     ChOfBasisOp RefCBOp;
     TargetSgOps.ParseHallSymbolCBOp(ps, RefCBOp, true);
     ChOfBasisOp CBOp = RefCBOp;
@@ -875,7 +875,7 @@ namespace sgtbx {
     return HallSymbol;
   }
 
-  std::string SgOps::BuildHallSymbol(bool TidyCBOp) const {
+  std::string SpaceGroup::BuildHallSymbol(bool TidyCBOp) const {
     return BuildHallSymbol(getSpaceGroupType(), TidyCBOp);
   }
 

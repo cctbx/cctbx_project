@@ -15,9 +15,9 @@ int main(void)
 {
   using namespace sgtbx;
   parse_string HSym("P 31");
-  SgOps sgops;
+  SpaceGroup SgOps;
   try {
-    sgops.ParseHallSymbol(HSym);
+    SgOps.ParseHallSymbol(HSym);
   }
   catch (const error& e) {
     std::cout << e.what() << std::endl;
@@ -26,7 +26,7 @@ int main(void)
     std::cout << "^" << std::endl;
   }
 
-  RTMx M = sgops(1);
+  RTMx M = SgOps(1);
   std::cout << M.as_array(double(0)) << std::endl;
   std::cout << M.as_int_array() << std::endl;
 

@@ -52,7 +52,7 @@ namespace sgtbx {
     return m_Vects.size() != old_size;
   }
 
-  void SgOps::reset()
+  void SpaceGroup::reset()
   {
     nLSL = 1;
     nSSL = 1;
@@ -65,7 +65,7 @@ namespace sgtbx {
     m_isTidy = false;
   }
 
-  void SgOps::addInv(const TrVec& NewInvT)
+  void SpaceGroup::addInv(const TrVec& NewInvT)
   {
     if (isCentric()) { // there is a centre of inversion already
       if (m_LTr.add(m_InvT - NewInvT)) m_isTidy = false;
@@ -83,7 +83,7 @@ namespace sgtbx {
     }
   }
 
-  void SgOps::addSMx(const RTMx& NewSMx)
+  void SpaceGroup::addSMx(const RTMx& NewSMx)
   {
     RotMx mR = -NewSMx.Rpart();
     for (int iSMx = 0; iSMx < m_nSMx; iSMx++) {
@@ -108,7 +108,7 @@ namespace sgtbx {
     m_isTidy = false;
   }
 
-  void SgOps::expandLTr(const TrVec& NewLTr)
+  void SpaceGroup::expandLTr(const TrVec& NewLTr)
   {
     if (m_NoExpand) {
       if (m_LTr.add(NewLTr)) m_isTidy = false;
@@ -142,13 +142,13 @@ namespace sgtbx {
     }
   }
 
-  void SgOps::expandInv(const TrVec& NewInvT)
+  void SpaceGroup::expandInv(const TrVec& NewInvT)
   {
     addInv(NewInvT);
     expandLTr(TrVec(0));
   }
 
-  void SgOps::expandSMx(const RTMx& NewSMx)
+  void SpaceGroup::expandSMx(const RTMx& NewSMx)
   {
     if (m_NoExpand) {
       addSMx(NewSMx);
@@ -171,7 +171,7 @@ namespace sgtbx {
     expandLTr(TrVec(0));
   }
 
-  int SgOps::expandConventionalCentringType(char Symbol)
+  int SpaceGroup::expandConventionalCentringType(char Symbol)
   {
     const lattice::CentringTypeMap*
     mapping = lattice::getConventionalCentringType(Symbol);
@@ -184,7 +184,7 @@ namespace sgtbx {
     return mapping->nTrs;
   }
 
-  RTMx SgOps::operator()(int iLTr, int iInv, int iSMx) const
+  RTMx SpaceGroup::operator()(int iLTr, int iInv, int iSMx) const
   {
     if (   iLTr < 0 || iLTr >= m_LTr.nVects()
         || iInv < 0 || iInv >= m_fInv
@@ -195,7 +195,7 @@ namespace sgtbx {
     return -m_SMx[iSMx] + m_InvT + m_LTr[iLTr];
   }
 
-  RTMx SgOps::operator()(int iLIS) const
+  RTMx SpaceGroup::operator()(int iLIS) const
   {
     // iLIS = ((iLTr * fInv) + iInv) * nSMx + iSMx
     if (iLIS < 0 || iLIS >= OrderZ()) {
@@ -207,13 +207,13 @@ namespace sgtbx {
     return operator()(iLTr, iInv, iSMx);
   }
 
-  bool operator==(const SgOps& lhs, const SgOps& rhs)
+  bool operator==(const SpaceGroup& lhs, const SpaceGroup& rhs)
   {
     if (lhs.nLTr() != rhs.nLTr()) return false;
     if (lhs.fInv() != rhs.fInv()) return false;
     if (lhs.nSMx() != rhs.nSMx()) return false;
-    SgOps tidy_lhs = lhs; tidy_lhs.makeTidy();
-    SgOps tidy_rhs = rhs; tidy_rhs.makeTidy();
+    SpaceGroup tidy_lhs = lhs; tidy_lhs.makeTidy();
+    SpaceGroup tidy_rhs = rhs; tidy_rhs.makeTidy();
     if (tidy_lhs.m_InvT != tidy_rhs.m_InvT) return false;
     if (tidy_lhs.m_LTr.Vects() != tidy_rhs.m_LTr.Vects()) return false;
     rangei(tidy_lhs.nSMx()) {
@@ -222,9 +222,9 @@ namespace sgtbx {
     return true;
   }
 
-  SgOps SgOps::BuildDerivedGroup(bool DiscardZ, bool AddInv) const
+  SpaceGroup SpaceGroup::BuildDerivedGroup(bool DiscardZ, bool AddInv) const
   {
-    SgOps result;
+    SpaceGroup result;
     int i;
     if (!DiscardZ) {
       for(i=0;i<nLTr();i++) {
@@ -240,11 +240,11 @@ namespace sgtbx {
     return result;
   }
 
-  SpaceGroupSymbols SgOps::MatchTabulatedSettings() const
+  SpaceGroupSymbols SpaceGroup::MatchTabulatedSettings() const
   {
     using tables::ReferenceSettings::MatrixGroupCodes;
     tables::MatrixGroup::Code PointGroupType = getPointGroupType();
-    SgOps TidySgOps = *this;
+    SpaceGroup TidySgOps = *this;
     TidySgOps.makeTidy();
     SpaceGroupSymbolIterator Iter;
     for (;;) {
@@ -254,7 +254,7 @@ namespace sgtbx {
           != MatrixGroupCodes[Symbols.SgNumber()].PointGroupType())
         continue;
       try {
-        SgOps TabSgOps(Symbols.Hall(), true);
+        SpaceGroup TabSgOps(Symbols.Hall(), true);
         if (TabSgOps == TidySgOps) return Symbols;
       }
       catch (const error&) {
@@ -263,7 +263,7 @@ namespace sgtbx {
     }
   }
 
-  std::string SgOps::BuildLookupSymbol(const SpaceGroupType& SgType) const
+  std::string SpaceGroup::BuildLookupSymbol(const SpaceGroupType& SgType) const
   {
     SpaceGroupSymbols Symbols = MatchTabulatedSettings();
     if (Symbols.SgNumber() != 0) {
@@ -272,7 +272,7 @@ namespace sgtbx {
     return "Hall: " + BuildHallSymbol(SgType, true);
   }
 
-  std::string SgOps::BuildLookupSymbol() const
+  std::string SpaceGroup::BuildLookupSymbol() const
   {
     SpaceGroupSymbols Symbols = MatchTabulatedSettings();
     if (Symbols.SgNumber() != 0) {
@@ -281,18 +281,18 @@ namespace sgtbx {
     return "Hall: " + BuildHallSymbol(true);
   }
 
-  std::ostream& operator<<(std::ostream& os, const SgOps& sgo)
+  std::ostream& operator<<(std::ostream& os, const SpaceGroup& SgOps)
   {
     int i;
-    os << "nLTr=" << sgo.nLTr() << std::endl;
-    for (i = 0; i < sgo.nLTr(); i++)
-      os << "  " << sgo(i, 0, 0).as_xyz() << std::endl;
-    os << "fInv=" << sgo.fInv() << std::endl;
-    if (sgo.isCentric())
-      os << "  " << sgo(0, 1, 0).as_xyz() << std::endl;
-    os << "nSMx=" << sgo.nSMx() << std::endl;
-    for (i = 0; i < sgo.nSMx(); i++)
-      os << "  " << sgo(0, 0, i).as_xyz() << std::endl;
+    os << "nLTr=" << SgOps.nLTr() << std::endl;
+    for (i = 0; i < SgOps.nLTr(); i++)
+      os << "  " << SgOps(i, 0, 0).as_xyz() << std::endl;
+    os << "fInv=" << SgOps.fInv() << std::endl;
+    if (SgOps.isCentric())
+      os << "  " << SgOps(0, 1, 0).as_xyz() << std::endl;
+    os << "nSMx=" << SgOps.nSMx() << std::endl;
+    for (i = 0; i < SgOps.nSMx(); i++)
+      os << "  " << SgOps(0, 0, i).as_xyz() << std::endl;
     return os;
   }
 

@@ -18,7 +18,7 @@ def OneCycle():
     if (StandardOnly and LookupSymbol[:5] == "Hall:"): continue
     SgSymbols = sgtbx.SpaceGroupSymbols(LookupSymbol)
     HSym = SgSymbols.Hall()
-    SgOps = sgtbx.SgOps(HSym)
+    SgOps = sgtbx.SpaceGroup(HSym)
     SgType = SgOps.getSpaceGroupType()
     print "SpaceGroup %s (%d) %s" % (
       SgOps.BuildLookupSymbol(SgType),

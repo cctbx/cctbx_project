@@ -60,9 +60,9 @@ namespace sgtbx {
     return result;
   }
 
-  SgOps SgOps::ChangeBasis(const ChOfBasisOp& CBOp) const
+  SpaceGroup SpaceGroup::ChangeBasis(const ChOfBasisOp& CBOp) const
   {
-    SgOps result(m_NoExpand);
+    SpaceGroup result(m_NoExpand);
     result.m_LTr = m_LTr.ChangeBasis(CBOp);
     if (isCentric()) {
       result.expandInv(CBOp(m_InvT, -1));

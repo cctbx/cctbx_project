@@ -788,13 +788,13 @@ namespace sgtbx {
   namespace detail {
 
     const tables::RawBrick*
-    FindTabulatedBrick(const SgOps& sgo, const SpaceGroupType& SgType)
+    FindTabulatedBrick(const SpaceGroup& SgOps, const SpaceGroupType& SgType)
     {
       for (std::size_t i = 0; tables::TabRawBricks[i].SgNumber != 0; i++) {
         if (tables::TabRawBricks[i].SgNumber > SgType.SgNumber()) break;
         if (tables::TabRawBricks[i].SgNumber == SgType.SgNumber()) {
-          SgOps TabSgOps(tables::TabRawBricks[i].HallSymbol);
-          if (sgo == TabSgOps) return &tables::TabRawBricks[i];
+          SpaceGroup TabSgOps(tables::TabRawBricks[i].HallSymbol);
+          if (SgOps == TabSgOps) return &tables::TabRawBricks[i];
         }
       }
       return 0;
@@ -802,9 +802,9 @@ namespace sgtbx {
 
   } // namespace detail
 
-  void Brick::initialize(const SgOps& sgo, const SpaceGroupType& SgType)
+  void Brick::initialize(const SpaceGroup& SgOps, const SpaceGroupType& SgType)
   {
-    const tables::RawBrick* RB = detail::FindTabulatedBrick(sgo, SgType);
+    const tables::RawBrick* RB = detail::FindTabulatedBrick(SgOps, SgType);
     if (RB == 0) {
       throw error(
         "Brick is not available for the given space group representation.");
@@ -816,12 +816,12 @@ namespace sgtbx {
     }
   }
 
-  Brick::Brick(const SgOps& sgo, const SpaceGroupType& SgType) {
-    initialize(sgo, SgType);
+  Brick::Brick(const SpaceGroup& SgOps, const SpaceGroupType& SgType) {
+    initialize(SgOps, SgType);
   }
 
-  Brick::Brick(const SgOps& sgo) {
-    initialize(sgo, sgo.getSpaceGroupType(false));
+  Brick::Brick(const SpaceGroup& SgOps) {
+    initialize(SgOps, SgOps.getSpaceGroupType(false));
   }
 
   BrickPoint

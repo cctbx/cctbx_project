@@ -68,7 +68,7 @@ namespace sgtbx {
       }
   };
 
-  void SgOps::makeTidy()
+  void SpaceGroup::makeTidy()
   {
     if (m_isTidy) return;
     if (isCentric()) {

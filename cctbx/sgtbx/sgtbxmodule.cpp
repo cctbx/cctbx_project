@@ -116,23 +116,26 @@ namespace {
     return CBOp(X);
   }
 
-  int SgOps_ParseHallSymbol_parse_string(SgOps& sgo, parse_string& HSym) {
-    return sgo.ParseHallSymbol(HSym);
+  int SpaceGroup_ParseHallSymbol_parse_string(SpaceGroup& SgOps,
+                                              parse_string& HSym) {
+    return SgOps.ParseHallSymbol(HSym);
   }
-  int SgOps_ParseHallSymbol_std_string(SgOps& sgo, const std::string& HSym) {
+  int SpaceGroup_ParseHallSymbol_std_string(SpaceGroup& SgOps,
+                                            const std::string& HSym) {
     parse_string HSymPS(HSym);
-    return sgo.ParseHallSymbol(HSymPS);
+    return SgOps.ParseHallSymbol(HSymPS);
   }
 
-  RTMx SgOps_call_1(const SgOps& sgo, int iLIS) {
-    return sgo(iLIS);
+  RTMx SpaceGroup_call_1(const SpaceGroup& SgOps, int iLIS) {
+    return SgOps(iLIS);
   }
-  RTMx SgOps_call_3(const SgOps& sgo, int iLTr, int iInv, int iSMx) {
-    return sgo(iLTr, iInv, iSMx);
+  RTMx
+  SpaceGroup_call_3(const SpaceGroup& SgOps, int iLTr, int iInv, int iSMx) {
+    return SgOps(iLTr, iInv, iSMx);
   }
-  RTMx SgOps_getitem(const SgOps& sgo, std::size_t key) {
+  RTMx SpaceGroup_getitem(const SpaceGroup& SgOps, std::size_t key) {
     try {
-      return sgo(key);
+      return SgOps(key);
     }
     catch (const error_index& e) {
       PyErr_SetString(PyExc_IndexError, e.what());
@@ -140,125 +143,130 @@ namespace {
     }
   }
 
-  bool SgOps_isCentric_0(const SgOps& sgo) {
-    return sgo.isCentric();
+  bool SpaceGroup_isCentric_0(const SpaceGroup& SgOps) {
+    return SgOps.isCentric();
   }
-  bool SgOps_isCentric_1(const SgOps& sgo, const Miller::Index& H) {
-    return sgo.isCentric(H);
-  }
-
-  bool SgOps_isValidPhase_rad_2(const SgOps& sgo,
-                                const Miller::Index& H, double phi) {
-    return sgo.isValidPhase_rad(H, phi);
-  }
-  bool SgOps_isValidPhase_rad_3(const SgOps& sgo,
-                                const Miller::Index& H, double phi,
-                                double tolerance) {
-    return sgo.isValidPhase_rad(H, phi, tolerance);
-  }
-  bool SgOps_isValidPhase_deg_2(const SgOps& sgo,
-                                const Miller::Index& H, double phi) {
-    return sgo.isValidPhase_deg(H, phi);
-  }
-  bool SgOps_isValidPhase_deg_3(const SgOps& sgo,
-                                const Miller::Index& H, double phi,
-                                double tolerance) {
-    return sgo.isValidPhase_deg(H, phi, tolerance);
+  bool
+  SpaceGroup_isCentric_1(const SpaceGroup& SgOps, const Miller::Index& H) {
+    return SgOps.isCentric(H);
   }
 
-  void SgOps_CheckMetricalMatrix_1(const SgOps& sgo, const uctbx::Mx33& G) {
-    sgo.CheckMetricalMatrix(G);
+  bool SpaceGroup_isValidPhase_rad_2(const SpaceGroup& SgOps,
+                                     const Miller::Index& H, double phi) {
+    return SgOps.isValidPhase_rad(H, phi);
   }
-  void SgOps_CheckUnitCell_1(const SgOps& sgo, const uctbx::UnitCell& uc) {
-    sgo.CheckUnitCell(uc);
+  bool SpaceGroup_isValidPhase_rad_3(const SpaceGroup& SgOps,
+                                     const Miller::Index& H, double phi,
+                                     double tolerance) {
+    return SgOps.isValidPhase_rad(H, phi, tolerance);
+  }
+  bool SpaceGroup_isValidPhase_deg_2(const SpaceGroup& SgOps,
+                                     const Miller::Index& H, double phi) {
+    return SgOps.isValidPhase_deg(H, phi);
+  }
+  bool SpaceGroup_isValidPhase_deg_3(const SpaceGroup& SgOps,
+                                     const Miller::Index& H, double phi,
+                                     double tolerance) {
+    return SgOps.isValidPhase_deg(H, phi, tolerance);
+  }
+
+  void SpaceGroup_CheckMetricalMatrix_1(const SpaceGroup& SgOps,
+                                        const uctbx::Mx33& G) {
+    SgOps.CheckMetricalMatrix(G);
+  }
+  void SpaceGroup_CheckUnitCell_1(const SpaceGroup& SgOps,
+                                  const uctbx::UnitCell& uc) {
+    SgOps.CheckUnitCell(uc);
   }
 
   Miller::MasterIndex
-  SgOps_getMasterIndex_2(const SgOps& sgo,
-                         const Miller::Index& H,
-                         bool Pretty) {
-    return sgo.getMasterIndex(H, Pretty);
+  SpaceGroup_getMasterIndex_2(const SpaceGroup& SgOps,
+                              const Miller::Index& H,
+                              bool Pretty) {
+    return SgOps.getMasterIndex(H, Pretty);
   }
   Miller::MasterIndex
-  SgOps_getMasterIndex_3(const SgOps& sgo,
-                         const Miller::Index& H,
-                         const Miller::Vec3& CutP,
-                         bool Pretty) {
-    return sgo.getMasterIndex(H, CutP, Pretty);
+  SpaceGroup_getMasterIndex_3(const SpaceGroup& SgOps,
+                              const Miller::Index& H,
+                              const Miller::Vec3& CutP,
+                              bool Pretty) {
+    return SgOps.getMasterIndex(H, CutP, Pretty);
   }
 
-  int SgOps_cmp_equal(const SgOps& lhs, const SgOps& rhs) {
+  int SpaceGroup_cmp_equal(const SpaceGroup& lhs, const SpaceGroup& rhs) {
     if (lhs == rhs) return 0;
     return 1;
   }
 
-  ChOfBasisOp SgOps_getZ2POp_0(const SgOps& sgo) {
-    return sgo.getZ2POp();
+  ChOfBasisOp SpaceGroup_getZ2POp_0(const SpaceGroup& SgOps) {
+    return SgOps.getZ2POp();
   }
 
-  SpaceGroupType SgOps_getSpaceGroupType_0(const SgOps& sgo) {
-    return sgo.getSpaceGroupType();
+  SpaceGroupType SpaceGroup_getSpaceGroupType_0(const SpaceGroup& SgOps) {
+    return SgOps.getSpaceGroupType();
   }
-  SpaceGroupType SgOps_getSpaceGroupType_1(const SgOps& sgo, bool TidyCBOp) {
-    return sgo.getSpaceGroupType(TidyCBOp);
-  }
-
-  std::string SgOps_BuildHallSymbol_0of1(const SgOps& sgo) {
-    return sgo.BuildHallSymbol();
-  }
-  std::string SgOps_BuildHallSymbol_1of1(const SgOps& sgo, bool TidyCBOp) {
-    return sgo.BuildHallSymbol(TidyCBOp);
-  }
-  std::string SgOps_BuildHallSymbol_1of2(const SgOps& sgo,
-                                         const SpaceGroupType& SgType) {
-    return sgo.BuildHallSymbol(SgType);
-  }
-  std::string SgOps_BuildHallSymbol_2of2(const SgOps& sgo,
-                                         const SpaceGroupType& SgType,
-                                         bool TidyCBOp) {
-    return sgo.BuildHallSymbol(SgType, TidyCBOp);
+  SpaceGroupType SpaceGroup_getSpaceGroupType_1(const SpaceGroup& SgOps,
+                                                bool TidyCBOp) {
+    return SgOps.getSpaceGroupType(TidyCBOp);
   }
 
-  std::string SgOps_BuildLookupSymbol_0(const SgOps& sgo) {
-    return sgo.BuildLookupSymbol();
+  std::string SpaceGroup_BuildHallSymbol_0of1(const SpaceGroup& SgOps) {
+    return SgOps.BuildHallSymbol();
   }
-  std::string SgOps_BuildLookupSymbol_1(const SgOps& sgo,
-                                        const SpaceGroupType& SgType) {
-    return sgo.BuildLookupSymbol(SgType);
+  std::string SpaceGroup_BuildHallSymbol_1of1(const SpaceGroup& SgOps,
+                                              bool TidyCBOp) {
+    return SgOps.BuildHallSymbol(TidyCBOp);
+  }
+  std::string SpaceGroup_BuildHallSymbol_1of2(const SpaceGroup& SgOps,
+                                              const SpaceGroupType& SgType) {
+    return SgOps.BuildHallSymbol(SgType);
+  }
+  std::string SpaceGroup_BuildHallSymbol_2of2(const SpaceGroup& SgOps,
+                                              const SpaceGroupType& SgType,
+                                              bool TidyCBOp) {
+    return SgOps.BuildHallSymbol(SgType, TidyCBOp);
   }
 
-  Brick SgOps_getBrick_0(const SgOps& sgo) {
-    return sgo.getBrick();
+  std::string SpaceGroup_BuildLookupSymbol_0(const SpaceGroup& SgOps) {
+    return SgOps.BuildLookupSymbol();
   }
-  Brick SgOps_getBrick_1(const SgOps& sgo,
-                               const SpaceGroupType& SgType) {
-    return sgo.getBrick(SgType);
+  std::string SpaceGroup_BuildLookupSymbol_1(const SpaceGroup& SgOps,
+                                             const SpaceGroupType& SgType) {
+    return SgOps.BuildLookupSymbol(SgType);
   }
 
-  python::string SgOps_repr(const SgOps& sgo)
+  Brick SpaceGroup_getBrick_0(const SpaceGroup& SgOps) {
+    return SgOps.getBrick();
+  }
+  Brick SpaceGroup_getBrick_1(const SpaceGroup& SgOps,
+                              const SpaceGroupType& SgType) {
+    return SgOps.getBrick(SgType);
+  }
+
+  python::string SpaceGroup_repr(const SpaceGroup& SgOps)
   {
     std::string result;
     char buf[256];
     int i;
-    sprintf(buf, "nLTr=%d\n", sgo.nLTr());
+    sprintf(buf, "nLTr=%d\n", SgOps.nLTr());
     result += buf;
-    for (i = 0; i < sgo.nLTr(); i++)
-      result += "  " + sgo(i, 0, 0).as_xyz() + "\n";
-    sprintf(buf, "fInv=%d\n", sgo.fInv());
+    for (i = 0; i < SgOps.nLTr(); i++)
+      result += "  " + SgOps(i, 0, 0).as_xyz() + "\n";
+    sprintf(buf, "fInv=%d\n", SgOps.fInv());
     result += buf;
-    if (sgo.isCentric())
-      result += "  " + sgo(0, 1, 0).as_xyz() + "\n";
-    sprintf(buf, "nSMx=%d\n", sgo.nSMx());
+    if (SgOps.isCentric())
+      result += "  " + SgOps(0, 1, 0).as_xyz() + "\n";
+    sprintf(buf, "nSMx=%d\n", SgOps.nSMx());
     result += buf;
-    for (i = 0; i < sgo.nSMx(); i++)
-      result += "  " + sgo(0, 0, i).as_xyz() + "\n";
+    for (i = 0; i < SgOps.nSMx(); i++)
+      result += "  " + SgOps(0, 0, i).as_xyz() + "\n";
     return python::string(result.c_str());
   }
 
   // Support for pickle.
-  tuple SgOps_getinitargs(const SgOps& sgo) {
+  tuple SpaceGroup_getinitargs(const SpaceGroup& SgOps) {
     tuple initargs(1);
-    initargs.set_item(0, ref(to_python(sgo.BuildHallSymbol())));
+    initargs.set_item(0, ref(to_python(SgOps.BuildHallSymbol())));
     return initargs;
   }
 
@@ -416,17 +424,17 @@ namespace {
   WyckoffMapping
   WyckoffTable_getWyckoffMapping_3(const WyckoffTable& WTab,
                                    const uctbx::UnitCell& uc,
-                                   const SgOps& sgo,
+                                   const SpaceGroup& SgOps,
                                    const fractional<double>& X) {
-    return WTab.getWyckoffMapping(uc, sgo, X);
+    return WTab.getWyckoffMapping(uc, SgOps, X);
   }
   WyckoffMapping
   WyckoffTable_getWyckoffMapping_4(const WyckoffTable& WTab,
                                    const uctbx::UnitCell& uc,
-                                   const SgOps& sgo,
+                                   const SpaceGroup& SgOps,
                                    const fractional<double>& X,
                                    double SnapRadius) {
-    return WTab.getWyckoffMapping(uc, sgo, X, SnapRadius);
+    return WTab.getWyckoffMapping(uc, SgOps, X, SnapRadius);
   }
 
   const char* SpecialPosition_getPointGroupType(const SpecialPosition& SP) {
@@ -544,9 +552,9 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_PhaseRestriction(this_module, "PhaseRestriction");
     class_builder<SymEquivMillerIndices>
     py_SymEquivMillerIndices(this_module, "SymEquivMillerIndices");
-    class_builder<SgOps>
-    py_SgOps(this_module, "SgOps");
-    python::export_converters(py_SgOps);
+    class_builder<SpaceGroup>
+    py_SpaceGroup(this_module, "SpaceGroup");
+    python::export_converters(py_SpaceGroup);
     class_builder<std::vector<RTMx> >
     py_std_vector_RTMx(this_module, "std_vector_RTMx");
     class_builder<SpaceGroupType>
@@ -736,71 +744,75 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_SymEquivMillerIndices.def(
       SymEquivMillerIndices_getMasterIndex_2, "getMasterIndex");
 
-    py_SgOps.def(constructor<>());
-    py_SgOps.def(constructor<parse_string&>());
-    py_SgOps.def(constructor<parse_string&, bool>());
-    py_SgOps.def(constructor<parse_string&, bool, bool>());
-    py_SgOps.def(constructor<const std::string&>());
-    py_SgOps.def(constructor<const std::string&, bool>());
-    py_SgOps.def(constructor<const std::string&, bool, bool>());
-    py_SgOps.def(SgOps_ParseHallSymbol_parse_string, "ParseHallSymbol");
-    py_SgOps.def(SgOps_ParseHallSymbol_std_string, "ParseHallSymbol");
-    py_SgOps.def(&SgOps::ParseHallSymbol, "ParseHallSymbol");
-    py_SgOps.def(&SgOps::ChangeBasis, "ChangeBasis");
-    py_SgOps.def(&SgOps::expandSMx, "expandSMx");
-    py_SgOps.def(&SgOps::RBF, "RBF");
-    py_SgOps.def(&SgOps::TBF, "TBF");
-    py_SgOps.def(&SgOps::nLTr, "nLTr");
-    py_SgOps.def(&SgOps::fInv, "fInv");
-    py_SgOps.def(&SgOps::nSMx, "nSMx");
-    py_SgOps.def(&SgOps::OrderP, "OrderP");
-    py_SgOps.def(&SgOps::OrderZ, "OrderZ");
-    py_SgOps.def(SgOps_call_1, "__call__");
-    py_SgOps.def(SgOps_call_3, "__call__");
-    py_SgOps.def(&SgOps::OrderZ, "__len__");
-    py_SgOps.def(SgOps_getitem, "__getitem__");
-    py_SgOps.def(&SgOps::getConventionalCentringTypeSymbol,
-                        "getConventionalCentringTypeSymbol");
-    py_SgOps.def(&SgOps::isChiral, "isChiral");
-    py_SgOps.def(&SgOps::isEnantiomorphic, "isEnantiomorphic");
-    py_SgOps.def(&SgOps::getChangeOfHandOp, "getChangeOfHandOp");
-    py_SgOps.def(&SgOps::isSysAbsent, "isSysAbsent");
-    py_SgOps.def(SgOps_isCentric_0, "isCentric");
-    py_SgOps.def(SgOps_isCentric_1, "isCentric");
-    py_SgOps.def(&SgOps::isOriginCentric, "isOriginCentric");
-    py_SgOps.def(&SgOps::getPhaseRestriction, "getPhaseRestriction");
-    py_SgOps.def(SgOps_isValidPhase_rad_2, "isValidPhase_rad");
-    py_SgOps.def(SgOps_isValidPhase_rad_3, "isValidPhase_rad");
-    py_SgOps.def(SgOps_isValidPhase_deg_2, "isValidPhase_deg");
-    py_SgOps.def(SgOps_isValidPhase_deg_3, "isValidPhase_deg");
-    py_SgOps.def(&SgOps::epsilon, "epsilon");
-    py_SgOps.def(&SgOps::multiplicity, "multiplicity");
-    py_SgOps.def(&SgOps::getEquivMillerIndices, "getEquivMillerIndices");
-    py_SgOps.def(&SgOps::getCutParameters, "getCutParameters");
-    py_SgOps.def(SgOps_getMasterIndex_2, "getMasterIndex");
-    py_SgOps.def(SgOps_getMasterIndex_3, "getMasterIndex");
-    py_SgOps.def(SgOps_CheckMetricalMatrix_1, "CheckMetricalMatrix");
-    py_SgOps.def(&SgOps::CheckMetricalMatrix, "CheckMetricalMatrix");
-    py_SgOps.def(SgOps_CheckUnitCell_1, "CheckUnitCell");
-    py_SgOps.def(&SgOps::CheckUnitCell, "CheckUnitCell");
-    py_SgOps.def(SgOps_getZ2POp_0, "getZ2POp");
-    py_SgOps.def(&SgOps::getZ2POp, "getZ2POp");
-    py_SgOps.def(&SgOps::makeTidy, "makeTidy");
-    py_SgOps.def(SgOps_cmp_equal, "__cmp__");
-    py_SgOps.def(SgOps_getSpaceGroupType_0, "getSpaceGroupType");
-    py_SgOps.def(SgOps_getSpaceGroupType_1, "getSpaceGroupType");
-    py_SgOps.def(&SgOps::getSpaceGroupType, "getSpaceGroupType");
-    py_SgOps.def(SgOps_BuildHallSymbol_0of1, "BuildHallSymbol");
-    py_SgOps.def(SgOps_BuildHallSymbol_1of1, "BuildHallSymbol");
-    py_SgOps.def(SgOps_BuildHallSymbol_1of2, "BuildHallSymbol");
-    py_SgOps.def(SgOps_BuildHallSymbol_2of2, "BuildHallSymbol");
-    py_SgOps.def(&SgOps::MatchTabulatedSettings, "MatchTabulatedSettings");
-    py_SgOps.def(SgOps_BuildLookupSymbol_0, "BuildLookupSymbol");
-    py_SgOps.def(SgOps_BuildLookupSymbol_1, "BuildLookupSymbol");
-    py_SgOps.def(SgOps_getBrick_0, "getBrick");
-    py_SgOps.def(SgOps_getBrick_1, "getBrick");
-    py_SgOps.def(SgOps_repr, "__repr__");
-    py_SgOps.def(SgOps_getinitargs, "__getinitargs__");
+    py_SpaceGroup.def(constructor<>());
+    py_SpaceGroup.def(constructor<parse_string&>());
+    py_SpaceGroup.def(constructor<parse_string&, bool>());
+    py_SpaceGroup.def(constructor<parse_string&, bool, bool>());
+    py_SpaceGroup.def(constructor<const std::string&>());
+    py_SpaceGroup.def(constructor<const std::string&, bool>());
+    py_SpaceGroup.def(constructor<const std::string&, bool, bool>());
+    py_SpaceGroup.def(SpaceGroup_ParseHallSymbol_parse_string,
+                                "ParseHallSymbol");
+    py_SpaceGroup.def(SpaceGroup_ParseHallSymbol_std_string,
+                                "ParseHallSymbol");
+    py_SpaceGroup.def(&SpaceGroup::ParseHallSymbol, "ParseHallSymbol");
+    py_SpaceGroup.def(&SpaceGroup::ChangeBasis, "ChangeBasis");
+    py_SpaceGroup.def(&SpaceGroup::expandSMx, "expandSMx");
+    py_SpaceGroup.def(&SpaceGroup::RBF, "RBF");
+    py_SpaceGroup.def(&SpaceGroup::TBF, "TBF");
+    py_SpaceGroup.def(&SpaceGroup::nLTr, "nLTr");
+    py_SpaceGroup.def(&SpaceGroup::fInv, "fInv");
+    py_SpaceGroup.def(&SpaceGroup::nSMx, "nSMx");
+    py_SpaceGroup.def(&SpaceGroup::OrderP, "OrderP");
+    py_SpaceGroup.def(&SpaceGroup::OrderZ, "OrderZ");
+    py_SpaceGroup.def(SpaceGroup_call_1, "__call__");
+    py_SpaceGroup.def(SpaceGroup_call_3, "__call__");
+    py_SpaceGroup.def(&SpaceGroup::OrderZ, "__len__");
+    py_SpaceGroup.def(SpaceGroup_getitem, "__getitem__");
+    py_SpaceGroup.def(&SpaceGroup::getConventionalCentringTypeSymbol,
+                                  "getConventionalCentringTypeSymbol");
+    py_SpaceGroup.def(&SpaceGroup::isChiral, "isChiral");
+    py_SpaceGroup.def(&SpaceGroup::isEnantiomorphic, "isEnantiomorphic");
+    py_SpaceGroup.def(&SpaceGroup::getChangeOfHandOp, "getChangeOfHandOp");
+    py_SpaceGroup.def(&SpaceGroup::isSysAbsent, "isSysAbsent");
+    py_SpaceGroup.def(SpaceGroup_isCentric_0, "isCentric");
+    py_SpaceGroup.def(SpaceGroup_isCentric_1, "isCentric");
+    py_SpaceGroup.def(&SpaceGroup::isOriginCentric, "isOriginCentric");
+    py_SpaceGroup.def(&SpaceGroup::getPhaseRestriction, "getPhaseRestriction");
+    py_SpaceGroup.def(SpaceGroup_isValidPhase_rad_2, "isValidPhase_rad");
+    py_SpaceGroup.def(SpaceGroup_isValidPhase_rad_3, "isValidPhase_rad");
+    py_SpaceGroup.def(SpaceGroup_isValidPhase_deg_2, "isValidPhase_deg");
+    py_SpaceGroup.def(SpaceGroup_isValidPhase_deg_3, "isValidPhase_deg");
+    py_SpaceGroup.def(&SpaceGroup::epsilon, "epsilon");
+    py_SpaceGroup.def(&SpaceGroup::multiplicity, "multiplicity");
+    py_SpaceGroup.def(&SpaceGroup::getEquivMillerIndices,
+                                  "getEquivMillerIndices");
+    py_SpaceGroup.def(&SpaceGroup::getCutParameters, "getCutParameters");
+    py_SpaceGroup.def(SpaceGroup_getMasterIndex_2, "getMasterIndex");
+    py_SpaceGroup.def(SpaceGroup_getMasterIndex_3, "getMasterIndex");
+    py_SpaceGroup.def(SpaceGroup_CheckMetricalMatrix_1, "CheckMetricalMatrix");
+    py_SpaceGroup.def(&SpaceGroup::CheckMetricalMatrix, "CheckMetricalMatrix");
+    py_SpaceGroup.def(SpaceGroup_CheckUnitCell_1, "CheckUnitCell");
+    py_SpaceGroup.def(&SpaceGroup::CheckUnitCell, "CheckUnitCell");
+    py_SpaceGroup.def(SpaceGroup_getZ2POp_0, "getZ2POp");
+    py_SpaceGroup.def(&SpaceGroup::getZ2POp, "getZ2POp");
+    py_SpaceGroup.def(&SpaceGroup::makeTidy, "makeTidy");
+    py_SpaceGroup.def(SpaceGroup_cmp_equal, "__cmp__");
+    py_SpaceGroup.def(SpaceGroup_getSpaceGroupType_0, "getSpaceGroupType");
+    py_SpaceGroup.def(SpaceGroup_getSpaceGroupType_1, "getSpaceGroupType");
+    py_SpaceGroup.def(&SpaceGroup::getSpaceGroupType, "getSpaceGroupType");
+    py_SpaceGroup.def(SpaceGroup_BuildHallSymbol_0of1, "BuildHallSymbol");
+    py_SpaceGroup.def(SpaceGroup_BuildHallSymbol_1of1, "BuildHallSymbol");
+    py_SpaceGroup.def(SpaceGroup_BuildHallSymbol_1of2, "BuildHallSymbol");
+    py_SpaceGroup.def(SpaceGroup_BuildHallSymbol_2of2, "BuildHallSymbol");
+    py_SpaceGroup.def(&SpaceGroup::MatchTabulatedSettings,
+                                  "MatchTabulatedSettings");
+    py_SpaceGroup.def(SpaceGroup_BuildLookupSymbol_0, "BuildLookupSymbol");
+    py_SpaceGroup.def(SpaceGroup_BuildLookupSymbol_1, "BuildLookupSymbol");
+    py_SpaceGroup.def(SpaceGroup_getBrick_0, "getBrick");
+    py_SpaceGroup.def(SpaceGroup_getBrick_1, "getBrick");
+    py_SpaceGroup.def(SpaceGroup_repr, "__repr__");
+    py_SpaceGroup.def(SpaceGroup_getinitargs, "__getinitargs__");
 
     py_std_vector_RTMx.def(constructor<>());
     py_std_vector_RTMx.def(&std::vector<RTMx>::size, "size");
@@ -829,7 +841,8 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_WyckoffMapping.def(&WyckoffMapping::snap, "snap");
 
     py_WyckoffTable.def(constructor<const SpaceGroupType&>());
-    py_WyckoffTable.def(constructor<const SgOps&, const SpaceGroupType&>());
+    py_WyckoffTable.def(constructor<const SpaceGroup&,
+                                    const SpaceGroupType&>());
     py_WyckoffTable.def(&WyckoffTable::expand, "expand");
     py_WyckoffTable.def(&WyckoffTable::N, "N");
     py_WyckoffTable.def(WyckoffTable_call_size_t, "__call__");
@@ -842,22 +855,22 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_WyckoffTable.def(WyckoffTable_getWyckoffMapping_4, "getWyckoffMapping");
 
     py_SpecialPositionSnapParameters.def(constructor<const uctbx::UnitCell&,
-                                                     const SgOps&>());
+                                                     const SpaceGroup&>());
     py_SpecialPositionSnapParameters.def(constructor<const uctbx::UnitCell&,
-                                                     const SgOps&,
+                                                     const SpaceGroup&,
                                                      bool>());
     py_SpecialPositionSnapParameters.def(constructor<const uctbx::UnitCell&,
-                                                     const SgOps&,
+                                                     const SpaceGroup&,
                                                      bool,
                                                      double>());
 
     py_SpecialPositionTolerances.def(constructor<const uctbx::UnitCell&,
-                                                 const SgOps&>());
+                                                 const SpaceGroup&>());
     py_SpecialPositionTolerances.def(constructor<const uctbx::UnitCell&,
-                                                 const SgOps&,
+                                                 const SpaceGroup&,
                                                  double>());
     py_SpecialPositionTolerances.def(constructor<const uctbx::UnitCell&,
-                                                 const SgOps&,
+                                                 const SpaceGroup&,
                                                  double,
                                                  double>());
 
@@ -910,7 +923,7 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
       constructor<const SpecialPositionTolerances&,
       const fractional<double>&>());
     py_SymEquivCoordinates.def(
-      constructor<const SgOps&,
+      constructor<const SpaceGroup&,
       const fractional<double>&>());
     py_SymEquivCoordinates.def(&SymEquivCoordinates<double>::M, "M");
     py_SymEquivCoordinates.def(
@@ -954,14 +967,14 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
 
     py_MillerIndexGenerator.def(constructor<>());
     py_MillerIndexGenerator.def(constructor<const uctbx::UnitCell&,
-                                            const SgOps&,
+                                            const SpaceGroup&,
                                             double>());
     py_MillerIndexGenerator.def(&MillerIndexGenerator::next, "next");
     py_MillerIndexGenerator.def(MillerIndexGenerator_getitem, "__getitem__");
     py_MillerIndexGenerator.def(&MillerIndexGenerator::ASU, "ASU");
 
     py_Miller_SymUniqueIndex.def(constructor<>());
-    py_Miller_SymUniqueIndex.def(constructor<const SgOps&,
+    py_Miller_SymUniqueIndex.def(constructor<const SpaceGroup&,
                                              const ReciprocalSpaceASU&,
                                              const Miller::Index&>());
     py_Miller_SymUniqueIndex.def(&Miller::SymUniqueIndex::H, "H");
@@ -975,7 +988,7 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
                                                       "ShiftPhase");
 
     py_StructureSeminvariant.def(constructor<>());
-    py_StructureSeminvariant.def(constructor<const SgOps&>());
+    py_StructureSeminvariant.def(constructor<const SpaceGroup&>());
     py_StructureSeminvariant.def(&StructureSeminvariant::size, "size");
     py_StructureSeminvariant.def(&StructureSeminvariant::size, "__len__");
     py_StructureSeminvariant.def(&StructureSeminvariant::V, "V");
