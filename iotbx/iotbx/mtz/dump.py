@@ -28,9 +28,9 @@ def dump(file_name):
       print "    Column number, label, observations, type:"
       for i_column in xrange(dataset.ncolumns()):
         column = dataset.getColumn(i_column)
-        n_oversations = p.valid_indices(column.label()).size()
+        n_observations = p.valid_indices(column.label()).size()
         print "      %3d, %s, %d/%d=%.2f%%, %s: %s" % (
           i_column+1, column.label(),
-          n_oversations, p.size(), 100.*n_oversations/p.size(),
+          n_observations, p.size(), 100.*n_observations/p.size(),
           column.type(), mtz.column_type_legend[column.type()])
   return p
