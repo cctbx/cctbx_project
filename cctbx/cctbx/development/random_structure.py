@@ -122,6 +122,7 @@ class xray_structure(xray.structure):
                random_u_iso=00000,
                u_iso=0,
                anisotropic_flag=00000,
+               random_u_cart_scale=0.1,
                random_occupancy=00000):
     assert elements is None or n_scatterers is None
     assert not (elements is None and n_scatterers is None)
@@ -184,7 +185,8 @@ class xray_structure(xray.structure):
         while 1:
           run_away_counter += 1
           assert run_away_counter < 100
-          u_cart = [random.random() for i in xrange(3)] + [0.,0.,0.]
+          u_cart = [random.random()*self.random_u_cart_scale
+                    for i in xrange(3)] + [0.,0.,0.]
           u_cart = adptbx.random_rotate_ellipsoid(u_cart)
           scatterer.u_star = site_symmetry.average_u_star(
                                adptbx.u_cart_as_u_star(
