@@ -325,7 +325,7 @@ else:
     env_etc.shlinkflags = []
     env_etc.shlinkflags_bpl = [
       "-bundle",
-      "-bundle_loader", env_etc.python_framework, env_etc.python_framework,]
+      "-framework", "Python"]
   else:
     raise RuntimeError("Unknown compiler choice: %s" % env_etc.compiler)
 
