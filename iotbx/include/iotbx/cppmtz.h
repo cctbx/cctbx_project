@@ -86,7 +86,7 @@ public:
   af::shared<std::string> history();
   Column getColumn(std::string s);
   Crystal getCrystal(const int&) const;
-  Crystal lookupCrystal(std::string) const;
+  Crystal columnToCrystal(std::string) const;
  
   void printHeader(int);
   void printHeaderAdv(int);

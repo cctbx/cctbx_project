@@ -23,6 +23,7 @@ def comprehensive_mtz(file):
  #p.printHeaderAdv(4)        # New-style header printout from ccp4
   p.MIx()                    # copy of miller index list, as af_shared miller
   cryst = p.getCrystal(0)    # lightweight object representing the first crystal
+  cryst = p.columnToCrystal("I") # lightweight crystal object with column "I"
   cryst.crystal_name()       # the crystal name as a string
   cryst.project_name()       # the project name as a string
   cryst.UnitCell()           # unit cell associated with this crystal

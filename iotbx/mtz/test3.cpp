@@ -4,7 +4,7 @@
 void tester(){
   iotbx::mtz::Mtz p("phase_noanom.mtz");
   
-  iotbx::mtz::Crystal cryst = p.lookupCrystal("FP");
+  iotbx::mtz::Crystal cryst = p.columnToCrystal("FP");
   af::tiny<double,6> ux = cryst.UnitCell();
   std::cout<<ux[0]<<std::endl;
   std::cout<<ux[1]<<std::endl;
