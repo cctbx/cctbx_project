@@ -182,6 +182,7 @@ class _wyckoff_table(boost.python.injector, wyckoff_table):
   def random_site_symmetry(self,
         special_position_settings,
         i_position,
+        unit_shift_range=(-5,6),
         tolerance=1.e-8):
     position = self.position(i_position)
     run_away_counter = 0
@@ -189,6 +190,9 @@ class _wyckoff_table(boost.python.injector, wyckoff_table):
       run_away_counter += 1
       assert run_away_counter < 1000
       site = position.special_op() * [random.random() for i in xrange(3)]
+      if (unit_shift_range is not None):
+        site = [x + random.randrange(*unit_shift_range) for x in site]
       site_symmetry = special_position_settings.site_symmetry(site)
       if (site_symmetry.distance_moved() < tolerance):
+        assert site_symmetry.multiplicity() == position.multiplicity()
         return site_symmetry

@@ -36,6 +36,11 @@ namespace cctbx { namespace crystal { namespace neighbors {
 
           distance_cutoff must be strictly greater than zero.
 
+          If minimal == true pairs with i_seq > j_seq will be
+          suppressed even if j_sym != 0.
+          See also:
+            cctbx::crystal::direct_space_asu::asu_mapping_index_pair::is_active
+
           epsilon must be greater than zero and smaller than 0.01.
        */
       fast_pair_generator(
@@ -43,6 +48,7 @@ namespace cctbx { namespace crystal { namespace neighbors {
           direct_space_asu::asu_mappings<
             FloatType, IntShiftType> > const& asu_mappings,
         FloatType const& distance_cutoff,
+        bool minimal=false,
         FloatType const& epsilon=1.e-6)
       :
         epsilon_(epsilon)
@@ -54,6 +60,7 @@ namespace cctbx { namespace crystal { namespace neighbors {
         this->asu_mappings_owner_ = asu_mappings;
         this->asu_mappings_ = asu_mappings.get();
         this->distance_cutoff_sq_ = distance_cutoff*distance_cutoff;
+        this->minimal_ = minimal;
         create_boxes(distance_cutoff * (1 + epsilon));
         restart();
       }
@@ -203,7 +210,7 @@ namespace cctbx { namespace crystal { namespace neighbors {
               if (boxes_ji_->i_sym == 0) continue;
               assign_pair();
             }
-            else if (boxes_ji_->i_sym != 0) {
+            else if (!this->minimal_ && boxes_ji_->i_sym != 0) {
               assign_pair();
             }
             else {

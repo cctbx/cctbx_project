@@ -316,11 +316,17 @@ namespace direct_space_asu {
     //! Symmetry index of second site.
     unsigned j_sym;
 
-    /*! Inside-inside upper triangle (i_seq < j_seq) or
-        inside-outside (j_sym != 0).
+    /*! If minimal is false:
+          Inside-inside upper triangle (i_seq < j_seq) or
+          inside-outside (j_sym != 0)
+        If minimal is true:
+          i_seq <= j_seq
      */
     bool
-    is_active() const { return i_seq < j_seq || j_sym != 0; }
+    is_active(bool minimal=false) const
+    {
+      return i_seq <= j_seq || (!minimal && j_sym != 0);
+    }
   };
 
   //! asu_mapping_index_pair plus difference vector and distance squared.

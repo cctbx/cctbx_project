@@ -38,10 +38,11 @@ namespace {
       typedef return_value_policy<copy_const_reference> ccr;
       class_<w_t>("neighbors_simple_pair_generator", no_init)
         .def(init<boost::shared_ptr<direct_space_asu::asu_mappings<> >&,
-                  optional<double const&> >(
-          (arg_("asu_mappings"), arg_("distance_cutoff"))))
+                  optional<double const&, bool> >(
+          (arg_("asu_mappings"), arg_("distance_cutoff"), arg_("minimal"))))
         .def("asu_mappings", &w_t::asu_mappings, ccr())
         .def("distance_cutoff_sq", &w_t::distance_cutoff_sq)
+        .def("minimal", &w_t::minimal)
         .def("at_end", &w_t::at_end)
         .def("next", helper<w_t>::next)
         .def("__iter__", scitbx::boost_python::pass_through)
@@ -66,9 +67,10 @@ namespace {
         "neighbors_fast_pair_generator", no_init)
         .def(init<boost::shared_ptr<direct_space_asu::asu_mappings<> >&,
                   double const&,
-                  optional<double const&> >(
+                  optional<bool, double const&> >(
           (arg_("asu_mappings"),
            arg_("distance_cutoff"),
+           arg_("minimal"),
            arg_("epsilon"))))
         .def("epsilon", &w_t::epsilon)
         .def("n_boxes", &w_t::n_boxes, ccr())

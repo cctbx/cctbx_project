@@ -182,12 +182,14 @@ def exercise_direct_space_asu():
     assert index_pairs == expected_index_pairs
     simple_pair_generator = crystal.neighbors_simple_pair_generator(
       asu_mappings=asu_mappings,
-      distance_cutoff=100)
+      distance_cutoff=100,
+      minimal=00000)
     assert simple_pair_generator.asu_mappings().is_locked()
     assert approx_equal(simple_pair_generator.distance_cutoff_sq(), 100*100)
     fast_pair_generator = crystal.neighbors_fast_pair_generator(
       asu_mappings=asu_mappings,
       distance_cutoff=100,
+      minimal=00000,
       epsilon=1.e-6)
     assert fast_pair_generator.asu_mappings().is_locked()
     assert approx_equal(fast_pair_generator.distance_cutoff_sq(), 100*100)
@@ -278,6 +280,12 @@ def exercise_direct_space_asu():
         (0.2478,0.0000,0.0000)]]))
   asu_mappings = structure.asu_mappings(buffer_thickness=3.5)
   assert list(asu_mappings.special_op_indices()) == [1,0,2]
+  pair = asu_mappings.make_pair(i_seq=1, j_seq=0, j_sym=1)
+  assert pair.i_seq == 1
+  assert pair.j_seq == 0
+  assert pair.j_sym == 1
+  assert pair.is_active(minimal=00000)
+  assert not pair.is_active(minimal=0001)
   for i_seeq,m in zip(count(), asu_mappings.mappings()):
     for i_sym in xrange(len(m)):
       rt_mx = asu_mappings.get_rt_mx(i_seq=i_seq, i_sym=i_sym)
