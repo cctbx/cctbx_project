@@ -129,6 +129,7 @@ def exercise_peak_search():
   for flex_type in flex_types():
     d = flex_type(flex.grid((3,4,5)))
     l = maptbx.peak_list(d, t, 0)
+    assert l.gridding() == d.focus()
     assert [(e.index, e.value) for e in l.entries()] == [((0, 0, 0), 0.0)]
 
 def exercise_pymol_interface():
