@@ -23,14 +23,13 @@ def run(file_name, plots_dir="itvc_wk1995_plots", quiet=0, verbose=0):
         label = label.replace(sign,"") + sign
         break
     wk = xray_scattering.wk1995(label, 1)
-    if (element_of_ion is None):
+    if (element_of_ion is None or not entry.table_y[-6:].all_eq(0)):
       gaussian_fit = scitbx.math.gaussian.fit(
         cctbx.eltbx.gaussian_fit.international_tables_stols,
         entry.table_y,
         cctbx.eltbx.gaussian_fit.international_tables_sigmas,
         wk.fetch())
     else:
-      assert entry.table_y[-6:].all_eq(0)
       element_of_ion_entry = tab.entries[element_of_ion]
       patched_table_y = entry.table_y[:-6]
       patched_table_y.append(element_of_ion_entry.table_y[-6:])

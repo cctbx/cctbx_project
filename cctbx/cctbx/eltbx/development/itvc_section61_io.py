@@ -1,4 +1,5 @@
 import cctbx.eltbx.gaussian_fit
+from cctbx.eltbx.gaussian_fit import international_tables_stols
 from cctbx.array_family import flex
 from scitbx.python_utils.misc import line_feeder
 from scitbx.python_utils.misc import adopt_init_args
@@ -37,15 +38,15 @@ def read_table6111(file_name):
     if (line.startswith("Element")):
       elements = line.split()[1:]
       line = lf.next()
-      assert line.lstrip().startswith("Z")
+      assert line.lstrip().startswith("Z"), line
       atomic_numbers = [int(z) for z in line.split()[1:]]
-      assert len(atomic_numbers) == len(elements)
+      assert len(atomic_numbers) == len(elements), line
       line = lf.next()
-      assert line.startswith("Method")
+      assert line.startswith("Method"), line
       methods = line.split()[1:]
-      assert len(methods) == len(elements)
+      assert len(methods) == len(elements), line
       line = lf.next()
-      assert line.startswith("(sin")
+      assert line.find("sin") > 0, line
       stols = flex.double()
       value_rows = []
       while 1:
@@ -53,18 +54,19 @@ def read_table6111(file_name):
         assert not lf.eof
         if (len(line.strip()) == 0): continue
         raw_value_row = line.split("\t")
-        assert len(raw_value_row) == len(elements) + 1
+        assert len(raw_value_row) == len(elements) + 1, line
         stols.append(float(raw_value_row[0]))
+        assert stols[-1] == international_tables_stols[stols.size()-1], line
         value_row = []
         for value in raw_value_row[1:]:
           if (len(value.strip()) == 0):
             value_row.append(0)
           else:
-            value_row.append(float(value))
+            try: value_row.append(float(value))
+            except ValueError, e: raise ValueError(line)
         value_rows.append(value_row)
         if (stols.size() == 62):
-          assert stols[-1] == 6
+          assert stols[-1] == 6, line
           break
-      assert stols.all_eq(cctbx.eltbx.gaussian_fit.international_tables_stols)
       tab.enter_block(elements, atomic_numbers, methods, value_rows)
   return tab
