@@ -443,10 +443,10 @@ namespace {
   }
 
   fractional<double>
-  SymEquivCoordinates_getitem(const SymEquivCoordinates<double>& SEC,
+  SymEquivCoordinates_getitem(const SymEquivCoordinates<double>& SymEqCoor,
                               std::size_t key) {
     try {
-      return SEC(key);
+      return SymEqCoor(key);
     }
     catch (const error_index& e) {
       PyErr_SetString(PyExc_IndexError, e.what());
