@@ -1,5 +1,5 @@
-#include <cctbx/array_family/simple_io.h>
 #include <cctbx/array_family.h>
+#include <cctbx/array_family/simple_io.h>
 #include <boost/bind.hpp>
 #include <vector>
 
@@ -31,6 +31,9 @@ namespace {
     static void run_2() {
       std::vector<element_type> u;
       for(int i=0;i<10;i++) u.push_back(element_type(i+1));
+
+      verify(__LINE__, u, af::make_const_ref(u));
+      verify(__LINE__, u, af::make_ref(u));
 
       ArrayType a1;
       a1.assign(12, element_type(3));

@@ -33,10 +33,6 @@ namespace cctbx { namespace af {
       const_ref(const ElementType* begin, accessor_type ac)
         : m_begin(begin), m_accessor(ac)
       {}
-      const_ref(const void* begin, accessor_type ac)
-        : m_begin(reinterpret_cast<const ElementType*>(begin)),
-          m_accessor(ac)
-      {}
       // convenience constructors
       const_ref(
         const ElementType* begin, long n0)
@@ -64,10 +60,6 @@ namespace cctbx { namespace af {
       const ElementType& at(size_type i) const {
         if (i >= size()) throw_range_error();
         return m_begin[i];
-      }
-
-      const void* handle() const {
-        return reinterpret_cast<const void*>(m_begin);
       }
 
       const_ref<ElementType> as_1d() const {
@@ -114,10 +106,6 @@ namespace cctbx { namespace af {
       ref(ElementType* begin, accessor_type ac)
         : m_begin(begin), m_accessor(ac)
       {}
-      ref(void* begin, accessor_type ac)
-        : m_begin(reinterpret_cast<ElementType*>(begin)),
-          m_accessor(ac)
-      {}
       // convenience constructors
       ref(
         ElementType* begin, long n0)
@@ -145,10 +133,6 @@ namespace cctbx { namespace af {
       ElementType& at(size_type i) const {
         if (i >= size()) throw_range_error();
         return m_begin[i];
-      }
-
-      void* handle() const {
-        return reinterpret_cast<void*>(m_begin);
       }
 
       ref<ElementType> as_1d() const {
