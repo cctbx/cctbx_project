@@ -148,7 +148,7 @@ def exercise_direct_space_asu():
           i_seq=i_seq,
           i_sym=i_sym),
         site_cart)
-      r = matrix.sqr(float(rt_mx.r().inverse()))
+      r = matrix.sqr(rt_mx.r().inverse().as_double())
       assert approx_equal(
         asu_mappings.r_inv_cart(i_seq=i_seq, i_sym=i_sym),
         (o*r*f).elems)

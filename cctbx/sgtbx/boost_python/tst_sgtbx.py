@@ -95,7 +95,6 @@ def exercise_tr_vec():
   assert t.den() == 6
   assert t.num() == (1,2,-1)
   assert t.as_double() == (1./6,2./6,-1./6)
-  assert float(t) == t.as_double()
   a = tr_vec((1,2,3), 12)
   b = tr_vec((9,0,1), 12)
   c = a.plus(b)
