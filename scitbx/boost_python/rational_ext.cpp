@@ -9,6 +9,8 @@
 
 #include <boost/rational.hpp>
 #include <scitbx/boost_python/utils.h>
+#include <scitbx/array_family/misc_functions.h>
+#include <scitbx/error.h>
 #include <boost/python/module.hpp>
 #include <boost/python/scope.hpp>
 #include <boost/python/def.hpp>
@@ -25,6 +27,19 @@ namespace scitbx { namespace boost_python { namespace {
   {
     typedef boost::rational<int> w_t;
 
+    static int
+    as_int(w_t const& o)
+    {
+      SCITBX_ASSERT(o.denominator() == 1);
+      return o.numerator();
+    }
+
+    static double
+    as_double(w_t const& o)
+    {
+      return double(o.numerator()) / o.denominator();
+    }
+
     static boost::python::tuple
     as_tuple(w_t const& o)
     {
@@ -39,6 +54,14 @@ namespace scitbx { namespace boost_python { namespace {
         return str(o.numerator());
       }
       return str(str(o.numerator()) + "/" + str(o.denominator()));
+    }
+
+    static long
+    hash(w_t const& o) // XXX there must be a better way
+    {
+      SCITBX_ASSERT(scitbx::fn::absolute(o.numerator()) < 32768);
+      SCITBX_ASSERT(o.denominator() < 32768);
+      return o.numerator() * 32768L + o.denominator();
     }
 
     static bool eq_rr(w_t const& lhs, w_t const& rhs) { return lhs == rhs; }
@@ -63,9 +86,12 @@ namespace scitbx { namespace boost_python { namespace {
         .def(init<int, optional<int> >())
         .def("numerator", &w_t::numerator)
         .def("denominator", &w_t::denominator)
+        .def("__int__", as_int)
+        .def("__float__", as_double)
         .def("as_tuple", as_tuple)
         .def("__str__", as_str)
         .def("__repr__", as_str)
+        .def("__hash__", hash)
         .def(-self)
         .def(self + self)
         .def(self - self)

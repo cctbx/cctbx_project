@@ -1,10 +1,13 @@
 from scitbx import rational
+from scitbx.test_utils import approx_equal
 
 def exercise_int():
   r = rational.int()
   assert r.numerator() == 0
   assert r.denominator() == 1
   assert r.as_tuple() == (0,1)
+  assert int(r) == 0
+  assert float(r) == 0
   assert rational.int(2).as_tuple() == (2,1)
   assert rational.int(2,3).as_tuple() == (2,3)
   assert str(rational.int()) == "0"
@@ -62,6 +65,13 @@ def exercise_int():
   r = rational.int(4,3)
   r += 1
   assert r.as_tuple() == (7,3)
+  assert approx_equal(float(r), 7./3)
+  s = rational.int(4,3)
+  assert hash(s) == hash(rational.int(4,3))
+  assert hash(s) != hash(r)
+  try: int(r)
+  except: pass
+  else: raise AssertionError, "Exception expected"
 
 def exercise_functions():
   assert rational.gcd(8,6) == 2
