@@ -509,6 +509,12 @@ namespace cctbx {
         return result;
       }
 
+      //! Simple measure for the similarity of two unit cells.
+      /*! The result is the mean of the squared differences between
+          basis vectors. The basis vectors are defined by the columns
+          of this->orthogonalization_matrix() and
+          other.orthogonalization_matrix().
+       */
       double
       bases_mean_square_difference(unit_cell const& other) const
       {
