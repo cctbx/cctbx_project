@@ -61,8 +61,11 @@ class energies:
 class lbfgs:
 
   def __init__(self, structure,
-                     bond_sym_table,
+                     shell_sym_tables,
+                     bond_params_table,
+                     repulsion_distance_table,
                      nonbonded_distance_cutoff,
+                     nonbonded_buffer,
                      lbfgs_termination_params=None,
                      lbfgs_core_params=None):
     adopt_init_args(self, locals())
@@ -74,6 +77,7 @@ class lbfgs:
     self.n = self._sites_cart.size()*3
     self.x = flex.double(self.n, 0)
     self.first_target_result = None
+    self._sites_cart_proxy_calculation = None
     self.activate_repulsion = 00000
     self.minimizer = scitbx.lbfgs.run(
       target_evaluator=self,
@@ -97,6 +101,11 @@ class lbfgs:
     del self.x
     del self.f
     del self.g
+    if (self._sites_cart_proxy_calculation is not None):
+      del self._asu_mappings
+      del self._bond_asu_proxies
+      del self._repulsion_asu_proxies
+    del self._sites_cart_proxy_calculation
     del self.activate_repulsion
     del self.minimizer
     del self._target_result
@@ -120,49 +129,46 @@ class lbfgs:
       self._sites_shifted[i_seq] = unit_cell.orthogonalize(site_special_frac)
 
   def compute_target(self, compute_gradients):
-    import cctbx.crystal
     from cctbx.crystal import distance_ls
     from cctbx import crystal
-    bonded_distance_cutoff = flex.max(distance_ls.get_distances(
-      unit_cell=self.structure.unit_cell(),
-      sites_cart=self._sites_shifted,
-      pair_sym_table=self.bond_sym_table)) * (1+1.e-6)
-    asu_mappings = cctbx.crystal.symmetry.asu_mappings(self.structure,
-      buffer_thickness=max(
-        self.nonbonded_distance_cutoff,
-        bonded_distance_cutoff))
-    asu_mappings.process_sites_cart(
-      original_sites=self._sites_shifted,
-      site_symmetry_table=self.structure.site_symmetry_table())
-    bond_asu_table = crystal.pair_asu_table(
-      asu_mappings=asu_mappings).add_pair_sym_table(
-        sym_table=self.bond_sym_table)
-    if (1):
-      validation_sym_table = bond_asu_table.extract_pair_sym_table()
-      for dict_a,dict_b in zip(self.bond_sym_table, validation_sym_table):
-        assert len(dict_a) == len(dict_b)
-        for j_seq,rt_mx_list_a in dict_a.items():
-          assert len(dict_b[j_seq]) == len(rt_mx_list_a)
-    bond_asu_proxies, repulsion_asu_proxies = distance_ls.get_all_proxies(
-      structure=self.structure,
-      bond_asu_table=bond_asu_table,
-      bonded_distance_cutoff=bonded_distance_cutoff,
-      nonbonded_distance_cutoff=self.nonbonded_distance_cutoff)
-    distance_ls.edit_bond_asu_proxies(
-      structure=self.structure,
-      asu_mappings=asu_mappings,
-      bond_asu_proxies=bond_asu_proxies)
-    distance_ls.edit_repulsion_asu_proxies(
-      structure=self.structure,
-      asu_mappings=asu_mappings,
-      repulsion_asu_proxies=repulsion_asu_proxies)
-    if (not self.activate_repulsion):
-      repulsion_asu_proxies = None
+    if (   self._sites_cart_proxy_calculation is None
+        or self._sites_cart_proxy_calculation.max_distance(self._sites_shifted)
+            > self.nonbonded_buffer):
+      shell_distance_cutoffs = [flex.max(distance_ls.get_distances(
+        unit_cell=self.structure.unit_cell(),
+        sites_cart=self._sites_shifted,
+        pair_sym_table=shell_sym_table)) * (1+1.e-6)
+          for shell_sym_table in self.shell_sym_tables]
+      asu_mappings = crystal.symmetry.asu_mappings(self.structure,
+        buffer_thickness=max(
+          max(shell_distance_cutoffs),
+          self.nonbonded_distance_cutoff+self.nonbonded_buffer))
+      asu_mappings.process_sites_cart(
+        original_sites=self._sites_shifted,
+        site_symmetry_table=self.structure.site_symmetry_table())
+      shell_asu_tables = [crystal.pair_asu_table(
+        asu_mappings=asu_mappings).add_pair_sym_table(
+          sym_table=shell_sym_table)
+            for shell_sym_table in self.shell_sym_tables]
+      bond_asu_proxies, repulsion_asu_proxies = distance_ls.get_all_proxies(
+        scatterers=self.structure.scatterers(),
+        bond_params_table=self.bond_params_table,
+        repulsion_distance_table=self.repulsion_distance_table,
+        shell_asu_tables=shell_asu_tables,
+        shell_distance_cutoffs=shell_distance_cutoffs,
+        nonbonded_distance_cutoff=self.nonbonded_distance_cutoff,
+        nonbonded_buffer=self.nonbonded_buffer)
+      if (not self.activate_repulsion):
+        repulsion_asu_proxies = None
+      self._asu_mappings = asu_mappings
+      self._bond_asu_proxies = bond_asu_proxies
+      self._repulsion_asu_proxies = repulsion_asu_proxies
+      self._sites_cart_proxy_calculation = self._sites_shifted
     self._target_result = energies(
       sites_cart=self._sites_shifted,
-      asu_mappings=asu_mappings,
-      bond_asu_proxies=bond_asu_proxies,
-      repulsion_asu_proxies=repulsion_asu_proxies,
+      asu_mappings=self._asu_mappings,
+      bond_asu_proxies=self._bond_asu_proxies,
+      repulsion_asu_proxies=self._repulsion_asu_proxies,
       compute_gradients=compute_gradients)
 
   def __call__(self):
