@@ -158,8 +158,8 @@ else:
     raise "Unknown compiler choice:", env_etc.compiler
 
 env_etc.cxxflags_bpl_defines_base = Split("""
-    -DBOOST_PYTHON_DYNAMIC_LIB
-    -DBOOST_PYTHON_V2
+    -DBOOST_PYTHON_MAX_ARITY=10
+    -DBOOST_PYTHON_MAX_BASES=2
 """)
 
 env_etc.libtbx_build = os.environ["LIBTBX_BUILD"]
