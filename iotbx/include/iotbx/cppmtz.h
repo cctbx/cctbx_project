@@ -10,6 +10,7 @@
 #include <scitbx/array_family/shared.h>
 #include <cctbx/miller.h>
 #include <cctbx/hendrickson_lattman.h>
+#include <cctbx/uctbx.h>
 
 /* Correction 1:  in mtzdata.h, changed CCP4File to CCP4:CCP4File*/
 
@@ -80,12 +81,13 @@ public:
   std::string title();
   std::string SpaceGroup();
   int& size();
-  int& ncrystals();
-  af::shared<std::string> columns();
+  int& ncrystals() const;
+  af::shared<std::string> columns() const;
   af::shared<std::string> history();
   Column getColumn(std::string s);
-  Crystal getCrystal(const int&);
-
+  Crystal getCrystal(const int&) const;
+  Crystal lookupCrystal(std::string) const;
+ 
   void printHeader(int);
   void printHeaderAdv(int);
 
