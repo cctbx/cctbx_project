@@ -1,0 +1,55 @@
+<html>
+<head>
+<title>cctbx - Determination of lattice symmetry</title>
+</head>
+<body bgcolor=#ffffff>
+
+[<a href="index.html">Index of services</a>]
+<hr>
+<h1>cctbx - Determination of lattice symmetry</h1>
+<hr>
+
+<FORM METHOD=POST ACTION="cctbx_web.cgi">
+<input type="HIDDEN" name="target_module" value="lattice_symmetry">
+
+<strong>Unit cell parameters: </strong>
+<br><input
+name="ucparams" size=40
+value="">
+
+<p>
+<strong>Space group symbol or centring type symbol (P,A,B,C,I,R,F):</strong>
+<br><input
+name="sgsymbol" size=40
+value=""><br>
+Convention:
+<select name="convention">
+  <option value="" selected
+    >Default</option>
+  <option value="A1983"
+    >International Tables for Crystallography, Volume A 1983</option>
+  <option value="I1952"
+    >International Tables for Crystallography, Volume I 1952</option>
+  <option value="Hall"
+    >Hall symbol</option>
+</select>
+
+<p>
+<strong>Angular tolerance:</strong>
+ <input name="max_delta" size=8 value="5"> degrees
+
+<p>
+<strong><a
+href="cctbx_web.cgi?target_module=lattice_symmetry&ucparams=12,12.1,15,90,90,120"
+>Example</a></strong>
+
+<p>
+<input type="submit" value="Compute lattice symmetry">
+<p>
+<input type="reset"  value="Reset">
+</FORM>
+<hr>
+[<a href="index.html">Index of services</a>]
+<hr>
+</body>
+</html>
