@@ -141,6 +141,12 @@ namespace {
     return SgOps.ParseHallSymbol(HSymPS);
   }
 
+  void SpaceGroup_expandLTr(SpaceGroup& SgOps,
+                            const af::int3& vector, int base_factor)
+  {
+    SgOps.expandLTr(TrVec(vector, base_factor).newBaseFactor(SgOps.TBF()));
+  }
+
   RTMx SpaceGroup_call_1(const SpaceGroup& SgOps, int iLIS) {
     return SgOps(iLIS);
   }
@@ -813,6 +819,7 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
   py_SpaceGroup.def(&SpaceGroup::ParseHallSymbol, "ParseHallSymbol");
   py_SpaceGroup.def(&SpaceGroup::ChangeBasis, "ChangeBasis");
   py_SpaceGroup.def(&SpaceGroup::expandSMx, "expandSMx");
+  py_SpaceGroup.def(SpaceGroup_expandLTr, "expandLTr");
   py_SpaceGroup.def(&SpaceGroup::expandConventionalCentringType,
                                 "expandConventionalCentringType");
   py_SpaceGroup.def(&SpaceGroup::RBF, "RBF");

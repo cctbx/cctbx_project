@@ -37,13 +37,6 @@ namespace cctbx { namespace sgtbx {
       return result;
     }
 
-    template <class FloatType>
-    double
-    modShortLength2(const uctbx::UnitCell& uc,
-                    const af::tiny<FloatType, 3>& Diff) {
-      return uc.Length2(fractional<FloatType>(Diff).modShort());
-    }
-
     void SetUniqueOps(const SpaceGroup& SgOps,
                       const RTMx& SpecialOp,
                       std::vector<RTMx>& UniqueOps);
@@ -793,9 +786,9 @@ namespace cctbx { namespace sgtbx {
       FloatType getShortestDistance2(const uctbx::UnitCell& uc,
                                      const fractional<FloatType>& Y) const
       {
-        FloatType result = detail::modShortLength2(uc, Y - m_Coordinates[0]);
+        FloatType result = uc.modShortLength2(Y - m_Coordinates[0]);
         for(std::size_t i=1;i<m_Coordinates.size();i++) {
-          FloatType Delta2 = detail::modShortLength2(uc, Y - m_Coordinates[i]);
+          FloatType Delta2 = uc.modShortLength2(Y - m_Coordinates[i]);
           if (result > Delta2)
               result = Delta2;
         }

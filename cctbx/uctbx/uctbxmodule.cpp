@@ -112,6 +112,28 @@ namespace {
                     const fractional<double>& Yf) {
     return uc.Distance(Xf, Yf);
   }
+  double
+  UnitCell_modShortLength2(const UnitCell& uc,
+                           const fractional<double>& Xf) {
+    return uc.modShortLength2(Xf);
+  }
+  double
+  UnitCell_modShortLength(const UnitCell& uc,
+                          const fractional<double>& Xf) {
+    return uc.modShortLength(Xf);
+  }
+  double
+  UnitCell_modShortDistance2(const UnitCell& uc,
+                             const fractional<double>& Xf,
+                             const fractional<double>& Yf) {
+    return uc.modShortDistance2(Xf, Yf);
+  }
+  double
+  UnitCell_modShortDistance(const UnitCell& uc,
+                            const fractional<double>& Xf,
+                            const fractional<double>& Yf) {
+    return uc.modShortDistance(Xf, Yf);
+  }
   UnitCell
   UnitCell_ChangeBasis_1(const UnitCell& uc, const af::double9& InvCBMxR) {
     return uc.ChangeBasis(InvCBMxR);
@@ -170,6 +192,10 @@ BOOST_PYTHON_MODULE_INIT(uctbx)
   UnitCell_class.def(UnitCell_Length, "Length");
   UnitCell_class.def(UnitCell_Distance2, "Distance2");
   UnitCell_class.def(UnitCell_Distance, "Distance");
+  UnitCell_class.def(UnitCell_modShortLength2, "modShortLength2");
+  UnitCell_class.def(UnitCell_modShortLength, "modShortLength");
+  UnitCell_class.def(UnitCell_modShortDistance2, "modShortDistance2");
+  UnitCell_class.def(UnitCell_modShortDistance, "modShortDistance");
   UnitCell_class.def(&UnitCell::MaxMillerIndices, "MaxMillerIndices");
   UnitCell_class.def(UnitCell_ChangeBasis_1, "ChangeBasis");
   UnitCell_class.def(
