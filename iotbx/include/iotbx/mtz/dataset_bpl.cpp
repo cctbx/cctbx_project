@@ -21,11 +21,14 @@ namespace {
           arg_("mtz_crystal"), arg_("i_dataset"))))
         .def("mtz_crystal", &w_t::mtz_crystal)
         .def("i_dataset", &w_t::i_dataset)
+        .def("mtz_object", &w_t::mtz_object)
         .def("id", &w_t::id)
         .def("name", &w_t::name)
         .def("wavelength", &w_t::wavelength)
         .def("n_columns", &w_t::n_columns)
         .def("columns", &w_t::columns)
+        .def("add_column", &w_t::add_column, (
+          arg_("label"), arg_("type")))
       ;
       {
         scitbx::af::boost_python::shared_wrapper<w_t>::wrap(

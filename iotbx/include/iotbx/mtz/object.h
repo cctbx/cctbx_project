@@ -163,6 +163,12 @@ namespace iotbx { namespace mtz {
         return *this;
       }
 
+      object&
+      add_history(const char* line)
+      {
+        return add_history(af::tiny<std::string, 1>(line).const_ref());
+      }
+
       std::string
       space_group_name() const { return ptr()->mtzsymm.spcgrpname; }
 
