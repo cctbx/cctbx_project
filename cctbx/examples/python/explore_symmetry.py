@@ -1,4 +1,4 @@
-#! /usr/local/Python-2.1/bin/python
+#! /usr/local_cci/Python-2.1.1/bin/python
 
 # This script reports a number of space group properties given a space
 # group symbol or symmetry matrices, or a combination of the two.

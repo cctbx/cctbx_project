@@ -1,4 +1,4 @@
-#! /usr/local/Python-2.1/bin/python
+#! /usr/local_cci/Python-2.1.1/bin/python
 
 # Convert coordinates from/to Fractional or Orthogonal.
 
