@@ -2,7 +2,7 @@
 #define CCTBX_XRAY_STRUCTURE_FACTORS_DIRECT_H
 
 #include <cctbx/xray/scattering_dictionary.h>
-#include <cctbx/sgtbx/miller_ops.h>
+#include <cctbx/xray/hr_ht_cache.h>
 #include <cctbx/math/cos_sin_table.h>
 
 namespace cctbx { namespace xray { namespace structure_factors {
@@ -14,8 +14,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
 
     direct_one_h_one_scatterer(
       CosSinType const& cos_sin,
-      sgtbx::space_group const& space_group,
-      miller::index<> const& h,
+      hr_ht_cache<float_type> const& hr_ht,
       float_type d_star_sq,
       ScattererType const& scatterer)
     :
@@ -23,14 +22,12 @@ namespace cctbx { namespace xray { namespace structure_factors {
     {
       typedef float_type f_t;
       typedef std::complex<f_t> c_t;
-      for(std::size_t i_smx=0;i_smx<space_group.n_smx();i_smx++) {
-        sgtbx::rt_mx const& s = space_group.smx(i_smx);
-        miller::index<> hr = h * s.r();
-        f_t hrx = hr * scatterer.site;
-        f_t ht = f_t(h * s.t()) / space_group.t_den();
-        c_t term = cos_sin.get(hrx + ht);
+      for(std::size_t i=0;i<hr_ht.groups.size();i++) {
+        hr_ht_group<f_t> const& g = hr_ht.groups[i];
+        f_t hrx = g.hr * scatterer.site;
+        c_t term = cos_sin.get(hrx + g.ht);
         if (scatterer.anisotropic_flag) {
-          f_t dw = adptbx::debye_waller_factor_u_star(hr, scatterer.u_star);
+          f_t dw = adptbx::debye_waller_factor_u_star(g.hr, scatterer.u_star);
           term *= dw;
         }
         f_calc += term;
@@ -63,13 +60,10 @@ namespace cctbx { namespace xray { namespace structure_factors {
       typedef dict_type::const_iterator dict_iter;
       typedef float_type f_t;
       typedef std::complex<float_type> c_t;
-      bool is_centric = space_group.is_centric();
-      bool is_origin_centric = (
-        is_centric ? space_group.is_origin_centric() : false);
+      hr_ht_cache<f_t> hr_ht(space_group, h);
       c_t f_h_inv_t(0,0);
-      if (!is_origin_centric && is_centric) {
-        f_t ht = f_t(h * space_group.inv_t()) / space_group.t_den();
-        f_h_inv_t = cos_sin.get(ht);
+      if (!hr_ht.is_origin_centric && hr_ht.is_centric) {
+        f_h_inv_t = cos_sin.get(hr_ht.h_inv_t);
       }
       f_t d_star_sq = unit_cell.d_star_sq(h);
       dict_type const& scd = scattering_dict.dict();
@@ -90,14 +84,13 @@ namespace cctbx { namespace xray { namespace structure_factors {
           if (have_fdp) fdp_w *= w;
           direct_one_h_one_scatterer<CosSinType, ScattererType> sf(
             cos_sin,
-            space_group,
-            h,
+            hr_ht,
             d_star_sq,
             scatterer);
-          if (is_origin_centric) {
+          if (hr_ht.is_origin_centric) {
             sf.f_calc = c_t(2*sf.f_calc.real(),0);
           }
-          else if (is_centric) {
+          else if (hr_ht.is_centric) {
             sf.f_calc += std::conj(sf.f_calc) * f_h_inv_t;
           }
           if (caasf_is_const) {
