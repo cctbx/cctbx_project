@@ -160,6 +160,8 @@ def emit_env_run_sh(env):
   f = open_info(env_run_sh_path)
   for var_name, values in env.items():
     if (var_name.upper() != var_name): continue
+    if (var_name == "LD_LIBRARY_PATH" and sys.platform.startswith("darwin")):
+      var_name = "DYLD_LIBRARY_PATH"
     if (type(values) == type([])):
       val = os.pathsep.join(values)
       print >> f, 'if [ ! -n "$%s" ]; then' % (var_name,)
