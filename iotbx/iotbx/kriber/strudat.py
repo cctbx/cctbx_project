@@ -74,6 +74,7 @@ class read_entry:
           a = unit_cell_parameters[0]
           self._unit_cell = uctbx.unit_cell((a,a,a,90,90,90))
         elif (crystal_system in ("Hexagonal", "Trigonal")):
+          assert len(unit_cell_parameters) == 2
           is_rhombohedral = 00000
           if (crystal_system == "Trigonal"):
             laue_group = self._derived_laue_group_symbol()
