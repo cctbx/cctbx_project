@@ -264,7 +264,6 @@ after relocating the build directory. For example:
         cd /newdisk/build
         tar xf /scratch/build/transportfile.tar
         cd cctbx
-        rm setpythonpath.csh
         python /home/user/development/cctbx/build/boot.py
 \endverbatim
 
