@@ -90,7 +90,8 @@ def RTMxAnalysis(M):
        TI.IntrinsicPart(), TI.OriginShift())
   print "</tr>"
 
-def ShowSgOpsGeneric(SgOps):
+def ShowSgOpsGeneric(SgInfo):
+  SgOps = SgInfo.SgOps()
   print "Number of lattice translations:", SgOps.nLTr()
   if (SgOps.isCentric()):
     print "Space group is centric."
@@ -98,13 +99,13 @@ def ShowSgOpsGeneric(SgOps):
     print "Space group is acentric."
   if (SgOps.isChiral()):
     print "Space group is chiral."
-  if (SgOps.isEnantiomorphic()):
+  if (SgInfo.isEnantiomorphic()):
     print "Space group is enantiomorphic."
   print "Number of representative symmetry operations:", SgOps.nSMx()
   print "Total number of symmetry operations:", SgOps.OrderZ()
   print
   print "Parallelepiped containing an asymmetric unit:"
-  try: Brick = SgOps.getBrick()
+  try: Brick = sgtbx.Brick(SgInfo)
   except RuntimeError, e:
     print " ", e
   else:
@@ -151,12 +152,12 @@ def ShowSymbols(Symbols):
       print "  Relation to standard setting:", Q
   print "  Hall symbol:", string.strip(Symbols.Hall())
 
-def get_unitcell(SgType):
-  if (143 <= SgType.SgNumber() < 195):
+def get_unitcell(SgInfo):
+  if (143 <= SgInfo.SgNumber() < 195):
     RefUnitCell = uctbx.UnitCell((10, 10, 10, 90, 90, 120))
   else:
     RefUnitCell = uctbx.UnitCell((10, 10, 10, 90, 90, 90))
-  return RefUnitCell.ChangeBasis(SgType.CBOp().M().as_tuple()[0])
+  return RefUnitCell.ChangeBasis(SgInfo.CBOp().M().as_tuple()[0])
 
 inp = GetFormData()
 
@@ -209,8 +210,8 @@ try:
     InTable = 0
     print
 
-  ShowSgOpsGeneric(SgOps)
-  SgType = SgOps.getSpaceGroupType(1)
+  SgInfo = sgtbx.SpaceGroupInfo(SgOps)
+  ShowSgOpsGeneric(SgInfo)
 
   if (inp.convention == "Hall" or len(inp.symxyz) != 0):
     Symbols_Match = SgOps.MatchTabulatedSettings()
@@ -225,18 +226,18 @@ try:
         print "Additional symmetry operations are redundant."
         print
     else:
-      print "Space group number:", SgType.SgNumber()
+      print "Space group number:", SgInfo.SgNumber()
       print "Conventional Hermann-Mauguin symbol:", \
-        sgtbx.SpaceGroupSymbols(SgType.SgNumber()).ExtendedHermann_Mauguin()
-      print "Hall symbol:", SgOps.BuildHallSymbol(SgType, 1)
-      print "Change-of-basis matrix:", SgType.CBOp().M()
-      print "               Inverse:", SgType.CBOp().InvM()
+        sgtbx.SpaceGroupSymbols(SgInfo.SgNumber()).ExtendedHermann_Mauguin()
+      print "Hall symbol:", SgInfo.BuildHallSymbol()
+      print "Change-of-basis matrix:", SgInfo.CBOp().M()
+      print "               Inverse:", SgInfo.CBOp().InvM()
       print
 
-  UnitCell = get_unitcell(SgType)
+  UnitCell = get_unitcell(SgInfo)
   SnapParameters = sgtbx.SpecialPositionSnapParameters(
     UnitCell, SgOps, 1, 1.e-6)
-  WyckoffTable = sgtbx.WyckoffTable(SgType)
+  WyckoffTable = sgtbx.WyckoffTable(SgInfo)
   print "List of Wyckoff positions:"
   print "</pre><table border=2 cellpadding=2>"
   InTable = 1
@@ -269,8 +270,8 @@ try:
   if (len(ss)):
     print "    Vector    Modulus"
     for i in xrange(len(ss)): print "   ", ss.V(i), ss.M(i)
-  K2L = SgType.getAddlGeneratorsOfEuclideanNormalizer(1, 0)
-  L2N = SgType.getAddlGeneratorsOfEuclideanNormalizer(0, 1)
+  K2L = SgInfo.getAddlGeneratorsOfEuclideanNormalizer(1, 0)
+  L2N = SgInfo.getAddlGeneratorsOfEuclideanNormalizer(0, 1)
   if (len(K2L)):
     print "  Inversion through a centre at:",
     print K2L[0].analyzeTpart().OriginShift()

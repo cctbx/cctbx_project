@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 Sep 13: SpaceGroupType -> SpaceGroupInfo (R.W. Grosse-Kunstleve)
      2001 Jul 02: Merged from CVS branch sgtbx_special_pos (rwgk)
      2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
@@ -23,7 +24,6 @@
 #include <cctbx/sgtbx/utils.h>
 #include <cctbx/sgtbx/miller.h>
 #include <cctbx/sgtbx/tables.h>
-#include <cctbx/sgtbx/asym_units.h>
 #include <cctbx/uctbx.h>
 
 namespace sgtbx {
@@ -55,46 +55,6 @@ namespace sgtbx {
       ChOfBasisOp getConventionalZ2POp(int RBF = CRBF,
                                        int TBF = CTBF) const;
       TrVec TidyT(const TrVec& T) const;
-  };
-
-  //! Result type for SpaceGroup::getSpaceGroupType.
-  /*! A space group type is characterized by the space group number
-      according to the International Tables for Crystallography,
-      Volume A, and a change-of-basis matrix that transforms
-      the coordinates of a given setting to a reference setting.
-   */
-  class SpaceGroupType {
-    public:
-      //! Constructor. For internal use only.
-      inline SpaceGroupType(int SgNumber, const ChOfBasisOp& CBOp)
-        : m_SgNumber(SgNumber), m_CBOp(CBOp) {
-        cctbx_assert(0 < SgNumber && SgNumber <= 230);
-        cctbx_assert(CBOp.M().Rpart().det() > 0);
-        cctbx_assert(CBOp.InvM().Rpart().det() > 0);
-      }
-      //! Space group number according to the International Tables.
-      inline int SgNumber() const { return m_SgNumber; }
-      //! Change-of-basis operator.
-      inline const ChOfBasisOp& CBOp() const { return m_CBOp; }
-      //! Get the additional generators of the Euclidean normalizer.
-      /*! See International Tables for Crystallography Volume A,
-          1983, Table 15.3.2. The generators are tabulated for
-          reference settings and transformed to the given setting
-          using CBOp().
-          <p>
-          getK2L = true requests the additional generator from
-          column "Inversion through a centre at" of Table 15.3.2.
-          <p>
-          getL2N = true requests the additional generators from
-          column "Further generators" of Table 15.3.2.
-          <p>
-          See also: class StructureSeminvariant
-       */
-      std::vector<RTMx>
-      getAddlGeneratorsOfEuclideanNormalizer(bool getK2L, bool getL2N) const;
-    private:
-      int m_SgNumber;
-      ChOfBasisOp m_CBOp;
   };
 
   //! Space Group Operations.
@@ -339,48 +299,6 @@ namespace sgtbx {
           group.
        */
       bool isChiral() const;
-      //! Test for the 22 (11 pairs) enantiomorphic space groups.
-      /*! A space group G is enantiomorphic if G and -I.G.-I have
-          two different space group types. I is the unit matrix.<br>
-          There are 11 pairs of enantiomorphic space groups,
-          for example P41 and P43.<br>
-          The notion of enantiomorphic space groups is connected
-          to the notion of <i>affine</i> space group types. There
-          are only 219 affine space group types, compared to the
-          230 conventional space group types. An pair of
-          enantiomorphic space groups corresponds to a single
-          affine space group type.
-          <p>
-          See also: getChangeOfHandOp()
-       */
-      bool isEnantiomorphic() const;
-      //! Determine a change-of-hand matrix.
-      /*! If the space group is centro-symmetric, the change-of-hand
-          matrix is the identity matrix.
-          <p>
-          If the space group belongs to one of the 22 enantiomorphic
-          space group types, the change-of-hand matrix is determined as
-          a centre of inversion that is located at the origin of the
-          reference setting.
-          <p>
-          If the space group is not enantiomorphic and not
-          centro-symmetric, the change-of-hand matrix is determined as
-          a centre of inversion of the Euclidean normalizer.
-          <p>
-          The change-of-hand matrix can be used to transform the
-          symmetry operations to obtain the enantiomorph symmetry
-          operations (use ChangeBasis()), and to transform fractional
-          coordinates. For example:<pre>
-          SpaceGroup SgOps = ...;
-          ChOfBasisOp CHOp = SgOps.getChangeOfHandOp();
-          SpaceGroup EnantiomorphSgOps = SgOps.ChangeBasis(CHOp);
-          fractional<double> X = ...;
-          fractional<double> EnatiomorphX = CHOp(X);</pre>
-          <p>
-          See also: isEnantiomorphic(), ChangeBasis(),
-                    SpaceGroupType::getAddlGeneratorsOfEuclideanNormalizer()
-       */
-      ChOfBasisOp getChangeOfHandOp() const;
       //! Test for a centre of inversion.
       inline bool isCentric() const { return m_fInv == 2; }
       //! Test if centre of inversion is at the origin.
@@ -581,6 +499,37 @@ namespace sgtbx {
           the 32 crystallographic point group types.
        */
       tables::MatrixGroup::Code getPointGroupType() const;
+      //! Match given symmetry operations with the 656 tabulated settings.
+      /*! This is a light-weight alternative to using
+          class SpaceGroupInfo, but will only work for the
+          656 tabulated settings.
+          <p>
+          This algorithm is not particularly optimized. Therefore
+          the runtimes for MatchTabulatedSettings() and
+          instantiating class SpaceGroupInfo are in general comparable.
+          The main purpose of this algorithm is therefore the
+          retrieval of conventional Hermann-Mauguin symbols.
+       */
+      SpaceGroupSymbols MatchTabulatedSettings() const;
+  };
+
+  //! iostream output operator for class SpaceGroup.
+  /*! Provided mainly for debugging purposes.
+   */
+  std::ostream& operator<<(std::ostream& os, const SpaceGroup& SgOps);
+
+  //! Compute and use change-of-basis matrix to reference setting.
+  /*! A space group type is characterized by the space group number
+      according to the International Tables for Crystallography,
+      Volume A, and a change-of-basis matrix that transforms
+      the coordinates of a given setting to a reference setting.
+   */
+  class SpaceGroupInfo {
+    public:
+      //! Default constructor.
+      /*! Equivalent to SpaceGroupInfo(SpaceGroup())
+       */
+      SpaceGroupInfo() : m_SgOps(), m_SgNumber(1), m_CBOp() {}
       //! Determine the space group type.
       /*! The algorithm for the determination of the space group
           type is published in
@@ -591,7 +540,7 @@ namespace sgtbx {
           change-of-basis matrix that transforms the given space group
           to its reference setting. RBF and TBF are the rotation base
           factor and the translation base factor, respectively, for the
-          change-of-basis matrix.<br>
+          change-of-basis matrix.<p>
           In general, there are several change-of-basis matrices that
           could be used. If TidyCBOp == true, the operations of the
           affine normalizer are used to determine a "standard"
@@ -606,10 +555,77 @@ namespace sgtbx {
           is about 70% of the time for the main determination
           of the space group type. This is, the TidyCBOp == true
           option is relatively expensive. However, the absolute
-          runtime is only in the order of 1/10 of a second.
+          runtime is only a small fraction of a second.
        */
-      SpaceGroupType getSpaceGroupType(bool TidyCBOp = true,
-                                       int RBF = CRBF, int TBF = CTBF) const;
+      SpaceGroupInfo(const SpaceGroup& SgOps,
+                     bool TidyCBOp = true,
+                     int RBF = CRBF, int TBF = CTBF);
+      //! Access to space group passed to the constructor.
+      inline const SpaceGroup& SgOps() const { return m_SgOps; }
+      //! Space group number according to the International Tables.
+      inline int SgNumber() const { return m_SgNumber; }
+      //! Change-of-basis operator.
+      inline const ChOfBasisOp& CBOp() const { return m_CBOp; }
+      //! Get the additional generators of the Euclidean normalizer.
+      /*! See International Tables for Crystallography Volume A,
+          1983, Table 15.3.2. The generators are tabulated for
+          reference settings and transformed to the given setting
+          using CBOp().
+          <p>
+          getK2L = true requests the additional generator from
+          column "Inversion through a centre at" of Table 15.3.2.
+          <p>
+          getL2N = true requests the additional generators from
+          column "Further generators" of Table 15.3.2.
+          <p>
+          See also: class StructureSeminvariant
+       */
+      std::vector<RTMx>
+      getAddlGeneratorsOfEuclideanNormalizer(bool getK2L, bool getL2N) const;
+      //! Test for the 22 (11 pairs) enantiomorphic space groups.
+      /*! A space group G is enantiomorphic if G and -I.G.-I have
+          two different space group types. I is the unit matrix.<br>
+          There are 11 pairs of enantiomorphic space groups,
+          for example P41 and P43.
+          <p>
+          The notion of enantiomorphic space groups is connected
+          to the notion of <i>affine</i> space group types. There
+          are 219 affine space group types, compared to the
+          230 conventional space group types. A pair of
+          enantiomorphic space groups corresponds to a single
+          affine space group type.
+          <p>
+          See also: getChangeOfHandOp()
+       */
+      bool isEnantiomorphic() const;
+      //! Determine a change-of-hand matrix.
+      /*! If the space group is centro-symmetric, the change-of-hand
+          matrix is the identity matrix.
+          <p>
+          If the space group belongs to one of the 22 enantiomorphic
+          space group types, the change-of-hand matrix is determined as
+          a centre of inversion that is located at the origin of the
+          reference setting.
+          <p>
+          If the space group is not enantiomorphic and not
+          centro-symmetric, the change-of-hand matrix is determined as
+          a centre of inversion of the Euclidean normalizer.
+          <p>
+          The change-of-hand matrix can be used to transform the
+          symmetry operations to obtain the enantiomorph symmetry
+          operations (use SpaceGroup::ChangeBasis()), and to transform
+          fractional coordinates. For example:<pre>
+          SpaceGroup SgOps = ...;
+          SpaceGroupInfo SgInfo(SgOps);
+          ChOfBasisOp CHOp = SgInfo.getChangeOfHandOp();
+          SpaceGroup EnantiomorphSgOps = SgOps.ChangeBasis(CHOp);
+          fractional<double> X = ...;
+          fractional<double> EnatiomorphX = CHOp(X);</pre>
+          <p>
+          See also: getAddlGeneratorsOfEuclideanNormalizer(),
+                    isEnantiomorphic(), SpaceGroup::ChangeBasis()
+       */
+      ChOfBasisOp getChangeOfHandOp() const;
       //! Build a Hall symbol for the given symmetry operations.
       /*! For a given group of symmetry operations, there are in
           general several plausible choices for a Hall symbol.
@@ -617,66 +633,29 @@ namespace sgtbx {
           from the Hall symbol for the reference setting. A change-of-basis
           operator is attached if necessary (i.e. "P 2 (y,z,x)").
           <p>
-          See getSpaceGroupType() for a discussion of
-          TidyCBOp. If TidyCBOp == true, the returned Hall
-          symbol is a reproducible representation of a
+          If TidyCBOp == true, the returned Hall symbol
+          is a reproducible representation of a
           given setting that is independent of the order of
           the symmetry operations.
-          <p>
-          This algorithm involves the determination of the space group
-          type. If the space group type has been determined already,
-          the result can be re-used to avoid run-time overhead.
-       */
-      std::string BuildHallSymbol(const SpaceGroupType& SgType,
-                                  bool TidyCBOp = true) const;
-      //! Build a Hall symbol for the given symmetry operations.
-      /*! See previous overload for this function.
        */
       std::string BuildHallSymbol(bool TidyCBOp = true) const;
-      //! Match given symmetry operations with the 656 tabulated settings.
-      /*! This is a light-weight alternative to getSpaceGroupType(),
-          but will only work for the 656 tabulated settings.<br>
-          This algorithm is not particularly optimized. Therefore
-          the run-times for MatchTabulatedSettings() and
-          getSpaceGroupType() are in general comparable.
-          The main purpose of this algorithm is therefore the
-          retrieval of conventional Hermann-Mauguin symbols.
-       */
-      SpaceGroupSymbols MatchTabulatedSettings() const;
       //! Determine conventional Hermann-Mauguin symbol or Hall symbol.
-      /*! First, MatchTabulatedSettings() is called. If the given
+      /*! First, SgOps().MatchTabulatedSettings() is called. If the given
           symmetry operations correspond to one of the 656 tabulated
           settings, the extended Hermann-Mauguin symbol is returned
           (e.g. "P n n n :2").  Otherwise the string "Hall: " + the
           result of BuildHallSymbol() is returned (e.g. "Hall:  P 2 2
-          -1n").<br>
+          -1n").
+          <p>
           The result of BuildLookupSymbol() can be used as the input
-          for the constructor of class SpaceGroupSymbols.<br>
-          This algorithm involves the determination of the space group
-          type. If the space group type has been determined already,
-          the result can be re-used to avoid run-time overhead.
-       */
-      std::string BuildLookupSymbol(const SpaceGroupType& SgType) const;
-      //! Determine conventional Hermann-Mauguin symbol or Hall symbol.
-      /*! See previous overload for this function.
+          for the constructor of class SpaceGroupSymbols.
        */
       std::string BuildLookupSymbol() const;
-      //! Get a parallelepiped that contains an asymmetric unit.
-      /*! See class Brick for details.
-       */
-      inline Brick getBrick() const { return Brick(*this); }
-      //! Get a parallelepiped that contains an asymmetric unit.
-      /*! See class Brick for details.
-       */
-      inline Brick getBrick(const SpaceGroupType& SgType) const {
-        return Brick(*this, SgType);
-      }
+    private:
+      SpaceGroup m_SgOps;
+      int m_SgNumber;
+      ChOfBasisOp m_CBOp;
   };
-
-  //! iostream output operator for class SpaceGroup.
-  /*! Provided mainly for debugging purposes.
-   */
-  std::ostream& operator<<(std::ostream& os, const SpaceGroup& SgOps);
 
 } // namespace sgtbx
 

@@ -14,12 +14,12 @@ Endless = "--Endless" in sys.argv
 if (RandomSeed0):
   random.seed(0)
 
-def get_unitcell(SgType):
-  if (143 <= SgType.SgNumber() < 195):
+def get_unitcell(SgInfo):
+  if (143 <= SgInfo.SgNumber() < 195):
     RefUnitCell = uctbx.UnitCell((10, 10, 10, 90, 90, 120))
   else:
     RefUnitCell = uctbx.UnitCell((10, 10, 10, 90, 90, 90))
-  return RefUnitCell.ChangeBasis(SgType.CBOp().M().as_tuple()[0])
+  return RefUnitCell.ChangeBasis(SgInfo.CBOp().M().as_tuple()[0])
 
 if (ShortCut):
   settings = ("P 61 2 2",)
@@ -36,19 +36,19 @@ def OneCycle():
     SgSymbols = sgtbx.SpaceGroupSymbols(LookupSymbol)
     HSym = SgSymbols.Hall()
     SgOps = sgtbx.SpaceGroup(HSym)
-    SgType = SgOps.getSpaceGroupType()
+    SgInfo = sgtbx.SpaceGroupInfo(SgOps)
     print "SpaceGroup %s (%d) %s" % (
-      SgOps.BuildLookupSymbol(SgType),
-      SgType.SgNumber(),
-      SgOps.BuildHallSymbol(SgType))
+      SgInfo.BuildLookupSymbol(),
+      SgInfo.SgNumber(),
+      SgInfo.BuildHallSymbol())
     sys.stdout.flush()
-    UnitCell = get_unitcell(SgType)
+    UnitCell = get_unitcell(SgInfo)
     SgOps.CheckUnitCell(UnitCell)
     SpecialPositionTolerances = \
     sgtbx.SpecialPositionTolerances(UnitCell, SgOps, 0.1, 0.1)
     SnapParameters = \
     sgtbx.SpecialPositionSnapParameters(UnitCell, SgOps, 1, 0.05)
-    WTab = sgtbx.WyckoffTable(SgType)
+    WTab = sgtbx.WyckoffTable(SgInfo)
     for WP in WTab:
       print "WyckoffPosition", WP.Letter(), WP.M(), WP.SpecialOp()
       while 1:
@@ -66,7 +66,7 @@ def OneCycle():
         else:
           if (SE.M() == WP.M()): break
       print "      WX =", WX
-      print "  Ref WX =", SgType.CBOp()(WX)
+      print "  Ref WX =", SgInfo.CBOp()(WX)
       for SymOp in [random.choice(SgOps)]:
         UM = sgtbx.RTMx("x-2,y+3,z-5", "", 1, 1).multiply(SymOp)
         UMWX = UM.multiply(WX)
@@ -83,7 +83,7 @@ def OneCycle():
             print WP.Letter(), WP.M(), WP.SpecialOp(), "input"
             print WPX.Letter(),WPX.M(),WPX.SpecialOp(),"getWyckoffMapping"
             print "ERROR: Wyckoff letter mismatch!"
-            print "ERROR: Ref WX =", SgType.CBOp()(WX)
+            print "ERROR: Ref WX =", SgInfo.CBOp()(WX)
             nMismatches = nMismatches + 1
           WWMap = WTab.getWyckoffMapping(UnitCell, SgOps, UMWX, 0.04)
           assert WMap.WP().Letter() == WWMap.WP().Letter()

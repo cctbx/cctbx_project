@@ -5,13 +5,14 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 Sep 13: SpaceGroupType -> SpaceGroupInfo (R.W. Grosse-Kunstleve)
      Created: 12-Jul-2001 (R.W. Grosse-Kunstleve)
  */
 
 #ifndef CCTBX_SGTBX_ASYM_UNITS_H
 #define CCTBX_SGTBX_ASYM_UNITS_H
 
-#include <cctbx/sgtbx/math.h>
+#include <cctbx/sgtbx/groups.h>
 
 namespace sgtbx {
 
@@ -37,9 +38,6 @@ namespace sgtbx {
       rational m_Point;
       bool m_Off;
   };
-
-  class SpaceGroup;
-  class SpaceGroupType;
 
   //! Parallelepiped that contains an asymmetric unit.
   /*! A "Brick" is a parallelepiped that contains an asymmetric unit
@@ -86,6 +84,8 @@ namespace sgtbx {
    */
   class Brick {
     public:
+      //! Constructor.
+      Brick(const SpaceGroupInfo& SgInfo);
       //! Access to the six points of the brick.
       /*! iBasisVector refers to the basis vectors a,b,c.
           <p>
@@ -102,14 +102,8 @@ namespace sgtbx {
        */
       std::string format() const;
       //! Test if a given point is inside the brick.
-      /*! XXX Warning: untested.
-       */
       bool isInBrick(const boost::array<rational, 3>& P) const;
     private:
-      friend class SpaceGroup;
-      Brick(const SpaceGroup& SgOps, const SpaceGroupType& SgType);
-      Brick(const SpaceGroup& SgOps);
-      void initialize(const SpaceGroup& SgOps, const SpaceGroupType& SgType);
       BrickPoint m_Points[3][2];
   };
 

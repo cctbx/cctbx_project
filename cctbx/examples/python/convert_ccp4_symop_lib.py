@@ -23,5 +23,6 @@ while 1:
     line = sys.stdin.readline()[:-1] # get the i'th symop
     # print line
     SgOps.expandSMx( sgtbx.RTMx(line) ) # and interpret
-  print SgOps.BuildHallSymbol() # now produce the sg symbol
-  print SgOps.BuildLookupSymbol()
+  SgInfo = sgtbx.SpaceGroupInfo(SgOps)
+  print SgInfo.BuildHallSymbol() # now produce the sg symbol
+  print SgInfo.BuildLookupSymbol()

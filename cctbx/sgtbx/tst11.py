@@ -20,13 +20,13 @@ def OneCycle():
     SgSymbols = sgtbx.SpaceGroupSymbols(LookupSymbol)
     HSym = SgSymbols.Hall()
     SgOps = sgtbx.SpaceGroup(HSym)
-    SgType = SgOps.getSpaceGroupType()
+    SgInfo = sgtbx.SpaceGroupInfo(SgOps)
     print "SpaceGroup %s (%d) %s" % (
-      SgOps.BuildLookupSymbol(SgType),
-      SgType.SgNumber(),
-      SgOps.BuildHallSymbol(SgType))
+      SgInfo.BuildLookupSymbol(),
+      SgInfo.SgNumber(),
+      SgInfo.BuildHallSymbol())
     sys.stdout.flush()
-    asu = sgtbx.ReciprocalSpaceASU(SgOps.getSpaceGroupType())
+    asu = sgtbx.ReciprocalSpaceASU(SgInfo)
     print asu.CBOp().M()
     print asu.CBOp().InvM()
     print asu.ReferenceASU().LaueGroupCode()

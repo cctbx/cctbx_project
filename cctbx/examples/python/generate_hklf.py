@@ -12,6 +12,7 @@
 """
 
 # Revision history:
+#   2001 Sep 13: SpaceGroupType -> SpaceGroupInfo (R.W. Grosse-Kunstleve)
 #   2001 Jul 02: Merged from CVS branch sgtbx_special_pos (rwgk)
 #   2001 Jun 21: use WyckoffTable (R.W. Grosse-Kunstleve)
 #   2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
@@ -108,8 +109,8 @@ class StructureInfo:
           sym = string.join(flds[1:])
           SpaceGroupSymbols = sgtbx.SpaceGroupSymbols(sym)
           self.SgOps = sgtbx.SpaceGroup(SpaceGroupSymbols.Hall())
-          self.SgType = self.SgOps.getSpaceGroupType()
-          self.WyckoffTable = sgtbx.WyckoffTable(self.SgOps, self.SgType)
+          self.SgInfo = sgtbx.SpaceGroupInfo(self.SgOps)
+          self.WyckoffTable = sgtbx.WyckoffTable(self.SgInfo, 1)
 
         elif (keyword == "Resolution"):
           if (   string.lower(flds[1]) != "d_min"
@@ -203,7 +204,7 @@ if (__name__ == "__main__"):
 
   for T in Structure.Titles: print "Title:", T
   print "Unit cell:", Structure.UnitCell
-  print "Space group symbol:", Structure.SgOps.BuildLookupSymbol()
+  print "Space group symbol:", Structure.SgInfo.BuildLookupSymbol()
   print "Resolution d_min:", Resolution_d_min
   print "Number of sites:", len(Structure.Sites)
   print

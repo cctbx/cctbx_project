@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 Sep 13: SpaceGroupType -> SpaceGroupInfo (R.W. Grosse-Kunstleve)
      2001 Aug: Redesign of Kevin Cowtan's implementation for the
                handling of CCP4 reciprocal-space asymmetric units.
                Motivation: implementation of MillerIndexGenerator (rwgk).
@@ -262,13 +263,13 @@ namespace sgtbx {
 
   } // namespace detail
 
-  ReciprocalSpaceASU::ReciprocalSpaceASU(const SpaceGroupType& SgType)
+  ReciprocalSpaceASU::ReciprocalSpaceASU(const SpaceGroupInfo& SgInfo)
     : m_CBOp(), m_isReferenceASU(true), m_ReferenceASU()
   {
-    m_CBOp = SgType.CBOp();
+    m_CBOp = SgInfo.CBOp();
     m_isReferenceASU = m_CBOp.M().Rpart().isUnit();
     using namespace tables::MatrixGroup;
-    Code MGC = tables::ReferenceSettings::MatrixGroupCodes[SgType.SgNumber()];
+    Code MGC = tables::ReferenceSettings::MatrixGroupCodes[SgInfo.SgNumber()];
     Code LG_MGC = MGC.LaueGroupType();
     if (LG_MGC == MGC_3bm) {
      if (   MGC == MGC_312
@@ -284,20 +285,19 @@ namespace sgtbx {
   }
 
   MillerIndexGenerator::MillerIndexGenerator(const uctbx::UnitCell& uc,
-                                             const SpaceGroup& SgOps,
+                                             const SpaceGroupInfo& SgInfo,
                                              double Resolution_d_min)
-    : m_UnitCell(uc), m_SgOps(SgOps)
+    : m_UnitCell(uc), m_SgOps(SgInfo.SgOps())
   {
     if (Resolution_d_min <= 0.) {
       throw error("Resolution limit must be greater than zero.");
     }
     m_Qhigh = 1. / (Resolution_d_min * Resolution_d_min);
 
-    SpaceGroupType SgType = m_SgOps.getSpaceGroupType();
     uctbx::UnitCell
-    ReferenceUnitCell = m_UnitCell.ChangeBasis(SgType.CBOp().InvM().Rpart());
-    SpaceGroup ReferenceSgOps(SpaceGroupSymbols(SgType.SgNumber()).Hall());
-    m_ASU = ReciprocalSpaceASU(SgType);
+    ReferenceUnitCell = m_UnitCell.ChangeBasis(SgInfo.CBOp().InvM().Rpart());
+    SpaceGroup ReferenceSgOps(SpaceGroupSymbols(SgInfo.SgNumber()).Hall());
+    m_ASU = ReciprocalSpaceASU(SgInfo);
     Miller::Vec3 CutP = m_ASU.ReferenceASU()->getCutParameters();
     Miller::Index
     ReferenceHmax = ReferenceUnitCell.MaxMillerIndices(Resolution_d_min);

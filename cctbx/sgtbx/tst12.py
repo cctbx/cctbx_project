@@ -19,11 +19,11 @@ def OneCycle():
     SgSymbols = sgtbx.SpaceGroupSymbols(LookupSymbol)
     HSym = SgSymbols.Hall()
     SgOps = sgtbx.SpaceGroup(HSym)
-    SgType = SgOps.getSpaceGroupType()
+    SgInfo = sgtbx.SpaceGroupInfo(SgOps)
     print "SpaceGroup %s (%d) %s" % (
-      SgOps.BuildLookupSymbol(SgType),
-      SgType.SgNumber(),
-      SgOps.BuildHallSymbol(SgType))
+      SgInfo.BuildLookupSymbol(),
+      SgInfo.SgNumber(),
+      SgInfo.BuildHallSymbol())
     sys.stdout.flush()
     ss = sgtbx.StructureSeminvariant(SgOps)
     for i in xrange(ss.size()):

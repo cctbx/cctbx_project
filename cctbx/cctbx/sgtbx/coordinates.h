@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 Sep 13: SpaceGroupType -> SpaceGroupInfo (R.W. Grosse-Kunstleve)
      2001 Jul 02: Merged from CVS branch sgtbx_special_pos (rwgk)
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
  */
@@ -431,23 +432,18 @@ namespace sgtbx {
    */
   class WyckoffTable {
     public:
-      //! Constructor without implicit call of expand().
+      //! Constructor.
       /*! The Wyckoff positions for the 230 reference settings are
-          tabulated. The change-of-basis matrix obtained with
-          SpaceGroup::getSpaceGroupType() is used to transform the
+          tabulated. SgInfo::CBOp() is used to transform the
           tabulated settings to the given setting.
-       */
-      WyckoffTable(const SpaceGroupType& SgType);
-      //! Constructor with implicit call of expand().
-      /*! The Wyckoff positions for the 230 reference settings are
-          tabulated. The change-of-basis matrix obtained with
-          SpaceGroup::getSpaceGroupType() is used to transform the
-          tabulated settings to the given setting. SgOps is
+          <p>
+          If auto_expand == true, SgInfo::SgOps() is
           used to expand the representative special position
           symmetry operations to lists of unique operations.
+          <p>
           See also: expand(), WyckoffPosition::expand()
        */
-      WyckoffTable(const SpaceGroup& SgOps, const SpaceGroupType& SgType);
+      WyckoffTable(const SpaceGroupInfo& SgInfo, bool auto_expand = false);
       //! Call expand() for all Wyckoff positions.
       /*! See also: WyckoffPosition::expand()
        */
@@ -524,7 +520,7 @@ namespace sgtbx {
                         const fractional<double>& X,
                         double SnapRadius = 0.5) const;
     private:
-      void InitializeOperations(const SpaceGroupType& SgType);
+      void InitializeOperations(const SpaceGroupInfo& SgInfo);
       std::vector<WyckoffPosition> m_Operations;
   };
 

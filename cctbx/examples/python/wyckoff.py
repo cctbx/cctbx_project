@@ -91,9 +91,9 @@ try:
   ShowInputSymbol(inp.sgsymbol, inp.convention, "Input ")
   Symbols_Inp = sgtbx.SpaceGroupSymbols(inp.sgsymbol, inp.convention)
   SgOps = HallSymbol_to_SgOps(Symbols_Inp.Hall())
-  SgType = SgOps.getSpaceGroupType()
+  SgInfo = sgtbx.SpaceGroupInfo(SgOps)
   print "Space group: (%d) %s" % (
-    SgType.SgNumber(), SgOps.BuildLookupSymbol(SgType))
+    SgInfo.SgNumber(), SgInfo.BuildLookupSymbol())
   print
 
   SgOps.CheckUnitCell(UnitCell)
@@ -101,7 +101,7 @@ try:
   MinMateDistance = string.atof(inp.MinMateDistance)
   SnapParameters = \
     sgtbx.SpecialPositionSnapParameters(UnitCell, SgOps, 1, MinMateDistance)
-  WyckoffTable = sgtbx.WyckoffTable(SgOps, SgType)
+  WyckoffTable = sgtbx.WyckoffTable(SgInfo, 1)
 
   skip_columns = string.atoi(inp.skip_columns)
   if (skip_columns < 0):

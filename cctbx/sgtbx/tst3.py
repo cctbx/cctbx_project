@@ -9,9 +9,10 @@ for hsym in table_hall_std530:
   SgOps = parse(hsym[6:])
   if (SgOps):
     SgOps.makeTidy()
+    SgInfo = sgtbx.SpaceGroupInfo(SgOps)
     print "OrderZ:", SgOps.OrderZ()
     print "isChiral:", SgOps.isChiral()
-    print "isEnantiomorphic:", SgOps.isEnantiomorphic()
+    print "isEnantiomorphic:", SgInfo.isEnantiomorphic()
     ts = SgOps.MatchTabulatedSettings()
     print ts.ExtendedHermann_Mauguin()
     symbols = sgtbx.SpaceGroupSymbols(ts.ExtendedHermann_Mauguin())

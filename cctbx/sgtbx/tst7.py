@@ -35,7 +35,7 @@ for HallSymbol in table_hall:
   for Z in "PABCIRHF":
     HSym = HallSymbol[0] + Z + HallSymbol[2:]
     SgOps = sgtbx.SpaceGroup(HSym)
-    SgNumber = SgOps.getSpaceGroupType().SgNumber()
+    SgNumber = sgtbx.SpaceGroupInfo(SgOps).SgNumber()
     RefSgOps = sgtbx.SpaceGroup(sgtbx.SpaceGroupSymbols(SgNumber).Hall())
     if (SgNumber < 75):
       RotOps = sgtbx.SpaceGroup('P 1')
@@ -49,7 +49,7 @@ for HallSymbol in table_hall:
       s = random_expand(s)
       print s.OrderZ()
       try:
-        t = s.getSpaceGroupType(TidyCBOp)
+        t = sgtbx.SpaceGroupInfo(s, TidyCBOp)
       except RuntimeError, e:
         e = str(e)
         if (string.find(e, RBFerr) >= 0 or string.find(e, TBFerr) >= 0):
@@ -65,7 +65,7 @@ for HallSymbol in table_hall:
           assert s.ChangeBasis(t.CBOp()) == RefSgOps
           assert s == RefSgOps.ChangeBasis(t.CBOp().swap())
         try:
-          l = s.BuildLookupSymbol()
+          l = t.BuildLookupSymbol()
         except RuntimeError, e:
           e = str(e)
           if (string.find(e, RBFerr) >= 0 or string.find(e, TBFerr) >= 0):

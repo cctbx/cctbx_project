@@ -87,14 +87,14 @@ try:
   ShowInputSymbol(inp.sgsymbol, inp.convention, "Input ")
   Symbols_Inp = sgtbx.SpaceGroupSymbols(inp.sgsymbol, inp.convention)
   SgOps = HallSymbol_to_SgOps(Symbols_Inp.Hall())
-  SgType = SgOps.getSpaceGroupType()
+  SgInfo = sgtbx.SpaceGroupInfo(SgOps)
   print "Space group: (%d) %s" % (
-    SgType.SgNumber(), SgOps.BuildLookupSymbol(SgType))
+    SgInfo.SgNumber(), SgInfo.BuildLookupSymbol())
   print
 
   SgOps.CheckUnitCell(UnitCell)
 
-  ChOfHandOp = SgOps.getChangeOfHandOp()
+  ChOfHandOp = SgInfo.getChangeOfHandOp()
   print "Change-of-hand matrix:", ChOfHandOp.M()
   print "              Inverse:", ChOfHandOp.InvM()
   print

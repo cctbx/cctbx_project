@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 Sep 13: SpaceGroupType -> SpaceGroupInfo (R.W. Grosse-Kunstleve)
      2001 Jul 02: Merged from CVS branch sgtbx_special_pos (rwgk)
      2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
      2001-Apr-23 Initial m_isTidy = false (R.W. Grosse-Kunstleve)
@@ -261,24 +262,6 @@ namespace sgtbx {
         throw cctbx_internal_error();
       }
     }
-  }
-
-  std::string SpaceGroup::BuildLookupSymbol(const SpaceGroupType& SgType) const
-  {
-    SpaceGroupSymbols Symbols = MatchTabulatedSettings();
-    if (Symbols.SgNumber() != 0) {
-      return Symbols.ExtendedHermann_Mauguin();
-    }
-    return "Hall: " + BuildHallSymbol(SgType, true);
-  }
-
-  std::string SpaceGroup::BuildLookupSymbol() const
-  {
-    SpaceGroupSymbols Symbols = MatchTabulatedSettings();
-    if (Symbols.SgNumber() != 0) {
-      return Symbols.ExtendedHermann_Mauguin();
-    }
-    return "Hall: " + BuildHallSymbol(true);
   }
 
   std::ostream& operator<<(std::ostream& os, const SpaceGroup& SgOps)

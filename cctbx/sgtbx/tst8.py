@@ -5,9 +5,9 @@ import sgtbx
 
 uc = uctbx.UnitCell([])
 sg = sgtbx.SpaceGroup("F 4 2")
-sgtype = sg.getSpaceGroupType()
-print sg.BuildLookupSymbol(sgtype)
-WTab = sgtbx.WyckoffTable(sgtype)
+sginfo = sgtbx.SpaceGroupInfo(sg)
+print sginfo.BuildLookupSymbol()
+WTab = sgtbx.WyckoffTable(sginfo)
 WTab.expand(sg)
 for p in WTab:
   print p.M(), p.Letter(), p.SpecialOp()

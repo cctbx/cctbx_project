@@ -27,8 +27,9 @@ int main()
       // cout << line << "\n";
       SgOps.expandSMx( sgtbx::RTMx(line) );     // and interpret
     }
-    cout << SgOps.BuildHallSymbol() << "\n";    // now produce the sg symbol
-    cout << SgOps.BuildLookupSymbol() << "\n";
+    sgtbx::SpaceGroupInfo SgInfo(SgOps);
+    cout << SgInfo.BuildHallSymbol() << "\n";    // now produce the sg symbol
+    cout << SgInfo.BuildLookupSymbol() << "\n";
   }
   return 0;
 }

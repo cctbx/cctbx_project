@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 Sep 13: SpaceGroupType -> SpaceGroupInfo (R.W. Grosse-Kunstleve)
      2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
  */
@@ -131,27 +132,24 @@ namespace sgtbx {
     return true;
   }
 
-  bool SpaceGroup::isEnantiomorphic() const
+  bool SpaceGroupInfo::isEnantiomorphic() const
   {
-    if (isCentric()) return false;
-    SpaceGroupType SgType = getSpaceGroupType();
+    if (SgOps().isCentric()) return false;
     std::vector<RTMx>
-    AddlG = ReferenceSettings::GetNormAddlG(SgType.SgNumber(),
-                                            false, true, false);
+    AddlG = ReferenceSettings::GetNormAddlG(SgNumber(), false, true, false);
     if (AddlG.size() == 1) return false;
     cctbx_assert(AddlG.size() == 0);
     return true;
   }
 
-  ChOfBasisOp SpaceGroup::getChangeOfHandOp() const
+  ChOfBasisOp SpaceGroupInfo::getChangeOfHandOp() const
   {
-    if (isCentric()) return ChOfBasisOp(1, STBF);
-    SpaceGroupType SgType = getSpaceGroupType();
+    if (SgOps().isCentric()) return ChOfBasisOp(1, STBF);
     std::vector<RTMx>
-    AddlG = SgType.getAddlGeneratorsOfEuclideanNormalizer(true, false);
+    AddlG = getAddlGeneratorsOfEuclideanNormalizer(true, false);
     if (AddlG.size() == 1) return ChOfBasisOp(AddlG[0]);
     cctbx_assert(AddlG.size() == 0);
-    return ChOfBasisOp(SgType.CBOp().swap()(RTMx(RotMx(1, -1), STBF)));
+    return ChOfBasisOp(CBOp().swap()(RTMx(RotMx(1, -1), STBF)));
   }
 
 } // namespace sgtbx

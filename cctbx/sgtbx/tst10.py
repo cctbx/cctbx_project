@@ -13,12 +13,12 @@ Endless = "--Endless" in sys.argv
 if (RandomSeed0):
   random.seed(0)
 
-def get_unitcell(SgType):
-  if (143 <= SgType.SgNumber() < 195):
+def get_unitcell(SgInfo):
+  if (143 <= SgInfo.SgNumber() < 195):
     RefUnitCell = uctbx.UnitCell((10, 10, 10, 90, 90, 120))
   else:
     RefUnitCell = uctbx.UnitCell((10, 10, 10, 90, 90, 90))
-  return RefUnitCell.ChangeBasis(SgType.CBOp().M().as_tuple()[0])
+  return RefUnitCell.ChangeBasis(SgInfo.CBOp().M().as_tuple()[0])
 
 if (ShortCut):
   settings = ("Hall: -P 6 2c (z,1/2*x,1/2*y)",)
@@ -33,20 +33,20 @@ def OneCycle():
     SgSymbols = sgtbx.SpaceGroupSymbols(LookupSymbol)
     HSym = SgSymbols.Hall()
     SgOps = sgtbx.SpaceGroup(HSym)
-    SgType = SgOps.getSpaceGroupType()
+    SgInfo = sgtbx.SpaceGroupInfo(SgOps)
     print "SpaceGroup %s (%d) %s" % (
-      SgOps.BuildLookupSymbol(SgType),
-      SgType.SgNumber(),
-      SgOps.BuildHallSymbol(SgType))
+      SgInfo.BuildLookupSymbol(),
+      SgInfo.SgNumber(),
+      SgInfo.BuildHallSymbol())
     sys.stdout.flush()
-    UnitCell = get_unitcell(SgType)
+    UnitCell = get_unitcell(SgInfo)
     SgOps.CheckUnitCell(UnitCell)
     SnapParametersLarge = \
     sgtbx.SpecialPositionSnapParameters(UnitCell, SgOps, 0, 2.0)
     SmallSnapDist2 = 1.e-5
     SnapParametersSmall = \
     sgtbx.SpecialPositionSnapParameters(UnitCell, SgOps, 0, SmallSnapDist2)
-    WTab = sgtbx.WyckoffTable(SgOps, SgType)
+    WTab = sgtbx.WyckoffTable(SgInfo, 1)
     for i in xrange(20):
       RandomX = (random.uniform(-2,2),
                  random.uniform(-2,2),

@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 Sep 13: SpaceGroupType -> SpaceGroupInfo (R.W. Grosse-Kunstleve)
      2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
      Created: 10-May-2001 (R.W. Grosse-Kunstleve)
  */
@@ -119,7 +120,7 @@ namespace sgtbx {
   } // namespace ReferenceSettings
 
   std::vector<RTMx>
-  SpaceGroupType::getAddlGeneratorsOfEuclideanNormalizer(bool getK2L,
+  SpaceGroupInfo::getAddlGeneratorsOfEuclideanNormalizer(bool getK2L,
                                                          bool getL2N) const
   {
     std::vector<RTMx> result
