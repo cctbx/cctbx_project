@@ -70,7 +70,7 @@ else
   else if ($#argv == 1) then
     set n_cpu_s=$1
   else
-    echo "usage: install_from_scratch.csh number_of_cpu_s"
+    echo "usage: $0 number_of_cpu_s"
     exit 1
   endif
   echo "Number of available CPU's: $n_cpu_s"
