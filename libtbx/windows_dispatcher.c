@@ -128,6 +128,7 @@ main(int argc, char *const argv[])
   char** extended_argv;
   int n, i;
   _putenv("PYTHONHOME=");
+  _putenv("PYTHONCASEOK=1");
   _putenv(libtbx_build);
   prepend_path_element(argv[0], "PYTHONPATH", pythonpath);
   prepend_path_element(argv[0], "PATH", main_path);

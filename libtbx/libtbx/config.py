@@ -212,7 +212,7 @@ class environment:
       (self._shortpath_bat, abs_path), "r").readline().rstrip()
 
   def abs_path_clean(self, path):
-    abs_path = libtbx.path.norm(os.path.abspath(path))
+    abs_path = os.path.normpath(os.path.abspath(path))
     if (os.name != "nt" or abs_path.find(" ") < 0): return abs_path
     short = self.abs_path_short(abs_path).split(os.sep)
     orig = abs_path.split(os.sep)
@@ -269,7 +269,9 @@ class environment:
     dist_path = self.find_dist_path(module_name, optional=optional)
     if (dist_path is None): return False
     new_module = module(env=self, name=module_name, dist_path=dist_path)
-    if (new_module.name in self.module_dict): return True
+    new_name_normcase = os.path.normcase(new_module.name)
+    for name in self.module_dict:
+      if (os.path.normcase(name) == new_name_normcase): return True
     new_module.find_mate()
     new_module.process_libtbx_config()
     self.register_module(dependent_module=dependent_module, module=new_module)
@@ -278,7 +280,11 @@ class environment:
 
   def add_repository(self, path):
     path = self.abs_path_clean(path)
-    if (not path in self.repository_paths):
+    path_normcase = os.path.normcase(path)
+    for repository_path in self.repository_paths:
+      if (os.path.normcase(repository_path) == path_normcase):
+        break
+    else:
       self.repository_paths.append(path)
 
   def find_dist_path(self, module_name, optional=False):
@@ -690,6 +696,7 @@ class environment:
         print >> s, '  set %s=%s' % (var_name, path)
         print >> u, '  set %s=' % var_name
     print >> s, '  if not "%1" == "debug" goto end_of_script'
+    print >> s, '    set PYTHONCASEOK=1' # no unset
     update_path.write(("    ", "  "), "PYTHONPATH", self.pythonpath)
     update_path.write(("    ", "  "), "PATH", [self.lib_path])
     for f in s, u:
@@ -743,7 +750,8 @@ class environment:
     for module in top_down_module_list:
       print " ", "+".join(module.names_active())
     if (len(self.missing_for_use) > 0):
-      raise UserError("Missing modules: " + " ".join(self.missing_for_use.keys()))
+      raise UserError("Missing modules: "
+        + " ".join(self.missing_for_use.keys()))
     if (len(self.missing_for_build) != 0):
       if (self.scons_dist_path is not None):
         print "***********************************"
@@ -786,8 +794,9 @@ class environment:
     hash = {}
     self.pythonpath = []
     for path in pythonpath:
-      if (path in hash): continue
-      hash[path] = None
+      path_normcase = os.path.normcase(path)
+      if (path_normcase in hash): continue
+      hash[path_normcase] = None
       self.pythonpath.append(path)
 
   def refresh(self):
@@ -819,7 +828,7 @@ class module:
   def __init__(self, env, name, dist_path, mate_suffix="_adaptbx"):
     self.env = env
     self.mate_suffix = mate_suffix
-    if (name.endswith(self.mate_suffix)):
+    if (os.path.normcase(name).endswith(os.path.normcase(self.mate_suffix))):
       self.name = name[:-len(self.mate_suffix)]
       self.names = [self.name, name]
       self.dist_paths = [None, dist_path]
@@ -916,7 +925,7 @@ class module:
     for dist_path in self.dist_paths_active():
       for sub_dir in ["", "/"+self.name]:
         sub_file = sub_dir + "/__init__.py"
-        path = libtbx.path.norm(dist_path + sub_file)
+        path = os.path.normpath(dist_path + sub_file)
         if (os.path.isfile(path)):
           result.append(os.path.dirname(os.path.dirname(path)))
           break
@@ -1020,7 +1029,7 @@ class include_registry:
         env.Prepend(SHCXXFLAGS=[ipath])
 
 def cold_start(args):
-  env = environment(build_path=libtbx.path.norm(os.path.abspath(os.getcwd())))
+  env = environment(build_path=os.path.normpath(os.path.abspath(os.getcwd())))
   env.process_args(
     args=args[1:],
     default_repository=os.path.dirname(os.path.dirname(args[0])))

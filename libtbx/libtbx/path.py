@@ -1,10 +1,7 @@
 import os
 
-def norm(path):
-  return os.path.normcase(os.path.normpath(path))
-
 def norm_join(*args):
-  return norm(apply(os.path.join, args))
+  return os.path.normpath(os.path.join(*args))
 
 def create_target_dir(target_file):
   target_dir = os.path.split(target_file)[0]
@@ -16,7 +13,7 @@ def canonical_path(file_name, effective_current_working_directory=None):
     if (effective_current_working_directory is None):
       effective_current_working_directory = os.getcwd()
     file_name = os.path.join(effective_current_working_directory, file_name)
-  return norm(file_name)
+  return os.path.normpath(file_name)
 
 def is_same_canoncial_file(file_names):
   assert len(file_names) == 2
@@ -35,5 +32,5 @@ def full_command_path(command, search_first=[], search_last=[]):
   for path in dirs:
     path_command = os.path.join(path, command)
     if (os.path.exists(path_command)):
-      return norm(os.path.abspath(path_command))
+      return os.path.normpath(os.path.abspath(path_command))
   return None
