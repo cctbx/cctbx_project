@@ -1,8 +1,11 @@
 import math
 from cctbx_boost.arraytbx import shared
+from cctbx_boost.arraytbx import shared_map
 from cctbx_boost import sgtbx
 from cctbx_boost import miller
 from cctbx_boost import sftbx
+from cctbx_boost import fftbx
+from cctbx.misc import python_utils
 
 # XXX move to uctbx
 def are_similar_unit_cells(ucell1, ucell2,
@@ -31,6 +34,9 @@ def show_binner_summary(binner):
     else:
       print "bin %2d: %9.4f >= d > %8.4f: %5d" % (
         (i_bin,) + bin_d_range + (count,))
+
+def ftor_a_s_sub(lhs, rhs): return lhs.sub(rhs)
+def ftor_a_s_div(lhs, rhs): return lhs.div(rhs)
 
 def space_group_info(space_group_symbol):
   return sgtbx.SpaceGroup(sgtbx.SpaceGroupSymbols(space_group_symbol)).Info()
@@ -78,6 +84,10 @@ class miller_set(crystal_symmetry):
   def multiplicities(self):
     return reciprocal_space_array(
       self, self.SgOps.multiplicity(self.H, self.friedel_flag))
+
+  def epsilons(self):
+    return reciprocal_space_array(
+      self, self.SgOps.epsilon(self.H))
 
   def d_spacings(self):
     return reciprocal_space_array(
@@ -140,17 +150,27 @@ class reciprocal_space_array(miller_set):
     print "Type of data:", self.type_of_data()
     print "Type of sigmas:", self.type_of_sigmas()
 
+  def map_to_asu(self):
+    h = self.H.deep_copy()
+    f = self.F.deep_copy()
+    miller.map_to_asu(self.SgInfo, self.friedel_flag, h, f)
+    return reciprocal_space_array(miller_set(self, h), f, self.sigmas)
+
   def anomalous_differences(self):
     if (hasattr(self, "SgInfo")):
-      jbm = miller.join_bijvoet_mates(self.SgInfo, self.H)
+      asu = self.map_to_asu()
+      jbm = miller.join_bijvoet_mates(asu.SgInfo, asu.H)
+      f = asu.F
     else:
       jbm = miller.join_bijvoet_mates(self.H)
+      f = self.F
     h = jbm.miller_indices_in_hemisphere("+")
-    f = jbm.minus(self.F)
+    f = jbm.minus(f)
     s = 0
     if (self.sigmas):
       s = jbm.additive_sigmas(self.sigmas)
-    return reciprocal_space_array(miller_set(self, h), f, s)
+    return reciprocal_space_array(
+      miller_set(self, h), f, s).set_friedel_flag(1)
 
   def all_selection(self):
     return shared.bool(self.H.size(), 1)
@@ -182,9 +202,9 @@ class reciprocal_space_array(miller_set):
     flags = shared.abs(self.F) >= self.sigmas.mul(cutoff_factor)
     return self.apply_selection(flags, negate)
 
-  def generic_binner_operation(self, use_binning, use_multiplicities,
-                               function,
-                               function_weighted):
+  def generic_binner_action(self, use_binning, use_multiplicities,
+                            function,
+                            function_weighted):
     if (use_multiplicities):
       mult = self.multiplicities().F.as_double()
     if (not use_binning):
@@ -208,12 +228,12 @@ class reciprocal_space_array(miller_set):
     return result
 
   def mean(self, use_binning=0, use_multiplicities=0):
-    return self.generic_binner_operation(use_binning, use_multiplicities,
+    return self.generic_binner_action(use_binning, use_multiplicities,
       shared.mean,
       shared.mean_weighted)
 
   def mean_sq(self, use_binning=0, use_multiplicities=0):
-    return self.generic_binner_operation(use_binning, use_multiplicities,
+    return self.generic_binner_action(use_binning, use_multiplicities,
       shared.mean_sq,
       shared.mean_sq_weighted)
 
@@ -235,6 +255,42 @@ class reciprocal_space_array(miller_set):
       for i_bin in self.binner.range_used():
         keep &= ~self.binner(i_bin) | (abs_f <= cutoff_factor * rms[i_bin-1])
     return self.apply_selection(keep, negate)
+
+  def statistical_mean(self, use_binning=0):
+    if (not use_binning):
+      result = miller.statistical_mean(
+        self.SgOps, friedel_flag, self.H, self.F)
+    else:
+      result = shared.double()
+      for i_bin in self.binner.range_used():
+        sel = self.binner(i_bin)
+        if (sel.count(1) == 0):
+          result.append(0)
+        else:
+          result.append(miller.statistical_mean(
+            self.SgOps, self.friedel_flag,
+            self.H.select(sel),
+            self.F.select(sel)))
+    return result
+
+  def generic_binner_application(self, binned_values, ftor, result_f):
+    result_p = shared.size_t()
+    for i_bin in self.binner.range_used():
+      result_p.append(self.binner.array_indices(i_bin))
+      result_f.append(
+        ftor(self.F.select(self.binner(i_bin)),
+             binned_values[i_bin-1]))
+    return reciprocal_space_array(self, result_f.shuffle(result_p))
+
+  def remove_patterson_origin_peak(self):
+    s_mean = self.statistical_mean(use_binning=1)
+    result_f = shared.double()
+    return self.generic_binner_application(s_mean, ftor_a_s_sub, result_f)
+
+  def normalize_structure_factors(self):
+    mean = self.mean(use_binning=1, use_multiplicities=1)
+    result_f = shared.double()
+    return self.generic_binner_application(mean, ftor_a_s_div, result_f)
 
   def __add__(self, other):
     if (type(other) != type(self)):
@@ -273,6 +329,10 @@ class symmetrized_sites(crystal_symmetry):
       self.UnitCell, self.SgOps, 1, self.MinMateDistance)
     if (sites):
       self.add_sites(sites)
+
+  def discard_special_position_info(self):
+    self.SpecialPositionOps = None
+    self.SnapParameters = None
 
   def copy_attributes(self):
     return symmetrized_sites(self, sites = None,
@@ -402,3 +462,57 @@ def ampl_phase_as_f(ampl_phase, deg=1):
   if deg:
     p *= pi / 180.0
   return complex(a * cos(p), a * sin(p))
+
+class fft_map(crystal_symmetry):
+
+  def __init__(self, coeff_set, grid_resolution_factor=1/3., max_prime=5):
+    self.grid_resolution_factor = grid_resolution_factor
+    self.max_prime = max_prime
+    crystal_symmetry.__init__(
+      self, coeff_set.UnitCell, coeff_set.SgInfo)
+    self.friedel_flag = coeff_set.friedel_flag
+    cf = coeff_set.F
+    if (type(cf[0]) != type(0j)):
+      if (cf.size() == 0):
+        cf = shared.complex_double() # XXX avoid large dummy array
+      else:
+        ph = shared.double(cf.size(), 0)
+        cf = shared.polar(cf, ph)
+        del ph
+    max_q = self.UnitCell.max_Q(coeff_set.H)
+    mandatory_grid_factors = self.SgOps.refine_gridding()
+    self.n_real = sftbx.determine_grid(
+      self.UnitCell, max_q,
+      self.grid_resolution_factor, self.max_prime, mandatory_grid_factors)
+    if (self.friedel_flag):
+      rfft = fftbx.real_to_complex_3d(self.n_real)
+      self.m_real = rfft.Mreal()
+      self.n_complex = rfft.Ncomplex()
+    else:
+      cfft = fftbx.complex_to_complex_3d(self.n_real)
+      self.m_real = cfft.N()
+      self.n_complex = self.m_real
+    conjugate = 0 # XXX correct?
+    cmap = sftbx.structure_factor_map(
+      self.SgOps, self.friedel_flag,
+      coeff_set.H, cf,
+      self.n_complex, conjugate)
+    if (self.friedel_flag):
+      rfft.backward(cmap)
+      self.rmap = shared.reinterpret_complex_as_real(cmap)
+    else:
+      cfft.backward(cmap)
+      self.cmap = cmap
+
+  def inplace_unpad(self):
+    if (self.friedel_flag):
+      shared_map.inplace_unpad(self.rmap, self.n_real, self.m_real)
+      self.m_real = self.n_real
+      del self.n_complex
+
+  def get_real_map(self):
+    if (self.friedel_flag):
+      self.inplace_unpad()
+      return self.rmap
+    else:
+      return shared.real(self.cmap)

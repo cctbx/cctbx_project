@@ -511,4 +511,15 @@ namespace cctbx { namespace miller {
     return flags;
   }
 
+  af::shared<std::size_t> binner::array_indices(std::size_t i_bin) const
+  {
+    cctbx_assert(i_bin < this->n_bins_all());
+    af::shared<std::size_t> result;
+    result.reserve(bin_indices_.size());
+    for(std::size_t i=0;i<bin_indices_.size();i++) {
+      if (bin_indices_[i] == i_bin) result.push_back(i);
+    }
+    return result;
+  }
+
 }} // namespace cctbx::miller

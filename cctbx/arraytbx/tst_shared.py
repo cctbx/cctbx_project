@@ -168,6 +168,13 @@ def exercise_complex_functions():
   assert abs(d.real - c.real) > 1.e-6
   assert abs(d.imag - c.imag) > 1.e-6
 
+def exercise_select_shuffle():
+  a = shared.int((1,2,3,4,5))
+  b = shared.bool((0,1,0,1,1))
+  assert tuple(a.select(b)) == (2,4,5)
+  b = shared.size_t((3,1,0,4,2))
+  assert tuple(a.shuffle(b)) == (3,2,5,1,4)
+
 def exercise_regression_and_statistics():
   x = shared.double((0, 1, 2, 3))
   y = shared.double((1, 3, 5, 7))
@@ -301,12 +308,6 @@ def pickle_large_arrays(max_exp):
         print array_type.__name__, n, pickler_name, "%.2f %.2f" % (td, tl)
         sys.stdout.flush()
 
-def exercise_export():
-  a = shared.double(60)
-  c = shared.as_CObjectZYXfloat(a, (3,4,5), (0,0,0), (3,4,5), 0)
-  a = shared.float(60)
-  c = shared.as_CObjectZYXfloat(a, (3,4,5), (0,0,0), (3,4,5), 1)
-
 def run(iterations):
   i = 0
   while (iterations == 0 or i < iterations):
@@ -317,10 +318,10 @@ def run(iterations):
     exercise_arith_inplace_operators()
     exercise_functions()
     exercise_complex_functions()
+    exercise_select_shuffle()
     exercise_regression_and_statistics()
     exercise_type_1_picklers()
     exercise_type_2_picklers()
-    exercise_export()
     i += 1
 
 if (__name__ == "__main__"):

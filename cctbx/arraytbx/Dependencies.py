@@ -10,8 +10,10 @@ class write_makefiles(makefile_generator.write_makefiles):
 
     self.files = (
       "arraytbx/sharedmodule.cpp",
+      "arraytbx/shared_mapmodule.cpp",
       "arraytbx/shared_picklers.cpp",
       "arraytbx/tst_shared.py",
+      "arraytbx/tst_shared_map.py",
       "arraytbx/tst_af_helpers.cpp",
       "arraytbx/tst_af_1.cpp",
       "arraytbx/tst_af_2.cpp",
@@ -32,5 +34,8 @@ class write_makefiles(makefile_generator.write_makefiles):
       "shared":
         (("sharedmodule", "shared_picklers"),
         ("eltbx", "cctbx_misc", "cctbx_bpl1")),
+      "shared_map":
+        (("shared_mapmodule",),
+        ("cctbx_misc", "cctbx_bpl1")),
     }
 

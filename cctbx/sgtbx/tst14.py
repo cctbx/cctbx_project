@@ -49,7 +49,7 @@ def OneCycle(settings):
         for i_eq in xrange(h_seq.M(friedel_flag)):
           h_eq = h_seq(i_eq)
           for deg in (0,1):
-            phi_eq = h_eq.phase_eq(phi_asym[deg])
+            phi_eq = h_eq.phase_eq(phi_asym[deg]) # XXX , deg) !!!
             phi_in = h_eq.phase_in(phi_eq)
             assert abs(phi_in - phi_asym[deg]) < 1.e-5
           f_eq = h_eq.complex_eq(f_asym)
