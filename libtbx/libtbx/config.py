@@ -109,7 +109,7 @@ def write_incomplete_libtbx_environment(f):
     for line in message: print >> f, '  echo %s' % line
     print >> f, '  echo.'
 
-def open_info(path, mode="w", info=" "):
+def open_info(path, mode="w", info="   "):
   print info, os.path.basename(path)
   try: return open(path, mode)
   except IOError, e:
@@ -803,16 +803,25 @@ class environment:
     file_name = libtbx.path.norm_join(self.build_path, "libtbx_env")
     pickle.dump(self, open(file_name, "wb"), 0)
 
+  def show_module_listing(self):
+    print "Top-down list of all modules involved:"
+    top_down_module_list = list(self.module_list)
+    top_down_module_list.reverse()
+    labels = [module.names_for_module_listing()
+      for module in top_down_module_list]
+    if (len(labels) == 0): return
+    fmt = "  %%-%ds  %%s" % max([len(label) for label in labels])
+    for label,module in zip(labels,top_down_module_list):
+      for dist_path in module.dist_paths_active():
+        print fmt % (label, dist_path)
+        label = ""
+
   def write_setpath_files(self):
     print 'Python: %s "%s"' % (sys.version.split()[0], sys.executable)
     if (self.is_ready_for_build()):
       self.build_options.report()
     print "command_version_suffix:", self.command_version_suffix
-    print "Top-down list of all packages involved:"
-    top_down_module_list = list(self.module_list)
-    top_down_module_list.reverse()
-    for module in top_down_module_list:
-      print " ", "+".join(module.names_active())
+    self.show_module_listing()
     if (len(self.missing_for_use) > 0):
       raise UserError("Missing modules: "
         + " ".join(self.missing_for_use.keys()))
@@ -824,7 +833,7 @@ class environment:
           print " ", module_name
         print "***********************************"
       remove_or_rename(self.under_build("SConstruct"))
-    print 'Creating files in build directory "%s":' % self.build_path
+    print 'Creating files in build directory:\n  "%s"' % self.build_path
     for suffix in ["", "_all", "_debug"]:
       if (hasattr(os, "symlink")):
         self.write_setpaths_sh(suffix)
@@ -915,21 +924,27 @@ class environment:
 
 class module:
 
-  def __init__(self, env, name, dist_path, mate_suffix="_adaptbx"):
+  def __init__(self, env, name, dist_path, mate_suffix="adaptbx"):
     self.env = env
     self.mate_suffix = mate_suffix
-    if (os.path.normcase(name).endswith(os.path.normcase(self.mate_suffix))):
-      self.name = name[:-len(self.mate_suffix)]
+    mate_suffix = "_" + mate_suffix
+    if (os.path.normcase(name).endswith(os.path.normcase(mate_suffix))):
+      self.name = name[:-len(mate_suffix)]
       self.names = [self.name, name]
       self.dist_paths = [None, dist_path]
     else:
       self.name = name
-      self.names = [name, name + self.mate_suffix]
+      self.names = [name, name + mate_suffix]
       self.dist_paths = [dist_path, None]
 
   def names_active(self):
     for name,path in zip(self.names, self.dist_paths):
       if (path is not None): yield name
+
+  def names_for_module_listing(self):
+    names_active = list(self.names_active())
+    if (len(names_active) == 1): return names_active[0]
+    return "+".join([self.name, self.mate_suffix])
 
   def dist_paths_active(self):
     for path in self.dist_paths:
