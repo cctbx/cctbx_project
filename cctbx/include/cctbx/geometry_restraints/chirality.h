@@ -24,6 +24,22 @@ namespace cctbx { namespace geometry_restraints {
       weight(weight_)
     {}
 
+    //! Sorts i_seqs such that i_seq[1] < i_seq[2] < i_seq[3].
+    chirality_proxy
+    sort_i_seqs() const
+    {
+      chirality_proxy result(*this);
+      for(unsigned i=1;i<3;i++) {
+        for(unsigned j=i+1;j<4;j++) {
+          if (result.i_seqs[i] > result.i_seqs[j]) {
+            std::swap(result.i_seqs[i], result.i_seqs[j]);
+            if (!both_signs) result.volume_ideal *= -1;
+          }
+        }
+      }
+      return result;
+    }
+
     //! Indices into array of sites.
     af::tiny<unsigned, 4> i_seqs;
     //! Parameter.
