@@ -129,8 +129,8 @@ namespace cctbx { namespace fftbx {
           TR2 = CC(I0,0,K)-CC(IC-1,1,K);
           CH(I1,K,0) = CC(I1,0,K)-CC(IC,1,K);
           TI2 = CC(I1,0,K)+CC(IC,1,K);
-          CH(I0,K,1) = WA1[I0-1]*TR2-WA1[I1]*TI2;
-          CH(I1,K,1) = WA1[I0-1]*TI2+WA1[I1]*TR2;
+          CH(I0,K,1) = WA1[I0-1]*TR2-WA1[I0]*TI2;
+          CH(I1,K,1) = WA1[I0-1]*TI2+WA1[I0]*TR2;
         }
       }
       if (IDO % 2 != 0) return;
