@@ -109,8 +109,7 @@ else:
         -tlocal
     """)
     env_etc.ccflags_base = Split("""
-        -std strict_ansi
-        -msg_display_number -msg_disable 186,450,1115
+        -std1
     """)
     if (not env_etc.debug_build):
       opts = ["-DNDEBUG", "-O2"]
