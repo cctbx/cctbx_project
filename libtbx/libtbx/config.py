@@ -50,6 +50,27 @@ def python_api_from_process(include_must_exist=True):
   assert python_api_version is not None
   return python_api_version
 
+def highlight_dispatcher_include_lines(lines):
+  m = max([len(line) for line in lines])
+  lines.insert(0, "# " + "-"*(m-2))
+  lines.append(lines[0])
+
+def source_specific_dispatcher_include(pattern, source_file):
+  try: source_lines = open(source_file).read().splitlines()
+  except IOError: return []
+  lines = ["# lines marked " + pattern]
+  for line in source_lines:
+    pattern_begin = line.find(pattern)
+    if (pattern_begin >= 0):
+      pattern_end = pattern_begin + len(pattern)
+      to_include = line[pattern_end:]
+      if (not to_include[:1].isalnum()):
+        if (to_include.startswith(" ")):
+          to_include = to_include[1:]
+        lines.append(to_include)
+  highlight_dispatcher_include_lines(lines)
+  return lines
+
 def patch_windows_dispatcher(
       dispatcher_exe_file_name,
       binary_string,
@@ -438,9 +459,7 @@ class environment:
         try: lines = open(file_name).read().splitlines()
         except IOError, e: raise UserError(str(e))
         lines.insert(0, "# included from %s" % file_name)
-        m = max([len(line) for line in lines])
-        lines.insert(0, "# " + "-"*(m-2))
-        lines.append(lines[0])
+        highlight_dispatcher_include_lines(lines)
         self._dispatcher_include = lines
       else:
         self._dispatcher_include = []
@@ -473,7 +492,15 @@ class environment:
     if (precall_commands is not None):
       for line in precall_commands:
         print >> f, line
+    for line in source_specific_dispatcher_include(
+                  pattern="LIBTBX_PRE_DISPATCHER_INCLUDE_SH",
+                  source_file=source_file):
+      print >> f, line
     for line in self.dispatcher_include():
+      print >> f, line
+    for line in source_specific_dispatcher_include(
+                  pattern="LIBTBX_POST_DISPATCHER_INCLUDE_SH",
+                  source_file=source_file):
       print >> f, line
     cmd = ""
     if (source_file.lower().endswith(".py")):
