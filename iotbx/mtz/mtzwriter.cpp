@@ -13,7 +13,7 @@ MtzWriter::MtzWriter()
   CCTBX_ASSERT(mtz != NULL);
 }
 
-MtzWriter::~MtzWriter() { MtzFree(mtz); }
+MtzWriter::~MtzWriter() { CMtz::MtzFree(mtz); }
 
 void
 MtzWriter::setTitle(const std::string& title)
@@ -66,8 +66,8 @@ MtzWriter::setSpaceGroup(
   CCTBX_ASSERT(strlen(mgcode.label()) <= 10);
   sprintf(pgname,"%s",mgcode.label());
 
-  ccp4_lwsymm(mtz, val_nsymx, val_nsympx, rsymx, &val_ltypex,
-              val_nspgrx, sgtype_s, pgname);
+  CMtz::ccp4_lwsymm(mtz, val_nsymx, val_nsympx, rsymx, &val_ltypex,
+                    val_nspgrx, sgtype_s, pgname);
 }
 
 void
@@ -87,7 +87,7 @@ MtzWriter::oneCrystal(
   }
   float cell[6];
   for (ind=0;ind<6;++ind) {cell[ind]=uc.parameters()[ind];}
-  onextal = MtzAddXtal(mtz, strip_crystal.c_str(), strip_project.c_str(),
+  onextal = CMtz::MtzAddXtal(mtz, strip_crystal.c_str(), strip_project.c_str(),
             cell);
 }
 
@@ -102,10 +102,10 @@ MtzWriter::oneDataset(
   while ((ind=strip_dataset.find(' '))!=std::string::npos) {
     strip_dataset.erase(ind,1);
   }
-  oneset = MtzAddDataset(mtz, onextal, strip_dataset.c_str(), wavelength);
-  MtzAddColumn (mtz,oneset,"H","H");
-  MtzAddColumn (mtz,oneset,"K","H");
-  MtzAddColumn (mtz,oneset,"L","H");
+  oneset = CMtz::MtzAddDataset(mtz,onextal,strip_dataset.c_str(),wavelength);
+  CMtz::MtzAddColumn(mtz,oneset,"H","H");
+  CMtz::MtzAddColumn(mtz,oneset,"K","H");
+  CMtz::MtzAddColumn(mtz,oneset,"L","H");
 }
 
 void
@@ -154,7 +154,7 @@ MtzWriter::safe_ccp4_lwrefl(
         lookup[i]->ref[iref-1] = adata[i];
       }
       /* update column ranges */
-      if (!ccp4_ismnf(mtz, adata[i])) {
+      if (!CMtz::ccp4_ismnf(mtz, adata[i])) {
         if (adata[i] < lookup[i]->min) lookup[i]->min = adata[i];
         if (adata[i] > lookup[i]->max) lookup[i]->max = adata[i];
       }
@@ -175,12 +175,12 @@ MtzWriter::addColumn(
 {
   using namespace cctbx;
   CMtz::MTZCOL* write_columns[4];
-  write_columns[0]=MtzColLookup(mtz,"H");
-  write_columns[1]=MtzColLookup(mtz,"K");
-  write_columns[2]=MtzColLookup(mtz,"L");
-  if (MtzColLookup(mtz,name.c_str())!=NULL)
+  write_columns[0]=CMtz::MtzColLookup(mtz,"H");
+  write_columns[1]=CMtz::MtzColLookup(mtz,"K");
+  write_columns[2]=CMtz::MtzColLookup(mtz,"L");
+  if (CMtz::MtzColLookup(mtz,name.c_str())!=NULL)
     throw Error("Attempt to overwrite existing column "+name);
-  write_columns[3]=MtzAddColumn(mtz,oneset,name.c_str(),&type_code);
+  write_columns[3]=CMtz::MtzAddColumn(mtz,oneset,name.c_str(),&type_code);
   CCTBX_ASSERT(miller_indices.size() == data.size());
   typedef std::map<miller::index<>, std::size_t> lookup_dict_type;
   lookup_dict_type lookup_dict;
@@ -216,7 +216,7 @@ MtzWriter::addColumn(
 void
 MtzWriter::write(const std::string& filename)
 {
-  MtzPut(mtz, const_cast<char*>(filename.c_str()));
+  CMtz::MtzPut(mtz, const_cast<char*>(filename.c_str()));
 }
 
 }} // namespace iotbx::mtz
