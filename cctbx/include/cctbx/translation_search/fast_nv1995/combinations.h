@@ -1,13 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     Oct 2002: Modified copy of phenix/fast_translation/combinations.h (rwgk)
-     Jan 2002: Created (R.W. Grosse-Kunstleve)
- */
-
 #ifndef CCTBX_TRANSLATION_SEARCH_FAST_NV1995_COMBINATIONS_H
 #define CCTBX_TRANSLATION_SEARCH_FAST_NV1995_COMBINATIONS_H
 
@@ -49,7 +39,7 @@ namespace cctbx { namespace translation_search { namespace fast_nv1995_detail {
     }
   }
 
-  // Navaza & Vernoslova (1995), p. 447, Eq. (13)
+  // Navaza & Vernoslova (1995), p. 447, Eq. (12)
   template <typename FloatType>
   void
   combination_eq12(
