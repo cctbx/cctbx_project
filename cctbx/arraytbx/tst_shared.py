@@ -169,4 +169,9 @@ p = pickle.dumps(a)
 b = pickle.loads(p)
 assert tuple(b) == (1+2j, 2+3j, 4+5j)
 assert b.size() == 3
+a = shared.miller_Index(((1,2,3), (-2,3,-4), (3,-4,5)))
+p = pickle.dumps(a)
+b = pickle.loads(p)
+assert tuple(b) == ((1,2,3), (-2,3,-4), (3,-4,5))
+assert b.size() == 3
 print "OK"

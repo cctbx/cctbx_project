@@ -10,6 +10,7 @@
 
 #include <boost/python/class_builder.hpp>
 #include <cctbx/error.h>
+#include <cctbx/miller.h>
 #include <cctbx/array_family/shared.h>
 
 namespace cctbx { namespace af {
@@ -181,6 +182,37 @@ namespace cctbx { namespace af {
       }
     };
 
+    struct miller_index_picklers
+    {
+      static
+      boost::python::ref
+      getstate(shared<miller::Index> const& a)
+      {
+        getstate_manager mgr(a.size(), 3 * 6);
+        for(std::size_t i=0;i<a.size();i++) {
+          miller::Index const& h = a[i];
+          sprintf(mgr.str_end, "%d,%d,%d", h[0], h[1], h[2]);
+          mgr.advance();
+        }
+        return boost::python::ref(mgr.finalize());
+      }
+
+      static
+      void
+      setstate(shared<miller::Index>& a, boost::python::ref state)
+      {
+        setstate_manager mgr(a.size(), state.get());
+        a.reserve(mgr.a_capacity);
+        for(std::size_t i=0;i<mgr.a_capacity;i++) {
+          int h[3];
+          cctbx_assert(sscanf(mgr.str_ptr, "%d,%d,%d", h+0, h+1, h+2) == 3);
+          mgr.advance();
+          a.push_back(miller::Index(h));
+        }
+        mgr.finalize();
+      }
+    };
+
   } // namespace <anonymous>
 
   boost::python::ref shared_bool_getstate(shared<bool> const& a)
@@ -244,6 +276,19 @@ namespace cctbx { namespace af {
     boost::python::ref state)
   {
     complex_picklers<double>::setstate(a, state, "%lg,%lg");
+  }
+
+  boost::python::ref shared_miller_index_getstate(
+    shared<miller::Index> const& a)
+  {
+    return miller_index_picklers::getstate(a);
+  }
+
+  void shared_miller_index_setstate(
+    shared<miller::Index>& a,
+    boost::python::ref state)
+  {
+    miller_index_picklers::setstate(a, state);
   }
 
 }} // namespace cctbx::af
