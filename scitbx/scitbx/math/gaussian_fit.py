@@ -102,10 +102,10 @@ class find_max_x:
   def __init__(self, gaussian_fit,
                      target_power,
                      minimize_using_sigmas,
-                     enforce_positive_b,
-                     max_max_error,
                      n_repeats_minimization,
-                     b_min=-1):
+                     enforce_positive_b_mod_n,
+                     b_min,
+                     max_max_error):
     self.min = None
     self.max_error = None
     table_x = gaussian_fit.table_x()
@@ -133,11 +133,19 @@ class find_max_x:
       best_minimized = None
       best_max_error = None
       for i in xrange(n_repeats_minimization):
-        minimized = minimize(
-          gaussian_fit=min_gaussian_fit,
-          target_power=target_power,
-          use_sigmas=minimize_using_sigmas,
-          enforce_positive_b=enforce_positive_b)
+        enforce_positive_b_this_time = (i % enforce_positive_b_mod_n == 0)
+        try:
+          minimized = minimize(
+            gaussian_fit=min_gaussian_fit,
+            target_power=target_power,
+            use_sigmas=minimize_using_sigmas,
+            enforce_positive_b=enforce_positive_b_this_time)
+        except RuntimeError, e:
+          if (str(e).find("lbfgs error: ") < 0): raise
+          if (enforce_positive_b_this_time): raise
+          minimized = None
+          max_error = None
+          break
         if (min(minimized.final_gaussian_fit.array_of_b()) < b_min):
           break
         min_gaussian_fit = minimized.final_gaussian_fit
@@ -172,7 +180,8 @@ class find_max_x_multi:
                      existing_gaussian,
                      target_powers,
                      minimize_using_sigmas,
-                     enforce_positive_b,
+                     enforce_positive_b_mod_n,
+                     b_min,
                      max_max_error,
                      n_start_fractions,
                      n_repeats_minimization,
@@ -193,7 +202,7 @@ class find_max_x_multi:
     if (n_terms == 1): n_start_fractions = 2
     best_fit = None
     for i_x in xrange(i_x_begin, i_x_end):
-      for i_start_fraction in xrange(1,n_start_fractions):
+      for i_start_fraction in xrange(0,n_start_fractions):
         gaussian_fit = make_start_gaussian(
           null_fit=null_fit,
           existing_gaussian=existing_gaussian,
@@ -204,9 +213,10 @@ class find_max_x_multi:
             gaussian_fit=gaussian_fit,
             target_power=target_power,
             minimize_using_sigmas=minimize_using_sigmas,
-            enforce_positive_b=enforce_positive_b,
-            max_max_error=max_max_error,
-            n_repeats_minimization=n_repeats_minimization)
+            n_repeats_minimization=n_repeats_minimization,
+            enforce_positive_b_mod_n=enforce_positive_b_mod_n,
+            b_min=b_min,
+            max_max_error=max_max_error)
           if (fit.min is not None):
             if (best_fit is None
                 or best_fit.min.final_gaussian_fit.table_x().size()
