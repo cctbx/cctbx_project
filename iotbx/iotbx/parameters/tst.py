@@ -1490,67 +1490,6 @@ group {
   master = iotbx.parameters.parse(input_string="""\
 a=None
  .type=int
- .multiple=True
-b
-  .multiple=True
-{
-  a=None
-    .type=int
-    .multiple=True
-  b=None
-    .type=int
-    .multiple=True
-    .optional=True
-  c=None
-    .type=int
-}
-c
-  .multiple=True
-  .optional=True
-{
-  a=None
-}
-d
-  .multiple=True
-  .optional=False
-{
-  a=None
-    .type=int
-}
-""")
-  custom = iotbx.parameters.parse(input_string="""\
-a=1
-a=2
-b {
-  a=3
-  a=4
-  c=10
-  c=20
-}
-b {
-  b=5
-  b=6
-}
-c {
-  a=None
-}
-""")
-  fetched = master.fetch(custom)
-  extracted = fetched.extract()
-  assert extracted.a == [1,2]
-  assert extracted.b[0].a == [3,4]
-  assert extracted.b[0].b == []
-  assert extracted.b[0].c == 20
-  assert extracted.b[1].a == [None]
-  assert extracted.b[1].b == [5,6]
-  assert extracted.b[1].c is None
-  assert extracted.c == []
-  assert extracted.d[0].a is None
-  # XXX master.format(extracted).show()
-  #
-  master = iotbx.parameters.parse(input_string="""\
-a=None
- .type=int
  .multiple=False
 """)
   custom = iotbx.parameters.parse(input_string="""\
@@ -1590,19 +1529,32 @@ a=2
 """)
   extracted = master.fetch(custom).extract()
   assert extracted.a == [1,2]
-  # XXX master.format(extracted).show()
+  out = StringIO()
+  master.format(extracted).show(out=out)
+  assert out.getvalue() == """\
+a = 1
+a = 2
+"""
   custom = iotbx.parameters.parse(input_string="""\
 a=1
 #a=2
 """)
   extracted = master.fetch(custom).extract()
   assert extracted.a == [1]
-  # XXX master.format(extracted).show()
+  out = StringIO()
+  master.format(extracted).show(out=out)
+  assert out.getvalue() == """\
+a = 1
+"""
   custom = iotbx.parameters.parse(input_string="""\
 """)
   extracted = master.fetch(custom).extract()
   assert extracted.a == [None]
-  # XXX master.format(extracted).show()
+  out = StringIO()
+  master.format(extracted).show(out=out)
+  assert out.getvalue() == """\
+a = None
+"""
   #
   master = iotbx.parameters.parse(input_string="""\
 a=None
@@ -1616,25 +1568,38 @@ a=2
 """)
   extracted = master.fetch(custom).extract()
   assert extracted.a == [1,2]
-  # XXX master.format(extracted).show()
+  out = StringIO()
+  master.format(extracted).show(out=out)
+  assert out.getvalue() == """\
+a = 1
+a = 2
+"""
   custom = iotbx.parameters.parse(input_string="""\
 a=1
 #a=2
 """)
   extracted = master.fetch(custom).extract()
   assert extracted.a == [1]
-  # XXX master.format(extracted).show()
+  out = StringIO()
+  master.format(extracted).show(out=out)
+  assert out.getvalue() == """\
+a = 1
+"""
   custom = iotbx.parameters.parse(input_string="""\
 """)
   extracted = master.fetch(custom).extract()
   assert extracted.a == []
-  # XXX master.format(extracted).show()
+  out = StringIO()
+  master.format(extracted).show(out=out)
+  assert out.getvalue() == ""
   custom = iotbx.parameters.parse(input_string="""\
 a=None
 """)
   extracted = master.fetch(custom).extract()
   assert extracted.a == []
-  # XXX master.format(extracted).show()
+  out = StringIO()
+  master.format(extracted).show(out=out)
+  assert out.getvalue() == ""
   #
   master = iotbx.parameters.parse(input_string="""\
 s
@@ -1737,7 +1702,17 @@ s {
   extracted = master.fetch(custom).extract()
   assert extracted.s[0].a == 1
   assert extracted.s[1].a == 2
-  # XXX master.format(extracted).show()
+  out = StringIO()
+  master.format(extracted).show(out=out)
+  assert out.getvalue() == """\
+s {
+  a = 1
+}
+
+s {
+  a = 2
+}
+"""
   custom = iotbx.parameters.parse(input_string="""\
 s {
   a=1
@@ -1750,7 +1725,17 @@ s {
   extracted = master.fetch(custom).extract()
   assert extracted.s[0].a == 1
   assert extracted.s[1].a == 3
-  # XXX master.format(extracted).show()
+  out = StringIO()
+  master.format(extracted).show(out=out)
+  assert out.getvalue() == """\
+s {
+  a = 1
+}
+
+s {
+  a = 3
+}
+"""
   master = iotbx.parameters.parse(input_string="""\
 s
   .multiple=True
@@ -1765,7 +1750,10 @@ s
 """)
   extracted = master.fetch(custom).extract()
   assert extracted.s == []
-  # XXX master.format(extracted).show()
+  out = StringIO()
+  master.format(extracted).show(out=out)
+  assert out.getvalue() == """\
+"""
   custom = iotbx.parameters.parse(input_string="""\
 s {
   a=None
@@ -1773,7 +1761,10 @@ s {
 """)
   extracted = master.fetch(custom).extract()
   assert extracted.s == []
-  # XXX master.format(extracted).show()
+  out = StringIO()
+  master.format(extracted).show(out=out)
+  assert out.getvalue() == """\
+"""
   custom = iotbx.parameters.parse(input_string="""\
 s {
   a=1
@@ -1785,7 +1776,17 @@ s {
   extracted = master.fetch(custom).extract()
   assert extracted.s[0].a == 1
   assert extracted.s[1].a == 2
-  # XXX master.format(extracted).show()
+  out = StringIO()
+  master.format(extracted).show(out=out)
+  assert out.getvalue() == """\
+s {
+  a = 1
+}
+
+s {
+  a = 2
+}
+"""
   custom = iotbx.parameters.parse(input_string="""\
 s {
   a=1
@@ -1798,7 +1799,100 @@ s {
   extracted = master.fetch(custom).extract()
   assert extracted.s[0].a == 1
   assert extracted.s[1].a == 3
-  # XXX master.format(extracted).show()
+  out = StringIO()
+  master.format(extracted).show(out=out)
+  assert out.getvalue() == """\
+s {
+  a = 1
+}
+
+s {
+  a = 3
+}
+"""
+  #
+  master = iotbx.parameters.parse(input_string="""\
+a=None
+ .type=int
+ .multiple=True
+b
+  .multiple=True
+{
+  a=None
+    .type=int
+    .multiple=True
+  b=None
+    .type=int
+    .multiple=True
+    .optional=True
+  c=None
+    .type=int
+}
+c
+  .multiple=True
+  .optional=True
+{
+  a=None
+}
+d
+  .multiple=True
+  .optional=False
+{
+  a=None
+    .type=int
+}
+""")
+  custom = iotbx.parameters.parse(input_string="""\
+a=1
+a=2
+b {
+  a=3
+  a=4
+  c=10
+  c=20
+}
+b {
+  b=5
+  b=6
+}
+c {
+  a=None
+}
+""")
+  fetched = master.fetch(custom)
+  extracted = fetched.extract()
+  assert extracted.a == [1,2]
+  assert extracted.b[0].a == [3,4]
+  assert extracted.b[0].b == []
+  assert extracted.b[0].c == 20
+  assert extracted.b[1].a == [None]
+  assert extracted.b[1].b == [5,6]
+  assert extracted.b[1].c is None
+  assert extracted.c == []
+  assert extracted.d[0].a is None
+  out = StringIO()
+  master.format(extracted).show(out=out)
+  assert out.getvalue() == """\
+a = 1
+a = 2
+
+b {
+  a = 3
+  a = 4
+  c = 20
+}
+
+b {
+  a = None
+  b = 5
+  b = 6
+  c = None
+}
+
+d {
+  a = None
+}
+"""
 
 def exercise():
   exercise_parse_and_show()

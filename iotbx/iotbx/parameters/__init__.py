@@ -666,7 +666,13 @@ class scope:
       for python_object_i in python_object:
         sub_python_object = python_object_i.__get__(object.name.split("."))
         if (sub_python_object is not scope_extract.attribute_error):
-          result.append(object.format(sub_python_object, custom_converters))
+          if (not object.multiple):
+            result.append(object.format(
+              sub_python_object, custom_converters))
+          else:
+            for sub_python_object_i in sub_python_object:
+              result.append(object.format(
+                sub_python_object_i, custom_converters))
     return self.copy(objects=result)
 
   def _fetch(self, source, substitution_scope=None):
