@@ -95,6 +95,12 @@ def exercise_basic():
     assert column.get_other("H").i_column() == 0
     assert column.get_other("K").i_column() == 1
     assert column.get_other("L").i_column() == 2
+    assert column.n_valid_values() == 165
+    valid_values = column.extract_valid_values()
+    assert valid_values.size() == 165
+    assert approx_equal(flex.min(valid_values), 0)
+    assert approx_equal(flex.max(valid_values), 5)
+    assert approx_equal(flex.mean(valid_values), 2.41818189621)
     column = mtz_object.get_column("F*")
     assert column.label() == "Frem"
     expected_dataset_ids = iter(range(4))
@@ -614,40 +620,40 @@ Crystal 1:
     Id: 1
     Wavelength: 10
     Number of columns: 1
-    Column number, label, number of valid values, type:
-      1 column_0 0/0=0.00% F: amplitude
+    label    #valid %valid  min  max type
+    column_0      0  0.00% None None F: amplitude
   Dataset 2:
     Name: dataset_1
     Id: 2
     Wavelength: 9
     Number of columns: 2
-    Column number, label, number of valid values, type:
-      1 column_1 0/0=0.00% ?: *** UNDEFINED column type ***
-      2 column_2 0/0=0.00% F: amplitude
+    label    #valid %valid  min  max type
+    column_1      0  0.00% None None ?: *** UNDEFINED column type ***
+    column_2      0  0.00% None None F: amplitude
   Dataset 3:
     Name: dataset_2
     Id: 3
     Wavelength: 8
     Number of columns: 3
-    Column number, label, number of valid values, type:
-      1 column_3 0/0=0.00% B: BATCH number
-      2 column_4 0/0=0.00% ?: *** UNDEFINED column type ***
-      3 column_5 0/0=0.00% F: amplitude
+    label    #valid %valid  min  max type
+    column_3      0  0.00% None None B: BATCH number
+    column_4      0  0.00% None None ?: *** UNDEFINED column type ***
+    column_5      0  0.00% None None F: amplitude
   Dataset 4:
     Name: dataset_3
     Id: 4
     Wavelength: 7
     Number of columns: 1
-    Column number, label, number of valid values, type:
-      1 column_6 0/0=0.00% F: amplitude
+    label    #valid %valid  min  max type
+    column_6      0  0.00% None None F: amplitude
   Dataset 5:
     Name: dataset_4
     Id: 5
     Wavelength: 6
     Number of columns: 2
-    Column number, label, number of valid values, type:
-      1 column_7 0/0=0.00% ?: *** UNDEFINED column type ***
-      2 column_8 0/0=0.00% F: amplitude
+    label    #valid %valid  min  max type
+    column_7      0  0.00% None None ?: *** UNDEFINED column type ***
+    column_8      0  0.00% None None F: amplitude
 Crystal 2:
   Name: crystal_1
   Project: project_1
@@ -659,33 +665,33 @@ Crystal 2:
     Id: 6
     Wavelength: 10
     Number of columns: 2
-    Column number, label, number of valid values, type:
-      1 column_9  0/0=0.00% B: BATCH number
-      2 column_10 0/0=0.00% ?: *** UNDEFINED column type ***
+    label     #valid %valid  min  max type
+    column_9       0  0.00% None None B: BATCH number
+    column_10      0  0.00% None None ?: *** UNDEFINED column type ***
   Dataset 2:
     Name: dataset_1
     Id: 7
     Wavelength: 9
     Number of columns: 3
-    Column number, label, number of valid values, type:
-      1 column_11 0/0=0.00% F: amplitude
-      2 column_12 0/0=0.00% B: BATCH number
-      3 column_13 0/0=0.00% ?: *** UNDEFINED column type ***
+    label     #valid %valid  min  max type
+    column_11      0  0.00% None None F: amplitude
+    column_12      0  0.00% None None B: BATCH number
+    column_13      0  0.00% None None ?: *** UNDEFINED column type ***
   Dataset 3:
     Name: dataset_2
     Id: 8
     Wavelength: 8
     Number of columns: 1
-    Column number, label, number of valid values, type:
-      1 column_14 0/0=0.00% ?: *** UNDEFINED column type ***
+    label     #valid %valid  min  max type
+    column_14      0  0.00% None None ?: *** UNDEFINED column type ***
   Dataset 4:
     Name: dataset_3
     Id: 9
     Wavelength: 7
     Number of columns: 2
-    Column number, label, number of valid values, type:
-      1 column_15 0/0=0.00% B: BATCH number
-      2 column_16 0/0=0.00% ?: *** UNDEFINED column type ***
+    label     #valid %valid  min  max type
+    column_15      0  0.00% None None B: BATCH number
+    column_16      0  0.00% None None ?: *** UNDEFINED column type ***
 Crystal 3:
   Name: crystal_2
   Project: project_2
@@ -697,25 +703,25 @@ Crystal 3:
     Id: 10
     Wavelength: 10
     Number of columns: 3
-    Column number, label, number of valid values, type:
-      1 column_17 0/0=0.00% ?: *** UNDEFINED column type ***
-      2 column_18 0/0=0.00% F: amplitude
-      3 column_19 0/0=0.00% B: BATCH number
+    label     #valid %valid  min  max type
+    column_17      0  0.00% None None ?: *** UNDEFINED column type ***
+    column_18      0  0.00% None None F: amplitude
+    column_19      0  0.00% None None B: BATCH number
   Dataset 2:
     Name: dataset_1
     Id: 11
     Wavelength: 9
     Number of columns: 1
-    Column number, label, number of valid values, type:
-      1 column_20 0/0=0.00% B: BATCH number
+    label     #valid %valid  min  max type
+    column_20      0  0.00% None None B: BATCH number
   Dataset 3:
     Name: dataset_2
     Id: 12
     Wavelength: 8
     Number of columns: 2
-    Column number, label, number of valid values, type:
-      1 column_21 0/0=0.00% F: amplitude
-      2 column_22 0/0=0.00% B: BATCH number
+    label     #valid %valid  min  max type
+    column_21      0  0.00% None None F: amplitude
+    column_22      0  0.00% None None B: BATCH number
 """)
   for column in mtz_object.columns():
     assert column.array_size() == 2000
@@ -811,14 +817,14 @@ Crystal 2:
     Id: 1
     Wavelength: 0
     Number of columns: 7
-    Column number, label, number of valid values, type:
-      1 H    4/4=100.00% H: index h,k,l
-      2 K    4/4=100.00% H: index h,k,l
-      3 L    4/4=100.00% H: index h,k,l
-      4 F    3/4=75.00%  F: amplitude
-      5 SigF 3/4=75.00%  Q: standard deviation
-      6 I    3/4=75.00%  F: amplitude
-      7 SigI 3/4=75.00%  Q: standard deviation
+    label #valid  %valid   min   max type
+    H          4 100.00%  1.00  3.00 H: index h,k,l
+    K          4 100.00%  2.00  4.00 H: index h,k,l
+    L          4 100.00%  3.00  5.00 H: index h,k,l
+    F          3  75.00% 10.00 30.00 F: amplitude
+    SigF       3  75.00%  1.00  3.00 Q: standard deviation
+    I          3  75.00% 11.00 31.00 F: amplitude
+    SigI       3  75.00%  4.00  6.00 Q: standard deviation
 """)
   mtz_object.write(file_name="tmp.mtz")
   if (not verbose): out = StringIO()
@@ -856,14 +862,14 @@ Crystal 2:
     Id: 1
     Wavelength: 0
     Number of columns: 7
-    Column number, label, number of valid values, type:
-      1 H    4/4=100.00% H: index h,k,l
-      2 K    4/4=100.00% H: index h,k,l
-      3 L    4/4=100.00% H: index h,k,l
-      4 F    3/4=75.00%  F: amplitude
-      5 SigF 3/4=75.00%  Q: standard deviation
-      6 I    3/4=75.00%  F: amplitude
-      7 SigI 3/4=75.00%  Q: standard deviation
+    label #valid  %valid   min   max type
+    H          4 100.00%  1.00  3.00 H: index h,k,l
+    K          4 100.00%  2.00  4.00 H: index h,k,l
+    L          4 100.00%  3.00  5.00 H: index h,k,l
+    F          3  75.00% 10.00 30.00 F: amplitude
+    SigF       3  75.00%  1.00  3.00 Q: standard deviation
+    I          3  75.00% 11.00 31.00 F: amplitude
+    SigI       3  75.00%  4.00  6.00 Q: standard deviation
 """)
   #
   original_miller_indices = mtz_object.extract_miller_indices()

@@ -154,6 +154,13 @@ class label_decorator:
       root_label + self.hendrickson_lattman_suffix_list[i_coeff],
       anomalous_sign)
 
+def format_min_max(func, values):
+  if (len(values) == 0): return "None"
+  value = func(values)
+  result = "%.2f" % value
+  if (len(result) > 12): result = "%12.4E" % value
+  return result
+
 class _object(boost.python.injector, ext.object):
 
   def space_group_info(self):
@@ -235,27 +242,28 @@ class _object(boost.python.injector, ext.object):
         print >> out, "    Wavelength: %.6g" % dataset.wavelength()
         print >> out, "    Number of columns:", dataset.n_columns()
         if (dataset.n_columns() > 0):
-          print >> out, \
-            "    Column number, label, number of valid values, type:"
-          fields_list = []
-          max_field_lengths = [0]*6
+          fields_list = [[
+            "label", "#valid", "%valid", "min", "max", "type", ""]]
+          max_field_lengths = [len(field) for field in fields_list[0]]
+          max_field_lengths[-2] = 0
           for i_column,column in enumerate(dataset.columns()):
-            n_valid_values = column.n_valid_values()
+            valid_values = column.extract_valid_values()
             fields = [
-              "%d" % (i_column+1),
               column.label(),
-              "%d/%d=" % (n_valid_values, self.n_reflections()),
-              "%.2f%%" % (100.*n_valid_values/max(1,self.n_reflections())),
+              "%d" % valid_values.size(),
+              "%.2f%%" %(100.*valid_values.size()/max(1,self.n_reflections())),
+              format_min_max(flex.min, valid_values),
+              format_min_max(flex.max, valid_values),
               column.type()+":",
               column_type_legend.get(
                 column.type(), "*** UNDEFINED column type ***")]
             fields_list.append(fields)
             for i,field in enumerate(fields):
               max_field_lengths[i] = max(max_field_lengths[i], len(field))
-          format = "      %%%ds %%-%ds %%%ds%%-%ds %%%ds %%s" % tuple(
-            max_field_lengths[:5])
+          format = "    %%-%ds %%%ds %%%ds %%%ds %%%ds %%%ds %%s" % tuple(
+            max_field_lengths[:6])
           for fields in fields_list:
-            print >> out, format % tuple(fields)
+            print >> out, (format % tuple(fields)).rstrip()
 
   def change_basis_in_place(self,
         cb_op,
