@@ -102,8 +102,8 @@ namespace cctbx { namespace sgtbx {
       }
       friend std::ostream& operator<<(std::ostream& os, const TrVec& T);
       template <class FloatType>
-      boost::array<FloatType, 3> as_array(const FloatType&) const {
-        boost::array<FloatType, 3> result;
+      array<FloatType, 3> as_array(const FloatType&) const {
+        array<FloatType, 3> result;
         for(int i=0;i<3;i++) {
           result[i] = FloatType(elems[i]) / FloatType(m_BF);
         }
@@ -276,8 +276,8 @@ namespace cctbx { namespace sgtbx {
       }
       friend std::ostream& operator<<(std::ostream& os, const RotMx& R);
       template <class FloatType>
-      boost::array<FloatType, 9> as_array(const FloatType&) const {
-        boost::array<FloatType, 9> result;
+      array<FloatType, 9> as_array(const FloatType&) const {
+        array<FloatType, 9> result;
         for(int i=0;i<9;i++) {
           result[i] = FloatType(elems[i]) / FloatType(m_BF);
         }
@@ -424,7 +424,7 @@ namespace cctbx { namespace sgtbx {
           <p>
           See also: as_array()
        */
-      boost::array<int, 12> as_int_array() const;
+      array<int, 12> as_int_array() const;
       //! Export matrix elements to a floating point boost array.
       /*! The 9 elements of the rotation part are divided by RBF()
           and copied to elements 0..8 of the boost array.
@@ -434,8 +434,8 @@ namespace cctbx { namespace sgtbx {
           See also: as_int_array()
        */
       template <class FloatType>
-      boost::array<FloatType, 12> as_array(const FloatType&) const {
-        boost::array<FloatType, 12> result;
+      array<FloatType, 12> as_array(const FloatType&) const {
+        array<FloatType, 12> result;
         int i;
         for(i=0;i<9;i++) {
           result[i    ] = FloatType(Rpart()[i]) / FloatType(RBF());

@@ -9,7 +9,7 @@ class write_makefiles(makefile_generator.write_makefiles):
     self.files = (
       "global/error.cpp",
       "global/bpl_utils.cpp",
-      "global/boost_array_bpl.cpp",
+      "global/array_bpl.cpp",
       "uctbx/uctbx.cpp",
       "uctbx/uctbxmodule.cpp",
       "uctbx/uctbxdriver.cpp",
@@ -28,5 +28,5 @@ class write_makefiles(makefile_generator.write_makefiles):
       "uctbx": (("uctbxmodule",
                  "uctbx",
                  "error",
-                 "bpl_utils", "boost_array_bpl"), ()),
+                 "bpl_utils", "array_bpl"), ()),
     }

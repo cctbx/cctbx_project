@@ -68,7 +68,7 @@ namespace cctbx { namespace sgtbx {
       r00 = 1;
       r22 = 1;
       for(int i=0;i<3;i++) {
-        int l = boost::lcm(CBMxR[i], CBMxR[6 + i]);
+        int l = lcm(CBMxR[i], CBMxR[6 + i]);
         if (CBMxR[i]) {
           int n = std::abs(l / CBMxR[i]);
           if (r00 < n) r00 = n;

@@ -18,10 +18,10 @@
 #include <vector>
 #include <cstddef>
 #include <iostream>
-#include <boost/array.hpp>
+#include <cctbx/array.h>
 #include <cctbx/utils.h>
 
-namespace boost {
+namespace cctbx {
 
     template<class AnyType, std::size_t N>
     bool operator== (const array<AnyType,N>& x, const AnyType& value) {
@@ -107,21 +107,21 @@ namespace boost {
 
     template <class AnyType, std::size_t N>
     std::size_t
-    array_min_index(const boost::array<AnyType, N>& a) {
+    array_min_index(const array<AnyType, N>& a) {
       return std::min_element(a.begin(), a.end()) - a.begin();
     }
 
     template <class AnyType, std::size_t N>
     std::size_t
-    array_max_index(const boost::array<AnyType, N>& a) {
+    array_max_index(const array<AnyType, N>& a) {
       return std::max_element(a.begin(), a.end()) - a.begin();
     }
 
     template <class NumType, std::size_t N>
-    boost::array<NumType, N>
-    array_abs(const boost::array<NumType, N>& a)
+    array<NumType, N>
+    array_abs(const array<NumType, N>& a)
     {
-      boost::array<NumType, N> result;
+      array<NumType, N> result;
       for (std::size_t i = 0; i < N; i++) {
         if (a[i] < 0) result[i] = -a[i];
         else          result[i] =  a[i];
@@ -129,27 +129,27 @@ namespace boost {
       return result;
     }
 
-} // namespace boost
+} // namespace cctbx
 
 namespace cctbx {
   namespace MatrixLite {
 
-    namespace itype {
+    namespace itype { // XXX remove
 
       //! Helper class for passing coordinate vectors.
-      typedef boost::array<int, 3> Vec3;
+      typedef cctbx::array<int, 3> Vec3;
 
       //! Helper class for passing 3x3 matrices.
-      typedef boost::array<int, 3 * 3> Mx33;
+      typedef cctbx::array<int, 3 * 3> Mx33;
     }
 
     namespace dtype {
 
       //! Helper class for passing coordinate vectors.
-      typedef boost::array<double, 3> Vec3;
+      typedef cctbx::array<double, 3> Vec3;
 
       //! Helper class for passing 3x3 matrices.
-      typedef boost::array<double, 3 * 3> Mx33;
+      typedef cctbx::array<double, 3 * 3> Mx33;
     }
 
     template <class NumType>
@@ -210,10 +210,10 @@ namespace cctbx {
     }
 
     template <class NumType>
-    boost::array<NumType, 3>
-    DiagonalElements(const boost::array<NumType, 9>& M)
+    array<NumType, 3>
+    DiagonalElements(const array<NumType, 9>& M)
     {
-      boost::array<NumType, 3> result;
+      array<NumType, 3> result;
       for(std::size_t i=0;i<3;i++) {
         result[i] = M[i * (3 + 1)];
       }
@@ -222,17 +222,17 @@ namespace cctbx {
 
     template <class NumType>
     inline NumType
-    Determinant(const boost::array<NumType, 9>& M) {
+    Determinant(const array<NumType, 9>& M) {
       return   M[0] * (M[4] * M[8] - M[5] * M[7])
              - M[1] * (M[3] * M[8] - M[5] * M[6])
              + M[2] * (M[3] * M[7] - M[4] * M[6]);
     }
 
     template <class NumType>
-    boost::array<NumType, 9>
-    CoFactorMxTp(const boost::array<NumType, 9>& M)
+    array<NumType, 9>
+    CoFactorMxTp(const array<NumType, 9>& M)
     {
-      boost::array<NumType, 9> result;
+      array<NumType, 9> result;
       result[0] =  M[4] * M[8] - M[5] * M[7];
       result[1] = -M[1] * M[8] + M[2] * M[7];
       result[2] =  M[1] * M[5] - M[2] * M[4];
@@ -246,11 +246,11 @@ namespace cctbx {
     }
 
     template <class NumType>
-    boost::array<NumType, 3>
-    cross_product(const boost::array<NumType, 3>& a,
-                  const boost::array<NumType, 3>& b)
+    array<NumType, 3>
+    cross_product(const array<NumType, 3>& a,
+                  const array<NumType, 3>& b)
     {
-      boost::array<NumType, 3> result;
+      array<NumType, 3> result;
       result[0] = a[1] * b[2] - b[1] * a[2];
       result[1] = a[2] * b[0] - b[2] * a[0];
       result[2] = a[0] * b[1] - b[0] * a[1];
@@ -259,8 +259,8 @@ namespace cctbx {
 
     template <class FloatType, std::size_t N>
     bool
-    approx_equal_scaled(const boost::array<FloatType, N>& a,
-                        const boost::array<FloatType, N>& b,
+    approx_equal_scaled(const array<FloatType, N>& a,
+                        const array<FloatType, N>& b,
                         FloatType scaled_tolerance) {
       for (std::size_t i = 0; i < N; i++) {
         if (!cctbx::approx_equal_scaled(a[i], b[i], scaled_tolerance)) {
@@ -274,12 +274,12 @@ namespace cctbx {
     struct return_type {};
 
     template <class FloatType6, class FloatType33>
-    boost::array<FloatType33, 3*3>
+    array<FloatType33, 3*3>
     CondensedSymMx33_as_FullSymMx33(
-      const boost::array<FloatType6, 6>& Mcond,
+      const array<FloatType6, 6>& Mcond,
       return_type<FloatType33>)
     {
-      boost::array<FloatType33, 3*3> Mfull;
+      array<FloatType33, 3*3> Mfull;
       Mfull[0] = Mcond[0];
       Mfull[1] = Mcond[3];
       Mfull[2] = Mcond[4];
@@ -293,12 +293,12 @@ namespace cctbx {
     }
 
     template <class FloatType33, class FloatType6>
-    inline boost::array<FloatType6, 6>
+    inline array<FloatType6, 6>
     FullSymMx33_as_CondensedSymMx33(
-      const boost::array<FloatType33, 3*3>& Mfull,
+      const array<FloatType33, 3*3>& Mfull,
       return_type<FloatType6>)
     {
-      boost::array<FloatType6, 6> Mcond;
+      array<FloatType6, 6> Mcond;
       Mcond[0] = Mfull[0];
       Mcond[1] = Mfull[4];
       Mcond[2] = Mfull[8];
@@ -309,23 +309,23 @@ namespace cctbx {
     }
 
     template <class FloatType>
-    boost::array<FloatType, 9>
-    FullTensorTransformation(const boost::array<FloatType, 9>& C,
-                             const boost::array<FloatType, 9>& T)
+    array<FloatType, 9>
+    FullTensorTransformation(const array<FloatType, 9>& C,
+                             const array<FloatType, 9>& T)
     {
-      boost::array<FloatType, 9> CT;
+      array<FloatType, 9> CT;
       multiply<FloatType>(C.elems, T.elems, 3, 3, 3, CT.elems);
-      boost::array<FloatType, 9> Ct;
+      array<FloatType, 9> Ct;
       transpose<FloatType>(C.elems, 3, 3, Ct.elems);
-      boost::array<FloatType, 9> CTCt;
+      array<FloatType, 9> CTCt;
       multiply<FloatType>(CT.elems, Ct.elems, 3, 3, 3, CTCt.elems);
       return CTCt;
     }
 
     template <class FloatTypeC, class FloatTypeT>
-    inline boost::array<FloatTypeT, 6>
-    CondensedTensorTransformation(const boost::array<FloatTypeC, 9>& C,
-                                  const boost::array<FloatTypeT, 6>& Tcond)
+    inline array<FloatTypeT, 6>
+    CondensedTensorTransformation(const array<FloatTypeC, 9>& C,
+                                  const array<FloatTypeT, 6>& Tcond)
     {
       return
         FullSymMx33_as_CondensedSymMx33(

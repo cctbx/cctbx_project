@@ -68,7 +68,7 @@ namespace cctbx {
                     const std::complex<FloatType>& fpfdp,
                     const cctbx::fractional<FloatType>& Coordinates,
                     const FloatType& Occ,
-                    const boost::array<FloatType, 6>& Uaniso)
+                    const array<FloatType, 6>& Uaniso)
         : m_Label(Label),
           m_CAASF(CAASF),
           m_fpfdp(fpfdp),
@@ -114,7 +114,7 @@ namespace cctbx {
           Conversions between isotropic and anisotropic displacement
           parameters are provided by the cctbx::adptbx.
        */
-      const boost::array<FloatType, 6>& Uaniso() { return m_U; }
+      const array<FloatType, 6>& Uaniso() { return m_U; }
       //! Compute multiplicity and average anisotropic displacement parameters.
       /*! The given unit cell and space group are used to determine
           the site symmetry of the scatterer see
@@ -235,7 +235,7 @@ namespace cctbx {
       cctbx::fractional<FloatType> m_Coordinates;
       FloatType m_Occ;
       bool m_Anisotropic;
-      boost::array<FloatType, 6> m_U;
+      array<FloatType, 6> m_U;
       int m_M;
       FloatType m_w;
   };

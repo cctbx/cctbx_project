@@ -27,9 +27,9 @@ namespace cctbx { namespace fftbx {
       See also: Mreal_from_Nreal()
    */
   template <typename IntegerType, std::size_t D>
-  inline boost::array<IntegerType, D>
-  Ncomplex_from_Nreal(const boost::array<IntegerType, D>& Nreal) {
-    boost::array<IntegerType, D> result = Nreal;
+  inline array<IntegerType, D>
+  Ncomplex_from_Nreal(const array<IntegerType, D>& Nreal) {
+    array<IntegerType, D> result = Nreal;
     result[D-1] = Ncomplex_from_Nreal(result[D-1]);
     return result;
   }
@@ -43,9 +43,9 @@ namespace cctbx { namespace fftbx {
       See also: Ncomplex_from_Nreal()
    */
   template <typename IntegerType, std::size_t D>
-  inline boost::array<IntegerType, D>
-  Mreal_from_Nreal(const boost::array<IntegerType, D>& Nreal) {
-    boost::array<IntegerType, D> result = Nreal;
+  inline array<IntegerType, D>
+  Mreal_from_Nreal(const array<IntegerType, D>& Nreal) {
+    array<IntegerType, D> result = Nreal;
     result[D-1] = Mreal_from_Nreal(result[D-1]);
     return result;
   }
@@ -79,15 +79,12 @@ namespace cctbx { namespace fftbx {
       typedef ComplexType complex_type;
 #endif // DOXYGEN_SHOULD_SKIP_THIS
 
-      //! Convenience typedef.
-      typedef cctbx::array<std::size_t, 3> triple;
-
       //! Default constructor.
       real_to_complex_3d() {}
       //! Initialization for transforms of lengths Nreal.
       /*! See also: Constructors of complex_to_complex and real_to_complex.
        */
-      real_to_complex_3d(const boost::array<std::size_t, 3>& Nreal)
+      real_to_complex_3d(const int3& Nreal)
         : m_Nreal(Nreal) {
         init();
       }
@@ -99,17 +96,17 @@ namespace cctbx { namespace fftbx {
         init();
       }
       //! Generic dimensions of real array.
-      boost::array<std::size_t, 3> Nreal() const { return m_Nreal; }
+      int3 Nreal() const { return m_Nreal; }
       //! Physical dimensions of real-to-complex array as complex array.
       /*! See also: Mreal(), Ncomplex_from_Nreal()
        */
-      boost::array<std::size_t, 3> Ncomplex() const {
+      int3 Ncomplex() const {
         return Ncomplex_from_Nreal(m_Nreal);
       }
       //! Physical dimensions of real-to-complex array as real array.
       /*! See also: Ncomplex(), Mreal_from_Nreal()
        */
-      boost::array<std::size_t, 3> Mreal() const {
+      int3 Mreal() const {
         return Mreal_from_Nreal(m_Nreal);
       }
       //! In-place "forward" Fourier transformation.
@@ -153,19 +150,19 @@ namespace cctbx { namespace fftbx {
     for (std::size_t ix = 0; ix < m_Nreal[0]; ix++) {
       for (std::size_t iy = 0; iy < m_Nreal[1]; iy++) {
         // Transform along z (fast direction)
-        m_fft1d_z.forward(&Map(triple(ix, iy, 0)));
+        m_fft1d_z.forward(&Map(int3(ix, iy, 0)));
       }
       for (std::size_t iz = 0; iz < m_fft1d_z.Ncomplex(); iz++) {
         std::size_t iy;
         for (iy = 0; iy < m_Nreal[1]; iy++) {
-          Seq[2*iy] = Map(triple(ix, iy, 2*iz));
-          Seq[2*iy+1] = Map(triple(ix, iy, 2*iz+1));
+          Seq[2*iy] = Map(int3(ix, iy, 2*iz));
+          Seq[2*iy+1] = Map(int3(ix, iy, 2*iz+1));
         }
         // Transform along y (medium direction)
         m_fft1d_y.transform(select_sign<forward_tag>(), Seq);
         for (iy = 0; iy < m_Nreal[1]; iy++) {
-          Map(triple(ix, iy, 2*iz)) = Seq[2*iy];
-          Map(triple(ix, iy, 2*iz+1)) = Seq[2*iy+1];
+          Map(int3(ix, iy, 2*iz)) = Seq[2*iy];
+          Map(int3(ix, iy, 2*iz+1)) = Seq[2*iy+1];
         }
       }
     }
@@ -173,14 +170,14 @@ namespace cctbx { namespace fftbx {
       for (std::size_t iz = 0; iz < m_fft1d_z.Ncomplex(); iz++) {
         std::size_t ix;
         for (ix = 0; ix < m_Nreal[0]; ix++) {
-          Seq[2*ix] = Map(triple(ix, iy, 2*iz));
-          Seq[2*ix+1] = Map(triple(ix, iy, 2*iz+1));
+          Seq[2*ix] = Map(int3(ix, iy, 2*iz));
+          Seq[2*ix+1] = Map(int3(ix, iy, 2*iz+1));
         }
         // Transform along x (slow direction)
         m_fft1d_x.transform(select_sign<forward_tag>(), Seq);
         for (ix = 0; ix < m_Nreal[0]; ix++) {
-          Map(triple(ix, iy, 2*iz)) = Seq[2*ix];
-          Map(triple(ix, iy, 2*iz+1)) = Seq[2*ix+1];
+          Map(int3(ix, iy, 2*iz)) = Seq[2*ix];
+          Map(int3(ix, iy, 2*iz+1)) = Seq[2*ix+1];
         }
       }
     }
@@ -204,39 +201,39 @@ namespace cctbx { namespace fftbx {
       for (std::size_t iy = 0; iy < m_Nreal[1]; iy++) {
         std::size_t ix;
         for (ix = 0; ix < m_Nreal[0]; ix++) {
-          Seq[2*ix] = Map(triple(ix, iy, 2*iz));
-          Seq[2*ix+1] = Map(triple(ix, iy, 2*iz+1));
+          Seq[2*ix] = Map(int3(ix, iy, 2*iz));
+          Seq[2*ix+1] = Map(int3(ix, iy, 2*iz+1));
         }
         // Transform along x (slow direction)
         m_fft1d_x.transform(select_sign<backward_tag>(), Seq);
         for (ix = 0; ix < m_Nreal[0]; ix++) {
-          Map(triple(ix, iy, 2*iz)) = Seq[2*ix];
-          Map(triple(ix, iy, 2*iz+1)) = Seq[2*ix+1];
+          Map(int3(ix, iy, 2*iz)) = Seq[2*ix];
+          Map(int3(ix, iy, 2*iz+1)) = Seq[2*ix+1];
         }
       }
       for (std::size_t ix = 0; ix < m_Nreal[0]; ix++) {
         std::size_t iy;
         for (iy = 0; iy < m_Nreal[1]; iy++) {
-          Seq[2*iy] = Map(triple(ix, iy, 2*iz));
-          Seq[2*iy+1] = Map(triple(ix, iy, 2*iz+1));
+          Seq[2*iy] = Map(int3(ix, iy, 2*iz));
+          Seq[2*iy+1] = Map(int3(ix, iy, 2*iz+1));
         }
         // Transform along y (medium direction)
         m_fft1d_y.transform(select_sign<backward_tag>(), Seq);
         for (iy = 0; iy < m_Nreal[1]; iy++) {
-          Map(triple(ix, iy, 2*iz)) = Seq[2*iy];
-          Map(triple(ix, iy, 2*iz+1)) = Seq[2*iy+1];
+          Map(int3(ix, iy, 2*iz)) = Seq[2*iy];
+          Map(int3(ix, iy, 2*iz+1)) = Seq[2*iy+1];
         }
       }
     }
     for (std::size_t ix = 0; ix < m_Nreal[0]; ix++) {
       for (std::size_t iy = 0; iy < m_Nreal[1]; iy++) {
         // Transform along z (fast direction)
-        m_fft1d_z.backward(&Map(triple(ix, iy, 0)));
+        m_fft1d_z.backward(&Map(int3(ix, iy, 0)));
       }
     }
   }
     private:
-      triple m_Nreal;
+      int3 m_Nreal;
       complex_to_complex<real_type, complex_type> m_fft1d_x;
       complex_to_complex<real_type, complex_type> m_fft1d_y;
       real_to_complex<real_type, complex_type>    m_fft1d_z;

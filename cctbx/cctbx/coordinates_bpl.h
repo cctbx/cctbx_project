@@ -19,22 +19,22 @@ BOOST_PYTHON_BEGIN_CONVERSION_NAMESPACE
     boost::python::type<const cctbx::cartesian<double>&>)
   {
     return cctbx::cartesian<double>(from_python(p,
-      boost::python::type<const boost::array<double, 3>&>()));
+      boost::python::type<const cctbx::array<double, 3>&>()));
   }
 
   PyObject* to_python(const cctbx::cartesian<double>& Xc) {
-    return to_python(static_cast<const boost::array<double, 3>&>(Xc));
+    return to_python(static_cast<const cctbx::array<double, 3>&>(Xc));
   }
 
   cctbx::fractional<double> from_python(PyObject* p,
     boost::python::type<const cctbx::fractional<double>&>)
   {
     return cctbx::fractional<double>(from_python(p,
-      boost::python::type<const boost::array<double, 3>&>()));
+      boost::python::type<const cctbx::array<double, 3>&>()));
   }
 
   PyObject* to_python(const cctbx::fractional<double>& Xf) {
-    return to_python(static_cast<const boost::array<double, 3>&>(Xf));
+    return to_python(static_cast<const cctbx::array<double, 3>&>(Xf));
   }
 
 BOOST_PYTHON_END_CONVERSION_NAMESPACE

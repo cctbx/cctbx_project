@@ -152,7 +152,7 @@ namespace cctbx { namespace sgtbx {
         if (   (Rtype ==  2 && TwoFold)
             || (Rtype == -2 && Mirror)) {
           RotMxInfo RI = StdSgOps[iSMx].Rpart().getInfo();
-          const Vec3 EV_100 = {1, 0, 0};
+          const Vec3 EV_100(1, 0, 0);
           if (RI.EV() == EV_100) {
             if (PointGroupType == MGC_4bm2) return MGC_4b2m;
             if (PointGroupType == MGC_32)   return MGC_321;
@@ -352,7 +352,7 @@ namespace cctbx { namespace sgtbx {
         cctbx_assert(Rtype != 0);
         if (std::abs(Rtype) == 2) {
           RotMxInfo RI = R.getInfo();
-          const Vec3 EV_100 = {1, 0, 0};
+          const Vec3 EV_100(1, 0, 0);
           if (RI.EV() == EV_100) {
             int iInv = 0; if (Rtype == 2) iInv = 1;
             RTMx SMx = WorkSgOps(0, iInv, iSMx);

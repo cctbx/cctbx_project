@@ -17,8 +17,8 @@ def write_copyright():
 
 def one_definition(T, N, declaration):
   prototype = """
-  boost::array<%s, %d> from_python(PyObject* p,
-    boost::python::type<const boost::array<%s, %d>&>)""" % (T, N, T, N)
+  cctbx::array<%s, %d> from_python(PyObject* p,
+    boost::python::type<const cctbx::array<%s, %d>&>)""" % (T, N, T, N)
   if (declaration):
     print prototype + ";"
   else:
@@ -27,7 +27,7 @@ def one_definition(T, N, declaration):
   {
     boost::python::tuple
     tup = cctbx::bpl_utils::tuple_from_python_list_or_tuple(p);
-    boost::array<%s, %d> result;
+    cctbx::array<%s, %d> result;
     if (tup.size() != result.size()) {
       PyErr_SetString(PyExc_ValueError,
         "incorrect number of values in tuple.");
@@ -40,7 +40,7 @@ def one_definition(T, N, declaration):
   }""" % (T, N, T)
 
   prototype = """
-  PyObject* to_python(const boost::array<%s, %d>& tobj)""" % (T, N)
+  PyObject* to_python(const cctbx::array<%s, %d>& tobj)""" % (T, N)
   if (declaration):
     print prototype + ";"
   else:
@@ -58,10 +58,10 @@ def one_definition(T, N, declaration):
 def write_declarations(T_N_List):
   write_copyright()
   print """
-#ifndef CCTBX_BASIC_BOOST_ARRAY_BPL_H
-#define CCTBX_BASIC_BOOST_ARRAY_BPL_H
+#ifndef CCTBX_ARRAY_BPL_H
+#define CCTBX_ARRAY_BPL_H
 
-#include <boost/array.hpp>
+#include <cctbx/array.h>
 
 BOOST_PYTHON_BEGIN_CONVERSION_NAMESPACE
 """
@@ -78,7 +78,7 @@ BOOST_PYTHON_END_CONVERSION_NAMESPACE
 def write_definitions(T_N_List):
   write_copyright()
   print """
-#include <boost/array.hpp>
+#include <cctbx/array.h>
 #include <cctbx/bpl_utils.h>
 
 BOOST_PYTHON_BEGIN_CONVERSION_NAMESPACE
@@ -100,18 +100,17 @@ def run():
   T_N_List = (
     T_N("int", 3),
     T_N("int", 9),
-    T_N("std::size_t", 3),
     T_N("double", 3),
     T_N("double", 6),
     T_N("double", 9),
   )
   import sys
-  f = open("boost_array_bpl.h", "w")
+  f = open("array_bpl.h", "w")
   sys.stdout = f
   write_declarations(T_N_List)
   sys.stdout = sys.__stdout__
   f.close()
-  f = open("boost_array_bpl.cpp", "w")
+  f = open("array_bpl.cpp", "w")
   sys.stdout = f
   write_definitions(T_N_List)
   sys.stdout = sys.__stdout__

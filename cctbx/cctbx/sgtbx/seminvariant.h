@@ -128,7 +128,7 @@ namespace cctbx { namespace sgtbx {
       //! Refine gridding starting with grid 1,1,1.
       /*! See also: other overload.
        */
-      boost::array<int, 3> refine_gridding() const {
+      array<int, 3> refine_gridding() const {
         return refine_gridding(array<int, 3>(1, 1, 1));
       }
 
