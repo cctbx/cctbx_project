@@ -111,7 +111,7 @@ namespace sgtbx {
       loop_n_from_m(std::size_t m, std::size_t n) : m_m(m), m_n(n), m_over(0) {
         cctbx_assert(m_m >= m_n);
         cctbx_assert(MaxN >= m_n);
-        for(std::size_t i=0;i<m_n;i++) m_cur[i] = i;
+        for(std::size_t i=0;i<m_n;i++) m_current[i] = i;
       }
       inline bool incr()
       {
@@ -119,14 +119,14 @@ namespace sgtbx {
           std::size_t p, l;
           p = l = m_n - 1;
           for (;;) {
-                m_cur[p]++;
-            if (m_cur[p] + l == m_m + p) {
+                m_current[p]++;
+            if (m_current[p] + l == m_m + p) {
               if (p == 0) break;
               p--;
             }
             else if (p < l) {
-              m_cur[p + 1] = m_cur[p];
-                    p++;
+              m_current[p + 1] = m_current[p];
+                        p++;
             }
             else {
               return true;
@@ -138,12 +138,12 @@ namespace sgtbx {
       }
       inline std::size_t m() { return m_m; }
       inline std::size_t n() { return m_n; }
-      inline std::size_t operator[](std::size_t i) { return m_cur[i]; }
+      inline std::size_t operator[](std::size_t i) { return m_current[i]; }
       inline std::size_t over() const { return m_over; }
     private:
       std::size_t m_m;
       std::size_t m_n;
-      std::size_t m_cur[MaxN];
+      std::size_t m_current[MaxN];
       std::size_t m_over;
   };
 
@@ -152,28 +152,30 @@ namespace sgtbx {
   {
     public:
       NestedLoop() : m_over(1) {}
-      NestedLoop(const ArrayType& min, const ArrayType& max)
-        : m_min(min), m_max(max), m_cur(m_min), m_over(0) {}
+      NestedLoop(const ArrayType& begin, const ArrayType& end)
+        : m_begin(begin), m_end(end), m_current(m_begin), m_over(0) {
+        cctbx_assert(m_begin.size() == m_end.size());
+      }
       inline bool incr()
       {
-        for (std::size_t i = m_cur.size(); i != 0;) {
+        for (std::size_t i = m_current.size(); i != 0;) {
           i--;
-          m_cur[i]++;
-          if (m_cur[i] <= m_max[i]) return true;
-          m_cur[i] = m_min[i];
+          m_current[i]++;
+          if (m_current[i] < m_end[i]) return true;
+          m_current[i] = m_begin[i];
         }
         m_over++;
         return false;
       }
-      inline const ArrayType& min() const { return m_min; }
-      inline const ArrayType& max() const { return m_max; }
-      inline const ArrayType& operator()() { return m_cur; }
+      inline const ArrayType& begin() const { return m_begin; }
+      inline const ArrayType& end() const { return m_end; }
+      inline const ArrayType& operator()() { return m_current; }
       inline std::size_t over() const { return m_over; }
-      inline const ArrayType& next() { incr(); return m_cur; }
+      inline const ArrayType& next() { incr(); return m_current; }
     private:
-      ArrayType m_min;
-      ArrayType m_max;
-      ArrayType m_cur;
+      ArrayType m_begin;
+      ArrayType m_end;
+      ArrayType m_current;
       std::size_t m_over;
   };
 
