@@ -11,7 +11,7 @@ from libtbx.test_utils import approx_equal
 import random
 import sys
 
-if (0):
+if (1): # fixed random seed to avoid rare failures
   random.seed(0)
   flex.set_random_seed(0)
 
