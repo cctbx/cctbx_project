@@ -198,6 +198,17 @@ namespace cctbx { namespace af {
         m_handle->weak_count++;
       }
 
+      // non-std
+      template <typename OtherArrayType>
+      shared_plain(array_adaptor<OtherArrayType> const& a_a)
+        : m_is_weak_ref(false),
+          m_handle(new sharing_handle)
+      {
+        OtherArrayType const& a = *(a_a.pointee);
+        reserve(a.size());
+        for(std::size_t i=0;i<a.size();i++) push_back(a[i]);
+      }
+
       ~shared_plain() {
         m_dispose();
       }

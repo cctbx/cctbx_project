@@ -31,15 +31,16 @@ tst_list = (
 "$CCTBX_DIST/cctbx/euclidean_model_matching.py",
 )
 
-assert "CCTBX_DIST" in os.environ
+cctbx_dist = os.environ["CCTBX_DIST"]
 
 for tst in tst_list:
-  print tst
+  tst_path = tst.replace("$CCTBX_DIST", cctbx_dist)
+  print tst_path
   sys.stdout.flush()
-  if (tst.endswith(".py")):
-    os.system("python " + os.path.normpath(tst))
+  if (tst_path.endswith(".py")):
+    os.system("python " + os.path.normpath(tst_path))
   else:
-    os.system(os.path.normpath(tst))
+    os.system(os.path.normpath(tst_path))
   print
   sys.stderr.flush()
   sys.stdout.flush()

@@ -32,6 +32,9 @@ namespace maps {
 
       grid_p1(const IndexType& n) : IndexType(n) {}
 
+      template <typename OtherArrayType>
+      grid_p1(af::array_adaptor<OtherArrayType> const& a_a) : IndexType(a_a) {}
+
       CCTBX_ARRAY_FAMILY_TINY_CONVENIENCE_CONSTRUCTORS(grid_p1)
 
       static std::size_t nd() { return Nd; }

@@ -14,6 +14,7 @@
 #include <cctbx/array_family/ref.h>
 #include <cctbx/array_family/misc.h>
 #include <cctbx/array_family/tiny_helpers.h>
+#include <cctbx/array_family/array_adaptor.h>
 
 namespace cctbx { namespace af {
 
@@ -27,6 +28,14 @@ namespace cctbx { namespace af {
       ElementType elems[N];
 
       tiny_plain() {}
+
+      template <typename OtherArrayType>
+      tiny_plain(array_adaptor<OtherArrayType> const& a_a)
+      {
+        OtherArrayType const& a = *(a_a.pointee);
+        if (a.size() != N) throw_range_error();
+        for(std::size_t i=0;i<N;i++) elems[i] = a[i];
+      }
 
       CCTBX_ARRAY_FAMILY_TINY_CONVENIENCE_CONSTRUCTORS(tiny_plain)
       CCTBX_ARRAY_FAMILY_TINY_COPY_AND_ASSIGNMENT(tiny_plain)

@@ -104,14 +104,14 @@ namespace {
     static
     void
     inplace_unpad(
-      cctbx::af::versa<FloatType, cctbx::af::flex_grid<> >& map,
-      cctbx::af::long3 const& n_real,
-      cctbx::af::long3 const& m_real)
+      cctbx::af::versa<FloatType, cctbx::af::flex_grid<> >& map)
     {
       using namespace cctbx;
-      cctbx_assert(map.accessor().nd() == 1);
-      cctbx_assert(map.accessor().origin()[0] == 0);
-      cctbx_assert(af::product(m_real.const_ref()) == map.size());
+      cctbx_assert(map.accessor().nd() == 3);
+      cctbx_assert(map.accessor().is_0_based());
+      if (map.accessor().layout().size() == 0) return;
+      af::long3 m_real(af::adapt(map.accessor().grid()));
+      af::long3 n_real(af::adapt(map.accessor().layout()));
       cctbx_assert(n_real[0] == m_real[0]);
       cctbx_assert(n_real[1] == m_real[1]);
       cctbx_assert(n_real[2] <= m_real[2]);
@@ -122,9 +122,7 @@ namespace {
       for(af::long3 const& point = loop(); !loop.over(); loop.incr()) {
         map_n(point) = map_m(point);
       }
-      af::flex_grid_default_index_type grid;
-      grid.push_back(af::product(n_real.const_ref()));
-      map.resize(af::flex_grid<>(grid));
+      map.resize(af::flex_grid<>(af::adapt(n_real)));
     }
   };
 
@@ -148,15 +146,14 @@ namespace {
     boost::python::ref
     convert(
       cctbx::af::versa<InpFloatType, cctbx::af::flex_grid<> > a,
-      cctbx::af::long3 const& gridding,
       cctbx::af::long3 const& first,
       cctbx::af::long3 const& last,
       bool apply_sigma_scaling)
     {
       using namespace cctbx;
-      cctbx_assert(a.accessor().nd() == 1);
-      cctbx_assert(a.accessor().origin()[0] == 0);
-      cctbx_assert(af::product(gridding.const_ref()) == a.size());
+      cctbx_assert(a.accessor().nd() == 3);
+      cctbx_assert(a.accessor().is_0_based());
+      cctbx_assert(!a.accessor().is_padded());
       math::array_statistics<InpFloatType> map_statistics;
       InpFloatType mean = 0;
       InpFloatType sigma = 0;
@@ -170,7 +167,8 @@ namespace {
       OutFloatType* out_mem = reinterpret_cast<OutFloatType*>(
         malloc(out_size(first, last) * sizeof(OutFloatType)));
       OutFloatType* out_ptr = out_mem;
-      af::ref<InpFloatType, maps::grid_p1<3> > a3d(a.begin(), gridding);
+      af::ref<InpFloatType, maps::grid_p1<3> > a3d(
+        a.begin(), af::adapt(a.accessor().grid()));
       af::long3 out_pt;
       for (out_pt[2] = first[2]; out_pt[2] <= last[2]; out_pt[2]++) {
       for (out_pt[1] = first[1]; out_pt[1] <= last[1]; out_pt[1]++) {
