@@ -103,9 +103,9 @@ class space_group_info:
       cache._lookup_symbol = self.type().lookup_symbol()
     return cache._lookup_symbol
 
-  def show_summary(self, f=sys.stdout):
-    print >> f, "Space group: %s (No. %d)" % (
-      str(self), self.type().number())
+  def show_summary(self, f=sys.stdout, prefix="Space group: "):
+    print >> f, "%s%s (No. %d)" % (
+      prefix, str(self), self.type().number())
 
   def any_compatible_unit_cell(self, volume):
     sg_number = self.type().number()
