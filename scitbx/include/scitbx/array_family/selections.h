@@ -20,7 +20,7 @@ namespace scitbx { namespace af {
 
   template <typename MapType>
   af::shared<MapType>
-  array_of_map_select(
+  array_of_map_proxy_select(
     af::const_ref<MapType> const& self,
     af::const_ref<std::size_t> const& iselection)
   {
@@ -43,6 +43,36 @@ namespace scitbx { namespace af {
         if (j != selectee_size) {
           new_map[static_cast<typename MapType::key_type>(j)]
             = old_map_i->second;
+        }
+      }
+    }
+    return result;
+  }
+
+  template <typename MapType>
+  af::shared<MapType>
+  array_of_map_proxy_remove(
+    af::const_ref<MapType> const& self,
+    af::const_ref<bool> const& selection)
+  {
+    SCITBX_ASSERT(selection.size() == self.size());
+    af::shared<MapType> result;
+    for(std::size_t i=0;i<self.size();i++) {
+      if (!selection[i]) {
+        result.push_back(self[i]);
+      }
+      else {
+        result.push_back(MapType());
+        MapType& new_map = result.back();
+        MapType const& old_map = self[i];
+        for(typename MapType::const_iterator
+              old_map_i=old_map.begin();
+              old_map_i!=old_map.end();
+              old_map_i++) {
+          SCITBX_ASSERT(old_map_i->first < self.size());
+          if (!selection[old_map_i->first]) {
+            new_map[old_map_i->first] = old_map_i->second;
+          }
         }
       }
     }
