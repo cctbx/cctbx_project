@@ -55,61 +55,57 @@ namespace {
 
   // to preserve VC6 compatibility we are not using shared_algebra.h
   cctbx::af::shared<double>
-  py_abs_complex(const cctbx::af::shared<std::complex<double> >& a) {
-    cctbx::af::shared<double> result(a.size()); // FUTURE: avoid default init.
+  py_abs_complex(cctbx::af::shared<std::complex<double> > a)
+  {
+    cctbx::af::shared<double> result;
+    result.reserve(a.size());
     for(std::size_t i=0;i<a.size();i++) {
-      result[i] = std::abs(a[i]);
+      result.push_back(std::abs(a[i]));
     }
     return result;
   }
   cctbx::af::shared<double>
-  py_arg_rad_complex(const cctbx::af::shared<std::complex<double> >& a) {
-    cctbx::af::shared<double> result(a.size()); // FUTURE: avoid default init.
+  py_arg_complex(
+    cctbx::af::shared<std::complex<double> > a,
+    bool deg = false)
+  {
+    cctbx::af::shared<double> result;
+    result.reserve(a.size());
     for(std::size_t i=0;i<a.size();i++) {
-      result[i] = std::arg(a[i]);
+      result.push_back(std::arg(a[i]));
+      if (deg) result[i] /= cctbx::constants::pi_180;
     }
     return result;
   }
   cctbx::af::shared<double>
-  py_arg_deg_complex(const cctbx::af::shared<std::complex<double> >& a) {
-    cctbx::af::shared<double> result(a.size()); // FUTURE: avoid default init.
+  py_norm_complex(cctbx::af::shared<std::complex<double> > a)
+  {
+    cctbx::af::shared<double> result;
+    result.reserve(a.size());
     for(std::size_t i=0;i<a.size();i++) {
-      result[i] = std::arg(a[i]) / cctbx::constants::pi_180;
-    }
-    return result;
-  }
-  cctbx::af::shared<double>
-  py_norm_complex(const cctbx::af::shared<std::complex<double> >& a) {
-    cctbx::af::shared<double> result(a.size()); // FUTURE: avoid default init.
-    for(std::size_t i=0;i<a.size();i++) {
-      result[i] = std::norm(a[i]);
+      result.push_back(std::norm(a[i]));
     }
     return result;
   }
   cctbx::af::shared<std::complex<double> >
-  py_polar_rad_complex(
+  py_polar_complex(
     cctbx::af::shared<double> rho,
-    cctbx::af::shared<double> theta)
+    cctbx::af::shared<double> theta,
+    bool deg = false)
   {
     cctbx_assert(rho.size() == theta.size());
     cctbx::af::shared<std::complex<double> > result;
     result.reserve(rho.size());
-    for(std::size_t i=0;i<rho.size();i++) {
-      result.push_back(std::polar(rho[i], theta[i]));
+    if (deg) {
+      for(std::size_t i=0;i<rho.size();i++) {
+        result.push_back(std::polar(rho[i], theta[i]));
+      }
     }
-    return result;
-  }
-  cctbx::af::shared<std::complex<double> >
-  py_polar_deg_complex(
-    cctbx::af::shared<double> rho,
-    cctbx::af::shared<double> theta)
-  {
-    cctbx_assert(rho.size() == theta.size());
-    cctbx::af::shared<std::complex<double> > result;
-    result.reserve(rho.size());
-    for(std::size_t i=0;i<rho.size();i++) {
-      result.push_back(
-        std::polar(rho[i], theta[i] * cctbx::constants::pi_180));
+    else {
+      for(std::size_t i=0;i<rho.size();i++) {
+        result.push_back(
+          std::polar(rho[i], theta[i] * cctbx::constants::pi_180));
+      }
     }
     return result;
   }
@@ -203,11 +199,17 @@ namespace {
     this_module.def(py_square, "square");
     this_module.def(py_set_if_less_than, "set_if_less_than");
     this_module.def(py_abs_complex, "abs");
-    this_module.def(py_arg_rad_complex, "arg_rad");
-    this_module.def(py_arg_deg_complex, "arg_deg");
+    this_module.def(py_arg_complex, "arg");
+    this_module.def(
+      (cctbx::af::shared<double>
+       (*)(cctbx::af::shared<std::complex<double> >))
+      py_arg_complex, "arg");
     this_module.def(py_norm_complex, "norm");
-    this_module.def(py_polar_rad_complex, "polar_rad");
-    this_module.def(py_polar_deg_complex, "polar_deg");
+    this_module.def(py_polar_complex, "polar");
+    this_module.def(
+      (cctbx::af::shared<std::complex<double> >
+       (*)(cctbx::af::shared<double>, cctbx::af::shared<double>))
+      py_polar_complex, "polar");
 
     class_builder<ex_linear_regression<double> >
     py_linear_regression(this_module, "linear_regression");

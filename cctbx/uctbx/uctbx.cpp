@@ -258,9 +258,10 @@ namespace cctbx { namespace uctbx {
   af::shared<double>
   UnitCell::Q(const af::shared<Miller::Index>& MIx) const
   {
-    af::shared<double> result(MIx.size()); // FUTURE: avoid default init.
+    af::shared<double> result;
+    result.reserve(MIx.size());
     for(std::size_t i=0;i<MIx.size();i++) {
-      result[i] = Q(MIx[i]);
+      result.push_back(Q(MIx[i]));
     }
     return result;
   }
@@ -276,46 +277,51 @@ namespace cctbx { namespace uctbx {
   af::shared<double>
   UnitCell::stol2(const af::shared<Miller::Index>& MIx) const
   {
-    af::shared<double> result(MIx.size()); // FUTURE: avoid default init.
+    af::shared<double> result;
+    result.reserve(MIx.size());
     for(std::size_t i=0;i<MIx.size();i++) {
-      result[i] = stol2(MIx[i]);
+      result.push_back(stol2(MIx[i]));
     }
     return result;
   }
   af::shared<double>
   UnitCell::two_stol(const af::shared<Miller::Index>& MIx) const
   {
-    af::shared<double> result(MIx.size()); // FUTURE: avoid default init.
+    af::shared<double> result;
+    result.reserve(MIx.size());
     for(std::size_t i=0;i<MIx.size();i++) {
-      result[i] = two_stol(MIx[i]);
+      result.push_back(two_stol(MIx[i]));
     }
     return result;
   }
   af::shared<double>
   UnitCell::stol(const af::shared<Miller::Index>& MIx) const
   {
-    af::shared<double> result(MIx.size()); // FUTURE: avoid default init.
+    af::shared<double> result;
+    result.reserve(MIx.size());
     for(std::size_t i=0;i<MIx.size();i++) {
-      result[i] = stol(MIx[i]);
+      result.push_back(stol(MIx[i]));
     }
     return result;
   }
   af::shared<double>
   UnitCell::d(const af::shared<Miller::Index>& MIx) const
   {
-    af::shared<double> result(MIx.size()); // FUTURE: avoid default init.
+    af::shared<double> result;
+    result.reserve(MIx.size());
     for(std::size_t i=0;i<MIx.size();i++) {
-      result[i] = d(MIx[i]);
+      result.push_back(d(MIx[i]));
     }
     return result;
   }
   af::shared<double>
-  UnitCell::two_theta_deg(
-    const af::shared<Miller::Index>& MIx, double lambda) const
+  UnitCell::two_theta(
+    af::shared<Miller::Index> MIx, double wavelength, bool deg) const
   {
-    af::shared<double> result(MIx.size()); // FUTURE: avoid default init.
+    af::shared<double> result;
+    result.reserve(MIx.size());
     for(std::size_t i=0;i<MIx.size();i++) {
-      result[i] = two_theta_deg(MIx[i], lambda);
+      result.push_back(two_theta(MIx[i], wavelength, deg));
     }
     return result;
   }

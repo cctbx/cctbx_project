@@ -187,23 +187,14 @@ namespace {
     return SgOps.isCentric(H);
   }
 
-  bool SpaceGroup_isValidPhase_rad_2(const SpaceGroup& SgOps,
-                                     const Miller::Index& H, double phi) {
-    return SgOps.isValidPhase_rad(H, phi);
+  bool SpaceGroup_isValidPhase_3(const SpaceGroup& SgOps,
+                                 const Miller::Index& H, double phi,
+                                 bool deg) {
+    return SgOps.isValidPhase(H, phi, deg);
   }
-  bool SpaceGroup_isValidPhase_rad_3(const SpaceGroup& SgOps,
-                                     const Miller::Index& H, double phi,
-                                     double tolerance) {
-    return SgOps.isValidPhase_rad(H, phi, tolerance);
-  }
-  bool SpaceGroup_isValidPhase_deg_2(const SpaceGroup& SgOps,
-                                     const Miller::Index& H, double phi) {
-    return SgOps.isValidPhase_deg(H, phi);
-  }
-  bool SpaceGroup_isValidPhase_deg_3(const SpaceGroup& SgOps,
-                                     const Miller::Index& H, double phi,
-                                     double tolerance) {
-    return SgOps.isValidPhase_deg(H, phi, tolerance);
+  bool SpaceGroup_isValidPhase_2(const SpaceGroup& SgOps,
+                                 const Miller::Index& H, double phi) {
+    return SgOps.isValidPhase(H, phi);
   }
 
   int
@@ -294,28 +285,19 @@ namespace {
     return SgInfo.BuildHallSymbol(TidyCBOp);
   }
 
-  int PhaseRestriction_HT_0(const PhaseRestriction& PR) {
-    return PR.HT();
-  }
-  double PhaseRestriction_HT_1(const PhaseRestriction& PR, double Period) {
-    return PR.HT(Period);
+  double PhaseRestriction_HT_angle_0(
+    const PhaseRestriction& PR)
+  {
+    return PR.HT_angle();
   }
 
-  bool PhaseRestriction_isValidPhase_rad_1(const PhaseRestriction& PR,
-                                           double phi) {
-    return PR.isValidPhase_rad(phi);
+  bool PhaseRestriction_isValidPhase_2(const PhaseRestriction& PR,
+                                       double phi, bool deg) {
+    return PR.isValidPhase(phi, deg);
   }
-  bool PhaseRestriction_isValidPhase_rad_2(const PhaseRestriction& PR,
-                                           double phi, double tolerance) {
-    return PR.isValidPhase_rad(phi, tolerance);
-  }
-  bool PhaseRestriction_isValidPhase_deg_1(const PhaseRestriction& PR,
-                                           double phi) {
-    return PR.isValidPhase_deg(phi);
-  }
-  bool PhaseRestriction_isValidPhase_deg_2(const PhaseRestriction& PR,
-                                           double phi, double tolerance) {
-    return PR.isValidPhase_deg(phi, tolerance);
+  bool PhaseRestriction_isValidPhase_1(const PhaseRestriction& PR,
+                                       double phi) {
+    return PR.isValidPhase(phi);
   }
 
   Miller::SymEquivIndex Miller_SymEquivIndex_Mate_0(
@@ -386,24 +368,14 @@ namespace {
     return SEMI(iInv, iList);
   }
   bool
-  SymEquivMillerIndices_isValidPhase_rad_1(const SymEquivMillerIndices& SEMI,
-                                           double phi) {
-    return SEMI.isValidPhase_rad(phi);
+  SymEquivMillerIndices_isValidPhase_2(const SymEquivMillerIndices& SEMI,
+                                       double phi, bool deg) {
+    return SEMI.isValidPhase(phi, deg);
   }
   bool
-  SymEquivMillerIndices_isValidPhase_rad_2(const SymEquivMillerIndices& SEMI,
-                                           double phi, double tolerance) {
-    return SEMI.isValidPhase_rad(phi, tolerance);
-  }
-  bool
-  SymEquivMillerIndices_isValidPhase_deg_1(const SymEquivMillerIndices& SEMI,
-                                           double phi) {
-    return SEMI.isValidPhase_deg(phi);
-  }
-  bool
-  SymEquivMillerIndices_isValidPhase_deg_2(const SymEquivMillerIndices& SEMI,
-                                           double phi, double tolerance) {
-    return SEMI.isValidPhase_deg(phi, tolerance);
+  SymEquivMillerIndices_isValidPhase_1(const SymEquivMillerIndices& SEMI,
+                                       double phi) {
+    return SEMI.isValidPhase(phi);
   }
 
   RTMx WyckoffPosition_getitem(const WyckoffPosition& WP,
@@ -833,19 +805,13 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
 
   py_PhaseRestriction.def(constructor<>());
   py_PhaseRestriction.def(&PhaseRestriction::isCentric, "isCentric");
-  py_PhaseRestriction.def(PhaseRestriction_HT_0, "HT");
+  py_PhaseRestriction.def(&PhaseRestriction::HT, "HT");
   py_PhaseRestriction.def(&PhaseRestriction::TBF, "TBF");
-  py_PhaseRestriction.def(PhaseRestriction_HT_1, "HT");
-  py_PhaseRestriction.def(&PhaseRestriction::HT_rad, "HT_rad");
-  py_PhaseRestriction.def(&PhaseRestriction::HT_deg, "HT_deg");
-  py_PhaseRestriction.def(
-    PhaseRestriction_isValidPhase_rad_1, "isValidPhase_rad");
-  py_PhaseRestriction.def(
-    PhaseRestriction_isValidPhase_rad_2, "isValidPhase_rad");
-  py_PhaseRestriction.def(
-    PhaseRestriction_isValidPhase_deg_1, "isValidPhase_deg");
-  py_PhaseRestriction.def(
-    PhaseRestriction_isValidPhase_deg_2, "isValidPhase_deg");
+  py_PhaseRestriction.def(&PhaseRestriction::HT_angle, "HT_angle");
+  py_PhaseRestriction.def(PhaseRestriction_HT_angle_0, "HT_angle");
+  py_PhaseRestriction.def(&PhaseRestriction::isValidPhase, "isValidPhase");
+  py_PhaseRestriction.def(PhaseRestriction_isValidPhase_2, "isValidPhase");
+  py_PhaseRestriction.def(PhaseRestriction_isValidPhase_1, "isValidPhase");
 
   py_SymEquivMillerIndices.def(constructor<>());
   py_SymEquivMillerIndices.def(
@@ -863,13 +829,11 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
   py_SymEquivMillerIndices.def(SymEquivMillerIndices_call_1, "__call__");
   py_SymEquivMillerIndices.def(SymEquivMillerIndices_call_2, "__call__");
   py_SymEquivMillerIndices.def(
-    SymEquivMillerIndices_isValidPhase_rad_1, "isValidPhase_rad");
+    &SymEquivMillerIndices::isValidPhase, "isValidPhase");
   py_SymEquivMillerIndices.def(
-    SymEquivMillerIndices_isValidPhase_rad_2, "isValidPhase_rad");
+    SymEquivMillerIndices_isValidPhase_2, "isValidPhase");
   py_SymEquivMillerIndices.def(
-    SymEquivMillerIndices_isValidPhase_deg_1, "isValidPhase_deg");
-  py_SymEquivMillerIndices.def(
-    SymEquivMillerIndices_isValidPhase_deg_2, "isValidPhase_deg");
+    SymEquivMillerIndices_isValidPhase_1, "isValidPhase");
 
   py_SpaceGroup.def(constructor<>());
   py_SpaceGroup.def(constructor<parse_string&>());
@@ -910,10 +874,9 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
   py_SpaceGroup.def(SpaceGroup_isCentric_s, "isCentric");
   py_SpaceGroup.def(&SpaceGroup::isOriginCentric, "isOriginCentric");
   py_SpaceGroup.def(&SpaceGroup::getPhaseRestriction, "getPhaseRestriction");
-  py_SpaceGroup.def(SpaceGroup_isValidPhase_rad_2, "isValidPhase_rad");
-  py_SpaceGroup.def(SpaceGroup_isValidPhase_rad_3, "isValidPhase_rad");
-  py_SpaceGroup.def(SpaceGroup_isValidPhase_deg_2, "isValidPhase_deg");
-  py_SpaceGroup.def(SpaceGroup_isValidPhase_deg_3, "isValidPhase_deg");
+  py_SpaceGroup.def(&SpaceGroup::isValidPhase, "isValidPhase");
+  py_SpaceGroup.def(SpaceGroup_isValidPhase_3, "isValidPhase");
+  py_SpaceGroup.def(SpaceGroup_isValidPhase_2, "isValidPhase");
   py_SpaceGroup.def(SpaceGroup_epsilon_a, "epsilon");
   py_SpaceGroup.def(SpaceGroup_epsilon_s, "epsilon");
   py_SpaceGroup.def(SpaceGroup_multiplicity_a, "multiplicity");

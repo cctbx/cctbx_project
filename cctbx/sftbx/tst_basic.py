@@ -40,7 +40,7 @@ def OneCycle():
   dT_dX = sftbx.StructureFactor_dT_dX_Array(
     UnitCell, SgOps, MillerIndices, dT_dFc, Sites)
   abs_F = shared.abs(Fcalc)
-  phase = shared.arg_deg(Fcalc)
+  phase = shared.arg(Fcalc)
   for i in xrange(len(MillerIndices)):
     print MillerIndices[i], Fcalc[i], abs_F[i], phase[i]
 
