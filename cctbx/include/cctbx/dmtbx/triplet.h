@@ -99,7 +99,9 @@ namespace cctbx { namespace dmtbx {
       triplet_invariants() {}
 
       triplet_invariants(sgtbx::SpaceGroupInfo const& SgInfo,
-                         af::shared<Miller::Index> miller_indices)
+                         af::shared<Miller::Index> miller_indices,
+                         bool sigma_2,
+                         bool other_than_sigma_2)
       : TBF_(SgInfo.SgOps().TBF())
       {
         sgtbx::ReciprocalSpaceASU asu(SgInfo);
@@ -122,9 +124,10 @@ namespace cctbx { namespace dmtbx {
           list_of_tpr_maps_.push_back(tpr_map_type());
         }
         for(std::size_t ih=0;ih<miller_indices.size();ih++) {
-          //if (ik == ih) continue;
           Miller::Index h = miller_indices[ih];
           for(std::size_t ik=0;ik<miller_indices.size();ik++) {
+            if (ik == ih) { if (!other_than_sigma_2) continue; }
+            else          { if (!sigma_2) continue; }
             Miller::Index k = miller_indices[ik];
             sgtbx::SymEquivMillerIndices
             sym_eq_k = SgInfo.SgOps().getEquivMillerIndices(k);
@@ -140,8 +143,12 @@ namespace cctbx { namespace dmtbx {
                 if (ld_pos != lookup_dict.end()) {
                   std::size_t ihmk = ld_pos->second;
                   cctbx_assert(miller_indices[ihmk] == asym_hmk_h);
-                  //if (ihmk == ih) continue;
-                  //if (ihmk == ik) continue;
+                  if (ihmk == ih || ihmk == ik) {
+                    if (!other_than_sigma_2) continue;
+                  }
+                  else {
+                    if (!sigma_2) continue;
+                  }
                   triplet_phase_relation tpr(ik, ihmk, k_seq, asym_hmk);
                   list_of_tpr_maps_[ih][tpr]++;
                 }
