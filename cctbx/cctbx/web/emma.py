@@ -4,6 +4,7 @@ from cctbx import sgtbx
 from cctbx import uctbx
 from cctbx.web import io_utils
 from cctbx.web import cgi_utils
+from libtbx.itertbx import count
 
 def interpret_form_data(form):
   inp = cgi_utils.inp_from_form(form,
@@ -34,11 +35,44 @@ def interpret_generic_coordinate_line(line, skip_columns):
     raise RuntimeError, "FormatError: " + line
   return " ".join(flds[:skip_columns]), site
 
+def pdb_file_to_emma_model(crystal_symmetry, pdb_records, other_symmetry):
+  from iotbx.pdb import cryst1_interpretation
+  cryst1_symmetry = None
+  for record in pdb_records:
+    if (record.record_name.startswith("CRYST1")):
+      try:
+        cryst1_symmetry = cryst1_interpretation.crystal_symmetry(
+          cryst1_record=record)
+      except: pass
+      break
+  if (cryst1_symmetry is not None):
+    crystal_symmetry = cryst1_symmetry.join_symmetry(
+      other_symmetry=crystal_symmetry,
+      force=0001)
+  if (other_symmetry is not None):
+    crystal_symmetry = crystal_symmetry.join_symmetry(
+      other_symmetry=other_symmetry,
+      force=00000)
+  positions = []
+  for record in pdb_records:
+    if (not record.record_name in ("ATOM", "HETATM")): continue
+    if (crystal_symmetry.unit_cell() is None):
+      raise RuntimeError("Unit cell parameters unknown.")
+    positions.append(emma.position(
+      ":".join([str(len(positions)+1),
+                record.name, record.resName, record.chainID]),
+      crystal_symmetry.unit_cell().fractionalize(record.coordinates)))
+  m = emma.model(
+    crystal.special_position_settings(crystal_symmetry),
+    positions)
+  m.label = "Other model"
+  return m
+
 def sdb_file_to_emma_model(crystal_symmetry, sdb_file):
   positions = []
-  i = 0
-  for site in sdb_file.sites:
-    i += 1
+  for i,site in zip(count(1),sdb_file.sites):
+    if (crystal_symmetry.unit_cell() is None):
+      raise RuntimeError("Unit cell parameters unknown.")
     positions.append(emma.position(
       ":".join((str(i), site.segid, site.type)),
       crystal_symmetry.unit_cell().fractionalize((site.x, site.y, site.z))))
@@ -51,10 +85,13 @@ def sdb_file_to_emma_model(crystal_symmetry, sdb_file):
 class web_to_models:
 
   def __init__(self, ucparams, sgsymbol, convention,
-               format, coor_type, skip_columns, coordinates):
+               format, coor_type, skip_columns, coordinates,
+               other_symmetry=None):
     self.ucparams = ucparams
     self.sgsymbol = sgsymbol
     self.convention = convention
+    self.other_symmetry = other_symmetry
+    self.coordinate_format = None
     if (format == "generic"):
       skip_columns = io_utils.interpret_skip_columns(skip_columns)
       self.positions = []
@@ -64,9 +101,31 @@ class web_to_models:
         if (coor_type != "Fractional"):
           site = self.get_unit_cell().fractionalize(site)
         self.positions.append(emma.position(label, site))
+      self.coordinate_format = "generic"
     else:
-      from iotbx.cns import sdb_reader
-      self.sdb_files = sdb_reader.multi_sdb_parser(coordinates)
+      if (self.coordinate_format is None):
+        try:
+          import iotbx.pdb
+          pdb_records = iotbx.pdb.parser.collect_records(
+            raw_records=coordinates,
+            ignore_master=0001)
+        except:
+          pass
+        else:
+          self.pdb_model = pdb_file_to_emma_model(
+            self.crystal_symmetry(), pdb_records, other_symmetry)
+          if (len(self.pdb_model.positions()) > 0):
+            self.coordinate_format = "pdb"
+      if (self.coordinate_format is None):
+        try:
+          from iotbx.cns import sdb_reader
+          self.sdb_files = sdb_reader.multi_sdb_parser(coordinates)
+        except:
+          pass
+        else:
+          self.coordinate_format = "sdb"
+      if (self.coordinate_format is None):
+        raise RuntimeError("Coordinate format unknown.")
     self.i_next_model = 0
 
   def get_unit_cell(self, other_unit_cell=None):
@@ -82,8 +141,17 @@ class web_to_models:
     assert other_space_group_info is not None, "Space group symbol unknown."
     return other_space_group_info
 
+  def crystal_symmetry(self):
+    unit_cell = None
+    space_group_symbol = None
+    if (self.ucparams): unit_cell = uctbx.unit_cell(self.ucparams)
+    if (self.sgsymbol): space_group_symbol = self.sgsymbol
+    return crystal.symmetry(
+      unit_cell=unit_cell,
+      space_group_symbol=space_group_symbol)
+
   def get_next(self):
-    if (hasattr(self, "positions")):
+    if (self.coordinate_format == "generic"):
       if (self.i_next_model): return None
       crystal_symmetry = crystal.symmetry(
         unit_cell=self.get_unit_cell(),
@@ -94,14 +162,24 @@ class web_to_models:
       m.label = "Model 2"
       self.i_next_model += 1
       return m
-    if (self.i_next_model >= len(self.sdb_files)): return None
-    sdb = self.sdb_files[self.i_next_model]
-    crystal_symmetry = crystal.symmetry(
-      unit_cell=self.get_unit_cell(sdb.unit_cell),
-      space_group_info=self.get_space_group_info(sdb.space_group_info))
-    m = sdb_file_to_emma_model(crystal_symmetry, sdb)
-    self.i_next_model += 1
-    return m
+    if (self.coordinate_format == "pdb"):
+      if (self.i_next_model): return None
+      self.i_next_model += 1
+      return self.pdb_model
+    if (self.coordinate_format == "sdb"):
+      if (self.i_next_model >= len(self.sdb_files)): return None
+      sdb = self.sdb_files[self.i_next_model]
+      crystal_symmetry = crystal.symmetry(
+        unit_cell=self.get_unit_cell(sdb.unit_cell),
+        space_group_info=self.get_space_group_info(sdb.space_group_info))
+      if (self.other_symmetry is not None):
+        crystal_symmetry = crystal_symmetry.join_symmetry(
+          other_symmetry=self.other_symmetry,
+          force=00000)
+      m = sdb_file_to_emma_model(crystal_symmetry, sdb)
+      self.i_next_model += 1
+      return m
+    raise RuntimeError("Internal error.")
 
 def run(server_info, inp, status):
   print "<pre>"
@@ -132,18 +210,25 @@ def run(server_info, inp, status):
   assert model1, "Problems reading reference model."
   model1.show("Reference model")
   assert not models1.get_next()
+  if (model1.unit_cell() is None):
+    raise RuntimeError("Unit cell parameters unknown (reference model).")
+  if (model1.space_group_info() is None):
+    raise RuntimeError("Space group unknown (reference model).")
 
   models2 = web_to_models(
     inp.ucparams_2,
     inp.sgsymbol_2, inp.convention_2,
     inp.format_2, inp.coor_type_2, inp.skip_columns_2,
-    inp.coordinates[1])
+    inp.coordinates[1],
+    other_symmetry=model1)
   while 1:
     print "#" * 79
     print
     model2 = models2.get_next()
     if (not model2): break
     model2.show(model2.label)
+    assert model2.unit_cell() is not None
+    assert model2.space_group_info() is not None
     model_matches = emma.model_matches(
       model1=model1,
       model2=model2,
