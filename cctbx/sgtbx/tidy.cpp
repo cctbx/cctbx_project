@@ -24,7 +24,9 @@ namespace cctbx { namespace sgtbx {
     TrVec Tbest = Tlcm.modShort();
     for (int i = 1; i < nVects(); i++) {
       TrVec Ttrial = (Tlcm + m_Vects[i].scale(fBF)).modShort();
-      if (CmpiVect(3)(Ttrial.elems, Tbest.elems)) Tbest = Ttrial;
+      if (CmpiVect(3)(Ttrial.vec().begin(), Tbest.vec().begin())) {
+        Tbest = Ttrial;
+      }
     }
     return Tbest.newBaseFactor(T.BF()).modPositive();
   }
@@ -33,8 +35,8 @@ namespace cctbx { namespace sgtbx {
     public:
       bool operator()(const TrVec& a, const TrVec& b) {
         rangei(3) {
-          if (a[i] < b[i]) return true;
-          if (a[i] > b[i]) return false;
+          if (a.vec()[i] < b.vec()[i]) return true;
+          if (a.vec()[i] > b.vec()[i]) return false;
         }
         return false;
       }
@@ -53,16 +55,18 @@ namespace cctbx { namespace sgtbx {
         if (CmpiVect(3)(RI_b.EV().elems, RI_a.EV().elems)) return false;
         if (RI_a.SenseOfRotation() > RI_b.SenseOfRotation()) return true;
         if (RI_a.SenseOfRotation() < RI_b.SenseOfRotation()) return false;
-        if (CmpiVect(3)(a.Tpart().elems, b.Tpart().elems)) return true;
-        if (CmpiVect(3)(b.Tpart().elems, a.Tpart().elems)) return false;
+        if (CmpiVect(3)(
+          a.Tpart().vec().begin(), b.Tpart().vec().begin())) return true;
+        if (CmpiVect(3)(
+          b.Tpart().vec().begin(), a.Tpart().vec().begin())) return false;
         int i;
         for(i=0;i<9;i++) {
           if (a.Rpart()[i] < b.Rpart()[i]) return true;
           if (a.Rpart()[i] > b.Rpart()[i]) return false;
         }
         for(i=0;i<3;i++) {
-          if (a.Tpart()[i] < b.Tpart()[i]) return true;
-          if (a.Tpart()[i] > b.Tpart()[i]) return false;
+          if (a.Tpart().vec()[i] < b.Tpart().vec()[i]) return true;
+          if (a.Tpart().vec()[i] > b.Tpart().vec()[i]) return false;
         }
         return false;
       }

@@ -52,7 +52,7 @@ namespace cctbx { namespace sgtbx {
     int i;
     for(i=0;i<3;i++) {
       TrVec BV;
-      BV[i] = BV.BF();
+      BV.vec()[i] = BV.BF();
       result.expand(CBOp(BV, 1));
     }
     for (i = 1; i < nVects(); i++) {

@@ -358,7 +358,7 @@ namespace cctbx { namespace sgtbx {
             int iInv = 0; if (Rtype == 2) iInv = 1;
             RTMx SMx = WorkSgOps(0, iInv, iSMx);
             TrVec wi = SMx.getIntrinsicPart();
-            if (wi[2] % wi.BF() != 0) return true;
+            if (wi.vec()[2] % wi.BF() != 0) return true;
             return false;
           }
         }
@@ -477,7 +477,7 @@ namespace cctbx { namespace sgtbx {
       int SNF[9 * 3], V[3 * 3];
       for (int iGen = 0; iGen < nGen; iGen++) {
         for(i=0;i<9;i++) SNF[iGen * 9 + i] = RmI[iGen][i];
-        for(i=0;i<3;i++) V[iGen * 3 + i] = DeltaT[iGen][i];
+        for(i=0;i<3;i++) V[iGen * 3 + i] = DeltaT[iGen].vec()[i];
       }
 
       af::int3 x;
@@ -627,8 +627,8 @@ namespace cctbx { namespace sgtbx {
           if (na > nb) return true;
           if (na < nb) return false;
 
-          if (CmpT(aT.elems, bT.elems)) return true;
-          if (CmpT(bT.elems, aT.elems)) return false;
+          if (CmpT(aT.vec().begin(), bT.vec().begin())) return true;
+          if (CmpT(bT.vec().begin(), aT.vec().begin())) return false;
 
           return CmpR(bR.elems, aR.elems);
         }
