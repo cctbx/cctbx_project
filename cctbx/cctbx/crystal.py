@@ -9,7 +9,8 @@ class symmetry(object):
                      space_group_symbol=None,
                      space_group_info=None,
                      space_group=None,
-                     assert_is_compatible_unit_cell=0001):
+                     assert_is_compatible_unit_cell=0001,
+                     force_compatible_unit_cell=0001):
     assert [space_group_symbol, space_group_info, space_group].count(None) >= 2
     if (    unit_cell is not None
         and not isinstance(unit_cell, uctbx.ext.unit_cell)):
@@ -21,11 +22,13 @@ class symmetry(object):
         self._space_group_info = sgtbx.space_group_info(space_group_symbol)
       elif (space_group is not None):
         self._space_group_info = sgtbx.space_group_info(group=space_group)
-    if (    assert_is_compatible_unit_cell
-        and self.unit_cell() is not None
-        and self.space_group_info() is not None):
-      assert self.is_compatible_unit_cell(), \
-        "Space group is incompatible with unit cell parameters."
+
+    if (self.unit_cell() is not None and self.space_group_info() is not None):
+      if (assert_is_compatible_unit_cell):
+        assert self.is_compatible_unit_cell(), \
+          "Space group is incompatible with unit cell parameters."
+      if (force_compatible_unit_cell):
+        self._unit_cell = self.space_group().average_unit_cell(self._unit_cell)
 
   def _copy_constructor(self, other):
     self._unit_cell = other._unit_cell

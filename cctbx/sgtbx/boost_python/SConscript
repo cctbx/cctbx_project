@@ -13,7 +13,6 @@ env.SharedLibrary(target="#libtbx/cctbx_boost/sgtbx_ext", source=[
   "seminvariant.cpp",
   "site_symmetry.cpp",
   "space_group.cpp",
-  "space_group_2.cpp",
   "space_group_type.cpp",
   "sym_equiv_sites.cpp",
   "symbols.cpp",
