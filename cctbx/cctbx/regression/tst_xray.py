@@ -14,6 +14,13 @@ def exercise_structure():
   assert tuple(xs.special_position_indices()) == (0, 1)
   xs.all_apply_symmetry()
   assert tuple(xs.special_position_indices()) == (0, 1)
+  ys = xs.deep_copy_scatterers()
+  ys.add_scatterers(ys.scatterers())
+  assert ys.scatterers().size() == 4
+  assert tuple(ys.special_position_indices()) == (0, 1, 2, 3)
+  ys.add_scatterer(ys.scatterers()[0])
+  assert ys.scatterers().size() == 5
+  assert tuple(ys.special_position_indices()) == (0, 1, 2, 3, 4)
   sx = xs.change_hand()
   assert sx.unit_cell().is_similar_to(xs.unit_cell())
   assert str(sx.space_group_info()) == "P 64 2 2"
