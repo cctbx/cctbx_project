@@ -103,10 +103,7 @@ class structure_factors(miller_index_set, symmetrized_sites):
     self.F = sftbx.StructureFactorArray(
       self.UnitCell, self.SgOps, self.H, self.Sites)
     if (abs_F):
-      abs_F = shared.double()
-      for F in self.F:
-        abs_F.append(abs(F)) # XXX push to C++ (self.F = shared.abs(self.F))
-      self.F = abs_F
+      self.F = shared.abs(self.F)
 
 def f_as_ampl_phase(f, deg=1):
   from math import hypot, atan2, pi
