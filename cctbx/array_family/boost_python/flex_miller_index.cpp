@@ -48,7 +48,8 @@ namespace scitbx { namespace af { namespace boost_python {
     using namespace cctbx;
 
     flex_wrapper<miller::index<> >::ordered("miller_index", flex_root_scope)
-      .def_pickle(flex_pickle_single_buffered<miller::index<>, 3*12>());
+      .def_pickle(flex_pickle_single_buffered<miller::index<>,
+        3*pickle_size_per_element<miller::index<>::value_type>::value>());
   }
 
 }}} // namespace scitbx::af::boost_python
