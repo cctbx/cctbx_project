@@ -25,7 +25,6 @@ namespace {
     wrap()
     {
       using namespace boost::python;
-      typedef boost::python::arg arg_; // gcc 2.96 workaround
       typedef return_value_policy<copy_const_reference> ccr;
       typedef return_internal_reference<> rir;
       class_<w_t>("grid_tags", no_init)

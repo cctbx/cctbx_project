@@ -34,7 +34,6 @@ namespace {
     {
       using namespace boost::python;
       typedef return_value_policy<copy_const_reference> ccr;
-      typedef boost::python::arg arg_; // gcc 2.96 workaround
       class_<w_t>("structure_seminvariants", no_init)
         .def(init<space_group const&>((arg_("space_group"))))
         .def("vectors_and_moduli", &w_t::vectors_and_moduli, ccr())

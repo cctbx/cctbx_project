@@ -16,7 +16,6 @@ namespace {
     wrap()
     {
       using namespace boost::python;
-      typedef boost::python::arg arg_; // gcc 2.96 workaround
       class_<w_t, bases<w_t::base_t> >("sampled_model_density", no_init)
         .def(init<uctbx::unit_cell const&,
                   af::const_ref<scatterer<> > const&,

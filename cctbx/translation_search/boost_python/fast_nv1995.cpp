@@ -16,7 +16,6 @@ namespace {
     wrap()
     {
       using namespace boost::python;
-      typedef boost::python::arg arg_; // gcc 2.96 workaround
       class_<w_t>("fast_nv1995", no_init)
         .def(init<af::int3 const&,
                   sgtbx::space_group const&,

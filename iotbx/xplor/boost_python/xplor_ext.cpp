@@ -209,7 +209,6 @@ namespace {
 BOOST_PYTHON_MODULE(iotbx_xplor_ext)
 {
   using namespace boost::python;
-  typedef boost::python::arg arg_; // gcc 2.96 workaround
 
   class_<map_reader>("map_reader", no_init)
     .def(init<std::string const&, std::size_t, af::flex_grid<> const&>(

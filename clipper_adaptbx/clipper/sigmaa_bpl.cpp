@@ -110,7 +110,6 @@ namespace clipper { namespace {
     wrap()
     {
       using namespace boost::python;
-      typedef boost::python::arg arg_; // gcc 2.96 workaround
       class_<w_t>("SFweight_spline_interface", no_init)
         .def(init<cctbx::uctbx::unit_cell const&,
                   cctbx::sgtbx::space_group const&,

@@ -26,7 +26,6 @@ namespace {
     wrap()
     {
       using namespace boost::python;
-      typedef boost::python::arg arg_; // gcc 2.96 workaround
       typedef return_value_policy<return_by_value> rbv;
       typedef default_call_policies dcp;
       class_<w_t>("direct_space_asu_float_cut_plane", no_init)
@@ -62,7 +61,6 @@ namespace {
     wrap()
     {
       using namespace boost::python;
-      typedef boost::python::arg arg_; // gcc 2.96 workaround
       typedef return_value_policy<copy_const_reference> ccr;
       typedef return_internal_reference<> rir;
       class_<w_t>("direct_space_asu_float_asu", no_init)
@@ -117,7 +115,6 @@ namespace {
     wrap()
     {
       using namespace boost::python;
-      typedef boost::python::arg arg_; // gcc 2.96 workaround
       class_<w_t>("direct_space_asu_asu_mapping_index_pair", no_init)
         .def_readonly("i_seq", &w_t::i_seq)
         .def_readonly("j_seq", &w_t::j_seq)
@@ -162,7 +159,6 @@ namespace {
     wrap()
     {
       using namespace boost::python;
-      typedef boost::python::arg arg_; // gcc 2.96 workaround
       typedef return_value_policy<copy_const_reference> ccr;
       typedef return_internal_reference<> rir;
       class_<w_t, boost::shared_ptr<asu_mappings<> > >(

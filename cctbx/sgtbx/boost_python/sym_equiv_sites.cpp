@@ -19,7 +19,6 @@ namespace {
     wrap()
     {
       using namespace boost::python;
-      typedef boost::python::arg arg_; // gcc 2.96 workaround
       typedef return_value_policy<copy_const_reference> ccr;
       typedef return_internal_reference<> rir;
       class_<w_t>("sym_equiv_sites", no_init)
@@ -71,7 +70,6 @@ namespace {
     wrap()
     {
       using namespace boost::python;
-      typedef boost::python::arg arg_; // gcc 2.96 workaround
       typedef return_value_policy<copy_const_reference> ccr;
       class_<w_t>("min_sym_equiv_distance_info", no_init)
         .def(init<sym_equiv_sites<> const&,

@@ -17,7 +17,6 @@ namespace {
     wrap()
     {
       using namespace boost::python;
-      typedef boost::python::arg arg_; // gcc 2.96 workaround
       typedef return_internal_reference<> rir;
       class_<w_t>("symmetry", no_init)
         .def(init<uctbx::unit_cell const&,

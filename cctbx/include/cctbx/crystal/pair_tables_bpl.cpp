@@ -56,7 +56,6 @@ namespace {
     wrap()
     {
       using namespace boost::python;
-      typedef boost::python::arg arg_; // gcc 2.96 workaround
       typedef return_value_policy<copy_const_reference> ccr;
       typedef return_internal_reference<> rir;
       class_<w_t>("pair_asu_table", no_init)
@@ -97,7 +96,6 @@ namespace {
   wrap_all()
   {
     using namespace boost::python;
-    typedef boost::python::arg arg_; // gcc 2.96 workaround
 
     pair_sym_table_wrappers::wrap();
     def("get_distances", get_distances, (

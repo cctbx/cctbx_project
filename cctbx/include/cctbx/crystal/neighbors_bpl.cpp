@@ -34,7 +34,6 @@ namespace {
     wrap()
     {
       using namespace boost::python;
-      typedef boost::python::arg arg_; // gcc 2.96 workaround
       class_<w_t>("neighbors_simple_pair_generator", no_init)
         .def(init<boost::shared_ptr<direct_space_asu::asu_mappings<> >&,
                   optional<double const&, bool> >(
@@ -60,7 +59,6 @@ namespace {
     wrap()
     {
       using namespace boost::python;
-      typedef boost::python::arg arg_; // gcc 2.96 workaround
       typedef return_value_policy<copy_const_reference> ccr;
       class_<w_t, bases<simple_pair_generator<> > >(
         "neighbors_fast_pair_generator", no_init)

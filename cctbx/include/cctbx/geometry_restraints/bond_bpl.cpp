@@ -22,7 +22,6 @@ namespace {
     wrap()
     {
       using namespace boost::python;
-      typedef boost::python::arg arg_; // gcc 2.96 workaround
       class_<w_t>("bond_params", no_init)
         .def(init<double, double>((arg_("distance_ideal"), arg_("weight"))))
         .def_readwrite("distance_ideal", &w_t::distance_ideal)
@@ -53,7 +52,6 @@ namespace {
     wrap()
     {
       using namespace boost::python;
-      typedef boost::python::arg arg_; // gcc 2.96 workaround
       typedef return_value_policy<return_by_value> rbv;
       class_<w_t, bases<bond_params> >("bond_simple_proxy", no_init)
         .def(init<af::tiny<unsigned, 2> const&, double, double>(
@@ -76,7 +74,6 @@ namespace {
     wrap()
     {
       using namespace boost::python;
-      typedef boost::python::arg arg_; // gcc 2.96 workaround
       class_<w_t, bases<bond_params, asu_mapping_index_pair> >(
             "bond_asu_proxy", no_init)
         .def(init<asu_mapping_index_pair const&, double, double>(
@@ -101,7 +98,6 @@ namespace {
     wrap()
     {
       using namespace boost::python;
-      typedef boost::python::arg arg_; // gcc 2.96 workaround
       typedef return_value_policy<return_by_value> rbv;
       class_<w_t, bases<bond_params> >("bond", no_init)
         .def(init<af::tiny<scitbx::vec3<double>, 2> const&, double, double>(
@@ -130,7 +126,6 @@ namespace {
     wrap()
     {
       using namespace boost::python;
-      typedef boost::python::arg arg_; // gcc 2.96 workaround
       typedef return_value_policy<copy_const_reference> ccr;
       class_<w_t>("bond_sorted_asu_proxies", no_init)
         .def(init<
@@ -171,7 +166,6 @@ namespace {
   wrap_all()
   {
     using namespace boost::python;
-    typedef boost::python::arg arg_; // gcc 2.96 workaround
     bond_params_wrappers::wrap();
     bond_params_table_wrappers::wrap();
     bond_simple_proxy_wrappers::wrap();

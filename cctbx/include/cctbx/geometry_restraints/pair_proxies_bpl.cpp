@@ -16,7 +16,6 @@ namespace {
     wrap()
     {
       using namespace boost::python;
-      typedef boost::python::arg arg_; // gcc 2.96 workaround
       class_<w_t>("pair_proxies", no_init)
         .def(init<
           af::const_ref<bond_params_dict> const&>((
@@ -52,7 +51,6 @@ namespace {
   wrap_all()
   {
     using namespace boost::python;
-    typedef boost::python::arg arg_; // gcc 2.96 workaround
     def("add_pairs", add_pairs, (
       arg_("pair_asu_table"), arg_("bond_simple_proxies")));
     pair_proxies_wrappers::wrap();

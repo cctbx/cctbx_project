@@ -22,7 +22,6 @@ namespace {
     wrap()
     {
       using namespace boost::python;
-      typedef boost::python::arg arg_; // gcc 2.96 workaround
       typedef return_value_policy<return_by_value> rbv;
       class_<w_t>("planarity_proxy", no_init)
         .def(init<
@@ -47,7 +46,6 @@ namespace {
     wrap()
     {
       using namespace boost::python;
-      typedef boost::python::arg arg_; // gcc 2.96 workaround
       typedef return_value_policy<copy_const_reference> ccr;
       typedef return_internal_reference<> rir;
       typedef return_value_policy<return_by_value> rbv;
@@ -78,7 +76,6 @@ namespace {
   wrap_all()
   {
     using namespace boost::python;
-    typedef boost::python::arg arg_; // gcc 2.96 workaround
     planarity_proxy_wrappers::wrap();
     planarity_wrappers::wrap();
     def("planarity_deltas_rms", planarity_deltas_rms,

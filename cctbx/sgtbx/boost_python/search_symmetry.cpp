@@ -18,7 +18,6 @@ namespace {
     wrap()
     {
       using namespace boost::python;
-      typedef boost::python::arg arg_; // gcc 2.96 workaround
       class_<w_t>("search_symmetry_flags", no_init)
         .def(init<bool, optional<int, bool, bool, bool> >(
           (arg_("use_space_group_symmetry"),
@@ -48,7 +47,6 @@ namespace {
     wrap()
     {
       using namespace boost::python;
-      typedef boost::python::arg arg_; // gcc 2.96 workaround
       typedef return_value_policy<copy_const_reference> ccr;
       typedef return_internal_reference<> rir;
       class_<w_t>("search_symmetry", no_init)

@@ -22,7 +22,6 @@ namespace {
     wrap()
     {
       using namespace boost::python;
-      typedef boost::python::arg arg_; // gcc 2.96 workaround
       class_<w_t>("nonbonded_params", no_init)
         .def(init<optional<double, double, double, double> >(
             (arg_("factor_1_4_interactions")=2/3.,
@@ -49,7 +48,6 @@ namespace {
     wrap()
     {
       using namespace boost::python;
-      typedef boost::python::arg arg_; // gcc 2.96 workaround
       typedef return_value_policy<return_by_value> rbv;
       class_<w_t>("nonbonded_simple_proxy", no_init)
         .def(init<af::tiny<unsigned, 2> const&, double>(
@@ -73,7 +71,6 @@ namespace {
     wrap()
     {
       using namespace boost::python;
-      typedef boost::python::arg arg_; // gcc 2.96 workaround
       class_<w_t, bases<asu_mapping_index_pair> >(
             "nonbonded_asu_proxy", no_init)
         .def(init<asu_mapping_index_pair const&, double>(
@@ -96,7 +93,6 @@ namespace {
     wrap()
     {
       using namespace boost::python;
-      typedef boost::python::arg arg_; // gcc 2.96 workaround
       class_<w_t>("repulsion_function", no_init)
         .def(init<optional<double, double, double, double> >(
           (arg_("c_rep"), arg_("k_rep"), arg_("irexp"), arg_("rexp"))))
@@ -116,7 +112,6 @@ namespace {
     wrap()
     {
       using namespace boost::python;
-      typedef boost::python::arg arg_; // gcc 2.96 workaround
       typedef return_value_policy<return_by_value> rbv;
       class_<w_t>("nonbonded", no_init)
         .def(init<af::tiny<scitbx::vec3<double>, 2> const&,
@@ -152,7 +147,6 @@ namespace {
     wrap()
     {
       using namespace boost::python;
-      typedef boost::python::arg arg_; // gcc 2.96 workaround
       typedef return_value_policy<copy_const_reference> ccr;
       class_<w_t>("nonbonded_sorted_asu_proxies", no_init)
         .def(init<
@@ -193,7 +187,6 @@ namespace {
   wrap_all()
   {
     using namespace boost::python;
-    typedef boost::python::arg arg_; // gcc 2.96 workaround
     nonbonded_params_wrappers::wrap();
     nonbonded_simple_proxy_wrappers::wrap();
     nonbonded_asu_proxy_wrappers::wrap();
