@@ -3,8 +3,8 @@
 
 #include <scitbx/array_family/tiny.h>
 #include <scitbx/math/bessel.h>
+#include <scitbx/math/atanh.h>
 #include <cctbx/import_scitbx_af.h>
-#include <boost/math/special_functions/atanh.hpp>
 #include <complex>
 
 namespace cctbx {
@@ -63,7 +63,7 @@ namespace cctbx {
         FloatType fom = std::min(std::abs(phase_integral),max_figure_of_merit);
         FloatType weight;
         if (centric_flag) {
-          weight = boost::math::atanh(fom);
+          weight = scitbx::math::atanh(fom);
         }
         else {
           weight = scitbx::math::bessel::inverse_i1_over_i0(fom);
