@@ -1,7 +1,70 @@
 from iotbx import reflection_file_reader
 from iotbx.option_parser import iotbx_option_parser
+from cctbx import crystal
+from cctbx import sgtbx
 from libtbx.itertbx import count
 import sys
+
+class array_cache:
+
+  def __init__(self, input):
+    self.input = input
+    self.change_of_basis_op_to_minimum_cell \
+      = self.input.change_of_basis_op_to_minimum_cell()
+    self.observations = self.input.change_basis(
+      cb_op=self.change_of_basis_op_to_minimum_cell) \
+        .expand_to_p1() \
+        .map_to_asu()
+    if (self.input.anomalous_flag()):
+      self.anom_diffs = self.input.anomalous_differences().change_basis(
+        cb_op=self.change_of_basis_op_to_minimum_cell) \
+          .expand_to_p1() \
+          .map_to_asu()
+    else:
+      self.anom_diffs = None
+    self.minimum_cell_symmetry = crystal.symmetry.change_basis(
+      self.input,
+      cb_op=self.change_of_basis_op_to_minimum_cell)
+    self.patterson_group = self.minimum_cell_symmetry.space_group() \
+      .build_derived_patterson_group()
+    self.patterson_group.make_tidy()
+
+  def similarity_transformations(self,
+        other,
+        relative_length_tolerance=0.02,
+        absolute_angle_tolerance=2):
+    c_inv_rs = self.minimum_cell_symmetry.unit_cell() \
+      .similarity_transformations(
+        other=other.minimum_cell_symmetry.unit_cell(),
+        relative_length_tolerance=relative_length_tolerance,
+        absolute_angle_tolerance=absolute_angle_tolerance)
+    expanded_groups = [self.patterson_group]
+    if (other.patterson_group != self.patterson_group):
+      expanded_groups.append(other.patterson_group)
+    patterson_groups = tuple(expanded_groups)
+    result = []
+    for c_inv_r in c_inv_rs:
+      c_inv = sgtbx.rt_mx(sgtbx.rot_mx(c_inv_r))
+      if (c_inv.is_unit_mx()):
+        result.append(sgtbx.change_of_basis_op(c_inv))
+      else:
+        for patterson_group in patterson_groups:
+          expanded_group = sgtbx.space_group(patterson_group)
+          expanded_group.expand_smx(c_inv)
+          expanded_group.make_tidy()
+          def is_in_expanded_groups():
+            for g in expanded_groups:
+              if (g == expanded_group): return True
+            return False
+          if (not is_in_expanded_groups()):
+            expanded_groups.append(expanded_group)
+            result.append(sgtbx.change_of_basis_op(c_inv).inverse())
+    return result
+
+  def combined_cb_op(self, other, cb_op):
+    s = self.change_of_basis_op_to_minimum_cell
+    o = other.change_of_basis_op_to_minimum_cell
+    return s.inverse() * cb_op.new_denominators(s) * o
 
 def binned_correlation_fmt(correlation):
   return "%6.3f" % correlation.coefficient()
@@ -31,8 +94,7 @@ def run(args):
   if (len(command_line.args) == 0):
     command_line.parser.show_help()
     return
-  all_miller_arrays = []
-  all_anom_diffs = []
+  array_caches = []
   for file_name in command_line.args:
     reflection_file = reflection_file_reader.any_reflection_file(
       file_name=file_name)
@@ -78,68 +140,92 @@ def run(args):
                 d_min=command_line.options.resolution)
             miller_array = miller_array.map_to_asu()
             miller_array.set_info(info=info)
-            all_miller_arrays.append(miller_array)
-            if (miller_array.anomalous_flag()):
-              anom_diffs = miller_array.anomalous_differences()
-            else:
-              anom_diffs = None
-            all_anom_diffs.append(anom_diffs)
-  assert len(all_miller_arrays) == len(all_anom_diffs)
-  for i_0,array_0,anom_diffs_0 in zip(count(), all_miller_arrays,
-                                               all_anom_diffs):
-    array_0.show_comprehensive_summary()
+            array_caches.append(array_cache(input=miller_array))
+  n_bins = command_line.options.n_bins
+  for i_0,cache_0 in enumerate(array_caches):
+    cache_0.input.show_comprehensive_summary()
     print
-    array_0.setup_binner(n_bins=command_line.options.n_bins)
-    if (anom_diffs_0 is not None):
-      anom_diffs_0.setup_binner(n_bins=command_line.options.n_bins)
-    print "Completeness of %s:" % str(array_0.info())
-    array_0.show_completeness_in_bins()
+    reindexing_matrices = cache_0.input.reindexing_matrices()
+    print "Possible twin laws:",
+    if (len(reindexing_matrices) == 0):
+      print "None"
+    else:
+      print
+      for c in reindexing_matrices:
+        print " ", c.r().as_hkl()
+      print
+    print "Completeness of %s:" % str(cache_0.input.info())
+    if (cache_0.input.binner() is None):
+      cache_0.input.setup_binner(n_bins=n_bins)
+    cache_0.input.show_completeness_in_bins()
     print
-    if (array_0.anomalous_flag()):
-      print "Anomalous signal of %s:" % str(array_0.info())
-      print array_0.anomalous_signal.__doc__
-      anom_signal = array_0.anomalous_signal(use_binning=True)
+    if (cache_0.input.anomalous_flag()):
+      print "Anomalous signal of %s:" % str(cache_0.input.info())
+      print cache_0.input.anomalous_signal.__doc__
+      anom_signal = cache_0.input.anomalous_signal(use_binning=True)
       anom_signal.show(data_fmt="%.4f")
       print
-    for array_1,anom_diffs_1 in zip(all_miller_arrays[i_0+1:],
-                                    all_anom_diffs[i_0+1:]):
-      if (not array_0.is_similar_symmetry(
-                other=array_1,
-                relative_length_tolerance=0.05,
-                absolute_angle_tolerance=5)):
-        print "Incompatible symmetries:"
-        print " ", array_0.info()
-        print " ", array_1.info()
-        print "No comparison."
-        print
-      elif (not command_line.options.quick):
-        print "Correlation of:"
-        print " ", array_0.info()
-        print " ", array_1.info()
-        correlation = array_0.correlation(
-          other=array_1,
-          assert_is_similar_symmetry=False)
-        print "Overall correlation: %6.3f" % correlation.coefficient()
-        correlation = array_0.correlation(
-          other=array_1,
-          use_binning=True,
-          assert_is_similar_symmetry=False)
-        correlation.show(data_fmt=binned_correlation_fmt)
-        print
-        if (anom_diffs_0 is not None and anom_diffs_1 is not None):
-          print "Anomalous difference correlation of:"
-          print " ", array_0.info()
-          print " ", array_1.info()
-          correlation = anom_diffs_0.correlation(
-            other=anom_diffs_1,
-            assert_is_similar_symmetry=False)
-          print "Overall correlation: %6.3f" % correlation.coefficient()
-          correlation = anom_diffs_0.correlation(
-            other=anom_diffs_1,
-            use_binning=True,
-            assert_is_similar_symmetry=False)
-          correlation.show(data_fmt=binned_correlation_fmt)
+    if (not command_line.options.quick):
+      for info_1 in array_caches[i_0+1:]:
+        similarity_transformations = cache_0.similarity_transformations(
+          other=info_1,
+          relative_length_tolerance=0.05,
+          absolute_angle_tolerance=5)
+        if (len(similarity_transformations) == 0):
+          print "Incompatible symmetries:"
+          print " ", cache_0.input.info()
+          print " ", info_1.input.info()
+          print "No comparison."
           print
+        else:
+          for cb_op in similarity_transformations:
+            print "Correlation of:"
+            print " ", cache_0.input.info()
+            print " ", info_1.input.info()
+            similar_array_1 = info_1.observations \
+              .change_basis(cb_op) \
+              .map_to_asu()
+            correlation = cache_0.observations.correlation(
+              other=similar_array_1,
+              assert_is_similar_symmetry=False)
+            combined_cb_op = cache_0.combined_cb_op(other=info_1, cb_op=cb_op)
+            if (not combined_cb_op.c().is_unit_mx()):
+              reindexing_note = " with reindexing"
+              hkl_str = " "+combined_cb_op.as_hkl()
+            else:
+              reindexing_note = ""
+              hkl_str = ""
+            print "Overall correlation%s: %6.3f%s" % (
+              reindexing_note, correlation.coefficient(), hkl_str)
+            if (cache_0.observations.binner() is None):
+              cache_0.observations.setup_binner(n_bins=n_bins)
+            correlation = cache_0.observations.correlation(
+              other=similar_array_1,
+              use_binning=True,
+              assert_is_similar_symmetry=False)
+            correlation.show(data_fmt=binned_correlation_fmt)
+            print
+            if (    cache_0.anom_diffs is not None
+                and info_1.anom_diffs is not None):
+              print "Anomalous difference correlation of:"
+              print " ", cache_0.input.info()
+              print " ", info_1.input.info()
+              similar_anom_diffs_1 = info_1.anom_diffs \
+                .change_basis(cb_op) \
+                .map_to_asu()
+              correlation = cache_0.anom_diffs.correlation(
+                other=similar_anom_diffs_1,
+                assert_is_similar_symmetry=False)
+              print "Overall correlation%s: %6.3f%s" % (
+                reindexing_note, correlation.coefficient(), hkl_str)
+              if (cache_0.anom_diffs.binner() is None):
+                cache_0.anom_diffs.setup_binner(n_bins=n_bins)
+              correlation = cache_0.anom_diffs.correlation(
+                other=similar_anom_diffs_1,
+                use_binning=True,
+                assert_is_similar_symmetry=False)
+              correlation.show(data_fmt=binned_correlation_fmt)
+              print
     print "=" * 79
     print
 
