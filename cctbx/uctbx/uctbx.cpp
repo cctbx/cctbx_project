@@ -192,6 +192,13 @@ namespace uctbx {
     SetLongestVector2();
   }
 
+  UnitCell::UnitCell() {
+    int i;
+    for(i=0;i<3;i++) Len[i] = 1.;
+    for(i=0;i<3;i++) Ang[i] = deg_as_rad(90.);
+    Initialize();
+  }
+
   UnitCell::UnitCell(const uc_params& ucp) {
     int i;
     for(i=0;i<3;i++) Len[i] = ucp.Len(i);

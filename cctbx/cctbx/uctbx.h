@@ -132,6 +132,8 @@ namespace uctbx {
     public:
       //! @name Constructors.
       //@{
+      //! Default (1, 1, 1, 90, 90, 90).
+      UnitCell();
       //! Constructor using parameters (a, b, c, alpha, beta, gamma).
       UnitCell(const uc_params& ucp);
       //! Constructor using parameters derived from a metrical matrix.

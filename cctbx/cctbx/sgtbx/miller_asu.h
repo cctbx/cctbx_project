@@ -167,6 +167,56 @@ namespace sgtbx {
       const StdReciprocalSpaceASU* m_StdASU;
   };
 
+  template <typename ArrayType>
+  class NestedLoop
+  {
+    public:
+      NestedLoop() : m_over(1) {}
+      NestedLoop(const ArrayType& min, const ArrayType& max)
+        : m_min(min), m_max(max), m_cur(m_min), m_over(0) {}
+      bool incr()
+      {
+        std::size_t i = m_cur.size() - 1;
+        for (;;) {
+          m_cur[i]++;
+          if (m_cur[i] <= m_max[i]) return true;
+          m_cur[i] = m_min[i];
+          if (i == 0) {
+            m_over++;
+            break;
+          }
+          i--;
+        }
+        return false;
+      }
+      inline const ArrayType& min() const { return m_min; }
+      inline const ArrayType& max() const { return m_max; }
+      inline const ArrayType& operator()() { return m_cur; }
+      inline std::size_t over() const { return m_over; }
+      inline const ArrayType& next() { incr(); return m_cur; }
+    private:
+      ArrayType m_min;
+      ArrayType m_max;
+      ArrayType m_cur;
+      std::size_t m_over;
+  };
+
+  class MillerIndexGenerator
+  {
+    public:
+      MillerIndexGenerator() {}
+      MillerIndexGenerator(const uctbx::UnitCell& uc,
+                           const SgOps& sgo,
+                           double Resolution_d_min);
+      Miller::Index next();
+    private:
+      uctbx::UnitCell m_UnitCell;
+      SgOps m_SgOps;
+      double m_Qhigh;
+      ReciprocalSpaceASU m_ASU;
+      NestedLoop<Miller::Index> m_loop;
+  };
+
 } // namespace sgtbx
 
 #endif // CCTBX_SGTBX_MILLER_ASU_H

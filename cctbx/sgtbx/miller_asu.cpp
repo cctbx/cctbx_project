@@ -393,8 +393,45 @@ namespace sgtbx {
     }
   }
 
-  class MillerIndexGenerator
+  MillerIndexGenerator::MillerIndexGenerator(const uctbx::UnitCell& uc,
+                                             const SgOps& sgo,
+                                             double Resolution_d_min)
+    : m_UnitCell(uc), m_SgOps(sgo)
   {
-  };
+    if (Resolution_d_min <= 0.) {
+      throw error("Resolution limit must be greater than zero.");
+    }
+    m_Qhigh = 1. / (Resolution_d_min * Resolution_d_min);
+
+    SpaceGroupType SgType = m_SgOps.getSpaceGroupType();
+    uctbx::UnitCell
+    StdUnitCell = m_UnitCell.ChangeBasis(SgType.CBOp().M().Rpart());
+    SgOps StdSgOps = SgOps(SpaceGroupSymbols(SgType.SgNumber()).Hall());
+    m_ASU = ReciprocalSpaceASU(SgType);
+    Miller::Vec3 CutP = m_ASU.StdASU()->getCutParameters();
+    Miller::Index StdHmax = StdUnitCell.MaxMillerIndices(Resolution_d_min);
+    Miller::Index StdHmin;
+    for(std::size_t i=0;i<3;i++) StdHmin[i] = StdHmax[i] * CutP[i];
+    m_loop = NestedLoop<Miller::Index>(StdHmin, StdHmax);
+  }
+
+  Miller::Index MillerIndexGenerator::next()
+  {
+    const int RBF = m_ASU.CBOp().M().RBF();
+    for (; m_loop.over() == 0;) {
+      Miller::Index StdH = m_loop();
+      m_loop.incr();
+      if (m_ASU.StdASU()->isInASU(StdH)) {
+        TrVec HR(StdH * m_ASU.CBOp().M().Rpart(), RBF);
+        HR = HR.cancel();
+        if (HR.BF() == 1) {
+          Miller::Index H(HR.elems);
+          double Q = m_UnitCell.Q(H);
+          if (Q != 0 && Q <= m_Qhigh && !m_SgOps.isSysAbsent(H)) return H;
+        }
+      }
+    }
+    return Miller::Index(0, 0, 0);
+  }
 
 } // namespace sgtbx

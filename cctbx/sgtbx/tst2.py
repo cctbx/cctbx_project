@@ -44,9 +44,19 @@ def hkl(sgo):
     for iList in xrange(semi.M(0)):
       assert(Master.H() == sgo.getMasterIndex(semi(iList), CutP, Pretty).H())
 
+def BuildIndices(SgOps):
+  import uctbx
+  UnitCell = uctbx.UnitCell((10, 10, 10, 90, 90, 90))
+  MG = sgtbx.MillerIndexGenerator(UnitCell, SgOps, 3)
+  while 1:
+    H = MG.next()
+    if (H == (0, 0, 0)): break
+    print H
+
 if (__name__ == '__main__'):
   sgo = parse(sys.argv[1])
   if (sgo):
     show(sgo)
-    show_RotMxInfo(sgo)
-    hkl(sgo)
+    #show_RotMxInfo(sgo)
+    #hkl(sgo)
+    BuildIndices(sgo)
