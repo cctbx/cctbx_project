@@ -1,4 +1,13 @@
 // $Id$
+/* Copyright (c) 2001 The Regents of the University of California through
+   E.O. Lawrence Berkeley National Laboratory, subject to approval by the
+   U.S. Department of Energy. See files COPYRIGHT.txt and
+   cctbx/LICENSE.txt for further details.
+
+   Revision history:
+     Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
+               Based on C code contributed by Vincent Favre-Nicolin.
+ */
 
 #include <string>
 #include <cctbx/eltbx/basic.h>
@@ -31,7 +40,6 @@ namespace eltbx {
       return mEntry;
     }
 
-    // C++ version of C function contributed by Vincent Favre-Nicolin
     fpfdp interpolate(const Label_Z_Efpfdp* m_Label_Z_Efpfdp, double Energy)
     {
       float fp = Efpfdp_undefined;

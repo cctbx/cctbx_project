@@ -73,13 +73,13 @@ expected that the cctbx is fully functional with Python 2.0.
 
 \section installing_python Installing Python
 
-In theory, Python has to be installed only if the cctbx Python bindings
-are to be used. However, the cctbx build system uses Python to
-automatically generate Makefiles. The Makefiles used in the development
-are provided and could be modified by hand, but this can be quite
-cumbersome, especially if more than one platform is used. Installing
-Python is easy. Therefore it is highly recommended to always install
-Python before installing the cctbx.
+Installing Python is required only if the cctbx Python bindings are to
+be used. However, the cctbx build system uses Python to automatically
+generate Makefiles. The Makefiles used in the development are provided
+and could be modified by hand, but this can be quite cumbersome,
+especially if more than one platform is used. Installing Python is
+easy. Therefore it is highly recommended to always install Python
+before installing the cctbx.
 
 \par
 On RedHat Linux systems, Python 1.5.2 is part of the operating system
@@ -93,10 +93,69 @@ platforms are provided here:
 
 \section installing_boost Installing Boost
 
-To be done.
+<h3>Unix</h3>
+
+<ol>
+<li>Unpack the Boost tar file in a directory of your choice (e.g.
+    $HOME or /usr/local):
+    <p>
+    <tt>cd $HOME</tt>
+    <tt>gunzip -c boost_*.tar.gz | tar xvf -</tt>
+    <p>
+    If you do not need the cctbx Python bindings, you are done with
+    the Boost installation.
+
+<li>Makefiles for a number of platforms are provided in the directory
+    boost/libs/python/build. Copy the appropriate Makefile to another
+    empty directory anywhere outside the boost directory tree, for
+    example $HOME/build/linux_gcc/boost. Note that compilation will
+    often be significanly faster if you choose a local file system (as
+    opposed to a network file system such as NFS).
+    <br>
+    Edit the pathnames at the top of the Makefile. The three Makefile
+    variables to change are BOOST, PYEXE, and PYINC.
+
+<li>Enter "make". This will build libboost_python.a (Unix) or
+    boost_python.lib (Microsoft Visual C++). In addition a number of
+    tests and examples will be compiled. When the compilation is
+    finished, enter "make test". There should be no error messages.
+
+<li>You may move libboost_python.a to a different directory such as
+    /usr/local/lib, if this is desired.
+
+</ol>
 
 \section installing_cctbx Installing the cctbx
 
-To be done.
+<h3>Unix</h3>
+<ol>
+<li>Unpack the cctbx tar file in a directory of your choice (e.g.
+    $HOME or /usr/local):
+    <p>
+    <tt>cd $HOME</tt>
+    <tt>gunzip -c cctbx_*.tar.gz | tar xvf -</tt>
+
+<li>Edit the pathnames in the Python script
+    cctbx/build/MakeMakefilesMaster.py.
+
+<li>In the main cctbx directory enter "make makefiles". This will
+    build the individual Makefiles for all the toolboxes using
+    the pathnames configured in MakeMakefilesMaster.py.
+
+<li>Copy cctbx/build/Makefile to another empty directory anywhere
+    outside the cctbx directory tree, for example
+    $HOME/build/linux_gcc/cctbx. Note that compilation will often be
+    significanly faster if you choose a local file system (as opposed
+    to a network file system such as NFS).
+
+<li>Enter "make boot_<platform>", e.g. "make boot_linux_gcc".
+
+<li>Enter "make everything". This will compile all toolboxes including
+    the Python bindings.
+
+<li>You may move the contents of cctbx/lib to another location,
+    such as /usr/local.
+
+</ol>
 
 */

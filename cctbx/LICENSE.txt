@@ -1,4 +1,4 @@
-SOURCE CODE LICENSE AGREEMENT
+SOURCE CODE LICENSE AGREEMENT (rev 010327)
 
 Software: Computational Crystallography Toolbox
 Version: Sourceforge CVS tree
@@ -128,7 +128,7 @@ return to Berkeley Lab, or destroy, all copies of the Software, and
 provide Berkeley Lab with written certification of your compliance with
 the foregoing.  Termination shall not relieve you from your obligations
 arising prior to such termination. Notwithstanding any provision of
-this Agreement to the contrary, Sections 5 through 10 shall survive
+this Agreement to the contrary, Sections 5 through 11 shall survive
 termination of this Agreement.
 
 9.      EXPORT CONTROLS. You shall observe all applicable United States
@@ -164,6 +164,5 @@ Software Licensing or via e-mail at TTD@lbl.gov.
 
 If you have any questions or feedback concerning this Software, contact
 the Computational Crystallography Group, Lawrence Berkeley National
-Laboratory, One Cyclotron Road, MS 4-230, Berkeley, CA  94720 or
-via email at cctbx@cci.lbl.gov.
-
+Laboratory, One Cyclotron Road, MS 4-230, Berkeley, CA  94720 or via
+email at cctbx@cci.lbl.gov.
