@@ -442,7 +442,9 @@ class definition: # FUTURE definition(object)
           substitution_source = self.primary_parent_scope.lexical_get(
             path=fragment.value, stop_id=self.primary_id)
           if (substitution_source is not None):
-            assert isinstance(substitution_source, definition)
+            if (not isinstance(substitution_source, definition)):
+              raise RuntimeError("Not a definition: $%s%s" % (
+                fragment.value, word.where_str()))
             variable_words = substitution_source.resolve_variables().words
         if (variable_words is None):
           env_var = os.environ.get(fragment.value, None)

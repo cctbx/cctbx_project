@@ -551,6 +551,7 @@ h=${s.t.x}
 i=${s.t.a}
 j=${s.t.n}
 k=${.s.t.x}
+l=$s
 """)
   check_resolve_variables(parameters, "a", "a = 1\n")
   check_resolve_variables(parameters, "b", "b = 1\n")
@@ -567,8 +568,7 @@ k=${.s.t.x}
   check_resolve_variables(parameters, "s.t.z", "z = 1\n")
   check_resolve_variables(parameters, "s.t.n", "n = 1 10 10\n")
   check_resolve_variables(parameters, "f", "f = 10\n")
-  try:
-    check_resolve_variables(parameters, "g")
+  try: check_resolve_variables(parameters, "g")
   except RuntimeError, e:
     assert str(e) == 'Undefined variable: $s.a (input line 26)'
   else: raise RuntimeError("Exception expected.")
@@ -579,6 +579,11 @@ k=${.s.t.x}
   check_resolve_variables(parameters, "s.e", "e = 9\n")
   check_resolve_variables(parameters, "s.f", "f = 2\n")
   check_resolve_variables(parameters, "s.g", "g = 20\n")
+  try: check_resolve_variables(parameters, "l")
+  except RuntimeError, e:
+    assert str(e) == 'Not a definition: $s (input line 37)'
+  else: raise RuntimeError("Exception expected.")
+  check_resolve_variables(parameters, "h", "h = 30\n")
   #
   parameters = iotbx.parameters.parse(input_string="""\
 a=$a
