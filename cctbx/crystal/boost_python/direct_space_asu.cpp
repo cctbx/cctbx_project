@@ -146,6 +146,7 @@ namespace {
         .def("lock", &w_t::lock)
         .def("is_locked", &w_t::is_locked)
         .def("mappings", &w_t::mappings, ccr())
+        .def("difference", &w_t::difference)
       ;
       {
         using namespace scitbx::boost_python::container_conversions;
