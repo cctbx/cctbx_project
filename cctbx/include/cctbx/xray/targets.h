@@ -301,11 +301,13 @@ double maximum_likelihood_target_one_h(double fo,
                                        int e,
                                        int c)
 {
-  CCTBX_ASSERT( (c == 1 || c == 0) && (b > 0.) && (e > 0) );
+  CCTBX_ASSERT( (c == 1 || c == 0) && (e > 0) );
   CCTBX_ASSERT( fo >= 0 && fc >= 0 );
-  CCTBX_ASSERT( a >= 0. );
   CCTBX_ASSERT( std::abs(k) > 1.e-9 );
   double target = 0.0;
+  if(a <= 0.0 || b <= 0.0) {
+     return 0.0;
+  }
   a *= k;
   b *= k*k;
   double eb = e * b;
@@ -348,9 +350,12 @@ std::complex<double> d_maximum_likelihood_target_one_h_over_fc(
                                                int c)
 {
   double fc = std::abs(fc_complex);
-  CCTBX_ASSERT( (c == 1 || c == 0) && (b > 0.) && (e > 0) );
-  CCTBX_ASSERT( fo >= 0 && fc > 0 && a >= 0. && k > 0. );
+  CCTBX_ASSERT( (c == 1 || c == 0) && (e > 0) );
+  CCTBX_ASSERT( fo >= 0 && fc > 0 && k > 0. );
   std::complex<double> d_target_over_fc = std::complex<double> (0.0,0.0);
+  if(a <= 0.0 || b <= 0.0) {
+     return std::complex<double> (0.0,0.0);
+  }
   a *= k;
   b *= k*k;
   double eb = e * b;
@@ -386,10 +391,13 @@ double d_maximum_likelihood_target_one_h_over_k(double fo,
                                                 int e,
                                                 int c)
 {
-  CCTBX_ASSERT( (c == 1 || c == 0) && (b > 0.) && (e > 0) );
-  CCTBX_ASSERT( fo >= 0 && fc > 0 && a >= 0. );
+  CCTBX_ASSERT( (c == 1 || c == 0) && (e > 0) );
+  CCTBX_ASSERT( fo >= 0 && fc > 0 );
   CCTBX_ASSERT( std::abs(k) > 1.e-9 );
   double d_target_over_k = 0.0;
+  if(a <= 0.0 || b <= 0.0) {
+     return 0.0;
+  }
   double eb = e * b;
   if(c == 0) {
     double d1 = 2. / k;
@@ -731,11 +739,13 @@ double mlhl_target_one_h(double fo,
                          double step_for_integration)
 {
   double small = 1.e-9;
-  CCTBX_ASSERT( (cf == 1 || cf == 0) && (beta > 0.) && (epsilon > 0) );
+  CCTBX_ASSERT( (cf == 1 || cf == 0) && (epsilon > 0) );
   CCTBX_ASSERT( fo >= 0 && fc >= 0 );
-  CCTBX_ASSERT( alpha >= 0. );
   CCTBX_ASSERT( std::abs(k) > small );
   double target = 0.0;
+  if(alpha <= 0.0 || beta <= 0.0) {
+     return 0.0;
+  }
   alpha *= k;
   beta *= k*k;
   double A = abcd.a();
@@ -807,6 +817,9 @@ std::complex<double> mlhl_d_target_dfcalc_one_h(
   CCTBX_ASSERT( alpha >= 0. );
   CCTBX_ASSERT( std::abs(k) > small );
   std::complex<double> d_target_over_fc = std::complex<double> (0.0,0.0);
+  if(alpha <= 0.0 || beta <= 0.0) {
+     return std::complex<double> (0.0,0.0);
+  }
   alpha *= k;
   beta *= k*k;
   double A = abcd.a();
