@@ -107,6 +107,9 @@ namespace scitbx { namespace af {
         return this->elems[0] * this->elems[1];
       }
 
+      bool
+      is_square() const { return this->elems[0] == this->elems[1]; }
+
       index_type
       index_nd(index_value_type const& i_1d)
       {
