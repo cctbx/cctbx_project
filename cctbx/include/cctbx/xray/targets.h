@@ -346,7 +346,8 @@ namespace cctbx { namespace xray { namespace targets {
       FobsValueType t_q = alpha[i]*fobs[i]*abs_fcalc/(eps[i]*beta[i]);
       FobsValueType t_r = scitbx::math::bessel::ln_of_i0(2.*t_q);
       FobsValueType t_s = t_q + std::log(1.+std::exp(-2.*t_q)) - std::log(2.);
-      target_ += -1.*( (1-cs[i])*(t_p+t_r)+cs[i]*(t_p/2.+t_s) );
+      FobsValueType tmp = std::log(beta[i])+fobs[i]*fobs[i]/(eps[i]*beta[i]);
+      target_ += -1.*( (1-cs[i])*(t_p+t_r+tmp)+cs[i]*(t_p/2.+t_s+tmp/2.) );
       if (compute_derivatives && abs_fcalc != 0) {
         FobsValueType d_p =-alpha[i]*alpha[i]*abs_fcalc/(eps[i]*beta[i]);
         FobsValueType d_q = alpha[i]*fobs[i]/(eps[i]*beta[i]);
