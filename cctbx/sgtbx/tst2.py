@@ -48,6 +48,7 @@ def BuildIndices(SgOps):
   import uctbx
   UnitCell = uctbx.UnitCell((10, 10, 10, 90, 90, 90))
   MIG = sgtbx.MillerIndexGenerator(UnitCell, SgOps, 3)
+  print MIG.ASU().ReferenceASU().representation()
   for H in MIG: print H
 
 if (__name__ == '__main__'):

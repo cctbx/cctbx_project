@@ -927,6 +927,7 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
                                             double>());
     py_MillerIndexGenerator.def(&MillerIndexGenerator::next, "next");
     py_MillerIndexGenerator.def(MillerIndexGenerator_getitem, "__getitem__");
+    py_MillerIndexGenerator.def(&MillerIndexGenerator::ASU, "ASU");
 
     sgtbx::sanity_check();
   }

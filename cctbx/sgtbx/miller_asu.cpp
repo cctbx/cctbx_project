@@ -436,12 +436,22 @@ namespace sgtbx {
       Miller::Index ReferenceH = m_loop();
       m_loop.incr();
       if (m_ASU.ReferenceASU()->isInASU(ReferenceH)) {
-        TrVec HR(ReferenceH * m_ASU.CBOp().M().Rpart(), RBF);
-        HR = HR.cancel();
-        if (HR.BF() == 1) {
-          Miller::Index H(HR.elems);
-          double Q = m_UnitCell.Q(H);
-          if (Q != 0 && Q <= m_Qhigh && !m_SgOps.isSysAbsent(H)) return H;
+        if (m_ASU.isReferenceASU()) {
+          double Q = m_UnitCell.Q(ReferenceH);
+          if (Q != 0 && Q <= m_Qhigh && !m_SgOps.isSysAbsent(ReferenceH)) {
+            return ReferenceH;
+          }
+        }
+        else {
+          TrVec HR(ReferenceH * m_ASU.CBOp().M().Rpart(), RBF);
+          HR = HR.cancel();
+          if (HR.BF() == 1) {
+            Miller::Index H(HR.elems);
+            double Q = m_UnitCell.Q(H);
+            if (Q != 0 && Q <= m_Qhigh && !m_SgOps.isSysAbsent(H)) {
+              return H;
+            }
+          }
         }
       }
     }
