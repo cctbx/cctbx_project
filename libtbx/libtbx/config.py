@@ -671,8 +671,8 @@ class environment:
       print >> f, ':update_path'
     update_path.write(("  ", "  "), "PATH", [self.bin_path])
     for un in ["", "un"]:
-      print >> s, '  doskey libtbx.%ssetpaths="%s\\%ssetpaths.bat" $*' % (
-        un, self.bin_path, un)
+      print >> s, '  doskey libtbx.%ssetpaths=%s\\%ssetpaths.bat $*' % (
+        un, self.build_path, un)
     print >> u, '  doskey libtbx.unsetpaths='
     print >> s, '  if "%1" == "" goto end_of_script'
     print >> s, '  if not "%2" == "" goto show_usage'
@@ -682,12 +682,12 @@ class environment:
     print >> s, '  echo usage: setpaths [all^|debug]'
     print >> s, '  goto end_of_script'
     print >> s, ':set_all'
-    print >> s, '  set %s="%s"' % ("LIBTBX_BUILD", self.build_path)
+    print >> s, '  set %s=%s' % ("LIBTBX_BUILD", self.build_path)
     print >> u, '  set %s=' % "LIBTBX_BUILD"
     for module in self.module_list:
       for name,path in module.name_and_dist_path_pairs():
         var_name = name.upper() + "_DIST"
-        print >> s, '  set %s="%s"' % (var_name, path)
+        print >> s, '  set %s=%s' % (var_name, path)
         print >> u, '  set %s=' % var_name
     print >> s, '  if not "%1" == "debug" goto end_of_script'
     update_path.write(("    ", "  "), "PYTHONPATH", self.pythonpath)
