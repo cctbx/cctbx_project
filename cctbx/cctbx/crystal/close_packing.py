@@ -15,21 +15,20 @@ import sys
 
 class hexagonal_box:
 
-  def __init__(self, unit_cell, vertices_frac, point_distance):
+  def __init__(self, vertices_cart, point_distance):
     self.hexagonal_cell = uctbx.unit_cell((
       point_distance, point_distance, point_distance*math.sqrt(8/3.),
       90, 90, 120))
-    hex_matrix = matrix.sqr(self.hexagonal_cell.fractionalization_matrix()) \
-               * matrix.sqr(unit_cell.orthogonalization_matrix())
-    if (len(vertices_frac) == 0):
+    hex_matrix = matrix.sqr(self.hexagonal_cell.fractionalization_matrix())
+    if (len(vertices_cart) == 0):
       self.min = None
       self.max = None
     else:
-      vertex_hex = hex_matrix * float(matrix.col(vertices_frac[0]))
+      vertex_hex = hex_matrix * matrix.col(vertices_cart[0])
       self.min = list(vertex_hex)
       self.max = list(vertex_hex)
-      for vertex_frac in vertices_frac[1:]:
-        vertex_hex = hex_matrix * float(matrix.col(vertex_frac))
+      for vertex_frac in vertices_cart[1:]:
+        vertex_hex = hex_matrix * matrix.col(vertex_frac)
         for i in xrange(3):
           self.min[i] = min(self.min[i], vertex_hex[i])
           self.max[i] = max(self.max[i], vertex_hex[i])
@@ -67,18 +66,15 @@ class hcp_options:
   def __init__(self, no_buffer=00000, strictly_inside=00000):
     adopt_init_args(self, locals())
 
-def hcp_fill_box(unit_cell, point_distance, rational_asu,
-                 continuous_shift_flags,
-                 options):
+def hcp_fill_box(float_asu, point_distance, continuous_shift_flags, options):
   assert point_distance > 0
   if (0):
     sites_frac = labeled_sites()
-    for i,vertex_frac in zip(count(), rational_asu.volume_vertices()):
-      sites_frac.append("vertex%2.2d" % i, float(matrix.col(vertex_frac)))
+    for i,vertex in zip(count(), float_asu.volume_vertices(cartesian=00000)):
+      sites_frac.append("vertex%2.2d" % i, vertex)
     return sites_frac
   hex_box = hexagonal_box(
-    unit_cell=unit_cell,
-    vertices_frac=rational_asu.volume_vertices(),
+    vertices_cart=float_asu.volume_vertices(cartesian=0001),
     point_distance=point_distance)
   if (options.no_buffer):
     extra_steps = 1
@@ -96,14 +92,12 @@ def hcp_fill_box(unit_cell, point_distance, rational_asu,
     buffer_thickness = 0
   else:
     buffer_thickness = point_distance * (2/3. * (.5 * math.sqrt(3)))
-  float_asu_buffer = rational_asu.add_buffer(
-    unit_cell=unit_cell,
-    thickness=buffer_thickness)
+  float_asu_buffer = float_asu.add_buffer(thickness=buffer_thickness)
   if (0):
     for facet in float_asu_buffer.facets():
       print facet.n, facet.c
   hex_to_frac_matrix = (
-      matrix.sqr(unit_cell.fractionalization_matrix())
+      matrix.sqr(float_asu.unit_cell().fractionalization_matrix())
     * matrix.sqr(hex_box.hexagonal_cell.orthogonalization_matrix()))
   sites_frac = labeled_sites()
   for point in flex.nested_loop(begin=box_origin,
@@ -160,9 +154,9 @@ def hexagonal_close_packing_sampling(crystal_symmetry,
     normal_directions=search_symmetry.continuous_shifts(),
     both_directions=0001)
   work_sites_frac = hcp_fill_box(
-    unit_cell=expanded_symmetry.unit_cell(),
+    float_asu=rational_asu.define_metric(
+      unit_cell=expanded_symmetry.unit_cell()).as_float_asu(),
     point_distance=point_distance,
-    rational_asu=rational_asu,
     continuous_shift_flags=search_symmetry.continuous_shift_flags(),
     options=options)
   rt = cb_op_work.c_inv().as_double_array()
