@@ -1,7 +1,8 @@
+import libtbx.load_env
 import md5
 import sys
 Import("env_base", "env_etc")
-env_etc.boost_dist = env_etc.libtbx_env.dist_path("boost")
+env_etc.boost_dist = libtbx.env.dist_path("boost")
 env_etc.boost_include = env_etc.boost_dist
 if (not env_etc.no_boost_python):
   env_etc.cxxflags_bpl_defines_base = ["-DBOOST_PYTHON_MAX_BASES=2"]
@@ -68,38 +69,17 @@ if (not env_etc.no_boost_python):
     env.Prepend(SHLINKFLAGS=[
       "g++", "-F"+env_etc.darwin_framework_path(), "-framework", "Python"])
 
-  jamfile_path = os.path.normpath(os.path.join(
-    env_etc.boost_dist, "libs/python/build/Jamfile"))
-
-  try:  #appropriate for Boost.Python snapshot on 2003-Feb-25
-    jamfile_all =   open(str(jamfile_path), "r").read()
-    jam_rhs = jamfile_all.split("local sources =")[1]
-    jam_middle = jam_rhs.split(";")[0]
-    jamfile_lines = jam_middle.split("\n")
-    jamfile_lines = [line.strip() for line in jamfile_lines]
-    while jamfile_lines.count("")>0:
-      jamfile_lines.remove("")
-    bpl_dll_sources = []
-    for line in jamfile_lines:
-      bpl_dll_sources.append(os.path.join("#boost/libs/python/build/../src", line))
-    assert len(bpl_dll_sources) > 0
-
-  except:  #appropriate for previous Boost release 1.29.0
-    jamfile_lines = [
-      line.strip() for line in open(str(jamfile_path), "r").readlines()]
-    for i in xrange(len(jamfile_lines)):
-      line = jamfile_lines[i]
-      if (line == "dll boost_python"):
-        assert jamfile_lines[i+1] == ":"
-        jamfile_lines = jamfile_lines[i+2:]
-        break
-    bpl_dll_sources = []
-    for i in xrange(len(jamfile_lines)):
-      line = jamfile_lines[i]
-      if (line == ":"): break
-      if (line):
-        bpl_dll_sources.append(os.path.join("#boost/libs/python/build", line))
-
+  jamfile_path = libtbx.env.under_dist("boost", "libs/python/build/Jamfile")
+  jamfile_all =   open(str(jamfile_path), "r").read()
+  jam_rhs = jamfile_all.split("local sources =")[1]
+  jam_middle = jam_rhs.split(";")[0]
+  jamfile_lines = jam_middle.split("\n")
+  jamfile_lines = [line.strip() for line in jamfile_lines]
+  while (jamfile_lines.count("") > 0):
+    jamfile_lines.remove("")
+  bpl_dll_sources = []
+  for line in jamfile_lines:
+    bpl_dll_sources.append(os.path.join("#boost/libs/python/src", line))
   assert len(bpl_dll_sources) > 0
 
   if (env_etc.static_bpl):
@@ -133,7 +113,7 @@ polymorphism2
 auto_ptr
 minimal
 args
-numpy
+#numpy
 enum
 exception_translator
 test_pointer_adoption
@@ -209,18 +189,18 @@ raw_ctor
       env_etc.boost_dist, "libs/python/test"))
     if (sys.platform == "win32"):
       boost_python_run_tests = \
-        "%s\\boost_python_run_tests.bat" % env_etc.libtbx_env.LIBTBX_BUILD
+        "%s\\boost_python_run_tests.bat" % libtbx.env.build_path
       f = open(boost_python_run_tests, "w")
       for tst in all_tst:
-        print >> f, 'call python "%s"' % (os.path.join(test_dir, tst+".py"))
+        print >> f, 'call libtbx.python "%s"' % (os.path.join(test_dir, tst+".py"))
       f.close()
     else:
       boost_python_run_tests = \
-        "%s/boost_python_run_tests.csh" % env_etc.libtbx_env.LIBTBX_BUILD
+        "%s/boost_python_run_tests.csh" % libtbx.env.build_path
       f = open(boost_python_run_tests, "w")
       print >> f, "#! /bin/csh -f"
       print >> f, "set verbose"
       for tst in all_tst:
-        print >> f, 'python "%s"' % (os.path.join(test_dir, tst+".py"))
+        print >> f, 'libtbx.python "%s"' % (os.path.join(test_dir, tst+".py"))
       f.close()
       os.chmod(boost_python_run_tests, 0755)

@@ -1,5 +1,5 @@
 from libtbx import test_utils
-import libtbx.env
+import libtbx.load_env
 
 def run():
   tst_list = (
