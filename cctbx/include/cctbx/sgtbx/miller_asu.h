@@ -273,7 +273,7 @@ namespace cctbx {
          */
         Index H() const { return m_H; }
         /*! \brief %Index (0 or 1) of the column for the
-            AsymIndex::FplusFminusLayout().
+            AsymIndex::TwoColumn() layout.
          */
         int iColumn() const { return m_iColumn; }
       private:
@@ -307,14 +307,13 @@ namespace cctbx {
         FriedelFlag() indicates if Friedel's law was
         actually applied.
         <p>
-        Support for the following data
+        Support one- and two-column data
         layouts is provided using the class
         IndexTableLayoutAdaptor:
         <p>
         <ul>
-        <li>AnomalousLayout()
-        <li>HermitianLayout()
-        <li>FplusFminusLayout()
+        <li>one_column()
+        <li>two_column()
         </ul>
      */
     class AsymIndex : public SymEquivIndex
@@ -349,41 +348,49 @@ namespace cctbx {
             selected is not necessarily contiguous.
          */
         AsymIndex(const sgtbx::SymEquivMillerIndices& SEMI);
-        //! Adaptor for table of asymmetric Miller indices.
-        /*! No Friedel symmetry (i.e. in the presence of an
-            anomalous signal), one column of data:<pre>
-              h  k  l  F
-             -h -k -l  F</pre>
-            There is a separate entry for each Friedel mate
-            in a table.
-         */
-        IndexTableLayoutAdaptor AnomalousLayout() const {
-          return IndexTableLayoutAdaptor(*this,
-            false, false, false);
-        }
-        //! Adaptor for table of asymmetric Miller indices.
-        /*! Assuming Friedel symmetry (no anomalous signal),
+        //! Adaptor for one-column table of asymmetric Miller indices.
+        /*! FriedelFlag == true (no anomalous signal),
             and only one value is stored for a Friedel pair:<pre>
              h  k  l  F</pre>
             The values associated with h,k,l and -h,-k,-l
             are assumed to be equal, and the phases are
             related by the equation
             phi(h,k,l) = -phi(-h,-k,-l).
+            <p>
+            FriedelFlag == false (i.e. in the presence of an
+            anomalous signal):<pre>
+              h  k  l  F
+             -h -k -l  F</pre>
+            There is a separate entry for each Friedel mate
+            in a table.
          */
-        IndexTableLayoutAdaptor HermitianLayout() const {
-          return IndexTableLayoutAdaptor(*this,
-            m_FriedelFlag, false, m_FriedelFlag);
+        IndexTableLayoutAdaptor one_column(bool friedel_flag) const
+        {
+          if (friedel_flag) {
+            return IndexTableLayoutAdaptor(*this,
+              m_FriedelFlag, false, m_FriedelFlag);
+          }
+          return IndexTableLayoutAdaptor(*this, false, false, false);
         }
-        //! Adaptor for table of asymmetric Miller indices.
-        /*! No Friedel symmetry (i.e. the in presence of an anomalous
-            signal), two columns of data:<pre>
+        //! Adaptor for two-column table of asymmetric Miller indices.
+        /*! FriedelFlag == true (no anomalous signal): same as
+            OneColumn(). Only one column is used. Provided
+            for completeness.
+            <p>
+            FriedelFlag == false (i.e. the in presence of an anomalous
+            signal):<pre>
               h  k  l  F+  F-</pre>
             Both Friedel mates are associated with the same
             index in a table.  The Miller index for F+ is
             (h, k, l) and the implied Miller index for F-
             is (-h, -k, -l).
          */
-        IndexTableLayoutAdaptor FplusFminusLayout() const {
+        IndexTableLayoutAdaptor two_column(bool friedel_flag) const
+        {
+          if (friedel_flag) {
+            return IndexTableLayoutAdaptor(*this,
+              m_FriedelFlag, false, m_FriedelFlag);
+          }
           return IndexTableLayoutAdaptor(*this,
             m_FriedelFlag, m_FriedelFlag, false);
         }
@@ -406,15 +413,9 @@ namespace cctbx {
         {
           cctbx_assert(miller_indices.size() == data_array.size());
           const sgtbx::SpaceGroup& sgops = sginfo.SgOps();
-          IndexTableLayoutAdaptor ila;
           for(std::size_t i=0;i<miller_indices.size();i++) {
             AsymIndex ai(sgops, asu_, miller_indices[i]);
-            if (friedel_flag_) {
-              ila = ai.HermitianLayout();
-            }
-            else {
-              ila = ai.AnomalousLayout();
-            }
+            IndexTableLayoutAdaptor ila = ai.one_column(friedel_flag);
             if (in_place) {
               miller_indices[i] = ila.H();
               data_array[i] = ila.complex_eq(data_array[i]);

@@ -118,7 +118,7 @@ namespace cctbx { namespace dmtbx {
               Miller::Index k_eq = sym_eq_k(ik_eq).HR();
               Miller::Index hmk = h - k_eq;
               tpr.asym_hmk = Miller::AsymIndex(SgInfo.SgOps(), asu, hmk);
-              Miller::Index asym_hmk = tpr.asym_hmk.HermitianLayout().H();
+              Miller::Index asym_hmk = tpr.asym_hmk.one_column(true).H();
               if (miller_index_span.is_in_domain(asym_hmk)) {
                 typename lookup_dict_type::const_iterator
                 ld_pos = lookup_dict.find(miller_index_span.pack(asym_hmk));
