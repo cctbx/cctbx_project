@@ -64,6 +64,12 @@ class rec:
   def __call__(self, ir, ic):
     return self.elems[ir * self.n_columns() + ic]
 
+  def __len__(self):
+    return len(self.elems)
+
+  def __getitem__(self, i):
+    return self.elems[i]
+
   def __float__(self):
     return rec([float(e) for e in self.elems], self.n)
 
@@ -275,6 +281,8 @@ if (__name__ == "__main__"):
   from libtbx.test_utils import approx_equal
   from boost import rational
   a = rec(range(1,7), (3,2))
+  assert len(a) == 6
+  assert a[1] == 2
   assert (a*3).mathematica_form() == "{{3, 6}, {9, 12}, {15, 18}}"
   assert (-2*a).mathematica_form() == "{{-2, -4}, {-6, -8}, {-10, -12}}"
   b = rec(range(1,7), (2,3))
