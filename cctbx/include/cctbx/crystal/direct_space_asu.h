@@ -268,7 +268,7 @@ namespace direct_space_asu {
       scitbx::vec3<IntShiftType> const&
       unit_shifts() const { return unit_shifts_; }
 
-      //! Fractional coordinates of the mapped site.
+      //! Cartesian coordinates of the mapped site.
       /*! mapped_site = space_group(i_sym_op()) * orginal_site + unit_shifts()
        */
       cartesian<FloatType> const&
