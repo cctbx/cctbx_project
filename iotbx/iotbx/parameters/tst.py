@@ -104,8 +104,7 @@ name = value
 """)
   recycle(
     input_string="name { }", expected_out="""\
-name
-{
+name {
 }
 """)
   recycle(
@@ -128,8 +127,7 @@ name
 """)
   recycle(
     input_string="name{a=b\nc=d\n}", expected_out="""\
-name
-{
+name {
   a = b
   c = d
 }
@@ -142,12 +140,10 @@ name
  prefix a = b
  prefix c = d
  prefix
- prefix e
- prefix {
+ prefix e {
  prefix }
  prefix
- prefix name
- prefix {
+ prefix name {
  prefix   var1 = None
  prefix   var2 = None
  prefix }
@@ -260,8 +256,7 @@ e=g""")
 a = b
 c = d
 
-e
-{
+e {
   a = 1
   b = x
 }
@@ -272,8 +267,7 @@ e = g
 a = b
 """)
   check_get(parameters, path="e", expected_out="""\
-e
-{
+e {
   a = 1
   b = x
 }
@@ -310,18 +304,14 @@ a0 {
     expected_out="""\
 d0 = 0
 
-a0
-{
+a0 {
   d1 = a b c
 
-  a1
-  {
-    t0
-    {
+  a1 {
+    t0 {
       c = yes
 
-      t1
-      {
+      t1 {
         x = 0
         y = 1.
       }
@@ -345,20 +335,16 @@ a0
 d0 = 0
   .type = "int"
 
-a0
-{
+a0 {
   d1 = a b c
     .type = "str"
 
-  a1
-  {
-    t0
-    {
+  a1 {
+    t0 {
       c = yes
         .type = "bool"
 
-      t1
-      {
+      t1 {
         x = 0
           .type = "int"
         y = 1.
@@ -379,8 +365,7 @@ s {
 t.a=0
 """)
   check_get(parameters, path="s", expected_out="""\
-s
-{
+s {
   a = 0
 }
 """)
@@ -404,18 +389,15 @@ t.a.b=0
 t.a.c.d=1
 """)
   check_get(parameters, path="s", expected_out="""\
-s
-{
-  a
-  {
+s {
+  a {
     b = 0
     c.d = 1
   }
 }
 """)
   check_get(parameters, path="s.a", expected_out="""\
-a
-{
+a {
   b = 0
   c.d = 1
 }
@@ -446,44 +428,35 @@ x.y { }
 x.z { }
 """)
   check_get(parameters, path="a", expected_out="""\
-a
-{
-  b
-  {
+a {
+  b {
   }
 
-  c
-  {
+  c {
   }
 }
 """)
   check_get(parameters, path="a.b", expected_out="""\
-b
-{
+b {
 }
 """)
   check_get(parameters, path="a.c", expected_out="""\
-c
-{
+c {
 }
 """)
   check_get(parameters, path="x", expected_out="""\
-x.y
-{
+x.y {
 }
 
-x.z
-{
+x.z {
 }
 """)
   check_get(parameters, path="x.y", expected_out="""\
-y
-{
+y {
 }
 """)
   check_get(parameters, path="x.z", expected_out="""\
-z
-{
+z {
 }
 """)
   parameters = iotbx.parameters.parse(input_string="""\
@@ -491,32 +464,26 @@ x.y { a.b { d.e=0
 } }
 """)
   check_get(parameters, path="x", expected_out="""\
-x.y
-{
-  a.b
-  {
+x.y {
+  a.b {
     d.e = 0
   }
 }
 """)
   check_get(parameters, path="x.y", expected_out="""\
-y
-{
-  a.b
-  {
+y {
+  a.b {
     d.e = 0
   }
 }
 """)
   check_get(parameters, path="x.y.a", expected_out="""\
-a.b
-{
+a.b {
   d.e = 0
 }
 """)
   check_get(parameters, path="x.y.a.b", expected_out="""\
-b
-{
+b {
   d.e = 0
 }
 """)
@@ -638,12 +605,10 @@ s {
 }
 """)
   check_get_sub(parameters, path="s", expected_out="""\
-s
-{
+s {
   a = x
 
-  s
-  {
+  s {
     a = y
     b = x
   }
@@ -844,13 +809,11 @@ s
   out = StringIO()
   master_multiple.fetch(source).show(out=out)
   assert out.getvalue() == """\
-s
-{
+s {
   a = 1
 }
 
-s
-{
+s {
   a = 2
 }
 """
@@ -866,8 +829,7 @@ s {
     out = StringIO()
     master.fetch(source).show(out=out)
     assert out.getvalue() == """\
-s
-{
+s {
   a = 1
 }
 """
@@ -875,13 +837,11 @@ s
     out = StringIO()
     master.fetch(source).show(out=out)
     assert out.getvalue() == """\
-s
-{
+s {
   a = 1
 }
 
-s
-{
+s {
   a = None
 }
 """
@@ -897,16 +857,14 @@ s {
     out = StringIO()
     master.fetch(source).show(out=out)
     assert out.getvalue() == """\
-s
-{
+s {
   a = None
 }
 """
   out = StringIO()
   master_optional_multiple.fetch(source).show(out=out)
   assert out.getvalue() == """\
-#s
-{
+#s {
   a = None
 }
 """
@@ -914,8 +872,7 @@ s
   out = StringIO()
   master_optional_multiple.fetch(source).show(out=out)
   assert out.getvalue() == """\
-#s
-{
+#s {
   a = None
 }
 """
@@ -1030,8 +987,7 @@ a = 9
 b = None
   .expert_level = 2
 
-c
-{
+c {
   a = y
     .expert_level = 3
   b = 1
@@ -1108,23 +1064,19 @@ c {
   out = StringIO()
   master.fetch(source=source).show(out=out)
   assert out.getvalue() == """\
-v
-{
+v {
   x = y
 }
 
-v
-{
+v {
   x = z
 }
 
-c
-{
+c {
   a = y
 }
 
-c
-{
+c {
   a = z
 }
 """
@@ -1150,8 +1102,7 @@ s {
   out = StringIO()
   master.fetch(source=source).show(out=out)
   assert out.getvalue() == """\
-s
-{
+s {
   a = x
 }
 """
@@ -1166,10 +1117,8 @@ s {
   out = StringIO()
   master.fetch(source=source).show(out=out)
   assert out.getvalue() == """\
-s
-{
-  t
-  {
+s {
+  t {
     a = x
   }
 }
@@ -1183,8 +1132,7 @@ s.t {
   out = StringIO()
   master.fetch(source=source).show(out=out)
   assert out.getvalue() == """\
-s.t
-{
+s.t {
   a = x
 }
 """
@@ -1197,8 +1145,7 @@ s.t {
   out = StringIO()
   master.fetch(source=source).show(out=out)
   assert out.getvalue() == """\
-s.t
-{
+s.t {
   a.b = x
 }
 """
@@ -1216,8 +1163,7 @@ s.t.u.a.b.c=${v.w.p.q}
   out = StringIO()
   master.fetch(source=source).show(out=out)
   assert out.getvalue() == """\
-s.t.u
-{
+s.t.u {
   a.b.c = z
 }
 """
@@ -1233,8 +1179,7 @@ s.t.u
     out = StringIO()
     master.fetch(source=source).show(out=out)
     assert out.getvalue() == """\
-s.t.u
-{
+s.t.u {
   a.b.c = x
 }
 """
@@ -1265,38 +1210,31 @@ s.t.a{b=e
   out = StringIO()
   master.fetch(source=source).show(out=out)
   assert out.getvalue() == """\
-s.t
-{
+s.t {
   a.b = x
 }
 
-s.t
-{
+s.t {
   a.b = y
 }
 
-s.t
-{
+s.t {
   a.b = z
 }
 
-s.t
-{
+s.t {
   a.b = q
 }
 
-s.t
-{
+s.t {
   a.b = w
 }
 
-s.t
-{
+s.t {
   a.b = f
 }
 
-s.t
-{
+s.t {
   a.b = e
 }
 """
@@ -1510,8 +1448,7 @@ group {
   extracted = parameters.fetch(source=parameters).extract()
   parameters.format(extracted).show(out=out)
   assert out.getvalue() == """\
-group
-{
+group {
   n = "ab" "c d" "ef "
   a = True
   b = 13
@@ -1698,8 +1635,7 @@ s
   out = StringIO()
   master.format(extracted).show(out=out)
   assert out.getvalue() == """\
-s
-{
+s {
   a = None
 }
 """
@@ -1716,8 +1652,7 @@ s {
   out = StringIO()
   master.format(extracted).show(out=out)
   assert out.getvalue() == """\
-s
-{
+s {
   a = 2
 }
 """
@@ -1735,8 +1670,7 @@ s {
   out = StringIO()
   master.format(extracted).show(out=out)
   assert out.getvalue() == """\
-s
-{
+s {
   a = 3
 }
 """
@@ -1757,8 +1691,7 @@ s
   out = StringIO()
   master.format(extracted).show(out=out)
   assert out.getvalue() == """\
-s
-{
+s {
   a = None
 }
 """
@@ -1772,8 +1705,7 @@ s {
   out = StringIO()
   master.format(extracted).show(out=out)
   assert out.getvalue() == """\
-s
-{
+s {
   a = None
 }
 """
