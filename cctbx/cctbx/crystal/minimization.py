@@ -1,4 +1,4 @@
-from mmtbx import stereochemistry
+from cctbx import restraints
 from cctbx.array_family import flex
 from scitbx.python_utils.misc import adopt_init_args
 from scitbx.python_utils.misc import time_log
@@ -26,7 +26,7 @@ class energies:
       self.bond_residual_sum = 0
     else:
       self.n_bond_proxies = len(bond_proxies)
-      self.bond_residual_sum = stereochemistry.restraints_bond_residual_sum(
+      self.bond_residual_sum = restraints.bond_residual_sum(
         sites_cart=sites_cart,
         proxies=bond_proxies,
         gradient_array=self.gradients)
@@ -36,7 +36,7 @@ class energies:
     else:
       assert asu_mappings is not None
       self.n_bond_sym_proxies = len(bond_sym_proxies)
-      self.bond_sym_residual_sum=stereochemistry.restraints_bond_residual_sum(
+      self.bond_sym_residual_sum=restraints.bond_residual_sum(
         sites_cart=sites_cart,
         asu_mappings=asu_mappings,
         proxies=bond_sym_proxies,
@@ -46,7 +46,7 @@ class energies:
       self.angle_residual_sum = 0
     else:
       self.n_angle_proxies = len(angle_proxies)
-      self.angle_residual_sum = stereochemistry.restraints_angle_residual_sum(
+      self.angle_residual_sum = restraints.angle_residual_sum(
         sites_cart=sites_cart,
         proxies=angle_proxies,
         gradient_array=self.gradients)
@@ -55,8 +55,7 @@ class energies:
       self.dihedral_residual_sum = 0
     else:
       self.n_dihedral_proxies = len(dihedral_proxies)
-      self.dihedral_residual_sum = \
-        stereochemistry.restraints_dihedral_residual_sum(
+      self.dihedral_residual_sum = restraints.dihedral_residual_sum(
           sites_cart=sites_cart,
           proxies=dihedral_proxies,
           gradient_array=self.gradients)
@@ -65,8 +64,7 @@ class energies:
       self.chirality_residual_sum = 0
     else:
       self.n_chirality_proxies = len(chirality_proxies)
-      self.chirality_residual_sum = \
-        stereochemistry.restraints_chirality_residual_sum(
+      self.chirality_residual_sum = restraints.chirality_residual_sum(
           sites_cart=sites_cart,
           proxies=chirality_proxies,
           gradient_array=self.gradients)
@@ -75,8 +73,7 @@ class energies:
       self.planarity_residual_sum = 0
     else:
       self.n_planarity_proxies = len(planarity_proxies)
-      self.planarity_residual_sum = \
-        stereochemistry.restraints_planarity_residual_sum(
+      self.planarity_residual_sum = restraints.planarity_residual_sum(
           sites_cart=sites_cart,
           proxies=planarity_proxies,
           gradient_array=self.gradients)
@@ -86,14 +83,13 @@ class energies:
     else:
       assert asu_mappings is not None
       self.n_repulsion_proxies = len(repulsion_proxies)
-      self.repulsion_residual_sum = (
-      stereochemistry.restraints_repulsion_residual_sum(
+      self.repulsion_residual_sum = restraints.repulsion_residual_sum(
         sites_cart=sites_cart,
         asu_mappings=asu_mappings,
         proxies=repulsion_proxies,
         gradient_array=self.gradients,
-        function=stereochemistry.restraints_repulsion_function(),
-        disable_cache=00000))
+        function=restraints.repulsion_function(),
+        disable_cache=00000)
 
   def target(self):
     return(self.bond_residual_sum
