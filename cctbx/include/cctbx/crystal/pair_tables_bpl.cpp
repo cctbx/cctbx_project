@@ -7,6 +7,7 @@
 #include <boost/python/return_arg.hpp>
 #include <boost/python/overloads.hpp>
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
+#include <scitbx/array_family/selections.h>
 #include <scitbx/stl/map_wrapper.h>
 #include <scitbx/stl/vector_wrapper.h>
 #include <cctbx/crystal/pair_tables.h>
@@ -25,7 +26,11 @@ namespace {
         "pair_sym_dict");
       scitbx::af::boost_python::shared_wrapper<pair_sym_dict, rir>::wrap(
         "pair_sym_table")
-        .def("select", pair_sym_table_select)
+        .def("select",
+          (pair_sym_table(*)(
+            af::const_ref<pair_sym_dict> const&,
+            af::const_ref<std::size_t> const&))
+              scitbx::af::array_of_map_select)
       ;
     }
   };

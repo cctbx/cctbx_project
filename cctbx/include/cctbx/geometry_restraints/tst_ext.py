@@ -37,6 +37,10 @@ def exercise_bond():
   t[0][13].distance_ideal = 5
   assert approx_equal(t[0][13].distance_ideal, 5)
   assert approx_equal(t[1][10].distance_ideal, 3)
+  t[1][1] = geometry_restraints.bond_params(distance_ideal=4, weight=5)
+  s = t.select(flex.size_t([1]))
+  assert approx_equal(s[0][0].distance_ideal, 4)
+  assert approx_equal(s[0][0].weight, 5)
   #
   p = geometry_restraints.bond_simple_proxy(
     i_seqs=[1,0],
