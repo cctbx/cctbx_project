@@ -28,6 +28,9 @@ namespace cctbx {
       typedef std::ptrdiff_t   difference_type;
 
       vecref() : m_begin(0), m_size(0) {}
+      template <typename VectorType>
+      vecref(VectorType& vec)
+        : m_begin(&(*(vec.begin()))), m_size(vec.size()) {}
       template <typename IteratorOrPointerType>
       vecref(IteratorOrPointerType begin, size_type size)
         : m_begin(&(*(begin))), m_size(size) {}
