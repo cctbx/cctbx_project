@@ -217,27 +217,27 @@ namespace {
   struct binning_
   {
     static std::size_t
-    get_j_bin_d_2(binning const& bng, double d_star_sq, double tolerance)
+    get_bin_index_d_2(binning const& bng, double d_star_sq, double tolerance)
     {
-      return bng.get_j_bin(d_star_sq, tolerance);
+      return bng.get_bin_index(d_star_sq, tolerance);
     }
 
     static std::size_t
-    get_j_bin_d_1(binning const& bng, double d_star_sq)
+    get_bin_index_d_1(binning const& bng, double d_star_sq)
     {
-      return bng.get_j_bin(d_star_sq);
+      return bng.get_bin_index(d_star_sq);
     }
 
     static std::size_t
-    get_j_bin_i_2(binning const& bng, Index const& h, double tolerance)
+    get_bin_index_i_2(binning const& bng, Index const& h, double tolerance)
     {
-      return bng.get_j_bin(h, tolerance);
+      return bng.get_bin_index(h, tolerance);
     }
 
     static std::size_t
-    get_j_bin_i_1(binning const& bng, Index const& h)
+    get_bin_index_i_1(binning const& bng, Index const& h)
     {
-      return bng.get_j_bin(h);
+      return bng.get_bin_index(h);
     }
   };
 
@@ -356,6 +356,9 @@ namespace {
 
     class_builder<binning>
     py_binning(this_module, "binning");
+
+    class_builder<binner>
+    py_binner(this_module, "binner");
 
     py_IndexTableLayoutAdaptor.declare_base(
       py_SymEquivIndex, python::without_downcast);
@@ -536,10 +539,15 @@ namespace {
     py_binning.def(&binning::d, "d");
     py_binning.def(&binning::d_min, "d_min");
     py_binning.def(&binning::limits, "limits");
-    py_binning.def(binning_::get_j_bin_d_2, "get_j_bin");
-    py_binning.def(binning_::get_j_bin_d_2, "get_j_bin");
-    py_binning.def(binning_::get_j_bin_i_2, "get_j_bin");
-    py_binning.def(binning_::get_j_bin_i_2, "get_j_bin");
+    py_binning.def(binning_::get_bin_index_d_2, "get_bin_index");
+    py_binning.def(binning_::get_bin_index_d_2, "get_bin_index");
+    py_binning.def(binning_::get_bin_index_i_2, "get_bin_index");
+    py_binning.def(binning_::get_bin_index_i_2, "get_bin_index");
+
+    py_binner.def(constructor<>());
+    py_binner.def(constructor<binning const&, af::shared<Index> >());
+    py_binner.def(&binner::bin_indices, "bin_indices");
+    py_binner.def(&binner::bin_selection, "bin_selection");
 
     this_module.def(py_expand_to_p1_4, "expand_to_p1");
     this_module.def(py_expand_to_p1_9, "expand_to_p1");

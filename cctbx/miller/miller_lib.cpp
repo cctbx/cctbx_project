@@ -432,4 +432,35 @@ namespace cctbx { namespace miller {
     span_ = d_star_sq_max - d_star_sq_min;
   }
 
+  std::size_t
+  binning::get_bin_index(double d_star_sq, double relative_tolerance) const
+  {
+    double abs_tolerance = relative_tolerance * span_;
+    if (d_star_sq < limits_[0] + abs_tolerance) return 0;
+    std::size_t i = 1;
+    for(;i<limits_.size();i++) {
+      if (d_star_sq > limits_[i]) return i;
+    }
+    if (d_star_sq > limits_[i-1] + abs_tolerance) i--;
+    return i;
+  }
+
+  binner::binner(binning const& bng, af::shared<Index> miller_indices)
+  {
+    bin_indices_.reserve(miller_indices.size());
+    for(std::size_t i=0;i<miller_indices.size();i++) {
+      bin_indices_.push_back(bng.get_bin_index(miller_indices[i]));
+    }
+  }
+
+  af::shared<bool> binner::bin_selection(std::size_t i_bin) const
+  {
+    af::shared<bool> flags;
+    flags.reserve(bin_indices_.size());
+    for(std::size_t i=0;i<bin_indices_.size();i++) {
+      flags.push_back(bin_indices_[i] == i_bin);
+    }
+    return flags;
+  }
+
 }} // namespace cctbx::miller
