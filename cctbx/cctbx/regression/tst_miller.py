@@ -67,6 +67,7 @@ def exercise_array():
   assert ma.sigmas() == sigmas
   assert ma.info() == "test"
   assert ma.observation_type() is None
+  assert ma.size() == 2
   ma.set_info("Test")
   assert ma.info() == "Test"
   ma.set_observation_type_xray_amplitude()
