@@ -2,6 +2,7 @@ from cctbx import crystal
 from cctbx import sgtbx
 from cctbx import uctbx
 from cctbx.development import debug_utils
+from libtbx.test_utils import approx_equal
 import sys
 
 def exercise_symmetry():
@@ -73,6 +74,8 @@ def exercise_symmetry():
   assert asu.hall_symbol == " P 2y"
   assert len(asu.facets) == 6
   assert asu.unit_cell is xs.unit_cell()
+  asu_mappings = xs.asu_mappings(buffer_thickness=2.364)
+  assert approx_equal(asu_mappings.buffer_thickness(), 2.364)
 
 def exercise_special_position_settings():
   xs = crystal.symmetry((3,4,5), "P 2 2 2")
