@@ -15,7 +15,9 @@ namespace scitbx { namespace af { namespace boost_python {
   void wrap_flex_size_t()
   {
     flex_wrapper<std::size_t>::ordered("size_t", boost::python::scope())
-      .def_pickle(flex_pickle_single_buffered<std::size_t>());
+      .def_pickle(flex_pickle_single_buffered<std::size_t>())
+      .def("__add__", flex_wrapper<std::size_t>::add_a_s)
+    ;
   }
 
 }}} // namespace scitbx::af::boost_python
