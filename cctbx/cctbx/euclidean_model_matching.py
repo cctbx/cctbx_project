@@ -91,8 +91,8 @@ class model(xutils.crystal_symmetry):
 
   def show(self, title):
     print title
-    print self.UnitCell
-    print self.SgInfo.BuildLookupSymbol()
+    print "Unit cell:", self.UnitCell
+    print "Space group:", self.SgInfo.BuildLookupSymbol()
     for lp in self.labelled_positions: print lp
     print
 
@@ -205,11 +205,13 @@ class match_refine:
 
   def show(self):
     print "Match summary:"
-    print self.rt.r.mathematica_form()
-    print self.rt.t.elems
-    print "rms: %.2f" % (self.rms,)
+    print "  Operator:"
+    print "       rotation:", self.rt.r.mathematica_form()
+    print "    translation:", self.rt.t.elems
+    print "rms coordinate error: %.2f" % (self.rms,)
+    print "  Pairs:"
     for pair in self.pairs:
-      print self.ref_model1[pair[0]].label,
+      print "   ", self.ref_model1[pair[0]].label,
       print self.ref_model2[pair[1]].label
     print "Singles model 1:", len(self.singles1)
     for s in self.singles1:
@@ -240,7 +242,7 @@ def weed_refined_matches(space_group_number, refined_matches):
   for i in xrange(n_matches-1, -1, -1):
     if (is_redundant[i]):
       del refined_matches[i]
-  if (space_group_number == 1):
+  if (space_group_number == 1 and n_matches > 0):
     trivial_matches_only = True
     for match in refined_matches:
       if (len(match.pairs) > 1):
@@ -318,6 +320,7 @@ def debug_analyze_refined_matches(model1, model2, refined_matches):
   print "total matches:", len(refined_matches)
   print "solutions:", solution_counter
   assert solution_counter != 0
+  print
 
 def debug_analyze_singles(model, singles):
   for i in singles:
