@@ -53,6 +53,7 @@ namespace {
 
     tuple_mapping_fixed_size<tiny<int,24> >(); // scitbx/math/golay.h
 
+    tuple_mapping_fixed_size<vec3<std::size_t> >();
     tuple_mapping_fixed_size<vec3<int> >();
     tuple_mapping_fixed_size<mat3<int> >();
     tuple_mapping_fixed_size<vec3<double> >();
