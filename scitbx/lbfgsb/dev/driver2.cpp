@@ -1,7 +1,5 @@
 #include <scitbx/lbfgsb/raw.h>
 #include <scitbx/array_family/shared.h>
-#include <iostream>
-#include <cstdio>
 
 namespace {
 
@@ -62,10 +60,11 @@ namespace {
     for(int i=1;i<=n;i++) {
       x(i)=3.0e0;
     }
-    std::cout << std::endl;
-    std::cout << "     Solving sample problem." << std::endl;
-    std::cout << "      (f = 0.0 at the optimal solution.)" << std::endl;
-    std::cout << std::endl;
+    printf(
+     "\n"
+     "     Solving sample problem.\n"
+     "      (f = 0.0 at the optimal solution.)\n"
+     "\n");
     task = "START";
     lbl_111:
     setulb(
@@ -94,20 +93,13 @@ namespace {
       if (dsave(13) <= 1.e-10*(1.0e0 + absolute(f))) {
         task="STOP: THE PROJECTED GRADIENT IS SUFFICIENTLY SMALL";
       }
-      std::printf(
+      printf(
         "Iterate%5d    nfg =%5d    f =%12.5E    |proj g| =%12.5E\n",
         isave(30), isave(34), f, dsave(13));
       if (task.substr(0,4) == "STOP") {
-        std::cout << " " << task << std::endl;
-        std::cout << " Final X=" << std::endl;
-        for(int i=1;i<=n;i++) {
-          if ((i-1)%6 == 0) {
-            if (i != 1) std::cout << std::endl;
-            std::cout << " ";
-          }
-          std::printf(" %11.4E", x(i));
-        }
-        std::cout << std::endl;
+        printf(" %-60.60s\n", task.c_str());
+        printf(" Final X=");
+        write_ref1(" ", x);
       }
       goto lbl_111;
     }
@@ -121,7 +113,7 @@ int main()
     driver2();
   }
   catch (std::exception const& e) {
-    std::cout << e.what() << std::endl;
+    printf("%s\n", e.what());
   }
   return 0;
 }

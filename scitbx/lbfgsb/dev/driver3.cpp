@@ -1,6 +1,5 @@
 #include <scitbx/lbfgsb/raw.h>
 #include <scitbx/array_family/shared.h>
-#include <iostream>
 
 namespace {
 
@@ -62,10 +61,11 @@ namespace {
     for(int i=1;i<=n;i++) {
       x(i)=3.0e0;
     }
-    std::cout << std::endl;
-    std::cout << "     Solving sample problem." << std::endl;
-    std::cout << "      (f = 0.0 at the optimal solution.)" << std::endl;
-    std::cout << std::endl;
+    printf(
+     "\n"
+     "     Solving sample problem.\n"
+     "      (f = 0.0 at the optimal solution.)\n"
+     "\n");
     task = "START";
     timer(time1);
     lbl_111:
@@ -76,12 +76,12 @@ namespace {
       timer(time2);
       if (time2-time1 > tlimit) {
         task="STOP: CPU EXCEEDING THE TIME LIMIT.";
-//      write (6,*) task;
-//      int j = 3*n+2*m*n+12*m*m;
-//      write (6,*) 'latest iterate x =';
-//      write (6,'((1x,1p, 6(1x,d11.4)))') (wa(i),i = j+1,j+n);
-//      write (6,'(a,1p,d12.5,4x,a,1p,d12.5)');
-//         'at latest iterate   f =',dsave(2),'|proj g| =',dsave(13);
+        printf(" %-60.60s\n", task.c_str());
+        int j = 3*n+2*m*n+12*m*m;
+        printf(" Latest iterate X =");
+        write_ref1(" ", wa.get1(j+1,n));
+        printf("At latest iterate   f =%12.5E    |proj g| =%12.5E\n",
+          dsave(2), dsave(13));
       }
       else {
         f=.25e0*pow2(x(1)-1.e0);
@@ -107,12 +107,13 @@ namespace {
       if (dsave(13) <= 1.e-10*(1.0e0 + absolute(f))) {
         task="STOP: THE PROJECTED GRADIENT IS SUFFICIENTLY SMALL";
       }
-//    write (6,'(2(a,i5,4x),a,1p,d12.5,4x,a,1p,d12.5)') 'iterate';
-//       ,isave(30),'nfg =',isave(34),'f =',f,'|proj g| =',dsave(13);
+      printf(
+        "Iterate%5d    nfg =%5d    f =%12.5E    |proj g| =%12.5E\n",
+        isave(30), isave(34), f, dsave(13));
       if (task.substr(0,4) == "STOP") {
-//      write (6,*) task;
-//      write (6,*) 'final x=';
-//      write (6,'((1x,1p, 6(1x,d11.4)))') (x(i),i = 1,n);
+        printf(" %-60.60s\n", task.c_str());
+        printf(" Final X=");
+        write_ref1(" ", x);
       }
       goto lbl_111;
     }
@@ -126,7 +127,7 @@ int main()
     driver3();
   }
   catch (std::exception const& e) {
-    std::cout << e.what() << std::endl;
+    printf("%s\n", e.what());
   }
   return 0;
 }
