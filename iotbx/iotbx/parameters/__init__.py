@@ -422,6 +422,9 @@ class definition: # FUTURE definition(object)
           self.type, self.name, self.where_str))
     return self.copy(words=words)
 
+  def unique(self):
+    return self
+
 class scope_extract:
 
   class attribute_error: pass
@@ -820,6 +823,16 @@ class scope:
           reference_directory=reference_directory,
           substitution_scope=substitution_scope,
           include_stack=include_stack))
+    return self.copy(objects=result)
+
+  def unique(self):
+    selection = {}
+    result = []
+    for i_object,object in enumerate(self.active_objects()):
+      selection[object.name] = i_object
+    for i_object,object in enumerate(self.active_objects()):
+      if (selection[object.name] == i_object):
+        result.append(object.unique())
     return self.copy(objects=result)
 
 class variable_substitution_fragment(object):

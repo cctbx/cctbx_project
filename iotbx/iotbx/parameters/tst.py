@@ -667,6 +667,17 @@ b = y
 d = $z
 s = 1
 """
+  out = StringIO()
+  parameters.unique().show(out=out)
+  assert out.getvalue() == """\
+tmp2 = tmp2.params
+a = x
+r = 0
+c = z
+b = y
+d = $z
+s = 1
+"""
   try: parameters.get(path="d")
   except RuntimeError, e:
     assert str(e) == 'Undefined variable: $z (file "tmp3.params", line 3)'
@@ -726,6 +737,11 @@ s {
   include tmp1.params
   z=2
 }
+s {
+  a=3
+  include tmp1.params
+  z=3
+}
 z=1
 """
   parameters = iotbx.parameters.parse(
@@ -751,6 +767,37 @@ s {
   y = 2
   x = 1
   z = 2
+}
+
+s {
+  a = 3
+  a = 0
+  b = 1
+  c = 2
+  z = 3
+  y = 2
+  x = 1
+  z = 3
+}
+
+z = 1
+"""
+  out = StringIO()
+  parameters.unique().show(out=out)
+  assert out.getvalue() == """\
+a = 0
+b = 1
+c = 2
+y = 2
+x = 1
+
+s {
+  a = 0
+  b = 1
+  c = 2
+  y = 2
+  x = 1
+  z = 3
 }
 
 z = 1
