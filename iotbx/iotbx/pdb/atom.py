@@ -8,13 +8,15 @@ import sys
 
 class labels(object):
 
-  __slots__ = ["name", "altLoc", "resName", "chainID", "resSeq", "iCode",
-               "segID", "MODELserial"]
+  __slots__ = [
+    "name", "altLoc", "resName", "column_21", "chainID", "resSeq", "iCode",
+    "segID", "MODELserial"]
 
   def __init__(self,
         name=None,
         altLoc=None,
         resName=None,
+        column_21=None,
         chainID=None,
         resSeq=None,
         iCode=None,
@@ -23,6 +25,7 @@ class labels(object):
     self.name = name
     self.altLoc = altLoc
     self.resName = resName
+    self.column_21 = column_21
     self.chainID = chainID
     self.resSeq = resSeq
     self.iCode = iCode
@@ -43,8 +46,11 @@ class labels(object):
     result = ""
     if (self.MODELserial is not None and self.MODELserial != 0):
       result += "MODEL     %4d: " % self.MODELserial
-    result = '"%-4.4s%1.1s%-3.3s %1.1s%4d%1.1s"' % (
-      self.name,self.altLoc,self.resName,self.chainID,self.resSeq,self.iCode)
+    column_21 = self.column_21
+    if (column_21 is None): column_21 = " "
+    result = '"%-4.4s%1.1s%-3.3s%1.1s%1.1s%4d%1.1s"' % (
+      self.name, self.altLoc, self.resName, column_21,
+      self.chainID, self.resSeq, self.iCode)
     if (self.segID is not None and len(self.segID.strip()) != 0):
       result += ' segID="%s"' % self.segID
     return result
@@ -68,7 +74,8 @@ def labels_from_string(s):
   for field in s.split(","):
     if (field == "None"): field = None
     fields.append(field)
-  assert len(fields) == 8
+    if (len(fields) == 3): fields.append(None) # column_21
+  assert len(fields) == 9
   return labels(*fields)
 
 class attributes(labels):
@@ -83,6 +90,7 @@ class attributes(labels):
         name=None,
         altLoc=None,
         resName=None,
+        column_21=None,
         chainID=None,
         resSeq=None,
         iCode=None,
@@ -103,6 +111,7 @@ class attributes(labels):
     self.name = name
     self.altLoc = altLoc
     self.resName = resName
+    self.column_21 = column_21
     self.chainID = chainID
     self.resSeq = resSeq
     self.iCode = iCode
@@ -128,6 +137,7 @@ class attributes(labels):
     if (self.name is None):        self.name = pdb_record.name
     if (self.altLoc is None):      self.altLoc = pdb_record.altLoc
     if (self.resName is None):     self.resName = pdb_record.resName
+    if (self.column_21 is None):   self.column_21 = pdb_record.column_21
     if (self.chainID is None):     self.chainID = pdb_record.chainID
     if (self.resSeq is None):      self.resSeq = pdb_record.resSeq
     if (self.iCode is None):       self.iCode = pdb_record.iCode

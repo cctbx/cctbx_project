@@ -215,6 +215,7 @@ class pdb_record:
     self.name = self.raw[12:16]
     self.altLoc = self.raw[16]
     self.resName = self.raw[17:20]
+    self.column_21 = self.raw[20]
     self.chainID = self.raw[21]
     try: self.resSeq = int(self.raw[22:26])
     except:
