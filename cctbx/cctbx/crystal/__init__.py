@@ -70,8 +70,11 @@ class symmetry(object):
   def primitive_setting(self):
     return self.change_basis(self.space_group().z2p_op())
 
+  def change_of_basis_op_to_reference_setting(self):
+    return self.space_group_info().type().cb_op()
+
   def as_reference_setting(self):
-    return self.change_basis(self.space_group_info().type().cb_op())
+    return self.change_basis(self.change_of_basis_op_to_reference_setting())
 
   def change_of_basis_op_to_best_cell(self, angular_tolerance=None):
     return find_best_cell(self, angular_tolerance=angular_tolerance).cb_op()
