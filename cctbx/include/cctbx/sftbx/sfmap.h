@@ -19,6 +19,7 @@
 #include <cctbx/array_family/versa.h>
 #include <cctbx/array_family/reductions.h>
 #include <cctbx/maps/accessors.h>
+#include <cctbx/maps/gridding.h>
 
 namespace cctbx { namespace sftbx {
 
@@ -133,24 +134,25 @@ namespace cctbx { namespace sftbx {
   }
 
   template <typename FloatType>
-  class sampled_density
+  class sampled_model_density
   {
     public:
       typedef af::versa<FloatType, maps::grid_p1<3> > map_type;
       typedef typename map_type::accessor_type map_accessor_type;
       typedef typename map_accessor_type::index_type grid_point_type;
 
-      sampled_density() {}
+      sampled_model_density() {}
 
       template <typename XrayScattererType>
-      sampled_density(const uctbx::UnitCell& ucell,
-                      const af::const_ref<XrayScattererType>& sites,
-                      const FloatType& max_q,
-                      const FloatType& resolution_factor,
-                      const grid_point_type& sampling_grid,
-                      const FloatType& quality_factor = 100,
-                      const FloatType& wing_cutoff = 0.01,
-                      const FloatType& exp_table_one_over_step_size = -1000)
+      sampled_model_density(
+        const uctbx::UnitCell& ucell,
+        const af::const_ref<XrayScattererType>& sites,
+        const FloatType& max_q,
+        const FloatType& resolution_factor,
+        const grid_point_type& sampling_grid,
+        const FloatType& quality_factor = 100,
+        const FloatType& wing_cutoff = 0.01,
+        const FloatType& exp_table_one_over_step_size = -1000)
         : map_(sampling_grid),
           max_q_(max_q),
           resolution_factor_(resolution_factor),
@@ -251,6 +253,25 @@ namespace cctbx { namespace sftbx {
         }
       }
   };
+
+  template <typename FloatType,
+            typename XrayScattererType>
+  sampled_model_density<FloatType>
+  sample_model_density(
+    const uctbx::UnitCell& ucell,
+    const af::const_ref<XrayScattererType>& sites,
+    FloatType max_q,
+    FloatType resolution_factor,
+    int max_prime,
+    const af::int3& mandatory_factors)
+  {
+    cctbx::af::int3 grid = maps::determine_grid(
+      ucell,
+      max_q, resolution_factor, max_prime, mandatory_factors);
+    return sampled_model_density<double>(
+      ucell, sites,
+      max_q, resolution_factor, grid);
+  }
 
 }} // namespace cctbx::sftbx
 
