@@ -42,7 +42,7 @@ struct Column {
   {
     return CCP4::ccp4_utils_isnan((union float_uint_uchar *)&p_col->ref[i]);
   }
-  inline double lookup(const int& i){return p_col->ref[i];}
+  inline float lookup(const int& i){return p_col->ref[i];}
   std::string label();
   std::string type();
 };
@@ -91,7 +91,7 @@ public:
   Column getColumn(std::string s);
   Crystal getCrystal(const int&) const;
   Crystal columnToCrystal(std::string) const;
- 
+
   void printHeader(int);
   void printHeaderAdv(int);
 
@@ -140,6 +140,10 @@ public:
     std::string const& column_label_b,
     std::string const& column_label_c,
     std::string const& column_label_d);
+
+  af::shared<int>
+  valid_integers(
+    std::string const& column_label);
 };
 }} //namespaces
 #endif /* CPPMTZ_H*/

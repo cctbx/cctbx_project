@@ -35,6 +35,7 @@ BOOST_PYTHON_MODULE(mtz)
       .def("valid_complex", &iotbx::mtz::Mtz::valid_complex)
       .def("valid_complex", &iotbx::mtz::Mtz::valid_complex_anomalous)
       .def("valid_hl", &iotbx::mtz::Mtz::valid_hl)
+      .def("valid_integers", &iotbx::mtz::Mtz::valid_integers)
     ;
 
     class_<iotbx::mtz::Crystal>("Crystal", no_init)
