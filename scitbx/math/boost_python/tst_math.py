@@ -987,6 +987,80 @@ def exercise_icosahedron():
       assert d > m
       assert d/2 < m
 
+def exercise_basic_statistics():
+  x = flex.double([])
+  s = scitbx.math.basic_statistics(values=x)
+  assert s.n == 0
+  assert approx_equal(s.min, -1)
+  assert approx_equal(s.max, -1)
+  assert approx_equal(s.max_absolute, -1)
+  assert approx_equal(s.sum, -1)
+  assert approx_equal(s.mean, -1)
+  assert approx_equal(s.mean_absolute_deviation_from_mean, -1)
+  assert approx_equal(s.biased_variance, -1)
+  assert approx_equal(s.biased_standard_deviation, -1)
+  assert approx_equal(s.bias_corrected_variance, -1)
+  assert approx_equal(s.bias_corrected_standard_deviation, -1)
+  assert approx_equal(s.skew, -1)
+  assert approx_equal(s.kurtosis, -1)
+  assert approx_equal(s.kurtosis_excess, -1)
+  x = flex.double([-7])
+  s = scitbx.math.basic_statistics(values=x)
+  assert s.n == 1
+  assert approx_equal(s.min, -7)
+  assert approx_equal(s.max, -7)
+  assert approx_equal(s.max_absolute, 7)
+  assert approx_equal(s.sum, -7)
+  assert approx_equal(s.mean, -7)
+  assert approx_equal(s.mean_absolute_deviation_from_mean, 0)
+  assert approx_equal(s.biased_variance, 0)
+  assert approx_equal(s.biased_standard_deviation, 0)
+  assert approx_equal(s.bias_corrected_variance, -1)
+  assert approx_equal(s.bias_corrected_standard_deviation, -1)
+  assert approx_equal(s.skew, -1)
+  assert approx_equal(s.kurtosis, -1)
+  assert approx_equal(s.kurtosis_excess, -1)
+  x = flex.double([1,2,3,4,5])
+  s = scitbx.math.basic_statistics(values=x)
+  assert s.n == 5
+  assert approx_equal(s.min, 1)
+  assert approx_equal(s.max, 5)
+  assert approx_equal(s.max_absolute, 5)
+  assert approx_equal(s.sum, 15)
+  assert approx_equal(s.mean, 3)
+  assert approx_equal(s.mean_absolute_deviation_from_mean, 1.2)
+  assert approx_equal(s.biased_variance, 2)
+  assert approx_equal(s.biased_standard_deviation, math.sqrt(2))
+  assert approx_equal(s.bias_corrected_variance, 2.5)
+  assert approx_equal(s.bias_corrected_standard_deviation, math.sqrt(2.5))
+  assert approx_equal(s.skew, 0)
+  assert approx_equal(s.kurtosis, 1.7)
+  assert approx_equal(s.kurtosis_excess, -1.3)
+  for i_trial in xrange(10):
+    x = flex.random_double(size=2+int(random.random()*10))
+    s = scitbx.math.basic_statistics(values=x)
+    assert s.n == x.size()
+    assert approx_equal(s.min, flex.min(x))
+    assert approx_equal(s.max, flex.max(x))
+    assert approx_equal(s.max_absolute, max(-flex.min(x), flex.max(x)))
+    assert approx_equal(s.sum, flex.sum(x))
+    assert approx_equal(s.mean, flex.mean(x))
+    d = x-flex.mean(x)
+    assert approx_equal(s.mean_absolute_deviation_from_mean,
+      flex.mean(flex.abs(d)))
+    assert approx_equal(s.biased_variance, flex.sum(d*d) / s.n)
+    assert approx_equal(s.biased_standard_deviation,
+      math.sqrt(s.biased_variance))
+    assert approx_equal(s.bias_corrected_variance,
+      flex.sum(flex.pow2(d)) / (s.n-1))
+    assert approx_equal(s.bias_corrected_standard_deviation,
+      math.sqrt(s.bias_corrected_variance))
+    assert approx_equal(s.skew,
+      (flex.sum(d*d*d)/s.n) / (flex.sum(d*d)/s.n)**(3/2.))
+    assert approx_equal(s.kurtosis,
+      (flex.sum(d*d*d*d)/s.n) / (flex.sum(d*d)/s.n)**2)
+    assert approx_equal(s.kurtosis_excess, s.kurtosis-3)
+
 def run():
   exercise_floating_point_epsilon()
   exercise_euler_angles()
@@ -1002,6 +1076,7 @@ def run():
   exercise_phase_error()
   exercise_row_echelon()
   exercise_icosahedron()
+  exercise_basic_statistics()
   forever = "--Forever" in sys.argv[1:]
   while 1:
     exercise_minimum_covering_sphere()

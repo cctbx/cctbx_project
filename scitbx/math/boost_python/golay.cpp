@@ -35,7 +35,7 @@ namespace {
     }
   };
 
-} // namespace <anoymous>
+} // namespace <anonymous>
 
 namespace boost_python {
 
