@@ -7,6 +7,7 @@ from libtbx.utils import UserError
 import sys, os
 
 class UserError_No_array_of_the_required_type(UserError): pass
+class UserError_Not_a_suitable_array(UserError): pass
 
 def find_labels(search_labels, info_string):
   for search_label in search_labels:
@@ -263,7 +264,7 @@ def select_array(
     error = "%s%s=%s" % (
       error_message_not_a_suitable_array, parameter_name, " ".join(labels))
     print >> err, "\n" + error + "\n"
-    raise UserError(error)
+    raise UserError_Not_a_suitable_array(error)
   if (label_scores is None):
     combined_scores = data_scores
   else:
@@ -349,25 +350,49 @@ class reflection_file_server:
         file_name,
         label,
         test_flag_value,
+        disable_suitability_test,
         parameter_scope):
     miller_arrays = self.get_miller_arrays(file_name=file_name)
-    flag_scores = get_r_free_flags_scores(
-      miller_arrays=miller_arrays,
-      test_flag_value=test_flag_value)
+    if (disable_suitability_test):
+      if (label is None or test_flag_value is None):
+        raise UserError((
+          "%s=True: Suitability test for R-free flags can only be disabled"
+          " if both %s and %s are defined.") % (
+            parameter_scope+".disable_suitability_test",
+            parameter_scope+".label",
+            parameter_scope+".test_flag_value"))
+      flag_scores = None
+      data_scores = None
+    else:
+      flag_scores = get_r_free_flags_scores(
+        miller_arrays=miller_arrays,
+        test_flag_value=test_flag_value)
+      data_scores = flag_scores.scores
     if (label is None): labels = None
     else: labels=[label]
-    i = select_array(
-      parameter_name=parameter_scope+".label",
-      labels=labels,
-      miller_arrays=miller_arrays,
-      data_scores=flag_scores.scores,
-      err=self.err,
-      error_message_no_array
-        ="No array of R-free flags found.",
-      error_message_not_a_suitable_array
-        ="Not a suitable array of R-free flags: ",
-      error_message_multiple_equally_suitable
-        ="Multiple equally suitable arrays of R-free flags found.")
+    try:
+      i = select_array(
+        parameter_name=parameter_scope+".label",
+        labels=labels,
+        miller_arrays=miller_arrays,
+        data_scores=data_scores,
+        err=self.err,
+        error_message_no_array
+          ="No array of R-free flags found.\n\n"
+          +"For manual selection define:\n"
+          +"  %s.label\n"%parameter_scope
+          +"  %s.test_flag_value\n"%parameter_scope
+          +"  %s.disable_suitability_test=True"%parameter_scope,
+        error_message_not_a_suitable_array
+          ="Not a suitable array of R-free flags: ",
+        error_message_multiple_equally_suitable
+          ="Multiple equally suitable arrays of R-free flags found.")
+    except UserError_Not_a_suitable_array, e:
+      raise UserError_Not_a_suitable_array(
+        str(e) + "\nTo override the suitability test define:"
+               + " %s.disable_suitability_test=True" % parameter_scope)
+    if (data_scores is None):
+      return miller_arrays[i], test_flag_value
     return miller_arrays[i], flag_scores.test_flag_values[i]
 
   def get_experimental_phases(self, file_name, labels, parameter_scope):
