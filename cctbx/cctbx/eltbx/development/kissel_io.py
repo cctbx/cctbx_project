@@ -9,7 +9,7 @@ import sys, os
 
 class table:
 
-  def __init__(self, atomic_number, x, y):
+  def __init__(self, atomic_number, x, y, sigmas):
     adopt_init_args(self, locals())
     self.element = tiny_pse.table(atomic_number).symbol()
 
@@ -18,6 +18,7 @@ def read_table(file_name):
   number_of_electrons = None
   x = flex.double()
   y = flex.double()
+  sigmas = flex.double()
   lf = line_feeder(open(file_name))
   while 1:
     line = lf.next()
@@ -36,10 +37,13 @@ def read_table(file_name):
         if (line == " *** END OF DATA ***"):
           lf.eof = 0001
           break
-        xy = [float(v) for v in line.split()]
-        x.append(xy[0])
-        y.append(xy[1])
-  return table(int(atomic_number), x, y*atomic_number)
+        vals_str = line.split()
+        for val_str in vals_str: assert len(val_str) == 13
+        x.append(float(vals_str[0]))
+        y.append(float(vals_str[1]))
+        assert vals_str[1][-4] == "E"
+        sigmas.append(float("0.00000005"+vals_str[1][-4:]))
+  return table(int(atomic_number), x, y*atomic_number, sigmas)
 
 def main():
   parser = OptionParser(

@@ -6,7 +6,8 @@ from scitbx.python_utils.misc import adopt_init_args
 
 class table6111_entry:
 
-  def __init__(self, element, atomic_number, method, table_y):
+  def __init__(self, element, atomic_number, method, table_y, table_sigmas):
+    assert table_y.size() == table_sigmas.size()
     adopt_init_args(self, locals())
     self.atomic_symbol = element
     if (element == "Cval"):
@@ -32,14 +33,17 @@ class table6111:
     self.entries[entry.element] = entry
     self.elements.append(entry.element)
 
-  def enter_block(self, elements, atomic_numbers, methods, value_rows):
+  def enter_block(self,elements,atomic_numbers,methods,value_rows,sigma_rows):
     i_column = -1
     for element,atomic_number,method in zip(elements,atomic_numbers,methods):
       i_column += 1
       table_y = flex.double()
-      for value_row in value_rows:
+      table_sigmas = flex.double()
+      for value_row,sigma_row in zip(value_rows,sigma_rows):
         table_y.append(value_row[i_column])
-      self.enter_entry(table6111_entry(element,atomic_number,method,table_y))
+        table_sigmas.append(sigma_row[i_column])
+      self.enter_entry(table6111_entry(
+        element, atomic_number, method, table_y, table_sigmas))
 
 def read_table6111(file_name):
   tab = table6111(file_name)
@@ -61,6 +65,7 @@ def read_table6111(file_name):
       assert line.find("sin") > 0, line
       stols = flex.double()
       value_rows = []
+      sigma_rows = []
       while 1:
         line = lf.next()
         assert not lf.eof
@@ -69,16 +74,29 @@ def read_table6111(file_name):
         assert len(raw_value_row) == len(elements) + 1, line
         stols.append(float(raw_value_row[0]))
         assert stols[-1] == international_tables_stols[stols.size()-1], line
-        value_row = []
+        value_row = flex.double()
+        sigma_row = flex.double()
         for value in raw_value_row[1:]:
           if (len(value.strip()) == 0):
-            value_row.append(0)
+            value_row.append(-1)
+            sigma_row.append(-1)
           else:
             try: value_row.append(float(value))
             except ValueError, e: raise ValueError(line)
+            assert value.count(".") == 1
+            sigma = ""
+            for c in value.strip():
+              if (c == "."):
+                sigma += "."
+              else:
+                assert c in "0123456789"
+                sigma += "0"
+            sigma += "5"
+            sigma_row.append(float(sigma))
         value_rows.append(value_row)
+        sigma_rows.append(sigma_row)
         if (stols.size() == 62):
           assert stols[-1] == 6, line
           break
-      tab.enter_block(elements, atomic_numbers, methods, value_rows)
+      tab.enter_block(elements,atomic_numbers,methods,value_rows,sigma_rows)
   return tab

@@ -6,11 +6,11 @@ from cctbx.array_family import flex
 from libtbx.optparse_wrapper import OptionParser
 import sys, os
 
-def run(file_name,
+def run(file_name, table_of_gaussians, cutoff,
         low_resolution_only=00000,
         high_resolution_only=00000,
         significant_errors_only=00000,
-        plots_dir="itvc_wk1995_plots",
+        plots_dir=None,
         quiet=0,
         verbose=0):
   assert not (low_resolution_only and high_resolution_only)
@@ -21,16 +21,15 @@ def run(file_name,
     if (not label in tab.entries):
       print "Warning: missing scatterer:", label
   stols = cctbx.eltbx.gaussian_fit.international_tables_stols
-  sigmas = cctbx.eltbx.gaussian_fit.international_tables_sigmas
+  sel = stols <= cutoff + 1.e-6
+  stols = stols.select(sel)
   if (low_resolution_only):
     sel = stols <= 2
     stols = stols.select(sel)
-    sigmas = sigmas.select(sel)
     assert stols.size() == 56
   elif (high_resolution_only):
     sel = stols > 2
     stols = stols.select(sel)
-    sigmas = sigmas.select(sel)
     assert stols.size() == 6
   range_62 = flex.size_t(xrange(62))
   labels = flex.std_string()
@@ -40,7 +39,7 @@ def run(file_name,
   cmp_plots = flex.std_string()
   for element in tab.elements:
     entry = tab.entries[element]
-    wk = xray_scattering.wk1995(element, 1)
+    wk = table_of_gaussians(element, 1)
     assert entry.table_y.size() == 62
     if (not flex.sort_permutation(entry.table_y, 0001).all_eq(range_62)):
       print "Increasing: %s (%d)" % (element, entry.atomic_number)
@@ -54,29 +53,31 @@ def run(file_name,
       gaussian_fit = scitbx.math.gaussian.fit(
         stols,
         entry.table_y[:-6],
-        sigmas,
+        entry.table_sigmas[:-6],
         wk.fetch())
     elif (high_resolution_only):
       gaussian_fit = scitbx.math.gaussian.fit(
         stols,
         entry.table_y[-6:],
-        sigmas,
+        entry.table_sigmas[-6:],
         wk.fetch())
     elif (    entry.element != entry.atomic_symbol
           and entry.table_y[-6:].all_eq(0)):
       atom_entry = tab.entries[entry.atomic_symbol]
       patched_table_y = entry.table_y[:-6]
       patched_table_y.append(atom_entry.table_y[-6:])
+      patched_table_sigmas = entry.table_sigmas[:-6]
+      patched_table_sigmas.append(atom_entry.table_sigmas[-6:])
       gaussian_fit = scitbx.math.gaussian.fit(
         stols,
         patched_table_y,
-        sigmas,
+        patched_table_sigmas,
         wk.fetch())
     else:
       gaussian_fit = scitbx.math.gaussian.fit(
         stols,
-        entry.table_y,
-        sigmas,
+        entry.table_y[:stols.size()],
+        entry.table_sigmas[:stols.size()],
         wk.fetch())
     labels.append(element)
     errors.append(gaussian_fit.significant_relative_errors())
@@ -123,6 +124,9 @@ def run(file_name,
 def main():
   parser = OptionParser(
     usage="usage: python %prog [options] file_name")
+  parser.add_option("-t", "--table", default="wk1995",
+    action="store", dest="table_of_gaussians",
+    help="wk1995 or it1992")
   parser.add_option("-q", "--quiet",
     action="store_true", dest="quiet", default=0,
     help="do not show values for large errors, only stol")
@@ -142,11 +146,26 @@ def main():
   if (len(args) != 1):
     parser.print_help()
     return
+  assert options.table_of_gaussians in ["wk1995", "it1992"]
+  if (options.table_of_gaussians == "wk1995"):
+    table_of_gaussians = xray_scattering.wk1995
+    plots_dir = "itvc_wk1995_plots"
+    cutoff = 6
+  else:
+    table_of_gaussians = xray_scattering.it1992
+    plots_dir = "itvc_it1992_plots"
+    cutoff = 2
+    assert not options.low_resolution_only
+    assert not options.high_resolution_only
+  print "table_of_gaussians:", options.table_of_gaussians
   run(
     file_name=args[0],
+    table_of_gaussians=table_of_gaussians,
+    cutoff=cutoff,
     low_resolution_only=options.low_resolution_only,
     high_resolution_only=options.high_resolution_only,
     significant_errors_only=options.significant_errors_only,
+    plots_dir=plots_dir,
     quiet=options.quiet,
     verbose=options.verbose)
 
