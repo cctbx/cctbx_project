@@ -1,5 +1,5 @@
 import sys, os, shutil
-PACKAGES = sys.argv[0]
+PACKAGES = os.path.abspath(sys.argv[0])
 for i in xrange(3): PACKAGES = os.path.dirname(PACKAGES)
 while (PACKAGES[-1] == os.sep): PACKAGES = PACKAGES[:-1]
 os.mkdir("vc60")
