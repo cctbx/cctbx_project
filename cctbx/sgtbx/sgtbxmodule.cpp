@@ -1042,8 +1042,10 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
   py_MillerIndexGenerator.def(constructor<>());
   py_MillerIndexGenerator.def(constructor<const uctbx::UnitCell&,
                                           const SpaceGroupInfo&,
+                                          bool,
                                           double>());
   py_MillerIndexGenerator.def(constructor<const SpaceGroupInfo&,
+                                          bool,
                                           const Miller::Index&>());
   py_MillerIndexGenerator.def(&MillerIndexGenerator::next, "next");
   py_MillerIndexGenerator.def(MillerIndexGenerator_getitem, "__getitem__");

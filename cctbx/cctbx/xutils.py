@@ -106,7 +106,7 @@ class symmetrized_sites(crystal_symmetry):
 
 def build_miller_indices(xsym, d_min): # XXX friedel_flag
   return miller_index_set(
-    xsym, sftbx.BuildMillerIndices(xsym.UnitCell, xsym.SgInfo, d_min))
+    xsym, sftbx.BuildMillerIndices(xsym.UnitCell, xsym.SgInfo, 1, d_min))
 
 def calculate_structure_factors(miller_indices, xtal, abs_F = 0):
   F = sftbx.StructureFactorArray(
