@@ -155,7 +155,9 @@ def run():
   file_names = []
   for file_name in ["strudat_zeolite_atlas", "strudat_special_bonds"]:
     path = os.path.join(regression_misc, file_name)
-    if (os.path.isfile(path)):
+    if (not os.path.isfile(path)):
+      print "Skipping %s test: input file not available" % file_name
+    else:
       file_names.append(path)
   for file_name in file_names:
     strudat_entries = strudat.read_all_entries(open(file_name))

@@ -74,7 +74,9 @@ def exercise(args, distance_cutoff=3.5, max_shell=5):
   ).process(args=args)
   atlas_file = os.path.join(os.environ["LIBTBX_DIST_ROOT"],
     "regression", "misc", "strudat_zeolite_atlas")
-  if (not os.path.isfile(atlas_file)): return
+  if (not os.path.isfile(atlas_file)):
+    print "Skipping exercise(): input file not available"
+    return
   all_entries = strudat.read_all_entries(open(atlas_file))
   for i,entry in enumerate(all_entries.entries):
     structure = entry.as_xray_structure()
