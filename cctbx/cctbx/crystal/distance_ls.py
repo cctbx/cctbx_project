@@ -48,12 +48,13 @@ def setup_bond_params_table(structure, bond_sym_table):
         assert abs(prev_params.weight - params.weight) < 1.e-8
   return t
 
-def setup_repulsion_distance_table():
-  t = restraints.repulsion_distance_table()
-  t.setdefault("Si")["Si"] = 3.1
-  t.setdefault("Si")["O"] = 1.5
-  t.setdefault("O")["O"] = 2.0
-  return t
+def setup_repulsion_params():
+  p = restraints.repulsion_params()
+  d = p.distance_table
+  d.setdefault("Si")["Si"] = 3.1
+  d.setdefault("Si")["O"] = 1.5
+  d.setdefault("O")["O"] = 2.0
+  return p
 
 class add_oxygen:
 
@@ -243,7 +244,7 @@ def distance_and_repulsion_least_squares(
   bond_params_table = setup_bond_params_table(
     structure=si_o.structure,
     bond_sym_table=shell_sym_tables[0])
-  repulsion_distance_table = setup_repulsion_distance_table()
+  repulsion_params = setup_repulsion_params()
   repulsion_types = flex.std_string()
   for scatterer in si_o.structure.scatterers():
     repulsion_types.append(scatterer.scattering_type)
@@ -260,12 +261,10 @@ def distance_and_repulsion_least_squares(
       try:
         trial_minimized = minimization.lbfgs(
           structure=trial_structure,
-          shell_sym_tables=shell_sym_tables,
-          bond_params_table=bond_params_table,
+          repulsion_params=repulsion_params,
           repulsion_types=repulsion_types,
-          repulsion_distance_table=repulsion_distance_table,
-          repulsion_radius_table=restraints.repulsion_radius_table(),
-          repulsion_distance_default=0,
+          bond_params_table=bond_params_table,
+          shell_sym_tables=shell_sym_tables,
           nonbonded_distance_cutoff=nonbonded_distance_cutoff,
           nonbonded_buffer=nonbonded_buffer,
           lbfgs_termination_params=scitbx.lbfgs.termination_parameters(

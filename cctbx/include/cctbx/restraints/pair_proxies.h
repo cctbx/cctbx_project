@@ -23,16 +23,13 @@ namespace cctbx { namespace restraints {
       pair_proxies() {}
 
       pair_proxies(
-        af::const_ref<bond_params_dict> const& bond_params_table,
+        restraints::repulsion_params const& repulsion_params,
         af::const_ref<std::string> const& repulsion_types,
-        restraints::repulsion_distance_table const& repulsion_distance_table,
-        restraints::repulsion_radius_table const& repulsion_radius_table,
-        double repulsion_distance_default,
+        af::const_ref<bond_params_dict> const& bond_params_table,
         std::vector<crystal::pair_asu_table<> > const& shell_asu_tables,
         double bonded_distance_cutoff,
         double nonbonded_distance_cutoff,
-        double nonbonded_buffer,
-        double vdw_1_4_factor)
+        double nonbonded_buffer)
       :
         n_bonded(0),
         n_1_3(0),
@@ -79,21 +76,12 @@ namespace cctbx { namespace restraints {
           else if (shell_asu_tables.size() > 2
                    && shell_asu_tables[2].contains(pair)) {
             repulsion_proxies.process(make_repulsion_asu_proxy(
-              repulsion_types,
-              repulsion_distance_table,
-              repulsion_radius_table,
-              repulsion_distance_default,
-              pair,
-              vdw_1_4_factor));
+              repulsion_params, repulsion_types, pair, true));
             n_1_4++;
           }
           else if (pair.dist_sq <= nonbonded_distance_cutoff_sq) {
             repulsion_proxies.process(make_repulsion_asu_proxy(
-              repulsion_types,
-              repulsion_distance_table,
-              repulsion_radius_table,
-              repulsion_distance_default,
-              pair));
+              repulsion_params, repulsion_types, pair, false));
             n_nonbonded++;
           }
         }
@@ -125,50 +113,67 @@ namespace cctbx { namespace restraints {
 
       repulsion_asu_proxy
       make_repulsion_asu_proxy(
+        restraints::repulsion_params const& repulsion_params,
         af::const_ref<std::string> const& repulsion_types,
-        restraints::repulsion_distance_table const& repulsion_distance_table,
-        restraints::repulsion_radius_table const& repulsion_radius_table,
-        double repulsion_distance_default,
         direct_space_asu::asu_mapping_index_pair const& pair,
-        double vdw_factor=1)
+        bool is_1_4_interaction)
       {
         std::string const& rep_type_i = repulsion_types[pair.i_seq];
         std::string const& rep_type_j = repulsion_types[pair.j_seq];
         repulsion_distance_table::const_iterator
-          distance_dict = repulsion_distance_table.find(rep_type_i);
-        if (distance_dict != repulsion_distance_table.end()) {
+          distance_dict = repulsion_params.distance_table.find(rep_type_i);
+        if (distance_dict != repulsion_params.distance_table.end()) {
           repulsion_distance_dict::const_iterator
             dict_entry = distance_dict->second.find(rep_type_j);
           if (dict_entry != distance_dict->second.end()) {
-            return repulsion_asu_proxy(pair, dict_entry->second*vdw_factor);
+            return repulsion_asu_proxy(pair, get_repulsion_distance(
+              repulsion_params, dict_entry->second, is_1_4_interaction));
           }
         }
-        distance_dict = repulsion_distance_table.find(rep_type_j);
-        if (distance_dict != repulsion_distance_table.end()) {
+        distance_dict = repulsion_params.distance_table.find(rep_type_j);
+        if (distance_dict != repulsion_params.distance_table.end()) {
           repulsion_distance_dict::const_iterator
             dict_entry = distance_dict->second.find(rep_type_i);
           if (dict_entry != distance_dict->second.end()) {
-            return repulsion_asu_proxy(pair, dict_entry->second*vdw_factor);
+            return repulsion_asu_proxy(pair, get_repulsion_distance(
+              repulsion_params, dict_entry->second, is_1_4_interaction));
           }
         }
         restraints::repulsion_radius_table::const_iterator
-          radius_i = repulsion_radius_table.find(rep_type_i);
-        if (radius_i != repulsion_radius_table.end()) {
+          radius_i = repulsion_params.radius_table.find(rep_type_i);
+        if (radius_i != repulsion_params.radius_table.end()) {
           restraints::repulsion_radius_table::const_iterator
-            radius_j = repulsion_radius_table.find(rep_type_j);
-          if (radius_j != repulsion_radius_table.end()) {
-            return repulsion_asu_proxy(
-              pair, (radius_i->second+radius_j->second)*vdw_factor);
+            radius_j = repulsion_params.radius_table.find(rep_type_j);
+          if (radius_j != repulsion_params.radius_table.end()) {
+            return repulsion_asu_proxy(pair, get_repulsion_distance(
+              repulsion_params,
+              radius_i->second + radius_j->second,
+              is_1_4_interaction));
           }
         }
-        if (repulsion_distance_default > 0) {
+        if (repulsion_params.default_distance > 0) {
           n_unknown_repulsion_type_pairs++;
-          return repulsion_asu_proxy(
-            pair, repulsion_distance_default*vdw_factor);
+          return repulsion_asu_proxy(pair, get_repulsion_distance(
+            repulsion_params,
+            repulsion_params.default_distance,
+            is_1_4_interaction));
         }
         throw error(
          "Unknown repulsion type pair (incomplete repulsion_distance_table): "
          + rep_type_i + " - " + rep_type_j);
+      }
+
+      double
+      get_repulsion_distance(
+        restraints::repulsion_params const& repulsion_params,
+        double distance,
+        bool is_1_4_interaction)
+      {
+        if (is_1_4_interaction) {
+          distance *= repulsion_params.factor_1_4_interactions;
+          distance -= repulsion_params.const_shrink_1_4_interactions;
+        }
+        return std::max(repulsion_params.minimum_distance, distance);
       }
 
       bond_sorted_asu_proxies bond_proxies;

@@ -221,6 +221,31 @@ def exercise_bond():
   assert pair_asu_table.table()[0].keys() == [1]
 
 def exercise_repulsion():
+  params = restraints.repulsion_params()
+  assert params.distance_table.size() == 0
+  assert params.radius_table.size() == 0
+  assert approx_equal(params.factor_1_4_interactions, 2/3.)
+  assert approx_equal(params.const_shrink_1_4_interactions, 0)
+  assert approx_equal(params.default_distance, 0)
+  assert approx_equal(params.minimum_distance, 0)
+  params = restraints.repulsion_params(
+    factor_1_4_interactions=.5,
+    const_shrink_1_4_interactions=.1,
+    default_distance=1,
+    minimum_distance=2)
+  assert approx_equal(params.factor_1_4_interactions, .5)
+  assert approx_equal(params.const_shrink_1_4_interactions, .1)
+  assert approx_equal(params.default_distance, 1)
+  assert approx_equal(params.minimum_distance, 2)
+  params.factor_1_4_interactions = .4
+  assert approx_equal(params.factor_1_4_interactions, .4)
+  params.const_shrink_1_4_interactions = .2
+  assert approx_equal(params.const_shrink_1_4_interactions, .2)
+  params.default_distance = .3
+  assert approx_equal(params.default_distance, .3)
+  params.minimum_distance = .6
+  assert approx_equal(params.minimum_distance, .6)
+  #
   p = restraints.repulsion_simple_proxy(
     i_seqs=[0,1],
     vdw_distance=5)

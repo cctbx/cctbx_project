@@ -19,26 +19,20 @@ namespace {
       typedef boost::python::arg arg_; // gcc 2.96 workaround
       class_<w_t>("pair_proxies", no_init)
         .def(init<
-          af::const_ref<bond_params_dict> const&,
+          repulsion_params const&,
           af::const_ref<std::string> const&,
-          repulsion_distance_table const&,
-          repulsion_radius_table const&,
-          double,
+          af::const_ref<bond_params_dict> const&,
           std::vector<crystal::pair_asu_table<> > const&,
           double,
           double,
-          double,
           double>((
-           arg_("bond_params_table"),
+           arg_("repulsion_params"),
            arg_("repulsion_types"),
-           arg_("repulsion_distance_table"),
-           arg_("repulsion_radius_table"),
-           arg_("repulsion_distance_default"),
+           arg_("bond_params_table"),
            arg_("shell_asu_tables"),
            arg_("bonded_distance_cutoff"),
            arg_("nonbonded_distance_cutoff"),
-           arg_("nonbonded_buffer"),
-           arg_("vdw_1_4_factor"))))
+           arg_("nonbonded_buffer"))))
         .def_readonly("bond_proxies", &w_t::bond_proxies)
         .def_readonly("repulsion_proxies", &w_t::repulsion_proxies)
         .def_readonly("n_bonded", &w_t::n_bonded)

@@ -59,12 +59,10 @@ class energies:
 class lbfgs:
 
   def __init__(self, structure,
-                     shell_sym_tables,
-                     bond_params_table,
+                     repulsion_params,
                      repulsion_types,
-                     repulsion_distance_table,
-                     repulsion_radius_table,
-                     repulsion_distance_default,
+                     bond_params_table,
+                     shell_sym_tables,
                      nonbonded_distance_cutoff,
                      nonbonded_buffer,
                      lbfgs_termination_params=None,
@@ -152,16 +150,13 @@ class lbfgs:
           sym_table=shell_sym_table)
             for shell_sym_table in self.shell_sym_tables]
       pair_proxies = restraints.pair_proxies(
-        bond_params_table=self.bond_params_table,
+        repulsion_params=self.repulsion_params,
         repulsion_types=self.repulsion_types,
-        repulsion_distance_table=self.repulsion_distance_table,
-        repulsion_radius_table=self.repulsion_radius_table,
-        repulsion_distance_default=self.repulsion_distance_default,
+        bond_params_table=self.bond_params_table,
         shell_asu_tables=shell_asu_tables,
         bonded_distance_cutoff=max(shell_distance_cutoffs),
         nonbonded_distance_cutoff=self.nonbonded_distance_cutoff,
-        nonbonded_buffer=self.nonbonded_buffer,
-        vdw_1_4_factor=2/3.)
+        nonbonded_buffer=self.nonbonded_buffer)
       self._bond_proxies = pair_proxies.bond_proxies
       if (not self.activate_repulsion):
         self._repulsion_proxies = None
