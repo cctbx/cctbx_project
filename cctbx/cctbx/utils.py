@@ -1,4 +1,4 @@
-import math
+from stdlib import math
 
 def signed_phase_error(phi1, phi2, deg=00000):
   if (deg): pi_sc = 180
