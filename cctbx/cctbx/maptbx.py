@@ -303,3 +303,9 @@ class peak_cluster_analysis:
       if (self._sites.size() >= max_clusters): break
       if (self.next() == None): break
     return self
+
+  def discard_last(self):
+    assert self._peak_list_indices.size() > 0
+    self._peak_list_indices.pop_back()
+    self._sites.pop_back()
+    self._grid_heights.pop_back()
