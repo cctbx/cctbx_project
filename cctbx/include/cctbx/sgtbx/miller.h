@@ -33,9 +33,18 @@ namespace cctbx {
             translation part of the symmetry operation,
             multiplied by the translation base-factor TBF
             in order to obtain an integer value for HT.
+            <p>
+            FriedelFlag indicates if Friedel's law was applied
+            to arrive at H().
          */
-        SymEquivIndex(const Index& HR, int HT, int TBF)
-          : m_HR(HR), m_HT(HT) , m_TBF(TBF) {}
+        SymEquivIndex(const Index& HR, int HT, int TBF, bool FriedelFlag)
+          : m_HR(HR), m_HT(HT) , m_TBF(TBF), m_FriedelFlag(FriedelFlag) {}
+        //! The symmetrically equivalent index.
+        Index H() const
+        {
+          if (m_FriedelFlag) return -m_HR;
+          return m_HR;
+        }
         //! Product of Miller index and rotation part of symmetry operation.
         const Index& HR() const { return m_HR; }
         //! Product of Miller index and translation part of symmetry operation.
@@ -44,57 +53,92 @@ namespace cctbx {
         /*! This is the factor by which HT() is multiplied.
          */
         int TBF() const { return m_TBF; }
+        //! Flag for application of Friedel's law.
+        /*! For centric reflections, FriedelFlag() is always false.
+         */
+        bool FriedelFlag() const { return m_FriedelFlag; }
 
-        /*! \brief Phase for equivalent index in radians, given phase for
+        //! Returns new SymEquivIndex with flipped FriedelFlag() if iMate != 0.
+        SymEquivIndex Mate(int iMate = 1) const
+        {
+          if (iMate) return SymEquivIndex(m_HR, m_HT, m_TBF, !m_FriedelFlag);
+          return *this;
+        }
+
+        /*! \brief Phase for equivalent index, given phase for
             input Miller index.
          */
         /*! Formula used:<br>
-            phi_eq = phi_in - (2 * pi * HT()) / TBF();
+            deg == 0: phi_eq = phi_in - (2 * pi * HT()) / TBF();<br>
+            deg != 0: phi_eq = phi_in - (360 * HT()) / TBF();<br>
+            if (FriedelFlag()) phi_eq = -phi_eq;
          */
         template <class FloatType>
-        FloatType phase_eq_rad(const FloatType& phi_in) const {
-          using cctbx::constants::pi;
-          return phi_in - (2. * pi * HT()) / TBF();
+        FloatType phase_eq(const FloatType& phi_in, bool deg = false) const
+        {
+          FloatType period = cctbx::constants::two_pi;
+          if (deg) period = 360;
+          FloatType phi_eq = phi_in - (period * HT()) / TBF();
+          if (m_FriedelFlag) return -phi_eq;
+          return phi_eq;
         }
-        /*! \brief Phase for input index in radians, given phase for
+        /*! \brief Phase for input index, given phase for
             equivalent Miller index.
          */
         /*! Formula used:<br>
-            phi_in = phi_eq + (2 * pi * HT()) / TBF();
+            if (FriedelFlag()) phi_eq = -phi_eq;<br>
+            deg == 0: phi_in = phi_eq + (2 * pi * HT()) / TBF();<br>
+            deg != 0: phi_in = phi_eq + (360 * HT()) / TBF();
          */
         template <class FloatType>
-        FloatType phase_in_rad(const FloatType& phi_eq) const {
-          using cctbx::constants::pi;
-          return phi_eq + (2. * pi * HT()) / TBF();
+        FloatType phase_in(FloatType phi_eq, bool deg = false) const
+        {
+          if (m_FriedelFlag) phi_eq = -phi_eq;
+          FloatType period = cctbx::constants::two_pi;
+          if (deg) period = 360;
+          return phi_eq + (period * HT()) / TBF();
         }
-        /*! \brief Phase for equivalent index in degrees, given phase for
-            input Miller index.
-         */
-        /*! Formula used:<br>
-            phi_eq = phi_in - (2 * pi * HT()) / TBF();
-         */
-        template <class FloatType>
-        FloatType phase_eq_deg(const FloatType& phi_in) const {
-          return phi_in - (2. * 180. * HT()) / TBF();
-        }
+
         /*! \brief Complex value for equivalent index, given complex
             value for input index.
          */
         /*! Formula used:<br>
             f_eq = f_in * exp(-2 * pi * j * HT() / TBF());<br>
+            where j is the imaginary number.<br>
+            if (FriedelFlag()) f_eq = conj(f_eq);
+         */
+        template <class FloatType>
+        std::complex<FloatType>
+        complex_eq(const std::complex<FloatType>& f_in) const
+        {
+          FloatType theta = (-cctbx::constants::two_pi * HT()) / TBF();
+          std::complex<FloatType>
+          f_eq = f_in * std::polar(FloatType(1), theta);
+          if (m_FriedelFlag) return std::conj(f_eq);
+          return f_eq;
+        }
+        /*! \brief Complex value for input index, given complex
+            value for equivalent index.
+         */
+        /*! Formula used:<br>
+            if (FriedelFlag()) f_eq = conj(f_eq);<br>
+            f_in = f_eq * exp(2 * pi * j * HT() / TBF());<br>
             where j is the imaginary number.
          */
         template <class FloatType>
         std::complex<FloatType>
-        complex_eq(const std::complex<FloatType>& f_in) const {
-          using cctbx::constants::pi;
-          FloatType theta = (-2. * pi * HT()) / TBF();
-          return f_in * std::polar(1., theta);
+        complex_in(std::complex<FloatType> f_eq) const
+        {
+          if (m_FriedelFlag) f_eq = std::conj(f_eq);
+          FloatType theta = ( cctbx::constants::two_pi * HT()) / TBF();
+          return f_eq * std::polar(FloatType(1), theta);
         }
+
       protected:
         Index m_HR;
         int   m_HT;
         int   m_TBF;
+        bool  m_FriedelFlag;
     };
 
   } // namespace Miller
@@ -125,7 +169,7 @@ namespace cctbx {
 
 #endif // DOXYGEN_SHOULD_SKIP_THIS
 
-    //! XXX
+    //! XXX merge with PhaseRestriction
     class sys_absent_test
     {
       public:
@@ -209,15 +253,13 @@ namespace cctbx {
         //! Test if phase phi (in radians) is compatible with restriction.
         /*! The tolerance compensates for rounding errors.
          */
-        bool isValidPhase_rad(double phi,
-                                     double tolerance = 1.e-5) const {
+        bool isValidPhase_rad(double phi, double tolerance = 1.e-5) const {
           return isValidPhase(cctbx::constants::pi, phi, tolerance);
         }
         //! Test if phase phi (in degrees) is compatible with restriction.
         /*! The tolerance compensates for rounding errors.
          */
-        bool isValidPhase_deg(double phi,
-                                     double tolerance = 1.e-5) const {
+        bool isValidPhase_deg(double phi, double tolerance = 1.e-5) const {
           return isValidPhase(180., phi, tolerance);
         }
       private:
@@ -267,6 +309,11 @@ namespace cctbx {
           if (FriedelFlag && !isCentric()) return 2 * N();
           return N();
         }
+        //! XXX
+        int n_p1_listing(bool FriedelFlag) const {
+          if (FriedelFlag && isCentric()) return N() / 2;
+          return N();
+        }
         //! Flag for Friedel mates == M(FriedelFlag)/N().
         /*! Useful for looping over all symmetrically equivalent reflections
             including Friedel mates (if FriedelFlag == true).<br>
@@ -309,7 +356,7 @@ namespace cctbx {
             one-deep loop with M() iterations.<br>
             See also: operator()(int iIL)
          */
-        Miller::Index operator()(int iMate, int iList) const;
+        Miller::SymEquivIndex operator()(int iMate, int iList) const;
         //! High-level access to the symmetrically equivalent Miller indices.
         /*! Intended use:<pre>
             sgtbx::SpaceGroup SgOps = ... // define space group
@@ -320,47 +367,7 @@ namespace cctbx {
               Miller::Index EquivH = SEMI(iIL);
             </pre>
          */
-        Miller::Index operator()(int iIL) const;
-
-        /*! \brief Shift phase of structure factor f_in corresponding to
-            input Miller index to structure factor corresponding to
-            operator()(iMate, iList).
-         */
-#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200)
-        template <class FloatType>
-        std::complex<FloatType>
-#else
-        inline
-        std::complex<double>
-#endif
-        complex_eq(
-          int iMate, int iList,
-#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200)
-          const std::complex<FloatType>& f_in
-#else
-          const std::complex<double>& f_in
-#endif
-          ) const;
-
-        /*! \brief Shift phase of structure factor F corresponding to
-            input Miller index to structure factor corresponding to
-            operator()(iIL).
-         */
-#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200)
-        template <class FloatType>
-        std::complex<FloatType>
-#else
-        inline
-        std::complex<double>
-#endif
-        complex_eq(
-          int iIL,
-#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200)
-          const std::complex<FloatType>& f_in
-#else
-          const std::complex<double>& f_in
-#endif
-          ) const;
+        Miller::SymEquivIndex operator()(int iIL) const;
 
         //! Test if phase phi (in radians) is compatible with restriction.
         /*! The tolerance compensates for rounding errors.<br>
@@ -386,6 +393,7 @@ namespace cctbx {
         SymEquivMillerIndices(int TBF, int OrderP)
           : m_TBF(TBF), m_OrderP(OrderP), m_HT_Restriction(-1), m_List() {}
         void add(const Miller::SymEquivIndex& SEI);
+        void sort_in_hemispheres();
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
         friend class SpaceGroup;
 #endif // DOXYGEN_SHOULD_SKIP_THIS
@@ -398,48 +406,6 @@ namespace cctbx {
         };
         iIL_decomposition decompose_iIL(int iIL) const;
     };
-
-#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200)
-    template <class FloatType>
-    std::complex<FloatType>
-#else
-    inline
-    std::complex<double>
-#endif
-    SymEquivMillerIndices::complex_eq(
-      int iMate, int iList,
-#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200)
-      const std::complex<FloatType>& f_in
-#else
-      const std::complex<double>& f_in
-#endif
-      ) const
-    {
-      if (iMate == 0) {
-        return m_List[iList].complex_eq(f_in);
-      }
-      return std::conj(m_List[iList].complex_eq(f_in));
-    }
-
-#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200)
-    template <class FloatType>
-    std::complex<FloatType>
-#else
-    inline
-    std::complex<double>
-#endif
-    SymEquivMillerIndices::complex_eq(
-      int iIL,
-#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200)
-      const std::complex<FloatType>& f_in
-#else
-      const std::complex<double>& f_in
-#endif
-      ) const
-    {
-      iIL_decomposition d = decompose_iIL(iIL);
-      return complex_eq(d.iMate, d.iList, f_in);
-    }
 
   } // namespace sgtbx
 } // namespace cctbx
