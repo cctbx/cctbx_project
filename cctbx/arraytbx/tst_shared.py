@@ -138,4 +138,24 @@ y = shared.polar(a, p, 0)
 d = y[0]
 assert abs(d.real - c.real) > 1.e-6
 assert abs(d.imag - c.imag) > 1.e-6
+import pickle
+a = shared.double(())
+p = pickle.dumps(a)
+b = pickle.loads(p)
+assert b.size() == 0
+a = shared.double((1,2,3))
+p = pickle.dumps(a)
+b = pickle.loads(p)
+assert b.size() == 3
+assert tuple(b) == (1,2,3)
+a = shared.int((1,2,3))
+p = pickle.dumps(a)
+b = pickle.loads(p)
+assert b.size() == 3
+assert tuple(b) == (1,2,3)
+a = shared.float((1,2,3))
+p = pickle.dumps(a)
+b = pickle.loads(p)
+assert b.size() == 3
+assert tuple(b) == (1,2,3)
 print "OK"

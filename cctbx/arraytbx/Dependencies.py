@@ -10,6 +10,7 @@ class write_makefiles(makefile_generator.write_makefiles):
 
     self.files = (
       "arraytbx/sharedmodule.cpp",
+      "arraytbx/shared_picklers.cpp",
       "arraytbx/tst_shared.py",
       "arraytbx/tst_af_helpers.cpp",
       "arraytbx/tst_af_1.cpp",
@@ -29,6 +30,6 @@ class write_makefiles(makefile_generator.write_makefiles):
 
     self.boost_python_modules = {
       "shared":
-        (("sharedmodule",), ("cctbx_misc", "cctbx_bpl1")),
+        (("sharedmodule", "shared_picklers"), ("cctbx_misc", "cctbx_bpl1")),
     }
 
