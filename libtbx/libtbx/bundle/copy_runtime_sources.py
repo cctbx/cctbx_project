@@ -17,6 +17,7 @@ def copy_dist_files(dist_copy, dirname, names):
         or name.startswith("copyright")
         or name.startswith("license")
         or name.endswith(".py")
+        or name.endswith(".html")
         or name.endswith(".csh")
         or name.endswith(".sh")):
       src = libtbx.path.norm_join(dirname, file_name)
