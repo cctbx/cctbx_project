@@ -191,9 +191,21 @@ namespace sgtbx {
           Extension "2": Origin choice 2.<br>
           Extension "H": Hexagonal axes.<br>
           Extension "R": Rhombohedral axes.<br>
+          The extension is '\0' (the null character) otherwise.
           See also: Hermann_Mauguin()
        */
       inline char Extension() const { return m_Extension; }
+      //! Hermann-Mauguin symbol with extension appended (if any).
+      /*! If the extension is '\0' (the null character),
+          ExtendedHermann_Mauguin() is equivalent to
+          Hermann_Mauguin(). Otherwise a colon and the one-character
+          extension is appended to the Hermann-Mauguin symbol.
+          <p>
+          The extended Hermann-Mauguin symbol uniquely identifies a
+          tabulated space group representation.
+       */
+      const std::string& ExtendedHermann_Mauguin() const {
+        return m_ExtendedHermann_Mauguin; }
       //! Hall symbol.
       /*! The space group notation of Hall was designed to be "computer
           adapted". Hall symbols have some similarities with
@@ -211,6 +223,7 @@ namespace sgtbx {
       std::string m_Qualifier;
       std::string m_Hermann_Mauguin;
       char        m_Extension;
+      std::string m_ExtendedHermann_Mauguin;
       std::string m_Hall;
       void SetAll(const symbols::tables::Main_Symbol_Dict_Entry* Entry,
                   char WorkExtension,

@@ -301,7 +301,8 @@ if (__name__ == "__main__"):
 
   for T in Structure.Titles: print "Title:", T
   print "Unit cell:", Structure.UnitCell
-  print "Space group symbol:", Structure.SpaceGroupSymbols.Hermann_Mauguin()
+  print "Space group symbol:", \
+        Structure.SpaceGroupSymbols.ExtendedHermann_Mauguin()
   print "Resolution d_min:", Resolution_d_min
   print "Number of sites:", len(Structure.Sites)
   print
@@ -316,5 +317,5 @@ if (__name__ == "__main__"):
   print
 
   print "H K L Fcalc"
-  for H in FcalcDict.keys(): print H, cpolar(FcalcDict[H], 1)
+  for H in FcalcDict.keys(): print H, "(%.6g, %.3f)" % cpolar(FcalcDict[H], 1)
   print

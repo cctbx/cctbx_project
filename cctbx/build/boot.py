@@ -27,6 +27,9 @@ if (__name__ == "__main__"):
     sys.exit(1)
   create_makefiles(path_cctbx, cf)
   if (hasattr(os, "symlink")):
+    try: os.symlink(path_cctbx + "/examples/python", "examples/python")
+    except: pass
+  if (hasattr(os, "symlink")):
     for file in ("Makefile", "make.py", "test.py"):
       print "Linking:", file
       try: os.symlink(path_cctbx + "/build/" + file, file)

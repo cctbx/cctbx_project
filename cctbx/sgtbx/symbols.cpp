@@ -898,6 +898,8 @@ namespace sgtbx {
     m_Qualifier       = string(Entry->Qualifier ? Entry->Qualifier : "");
     m_Hermann_Mauguin = Entry->Hermann_Mauguin;
     m_Extension       = WorkExtension;
+    if (m_Extension == '\0') m_ExtendedHermann_Mauguin = m_Hermann_Mauguin;
+    else m_ExtendedHermann_Mauguin = m_Hermann_Mauguin + " :" + m_Extension;
     m_Hall            = TableHall;
   }
 
