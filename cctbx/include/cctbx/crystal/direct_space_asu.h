@@ -363,13 +363,11 @@ namespace direct_space_asu {
       asu_mappings(
         sgtbx::space_group const& space_group,
         float_asu<FloatType> const& asu,
-        FloatType const& buffer_thickness,
-        FloatType const& min_distance_sym_equiv=0.5)
+        FloatType const& buffer_thickness)
       :
         space_group_(space_group),
         asu_(asu),
         buffer_thickness_(buffer_thickness),
-        min_distance_sym_equiv_(min_distance_sym_equiv),
         space_group_ops_(space_group.all_ops()),
         space_group_ops_const_ref_(space_group_ops_.const_ref()),
         asu_buffer_(asu.add_buffer(buffer_thickness)),
@@ -415,10 +413,6 @@ namespace direct_space_asu {
       float_asu<FloatType> const&
       asu_buffer() const { return asu_buffer_; }
 
-      //! Value of min_distance_sym_equiv as passed to the constructor.
-      FloatType
-      min_distance_sym_equiv() const { return min_distance_sym_equiv_; }
-
       //! Sphere covering the asymmetric unit + buffer_thickness().
       /*! The sphere is computed as the minimum covering sphere
           for the vertices of asu(), followed by adding buffer_thickness()
@@ -430,13 +424,15 @@ namespace direct_space_asu {
 
       //! Processes one site and appends the results to mappings().
       void
-      process(fractional<FloatType> const& original_site)
+      process(
+        fractional<FloatType> const& original_site,
+        FloatType const& min_distance_sym_equiv=0.5)
       {
         sgtbx::site_symmetry site_symmetry(
           asu_.unit_cell(),
           space_group_,
           original_site,
-          min_distance_sym_equiv_,
+          min_distance_sym_equiv,
           true);
         process(original_site, site_symmetry);
       }
@@ -518,10 +514,11 @@ namespace direct_space_asu {
       //! Calls process() for each original site.
       void
       process_sites_frac(
-        af::const_ref<scitbx::vec3<FloatType> > const& original_sites)
+        af::const_ref<scitbx::vec3<FloatType> > const& original_sites,
+        FloatType const& min_distance_sym_equiv=0.5)
       {
         for(std::size_t i=0;i<original_sites.size();i++) {
-          process(original_sites[i]);
+          process(original_sites[i], min_distance_sym_equiv);
         }
       }
 
@@ -541,11 +538,12 @@ namespace direct_space_asu {
       //! Calls process() for each original site.
       void
       process_sites_cart(
-        af::const_ref<scitbx::vec3<FloatType> > const& original_sites)
+        af::const_ref<scitbx::vec3<FloatType> > const& original_sites,
+        FloatType const& min_distance_sym_equiv=0.5)
       {
         scitbx::mat3<FloatType> frac = unit_cell().fractionalization_matrix();
         for(std::size_t i=0;i<original_sites.size();i++) {
-          process(frac * original_sites[i]);
+          process(frac * original_sites[i], min_distance_sym_equiv);
         }
       }
 
@@ -806,7 +804,6 @@ namespace direct_space_asu {
       sgtbx::space_group space_group_;
       float_asu<FloatType> asu_;
       FloatType buffer_thickness_;
-      FloatType min_distance_sym_equiv_;
       af::shared<sgtbx::rt_mx> space_group_ops_;
       af::const_ref<sgtbx::rt_mx> space_group_ops_const_ref_;
       float_asu<FloatType> asu_buffer_;
