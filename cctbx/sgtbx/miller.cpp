@@ -209,7 +209,7 @@ namespace sgtbx {
       return Range;
     }
 
-    int CheckCutParam(const SgOps& sgo, bool FriedelSym, Miller::Vec3 CutP,
+    int CheckCutParam(const SgOps& sgo, Miller::Vec3 CutP,
                       int Range, int FullBlock)
     {
       Miller::Vec3 AdjRange;
@@ -233,7 +233,7 @@ namespace sgtbx {
             for (i = 0; i < 3; i++)
               if (CutP[i] == 0 && SEMI[iEq].HR()[i] < 0) break;
             if (i == 3) break;
-            if (SEMI.fMates(FriedelSym) != 2) continue;
+            if (SEMI.fMates(true) != 2) continue;
             for (i = 0; i < 3; i++)
               if (CutP[i] == 0 && SEMI[iEq].HR()[i] > 0) break;
             if (i == 3) break;
@@ -248,7 +248,7 @@ namespace sgtbx {
 
   } // namespace <anonymous>
 
-  Miller::Vec3 SgOps::getCutParameters(bool FriedelSym) const
+  Miller::Vec3 SgOps::getCutParameters() const
   {
     const int nTrials = 8;
     static const Miller::Vec3 ListTrialCutP[nTrials] = {
@@ -259,17 +259,14 @@ namespace sgtbx {
       {-1, -1,  0},
       { 0, -1, -1},
       {-1,  0, -1},
-      {-1, -1, -1},
     };
     int Range = SetCheckCutPRange(*this);
-    int iTrial;
-    for (iTrial = 0; iTrial < nTrials - 1; iTrial++) {
-      if (CheckCutParam(*this, FriedelSym, ListTrialCutP[iTrial],
-                        Range, 0) != 0) {
+    for (int iTrial = 0; iTrial < nTrials; iTrial++) {
+      if (CheckCutParam(*this, ListTrialCutP[iTrial], Range, 0) != 0) {
         return ListTrialCutP[iTrial];
       }
     }
-    return ListTrialCutP[nTrials - 1];
+    throw cctbx_internal_error();
   }
 
   void SymEquivMillerIndices::setMasterIndex(Miller::MasterIndex& Master) const

@@ -436,7 +436,7 @@ namespace sgtbx {
           The getCutParameters() function returns parameters that can be
           used in the following way:<pre>
           Miller::Index Hmax = ... // determine max hkl
-          Miller::Vec3 CutP = getCutParameters(false);
+          Miller::Vec3 CutP = getCutParameters();
           Miller::Index Hmin;
           for(int i=0;i<3;i++) Hmin[i] = CutP[i] * Hmax[i];
           Miller::Index H;
@@ -446,12 +446,16 @@ namespace sgtbx {
                 // use H</pre>
           This is, each element of CutP is either -1 or 0. A value
           of 0 indicates that the corresponding negative half-space
-          can be omitted in the loop over possible indices.<br>
-          If FriedelSym == true, a centre of inversion is added to the
-          list of symmetry matrices considered in the determination of
-          the cut parameters.
+          can be omitted in the loop over possible indices.
+          <p>
+          Friedel symmetry is implied in the determination of
+          the cut parameters. If the Friedel mates are needed
+          explicitly, they have to be added in a separate step.
+          Note that the Friedel mate appears explicitly only for
+          acentric reflections (use !isCentric(H) to determine
+          which reflections are acentric).
        */
-      Miller::Vec3 getCutParameters(bool FriedelSym) const;
+      Miller::Vec3 getCutParameters() const;
       //! Determine a representative ("asymmetric") Miller index.
       /*! A light-weight, general alternative to using contiguous
           asymmetric units.<br>

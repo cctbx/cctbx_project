@@ -46,10 +46,10 @@ class SiteInfo:
       self.Occ = 1.
       self.Uiso = default_Uiso
       if (len(flds) >= offs + 4):
-        self.Occ = flds[offs + 3]
+        self.Occ = string.atof(flds[offs + 3])
         if (len(flds) == offs + 5):
-          self.Uiso = flds[offs + 4]
-        else:
+          self.Uiso = string.atof(flds[offs + 4])
+        elif (len(flds) > offs + 5):
           raise FormatError, flds
       self.WyckoffMapping = None
       self.SiteSymmetry = None
@@ -146,9 +146,9 @@ class MillerIndexSet:
     self.UnitCell = UnitCell
     self.IndexDict = {}
 
-  def BuildIndices(self, Resolution_d_min, FriedelSym = 1):
+  def BuildIndices(self, Resolution_d_min):
     SgOps = self.SgOps
-    CutP = SgOps.getCutParameters(FriedelSym)
+    CutP = SgOps.getCutParameters()
     Hmax = self.UnitCell.MaxMillerIndices(Resolution_d_min)
     Qlow = 0.
     Qhigh = 1. / (Resolution_d_min * Resolution_d_min)

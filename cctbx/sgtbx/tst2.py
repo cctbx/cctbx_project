@@ -27,21 +27,21 @@ def show_RotMxInfo(sgo):
     print "EV =", info.EV(),
     print "SenseOfRotation =", info.SenseOfRotation()
 
-def hkl(sgo, FriedelSym = 0):
+def hkl(sgo):
   H = (1,2,-3)
   semi = sgo.getEquivMillerIndices(H)
-  for iList in xrange(semi.M(FriedelSym)):
+  for iList in xrange(semi.M(0)):
     print semi(iList)
   for iList in xrange(semi.N()):
     print semi[iList].HR(), semi[iList].HT()
-  CutP = sgo.getCutParameters(FriedelSym)
+  CutP = sgo.getCutParameters()
   print 'CutParameters =', CutP
   Master = sgo.getMasterIndex(H, CutP, 1)
   print Master.H()
   print Master.iMate()
   for Pretty in xrange(2):
     Master = sgo.getMasterIndex(H, CutP, Pretty)
-    for iList in xrange(semi.M(FriedelSym)):
+    for iList in xrange(semi.M(0)):
       assert(Master.H() == sgo.getMasterIndex(semi(iList), CutP, Pretty).H())
 
 if (__name__ == '__main__'):
