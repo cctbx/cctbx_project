@@ -2,10 +2,12 @@ from iotbx import wildcard
 from scitbx.array_family import flex
 from scitbx import stl
 import scitbx.stl.map
-from scitbx.python_utils.misc import adopt_init_args
 import sys
 
 class labels:
+
+  __slots__ = ["name", "altLoc", "resName", "chainID", "resSeq", "iCode",
+               "segID", "MODELserial"]
 
   def __init__(self,
         name=None,
@@ -16,7 +18,14 @@ class labels:
         iCode=None,
         segID=None,
         MODELserial=None):
-    adopt_init_args(self, locals())
+    self.name = name
+    self.altLoc = altLoc
+    self.resName = resName
+    self.chainID = chainID
+    self.resSeq = resSeq
+    self.iCode = iCode
+    self.segID = segID
+    self.MODELserial = MODELserial
 
   def __str__(self):
     return ",".join([str(id) for id in [
@@ -62,6 +71,11 @@ def labels_from_string(s):
 
 class attributes(labels):
 
+  __slots__ = ["is_hetatm",
+               "coordinates", "occupancy", "tempFactor", "element", "charge",
+               "sigCoor", "sigOcc", "sigTemp", "Ucart", "sigUcart",
+               "line_number"]
+
   def __init__(self,
         is_hetatm=False,
         name=None,
@@ -83,7 +97,26 @@ class attributes(labels):
         Ucart=None,
         sigUcart=None,
         line_number=None):
-    adopt_init_args(self, locals())
+    self.is_hetatm = is_hetatm
+    self.name = name
+    self.altLoc = altLoc
+    self.resName = resName
+    self.chainID = chainID
+    self.resSeq = resSeq
+    self.iCode = iCode
+    self.segID = segID
+    self.MODELserial = MODELserial
+    self.coordinates = coordinates
+    self.occupancy = occupancy
+    self.tempFactor = tempFactor
+    self.element = element
+    self.charge = charge
+    self.sigCoor = sigCoor
+    self.sigOcc = sigOcc
+    self.sigTemp = sigTemp
+    self.Ucart = Ucart
+    self.sigUcart = sigUcart
+    self.line_number = line_number
 
   def set_from_ATOM_record(self, pdb_record):
     if (pdb_record.record_name == "HETATM"):
