@@ -23,6 +23,8 @@
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/scope.hpp>
+#include <boost/python/return_value_policy.hpp>
+#include <boost/python/copy_non_const_reference.hpp>
 
 namespace scitbx { namespace af { namespace boost_python {
 
@@ -47,7 +49,10 @@ namespace scitbx { namespace af { namespace boost_python {
     versa<ElementType, flex_grid<> > data_;
   };
 
-  template <typename ElementType>
+  template <typename ElementType,
+            typename GetitemReturnValuePolicy
+              = boost::python::return_value_policy<
+                  boost::python::copy_non_const_reference> >
   struct flex_wrapper : versa<ElementType, flex_grid<> >
   {
     typedef ElementType e_t;
@@ -123,16 +128,16 @@ namespace scitbx { namespace af { namespace boost_python {
     static std::size_t
     capacity(f_t const& a) { return a.capacity(); }
 
-    static e_t
-    getitem_1d(f_t const& a, std::size_t i)
+    static e_t&
+    getitem_1d(f_t& a, std::size_t i)
     {
       if (!a.check_shared_size()) raise_shared_size_mismatch();
       if (i >= a.size()) scitbx::boost_python::raise_index_error();
       return a[i];
     }
 
-    static e_t
-    getitem_flex_grid(f_t const& a, flex_grid_default_index_type const& i)
+    static e_t&
+    getitem_flex_grid(f_t& a, flex_grid_default_index_type const& i)
     {
       if (!a.check_shared_size()) raise_shared_size_mismatch();
       if (!a.accessor().is_valid_index(i)) {
@@ -670,8 +675,8 @@ namespace scitbx { namespace af { namespace boost_python {
         .def("size", size)
         .def("__len__", size)
         .def("capacity", capacity)
-        .def("__getitem__", getitem_1d)
-        .def("__getitem__", getitem_flex_grid)
+        .def("__getitem__", getitem_1d, GetitemReturnValuePolicy())
+        .def("__getitem__", getitem_flex_grid, GetitemReturnValuePolicy())
         .def("__setitem__", setitem_1d)
         .def("__setitem__", setitem_flex_grid)
         .def("front", front)
