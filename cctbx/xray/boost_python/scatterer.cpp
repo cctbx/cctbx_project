@@ -183,6 +183,19 @@ namespace {
         sgtbx::change_of_basis_op const&)) change_basis, (
       arg_("scatterers"), arg_("cb_op")));
 
+    def("expand_to_p1",
+      (af::shared<scatterer<> >(*)(
+        uctbx::unit_cell const&,
+        sgtbx::space_group const&,
+        af::const_ref<scatterer<> > const&,
+        sgtbx::site_symmetry_table const&,
+        bool)) expand_to_p1, (
+          arg_("unit_cell"),
+          arg_("space_group"),
+          arg_("scatterers"),
+          arg_("site_symmetry_table"),
+          arg_("append_number_to_labels")));
+
     def("n_undefined_multiplicities",
       (std::size_t(*)(
         af::const_ref<scatterer<> > const&)) n_undefined_multiplicities, (
