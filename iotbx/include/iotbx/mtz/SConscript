@@ -1,9 +1,22 @@
-Import("env_etc")
+Import("mtz_env", "env_etc")
+
+env = mtz_env.Copy()
+env.Prepend(LIBS=["cctbx", "cmtz"]+env_etc.libm)
+env.Append(LIBPATH=["#libtbx"])
+if (env_etc.static_libraries): builder = env.StaticLibrary
+else:                          builder = env.SharedLibrary
+builder(
+  target="#libtbx/iotbx_mtz",
+  source=[
+    "object.cpp",
+    "crystal.cpp",
+    "dataset.cpp",
+    "column.cpp"])
 
 if (not env_etc.no_boost_python):
   Import("env_iotbx_boost_python_ext")
   env = env_iotbx_boost_python_ext.Copy()
-  env.Prepend(LIBS=["cmtz", "cctbx", "scitbx_boost_python"])
+  env.Prepend(LIBS=["iotbx_mtz", "cctbx", "cmtz", "scitbx_boost_python"])
   env.SharedLibrary(
     target="#libtbx/iotbx_mtz_ext",
     source=[
