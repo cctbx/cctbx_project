@@ -14,6 +14,8 @@ def copy_dist_files(dist_copy, dirname, names):
     name = file_name.lower()
     if (   name == "libtbx_config"
         or (name == "dispatcher_front_end.exe" and os.name == "nt")
+        or name.startswith("authors")
+        or name.startswith("copying")
         or name.startswith("copyright")
         or name.startswith("license")
         or name.endswith(".py")
