@@ -207,6 +207,17 @@ class stage_1:
           * sites_frac
     return self._sites_cart
 
+  def get_element_symbols(self, strip_symbols=False):
+    result = flex.std_string()
+    for atom in self.atom_attributes_list:
+      if (atom.element is None):
+        result.push_back("")
+      elif (strip_symbols):
+        result.push_back(atom.element.strip())
+      else:
+        result.push_back(atom.element)
+    return result
+
   def get_block_identifiers(self, block_indices):
     if (len(block_indices) == 0):
       return flex.size_t(len(self.atom_attributes_list), 0)
