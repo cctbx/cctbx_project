@@ -22,6 +22,12 @@ class constraints:
       row_echelon_form=self.row_echelon_form,
       independent_flags=self.independent_flags)
 
+  def n_independent_params(self):
+    return self.independent_flags.count(True)
+
+  def n_dependent_params(self):
+    return self.independent_flags.count(False)
+
   def independent_params(self, u_star):
     return flex.double(u_star).select(self.independent_flags)
 
