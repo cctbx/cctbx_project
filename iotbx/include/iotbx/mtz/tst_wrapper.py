@@ -1,7 +1,9 @@
 from iotbx import mtz
 import iotbx.mtz.wrapper
+from iotbx.option_parser import iotbx_option_parser
 from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
+from cStringIO import StringIO
 import sys, os
 
 def exercise_basic():
@@ -116,6 +118,12 @@ def exercise_basic():
                 == column.valid_indices().size()
           lookup_column = mtz_object.lookup_column(column.label())
           assert lookup_column.label() == column.label()
+    assert mtz_object.valid_indices(
+      column_label="Frem").size() == 163
+    assert mtz_object.valid_values(
+      column_label="Frem").size() == 163
+    assert mtz_object.valid_integers(
+      column_label="ISYMabs").size() == 165
     assert mtz_object.valid_indices_anomalous(
       column_label_plus="Frem",
       column_label_minus="DANOrem").size() == 326
@@ -130,25 +138,104 @@ def exercise_basic():
       column_label_phi_plus="DANOrem",
       column_label_ampl_minus="Frem",
       column_label_phi_minus="DANOrem").size() == 326
-    observations = mtz_object.valid_delta_anomalous(
+    array_group = mtz_object.valid_delta_anomalous(
       column_label_f_data="Frem",
       column_label_f_sigmas="SIGFrem",
       column_label_d_data="DANOrem",
       column_label_d_sigmas="SIGDANOrem")
-    assert observations.indices.size() == 326
-    assert observations.data.size() == 326
-    assert observations.sigmas.size() == 326
+    assert array_group.indices.size() == 326
+    assert array_group.data.size() == 326
+    assert array_group.sigmas.size() == 326
     assert mtz_object.valid_hl(
       column_label_a="Frem",
       column_label_b="DANOrem",
       column_label_c="Frem",
       column_label_d="DANOrem").size() == 163
 
+def exercise_valid_any(file_name, out):
+  mtz_object = mtz.wrapper.object(file_name=file_name)
+  mtz_object.show_summary(out=out)
+  types = "".join(mtz_object.column_types())
+  i = types.find("FP")
+  if (i >= 0):
+    labels = mtz_object.column_labels()[i:i+2]
+    mtz_object.valid_complex(
+      column_label_ampl=labels[0],
+      column_label_phi=labels[1])
+  for type_group in ["GLGL", "KMKM"]:
+    i = types.find(type_group)
+    if (i >= 0):
+      labels = mtz_object.column_labels()[i:i+4]
+      indices = mtz_object.valid_indices_anomalous(
+        column_label_plus=labels[0],
+        column_label_minus=labels[2])
+      data = mtz_object.valid_values_anomalous(
+        column_label_plus=labels[0],
+        column_label_minus=labels[2])
+      assert indices.size() == data.size()
+      data = mtz_object.valid_complex_anomalous(
+        column_label_ampl_plus=labels[0],
+        column_label_phi_plus=labels[1],
+        column_label_ampl_minus=labels[2],
+        column_label_phi_minus=labels[3])
+      assert indices.size() == data.size()
+  i = types.find("FQDQ")
+  if (i >= 0):
+    labels = mtz_object.column_labels()[i:i+4]
+    mtz_object.valid_delta_anomalous(
+      column_label_f_data=labels[0],
+      column_label_f_sigmas=labels[1],
+      column_label_d_data=labels[2],
+      column_label_d_sigmas=labels[3])
+  i = types.find("AAAA")
+  if (i >= 0):
+    labels = mtz_object.column_labels()[i:i+4]
+    mtz_object.valid_hl(
+      column_label_a=labels[0],
+      column_label_b=labels[1],
+      column_label_c=labels[2],
+      column_label_d=labels[3])
+
+def walk_callback(arg, top, names):
+  out = arg
+  for name in names:
+    if (not name.endswith(".mtz")): continue
+    file_name = os.path.normpath(os.path.join(top, name))
+    print >> out, "Processing:", file_name
+    exercise_valid_any(file_name=file_name, out=out)
+
+def exercise_walk(root_dir, verbose=False):
+  if (verbose):
+    out = sys.stdout
+  else:
+    out = StringIO()
+  os.path.walk(top=root_dir, func=walk_callback, arg=out)
+
 def exercise():
-  forever = "--forever" in sys.argv[1:]
-  while 1:
+  command_line = (iotbx_option_parser()
+    .option(None, "--verbose",
+      action="store_true",
+      dest="verbose")
+    .option(None, "--forever",
+      action="store_true",
+      dest="forever",
+      help="Infinite loop, for detection of memory leaks")
+    .option(None, "--walk",
+      action="store",
+      type="string",
+      dest="walk",
+      metavar="ROOT_DIR",
+      help="Find and process all MTZ files under ROOT_DIR")
+  ).process(args=sys.argv[1:])
+  exercise_basic()
+  for file_name in command_line.args:
+    exercise_valid_any(file_name=file_name, out=sys.stdout)
+  if (command_line.options.walk is not None):
+    exercise_walk(
+      root_dir=command_line.options.walk,
+      verbose=command_line.options.verbose)
+  while (command_line.options.forever):
     exercise_basic()
-    if (not forever): break
   print "OK"
 
 if (__name__ == "__main__"):

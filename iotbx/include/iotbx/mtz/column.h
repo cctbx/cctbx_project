@@ -298,7 +298,7 @@ namespace iotbx { namespace mtz {
         SIGF(-) = SIGF(+)
    */
   inline
-  observation_arrays
+  array_group
   object::valid_delta_anomalous(
     const char* column_label_f_data,
     const char* column_label_f_sigmas,
@@ -312,11 +312,11 @@ namespace iotbx { namespace mtz {
     column values_fs(lookup_column(column_label_f_sigmas));
     column values_dd(lookup_column(column_label_d_data));
     column values_ds(lookup_column(column_label_d_sigmas));
-    observation_arrays result(2*n_reflections());
+    array_group result(2*n_reflections());
     for(int i=0;i<n_reflections();i++) {
       if (   values_fs.is_ccp4_nan(i) != values_fd.is_ccp4_nan(i)
-          || values_dd.is_ccp4_nan(i) != values_fd.is_ccp4_nan(i)
-          || values_ds.is_ccp4_nan(i) != values_fd.is_ccp4_nan(i)) {
+          || values_ds.is_ccp4_nan(i) != values_dd.is_ccp4_nan(i)
+          || (values_fd.is_ccp4_nan(i) && !values_dd.is_ccp4_nan(i))) {
         throw cctbx::error(std::string(
           "Unexpected NAN while extracting complex array from columns: ")
           + column_label_f_data   + ", "
@@ -327,17 +327,23 @@ namespace iotbx { namespace mtz {
       if (!values_fd.is_ccp4_nan(i)) {
         result.indices.push_back(cctbx::miller::index<>(
            h.int_datum(i),  k.int_datum(i),  l.int_datum(i)));
-        result.indices.push_back(cctbx::miller::index<>(
-          -h.int_datum(i), -k.int_datum(i), -l.int_datum(i)));
         double fd = values_fd.float_datum(i);
         double fs = values_fs.float_datum(i);
-        double ddh = values_dd.float_datum(i) * .5;
-        double dsh = values_ds.float_datum(i) * .5;
-        result.data.push_back(fd + ddh);
-        result.data.push_back(fd - ddh);
-        double s = std::sqrt(fs*fs + dsh*dsh);
-        result.sigmas.push_back(std::sqrt(s));
-        result.sigmas.push_back(std::sqrt(s));
+        if (values_dd.is_ccp4_nan(i)) {
+          result.data.push_back(fd);
+          result.sigmas.push_back(fs);
+        }
+        else {
+          double ddh = values_dd.float_datum(i) * .5;
+          double dsh = values_ds.float_datum(i) * .5;
+          double s = std::sqrt(fs*fs + dsh*dsh);
+          result.indices.push_back(cctbx::miller::index<>(
+            -h.int_datum(i), -k.int_datum(i), -l.int_datum(i)));
+          result.data.push_back(fd + ddh);
+          result.data.push_back(fd - ddh);
+          result.sigmas.push_back(std::sqrt(s));
+          result.sigmas.push_back(std::sqrt(s));
+        }
       }
     }
     return result;
