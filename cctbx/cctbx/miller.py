@@ -738,6 +738,11 @@ class array(set):
     from cctbx.xray import observation_types
     return isinstance(self.observation_type(), observation_types.amplitude)
 
+  def is_xray_reconstructed_amplitude_array(self):
+    from cctbx.xray import observation_types
+    return isinstance(
+      self.observation_type(), observation_types.reconstructed_amplitude)
+
   def is_xray_intensity_array(self):
     from cctbx.xray import observation_types
     return isinstance(self.observation_type(), observation_types.intensity)
