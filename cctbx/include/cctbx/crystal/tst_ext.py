@@ -448,6 +448,11 @@ def exercise_pair_tables():
     assert asu_table.add_pair(
       i_seq=p[0], j_seq=p[1], rt_mx_ji=sgtbx.rt_mx(p[2])) is asu_table
   check_pair_asu_table(asu_table, expected_asu_pairs)
+  term_table = crystal.coordination_sequences_simple(
+    pair_asu_table=asu_table,
+    n_shells=5)
+  assert [list(terms) for terms in term_table] \
+      == [[1,4,10,20,34,54], [1,4,10,20,34,53], [1,4,10,20,34,54]]
 
 def exercise_symmetry():
   symmetry = crystal.ext.symmetry(

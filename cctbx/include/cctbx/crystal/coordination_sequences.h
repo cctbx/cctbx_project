@@ -97,17 +97,20 @@ namespace coordination_sequences {
 
   af::shared<std::vector<unsigned> >
   simple(
-    direct_space_asu::asu_mappings<> const& asu_mappings,
-    pair_asu_table_table const& pair_asu_table_table_,
+    crystal::pair_asu_table<> const& pair_asu_table,
     unsigned n_shells)
   {
-    CCTBX_ASSERT(pair_asu_table_table_.size()
-              == asu_mappings.mappings().size());
+    direct_space_asu::asu_mappings<> const&
+      asu_mappings = *pair_asu_table.asu_mappings().get();
+    af::const_ref<pair_asu_dict>
+      asu_table_ref = pair_asu_table.table().const_ref();
+    CCTBX_ASSERT(asu_mappings.mappings_const_ref().size()
+              == asu_table_ref.size());
     af::shared<std::vector<unsigned> > term_table;
     for(unsigned i_seq_pivot=0;
-                 i_seq_pivot<pair_asu_table_table_.size();
+                 i_seq_pivot<asu_table_ref.size();
                  i_seq_pivot++) {
-      pair_asu_dict pair_asu_dict_pivot = pair_asu_table_table_[i_seq_pivot];
+      pair_asu_dict pair_asu_dict_pivot = asu_table_ref[i_seq_pivot];
       sgtbx::rt_mx rt_mx_pivot = asu_mappings.get_rt_mx(i_seq_pivot, 0);
       if (pair_asu_dict_pivot.size() == 0) {
         term_table.push_back(std::vector<unsigned>());
@@ -127,9 +130,9 @@ namespace coordination_sequences {
           sgtbx::rt_mx rt_mx_i = asu_mappings.get_rt_mx(node_m.i_seq, 0);
           sgtbx::rt_mx rt_mx_ni = node_m.rt_mx.multiply(rt_mx_i.inverse());
           pair_asu_dict::const_iterator
-            pair_asu_dict_end = pair_asu_table_table_[node_m.i_seq].end();
+            pair_asu_dict_end = asu_table_ref[node_m.i_seq].end();
           for(pair_asu_dict::const_iterator
-                pair_asu_dict_i = pair_asu_table_table_[node_m.i_seq].begin();
+                pair_asu_dict_i = asu_table_ref[node_m.i_seq].begin();
                 pair_asu_dict_i != pair_asu_dict_end;
                 pair_asu_dict_i++) {
             unsigned j_seq = pair_asu_dict_i->first;

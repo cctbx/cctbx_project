@@ -22,8 +22,7 @@ def exercise(distance_cutoff=3.5, n_shells=5):
         pair_asu_table=pair_asu_table,
         n_shells=n_shells)
       term_table_simple = cctbx.crystal.coordination_sequences_simple(
-        asu_mappings=pair_asu_table.asu_mappings(),
-        pair_asu_table_table=pair_asu_table.table(),
+        pair_asu_table=pair_asu_table,
         n_shells=n_shells)
       if (verbose):
         print "term_table_slow:"

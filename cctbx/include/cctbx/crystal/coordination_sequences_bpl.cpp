@@ -13,8 +13,7 @@ namespace {
     using namespace boost::python;
     typedef boost::python::arg arg_; // gcc 2.96 workaround
     def("coordination_sequences_simple", coordination_sequences::simple, (
-      arg_("asu_mappings"),
-      arg_("pair_asu_table_table"),
+      arg_("pair_asu_table"),
       arg_("n_shells")));
   }
 
