@@ -44,7 +44,8 @@ class package:
     self.dist_path = norm(join(self.effective_root, name))
     if (isfile(self.dist_path)):
       try:
-        self.effective_root = norm(open(self.dist_path).readlines()[0][:-1])
+        self.effective_root = norm(
+          abspath(open(self.dist_path).readlines()[0][:-1]))
         assert len(self.effective_root) > 0
       except:
         raise UserError("Error reading redirection file: %s" % self.dist_path)
@@ -52,7 +53,8 @@ class package:
       self.dist_path = norm(join(self.effective_root, name))
       if (not isdir(self.dist_path)):
         # second attempt: interpret the redirection as relative path
-        self.effective_root = norm(join(self.dist_root, self.effective_root))
+        self.effective_root = norm(
+          abspath(join(self.dist_root, self.effective_root)))
         self.dist_path = norm(join(self.effective_root, name))
         if (not isdir(self.dist_path)):
           raise UserError('Redirection to non-existing directory: "%s"'
