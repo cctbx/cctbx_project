@@ -30,7 +30,7 @@ namespace cctbx {
     template <typename FloatType>
     struct null_accumulator
     {
-      void inner_sum_reset() {}
+      void inner_sum_reset(const Miller::Index&) {}
       void inner_sum_add(const std::complex<FloatType>&,
                          const Miller::Index&) {}
       void outer_sum_add() {}
@@ -61,11 +61,11 @@ namespace cctbx {
           Miller::Index HR = H * SgOps[s].Rpart();
           FloatType HRX = HR * X;
           sgtbx::TrVec T = SgOps[s].Tpart();
-                     accu1->inner_sum_reset();
-          if (accu2) accu2->inner_sum_reset();
-          if (accu3) accu3->inner_sum_reset();
-          if (accu4) accu4->inner_sum_reset();
-          if (accu5) accu5->inner_sum_reset();
+                     accu1->inner_sum_reset(HR);
+          if (accu2) accu2->inner_sum_reset(HR);
+          if (accu3) accu3->inner_sum_reset(HR);
+          if (accu4) accu4->inner_sum_reset(HR);
+          if (accu5) accu5->inner_sum_reset(HR);
           for (int i = 0; i < SgOps.fInv(); i++) {
             if (i) {
               HR = -HR;
@@ -108,6 +108,30 @@ namespace cctbx {
                          const Miller::Index&) {
         outer_sum += e2piiHXs;
       }
+      std::complex<FloatType> outer_sum;
+    };
+
+    template <typename FloatType>
+    struct structure_factor_aniso_accumulator : null_accumulator<FloatType>
+    {
+      structure_factor_aniso_accumulator(const af::tiny<FloatType, 6>& Ustar)
+      : Ustar_(Ustar),
+        outer_sum(0)
+      {}
+      void inner_sum_reset(const Miller::Index& HR) {
+        HR_ = HR;
+        inner_sum = std::complex<FloatType>(0);
+      }
+      void inner_sum_add(const std::complex<FloatType>& e2piiHXs,
+                         const Miller::Index&) {
+        inner_sum += e2piiHXs;
+      }
+      void outer_sum_add() {
+        outer_sum += inner_sum * adptbx::DebyeWallerFactorUstar(HR_, Ustar_);
+      }
+      const af::tiny<FloatType, 6>& Ustar_;
+      Miller::Index HR_;
+      std::complex<FloatType> inner_sum;
       std::complex<FloatType> outer_sum;
     };
 
@@ -233,27 +257,11 @@ namespace cctbx {
                   const fractional<FloatType>& X,
                   const af::tiny<FloatType, 6>& Ustar)
   {
-    using constants::pi;
-    std::complex<FloatType> F(FloatType(0));
-    for (int s = 0; s < SgOps.nSMx(); s++) {
-      Miller::Index HR = H * SgOps[s].Rpart();
-      FloatType HRX = HR * X;
-      sgtbx::TrVec T = SgOps[s].Tpart();
-      std::complex<FloatType> Fs(0., 0.);
-      for (int i = 0; i < SgOps.fInv(); i++) {
-        if (i) {
-          HRX = -HRX;
-          T = SgOps.InvT() - T;
-        }
-        for (int l = 0; l < SgOps.nLTr(); l++) {
-          FloatType HT = FloatType(H * (T + SgOps.LTr(l))) / SgOps.TBF();
-          FloatType phase = FloatType(2 * pi) * (HRX + HT);
-          Fs += std::complex<FloatType>(std::cos(phase), std::sin(phase));
-        }
-      }
-      F += Fs * adptbx::DebyeWallerFactorUstar(HR, Ustar);
-    }
-    return F;
+    typedef detail::structure_factor_aniso_accumulator<FloatType> accu_type;
+    accu_type accu(Ustar);
+    detail::generic_sum_over_symmetry<FloatType, accu_type>::run(
+      SgOps, H, X, &accu);
+    return accu.outer_sum;
   }
 
   /*! \brief This class groups the information about an atom that
