@@ -7,6 +7,86 @@ import string
 
 class empty: pass
 
+class model:
+
+  def __init__(self, stage_1, serial):
+    self.stage_1 = stage_1
+    self.serial = serial
+    self.altLocs = {}
+    self.conformers = []
+
+  def add_conformer(self, conformer):
+    assert not self.altLocs.has_key(conformer.altLoc)
+    self.altLocs[conformer.altLoc] = len(self.conformers)
+    self.conformers.append(conformer)
+
+class conformer:
+
+  def __init__(self, model, altLoc, iselection):
+    self.model = model
+    self.altLoc = altLoc
+    self.iselection = iselection
+
+  def iselection_common_atoms(self, other):
+    assert other.model.stage_1 is self.model.stage_1
+    return self.model.stage_1.selection_cache().intersection(
+      iselections=[self.iselection, other.iselection]).iselection()
+
+  def get_chains(self):
+    stage_1 = self.model.stage_1
+    ter_block_identifiers = stage_1.get_ter_block_identifiers()
+    chains = []
+    residue_iselections = []
+    isel_residue = flex.size_t()
+    prev_atom = None
+    prev_residue_labels = ""
+    prev_ter_block_identifier = -1
+    for i_seq in self.iselection:
+      atom = stage_1.atom_attributes_list[i_seq]
+      residue_labels = atom.residue_labels()
+      ter_block_identifier = ter_block_identifiers[i_seq]
+      if (   prev_atom is None
+          or atom.chainID != prev_atom.chainID
+          or atom.segID != prev_atom.segID
+          or ter_block_identifier != prev_ter_block_identifier
+          or atom.resSeq < prev_atom.resSeq):
+        if (isel_residue.size() > 0):
+          residue_iselections.append(isel_residue)
+          isel_residue = flex.size_t()
+        if (len(residue_iselections) > 0):
+          chains.append(pdb.interpretation.chain(
+            conformer=self, residue_iselections=residue_iselections))
+          residue_iselections = []
+      elif (residue_labels != prev_residue_labels):
+        if (isel_residue.size() > 0):
+          residue_iselections.append(isel_residue)
+          isel_residue = flex.size_t()
+      isel_residue.append(i_seq)
+      prev_atom = atom
+      prev_residue_labels = residue_labels
+      prev_ter_block_identifier = ter_block_identifier
+    if (isel_residue.size() > 0):
+      residue_iselections.append(isel_residue)
+    if (len(residue_iselections) > 0):
+      chains.append(pdb.interpretation.chain(
+        conformer=self, residue_iselections=residue_iselections))
+    return chains
+
+class chain:
+
+  def __init__(self, conformer, residue_iselections):
+    self.conformer = conformer
+    self.residues = []
+    for iselection in residue_iselections:
+      self.residues.append(
+        residue(chain=self, iselection=iselection))
+
+class residue:
+
+  def __init__(self, chain, iselection):
+    self.chain = chain
+    self.iselection = iselection
+
 class stage_1:
 
   def __init__(self, file_name=None, raw_records=None):
@@ -88,6 +168,15 @@ class stage_1:
       line_number=self.state.line_number,
       ignore_columns_73_and_following=self.ignore_columns_73_and_following)
 
+  def get_ter_block_identifiers(self):
+    if (len(self.ter_indices) == 0):
+      return flex.size_t(len(self.atom_attributes_list), 0)
+    result = flex.size_t()
+    for i,j in enumerate(self.ter_indices):
+      result.resize(j, i)
+    result.resize(len(self.atom_attributes_list), result.back()+1)
+    return result
+
   def selection_cache(self):
     if (self._selection_cache is None):
       self._selection_cache = pdb.atom.selection_cache(
@@ -154,6 +243,38 @@ class stage_1:
         self.n_patched_altLocs += 1
     if (self.n_patched_altLocs > 0):
       self._selection_cache = None
+
+  def get_models_and_conformers(self):
+    sel_cache = self.selection_cache()
+    altLoc_unions = {}
+    isel_blank_altLoc = sel_cache.altLoc.get(" ", None)
+    if (isel_blank_altLoc is None):
+      altLoc_unions = sel_cache.altLoc
+    else:
+      for altLoc,isel_altLoc in sel_cache.altLoc.items():
+        altLoc_unions[altLoc] = sel_cache.union(
+          iselections=[isel_blank_altLoc, isel_altLoc]).iselection()
+    models = []
+    for MODELserial,isel_model in sel_cache.MODELserial.items():
+      conformer_dict = {}
+      for altLoc,isel_altLoc_union in altLoc_unions.items():
+        isel_conformer = sel_cache.intersection(
+          iselections=[isel_model, isel_altLoc_union]).iselection()
+        if (isel_conformer.size() > 0):
+          conformer_dict[altLoc] = isel_conformer
+      if (len(conformer_dict) > 1 and " " in conformer_dict):
+        del conformer_dict[" "]
+      altLocs = conformer_dict.keys()
+      altLocs.sort()
+      model_ = model(stage_1=self, serial=MODELserial)
+      for altLoc in altLocs:
+        conformer_ = conformer(
+          model=model_,
+          altLoc=altLoc,
+          iselection=conformer_dict[altLoc])
+        model_.add_conformer(conformer_)
+      models.append(model_)
+    return models
 
 class altLoc_grouping:
 
