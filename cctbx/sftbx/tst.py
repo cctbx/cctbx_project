@@ -30,7 +30,7 @@ def OneCycle():
   ):
     SF = CAASF_WK1995(Label)
     Site = sftbx.XrayScatterer(Label, SF, 0j, Coordinates, 1., 0.03)
-    Site.ApplySymmetry(UnitCell, SgOps, 0.5, 0.1)
+    Site.ApplySymmetry(UnitCell, SgOps, 0.5, 0.1, 1)
     Sites.append(Site)
   for Site in Sites:
     print Site.Label(), Site.Coordinates()
