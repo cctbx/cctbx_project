@@ -8,6 +8,9 @@
 
 namespace cctbx { namespace geometry_restraints {
 
+  /*! \brief Difference between angle_1 and angle_2 (in degrees) taking the
+      periodicity into account.
+   */
   inline
   double
   angle_delta_deg(double angle_1, double angle_2, int periodicity=1)
@@ -35,22 +38,6 @@ namespace cctbx { namespace geometry_restraints {
           ProxyType const& proxy = proxies[i];
           RestraintType restraint(sites_cart, proxy);
           result.push_back(restraint.delta);
-        }
-        return result;
-      }
-
-      static
-      af::shared<double>
-      get_rms(
-        af::const_ref<scitbx::vec3<double> > const& sites_cart,
-        af::const_ref<ProxyType> const& proxies)
-      {
-        af::shared<double> result((af::reserve(proxies.size())));
-        for(std::size_t i=0;i<proxies.size();i++) {
-          ProxyType const& proxy = proxies[i];
-          RestraintType restraint(sites_cart, proxy);
-          result.push_back(
-            std::sqrt(af::mean_sq(restraint.deltas().const_ref())));
         }
         return result;
       }

@@ -62,6 +62,7 @@ namespace {
         .add_property("sites", make_getter(&w_t::sites, rbv()))
         .add_property("weights", make_getter(&w_t::weights, rbv()))
         .def("deltas", &w_t::deltas, ccr())
+        .def("rms_deltas", &w_t::rms_deltas)
         .def("residual", &w_t::residual)
         .def("gradients", &w_t::gradients)
         .def("normal", &w_t::normal)

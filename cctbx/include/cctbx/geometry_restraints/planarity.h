@@ -5,10 +5,13 @@
 
 namespace cctbx { namespace geometry_restraints {
 
+  //! Grouping of indices into array of sites (i_seqs) and weights.
   struct planarity_proxy
   {
+    //! Default constructor. Some data members are not initialized!
     planarity_proxy() {}
 
+    //! Constructor.
     planarity_proxy(
       af::shared<std::size_t> const& i_seqs_,
       af::shared<double> const& weights_)
@@ -19,15 +22,32 @@ namespace cctbx { namespace geometry_restraints {
       CCTBX_ASSERT(weights.size() == i_seqs.size());
     }
 
+    //! Indices into array of sites.
     af::shared<std::size_t> i_seqs;
+    //! Array of weights.
     af::shared<double> weights;
   };
 
+  //! Residual and gradient calculations for planarity restraint.
+  /*! See also:
+
+        Hendrickson, W.A. (1985). Meth. Enzym. 115, 252-270.
+
+        Urzhumtsev, A.G. (1991). Acta Cryst. A47, 723-727.
+
+        Blanc, E. & Paciorek, W. (2001). J. Appl. Cryst. 34, 480-483.
+
+      This implementation uses the procedure of Blanc & Paciorek.
+      The results are identical to those produced by Urzhumtsev's
+      procedure.
+   */
   class planarity
   {
     public:
+      //! Default constructor. Some data members are not initialized!
       planarity() {}
 
+      //! Constructor.
       planarity(
         af::shared<scitbx::vec3<double> > const& sites_,
         af::shared<double> const& weights_)
@@ -38,6 +58,9 @@ namespace cctbx { namespace geometry_restraints {
         init_deltas();
       }
 
+      /*! \brief Coordinates are copied from sites_cart according to
+          proxy.i_seqs, weights are copied from proxy.
+       */
       planarity(
         af::const_ref<scitbx::vec3<double> > const& sites_cart,
         planarity_proxy const& proxy)
@@ -54,12 +77,20 @@ namespace cctbx { namespace geometry_restraints {
         init_deltas();
       }
 
+      //! Cartesian coordinates of the sites defining the plane.
       af::shared<scitbx::vec3<double> > sites;
+      //! Array of weights for each site.
       af::shared<double> weights;
 
+      //! Array of distances from plane for each site.
       af::shared<double> const&
       deltas() const { return deltas_; }
 
+      //! sqrt(mean_sq(deltas))
+      double
+      rms_deltas() const { return std::sqrt(af::mean_sq(deltas_.const_ref())); }
+
+      //! Sum of weight * delta**2 over all sites.
       double
       residual() const
       {
@@ -73,6 +104,7 @@ namespace cctbx { namespace geometry_restraints {
         return result;
       }
 
+      //! Gradients with respect to the sites.
       af::shared<scitbx::vec3<double> >
       gradients() const
       {
@@ -88,7 +120,9 @@ namespace cctbx { namespace geometry_restraints {
         return result;
       }
 
-      // Not available in Python.
+      //! Support for planarity_residual_sum.
+      /*! Not available in Python.
+       */
       void
       add_gradients(
         af::ref<scitbx::vec3<double> > const& gradient_array,
@@ -102,12 +136,17 @@ namespace cctbx { namespace geometry_restraints {
         }
       }
 
+      /*! The plane normal is identical to the eigenvector corresponding
+          to the smallest eigenvalue of the residual_tensor().
+       */
       scitbx::vec3<double>
       normal() const
       {
         return scitbx::vec3<double>(eigensystem_.vectors().begin()+2*3);
       }
 
+      /*! Smallest eigenvalue of the residual_tensor().
+       */
       double
       lambda_min() const { return eigensystem_.values()[2]; }
 
@@ -170,16 +209,25 @@ namespace cctbx { namespace geometry_restraints {
       }
   };
 
+  /*! \brief Fast computation of planarity::rms_deltas() given an array
+      of planarity proxies.
+   */
   inline
   af::shared<double>
   planarity_deltas_rms(
     af::const_ref<scitbx::vec3<double> > const& sites_cart,
     af::const_ref<planarity_proxy> const& proxies)
   {
-    return detail::generic_deltas<planarity_proxy, planarity>::get_rms(
-      sites_cart, proxies);
+    af::shared<double> result((af::reserve(proxies.size())));
+    for(std::size_t i=0;i<proxies.size();i++) {
+      result.push_back(planarity(sites_cart, proxies[i]).rms_deltas());
+    }
+    return result;
   }
 
+  /*! \brief Fast computation of planarity::residual() given an array
+      of planarity proxies.
+   */
   inline
   af::shared<double>
   planarity_residuals(
@@ -190,6 +238,15 @@ namespace cctbx { namespace geometry_restraints {
       sites_cart, proxies);
   }
 
+  /*! Fast computation of sum of planarity::residual() and gradients
+      given an array of planarity proxies.
+   */
+  /*! The planarity::gradients() are added to the gradient_array if
+      gradient_array.size() == sites_cart.size().
+      gradient_array must be initialized before this function
+      is called.
+      No gradient calculations are performed if gradient_array.size() == 0.
+   */
   inline
   double
   planarity_residual_sum(

@@ -7,6 +7,7 @@
 
 namespace cctbx { namespace geometry_restraints {
 
+  //! Adds all pairs defined by bond_simple_proxies[i].i_seqs.
   void
   add_pairs(
     crystal::pair_asu_table<>& pair_asu_table,
@@ -17,11 +18,14 @@ namespace cctbx { namespace geometry_restraints {
     }
   }
 
+  //! Generation of sorted bond and respulsion proxies.
   class pair_proxies
   {
     public:
+      //! Default constructor. Some data members are not initialized!
       pair_proxies() {}
 
+      //! Generation of bond proxies only.
       pair_proxies(
         af::const_ref<bond_params_dict> const& bond_params_table)
       :
@@ -43,6 +47,17 @@ namespace cctbx { namespace geometry_restraints {
         }
       }
 
+      //! Generation of bond and repulsion proxies.
+      /*! Bonds (1-2) interactions are defined by shell_asu_tables[0]
+          and are used at the same time as nonbonded exculsions.
+
+          1-3 interactions are defined by shell_asu_tables[1]
+          and are used as nonbonded exculsions.
+
+          1-4 interactions are defined by shell_asu_tables[2]
+          and are used to attenuate nonbonded energies according to
+          repulsion_params.
+       */
       pair_proxies(
         geometry_restraints::repulsion_params const& repulsion_params,
         af::const_ref<std::string> const& repulsion_types,
@@ -108,6 +123,7 @@ namespace cctbx { namespace geometry_restraints {
         }
       }
 
+      //! For internal use only.
       static
       bond_asu_proxy
       make_bond_asu_proxy(
@@ -132,6 +148,7 @@ namespace cctbx { namespace geometry_restraints {
         return bond_asu_proxy(pair, params->second);
       }
 
+      //! For internal use only.
       repulsion_asu_proxy
       make_repulsion_asu_proxy(
         geometry_restraints::repulsion_params const& repulsion_params,
@@ -184,6 +201,7 @@ namespace cctbx { namespace geometry_restraints {
          + rep_type_i + " - " + rep_type_j);
       }
 
+      //! For internal use only.
       double
       get_repulsion_distance(
         geometry_restraints::repulsion_params const& repulsion_params,
@@ -197,12 +215,21 @@ namespace cctbx { namespace geometry_restraints {
         return std::max(repulsion_params.minimum_distance, distance);
       }
 
+      //! Final bond proxies.
       bond_sorted_asu_proxies bond_proxies;
+      //! Final repulsion proxies.
       repulsion_sorted_asu_proxies repulsion_proxies;
+      //! Total number of bond proxies (simple + asu).
       unsigned n_bonded;
+      //! Number of 1-3 interactions excluded from repulsion proxies.
       unsigned n_1_3;
+      //! Number of attenuated 1-4 interactions.
       unsigned n_1_4;
+      //! Total number of full strength (not attenuated) repulsion terms.
       unsigned n_nonbonded;
+      /*! \brief Number of unknown repulsion type pairs (repulsion proxies
+          with default distance).
+       */
       unsigned n_unknown_repulsion_type_pairs;
   };
 

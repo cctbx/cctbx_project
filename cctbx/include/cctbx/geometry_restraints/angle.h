@@ -5,10 +5,13 @@
 
 namespace cctbx { namespace geometry_restraints {
 
+  //! Grouping of indices into array of sites (i_seqs) and parameters.
   struct angle_proxy
   {
+    //! Default constructor. Some data members are not initialized!
     angle_proxy() {}
 
+    //! Constructor.
     angle_proxy(
       af::tiny<unsigned, 3> const& i_seqs_,
       double angle_ideal_,
@@ -19,16 +22,22 @@ namespace cctbx { namespace geometry_restraints {
       weight(weight_)
     {}
 
+    //! Indices into array of sites.
     af::tiny<unsigned, 3> i_seqs;
+    //! Parameter.
     double angle_ideal;
+    //! Parameter.
     double weight;
   };
 
+  //! Residual and gradient calculations for angle restraint.
   class angle
   {
     public:
+      //! Default constructor. Some data members are not initialized!
       angle() {}
 
+      //! Constructor.
       angle(
         af::tiny<scitbx::vec3<double>, 3> const& sites_,
         double angle_ideal_,
@@ -41,6 +50,9 @@ namespace cctbx { namespace geometry_restraints {
         init_angle_model();
       }
 
+      /*! \brief Coordinates are copied from sites_cart according to
+          proxy.i_seqs, parameters are copied from proxy.
+       */
       angle(
         af::const_ref<scitbx::vec3<double> > const& sites_cart,
         angle_proxy const& proxy)
@@ -56,9 +68,23 @@ namespace cctbx { namespace geometry_restraints {
         init_angle_model();
       }
 
+      //! weight * delta**2.
+      /*! See also: Hendrickson, W.A. (1985). Meth. Enzym. 115, 252-270.
+       */
       double
       residual() const { return weight * scitbx::fn::pow2(delta); }
 
+      //! Gradients with respect to the three sites.
+      /*! The formula for the gradients is singular at delta = 0
+          and delta = 180. However, the gradients converge to zero
+          near these singularities. To avoid numerical problems, the
+          gradients are set to zero exactly if the intermediate
+          result 1/(1-cos(angle_model)**2) < epsilon.
+
+          See also:
+            http://salilab.org/modeller/manual/manual.html,
+            "Features and their derivatives"
+       */
       af::tiny<scitbx::vec3<double>, 3>
       gradients(double epsilon=1.e-100) const
       {
@@ -85,7 +111,9 @@ namespace cctbx { namespace geometry_restraints {
         return result;
       }
 
-      // Not available in Python.
+      //! Support for angle_residual_sum.
+      /*! Not available in Python.
+       */
       void
       add_gradients(
         af::ref<scitbx::vec3<double> > const& gradient_array,
@@ -100,9 +128,13 @@ namespace cctbx { namespace geometry_restraints {
 #if defined(__MACH__) && defined(__APPLE_CC__) && __APPLE_CC__ <= 1640
       bool dummy_;
 #endif
+      //! Cartesian coordinates of sites forming the angle.
       af::tiny<scitbx::vec3<double>, 3> sites;
+      //! Parameter (usually as passed to the constructor).
       double angle_ideal;
+      //! Parameter (usually as passed to the constructor).
       double weight;
+      //! false in singular situations.
       bool have_angle_model;
     protected:
       double d_01_abs;
@@ -111,7 +143,13 @@ namespace cctbx { namespace geometry_restraints {
       scitbx::vec3<double> d_21_unit;
       double cos_angle_model;
     public:
+      //! Value of angle formed by the sites.
       double angle_model;
+      /*! \brief Smallest difference between angle_model and angle_ideal
+          taking the periodicity into account.
+       */
+      /*! See also: angle_delta_deg
+       */
       double delta;
 
     protected:
@@ -144,6 +182,7 @@ namespace cctbx { namespace geometry_restraints {
       }
   };
 
+  //! Fast computation of angle::delta given an array of angle proxies.
   inline
   af::shared<double>
   angle_deltas(
@@ -154,6 +193,7 @@ namespace cctbx { namespace geometry_restraints {
       sites_cart, proxies);
   }
 
+  //! Fast computation of angle::residual() given an array of angle proxies.
   inline
   af::shared<double>
   angle_residuals(
@@ -164,6 +204,15 @@ namespace cctbx { namespace geometry_restraints {
       sites_cart, proxies);
   }
 
+  /*! Fast computation of sum of angle::residual() and gradients
+      given an array of angle proxies.
+   */
+  /*! The angle::gradients() are added to the gradient_array if
+      gradient_array.size() == sites_cart.size().
+      gradient_array must be initialized before this function
+      is called.
+      No gradient calculations are performed if gradient_array.size() == 0.
+   */
   inline
   double
   angle_residual_sum(
