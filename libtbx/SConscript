@@ -213,28 +213,20 @@ else:
     env_etc.cxxflags_base = Split("""
       -fPIC
       -ftemplate-depth-100
+      -w
     """)
     env_etc.ccflags_base = Split("""
     """)
     if (libtbx.config.build_options.optimization):
       opts = ["-DNDEBUG", "-O3"]
     else:
-      opts = ["-O0", "-fno-inline",
-              #"-Wall"
-              ]
+      opts = ["-O0", "-fno-inline"]
     if (libtbx.config.build_options.debug_symbols):
       opts.insert(0, "-g")
     env_etc.cxxflags_base.extend(opts)
     env_etc.ccflags_base.extend(opts)
-    env_etc.shlinkflags = "-dynamiclib"
-    env_etc.shlinkflags_bpl = ["-nostdlib",
-                               "-Wl,-read_only_relocs,warning",
-                               "-g",
-                               "-Wl,-bundle",
-                               "-Wl,-framework,Python",
-                               '-Wl,-bundle_loader,"/Library/Frameworks/Python.framework/Versions/2.3/bin/python2.3"',
-                               "/usr/lib/bundle1.o",
-                               ]
+    env_etc.shlinkflags = []
+    env_etc.shlinkflags_bpl = []
   else:
     raise "Unknown compiler choice:", env_etc.compiler
 

@@ -39,6 +39,10 @@ if (not env_etc.no_boost_python):
   env.Append(CXXFLAGS="-DBOOST_PYTHON_SOURCE")
   env.Replace(LINKFLAGS=env_etc.shlinkflags)
 
+  if (env_etc.compiler == "darwin_g++"):
+    env.Replace(SHLINK="libtbx.mac_os_x_ld_bpl_dll")
+    env_boost_python_ext.Replace(SHLINK="libtbx.mac_os_x_ld_pyd")
+
   jamfile_path = os.path.normpath(os.path.join(
     env_etc.boost_dist, "libs/python/build/Jamfile"))
 
