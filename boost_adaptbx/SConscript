@@ -91,8 +91,12 @@ if (not env_etc.no_boost_python):
       [line.rstrip() for line in open(jamfile_path).readlines()])
     m = md5.new()
     m.update(jamfile)
-    # based on boost/libs/python/test/Jamfile revision 1.65
-    assert m.hexdigest() == "6a4a11c8a35bac27101b8b22cf3acf16"
+    # based on boost/libs/python/test/Jamfile revision 1.67
+    jamfile_md5 = "a587d22e95592f1003428e93af7baaf3"
+    if (m.hexdigest() != jamfile_md5):
+      print "boost/libs/python/test/Jamfile has changed"
+      print "New md5 signature:", m.hexdigest()
+      raise RuntimeError, "Jamfile md5 mismatch."
     bpl_tests = Split("""
 staticmethod
 shared_ptr
@@ -142,6 +146,8 @@ crossmod_exception_b,crossmod_exception_b,crossmod_exception
 vector_indexing_suite
 return_arg
 keywords,keywords,keywords_test
+properties
+map_indexing_suite
 """)
     Import("env_boost_python_ext")
     env = env_boost_python_ext.Copy()
