@@ -16,8 +16,6 @@ namespace cctbx { namespace xray {
   {
     public:
       typedef sampling_base<FloatType, XrayScattererType> base_t;
-      typedef typename base_t::xray_scatterer_type xray_scatterer_type;
-      typedef typename base_t::caasf_type caasf_type;
       typedef typename base_t::accessor_type accessor_type;
       typedef typename base_t::grid_point_type grid_point_type;
       typedef typename base_t::grid_point_element_type grid_point_element_type;
@@ -29,6 +27,7 @@ namespace cctbx { namespace xray {
       sampled_model_density(
         uctbx::unit_cell const& unit_cell,
         af::const_ref<XrayScattererType> const& scatterers,
+        scattering_dictionary const& scattering_dict,
         grid_point_type const& fft_n_real,
         grid_point_type const& fft_m_real,
         FloatType const& u_extra=0.25,
@@ -67,6 +66,7 @@ namespace cctbx { namespace xray {
   ::sampled_model_density(
     uctbx::unit_cell const& unit_cell,
     af::const_ref<XrayScattererType> const& scatterers,
+    scattering_dictionary const& scattering_dict,
     grid_point_type const& fft_n_real,
     grid_point_type const& fft_m_real,
     FloatType const& u_extra,
@@ -96,59 +96,66 @@ namespace cctbx { namespace xray {
     detail::exponent_table<FloatType> exp_table(exp_table_one_over_step_size);
     scitbx::mat3<FloatType>
       orth_mx = this->unit_cell_.orthogonalization_matrix();
-    const xray_scatterer_type* scatterer;
-    for(scatterer=scatterers.begin();scatterer!=scatterers.end();scatterer++)
-    {
-      CCTBX_ASSERT(scatterer->weight() >= 0);
-      if (scatterer->weight() == 0) continue;
-      FloatType fdp = scatterer->fdp;
-      fractional<FloatType> coor_frac = scatterer->site;
-      FloatType u_iso;
-      scitbx::sym_mat3<FloatType> u_cart;
-      if (!scatterer->anisotropic_flag) {
-        u_iso = scatterer->u_iso;
-      }
-      else {
-        u_iso = this->get_u_cart_and_u_iso(scatterer->u_star, u_cart);
-      }
-      CCTBX_ASSERT(u_iso >= 0);
-      detail::caasf_fourier_transformed<FloatType, caasf_type> caasf_ft(
-        exp_table,
-        scatterer->caasf, scatterer->fp, scatterer->fdp, scatterer->weight(),
-        u_iso, this->u_extra_);
-      detail::calc_shell<FloatType, grid_point_type> shell(
-        this->unit_cell_, this->wing_cutoff_, grid_f, caasf_ft);
-      detail::array_update_max(this->max_shell_radii_, shell.radii);
-      if (electron_density_must_be_positive) {
-        if (   caasf_ft.rho_real_0() < 0
-            || caasf_ft.rho_real(shell.max_d_sq) < 0) {
-
-          throw error("Negative electron density at sampling point.");
-        }
-      }
-      if (scatterer->anisotropic_flag) {
-        caasf_ft = detail::caasf_fourier_transformed<FloatType,caasf_type>(
-          exp_table,
-          scatterer->caasf, scatterer->fp, scatterer->fdp, scatterer->weight(),
-          u_cart, this->u_extra_);
-      }
-      grid_point_type pivot = detail::calc_nearest_grid_point(
-        coor_frac, grid_f);
-#     include <cctbx/xray/sampling_loop.h>
-        if (this->anomalous_flag_) i_map *= 2;
-        if (!scatterer->anisotropic_flag) {
-          map_begin[i_map] += caasf_ft.rho_real(d_sq);
-          if (fdp) {
-            map_begin[i_map+1] += caasf_ft.rho_imag(d_sq);
-          }
+    typedef scattering_dictionary::dict_type dict_type;
+    typedef dict_type::const_iterator dict_iter;
+    dict_type const& scd = scattering_dict.dict();
+    for(dict_iter di=scd.begin();di!=scd.end();di++) {
+      eltbx::caasf::custom const& caasf = di->second.coefficients;
+      af::const_ref<std::size_t>
+        member_indices = di->second.member_indices.const_ref();
+      for(std::size_t mi=0;mi<member_indices.size();mi++) {
+        XrayScattererType const& scatterer = scatterers[member_indices[mi]];
+        CCTBX_ASSERT(scatterer.weight() >= 0);
+        if (scatterer.weight() == 0) continue;
+        FloatType fdp = scatterer.fdp;
+        fractional<FloatType> coor_frac = scatterer.site;
+        FloatType u_iso;
+        scitbx::sym_mat3<FloatType> u_cart;
+        if (!scatterer.anisotropic_flag) {
+          u_iso = scatterer.u_iso;
         }
         else {
-          map_begin[i_map] += caasf_ft.rho_real(d);
-          if (fdp) {
-            map_begin[i_map+1] += caasf_ft.rho_imag(d);
+          u_iso = this->get_u_cart_and_u_iso(scatterer.u_star, u_cart);
+        }
+        CCTBX_ASSERT(u_iso >= 0);
+        detail::caasf_fourier_transformed<FloatType> caasf_ft(
+          exp_table,
+          caasf, scatterer.fp, scatterer.fdp, scatterer.weight(),
+          u_iso, this->u_extra_);
+        detail::calc_shell<FloatType, grid_point_type> shell(
+          this->unit_cell_, this->wing_cutoff_, grid_f, caasf_ft);
+        detail::array_update_max(this->max_shell_radii_, shell.radii);
+        if (electron_density_must_be_positive) {
+          if (   caasf_ft.rho_real_0() < 0
+              || caasf_ft.rho_real(shell.max_d_sq) < 0) {
+
+            throw error("Negative electron density at sampling point.");
           }
         }
-      }}}
+        if (scatterer.anisotropic_flag) {
+          caasf_ft = detail::caasf_fourier_transformed<FloatType>(
+            exp_table,
+            caasf, scatterer.fp, scatterer.fdp, scatterer.weight(),
+            u_cart, this->u_extra_);
+        }
+        grid_point_type pivot = detail::calc_nearest_grid_point(
+          coor_frac, grid_f);
+#       include <cctbx/xray/sampling_loop.h>
+          if (this->anomalous_flag_) i_map *= 2;
+          if (!scatterer.anisotropic_flag) {
+            map_begin[i_map] += caasf_ft.rho_real(d_sq);
+            if (fdp) {
+              map_begin[i_map+1] += caasf_ft.rho_imag(d_sq);
+            }
+          }
+          else {
+            map_begin[i_map] += caasf_ft.rho_real(d);
+            if (fdp) {
+              map_begin[i_map+1] += caasf_ft.rho_imag(d);
+            }
+          }
+        }}}
+      }
     }
     this->exp_table_size_ = exp_table.table().size();
   }

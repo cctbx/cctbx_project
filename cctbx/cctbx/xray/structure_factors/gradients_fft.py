@@ -34,9 +34,12 @@ class gradients_fft(gradients_base):
       gradient_map_complex = manager.cfft().backward(coeff_map.complex_map())
     time_fft = time_fft.elapsed()
     time_sampling = user_plus_sys_time()
+    scattering_dict = ext.scattering_dictionary(xray_structure.scatterers())
+    scattering_dict.assign_from_table("WK1995")
     self._results = ext.fast_gradients(
       xray_structure.unit_cell(),
       xray_structure.scatterers(),
+      scattering_dict,
       gradient_map_real,
       gradient_map_complex,
       gradient_flags,

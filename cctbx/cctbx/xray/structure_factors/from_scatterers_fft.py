@@ -13,9 +13,12 @@ class from_scatterers_fft(managed_calculation_base):
     assert miller_set.d_min() >= manager.d_min()
     manager.setup_fft() # before timing
     time_sampling = user_plus_sys_time()
+    scattering_dict = ext.scattering_dictionary(xray_structure.scatterers())
+    scattering_dict.assign_from_table("WK1995")
     sampled_density = ext.sampled_model_density(
       xray_structure.unit_cell(),
       xray_structure.scatterers(),
+      scattering_dict,
       manager.rfft().n_real(),
       manager.rfft().m_real(),
       manager.u_extra(),
