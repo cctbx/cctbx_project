@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx import uctbx
 
 import boost.python
@@ -184,6 +185,56 @@ class _site_symmetry_table(boost.python.injector, ext.site_symmetry_table):
 
   def __getinitargs__(self):
     return (self.indices(), self.table(), self.special_position_indices())
+
+  def apply_symmetry_sites(self, unit_cell, sites_cart):
+    sites_frac = unit_cell.fractionalization_matrix() * sites_cart
+    for i_seq in self.special_position_indices():
+      sites_frac[i_seq] = self.get(i_seq=i_seq).special_op() \
+                        * sites_frac[i_seq]
+    return unit_cell.orthogonalization_matrix() * sites_frac
+
+  def show_special_position_shifts(self,
+        special_position_settings,
+        site_labels,
+        sites_frac_original=None,
+        sites_cart_original=None,
+        sites_frac_exact=None,
+        sites_cart_exact=None,
+        out=None,
+        prefix=""):
+    assert [sites_frac_original, sites_cart_original].count(None) == 1
+    assert [sites_frac_exact, sites_cart_exact].count(None) == 1
+    if (out is None): out = sys.stdout
+    print >> out, prefix + "Number of sites in special positions:", \
+      self.special_position_indices().size()
+    if (self.special_position_indices().size() > 0):
+      label_len = 5
+      for i_seq in self.special_position_indices():
+        label_len = max(label_len, len(site_labels[i_seq]))
+      label_fmt = "%%-%ds"%label_len
+      print >> out, prefix \
+        + "  Minimum distance between symmetrically equivalent sites: %.4g" % (
+        special_position_settings.min_distance_sym_equiv())
+      print >> out, prefix + "  " + label_fmt%"Label" \
+        + "   Mult   Shift    Fractional coordinates"
+      uc = special_position_settings.unit_cell()
+      if (sites_frac_original is None):
+        sites_frac_original = uc.fractionalization_matrix()*sites_cart_original
+      if (sites_frac_exact is None):
+        sites_frac_exact = uc.fractionalization_matrix()*sites_cart_exact
+      for i_seq in self.special_position_indices():
+        so = sites_frac_original[i_seq]
+        se = sites_frac_exact[i_seq]
+        special_ops = self.get(i_seq=i_seq)
+        print >> out, prefix + "  " + label_fmt%site_labels[i_seq] \
+          + "  %4d  %7.3f (%8.4f %8.4f %8.4f) original" % (
+          (special_ops.multiplicity(), uc.distance(so, se)) + so)
+        print >> out, prefix + label_fmt%"" \
+          + "   site sym %-6s"%special_position_settings.site_symmetry(se) \
+              .point_group_type() \
+          + "(%8.4f %8.4f %8.4f) exact"%se
+        s = str(special_ops.special_op())
+        print >> out, prefix + label_fmt%"" + " "*(18+max(0,(26-len(s))//2)), s
 
 class _wyckoff_table(boost.python.injector, wyckoff_table):
 

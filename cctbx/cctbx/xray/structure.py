@@ -244,6 +244,20 @@ class structure(crystal.special_position_settings):
       scatterer.show(f=f, unit_cell=self.unit_cell())
     return self
 
+  def show_special_position_shifts(self,
+        sites_frac_original=None,
+        sites_cart_original=None,
+        out=None,
+        prefix=""):
+    self._site_symmetry_table.show_special_position_shifts(
+      special_position_settings=self,
+      site_labels=self.scatterers().extract_labels(),
+      sites_frac_original=sites_frac_original,
+      sites_cart_original=sites_cart_original,
+      sites_frac_exact=self.scatterers().extract_sites(),
+      out=out,
+      prefix=prefix)
+
   def apply_symmetry_sites(self):
     ext.apply_symmetry_sites(
       site_symmetry_table=self._site_symmetry_table,
