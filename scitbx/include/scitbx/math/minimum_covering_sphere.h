@@ -56,6 +56,9 @@ namespace scitbx { namespace math {
       box_max() const { return center_ + radius_; }
 
     protected:
+#if defined(__MACH__) && defined(__APPLE_CC__) && __APPLE_CC__ <= 1495
+      bool dummy_;
+#endif
       vec3<FloatType> center_;
       FloatType radius_;
   };
