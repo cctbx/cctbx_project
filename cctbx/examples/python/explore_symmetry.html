@@ -1,13 +1,11 @@
 <html>
 <head>
-<title>cctbx - SHELX LATT &amp; SYMM records</title>
+<title>cctbx - Explore symmetry</title>
 </head>
 <body bgcolor=#ffffff>
-
-<h1>cctbx - SHELX LATT &amp; SYMM records</h1>
+<h1>cctbx - Explore symmetry</h1>
 <hr>
-
-<FORM METHOD=POST ACTION="shelx.py">
+<FORM METHOD=POST ACTION="explore_symmetry.py">
 
 <strong>Space group symbol: </strong><input
 name="sgsymbol" size=40
@@ -25,11 +23,13 @@ Convention:
 </select>
 
 <p>
-<input type="submit" value="Generate LATT &amp; SYMM records">
+<strong>Additional symmetry operations:</strong>
 <p>
+<textarea name="symxyz" rows=8 cols=40></textarea>
+<p>
+<input type="submit" value="Get space group information">
 <input type="reset"  value="Reset">
 </FORM>
-
 <hr>
 </body>
 </html>

@@ -1,9 +1,11 @@
 #! /usr/local/Python-2.1/bin/python
 
+PATH_cctbx_lib_python = "/net/boa/srv/html/cci/cctbx"
+
 import sys
 sys.stderr = sys.stdout
 
-print "Content-type: text/plain"
+print "Content-type: text/html"
 print
 
 import exceptions
@@ -12,32 +14,33 @@ class InternalError(exceptions.Exception):
 
 import string, re, cgi
 
-sys.path.insert(0, "/net/boa/srv/html/sgtbx") # for sgtbx
+sys.path.insert(0, PATH_cctbx_lib_python)
 import sgtbx
 
 print "sgtbx version:", sgtbx.__version__
-print
+print "<p>"
+print "<pre>"
+InTable = 0
+
+class Empty: pass
 
 def GetFormData():
   form = cgi.FieldStorage()
-
-  sgsymbol = ""
-  if (form.has_key("sgsymbol")):
-    sgsymbol = string.strip(form["sgsymbol"].value)
-
-  convention = ""
-  if (form.has_key("convention")):
-    convention = form["convention"].value
-
-  symxyz = []
+  inp = Empty()
+  for key in (("sgsymbol", "P1"),
+              ("convention", "")):
+    if (form.has_key(key[0])):
+      inp.__dict__[key[0]] = string.strip(form[key[0]].value)
+    else:
+      inp.__dict__[key[0]] = key[1]
+  inp.symxyz = []
   if (form.has_key("symxyz")):
     lines = string.split(form["symxyz"].value, "\015\012")
     for l in lines:
       for s in string.split(l, ";"):
         s = string.strip(s)
-        if (s != ""): symxyz.append(string.strip(s))
-
-  return (sgsymbol, convention, symxyz)
+        if (s != ""): inp.symxyz.append(string.strip(s))
+  return inp
 
 
 def ShowInputSymbol(sgsymbol, convention):
@@ -57,22 +60,34 @@ def ShowInputSymbol(sgsymbol, convention):
 def StrEV(EV):
   return "[%d,%d,%d]" % EV
 
+def RTMxAnalysisHeader():
+  print "<tr>"
+  print "<th>Matrix"
+  print "<th>Rotation-part type"
+  print "<th>Axis direction"
+  print "<th>Screw/glide component"
+  print "<th>Origin shift"
+  print "</tr>"
+
 def RTMxAnalysis(M):
+  print "<tr>"
+  print "<td><tt>" + str(M) + "</tt>"
   RI = M.getRotMxInfo()
   TI = M.analyzeTpart()
   if (RI.Rtype() == 1):
-    return "rotation=1"
+    print "<td>1<td>-<td>-<td>-"
   elif (RI.Rtype() == -1):
-    return "rotation=%d shift=(%s)" % (
+    print "<td>%d<td>-<td>-<td>(%s)" % (
       RI.Rtype(), TI.OriginShift().as_xyz(),)
   elif (abs(RI.Rtype()) == 2):
-    return "rotation=%d%s intrinsic=(%s) shift=(%s)" % (
+    print "<td>%d<td>%s<td>(%s)<td>(%s)" % (
       RI.Rtype(), StrEV(RI.EV()),
       TI.IntrinsicPart().as_xyz(), TI.OriginShift().as_xyz())
   else:
-    return "rotation=%d^%d%s intrinsic=(%s) shift=(%s)" % (
+    print "<td>%d^%d<td>%s<td>(%s)<td>(%s)" % (
        RI.Rtype(), RI.SenseOfRotation(), StrEV(RI.EV()),
        TI.IntrinsicPart().as_xyz(), TI.OriginShift().as_xyz())
+  print "</tr>"
 
 def ShowSgOpsGeneric(SgOps):
   print "Number of lattice translations:", SgOps.nLTr()
@@ -88,8 +103,13 @@ def ShowSgOpsGeneric(SgOps):
   print "Total number of symmetry operations:", SgOps.OrderZ()
   print
   print "List of symmetry operations:"
-  for M in SgOps:
-    print " ", M.as_xyz(), "", RTMxAnalysis(M)
+  print "</pre><table border=2>"
+  global InTable
+  InTable = 1
+  RTMxAnalysisHeader()
+  for M in SgOps: RTMxAnalysis(M)
+  print "</table><pre>"
+  InTable = 0
   print
 
 
@@ -124,23 +144,23 @@ def ShowSymbols(Symbols):
   print "  Hall symbol:", string.strip(Symbols.Hall())
 
 
-(sgsymbol, convention, symxyz) = GetFormData()
-#sgsymbol = "P 4"
-#symxyz = ["x,y,z", "x,y,z"]
-ShowInputSymbol(sgsymbol, convention)
+inp = GetFormData()
+
+print "<pre>"
+ShowInputSymbol(inp.sgsymbol, inp.convention)
 
 try:
   Symbols_Inp = None
-  lookup_symbol = sgsymbol
+  lookup_symbol = inp.sgsymbol
   if (lookup_symbol == ""): lookup_symbol = "P 1"
-  if (convention == "Hall"):
+  if (inp.convention == "Hall"):
     HallSymbol = lookup_symbol
   else:
-    Symbols_Inp = sgtbx.SpaceGroupSymbols(lookup_symbol, convention)
+    Symbols_Inp = sgtbx.SpaceGroupSymbols(lookup_symbol, inp.convention)
     HallSymbol = Symbols_Inp.Hall()
     if (Symbols_Inp.SgNumber() == 0):
       Symbols_Inp = None
-      convention = "Hall"
+      inp.convention = "Hall"
     else:
       print "Result of symbol lookup:"
       ShowSymbols(Symbols_Inp)
@@ -150,27 +170,34 @@ try:
     ps = sgtbx.parse_string(HallSymbol)
     SgOps = sgtbx.SgOps(ps)
   except RuntimeError, e:
-    print "-->" + ps.string() + "<--"
+    print "--&gt;" + ps.string() + "&lt;--"
     print ("-" * (ps.where() + 3)) + "^"
     raise
 
-  if (len(symxyz) != 0):
+  if (len(inp.symxyz) != 0):
     print "Addition of symmetry operations:"
-    for s in symxyz:
+    print "</pre><table border=2>"
+    InTable = 1
+    RTMxAnalysisHeader()
+    for s in inp.symxyz:
       ps = sgtbx.parse_string(s)
       try:
         M = sgtbx.RTMx(ps)
       except RuntimeError, e:
-        print "-->" + ps.string() + "<--"
+        print "</table><pre>"
+        InTable = 0
+        print "--&gt;" + ps.string() + "&lt;--"
         print ("-" * (ps.where() + 3)) + "^"
         raise
-      print " ", M.as_xyz(), "", RTMxAnalysis(M)
+      RTMxAnalysis(M)
       SgOps.expandSMx(M)
+    print "</table><pre>"
+    InTable = 0
     print
 
   ShowSgOpsGeneric(SgOps)
 
-  if (convention == "Hall" or len(symxyz) != 0):
+  if (inp.convention == "Hall" or len(inp.symxyz) != 0):
     Symbols_Match = SgOps.MatchTabulatedSettings()
     if (Symbols_Match.SgNumber() != 0):
       if (   Symbols_Inp == None
@@ -209,4 +236,7 @@ try:
 #  print
 
 except RuntimeError, e:
+  if (InTable): print "</table><pre>"
   print e
+
+print "</pre>"
