@@ -80,6 +80,9 @@ namespace {
         .def("add_pair_sym_table", &w_t::add_pair_sym_table, (
           arg_("sym_table")), return_self<>())
         .def("add_pair", (pair_asu_table<>&(w_t::*)(
+            direct_space_asu::asu_mapping_index_pair const&)) &w_t::add_pair,
+          (arg_("pair")), return_self<>())
+        .def("add_pair", (pair_asu_table<>&(w_t::*)(
             unsigned, unsigned, sgtbx::rt_mx const&)) &w_t::add_pair,
           (arg_("i_seq"), arg_("j_seq"), arg_("rt_mx_ji")), return_self<>())
         .def("add_pair", (pair_asu_table<>&(w_t::*)(
