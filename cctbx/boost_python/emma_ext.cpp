@@ -14,7 +14,8 @@ namespace {
 
   struct add_pair
   {
-#if defined(__MACH__) && defined(__APPLE_CC__) && __APPLE_CC__ <= 1640
+#if defined(__APPLE__) && defined(__MACH__) \
+ && defined(__GNUC__) && __GNUC__ == 3 && __GNUC_MINOR__ == 3
       bool dummy_;
 #endif
     double tolerance_;
