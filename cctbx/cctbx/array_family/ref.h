@@ -98,6 +98,10 @@ namespace cctbx { namespace af {
         return reinterpret_cast<const void*>(m_begin);
       }
 
+      const_ref<ElementType> as_1d() const {
+        return const_ref<ElementType>(m_begin, size());
+      }
+
       const value_type& operator()(const index_type& i) const {
         return this->begin()[m_accessor(i)];
       }
@@ -174,6 +178,10 @@ namespace cctbx { namespace af {
 
       void* handle() const {
         return reinterpret_cast<void*>(m_begin);
+      }
+
+      ref<ElementType> as_1d() const {
+        return ref<ElementType>(m_begin, size());
       }
 
       operator const_ref<ElementType, AccessorType>() const {

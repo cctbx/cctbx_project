@@ -35,12 +35,22 @@ namespace cctbx { namespace af {
         this->resize(ac);
       }
 
+      versa_plain(const handle_type& handle, const size_type& sz)
+        : shared_base<ElementType>(handle) {
+        this->resize(accessor_type(sz));
+      }
+
       void resize(const accessor_type& ac) {
         m_accessor = ac;
         shared_base<ElementType>(*this).resize(m_accessor.size1d());
       }
 
       const accessor_type& accessor() const { return m_accessor; }
+      size_type size() const { return m_accessor.size1d(); }
+
+      versa_plain<ElementType> as_1d() {
+        return versa_plain<ElementType>(this->handle(), this->size());
+      }
 
       CCTBX_ARRAY_FAMILY_TAKE_VERSA_REF(this->begin(), this->accessor())
 

@@ -32,6 +32,13 @@ namespace cctbx { namespace af {
       versa(const handle_type& handle, const accessor_type& ac)
         : versa_plain<ElementType, AccessorType>(handle, ac)
       {}
+      versa(const handle_type& handle, const size_type& sz)
+        : versa_plain<ElementType, AccessorType>(handle, sz)
+      {}
+
+      versa<ElementType> as_1d() {
+        return versa<ElementType>(this->handle(), this->size());
+      }
 
       CCTBX_ARRAY_FAMILY_TAKE_VERSA_REF(this->begin(), this->accessor())
   };
