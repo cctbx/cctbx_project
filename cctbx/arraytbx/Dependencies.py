@@ -23,11 +23,10 @@ class write_makefiles(makefile_generator.write_makefiles):
 
     self.executables = {
       "tst_af_1": (("tst_af_1",), ()),
+      "tst_af_2": (("tst_af_2",), ()),
       "tst_vec3": (("tst_vec3",), ()),
       "tst_mat3": (("tst_mat3", "error"), ()),
     }
-    if (self.platform != "vc60"):
-      self.executables["tst_af_2"] = (("tst_af_2",), ())
 
     self.boost_python_modules = {
       "shared":
