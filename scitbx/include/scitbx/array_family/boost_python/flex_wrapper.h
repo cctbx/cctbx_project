@@ -223,6 +223,7 @@ namespace scitbx { namespace af { namespace boost_python {
     as_1d(f_t const& a)
     {
       if (!a.check_shared_size()) raise_shared_size_mismatch();
+      SCITBX_ASSERT(!a.accessor().is_padded());
       return f_t(a, flex_grid<>(a.size()));
     }
 
