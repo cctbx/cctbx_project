@@ -116,8 +116,9 @@ namespace {
     def("asu_mappings_process",
       (void(*)(
         crystal::direct_space_asu::asu_mappings<>&,
-        af::const_ref<scatterer<> > const&))
-      asu_mappings_process, (arg_("asu_mappings"), arg_("scatterers")));
+        af::const_ref<scatterer<> > const&,
+        sgtbx::site_symmetry_table const&)) asu_mappings_process, (
+      arg_("asu_mappings"), arg_("scatterers"), arg_("site_symmetry_table")));
   }
 
 }}} // namespace cctbx::xray::boost_python

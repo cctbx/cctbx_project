@@ -88,7 +88,14 @@ def exercise_direct_space_asu():
   assert asu_mappings.mappings().size() == 0
   asu_mappings.process(original_site=sites_seq[0])
   assert asu_mappings.mappings().size() == 1
-  asu_mappings.process(original_site=sites_seq[1])
+  site_symmetry = sgtbx.site_symmetry(
+    unit_cell=asu_mappings.asu().unit_cell(),
+    space_group=asu_mappings.space_group(),
+    original_site=sites_seq[1],
+    min_distance_sym_equiv=0.01)
+  asu_mappings.process(
+    original_site=sites_seq[1],
+    site_symmetry_ops=site_symmetry)
   assert asu_mappings.mappings().size() == 2
   assert asu_mappings.n_sites_in_asu_and_buffer() == 11
   assert not asu_mappings.is_locked()
@@ -280,6 +287,7 @@ def exercise_direct_space_asu():
         (0.2478,0.0000,0.0000)]]))
   asu_mappings = structure.asu_mappings(buffer_thickness=3.5)
   assert list(asu_mappings.site_symmetry_table().indices()) == [1,0,2]
+  assert asu_mappings.n_sites_in_asu_and_buffer() == 33
   pair = asu_mappings.make_pair(i_seq=1, j_seq=0, j_sym=1)
   assert pair.i_seq == 1
   assert pair.j_seq == 0
@@ -298,6 +306,24 @@ def exercise_direct_space_asu():
   assert str(asu_mappings.special_op(0)) == "x,y,1/4"
   assert str(asu_mappings.special_op(1)) == "x,y,z"
   assert str(asu_mappings.special_op(2)) == "x-1/2*y,0,0"
+  asu_mappings = structure[:0].asu_mappings(buffer_thickness=3.5)
+  asu_mappings.process_sites_frac(
+    original_sites=structure.scatterers().extract_sites())
+  assert asu_mappings.n_sites_in_asu_and_buffer() == 33
+  asu_mappings = structure[:0].asu_mappings(buffer_thickness=3.5)
+  asu_mappings.process_sites_frac(
+    original_sites=structure.scatterers().extract_sites(),
+    site_symmetry_table=structure.site_symmetry_table())
+  assert asu_mappings.n_sites_in_asu_and_buffer() == 33
+  asu_mappings = structure[:0].asu_mappings(buffer_thickness=3.5)
+  asu_mappings.process_sites_cart(
+    original_sites=structure.sites_cart())
+  assert asu_mappings.n_sites_in_asu_and_buffer() == 33
+  asu_mappings = structure[:0].asu_mappings(buffer_thickness=3.5)
+  asu_mappings.process_sites_cart(
+    original_sites=structure.sites_cart(),
+    site_symmetry_table=structure.site_symmetry_table())
+  assert asu_mappings.n_sites_in_asu_and_buffer() == 33
 
 def exercise_symmetry():
   symmetry = crystal.ext.symmetry(

@@ -535,7 +535,8 @@ def exercise_asu_mappings():
     buffer_thickness=3)
   xray.asu_mappings_process(
     asu_mappings=asu_mappings,
-    scatterers=structure.scatterers())
+    scatterers=structure.scatterers(),
+    site_symmetry_table=structure.site_symmetry_table())
   assert asu_mappings.mappings().size() == structure.scatterers().size()
 
 def run():

@@ -161,11 +161,11 @@ namespace {
         .def(init<sgtbx::space_group const&,
                   float_asu<> const&,
                   double const&,
-                  optional<double const&> >(
-          (arg_("space_group"),
-           arg_("asu"),
-           arg_("buffer_thickness"),
-           arg_("min_distance_sym_equiv"))))
+                  optional<double const&> >((
+          arg_("space_group"),
+          arg_("asu"),
+          arg_("buffer_thickness"),
+          arg_("min_distance_sym_equiv"))))
         .def("reserve", &w_t::reserve, (arg_("n_sites_final")))
         .def("space_group", &w_t::space_group, rir())
         .def("asu", &w_t::asu, rir())
@@ -174,11 +174,35 @@ namespace {
         .def("asu_buffer", &w_t::asu_buffer, rir())
         .def("min_distance_sym_equiv", &w_t::min_distance_sym_equiv)
         .def("buffer_covering_sphere", &w_t::buffer_covering_sphere, rir())
-        .def("process", &w_t::process, (arg_("original_site")))
-        .def("process_sites_frac", &w_t::process_sites_frac,
-          (arg_("original_sites")))
-        .def("process_sites_cart", &w_t::process_sites_cart,
-          (arg_("original_sites")))
+        .def("process",
+          (void(w_t::*)(fractional<> const&))
+            &w_t::process, (
+          arg_("original_site")))
+        .def("process",
+          (void(w_t::*)(fractional<> const&, sgtbx::site_symmetry_ops const&))
+            &w_t::process, (
+          arg_("original_site"), arg_("site_symmetry_ops")))
+        .def("process_sites_frac",
+          (void(w_t::*)(af::const_ref<scitbx::vec3<double> > const&))
+            &w_t::process_sites_frac, (
+          arg_("original_sites")))
+        .def("process_sites_frac",
+          (void(w_t::*)(
+            af::const_ref<scitbx::vec3<double> > const&,
+            sgtbx::site_symmetry_table const&))
+              &w_t::process_sites_frac, (
+          arg_("original_sites"), arg_("site_symmetry_table")))
+        .def("process_sites_cart",
+          (void(w_t::*)(af::const_ref<scitbx::vec3<double> > const&))
+            &w_t::process_sites_cart, (
+          arg_("original_sites")))
+        .def("process_sites_cart",
+          (void(w_t::*)(
+            af::const_ref<scitbx::vec3<double> > const&,
+            sgtbx::site_symmetry_table const&))
+              &w_t::process_sites_cart, (
+          arg_("original_sites"), arg_("site_symmetry_table")))
+        .def("n_sites_in_asu_and_buffer", &w_t::n_sites_in_asu_and_buffer)
         .def("n_sites_in_asu_and_buffer", &w_t::n_sites_in_asu_and_buffer)
         .def("lock", &w_t::lock)
         .def("is_locked", &w_t::is_locked)
@@ -190,17 +214,17 @@ namespace {
         .def("site_symmetry_table", &w_t::site_symmetry_table, rir())
         .def("get_rt_mx", &w_t::get_rt_mx, (arg_("i_seq"), arg_("i_sym")))
         .def("diff_vec", &w_t::diff_vec, (arg_("pair")))
-        .def("map_moved_site_to_asu", &w_t::map_moved_site_to_asu,
-          (arg_("moved_original_site"), arg_("i_seq"), arg_("i_sym")))
+        .def("map_moved_site_to_asu", &w_t::map_moved_site_to_asu, (
+          arg_("moved_original_site"), arg_("i_seq"), arg_("i_sym")))
         .def("r_inv_cart", &w_t::r_inv_cart, (arg_("i_seq"), arg_("i_sym")))
-        .def("is_simple_interaction", &w_t::is_simple_interaction,
-          (arg_("pair")))
-        .def("interaction_type_id", &w_t::interaction_type_id,
-          (arg_("pair")))
-        .def("make_trial_pair", &w_t::make_trial_pair,
-          (arg_("i_seq"), arg_("j_seq"), arg_("j_sym")))
-        .def("make_pair", &w_t::make_pair,
-          (arg_("i_seq"), arg_("j_seq"), arg_("j_sym")))
+        .def("is_simple_interaction", &w_t::is_simple_interaction, (
+          arg_("pair")))
+        .def("interaction_type_id", &w_t::interaction_type_id, (
+          arg_("pair")))
+        .def("make_trial_pair", &w_t::make_trial_pair, (
+          arg_("i_seq"), arg_("j_seq"), arg_("j_sym")))
+        .def("make_pair", &w_t::make_pair, (
+          arg_("i_seq"), arg_("j_seq"), arg_("j_sym")))
         .def("find_i_sym", &w_t::find_i_sym, (arg_("i_seq"), arg_("rt_mx")))
       ;
       {

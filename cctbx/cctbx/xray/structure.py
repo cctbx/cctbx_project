@@ -338,7 +338,6 @@ class structure(crystal.special_position_settings):
     return result
 
   def asu_mappings(self, buffer_thickness, is_inside_epsilon=None):
-    # raise "TODO" # XXX
     result = crystal.direct_space_asu.asu_mappings(
       space_group=self.space_group(),
       asu=self.direct_space_asu().as_float_asu(
@@ -347,7 +346,8 @@ class structure(crystal.special_position_settings):
       min_distance_sym_equiv=self.min_distance_sym_equiv())
     ext.asu_mappings_process(
       asu_mappings=result,
-      scatterers=self.scatterers())
+      scatterers=self._scatterers,
+      site_symmetry_table=self._site_symmetry_table)
     return result
 
   def difference_vectors_cart(self, other):
