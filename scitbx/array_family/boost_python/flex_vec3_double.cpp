@@ -5,6 +5,7 @@
 #include <scitbx/math/utils.h>
 #include <scitbx/mat3.h>
 #include <scitbx/error.h>
+#include <boost/python/make_constructor.hpp>
 
 namespace scitbx { namespace boost_python { namespace pickle_single_buffered {
 
@@ -38,6 +39,21 @@ namespace scitbx { namespace boost_python { namespace pickle_single_buffered {
 
 namespace scitbx { namespace af {
 namespace {
+
+  flex<vec3<double> >::type*
+  join(
+    af::const_ref<double> const& x,
+    af::const_ref<double> const& y,
+    af::const_ref<double> const& z)
+  {
+    SCITBX_ASSERT(y.size() == x.size());
+    SCITBX_ASSERT(z.size() == x.size());
+    af::shared<vec3<double> > result((af::reserve(x.size())));
+    for(std::size_t i=0;i<x.size();i++) {
+      result.push_back(vec3<double>(x[i],y[i],z[i]));
+    }
+    return new flex<vec3<double> >::type(result, result.size());
+  }
 
   flex_double
   as_double(flex<vec3<double> >::type const& a)
@@ -139,6 +155,7 @@ namespace boost_python {
     flex_wrapper<vec3<double> >::plain("vec3_double")
       .def_pickle(flex_pickle_single_buffered<vec3<double>,
         3*pickle_size_per_element<double>::value>())
+      .def("__init__", boost::python::make_constructor(join))
       .def("as_double", as_double)
       .def("from_double", from_double)
       .def("min", vec3_min)
