@@ -83,6 +83,9 @@ class space_group_info:
   def is_reference_setting(self):
     return self.type().cb_op().is_identity_op()
 
+  def as_reference_setting(self):
+    return self.change_basis(self.type().cb_op())
+
   def change_basis(self, cb_op):
     return space_group_info(group=self.group().change_basis(cb_op))
 
