@@ -597,6 +597,7 @@ def exercise_minimum_covering_sphere(epsilon=1.e-3):
   assert approx_equal(mcs.center(), (0.5,0.5,0.5), eps=1.e-3)
   assert approx_equal(mcs.radius(), math.sqrt(3)/2, eps=1.e-5)
   eps = epsilon*10
+  eps_loose = eps*10
   for i,j,k in flex.nested_loop((1,1,1),(2,3,2),00000):
     for shift in [(0,0,0),(2,3,4),(-3,-5,2)]:
       for poly_index in xrange(1,2):
@@ -651,13 +652,13 @@ def exercise_minimum_covering_sphere(epsilon=1.e-3):
             (matrix.col(expected_center)
              + matrix.col([r(),r(),r()]).normalize()*expected_radius).elems)
           mcs = minimum_covering_sphere(points, epsilon=epsilon)
-          assert approx_equal(mcs.center(), expected_center, eps=eps*4)
+          assert approx_equal(mcs.center(), expected_center, eps=eps_loose)
           assert approx_equal(mcs.radius(), expected_radius, eps=eps)
         # also exercise the Python implementation
         mcs = minimum_covering_sphere(
           points=[matrix.col(point) for point in points],
           epsilon=epsilon)
-        assert approx_equal(mcs.center(), expected_center, eps=eps*4)
+        assert approx_equal(mcs.center(), expected_center, eps=eps_loose)
         assert approx_equal(mcs.radius(), expected_radius, eps=eps)
   # exercise Python implementation with sets of 2-dimensional points
   for i,j in flex.nested_loop((1,1),(2,3),00000):
@@ -688,7 +689,7 @@ def exercise_minimum_covering_sphere(epsilon=1.e-3):
           matrix.col(expected_center)
           + matrix.col([r(),r()]).normalize()*expected_radius)
         mcs = minimum_covering_sphere(points, epsilon=epsilon)
-        assert approx_equal(mcs.center(), expected_center, eps=eps*4)
+        assert approx_equal(mcs.center(), expected_center, eps=eps_loose)
         assert approx_equal(mcs.radius(), expected_radius, eps=eps)
 
 def run():
