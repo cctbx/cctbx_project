@@ -34,7 +34,7 @@ def run():
   ["$D/cctbx/regression/tst_crystal.py", "I41/acd"],
   ["$D/cctbx/regression/tst_direct_space_asu.py", "I41/acd"],
   ["$D/cctbx/regression/tst_crystal_close_packing.py", "R-3mr"],
-  "$D/cctbx/crystal/bond_asu_records.py",
+  "$D/cctbx/crystal/pair_asu_table.py",
   ["$D/cctbx/regression/tst_xray.py", "I41/acd"],
   ["$D/cctbx/regression/tst_miller.py", "P31"],
   ["$D/cctbx/regression/tst_reciprocal_space_asu.py", "P312"],
