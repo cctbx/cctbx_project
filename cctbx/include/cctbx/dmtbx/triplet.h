@@ -33,25 +33,27 @@ namespace cctbx { namespace dmtbx {
     triplet_phase_relation(
       std::size_t ik,
       std::size_t ihmk,
-      Miller::AsymIndex const& asym_k,
+      Miller::SymEquivIndex const& k_seq,
       Miller::AsymIndex const& asym_hmk)
     {
+      cctbx_assert(k_seq.TBF() == asym_hmk.TBF());
+      cctbx_assert(k_seq.HT() >= 0);
+      cctbx_assert(asym_hmk.HT() >= 0);
       if (ik <= ihmk) {
         ik_ = ik;
         ihmk_ = ihmk;
-        friedel_flag_k_ = asym_k.FriedelFlag();
+        friedel_flag_k_ = k_seq.FriedelFlag();
         friedel_flag_hmk_ = asym_hmk.FriedelFlag();
       }
       else {
         ik_ = ihmk;
         ihmk_ = ik;
         friedel_flag_k_ = asym_hmk.FriedelFlag();
-        friedel_flag_hmk_ = asym_k.FriedelFlag();
+        friedel_flag_hmk_ = k_seq.FriedelFlag();
       }
-      cctbx_assert(asym_k.TBF() == asym_hmk.TBF());
-      cctbx_assert(asym_k.HT() >= 0);
-      cctbx_assert(asym_hmk.HT() >= 0);
-      ht_sum_ = (asym_k.HT() + asym_hmk.HT()) % asym_k.TBF();
+      int k_ht = k_seq.HT();
+      if (k_seq.FriedelFlag()) k_ht *= -1;
+      ht_sum_ = sgtbx::modPositive(-k_ht + asym_hmk.HT(), k_seq.TBF());
     }
 
     bool operator<(triplet_phase_relation const& other) const
@@ -129,7 +131,8 @@ namespace cctbx { namespace dmtbx {
             sgtbx::SymEquivMillerIndices
             sym_eq_k = SgInfo.SgOps().getEquivMillerIndices(k);
             for (std::size_t ik_eq=0;ik_eq<sym_eq_k.M(true);ik_eq++) {
-              Miller::Index k_eq = sym_eq_k(ik_eq).H();
+              Miller::SymEquivIndex k_seq = sym_eq_k(ik_eq);
+              Miller::Index k_eq = k_seq.H();
               Miller::Index hmk = h - k_eq;
               Miller::AsymIndex asym_hmk(SgInfo.SgOps(), asu, hmk);
               Miller::Index asym_hmk_h = asym_hmk.H();
@@ -141,8 +144,7 @@ namespace cctbx { namespace dmtbx {
                   cctbx_assert(miller_indices[ihmk] == asym_hmk_h);
                   //if (ihmk == ih) continue;
                   //if (ihmk == ik) continue;
-                  Miller::AsymIndex asym_k(SgInfo.SgOps(), asu, k_eq);
-                  triplet_phase_relation tpr(ik, ihmk, asym_k, asym_hmk);
+                  triplet_phase_relation tpr(ik, ihmk, k_seq, asym_hmk);
                   list_of_tpr_maps_[ih][tpr]++;
                 }
               }
