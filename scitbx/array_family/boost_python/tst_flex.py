@@ -538,6 +538,22 @@ def exercise_sort():
     assert tuple(p) == (0,2,1)
     assert approx_equal(x.select(p), (3,2,1))
 
+def exercise_random():
+  for i in xrange(3):
+    for j in xrange(2):
+      if (j == 0): mt = flex.mersenne_twister()
+      else: mt.seed()
+      assert tuple(mt.random_size_t(3)) \
+          == (4182529786L,2180050607L,3809380472L)
+      assert approx_equal(mt.random_double(3),
+       (0.68936349374460137, 0.94325460841489361, 0.92878638322669693))
+      if (j == 0): mt = flex.mersenne_twister(4357)
+      else: mt.seed(4357)
+      assert tuple(mt.random_size_t(3)) \
+          == (1393419875, 3943084030L, 3680293049L)
+      assert approx_equal(mt.random_double(3),
+        (0.62126747463393661, 0.47816347295375622, 0.20067452178352385))
+
 def exercise_flex_vec3_double():
   flex.exercise_triple(flex.vec3_double, as_double=0001)
   a = flex.vec3_double(((1,2,5), (-2,3,4), (3,4,3)))
@@ -911,6 +927,7 @@ def run(iterations):
     exercise_arith_inplace_operators()
     exercise_functions()
     exercise_complex_functions()
+    exercise_random()
     exercise_sort()
     exercise_flex_vec3_double()
     exercise_histogram()
