@@ -539,7 +539,7 @@ def exercise_space_group():
   assert g.r_den() == 1
   assert g.t_den() == 6
   g.reset()
-  g.expand_ltr(tr_vec())
+  assert g.expand_ltr(tr_vec()) is g
   assert g.n_ltr() == 1
   g.reset()
   g.expand_ltr(tr_vec((6,0,0)))
@@ -551,7 +551,7 @@ def exercise_space_group():
   assert g.f_inv() == 1
   assert not g.is_centric()
   assert not g.is_origin_centric()
-  g.expand_inv(tr_vec((0,0,0)))
+  assert g.expand_inv(tr_vec((0,0,0))) is g
   assert g.f_inv() == 2
   assert g.is_centric()
   assert g.is_origin_centric()
@@ -561,12 +561,12 @@ def exercise_space_group():
   assert not g.is_origin_centric()
   g.reset()
   assert g.n_smx() == 1
-  g.expand_smx(rt_mx("-x,-y,z"))
+  assert g.expand_smx(rt_mx("-x,-y,z")) is g
   assert g.n_smx() == 2
   g = sgtbx.space_group()
-  g.expand_smx("-x,y,-z")
+  assert g.expand_smx("-x,y,-z") is g
   assert not g.is_tidy()
-  g.make_tidy()
+  assert g.make_tidy() is g
   assert g.is_tidy()
   assert g.order_z() == 2
   g.expand_smx("-x,-y,-z")
@@ -668,6 +668,14 @@ def exercise_space_group():
   g = space_group("C 2y (x+y,-x+y+z,z)")
   assert g.is_compatible_unit_cell(u)
   g = space_group("C 2 -2c")
+  h = g.build_derived_reflection_intensity_group(anomalous_flag=True)
+  assert h == space_group("C 2 -2")
+  h = h.build_derived_acentric_group()
+  assert h == space_group("C 2 -2")
+  h = g.build_derived_reflection_intensity_group(anomalous_flag=False)
+  assert h == space_group("-C 2 2")
+  h = h.build_derived_acentric_group()
+  assert h == space_group("C 2 2")
   h = g.build_derived_patterson_group()
   assert h == space_group("-C 2 2")
   h = g.build_derived_point_group()
@@ -681,6 +689,7 @@ def exercise_space_group():
     g = space_group(s)
     m = g.match_tabulated_settings()
     assert s.number() == m.number()
+    assert not g.build_derived_acentric_group().is_centric()
   g = space_group("P 31")
   assert g.gridding() == (1,1,3)
   assert g.refine_gridding((2,1,4)) == (2,2,12)

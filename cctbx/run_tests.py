@@ -29,6 +29,7 @@ def run():
   ["$D/cctbx/regression/tst_sgtbx_denominators.py", "P31"],
   "$D/cctbx/regression/tst_sgtbx_subgroups.py",
   "$D/cctbx/regression/tst_sgtbx_lattice_symmetry.py",
+  "$D/cctbx/regression/tst_reflection_statistics.py",
   "$D/cctbx/regression/tst_sgtbx_harker.py",
   "$D/cctbx/sgtbx/symbol_confidence.py",
   "$D/cctbx/sgtbx/bravais_types.py",

@@ -66,12 +66,12 @@ namespace cctbx { namespace sgtbx {
     is_tidy_ = false;
   }
 
-  void
+  space_group&
   space_group::expand_ltr(tr_vec const& new_ltr)
   {
     if (no_expand_) {
       if (ltr_.add(new_ltr)) is_tidy_ = false;
-      return;
+      return *this;
     }
     for (std::size_t i_smx=n_ssl_;i_smx<n_smx();i_smx++) {
       for (std::size_t i_ltr=1;i_ltr<n_lsl_;i_ltr++) {
@@ -99,21 +99,23 @@ namespace cctbx { namespace sgtbx {
       trial_ltr = ltr_[j] + ltr_[i];
       j++;
     }
+    return *this;
   }
 
-  void
+  space_group&
   space_group::expand_inv(tr_vec const& new_inv_t)
   {
     add_inv(new_inv_t);
     expand_ltr(tr_vec(0));
+    return *this;
   }
 
-  void
+  space_group&
   space_group::expand_smx(rt_mx const& new_smx)
   {
     if (no_expand_) {
       add_smx(new_smx);
-      return;
+      return *this;
     }
     const rt_mx *pnew_smx = &new_smx; // XXX avoid pointer stuff
     rt_mx trial_smx;
@@ -131,6 +133,7 @@ namespace cctbx { namespace sgtbx {
       j++;
     }
     expand_ltr(tr_vec(0));
+    return *this;
   }
 
   std::size_t
@@ -207,6 +210,22 @@ namespace cctbx { namespace sgtbx {
     }
     for(std::size_t i=0;i<n_smx();i++) {
       result.expand_smx(rt_mx(smx_[i].r(), t_den()));
+    }
+    return result;
+  }
+
+  space_group
+  space_group::build_derived_acentric_group() const
+  {
+    if (!is_centric()) return *this;
+    space_group tidy_sg = *this;
+    tidy_sg.make_tidy();
+    space_group result(false, tidy_sg.t_den());
+    for(std::size_t i=0;i<tidy_sg.n_ltr();i++) {
+      result.expand_ltr(tidy_sg.ltr_[i]);
+    }
+    for(std::size_t i=0;i<tidy_sg.n_smx();i++) {
+      result.expand_smx(tidy_sg.smx_[i]);
     }
     return result;
   }
@@ -498,10 +517,10 @@ namespace cctbx { namespace sgtbx {
 
   } // namespace <anonymous>
 
-  void
+  space_group&
   space_group::make_tidy()
   {
-    if (is_tidy_) return;
+    if (is_tidy_) return *this;
     if (is_centric()) {
       inv_t_ = inv_t(true);
       for (std::size_t i=1;i<n_smx();i++) {
@@ -518,6 +537,7 @@ namespace cctbx { namespace sgtbx {
     if (n_smx() > 2)
       std::sort(smx_.begin() + 1, smx_.begin() + n_smx(), cmp_smx());
     is_tidy_ = true;
+    return *this;
   }
 
   space_group

@@ -148,6 +148,13 @@ class symmetry(object):
       relative_epsilon=relative_epsilon,
       iteration_limit=iteration_limit))
 
+  def reflection_intensity_symmetry(self, anomalous_flag):
+    return symmetry(
+      unit_cell=self.unit_cell(),
+      space_group=self.space_group()
+        .build_derived_reflection_intensity_group(
+          anomalous_flag=anomalous_flag))
+
   def patterson_symmetry(self):
     return symmetry(
       unit_cell=self.unit_cell(),
@@ -156,12 +163,6 @@ class symmetry(object):
   def is_patterson_symmetry(self):
     return self.space_group().build_derived_patterson_group() \
         == self.space_group()
-
-  def reindexing_info(self, max_delta=0.1):
-    return reindexing_info(crystal_symmetry=self, max_delta=max_delta)
-
-  def reindexing_matrices(self, max_delta=0.1):
-    return self.reindexing_info(max_delta=max_delta).matrices
 
   def join_symmetry(self, other_symmetry, force=False):
     if (other_symmetry is None):
@@ -211,46 +212,6 @@ class symmetry(object):
       asu=self.direct_space_asu().as_float_asu(
         is_inside_epsilon=is_inside_epsilon),
       buffer_thickness=buffer_thickness)
-
-class reindexing_info:
-
-  def __init__(self, crystal_symmetry, max_delta=0.1):
-    from cctbx.sgtbx import lattice_symmetry
-    self.max_delta = max_delta
-    self.cb_op_to_minimum_cell \
-      = crystal_symmetry.change_of_basis_op_to_minimum_cell()
-    self.minimum_symmetry = crystal_symmetry.change_basis(
-      self.cb_op_to_minimum_cell)
-    self.lattice_group = lattice_symmetry.group(
-      self.minimum_symmetry.unit_cell(),
-      max_delta=max_delta)
-    patterson_group = self.minimum_symmetry.space_group() \
-      .build_derived_patterson_group()
-    patterson_group.make_tidy()
-    expanded_groups = [patterson_group]
-    self.matrices = []
-    for s in self.lattice_group:
-      expanded_group = sgtbx.space_group(patterson_group)
-      expanded_group.expand_smx(s)
-      expanded_group.make_tidy()
-      def is_in_expanded_groups():
-        for g in expanded_groups:
-          if (g == expanded_group): return True
-        return False
-      if (not is_in_expanded_groups()):
-        expanded_groups.append(expanded_group)
-        self.matrices.append(self.cb_op_to_minimum_cell.inverse().apply(s))
-
-  def lattice_symmetry(self):
-    self.lattice_group.expand_inv(sgtbx.tr_vec((0,0,0)))
-    return symmetry(
-      unit_cell=self.minimum_symmetry.unit_cell(),
-      space_group=self.lattice_group,
-      assert_is_compatible_unit_cell=False)
-
-  def idealized_unit_cell(self):
-    return self.cb_op_to_minimum_cell.inverse().apply(
-      self.lattice_symmetry().unit_cell())
 
 class special_position_settings(symmetry):
 

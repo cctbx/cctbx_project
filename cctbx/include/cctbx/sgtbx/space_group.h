@@ -111,7 +111,8 @@ namespace cctbx { namespace sgtbx {
       /*! Group multiplication is automatically performed
           (unless no_expand = true).
        */
-      void expand_ltr(tr_vec const& new_t);
+      space_group&
+      expand_ltr(tr_vec const& new_t);
 
       //! Adds a centre of inversion to the space group.
       /*! The matrix added is (-I, new_inv_t). This is, the rotation part
@@ -119,29 +120,37 @@ namespace cctbx { namespace sgtbx {
           Group multiplication is automatically performed
           (unless no_expand = true).
        */
-      void expand_inv(tr_vec const& new_inv_t);
+      space_group&
+      expand_inv(tr_vec const& new_inv_t);
 
       //! Adds a Seitz matrix to the space group.
       /*! Group multiplication is automatically performed
           (unless no_expand = true).
        */
-      void expand_smx(rt_mx const& new_smx);
+      space_group&
+      expand_smx(rt_mx const& new_smx);
 
       //! Adds a vector of Seitz matrices to the space group.
       /*! See also: overload for individual new_smx.
           <p>
           Not available in Python.
        */
-      void expand_smx(af::const_ref<rt_mx> const& new_smx)
+      space_group&
+      expand_smx(af::const_ref<rt_mx> const& new_smx)
       {
         for(std::size_t i=0;i<new_smx.size();i++) {
           expand_smx(new_smx[i]);
         }
+        return *this;
       }
 
       //! Shorthand for: expand_smx(rt_mx(str_xyz))
-      void
-      expand_smx(std::string const& str_xyz) { expand_smx(rt_mx(str_xyz)); }
+      space_group&
+      expand_smx(std::string const& str_xyz)
+      {
+        expand_smx(rt_mx(str_xyz));
+        return *this;
+      }
 
       //! Adds lattice translation vectors to the space group.
       /*! The lattice translation vectors corresponding to the
@@ -297,7 +306,8 @@ namespace cctbx { namespace sgtbx {
           representation will always result in exactly the same
           internal representation.
        */
-      void make_tidy();
+      space_group&
+      make_tidy();
 
       //! True if make_tidy() was called before.
       bool
@@ -499,6 +509,7 @@ namespace cctbx { namespace sgtbx {
           at the origin.
           <p>
           See also:
+            build_derived_reflection_intensity_group(),
             build_derived_patterson_group(),
             build_derived_point_group(),
             build_derived_laue_group()
@@ -507,9 +518,26 @@ namespace cctbx { namespace sgtbx {
        */
       space_group build_derived_group(bool discard_z, bool add_inv) const;
 
+      //! New instance without a centre of inversion.
+      space_group
+      build_derived_acentric_group() const;
+
+      //! Builds the symmetry for reflection intensities.
+      /*! The translation parts of the symmetry operations are set to 0.
+          However, the lattice translation vectors are not modified.
+          If anomalous_flag = false a centre of inversion is added at
+          the origin.
+       */
+      space_group
+      build_derived_reflection_intensity_group(bool anomalous_flag) const
+      {
+        return build_derived_group(false, !anomalous_flag);
+      }
+
       //! Builds the corresponding Patterson space group.
       /*! The translation parts of the symmetry operations are set to 0.
           However, the lattice translation vectors are not modified.
+          A centre of inversion is added at the origin.
        */
       space_group build_derived_patterson_group() const
       {
