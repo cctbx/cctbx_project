@@ -43,6 +43,10 @@ namespace cctbx { namespace restraints {
           CCTBX_ASSERT(shell_asu_tables[i].table().size()
                     == bond_params_table.size());
         }
+        bond_proxies = bond_sorted_asu_proxies(
+          shell_asu_tables[0].asu_mappings());
+        repulsion_proxies = repulsion_sorted_asu_proxies(
+          shell_asu_tables[0].asu_mappings());
         double distance_cutoff = std::max(
           af::max(shell_distance_cutoffs),
           nonbonded_distance_cutoff+nonbonded_buffer);
@@ -57,7 +61,7 @@ namespace cctbx { namespace restraints {
           direct_space_asu::asu_mapping_index_pair_and_diff<>
             pair = pair_generator.next();
           if (shell_asu_tables[0].contains(pair)) {
-            bond_asu_proxies.push_back(
+            bond_proxies.process(
               make_bond_asu_proxy(bond_params_table, pair));
           }
           else if (shell_asu_tables.size() > 1
@@ -66,7 +70,7 @@ namespace cctbx { namespace restraints {
           }
           else if (shell_asu_tables.size() > 2
                    && shell_asu_tables[2].contains(pair)) {
-            repulsion_asu_proxies.push_back(make_repulsion_asu_proxy(
+            repulsion_proxies.process(make_repulsion_asu_proxy(
               repulsion_types,
               repulsion_distance_table,
               repulsion_radius_table,
@@ -75,7 +79,7 @@ namespace cctbx { namespace restraints {
               vdw_1_4_factor));
           }
           else if (pair.dist_sq <= nonbonded_distance_cutoff_sq) {
-            repulsion_asu_proxies.push_back(make_repulsion_asu_proxy(
+            repulsion_proxies.process(make_repulsion_asu_proxy(
               repulsion_types,
               repulsion_distance_table,
               repulsion_radius_table,
@@ -157,8 +161,8 @@ namespace cctbx { namespace restraints {
          + rep_type_i + " - " + rep_type_j);
       }
 
-      af::shared<bond_asu_proxy> bond_asu_proxies;
-      af::shared<repulsion_asu_proxy> repulsion_asu_proxies;
+      bond_sorted_asu_proxies bond_proxies;
+      repulsion_sorted_asu_proxies repulsion_proxies;
       unsigned n_unknown_repulsion_type_pairs;
   };
 
