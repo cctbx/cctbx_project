@@ -109,9 +109,14 @@ def show(input_symmetry, max_delta):
     # Use identity change-of-basis operator if possible
     if (best_subsym.unit_cell().is_similar_to(input_symmetry.unit_cell())):
       cb_op_corr = cb_op_inp_best.inverse()
-      if (   best_subsym.change_basis(cb_op_corr).space_group()
-          == best_subsym.space_group()):
-        cb_op_inp_best = cb_op_corr * cb_op_inp_best
+      try:
+        best_subsym_corr = best_subsym.change_basis(cb_op_corr)
+      except RuntimeError, e:
+        if (str(e).find("Unsuitable value for rational rotation matrix.") < 0):
+          raise
+      else:
+        if (best_subsym_corr.space_group() == best_subsym.space_group()):
+          cb_op_inp_best = cb_op_corr * cb_op_inp_best
 
     subsym.space_group_info().show_summary(
       prefix="Symmetry in minimum-lengths cell: ")
