@@ -12,6 +12,7 @@
 #include <cctbx/error.h>
 #include <cctbx/miller.h>
 #include <cctbx/hendrickson_lattman.h>
+#include <cctbx/sftbx/xray_scatterer.h>
 #include <cctbx/array_family/shared.h>
 
 namespace cctbx { namespace af {
@@ -254,6 +255,242 @@ namespace cctbx { namespace af {
       }
     };
 
+    struct make_pickle_string
+    {
+      std::string buffer;
+
+      make_pickle_string& operator<<(std::string const& val)
+      {
+        buffer += val + '\0' + ',';
+        return *this;
+      }
+
+      make_pickle_string& operator<<(const char* val)
+      {
+        return *this << std::string(val);
+      }
+
+      make_pickle_string& operator<<(bool const& val)
+      {
+        if (val) buffer += "1,";
+        else     buffer += "0,";
+        return *this;
+      }
+
+      make_pickle_string& operator<<(int const& val)
+      {
+        char buf[64];
+        sprintf(buf, "%d,", val);
+        buffer += buf;
+        return *this;
+      }
+
+      make_pickle_string& operator<<(unsigned int const& val)
+      {
+        char buf[64];
+        sprintf(buf, "%u,", val);
+        buffer += buf;
+        return *this;
+      }
+
+      make_pickle_string& operator<<(long const& val)
+      {
+        char buf[64];
+        sprintf(buf, "%ld,", val);
+        buffer += buf;
+        return *this;
+      }
+
+      make_pickle_string& operator<<(unsigned long const& val)
+      {
+        char buf[64];
+        sprintf(buf, "%lu,", val);
+        buffer += buf;
+        return *this;
+      }
+
+      make_pickle_string& operator<<(float const& val)
+      {
+        char buf[64];
+        sprintf(buf, "%.6g,", val);
+        buffer += buf;
+        return *this;
+      }
+
+      make_pickle_string& operator<<(double const& val)
+      {
+        char buf[64];
+        sprintf(buf, "%.12g,", val);
+        buffer += buf;
+        return *this;
+      }
+
+      template <typename FloatType>
+      make_pickle_string& operator<<(std::complex<FloatType> const& val)
+      {
+        return *this << val.real() << val.imag();
+      }
+
+      template <typename ElementType, typename AccessorType>
+      make_pickle_string& operator<<(
+        af::const_ref<ElementType, AccessorType> const& vals)
+      {
+        for(std::size_t i=0;i<vals.size();i++) {
+          *this << vals[i];
+        }
+        return *this;
+      }
+    };
+
+    struct read_from_pickle_string
+    {
+      const char* str_ptr;
+
+      read_from_pickle_string(PyObject* str_obj)
+      : str_ptr(PyString_AsString(str_obj))
+      {
+        cctbx_assert(str_ptr != 0);
+      }
+
+      void assert_end() const
+      {
+        cctbx_assert(*str_ptr == 0);
+      }
+
+      read_from_pickle_string& advance()
+      {
+        while (*str_ptr != ',') str_ptr++;
+        str_ptr++;
+        return *this;
+      }
+
+      read_from_pickle_string& operator>>(std::string& val)
+      {
+        val = std::string(str_ptr);
+        while (*str_ptr) str_ptr++;
+        return advance();
+      }
+
+      read_from_pickle_string& operator>>(bool& val)
+      {
+        *str_ptr == '1' ? val = true : val = false;
+        return advance();
+      }
+
+      read_from_pickle_string& operator>>(int& val)
+      {
+        cctbx_assert(sscanf(str_ptr, "%d", &val) == 1);
+        return advance();
+      }
+
+      read_from_pickle_string& operator>>(unsigned int& val)
+      {
+        cctbx_assert(sscanf(str_ptr, "%u", &val) == 1);
+        return advance();
+      }
+
+      read_from_pickle_string& operator>>(long& val)
+      {
+        cctbx_assert(sscanf(str_ptr, "%ld", &val) == 1);
+        return advance();
+      }
+
+      read_from_pickle_string& operator>>(unsigned long& val)
+      {
+        cctbx_assert(sscanf(str_ptr, "%lu", &val) == 1);
+        return advance();
+      }
+
+      read_from_pickle_string& operator>>(float& val)
+      {
+        cctbx_assert(sscanf(str_ptr, "%g", &val) == 1);
+        return advance();
+      }
+
+      read_from_pickle_string& operator>>(double& val)
+      {
+        cctbx_assert(sscanf(str_ptr, "%lg", &val) == 1);
+        return advance();
+      }
+
+      template <typename FloatType>
+      read_from_pickle_string& operator>>(std::complex<FloatType>& val)
+      {
+        FloatType r, i;
+        *this >> r >> i;
+        val = std::complex<FloatType>(r, i);
+        return *this;
+      }
+
+      template <typename ElementType, typename AccessorType>
+      read_from_pickle_string& operator>>(
+        af::ref<ElementType, AccessorType> vals)
+      {
+        for(std::size_t i=0;i<vals.size();i++) {
+          *this >> vals[i];
+        }
+        return *this;
+      }
+    };
+
+    template <typename FloatType, typename CAASF_Type>
+    struct xray_scatterer_picklers
+    {
+      typedef sftbx::XrayScatterer<FloatType, CAASF_Type> xs_type;
+
+      static
+      boost::python::ref
+      getstate(shared<xs_type> const& a)
+      {
+        make_pickle_string result;
+        result << a.size();
+        for(std::size_t i=0;i<a.size();i++) {
+          xs_type const& site = a[i];
+          result << site.Label()
+                 << site.CAASF().Label()
+                 << site.fpfdp()
+                 << site.Coordinates().const_ref()
+                 << site.Occ()
+                 << site.isAnisotropic();
+          if (site.isAnisotropic()) result << site.Uaniso().const_ref();
+          else                      result << site.Uiso();
+        }
+        return boost::python::make_ref(result.buffer);
+      }
+
+      static
+      void
+      setstate(shared<xs_type>& a, boost::python::ref state)
+      {
+        cctbx_assert(a.size() == 0);
+        read_from_pickle_string inp(state.get());
+        std::size_t a_capacity;
+        inp >> a_capacity;
+        a.reserve(a_capacity);
+        std::string lbl, sf_lbl;
+        std::complex<FloatType> fpfdp;
+        fractional<FloatType> coor;
+        FloatType occ;
+        bool is_aniso;
+        for(std::size_t i=0;i<a_capacity;i++) {
+          inp >> lbl >> sf_lbl >> fpfdp >> coor.ref() >> occ >> is_aniso;
+          if (is_aniso) {
+            af::tiny<FloatType, 6> u_aniso;
+            inp >> u_aniso.ref();
+            a.push_back(
+              xs_type(lbl, CAASF_Type(sf_lbl), fpfdp, coor, occ, u_aniso));
+          }
+          else {
+            FloatType u_iso;
+            inp >> u_iso;
+            a.push_back(
+              xs_type(lbl, CAASF_Type(sf_lbl), fpfdp, coor, occ, u_iso));
+          }
+        }
+        inp.assert_end();
+      }
+    };
+
   } // namespace <anonymous>
 
   boost::python::ref shared_bool_getstate(shared<bool> const& a)
@@ -345,6 +582,19 @@ namespace cctbx { namespace af {
   {
     hendrickson_lattman_picklers<double>::setstate(
       a, state, "%lg,%lg,%lg,%lg");
+  }
+
+  boost::python::ref shared_xray_scatterer_double_wk1995_getstate(
+    shared<sftbx::XrayScatterer<double, eltbx::CAASF_WK1995> > const& a)
+  {
+    return xray_scatterer_picklers<double, eltbx::CAASF_WK1995>::getstate(a);
+  }
+
+  void shared_xray_scatterer_double_wk1995_setstate(
+    shared<sftbx::XrayScatterer<double, eltbx::CAASF_WK1995> >& a,
+    boost::python::ref state)
+  {
+    xray_scatterer_picklers<double, eltbx::CAASF_WK1995>::setstate(a, state);
   }
 
 }} // namespace cctbx::af

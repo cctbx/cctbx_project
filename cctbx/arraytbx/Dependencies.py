@@ -30,6 +30,7 @@ class write_makefiles(makefile_generator.write_makefiles):
 
     self.boost_python_modules = {
       "shared":
-        (("sharedmodule", "shared_picklers"), ("cctbx_misc", "cctbx_bpl1")),
+        (("sharedmodule", "shared_picklers"),
+        ("eltbx", "cctbx_misc", "cctbx_bpl1")),
     }
 
