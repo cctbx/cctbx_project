@@ -244,10 +244,10 @@ Label, Scattering, Multiplicity, Coordinates, Occupancy, Uiso
 """
   s = StringIO()
   stage_1.write_modified(out=s, new_sites_cart=xray_structure.sites_cart())
-  assert s.getvalue() == """\
+  assert s.getvalue().replace("-0.000000", " 0.000000") == """\
 CRYST1    8.098    5.953    8.652  90.00 124.40  90.00 P121/c1
-SCALE1      0.123487 -0.000000  0.084554        0.00000
-SCALE2      0.000000  0.167983 -0.000000        0.00000
+SCALE1      0.123487  0.000000  0.084554        0.00000
+SCALE2      0.000000  0.167983  0.000000        0.00000
 SCALE3      0.000000  0.000000  0.140078        0.00000
 HETATM    1  C1  UNK     0      -0.938   0.110   2.344  1.00  0.00           C
 HETATM    2  X2  UNK     0      -0.175   0.975   1.592  1.00  0.00           C
