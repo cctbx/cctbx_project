@@ -13,6 +13,7 @@ def exercise_triplet():
   assert approx_equal(t.average_number_of_triplets_per_reflection(), 0)
   assert t.n_relations(0) == 0
   t.dump_triplets(i)
+  assert approx_equal(tuple(t.sum_of_e_products(i, e)), (0,0))
   r = t.apply_tangent_formula(e, e)
   assert approx_equal(tuple(r), (1,2))
   t.weights_and_epsilon(sg.type(), i)

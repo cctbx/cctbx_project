@@ -34,6 +34,7 @@ namespace {
           &w_t::average_number_of_triplets_per_reflection)
         .def("n_relations", &w_t::n_relations)
         .def("dump_triplets", &w_t::dump_triplets)
+        .def("sum_of_e_products", &w_t::sum_of_e_products)
         .def("apply_tangent_formula", &w_t::apply_tangent_formula)
         .def("weights_and_epsilon", &w_t::weights_and_epsilon)
       ;
