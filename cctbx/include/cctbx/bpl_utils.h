@@ -30,7 +30,7 @@ namespace cctbx { namespace bpl_utils {
   af::shared_plain<ElementType>
   as_base_array(af::versa<ElementType, af::flex_grid<> > const& a)
   {
-    assert_1d(a.accessor());
+    assert_0_based_1d(a.accessor());
     af::shared_plain<ElementType> b = a.as_base_array();
     if (a.size() != b.size()) raise_shared_size_mismatch();
     return b;

@@ -14,5 +14,5 @@ class write_makefiles(makefile_generator.write_makefiles):
     )
 
     self.boost_python_modules = {
-      "fftbx": (("fftbxmodule",), ("cctbx_bpl1",)),
+      "fftbx": (("fftbxmodule",), ("cctbx_misc", "cctbx_bpl1",)),
     }
