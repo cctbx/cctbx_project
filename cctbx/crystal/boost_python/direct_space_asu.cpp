@@ -162,6 +162,8 @@ namespace {
         .def("lock", &w_t::lock)
         .def("is_locked", &w_t::is_locked)
         .def("mappings", &w_t::mappings, ccr())
+        .def("mapped_sites_min", &w_t::mapped_sites_min, ccr())
+        .def("mapped_sites_max", &w_t::mapped_sites_max, ccr())
         .def("get_rt_mx", &w_t::get_rt_mx, (arg_("i_seq"), arg_("i_sym")))
         .def("diff_vec", &w_t::diff_vec, (arg_("pair")))
         .def("r_inv_cart", &w_t::r_inv_cart, (arg_("i_seq"), arg_("i_sym")))

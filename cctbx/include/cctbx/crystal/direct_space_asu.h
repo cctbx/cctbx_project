@@ -329,6 +329,8 @@ namespace direct_space_asu {
             asu.volume_vertices(true).const_ref())
           .expand(buffer_thickness+sym_equiv_tolerance_)),
         mappings_const_ref_(mappings_.const_ref()),
+        mapped_sites_min_(0,0,0),
+        mapped_sites_max_(0,0,0),
         is_locked_(false)
       {}
 
@@ -427,6 +429,18 @@ namespace direct_space_asu {
               else {
                 site_mappings.push_back(mapping);
               }
+              if (   site_mappings.size() == 1
+                  && mappings_const_ref_.size() == 1) {
+                mapped_sites_min_ = mapping.mapped_site();
+                mapped_sites_max_ = mapping.mapped_site();
+              }
+              else {
+                for(std::size_t i=0;i<3;i++) {
+                  FloatType const& e = mapping.mapped_site()[i];
+                  scitbx::math::update_min(mapped_sites_min_[i], e);
+                  scitbx::math::update_max(mapped_sites_max_[i], e);
+                }
+              }
             }
           }}}
         }
@@ -442,6 +456,14 @@ namespace direct_space_asu {
       //! Accumulated mappings due to repeated calls of process().
       array_of_array_of_mappings_for_one_site const&
       mappings() const { return mappings_; }
+
+      //! Minimum coordinates of all mapped sites.
+      cartesian<FloatType> const&
+      mapped_sites_min() const { return mapped_sites_min_; }
+
+      //! Maximum coordinates of all mapped sites.
+      cartesian<FloatType> const&
+      mapped_sites_max() const { return mapped_sites_max_; }
 
       //! mappings()[i_seq][i_sym] with range checking of i_seq and i_sym.
       /*! Not available in Python.
@@ -513,6 +535,8 @@ namespace direct_space_asu {
       scitbx::math::sphere_3d<FloatType> buffer_covering_sphere_;
       array_of_array_of_mappings_for_one_site mappings_;
       af::const_ref<array_of_mappings_for_one_site> mappings_const_ref_;
+      cartesian<FloatType> mapped_sites_min_;
+      cartesian<FloatType> mapped_sites_max_;
       bool is_locked_;
       mutable std::vector<scitbx::mat3<FloatType> > r_inv_cart_;
   };
