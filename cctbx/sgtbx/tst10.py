@@ -21,7 +21,7 @@ def get_unitcell(SgType):
   return RefUnitCell.ChangeBasis(SgType.CBOp().M().as_tuple()[0])
 
 if (ShortCut):
-  settings = ("B 2 2 2",)
+  settings = ("Hall: -P 6 2c (z,1/2*x,1/2*y)",)
 else:
   from settings import * # see examples/python/make_settings.py
 
@@ -41,10 +41,11 @@ def OneCycle():
     sys.stdout.flush()
     UnitCell = get_unitcell(SgType)
     SgOps.CheckUnitCell(UnitCell)
-    SnapParameters20 = \
+    SnapParametersLarge = \
     sgtbx.SpecialPositionSnapParameters(UnitCell, SgOps, 0, 2.0)
-    SnapParameters01 = \
-    sgtbx.SpecialPositionSnapParameters(UnitCell, SgOps, 0, 0.1)
+    SmallSnapDist2 = 1.e-5
+    SnapParametersSmall = \
+    sgtbx.SpecialPositionSnapParameters(UnitCell, SgOps, 0, SmallSnapDist2)
     WTab = sgtbx.WyckoffTable(SgOps, SgType)
     for i in xrange(20):
       RandomX = (random.uniform(-2,2),
@@ -52,7 +53,7 @@ def OneCycle():
                  random.uniform(-2,2))
       print "RandomX ", RandomX
       #
-      SP = sgtbx.SpecialPosition(SnapParameters20, RandomX, 1, 1)
+      SP = sgtbx.SpecialPosition(SnapParametersLarge, RandomX, 1, 1)
       SWMap = WTab.getWyckoffMapping(SP)
       print SWMap.WP().M(), SWMap.WP().Letter(), SWMap.WP().SpecialOp(),
       print SP.getPointGroupType()
@@ -69,10 +70,10 @@ def OneCycle():
       assert d < 1.e-5
       #
       WWMap = WTab.getWyckoffMapping(UnitCell, SgOps, RandomX, 2.0)
-      SP = sgtbx.SpecialPosition(SnapParameters01, WWMap.snap(RandomX), 0, 1)
+      SP = sgtbx.SpecialPosition(SnapParametersSmall, WWMap.snap(RandomX), 0,1)
       print WWMap.WP().M(), WWMap.WP().Letter(), WWMap.WP().SpecialOp(),
       print SP.getPointGroupType()
-      assert SP.DistanceMoved2() < 1.e-5
+      assert SP.DistanceMoved2() < SmallSnapDist2
       SWMap = WTab.getWyckoffMapping(SP)
       assert SWMap.WP().Letter() == WWMap.WP().Letter()
       assert UnitCell.Distance2(SWMap.snap(RandomX), SP.SnapPosition()) < 1.e-5
