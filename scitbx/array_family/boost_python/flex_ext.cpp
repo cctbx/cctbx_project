@@ -63,7 +63,8 @@ namespace {
     tuple_mapping_fixed_size<tiny<std::size_t, 2> >();
     tuple_mapping_fixed_size<tiny<std::size_t, 3> >();
     tuple_mapping_fixed_size<tiny<std::size_t, 4> >();
-    if (sizeof(unsigned) != sizeof(std::size_t)) {
+    if (boost::python::converter::registry::query(
+          boost::python::type_info(typeid(tiny<unsigned, 2>))) == 0) {
       tuple_mapping_fixed_size<tiny<unsigned, 2> >();
       tuple_mapping_fixed_size<tiny<unsigned, 3> >();
       tuple_mapping_fixed_size<tiny<unsigned, 4> >();
