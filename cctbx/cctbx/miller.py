@@ -665,6 +665,12 @@ class array(set):
     assert self.indices().size() == e.size()
     return array(self, e.unshuffle(e_perm))
 
+  def quasi_normalized_as_normalized(self):
+    assert self.sigmas() == None
+    return array(
+      miller_set=self,
+      data=self.data()/flex.sqrt(self.epsilons().data().as_double()))
+
   def __abs__(self):
     return array(self, flex.abs(self.data()), self.sigmas())
 
