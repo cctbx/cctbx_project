@@ -15,14 +15,14 @@ class dblite:
     self._dict = {}
     self._needs_sync = 00000
     if (self._flag == "n"):
-      _open(self._file_name, "w", self._mode)
+      _open(self._file_name, "wb", self._mode)
     else:
       try:
-        f = _open(self._file_name, "r")
+        f = _open(self._file_name, "rb")
       except IOError:
         if (self._flag == "w"):
           raise IOError("Database does not exist: %s" % self._file_name)
-        _open(self._file_name, "w", self._mode)
+        _open(self._file_name, "wb", self._mode)
       else:
         self._dict = pickle.load(f)
 
@@ -32,7 +32,7 @@ class dblite:
 
   def sync(self):
     self._check_writable()
-    f = _open(self._file_name, "w", self._mode)
+    f = _open(self._file_name, "wb", self._mode)
     pickle.dump(self._dict, f, 1)
     f.close()
     self._needs_sync = 00000
