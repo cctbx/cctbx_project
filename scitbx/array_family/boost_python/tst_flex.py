@@ -25,6 +25,18 @@ def exercise_flex_grid():
   assert g((1,2,4)) == 29
   assert g.is_0_based()
   assert not g.is_padded()
+  assert flex.grid(1).grid() == (1,)
+  assert flex.grid(1,2).grid() == (1,2,)
+  assert flex.grid(1,2,3).grid() == (1,2,3)
+  assert flex.grid(1,2,3,4).grid() == (1,2,3,4)
+  assert flex.grid(1,2,3,4,5).grid() == (1,2,3,4,5)
+  assert flex.grid(1,2,3,4,5,6).grid() == (1,2,3,4,5,6)
+  assert flex.grid().set_layout(1).layout() == (1,)
+  assert flex.grid().set_layout(1,2).layout() == (1,2,)
+  assert flex.grid().set_layout(1,2,3).layout() == (1,2,3)
+  assert flex.grid().set_layout(1,2,3,4).layout() == (1,2,3,4)
+  assert flex.grid().set_layout(1,2,3,4,5).layout() == (1,2,3,4,5)
+  assert flex.grid().set_layout(1,2,3,4,5,6).layout() == (1,2,3,4,5,6)
   g = flex.grid((1,2,3), (4,6,8))
   assert g.nd() == 3
   assert g.size_1d() == 60
