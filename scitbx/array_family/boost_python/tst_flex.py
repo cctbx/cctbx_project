@@ -613,6 +613,47 @@ def exercise_mean_and_variance():
   assert approx_equal(mv.cumulative_variance(), 1/3.)
   assert approx_equal(mv.conservative_variance(), 1/3.)
 
+def exercise_linear_interpolation():
+  for flex_type in (flex.float, flex.double):
+    tab_x = flex_type([1,2,3,4])
+    tab_y = flex_type([10,20,30,40])
+    assert approx_equal(flex.linear_interpolation(tab_x, tab_y, 3.5, 1.e-6),35)
+    assert approx_equal(flex.linear_interpolation(tab_x, tab_y, 2.1), 21)
+    assert approx_equal(flex.linear_interpolation(tab_x, tab_y, 1), 10)
+    assert approx_equal(flex.linear_interpolation(tab_x, tab_y, 1-1.e-6), 10,
+      eps=1.e-4)
+    assert approx_equal(flex.linear_interpolation(tab_x, tab_y, 1+1.e-6), 10,
+      eps=1.e-4)
+    assert approx_equal(flex.linear_interpolation(tab_x, tab_y, 4), 40)
+    assert approx_equal(flex.linear_interpolation(tab_x, tab_y, 4+1.e-6), 40,
+      eps=1.e-4)
+    assert approx_equal(flex.linear_interpolation(tab_x, tab_y, 4-1.e-6), 40,
+      eps=1.e-4)
+    for i in xrange(11):
+      x = 1+3*i/10.
+      assert approx_equal(flex.linear_interpolation(tab_x, tab_y, x), 10*x)
+    for x in [0,5]:
+      try: flex.linear_interpolation(tab_x, tab_y, 0)
+      except: pass
+      else: raise RuntimeError("Exception expected.")
+    x = flex_type([1.3,2.4,3.6])
+    assert approx_equal(flex.linear_interpolation(tab_x, tab_y, x, 1.e-6),
+      [13,24,36])
+    assert approx_equal(flex.linear_interpolation(tab_x, tab_y, x),
+      [13,24,36])
+    tab_x = flex_type([2,4,8,16])
+    tab_y = flex_type([4,6,8,10])
+    x = flex_type([2,3,5,6,8,11,12,16])
+    assert approx_equal(flex.linear_interpolation(tab_x, tab_y, x),
+      [4, 5, 6.5, 7, 8, 8.75, 9, 10])
+    tab_x = flex_type([2,4,8,16])
+    tab_y = flex_type([4,-6,8,-10])
+    for eps in [1.e-6,-1.e-6]:
+      x = flex_type([2,3,5,6,8,11,12,16]) + eps
+      assert approx_equal(flex.linear_interpolation(tab_x, tab_y, x),
+        [4, -1, -6+1/4.*14, -6+2/4.*14, 8, 8-18*3./8, 8-18*4./8, -10],
+      eps=1.e-4)
+
 def exercise_exceptions():
   f = flex.double(flex.grid((2,3)))
   try: f.assign(1, 0)
@@ -769,6 +810,7 @@ def run(iterations):
     exercise_linear_regression()
     exercise_linear_correlation()
     exercise_mean_and_variance()
+    exercise_linear_interpolation()
     exercise_exceptions()
     exercise_pickle_single_buffered()
     exercise_pickle_double_buffered()
