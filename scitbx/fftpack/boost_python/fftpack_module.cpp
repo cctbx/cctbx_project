@@ -17,7 +17,6 @@
 #include <scitbx/array_family/flex_types.h>
 #include <scitbx/array_family/accessors/c_grid.h>
 #include <scitbx/array_family/boost_python/utils.h>
-#include <scitbx/array_family/boost_python/tiny_conversions.h>
 #include <boost/python/module.hpp>
 #include <boost/python/scope.hpp>
 #include <boost/python/def.hpp>
@@ -353,7 +352,6 @@ namespace scitbx { namespace fftpack { namespace {
     scope().attr("__version__") = scitbx::boost_python::cvs_revision(
       "$Revision$");
 
-    scitbx::af::boost_python::register_tiny_types_conversions();
     scitbx::boost_python::import_module(
       "scitbx_boost.array_family.flex_scitbx_ext");
 
