@@ -21,6 +21,8 @@ namespace cctbx { namespace xray {
       typedef typename base_t::grid_point_element_type grid_point_element_type;
       typedef typename base_t::real_map_type real_map_type;
       typedef typename base_t::complex_map_type complex_map_type;
+      typedef typename base_t::u_radius_cache_t u_radius_cache_t;
+      typedef typename base_t::u_cart_cache_t u_cart_cache_t;
 
       sampled_model_density() {}
 
@@ -30,7 +32,7 @@ namespace cctbx { namespace xray {
         scattering_dictionary const& scattering_dict,
         grid_point_type const& fft_n_real,
         grid_point_type const& fft_m_real,
-        FloatType const& u_extra=0.25,
+        FloatType const& u_base=0.25,
         FloatType const& wing_cutoff=1.e-3,
         FloatType const& exp_table_one_over_step_size=-100,
         bool force_complex=false,
@@ -69,18 +71,17 @@ namespace cctbx { namespace xray {
     scattering_dictionary const& scattering_dict,
     grid_point_type const& fft_n_real,
     grid_point_type const& fft_m_real,
-    FloatType const& u_extra,
+    FloatType const& u_base,
     FloatType const& wing_cutoff,
     FloatType const& exp_table_one_over_step_size,
     bool force_complex,
     bool electron_density_must_be_positive,
     FloatType const& tolerance_positive_definite)
   :
-    base_t(unit_cell, scatterers, scattering_dict, u_extra, wing_cutoff,
-           exp_table_one_over_step_size, tolerance_positive_definite,
-           fft_n_real)
+    base_t(unit_cell, scatterers, scattering_dict,
+           u_base, wing_cutoff,
+           exp_table_one_over_step_size, tolerance_positive_definite)
   {
-    CCTBX_ASSERT(scattering_dict.n_scatterers() == scatterers.size());
     FloatType* map_begin;
     if (this->n_anomalous_scatterers_ == 0 && !force_complex) {
       this->map_accessor_ = accessor_type(fft_m_real, fft_n_real);
@@ -105,6 +106,10 @@ namespace cctbx { namespace xray {
     std::vector<FloatType> o2f2_;
     std::vector<FloatType> o5f2_;
     std::vector<FloatType> o8f2_;
+    typename u_radius_cache_t::const_iterator u_radius =
+      this->u_radius_cache_.begin();
+    typename u_cart_cache_t::const_iterator u_cart =
+      this->u_cart_cache_.begin();
     typedef scattering_dictionary::dict_type dict_type;
     typedef dict_type::const_iterator dict_iter;
     dict_type const& scd = scattering_dict.dict();
@@ -118,19 +123,10 @@ namespace cctbx { namespace xray {
         if (scatterer.weight() == 0) continue;
         FloatType fdp = scatterer.fdp;
         fractional<FloatType> coor_frac = scatterer.site;
-        FloatType u_iso;
-        scitbx::sym_mat3<FloatType> u_cart;
-        if (!scatterer.anisotropic_flag) {
-          u_iso = scatterer.u_iso;
-        }
-        else {
-          u_iso = this->get_u_cart_and_u_iso(scatterer.u_star, u_cart);
-        }
-        CCTBX_ASSERT(u_iso >= 0);
         detail::gaussian_fourier_transformed<FloatType> gaussian_ft(
           exp_table,
           gaussian, scatterer.fp, scatterer.fdp, scatterer.weight(),
-          u_iso, this->u_extra_);
+          *u_radius++, this->u_extra_);
         detail::calc_box<FloatType, grid_point_type> sampling_box(
           this->unit_cell_, this->rho_cutoff_, this->max_d_sq_upper_bound_,
           grid_f, coor_frac, gaussian_ft);
@@ -147,7 +143,7 @@ namespace cctbx { namespace xray {
           gaussian_ft = detail::gaussian_fourier_transformed<FloatType>(
             exp_table,
             gaussian, scatterer.fp, scatterer.fdp, scatterer.weight(),
-            u_cart, this->u_extra_);
+            *u_cart++, this->u_extra_);
         }
         std::size_t exp_tab_size = exp_table.table_.size();
 #       include <cctbx/xray/sampling_loop.h>
@@ -190,9 +186,13 @@ namespace cctbx { namespace xray {
               map_begin[i_map+1] += gaussian_ft.rho_imag(d);
             }
           }
-        }}}
+        CCTBX_XRAY_SAMPLING_LOOP_END
       }
     }
+    CCTBX_ASSERT(u_radius == this->u_radius_cache_.end());
+    CCTBX_ASSERT(u_cart == this->u_cart_cache_.end());
+    this->u_radius_cache_ = u_radius_cache_t(); // free memory
+    this->u_cart_cache_ = u_cart_cache_t(); // free memory
     this->exp_table_size_ = exp_table.table().size();
   }
 

@@ -3,6 +3,7 @@
 #error "Do not include this file directly."
 #endif
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
+#define CCTBX_XRAY_SAMPLING_LOOP_END }}}
       // highly hand-optimized loop over points in sampling box
       scitbx::vec3<int> g_min = sampling_box.box_min;
       scitbx::vec3<int> g_max = sampling_box.box_max;

@@ -39,12 +39,12 @@ class resampling(crystal.symmetry):
                      grid_resolution_factor=1/3.,
                      symmetry_flags=maptbx.use_space_group_symmetry,
                      mandatory_grid_factors=None,
-                     quality_factor=100000, u_extra=None, b_extra=None,
+                     quality_factor=1000000, u_base=None, b_base=None,
                      wing_cutoff=1.e-10,
                      exp_table_one_over_step_size=-100,
                      max_prime=5):
     assert miller_set is None or crystal_symmetry is None
-    assert [quality_factor, u_extra, b_extra].count(None) == 2
+    assert [quality_factor, u_base, b_base].count(None) == 2
     if (miller_set is None):
       assert crystal_symmetry is not None and d_min is not None
     else:
@@ -55,15 +55,15 @@ class resampling(crystal.symmetry):
         assert d_min <= miller_set.d_min()
     crystal.symmetry._copy_constructor(self, crystal_symmetry)
     quality_factor = xray.structure_factors.quality_factor_from_any(
-      d_min, grid_resolution_factor, quality_factor, u_extra, b_extra)
+      d_min, grid_resolution_factor, quality_factor, u_base, b_base)
     del miller_set
-    del u_extra
-    del b_extra
+    del u_base
+    del b_base
     adopt_init_args(self, locals(), hide=0001)
     self._crystal_gridding = None
     self._crystal_gridding_tags = None
     self._rfft = None
-    self._u_extra = None
+    self._u_base = None
 
   def d_min(self):
     return self._d_min
@@ -113,21 +113,21 @@ class resampling(crystal.symmetry):
       self._rfft = fftpack.real_to_complex_3d(self.crystal_gridding().n_real())
     return self._rfft
 
-  def u_extra(self):
-    if (self._u_extra is None):
-      self._u_extra = xray.calc_u_extra(
+  def u_base(self):
+    if (self._u_base is None):
+      self._u_base = xray.calc_u_base(
         self.d_min(),
         self.grid_resolution_factor(),
         self.quality_factor())
-    return self._u_extra
+    return self._u_base
 
   def setup_fft(self):
     self.crystal_gridding_tags()
     self.rfft()
-    self.u_extra()
+    self.u_base()
     return self
 
-  def ft_dp(self, dp):
+  def ft_dp(self, dp, u_extra):
     multiplier = (  self.unit_cell().volume()
                   / matrix.row(self.rfft().n_real()).product()
                   * self.space_group().order_z()
@@ -135,7 +135,7 @@ class resampling(crystal.symmetry):
     coeff = dp.deep_copy()
     xray.apply_u_extra(
       self.unit_cell(),
-      self.u_extra(),
+      u_extra,
       coeff.indices(),
       coeff.data(),
       multiplier)
@@ -147,40 +147,41 @@ class resampling(crystal.symmetry):
                      dp,
                      gradient_flags,
                      n_parameters,
-                     electron_density_must_be_positive=0001,
-                     tolerance_positive_definite=1.e-5,
                      verbose=0):
-    gradient_map = self.ft_dp(dp)
+    result = xray.fast_gradients(
+      unit_cell=xray_structure.unit_cell(),
+      scatterers=xray_structure.scatterers(),
+      scattering_dict=xray_structure.scattering_dict(),
+      u_base=self.u_base(),
+      wing_cutoff=self.wing_cutoff(),
+      exp_table_one_over_step_size=self.exp_table_one_over_step_size(),
+      tolerance_positive_definite=1.e-5)
+    if (0 or verbose):
+      print "u_base:", result.u_base()
+      print "u_extra:", result.u_extra()
+    gradient_map = self.ft_dp(dp, u_extra=result.u_extra())
     if (not gradient_map.anomalous_flag()):
-      gradient_map_real = gradient_map.real_map()
-      gradient_map_complex = flex.complex_double(flex.grid(0,0,0))
+      gradient_map = gradient_map.real_map()
     else:
-      gradient_map_real = flex.double(flex.grid(0,0,0))
-      gradient_map_complex = gradient_map.complex_map()
-      assert not gradient_map_complex.is_padded()
+      gradient_map = gradient_map.complex_map()
+      assert not gradient_map.is_padded()
       if (0 or verbose):
         gradient_flags.show_summary()
-        print "grid:", gradient_map_complex.focus()
+        print "grid:", gradient_map.focus()
         print "ft_dt_map real: %.4g %.4g" % (
-          flex.min(flex.real(gradient_map_complex)),
-          flex.max(flex.real(gradient_map_complex)))
+          flex.min(flex.real(gradient_map)),
+          flex.max(flex.real(gradient_map)))
         print "ft_dt_map imag: %.4g %.4g" % (
-          flex.min(flex.imag(gradient_map_complex)),
-          flex.max(flex.imag(gradient_map_complex)))
+          flex.min(flex.imag(gradient_map)),
+          flex.max(flex.imag(gradient_map)))
         print
-    result = xray.fast_gradients(
-      xray_structure.unit_cell(),
-      xray_structure.scatterers(),
-      xray_structure.scattering_dict(),
-      gradient_map_real,
-      gradient_map_complex,
-      gradient_flags,
-      n_parameters,
-      self.u_extra(),
-      self.wing_cutoff(),
-      self.exp_table_one_over_step_size(),
-      electron_density_must_be_positive,
-      tolerance_positive_definite)
+    result.sampling(
+      scatterers=xray_structure.scatterers(),
+      scattering_dict=xray_structure.scattering_dict(),
+      ft_d_target_d_f_calc=gradient_map,
+      grad_flags=gradient_flags,
+      n_parameters=n_parameters,
+      electron_density_must_be_positive=0001)
     if (0 or verbose):
       print "max_sampling_box_edges:", result.max_sampling_box_edges()
       print "exp_table_size:", result.exp_table_size()
@@ -192,7 +193,7 @@ class judge:
   def __init__(self, scatterer, label, reference, other, top):
     label += [" iso", " aniso"][int(scatterer.anisotropic_flag)]
     s = ""
-    r = (reference-other)/top
+    r = (reference-other)/max(abs(top), min(abs(reference), abs(other)))
     s += " %.5f " % r + label
     self.is_bad = 00000
     if (abs(r) > 0.03):

@@ -369,8 +369,8 @@ class set(crystal.symmetry):
                                         algorithm=None,
                                         cos_sin_table=00000,
                                         quality_factor=None,
-                                        u_extra=None,
-                                        b_extra=None,
+                                        u_base=None,
+                                        b_base=None,
                                         wing_cutoff=None,
                                         exp_table_one_over_step_size=None):
     from cctbx import xray
@@ -383,8 +383,8 @@ class set(crystal.symmetry):
       miller_set=self,
       cos_sin_table=cos_sin_table,
       quality_factor=quality_factor,
-      u_extra=u_extra,
-      b_extra=b_extra,
+      u_base=u_base,
+      b_base=b_base,
       wing_cutoff=wing_cutoff,
       exp_table_one_over_step_size=exp_table_one_over_step_size)(
         xray_structure=xray_structure,

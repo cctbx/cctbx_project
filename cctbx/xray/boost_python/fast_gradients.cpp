@@ -2,6 +2,7 @@
 
 #include <cctbx/xray/fast_gradients.h>
 #include <boost/python/class.hpp>
+#include <boost/python/args.hpp>
 
 namespace cctbx { namespace xray { namespace boost_python {
 
@@ -15,21 +16,50 @@ namespace {
     wrap()
     {
       using namespace boost::python;
+      typedef boost::python::arg arg_; // gcc 2.96 workaround
       class_<w_t, bases<w_t::base_t> >("fast_gradients", no_init)
         .def(init<uctbx::unit_cell const&,
                   af::const_ref<scatterer<> > const&,
                   scattering_dictionary const&,
-                  af::const_ref<double,
-                                maptbx::c_grid_padded_p1<3> > const&,
-                  af::const_ref<std::complex<double>,
-                                maptbx::c_grid_padded_p1<3> > const&,
-                  gradient_flags const&,
-                  std::size_t,
                   optional<double const&,
                            double const&,
                            double const&,
-                           bool,
-                           double const&> >())
+                           double const&> >(
+          (arg_("unit_cell"),
+           arg_("scatterers"),
+           arg_("scattering_dict"),
+           arg_("u_base"),
+           arg_("wing_cutoff"),
+           arg_("exp_table_one_over_step_size"),
+           arg_("tolerance_positive_definite"))))
+        .def("sampling",
+          (void(w_t::*)(
+            af::const_ref<scatterer<> > const&,
+            scattering_dictionary const&,
+            af::const_ref<double, w_t::accessor_type> const&,
+            gradient_flags const&,
+            std::size_t,
+            bool)) &w_t::sampling,
+          (arg_("scatterers"),
+           arg_("scattering_dict"),
+           arg_("ft_d_target_d_f_calc"),
+           arg_("grad_flags"),
+           arg_("n_parameters"),
+           arg_("electron_density_must_be_positive")))
+        .def("sampling",
+          (void(w_t::*)(
+            af::const_ref<scatterer<> > const&,
+            scattering_dictionary const&,
+            af::const_ref<std::complex<double>, w_t::accessor_type> const&,
+            gradient_flags const&,
+            std::size_t,
+            bool)) &w_t::sampling,
+          (arg_("scatterers"),
+           arg_("scattering_dict"),
+           arg_("ft_d_target_d_f_calc"),
+           arg_("grad_flags"),
+           arg_("n_parameters"),
+           arg_("electron_density_must_be_positive")))
         .def("packed", &w_t::packed)
         .def("d_target_d_site_cart", &w_t::d_target_d_site_cart)
         .def("d_target_d_u_iso", &w_t::d_target_d_u_iso)

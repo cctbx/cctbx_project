@@ -24,7 +24,10 @@ namespace {
       typedef return_internal_reference<> rir;
       class_<w_t>("sampling_base", no_init)
         .def("unit_cell", &w_t::unit_cell, rir())
+        .def("u_base", &w_t::u_base)
         .def("u_extra", &w_t::u_extra)
+        .def("u_min", &w_t::u_min)
+        .def("ave_u_iso_or_equiv", &w_t::ave_u_iso_or_equiv)
         .def("wing_cutoff", &w_t::wing_cutoff)
         .def("exp_table_one_over_step_size",
           &w_t::exp_table_one_over_step_size)
@@ -45,7 +48,7 @@ namespace {
   };
 
   BOOST_PYTHON_FUNCTION_OVERLOADS(
-    calc_u_extra_overloads, calc_u_extra, 2, 4)
+    calc_u_base_overloads, calc_u_base, 2, 4)
 
   void
   apply_u_extra_double(
@@ -80,7 +83,7 @@ namespace {
   {
     using namespace boost::python;
 
-    def("calc_u_extra", calc_u_extra, calc_u_extra_overloads());
+    def("calc_u_base", calc_u_base, calc_u_base_overloads());
     def("apply_u_extra",apply_u_extra_double,apply_u_extra_double_overloads());
     def("apply_u_extra", apply_u_extra_array_double);
 

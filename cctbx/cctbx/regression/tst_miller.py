@@ -435,11 +435,11 @@ def exercise_squaring_and_patterson_map(space_group_info,
   f.setup_binner(auto_binning=0001)
   e = f.quasi_normalize_structure_factors()
   grid_resolution_factor = 1/3.
-  u_extra = xray.calc_u_extra(d_min, grid_resolution_factor)
+  u_base = xray.calc_u_base(d_min, grid_resolution_factor)
   if (0 or verbose):
-    print "u_extra:", u_extra
+    print "u_base:", u_base
   d_star_sq = e.unit_cell().d_star_sq(e.indices())
-  dw = flex.exp(d_star_sq*2*(math.pi**2)*u_extra)
+  dw = flex.exp(d_star_sq*2*(math.pi**2)*u_base)
   eb = miller.array(miller_set=e, data=e.data()/dw)
   eb_map = eb.phase_transfer(f_calc).fft_map(
     resolution_factor=grid_resolution_factor,

@@ -102,23 +102,23 @@ def exercise_structure():
   am = xs.asu_mappings(buffer_thickness=1)
   assert am.mappings().size() == xs.scatterers().size()
 
-def exercise_u_extra():
+def exercise_u_base():
   d_min = 9
   grid_resolution_factor = 1/3.
   for quality_factor in (1,2,4,8,10,100,200,1000):
-    u_extra = xray.calc_u_extra(d_min, grid_resolution_factor, quality_factor)
+    u_base = xray.calc_u_base(d_min, grid_resolution_factor, quality_factor)
     assert approx_equal(
       quality_factor,
       xray.structure_factors.quality_factor_from_any(
         d_min=d_min,
         grid_resolution_factor=grid_resolution_factor,
-        u_extra=u_extra))
+        u_base=u_base))
     assert approx_equal(
       quality_factor,
       xray.structure_factors.quality_factor_from_any(
         d_min=d_min,
         grid_resolution_factor=grid_resolution_factor,
-        b_extra=adptbx.u_as_b(u_extra)))
+        b_base=adptbx.u_as_b(u_base)))
     assert approx_equal(
       quality_factor,
       xray.structure_factors.quality_factor_from_any(
@@ -242,7 +242,7 @@ def run_call_back(flags, space_group_info):
 def run():
   exercise_scatterer()
   exercise_structure()
-  exercise_u_extra()
+  exercise_u_base()
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
   print "OK"
 

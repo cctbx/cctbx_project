@@ -324,6 +324,8 @@ namespace cctbx { namespace xray {
       typedef typename base_t::grid_point_element_type grid_point_element_type;
       typedef typename base_t::real_map_type real_map_type;
       typedef typename base_t::complex_map_type complex_map_type;
+      typedef typename base_t::u_radius_cache_t u_radius_cache_t;
+      typedef typename base_t::u_cart_cache_t u_cart_cache_t;
 
       fast_gradients() {}
 
@@ -331,17 +333,49 @@ namespace cctbx { namespace xray {
         uctbx::unit_cell const& unit_cell,
         af::const_ref<XrayScattererType> const& scatterers,
         scattering_dictionary const& scattering_dict,
-        af::const_ref<FloatType, accessor_type> const&
-          ft_d_target_d_f_calc_real,
-        af::const_ref<std::complex<FloatType>, accessor_type> const&
-          ft_d_target_d_f_calc_complex,
-        gradient_flags const& grad_flags,
-        std::size_t n_parameters=0,
-        FloatType const& u_extra=0.25,
+        FloatType const& u_base=0.25,
         FloatType const& wing_cutoff=1.e-3,
         FloatType const& exp_table_one_over_step_size=-100,
-        bool electron_density_must_be_positive=true,
-        FloatType const& tolerance_positive_definite=1.e-5);
+        FloatType const& tolerance_positive_definite=1.e-5)
+      :
+        base_t(unit_cell, scatterers, scattering_dict,
+               u_base, wing_cutoff,
+               exp_table_one_over_step_size, tolerance_positive_definite),
+        sampling_may_only_be_called_once(true),
+        n_scatterers_expected(scatterers.size())
+      {}
+
+      void
+      sampling(
+        af::const_ref<XrayScattererType> const& scatterers,
+        scattering_dictionary const& scattering_dict,
+        af::const_ref<FloatType, accessor_type> const&
+          ft_d_target_d_f_calc,
+        gradient_flags const& grad_flags,
+        std::size_t n_parameters=0,
+        bool electron_density_must_be_positive=true)
+      {
+        this->map_accessor_ = ft_d_target_d_f_calc.accessor();
+        sampling_(
+          scatterers, scattering_dict, &*ft_d_target_d_f_calc.begin(), 0,
+          grad_flags, n_parameters, electron_density_must_be_positive);
+      }
+
+      void
+      sampling(
+        af::const_ref<XrayScattererType> const& scatterers,
+        scattering_dictionary const& scattering_dict,
+        af::const_ref<std::complex<FloatType>, accessor_type> const&
+          ft_d_target_d_f_calc,
+        gradient_flags const& grad_flags,
+        std::size_t n_parameters=0,
+        bool electron_density_must_be_positive=true)
+      {
+        this->map_accessor_ = ft_d_target_d_f_calc.accessor();
+        sampling_(
+          scatterers, scattering_dict, 0, &*ft_d_target_d_f_calc.begin(),
+          grad_flags, n_parameters, electron_density_must_be_positive);
+      }
 
       af::shared<FloatType>
       packed() const { return packed_; }
@@ -365,6 +399,8 @@ namespace cctbx { namespace xray {
       d_target_d_fdp() const { return d_target_d_fdp_; }
 
     private:
+      bool sampling_may_only_be_called_once;
+      std::size_t n_scatterers_expected;
       af::shared<FloatType> packed_;
       af::shared<scitbx::vec3<FloatType> > d_target_d_site_cart_;
       af::shared<FloatType> d_target_d_u_iso_;
@@ -372,36 +408,35 @@ namespace cctbx { namespace xray {
       af::shared<FloatType> d_target_d_occupancy_;
       af::shared<FloatType> d_target_d_fp_;
       af::shared<FloatType> d_target_d_fdp_;
+
+      void
+      sampling_(
+        af::const_ref<XrayScattererType> const& scatterers,
+        scattering_dictionary const& scattering_dict,
+        const FloatType* ft_d_target_d_f_calc_real,
+        const std::complex<FloatType>* ft_d_target_d_f_calc_complex,
+        gradient_flags const& grad_flags,
+        std::size_t n_parameters,
+        bool electron_density_must_be_positive);
   };
 
   template <typename FloatType,
             typename XrayScattererType>
-  fast_gradients<FloatType, XrayScattererType>
-  ::fast_gradients(
-    uctbx::unit_cell const& unit_cell,
+  void
+  fast_gradients<FloatType, XrayScattererType>::
+  sampling_(
     af::const_ref<XrayScattererType> const& scatterers,
     scattering_dictionary const& scattering_dict,
-    af::const_ref<FloatType, accessor_type> const&
-      ft_d_target_d_f_calc_real,
-    af::const_ref<std::complex<FloatType>, accessor_type> const&
-      ft_d_target_d_f_calc_complex,
+    const FloatType* ft_d_target_d_f_calc_real,
+    const std::complex<FloatType>* ft_d_target_d_f_calc_complex,
     gradient_flags const& grad_flags,
     std::size_t n_parameters,
-    FloatType const& u_extra,
-    FloatType const& wing_cutoff,
-    FloatType const& exp_table_one_over_step_size,
-    bool electron_density_must_be_positive,
-    FloatType const& tolerance_positive_definite)
-  :
-    base_t(unit_cell, scatterers, scattering_dict, u_extra, wing_cutoff,
-           exp_table_one_over_step_size, tolerance_positive_definite,
-           (  ft_d_target_d_f_calc_real.size() != 0
-            ? ft_d_target_d_f_calc_real.accessor().focus()
-            : ft_d_target_d_f_calc_complex.accessor().focus()))
+    bool electron_density_must_be_positive)
   {
+    CCTBX_ASSERT(sampling_may_only_be_called_once);
+    sampling_may_only_be_called_once = false;
+    CCTBX_ASSERT(scatterers.size() == n_scatterers_expected);
     CCTBX_ASSERT(scattering_dict.n_scatterers() == scatterers.size());
-    CCTBX_ASSERT(   (ft_d_target_d_f_calc_real.size() == 0)
-                 != (ft_d_target_d_f_calc_complex.size() == 0));
     if (this->n_anomalous_scatterers_ != 0) {
       this->anomalous_flag_ = true;
     }
@@ -417,16 +452,10 @@ namespace cctbx { namespace xray {
       if (grad_flags.fp) d_target_d_fp_.reserve(scatterers.size());
       if (grad_flags.fdp) d_target_d_fdp_.reserve(scatterers.size());
     }
-    bool gradient_map_is_real = ft_d_target_d_f_calc_real.size() != 0;
-    if (gradient_map_is_real) {
-      this->map_accessor_ = ft_d_target_d_f_calc_real.accessor();
-    }
-    else {
-      this->map_accessor_ = ft_d_target_d_f_calc_complex.accessor();
-    }
     grid_point_type const& grid_f = this->map_accessor_.focus();
     grid_point_type const& grid_a = this->map_accessor_.all();
-    detail::exponent_table<FloatType> exp_table(exp_table_one_over_step_size);
+    detail::exponent_table<FloatType>
+      exp_table(this->exp_table_one_over_step_size_);
     scitbx::mat3<FloatType>
       orth_mx = this->unit_cell_.orthogonalization_matrix();
     std::vector<int> gp1g;
@@ -436,6 +465,10 @@ namespace cctbx { namespace xray {
     std::vector<FloatType> o2f2_;
     std::vector<FloatType> o5f2_;
     std::vector<FloatType> o8f2_;
+    typename u_radius_cache_t::const_iterator u_radius =
+      this->u_radius_cache_.begin();
+    typename u_cart_cache_t::const_iterator u_cart =
+      this->u_cart_cache_.begin();
     typedef scattering_dictionary::dict_type dict_type;
     typedef dict_type::const_iterator dict_iter;
     dict_type const& scd = scattering_dict.dict();
@@ -455,21 +488,12 @@ namespace cctbx { namespace xray {
         if (scatterer.weight() != 0) {
           FloatType fdp = scatterer.fdp;
           fractional<FloatType> coor_frac = scatterer.site;
-          FloatType u_iso;
-          scitbx::sym_mat3<FloatType> u_cart;
-          if (!scatterer.anisotropic_flag) {
-            u_iso = scatterer.u_iso;
-          }
-          else {
-            u_iso = this->get_u_cart_and_u_iso(scatterer.u_star, u_cart);
-          }
-          CCTBX_ASSERT(u_iso >= 0);
           detail::d_gaussian_fourier_transformed<FloatType> gaussian_ft(
             grad_flags,
             exp_table,
             gaussian, scatterer.fp, scatterer.fdp, scatterer.occupancy,
             scatterer.weight_without_occupancy(), scatterer.weight(),
-            u_iso, this->u_extra_);
+            *u_radius++, this->u_extra_);
           detail::calc_box<FloatType, grid_point_type> sampling_box(
             this->unit_cell_, this->rho_cutoff_, this->max_d_sq_upper_bound_,
             grid_f, coor_frac, gaussian_ft);
@@ -488,12 +512,12 @@ namespace cctbx { namespace xray {
               exp_table,
               gaussian, scatterer.fp, scatterer.fdp, scatterer.occupancy,
               scatterer.weight_without_occupancy(), scatterer.weight(),
-              u_cart, this->u_extra_);
+              *u_cart++, this->u_extra_);
           }
           FloatType f_real(-1.e20); // could be uninitialized
           FloatType f_imag(-1.e20); // could be uninitialized
 #         include <cctbx/xray/sampling_loop.h>
-            if (gradient_map_is_real) {
+            if (ft_d_target_d_f_calc_real != 0) {
               f_real = -ft_d_target_d_f_calc_real[i_map];
             }
             else {
@@ -505,13 +529,13 @@ namespace cctbx { namespace xray {
             if (grad_flags.site) {
               if (!scatterer.anisotropic_flag) {
                 gr_site += f_real * gaussian_ft.d_rho_real_d_site(d, d_sq);
-                if (fdp && !gradient_map_is_real) {
+                if (fdp && ft_d_target_d_f_calc_real == 0) {
                   gr_site += f_imag * gaussian_ft.d_rho_imag_d_site(d, d_sq);
                 }
               }
               else {
                 gr_site += f_real * gaussian_ft.d_rho_real_d_site(d);
-                if (fdp && !gradient_map_is_real) {
+                if (fdp && ft_d_target_d_f_calc_real == 0) {
                   gr_site += f_imag * gaussian_ft.d_rho_imag_d_site(d);
                 }
               }
@@ -519,7 +543,7 @@ namespace cctbx { namespace xray {
             if (!scatterer.anisotropic_flag) {
               if (grad_flags.u_iso) {
                 gr_b_iso += f_real * gaussian_ft.d_rho_real_d_b_iso(d_sq);
-                if (fdp && !gradient_map_is_real) {
+                if (fdp && ft_d_target_d_f_calc_real == 0) {
                   gr_b_iso += f_imag * gaussian_ft.d_rho_imag_d_b_iso(d_sq);
                 }
               }
@@ -527,7 +551,7 @@ namespace cctbx { namespace xray {
             else {
               if (grad_flags.u_aniso) {
                 gr_b_cart += f_real * gaussian_ft.d_rho_real_d_b_cart(d);
-                if (fdp && !gradient_map_is_real) {
+                if (fdp && ft_d_target_d_f_calc_real == 0) {
                   gr_b_cart += f_imag * gaussian_ft.d_rho_imag_d_b_cart(d);
                 }
               }
@@ -536,7 +560,7 @@ namespace cctbx { namespace xray {
               if (!scatterer.anisotropic_flag) {
                 gr_occupancy += f_real
                               * gaussian_ft.d_rho_real_d_occupancy(d_sq);
-                if (fdp && !gradient_map_is_real) {
+                if (fdp && ft_d_target_d_f_calc_real == 0) {
                   gr_occupancy += f_imag
                                 * gaussian_ft.d_rho_imag_d_occupancy(d_sq);
                 }
@@ -544,7 +568,7 @@ namespace cctbx { namespace xray {
               else {
                 gr_occupancy += f_real
                               * gaussian_ft.d_rho_real_d_occupancy(d);
-                if (fdp && !gradient_map_is_real) {
+                if (fdp && ft_d_target_d_f_calc_real == 0) {
                   gr_occupancy += f_imag
                                 * gaussian_ft.d_rho_imag_d_occupancy(d);
                 }
@@ -558,7 +582,7 @@ namespace cctbx { namespace xray {
                 gr_fp += f_real * gaussian_ft.d_rho_real_d_fp(d);
               }
             }
-            if (grad_flags.fdp && !gradient_map_is_real) {
+            if (grad_flags.fdp && ft_d_target_d_f_calc_real == 0) {
               if (!scatterer.anisotropic_flag) {
                 gr_fdp += f_imag * gaussian_ft.d_rho_imag_d_fdp(d_sq);
               }
@@ -566,7 +590,7 @@ namespace cctbx { namespace xray {
                 gr_fdp += f_imag * gaussian_ft.d_rho_imag_d_fdp(d);
               }
             }
-          }}}
+          CCTBX_XRAY_SAMPLING_LOOP_END
         }
         if (n_parameters != 0) {
           BOOST_STATIC_ASSERT(packing_order_convention == 1);
@@ -622,6 +646,10 @@ namespace cctbx { namespace xray {
     if (n_parameters != 0) {
       CCTBX_ASSERT(packed_.size() == n_parameters);
     }
+    CCTBX_ASSERT(u_radius == this->u_radius_cache_.end());
+    CCTBX_ASSERT(u_cart == this->u_cart_cache_.end());
+    this->u_radius_cache_ = u_radius_cache_t(); // free memory
+    this->u_cart_cache_ = u_cart_cache_t(); // free memory
     this->exp_table_size_ = exp_table.table().size();
   }
 

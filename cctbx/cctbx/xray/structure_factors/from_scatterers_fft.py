@@ -19,7 +19,7 @@ class from_scatterers_fft(managed_calculation_base):
       xray_structure.scattering_dict(),
       manager.rfft().n_real(),
       manager.rfft().m_real(),
-      manager.u_extra(),
+      manager.u_base(),
       manager.wing_cutoff(),
       manager.exp_table_one_over_step_size(),
       manager.force_complex(),
