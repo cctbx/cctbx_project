@@ -19,8 +19,8 @@ def StrEV(EV):
 def RTMxAnalysis(M):
   RI = M.getRotMxInfo()
   TI = M.analyzeTpart()
-  t_intrinsic = TI.IntrinsicPart().modPositive()
-  t_shift = TI.OriginShift().modPositive()
+  t_intrinsic = TI.IntrinsicPart().modPositive().as_xyz(1, 0, "xyz", ",")
+  t_shift = TI.OriginShift().modPositive().as_xyz(1, 0, "xyz", ",")
   if (RI.Rtype() == 1):
     return ("1", "-", "-", "-")
   if (RI.Rtype() == -1):
