@@ -39,10 +39,6 @@ class Mtz (ext.Mtz):
   def __init__(self,s):
     ext.Mtz.__init__(self,s)
 
-  def __getattr__(self,s): # XXX get_column
-    assert type(s) == type(str())
-    return self.getColumn(s)
-
   def label_to_crystal(self, label):
     assert label in self.columns()
     for i in xrange(self.ncrystals()):
@@ -196,26 +192,27 @@ class Mtz (ext.Mtz):
             crystal_symmetry=crystal_symmetry,
             primary_column_type=t0,
             labels=labels,
-            indices=self.valid_indices(labels[0], labels[1]),
+            indices=self.valid_indices_anomalous(labels[0], labels[1]),
             anomalous_flag=0001,
-            data=self.valid_values(labels[0], labels[1])))
+            data=self.valid_values_anomalous(labels[0], labels[1])))
         elif ("P" in remaining_types[:4]):
           groups.append(column_group(
             crystal_symmetry=crystal_symmetry,
             primary_column_type=t0,
             labels=labels,
-            indices=self.valid_indices(labels[0], labels[2]),
+            indices=self.valid_indices_anomalous(labels[0], labels[2]),
             anomalous_flag=0001,
-            data=self.valid_complex(labels[0],labels[1],labels[2],labels[3])))
+            data=self.valid_complex_anomalous(
+              labels[0],labels[1],labels[2],labels[3])))
         else:
           groups.append(column_group(
             crystal_symmetry=crystal_symmetry,
             primary_column_type=t0,
             labels=labels,
-            indices=self.valid_indices(labels[0], labels[2]),
+            indices=self.valid_indices_anomalous(labels[0], labels[2]),
             anomalous_flag=0001,
-            data=self.valid_values(labels[0],labels[2]),
-            sigmas=self.valid_values(labels[1],labels[3])))
+            data=self.valid_values_anomalous(labels[0],labels[2]),
+            sigmas=self.valid_values_anomalous(labels[1],labels[3])))
       else:
         groups.append(column_group(
           crystal_symmetry=crystal_symmetry,

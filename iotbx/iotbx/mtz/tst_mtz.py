@@ -79,10 +79,10 @@ def recycle(miller_array, mtz_label, verbose=0):
         r = miller.array(
           miller_set=miller.set(
             crystal_symmetry=crystal_symmetry,
-            indices=p.valid_indices(
+            indices=p.valid_indices_anomalous(
               w.label_plus(mtz_label), w.label_minus(mtz_label)),
             anomalous_flag=0001),
-          data=p.valid_complex(
+          data=p.valid_complex_anomalous(
             w.label_plus(mtz_label), w.label_plus(label_phases),
             w.label_minus(mtz_label), w.label_minus(label_phases)))
       else:
@@ -90,22 +90,22 @@ def recycle(miller_array, mtz_label, verbose=0):
         r = miller.array(
           miller_set=miller.set(
             crystal_symmetry=crystal_symmetry,
-            indices=p.valid_indices(
+            indices=p.valid_indices_anomalous(
               w.label_plus(mtz_label), w.label_minus(mtz_label)),
             anomalous_flag=0001),
-          data=p.valid_values(
+          data=p.valid_values_anomalous(
             w.label_plus(mtz_label), w.label_minus(mtz_label)))
     else:
       assert dataset.ncolumns() == 3+4
       r = miller.array(
         miller_set=miller.set(
           crystal_symmetry=crystal_symmetry,
-          indices=p.valid_indices(
+          indices=p.valid_indices_anomalous(
             w.label_plus(mtz_label), w.label_minus(mtz_label)),
           anomalous_flag=0001),
-        data=p.valid_values(
+        data=p.valid_values_anomalous(
           w.label_plus(mtz_label), w.label_minus(mtz_label)),
-        sigmas=p.valid_values(
+        sigmas=p.valid_values_anomalous(
           w.label_plus(label_sigmas), w.label_minus(label_sigmas)))
   verify_miller_arrays(miller_array, r)
   r = p.as_miller_arrays()
