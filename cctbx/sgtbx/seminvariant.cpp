@@ -8,8 +8,15 @@
      2001 Sep 02: start port of sglite/sgss.c (R.W. Grosse-Kunstleve)
  */
 
-#include <cctbx/sgtbx/groups.h>
+#include <cctbx/sgtbx/seminvariant.h>
 #include <cctbx/sgtbx/reference.h>
+
+#if 1
+#include <iostream>
+using std::cout;
+using std::endl;
+#define CheckPoint cout << __FILE__ << "(" << __LINE__ << ")" << endl
+#endif
 
 namespace sgtbx {
 
@@ -61,8 +68,8 @@ namespace sgtbx {
 
   namespace detail {
 
-    struct Generators {
-      Generators(const SgOps& AnySgOps);
+    struct AnyGenerators {
+      AnyGenerators(const SgOps& sgo);
       void setPrimitive();
       ChOfBasisOp Z2POp;
       TrVec ZInvT;
@@ -72,14 +79,14 @@ namespace sgtbx {
       RTMx PGen[2];
     };
 
-    Generators::Generators(const SgOps& AnySgOps)
+    AnyGenerators::AnyGenerators(const SgOps& sgo)
       : nGen(0)
     {
       using namespace tables::CrystalSystem;
 
-      Z2POp = AnySgOps.getZ2POp();
+      Z2POp = sgo.getZ2POp();
 
-      ZInvT = AnySgOps.InvT(true);
+      ZInvT = sgo.InvT(true);
       PInvT = TrVec(0);
       int i;
       for(i=0;i<2;i++) ZGen[i] = RTMx(0, 0);
@@ -87,20 +94,20 @@ namespace sgtbx {
 
       int PrincipalProperOrder = 0;
 
-      tables::MatrixGroup::Code PG_MGC = AnySgOps.getPointGroupType();
+      tables::MatrixGroup::Code PG_MGC = sgo.getPointGroupType();
       switch (PG_MGC.CrystalSystem())
       {
         case Triclinic:
           break;
 
         case Monoclinic:
-          ZGen[0] = AnySgOps[1];
+          ZGen[0] = sgo[1];
           nGen = 1;
           break;
 
         case Orthorhombic:
-          ZGen[0] = AnySgOps[1];
-          ZGen[1] = AnySgOps[2];
+          ZGen[0] = sgo[1];
+          ZGen[1] = sgo[2];
           nGen = 2;
           break;
 
@@ -112,11 +119,11 @@ namespace sgtbx {
           if (!PrincipalProperOrder) PrincipalProperOrder = 6;
           {
             RotMxInfo PrincipalRI;
-            for(i = 1; i < AnySgOps.nSMx(); i++) {
-              PrincipalRI = AnySgOps[i].Rpart().getInfo();
+            for(i = 1; i < sgo.nSMx(); i++) {
+              PrincipalRI = sgo[i].Rpart().getInfo();
               if (std::abs(PrincipalRI.Rtype()) == PrincipalProperOrder) {
                 if (PrincipalRI.SenseOfRotation() > 0) {
-                  ZGen[0] = AnySgOps[i];
+                  ZGen[0] = sgo[i];
                   nGen++;
                   break;
                 }
@@ -124,12 +131,12 @@ namespace sgtbx {
             }
             cctbx_assert(nGen == 1);
             int iPrincipal = i;
-            for(i = 1; i < AnySgOps.nSMx(); i++) {
+            for(i = 1; i < sgo.nSMx(); i++) {
               if (i == iPrincipal) continue;
-              RotMxInfo RI = AnySgOps[i].Rpart().getInfo();
+              RotMxInfo RI = sgo[i].Rpart().getInfo();
               if (std::abs(RI.Rtype()) == 2) {
                 if (PrincipalRI.EV() != RI.EV()) {
-                  ZGen[0] = AnySgOps[i];
+                  ZGen[1] = sgo[i];
                   nGen++;
                   break;
                 }
@@ -139,21 +146,23 @@ namespace sgtbx {
           break;
 
         case Cubic:
-          for(i = 1; i < AnySgOps.nSMx(); i++) {
-            RotMxInfo RI = AnySgOps[i].Rpart().getInfo();
+          for(i = 1; i < sgo.nSMx(); i++) {
+            RotMxInfo RI = sgo[i].Rpart().getInfo();
             if      (std::abs(RI.Rtype()) == 3) {
               if (RI.SenseOfRotation() > 0) {
                 if (!ZGen[0].isValid()) {
-                  ZGen[0] = AnySgOps[i];
+                  ZGen[0] = sgo[i];
                   nGen++;
+                  if (nGen == 2) break;
                 }
               }
             }
-            else if (std::abs(RI.Rtype()) == AnySgOps.nSMx() / 6) {
+            else if (std::abs(RI.Rtype()) == sgo.nSMx() / 6) {
               if (RI.SenseOfRotation() >= 0) {
                 if (!ZGen[1].isValid()) {
-                  ZGen[1] = AnySgOps[i];
+                  ZGen[1] = sgo[i];
                   nGen++;
+                  if (nGen == 2) break;
                 }
               }
             }
@@ -166,7 +175,7 @@ namespace sgtbx {
       }
     }
 
-    void Generators::setPrimitive()
+    void AnyGenerators::setPrimitive()
     {
       for (int i = 0; i < nGen; i++) {
         PGen[i] = Z2POp(ZGen[i]).modPositive();
@@ -531,5 +540,25 @@ namespace sgtbx {
     return n_ssVM;
   }
 #endif
+
+  StructureSeminvariant::StructureSeminvariant(const SgOps& sgo)
+    : m_size(0)
+  {
+    for(std::size_t i = 0; i < 3; i++) m_VM[i].zero_out();
+
+    // XXX new: P 1 -> ngen = 0
+    detail::AnyGenerators Gen(sgo);
+
+    int j;
+    SgOps VfySgOps;
+    for(j=0; j < sgo.nLTr(); j++) {
+      VfySgOps.expandLTr(sgo.LTr(j));
+    }
+    if (Gen.ZInvT.isValid()) VfySgOps.expandInv(Gen.ZInvT);
+    for(j=0; j < Gen.nGen; j++) {
+      VfySgOps.expandSMx(Gen.ZGen[j]);
+    }
+    cctbx_assert(VfySgOps == sgo);
+  }
 
 } // namespace sgtbx
