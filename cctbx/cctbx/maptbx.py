@@ -77,14 +77,21 @@ structure_factors = dicts.easy(
 class crystal_gridding:
 
   def __init__(self, unit_cell,
-                     d_min,
-                     resolution_factor=1./3,
+                     d_min=None,
+                     resolution_factor=None,
+                     step=None,
                      symmetry_flags=None,
                      space_group_info=None,
                      mandatory_factors=None,
                      max_prime=5,
                      assert_shannon_sampling=0001):
     adopt_init_args(self, locals(), hide=0001)
+    assert [d_min, step].count(None) == 1
+    if (step is not None):
+      d_min = step*2
+      resolution_factor = 0.5
+    elif (resolution_factor is None):
+      resolution_factor = 1/3.
     if (symmetry_flags is not None): assert space_group_info is not None
     if (mandatory_factors is None): mandatory_factors = (1,1,1)
     assert len(mandatory_factors) == 3
