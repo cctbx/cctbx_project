@@ -27,7 +27,7 @@ That is:
 ...an integer giving the number of title lines, with mandatory !NTITLE
 ...title lines in %-264s format
 ...X, Y, and Z sections giving:
-       sections per unit cell + 1, in the given direction
+       sections per unit cell, in the given direction
        ordinal of first section in file
        ordinal of last section in file
 ...unit cell dimensions
@@ -38,7 +38,7 @@ That is:
 ...map average and standard deviation
 '''
 
-class XplorMap:
+class XplorMap(ext.XplorMap):
   def __init__(self):
     self.title = []
     self.sections = []
@@ -47,6 +47,7 @@ class XplorMap:
     self.data = None
     self.average = 0.0
     self.stddev = 1.0
+    ext.XplorMap.__init__(self)
 
   def read(self,arg):
     f = open(arg,"r")
@@ -56,7 +57,7 @@ class XplorMap:
     ntitle = int(f.readline().strip().split("!")[0])
     self.title=[]
     for x in xrange(ntitle):
-      line = f.readline().strip()
+      line = f.readline().rstrip()
       self.title.append(line)
     
     # sections
@@ -85,7 +86,7 @@ class XplorMap:
     self.order = f.readline().strip()
     f.close()
     
-    self.data = ext.ReadXplorMap(arg,len(self.title)+5,self.sections)
+    self.data = self.ReadXplorMap(arg,len(self.title)+5,self.sections)
 
     # average and standard deviation
     f = open(arg,"r")
@@ -105,4 +106,7 @@ class XplorMap:
     for line in self.title:
       f.write("%-264s\n"%line)
     f.write("%8d%8d%8d%8d%8d%8d%8d%8d%8d\n"%tuple(self.sections))
+    f.close()
+    self.WriteXplorMap(self.unitcell,self.data,self.average,self.stddev,arg)
+    
     

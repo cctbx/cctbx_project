@@ -70,3 +70,4 @@ if (not env_etc.no_boost_python):
 
   SConscript("detectors/SConscript")
   SConscript("mtz/boost_python/SConscript")
+  SConscript("xplor/boost_python/SConscript")
