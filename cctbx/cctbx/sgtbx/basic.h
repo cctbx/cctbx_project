@@ -34,9 +34,6 @@ namespace cctbx {
       virtual ~error_base_factor() throw() {}
   };
 
-  using MatrixLite::itype::Mx33; // XXX remove
-  using MatrixLite::itype::Vec3;
-
   /*! \brief Maximum number of representative rotation matrices for
       3-dimensional crystallographic space groups.
    */

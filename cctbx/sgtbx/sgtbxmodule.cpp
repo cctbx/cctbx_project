@@ -99,8 +99,8 @@ namespace {
         " (rotation part and translation part)");
       throw boost::python::error_already_set();
     }
-    Mx33 Rpart = from_python(t[0].get(), boost::python::type<const Mx33&>());
-    Vec3 Tpart = from_python(t[1].get(), boost::python::type<const Vec3&>());
+    int9 Rpart = from_python(t[0].get(), boost::python::type<const int9&>());
+    int3 Tpart = from_python(t[1].get(), boost::python::type<const int3&>());
     return RTMx(RotMx(Rpart, RBF), TrVec(Tpart, TBF));
   }
 
@@ -111,7 +111,7 @@ namespace {
     return lhs.multiply(rhs);
   }
   double3
-  RTMx_multiply_Vec3(const RTMx& lhs, const double3& rhs) {
+  RTMx_multiply_int3(const RTMx& lhs, const double3& rhs) {
     return lhs * rhs;
   }
 
@@ -185,7 +185,7 @@ namespace {
   }
 
   void SpaceGroup_CheckMetricalMatrix_1(const SpaceGroup& SgOps,
-                                        const uctbx::Mx33& G) {
+                                        const double9& G) {
     SgOps.CheckMetricalMatrix(G);
   }
   void SpaceGroup_CheckUnitCell_1(const SpaceGroup& SgOps,
@@ -687,7 +687,7 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
   py_RTMx.def(&RTMx::analyzeTpart, "analyzeTpart");
   py_RTMx.def(RTMx_mul_RTMx, "__mul__");
   py_RTMx.def(RTMx_multiply_RTMx, "multiply");
-  py_RTMx.def(RTMx_multiply_Vec3, "multiply");
+  py_RTMx.def(RTMx_multiply_int3, "multiply");
 
   py_ChOfBasisOp.def(constructor<const RTMx&, const RTMx&>());
   py_ChOfBasisOp.def(constructor<const RTMx&>());

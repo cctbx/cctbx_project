@@ -29,7 +29,7 @@ BOOST_PYTHON_BEGIN_CONVERSION_NAMESPACE
 #   include <cctbx/basic/from_bpl_import.h>
     tuple tup = bpl_utils::tuple_from_python_list_or_tuple(p);
     if (tup.size() == 9) {
-      Mx33 G = from_python(p, python::type<const Mx33&>());
+      double9 G = from_python(p, python::type<const double9&>());
       return UnitCell(G).getParameters();
     }
     if (tup.size() > 6) {
@@ -88,7 +88,7 @@ namespace {
   uc_params UnitCell_getParameters_0(const UnitCell& uc) {
     return uc.getParameters();
   }
-  Mx33 UnitCell_getMetricalMatrix_0(const UnitCell& uc) {
+  double9 UnitCell_getMetricalMatrix_0(const UnitCell& uc) {
     return uc.getMetricalMatrix();
   }
   double
@@ -113,7 +113,8 @@ namespace {
                     const fractional<double>& Yf) {
     return uc.Distance(Xf, Yf);
   }
-  UnitCell UnitCell_ChangeBasis_1(const UnitCell& uc, const Mx33& InvCBMxR) {
+  UnitCell
+  UnitCell_ChangeBasis_1(const UnitCell& uc, const double9& InvCBMxR) {
     return uc.ChangeBasis(InvCBMxR);
   }
   fractional<double>
@@ -167,7 +168,7 @@ BOOST_PYTHON_MODULE_INIT(uctbx)
   UnitCell_class.def(&UnitCell::MaxMillerIndices, "MaxMillerIndices");
   UnitCell_class.def(UnitCell_ChangeBasis_1, "ChangeBasis");
   UnitCell_class.def(
-    (UnitCell (UnitCell::*)(const Mx33&, double) const)
+    (UnitCell (UnitCell::*)(const double9&, double) const)
     &UnitCell::ChangeBasis, "ChangeBasis");
   UnitCell_class.def(&UnitCell::Q, "Q");
   UnitCell_class.def(&UnitCell::s, "s");

@@ -134,24 +134,6 @@ namespace cctbx {
 namespace cctbx {
   namespace MatrixLite {
 
-    namespace itype { // XXX remove
-
-      //! Helper class for passing coordinate vectors.
-      typedef cctbx::carray<int, 3> Vec3;
-
-      //! Helper class for passing 3x3 matrices.
-      typedef cctbx::carray<int, 3 * 3> Mx33;
-    }
-
-    namespace dtype {
-
-      //! Helper class for passing coordinate vectors.
-      typedef cctbx::carray<double, 3> Vec3;
-
-      //! Helper class for passing 3x3 matrices.
-      typedef cctbx::carray<double, 3 * 3> Mx33;
-    }
-
     template <class NumType>
     void
     identity(NumType *M, const std::size_t n, const NumType& diagonal = 1)

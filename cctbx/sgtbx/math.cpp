@@ -129,7 +129,7 @@ namespace cctbx { namespace sgtbx {
     return nIndep;
   }
 
-  void SolveHomRE1(const int REMx[3], const int IxIndep[2], Vec3 Sol[4])
+  void SolveHomRE1(const int REMx[3], const int IxIndep[2], int3 Sol[4])
   {
     // REMx must be in row echelon form with Rank 1.
 

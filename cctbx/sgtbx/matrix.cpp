@@ -62,9 +62,9 @@ namespace cctbx { namespace sgtbx {
     return RTMx(m_R.scale(factorR), m_T.scale(factorT));
   }
 
-  Vec3 operator*(const RotMx& lhs, const Vec3& rhs)
+  int3 operator*(const RotMx& lhs, const int3& rhs)
   {
-    Vec3 result;
+    int3 result;
     MatrixLite::multiply(lhs.elems, rhs.elems, 3, 3, 1, result.elems);
     return result;
   }
@@ -396,7 +396,7 @@ namespace cctbx { namespace sgtbx {
     *this = RTMx(StrXYZ_PS, StopChars, RBF, TBF);
   }
 
-  bool RTMx::isPerpendicular(const Vec3& v) const
+  bool RTMx::isPerpendicular(const int3& v) const
   {
     return Rpart().accumulate() * v == 0;
   }
@@ -442,7 +442,7 @@ namespace cctbx { namespace sgtbx {
     int i;
     for(i=0;i<3;i++) g = gcd(g, elems[i]);
     if (g == 0) g = 1;
-    Vec3 result;
+    int3 result;
     for(i=0;i<3;i++) result[i] = elems[i] / g;
     return TrVec(result, BF() / g);
   }
@@ -453,7 +453,7 @@ namespace cctbx { namespace sgtbx {
     int i;
     for(i=0;i<9;i++) g = gcd(g, elems[i]);
     if (g == 0) g = 1;
-    Mx33 result;
+    int9 result;
     for(i=0;i<9;i++) result[i] = elems[i] / g;
     return RotMx(result, BF() / g);
   }

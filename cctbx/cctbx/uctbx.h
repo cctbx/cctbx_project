@@ -35,9 +35,6 @@ namespace cctbx {
   static const error
     corrupt_metrical_matrix("Corrupt metrical matrix.");
 
-  using MatrixLite::dtype::Vec3;
-  using MatrixLite::dtype::Mx33;
-
   //! @name Conversions between radians and degrees.
   //@{
   inline double deg_as_rad(double deg) { return deg * constants::pi_180;}
@@ -47,7 +44,7 @@ namespace cctbx {
   //! inline function for fast matrix * vector computation.
   template <class FloatType>
   inline carray<FloatType, 3>
-  operator*(const Mx33& m, const carray<FloatType, 3>& v)
+  operator*(const double9& m, const carray<FloatType, 3>& v)
   {
     carray<FloatType, 3> mv;
     mv[0] = m[0] * v[0] + m[1] * v[1] + m[2] * v[2];
@@ -57,9 +54,9 @@ namespace cctbx {
   }
 
   //! Helper function for transforming metrical matrices.
-  inline Mx33 getRtGR(const Mx33& G, const Mx33& R)
+  inline double9 getRtGR(const double9& G, const double9& R)
   {
-    Mx33 Rt, GR, RtGR;
+    double9 Rt, GR, RtGR;
     MatrixLite::transpose<double>(R.elems, 3, 3, Rt.elems);
     MatrixLite::multiply<double>(G.elems, R.elems, 3, 3, 3, GR.elems);
     MatrixLite::multiply<double>(Rt.elems, GR.elems, 3, 3, 3, RtGR.elems);
@@ -92,7 +89,7 @@ namespace cctbx {
         elems[3] = alpha; elems[4] = beta; elems[5] = gamma;
       }
       //! Constructor using arrays for lengths and angles.
-      uc_params(const Vec3& Len, const Vec3& Ang) {
+      uc_params(const double3& Len, const double3& Ang) {
         int i;
         for(i=0;i<3;i++) elems[i]     = Len[i];
         for(i=0;i<3;i++) elems[i + 3] = Ang[i];
@@ -146,29 +143,29 @@ namespace cctbx {
          </pre>
        */
       explicit
-      UnitCell(const Mx33& MetricalMatrix);
+      UnitCell(const double9& MetricalMatrix);
       //@}
 
       //! @name Query parameters and volume.
       //@{
       uc_params getParameters(bool reciprocal = false) const;
-      const Vec3& getLen(bool reciprocal = false) const {
+      const double3& getLen(bool reciprocal = false) const {
         if (reciprocal == false) return Len;
         /* else */               return R_Len;
       }
-      const Vec3& getAng(bool reciprocal = false) const {
+      const double3& getAng(bool reciprocal = false) const {
         if (reciprocal == false) return Ang;
         /* else */               return R_Ang;
       }
-      const Vec3& get_sinAng(bool reciprocal = false) const {
+      const double3& get_sinAng(bool reciprocal = false) const {
         if (reciprocal == false) return sinAng;
         /* else */               return R_sinAng;
       }
-      const Vec3& get_cosAng(bool reciprocal = false) const {
+      const double3& get_cosAng(bool reciprocal = false) const {
         if (reciprocal == false) return cosAng;
         /* else */               return R_cosAng;
       }
-      const Mx33& getMetricalMatrix(bool reciprocal = false) const {
+      const double9& getMetricalMatrix(bool reciprocal = false) const {
         if (reciprocal == false) return G;
         /* else */               return R_G;
       }
@@ -196,10 +193,10 @@ namespace cctbx {
       //@{
       //! This matrix converts cartesian to fractional coordinates.<br>
       //! x(fractional) = matrix * x(cartesian).
-      const Mx33& getFractionalizationMatrix() const { return Frac; }
+      const double9& getFractionalizationMatrix() const { return Frac; }
       //! This matrix converts fractional to cartesian coordinates.<br>
       //! x(cartesian) = matrix * x(fractional).
-      const Mx33& getOrthogonalizationMatrix() const { return Orth; }
+      const double9& getOrthogonalizationMatrix() const { return Orth; }
       //! Converts cartesian coordinates Xc to fractional coordinates.
       template <class FloatType>
       fractional<FloatType>
@@ -245,7 +242,7 @@ namespace cctbx {
       //! InvCBMxR is the inverse of the 3x3 change-of-basis matrix
       //! that transforms coordinates in the old basis system to
       //! coodinates in the new basis system.
-      UnitCell ChangeBasis(const Mx33& InvCBMxR, double RBF = 1.) const;
+      UnitCell ChangeBasis(const double9& InvCBMxR, double RBF = 1.) const;
       UnitCell ChangeBasis(const sgtbx::RotMx& InvCBMxR) const;
       //@}
 
@@ -284,20 +281,20 @@ namespace cctbx {
       void SetLongestVector2();
       void Initialize();
 
-      Vec3   Len;
-      Vec3   Ang;
-      Vec3   sinAng;
-      Vec3   cosAng;
-      double Vol;
-      Mx33   G;
-      Vec3   R_Len;
-      Vec3   R_Ang;
-      Vec3   R_sinAng;
-      Vec3   R_cosAng;
-      Mx33   R_G;
-      Mx33   Frac;
-      Mx33   Orth;
-      double LongestVector2;
+      double3 Len;
+      double3 Ang;
+      double3 sinAng;
+      double3 cosAng;
+      double  Vol;
+      double9 G;
+      double3 R_Len;
+      double3 R_Ang;
+      double3 R_sinAng;
+      double3 R_cosAng;
+      double9 R_G;
+      double9 Frac;
+      double9 Orth;
+      double  LongestVector2;
   };
 
   //! iostream output operator for class UnitCell.

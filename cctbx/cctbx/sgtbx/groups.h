@@ -492,7 +492,7 @@ namespace cctbx { namespace sgtbx {
           The tolerance compensates for rounding errors.<br>
           See also: isCompatibleUnitCell()
        */
-      bool isCompatibleMetricalMatrix(const uctbx::Mx33& G,
+      bool isCompatibleMetricalMatrix(const double9& G,
                                       double tolerance = 1.e-4) const;
       //! Check if a unit cell is compatible with the symmetry operations.
       /*! Similar to isCompatibleMetricalMatrix(), but an exception
@@ -500,7 +500,7 @@ namespace cctbx { namespace sgtbx {
           symmetry operations.<br>
           See also: CheckUnitCell()
        */
-      void CheckMetricalMatrix(const uctbx::Mx33& G,
+      void CheckMetricalMatrix(const double9& G,
                                double tolerance = 1.e-4) const;
       //! Check if a unit cell is compatible with the symmetry operations.
       /*! Similar to isCompatibleMetricalMatrix(),
@@ -509,7 +509,7 @@ namespace cctbx { namespace sgtbx {
           The tolerance compensates for rounding errors.
        */
       bool isCompatibleUnitCell(const uctbx::UnitCell& uc,
-                                       double tolerance = 1.e-4) const {
+                                double tolerance = 1.e-4) const {
         return isCompatibleMetricalMatrix(uc.getMetricalMatrix(), tolerance);
       }
       //! Check if a unit cell is compatible with the symmetry operations.

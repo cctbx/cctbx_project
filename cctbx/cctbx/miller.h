@@ -28,21 +28,18 @@ namespace cctbx {
   //! %Miller index namespace.
   namespace Miller {
 
-    //! Triple of 3 integers.
-    typedef MatrixLite::itype::Vec3 Vec3;
-
     //! Enumeration for symbolic subscripting (e.g. MillerIndex[H]).
     enum {H, K, L};
 
     //! Miller index class.
-    class Index : public Vec3 {
+    class Index : public int3 {
       public:
         //! @name Constructors.
         //@{
         Index() {
           for(std::size_t i=0;i<3;i++) elems[i] = 0;
         }
-        explicit Index(const Vec3& v) {
+        explicit Index(const int3& v) {
           for(std::size_t i=0;i<3;i++) elems[i] = v[i];
         }
         explicit Index(const int* hkl) {
