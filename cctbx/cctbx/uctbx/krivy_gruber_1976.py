@@ -2,6 +2,10 @@ from cctbx.uctbx import reduction_base
 from cctbx import uctbx
 from cctbx import matrix
 
+class error(RuntimeError): pass
+class extreme_unit_cell(error): pass
+class iteration_limit_exceeded(error): pass
+
 class reduction(reduction_base.gruber_parameterization):
 
   def __init__(self, unit_cell, relative_epsilon=None, iteration_limit=1000):
@@ -11,8 +15,11 @@ class reduction(reduction_base.gruber_parameterization):
     self._r_inv = matrix.sqr((1,0,0,0,1,0,0,0,1))
     self._n_iterations = 0
     while 1:
+      if (min(self.a, self.b, self.c) < self.epsilon):
+        raise extreme_unit_cell("Extreme unit cell.")
       if (self._n_iterations == iteration_limit):
-        raise RuntimeError("Krivy-Gruber iteration limit exceeded (limit=%d)."
+        raise iteration_limit_exceeded(
+          "Krivy-Gruber iteration limit exceeded (limit=%d)."
           % iteration_limit)
       stop = self.step()
       self._n_iterations += 1
@@ -71,9 +78,8 @@ class reduction(reduction_base.gruber_parameterization):
     self._r_inv *= matrix.sqr(m_elems)
 
   def sign(self, x):
-    assert abs(x) > self.epsilon
-    if (x > 0): return 1
-    return -1
+    if (self.eps_lt(x, 0)): return -1
+    return 1
 
   def a1_action(self):
     self.a, self.b = self.b, self.a
