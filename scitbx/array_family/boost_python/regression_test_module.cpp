@@ -97,7 +97,7 @@ namespace scitbx { namespace {
     return result;
   }
 
-BOOST_PYTHON_FUNCTION_GENERATOR(make_boost_int_2_stubs, make_boost_int_2, 1, 2)
+BOOST_PYTHON_FUNCTION_GENERATOR(make_boost_int_2_stubs, make_boost_int_2, 0, 2)
 
   void init_module(boost::python::module& this_module)
   {

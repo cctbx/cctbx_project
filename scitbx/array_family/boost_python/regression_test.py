@@ -80,7 +80,7 @@ def exercise_to_tuple(verbose=0):
     return
   assert rt.make_boost_int_2(3, 5) == (3, 5)
   assert rt.make_boost_int_2(3) == (3, 2)
-  #assert rt.make_boost_int_2() == (7, 2) XXX currently not supported
+  assert rt.make_boost_int_2() == (7, 2)
   if (verbose): print 'OK'
 
 def run(args):
