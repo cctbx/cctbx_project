@@ -106,6 +106,50 @@ namespace cctbx { namespace xray { namespace {
     }
   }
 
+  af::shared<double>
+  extract_u_iso(af::const_ref<scatterer<> > const& scatterers)
+  {
+    af::shared<double>
+      result(af::reserve(scatterers.size()));
+    for(std::size_t i=0;i<scatterers.size();i++) {
+      result.push_back(scatterers[i].u_iso);
+    }
+    return result;
+  }
+
+  void
+  set_u_iso(
+    af::ref<scatterer<> > const& scatterers,
+    af::const_ref<double> const& u_iso)
+  {
+    CCTBX_ASSERT(scatterers.size() == u_iso.size());
+    for(std::size_t i=0;i<scatterers.size();i++) {
+      scatterers[i].u_iso = u_iso[i];
+    }
+  }
+
+  af::shared<scitbx::sym_mat3<double> >
+  extract_u_star(af::const_ref<scatterer<> > const& scatterers)
+  {
+    af::shared<scitbx::sym_mat3<double> >
+      result(af::reserve(scatterers.size()));
+    for(std::size_t i=0;i<scatterers.size();i++) {
+      result.push_back(scatterers[i].u_star);
+    }
+    return result;
+  }
+
+  void
+  set_u_star(
+    af::ref<scatterer<> > const& scatterers,
+    af::const_ref<scitbx::sym_mat3<double> > const& u_star)
+  {
+    CCTBX_ASSERT(scatterers.size() == u_star.size());
+    for(std::size_t i=0;i<scatterers.size();i++) {
+      scatterers[i].u_star = u_star[i];
+    }
+  }
+
   std::size_t
   count_anisotropic(af::const_ref<scatterer<> > const& scatterers)
   {
@@ -143,6 +187,10 @@ namespace scitbx { namespace af { namespace boost_python {
       .def("set_sites", cctbx::xray::set_sites)
       .def("extract_occupancies", cctbx::xray::extract_occupancies)
       .def("set_occupancies", cctbx::xray::set_occupancies)
+      .def("extract_u_iso", cctbx::xray::extract_u_iso)
+      .def("set_u_iso", cctbx::xray::set_u_iso)
+      .def("extract_u_star", cctbx::xray::extract_u_star)
+      .def("set_u_star", cctbx::xray::set_u_star)
       .def("count_anisotropic", cctbx::xray::count_anisotropic)
       .def("count_anomalous", cctbx::xray::count_anomalous)
     ;
