@@ -20,14 +20,35 @@ namespace {
   typedef sftbx::XrayScatterer<double, eltbx::CAASF_WK1995> ex_xray_scatterer;
 
   std::complex<double>
-  py_StructureFactorAndDerivatives_F(
-    const sftbx::StructureFactorAndDerivatives<double>& sfad) {
-    return sfad.F();
+  py_StructureFactor_plain(const sgtbx::SpaceGroup& SgOps,
+                           const Miller::Index& H,
+                           const fractional<double>& X) {
+    return sftbx::StructureFactor(SgOps, H, X);
   }
+  std::complex<double>
+  py_StructureFactor_iso(const sgtbx::SpaceGroup& SgOps,
+                         const uctbx::UnitCell& UCell,
+                         const Miller::Index& H,
+                         const fractional<double>& X,
+                         double Uiso) {
+    return sftbx::StructureFactor(SgOps, UCell, H, X, Uiso);
+  }
+  std::complex<double>
+  py_StructureFactor_aniso(const sgtbx::SpaceGroup& SgOps,
+                           const Miller::Index& H,
+                           const fractional<double>& X,
+                           const af::double6& Ustar) {
+    return sftbx::StructureFactor(SgOps, H, X, Ustar);
+  }
+
   af::double3
-  py_StructureFactorAndDerivatives_dF_dX(
-    const sftbx::StructureFactorAndDerivatives<double>& sfad) {
-    return sfad.dF_dX();
+  py_StructureFactor_dX(const sgtbx::SpaceGroup& SgOps,
+                        const Miller::Index& H,
+                        const fractional<double>& X,
+                        const std::complex<double>& phase_indep_coeff,
+                        const std::complex<double>& dTarget_dFcalc) {
+    return sftbx::StructureFactor_dX(
+      SgOps, H, X, phase_indep_coeff, dTarget_dFcalc);
   }
 
   void
@@ -44,18 +65,17 @@ namespace {
   }
 
   void
-  py_StructureFactorAndDerivativesArray(
+  py_StructureFactor_dX_Array(
     const uctbx::UnitCell& UC,
     const sgtbx::SpaceGroup& SgOps,
     const af::shared<Miller::Index>& H,
     const af::shared<std::complex<double> >& dTarget_dFcalc,
     const af::shared<ex_xray_scatterer>& Sites,
-    af::shared<std::complex<double> > Fcalc,
     af::shared<af::double3> dF_dX)
   {
-    sftbx::StructureFactorAndDerivativesArray(
+    sftbx::StructureFactor_dX_Array(
       UC, SgOps, H.const_ref(), dTarget_dFcalc.const_ref(), Sites.const_ref(),
-      Fcalc.ref(), dF_dX.ref());
+      dF_dX.ref());
   }
 
   af::shared<Miller::Index>
@@ -111,19 +131,13 @@ namespace {
     python::import_converters<af::shared<af::double3> >
     py_shared_double3("cctbx_boost.arraytbx.shared", "double3");
 
-    class_builder<sftbx::StructureFactorAndDerivatives<double> >
-    py_StructureFactorAndDerivatives(
-      this_module, "StructureFactorAndDerivatives");
-
     class_builder<ex_xray_scatterer>
     py_XrayScatterer(this_module, "XrayScatterer");
     python::export_converters(py_XrayScatterer);
 
-    py_StructureFactorAndDerivatives.def(constructor<>());
-    py_StructureFactorAndDerivatives.def(
-      py_StructureFactorAndDerivatives_F, "F");
-    py_StructureFactorAndDerivatives.def(
-      py_StructureFactorAndDerivatives_dF_dX, "dF_dX");
+    this_module.def(py_StructureFactor_plain, "StructureFactor");
+    this_module.def(py_StructureFactor_iso,   "StructureFactor");
+    this_module.def(py_StructureFactor_aniso, "StructureFactor");
 
     py_XrayScatterer.def(constructor<>());
     py_XrayScatterer.def(constructor<
@@ -167,12 +181,10 @@ namespace {
     py_XrayScatterer.def(
       &ex_xray_scatterer::StructureFactor, "StructureFactor");
     py_XrayScatterer.def(
-      &ex_xray_scatterer::StructureFactorAndDerivatives,
-                         "StructureFactorAndDerivatives");
+      &ex_xray_scatterer::StructureFactor_dX, "StructureFactor_dX");
 
     this_module.def(py_StructureFactorArray, "StructureFactorArray");
-    this_module.def(py_StructureFactorAndDerivativesArray,
-      "StructureFactorAndDerivativesArray");
+    this_module.def(py_StructureFactor_dX_Array, "StructureFactor_dX_Array");
 
     this_module.def(py_BuildMillerIndices_Resolution_d_min,
                       "BuildMillerIndices");

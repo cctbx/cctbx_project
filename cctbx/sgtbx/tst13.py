@@ -3,6 +3,7 @@
 import sys, os
 from cctbx_boost import sgtbx
 from cctbx_boost import uctbx
+from cctbx_boost import sftbx
 import random
 
 ShortCut = "--ShortCut" in sys.argv
@@ -57,7 +58,7 @@ def OneCycle():
       RandomH = (1, 2, 3)
       print "RandomH ", RandomH
       FC = SEC.StructureFactor(RandomH)
-      FH = n * SgOps.StructureFactor(RandomH, X, (0,0,0,0,0,0))
+      FH = n * sftbx.StructureFactor(SgOps, RandomH, X, (0,0,0,0,0,0))
       print FC, FH
       assert abs(FC - FH) < 1.e-5
   t = os.times()

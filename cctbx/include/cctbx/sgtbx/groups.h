@@ -18,7 +18,6 @@
 #include <vector>
 #include <map>
 #include <complex>
-#include <cctbx/coordinates.h>
 #include <cctbx/sgtbx/symbols.h>
 #include <cctbx/sgtbx/matrix.h>
 #include <cctbx/sgtbx/change_basis.h>
@@ -377,107 +376,6 @@ namespace cctbx { namespace sgtbx {
        */
       SymEquivMillerIndices
       getEquivMillerIndices(const Miller::Index& H) const;
-
-      //! Structure factor without Debye-Waller factor.
-      /*! Sum of exp(2 pi j H S X) over all symmetry operations S.
-          j is the imaginary number.
-       */
-      template <class FloatType>
-      std::complex<FloatType>
-      StructureFactor(const Miller::Index& H,
-                      const fractional<FloatType> X) const
-      {
-        using constants::pi;
-        std::complex<FloatType> F(0., 0.);
-        for (int s = 0; s < nSMx(); s++) {
-          Miller::Index HR = H * m_SMx[s].Rpart();
-          FloatType HRX = HR * X;
-          TrVec T = m_SMx[s].Tpart();
-          for (int i = 0; i < fInv(); i++) {
-            if (i) {
-              HRX = -HRX;
-              T = m_InvT - T;
-            }
-            for (int l = 0; l < nLTr(); l++) {
-              FloatType HT = FloatType(H * (T + LTr(l))) / TBF();
-              FloatType phase = 2. * pi * (HRX + HT);
-              F += std::complex<FloatType>(std::cos(phase), std::sin(phase));
-            }
-          }
-        }
-        return F;
-      }
-      //! Structure factor with isotropic Debye-Waller factor given Uiso.
-      /*! Sum of exp(2 pi j H S X) over all symmetry operations S,
-          multiplied by cctbx::adptbx::DebyeWallerFactorUiso().
-          j is the imaginary number.
-          <p>
-          This function is provided for symmetry with the
-          structure factor calculation given anisotropic
-          displacement parameters.
-       */
-      template <class FloatType>
-      std::complex<FloatType>
-      StructureFactor(const uctbx::UnitCell& uc,
-                      const Miller::Index& H,
-                      const fractional<FloatType> X,
-                      double Uiso) const
-      {
-        return
-          StructureFactor(H, X) * adptbx::DebyeWallerFactorUiso(uc, H, Uiso);
-      }
-      //! Structure factor with isotropic Debye-Waller factor given Uiso.
-      /*! Sum of exp(2 pi j H S X) over all symmetry operations S,
-          multiplied by cctbx::adptbx::DebyeWallerFactorUiso().
-          j is the imaginary number.
-          <p>
-          This function is provided for symmetry with the
-          structure factor calculation given anisotropic
-          displacement parameters.
-       */
-      template <class FloatType>
-      std::complex<FloatType>
-      StructureFactor(double stol2,
-                      const Miller::Index& H,
-                      const fractional<FloatType> X,
-                      double Uiso) const
-      {
-        return
-          StructureFactor(H, X) * adptbx::DebyeWallerFactorUiso(stol2, Uiso);
-      }
-      //! Structure factor with anisotropic Debye-Waller factor given Ustar.
-      /*! Sum of cctbx::adptbx::DebyeWallerFactorUstar() * exp(2 pi j H S X)
-          over all symmetry operations S.
-          j is the imaginary number.
-       */
-      template <class FloatType>
-      std::complex<FloatType>
-      StructureFactor(const Miller::Index& H,
-                      const fractional<FloatType> X,
-                      const af::tiny<FloatType, 6>& Ustar) const
-      {
-        using constants::pi;
-        std::complex<FloatType> F(0., 0.);
-        for (int s = 0; s < nSMx(); s++) {
-          Miller::Index HR = H * m_SMx[s].Rpart();
-          FloatType HRX = HR * X;
-          TrVec T = m_SMx[s].Tpart();
-          std::complex<FloatType> Fs(0., 0.);
-          for (int i = 0; i < fInv(); i++) {
-            if (i) {
-              HRX = -HRX;
-              T = m_InvT - T;
-            }
-            for (int l = 0; l < nLTr(); l++) {
-              FloatType HT = FloatType(H * (T + LTr(l))) / TBF();
-              FloatType phase = 2. * pi * (HRX + HT);
-              Fs += std::complex<FloatType>(std::cos(phase), std::sin(phase));
-            }
-          }
-          F += Fs * adptbx::DebyeWallerFactorUstar(HR, Ustar);
-        }
-        return F;
-      }
 
       //! Check if a unit cell is compatible with the symmetry operations.
       /*! This function is designed to work together with the UnitCell
