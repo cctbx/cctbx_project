@@ -1,3 +1,3 @@
 #! /bin/sh
-. $LIBTBX_BUILD/setpaths.sh all
+. $LIBTBX_BUILD/setpaths_all.sh
 printenv

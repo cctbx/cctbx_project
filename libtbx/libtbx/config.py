@@ -4,6 +4,7 @@ from libtbx.optparse_wrapper import option_parser
 from libtbx import introspection
 from libtbx.utils import UserError
 import pickle
+from cStringIO import StringIO
 import sys, os
 
 def get_hostname():
@@ -49,6 +50,14 @@ def python_api_from_process(include_must_exist=True):
         break
   assert python_api_version is not None
   return python_api_version
+
+def ld_library_path_var_name():
+  if (os.name == "nt"):
+    return "PATH"
+  if (sys.platform.startswith("darwin")):
+    return "DYLD_LIBRARY_PATH"
+  else:
+    return "LD_LIBRARY_PATH"
 
 def highlight_dispatcher_include_lines(lines):
   m = max([len(line) for line in lines])
@@ -99,57 +108,89 @@ def write_incomplete_libtbx_environment(f):
     for line in message: print >> f, '  echo %s' % line
     print >> f, '  echo.'
 
-class unix_update_path:
+class common_setpaths:
 
-  def __init__(self, env, shell, s, u):
-    assert shell in ["sh", "csh"]
-    self.shell = shell
+  def __init__(self, env, shell, suffix):
     self.env = env
-    self.s = s
-    self.u = u
-    if (self.shell == "sh"):
-      self.setenv = "%s="
+    self.shell = shell
+    self.suffix = suffix
+    self.s = open_info(env.under_build("setpaths%s.%s" % (suffix, shell)))
+    if (suffix == "_debug"):
+      self.u = open_info(env.under_build("unsetpaths.%s" % shell))
     else:
-      self.setenv = "setenv %s "
+      self.u = StringIO() # /dev/null equivalent
 
-  def write(self, prefixes, var_name, val):
+  def all_and_debug(self):
+    if (self.suffix != ""):
+      self.setenv("LIBTBX_BUILD", self.env.build_path)
+      for module in self.env.module_list:
+        for name,path in module.name_and_dist_path_pairs():
+          self.setenv(name.upper()+"_DIST", path)
+    if (self.suffix == "_debug"):
+      self.update_path("PYTHONPATH", self.env.pythonpath)
+      self.update_path(ld_library_path_var_name(), [self.env.lib_path])
+
+class unix_setpaths(common_setpaths):
+
+  def __init__(self, env, shell, suffix):
+    assert shell in ["sh", "csh"]
+    common_setpaths.__init__(self, env, shell, suffix)
+    if (self.shell == "sh"):
+      self._setenv = "%s="
+    else:
+      self._setenv = "setenv %s "
+
+  def setenv(self, var_name, val):
+    if (self.shell == "sh"):
+      print >> self.s, '  %s="%s"' % (var_name, val)
+      print >> self.s, '  export %s' % var_name
+      print >> self.u, '  unset %s' % var_name
+    else:
+      print >> self.s, '  setenv %s "%s"' % (var_name, val)
+      print >> self.u, '  unsetenv %s' % var_name
+
+  def update_path(self, var_name, val):
     val = os.pathsep.join(val)
-    for f,prefix,action in [(self.s, prefixes[0], "prepend"),
-                            (self.u, prefixes[1], "delete")]:
-      print >> f, '''%s%s"`'%s' '%s' %s %s '%s'`"''' % (
-        prefix,
-        self.setenv % var_name,
+    for f,action in [(self.s, "prepend"), (self.u, "delete")]:
+      print >> f, '''  %s"`'%s' '%s' %s %s '%s'`"''' % (
+        self._setenv % var_name,
         self.env.python_exe,
         self.env.path_utility,
         action,
         var_name,
         val)
       if (f is self.s and self.shell == "sh"):
-        print >> f, '%sexport %s' % (prefixes[0], var_name)
+        print >> f, '  export %s' % var_name
+      if (self.shell == "sh"):
+        print >> f, '  if [ "$%s" == "E_M_P_T_Y" ]; then unset %s; fi' % (
+          var_name, var_name)
+      else:
+        print >> f, '  if ("$%s" == "E_M_P_T_Y") unsetenv %s' % (
+          var_name, var_name)
 
-class windows_update_path:
+class windows_setpaths(common_setpaths):
 
-  def __init__(self, env, s, u):
-    self.env = env
-    self.s = s
-    self.u = u
+  def __init__(self, env, suffix):
+    common_setpaths.__init__(self, env, "bat", suffix)
 
-  def write(self, prefixes, var_name, val):
+  def setenv(self, var_name, val):
+    print >> self.s, '  set %s=%s' % (var_name, val)
+    print >> self.u, '  set %s=' % var_name
+
+  def update_path(self, var_name, val):
     val = os.pathsep.join(val)
     fmt = '''\
-%sfor /F "delims=" %%%%i in ('%s "%s" %s %s "%s"') do set %s=%%%%i'''
-    for f,prefix,action in [(self.s, prefixes[0], "prepend"),
-                            (self.u, prefixes[1], "delete")]:
+  for /F "delims=" %%%%i in ('%s "%s" %s %s "%s"') do set %s=%%%%i'''
+    for f,action in [(self.s, "prepend"), (self.u, "delete")]:
       print >> f, fmt % (
-        prefix,
         self.env.python_exe,
         self.env.path_utility,
         action,
         var_name,
         val,
         var_name)
-      print >> f, '%sif "%%%s%%" == "E_M_P_T_Y" set %s=' % (
-        prefix, var_name, var_name)
+      print >> f, '  if "%%%s%%" == "E_M_P_T_Y" set %s=' % (
+        var_name, var_name)
 
 def _windows_pathext():
   result = os.environ.get("PATHEXT", "").lower().split(os.pathsep)
@@ -474,11 +515,7 @@ class environment:
     print >> f, 'LIBTBX_BUILD="%s"' % self.build_path
     print >> f, 'export LIBTBX_BUILD'
     essentials = [("PYTHONPATH", self.pythonpath)]
-    if (sys.platform.startswith("darwin")):
-      ld_library_path = "DYLD_LIBRARY_PATH"
-    else:
-      ld_library_path = "LD_LIBRARY_PATH"
-    essentials.append((ld_library_path, [self.lib_path]))
+    essentials.append((ld_library_path_var_name(), [self.lib_path]))
     essentials.append(("PATH", [self.bin_path]))
     for n,v in essentials:
       if (len(v) == 0): continue
@@ -582,147 +619,77 @@ class environment:
       source_file=source_file,
       target_file=self.under_build("bin/"+target_file))
 
-  def write_setpaths_sh(self):
-    setpaths_path = self.under_build("setpaths.sh")
-    unsetpaths_path = self.under_build("unsetpaths.sh")
-    s = open_info(setpaths_path)
-    u = open_info(unsetpaths_path)
-    update_path = unix_update_path(self, "sh", s, u)
+  def write_setpaths_sh(self, suffix):
+    setpaths = unix_setpaths(self, "sh", suffix)
+    s, u = setpaths.s, setpaths.u
     for f in s, u:
-      print >> f, '"%s" -V > /dev/null 2>&1' % self.under_build(
-        "bin/libtbx.python")
-      print >> f, \
-        'if [ $? -ne 0 -o ! -f "%s" ]; then' % self.path_utility
+      print >> f, 'libtbx_pythonhome_save="$PYTHONHOME"'
+      print >> f, 'unset PYTHONHOME'
+      print >> f, '"%s" -V > /dev/null 2>&1' % self.python_exe
+      print >> f, 'if [ $? -ne 0 -o ! -f "%s" ]; then' % self.path_utility
       write_incomplete_libtbx_environment(f)
       print >> f, 'else'
-    update_path.write(("  ", "  "), "PATH", [self.bin_path])
-    for un in ["", "un"]:
-      print >> s, \
-        """  alias libtbx.%ssetpaths='source "%s/%ssetpaths.sh"'""" % (
-          un, self.build_path, un)
+    setpaths.update_path("PATH", [self.bin_path])
+    for command in ["setpaths_all", "unsetpaths"]:
+      print >> s, """  alias libtbx.%s='. "%s/%s.sh"'""" % (
+       command, self.build_path, command)
     print >> u, '  unalias libtbx.unsetpaths > /dev/null 2>&1'
-    print >> s, '  if [ $# -ne 0 ]; then'
-    print >> s, \
-      '    if [ $# -ne 1 -o \( "$1" != "all" -a "$1" != "debug" \) ]; then'
-    print >> s, '      echo "usage: source setpaths.sh [all|debug]"'
-    print >> s, '    else'
-    print >> s, '      %s="%s"' % ("LIBTBX_BUILD", self.build_path)
-    print >> s, '      export %s' % "LIBTBX_BUILD"
-    print >> u, '  unset %s' % "LIBTBX_BUILD"
-    for module in self.module_list:
-      for name,path in module.name_and_dist_path_pairs():
-        var_name = name.upper() + "_DIST"
-        print >> s, '      %s="%s"' % (var_name, path)
-        print >> s, '      export %s' % var_name
-        print >> u, '  unset %s' % var_name
-    print >> s, '      if [ "$1" == "debug" ]; then'
-    update_path.write(("        ", "  "), "PYTHONPATH", self.pythonpath)
-    if (sys.platform.startswith("darwin")):
-      ld_library_path = "DYLD_LIBRARY_PATH"
-    else:
-      ld_library_path = "LD_LIBRARY_PATH"
-    update_path.write(("        ", "  "), ld_library_path, [self.lib_path])
-    print >> s, '      fi'
-    print >> s, '    fi'
-    print >> s, '  fi'
+    setpaths.all_and_debug()
     for f in s, u:
       print >> f, 'fi'
-    s.close()
-    u.close()
+      print >> f, 'if [ -n "$libtbx_pythonhome_save" ]; then'
+      print >> f, '  PYTHONHOME="$libtbx_pythonhome_save"'
+      print >> f, '  export PYTHONHOME'
+      print >> f, 'fi'
+      print >> f, 'unset libtbx_pythonhome_save'
 
-  def write_setpaths_csh(self, all):
-    if (all): s = "_all"
-    else:     s = ""
-    setpaths_csh_path = self.under_build("setpaths%s.csh"%s)
-    unsetpaths_csh_path = self.under_build("unsetpaths.csh")
-    s = open_info(setpaths_csh_path)
-    u = open_info(unsetpaths_csh_path)
-    update_path = unix_update_path(self, "csh", s, u)
+  def write_setpaths_csh(self, suffix):
+    setpaths = unix_setpaths(self, "csh", suffix)
+    s, u = setpaths.s, setpaths.u
     for f in s, u:
-      print >> f, '"%s" -V >& /dev/null' % self.under_build(
-        "bin/libtbx.python")
-      print >> f, \
-        'if ($status != 0 || ! -f "%s") then' % self.path_utility
+      print >> f, 'if ($?PYTHONHOME) then'
+      print >> f, '  set libtbx_pythonhome_save="$PYTHONHOME"'
+      print >> f, '  unsetenv PYTHONHOME'
+      print >> f, 'endif'
+      print >> f, '"%s" -V >& /dev/null' % self.python_exe
+      print >> f, 'if ($status != 0 || ! -f "%s") then' % self.path_utility
       write_incomplete_libtbx_environment(f)
       print >> f, 'else'
-    update_path.write(("  ", "  "), "PATH", [self.bin_path])
-    for un in ["", "un"]:
-      print >> s, \
-        """  alias libtbx.%ssetpaths 'source "%s/%ssetpaths.csh"'""" % (
-          un, self.build_path, un)
+    setpaths.update_path("PATH", [self.bin_path])
+    for command in ["setpaths_all", "unsetpaths"]:
+      print >> s, """  alias libtbx.%s 'source "%s/%s.csh"'""" % (
+       command, self.build_path, command)
     print >> u, '  unalias libtbx.unsetpaths'
-    if (all): c = "#"
-    else:     c = ""
-    print >> s, '  %sif ($#argv != 0) then' % c
-    print >> s, \
-      '    %sif ($#argv != 1 || ("$1" != "all" && "$1" != "debug")) then' % c
-    print >> s, '    %s  echo "usage: source setpaths.csh [all|debug]"' % c
-    print >> s, '    %selse' % c
-    print >> s, '      setenv %s "%s"' % ("LIBTBX_BUILD", self.build_path)
-    print >> u, '  unsetenv %s' % "LIBTBX_BUILD"
-    for module in self.module_list:
-      for name,path in module.name_and_dist_path_pairs():
-        var_name = name.upper() + "_DIST"
-        print >> s, '      setenv %s "%s"' % (var_name, path)
-        print >> u, '  unsetenv %s' % var_name
-    print >> s, '      if ("$1" == "debug") then'
-    update_path.write(("        ", "  "), "PYTHONPATH", self.pythonpath)
-    if (sys.platform.startswith("darwin")):
-      ld_library_path = "DYLD_LIBRARY_PATH"
-    else:
-      ld_library_path = "LD_LIBRARY_PATH"
-    update_path.write(("        ", "  "), ld_library_path, [self.lib_path])
-    print >> s, '      endif'
-    print >> s, '    %sendif' % c
-    print >> s, '  %sendif' % c
+    setpaths.all_and_debug()
     for f in s, u:
       print >> f, 'endif'
-    s.close()
-    u.close()
+      print >> f, 'if ($?libtbx_pythonhome_save) then'
+      print >> f, '  setenv PYTHONHOME "$libtbx_pythonhome_save"'
+      print >> f, '  unset libtbx_pythonhome_save'
+      print >> f, 'endif'
 
-  def write_setpaths_bat(self):
-    setpaths_path = self.under_build("setpaths.bat")
-    unsetpaths_path = self.under_build("unsetpaths.bat")
-    s = open_info(setpaths_path)
-    u = open_info(unsetpaths_path)
-    update_path = windows_update_path(self, s, u)
+  def write_setpaths_bat(self, suffix):
+    setpaths = windows_setpaths(self, suffix)
+    s, u = setpaths.s, setpaths.u
     for f in s, u:
       print >> f, '@ECHO off'
       print >> f, 'if not exist "%s" goto fatal_error' % self.python_exe
-      print >> f, 'if not exist "%s" goto fatal_error' % self.path_utility
-      print >> f, 'if exist "%s" goto update_path' % self.under_build(
-        "bin/libtbx.python.exe")
+      print >> f, 'if exist "%s" goto update_path' % self.path_utility
+      print >> f, ':fatal_error'
       write_incomplete_libtbx_environment(f)
       print >> f, '  goto end_of_script'
       print >> f, ':update_path'
-    update_path.write(("  ", "  "), "PATH", [self.bin_path])
-    for un in ["", "un"]:
-      print >> s, '  doskey libtbx.%ssetpaths=%s\\%ssetpaths.bat $*' % (
-        un, self.build_path, un)
+      print >> f, '  set PYTHONHOME='
+    setpaths.update_path("PATH", [self.bin_path])
+    for command in ["setpaths_all", "unsetpaths"]:
+      print >> s, '  doskey libtbx.%s=%s\\%s.bat $*' % (
+        command, self.build_path, command)
     print >> u, '  doskey libtbx.unsetpaths='
-    print >> s, '  if "%1" == "" goto end_of_script'
-    print >> s, '  if not "%2" == "" goto show_usage'
-    print >> s, '  if "%1" == "all" goto set_all'
-    print >> s, '  if "%1" == "debug" goto set_all'
-    print >> s, ':show_usage'
-    print >> s, '  echo usage: setpaths [all^|debug]'
-    print >> s, '  goto end_of_script'
-    print >> s, ':set_all'
-    print >> s, '  set %s=%s' % ("LIBTBX_BUILD", self.build_path)
-    print >> u, '  set %s=' % "LIBTBX_BUILD"
-    for module in self.module_list:
-      for name,path in module.name_and_dist_path_pairs():
-        var_name = name.upper() + "_DIST"
-        print >> s, '  set %s=%s' % (var_name, path)
-        print >> u, '  set %s=' % var_name
-    print >> s, '  if not "%1" == "debug" goto end_of_script'
-    print >> s, '    set PYTHONCASEOK=1' # no unset
-    update_path.write(("    ", "  "), "PYTHONPATH", self.pythonpath)
-    update_path.write(("    ", "  "), "PATH", [self.lib_path])
+    setpaths.all_and_debug()
+    if (suffix == "_debug"):
+      print >> s, '  set PYTHONCASEOK=1' # no unset
     for f in s, u:
       print >> f, ':end_of_script'
-    s.close()
-    u.close()
 
   def write_SConstruct(self):
     SConstruct_path = self.under_build("SConstruct")
@@ -779,12 +746,12 @@ class environment:
         for module_name in self.missing_for_build.keys():
           print " ", module_name
         print "***********************************"
-    if (hasattr(os, "symlink")):
-      self.write_setpaths_sh()
-      for all in [False, True]:
-        self.write_setpaths_csh(all)
-    else:
-      self.write_setpaths_bat()
+    for suffix in ["", "_all", "_debug"]:
+      if (hasattr(os, "symlink")):
+        self.write_setpaths_sh(suffix)
+        self.write_setpaths_csh(suffix)
+      else:
+        self.write_setpaths_bat(suffix)
     self.pickle()
 
   def write_python_and_show_path_duplicates(self):
