@@ -21,10 +21,15 @@ def space_group_info(space_group_symbol):
 
 class crystal_symmetry:
 
-  def __init__(self, UnitCell, SgInfo):
+  def __init__(self, UnitCell, SgInfo, auto_check=0):
     self.UnitCell = UnitCell
     self.SgInfo = SgInfo
     self.SgOps = self.SgInfo.SgOps() # FUTURE: avoid the copy?
+    if (auto_check):
+      self.check_unit_cell()
+
+  def check_unit_cell(self):
+    self.SgOps.CheckUnitCell(self.UnitCell)
 
   def cell_equivalent_p1(self):
     return crystal_symmetry(self.UnitCell, sgtbx.SpaceGroupInfo())
