@@ -564,7 +564,7 @@ double mlhl_target_one_h(double fo,
      double mabsarg = -std::abs(arg);
      target = (fo*fo + alpha*alpha*fc*fc)/(2.0*var) + mabsarg -
               std::log((1.0 + std::exp(2.0*mabsarg))/2.0);
-     double Pi = scitbx::constants::pi;
+     //double Pi = scitbx::constants::pi;
      double t1 = 0.0;//-0.5 * std::log(2. / (Pi * var));
      target = target + t1;
   }
