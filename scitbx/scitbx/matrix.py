@@ -217,7 +217,8 @@ class rec:
       s = s[:-2] + "},"
       if (one_row_per_line): s += "\n  "
       else: s += " "
-    return s[:-2] + "}"
+    if (self.n_rows() > 0): s = s[:-2]
+    return s + "}"
 
   def as_sym_mat3(self):
     assert self.n == (3,3)
@@ -333,6 +334,8 @@ class rt:
 if (__name__ == "__main__"):
   from libtbx.test_utils import approx_equal
   from boost import rational
+  a = rec((),(0,0))
+  assert a.mathematica_form() == "{}"
   a = rec(range(1,7), (3,2))
   assert len(a) == 6
   assert a[1] == 2
