@@ -46,7 +46,7 @@ class labels(object):
     result = '"%-4.4s%1.1s%-3.3s %1.1s%4d%1.1s"' % (
       self.name,self.altLoc,self.resName,self.chainID,self.resSeq,self.iCode)
     if (self.segID is not None and len(self.segID.strip()) != 0):
-      result += ' ... segID="%s"' % self.segID
+      result += ' segID="%s"' % self.segID
     return result
 
   def is_in_same_chain(self, other):
