@@ -15,6 +15,7 @@
 #include <vector>
 #include <complex>
 #include <cctbx/uctbx.h>
+#include <cctbx/coordinates.h>
 #include <cctbx/miller.h>
 #include <cctbx/sgtbx/groups.h>
 
@@ -22,9 +23,7 @@ namespace sgtbx {
 
   namespace detail {
 
-    uctbx::Vec3 ModPositive(const uctbx::Vec3& X);
-    uctbx::Vec3 ModShort(const uctbx::Vec3& X);
-    TrVec getUnitShifts(const uctbx::Vec3& Delta, int TBF);
+    TrVec getUnitShifts(const coordinates::fractional<double>& Delta);
     void SetUniqueOps(const SgOps& sgo,
                       const RTMx& SpecialOp,
                       std::vector<RTMx>& UniqueOps);
@@ -161,20 +160,20 @@ namespace sgtbx {
                     examples/python/generate_hklf.py
        */
       SpecialPosition(const SpecialPositionSnapParameters& params,
-                      const uctbx::Vec3& X,
+                      const coordinates::fractional<double>& X,
                       bool auto_expand = false);
       //! Retrieve the original coordinates (X in the constructor).
-      inline const uctbx::Vec3& OriginalPosition() const {
+      inline const coordinates::fractional<double>& OriginalPosition() const {
         return m_OriginalPosition;
       }
       //! Exact location of the special position.
-      inline const uctbx::Vec3& SnapPosition() const {
+      inline const coordinates::fractional<double>& SnapPosition() const {
         return m_SnapPosition;
       }
       //! Distance squared between OriginalPosition() and SnapPosition().
       inline double DistanceMoved2() const {
-        return m_Parameters.m_UnitCell.Length2(  m_SnapPosition
-                                               - m_OriginalPosition);
+        return m_Parameters.m_UnitCell.Distance2(m_SnapPosition,
+                                                 m_OriginalPosition);
       }
       //! Distance between OriginalPosition() and SnapPosition().
       inline double DistanceMoved() const {
@@ -253,8 +252,8 @@ namespace sgtbx {
       friend class WyckoffTable;
       void BuildSpecialOp();
       const SpecialPositionSnapParameters& m_Parameters;
-      const uctbx::Vec3 m_OriginalPosition;
-      uctbx::Vec3 m_SnapPosition;
+      const coordinates::fractional<double> m_OriginalPosition;
+      coordinates::fractional<double> m_SnapPosition;
       double m_ShortestDistance2;
       int m_M;
       RTMx m_SpecialOp;
@@ -372,7 +371,8 @@ namespace sgtbx {
           is useful for repeated, efficient computation of
           symmetry mates.
        */
-      inline uctbx::Vec3 snap_to_representative(const uctbx::Vec3& X) const {
+      inline coordinates::fractional<double>
+      snap_to_representative(const coordinates::fractional<double>& X) const {
         return (*m_WP).SpecialOp() * (m_Mapping * X);
       }
       //! Exact location of the special position.
@@ -380,7 +380,8 @@ namespace sgtbx {
           <p>
           Formula used: Mapping().inverse() * WP().SpecialOp() * Mapping() * X
        */
-      inline uctbx::Vec3 snap(const uctbx::Vec3& X) const {
+      inline coordinates::fractional<double>
+      snap(const coordinates::fractional<double>& X) const {
         return    m_Mapping.inverse_with_cancel()
                * ((*m_WP).SpecialOp() * (m_Mapping * X));
       }
@@ -477,7 +478,7 @@ namespace sgtbx {
           Usage:<pre>
           uctbx::UnitCell uc = ...;
           sgtbx::SgOps sgo = ...;
-          uctbx::Vec3 X = ...;
+          coordinates::fractional<double> X = ...;
           SpecialPositionSnapParameters SnapParameters(uc, sgo);
           SpecialPosition SP = SpecialPosition(SnapParameters, X);
           WyckoffMapping WM = getWyckoffMapping(SP);</pre>
@@ -491,7 +492,7 @@ namespace sgtbx {
       const WyckoffMapping
       getWyckoffMapping(const uctbx::UnitCell& uc,
                         const SgOps& sgo,
-                        const uctbx::Vec3& X,
+                        const coordinates::fractional<double>& X,
                         double SnapRadius = 0.5) const;
     private:
       void InitializeOperations(const SpaceGroupType& SgType);
@@ -505,7 +506,7 @@ namespace sgtbx {
       /*! See class SpecialPositionSnapParameters for details.
        */
       SymEquivCoordinates(const SpecialPositionSnapParameters& params,
-                          const uctbx::Vec3& X);
+                          const coordinates::fractional<double>& X);
       //! Compute symmetry equivalent coordinates using a robust algorithm.
       /*! See class SpecialPosition for details.
           <p>
@@ -520,7 +521,8 @@ namespace sgtbx {
           can be used in this constructor. This is normally achieved
           by calling WyckoffTable::expand().
        */
-      SymEquivCoordinates(const WyckoffMapping& WM, const uctbx::Vec3& X);
+      SymEquivCoordinates(const WyckoffMapping& WM,
+                          const coordinates::fractional<double>& X);
       //! Compute symmetry equivalent coordinates using a WyckoffPosition.
       /*! See class WyckoffMapping for details. If X is known to be
           close to the representative Wyckoff position, the
@@ -535,7 +537,8 @@ namespace sgtbx {
           WyckoffTable. This is, it is important that TidyCBOp = true
           when calling getSpaceGroupType().
        */
-      SymEquivCoordinates(const WyckoffPosition& WP, const uctbx::Vec3& X);
+      SymEquivCoordinates(const WyckoffPosition& WP,
+                          const coordinates::fractional<double>& X);
       //! Compute symmetry equivalent coordinates using simple distance calculations.
       /*! See class SpecialPositionTolerances for details.
           <p>
@@ -547,7 +550,7 @@ namespace sgtbx {
           is only marginally slower.
        */
       SymEquivCoordinates(const SpecialPositionTolerances& params,
-                          const uctbx::Vec3& X);
+                          const coordinates::fractional<double>& X);
       //! Compute symmetry equivalent coordinates without treatment of special positions.
       /*! The symmetry operations are applied to X. Duplicates on
           special positions are not removed. The multiplicty M() will
@@ -557,20 +560,23 @@ namespace sgtbx {
           The true multiplicity of X can be tabulated and used
           as a weight in structure factor calculations.
        */
-      SymEquivCoordinates(const SgOps& sgo, const uctbx::Vec3& X);
+      SymEquivCoordinates(const SgOps& sgo,
+                          const coordinates::fractional<double>& X);
       //! Number of symmetry equivalent coordinates (multiplicity).
       inline int M() const { return m_Coordinates.size(); }
       //! Return the i'th symmetry equivalent coordinate.
       /*! i must be in the range [0,M()[. No range checking is
           performed for maximal performance.
        */
-      inline const uctbx::Vec3& operator[](std::size_t i) const {
+      inline const coordinates::fractional<double>&
+      operator[](std::size_t i) const {
         return m_Coordinates[i];
       }
       //! Return the i'th symmetry equivalent coordinate.
       /*! An exception is thrown if i is out of range.
        */
-      inline const uctbx::Vec3& operator()(std::size_t i) const {
+      inline const coordinates::fractional<double>&
+      operator()(std::size_t i) const {
         if (i >= M()) throw error_index();
         return m_Coordinates[i];
       }
@@ -578,14 +584,16 @@ namespace sgtbx {
       /*! Determine the shortest distance between Y and the symmetry
           mates in the internal table.
        */
-      double getShortestDistance2(const uctbx::UnitCell& uc,
-                                  const uctbx::Vec3& Y) const;
+      double
+      getShortestDistance2(const uctbx::UnitCell& uc,
+                           const coordinates::fractional<double>& Y) const;
       //! Shortest distance between the symmetry mates of X and Y.
       /*! Determine the shortest distance between Y and the symmetry
           mates in the internal table.
        */
-      inline double getShortestDistance(const uctbx::UnitCell& uc,
-                                        const uctbx::Vec3& Y) const {
+      inline double
+      getShortestDistance(const uctbx::UnitCell& uc,
+                          const coordinates::fractional<double>& Y) const {
         return std::sqrt(getShortestDistance2(uc, Y));
       }
       //! Compute Sum(exp(2 pi i H X)) for all symmetry equivalent X.
@@ -595,7 +603,7 @@ namespace sgtbx {
       std::complex<double> StructureFactor(const Miller::Index& H) const;
 
     private:
-      std::vector<uctbx::Vec3> m_Coordinates;
+      std::vector<coordinates::fractional<double> > m_Coordinates;
   };
 
 } // namespace sgtbx

@@ -21,6 +21,7 @@
 #include <boost/array.hpp>
 #include <cctbx/error.h>
 #include <cctbx/basic/matrixlite.h>
+#include <cctbx/coordinates.h>
 #include <cctbx/miller.h>
 #include <cctbx/sgtbx/matrix.h>
 #include <cctbx/constants.h>
@@ -166,29 +167,42 @@ namespace uctbx {
       //! x(cartesian) = matrix * x(fractional).
       inline const Mx33& getOrthogonalizationMatrix() const { return Orth; }
       //! Converts cartesian coordinates Xc to fractional coordinates.
-      inline Vec3 fractionalize(const Vec3& Xc) const { return Frac * Xc; }
+      template <class T>
+      inline coordinates::fractional<T>
+      fractionalize(const coordinates::cartesian<T>& Xc) const {
+        return Frac * Xc;
+      }
       //! Converts fractional coordinates Xf to cartesian coordinates.
-      inline Vec3 orthogonalize(const Vec3& Xf) const { return Orth * Xf; }
+      template <class T>
+      inline coordinates::cartesian<T>
+      orthogonalize(const coordinates::fractional<T>& Xf) const {
+        return Orth * Xf;
+      }
       //@}
 
       //! @name Measurements, given fractional coordinates.
       //@{
       //! Length squared of vector.
-      inline double Length2(const Vec3& Xf) const {
-        Vec3 Xc = orthogonalize(Xf);
-        return Xc * Xc;
+      template <class T>
+      inline T Length2(const coordinates::fractional<T>& Xf) const {
+        return orthogonalize(Xf).Length2();
       }
       //! Length of vector.
-      inline double Length(const Vec3& Xf) const {
+      template <class T>
+      inline T Length(const coordinates::fractional<T>& Xf) const {
         return std::sqrt(Length2(Xf));
       }
       //! Distance squared.
-      inline double Distance2(const Vec3& Xf, const Vec3& Yf) const {
-        return Length2(Xf - Yf);
+      template <class T>
+      inline T Distance2(const coordinates::fractional<T>& Xf,
+                         const coordinates::fractional<T>& Yf) const {
+        return Length2(coordinates::fractional<T>(Xf - Yf));
       }
       //! Distance.
-      inline double Distance(const Vec3& Xf, const Vec3& Yf) const {
-        return Length(Xf - Yf);
+      template <class T>
+      inline T Distance(const coordinates::fractional<T>& Xf,
+                        const coordinates::fractional<T>& Yf) const {
+        return Length(coordinates::fractional<T>(Xf - Yf));
       }
       //@}
 

@@ -21,6 +21,7 @@
 #include <cctbx/fixes/cstdlib>
 #include <boost/array.hpp>
 #include <cctbx/basic/matrixlite.h>
+#include <cctbx/coordinates.h>
 #include <cctbx/constants.h>
 
 namespace cctbx {
@@ -37,8 +38,15 @@ namespace cctbx {
       public:
         //! @name Constructors.
         //@{
-        Index() { for(int i=0;i<3;i++) elems[i] = 0; }
-        Index(const int *hkl) { for(int i=0;i<3;i++) elems[i] = hkl[i]; }
+        Index() {
+          for(std::size_t i=0;i<3;i++) elems[i] = 0;
+        }
+        Index(const Vec3& v) {
+          for(std::size_t i=0;i<3;i++) elems[i] = v[i];
+        }
+        Index(const int* hkl) {
+          for(std::size_t i=0;i<3;i++) elems[i] = hkl[i];
+        }
         Index(const int h, const int k, const int l) {
           elems[0] = h; elems[1] = k; elems[2] = l;
         }
@@ -60,7 +68,7 @@ namespace cctbx {
         //! @name Test for equality and inequality.
         //@{
         inline friend bool operator==(const Index& lhs, const Index& rhs) {
-          for(int i=0;i<3;i++) if (lhs[i] != rhs[i]) return false;
+          for(std::size_t i=0;i<3;i++) if (lhs[i] != rhs[i]) return false;
           return true;
         }
         inline friend bool operator!=(const Index& lhs, const Index& rhs) {
@@ -76,7 +84,7 @@ namespace cctbx {
         inline bool operator<(const Index& m2) const
         {
           const int P[3] = {2, 0, 1};
-          int i;
+          std::size_t i;
           for(i=0;i<3;i++) {
             if (elems[P[i]] >= 0 && m2[P[i]] <  0) return true;
             if (elems[P[i]] <  0 && m2[P[i]] >= 0) return false;
@@ -94,10 +102,11 @@ namespace cctbx {
     };
 
     //! Multiplication of Miller indices and fractional coordiantes.
-    inline double
-    operator*(const Index& lhs, const MatrixLite::dtype::Vec3& rhs) {
+    template <class T>
+    inline T
+    operator*(const Index& lhs, const coordinates::fractional<T>& rhs) {
       double result = 0.;
-      for(int i=0;i<3;i++) result += lhs[i] * rhs[i];
+      for(std::size_t i=0;i<3;i++) result += lhs[i] * rhs[i];
       return result;
     }
 
@@ -106,7 +115,7 @@ namespace cctbx {
       public:
         //! This fast comparison function is implemented as operator().
         inline bool operator()(const Index& m1,const Index& m2) const {
-          for(int i=0;i<3;i++) {
+          for(std::size_t i=0;i<3;i++) {
             if (m1[i] < m2[i]) return true;
             if (m1[i] > m2[i]) return false;
           }
