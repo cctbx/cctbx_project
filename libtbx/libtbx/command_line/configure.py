@@ -305,16 +305,44 @@ def emit_SConstruct(env, build_options, packages_dict):
       done[p] = 0
   f.close()
 
-def run(libtbx_dist, args):
+def show_help(old_env):
+  if (old_env):
+    cmd = "libtbx.configure"
+  else:
+    cmd = "[path_to/]python [path_to/]libtbx/configure.py".replace("/", os.sep)
+  print
+  print   cmd, "[options] package [...]"
+  print
+  print   "options:"
+  print   "  -h, --help                      show this help message and exit"
+  if (old_env):
+    print "  --only                          disable previously configured"
+    print "                                    packages"
+  print   "  --build=[quick|release|debug]   select build mode"
+  print   "  --compiler=COMPILER             select non-standard compiler"
+  print   "  --static_libraries              build all libraries statically"
+  print   "  --static_exe                    link all executables statically"
+  print   "                                    (implies --static_libraries)"
+  print   "  --scan_boost                    enable implicit dependency scan"
+  print   "                                    of boost header files"
+  print
+
+def run(libtbx_dist, args, old_env=None):
   env = libtbx_env(os.getcwd(), libtbx_dist)
   build_options = build_options_t()
   remaining_args = []
+  option_only = 00000
   for arg in args:
-    if (arg.startswith("--compiler=")):
-      build_options.compiler = arg.split("=", 1)[1].strip().lower()
+    if (arg in ["-h", "--help"]):
+      show_help(old_env)
+      sys.exit(0)
+    elif (arg == "--only"):
+      option_only = 0001
     elif (arg.startswith("--build=")):
       build_options.mode = arg.split("=", 1)[1].strip().lower()
       assert build_options.mode in ("quick", "release", "debug")
+    elif (arg.startswith("--compiler=")):
+      build_options.compiler = arg.split("=", 1)[1].strip().lower()
     elif (arg == "--static_libraries"):
       build_options.static_libraries = 0001
     elif (arg == "--static_exe"):
@@ -323,15 +351,19 @@ def run(libtbx_dist, args):
     elif (arg == "--scan_boost"):
       build_options.scan_boost = 0001
     elif (arg.startswith("--")):
+      show_help(old_env)
       raise UserError("Unknown option: " + arg)
     else:
       remaining_args.append(arg)
   env.compiler = build_options.compiler
   args = remaining_args
+  if (len(args) > 0 and not option_only and old_env is not None):
+    args.extend(old_env.package_list)
   packages = registry()
   for arg in args:
     packages.merge(package(env.LIBTBX_DIST_ROOT, arg).dependency_registry)
   if (len(packages.list) == 0):
+    show_help(old_env)
     raise UserError("At least one package must be specified.")
   if (len(packages.missing_for_build) == 0):
     build_options.report()
@@ -366,7 +398,9 @@ def run(libtbx_dist, args):
 
 def cold_start(args):
   try:
-    env = run(libtbx_dist=norm(dirname(norm(abspath(args[0])))), args=args[1:])
+    env = run(
+      libtbx_dist=norm(dirname(norm(abspath(args[0])))),
+      args=args[1:])
   except UserError, e:
     print "Error:", e
   else:
@@ -382,7 +416,10 @@ def warm_start(args):
     if (old_env.LIBTBX_BUILD != norm(abspath(os.getcwd()))):
       raise UserError(
         "Current working directory must be: " + old_env.LIBTBX_BUILD)
-    run(libtbx_dist=old_env.dist_paths["LIBTBX_DIST"], args=args[1:])
+    run(
+      libtbx_dist=old_env.dist_paths["LIBTBX_DIST"],
+      args=args[1:],
+      old_env=old_env)
   except UserError, e:
     print "Error:", e
   else:
