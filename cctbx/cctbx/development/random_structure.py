@@ -1,9 +1,11 @@
+from __future__ import generators
 from cctbx import sgtbx
 from cctbx import crystal
 from cctbx import adptbx
 from cctbx import xray
 import cctbx.eltbx.xray_scattering
 from cctbx import eltbx
+from cctbx.array_family import flex
 from scitbx.python_utils.misc import adopt_init_args
 import random
 
@@ -283,3 +285,42 @@ class xray_structure(xray.structure):
       else:
         raise RuntimeError
     return modified_structure
+
+class wyckoff_pair_generator:
+
+  def __init__(self,
+        space_group_info,
+        unit_cell_volume=1000,
+        min_distance_sym_equiv=1,
+        min_cross_distance=1,
+        scattering_type="const",
+        max_trials_per_position=10):
+    adopt_init_args(self, locals())
+    self.special_position_settings = crystal.special_position_settings(
+      crystal_symmetry=crystal.symmetry(
+        unit_cell=space_group_info.any_compatible_unit_cell(
+          volume=unit_cell_volume),
+        space_group_info=space_group_info),
+      min_distance_sym_equiv=min_distance_sym_equiv)
+    self.wyckoff_table = space_group_info.wyckoff_table()
+
+  def loop(self):
+    for i_position in xrange(self.wyckoff_table.size()):
+      site_symmetry_i = self.wyckoff_table.random_site_symmetry(
+        special_position_settings=self.special_position_settings,
+        i_position=i_position)
+      equiv_sites_i = sgtbx.sym_equiv_sites(site_symmetry_i)
+      for j_position in xrange(self.wyckoff_table.size()):
+        for n_trial in xrange(self.max_trials_per_position):
+          site_j = self.wyckoff_table.random_site_symmetry(
+            special_position_settings=self.special_position_settings,
+            i_position=j_position).exact_site()
+          dist_info = sgtbx.min_sym_equiv_distance_info(equiv_sites_i, site_j)
+          if (dist_info.dist() > self.min_cross_distance):
+            structure = xray.structure(
+              special_position_settings=self.special_position_settings,
+              scatterers=flex.xray_scatterer(
+               [xray.scatterer(scattering_type=self.scattering_type, site=site)
+                for site in [site_symmetry_i.exact_site(), site_j]]))
+            yield structure, dist_info.dist()
+            break
