@@ -10,7 +10,7 @@ import cctbx.sgtbx
 import scitbx.stl.set
 import scitbx.stl.vector
 
-bond_sym_ops = cctbx.sgtbx.stl_vector_rt_mx
+pair_sym_ops = cctbx.sgtbx.stl_vector_rt_mx
 
-bond_asu_dict = scitbx.stl.vector.set_unsigned
-bond_asu_j_sym_groups = scitbx.stl.set.unsigned
+pair_asu_dict = scitbx.stl.vector.set_unsigned
+pair_asu_j_sym_groups = scitbx.stl.set.unsigned

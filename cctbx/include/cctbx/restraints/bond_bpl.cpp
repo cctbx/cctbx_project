@@ -7,6 +7,7 @@
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
 #include <boost/python/return_by_value.hpp>
+#include <boost/python/suite/indexing/map_indexing_suite.hpp>
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
 #include <cctbx/restraints/bond.h>
 
@@ -27,6 +28,23 @@ namespace {
         .def_readwrite("distance_ideal", &w_t::distance_ideal)
         .def_readwrite("weight", &w_t::weight)
       ;
+    }
+  };
+
+  struct bond_params_table_wrappers
+  {
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      class_<bond_params_dict>("bond_params_dict")
+        .def(map_indexing_suite<bond_params_dict>())
+      ;
+      {
+        typedef return_internal_reference<> rir;
+        scitbx::af::boost_python::shared_wrapper<bond_params_dict, rir>::wrap(
+          "bond_params_table");
+      }
     }
   };
 
@@ -146,6 +164,7 @@ namespace {
     using namespace boost::python;
     typedef boost::python::arg arg_; // gcc 2.96 workaround
     bond_params_wrappers::wrap();
+    bond_params_table_wrappers::wrap();
     bond_simple_proxy_wrappers::wrap();
     bond_asu_proxy_wrappers::wrap();
     bond_wrappers::wrap();

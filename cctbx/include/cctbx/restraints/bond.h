@@ -21,6 +21,9 @@ namespace cctbx { namespace restraints {
     double weight;
   };
 
+  typedef std::map<unsigned, bond_params> bond_params_dict;
+  typedef af::shared<bond_params_dict> bond_params_table;
+
   struct bond_simple_proxy : bond_params
   {
     bond_simple_proxy() {}
