@@ -1,3 +1,4 @@
+#include <cmath>
 #include <scitbx/vec3.h>
 #include <scitbx/array_family/simple_io.h>
 
