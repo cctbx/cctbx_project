@@ -1,6 +1,6 @@
 #include <cctbx/boost_python/flex_fwd.h>
 
-#include <cctbx/xray/asu_mappings.h>
+#include <cctbx/xray/scatterer_utils.h>
 #include <cctbx/crystal/direct_space_asu.h>
 #include <boost/python/class.hpp>
 #include <boost/python/def.hpp>
@@ -12,6 +12,9 @@
 namespace cctbx { namespace xray { namespace boost_python {
 
 namespace {
+
+  BOOST_PYTHON_FUNCTION_OVERLOADS(
+    apply_symmetry_u_star_overloads, apply_symmetry_u_star, 3, 6)
 
   struct scatterer_wrappers
   {
@@ -113,12 +116,59 @@ namespace {
 
     scatterer_wrappers::wrap();
 
+    def("apply_symmetry_site",
+      (void(*)(
+        sgtbx::site_symmetry_table const&,
+        af::ref<scatterer<> > const&)) apply_symmetry_site, (
+          arg_("site_symmetry_table"),
+          arg_("scatterers")));
+
+    def("apply_symmetry_u_star",
+      (void(*)(
+        uctbx::unit_cell const&,
+        sgtbx::site_symmetry_table const&,
+        af::ref<scatterer<> > const&,
+        double, bool, bool)) 0, apply_symmetry_u_star_overloads((
+          arg_("unit_cell"),
+          arg_("site_symmetry_table"),
+          arg_("scatterers"),
+          arg_("u_star_tolerance")=0,
+          arg_("assert_is_positive_definite")=false,
+          arg_("assert_min_distance_sym_equiv")=true)));
+
+    def("add_scatterers_ext",
+      (void(*)(
+        uctbx::unit_cell const&,
+        sgtbx::space_group const&,
+        af::ref<scatterer<> > const&,
+        sgtbx::site_symmetry_table&,
+        sgtbx::site_symmetry_table const&,
+        double, double, bool, bool)) add_scatterers_ext, (
+          arg_("unit_cell"),
+          arg_("space_group"),
+          arg_("scatterers"),
+          arg_("site_symmetry_table"),
+          arg_("site_symmetry_table_for_new"),
+          arg_("min_distance_sym_equiv"),
+          arg_("u_star_tolerance"),
+          arg_("assert_is_positive_definite"),
+          arg_("assert_min_distance_sym_equiv")));
+
     def("asu_mappings_process",
       (void(*)(
         crystal::direct_space_asu::asu_mappings<>&,
         af::const_ref<scatterer<> > const&,
         sgtbx::site_symmetry_table const&)) asu_mappings_process, (
       arg_("asu_mappings"), arg_("scatterers"), arg_("site_symmetry_table")));
+
+    def("rotate",
+      (af::shared<scatterer<> >(*)(
+        uctbx::unit_cell const&,
+        scitbx::mat3<double> const&,
+        af::const_ref<scatterer<> > const&)) rotate, (
+          arg_("unit_cell"),
+          arg_("rotation_matrix"),
+          arg_("scatterers")));
   }
 
 }}} // namespace cctbx::xray::boost_python
