@@ -36,14 +36,24 @@ namespace {
   py_BuildMillerIndices_Resolution_d_min(
     const uctbx::UnitCell& UC,
     const sgtbx::SpaceGroupInfo& SgInfo,
-    double Resolution_d_min) {
-    return cctbx::BuildMillerIndices(UC, SgInfo, Resolution_d_min);
+    double Resolution_d_min)
+  {
+    boost::shared_ptr<std::vector<cctbx::Miller::Index> >
+    VectorOfH(new std::vector<cctbx::Miller::Index>);
+    sgtbx::MillerIndexGenerator(
+      UC, SgInfo, Resolution_d_min).AddToVector(*VectorOfH);
+    return VectorOfH;
   }
   boost::shared_ptr<std::vector<cctbx::Miller::Index> >
   py_BuildMillerIndices_MaxIndex(
     const sgtbx::SpaceGroupInfo& SgInfo,
-    const cctbx::Miller::Index& MaxIndex) {
-    return cctbx::BuildMillerIndices(SgInfo, MaxIndex);
+    const cctbx::Miller::Index& MaxIndex)
+  {
+    boost::shared_ptr<std::vector<cctbx::Miller::Index> >
+    VectorOfH(new std::vector<cctbx::Miller::Index>);
+    sgtbx::MillerIndexGenerator(
+      SgInfo, MaxIndex).AddToVector(*VectorOfH);
+    return VectorOfH;
   }
 
 #   include <cctbx/basic/from_bpl_import.h>
