@@ -131,6 +131,7 @@ iterator,iterator_ext,iterator
 input_iterator,input_iterator,iterator
 crossmod_exception_a,crossmod_exception_a,crossmod_exception
 crossmod_exception_b,crossmod_exception_b,crossmod_exception
+vector_indexing_suite
 """)
     Import("env_boost_python_ext")
     env = env_boost_python_ext.Copy()
