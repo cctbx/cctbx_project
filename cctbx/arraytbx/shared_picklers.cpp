@@ -16,6 +16,12 @@
 #include <cctbx/array_family/shared.h>
 #include <cctbx/basic/meta.h>
 
+#if defined(__GNUC__) || defined(__DECCXX_VER)
+#  if !(defined(sun) || defined(__sun))
+#    define HAVE_STRTOF
+#  endif
+#endif
+
 namespace cctbx { namespace af {
 
   namespace picklers {
@@ -136,10 +142,10 @@ namespace cctbx { namespace af {
     {
       from_string(const char* start)
       {
-#if (defined(BOOST_MSVC) && BOOST_MSVC <= 1300) // VC++ 7.0
-        value = strtod(start, &end);
-#else
+#ifdef HAVE_STRTOF
         value = strtof(start, &end);
+#else
+        value = strtod(start, &end);
 #endif
         cctbx_assert(*end++ == ',');
       }
