@@ -174,21 +174,28 @@ def emit_env_run_sh(env):
   os.chmod(env_run_sh_path, 0755)
 
 def emit_setpaths_csh(env):
+  libtbx_python = norm(join(
+    env.LIBTBX_BUILD, "libtbx","bin","libtbx.python"))
+  libtbx_path_utility = norm(join(
+    env.LIBTBX_DIST_ROOT, "libtbx","libtbx","command_line","path_utility.py"))
   setpaths_csh_path = norm(join(env.LIBTBX_BUILD, "setpaths.csh"))
-  f = open_info(setpaths_csh_path)
+  unsetpaths_csh_path = norm(join(env.LIBTBX_BUILD, "unsetpaths.csh"))
+  s = open_info(setpaths_csh_path)
+  u = open_info(unsetpaths_csh_path)
   for var_name, values in env.items():
     if (var_name.upper() != var_name): continue
     if (var_name == "LD_LIBRARY_PATH" and sys.platform.startswith("darwin")):
       var_name = "DYLD_LIBRARY_PATH"
     if (type(values) == type([])):
       val = os.pathsep.join(values)
-      print >> f, 'if (! $?%s) then' % (var_name,)
-      print >> f, '  setenv %s ""' % (var_name,)
-      print >> f, 'endif'
-      print >> f, 'setenv %s "%s%s$%s"' % (var_name, val, os.pathsep, var_name)
+      fmt_args = (var_name, libtbx_python, libtbx_path_utility, var_name, val)
+      print >> s, '''setenv %s "`%s %s prepend %s '%s'`"''' % fmt_args
+      print >> u, '''setenv %s "`%s %s delete %s '%s'`"''' % fmt_args
     else:
-      print >> f, 'setenv %s "%s"' % (var_name, values)
-  f.close()
+      print >> s, 'setenv %s "%s"' % (var_name, values)
+      print >> u, 'unsetenv %s' % var_name
+  s.close()
+  u.close()
 
 def join_path_ld_library_path(env):
   joined_path = env.PATH
