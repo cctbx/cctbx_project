@@ -11,6 +11,13 @@ from scitbx.python_utils import dicts
 from scitbx.python_utils.misc import adopt_init_args
 import sys
 
+def value_at_closest_grid_point(map, x_frac):
+  return map[closest_grid_point(map, x_frac)]
+
+flex.double.eight_point_interpolation = eight_point_interpolation
+flex.double.closest_grid_point = closest_grid_point
+flex.double.value_at_closest_grid_point = value_at_closest_grid_point
+
 class statistics(ext.statistics):
 
   def __init__(self, map):
