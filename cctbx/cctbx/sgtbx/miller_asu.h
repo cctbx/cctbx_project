@@ -9,7 +9,6 @@
 #define CCTBX_SGTBX_MILLER_ASU_H
 
 
-#include <boost/smart_ptr.hpp>
 #include <cctbx/miller.h>
 #include <cctbx/sgtbx/groups.h>
 
@@ -153,10 +152,9 @@ namespace sgtbx {
   {
     public:
       inline ReciprocalSpaceASU()
-        : m_isStdASU(true), m_StdASU(), m_CBOp() {}
+        : m_CBOp(), m_isStdASU(true), m_StdASU() {}
       ReciprocalSpaceASU(const SpaceGroupType& SgType);
-      inline boost::shared_ptr<StdReciprocalSpaceASU>
-      StdASU() const { return m_StdASU; }
+      inline const StdReciprocalSpaceASU* StdASU() const { return m_StdASU; }
       inline const ChOfBasisOp& CBOp() const { return m_CBOp; }
       inline bool isStdASU() const { return m_isStdASU; }
       inline bool isInASU(const Miller::Index& H) const {
@@ -166,7 +164,7 @@ namespace sgtbx {
     private:
       ChOfBasisOp m_CBOp;
       bool m_isStdASU;
-      boost::shared_ptr<StdReciprocalSpaceASU> m_StdASU;
+      const StdReciprocalSpaceASU* m_StdASU;
   };
 
 } // namespace sgtbx

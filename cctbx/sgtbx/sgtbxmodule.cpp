@@ -447,11 +447,26 @@ namespace {
   }
 
   const char*
-  StdReciprocalSpaceASU_LaueGroupCode(const StdReciprocalSpaceASU& asu) {
-    return asu.LaueGroupCode().Label();
+  StdReciprocalSpaceASU_LaueGroupCode(const StdReciprocalSpaceASU& StdASU) {
+    return StdASU.LaueGroupCode().Label();
   }
 
-}
+} // namespace <anonymous>
+
+namespace boost { namespace python {
+  template class
+  class_builder<StdReciprocalSpaceASU>; // explicitly instantiate
+}} // namespace boost::python
+
+BOOST_PYTHON_BEGIN_CONVERSION_NAMESPACE
+  PyObject* to_python(const StdReciprocalSpaceASU* p)
+  {
+    return boost::python::python_extension_class_converters<
+      StdReciprocalSpaceASU>::smart_ptr_to_python(
+      const_cast<StdReciprocalSpaceASU*>(p));
+  }
+BOOST_PYTHON_END_CONVERSION_NAMESPACE
+
 
 BOOST_PYTHON_MODULE_INIT(sgtbx)
 {

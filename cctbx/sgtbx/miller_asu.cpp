@@ -138,227 +138,259 @@ namespace sgtbx
 
 namespace sgtbx {
 
-  class StdReciprocalSpaceASU_1b : public StdReciprocalSpaceASU {
-    public:
-      virtual tables::MatrixGroup::Code LaueGroupCode() const {
-        return tables::MatrixGroup::MGC_1b;
-      }
-      virtual bool isInASU(const Miller::Index& H) const {
-        return (H[2]>0 || (H[2]==0 && (H[0]>0 || (H[0]==0 && H[1]>=0))));
-      }
-      virtual const char* representation() const {
-        return "l>0 or (l==0 and (h>0 or (h==0 and k>=0)))";
-      }
-      virtual const Miller::Vec3& getCutParameters() const {
-        static const Miller::Vec3 result = {-1, -1, 0};
-        return result;
-      }
-  };
-  class StdReciprocalSpaceASU_2_m : public StdReciprocalSpaceASU {
-    public:
-      virtual tables::MatrixGroup::Code LaueGroupCode() const {
-        return tables::MatrixGroup::MGC_2_m;
-      }
-      virtual bool isInASU(const Miller::Index& H) const {
-        return (H[1]>=0 && (H[2]>0 || (H[2]==0 && H[0]>=0)));
-      }
-      virtual const char* representation() const {
-        return "k>=0 and (l>0 or (l=0 and h>=0))";
-      }
-      virtual const Miller::Vec3& getCutParameters() const {
-        static const Miller::Vec3 result = {-1, 0, 0};
-        return result;
-      }
-  };
-  class StdReciprocalSpaceASU_mmm : public StdReciprocalSpaceASU {
-    public:
-      virtual tables::MatrixGroup::Code LaueGroupCode() const {
-        return tables::MatrixGroup::MGC_mmm;
-      }
-      virtual bool isInASU(const Miller::Index& H) const {
-        return (H[0]>=0 && H[1]>=0 && H[2]>=0);
-      }
-      virtual const char* representation() const {
-        return "h>=0 and k>=0 and l>=0";
-      }
-      virtual const Miller::Vec3& getCutParameters() const {
-        static const Miller::Vec3 result = {0, 0, 0};
-        return result;
-      }
-  };
-  class StdReciprocalSpaceASU_4_m : public StdReciprocalSpaceASU {
-    public:
-      virtual tables::MatrixGroup::Code LaueGroupCode() const {
-        return tables::MatrixGroup::MGC_4_m;
-      }
-      virtual bool isInASU(const Miller::Index& H) const {
-        return (H[2]>=0 && ((H[0]>=0 && H[1]>0) || (H[0]==0 && H[1]==0)));
-      }
-      virtual const char* representation() const {
-        return "l>=0 and ((h>=0 and k>0) or (h=0 and k=0))";
-      }
-      virtual const Miller::Vec3& getCutParameters() const {
-        static const Miller::Vec3 result = {0, 0, 0};
-        return result;
-      }
-  };
-  class StdReciprocalSpaceASU_4_mmm : public StdReciprocalSpaceASU {
-    public:
-      virtual tables::MatrixGroup::Code LaueGroupCode() const {
-        return tables::MatrixGroup::MGC_4_mmm;
-      }
-      virtual bool isInASU(const Miller::Index& H) const {
-        return (H[0]>=H[1] && H[1]>=0 && H[2]>=0);
-      }
-      virtual const char* representation() const {
-        return "h>=k and k>=0 and l>=0";
-      }
-      virtual const Miller::Vec3& getCutParameters() const {
-        static const Miller::Vec3 result = {0, 0, 0};
-        return result;
-      }
-  };
-  class StdReciprocalSpaceASU_3b : public StdReciprocalSpaceASU {
-    public:
-      virtual tables::MatrixGroup::Code LaueGroupCode() const {
-        return tables::MatrixGroup::MGC_3b;
-      }
-      virtual bool isInASU(const Miller::Index& H) const {
-        return (H[0]>=0 && H[1]>0) || (H[0]==0 && H[1]==0 && H[2]>=0);
-      }
-      virtual const char* representation() const {
-        return "(h>=0 and k>0) or (h=0 and k=0 and l>=0)";
-      }
-      virtual const Miller::Vec3& getCutParameters() const {
-        static const Miller::Vec3 result = {0, 0, -1};
-        return result;
-      }
-  };
-  class StdReciprocalSpaceASU_3b1m : public StdReciprocalSpaceASU {
-    public:
-      virtual tables::MatrixGroup::Code LaueGroupCode() const {
-        return tables::MatrixGroup::MGC_3b1m;
-      }
-      virtual bool isInASU(const Miller::Index& H) const {
-        return (H[0]>=H[1] && H[1]>=0 && (H[1]>0 || H[2]>=0));
-      }
-      virtual const char* representation() const {
-        return "h>=k and k>=0 and (k>0 or l>=0)";
-      }
-      virtual const Miller::Vec3& getCutParameters() const {
-        static const Miller::Vec3 result = {0, 0, -1};
-        return result;
-      }
-  };
-  class StdReciprocalSpaceASU_3bm1 : public StdReciprocalSpaceASU {
-    public:
-      virtual tables::MatrixGroup::Code LaueGroupCode() const {
-        return tables::MatrixGroup::MGC_3bm1;
-      }
-      virtual bool isInASU(const Miller::Index& H) const {
-        return (H[0]>=H[1] && H[1]>=0 && (H[0]>H[1] || H[2]>=0));
-      }
-      virtual const char* representation() const {
-        return "h>=k and k>=0 and (h>k or l>=0)";
-      }
-      virtual const Miller::Vec3& getCutParameters() const {
-        static const Miller::Vec3 result = {0, 0, -1};
-        return result;
-      }
-  };
-  class StdReciprocalSpaceASU_6_m : public StdReciprocalSpaceASU {
-    public:
-      virtual tables::MatrixGroup::Code LaueGroupCode() const {
-        return tables::MatrixGroup::MGC_6_m;
-      }
-      virtual bool isInASU(const Miller::Index& H) const {
-        return (H[2]>=0 && ((H[0]>=0 && H[1]>0) || (H[0]==0 && H[1]==0)));
-      }
-      virtual const char* representation() const {
-        return "l>=0 and ((h>=0 and k>0) or (h=0 and k=0))";
-      }
-      virtual const Miller::Vec3& getCutParameters() const {
-        static const Miller::Vec3 result = {0, 0, 0};
-        return result;
-      }
-  };
-  class StdReciprocalSpaceASU_6_mmm : public StdReciprocalSpaceASU {
-    public:
-      virtual tables::MatrixGroup::Code LaueGroupCode() const {
-        return tables::MatrixGroup::MGC_6_mmm;
-      }
-      virtual bool isInASU(const Miller::Index& H) const {
-        return (H[0]>=H[1] && H[1]>=0 && H[2]>=0);
-      }
-      virtual const char* representation() const {
-        return "h>=k and k>=0 and l>=0";
-      }
-      virtual const Miller::Vec3& getCutParameters() const {
-        static const Miller::Vec3 result = {0, 0, 0};
-        return result;
-      }
-  };
-  class StdReciprocalSpaceASU_m3b : public StdReciprocalSpaceASU {
-    public:
-      virtual tables::MatrixGroup::Code LaueGroupCode() const {
-        return tables::MatrixGroup::MGC_m3b;
-      }
-      virtual bool isInASU(const Miller::Index& H) const {
-        return
+  namespace detail {
+
+    class StdReciprocalSpaceASU_1b : public StdReciprocalSpaceASU {
+      public:
+        virtual tables::MatrixGroup::Code LaueGroupCode() const {
+          return tables::MatrixGroup::MGC_1b;
+        }
+        virtual bool isInASU(const Miller::Index& H) const {
+          return (H[2]>0 || (H[2]==0 && (H[0]>0 || (H[0]==0 && H[1]>=0))));
+        }
+        virtual const char* representation() const {
+          return "l>0 or (l==0 and (h>0 or (h==0 and k>=0)))";
+        }
+        virtual const Miller::Vec3& getCutParameters() const {
+          static const Miller::Vec3 result = {-1, -1, 0};
+          return result;
+        }
+    };
+    class StdReciprocalSpaceASU_2_m : public StdReciprocalSpaceASU {
+      public:
+        virtual tables::MatrixGroup::Code LaueGroupCode() const {
+          return tables::MatrixGroup::MGC_2_m;
+        }
+        virtual bool isInASU(const Miller::Index& H) const {
+          return (H[1]>=0 && (H[2]>0 || (H[2]==0 && H[0]>=0)));
+        }
+        virtual const char* representation() const {
+          return "k>=0 and (l>0 or (l=0 and h>=0))";
+        }
+        virtual const Miller::Vec3& getCutParameters() const {
+          static const Miller::Vec3 result = {-1, 0, 0};
+          return result;
+        }
+    };
+    class StdReciprocalSpaceASU_mmm : public StdReciprocalSpaceASU {
+      public:
+        virtual tables::MatrixGroup::Code LaueGroupCode() const {
+          return tables::MatrixGroup::MGC_mmm;
+        }
+        virtual bool isInASU(const Miller::Index& H) const {
+          return (H[0]>=0 && H[1]>=0 && H[2]>=0);
+        }
+        virtual const char* representation() const {
+          return "h>=0 and k>=0 and l>=0";
+        }
+        virtual const Miller::Vec3& getCutParameters() const {
+          static const Miller::Vec3 result = {0, 0, 0};
+          return result;
+        }
+    };
+    class StdReciprocalSpaceASU_4_m : public StdReciprocalSpaceASU {
+      public:
+        virtual tables::MatrixGroup::Code LaueGroupCode() const {
+          return tables::MatrixGroup::MGC_4_m;
+        }
+        virtual bool isInASU(const Miller::Index& H) const {
+          return (H[2]>=0 && ((H[0]>=0 && H[1]>0) || (H[0]==0 && H[1]==0)));
+        }
+        virtual const char* representation() const {
+          return "l>=0 and ((h>=0 and k>0) or (h=0 and k=0))";
+        }
+        virtual const Miller::Vec3& getCutParameters() const {
+          static const Miller::Vec3 result = {0, 0, 0};
+          return result;
+        }
+    };
+    class StdReciprocalSpaceASU_4_mmm : public StdReciprocalSpaceASU {
+      public:
+        virtual tables::MatrixGroup::Code LaueGroupCode() const {
+          return tables::MatrixGroup::MGC_4_mmm;
+        }
+        virtual bool isInASU(const Miller::Index& H) const {
+          return (H[0]>=H[1] && H[1]>=0 && H[2]>=0);
+        }
+        virtual const char* representation() const {
+          return "h>=k and k>=0 and l>=0";
+        }
+        virtual const Miller::Vec3& getCutParameters() const {
+          static const Miller::Vec3 result = {0, 0, 0};
+          return result;
+        }
+    };
+    class StdReciprocalSpaceASU_3b : public StdReciprocalSpaceASU {
+      public:
+        virtual tables::MatrixGroup::Code LaueGroupCode() const {
+          return tables::MatrixGroup::MGC_3b;
+        }
+        virtual bool isInASU(const Miller::Index& H) const {
+          return (H[0]>=0 && H[1]>0) || (H[0]==0 && H[1]==0 && H[2]>=0);
+        }
+        virtual const char* representation() const {
+          return "(h>=0 and k>0) or (h=0 and k=0 and l>=0)";
+        }
+        virtual const Miller::Vec3& getCutParameters() const {
+          static const Miller::Vec3 result = {0, 0, -1};
+          return result;
+        }
+    };
+    class StdReciprocalSpaceASU_3b1m : public StdReciprocalSpaceASU {
+      public:
+        virtual tables::MatrixGroup::Code LaueGroupCode() const {
+          return tables::MatrixGroup::MGC_3b1m;
+        }
+        virtual bool isInASU(const Miller::Index& H) const {
+          return (H[0]>=H[1] && H[1]>=0 && (H[1]>0 || H[2]>=0));
+        }
+        virtual const char* representation() const {
+          return "h>=k and k>=0 and (k>0 or l>=0)";
+        }
+        virtual const Miller::Vec3& getCutParameters() const {
+          static const Miller::Vec3 result = {0, 0, -1};
+          return result;
+        }
+    };
+    class StdReciprocalSpaceASU_3bm1 : public StdReciprocalSpaceASU {
+      public:
+        virtual tables::MatrixGroup::Code LaueGroupCode() const {
+          return tables::MatrixGroup::MGC_3bm1;
+        }
+        virtual bool isInASU(const Miller::Index& H) const {
+          return (H[0]>=H[1] && H[1]>=0 && (H[0]>H[1] || H[2]>=0));
+        }
+        virtual const char* representation() const {
+          return "h>=k and k>=0 and (h>k or l>=0)";
+        }
+        virtual const Miller::Vec3& getCutParameters() const {
+          static const Miller::Vec3 result = {0, 0, -1};
+          return result;
+        }
+    };
+    class StdReciprocalSpaceASU_6_m : public StdReciprocalSpaceASU {
+      public:
+        virtual tables::MatrixGroup::Code LaueGroupCode() const {
+          return tables::MatrixGroup::MGC_6_m;
+        }
+        virtual bool isInASU(const Miller::Index& H) const {
+          return (H[2]>=0 && ((H[0]>=0 && H[1]>0) || (H[0]==0 && H[1]==0)));
+        }
+        virtual const char* representation() const {
+          return "l>=0 and ((h>=0 and k>0) or (h=0 and k=0))";
+        }
+        virtual const Miller::Vec3& getCutParameters() const {
+          static const Miller::Vec3 result = {0, 0, 0};
+          return result;
+        }
+    };
+    class StdReciprocalSpaceASU_6_mmm : public StdReciprocalSpaceASU {
+      public:
+        virtual tables::MatrixGroup::Code LaueGroupCode() const {
+          return tables::MatrixGroup::MGC_6_mmm;
+        }
+        virtual bool isInASU(const Miller::Index& H) const {
+          return (H[0]>=H[1] && H[1]>=0 && H[2]>=0);
+        }
+        virtual const char* representation() const {
+          return "h>=k and k>=0 and l>=0";
+        }
+        virtual const Miller::Vec3& getCutParameters() const {
+          static const Miller::Vec3 result = {0, 0, 0};
+          return result;
+        }
+    };
+    class StdReciprocalSpaceASU_m3b : public StdReciprocalSpaceASU {
+      public:
+        virtual tables::MatrixGroup::Code LaueGroupCode() const {
+          return tables::MatrixGroup::MGC_m3b;
+        }
+        virtual bool isInASU(const Miller::Index& H) const {
+          return
         (H[0]>=0 && ((H[2]>=H[0] && H[1]>H[0]) || (H[2]==H[0] && H[1]==H[0])));
-      }
-      virtual const char* representation() const {
-        return "h>=0 and ((l>=h and k>h) or (l=h and k=h))";
-      }
-      virtual const Miller::Vec3& getCutParameters() const {
-        static const Miller::Vec3 result = {0, 0, 0};
-        return result;
-      }
-  };
-  class StdReciprocalSpaceASU_m3bm: public StdReciprocalSpaceASU {
-    public:
-      virtual tables::MatrixGroup::Code LaueGroupCode() const {
-        return tables::MatrixGroup::MGC_m3bm;
-      }
-      virtual bool isInASU(const Miller::Index& H) const {
-        return (H[1]>=H[2] && H[2]>=H[0] && H[0]>=0);
-      }
-      virtual const char* representation() const {
-        return "k>=l and l>=h and h>=0";
-      }
-      virtual const Miller::Vec3& getCutParameters() const {
-        static const Miller::Vec3 result = {0, 0, 0};
-        return result;
-      }
-  };
+        }
+        virtual const char* representation() const {
+          return "h>=0 and ((l>=h and k>h) or (l=h and k=h))";
+        }
+        virtual const Miller::Vec3& getCutParameters() const {
+          static const Miller::Vec3 result = {0, 0, 0};
+          return result;
+        }
+    };
+    class StdReciprocalSpaceASU_m3bm: public StdReciprocalSpaceASU {
+      public:
+        virtual tables::MatrixGroup::Code LaueGroupCode() const {
+          return tables::MatrixGroup::MGC_m3bm;
+        }
+        virtual bool isInASU(const Miller::Index& H) const {
+          return (H[1]>=H[2] && H[2]>=H[0] && H[0]>=0);
+        }
+        virtual const char* representation() const {
+          return "k>=l and l>=h and h>=0";
+        }
+        virtual const Miller::Vec3& getCutParameters() const {
+          static const Miller::Vec3 result = {0, 0, 0};
+          return result;
+        }
+    };
+
+    static const StdReciprocalSpaceASU_1b    StdASU_1b =
+                 StdReciprocalSpaceASU_1b();
+    static const StdReciprocalSpaceASU_2_m   StdASU_2_m =
+                 StdReciprocalSpaceASU_2_m();
+    static const StdReciprocalSpaceASU_mmm   StdASU_mmm =
+                 StdReciprocalSpaceASU_mmm();
+    static const StdReciprocalSpaceASU_4_m   StdASU_4_m =
+                 StdReciprocalSpaceASU_4_m();
+    static const StdReciprocalSpaceASU_4_mmm StdASU_4_mmm =
+                 StdReciprocalSpaceASU_4_mmm();
+    static const StdReciprocalSpaceASU_3b    StdASU_3b =
+                 StdReciprocalSpaceASU_3b();
+    static const StdReciprocalSpaceASU_3b1m  StdASU_3b1m =
+                 StdReciprocalSpaceASU_3b1m();
+    static const StdReciprocalSpaceASU_3bm1  StdASU_3bm1 =
+                 StdReciprocalSpaceASU_3bm1();
+    static const StdReciprocalSpaceASU_6_m   StdASU_6_m =
+                 StdReciprocalSpaceASU_6_m();
+    static const StdReciprocalSpaceASU_6_mmm StdASU_6_mmm =
+                 StdReciprocalSpaceASU_6_mmm();
+    static const StdReciprocalSpaceASU_m3b   StdASU_m3b =
+                 StdReciprocalSpaceASU_m3b();
+    static const StdReciprocalSpaceASU_m3bm  StdASU_m3bm =
+                 StdReciprocalSpaceASU_m3bm();
+
+    static const StdReciprocalSpaceASU* TableStdReciprocalSpaceASU[] = {
+      &StdASU_1b,
+      &StdASU_2_m,
+      &StdASU_mmm,
+      &StdASU_4_m, &StdASU_4_mmm,
+      &StdASU_3b, &StdASU_3b1m, &StdASU_3bm1,
+      &StdASU_6_m, &StdASU_6_mmm,
+      &StdASU_m3b, &StdASU_m3bm,
+      0,
+    };
+
+  } // namespace detail
 
   ReciprocalSpaceASU::ReciprocalSpaceASU(const SpaceGroupType& SgType)
-    : m_isStdASU(true), m_StdASU(), m_CBOp()
+    : m_CBOp(), m_isStdASU(true), m_StdASU()
   {
     m_CBOp = SgType.CBOp();
     m_isStdASU = m_CBOp.M().isUnit();
     using namespace tables::MatrixGroup;
     Code MGC = tables::ReferenceSettings::MatrixGroupCodes[SgType.SgNumber()];
     Code LG_MGC = MGC.LaueGroupType();
-    StdReciprocalSpaceASU* p;
-    if      (LG_MGC == MGC_1b)    p = new StdReciprocalSpaceASU_1b();
-    else if (LG_MGC == MGC_2_m)   p = new StdReciprocalSpaceASU_2_m();
-    else if (LG_MGC == MGC_mmm)   p = new StdReciprocalSpaceASU_mmm();
-    else if (LG_MGC == MGC_4_m)   p = new StdReciprocalSpaceASU_4_m();
-    else if (LG_MGC == MGC_4_mmm) p = new StdReciprocalSpaceASU_4_mmm();
-    else if (LG_MGC == MGC_3b)    p = new StdReciprocalSpaceASU_3b();
-    else if (LG_MGC == MGC_3bm) {
+    if (LG_MGC == MGC_3bm) {
      if (   MGC == MGC_312
          || MGC == MGC_31m
-         || MGC == MGC_3b1m) p = new StdReciprocalSpaceASU_3b1m();
-     else                    p = new StdReciprocalSpaceASU_3bm1();
+         || MGC == MGC_3b1m) LG_MGC = MGC_3b1m;
+     else                    LG_MGC = MGC_3bm1;
     }
-    else if (LG_MGC == MGC_6_m)   p = new StdReciprocalSpaceASU_6_m();
-    else if (LG_MGC == MGC_6_mmm) p = new StdReciprocalSpaceASU_6_mmm();
-    else if (LG_MGC == MGC_m3b)   p = new StdReciprocalSpaceASU_m3b();
-    else if (LG_MGC == MGC_m3bm)  p = new StdReciprocalSpaceASU_m3bm();
-    else throw cctbx_internal_error();
-    m_StdASU = boost::shared_ptr<StdReciprocalSpaceASU>(p);
+    for(std::size_t i=0;; i++) {
+      m_StdASU = detail::TableStdReciprocalSpaceASU[i];
+      if (m_StdASU == 0) throw cctbx_internal_error();
+      if (m_StdASU->LaueGroupCode() == LG_MGC) break;
+    }
   }
 
   class MillerIndexGenerator
