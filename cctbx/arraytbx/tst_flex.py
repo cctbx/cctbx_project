@@ -278,6 +278,7 @@ def exercise_arith_inplace_operators():
 def exercise_functions():
   a = flex.int((-1, 0, 1))
   assert tuple(flex.abs(a)) == (1, 0, 1)
+  assert tuple(flex.pow2(a)) == (1, 0, 1)
   a = flex.double((1, 0, 3, 2))
   b = flex.double((4, 5, 6))
   assert flex.min_index(a) == 1
