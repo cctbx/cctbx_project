@@ -17,8 +17,8 @@ lib_scitbx_boost_python_sources = [
   "#scitbx/array_family/boost_python/tiny_conversions.cpp",
   "#scitbx/array_family/boost_python/small_conversions.cpp",
 ]
-if (env_etc.is_win32): builder = env.StaticLibrary
-else:                  builder = env.SharedLibrary
+if (env_etc.static_libraries): builder = env.StaticLibrary
+else:                          builder = env.SharedLibrary
 lib_scitbx_boost_python_node = builder(
     target="scitbx_boost_python",
     source=lib_scitbx_boost_python_sources)
