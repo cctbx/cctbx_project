@@ -481,7 +481,13 @@ class pair_proxies:
       assert shell_asu_tables is not None
       assert len(shell_asu_tables) > 0
       unit_cell = shell_asu_tables[0].asu_mappings().unit_cell()
-      assert nonbonded_distance_cutoff_plus_buffer**2 <= unit_cell.shortest_vector_sq()
+      if (  nonbonded_distance_cutoff_plus_buffer**2
+          > unit_cell.shortest_vector_sq()):
+        raise RuntimeError(
+          "Nonbonded distance cutoff + buffer"
+          " > shortest lattice translation vector: %.6g > %.6g" % (
+            nonbonded_distance_cutoff_plus_buffer,
+            unit_cell.shortest_vector_sq()**0.5))
       self.nonbonded_proxies = nonbonded_sorted_asu_proxies(
         model_indices=model_indices,
         conformer_indices=conformer_indices,
