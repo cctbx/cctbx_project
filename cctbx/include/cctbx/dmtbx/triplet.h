@@ -45,14 +45,12 @@ namespace cctbx { namespace dmtbx {
       return result;
     }
 
-    bool less(triplet_phase_relation const& other, bool eval_ht) const
+    bool operator<(triplet_phase_relation const& other) const
     {
-      return true;
       if (ik < other.ik) return true;
       if (ik > other.ik) return false;
       if (ihmk < other.ihmk) return true;
       if (ihmk > other.ihmk) return false;
-      if (!eval_ht) return false;
       if (asym_k.HT() < other.asym_k.HT()) return true;
       if (asym_k.HT() > other.asym_k.HT()) return false;
       if (!asym_k.FriedelFlag() && other.asym_k.FriedelFlag()) return true;
@@ -62,21 +60,6 @@ namespace cctbx { namespace dmtbx {
       if (!asym_hmk.FriedelFlag() && other.asym_hmk.FriedelFlag()) return true;
       return false;
     }
-
-    bool operator<(triplet_phase_relation const& other) const
-    {
-      return less(other, true);
-    }
-
-    struct less_no_eval_ht
-    {
-      bool operator()(
-        triplet_phase_relation const& lhs,
-        triplet_phase_relation const& rhs)
-      {
-        return lhs.less(rhs, false);
-      }
-    };
   };
 
   template <typename FloatType>
@@ -219,31 +202,6 @@ namespace cctbx { namespace dmtbx {
                << std::endl;
           }
         }
-      }
-
-      triplet_invariants
-      unique_triplets()
-      {
-        typedef
-          std::map<
-            triplet_phase_relation,
-            std::size_t,
-            triplet_phase_relation::less_no_eval_ht> umap_type;
-        triplet_invariants result;
-        list_of_tpr_maps_type::const_iterator li = list_of_tpr_maps_.begin();
-        for(std::size_t i=0;i<list_of_tpr_maps_.size();i++,li++) {
-          umap_type umap;
-          for(tpr_map_type::const_iterator
-              lij=li->begin();lij!=li->end();lij++) {
-            umap[lij->first] += lij->second;
-          }
-          tpr_map_type new_map;
-          for(umap_type::const_iterator ui=umap.begin();ui!=umap.end();ui++) {
-            new_map[ui->first] = ui->second;
-          }
-          result.list_of_tpr_maps_.append(new_map);
-        }
-        return result;
       }
 
       af::shared<FloatType>

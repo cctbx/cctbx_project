@@ -88,9 +88,6 @@ namespace {
       &dmtbx::triplet_invariants<double>::n_relations,
                                          "n_relations");
     py_triplet_invariants.def(
-      &dmtbx::triplet_invariants<double>::unique_triplets,
-                                         "unique_triplets");
-    py_triplet_invariants.def(
       &dmtbx::triplet_invariants<double>::apply_tangent_formula,
                                          "apply_tangent_formula");
     py_triplet_invariants.def(

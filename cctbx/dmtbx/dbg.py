@@ -96,18 +96,14 @@ def square_emap(xtal, e000, p1_miller_indices,
 def test_triplet_invariants(sginfo, miller_indices_h, e_values, phases,
                             use_tangent_formula, verbose):
   tprs = dmtbx.triplet_invariants(sginfo, miller_indices_h, e_values)
-  utprs = tprs.unique_triplets()
   print "number_of_weighted_triplets:", \
-       tprs.number_of_weighted_triplets(), \
-       utprs.number_of_weighted_triplets()
+       tprs.number_of_weighted_triplets()
   print "total_number_of_triplets:", \
-       tprs.total_number_of_triplets(), \
-       utprs.total_number_of_triplets()
-  print "average_number_of_triplets_per_reflection: %.2f %.2f" % (
-       tprs.average_number_of_triplets_per_reflection(),
-       utprs.average_number_of_triplets_per_reflection())
+       tprs.total_number_of_triplets()
+  print "average_number_of_triplets_per_reflection: %.2f" % (
+       tprs.average_number_of_triplets_per_reflection(),)
   means = []
-  for t in (tprs, utprs):
+  for t in (tprs,):
     mean_weighted_phase_error = []
     for ignore_weights in (0, 1):
       if (use_tangent_formula):
@@ -124,9 +120,6 @@ def test_triplet_invariants(sginfo, miller_indices_h, e_values, phases,
       mean_weighted_phase_error[1],
       mean_weighted_phase_error[1] - mean_weighted_phase_error[0])
     means.append(mean_weighted_phase_error)
-  print "        delta phase error: %.2f %.2f" % (
-    means[1][0] - means[0][0],
-    means[1][1] - means[0][1])
   if (0 or verbose):
     tprs.dump_triplets(miller_indices_h)
   return tprs
@@ -137,7 +130,7 @@ def exercise(SgInfo,
              e_min=1.8,
              exercise_triplets=0,
              exercise_squaring=0,
-             use_tangent_formula=0,
+             use_tangent_formula=1,
              verbose=0):
   elements = ["const"] * number_of_point_atoms
   print "random.getstate():", debug_utils.random.getstate()
@@ -149,7 +142,8 @@ def exercise(SgInfo,
     min_distance=1.5,
     general_positions_only=0,
     no_random_u=1)
-  print xtal.UnitCell
+  print "Unit cell:", xtal.UnitCell
+  print "Space group:", xtal.SgInfo.BuildLookupSymbol()
   debug_utils.print_sites(xtal)
   MillerIndices = xutils.build_miller_indices(xtal, friedel_flag=1,d_min=d_min)
   if (0):
