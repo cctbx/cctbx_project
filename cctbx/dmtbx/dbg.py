@@ -48,15 +48,16 @@ def square_emap(xtal, p1_miller_indices, miller_indices, e_values, phases):
     print "  max:", index_span.max()
     print "  abs_range:", index_span.abs_range()
     print "  map_grid:", index_span.map_grid()
-    print
-  grid_logical = index_span.map_grid()
-  #grid_logical = (47, 47, 76)
+  grid_logical = list(index_span.map_grid())
+  if (grid_logical[2] % 2): grid_logical[2] -= 1
+  grid_logical = [n * 1 for n in grid_logical]
   print "grid_logical:", grid_logical
   rfft = fftbx.real_to_complex_3d(grid_logical)
   friedel_flag = 1
   old_e_complex = shared.polar_rad(e_values, phases)
   n_complex = rfft.Ncomplex()
   print "n_complex:", n_complex
+  print
   conjugate = 0
   map = sftbx.structure_factor_map(
     xtal.SgOps, friedel_flag, miller_indices,
@@ -67,7 +68,7 @@ def square_emap(xtal, p1_miller_indices, miller_indices, e_values, phases):
   new_e_complex = sftbx.collect_structure_factors(
     friedel_flag, miller_indices, map, n_complex, conjugate)
   new_phases = shared.arg_rad(new_e_complex)
-  if (1):
+  if (0):
     for i in xrange(miller_indices.size()):
       print miller_indices[i], "%.2f %.2f" % (
         phases[i]*180/math.pi,
