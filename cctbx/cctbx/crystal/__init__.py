@@ -237,8 +237,11 @@ class special_position_settings(symmetry):
       self.min_distance_sym_equiv(),
       self.assert_min_distance_sym_equiv())
 
+  def sym_equiv_sites(self, site):
+    return sgtbx.sym_equiv_sites(self.site_symmetry(site))
+
   def site_symmetry_table(self, sites_frac=None, sites_cart=None):
-    assert [sites_frac, sites_cart].count(None) == 1
+    assert (sites_frac is None) != (sites_cart is None)
     if (sites_frac is None):
       sites_frac = self.unit_cell().fractionalization_matrix() * sites_cart
     result = sgtbx.site_symmetry_table()
@@ -250,8 +253,25 @@ class special_position_settings(symmetry):
       assert_min_distance_sym_equiv=self.assert_min_distance_sym_equiv())
     return result
 
-  def sym_equiv_sites(self, site):
-    return sgtbx.sym_equiv_sites(self.site_symmetry(site))
+  def asu_mappings(self,
+        buffer_thickness,
+        sites_frac=None,
+        sites_cart=None,
+        site_symmetry_table=None,
+        is_inside_epsilon=None):
+    asu_mappings = symmetry.asu_mappings(self,
+      buffer_thickness=buffer_thickness,
+      is_inside_epsilon=is_inside_epsilon)
+    if (sites_frac is not None or sites_cart is not None):
+      if (sites_frac is None):
+        sites_frac = self.unit_cell().fractionalization_matrix() * sites_cart
+        del sites_cart
+      if (site_symmetry_table is None):
+        site_symmetry_table = self.site_symmetry_table(sites_frac=sites_frac)
+      asu_mappings.process_sites_frac(
+        original_sites=sites_frac,
+        site_symmetry_table=site_symmetry_table)
+    return asu_mappings
 
   def change_basis(self, cb_op):
     return special_position_settings(
