@@ -372,6 +372,13 @@ class symmetrized_sites(crystal_symmetry):
   def __getitem__(self, key):
     return self.Sites[key]
 
+  def as_emma_model(self):
+    from cctbx import euclidean_model_matching as emma
+    positions = []
+    for site in self.Sites:
+      positions.append(emma.labeled_position(site.Label(), site.Coordinates()))
+    return emma.model(self, positions)
+
 def build_miller_set(xsym, friedel_flag, d_min):
   return miller_set(
     xsym, miller.BuildIndices(
