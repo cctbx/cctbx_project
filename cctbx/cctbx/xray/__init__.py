@@ -208,6 +208,16 @@ class structure(crystal.special_position_settings):
       special_position_settings=self,
       scatterers=shifted_scatterers)
 
+  def sort(self, by_value="occupancy", reverse=00000):
+    assert by_value in ("occupancy",)
+    assert reverse in (00000, 0001)
+    p = flex.sort_permutation(
+      self.scatterers().extract_occupancies(),
+      reverse)
+    return structure(
+      special_position_settings=self,
+      scatterers=self.scatterers().shuffle(p))
+
   def as_emma_model(self):
     from cctbx import euclidean_model_matching as emma
     positions = []
