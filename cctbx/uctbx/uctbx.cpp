@@ -264,9 +264,9 @@ namespace cctbx { namespace uctbx {
     if (shortest_vector_sq_ < 0.) {
       af::double6 gruber_params = fast_minimum_reduction<>(*this)
         .as_gruber_matrix();
-      shortest_vector_sq_ = 0.;
-      for(std::size_t i=0;i<3;i++) {
-        scitbx::math::update_max(shortest_vector_sq_, gruber_params[i]);
+      shortest_vector_sq_ = gruber_params[0];
+      for(std::size_t i=1;i<3;i++) {
+        scitbx::math::update_min(shortest_vector_sq_, gruber_params[i]);
       }
     }
     return shortest_vector_sq_;

@@ -74,7 +74,7 @@ def exercise_basic():
   u = uctbx.unit_cell((2,3,4))
   assert approx_equal(u.volume(), 2*3*4)
   assert approx_equal(u.longest_vector_sq(), 2*2+3*3+4*4)
-  assert approx_equal(u.shortest_vector_sq(), 4*4)
+  assert approx_equal(u.shortest_vector_sq(), 2*2)
   u = uctbx.unit_cell(p)
   assert approx_equal(u.volume(), 22.04006625)
   for alpha in xrange(70,121,10):
