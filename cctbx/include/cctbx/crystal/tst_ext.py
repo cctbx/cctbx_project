@@ -568,6 +568,43 @@ Si(2)
   Si(2)
     y,-x+y,-z
 """
+  #
+  sites_cart = flex.vec3_double([(0,0,0), (2,0,0), (0,3,0)])
+  asu_mappings = crystal.direct_space_asu.non_crystallographic_asu_mappings(
+    sites_cart=sites_cart)
+  bond_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
+  bond_asu_table.add_all_pairs(distance_cutoff=3)
+  f = StringIO()
+  bond_asu_table.show(f=f)
+  assert f.getvalue() == """\
+i_seq: 0
+  j_seq: 1
+    j_syms: [0]
+  j_seq: 2
+    j_syms: [0]
+i_seq: 1
+  j_seq: 0
+    j_syms: [0]
+i_seq: 2
+  j_seq: 0
+    j_syms: [0]
+"""
+  sym_table = bond_asu_table.extract_pair_sym_table()
+  f = StringIO()
+  sym_table.show(f=f)
+  assert f.getvalue() == """\
+i_seq: 0
+  j_seq: 1
+    x,y,z
+  j_seq: 2
+    x,y,z
+i_seq: 1
+i_seq: 2
+"""
+  distances = crystal.get_distances(
+    pair_sym_table=sym_table,
+    sites_cart=sites_cart)
+  assert approx_equal(distances, [2,3])
 
 def exercise_coordination_sequences_simple():
   structure = trial_structure()
