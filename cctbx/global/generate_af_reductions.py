@@ -118,7 +118,7 @@ def one_type(subs):
 
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 
-#include <cctbx/array_family/reductions.h>
+#include <cctbx/array_family/ref_reductions.h>
 #include <cctbx/array_family/${array_type_plain}.h>
 
 namespace cctbx { namespace af {

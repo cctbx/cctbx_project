@@ -28,7 +28,6 @@
 #include <cctbx/uctbx.h>
 #include <cctbx/adptbx.h>
 #include <cctbx/array_family/shared.h>
-#include <cctbx/array_family/reductions.h> // XXX new
 
 namespace cctbx { namespace sgtbx {
 

@@ -13,8 +13,7 @@
 #define CCTBX_MATH_ARRAY_UTILS_H
 
 #include <cctbx/fixes/cmath>
-#include <cctbx/array_family/reductions.h>
-#include <cctbx/array_family/shared.h>
+#include <cctbx/array_family/ref_reductions.h>
 
 namespace cctbx { namespace math {
 
@@ -23,24 +22,21 @@ namespace cctbx { namespace math {
   {
     public:
       array_statistics() {}
-      array_statistics(const af::const_ref<FloatType>& a)
+      array_statistics(af::const_ref<FloatType> const& a)
       {
         m_min = af::min(a);
         m_max = af::max(a);
         m_mean = af::mean(a);
-        af::shared<FloatType> a2(a.begin(), a.end());
-        af::ref<FloatType> a2r = a2.ref();
-        for(std::size_t i=0;i<a2r.size();i++) a2r[i] *= a2r[i];
-        m_mean2 = af::mean(a2r);
+        m_mean2 = af::mean_sq(a);
         m_sigma = m_mean2 - m_mean * m_mean;
         if (m_sigma < FloatType(0)) m_sigma = 0;
         m_sigma = std::sqrt(m_sigma);
       }
-      const FloatType& min() const { return m_min; }
-      const FloatType& max() const { return m_max; }
-      const FloatType& mean() const { return m_mean; }
-      const FloatType& mean2() const { return m_mean2; }
-      const FloatType& sigma() const { return m_sigma; }
+      FloatType const& min() const { return m_min; }
+      FloatType const& max() const { return m_max; }
+      FloatType const& mean() const { return m_mean; }
+      FloatType const& mean2() const { return m_mean2; }
+      FloatType const& sigma() const { return m_sigma; }
     protected:
       FloatType m_min;
       FloatType m_max;
