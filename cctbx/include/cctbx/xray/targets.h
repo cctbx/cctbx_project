@@ -711,7 +711,7 @@ std::complex<double> mlhl_d_target_dfcalc_one_h(
             typename AlphaValueType   = FobsValueType,
             typename BetaValueType    = FobsValueType,
             typename EpsilonValueType = int,
-            typename CentricValueType = EpsilonValueType,
+            typename CentricValueType = bool,
             typename FlagValueType    = bool,
             typename HLValueType      = cctbx::hendrickson_lattman<FobsValueType> >
   class maximum_likelihood_criterion_hl {
@@ -785,7 +785,7 @@ std::complex<double> mlhl_d_target_dfcalc_one_h(
       double b  = beta[i_h];
       int    e  = eps[i_h];
       // acentric: c = 0, centric: c = 1
-      int    c  = cs[i_h];
+      int    c  = static_cast<int>(cs[i_h]);
       double tmp1 = mlhl_target_one_h(fo,
                                    fc,
                                    pc,

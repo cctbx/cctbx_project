@@ -325,7 +325,7 @@ class maximum_likelihood_criterion_hl:
         alpha,
         beta,
         f_calc.epsilons().data(),
-        flex.int(flex.to_list(f_calc.centric_flags().data())),
+        f_calc.centric_flags().data(),
         compute_derivatives,
         self.abcd(),
         self.step_for_integration())
