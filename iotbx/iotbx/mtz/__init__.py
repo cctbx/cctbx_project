@@ -11,6 +11,7 @@ from cctbx import crystal
 from cctbx import sgtbx
 from cctbx import uctbx
 from scitbx.python_utils.misc import adopt_init_args
+from scitbx.python_utils.str_utils import overwrite_at
 
 column_type_legend_source = \
   "http://www.ccp4.ac.uk/dist/html/mtzlib.html#fileformat"
@@ -77,8 +78,9 @@ class Mtz (ext.Mtz):
   def group_columns(self, crystal_symmetry, dataset):
     known_mtz_column_types = "".join(column_type_legend.keys())
     assert len(known_mtz_column_types) == 16 # safety guard
-    all_column_types = dataset.all_column_types()
     all_column_labels = dataset.all_column_labels()
+    all_column_types = mend_non_conforming_anomalous_column_types(
+      dataset.all_column_types(), all_column_labels)
     groups = []
     i_column = -1
     while 1:
@@ -197,13 +199,6 @@ class Mtz (ext.Mtz):
           data=self.valid_values(l0)))
     return groups
 
-def _Dataset_all_column_types(self):
-  result = ""
-  for i_column in xrange(self.ncolumns()):
-    result += self.getColumn(i_column).type()
-  return result
-
-
 def _Crystal_get_unit_cell(self):
   result = self.UnitCell()
   if (result.is_similar_to(uctbx.unit_cell((1,1,1,90,90,90)))):
@@ -211,6 +206,12 @@ def _Crystal_get_unit_cell(self):
   return result
 
 Crystal.get_unit_cell = _Crystal_get_unit_cell
+
+def _Dataset_all_column_types(self):
+  result = ""
+  for i_column in xrange(self.ncolumns()):
+    result += self.getColumn(i_column).type()
+  return result
 
 def _Dataset_all_column_labels(self):
   result = []
@@ -243,3 +244,54 @@ def column_group(crystal_symmetry, primary_column_type, labels,
 for v in writer.__dict__.values():
   if (hasattr(v, "func_name")):
     setattr(MtzWriter, v.func_name, v)
+
+def mend_non_conforming_anomalous_column_types(all_types, all_labels):
+
+  replacements = {
+    "JQJQ": "KMKM",
+    "FQFQ": "GLGL",
+    "JJQQ": "KKMM",
+    "FFQQ": "GGLL",
+  }
+
+  def contains_one_of(label, patterns):
+    for pattern in patterns:
+      if (label.find(pattern) >= 0):
+        return 0001
+    return 00000
+
+  def are_anomalous_labels():
+    if (group_types[1] == "Q"):
+      permutation = ((0,1),(2,3))
+    else:
+      permutation = ((0,2),(1,3))
+    for offsets,patterns in zip(permutation, (("+", "PLUS"), ("-", "MINU"))):
+      for offs in offsets:
+        label = all_labels[i_group_start + offs].upper()
+        if (not contains_one_of(label, patterns)):
+          return 00000
+    return 0001
+
+  def find_group():
+    for group_types in replacements.keys():
+      i_group_start = all_types_x.find(group_types)
+      if (i_group_start >= 0):
+        return group_types, i_group_start
+    return None, None
+
+  if (0): # for debugging only
+    all_types = all_types.replace("GLGL", "FQFQ")
+    all_types = all_types.replace("KMKM", "JQJQ")
+
+  all_types_x = all_types
+  while 1:
+    group_types, i_group_start = find_group()
+    if (group_types is None):
+      break
+    if (are_anomalous_labels()):
+      replacement = replacements[group_types]
+      all_types = overwrite_at(all_types, i_group_start, replacement)
+    else:
+      replacement = "X"
+    all_types_x = overwrite_at(all_types_x, i_group_start, replacement)
+  return all_types
