@@ -37,6 +37,21 @@ namespace {
     }
   };
 
+  vec3<double>
+  time_eigensystem_real_symmetric(
+    sym_mat3<double> const& m, std::size_t n_repetitions)
+  {
+    SCITBX_ASSERT(n_repetitions % 2 == 0);
+    vec3<double> result(0,0,0);
+    for(std::size_t i=0;i<n_repetitions/2;i++) {
+      result += vec3<double>(
+        eigensystem::real_symmetric<>(m).values().begin());
+      result -= vec3<double>(
+        eigensystem::real_symmetric<>(m).values().begin());
+    }
+    return result / static_cast<double>(n_repetitions);
+  }
+
   void init_module()
   {
     using namespace boost::python;
@@ -58,6 +73,8 @@ namespace {
     wrap_golay();
     wrap_minimum_covering_sphere();
     wrap_principle_axes_of_inertia();
+
+    def("time_eigensystem_real_symmetric", time_eigensystem_real_symmetric);
   }
 
 }}}} // namespace scitbx::math::boost_python::<anonymous>

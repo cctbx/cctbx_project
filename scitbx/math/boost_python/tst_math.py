@@ -2,7 +2,7 @@ import scitbx.math
 from scitbx.math import euler_angles_as_matrix
 from scitbx.math import erf_verification, erf, erfc, erfcx
 from scitbx.math import bessel_i1_over_i0
-from scitbx.math import eigensystem
+from scitbx.math import eigensystem, time_eigensystem_real_symmetric
 from scitbx.math import gaussian
 from scitbx.math import golay_24_12_generator
 from scitbx.math import principle_axes_of_inertia
@@ -14,6 +14,7 @@ import pickle
 import StringIO
 import random
 import math
+import time
 import sys
 
 def exercise_floating_point_epsilon():
@@ -209,6 +210,14 @@ def exercise_eigensystem():
         mx = matrix_mul(m, n, n, x, n, 1)
         lx = [e*l for e in x]
         assert approx_equal(mx, lx)
+  m = (1.4573362052597449, 1.7361052947659894, 2.8065584999742659,
+       -0.5387293498219814, -0.018204949672480729, 0.44956507395617257)
+  n_repetitions = 100000
+  t0 = time.time()
+  v = time_eigensystem_real_symmetric(m, n_repetitions)
+  assert v == (0,0,0)
+  print "time_eigensystem_real_symmetric: %.3f micro seconds" % (
+    (time.time() - t0)/n_repetitions*1.e6)
 
 def gaussian_finite_gradient_dx_at_x(gaussian, x, eps=1.e-5):
   if (x == 0): return 0
