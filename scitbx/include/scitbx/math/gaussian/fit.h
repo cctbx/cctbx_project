@@ -139,7 +139,7 @@ namespace scitbx { namespace math { namespace gaussian {
           }
           sh_terms.push_back(term<FloatType>(sh_a, sh_b));
         }
-        if (this->use_c()) sh_c = shifts[j];
+        if (this->use_c()) sh_c = this->c_ + shifts[j];
         else               sh_c = 0;
         return fit(this->table_x_, this->table_y_, this->table_sigmas_,
                    base_t(sh_terms, sh_c, this->use_c()));

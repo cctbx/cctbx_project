@@ -12,6 +12,7 @@
 
 #include <scitbx/math/linear_regression.h>
 #include <scitbx/math/linear_correlation.h>
+#include <scitbx/math/gaussian/sum.h>
 #include <scitbx/sym_mat3.h>
 #include <scitbx/array_family/tiny_types.h>
 #include <scitbx/array_family/boost_python/c_grid_flex_conversions.h>
@@ -63,6 +64,8 @@ namespace {
     tuple_mapping_fixed_size<sym_mat3<double> >();
 
     tuple_mapping_fixed_capacity<flex_grid_default_index_type>();
+    tuple_mapping_fixed_capacity<
+      small<double, math::gaussian::sum<double>::max_n_terms> >();
   }
 
   struct linear_regression_core_wrappers
