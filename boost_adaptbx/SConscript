@@ -129,6 +129,8 @@ m1,m1,newtest
 m2,m2,newtest
 iterator,iterator_ext,iterator
 input_iterator,input_iterator,iterator
+crossmod_exception_a,crossmod_exception_a,crossmod_exception
+crossmod_exception_b,crossmod_exception_b,crossmod_exception
 """)
     Import("env_boost_python_ext")
     env = env_boost_python_ext.Copy()
