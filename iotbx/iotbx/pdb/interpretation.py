@@ -124,6 +124,7 @@ class stage_1:
     self.scale_matrix = [[None]*9,[None]*3]
     self.remark_3_records = []
     self.remark_290_records = []
+    self.remark_r_free_flags_md5_hexdigest = []
     self.ter_indices = flex.size_t()
     self.break_indices = flex.size_t()
     self.atom_attributes_list = []
@@ -161,6 +162,9 @@ class stage_1:
         self.remark_3_records.append(state.raw_record.rstrip())
       elif (state.raw_record.startswith("REMARK 290 ")):
         self.remark_290_records.append(state.raw_record.rstrip())
+      elif (state.raw_record.startswith("REMARK r_free_flags.md5.hexdigest ")):
+        self.remark_r_free_flags_md5_hexdigest.append(
+          state.raw_record.rstrip())
       elif (record_name == "MODEL "):
         model_serial = max(1, self.parse_record().serial)
         self.model_serial_list.append(model_serial)
