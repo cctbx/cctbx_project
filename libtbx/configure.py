@@ -152,8 +152,15 @@ def emit_SConstruct(env, libtbx_info):
   print >> f, 'assert norm(os.getcwd()) == norm(os.environ["LIBTBX_BUILD"])'
   print >> f, 'Repository(r"%s")' % (env.dist_root,)
   print >> f, 'SConscript("libtbx/SConscript")'
+  print >> f, '''\
+
+def use_SConscript_if_present(package_name):
+  dist = os.environ[package_name.upper() + "_DIST"]
+  if (os.path.isfile(dist + "/SConscript")):
+    SConscript(package_name + "/SConscript")
+'''
   for package_name in libtbx_info["package_names"]:
-    print >> f, 'SConscript("%s/SConscript")' % (package_name,)
+    print >> f, 'use_SConscript_if_present("%s")' % (package_name,)
   f.close()
 
 def run():
