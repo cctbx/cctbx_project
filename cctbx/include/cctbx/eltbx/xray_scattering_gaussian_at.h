@@ -33,6 +33,7 @@
         return at_stol_sq(d_star_sq / 4.);
       }
 
+      //! Analytical gradient of the scattering factor at the point d_star.
       double
       gradient_at_d_star(double d_star) const
       {
@@ -44,6 +45,7 @@
         return result;
       }
 
+      //! Analytical integral of the scattering factor from zero to d_star.
       double
       integral_at_d_star(double d_star) const
       {
