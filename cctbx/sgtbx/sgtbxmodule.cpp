@@ -318,18 +318,22 @@ namespace {
     return PR.isValidPhase_deg(phi, tolerance);
   }
 
-  double Miller_SymEquivIndex_Phase_rad(const Miller::SymEquivIndex& SEI,
-                                        double phi) {
-    return SEI.Phase_rad(phi);
+  double Miller_SymEquivIndex_phase_eq_rad(
+    const Miller::SymEquivIndex& SEI,
+    double phi_in)
+  {
+    return SEI.phase_eq_rad(phi_in);
   }
-  double Miller_SymEquivIndex_Phase_deg(const Miller::SymEquivIndex& SEI,
-                                        double phi) {
-    return SEI.Phase_deg(phi);
+  double Miller_SymEquivIndex_phase_eq_deg(
+    const Miller::SymEquivIndex& SEI,
+    double phi_in)
+  {
+    return SEI.phase_eq_deg(phi_in);
   }
   std::complex<double>
-  Miller_SymEquivIndex_ShiftPhase(const Miller::SymEquivIndex& SEI,
-                                  const std::complex<double>& F) {
-    return SEI.ShiftPhase(F);
+  Miller_SymEquivIndex_complex_eq(const Miller::SymEquivIndex& SEI,
+                                  const std::complex<double>& f_in) {
+    return SEI.complex_eq(f_in);
   }
 
   Miller::SymEquivIndex
@@ -499,18 +503,19 @@ namespace {
     return result;
   }
 
-  double Miller_IndexTableLayoutAdaptor_Phase_rad(
-    const Miller::IndexTableLayoutAdaptor& TLA, double phi) {
-    return TLA.Phase_rad(phi);
+  double Miller_IndexTableLayoutAdaptor_phase_eq_rad(
+    const Miller::IndexTableLayoutAdaptor& TLA, double phi_in) {
+    return TLA.phase_eq_rad(phi_in);
   }
-  double Miller_IndexTableLayoutAdaptor_Phase_deg(
-    const Miller::IndexTableLayoutAdaptor& TLA, double phi) {
-    return TLA.Phase_deg(phi);
+  double Miller_IndexTableLayoutAdaptor_phase_eq_deg(
+    const Miller::IndexTableLayoutAdaptor& TLA, double phi_in) {
+    return TLA.phase_eq_deg(phi_in);
   }
   std::complex<double>
-  Miller_IndexTableLayoutAdaptor_ShiftPhase(
-    const Miller::IndexTableLayoutAdaptor& TLA, const std::complex<double>& F){
-    return TLA.ShiftPhase(F);
+  Miller_IndexTableLayoutAdaptor_complex_eq(
+    const Miller::IndexTableLayoutAdaptor& TLA,
+    const std::complex<double>& f_in){
+    return TLA.complex_eq(f_in);
   }
 
   af::int3 StructureSeminvariant_refine_gridding_0(
@@ -760,9 +765,12 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
   py_Miller_SymEquivIndex.def(&Miller::SymEquivIndex::HR, "HR");
   py_Miller_SymEquivIndex.def(&Miller::SymEquivIndex::HT, "HT");
   py_Miller_SymEquivIndex.def(&Miller::SymEquivIndex::TBF, "TBF");
-  py_Miller_SymEquivIndex.def(Miller_SymEquivIndex_Phase_rad, "Phase_rad");
-  py_Miller_SymEquivIndex.def(Miller_SymEquivIndex_Phase_deg, "Phase_deg");
-  py_Miller_SymEquivIndex.def(Miller_SymEquivIndex_ShiftPhase, "ShiftPhase");
+  py_Miller_SymEquivIndex.def(
+    Miller_SymEquivIndex_phase_eq_rad, "phase_eq_rad");
+  py_Miller_SymEquivIndex.def(
+    Miller_SymEquivIndex_phase_eq_deg, "phase_eq_deg");
+  py_Miller_SymEquivIndex.def(
+    Miller_SymEquivIndex_complex_eq, "complex_eq");
 
   py_PhaseRestriction.def(constructor<>());
   py_PhaseRestriction.def(&PhaseRestriction::isCentric, "isCentric");
@@ -1057,11 +1065,11 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
   py_Miller_IndexTableLayoutAdaptor.def(
     &Miller::IndexTableLayoutAdaptor::iColumn, "iColumn");
   py_Miller_IndexTableLayoutAdaptor.def(
-    Miller_IndexTableLayoutAdaptor_Phase_rad, "Phase_rad");
+    Miller_IndexTableLayoutAdaptor_phase_eq_rad, "phase_eq_rad");
   py_Miller_IndexTableLayoutAdaptor.def(
-    Miller_IndexTableLayoutAdaptor_Phase_deg, "Phase_deg");
+    Miller_IndexTableLayoutAdaptor_phase_eq_deg, "phase_eq_deg");
   py_Miller_IndexTableLayoutAdaptor.def(
-    Miller_IndexTableLayoutAdaptor_ShiftPhase, "ShiftPhase");
+    Miller_IndexTableLayoutAdaptor_complex_eq, "complex_eq");
 
   py_Miller_AsymIndex.def(constructor<>());
   py_Miller_AsymIndex.def(constructor<

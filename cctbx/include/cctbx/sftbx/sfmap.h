@@ -771,7 +771,7 @@ namespace cctbx { namespace sftbx {
         sfmap::grid_point_type ih = detail::h_as_ih_array(
           friedel_flag, h, n_complex);
         cctbx_assert(ih >= sfmap::grid_point_element_type(0));
-        map(ih) = semi.ShiftPhase(e, structure_factors[i]);
+        map(ih) = semi.complex_eq(e, structure_factors[i]);
       }
     }
     return map;

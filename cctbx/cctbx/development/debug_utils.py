@@ -303,9 +303,13 @@ def show_regression(x, y, label, min_correlation = 0):
   print label, "cc: %.4f m: %.3f" % (xy_regr.cc(), xy_regr.m())
   assert min_correlation == 0 or xy_regr.cc() >= min_correlation
 
-def phase_error(p1, p2):
-  d_as_r = math.pi / 180
-  return math.acos(math.cos((p1 - p2) * d_as_r)) / d_as_r
+def phase_error(phi1, phi2, deg=1):
+  if (deg == 0): pi_sc = math.pi
+  else:          pi_sc = 180
+  e = math.fmod(phi1-phi2, 2 * pi_sc)
+  if   (e < -pi_sc): e += 2 * pi_sc
+  elif (e >  pi_sc): e -= 2 * pi_sc
+  return abs(e)
 
 class structure_factor_comparison:
 

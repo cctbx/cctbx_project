@@ -292,28 +292,39 @@ namespace cctbx {
         int iColumn() const {
           return m_iColumn;
         }
-        //! Phase in radians, given phase for input Miller index.
+        /*! \brief Phase for equivalent index in radians, given phase for
+            input Miller index.
+         */
         template <class FloatType>
         FloatType
-        Phase_rad(const FloatType& phi) const {
-          if (m_ConjF) return -SymEquivIndex::Phase_rad(phi);
-          return SymEquivIndex::Phase_rad(phi);
+        phase_eq_rad(const FloatType& phi_in) const {
+          if (m_ConjF) return -SymEquivIndex::phase_eq_rad(phi_in);
+          return SymEquivIndex::phase_eq_rad(phi_in);
+        }
+        /*! \brief Phase for input index in radians, given phase for
+            equivalent Miller index.
+         */
+        template <class FloatType>
+        FloatType
+        phase_in_rad(const FloatType& phi_eq) const {
+          if (m_ConjF) return SymEquivIndex::phase_in_rad(-phi_eq);
+          return SymEquivIndex::phase_in_rad(phi_eq);
         }
         //! Phase in degrees, given phase for input Miller index.
         template <class FloatType>
         FloatType
-        Phase_deg(const FloatType& phi) const {
-          if (m_ConjF) return -SymEquivIndex::Phase_deg(phi);
-          return SymEquivIndex::Phase_deg(phi);
+        phase_eq_deg(const FloatType& phi_in) const {
+          if (m_ConjF) return -SymEquivIndex::phase_eq_deg(phi_in);
+          return SymEquivIndex::phase_eq_deg(phi_in);
         }
         /*! \brief Complex structure factor, given structure factor
             for input Miller index.
          */
         template <class FloatType>
         std::complex<FloatType>
-        ShiftPhase(const std::complex<FloatType>& F) const {
-          if (m_ConjF) return std::conj(SymEquivIndex::ShiftPhase(F));
-          return SymEquivIndex::ShiftPhase(F);
+        complex_eq(const std::complex<FloatType>& f_in) const {
+          if (m_ConjF) return std::conj(SymEquivIndex::complex_eq(f_in));
+          return SymEquivIndex::complex_eq(f_in);
         }
       private:
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
@@ -476,11 +487,11 @@ namespace cctbx {
             }
             if (in_place) {
               miller_indices[i] = ila.H();
-              data_array[i] = ila.ShiftPhase(data_array[i]);
+              data_array[i] = ila.complex_eq(data_array[i]);
             }
             else {
               asym_miller_indices_.push_back(ila.H());
-              asym_data_array_.push_back(ila.ShiftPhase(data_array[i]));
+              asym_data_array_.push_back(ila.complex_eq(data_array[i]));
             }
           }
           if (in_place) {
