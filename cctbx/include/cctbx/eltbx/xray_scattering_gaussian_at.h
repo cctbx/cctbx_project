@@ -78,8 +78,8 @@
       gradients_at_stol(double stol) const
       {
         double stol_sq = stol * stol;
-        af::small<float, gaussian::max_n_ab> gr_a;
-        af::small<float, gaussian::max_n_ab> gr_b;
+        af::small<double, gaussian::max_n_ab> gr_a;
+        af::small<double, gaussian::max_n_ab> gr_b;
         for(std::size_t i=0;i<n_ab();i++) {
           gr_a.push_back(std::exp(-b(i) * stol_sq));
         }
