@@ -36,6 +36,21 @@ class matrix:
       return sqr(result)
     return matrix(result, (ar, bc))
 
+  def __call__(self, ir, ic):
+    return self.elems[ir * self.n[1] + ic]
+
+  def mathematica_form(self, label=""):
+    s = ""
+    if (label): s = label + "="
+    s += "{"
+    for ir in xrange(self.n[0]):
+      s += "{"
+      for ic in xrange(self.n[1]):
+	s += str(self(ir, ic))
+        s += ", "
+      s = s[:-2] + "}, "
+    return s[:-2] + "}"
+
 class row(matrix):
 
   def __init__(self, elems):
@@ -77,11 +92,24 @@ class rt:
     return rt((self.r * other.r, self.r * other.t + self.t))
 
 if (__name__ == "__main__"):
-  # XXX verify with mathematica and insert asserts
-  m1 = matrix(range(1,7), (3,2))
-  m2 = matrix(range(1,7), (2,3))
-  print m1.elems
-  print m2.elems
-  r = m1 * m2
-  print r.elems
-  op = rt((r, (1,2,3)))
+  a = matrix(range(1,7), (3,2))
+  b = matrix(range(1,7), (2,3))
+  c = a * b
+  d = rt((c, (1,2,3)))
+  assert d.r.mathematica_form() == "{{9, 12, 15}, {19, 26, 33}, {29, 40, 51}}"
+  assert d.t.mathematica_form() == "{{1}, {2}, {3}}"
+  e = d + col((3,5,6))
+  assert e.r.mathematica_form() == "{{9, 12, 15}, {19, 26, 33}, {29, 40, 51}}"
+  assert e.t.mathematica_form() == "{{4}, {7}, {9}}"
+  f = e - col((1,2,3))
+  assert f.r.mathematica_form() == "{{9, 12, 15}, {19, 26, 33}, {29, 40, 51}}"
+  assert f.t.mathematica_form() == "{{3}, {5}, {6}}"
+  ar = range(1,10)
+  at = range(1,4)
+  br = range(11,20)
+  bt = range(4,7)
+  g = rt((ar,at)) * rt((br,bt))
+  assert g.r.mathematica_form() == \
+    "{{90, 96, 102}, {216, 231, 246}, {342, 366, 390}}"
+  assert g.t.mathematica_form() == "{{33}, {79}, {125}}"
+  print "OK"
