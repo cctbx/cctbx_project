@@ -1,23 +1,17 @@
-#include <scitbx/array_family/boost_python/flex_fwd.h>
+#include <cctbx/boost_python/flex_fwd.h>
+#include <cctbx/uctbx.h>
+#include <scitbx/array_family/flex_types.h>
+#include <boost/python/class.hpp>
+#include <boost/python/module.hpp>
+#include <boost/smart_ptr.hpp>
+#include <fstream>
 #include <string>
 #include <cstdlib>
-#include <fstream>
-#include <iostream>
+#include <cstdio>
 
-# include <boost/python/def.hpp>
-# include <boost/python/class.hpp>
-# include <boost/python/extract.hpp>
-# include <boost/python/list.hpp>
-# include <boost/python/module.hpp>
-
-#include <scitbx/array_family/flex_types.h>
-#include <cctbx/uctbx.h>
 namespace af = scitbx::af;
 
-#include <cstdio>
-#include <string>
-#include <cassert>
-#include <boost/smart_ptr.hpp>
+namespace {
 
 class ScientificFormatter {
   //Necessary because Microsoft Visual C Runtime formats printf incorrectly
@@ -35,14 +29,14 @@ private:
   bool stdprintf;
   const char pad;
 public:
-  ScientificFormatter(std::string s);
+  ScientificFormatter(std::string const& s);
   boost::shared_array<char> operator() (double d);
 };
 
-ScientificFormatter::ScientificFormatter(std::string s): pad(' ') {
+ScientificFormatter::ScientificFormatter(std::string const& s): pad(' ') {
     //parse the format %12.5E becomes TOKEN digits TOKEN decimal LETTER
     //could re-implement this with the boost tokenizer
-    assert (s.find("%") == 0);
+    SCITBX_ASSERT(s.find("%") == 0);
 
     int dot = s.find("."); std::string(s,dot)/* essentially an assertion */;
     int letter = s.find("E"); std::string(s,letter);
@@ -50,16 +44,19 @@ ScientificFormatter::ScientificFormatter(std::string s): pad(' ') {
     digits   = std::atoi(std::string(s,1,dot-1).c_str());
     frac = std::atoi(std::string(s,dot+1,letter-dot).c_str());
 
-    assert (frac+7 <= digits); //otherwise format too small to hold the frac
+    SCITBX_ASSERT(frac+7 <= digits); // otherwise format too small to
+                                     // hold the frac
     sprintf (iformat, "%c%d.%dE\0",'%',frac+8,frac);
     sprintf (oformat, "%s\0",s.c_str());
+    SCITBX_ASSERT(std::string(iformat).size() < 8);
+    SCITBX_ASSERT(std::string(oformat).size() < 8);
 
     //Now determine if we use standard or MSVC printf format
     boost::shared_array<char> t(new char[frac+9]); //ie., "-d.dddddE+00\0"
     sprintf (t.get(),iformat,-1.0);
     if (t[frac+5]=='0') {stdprintf=false;} else {stdprintf=true;}
   }
-  
+
 boost::shared_array<char> ScientificFormatter::operator() (double d) {
     boost::shared_array<char> b(new char[frac+10]);
     if (stdprintf) {
@@ -83,63 +80,64 @@ private:
   ScientificFormatter pretty4;
 public:
   XplorMap();
-  af::versa<double,af::c_grid<3> > ReadXplorMap(const std::string&,int,boost::python::list);
-  void WriteXplorMap(cctbx::uctbx::unit_cell,
+  af::versa<double,af::c_grid<3> >
+  ReadXplorMap(std::string const&, int, af::int9 const& sec);
+  void WriteXplorMap(cctbx::uctbx::unit_cell const&,
                      af::const_ref<double,af::c_grid<3> > const&,
-                     double, double, std::string);
+                     double, double, std::string const&);
 };
 
 XplorMap::XplorMap():pretty("%12.5E"),pretty4("%12.4E"){}
 
-af::versa<double,af::c_grid<3> > XplorMap::ReadXplorMap(const std::string& filename,
-                             int headers,
-                             boost::python::list sec
-                             ) {
+af::versa<double,af::c_grid<3> >
+XplorMap::ReadXplorMap(std::string const& filename,
+                       int headers,
+                       af::int9 const& sec)
+{
   std::ifstream cin(filename.c_str());
   std::string line;
   for (std::size_t i = 0; i < headers; i++) {
     std::getline(cin,line);
   }
   // dump everything to a 3-D array
-  int nX,nY,nZ;
-  nX = boost::python::extract<int>(sec[2]) - boost::python::extract<int>(sec[1]) + 1;
-  nY = boost::python::extract<int>(sec[5]) - boost::python::extract<int>(sec[4]) + 1;
-  nZ = boost::python::extract<int>(sec[8]) - boost::python::extract<int>(sec[7]) + 1;
-
-  af::versa<double,af::c_grid<3> > m(af::c_grid<3>(nX,nY,nZ)); 
+  int nX = sec[2] - sec[1] + 1;
+  int nY = sec[5] - sec[4] + 1;
+  int nZ = sec[8] - sec[7] + 1;
+  SCITBX_ASSERT(nX > 0);
+  SCITBX_ASSERT(nY > 0);
+  SCITBX_ASSERT(nZ > 0);
+  af::versa<double,af::c_grid<3> > m(af::c_grid<3>(nX,nY,nZ));
   af::ref<double, af::c_grid<3> > mref=m.ref();
   for (int section = 0; section < nZ; section++) {
     std::getline(cin,line); //reads section number
     int x=0;
     int y=0;
     for (int rect = 0, fast = 0; rect < (nX*nY); rect++,fast++) {
-      if (fast%6==0) 
+      if (fast%6==0)
         {    std::getline(cin,line); fast=0;      }
       mref(x,y,section) = std::atof(line.substr(fast*12,12).c_str());
       ++x;
-      if (x==nX) {x=0; ++y;}      
+      if (x==nX) {x=0; ++y;}
     }
   }
-    
+
   cin.close();
   return m;
 }
 
-void XplorMap::WriteXplorMap(cctbx::uctbx::unit_cell uc,
+void XplorMap::WriteXplorMap(cctbx::uctbx::unit_cell const& uc,
                              af::const_ref<double,af::c_grid<3> > const& data,
-                             double average, 
+                             double average,
                              double stddev,
-                             std::string outputfile) {
-                             
-  //af::const_ref<double,af::c_grid<3> > data_h(data.c_grid());
+                             std::string const& outputfile)
+{
   FILE* fh = fopen(outputfile.c_str(),"ab");
+  SCITBX_ASSERT(fh != 0);
   //Unit Cell
-  fprintf(fh,"%s%s%s%s%s%s\n", pretty(uc.parameters()[0]).get(), 
-                               pretty(uc.parameters()[1]).get(), 
-                               pretty(uc.parameters()[2]).get(), 
-                               pretty(uc.parameters()[3]).get(), 
-                               pretty(uc.parameters()[4]).get(), 
-                               pretty(uc.parameters()[5]).get() );
+  for(std::size_t i=0;i<6;i++) {
+    fprintf(fh, "%s", pretty(uc.parameters()[i]).get());
+  }
+  fprintf(fh, "\n");
   //Data
   fprintf(fh,"ZYX\n");
   int xsize = data.accessor()[0];
@@ -149,7 +147,7 @@ void XplorMap::WriteXplorMap(cctbx::uctbx::unit_cell uc,
     int x=0;
     int y=0;
     fprintf(fh,"%8d\n",z);
-    for (int xy = 0; xy < xsize*ysize; ++xy){    
+    for (int xy = 0; xy < xsize*ysize; ++xy){
         fprintf(fh,"%s",pretty(data(x,y,z)).get());
         ++x;
         if (x==xsize) {x = 0;++y;}
@@ -164,12 +162,11 @@ void XplorMap::WriteXplorMap(cctbx::uctbx::unit_cell uc,
   fclose(fh);
 }
 
-#include <cctbx/boost_python/flex_fwd.h>
-#include <scitbx/boost_python/utils.h>
-using namespace boost::python;
+} // namespace <anonymous>
 
 BOOST_PYTHON_MODULE(xplor)
 {
+    using namespace boost::python;
     class_<XplorMap>("XplorMap", init<>())
       .def("ReadXplorMap", &XplorMap::ReadXplorMap)
       .def("WriteXplorMap", &XplorMap::WriteXplorMap)
