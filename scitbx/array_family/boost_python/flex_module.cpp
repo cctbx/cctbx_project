@@ -67,11 +67,10 @@ namespace {
     {
       using namespace boost::python;
       typedef return_value_policy<copy_const_reference> copy_const_reference;
-      c_w_t("grid",
-        args<>())
-        .def_init(args<df_i_t const&>())
-        .def_init(args<df_i_t const&, df_i_t const&>())
-        .def_init(args<df_i_t const&, df_i_t const&, bool>())
+      c_w_t("grid")
+        .def(init<>())
+        .def(init<df_i_t const&>())
+        .def(init<df_i_t const&, df_i_t const&, optional<bool> >())
         .def("set_layout", (w_t(w_t::*)(df_i_t const&))&w_t::set_layout)
         .def("nd", &w_t::nd)
         .def("size_1d", &w_t::size_1d)

@@ -92,9 +92,9 @@ namespace scitbx { namespace fftpack { namespace {
     wrap()
     {
       using namespace boost::python;
-      class_<w_t>("factorization",
-        args<>())
-        .def_init(args<std::size_t, bool>())
+      class_<w_t>("factorization")
+        .def(init<>())
+        .def(init<std::size_t, bool>())
         .def("n", &w_t::n)
         .def("factors", &w_t::factors)
       ;
@@ -150,9 +150,9 @@ namespace scitbx { namespace fftpack { namespace {
     wrap()
     {
       using namespace boost::python;
-      class_<w_t, bases<factorization> >("complex_to_complex",
-        args<>())
-        .def_init(args<std::size_t>())
+      class_<w_t, bases<factorization> >("complex_to_complex")
+        .def(init<>())
+        .def(init<std::size_t>())
         .def("wa", &w_t::wa)
         .def("forward", forward_complex)
         .def("forward", forward_real)
@@ -206,9 +206,9 @@ namespace scitbx { namespace fftpack { namespace {
     wrap()
     {
       using namespace boost::python;
-      class_<w_t, bases<factorization> >("real_to_complex",
-        args<>())
-        .def_init(args<std::size_t>())
+      class_<w_t, bases<factorization> >("real_to_complex")
+        .def(init<>())
+        .def(init<std::size_t>())
         .def("n_real", &w_t::n_real)
         .def("m_real", &w_t::m_real)
         .def("n_complex", &w_t::n_complex)
@@ -271,10 +271,10 @@ namespace scitbx { namespace fftpack { namespace {
     wrap()
     {
       using namespace boost::python;
-      class_<w_t>("complex_to_complex_3d",
-        args<>())
-        .def_init(args<std::size_t, std::size_t, std::size_t>())
-        .def_init(args<af::int3>())
+      class_<w_t>("complex_to_complex_3d")
+        .def(init<>())
+        .def(init<std::size_t, std::size_t, std::size_t>())
+        .def(init<af::int3>())
         .def("n", &w_t::n)
         .def("forward", forward_complex)
         .def("forward", forward_real)
@@ -335,10 +335,10 @@ namespace scitbx { namespace fftpack { namespace {
     wrap()
     {
       using namespace boost::python;
-      class_<w_t>("real_to_complex_3d",
-        args<>())
-        .def_init(args<std::size_t, std::size_t, std::size_t>())
-        .def_init(args<af::int3>())
+      class_<w_t>("real_to_complex_3d")
+        .def(init<>())
+        .def(init<std::size_t, std::size_t, std::size_t>())
+        .def(init<af::int3>())
         .def("n_real", &w_t::n_real)
         .def("m_real", &w_t::m_real)
         .def("n_complex", &w_t::n_complex)

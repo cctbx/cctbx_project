@@ -613,20 +613,18 @@ namespace scitbx { namespace af { namespace boost_python {
       shared_flex_conversions<ElementType>();
       ref_1d_flex_conversions<ElementType>();
 
-      class_<flex_items<ElementType> >((python_name+"_items").c_str(),
-        args<>())
-        .def_init(args<f_t const&>())
+      class_<flex_items<ElementType> >((python_name+"_items").c_str())
+        .def(init<>())
+        .def(init<f_t const&>())
         .def("__len__", &flex_items<ElementType>::size)
         .def("__getitem__", &flex_items<ElementType>::getitem)
       ;
 
-      return class_f_t(python_name.c_str(),
-        args<>())
-        .def_init(args<flex_grid<> const&>())
-        .def_init(args<flex_grid<> const&, ElementType const&>())
-        .def_init(args<std::size_t>())
-        .def_init(args<std::size_t, ElementType const&>())
-        .def_init(args<shared_plain<ElementType> const&>())
+      return class_f_t(python_name.c_str())
+        .def(init<>())
+        .def(init<flex_grid<> const&, optional<ElementType const&> >())
+        .def(init<std::size_t, optional<ElementType const&> >())
+        .def(init<shared_plain<ElementType> const&>())
         .def("accessor", accessor)
         .def("nd", nd)
         .def("origin", origin)
