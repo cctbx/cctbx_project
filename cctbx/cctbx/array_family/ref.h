@@ -13,7 +13,6 @@
 
 #include <cstddef>
 #include <stdexcept>
-#include <algorithm>
 
 // FIXES for broken compilers
 #include <boost/config.hpp>
@@ -26,8 +25,21 @@
 
 namespace cctbx { namespace af {
 
-  void sizecheck (std::size_t s, std::size_t n) {
-    if (s > n) { throw std::range_error("array_family"); }
+  void throw_range_error() {
+    throw std::range_error("array_family");
+  }
+
+  template <typename InputElementType,
+            typename OutputElementType>
+  OutputElementType*
+  copy_typeconv(
+    const InputElementType* first,
+    const InputElementType* last,
+    OutputElementType* result)
+  {
+    OutputElementType* p = result;
+    while (first != last) *p++ = OutputElementType(*first++);
+    return result;
   }
 
   template <typename ElementType>
@@ -55,8 +67,9 @@ namespace cctbx { namespace af {
 
       const ElementType& operator[](size_type i) const { return m_begin[i]; }
 
-      const ElementType& at(size_type i) const { \
-        sizecheck(i+1, m_size); return m_begin[i]; \
+      const ElementType& at(size_type i) const {
+        if (i >= m_size) throw_range_error();
+        return m_begin[i];
       }
 
       const void* memory_handle() const {
@@ -93,8 +106,9 @@ namespace cctbx { namespace af {
 
       ElementType& operator[](size_type i) const { return m_begin[i]; }
 
-      ElementType& at(size_type i) const { \
-        sizecheck(i+1, m_size); return m_begin[i]; \
+      ElementType& at(size_type i) const {
+        if (i >= m_size) throw_range_error();
+        return m_begin[i];
       }
 
       void* memory_handle() const {

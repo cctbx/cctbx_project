@@ -24,8 +24,12 @@ const ElementType& back() const { return beg[sz-1]; } \
 ElementType& operator[](size_type i) { return beg[i]; } \
 const ElementType& operator[](size_type i) const { return beg[i]; } \
  \
-ElementType& at(size_type i) { sizecheck(i+1, sz); return beg[i]; } \
-const ElementType& at(size_type i) const { sizecheck(i+1, sz); return beg[i]; }
+ElementType& at(size_type i) { \
+  if (i >= sz) throw_range_error(); return beg[i]; \
+} \
+const ElementType& at(size_type i) const { \
+  if (i >= sz) throw_range_error(); return beg[i]; \
+}
 
 #define CCTBX_ARRAY_FAMILY_TAKE_REF(beg, sz) \
 ref<ElementType> \

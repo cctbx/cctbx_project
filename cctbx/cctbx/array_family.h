@@ -12,6 +12,6 @@
 #define CCTBX_ARRAY_FAMILY_H
 
 #include <cctbx/array_family/tiny.h>
-#include <cctbx/array_family/small_base.h>
+#include <cctbx/array_family/small.h>
 
 #endif // CCTBX_ARRAY_FAMILY_H

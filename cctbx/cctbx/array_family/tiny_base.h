@@ -11,6 +11,7 @@
 #ifndef CCTBX_ARRAY_FAMILY_TINY_BASE_H
 #define CCTBX_ARRAY_FAMILY_TINY_BASE_H
 
+#include <algorithm>
 #include <cctbx/array_family/ref.h>
 #include <cctbx/array_family/tiny_helpers.h>
 

@@ -148,11 +148,11 @@ class_name( \
 #define CCTBX_ARRAY_FAMILY_TINY_COPY_AND_ASSIGNMENT(class_name) \
 template <typename OtherElementType> \
 class_name(const tiny_base<OtherElementType,N>& rhs) { \
-  for(size_type i=0;i<this->size();i++) this->elems[i] = ElementType(rhs[i]); \
+  copy_typeconv(rhs.begin(), rhs.end(), this->elems); \
 } \
 template <typename OtherElementType> \
 class_name<ElementType,N>& \
 operator=(const tiny_base<OtherElementType,N>& rhs) { \
-  for(size_type i=0;i<this->size();i++) this->elems[i] = ElementType(rhs[i]); \
+  copy_typeconv(rhs.begin(), rhs.end(), this->elems); \
   return *this; \
 }
