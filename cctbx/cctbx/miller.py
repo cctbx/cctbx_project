@@ -102,7 +102,7 @@ class set(crystal.symmetry):
       print >> f, "Centric reflections:", n_centric
     if (self.unit_cell() != None):
       print >> f, "Resolution range: %.6g %.6g" % no_sys_abs.resolution_range()
-      if (self.space_group_info() != None):
+      if (self.space_group_info() != None and self.indices().size() > 0):
         print >> f, "Completeness: %.6g" % no_sys_abs.completeness()
     if (self.space_group_info() != None and no_sys_abs.anomalous_flag()):
       asu, matches = no_sys_abs.match_bijvoet_mates()
