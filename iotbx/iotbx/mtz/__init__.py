@@ -67,7 +67,13 @@ column_type_legend = {
 
 def default_column_types(miller_array):
   result = None
-  if (miller_array.is_xray_intensity_array()):
+  if (miller_array.is_complex_array() and miller_array.sigmas() is None):
+    assert not miller_array.is_xray_intensity_array()
+    if (miller_array.anomalous_flag()):
+      result = "GP"
+    else:
+      result = "FP"
+  elif (miller_array.is_xray_intensity_array()):
     if (miller_array.anomalous_flags()):
       result = "K"
       if (miller_array.sigmas() is not None):
@@ -96,11 +102,6 @@ def default_column_types(miller_array):
       result = "G"
     else:
       result = "F"
-  elif (miller_array.is_complex_array() and miller_array.sigmas() is None):
-    if (miller_array.anomalous_flag()):
-      result = "GP"
-    else:
-      result = "FP"
   elif (miller_array.is_hendrickson_lattman_array()):
     result = "AAAA"
   return result
