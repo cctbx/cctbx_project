@@ -7,6 +7,7 @@ import cctbx.eltbx.xray_scattering
 from cctbx import eltbx
 from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
+import pickle
 import StringIO
 import sys
 
@@ -23,8 +24,6 @@ def exercise_structure():
     xray.scatterer("O1", (0.19700, -0.19700, 0.83333))))
   xs = xray.structure(sp, scatterers)
   assert xs.scatterers().size() == 2
-  assert tuple(xs.special_position_indices()) == (0, 1)
-  xs.all_apply_symmetry()
   assert tuple(xs.special_position_indices()) == (0, 1)
   ys = xs.deep_copy_scatterers()
   ys.add_scatterers(ys.scatterers())
@@ -71,15 +70,17 @@ def exercise_structure():
   assert approx_equal(center_of_mass.elems, (1.335228, 1.071897, 2.815899))
   center_of_mass = xs.center_of_mass()
   assert approx_equal(center_of_mass.elems, (1.335228, 1.071897, 2.815899))
-  ys = xs.apply_shift(xs.unit_cell().fractionalize((-center_of_mass).elems))
+  ys = xs.apply_shift(
+    shift=xs.unit_cell().fractionalize((-center_of_mass).elems),
+    recompute_site_symmetries=0001)
   assert approx_equal(ys.center_of_mass().elems, (0,0,0))
   ys = xray.structure(xs)
   assert ys.atomic_weights().size() == 0
   assert ys.center_of_mass().elems == (0,0,0)
   ys = xray.structure(sp, scatterers)
-  ys.set_occupancy(1, 0.5)
+  ys.scatterers()[1].occupancy = 0.5
   assert approx_equal(ys.scatterers()[1].weight(),0.25)
-  ys.shift_occupancy(1, -0.1)
+  ys.scatterers()[1].occupancy -= 0.1
   assert approx_equal(ys.scatterers()[1].weight(),0.2)
   assert xs.n_parameters(xray.structure_factors.gradient_flags(default=0001)) \
          == 14
@@ -104,6 +105,11 @@ def exercise_structure():
   rs = p1.random_shift_sites(max_shift_cart=0.2)
   assert flex.max(flex.abs(p1.difference_vectors_cart(rs).as_double())) <= 0.2
   assert p1.rms(rs) > 0
+  for s in [xs, ys, p1, rs]:
+    p = pickle.dumps(s)
+    l = pickle.loads(p)
+    assert l.scatterers().size() == s.scatterers().size()
+    assert l.special_position_indices().all_eq(s.special_position_indices())
 
 def exercise_u_base():
   d_min = 9

@@ -52,6 +52,7 @@ namespace cctbx { namespace sgtbx {
             table_.push_back(site_symmetry_ops_);
             table_const_ref_ = table_.const_ref();
           }
+          special_position_indices_.push_back(indices_.size());
           indices_.push_back(i);
         }
         indices_const_ref_ = indices_.const_ref();
@@ -66,6 +67,17 @@ namespace cctbx { namespace sgtbx {
         CCTBX_ASSERT(i_seq < indices_const_ref_.size());
         return table_const_ref_[indices_const_ref_[i_seq]];
       }
+
+      //! Number of sites in special positions.
+      std::size_t
+      n_special_positions() const { return special_position_indices_.size(); }
+
+      //! Indices of sites in special positions.
+      /*! The indices refer to the order in which the site symmetries
+          were passed to process().
+       */
+      af::shared<std::size_t> const&
+      special_position_indices() const { return special_position_indices_; }
 
       //! Indices to internal table entries.
       af::shared<std::size_t> const&
@@ -84,11 +96,17 @@ namespace cctbx { namespace sgtbx {
       //! Internal table of unique site_symmetry_ops.
       /*! The table is organized such that table()[0].is_point_group_1()
           is always true after the first call of process().
+       */
+      af::shared<site_symmetry_ops> const&
+      table() const { return table_; }
 
-          Not available in Python.
+      /*! \brief Reference to internal table of unique site_symmetry_ops;
+          use for efficiency.
+       */
+      /*! Not available in Python.
        */
       af::const_ref<site_symmetry_ops> const&
-      table() const { return table_const_ref_; }
+      table_const_ref() const { return table_const_ref_; }
 
       //! Pre-allocates memory for indices(); for efficiency.
       void
@@ -98,11 +116,51 @@ namespace cctbx { namespace sgtbx {
         indices_const_ref_ = indices_.const_ref();
       }
 
+      //! Creates independent copy.
+      site_symmetry_table
+      deep_copy() const
+      {
+        site_symmetry_table result;
+        result.indices_ = indices_.deep_copy();
+        result.indices_const_ref_ = result.indices_.const_ref();
+        result.table_ = table_.deep_copy();
+        result.table_const_ref_ = result.table_.const_ref();
+        result.special_position_indices_=special_position_indices_.deep_copy();
+        return result;
+      }
+
+      //! Apply selection.
+      site_symmetry_table
+      select(af::const_ref<std::size_t> const& indices) const
+      {
+        site_symmetry_table result;
+        result.reserve(indices.size());
+        for(std::size_t i=0;i<indices.size();i++) {
+          result.process(get(indices[i]));
+        }
+        return result;
+      }
+
+      //! Support for Python's pickle facility. Do not use for other purposes.
+      site_symmetry_table(
+        af::shared<std::size_t> const& indices,
+        af::shared<site_symmetry_ops> const& table,
+        af::shared<std::size_t> const& special_position_indices)
+      :
+        indices_(indices),
+        table_(table),
+        special_position_indices_(special_position_indices)
+      {
+        indices_const_ref_ = indices_.const_ref();
+        table_const_ref_ = table_.const_ref();
+      }
+
     protected:
       af::shared<std::size_t> indices_;
       af::const_ref<std::size_t> indices_const_ref_;
       af::shared<site_symmetry_ops> table_;
       af::const_ref<site_symmetry_ops> table_const_ref_;
+      af::shared<std::size_t> special_position_indices_;
   };
 
 }} // namespace cctbx::sgtbx

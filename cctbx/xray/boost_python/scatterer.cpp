@@ -21,10 +21,14 @@ namespace {
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
       apply_symmetry_overloads, apply_symmetry, 2, 6)
 
+    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
+      apply_symmetry_u_star_overloads, apply_symmetry_u_star, 2, 5)
+
     static void
     wrap()
     {
       using namespace boost::python;
+      typedef boost::python::arg arg_; // gcc 2.96 workaround
       typedef return_value_policy<return_by_value> rbv;
       typedef default_call_policies dcp;
       class_<w_t>("scatterer", no_init)
@@ -34,14 +38,28 @@ namespace {
                   flt_t const&,
                   std::string const&,
                   flt_t const&,
-                  flt_t const&>())
+                  flt_t const&>((
+          arg_("label"),
+          arg_("site"),
+          arg_("u_iso"),
+          arg_("occupancy"),
+          arg_("scattering_type"),
+          arg_("fp"),
+          arg_("fdp"))))
         .def(init<std::string const&,
                   fractional<flt_t> const&,
                   scitbx::sym_mat3<flt_t> const&,
                   flt_t const&,
                   std::string const&,
                   flt_t const&,
-                  flt_t const&>())
+                  flt_t const&>((
+          arg_("label"),
+          arg_("site"),
+          arg_("u_star"),
+          arg_("occupancy"),
+          arg_("scattering_type"),
+          arg_("fp"),
+          arg_("fdp"))))
         .add_property("label", make_getter(&w_t::label, rbv()),
                                make_setter(&w_t::label, dcp()))
         .add_property("scattering_type",
@@ -62,8 +80,23 @@ namespace {
                                make_setter(&w_t::u_iso, dcp()))
         .add_property("u_star", make_getter(&w_t::u_star, rbv()),
                                 make_setter(&w_t::u_star, dcp()))
-        .def("apply_symmetry", &w_t::apply_symmetry,apply_symmetry_overloads())
-        .def("update_weight", &w_t::update_weight)
+        .def("apply_symmetry", &w_t::apply_symmetry,
+          apply_symmetry_overloads((
+            arg_("unit_cell"),
+            arg_("space_group"),
+            arg_("min_distance_sym_equiv")=0.5,
+            arg_("u_star_tolerance")=0,
+            arg_("assert_is_positive_definite")=false,
+            arg_("assert_min_distance_sym_equiv")=true)))
+        .def("apply_symmetry_site", &w_t::apply_symmetry_site, (
+          arg_("site_symmetry_ops")))
+        .def("apply_symmetry_u_star", &w_t::apply_symmetry_u_star,
+          apply_symmetry_u_star_overloads((
+            arg_("unit_cell"),
+            arg_("site_symmetry_ops"),
+            arg_("u_star_tolerance")=0,
+            arg_("assert_is_positive_definite")=false,
+            arg_("assert_min_distance_sym_equiv")=true)))
         .def("multiplicity", &w_t::multiplicity)
         .def("weight_without_occupancy", &w_t::weight_without_occupancy)
         .def("weight", &w_t::weight)

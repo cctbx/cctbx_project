@@ -37,6 +37,30 @@ namespace cctbx { namespace sgtbx {
       }
 
       /*! \brief Computes symmetrically equivalent coordinates given
+          site_symmetry_ops.
+       */
+      /*! See also: site_symmetry_table
+       */
+      sym_equiv_sites(
+        uctbx::unit_cell const& unit_cell,
+        sgtbx::space_group const& space_group,
+        frac_t const& original_site,
+        sgtbx::site_symmetry_ops const& site_symmetry_ops)
+      :
+        unit_cell_(unit_cell),
+        space_group_(space_group),
+        original_site_(original_site),
+        special_op_(site_symmetry_ops.special_op()),
+        use_special_op_(true),
+        max_accepted_tolerance_(-1)
+      {
+        std::size_t multiplicity
+          = site_symmetry_ops.multiplicity(space_group_.order_z());
+        initialize_with_special_op(multiplicity);
+        CCTBX_ASSERT(coordinates_.size() == multiplicity);
+      }
+
+      /*! \brief Computes symmetrically equivalent coordinates given
           a Wyckoff mapping.
        */
       explicit
@@ -102,7 +126,8 @@ namespace cctbx { namespace sgtbx {
         uctbx::unit_cell const& unit_cell,
         sgtbx::space_group const& space_group,
         frac_t const& original_site,
-        rt_mx const& special_op)
+        rt_mx const& special_op,
+        std::size_t multiplicity=0)
       :
         unit_cell_(unit_cell),
         space_group_(space_group),
@@ -111,7 +136,7 @@ namespace cctbx { namespace sgtbx {
         use_special_op_(true),
         max_accepted_tolerance_(-1)
       {
-        initialize_with_special_op(0);
+        initialize_with_special_op(multiplicity);
         CCTBX_ASSERT(space_group_.order_z() % coordinates_.size() == 0);
       }
 

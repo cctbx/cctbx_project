@@ -410,6 +410,10 @@ def exercise_rt_mx():
   assert str(rt_mx(r, t, 2, 24)) == "-x+y+1/12,y+1/6,-z+1/4"
   assert str(rt_mx("+0*x-1*y+0*z,+0*x+0*y+1*z,-1*x+0*y-1*z")) == "-y,z,-x-z"
   assert str(rt_mx("-x+y,-x+1/4,z+2/3") + (2,-1,3)) == "-x+y+2,-x-3/4,z+11/3"
+  for m in [rt_mx("x,y,z"), rt_mx(0,0), rt_mx("-x+y+2,-x-3/4,z+11/3")]:
+    p = pickle.dumps(m)
+    l = pickle.loads(p)
+    assert l == m
 
 def exercise_change_of_basis_op():
   rt_mx = sgtbx.rt_mx
@@ -842,6 +846,12 @@ def exercise_site_symmetry():
   assert not s.is_point_group_1()
   assert s.point_group_type() == "2"
   assert [str(o) for o in s.unique_ops()] == ["0,0,z"]
+  cb_op = sgtbx.change_of_basis_op("z,x,y")
+  sc = s.change_basis(cb_op=cb_op)
+  assert str(sc.special_op()) == "x,0,0"
+  assert str(sc.matrices()[0]) == "x,y,z"
+  assert str(sc.matrices()[1]) == "x,-y,-z"
+  assert str(s.matrices()[1]) == "-x,-y,z"
   u = uctbx.unit_cell((10,10,15,90,90,120))
   g = sgtbx.space_group("-P 3 2")
   s = site_symmetry(unit_cell=u, space_group=g, original_site=(0,0,0))
@@ -857,6 +867,8 @@ def exercise_site_symmetry():
   assert t.indices().size() == 0
   t.process(site_symmetry_ops=s)
   assert t.indices().size() == 1
+  assert t.n_special_positions() == 1
+  assert list(t.special_position_indices()) == [0]
   assert t.n_unique() == 2
   t.process(site_symmetry_ops=s)
   assert t.indices().size() == 2
@@ -873,13 +885,63 @@ def exercise_site_symmetry():
   t.process(site_symmetry_ops=s3)
   assert t.indices().size() == 5
   assert t.n_unique() == 3
+  assert len(t.table()) == 3
   assert list(t.indices()) == [1,1,2,1,0]
+  assert t.n_special_positions() == 4
+  assert list(t.special_position_indices()) == [0,1,2,3]
   assert t.get(0).special_op() == s.special_op()
   assert t.get(1).special_op() == s.special_op()
   assert t.get(2).special_op() == s2.special_op()
   assert t.get(3).special_op() == s.special_op()
+  assert t.get(0).n_matrices() == 12
+  assert t.get(4).n_matrices() == 1
+  assert not t.get(0).is_point_group_1()
   assert t.get(4).is_point_group_1()
+  assert t.get(0).multiplicity(space_group_order_z=g.order_z()) == 1
+  assert t.get(4).multiplicity(g.order_z()) == 12
+  assert str(t.get(0).matrices()[0]) == "x,y,z"
   assert str(t.get(4).matrices()[0]) == "x,y,z"
+  tc = t.deep_copy()
+  assert list(tc.indices()) == [1,1,2,1,0]
+  tc.process(site_symmetry_ops=s2)
+  assert list(tc.indices()) == [1,1,2,1,0,2]
+  assert list(t.indices()) == [1,1,2,1,0]
+  t.process(site_symmetry_ops=s3)
+  assert list(t.indices()) == [1,1,2,1,0,0]
+  assert list(tc.indices()) == [1,1,2,1,0,2]
+  assert list(t.special_position_indices()) == [0,1,2,3]
+  assert list(tc.special_position_indices()) == [0,1,2,3,5]
+  ts = tc.select(indices=flex.size_t([5,0,4,1]))
+  assert list(ts.indices()) == [1,2,0,2]
+  assert ts.get(0).special_op() == tc.get(5).special_op()
+  assert ts.get(1).special_op() == tc.get(0).special_op()
+  assert ts.get(2).special_op() == tc.get(4).special_op()
+  assert ts.get(3).special_op() == tc.get(1).special_op()
+  ts = tc.select(indices=flex.size_t())
+  assert ts.indices().size() == 0
+  s = tc.get(0)
+  p = pickle.dumps(s)
+  l = pickle.loads(p)
+  assert l.special_op() == s.special_op()
+  assert len(s.matrices()) == 12
+  assert len(l.matrices()) == 12
+  for unpickled,original in zip(l.matrices(), s.matrices()):
+    assert unpickled == original
+  p = pickle.dumps(ts)
+  l = pickle.loads(p)
+  assert l.indices().size() == 0
+  assert l.table() == ()
+  assert l.special_position_indices().size() == 0
+  p = pickle.dumps(tc)
+  l = pickle.loads(p)
+  assert list(l.indices()) == [1,1,2,1,0,2]
+  assert len(l.table()) == 3
+  assert str(l.table()[0].special_op()) == "x,y,z"
+  for unpickled,original in zip(l.table(), tc.table()):
+    assert unpickled.special_op() == original.special_op()
+    for unp,orig in zip(unpickled.matrices(), original.matrices()):
+      assert unp == orig
+  assert list(l.special_position_indices()) == [0,1,2,3,5]
 
 def exercise_wyckoff():
   space_group_type = sgtbx.space_group_type
@@ -1011,22 +1073,74 @@ def exercise_sym_equiv_sites():
     assert e.special_op() == ss.special_op()
     assert e.max_accepted_tolerance() < 0
     assert e.coordinates().size() == mult
-    for i in xrange(3):
-      if (i == 0): e = sym_equiv_sites(u, g, x)
-      if (i == 1): e = sym_equiv_sites(u, g, x, 0.1)
-      if (i == 2): e = sym_equiv_sites(u, g, x, 0.1, 0.001)
+    for i in xrange(4):
+      if (i == 0):
+        e = sym_equiv_sites(
+          unit_cell=u,
+          space_group=g,
+          original_site=x,
+          site_symmetry_ops=ss)
+      elif (i == 1):
+        e = sym_equiv_sites(
+          unit_cell=u,
+          space_group=g,
+          original_site=x)
+      elif (i == 2):
+        e = sym_equiv_sites(
+          unit_cell=u,
+          space_group=g,
+          original_site=x,
+          minimum_distance=0.1)
+      elif (i == 3):
+        e = sym_equiv_sites(
+          unit_cell=u,
+          space_group=g,
+          original_site=x,
+          minimum_distance=0.1,
+          tolerance=0.001)
       assert e.unit_cell().is_similar_to(u)
       assert e.space_group() == g
       assert e.original_site() == x
-      assert not e.special_op().is_valid()
-      assert e.max_accepted_tolerance() >= 0
+      if (i == 0):
+        assert e.special_op().is_valid()
+        assert e.max_accepted_tolerance() < 0
+      else:
+        assert not e.special_op().is_valid()
+        assert e.max_accepted_tolerance() >= 0
       assert e.coordinates().size() == mult
     e = sym_equiv_sites(u, g, x, 100, 50)
     assert e.coordinates().size() == 1
-    for i in xrange(3):
-      if (i == 0): e = sym_equiv_sites(ss)
-      if (i == 1): e = sym_equiv_sites(wm)
-      if (i == 2): e = sym_equiv_sites(u, g, x)
+    for i in xrange(6):
+      if (i == 0):
+        e = sym_equiv_sites(
+          site_symmetry=ss)
+      elif (i == 1):
+        e = sym_equiv_sites(
+          unit_cell=u,
+          space_group=g,
+          original_site=x,
+          site_symmetry_ops=ss)
+      elif (i == 2):
+        e = sym_equiv_sites(
+          wyckoff_mapping=wm)
+      elif (i == 3):
+        e = sym_equiv_sites(
+          unit_cell=u,
+          space_group=g,
+          original_site=x,
+          special_op=ss.special_op())
+      elif (i == 4):
+        e = sym_equiv_sites(
+          unit_cell=u,
+          space_group=g,
+          original_site=x,
+          special_op=ss.special_op(),
+          multiplicity=ss.multiplicity())
+      elif (i == 5):
+        e = sym_equiv_sites(
+          unit_cell=u,
+          space_group=g,
+          original_site=x)
       d = sgtbx.min_sym_equiv_distance_info(reference_sites=e, other=x)
       assert d.i_other() == 0
       assert str(d.sym_op()) == "x,y,z"

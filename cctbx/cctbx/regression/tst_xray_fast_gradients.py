@@ -367,7 +367,7 @@ class shifted_occupancy:
 
   def __init__(self, f_obs, structure, i_scatterer, shift):
     self.structure_shifted = structure.deep_copy_scatterers()
-    self.structure_shifted.shift_occupancy(i_scatterer, shift)
+    self.structure_shifted.scatterers()[i_scatterer].occupancy += shift
     if (f_obs is not None):
       self.f_calc = f_obs.structure_factors_from_scatterers(
         xray_structure=self.structure_shifted).f_calc()

@@ -750,8 +750,8 @@ namespace direct_space_asu {
           }
         }
         else {
-          sgtbx::rt_mx const&
-            special_op = site_symmetry_table_.table()[i_sst].special_op();
+          sgtbx::rt_mx const& special_op
+            = site_symmetry_table_.table_const_ref()[i_sst].special_op();
           sgtbx::rt_mx rt_mx_sp = rt_mx.multiply(special_op);
           for(int i_sym=0; i_sym<mappings_const_ref_[i_seq].size(); i_sym++) {
             if (get_rt_mx(i_seq, i_sym).multiply(special_op) == rt_mx_sp) {

@@ -177,6 +177,21 @@ class _search_symmetry_flags(boost.python.injector, ext.search_symmetry_flags):
     print >> f, "use_normalizer_l2n:", self.use_normalizer_l2n()
     print >> f, "use_seminvariants:", self.use_seminvariants()
 
+class _rt_mx(boost.python.injector, ext.rt_mx):
+
+  def __getinitargs__(self):
+    return (flex.int(self.as_int_array() + (self.r().den(), self.t().den())),)
+
+class _site_symmetry_ops(boost.python.injector, ext.site_symmetry_ops):
+
+  def __getinitargs__(self):
+    return (self.special_op(), self.matrices())
+
+class _site_symmetry_table(boost.python.injector, ext.site_symmetry_table):
+
+  def __getinitargs__(self):
+    return (self.indices(), self.table(), self.special_position_indices())
+
 class _wyckoff_table(boost.python.injector, wyckoff_table):
 
   def random_site_symmetry(self,
