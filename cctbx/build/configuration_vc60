@@ -1,10 +1,12 @@
 vc60
 
-CCTBX_UNIX=$(HOME)/cctbx
-CCTBX_WIN="L:\cctbx"
-CCTBXINC=-I$(CCTBX_WIN)
+ROOT=@(ROOT)
 
-BOOSTINC=-I"L:\boost"
+CCTBX_UNIX="$(HOME)/cctbx"
+CCTBX_WIN="$(ROOT)\cctbx"
+CCTBXINC=-I"$(ROOT)\cctbx"
+
+BOOSTINC=-I"$(ROOT)\boost"
 BOOST_PYTHONLIB="@(CWD)\..\boost\boost_python.lib"
 
 PYEXE="C:\Program files\Python\python.exe"
