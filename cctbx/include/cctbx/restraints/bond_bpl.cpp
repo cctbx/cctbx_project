@@ -27,11 +27,12 @@ namespace {
         .def(init<af::tiny<std::size_t, 2> const&, double, double>(
           (arg_("i_seqs"), arg_("distance_ideal"), arg_("weight"))))
         .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
-        .def_readonly("distance_ideal", &w_t::distance_ideal)
-        .def_readonly("weight", &w_t::weight)
+        .def_readwrite("distance_ideal", &w_t::distance_ideal)
+        .def_readwrite("weight", &w_t::weight)
       ;
       {
-        scitbx::af::boost_python::shared_wrapper<w_t>::wrap(
+        typedef return_internal_reference<> rir;
+        scitbx::af::boost_python::shared_wrapper<w_t, rir>::wrap(
           "shared_bond_proxy");
       }
     }
@@ -53,12 +54,13 @@ namespace {
           double>(
             (arg_("pair"), arg_("distance_ideal"), arg_("weight"))))
         .def_readonly("pair", &w_t::pair)
-        .def_readonly("distance_ideal", &w_t::distance_ideal)
-        .def_readonly("weight", &w_t::weight)
+        .def_readwrite("distance_ideal", &w_t::distance_ideal)
+        .def_readwrite("weight", &w_t::weight)
         .def("as_direct_proxy", &w_t::as_direct_proxy)
       ;
       {
-        scitbx::af::boost_python::shared_wrapper<w_t>::wrap(
+        typedef return_internal_reference<> rir;
+        scitbx::af::boost_python::shared_wrapper<w_t, rir>::wrap(
           "shared_bond_asu_proxy");
       }
     }
