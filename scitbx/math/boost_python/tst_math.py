@@ -1,7 +1,7 @@
 import scitbx.math
 from scitbx.math import euler_angles_as_matrix
 from scitbx.math import erf_verification, erf, erfc, erfcx
-from scitbx.math import bessel_i1_over_i0
+from scitbx.math import bessel_i1_over_i0, bessel_i0, bessel_i1
 from scitbx.math import eigensystem, time_eigensystem_real_symmetric
 from scitbx.math import gaussian
 from scitbx.math import golay_24_12_generator
@@ -148,6 +148,14 @@ def exercise_bessel():
   x=0.0
   while x <= 100.0:
     assert approx_equal(-bessel_i1_over_i0(-x),bessel_i1_over_i0(x))
+    x+=0.01
+  assert approx_equal(bessel_i0(0.0), 1.0)
+  assert approx_equal(bessel_i1(0.0), 0.0)
+  x=-500.0
+  while x <= 500.0:
+    a = bessel_i1_over_i0(x)
+    b = bessel_i1(x) / bessel_i0(x)
+    assert approx_equal(a,b,1.e-5)
     x+=0.01
 
 def matrix_mul(a, ar, ac, b, br, bc):
