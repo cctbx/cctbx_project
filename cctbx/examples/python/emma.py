@@ -53,13 +53,14 @@ def GetFormData():
       inp.__dict__[key[0]] = key[1]
   inp.coordinates = []
   for i in xrange(2):
-    key = "coordinates_" + str(i+1)
     coordinates = []
-    if (form.has_key(key)):
-      lines = form[key].value.split("\015\012")
-      for l in lines:
-        s = l.strip()
-        if (len(s) != 0): coordinates.append(s)
+    for key_root in ("coordinates", "coor_file"):
+      key = key_root + "_" + str(i+1)
+      if (form.has_key(key)):
+        lines = form[key].value.replace("\015", "\012").split("\012")
+        for l in lines:
+          s = l.strip()
+          if (len(s) != 0): coordinates.append(s)
     inp.coordinates.append(coordinates)
   return inp
 

@@ -12,7 +12,7 @@
 
 <hr>
 
-<FORM METHOD=POST ACTION="emma.py">
+<FORM ENCTYPE="multipart/form-data" METHOD=POST ACTION="emma.py">
 
 <h3>Reference model</h3>
 
@@ -55,6 +55,9 @@ Generic format only:
 <br>
 Skip the left <input name="skip_columns_1" size=4 value="0"> columns.
 </blockquote>
+Specify file: <INPUT NAME="coor_file_1" TYPE="file">,
+or paste in coordinates:
+<br>
 <textarea name="coordinates_1" rows=16 cols=60></textarea>
 
 <hr>
@@ -102,6 +105,9 @@ Generic format only:
 <p>
 Skip the left <input name="skip_columns_2" size=4 value="0"> columns.
 </blockquote>
+Specify file: <INPUT NAME="coor_file_2" TYPE="file">,
+or paste in coordinates:
+<br>
 <textarea name="coordinates_2" rows=16 cols=60></textarea>
 
 <hr>
