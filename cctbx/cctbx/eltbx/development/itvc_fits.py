@@ -32,16 +32,22 @@ def run(file_name, args, params=None,
     i_chunk += 1
     if (not flag):
       continue
-    if (len(args) > 0 and element not in args): continue
+    label = element
+    if (len(args) > 0 and label not in args): continue
+    for sign in ["+", "-"]:
+      i = label.find(sign)
+      if (i > 0):
+        label = label.replace(sign,"") + sign
+        break
+    wk = xray_scattering.wk1995(label, 1)
     entry = tab.entries[element]
-    wk = xray_scattering.wk1995(element, 1)
     null_fit = scitbx.math.gaussian.fit(
       cctbx.eltbx.gaussian_fit.international_tables_stols,
       entry.table_y,
       cctbx.eltbx.gaussian_fit.international_tables_sigmas,
       xray_scattering.gaussian(0, 00000))
     results[wk.label()] = cctbx.eltbx.gaussian_fit.incremental_fits(
-      label=element,
+      label=wk.label(),
       null_fit=null_fit,
       params=params,
       plots_dir=plots_dir,
