@@ -24,7 +24,6 @@ class target_functors_manager:
                      f_obs,
                      flags,
                      abcd                   = None,
-                     step_for_integration   = None,
                      weights                = None,
                      use_sigmas_as_weights  = False,
                      scale_factor           = 0):
@@ -38,7 +37,7 @@ class target_functors_manager:
       self.f_obs_w = self.f_obs
       self.f_obs_t = self.f_obs
     if(self.target_name == "mlhl"):
-      assert self.abcd is not None and self.step_for_integration
+      assert self.abcd is not None
     if(self.abcd is not None):
       if(self.target_name == "mlhl"):
         if(self.flags.count(True) > 0):
@@ -85,8 +84,7 @@ class target_functors_manager:
     if(self.target_name == "mlhl"):
       return maximum_likelihood_criterion_hl(
                               f_obs                = f_obs,
-                              abcd                 = abcd.data(),
-                              step_for_integration = self.step_for_integration)
+                              abcd                 = abcd.data())
 
   def target_functor_t(self, selection = None):
     if(selection is None):
@@ -111,8 +109,7 @@ class target_functors_manager:
     if(self.target_name == "mlhl"):
       return maximum_likelihood_criterion_hl(
                               f_obs                = f_obs,
-                              abcd                 = abcd.data(),
-                              step_for_integration = self.step_for_integration)
+                              abcd                 = abcd.data())
 
 
 class least_squares_residual:
@@ -205,7 +202,7 @@ class maximum_likelihood_criterion_hl:
 
   def __init__(self, f_obs,
                      abcd,
-                     step_for_integration):
+                     step_for_integration = 5.0):
     adopt_init_args(self, locals(), hide=True)
 
   def f_obs(self):
