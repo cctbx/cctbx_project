@@ -16,205 +16,207 @@
 #include <complex>
 #include <cctbx/miller.h>
 
-namespace Miller {
+namespace cctbx {
+  namespace Miller {
 
-  //! Helper class for symmetry equivalent Miller indices.
-  class SymEquivIndex {
-    private:
-      int   m_TBF;
-      Index m_HR;
-      int   m_HT;
-    public:
-      //! Constructor. For internal use only.
-      inline SymEquivIndex(const Index& HR, int HT, int TBF)
-        : m_HR(HR), m_HT(HT) , m_TBF(TBF) { }
-      //! Product of Miller index and rotation part of symmetry operation.
-      inline const Index& HR() const { return m_HR; }
-      //! Product of Miller index and translation part of symmetry operation.
-      inline int HT() const { return m_HT; }
-      //! Translation base factor.
-      /*! This is the factor by which HT() is multiplied.
-       */
-      inline int TBF() const { return m_TBF; }
+    //! Helper class for symmetry equivalent Miller indices.
+    class SymEquivIndex {
+      private:
+        int   m_TBF;
+        Index m_HR;
+        int   m_HT;
+      public:
+        //! Constructor. For internal use only.
+        inline SymEquivIndex(const Index& HR, int HT, int TBF)
+          : m_HR(HR), m_HT(HT) , m_TBF(TBF) { }
+        //! Product of Miller index and rotation part of symmetry operation.
+        inline const Index& HR() const { return m_HR; }
+        //! Product of Miller index and translation part of symmetry operation.
+        inline int HT() const { return m_HT; }
+        //! Translation base factor.
+        /*! This is the factor by which HT() is multiplied.
+         */
+        inline int TBF() const { return m_TBF; }
 
-      //! Phase of this index in radians, given phase of input Miller index.
-      /*! Formula used:<br>
-          this_phi = phi - (2 * pi * HT()) / TBF();
-       */
-      template <class T>
-      T Phase_rad(const T& phi) const {
-        using cctbx::constants::pi;
-        return phi - (2. * pi * HT()) / TBF();
-      }
-      //! Phase of this index in degrees, given phase of input Miller index.
-      /*! Formula used:<br>
-          this_phi = phi - (2 * 180 * HT()) / TBF();
-       */
-      template <class T>
-      T Phase_deg(const T& phi) const {
-        return phi - (2. * 180. * HT()) / TBF();
-      }
-      //! Complex value for this index, given complex value for input index.
-      /*! Formula used:<br>
-          this_F = F * exp(-2 * pi * j * HT() / TBF());<br>
-          where j is the imaginary number.
-       */
-      template <class T>
-      std::complex<T> ShiftPhase(const std::complex<T>& F) const {
-        using cctbx::constants::pi;
-        T theta = (-2. * pi * HT()) / TBF();
-        return F * std::polar(1., theta);
-      }
-  };
-
-  //! Master Miller index class.
-  /*! See documentation for sgtbx::SymEquivIndices::getMasterIndex().<br>
-      The MasterIndex class supports the following data layouts:<p>
-      1. Assuming Friedel symmetry (no anomalous signal), only one
-      value is stored for a Friedel pair:<pre>
-       h  k  l  F</pre>
-      The values associated with h,k,l and -h,-k,-l are assumed to be
-      equal, and the phases are related by the equation phi(h,k,l) =
-      -phi(-h,-k,-l).<br>
-      In this case, MasterIndex.H() is intended for use as the
-      representative ("asymmetric") index in a list.<p>
-      2. No Friedel symmetry (i.e. in presence of an anomalous signal),
-      two columns of data:<pre>
-       h  k  l  F+  F-</pre>
-      Both Friedel mates are associated with the same index in a list.
-      The Miller index for F+ is (h, k, l) and the implied Miller index
-      for F- is (-h, -k, -l).<br>
-      In this case, MasterIndex.H() is intended for use as the
-      representative ("asymmetric") index in a list.
-      MasterIndex.iMate() is intended for selecting the data column.<p>
-      3. No Friedel symmetry (i.e. in presence of an anomalous signal),
-      one column of data:<pre>
-       h  k  l  F
-      -h -k -l  F</pre>
-      There is a separate entry for each Friedel mate in a list.<br>
-      In this case, MasterIndex.HR() is intended for use as the
-      representative ("asymmetric") index in a list.
-   */
-  class MasterIndex {
-    private:
-      int   m_TBF;
-      bool  m_haveCutP;
-      Vec3  m_CutP;
-      bool  m_Pretty;
-      Index m_H;
-      bool  m_iMate;
-      Index m_HR;
-      int   m_HT;
-
-      inline bool isInActiveArea(const Miller::Index& H) {
-        for(int i=0;i<3;i++) if (m_CutP[i] == 0 && H[i] < 0) return false;
-        return true;
-      }
-
-    public:
-      //! For internal use only.
-      inline MasterIndex()
-        : m_TBF(0), m_haveCutP(false) {}
-      //! For internal use only.
-      inline MasterIndex(bool Pretty)
-        : m_TBF(0), m_haveCutP(false), m_Pretty(Pretty) {}
-      //! For internal use only.
-      inline MasterIndex(const Vec3& CutP, bool Pretty)
-        : m_TBF(0), m_haveCutP(true), m_CutP(CutP), m_Pretty(Pretty) {}
-
-      //! For internal use only.
-      inline void Update(const Miller::Index& TrialH,
-                         int iMate,
-                         const Miller::SymEquivIndex& HS) {
-        if (m_haveCutP && !isInActiveArea(TrialH)) return;
-        if (m_TBF == 0
-            || (m_Pretty ? TrialH < m_H // operator< is very slow
-                         : Miller::hashCompare()(TrialH, m_H))) {
-          m_H = TrialH;
-          m_iMate = iMate;
-          m_HR = HS.HR();
-          m_HT = HS.HT();
-          m_TBF = HS.TBF();
+        //! Phase of this index in radians, given phase of input Miller index.
+        /*! Formula used:<br>
+            this_phi = phi - (2 * pi * HT()) / TBF();
+         */
+        template <class T>
+        T Phase_rad(const T& phi) const {
+          using cctbx::constants::pi;
+          return phi - (2. * pi * HT()) / TBF();
         }
-      }
+        //! Phase of this index in degrees, given phase of input Miller index.
+        /*! Formula used:<br>
+            this_phi = phi - (2 * 180 * HT()) / TBF();
+         */
+        template <class T>
+        T Phase_deg(const T& phi) const {
+          return phi - (2. * 180. * HT()) / TBF();
+        }
+        //! Complex value for this index, given complex value for input index.
+        /*! Formula used:<br>
+            this_F = F * exp(-2 * pi * j * HT() / TBF());<br>
+            where j is the imaginary number.
+         */
+        template <class T>
+        std::complex<T> ShiftPhase(const std::complex<T>& F) const {
+          using cctbx::constants::pi;
+          T theta = (-2. * pi * HT()) / TBF();
+          return F * std::polar(1., theta);
+        }
+    };
 
-      //! Test if cut parameters were used in determining the master index.
-      inline bool haveCutP() const { return m_haveCutP; }
-      //! The cut parameters used in determining the master index.
-      /*! If haveCutP() == false, the cut parameters are not defined.
-       */
-      inline const Vec3& CutP() const { return m_CutP; }
-      //! Test if the Pretty flag was used in determining the master index.
-      /*! If Pretty == true, a "nice" master index for human readable
-          listings was requested.
-       */
-      inline bool Pretty() const { return m_Pretty; }
+    //! Master Miller index class.
+    /*! See documentation for sgtbx::SymEquivIndices::getMasterIndex().<br>
+        The MasterIndex class supports the following data layouts:<p>
+        1. Assuming Friedel symmetry (no anomalous signal), only one
+        value is stored for a Friedel pair:<pre>
+         h  k  l  F</pre>
+        The values associated with h,k,l and -h,-k,-l are assumed to be
+        equal, and the phases are related by the equation phi(h,k,l) =
+        -phi(-h,-k,-l).<br>
+        In this case, MasterIndex.H() is intended for use as the
+        representative ("asymmetric") index in a list.<p>
+        2. No Friedel symmetry (i.e. in presence of an anomalous signal),
+        two columns of data:<pre>
+         h  k  l  F+  F-</pre>
+        Both Friedel mates are associated with the same index in a list.
+        The Miller index for F+ is (h, k, l) and the implied Miller index
+        for F- is (-h, -k, -l).<br>
+        In this case, MasterIndex.H() is intended for use as the
+        representative ("asymmetric") index in a list.
+        MasterIndex.iMate() is intended for selecting the data column.<p>
+        3. No Friedel symmetry (i.e. in presence of an anomalous signal),
+        one column of data:<pre>
+         h  k  l  F
+        -h -k -l  F</pre>
+        There is a separate entry for each Friedel mate in a list.<br>
+        In this case, MasterIndex.HR() is intended for use as the
+        representative ("asymmetric") index in a list.
+     */
+    class MasterIndex {
+      private:
+        int   m_TBF;
+        bool  m_haveCutP;
+        Vec3  m_CutP;
+        bool  m_Pretty;
+        Index m_H;
+        bool  m_iMate;
+        Index m_HR;
+        int   m_HT;
 
-      //! The master index for data layouts 1 and 2. See class details.
-      inline const Index& H() const { return m_H; }
-      //! Selection of F+ or F- data column. See class details.
-      /*! The values returned are 0 for F+, and 1 for F-.
-       */
-      inline int iMate() const { return m_iMate; }
-      //! The master index for data layout 3. See class details.
-      /*! This index is the product of the input Miller index for which
-          the master index was computed, and the rotation part of a
-          symmetry operation.
-       */
-      inline const Index& HR() const { return m_HR; }
-      //! Phase shift for HR() with respect to the input Miller index.
-      /*! Low-level information for computing the phase of the master
-          index, given the phase of the input Miller index. Note that
-          high-level functions are also available (e.g. ShiftPhase()).<br>
-          HT() is multiplied by a base factor TBF() in order to obtain
-          an integer value.
-       */
-      inline int HT() const { return m_HT; }
-      //! Translation base factor.
-      /*! This is the factor by which HT() is multiplied.
-       */
-      inline int TBF() const { return m_TBF; }
+        inline bool isInActiveArea(const Miller::Index& H) {
+          for(int i=0;i<3;i++) if (m_CutP[i] == 0 && H[i] < 0) return false;
+          return true;
+        }
 
-      //! Phase of master index in radians, given phase of input Miller index.
-      /*! Formula used:<br>
-          master_phi = phi - (2 * pi * HT()) / TBF();<br>
-          if (FriedelSym && iMate()) master_phi = -master_phi;
-       */
-      template <class T>
-      T Phase_rad(const T& phi, bool FriedelSym) const {
-        using cctbx::constants::pi;
-        T master_phi = phi - (2. * pi * HT()) / TBF();
-        if (FriedelSym && iMate()) return -master_phi;
-        return master_phi;
-      }
-      //! Phase of master index in degrees, given phase of input Miller index.
-      /*! Formula used:<br>
-          master_phi = phi - (2 * 180 * HT()) / TBF();<br>
-          if (FriedelSym && iMate()) master_phi = -master_phi;
-       */
-      template <class T>
-      T Phase_deg(const T& phi, bool FriedelSym) const {
-        T master_phi = phi - (2. * 180. * HT()) / TBF();
-        if (FriedelSym && iMate()) return -master_phi;
-        return master_phi;
-      }
-      //! Complex value for master index, given complex value for input index.
-      /*! Formula used:<br>
-          master_F = F * exp(-2 * pi * j * HT() / TBF());<br>
-          where j is the imaginary number.
-       */
-      template <class T>
-      std::complex<T> ShiftPhase(const std::complex<T>& F,
-                                 bool FriedelSym) const {
-        using cctbx::constants::pi;
-        T theta = (-2. * pi * HT()) / TBF();
-        std::complex<T> master_F = F * std::polar(1., theta);
-        if (FriedelSym && iMate()) return std::conj(master_F);
-        return master_F;
-      }
-  };
+      public:
+        //! For internal use only.
+        inline MasterIndex()
+          : m_TBF(0), m_haveCutP(false) {}
+        //! For internal use only.
+        inline MasterIndex(bool Pretty)
+          : m_TBF(0), m_haveCutP(false), m_Pretty(Pretty) {}
+        //! For internal use only.
+        inline MasterIndex(const Vec3& CutP, bool Pretty)
+          : m_TBF(0), m_haveCutP(true), m_CutP(CutP), m_Pretty(Pretty) {}
 
-} // namespace Miller
+        //! For internal use only.
+        inline void Update(const Miller::Index& TrialH,
+                           int iMate,
+                           const Miller::SymEquivIndex& HS) {
+          if (m_haveCutP && !isInActiveArea(TrialH)) return;
+          if (m_TBF == 0
+              || (m_Pretty ? TrialH < m_H // operator< is very slow
+                           : Miller::hashCompare()(TrialH, m_H))) {
+            m_H = TrialH;
+            m_iMate = iMate;
+            m_HR = HS.HR();
+            m_HT = HS.HT();
+            m_TBF = HS.TBF();
+          }
+        }
+
+        //! Test if cut parameters were used in determining the master index.
+        inline bool haveCutP() const { return m_haveCutP; }
+        //! The cut parameters used in determining the master index.
+        /*! If haveCutP() == false, the cut parameters are not defined.
+         */
+        inline const Vec3& CutP() const { return m_CutP; }
+        //! Test if the Pretty flag was used in determining the master index.
+        /*! If Pretty == true, a "nice" master index for human readable
+            listings was requested.
+         */
+        inline bool Pretty() const { return m_Pretty; }
+
+        //! The master index for data layouts 1 and 2. See class details.
+        inline const Index& H() const { return m_H; }
+        //! Selection of F+ or F- data column. See class details.
+        /*! The values returned are 0 for F+, and 1 for F-.
+         */
+        inline int iMate() const { return m_iMate; }
+        //! The master index for data layout 3. See class details.
+        /*! This index is the product of the input Miller index for which
+            the master index was computed, and the rotation part of a
+            symmetry operation.
+         */
+        inline const Index& HR() const { return m_HR; }
+        //! Phase shift for HR() with respect to the input Miller index.
+        /*! Low-level information for computing the phase of the master
+            index, given the phase of the input Miller index. Note that
+            high-level functions are also available (e.g. ShiftPhase()).<br>
+            HT() is multiplied by a base factor TBF() in order to obtain
+            an integer value.
+         */
+        inline int HT() const { return m_HT; }
+        //! Translation base factor.
+        /*! This is the factor by which HT() is multiplied.
+         */
+        inline int TBF() const { return m_TBF; }
+
+        //! Phase of master index in radians, given phase of input Miller index.
+        /*! Formula used:<br>
+            master_phi = phi - (2 * pi * HT()) / TBF();<br>
+            if (FriedelSym && iMate()) master_phi = -master_phi;
+         */
+        template <class T>
+        T Phase_rad(const T& phi, bool FriedelSym) const {
+          using cctbx::constants::pi;
+          T master_phi = phi - (2. * pi * HT()) / TBF();
+          if (FriedelSym && iMate()) return -master_phi;
+          return master_phi;
+        }
+        //! Phase of master index in degrees, given phase of input Miller index.
+        /*! Formula used:<br>
+            master_phi = phi - (2 * 180 * HT()) / TBF();<br>
+            if (FriedelSym && iMate()) master_phi = -master_phi;
+         */
+        template <class T>
+        T Phase_deg(const T& phi, bool FriedelSym) const {
+          T master_phi = phi - (2. * 180. * HT()) / TBF();
+          if (FriedelSym && iMate()) return -master_phi;
+          return master_phi;
+        }
+        //! Complex value for master index, given complex value for input index.
+        /*! Formula used:<br>
+            master_F = F * exp(-2 * pi * j * HT() / TBF());<br>
+            where j is the imaginary number.
+         */
+        template <class T>
+        std::complex<T> ShiftPhase(const std::complex<T>& F,
+                                   bool FriedelSym) const {
+          using cctbx::constants::pi;
+          T theta = (-2. * pi * HT()) / TBF();
+          std::complex<T> master_F = F * std::polar(1., theta);
+          if (FriedelSym && iMate()) return std::conj(master_F);
+          return master_F;
+        }
+    };
+
+  } // namespace Miller
+} // namespace cctbx
 
 namespace sgtbx {
 

@@ -21,8 +21,7 @@
 //! Space Group Toolbox namespace.
 namespace sgtbx {
 
-  using cctbx::error;
-  using cctbx::error_index;
+  using namespace cctbx;
 
   class error_base_factor : public error {
     public:

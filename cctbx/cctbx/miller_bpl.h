@@ -15,15 +15,15 @@
 
 BOOST_PYTHON_BEGIN_CONVERSION_NAMESPACE
 
-  Miller::Index from_python(PyObject* p,
-    boost::python::type<const Miller::Index&>)
+  cctbx::Miller::Index from_python(PyObject* p,
+    boost::python::type<const cctbx::Miller::Index&>)
   {
-    return Miller::Index(from_python(p,
-      boost::python::type<const Miller::Vec3&>()).data());
+    return cctbx::Miller::Index(from_python(p,
+      boost::python::type<const cctbx::Miller::Vec3&>()).data());
   }
 
-  PyObject* to_python(const Miller::Index& MIx) {
-    return to_python(static_cast<const Miller::Vec3&>(MIx));
+  PyObject* to_python(const cctbx::Miller::Index& MIx) {
+    return to_python(static_cast<const cctbx::Miller::Vec3&>(MIx));
   }
 
 BOOST_PYTHON_END_CONVERSION_NAMESPACE
