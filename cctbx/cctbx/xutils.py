@@ -20,8 +20,8 @@ class miller_index_set(crystal_symmetry):
 class symmetrized_sites(crystal_symmetry):
 
   def __init__(self, xsym, sites,
-               MinMateDistance = 0.5,  
-               Ustar_tolerance = 0.1,  
+               MinMateDistance = 0.5,
+               Ustar_tolerance = 0.1,
                TestPositiveDefiniteness = 1):
     self.__dict__.update(xsym.__dict__)
     self.Sites = sites

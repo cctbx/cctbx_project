@@ -6,6 +6,7 @@ from cctbx_boost import sgtbx
 from cctbx_boost.eltbx.caasf_wk1995 import CAASF_WK1995
 from cctbx_boost import adptbx
 from cctbx_boost import sftbx
+from cctbx import xutils
 from cctbx.macro_mol import rotation_parameters
 
 def set_random_seed(seed):
@@ -133,10 +134,27 @@ class random_structure:
       SF = CAASF_WK1995(Elem)
       U = 0.01 + abs(random.gauss(0, 0.05))
       if (anisotropic_displacement_parameters):
-        U = [(U + abs(random.gauss(U, 0.05))) / 2
-          for i in xrange(3)] + [0.,0.,0.]
-        U = random_rotate_ellipsoid(U)
-        U = adptbx.Ucart_as_Ustar(self.UnitCell, U)
+        Uiso = U
+        run_away_counter = 0
+        while 1:
+          run_away_counter += 1
+          assert run_away_counter < 100
+          U = [(Uiso + abs(random.gauss(Uiso, 0.05))) / 2
+            for i in xrange(3)] + [0.,0.,0.]
+          U = random_rotate_ellipsoid(U)
+          U = adptbx.Ucart_as_Ustar(self.UnitCell, U)
+          Site = sftbx.XrayScatterer(Elem + str(n), SF, 0j, Pos, 1., U)
+          Site.ApplySymmetry(
+            self.UnitCell, self.SgInfo.SgOps(), min_distance, 0, 0)
+          U = adptbx.Ustar_as_Ucart(self.UnitCell, Site.Uaniso())
+          try:
+            Ev = adptbx.Eigenvalues(U)
+          except RuntimeError:
+            continue
+          else:
+            if (min(Ev) > 0.001):
+              break
+        U = Site.Uaniso()
       Site = sftbx.XrayScatterer(Elem + str(n), SF, 0j, Pos, 1., U)
       Site.ApplySymmetry(
         self.UnitCell, self.SgInfo.SgOps(), min_distance, 0, 1)
@@ -216,3 +234,17 @@ def write_pdb(file_name, structure):
     + (structure.SgInfo.BuildLookupSymbol(),))
   print >> f, "END"
   f.close()
+
+def round_scaled(x, scale):
+  y = round(x * scale)
+  if (-0.5 < y <= 0): return 0.
+  return y / scale
+
+def print_structure_factors(F, precision_ampl=3, precision_phase=0):
+  for i in xrange(len(F.H)):
+    a, p = xutils.f_as_ampl_phase(F.F[i])
+    a = round_scaled(a, 10**precision_ampl)
+    p = round_scaled(p, 10**precision_phase) % 360
+    if (p <= round_scaled(-180., 10**precision_phase)): p += 360
+    print F.H[i], (
+      "%%.%dg %%.%df" % (precision_ampl, precision_phase)) % (a, p)

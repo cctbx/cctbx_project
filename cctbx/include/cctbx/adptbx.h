@@ -46,13 +46,13 @@ namespace cctbx {
     return Biso / EightPiSquared;
   }
   //! Convert anisotropic displacement parameters U -> B.
-  template <class FloatType>
+  template <typename FloatType>
   af::tiny<FloatType, 6>
   U_as_B(const af::tiny<FloatType, 6>& Uaniso) {
     return EightPiSquared * Uaniso;
   }
   //! Convert anisotropic displacement parameters B -> U.
-  template <class FloatType>
+  template <typename FloatType>
   af::tiny<FloatType, 6>
   B_as_U(const af::tiny<FloatType, 6>& Baniso) {
     return (1. / EightPiSquared) * Baniso;
@@ -73,7 +73,7 @@ namespace cctbx {
           Ustar13 = a* c* Uuvrs13
           Ustar23 = b* c* Uuvrs23</pre>
    */
-  template <class FloatType>
+  template <typename FloatType>
   af::tiny<FloatType, 6>
   Uuvrs_as_Ustar(const uctbx::UnitCell& uc,
                  const af::tiny<FloatType, 6>& Uuvrs) {
@@ -90,7 +90,7 @@ namespace cctbx {
   //! Convert anisotropic displacement parameters Ustar -> Uuvrs.
   /*! Inverse of Uuvrs_as_Ustar().
    */
-  template <class FloatType>
+  template <typename FloatType>
   af::tiny<FloatType, 6>
   Ustar_as_Uuvrs(const uctbx::UnitCell& uc,
                  const af::tiny<FloatType, 6>& Ustar) {
@@ -111,7 +111,7 @@ namespace cctbx {
       The formula for the transformation is Ustar = C Ucart Ct,
       where Ct is the transposed of C.
    */
-  template <class FloatType>
+  template <typename FloatType>
   inline af::tiny<FloatType, 6>
   Ucart_as_Ustar(const uctbx::UnitCell& uc,
                  const af::tiny<FloatType, 6>& Ucart) {
@@ -125,7 +125,7 @@ namespace cctbx {
       The formula for the transformation is Ucart = C Ustar Ct,
       where Ct is the transposed of C.
    */
-  template <class FloatType>
+  template <typename FloatType>
   inline af::tiny<FloatType, 6>
   Ustar_as_Ucart(const uctbx::UnitCell& uc,
                  const af::tiny<FloatType, 6>& Ustar) {
@@ -137,7 +137,7 @@ namespace cctbx {
   /*! This is implemented without a significant loss of efficiency
       as Ustar_as_Uuvrs(uc, Ucart_as_Ustar(uc, Ucart)).
    */
-  template <class FloatType>
+  template <typename FloatType>
   inline af::tiny<FloatType, 6>
   Ucart_as_Uuvrs(const uctbx::UnitCell& uc,
                  const af::tiny<FloatType, 6>& Ucart) {
@@ -147,7 +147,7 @@ namespace cctbx {
   /*! This is implemented without a significant loss of efficiency
       as Ustar_as_Ucart(uc, Uuvrs_as_Ustar(uc, Uuvrs)).
    */
-  template <class FloatType>
+  template <typename FloatType>
   inline af::tiny<FloatType, 6>
   Uuvrs_as_Ucart(const uctbx::UnitCell& uc,
                  const af::tiny<FloatType, 6>& Uuvrs) {
@@ -157,7 +157,7 @@ namespace cctbx {
   //! Convert anisotropic displacement parameters Ustar -> beta.
   /*! The elements of Ustar are multiplied by 2pi^2.
    */
-  template <class FloatType>
+  template <typename FloatType>
   inline af::tiny<FloatType, 6>
   Ustar_as_beta(const af::tiny<FloatType, 6>& Ustar) {
     return TwoPiSquared * Ustar;
@@ -165,7 +165,7 @@ namespace cctbx {
   //! Convert anisotropic displacement parameters beta -> Ustar.
   /*! The elements of beta are divided by 2pi^2.
    */
-  template <class FloatType>
+  template <typename FloatType>
   inline af::tiny<FloatType, 6>
   beta_as_Ustar(const af::tiny<FloatType, 6>& beta) {
     return beta / TwoPiSquared;
@@ -174,7 +174,7 @@ namespace cctbx {
   //! Convert anisotropic displacement parameters Ucart -> beta.
   /*! This is implemented as Ustar_as_beta(Ucart_as_Ustar(uc, Ucart)).
    */
-  template <class FloatType>
+  template <typename FloatType>
   inline af::tiny<FloatType, 6>
   Ucart_as_beta(const uctbx::UnitCell& uc,
                 const af::tiny<FloatType, 6>& Ucart) {
@@ -183,7 +183,7 @@ namespace cctbx {
   //! Convert anisotropic displacement parameters beta -> Ucart.
   /*! This is implemented as Ustar_as_Ucart(uc, beta_as_Ustar(beta)).
    */
-  template <class FloatType>
+  template <typename FloatType>
   inline af::tiny<FloatType, 6>
   beta_as_Ucart(const uctbx::UnitCell& uc,
                 const af::tiny<FloatType, 6>& beta) {
@@ -193,7 +193,7 @@ namespace cctbx {
   //! Convert anisotropic displacement parameters Uuvrs -> beta.
   /*! This is implemented as Ustar_as_beta(Uuvrs_as_Ustar(uc, Uuvrs)).
    */
-  template <class FloatType>
+  template <typename FloatType>
   inline af::tiny<FloatType, 6>
   Uuvrs_as_beta(const uctbx::UnitCell& uc,
                 const af::tiny<FloatType, 6>& Uuvrs) {
@@ -202,7 +202,7 @@ namespace cctbx {
   //! Convert anisotropic displacement parameters beta -> Uuvrs.
   /*! This is implemented as Ustar_as_Uuvrs(uc, beta_as_Ustar(beta)).
    */
-  template <class FloatType>
+  template <typename FloatType>
   inline af::tiny<FloatType, 6>
   beta_as_Uuvrs(const uctbx::UnitCell& uc,
                 const af::tiny<FloatType, 6>& beta) {
@@ -213,7 +213,7 @@ namespace cctbx {
   /*! Uiso is defined as the mean of the diagonal elements of Ucart:<pre>
           Uiso = 1/3 (Ucart11 + Ucart22 + Ucart33)</pre>
    */
-  template <class FloatType>
+  template <typename FloatType>
   inline FloatType
   Ucart_as_Uiso(const af::tiny<FloatType, 6>& Ucart)
   {
@@ -223,7 +223,7 @@ namespace cctbx {
   /*! The diagonal elements of Ucart are set to the value of Uiso.
       The off-diagonal components Ucart are set to zero.
    */
-  template <class FloatType>
+  template <typename FloatType>
   af::tiny<FloatType, 6>
   Uiso_as_Ucart(const FloatType& Uiso)
   {
@@ -236,7 +236,7 @@ namespace cctbx {
   //! Convert Ustar -> Uiso.
   /*! This is implemented as Ucart_as_Uiso(Ustar_as_Ucart(uc, Ustar)).
    */
-  template <class FloatType>
+  template <typename FloatType>
   inline FloatType
   Ustar_as_Uiso(const uctbx::UnitCell& uc,
                 const af::tiny<FloatType, 6>& Ustar)
@@ -246,7 +246,7 @@ namespace cctbx {
   //! Convert Uiso -> Ustar.
   /*! This is implemented as Ucart_as_Ustar(uc, Uiso_as_Ucart(Uiso)).
    */
-  template <class FloatType>
+  template <typename FloatType>
   inline af::tiny<FloatType, 6>
   Uiso_as_Ustar(const uctbx::UnitCell& uc,
                 const FloatType& Uiso)
@@ -257,7 +257,7 @@ namespace cctbx {
   //! Convert Uuvrs -> Uiso.
   /*! This is implemented as Ucart_as_Uiso(Uuvrs_as_Ucart(uc, Uuvrs)).
    */
-  template <class FloatType>
+  template <typename FloatType>
   inline FloatType
   Uuvrs_as_Uiso(const uctbx::UnitCell& uc,
                 const af::tiny<FloatType, 6>& Uuvrs)
@@ -267,7 +267,7 @@ namespace cctbx {
   //! Convert Uiso -> Uuvrs.
   /*! This is implemented as Ucart_as_Uuvrs(uc, Uiso_as_Ucart(Uiso)).
    */
-  template <class FloatType>
+  template <typename FloatType>
   inline af::tiny<FloatType, 6>
   Uiso_as_Uuvrs(const uctbx::UnitCell& uc,
                 const FloatType& Uiso)
@@ -278,7 +278,7 @@ namespace cctbx {
   //! Convert beta -> Uiso.
   /*! This is implemented as Ucart_as_Uiso(beta_as_Ucart(uc, beta)).
    */
-  template <class FloatType>
+  template <typename FloatType>
   inline FloatType
   beta_as_Uiso(const uctbx::UnitCell& uc,
                const af::tiny<FloatType, 6>& beta)
@@ -288,7 +288,7 @@ namespace cctbx {
   //! Convert Uiso -> beta.
   /*! This is implemented as Ucart_as_beta(uc, Uiso_as_Ucart(Uiso)).
    */
-  template <class FloatType>
+  template <typename FloatType>
   inline af::tiny<FloatType, 6>
   Uiso_as_beta(const uctbx::UnitCell& uc,
                 const FloatType& Uiso)
@@ -328,7 +328,7 @@ namespace cctbx {
   }
 
   //! Anisotropic Debye-Waller factor given Miller index and Ustar.
-  template <class FloatType>
+  template <typename FloatType>
   inline FloatType
   DebyeWallerFactorUstar(const Miller::Index& MIx,
                          const af::tiny<FloatType, 6>& Ustar)
@@ -343,7 +343,7 @@ namespace cctbx {
   }
 
   //! Anisotropic Debye-Waller factor given Miller index and beta.
-  template <class FloatType>
+  template <typename FloatType>
   inline FloatType
   DebyeWallerFactor_beta(const Miller::Index& MIx,
                          const af::tiny<FloatType, 6>& beta)
@@ -352,7 +352,7 @@ namespace cctbx {
   }
 
   //! Anisotropic Debye-Waller factor given Miller index and Uuvrs.
-  template <class FloatType>
+  template <typename FloatType>
   inline FloatType
   DebyeWallerFactorUuvrs(const uctbx::UnitCell& uc,
                          const Miller::Index& MIx,
@@ -361,7 +361,7 @@ namespace cctbx {
     return DebyeWallerFactorUstar(MIx, Uuvrs_as_Ustar(uc, Uuvrs));
   }
   //! Anisotropic Debye-Waller factor given Miller index and Ucart.
-  template <class FloatType>
+  template <typename FloatType>
   inline FloatType
   DebyeWallerFactorUcart(const uctbx::UnitCell& uc,
                          const Miller::Index& MIx,
@@ -369,6 +369,25 @@ namespace cctbx {
   {
     return DebyeWallerFactorUstar(MIx, Ucart_as_Ustar(uc, Ucart));
   }
+
+  namespace detail {
+
+    template <class T>
+    inline
+    std::complex<T>
+    main_root(const std::complex<T>& a, unsigned int m)
+    {
+      T rho = std::abs(a);
+      if (rho == T(0)) return std::complex<T>(0, 0);
+      const T one_pi(constants::pi);
+      const T two_pi(2. * constants::pi);
+      T theta0 = std::fmod(std::arg(a), two_pi);
+      if (theta0 > one_pi) theta0 -= two_pi;
+      if (theta0 <= one_pi) theta0 += two_pi;
+      return std::polar(std::pow(rho, T(1./m)), theta0 / T(m));
+    }
+
+  } // namespace detail
 
   //! Determine the eigenvalues of the anisotropic displacement tensor.
   /*! Since the anisotropic displacement tensor is a symmetric matrix,
@@ -383,7 +402,7 @@ namespace cctbx {
       <p>
       See also: Eigenvectors().
    */
-  template <class FloatType>
+  template <typename FloatType>
   af::tiny<FloatType, 3>
   Eigenvalues(const af::tiny<FloatType, 6>& adp)
   {
@@ -410,20 +429,21 @@ namespace cctbx {
                   - adp[3] * adp[3] - adp[4] * adp[4] - adp[5] * adp[5];
     FloatType t =   adp[0] * adp[5] * adp[5] - adp[0] * adp[1] * adp[2]
                   + adp[2] * adp[3] * adp[3] + adp[1] * adp[4] * adp[4]
-                  - 2 * adp[3] * adp[4] * adp[5];
+                  - FloatType(2) * adp[3] * adp[4] * adp[5];
     /* "Reduced form" of the cubic equation according to
        Taschenbuch der Mathematik.
      */
     // reduced form: y^3 + p y + q == 0
-    FloatType p = s - r * r / 3.;
-    FloatType q = 2. * r * r * r / 27. - r * s / 3. + t;
-    // to circumvent numerical instabilities due to rounding errors the
+    FloatType p = s - r * r / FloatType(3);
+    FloatType q =   FloatType(2) * r * r * r / FloatType(27)
+                  - r * s / FloatType(3) + t;
+    // to circumvent instabilities due to rounding errors the
     // roots are determined as complex numbers.
-    std::complex<FloatType> D(p * p * p / 27. + q * q / 4.);
+    std::complex<FloatType> D(p*p*p / FloatType(27) + q*q / FloatType(4));
     std::complex<FloatType> sqrtD = std::sqrt(D);
-    FloatType mq2 = -q / 2.;
-    std::complex<FloatType> u = std::pow(mq2 + sqrtD, 1/3.);
-    std::complex<FloatType> v = std::pow(mq2 - sqrtD, 1/3.);
+    FloatType mq2 = -q / FloatType(2);
+    std::complex<FloatType> u = detail::main_root(mq2 + sqrtD, 3);
+    std::complex<FloatType> v = detail::main_root(mq2 - sqrtD, 3);
     std::complex<FloatType> epsilon1(-0.5, std::sqrt(3.) * 0.5);
     std::complex<FloatType> epsilon2 = std::conj(epsilon1);
     // since the anisotropic displacement tensor is a symmetric matrix,
@@ -434,7 +454,7 @@ namespace cctbx {
     result[2] = (epsilon2 * u + epsilon1 * v).real();
     // convert the solutions y of the reduced form to the
     // solutions x of the normal form.
-    for(std::size_t i = 0;i<3;i++) result[i] -= r / 3.;
+    for(std::size_t i = 0;i<3;i++) result[i] -= r / FloatType(3);
     return result;
   }
 
@@ -445,7 +465,7 @@ namespace cctbx {
       <p>
       See also: CheckPositiveDefinite(), Eigenvalues().
    */
-  template <class FloatType>
+  template <typename FloatType>
   bool
   isPositiveDefinite(const af::tiny<FloatType, 3>& adp_eigenvalues) {
     return adp_eigenvalues[af::min_index(adp_eigenvalues)] > 0.;
@@ -458,7 +478,7 @@ namespace cctbx {
       <p>
       See also: CheckPositiveDefinite(), Eigenvalues().
    */
-  template <class FloatType>
+  template <typename FloatType>
   bool
   isPositiveDefinite(const af::tiny<FloatType, 6>& adp) {
     return isPositiveDefinite(Eigenvalues(adp));
@@ -471,7 +491,7 @@ namespace cctbx {
       <p>
       See also: isPositiveDefinite(), Eigenvalues().
    */
-  template <class FloatType>
+  template <typename FloatType>
   void
   CheckPositiveDefinite(const af::tiny<FloatType, 3>& adp_eigenvalues) {
     if (!(isPositiveDefinite(adp_eigenvalues))) {
@@ -486,7 +506,7 @@ namespace cctbx {
       <p>
       See also: isPositiveDefinite(), Eigenvalues().
    */
-  template <class FloatType>
+  template <typename FloatType>
   void
   CheckPositiveDefinite(const af::tiny<FloatType, 6>& adp) {
     CheckPositiveDefinite(Eigenvalues(adp));
@@ -494,7 +514,7 @@ namespace cctbx {
 
   namespace detail {
 
-    template <class FloatType>
+    template <typename FloatType>
     std::pair<af::tiny<FloatType, 3>, FloatType>
     recursively_multiply(const af::tiny<FloatType, 9>& M,
                          af::tiny<FloatType, 3> V,
@@ -526,7 +546,7 @@ namespace cctbx {
   } // namespace detail
 
   //! Group of associated eigenvectors and values.
-  template <class FloatType>
+  template <typename FloatType>
   class Eigensystem
   {
     public:
