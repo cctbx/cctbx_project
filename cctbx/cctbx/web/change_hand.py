@@ -26,10 +26,7 @@ def interpret_form_data(form):
       if (len(s) != 0): inp.coordinates.append(s)
   return inp
 
-def run(cctbx_url, inp, status):
-  print "Content-type: text/html"
-  print
-
+def run(server_info, inp, status):
   print "<pre>"
 
   utils.show_input_symbol(inp.sgsymbol, inp.convention)

@@ -45,9 +45,7 @@ def LATT_SYMM(space_group):
     l("SYMM %s" % (space_group(i).as_xyz(0, 0, "XYZ", ","),))
   return lines
 
-def run(cctbx_url, inp, status):
-  print "Content-type: text/html"
-  print
+def run(server_info, inp, status):
   print "<pre>"
   space_group_info = sgtbx.space_group_info(
     symbol=inp.sgsymbol,

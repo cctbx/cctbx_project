@@ -29,10 +29,7 @@ def interpret_form_data(form):
       if (len(s) != 0): inp.coordinates.append(s)
   return inp
 
-def run(cctbx_url, inp, status):
-  print "Content-type: text/html"
-  print
-
+def run(server_info, inp, status):
   print "<pre>"
   utils.show_input_symbol(inp.sgsymbol, inp.convention)
   special_position_settings = crystal.special_position_settings(
@@ -50,6 +47,7 @@ def run(cctbx_url, inp, status):
   skip_columns = utils.interpret_skip_columns(inp.skip_columns)
 
   wyckoff_table=special_position_settings.space_group_info().wyckoff_table()
+  unit_cell = special_position_settings.unit_cell()
   print "</pre><table border=2 cellpadding=2>"
   status.in_table = True
   print "<tr>"

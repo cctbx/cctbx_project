@@ -6,9 +6,8 @@
 # tabulated settings for that space group number. If no space group
 # symbol is given, all 530 entries in the internal table are listed.
 
-import urllib, urlparse
-
 from cctbx import sgtbx
+import urllib
 
 class empty: pass
 
@@ -22,17 +21,7 @@ def interpret_form_data(form):
       inp.__dict__[key[0]] = key[1]
   return inp
 
-def run(cctbx_url, inp, status):
-  print "Content-type: text/html"
-  print
-  print "<td><a href=\"%s\">%s</a>" % (
-    urlparse.urlunsplit(cctbx_url),
-    urlparse.urlunsplit(cctbx_url))
-  print "<p>"
-  url_cctbx_web = urlparse.urlunsplit(
-      cctbx_url[:2]
-    + [cctbx_url[2] + "/cctbx_web.cgi"]
-    + cctbx_url[3:])
+def run(server_info, inp, status):
   sg_number = 0
   if (len(inp.sgsymbol.strip()) != 0):
     sg_number = sgtbx.space_group_info(
@@ -50,10 +39,10 @@ def run(cctbx_url, inp, status):
       print "<tr>"
       print "<td>(%d)<td>%s" % (
         symbols.number(), symbols.schoenflies())
-      print ("<td><a href=\"%s?target_module=explore_symmetry"
-            +"&sgsymbol=%s\">%s</a>") % (
-        url_cctbx_web,
-        urllib.quote_plus(symbols.extended_hermann_mauguin()),
+      query = "target_module=explore_symmetry&sgsymbol=" \
+            + urllib.quote_plus(symbols.extended_hermann_mauguin())
+      print ("<td><a href=\"%s\">%s</a>") % (
+        server_info.script(query),
         symbols.extended_hermann_mauguin())
       print "<td>%s" % (symbols.hall(),)
       n_settings += 1
@@ -62,6 +51,3 @@ def run(cctbx_url, inp, status):
     print "<p>"
     print "Number of settings listed:", n_settings
   print "<p>"
-  print "<td><a href=\"%s\">%s</a>" % (
-    urlparse.urlunsplit(cctbx_url),
-    urlparse.urlunsplit(cctbx_url))

@@ -4,17 +4,17 @@ sys.stderr = sys.stdout
 import cgitb
 cgitb.enable()
 
+from cctbx.web import utils
 import os, cgi, urlparse
 
 if (0):
   cgi.test()
+  sys.exit(0)
 
-if (0):
-  print "Content-type: text/html"
-  print
+print "Content-type: text/html"
+print
 
-cctbx_url = list(urlparse.urlsplit(os.environ["HTTP_REFERER"]))
-cctbx_url[2] = "/".join(cctbx_url[2].split("/")[:-1])
+server_info = utils.server_info()
 
 form = cgi.FieldStorage()
 target_module = form["target_module"].value
@@ -27,15 +27,19 @@ if (1):
   import time, pickle
   time_stamp = "%d_%02d_%02d_%02d_%02d_%02d" % time.localtime(time.time())[:6]
   f = open("/var/tmp/cctbx_web/"+target_module+"_"+time_stamp, "wb")
-  pickle.dump([cctbx_url, target_module, inp], f)
+  pickle.dump([server_info, target_module, inp], f)
   f.close()
+
+print '[<a href="'+server_info.base()+'">Index of services</a>]'
+print '[<a href="'+server_info.file(target_module+".html")+'">New input</a>]'
+print "<hr>"
 
 import traceback
 class empty: pass
 status = empty()
 status.in_table = False
 try:
-  target.run(cctbx_url, inp, status)
+  target.run(server_info, inp, status)
 except:
   if (status.in_table): print "</table><pre>"
   ei = sys.exc_info()
@@ -45,3 +49,7 @@ except:
   print "Details:"
   print
   traceback.print_exc()
+else:
+  print "<hr>"
+  print '[<a href="'+server_info.base()+'">Index of services</a>]'
+  print '[<a href="'+server_info.file(target_module+".html")+'">New input</a>]'
