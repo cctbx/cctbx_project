@@ -45,6 +45,9 @@ def exercise(space_group_info, n_scatterers=8, d_min=2.5,
     miller_set=f_calc,
     data=data,
     sigmas=data/10).set_observation_type_xray_intensity()
+  r = flex.random_double(size=data.size())
+  p = flex.sort_permutation(r)
+  f_calc = f_calc.apply_selection(p)
   recycle(miller_array=f_calc)
   recycle(miller_array=f_calc.f_sq_as_f())
 

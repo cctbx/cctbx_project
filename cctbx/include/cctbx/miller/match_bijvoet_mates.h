@@ -1,12 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Jul: Created from fragments of cctbx/miller.h (R.W. Grosse-Kunstleve)
- */
-
 #ifndef CCTBX_MILLER_MATCH_BIJVOET_MATES_H
 #define CCTBX_MILLER_MATCH_BIJVOET_MATES_H
 
@@ -80,11 +71,14 @@ namespace cctbx { namespace miller {
       void
       size_assert(std::size_t sz) const;
 
-      af::shared<bool>
+      af::shared<std::size_t>
       pairs_hemisphere_selection(char plus_or_minus) const;
 
-      af::shared<bool>
-      singles_hemisphere_selection(char plus_or_minus) const;
+      af::shared<std::size_t> const&
+      singles_hemisphere_selection(char plus_or_minus) const
+      {
+        return singles_[plus_or_minus_index_(plus_or_minus)];
+      }
 
       af::shared<index<> >
       miller_indices_in_hemisphere(char plus_or_minus) const;
