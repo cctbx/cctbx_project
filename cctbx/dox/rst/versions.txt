@@ -24,6 +24,14 @@ Quick links
 
 - `cctbx - Project page at SourceForge`_
 
+- cctbx Python interfaces:
+  `libtbx <current_cvs/python/libtbx/>`_
+  `scitbx <current_cvs/python/scitbx/>`_
+  `cctbx <current_cvs/python/cctbx/>`_
+  `iotbx <current_cvs/python/iotbx/>`_
+
+- `cctbx C++ interfaces <current_cvs/c_plus_plus/namespaces.html>`_
+
 .. _`cctbx - Public CVS repository`: http://cvs.sourceforge.net/cgi-bin/viewcvs.cgi/cctbx/
 
 .. _`cctbx - Project page at SourceForge`: http://sourceforge.net/projects/cctbx/
