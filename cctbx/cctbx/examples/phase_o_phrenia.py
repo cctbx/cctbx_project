@@ -6,7 +6,8 @@ from cctbx import sgtbx
 from cctbx.array_family import flex
 from scitbx.python_utils import dicts
 
-def peak_cluster_reduction(crystal_symmetry, peak_list, min_peak_distance, max_reduced_peaks):
+def peak_cluster_reduction(crystal_symmetry, peak_list,
+                           min_peak_distance, max_reduced_peaks):
   special_position_settings = crystal.special_position_settings(
     crystal_symmetry=crystal_symmetry,
     min_distance_sym_equiv=min_peak_distance)
@@ -38,7 +39,7 @@ def calculate_exp_i_two_phi_peaks(xray_structure, d_min,
                                   max_reduced_peaks):
   f_h_array = xray_structure.structure_factors(
     anomalous_flag=00000,
-    d_min=d_min).f_calc_array()
+    d_min=d_min).f_calc()
   two_i_phi_h_array = miller.array(
     miller_set=f_h_array,
     data=flex.polar(1, flex.arg(f_h_array.data())*2))

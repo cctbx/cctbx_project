@@ -11,6 +11,9 @@ class lbfgs:
 
   def __init__(self, target_functor, options, xray_structure):
     adopt_init_args(self, locals())
+    self.structure_factors_from_scatterers = \
+      xray.structure_factors_new.from_scatterers(
+        miller_set=self.target_functor.f_obs_array())
     self.pack_parameters()
     self.first_target_value = None
     self.minimizer = scitbx.lbfgs.run(self)
@@ -39,9 +42,9 @@ class lbfgs:
       self.options.occupancy)
 
   def compute_target(self, compute_derivatives):
-    self.f_calc_array = xray.structure_factors_direct(
+    self.f_calc_array = self.structure_factors_from_scatterers(
       xray_structure=self.xray_structure,
-      miller_set=self.target_functor.f_obs_array()).f_calc_array()
+      miller_set=self.target_functor.f_obs_array()).f_calc()
     self.target_result = self.target_functor(
       self.f_calc_array,
       compute_derivatives)
@@ -50,13 +53,15 @@ class lbfgs:
     if (self.first_target_value != None):
       self.unpack_parameters()
     self.compute_target(compute_derivatives=0001)
-    sf = xray.structure_factors_direct(
+    sf = self.structure_factors_from_scatterers(
       xray_structure=self.xray_structure,
       miller_set=self.target_functor.f_obs_array(),
       d_target_d_f_calc=self.target_result.derivatives(),
-      d_site_flag=self.options.site,
-      d_u_iso_flag=self.options.u_iso,
-      d_occupancy_flag=self.options.occupancy)
+      derivative_flags=xray.structure_factors_new.derivative_flags(
+        site=self.options.site,
+        u_iso=self.options.u_iso,
+        occupancy=self.options.occupancy),
+      direct=0001)
     self.g = flex.double()
     if (self.options.site):
       d_target_d_site = sf.d_target_d_site()

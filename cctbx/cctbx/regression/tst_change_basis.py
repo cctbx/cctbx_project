@@ -16,7 +16,7 @@ def exercise(space_group_info, anomalous_flag,
     random_u_iso=0001,
     random_occupancy=0001)
   f_abs_z_array = abs(structure_z.structure_factors(
-    anomalous_flag=anomalous_flag, d_min=d_min, method="direct").f_calc_array())
+    anomalous_flag=anomalous_flag, d_min=d_min, direct=0001).f_calc())
   if (0 or verbose):
     structure_z.show_summary().show_scatterers()
     print "n_special_positions:", \
@@ -32,9 +32,11 @@ def exercise(space_group_info, anomalous_flag,
   structure_pz = structure_p.change_basis(z2p_op.inverse())
   assert structure_pz.unit_cell().is_similar_to(structure_z.unit_cell())
   assert structure_pz.space_group() == structure_z.space_group()
-  f_abs_pz_array = abs(xray.structure_factors_direct(
-    xray_structure=structure_pz,
-    miller_set=f_abs_z_array).f_calc_array())
+  f_abs_pz_array = abs(xray.structure_factors_new.from_scatterers(
+    miller_set=f_abs_z_array)(
+      xray_structure=structure_pz,
+      miller_set=f_abs_z_array,
+      direct=0001).f_calc())
   c = flex.linear_correlation(f_abs_z_array.data(), f_abs_pz_array.data())
   assert c.is_well_defined()
   if (0 or verbose):
@@ -48,9 +50,11 @@ def exercise(space_group_info, anomalous_flag,
     assert o != 0
   f_abs_pz_array = f_abs_p_array_cb.change_basis(z2p_op.inverse())
   assert flex.order(f_abs_pz_array.indices(), f_abs_z_array.indices()) == 0
-  f_abs_p_array_sf = abs(xray.structure_factors_direct(
-    xray_structure=structure_p,
-    miller_set=f_abs_p_array_cb).f_calc_array())
+  f_abs_p_array_sf = abs(xray.structure_factors_new.from_scatterers(
+    miller_set=f_abs_p_array_cb)(
+      xray_structure=structure_p,
+      miller_set=f_abs_p_array_cb,
+      direct=0001).f_calc())
   c = flex.linear_correlation(f_abs_p_array_sf.data(), f_abs_p_array_cb.data())
   assert c.is_well_defined()
   if (0 or verbose):

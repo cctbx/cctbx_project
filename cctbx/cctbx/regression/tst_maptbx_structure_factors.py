@@ -19,8 +19,8 @@ def exercise(space_group_info, anomalous_flag, conjugate_flag,
     random_u_iso=0001,
     random_occupancy=0001
     ).structure_factors(
-        anomalous_flag=anomalous_flag, d_min=d_min, method="direct")
-  f_calc_array = structure_factors.f_calc_array()
+        anomalous_flag=anomalous_flag, d_min=d_min, direct=0001)
+  f_calc_array = structure_factors.f_calc()
   n_real = f_calc_array.crystal_gridding(
     resolution_factor=resolution_factor,
     d_min=d_min,
@@ -95,8 +95,8 @@ def exercise_under_sampled(space_group_info, anomalous_flag, conjugate_flag,
     random_u_iso=0001,
     random_occupancy=0001
     ).structure_factors(
-        anomalous_flag=anomalous_flag, d_min=d_min, method="direct")
-  f_calc_array = structure_factors.f_calc_array()
+        anomalous_flag=anomalous_flag, d_min=d_min, direct=0001)
+  f_calc_array = structure_factors.f_calc()
   n_real = maptbx.crystal_gridding(
     unit_cell=f_calc_array.unit_cell(),
     d_min=d_min,
