@@ -3,6 +3,7 @@
 
 #include <cctbx/sgtbx/rot_mx.h>
 #include <cctbx/sgtbx/parse_string.h>
+#include <scitbx/sym_mat3.h>
 #include <scitbx/array_family/tiny_types.h>
 #include <cctbx/import_scitbx_af.h>
 
@@ -486,6 +487,42 @@ namespace cctbx { namespace sgtbx {
       tr_vec lp_;
       tr_vec os_;
   };
+
+  //! Symmetry-averaged tensor.
+  /*! reciprocal_space = false:
+        sum[tensor.tensor_transpose_transform(r)] / matrices.size()
+
+      reciprocal_space = true:
+        sum[tensor.tensor_transform(r)] / matrices.size()
+
+      over all rotation parts r of matrices.
+
+      See also:
+        Giacovazzo, Fundamentals of Crystallography 1992, p. 189.
+
+      Not available in Python.
+   */
+  template <class FloatType>
+  scitbx::sym_mat3<FloatType>
+  average_tensor(
+    af::const_ref<rt_mx> const& matrices,
+    scitbx::sym_mat3<FloatType> const& tensor,
+    bool reciprocal_space)
+  {
+    scitbx::sym_mat3<FloatType> result(0,0,0,0,0,0);
+    for (std::size_t i=0;i<matrices.size();i++) {
+      scitbx::mat3<FloatType>
+        r = matrices[i].r()
+              .as_floating_point(scitbx::type_holder<FloatType>());
+      if (reciprocal_space) {
+        result += tensor.tensor_transform(r);
+      }
+      else {
+        result += tensor.tensor_transpose_transform(r);
+      }
+    }
+    return result / static_cast<FloatType>(matrices.size());
+  }
 
 }} // namespace cctbx::sgtbx
 

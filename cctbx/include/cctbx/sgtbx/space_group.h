@@ -476,7 +476,10 @@ namespace cctbx { namespace sgtbx {
           Not available in Python.
        */
       uc_sym_mat3
-      average_metrical_matrix(uc_sym_mat3 const& g) const;
+      average_metrical_matrix(uc_sym_mat3 const& g) const
+      {
+        return average_tensor(smx_.const_ref(), g, false);
+      }
 
       //! Computes a unit cell compatible with the space group symmetry.
       /*! Shorthand for:
@@ -501,6 +504,20 @@ namespace cctbx { namespace sgtbx {
           average_unit_cell(ucell),
           relative_length_tolerance,
           absolute_angle_tolerance);
+      }
+
+      /*! \brief Averages symmetrically equivalent u_star tensors to
+          obtain a tensor that satisfies the symmetry constraints.
+       */
+      /*! The averaged tensor is equivalent to beta_inv
+          of Giacovazzo, Fundamentals of Crystallography 1992,
+          p. 189.
+       */
+      template <class FloatType>
+      scitbx::sym_mat3<FloatType>
+      average_u_star(scitbx::sym_mat3<FloatType> const& u_star) const
+      {
+        return average_tensor(smx_.const_ref(), u_star, true);
       }
 
       //! The translation parts of the symmetry operations are set to 0.
