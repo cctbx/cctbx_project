@@ -48,6 +48,8 @@ class structure(crystal.special_position_settings):
     cp = structure(self, scattering_dict=self._scattering_dict)
     cp._scatterers = self._scatterers.deep_copy()
     cp._special_position_indices = self._special_position_indices.deep_copy()
+    if (getattr(self, "scatterer_pdb_records", None) is not None):
+      cp.scatterer_pdb_records = self.scatterer_pdb_records
     return cp
 
   def scatterers(self):
