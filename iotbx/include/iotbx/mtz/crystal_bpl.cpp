@@ -27,6 +27,8 @@ namespace {
         .def("unit_cell", &w_t::unit_cell)
         .def("n_datasets", &w_t::n_datasets)
         .def("datasets", &w_t::datasets)
+        .def("add_dataset", &w_t::add_dataset, (
+          arg_("name"), arg_("wavelength")))
       ;
       {
         scitbx::af::boost_python::shared_wrapper<w_t>::wrap(

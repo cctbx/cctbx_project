@@ -51,17 +51,20 @@ class _object(boost.python.injector, ext.object):
     if (out is None): out = sys.stdout
     print >> out, "Title:", self.title()
     print >> out, "Space group symbol from file:", self.space_group_name()
+    print >> out, "Space group number from file:", self.space_group_number()
     self.space_group_info().show_summary(
       f=out, prefix="Space group from matrices: ")
+    print >> out, "Point group symbol from file:", self.point_group_name()
     print >> out, "Number of crystals:", self.n_crystals()
     print >> out, "Number of Miller indices:", self.n_reflections()
     print >> out, "History:"
     for line in self.history():
-      print >> out, " ", line.rstrip()
+      print >> out, " ", line
     for i_crystal,crystal in enumerate(self.crystals()):
       print >> out, "Crystal %d:" % (i_crystal+1)
       print >> out, "  Name:", crystal.name()
       print >> out, "  Project:", crystal.project_name()
+      print >> out, "  Id:", crystal.id()
       crystal.unit_cell().show_parameters(f=out, prefix="  Unit cell: ")
       print >> out, "  Number of datasets:", crystal.n_datasets()
       for i_dataset,dataset in enumerate(crystal.datasets()):
@@ -70,14 +73,16 @@ class _object(boost.python.injector, ext.object):
         print >> out, "    Id:", dataset.id()
         print >> out, "    Wavelength: %.6g" % dataset.wavelength()
         print >> out, "    Number of columns:", dataset.n_columns()
-        print >> out, "    Column number, label, number of valid values, type:"
-        for i_column,column in enumerate(dataset.columns()):
-          n_valid_values = column.n_valid_values()
-          print >> out, "      %3d, %s, %d/%d=%.2f%%, %s: %s" % (
-            i_column+1,
-            column.label(),
-            n_valid_values,
-            self.n_reflections(),
-            100.*n_valid_values/self.n_reflections(),
-            column.type(),
-            column_type_legend[column.type()])
+        if (dataset.n_columns() > 0):
+          print >> out, \
+            "    Column number, label, number of valid values, type:"
+          for i_column,column in enumerate(dataset.columns()):
+            n_valid_values = column.n_valid_values()
+            print >> out, "      %3d, %s, %d/%d=%.2f%%, %s: %s" % (
+              i_column+1,
+              column.label(),
+              n_valid_values,
+              self.n_reflections(),
+              100.*n_valid_values/self.n_reflections(),
+              column.type(),
+              column_type_legend[column.type()])

@@ -63,6 +63,22 @@ namespace iotbx { namespace mtz {
     return result;
   }
 
+  inline
+  dataset
+  crystal::add_dataset(
+    const char *name,
+    double wavelength)
+  {
+    int i_dataset = n_datasets();
+    CMtz::MTZSET* dataset_ptr = CMtz::MtzAddDataset(
+      mtz_object().ptr(), ptr(), name, static_cast<float>(wavelength));
+    CCTBX_ASSERT(dataset_ptr != 0);
+    CCTBX_ASSERT(n_datasets() == i_dataset+1);
+    dataset result(*this, i_dataset);
+    CCTBX_ASSERT(result.ptr() == dataset_ptr);
+    return result;
+  }
+
 }} // namespace iotbx::mtz
 
 #endif // IOTBX_MTZ_DATASET_H
