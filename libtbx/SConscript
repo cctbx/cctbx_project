@@ -103,6 +103,7 @@ if (sys.platform == "win32"):
         /MD
         /GR /GX
         /Zm800
+        /DBOOST_DISABLE_THREADS
     """)
     env_etc.ccflags_base = Split("""
         /nologo
@@ -147,6 +148,7 @@ else:
         -std strict_ansi
         -msg_display_number -msg_disable 186,450,1115
         -tlocal
+        -DBOOST_DISABLE_THREADS
     """)
     env_etc.ccflags_base = Split("""
         -std1
@@ -180,6 +182,7 @@ else:
       -fPIC
       -ftemplate-depth-120
       -w
+      -DBOOST_DISABLE_THREADS
     """)
     env_etc.ccflags_base = Split("""
       -fPIC
@@ -211,6 +214,7 @@ else:
     )
     env_etc.cxxflags_base = Split("""
       -fPIC
+      -DBOOST_DISABLE_THREADS
     """)
     env_etc.ccflags_base = Split("""
     """)
@@ -237,6 +241,7 @@ else:
     )
     env_etc.cxxflags_base = Split("""
       -fPIC
+      -DBOOST_DISABLE_THREADS
     """)
     env_etc.ccflags_base = Split("""
     """)
@@ -274,6 +279,7 @@ else:
       env_etc.cxxflags_base.insert(0,
         "-I%s/boost/compatibility/cpp_c_headers"
         % env_etc.libtbx_env.dist_path("boost"))
+    env_etc.cxxflags_base.append("-DBOOST_DISABLE_THREADS")
     env_etc.ccflags_base = []
     if (libtbx.config.build_options.optimization):
       opts = ["-DNDEBUG", "-O2", "-OPT:Olimit=0"]
@@ -305,6 +311,7 @@ else:
       -fPIC
       -ftemplate-depth-130
       -w
+      -DBOOST_DISABLE_THREADS
     """)
     env_etc.ccflags_base = Split("""
       -w
@@ -342,6 +349,7 @@ else:
       -fcoalesce-templates
       -Wno-long-double
       -w
+      -DBOOST_DISABLE_THREADS
     """)
     env_etc.ccflags_base = Split("""
       -fPIC
