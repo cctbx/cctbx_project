@@ -28,7 +28,6 @@ namespace cctbx { namespace restraints {
       bool
       process(SimpleProxyType const& proxy)
       {
-        CCTBX_ASSERT(proxy.i_seqs[0] < proxy.i_seqs[1]);
         simple.push_back(proxy);
         return false;
       }
@@ -36,9 +35,7 @@ namespace cctbx { namespace restraints {
       bool
       process(SymProxyType const& proxy)
       {
-        int type_id = asu_mappings_->interaction_type_id(proxy.pair);
-        if (type_id < 0) return false;
-        if (type_id > 0) {
+        if (asu_mappings_->is_simple_interaction(proxy.pair)) {
           simple.push_back(proxy.as_simple_proxy());
           return false;
         }
