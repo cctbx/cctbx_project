@@ -334,6 +334,18 @@ namespace scitbx { namespace af { namespace boost_python {
     }
 
     static shared<e_t>
+    reversed(
+      af::const_ref<e_t> const& self)
+    {
+      shared<e_t> result((af::reserve(self.size())));
+      for(std::size_t i=self.size();i>0;) {
+        i--;
+        result.push_back(self[i]);
+      }
+      return result;
+    }
+
+    static shared<e_t>
     select_bool(
       af::const_ref<e_t> const& a,
       af::const_ref<bool> const& flags)
@@ -687,6 +699,7 @@ namespace scitbx { namespace af { namespace boost_python {
         .def("resize", resize_flex_grid_2)
         .def("clear", clear)
         .def("extend", extend)
+        .def("reversed", reversed)
         .def("select", select_bool)
         .def("select", select_size_t)
         .def("set_selected", set_selected_bool_a)
