@@ -43,21 +43,19 @@ documentation can be used for both the compiled and the scripted
 layer of the Computational Crystallography Toolbox.
 
 <h3>\ref page_fundamental</h3>
-<h3><a href="http://sourceforge.net/projects/cctbx/"
-    >The cctbx project page at SourceForge</a></h3>
-<h3><a
-href="http://cvs.sourceforge.net/cgi-bin/cvsweb.cgi/cctbx/?cvsroot=cctbx"
->The public cctbx CVS repository</a></h3>
+<h3><a href="http://sourceforge.net/projects/cctbx/">The %cctbx project page at SourceForge</a></h3>
+<h3><a href="http://cvs.sourceforge.net/cgi-bin/cvsweb.cgi/cctbx/?cvsroot=cctbx">The public %cctbx CVS repository</a></h3>
 
 <hr>
 
 \section acknowledgments Acknowledgments
 
-This initial version of the cctbx was written by members of the
+This initial version of the %cctbx was written by members of the
 Computational Crystallography Initiative (CCI, http://cci.lbl.gov/) at
 the Lawrence Berkeley National Laboratory (http://www.lbl.gov/). The
 CCI is headed by Paul Adams and is supported by the U.S. Department of
-Energy under Contract No. DE-AC03-76SF00098.
+Energy under Contract No. DE-AC03-76SF00098 and
+NIH/NIGMS under grant number 1P50GM62412-010003.
 
 We are indebted to
 <a href="http://www.boost.org/people/dave_abrahams.htm">David Abrahams</a>,
@@ -67,7 +65,7 @@ main author of the Boost.Python library, for his generous help.
 
 \section getting_started Getting started
 
-The main classes of the cctbx are class <tt>uctbx::UnitCell</tt> and
+The main classes of the %cctbx are class <tt>uctbx::UnitCell</tt> and
 class <tt>sgtbx::SgOps</tt>. The following Python script shows how to
 define a unit cell, process a space group symbol to obtain symmetry
 matrices, verify that the unit cell is compatibe with the symmetry,
@@ -75,18 +73,7 @@ and print a list of the symmetry operations:
 
 <hr>
 
-<pre>
-import sgtbx
-import uctbx
-
-UnitCell = uctbx.UnitCell((11, 12, 13, 90, 100, 90))
-print UnitCell
-Symbols = sgtbx.SpaceGroupSymbols("C 2")
-SgOps = sgtbx.SgOps(Symbols.Hall())
-SgOps.CheckUnitCell(UnitCell)
-for i in xrange(SgOps.OrderZ()):
-  print SgOps(i).as_xyz()
-</pre>
+\include python/getting_started.py
 
 <hr>
 
@@ -95,25 +82,7 @@ implementation is very similar:
 
 <hr>
 
-<pre>
-\#include <iostream>
-\#include <cctbx/sgtbx/symbols.h>
-\#include <cctbx/sgtbx/groups.h>
-\#include <cctbx/uctbx.h>
-
-int main()
-{
-  uctbx::UnitCell UnitCell(uctbx::uc_params(11, 12, 13, 90, 100, 90));
-  std::cout << UnitCell << std::endl;
-  sgtbx::SpaceGroupSymbols Symbols("C 2");
-  sgtbx::SgOps SgOps(Symbols.Hall());
-  SgOps.CheckUnitCell(UnitCell);
-  for (int i = 0; i < SgOps.OrderZ(); i++) {
-    std::cout << SgOps(i).as_xyz() << std::endl;
-  }
-  return 0;
-}
-</pre>
+\include cpp/getting_started.cpp
 
 <hr>
 
@@ -126,12 +95,12 @@ The examples can be found in the <tt>examples/cpp</tt> and
 
 <ul>
 <li><a href="http://sourceforge.net/project/showfiles.php?group_id=24107"
-    >Download page</a>
+    >%cctbx - Download page</a>
 <li>\ref page_installation
 <li>\ref page_installation_adv
 <li>\ref page_installation_compilers
 <li>\ref page_installation_python
-<li>\ref page_documentation
+<li>\ref page_about_documentation
 <li>\ref page_history
 </ul>
 
@@ -141,13 +110,13 @@ The examples can be found in the <tt>examples/cpp</tt> and
 cctbx@cci.lbl.gov
 
 <hr>
-The cctbx CVS development tree is hosted by
-<A href="http://sourceforge.net">SourceForge</A>
-<IMG src="http://sourceforge.net/sflogo.php?group_id=24107" width="88" height="31" border="0" alt="SourceForge Logo">
-
-<hr>
 
 \par
 R.W. Grosse-Kunstleve, April 2001
+
+<hr>
+The %cctbx CVS development tree is hosted by
+<A href="http://sourceforge.net">
+<IMG src="http://sourceforge.net/sflogo.php?group_id=24107" width="88" height="31" border="0" alt="SourceForge Logo"></A>
 
 */

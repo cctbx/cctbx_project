@@ -1,4 +1,4 @@
-# Doxyfile 1.2.5
+# Doxyfile 1.2.6
 
 # This file describes the settings to be used by doxygen for a project
 #
@@ -216,6 +216,12 @@ GENERATE_TODOLIST      = YES
 
 GENERATE_TESTLIST      = YES
 
+# The GENERATE_BUGLIST tag can be used to enable (YES) or 
+# disable (NO) the bug list. This list is created by putting \bug 
+# commands in the documentation.
+
+GENERATE_BUGLIST       = YES
+
 # This tag can be used to specify a number of aliases that acts 
 # as commands in the documentation. An alias has the form "name=value". 
 # For example adding "sideeffect=\par Side Effects:\n" will allow you to 
@@ -241,6 +247,12 @@ MAX_INITIALIZER_LINES  = 30
 # of all members will be omitted, etc. 
 
 OPTIMIZE_OUTPUT_FOR_C  = NO
+
+# Set the SHOW_USED_FILES tag to NO to disable the list of files generated 
+# at the bottom of the documentation of classes and structs. If set to YES the 
+# list will mention the files that were used to generate the documentation. 
+
+SHOW_USED_FILES        = YES
 
 #---------------------------------------------------------------------------
 # configuration options related to warning and progress messages
@@ -415,6 +427,23 @@ HTML_ALIGN_MEMBERS     = YES
 # of the generated HTML documentation. 
 
 GENERATE_HTMLHELP      = NO
+
+# If the GENERATE_HTMLHELP tag is set to YES, the GENERATE_CHI flag 
+# controls if a separate .chi index file is generated (YES) or that 
+# it should be included in the master .chm file (NO).
+
+GENERATE_CHI           = NO
+
+# If the GENERATE_HTMLHELP tag is set to YES, the BINARY_TOC flag 
+# controls whether a binary table of contents is generated (YES) or a 
+# normal table of contents (NO) in the .chm file.
+
+BINARY_TOC             = NO
+
+# The TOC_EXPAND flag can be set YES to add extra items for group members 
+# to the contents of the Html help documentation and to the tree view. 
+
+TOC_EXPAND             = NO
 
 # The DISABLE_INDEX tag can be used to turn on/off the condensed index at 
 # top of each HTML page. The value NO (the default) enables the index and 
@@ -706,6 +735,12 @@ MAX_DOT_GRAPH_HEIGHT   = 1024
 # arrows in the dot generated graphs. 
 
 GENERATE_LEGEND        = YES
+
+# If the DOT_CLEANUP tag is set to YES (the default) Doxygen will 
+# remove the intermedate dot files that are used to generate 
+# the various graphs. 
+
+DOT_CLEANUP            = YES
 
 #---------------------------------------------------------------------------
 # Configuration::addtions related to the search engine   
