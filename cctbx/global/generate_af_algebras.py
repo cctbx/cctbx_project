@@ -51,6 +51,13 @@ cstdlib_1arg = (
   'abs',
 )
 
+misc_functions_2arg = (
+  ("", ["approx_equal_scaled"], 1,
+   [", const ElementType& scaled_tolerance", ", scaled_tolerance"]),
+  ("", ["approx_equal_unscaled"], 1,
+   [", const ElementType& tolerance", ", tolerance"]),
+)
+
 class empty: pass
 
 def format_header(indent, str, max_line_length = 79):
@@ -450,16 +457,8 @@ namespace cctbx { namespace af {
       "std::", cmath_1arg + cstdlib_1arg)
     generate_2arg_element_wise(array_type_name,
       "std::", cmath_2arg)
-    generate_2arg_element_wise(array_type_name,
-      "", ["approx_equal_scaled"],
-      1,
-      [", const ElementType& scaled_tolerance",
-       ", scaled_tolerance"])
-    generate_2arg_element_wise(array_type_name,
-      "", ["approx_equal_unscaled"],
-      1,
-      [", const ElementType& tolerance",
-       ", tolerance"])
+    for args in misc_functions_2arg:
+      apply(generate_2arg_element_wise, (array_type_name,) + args)
   generate_1arg_reductions(array_type_name)
   generate_2arg_reductions(array_type_name)
 
