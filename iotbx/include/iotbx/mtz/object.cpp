@@ -523,6 +523,30 @@ namespace iotbx { namespace mtz {
     return result;
   }
 
+  namespace {
+
+    struct nan_and_non_zero_counts
+    {
+      nan_and_non_zero_counts();
+
+      nan_and_non_zero_counts(
+        af::tiny<column, 4> const& columns,
+        int i_refl)
+      :
+        n_nan(0),
+        n_non_zero(0)
+      {
+        for(unsigned i=0;i<4;i++) {
+          if      (columns[i].is_ccp4_nan(i_refl)) n_nan++;
+          else if (columns[i].float_datum(i_refl)) n_non_zero++;
+        }
+      }
+
+      unsigned n_nan;
+      unsigned n_non_zero;
+    };
+  }
+
   hl_group
   object::extract_hendrickson_lattman(
     const char* column_label_a,
@@ -533,14 +557,14 @@ namespace iotbx { namespace mtz {
     int n_refl = n_reflections();
     hl_group result(false, n_refl);
     hkl_columns hkl = get_hkl_columns();
-    column data_a(get_column(column_label_a));
-    column data_b(get_column(column_label_b));
-    column data_c(get_column(column_label_c));
-    column data_d(get_column(column_label_d));
+    af::tiny<column, 4> data(
+      get_column(column_label_a),
+      get_column(column_label_b),
+      get_column(column_label_c),
+      get_column(column_label_d));
     for(int i_refl=0;i_refl<n_refl;i_refl++) {
-      if (   data_b.is_ccp4_nan(i_refl) != data_a.is_ccp4_nan(i_refl)
-          || data_c.is_ccp4_nan(i_refl) != data_a.is_ccp4_nan(i_refl)
-          || data_d.is_ccp4_nan(i_refl) != data_a.is_ccp4_nan(i_refl)) {
+      nan_and_non_zero_counts counts(data, i_refl);
+      if (counts.n_nan != 0 && counts.n_non_zero != 0) {
         throw cctbx::error(std::string(
           "Unexpected NAN while extracting Hendrickson-Lattman array"
           " from columns: ")
@@ -549,14 +573,14 @@ namespace iotbx { namespace mtz {
           + column_label_c + ", "
           + column_label_d);
       }
-      if (!data_a.is_ccp4_nan(i_refl)) {
+      if (counts.n_nan == 0) {
         result.mtz_reflection_indices.push_back(i_refl);
         result.indices.push_back(hkl.get_miller_index(i_refl));
         result.data.push_back(cctbx::hendrickson_lattman<>(
-          data_a.float_datum(i_refl),
-          data_b.float_datum(i_refl),
-          data_c.float_datum(i_refl),
-          data_d.float_datum(i_refl)));
+          data[0].float_datum(i_refl),
+          data[1].float_datum(i_refl),
+          data[2].float_datum(i_refl),
+          data[3].float_datum(i_refl)));
       }
     }
     return result;
@@ -576,18 +600,19 @@ namespace iotbx { namespace mtz {
     int n_refl = n_reflections();
     hl_group result(true, n_refl);
     hkl_columns hkl = get_hkl_columns();
-    column data_ap(get_column(column_label_a_plus));
-    column data_bp(get_column(column_label_b_plus));
-    column data_cp(get_column(column_label_c_plus));
-    column data_dp(get_column(column_label_d_plus));
-    column data_am(get_column(column_label_a_minus));
-    column data_bm(get_column(column_label_b_minus));
-    column data_cm(get_column(column_label_c_minus));
-    column data_dm(get_column(column_label_d_minus));
+    af::tiny<column, 4> data_p(
+      get_column(column_label_a_plus),
+      get_column(column_label_b_plus),
+      get_column(column_label_c_plus),
+      get_column(column_label_d_plus));
+    af::tiny<column, 4> data_m(
+      get_column(column_label_a_minus),
+      get_column(column_label_b_minus),
+      get_column(column_label_c_minus),
+      get_column(column_label_d_minus));
     for(int i_refl=0;i_refl<n_refl;i_refl++) {
-      if (   data_bp.is_ccp4_nan(i_refl) != data_ap.is_ccp4_nan(i_refl)
-          || data_cp.is_ccp4_nan(i_refl) != data_ap.is_ccp4_nan(i_refl)
-          || data_dp.is_ccp4_nan(i_refl) != data_ap.is_ccp4_nan(i_refl)) {
+      nan_and_non_zero_counts counts(data_p, i_refl);
+      if (counts.n_nan != 0 && counts.n_non_zero != 0) {
         throw cctbx::error(std::string(
           "Unexpected NAN while extracting Hendrickson-Lattman array"
           " from columns: ")
@@ -596,18 +621,17 @@ namespace iotbx { namespace mtz {
           + column_label_c_plus + ", "
           + column_label_d_plus);
       }
-      if (!data_ap.is_ccp4_nan(i_refl)) {
+      if (counts.n_nan == 0) {
         result.mtz_reflection_indices.push_back(i_refl);
         result.indices.push_back(hkl.get_miller_index(i_refl));
         result.data.push_back(cctbx::hendrickson_lattman<>(
-          data_ap.float_datum(i_refl),
-          data_bp.float_datum(i_refl),
-          data_cp.float_datum(i_refl),
-          data_dp.float_datum(i_refl)));
+          data_p[0].float_datum(i_refl),
+          data_p[1].float_datum(i_refl),
+          data_p[2].float_datum(i_refl),
+          data_p[3].float_datum(i_refl)));
       }
-      if (   data_bm.is_ccp4_nan(i_refl) != data_am.is_ccp4_nan(i_refl)
-          || data_cm.is_ccp4_nan(i_refl) != data_am.is_ccp4_nan(i_refl)
-          || data_dm.is_ccp4_nan(i_refl) != data_am.is_ccp4_nan(i_refl)) {
+      counts = nan_and_non_zero_counts(data_m, i_refl);
+      if (counts.n_nan != 0 && counts.n_non_zero != 0) {
         throw cctbx::error(std::string(
           "Unexpected NAN while extracting Hendrickson-Lattman array"
           " from columns: ")
@@ -616,14 +640,14 @@ namespace iotbx { namespace mtz {
           + column_label_c_minus + ", "
           + column_label_d_minus);
       }
-      if (!data_am.is_ccp4_nan(i_refl)) {
+      if (counts.n_nan == 0) {
         result.mtz_reflection_indices.push_back(i_refl);
         result.indices.push_back(-hkl.get_miller_index(i_refl));
         result.data.push_back(cctbx::hendrickson_lattman<>(
-          data_am.float_datum(i_refl),
-          data_bm.float_datum(i_refl),
-          data_cm.float_datum(i_refl),
-          data_dm.float_datum(i_refl)));
+          data_m[0].float_datum(i_refl),
+          data_m[1].float_datum(i_refl),
+          data_m[2].float_datum(i_refl),
+          data_m[3].float_datum(i_refl)));
       }
     }
     return result;
