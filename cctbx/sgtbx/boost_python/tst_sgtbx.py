@@ -1186,11 +1186,13 @@ def exercise_lattice_symmetry():
   assert sgtbx.lattice_symmetry_find_max_delta(niggli_cell, group, 2) < 1.e-10
 
 def exercise_find_affine():
-  for sym,n in [("P 1",67704), ("P 2",104), ("C 2y",36)]:
+  for sym,n in [("P 1",67704),("P 2",104),("C 2y",36),("B 2x",36),("A 2z",36)]:
     group = sgtbx.space_group(sym)
-    affine = sgtbx.find_affine(group, 2)
-    cb_mx = affine.cb_mx()
-    assert len(cb_mx) == n
+    for use_p1_algorithm in [00000, 0001]:
+      affine = sgtbx.find_affine(group, 2)
+      cb_mx = affine.cb_mx()
+      assert len(cb_mx) == n
+      if (group.n_smx() == 1): break
 
 def exercise_direct_space_asu():
   cp = sgtbx.direct_space_asu_float_cut_plane([-1,0,0], 1)

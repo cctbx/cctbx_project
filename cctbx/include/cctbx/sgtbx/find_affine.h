@@ -20,8 +20,15 @@ namespace cctbx { namespace sgtbx {
           [-range, +range] and determinant one. For each of these
           it is tested if the space group is invariant under
           c*s*c.inverse(). If so the matrix c is stored in cb_mx_.
+          If use_p1_algorithm == false (default) and the space group
+          is different from P1 a much faster algorithm is used
+          to generate the change-of-basis matrices.
+          Set use_p1_algorithm=true for testing purposes only.
        */
-      find_affine(space_group const& group, int range=2);
+      find_affine(
+        space_group const& group,
+        int range=2,
+        bool use_p1_algorithm=false);
 
       //! Change-of-basis matrices that leave the space group invariant.
       af::shared<rt_mx>
@@ -29,6 +36,12 @@ namespace cctbx { namespace sgtbx {
 
     protected:
       af::shared<rt_mx> cb_mx_;
+
+      void
+      p1_algorithm(space_group const& group, int range);
+
+      void
+      sg_algorithm(space_group const& group, int range);
   };
 
 }} // namespace cctbx::sgtbx
