@@ -131,6 +131,16 @@ class include_registry:
         env.Prepend(CXXFLAGS=[ipath])
         env.Prepend(SHCXXFLAGS=[ipath])
 
+def get_mipspro_version():
+  version = os.popen4("CC -version", "r")[1].read().strip().split()
+  if (version[:3] == "MIPSpro Compilers: Version ".split()):
+    if (version[3].startswith("7.3")):
+      return "73"
+    elif (version[3].startswith("7.4")):
+      return "74"
+  sys.tracebacklimit = 0
+  raise RuntimeError("Unknown MIPSpro compiler (CC -version).")
+
 class _build_options:
 
   def set(self, **kw):
