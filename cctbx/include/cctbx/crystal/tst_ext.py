@@ -99,18 +99,18 @@ def exercise_direct_space_asu():
     [3.1,-2.2,1.3],
     [-4.3,1.7,0.4]]
   assert asu_mappings.mappings().size() == 0
-  asu_mappings.process(
+  assert asu_mappings.process(
     original_site=sites_seq[0],
-    min_distance_sym_equiv=0.01)
+    min_distance_sym_equiv=0.01) is asu_mappings
   assert asu_mappings.mappings().size() == 1
   site_symmetry = sgtbx.site_symmetry(
     unit_cell=asu_mappings.asu().unit_cell(),
     space_group=asu_mappings.space_group(),
     original_site=sites_seq[1],
     min_distance_sym_equiv=0.01)
-  asu_mappings.process(
+  assert asu_mappings.process(
     original_site=sites_seq[1],
-    site_symmetry_ops=site_symmetry)
+    site_symmetry_ops=site_symmetry) is asu_mappings
   assert asu_mappings.mappings().size() == 2
   assert asu_mappings.n_sites_in_asu_and_buffer() == 11
   assert not asu_mappings.is_locked()
@@ -176,15 +176,15 @@ def exercise_direct_space_asu():
         sgtbx.change_of_basis_op("x+1/4,y-1/4,z+1/2")),
       asu=asu,
       buffer_thickness=buffer_thickness)
-    asu_mappings.process_sites_frac(
+    assert asu_mappings.process_sites_frac(
       original_sites=flex.vec3_double([[3.1,-2.2,1.3]]),
-      min_distance_sym_equiv=0.01)
+      min_distance_sym_equiv=0.01) is asu_mappings
     assert asu_mappings.mappings().size() == 1
     if (two_flag):
-      asu_mappings.process_sites_cart(
+      assert asu_mappings.process_sites_cart(
         original_sites=flex.vec3_double([
           asu.unit_cell().orthogonalize([-4.3,1.7,0.4])]),
-      min_distance_sym_equiv=0.01)
+        min_distance_sym_equiv=0.01) is asu_mappings
     pair_generator = crystal.neighbors_simple_pair_generator(asu_mappings)
     index_pairs = []
     for index_pair in pair_generator:
@@ -333,22 +333,22 @@ def exercise_direct_space_asu():
   assert str(asu_mappings.special_op(1)) == "x,y,z"
   assert str(asu_mappings.special_op(2)) == "x-1/2*y,0,0"
   asu_mappings = structure[:0].asu_mappings(buffer_thickness=3.5)
-  asu_mappings.process_sites_frac(
-    original_sites=structure.scatterers().extract_sites())
+  assert asu_mappings.process_sites_frac(
+    original_sites=structure.scatterers().extract_sites()) is asu_mappings
   assert asu_mappings.n_sites_in_asu_and_buffer() == 33
   asu_mappings = structure[:0].asu_mappings(buffer_thickness=3.5)
-  asu_mappings.process_sites_frac(
+  assert asu_mappings.process_sites_frac(
     original_sites=structure.scatterers().extract_sites(),
-    site_symmetry_table=structure.site_symmetry_table())
+    site_symmetry_table=structure.site_symmetry_table()) is asu_mappings
   assert asu_mappings.n_sites_in_asu_and_buffer() == 33
   asu_mappings = structure[:0].asu_mappings(buffer_thickness=3.5)
-  asu_mappings.process_sites_cart(
-    original_sites=structure.sites_cart())
+  assert asu_mappings.process_sites_cart(
+    original_sites=structure.sites_cart()) is asu_mappings
   assert asu_mappings.n_sites_in_asu_and_buffer() == 33
   asu_mappings = structure[:0].asu_mappings(buffer_thickness=3.5)
-  asu_mappings.process_sites_cart(
+  assert asu_mappings.process_sites_cart(
     original_sites=structure.sites_cart(),
-    site_symmetry_table=structure.site_symmetry_table())
+    site_symmetry_table=structure.site_symmetry_table()) is asu_mappings
   assert asu_mappings.n_sites_in_asu_and_buffer() == 33
 
 def check_pair_asu_table(asu_table, expected_asu_pairs):
