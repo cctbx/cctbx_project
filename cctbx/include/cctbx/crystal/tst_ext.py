@@ -113,6 +113,13 @@ def exercise_direct_space_asu():
     original_site=sites_seq[1],
     site_symmetry_ops=site_symmetry) is asu_mappings
   assert asu_mappings.mappings().size() == 2
+  sites_frac = flex.vec3_double([m[1-i].mapped_site()
+    for i,m in enumerate(asu_mappings.mappings())])
+  assert list(asu_mappings.asu().is_inside_frac(
+    sites_frac=sites_frac)) == [False, True]
+  assert list(asu_mappings.asu().is_inside_cart(
+    sites_cart=asu_mappings.asu().unit_cell().orthogonalization_matrix()
+              *sites_frac)) == [False, True]
   assert asu_mappings.n_sites_in_asu_and_buffer() == 11
   assert not asu_mappings.is_locked()
   asu_mappings.lock()

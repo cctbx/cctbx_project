@@ -128,6 +128,35 @@ namespace direct_space_asu {
         return true;
       }
 
+      //! Array version of is_inside(), given fractional coordinates.
+      af::shared<bool>
+      is_inside_frac(
+        af::const_ref<scitbx::vec3<FloatType> > const& sites_frac)
+      {
+        af::shared<bool>
+          result(sites_frac.size(), af::init_functor_null<bool>());
+        bool* res = result.begin();
+        for(std::size_t i=0;i<sites_frac.size();i++) {
+          *res++ = is_inside(sites_frac[i]);
+        }
+        return result;
+      }
+
+      //! Array version of is_inside(), given cartesian coordinates.
+      af::shared<bool>
+      is_inside_cart(
+        af::const_ref<scitbx::vec3<FloatType> > const& sites_cart)
+      {
+        af::shared<bool>
+          result(sites_cart.size(), af::init_functor_null<bool>());
+        scitbx::mat3<FloatType> frac = unit_cell().fractionalization_matrix();
+        bool* res = result.begin();
+        for(std::size_t i=0;i<sites_cart.size();i++) {
+          *res++ = is_inside(frac * sites_cart[i]);
+        }
+        return result;
+      }
+
       /*! \brief New asymmetric unit with all facets shifted by the distance
           specified as thickness.
        */

@@ -73,6 +73,8 @@ namespace {
         .def("facets", &w_t::facets, ccr())
         .def("is_inside_epsilon", &w_t::is_inside_epsilon)
         .def("is_inside", &w_t::is_inside, (arg_("point")))
+        .def("is_inside_frac", &w_t::is_inside_frac, (arg_("sites_frac")))
+        .def("is_inside_cart", &w_t::is_inside_cart, (arg_("sites_cart")))
         .def("_add_buffer", &w_t::add_buffer)
         .def("volume_vertices", &w_t::volume_vertices,
           volume_vertices_overloads((arg_("cartesian"), arg_("epsilon"))))
