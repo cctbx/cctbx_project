@@ -1,6 +1,15 @@
 import math
 from cctbx_boost.arraytbx import shared
 
+def exercise_basic():
+  a = shared.double()
+  b = shared.reinterpret_real_as_complex(a)
+  assert a.id() == b.id()
+  a = shared.reinterpret_complex_as_real(b)
+  assert a.id() == b.id()
+  b = a.deep_copy()
+  assert a.id() != b.id()
+
 def exercise_push_back_etc():
   a = shared.int(3)
   assert a.size() == 3
@@ -277,6 +286,7 @@ def pickle_large_arrays(max_exp):
 def run(iterations):
   i = 0
   while (iterations == 0 or i < iterations):
+    exercise_basic()
     exercise_push_back_etc()
     exercise_operators()
     exercise_bool_inplace_operators()

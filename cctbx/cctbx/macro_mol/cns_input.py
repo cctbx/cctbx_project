@@ -126,7 +126,7 @@ class cns_reflection_file:
       h_i = rsos[i].H
       for j in xrange(i+1, len(rsos)):
         h_j = rsos[j].H
-        if (h_i is h_j): continue # already optimized
+        if (h_i.id() == h_j.id()): continue # already optimized
         if (h_i.size() != h_j.size()): continue
         if ((h_i == h_j).count(0) == 0):
           rsos[j].H = h_i

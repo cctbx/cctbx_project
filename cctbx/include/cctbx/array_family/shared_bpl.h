@@ -184,6 +184,10 @@ namespace cctbx { namespace af {
 
     static
     std::size_t
+    id(sh_t const& v) { return v.id(); }
+
+    static
+    std::size_t
     size(sh_t const& v) { return v.size(); }
 
     static
@@ -845,6 +849,7 @@ namespace cctbx { namespace af {
       py_shared.def(constructor<std::size_t>());
       py_shared.def(constructor<std::size_t, ElementType const&>());
       py_shared.def(constructor<tuple>());
+      py_shared.def(id, "id");
       py_shared.def(size, "size");
       py_shared.def(size, "__len__");
       py_shared.def(capacity, "capacity");
