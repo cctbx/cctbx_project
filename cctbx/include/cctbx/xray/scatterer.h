@@ -177,7 +177,10 @@ namespace xray {
           for some reason.
        */
       void
-      update_weight(sgtbx::space_group const& space_group);
+      update_weight(std::size_t space_group_order_z)
+      {
+        weight_ = occupancy * multiplicity_ / space_group_order_z;
+      }
 
       //! Access to multiplicity computed by apply_symmetry().
       int
@@ -230,7 +233,7 @@ namespace xray {
        assert_min_distance_sym_equiv);
     site = site_symmetry.exact_site();
     multiplicity_ = site_symmetry.multiplicity();
-    weight_ = occupancy * multiplicity_ / space_group.order_z();
+    update_weight(space_group.order_z());
     if (anisotropic_flag) {
       if (u_star_tolerance > 0.) {
         CCTBX_ASSERT(
@@ -242,16 +245,6 @@ namespace xray {
       }
     }
     return site_symmetry;
-  }
-
-  template <typename FloatType,
-            typename CaasfType,
-            typename LabelType>
-  void
-  scatterer<FloatType, CaasfType, LabelType>
-  ::update_weight(sgtbx::space_group const& space_group)
-  {
-    weight_ = occupancy * multiplicity_ / space_group.order_z();
   }
 
 }} // namespace cctbx::xray

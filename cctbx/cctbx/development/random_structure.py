@@ -233,7 +233,7 @@ class xray_structure(xray.structure):
       elif (parameter_name == "occupancy"):
         scatterer.occupancy = \
           self.random_modify_occupancy(scatterer.occupancy, gauss_sigma)
-        scatterer.update_weight(self.space_group())
+        scatterer.update_weight(self.space_group().order_z())
       elif (parameter_name == "fp"):
         scatterer.fp_fdp = complex(
           self.random_modify_fp(scatterer.fp_fdp.real, gauss_sigma),

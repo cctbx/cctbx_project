@@ -11,6 +11,8 @@
 #define CCTBX_XRAY_SCATTERER_UTILS_H
 
 #include <cctbx/xray/scatterer.h>
+#include <scitbx/array_family/versa.h>
+#include <scitbx/array_family/accessors/flex_grid.h>
 
 namespace cctbx { namespace xray {
 
@@ -62,6 +64,110 @@ namespace cctbx { namespace xray {
       rot_scatterers[i].site = unit_cell.fractionalize(rc);
     }
     return rot_scatterers;
+  }
+
+  template <typename FloatType,
+            typename CaasfType,
+            typename LabelType,
+            typename FloatTypePacked,
+            typename FlexGridIndexType>
+  std::size_t
+  pack_parameters(
+    const uctbx::unit_cell* unit_cell,
+    af::const_ref<scatterer<FloatType,CaasfType,LabelType> > const& scatterers,
+    af::versa<FloatTypePacked, af::flex_grid<FlexGridIndexType> >& x,
+    bool site_flag,
+    bool u_iso_flag,
+    bool occupancy_flag)
+  {
+    CCTBX_ASSERT(x.accessor().is_0_based());
+    CCTBX_ASSERT(x.accessor().nd() == 1);
+    CCTBX_ASSERT(!x.accessor().is_padded());
+    af::shared_plain<FloatTypePacked> xb = x.as_base_array();
+    CCTBX_ASSERT(xb.size() == x.size());
+    if (site_flag) {
+      if (!unit_cell) {
+        for(std::size_t i=0;i<scatterers.size();i++) {
+          fractional<FloatType> const&
+            site = scatterers[i].site;
+          xb.insert(xb.end(), site.begin(), site.end());
+        }
+      }
+      else {
+        for(std::size_t i=0;i<scatterers.size();i++) {
+          cartesian<FloatType>
+            site = unit_cell->orthogonalize(scatterers[i].site);
+          xb.insert(xb.end(), site.begin(), site.end());
+        }
+      }
+    }
+    if (u_iso_flag) {
+      for(std::size_t i=0;i<scatterers.size();i++) {
+        if (!scatterers[i].anisotropic_flag) {
+          xb.push_back(scatterers[i].u_iso);
+        }
+      }
+    }
+    if (occupancy_flag) {
+      for(std::size_t i=0;i<scatterers.size();i++) {
+        xb.push_back(scatterers[i].occupancy);
+      }
+    }
+    x.resize(af::flex_grid<>(xb.size()));
+    return x.size();
+  }
+
+  template <typename FloatTypePacked,
+            typename FloatType,
+            typename CaasfType,
+            typename LabelType>
+  std::size_t
+  unpack_parameters(
+    const uctbx::unit_cell* unit_cell,
+    std::size_t space_group_order_z,
+    af::const_ref<FloatTypePacked> const& x,
+    std::size_t start,
+    af::ref<scatterer<FloatType,CaasfType,LabelType> > const& scatterers,
+    bool site_flag,
+    bool u_iso_flag,
+    bool occupancy_flag)
+  {
+    if (site_flag) {
+      CCTBX_ASSERT(x.size() >= start + scatterers.size() * 3);
+      if (!unit_cell) {
+        for(std::size_t i=0;i<scatterers.size();i++) {
+          scatterers[i].site
+            = fractional<double>(&x[start]);
+          start += 3;
+        }
+      }
+      else {
+        for(std::size_t i=0;i<scatterers.size();i++) {
+          scatterers[i].site
+            = unit_cell->fractionalize(cartesian<double>(&x[start]));
+          start += 3;
+        }
+      }
+    }
+    if (u_iso_flag) {
+      CCTBX_ASSERT(x.size() >= start + scatterers.size());
+      for(std::size_t i=0;i<scatterers.size();i++) {
+        if (!scatterers[i].anisotropic_flag) {
+          scatterers[i].u_iso = x[start];
+          start++;
+        }
+      }
+    }
+    if (occupancy_flag) {
+      CCTBX_ASSERT(space_group_order_z > 0);
+      CCTBX_ASSERT(x.size() >= start + scatterers.size());
+      for(std::size_t i=0;i<scatterers.size();i++) {
+        scatterers[i].occupancy = x[start];
+        scatterers[i].update_weight(space_group_order_z);
+        start++;
+      }
+    }
+    return start;
   }
 
 }} // namespace cctbx::xray

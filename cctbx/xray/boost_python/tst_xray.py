@@ -63,6 +63,9 @@ def exercise_xray_scatterer():
   assert approx_equal(x.weight(), 0.9/4.)
   assert approx_equal(x.site, (0,0,0.3))
   assert ss.multiplicity() == x.multiplicity()
+  x.occupancy = 0.8
+  x.update_weight(sg.group().order_z())
+  assert approx_equal(x.weight(), 0.8/4.)
   u_cart = (0.3354, 0.3771, 0.4874, -0.05161, 0.026763, -0.02116)
   x.u_star = adptbx.u_cart_as_u_star(uc, u_cart)
   x.anisotropic_flag = 1
@@ -87,6 +90,45 @@ def exercise_rotate():
   assert approx_equal(s[0].site, r[0].site)
   r = xray.rotate(uc, ((0,-1,0, -1,0,0, 0,0,-1)), s)
   assert approx_equal(r[0].site, (-0.02,-0.01,-0.3))
+
+def exercise_pack_parameters():
+  unit_cell = uctbx.unit_cell((10, 10, 10))
+  sg = sgtbx.space_group_info(symbol="P 1")
+  scatterers = flex.xray_scatterer((
+    xray.scatterer("Si1", site=(0.01,0.02,0.3), u=0.2),
+    xray.scatterer("O1", site=(0.3,0.4,0.5), u=(0.4,0.5,0.6,-.05,0.2,-0.02))))
+  for scatterer in scatterers:
+    scatterer.apply_symmetry(unit_cell, sg.group())
+  for uc in (unit_cell, None):
+    x = flex.double()
+    assert xray.pack_parameters(uc, scatterers, x, False, False, False) == 0
+  x = flex.double()
+  assert xray.pack_parameters(unit_cell, scatterers, x, True, False, False)==6
+  assert approx_equal(tuple(x), (0.1, 0.2, 3, 3, 4, 5))
+  x = flex.double()
+  assert xray.pack_parameters(None, scatterers, x, True, False, False)==6
+  assert approx_equal(tuple(x), (0.01, 0.02, 0.3, 0.3, 0.4, 0.5))
+  x = flex.double()
+  assert xray.pack_parameters(None, scatterers, x, False, True, False)==1
+  assert approx_equal(tuple(x), (0.2,))
+  x = flex.double()
+  assert xray.pack_parameters(None, scatterers, x, False, False, True)==2
+  assert approx_equal(tuple(x), (1,1))
+  for start in (0, 10):
+    x = flex.double(start)
+    assert xray.pack_parameters(None, scatterers, x, True, True, True)==9+start
+    x *= 2
+    sc = scatterers.deep_copy()
+    assert xray.unpack_parameters(
+      None, 0, x, start, sc, False, False, False)==0+start
+    assert xray.unpack_parameters(
+      None, sg.group().order_z(), x, start, sc, True, True, True)==9+start
+    assert approx_equal(sc[0].site, (0.02, 0.04, 0.6))
+    assert approx_equal(sc[0].u_iso, 0.4)
+    assert approx_equal(sc[0].occupancy, 2)
+    assert approx_equal(sc[0].weight(), 2)
+    assert approx_equal(sc[1].site, (0.6, 0.8, 1))
+    assert approx_equal(sc[1].occupancy, 2)
 
 def exercise_structure_factors():
   uc = uctbx.unit_cell((10, 10, 13))
@@ -205,6 +247,7 @@ def run():
   exercise_conversions()
   exercise_xray_scatterer()
   exercise_rotate()
+  exercise_pack_parameters()
   exercise_structure_factors()
   exercise_targets()
   exercise_sampled_model_density()

@@ -191,7 +191,7 @@ class array(set):
     s = None
     if (self.sigmas() != None):
       s = matching.additive_sigmas(self.sigmas())
-    return array(set(self, i), d, s, False)
+    return array(set(self, i, anomalous_flag=False), d, s)
 
   def all_selection(self):
     return flex.bool(self.indices().size(), True)
@@ -313,7 +313,7 @@ class array(set):
     return self._generic_binner_application(mean, _ftor_a_s_div, result_data)
 
   def __abs__(self):
-    return array(self, flex.abs(self.data()))
+    return array(self, flex.abs(self.data()), self.sigmas())
 
   def __add__(self, other):
     assert self.indices() != None
@@ -336,11 +336,11 @@ class array(set):
     assert self.data().size() == self.indices().size()
     if (self.sigmas() == None):
       for i,h in self.indices().items():
-        print h, self.data()[i]
+        print >> f, h, self.data()[i]
     else:
       assert self.indices().size() == self.sigmas().size()
       for i,h in self.indices().items():
-        print h, self.data()[i], self.sigmas()[i]
+        print >> f, h, self.data()[i], self.sigmas()[i]
     return self
 
 class fft_map(crystal.symmetry):
