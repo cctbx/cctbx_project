@@ -142,6 +142,6 @@ namespace cctbx { namespace maps {
     }
   }
 
-}} // namespace phenix::maps
+}} // namespace cctbx::maps
 
 #endif // CCTBX_MAPS_PEAK_SEARCH_H

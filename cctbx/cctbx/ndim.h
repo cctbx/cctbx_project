@@ -55,22 +55,22 @@ namespace cctbx {
     public:
       dimension() {};
       dimension(const boost::array<int, D>& N) {
-        for(std::size_t i=0;i<size();i++) elems[i] = N[i];
+        for(std::size_t i=0;i<size();i++) this->elems[i] = N[i];
       }
       dimension(const boost::array<std::size_t, D>& N) {
         std::copy(N.begin(), N.end(), begin());
       }
       dimension(std::size_t n0) {
-        elems[0] = n0;
+        this->elems[0] = n0;
       }
       dimension(std::size_t n0, std::size_t n1) {
-        elems[0] = n0;
-        elems[1] = n1;
+        this->elems[0] = n0;
+        this->elems[1] = n1;
       }
       dimension(std::size_t n0, std::size_t n1, std::size_t n2) {
-        elems[0] = n0;
-        elems[1] = n1;
-        elems[2] = n2;
+        this->elems[0] = n0;
+        this->elems[1] = n1;
+        this->elems[2] = n2;
       }
 
       std::size_t size1d() const { return cctbx::vector::product(*this); }
@@ -85,7 +85,7 @@ namespace cctbx {
         if (I.size() != size()) return false;
         for(std::size_t j=0;j<size();j++) {
           std::size_t i = I[j];
-          if (i >= elems[j]) return false;
+          if (i >= this->elems[j]) return false;
         }
         return true;
       }
