@@ -45,7 +45,7 @@ def recycle(miller_array, mtz_label, verbose=0):
   assert dataset.dataset_name() == "test_dataset"
   assert dataset.wavelength() - 1.0 < 1.e-5
   if (not miller_array.anomalous_flag()):
-    if (miller_array.sigmas() == None):
+    if (miller_array.sigmas() is None):
       if (miller_array.is_complex()):
         assert dataset.ncolumns() == 3+2
         r = miller.array(
@@ -72,7 +72,7 @@ def recycle(miller_array, mtz_label, verbose=0):
         data=p.valid_values(mtz_label),
         sigmas=p.valid_values(label_sigmas))
   else:
-    if (miller_array.sigmas() == None):
+    if (miller_array.sigmas() is None):
       if (miller_array.is_complex()):
         assert dataset.ncolumns() == 3+4
         r = miller.array(
@@ -115,7 +115,7 @@ def recycle(miller_array, mtz_label, verbose=0):
 def verify_miller_arrays(a1, a2):
   v = a2.adopt_set(a1)
   assert flex.max(flex.abs(a1.data() - v.data())) < 1.e-5
-  if (v.sigmas() != None):
+  if (v.sigmas() is not None):
     assert flex.max(flex.abs(a1.sigmas() - v.sigmas())) < 1.e-5
 
 def exercise(space_group_info, n_scatterers=8, d_min=5,

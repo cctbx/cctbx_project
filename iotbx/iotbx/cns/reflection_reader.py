@@ -302,7 +302,7 @@ class cns_reflection_file:
           rsos[j].indices = h_i
 
   def join_hl_group(self, group_index=None):
-    if (group_index == None):
+    if (group_index is None):
       assert len(self.groups) == 1
       group_index = 0
     selected_group = self.groups[group_index]

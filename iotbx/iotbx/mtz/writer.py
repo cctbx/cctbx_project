@@ -3,9 +3,9 @@ from cctbx import miller
 from cctbx.array_family import flex
 
 def setSpaceGroup(self, space_group_info, symbol=None):
-  if (symbol == None):
+  if (symbol is None):
     symbol = extract_from_symop_lib.ccp4_symbol(space_group_info)
-    if (symbol == None):
+    if (symbol is None):
       symbol = "No.%d" % space_group_info.type().number()
   assert not " " in symbol
   self.raw_setSpaceGroup(space_group_info.group(), symbol)
@@ -120,7 +120,7 @@ def add_miller_array(self, miller_array, mtz_label):
       else:
         carry_miller.append(-asu.indices().select(sel))
       carry_data.append(asu.data().select(sel))
-      if (asu.sigmas() != None):
+      if (asu.sigmas() is not None):
         carry_sigma.append(asu.sigmas().select(sel))
     self._columnCombinations(mtz_label, column_types[0],
       carry_miller,carry_data)
@@ -139,15 +139,15 @@ def miller_array_export_as_mtz(self, file_name, column_label,
   from cctbx import uctbx
   from cctbx import sgtbx
   w = mtz.MtzWriter()
-  if (title == None):
+  if (title is None):
     title = self.info()
-  if (title == None):
+  if (title is None):
     title = "cctbx.miller.array"
   unit_cell = self.unit_cell()
-  if (unit_cell == None):
+  if (unit_cell is None):
     unit_cell = uctbx.unit_cell((1,1,1,90,90,90))
   space_group_info = self.space_group_info()
-  if (space_group_info == None):
+  if (space_group_info is None):
     space_group_info = sgtbx.space_group_info(symbol="P 1")
   w.setTitle(title)
   w.setSpaceGroup(space_group_info)

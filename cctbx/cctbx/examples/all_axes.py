@@ -36,10 +36,10 @@ def rt_mx_analysis(s):
           "(%s)" % (t_shift,))
 
 def list_all_axes(space_group_symbol=None, space_group_info=None):
-  assert space_group_symbol == None or space_group_info == None
+  assert space_group_symbol is None or space_group_info is None
   shift_range = 1 # XXX Works for the 230 reference settings; it is not
                   # XXX clear to me (rwgk) what value is needed in general.
-  if (space_group_symbol != None):
+  if (space_group_symbol is not None):
     space_group_info = sgtbx.space_group_info(symbol=space_group_symbol)
   space_group_info.show_summary()
   print

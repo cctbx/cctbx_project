@@ -6,7 +6,7 @@ def binTable(binners, labels):
 
   print "             ",
   for x in xrange(length):
-   if len(labels)>=x+1 and labels[x]!=None:
+   if len(labels)>=x+1 and labels[x] is not None:
      print "%12s"%labels[x],
    else:
      print "%12s"%None,
@@ -22,7 +22,7 @@ def binTable(binners, labels):
     for list in binners:
       value = list[x]
 
-      if value!=None:
+      if value is not None:
         if -2.0<value<2.0:
           print "%12.5f"%value,
         else:

@@ -27,7 +27,7 @@ class model(crystal.special_position_settings):
       self, special_position_settings)
     self.reset_cb_op()
     self._positions = []
-    if (positions != None):
+    if (positions is not None):
       self.add_positions(positions)
 
   def cb_op(self):
@@ -105,7 +105,7 @@ class model(crystal.special_position_settings):
 
   def as_xray_structure(self, scatterer=None):
     from cctbx import xray
-    if (scatterer == None): scatterer = xray.scatterer(label="const")
+    if (scatterer is None): scatterer = xray.scatterer(label="const")
     result = xray.structure(special_position_settings=self)
     for position in self.positions():
       result.add_scatterer(scatterer.copy(
@@ -190,7 +190,7 @@ class match_refine:
     self.singles2 = generate_singles(self.ref_model2.size(), self.i_pivot2)
     self.pairs = [(self.i_pivot1, self.i_pivot2)]
     self.adjusted_shift = initial_shift[:]
-    if (self.times == None):
+    if (self.times is None):
       self.times = match_refine_times()
     self.exclude_pairs()
     self.add_pairs()

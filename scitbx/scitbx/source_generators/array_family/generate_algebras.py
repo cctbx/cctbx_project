@@ -209,7 +209,8 @@ def operator_decl_params(array_type_name, op_type, op_class, type_flags,
 
 def get_result_constructor_args(array_type_name, type_flags = None):
   arg_name = "a"
-  if (type_flags != None): arg_name = "a%d" % ((type_flags[0] + 1) % 2 + 1,)
+  if (type_flags is not None):
+    arg_name = "a%d" % ((type_flags[0] + 1) % 2 + 1,)
   if (base_array_type_name(array_type_name) == "versa"):
     return "%s.accessor()" % (arg_name,)
   return "%s.size()" % (arg_name,)

@@ -8,7 +8,7 @@ def miller_export_as_shelx_hklf(self, file_object=sys.stdout):
   s = 0.01
   fmt = "%4d%4d%4d%8.2f%8.2f"
   for i,h in self.indices().items():
-    if (sigmas != None): s = sigmas[i]
+    if (sigmas is not None): s = sigmas[i]
     print >> file_object, fmt % (h + (data[i],s))
   print >> file_object, fmt % (0,0,0,0,0)
 
@@ -52,7 +52,7 @@ class reader:
 
   def as_miller_arrays(self, crystal_symmetry=None, force_symmetry=00000,
                              info_prefix=""):
-    if (crystal_symmetry == None):
+    if (crystal_symmetry is None):
       crystal_symmetry = crystal.symmetry()
     miller_set = miller.set(
       crystal_symmetry=crystal_symmetry,

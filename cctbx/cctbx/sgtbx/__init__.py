@@ -18,16 +18,16 @@ class space_group_info:
   __safe_for_unpickling__ = 0001
 
   def __init__(self, symbol=None, table_id=None, group=None):
-    if (symbol == None):
-      assert table_id == None
+    if (symbol is None):
+      assert table_id is None
       self._group = group
     else:
-      assert group == None
-      if (table_id == None):
+      assert group is None
+      if (table_id is None):
         self._group = space_group(space_group_symbols(symbol))
       else:
         self._group = space_group(space_group_symbols(symbol, table_id))
-    if (self._group != None):
+    if (self._group is not None):
       self._group.make_tidy()
     self._space_group_info_cache = empty()
 
@@ -120,8 +120,8 @@ class space_group_info:
     return uctbx.unit_cell(params)
 
 def row_echelon_back_substitution(rt_mx, v=None, sol=None, indep=None):
-  if (v == None): v = flex.int()
-  if (sol == None): sol = flex.int()
+  if (v is None): v = flex.int()
+  if (sol is None): sol = flex.int()
   if (indep is None): indep = flex.bool()
   return ext.row_echelon_back_substitution(rt_mx, v, sol, indep)
 

@@ -26,7 +26,7 @@ def extract_from(file):
     line = line.strip()
     if (line.startswith('{===>} sg="')):
       assert line[-2:] == '";'
-      assert space_group_symbol == None, "Duplicate space group symbol."
+      assert space_group_symbol is None, "Duplicate space group symbol."
       space_group_symbol = line[11:-2]
     else:
       i = -1
@@ -34,10 +34,10 @@ def extract_from(file):
         i += 1
         if (line.startswith('{===>} %s=' % label)):
           assert line[-1] == ';'
-          assert unit_cell[i] == None, "Duplicate unit cell parameter %s." % label
+          assert unit_cell[i] is None, "Duplicate unit cell parameter %s." % label
           unit_cell[i] = float(line[8+len(label):-1])
   assert unit_cell.count(None) == 0
-  assert space_group_symbol != None
+  assert space_group_symbol is not None
   return crystal.symmetry(
     unit_cell=unit_cell,
     space_group_symbol=space_group_symbol)

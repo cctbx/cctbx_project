@@ -7,7 +7,7 @@ def run():
   uc = (10,12,14,90,90,90)
   cs = crystal.symmetry(unit_cell=uc, space_group_symbol="P 1")
   assert harker.planes_cartesian(cs).count() == 0
-  assert harker.planes_cartesian(cs).min_distance((0,0,0)) == None
+  assert harker.planes_cartesian(cs).min_distance((0,0,0)) is None
   cs = crystal.symmetry(unit_cell=uc, space_group_symbol="P 2 2 2")
   assert harker.planes_cartesian(cs).count() == 3
   assert ae(harker.planes_cartesian(cs).min_distance((0.123,0.234,0)), 0)

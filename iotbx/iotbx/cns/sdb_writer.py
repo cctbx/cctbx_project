@@ -4,19 +4,19 @@ from cStringIO import StringIO
 
 def write_header(s, file=None, description=None, comment=None,
                     space_group_info=None, n_rows=None):
-  assert n_rows != None
-  if (file != None):
+  assert n_rows is not None
+  if (file is not None):
     print >> s, "{+ file: %s +}" % str(file)
-  if (description != None):
+  if (description is not None):
     print >> s, "{+ description: %s +}" % str(description)
-  if (comment != None):
+  if (comment is not None):
     print >> s, "{+ comment:"
     for line in comment: print >> s, line
     print >> s, "+}"
   print >> s
   print >> s, "{- begin block parameter definition -} define("
   print >> s
-  if (space_group_info != None):
+  if (space_group_info is not None):
     print >> s, """\
 {============================ space group ============================}
 

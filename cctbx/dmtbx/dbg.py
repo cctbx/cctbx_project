@@ -45,7 +45,7 @@ def compute_mean_weighted_phase_error(tprs, sgops, h, f, phi1, phi2, verbose=0):
   sum_w_phase_error = 0
   sum_w = 0
   for i in xrange(h.size()):
-    if (tprs != None and tprs.n_relations(i) == 0): continue
+    if (tprs is not None and tprs.n_relations(i) == 0): continue
     phase_error = debug_utils.phase_error(
       phi1[i], phi2[i], deg=0) * 180/math.pi
     if (0 or verbose):
@@ -248,7 +248,7 @@ def exercise(SgInfo,
       sim.xtal, sim.e000, p1_H, sim.miller_set.H, sim.e_values, sim.phases,
       use_e000, zero_out_negative)
     tprs_plus = [tprs_sg]
-    if (tprs_sg != None): tprs_plus.append(None)
+    if (tprs_sg is not None): tprs_plus.append(None)
     for t in tprs_plus:
       mwpe = compute_mean_weighted_phase_error(
         t,

@@ -4,7 +4,7 @@ import time
 from scitbx.array_family import flex
 
 def seed(a=None):
-  if (a == None):
+  if (a is None):
     try: a = long(os.getpid() * (2**16)) + long(time.time() * 2**8)
     except: pass
   random.seed(a)

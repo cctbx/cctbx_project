@@ -36,7 +36,7 @@ class no_merge_original_index_file:
     self.sigmas = all_arrays.sigmas()
 
   def merge_equivalents(self, crystal_symmetry=None):
-    if (crystal_symmetry == None):
+    if (crystal_symmetry is None):
       crystal_symmetry = crystal.symmetry(space_group=self.space_group)
     return miller.array(
       miller_set=miller.set(

@@ -37,7 +37,7 @@ def peak_list(data,
               peak_search_level=1,
               max_peaks=0,
               peak_cutoff=None):
-  if (peak_cutoff == None):
+  if (peak_cutoff is None):
     return ext.peak_list(data, tags, peak_search_level, max_peaks)
   return ext.peak_list(data, tags, peak_search_level, peak_cutoff, max_peaks)
 
@@ -59,15 +59,15 @@ class crystal_gridding:
                      max_prime=5,
                      assert_shannon_sampling=0001):
     adopt_init_args(self, locals(), hide=0001)
-    assert symmetry_flags == None or mandatory_factors == None
-    if (symmetry_flags != None): assert space_group_info != None
-    if (symmetry_flags != None):
+    assert symmetry_flags is None or mandatory_factors is None
+    if (symmetry_flags is not None): assert space_group_info is not None
+    if (symmetry_flags is not None):
       self._n_real = determine_gridding(
         unit_cell, d_min, resolution_factor,
         symmetry_flags, space_group_info.type(),
         max_prime, assert_shannon_sampling)
     else:
-      if (mandatory_factors == None): mandatory_factors = (1,1,1)
+      if (mandatory_factors is None): mandatory_factors = (1,1,1)
       assert len(mandatory_factors) == 3
       self._n_real = determine_gridding(
         unit_cell, d_min, resolution_factor,
@@ -109,11 +109,11 @@ class crystal_gridding:
     return self._n_real
 
   def space_group(self):
-    assert self.space_group_info() != None
+    assert self.space_group_info() is not None
     return self.space_group_info().group()
 
   def crystal_symmetry(self):
-    assert self.space_group_info() != None
+    assert self.space_group_info() is not None
     return crystal.symmetry(
       unit_cell=self.unit_cell(),
       space_group_info=self.space_group_info())
@@ -131,7 +131,7 @@ class crystal_gridding_tags(crystal_gridding):
 
   def __init__(self, gridding):
     crystal_gridding._copy_constructor(self, gridding)
-    assert gridding.symmetry_flags() != None
+    assert gridding.symmetry_flags() is not None
     self._tags = grid_tags(self.n_real())
     self._tags.build(
       self.space_group_info().type(),
@@ -152,7 +152,7 @@ class crystal_gridding_tags(crystal_gridding):
       peak_search_level=parameters.peak_search_level(),
       max_peaks=parameters.max_peaks(),
       peak_cutoff=parameters.peak_cutoff())
-    if (parameters.min_distance_sym_equiv() == None):
+    if (parameters.min_distance_sym_equiv() is None):
       return grid_peaks
     return peak_cluster_analysis(
       peak_list=grid_peaks,
@@ -217,7 +217,7 @@ class peak_cluster_analysis:
                      min_cross_distance=None,
                      max_clusters=None):
     adopt_init_args(self, locals(), hide=0001)
-    if (min_cross_distance == None):
+    if (min_cross_distance is None):
       min_cross_distance = special_position_settings.min_distance_sym_equiv()
     self._gridding = peak_list.gridding()
     self._peak_list_entries = peak_list.entries()
@@ -296,12 +296,12 @@ class peak_cluster_analysis:
           site=site)
 
   def all(self, max_clusters=None):
-    if (max_clusters == None):
+    if (max_clusters is None):
       max_clusters = self._max_clusters
-    assert max_clusters != None
+    assert max_clusters is not None
     while 1:
       if (self._sites.size() >= max_clusters): break
-      if (self.next() == None): break
+      if (self.next() is None): break
     return self
 
   def discard_last(self):

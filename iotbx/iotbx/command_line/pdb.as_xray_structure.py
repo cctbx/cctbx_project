@@ -58,7 +58,7 @@ def run(args):
     structure.show_summary()
     all_structures.append(structure)
     print
-  if (pickle_file_name != None and len(all_structures) > 0):
+  if (pickle_file_name is not None and len(all_structures) > 0):
     if (len(all_structures) == 1):
       all_structures = all_structures[0]
     if (not pickle_file_name.lower().endswith(".pickle")):

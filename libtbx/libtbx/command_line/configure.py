@@ -79,7 +79,7 @@ class package:
       raise UserError("Dependency cycle detected: "
         + str(registry.list) + " + " + self.name)
     registry.append(self.name, self)
-    if (self.config != None):
+    if (self.config is not None):
       try:
         required_packages = self.config["packages_required_for_use"]
       except:
@@ -95,7 +95,7 @@ class package:
       else:
         for required_package_name in required_packages:
           p = package(self.dist_root, required_package_name, must_exist=0)
-          if (p.dist_path == None):
+          if (p.dist_path is None):
             registry.build_disabled = 1
           else:
             p._resolve_dependencies(registry)
@@ -127,7 +127,7 @@ class libtbx_env:
   def add_package(self, package):
     self.package_list.insert(0, package.name)
     self.dist_paths[package.name.upper() + "_DIST"] = package.dist_path
-    if (package.python_path != None):
+    if (package.python_path is not None):
       insert_normed_path(self.PYTHONPATH, package.python_path)
 
   def items(self):
@@ -148,9 +148,9 @@ class libtbx_env:
 
   def check_python_api(self):
     api_from_include = libtbx.config.python_api_from_include(must_exist=False)
-    if (api_from_include == None): return
+    if (api_from_include is None): return
     api_from_build = self.python_api_from_libtbx_build_libtbx()
-    if (api_from_build == None): return
+    if (api_from_build is None): return
     if (api_from_include != api_from_build):
       raise UserError(("Incompatible Python API's: current version: %s,"
         + " used to build binaries: %s") % (api_from_include, api_from_build))

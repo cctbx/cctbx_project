@@ -35,7 +35,7 @@ class plane_fractional:
     for j in xrange(3):
       for i in xrange(3):
         rij = r[i*3+j]
-        if (signs[i] == None and rij != 0):
+        if (signs[i] is None and rij != 0):
           if (rij < 0): signs[i] = -1
           else: signs[i] = 1
     m = list(sgtbx.rot_mx(d, d).num())
@@ -101,7 +101,7 @@ class planes_cartesian(crystal.symmetry):
             xu = [x[0]+u0, x[1]+u1, x[2]+u2]
             xuc = self.unit_cell().orthogonalize(xu)
             for pl in self.list:
-              if (result == None): result = pl.distance(xuc)
+              if (result is None): result = pl.distance(xuc)
               else: result = min(result, pl.distance(xuc))
     return result
 

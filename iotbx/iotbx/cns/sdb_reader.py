@@ -18,9 +18,9 @@ class sdb_site:
     except:
       try: caasf = wk1995(self.segid)
       except: pass
-    if (caasf == None): caasf = wk1995("const")
+    if (caasf is None): caasf = wk1995("const")
     site = (self.x, self.y, self.z)
-    if (unit_cell != None): site = unit_cell.fractionalize(site)
+    if (unit_cell is not None): site = unit_cell.fractionalize(site)
     return xray.scatterer(
       label="_".join((self.segid, self.type)),
       site=site,
@@ -34,8 +34,8 @@ class sdb_file:
     adopt_init_args(self, locals())
 
   def as_xray_structure(self, min_distance_sym_equiv=0.5):
-    assert self.unit_cell != None
-    assert self.space_group_info != None
+    assert self.unit_cell is not None
+    assert self.space_group_info is not None
     from cctbx import crystal
     from cctbx import xray
     symmetry = crystal.symmetry(
@@ -162,11 +162,11 @@ def run(args):
     f.close()
     sdb_files = multi_sdb_parser(lines)
     for sdb in sdb_files:
-      if (unit_cell != None): sdb.unit_cell = unit_cell
+      if (unit_cell is not None): sdb.unit_cell = unit_cell
       print "file:", sdb.file_name
-      if (sdb.unit_cell != None):
+      if (sdb.unit_cell is not None):
         print "unit cell:", sdb.unit_cell.parameters()
-      if (sdb.space_group_info != None):
+      if (sdb.space_group_info is not None):
         print "space group:", sdb.space_group_info
       if (show_raw):
         for site in sdb.sites:

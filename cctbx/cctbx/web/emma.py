@@ -69,7 +69,7 @@ class web_to_models:
 
   def get_unit_cell(self, other_unit_cell=None):
     if (self.ucparams): return uctbx.unit_cell(self.ucparams)
-    assert other_unit_cell != None, "Unit cell parameters unknown."
+    assert other_unit_cell is not None, "Unit cell parameters unknown."
     return other_unit_cell
 
   def get_space_group_info(self, other_space_group_info=None):
@@ -77,7 +77,7 @@ class web_to_models:
       return sgtbx.space_group_info(
         symbol=self.sgsymbol,
         table_id=self.convention)
-    assert other_space_group_info != None, "Space group symbol unknown."
+    assert other_space_group_info is not None, "Space group symbol unknown."
     return other_space_group_info
 
   def get_next(self):

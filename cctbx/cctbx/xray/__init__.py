@@ -29,9 +29,9 @@ def scatterer(label="",
   """\
 Python wrapper for C++ constructor.
 """
-  assert u == None or b == None
-  if   (b != None): u = adptbx.b_as_u(b)
-  elif (u == None): u = 0
+  assert u is None or b is None
+  if   (b is not None): u = adptbx.b_as_u(b)
+  elif (u is None): u = 0
   if (type(caasf) == type("")):
     if (caasf == ""):
       caasf = wk1995(label, 0)
@@ -47,16 +47,16 @@ def _scatterer_copy(self,
                     occupancy=None,
                     caasf=None,
                     fp_fdp=None):
-  assert u == None or b == None
-  if (b != None): u = adptbx.b_as_u(b)
-  if (label == None): label = self.label
-  if (site == None): site = self.site
-  if (u == None):
+  assert u is None or b is None
+  if (b is not None): u = adptbx.b_as_u(b)
+  if (label is None): label = self.label
+  if (site is None): site = self.site
+  if (u is None):
     if (self.anisotropic_flag): u = self.u_star
     else: u = self.u_iso
-  if (occupancy == None): occupancy = self.occupancy
-  if (caasf == None): caasf = self.caasf
-  if (fp_fdp == None): fp_fdp = self.fp_fdp
+  if (occupancy is None): occupancy = self.occupancy
+  if (caasf is None): caasf = self.caasf
+  if (fp_fdp is None): fp_fdp = self.fp_fdp
   return scatterer(
     label=label,
     site=site,
@@ -72,7 +72,7 @@ class structure(crystal.special_position_settings):
   def __init__(self, special_position_settings, scatterers=None):
     crystal.special_position_settings._copy_constructor(
       self, special_position_settings)
-    if (scatterers == None):
+    if (scatterers is None):
       self._scatterers = flex.xray_scatterer()
       self._special_position_indices = flex.size_t()
     else:
@@ -221,7 +221,7 @@ class _target_functor_base:
     assert f_calc.unit_cell().is_similar_to(
            self.f_obs().unit_cell())
     assert f_calc.space_group() == self.f_obs().space_group()
-    if (self.weights() != None):
+    if (self.weights() is not None):
       return self._target_calculator(self.f_obs().data(),
                                      self.weights(),
                                      f_calc.data(),
@@ -236,7 +236,7 @@ class _least_squares_residual(_target_functor_base):
   def __init__(self, f_obs, weights=None,
                use_sigmas_as_weights=00000):
     adopt_init_args(self, locals(), hide=0001)
-    assert self._weights == None or self._use_sigmas_as_weights == 00000
+    assert self._weights is None or self._use_sigmas_as_weights == 00000
     self._target_calculator = targets_least_squares_residual
     if (self._use_sigmas_as_weights):
       self._weights = self._f_obs.sigmas().data()
@@ -255,7 +255,7 @@ class _intensity_correlation(_target_functor_base):
   def __init__(self, f_obs, weights=None,
                use_multiplicities_as_weights=00000):
     adopt_init_args(self, locals(), hide=0001)
-    assert self._weights==None or self._use_multiplicities_as_weights==00000
+    assert self._weights is None or self._use_multiplicities_as_weights==00000
     self._target_calculator = targets_intensity_correlation
     if (self._use_multiplicities_as_weights):
       self._weights = self._f_obs.multiplicities().data()

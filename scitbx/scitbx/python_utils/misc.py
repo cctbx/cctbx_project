@@ -46,7 +46,7 @@ class time_log:
   legend = "time_log: label: n accumulation delta average"
 
   def report(self):
-    assert self.timer == None
+    assert self.timer is None
     return "time_log: %s: %d %.2f %.2f %.2f" % (
       self.label, self.n, self.accumulation,
       self.delta, self.accumulation/max(1,self.n))
@@ -95,7 +95,7 @@ def import_ext(name):
   mod = __import__(name)
   for comp in components[1:]:
     mod = getattr(mod, comp)
-  if (previous_dlopenflags != None):
+  if (previous_dlopenflags is not None):
     sys.setdlopenflags(previous_dlopenflags)
   return mod
 

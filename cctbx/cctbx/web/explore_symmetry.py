@@ -211,7 +211,7 @@ def run(server_info, inp, status):
   if (inp.convention == "Hall" or len(inp.symxyz) != 0):
     symbols_match = sg.match_tabulated_settings()
     if (symbols_match.number() != 0):
-      if (   symbols_inp == None
+      if (   symbols_inp is None
           or    symbols_inp.extended_hermann_mauguin()
              != symbols_match.extended_hermann_mauguin()):
         print "Symmetry operations match:"
