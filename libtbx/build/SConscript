@@ -30,12 +30,15 @@ if (env_etc.compiler == 0):
     env_etc.compiler = "tru64_cxx"
   elif (sys.platform.startswith("irix")):
     env_etc.compiler = "irix_CC"
+  elif (sys.platform.startswith("darwin")):
+    env_etc.compiler = "darwin_c++"
 assert env_etc.compiler in (
   "win32_cl",
   #"win32_mwcc",
   "unix_gcc",
   "tru64_cxx",
   "irix_CC",
+  "darwin_c++",
 )
 
 if (sys.platform == "win32"):
@@ -120,8 +123,27 @@ else:
     """)
     env_etc.shlinkflags = "-shared -LD_MSG:off=15,84"
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
+  elif (env_etc.compiler == "darwin_c++"):
+    env_base.Replace(
+      CXX="c++",
+      LINK="c++",
+      SHCXX="c++",
+      SHLINK="c++",
+      SHLIBSUFFIX=".dylib",
+    )
+    env_etc.cxxflags_base = Split("""
+        -fno-common
+        -no-cpp-precomp
+        -ftemplate-depth-50
+        -w
+        -g
+        -DNDEBUG
+    """)
+    env_etc.shlinkflags = "-dynamiclib"
+    env_etc.shlinkflags_bpl = "-bundle -flat_namespace -undefined warning"
   else:
     raise "Unknown compiler choice:", env_etc.compiler
+
 env_etc.cxxflags_bpl_defines_base = Split("""
     -DBOOST_PYTHON_DYNAMIC_LIB
     -DBOOST_PYTHON_V2
