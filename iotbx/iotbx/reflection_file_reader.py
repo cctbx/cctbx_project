@@ -6,6 +6,7 @@ from iotbx.cns import index_fobs_sigma_reader as cns_index_fobs_sigma_reader
 from iotbx.dtrek import reflnlist_reader as dtrek_reflnlist_reader
 from iotbx.shelx import hklf as shelx_hklf
 from iotbx.xds.read_ascii import reader as xds_ascii_reader
+from iotbx.solve.fpfm_reader import reader as solve_fpfm_reader
 from iotbx import crystal_symmetry_from_any
 from iotbx.option_parser import iotbx_option_parser
 from cctbx import miller
@@ -59,6 +60,10 @@ class any_reflection_file:
         open(file_name))
       except: pass
       else: self._file_type = "xds_ascii"
+    if (self._file_type is None):
+      try: self._file_content = solve_fpfm_reader(file_name=file_name)
+      except: pass
+      else: self._file_type = "solve_fpfm"
     if (self._file_type is None):
       try: self._file_content = easy_pickle.load(file_name)
       except: pass
