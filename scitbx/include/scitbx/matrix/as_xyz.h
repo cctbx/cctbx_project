@@ -20,7 +20,7 @@ namespace scitbx { namespace matrix {
     const char* letters_xyz,
     const char* separator)
   {
-    SCITBX_ASSERT(letters_xyz != 0 && strlen(letters_xyz) == n_columns);
+    SCITBX_ASSERT(letters_xyz != 0 && std::strlen(letters_xyz) == n_columns);
     SCITBX_ASSERT(separator != 0);
     std::string result;
     for (int i = 0; i < n_rows; i++) {
