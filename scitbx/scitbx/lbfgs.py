@@ -42,7 +42,8 @@ class exception_handling_parameters:
       if (self.ignore_line_search_failed_rounding_errors):
         return 0
     elif (msg.find("The step is at the lower bound stpmax().") >= 0):
-      if (ext.traditional_convergence_test(n)(x, g)):
+      if (x is not None and g is not None
+          and ext.traditional_convergence_test(n)(x, g)):
         return 0
       if (self.ignore_line_search_failed_step_at_lower_bound):
         return -1
@@ -58,7 +59,8 @@ class exception_handling_parameters:
       if (self.ignore_line_search_failed_xtol):
         return -1
     elif (msg.find("The search direction is not a descent direction.") >= 0):
-      if (ext.traditional_convergence_test(n)(x, g)):
+      if (x is not None and g is not None
+          and ext.traditional_convergence_test(n)(x, g)):
         return 0
       if (self.ignore_search_direction_not_descent):
         return -1
@@ -90,7 +92,7 @@ def run_c_plus_plus(target_evaluator,
     is_converged = ext.drop_convergence_test(termination_params.min_iterations)
   callback_after_step = getattr(target_evaluator, "callback_after_step", None)
   x_after_step = None
-  x = None
+  x, f, g = None, None, None
   try:
     while 1:
       x, f, g = target_evaluator()
