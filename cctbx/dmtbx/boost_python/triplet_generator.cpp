@@ -32,7 +32,7 @@ namespace {
         .def("discard_weights", &w_t::discard_weights)
         .def("n_relations", &w_t::n_relations)
         .def("relations_for", &w_t::relations_for)
-        .def("sum_of_amplitude_products", &w_t::sum_of_amplitude_products)
+        .def("sums_of_amplitude_products", &w_t::sums_of_amplitude_products)
         .def("raw_apply_tangent_formula", &w_t::apply_tangent_formula)
       ;
     }
