@@ -1,6 +1,7 @@
 from __future__ import generators
 from iotbx import simple_tokenizer
 from scitbx.python_utils.str_utils import line_breaker
+from libtbx.itertbx import count
 from libtbx import introspection
 
 def str_from_value_words(value_words):
@@ -129,6 +130,10 @@ class definition:
       attributes_level=attributes_level,
       print_width=print_width)
 
+  def get(self, path):
+    if (self.name == path): return [self]
+    return []
+
 class scope:
 
   def __init__(self,
@@ -152,6 +157,15 @@ class scope:
         previous_object=previous_object)
       previous_object = object
     print >> out, prefix + "}"
+
+  def get(self, path):
+    if (self.name == path): return [self]
+    if (not path.startswith(self.name+".")): return []
+    path = path[len(self.name)+1:]
+    result = []
+    for object in self.objects:
+      result.extend(object.get(path=path))
+    return result
 
 class table:
 
@@ -227,18 +241,27 @@ class table:
       print >> out, prefix+"  }"
     print >> out, prefix+"}"
 
-class parse:
+  def get(self, path):
+    if (self.name == path): return [self]
+    if (not path.startswith(self.name+".")): return []
+    path = path[len(self.name)+1:]
+    result = []
+    for n_row,row_name,row_objects in zip(count(1),
+                                          self.row_names,
+                                          self.row_objects):
+      for alt_row_name in [row_name, str(n_row)]:
+        if (alt_row_name is None): continue
+        if (alt_row_name == path):
+          result.extend(row_objects)
+        elif (not path.startswith(alt_row_name+".")):
+          for row_object in row_objects:
+            result.extend(row_object.get(path=path[len(alt_row_name)+1:]))
+    return result
 
-  def __init__(self, input_string, definition_type_names=None):
-    from iotbx.parameters import parser
-    if (definition_type_names is None):
-      definition_type_names = default_definition_type_names
-    self.objects = parser.collect_objects(
-      word_stack=simple_tokenizer.as_word_stack(
-        input_string=input_string,
-        contiguous_word_characters="",
-        auto_split_unquoted={"{}": ("{", "}")}),
-      definition_type_names=definition_type_names)
+class object_list:
+
+  def __init__(self, objects):
+    self.objects = objects
 
   def show(self, out, prefix="", attributes_level=0, print_width=None):
     if (print_width is None):
@@ -253,3 +276,20 @@ class parse:
         previous_object=previous_object)
       previous_object = object
     return self
+
+  def get(self, path):
+    result = []
+    for object in self.objects:
+      result.extend(object.get(path))
+    return object_list(objects=result)
+
+def parse(input_string, definition_type_names=None):
+  from iotbx.parameters import parser
+  if (definition_type_names is None):
+    definition_type_names = default_definition_type_names
+  return object_list(objects=parser.collect_objects(
+    word_stack=simple_tokenizer.as_word_stack(
+      input_string=input_string,
+      contiguous_word_characters="",
+      auto_split_unquoted={"{}": ("{", "}")}),
+    definition_type_names=definition_type_names))
