@@ -63,6 +63,13 @@ namespace {
   BOOST_PYTHON_FUNCTION_OVERLOADS(
     complete_gamma_overloads,
     complete_gamma, 1, 2)
+  BOOST_PYTHON_FUNCTION_OVERLOADS(
+    incomplete_gamma_overloads,
+    incomplete_gamma, 2,3)
+  BOOST_PYTHON_FUNCTION_OVERLOADS(
+    incomplete_gamma_complement_overloads,
+    incomplete_gamma_complement, 2,3)
+
 
   BOOST_PYTHON_FUNCTION_OVERLOADS(lambertw_overloads, lambertw, 1, 2)
 
@@ -96,11 +103,21 @@ namespace {
     def("complete_gamma", (double(*)(double const&, bool))
         complete_gamma,
         complete_gamma_overloads( (arg_("x"),
-                                          arg_("minimax")=true)));
-    def("incomplete_gamma", (double(*)(double const&, double const&))
-                             incomplete_gamma);
-    def("imcomplete_gamma_complement",(double(*)(double const&, double const&))
-                             incomplete_gamma);
+                                   arg_("minimax")=true)));
+    def("incomplete_gamma", (double(*)(double const&,
+                                       double const&,
+                                       unsigned))
+        incomplete_gamma,
+        incomplete_gamma_overloads( (arg_("a"),
+                                     arg_("x"),
+                                     arg_("max_iterations")=500 )));
+    def("incomplete_gamma_complement",(double(*)(double const&,
+                                                 double const&,
+                                                 unsigned))
+        incomplete_gamma_complement,
+        incomplete_gamma_complement_overloads( (arg_("a"),
+                                                arg_("x"),
+                                                arg_("max_iterations")=500 )));
 
     def("lambertw", (double(*)(double const&, unsigned)) lambertw,
       lambertw_overloads(
