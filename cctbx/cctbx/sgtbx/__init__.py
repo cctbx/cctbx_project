@@ -126,9 +126,6 @@ class space_group_info:
     return uctbx.unit_cell(params)
 
 def row_echelon_back_substitution(rt_mx, v=None, sol=None, indep=None):
-  if (v is None): v = flex.int()
-  if (sol is None): sol = flex.int()
-  if (indep is None): indep = flex.bool()
   return ext.row_echelon_back_substitution(rt_mx, v, sol, indep)
 
 class _tr_vec(injector, tr_vec):

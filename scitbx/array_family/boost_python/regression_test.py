@@ -73,6 +73,8 @@ def exercise_ref_flex_conversions(verbose=0):
   assert rt.use_const_ref(s) == 6
   rt.modify_ref(s)
   assert tuple(s) == (6,2,4)
+  assert rt.use_const_ref(None) == 0
+  rt.modify_ref(None)
   if (verbose): print 'OK'
 
 def exercise_ref_flex_grid_flex_conversions(verbose=0):
