@@ -96,22 +96,23 @@ namespace cctbx { namespace af {
     return sum(a) / a.size();
   }
 
-  template <typename ElementTypeWeights, typename AccessorTypeWeights,
-            typename ElementTypeValues, typename AccessorTypeValues>
+  template <typename ElementTypeValues, typename AccessorTypeValues,
+            typename ElementTypeWeights, typename AccessorTypeWeights>
   ElementTypeValues
   weighted_mean(
-    const const_ref<ElementTypeWeights, AccessorTypeWeights>& weights,
-    const const_ref<ElementTypeValues, AccessorTypeValues>& values)
+    const const_ref<ElementTypeValues, AccessorTypeValues>& values,
+    const const_ref<ElementTypeWeights, AccessorTypeWeights>& weights)
   {
     ElementTypeValues result;
+    if (values.size() != weights.size()) throw_range_error();
     if (values.size() > 0) {
+      ElementTypeValues sum_vw = 0;
       ElementTypeWeights sum_w = 0;
-      ElementTypeValues sum_wv = 0;
       for(std::size_t i=0;i<values.size();i++) {
+        sum_vw += values[i] * weights[i];
         sum_w += weights[i];
-        sum_wv += weights[i] * values[i];
       }
-      result = sum_wv / sum_w;
+      result = sum_vw / sum_w;
     }
     return result;
   }

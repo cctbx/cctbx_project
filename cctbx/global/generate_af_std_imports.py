@@ -19,7 +19,7 @@ def write_copyright():
  */""" % (sys.argv[0],)
 
 cmath_1arg = (
-  'acos', 'cos', 'fmod', 'tan',
+  'acos', 'cos', 'tan',
   'asin', 'cosh', 'tanh',
   'atan', 'exp', 'sin',
   'fabs', 'log', 'sinh',
@@ -34,6 +34,38 @@ cstdlib_1arg = (
   'abs',
 )
 
+complex_1arg = (
+# "cos",
+# "cosh",
+# "exp",
+# "log",
+# "log10",
+# "sin",
+# "sinh",
+# "sqrt",
+# "tan",
+# "tanh",
+  "conj",
+)
+
+complex_special = (
+("ElementType", "real", "std::complex<ElementType>"),
+("ElementType", "imag", "std::complex<ElementType>"),
+("ElementType", "abs", "std::complex<ElementType>"),
+("ElementType", "arg", "std::complex<ElementType>"),
+("ElementType", "norm", "std::complex<ElementType>"),
+("std::complex<ElementType>", "pow", "std::complex<ElementType>",
+                                     "int"),
+("std::complex<ElementType>", "pow", "std::complex<ElementType>",
+                                     "ElementType"),
+("std::complex<ElementType>", "pow", "std::complex<ElementType>",
+                                     "std::complex<ElementType>"),
+("std::complex<ElementType>", "pow", "ElementType",
+                                     "std::complex<ElementType>"),
+("std::complex<ElementType>", "polar", "ElementType",
+                                       "ElementType"),
+)
+
 def run():
   f = open("std_imports.h", "w")
   sys.stdout = f
@@ -44,11 +76,21 @@ def run():
 
 #include <cmath>
 #include <cstdlib>
+#include <complex>
 
 namespace cctbx { namespace af {
 """
 
-  for function_name in cmath_1arg + cmath_2arg + cstdlib_1arg:
+  all_function_names = []
+  for function_name in cmath_1arg + cmath_2arg + cstdlib_1arg + complex_1arg:
+    if (not function_name in all_function_names):
+      all_function_names.append(function_name)
+  for entry in complex_special:
+    function_name = entry[1]
+    if (not function_name in all_function_names):
+      all_function_names.append(function_name)
+
+  for function_name in all_function_names:
     print "  using std::" + function_name + ";"
 
   print """
