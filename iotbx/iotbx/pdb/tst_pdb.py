@@ -111,6 +111,35 @@ SIGUIJ   10  N  ACYS "   6        3      2      8      3      8      6  1ETN N1+
   sigUcart:    (0.0003, 0.0002, 0.0008, 0.0003, 0.0008, 0.0006)
 """
 
+def exercise_altLoc_grouping():
+  altLoc_groups = pdb.interpretation.altLoc_grouping()
+  altLoc_groups.add_group(["A", " "])
+  assert altLoc_groups.group_list == [[" ", "A"]]
+  altLoc_groups.add_group(["B", "C"])
+  assert altLoc_groups.group_list == [[" ", "A"], ["B", "C"]]
+  altLoc_groups.add_group(["D", "C"])
+  assert altLoc_groups.group_list == [[" ", "A"], ["B", "C", "D"]]
+  replacements = altLoc_groups.get_false_blank_altLoc_replacements()
+  assert len(replacements) == 1
+  assert replacements[0] == "X"
+  altLoc_groups.add_group(["B", "A", "E"])
+  assert altLoc_groups.group_list == [[" ", "A", "B", "C", "D", "E"]]
+  altLoc_groups.add_group(["1", " ", "3"])
+  assert altLoc_groups.group_list == [[" ", "A", "B", "C", "D", "E"],
+                                      [" ", "1", "3"]]
+  replacements = altLoc_groups.get_false_blank_altLoc_replacements()
+  assert len(replacements) == 2
+  assert replacements[0] == "X"
+  assert replacements[1] == "0"
+  altLoc_groups.add_group(["Q", "R"])
+  assert len(altLoc_groups.group_list) == 3
+  altLoc_groups.add_group(["Q", "B", "1"])
+  assert altLoc_groups.group_list \
+    == [[" ", "1", "3", "A", "B", "C", "D", "E", "Q", "R"]]
+  replacements = altLoc_groups.get_false_blank_altLoc_replacements()
+  assert len(replacements) == 1
+  assert replacements[0] == "X"
+
 def exercise_interpretation(verbose=0, quick=0001):
   pdb_dir = os.path.join(os.environ["LIBTBX_DIST_ROOT"],
     "regression", "pdb")
@@ -205,6 +234,7 @@ def run():
   exercise_remark_290_interpretation()
   exercise_parser()
   exercise_atom()
+  exercise_altLoc_grouping()
   exercise_interpretation(verbose=verbose)
   for anisotropic_flag in (00000, 0001):
     exercise_xray_structure(anisotropic_flag, verbose=verbose)
