@@ -28,7 +28,11 @@ class target_functors_manager:
                      use_sigmas_as_weights  = False,
                      scale_factor           = 0):
     adopt_init_args(self, locals())
-    assert self.target_name in ("ml","ls","mlhl")
+    assert self.target_name in ("ls_wunit_k1","ls_wunit_k2","ls_wunit_kunit",
+                                "ls_wexp_k1" ,"ls_wexp_k2" ,"ls_wexp_kunit",
+                                "ls_wff_k1"  ,"ls_wff_k2"  ,"ls_wff_kunit",
+                                "lsm_k1"     ,"lsm_k2"     ,"lsm_kunit",
+                                "ml","mlhl")
     assert self.f_obs.data().size() == self.flags.size()
     if(self.flags.count(True) > 0):
       self.f_obs_w = self.f_obs.select(~self.flags)
@@ -51,7 +55,7 @@ class target_functors_manager:
     else:
       self.abcd_w, self.abcd_t = None, None
     if(self.weights is not None):
-      assert self.target_name == "ls"
+      assert self.target_name.count("ls")+self.target_name.count("k") == 2
       if(self.flags.count(True) > 0):
         self.weights_w = self.weights.select(~self.flags)
         self.weights_t = self.weights.select( self.flags)
@@ -73,12 +77,24 @@ class target_functors_manager:
       else:                           weights = self.weights_w
       if(self.abcd_w is not None): abcd = self.abcd_w.select(selection)
       else:                        abcd = self.abcd_w
-    if(self.target_name == "ls"):
-      return least_squares_residual(
-                            f_obs                 = f_obs,
-                            weights               = weights,
-                            use_sigmas_as_weights = self.use_sigmas_as_weights,
-                            scale_factor          = self.scale_factor)
+    if(self.target_name.count("k1") == 1):
+       assert self.scale_factor == 0
+       return ls_k1(f_obs            = f_obs,
+                    weights          = weights,
+                    scale_factor     = self.scale_factor,
+                    fix_scale_factor = False)
+    if(self.target_name.count("k2") == 1):
+       assert self.scale_factor == 0
+       return ls_k2(f_obs            = f_obs,
+                    weights          = weights,
+                    scale_factor     = self.scale_factor,
+                    fix_scale_factor = False)
+    if(self.target_name.count("kunit") == 1):
+       assert self.scale_factor == 1
+       return ls_k1(f_obs            = f_obs,
+                    weights          = weights,
+                    scale_factor     = self.scale_factor,
+                    fix_scale_factor = True)
     if(self.target_name == "ml"):
       return maximum_likelihood_criterion(f_obs = f_obs)
     if(self.target_name == "mlhl"):
@@ -98,12 +114,24 @@ class target_functors_manager:
       else:                           weights = self.weights_t
       if(self.abcd_t is not None): abcd = self.abcd_t.select(selection)
       else:                        abcd = self.abcd_t
-    if(self.target_name == "ls"):
-      return least_squares_residual(
-                            f_obs                 = f_obs,
-                            weights               = weights,
-                            use_sigmas_as_weights = self.use_sigmas_as_weights,
-                            scale_factor          = self.scale_factor)
+    if(self.target_name.count("k1") == 1):
+       assert self.scale_factor == 0
+       return ls_k1(f_obs            = f_obs,
+                    weights          = weights,
+                    scale_factor     = self.scale_factor,
+                    fix_scale_factor = False)
+    if(self.target_name.count("k2") == 1):
+       assert self.scale_factor == 0
+       return ls_k2(f_obs            = f_obs,
+                    weights          = weights,
+                    scale_factor     = self.scale_factor,
+                    fix_scale_factor = False)
+    if(self.target_name.count("kunit") == 1):
+       assert self.scale_factor == 1
+       return ls_k1(f_obs            = f_obs,
+                    weights          = weights,
+                    scale_factor     = self.scale_factor,
+                    fix_scale_factor = True)
     if(self.target_name == "ml"):
       return maximum_likelihood_criterion(f_obs = f_obs)
     if(self.target_name == "mlhl"):
@@ -111,6 +139,69 @@ class target_functors_manager:
                               f_obs                = f_obs,
                               abcd                 = abcd.data())
 
+class ls_k1:
+
+  def __init__(self, f_obs,
+                     weights,
+                     scale_factor,
+                     fix_scale_factor):
+    adopt_init_args(self, locals(), hide=True)
+    if(self._fix_scale_factor == True):
+       assert self._scale_factor > 0.0
+
+  def f_obs(self):
+    return self._f_obs
+
+  def weights(self):
+    return self._weights
+
+  def scale_factor(self):
+    return self._scale_factor
+
+  def __call__(self, f_calc, compute_derivatives):
+    assert f_calc.unit_cell().is_similar_to(
+           self.f_obs().unit_cell())
+    assert f_calc.space_group() == self.f_obs().space_group()
+    assert f_calc.data().size() == self.f_obs().data().size()
+    return ext.ls_target_with_scale_k1(
+                                  f_obs               = self.f_obs().data(),
+                                  weights             = self.weights(),
+                                  f_calc              = f_calc.data(),
+                                  compute_derivatives = compute_derivatives,
+                                  fix_scale           = self._fix_scale_factor,
+                                  scale               = self._scale_factor)
+
+class ls_k2:
+
+  def __init__(self, f_obs,
+                     weights,
+                     scale_factor,
+                     fix_scale_factor):
+    adopt_init_args(self, locals(), hide=True)
+    if(self._fix_scale_factor == True):
+       assert self._scale_factor > 0.0
+
+  def f_obs(self):
+    return self._f_obs
+
+  def weights(self):
+    return self._weights
+
+  def scale_factor(self):
+    return self._scale_factor
+
+  def __call__(self, f_calc, compute_derivatives):
+    assert f_calc.unit_cell().is_similar_to(
+           self.f_obs().unit_cell())
+    assert f_calc.space_group() == self.f_obs().space_group()
+    assert f_calc.data().size() == self.f_obs().data().size()
+    return ext.ls_target_with_scale_k2(
+                                  f_obs               = self.f_obs().data(),
+                                  weights             = self.weights(),
+                                  f_calc              = f_calc.data(),
+                                  compute_derivatives = compute_derivatives,
+                                  fix_scale           = self._fix_scale_factor,
+                                  scale               = self._scale_factor)
 
 class least_squares_residual:
 
