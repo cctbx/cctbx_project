@@ -41,6 +41,10 @@ namespace {
            arg_("vdw_1_4_factor"))))
         .def_readonly("bond_proxies", &w_t::bond_proxies)
         .def_readonly("repulsion_proxies", &w_t::repulsion_proxies)
+        .def_readonly("n_bonded", &w_t::n_bonded)
+        .def_readonly("n_1_3", &w_t::n_1_3)
+        .def_readonly("n_1_4", &w_t::n_1_4)
+        .def_readonly("n_nonbonded", &w_t::n_nonbonded)
         .def_readonly("n_unknown_repulsion_type_pairs",
           &w_t::n_unknown_repulsion_type_pairs)
       ;
