@@ -39,6 +39,9 @@ class time_log:
     self.accumulation += self.delta
     self.n += 1
 
+  def average(self):
+    return self.accumulation / max(1,self.n)
+
   def log(self):
     self.stop()
     return self.report()
@@ -49,7 +52,7 @@ class time_log:
     assert self.timer is None
     return "time_log: %s: %d %.2f %.2f %.2f" % (
       self.label, self.n, self.accumulation,
-      self.delta, self.accumulation/max(1,self.n))
+      self.delta, self.average())
 
 def human_readable_time(time_in_seconds):
   time_units = time_in_seconds
