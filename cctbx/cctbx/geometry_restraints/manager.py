@@ -42,6 +42,65 @@ class manager:
     self.effective_nonbonded_buffer = self.nonbonded_buffer
     self.n_updates_pair_proxies = 0
 
+  def select(self, selection):
+    iselection = selection.iselection()
+    selected_model_indices = None
+    if (self.model_indices is not None):
+      selected_model_indices = self.model_indices.select(
+        iselection)
+    selected_conformer_indices = None
+    if (self.conformer_indices is not None):
+      selected_conformer_indices = self.conformer_indices.select(
+        iselection)
+    selected_site_symmetry_table = None
+    if (self.site_symmetry_table is not None):
+      selected_site_symmetry_table = self.site_symmetry_table.select(
+        iselection)
+    selected_bond_params_table = None
+    if (self.bond_params_table is not None):
+      selected_bond_params_table = self.bond_params_table.select(
+        iselection)
+    selected_shell_sym_tables = None
+    if (self.shell_sym_tables is not None):
+      selected_shell_sym_tables = [shell_sym_table.select(iselection)
+        for shell_sym_table in self.shell_sym_tables]
+    selected_nonbonded_types = None
+    if (self.nonbonded_types is not None):
+      selected_nonbonded_types = self.nonbonded_types.select(
+        iselection)
+    selected_angle_proxies = None
+    if (self.angle_proxies is not None):
+      selected_angle_proxies = self.angle_proxies.select(
+        selection.size(), iselection)
+    selected_dihedral_proxies = None
+    if (self.dihedral_proxies is not None):
+      selected_dihedral_proxies = self.dihedral_proxies.select(
+        selection.size(), iselection)
+    selected_chirality_proxies = None
+    if (self.chirality_proxies is not None):
+      selected_chirality_proxies = self.chirality_proxies.select(
+        selection.size(), iselection)
+    selected_planarity_proxies = None
+    if (self.planarity_proxies is not None):
+      selected_planarity_proxies = self.planarity_proxies.select(
+        selection.size(), iselection)
+    return manager(
+      crystal_symmetry=self.crystal_symmetry,
+      model_indices=selected_model_indices,
+      conformer_indices=selected_conformer_indices,
+      site_symmetry_table=selected_site_symmetry_table,
+      bond_params_table=selected_bond_params_table,
+      shell_sym_tables=selected_shell_sym_tables,
+      nonbonded_params=self.nonbonded_params,
+      nonbonded_types=selected_nonbonded_types,
+      nonbonded_function=self.nonbonded_function,
+      nonbonded_distance_cutoff=self.nonbonded_distance_cutoff,
+      nonbonded_buffer=self.nonbonded_buffer,
+      angle_proxies=selected_angle_proxies,
+      dihedral_proxies=selected_dihedral_proxies,
+      chirality_proxies=selected_chirality_proxies,
+      planarity_proxies=selected_planarity_proxies)
+
   def pair_proxies(self,
         sites_cart=None,
         flags=None,
