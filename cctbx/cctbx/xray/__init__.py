@@ -127,6 +127,13 @@ class structure(crystal.special_position_settings):
       r = matrix.sqr(site_symmetry.special_op().r().as_double())
       d_target_d_site[i] = (matrix.row(d_target_d_site[i]) * r).elems
 
+  def as_emma_model(self):
+    from cctbx import euclidean_model_matching as emma
+    positions = []
+    for scatterer in self.scatterers():
+      positions.append(emma.position(scatterer.label, scatterer.site))
+    return emma.model(self, positions)
+
 class structure_factors_direct:
 
   def __init__(self, xray_structure,
