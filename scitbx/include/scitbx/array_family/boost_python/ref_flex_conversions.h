@@ -34,10 +34,8 @@ namespace scitbx { namespace af { namespace boost_python {
 
     static void* convertible(PyObject* obj_ptr)
     {
-      using namespace boost::python;
-      using boost::python::borrowed; // works around gcc 2.96 bug
-      object obj(borrowed(obj_ptr));
-      extract<flex_type&> flex_proxy(obj);
+      boost::python::object obj(boost::python::borrowed(obj_ptr));
+      boost::python::extract<flex_type&> flex_proxy(obj);
       if (!flex_proxy.check()) return 0;
       flex_type& a = flex_proxy();
       if (a.accessor().nd() != 1) return 0;
@@ -50,16 +48,14 @@ namespace scitbx { namespace af { namespace boost_python {
       PyObject* obj_ptr,
       boost::python::converter::rvalue_from_python_stage1_data* data)
     {
-      using namespace boost::python;
-      using boost::python::borrowed;
-      object obj(borrowed(obj_ptr));
-      flex_type& a = extract<flex_type&>(obj)();
+      boost::python::object obj(boost::python::borrowed(obj_ptr));
+      flex_type& a = boost::python::extract<flex_type&>(obj)();
       if (!a.check_shared_size()) raise_shared_size_mismatch();
       assert(a.accessor().nd() == 1);
       assert(a.accessor().is_0_based());
       assert(!a.accessor().is_padded());
       void* storage = (
-        (converter::rvalue_from_python_storage<RefType>*)
+        (boost::python::converter::rvalue_from_python_storage<RefType>*)
           data)->storage.bytes;
       new (storage) RefType(a.begin(), a.size());
       data->convertible = storage;
@@ -82,10 +78,8 @@ namespace scitbx { namespace af { namespace boost_python {
 
     static void* convertible(PyObject* obj_ptr)
     {
-      using namespace boost::python;
-      using boost::python::borrowed; // works around gcc 2.96 bug
-      object obj(borrowed(obj_ptr));
-      extract<flex_type&> flex_proxy(obj);
+      boost::python::object obj(boost::python::borrowed(obj_ptr));
+      boost::python::extract<flex_type&> flex_proxy(obj);
       if (!flex_proxy.check()) return 0;
       return obj_ptr;
     }
@@ -94,13 +88,11 @@ namespace scitbx { namespace af { namespace boost_python {
       PyObject* obj_ptr,
       boost::python::converter::rvalue_from_python_stage1_data* data)
     {
-      using namespace boost::python;
-      using boost::python::borrowed;
-      object obj(borrowed(obj_ptr));
-      flex_type& a = extract<flex_type&>(obj)();
+      boost::python::object obj(boost::python::borrowed(obj_ptr));
+      flex_type& a = boost::python::extract<flex_type&>(obj)();
       if (!a.check_shared_size()) raise_shared_size_mismatch();
       void* storage = (
-        (converter::rvalue_from_python_storage<RefType>*)
+        (boost::python::converter::rvalue_from_python_storage<RefType>*)
           data)->storage.bytes;
       new (storage) RefType(a.begin(), a.accessor());
       data->convertible = storage;

@@ -738,11 +738,9 @@ namespace scitbx { namespace af { namespace boost_python {
     ordered(std::string const& python_name,
             boost::python::object const& flex_root_scope)
     {
-      using namespace boost::python;
-      using boost::python::def; // works around gcc 2.96 bug
       {
-        scope local_scope(flex_root_scope);
-        def("order", order_a_a);
+        boost::python::scope local_scope(flex_root_scope);
+        boost::python::def("order", order_a_a);
       }
       return plain(python_name);
     }
@@ -767,13 +765,11 @@ namespace scitbx { namespace af { namespace boost_python {
     numeric_common(std::string const& python_name,
                    boost::python::object const& flex_root_scope)
     {
-      using namespace boost::python;
-      using boost::python::def; // works around gcc 2.96 bug
       {
-        scope local_scope(flex_root_scope);
-        def("sum", sum_a);
-        def("sum_sq", sum_sq_a);
-        def("product", product_a);
+        boost::python::scope local_scope(flex_root_scope);
+        boost::python::def("sum", sum_a);
+        boost::python::def("sum_sq", sum_sq_a);
+        boost::python::def("product", product_a);
       }
       return plain(python_name)
         .def("__neg__", neg_a)
@@ -804,17 +800,15 @@ namespace scitbx { namespace af { namespace boost_python {
     numeric_no_pow(std::string const& python_name,
                    boost::python::object const& flex_root_scope)
     {
-      using namespace boost::python;
-      using boost::python::def; // works around gcc 2.96 bug
       {
-        scope local_scope(flex_root_scope);
-        def("order", order_a_a);
-        def("abs", abs_a);
-        def("pow2", pow2_a);
-        def("min_index", min_index_a);
-        def("max_index", max_index_a);
-        def("min", min_a);
-        def("max", max_a);
+        boost::python::scope local_scope(flex_root_scope);
+        boost::python::def("order", order_a_a);
+        boost::python::def("abs", abs_a);
+        boost::python::def("pow2", pow2_a);
+        boost::python::def("min_index", min_index_a);
+        boost::python::def("max_index", max_index_a);
+        boost::python::def("min", min_a);
+        boost::python::def("max", max_a);
       }
       return numeric_common(python_name, flex_root_scope)
         .def("as_double", as_double)
@@ -841,33 +835,31 @@ namespace scitbx { namespace af { namespace boost_python {
     numeric(std::string const& python_name,
             boost::python::object const& flex_root_scope)
     {
-      using namespace boost::python;
-      using boost::python::def; // works around gcc 2.96 bug
       {
-        scope local_scope(flex_root_scope);
-        def("pow", pow_a_s);
-        def("fmod", fmod_a_s);
-        def("atan2", atan2_a_a);
-        def("acos", acos_a);
-        def("cos", cos_a);
-        def("tan", tan_a);
-        def("asin", asin_a);
-        def("cosh", cosh_a);
-        def("tanh", tanh_a);
-        def("atan", atan_a);
-        def("exp", exp_a);
-        def("sin", sin_a);
-        def("fabs", fabs_a);
-        def("log", log_a);
-        def("sinh", sinh_a);
-        def("ceil", ceil_a);
-        def("floor", floor_a);
-        def("log10", log10_a);
-        def("sqrt", sqrt_a);
-        def("mean", mean_a);
-        def("mean_sq", mean_sq_a);
-        def("mean_weighted", mean_weighted_a_a);
-        def("mean_sq_weighted", mean_sq_weighted_a_a);
+        boost::python::scope local_scope(flex_root_scope);
+        boost::python::def("pow", pow_a_s);
+        boost::python::def("fmod", fmod_a_s);
+        boost::python::def("atan2", atan2_a_a);
+        boost::python::def("acos", acos_a);
+        boost::python::def("cos", cos_a);
+        boost::python::def("tan", tan_a);
+        boost::python::def("asin", asin_a);
+        boost::python::def("cosh", cosh_a);
+        boost::python::def("tanh", tanh_a);
+        boost::python::def("atan", atan_a);
+        boost::python::def("exp", exp_a);
+        boost::python::def("sin", sin_a);
+        boost::python::def("fabs", fabs_a);
+        boost::python::def("log", log_a);
+        boost::python::def("sinh", sinh_a);
+        boost::python::def("ceil", ceil_a);
+        boost::python::def("floor", floor_a);
+        boost::python::def("log10", log10_a);
+        boost::python::def("sqrt", sqrt_a);
+        boost::python::def("mean", mean_a);
+        boost::python::def("mean_sq", mean_sq_a);
+        boost::python::def("mean_weighted", mean_weighted_a_a);
+        boost::python::def("mean_sq_weighted", mean_sq_weighted_a_a);
       }
       return numeric_no_pow(python_name, flex_root_scope);
     }
@@ -886,18 +878,16 @@ namespace scitbx { namespace af { namespace boost_python {
     static void
     complex_functions(boost::python::object const& flex_root_scope)
     {
-      using namespace boost::python;
-      using boost::python::def; // works around gcc 2.96 bug
       {
-        scope local_scope(flex_root_scope);
-        def("real", real_complex);
-        def("imag", imag_complex);
-        def("abs", abs_complex);
-        def("arg", arg_complex_2);
-        def("arg", arg_complex_1);
-        def("norm", norm_complex);
-        def("polar", polar_complex_3);
-        def("polar", polar_complex_2);
+        boost::python::scope local_scope(flex_root_scope);
+        boost::python::def("real", real_complex);
+        boost::python::def("imag", imag_complex);
+        boost::python::def("abs", abs_complex);
+        boost::python::def("arg", arg_complex_2);
+        boost::python::def("arg", arg_complex_1);
+        boost::python::def("norm", norm_complex);
+        boost::python::def("polar", polar_complex_3);
+        boost::python::def("polar", polar_complex_2);
       }
     }
   };

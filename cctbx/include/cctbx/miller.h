@@ -62,17 +62,16 @@ namespace cctbx {
        */
       bool operator<(index const& other) const
       {
-        using scitbx::fn::absolute;
         const int P[3] = {2, 0, 1};
         for(std::size_t i=0;i<3;i++) {
           if (this->elems[P[i]] >= 0 && other[P[i]] <  0) return true;
           if (this->elems[P[i]] <  0 && other[P[i]] >= 0) return false;
         }
         for(std::size_t i=0;i<3;i++) {
-          if (  absolute(this->elems[P[i]])
-              < absolute(other[P[i]])) return true;
-          if (  absolute(this->elems[P[i]])
-              > absolute(other[P[i]])) return false;
+          if (  scitbx::fn::absolute(this->elems[P[i]])
+              < scitbx::fn::absolute(other[P[i]])) return true;
+          if (  scitbx::fn::absolute(this->elems[P[i]])
+              > scitbx::fn::absolute(other[P[i]])) return false;
         }
         return false;
       }
