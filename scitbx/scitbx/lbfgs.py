@@ -28,7 +28,7 @@ class termination_parameters:
 class exception_handling_parameters:
 
   def __init__(self, ignore_line_search_failed_rounding_errors=0001,
-                     ignore_line_search_failed_step_at_lower_bound=0001,
+                     ignore_line_search_failed_step_at_lower_bound=00000,
                      ignore_line_search_failed_step_at_upper_bound=00000,
                      ignore_line_search_failed_maxfev=00000,
                      ignore_line_search_failed_xtol=00000,
