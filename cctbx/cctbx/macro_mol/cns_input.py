@@ -5,7 +5,10 @@ __version__="$Revision$"[11:-2]
 
 import exceptions
 from cctbx_boost.arraytbx import shared
+from cctbx_boost import uctbx
+from cctbx_boost import sgtbx
 from cctbx_boost import miller
+from cctbx import xutils
 
 # <xray-reflection-statement> :==
 #   nreflection=<integer>
@@ -272,11 +275,20 @@ class CNS_xray_reflection_Reader(CNS_input):
     except EOFError:
       if (self.level != 0): raise CNS_input_Error, "premature end-of-file"
 
+def as_reciprocal_space_array(crystal_symmetry, friedel_flag,
+                              miller_indices, data, info):
+  data_set = xutils.reciprocal_space_array(
+    xutils.miller_set(crystal_symmetry, miller_indices), data)
+  data_set.set_friedel_flag(friedel_flag)
+  data_set.info = info
+  return data_set
+
 class cns_reflection_file:
 
   def __init__(self, file_handle):
     reader = CNS_xray_reflection_Reader(file_handle)
     reader.load(self)
+    self.optimize()
 
   def show_summary(self):
     print "nreflections=%d" % (self.nreflections,)
@@ -308,7 +320,7 @@ class cns_reflection_file:
       rso = self.reciprocal_space_objects[name]
       assert rso.type == "real"
       rsos.append(rso)
-      if (miller_indices == 0): miller_indices = rso.H
+      if (type(miller_indices) == type(0)): miller_indices = rso.H
       js = miller.join_sets(miller_indices, rso.H)
       assert not js.have_singles()
       joined_sets.append(js)
@@ -321,6 +333,24 @@ class cns_reflection_file:
         coeff.append(rsos[ic].data[ih1])
       hl.append(coeff)
     return miller_indices, hl
+
+  def as_reciprocal_space_arrays(self, crystal_symmetry, prefix):
+    data_sets = []
+    done = {}
+    for group_index in xrange(len(self.groups)):
+      miller_indices, hl = self.join_hl_group(group_index)
+      data_sets.append(as_reciprocal_space_array(
+        crystal_symmetry, not self.anomalous, miller_indices, hl,
+        prefix + "hl_group_%d" % (group_index+1,)))
+      for name in self.groups[group_index]:
+        done[name] = 1
+    for rso in self.reciprocal_space_objects.values():
+      if rso.name in done: continue
+      data_sets.append(as_reciprocal_space_array(
+        crystal_symmetry, not self.anomalous, rso.H, rso.data,
+        prefix + rso.name.lower()))
+      done[rso.name] = 1
+    return data_sets
 
 def run():
   import sys, os
@@ -336,8 +366,15 @@ def run():
     tn = os.times()
     t_parse = tn[0]+tn[1]-t0[0]-t0[1]
     f.close()
-    reflection_file.optimize()
     reflection_file.show_summary()
+    print
+    crystal_symmetry = xutils.crystal_symmetry(
+      uctbx.UnitCell(), sgtbx.SpaceGroupInfo())
+    data_sets = reflection_file.as_reciprocal_space_arrays(
+      crystal_symmetry, prefix="")
+    for data_set in data_sets:
+      data_set.show_summary()
+      print
     if (to_pickle):
       pickle_file_name = file_name + ".pickle"
       f = open(pickle_file_name, "wb")
