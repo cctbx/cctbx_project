@@ -8,6 +8,7 @@ from cctbx import crystal
 from cctbx import miller
 from cctbx.array_family import flex
 from scitbx.python_utils import complex_math
+import sys
 
 # <xray-reflection-statement> :==
 #   nreflection=<integer>
@@ -90,8 +91,8 @@ class cns_reciprocal_space_object:
     else:
       raise RuntimeError, "Internal Error."
 
-  def show_summary(self):
-    print "name=%s type=%s len(data)=%d" % (
+  def show_summary(self, f=sys.stdout):
+    print >> f, "name=%s type=%s len(data)=%d" % (
       self.name, self.type, self.data.size())
 
   def append(self, h, value):
@@ -285,13 +286,13 @@ class cns_reflection_file:
     reader.load(self)
     self.optimize()
 
-  def show_summary(self):
-    print "nreflections=%d" % (self.nreflections,)
-    print "anomalous=%d" % (self.anomalous,)
+  def show_summary(self, f=sys.stdout):
+    print >> f, "nreflections=%d" % (self.nreflections,)
+    print >> f, "anomalous=%d" % (self.anomalous,)
     for rso in self.reciprocal_space_objects.values():
-      rso.show_summary()
+      rso.show_summary(f)
     for g in self.groups:
-      print "group: " + str(g)
+      print >> f, "group: " + str(g)
 
   def optimize(self):
     rsos = self.reciprocal_space_objects.values()
