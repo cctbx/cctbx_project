@@ -17,6 +17,7 @@
 #include <scitbx/array_family/versa_algebra.h>
 #include <scitbx/boost_python/utils.h>
 #include <scitbx/boost_python/container_conversions.h>
+#include <scitbx/array_family/boost_python/shared_flex_conversions.h>
 #include <scitbx/array_family/boost_python/utils.h>
 #include <boost/python/module.hpp>
 #include <boost/python/class.hpp>
@@ -589,6 +590,7 @@ namespace scitbx { namespace af { namespace boost_python {
       scitbx::boost_python::container_conversions::from_python_sequence<
         shared_plain<ElementType>,
         scitbx::boost_python::container_conversions::variable_size_policy>();
+      shared_flex_conversions<ElementType>();
 
       m.add(
         class_<flex_items<ElementType> >((python_name+"_items").c_str(),
