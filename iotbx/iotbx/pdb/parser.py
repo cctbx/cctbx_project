@@ -296,11 +296,14 @@ class pdb_record:
 
 def collect_records(raw_records,
                     ignore_unknown=0001,
-                    ignore_coordinate_section=00000):
+                    ignore_coordinate_section=00000,
+                    ignore_master=00000):
   line_number = 0
   records = []
   for raw_record in raw_records:
     line_number += 1
+    if (ignore_master and raw_record.startswith("MASTER")):
+      continue
     r = pdb_record(raw_record, line_number)
     if (ignore_unknown and not r.is_interpreted):
       continue
