@@ -11,18 +11,17 @@
 #ifndef CCTBX_FFTBX_DETAIL_REAL_TO_COMPLEX_FORWARD_H
 #define CCTBX_FFTBX_DETAIL_REAL_TO_COMPLEX_FORWARD_H
 
-#include <cctbx/fftbx/detail/adaptors.h>
-
 namespace cctbx { namespace fftbx {
 
-  template <class VectorType>
+  template <typename RealType, typename ComplexType>
   void
-  real_to_complex<VectorType>::forward_compressed(iterator_type Seq_begin)
+  real_to_complex<RealType,
+                  ComplexType>::forward_compressed(real_type* Seq_begin)
   {
     if (m_N < 2) return;
-    iterator_type C = Seq_begin;
-    iterator_type CH = m_CH.begin();
-    const_iterator_type WA = m_WA.begin();
+    real_type* C = Seq_begin;
+    real_type* CH = m_CH.begin();
+    const real_type* WA = m_WA.begin();
     std::size_t IDL1;
     std::size_t IDO;
     std::size_t IP;
@@ -102,19 +101,20 @@ namespace cctbx { namespace fftbx {
     }
   }
 
-  template <class VectorType>
+  template <typename RealType, typename ComplexType>
   void
-  real_to_complex<VectorType>::passf2(std::size_t IDO,
-                                      std::size_t L1,
-                                      iterator_type CC_begin,
-                                      iterator_type CH_begin,
-                                      const_iterator_type WA1)
+  real_to_complex<RealType,
+                  ComplexType>::passf2(std::size_t IDO,
+                                       std::size_t L1,
+                                       real_type* CC_begin,
+                                       real_type* CH_begin,
+                                       const real_type* WA1)
   {
-    detail::array_tp<VectorType, 3> CC(CC_begin, IDO, L1, 2);
-    detail::array_tp<VectorType, 3> CH(CH_begin, IDO, 2, L1);
+    dim3 CC(CC_begin, IDO, L1, 2);
+    dim3 CH(CH_begin, IDO, 2, L1);
     std::size_t IC;
-    value_type TI2;
-    value_type TR2;
+    real_type TI2;
+    real_type TR2;
     std::size_t K;
     for (K = 0; K < L1; K++) {
       CH(0,0,K) = CC(0,K,0)+CC(0,K,1);
@@ -142,30 +142,31 @@ namespace cctbx { namespace fftbx {
     }
   }
 
-  template <class VectorType>
+  template <typename RealType, typename ComplexType>
   void
-  real_to_complex<VectorType>::passf3(std::size_t IDO,
-                                      std::size_t L1,
-                                      iterator_type CC_begin,
-                                      iterator_type CH_begin,
-                                      const_iterator_type WA1,
-                                      const_iterator_type WA2)
+  real_to_complex<RealType,
+                  ComplexType>::passf3(std::size_t IDO,
+                                       std::size_t L1,
+                                       real_type* CC_begin,
+                                       real_type* CH_begin,
+                                       const real_type* WA1,
+                                       const real_type* WA2)
   {
-    detail::array_tp<VectorType, 3> CC(CC_begin, IDO, L1, 3);
-    detail::array_tp<VectorType, 3> CH(CH_begin, IDO, 3, L1);
-    value_type CI2;
-    value_type CR2;
-    value_type DI2;
-    value_type DI3;
-    value_type DR2;
-    value_type DR3;
+    dim3 CC(CC_begin, IDO, L1, 3);
+    dim3 CH(CH_begin, IDO, 3, L1);
+    real_type CI2;
+    real_type CR2;
+    real_type DI2;
+    real_type DI3;
+    real_type DR2;
+    real_type DR3;
     std::size_t IC;
-    value_type TI2;
-    value_type TI3;
-    value_type TR2;
-    value_type TR3;
-    const value_type TAUR = -.5;
-    const value_type TAUI = -TAUR * std::sqrt(value_type(3));
+    real_type TI2;
+    real_type TI3;
+    real_type TR2;
+    real_type TR3;
+    const real_type TAUR = -.5;
+    const real_type TAUI = -TAUR * std::sqrt(real_type(3));
     std::size_t K;
     for (K = 0; K < L1; K++) {
       CR2 = CC(0,K,1)+CC(0,K,2);
@@ -198,34 +199,35 @@ namespace cctbx { namespace fftbx {
     }
   }
 
-  template <class VectorType>
+  template <typename RealType, typename ComplexType>
   void
-  real_to_complex<VectorType>::passf4(std::size_t IDO,
-                                      std::size_t L1,
-                                      iterator_type CC_begin,
-                                      iterator_type CH_begin,
-                                      const_iterator_type WA1,
-                                      const_iterator_type WA2,
-                                      const_iterator_type WA3)
+  real_to_complex<RealType,
+                  ComplexType>::passf4(std::size_t IDO,
+                                       std::size_t L1,
+                                       real_type* CC_begin,
+                                       real_type* CH_begin,
+                                       const real_type* WA1,
+                                       const real_type* WA2,
+                                       const real_type* WA3)
   {
-    detail::array_tp<VectorType, 3> CC(CC_begin, IDO, L1, 4);
-    detail::array_tp<VectorType, 3> CH(CH_begin, IDO, 4, L1);
-    value_type CI2;
-    value_type CI3;
-    value_type CI4;
-    value_type CR2;
-    value_type CR3;
-    value_type CR4;
+    dim3 CC(CC_begin, IDO, L1, 4);
+    dim3 CH(CH_begin, IDO, 4, L1);
+    real_type CI2;
+    real_type CI3;
+    real_type CI4;
+    real_type CR2;
+    real_type CR3;
+    real_type CR4;
     std::size_t IC;
-    value_type TI1;
-    value_type TI2;
-    value_type TI3;
-    value_type TI4;
-    value_type TR1;
-    value_type TR2;
-    value_type TR3;
-    value_type TR4;
-    const value_type HSQT2 = value_type(.5) * std::sqrt(value_type(2));
+    real_type TI1;
+    real_type TI2;
+    real_type TI3;
+    real_type TI4;
+    real_type TR1;
+    real_type TR2;
+    real_type TR3;
+    real_type TR4;
+    const real_type HSQT2 = real_type(.5) * std::sqrt(real_type(2));
     std::size_t K;
     for (K = 0; K < L1; K++) {
       TR1 = CC(0,K,1)+CC(0,K,3);
@@ -277,52 +279,53 @@ namespace cctbx { namespace fftbx {
     }
   }
 
-  template <class VectorType>
+  template <typename RealType, typename ComplexType>
   void
-  real_to_complex<VectorType>::passf5(std::size_t IDO,
-                                      std::size_t L1,
-                                      iterator_type CC_begin,
-                                      iterator_type CH_begin,
-                                      const_iterator_type WA1,
-                                      const_iterator_type WA2,
-                                      const_iterator_type WA3,
-                                      const_iterator_type WA4)
+  real_to_complex<RealType,
+                  ComplexType>::passf5(std::size_t IDO,
+                                       std::size_t L1,
+                                       real_type* CC_begin,
+                                       real_type* CH_begin,
+                                       const real_type* WA1,
+                                       const real_type* WA2,
+                                       const real_type* WA3,
+                                       const real_type* WA4)
   {
-    detail::array_tp<VectorType, 3> CC(CC_begin, IDO, L1, 5);
-    detail::array_tp<VectorType, 3> CH(CH_begin, IDO, 5, L1);
-    value_type CI2;
-    value_type CI3;
-    value_type CI4;
-    value_type CI5;
-    value_type CR2;
-    value_type CR3;
-    value_type CR4;
-    value_type CR5;
-    value_type DI2;
-    value_type DI3;
-    value_type DI4;
-    value_type DI5;
-    value_type DR2;
-    value_type DR3;
-    value_type DR4;
-    value_type DR5;
+    dim3 CC(CC_begin, IDO, L1, 5);
+    dim3 CH(CH_begin, IDO, 5, L1);
+    real_type CI2;
+    real_type CI3;
+    real_type CI4;
+    real_type CI5;
+    real_type CR2;
+    real_type CR3;
+    real_type CR4;
+    real_type CR5;
+    real_type DI2;
+    real_type DI3;
+    real_type DI4;
+    real_type DI5;
+    real_type DR2;
+    real_type DR3;
+    real_type DR4;
+    real_type DR5;
     std::size_t IC;
-    value_type TI2;
-    value_type TI3;
-    value_type TI4;
-    value_type TI5;
-    value_type TR2;
-    value_type TR3;
-    value_type TR4;
-    value_type TR5;
+    real_type TI2;
+    real_type TI3;
+    real_type TI4;
+    real_type TI5;
+    real_type TR2;
+    real_type TR3;
+    real_type TR4;
+    real_type TR5;
     // sin(18 deg)
-    const value_type TR11 =  .309016994374947424102293417182819058860154589903;
+    const real_type TR11 =  .309016994374947424102293417182819058860154589903;
     // cos(18 deg)
-    const value_type TI11 =  .951056516295153572116439333379382143405698634126;
+    const real_type TI11 =  .951056516295153572116439333379382143405698634126;
     // -cos(36 deg)
-    const value_type TR12 = -.809016994374947424102293417182819058860154589903;
+    const real_type TR12 = -.809016994374947424102293417182819058860154589903;
     // sin(36 deg)
-    const value_type TI12 =  .587785252292473129168705954639072768597652437643;
+    const real_type TI12 =  .587785252292473129168705954639072768597652437643;
     std::size_t K;
     for (K = 0; K < L1; K++) {
       CR2 = CC(0,K,4)+CC(0,K,1);
@@ -378,34 +381,35 @@ namespace cctbx { namespace fftbx {
     }
   }
 
-  template <class VectorType>
+  template <typename RealType, typename ComplexType>
   void
-  real_to_complex<VectorType>::passfg(std::size_t IDO,
-                                      std::size_t IP,
-                                      std::size_t L1,
-                                      std::size_t IDL1,
-                                      iterator_type CC_begin,
-                                      iterator_type C1_begin,
-                                      iterator_type C2_begin,
-                                      iterator_type CH_begin,
-                                      iterator_type CH2_begin,
-                                      const_iterator_type WA)
+  real_to_complex<RealType,
+                  ComplexType>::passfg(std::size_t IDO,
+                                       std::size_t IP,
+                                       std::size_t L1,
+                                       std::size_t IDL1,
+                                       real_type* CC_begin,
+                                       real_type* C1_begin,
+                                       real_type* C2_begin,
+                                       real_type* CH_begin,
+                                       real_type* CH2_begin,
+                                       const real_type* WA)
   {
-    detail::array_tp<VectorType, 3> CC(CC_begin, IDO, IP, L1);
-    detail::array_tp<VectorType, 3> C1(C1_begin, IDO, L1, IP);
-    detail::array_tp<VectorType, 2> C2(C2_begin, IDL1, IP);
-    detail::array_tp<VectorType, 3> CH(CH_begin, IDO, L1, IP);
-    detail::array_tp<VectorType, 2> CH2(CH2_begin, IDL1, IP);
-    value_type AI1;
-    value_type AI2;
-    value_type AR1;
-    value_type AR1H;
-    value_type AR2;
-    value_type AR2H;
-    value_type DC2;
-    value_type DCP;
-    value_type DS2;
-    value_type DSP;
+    dim3 CC(CC_begin, IDO, IP, L1);
+    dim3 C1(C1_begin, IDO, L1, IP);
+    dim2 C2(C2_begin, IDL1, IP);
+    dim3 CH(CH_begin, IDO, L1, IP);
+    dim2 CH2(CH2_begin, IDL1, IP);
+    real_type AI1;
+    real_type AI2;
+    real_type AR1;
+    real_type AR1H;
+    real_type AR2;
+    real_type AR2H;
+    real_type DC2;
+    real_type DCP;
+    real_type DS2;
+    real_type DSP;
     std::size_t IC;
     std::size_t IDIJ;
     std::size_t IPPH;
@@ -414,8 +418,8 @@ namespace cctbx { namespace fftbx {
     std::size_t JC;
     std::size_t LC;
     std::size_t NBD;
-    const value_type TPI = value_type(8) * std::atan(value_type(1));
-    value_type ARG = TPI / value_type(IP);
+    const real_type TPI = real_type(8) * std::atan(real_type(1));
+    real_type ARG = TPI / real_type(IP);
     DCP = std::cos(ARG);
     DSP = std::sin(ARG);
     IPPH = (IP+1)/2;

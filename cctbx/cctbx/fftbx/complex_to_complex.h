@@ -11,9 +11,10 @@
 #ifndef CCTBX_FFTBX_COMPLEX_TO_COMPLEX_H
 #define CCTBX_FFTBX_COMPLEX_TO_COMPLEX_H
 
+#include <vector>
 #include <algorithm>
+#include <complex>
 #include <cctbx/fixes/cmath>
-#include <cctbx/fftbx/error.h>
 #include <cctbx/fftbx/factorization.h>
 #include <cctbx/fftbx/detail/adaptors.h>
 
@@ -71,20 +72,16 @@ namespace cctbx { namespace fftbx {
 #endif // DOXYGEN_SHOULD_SKIP_THIS
 
   //! Complex-to-complex Fast Fourier Transformation.
-  /*! TODO: Currently the class operates only on vectors of real
-      2*N numbers, where N is the length of the sequence to be
-      transformed. I.e., each complex number is represented as two
-      consecutive real numbers (real part and imaginary part). Support
-      for vectors of std::complex<> is planned for the future.
-   */
-  template <class VectorType>
+  template <typename RealType,
+            typename ComplexType = std::complex<RealType> >
   class complex_to_complex : public factorization
   {
     public:
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
-      typedef typename VectorType::value_type value_type;
-      typedef typename VectorType::iterator iterator_type;
-      typedef typename VectorType::const_iterator const_iterator_type;
+      typedef RealType real_type;
+      typedef ComplexType complex_type;
+      typedef detail::access_tp<2, real_type*, real_type> dim2;
+      typedef detail::access_tp<3, real_type*, real_type> dim3;
 #endif // DOXYGEN_SHOULD_SKIP_THIS
 
       //! Default constructor.
@@ -98,7 +95,7 @@ namespace cctbx { namespace fftbx {
        */
       complex_to_complex(std::size_t N);
       //! Access to the pre-computed "twiddle factors."
-      const VectorType& WA() const {
+      const std::vector<real_type>& WA() const {
         return m_WA;
       }
 
@@ -114,11 +111,9 @@ namespace cctbx { namespace fftbx {
           </pre>
           Note that 1j is the imaginary number (sqrt(-1)) in Python.
        */
-      void forward(VectorType& Seq) {
-        if (Seq.size() < 2 * m_N) {
-          throw error("Input sequence is too short.");
-        }
-        transform(select_sign<forward_tag>(), Seq.begin());
+      template <typename ComplexOrRealType>
+      void forward(ComplexOrRealType* Seq_begin) {
+        transform(select_sign<forward_tag>(), Seq_begin);
       }
       /*! \brief In-place "backward" Fourier transformation of a
           sequence of length N().
@@ -132,22 +127,26 @@ namespace cctbx { namespace fftbx {
           </pre>
           Note that 1j is the imaginary number (sqrt(-1)) in Python.
        */
-      void backward(VectorType& Seq) {
-        if (Seq.size() < 2 * m_N) {
-          throw error("Input sequence is too short.");
-        }
-        transform(select_sign<backward_tag>(), Seq.begin());
+      template <typename ComplexOrRealType>
+      void backward(ComplexOrRealType* Seq_begin) {
+        transform(select_sign<backward_tag>(), Seq_begin);
       }
 
-      //! Generic in-place Fourier transformation.
-      template <class Tag>
-      void transform(select_sign<Tag>, iterator_type Seq_begin)
+      //! Generic in-place Fourier transformation of a contiguous sequence.
+      template <typename Tag>
+      void transform(select_sign<Tag> tag, complex_type* Seq_begin) {
+        transform(tag, reinterpret_cast<real_type*>(Seq_begin));
+      }
+
+      //! Generic in-place Fourier transformation of a contiguous sequence.
+      template <typename Tag>
+      void transform(select_sign<Tag> tag, real_type* Seq_begin)
   // FUTURE: move out of class body
   {
     if (m_N < 2) return;
-    iterator_type C = Seq_begin;
-    iterator_type CH = m_CH.begin();
-    const_iterator_type WA = m_WA.begin();
+    real_type* C = Seq_begin;
+    real_type* CH = m_CH.begin();
+    const real_type* WA = m_WA.begin();
     bool NA = false;
     std::size_t L1 = 1;
     std::size_t IW = 0;
@@ -161,29 +160,29 @@ namespace cctbx { namespace fftbx {
         std::size_t IX2 = IW+IDOT;
         std::size_t IX3 = IX2+IDOT;
         if (!NA) {
-          pass4(select_sign<Tag>(), IDOT,L1,C,CH,WA+IW,WA+IX2,WA+IX3);
+          pass4(tag, IDOT,L1,C,CH,WA+IW,WA+IX2,WA+IX3);
         }
         else {
-          pass4(select_sign<Tag>(), IDOT,L1,CH,C,WA+IW,WA+IX2,WA+IX3);
+          pass4(tag, IDOT,L1,CH,C,WA+IW,WA+IX2,WA+IX3);
         }
         NA = !NA;
       }
       else if (IP == 2) {
         if (!NA) {
-          pass2(select_sign<Tag>(), IDOT,L1,C,CH,WA+IW);
+          pass2(tag, IDOT,L1,C,CH,WA+IW);
         }
         else {
-          pass2(select_sign<Tag>(), IDOT,L1,CH,C,WA+IW);
+          pass2(tag, IDOT,L1,CH,C,WA+IW);
         }
         NA = !NA;
       }
       else if (IP == 3) {
         std::size_t IX2 = IW+IDOT;
         if (!NA) {
-          pass3(select_sign<Tag>(), IDOT,L1,C,CH,WA+IW,WA+IX2);
+          pass3(tag, IDOT,L1,C,CH,WA+IW,WA+IX2);
         }
         else {
-          pass3(select_sign<Tag>(), IDOT,L1,CH,C,WA+IW,WA+IX2);
+          pass3(tag, IDOT,L1,CH,C,WA+IW,WA+IX2);
         }
         NA = !NA;
       }
@@ -192,22 +191,20 @@ namespace cctbx { namespace fftbx {
         std::size_t IX3 = IX2+IDOT;
         std::size_t IX4 = IX3+IDOT;
         if (!NA) {
-          pass5(select_sign<Tag>(), IDOT,L1,C,CH,
-            WA+IW,WA+IX2,WA+IX3,WA+IX4);
+          pass5(tag, IDOT,L1,C,CH,WA+IW,WA+IX2,WA+IX3,WA+IX4);
         }
         else {
-          pass5(select_sign<Tag>(), IDOT,L1,CH,C,
-            WA+IW,WA+IX2,WA+IX3,WA+IX4);
+          pass5(tag, IDOT,L1,CH,C,WA+IW,WA+IX2,WA+IX3,WA+IX4);
         }
         NA = !NA;
       }
       else {
         bool NAC;
         if (!NA) {
-          passg(select_sign<Tag>(), NAC, IDOT,IP,L1,IDL1,IW,C,CH);
+          passg(tag, NAC, IDOT,IP,L1,IDL1,IW,C,CH,WA);
         }
         else {
-          passg(select_sign<Tag>(), NAC, IDOT,IP,L1,IDL1,IW,CH,C);
+          passg(tag, NAC, IDOT,IP,L1,IDL1,IW,CH,C,WA);
         }
         if (NAC) NA = !NA;
       }
@@ -220,20 +217,20 @@ namespace cctbx { namespace fftbx {
   }
     private:
       // Constants.
-      value_type m_TwoPi;
-      value_type m_OneHalf;
-      value_type m_cos30;
-      value_type m_sin18;
-      value_type m_cos18;
-      value_type m_sin36;
-      value_type m_cos36;
-      static value_type deg_as_rad(const value_type& phi) {
-        return phi * std::atan(value_type(1)) / value_type(45);
+      real_type m_TwoPi;
+      real_type m_OneHalf;
+      real_type m_cos30;
+      real_type m_sin18;
+      real_type m_cos18;
+      real_type m_sin36;
+      real_type m_cos36;
+      static real_type deg_as_rad(const real_type& phi) {
+        return phi * std::atan(real_type(1)) / real_type(45);
       }
 
       // Scratch space.
-      VectorType m_WA;
-      VectorType m_CH;
+      std::vector<real_type> m_WA;
+      std::vector<real_type> m_CH;
 
       // Codelets for prime factors 2,3,4,5 and a general transform.
 
@@ -241,13 +238,13 @@ namespace cctbx { namespace fftbx {
       void pass2(select_sign<Tag>,
                  std::size_t IDO,
                  std::size_t L1,
-                 iterator_type CC_begin,
-                 iterator_type CH_begin,
-                 const_iterator_type WA1)
+                 real_type* CC_begin,
+                 real_type* CH_begin,
+                 const real_type* WA1)
   // FUTURE: move out of class body
   {
-    detail::array_tp<VectorType, 3> CC(CC_begin, IDO, 2, L1);
-    detail::array_tp<VectorType, 3> CH(CH_begin, IDO, L1, 2);
+    dim3 CC(CC_begin, IDO, 2, L1);
+    dim3 CH(CH_begin, IDO, L1, 2);
     if (IDO == 2) {
       for (std::size_t K = 0; K < L1; K++) {
         CH(0,K,0) = CC(0,0,K) + CC(0,1,K);
@@ -262,8 +259,8 @@ namespace cctbx { namespace fftbx {
           std::size_t I1 = I0 + 1;
           CH(I0,K,0) = CC(I0,0,K) + CC(I0,1,K);
           CH(I1,K,0) = CC(I1,0,K) + CC(I1,1,K);
-          value_type TR2 = CC(I0,0,K) - CC(I0,1,K);
-          value_type TI2 = CC(I1,0,K) - CC(I1,1,K);
+          real_type TR2 = CC(I0,0,K) - CC(I0,1,K);
+          real_type TI2 = CC(I1,0,K) - CC(I1,1,K);
           CH(I0,K,1) = select_sign<Tag>::plusminus(WA1[I0]*TR2,WA1[I1]*TI2);
           CH(I1,K,1) = select_sign<Tag>::minusplus(WA1[I0]*TI2,WA1[I1]*TR2);
         }
@@ -275,23 +272,23 @@ namespace cctbx { namespace fftbx {
       void pass3(select_sign<Tag>,
                  std::size_t IDO,
                  std::size_t L1,
-                 iterator_type CC_begin,
-                 iterator_type CH_begin,
-                 const_iterator_type WA1,
-                 const_iterator_type WA2)
+                 real_type* CC_begin,
+                 real_type* CH_begin,
+                 const real_type* WA1,
+                 const real_type* WA2)
   // FUTURE: move out of class body
   {
-    detail::array_tp<VectorType, 3> CC(CC_begin, IDO, 3, L1);
-    detail::array_tp<VectorType, 3> CH(CH_begin, IDO, L1, 3);
-    value_type TAUI = select_sign<Tag>::unaryminusplus(m_cos30);
+    dim3 CC(CC_begin, IDO, 3, L1);
+    dim3 CH(CH_begin, IDO, L1, 3);
+    real_type TAUI = select_sign<Tag>::unaryminusplus(m_cos30);
     if (IDO == 2) {
       for (std::size_t K = 0; K < L1; K++) {
-        value_type TR2 = CC(0,1,K) + CC(0,2,K);
-        value_type TI2 = CC(1,1,K) + CC(1,2,K);
-        value_type CR2 = CC(0,0,K) - m_OneHalf * TR2;
-        value_type CI2 = CC(1,0,K) - m_OneHalf * TI2;
-        value_type CR3 = TAUI * (CC(0,1,K) - CC(0,2,K));
-        value_type CI3 = TAUI * (CC(1,1,K) - CC(1,2,K));
+        real_type TR2 = CC(0,1,K) + CC(0,2,K);
+        real_type TI2 = CC(1,1,K) + CC(1,2,K);
+        real_type CR2 = CC(0,0,K) - m_OneHalf * TR2;
+        real_type CI2 = CC(1,0,K) - m_OneHalf * TI2;
+        real_type CR3 = TAUI * (CC(0,1,K) - CC(0,2,K));
+        real_type CI3 = TAUI * (CC(1,1,K) - CC(1,2,K));
         CH(0,K,0) = CC(0,0,K) + TR2;
         CH(1,K,0) = CC(1,0,K) + TI2;
         CH(0,K,1) = CR2 - CI3;
@@ -304,16 +301,16 @@ namespace cctbx { namespace fftbx {
       for (std::size_t K = 0; K < L1; K++) {
         for (std::size_t I0 = 0; I0 < IDO; I0 += 2) {
           std::size_t I1 = I0 + 1;
-          value_type TR2 = CC(I0,1,K) + CC(I0,2,K);
-          value_type TI2 = CC(I1,1,K) + CC(I1,2,K);
-          value_type CR2 = CC(I0,0,K) - m_OneHalf * TR2;
-          value_type CI2 = CC(I1,0,K) - m_OneHalf * TI2;
-          value_type CR3 = TAUI * (CC(I0,1,K) - CC(I0,2,K));
-          value_type CI3 = TAUI * (CC(I1,1,K) - CC(I1,2,K));
-          value_type DR2 = CR2 - CI3;
-          value_type DI2 = CI2 + CR3;
-          value_type DR3 = CR2 + CI3;
-          value_type DI3 = CI2 - CR3;
+          real_type TR2 = CC(I0,1,K) + CC(I0,2,K);
+          real_type TI2 = CC(I1,1,K) + CC(I1,2,K);
+          real_type CR2 = CC(I0,0,K) - m_OneHalf * TR2;
+          real_type CI2 = CC(I1,0,K) - m_OneHalf * TI2;
+          real_type CR3 = TAUI * (CC(I0,1,K) - CC(I0,2,K));
+          real_type CI3 = TAUI * (CC(I1,1,K) - CC(I1,2,K));
+          real_type DR2 = CR2 - CI3;
+          real_type DI2 = CI2 + CR3;
+          real_type DR3 = CR2 + CI3;
+          real_type DI3 = CI2 - CR3;
           CH(I0,K,0) = CC(I0,0,K) + TR2;
           CH(I1,K,0) = CC(I1,0,K) + TI2;
           CH(I0,K,1) = select_sign<Tag>::plusminus(WA1[I0]*DR2,WA1[I1]*DI2);
@@ -329,26 +326,26 @@ namespace cctbx { namespace fftbx {
       void pass4(select_sign<Tag>,
                  std::size_t IDO,
                  std::size_t L1,
-                 iterator_type CC_begin,
-                 iterator_type CH_begin,
-                 const_iterator_type WA1,
-                 const_iterator_type WA2,
-                 const_iterator_type WA3)
+                 real_type* CC_begin,
+                 real_type* CH_begin,
+                 const real_type* WA1,
+                 const real_type* WA2,
+                 const real_type* WA3)
   // FUTURE: move out of class body
   {
-    detail::array_tp<VectorType, 3> CC(CC_begin, IDO, 4, L1);
-    detail::array_tp<VectorType, 3> CH(CH_begin, IDO, L1, 4);
+    dim3 CC(CC_begin, IDO, 4, L1);
+    dim3 CH(CH_begin, IDO, L1, 4);
     if (IDO == 2) {
       for (std::size_t K = 0; K < L1; K++) {
-        value_type TR1 = CC(0,0,K)-CC(0,2,K);
-        value_type TI1 = CC(1,0,K)-CC(1,2,K);
-        value_type TR2 = CC(0,0,K)+CC(0,2,K);
-        value_type TI2 = CC(1,0,K)+CC(1,2,K);
-        value_type TR3 = CC(0,1,K)+CC(0,3,K);
-        value_type TI3 = CC(1,1,K)+CC(1,3,K);
-        value_type
+        real_type TR1 = CC(0,0,K)-CC(0,2,K);
+        real_type TI1 = CC(1,0,K)-CC(1,2,K);
+        real_type TR2 = CC(0,0,K)+CC(0,2,K);
+        real_type TI2 = CC(1,0,K)+CC(1,2,K);
+        real_type TR3 = CC(0,1,K)+CC(0,3,K);
+        real_type TI3 = CC(1,1,K)+CC(1,3,K);
+        real_type
         TR4 = select_sign<Tag>::unaryplusminus(CC(1,1,K)-CC(1,3,K));
-        value_type
+        real_type
         TI4 = select_sign<Tag>::unaryplusminus(CC(0,3,K)-CC(0,1,K));
         CH(0,K,0) = TR2+TR3;
         CH(1,K,0) = TI2+TI3;
@@ -364,22 +361,22 @@ namespace cctbx { namespace fftbx {
       for (std::size_t K = 0; K < L1; K++) {
         for (std::size_t I0 = 0; I0 < IDO; I0 += 2) {
           std::size_t I1 = I0 + 1;
-          value_type TR1 = CC(I0,0,K)-CC(I0,2,K);
-          value_type TI1 = CC(I1,0,K)-CC(I1,2,K);
-          value_type TR2 = CC(I0,0,K)+CC(I0,2,K);
-          value_type TI2 = CC(I1,0,K)+CC(I1,2,K);
-          value_type TR3 = CC(I0,1,K)+CC(I0,3,K);
-          value_type TI3 = CC(I1,1,K)+CC(I1,3,K);
-          value_type
+          real_type TR1 = CC(I0,0,K)-CC(I0,2,K);
+          real_type TI1 = CC(I1,0,K)-CC(I1,2,K);
+          real_type TR2 = CC(I0,0,K)+CC(I0,2,K);
+          real_type TI2 = CC(I1,0,K)+CC(I1,2,K);
+          real_type TR3 = CC(I0,1,K)+CC(I0,3,K);
+          real_type TI3 = CC(I1,1,K)+CC(I1,3,K);
+          real_type
           TR4 = select_sign<Tag>::unaryplusminus(CC(I1,1,K)-CC(I1,3,K));
-          value_type
+          real_type
           TI4 = select_sign<Tag>::unaryplusminus(CC(I0,3,K)-CC(I0,1,K));
-          value_type CR3 = TR2-TR3;
-          value_type CI3 = TI2-TI3;
-          value_type CR2 = TR1+TR4;
-          value_type CR4 = TR1-TR4;
-          value_type CI2 = TI1+TI4;
-          value_type CI4 = TI1-TI4;
+          real_type CR3 = TR2-TR3;
+          real_type CI3 = TI2-TI3;
+          real_type CR2 = TR1+TR4;
+          real_type CR4 = TR1-TR4;
+          real_type CI2 = TI1+TI4;
+          real_type CI4 = TI1-TI4;
           CH(I0,K,0) = TR2+TR3;
           CH(I1,K,0) = TI2+TI3;
           CH(I0,K,1) = select_sign<Tag>::plusminus(WA1[I0]*CR2,WA1[I1]*CI2);
@@ -397,36 +394,36 @@ namespace cctbx { namespace fftbx {
       void pass5(select_sign<Tag>,
                  std::size_t IDO,
                  std::size_t L1,
-                 iterator_type CC_begin,
-                 iterator_type CH_begin,
-                 const_iterator_type WA1,
-                 const_iterator_type WA2,
-                 const_iterator_type WA3,
-                 const_iterator_type WA4)
+                 real_type* CC_begin,
+                 real_type* CH_begin,
+                 const real_type* WA1,
+                 const real_type* WA2,
+                 const real_type* WA3,
+                 const real_type* WA4)
   // FUTURE: move out of class body
   {
-    detail::array_tp<VectorType, 3> CC(CC_begin, IDO, 5, L1);
-    detail::array_tp<VectorType, 3> CH(CH_begin, IDO, L1, 5);
-    value_type TI11 = select_sign<Tag>::unaryminusplus(m_cos18);
-    value_type TI12 = select_sign<Tag>::unaryminusplus(m_sin36);
+    dim3 CC(CC_begin, IDO, 5, L1);
+    dim3 CH(CH_begin, IDO, L1, 5);
+    real_type TI11 = select_sign<Tag>::unaryminusplus(m_cos18);
+    real_type TI12 = select_sign<Tag>::unaryminusplus(m_sin36);
     if (IDO == 2) {
       for (std::size_t K = 0; K < L1; K++) {
-        value_type TR2 = CC(0,1,K)+CC(0,4,K);
-        value_type TI2 = CC(1,1,K)+CC(1,4,K);
-        value_type TR3 = CC(0,2,K)+CC(0,3,K);
-        value_type TI3 = CC(1,2,K)+CC(1,3,K);
-        value_type TR4 = CC(0,2,K)-CC(0,3,K);
-        value_type TI4 = CC(1,2,K)-CC(1,3,K);
-        value_type TR5 = CC(0,1,K)-CC(0,4,K);
-        value_type TI5 = CC(1,1,K)-CC(1,4,K);
-        value_type CR2 = CC(0,0,K)+m_sin18*TR2-m_cos36*TR3;
-        value_type CI2 = CC(1,0,K)+m_sin18*TI2-m_cos36*TI3;
-        value_type CR3 = CC(0,0,K)-m_cos36*TR2+m_sin18*TR3;
-        value_type CI3 = CC(1,0,K)-m_cos36*TI2+m_sin18*TI3;
-        value_type CR5 = TI11*TR5+TI12*TR4;
-        value_type CI5 = TI11*TI5+TI12*TI4;
-        value_type CR4 = TI12*TR5-TI11*TR4;
-        value_type CI4 = TI12*TI5-TI11*TI4;
+        real_type TR2 = CC(0,1,K)+CC(0,4,K);
+        real_type TI2 = CC(1,1,K)+CC(1,4,K);
+        real_type TR3 = CC(0,2,K)+CC(0,3,K);
+        real_type TI3 = CC(1,2,K)+CC(1,3,K);
+        real_type TR4 = CC(0,2,K)-CC(0,3,K);
+        real_type TI4 = CC(1,2,K)-CC(1,3,K);
+        real_type TR5 = CC(0,1,K)-CC(0,4,K);
+        real_type TI5 = CC(1,1,K)-CC(1,4,K);
+        real_type CR2 = CC(0,0,K)+m_sin18*TR2-m_cos36*TR3;
+        real_type CI2 = CC(1,0,K)+m_sin18*TI2-m_cos36*TI3;
+        real_type CR3 = CC(0,0,K)-m_cos36*TR2+m_sin18*TR3;
+        real_type CI3 = CC(1,0,K)-m_cos36*TI2+m_sin18*TI3;
+        real_type CR5 = TI11*TR5+TI12*TR4;
+        real_type CI5 = TI11*TI5+TI12*TI4;
+        real_type CR4 = TI12*TR5-TI11*TR4;
+        real_type CI4 = TI12*TI5-TI11*TI4;
         CH(0,K,0) = CC(0,0,K)+TR2+TR3;
         CH(1,K,0) = CC(1,0,K)+TI2+TI3;
         CH(0,K,1) = CR2-CI5;
@@ -443,30 +440,30 @@ namespace cctbx { namespace fftbx {
       for (std::size_t K = 0; K < L1; K++) {
         for (std::size_t I0 = 0; I0 < IDO; I0 += 2) {
           std::size_t I1 = I0 + 1;
-          value_type TR2 = CC(I0,1,K)+CC(I0,4,K);
-          value_type TI2 = CC(I1,1,K)+CC(I1,4,K);
-          value_type TR3 = CC(I0,2,K)+CC(I0,3,K);
-          value_type TI3 = CC(I1,2,K)+CC(I1,3,K);
-          value_type TR4 = CC(I0,2,K)-CC(I0,3,K);
-          value_type TI4 = CC(I1,2,K)-CC(I1,3,K);
-          value_type TR5 = CC(I0,1,K)-CC(I0,4,K);
-          value_type TI5 = CC(I1,1,K)-CC(I1,4,K);
-          value_type CR2 = CC(I0,0,K)+m_sin18*TR2-m_cos36*TR3;
-          value_type CI2 = CC(I1,0,K)+m_sin18*TI2-m_cos36*TI3;
-          value_type CR3 = CC(I0,0,K)-m_cos36*TR2+m_sin18*TR3;
-          value_type CI3 = CC(I1,0,K)-m_cos36*TI2+m_sin18*TI3;
-          value_type CR4 = TI12*TR5-TI11*TR4;
-          value_type CI4 = TI12*TI5-TI11*TI4;
-          value_type CR5 = TI11*TR5+TI12*TR4;
-          value_type CI5 = TI11*TI5+TI12*TI4;
-          value_type DR3 = CR3-CI4;
-          value_type DR4 = CR3+CI4;
-          value_type DI3 = CI3+CR4;
-          value_type DI4 = CI3-CR4;
-          value_type DR5 = CR2+CI5;
-          value_type DR2 = CR2-CI5;
-          value_type DI5 = CI2-CR5;
-          value_type DI2 = CI2+CR5;
+          real_type TR2 = CC(I0,1,K)+CC(I0,4,K);
+          real_type TI2 = CC(I1,1,K)+CC(I1,4,K);
+          real_type TR3 = CC(I0,2,K)+CC(I0,3,K);
+          real_type TI3 = CC(I1,2,K)+CC(I1,3,K);
+          real_type TR4 = CC(I0,2,K)-CC(I0,3,K);
+          real_type TI4 = CC(I1,2,K)-CC(I1,3,K);
+          real_type TR5 = CC(I0,1,K)-CC(I0,4,K);
+          real_type TI5 = CC(I1,1,K)-CC(I1,4,K);
+          real_type CR2 = CC(I0,0,K)+m_sin18*TR2-m_cos36*TR3;
+          real_type CI2 = CC(I1,0,K)+m_sin18*TI2-m_cos36*TI3;
+          real_type CR3 = CC(I0,0,K)-m_cos36*TR2+m_sin18*TR3;
+          real_type CI3 = CC(I1,0,K)-m_cos36*TI2+m_sin18*TI3;
+          real_type CR4 = TI12*TR5-TI11*TR4;
+          real_type CI4 = TI12*TI5-TI11*TI4;
+          real_type CR5 = TI11*TR5+TI12*TR4;
+          real_type CI5 = TI11*TI5+TI12*TI4;
+          real_type DR3 = CR3-CI4;
+          real_type DR4 = CR3+CI4;
+          real_type DI3 = CI3+CR4;
+          real_type DI4 = CI3-CR4;
+          real_type DR5 = CR2+CI5;
+          real_type DR2 = CR2-CI5;
+          real_type DI5 = CI2-CR5;
+          real_type DI2 = CI2+CR5;
           CH(I0,K,0) = CC(I0,0,K)+TR2+TR3;
           CH(I1,K,0) = CC(I1,0,K)+TI2+TI3;
           CH(I0,K,1) = select_sign<Tag>::plusminus(WA1[I0]*DR2,WA1[I1]*DI2);
@@ -490,15 +487,16 @@ namespace cctbx { namespace fftbx {
                  std::size_t L1,
                  std::size_t IDL1,
                  std::size_t IW,
-                 iterator_type CC_begin,
-                 iterator_type CH_begin)
+                 real_type* CC_begin,
+                 real_type* CH_begin,
+                 const real_type* WA)
   // FUTURE: move out of class body
   {
-    detail::array_tp<VectorType, 3> CC(CC_begin, IDO, IP, L1);
-    detail::array_tp<VectorType, 3> C1(CC_begin, IDO, L1, IP);
-    detail::array_tp<VectorType, 2> C2(CC_begin, IDL1, IP);
-    detail::array_tp<VectorType, 3> CH(CH_begin, IDO, L1, IP);
-    detail::array_tp<VectorType, 2> CH2(CH_begin, IDL1, IP);
+    dim3 CC(CC_begin, IDO, IP, L1);
+    dim3 C1(CC_begin, IDO, L1, IP);
+    dim2 C2(CC_begin, IDL1, IP);
+    dim3 CH(CH_begin, IDO, L1, IP);
+    dim2 CH2(CH_begin, IDL1, IP);
     std::size_t IDOT = IDO/2;
     std::size_t IPPH = (IP+1)/2;
     std::size_t IDP = IP*IDO;
@@ -538,9 +536,9 @@ namespace cctbx { namespace fftbx {
     for (std::size_t L = 1; L < IPPH; L++) {
       std::size_t LC = IP-L;
       for (std::size_t IK = 0; IK < IDL1; IK++) {
-        C2(IK,L) = CH2(IK,0)+m_WA[IW+IDL]*CH2(IK,1);
+        C2(IK,L) = CH2(IK,0)+WA[IW+IDL]*CH2(IK,1);
         C2(IK,LC) = select_sign<Tag>::unaryminusplus(
-                                         m_WA[IW+IDL+1]*CH2(IK,IP-1));
+                                         WA[IW+IDL+1]*CH2(IK,IP-1));
       }
       std::size_t IDLJ = IDL;
       IDL += IDO;
@@ -548,8 +546,8 @@ namespace cctbx { namespace fftbx {
         std::size_t JC = IP-J;
         IDLJ += IDL;
         if (IDLJ >= IDP) IDLJ = IDLJ-IDP;
-        value_type WAR = m_WA[IW+IDLJ];
-        value_type WAI = m_WA[IW+IDLJ+1];
+        real_type WAR = WA[IW+IDLJ];
+        real_type WAI = WA[IW+IDLJ+1];
         for (std::size_t IK = 0; IK < IDL1; IK++) {
           C2(IK,L) = C2(IK,L)+WAR*CH2(IK,J);
           C2(IK,LC) = select_sign<Tag>::minusplus(C2(IK,LC),WAI*CH2(IK,JC));
@@ -590,9 +588,9 @@ namespace cctbx { namespace fftbx {
           std::size_t I1 = I0 + 1;
           for (std::size_t K = 0; K < L1; K++) {
             C1(I0,K,J) = select_sign<Tag>::plusminus(
-              m_WA[IW+IDIJ]*CH(I0,K,J),m_WA[IW+IDIJ+1]*CH(I1,K,J));
+              WA[IW+IDIJ]*CH(I0,K,J),WA[IW+IDIJ+1]*CH(I1,K,J));
             C1(I1,K,J) = select_sign<Tag>::minusplus(
-              m_WA[IW+IDIJ]*CH(I1,K,J),m_WA[IW+IDIJ+1]*CH(I0,K,J));
+              WA[IW+IDIJ]*CH(I1,K,J),WA[IW+IDIJ+1]*CH(I0,K,J));
           }
           IDIJ += 2;
         }
@@ -607,9 +605,9 @@ namespace cctbx { namespace fftbx {
           for (std::size_t I0 = 2; I0 < IDO; I0 += 2) {
             std::size_t I1 = I0 + 1;
             C1(I0,K,J) = select_sign<Tag>::plusminus(
-              m_WA[IW+IDIJ]*CH(I0,K,J),m_WA[IW+IDIJ+1]*CH(I1,K,J));
+              WA[IW+IDIJ]*CH(I0,K,J),WA[IW+IDIJ+1]*CH(I1,K,J));
             C1(I1,K,J) = select_sign<Tag>::minusplus(
-              m_WA[IW+IDIJ]*CH(I1,K,J),m_WA[IW+IDIJ+1]*CH(I0,K,J));
+              WA[IW+IDIJ]*CH(I1,K,J),WA[IW+IDIJ+1]*CH(I0,K,J));
             IDIJ += 2;
           }
         }
@@ -621,14 +619,15 @@ namespace cctbx { namespace fftbx {
   }
   };
 
-  template <class VectorType>
-  complex_to_complex<VectorType>::complex_to_complex(std::size_t N)
+  template <typename RealType,
+            typename ComplexType>
+  complex_to_complex<RealType, ComplexType>::complex_to_complex(std::size_t N)
     : factorization(N, false), m_WA(2 * N), m_CH(2 * N)
   {
     if (m_N < 2) return;
-    // Precompute constants for value_type.
-    m_TwoPi = value_type(8) * std::atan(value_type(1));
-    m_OneHalf = value_type(1) / value_type(2);
+    // Precompute constants for real_type.
+    m_TwoPi = real_type(8) * std::atan(real_type(1));
+    m_OneHalf = real_type(1) / real_type(2);
     m_cos30 = std::cos(deg_as_rad(30));
     m_sin18 = std::sin(deg_as_rad(18));
     m_cos18 = std::cos(deg_as_rad(18));
@@ -636,7 +635,8 @@ namespace cctbx { namespace fftbx {
     m_cos36 = std::cos(deg_as_rad(36));
     // Computation of the sin and cos terms.
     // Based on the second part of fftpack41/cffti1.f.
-    value_type ARGH = m_TwoPi / value_type(m_N);
+    real_type* WA = m_WA.begin();
+    real_type ARGH = m_TwoPi / real_type(m_N);
     std::size_t I = 0;
     std::size_t L1 = 1;
     for (std::size_t K1 = 0; K1 < m_Factors.size(); K1++) {
@@ -646,21 +646,21 @@ namespace cctbx { namespace fftbx {
       std::size_t IDOT = 2 * (m_N / L2) + 2;
       for (std::size_t J = 0; J < IP - 1; J++) {
         std::size_t I1 = I;
-        m_WA[I  ] = value_type(1);
-        m_WA[I+1] = value_type(0);
+        WA[I  ] = real_type(1);
+        WA[I+1] = real_type(0);
         LD += L1;
         std::size_t FI = 0;
-        value_type ARGLD = value_type(LD) * ARGH;
+        real_type ARGLD = real_type(LD) * ARGH;
         for (std::size_t II = 4; II <= IDOT; II += 2) {
           I += 2;
           FI++;
-          value_type ARG = value_type(FI) * ARGLD;
-          m_WA[I  ] = std::cos(ARG);
-          m_WA[I+1] = std::sin(ARG);
+          real_type ARG = real_type(FI) * ARGLD;
+          WA[I  ] = std::cos(ARG);
+          WA[I+1] = std::sin(ARG);
         }
         if (IP > 5) {
-          m_WA[I1  ] = m_WA[I  ];
-          m_WA[I1+1] = m_WA[I+1];
+          WA[I1  ] = WA[I  ];
+          WA[I1+1] = WA[I+1];
         }
       }
       L1 = L2;
