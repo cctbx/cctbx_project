@@ -47,19 +47,19 @@ namespace {
 
     py_kbstg.def(constructor<>());
     py_kbstg.def(constructor<
+      uctbx::UnitCell const&,
       af::shared<Miller::Index>,
       af::shared<int>,
       af::shared<double>,
       af::shared<double>,
       double,
       af::tiny<double, 6> const&,
-      double,
       bool,
       bool
       >());
     py_kbstg.def(&kbstg::target, "target");
     py_kbstg.def(&kbstg::gradient_k, "gradient_k");
-    py_kbstg.def(&kbstg::gradients_u_star, "gradients_u_star");
+    py_kbstg.def(&kbstg::gradients_b_cif, "gradients_b_cif");
   }
 
 }

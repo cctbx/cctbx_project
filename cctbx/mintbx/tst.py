@@ -29,42 +29,36 @@ def run_lbfgs(target_evaluator,
       if (minimizer.nfun() > max_calls): break
       if (not minimizer.run(x, f, g)): break
   except RuntimeError, e:
-    if (str(e).find("Tolerances may be too small.") < 0):
+    if (    str(e).find("Tolerances may be too small.")<0
+        and str(e).find("The search direction is not a descent direction")<0):
       raise
+    minimizer.error = str(e)
   return minimizer
 
 class k_b_scaling_minimizer:
 
   def __init__(self, unit_cell, miller_indices, multiplicities,
                data_reference, data_scaled,
-               k_initial, u_initial,
-               refine_k, refine_u,
+               k_initial, b_initial,
+               refine_k, refine_b,
                min_iterations=50, max_calls=1000):
     python_utils.adopt_init_args(self, locals())
-    self.anisotropic = hasattr(self.u_initial, "__len__")
+    self.anisotropic = hasattr(self.b_initial, "__len__")
     self.k_min = 1 # refine correction factor for k_initial
-    self.u_scale = unit_cell.getLongestVector2()
-    if (self.anisotropic):
-      self.u_min = [u * self.u_scale for u in self.u_initial]
-    else:
-      self.u_min = self.u_initial * self.u_scale
-    self.x = self.pack(self.k_min, self.u_min)
+    self.b_min = self.b_initial
+    self.x = self.pack(self.k_min, self.b_min)
     self.n = self.x.size()
     self.minimizer = run_lbfgs(self, min_iterations, max_calls)
     self()
     del self.x
     self.k_min *= self.k_initial
-    if (self.anisotropic):
-      self.u_min = [u / self.u_scale for u in self.u_min]
-    else:
-      self.u_min /= self.u_scale
 
-  def pack(self, k, u):
+  def pack(self, k, b):
     v = []
     if (self.refine_k): v.append(k)
-    if (self.refine_u):
-      if (self.anisotropic): v += list(u)
-      else:                  v.append(u)
+    if (self.refine_b):
+      if (self.anisotropic): v += list(b)
+      else:                  v.append(b)
     return shared.double(tuple(v))
 
   def unpack_x(self):
@@ -72,22 +66,22 @@ class k_b_scaling_minimizer:
     if (self.refine_k):
       self.k_min = self.x[i]
       i += 1
-    if (self.refine_u):
+    if (self.refine_b):
       if (self.anisotropic):
-        self.u_min = self.x.as_tuple()[i:]
+        self.b_min = tuple(self.x)[i:]
       else:
-        self.u_min = self.x[i]
+        self.b_min = self.x[i]
 
   def __call__(self):
     self.unpack_x()
     tg = mintbx.k_b_scaling_target_and_gradients(
-      self.miller_indices, self.multiplicities,
+      self.unit_cell, self.miller_indices, self.multiplicities,
       self.data_reference, self.data_scaled,
-      self.k_initial * self.k_min, self.u_min, self.u_scale,
-      self.refine_k, self.refine_u)
+      self.k_initial * self.k_min, self.b_min,
+      self.refine_k, self.refine_b)
     self.f = tg.target()
     if (self.anisotropic):
-      self.g = self.pack(tg.gradient_k(), tg.gradients_u_star())
+      self.g = self.pack(tg.gradient_k(), tg.gradients_b_cif())
     else:
       raise AssertionError, "Not implemented."
     return self.x, self.f, self.g
@@ -108,24 +102,24 @@ def exercise(SgInfo, d_min=2., verbose=0):
   f_ref = xutils.calculate_structure_factors(miller_set, xtal, abs_F=1)
   f_sca = xutils.reciprocal_space_array(miller_set, shared.double())
   k_sim = 1000
-  u_star = [0.001,0.002,0.003,0.004,0.005,0.006]
-  for i in xrange(len(miller_set.H)):
-    h = miller_set.H[i]
+  b_cif = [5,10,15,20,25,30]
+  u_star = adptbx.Ucif_as_Ustar(xtal.UnitCell, adptbx.B_as_U(b_cif))
+  for i,h in miller_set.H.items():
     f_sca.F.push_back(
       k_sim * f_ref.F[i] * adptbx.DebyeWallerFactorUstar(h, u_star))
     if (0 or verbose): print h, f_ref.F[i], f_sca.F[i]
   k_min = 1
-  u_min = [0,0,0,0,0,0]
-  for p in xrange(20):
-    for refine_k, refine_u in ((1,0), (0,1), (1,0), (0,1), (1,0), (1,1)):
+  b_min = [0,0,0,0,0,0]
+  for p in xrange(10):
+    for refine_k, refine_b in ((1,0), (0,1), (1,0), (0,1), (1,0), (1,1)):
       minimized = k_b_scaling_minimizer(
         xtal.UnitCell, miller_set.H, multiplicity_set.F, f_ref.F, f_sca.F,
-        k_min, u_min,
-        refine_k, refine_u)
+        k_min, b_min,
+        refine_k, refine_b)
       k_min = minimized.k_min
-      u_min = minimized.u_min
+      b_min = minimized.b_min
   print "k_min:", minimized.k_min
-  print "u_min:", minimized.u_min
+  print "b_min:", minimized.b_min
   print "target:", minimized.f,
   print "after %d iteration(s)" % (minimized.minimizer.iter(),)
   print
