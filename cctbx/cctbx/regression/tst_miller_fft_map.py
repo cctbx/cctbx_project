@@ -10,6 +10,7 @@ from cctbx.development import structure_factor_utils
 from cctbx.array_family import flex
 from scitbx import fftpack
 from libtbx.test_utils import approx_equal
+import random
 import sys
 
 def check_peaks(structure, peak_sites, max_min_dist):
@@ -35,7 +36,7 @@ def run_test(space_group_info, n_elements=5, d_min=1.5,
     general_positions_only=False)
   miller_set_f_obs = miller.build_set(
     crystal_symmetry=structure,
-    anomalous_flag=False,
+    anomalous_flag=(random.random()>0.5),
     d_min=d_min)
   f_obs = miller_set_f_obs.structure_factors_from_scatterers(
     xray_structure=structure,
@@ -48,6 +49,7 @@ def run_test(space_group_info, n_elements=5, d_min=1.5,
   fft_map = f_obs.fft_map(
     resolution_factor=grid_resolution_factor,
     symmetry_flags=maptbx.use_space_group_symmetry)
+  fft_map.apply_sigma_scaling()
   real_map = maptbx.copy(
     fft_map.real_map(),
     flex.grid(fft_map.real_map().focus()))
