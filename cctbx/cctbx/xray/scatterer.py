@@ -2,6 +2,7 @@ from cctbx.xray import ext
 from cctbx.eltbx.caasf import wk1995
 from cctbx import adptbx
 from scitbx.boost_python_utils import injector
+import sys
 
 class scatterer(ext.scatterer):
 
