@@ -69,7 +69,12 @@ namespace cctbx {
 
   //! @name inline functions for fast conversions of d-spacing measures.
   //@{
-  inline double Q_as_s(double Q) {  return std::sqrt(Q); }
+  inline double Q_as_stol2(double Q) { return Q * .25; }
+  inline double Q_as_two_stol(double Q) { return std::sqrt(Q); }
+  inline double Q_as_stol(double Q) { return std::sqrt(Q) * .5; }
+  inline double Q_as_two_theta_deg(double Q, double lambda) {
+    return rad_as_deg(2. * std::asin(Q_as_stol(Q) * lambda));
+  }
   inline double Q_as_d(double Q) {
     if (Q == 0.) return -1.;
     /* else */   return 1. / std::sqrt(Q);
@@ -276,7 +281,7 @@ namespace cctbx {
       //@{
       //! Compute the maximum Miller indices for a given minimum d-spacing.
       Miller::Index MaxMillerIndices(double dmin) const;
-      //! d-spacing measure Q = 1 / d^2 = s^2 = (2*sin(theta)/lambda)^2.
+      //! d-spacing measure Q = 1/d^2 = (2*sin(theta)/lambda)^2.
       double
       Q(const Miller::Index& MIx) const
       {
@@ -288,21 +293,52 @@ namespace cctbx {
           + (2 * MIx[0] * MIx[2]) * (R_Len[0] * R_Len[2] * R_cosAng[1])
           + (2 * MIx[1] * MIx[2]) * (R_Len[1] * R_Len[2] * R_cosAng[0]);
       }
-      //! d-spacing measure Q = 1 / d^2 = s^2 = (2*sin(theta)/lambda)^2.
+      //! d-spacing measure Q = 1/d^2 = (2*sin(theta)/lambda)^2.
       af::shared<double>
       Q(const af::shared<Miller::Index>& MIx) const;
-      //! d-spacing measure s = 1 / d = 2*sin(theta)/lambda.
+
+      //! d-spacing measure (sin(theta)/lambda)^2 = Q/4.
       double
-      s(const Miller::Index& MIx) const { return Q_as_s(Q(MIx));}
-      //! d-spacing measure s = 1 / d = 2*sin(theta)/lambda.
+      stol2(const Miller::Index& MIx) const {
+        return Q_as_stol2(Q(MIx));
+      }
+      //! d-spacing measure (sin(theta)/lambda)^2 = Q/4.
       af::shared<double>
-      s(const af::shared<Miller::Index>& MIx) const;
-      //! d-spacing measure d = 1 / s = lamda/(2*sin(theta))
+      stol2(const af::shared<Miller::Index>& MIx) const;
+
+      //! d-spacing measure 2*sin(theta)/lambda = 1/d = sqrt(Q).
+      double
+      two_stol(const Miller::Index& MIx) const {
+        return Q_as_two_stol(Q(MIx));
+      }
+      //! d-spacing measure 2*sin(theta)/lambda = 1/d = sqrt(Q).
+      af::shared<double>
+      two_stol(const af::shared<Miller::Index>& MIx) const;
+
+      //! d-spacing measure sin(theta)/lambda = 1/(2*d) = sqrt(Q)/2.
+      double
+      stol(const Miller::Index& MIx) const {
+        return Q_as_stol(Q(MIx));
+      }
+      //! d-spacing measure sin(theta)/lambda = 1/(2*d) = sqrt(Q)/2.
+      af::shared<double>
+      stol(const af::shared<Miller::Index>& MIx) const;
+
+      //! d-spacing measure d = 1/(2*sin(theta)/lambda).
       double
       d(const Miller::Index& MIx) const { return Q_as_d(Q(MIx));}
-      //! d-spacing measure d = 1 / s = lamda/(2*sin(theta))
+      //! d-spacing measure d = 1/(2*sin(theta)/lambda).
       af::shared<double>
       d(const af::shared<Miller::Index>& MIx) const;
+
+      //! Diffraction angle 2-theta in degrees, given wavelength lamdda.
+      double
+      two_theta_deg(const Miller::Index& MIx, double lambda) const {
+        return Q_as_two_theta_deg(Q(MIx), lambda);
+      }
+      //! Diffraction angle 2-theta in degrees, given wavelength lamdda.
+      af::shared<double>
+      two_theta_deg(const af::shared<Miller::Index>& MIx, double lambda) const;
       //@}
 
       //! @name Stream I/O.
