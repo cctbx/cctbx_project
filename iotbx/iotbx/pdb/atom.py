@@ -6,7 +6,7 @@ from scitbx import stl
 import scitbx.stl.map
 import sys
 
-class labels:
+class labels(object):
 
   __slots__ = ["name", "altLoc", "resName", "chainID", "resSeq", "iCode",
                "segID", "MODELserial"]
