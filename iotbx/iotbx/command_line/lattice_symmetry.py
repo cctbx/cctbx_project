@@ -1,3 +1,5 @@
+#! /usr/bin/env python
+
 from cctbx import miller
 from cctbx import crystal
 from cctbx import sgtbx
