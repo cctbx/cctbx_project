@@ -36,6 +36,15 @@ namespace cctbx { namespace restraints {
       i_seqs(i_seqs_)
     {}
 
+    //! Not available in Python.
+    bond_simple_proxy(
+      af::tiny<unsigned, 2> const& i_seqs_,
+      bond_params const& params)
+    :
+      bond_params(params),
+      i_seqs(i_seqs_)
+    {}
+
     af::tiny<unsigned, 2> i_seqs;
   };
 
