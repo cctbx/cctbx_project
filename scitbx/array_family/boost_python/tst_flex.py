@@ -770,8 +770,22 @@ def exercise_histogram():
   assert approx_equal(h.data_max(), 19)
   assert approx_equal(h.slot_width(), 19/5.)
   assert tuple(h.slots()) == (4,4,4,4,4)
+  assert h.n_out_of_slot_range() == 0
   assert approx_equal(h.get_cutoff(max_points=15), 7.60038)
-  assert approx_equal(h.get_cutoff(15, tolerance=0.1), 7.98)
+  assert approx_equal(h.get_cutoff(15, relative_tolerance=0.1), 7.98)
+  y = flex.double(xrange(-3,23))
+  hy = flex.histogram(other=h, data=y)
+  assert approx_equal(hy.data_min(), 0)
+  assert approx_equal(hy.data_max(), 19)
+  assert approx_equal(hy.slot_width(), 19/5.)
+  assert tuple(hy.slots()) == (4,4,4,4,4)
+  assert hy.n_out_of_slot_range() == 6
+  hy = flex.histogram(other=h, data=y, relative_tolerance=0.5)
+  assert tuple(hy.slots()) == (5,4,4,4,5)
+  assert hy.n_out_of_slot_range() == 4
+  hy = flex.histogram(other=h, data=y, relative_tolerance=1)
+  assert tuple(hy.slots()) == (7,4,4,4,7)
+  assert hy.n_out_of_slot_range() == 0
 
 def exercise_linear_regression():
   x = flex.double((1,2,3))

@@ -1,12 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2003 Mar: Created, based on cctbx::maptbx::peak_histogram (rwgk)
- */
-
 #ifndef SCITBX_HISTOGRAM_H
 #define SCITBX_HISTOGRAM_H
 
@@ -32,7 +23,8 @@ namespace scitbx {
         data_min_(0),
         data_max_(0),
         slot_width_(0),
-        slots_(n_slots)
+        slots_(n_slots),
+        n_out_of_slot_range_(0)
       {
         SCITBX_ASSERT(n_slots > 0);
         if (data.size() == 0) return;
@@ -40,13 +32,32 @@ namespace scitbx {
         data_max_ = af::max(data);
         slot_width_ = (data_max_ - data_min_) / slots_.size();
         for(std::size_t i=0;i<data.size();i++) {
-          ValueType d = data[i] - data_min_;
-          std::size_t i_slot = 0;
-          if (d != 0 && d >= slot_width_) {
-                i_slot = std::size_t(d / slot_width_);
-            if (i_slot >= slots_.size()) i_slot = slots_.size() - 1;
+          assign_to_slot(static_cast<ValueType>(data[i] - data_min_));
+        }
+      }
+
+      //! Histogram using slots of other.
+      template <typename DataType>
+      histogram(
+        histogram const& other,
+        af::const_ref<DataType> const& data,
+        ValueType const& relative_tolerance=1.e-4)
+      :
+        data_min_(other.data_min_),
+        data_max_(other.data_max_),
+        slot_width_(other.slot_width_),
+        slots_(other.slots_.size()),
+        n_out_of_slot_range_(0)
+      {
+        ValueType width_tolerance = slot_width_ * relative_tolerance;
+        for(std::size_t i=0;i<data.size();i++) {
+          if (   data[i] < data_min_ - width_tolerance
+              || data[i] > data_max_ + width_tolerance) {
+            n_out_of_slot_range_++;
           }
-          slots_[i_slot]++;
+          else {
+            assign_to_slot(static_cast<ValueType>(data[i] - data_min_));
+          }
         }
       }
 
@@ -66,10 +77,14 @@ namespace scitbx {
       af::shared<CountType>
       slots() const { return slots_; }
 
+      //! Number of unaccounted data values.
+      std::size_t
+      n_out_of_slot_range() const { return n_out_of_slot_range_; }
+
       //! Determination of the cutoff value given a maximum number of points.
       ValueType
       get_cutoff(CountType const& max_points,
-                 ValueType const& tolerance=1.e-4) const
+                 ValueType const& relative_tolerance=1.e-4) const
       {
         CountType cum = 0;
         std::size_t i = slots_.size();
@@ -77,14 +92,26 @@ namespace scitbx {
           cum += slots_[i-1];
           if (cum > max_points) break;
         }
-        return data_min_ + i * slot_width_ + slot_width_ * tolerance;
+        return data_min_ + i * slot_width_ + slot_width_ * relative_tolerance;
       }
 
     private:
+      void
+      assign_to_slot(ValueType const& d)
+      {
+        std::size_t i_slot = 0;
+        if (d != 0 && d >= slot_width_) {
+              i_slot = static_cast<std::size_t>(d / slot_width_);
+          if (i_slot >= slots_.size()) i_slot = slots_.size() - 1;
+        }
+        slots_[i_slot]++;
+      }
+
       ValueType data_min_;
       ValueType data_max_;
       ValueType slot_width_;
       af::shared<CountType> slots_;
+      std::size_t n_out_of_slot_range_;
   };
 
 } // namespace scitbx
