@@ -246,8 +246,8 @@ namespace cctbx { namespace fftbx {
                  const_iterator_type WA1)
   // FUTURE: move out of class body
   {
-    detail::array_3d_tp<VectorType> CC(CC_begin, IDO, 2, L1);
-    detail::array_3d_tp<VectorType> CH(CH_begin, IDO, L1, 2);
+    detail::array_tp<VectorType, 3> CC(CC_begin, IDO, 2, L1);
+    detail::array_tp<VectorType, 3> CH(CH_begin, IDO, L1, 2);
     if (IDO == 2) {
       for (std::size_t K = 0; K < L1; K++) {
         CH(0,K,0) = CC(0,0,K) + CC(0,1,K);
@@ -281,8 +281,8 @@ namespace cctbx { namespace fftbx {
                  const_iterator_type WA2)
   // FUTURE: move out of class body
   {
-    detail::array_3d_tp<VectorType> CC(CC_begin, IDO, 3, L1);
-    detail::array_3d_tp<VectorType> CH(CH_begin, IDO, L1, 3);
+    detail::array_tp<VectorType, 3> CC(CC_begin, IDO, 3, L1);
+    detail::array_tp<VectorType, 3> CH(CH_begin, IDO, L1, 3);
     value_type TAUI = select_sign<Tag>::unaryminusplus(m_cos30);
     if (IDO == 2) {
       for (std::size_t K = 0; K < L1; K++) {
@@ -336,8 +336,8 @@ namespace cctbx { namespace fftbx {
                  const_iterator_type WA3)
   // FUTURE: move out of class body
   {
-    detail::array_3d_tp<VectorType> CC(CC_begin, IDO, 4, L1);
-    detail::array_3d_tp<VectorType> CH(CH_begin, IDO, L1, 4);
+    detail::array_tp<VectorType, 3> CC(CC_begin, IDO, 4, L1);
+    detail::array_tp<VectorType, 3> CH(CH_begin, IDO, L1, 4);
     if (IDO == 2) {
       for (std::size_t K = 0; K < L1; K++) {
         value_type TR1 = CC(0,0,K)-CC(0,2,K);
@@ -405,8 +405,8 @@ namespace cctbx { namespace fftbx {
                  const_iterator_type WA4)
   // FUTURE: move out of class body
   {
-    detail::array_3d_tp<VectorType> CC(CC_begin, IDO, 5, L1);
-    detail::array_3d_tp<VectorType> CH(CH_begin, IDO, L1, 5);
+    detail::array_tp<VectorType, 3> CC(CC_begin, IDO, 5, L1);
+    detail::array_tp<VectorType, 3> CH(CH_begin, IDO, L1, 5);
     value_type TI11 = select_sign<Tag>::unaryminusplus(m_cos18);
     value_type TI12 = select_sign<Tag>::unaryminusplus(m_sin36);
     if (IDO == 2) {
@@ -494,11 +494,11 @@ namespace cctbx { namespace fftbx {
                  iterator_type CH_begin)
   // FUTURE: move out of class body
   {
-    detail::array_3d_tp<VectorType> CC(CC_begin, IDO, IP, L1);
-    detail::array_3d_tp<VectorType> C1(CC_begin, IDO, L1, IP);
-    detail::array_2d_tp<VectorType> C2(CC_begin, IDL1, IP);
-    detail::array_3d_tp<VectorType> CH(CH_begin, IDO, L1, IP);
-    detail::array_2d_tp<VectorType> CH2(CH_begin, IDL1, IP);
+    detail::array_tp<VectorType, 3> CC(CC_begin, IDO, IP, L1);
+    detail::array_tp<VectorType, 3> C1(CC_begin, IDO, L1, IP);
+    detail::array_tp<VectorType, 2> C2(CC_begin, IDL1, IP);
+    detail::array_tp<VectorType, 3> CH(CH_begin, IDO, L1, IP);
+    detail::array_tp<VectorType, 2> CH2(CH_begin, IDL1, IP);
     std::size_t IDOT = IDO/2;
     std::size_t IPPH = (IP+1)/2;
     std::size_t IDP = IP*IDO;
