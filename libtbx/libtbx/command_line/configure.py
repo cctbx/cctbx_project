@@ -80,6 +80,9 @@ class package:
             break
       if (self.needs_adaptbx):
         self.effective_root_adaptbx = dirname(ppd.adaptbx)
+      self.test_scripts = []
+      for dist_path_suf in ppd.adaptbx_first():
+        self.test_scripts.extend(find_test_scripts(directory=dist_path_suf))
       self._build_dependency_registry()
 
   def _build_dependency_registry(self):
@@ -332,6 +335,39 @@ def emit_SConstruct(env, build_options, packages_dict):
       done[p] = 0
   f.close()
 
+def find_test_scripts(
+      directory,
+      file_names=["run_tests.py", "run_examples.py"]):
+  result = []
+  for file_name in file_names:
+    path = norm(join(directory, file_name))
+    if (os.path.isfile(path)):
+      result.append(path)
+  return result
+
+def collect_test_scripts(env, packages):
+  result = find_test_scripts(directory=env.dist_paths["LIBTBX_DIST"])
+  package_names = list(packages.list)
+  package_names.reverse()
+  for package_name in package_names:
+    for file_name in packages.dict[package_name].test_scripts:
+      if (not file_name in result):
+        result.append(file_name)
+  return result
+
+def emit_run_tests_csh(env, packages):
+  test_scripts = collect_test_scripts(env, packages)
+  if (len(test_scripts) > 0):
+    path = norm(join(env.LIBTBX_BUILD, "run_tests.csh"))
+    f = open_info(path)
+    print >> f, "#! /bin/csh -f"
+    print >> f, "set noglob"
+    print >> f, "set verbose"
+    for file_name in test_scripts:
+      print >> f, "python %s $*" % file_name
+    f.close()
+    os.chmod(path, 0755)
+
 def show_help(old_env):
   if (old_env):
     cmd = "libtbx.configure"
@@ -424,6 +460,7 @@ def run(libtbx_dist, args, old_env=None):
     emit_setpaths_bat(env)
   if (len(packages.missing_for_build) == 0):
     emit_SConstruct(env, build_options, packages.dict)
+  emit_run_tests_csh(env, packages)
   return env
 
 def cold_start(args):
