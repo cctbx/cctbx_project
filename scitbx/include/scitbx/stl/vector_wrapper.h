@@ -12,6 +12,16 @@
 #include <scitbx/error.h>
 #include <vector>
 
+#if defined(__sgi) && !defined(__GNUC__)
+// for details see <scitbx/array_family/boost_python/flex_fwd.h>
+namespace scitbx { namespace af { namespace boost_python {
+  struct stl_vector_fwd
+  {
+    friend void f(const_ref<std::size_t> const&);
+  };
+}}} // namespace scitbx::af::boost_python
+#endif // defined(__sgi) && !defined(__GNUC__)
+
 namespace scitbx { namespace stl { namespace boost_python {
 
   using scitbx::boost_python::positive_getitem_index;
