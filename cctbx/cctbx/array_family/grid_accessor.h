@@ -11,7 +11,14 @@
 #ifndef CCTBX_ARRAY_FAMILY_GRID_ACCESSOR_H
 #define CCTBX_ARRAY_FAMILY_GRID_ACCESSOR_H
 
-#include <cctbx/array_family/tiny.h>
+#include <cstddef>
+#include <cctbx/array_family/tiny_helpers.h>
+
+// forward declaration
+namespace cctbx { namespace af {
+  template <typename ElementType, std::size_t N>
+  class tiny;
+}}
 
 namespace cctbx { namespace af {
 
@@ -62,6 +69,10 @@ namespace cctbx { namespace af {
       CCTBX_ARRAY_FAMILY_TINY_CONVENIENCE_CONSTRUCTORS(grid_accessor)
 
       static std::size_t nd() { return Nd; }
+
+      void init_default() {
+        for(std::size_t i=0;i<nd();i++) this->elems[i] = 0;
+      }
 
       std::size_t size1d() const {
         // XXX return product(IndexType(*this));
