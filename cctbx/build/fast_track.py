@@ -23,19 +23,28 @@ if (platform == "vc60"):
   make = "nmake"
 else:
   make = "make"
-os.mkdir(platform)
+if (os.path.isdir(platform)):
+  print "directory " + platform + " already exists"
+else:
+  os.mkdir(platform)
 os.chdir(platform)
 # Run the cctbx boot command before installing Boost.Python.
 # The boost script will issue a warning if the platform identifier
 # is unsupported.
-os.mkdir("cctbx")
+if (os.path.isdir("cctbx")):
+  print "directory cctbx already exists"
+else:
+  os.mkdir("cctbx")
 os.chdir("cctbx")
 shutil.copy(cctbx_cf, "configuration")
 if (os.system("python " + norm(PACKAGES + "/cctbx/build/boot.py")) != 0):
   sys.exit(1)
 os.chdir("..")
 # Now install Boost.Python.
-os.mkdir("boost")
+if (os.path.isdir("boost")):
+  print "directory boost already exists"
+else:
+  os.mkdir("boost")
 os.chdir("boost")
 shutil.copy(boost_mak, "Makefile")
 os.system(make + ' ROOT="%s" %s' % (PACKAGES, link_cmd))
