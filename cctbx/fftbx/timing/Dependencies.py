@@ -15,6 +15,7 @@ class write_makefiles(makefile_generator.write_makefiles):
       "fftbx/timing/tst3d.cpp",
       "fftbx/timing/time3d.py",
       "fftbx/timing/eval_times.py",
+      "fftbx/timing/debug_compare.csh",
     )
 
     self.executables = {

@@ -17,7 +17,7 @@ namespace cctbx { namespace fftbx {
 
   template <class VectorType>
   void
-  real_to_complex<VectorType>::backward(iterator_type Seq_begin)
+  real_to_complex<VectorType>::backward_compressed(iterator_type Seq_begin)
   {
     if (m_N < 2) return;
     iterator_type C = Seq_begin;

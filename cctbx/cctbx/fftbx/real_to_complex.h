@@ -37,22 +37,6 @@ namespace cctbx { namespace fftbx {
   }
 
   //! Real-to-complex Fast Fourier Transformation.
-  /*! TODO: Currently, the 1-dimensional real-to-complex
-      transformed sequences are represented according to
-      "compressed" FFTPACK convention which is based on the
-      observation that the imaginary part of the first
-      complex number in the sequence is always zero, and
-      the imaginary part of the last complex number in the
-      sequence is also zero if N() is even. FFTPACK
-      removes these zeros, and therefore the number of
-      slots in the real and the corresonding transformed
-      (complex) sequence are identical.
-      <p>
-      For consistency with the 3-dimensional transforms,
-      ease of use and ease of understanding, the
-      1-dimensional real-to-complex transforms should
-      be modified to avoid the compression.
-   */
   template <class VectorType>
   class real_to_complex : public factorization
   {
@@ -65,21 +49,29 @@ namespace cctbx { namespace fftbx {
 
       //! Default constructor.
       real_to_complex() : factorization() {}
-      //! Initialization for transforms of length N.
-      /*! This constructor determines the factorization of N,
+      //! Initialization for transforms of length Nreal.
+      /*! This constructor determines the factorization of Nreal,
           pre-computes some constants, determines the
           "twiddle factors" needed in the transformation
-          (N complex values), and allocates scratch space
-          (N complex values).
+          (Nreal float values), and allocates scratch space
+          (Nreal float values).
        */
-      real_to_complex(std::size_t N);
+      real_to_complex(std::size_t Nreal);
+      //! Length of real sequence.
+      /*! See also: Ncomplex_from_Nreal()
+       */
+      std::size_t Nreal() { return m_N; }
+      //! Length of complex sequence.
+      /*! See also: Ncomplex_from_Nreal()
+       */
+      std::size_t Ncomplex() { return m_Ncomplex; }
       //! Access to the pre-computed "twiddle factors."
       const VectorType& WA() const {
         return m_WA;
       }
 
       /*! \brief In-place "forward" Fourier transformation of a
-          sequence of N() real numbers to Ncomplex_from_Nreal()
+          sequence of Nreal() real numbers to Ncomplex()
           complex numbers.
        */
       /*! For the forward transformation, the sign in the exponent
@@ -88,14 +80,13 @@ namespace cctbx { namespace fftbx {
           See also: class details.
        */
       void forward(VectorType& Seq) {
-        if (Seq.size() < m_N) {
+        if (Seq.size() < 2 * m_Ncomplex) {
           throw error("Input sequence is too short.");
         }
         forward(Seq.begin());
       }
-      /*! \brief In-place "backward" Fourier transformation of a
-          sequence of Ncomplex_from_Nreal() complex
-          numbers to N() real numbers.
+      /*! \brief In-place "backward" Fourier transformation of a sequence
+          of Ncomplex() complex numbers to Nreal() real numbers.
        */
       /*! For the backward transform, the sign in the exponent
           is "+". See also class complex_to_complex.
@@ -103,24 +94,25 @@ namespace cctbx { namespace fftbx {
           See also: class details.
        */
       void backward(VectorType& Seq) {
-        if (Seq.size() < m_N) {
+        if (Seq.size() < 2 * m_Ncomplex) {
           throw error("Input sequence is too short.");
         }
         forward(Seq.begin());
       }
-      /*! \brief In-place "forward" Fourier transformation of a
-          sequence of N() real numbers to Ncomplex_from_Nreal()
-          complex numbers.
+      /*! \brief In-place "forward" Fourier transformation of a sequence
+          of Nreal() real numbers to Ncomplex() complex numbers.
        */
       void forward(iterator_type Seq_begin);
-      /*! \brief In-place "backward" Fourier transformation of a
-          sequence of Ncomplex_from_Nreal() complex
-          numbers to N() real numbers.
+      /*! \brief In-place "backward" Fourier transformation of a sequence
+          of Ncomplex() complex numbers to Nreal() real numbers.
        */
       void backward(iterator_type Seq_begin);
     private:
+      std::size_t m_Ncomplex;
       VectorType m_WA;
       VectorType m_CH;
+      void forward_compressed(iterator_type Seq_begin);
+      void backward_compressed(iterator_type Seq_begin);
       void passf2(std::size_t IDO,
                   std::size_t L1,
                   iterator_type CC_start,
@@ -196,9 +188,10 @@ namespace cctbx { namespace fftbx {
   };
 
   template <class VectorType>
-  real_to_complex<VectorType>::real_to_complex(std::size_t N)
-    : factorization(N, true), m_WA(N), m_CH(N)
+  real_to_complex<VectorType>::real_to_complex(std::size_t Nreal)
+    : factorization(Nreal, true), m_WA(Nreal), m_CH(Nreal)
   {
+    m_Ncomplex = Ncomplex_from_Nreal(Nreal);
     // Computation of the sin and cos terms.
     // Based on the second part of fftpack41/rffti1.f.
     if (m_N < 2) return;
@@ -230,6 +223,56 @@ namespace cctbx { namespace fftbx {
       }
       L1 = L2;
     }
+  }
+
+  /* In the core transforms, the 1-dimensional real-to-complex
+     transformed sequences are represented according to
+     "compressed" FFTPACK convention which is based on the
+     observation that the imaginary part of the first
+     complex number in the sequence is always zero, and
+     the imaginary part of the last complex number in the
+     sequence is also zero if Nreal() is even. FFTPACK
+     removes these zeros, and therefore the number of float
+     slots in the real and the corresonding transformed
+     (complex) sequence are identical.
+
+     For consistency with the 3-dimensional transforms,
+     ease of use and ease of understanding, the
+     FFTPACK compression is not exposed to the user,
+     at the cost of a small runtime penalty.
+   */
+
+  template <class VectorType>
+  void
+  real_to_complex<VectorType>::forward(iterator_type Seq_begin)
+  {
+    forward_compressed(Seq_begin);
+    // The imaginary part of the first coefficient is always zero.
+    // FFTPACK uses this knowledge to conserve space: the sequence
+    // of floating point numbers is shifted down one real-sized slot.
+    // Here the shift is undone.
+    std::copy_backward(Seq_begin + 1, Seq_begin + m_N, Seq_begin + m_N + 1);
+    // Insert the trivial imaginary part.
+    Seq_begin[1] = value_type(0);
+    // If the transform length is even, the imaginary part of the
+    // last complex number in the sequence is also always zero.
+    // FFTPACK does not set this imaginary part. It is done here
+    // instead.
+    if (m_N % 2 == 0) {
+      Seq_begin[m_N + 1] = value_type(0);
+    }
+  }
+
+  template <class VectorType>
+  void
+  real_to_complex<VectorType>::backward(iterator_type Seq_begin)
+  {
+    // The imaginary part of the first coefficient is always zero.
+    // FFTPACK uses this knowledge to conserve space: the sequence
+    // of floating point numbers is shifted down one real-sized slot.
+    // Here the shift is applied before calling the core transform.
+    std::copy(Seq_begin + 2, Seq_begin + 2 * m_Ncomplex, Seq_begin + 1);
+    backward_compressed(Seq_begin);
   }
 
 }} // namespace cctbx::fftbx
