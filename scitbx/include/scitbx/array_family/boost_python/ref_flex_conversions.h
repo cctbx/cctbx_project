@@ -34,11 +34,14 @@ namespace scitbx { namespace af { namespace boost_python {
 
     static void* convertible(PyObject* obj_ptr)
     {
-      boost::python::object obj(boost::python::borrowed(obj_ptr));
-      boost::python::extract<flex_type&> flex_proxy(obj);
-      if (!flex_proxy.check()) return 0;
-      flex_type& a = flex_proxy();
-      if (!a.accessor().is_trivial_1d()) return 0;
+      boost::python::object none;
+      if (obj_ptr != none.ptr()) {
+        boost::python::object obj(boost::python::borrowed(obj_ptr));
+        boost::python::extract<flex_type&> flex_proxy(obj);
+        if (!flex_proxy.check()) return 0;
+        flex_type& a = flex_proxy();
+        if (!a.accessor().is_trivial_1d()) return 0;
+      }
       return obj_ptr;
     }
 
@@ -46,14 +49,21 @@ namespace scitbx { namespace af { namespace boost_python {
       PyObject* obj_ptr,
       boost::python::converter::rvalue_from_python_stage1_data* data)
     {
-      boost::python::object obj(boost::python::borrowed(obj_ptr));
-      flex_type& a = boost::python::extract<flex_type&>(obj)();
-      if (!a.check_shared_size()) raise_shared_size_mismatch();
-      assert(a.accessor().is_trivial_1d());
+      boost::python::object none;
+      element_type* bg = 0;
+      std::size_t sz = 0;
+      if (obj_ptr != none.ptr()) {
+        boost::python::object obj(boost::python::borrowed(obj_ptr));
+        flex_type& a = boost::python::extract<flex_type&>(obj)();
+        if (!a.check_shared_size()) raise_shared_size_mismatch();
+        assert(a.accessor().is_trivial_1d());
+        bg = a.begin();
+        sz = a.size();
+      }
       void* storage = (
         (boost::python::converter::rvalue_from_python_storage<RefType>*)
           data)->storage.bytes;
-      new (storage) RefType(a.begin(), a.size());
+      new (storage) RefType(bg, sz);
       data->convertible = storage;
     }
   };
