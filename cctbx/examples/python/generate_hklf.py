@@ -19,6 +19,7 @@
 #   Created April 2001 (Ralf W. Grosse-Kunstleve)
 
 import sys, exceptions, string, fileinput, math
+class FormatError(exceptions.Exception): pass
 
 import uctbx
 import sgtbx
@@ -49,11 +50,11 @@ class SiteInfo:
         if (len(flds) == offs + 5):
           self.Uiso = flds[offs + 4]
         else:
-          raise FormatError
+          raise FormatError, flds
       self.WyckoffMapping = None
       self.SiteSymmetry = None
     except:
-      raise FormatError
+      raise FormatError, flds
 
   def __str__(self):
     return "%s %s (%d %s %s) (%.6g %.6g %.6g) %.6g %.6g" % (
@@ -61,9 +62,6 @@ class SiteInfo:
        self.WyckoffMapping.WP().M(), self.WyckoffMapping.WP().Letter(),
        self.SiteSymmetry)
       + tuple(self.Coordinates) + (self.Occ, self.Uiso))
-
-class FormatError(exceptions.Exception):
-  pass
 
 def strip_comment(line):
   i = string.find(line, "#")
@@ -193,6 +191,7 @@ def ComputeStructureFactors(Sites, IndexSet):
 
 def polar(c):
   from math import hypot, atan2, pi
+  if (c == 0j): return 0., 0.
   return hypot(c.real, c.imag), 180.0 * atan2(c.imag, c.real) / pi
 
 if (__name__ == "__main__"):

@@ -57,7 +57,7 @@ try:
     SgOps = Symbol_to_SgOps(inp.sgsymbol, inp.convention)
     SgType = SgOps.getSpaceGroupType()
     SgNumber = SgType.SgNumber()
-  print "<table border=2>"
+  print "<table border=2 cellpadding=2>"
   print "<tr>"
   print "<th>Space group<br>No."
   print "<th>Schoenflies<br>symbol"
