@@ -127,6 +127,15 @@ class structure(crystal.special_position_settings):
       r = matrix.sqr(site_symmetry.special_op().r().as_double())
       d_target_d_site[i] = (matrix.row(d_target_d_site[i]) * r).elems
 
+  def asymmetric_unit_in_p1(self):
+    new_structure = structure(
+      crystal.special_position_settings(
+        crystal.symmetry.cell_equivalent_p1(self)))
+    new_structure._scatterers = self.scatterers().deep_copy()
+    new_structure._special_position_indices = \
+      self.special_position_indices().deep_copy()
+    return new_structure
+
   def expand_to_p1(self):
     new_structure = structure(
       crystal.special_position_settings(

@@ -466,7 +466,7 @@ def fdp(structure_ideal, d_min, f_obs, verbose=0):
   sys.stdout.flush()
 
 def exercise_gradient_manager(structure_ideal, d_min, f_obs,
-                              fdp_flag, anisotropic_flag,
+                              anomalous_flag, anisotropic_flag,
                               verbose=0):
   sh = shifted_site(None, structure_ideal, 0, 0, 0.01)
   if (not anisotropic_flag):
@@ -474,7 +474,7 @@ def exercise_gradient_manager(structure_ideal, d_min, f_obs,
   else:
     sh = shifted_u_star(None, sh.structure_shifted, 0, 0, 0.0001)
   sh = shifted_occupancy(None, sh.structure_shifted, 0, 0.2)
-  if (fdp_flag):
+  if (anomalous_flag):
     sh = shifted_fdp(None, sh.structure_shifted, 0, 2)
   sh = shifted_fp(f_obs, sh.structure_shifted, 0, -0.2)
   ls = xray.targets_least_squares_residual(
@@ -513,13 +513,13 @@ def exercise_gradient_manager(structure_ideal, d_min, f_obs,
   d = gd.d_target_d_fp()
   f = gf.d_target_d_fp()
   linear_regression_test(d, f, slope_tolerance=1.e-2, verbose=verbose)
-  if (fdp_flag):
+  if (anomalous_flag):
     d = gd.d_target_d_fdp()
     f = gf.d_target_d_fdp()
     linear_regression_test(d, f, slope_tolerance=1.e-2, verbose=verbose)
 
 def run_one(space_group_info, n_elements=3, volume_per_atom=1000, d_min=2,
-            fdp_flag=0, anisotropic_flag=0, verbose=0):
+            anomalous_flag=0, anisotropic_flag=0, verbose=0):
   structure_ideal = random_structure.xray_structure(
     space_group_info,
     elements=("Se",)*n_elements,
@@ -528,7 +528,7 @@ def run_one(space_group_info, n_elements=3, volume_per_atom=1000, d_min=2,
     general_positions_only=1,
     random_f_prime_d_min=d_min-1,
     random_f_prime_scale=0.6,
-    random_f_double_prime=fdp_flag,
+    random_f_double_prime=anomalous_flag,
     anisotropic_flag=anisotropic_flag,
     random_u_iso=0001,
     random_u_iso_scale=.3,
@@ -542,7 +542,7 @@ def run_one(space_group_info, n_elements=3, volume_per_atom=1000, d_min=2,
         print "u_iso:", adptbx.u_star_as_u_iso(uc, scatterer.u_star)
     print
   f_obs = abs(structure_ideal.structure_factors(
-    d_min=d_min, anomalous_flag=fdp_flag, direct=0001).f_calc())
+    d_min=d_min, anomalous_flag=anomalous_flag, direct=0001).f_calc())
   if (1):
     site(structure_ideal, d_min, f_obs, verbose=verbose)
   if (1):
@@ -554,18 +554,18 @@ def run_one(space_group_info, n_elements=3, volume_per_atom=1000, d_min=2,
     occupancy(structure_ideal, d_min, f_obs, verbose=verbose)
   if (1):
     fp(structure_ideal, d_min, f_obs, verbose=verbose)
-  if (1 and fdp_flag):
+  if (1 and anomalous_flag):
     fdp(structure_ideal, d_min, f_obs, verbose=verbose)
   if (1):
     exercise_gradient_manager(
-      structure_ideal, d_min, f_obs, fdp_flag, anisotropic_flag)
+      structure_ideal, d_min, f_obs, anomalous_flag, anisotropic_flag)
 
 def run_call_back(flags, space_group_info):
-  for fdp_flag in [0,1]:
+  for anomalous_flag in [0,1]:
     for anisotropic_flag in [0,1]:
       run_one(
         space_group_info=space_group_info,
-        fdp_flag=fdp_flag,
+        anomalous_flag=anomalous_flag,
         anisotropic_flag=anisotropic_flag,
         verbose=flags.Verbose)
 

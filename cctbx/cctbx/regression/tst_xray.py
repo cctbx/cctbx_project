@@ -33,8 +33,15 @@ def exercise_structure():
   assert str(sx.space_group_info()) == "P 64 2 2"
   assert approx_equal(sx.scatterers()[0].site, (-1./2, -1./2, -1./3))
   assert approx_equal(sx.scatterers()[1].site, (-0.19700, 0.19700, -0.833333))
+  p1 = xs.asymmetric_unit_in_p1()
+  assert p1.scatterers().size() == 2
+  for i in xrange(2):
+    assert p1.scatterers()[i].weight() == xs.scatterers()[i].weight()
+  assert str(p1.space_group_info()) == "P 1"
   p1 = xs.expand_to_p1()
   assert p1.scatterers().size() == 9
+  for i in xrange(2):
+    assert p1.scatterers()[i].weight() != xs.scatterers()[i].weight()
   sh = p1.apply_shift((0.2,0.3,-1/6.))
   assert approx_equal(sh.scatterers()[0].site, (0.7,0.8,1/6.))
   assert approx_equal(sh.scatterers()[3].site, (0.3970,0.1030,2/3.))
@@ -93,8 +100,8 @@ def exercise_from_scatterers_direct(space_group_info,
                                     element_type,
                                     n_elements=3,
                                     volume_per_atom=1000,
-                                    d_min=2,
-                                    fdp_flag=0,
+                                    d_min=3,
+                                    anomalous_flag=0,
                                     anisotropic_flag=0,
                                     verbose=0):
   structure = random_structure.xray_structure(
@@ -105,7 +112,7 @@ def exercise_from_scatterers_direct(space_group_info,
     general_positions_only=1,
     random_f_prime_d_min=d_min-1,
     random_f_prime_scale=0.6,
-    random_f_double_prime=fdp_flag,
+    random_f_double_prime=anomalous_flag,
     anisotropic_flag=anisotropic_flag,
     random_u_iso=0001,
     random_u_iso_scale=.3,
@@ -114,7 +121,7 @@ def exercise_from_scatterers_direct(space_group_info,
   if (0 or verbose):
     structure.show_summary().show_scatterers()
   f_obs_exact = structure.structure_factors(
-    d_min=d_min, anomalous_flag=fdp_flag, direct=0001,
+    d_min=d_min, anomalous_flag=anomalous_flag, direct=0001,
     cos_sin_table=00000).f_calc()
   f_obs_simple = xray.ext.structure_factors_simple(
     f_obs_exact.unit_cell(),
@@ -143,14 +150,19 @@ def exercise_from_scatterers_direct(space_group_info,
 
 def run_call_back(flags, space_group_info):
   for element_type in ("Se", "const"):
-    for fdp_flag in [0,1]:
+    for anomalous_flag in [0,1]:
       for anisotropic_flag in [0,1]:
-        exercise_from_scatterers_direct(
-          space_group_info=space_group_info,
-          element_type=element_type,
-          fdp_flag=fdp_flag,
-          anisotropic_flag=anisotropic_flag,
-          verbose=flags.Verbose)
+        for with_shift in [0,1]:
+          if (with_shift):
+            sgi = debug_utils.random_origin_shift(space_group_info)
+          else:
+            sgi = space_group_info
+          exercise_from_scatterers_direct(
+            space_group_info=sgi,
+            element_type=element_type,
+            anomalous_flag=anomalous_flag,
+            anisotropic_flag=anisotropic_flag,
+            verbose=flags.Verbose)
 
 def run():
   exercise_structure()
