@@ -130,9 +130,9 @@ class CNS_xray_reflection_Reader(CNS_input):
     self.level = self.level + 1
     word = self.getNextWord(4)
     if   (word == "TRUE"):
-      anomalous = 1
+      anomalous = True
     elif (word == "FALS"):
-      anomalous = 0
+      anomalous = False
     else:
       self.raiseError("TRUE or FALSe expected")
     self.level = self.level - 1
@@ -319,10 +319,12 @@ class cns_reflection_file:
       group_index = 0
     selected_group = self.groups[group_index]
     assert len(selected_group) == 4
+    names = []
     miller_indices = 0
     rsos = []
     matches = []
     for name in selected_group:
+      names.append(name)
       rso = self.reciprocal_space_objects[name]
       assert rso.type == "real"
       rsos.append(rso)
@@ -338,7 +340,7 @@ class cns_reflection_file:
         assert ih0 == ih
         coeff.append(rsos[ic].data[ih1])
       hl.append(coeff)
-    return miller_indices, hl
+    return names, miller_indices, hl
 
   def _as_miller_array(self, crystal_symmetry, miller_indices,
                              data, sigmas=None, obs_type=None):
@@ -357,39 +359,44 @@ class cns_reflection_file:
         result.set_observation_type_xray_intensity()
     return result
 
-  def as_miller_arrays(self, crystal_symmetry=None, force_symmetry=False,
-                             info_prefix=""):
+  def as_miller_arrays(self,
+        crystal_symmetry=None,
+        force_symmetry=False,
+        merge_equivalents=True,
+        base_array_info=None):
     if (crystal_symmetry is None):
       crystal_symmetry = crystal.symmetry(
         unit_cell=None,
         space_group_info=None)
+    if (base_array_info is None):
+      base_array_info = miller.array_info(source_type="cns_reflection_file")
     result = []
     done = {}
     for group_index in xrange(len(self.groups)):
-      miller_indices, hl = self.join_hl_group(group_index)
-      info = info_prefix + "hl_group_%d" % (group_index+1,)
+      names, miller_indices, hl = self.join_hl_group(group_index)
       result.append(self._as_miller_array(
-        crystal_symmetry, miller_indices, hl).set_info(info))
-      for name in self.groups[group_index]:
-        done[name] = 1
+        crystal_symmetry, miller_indices, hl).set_info(
+          base_array_info.customized_copy(labels=names)))
+      for name in names:
+        done[name] = None
     real_arrays = {}
     for rso in self.reciprocal_space_objects.values():
       if (rso.name in done): continue
       if (not rso.is_real()): continue
       real_arrays[rso.name.lower()] = rso
     for obs,sigma,obs_type in group_obs_sigma(real_arrays):
-      info = info_prefix + obs.name.lower() + "," + sigma.name.lower()
       result.append(self._as_miller_array(
         crystal_symmetry, obs.indices,
-        obs.real_data(), sigma.real_data(), obs_type).set_info(info))
-      done[obs.name] = 1
-      done[sigma.name] = 1
+        obs.real_data(), sigma.real_data(), obs_type).set_info(
+          base_array_info.customized_copy(labels=[obs.name, sigma.name])))
+      done[obs.name] = None
+      done[sigma.name] = None
     for rso in self.reciprocal_space_objects.values():
       if (rso.name in done): continue
-      info = info_prefix + rso.name.lower()
       result.append(self._as_miller_array(
-        crystal_symmetry, rso.indices, rso.data).set_info(info))
-      done[rso.name] = 1
+        crystal_symmetry, rso.indices, rso.data).set_info(
+          base_array_info.customized_copy(labels=[rso.name])))
+      done[rso.name] = None
     return result
 
 def group_obs_sigma(real_arrays):
@@ -400,8 +407,8 @@ def group_obs_sigma(real_arrays):
     s = real_arrays.get("sigi")
     if (s is not None and i.indices.all_eq(s.indices)):
       result.append((i,s,"i"))
-      done[i.name] = 1
-      done[s.name] = 1
+      done[i.name] = None
+      done[s.name] = None
   for name,f in real_arrays.items():
     if (f.name in done): continue
     rest = None
@@ -417,8 +424,8 @@ def group_obs_sigma(real_arrays):
         break
     if (s is not None and f.indices.all_eq(s.indices)):
       result.append((f,s,"f"))
-      done[f.name] = 1
-      done[s.name] = 1
+      done[f.name] = None
+      done[s.name] = None
   return result
 
 def run(args):

@@ -11,6 +11,7 @@ class index_fobs_sigma_line:
     if (flds[0].lower() not in ("inde", "index")): return
     if (flds[4].lower() != "fobs"): return
     if (flds[6].lower() != "sigma"): return
+    self.names = [flds[4], flds[6]]
     try: self.index = tuple([int(i) for i in flds[1:4]])
     except: return
     try: self.fobs = float(flds[5])
@@ -25,6 +26,7 @@ class reader:
     assert [file_name, file_object].count(None) == 1
     if (file_object is None):
       file_object = open(file_name)
+    self._names = None
     self._indices = flex.miller_index()
     self._data = flex.double()
     self._sigmas = flex.double()
@@ -39,6 +41,7 @@ class reader:
         if (self.n_lines == max_header_lines or have_data):
           raise RuntimeError, "Unkown file format."
       else:
+        if (self._names is None): self._names = ifs.names
         self._indices.append(ifs.index)
         self._data.append(ifs.fobs)
         self._sigmas.append(ifs.sigma)
@@ -55,10 +58,15 @@ class reader:
   def sigmas(self):
     return self._sigmas
 
-  def as_miller_arrays(self, crystal_symmetry=None, force_symmetry=False,
-                             info_prefix=""):
+  def as_miller_arrays(self,
+        crystal_symmetry=None,
+        force_symmetry=False,
+        merge_equivalents=True,
+        base_array_info=None):
     if (crystal_symmetry is None):
       crystal_symmetry = crystal.symmetry()
+    if (base_array_info is None):
+      base_array_info = miller.array_info(source_type="cns_index_fobs_sigma")
     miller_set = miller.set(
       crystal_symmetry=crystal_symmetry,
       indices=self.indices()).auto_anomalous()
@@ -66,5 +74,5 @@ class reader:
       miller_set=miller_set,
       data=self.data(),
       sigmas=self.sigmas())
-      .set_info(info_prefix+"fobs,sigma")
+      .set_info(base_array_info.customized_copy(labels=self._names))
       .set_observation_type_xray_amplitude()]

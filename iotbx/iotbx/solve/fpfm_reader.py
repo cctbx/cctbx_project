@@ -56,10 +56,15 @@ class reader:
   def sigmas(self):
     return self._sigmas
 
-  def as_miller_arrays(self, crystal_symmetry=None, force_symmetry=False,
-                             info_prefix=""):
+  def as_miller_arrays(self,
+        crystal_symmetry=None,
+        force_symmetry=False,
+        merge_equivalents=True,
+        base_array_info=None):
     if (crystal_symmetry is None):
       crystal_symmetry = crystal.symmetry()
+    if (base_array_info is None):
+      base_array_info = miller.array_info(source_type="solve_fpfm")
     miller_set = miller.set(
       crystal_symmetry=crystal_symmetry,
       indices=self.indices(),
@@ -68,5 +73,6 @@ class reader:
       miller_set=miller_set,
       data=self.data(),
       sigmas=self.sigmas())
-      .set_info(info_prefix+"fpfm,sigma_fpfm")
+      .set_info(base_array_info.customized_copy(
+        labels=["fpfm", "sigma_fpfm"]))
       .set_observation_type_xray_amplitude()]
