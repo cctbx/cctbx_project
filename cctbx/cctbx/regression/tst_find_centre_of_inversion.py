@@ -22,7 +22,7 @@ def exercise(space_group_info, n_scatterers=8, verbose=0):
   structure = random_structure.xray_structure(
     space_group_info,
     n_scatterers=n_scatterers,
-    volume_per_atom=300,
+    volume_per_atom=500,
     min_distance=2.,
     general_positions_only=0001)
   t_centre_of_inversion = tuple([random.random() for i in xrange(3)])
