@@ -39,7 +39,7 @@ namespace cctbx {
       //! Construct from plain pointer to coefficients.
       hendrickson_lattman(const FloatType* coeff)
       {
-        std::copy(coeff, coeff + 4, coeff_);
+        std::copy(coeff, coeff + 4, coeff_.begin());
       }
 
       //! Construct given individual coefficients.

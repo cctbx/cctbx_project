@@ -11,6 +11,7 @@
 #include <boost/python/class_builder.hpp>
 #include <cctbx/error.h>
 #include <cctbx/miller.h>
+#include <cctbx/hendrickson_lattman.h>
 #include <cctbx/array_family/shared.h>
 
 namespace cctbx { namespace af {
@@ -213,6 +214,46 @@ namespace cctbx { namespace af {
       }
     };
 
+    template <typename FloatType>
+    struct hendrickson_lattman_picklers
+    {
+      typedef hendrickson_lattman<FloatType> hl_type;
+
+      static
+      boost::python::ref
+      getstate(
+        shared<hl_type> const& a,
+        std::size_t size_per_element,
+        const char* fmt)
+      {
+        getstate_manager mgr(a.size(), 4 * size_per_element);
+        for(std::size_t i=0;i<a.size();i++) {
+          af::tiny<FloatType, 4> const& c = a[i].array();
+          sprintf(mgr.str_end, fmt, c[0], c[1], c[2], c[3]);
+          mgr.advance();
+        }
+        return boost::python::ref(mgr.finalize());
+      }
+
+      static
+      void
+      setstate(
+        shared<hl_type>& a,
+        boost::python::ref state,
+        const char* fmt)
+      {
+        setstate_manager mgr(a.size(), state.get());
+        a.reserve(mgr.a_capacity);
+        for(std::size_t i=0;i<mgr.a_capacity;i++) {
+          FloatType c[4];
+          cctbx_assert(sscanf(mgr.str_ptr, fmt, c+0, c+1, c+2, c+3) == 4);
+          mgr.advance();
+          a.push_back(hl_type(c));
+        }
+        mgr.finalize();
+      }
+    };
+
   } // namespace <anonymous>
 
   boost::python::ref shared_bool_getstate(shared<bool> const& a)
@@ -289,6 +330,21 @@ namespace cctbx { namespace af {
     boost::python::ref state)
   {
     miller_index_picklers::setstate(a, state);
+  }
+
+  boost::python::ref shared_hendrickson_lattman_double_getstate(
+    shared<hendrickson_lattman<double> > const& a)
+  {
+    return hendrickson_lattman_picklers<double>::getstate(
+      a, 18, "%.12g,%.12g,%.12g,%.12g");
+  }
+
+  void shared_hendrickson_lattman_double_setstate(
+    shared<hendrickson_lattman<double> >& a,
+    boost::python::ref state)
+  {
+    hendrickson_lattman_picklers<double>::setstate(
+      a, state, "%lg,%lg,%lg,%lg");
   }
 
 }} // namespace cctbx::af
