@@ -2,7 +2,7 @@
 cctbx Versions
 --------------
 
-Documentation for the current development version (will become cctbx 2.0):
+Documentation for the current development version:
 
   http://cctbx.sourceforge.net/current_cvs/
 
@@ -10,10 +10,6 @@ It is highly recommended to use the CVS version. We take great care
 that the cctbx CVS trees are consistent and in working order. The C++
 interfaces have changed significantly since the 1.0 release but are
 very stable since the fall of 2002.
-
-Documentation for the last released version (2001-Nov-29):
-
-  http://cctbx.sourceforge.net/v1.0/
 
 Please direct questions to cctbx@cci.lbl.gov .
 
