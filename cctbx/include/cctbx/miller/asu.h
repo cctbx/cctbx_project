@@ -1,12 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Jul: Created from fragments of cctbx/sgtbx/miller_asu.h (rwgk)
- */
-
 #ifndef CCTBX_MILLER_ASU_H
 #define CCTBX_MILLER_ASU_H
 
@@ -243,7 +234,7 @@ namespace cctbx { namespace miller {
     map_to_asu(
       sgtbx::space_group_type const& sg_type,
       bool anomalous_flag,
-      af::ref<miller::index<> > const& miller_indices,
+      af::ref<index<> > const& miller_indices,
       af::ref<ValueType> const& data,
       bool deg)
     {
@@ -264,14 +255,14 @@ namespace cctbx { namespace miller {
   map_to_asu(
     sgtbx::space_group_type const& sg_type,
     bool anomalous_flag,
-    af::ref<miller::index<> > const& miller_indices);
+    af::ref<index<> > const& miller_indices);
 
   template <typename ValueType>
   void
   map_to_asu(
     sgtbx::space_group_type const& sg_type,
     bool anomalous_flag,
-    af::ref<miller::index<> > const& miller_indices,
+    af::ref<index<> > const& miller_indices,
     af::ref<ValueType> const& data)
   {
     detail::map_to_asu<ValueType, ValueType>(
@@ -283,13 +274,19 @@ namespace cctbx { namespace miller {
   map_to_asu(
     sgtbx::space_group_type const& sg_type,
     bool anomalous_flag,
-    af::ref<miller::index<> > const& miller_indices,
+    af::ref<index<> > const& miller_indices,
     af::ref<ValueType> const& data,
     bool deg)
   {
     detail::map_to_asu<ValueType, data_classes::phase_type>(
       sg_type, anomalous_flag, miller_indices, data, deg);
   }
+
+  bool
+  is_unique_set_under_symmetry(
+    sgtbx::space_group_type const& space_group_type,
+    bool anomalous_flag,
+    af::const_ref<index<> > const& miller_indices);
 
 }} // namespace cctbx::miller
 

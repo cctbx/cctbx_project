@@ -13,6 +13,7 @@ def exercise(space_group_info, anomalous_flags,
   f = abs(structure.structure_factors(
     d_min=d_min, anomalous_flag=anomalous_flags).f_calc())
   fs = miller.array(miller_set=f, data=f.data(), sigmas=flex.sqrt(f.data()))
+  assert fs.is_unique_set_under_symmetry()
   for a in (f, fs):
     m = a.merge_equivalents()
     j = m.array().adopt_set(a)
@@ -42,10 +43,12 @@ def exercise(space_group_info, anomalous_flags,
       anomalous_flag=fs.anomalous_flag()),
     data=r_data,
     sigmas=r_sigmas)
+  assert not r.is_unique_set_under_symmetry()
   noise = flex.random_double(size=r.indices().size())
   r = r.sort(by_value=noise)
   m = r.merge_equivalents()
   j = m.array().adopt_set(fs)
+  assert j.is_unique_set_under_symmetry()
   assert flex.linear_correlation(
     j.data(),
     fs.data()).coefficient() > 1-1.e-6

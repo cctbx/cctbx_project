@@ -398,6 +398,12 @@ class set(crystal.symmetry):
       indices=self.indices(),
       anomalous_flag=anomalous_flag)
 
+  def is_unique_set_under_symmetry(self):
+    return ext.is_unique_set_under_symmetry(
+      space_group_type=self.space_group_info().type(),
+      anomalous_flag=self.anomalous_flag(),
+      miller_indices=self.indices())
+
   def map_to_asu(self):
     i = self.indices().deep_copy()
     anomalous_flag = self.anomalous_flag()
@@ -522,7 +528,7 @@ class set(crystal.symmetry):
       n = matches.pairs().size() + matches.n_singles()
       del matches
     else:
-      # XXX assert not self.is_merged()
+      assert self.is_unique_set_under_symmetry()
       n = self.indices().size()
     result = flex.bool(n, False)
     i_start = 0

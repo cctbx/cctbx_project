@@ -1,17 +1,9 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Oct: Created (rwgk)
- */
-
 #include <cctbx/boost_python/flex_fwd.h>
 
 #include <cctbx/miller/asu.h>
 #include <boost/python/class.hpp>
 #include <boost/python/def.hpp>
+#include <boost/python/args.hpp>
 
 namespace cctbx { namespace miller { namespace boost_python {
 
@@ -96,6 +88,10 @@ namespace {
     def("map_to_asu", map_to_asu_wrappers<double>::with_bool);
     def("map_to_asu", map_to_asu_wrappers<std::complex<double> >::no_bool);
     def("map_to_asu", map_to_asu_wrappers<hendrickson_lattman<> >::no_bool);
+    def("is_unique_set_under_symmetry", is_unique_set_under_symmetry, (
+      arg_("space_group_type"),
+      arg_("anomalous_flag"),
+      arg_("miller_indices")));
   }
 
 }}} // namespace cctbx::miller::boost_python
