@@ -1100,6 +1100,16 @@ def exercise_seminvariant():
   a = ss.grid_adapted_moduli((3,5,12))
   assert [vm.m for vm in a] == [60]
 
+def exercise_row_echelon():
+  m = flex.int((1,1,1,1))
+  m.resize(flex.grid(2,2))
+  t = flex.int((2,3))
+  t.resize(flex.grid(2,1))
+  assert sgtbx.row_echelon_form_t(m, t) == 1
+  assert m.focus() == (1,2)
+  assert tuple(m) == (1,1)
+  assert tuple(t) == (2,1)
+
 def run():
   exercise_symbols()
   exercise_tr_vec()
@@ -1115,6 +1125,7 @@ def run():
   exercise_wyckoff()
   exercise_sym_equiv_sites()
   exercise_seminvariant()
+  exercise_row_echelon()
   print "OK"
 
 if (__name__ == "__main__"):
