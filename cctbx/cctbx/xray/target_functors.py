@@ -34,7 +34,7 @@ class target_functors_manager:
       "ls_wexp_k1" ,"ls_wexp_k2" ,"ls_wexp_kunit",
       "ls_wff_k1"  ,"ls_wff_k2"  ,"ls_wff_kunit","ls_wff_k1_fixed",
       "ls_wff_k1ask3_fixed",
-      "lsm_k1"     ,"lsm_k2"     ,"lsm_kunit",
+      "lsm_k1"     ,"lsm_k2"     ,"lsm_kunit","lsm_k1_fixed","lsm_k1ask3_fixed",
       "ml","mlhl")
     assert self.f_obs.data().size() == self.flags.size()
     if(self.flags.count(True) > 0):
@@ -81,17 +81,19 @@ class target_functors_manager:
       if(self.abcd_w is not None): abcd = self.abcd_w.select(selection)
       else:                        abcd = self.abcd_w
     if(self.target_name.count("k1") == 1 and self.target_name.count("k1as") == 0):
-       assert self.scale_factor == 0
+       if(self.scale_factor == 0): fix_scale_factor = False
+       else: fix_scale_factor = True
        return ls_k1(f_obs            = f_obs,
                     weights          = weights,
                     scale_factor     = self.scale_factor,
-                    fix_scale_factor = False)
+                    fix_scale_factor = fix_scale_factor)
     if(self.target_name.count("k2") == 1 and self.target_name.count("k2as") == 0):
-       assert self.scale_factor == 0
+       if(self.scale_factor == 0): fix_scale_factor = False
+       else: fix_scale_factor = True
        return ls_k2(f_obs            = f_obs,
                     weights          = weights,
                     scale_factor     = self.scale_factor,
-                    fix_scale_factor = False)
+                    fix_scale_factor = fix_scale_factor)
     if(self.target_name.count("kunit") == 1 or self.target_name.count("ask") == 1):
        assert self.scale_factor != 0.0
        return ls_k1(f_obs            = f_obs,
@@ -118,17 +120,19 @@ class target_functors_manager:
       if(self.abcd_t is not None): abcd = self.abcd_t.select(selection)
       else:                        abcd = self.abcd_t
     if(self.target_name.count("k1") == 1 and self.target_name.count("k1as") == 0):
-       assert self.scale_factor == 0
+       if(self.scale_factor == 0): fix_scale_factor = False
+       else: fix_scale_factor = True
        return ls_k1(f_obs            = f_obs,
                     weights          = weights,
                     scale_factor     = self.scale_factor,
-                    fix_scale_factor = False)
+                    fix_scale_factor = fix_scale_factor)
     if(self.target_name.count("k2") == 1 and self.target_name.count("k2as") == 0):
-       assert self.scale_factor == 0
+       if(self.scale_factor == 0): fix_scale_factor = False
+       else: fix_scale_factor = True
        return ls_k2(f_obs            = f_obs,
                     weights          = weights,
                     scale_factor     = self.scale_factor,
-                    fix_scale_factor = False)
+                    fix_scale_factor = fix_scale_factor)
     if(self.target_name.count("kunit") == 1 or self.target_name.count("ask") == 1):
        assert self.scale_factor != 0.0
        return ls_k1(f_obs            = f_obs,
