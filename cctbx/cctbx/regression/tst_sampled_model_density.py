@@ -10,7 +10,7 @@ from scitbx import fftpack
 import random
 import sys
 
-def assign_custom_gaussians(structure, negative_a=00000):
+def assign_custom_gaussians(structure, negative_a=False):
   if (negative_a):
     f = -1
   else:
@@ -40,7 +40,7 @@ def exercise(space_group_info, const_gaussian, negative_gaussian,
              d_min=1., resolution_factor=1./3, max_prime=5,
              quality_factor=100, wing_cutoff=1.e-6,
              exp_table_one_over_step_size=-100,
-             force_complex=00000,
+             force_complex=False,
              verbose=0):
   if (const_gaussian):
     elements=["const"]*8
@@ -59,18 +59,18 @@ def exercise(space_group_info, const_gaussian, negative_gaussian,
     random_f_prime_scale=random_f_prime_scale,
     random_f_double_prime=anomalous_flag,
     anisotropic_flag=anisotropic_flag,
-    random_u_iso=0001,
-    random_occupancy=0001)
-  sampled_density_must_be_positive = 0001
+    random_u_iso=True,
+    random_occupancy=True)
+  sampled_density_must_be_positive = True
   if (negative_gaussian):
     d = structure.scattering_dict(
       custom_dict={"H": eltbx.xray_scattering.gaussian(-1)}).dict()
     assert d["H"].gaussian.n_terms() == 0
     assert d["H"].gaussian.c() == -1
-    sampled_density_must_be_positive = 00000
+    sampled_density_must_be_positive = False
   elif (not const_gaussian and random.random() < 0.5):
     if (random.random() < 0.5):
-      sampled_density_must_be_positive = 00000
+      sampled_density_must_be_positive = False
     assign_custom_gaussians(
       structure,
       negative_a=not sampled_density_must_be_positive)
@@ -173,8 +173,8 @@ def exercise(space_group_info, const_gaussian, negative_gaussian,
     verbose=verbose)
 
 def run_call_back(flags, space_group_info):
-  for anomalous_flag in (00000, 0001)[:]: #SWITCH
-    for anisotropic_flag in (00000, 0001)[:]: #SWITCH
+  for anomalous_flag in (False, True)[:]: #SWITCH
+    for anisotropic_flag in (False, True)[:]: #SWITCH
       r = random.random()
       exercise(
         space_group_info,

@@ -13,7 +13,7 @@ class manager(crystal.symmetry):
   def __init__(self, miller_set=None,
                      crystal_symmetry=None,
                      d_min=None,
-                     cos_sin_table=00000,
+                     cos_sin_table=False,
                      grid_resolution_factor=1/3.,
                      symmetry_flags=None,
                      mandatory_grid_factors=None,
@@ -21,8 +21,8 @@ class manager(crystal.symmetry):
                      wing_cutoff=None,
                      exp_table_one_over_step_size=None,
                      max_prime=5,
-                     force_complex=00000,
-                     sampled_density_must_be_positive=00000,
+                     force_complex=False,
+                     sampled_density_must_be_positive=False,
                      tolerance_positive_definite=1.e-5):
     assert miller_set is None or crystal_symmetry is None
     if (miller_set is None):
@@ -41,7 +41,7 @@ class manager(crystal.symmetry):
     if (exp_table_one_over_step_size is None):
       exp_table_one_over_step_size = -100
     del miller_set
-    adopt_init_args(self, locals(), hide=0001)
+    adopt_init_args(self, locals(), hide=True)
     self._crystal_gridding = None
     self._rfft = None
     self._cfft = None
@@ -86,7 +86,7 @@ class manager(crystal.symmetry):
   def tolerance_positive_definite(self):
     return self._tolerance_positive_definite
 
-  def crystal_gridding(self, assert_shannon_sampling=0001):
+  def crystal_gridding(self, assert_shannon_sampling=True):
     if (self._crystal_gridding is None):
       self._crystal_gridding = maptbx.crystal_gridding(
         unit_cell=self.unit_cell(),
@@ -227,7 +227,7 @@ class _estimate_time_fft:
 class managed_calculation_base:
 
   def __init__(self, manager, xray_structure, miller_set):
-    adopt_init_args(self, locals(), hide=0001)
+    adopt_init_args(self, locals(), hide=True)
     assert xray_structure is not None and miller_set is not None
     assert xray_structure.unit_cell().is_similar_to(miller_set.unit_cell())
     assert xray_structure.space_group() == miller_set.space_group()

@@ -13,8 +13,8 @@ import sys
 
 def n_less_than(sorted_array, cutoff, eps=1.e-6):
   selection = sorted_array < cutoff + eps
-  result = selection.count(0001)
-  assert selection[:result].all_eq(0001)
+  result = selection.count(True)
+  assert selection[:result].all_eq(True)
   return result
 
 class LargeNegativeB(RuntimeError): pass
@@ -47,11 +47,11 @@ class minimize_mixin:
       self.final_gaussian_fit.significant_relative_errors())
 
   def is_better_than(self, other):
-    if (other is None): return 0001
-    if (self.max_x > other.max_x): return 0001
-    if (self.max_x < other.max_x): return 00000
-    if (self.max_error < other.max_error): return 0001
-    return 00000
+    if (other is None): return True
+    if (self.max_x > other.max_x): return True
+    if (self.max_x < other.max_x): return False
+    if (self.max_error < other.max_error): return True
+    return False
 
   def show_summary(self, f=None):
     if (f is None): f = sys.stdout
@@ -112,7 +112,7 @@ class minimize_lbfgsb(minimize_mixin):
                      lbfgsb_m=20,
                      hard_b_min=-1,
                      iprint=-1,
-                     use_fortran_library=00000):
+                     use_fortran_library=False):
     adopt_init_args(self, locals())
     assert target_power in [2,4]
     self.n = gaussian_fit.n_terms() * 2
@@ -140,7 +140,7 @@ class minimize_lbfgsb(minimize_mixin):
     u = flex.double(self.n, 0)
     nbd = flex.int(self.n, 0)
     if (self.apply_lower_bounds_on_b):
-      bound_flags = self.gaussian_fit.bound_flags(00000, 0001)
+      bound_flags = self.gaussian_fit.bound_flags(False, True)
       nbd.set_selected(bound_flags, 1)
     self.minimizer = lbfgsb.minimizer(
       n=self.n,
@@ -152,7 +152,7 @@ class minimize_lbfgsb(minimize_mixin):
     self.x = flex.double(self.n, 0)
     self.f = 0
     self.g = flex.double(self.n, 0)
-    while 0001:
+    while True:
       if (self.minimizer.process(self.x, self.f, self.g,
                                  self.use_fortran_library)):
         self.compute_fg()
@@ -208,7 +208,7 @@ def minimize_multi_lbfgsb(start_fit,
                           n_repeats_minimization):
   best_min = None
   for target_power in target_powers:
-    for apply_lower_bounds_on_b in [00000, 0001]:
+    for apply_lower_bounds_on_b in [False, True]:
       min_gaussian_fit = start_fit
       for i in xrange(n_repeats_minimization):
         if (shift_sqrt_b_mod_n > 0):
@@ -237,11 +237,11 @@ def minimize_multi_lbfgsb(start_fit,
 
 minimize_multi_histogram = dicts.with_default_value(0)
 
-def show_minimize_multi_histogram(f=None, reset=0001):
+def show_minimize_multi_histogram(f=None, reset=True):
   global minimize_multi_histogram
   minimizer_types = minimize_multi_histogram.keys()
   counts = flex.double(minimize_multi_histogram.values())
-  perm = flex.sort_permutation(data=counts, reverse=0001)
+  perm = flex.sort_permutation(data=counts, reverse=True)
   minimizer_types = flex.select(minimizer_types, perm)
   counts = counts.select(perm)
   n_total = flex.sum(counts)
@@ -347,7 +347,7 @@ def make_start_gaussian(null_fit,
     b_max = flex.max(flex.abs(b))
     b_min = b_max * b_range
     sel = b < b_min
-    b.set_selected(sel, flex.double(sel.count(0001), b_min))
+    b.set_selected(sel, flex.double(sel.count(True), b_min))
     if (i_split < 0):
       a = flex.double(existing_gaussian.array_of_a()) * scale_old
       a.append(y0_table - flex.sum(a))

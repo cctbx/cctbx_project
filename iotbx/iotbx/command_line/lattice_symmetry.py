@@ -71,10 +71,10 @@ class metric_subgroups:
     sort_values = flex.double()
     for group in subgrs:
       order_z = group.order_z()
-      space_group_number = sgtbx.space_group_type(group, 00000).number()
+      space_group_number = sgtbx.space_group_type(group, False).number()
       assert 1 <= space_group_number <= 230
       sort_values.append(order_z*1000+space_group_number)
-    perm = flex.sort_permutation(sort_values, 0001)
+    perm = flex.sort_permutation(sort_values, True)
 
     for i_subgr in perm:
       acentric_subgroup = subgrs[i_subgr]
@@ -87,7 +87,7 @@ class metric_subgroups:
       subsym = crystal.symmetry(
         unit_cell=self.minimum_symmetry.unit_cell(),
         space_group=centric_group,
-        assert_is_compatible_unit_cell=00000)
+        assert_is_compatible_unit_cell=False)
       # Convert subgroup to reference setting
       cb_op_minimum_ref = subsym.space_group_info().type().cb_op()
       ref_subsym = subsym.change_basis(cb_op_minimum_ref)

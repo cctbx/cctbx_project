@@ -11,7 +11,7 @@ class gradient_flags(ext.gradient_flags):
                      fp=None,
                      fdp=None,
                      u=None,
-                     default=00000):
+                     default=False):
     if (u is not None): assert u_iso is None and u_aniso is None
     if (u is None): u = default
     if (site is None): site = default

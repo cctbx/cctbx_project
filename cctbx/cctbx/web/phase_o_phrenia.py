@@ -114,7 +114,7 @@ def run(server_info, inp, status):
         height = reduced_peaks[i].height
         h = int(round(height * plot_ny))
         h = max(0, min(plot_ny, h))
-        for j in xrange(h): plot[(i,j)] = 0001
+        for j in xrange(h): plot[(i,j)] = True
       for j in xrange(plot_ny-1,-1,-1):
         line = ""
         for i in xrange(plot_nx):

@@ -75,7 +75,7 @@ def exercise_structure():
   assert approx_equal(center_of_mass.elems, (1.335228, 1.071897, 2.815899))
   ys = xs.apply_shift(
     shift=xs.unit_cell().fractionalize((-center_of_mass).elems),
-    recompute_site_symmetries=0001)
+    recompute_site_symmetries=True)
   assert approx_equal(ys.center_of_mass().elems, (0,0,0))
   ys = xray.structure(xs)
   assert ys.atomic_weights().size() == 0
@@ -85,7 +85,7 @@ def exercise_structure():
   assert approx_equal(ys.scatterers()[1].weight(),0.25)
   ys.scatterers()[1].occupancy -= 0.1
   assert approx_equal(ys.scatterers()[1].weight(),0.2)
-  assert xs.n_parameters(xray.structure_factors.gradient_flags(default=0001)) \
+  assert xs.n_parameters(xray.structure_factors.gradient_flags(default=True)) \
          == 14
   g = flex.vec3_double(((0.1,0.2,0.3),(0.2,0.3,0.4)))
   xs.apply_special_position_ops_d_target_d_site(g)
@@ -121,9 +121,9 @@ def exercise_structure():
       space_group_symbol="P 2 2 2"))
   xs0.add_scatterer(xray.scatterer(label="C", site=(0.1,0.1,0.1)))
   assert xs0.site_symmetry_table().get(0).is_point_group_1()
-  xs1 = xs0.apply_shift(shift=(-0.08,-0.1,0), recompute_site_symmetries=00000)
+  xs1 = xs0.apply_shift(shift=(-0.08,-0.1,0), recompute_site_symmetries=False)
   assert xs1.site_symmetry_table().get(0).is_point_group_1()
-  xs2 = xs0.apply_shift(shift=(-0.08,-0.1,0), recompute_site_symmetries=0001)
+  xs2 = xs0.apply_shift(shift=(-0.08,-0.1,0), recompute_site_symmetries=True)
   assert str(xs2.site_symmetry_table().get(0).special_op()) == "0,0,z"
   assert approx_equal(xs1.scatterers()[0].site, (0.02, 0, 0.1))
   assert approx_equal(xs2.scatterers()[0].site, (0, 0, 0.1))
@@ -150,7 +150,7 @@ def exercise_structure():
   assert xs2.unit_cell().is_similar_to(xs1.unit_cell())
   assert xs2.space_group().order_z() == 1
   assert list(xs2[:].special_position_indices()) == [1,4]
-  for append_number_to_labels in [00000, 0001]:
+  for append_number_to_labels in [False, True]:
     xs2 = xs1.expand_to_p1(append_number_to_labels=append_number_to_labels)
     assert xs2.scatterers().size() == 16
     xs2 = xray.structure(xs1, xs1.scatterers())
@@ -219,15 +219,15 @@ def exercise_from_scatterers_direct(space_group_info,
     random_f_prime_scale=0.6,
     random_f_double_prime=anomalous_flag,
     anisotropic_flag=anisotropic_flag,
-    random_u_iso=0001,
+    random_u_iso=True,
     random_u_iso_scale=.3,
     random_u_cart_scale=.3,
-    random_occupancy=0001)
+    random_occupancy=True)
   if (0 or verbose):
     structure.show_summary().show_scatterers()
   f_obs_exact = structure.structure_factors(
     d_min=d_min, algorithm="direct",
-    cos_sin_table=00000).f_calc()
+    cos_sin_table=False).f_calc()
   assert f_obs_exact.anomalous_flag() == anomalous_flag
   f_obs_simple = xray.ext.structure_factors_simple(
     f_obs_exact.unit_cell(),
@@ -248,9 +248,9 @@ def exercise_from_scatterers_direct(space_group_info,
   f_obs_table = f_obs_exact.structure_factors_from_scatterers(
     xray_structure=structure,
     algorithm="direct",
-    cos_sin_table=0001).f_calc()
+    cos_sin_table=True).f_calc()
   ls = xray.targets_least_squares_residual(
-    abs(f_obs_exact).data(), f_obs_table.data(), 00000, 1)
+    abs(f_obs_exact).data(), f_obs_table.data(), False, 1)
   if (0 or verbose):
     print "r-factor:", ls.target()
   assert ls.target() < 1.e-4
@@ -277,18 +277,18 @@ def exercise_n_gaussian(space_group_info, verbose=0):
   f_calc_5g = structure_5g.structure_factors(
     d_min=d_min,
     algorithm="direct",
-    cos_sin_table=00000).f_calc()
+    cos_sin_table=False).f_calc()
   f_calc_4g = f_calc_5g.structure_factors_from_scatterers(
     xray_structure=structure_4g,
     algorithm="direct",
-    cos_sin_table=00000).f_calc()
+    cos_sin_table=False).f_calc()
   f_calc_2g = f_calc_5g.structure_factors_from_scatterers(
     xray_structure=structure_2g,
     algorithm="direct",
-    cos_sin_table=00000).f_calc()
+    cos_sin_table=False).f_calc()
   for n,f_calc_ng in ((4,f_calc_4g), (2,f_calc_2g)):
     ls = xray.targets_least_squares_residual(
-      abs(f_calc_5g).data(), f_calc_ng.data(), 00000, 1)
+      abs(f_calc_5g).data(), f_calc_ng.data(), False, 1)
     if (0 or verbose):
       print "%d-gaussian r-factor:" % n, ls.target()
     if (n == 2):

@@ -12,7 +12,7 @@ def random_f_calc(space_group_info, n_scatterers, d_min, anomalous_flag,
     elements=["const"]*n_scatterers,
     volume_per_atom=500,
     min_distance=2.,
-    general_positions_only=0001)
+    general_positions_only=True)
   if (0 or verbose):
     structure.show_summary().show_scatterers()
   f_calc = structure.structure_factors(
@@ -21,9 +21,9 @@ def random_f_calc(space_group_info, n_scatterers, d_min, anomalous_flag,
     miller_set=f_calc,
     data=f_calc.data()/flex.mean(flex.abs(f_calc.data())))
   if (f_calc.anomalous_flag()):
-    selection = flex.bool(f_calc.indices().size(), 0001)
+    selection = flex.bool(f_calc.indices().size(), True)
     for i in xrange(f_calc.indices().size()/10):
       j = random.randrange(f_calc.indices().size())
-      selection[j] = 00000
+      selection[j] = False
     f_calc = f_calc.apply_selection(selection)
   return f_calc

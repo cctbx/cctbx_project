@@ -83,7 +83,7 @@ def exercise_grid_tags():
       use_space_group_ltr=0,
       use_seminvariants=(i_flags/4) % 2 != 0,
       use_normalizer_k2l=(i_flags/2) % 2 != 0,
-      use_normalizer_l2n=00000)
+      use_normalizer_l2n=False)
     t.build(s.type(), f)
     assert t.is_valid()
     assert t.space_group_type().group() == s.group()
@@ -115,14 +115,14 @@ def exercise_peak_search():
   t = flex.long(flex.grid((3,4,5)))
   for flex_type in flex_types():
     d = flex_type(flex.grid((3,4,5)))
-    l = maptbx.peak_list(d, t, peak_search_level=0, interpolate=00000)
+    l = maptbx.peak_list(d, t, peak_search_level=0, interpolate=False)
     assert l.gridding() == d.focus()
     assert l.grid_indices(0) == (0,0,0)
     assert list(l.grid_heights()) == [0]
     assert list(l.sites()) == [(0,0,0)]
     assert list(l.heights()) == [0]
     l = maptbx.peak_list(
-      d, t, peak_search_level=0,peak_cutoff=-1, interpolate=00000)
+      d, t, peak_search_level=0,peak_cutoff=-1, interpolate=False)
     assert l.gridding() == d.focus()
     assert l.grid_indices(0) == (0,0,0)
     assert list(l.grid_heights()) == [0]
@@ -139,8 +139,8 @@ def exercise_structure_factors():
   sg = sgtbx.space_group_info("P 31")
   mi = flex.miller_index(((1,2,3),(2,3,4)))
   d = flex.complex_double((1+2j, 2+3j))
-  for anomalous_flag in (00000, 0001):
-    for conjugate_flag in (00000, 0001):
+  for anomalous_flag in (False, True):
+    for conjugate_flag in (False, True):
       t = maptbx.structure_factors.to_map(
         sg.group(), anomalous_flag, mi, d,
         (11,11,9), flex.grid(11,11,9), conjugate_flag)
@@ -154,7 +154,7 @@ def exercise_structure_factors():
       assert f.miller_indices().size() == 0
       assert f.data().size() == mi.size()
       f = maptbx.structure_factors.from_map(
-        anomalous_flag, mi, t.complex_map(), conjugate_flag, 0001)
+        anomalous_flag, mi, t.complex_map(), conjugate_flag, True)
       assert f.miller_indices().size() == 0
       assert f.data().size() == mi.size()
       assert f.n_indices_affected_by_aliasing() == 0
@@ -168,16 +168,16 @@ def exercise_structure_factors():
 
 def exercise_gridding():
   u = uctbx.unit_cell((4,6,7))
-  assert maptbx.ext.determine_gridding(u, 2, 1/3., (1,1,1), 5, 0001) \
+  assert maptbx.ext.determine_gridding(u, 2, 1/3., (1,1,1), 5, True) \
       == (8,9,12)
   f = sgtbx.search_symmetry_flags(
-    use_space_group_symmetry=0001,
+    use_space_group_symmetry=True,
     use_space_group_ltr=0,
-    use_seminvariants=00000,
-    use_normalizer_k2l=0001,
-    use_normalizer_l2n=00000)
+    use_seminvariants=False,
+    use_normalizer_k2l=True,
+    use_normalizer_l2n=False)
   t = sgtbx.space_group_info("F 2 2 2").primitive_setting().type()
-  assert maptbx.ext.determine_gridding(u, 2, 1/3., f, t, (1,1,1), 5, 0001) \
+  assert maptbx.ext.determine_gridding(u, 2, 1/3., f, t, (1,1,1), 5, True) \
       == (12, 12, 12)
 
 def exercise_misc():

@@ -22,7 +22,7 @@ class _sum(boost.python.injector, sum):
   def sort(self):
     perm = flex.sort_permutation(
       data=flex.abs(flex.double(self.array_of_a())),
-      reverse=0001)
+      reverse=True)
     return sum(
       flex.select(self.array_of_a(), perm),
       flex.select(self.array_of_b(), perm),

@@ -31,7 +31,7 @@ def exercise_flex_hendrickson_lattman():
   p = pickle.dumps(a)
   b = pickle.loads(p)
   assert tuple(a) == tuple(b)
-  centric_flags = flex.bool([00000, 0001])
+  centric_flags = flex.bool([False, True])
   phase_integrals = flex.complex_double([complex(0.5,-0.7), complex(-0.3,0.4)])
   a = flex.hendrickson_lattman(
     centric_flags=centric_flags,

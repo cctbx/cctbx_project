@@ -13,14 +13,14 @@ class wilson_plot:
     self.info = f_obs.info()
     # compute <fobs^2> in resolution shells
     self.mean_fobs_sq = f_obs.mean_sq(
-      use_binning=0001,
-      use_multiplicities=0001)
+      use_binning=True,
+      use_multiplicities=True)
     # compute <s^2> = <(sin(theta)/lambda)^2> in resolution shells
     stol_sq = f_obs.sin_theta_over_lambda_sq()
     stol_sq.use_binner_of(f_obs)
     self.mean_stol_sq = stol_sq.mean(
-      use_binning=0001,
-      use_multiplicities=0001)
+      use_binning=True,
+      use_multiplicities=True)
     # cache scattering factor info
     gaussians = {}
     for chemical_type in asu_contents.keys():

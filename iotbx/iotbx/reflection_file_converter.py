@@ -6,14 +6,14 @@ from iotbx import reflection_file_reader
 from iotbx import reflection_file_utils
 from iotbx.option_parser import iotbx_option_parser
 
-def run(args, simply_return_all_miller_arrays=00000):
+def run(args, simply_return_all_miller_arrays=False):
   command_line = (iotbx_option_parser(
     usage="iotbx.reflection_file_converter [options] reflection_file ...",
     description="Example: iotbx.reflection_file_converter w1.sca --mtz .")
     .enable_symmetry_comprehensive()
     .option(None, "--weak_symmetry",
       action="store_true",
-      default=00000,
+      default=False,
       dest="weak_symmetry",
       help="symmetry on command line is weaker than symmetry found in files")
     .enable_resolutions()
@@ -77,7 +77,7 @@ def run(args, simply_return_all_miller_arrays=00000):
     file_names=command_line.args,
     crystal_symmetry=command_line.symmetry,
     force_symmetry=not command_line.options.weak_symmetry,
-    discard_arrays=00000,
+    discard_arrays=False,
     verbose=1)
   if (simply_return_all_miller_arrays):
     return all_miller_arrays

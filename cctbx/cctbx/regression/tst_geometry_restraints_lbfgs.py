@@ -190,7 +190,7 @@ def exercise(verbose=0):
     pml_write(f=open("vdw_2.pml", "w"), label="vdw_2", sticks=vdw_2_sticks)
   #
   i_pdb = count(2)
-  for use_crystal_symmetry in [00000, 0001]:
+  for use_crystal_symmetry in [False, True]:
     if (not use_crystal_symmetry):
       crystal_symmetry = None
       site_symmetry_table = None

@@ -39,19 +39,19 @@ def exercise_space_group_info():
 
 def test_enantiomorphic_pairs():
   pairs = []
-  done = [00000 for i in xrange(231)]
+  done = [False for i in xrange(231)]
   for i in xrange(1, 231):
     a = sgtbx.space_group_info(i)
     b = a.change_hand()
     assert a.type().is_enantiomorphic() == b.type().is_enantiomorphic()
     assert (a.group() == b.group()) == (not a.type().is_enantiomorphic())
-    done[i] = 0001
+    done[i] = True
     if (a.type().is_enantiomorphic()):
       j = b.type().number()
       if (not done[j]):
         assert j > i
         pairs.append((i,j))
-        done[i] = 0001
+        done[i] = True
       else:
         assert j < i
         assert (j,i) in pairs

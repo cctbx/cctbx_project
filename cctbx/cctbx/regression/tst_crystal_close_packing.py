@@ -42,8 +42,8 @@ def hex_indices_as_site(point, layer=0):
 
 def hcp_fill_box(cb_op_original_to_sampling, float_asu, continuous_shift_flags,
                  point_distance,
-                 buffer_thickness=-1, all_twelve_neighbors=00000,
-                 exercise_cpp=0001):
+                 buffer_thickness=-1, all_twelve_neighbors=False,
+                 exercise_cpp=True):
   if (exercise_cpp):
     cpp = close_packing.hexagonal_sampling_generator(
       cb_op_original_to_sampling=cb_op_original_to_sampling,
@@ -66,10 +66,10 @@ def hcp_fill_box(cb_op_original_to_sampling, float_asu, continuous_shift_flags,
   hex_cell = hexagonal_sampling_cell(point_distance=point_distance)
   hex_box = hexagonal_box(
     hex_cell=hex_cell,
-    vertices_cart=float_asu.volume_vertices(cartesian=0001))
+    vertices_cart=float_asu.volume_vertices(cartesian=True))
   hex_box_buffer = hexagonal_box(
     hex_cell=hex_cell,
-    vertices_cart=float_asu_buffer.volume_vertices(cartesian=0001))
+    vertices_cart=float_asu_buffer.volume_vertices(cartesian=True))
   box_lower = []
   box_upper = []
   for i in xrange(3):
@@ -89,7 +89,7 @@ def hcp_fill_box(cb_op_original_to_sampling, float_asu, continuous_shift_flags,
   sites_frac = flex.vec3_double()
   for point in flex.nested_loop(begin=box_lower,
                                 end=box_upper,
-                                open_range=00000):
+                                open_range=False):
     site_hex = matrix.col(hex_box.pivot) \
              + matrix.col(hex_indices_as_site(point))
     site_frac = hex_to_frac_matrix * site_hex
@@ -259,18 +259,18 @@ def run_call_back(flags, space_group_info):
   if (flags.Verbose):
     print crystal_symmetry.unit_cell()
   symmetry_flags=sgtbx.search_symmetry_flags(
-      use_space_group_symmetry=0001,
+      use_space_group_symmetry=True,
       use_space_group_ltr=0,
-      use_seminvariants=0001,
-      use_normalizer_k2l=00000,
-      use_normalizer_l2n=00000)
+      use_seminvariants=True,
+      use_normalizer_k2l=False,
+      use_normalizer_l2n=False)
   point_distance = 2
   buffer_thickness = -1
-  all_twelve_neighbors = 00000
+  all_twelve_neighbors = False
   if (flags.strictly_inside):
     buffer_thickness = 0
   if (flags.all_twelve_neighbors):
-    all_twelve_neighbors = 0001
+    all_twelve_neighbors = True
   if (flags.Verbose):
     print "buffer_thickness:", buffer_thickness
     print "all_twelve_neighbors:", all_twelve_neighbors
@@ -303,14 +303,14 @@ def exercise_all_twelve_neighbors():
       unit_cell=(14.4225, 14.4225, 14.4225, 90, 90, 90),
       space_group_symbol="F m -3 m"),
     symmetry_flags=sgtbx.search_symmetry_flags(
-      use_space_group_symmetry=0001,
+      use_space_group_symmetry=True,
       use_space_group_ltr=0,
-      use_seminvariants=0001,
-      use_normalizer_k2l=00000,
-      use_normalizer_l2n=00000),
+      use_seminvariants=True,
+      use_normalizer_k2l=False,
+      use_normalizer_l2n=False),
     point_distance=2,
     buffer_thickness=-1,
-    all_twelve_neighbors=0001)
+    all_twelve_neighbors=True)
   assert len(sites_cart) == 37
 
 def exercise_groel_sampling(verbose):
@@ -319,17 +319,17 @@ def exercise_groel_sampling(verbose):
     space_group_symbol="P 21 21 2")
   t00 = time.time()
   n_sites = []
-  for use_space_group_symmetry in [0001,00000]:
-    for use_seminvariants in [0001,00000]:
-      for all_twelve_neighbors in [00000,0001]:
+  for use_space_group_symmetry in [True,False]:
+    for use_seminvariants in [True,False]:
+      for all_twelve_neighbors in [False,True]:
         sampling_generator = close_packing.hexagonal_sampling(
           crystal_symmetry=crystal_symmetry,
           symmetry_flags=sgtbx.search_symmetry_flags(
             use_space_group_symmetry=use_space_group_symmetry,
             use_space_group_ltr=0,
             use_seminvariants=use_seminvariants,
-            use_normalizer_k2l=00000,
-            use_normalizer_l2n=00000),
+            use_normalizer_k2l=False,
+            use_normalizer_l2n=False),
           point_distance=2,
           buffer_thickness=-1,
           all_twelve_neighbors=all_twelve_neighbors)

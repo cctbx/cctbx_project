@@ -104,7 +104,7 @@ def run(gaussian_fit_pickle_file_names, itvc_file_name, kissel_dir):
     print
   if (max_errors.size() > 0):
     print "Summary:"
-    perm = flex.sort_permutation(data=max_errors, reverse=0001)
+    perm = flex.sort_permutation(data=max_errors, reverse=True)
     max_errors = max_errors.select(perm)
     labeled_fits = flex.select(labeled_fits, perm)
     quick_summary = {}
@@ -151,7 +151,7 @@ def cross_check(args):
       max_of_errors.append(max(error_1, error_2))
       atomic_numbers.append(
         tiny_pse.table(label_1.split("_")[0]).atomic_number())
-  for sort_key,reverse in [(max_of_errors,0001), (atomic_numbers,00000)]:
+  for sort_key,reverse in [(max_of_errors,True), (atomic_numbers,False)]:
     perm = flex.sort_permutation(data=sort_key, reverse=reverse)
     perm_lines = flex.select(lines, perm)
     for line in perm_lines:

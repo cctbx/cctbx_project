@@ -22,7 +22,7 @@ def randomize_phases(f_calc, fudge_factor):
                       * 360 - 180) * fudge_factor
   phases.set_selected(centric_flags, centric_phases)
   phases.set_selected(acentric_flags, acentric_phases)
-  return f_calc.phase_transfer(phases, deg=0001)
+  return f_calc.phase_transfer(phases, deg=True)
 
 def skewness_calculation(space_group_info, n_test_points=10,
                          n_sites=20, d_min=3, volume_per_atom=200):
@@ -30,12 +30,12 @@ def skewness_calculation(space_group_info, n_test_points=10,
     space_group_info=space_group_info,
     elements=["Se"]*n_sites,
     volume_per_atom=volume_per_atom,
-    anisotropic_flag=00000,
-    random_u_iso=0001)
+    anisotropic_flag=False,
+    random_u_iso=True)
   structure.show_summary()
   print
   f_calc = structure.structure_factors(
-    d_min=d_min, anomalous_flag=00000).f_calc()
+    d_min=d_min, anomalous_flag=False).f_calc()
   f_calc.show_summary()
   print
   for i_fudge_factor in xrange(n_test_points+1):

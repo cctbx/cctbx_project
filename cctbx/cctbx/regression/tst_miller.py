@@ -19,10 +19,10 @@ def exercise_set():
   xs = crystal.symmetry((3,4,5), "P 2 2 2")
   mi = flex.miller_index(((1,2,3), (0,0,4)))
   ms = miller.set(xs, mi)
-  ms = miller.set(xs, mi, 00000)
-  ms = miller.set(xs, mi, 0001)
+  ms = miller.set(xs, mi, False)
+  ms = miller.set(xs, mi, True)
   assert ms.indices() == mi
-  assert ms.anomalous_flag() == 0001
+  assert ms.anomalous_flag() == True
   mc = ms.copy()
   assert not mc is ms
   assert mc.unit_cell() is ms.unit_cell()
@@ -43,14 +43,14 @@ def exercise_set():
   assert approx_equal(ms.resolution_range(), (1.25, 1.177603))
   p1 = ms.expand_to_p1()
   assert p1.indices().size() == 6
-  b = p1.setup_binner(auto_binning=0001)
+  b = p1.setup_binner(auto_binning=True)
   b = p1.setup_binner(reflections_per_bin=1)
   b = p1.setup_binner(n_bins=8)
   assert id(p1.binner()) == id(b)
   assert b.limits().size() == 9
   assert tuple(ms.sort().indices()) == ((0,0,4), (1,2,3))
-  assert tuple(ms.sort(reverse=0001).indices()) == ((1,2,3), (0,0,4))
-  ms = miller.set(xs, mi, 00000)
+  assert tuple(ms.sort(reverse=True).indices()) == ((1,2,3), (0,0,4))
+  ms = miller.set(xs, mi, False)
   mp = ms.patterson_symmetry()
   assert str(mp.space_group_info()) == "P m m m"
   assert mp.indices() == ms.indices()
@@ -62,19 +62,19 @@ def exercise_set():
   assert flex.order(ms.indices(), ma.indices()) == 0
   ma = ms.remove_systematic_absences()
   assert flex.order(ms.indices(), ma.indices()) == 0
-  assert miller.set(xs, mi).auto_anomalous().anomalous_flag() == 00000
+  assert miller.set(xs, mi).auto_anomalous().anomalous_flag() == False
   mi.extend(flex.miller_index(((-1,-2,-3), (3,4,5), (-3,-4,-5))))
   ma = miller.set(xs, mi)
   assert ma.n_bijvoet_pairs() == 2
-  assert ma.auto_anomalous().anomalous_flag() == 0001
+  assert ma.auto_anomalous().anomalous_flag() == True
   assert ma.auto_anomalous(
-    min_n_bijvoet_pairs=2).anomalous_flag() == 0001
+    min_n_bijvoet_pairs=2).anomalous_flag() == True
   assert ma.auto_anomalous(
-    min_n_bijvoet_pairs=3).anomalous_flag() == 00000
+    min_n_bijvoet_pairs=3).anomalous_flag() == False
   assert ma.auto_anomalous(
-    min_fraction_bijvoet_pairs=4/5.-1.e-4).anomalous_flag() == 0001
+    min_fraction_bijvoet_pairs=4/5.-1.e-4).anomalous_flag() == True
   assert ma.auto_anomalous(
-    min_fraction_bijvoet_pairs=4/5.+1.e-4).anomalous_flag() == 00000
+    min_fraction_bijvoet_pairs=4/5.+1.e-4).anomalous_flag() == False
   s = StringIO.StringIO()
   mc.show_comprehensive_summary(f=s)
   assert s.getvalue() == """\
@@ -93,7 +93,7 @@ def exercise_binner():
   crystal_symmetry = crystal.symmetry(
     unit_cell="14.311  57.437  20.143",
     space_group_symbol="C m c m")
-  for anomalous_flag in [00000, 0001]:
+  for anomalous_flag in [False, True]:
     set1 = miller.build_set(
       crystal_symmetry=crystal_symmetry,
       anomalous_flag=anomalous_flag,
@@ -122,7 +122,7 @@ bin  2:   14.1305 >= d >   11.4473: 3/3 =   1.0000
 bin  3:   11.4473 >= d >   10.0715: 2/2 =   1.0000
 unused:   10.0715 >  d            : 8/8 =   1.0000
 """
-    binned_ratios = set2.completeness(use_binning=0001)
+    binned_ratios = set2.completeness(use_binning=True)
     s = StringIO.StringIO()
     binned_ratios.show(f=s)
     assert s.getvalue() == """\
@@ -133,7 +133,7 @@ bin  3:   11.4473 >= d >   10.0715: (2, 2)
 unused:   10.0715 >  d            : (8, 8)
 """
     s = StringIO.StringIO()
-    binned_ratios.show(show_n=0001, f=s)
+    binned_ratios.show(show_n=True, f=s)
     assert s.getvalue() == """\
 unused:              d >   28.7186: n=    0, (0, 0)
 bin  1:   28.7186 >= d >   14.1305: n=    3, (3, 3)
@@ -146,13 +146,13 @@ def exercise_crystal_gridding():
   crystal_symmetry = crystal.symmetry(
     unit_cell=(95.2939, 95.2939, 98.4232, 94.3158, 115.226, 118.822),
     space_group_symbol="Hall: C 2y (x+y,-x+y+z,z)")
-  f_obs = miller.build_set(crystal_symmetry, anomalous_flag=00000, d_min=3.5)
+  f_obs = miller.build_set(crystal_symmetry, anomalous_flag=False, d_min=3.5)
   symmetry_flags = sgtbx.search_symmetry_flags(
-    use_space_group_symmetry=00000,
+    use_space_group_symmetry=False,
     use_space_group_ltr=0,
-    use_seminvariants=0001,
-    use_normalizer_k2l=00000,
-    use_normalizer_l2n=00000)
+    use_seminvariants=True,
+    use_normalizer_k2l=False,
+    use_normalizer_l2n=False)
   crystal_gridding_tags = f_obs.crystal_gridding(
     symmetry_flags=symmetry_flags,
     resolution_factor=1/3.,
@@ -204,7 +204,7 @@ def exercise_array():
   mi = flex.miller_index(((1,2,3), (-1,-2,-3), (2,3,4), (-2,-3,-4), (3,4,5)))
   data = flex.double((1,2,5,3,6))
   sigmas = flex.double((0.1,0.2,0.3,0.4,0.5))
-  ms = miller.set(xs, mi, anomalous_flag=0001)
+  ms = miller.set(xs, mi, anomalous_flag=True)
   ma = miller.array(ms, data, sigmas)
   ad = ma.anomalous_differences()
   assert tuple(ad.indices()) == ((1,2,3), (2,3,4))
@@ -218,7 +218,7 @@ def exercise_array():
     assert approx_equal(tuple(hm.data()), (2,3))
     assert approx_equal(tuple(hm.sigmas()), (0.2,0.4))
   assert approx_equal(ma.anomalous_signal(), 0.5063697)
-  ms = miller.set(crystal.symmetry(), mi, anomalous_flag=0001)
+  ms = miller.set(crystal.symmetry(), mi, anomalous_flag=True)
   ma = miller.array(ms, data, sigmas)
   ad = ma.anomalous_differences()
   assert tuple(ad.indices()) == ((1,2,3), (2,3,4))
@@ -236,7 +236,7 @@ def exercise_array():
     assert tuple(sa.indices()) == ((1,2,3), (-2,-3,-4))
     assert approx_equal(tuple(sa.data()), (1,3))
     assert approx_equal(tuple(sa.sigmas()), (0.1,0.4))
-  ms = miller.build_set(xs, anomalous_flag=00000, d_min=1)
+  ms = miller.build_set(xs, anomalous_flag=False, d_min=1)
   ma = miller.array(ms)
   sa = ma.resolution_filter()
   assert ma.indices().size() == sa.indices().size()
@@ -244,7 +244,7 @@ def exercise_array():
   assert sa.indices().size() == 0
   sa = ma.resolution_filter(d_min=2)
   assert sa.indices().size() == 10
-  sa = ma.resolution_filter(d_min=2, negate=0001)
+  sa = ma.resolution_filter(d_min=2, negate=True)
   assert sa.indices().size() == 38
   ma = ma.d_spacings()
   ma = miller.array(ma, ma.data(), ma.data().deep_copy())
@@ -274,17 +274,17 @@ def exercise_array():
     for use_multiplicities in (0,1):
       sa = ma.rms_filter(-1, use_binning, use_multiplicities)
       assert sa.indices().size() == 0
-      sa = ma.rms_filter(100, use_binning, use_multiplicities, 00000)
+      sa = ma.rms_filter(100, use_binning, use_multiplicities, False)
       assert sa.indices().size() == ma.indices().size()
-      sa = ma.rms_filter(-1, use_binning, use_multiplicities, negate=0001)
+      sa = ma.rms_filter(-1, use_binning, use_multiplicities, negate=True)
       assert sa.indices().size() == ma.indices().size()
-      sa = ma.rms_filter(100, use_binning, use_multiplicities, negate=0001)
+      sa = ma.rms_filter(100, use_binning, use_multiplicities, negate=True)
       assert sa.indices().size() == 0
       sa = ma.rms_filter(1.0, use_binning, use_multiplicities)
       assert sa.indices().size() \
           == ((36, 33), (29, 29))[use_binning][use_multiplicities]
   assert approx_equal(ma.statistical_mean(), 1.380312)
-  assert approx_equal(tuple(ma.statistical_mean(0001)),
+  assert approx_equal(tuple(ma.statistical_mean(True)),
                       (1.768026, 1.208446, 0.9950434))
   no = ma.remove_patterson_origin_peak()
   assert approx_equal(no.data()[0], 3.231974)
@@ -326,28 +326,28 @@ def exercise_array():
   ms = miller.set(xs, mi)
   ma = miller.array(ms).remove_systematic_absences()
   assert tuple(ma.indices()) == ((0,0,2), (0,0,-4))
-  ma = miller.array(ms).remove_systematic_absences(negate=0001)
+  ma = miller.array(ms).remove_systematic_absences(negate=True)
   assert tuple(ma.indices()) == ((0,0,1), (0,0,-3))
   ma = miller.array(ms, flex.double((3,4,1,-2)), flex.double((.3,.4,.1,.2)))
   sa = ma.sort(by_value="resolution")
   assert tuple(sa.indices()) == ((0,0,1), (0,0,2), (0,0,-3), (0,0,-4))
   assert approx_equal(sa.data(), (3,4,1,-2))
   assert approx_equal(sa.sigmas(), (.3,.4,.1,.2))
-  sa = ma.sort(by_value="resolution", reverse=0001)
+  sa = ma.sort(by_value="resolution", reverse=True)
   assert tuple(sa.indices()) == ((0,0,-4), (0,0,-3), (0,0,2), (0,0,1))
   assert approx_equal(sa.data(), (-2,1,4,3))
   assert approx_equal(sa.sigmas(), (.2,.1,.4,.3))
   sa = ma.sort(by_value="data")
   assert approx_equal(sa.data(), (4,3,1,-2))
-  sa = ma.sort(by_value="data", reverse=0001)
+  sa = ma.sort(by_value="data", reverse=True)
   assert approx_equal(sa.data(), (-2,1,3,4))
   sa = ma.sort(by_value="abs")
   assert approx_equal(sa.data(), (4,3,-2,1))
-  sa = ma.sort(by_value="abs", reverse=0001)
+  sa = ma.sort(by_value="abs", reverse=True)
   assert approx_equal(sa.data(), (1,-2,3,4))
   sa = ma.sort(by_value=flex.double((3,1,4,2)))
   assert tuple(sa.indices()) == ((0,0,-3), (0,0,1), (0,0,-4), (0,0,2))
-  sa = ma.sort(by_value=flex.double((3,1,4,2)), reverse=0001)
+  sa = ma.sort(by_value=flex.double((3,1,4,2)), reverse=True)
   assert tuple(sa.indices()) == ((0,0,2), (0,0,-4), (0,0,1), (0,0,-3))
   aa = sa.adopt_set(ma)
   assert tuple(aa.indices()) == tuple(ma.indices())
@@ -359,7 +359,7 @@ def exercise_array():
   sa = sa.apply_scaling(factor=3)
   assert approx_equal(flex.max(sa.data()), 30)
   assert approx_equal(flex.max(sa.sigmas()), 3)
-  ma = miller.array(miller.set(xs, mi, 00000),data,sigmas).patterson_symmetry()
+  ma = miller.array(miller.set(xs, mi, False),data,sigmas).patterson_symmetry()
   assert str(ma.space_group_info()) == "P 1 1 2/m"
   assert ma.indices() == mi
   assert ma.data() == data
@@ -380,14 +380,14 @@ def exercise_array():
   assert tuple(c2.sigmas()) == (6,)
   assert tuple(c1.adopt_set(c2).indices()) == ((1,-2,3),)
   sg = miller.array(
-    miller.set(xs, flex.miller_index(((0,0,-5), (1,-2,3))), 00000),
+    miller.set(xs, flex.miller_index(((0,0,-5), (1,-2,3))), False),
     flex.double((3,4)))
   p1 = sg.expand_to_p1()
   assert p1.indices().size() == 3
   assert approx_equal(tuple(p1.data()), (3,4,4))
   assert p1.sigmas() is None
   sg = miller.array(
-    miller.set(xs, flex.miller_index(((0,0,-5), (1,-2,3))), 00000),
+    miller.set(xs, flex.miller_index(((0,0,-5), (1,-2,3))), False),
     flex.double((3,4)),
     flex.double((5,6)))
   p1 = sg.expand_to_p1()
@@ -399,16 +399,16 @@ def exercise_array():
   data = flex.double((1,2))
   a = miller.array(miller.set(xs, mi), data)
   ph = flex.double((10,20))
-  b = a.phase_transfer(ph, deg=0001)
+  b = a.phase_transfer(ph, deg=True)
   assert approx_equal(tuple(b.amplitudes().data()), a.data())
-  assert approx_equal(tuple(b.phases(deg=0001).data()), (10,0))
+  assert approx_equal(tuple(b.phases(deg=True).data()), (10,0))
   ph = ph * math.pi/180
-  b = a.phase_transfer(ph, deg=00000)
+  b = a.phase_transfer(ph, deg=False)
   assert approx_equal(tuple(b.amplitudes().data()), a.data())
-  assert approx_equal(tuple(b.phases(deg=0001).data()), (10,0))
+  assert approx_equal(tuple(b.phases(deg=True).data()), (10,0))
   c = a.phase_transfer(b.data())
   assert approx_equal(tuple(c.amplitudes().data()), a.data())
-  assert approx_equal(tuple(c.phases(deg=0001).data()), (10,0))
+  assert approx_equal(tuple(c.phases(deg=True).data()), (10,0))
   a = miller.array(miller_set=a, data=flex.complex_double([1+2j,2-3j]))
   c = a.conjugate()
   assert approx_equal(a.data(), flex.conj(c.data()))
@@ -417,7 +417,7 @@ def exercise_array_2(space_group_info):
   xs = crystal.symmetry(
     unit_cell=space_group_info.any_compatible_unit_cell(60),
     space_group_info=space_group_info)
-  for anomalous_flag in (00000, 0001):
+  for anomalous_flag in (False, True):
     st = miller.build_set(xs, anomalous_flag, d_min=1)
     for sigmas in (None, flex.double(xrange(1,st.indices().size()+1))):
       sg = miller.array(
@@ -430,7 +430,7 @@ def exercise_array_2(space_group_info):
         p1.data(),
         p1.sigmas())
       m = ps.merge_equivalents()
-      p = m.array().sort_permutation(by_value="data", reverse=0001)
+      p = m.array().sort_permutation(by_value="data", reverse=True)
       assert flex.order(sg.indices(), m.array().indices().select(p)) == 0
       assert approx_equal(sg.data(), m.array().data().select(p))
       if (sigmas is not None):
@@ -442,7 +442,7 @@ def exercise_array_2(space_group_info):
 def exercise_fft_map():
   xs = crystal.symmetry((3,4,5), "P 2 2 2")
   mi = flex.miller_index(((1,-2,3), (0,0,-4)))
-  for anomalous_flag in (00000, 0001):
+  for anomalous_flag in (False, True):
     ms = miller.set(xs, mi, anomalous_flag=anomalous_flag)
     ma = miller.array(ms, flex.complex_double((1,2)))
     fft_map = ma.fft_map()
@@ -464,19 +464,19 @@ def exercise_squaring_and_patterson_map(space_group_info,
     elements=["const"]*n_scatterers,
     volume_per_atom=500,
     min_distance=5.,
-    general_positions_only=0001,
+    general_positions_only=True,
     u_iso=0.0)
   if (0 or verbose):
     structure.show_summary().show_scatterers()
   e_000 = math.sqrt(n_scatterers * structure.space_group().order_z())
   f_calc = structure.structure_factors(
-    d_min=d_min, anomalous_flag=00000).f_calc()
+    d_min=d_min, anomalous_flag=False).f_calc()
   f_calc = f_calc.sort(by_value="abs")
   f = abs(f_calc)
   assert approx_equal(f.data(), f_calc.amplitudes().data())
-  assert approx_equal(f_calc.phases(deg=0001).data()*math.pi/180,
+  assert approx_equal(f_calc.phases(deg=True).data()*math.pi/180,
                       f_calc.phases().data())
-  f.setup_binner(auto_binning=0001)
+  f.setup_binner(auto_binning=True)
   e = f.quasi_normalize_structure_factors()
   grid_resolution_factor = 1/3.
   u_base = xray.calc_u_base(d_min, grid_resolution_factor)
@@ -495,8 +495,8 @@ def exercise_squaring_and_patterson_map(space_group_info,
   if (0 or verbose):
     print "mean_weighted_phase_error: %.2f" % mwpe
   assert mwpe < 2
-  for sharpening in (00000, 0001):
-    for origin_peak_removal in (00000, 0001):
+  for sharpening in (False, True):
+    for origin_peak_removal in (False, True):
       patterson_map = eb.patterson_map(
         symmetry_flags=maptbx.use_space_group_symmetry,
         resolution_factor=grid_resolution_factor,
@@ -524,19 +524,19 @@ def exercise_array_correlation(space_group_info,
     size=arrays[1].indices().size()))
   a,b = arrays[0].common_sets(arrays[1])
   assert a.indices().all_eq(b.indices())
-  for anomalous_flag in [00000, 0001]:
+  for anomalous_flag in [False, True]:
     if (anomalous_flag):
       arrays[0] = arrays[0].as_anomalous()
     assert approx_equal(arrays[0].correlation(arrays[0]).coefficient(), 1)
     assert approx_equal(arrays[0].correlation(arrays[1]).coefficient(),
                         arrays[1].correlation(arrays[0]).coefficient())
-    arrays[0].setup_binner(auto_binning=0001)
+    arrays[0].setup_binner(auto_binning=True)
     arrays[1].use_binning_of(arrays[0])
-    for corr in arrays[0].correlation(arrays[0], use_binning=0001).data():
+    for corr in arrays[0].correlation(arrays[0], use_binning=True).data():
       if (corr.n() > 0):
         assert approx_equal(corr.coefficient(), 1)
-    corr0 = arrays[0].correlation(arrays[1], use_binning=0001).data()
-    corr1 = arrays[1].correlation(arrays[0], use_binning=0001).data()
+    corr0 = arrays[0].correlation(arrays[1], use_binning=True).data()
+    corr1 = arrays[1].correlation(arrays[0], use_binning=True).data()
     for c0,c1 in zip(corr0,corr1):
       assert c0.n() == c1.n()
       if (c0.n() > 0):
@@ -546,12 +546,12 @@ def exercise_as_hendrickson_lattman(space_group_info, n_scatterers=5, d_min=3,
                                     verbose=0):
   phase_integrator = miller.phase_integrator()
   phase_restriction = space_group_info.group().phase_restriction
-  for anomalous_flag in [00000, 0001]:
+  for anomalous_flag in [False, True]:
     structure = random_structure.xray_structure(
       space_group_info,
       elements=["const"]*n_scatterers,
       volume_per_atom=200,
-      random_f_double_prime=00000)
+      random_f_double_prime=False)
     f_calc = structure.structure_factors(
       d_min=d_min,
       anomalous_flag=anomalous_flag,
@@ -588,7 +588,7 @@ def generate_random_hl(miller_set, coeff_range=5):
       f = fom * complex(math.cos(angle), math.sin(angle))
       assert abs(f - phase_info.valid_structure_factor(f)) < 1.e-6
       hl.append(cctbx.hendrickson_lattman(
-        centric_flag=0001,
+        centric_flag=True,
         phase_integral=f,
         max_figure_of_merit=1-1.e-6))
     else:
@@ -602,7 +602,7 @@ def exercise_phase_integrals(space_group_info):
       volume=250*space_group_info.group().n_ltr()),
     space_group_info=space_group_info)
   is_centric = space_group_info.group().is_centric
-  for anomalous_flag in [00000, 0001]:
+  for anomalous_flag in [False, True]:
     miller_set = miller.build_set(
       crystal_symmetry=crystal_symmetry,
       anomalous_flag=anomalous_flag,

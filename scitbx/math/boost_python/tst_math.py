@@ -31,17 +31,17 @@ def exercise_floating_point_epsilon():
 def exercise_euler_angles():
   assert approx_equal(euler_angles_as_matrix([0,0,0]).elems,
     [1,0,0,0,1,0,0,0,1])
-  assert approx_equal(euler_angles_as_matrix([180,0,0], deg=0001).elems,
+  assert approx_equal(euler_angles_as_matrix([180,0,0], deg=True).elems,
     [-1,0,0,0,-1,0,0,0,1])
-  assert approx_equal(euler_angles_as_matrix([0,180,0], deg=0001).elems,
+  assert approx_equal(euler_angles_as_matrix([0,180,0], deg=True).elems,
     [-1,0,0,0,1,0,0,0,-1])
-  assert approx_equal(euler_angles_as_matrix([0,0,180], deg=0001).elems,
+  assert approx_equal(euler_angles_as_matrix([0,0,180], deg=True).elems,
     [-1,0,0,0,-1,0,0,0,1])
-  assert approx_equal(euler_angles_as_matrix([90,0,0], deg=0001).elems,
+  assert approx_equal(euler_angles_as_matrix([90,0,0], deg=True).elems,
     [0,-1,0,1,0,0,0,0,1])
-  assert approx_equal(euler_angles_as_matrix([0,90,0], deg=0001).elems,
+  assert approx_equal(euler_angles_as_matrix([0,90,0], deg=True).elems,
     [0,0,1,0,1,0,-1,0,0])
-  assert approx_equal(euler_angles_as_matrix([0,0,90], deg=0001).elems,
+  assert approx_equal(euler_angles_as_matrix([0,0,90], deg=True).elems,
     [0,-1,0,1,0,0,0,0,1])
 
 def exercise_erf():
@@ -395,9 +395,9 @@ def exercise_gaussian_sum():
   assert approx_equal(g.c(), 0)
   assert g.use_c()
   assert g.n_parameters() == 1
-  g = gaussian.sum(0, 0001)
+  g = gaussian.sum(0, True)
   assert g.use_c()
-  g = gaussian.sum(0, 00000)
+  g = gaussian.sum(0, False)
   assert not g.use_c()
   g = gaussian.sum(1)
   assert g.n_terms() == 0
@@ -423,7 +423,7 @@ def exercise_gaussian_sum():
   assert approx_equal(g.array_of_b(), (2,4))
   assert approx_equal(g.c(), 0)
   assert not g.use_c()
-  g = gaussian.sum(flex.double((1,2,3,4)), 0, 0001)
+  g = gaussian.sum(flex.double((1,2,3,4)), 0, True)
   assert approx_equal(g.c(), 0)
   assert g.use_c()
   g = gaussian.sum(flex.double((1,2,3,4)), 5)
@@ -606,22 +606,22 @@ def exercise_gaussian_fit():
   gf = gaussian.fit(
     x, reference_gaussian, flex.double(x.size(), 1),
     gaussian.sum((1,2), (4,5)))
-  assert list(gf.bound_flags(00000, 00000)) == [00000,00000,00000,00000]
-  assert list(gf.bound_flags(0001, 00000)) == [0001,00000,0001,00000]
-  assert list(gf.bound_flags(00000, 0001)) == [00000,0001,00000,0001]
-  sgf = gf.apply_shifts(flex.double((3,-3,4,6)), 0001)
+  assert list(gf.bound_flags(False, False)) == [False,False,False,False]
+  assert list(gf.bound_flags(True, False)) == [True,False,True,False]
+  assert list(gf.bound_flags(False, True)) == [False,True,False,True]
+  sgf = gf.apply_shifts(flex.double((3,-3,4,6)), True)
   assert approx_equal(sgf.array_of_a(), (1+3,2+4))
   assert approx_equal(sgf.array_of_b(),
     ((math.sqrt(4)-3)**2,(math.sqrt(5)+6)**2))
   assert approx_equal(sgf.c(), 0)
   assert not sgf.use_c()
-  sgf = gf.apply_shifts(flex.double((3,-3,4,6)), 00000)
+  sgf = gf.apply_shifts(flex.double((3,-3,4,6)), False)
   assert approx_equal(sgf.array_of_a(), (1+3,2+4))
   assert approx_equal(sgf.array_of_b(), (4-3,5+6))
   assert approx_equal(sgf.c(), 0)
   assert not sgf.use_c()
   differences = sgf.differences()
-  for use_sigmas in [00000, 0001]:
+  for use_sigmas in [False, True]:
     assert approx_equal(sgf.target_function(2, use_sigmas, differences),
       25.0320634)
     assert approx_equal(sgf.target_function(4, use_sigmas, differences),
@@ -632,22 +632,22 @@ def exercise_gaussian_fit():
   gfc = gaussian.fit(
     x, reference_gaussian, flex.double(x.size(), 1),
     gaussian.sum((1,2), (4,5), 6))
-  assert list(gfc.bound_flags(00000, 00000)) == [00000,00000,00000,00000,00000]
-  assert list(gfc.bound_flags(0001, 00000)) == [0001,00000,0001,00000,0001]
-  assert list(gfc.bound_flags(00000, 0001)) == [00000,0001,00000,0001,00000]
-  sgfc = gfc.apply_shifts(flex.double((3,-3,4,6,-5)), 0001)
+  assert list(gfc.bound_flags(False, False)) == [False,False,False,False,False]
+  assert list(gfc.bound_flags(True, False)) == [True,False,True,False,True]
+  assert list(gfc.bound_flags(False, True)) == [False,True,False,True,False]
+  sgfc = gfc.apply_shifts(flex.double((3,-3,4,6,-5)), True)
   assert approx_equal(sgfc.array_of_a(), (1+3,2+4))
   assert approx_equal(sgfc.array_of_b(),
     ((math.sqrt(4)-3)**2,(math.sqrt(5)+6)**2))
   assert approx_equal(sgfc.c(), 6-5)
   assert sgfc.use_c()
-  sgfc = gfc.apply_shifts(flex.double((3,-3,4,6,-5)), 00000)
+  sgfc = gfc.apply_shifts(flex.double((3,-3,4,6,-5)), False)
   assert approx_equal(sgfc.array_of_a(), (1+3,2+4))
   assert approx_equal(sgfc.array_of_b(), (4-3,5+6))
   assert approx_equal(sgfc.c(), 6-5)
   assert sgfc.use_c()
   differences = sgfc.differences()
-  for use_sigmas in [00000, 0001]:
+  for use_sigmas in [False, True]:
     assert approx_equal(sgfc.target_function(2, use_sigmas, differences),
       44.8181444)
     assert approx_equal(sgfc.target_function(4, use_sigmas, differences),
@@ -656,7 +656,7 @@ def exercise_gaussian_fit():
       sgfc.gradients_d_abc(2, use_sigmas, differences),
       [21.1132071, -6.0532695, 13.6638274, -2.2460994, 22.7860809])
   differences = c_fit.differences()
-  gabc = c_fit.gradients_d_abc(2, 00000, differences)
+  gabc = c_fit.gradients_d_abc(2, False, differences)
   assert approx_equal(
     gabc,
     [-0.016525391425206391, 0.0074465239375589107, 0.020055876723667564,
@@ -670,10 +670,10 @@ def exercise_gaussian_fit():
     (14.780757904052734, 0.77677500247955322, 42.086841583251953,
      -0.00029399999766610563, 0.23953500390052795),
     4.2979831695556641)
-  for include_constant_term in (00000, 0001):
+  for include_constant_term in (False, True):
     a = flex.double(g5c.array_of_a())
     b = flex.double(g5c.array_of_b())
-    permutation = flex.sort_permutation(data=flex.abs(a), reverse=0001)[:4]
+    permutation = flex.sort_permutation(data=flex.abs(a), reverse=True)[:4]
     gf = gaussian.fit(
       flex.double([0]),
       g5c,
@@ -684,7 +684,7 @@ def exercise_gaussian_fit():
     assert approx_equal(gf.differences(), [-5.01177418232])
     shifts = flex.double(8,-1)
     if (include_constant_term): shifts.append(-.2)
-    sgf = gf.apply_shifts(shifts, 00000)
+    sgf = gf.apply_shifts(shifts, False)
     assert approx_equal(sgf.array_of_a(),
                         [-5.2410698, 1.657506, 0.49090898, 0.078078985])
     assert approx_equal(sgf.array_of_b(),
@@ -705,7 +705,7 @@ def exercise_gaussian_fit():
         sgf)
       differences = flex.double([0.5])
       assert approx_equal(
-        gf.gradients_d_abc(2, 00000, differences),
+        gf.gradients_d_abc(2, False, differences),
         gaussian_fit_finite_diff_gradients(gf, gf.table_x()[0]),
         eps=1.e-3)
       for sigma in [0.04,0.02,0.01]:
@@ -715,7 +715,7 @@ def exercise_gaussian_fit():
           flex.double([sigma]),
           sgf)
         for power in [2,4]:
-          for use_sigmas in [00000, 0001]:
+          for use_sigmas in [False, True]:
             differences = gf.differences()
             an=gf.gradients_d_abc(power, use_sigmas, differences)
             fi=gaussian_fit_finite_diff_target_gradients(gf, power, use_sigmas)
@@ -797,7 +797,7 @@ def exercise_principal_axes_of_inertia():
     else:
       rot = euler_angles_as_matrix(
         angles=[random.uniform(0,360) for i in xrange(3)],
-        deg=0001)
+        deg=True)
     points = flex.vec3_double()
     for point in [
       [-1,-1, 0],[-1, 1, 0],
@@ -832,7 +832,7 @@ def exercise_principal_axes_of_inertia():
     assert approx_equal(paip.inertia_tensor(), paiw.inertia_tensor())
 
 def exercise_phase_error():
-  for deg in [00000, 0001]:
+  for deg in [False, True]:
     if (deg): f = 1
     else: f = math.pi/180
     assert approx_equal(signed_phase_error(phi1=-30*f, phi2=270*f, deg=deg),
@@ -873,7 +873,7 @@ def exercise_minimum_covering_sphere(epsilon=1.e-3):
   assert mcs.is_inside(mcs.center()) # base class method
   eps = epsilon*10
   eps_loose = eps*10
-  for i,j,k in flex.nested_loop((1,1,1),(2,3,2),00000):
+  for i,j,k in flex.nested_loop((1,1,1),(2,3,2),False):
     for shift in [(0,0,0),(2,3,4),(-3,-5,2)]:
       for poly_index in xrange(1,2):
         if (poly_index == 0):
@@ -936,7 +936,7 @@ def exercise_minimum_covering_sphere(epsilon=1.e-3):
         assert approx_equal(mcs.center(), expected_center, eps=eps_loose)
         assert approx_equal(mcs.radius(), expected_radius, eps=eps)
   # exercise Python implementation with sets of 2-dimensional points
-  for i,j in flex.nested_loop((1,1),(2,3),00000):
+  for i,j in flex.nested_loop((1,1),(2,3),False):
     for shift in [(0,0),(3,4),(-3,-5)]:
       # square
       points = [matrix.col(t)+matrix.col(shift) for t in [

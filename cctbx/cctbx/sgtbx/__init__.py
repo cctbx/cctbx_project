@@ -21,7 +21,7 @@ class _space_group(boost.python.injector, ext.space_group):
 
 class space_group_info:
 
-  __safe_for_unpickling__ = 0001
+  __safe_for_unpickling__ = True
 
   def __init__(self, symbol=None, table_id=None, group=None, number=None):
     assert [symbol, group, number].count(None) >= 2
@@ -57,7 +57,7 @@ class space_group_info:
   def group(self):
     return self._group
 
-  def type(self, tidy_cb_op=0001, r_den=cb_r_den, t_den=cb_t_den):
+  def type(self, tidy_cb_op=True, r_den=cb_r_den, t_den=cb_t_den):
     cache = self._space_group_info_cache
     if (not hasattr(cache, "_type")
         or cache._type_parameters != (tidy_cb_op, r_den, t_den)):

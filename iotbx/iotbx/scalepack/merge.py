@@ -24,7 +24,7 @@ class FormatError(exceptions.Exception): pass
 
 class reader:
 
-  def __init__(self, file_handle, header_only=00000):
+  def __init__(self, file_handle, header_only=False):
     line = file_handle.readline()
     if (line.rstrip() != "    1"):
       raise FormatError, "line 1: expecting '    1'"
@@ -88,7 +88,7 @@ class reader:
   def info(self):
     return "i_obs,sigma"
 
-  def as_miller_array(self, crystal_symmetry=None, force_symmetry=00000,
+  def as_miller_array(self, crystal_symmetry=None, force_symmetry=False,
                             info_prefix=""):
     return (miller.array(
       miller_set=miller.set(
@@ -103,7 +103,7 @@ class reader:
       sigmas=self.sigmas)
       .set_info(info_prefix+self.info()).set_observation_type_xray_intensity())
 
-  def as_miller_arrays(self, crystal_symmetry=None, force_symmetry=00000,
+  def as_miller_arrays(self, crystal_symmetry=None, force_symmetry=False,
                              info_prefix=""):
     return [self.as_miller_array(crystal_symmetry,force_symmetry,info_prefix)]
 

@@ -22,7 +22,7 @@ def exercise_crystal_gridding():
       space_group_info=crystal_symmetry.space_group_info(),
       mandatory_factors=mandatory_factors,
       max_prime=5,
-      assert_shannon_sampling=0001)
+      assert_shannon_sampling=True)
     assert crystal_gridding.n_real() == n_real
 
 def exercise_shannon_sampled(space_group_info, anomalous_flag, conjugate_flag,
@@ -33,9 +33,9 @@ def exercise_shannon_sampled(space_group_info, anomalous_flag, conjugate_flag,
     elements=("N", "C", "C", "O"),
     random_f_prime_d_min=1,
     random_f_double_prime=anomalous_flag,
-    anisotropic_flag=0001,
-    random_u_iso=0001,
-    random_occupancy=0001)
+    anisotropic_flag=True,
+    random_u_iso=True,
+    random_occupancy=True)
   f_calc = structure.structure_factors(
     anomalous_flag=anomalous_flag,
     d_min=d_min,
@@ -131,9 +131,9 @@ def exercise_under_sampled(space_group_info, anomalous_flag, conjugate_flag,
     elements=("N", "C", "C", "O"),
     random_f_prime_d_min=1,
     random_f_double_prime=anomalous_flag,
-    anisotropic_flag=0001,
-    random_u_iso=0001,
-    random_occupancy=0001
+    anisotropic_flag=True,
+    random_u_iso=True,
+    random_occupancy=True
     ).structure_factors(
         anomalous_flag=anomalous_flag, d_min=d_min, algorithm="direct")
   f_calc = structure_factors.f_calc()
@@ -226,8 +226,8 @@ def exercise_under_sampled(space_group_info, anomalous_flag, conjugate_flag,
     assert c.coefficient() >= 0.9999
 
 def run_call_back(flags, space_group_info):
-  for anomalous_flag in (00000, 0001)[:]: #SWITCH
-    for conjugate_flag in (00000, 0001)[:]: #SWITCH
+  for anomalous_flag in (False, True)[:]: #SWITCH
+    for conjugate_flag in (False, True)[:]: #SWITCH
       for with_shift in [0,1]:
         if (with_shift):
           sgi = debug_utils.random_origin_shift(space_group_info)
@@ -238,8 +238,8 @@ def run_call_back(flags, space_group_info):
         anomalous_flag=anomalous_flag,
         conjugate_flag=conjugate_flag,
         verbose=flags.Verbose)
-  for anomalous_flag in (00000, 0001)[:]: #SWITCH
-    for conjugate_flag in (00000, 0001)[:]: #SWITCH
+  for anomalous_flag in (False, True)[:]: #SWITCH
+    for conjugate_flag in (False, True)[:]: #SWITCH
       for under_sampling in (1,2,3,4,5):
         exercise_under_sampled(space_group_info,
                                anomalous_flag,

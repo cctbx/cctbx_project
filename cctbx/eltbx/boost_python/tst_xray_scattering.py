@@ -11,7 +11,7 @@ def exercise_gaussian():
   assert approx_equal(g.c(), 0)
   assert g.use_c()
   assert g.n_parameters() == 1
-  g = xray_scattering.gaussian(0, 00000)
+  g = xray_scattering.gaussian(0, False)
   assert g.n_terms() == 0
   assert approx_equal(g.c(), 0)
   assert not g.use_c()
@@ -37,7 +37,7 @@ def exercise_gaussian():
   assert approx_equal(g.array_of_b(), (2,4))
   assert approx_equal(g.c(), 0)
   assert not g.use_c()
-  g = xray_scattering.gaussian(flex.double((1,2,3,4)), 0, 0001)
+  g = xray_scattering.gaussian(flex.double((1,2,3,4)), 0, True)
   assert approx_equal(g.c(), 0)
   assert g.use_c()
   g = xray_scattering.gaussian(flex.double((1,2,3,4)), 5)

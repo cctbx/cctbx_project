@@ -54,20 +54,20 @@ class gridding:
   def as_flex_grid(self):
     return flex.grid(self.first, self.last, 0)
 
-  def is_compatible_flex_grid(self, flex_grid, is_p1_cell=00000):
-    if (flex_grid.nd() != 3): return 00000
+  def is_compatible_flex_grid(self, flex_grid, is_p1_cell=False):
+    if (flex_grid.nd() != 3): return False
     if (not is_p1_cell):
       self_as_flex_grid = self.as_flex_grid()
-      if (flex_grid.origin() != self_as_flex_grid.origin()): return 00000
-      if (flex_grid.last() != self_as_flex_grid.last()): return 00000
+      if (flex_grid.origin() != self_as_flex_grid.origin()): return False
+      if (flex_grid.last() != self_as_flex_grid.last()): return False
     else:
-      if (not flex_grid.is_0_based()): return 00000
-      if (flex_grid.focus() != self.n): return 00000
-    return 0001
+      if (not flex_grid.is_0_based()): return False
+      if (flex_grid.focus() != self.n): return False
+    return True
 
 class reader:
 
-  def __init__(self, file_name, header_only=00000):
+  def __init__(self, file_name, header_only=False):
     f = open(file_name, "r")
     f.readline()
     self.title_lines = []
@@ -102,7 +102,7 @@ class reader:
       self.standard_deviation = ext_reader.standard_deviation
 
 def writer(file_name, title_lines, unit_cell, gridding,
-           data, is_p1_cell=00000,
+           data, is_p1_cell=False,
            average=-1,
            standard_deviation=-1):
   assert gridding.is_compatible_flex_grid(
@@ -157,7 +157,7 @@ def cctbx_miller_fft_map_as_xplor_map(
     unit_cell=self.unit_cell(),
     gridding=gridding_,
     data=data,
-    is_p1_cell=0001,
+    is_p1_cell=True,
     average=average,
     standard_deviation=standard_deviation)
 

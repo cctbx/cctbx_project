@@ -320,7 +320,7 @@ class fortran_minimizer:
     self.w = Numeric.array(Numeric.arange(size_w), Numeric.Float64)
     self.iflag = Numeric.array([0], Numeric.Int32)
 
-  def __call__(self, x, f, g, diag=None, diagco=00000):
+  def __call__(self, x, f, g, diag=None, diagco=False):
     for i,v in x.items(): self.x[i] = v
     for i,v in g.items(): self.g[i] = v
     if (diag is not None):
@@ -337,12 +337,12 @@ class fortran_minimizer:
 
 def fortran_lbfgs_run(target_evaluator,
                       max_calls=100000,
-                      use_curvatures=00000):
+                      use_curvatures=False):
   ext = scitbx_lbfgs.ext
   scitbx_minimizer = ext.minimizer(target_evaluator.n)
   minimizer = fortran_minimizer(scitbx_minimizer)
   icall = 0
-  requests_f_and_g = 0001
+  requests_f_and_g = True
   requests_diag = use_curvatures
   while 1:
     if (not use_curvatures):
@@ -371,7 +371,7 @@ def lbfgs_run(target_evaluator,
               min_iterations=0,
               max_iterations=None,
               traditional_convergence_test=1,
-              use_curvatures=00000):
+              use_curvatures=False):
   ext = scitbx_lbfgs.ext
   minimizer = ext.minimizer(target_evaluator.n)
   minimizer.error = None
@@ -382,7 +382,7 @@ def lbfgs_run(target_evaluator,
     is_converged = ext.drop_convergence_test(min_iterations)
   try:
     icall = 0
-    requests_f_and_g = 0001
+    requests_f_and_g = True
     requests_diag = use_curvatures
     while 1:
       if (requests_f_and_g):
@@ -442,13 +442,13 @@ class twisted_gaussian_minimizer:
       self.minimizer = fortran_lbfgs_run(
         target_evaluator=self,
         use_curvatures=use_curvatures)
-    self(requests_f_and_g=0001, requests_diag=00000)
+    self(requests_f_and_g=True, requests_diag=False)
     return self
 
   def __call__(self, requests_f_and_g, requests_diag):
     if (not requests_f_and_g and not requests_diag):
-      requests_f_and_g = 0001
-      requests_diag = 0001
+      requests_f_and_g = True
+      requests_diag = True
     if (requests_f_and_g):
       self.f = twisted_gauss2d0(self.x, self.s11,self.s12,self.s22, self.twist)
       self.g = flex.double(
@@ -476,15 +476,15 @@ def run(scale=2, twist=0.5):
   for i in xrange(100):
     x = [random.random()*scale for i in (0,1)]
     print x, "start"
-    for use_curvatures in (00000, 0001):
+    for use_curvatures in (False, True):
       m = twisted_gaussian_minimizer(x=x, twist=twist).run(
-        use_fortran=00000,
+        use_fortran=False,
         use_curvatures=use_curvatures)
       print x
       print tuple(m.x), "final"
       if (use_fortran):
         mf = twisted_gaussian_minimizer(x=x, twist=twist).run(
-          use_fortran=0001,
+          use_fortran=True,
           use_curvatures=use_curvatures)
         assert mf.x.all_eq(m.x)
         print mf.minimizer.n_calls, m.minimizer.n_calls

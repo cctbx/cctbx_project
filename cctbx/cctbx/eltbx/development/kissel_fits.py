@@ -10,7 +10,7 @@ from scitbx.python_utils import easy_pickle
 from libtbx.optparse_wrapper import OptionParser
 import sys, os
 
-def run(args, cutoff, max_n_terms, six_term=00000, params=None,
+def run(args, cutoff, max_n_terms, six_term=False, params=None,
         plots_dir="kissel_fits_plots", verbose=0):
   if (params is None):
     params = cctbx.eltbx.gaussian_fit.fit_parameters(
@@ -42,12 +42,12 @@ def run(args, cutoff, max_n_terms, six_term=00000, params=None,
       tab.x.select(fit_selection),
       tab.y.select(fit_selection),
       tab.sigmas.select(fit_selection),
-      xray_scattering.gaussian(0, 00000))
+      xray_scattering.gaussian(0, False))
     null_fit_more = scitbx.math.gaussian.fit(
       tab.x.select(more_selection),
       tab.y.select(more_selection),
       tab.sigmas.select(more_selection),
-      xray_scattering.gaussian(0, 00000))
+      xray_scattering.gaussian(0, False))
     if (not six_term):
       results[tab.element] = cctbx.eltbx.gaussian_fit.incremental_fits(
         label=tab.element,

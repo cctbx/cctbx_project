@@ -60,14 +60,14 @@ class dtrek_symmetry_entry:
           print "  misfit:", s
       space_group = sgtbx.space_group_info(symbol=number).group()
       for i_smx in xrange(space_group.n_smx()):
-        OK = 00000
+        OK = False
         for i_inv in xrange(space_group.f_inv()):
           for i_ltr in xrange(space_group.n_ltr()):
             sg = space_group(i_ltr, i_inv, i_smx).mod_positive()
             for sm in matrices:
               sm = sm.mod_positive()
               if (sm == sg):
-                OK = 0001
+                OK = True
                 break
             if (OK): break
           if (OK): break

@@ -51,7 +51,7 @@ class binner(ext.binner):
       return "unused: %9.4f >  d            :" % bin_d_range[0]
     return "bin %2d:" % i_bin + " %9.4f >= d > %9.4f:" % bin_d_range
 
-  def show_data(self, data, data_fmt=None, show_n=00000, f=None):
+  def show_data(self, data, data_fmt=None, show_n=False, f=None):
     assert len(data) == self.n_bins_all()
     if (f is None): f = sys.stdout
     for i_bin in self.range_all():
@@ -77,7 +77,7 @@ class binned_data:
   def data(self):
     return self._data
 
-  def show(self, data_fmt=None, show_n=00000, f=None):
+  def show(self, data_fmt=None, show_n=False, f=None):
     self.binner().show_data(
       data=self.data(),
       data_fmt=data_fmt,
@@ -93,7 +93,7 @@ def make_lookup_dict(indices): # XXX push to C++
 class set(crystal.symmetry):
 
   def __init__(self, crystal_symmetry, indices, anomalous_flag=None):
-    assert anomalous_flag in (None, 00000, 0001)
+    assert anomalous_flag in (None, False, True)
     crystal.symmetry._copy_constructor(self, crystal_symmetry)
     self._indices = indices
     self._anomalous_flag = anomalous_flag
@@ -147,18 +147,18 @@ class set(crystal.symmetry):
     no_sys_abs = self.copy()
     if (self.space_group_info() is not None):
       sys_absent_flags = self.sys_absent_flags().data()
-      n_sys_abs = sys_absent_flags.count(0001)
+      n_sys_abs = sys_absent_flags.count(True)
       print >> f, "Systematic absences:", n_sys_abs
       if (n_sys_abs != 0):
         no_sys_abs = self.apply_selection(flags=~sys_absent_flags)
         print >> f, "Systematic absences not included in following:"
-      n_centric = no_sys_abs.centric_flags().data().count(0001)
+      n_centric = no_sys_abs.centric_flags().data().count(True)
       print >> f, "Centric reflections:", n_centric
     if (self.unit_cell() is not None):
       print >> f, "Resolution range: %.6g %.6g" % no_sys_abs.resolution_range()
       if (self.space_group_info() is not None and self.indices().size() > 0):
         no_sys_abs.setup_binner(n_bins=1)
-        completeness_d_max_d_min = no_sys_abs.completeness(use_binning=0001)
+        completeness_d_max_d_min = no_sys_abs.completeness(use_binning=True)
         assert completeness_d_max_d_min.data()[0][0] == 0
         assert completeness_d_max_d_min.data()[2][0] == 0
         n_obs, n_complete = completeness_d_max_d_min.data()[1]
@@ -205,7 +205,7 @@ class set(crystal.symmetry):
     return array(
       self, self.unit_cell().stol_sq(self.indices()))
 
-  def two_theta(self, wavelength, deg=00000):
+  def two_theta(self, wavelength, deg=False):
     return array(
       self, self.unit_cell().two_theta(self.indices(), wavelength, deg))
 
@@ -235,7 +235,7 @@ class set(crystal.symmetry):
     i = self.indices().deep_copy()
     anomalous_flag = self.anomalous_flag()
     if (anomalous_flag is None):
-      anomalous_flag = 0001
+      anomalous_flag = True
     map_to_asu(
       self.space_group_info().type(),
       anomalous_flag,
@@ -243,13 +243,13 @@ class set(crystal.symmetry):
     return set(self, i, self.anomalous_flag())
 
   def complete_set(self, tolerance=1.e-6):
-    assert self.anomalous_flag() in (00000, 0001)
+    assert self.anomalous_flag() in (False, True)
     return build_set(
       crystal_symmetry=self,
       anomalous_flag=self.anomalous_flag(),
       d_min=self.d_min()*(1-tolerance))
 
-  def completeness(self, use_binning=00000, tolerance=1.e-6):
+  def completeness(self, use_binning=False, tolerance=1.e-6):
     complete_set = self.complete_set(tolerance=tolerance)
     if (not use_binning):
       return self.indices().size() / float(complete_set.indices().size())
@@ -257,14 +257,14 @@ class set(crystal.symmetry):
     complete_set.use_binning_of(self)
     ratios = []
     for i_bin in self.binner().range_all():
-      n_complete = complete_set.binner().selection(i_bin).count(0001)
-      n_given = self.binner().selection(i_bin).count(0001)
+      n_complete = complete_set.binner().selection(i_bin).count(True)
+      n_given = self.binner().selection(i_bin).count(True)
       ratios.append((n_given, n_complete))
     return binned_data(binner=self.binner(), data=ratios)
 
   def show_completeness_in_bins(self, tolerance=1.e-6, f=None):
     if (f is None): f = sys.stdout
-    binned_ratios = self.completeness(use_binning=0001, tolerance=tolerance)
+    binned_ratios = self.completeness(use_binning=True, tolerance=tolerance)
     fractions = []
     max_len = 0
     for ratio in binned_ratios.data():
@@ -280,9 +280,9 @@ class set(crystal.symmetry):
       print >> f
 
   def all_selection(self):
-    return flex.bool(self.indices().size(), 0001)
+    return flex.bool(self.indices().size(), True)
 
-  def apply_selection(self, flags, negate=00000, anomalous_flag=None):
+  def apply_selection(self, flags, negate=False, anomalous_flag=None):
     assert self.indices() is not None
     if (anomalous_flag is None):
       anomalous_flag = self.anomalous_flag()
@@ -290,7 +290,7 @@ class set(crystal.symmetry):
     i = self.indices().select(flags)
     return set(self, i, anomalous_flag)
 
-  def remove_systematic_absences(self, negate=00000):
+  def remove_systematic_absences(self, negate=False):
     return self.apply_selection(
       flags=self.sys_absent_flags().data(),
       negate=not negate)
@@ -320,7 +320,7 @@ class set(crystal.symmetry):
       .set_observation_type(self))
 
   def match_bijvoet_mates(self):
-    assert self.anomalous_flag() in (None, 0001)
+    assert self.anomalous_flag() in (None, True)
     assert self.indices() is not None
     if (self.space_group_info() is not None):
       asu = self.map_to_asu()
@@ -335,9 +335,9 @@ class set(crystal.symmetry):
     r = self.unit_cell().min_max_d_star_sq(self.indices())
     return tuple([uctbx.d_star_sq_as_d(x) for x in r])
 
-  def sort(self, by_value="resolution", reverse=00000):
+  def sort(self, by_value="resolution", reverse=False):
     assert by_value in ("resolution",)
-    assert reverse in (00000, 0001)
+    assert reverse in (False, True)
     p = flex.sort_permutation(
       data=self.unit_cell().d_star_sq(self.indices()),
       reverse=reverse)
@@ -361,7 +361,7 @@ class set(crystal.symmetry):
     return set(self.cell_equivalent_p1(), p1.indices(), self.anomalous_flag())
 
   def patterson_symmetry(self):
-    assert self.anomalous_flag() == 00000
+    assert self.anomalous_flag() == False
     return set(
       crystal.symmetry.patterson_symmetry(self),
       self.indices(),
@@ -372,7 +372,7 @@ class set(crystal.symmetry):
                              symmetry_flags=None,
                              mandatory_factors=None,
                              max_prime=5,
-                             assert_shannon_sampling=0001):
+                             assert_shannon_sampling=True):
     if (d_min is None): d_min = self.d_min()
     return maptbx.crystal_gridding(
       unit_cell=self.unit_cell(),
@@ -384,10 +384,10 @@ class set(crystal.symmetry):
       max_prime=max_prime,
       assert_shannon_sampling=assert_shannon_sampling)
 
-  def structure_factors_from_map(self, map, in_place_fft=00000):
+  def structure_factors_from_map(self, map, in_place_fft=False):
     assert map.focus_size_1d() > 0 and map.nd() == 3 and map.is_0_based()
     assert isinstance(map, flex.double) or isinstance(map, flex.complex_double)
-    assert in_place_fft in (00000, 0001)
+    assert in_place_fft in (False, True)
     if (isinstance(map, flex.double)):
       fft = fftpack.real_to_complex_3d(map.focus())
       if (not map.is_padded()):
@@ -401,7 +401,7 @@ class set(crystal.symmetry):
         map = map.deep_copy()
       fft = fftpack.complex_to_complex_3d(map.focus())
     map = fft.forward(map)
-    conjugate_flag = 0001
+    conjugate_flag = True
     from_map = maptbx.structure_factors.from_map(
       self.anomalous_flag(),
       self.indices(),
@@ -411,7 +411,7 @@ class set(crystal.symmetry):
 
   def structure_factors_from_scatterers(self, xray_structure,
                                         algorithm=None,
-                                        cos_sin_table=00000,
+                                        cos_sin_table=False,
                                         quality_factor=None,
                                         u_base=None,
                                         b_base=None,
@@ -635,7 +635,7 @@ class array(set):
 
   def eliminate_sys_absent(self):
     sys_absent_flags = self.sys_absent_flags().data()
-    if (sys_absent_flags.all_eq(00000)): return self
+    if (sys_absent_flags.all_eq(False)): return self
     return self.apply_selection(flags=~sys_absent_flags)
 
   def adopt_set(self, other):
@@ -664,13 +664,13 @@ class array(set):
     return [self.apply_selection(pairs.column(0)),
             other.apply_selection(pairs.column(1))]
 
-  def sort(self, by_value="resolution", reverse=00000):
+  def sort(self, by_value="resolution", reverse=False):
     return self.apply_sort_permutation(self.sort_permutation(
       by_value=by_value,
       reverse=reverse))
 
-  def sort_permutation(self, by_value="resolution", reverse=00000):
-    assert reverse in (00000, 0001)
+  def sort_permutation(self, by_value="resolution", reverse=False):
+    assert reverse in (False, True)
     if (by_value == "resolution"):
       result = flex.sort_permutation(
         data=self.unit_cell().d_star_sq(self.indices()),
@@ -728,7 +728,7 @@ class array(set):
       new_data = p1.hendrickson_lattman_coefficients()
     else:
       assert isinstance(self.data(), flex.double)
-      assert phase_deg in (None, 00000, 0001)
+      assert phase_deg in (None, False, True)
       if (phase_deg is None):
         p1 = expand_to_p1(
           self.space_group(), self.anomalous_flag(), self.indices(),
@@ -765,7 +765,7 @@ class array(set):
       data=new_data,
       sigmas=new_sigmas).set_observation_type(self)
 
-  def phase_transfer(self, phase_source, epsilon=1.e-10, deg=00000,
+  def phase_transfer(self, phase_source, epsilon=1.e-10, deg=False,
                            phase_integrator_n_steps=None):
     assert self.data() is not None
     if (hasattr(phase_source, "data")):
@@ -841,7 +841,7 @@ class array(set):
     s = None
     if (asu.sigmas() is not None):
       s = matches.additive_sigmas(asu.sigmas())
-    return array(set(asu, i, anomalous_flag=00000), d, s)
+    return array(set(asu, i, anomalous_flag=False), d, s)
 
   def hemisphere(self, plus_or_minus):
     assert plus_or_minus in ("+", "-")
@@ -850,7 +850,7 @@ class array(set):
     i_column = "+-".index(plus_or_minus)
     return asu.select(
       permutation=matches.pairs().column(i_column),
-      anomalous_flag=00000)
+      anomalous_flag=False)
 
   def hemispheres(self):
     assert self.data() is not None
@@ -858,10 +858,10 @@ class array(set):
     return tuple(
       [asu.select(
         permutation=matches.pairs().column(i_column),
-        anomalous_flag=00000)
+        anomalous_flag=False)
        for i_column in (0,1)])
 
-  def anomalous_signal(self, use_binning=00000):
+  def anomalous_signal(self, use_binning=False):
     "sqrt((<||f_plus|-|f_minus||**2>)/(1/2(<|f_plus|>**2+<|f_minus|>**2)))"
     assert not use_binning or self.binner() is not None
     if (not use_binning):
@@ -883,7 +883,7 @@ class array(set):
       results.append(self.apply_selection(sel).anomalous_signal())
     return binned_data(binner=self.binner(), data=results)
 
-  def apply_selection(self, flags, negate=00000, anomalous_flag=None):
+  def apply_selection(self, flags, negate=False, anomalous_flag=None):
     assert self.indices() is not None
     if (anomalous_flag is None):
       anomalous_flag = self.anomalous_flag()
@@ -928,7 +928,7 @@ class array(set):
       result = flex.double()
       for i_bin in self.binner().range_used():
         sel = self.binner().selection(i_bin)
-        if (sel.count(0001) == 0):
+        if (sel.count(True) == 0):
           result.append(0)
         else:
           sel_data = self.data().select(sel)
@@ -977,7 +977,7 @@ class array(set):
       result = flex.double()
       for i_bin in self.binner().range_used():
         sel = self.binner().selection(i_bin)
-        if (sel.count(0001) == 0):
+        if (sel.count(True) == 0):
           result.append(0)
         else:
           result.append(statistical_mean(
@@ -988,7 +988,7 @@ class array(set):
 
   def remove_patterson_origin_peak(self):
     assert self.observation_type() is None or self.is_xray_intensity_array()
-    s_mean = self.statistical_mean(use_binning=0001)
+    s_mean = self.statistical_mean(use_binning=True)
     result_data = self.data().deep_copy()
     for i_bin in self.binner().range_used():
       sel = self.binner().array_indices(i_bin)
@@ -1030,7 +1030,7 @@ class array(set):
   def __abs__(self):
     return array(self, flex.abs(self.data()), self.sigmas())
 
-  def arg(self, deg=00000):
+  def arg(self, deg=False):
     return array(self, flex.arg(self.data(), deg))
 
   def amplitudes(self):
@@ -1038,7 +1038,7 @@ class array(set):
     assert self.sigmas() is None
     return abs(self)
 
-  def phases(self, deg=00000):
+  def phases(self, deg=False):
     assert isinstance(self.data(), flex.complex_double)
     assert self.sigmas() is None
     return self.arg(deg)
@@ -1083,11 +1083,11 @@ class array(set):
       miller_set=set(
         crystal_symmetry=self,
         indices=indices,
-        anomalous_flag=0001),
+        anomalous_flag=True),
       data=data,
       sigmas=sigmas)
 
-  def correlation(self, other, use_binning=00000):
+  def correlation(self, other, use_binning=False):
     assert self.is_similar_symmetry(other)
     assert self.is_real()
     assert other.is_real()
@@ -1126,7 +1126,7 @@ class array(set):
                     symmetry_flags=None,
                     mandatory_factors=None,
                     max_prime=5,
-                    assert_shannon_sampling=0001,
+                    assert_shannon_sampling=True,
                     f_000=None):
     return fft_map(
       crystal_gridding=self.crystal_gridding(
@@ -1144,10 +1144,10 @@ class array(set):
                           symmetry_flags=None,
                           mandatory_factors=None,
                           max_prime=5,
-                          assert_shannon_sampling=0001,
+                          assert_shannon_sampling=True,
                           f_000=None,
-                          sharpening=00000,
-                          origin_peak_removal=00000):
+                          sharpening=False,
+                          origin_peak_removal=False):
     f_patt = self.patterson_symmetry()
     return patterson_map(
       crystal_gridding=f_patt.crystal_gridding(
@@ -1169,7 +1169,7 @@ class merge_equivalents:
     if (miller_array.sigmas() is not None):
       assert isinstance(miller_array.sigmas(), flex.double)
       sel = (miller_array.sigmas() <= 0) & (miller_array.data() == 0)
-      if (sel.count(0001) > 0):
+      if (sel.count(True) > 0):
         miller_array = miller_array.select(~sel)
     asu_set = set.map_to_asu(miller_array)
     span = index_span(asu_set.indices())
@@ -1207,7 +1207,7 @@ class fft_map(maptbx.crystal_gridding):
 
   def __init__(self, crystal_gridding, fourier_coefficients, f_000=None):
     maptbx.crystal_gridding._copy_constructor(self, crystal_gridding)
-    assert fourier_coefficients.anomalous_flag() in (00000, 0001)
+    assert fourier_coefficients.anomalous_flag() in (False, True)
     assert fourier_coefficients.unit_cell().is_similar_to(self.unit_cell())
     assert fourier_coefficients.space_group() == self.space_group()
     assert isinstance(fourier_coefficients.data(), flex.complex_double)
@@ -1218,7 +1218,7 @@ class fft_map(maptbx.crystal_gridding):
     else:
       cfft = fftpack.complex_to_complex_3d(self.n_real())
       n_complex = cfft.n()
-    conjugate_flag = 0001
+    conjugate_flag = True
     map = maptbx.structure_factors.to_map(
       self.space_group(),
       self.anomalous_flag(),
@@ -1261,8 +1261,8 @@ class fft_map(maptbx.crystal_gridding):
     return self
 
 def patterson_map(crystal_gridding, f_patt, f_000=None,
-                  sharpening=00000,
-                  origin_peak_removal=00000):
+                  sharpening=False,
+                  origin_peak_removal=False):
   assert f_patt.is_patterson_symmetry()
   if (sharpening):
     f_patt.setup_binner(auto_binning=1)

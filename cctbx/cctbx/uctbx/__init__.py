@@ -8,7 +8,7 @@ import sys
 
 class unit_cell(ext.unit_cell):
 
-  def __init__(self, parameters, is_metrical_matrix=00000):
+  def __init__(self, parameters, is_metrical_matrix=False):
     if (isinstance(parameters, str)):
       parameters = [float(p) for p in parameters.replace(",", " ").split()]
     ext.unit_cell.__init__(self, parameters, is_metrical_matrix)

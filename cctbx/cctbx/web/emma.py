@@ -48,11 +48,11 @@ def pdb_file_to_emma_model(crystal_symmetry, pdb_records, other_symmetry):
   if (cryst1_symmetry is not None):
     crystal_symmetry = cryst1_symmetry.join_symmetry(
       other_symmetry=crystal_symmetry,
-      force=0001)
+      force=True)
   if (other_symmetry is not None):
     crystal_symmetry = crystal_symmetry.join_symmetry(
       other_symmetry=other_symmetry,
-      force=00000)
+      force=False)
   positions = []
   for record in pdb_records:
     if (not record.record_name in ("ATOM", "HETATM")): continue
@@ -108,7 +108,7 @@ class web_to_models:
           import iotbx.pdb
           pdb_records = iotbx.pdb.parser.collect_records(
             raw_records=coordinates,
-            ignore_master=0001)
+            ignore_master=True)
         except:
           pass
         else:
@@ -175,7 +175,7 @@ class web_to_models:
       if (self.other_symmetry is not None):
         crystal_symmetry = crystal_symmetry.join_symmetry(
           other_symmetry=self.other_symmetry,
-          force=00000)
+          force=False)
       m = sdb_file_to_emma_model(crystal_symmetry, sdb)
       self.i_next_model += 1
       return m

@@ -189,7 +189,7 @@ class rec:
         elems.append(self(i,j))
     return rec(elems, (self.n_columns(), self.n_rows()))
 
-  def mathematica_form(self, label="", one_row_per_line=00000, format=None):
+  def mathematica_form(self, label="", one_row_per_line=False, format=None):
     s = ""
     if (label): s = label + "="
     s += "{"

@@ -68,7 +68,7 @@ def exercise_direct_space_asu():
   eps = 0.02
   assert not buf_asu.is_inside([0.99+0.2+eps,0.49+0.2+eps,0.32+0.2+eps])
   assert len(asu.volume_vertices()) == 1
-  for cartesian in [00000,0001]:
+  for cartesian in [False,True]:
     assert approx_equal(asu.volume_vertices(
       cartesian=cartesian, epsilon=1.e-6)[0], (1.0, 2.0, 3.0))
   asu = crystal.direct_space_asu.float_asu(
@@ -80,8 +80,8 @@ def exercise_direct_space_asu():
       [(1, 0, -1), 1/4.]]])
   assert approx_equal(asu.box_min(), [0.25, -0.25, 0.5])
   assert approx_equal(asu.box_max(), [1.25, 0.75, 1.0])
-  assert approx_equal(asu.box_min(cartesian=0001), [0.25, -0.25, 0.5])
-  assert approx_equal(asu.box_max(cartesian=0001), [1.25, 0.75, 1.0])
+  assert approx_equal(asu.box_min(cartesian=True), [0.25, -0.25, 0.5])
+  assert approx_equal(asu.box_max(cartesian=True), [1.25, 0.75, 1.0])
   asu_mappings = crystal.direct_space_asu.asu_mappings(
     space_group=sgtbx.space_group("P 2 3").change_basis(
       sgtbx.change_of_basis_op("x+1/4,y-1/4,z+1/2")),
@@ -167,10 +167,10 @@ def exercise_direct_space_asu():
     (1,0,1),(1,0,2),(1,0,3),(1,0,4),
     (1,1,1),(1,1,2),(1,1,3),(1,1,4),(1,1,5)]
   for two_flag,buffer_thickness,expected_index_pairs,expected_n_boxes in [
-    (00000, 0.04, [], (1,1,1)),
-    (00000, 0.1, [(0,0,1),(0,0,2),(0,0,3),(0,0,4)], (2,3,1)),
-    (00001, 0, [(0, 1, 0)], (1,1,1)),
-    (00001, 0.04, [(0, 1, 0), (0, 1, 1), (1, 1, 1)], (1,2,1))]:
+    (False, 0.04, [], (1,1,1)),
+    (False, 0.1, [(0,0,1),(0,0,2),(0,0,3),(0,0,4)], (2,3,1)),
+    (True, 0, [(0, 1, 0)], (1,1,1)),
+    (True, 0.04, [(0, 1, 0), (0, 1, 1), (1, 1, 1)], (1,2,1))]:
     asu_mappings = crystal.direct_space_asu.asu_mappings(
       space_group=sgtbx.space_group("P 2 3").change_basis(
         sgtbx.change_of_basis_op("x+1/4,y-1/4,z+1/2")),
@@ -208,13 +208,13 @@ def exercise_direct_space_asu():
     simple_pair_generator = crystal.neighbors_simple_pair_generator(
       asu_mappings=asu_mappings,
       distance_cutoff=100,
-      minimal=00000)
+      minimal=False)
     assert simple_pair_generator.asu_mappings().is_locked()
     assert approx_equal(simple_pair_generator.distance_cutoff_sq(), 100*100)
     fast_pair_generator = crystal.neighbors_fast_pair_generator(
       asu_mappings=asu_mappings,
       distance_cutoff=100,
-      minimal=00000,
+      minimal=False,
       epsilon=1.e-6)
     assert fast_pair_generator.asu_mappings().is_locked()
     assert approx_equal(fast_pair_generator.distance_cutoff_sq(), 100*100)
@@ -301,8 +301,8 @@ def exercise_direct_space_asu():
   assert pair.i_seq == 1
   assert pair.j_seq == 0
   assert pair.j_sym == 1
-  assert pair.is_active(minimal=00000)
-  assert not pair.is_active(minimal=0001)
+  assert pair.is_active(minimal=False)
+  assert not pair.is_active(minimal=True)
   for i_seq,m in enumerate(asu_mappings.mappings()):
     for i_sym in xrange(len(m)):
       rt_mx = asu_mappings.get_rt_mx(i_seq=i_seq, i_sym=i_sym)
@@ -416,7 +416,7 @@ def exercise_pair_tables():
     [2, 1, 0], [2, 1, 11], [2, 2, 1], [2, 2, 2]]
   check_pair_asu_table(asu_table, expected_asu_pairs)
   asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
-  for minimal in [0001, 00000]:
+  for minimal in [True, False]:
     pair_generator = crystal.neighbors_fast_pair_generator(
       asu_mappings,
       distance_cutoff=3.5,
@@ -484,7 +484,7 @@ Si(2)
   other = crystal.pair_asu_table(asu_mappings=asu_mappings)
   assert not asu_table == other
   assert asu_table != other
-  for skip_j_seq_less_than_i_seq in [00000, 0001]:
+  for skip_j_seq_less_than_i_seq in [False, True]:
     sym_table = asu_table.extract_pair_sym_table(
       skip_j_seq_less_than_i_seq=skip_j_seq_less_than_i_seq)
     assert sym_table.size() == asu_table.table().size()
@@ -657,7 +657,7 @@ def exercise_coordination_sequences_shell_asu_tables():
       pair_asu_table=shell_asu_tables[1])
     print
     s1_sym_table = shell_asu_tables[1].extract_pair_sym_table(
-      skip_j_seq_less_than_i_seq=00000)
+      skip_j_seq_less_than_i_seq=False)
     s1_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
     s1_asu_table.add_pair_sym_table(sym_table=s1_sym_table)
     distance_ls.show_pairs(

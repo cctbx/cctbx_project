@@ -50,7 +50,7 @@ def exercise_minimizer_interface():
   assert minimizer.nbd().size() == n
   assert minimizer.nbd().all_eq(0)
 
-def driver1(use_fortran_library=00000):
+def driver1(use_fortran_library=False):
   n = 25
   nbd = flex.int(n)
   x = flex.double(n)
@@ -81,7 +81,7 @@ def driver1(use_fortran_library=00000):
     pgtol=1.0e-5,
     iprint=iprint)
   f = 0
-  while 0001:
+  while True:
     if (minimizer.process(x, f, g, use_fortran_library)):
       f=.25e0*(x[0]-1.e0)**2
       for i in xrange(1,n):

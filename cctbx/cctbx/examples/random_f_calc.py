@@ -19,11 +19,11 @@ def generate_random_f_calc(space_group_info, n_elements=10, d_min=1.5):
     elements=["Si"]*n_elements,
     volume_per_atom=1000,
     min_distance=3.,
-    general_positions_only=00000)
+    general_positions_only=False)
   structure.show_summary().show_scatterers()
   print
   f_calc = structure.structure_factors(
-    d_min=d_min, anomalous_flag=00000).f_calc()
+    d_min=d_min, anomalous_flag=False).f_calc()
   f_calc.show_summary()
   print
   print "Writing file: map_coeff.pickle"

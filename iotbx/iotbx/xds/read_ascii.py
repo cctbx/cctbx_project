@@ -10,16 +10,16 @@ def get_rhs(line):
 
 class reader:
 
-  def __init__(self, file_handle, header_only=00000):
+  def __init__(self, file_handle, header_only=False):
     "http://www.mpimf-heidelberg.mpg.de/~kabsch/xds/"
     f = iter(file_handle)
     flds = f.next().split()
     assert flds[0] == "!FORMAT=XDS_ASCII"
     assert flds[1] == "MERGE=TRUE"
     if   (flds[2] == "FRIEDEL'S_LAW=FALSE"):
-      self.anomalous_flag = 0001
+      self.anomalous_flag = True
     elif (flds[2] == "FRIEDEL'S_LAW=TRUE"):
-      self.anomalous_flag = 00000
+      self.anomalous_flag = False
     else:
       raise RuntimeError, "Expected FRIEDEL'S_LAW=FALSE|TRUE"
     self.unit_cell = None
@@ -85,7 +85,7 @@ class reader:
       unit_cell=self.unit_cell,
       space_group_symbol=self.space_group_number)
 
-  def as_miller_array(self, crystal_symmetry=None, force_symmetry=00000,
+  def as_miller_array(self, crystal_symmetry=None, force_symmetry=False,
                             info_prefix=""):
     return (miller.array(
       miller_set=miller.set(
@@ -98,7 +98,7 @@ class reader:
       sigmas=self.sigma_iobs)
       .set_info(info_prefix+self.info()).set_observation_type_xray_intensity())
 
-  def as_miller_arrays(self, crystal_symmetry=None, force_symmetry=00000,
+  def as_miller_arrays(self, crystal_symmetry=None, force_symmetry=False,
                              info_prefix=""):
     return [self.as_miller_array(crystal_symmetry,force_symmetry,info_prefix)]
 

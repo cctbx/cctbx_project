@@ -22,11 +22,11 @@ def exercise_symmetry():
   except: pass
   else: raise AssertionError, "Exception expected."
   xs = crystal.symmetry(
-    (3,4,5), "P 4 2 2", assert_is_compatible_unit_cell=00000,
-    force_compatible_unit_cell=00000)
+    (3,4,5), "P 4 2 2", assert_is_compatible_unit_cell=False,
+    force_compatible_unit_cell=False)
   assert not xs.is_compatible_unit_cell()
   xs = crystal.symmetry(
-    (3,4,5), "P 4 2 2", assert_is_compatible_unit_cell=00000)
+    (3,4,5), "P 4 2 2", assert_is_compatible_unit_cell=False)
   assert xs.is_compatible_unit_cell()
   xs = crystal.symmetry((5,5,29,90,90,120), "R 3")
   ps = xs.primitive_setting()
@@ -79,11 +79,11 @@ def exercise_symmetry():
 
 def exercise_special_position_settings():
   xs = crystal.symmetry((3,4,5), "P 2 2 2")
-  sp = crystal.special_position_settings(xs, 1, 2, 0001, 00000)
+  sp = crystal.special_position_settings(xs, 1, 2, True, False)
   assert sp.min_distance_sym_equiv() == 1
   assert sp.u_star_tolerance() == 2
-  assert sp.assert_is_positive_definite() == 0001
-  assert sp.assert_min_distance_sym_equiv() == 00000
+  assert sp.assert_is_positive_definite() == True
+  assert sp.assert_min_distance_sym_equiv() == False
   assert sp.site_symmetry((0,0,0)).multiplicity() == 1
   assert str(sp.sym_equiv_sites((0,0,0)).special_op()) == "0,0,0"
 

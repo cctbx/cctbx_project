@@ -28,10 +28,10 @@ def is_sym_equiv_interaction_simple(unit_cell,
     d2 = dist(rt_mx_ji_2 * site_j_mod, site_i_mod)
     if (shifts == [0,0,0]):
       if (abs(d1-d2) >= 1.e-3):
-        return 00000
+        return False
   return abs(d1-d2) < 1.e-3
 
-def check_sym_equiv(structure, bond_asu_table, weak=00000):
+def check_sym_equiv(structure, bond_asu_table, weak=False):
   unit_cell = structure.unit_cell()
   asu_mappings = bond_asu_table.asu_mappings()
   sites_frac = structure.scatterers().extract_sites()
@@ -74,7 +74,7 @@ def exercise(
       structure,
       distance_cutoff,
       connectivities=None,
-      weak_check_sym_equiv=00000,
+      weak_check_sym_equiv=False,
       verbose=0):
   if (0 or verbose):
     print "distance_cutoff:", distance_cutoff
@@ -120,7 +120,7 @@ def run():
         distance_cutoff = default_distance_cutoff
       weak_check_sym_equiv = (
         entry.reference.find("weak_check_sym_equiv") >= 0)
-      connectivities = entry.connectivities(all_or_nothing=0001)
+      connectivities = entry.connectivities(all_or_nothing=True)
       exercise(
         structure=structure,
         distance_cutoff=distance_cutoff,

@@ -17,34 +17,34 @@ class check_is_niggli_cell(reduction_base.gruber_parameterization):
     eq = self.eps_eq
     gt = self.eps_gt
     a,b,c,d,e,f = (self.a,self.b,self.c,self.d,self.e,self.f)
-    if (not self.meets_main_conditions()): return 00000
+    if (not self.meets_main_conditions()): return False
     type = self.type()
     assert type in (1,2)
     if (type == 1):
       if (eq(a, b)):
-        if (gt(d, e)): return 00000
+        if (gt(d, e)): return False
       if (eq(b, c)):
-        if (gt(e, f)): return 00000
+        if (gt(e, f)): return False
       if (eq(d, b)):
-        if (gt(f, e+e)): return 00000
+        if (gt(f, e+e)): return False
       if (eq(e, a)):
-        if (gt(f, d+d)): return 00000
+        if (gt(f, d+d)): return False
       if (eq(f, a)):
-        if (gt(e, d+d)): return 00000
+        if (gt(e, d+d)): return False
     else:
       if (eq(a, b)):
-        if (gt(abs(d), abs(e))): return 00000
+        if (gt(abs(d), abs(e))): return False
       if (eq(b, c)):
-        if (gt(abs(e), abs(f))): return 00000
+        if (gt(abs(e), abs(f))): return False
       if (eq(abs(d), b)):
-        if (not eq(f, 0)): return 00000
+        if (not eq(f, 0)): return False
       if (eq(abs(e), a)):
-        if (not eq(f, 0)): return 00000
+        if (not eq(f, 0)): return False
       if (eq(abs(f), a)):
-        if (not eq(e, 0)): return 00000
+        if (not eq(e, 0)): return False
       if (eq(abs(d)+abs(e)+abs(f), a+b)):
-        if (gt(a, abs(e) + abs(f)/2)): return 00000
-    return 0001
+        if (gt(a, abs(e) + abs(f)/2)): return False
+    return True
 
 class reduction_with_tracking(krivy_gruber_1976.reduction):
 
@@ -60,9 +60,9 @@ class reduction_with_tracking(krivy_gruber_1976.reduction):
         unit_cell=unit_cell,
         relative_epsilon=relative_epsilon,
         iteration_limit=iteration_limit)
-      self.iteration_limit_exceeded = 00000
+      self.iteration_limit_exceeded = False
     except StopIteration:
-      self.iteration_limit_exceeded = 0001
+      self.iteration_limit_exceeded = True
 
   def cb_update(self, m_elems):
     caller = get_caller_name()
@@ -89,11 +89,11 @@ class reduction_with_tracking_and_eq_always_false(reduction_with_tracking):
     reduction_with_tracking.__init__(self, unit_cell)
 
   def eps_eq(self, x, y):
-    return 00000
+    return False
 
 relative_epsilon = None
-track_infinite = 00000
-eq_always_false = 00000
+track_infinite = False
+eq_always_false = False
 time_krivy_gruber_1976 = time_log("krivy_gruber_1976.reduction")
 time_gruber_1973 = time_log("gruber_1973.reduction")
 time_krivy_gruber_1976_minimum=time_log("krivy_gruber_1976.minimum_reduction")
@@ -182,7 +182,7 @@ def reduce(inp):
     raise
 
 def ucgmx((a,b,c,d,e,f)): # unit cell given Gruber matrix
-  return uctbx.unit_cell((a,b,c,f/2.,e/2.,d/2.), is_metrical_matrix=0001)
+  return uctbx.unit_cell((a,b,c,f/2.,e/2.,d/2.), is_metrical_matrix=True)
 
 def exercise_gruber_1973_example():
   start = ucgmx((4,136,76,-155,-31,44))
@@ -263,7 +263,7 @@ def exercise_bravais_plus():
 def cos_deg(x):
   return math.cos(x*math.pi/180)
 
-def exercise_grid(quick=00000, verbose=0):
+def exercise_grid(quick=False, verbose=0):
   if (quick):
     sample_lengths = (10,)
     sample_angles = (60,)
@@ -366,7 +366,7 @@ def exercise_gruber_types(n_trials_per_type, dump=0, verbose=0):
   mk2_sets = gruber_1973_table_1.get_mk2_sets()
   type_conditions = gruber_1973_table_1.get_type_conditions()
   random_unimodular = random_unimodular_integer_matrix_generator()
-  have_errors = 00000
+  have_errors = False
   for k in xrange(1,29):
     set = mk2_sets[k]
     tc = type_conditions[k]
@@ -428,7 +428,7 @@ def exercise_gruber_types(n_trials_per_type, dump=0, verbose=0):
     if ((0 or verbose) and n_errors != 0):
       print "Errors for type %d:" % k, n_errors
     if (n_errors != 0):
-      have_errors = 0001
+      have_errors = True
   assert not have_errors
 
 def exercise_extreme():
@@ -491,7 +491,7 @@ def exercise_problem_parameters():
   for parameters in problem_parameters:
     reduce(uctbx.unit_cell(parameters))
 
-def exercise_one_pass(show_times=00000):
+def exercise_one_pass(show_times=False):
   quick = "--Quick" in sys.argv[1:]
   verbose = "--Verbose" in sys.argv[1:]
   global relative_epsilon
@@ -500,10 +500,10 @@ def exercise_one_pass(show_times=00000):
   if ("--zero_epsilon" in sys.argv[1:]):
     relative_epsilon = 0
   if ("--track_infinite" in sys.argv[1:]):
-    track_infinite = 0001
+    track_infinite = True
   if ("--eq_always_false" in sys.argv[1:]):
-    track_infinite = 0001
-    eq_always_false = 0001
+    track_infinite = True
+    eq_always_false = True
   exercise_problem_parameters()
   exercise_extreme()
   exercise_gruber_1973_example()
@@ -514,7 +514,7 @@ def exercise_one_pass(show_times=00000):
   else:       n_trials_per_type=100
   if ("--dump" in sys.argv[1:]):
     random.seed(0)
-    exercise_gruber_types(n_trials_per_type, dump=0001, verbose=verbose)
+    exercise_gruber_types(n_trials_per_type, dump=True, verbose=verbose)
     return
   exercise_gruber_types(n_trials_per_type, verbose=verbose)
   exercise_real_world_examples()

@@ -21,10 +21,10 @@ class target_functor_base:
 class least_squares_residual:
 
   def __init__(self, f_obs, weights=None,
-               use_sigmas_as_weights=00000,
+               use_sigmas_as_weights=False,
                scale_factor=0):
-    adopt_init_args(self, locals(), hide=0001)
-    assert self._weights is None or self._use_sigmas_as_weights == 00000
+    adopt_init_args(self, locals(), hide=True)
+    assert self._weights is None or self._use_sigmas_as_weights == False
     if (self._use_sigmas_as_weights):
       sigmas_squared = flex.pow2(self._f_obs.sigmas().data())
       assert sigmas_squared.all_gt(0)
@@ -60,9 +60,9 @@ class least_squares_residual:
 class intensity_correlation(target_functor_base):
 
   def __init__(self, f_obs, weights=None,
-               use_multiplicities_as_weights=00000):
-    adopt_init_args(self, locals(), hide=0001)
-    assert self._weights is None or self._use_multiplicities_as_weights==00000
+               use_multiplicities_as_weights=False):
+    adopt_init_args(self, locals(), hide=True)
+    assert self._weights is None or self._use_multiplicities_as_weights==False
     self._target_calculator = ext.targets_intensity_correlation
     if (self._use_multiplicities_as_weights):
       self._weights = self._f_obs.multiplicities().data()
@@ -79,7 +79,7 @@ class intensity_correlation(target_functor_base):
 class maximum_likelihood_criterion:
 
   def __init__(self, f_obs):
-    adopt_init_args(self, locals(), hide=0001)
+    adopt_init_args(self, locals(), hide=True)
 
   def f_obs(self):
     return self._f_obs

@@ -24,8 +24,8 @@ class symmetry(object):
                      space_group_symbol=None,
                      space_group_info=None,
                      space_group=None,
-                     assert_is_compatible_unit_cell=0001,
-                     force_compatible_unit_cell=0001):
+                     assert_is_compatible_unit_cell=True,
+                     force_compatible_unit_cell=True):
     assert [space_group_symbol, space_group_info, space_group].count(None) >= 2
     if (    unit_cell is not None
         and not isinstance(unit_cell, uctbx.ext.unit_cell)):
@@ -75,7 +75,7 @@ class symmetry(object):
   def is_similar_symmetry(self, other, relative_length_tolerance=0.01,
                                        absolute_angle_tolerance=1.):
     if (not self.unit_cell().is_similar_to(other.unit_cell(),
-      relative_length_tolerance, absolute_angle_tolerance)): return 00000
+      relative_length_tolerance, absolute_angle_tolerance)): return False
     return self.space_group() == other.space_group()
 
   def is_compatible_unit_cell(self):
@@ -148,10 +148,10 @@ class symmetry(object):
     return self.space_group().build_derived_patterson_group() \
         == self.space_group()
 
-  def join_symmetry(self, other_symmetry, force=00000):
+  def join_symmetry(self, other_symmetry, force=False):
     if (other_symmetry is None):
       return self
-    if (force == 00000):
+    if (force == False):
       strong = self
       weak = other_symmetry
     else:
@@ -177,7 +177,7 @@ class symmetry(object):
                      symmetry_flags=None,
                      mandatory_factors=None,
                      max_prime=5,
-                     assert_shannon_sampling=0001):
+                     assert_shannon_sampling=True):
     from cctbx import maptbx
     return maptbx.crystal_gridding(
       unit_cell=self.unit_cell(),
@@ -202,8 +202,8 @@ class special_position_settings(symmetry):
   def __init__(self, crystal_symmetry,
                min_distance_sym_equiv=0.5,
                u_star_tolerance=0,
-               assert_is_positive_definite=00000,
-               assert_min_distance_sym_equiv=0001):
+               assert_is_positive_definite=False,
+               assert_min_distance_sym_equiv=True):
     symmetry._copy_constructor(self, crystal_symmetry)
     self._min_distance_sym_equiv = min_distance_sym_equiv
     self._u_star_tolerance = u_star_tolerance

@@ -10,7 +10,7 @@ class flags:
         dihedral=None,
         chirality=None,
         planarity=None,
-        default=00000):
+        default=False):
     if (bond is None): bond = default
     if (nonbonded is None): nonbonded = default
     if (angle is None): angle = default

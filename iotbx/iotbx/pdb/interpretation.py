@@ -228,7 +228,7 @@ class stage_1:
     self.n_patched_altLocs = 0
     if (len(altLoc_dict) == 1 or " " not in altLoc_dict): return
     sel_cache = self.selection_cache()
-    is_processed = flex.bool(sel_cache.n_seq, 00000)
+    is_processed = flex.bool(sel_cache.n_seq, False)
     for MODELserial,isel_model in sel_cache.MODELserial.items():
       false_blank_related = {}
       altLoc_groups = altLoc_grouping()
@@ -251,7 +251,7 @@ class stage_1:
             MODELserial=atom.MODELserial)).iselection()
           for i_seq in isel_related_atoms:
             atom = self.atom_attributes_list[i_seq]
-            is_processed[i_seq] = 0001
+            is_processed[i_seq] = True
             altLoc_group[atom.altLoc] = 0
             if (atom.altLoc == " "):
               false_blank_related[i_seq] = altLoc_pivot
@@ -300,8 +300,8 @@ class stage_1:
 
   def are_all_blank_altLocs(self, i_seqs):
     for i_seq in i_seqs:
-      if (self.atom_attributes_list[i_seq].altLoc != " "): return 00000
-    return 0001
+      if (self.atom_attributes_list[i_seq].altLoc != " "): return False
+    return True
 
   def show_atom_labels(self, i_seqs, f=None, prefix=""):
     if (f is None): f = sys.stdout
@@ -337,11 +337,11 @@ class altLoc_grouping:
       indices_existing = indices_existing.keys()
       indices_existing.sort()
       if (len(indices_existing) > 1):
-        sel = flex.bool(len(self.group_list), 0001)
+        sel = flex.bool(len(self.group_list), True)
         merged_group = self.group_list[indices_existing[0]]
         for i in indices_existing[1:]:
           merged_group.extend(self.group_list[i])
-          sel[i] = 00000
+          sel[i] = False
         self.group_list = flex.select(sequence=self.group_list, flags=sel)
       group = self.group_list[indices_existing[0]]
       group.extend(new_group)

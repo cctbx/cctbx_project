@@ -14,7 +14,7 @@ if (1):
 def exercise_SFweight_spline_core(structure, d_min, verbose=0):
   structure.scattering_dict(d_min=d_min)
   f_obs = abs(structure.structure_factors(
-    d_min=d_min, anomalous_flag=00000).f_calc())
+    d_min=d_min, anomalous_flag=False).f_calc())
   if (0 or verbose):
     f_obs.show_summary()
   f_obs = miller.array(

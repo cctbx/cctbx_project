@@ -139,7 +139,7 @@ def exercise_altLoc_grouping():
   assert len(replacements) == 1
   assert replacements[0] == "X"
 
-def exercise_interpretation(verbose=0, quick=0001):
+def exercise_interpretation(verbose=0, quick=True):
   pdb_dir = os.path.join(os.environ["LIBTBX_DIST_ROOT"],
     "regression", "pdb")
   if (not os.path.isdir(pdb_dir)): return
@@ -184,16 +184,16 @@ def exercise_interpretation(verbose=0, quick=0001):
     sel_element = sel_cache.sel_element(" C")
     sel_charge = sel_cache.sel_charge("2+")
     if (0 or verbose):
-      print "  sel_name:", sel_name.count(0001)
-      print "  sel_altLoc:", sel_altLoc.count(0001)
-      print "  sel_resName:", sel_resName.count(0001)
-      print "  sel_chainID:", sel_chainID.count(0001)
-      print "  sel_resSeq:", sel_resSeq.count(0001)
-      print "  sel_iCode:", sel_iCode.count(0001)
-      print "  sel_segID:", sel_segID.count(0001)
-      print "  sel_MODELserial:", sel_MODELserial.count(0001)
-      print "  sel_element:", sel_element.count(0001)
-      print "  sel_charge:", sel_charge.count(0001)
+      print "  sel_name:", sel_name.count(True)
+      print "  sel_altLoc:", sel_altLoc.count(True)
+      print "  sel_resName:", sel_resName.count(True)
+      print "  sel_chainID:", sel_chainID.count(True)
+      print "  sel_resSeq:", sel_resSeq.count(True)
+      print "  sel_iCode:", sel_iCode.count(True)
+      print "  sel_segID:", sel_segID.count(True)
+      print "  sel_MODELserial:", sel_MODELserial.count(True)
+      print "  sel_element:", sel_element.count(True)
+      print "  sel_charge:", sel_charge.count(True)
     if (quick): break
 
 def exercise_xray_structure(anisotropic_flag, verbose=0):
@@ -202,13 +202,13 @@ def exercise_xray_structure(anisotropic_flag, verbose=0):
     elements=["N","C","C","O","Si"]*2,
     volume_per_atom=500,
     min_distance=2.,
-    general_positions_only=00000,
-    random_u_iso=0001,
+    general_positions_only=False,
+    random_u_iso=True,
     anisotropic_flag=anisotropic_flag)
   f_abs = abs(structure.structure_factors(
-    anomalous_flag=00000, d_min=2, algorithm="direct").f_calc())
+    anomalous_flag=False, d_min=2, algorithm="direct").f_calc())
   for res_name in (None, "res"):
-    for fractional_coordinates in (00000, 0001):
+    for fractional_coordinates in (False, True):
       pdb_file = structure.as_pdb_file(
         remark="Title", remarks=["Any", "Thing"],
         fractional_coordinates=fractional_coordinates,
@@ -235,7 +235,7 @@ def run():
   exercise_atom()
   exercise_altLoc_grouping()
   exercise_interpretation(verbose=verbose)
-  for anisotropic_flag in (00000, 0001):
+  for anisotropic_flag in (False, True):
     exercise_xray_structure(anisotropic_flag, verbose=verbose)
   print "OK"
 

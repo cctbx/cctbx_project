@@ -36,9 +36,9 @@ def exercise(
     volume_per_atom=200,
     random_f_prime_d_min=1.0,
     random_f_double_prime=anomalous_flag,
-    random_u_iso=0001,
+    random_u_iso=True,
     anisotropic_flag=anisotropic_flag,
-    random_occupancy=0001)
+    random_occupancy=True)
   check_weight_without_occupancy(structure_z)
   f_abs_z = abs(structure_z.structure_factors(
     anomalous_flag=anomalous_flag, d_min=d_min, algorithm="direct").f_calc())
@@ -87,8 +87,8 @@ def exercise(
   assert c.coefficient() > 0.999
 
 def run_call_back(flags, space_group_info):
-  for anomalous_flag in (00000, 0001)[:]: #SWITCH
-    for anisotropic_flag in (00000, 0001)[:]: #SWITCH
+  for anomalous_flag in (False, True)[:]: #SWITCH
+    for anisotropic_flag in (False, True)[:]: #SWITCH
       exercise(
         space_group_info=space_group_info,
         anomalous_flag=anomalous_flag,

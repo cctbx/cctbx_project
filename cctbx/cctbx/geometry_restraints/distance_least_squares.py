@@ -204,14 +204,14 @@ def distance_and_repulsion_least_squares(
           size=n_scatterers*3)))
         trial_structure.apply_symmetry_sites()
       trial_minimized = []
-      for enable_nonbonded in [00000, 0001]:
+      for enable_nonbonded in [False, True]:
         if (not enable_nonbonded):
           geometry_restraints_flags = geometry_restraints.flags.flags(
-            bond=0001)
+            bond=True)
         else:
           geometry_restraints_flags = geometry_restraints.flags.flags(
-            bond=0001,
-            nonbonded=0001)
+            bond=True,
+            nonbonded=True)
           trial_structure.set_sites_cart(sites_cart=trial_sites_cart)
           trial_structure = trial_structure.random_shift_sites(
             max_shift_cart=0.2)

@@ -34,8 +34,8 @@ class pdb_record:
 
   def __init__(self, raw_record,
         line_number=None,
-        strict=00000,
-        ignore_columns_73_and_following=00000):
+        strict=False,
+        ignore_columns_73_and_following=False):
     if (ignore_columns_73_and_following):
       self.raw = (raw_record.rstrip()[:72] + " "*80)[:80]
     else:
@@ -53,9 +53,9 @@ class pdb_record:
     function_name = "read_" + self.record_name
     bound_function_object = getattr(self, function_name, None)
     if (bound_function_object is None):
-      self.is_interpreted = 00000
+      self.is_interpreted = False
     else:
-      self.is_interpreted = 0001
+      self.is_interpreted = True
       bound_function_object()
 
   def show(self, f=None):
@@ -408,14 +408,14 @@ class columns_73_76_evaluator:
           except KeyError: columns_73_76_dict[field] = 1
     if (len(atom_columns_73_76_dict) == 0):
       self.finding = "Blank columns 73-76 on ATOM and HETATM records."
-      self.is_old_style = 00000
+      self.is_old_style = False
       return
     if (    len(other_columns_73_76_dict) == 1
         and len(atom_columns_73_76_dict) == 1
         and len(other_columns_73_76_dict.keys()[0].strip()) == 4
         and other_columns_73_76_dict.keys() == atom_columns_73_76_dict.keys()):
       self.finding = "Exactly one common label in columns 73-76."
-      self.is_old_style = 0001
+      self.is_old_style = True
       return
     common_four_character_field = None
     sum_counts_common_four_character_field = 0
@@ -427,7 +427,7 @@ class columns_73_76_evaluator:
             and other_columns_73_76_dict[field]
                 > is_frequent_threshold_other_records):
           self.finding = "Frequent common labels in columns 73-76."
-          self.is_old_style = 0001
+          self.is_old_style = True
           return
         sum_counts = atom_columns_73_76_dict[field] \
                    + other_columns_73_76_dict[field]
@@ -436,7 +436,7 @@ class columns_73_76_evaluator:
           sum_counts_common_four_character_field = sum_counts
     if (sum_counts_common_four_character_field == 0):
       self.finding =  "No common label in columns 73-76."
-      self.is_old_style = 00000
+      self.is_old_style = False
       return
     three_char_dicts = []
     for columns_73_76_dict in [atom_columns_73_76_dict,
@@ -453,17 +453,17 @@ class columns_73_76_evaluator:
         and three_char_dicts[0].keys() == three_char_dicts[1].keys()):
       self.finding = "Exactly one common label in columns 73-76" \
                    + " comparing only the first three characters."
-      self.is_old_style = 0001
+      self.is_old_style = True
       return
     self.finding = "Undecided."
-    self.is_old_style = 00000
+    self.is_old_style = False
 
 def collect_records(raw_records,
-                    ignore_unknown=0001,
-                    ignore_coordinate_section=00000,
-                    ignore_master=00000,
-                    evaluate_columns_73_76=0001):
-  ignore_columns_73_and_following = 00000
+                    ignore_unknown=True,
+                    ignore_coordinate_section=False,
+                    ignore_master=False,
+                    evaluate_columns_73_76=True):
+  ignore_columns_73_and_following = False
   if (evaluate_columns_73_76):
     evaluation = columns_73_76_evaluator(
       raw_records=raw_records)

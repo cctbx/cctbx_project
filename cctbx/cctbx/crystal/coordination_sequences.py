@@ -16,8 +16,8 @@ def find_node(test_node, node_list):
   for list_node in node_list:
     if (    list_node.i_seq == test_node.i_seq
         and list_node.rt_mx_unique == test_node.rt_mx_unique):
-      return 0001
-  return 00000
+      return True
+  return False
 
 def simple_and_slow(pair_asu_table, max_shell=10):
   asu_mappings = pair_asu_table.asu_mappings()
@@ -71,7 +71,7 @@ def show_terms(structure, term_table, coseq_dict=None):
     print scatterer.label, list(terms),
     if (coseq_dict is not None):
       terms_to_match = list(terms[1:])
-      have_match = 00000
+      have_match = False
       tags = coseq_dict.keys()
       tags.sort()
       for tag in tags:
@@ -79,7 +79,7 @@ def show_terms(structure, term_table, coseq_dict=None):
           n = min(len(coseq_terms), len(terms_to_match))
           if (coseq_terms[:n] == terms_to_match[:n]):
             print tag,
-            have_match = 0001
+            have_match = True
       if (not have_match):
         print "Unknown",
     print

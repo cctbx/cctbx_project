@@ -30,7 +30,7 @@ def recycle(miller_array):
   assert abs(regression.y_intercept()) < 1
 
 def exercise(space_group_info, n_scatterers=8, d_min=2.5,
-             anomalous_flag=00000, verbose=0):
+             anomalous_flag=False, verbose=0):
   f_calc = random_f_calc(
     space_group_info=space_group_info,
     n_scatterers=n_scatterers,
@@ -52,7 +52,7 @@ def exercise(space_group_info, n_scatterers=8, d_min=2.5,
   recycle(miller_array=f_calc.f_sq_as_f())
 
 def run_call_back(flags, space_group_info):
-  for anomalous_flag in (00000, 0001):
+  for anomalous_flag in (False, True):
     exercise(
       space_group_info,
       anomalous_flag=anomalous_flag,

@@ -19,8 +19,8 @@ def verify_match(model1, model2, tolerance, match_rt, pairs):
 
 def analyze_singles(model, singles):
   for i in singles:
-    if (model[i].label.startswith("S")): return 00000
-  return 0001
+    if (model[i].label.startswith("S")): return False
+  return True
 
 def analyze_refined_matches(model1, model2, refined_matches, verbose):
   solution_counter = 0
@@ -90,7 +90,7 @@ class test_model(emma.model):
   def apply_random_eucl_op(self, models_are_diffraction_index_equivalent=0):
     match_symmetry = emma.euclidean_match_symmetry(
       self.space_group_info(),
-      use_k2l=0001, use_l2n=(not models_are_diffraction_index_equivalent))
+      use_k2l=True, use_l2n=(not models_are_diffraction_index_equivalent))
     i = random.randrange(match_symmetry.rt_mx.order_z())
     eucl_symop = match_symmetry.rt_mx(i)
     shift = [0.5 - random.random() for i in xrange(3)]
@@ -111,7 +111,7 @@ class test_model(emma.model):
       existing_sites=existing_sites,
       n_new=number_of_new_positions,
       min_hetero_distance=min_distance,
-      general_positions_only=00000)
+      general_positions_only=False)
     new_positions = []
     i = 0
     for site in new_sites:
@@ -165,7 +165,7 @@ def run_call_back(flags, space_group_info):
           m2.show("Model2(%d)" % (j,))
         model_matches = emma.model_matches(m1, m2, rms_penalty_per_site=0)
         analyze_refined_matches(m1, m2, model_matches.refined_matches, verbose)
-    return 00000
+    return False
   model_core = test_model(space_group_info)
   model1 = (model_core
     .add_random_positions(2, "A")
@@ -214,10 +214,10 @@ def run_call_back(flags, space_group_info):
         equiv_sites1 = sgtbx.sym_equiv_sites(m1.site_symmetry(site1))
         dist_info = sgtbx.min_sym_equiv_distance_info(equiv_sites1, site2)
         if (dist_info.dist() < model_matches.tolerance - 1.e-6):
-          ok = 00000
+          ok = False
           for pair in model_matches.refined_matches[0].pairs:
             if (pair[i1-1] == i_site1):
-              ok = 0001
+              ok = True
           assert ok
 
 def run():

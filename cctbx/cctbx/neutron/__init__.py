@@ -27,10 +27,10 @@ class scatterer:
     self.site = site
     try:
       self.u_iso = float(u)
-      self.anisotropic_flag = 00000
+      self.anisotropic_flag = False
     except:
       assert len(u) == 6
-      self.anisotropic_flag = 0001
+      self.anisotropic_flag = True
       self.u_star = tuple([float(uij) for uij in u])
     self.occupancy = occupancy
     self.scattering_info = scattering_info
@@ -51,8 +51,8 @@ class scatterer:
                            space_group,
                            min_distance_sym_equiv=0.5,
                            u_star_tolerance=0,
-                           assert_is_positive_definite=00000,
-                           assert_min_distance_sym_equiv=0001):
+                           assert_is_positive_definite=False,
+                           assert_min_distance_sym_equiv=True):
     site_symmetry = sgtbx.site_symmetry(
       unit_cell,
       space_group,
@@ -120,7 +120,7 @@ class structure(crystal.special_position_settings):
     print "WARNING: RESULTS NOT VERIFIED" # XXX
     miller_set = miller.build_set(
       crystal_symmetry=self,
-      anomalous_flag=0001, # XXX always True?
+      anomalous_flag=True, # XXX always True?
       d_min=d_min)
     f_calc = flex.complex_double()
     for h in miller_set.indices():

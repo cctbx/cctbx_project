@@ -36,7 +36,7 @@ def run(args, distance_cutoff=3.5, nonbonded_distance_cutoff=5):
         distance_cutoff=distance_cutoff,
         nonbonded_distance_cutoff=nonbonded_distance_cutoff,
         n_trials=command_line.options.n_trials,
-        connectivities=entry.connectivities(all_or_nothing=0001))
+        connectivities=entry.connectivities(all_or_nothing=True))
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

@@ -19,7 +19,7 @@ class read_entry:
   def __init__(self, f):
     line = f.readline()
     if (len(line) == 0):
-      self.tag = 00000
+      self.tag = False
       return
     if (line[0] != "*"):
       self.tag = None
@@ -75,11 +75,11 @@ class read_entry:
           self._unit_cell = uctbx.unit_cell((a,a,a,90,90,90))
         elif (crystal_system in ("Hexagonal", "Trigonal")):
           assert len(unit_cell_parameters) == 2
-          is_rhombohedral = 00000
+          is_rhombohedral = False
           if (crystal_system == "Trigonal"):
             laue_group = self._derived_laue_group_symbol()
             if (laue_group in ("R-3m:R", "R-3:R")):
-              is_rhombohedral = 0001
+              is_rhombohedral = True
           if (is_rhombohedral):
             a = unit_cell_parameters[0]
             angle = unit_cell_parameters[1]
@@ -134,7 +134,7 @@ class read_entry:
         print "%2d" % atm.connectivity,
       print
 
-  def connectivities(self, all_or_nothing=00000):
+  def connectivities(self, all_or_nothing=False):
     result = [atom.connectivity for atom in self.atoms]
     if (all_or_nothing):
       n_none = result.count(None)
@@ -161,7 +161,7 @@ class read_all_entries:
       entry = read_entry(f)
       if (entry.tag is None):
         continue
-      if (entry.tag == 00000):
+      if (entry.tag == False):
         break
       self.entries.append(entry)
 

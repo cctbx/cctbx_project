@@ -11,7 +11,7 @@ from libtbx.optparse_wrapper import OptionParser
 import sys, os
 
 def run(file_name, args, cutoff, params,
-        zig_zag=00000, six_term=00000, full_fits=None,
+        zig_zag=False, six_term=False, full_fits=None,
         plots_dir="itvc_fits_plots", verbose=0):
   tab = itvc_section61_io.read_table6111(file_name)
   chunk_n = 1
@@ -45,12 +45,12 @@ def run(file_name, args, cutoff, params,
         stols,
         entry.table_y[:stols.size()],
         entry.table_sigmas[:stols.size()],
-        xray_scattering.gaussian(0, 00000))
+        xray_scattering.gaussian(0, False))
       null_fit_more = scitbx.math.gaussian.fit(
         stols_more,
         entry.table_y[:stols_more.size()],
         entry.table_sigmas[:stols_more.size()],
-        xray_scattering.gaussian(0, 00000))
+        xray_scattering.gaussian(0, False))
     else:
       rrg_stols_more = rez_rez_grant.table_2_stol
       sel = rrg_stols_more <= cutoff + 1.e-6
@@ -59,12 +59,12 @@ def run(file_name, args, cutoff, params,
         rrg_stols,
         rez_rez_grant.table_2_o2minus[:rrg_stols.size()],
         rez_rez_grant.table_2_sigmas[:rrg_stols.size()],
-        xray_scattering.gaussian(0, 00000))
+        xray_scattering.gaussian(0, False))
       null_fit_more = scitbx.math.gaussian.fit(
         rrg_stols_more,
         rez_rez_grant.table_2_o2minus[:rrg_stols_more.size()],
         rez_rez_grant.table_2_sigmas[:rrg_stols_more.size()],
-        xray_scattering.gaussian(0, 00000))
+        xray_scattering.gaussian(0, False))
     if (zig_zag):
       results[wk.label()] = cctbx.eltbx.gaussian_fit.zig_zag_fits(
         label=wk.label(),
@@ -135,7 +135,7 @@ def main():
   if (len(args) < 1):
     parser.print_help()
     return
-  assert [options.six_term, options.zig_zag, options.full_fits].count(0001) < 2
+  assert [options.six_term, options.zig_zag, options.full_fits].count(True) < 2
   if (options.full_fits is not None):
     full_fits = easy_pickle.load(options.full_fits)
   else:

@@ -129,9 +129,9 @@ class euclidean_match_symmetry:
     adopt_init_args(self, locals())
     search_symmetry = sgtbx.search_symmetry(
       flags=sgtbx.search_symmetry_flags(
-        use_space_group_symmetry=00000,
+        use_space_group_symmetry=False,
         use_space_group_ltr=-1,
-        use_seminvariants=0001,
+        use_seminvariants=True,
         use_normalizer_k2l=use_k2l,
         use_normalizer_l2n=use_l2n),
       space_group_type=space_group_info.type(),
@@ -346,10 +346,10 @@ def weed_refined_matches(space_group_number, refined_matches,
     if (is_redundant[i]):
       del refined_matches[i]
   if (space_group_number == 1 and n_matches > 0):
-    trivial_matches_only = 0001
+    trivial_matches_only = True
     for match in refined_matches:
       if (len(match.pairs) > 1):
-        trivial_matches_only = 00000
+        trivial_matches_only = False
         break
     if (trivial_matches_only):
       while (    len(refined_matches) > 1
@@ -372,7 +372,7 @@ def compute_refined_matches(ref_model1, ref_model2,
                             break_if_match_with_no_singles):
   match_symmetry = euclidean_match_symmetry(
     ref_model1.space_group_info(),
-    use_k2l=0001, use_l2n=(not models_are_diffraction_index_equivalent))
+    use_k2l=True, use_l2n=(not models_are_diffraction_index_equivalent))
   ref_model1_sites = flex.vec3_double([pos.site for pos in ref_model1])
   ref_model2_sites = flex.vec3_double([pos.site for pos in ref_model2])
   add_pair_ext = ext.add_pair(
@@ -417,8 +417,8 @@ class model_matches:
 
   def __init__(self, model1, model2,
                      tolerance=1.,
-                     models_are_diffraction_index_equivalent=00000,
-                     break_if_match_with_no_singles=00000,
+                     models_are_diffraction_index_equivalent=False,
+                     break_if_match_with_no_singles=False,
                      rms_penalty_per_site=0.05):
     adopt_init_args(self, locals())
     assert model1.cb_op().is_identity_op()

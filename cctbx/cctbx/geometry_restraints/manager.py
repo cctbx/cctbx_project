@@ -37,7 +37,7 @@ class manager:
 
   def pair_proxies(self,
         sites_cart=None,
-        lock=00000,
+        lock=False,
         asu_is_inside_epsilon=None,
         bonded_distance_cutoff_epsilon=None):
     if (bonded_distance_cutoff_epsilon is None):
@@ -102,11 +102,11 @@ class manager:
   def energies(self,
         sites_cart,
         flags=None,
-        compute_gradients=00000,
-        disable_asu_cache=00000,
-        lock_pair_proxies=00000):
+        compute_gradients=False,
+        disable_asu_cache=False,
+        lock_pair_proxies=False):
     if (flags is None):
-      flags = geometry_restraints.flags.flags(default=0001)
+      flags = geometry_restraints.flags.flags(default=True)
     pair_proxies = self.pair_proxies(
       sites_cart=sites_cart,
       lock=lock_pair_proxies)

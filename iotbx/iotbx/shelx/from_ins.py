@@ -12,9 +12,9 @@ from cctbx.eltbx.xray_scattering import wk1995
 from iotbx.shelx import crystal_symmetry_from_ins
 
 def from_ins(file_name=None, ins_records=None,
-             crystal_symmetry=None, force_symmetry=00000,
-             ignore_atom_element_q=0001,
-             scan_atom_element_columns=0001,
+             crystal_symmetry=None, force_symmetry=False,
+             ignore_atom_element_q=True,
+             scan_atom_element_columns=True,
              min_distance_sym_equiv=0.5):
 
   assert [file_name, ins_records].count(None) == 1

@@ -29,19 +29,19 @@ def exercise_conversions():
   assert r.sigma_f_sq.size() == 0
 
 def exercise_gradient_flags():
-  f = xray.ext.gradient_flags(00000, 0001, 00000, 0001, 00000, 0001)
+  f = xray.ext.gradient_flags(False, True, False, True, False, True)
   assert not f.site
   assert f.u_iso
   assert not f.u_aniso
   assert f.occupancy
   assert not f.fp
   assert f.fdp
-  f.site = 0001
-  f.u_iso = 00000
-  f.u_aniso = 0001
-  f.occupancy = 00000
-  f.fp = 0001
-  f.fdp = 00000
+  f.site = True
+  f.u_iso = False
+  f.u_aniso = True
+  f.occupancy = False
+  f.fp = True
+  f.fdp = False
   assert f.site
   assert not f.u_iso
   assert f.u_aniso
@@ -57,12 +57,12 @@ def exercise_gradient_flags():
   assert not c.fdp
   assert not f.all_false()
   assert xray.ext.gradient_flags(
-    00000, 00000, 00000, 00000, 00000, 00000).all_false()
-  f.u_iso = 0001
-  assert f.adjust(00000).u_iso == 0001
-  assert f.adjust(0001).u_iso == 00000
-  assert f.adjust(00000).u_aniso == 00000
-  assert f.adjust(0001).u_aniso == 0001
+    False, False, False, False, False, False).all_false()
+  f.u_iso = True
+  assert f.adjust(False).u_iso == True
+  assert f.adjust(True).u_iso == False
+  assert f.adjust(False).u_aniso == False
+  assert f.adjust(True).u_aniso == True
 
 def exercise_xray_scatterer():
   x = xray.scatterer("a", (0.1,0.2,0.3), 0.25, 0.9, "const", 0, 0)
@@ -130,8 +130,8 @@ def exercise_xray_scatterer():
     space_group=sg.group(),
     min_distance_sym_equiv=0.5,
     u_star_tolerance=0,
-    assert_is_positive_definite=00000,
-    assert_min_distance_sym_equiv=00000)
+    assert_is_positive_definite=False,
+    assert_min_distance_sym_equiv=False)
   assert ss.is_compatible_u_star(x.u_star)
   assert approx_equal(x.u_star, (0.0035625, 0.0035625, 0.002884, 0, 0, 0))
   site = (0.2,0.5,0.4)
@@ -142,8 +142,8 @@ def exercise_xray_scatterer():
     unit_cell=uc,
     site_symmetry_ops=ss,
     u_star_tolerance=0,
-    assert_is_positive_definite=00000,
-    assert_min_distance_sym_equiv=00000)
+    assert_is_positive_definite=False,
+    assert_min_distance_sym_equiv=False)
   assert approx_equal(x.u_star, (1.5,1.5,3.0,0,0,0))
   x.site = (0.2,0.5,0.4)
   ss = x.apply_symmetry(uc, sg.group(), 1.e-10, 0)
@@ -153,8 +153,8 @@ def exercise_xray_scatterer():
     unit_cell=uc,
     site_symmetry_ops=ss,
     u_star_tolerance=0,
-    assert_is_positive_definite=00000,
-    assert_min_distance_sym_equiv=00000)
+    assert_is_positive_definite=False,
+    assert_min_distance_sym_equiv=False)
   # check if eigenvalue filtering was applied
   assert approx_equal(x.u_star,
     (3.3379643647809192, 4.5640522609325131, 4.4690204772593507,
@@ -282,8 +282,8 @@ def exercise_structure_factors():
     site_symmetry_table_for_new=sgtbx.site_symmetry_table(),
     min_distance_sym_equiv=0.5,
     u_star_tolerance=0,
-    assert_is_positive_definite=00000,
-    assert_min_distance_sym_equiv=0001)
+    assert_is_positive_definite=False,
+    assert_min_distance_sym_equiv=True)
   assert list(site_symmetry_table.special_position_indices()) == [0]
   for s in scatterers:
     assert s.multiplicity() != 0
@@ -304,13 +304,13 @@ def exercise_structure_factors():
   xray.ext.structure_factors_gradients_direct(
     uc, sg.group(), mi, scatterers, scattering_dict,
     flex.complex_double(mi.size()),
-    xray.ext.gradient_flags(00001, 00001, 00001, 00001, 00001, 00001),
+    xray.ext.gradient_flags(True, True, True, True, True, True),
     0)
   xray.ext.structure_factors_gradients_direct(
     math_module.cos_sin_table(12),
     uc, sg.group(), mi, scatterers, scattering_dict,
     flex.complex_double(mi.size()),
-    xray.ext.gradient_flags(00001, 00001, 00001, 00001, 00001, 00001),
+    xray.ext.gradient_flags(True, True, True, True, True, True),
     0)
 
 def exercise_targets():
@@ -321,11 +321,11 @@ def exercise_targets():
   assert approx_equal(ls.scale_factor(), 1)
   assert approx_equal(ls.target(), 0)
   assert ls.derivatives().size() == 0
-  ls = xray.targets_least_squares_residual(f_obs, w, f_calc, 0001)
+  ls = xray.targets_least_squares_residual(f_obs, w, f_calc, True)
   assert approx_equal(ls.scale_factor(), 1)
   assert approx_equal(ls.target(), 0)
   assert approx_equal(tuple(ls.derivatives()), (0j,0j,0j,0j,0j))
-  ls = xray.targets_least_squares_residual(f_obs, w, f_calc, 00000, 3)
+  ls = xray.targets_least_squares_residual(f_obs, w, f_calc, False, 3)
   assert approx_equal(ls.scale_factor(), 3)
   assert approx_equal(ls.target(), 4)
   assert ls.derivatives().size() == 0
@@ -334,17 +334,17 @@ def exercise_targets():
   assert approx_equal(ls.target(), 0)
   assert ls.derivatives().size() == 0
   f_calc = flex.complex_double((10,20,30,40,50))
-  ls = xray.targets_least_squares_residual(f_obs, f_calc, 0001)
+  ls = xray.targets_least_squares_residual(f_obs, f_calc, True)
   assert approx_equal(ls.scale_factor(), 1/10.)
   assert approx_equal(ls.target(), 0)
   assert approx_equal(tuple(ls.derivatives()), (0j,0j,0j,0j,0j))
-  ls = xray.targets_least_squares_residual(f_obs, f_calc, 00000, 3/10.)
+  ls = xray.targets_least_squares_residual(f_obs, f_calc, False, 3/10.)
   assert approx_equal(ls.scale_factor(), 3/10.)
   assert approx_equal(ls.target(), 4)
   assert ls.derivatives().size() == 0
   f_calc = flex.complex_double((1+2j,3+4j,-1-2j,5-4j,-5+6j))
   w = flex.double((1,2,3,2,4))
-  ls = xray.targets_least_squares_residual(f_obs, w, f_calc, 0001)
+  ls = xray.targets_least_squares_residual(f_obs, w, f_calc, True)
   assert approx_equal(ls.scale_factor(), 0.6307845)
   assert approx_equal(ls.target(), 0.06211855)
   assert approx_equal(tuple(ls.derivatives()), (
@@ -358,7 +358,7 @@ def exercise_targets():
   assert approx_equal(ic.correlation(), 1)
   assert approx_equal(ic.target(), 0)
   assert ic.derivatives().size() == 0
-  ic = xray.targets_intensity_correlation(f_obs, w, f_calc, 0001)
+  ic = xray.targets_intensity_correlation(f_obs, w, f_calc, True)
   assert approx_equal(ic.correlation(), 1)
   assert approx_equal(ic.target(), 0)
   assert approx_equal(tuple(ic.derivatives()), (0j,0j,0j,0j,0j))
@@ -367,13 +367,13 @@ def exercise_targets():
   assert approx_equal(ic.target(), 0)
   assert ic.derivatives().size() == 0
   f_calc = flex.complex_double((10,20,30,40,50))
-  ic = xray.targets_intensity_correlation(f_obs, f_calc, 0001)
+  ic = xray.targets_intensity_correlation(f_obs, f_calc, True)
   assert approx_equal(ic.correlation(), 1)
   assert approx_equal(ic.target(), 0)
   assert approx_equal(tuple(ic.derivatives()), (0j,0j,0j,0j,0j))
   f_calc = flex.complex_double((1+2j,3+4j,-1-2j,5-4j,-5+6j))
   w = flex.int((1,2,3,2,4))
-  ic = xray.targets_intensity_correlation(f_obs, w, f_calc, 0001)
+  ic = xray.targets_intensity_correlation(f_obs, w, f_calc, True)
   assert approx_equal(ic.correlation(), 0.8932460)
   assert approx_equal(ic.target(), 1-ic.correlation())
   assert approx_equal(tuple(ic.derivatives()), (
@@ -446,7 +446,7 @@ def exercise_minimization_apply_shifts():
                      (0.04,0.05,0.06,-.005,0.02,-0.002)))))
   scattering_dict = xray.ext.scattering_dictionary(scatterers)
   scattering_dict.assign_from_table("WK1995")
-  f = xray.ext.gradient_flags(0001, 0001, 0001, 0001, 0001, 0001)
+  f = xray.ext.gradient_flags(True, True, True, True, True, True)
   shifts = flex.double(19, 0.001)
   shifted_scatterers = xray.ext.minimization_apply_shifts(
     uc, sg.type(), scatterers, scattering_dict, f, shifts, 0)
@@ -479,7 +479,7 @@ def exercise_minimization_apply_shifts():
     assert approx_equal(a.occupancy, b.occupancy)
     assert approx_equal(a.fp, b.fp)
     assert approx_equal(a.fdp, b.fdp)
-  f = xray.ext.gradient_flags(0001, 00000, 00000, 00000, 00000, 00000)
+  f = xray.ext.gradient_flags(True, False, False, False, False, False)
   shifts = flex.double((-1,2,-3,4,-5,-6))
   shifted_scatterers = xray.ext.minimization_apply_shifts(
     uc, sg.type(), scatterers, scattering_dict, f, shifts, 0)
@@ -489,12 +489,12 @@ def exercise_minimization_apply_shifts():
   assert approx_equal(
     shifted_scatterers[1].site,
     (0.3+4/20.,0.4-5/20.,0.5-6/23.))
-  f = xray.ext.gradient_flags(00000, 0001, 00000, 00000, 00000, 00000)
+  f = xray.ext.gradient_flags(False, True, False, False, False, False)
   shifts = flex.double(1, -10)
   shifted_scatterers = xray.ext.minimization_apply_shifts(
     uc, sg.type(), scatterers, scattering_dict, f, shifts, 0)
   assert shifted_scatterers[0].u_iso == 0
-  f = xray.ext.gradient_flags(00000, 00000, 0001, 00000, 00000, 00000)
+  f = xray.ext.gradient_flags(False, False, True, False, False, False)
   shifts = flex.double(6, -100)
   shifted_scatterers = xray.ext.minimization_apply_shifts(
     uc, sg.type(), scatterers, scattering_dict, f, shifts, 0)
@@ -506,13 +506,13 @@ def exercise_minimization_apply_shifts():
   # should produce the same result
   assert approx_equal(shifted_scatterers[1].u_star,
                       shifted_scatterers_2[1].u_star)
-  f = xray.ext.gradient_flags(00000, 00000, 00000, 0001, 00000, 00000)
+  f = xray.ext.gradient_flags(False, False, False, True, False, False)
   shifts = flex.double(2, -10)
   shifted_scatterers = xray.ext.minimization_apply_shifts(
     uc, sg.type(), scatterers, scattering_dict, f, shifts, 0)
   for i in xrange(2):
     assert shifted_scatterers[i].occupancy == 0
-  f = xray.ext.gradient_flags(00000, 00000, 00000, 00000, 0001, 00000)
+  f = xray.ext.gradient_flags(False, False, False, False, True, False)
   shifts = flex.double(2, -10)
   shifted_scatterers = xray.ext.minimization_apply_shifts(
     uc, sg.type(), scatterers, scattering_dict, f, shifts, 0)
@@ -527,7 +527,7 @@ def exercise_minimization_apply_shifts():
           .lookup(shifted_scatterers[i].scattering_type)
           .gaussian.at_d_star_sq(1/9.)))
     assert shifted_scatterers[i].fdp == scatterers[i].fdp
-  f = xray.ext.gradient_flags(00000, 00000, 00000, 00000, 00000, 0001)
+  f = xray.ext.gradient_flags(False, False, False, False, False, True)
   shifts = flex.double((2,3))
   shifted_scatterers = xray.ext.minimization_apply_shifts(
     uc, sg.type(), scatterers, scattering_dict, f, shifts, 3)
@@ -560,7 +560,7 @@ def exercise_minimization_add_geometry_restraints_site_gradients():
                    u=adptbx.u_cart_as_u_star(uc,
                      (0.04,0.05,0.06,-.005,0.02,-0.002)))))
   gradient_flags = xray.ext.gradient_flags(
-    0001, 00000, 00000, 00000, 00000, 00000)
+    True, False, False, False, False, False)
   xray_gradients = flex.double(xrange(6))
   geometry_restraints_site_gradients = flex.vec3_double([(1,-2,3),(-4,-5,6)])
   xray.ext.minimization_add_geometry_restraints_site_gradients(
@@ -571,7 +571,7 @@ def exercise_minimization_add_geometry_restraints_site_gradients():
   assert approx_equal(xray_gradients,
     [1,-1,5,-1,-1,11])
   gradient_flags = xray.ext.gradient_flags(
-    0001, 0001, 0001, 0001, 0001, 0001)
+    True, True, True, True, True, True)
   xray_gradients = flex.double(xrange(19))
   xray.ext.minimization_add_geometry_restraints_site_gradients(
     scatterers=scatterers,
@@ -581,7 +581,7 @@ def exercise_minimization_add_geometry_restraints_site_gradients():
   assert approx_equal(xray_gradients,
     [1,-1,5,3,4,5,6,3,3,15,10,11,12,13,14,15,16,17,18])
   gradient_flags = xray.ext.gradient_flags(
-    0001, 0001, 00000, 0001, 0001, 0001)
+    True, True, False, True, True, True)
   xray_gradients = flex.double(xrange(13))
   xray.ext.minimization_add_geometry_restraints_site_gradients(
     scatterers=scatterers,
@@ -591,7 +591,7 @@ def exercise_minimization_add_geometry_restraints_site_gradients():
   assert approx_equal(xray_gradients,
     [1,-1,5,3,4,5,6,3,3,15,10,11,12])
   gradient_flags = xray.ext.gradient_flags(
-    0001, 00000, 0001, 0001, 00000, 0001)
+    True, False, True, True, False, True)
   xray_gradients = flex.double(xrange(16))
   xray.ext.minimization_add_geometry_restraints_site_gradients(
     scatterers=scatterers,

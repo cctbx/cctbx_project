@@ -16,7 +16,7 @@ def timings(structure, wing_cutoff=1.e-3):
       miller_set = miller.build_set(
         crystal_symmetry=structure,
         d_min=d_min,
-        anomalous_flag=00000)
+        anomalous_flag=False)
       miller_set.show_summary()
       times = []
       for structure in (structure_ng, structure_4g):

@@ -20,14 +20,14 @@ def peak_cluster_reduction(crystal_symmetry, peak_list,
   for peak in peaks:
     site_symmetry = special_position_settings.site_symmetry(peak.site)
     equiv_sites = sgtbx.sym_equiv_sites(site_symmetry)
-    keep = 0001
+    keep = True
     for reduced_peak in reduced_peaks:
       dist = sgtbx.min_sym_equiv_distance_info(
         equiv_sites, reduced_peak.site).dist()
       if (dist < min_peak_distance):
-        keep = 00000
+        keep = False
         break
-    if (keep == 0001):
+    if (keep == True):
       reduced_peaks.append(peak)
       if (len(reduced_peaks) == max_reduced_peaks): break
   return reduced_peaks
@@ -36,7 +36,7 @@ def calculate_exp_i_two_phi_peaks(xray_structure, d_min,
                                   min_peak_distance,
                                   max_reduced_peaks):
   f_h = xray_structure.structure_factors(
-    anomalous_flag=00000,
+    anomalous_flag=False,
     d_min=d_min).f_calc()
   two_i_phi_h = miller.array(
     miller_set=f_h,
@@ -56,7 +56,7 @@ def calculate_exp_i_two_phi_peaks(xray_structure, d_min,
     data=real_map,
     tags=grid_tags.tag_array(),
     max_peaks=10*max_reduced_peaks,
-    interpolate=0001)
+    interpolate=True)
   reduced_peaks = peak_cluster_reduction(
     crystal_symmetry=xray_structure,
     peak_list=peak_list,

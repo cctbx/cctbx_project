@@ -12,8 +12,8 @@ class energies:
                      dihedral_proxies=None,
                      chirality_proxies=None,
                      planarity_proxies=None,
-                     compute_gradients=0001,
-                     disable_asu_cache=00000):
+                     compute_gradients=True,
+                     disable_asu_cache=False):
     if (nonbonded_proxies is not None): assert nonbonded_function is not None
     if (compute_gradients):
       self.gradients = flex.vec3_double(sites_cart.size(), [0,0,0])
@@ -39,7 +39,7 @@ class energies:
         sorted_asu_proxies=nonbonded_proxies,
         gradient_array=self.gradients,
         function=nonbonded_function,
-        disable_cache=00000)
+        disable_cache=False)
     if (angle_proxies is None):
       self.n_angle_proxies = None
       self.angle_residual_sum = 0

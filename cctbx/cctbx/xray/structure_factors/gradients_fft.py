@@ -56,8 +56,8 @@ class gradients_fft(gradients_base):
       time_fft=time_fft,
       time_from_or_to_map=time_from_or_to_map,
       time_apply_u_extra=time_apply_u_extra)
-    self.d_target_d_site_frac_was_used = 00000
-    self.d_target_d_u_star_was_used = 00000
+    self.d_target_d_site_frac_was_used = False
+    self.d_target_d_u_star_was_used = False
 
   def _gradient_map_coeff(self):
     multiplier = (  self.manager().unit_cell().volume()
@@ -78,7 +78,7 @@ class gradients_fft(gradients_base):
       n_complex = self.manager().rfft().n_complex()
     else:
       n_complex = self.manager().rfft().n_real()
-    conjugate_flag = 0001
+    conjugate_flag = True
     return maptbx.structure_factors.to_map(
       self.miller_set().space_group(),
       self.miller_set().anomalous_flag(),
@@ -94,7 +94,7 @@ class gradients_fft(gradients_base):
   def d_target_d_site_frac(self):
     if (self.d_target_d_site_frac_was_used):
       raise RuntimeError(expensive_function_call_message)
-    self.d_target_d_site_frac_was_used = 0001
+    self.d_target_d_site_frac_was_used = True
     return self.d_target_d_site_cart() \
          * self.xray_structure().unit_cell().orthogonalization_matrix()
 
@@ -104,6 +104,6 @@ class gradients_fft(gradients_base):
   def d_target_d_u_star(self):
     if (self.d_target_d_u_star_was_used):
       raise RuntimeError(expensive_function_call_message)
-    self.d_target_d_u_star_was_used = 0001
+    self.d_target_d_u_star_was_used = True
     return adptbx.grad_u_cart_as_u_star(
       self.xray_structure().unit_cell(), self.d_target_d_u_cart())

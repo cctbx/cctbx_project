@@ -10,7 +10,7 @@ from scitbx.python_utils.math_utils import iround
 from cStringIO import StringIO
 
 def xray_structure_as_pdb_file(self, remark=None, remarks=[],
-                                     fractional_coordinates=00000,
+                                     fractional_coordinates=False,
                                      res_name=None,
                                      connect=None):
   if (remark is not None):
@@ -99,19 +99,19 @@ def xray_structure_as_pdb_file(self, remark=None, remarks=[],
 xray.structure.as_pdb_file = xray_structure_as_pdb_file
 
 def from_pdb(file_name=None, file_iterator=None, pdb_records=None,
-             crystal_symmetry=None, force_symmetry=00000,
-             ignore_atom_element_q=0001,
-             scan_atom_element_columns=0001,
-             fractional_coordinates=00000,
+             crystal_symmetry=None, force_symmetry=False,
+             ignore_atom_element_q=True,
+             scan_atom_element_columns=True,
+             fractional_coordinates=False,
              min_distance_sym_equiv=0.5,
-             keep_scatterer_pdb_records=00000):
+             keep_scatterer_pdb_records=False):
   assert [file_name, file_iterator, pdb_records].count(None) == 2
   if (pdb_records is None):
     if (file_iterator is None):
       file_iterator = open(file_name)
     pdb_records = parser.collect_records(
       raw_records=file_iterator,
-      ignore_master=0001)
+      ignore_master=True)
   cryst1_symmetry = None
   for record in pdb_records:
     if (record.record_name.startswith("CRYST1")):

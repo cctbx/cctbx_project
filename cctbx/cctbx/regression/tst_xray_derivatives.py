@@ -28,7 +28,7 @@ def finite_differences_site(cartesian_flag, target_ftor, structure,
         f_calc = target_ftor.f_obs().structure_factors_from_scatterers(
             xray_structure=modified_structure,
             algorithm="direct").f_calc()
-        target_result = target_ftor(f_calc, compute_derivatives=00000)
+        target_result = target_ftor(f_calc, compute_derivatives=False)
         target_values.append(target_result.target())
       derivative = (target_values[1] - target_values[0]) / (2 * delta)
       if (not cartesian_flag): derivative *= abc[ix]
@@ -52,7 +52,7 @@ def finite_differences_u_star(target_ftor, structure,
         f_calc = target_ftor.f_obs().structure_factors_from_scatterers(
           xray_structure=modified_structure,
           algorithm="direct").f_calc()
-        target_result = target_ftor(f_calc, compute_derivatives=00000)
+        target_result = target_ftor(f_calc, compute_derivatives=False)
         target_values.append(target_result.target())
       derivative = (target_values[1] - target_values[0]) / (2 * delta)
       d_target_d_u_star[iu] = derivative
@@ -80,7 +80,7 @@ def finite_differences_scalar(parameter_name, target_ftor, structure,
       f_calc = target_ftor.f_obs().structure_factors_from_scatterers(
         xray_structure=modified_structure,
         algorithm="direct").f_calc()
-      target_result = target_ftor(f_calc, compute_derivatives=00000)
+      target_result = target_ftor(f_calc, compute_derivatives=False)
       target_values.append(target_result.target())
     derivative = (target_values[1] - target_values[0]) / (2 * delta)
     derivatives.append(derivative)
@@ -92,7 +92,7 @@ def flex_tuple_as_flex_double(flex_tuple):
     result.extend(flex.double(tuple(t)))
   return result
 
-def linear_regression_test(d_analytical, d_numerical, test_hard=0001,
+def linear_regression_test(d_analytical, d_numerical, test_hard=True,
                            slope_tolerance=1.e-3,
                            correlation_min=0.999,
                            verbose=0):
@@ -121,8 +121,8 @@ def linear_regression_test(d_analytical, d_numerical, test_hard=0001,
 def exercise(target_functor, parameter_name, space_group_info,
              anomalous_flag, cartesian_flag,
              n_elements=4, d_min=3., shake_sigma=0.25,
-             test_hard=0001, verbose=0):
-  if (parameter_name != "site" and cartesian_flag == 0001): return
+             test_hard=True, verbose=0):
+  if (parameter_name != "site" and cartesian_flag == True): return
   if (parameter_name == "fdp" and not anomalous_flag): return
   structure_ideal = random_structure.xray_structure(
     space_group_info,
@@ -131,8 +131,8 @@ def exercise(target_functor, parameter_name, space_group_info,
     random_f_prime_d_min=d_min,
     random_f_double_prime=anomalous_flag,
     anisotropic_flag=(parameter_name == "u_star"),
-    random_u_iso=0001,
-    random_occupancy=0001)
+    random_u_iso=True,
+    random_occupancy=True)
   f_obs = abs(structure_ideal.structure_factors(
     anomalous_flag=anomalous_flag, d_min=d_min, algorithm="direct").f_calc())
   if (0 or verbose):
@@ -142,7 +142,7 @@ def exercise(target_functor, parameter_name, space_group_info,
   if (0 or verbose):
     f_obs.show_summary()
   structure_shake = structure_ideal.random_modify_parmeters(
-    parameter_name, shake_sigma, vary_z_only=00000)
+    parameter_name, shake_sigma, vary_z_only=False)
   assert tuple(structure_ideal.special_position_indices()) \
       == tuple(structure_shake.special_position_indices())
   if (0 or verbose):
@@ -152,7 +152,7 @@ def exercise(target_functor, parameter_name, space_group_info,
     f_calc = f_obs.structure_factors_from_scatterers(
       xray_structure=structure,
       algorithm="direct").f_calc()
-    target_result = target_ftor(f_calc, compute_derivatives=0001)
+    target_result = target_ftor(f_calc, compute_derivatives=True)
     if (structure == structure_ideal):
       assert abs(target_result.target()) < 1.e-5
   if (0 or verbose):
@@ -205,14 +205,14 @@ def exercise(target_functor, parameter_name, space_group_info,
 
 def run_call_back(flags, space_group_info):
   coordinate_systems = []
-  if (flags.Frac): coordinate_systems.append(00000)
-  if (flags.Cart): coordinate_systems.append(0001)
+  if (flags.Frac): coordinate_systems.append(False)
+  if (flags.Cart): coordinate_systems.append(True)
   if (len(coordinate_systems) == 0):
-    coordinate_systems = [00000, 0001]
+    coordinate_systems = [False, True]
   for target_functor in xray.target_functors.registry().values():
     for parameter_name in ("site", "u_iso", "u_star", "occupancy",
                            "fp", "fdp")[:]: #SWITCH
-      for anomalous_flag in (00000, 0001)[:]: #SWITCH
+      for anomalous_flag in (False, True)[:]: #SWITCH
         for cartesian_flag in coordinate_systems:
           exercise(target_functor, parameter_name, space_group_info,
                    anomalous_flag, cartesian_flag,

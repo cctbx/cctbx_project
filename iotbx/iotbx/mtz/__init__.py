@@ -53,8 +53,8 @@ class Mtz (ext.Mtz):
       return None
     return sgtbx.space_group_info(group=self.getSgtbxSpaceGroup())
 
-  def as_miller_arrays(self, crystal_symmetry=None, force_symmetry=00000,
-                             merge_equivalents=0001,
+  def as_miller_arrays(self, crystal_symmetry=None, force_symmetry=False,
+                             merge_equivalents=True,
                              info_prefix=""):
     other_symmetry = crystal_symmetry
     result = []
@@ -104,7 +104,7 @@ class Mtz (ext.Mtz):
           primary_column_type=t0,
           labels=[l0],
           indices=self.valid_indices(l0),
-          anomalous_flag=00000,
+          anomalous_flag=False,
           data=self.valid_integers(l0)))
       elif (t0 in "R"): # general real column
         groups.append(column_group(
@@ -112,7 +112,7 @@ class Mtz (ext.Mtz):
           primary_column_type=t0,
           labels=[l0],
           indices=self.valid_indices(l0),
-          anomalous_flag=00000,
+          anomalous_flag=False,
           data=self.valid_values(l0)))
       elif (t0 in "A"): # Hendrickson-Lattman coefficients
         assert all_column_types[i_column:i_column+4] == "AAAA"
@@ -123,7 +123,7 @@ class Mtz (ext.Mtz):
           primary_column_type=t0,
           labels=labels,
           indices=self.valid_indices(l0),
-          anomalous_flag=00000,
+          anomalous_flag=False,
           data=self.valid_hl(labels[0], labels[1], labels[2], labels[3])))
       elif (remaining_types[:4] == "FQDQ"):
         labels = all_column_labels[i_column:i_column+4]
@@ -135,7 +135,7 @@ class Mtz (ext.Mtz):
           primary_column_type=t0,
           labels=labels,
           indices=arrays.indices,
-          anomalous_flag=0001,
+          anomalous_flag=True,
           data=arrays.data,
           sigmas=arrays.sigmas))
         groups[-1].set_observation_type(
@@ -166,7 +166,7 @@ class Mtz (ext.Mtz):
           primary_column_type=t0,
           labels=labels,
           indices=self.valid_indices(l0),
-          anomalous_flag=00000,
+          anomalous_flag=False,
           data=data,
           sigmas=sigmas))
       elif (t0 in "GK"):
@@ -192,7 +192,7 @@ class Mtz (ext.Mtz):
             primary_column_type=t0,
             labels=labels,
             indices=self.valid_indices_anomalous(labels[0], labels[1]),
-            anomalous_flag=0001,
+            anomalous_flag=True,
             data=self.valid_values_anomalous(labels[0], labels[1])))
         elif ("P" in remaining_types[:4]):
           groups.append(column_group(
@@ -200,7 +200,7 @@ class Mtz (ext.Mtz):
             primary_column_type=t0,
             labels=labels,
             indices=self.valid_indices_anomalous(labels[0], labels[2]),
-            anomalous_flag=0001,
+            anomalous_flag=True,
             data=self.valid_complex_anomalous(
               labels[0],labels[1],labels[2],labels[3])))
         else:
@@ -209,7 +209,7 @@ class Mtz (ext.Mtz):
             primary_column_type=t0,
             labels=labels,
             indices=self.valid_indices_anomalous(labels[0], labels[2]),
-            anomalous_flag=0001,
+            anomalous_flag=True,
             data=self.valid_values_anomalous(labels[0],labels[2]),
             sigmas=self.valid_values_anomalous(labels[1],labels[3])))
       else:
@@ -218,7 +218,7 @@ class Mtz (ext.Mtz):
           primary_column_type=t0,
           labels=[l0],
           indices=self.valid_indices(l0),
-          anomalous_flag=00000,
+          anomalous_flag=False,
           data=self.valid_values(l0)))
     return groups
 
@@ -251,11 +251,11 @@ def column_group(crystal_symmetry, primary_column_type, labels,
   assert data is not None
   assert data.size() == indices.size()
   if (sigmas is not None): assert sigmas.size() == data.size()
-  if (anomalous_flag is 0001):
+  if (anomalous_flag is True):
     miller_set = miller.set(
       crystal_symmetry=crystal_symmetry,
       indices=indices,
-      anomalous_flag=0001)
+      anomalous_flag=True)
   else:
     miller_set = miller.set(
       crystal_symmetry=crystal_symmetry,
@@ -287,8 +287,8 @@ def mend_non_conforming_anomalous_column_types(all_types, all_labels):
   def contains_one_of(label, patterns):
     for pattern in patterns:
       if (label.find(pattern) >= 0):
-        return 0001
-    return 00000
+        return True
+    return False
 
   def are_anomalous_labels():
     if (group_types[1] == "Q"):
@@ -299,8 +299,8 @@ def mend_non_conforming_anomalous_column_types(all_types, all_labels):
       for offs in offsets:
         label = all_labels[i_group_start + offs].upper()
         if (not contains_one_of(label, patterns)):
-          return 00000
-    return 0001
+          return False
+    return True
 
   def find_group():
     for group_types in replacements.keys():

@@ -57,7 +57,7 @@ def exercise_volume_vertices(asu, unit_cell):
       m_near_sphere_surface += 1
   assert m_near_sphere_surface >= n_near_sphere_surface
   line_asu = copy.copy(asu)
-  line_asu.add_planes([(0,0,1),(1,1,1)], both_directions=0001)
+  line_asu.add_planes([(0,0,1),(1,1,1)], both_directions=True)
   assert len(line_asu.facets) == len(asu.facets) + 4
   assert line_asu.facets[-2].n == (-line_asu.facets[-1]).n
 
@@ -72,7 +72,7 @@ def exercise_float_asu(space_group_info, n_grid=6):
   float_asu = inp_asu.add_buffer(unit_cell=unit_cell, thickness=0.001)
   cb_mx_ref_inp = space_group_info.type().cb_op().c_inv().as_rational()
   n = n_grid
-  for ref_n in flex.nested_loop((-n/2,-n/2,-n/2),(n,n,n),00000):
+  for ref_n in flex.nested_loop((-n/2,-n/2,-n/2),(n,n,n),False):
     # check correctness of space_group_info.direct_space_asu()
     ref_r = matrix.col([rational.int(g,n) for g in ref_n])
     inp_r = cb_mx_ref_inp * ref_r
@@ -120,7 +120,7 @@ def exercise_asu_mappings(space_group_info, n_elements=10):
     elements=["Si"]*n_elements,
     volume_per_atom=1000,
     min_distance=3.,
-    general_positions_only=00000)
+    general_positions_only=False)
   asu_mappings = crystal.direct_space_asu.asu_mappings(
     space_group=structure.space_group(),
     asu=structure.direct_space_asu().as_float_asu(),
@@ -148,7 +148,7 @@ def exercise_neighbors_pair_generators(structure, verbose=0):
     for scatterer in structure.scatterers():
       asu_mappings.process(scatterer.site)
     array_of_array_of_mappings = asu_mappings.mappings()
-    for minimal in [00000, 0001]:
+    for minimal in [False, True]:
       pair_list = []
       for i_seq in xrange(array_of_array_of_mappings.size()):
         array_of_mappings_i = array_of_array_of_mappings[i_seq]
@@ -221,13 +221,13 @@ def exercise_neighbors_pair_generators(structure, verbose=0):
 
 def asu_mappings_is_simple_interaction_emulation(asu_mappings, pair):
   is_special_position = asu_mappings.site_symmetry_table().is_special_position
-  if (is_special_position(i_seq=pair.i_seq)): return 00000
-  if (is_special_position(i_seq=pair.j_seq)): return 00000
+  if (is_special_position(i_seq=pair.i_seq)): return False
+  if (is_special_position(i_seq=pair.j_seq)): return False
   return asu_mappings.get_rt_mx_i(pair) == asu_mappings.get_rt_mx_j(pair)
 
 def exercise_is_simple_interaction():
   for space_group_symbol in ["P1", "P41"]:
-    for shifts in flex.nested_loop((-2,-2,-2),(2,2,2),00000):
+    for shifts in flex.nested_loop((-2,-2,-2),(2,2,2),False):
       shifts = matrix.col(shifts)
       structure = xray.structure(
         crystal_symmetry=crystal.symmetry(
@@ -287,7 +287,7 @@ def exercise_all(flags, space_group_info):
       elements=["Si"]*5,
       volume_per_atom=100,
       min_distance=3.,
-      general_positions_only=00000),
+      general_positions_only=False),
     verbose=flags.Verbose)
 
 def run_call_back(flags, space_group_info):
