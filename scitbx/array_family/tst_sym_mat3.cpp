@@ -148,6 +148,13 @@ int main(int argc, char* argv[])
     verify(__LINE__, a.tensor_transpose_transform(c),
                      sym_mat3<int>(371,9,967,148,597,238));
   }
+  {
+    mat3<int> a(3,4,-9, 2,1,7, -2,4,5);
+    verify(__LINE__, a.self_times_self_transpose(),
+                     sym_mat3<int>(106,54,45,-53,-35,35));
+    verify(__LINE__, a.self_transpose_times_self(),
+                     sym_mat3<int>(17,33,155,6,-23,-9));
+  }
 
   std::cout << "Total OK: " << ok_counter << std::endl;
   if (error_counter || verbose) {
