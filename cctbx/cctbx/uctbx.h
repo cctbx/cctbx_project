@@ -230,6 +230,8 @@ namespace uctbx {
       //@{
       //! Compute the maximum Miller indices for a given minimum d-spacing.
       Miller::Index MaxMillerIndices(double dmin) const;
+      //! Inverse operation of MaxMiller indices.
+      double MaxResolution(Miller::Index) const;
       //! d-spacing measure Q = 1 / d^2 = s^2 = (2*sin(theta)/lambda)^2.
       inline double Q(const Miller::Index& MIx) const
       {

@@ -265,6 +265,25 @@ namespace uctbx {
     return MaxMIx;
   }
 
+  double UnitCell::MaxResolution(Miller::Index Mix) const
+  {
+    Miller::Index MaxMIx(std::abs(Mix[Miller::H]),std::abs(Mix[Miller::K]),std::abs(Mix[Miller::L]));
+    double maxres = 0.0;
+    int i, j;
+    for(i=0;i<3;i++) {
+      Vec3 u, v, uxv;
+      for(j=0;j<3;j++) u[j] = 0.; u[(i + 1) % 3] = 1.;
+      for(j=0;j<3;j++) v[j] = 0.; v[(i + 2) % 3] = 1.;
+      uxv = CrossG(1., R_G, u, v); // Since length of uxv is not used
+                                   //   sqrt(det(G)) is set to 1
+      double uxv2 = DotG(uxv, R_G, uxv);
+      double dmin = ((double)uxv[i]/(double)MaxMIx[i]/std::sqrt(uxv2)) -1.e-4;
+      std::cout<<"component "<<i<<" dmin="<<dmin<<std::endl;
+      maxres = i?((dmin<maxres)?dmin:maxres):dmin;
+    }
+    return maxres;
+  }
+
   UnitCell UnitCell::ChangeBasis(const Mx33& InvCBMxR, double RBF) const
   {
     Mx33 R = InvCBMxR;
