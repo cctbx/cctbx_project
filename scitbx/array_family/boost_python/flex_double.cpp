@@ -1,10 +1,21 @@
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
 #include <scitbx/array_family/boost_python/flex_pickle_single_buffered.h>
 #include <boost/python/args.hpp>
+#include <boost/python/make_constructor.hpp>
 
 namespace scitbx { namespace af {
 
 namespace {
+
+  flex<double>::type*
+  from_stl_vector_double(std::vector<double> const& v)
+  {
+    af::shared<double> result(af::reserve(v.size()));
+    for(std::size_t i=0;i<v.size();i++) {
+      result.push_back(v[i]);
+    }
+    return new flex<double>::type(result, result.size());
+  }
 
   af::shared<double>
   extract_double_attributes(
@@ -56,6 +67,8 @@ namespace boost_python {
 
     flex_wrapper<double>::numeric("double", scope())
       .def_pickle(flex_pickle_single_buffered<double>())
+      .def("__init__", make_constructor(
+        from_stl_vector_double, default_call_policies()))
     ;
 
     def("extract_double_attributes", extract_double_attributes,

@@ -387,6 +387,12 @@ def exercise_select():
   assert list(flex.intersection(size=5,iselections=[isel,isel2]).iselection())\
       == [4]
 
+def exercise_from_stl_vector():
+  from scitbx import stl
+  import scitbx.stl.vector
+  assert list(flex.size_t(stl.vector.unsigned([2,5,9]))) == [2,5,9]
+  assert list(flex.double(stl.vector.double([3,-6,10]))) == [3,-6,10]
+
 def exercise_operators():
   a = flex.bool((0, 1, 0, 1))
   b = flex.bool((0, 1, 1, 0))
@@ -1066,6 +1072,7 @@ def run(iterations):
     exercise_push_back_etc()
     exercise_setitem()
     exercise_select()
+    exercise_from_stl_vector()
     exercise_operators()
     exercise_bool_inplace_operators()
     exercise_arith_inplace_operators()
