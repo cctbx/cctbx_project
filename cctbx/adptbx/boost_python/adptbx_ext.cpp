@@ -1,13 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Oct: Refactored (rwgk)
-     2001 Oct: Created (R.W. Grosse-Kunstleve)
- */
-
 #include <cctbx/boost_python/flex_fwd.h>
 
 #include <cctbx/adptbx.h>
@@ -122,11 +112,21 @@ namespace {
       debye_waller_factor_u_cart);
 
     def("grad_u_star_as_u_cart",
-      (sym_mat3<double>(*)(uctbx::unit_cell const&,
-                           sym_mat3<double> const&)) grad_u_star_as_u_cart);
+      (sym_mat3<double>(*)(
+        uctbx::unit_cell const&,
+        sym_mat3<double> const&)) grad_u_star_as_u_cart);
+    def("grad_u_star_as_u_cart",
+      (af::shared<sym_mat3<double> >(*)(
+        uctbx::unit_cell const&,
+        af::const_ref<sym_mat3<double> > const&)) grad_u_star_as_u_cart);
     def("grad_u_cart_as_u_star",
-      (sym_mat3<double>(*)(uctbx::unit_cell const&,
-                           sym_mat3<double> const&)) grad_u_cart_as_u_star);
+      (sym_mat3<double>(*)(
+        uctbx::unit_cell const&,
+        sym_mat3<double> const&)) grad_u_cart_as_u_star);
+    def("grad_u_cart_as_u_star",
+      (af::shared<sym_mat3<double> >(*)(
+        uctbx::unit_cell const&,
+        af::const_ref<sym_mat3<double> > const&)) grad_u_cart_as_u_star);
 
     def("eigenvalues", (vec3<double>(*)(sym_mat3<double> const&)) eigenvalues);
     def("is_positive_definite",

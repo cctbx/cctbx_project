@@ -1,6 +1,7 @@
 from cctbx import uctbx
 from cctbx import adptbx
 from cctbx import matrix
+from cctbx.array_family import flex
 import scitbx.math.eigensystem
 from scitbx.test_utils import approx_equal
 import math
@@ -108,6 +109,13 @@ def exercise_grad_u_transformations():
   assert approx_equal(
     grad_u_star,
     adptbx.grad_u_cart_as_u_star(uc, grad_u_cart))
+  grad_u_star_array = flex.sym_mat3_double([grad_u_star]*3)
+  grad_u_cart_array = adptbx.grad_u_star_as_u_cart(uc, grad_u_star_array)
+  for g in grad_u_cart_array:
+    assert approx_equal(grad_u_cart, g)
+  grad_u_star_array = adptbx.grad_u_cart_as_u_star(uc, grad_u_cart_array)
+  for g in grad_u_star_array:
+    assert approx_equal(grad_u_star, g)
 
 def exercise_eigen_core(diag):
   u = adptbx.random_rotate_ellipsoid(diag + [0.,0.,0.])

@@ -49,22 +49,56 @@ namespace cctbx { namespace xray {
     return max_u_extra;
   }
 
+  // Not available in Python.
+  template <typename FloatType>
+  inline
+  void
+  apply_u_extra(
+    uctbx::unit_cell const& unit_cell,
+    FloatType const& u_extra,
+    miller::index<> const& miller_index,
+    std::complex<FloatType>& structure_factor,
+    FloatType const& multiplier)
+  {
+    //    f *= exp(b_extra * d_star_sq(h)/4)
+    // => f *= exp(2*pi*pi*u_extra * d_star_sq(h))
+    FloatType tppu = scitbx::constants::two_pi_sq * u_extra;
+    structure_factor *= multiplier * FloatType(std::exp(
+        tppu * unit_cell.d_star_sq(miller_index)));
+  }
+
   template <typename FloatType>
   void
-  eliminate_u_extra(
+  apply_u_extra(
     uctbx::unit_cell const& unit_cell,
     FloatType const& u_extra,
     af::const_ref<miller::index<> > const& miller_indices,
     af::ref<std::complex<FloatType> > const& structure_factors,
-    FloatType const& norm=1)
+    FloatType const& multiplier=1)
   {
     CCTBX_ASSERT(miller_indices.size() == structure_factors.size());
-    //    f *= exp(b_extra * d_star_sq(h)/4)
-    // => f *= exp(2*pi*pi*u_extra * d_star_sq(h))
-    FloatType tppu = scitbx::constants::two_pi_sq * u_extra;
     for(std::size_t i=0;i<miller_indices.size();i++) {
-      structure_factors[i] *= norm * FloatType(std::exp(
-        tppu * unit_cell.d_star_sq(miller_indices[i])));
+      apply_u_extra(
+        unit_cell, u_extra, miller_indices[i], structure_factors[i],
+        multiplier);
+    }
+  }
+
+  template <typename FloatType>
+  void
+  apply_u_extra(
+    uctbx::unit_cell const& unit_cell,
+    FloatType const& u_extra,
+    af::const_ref<miller::index<> > const& miller_indices,
+    af::ref<std::complex<FloatType> > const& structure_factors,
+    af::const_ref<FloatType> const& multipliers)
+  {
+    CCTBX_ASSERT(miller_indices.size() == structure_factors.size());
+    CCTBX_ASSERT(miller_indices.size() == multipliers.size());
+    for(std::size_t i=0;i<miller_indices.size();i++) {
+      apply_u_extra(
+        unit_cell, u_extra, miller_indices[i], structure_factors[i],
+        multipliers[i]);
     }
   }
 

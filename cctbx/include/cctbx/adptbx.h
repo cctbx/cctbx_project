@@ -1,13 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Oct: Refactored (rwgk)
-     2001 Oct: Created (R.W. Grosse-Kunstleve)
- */
-
 /*! \file
     Toolbox for the handling of anisotropic displacement parameters (ADPs).
  */
@@ -511,6 +501,8 @@ namespace cctbx {
   } // namespace detail
 
   //! Transformation of gradients w.r.t. u_star to gradients w.r.t. u_cart.
+  /*! Scalar version.
+   */
   template <typename FloatType>
   inline sym_mat3<FloatType>
   grad_u_star_as_u_cart(
@@ -521,7 +513,25 @@ namespace cctbx {
       unit_cell.fractionalization_matrix(), grad_u_star);
   }
 
+  //! Transformation of gradients w.r.t. u_star to gradients w.r.t. u_cart.
+  /*! Vector version.
+   */
+  template <typename FloatType>
+  af::shared<sym_mat3<FloatType> >
+  grad_u_star_as_u_cart(
+    uctbx::unit_cell const& unit_cell,
+    af::const_ref<sym_mat3<FloatType> > const& grad_u_star)
+  {
+    af::shared<sym_mat3<FloatType> > result((af::reserve(grad_u_star.size())));
+    for(std::size_t i=0;i<grad_u_star.size();i++) {
+      result.push_back(grad_u_star_as_u_cart(unit_cell, grad_u_star[i]));
+    }
+    return result;
+  }
+
   //! Transformation of gradients w.r.t. u_cart to gradients w.r.t. u_star.
+  /*! Scalar version.
+   */
   template <typename FloatType>
   inline sym_mat3<FloatType>
   grad_u_cart_as_u_star(
@@ -530,6 +540,22 @@ namespace cctbx {
   {
     return detail::grad_u_transform(
       unit_cell.orthogonalization_matrix(), grad_u_cart);
+  }
+
+  //! Transformation of gradients w.r.t. u_cart to gradients w.r.t. u_star.
+  /*! Vector version.
+   */
+  template <typename FloatType>
+  af::shared<sym_mat3<FloatType> >
+  grad_u_cart_as_u_star(
+    uctbx::unit_cell const& unit_cell,
+    af::const_ref<sym_mat3<FloatType> > const& grad_u_cart)
+  {
+    af::shared<sym_mat3<FloatType> > result((af::reserve(grad_u_cart.size())));
+    for(std::size_t i=0;i<grad_u_cart.size();i++) {
+      result.push_back(grad_u_cart_as_u_star(unit_cell, grad_u_cart[i]));
+    }
+    return result;
   }
 
   namespace detail {

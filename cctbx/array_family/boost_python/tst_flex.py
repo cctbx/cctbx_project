@@ -37,6 +37,9 @@ def exercise_flex_sym_mat3_double():
   p = pickle.dumps(a)
   b = pickle.loads(p)
   assert tuple(a) == tuple(b)
+  assert approx_equal(tuple(a.as_double()), (1,2,3,4,5,6,2,3,4,5,6,7))
+  b = flex.sym_mat3_double().from_double(a.as_double())
+  assert tuple(a) == tuple(b)
 
 def exercise_flex_hendrickson_lattman():
   a = flex.hendrickson_lattman()

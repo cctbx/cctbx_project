@@ -330,13 +330,13 @@ namespace cctbx { namespace xray {
         bool electron_density_must_be_positive=true);
 
       af::shared<scitbx::vec3<FloatType> >
-      d_target_d_site() const { return d_target_d_site_; }
+      d_target_d_site_cart() const { return d_target_d_site_cart_; }
 
       af::shared<FloatType>
       d_target_d_u_iso() const { return d_target_d_u_iso_; }
 
       af::shared<scitbx::sym_mat3<FloatType> >
-      d_target_d_u_star() const { return d_target_d_u_star_; }
+      d_target_d_u_cart() const { return d_target_d_u_cart_; }
 
       af::shared<FloatType>
       d_target_d_occupancy() const { return d_target_d_occupancy_; }
@@ -348,9 +348,9 @@ namespace cctbx { namespace xray {
       d_target_d_fdp() const { return d_target_d_fdp_; }
 
     private:
-      af::shared<scitbx::vec3<FloatType> > d_target_d_site_;
+      af::shared<scitbx::vec3<FloatType> > d_target_d_site_cart_;
       af::shared<FloatType> d_target_d_u_iso_;
-      af::shared<scitbx::sym_mat3<FloatType> > d_target_d_u_star_;
+      af::shared<scitbx::sym_mat3<FloatType> > d_target_d_u_cart_;
       af::shared<FloatType> d_target_d_occupancy_;
       af::shared<FloatType> d_target_d_fp_;
       af::shared<FloatType> d_target_d_fdp_;
@@ -517,19 +517,13 @@ namespace cctbx { namespace xray {
         }
       }}}
       if (grad_flags.site) {
-        d_target_d_site_.push_back(
-          gr_site * this->unit_cell_.orthogonalization_matrix());
+        d_target_d_site_cart_.push_back(gr_site);
       }
-      if (!scatterer->anisotropic_flag) {
-        if (grad_flags.u_iso) {
-          d_target_d_u_iso_.push_back(adptbx::u_as_b(gr_b_iso));
-        }
+      if (grad_flags.u_iso) {
+        d_target_d_u_iso_.push_back(adptbx::u_as_b(gr_b_iso));
       }
-      else {
-        if (grad_flags.u_aniso) {
-          d_target_d_u_star_.push_back(adptbx::grad_u_cart_as_u_star(
-            this->unit_cell_, adptbx::u_as_b(gr_b_cart)));
-        }
+      if (grad_flags.u_aniso) {
+        d_target_d_u_cart_.push_back(adptbx::u_as_b(gr_b_cart));
       }
       if (grad_flags.occupancy) {
         d_target_d_occupancy_.push_back(gr_occupancy);

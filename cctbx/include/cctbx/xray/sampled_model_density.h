@@ -60,11 +60,11 @@ namespace cctbx { namespace xray {
         af::const_ref<miller::index<> > const& miller_indices,
         af::ref<std::complex<FloatType> > const& structure_factors) const
       {
-        FloatType norm = this->unit_cell_.volume()
-                       / this->map_accessor_.focus_size_1d();
-        eliminate_u_extra(
+        FloatType multiplier = this->unit_cell_.volume()
+                             / this->map_accessor_.focus_size_1d();
+        apply_u_extra(
           this->unit_cell_, this->u_extra_,
-          miller_indices, structure_factors, norm);
+          miller_indices, structure_factors, multiplier);
       }
 
     private:

@@ -5,7 +5,9 @@ from cctbx import maptbx
 from cctbx import miller
 from cctbx import crystal
 from cctbx import adptbx
+from cctbx import matrix
 from cctbx.array_family import flex
+from cctbx.regression.tst_xray_derivatives import linear_regression_test
 from scitbx.python_utils.misc import adopt_init_args, user_plus_sys_time
 from scitbx.test_utils import approx_equal
 from scitbx import fftpack
@@ -109,20 +111,20 @@ class resampling(crystal.symmetry):
     return self
 
   def ft_dp(self, dp):
-    n = self.rfft().n_real()
-    norm = self.unit_cell().volume()/(n[0]*n[1]*n[2])
-    dpe = dp.deep_copy()
-    xray.eliminate_u_extra(
+    multiplier = dp.epsilons().data().as_double() * (
+                   self.unit_cell().volume()
+                 / matrix.row(self.rfft().n_real()).product()
+                 * self.space_group().n_ltr())
+    coeff = dp.deep_copy()
+    xray.apply_u_extra(
       self.unit_cell(),
       self.u_extra(),
-      dpe.indices(),
-      dpe.data(),
-      norm)
-    dpe = miller.array(dpe, dpe.data() \
-                            * flex.polar(dpe.epsilons().data().as_double(),0))
+      coeff.indices(),
+      coeff.data(),
+      multiplier)
     return miller.fft_map(
       crystal_gridding=self.crystal_gridding(),
-      fourier_coefficients=dpe)
+      fourier_coefficients=coeff)
 
   def __call__(self, xray_structure,
                      dp,
@@ -195,8 +197,9 @@ class shifted_site:
     site = list(self.structure_shifted.scatterers()[i_scatterer].site)
     site[i_xyz] += shift
     self.structure_shifted.scatterers()[i_scatterer].site = site
-    self.f_calc = f_obs.structure_factors_from_scatterers(
-      xray_structure=self.structure_shifted, direct=0001).f_calc()
+    if (f_obs is not None):
+      self.f_calc = f_obs.structure_factors_from_scatterers(
+        xray_structure=self.structure_shifted, direct=0001).f_calc()
 
 def site(structure_ideal, d_min, f_obs, verbose=0):
   sh = shifted_site(f_obs, structure_ideal, 0, 0, 0.01)
@@ -206,28 +209,25 @@ def site(structure_ideal, d_min, f_obs, verbose=0):
     print
   ls = xray.targets_least_squares_residual(
     f_obs.data(), sh.f_calc.data(), 0001, 1)
-  sfd = xray.structure_factors.from_scatterers_direct(
+  sfd = xray.structure_factors.gradients_direct(
     xray_structure=sh.structure_shifted,
     miller_set=f_obs,
     d_target_d_f_calc=ls.derivatives(),
     gradient_flags=xray.structure_factors.gradient_flags(site=0001))
   re = resampling(miller_set=f_obs)
-  dp0 = miller.array(miller_set=f_obs, data=ls.derivatives())
   map0 = re(
     xray_structure=sh.structure_shifted,
-    dp=dp0,
+    dp=miller.array(miller_set=f_obs, data=ls.derivatives()),
     gradient_flags=xray.structure_factors.gradient_flags(site=0001),
     verbose=verbose)
-  sfd.d_target_d_site_inplace_frac_as_cart(sfd.d_target_d_site())
-  sfd.d_target_d_site_inplace_frac_as_cart(map0.d_target_d_site())
+  sfd_d_target_d_site_cart = sfd.d_target_d_site_cart()
   top_gradient = None
-  for i_scatterer in (0,1,2):
+  for i_scatterer in sh.structure_shifted.scatterers().indices():
     scatterer = sh.structure_shifted.scatterers()[i_scatterer]
     for i_xyz in (0,1,2):
-      direct_summ = sfd.d_target_d_site()[i_scatterer][i_xyz]
+      direct_summ = sfd_d_target_d_site_cart[i_scatterer][i_xyz]
       if (top_gradient is None): top_gradient = direct_summ
-      fast_gradie = map0.d_target_d_site()[i_scatterer][i_xyz] \
-                  * f_obs.space_group().n_ltr()
+      fast_gradie = map0.d_target_d_site_cart()[i_scatterer][i_xyz]
       match = judge(scatterer, "site", direct_summ, fast_gradie, top_gradient)
       if (0 or verbose):
         print "direct summ[%d][%d]: " % (i_scatterer,i_xyz), direct_summ
@@ -241,8 +241,9 @@ class shifted_u_iso:
   def __init__(self, f_obs, structure, i_scatterer, shift):
     self.structure_shifted = structure.deep_copy_scatterers()
     self.structure_shifted.scatterers()[i_scatterer].u_iso += shift
-    self.f_calc = f_obs.structure_factors_from_scatterers(
-      xray_structure=self.structure_shifted).f_calc()
+    if (f_obs is not None):
+      self.f_calc = f_obs.structure_factors_from_scatterers(
+        xray_structure=self.structure_shifted).f_calc()
 
 def u_iso(structure_ideal, d_min, f_obs, verbose=0):
   sh = shifted_u_iso(f_obs, structure_ideal, 0, 0.05)
@@ -252,25 +253,23 @@ def u_iso(structure_ideal, d_min, f_obs, verbose=0):
     print
   ls = xray.targets_least_squares_residual(
     f_obs.data(), sh.f_calc.data(), 0001, 1)
-  sfd = xray.structure_factors.from_scatterers_direct(
+  sfd = xray.structure_factors.gradients_direct(
     xray_structure=sh.structure_shifted,
     miller_set=f_obs,
     d_target_d_f_calc=ls.derivatives(),
     gradient_flags=xray.structure_factors.gradient_flags(u_iso=0001))
   re = resampling(miller_set=f_obs)
-  dp0 = miller.array(miller_set=f_obs, data=ls.derivatives())
   map0 = re(
     xray_structure=sh.structure_shifted,
-    dp=dp0,
+    dp=miller.array(miller_set=f_obs, data=ls.derivatives()),
     gradient_flags=xray.structure_factors.gradient_flags(u_iso=0001),
     verbose=verbose)
   top_gradient = None
-  for i_scatterer in (0,1,2):
+  for i_scatterer in sh.structure_shifted.scatterers().indices():
     scatterer = sh.structure_shifted.scatterers()[i_scatterer]
     direct_summ = sfd.d_target_d_u_iso()[i_scatterer]
     if (top_gradient is None): top_gradient = direct_summ
-    fast_gradie = map0.d_target_d_u_iso()[i_scatterer] \
-                * f_obs.space_group().n_ltr()
+    fast_gradie = map0.d_target_d_u_iso()[i_scatterer]
     match = judge(scatterer, "u_iso", direct_summ, fast_gradie, top_gradient)
     if (0 or verbose):
       print "direct summ[%d]: " % i_scatterer, direct_summ
@@ -287,15 +286,9 @@ class shifted_u_star:
     u_star = list(scatterer.u_star)
     u_star[ij] += shift
     scatterer.u_star = u_star
-    self.f_calc = f_obs.structure_factors_from_scatterers(
-      xray_structure=self.structure_shifted).f_calc()
-
-def ij_product(hkl, ij):
-  if (ij < 3): return hkl[ij]**2
-  if (ij == 3): return 2*hkl[0]*hkl[1]
-  if (ij == 4): return 2*hkl[0]*hkl[2]
-  if (ij == 5): return 2*hkl[1]*hkl[2]
-  raise RuntimeError
+    if (f_obs is not None):
+      self.f_calc = f_obs.structure_factors_from_scatterers(
+        xray_structure=self.structure_shifted).f_calc()
 
 def u_star(structure_ideal, d_min, f_obs, verbose=0):
   sh = shifted_u_star(f_obs, structure_ideal, 0, 0, 0.0001)
@@ -305,20 +298,21 @@ def u_star(structure_ideal, d_min, f_obs, verbose=0):
     print
   ls = xray.targets_least_squares_residual(
     f_obs.data(), sh.f_calc.data(), 0001, 1)
-  sfd = xray.structure_factors.from_scatterers_direct(
+  sfd = xray.structure_factors.gradients_direct(
     xray_structure=sh.structure_shifted,
     miller_set=f_obs,
     d_target_d_f_calc=ls.derivatives(),
     gradient_flags=xray.structure_factors.gradient_flags(u_aniso=0001))
   re = resampling(miller_set=f_obs)
-  dp0 = miller.array(miller_set=f_obs, data=ls.derivatives())
   map0 = re(
     xray_structure=sh.structure_shifted,
-    dp=dp0,
+    dp=miller.array(miller_set=f_obs, data=ls.derivatives()),
     gradient_flags=xray.structure_factors.gradient_flags(u_aniso=0001),
     verbose=verbose)
+  sfd_d_target_d_u_cart = sfd.d_target_d_u_cart()
+  map0_d_target_d_u_cart = map0.d_target_d_u_cart()
   top_gradient = None
-  for i_scatterer in (0,1,2):
+  for i_scatterer in sh.structure_shifted.scatterers().indices():
     scatterer = sh.structure_shifted.scatterers()[i_scatterer]
     sfd_star = sfd.d_target_d_u_star()[i_scatterer]
     sfd_cart = adptbx.grad_u_star_as_u_cart(
@@ -327,11 +321,10 @@ def u_star(structure_ideal, d_min, f_obs, verbose=0):
       sfd_star,
       adptbx.grad_u_cart_as_u_star(structure_ideal.unit_cell(), sfd_cart))
     for ij in xrange(6):
-      direct_summ = sfd.d_target_d_u_star()[i_scatterer][ij]
+      direct_summ = sfd_d_target_d_u_cart[i_scatterer][ij]
       if (top_gradient is None): top_gradient = direct_summ
-      fast_gradie = map0.d_target_d_u_star()[i_scatterer][ij] \
-                  * f_obs.space_group().n_ltr()
-      match = judge(scatterer, "u_star", direct_summ,fast_gradie,top_gradient)
+      fast_gradie = map0_d_target_d_u_cart[i_scatterer][ij]
+      match = judge(scatterer, "u_cart", direct_summ,fast_gradie,top_gradient)
       if (0 or verbose):
         print "direct summ[%d][%d]: " % (i_scatterer, ij), direct_summ
         print "fast gradie[%d][%d]: " % (i_scatterer, ij), fast_gradie, match
@@ -344,8 +337,9 @@ class shifted_occupancy:
   def __init__(self, f_obs, structure, i_scatterer, shift):
     self.structure_shifted = structure.deep_copy_scatterers()
     self.structure_shifted.shift_occupancy(i_scatterer, shift)
-    self.f_calc = f_obs.structure_factors_from_scatterers(
-      xray_structure=self.structure_shifted).f_calc()
+    if (f_obs is not None):
+      self.f_calc = f_obs.structure_factors_from_scatterers(
+        xray_structure=self.structure_shifted).f_calc()
 
 def occupancy(structure_ideal, d_min, f_obs, verbose=0):
   sh = shifted_occupancy(f_obs, structure_ideal, 0, 0.2)
@@ -355,25 +349,23 @@ def occupancy(structure_ideal, d_min, f_obs, verbose=0):
     print
   ls = xray.targets_least_squares_residual(
     f_obs.data(), sh.f_calc.data(), 0001, 1)
-  sfd = xray.structure_factors.from_scatterers_direct(
+  sfd = xray.structure_factors.gradients_direct(
     xray_structure=sh.structure_shifted,
     miller_set=f_obs,
     d_target_d_f_calc=ls.derivatives(),
     gradient_flags=xray.structure_factors.gradient_flags(occupancy=0001))
   re = resampling(miller_set=f_obs)
-  dp0 = miller.array(miller_set=f_obs, data=ls.derivatives())
   map0 = re(
     xray_structure=sh.structure_shifted,
-    dp=dp0,
+    dp=miller.array(miller_set=f_obs, data=ls.derivatives()),
     gradient_flags=xray.structure_factors.gradient_flags(occupancy=0001),
     verbose=verbose)
   top_gradient = None
-  for i_scatterer in (0,1,2):
+  for i_scatterer in sh.structure_shifted.scatterers().indices():
     scatterer = sh.structure_shifted.scatterers()[i_scatterer]
     direct_summ = sfd.d_target_d_occupancy()[i_scatterer]
     if (top_gradient is None): top_gradient = direct_summ
-    fast_gradie = map0.d_target_d_occupancy()[i_scatterer] \
-                * f_obs.space_group().n_ltr()
+    fast_gradie = map0.d_target_d_occupancy()[i_scatterer]
     match = judge(scatterer, "occupancy", direct_summ,fast_gradie,top_gradient)
     if (0 or verbose):
       print "direct summ[%d]: " % i_scatterer, direct_summ
@@ -387,8 +379,9 @@ class shifted_fp:
   def __init__(self, f_obs, structure, i_scatterer, shift):
     self.structure_shifted = structure.deep_copy_scatterers()
     self.structure_shifted.scatterers()[i_scatterer].fp_fdp += shift
-    self.f_calc = f_obs.structure_factors_from_scatterers(
-      xray_structure=self.structure_shifted).f_calc()
+    if (f_obs is not None):
+      self.f_calc = f_obs.structure_factors_from_scatterers(
+        xray_structure=self.structure_shifted).f_calc()
 
 def fp(structure_ideal, d_min, f_obs, verbose=0):
   sh = shifted_fp(f_obs, structure_ideal, 0, -0.2)
@@ -398,25 +391,23 @@ def fp(structure_ideal, d_min, f_obs, verbose=0):
     print
   ls = xray.targets_least_squares_residual(
     f_obs.data(), sh.f_calc.data(), 0001, 1)
-  sfd = xray.structure_factors.from_scatterers_direct(
+  sfd = xray.structure_factors.gradients_direct(
     xray_structure=sh.structure_shifted,
     miller_set=f_obs,
     d_target_d_f_calc=ls.derivatives(),
     gradient_flags=xray.structure_factors.gradient_flags(fp=0001))
   re = resampling(miller_set=f_obs)
-  dp0 = miller.array(miller_set=f_obs, data=ls.derivatives())
   map0 = re(
     xray_structure=sh.structure_shifted,
-    dp=dp0,
+    dp=miller.array(miller_set=f_obs, data=ls.derivatives()),
     gradient_flags=xray.structure_factors.gradient_flags(fp=0001),
     verbose=verbose)
   top_gradient = None
-  for i_scatterer in (0,1,2):
+  for i_scatterer in sh.structure_shifted.scatterers().indices():
     scatterer = sh.structure_shifted.scatterers()[i_scatterer]
     direct_summ = sfd.d_target_d_fp()[i_scatterer]
     if (top_gradient is None): top_gradient = direct_summ
-    fast_gradie = map0.d_target_d_fp()[i_scatterer] \
-                * f_obs.space_group().n_ltr()
+    fast_gradie = map0.d_target_d_fp()[i_scatterer]
     match = judge(scatterer, "fp", direct_summ, fast_gradie, top_gradient)
     if (0 or verbose):
       print "direct summ[%d]: " % i_scatterer, direct_summ
@@ -430,8 +421,9 @@ class shifted_fdp:
   def __init__(self, f_obs, structure, i_scatterer, shift):
     self.structure_shifted = structure.deep_copy_scatterers()
     self.structure_shifted.scatterers()[i_scatterer].fp_fdp += complex(0,shift)
-    self.f_calc = f_obs.structure_factors_from_scatterers(
-      xray_structure=self.structure_shifted).f_calc()
+    if (f_obs is not None):
+      self.f_calc = f_obs.structure_factors_from_scatterers(
+        xray_structure=self.structure_shifted).f_calc()
 
 def fdp(structure_ideal, d_min, f_obs, verbose=0):
   sh = shifted_fdp(f_obs, structure_ideal, 0, 2)
@@ -441,25 +433,23 @@ def fdp(structure_ideal, d_min, f_obs, verbose=0):
     print
   ls = xray.targets_least_squares_residual(
     f_obs.data(), sh.f_calc.data(), 0001, 1)
-  sfd = xray.structure_factors.from_scatterers_direct(
+  sfd = xray.structure_factors.gradients_direct(
     xray_structure=sh.structure_shifted,
     miller_set=f_obs,
     d_target_d_f_calc=ls.derivatives(),
     gradient_flags=xray.structure_factors.gradient_flags(fdp=0001))
   re = resampling(miller_set=f_obs)
-  dp0 = miller.array(miller_set=f_obs, data=ls.derivatives())
   map0 = re(
     xray_structure=sh.structure_shifted,
-    dp=dp0,
+    dp=miller.array(miller_set=f_obs, data=ls.derivatives()),
     gradient_flags=xray.structure_factors.gradient_flags(fdp=0001),
     verbose=verbose)
   top_gradient = None
-  for i_scatterer in (0,1,2):
+  for i_scatterer in sh.structure_shifted.scatterers().indices():
     scatterer = sh.structure_shifted.scatterers()[i_scatterer]
     direct_summ = sfd.d_target_d_fdp()[i_scatterer]
     if (top_gradient is None): top_gradient = direct_summ
-    fast_gradie = map0.d_target_d_fdp()[i_scatterer] \
-                * f_obs.space_group().n_ltr()
+    fast_gradie = map0.d_target_d_fdp()[i_scatterer]
     match = judge(scatterer, "fdp", direct_summ, fast_gradie, top_gradient)
     if (0 or verbose):
       print "direct summ[%d]: " % i_scatterer, direct_summ
@@ -467,6 +457,59 @@ def fdp(structure_ideal, d_min, f_obs, verbose=0):
       print
     assert not match.is_bad
   sys.stdout.flush()
+
+def exercise_gradient_manager(structure_ideal, d_min, f_obs,
+                              fdp_flag, anisotropic_flag,
+                              verbose=0):
+  sh = shifted_site(None, structure_ideal, 0, 0, 0.01)
+  if (not anisotropic_flag):
+    sh = shifted_u_iso(None, sh.structure_shifted, 0, 0.05)
+  else:
+    sh = shifted_u_star(None, sh.structure_shifted, 0, 0, 0.0001)
+  sh = shifted_occupancy(None, sh.structure_shifted, 0, 0.2)
+  if (fdp_flag):
+    sh = shifted_fdp(None, sh.structure_shifted, 0, 2)
+  sh = shifted_fp(f_obs, sh.structure_shifted, 0, -0.2)
+  ls = xray.targets_least_squares_residual(
+    f_obs.data(), sh.f_calc.data(), 0001, 1)
+  grad_manager = xray.structure_factors.gradients(
+    miller_set=f_obs,
+    quality_factor=100000,
+    wing_cutoff=1.e-10)
+  gd = grad_manager(
+    xray_structure=sh.structure_shifted,
+    miller_set=f_obs,
+    d_target_d_f_calc=ls.derivatives(),
+    gradient_flags=xray.structure_factors.gradient_flags(default=0001),
+    direct=0001)
+  gf = grad_manager(
+    xray_structure=sh.structure_shifted,
+    miller_set=f_obs,
+    d_target_d_f_calc=ls.derivatives(),
+    gradient_flags=xray.structure_factors.gradient_flags(default=0001),
+    fft=0001)
+  d = gd.d_target_d_site_frac()
+  f = gf.d_target_d_site_frac()
+  linear_regression_test(d, f, slope_tolerance=1.e-2, verbose=verbose)
+  d = gd.d_target_d_site_cart()
+  f = gf.d_target_d_site_cart()
+  linear_regression_test(d, f, slope_tolerance=1.e-2, verbose=verbose)
+  d = gd.d_target_d_u_iso()
+  f = gf.d_target_d_u_iso()
+  linear_regression_test(d, f, slope_tolerance=1.e-2, verbose=verbose)
+  d = gd.d_target_d_u_cart()
+  f = gf.d_target_d_u_cart()
+  linear_regression_test(d, f, slope_tolerance=1.e-2, verbose=verbose)
+  d = gd.d_target_d_occupancy()
+  f = gf.d_target_d_occupancy()
+  linear_regression_test(d, f, slope_tolerance=1.e-2, verbose=verbose)
+  d = gd.d_target_d_fp()
+  f = gf.d_target_d_fp()
+  linear_regression_test(d, f, slope_tolerance=1.e-2, verbose=verbose)
+  if (fdp_flag):
+    d = gd.d_target_d_fdp()
+    f = gf.d_target_d_fdp()
+    linear_regression_test(d, f, slope_tolerance=1.e-2, verbose=verbose)
 
 def run_one(space_group_info, n_elements=3, volume_per_atom=1000, d_min=2,
             fdp_flag=0, anisotropic_flag=0, verbose=0):
@@ -506,6 +549,8 @@ def run_one(space_group_info, n_elements=3, volume_per_atom=1000, d_min=2,
     fp(structure_ideal, d_min, f_obs, verbose=verbose)
   if (1):
     fdp(structure_ideal, d_min, f_obs, verbose=verbose)
+  exercise_gradient_manager(
+    structure_ideal, d_min, f_obs, fdp_flag, anisotropic_flag)
 
 def run_call_back(flags, space_group_info):
   for fdp_flag in [0,1]:

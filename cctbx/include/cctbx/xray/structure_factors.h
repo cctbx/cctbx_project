@@ -137,7 +137,9 @@ namespace cctbx { namespace xray { namespace structure_factors {
           d_t_d_f,
           grad_flags.site,
           grad_flags.u_aniso);
-        f_calc[i] += sf.const_h_sum * sf.f0_fp_fdp_w;
+        if (f_calc.size()) {
+          f_calc[i] += sf.const_h_sum * sf.f0_fp_fdp_w;
+        }
         if (d_t_d_f) {
           if (grad_flags.site) d_target_d_site += sf.d_target_d_site;
           if (grad_flags.u_aniso) d_target_d_u_star += sf.d_target_d_u_star;
@@ -201,7 +203,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
                      || d_target_d_f_calc.size() == miller_indices.size());
         CCTBX_ASSERT(   grad_flags.all_false()
                      || d_target_d_f_calc.size() == miller_indices.size());
-        f_calc_.resize(miller_indices.size());
+        if (grad_flags.all_false()) f_calc_.resize(miller_indices.size());
         if (grad_flags.site) d_target_d_site_.reserve(scatterers.size());
         if (grad_flags.u_iso) d_target_d_u_iso_.reserve(scatterers.size());
         if (grad_flags.u_aniso) d_target_d_u_star_.reserve(scatterers.size());
@@ -270,18 +272,6 @@ namespace cctbx { namespace xray { namespace structure_factors {
       af::shared<float_type> d_target_d_fp_;
       af::shared<float_type> d_target_d_fdp_;
   };
-
-  template <typename FloatType>
-  void
-  d_target_d_site_in_place_frac_as_cart(
-    uctbx::unit_cell const& unit_cell,
-    af::ref<scitbx::vec3<FloatType> > const& d_target_d_site)
-  {
-    for(std::size_t i=0;i<d_target_d_site.size();i++) {
-      d_target_d_site[i] = d_target_d_site[i]
-                         * unit_cell.fractionalization_matrix();
-    }
-  }
 
 }}} // namespace cctbx::xray::structure_factors
 

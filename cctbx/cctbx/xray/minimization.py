@@ -16,6 +16,9 @@ class lbfgs:
     self.structure_factors_from_scatterers = \
       cctbx.xray.structure_factors.from_scatterers(
         miller_set=self.target_functor.f_obs())
+    self.structure_factor_gradients = \
+      cctbx.xray.structure_factors.gradients(
+        miller_set=self.target_functor.f_obs())
     self.pack_parameters()
     self.first_target_value = None
     self.minimizer = scitbx.lbfgs.run(
@@ -56,7 +59,7 @@ class lbfgs:
     if (self.first_target_value is not None):
       self.unpack_parameters()
     self.compute_target(compute_derivatives=0001)
-    sf = self.structure_factors_from_scatterers(
+    sf = self.structure_factor_gradients(
       xray_structure=self.xray_structure,
       miller_set=self.target_functor.f_obs(),
       d_target_d_f_calc=self.target_result.derivatives(),
@@ -67,7 +70,7 @@ class lbfgs:
       direct=0001)
     self.g = flex.double()
     if (self.options.site):
-      d_target_d_site = sf.d_target_d_site()
+      d_target_d_site = sf.d_target_d_site_frac()
       self.xray_structure.apply_special_position_ops_d_target_d_site(
         d_target_d_site)
       self.g.append(d_target_d_site.as_double())

@@ -37,17 +37,6 @@ namespace {
     }
   };
 
-  void
-  wrap_functions()
-  {
-    using namespace boost::python;
-
-    def("structure_factors_d_target_d_site_in_place_frac_as_cart",
-      (void(*)(uctbx::unit_cell const&,
-               af::ref<scitbx::vec3<double> > const&))
-        d_target_d_site_in_place_frac_as_cart);
-  }
-
 } // namespace <anoymous>
 
 }} // namespace structure_factors::boost_python
@@ -58,8 +47,6 @@ namespace boost_python {
   {
     structure_factors::boost_python
     ::direct_with_first_derivatives_wrappers::wrap();
-
-    structure_factors::boost_python::wrap_functions();
   }
 
 }}} // namespace cctbx::xray::boost_python
