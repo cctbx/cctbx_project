@@ -454,15 +454,16 @@ class environment:
 
   def dispatcher_include(self):
     if (not hasattr(self, "_dispatcher_include")):
-      file_name = self.under_build("dispatcher_include.sh")
-      if (os.path.isfile(file_name)):
-        try: lines = open(file_name).read().splitlines()
-        except IOError, e: raise UserError(str(e))
-        lines.insert(0, "# included from %s" % file_name)
-        highlight_dispatcher_include_lines(lines)
-        self._dispatcher_include = lines
-      else:
-        self._dispatcher_include = []
+      self._dispatcher_include = []
+      for file_name in os.listdir(self.build_path):
+        if (not os.path.isfile(file_name)): continue
+        if (    file_name.startswith("dispatcher_include")
+            and file_name.endswith(".sh")):
+          try: lines = open(file_name).read().splitlines()
+          except IOError, e: raise UserError(str(e))
+          lines.insert(0, "# included from %s" % file_name)
+          highlight_dispatcher_include_lines(lines)
+          self._dispatcher_include.extend(lines)
     return self._dispatcher_include
 
   def write_bin_sh_dispatcher(self, source_file, target_file):
@@ -580,14 +581,6 @@ class environment:
     self.write_dispatcher(
       source_file=source_file,
       target_file=self.under_build("bin/"+target_file))
-
-  def write_dispatcher_include_sh(self):
-    file_name = self.under_build("dispatcher_include.sh")
-    if (not os.path.isfile(file_name)):
-      f = open_info(file_name)
-      print >> f, \
-        "# sh commands to be included in the auto-generated dispatchers"
-      f.close()
 
   def write_setpaths_sh(self):
     setpaths_path = self.under_build("setpaths.sh")
@@ -787,7 +780,6 @@ class environment:
           print " ", module_name
         print "***********************************"
     if (hasattr(os, "symlink")):
-      self.write_dispatcher_include_sh()
       self.write_setpaths_sh()
       for all in [False, True]:
         self.write_setpaths_csh(all)
