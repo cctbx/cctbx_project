@@ -30,7 +30,7 @@ namespace scitbx { namespace af {
         return result;
       }
 
-      ElementType
+      ElementType const&
       operator()() { return *(*this)(1); }
 
       bool
@@ -38,6 +38,42 @@ namespace scitbx { namespace af {
 
     private:
       af::const_ref<ElementType> array_;
+      std::string error_message_;
+      std::size_t i_;
+  };
+
+  template <typename ElementType>
+  class block_iterator
+  {
+    public:
+      block_iterator(
+        af::ref<ElementType> const& array,
+        std::string const& error_message)
+      :
+        array_(array),
+        error_message_(error_message),
+        i_(0)
+      {}
+
+      ElementType*
+      operator()(std::size_t block_size)
+      {
+        if (i_ + block_size > array_.size()) {
+          throw error(error_message_);
+        }
+        ElementType* result = &array_[i_];
+        i_ += block_size;
+        return result;
+      }
+
+      ElementType&
+      operator()() { return *(*this)(1); }
+
+      bool
+      is_at_end() const { return i_ == array_.size(); }
+
+    private:
+      af::ref<ElementType> array_;
       std::string error_message_;
       std::size_t i_;
   };
