@@ -1,14 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     Oct 2002: Modified copy of phenix/fast_translation/front_end.h (rwgk)
-     Mar 2002: using cctbx/array_family (rwgk)
-     Jan 2002: Created (R.W. Grosse-Kunstleve)
- */
-
 #ifndef CCTBX_TRANSLATION_SEARCH_FAST_NV1995_H
 #define CCTBX_TRANSLATION_SEARCH_FAST_NV1995_H
 
@@ -70,19 +59,19 @@ namespace cctbx { namespace translation_search {
             miller::index<>(rfft.n_complex()));
 
         summation_eq15(space_group, miller_indices_f_obs,
-          f_part, fc_map, accu);
+          interm.mh.const_ref(), f_part, fc_map, accu);
         rfft.backward(accu_mem_complex);
         maptbx::copy(accu_mem_real_const_ref, target_map_.ref());
 
         accu_mem_complex.fill(0);
         summation_eq14(space_group, miller_indices_f_obs,
-          af::const_ref<f_t>(0,0), f_part, fc_map, accu);
+          interm.mh.const_ref(), f_part, fc_map, accu);
         rfft.backward(accu_mem_complex);
         combination_eq13(interm, accu_mem_real_const_ref, target_map_.ref());
 
         accu_mem_complex.fill(0);
         summation_eq14(space_group, miller_indices_f_obs,
-          interm.d_i_obs.const_ref(), f_part, fc_map, accu);
+          interm.mh_d_i_obs.const_ref(), f_part, fc_map, accu);
         rfft.backward(accu_mem_complex);
         combination_eq12(interm, accu_mem_real_const_ref, target_map_.ref());
       }

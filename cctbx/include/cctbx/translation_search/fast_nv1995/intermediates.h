@@ -1,13 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     Oct 2002: Fragments from phenix/fast_translation/front_end.h (rwgk)
-     Jan 2002: Created (R.W. Grosse-Kunstleve)
- */
-
 #ifndef CCTBX_TRANSLATION_SEARCH_FAST_NV1995_INTERMEDIATES_H
 #define CCTBX_TRANSLATION_SEARCH_FAST_NV1995_INTERMEDIATES_H
 
@@ -37,14 +27,15 @@ namespace cctbx { namespace translation_search { namespace fast_nv1995_detail {
       for(std::size_t i=0;i<miller_indices.size();i++) {
         i_obs.push_back(f_obs[i] * f_obs[i]);
       }
-      array_type mh((af::reserve(miller_indices.size())));
+      mh.reserve(miller_indices.size());
       for(std::size_t i=0;i<miller_indices.size();i++) {
         mh.push_back(
           space_group.multiplicity(miller_indices[i], anomalous_flag));
       }
       sum_mh = af::sum(mh);
-      d_i_obs = i_obs - af::sum(mh * i_obs) / sum_mh;
-      sum_mh_d_i_obs_sq = af::sum(mh * d_i_obs * d_i_obs);
+      array_type d_i_obs = i_obs - af::sum(mh * i_obs) / sum_mh;
+      mh_d_i_obs = mh * d_i_obs;
+      sum_mh_d_i_obs_sq = af::sum(mh_d_i_obs * d_i_obs);
       sum_mh_f_sq = 0;
       sum_mh_f_sq_f_sq = 0;
       sum_mh_f_sq_d_i_obs = 0;
@@ -60,7 +51,8 @@ namespace cctbx { namespace translation_search { namespace fast_nv1995_detail {
     }
 
     FloatTypeSummation sum_mh;
-    array_type         d_i_obs;
+    array_type         mh;
+    array_type         mh_d_i_obs;
     FloatTypeSummation sum_mh_d_i_obs_sq;
     FloatTypeSummation sum_mh_f_sq;
     FloatTypeSummation sum_mh_f_sq_f_sq;
