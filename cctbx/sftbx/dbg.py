@@ -7,16 +7,30 @@ from cctbx_boost import fftbx
 from cctbx import xutils
 from cctbx.development import debug_utils
 
-def print_structure_factors(SgInfo, adp=0, d_min=3.):
+def print_structure_factors(SgInfo, adp=0, d_min=1.):
   elements = ("N", "C", "C", "O", "N", "C", "C", "O")
   xtal = debug_utils.random_structure(
     SgInfo, elements,
-    volume_per_atom=50.,
+    volume_per_atom=400.,
     min_distance=1.5,
     general_positions_only=0,
     anisotropic_displacement_parameters=adp)
+  if (0):
+    from cctbx_boost import uctbx
+    from cctbx_boost.eltbx.caasf_wk1995 import CAASF_WK1995
+    xtal.UnitCell = uctbx.UnitCell((10,10,10))
+    xtal.Sites = shared.XrayScatterer()
+    #s = sftbx.XrayScatterer("O", CAASF_WK1995("O"), 0j, (1./64,1./64,1./64), 1., 0)
+    s = sftbx.XrayScatterer("O", CAASF_WK1995("O"), 0j, (1./32,1./16,1./6), 1., 0.5)
+    s.ApplySymmetry(xtal.UnitCell, xtal.SgOps, 0.1, 0, 0)
+    xtal.Sites.append(s)
+    s = sftbx.XrayScatterer("O", CAASF_WK1995("O"), 0j, (8./32,5./16,3./6), 1., 0.5)
+    s.ApplySymmetry(xtal.UnitCell, xtal.SgOps, 0.1, 0, 0)
+    xtal.Sites.append(s)
   print xtal.UnitCell
   debug_utils.print_sites(xtal)
+  MillerIndices = xutils.build_miller_indices(xtal, d_min)
+  Fcalc = xutils.calculate_structure_factors(MillerIndices, xtal)
   max_q = 1. / (d_min**2)
   resolution_factor = 1./3
   max_prime = 5
@@ -41,6 +55,16 @@ def print_structure_factors(SgInfo, adp=0, d_min=3.):
   print "min %.6g" % (map_stats.min())
   print "mean %.6g" % (map_stats.mean())
   print "sigma %.6g" % (map_stats.sigma())
+  if (0):
+    map = sftbx.structure_factor_map(
+      xtal.SgOps, Fcalc.H, Fcalc.F, fft.Ncomplex())
+    fft.backward(map)
+    map_stats = shared.statistics(map)
+    print "True electron density"
+    print "max %.6g" % (map_stats.max())
+    print "min %.6g" % (map_stats.min())
+    print "mean %.6g" % (map_stats.mean())
+    print "sigma %.6g" % (map_stats.sigma())
   fft.forward(map)
   map_stats = shared.statistics(map)
   print "Structure factors"
@@ -48,10 +72,13 @@ def print_structure_factors(SgInfo, adp=0, d_min=3.):
   print "min %.6g" % (map_stats.min())
   print "mean %.6g" % (map_stats.mean())
   print "sigma %.6g" % (map_stats.sigma())
+  print "Ncomplex", fft.Ncomplex()
+  if (0):
+    map = sftbx.structure_factor_map(
+      xtal.SgOps, Fcalc.H, Fcalc.F, fft.Ncomplex())
   miller_indices, fcal = sftbx.collect_structure_factors(
     xtal.UnitCell, xtal.SgInfo,
     max_q, map, fft.Ncomplex())
-  MillerIndices = xutils.build_miller_indices(xtal, d_min)
   js = shared.join_sets(MillerIndices.H, miller_indices)
   if (0):
     for i,j in js.pairs():
@@ -67,7 +94,6 @@ def print_structure_factors(SgInfo, adp=0, d_min=3.):
   assert js.pairs().size() == MillerIndices.H.size()
   for i in xrange(2):
     assert js.singles(i).size() == 0
-  Fcalc = xutils.calculate_structure_factors(MillerIndices, xtal)
   x = shared.double()
   y = shared.double()
   for i,j in js.pairs():
@@ -80,6 +106,18 @@ def print_structure_factors(SgInfo, adp=0, d_min=3.):
   xy_regr = shared.linear_regression(x, y)
   assert xy_regr.is_well_defined()
   print "cc:", xy_regr.cc()
+  print "m:", xy_regr.m()
+  if (0):
+    x = list(x.as_tuple())
+    x.sort()
+    x = shared.double(tuple(x))
+    y = list(y.as_tuple())
+    y.sort()
+    y = shared.double(tuple(y))
+    xy_regr = shared.linear_regression(x, y)
+    assert xy_regr.is_well_defined()
+    print "cc:", xy_regr.cc()
+    print "m:", xy_regr.m()
 
 def run():
   Flags = debug_utils.command_line_options(sys.argv[1:], (

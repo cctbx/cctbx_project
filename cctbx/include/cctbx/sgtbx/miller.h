@@ -287,12 +287,29 @@ namespace cctbx {
          */
         Miller::Index operator()(int iIL) const;
 
+        /*! \brief Shift phase of structure factor F corresponding to
+            input Miller index to structure factor corresponding to
+            operator()(iMate, iList).
+         */
+        template <class FloatType>
+        std::complex<FloatType>
+        ShiftPhase(
+          int iMate, int iList, const std::complex<FloatType>& F) const;
+
+        /*! \brief Shift phase of structure factor F corresponding to
+            input Miller index to structure factor corresponding to
+            operator()(iIL).
+         */
+        template <class FloatType>
+        std::complex<FloatType>
+        ShiftPhase(int iIL, const std::complex<FloatType>& F) const;
+
         //! Test if phase phi (in radians) is compatible with restriction.
         /*! The tolerance compensates for rounding errors.<br>
             See also: class PhaseRestriction
          */
         bool isValidPhase_rad(double phi,
-                                     double tolerance = 1.e-5) const {
+                              double tolerance = 1.e-5) const {
           return getPhaseRestriction().isValidPhase_rad(phi, tolerance);
         }
         //! Test if phase phi (in degrees) is compatible with restriction.
@@ -300,7 +317,7 @@ namespace cctbx {
             See also: class PhaseRestriction
          */
         bool isValidPhase_deg(double phi,
-                                     double tolerance = 1.e-5) const {
+                              double tolerance = 1.e-5) const {
           return getPhaseRestriction().isValidPhase_deg(phi, tolerance);
         }
       private:
@@ -314,7 +331,35 @@ namespace cctbx {
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
         friend class SpaceGroup;
 #endif // DOXYGEN_SHOULD_SKIP_THIS
+        struct iIL_decomposition
+        {
+          iIL_decomposition(int iMate_, int iList_)
+            : iMate(iMate_), iList(iList_)
+          {}
+          int iMate, iList;
+        };
+        iIL_decomposition decompose_iIL(int iIL) const;
     };
+
+    template <class FloatType>
+    std::complex<FloatType>
+    SymEquivMillerIndices::ShiftPhase(
+      int iMate, int iList, const std::complex<FloatType>& F) const
+    {
+      if (iMate == 0) {
+        return m_List[iList].ShiftPhase(F);
+      }
+      return std::conj(m_List[iList].ShiftPhase(F));
+    }
+
+    template <class FloatType>
+    std::complex<FloatType>
+    SymEquivMillerIndices::ShiftPhase(
+      int iIL, const std::complex<FloatType>& F) const
+    {
+      iIL_decomposition d = decompose_iIL(iIL);
+      return ShiftPhase(d.iMate, d.iList, F);
+    }
 
   } // namespace sgtbx
 } // namespace cctbx

@@ -429,6 +429,18 @@ namespace {
     return result;
   }
 
+  af::shared<double>
+  py_structure_factor_map(
+    const sgtbx::SpaceGroup& sgops,
+    const af::shared<Miller::Index>& h,
+    const af::shared<std::complex<double> >& f,
+    const af::tiny<long, 3>& n_complex)
+  {
+    return af::shared<double>(
+      sftbx::structure_factor_map(
+        sgops, h.const_ref(), f.const_ref(), n_complex).handle());
+  }
+
   void init_module(python::module_builder& this_module)
   {
     const std::string Revision = "$Revision$";
@@ -601,6 +613,7 @@ namespace {
 
     this_module.def(py_determine_grid, "determine_grid");
     this_module.def(py_collect_structure_factors, "collect_structure_factors");
+    this_module.def(py_structure_factor_map, "structure_factor_map");
   }
 
 }

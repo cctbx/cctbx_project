@@ -105,6 +105,31 @@ namespace maps {
       IndexType n_physical_;
   };
 
+  //! 1-dimensional array index corresponding to Miller index element.
+  template <typename IntegerType>
+  inline IntegerType h_as_ih(IntegerType h, std::size_t N, bool PositiveOnly)
+  {
+    if (PositiveOnly) {
+      if (0 > h || h >= N) return -1;
+    }
+    else {
+      IntegerType m = (N - 1) / 2;
+      if (-m > h || h > m) return -1;
+      else if (h < 0) return h + N;
+    }
+    return h;
+  }
+
+  //! Miller index element corresponding to 1-dimensional array index.
+  template <typename IntegerType>
+  inline
+  IntegerType
+  ih_as_h(IntegerType ih, std::size_t n)
+  {
+    if (ih <= n/2) return ih;
+    return ih - n;
+  }
+
 }} // namespace cctbx::maps
 
 #endif // CCTBX_MAPS_ACCESSORS_H

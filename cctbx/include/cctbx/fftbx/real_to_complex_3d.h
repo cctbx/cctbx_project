@@ -69,7 +69,7 @@ namespace cctbx { namespace fftbx {
   //! 3-dimensional real-to-complex Fast Fourier Transformation.
   /*! The real-to-complex Fourier transform of a real array
       is Hermitian. I.e., map(i,j,k) is the conjugate complex
-      of map(-i,-j,-k). Explointing this symmetry leads to
+      of map(-i,-j,-k). Exploiting this symmetry leads to
       reduced memory usage and faster Fourier transformations.
       <p>
       In this implementation, the Hermitian symmetry is exploited
