@@ -12,9 +12,9 @@ namespace cctbx { namespace crystal { namespace close_packing {
 
 namespace {
 
-  struct hexagonal_sampling_wrappers
+  struct hexagonal_sampling_generator_wrappers
   {
-    typedef hexagonal_sampling<> w_t;
+    typedef hexagonal_sampling_generator<> w_t;
 
     static fractional<>
     next_site_frac(w_t& o)
@@ -33,7 +33,7 @@ namespace {
       typedef boost::python::arg arg_; // gcc 2.96 workaround
       typedef return_value_policy<copy_const_reference> ccr;
       typedef return_internal_reference<> rir;
-      class_<w_t>("close_packing_hexagonal_sampling", no_init)
+      class_<w_t>("close_packing_hexagonal_sampling_generator", no_init)
         .def(init<sgtbx::change_of_basis_op const&,
                   direct_space_asu::float_asu<double>,
                   af::tiny<bool, 3> const&,
@@ -72,7 +72,7 @@ namespace boost_python {
 
   void wrap_close_packing()
   {
-    close_packing::hexagonal_sampling_wrappers::wrap();
+    close_packing::hexagonal_sampling_generator_wrappers::wrap();
   }
 
 }}} // namespace cctbx::crystal::boost_python

@@ -23,12 +23,12 @@ namespace cctbx { namespace crystal { namespace close_packing {
   } // namespace detail
 
   template <typename FloatType=double>
-  class hexagonal_sampling
+  class hexagonal_sampling_generator
   {
     public:
-      hexagonal_sampling() {}
+      hexagonal_sampling_generator() {}
 
-      hexagonal_sampling(
+      hexagonal_sampling_generator(
         sgtbx::change_of_basis_op const& cb_op_original_to_sampling,
         direct_space_asu::float_asu<FloatType> const& float_asu,
         af::tiny<bool, 3> const& continuous_shift_flags,
