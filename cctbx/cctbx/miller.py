@@ -403,6 +403,7 @@ class array(set):
 
   def set_info(self, info):
     self._info = info
+    return self
 
   def f_sq_as_f(self, tolerance=1.e-6):
     from cctbx import xray
