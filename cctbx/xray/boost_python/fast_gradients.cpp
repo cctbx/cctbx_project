@@ -46,12 +46,12 @@ namespace {
         .def("exp_table_size", &w_t::exp_table_size)
         .def("max_shell_radii", &w_t::max_shell_radii, ccr())
         .def("max_shell_radii_frac", &w_t::max_shell_radii_frac)
-        .def("grad_site", &w_t::grad_site)
-        .def("grad_u_iso", &w_t::grad_u_iso)
-        .def("grad_u_star", &w_t::grad_u_star)
-        .def("grad_occupancy", &w_t::grad_occupancy)
-        .def("grad_fp", &w_t::grad_fp)
-        .def("grad_fdp", &w_t::grad_fdp)
+        .def("d_target_d_site", &w_t::d_target_d_site)
+        .def("d_target_d_u_iso", &w_t::d_target_d_u_iso)
+        .def("d_target_d_u_star", &w_t::d_target_d_u_star)
+        .def("d_target_d_occupancy", &w_t::d_target_d_occupancy)
+        .def("d_target_d_fp", &w_t::d_target_d_fp)
+        .def("d_target_d_fdp", &w_t::d_target_d_fdp)
       ;
     }
   };
