@@ -8,6 +8,18 @@ class table6111_entry:
 
   def __init__(self, element, atomic_number, method, table_y):
     adopt_init_args(self, locals())
+    self.atomic_symbol = element
+    if (element == "Cval"):
+      self.atomic_symbol = "C"
+    elif (element == "Sival"):
+      self.atomic_symbol = "Si"
+    else:
+      for sign in ["+", "-"]:
+        i = element.find(sign)
+        if (i > 0):
+          self.element = element.replace(sign,"") + sign
+          self.atomic_symbol = element[:i]
+          break
 
 class table6111:
 

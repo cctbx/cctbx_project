@@ -8,7 +8,7 @@ from scitbx.python_utils import easy_pickle
 from libtbx.optparse_wrapper import OptionParser
 import sys, os
 
-def run(file_name, args, params=None,
+def run(file_name, args, incremental=00000, params=None,
         plots_dir="itvc_fits_plots", verbose=0):
   timer = user_plus_sys_time()
   tab = itvc_section61_io.read_table6111(file_name)
@@ -18,12 +18,13 @@ def run(file_name, args, params=None,
   if (len(args) > 0 and len(args[0].split(",")) == 2):
     chunk_n, chunk_i = [int(i) for i in args[0].split(",")]
     args = args[1:]
-  if (not os.path.isdir(plots_dir)):
-    print "No plots because target directory does not exist (mkdir %s)." % \
-      plots_dir
-    plots_dir = None
-  if (chunk_n > 1):
-    assert plots_dir is not None
+  if (incremental):
+    if (not os.path.isdir(plots_dir)):
+      print "No plots because target directory does not exist (mkdir %s)." % \
+        plots_dir
+      plots_dir = None
+    if (chunk_n > 1):
+      assert plots_dir is not None
   results = {}
   results["fit_parameters"] = params
   i_chunk = 0
@@ -32,26 +33,34 @@ def run(file_name, args, params=None,
     i_chunk += 1
     if (not flag):
       continue
-    label = element
-    if (len(args) > 0 and label not in args): continue
-    for sign in ["+", "-"]:
-      i = label.find(sign)
-      if (i > 0):
-        label = label.replace(sign,"") + sign
-        break
-    wk = xray_scattering.wk1995(label, 1)
+    wk = xray_scattering.wk1995(element, 1)
     entry = tab.entries[element]
     null_fit = scitbx.math.gaussian.fit(
       cctbx.eltbx.gaussian_fit.international_tables_stols,
       entry.table_y,
       cctbx.eltbx.gaussian_fit.international_tables_sigmas,
       xray_scattering.gaussian(0, 00000))
-    results[wk.label()] = cctbx.eltbx.gaussian_fit.incremental_fits(
-      label=wk.label(),
-      null_fit=null_fit,
-      params=params,
-      plots_dir=plots_dir,
-      verbose=verbose)
+    if (incremental):
+      results[wk.label()] = cctbx.eltbx.gaussian_fit.incremental_fits(
+        label=wk.label(),
+        null_fit=null_fit,
+        params=params,
+        plots_dir=plots_dir,
+        verbose=verbose)
+    else:
+      print "label:", wk.label()
+      sys.stdout.flush()
+      fit = scitbx.math.gaussian_fit.fit_with_golay_starts(
+        null_fit=null_fit,
+        n_terms=6,
+        target_powers=params.target_powers,
+        minimize_using_sigmas=params.minimize_using_sigmas,
+        enforce_positive_b_mod_n=params.enforce_positive_b_mod_n,
+        b_min=params.b_min,
+        n_repeats_minimization=params.n_repeats_minimization)
+      g = fit.min.final_gaussian_fit
+      results[wk.label()] = [xray_scattering.fitted_gaussian(
+        stol=g.table_x()[-1], gaussian_sum=g)]
     sys.stdout.flush()
     easy_pickle.dump("fits_%02d.pickle" % chunk_i, results)
   print "CPU time: %.2f seconds" % timer.elapsed()

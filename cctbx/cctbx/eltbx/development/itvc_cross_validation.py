@@ -11,6 +11,7 @@ def show_differences_if_any(label, stols, y0, y1):
         print stol, y0i, y1i
 
 def run(file_names):
+  assert len(file_names) == 2
   tabs = []
   for file_name in file_names:
     tabs.append(itvc_section61_io.read_table6111(file_name))
@@ -32,14 +33,10 @@ def run(file_names):
         y0=e0.table_y[:min_size],
         y1=e1.table_y[:min_size],
         stols=international_tables_stols[:min_size])
-    i = label.find("+")
-    if (i < 0): i = label.find("-")
-    assert i != 0
-    if (i > 0):
-      element_of_ion = label[:i]
-      for tab in tabs:
-        ee = tab.entries.get(element_of_ion, None)
-        ei = tab.entries.get(label, None)
+    for tab in tabs:
+      ei = tab.entries.get(label, None)
+      if (ei is not None and ei.element != ei.atomic_symbol):
+        ee = tab.entries.get(ei.atomic_symbol, None)
         if ([ee,ei].count(None) == 0):
           assert ee.table_y.size() == 62
           assert ei.table_y.size() == 62
