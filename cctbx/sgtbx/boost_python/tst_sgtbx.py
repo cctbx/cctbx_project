@@ -1185,6 +1185,13 @@ def exercise_lattice_symmetry():
   assert group.order_z() == 1
   assert sgtbx.lattice_symmetry_find_max_delta(niggli_cell, group, 2) < 1.e-10
 
+def exercise_find_affine():
+  for sym,n in [("P 1",67704), ("P 2",104), ("C 2y",36)]:
+    group = sgtbx.space_group(sym)
+    affine = sgtbx.find_affine(group, 2)
+    cb_mx = affine.cb_mx()
+    assert len(cb_mx) == n
+
 def run():
   exercise_symbols()
   exercise_tr_vec()
@@ -1202,6 +1209,7 @@ def run():
   exercise_seminvariant()
   exercise_row_echelon()
   exercise_lattice_symmetry()
+  exercise_find_affine()
   print "OK"
 
 if (__name__ == "__main__"):
