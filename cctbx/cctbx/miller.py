@@ -1548,6 +1548,10 @@ class array(set):
       dataset_name=dataset_name,
       wavelength=wavelength)
 
+  def as_phases_phs(self, out):
+    import iotbx.phases
+    iotbx.phases.miller_array_as_phases_phs(self=self, out=out)
+
 class merge_equivalents:
 
   def __init__(self, miller_array):
