@@ -12,7 +12,7 @@ bpmtz::Mtz::~Mtz(){
 std::string bpmtz::Mtz::title(){return std::string(mtz->title);}
 std::string bpmtz::Mtz::SpaceGroup(){return mtz->mtzsymm.spcgrpname;}
 int& bpmtz::Mtz::size(){return mtz->nref;}
-int& bpmtz::Mtz::ncrystals() {return mtz->nxtal;}
+int& bpmtz::Mtz::ncrystals() const {return mtz->nxtal;}
 int bpmtz::Mtz::ndatasets(const int& xtal) {return mtz->xtal[xtal]->nset;}
 int& bpmtz::Mtz::ncolumns(const int& xtal, const int& set) {return mtz->xtal[xtal]->set[set]->ncol;}
 
@@ -30,7 +30,7 @@ af::shared<std::string> bpmtz::Mtz::history(){
    return answer;
 }
 
-af::shared<std::string> bpmtz::Mtz::columns(){
+af::shared<std::string> bpmtz::Mtz::columns() const {
    af::shared<std::string> answer;
    /* Loop over crystals */
     for (int i = 0; i < mtz->nxtal; ++i) {
@@ -51,8 +51,31 @@ bpmtz::Column bpmtz::Mtz::getColumn(std::string s){
   return bpmtz::Column(CMtz::MtzColLookup(mtz,s.c_str()));
 }
 
-bpmtz::Crystal bpmtz::Mtz::getCrystal(const int& xtalid){
+bpmtz::Crystal bpmtz::Mtz::getCrystal(const int& xtalid) const{
   return bpmtz::Crystal(CMtz::MtzIxtal(mtz, xtalid));
+}
+
+bpmtz::Crystal bpmtz::Mtz::lookupCrystal(std::string s) const{
+  af::shared<std::string> cols = this->columns();
+  bool foundlabel=false;
+  for (int i = 0; i<cols.size(); ++i) {
+    if (cols[i]==s) {
+      foundlabel=true;
+      break;
+    }
+  }
+  if (!foundlabel) throw iotbx::mtz::Error("no such column label");
+
+  for (int i = 0; i < this->ncrystals(); ++i) {
+    iotbx::mtz::Crystal cryst = this->getCrystal(i);
+    for (int j = 0; j < cryst.ndatasets(); ++j) {
+      iotbx::mtz::Dataset data = cryst.getDataset(j);
+      for (int k = 0; k < data.ncolumns(); ++k) {
+        if (data.getColumn(k).label() == s) {
+          return cryst;}
+      }
+    }
+  }
 }
 
 af::shared< cctbx::miller::index<> > bpmtz::Mtz::MIx() {
