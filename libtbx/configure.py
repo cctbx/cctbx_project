@@ -24,12 +24,13 @@ def update_libtbx_info(env, package_name, package_dist):
     "PATH": [norm(join(env.libtbx_dist, "libtbx/command_line"))],
     "LIBTBX_PYTHON_EXE": env.libtbx_python_exe,
     "LIBTBX_DIST": env.libtbx_dist,
-    "LIBTBX_SCONS": env.libtbx_scons,
     "LIBTBX_BUILD": env.libtbx_build,
     "LIBTBX_BOOST": env.libtbx_boost,
     package_dist_varname: package_dist,
     "package_names": [],
   }
+  if (not env.libtbx_scons in (None, "default")):
+    libtbx_info["LIBTBX_SCONS"] = env.libtbx_scons
   try:
     f = open(libtbx_info_path, "r")
   except:
