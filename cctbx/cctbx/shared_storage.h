@@ -12,6 +12,8 @@
 #define CCTBX_SHARED_STORAGE_H
 
 #include <cstddef>
+#include <vector>
+#include <algorithm>
 #include <boost/smart_ptr.hpp>
 
 namespace cctbx {
@@ -31,26 +33,36 @@ namespace cctbx {
       typedef boost::shared_array<char> shared_array_type;
 
       explicit shared_storage(const size_type& sz = 0)
-        : m_begin(new value_type[sz]),
+        : m_storage(new char[sizeof(value_type) * sz]),
           m_size(sz)
       {
-        char* char_ptr_begin = reinterpret_cast<char*>(m_begin);
-        m_storage = shared_array_type(char_ptr_begin);
+        m_begin = reinterpret_cast<value_type*>(m_storage.get());
       }
       shared_storage(const shared_array_type& storage, size_type size)
         : m_storage(storage),
           m_begin(reinterpret_cast<value_type*>(storage.get())),
           m_size(size)
       {}
+      template <typename T>
+      shared_storage(const std::vector<T>& std_vec)
+        : m_storage(new char[sizeof(value_type) * std_vec.size()]),
+          m_size(std_vec.size())
+      {
+        m_begin = reinterpret_cast<value_type*>(m_storage.get());
+        std::copy(std_vec.begin(), std_vec.end(), m_begin);
+      }
 
-      value_type* begin() const { return m_begin; }
-      value_type* end() const { return m_begin + m_size; }
+            value_type* begin()       { return m_begin; }
+      const value_type* begin() const { return m_begin; }
+            value_type* end()       { return m_begin + m_size; }
+      const value_type* end() const { return m_begin + m_size; }
 
-      value_type& operator[](size_type i) const { return m_begin[i]; }
+            value_type& operator[](size_type i)       { return m_begin[i]; }
+      const value_type& operator[](size_type i) const { return m_begin[i]; }
 
       size_type size() const { return m_size; }
 
-      shared_array_type cast() const { return m_storage; }
+      shared_array_type handle() const { return m_storage; }
 
       shared_storage<value_type>
       deepcopy() const

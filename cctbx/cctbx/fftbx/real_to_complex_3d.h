@@ -137,7 +137,7 @@ namespace cctbx { namespace fftbx {
       void forward(VecRefNd Map, complex_type) {
         typedef typename VecRefNd::dimension_type dim_type;
         dim_type dim(Map.dim()[0], Map.dim()[1], Map.dim()[2] * 2);
-        vecrefnd<real_type, dim_type> rmap(Map.cast(), dim);
+        vecrefnd<real_type, dim_type> rmap(Map.handle(), dim);
         forward(rmap, real_type());
       }
       // Core routine always works on real maps.
@@ -187,7 +187,7 @@ namespace cctbx { namespace fftbx {
       void backward(VecRefNd Map, complex_type) {
         typedef typename VecRefNd::dimension_type dim_type;
         dim_type dim(Map.dim()[0], Map.dim()[1], Map.dim()[2] * 2);
-        vecrefnd<real_type, dim_type> rmap(Map.cast(), dim);
+        vecrefnd<real_type, dim_type> rmap(Map.handle(), dim);
         backward(rmap, real_type());
       }
       // Core routine always works on real maps.
