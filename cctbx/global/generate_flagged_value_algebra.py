@@ -105,6 +105,51 @@ def generate_unary_ops():
        format_list("    ", d.return_array_type),
        op_symbol)
 
+def generate_1arg_element_wise(prefix, function_names):
+  hp = get_template_header_and_parameters("flagged_value", 1)
+  for function_name in function_names:
+    print """%s
+  inline
+  %s
+  %s(const %s& a) {
+    %s result;
+    if (a.f) {
+      result.v = %s(a.v);
+      result.f = true;
+    }
+    return result;
+  }
+""" % (format_header("  ", hp.header), hp.params[0],
+       function_name, hp.params[0],
+       hp.params[0],
+       prefix + function_name)
+
+def generate_2arg_element_wise(
+  prefix, function_names,
+  equal_element_type = 0,
+  addl_args = ["", ""]
+):
+  hp = get_template_header_and_parameters(
+    "flagged_value", 2, equal_element_type)
+  for function_name in function_names:
+    print """%s
+  inline
+  %s
+  %s(
+    const %s& a1,
+    const %s& a2%s) {
+    %s result;
+    if (a1.f && a2.f) {
+      result.v = %s(a1.v, a2.v%s);
+      result.f = true;
+    }
+    return result;
+  }
+""" % (format_header("  ", hp.header), hp.params[0],
+       function_name, hp.params[0], hp.params[1], addl_args[0],
+       hp.params[0],
+       prefix + function_name, addl_args[1])
+
 def run():
   f = open("flagged_value_algebra.h", "w")
   sys.stdout = f
@@ -113,6 +158,9 @@ def run():
 #ifndef CCTBX_ARRAY_FAMILY_FLAGGED_VALUE_ALGEBRA_H
 #define CCTBX_ARRAY_FAMILY_FLAGGED_VALUE_ALGEBRA_H
 
+#include <cmath>
+#include <cstdlib>
+#include <cctbx/array_family/misc_functions.h>
 #include <cctbx/array_family/operator_traits_builtin.h>
 
 namespace cctbx { namespace af {
@@ -125,6 +173,10 @@ namespace cctbx { namespace af {
     generate_elementwise_binary_op("logical", op_symbol)
   for op_symbol in boolean_ops:
     generate_elementwise_binary_op("boolean", op_symbol)
+  generate_1arg_element_wise("std::", cmath_1arg + cstdlib_1arg)
+  generate_2arg_element_wise("std::", cmath_2arg)
+  for args in misc_functions_2arg:
+    apply(generate_2arg_element_wise, args)
 
   print """}} // namespace cctbx::af
 
