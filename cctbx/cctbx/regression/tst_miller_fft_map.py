@@ -5,6 +5,7 @@ from cctbx import maptbx
 from cctbx import sgtbx
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
+from cctbx.development import structure_factor_utils
 from cctbx.array_family import flex
 from scitbx import fftpack
 from scitbx.test_utils import approx_equal
@@ -25,6 +26,7 @@ def run_test(space_group_info, n_elements=5, d_min=1.5,
   f_obs_array = xray.structure_factors_direct(
     xray_structure=structure,
     miller_set=miller_set_f_obs).f_calc_array()
+  structure_factor_utils.check_phase_restrictions(f_obs_array, verbose=verbose)
   if (0 or verbose):
     f_obs_array.show_summary()
   if (0 or verbose):

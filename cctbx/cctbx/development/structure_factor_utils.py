@@ -2,6 +2,7 @@ from scitbx.python_utils.misc import adopt_init_args
 from scitbx.python_utils.complex_math import abs_arg
 from cctbx.utils import phase_error
 from cctbx.array_family import flex
+import math
 
 def check_regression(x, y, label, min_correlation=0, verbose=0):
   xy_regr = flex.linear_regression(x, y)
@@ -69,3 +70,13 @@ def check_correlation(label, h1, match, f1, f2,
     for i,j in match.pairs():
       coll.add(h1[i], f1[i], f2[j])
   coll.report()
+
+def check_phase_restrictions(miller_array, epsilon=1.e-10, verbose=0):
+  space_group = miller_array.space_group()
+  phases = flex.arg(miller_array.data())
+  for i,h in miller_array.indices().items():
+    f = miller_array.data()[i]
+    if (verbose):
+      print h, f, abs(f), phases[i]*180/math.pi
+    if (abs(f.real) > epsilon and abs(f.imag) > epsilon):
+      assert space_group.is_valid_phase(h, phases[i])
