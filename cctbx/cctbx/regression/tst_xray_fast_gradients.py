@@ -182,7 +182,7 @@ class resampling(crystal.symmetry):
       electron_density_must_be_positive,
       tolerance_positive_definite)
     if (0 or verbose):
-      print "max_shell_radii:", result.max_shell_radii()
+      print "max_sampling_box_edges:", result.max_sampling_box_edges()
       print "exp_table_size:", result.exp_table_size()
       print
     return result

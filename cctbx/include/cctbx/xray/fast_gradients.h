@@ -393,8 +393,11 @@ namespace cctbx { namespace xray {
     bool electron_density_must_be_positive,
     FloatType const& tolerance_positive_definite)
   :
-    base_t(unit_cell, scatterers, u_extra, wing_cutoff,
-           exp_table_one_over_step_size, tolerance_positive_definite)
+    base_t(unit_cell, scatterers, scattering_dict, u_extra, wing_cutoff,
+           exp_table_one_over_step_size, tolerance_positive_definite,
+           (  ft_d_target_d_f_calc_real.size() != 0
+            ? ft_d_target_d_f_calc_real.accessor().focus()
+            : ft_d_target_d_f_calc_complex.accessor().focus()))
   {
     CCTBX_ASSERT(scattering_dict.n_scatterers() == scatterers.size());
     CCTBX_ASSERT(   (ft_d_target_d_f_calc_real.size() == 0)
@@ -426,6 +429,13 @@ namespace cctbx { namespace xray {
     detail::exponent_table<FloatType> exp_table(exp_table_one_over_step_size);
     scitbx::mat3<FloatType>
       orth_mx = this->unit_cell_.orthogonalization_matrix();
+    std::vector<int> gp1g;
+    std::vector<FloatType> o1f1_;
+    std::vector<FloatType> o4f1_;
+    std::vector<int> gp2g;
+    std::vector<FloatType> o2f2_;
+    std::vector<FloatType> o5f2_;
+    std::vector<FloatType> o8f2_;
     typedef scattering_dictionary::dict_type dict_type;
     typedef dict_type::const_iterator dict_iter;
     dict_type const& scd = scattering_dict.dict();
@@ -460,12 +470,14 @@ namespace cctbx { namespace xray {
             gaussian, scatterer.fp, scatterer.fdp, scatterer.occupancy,
             scatterer.weight_without_occupancy(), scatterer.weight(),
             u_iso, this->u_extra_);
-          detail::calc_shell<FloatType, grid_point_type> shell(
-            this->unit_cell_, this->wing_cutoff_, grid_f, gaussian_ft);
-          detail::array_update_max(this->max_shell_radii_, shell.radii);
+          detail::calc_box<FloatType, grid_point_type> sampling_box(
+            this->unit_cell_, this->rho_cutoff_, this->max_d_sq_upper_bound_,
+            grid_f, coor_frac, gaussian_ft);
+          this->update_sampling_box_statistics(
+            sampling_box.n_points, sampling_box.box_edges);
           if (electron_density_must_be_positive) {
             if (   gaussian_ft.rho_real_0() < 0
-                || gaussian_ft.rho_real(shell.max_d_sq) < 0) {
+                || gaussian_ft.rho_real(sampling_box.max_d_sq) < 0) {
 
               throw error("Negative electron density at sampling point.");
             }
@@ -478,8 +490,6 @@ namespace cctbx { namespace xray {
               scatterer.weight_without_occupancy(), scatterer.weight(),
               u_cart, this->u_extra_);
           }
-          grid_point_type pivot = detail::calc_nearest_grid_point(
-            coor_frac, grid_f);
           FloatType f_real(-1.e20); // could be uninitialized
           FloatType f_imag(-1.e20); // could be uninitialized
 #         include <cctbx/xray/sampling_loop.h>

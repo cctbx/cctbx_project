@@ -121,8 +121,7 @@ namespace cctbx { namespace xray {
         {
           if (one_over_step_size_ == 0) return std::exp(x);
           FloatType xs = x * one_over_step_size_;
-          CCTBX_ASSERT(xs >= 0);
-          std::size_t i(xs + FloatType(.5));
+          std::size_t i = static_cast<std::size_t>(xs+.5);
           if (i >= table_.size()) expand(i + 1);
           return table_[i];
         }
@@ -130,7 +129,7 @@ namespace cctbx { namespace xray {
         std::vector<FloatType> const&
         table() const { return table_; }
 
-      private:
+      public: // not protected to allow for manually inlined code
         FloatType one_over_step_size_;
         std::vector<FloatType> table_;
 
@@ -186,7 +185,7 @@ namespace cctbx { namespace xray {
       FloatType const& b_all)
     {
       FloatType d = b_all * b_all * b_all;
-      CCTBX_ASSERT(d != 0);
+      CCTBX_ASSERT(d > 0);
       return eight_pi_pow_3_2 * a / std::sqrt(d);
     }
 
@@ -214,6 +213,28 @@ namespace cctbx { namespace xray {
     {
       return scitbx::sym_mat3<FloatType>(gaussian_b + adptbx::u_as_b(u_extra))
            + scitbx::sym_mat3<FloatType>(adptbx::u_as_b(u_cart));
+    }
+
+    template <typename FloatType>
+    FloatType
+    get_average_gaussian_ft_a(
+      scattering_dictionary const& scattering_dict,
+      FloatType const& average_b_iso_estimate)
+    {
+      typedef scattering_dictionary::dict_type dict_type;
+      typedef dict_type::const_iterator dict_iter;
+      FloatType sum_a = 0;
+      std::size_t sum_n = 0;
+      dict_type const& scd = scattering_dict.dict();
+      for(dict_iter di=scd.begin();di!=scd.end();di++) {
+        std::size_t n = di->second.member_indices.size();
+        sum_a += n * scitbx::fn::absolute(di->second.gaussian.at_stol_sq(0));
+        sum_n += n;
+      }
+      if (sum_n == 0) return 0;
+      return isotropic_3d_gaussian_fourier_transform(
+        sum_a / static_cast<FloatType>(sum_n),
+        average_b_iso_estimate);
     }
 
     template <typename FloatType>
@@ -354,7 +375,32 @@ namespace cctbx { namespace xray {
           return as_imag_ * exp_term(d_or_d_sq);
         }
 
-      protected:
+        FloatType
+        max_d_sq_estimate(
+          FloatType const& rho_cutoff,
+          FloatType const& d_sq_upper_bound,
+          FloatType const& epsilon=1.e-3) const
+        {
+          /* Solution of rho_cutoff = a * exp(b*max_d_sq)
+             => max_d_sq = log(rho_cutoff/a) / b
+           */
+          if (n_rho_real_terms == 0) return 0;
+          FloatType max_a = 0;
+          for (std::size_t i=0;i<n_rho_real_terms;i++) {
+            scitbx::math::update_max(max_a, scitbx::fn::absolute(as_real_[i]));
+          }
+          if (max_a <= rho_cutoff * epsilon) return 0;
+          FloatType result = 0;
+          for (std::size_t i=0;i<n_rho_real_terms;i++) {
+            FloatType a = scitbx::fn::absolute(as_real_[i]);
+            if (a <= rho_cutoff * epsilon) continue;
+            scitbx::math::update_max(result,
+              std::log(rho_cutoff/a)/bs_real_[i]);
+          }
+          return result;
+        }
+
+      public: // not protected to allow for manually inlined code
         exponent_table<FloatType>* exp_table_;
         bool anisotropic_flag_;
         std::size_t n_rho_real_terms;
@@ -369,74 +415,97 @@ namespace cctbx { namespace xray {
 
     template <typename FloatType,
               typename GridPointType>
-    struct calc_shell
+    struct calc_box
     {
-      GridPointType radii;
       FloatType max_d_sq;
+      std::size_t n_points;
+      GridPointType box_min;
+      GridPointType box_max;
+      GridPointType box_edges;
 
-      calc_shell(
+      calc_box(
         uctbx::unit_cell const& unit_cell,
-        FloatType const& wing_cutoff,
+        FloatType const& rho_cutoff,
+        FloatType const& max_d_sq_upper_bound,
         GridPointType const& grid_n,
+        fractional<FloatType> const& coor_frac,
         gaussian_fourier_transformed<FloatType> const& gaussian_ft)
       :
-        max_d_sq(0)
+        max_d_sq(0),
+        n_points(1)
       {
         CCTBX_ASSERT(!gaussian_ft.anisotropic_flag());
         af::tiny<FloatType, 3> grid_n_f = grid_n;
-        FloatType rho_cutoff = scitbx::fn::absolute(
-          gaussian_ft.rho_real_0() * wing_cutoff);
-        for(std::size_t i_basis_vec=0;i_basis_vec<3;i_basis_vec++) {
-          typename GridPointType::value_type ig;
-          for (ig = 1; ig < grid_n[i_basis_vec]; ig++) {
-            fractional<FloatType> d_frac(0,0,0);
-            d_frac[i_basis_vec] = ig / grid_n_f[i_basis_vec];
-            FloatType d_sq = unit_cell.length_sq(d_frac);
-            if (scitbx::fn::absolute(
-                  gaussian_ft.rho_real(d_sq)) < rho_cutoff) {
-              break;
-            }
-            if (max_d_sq < d_sq) max_d_sq = d_sq;
+        FloatType max_d_sq_estimate = gaussian_ft.max_d_sq_estimate(
+          rho_cutoff, max_d_sq_upper_bound);
+        for(std::size_t i_bv=0;i_bv<3;i_bv++) {
+          fractional<FloatType> d_frac(0,0,0);
+          d_frac[i_bv] = 1 / grid_n_f[i_bv];
+          FloatType d_sq = unit_cell.length_sq(d_frac);
+          FloatType gu_radius = std::sqrt(max_d_sq_estimate / d_sq);
+          FloatType gu_site = coor_frac[i_bv] * grid_n_f[i_bv];
+          box_min[i_bv] = adjust_box_limit(
+            unit_cell, rho_cutoff, max_d_sq_upper_bound,
+            grid_n_f, coor_frac, gaussian_ft,
+            i_bv, 1, scitbx::math::ifloor(gu_site - gu_radius));
+          box_max[i_bv] = adjust_box_limit(
+            unit_cell, rho_cutoff, max_d_sq_upper_bound,
+            grid_n_f, coor_frac, gaussian_ft,
+            i_bv, -1, scitbx::math::iceil(gu_site + gu_radius));
+          box_edges[i_bv] = box_max[i_bv] - box_min[i_bv] + 1;
+          if (box_edges[i_bv] < 1) {
+            throw error(
+              "Error determining sampling box for"
+              " model electron density. This may be due to incorrectly"
+              " defined atomic scattering factors. (calc_box)");
           }
-          if (ig == 1) {
+          n_points *= box_edges[i_bv];
+        }
+      }
+
+      int
+      adjust_box_limit(
+        uctbx::unit_cell const& unit_cell,
+        FloatType const& rho_cutoff,
+        FloatType const& max_d_sq_upper_bound,
+        af::tiny<FloatType, 3> const& grid_n_f,
+        fractional<FloatType> const& coor_frac,
+        gaussian_fourier_transformed<FloatType> const& gaussian_ft,
+        int i_bv,
+        int f,
+        int box_limit)
+      {
+        int known_required = box_limit + 2*f;
+        fractional<FloatType> d_frac(0,0,0);
+        while (true) {
+          d_frac[i_bv] = f * (coor_frac[i_bv] - box_limit/grid_n_f[i_bv]);
+          if (d_frac[i_bv] < 0) {
             throw error(
               "Error determining sampling radius for"
               " model electron density. This may be due to incorrectly"
-              " defined atomic scattering factors.");
+              " defined atomic scattering factors. (adjust_box_limit)");
           }
-          if (ig == grid_n[i_basis_vec]) {
-            throw error(
-              "Excessive radius for real-space sampling of"
-              " model electron density.");
+          FloatType d_sq = unit_cell.length_sq(d_frac);
+          FloatType abs_rho = scitbx::fn::absolute(gaussian_ft.rho_real(d_sq));
+          if (abs_rho < rho_cutoff) {
+            box_limit += f;
+            if (box_limit == known_required) {
+              return box_limit;
+            }
           }
-          radii[i_basis_vec] = ig - 1;
+          else {
+            if (d_sq > max_d_sq_upper_bound) {
+              throw error(
+                "Excessive radius for real-space sampling of"
+                " model electron density.");
+            }
+            scitbx::math::update_max(max_d_sq, d_sq);
+            known_required = box_limit;
+            box_limit -= f;
+          }
         }
       }
     };
-
-    template <typename FloatType>
-    inline
-    FloatType
-    add_for_rounding(FloatType const& x)
-    {
-      if (x < FloatType(0)) return x - FloatType(.5);
-      return x + FloatType(.5);
-    }
-
-    template <typename FloatType,
-              typename GridPointType>
-    inline
-    GridPointType
-    calc_nearest_grid_point(fractional<FloatType> const& coor,
-                            GridPointType const& grid_n)
-    {
-      typedef typename GridPointType::value_type value_type;
-      GridPointType grid_point;
-      for(std::size_t i=0;i<3;i++) {
-        grid_point[i] = value_type(add_for_rounding(coor[i] * grid_n[i]));
-      }
-      return grid_point;
-    }
 
     template <typename ArrayMaxType,
               typename ArrayValType>
@@ -470,10 +539,12 @@ namespace cctbx { namespace xray {
       sampling_base(
         uctbx::unit_cell const& unit_cell,
         af::const_ref<XrayScattererType> const& scatterers,
+        scattering_dictionary const& scattering_dict,
         FloatType const& u_extra,
         FloatType const& wing_cutoff,
         FloatType const& exp_table_one_over_step_size,
-        FloatType const& tolerance_positive_definite);
+        FloatType const& tolerance_positive_definite,
+        grid_point_type const& grid_n);
 
       uctbx::unit_cell const&
       unit_cell() { return unit_cell_; }
@@ -511,15 +582,30 @@ namespace cctbx { namespace xray {
       std::size_t
       exp_table_size() const { return exp_table_size_; }
 
+      std::size_t
+      max_sampling_box_n_points() const { return max_sampling_box_n_points_; }
+
+      std::size_t
+      sum_sampling_box_n_points() const { return sum_sampling_box_n_points_; }
+
+      double
+      ave_sampling_box_n_points() const
+      {
+        if (n_contributing_scatterers_ == 0) return 0;
+        return static_cast<double>(sum_sampling_box_n_points_)
+             / static_cast<double>(n_contributing_scatterers_);
+      }
+
       grid_point_type const&
-      max_shell_radii() const { return max_shell_radii_; }
+      max_sampling_box_edges() const { return max_sampling_box_edges_; }
 
       fractional<FloatType>
-      max_shell_radii_frac() const
+      max_sampling_box_edges_frac() const
       {
         fractional<FloatType> r;
         for(std::size_t i=0;i<3;i++) {
-          r[i] = FloatType(max_shell_radii_[i]) / map_accessor_.focus()[i];
+          r[i] = FloatType(max_sampling_box_edges_[i])
+               / map_accessor_.focus()[i];
         }
         return r;
       }
@@ -528,14 +614,19 @@ namespace cctbx { namespace xray {
       uctbx::unit_cell unit_cell_;
       std::size_t n_scatterers_passed_;
       FloatType u_extra_;
+      FloatType average_u_iso_estimate_;
       FloatType wing_cutoff_;
       FloatType exp_table_one_over_step_size_;
       FloatType tolerance_positive_definite_;
       std::size_t n_contributing_scatterers_;
       std::size_t n_anomalous_scatterers_;
       bool anomalous_flag_;
+      FloatType rho_cutoff_;
+      FloatType max_d_sq_upper_bound_;
       std::size_t exp_table_size_;
-      grid_point_type max_shell_radii_;
+      std::size_t max_sampling_box_n_points_;
+      std::size_t sum_sampling_box_n_points_;
+      grid_point_type max_sampling_box_edges_;
       accessor_type map_accessor_;
 
       FloatType
@@ -550,6 +641,16 @@ namespace cctbx { namespace xray {
           tolerance_positive_definite_));
         return af::max(u_cart_eigenvalues);
       }
+
+      void
+      update_sampling_box_statistics(
+        std::size_t n_points,
+        grid_point_type const& box_edges)
+      {
+        scitbx::math::update_max(max_sampling_box_n_points_, n_points);
+        sum_sampling_box_n_points_ += n_points;
+        detail::array_update_max(max_sampling_box_edges_, box_edges);
+      }
   };
 
   template <typename FloatType,
@@ -558,22 +659,29 @@ namespace cctbx { namespace xray {
   ::sampling_base(
     uctbx::unit_cell const& unit_cell,
     af::const_ref<XrayScattererType> const& scatterers,
+    scattering_dictionary const& scattering_dict,
     FloatType const& u_extra,
     FloatType const& wing_cutoff,
     FloatType const& exp_table_one_over_step_size,
-    FloatType const& tolerance_positive_definite)
+    FloatType const& tolerance_positive_definite,
+    grid_point_type const& grid_n)
   :
     unit_cell_(unit_cell),
     n_scatterers_passed_(scatterers.size()),
     u_extra_(u_extra),
+    average_u_iso_estimate_(0.25),
     wing_cutoff_(wing_cutoff),
     exp_table_one_over_step_size_(exp_table_one_over_step_size),
     tolerance_positive_definite_(tolerance_positive_definite),
     n_contributing_scatterers_(0),
     n_anomalous_scatterers_(0),
     anomalous_flag_(false),
+    rho_cutoff_(0),
+    max_d_sq_upper_bound_(unit_cell.shortest_vector_sq() * 0.25),
     exp_table_size_(0),
-    max_shell_radii_(0,0,0)
+    max_sampling_box_n_points_(0),
+    sum_sampling_box_n_points_(0),
+    max_sampling_box_edges_(0,0,0)
   {
     scitbx::mat3<FloatType> orth_mx = unit_cell_.orthogonalization_matrix();
     if (orth_mx[3] != 0 || orth_mx[6] != 0 || orth_mx[7] != 0) {
@@ -592,6 +700,10 @@ namespace cctbx { namespace xray {
         n_anomalous_scatterers_++;
       }
     }
+    rho_cutoff_ = detail::get_average_gaussian_ft_a(
+      scattering_dict,
+      adptbx::u_as_b(average_u_iso_estimate_ + u_extra_)) * wing_cutoff_;
+    CCTBX_ASSERT(rho_cutoff_ > 0);
   }
 
 }} // namespace cctbx::xray

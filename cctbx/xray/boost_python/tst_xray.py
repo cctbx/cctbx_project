@@ -350,9 +350,12 @@ def exercise_sampled_model_density():
   assert d.anomalous_flag()
   assert d.real_map().size() == 0
   assert d.complex_map().size() == (20*20*22)
-  assert d.exp_table_size() == 7201
-  assert d.max_shell_radii() == (5,5,4)
-  assert approx_equal(d.max_shell_radii_frac(), (5/20.,5/20.,4/22.))
+  assert d.exp_table_size() == 7689
+  assert d.max_sampling_box_n_points() == 1100
+  assert d.sum_sampling_box_n_points() == 1667
+  assert approx_equal(d.ave_sampling_box_n_points(), 1667/2.)
+  assert d.max_sampling_box_edges() == (11,10,10)
+  assert approx_equal(d.max_sampling_box_edges_frac(), (11/20.,10/20.,10/22.))
   i = flex.miller_index(((1,2,3), (2,3,4)))
   f = flex.complex_double((1+2j, 2+3j))
   d.eliminate_u_extra_and_normalize(i, f)
