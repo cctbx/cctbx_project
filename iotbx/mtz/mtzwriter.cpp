@@ -31,10 +31,10 @@ void iotbx::mtz::MtzWriter::setSpaceGroup(const cctbx::sgtbx::space_group& sg,
     float t_den = t.den();
     for (std::size_t p=0;p<3;p++) {
       for (std::size_t q=0;q<3;q++) {
-        rsymx[i][q][p] = r_num(p,q)/r_den;
+        rsymx[i][p][q] = r_num(p,q)/r_den;
       }
-      rsymx[i][3][p] = t_num[p]/t_den;
-      rsymx[i][p][3] = 0.0;
+      rsymx[i][p][3] = t_num[p]/t_den;
+      rsymx[i][3][p] = 0.0;
     }
     rsymx[i][3][3] = 1.0;
   }
