@@ -81,13 +81,26 @@ namespace iotbx { namespace mtz { namespace boost_python {
 
   void wrap_MtzWriter();
 
+  int
+  ccp4_liberr_verbosity_wrapper(int iverb)
+  {
+    return CCP4::ccp4_liberr_verbosity(iverb);
+  }
+
+  void
+  wrap_functions()
+  {
+    using namespace boost::python;
+    def("ccp4_liberr_verbosity", ccp4_liberr_verbosity_wrapper);
+  }
+
 }}} // namespace iotbx::mtz::boost_python
 
 BOOST_PYTHON_MODULE(iotbx_mtz_ext)
 {
   using namespace iotbx::mtz::boost_python;
   CCP4::ccp4_liberr_verbosity(0);
-  boost::python::def("ccp4_liberr_verbosity", CCP4::ccp4_liberr_verbosity);
+  wrap_functions();
   wrap_Mtz();
   wrap_Crystal();
   wrap_Dataset();
