@@ -44,6 +44,7 @@ assert env_etc.compiler in (
   "win32_cl",
   #"win32_mwcc",
   "unix_gcc",
+  "unix_ecc",
   "tru64_cxx",
   "irix_CC",
   "darwin_c++",
@@ -139,6 +140,30 @@ else:
       opts = ["-DNDEBUG", "-O3"]
     else:
       opts = ["-O0", "-fno-inline"]
+    env_etc.cxxflags_base.extend(opts)
+    env_etc.ccflags_base.extend(opts)
+    env_etc.shlinkflags = "-shared"
+    env_etc.shlinkflags_bpl = env_etc.shlinkflags
+  elif (env_etc.compiler == "unix_ecc"):
+    env_etc.static_libraries = 0
+    env_etc.static_bpl = 0
+    env_base.Replace(
+      CC="ecc",
+      SHCC="ecc",
+      CXX="ecc",
+      LINK="ecc",
+      SHCXX="ecc",
+      SHLINK="ecc",
+    )
+    env_etc.cxxflags_base = Split("""
+      -fPIC
+    """)
+    env_etc.ccflags_base = Split("""
+    """)
+    if (env_etc.release_build):
+      opts = ["-DNDEBUG", "-O", "-tpp2"]
+    else:
+      opts = ["-O0"]
     env_etc.cxxflags_base.extend(opts)
     env_etc.ccflags_base.extend(opts)
     env_etc.shlinkflags = "-shared"
