@@ -341,7 +341,7 @@ def exercise_sampled_model_density():
     uc, scatterers, scattering_dict, (20,20,22), (20,20,23))
   assert d.unit_cell().is_similar_to(uc)
   assert approx_equal(d.u_extra(), 0.25)
-  assert approx_equal(d.wing_cutoff(), 1.e-6)
+  assert approx_equal(d.wing_cutoff(), 1.e-3)
   assert approx_equal(d.exp_table_one_over_step_size(), -100)
   assert approx_equal(d.tolerance_positive_definite(), 1.e-5)
   assert d.n_scatterers_passed() == 2
@@ -350,12 +350,12 @@ def exercise_sampled_model_density():
   assert d.anomalous_flag()
   assert d.real_map().size() == 0
   assert d.complex_map().size() == (20*20*22)
-  assert d.exp_table_size() == 7689
-  assert d.max_sampling_box_n_points() == 1100
-  assert d.sum_sampling_box_n_points() == 1667
-  assert approx_equal(d.ave_sampling_box_n_points(), 1667/2.)
-  assert d.max_sampling_box_edges() == (11,10,10)
-  assert approx_equal(d.max_sampling_box_edges_frac(), (11/20.,10/20.,10/22.))
+  assert d.exp_table_size() == 2889
+  assert d.max_sampling_box_n_points() == 216
+  assert d.sum_sampling_box_n_points() == 341
+  assert approx_equal(d.ave_sampling_box_n_points(), 341/2.)
+  assert d.max_sampling_box_edges() == (6,6,6)
+  assert approx_equal(d.max_sampling_box_edges_frac(), (6/20.,6/20.,6/22.))
   i = flex.miller_index(((1,2,3), (2,3,4)))
   f = flex.complex_double((1+2j, 2+3j))
   d.eliminate_u_extra_and_normalize(i, f)

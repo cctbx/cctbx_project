@@ -1,10 +1,9 @@
 from cctbx import xray
 from cctbx import miller
-from cctbx.command_line.structure_factor_timings import show_scatterer_digest
 from cctbx.command_line.structure_factor_timings import read_structure
 import sys
 
-def timings(structure, wing_cutoff=1.e-4):
+def timings(structure, wing_cutoff=1.e-3):
   print "wing_cutoff for following fft calculations: %3.1e"%wing_cutoff
   for calc_type,exp_table_one_over_step_size in (("exp function:",0),
                                                  ("exp table:",-100)):
@@ -21,7 +20,7 @@ def timings(structure, wing_cutoff=1.e-4):
       miller_set.show_summary()
       times = []
       for structure in (structure_ng, structure_4g):
-        show_scatterer_digest(structure)
+        structure.scattering_dict().show_summary()
         f_calc_object = xray.structure_factors.from_scatterers(
         miller_set=miller_set,
         wing_cutoff=wing_cutoff,
