@@ -241,46 +241,27 @@ namespace cctbx {
           return *this;
         }
 
-              ElementType* begin()
-                { return reinterpret_cast<ElementType*>(m_handle.get());}
-        const ElementType* begin() const
-                { return reinterpret_cast<ElementType*>(m_handle.get()); }
-              ElementType* end()       { return begin() + size(); }
-        const ElementType* end() const { return begin() + size(); }
-
-              ElementType& operator[](size_type i)       { return begin()[i]; }
-        const ElementType& operator[](size_type i) const { return begin()[i]; }
-
         size_type size() const { return m_handle.size()/element_size(); }
+
+        CCTBX_ARRAY_FAMILY_BEGIN_END_ETC(
+          reinterpret_cast<ElementType*>(m_handle.get()), size())
 
               handle_type& handle()       { return m_handle; }
         const handle_type& handle() const { return m_handle; }
 
         shared_base<ElementType>
-        deepcopy() const
-        {
+        deepcopy() const {
           shared_base<ElementType> result(size());
           std::copy(this->begin(), this->end(), result.begin());
           return result;
         }
 
+        CCTBX_ARRAY_FAMILY_TAKE_REF(begin(), size())
+
         //! Resize all shared copies; single-instance deepcopy semantics;
         //! extra elements not initialized
         void resize(const size_type& sz = 0) {
           m_handle.resize(element_size() * sz);
-        }
-
-        CCTBX_ARRAY_FAMILY_TAKE_REF(begin(), size())
-
-        //! swaps in the data from another handle but preserves reference count
-        void swap(shared_base<ElementType>& other) {
-          m_handle.swap(other.m_handle);
-        }
-
-        // XXX tell Nick
-        void assign(size_type n, const ElementType& x = ElementType()) {
-          resize(n);
-          std::fill(begin(), end(), x);
         }
       protected:
         handle_type m_handle;

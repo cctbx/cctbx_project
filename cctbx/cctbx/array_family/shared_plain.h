@@ -38,6 +38,17 @@ namespace cctbx { namespace af {
         this->resize(this->size()+1);
         this->operator[](this->size()-1)=value;
       }
+
+      //! swaps in the data from another handle but preserves reference count
+      void swap(shared_base<ElementType>& other) {
+        this->handle().swap(other.handle());
+      }
+
+      // XXX tell Nick
+      void assign(size_type n, const ElementType& x = ElementType()) {
+        this->resize(n);
+        std::fill(this->begin(), this->end(), x);
+      }
   };
 
 }} //namespace cctbx::af
