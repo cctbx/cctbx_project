@@ -90,7 +90,7 @@ namespace cctbx { namespace af {
       }
     }
     catch (...) {
-      detail::destroy_array_elements(result, p);
+      detail::destroy_array_elements(result, p, false_type());
       throw;
     }
     return result;

@@ -13,6 +13,7 @@ class write_makefiles(makefile_generator.write_makefiles):
       "arraytbx/std_vectormodule.cpp",
       "arraytbx/shared_storagemodule.cpp",
       "arraytbx/tst.py",
+      "arraytbx/tst_af_helpers.cpp",
       "arraytbx/tst_af_1.cpp",
       "arraytbx/tst_af_2.cpp",
     )

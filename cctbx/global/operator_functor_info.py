@@ -7,6 +7,11 @@ logical_binary_ops = ("&&", "||")
 
 boolean_ops = ("==", "!=", ">", "<", ">=", "<=")
 
+std_unary_function_objects = {
+  "-": "std::negate",
+  "!": "std::logical_not",
+}
+
 std_abinop_function_objects = {
   "+": "std::plus",
   "-": "std::minus",

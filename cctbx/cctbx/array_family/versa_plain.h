@@ -176,6 +176,11 @@ namespace cctbx { namespace af {
         return versa_plain<ElementType, AccessorType>(c.handle(), m_accessor);
       }
 
+      shared_plain<ElementType>
+      as_shared_plain() const {
+        return shared_plain<ElementType>(*this);
+      }
+
       versa_plain<ElementType, AccessorType>
       weak_ref() const {
         return versa_plain<ElementType, AccessorType>(*this, weak_ref_flag());

@@ -38,12 +38,12 @@ def run():
 
 #include <functional>
 
-namespace cctbx { namespace vector {"""
+namespace cctbx { namespace af {"""
 
   generate_aipbinop_function_objects()
 
   print """
-}} // namespace cctbx::vector
+}} // namespace cctbx::af
 
 #endif // CCTBX_ARRAY_FAMILY_OPERATOR_FUNCTORS_H"""
   sys.stdout = sys.__stdout__
