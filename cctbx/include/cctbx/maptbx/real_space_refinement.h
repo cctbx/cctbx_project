@@ -16,7 +16,7 @@ residual(
 
   for(int i = 0; i < num; ++i) {
     val -= cctbx::maptbx::non_crystallographic_eight_point_interpolation<double>(
-	                               map, gridding_matrix, sites_cart[i], false);
+                                       map, gridding_matrix, sites_cart[i], false);
   }
 
   return val / static_cast<FloatType>(num);
