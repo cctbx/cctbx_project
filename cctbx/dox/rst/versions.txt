@@ -1,41 +1,34 @@
---------------
-cctbx Versions
---------------
+=====================================
+Computational Crystallography Toolbox
+=====================================
 
-Documentation for the current development version:
+cctbx links
+-----------
 
-  http://cctbx.sourceforge.net/current_cvs/
+- `Introduction </current_cvs/>`_
 
-It is highly recommended to use the CVS version. We take great care
-that the cctbx CVS trees are consistent and in working order. The C++
-interfaces have changed significantly since the 1.0 release but are
-very stable since the fall of 2002.
+- `Web services <http://cci.lbl.gov/cctbx/>`_
 
-Please direct questions to cctbx@cci.lbl.gov .
+- `Downloads <http://cci.lbl.gov/cctbx_build/>`_
 
-Quick links
-===========
+- `CVS repository <http://cvs.sourceforge.net/cgi-bin/viewcvs.cgi/cctbx/>`_
 
-- `cctbx - Web services`_
+- `Project page at SourceForge <http://sourceforge.net/projects/cctbx/>`_
 
-- `cctbx - Automatic multi-platform builds`_
+- Newsletter articles, IUCr Computing Commission:
 
-- `cctbx - Public CVS repository`_
+  - `January 2004 <http://cci.lbl.gov/publications/download/iucrcompcomm_jan2004.pdf>`_
 
-- `cctbx - Project page at SourceForge`_
+  - `July 2003 <http://cci.lbl.gov/publications/download/iucrcompcomm_jul2003.pdf>`_
 
-- cctbx Python interfaces:
+  - `January 2003 <http://cci.lbl.gov/publications/download/iucrcompcomm_jan2003.pdf>`_
+
+- Python interfaces:
   `libtbx <current_cvs/python/libtbx/>`_
   `scitbx <current_cvs/python/scitbx/>`_
   `cctbx <current_cvs/python/cctbx/>`_
   `iotbx <current_cvs/python/iotbx/>`_
 
-- `cctbx C++ interfaces <current_cvs/c_plus_plus/namespaces.html>`_
+- `C++ interfaces <current_cvs/c_plus_plus/namespaces.html>`_
 
-.. _`cctbx - Web services`: http://cci.lbl.gov/cctbx/
-
-.. _`cctbx - Automatic multi-platform builds`: http://cci.lbl.gov/cctbx_build/
-
-.. _`cctbx - Public CVS repository`: http://cvs.sourceforge.net/cgi-bin/viewcvs.cgi/cctbx/
-
-.. _`cctbx - Project page at SourceForge`: http://sourceforge.net/projects/cctbx/
+Please direct questions to cctbx@cci.lbl.gov .
