@@ -158,10 +158,9 @@ def run():
 #ifndef CCTBX_ARRAY_FAMILY_FLAGGED_VALUE_ALGEBRA_H
 #define CCTBX_ARRAY_FAMILY_FLAGGED_VALUE_ALGEBRA_H
 
-#include <cmath>
-#include <cstdlib>
-#include <cctbx/array_family/misc_functions.h>
 #include <cctbx/array_family/operator_traits_builtin.h>
+#include <cctbx/array_family/std_imports.h>
+#include <cctbx/array_family/misc_functions.h>
 
 namespace cctbx { namespace af {
 """
@@ -173,8 +172,8 @@ namespace cctbx { namespace af {
     generate_elementwise_binary_op("logical", op_symbol)
   for op_symbol in boolean_ops:
     generate_elementwise_binary_op("boolean", op_symbol)
-  generate_1arg_element_wise("std::", cmath_1arg + cstdlib_1arg)
-  generate_2arg_element_wise("std::", cmath_2arg)
+  generate_1arg_element_wise("", cmath_1arg + cstdlib_1arg)
+  generate_2arg_element_wise("", cmath_2arg)
   for args in misc_functions_2arg:
     apply(generate_2arg_element_wise, args)
 

@@ -25,6 +25,15 @@ logical_unary_ops = ("!")
 logical_binary_ops = ("&&", "||")
 boolean_ops = ("==", "!=", ">", "<", ">=", "<=")
 
+from generate_af_std_imports import *
+
+misc_functions_2arg = (
+  ("", ["approx_equal_scaled"], 1,
+   [", const ElementType& scaled_tolerance", ", scaled_tolerance"]),
+  ("", ["approx_equal_unscaled"], 1,
+   [", const ElementType& tolerance", ", tolerance"]),
+)
+
 reduction_functions_1arg = (
   "max_index", "min_index",
   "max", "min",
@@ -33,29 +42,6 @@ reduction_functions_1arg = (
 )
 reduction_functions_2arg = (
   "weighted_mean",
-)
-
-cmath_1arg = (
-  'acos', 'cos', 'fmod', 'tan',
-  'asin', 'cosh', 'tanh',
-  'atan', 'exp', 'sin',
-  'fabs', 'log', 'sinh',
-  'ceil', 'floor', 'log10', 'sqrt',
-)
-
-cmath_2arg = (
-  'fmod', 'pow', 'atan2',
-)
-
-cstdlib_1arg = (
-  'abs',
-)
-
-misc_functions_2arg = (
-  ("", ["approx_equal_scaled"], 1,
-   [", const ElementType& scaled_tolerance", ", scaled_tolerance"]),
-  ("", ["approx_equal_unscaled"], 1,
-   [", const ElementType& tolerance", ", tolerance"]),
 )
 
 class empty: pass
@@ -423,10 +409,9 @@ def one_type(array_type_name):
 #define CCTBX_ARRAY_FAMILY_%s_ALGEBRA_H
 """ % ((array_type_name.upper(),) * 2)
   if (array_type_name != "ref"):
-    print """#include <cmath>
-#include <cstdlib>
+    print """#include <cctbx/array_family/operator_traits_builtin.h>"""
+#include <cctbx/array_family/std_imports.h>
 #include <cctbx/array_family/misc_functions.h>
-#include <cctbx/array_family/operator_traits_builtin.h>"""
   print """#include <cctbx/array_family/reductions.h>
 
 namespace cctbx { namespace af {
@@ -454,9 +439,9 @@ namespace cctbx { namespace af {
     for op_symbol in boolean_ops:
       generate_reducing_boolean_op(array_type_name, op_symbol)
     generate_1arg_element_wise(array_type_name,
-      "std::", cmath_1arg + cstdlib_1arg)
+      "", cmath_1arg + cstdlib_1arg)
     generate_2arg_element_wise(array_type_name,
-      "std::", cmath_2arg)
+      "", cmath_2arg)
     for args in misc_functions_2arg:
       apply(generate_2arg_element_wise, (array_type_name,) + args)
   generate_1arg_reductions(array_type_name)
