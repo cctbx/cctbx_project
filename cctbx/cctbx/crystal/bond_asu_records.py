@@ -2,13 +2,13 @@ from iotbx.kriber import strudat
 import iotbx.pdb
 from iotbx.option_parser import iotbx_option_parser
 from cctbx import crystal
+from scitbx.python_utils.misc import adopt_init_args
 import libtbx.itertbx
 import math
 import sys, os
 
-def start_bond_table(structure, distance_cutoff, verbose=0):
-  asu_mappings = structure.asu_mappings(buffer_thickness=distance_cutoff)
-  bond_table = [{} for i_seq in xrange(structure.scatterers().size())]
+def start_bond_table(asu_mappings, distance_cutoff, verbose=0):
+  bond_table = [{} for i_seq in xrange(asu_mappings.mappings().size())]
   pair_generator = crystal.neighbors_fast_pair_generator(
     asu_mappings=asu_mappings,
     distance_cutoff=distance_cutoff,
@@ -33,7 +33,28 @@ def start_bond_table(structure, distance_cutoff, verbose=0):
         rt_mx_ji=rt_mx_ji.inverse_cancel(),
         verbose=verbose)
       assert is_new
-  return asu_mappings, bond_table
+  return bond_table
+
+def restore_bond_table(asu_mappings, bond_sym_proxies, verbose=0):
+  bond_table = [{} for i_seq in xrange(asu_mappings.mappings().size())]
+  for proxy in bond_sym_proxies:
+    is_new = process_bond(
+      asu_mappings=asu_mappings,
+      bond_table=bond_table,
+      i_seq=proxy.i_seqs[0],
+      j_seq=proxy.i_seqs[1],
+      rt_mx_ji=proxy.rt_mx,
+      verbose=verbose)
+    if (is_new and proxy.i_seqs[0] != proxy.i_seqs[1]):
+      is_new = process_bond(
+        asu_mappings=asu_mappings,
+        bond_table=bond_table,
+        i_seq=proxy.i_seqs[1],
+        j_seq=proxy.i_seqs[0],
+        rt_mx_ji=proxy.rt_mx.inverse_cancel(),
+        verbose=verbose)
+      assert is_new
+  return bond_table
 
 def process_bond(asu_mappings, bond_table,
                  i_seq, j_seq, rt_mx_ji, verbose=0):
@@ -66,6 +87,24 @@ def process_bond(asu_mappings, bond_table,
       if (0 or verbose):
         print "    equiv b: i_seq, j_seq, j_sym", i_seq, j_seq, j_sym_eq
   return 0001
+
+class bond_sym_proxy:
+
+  def __init__(self, i_seqs, rt_mx, distance_ideal=0, weight=0):
+    adopt_init_args(self, locals())
+
+def extract_bond_sym_proxies(asu_mappings, bond_table):
+  bond_sym_proxies = []
+  for i_seq,j_seq_dict in enumerate(bond_table):
+    rt_mx_i_inv = asu_mappings.get_rt_mx(i_seq=i_seq, i_sym=0).inverse()
+    for j_seq,j_sym_groups in j_seq_dict.items():
+      for j_sym_group in j_sym_groups:
+        j_sym = j_sym_group[0]
+        rt_mx_j = asu_mappings.get_rt_mx(i_seq=j_seq, i_sym=j_sym)
+        bond_sym_proxies.append(bond_sym_proxy(
+          i_seqs=(i_seq, j_seq),
+          rt_mx=rt_mx_i_inv.multiply(rt_mx_j)))
+  return bond_sym_proxies
 
 def is_sym_equiv_interaction_simple(unit_cell,
                                     i_seq,
@@ -140,17 +179,26 @@ def exercise(
       verbose=0):
   if (0 or verbose):
     print "distance_cutoff:", distance_cutoff
-  asu_mappings, bond_table = start_bond_table(
-    structure=structure,
-    distance_cutoff=distance_cutoff,
-    verbose=verbose)
-  if (connectivities is not None):
-    check_connectivities(bond_table, connectivities, verbose)
-  check_sym_equiv(
-    structure=structure,
-    asu_mappings=asu_mappings,
-    bond_table=bond_table,
-    weak=weak_check_sym_equiv)
+  asu_mappings = structure.asu_mappings(buffer_thickness=distance_cutoff)
+  for i_pass in xrange(2):
+    if (i_pass == 0):
+      bond_table = start_bond_table(
+        asu_mappings=asu_mappings,
+        distance_cutoff=distance_cutoff,
+        verbose=verbose)
+    else:
+      bond_sym_proxies = extract_bond_sym_proxies(asu_mappings, bond_table)
+      bond_table = restore_bond_table(
+        asu_mappings=asu_mappings,
+        bond_sym_proxies=bond_sym_proxies,
+        verbose=verbose)
+    if (connectivities is not None):
+      check_connectivities(bond_table, connectivities, verbose)
+    check_sym_equiv(
+      structure=structure,
+      asu_mappings=asu_mappings,
+      bond_table=bond_table,
+      weak=weak_check_sym_equiv)
 
 def run():
   command_line = (iotbx_option_parser(
