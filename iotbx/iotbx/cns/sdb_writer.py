@@ -65,7 +65,10 @@ def write_tail(s):
 ) {- end block parameter definition -}"""
 
 def write_scatterer(s, running_index, scatterer,
-                       action="fix", segid="SITE", group=""):
+                       action=None, segid=None, group=None):
+  if (action is None): action = "refine"
+  if (segid is None): segid = "SITE"
+  if (group is None): group = ""
   assert running_index > 0
   assert not scatterer.anisotropic_flag
   assert action in ("refine", "fix", "ignore")
@@ -86,7 +89,9 @@ def write_scatterer(s, running_index, scatterer,
 def xray_structure_as_cns_sdb_file(self, file=None,
                                          description=None,
                                          comment=None,
-                                         group=""):
+                                         action=None,
+                                         segid=None,
+                                         group=None):
   s = StringIO()
   write_header(s, file, description, comment,
                   self.space_group_info(),
@@ -95,6 +100,8 @@ def xray_structure_as_cns_sdb_file(self, file=None,
     write_scatterer(s,
       running_index+1,
       scatterer.copy(site=self.unit_cell().orthogonalize(scatterer.site)),
+      action=action,
+      segid=segid,
       group=group)
   write_tail(s)
   return s.getvalue()
