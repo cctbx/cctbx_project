@@ -8,6 +8,7 @@ def exercise_symmetry():
   xs = crystal.symmetry("3,4,5", "P 2 2 2")
   xs = crystal.symmetry([4,5,6], space_group_info=xs.space_group_info())
   xs = crystal.symmetry([4,5,6], space_group=xs.space_group())
+  xs = crystal.symmetry([4,5,6], space_group=str(xs.space_group_info()))
   assert str(xs.unit_cell()) == "(4, 5, 6, 90, 90, 90)"
   assert xs.unit_cell().is_similar_to(uctbx.unit_cell((4,5,6)))
   assert str(xs.space_group_info()) == "P 2 2 2"
