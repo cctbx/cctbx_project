@@ -284,23 +284,9 @@ namespace sgtbx {
     }
   }
 
-  MillerIndexGenerator::MillerIndexGenerator(const uctbx::UnitCell& uc,
-                                             const SpaceGroupInfo& SgInfo,
-                                             double Resolution_d_min)
-    : m_UnitCell(uc), m_SgOps(SgInfo.SgOps())
+  void MillerIndexGenerator::InitializeLoop(const Miller::Index& ReferenceHmax)
   {
-    if (Resolution_d_min <= 0.) {
-      throw error("Resolution limit must be greater than zero.");
-    }
-    m_Qhigh = 1. / (Resolution_d_min * Resolution_d_min);
-
-    uctbx::UnitCell
-    ReferenceUnitCell = m_UnitCell.ChangeBasis(SgInfo.CBOp().InvM().Rpart());
-    SpaceGroup ReferenceSgOps(SpaceGroupSymbols(SgInfo.SgNumber()).Hall());
-    m_ASU = ReciprocalSpaceASU(SgInfo);
     Miller::Vec3 CutP = m_ASU.ReferenceASU()->getCutParameters();
-    Miller::Index
-    ReferenceHmax = ReferenceUnitCell.MaxMillerIndices(Resolution_d_min);
     Miller::Index ReferenceHbegin;
     Miller::Index ReferenceHend;
     for(std::size_t i=0;i<3;i++) {
@@ -308,6 +294,32 @@ namespace sgtbx {
       ReferenceHend[i] = ReferenceHmax[i] + 1;
     }
     m_loop = NestedLoop<Miller::Index>(ReferenceHbegin, ReferenceHend);
+  }
+
+  MillerIndexGenerator::MillerIndexGenerator(const uctbx::UnitCell& uc,
+                                             const SpaceGroupInfo& SgInfo,
+                                             double Resolution_d_min)
+    : m_UnitCell(uc),
+      m_SgOps(SgInfo.SgOps()),
+      m_ASU(ReciprocalSpaceASU(SgInfo))
+  {
+    if (Resolution_d_min <= 0.) {
+      throw error("Resolution limit must be greater than zero.");
+    }
+    m_Qhigh = 1. / (Resolution_d_min * Resolution_d_min);
+    uctbx::UnitCell
+    ReferenceUnitCell = m_UnitCell.ChangeBasis(SgInfo.CBOp().InvM().Rpart());
+    InitializeLoop(ReferenceUnitCell.MaxMillerIndices(Resolution_d_min));
+  }
+
+  MillerIndexGenerator::MillerIndexGenerator(const SpaceGroupInfo& SgInfo,
+                                             const Miller::Index& MaxIndex)
+    : m_UnitCell(),
+      m_SgOps(SgInfo.SgOps()),
+      m_ASU(ReciprocalSpaceASU(SgInfo)),
+      m_Qhigh(-1.)
+  {
+    InitializeLoop(Miller::Index(boost::array_abs(MaxIndex)));
   }
 
   Miller::Index MillerIndexGenerator::next()
@@ -318,9 +330,16 @@ namespace sgtbx {
       m_loop.incr();
       if (m_ASU.ReferenceASU()->isInASU(ReferenceH)) {
         if (m_ASU.isReferenceASU()) {
-          double Q = m_UnitCell.Q(ReferenceH);
-          if (Q != 0 && Q <= m_Qhigh && !m_SgOps.isSysAbsent(ReferenceH)) {
-            return ReferenceH;
+          if (m_Qhigh < 0.) {
+            if (!ReferenceH.is000() && !m_SgOps.isSysAbsent(ReferenceH)) {
+              return ReferenceH;
+            }
+          }
+          else {
+            double Q = m_UnitCell.Q(ReferenceH);
+            if (Q != 0 && Q <= m_Qhigh && !m_SgOps.isSysAbsent(ReferenceH)) {
+              return ReferenceH;
+            }
           }
         }
         else {
@@ -328,9 +347,16 @@ namespace sgtbx {
           HR = HR.cancel();
           if (HR.BF() == 1) {
             Miller::Index H(HR.elems);
-            double Q = m_UnitCell.Q(H);
-            if (Q != 0 && Q <= m_Qhigh && !m_SgOps.isSysAbsent(H)) {
-              return H;
+            if (m_Qhigh < 0.) {
+              if (!H.is000() && !m_SgOps.isSysAbsent(H)) {
+                return H;
+              }
+            }
+            else {
+              double Q = m_UnitCell.Q(H);
+              if (Q != 0 && Q <= m_Qhigh && !m_SgOps.isSysAbsent(H)) {
+                return H;
+              }
             }
           }
         }
