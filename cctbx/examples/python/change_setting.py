@@ -1,4 +1,4 @@
-#! /usr/local_cci/Python-2.1.1/bin/python
+#! /usr/local_cci/Python-2.2.1/bin/python
 
 # It is common that a certain crystal structure is published in the
 # literature in two or more different settings of the same space group. A

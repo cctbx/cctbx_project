@@ -1,4 +1,4 @@
-#! /usr/local_cci/Python-2.1.1/bin/python
+#! /usr/local_cci/Python-2.2.1/bin/python
 
 # This example uses an internal table, with 530 space group settings,
 # that is based on Table 4.3.1 in the International Tables for
