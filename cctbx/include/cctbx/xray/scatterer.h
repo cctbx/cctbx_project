@@ -298,13 +298,13 @@ namespace xray {
       weight_without_occupancy_ = FloatType(1)
                                 / site_symmetry_ops.matrices().size();
       apply_symmetry_site(site_symmetry_ops);
-      apply_symmetry_u_star(
-        unit_cell,
-        site_symmetry_ops,
-        u_star_tolerance,
-        assert_is_positive_definite,
-        assert_min_distance_sym_equiv);
     }
+    apply_symmetry_u_star(
+      unit_cell,
+      site_symmetry_ops,
+      u_star_tolerance,
+      assert_is_positive_definite,
+      assert_min_distance_sym_equiv);
   }
 
   template <typename FloatType,
@@ -324,7 +324,9 @@ namespace xray {
         CCTBX_ASSERT(
           site_symmetry_ops.is_compatible_u_star(u_star, u_star_tolerance));
       }
-      u_star = site_symmetry_ops.average_u_star(u_star);
+      if (!site_symmetry_ops.is_point_group_1()) {
+        u_star = site_symmetry_ops.average_u_star(u_star);
+      }
       scitbx::sym_mat3<FloatType>
         u_cart = adptbx::u_star_as_u_cart(unit_cell, u_star);
       if (assert_is_positive_definite) {

@@ -145,6 +145,20 @@ def exercise_xray_scatterer():
     assert_is_positive_definite=00000,
     assert_min_distance_sym_equiv=00000)
   assert approx_equal(x.u_star, (1.5,1.5,3.0,0,0,0))
+  x.site = (0.2,0.5,0.4)
+  ss = x.apply_symmetry(uc, sg.group(), 1.e-10, 0)
+  assert ss.is_point_group_1()
+  x.u_star = (1,2,3,4,5,6)
+  x.apply_symmetry_u_star(
+    unit_cell=uc,
+    site_symmetry_ops=ss,
+    u_star_tolerance=0,
+    assert_is_positive_definite=00000,
+    assert_min_distance_sym_equiv=00000)
+  # check if eigenvalue filtering was applied
+  assert approx_equal(x.u_star,
+    (3.3379643647809192, 4.5640522609325131, 4.4690204772593507,
+     3.9031581835726965, 3.8623090371651934, 4.5162864184404032))
 
 def exercise_rotate():
   uc = uctbx.unit_cell((10, 10, 13))
