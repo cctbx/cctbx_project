@@ -123,6 +123,7 @@ namespace boost {
       py_vector.def(boost::python::constructor<>());
       py_vector.def(boost::python::constructor<std::size_t>());
       py_vector.def(boost::python::constructor<boost::python::tuple>());
+      py_vector.def(&std::vector<T>::size, "size");
       py_vector.def(&std::vector<T>::size, "__len__");
       py_vector.def(&std_vector_access<T>::getitem, "__getitem__");
       py_vector.def(&std_vector_access<T>::setitem, "__setitem__");
