@@ -676,15 +676,15 @@ def exercise_flex_vec3_double():
 
 def exercise_histogram():
   x = flex.double(xrange(20))
-  h = flex.histogram(x)
+  h = flex.histogram(data=x)
   assert h.slots().size() == 1000
-  h = flex.histogram(x, 5)
+  h = flex.histogram(x, n_slots=5)
   assert approx_equal(h.data_min(), 0)
   assert approx_equal(h.data_max(), 19)
   assert approx_equal(h.slot_width(), 19/5.)
   assert tuple(h.slots()) == (4,4,4,4,4)
-  assert approx_equal(h.get_cutoff(15), 7.60038)
-  assert approx_equal(h.get_cutoff(15, 0.1), 7.98)
+  assert approx_equal(h.get_cutoff(max_points=15), 7.60038)
+  assert approx_equal(h.get_cutoff(15, tolerance=0.1), 7.98)
 
 def exercise_linear_regression():
   x = flex.double((1,2,3))
