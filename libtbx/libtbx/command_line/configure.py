@@ -228,6 +228,10 @@ def emit_setpaths_csh(env):
     print >> f, '  echo "*******************************************"'
     print >> f, '  echo "Please re-run the libtbx/configure.py command."'
     print >> f, '  echo ""'
+    if (f is s):
+      print >> f, 'else if ($#argv != 0 && $#argv != 1'\
+                  ' || $#argv && "$1" != "minimal") then'
+      print >> f, '  echo "usage: source $0 [minimal]"'
     print >> f, 'else'
   for var_name, values in env.items():
     if (var_name.upper() != var_name): continue
@@ -243,7 +247,12 @@ def emit_setpaths_csh(env):
       print >> s, '  setenv LIBTBX0%s "$%s"' % (var_name, var_name)
       print >> u, '  unsetenv LIBTBX0%s' % var_name
     else:
-      print >> s, '  setenv %s "%s"' % (var_name, values)
+      if (   var_name.endswith("_DIST")
+          or var_name.endswith("_DIST_ROOT")):
+        condition = "if ($#argv == 0) "
+      else:
+        condition = ""
+      print >> s, '  %ssetenv %s "%s"' % (condition, var_name, values)
       print >> u, '  unsetenv %s' % var_name
   for f in s, u:
     print >> f, 'endif'

@@ -1,5 +1,5 @@
-import os, os.path
 from libtbx import test_utils
+import libtbx.env
 
 def run():
   tst_list = (
@@ -20,8 +20,8 @@ def run():
   ["$D/iotbx/regression/tst_reflection_statistics.py", "P31m"]
   )
 
-  build_dir = os.path.join(os.environ["LIBTBX_BUILD"], "iotbx")
-  dist_dir = os.environ["IOTBX_DIST"]
+  build_dir = libtbx.env.under_build("iotbx")
+  dist_dir = libtbx.env.dist_path("iotbx")
 
   test_utils.run_tests(build_dir, dist_dir, tst_list)
 

@@ -1,5 +1,6 @@
 from scitbx.source_generators.utils import norm_join, join_open
 from scitbx.source_generators.utils import write_this_is_auto_generated
+import libtbx.env
 import string
 import sys, os
 
@@ -38,7 +39,7 @@ def print_ftp_info(f):
 """
 
 def collect_tables():
-  cctbx_dist = os.environ["CCTBX_DIST"]
+  cctbx_dist = libtbx.env.dist_path("cctbx")
   henke_tables_dir = norm_join(cctbx_dist, "reference/henke/tables")
   nff_files = []
   for file in os.listdir(henke_tables_dir):

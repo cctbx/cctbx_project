@@ -9,6 +9,7 @@ from cctbx import adptbx
 from cctbx.development import random_structure
 from cctbx.array_family import flex
 import scitbx.math
+import libtbx.env
 from cStringIO import StringIO
 import sys, os
 
@@ -144,8 +145,7 @@ def exercise_altLoc_grouping():
   assert replacements[0] == "X"
 
 def exercise_interpretation(verbose=0, quick=True):
-  pdb_dir = os.path.join(os.environ["LIBTBX_DIST_ROOT"],
-    "regression", "pdb")
+  pdb_dir = libtbx.env.under_dist_root("regression/pdb")
   if (not os.path.isdir(pdb_dir)):
     print "Skipping exercise_interpretation(): input file not available"
     return

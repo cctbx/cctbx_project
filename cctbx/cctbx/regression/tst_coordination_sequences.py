@@ -3,6 +3,7 @@ from cctbx import crystal
 import cctbx.crystal.coordination_sequences
 from cctbx import xray
 from iotbx.option_parser import iotbx_option_parser
+import libtbx.env
 import sys, os
 
 def exercise_simple(structure, distance_cutoff, max_shell, verbose):
@@ -70,8 +71,8 @@ def exercise(args, distance_cutoff=3.5, max_shell=5):
       action="store_true",
       dest="verbose")
   ).process(args=args)
-  atlas_file = os.path.join(os.environ["LIBTBX_DIST_ROOT"],
-    "regression", "misc", "strudat_zeolite_atlas")
+  atlas_file = libtbx.env.under_dist_root(
+    "regression/misc/strudat_zeolite_atlas")
   if (not os.path.isfile(atlas_file)):
     print "Skipping exercise(): input file not available"
     return

@@ -2,6 +2,7 @@ from libtbx.test_utils import approx_equal
 from iotbx.shelx import from_ins
 from cctbx.array_family import flex
 from cctbx import adp_restraints
+import libtbx.env
 import math, os
 
 result = [
@@ -68,7 +69,7 @@ def exercise_rigid_bond_test():
   Analysis used as a part of WinGX (WinGX - Crystallographic Program
   System for Windows)
   """
-  ins_file = os.path.expandvars('$LIBTBX_DIST_ROOT/regression/pdb/enk_11i.res')
+  ins_file = libtbx.env.under_dist_root("regression/pdb/enk_11i.res")
   if (not os.path.isfile(ins_file)):
     print "Skipping exercise_rigid_bond_test(): input file not available"
     return

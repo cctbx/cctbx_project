@@ -1,5 +1,5 @@
 from libtbx import test_utils
-import os, os.path
+import libtbx.env
 
 def run():
   tst_list = (
@@ -9,7 +9,7 @@ def run():
   )
 
   build_dir = None
-  dist_dir = os.environ["LIBTBX_DIST"]
+  dist_dir = libtbx.env.dist_path("libtbx")
 
   test_utils.run_tests(build_dir, dist_dir, tst_list)
 

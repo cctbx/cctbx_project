@@ -1,10 +1,10 @@
 from scitbx.array_family import flex
+import libtbx.env
+import sys
 
 def extend_sys_path():
-  import sys, os.path
-  libtbx_build = os.environ["LIBTBX_BUILD"]
-  sys.path.insert(0, os.path.normpath(os.path.join(libtbx_build,
-    "scitbx/array_family/boost_python")))
+  sys.path.insert(0,
+    libtbx.env.under_build("scitbx/array_family/boost_python"))
 
 def exercise_std_vector_conversions(verbose=0):
   if (verbose): print 'Checking std::vector conversions'

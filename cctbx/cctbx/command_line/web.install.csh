@@ -1,5 +1,6 @@
 #! /bin/csh -f
 
+source "`libtbx.show_build_path`/setpaths.csh"
 set echo
 
 mkdir -p dist

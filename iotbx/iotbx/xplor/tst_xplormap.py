@@ -6,6 +6,7 @@ from cctbx.array_family import flex
 from cctbx.development import random_structure
 from scitbx.python_utils.math_utils import iround
 from libtbx.test_utils import approx_equal, eps_eq
+import libtbx.env
 import sys, os
 
 def exercise_map_gridding():
@@ -36,8 +37,7 @@ xray
   end
 end
   """
-  return os.path.join(os.environ["LIBTBX_DIST_ROOT"],
-    "regression", "misc", "cns.map")
+  return libtbx.env.under_dist_root("regression/misc/cns.map")
 
 def read_xplor(file_name):
   a = iotbx.xplor.map.reader(file_name=file_name)

@@ -1,5 +1,5 @@
-import os, os.path
 from libtbx import test_utils
+import libtbx.env
 
 def run():
   tst_list = (
@@ -29,8 +29,8 @@ def run():
   ["$D/fftpack/boost_python/tst_fftpack.py"],
   )
 
-  build_dir = os.path.join(os.environ["LIBTBX_BUILD"], "scitbx")
-  dist_dir = os.environ["SCITBX_DIST"]
+  build_dir = libtbx.env.under_build("scitbx")
+  dist_dir = libtbx.env.dist_path("scitbx")
 
   test_utils.run_tests(build_dir, dist_dir, tst_list)
 

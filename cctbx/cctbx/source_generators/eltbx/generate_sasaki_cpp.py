@@ -1,5 +1,6 @@
 from scitbx.source_generators.utils import join_open
 from scitbx.source_generators.utils import write_this_is_auto_generated
+import libtbx.env
 import string
 import sys, os
 
@@ -267,7 +268,7 @@ def print_sasaki_cpp(f, tables_combined):
 }}} // namespace cctbx::eltbx::sasaki"""
 
 def run(target_dir):
-  cctbx_dist = os.environ["CCTBX_DIST"]
+  cctbx_dist = libtbx.env.dist_path("cctbx")
   f = join_open(cctbx_dist, "reference/sasaki/fpwide.tbl", "r")
   tables_wide = collect_tables(f, 0)
   f.close()

@@ -205,12 +205,14 @@ raw_ctor
         target="#libtbx/%s" % pyd,
         source=["#boost/libs/python/test/%s.cpp" % s for s in src.split(";")],
       )
+    test_dir = os.path.normpath(os.path.join(
+      env_etc.boost_dist, "libs/python/test"))
     if (sys.platform == "win32"):
       boost_python_run_tests = \
         "%s\\boost_python_run_tests.bat" % env_etc.libtbx_env.LIBTBX_BUILD
       f = open(boost_python_run_tests, "w")
       for tst in all_tst:
-        print >> f, "call python %%BOOST_DIST%%/libs/python/test/%s.py" % tst
+        print >> f, 'call python "%s"' % (os.path.join(test_dir, tst+".py"))
       f.close()
     else:
       boost_python_run_tests = \
@@ -219,6 +221,6 @@ raw_ctor
       print >> f, "#! /bin/csh -f"
       print >> f, "set verbose"
       for tst in all_tst:
-        print >> f, "python $BOOST_DIST/libs/python/test/%s.py" % tst
+        print >> f, 'python "%s"' % (os.path.join(test_dir, tst+".py"))
       f.close()
       os.chmod(boost_python_run_tests, 0755)

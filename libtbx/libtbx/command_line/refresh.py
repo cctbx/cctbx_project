@@ -200,6 +200,15 @@ def create_python_dispatchers(libtbx_env, target_dir, precall_commands):
     else:
       action(python_exe, target_file)
 
+def create_show_build_path(libtbx_env, target_dir):
+  target_file = os.path.join(target_dir, "libtbx.show_build_path")
+  f = open(target_file, "w")
+  print >> f, '#! /bin/sh'
+  print >> f, '# LIBTBX_DISPATCHER DO NOT EDIT'
+  print >> f, 'echo "%s"' % libtbx_env.LIBTBX_BUILD
+  f.close()
+  os.chmod(target_file, 0755)
+
 def run():
   libtbx_env = libtbx.config.env()
   target_dir = norm(join(libtbx_env.LIBTBX_BUILD, "libtbx/bin"))
@@ -228,6 +237,8 @@ def run():
     create_dispatcher_back_end(
       libtbx_env=libtbx_env,
       dispatcher_dict=dispatcher_dict)
+  else:
+    create_show_build_path(libtbx_env=libtbx_env, target_dir=target_dir)
 
 if (__name__ == "__main__"):
   run()

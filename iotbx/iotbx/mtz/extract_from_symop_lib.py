@@ -1,18 +1,20 @@
 from cctbx import sgtbx
+import libtbx.env
 import os
 
-def environ_based_path(path_elements):
-  if (os.environ.has_key(path_elements[0])):
-    return os.path.normpath(os.sep.join(
-      [os.environ[path_elements[0]]] + path_elements[1:]))
-  return None
+try:
+  ccp4io_dist = libtbx.env.dist_path("ccp4io")
+except KeyError:
+  ccp4io_dist = None
 
 def ccp4_symbol(space_group_info):
+  symop_lib_paths = [os.path.expandvars("$CCP4_LIB/data/symop.lib")]
+  if (ccp4io_dist is not None):
+    symop_lib_paths.append(os.path.normpath(os.path.join(
+      ccp4io_dist, "lib/data/symop.lib")))
   found_at_least_one_symop_lib = False
-  for symop_lib_path in (
-        environ_based_path(["CCP4_LIB", "data", "symop.lib"]),
-        environ_based_path(["CCP4IO_DIST", "lib", "data", "symop.lib"])):
-    if (symop_lib_path is not None):
+  for symop_lib_path in symop_lib_paths:
+    if (os.path.isfile(symop_lib_path)):
       found_at_least_one_symop_lib = True
       file_iter = iter(open(symop_lib_path, "r"))
       symbol = search_for_ccp4_symbol(space_group_info, file_iter)
