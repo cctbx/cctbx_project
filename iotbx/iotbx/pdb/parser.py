@@ -21,7 +21,7 @@ class UnknownRecordName(FormatError): pass
 
 class pdb_record:
 
-  def __init__(self, raw_record, line_number):
+  def __init__(self, raw_record, line_number=None):
     self.raw = (raw_record + " " * 80)[:80]
     self.line_number = line_number
     self.record_name = (self.raw)[:6].upper().strip()
@@ -47,16 +47,21 @@ class pdb_record:
       if (key == "record_name"): continue
       print >> f, "  %s:" % key, value
 
+  def error_prefix(self):
+    if (self.line_number is None):
+      return "Error: "
+    else:
+      return "Error: Line: %d: " % self.line_number
+
   def raise_FormatError(self, message=None):
     if (message is None):
       message = "Corrupt " + self.record_name + " record."
-    raise FormatError("Error: Line: %d: %s" % (self.line_number, message))
+    raise FormatError("%s%s" % (self.error_prefix(), message))
 
   def assert_is_interpreted(self):
     if (not (self.record_name.startswith("REMARK") or self.is_interpreted)):
-      raise UnknownRecordName(
-        "Error: Line: %d: Record name %s not recognized." % (
-        self.line_number, self.record_name))
+      raise UnknownRecordName("%sRecord name %s not recognized." % (
+        self.error_prefix(), self.record_name))
 
   def read_HEADER(self):
     # 11 - 50  String(40)    classification  Classifies the molecule(s)

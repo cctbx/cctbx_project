@@ -1046,14 +1046,10 @@ fallback_dictionary = {
 }
 
 def get(residue_name, atom_name):
-  try:
-    return residues[residue_name][atom_name]
-  except KeyError:
-    pass
-  try:
-    return fallback_dictionary[atom_name]
-  except KeyError:
-    pass
+  try: return residues[residue_name][atom_name.replace("*", "'")]
+  except KeyError: pass
+  try: return fallback_dictionary[atom_name]
+  except KeyError: pass
   raise KeyError, "Unknown residue name (%s) or atom name (%s)." % (
     residue_name, atom_name)
 

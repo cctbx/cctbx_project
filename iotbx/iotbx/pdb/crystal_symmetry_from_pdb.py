@@ -1,5 +1,4 @@
-from cctbx import crystal
-from iotbx.pdb import parser
+from iotbx.pdb import cryst1_interpretation
 from iotbx.misc import detect_binary_file
 
 def extract_from(file_name=None, file=None, monitor_initial=None):
@@ -16,9 +15,7 @@ def extract_from(file_name=None, file=None, monitor_initial=None):
         if (is_binary): break
         detect_binary = None
     if (not line.startswith("CRYST1")): continue
-    cryst1 = parser.pdb_record(raw_record=line, line_number=line_number)
-    assert [cryst1.ucparams, cryst1.sGroup].count(None) < 2
-    return crystal.symmetry(
-      unit_cell=cryst1.ucparams,
-      space_group_symbol=cryst1.sGroup)
+    return cryst1_interpretation.crystal_symmetry(
+      cryst1_record=line,
+      line_number=line_number)
   raise RuntimeError, "No CRYST1 record."
