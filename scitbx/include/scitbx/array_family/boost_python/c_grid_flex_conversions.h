@@ -7,8 +7,8 @@
      2002 Aug: Created (R.W. Grosse-Kunstleve)
  */
 
-#ifndef SCITBX_ARRAY_FAMILY_BOOST_PYTHON_REF_C_GRID_FLEX_CONVERSIONS_H
-#define SCITBX_ARRAY_FAMILY_BOOST_PYTHON_REF_C_GRID_FLEX_CONVERSIONS_H
+#ifndef SCITBX_ARRAY_FAMILY_BOOST_PYTHON_C_GRID_FLEX_CONVERSIONS_H
+#define SCITBX_ARRAY_FAMILY_BOOST_PYTHON_C_GRID_FLEX_CONVERSIONS_H
 
 #include <scitbx/array_family/accessors/c_grid.h>
 #include <scitbx/array_family/accessors/c_grid_padded.h>
@@ -18,6 +18,22 @@
 #include <boost/python/extract.hpp>
 
 namespace scitbx { namespace af { namespace boost_python {
+
+  template <typename ElementType,
+            typename CgridType>
+  struct versa_c_grid_to_flex
+  {
+    static PyObject* convert(versa<ElementType, CgridType> const& a)
+    {
+      using namespace boost::python;
+      using boost::python::incref; // works around gcc 2.96 bug
+      using boost::python::object; // dito
+      versa<ElementType, flex_grid<> > result(
+        a,
+        a.accessor().as_flex_grid());
+      return incref(object(result).ptr());
+    }
+  };
 
   template <typename RefCGridType>
   struct ref_c_grid_from_flex
@@ -67,27 +83,30 @@ namespace scitbx { namespace af { namespace boost_python {
 
   template <typename ElementType,
             typename CGridType>
-  struct ref_c_grid_flex_conversions
+  struct c_grid_flex_conversions
   {
-    ref_c_grid_flex_conversions()
+    c_grid_flex_conversions()
     {
+      boost::python::to_python_converter<
+        versa<ElementType, CGridType>,
+        versa_c_grid_to_flex<ElementType, CGridType> >();
       ref_c_grid_from_flex<const_ref<ElementType, CGridType> >();
       ref_c_grid_from_flex<ref<ElementType, CGridType> >();
     }
   };
 
   template <typename ElementType>
-  struct default_ref_c_grid_flex_conversions
+  struct default_c_grid_flex_conversions
   {
-    default_ref_c_grid_flex_conversions()
+    default_c_grid_flex_conversions()
     {
-      ref_c_grid_flex_conversions<ElementType, c_grid<2> >();
-      ref_c_grid_flex_conversions<ElementType, c_grid<3> >();
-      ref_c_grid_flex_conversions<ElementType, c_grid_padded<2> >();
-      ref_c_grid_flex_conversions<ElementType, c_grid_padded<3> >();
+      c_grid_flex_conversions<ElementType, c_grid<2> >();
+      c_grid_flex_conversions<ElementType, c_grid<3> >();
+      c_grid_flex_conversions<ElementType, c_grid_padded<2> >();
+      c_grid_flex_conversions<ElementType, c_grid_padded<3> >();
     }
   };
 
 }}} // namespace scitbx::af::boost_python
 
-#endif // SCITBX_ARRAY_FAMILY_BOOST_PYTHON_REF_C_GRID_FLEX_CONVERSIONS_H
+#endif // SCITBX_ARRAY_FAMILY_BOOST_PYTHON_C_GRID_FLEX_CONVERSIONS_H
