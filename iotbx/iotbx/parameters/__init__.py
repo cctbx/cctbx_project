@@ -239,7 +239,7 @@ class definition: # FUTURE definition(object)
       words.append(simple_tokenizer.word(
         value=value,
         line_number=word.line_number,
-        file_name=word.file_name))
+        source_info=word.source_info))
     return self.copy(words=words)
 
   def has_attribute_with_name(self, name):
@@ -756,7 +756,8 @@ class scope:
           if (env_var is not None):
             variable_words = [simple_tokenizer.word(
               value=env_var,
-              quote_token='"')]
+              quote_token='"',
+              source_info='environment: "%s"'%fragment.value)]
         if (variable_words is None):
           raise RuntimeError("Undefined variable: $%s%s" % (
             fragment.value, word.where_str()))
@@ -881,10 +882,12 @@ class variable_substitution_proxy(object):
 
 def parse(
       input_string=None,
+      source_info=None,
       file_name=None,
       definition_type_names=None,
       process_includes=False):
   from iotbx.parameters import parser
+  assert source_info is None or file_name is None
   if (input_string is None):
     assert file_name is not None
     input_string = open(file_name).read()
@@ -893,6 +896,7 @@ def parse(
   result = scope(name="", objects=parser.collect_objects(
     word_iterator=simple_tokenizer.word_iterator(
       input_string=input_string,
+      source_info=source_info,
       file_name=file_name,
       list_of_settings=[
         simple_tokenizer.settings(

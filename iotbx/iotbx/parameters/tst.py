@@ -539,6 +539,8 @@ m=$k
   else: raise RuntimeError("Exception expected.")
   os.environ["_X_Y_Z_"] = "xyz"
   check_get_sub(parameters, path="h", expected_out='h = "xyz"\n')
+  assert parameters.get(path="h").objects[0].words[0].where_str() \
+      == ' (environment: "_X_Y_Z_")'
   check_get_sub(parameters, path="j", expected_out='j = 1\n')
   check_get_sub(parameters, path="l", expected_out='l = y\n')
   check_get_sub(parameters, path="m", expected_out='m = z\n')
