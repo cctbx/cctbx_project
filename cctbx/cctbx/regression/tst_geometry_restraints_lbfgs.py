@@ -107,6 +107,7 @@ def exercise(verbose=0):
   unit_cell_lengths = list(  matrix.col(sites_cart.max())
                            + matrix.col((1,-1.2,4)))
   unit_cell_lengths[1] *= 2
+  unit_cell_lengths[2] *= 2
   xray_structure = xray.structure(
     crystal_symmetry=crystal.symmetry(
       unit_cell=unit_cell_lengths,
@@ -125,7 +126,7 @@ def exercise(verbose=0):
     p1_structure.add_scatterers(p1_structure.apply_shift(shift).scatterers())
   if (0 or verbose):
     open("p1_structure.pdb", "w").write(p1_structure.as_pdb_file())
-  nonbonded_cutoff = 7
+  nonbonded_cutoff = 6.5
   asu_mappings = xray_structure.asu_mappings(
     buffer_thickness=nonbonded_cutoff)
   bond_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
