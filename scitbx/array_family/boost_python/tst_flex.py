@@ -547,12 +547,19 @@ def exercise_random():
           == (4182529786L,2180050607L,3809380472L)
       assert approx_equal(mt.random_double(3),
        (0.68936349374460137, 0.94325460841489361, 0.92878638322669693))
-      if (j == 0): mt = flex.mersenne_twister(4357)
-      else: mt.seed(4357)
-      assert tuple(mt.random_size_t(3)) \
+      if (j == 0): mt = flex.mersenne_twister(seed=4357)
+      else: mt.seed(value=4357)
+      assert tuple(mt.random_size_t(size=3)) \
           == (1393419875, 3943084030L, 3680293049L)
-      assert approx_equal(mt.random_double(3),
+      assert approx_equal(mt.random_double(size=3),
         (0.62126747463393661, 0.47816347295375622, 0.20067452178352385))
+  assert flex.random_size_t(size=3).size() == 3
+  assert flex.random_double(size=3).size() == 3
+  flex.set_random_seed(value=0)
+  assert tuple(flex.random_size_t(3)) \
+      == (4182529786L,2180050607L,3809380472L)
+  assert approx_equal(flex.random_double(3),
+    (0.68936349374460137, 0.94325460841489361, 0.92878638322669693))
 
 def exercise_flex_vec3_double():
   flex.exercise_triple(flex.vec3_double, as_double=0001)
