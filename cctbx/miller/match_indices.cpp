@@ -1,12 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Oct: Refactored parts of miller/miller_lib.cpp (rwgk)
- */
-
 #include <cctbx/miller/match_indices.h>
 #include <cctbx/error.h>
 #include <map>
@@ -28,7 +19,7 @@ namespace cctbx { namespace miller {
       }
       return;
     }
-    typedef std::map<index<>, std::size_t> lookup_map_type;
+    typedef std::map<index<>, std::size_t, fast_less_than<> > lookup_map_type;
     lookup_map_type lookup_map;
     for(std::size_t i=0;i<miller_indices_[1].size();i++) {
       lookup_map[miller_indices_[1][i]] = i;

@@ -1,15 +1,5 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2001 Jul: Merged from CVS branch sgtbx_special_pos (rwgk)
-     2001 Apr: SourceForge release (R.W. Grosse-Kunstleve)
- */
-
 /*! \file
-    Toolbox for Miller indices.
+    Handling of Miller indices.
  */
 
 #ifndef CCTBX_MILLER_H
@@ -24,7 +14,7 @@ namespace cctbx {
   namespace miller {
 
   //! Miller index class.
-  template <typename NumType = int>
+  template <typename NumType=int>
   class index : public scitbx::vec3<NumType>
   {
     public:
@@ -58,7 +48,7 @@ namespace cctbx {
 
       //! Definition of sort order for human-readable listings.
       /*! This comparison is computationally more expensive than
-          hash_compare below.
+          fast_less_than below.
        */
       bool operator<(index const& other) const
       {
@@ -98,8 +88,8 @@ namespace cctbx {
   /*! \brief Definition of fast comparison for use in,
       e.g., std::map<miller::index<> >.
    */
-  template <typename NumType = int>
-  class hash_compare
+  template <typename NumType=int>
+  class fast_less_than
   {
     public:
       //! This fast comparison function is implemented as operator().
