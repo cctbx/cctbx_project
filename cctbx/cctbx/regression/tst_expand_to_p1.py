@@ -1,5 +1,4 @@
 from cctbx import miller
-from cctbx import xray
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from cctbx.array_family import flex
@@ -48,11 +47,9 @@ def exercise(space_group_info, use_primitive_setting, anomalous_flag,
     for i,phase in f_calc_p1_phases.data().items():
       e = utils.phase_error(phase, phases_p1.data()[i], deg=phase_deg)
       assert e < 1.e-6
-  ctrl_amplitudes_p1 = abs(xray.structure_factors_new.from_scatterers(
-    miller_set=miller_set_p1)(
-      xray_structure=structure_p1,
-      miller_set=miller_set_p1,
-      direct=0001).f_calc())
+  ctrl_amplitudes_p1 = abs(miller_set_p1.structure_factors_from_scatterers(
+    xray_structure=structure_p1,
+    direct=0001).f_calc())
   c = flex.linear_correlation(amplitudes_p1.data(), ctrl_amplitudes_p1.data())
   assert c.is_well_defined()
   if (0 or verbose):

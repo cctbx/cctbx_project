@@ -192,6 +192,21 @@ class set(crystal.symmetry):
       conjugate_flag)
     return array(miller_set=self, data=from_map.data())
 
+  def structure_factors_from_scatterers(self, xray_structure,
+                                              direct=00000, fft=00000):
+    from cctbx import xray
+    assert direct == 00000 or fft == 00000
+    if (direct):
+      return xray.structure_factors.from_scatterers_direct(
+        xray_structure=xray_structure,
+        miller_set=self)
+    return xray.structure_factors.from_scatterers(
+      miller_set=self)(
+        xray_structure=xray_structure,
+        miller_set=self,
+        direct=direct,
+        fft=fft)
+
   def setup_binner(self, d_max=0, d_min=0,
                    auto_binning=0,
                    reflections_per_bin=0,

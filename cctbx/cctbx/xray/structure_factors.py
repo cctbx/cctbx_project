@@ -42,7 +42,6 @@ class from_scatterers(crystal.symmetry):
     self._crystal_gridding = None
     self._crystal_gridding_tags = None
     self._rfft = None
-    from cctbx import xray
     self._u_extra = None
     self.estimate_time_direct = _estimate_time_direct(
       self.space_group().order_z())
@@ -98,6 +97,7 @@ class from_scatterers(crystal.symmetry):
 
   def u_extra(self):
     if (self._u_extra == None):
+      from cctbx import xray
       self._u_extra = xray.calc_u_extra(
         self.d_min(),
         self.grid_resolution_factor(),

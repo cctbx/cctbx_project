@@ -1,5 +1,4 @@
 from cctbx.xray import minimization
-from cctbx import xray
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from cctbx.array_family import flex
@@ -32,11 +31,9 @@ def exercise(space_group_info, anomalous_flag,
   structure_pz = structure_p.change_basis(z2p_op.inverse())
   assert structure_pz.unit_cell().is_similar_to(structure_z.unit_cell())
   assert structure_pz.space_group() == structure_z.space_group()
-  f_abs_pz_array = abs(xray.structure_factors_new.from_scatterers(
-    miller_set=f_abs_z_array)(
-      xray_structure=structure_pz,
-      miller_set=f_abs_z_array,
-      direct=0001).f_calc())
+  f_abs_pz_array = abs(f_abs_z_array.structure_factors_from_scatterers(
+    xray_structure=structure_pz,
+    direct=0001).f_calc())
   c = flex.linear_correlation(f_abs_z_array.data(), f_abs_pz_array.data())
   assert c.is_well_defined()
   if (0 or verbose):
@@ -50,11 +47,9 @@ def exercise(space_group_info, anomalous_flag,
     assert o != 0
   f_abs_pz_array = f_abs_p_array_cb.change_basis(z2p_op.inverse())
   assert flex.order(f_abs_pz_array.indices(), f_abs_z_array.indices()) == 0
-  f_abs_p_array_sf = abs(xray.structure_factors_new.from_scatterers(
-    miller_set=f_abs_p_array_cb)(
-      xray_structure=structure_p,
-      miller_set=f_abs_p_array_cb,
-      direct=0001).f_calc())
+  f_abs_p_array_sf = abs(f_abs_p_array_cb.structure_factors_from_scatterers(
+    xray_structure=structure_p,
+    direct=0001).f_calc())
   c = flex.linear_correlation(f_abs_p_array_sf.data(), f_abs_p_array_cb.data())
   assert c.is_well_defined()
   if (0 or verbose):

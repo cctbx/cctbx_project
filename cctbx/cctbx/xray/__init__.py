@@ -5,7 +5,7 @@ ext = misc.import_ext("cctbx_boost.xray_ext")
 misc.import_regular_symbols(globals(), ext.__dict__)
 del misc
 
-from cctbx.xray import structure_factors_new
+from cctbx.xray import structure_factors
 from cctbx import crystal
 from cctbx import miller
 from cctbx import adptbx
@@ -119,9 +119,13 @@ class structure(crystal.special_position_settings):
   def structure_factors(self, anomalous_flag=None, d_min=None,
                               direct=00000, fft=00000):
     miller_set = miller.build_set(self, anomalous_flag, d_min)
-    return structure_factors_new.from_scatterers(
-      miller_set=miller_set)(
-        xray_structure=self, miller_set=miller_set, direct=direct, fft=fft)
+    return structure_factors.from_scatterers(
+      crystal_symmetry=self,
+      d_min=d_min)(
+        xray_structure=self,
+        miller_set=miller_set,
+        direct=direct,
+        fft=fft)
 
   def show_summary(self, f=sys.stdout):
     print >> f, "Number of scatterers:", self.scatterers().size()
