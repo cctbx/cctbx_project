@@ -345,4 +345,3 @@ std::string bpmtz::Column::label() {
 std::string bpmtz::Column::type() {
   return std::string(p_col->type);
 }
-
