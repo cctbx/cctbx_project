@@ -20,7 +20,7 @@ namespace {
     {
       using namespace boost::python;
       typedef boost::python::arg arg_; // gcc 2.96 workaround
-      def("sort_permutation",
+      boost::python::def("sort_permutation",
         (shared<std::size_t>(*)(const_ref<ElementType> const&, bool)) 0,
         sort_permutation_overloads((
           arg_("data"), arg_("reverse")=false)));
