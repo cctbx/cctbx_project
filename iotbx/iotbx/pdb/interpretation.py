@@ -58,19 +58,19 @@ class conformer:
 
   def get_chains(self):
     stage_1 = self.model.stage_1
-    ter_block_identifiers = stage_1.get_ter_block_identifiers()
+    block_identifiers = stage_1.get_ter_and_end_block_identifiers()
     chains = []
     residue_iselections = []
     isel_residue = flex.size_t()
     prev_atom = None
     prev_residue_labels = ""
-    prev_ter_block_identifier = -1
+    prev_block_identifier = -1
     for i_seq in self.iselection:
       atom = stage_1.atom_attributes_list[i_seq]
       residue_labels = atom.residue_labels()
-      ter_block_identifier = ter_block_identifiers[i_seq]
+      block_identifier = block_identifiers[i_seq]
       if (prev_atom is not None):
-        if (   ter_block_identifier != prev_ter_block_identifier
+        if (   block_identifier != prev_block_identifier
             or not atom.is_in_same_chain(prev_atom)):
           if (isel_residue.size() > 0):
             residue_iselections.append(isel_residue)
@@ -86,7 +86,7 @@ class conformer:
       isel_residue.append(i_seq)
       prev_atom = atom
       prev_residue_labels = residue_labels
-      prev_ter_block_identifier = ter_block_identifier
+      prev_block_identifier = block_identifier
     if (isel_residue.size() > 0):
       residue_iselections.append(isel_residue)
     if (len(residue_iselections) > 0):
@@ -125,8 +125,9 @@ class stage_1:
     self.remark_3_records = []
     self.remark_290_records = []
     self.remark_r_free_flags_md5_hexdigest = []
-    self.ter_indices = flex.size_t()
     self.break_indices = flex.size_t()
+    self.ter_indices = flex.size_t()
+    self.end_indices = flex.size_t()
     self.atom_attributes_list = []
     self.conect_records = []
     self.link_records = []
@@ -170,10 +171,12 @@ class stage_1:
         self.model_serial_list.append(model_serial)
       elif (record_name == "ENDMDL"):
         model_serial = None
-      elif (record_name.rstrip() == "TER"):
-        self.ter_indices.append(len(self.atom_attributes_list))
       elif (record_name.rstrip() == "BREAK"):
         self.break_indices.append(len(self.atom_attributes_list))
+      elif (record_name.rstrip() == "TER"):
+        self.ter_indices.append(len(self.atom_attributes_list))
+      elif (record_name.rstrip() == "END"):
+        self.end_indices.append(len(self.atom_attributes_list))
       elif (record_name in ("ATOM  ", "HETATM")):
         atom_attributes = pdb.atom.attributes(line_number=state.line_number)
         atom_attributes.set_from_ATOM_record(self.parse_record())
@@ -208,7 +211,7 @@ class stage_1:
         or None in self.scale_matrix[1]):
       self.scale_matrix = None
     self._sites_cart = None
-    self._ter_block_identifiers = None
+    self._ter_and_end_block_identifiers = None
     self._break_block_identifiers = None
     self._selection_cache = None
     self._clean_model_serial_list()
@@ -368,17 +371,20 @@ class stage_1:
     result.resize(len(self.atom_attributes_list), result.back()+1)
     return result
 
-  def get_ter_block_identifiers(self):
-    if (self._ter_block_identifiers is None):
-      self._ter_block_identifiers = self.get_block_identifiers(
-        self.ter_indices)
-    return self._ter_block_identifiers
-
   def get_break_block_identifiers(self):
     if (self._break_block_identifiers is None):
       self._break_block_identifiers = self.get_block_identifiers(
         self.break_indices)
     return self._break_block_identifiers
+
+  def get_ter_and_end_block_identifiers(self):
+    if (self._ter_and_end_block_identifiers is None):
+      ter_and_end_indices = self.ter_indices.deep_copy()
+      ter_and_end_indices.extend(self.end_indices)
+      ter_and_end_indices.select(flex.sort_permutation(ter_and_end_indices))
+      self._ter_and_end_block_identifiers = self.get_block_identifiers(
+        ter_and_end_indices)
+    return self._ter_and_end_block_identifiers
 
   def selection_cache(self):
     if (self._selection_cache is None):
