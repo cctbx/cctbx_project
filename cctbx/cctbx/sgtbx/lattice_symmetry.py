@@ -2,6 +2,7 @@ from cctbx import sgtbx
 from cctbx import matrix
 from scitbx.python_utils.math_utils import iround
 from scitbx.python_utils.misc import store
+from scitbx.array_family import flex
 import math
 
 # Y. Le Page
@@ -53,16 +54,29 @@ class group_search:
     max_delta *= math.pi/180
     frac = matrix.sqr(niggli_cell.fractionalization_matrix())
     orth = matrix.sqr(niggli_cell.orthogonalization_matrix())
-    group = sgtbx.space_group()
+    deltas = flex.double()
+    ts = []
     for axis in self.potential_axes():
       t = orth * axis.u
       tau = matrix.col((axis.h * frac).elems)
-      delta = math.atan(abs(t.cross(tau))/axis.abs_uh)
+      delta = abs(math.atan(abs(t.cross(tau))/axis.abs_uh))
       if (delta < max_delta):
-        w_cart = two_fold_matrix_from_axis_direction(t)
-        w_frac = as_integer_matrix(frac*w_cart*orth)
-        s = sgtbx.rt_mx(w_frac, (0,0,0))
-        group.expand_smx(s)
+        deltas.append(delta)
+        ts.append(t)
+    perm = flex.sort_permutation(deltas)
+    group = sgtbx.space_group()
+    for i in perm:
+      w_cart = two_fold_matrix_from_axis_direction(ts[i])
+      w_frac = as_integer_matrix(frac*w_cart*orth)
+      s = sgtbx.rt_mx(w_frac, (0,0,0))
+      expanded_group = sgtbx.space_group(group)
+      try:
+        expanded_group.expand_smx(s)
+      except RuntimeError, e:
+        ee = "cctbx Error: Non-crystallographic rotation matrix encountered."
+        if (str(e) != ee): raise
+        break
+      group = expanded_group
     return group
 
 group = group_search()
