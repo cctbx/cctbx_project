@@ -56,6 +56,7 @@ namespace {
       class_<w_t, bases<bond_params> >("bond_simple_proxy", no_init)
         .def(init<af::tiny<unsigned, 2> const&, double, double>(
           (arg_("i_seqs"), arg_("distance_ideal"), arg_("weight"))))
+        .def("sort_i_seqs", &w_t::sort_i_seqs)
         .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
       ;
       {
