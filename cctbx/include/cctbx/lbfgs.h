@@ -58,41 +58,55 @@
 #include <cctbx/error.h>
 #include <cctbx/fixes/cstdlib>
 #include <cctbx/fixes/cmath>
-#include <cctbx/array_family/shared.h>
 
 namespace cctbx {
 
-  std::string itoa(int i) {
-    char buf[80];
-    sprintf(buf, "%d", i); // FUTURE: use C++ facility
-    return std::string(buf);
-  }
-
-  std::string operator+(const std::string& s, int i) {
-    return s + itoa(i);
-  }
-
-  class lbfgs_parameters {
-    public:
-      explicit
-      lbfgs_parameters(
-        double gtol_ = 0.9,
-        double stpmin_ = 1.e-20,
-        double stpmax_ = 1.e20)
-        : gtol(gtol_),
-          stpmin(stpmin_),
-          stpmax(stpmax_)
-      {}
-      double gtol;
-      double stpmin;
-      double stpmax;
-  };
-
+  /*! This class solves the unconstrained minimization problem
+      <pre>
+          min f(x),  x = (x1,x2,...,x_n),
+      </pre>
+      using the limited-memory BFGS method. The routine is
+      especially effective on problems involving a large number of
+      variables. In a typical iteration of this method an
+      approximation <code>Hk</code> to the inverse of the Hessian
+      is obtained by applying <code>m</code> BFGS updates to a
+      diagonal matrix <code>Hk0</code>, using information from the
+      previous M steps.  The user specifies the number
+      <code>m</code>, which determines the amount of storage
+      required by the routine. The user may also provide the
+      diagonal matrices <code>Hk0</code> if not satisfied with the
+      default choice.  The algorithm is described in "On the
+      limited memory BFGS method for large scale optimization", by
+      D. Liu and J. Nocedal, Mathematical Programming B 45 (1989)
+      503-528.
+      <p>
+      The user is required to calculate the function value
+      <code>f</code> and its gradient <code>g</code>. In order to
+      allow the user complete control over these computations,
+      reverse communication is used. The routine must be called
+      repeatedly under the control of the parameter
+      <code>iflag</code>.
+      <p>
+      The steplength is determined at each iteration by means of
+      the line search routine <code>mcsrch</code>, which is a
+      slight modification of the routine <code>CSRCH</code> written
+      by More' and Thuente.
+      <p>
+      The only variables that are machine-dependent are
+      <code>xtol</code>, <code>stpmin</code> and
+      <code>stpmax</code>.
+      <p>
+      Fatal errors cause exceptions to be thrown.
+   */
   class lbfgs
   {
     public:
       //! Default constructor. Members are not initialized!
-      lbfgs() {}
+      lbfgs()
+      : n_(0), m_(0), eps_(0), xtol_(0), maxfev_(0),
+        gtol_(0), stpmin_(0), stpmax_(0),
+        ispt(0), iypt(0)
+      {}
 
       //! Constructor.
       /*! @param n The number of variables in the minimization problem.
@@ -116,6 +130,10 @@ namespace cctbx {
             on a SUN station 3/60). The line search routine will
             terminate if the relative width of the interval of
             uncertainty is less than <code>xtol</code>.
+
+          @param maxfev Termination occurs when the number of evaluations
+             of the objective function is at least <code>maxfev</code> by
+             the end of an iteration.
 
           <code>gtol</code> controls the accuracy of the line search
           <code>mcsrch</code>.
@@ -145,52 +163,116 @@ namespace cctbx {
         int m = 5,
         double eps = 1.e-5,
         double xtol = 1.e-16,
+        int maxfev = 20,
         double gtol = 0.9,
         double stpmin = 1.e-20,
         double stpmax = 1.e20)
-        : n_(n), m_(m), eps_(eps), xtol_(xtol),
-          params(gtol, stpmin, stpmax), iflag_(0)
-      {}
+        : n_(n), m_(m), eps_(eps), xtol_(xtol), maxfev_(maxfev),
+          gtol_(gtol), stpmin_(stpmin), stpmax_(stpmax),
+          iflag_(0), iter_(0), nfun_(0), gnorm_(0), stp_(0),
+          stp1(0), ftol(0.0001), ys(0), point(0), npt(0),
+          ispt(n+2*m), iypt((n+2*m)+n*m),
+          info(0), bound(0), nfev(0)
+      {
+        if (n_ <= 0) {
+          iflag_ = -3;
+          throw error("Improper input parameter: n is not positive.");
+        }
+        if (m_ <= 0) {
+          iflag_ = -3;
+          throw error("Improper input parameter: m is not positive.");
+        }
+        if (gtol_ <= 1.e-4) {
+          iflag_ = -3;
+          throw error("Improper input parameter: gtol <= 1.e-4.");
+        }
+        w_.resize(n_*(2*m_+1)+2*m_);
+      }
 
-      /*! This subroutine solves the unconstrained minimization problem
-          <pre>
-              min f(x),  x = (x1,x2,...,x_n),
-          </pre>
-          using the limited-memory BFGS method. The routine is
-          especially effective on problems involving a large number of
-          variables. In a typical iteration of this method an
-          approximation <code>Hk</code> to the inverse of the Hessian
-          is obtained by applying <code>m</code> BFGS updates to a
-          diagonal matrix <code>Hk0</code>, using information from the
-          previous M steps.  The user specifies the number
-          <code>m</code>, which determines the amount of storage
-          required by the routine. The user may also provide the
-          diagonal matrices <code>Hk0</code> if not satisfied with the
-          default choice.  The algorithm is described in "On the
-          limited memory BFGS method for large scale optimization", by
-          D. Liu and J. Nocedal, Mathematical Programming B 45 (1989)
-          503-528.
+      //! Number of free parameters.
+      int n() const { return n_; }
 
-          The user is required to calculate the function value
-          <code>f</code> and its gradient <code>g</code>. In order to
-          allow the user complete control over these computations,
-          reverse communication is used. The routine must be called
-          repeatedly under the control of the parameter
-          <code>iflag</code>.
+      //! Number of corrections kept.
+      int m() const { return m_; }
 
-          The steplength is determined at each iteration by means of
-          the line search routine <code>mcsrch</code>, which is a
-          slight modification of the routine <code>CSRCH</code> written
-          by More' and Thuente.
+      //! XXX
+      double eps() const { return eps_; }
 
-          The only variables that are machine-dependent are
-          <code>xtol</code>, <code>stpmin</code> and
-          <code>stpmax</code>.
+      //! XXX
+      double xtol() const { return xtol_; }
 
-          Progress messages are accumulated in <code>log()</code>.
-          Fatal errors cause exceptions to be thrown.
+      //! XXX
+      int maxfev() const { return maxfev_; }
 
-          @param x On initial entry this must be set by the user to the
+      //! XXX
+      double gtol() const { return gtol_; }
+
+      //! XXX
+      double stpmin() const { return stpmin_; }
+
+      //! XXX
+      double stpmax() const { return stpmax_; }
+
+      //! Status indicator.
+      /*! A return with <code>iflag &lt; 0</code> indicates an error,
+          and <code>iflag = 0</code> indicates that the routine has
+          terminated without detecting errors. On a return with
+          <code>iflag = 1</code>, the user must evaluate the function
+          <code>f</code> and gradient <code>g</code>. On a return with
+          <code>iflag = 2</code>, the user must provide the diagonal
+          matrix <code>Hk0</code>.
+          <p>
+          The following negative values of <code>iflag</code>,
+          detecting an error, are possible:
+          <ul>
+          <li><code>iflag = -1</code> The line search routine
+              <code>mcsrch</code> failed. One of the following
+              messages is printed:
+            <ul>
+            <li>Improper input parameters.
+            <li>Relative width of the interval of uncertainty is at
+                most <code>xtol</code>.
+            <li>More than maxfev function evaluations were required at the
+                present iteration.
+            <li>The step is too small.
+            <li>The step is too large.
+            <li>Rounding errors prevent further progress. There may not
+                be a step which satisfies the sufficient decrease and
+                curvature conditions. Tolerances may be too small.
+            </ul>
+          <li><code>iflag = -2</code> The i-th diagonal element of
+              the diagonal inverse Hessian approximation, given in DIAG,
+              is not positive.
+          <li><code>iflag = -3</code> Improper input parameters for LBFGS.
+          </ul>
+       */
+      int iflag() const { return iflag_; }
+
+      //! Number of iterations so far.
+      int iter() const { return iter_; }
+
+      //! Number of function evaluations so far.
+      /*! This method returns the total number of evaluations of the
+          objective function. The total number of function evaluations
+          increases by the number of evaluations required for the line
+          search; the total is only increased after a successful line
+          search.
+        */
+      int nfun() const { return nfun_; }
+
+      //! Norm of gradient at current solution <code>x</code>.
+      double gnorm() const { return gnorm_; }
+
+      //! Norm of gradient given gradient array of length n().
+      double gnorm(const double* g) const {
+        return std::sqrt(ddot(n_, g, 0, 1, g, 0, 1));
+      }
+
+      //! Current stepsize.
+      double stp() const { return stp_; }
+
+      //! Execution of one step of the minimization.
+      /*! @param x On initial entry this must be set by the user to the
              values of the initial estimate of the solution vector. On
              exit with <code>iflag = 0</code>, it contains the values
              of the variables at the best point found (usually a
@@ -206,54 +288,67 @@ namespace cctbx {
              contain the components of the gradient <code>g</code> at
              the point <code>x</code>.
 
-          @param diagco Set this to <code>true</code> if the user
-             wishes to provide the diagonal matrix <code>Hk0</code> at
-             each iteration.  Otherwise it should be set to
-             <code>false</code> in which case <code>lbfgs</code> will
-             use a default value described below. If
-             <code>diagco</code> is set to <code>true</code> the
-             routine will return at each iteration of the algorithm
-             with <code>iflag = 2</code>, and the diagonal matrix
-             <code>Hk0</code> must be provided in the array
-             <code>diag</code>.
+          <code>lbfgs</code> will use a default value for diag
+          as described below. XXX
+       */
+      void run(
+        double* x,
+        double f,
+        const double* g)
+      {
+        if (diag_.size() == 0) diag_.resize(n_);
+        generic_run(x, f, g, false, &(*(diag_.begin())));
+      }
 
-          @param diag If <code>diagco = true</code>, then on initial
-             entry or on re-entry with <code>iflag = 2</code>,
-             <code>diag</code> must be set by the user to contain the
-             values of the diagonal matrix <code>Hk0</code>.
+      //! Execution of one step of the minimization.
+      /*! @param x See other overload.
+
+          @param f See other overload.
+
+          @param g See other overload.
+
+          @param diag On initial entry or on re-entry with
+             <code>iflag = 2</code>, <code>diag</code> must be set by
+             the user to contain the values of the diagonal matrix
+             <code>Hk0</code>.
+             The routine will return at each iteration of the algorithm
+             with <code>iflag = 2</code>.
              Restriction: all elements of <code>diag</code> must be
              positive.
        */
       void run(
         double* x,
         double f,
-        double* g,
+        const double* g,
+        double* diag)
+      {
+        generic_run(x, f, g, true, diag);
+      }
+
+    protected:
+      static std::string itoa(int i) {
+        char buf[80];
+        sprintf(buf, "%d", i); // FUTURE: use C++ facility
+        return std::string(buf);
+      }
+
+      static void throw_diagonal_element_not_positive(int i) {
+        throw error(
+          "The " + itoa(i) + "-th diagonal element of the inverse"
+          " Hessian approximation is not positive.");
+      }
+
+      void generic_run(
+        double* x,
+        double f,
+        const double* g,
         bool diagco,
         double* diag)
       {
-        const int maxfev = 20;
         double* w = &(*(w_.begin()));
         bool execute_entire_while_loop = false;
         if (iflag_ == 0) { // Initialize.
-          w_.resize(n_*(2*m_+1)+2*m_); // XXX set size in constructor
-          w = &(*(w_.begin()));
-          ys = double(0);
-          x_cache_.assign(x, x + n_);
-          iter_ = 0;
-          if (n_ <= 0 || m_ <= 0) {
-            iflag_ = -3;
-            throw error(
-              "Improper input parameters (n or m are not positive.)"); // XXX
-          }
-          if (params.gtol <= 0.0001) {
-            log_.push_back(
-              "gtol is less than or equal to 0.0001."
-              " It has been reset to 0.9.");
-            params.gtol= 0.9;
-          }
           nfun_ = 1;
-          npt = 0;
-          point = 0;
           if (diagco) {
             for (int i = 0; i < n_; i++) {
               if (diag[i] <= 0) {
@@ -265,16 +360,11 @@ namespace cctbx {
           else {
             std::fill_n(diag, n_, double(1));
           }
-          ispt = n_+2*m_;
-          iypt = ispt+n_*m_;
           for (int i = 0; i < n_; i++) {
             w[ispt + i] = -g[i] * diag[i];
           }
           gnorm_ = std::sqrt(ddot(n_, g, 0, 1, g, 0, 1));
           stp1= 1/gnorm_;
-          ftol= 0.0001;
-          stp_ = double(0);
-          nfev = 0;
           execute_entire_while_loop = true;
         }
         for (;;) {
@@ -341,10 +431,11 @@ namespace cctbx {
             if (iter_ == 1) stp_ = stp1;
             std::copy(g, g+n_, w);
           }
-          if (!mcsrch_instance.run(params, n_, x, f, g, w, ispt + point * n_,
-                stp_, ftol, xtol_, maxfev, info, nfev, diag)) {
-            log_.push_back(
-              "The search direction is not a descent direction.\n");
+          if (!mcsrch_instance.run(
+                 gtol_, stpmin_, stpmax_, n_, x, f, g, w, ispt + point * n_,
+                 stp_, ftol, xtol_, maxfev_, info, nfev, diag)) {
+            iflag_ = -1;
+            throw error("The search direction is not a descent direction.");
           }
           if (info == -1) {
             iflag_ = 1;
@@ -353,8 +444,7 @@ namespace cctbx {
           if (info != 1) {
             iflag_ = -1;
             throw error(
-              "Line search failed. See documentation of routine mcsrch."
-              " Error return of line search: info = " + itoa(info) +
+              "Line search failed (info=" + itoa(info) + ")."
               " Possible causes: function or gradient are incorrect,"
               " or incorrect tolerances.");
           }
@@ -366,13 +456,6 @@ namespace cctbx {
           }
           point++;
           if (point == m_) point = 0;
-          // Cache the current solution vector. Due to the spaghetti-like
-          // nature of this code, it's not possible to quit here and return;
-          // we need to go back to the top of the loop, and eventually call
-          // mcsrch one more time -- but that will modify the solution vector.
-          // So we need to keep a copy of the solution vector as it was at
-          // the completion (info==1) of the most recent line search.
-          x_cache_.assign(x, x + n_);
           gnorm_ = std::sqrt(ddot(n_, g, 0, 1, g, 0, 1));
           double xnorm = std::max(
             double(1), std::sqrt(ddot(n_, x, 0, 1, x, 0, 1)));
@@ -382,102 +465,6 @@ namespace cctbx {
           }
           execute_entire_while_loop = true; // from now on, execute whole loop
         }
-      }
-
-      //! Number of free parameters.
-      int n() const { return n_; }
-
-      //! Number of corrections kept.
-      int m() const { return m_; }
-
-      //! XXX
-      double eps() const { return eps_; }
-
-      //! XXX
-      double xtol() const { return xtol_; }
-
-      //! Status indicator.
-      /*! A return with <code>iflag &lt; 0</code> indicates an error,
-          and <code>iflag = 0</code> indicates that the routine has
-          terminated without detecting errors. On a return with
-          <code>iflag = 1</code>, the user must evaluate the function
-          <code>f</code> and gradient <code>g</code>. On a return with
-          <code>iflag = 2</code>, the user must provide the diagonal
-          matrix <code>Hk0</code>.
-          <p>
-          The following negative values of <code>iflag</code>,
-          detecting an error, are possible:
-          <ul>
-          <li><code>iflag = -1</code> The line search routine
-              <code>mcsrch</code> failed. One of the following
-              messages is printed:
-            <ul>
-            <li>Improper input parameters.
-            <li>Relative width of the interval of uncertainty is at
-                most <code>xtol</code>.
-            <li>More than 20 function evaluations were required at the
-                present iteration.
-            <li>The step is too small.
-            <li>The step is too large.
-            <li>Rounding errors prevent further progress. There may not
-                be a step which satisfies the sufficient decrease and
-                curvature conditions. Tolerances may be too small.
-            </ul>
-          <li><code>iflag = -2</code> The i-th diagonal element of
-              the diagonal inverse Hessian approximation, given in DIAG,
-              is not positive.
-          <li><code>iflag = -3</code> Improper input parameters for LBFGS
-              (<code>n</code> or <code>m</code> are not positive).
-          </ul>
-       */
-      int iflag() const { return iflag_; }
-
-      //! Number of iterations so far.
-      int iter() const { return iter_; }
-
-      //! Number of function evaluations so far.
-      /*! This method returns the total number of evaluations of the
-          objective function. The total number of function evaluations
-          increases by the number of evaluations required for the line
-          search; the total is only increased after a successful line
-          search.
-        */
-      int nfun() const { return nfun_; }
-
-      //! Norm of gradient at current solution <code>x</code>.
-      double gnorm() const { return gnorm_; }
-
-      //! Norm of gradient given gradient array.
-      double gnorm(const double* g) const {
-        return std::sqrt(ddot(n_, g, 0, 1, g, 0, 1));
-      }
-
-      //! Current stepsize.
-      double stp() const { return stp_; }
-
-      //! Solution cache.
-      /*! The solution vector as it was at the end of the most recently
-          completed line search. This will usually be different from
-          the return value of the parameter <tt>x</tt> of
-          <tt>lbfgs</tt>, which is modified by line-search steps. A
-          caller which wants to stop the optimization iterations before
-          <tt>lbfgs</tt> automatically stops (by reaching a very
-          small gradient) should copy this vector instead of using
-          <tt>x</tt>. When <tt>lbfgs</tt> automatically stops,
-          then <tt>x</tt> and <tt>x_cache</tt> are the same.
-        */
-      const af::shared<double>& x_cache() const { return x_cache_; }
-            af::shared<double>& x_cache()       { return x_cache_; }
-
-      const af::shared<std::string>& log() const { return log_; }
-            af::shared<std::string>  log()       { return log_; }
-
-    protected:
-
-      static void throw_diagonal_element_not_positive(int i) {
-        throw error(
-          "The " + itoa(i) + "-th diagonal element of the inverse"
-          " Hessian approximation is not positive.");
       }
 
       /* Compute the sum of a vector times a scalara plus another vector.
@@ -602,13 +589,13 @@ namespace cctbx {
           bool brackt;
           bool stage1;
 
-        public:
           static double sqr(double x) { return x * x; }
 
           static double max3(double x, double y, double z) {
             return x < y ? (y < z ? z : y ) : (x < z ? z : x );
           }
 
+        public:
           /* Minimize a function along a search direction. This code is
              a Java translation of the function <code>MCSRCH</code> from
              <code>lbfgs.f</code>, which in turn is a slight modification
@@ -716,11 +703,13 @@ namespace cctbx {
              @param wa Temporary storage array, of length <code>n</code>.
            */
           bool run(
-            const lbfgs_parameters& lbfgs_params,
+            const double& gtol,
+            const double& stpmin,
+            const double& stpmax,
             int n,
             double* x,
             double f,
-            double* g,
+            const double* g,
             double* s,
             int is0,
             double& stp,
@@ -734,9 +723,9 @@ namespace cctbx {
             if (info != -1) {
               infoc = 1;
               if (   n <= 0 || stp <= 0 || ftol < 0 || xtol < 0
-                  || lbfgs_params.gtol < 0
-                  || lbfgs_params.stpmin < 0
-                  || lbfgs_params.stpmax < lbfgs_params.stpmin
+                  || gtol < 0
+                  || stpmin < 0
+                  || stpmax < stpmin
                   || maxfev <= 0) {
                 return true;
               }
@@ -754,7 +743,7 @@ namespace cctbx {
               nfev = 0;
               finit = f;
               dgtest = ftol*dginit;
-              width = lbfgs_params.stpmax - lbfgs_params.stpmin;
+              width = stpmax - stpmin;
               width1 = double(2) * width;
               std::copy(x, x+n, wa);
               // The variables stx, fx, dgx contain the values of the step,
@@ -784,8 +773,8 @@ namespace cctbx {
                   stmax = stp + double(4) * (stp - stx);
                 }
                 // Force the step to be within the bounds stpmax and stpmin.
-                stp = std::max(stp, lbfgs_params.stpmin);
-                stp = std::min(stp, lbfgs_params.stpmax);
+                stp = std::max(stp, stpmin);
+                stp = std::min(stp, stpmax);
                 // If an unusual termination is to occur then let
                 // stp be the lowest point obtained so far.
                 if (   (brackt && (stp <= stmin || stp >= stmax))
@@ -814,10 +803,10 @@ namespace cctbx {
                   || infoc == 0) {
                 info = 6;
               }
-              if (stp == lbfgs_params.stpmax && f <= ftest1 && dg <= dgtest) {
+              if (stp == stpmax && f <= ftest1 && dg <= dgtest) {
                 info = 5;
               }
-              if (stp == lbfgs_params.stpmin && (f > ftest1 || dg >= dgtest)) {
+              if (stp == stpmin && (f > ftest1 || dg >= dgtest)) {
                 info = 4;
               }
               if (nfev >= maxfev) {
@@ -827,7 +816,7 @@ namespace cctbx {
                 info = 2;
               }
               if (   f <= ftest1
-                  && std::fabs(dg) <= lbfgs_params.gtol * (-dginit)) {
+                  && std::fabs(dg) <= gtol * (-dginit)) {
                 info = 1;
               }
               // Check for termination.
@@ -835,7 +824,7 @@ namespace cctbx {
               // In the first stage we seek a step for which the modified
               // function has a nonpositive value and nonnegative derivative.
               if (   stage1 && f <= ftest1
-                  && dg >= std::min(ftol, lbfgs_params.gtol) * dginit) {
+                  && dg >= std::min(ftol, gtol) * dginit) {
                 stage1 = false;
               }
               // A modified function is used to predict the step only if
@@ -1119,30 +1108,32 @@ namespace cctbx {
           }
       };
 
-      lbfgs_parameters params;
       mcsrch mcsrch_instance;
+      const int n_;
+      const int m_;
+      const double eps_;
+      const double xtol_;
+      const int maxfev_;
+      const double gtol_;
+      const double stpmin_;
+      const double stpmax_;
       int iflag_;
-      int n_;
-      int m_;
-      double eps_;
-      double xtol_;
-      double gnorm_;
-      double stp_;
       int iter_;
       int nfun_;
+      double gnorm_;
+      double stp_;
       double stp1;
       double ftol;
       double ys;
       int point;
       int npt;
-      int ispt;
-      int iypt;
+      const int ispt;
+      const int iypt;
       int info;
       int bound;
       int nfev;
       std::vector<double> w_;
-      af::shared<double> x_cache_;
-      af::shared<std::string> log_;
+      std::vector<double> diag_;
   };
 
 } // namespace cctbx
