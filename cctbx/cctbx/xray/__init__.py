@@ -238,6 +238,29 @@ class structure(crystal.special_position_settings):
       positions.append(emma.position(scatterer.label, scatterer.site))
     return emma.model(self, positions)
 
+  def atomic_weights(self):
+    from cctbx.eltbx import tiny_pse
+    result = flex.double()
+    for scatterer in self.scatterers():
+      label = scatterer.caasf.label()
+      assert label != "const", "Unknown atomic weight: "+scatterer.label
+      result.append(tiny_pse.table(label).weight())
+    return result
+
+  def center_of_mass(self, atomic_weights=None):
+    if (atomic_weights is None):
+      atomic_weights = self.atomic_weights()
+    sites_cart = (self.unit_cell().orthogonalization_matrix()
+                  * self.scatterers().extract_sites())
+    sum_w = 0
+    sum_wc = matrix.col((0,0,0))
+    for i,site_cart in sites_cart.items():
+      w = atomic_weights[i]
+      sum_w += w
+      sum_wc += matrix.col(site_cart) * w
+    if (sum_w == 0): return sum_wc
+    return sum_wc / sum_w
+
 class _target_functor_base:
 
   def __call__(self, f_calc, compute_derivatives):
