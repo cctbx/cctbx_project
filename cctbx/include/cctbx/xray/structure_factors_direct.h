@@ -23,27 +23,17 @@ namespace cctbx { namespace xray { namespace structure_factors {
     {
       typedef float_type f_t;
       typedef std::complex<f_t> c_t;
-      for(std::size_t s=0;s<space_group.n_smx();s++) {
-        miller::index<> hr = h * space_group.smx(s).r();
+      for(std::size_t i_smx=0;i_smx<space_group.n_smx();i_smx++) {
+        sgtbx::rt_mx const& s = space_group.smx(i_smx);
+        miller::index<> hr = h * s.r();
         f_t hrx = hr * scatterer.site;
-        sgtbx::tr_vec t = space_group.smx(s).t();
-        c_t sum_inv(0,0);
-        for(std::size_t i=0;i<space_group.f_inv();i++) {
-          if (i) {
-            hr = -hr;
-            hrx = -hrx;
-            t = space_group.inv_t() - t;
-          }
-          for(std::size_t l=0;l<space_group.n_ltr();l++) {
-            f_t ht = f_t(h * (t + space_group.ltr(l))) / space_group.t_den();
-            sum_inv += cos_sin.get(hrx + ht);
-          }
-        }
+        f_t ht = f_t(h * s.t()) / space_group.t_den();
+        c_t term = cos_sin.get(hrx + ht);
         if (scatterer.anisotropic_flag) {
           f_t dw = adptbx::debye_waller_factor_u_star(hr, scatterer.u_star);
-          sum_inv *= dw;
+          term *= dw;
         }
-        f_calc += sum_inv;
+        f_calc += term;
       }
       if (!scatterer.anisotropic_flag && scatterer.u_iso != 0) {
         f_t dw=adptbx::debye_waller_factor_u_iso(d_star_sq/4, scatterer.u_iso);
@@ -77,6 +67,9 @@ namespace cctbx { namespace xray { namespace structure_factors {
       if (caasf_is_const) fp_w += scatterer.caasf.c();
       fp_w *= w;
       if (have_fdp) fdp_w *= w;
+      bool is_centric = space_group.is_centric();
+      bool is_origin_centric = (
+        is_centric ? space_group.is_origin_centric() : false);
       for(std::size_t i=0;i<miller_indices.size();i++) {
         miller::index<> const& h = miller_indices[i];
         f_t d_star_sq = unit_cell.d_star_sq(h);
@@ -86,6 +79,13 @@ namespace cctbx { namespace xray { namespace structure_factors {
           h,
           d_star_sq,
           scatterer);
+        if (is_origin_centric) {
+          sf.f_calc = c_t(2*sf.f_calc.real(),0);
+        }
+        else if (is_centric) {
+          f_t ht = f_t(h * space_group.inv_t()) / space_group.t_den();
+          sf.f_calc += std::conj(sf.f_calc) * cos_sin.get(ht);
+        }
         if (caasf_is_const) {
           if (have_fdp) sf.f_calc *= c_t(fp_w, fdp_w);
           else sf.f_calc *= fp_w;
@@ -116,18 +116,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
         af::const_ref<ScattererType> const& scatterers)
       {
         math::cos_sin_exact<float_type> cos_sin;
-        f_calc_.resize(miller_indices.size());
-        for(std::size_t i=0;i<scatterers.size();i++) {
-          ScattererType const& scatterer = scatterers[i];
-          direct_one_scatterer<math::cos_sin_exact<float_type>,
-                               ScattererType> sf(
-            cos_sin,
-            unit_cell,
-            space_group,
-            miller_indices,
-            scatterer,
-            f_calc_.ref());
-        }
+        compute(cos_sin, unit_cell, space_group, miller_indices, scatterers);
       }
 
       direct(
@@ -137,18 +126,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
         af::const_ref<miller::index<> > const& miller_indices,
         af::const_ref<ScattererType> const& scatterers)
       {
-        f_calc_.resize(miller_indices.size());
-        for(std::size_t i=0;i<scatterers.size();i++) {
-          ScattererType const& scatterer = scatterers[i];
-          direct_one_scatterer<math::cos_sin_table<float_type>,
-                               ScattererType> sf(
-            cos_sin,
-            unit_cell,
-            space_group,
-            miller_indices,
-            scatterer,
-            f_calc_.ref());
-        }
+        compute(cos_sin, unit_cell, space_group, miller_indices, scatterers);
       }
 
       af::shared<std::complex<float_type> >
@@ -156,6 +134,37 @@ namespace cctbx { namespace xray { namespace structure_factors {
 
     protected:
       af::shared<std::complex<float_type> > f_calc_;
+
+      template <typename CosSinType>
+      void
+      compute(
+        CosSinType const& cos_sin,
+        uctbx::unit_cell const& unit_cell,
+        sgtbx::space_group const& space_group,
+        af::const_ref<miller::index<> > const& miller_indices,
+        af::const_ref<ScattererType> const& scatterers)
+      {
+        typedef float_type f_t;
+        typedef std::complex<float_type> c_t;
+        f_calc_.resize(miller_indices.size());
+        af::ref<std::complex<float_type> > f_calc_ref = f_calc_.ref();
+        for(std::size_t i=0;i<scatterers.size();i++) {
+          ScattererType const& scatterer = scatterers[i];
+          direct_one_scatterer<CosSinType, ScattererType> sf(
+            cos_sin, unit_cell, space_group, miller_indices, scatterer,
+            f_calc_ref);
+        }
+        if (space_group.n_ltr() > 1) {
+          for(std::size_t i=0;i<miller_indices.size();i++) {
+            miller::index<> const& h = miller_indices[i];
+            c_t f = f_calc_ref[i];
+            for(std::size_t l=1;l<space_group.n_ltr();l++) {
+              f_t ht = f_t(h * space_group.ltr(l)) / space_group.t_den();
+              f_calc_ref[i] += f * cos_sin.get(ht);
+            }
+          }
+        }
+      }
   };
 
 }}} // namespace cctbx::xray::structure_factors

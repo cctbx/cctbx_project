@@ -11,5 +11,6 @@ env.SharedLibrary(target="#libtbx/cctbx_boost/xray_ext", source=[
   "sampling_base.cpp",
   "sampled_model_density.cpp",
   "structure_factors_direct.cpp",
+  "structure_factors_simple.cpp",
   "targets.cpp",
 ])

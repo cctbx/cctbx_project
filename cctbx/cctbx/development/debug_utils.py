@@ -20,7 +20,7 @@ def get_test_space_group_symbols(flag_AllSpaceGroups,
   else:
     sg_numbers = (1,2,3,15,16,74,75,76,142,143,144,157,167,168,194,195,230)
   return [sgtbx.space_group_symbols(n).extended_hermann_mauguin()
-          for n in sg_numbers]
+          for n in sg_numbers] + ["Hall: -F 4 21 (1,5,3)"]
 
 def report_cpu_times():
   t = os.times()
