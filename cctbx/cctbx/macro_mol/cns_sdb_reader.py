@@ -1,11 +1,13 @@
 from cctbx.misc import python_utils
+from cctbx_boost import uctbx
+from cctbx_boost import sgtbx
 
 class sdb_site:
   def __init__(self, action, segid, type, x, y, z, b, q, g):
     python_utils.adopt_init_args(self, locals())
 
 class sdb_file:
-  def __init__(self, file_name, sites):
+  def __init__(self, file_name, unit_cell, space_group, sites):
     python_utils.adopt_init_args(self, locals())
 
 def generic_add_str(m, buffer):
@@ -24,6 +26,8 @@ class raw_parameters:
 
   def __init__(self, file_name):
     self.file_name = file_name
+    self.unit_cell = 0
+    self.space_group = 0
     self.action = []
     self.segid = []
     self.type = []
@@ -60,12 +64,13 @@ class raw_parameters:
         self.x[i], self.y[i], self.z[i],
         self.b[i], self.q[i],
         self.g[i]))
-    return sdb_file(self.file_name, sites)
+    return sdb_file(self.file_name, self.unit_cell, self.space_group, sites)
 
 def multi_sdb_parser(lines):
   # Parser for one or more cns sdb files.
   # Lines interpreted:
   #   {+ file: heavy_search_1.sdb +}
+  #   sg= P6 a= 116.097 b= 116.097 c= 44.175 alpha= 90 beta= 90 gamma= 120
   #   {===>} site.action_1="refine";
   #   {===>} site.segid_1="SITE"; site.type_1="SE";
   #   {===>} site.x_1=18.7869; site.y_1=12.1257; site.z_1=0.163635;
@@ -80,6 +85,13 @@ def multi_sdb_parser(lines):
       if (p): sdb_files.append(p.as_sdb_sites())
       p = raw_parameters(m.group(1))
     if (not p): continue
+    m = re.match(  r'sg=\s*(\S+)\s*a=\s*(\S+)\s*b=\s*(\S+)\s*c=\s*(\S+)'
+                 + r'\s*alpha=\s*(\S+)\s*beta=\s*(\S+)\s*gamma=\s*(\S+)',
+                 line)
+    if (m):
+      p.unit_cell = uctbx.UnitCell(
+        [float(m.group(i+2)) for i in xrange(6)])
+      p.space_group = sgtbx.SpaceGroup(sgtbx.SpaceGroupSymbols(m.group(1)))
     p.add_action(re.search(r'site\.action_(\d+)\s*=\s*"([^"]*)"', line))
     p.add_segid(re.search(r'site\.segid_(\d+)\s*=\s*"([^"]*)"', line))
     p.add_type(re.search(r'site\.type_(\d+)\s*=\s*"([^"]*)"', line))
@@ -101,6 +113,10 @@ if (__name__ == "__main__"):
     sdb_files = multi_sdb_parser(lines)
     for sdb in sdb_files:
       print "file:", sdb.file_name
+      if (sdb.unit_cell):
+        print "unit cell:", sdb.unit_cell
+      if (sdb.space_group):
+        print "space group:", sdb.space_group.Info().BuildLookupSymbol()
       for site in sdb.sites:
         print site.action, site.segid, site.type, site.g
         print " ", site.x, site.y, site.z, site.b, site.q

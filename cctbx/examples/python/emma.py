@@ -34,7 +34,7 @@ def GetFormData():
   form = cgi.FieldStorage()
   inp = Empty()
   for key in (("ucparams_1", ""),
-              ("sgsymbol_1", "P1"),
+              ("sgsymbol_1", ""),
               ("convention_1", ""),
               ("format_1", None),
               ("coor_type_1", None),
@@ -86,10 +86,9 @@ class web_to_models:
 
   def __init__(self, ucparams, sgsymbol, convention,
                format, coor_type, skip_columns, coordinates):
-    self.xsym = xutils.crystal_symmetry(
-      uctbx.UnitCell([float(p) for p in ucparams.split()]),
-      sgtbx.SpaceGroup(sgtbx.SpaceGroupSymbols(sgsymbol, convention)).Info(),
-      auto_check=1)
+    self.ucparams = ucparams
+    self.sgsymbol = sgsymbol
+    self.convention = convention
     if (format == "generic"):
       skip_columns = int(skip_columns)
       self.positions = []
@@ -104,15 +103,37 @@ class web_to_models:
       self.sdb_files = cns_sdb_reader.multi_sdb_parser(coordinates)
     self.i_next_model = 0
 
+  def get_unit_cell(self, other_unit_cell = None):
+    if (self.ucparams):
+      return uctbx.UnitCell([float(p) for p in self.ucparams.split()])
+    assert other_unit_cell, "Unit cell parameters unknown."
+    return other_unit_cell
+
+  def get_space_group(self, other_space_group = None):
+    if (self.sgsymbol):
+      return sgtbx.SpaceGroup(sgtbx.SpaceGroupSymbols(
+        self.sgsymbol, self.convention))
+    assert other_space_group, "Space group symbol unknown."
+    return other_space_group
+
   def get_next(self):
     if (hasattr(self, "positions")):
       if (self.i_next_model): return None
-      m = emma.model(self.xsym, self.positions)
+      xsym = xutils.crystal_symmetry(
+        self.get_unit_cell(),
+        self.get_space_group().Info(),
+        auto_check=1)
+      m = emma.model(xsym, self.positions)
       m.label = "Model 2"
       self.i_next_model += 1
       return m
     if (self.i_next_model >= len(self.sdb_files)): return None
-    m = sdb_file_to_emma_model(self.xsym, self.sdb_files[self.i_next_model])
+    sdb = self.sdb_files[self.i_next_model]
+    xsym = xutils.crystal_symmetry(
+      self.get_unit_cell(sdb.unit_cell),
+      self.get_space_group(sdb.space_group).Info(),
+      auto_check=1)
+    m = sdb_file_to_emma_model(xsym, sdb)
     self.i_next_model += 1
     return m
 
