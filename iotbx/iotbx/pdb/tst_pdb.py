@@ -301,11 +301,11 @@ HETATM 1462  O2* 5GP H 187      28.685  38.690  68.496  1.00 20.45
 HETATM 1463  C1* 5GP H 187      28.634  39.641  70.688  1.00 17.09
 HETATM 1464  N9  5GP H 187      27.238  39.525  71.076  1.00 15.35
 HETATM 1465  C8  5GP H 187      26.330  40.535  70.852  1.00 12.57
-HETATM 1466  N7  5GP H 187      25.175  40.314  71.417  1.00 12.88
+HETATM 1466  N7' 5GP H 187      25.175  40.314  71.417  1.00 12.88
 HETATM 1467  C5  5GP H 187      25.278  39.082  72.070  1.00 10.75
 HETATM 1468  C6  5GP H 187      24.326  38.354  72.827  1.00  9.77
 HETATM 1469  O6  5GP H 187      23.169  38.678  73.029  1.00  8.66
-HETATM 1470  N1  5GP H 187      24.836  37.190  73.270  1.00  9.67
+HETATM 1470  N1' 5GP H 187      24.836  37.190  73.270  1.00  9.67
 HETATM 1471  C2  5GP H 187      26.075  36.701  73.001  1.00  9.84
 HETATM 1472  N2  5GP H 187      26.361  35.490  73.520  1.00  9.77
 HETATM 1473  N3  5GP H 187      27.005  37.353  72.310  1.00 10.31
@@ -328,6 +328,7 @@ END
   assert list(isel(r"name 'C?\*'")) == []
   assert list(isel(r"name ' C?\*'")) == [45,46,48,50,52]
   assert list(isel(r"name ' c?\*'")) == []
+  assert list(isel(r"name n?'")) == [55, 59]
   assert list(isel(r"altloc a and name n")) == [24]
   assert list(isel(r"altloc b and name n")) == [32]
   assert list(isel(r"altloc ' ' and name n")) == [0,6,17]
