@@ -170,11 +170,12 @@ namespace cctbx {
       af::int3 abs_range() const
       {
         af::int3 result;
-        for(std::size_t j=0;j<3;j++) {
+        std::size_t j;
+        for(j=0;j<3;j++) {
           result[j] = math::abs((*this)[j][0]);
           math::update_max(result[j], math::abs((*this)[j][1]-1));
         }
-        for(std::size_t j=0;j<3;j++) result[j] += 1;
+        for(j=0;j<3;j++) result[j] += 1;
         return result;
       }
 
