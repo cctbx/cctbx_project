@@ -158,11 +158,11 @@ namespace cctbx { namespace xray { namespace structure_factors {
               d_target_d_u_iso += d_const_h * d_star_sq;
             }
             if (d_occupancy_flag) {
-              d_target_d_occupancy += d_const_h / scatterer.occupancy;
+              d_target_d_occupancy += d_const_h / scatterer.occupancy; // XXX
             }
           }
           if (d_fp_flag || d_fdp_flag) {
-            c_t f = sf.const_h_sum / sf.f0_fp_fdp;
+            c_t f = sf.const_h_sum / sf.f0_fp_fdp; // XXX
             if (d_fp_flag) {
               d_target_d_fp += d_t_d_f->real() * f.real()
                              + d_t_d_f->imag() * f.imag();
