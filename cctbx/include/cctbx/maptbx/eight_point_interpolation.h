@@ -86,10 +86,30 @@ namespace cctbx { namespace maptbx {
     fractional<FloatType> const& x_frac)
   {
     typedef af::c_grid_padded<3>::index_type index_t;
-    typedef typename index_t::value_type iv_t;
     index_t const& grid_n = map.accessor().focus();
     return get_corner<index_t, FloatType>(grid_n, x_frac)
       .closest_grid_point(grid_n);
+  }
+
+  // XXX unfinished
+  template <typename FloatType>
+  FloatType
+  non_crystallographic_eight_point_interpolation(
+    af::const_ref<FloatType, af::flex_grid<> > const& map,
+    scitbx::vec3<int> const& unit_cell_gridding_n,
+    fractional<FloatType> const& x_frac)
+  {
+    CCTBX_ASSERT(map.accessor().nd() == 3);
+    typedef typename af::flex_grid<>::index_type index_t;
+    index_t map_index(3, 0); // variable-size array, constructor like std::vector<>
+    // example
+    for(unsigned i=0;i<3;i++) {
+      map_index[i] = map.accessor().origin()[i];
+    }
+    // map.accessor().focus() == last+1 in each dimension
+    // x_frac[i], i=0..2, fractional coordinates
+    // unit_cell_gridding_n[i], i=0..2, number of grid points per unit cell in each dimension
+    return map(map_index); // no bounds checking!
   }
 
 }} // namespace cctbx::maptbx

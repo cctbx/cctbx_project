@@ -49,6 +49,12 @@ namespace {
       (af::c_grid_padded<3>::index_type(*)
         (af::const_ref<double, af::c_grid_padded<3> > const&,
          fractional<double> const&)) closest_grid_point);
+    def("non_crystallographic_eight_point_interpolation",
+      (double(*)
+        (af::const_ref<double, af::flex_grid<> > const&,
+         scitbx::vec3<int> const&,
+         fractional<double> const&))
+           non_crystallographic_eight_point_interpolation);
   }
 
 } // namespace <anonymous>
