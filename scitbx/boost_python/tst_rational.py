@@ -7,6 +7,10 @@ def exercise_int():
   assert r.as_tuple() == (0,1)
   assert rational.int(2).as_tuple() == (2,1)
   assert rational.int(2,3).as_tuple() == (2,3)
+  assert str(rational.int()) == "0"
+  assert str(rational.int(2)) == "2"
+  assert str(rational.int(-2,3)) == "-2/3"
+  assert (-rational.int(2,3)).as_tuple() == (-2,3)
   assert (rational.int(2,3) + rational.int(3,4)).as_tuple() == (17,12)
   assert (rational.int(2,3) - rational.int(3,4)).as_tuple() == (-1,12)
   assert (rational.int(2,3) * rational.int(3,4)).as_tuple() == (1,2)
@@ -63,9 +67,14 @@ def exercise_functions():
   assert rational.gcd(8,6) == 2
   assert rational.lcm(8,6) == 24
 
+def exercise_python_code():
+  assert rational.from_string("1") == 1
+  assert rational.from_string("2/4").as_tuple() == (1,2)
+
 def run():
   exercise_int()
   exercise_functions()
+  exercise_python_code()
   print "OK"
 
 if (__name__ == "__main__"):
