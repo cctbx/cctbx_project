@@ -12,6 +12,7 @@
 #define SCITBX_ARRAY_FAMILY_BOOST_PYTHON_FLEX_WRAPPER_H
 
 #include <boost/python/def.hpp>
+#include <boost/python/tuple.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/scope.hpp>
 #include <boost/python/return_value_policy.hpp>
