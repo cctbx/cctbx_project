@@ -31,8 +31,8 @@ class _triplet_generator(injector, triplet_generator):
                                   extrapolation_order=None,
                                   reuse_results=00000,
                                   sum_epsilon=1.e-10):
-    if (selection_fixed == None): selection_fixed = flex.bool()
-    if (extrapolation_order == None): extrapolation_order = flex.size_t()
+    if (selection_fixed is None): selection_fixed = flex.bool()
+    if (extrapolation_order is None): extrapolation_order = flex.size_t()
     return triplet_generator.raw_apply_tangent_formula(self,
       amplitudes, phases, selection_fixed, extrapolation_order, reuse_results,
       sum_epsilon)
