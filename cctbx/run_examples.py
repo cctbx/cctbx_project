@@ -3,7 +3,7 @@ import libtbx.load_env
 
 def run():
   tst_list = (
-  "$B/examples/getting_started",
+  "$B/../exe_dev/cctbx.getting_started",
   "$D/cctbx/examples/getting_started.py",
   "$D/cctbx/examples/analyze_adp.py",
   ["$D/cctbx/examples/all_axes.py", "P31"],
