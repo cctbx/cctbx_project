@@ -11,6 +11,7 @@ from cStringIO import StringIO
 
 def xray_structure_as_pdb_file(self, remark=None, remarks=[],
                                      fractional_coordinates=00000,
+                                     res_name=None,
                                      connect=None):
   if (remark is not None):
     remarks.insert(0, remark)
@@ -55,6 +56,8 @@ def xray_structure_as_pdb_file(self, remark=None, remarks=[],
   # 73 - 76  LString(4)    segID         Segment identifier, left-justified.
   # 77 - 78  LString(2)    element       Element symbol, right-justified.
   # 79 - 80  LString(2)    charge        Charge on the atom.
+  if (res_name is not None):
+    res_name_i = res_name.upper()
   serial = 0
   for scatterer in self.scatterers():
     serial += 1
@@ -71,9 +74,11 @@ def xray_structure_as_pdb_file(self, remark=None, remarks=[],
     element_symbol = scatterer.element_symbol()
     if (element_symbol is None): element_symbol = "Q"
     assert len(element_symbol) in (1,2)
+    if (res_name is None):
+      res_name_i = label[:3]
     assert serial < 100000
     atom_07_27 = ("%5d %-4s %-3s  %4d" % (
-      serial, label[:4], label[:3], serial%10000),)
+      serial, label[:4], res_name_i, serial%10000),)
     print >> s, "ATOM  %s    %8.3f%8.3f%8.3f%6.2f%6.2f          %2s" % (
       atom_07_27 + xyz + (scatterer.occupancy, adptbx.u_as_b(u),
       element_symbol.upper()))
