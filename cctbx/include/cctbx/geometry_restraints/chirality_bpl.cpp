@@ -29,6 +29,7 @@ namespace {
            arg_("volume_ideal"),
            arg_("both_signs"),
            arg_("weight"))))
+        .def("sort_i_seqs", &w_t::sort_i_seqs)
         .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
         .def_readonly("volume_ideal", &w_t::volume_ideal)
         .def_readonly("both_signs", &w_t::both_signs)

@@ -572,14 +572,26 @@ def exercise_dihedral():
 
 def exercise_chirality():
   p = geometry_restraints.chirality_proxy(
-    i_seqs=[0,1,2,3],
+    i_seqs=[0,2,3,1],
     volume_ideal=4,
     both_signs=00000,
     weight=1)
-  assert p.i_seqs == (0,1,2,3)
+  assert p.i_seqs == (0,2,3,1)
   assert approx_equal(p.volume_ideal, 4)
   assert not p.both_signs
   assert approx_equal(p.weight, 1)
+  p = p.sort_i_seqs()
+  assert p.i_seqs == (0,1,2,3)
+  assert approx_equal(p.volume_ideal, 4)
+  p = geometry_restraints.chirality_proxy(
+    i_seqs=[0,2,1,3],
+    volume_ideal=-4,
+    both_signs=00000,
+    weight=1)
+  assert approx_equal(p.volume_ideal, -4)
+  p = p.sort_i_seqs()
+  assert p.i_seqs == (0,1,2,3)
+  assert approx_equal(p.volume_ideal, 4)
   c = geometry_restraints.chirality(
     sites=[(1,0,0),(0,0,0),(0,1,0),(1,0,1)],
     volume_ideal=4,
