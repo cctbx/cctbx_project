@@ -17,15 +17,23 @@ def add_u_extra(xtal, u_extra):
 
 def print_structure_factors(SgInfo,
                             adp=0,
-                            d_min=2.,
+                            d_min=3.,
                             grid_resolution_factor = 1./3):
   elements = ("N", "C", "C", "O", "N", "C", "C", "O")
   xtal = debug_utils.random_structure(
     SgInfo, elements,
     volume_per_atom=50.,
     min_distance=1.5,
-    general_positions_only=0,
+    general_positions_only=1,
     anisotropic_displacement_parameters=adp)
+  if (1):
+    new_sites = shared.XrayScatterer()
+    site = xtal.Sites[3]
+    site.set_Coordinates((0.5,0.5,0.5))
+    site.set_Uiso(0)
+    print site.CAASF().Label(), site.w()
+    new_sites.append(site)
+    xtal.Sites = new_sites
   if (0):
     assert SgInfo.SgNumber() == 1
     from cctbx_boost import uctbx
@@ -56,21 +64,27 @@ def print_structure_factors(SgInfo,
     xtal.UnitCell,
     max_q, grid_resolution_factor, max_prime, mandatory_grid_factors)
   fft = fftbx.real_to_complex_3d(grid_logical)
+  quality_factor = 100
+  u_extra = sftbx.calc_u_extra(max_q, grid_resolution_factor, quality_factor)
+  u_extra = adptbx.B_as_U(20) # XXX
+  wing_cutoff = 1.e-7
+  exp_table_one_over_step_size = 0
   sampled_density = sftbx.sampled_model_density(
     xtal.UnitCell, xtal.Sites,
-    max_q, grid_resolution_factor,
-    fft.Nreal(), fft.Mreal())
+    max_q, grid_resolution_factor, u_extra,
+    fft.Nreal(), fft.Mreal(),
+    wing_cutoff, exp_table_one_over_step_size)
   tags = sftbx.grid_tags(fft.Nreal())
   sym_flags = sftbx.map_symmetry_flags(1)
   tags.build(xtal.SgInfo, sym_flags)
   sampled_density.apply_symmetry(tags)
   if (0):
     print "max_q:", sampled_density.max_q()
-    print "grid_resolution_factor:", sampled_density.resolution_factor()
+    print "grid_resolution_factor:", sampled_density.grid_resolution_factor()
     print "quality_factor:", sampled_density.quality_factor()
     print "wing_cutoff:", sampled_density.wing_cutoff()
     print "u_extra:", sampled_density.u_extra()
-    print "b_extra:", adptbx.U_as_B(sampled_density.u_extra())
+  print "b_extra:", adptbx.U_as_B(sampled_density.u_extra())
   map = sampled_density.map_as_shared()
   map_stats = shared.statistics(map)
   if (0):
@@ -249,7 +263,7 @@ def run():
     "Isotropic",
     "Anisotropic",
   ))
-  if (not Flags.RandomSeed): debug_utils.set_random_seed(0)
+  if (not Flags.RandomSeed): debug_utils.set_random_seed(6) # XXX
   if (not (Flags.Isotropic or Flags.Anisotropic)):
     Flags.Isotropic = 1
     # XXX Flags.Anisotropic = 1
