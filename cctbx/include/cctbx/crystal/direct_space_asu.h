@@ -730,7 +730,8 @@ namespace direct_space_asu {
       find_i_sym(unsigned i_seq, sgtbx::rt_mx const& rt_mx) const
       {
         CCTBX_ASSERT(i_seq < mappings_const_ref_.size());
-        if (special_op_indices_const_ref_[i_seq] == 0) {
+        std::size_t i_special_op = special_op_indices_const_ref_[i_seq];
+        if (i_special_op == 0) {
           for(int i_sym=0; i_sym<mappings_const_ref_[i_seq].size(); i_sym++) {
             if (get_rt_mx(i_seq, i_sym) == rt_mx) {
               return i_sym;
@@ -738,7 +739,7 @@ namespace direct_space_asu {
           }
         }
         else {
-          sgtbx::rt_mx const& special_op = special_ops_const_ref_[i_seq];
+          sgtbx::rt_mx const& special_op=special_ops_const_ref_[i_special_op];
           sgtbx::rt_mx rt_mx_sp = rt_mx.multiply(special_op);
           for(int i_sym=0; i_sym<mappings_const_ref_[i_seq].size(); i_sym++) {
             if (get_rt_mx(i_seq, i_sym).multiply(special_op) == rt_mx_sp) {
