@@ -1,8 +1,14 @@
 class detect_binary_file:
 
-  def __init__(self, monitor_initial=1000, max_fraction_non_ascii=0.05):
-    self.monitor_initial = monitor_initial
-    self.max_fraction_non_ascii = max_fraction_non_ascii
+  def __init__(self, monitor_initial=None, max_fraction_non_ascii=None):
+    if (monitor_initial is None):
+      self.monitor_initial = 1000
+    else:
+      self.monitor_initial = monitor_initial
+    if (max_fraction_non_ascii is None):
+      self.max_fraction_non_ascii = 0.05
+    else:
+      self.max_fraction_non_ascii = max_fraction_non_ascii
     self.n_ascii_characters = 0
     self.n_non_ascii_characters = 0
     self.status = None

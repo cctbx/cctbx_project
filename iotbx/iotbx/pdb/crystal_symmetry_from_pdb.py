@@ -1,7 +1,7 @@
 from cctbx import crystal
 from iotbx.misc import detect_binary_file
 
-def extract_from(file_name=None, file=None, monitor_initial=1000):
+def extract_from(file_name=None, file=None, monitor_initial=None):
   assert [file_name, file].count(None) == 1
   if (file is None):
     file = open(file_name)
@@ -10,7 +10,7 @@ def extract_from(file_name=None, file=None, monitor_initial=1000):
     if (detect_binary is not None):
       is_binary = detect_binary.is_binary_file(line)
       if (is_binary is not None):
-        if (is_binary): return None
+        if (is_binary): break
         detect_binary = None
     if (not line.startswith("CRYST1")): continue
     #  7 - 15       Real(9.3)      a             a (Angstroms).
@@ -32,3 +32,4 @@ def extract_from(file_name=None, file=None, monitor_initial=1000):
     return crystal.symmetry(
       unit_cell=ucparams,
       space_group_symbol=sGroup)
+  raise RuntimeError, "No CRYST1 record."

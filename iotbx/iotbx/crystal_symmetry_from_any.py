@@ -6,6 +6,7 @@ from iotbx.shelx import crystal_symmetry_from_ins as from_shelx_ins
 from iotbx.cns import crystal_symmetry_from_inp as from_cns_inp
 from iotbx.cns import crystal_symmetry_from_sdb as from_cns_sdb
 from iotbx.pdb import crystal_symmetry_from_pdb as from_pdb
+from iotbx.solve import crystal_symmetry_from_inp as from_solve_inp
 
 def extract_from(file_name):
   for fmt in (from_scalepack_hkl,
@@ -15,7 +16,8 @@ def extract_from(file_name):
               from_shelx_ins,
               from_cns_inp,
               from_cns_sdb,
-              from_pdb):
+              from_pdb,
+              from_solve_inp):
     try: return fmt.extract_from(file_name)
     except: pass
   return None
