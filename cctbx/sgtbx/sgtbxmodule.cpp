@@ -299,6 +299,10 @@ namespace {
   {
     return phinfo.isValidPhase(phi);
   }
+  double PhaseInfo_nearest_valid_phase_1(const PhaseInfo& phinfo, double phi)
+  {
+    return phinfo.nearest_valid_phase(phi);
+  }
 
   double Miller_SymEquivIndex_HT_angle_0(
     Miller::SymEquivIndex const& SEI)
@@ -845,6 +849,8 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
   py_PhaseInfo.def(&PhaseInfo::isValidPhase, "isValidPhase");
   py_PhaseInfo.def(PhaseInfo_isValidPhase_2, "isValidPhase");
   py_PhaseInfo.def(PhaseInfo_isValidPhase_1, "isValidPhase");
+  py_PhaseInfo.def(&PhaseInfo::nearest_valid_phase, "nearest_valid_phase");
+  py_PhaseInfo.def(PhaseInfo_nearest_valid_phase_1, "nearest_valid_phase");
 
   py_SymEquivMillerIndices.def(constructor<>());
   py_SymEquivMillerIndices.def(
