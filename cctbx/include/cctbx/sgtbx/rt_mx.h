@@ -411,7 +411,7 @@ namespace cctbx { namespace sgtbx {
         grid[ir], norm_denominator(t_[ir], t_.den()));
       for(std::size_t ic=0;ic<3;ic++) {
         result[ir] = boost::lcm(
-          result[ir], norm_denominator(r_(ir, ic), grid[ic]));
+          result[ir], norm_denominator(this->r_(ir, ic), grid[ic]));
       }
     }
     return result;
