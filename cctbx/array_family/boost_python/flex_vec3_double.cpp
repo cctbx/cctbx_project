@@ -1,12 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Sep: Created (R.W. Grosse-Kunstleve)
- */
-
 #include <cctbx/boost_python/flex_fwd.h>
 
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
@@ -119,7 +110,7 @@ namespace scitbx { namespace af { namespace boost_python {
       af::const_ref<vec3<double> > const& a,
       mat3<double> const& m)
     {
-      af::shared<vec3<double> > result;
+      af::shared<vec3<double> > result((af::reserve(a.size())));
       for(std::size_t i=0;i<a.size();i++) {
         result.push_back(a[i] * m);
       }
@@ -132,7 +123,7 @@ namespace scitbx { namespace af { namespace boost_python {
       mat3<double> const& m)
     {
       mat3<double> m_transposed = m.transpose();
-      af::shared<vec3<double> > result;
+      af::shared<vec3<double> > result((af::reserve(a.size())));
       for(std::size_t i=0;i<a.size();i++) {
         result.push_back(a[i] * m_transposed);
       }
