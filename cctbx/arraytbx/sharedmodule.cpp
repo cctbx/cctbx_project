@@ -23,6 +23,20 @@
 namespace {
 
   cctbx::af::shared<double>
+  py_reinterpret_complex_as_real(
+    cctbx::af::shared<std::complex<double> > a)
+  {
+    return cctbx::af::shared<double>(a.handle());
+  }
+
+  cctbx::af::shared<std::complex<double> >
+  py_reinterpret_real_as_complex(
+    cctbx::af::shared<double> a)
+  {
+    return cctbx::af::shared<std::complex<double> >(a.handle());
+  }
+
+  cctbx::af::shared<double>
   py_square(const cctbx::af::shared<double>& a) {
     cctbx::af::shared<double> result(a.size()); // FUTURE: avoid default init.
     for(std::size_t i=0;i<a.size();i++) {
@@ -172,6 +186,11 @@ namespace {
     WRAP_TYPE("size_t", size_t);
     typedef cctbx::af::tiny<size_t, 2> tiny_size_t_2;
     WRAP_TYPE("tiny_size_t_2", tiny_size_t_2);
+
+    this_module.def(py_reinterpret_complex_as_real,
+      "reinterpret_complex_as_real");
+    this_module.def(py_reinterpret_real_as_complex,
+      "reinterpret_real_as_complex");
 
     this_module.def(py_square, "square");
     this_module.def(py_abs_complex, "abs");
