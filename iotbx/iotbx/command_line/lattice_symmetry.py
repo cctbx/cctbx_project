@@ -19,8 +19,8 @@ def run():
       dest="delta",
       help="angular tolerance in degrees")
   ).process(max_nargs=1)
-  crystal_symmetry = command_line.symmetry
-  if (crystal_symmetry.unit_cell() is None):
+  input_symmetry = command_line.symmetry
+  if (input_symmetry.unit_cell() is None):
     print "***********************************"
     print "Please specify unit cell parameters"
     print "***********************************"
@@ -28,21 +28,25 @@ def run():
     sys.stdout.write(command_line.parser.format_help())
     return
   if (len(command_line.args) > 0):
-    crystal_symmetry = crystal.symmetry(
-      unit_cell=crystal_symmetry.unit_cell(),
+    input_symmetry = crystal.symmetry(
+      unit_cell=input_symmetry.unit_cell(),
       space_group_symbol="Hall: %s 1" % command_line.args[0])
-  elif (crystal_symmetry.space_group_info() is None):
-    crystal_symmetry = crystal.symmetry(
-      unit_cell=crystal_symmetry.unit_cell(),
+  elif (input_symmetry.space_group_info() is None):
+    input_symmetry = crystal.symmetry(
+      unit_cell=input_symmetry.unit_cell(),
       space_group_symbol="P 1")
-  print "Input:"
-  print crystal_symmetry.unit_cell(),
-  crystal_symmetry.space_group_info().show_summary()
-  print "angular tolerance:", command_line.options.delta, "degrees"
+  print "Input"
+  print "====="
   print
-  print "Similar symmetries:"
-  niggli_cb_op = crystal_symmetry.change_of_basis_op_to_niggli_cell()
-  niggli_symmetry = crystal_symmetry.change_basis(niggli_cb_op)
+  input_symmetry.show_summary()
+  print
+  print "Angular tolerance:", command_line.options.delta, "degrees"
+  print
+  print "Similar symmetries"
+  print "=================="
+  print
+  cb_op_inp_niggli = input_symmetry.change_of_basis_op_to_niggli_cell()
+  niggli_symmetry = input_symmetry.change_basis(cb_op_inp_niggli)
   lattice_group = lattice_symmetry.group(
     niggli_symmetry.unit_cell(), max_delta=command_line.options.delta)
   lattice_group_info = sgtbx.space_group_info(group=lattice_group)
@@ -52,20 +56,23 @@ def run():
     order_z.append(group.order_z())
   perm = flex.sort_permutation(order_z, 0001)
   for i_subgrs in perm:
-    group = subgrs[i_subgrs]
     subsym = crystal.symmetry(
       unit_cell=niggli_symmetry.unit_cell(),
-      space_group=group,
+      space_group=subgrs[i_subgrs],
       assert_is_compatible_unit_cell=00000)
-    try: subsym = subsym.change_basis(niggli_cb_op.inverse())
-    except: reference_cell = niggli_symmetry.unit_cell()
-    else: reference_cell = crystal_symmetry.unit_cell()
-    if (subsym.unit_cell().is_similar_to(reference_cell)):
-      print "*",
-    else:
-      print " ",
-    print subsym.unit_cell(),
-    subsym.space_group_info().show_summary()
+    subsym.space_group_info().show_summary(
+      prefix="Symmetry in Niggli cell: ")
+    print "      Input Niggli cell:", niggli_symmetry.unit_cell()
+    print "  Symmetry-adapted cell:", subsym.unit_cell()
+    cb_op_niggli_ref = subsym.space_group_info().type().cb_op()
+    ref_subsym = subsym.change_basis(cb_op_niggli_ref)
+    ref_subsym.space_group_info().show_summary(
+      prefix="   Conventional setting: ")
+    print "              Unit cell:", ref_subsym.unit_cell()
+    cb_op_inp_ref = cb_op_niggli_ref * cb_op_inp_niggli
+    print "        Change of basis:", cb_op_inp_ref.c()
+    print "                Inverse:", cb_op_inp_ref.c_inv()
+    print
 
 if (__name__ == "__main__"):
   run()
