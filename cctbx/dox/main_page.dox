@@ -63,6 +63,21 @@ main author of the Boost.Python library, for his generous help.
 
 <hr>
 
+\section audience Audience
+
+The %cctbx package is of most use for developers of software for
+computational crystallography. However, the Python interface will
+also enable crystallographers who are less software oriented to use
+the algorithms implemented in the %cctbx. The Python interface could
+also be useful in teaching crystallography.
+
+\par
+The fastest way of getting started with the %cctbx Python interface
+is to use the pre-compiled Python modules for Windows. See the
+\ref page_installation section for more details.
+
+<hr>
+
 \section getting_started Getting started
 
 The main classes of the %cctbx are class <tt>uctbx::UnitCell</tt> and
