@@ -153,9 +153,11 @@ namespace cctbx {
         long use_count() const             { return *pn; } 
         bool unique() const                { return *pn == 1; } 
 
+        //! do not swap the other handle's reference counter.
+        //! it is assumed that we keep the current reference
+        //! count and only exchange the data.
         void swap(handle<element_type>& other) 
-         { std::swap(px,other.px); 
-           std::swap(pn,other.pn);}
+         { std::swap(px,other.px); }
 
         void resize(const size_type& s)
           {px->resize(s);}
@@ -225,6 +227,7 @@ namespace cctbx {
         explicit dynamic(const dynamic<ValueType2>& r):
           m_handle (element_size() * r.size())
         {
+          std::cout<<"...templated copy constructor"<<std::endl;
           std::copy(r.begin(), r.end(), this->begin());
         }
 
@@ -233,6 +236,7 @@ namespace cctbx {
         //! in general rhs must be initialized first
         template <class ValueType2>
         dynamic<value_type> operator= (const dynamic<ValueType2>& r) {
+          std::cout<<"...templated assignment operator"<<std::endl;
           assert (this->size() == r.size());        
           std::copy(r.begin(), r.end(), this->begin());
           return *this;
@@ -281,6 +285,18 @@ namespace cctbx {
           this->operator[](size()-1)=value;
         }
 
+        //! swaps in the data from another handle but preserves reference count
+        void swap(dynamic<value_type>& other) {
+          m_handle.swap(other.m_handle);
+        }
+
+        //! assign a scalar value to all elements of the array
+        //! default value is taken from default constructor of value_type
+        void assign(const value_type& value = value_type()) {
+          for (iterator position = begin(); position!=end(); ++position) {
+            *position = value;
+          }
+        }
       protected:
         handle_type m_handle;
     };
