@@ -501,6 +501,9 @@ def fit_with_golay_starts(label,
         if (good_min.max_error <= params.negligible_max_error):
           break
   if (print_to is not None):
+    print >> print_to, "Total number of Golay codes processed:", \
+      n_golay_codes_processed
+    print >> print_to
     if (good_min is None):
       print >> print_to, "Final: %s: No successful minimization." % label
     else:
