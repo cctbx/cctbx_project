@@ -108,6 +108,7 @@ class array_cache:
     print
 
   def show_perfect_merohedral_twinning_test(self, n_bins=None):
+    if (self.input.space_group().is_centric()): return
     print "Perfect merohedral twinning test for %s:"%str(self.input.info())
     acentric = self.input.select_acentric()
     assert acentric.observation_type() is self.input.observation_type()
