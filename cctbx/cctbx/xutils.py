@@ -164,6 +164,13 @@ class reciprocal_space_array(miller_set):
     if (self.sigmas): s = self.sigmas.select(flags)
     return reciprocal_space_array(miller_set(self, h), f, s)
 
+  def resolution_range(self):
+    min_max_d_star_sq  = self.UnitCell.min_max_Q(self.H)
+    result = []
+    for d_star_sq in min_max_d_star_sq:
+      result.append(1 / math.sqrt(d_star_sq))
+    return tuple(result)
+
   def resolution_filter(self, d_max=0, d_min=0, negate=0):
     d = self.d_spacings().F
     keep = self.all_selection()
@@ -251,13 +258,17 @@ class symmetrized_sites(crystal_symmetry):
   def __init__(self, xsym, sites = None,
                MinMateDistance = 0.5,
                Ustar_tolerance = 0.1,
-               TestPositiveDefiniteness = 1):
+               TestPositiveDefiniteness = 1,
+               keep_special_position_operators = 1):
     crystal_symmetry.__init__(self, xsym.UnitCell, xsym.SgInfo)
     self.MinMateDistance = MinMateDistance
     self.Ustar_tolerance = Ustar_tolerance
     self.TestPositiveDefiniteness = TestPositiveDefiniteness
     self.Sites = shared.XrayScatterer()
-    self.SpecialPositionOps = shared.RTMx()
+    if (keep_special_position_operators):
+      self.SpecialPositionOps = shared.RTMx()
+    else:
+      self.SpecialPositionOps = None
     self.SnapParameters = sgtbx.SpecialPositionSnapParameters(
       self.UnitCell, self.SgOps, 1, self.MinMateDistance)
     if (sites):
@@ -270,6 +281,7 @@ class symmetrized_sites(crystal_symmetry):
       TestPositiveDefiniteness = self.TestPositiveDefiniteness)
 
   def n_special_positions(self):
+    assert self.SpecialPositionOps != None
     n = 0
     for special_op in self.SpecialPositionOps:
       if (not special_op.isUnit()):
@@ -287,7 +299,8 @@ class symmetrized_sites(crystal_symmetry):
       self.TestPositiveDefiniteness)
     special_op = site_symmetry.SpecialOp()
     self.Sites.append(site)
-    self.SpecialPositionOps.append(special_op)
+    if (self.SpecialPositionOps != None):
+      self.SpecialPositionOps.append(special_op)
 
   def add_sites(self, sites):
     for site in sites:
@@ -305,7 +318,7 @@ def build_miller_set(xsym, friedel_flag, d_min):
       xsym.UnitCell, xsym.SgInfo, friedel_flag, d_min)).set_friedel_flag(
         friedel_flag)
 
-def calculate_structure_factors(miller_set_obj, xtal, abs_F = 0):
+def calculate_structure_factors_direct(miller_set_obj, xtal, abs_F=0):
   F = sftbx.StructureFactorArray(
     miller_set_obj.UnitCell, miller_set_obj.SgOps, miller_set_obj.H,
     xtal.Sites)
@@ -314,20 +327,20 @@ def calculate_structure_factors(miller_set_obj, xtal, abs_F = 0):
   result.symmetrized_sites = xtal
   return result
 
-def calculate_structure_factors_fft(miller_set_obj, xtal, abs_F = 0):
+def calculate_structure_factors_fft(miller_set_obj, xtal, abs_F=0,
+                                    grid_resolution_factor=1/3.,
+                                    max_prime=5,
+                                    quality_factor=100,
+                                    wing_cutoff=1.e-3,
+                                    exp_table_one_over_step_size=-100):
   from cctbx_boost import fftbx
   max_q = xtal.UnitCell.max_Q(miller_set_obj.H)
-  grid_resolution_factor = 1/3.
-  max_prime = 5
   mandatory_grid_factors = xtal.SgOps.refine_gridding()
   grid_logical = sftbx.determine_grid(
     xtal.UnitCell,
     max_q, grid_resolution_factor, max_prime, mandatory_grid_factors)
   rfft = fftbx.real_to_complex_3d(grid_logical)
-  quality_factor = 100
   u_extra = sftbx.calc_u_extra(max_q, grid_resolution_factor, quality_factor)
-  wing_cutoff = 1.e-3
-  exp_table_one_over_step_size = -100
   force_complex = 0
   electron_density_must_be_positive = 1
   sampled_density = sftbx.sampled_model_density(
@@ -357,6 +370,21 @@ def calculate_structure_factors_fft(miller_set_obj, xtal, abs_F = 0):
   if (abs_F): fcalc = shared.abs(fcalc)
   result = reciprocal_space_array(miller_set_obj, fcalc)
   result.symmetrized_sites = xtal
+  return result
+
+def calculate_structure_factors(miller_set_obj, xtal, abs_F=0, method=0):
+  assert method in (0, "fft", "direct")
+  if (method == 0):
+    approx_number_of_atoms = xtal.Sites.size() * xtal.SgOps.OrderZ()
+    if (approx_number_of_atoms > 30):
+      method = "fft"
+    else:
+      method = "direct"
+  if (method == "fft"):
+    result = calculate_structure_factors_fft(miller_set_obj, xtal, abs_F)
+  else:
+    result = calculate_structure_factors_direct(miller_set_obj, xtal, abs_F)
+  result.fcalc_method = method
   return result
 
 def f_as_ampl_phase(f, deg=1):

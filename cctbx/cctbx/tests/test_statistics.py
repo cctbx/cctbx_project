@@ -21,7 +21,8 @@ def exercise(SgInfo, d_min=1.0, reflections_per_bin=200, n_bins=10, verbose=0):
     print "Space group:", xtal.SgInfo.BuildLookupSymbol()
     debug_utils.print_sites(xtal)
   miller_set = xutils.build_miller_set(xtal, friedel_flag, d_min)
-  fcalc_set = xutils.calculate_structure_factors(miller_set, xtal, abs_F=1)
+  fcalc_set = xutils.calculate_structure_factors_direct(
+    miller_set, xtal, abs_F=1)
   fcalc_set.setup_binner(
     auto_binning=1, reflections_per_bin=reflections_per_bin, n_bins=n_bins)
   if (0 or verbose):

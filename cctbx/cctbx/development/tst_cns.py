@@ -93,7 +93,7 @@ def exercise(SgInfo, d_min=2., friedel_flag=0, verbose=0):
     min_distance=1.5,
     general_positions_only=0)
   sg_miller_set = xutils.build_miller_set(xtal, friedel_flag, d_min)
-  sg_fcalc_set = xutils.calculate_structure_factors(sg_miller_set, xtal)
+  sg_fcalc_set = xutils.calculate_structure_factors_direct(sg_miller_set, xtal)
   sg_hl = generate_random_hl(sg_miller_set)
   write_cns_input(sg_miller_set, sg_fcalc_set, sg_hl)
   try: os.unlink("tmp.hkl")

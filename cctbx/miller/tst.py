@@ -102,7 +102,8 @@ def exercise_bins(SgInfo, n_bins=10, d_min=1, verbose=0):
     print "Unit cell:", xtal.UnitCell
     print "Space group:", xtal.SgInfo.BuildLookupSymbol()
   miller_set = xutils.build_miller_set(xtal, friedel_flag, d_min)
-  fcalc_set = xutils.calculate_structure_factors(miller_set, xtal, abs_F=1)
+  fcalc_set = xutils.calculate_structure_factors_direct(
+    miller_set, xtal, abs_F=1)
   binning1 = miller.binning(xtal.UnitCell, n_bins, miller_set.H)
   assert binning1.n_bins_used() == n_bins
   assert binning1.limits().size() == n_bins + 1

@@ -70,7 +70,7 @@ def print_structure_factors(SgInfo,
   print xtal.UnitCell
   debug_utils.print_sites(xtal)
   miller_set = xutils.build_miller_set(xtal, friedel_flag, d_min)
-  Fcalc = xutils.calculate_structure_factors(miller_set, xtal)
+  Fcalc = xutils.calculate_structure_factors_direct(miller_set, xtal)
   debug_utils.print_structure_factors(Fcalc)
   fcalc_fft = xutils.calculate_structure_factors_fft(miller_set, xtal)
   debug_utils.show_structure_factor_correlation(

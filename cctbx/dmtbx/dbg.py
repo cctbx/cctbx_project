@@ -157,7 +157,8 @@ class simulated_data:
       miller_set.H.append((0,2,0))
       miller_set.H.append((1,1,15))
     miller_set.H.append((0,0,0))
-    Fcalc = xutils.calculate_structure_factors(miller_set, xtal, abs_F=1)
+    Fcalc = xutils.calculate_structure_factors_direct(
+      miller_set, xtal, abs_F=1)
     print "F000:", Fcalc.F[miller_set.H.size()-1]
     e_values = Fcalc.F
     inplace_divide(
@@ -174,7 +175,8 @@ class simulated_data:
     print "number of structure factors:", e_values.size()
     if (0): # XXX
       normalize_quasi_normalized(xtal.SgOps, miller_set.H, e_values)
-    Fcalc = xutils.calculate_structure_factors(miller_set, xtal, abs_F=0)
+    Fcalc = xutils.calculate_structure_factors_direct(
+      miller_set, xtal, abs_F=0)
     dummy, phases = ampl_phase(Fcalc.F) # XXX use shared.arg()
     Fcalc.F = e_values
     if (0 or verbose):
