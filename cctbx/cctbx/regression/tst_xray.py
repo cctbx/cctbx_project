@@ -34,6 +34,13 @@ def exercise_structure():
   sh = p1.apply_shift((0.2,0.3,-1/6.))
   assert approx_equal(sh.scatterers()[0].site, (0.7,0.8,1/6.))
   assert approx_equal(sh.scatterers()[3].site, (0.3970,0.1030,2/3.))
+  sl = sh[:1]
+  assert sl.scatterers().size() == 1
+  assert sl.scatterers()[0].label == sh.scatterers()[0].label
+  sl = sh[1:4]
+  assert sl.scatterers().size() == 3
+  for i in xrange(3):
+    assert sl.scatterers()[i].label == sh.scatterers()[i+1].label
   xs.scatterers().set_occupancies(flex.double((0.5,0.2)))
   s = xs.sort(by_value="occupancy")
   assert approx_equal(s.scatterers().extract_occupancies(), (0.2,0.5))

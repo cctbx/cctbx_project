@@ -17,6 +17,7 @@ from cctbx import matrix
 from scitbx import fftpack
 from scitbx.python_utils import dicts
 from scitbx.python_utils.misc import adopt_init_args
+import types
 import sys
 
 def scatterer(label="",
@@ -96,6 +97,13 @@ class structure(crystal.special_position_settings):
 
   def special_position_indices(self):
     return self._special_position_indices
+
+  def __getitem__(self, slice_object):
+    assert type(slice_object) == types.SliceType
+    assert self.scatterers() is not None
+    return structure(
+      special_position_settings=self,
+      scatterers=self.scatterers().__getitem__(slice_object))
 
   def add_scatterer(self, scatterer):
     i = self.scatterers().size()
