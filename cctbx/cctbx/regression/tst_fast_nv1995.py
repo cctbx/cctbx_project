@@ -27,10 +27,7 @@ def run_fast_nv1995(f_obs_array, f_calc_fixed_array, f_calc_p1_array,
   assert fast_nv1995.target_map().all() == gridding.target()
   map_stats = maptbx.statistics(fast_nv1995.target_map())
   if (0 or verbose):
-    print "max %.6g" % (map_stats.max())
-    print "min %.6g" % (map_stats.min())
-    print "mean %.6g" % (map_stats.mean())
-    print "sigma %.6g" % (map_stats.sigma())
+    map_stats.show_summary()
   grid_tags.build(f_obs_array.space_group_info().type(), symmetry_flags)
   assert grid_tags.n_grid_misses() == 0
   assert grid_tags.verify(fast_nv1995.target_map())

@@ -60,6 +60,55 @@ namespace cctbx { namespace maptbx { namespace structure_factors {
   };
 
   template <typename FloatType = double>
+  class to_under_sampled_map
+  {
+    public:
+      template <typename OtherFloatType>
+      to_under_sampled_map(
+        sgtbx::space_group const& space_group,
+        bool anomalous_flag,
+        af::const_ref<miller::index<> > const& miller_indices,
+        af::const_ref<std::complex<OtherFloatType> > const& structure_factors,
+        af::int3 const& n_real,
+        af::flex_grid<> const& map_grid,
+        bool conjugate_flag)
+      :
+        complex_map_(af::c_grid_padded<3>(map_grid))
+      {
+        CCTBX_ASSERT(map_grid.all().all_ge(map_grid.focus()));
+        af::int3 map_grid_focus(complex_map_.accessor().focus());
+        std::size_t count_n_real_not_equal_map_grid_focus = 0;
+        for(std::size_t i=0;i<3;i++) {
+          CCTBX_ASSERT(   map_grid_focus[i] == n_real[i]
+                       || map_grid_focus[i] == n_real[i]/2+1);
+          if (map_grid_focus[i] != n_real[i]) {
+            count_n_real_not_equal_map_grid_focus++;
+          }
+        }
+        CCTBX_ASSERT(count_n_real_not_equal_map_grid_focus <= 1);
+        CCTBX_ASSERT(   anomalous_flag == false
+                     || count_n_real_not_equal_map_grid_focus == 0);
+        for(std::size_t i=0;i<miller_indices.size();i++) {
+          miller::sym_equiv_indices h_eq(space_group, miller_indices[i]);
+          for(int e=0;e<h_eq.multiplicity(anomalous_flag);e++) {
+            miller::sym_equiv_index h_eq_e = h_eq(e);
+            miller::index<> h = h_eq_e.h();
+            if (conjugate_flag) h = -h;
+            af::int3 ih = h_as_ih_array_under_sampled(h, n_real);
+            if (!ih.all_lt(map_grid_focus)) continue;
+            complex_map_(ih) += h_eq_e.complex_eq(structure_factors[i]);
+          }
+        }
+      }
+
+      af::versa<std::complex<FloatType>, af::c_grid_padded<3> >
+      complex_map() const { return complex_map_; }
+
+    protected:
+      af::versa<std::complex<FloatType>, af::c_grid_padded<3> > complex_map_;
+  };
+
+  template <typename FloatType = double>
   class from_map
   {
     public:
@@ -178,7 +227,6 @@ namespace cctbx { namespace maptbx { namespace structure_factors {
       af::shared<miller::index<> > miller_indices_;
       af::shared<std::complex<FloatType> > data_;
   };
-
 }}} // namespace cctbx::maptbx::structure_factors
 
 #endif // CCTBX_MAPTBX_STRUCTURE_FACTORS_H

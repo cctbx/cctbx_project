@@ -6,6 +6,18 @@ misc.import_regular_symbols(globals(), ext.__dict__)
 del misc
 
 from scitbx.python_utils import dicts
+import sys
+
+class statistics(ext.statistics):
+
+  def __init__(self, map):
+    ext.statistics.__init__(self, map)
+
+  def show_summary(self, f=sys.stdout):
+    print >> f, "max %.6g" % (self.max())
+    print >> f, "min %.6g" % (self.min())
+    print >> f, "mean %.6g" % (self.mean())
+    print >> f, "sigma %.6g" % (self.sigma())
 
 def symmetry_flags(use_space_group_symmetry,
                    use_normalizer_k2l=00000,
@@ -33,4 +45,5 @@ def as_CObjectZYX(map_unit_cell, first, last, apply_sigma_scaling=0001):
 
 structure_factors = dicts.easy()
 structure_factors.to_map = structure_factors_to_map
+structure_factors.to_under_sampled_map = structure_factors_to_under_sampled_map
 structure_factors.from_map = structure_factors_from_map
