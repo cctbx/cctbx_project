@@ -16,8 +16,8 @@ int main(int argc, const char* argv[])
       x[j] = -1.2;
       x[j+1] = 1.;
     }
-    cctbx::lbfgs::minimizer<double> minimizer(n);
-    cctbx::lbfgs::traditional_convergence_test<double> is_converged(n);
+    cctbx::lbfgs::minimizer<double, int> minimizer(n);
+    cctbx::lbfgs::traditional_convergence_test<double, int> is_converged(n);
     if (passes == 1) {
       std::cout << "n: " << minimizer.n() << std::endl;
       std::cout << "m: " << minimizer.m() << std::endl;

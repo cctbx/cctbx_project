@@ -168,7 +168,7 @@ namespace lbfgs {
     }
 
     // This class implements an algorithm for multi-dimensional line search.
-    template <typename FloatType>
+    template <typename FloatType, typename SizeType = std::size_t>
     class mcsrch
     {
       protected:
@@ -295,18 +295,18 @@ namespace lbfgs {
           const FloatType& gtol,
           const FloatType& stpmin,
           const FloatType& stpmax,
-          std::size_t n,
+          SizeType n,
           FloatType* x,
           FloatType f,
           const FloatType* g,
           FloatType* s,
-          std::size_t is0,
+          SizeType is0,
           FloatType& stp,
           FloatType ftol,
           FloatType xtol,
-          std::size_t maxfev,
+          SizeType maxfev,
           int& info,
-          std::size_t& nfev,
+          SizeType& nfev,
           FloatType* wa);
 
         /* The purpose of this function is to compute a safeguarded step
@@ -383,23 +383,23 @@ namespace lbfgs {
           FloatType stpmax);
     };
 
-    template <typename FloatType>
-    void mcsrch<FloatType>::run(
+    template <typename FloatType, typename SizeType>
+    void mcsrch<FloatType, SizeType>::run(
       const FloatType& gtol,
       const FloatType& stpmin,
       const FloatType& stpmax,
-      std::size_t n,
+      SizeType n,
       FloatType* x,
       FloatType f,
       const FloatType* g,
       FloatType* s,
-      std::size_t is0,
+      SizeType is0,
       FloatType& stp,
       FloatType ftol,
       FloatType xtol,
-      std::size_t maxfev,
+      SizeType maxfev,
       int& info,
-      std::size_t& nfev,
+      SizeType& nfev,
       FloatType* wa)
     {
       if (info != -1) {
@@ -418,7 +418,7 @@ namespace lbfgs {
         // Compute the initial gradient in the search direction
         // and check that s is a descent direction.
         dginit = FloatType(0);
-        for (std::size_t j = 0; j < n; j++) {
+        for (SizeType j = 0; j < n; j++) {
           dginit += g[j] * s[is0+j];
         }
         if (dginit >= FloatType(0)) {
@@ -471,7 +471,7 @@ namespace lbfgs {
           // Evaluate the function and gradient at stp
           // and compute the directional derivative.
           // We return to main program to obtain F and G.
-          for (std::size_t j = 0; j < n; j++) {
+          for (SizeType j = 0; j < n; j++) {
             x[j] = wa[j] + stp * s[is0+j];
           }
           info=-1;
@@ -480,7 +480,7 @@ namespace lbfgs {
         info = 0;
         nfev++;
         FloatType dg(0);
-        for (std::size_t j = 0; j < n; j++) {
+        for (SizeType j = 0; j < n; j++) {
           dg += g[j] * s[is0+j];
         }
         FloatType ftest1 = finit + stp*dgtest;
@@ -561,8 +561,8 @@ namespace lbfgs {
       }
     }
 
-    template <typename FloatType>
-    int mcsrch<FloatType>::mcstep(
+    template <typename FloatType, typename SizeType>
+    int mcsrch<FloatType, SizeType>::mcstep(
       FloatType& stx,
       FloatType& fx,
       FloatType& dx,
@@ -743,18 +743,18 @@ namespace lbfgs {
        Adapted from the subroutine <code>daxpy</code> in
        <code>lbfgs.f</code>.
      */
-    template <typename FloatType>
+    template <typename FloatType, typename SizeType>
     void daxpy(
-      std::size_t n,
+      SizeType n,
       FloatType da,
       const FloatType* dx,
-      std::size_t ix0,
-      std::size_t incx,
+      SizeType ix0,
+      SizeType incx,
       FloatType* dy,
-      std::size_t iy0,
-      std::size_t incy)
+      SizeType iy0,
+      SizeType incy)
     {
-      std::size_t i, ix, iy, m;
+      SizeType i, ix, iy, m;
       if (n == 0) return;
       if (da == FloatType(0)) return;
       if  (!(incx == 1 && incy == 1)) {
@@ -779,21 +779,33 @@ namespace lbfgs {
       }
     }
 
+    template <typename FloatType, typename SizeType>
+    inline
+    void daxpy(
+      SizeType n,
+      FloatType da,
+      const FloatType* dx,
+      SizeType ix0,
+      FloatType* dy)
+    {
+      daxpy(n, da, dx, ix0, SizeType(1), dy, SizeType(0), SizeType(1));
+    }
+
     /* Compute the dot product of two vectors.
        Adapted from the subroutine <code>ddot</code>
        in <code>lbfgs.f</code>.
      */
-    template <typename FloatType>
+    template <typename FloatType, typename SizeType>
     FloatType ddot(
-      std::size_t n,
+      SizeType n,
       const FloatType* dx,
-      std::size_t ix0,
-      std::size_t incx,
+      SizeType ix0,
+      SizeType incx,
       const FloatType* dy,
-      std::size_t iy0,
-      std::size_t incy)
+      SizeType iy0,
+      SizeType incy)
     {
-      std::size_t i, ix, iy, m, mp1;
+      SizeType i, ix, iy, m, mp1;
       FloatType dtemp(0);
       if (n == 0) return FloatType(0);
       if (!(incx == 1 && incy == 1)) {
@@ -818,6 +830,17 @@ namespace lbfgs {
         dtemp += dx[ix0+i] * dy[iy0+i]; i++;
       }
       return dtemp;
+    }
+
+    template <typename FloatType, typename SizeType>
+    inline
+    FloatType ddot(
+      SizeType n,
+      const FloatType* dx,
+      const FloatType* dy)
+    {
+      return ddot(
+        n, dx, SizeType(0), SizeType(1), dy, SizeType(0), SizeType(1));
     }
 
   } // namespace detail
@@ -874,7 +897,7 @@ namespace lbfgs {
       Compaq C++ V6.5, the C++ implementation is about 15% slower
       than the Fortran implementation.
    */
-  template <typename FloatType>
+  template <typename FloatType, typename SizeType = std::size_t>
   class minimizer
   {
     public:
@@ -930,9 +953,9 @@ namespace lbfgs {
        */
       explicit
       minimizer(
-        std::size_t n,
-        std::size_t m = 5,
-        std::size_t maxfev = 20,
+        SizeType n,
+        SizeType m = 5,
+        SizeType maxfev = 20,
         FloatType gtol = FloatType(0.9),
         FloatType xtol = FloatType(1.e-16),
         FloatType stpmin = FloatType(1.e-20),
@@ -971,15 +994,15 @@ namespace lbfgs {
       }
 
       //! Number of free parameters (as passed to the constructor).
-      std::size_t n() const { return n_; }
+      SizeType n() const { return n_; }
 
       //! Number of corrections kept (as passed to the constructor).
-      std::size_t m() const { return m_; }
+      SizeType m() const { return m_; }
 
       /*! \brief Maximum number of evaluations of the objective function
           (as passed to the constructor).
        */
-      std::size_t maxfev() const { return maxfev_; }
+      SizeType maxfev() const { return maxfev_; }
 
       /*! \brief Control of the accuracy of the line search.
           (as passed to the constructor).
@@ -1028,7 +1051,7 @@ namespace lbfgs {
           <p>
           See also: nfun()
        */
-      std::size_t iter() const { return iter_; }
+      SizeType iter() const { return iter_; }
 
       //! Total number of evaluations of the objective function so far.
       /*! The total number of function evaluations increases by the
@@ -1037,11 +1060,11 @@ namespace lbfgs {
           <p>
           See also: iter()
        */
-      std::size_t nfun() const { return nfun_; }
+      SizeType nfun() const { return nfun_; }
 
       //! Norm of gradient given gradient array of length n().
       FloatType euclidean_norm(const FloatType* a) const {
-        return std::sqrt(detail::ddot(n_, a, 0, 1, a, 0, 1));
+        return std::sqrt(detail::ddot(n_, a, a));
       }
 
       //! Current stepsize.
@@ -1111,7 +1134,7 @@ namespace lbfgs {
       }
 
     protected:
-      static void throw_diagonal_element_not_positive(std::size_t i) {
+      static void throw_diagonal_element_not_positive(SizeType i) {
         throw error_improper_input_data(
           "The " + error::itoa(i) + ". diagonal element of the"
           " inverse Hessian approximation is not positive.");
@@ -1124,10 +1147,10 @@ namespace lbfgs {
         bool diagco,
         FloatType* diag);
 
-      detail::mcsrch<FloatType> mcsrch_instance;
-      const std::size_t n_;
-      const std::size_t m_;
-      const std::size_t maxfev_;
+      detail::mcsrch<FloatType, SizeType> mcsrch_instance;
+      const SizeType n_;
+      const SizeType m_;
+      const SizeType maxfev_;
       const FloatType gtol_;
       const FloatType xtol_;
       const FloatType stpmin_;
@@ -1135,25 +1158,25 @@ namespace lbfgs {
       int iflag_;
       bool requests_f_and_g_;
       bool requests_diag_;
-      std::size_t iter_;
-      std::size_t nfun_;
+      SizeType iter_;
+      SizeType nfun_;
       FloatType stp_;
       FloatType stp1;
       FloatType ftol;
       FloatType ys;
-      std::size_t point;
-      std::size_t npt;
-      const std::size_t ispt;
-      const std::size_t iypt;
+      SizeType point;
+      SizeType npt;
+      const SizeType ispt;
+      const SizeType iypt;
       int info;
-      std::size_t bound;
-      std::size_t nfev;
+      SizeType bound;
+      SizeType nfev;
       std::vector<FloatType> w_;
       std::vector<FloatType> diag_;
   };
 
-  template <typename FloatType>
-  bool minimizer<FloatType>::generic_run(
+  template <typename FloatType, typename SizeType>
+  bool minimizer<FloatType, SizeType>::generic_run(
     FloatType* x,
     FloatType f,
     const FloatType* g,
@@ -1170,7 +1193,7 @@ namespace lbfgs {
     if (iflag_ == 0) { // Initialize.
       nfun_ = 1;
       if (diagco) {
-        for (std::size_t i = 0; i < n_; i++) {
+        for (SizeType i = 0; i < n_; i++) {
           if (diag[i] <= FloatType(0)) {
             throw_diagonal_element_not_positive(i);
           }
@@ -1179,10 +1202,10 @@ namespace lbfgs {
       else {
         std::fill_n(diag, n_, FloatType(1));
       }
-      for (std::size_t i = 0; i < n_; i++) {
+      for (SizeType i = 0; i < n_; i++) {
         w[ispt + i] = -g[i] * diag[i];
       }
-      FloatType gnorm = std::sqrt(detail::ddot(n_, g, 0, 1, g, 0, 1));
+      FloatType gnorm = std::sqrt(detail::ddot(n_, g, g));
       if (gnorm == FloatType(0)) return false;
       stp1 = FloatType(1) / gnorm;
       execute_entire_while_loop = true;
@@ -1193,9 +1216,11 @@ namespace lbfgs {
       info = 0;
       if (iter_ != 1) {
         if (iter_ > m_) bound = m_;
-        ys = detail::ddot(n_, w, iypt + npt, 1, w, ispt + npt, 1);
+        ys = detail::ddot(
+          n_, w, iypt + npt, SizeType(1), w, ispt + npt, SizeType(1));
         if (!diagco) {
-          FloatType yy = detail::ddot(n_, w, iypt+npt, 1, w, iypt+npt, 1);
+          FloatType yy = detail::ddot(
+            n_, w, iypt + npt, SizeType(1), w, iypt + npt, SizeType(1));
           std::fill_n(diag, n_, ys / yy);
         }
         else {
@@ -1208,16 +1233,16 @@ namespace lbfgs {
     if (execute_entire_while_loop || iflag_ == 2) {
       if (iter_ != 1) {
         if (diagco) {
-          for (std::size_t i = 0; i < n_; i++) {
+          for (SizeType i = 0; i < n_; i++) {
             if (diag[i] <= FloatType(0)) {
               throw_diagonal_element_not_positive(i);
             }
           }
         }
-        std::size_t cp = point;
+        SizeType cp = point;
         if (point == 0) cp = m_;
         w[n_ + cp -1] = 1 / ys;
-        std::size_t i;
+        SizeType i;
         for (i = 0; i < n_; i++) {
           w[i] = -g[i];
         }
@@ -1225,22 +1250,24 @@ namespace lbfgs {
         for (i = 0; i < bound; i++) {
           if (cp == 0) cp = m_;
           cp--;
-          FloatType sq = detail::ddot(n_, w, ispt + cp * n_, 1, w, 0, 1);
-          std::size_t inmc=n_+m_+cp;
-          std::size_t iycn=iypt+cp*n_;
+          FloatType sq = detail::ddot(
+            n_, w, ispt + cp * n_, SizeType(1), w, SizeType(0), SizeType(1));
+          SizeType inmc=n_+m_+cp;
+          SizeType iycn=iypt+cp*n_;
           w[inmc] = w[n_ + cp] * sq;
-          detail::daxpy(n_, -w[inmc], w, iycn, 1, w, 0, 1);
+          detail::daxpy(n_, -w[inmc], w, iycn, w);
         }
         for (i = 0; i < n_; i++) {
           w[i] *= diag[i];
         }
         for (i = 0; i < bound; i++) {
-          FloatType yr = detail::ddot(n_, w, iypt + cp * n_, 1, w, 0, 1);
+          FloatType yr = detail::ddot(
+            n_, w, iypt + cp * n_, SizeType(1), w, SizeType(0), SizeType(1));
           FloatType beta = w[n_ + cp] * yr;
-          std::size_t inmc=n_+m_+cp;
+          SizeType inmc=n_+m_+cp;
           beta = w[inmc] - beta;
-          std::size_t iscn=ispt+cp*n_;
-          detail::daxpy(n_, beta, w, iscn, 1, w, 0, 1);
+          SizeType iscn=ispt+cp*n_;
+          detail::daxpy(n_, beta, w, iscn, w);
           cp++;
           if (cp == m_) cp = 0;
         }
@@ -1263,7 +1290,7 @@ namespace lbfgs {
     }
     nfun_ += nfev;
     npt = point*n_;
-    for (std::size_t i = 0; i < n_; i++) {
+    for (SizeType i = 0; i < n_; i++) {
       w[ispt + npt + i] = stp_ * w[ispt + npt + i];
       w[iypt + npt + i] = g[i] - w[i];
     }
@@ -1280,7 +1307,7 @@ namespace lbfgs {
       vector <code>g</code>. Therefore this test should not be used if
       this assumption is not correct for a given problem.
    */
-  template <typename FloatType>
+  template <typename FloatType, typename SizeType = std::size_t>
   class traditional_convergence_test
   {
     public:
@@ -1298,7 +1325,7 @@ namespace lbfgs {
        */
       explicit
       traditional_convergence_test(
-        std::size_t n,
+        SizeType n,
         FloatType eps = FloatType(1.e-5))
       : n_(n), eps_(eps)
       {
@@ -1311,7 +1338,7 @@ namespace lbfgs {
       }
 
       //! Number of free parameters (as passed to the constructor).
-      std::size_t n() const { return n_; }
+      SizeType n() const { return n_; }
 
       /*! \brief Accuracy with which the solution is to be found
           (as passed to the constructor).
@@ -1333,13 +1360,13 @@ namespace lbfgs {
       bool
       operator()(const FloatType* x, const FloatType* g) const
       {
-        FloatType xnorm = std::sqrt(detail::ddot(n_, x, 0, 1, x, 0, 1));
-        FloatType gnorm = std::sqrt(detail::ddot(n_, g, 0, 1, g, 0, 1));
+        FloatType xnorm = std::sqrt(detail::ddot(n_, x, x));
+        FloatType gnorm = std::sqrt(detail::ddot(n_, g, g));
         if (gnorm <= eps_ * std::max(FloatType(1), xnorm)) return true;
         return false;
       }
     protected:
-      const std::size_t n_;
+      const SizeType n_;
       const FloatType eps_;
   };
 
@@ -1382,7 +1409,7 @@ namespace lbfgs {
           </pre>
       </ul>
    */
-  template <typename FloatType>
+  template <typename FloatType, typename SizeType = std::size_t>
   class drop_convergence_test
   {
     public:
@@ -1392,7 +1419,7 @@ namespace lbfgs {
        */
       explicit
       drop_convergence_test(
-        std::size_t p = 5,
+        SizeType p = 5,
         FloatType max_drop_eps = FloatType(1.e-5),
         FloatType slope_eps = FloatType(1.e-4))
       : p_(p), max_drop_eps_(max_drop_eps), slope_eps_(slope_eps),
@@ -1412,7 +1439,7 @@ namespace lbfgs {
       /*! \brief Number of most recent objective function values used
            in fit of straight lines (as passed to the constructor).
        */
-      std::size_t p() const { return p_; }
+      SizeType p() const { return p_; }
 
       /*! \brief Base tolerance for test of drop of objective function
            (as passed to the constructor).
@@ -1440,7 +1467,7 @@ namespace lbfgs {
       FloatType max_drop() const { return max_drop_; }
 
     protected:
-      const std::size_t p_;
+      const SizeType p_;
       const FloatType max_drop_eps_;
       const FloatType slope_eps_;
       af::shared<FloatType> x_;
@@ -1449,9 +1476,9 @@ namespace lbfgs {
       FloatType max_drop_;
   };
 
-  template <typename FloatType>
+  template <typename FloatType, typename SizeType>
   bool
-  drop_convergence_test<FloatType>::operator()(FloatType f)
+  drop_convergence_test<FloatType, SizeType>::operator()(FloatType f)
   {
     if (x_.size()) {
       max_drop_ = std::max(max_drop_, y_.back() - f);
@@ -1479,7 +1506,7 @@ namespace lbfgs {
     FloatType s = linreg_ln_y.m();
     // compute exponentially fitted values for last p_ points
     af::shared<FloatType> ideal_y;
-    for(std::size_t i = x_.size() - p_; i < x_.size(); i++) {
+    for(SizeType i = x_.size() - p_; i < x_.size(); i++) {
       ideal_y.push_back(r * std::exp(s * x_[i]));
     }
     // fit computed values to straight line

@@ -103,7 +103,7 @@ namespace cctbx { namespace math {
         size_type n = x.size();
         cctbx_assert(n == y.size());
         if (n == 0) {
-          reset();
+          this->reset();
           return;
         }
         value_type min_x = x[0];
