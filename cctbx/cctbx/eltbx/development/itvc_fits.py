@@ -1,5 +1,6 @@
 from cctbx.eltbx.development import itvc_section61_io
 from cctbx.eltbx.development import rez_rez_grant
+from cctbx.eltbx.development.create_n_gaussian_raw_cpp import identifier
 from cctbx.eltbx import xray_scattering
 import scitbx.math.gaussian_fit
 import cctbx.eltbx.gaussian_fit
@@ -18,7 +19,7 @@ def run(file_name, args, cutoff, params,
   if (len(args) > 0 and len(args[0].split(",")) == 2):
     chunk_n, chunk_i = [int(i) for i in args[0].split(",")]
     args = args[1:]
-  if (not six_term):
+  if (not six_term and not zig_zag):
     if (not os.path.isdir(plots_dir)):
       print "No plots because target directory does not exist (mkdir %s)." % \
         plots_dir
@@ -96,7 +97,8 @@ def run(file_name, args, cutoff, params,
       results[wk.label()] = [xray_scattering.fitted_gaussian(
         stol=g.table_x()[-1], gaussian_sum=g)]
     sys.stdout.flush()
-    easy_pickle.dump("fits_%02d.pickle" % chunk_i, results)
+    pickle_file_name = "%s_fits.pickle" % identifier(wk.label())
+    easy_pickle.dump(pickle_file_name, results)
 
 def run_and_time(*args, **kw):
   timer = user_plus_sys_time()

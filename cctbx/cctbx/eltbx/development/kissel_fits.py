@@ -1,4 +1,5 @@
 from cctbx.eltbx.development import kissel_io
+from cctbx.eltbx.development.create_n_gaussian_raw_cpp import identifier
 from cctbx.eltbx import xray_scattering
 import scitbx.math.gaussian_fit
 import cctbx.eltbx.gaussian_fit
@@ -64,7 +65,8 @@ def run(args, cutoff, max_n_terms, six_term=00000, params=None,
       results[tab.element] = [xray_scattering.fitted_gaussian(
         stol=g.table_x()[-1], gaussian_sum=g)]
     sys.stdout.flush()
-    easy_pickle.dump("fits_%02d.pickle" % chunk_i, results)
+    pickle_file_name = "%s_fits.pickle" % identifier(tab.element)
+    easy_pickle.dump(pickle_file_name, results)
 
 def run_and_time(*args, **kw):
   timer = user_plus_sys_time()
