@@ -766,6 +766,62 @@ def exercise_phase_error():
       reference=flex.double([-30*f]),
       other=flex.double([345*f]), deg=deg), [-15*f])
 
+def exercise_row_echelon():
+  m = flex.int((1,1,1,1))
+  m.resize(flex.grid(2,2))
+  t = flex.int((2,3))
+  t.resize(flex.grid(2,1))
+  assert scitbx.math.row_echelon_form_t(m, t) == 1
+  assert m.focus() == (1,2)
+  assert tuple(m) == (1,1)
+  assert tuple(t) == (2,1)
+  assert scitbx.math.row_echelon_form(m) == 1
+  assert m.focus() == (1,2)
+  assert tuple(m) == (1,1)
+  m = flex.int((0,-24,0,0,0,-24,24,0,24))
+  m.resize(flex.grid(3,3))
+  t = flex.int((-3, -6, 0))
+  t.resize(flex.grid(3,1))
+  assert scitbx.math.row_echelon_form_t(m, t) == 3
+  assert tuple(m) == (24,0,24,0,24,0,0,0,24)
+  assert tuple(t) == (0,3,6)
+  t.resize(flex.grid(3))
+  sol = flex.int(3)
+  assert scitbx.math.row_echelon_back_substitution_int(m, t, sol) == 8
+  assert tuple(sol) == (-2,1,2)
+  indep = flex.bool((True,True,True))
+  assert scitbx.math.row_echelon_back_substitution_int(
+    row_echelon_form=m, independent_flags=indep) == 1
+  assert tuple(indep) == (False,False,False)
+  #
+  for n_cols in xrange(1,5):
+    for n_rows in xrange(5):
+      for i_trial in xrange(10):
+        m = flex.int()
+        for i in xrange(n_rows):
+          coeffs = flex.int([random.randrange(-5,5) for j in xrange(n_cols)])
+          m.extend(coeffs)
+        m.resize(flex.grid(n_rows,n_cols))
+        rank = scitbx.math.row_echelon_form(m)
+        assert m.focus()[0] == rank
+        assert m.focus()[1] == n_cols
+        indep = flex.bool(n_cols, True)
+        scitbx.math.row_echelon_back_substitution_int(
+          row_echelon_form=m, independent_flags=indep)
+        mm = matrix.rec(m, m.focus())
+        s = matrix.col([random.random() for j in xrange(n_cols)])
+        sol = flex.double(n_cols, 0)
+        sol.set_selected(indep, flex.double(s).select(indep))
+        assert scitbx.math.row_echelon_back_substitution_float(
+          row_echelon_form=m, solution=sol, v=flex.double(mm * s))
+        assert approx_equal(sol, s)
+        sol = flex.double(n_cols, 0)
+        sol.set_selected(indep, flex.double(s).select(indep))
+        assert scitbx.math.row_echelon_back_substitution_float(
+          row_echelon_form=m, solution=sol)
+        zeros = mm * matrix.col(sol)
+        assert approx_equal(zeros, [0]*rank)
+
 def exercise_minimum_covering_sphere(epsilon=1.e-3):
   s3 = sphere_3d(center=[1,2,3], radius=4)
   assert approx_equal(s3.center(), [1,2,3])
@@ -894,6 +950,7 @@ def run():
   exercise_golay()
   exercise_principal_axes_of_inertia()
   exercise_phase_error()
+  exercise_row_echelon()
   forever = "--Forever" in sys.argv[1:]
   while 1:
     exercise_minimum_covering_sphere()

@@ -90,3 +90,19 @@ def minimum_covering_sphere(points, epsilon=None):
     return minimum_covering_sphere_3d(points=points, epsilon=epsilon)
   else:
     return minimum_covering_sphere_nd(points=points, epsilon=epsilon)
+
+def row_echelon_back_substitution_int(
+      row_echelon_form,
+      v=None,
+      solution=None,
+      independent_flags=None):
+  return ext.row_echelon_back_substitution_int(
+    row_echelon_form, v, solution, independent_flags)
+
+def row_echelon_back_substitution_float(
+      row_echelon_form,
+      v=None,
+      solution=None):
+  assert solution is not None
+  return ext.row_echelon_back_substitution_float(
+    row_echelon_form, v, solution)
