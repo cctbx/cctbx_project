@@ -1,0 +1,35 @@
+---------------------------
+cctbx - Development history
+---------------------------
+
+eltbx - Element Toolbox
+=======================
+
+The cctbx Element Toolbox supersedes atominfo_.
+The Henke, Sasaki and neutron modules are based on C source code
+contributed by `Vincent Favre-Nicolin`_.
+
+.. _atominfo: http://www.ccp14.ac.uk/ccp/ccp14/ftp-mirror/ralf_grosse_kunstleve/pub/local/rwgk/atominfo/
+
+.. _`Vincent Favre-Nicolin`: http://v.favrenicolin.free.fr/cv/index-en.html
+
+sgtbx - Space Group Toolbox
+===========================
+
+The cctbx Space Group Toolbox is based on SgLite_ which in turn is based on
+`SgInfo 1.01`_.
+All new development will be focussed on the sgtbx.
+SgLite and SgInfo are not being developed anymore.
+More information: `sgtbx development history details <history_sgtbx.html>`_
+
+.. _SgLite: http://cvs.sourceforge.net/cgi-bin/viewcvs.cgi/pymol/pymol/contrib/sglite/
+.. _`SgInfo 1.01`: http://www.kristall.ethz.ch/LFK/software/sginfo/
+
+The other toolboxes are developed by the
+`Computational Crystallography Initiative`_ (CCI).
+
+.. _`Computational Crystallography Initiative`: http://cci.lbl.gov/
+
+Back_
+
+.. _Back: introduction.html

@@ -1,0 +1,160 @@
++++++++++++++++++++++++++++++++++++++
+Computational Crystallography Toolbox
++++++++++++++++++++++++++++++++++++++
+
+.. contents:: Table of Contents
+
+Introduction
+============
+
+The Computational Crystallography Toolbox (cctbx) is being developed as
+the open source component of the PHENIX_ system. The goal of the PHENIX
+project is to advance automation of macromolecular structure
+determination. PHENIX depends on the cctbx, but not vice versa. This
+hierarchical approach enforces a clean design as a reusable library.
+The cctbx is therefore also useful for small-molecule crystallography
+and even general scientific applications.
+
+To maximize reusability and, maybe even more importantly, to give
+individual developers a notion of privacy, the cctbx is organized
+as a set of smaller modules. This is very much like a village (the
+cctbx project) with individual houses (modules) for each family
+(groups of developers, of any size including one).
+
+The cctbx code base is available without restrictions and free
+of charge to all interested developers, both academic and commercial.
+The entire community is invited to actively participate in the
+development of the code base. A sophisticated technical infrastructure
+that enables community based software development is provided by
+SourceForge_. This service is also free of charge and open to
+the entire world.
+
+The cctbx is designed with an open and flexible architecture to
+promote extendability and easy incorporation into other software
+environments. The package is organized as a set of ISO C++ classes
+with Python_ bindings. This organization combines the computational
+efficiency of a strongly typed compiled language with the convenience
+and flexibility of a dynamically typed scripting language in a
+strikingly uniform and very maintainable way.
+
+Use of the Python interfaces is highly recommended, but optional. The
+cctbx can also be used purely as a C++ class library.
+
+High level organization
+=======================
+
+The SourceForge cctbx project currently contains these modules:
+
+**libtbx**
+  The build system common to all other modules. This is a very
+  thin wrapper around the SCons_ software construction tool.
+  The libtbx also contains platform-independent instructions
+  for building the Boost.Python_ library.
+
+**scitbx**
+  Libraries for general scientific computing (i.e.
+  libraries that are not specific to crystallographic applications):
+  a family of high-level C++ array types, a fast Fourier transform
+  library, and a C++ port of the popular LBFGS conjugate gradient
+  minimizer, all including Python_ bindings. These libraries are
+  separated from the crystallographic code base to make them easily
+  accessible for non-crystallographic application developers.
+
+**cctbx**
+  Libraries for general crystallographic applications,
+  useful for both small-molecule and macro-molecular crystallography.
+  The libraries in the cctbx module cover everything from algorithms
+  for the handling of unit cells to high-level building blocks for
+  refinement algorithms. Note the distinction between the cctbx
+  *project* and the cctbx *module*. In retrospect we should have
+  chosen a different name for the project, but the current naming
+  reflects how the modules have evolved and it would be too disruptive
+  to start a grand renaming.
+
+**iotbx**
+  The youngest member in the family: evolving libraries for reading and
+  writing established file formats.
+
+Tour
+====
+
+`Tour of the cctbx <tour.html>`_.
+
+Installation
+============
+
+`Installation instructions <installation.html>`_ for both binary
+installation and installation from sources.
+
+The cctbx build system `is based on SCons <build_system.html>`_.
+
+Reference documentation
+=======================
+
+The documentation is directly embedded in the source code and
+automatically processed into a web-based format for ease of
+navigation.
+
+- cctbx Python interfaces:
+  `libtbx <python/libtbx>`_
+  `scitbx <python/scitbx>`_
+  `cctbx <python/cctbx>`_
+  `iotbx <python/iotbx>`_
+
+- `cctbx C++ interfaces <c_plus_plus/namespaces.html>`_
+
+Most documented C++ interfaces are also available at the Python layer.
+Unfortunately the documentation tools available are not capable of
+merging the documentations. Therefore Python users need to also consult
+the C++ documention.
+
+Links
+=====
+
+- `cctbx - Public CVS repository`_
+
+- `cctbx - Project page at SourceForge`_
+
+- `cctbx - Development history <history.html>`_
+
+.. _`cctbx - Public CVS repository`: http://cvs.sourceforge.net/cgi-bin/viewcvs.cgi/cctbx/
+
+.. _`cctbx - Project page at SourceForge`: http://sourceforge.net/projects/cctbx/
+
+Acknowledgments
+===============
+
+We would like to thank David Abrahams for creating the amazing
+Boost.Python_ library and for patiently supporting the entire open
+source community. We would like to thank Airlie McCoy for allowing us
+to adapt some parts of the Phaser package (FFT structure factor
+calculation). Kevin Cowtan has contributed algorithms for the handling
+of reciprocal space asymmetric units. We are also grateful for his
+development of the Clipper_ library from which we have adapted some
+source code fragments. Our work was funded in part by the US
+Department of Energy under Contract No. DE-AC03-76SF00098. We
+gratefully acknowledge the financial support of NIH/NIGMS.
+
+The cctbx CVS development tree is hosted by
+
+.. image:: http://sourceforge.net/sflogo.php?group_id=24107
+
+Contact
+=======
+
+cctbx@cci.lbl.gov
+
+
+.. _Boost: http://www.boost.org/
+
+.. _Boost.Python: http://www.boost.org/libs/python/doc/
+
+.. _Clipper: http://www.yorvic.york.ac.uk/~cowtan/clipper/clipper.html
+
+.. _PHENIX: http://phenix-online.org/
+
+.. _Python: http://www.python.org/
+
+.. _SCons: http://www.scons.org/
+
+.. _SourceForge: http://sourceforge.net/
