@@ -940,7 +940,7 @@ def exercise_minimum_covering_sphere(epsilon=1.e-3):
         assert approx_equal(mcs.radius(), expected_radius, eps=eps)
 
 def exercise_icosahedron():
-  tmp=[
+  expected_sites_level_2=[
         (-0.13039500000000001, -0.82034300000000004, -0.55680700000000005),
         (-0.298564, -0.64480300000000002, -0.70362499999999994),
         (-0.27460699999999999, -0.76751199999999997, -0.57923899999999995),
@@ -1261,19 +1261,15 @@ def exercise_icosahedron():
         (0.79803500000000005, 0.44999699999999998, 0.40080300000000002),
         (0.76232699999999998, 0.58046699999999996, 0.28621099999999999),
         (0.816797, 0.55912499999999998, 0.142204)]
-
   ico = icosahedron(2)
   assert ico.level == 2
-  nvals = ico.sites
-  ovals = flex.vec3_double()
-  for site in tmp:
-    ovals.append(site)
-  diff = nvals-ovals
-  dmin = diff.min()
-  dmax = diff.max()
-  for i in xrange(3):
-    assert 0.0<=math.fabs(dmin[i])<=0.02
-    assert 0.0<=math.fabs(dmax[i])<=0.02
+  diff = ico.sites - flex.vec3_double(expected_sites_level_2)
+  for d in diff.min(): assert abs(d) < 0.02
+  for d in diff.max(): assert abs(d) < 0.02
+  for level in xrange(1,6):
+    ico = icosahedron(level)
+    assert ico.level == level
+    assert ico.sites.size() == 80 * 4**(level-1)
 
 def run():
   exercise_floating_point_epsilon()
