@@ -152,15 +152,16 @@ class set(crystal.symmetry):
       i)
     return set(self, i, self.anomalous_flag())
 
-  def complete_set(self):
+  def complete_set(self, tolerance=1.e-6):
     assert self.anomalous_flag() in (00000, 0001)
     return build_set(
       crystal_symmetry=self,
       anomalous_flag=self.anomalous_flag(),
-      d_min=self.d_min())
+      d_min=self.d_min()*(1-tolerance))
 
-  def completeness(self):
-    return self.indices().size() / float(self.complete_set().indices().size())
+  def completeness(self, tolerance=1.e-6):
+    return self.indices().size() \
+         / float(self.complete_set(tolerance).indices().size())
 
   def all_selection(self):
     return flex.bool(self.indices().size(), 0001)
