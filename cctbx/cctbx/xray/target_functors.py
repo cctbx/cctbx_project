@@ -18,11 +18,79 @@ class target_functor_base:
                                      f_calc.data(),
                                      compute_derivatives)
 
+class target_functors_manager:
+
+  def __init__(self, target_name,
+                     f_obs,
+                     flags,
+                     abcd                   = None,
+                     step_for_integration   = None,
+                     weights                = None,
+                     use_sigmas_as_weights  = False,
+                     scale_factor           = 0):
+    adopt_init_args(self, locals())
+    assert self.target_name == "ml" or self.target_name == "ls" or \
+           self.target_name == "mlhl"
+    assert self.f_obs.data().size() == self.flags.size()
+    if(self.flags.count(True) > 0):
+      self.f_obs_w = self.f_obs.select(~self.flags)
+      self.f_obs_t = self.f_obs.select( self.flags)
+    else:
+      self.f_obs_w = self.f_obs
+      self.f_obs_t = self.f_obs
+    if(self.target_name == "ml"):
+      self.tf_w = maximum_likelihood_criterion(f_obs = self.f_obs_w)
+      self.tf_t = maximum_likelihood_criterion(f_obs = self.f_obs_t)
+    if(self.target_name == "mlhl"):
+      assert self.abcd is not None and self.step_for_integration is not None
+      if(self.flags.count(True) > 0):
+        self.abcd_w = self.abcd.select(~self.flags)
+        self.abcd_t = self.abcd.select( self.flags)
+      else:
+        self.abcd_w = self.abcd
+        self.abcd_t = self.abcd
+      self.tf_w = maximum_likelihood_criterion_hl(
+                              f_obs                = self.f_obs_w,
+                              abcd                 = self.abcd_w.data(),
+                              step_for_integration = self.step_for_integration)
+      self.tf_t = maximum_likelihood_criterion_hl(
+                              f_obs                = self.f_obs_t,
+                              abcd                 = self.abcd_t.data(),
+                              step_for_integration = self.step_for_integration)
+    if(self.target_name == "ls"):
+      if(self.weights is not None):
+        if(self.flags.count(True) > 0):
+          self.weights_w = self.weights.select(~self.flags)
+          self.weights_t = self.weights.select( self.flags)
+        else:
+          self.weights_w = self.weights
+          self.weights_t = self.weights
+      else:
+        self.weights_w, self.weights_t = None, None
+      self.tf_w = least_squares_residual(
+                            f_obs                 = self.f_obs_w,
+                            weights               = self.weights_w,
+                            use_sigmas_as_weights = self.use_sigmas_as_weights,
+                            scale_factor          = self.scale_factor)
+      self.tf_t = least_squares_residual(
+                            f_obs                 = self.f_obs_t,
+                            weights               = self.weights_t,
+                            use_sigmas_as_weights = self.use_sigmas_as_weights,
+                            scale_factor          = self.scale_factor)
+
+  def target_functor_w(self):
+    return self.tf_w
+
+  def target_functor_t(self):
+    return self.tf_t
+
+
 class least_squares_residual:
 
-  def __init__(self, f_obs, weights=None,
-               use_sigmas_as_weights=False,
-               scale_factor=0):
+  def __init__(self, f_obs,
+                     weights               = None,
+                     use_sigmas_as_weights = False,
+                     scale_factor          = 0):
     adopt_init_args(self, locals(), hide=True)
     assert self._weights is None or self._use_sigmas_as_weights == False
     if (self._use_sigmas_as_weights):
