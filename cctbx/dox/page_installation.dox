@@ -168,7 +168,7 @@ can be used if the following assumptions are valid:
         gunzip -c boost_1_21_2.tar.gz | tar xf -
         mv boost_1_21_2 boost
         gunzip -c cctbx_0_9_1.tar.gz | tar xf -
-        mv boost_0_9_1 cctbx
+        mv cctbx_0_9_1 cctbx
 \endverbatim
 
     Note that the both the boost and the %cctbx directory are renamed.
