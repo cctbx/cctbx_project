@@ -230,14 +230,36 @@ namespace cctbx {
       //! Distance squared.
       template <class FloatType>
       FloatType Distance2(const fractional<FloatType>& Xf,
-                         const fractional<FloatType>& Yf) const {
+                          const fractional<FloatType>& Yf) const {
         return Length2(fractional<FloatType>(Xf - Yf));
       }
       //! Distance.
       template <class FloatType>
       FloatType Distance(const fractional<FloatType>& Xf,
-                        const fractional<FloatType>& Yf) const {
+                         const fractional<FloatType>& Yf) const {
         return Length(fractional<FloatType>(Xf - Yf));
+      }
+      //! Shortest length squared under applicaton of periodicity.
+      template <class FloatType>
+      FloatType modShortLength2(const af::tiny<FloatType, 3>& Xf) const {
+        return Length2(fractional<FloatType>(Xf).modShort());
+      }
+      //! Shortest length under applicaton of periodicity.
+      template <class FloatType>
+      FloatType modShortLength(const af::tiny<FloatType, 3>& Xf) const {
+        return std::sqrt(modShortLength2(Xf));
+      }
+      //! Shortest distance squared under applicaton of periodicity.
+      template <class FloatType>
+      FloatType modShortDistance2(const fractional<FloatType>& Xf,
+                                  const fractional<FloatType>& Yf) const {
+        return modShortLength2(fractional<FloatType>(Xf - Yf));
+      }
+      //! Shortest distance under applicaton of periodicity.
+      template <class FloatType>
+      FloatType modShortDistance(const fractional<FloatType>& Xf,
+                                 const fractional<FloatType>& Yf) const {
+        return std::sqrt(modShortDistance2(Xf, Yf));
       }
       //@}
 
