@@ -229,6 +229,13 @@ namespace cctbx { namespace sgtbx {
       af::shared<std::size_t>
       sym_op_indices() const { return sym_op_indices_; }
 
+      //! True if coordinates.size() < space_group().order_z().
+      bool
+      is_special_position() const
+      {
+        return coordinates_.size() < space_group_.order_z();
+      }
+
     protected:
       uctbx::unit_cell unit_cell_;
       sgtbx::space_group space_group_;

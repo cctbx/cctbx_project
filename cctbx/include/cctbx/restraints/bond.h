@@ -42,6 +42,15 @@ namespace cctbx { namespace restraints {
       weight(weight_)
     {}
 
+    bond_proxy
+    as_bond_proxy() const
+    {
+      return bond_proxy(
+        af::tiny<std::size_t, 2>(pair.i_seq, pair.j_seq),
+        distance_ideal,
+        weight);
+    }
+
     direct_space_asu::asu_mapping_index_pair pair;
     double distance_ideal;
     double weight;
@@ -157,6 +166,58 @@ namespace cctbx { namespace restraints {
       }
   };
 
+  class bond_sorted_proxies
+  {
+    public:
+      bond_sorted_proxies() {}
+
+      bond_sorted_proxies(
+        boost::shared_ptr<
+          direct_space_asu::asu_mappings<> > const& asu_mappings)
+      :
+        asu_mappings_owner_(asu_mappings),
+        asu_mappings_(asu_mappings.get())
+      {}
+
+      //! Instance as passed to the constructor.
+      boost::shared_ptr<direct_space_asu::asu_mappings<> > const&
+      asu_mappings() const { return asu_mappings_owner_; }
+
+      bool
+      process(bond_proxy const& proxy)
+      {
+        proxies.push_back(proxy);
+        return false;
+      }
+
+      bool
+      process(bond_sym_proxy const& proxy)
+      {
+        if (asu_mappings_->is_direct_interaction(proxy.pair)) {
+          if (proxy.pair.j_sym == 0 || proxy.pair.i_seq < proxy.pair.j_seq) {
+            proxies.push_back(proxy.as_bond_proxy());
+          }
+          return false;
+        }
+        sym_proxies.push_back(proxy);
+        return true;
+      }
+
+      std::size_t
+      n_total() const
+      {
+        return proxies.size() + sym_proxies.size();
+      }
+
+    protected:
+      boost::shared_ptr<direct_space_asu::asu_mappings<> > asu_mappings_owner_;
+      const direct_space_asu::asu_mappings<>* asu_mappings_;
+
+    public:
+      af::shared<bond_proxy> proxies;
+      af::shared<bond_sym_proxy> sym_proxies;
+  };
+
   inline
   af::shared<double>
   bond_deltas(
@@ -235,6 +296,25 @@ namespace cctbx { namespace restraints {
         restraint.add_gradients(gradient_array, asu_mappings, proxies[i].pair);
       }
     }
+    return result;
+  }
+
+  inline
+  double
+  bond_residual_sum(
+    af::const_ref<scitbx::vec3<double> > const& sites_cart,
+    bond_sorted_proxies const& sorted_proxies,
+    af::ref<scitbx::vec3<double> > const& gradient_array)
+  {
+    double result = bond_residual_sum(
+      sites_cart,
+      sorted_proxies.proxies.const_ref(),
+      gradient_array);
+    result += bond_residual_sum(
+      sites_cart,
+      *sorted_proxies.asu_mappings(),
+      sorted_proxies.sym_proxies.const_ref(),
+      gradient_array);
     return result;
   }
 

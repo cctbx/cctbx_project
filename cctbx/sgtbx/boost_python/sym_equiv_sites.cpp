@@ -50,6 +50,7 @@ namespace {
         .def("coordinates", &w_t::coordinates)
         .def("sym_op", &w_t::sym_op, (arg_("i_coor")))
         .def("sym_op_indices", &w_t::sym_op_indices)
+        .def("is_special_position", &w_t::is_special_position)
       ;
     }
   };

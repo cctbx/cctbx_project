@@ -13,6 +13,9 @@ from scitbx.python_utils.misc import adopt_init_args
 from libtbx.itertbx import count
 from libtbx.test_utils import approx_equal
 
+if (1):
+  flex.set_random_seed(0)
+
 class restraint_parameters:
 
   def __init__(self, distance_ideal, weight):
@@ -63,6 +66,7 @@ class create_bond_proxies:
     for scatterer in scatterers:
       site_symmetries.append(structure.site_symmetry(scatterer.site))
     proxies = restraints.shared_bond_sym_proxy()
+    sorted_proxies = restraints.bond_sorted_proxies(asu_mappings=asu_mappings)
     bond_counts = flex.size_t(structure.scatterers().size(), 0)
     for pairs in pairs_list:
       if (len(pairs) > 0):
@@ -89,6 +93,7 @@ class create_bond_proxies:
           pair=pair,
           distance_ideal=distance_ideal,
           weight=weight))
+        sorted_proxies.process(proxy=proxies[-1])
         if (pair.dist_sq**.5 > distance_cutoff_minus):
           for pair_fwd in pairs[i_pair+1:]:
             if (    pair_fwd.j_seq == pair.j_seq
@@ -110,12 +115,14 @@ class create_bond_proxies:
                   pair=pair_fwd,
                   distance_ideal=distance_ideal,
                   weight=weight))
+                sorted_proxies.process(proxy=proxies[-1])
                 bond_counts[i_seq] += 1
                 if (pair_fwd.j_sym == 0):
                   bond_counts[pair_fwd.j_seq] += 1
     self.site_symmetries = site_symmetries
     self.asu_mappings = asu_mappings
     self.proxies = proxies
+    self.sorted_proxies = sorted_proxies
     self.bond_counts = bond_counts
 
 def get_bond_site_symmetry(structure, site_i, site_ji):
@@ -229,6 +236,7 @@ def add_o_si_o_proxies(structure, proxies, distance_ideal, weight):
                   i_seq=pair1.j_seq, j_seq=pair2.j_seq, j_sym=k_sym),
                 distance_ideal=distance_ideal,
                 weight=weight))
+              proxies.sorted_proxies.process(proxies.proxies[-1])
               if (1):
                 assert abs(  restraints.bond(
                                sites_cart=structure.sites_cart(),
@@ -270,6 +278,7 @@ def add_o_si_o_proxies(structure, proxies, distance_ideal, weight):
                     i_seq=pair2.j_seq, j_seq=pair1.j_seq, j_sym=k_sym),
                   distance_ideal=distance_ideal,
                   weight=weight))
+                proxies.sorted_proxies.process(proxies.proxies[-1])
                 if (1):
                   assert abs(  restraints.bond(
                                  sites_cart=structure.sites_cart(),
@@ -292,6 +301,7 @@ def add_si_o_si_proxies(si_proxies, si_o_proxies, distance_ideal, weight):
         pair=si_proxy.pair,
         distance_ideal=distance_ideal,
         weight=weight))
+    si_o_proxies.sorted_proxies.process(si_o_proxies.proxies[-1])
 
 def run(distance_cutoff=3.5):
   command_line = (iotbx_option_parser(
@@ -373,6 +383,10 @@ def run(distance_cutoff=3.5):
               sites_cart=sites_cart,
               asu_mappings=si_o_proxies.asu_mappings,
               proxy=proxy).distance_model
+          print "sorted_proxies.proxies.size():",
+          print si_o_proxies.sorted_proxies.proxies.size()
+          print "sorted_proxies.sym_proxies.size():",
+          print si_o_proxies.sorted_proxies.sym_proxies.size()
         if (1):
           sites_cart = si_o_structure.sites_cart()
           gradients_cart = flex.vec3_double(sites_cart.size(), [0,0,0])
@@ -384,6 +398,14 @@ def run(distance_cutoff=3.5):
           gradients_frac = gradients_cart \
             * si_o_structure.unit_cell().orthogonalization_matrix()
           print "initial residual sum:", residual_sum
+          gradients_cart_2 = flex.vec3_double(sites_cart.size(), [0,0,0])
+          residual_sum_2 = restraints.bond_residual_sum(
+            sites_cart=sites_cart,
+            sorted_proxies=si_o_proxies.sorted_proxies,
+            gradient_array=gradients_cart_2)
+          print "   ctrl residual sum:", residual_sum_2
+          assert approx_equal(residual_sum_2, residual_sum)
+          assert approx_equal(gradients_cart, gradients_cart_2)
         if (1):
           for i_site,scatterer in zip(count(),si_o_structure.scatterers()):
             site = scatterer.site
@@ -419,13 +441,22 @@ def run(distance_cutoff=3.5):
                 sites_special.append(site_symmetry.special_op()*site_frac)
               sites_cart = si_o_structure.unit_cell() \
                 .orthogonalization_matrix() * sites_special
-            minimized = minimization.lbfgs(
-              sites_cart=sites_cart,
-              site_symmetries=si_o_proxies.site_symmetries,
-              asu_mappings=si_o_proxies.asu_mappings,
-              bond_sym_proxies=si_o_proxies.proxies,
-              lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
-                max_iterations=1000))
+            if (0):
+              minimized = minimization.lbfgs(
+                sites_cart=sites_cart,
+                site_symmetries=si_o_proxies.site_symmetries,
+                asu_mappings=si_o_proxies.asu_mappings,
+                bond_sym_proxies=si_o_proxies.proxies,
+                lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
+                  max_iterations=1000))
+            else:
+              minimized = minimization.lbfgs(
+                sites_cart=sites_cart,
+                site_symmetries=si_o_proxies.site_symmetries,
+                asu_mappings=si_o_proxies.asu_mappings,
+                bond_sorted_proxies=si_o_proxies.sorted_proxies,
+                lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
+                  max_iterations=1000))
             if (0):
               print minimized.minimizer.error
             if (0):

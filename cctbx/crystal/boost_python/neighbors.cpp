@@ -47,7 +47,7 @@ namespace {
         .def("__iter__", scitbx::boost_python::pass_through)
         .def("restart", &w_t::restart)
         .def("count_pairs", &w_t::count_pairs)
-        .def("is_symmetry_interaction", &w_t::is_symmetry_interaction)
+        .def("is_direct_interaction", &w_t::is_direct_interaction)
       ;
     }
   };

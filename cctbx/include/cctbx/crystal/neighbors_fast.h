@@ -41,7 +41,7 @@ namespace cctbx { namespace crystal { namespace neighbors {
       fast_pair_generator(
         boost::shared_ptr<
           direct_space_asu::asu_mappings<
-            FloatType, IntShiftType> >& asu_mappings,
+            FloatType, IntShiftType> > const& asu_mappings,
         FloatType const& distance_cutoff,
         FloatType const& epsilon=1.e-6)
       :

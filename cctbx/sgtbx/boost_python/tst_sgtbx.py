@@ -954,6 +954,8 @@ def exercise_sym_equiv_sites():
         for i in xrange(6):
           assert approx_equal(c[i], vfy[i])
       assert tuple(e.sym_op_indices()) == sym_i
+      assert e.is_special_position() \
+          == (len(e.coordinates()) < e.space_group().order_z())
       for i in e.coordinates().indices():
         assert e.sym_op(i) == g(sym_i[i])
     for i in xrange(2):
