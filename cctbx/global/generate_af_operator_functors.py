@@ -33,10 +33,14 @@ namespace cctbx { namespace af {"""
 
   for op in unary_functors.keys():
     generate_unary_functor(
-      unary_functors[op], op + " x")
+      unary_functors[op], op + "x")
   for op in binary_functors.keys():
-    generate_binary_functor(
-      binary_functors[op], "x " + op + " y")
+    if (op in (">", "<")):
+      generate_greater_less_functor(
+        binary_functors[op], op)
+    else:
+      generate_binary_functor(
+        binary_functors[op], "x " + op + " y")
   for op in in_place_binary_functors.keys():
     generate_in_place_binary_functor(
       in_place_binary_functors[op], "x " + op + " y")
