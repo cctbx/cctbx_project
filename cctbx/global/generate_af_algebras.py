@@ -488,6 +488,8 @@ def one_type(array_type_name):
   print """
 #ifndef CCTBX_ARRAY_FAMILY_%s_ALGEBRA_H
 #define CCTBX_ARRAY_FAMILY_%s_ALGEBRA_H
+
+#ifndef DOXYGEN_SHOULD_SKIP_THIS
 """ % ((array_type_name.upper(),) * 2)
   if (array_type_name != "ref"):
     print """#include <cctbx/array_family/operator_traits_builtin.h>"""
@@ -530,6 +532,8 @@ namespace cctbx { namespace af {
   generate_2arg_reductions(array_type_name)
 
   print """}} // namespace cctbx::af
+
+#endif // DOXYGEN_SHOULD_SKIP_THIS
 
 #endif // CCTBX_ARRAY_FAMILY_%s_ALGEBRA_H""" % (array_type_name.upper(),)
   sys.stdout = sys.__stdout__

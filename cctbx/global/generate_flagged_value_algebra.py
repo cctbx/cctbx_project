@@ -206,6 +206,8 @@ def run():
 #ifndef CCTBX_ARRAY_FAMILY_FLAGGED_VALUE_ALGEBRA_H
 #define CCTBX_ARRAY_FAMILY_FLAGGED_VALUE_ALGEBRA_H
 
+#ifndef DOXYGEN_SHOULD_SKIP_THIS
+
 #include <cctbx/array_family/operator_traits_builtin.h>
 #include <cctbx/array_family/std_imports.h>
 #include <cctbx/array_family/misc_functions.h>
@@ -228,6 +230,8 @@ namespace cctbx { namespace af {
     apply(generate_2arg_element_wise, args)
 
   print """}} // namespace cctbx::af
+
+#endif // DOXYGEN_SHOULD_SKIP_THIS
 
 #endif // CCTBX_ARRAY_FAMILY_FLAGGED_VALUE_ALGEBRA_H"""
   sys.stdout = sys.__stdout__

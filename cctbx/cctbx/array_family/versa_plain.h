@@ -30,16 +30,28 @@ namespace cctbx { namespace af {
 
       CCTBX_ARRAY_FAMILY_VERSA_CONSTRUCTORS(versa_plain)
 
-      versa_plain(const handle_type& handle, const accessor_type& ac)
-        : shared_base<ElementType>(handle) {
-        CCTBX_ARRAY_FAMILY_STATIC_ASSERT_HAS_TRIVIAL_DESTRUCTOR
-        this->resize(ac);
+      template <typename OtherAccessorType>
+      versa_plain(versa_plain<ElementType, OtherAccessorType>& other,
+                  const accessor_type& ac,
+                  const ElementType& x = ElementType())
+        : shared_base<ElementType>(this->m_handle) {
+        this->resize(ac, x);
       }
 
-      versa_plain(const handle_type& handle, const size_type& sz)
+      template <typename OtherAccessorType>
+      versa_plain(versa_plain<ElementType, OtherAccessorType>& other,
+                  size_type new_size,
+                  const ElementType& x = ElementType())
+        : shared_base<ElementType>(this->m_handle) {
+        this->resize(accessor_type(new_size), x);
+      }
+
+      versa_plain(const handle_type& handle,
+                  const accessor_type& ac,
+                  const ElementType& x = ElementType())
         : shared_base<ElementType>(handle) {
         CCTBX_ARRAY_FAMILY_STATIC_ASSERT_HAS_TRIVIAL_DESTRUCTOR
-        this->resize(accessor_type(sz));
+        this->resize(ac, x);
       }
 
       void resize(const accessor_type& ac,
@@ -52,8 +64,8 @@ namespace cctbx { namespace af {
       const accessor_type& accessor() const { return m_accessor; }
       size_type size() const { return m_accessor.size1d(); }
 
-      versa_plain<ElementType> as_1d() {
-        return versa_plain<ElementType>(this->handle(), this->size());
+      versa_plain<ElementType> as_1d(const ElementType& x = ElementType()) {
+        return versa_plain<ElementType>(*this, this->size(), x);
       }
 
       CCTBX_ARRAY_FAMILY_TAKE_VERSA_REF(this->begin(), this->accessor())

@@ -203,6 +203,12 @@ namespace cctbx { namespace af {
         CCTBX_ARRAY_FAMILY_STATIC_ASSERT_HAS_TRIVIAL_DESTRUCTOR
       }
 
+      ~shared_base() {
+        if (m_handle.use_count() == 1) {
+          resize(0);
+        }
+      }
+
       size_type size() const { return m_handle.size() / element_size(); }
       bool empty() const { if (size() == 0) return true; return false; }
       size_type capacity() const {
