@@ -1,44 +1,48 @@
-from cctbx.misc import python_utils
-from cctbx_boost import uctbx
-from cctbx_boost import sgtbx
+from cctbx import uctbx
+from cctbx import sgtbx
+from scitbx.python_utils.misc import adopt_init_args
 
 class sdb_site:
 
   def __init__(self, action, segid, type, x, y, z, b, q, g):
-    python_utils.adopt_init_args(self, locals())
+    adopt_init_args(self, locals())
 
   def as_xray_scatterer(self, unit_cell=None):
-    from cctbx_boost import adptbx
-    from cctbx_boost import sftbx
-    from cctbx_boost.eltbx.caasf_wk1995 import CAASF_WK1995
+    from cctbx import adptbx
+    from cctbx import xray
+    from cctbx.eltbx.caasf import wk1995
     caasf = None
-    try: caasf = CAASF_WK1995(self.type)
+    try: caasf = wk1995(self.type)
     except:
-      try: caasf = CAASF_WK1995(self.segid)
+      try: caasf = wk1995(self.segid)
       except: pass
-    if (caasf == None): caasf = CAASF_WK1995("const")
-    coor = (self.x, self.y, self.z)
-    if (unit_cell != None): coor = unit_cell.fractionalize(coor)
-    return sftbx.XrayScatterer(
-      "_".join((self.segid, self.type)), caasf, 0j,
-      coor, self.q, adptbx.B_as_U(self.b))
+    if (caasf == None): caasf = wk1995("const")
+    site = (self.x, self.y, self.z)
+    if (unit_cell != None): site = unit_cell.fractionalize(site)
+    return xray.scatterer(
+      label="_".join((self.segid, self.type)),
+      site=site,
+      u=adptbx.b_as_u(self.b),
+      occupancy=self.q,
+      caasf=caasf)
 
 class sdb_file:
 
-  def __init__(self, file_name, unit_cell, space_group, sites):
-    python_utils.adopt_init_args(self, locals())
+  def __init__(self, file_name, unit_cell, space_group_info, sites):
+    adopt_init_args(self, locals())
 
-  def as_symmetrized_sites(self, keep_special_position_operators=0):
-    from cctbx import xutils
-    assert type(self.unit_cell) == type(uctbx.UnitCell())
-    assert type(self.space_group) == type(sgtbx.SpaceGroup())
-    crystal_symmetry = xutils.crystal_symmetry(
-      self.unit_cell, self.space_group.Info())
-    xtal = xutils.symmetrized_sites(
-      crystal_symmetry, keep_special_position_operators)
+  def as_xray_structure(self):
+    assert self.unit_cell != None
+    assert self.space_group_info != None
+    from cctbx import crystal
+    from cctbx import xray
+    symmetry = crystal.symmetry(
+      unit_cell=self.unit_cell,
+      space_group_info=self.space_group_info)
+    structure = xray.structure(crystal.special_position_settings(symmetry))
     for site in self.sites:
-      xtal.add_site(site.as_xray_scatterer(self.unit_cell))
-    return xtal
+      structure.add_scatterer(site.as_xray_scatterer(self.unit_cell))
+    return structure
 
 def generic_add_str(m, buffer):
   if (not m): return
@@ -57,7 +61,7 @@ class raw_parameters:
   def __init__(self, file_name):
     self.file_name = file_name
     self.unit_cell = 0
-    self.space_group = 0
+    self.space_group_info = 0
     self.action = []
     self.segid = []
     self.type = []
@@ -94,7 +98,8 @@ class raw_parameters:
         self.x[i], self.y[i], self.z[i],
         self.b[i], self.q[i],
         self.g[i]))
-    return sdb_file(self.file_name, self.unit_cell, self.space_group, sites)
+    return sdb_file(
+      self.file_name, self.unit_cell, self.space_group_info, sites)
 
 def multi_sdb_parser(lines):
   # Parser for one or more cns sdb files.
@@ -119,13 +124,13 @@ def multi_sdb_parser(lines):
                  + r'\s*alpha=\s*(\S+)\s*beta=\s*(\S+)\s*gamma=\s*(\S+)',
                  line)
     if (m):
-      p.unit_cell = uctbx.UnitCell(
+      p.unit_cell = uctbx.unit_cell(
         [float(m.group(i+2)) for i in xrange(6)])
-      p.space_group = sgtbx.SpaceGroup(sgtbx.SpaceGroupSymbols(m.group(1)))
+      p.space_group_info = sgtbx.space_group_info(m.group(1))
     else:
       m = re.match(r'\{===>\}\s*sg=\s*"(\S+)"\s*;', line)
       if (m):
-        p.space_group = sgtbx.SpaceGroup(sgtbx.SpaceGroupSymbols(m.group(1)))
+        p.space_group_info = sgtbx.space_group_info(m.group(1))
     p.add_action(re.search(r'site\.action_(\d+)\s*=\s*"([^"]*)"', line))
     p.add_segid(re.search(r'site\.segid_(\d+)\s*=\s*"([^"]*)"', line))
     p.add_type(re.search(r'site\.type_(\d+)\s*=\s*"([^"]*)"', line))
@@ -140,13 +145,13 @@ def multi_sdb_parser(lines):
 
 def run():
   import sys
-  show_raw = not "--use_sftbx" in sys.argv[1:]
+  show_raw = "--show_raw" in sys.argv[1:]
   write_pickle = "--pickle" in sys.argv[1:]
   unit_cell = None
   for arg in sys.argv[1:]:
     if (arg.startswith("--unit_cell=")):
-      ucell_params = [float(x) for x in arg.split("=", 1)[1].split()]
-      unit_cell = uctbx.UnitCell(ucell_params)
+      params = [float(x) for x in arg.split("=", 1)[1].split()]
+      unit_cell = uctbx.unit_cell(params)
   for file_name in sys.argv[1:]:
     if (file_name.startswith("--")): continue
     f = open(file_name, "r")
@@ -156,25 +161,23 @@ def run():
     for sdb in sdb_files:
       if (unit_cell != None): sdb.unit_cell = unit_cell
       print "file:", sdb.file_name
-      if (sdb.unit_cell):
-        print "unit cell:", sdb.unit_cell
-      if (sdb.space_group):
-        print "space group:", sdb.space_group.Info().BuildLookupSymbol()
+      if (sdb.unit_cell != None):
+        print "unit cell:", sdb.unit_cell.parameters()
+      if (sdb.space_group_info != None):
+        print "space group:", sdb.space_group_info
       if (show_raw):
         for site in sdb.sites:
           print site.action, site.segid, site.type, site.g
           print " ", site.x, site.y, site.z, site.b, site.q
       else:
-        from cctbx.development import debug_utils
-        xtal = sdb.as_symmetrized_sites()
-        xtal.discard_special_position_info()
-        debug_utils.print_sites(xtal)
+        xray_structure = sdb.as_xray_structure()
+        xray_structure.show_summary().show_scatterers()
         if (write_pickle):
           import cPickle
           file_name_pickle = sdb.file_name + ".pickle"
           print "Writing:", file_name_pickle
           f = open(file_name_pickle, "wb")
-          cPickle.dump(xtal, f)
+          cPickle.dump(xray_structure, f)
           f.close()
       print
 

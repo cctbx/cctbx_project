@@ -16,9 +16,10 @@ class symmetry:
     self._space_group_info = space_group_info
     if (self._space_group_info == None):
       self._space_group_info = sgtbx.space_group_info(space_group_symbol)
-    if (self.unit_cell() != None and self.space_group() != None):
-      assert not assert_is_compatible_unit_cell \
-          or self.is_compatible_unit_cell()
+    if (    assert_is_compatible_unit_cell
+        and self.unit_cell() != None
+        and self.space_group() != None):
+      assert self.is_compatible_unit_cell()
 
   def _copy_constructor(self, other):
     self._unit_cell = other._unit_cell
