@@ -204,11 +204,6 @@ source setpaths_all.csh
 if ($have_sources != 0) then
   echo ""
   echo "Installing $bundle modules. This may take a while."
-  if (1) then # work around a SCons bug
-    libtbx.scons include/scitbx/array_family/versa_algebra.h
-    libtbx.scons cctbx/eltbx/henke.cpp
-    libtbx.scons cctbx/eltbx/sasaki.cpp
-  endif
   libtbx.scons -j "$n_cpu_s" .
 endif
 

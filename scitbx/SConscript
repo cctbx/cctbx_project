@@ -9,7 +9,6 @@ env_etc.scitbx_common_includes = [
   env_etc.boost_include,
 ]
 
-SConscript("scitbx/source_generators/array_family/SConscript")
 SConscript("array_family/SConscript")
 SConscript("serialization/SConscript")
 SConscript("fftpack/timing/SConscript")

@@ -6,8 +6,7 @@ import generate_algebras
 import generate_apply
 import os
 
-def run(env, target, source):
-  array_family = os.path.split(str(target[0]))[0]
+def refresh(array_family):
   assert os.path.isdir(array_family)
   array_family_detail = os.path.join(array_family, "detail")
   assert os.path.isdir(array_family_detail)
