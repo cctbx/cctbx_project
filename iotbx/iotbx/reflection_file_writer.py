@@ -1,5 +1,6 @@
 from iotbx import mtz
-import  iotbx.cns.miller_array
+import iotbx.cns.miller_array
+from cctbx import miller
 from scitbx.python_utils import easy_pickle
 import sys
 
@@ -20,6 +21,8 @@ def run(args):
   assert len(remaining_args) in (1,2)
   input_file_name = remaining_args[0]
   miller_arrays = easy_pickle.load(input_file_name)
+  if (isinstance(miller_arrays, miller.array)):
+    miller_arrays = [miller_arrays]
   export_mapping_file_name = None
   if (len(remaining_args) == 1):
     print "export_mappings = {"
