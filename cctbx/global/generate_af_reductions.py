@@ -33,6 +33,7 @@ def generate_cmp(subs):
   template <typename ElementType1${templ_decl_2_1},
             typename ElementType2${templ_decl_2_2}>
   int
+  inline
   cmp(
     ${array_type}<ElementType1${templ_inst_2_1}> const& a1,
     ${array_type}<ElementType2${templ_inst_2_2}> const& a2)
@@ -42,6 +43,7 @@ def generate_cmp(subs):
 
   template <typename ElementType${templ_decl_2}>
   int
+  inline
   cmp(
     ${array_type}<ElementType${templ_inst_2}> const& a1,
     ElementType const& a2)
@@ -51,6 +53,7 @@ def generate_cmp(subs):
 
   template <typename ElementType${templ_decl_2}>
   int
+  inline
   cmp(
     ElementType const& a1,
     ${array_type}<ElementType${templ_inst_2}> const& a2)
@@ -64,6 +67,7 @@ def generate_max_index_etc(subs):
     subs["func_name"] = func_name
     print substitute(subs, """
   template <typename ElementType${templ_decl_2}>
+  inline
   std::size_t
   ${func_name}(${array_type}<ElementType${templ_inst_2}> const& a)
   {
@@ -77,6 +81,7 @@ def generate_max_etc(subs):
     subs["func_name"] = func_name
     print substitute(subs, """
   template <typename ElementType${templ_decl_2}>
+  inline
   ElementType
   ${func_name}(${array_type}<ElementType${templ_inst_2}> const& a)
   {
@@ -90,6 +95,7 @@ def generate_mean_weighted_etc(subs):
     print substitute(subs, """
   template <typename ElementTypeValues${templ_decl_2_1eq},
             typename ElementTypeWeights${templ_decl_2_2eq}>
+  inline
   ElementTypeValues
   ${func_name}(
     ${array_type}<ElementTypeValues${templ_inst_2_1eq}> const& values,
