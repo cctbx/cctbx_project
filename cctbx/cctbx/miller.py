@@ -993,6 +993,11 @@ class fft_map(maptbx.crystal_gridding):
     else:
       return flex.real(self._complex_map)
 
+  def real_map_unpadded(self):
+    result = self.real_map()
+    if (not result.is_padded()): return result
+    return maptbx.copy(result, flex.grid(result.focus()))
+
   def complex_map(self):
     assert self.anomalous_flag()
     return self._complex_map
