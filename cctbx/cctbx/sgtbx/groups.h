@@ -34,9 +34,13 @@ namespace sgtbx {
       std::vector<TrVec> m_Vects;
       bool add(const TrVec& NewTr);
     public:
-      inline TrOps() : m_Vects() { m_Vects.push_back(TrVec()); }
-
-      inline void reset() { m_Vects.clear(); m_Vects.push_back(TrVec()); }
+      inline TrOps(int BF = STBF) : m_Vects() {
+        m_Vects.push_back(TrVec(BF));
+      }
+      inline void reset(int BF = STBF) {
+        m_Vects.clear();
+        m_Vects.push_back(TrVec());
+      }
       inline const std::vector<TrVec>& Vects() const { return m_Vects; }
       inline std::vector<TrVec>& Vects() { return m_Vects; }
       inline int nVects() const { return m_Vects.size(); }

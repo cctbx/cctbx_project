@@ -55,6 +55,7 @@ namespace sgtbx {
                    const int nr, const int nc,
                    int *Sol, int *FlagIndep);
   int iRESetIxIndep(const int *REMx, int nr, int nc, int *IxIndep, int mIndep);
+  void SolveHomRE1(const int REMx[3], const int IxIndep[2], Vec3 Sol[4]);
 
   int SmithNormalForm(int *M, int mr, int mc, int *P, int *Q);
 

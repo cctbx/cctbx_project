@@ -271,25 +271,6 @@ namespace sgtbx {
       throw cctbx_internal_error();
     }
 
-    void SolveHomRE1(const int REMx[3], const int IxIndep[2], Vec3 Sol[4])
-    {
-      // REMx must be in row echelon form with Rank 1.
-
-      const int  TrialV[4][2] =
-        {{ 1,  0 },
-         { 0,  1 },
-         { 1,  1 },
-         { 1, -1 },
-        };
-
-      for (int iPV = 0; iPV < 4; iPV++) {
-        int i;
-        for(i=0;i<3;i++) Sol[iPV][i] = 0;
-        for(i=0;i<2;i++) Sol[iPV][IxIndep[i]] = TrialV[iPV][i];
-        cctbx_assert(iREBacksubst(REMx, 0, 2, 3, Sol[iPV].elems, 0) > 0);
-      }
-    }
-
     RotMx BasisBuilder::UniAxialBasis()
     {
       if (Ord[0] < 0) {
@@ -429,9 +410,9 @@ namespace sgtbx {
 namespace sgtbx {
   namespace ConstructCBOpTpart {
 
-    struct Generators {
-      Generators(const SgOps& WorkSgOps,
-                 const tables::MatrixGroup::Code& PG_MGC);
+    struct StdGenerators { // see also: AnyGenerators
+      StdGenerators(const SgOps& WorkSgOps,
+                    const tables::MatrixGroup::Code& PG_MGC);
       void setPrimitive();
       ChOfBasisOp Z2POp;
       TrVec ZInvT;
@@ -441,8 +422,8 @@ namespace sgtbx {
       RTMx PGen[2];
     };
 
-    Generators::Generators(const SgOps& WorkSgOps,
-                           const tables::MatrixGroup::Code& PG_MGC)
+    StdGenerators::StdGenerators(const SgOps& WorkSgOps,
+                                 const tables::MatrixGroup::Code& PG_MGC)
       : nGen(0)
     {
       using namespace tables::CrystalSystem;
@@ -551,7 +532,7 @@ namespace sgtbx {
       for (i = 0; i < nGen; i++) ZGen[i].modPositiveInPlace();
     }
 
-    void Generators::setPrimitive()
+    void StdGenerators::setPrimitive()
     {
       for (int i = 0; i < nGen; i++) {
         PGen[i] = Z2POp(ZGen[i]).modPositive();
@@ -596,8 +577,8 @@ namespace sgtbx {
       return true;
     }
 
-    TrVec FindOriginShift(const Generators& TabGenerators,
-                          const Generators& TstGenerators,
+    TrVec FindOriginShift(const StdGenerators& TabGenerators,
+                          const StdGenerators& TstGenerators,
                           int TBF)
     {
       /*    (I|K)(R|T)(I|-K)=(R|S)
@@ -647,7 +628,7 @@ namespace sgtbx {
                                 const SgOps& WorkSgOps,
                                 const tables::MatrixGroup::Code& PG_MGC,
                                 char TabZ,
-                                const Generators& TabGenerators)
+                                const StdGenerators& TabGenerators)
     {
       if (TabGenerators.nGen == 0 && !TabGenerators.ZInvT.isValid())
         return ChOfBasisOp(RBF, TBF); // space group P 1
@@ -693,7 +674,7 @@ namespace sgtbx {
             cctbx_assert(TstZ != '\0' && TstZ != 'Q');
             if (TstZ != TabZ)
               continue;
-            Generators TstGenerators(TstSgOps, PG_MGC);
+            StdGenerators TstGenerators(TstSgOps, PG_MGC);
             cctbx_assert(TstGenerators.nGen == TabGenerators.nGen);
             if (    TabGenerators.nGen != 2
                 ||  (      TabGenerators.ZGen[0].Rpart()[8]
@@ -711,7 +692,7 @@ namespace sgtbx {
         }
       }
       else {
-        Generators TstGenerators(WorkSgOps, PG_MGC);
+        StdGenerators TstGenerators(WorkSgOps, PG_MGC);
         cctbx_assert(TstGenerators.nGen == TabGenerators.nGen);
         TstGenerators.setPrimitive();
         TrVec CBT = FindOriginShift(TabGenerators, TstGenerators, TBF);
@@ -723,7 +704,7 @@ namespace sgtbx {
       return ChOfBasisOp(0, 0);
     }
 
-    void TidyCBOpT(const Generators& TargetGenerators,
+    void TidyCBOpT(const StdGenerators& TargetGenerators,
                    const SgOps& GivenSgOps,
                    const tables::MatrixGroup::Code& PG_MGC,
                    ChOfBasisOp& TrialCBOp)
@@ -738,7 +719,7 @@ namespace sgtbx {
       if (GivenSgOps.nSMx() == 1 && !GivenSgOps.isCentric()) return;
 
       SgOps TransformedSgOps = GivenSgOps.ChangeBasis(TrialCBOp);
-      Generators TransformedGenerators(TransformedSgOps, PG_MGC);
+      StdGenerators TransformedGenerators(TransformedSgOps, PG_MGC);
       TransformedGenerators.setPrimitive();
       TrVec
       CBT = FindOriginShift(TargetGenerators, TransformedGenerators,
@@ -803,7 +784,7 @@ namespace sgtbx {
                              int SgNumber,
                              const ChOfBasisOp& RefCBOp,
                              const SgOps& TargetSgOps,
-                             const Generators& TargetGenerators,
+                             const StdGenerators& TargetGenerators,
                              const ChOfBasisOp& RawCBOp)
     {
       std::vector<RTMx>
@@ -970,7 +951,7 @@ namespace sgtbx {
       if (TabSgOps.nLTr() != WorkSgOps.nLTr())
         continue;
 
-      ConstructCBOpTpart::Generators TabGenerators(TabSgOps, PG_MGC);
+      ConstructCBOpTpart::StdGenerators TabGenerators(TabSgOps, PG_MGC);
       TabGenerators.setPrimitive();
       ChOfBasisOp AddCBOp = ConstructCBOpTpart::MatchGenerators(
         RBF, TBF, WorkSgOps, PG_MGC, HallSymbol[1], TabGenerators);
@@ -1007,7 +988,7 @@ namespace sgtbx {
     }
     if (TidyCBOp) {
       tables::MatrixGroup::Code PG_MGC = TargetSgOps.getPointGroupType();
-      ConstructCBOpTpart::Generators TargetGenerators(TargetSgOps, PG_MGC);
+      ConstructCBOpTpart::StdGenerators TargetGenerators(TargetSgOps, PG_MGC);
       TargetGenerators.setPrimitive();
       CBOp = ConstructCBOpTpart::FindBestCBOp(
         *this, PG_MGC,

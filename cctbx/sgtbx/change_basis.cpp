@@ -27,6 +27,12 @@ namespace sgtbx {
             + Mx.Tpart().scale(Mx.Rpart().BF())).newBaseFactor(T.BF());
   }
 
+  RotMx ChOfBasisOp::operator()(const RotMx& R) const
+  {
+    cctbx_assert(R.BF() == 1);
+    return (Mx.Rpart() * R * InvMx.Rpart()).newBaseFactor(1);
+  }
+
   RTMx ChOfBasisOp::operator()(const RTMx& RT) const
   {
     // This function only works for Seitz matrices:

@@ -8,7 +8,7 @@ StandardOnly = "--StandardOnly" in sys.argv
 Endless = "--Endless" in sys.argv
 
 if (ShortCut):
-  settings = ("C 4 2 2",)
+  settings = ("Hall: -P 1 (-1/2*x+1/2*y+1/2*z,1/2*x-1/2*y+1/2*z,1/2*x+1/2*y-1/2*z)",)
 else:
   from settings import * # see examples/python/make_settings.py
 
