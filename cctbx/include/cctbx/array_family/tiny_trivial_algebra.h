@@ -85,6 +85,17 @@ namespace cctbx { namespace af {
 
   template<typename NumType, std::size_t N>
   inline
+  af::tiny<NumType,N>&
+  operator+=(af::tiny<NumType,N>& lhs,
+            const af::tiny<NumType,N>& rhs) {
+      for (std::size_t i = 0; i < lhs.size(); i++) {
+          lhs[i] += rhs[i];
+      }
+      return lhs;
+  }
+
+  template<typename NumType, std::size_t N>
+  inline
   af::tiny<NumType,N>
   operator-(const af::tiny<NumType,N>& lhs,
             const af::tiny<NumType,N>& rhs) {
@@ -126,6 +137,15 @@ namespace cctbx { namespace af {
       af::tiny<NumType,N> result;
       for (std::size_t i = 0; i < rhs.size(); i++) result[i] = lhs * rhs[i];
       return result;
+  }
+
+  template<typename NumType, std::size_t N>
+  inline
+  af::tiny<NumType,N>&
+  operator*=(af::tiny<NumType,N>& lhs,
+             const NumType& rhs) {
+      for (std::size_t i = 0; i < lhs.size(); i++) lhs[i] *= rhs;
+      return lhs;
   }
 
   template<typename NumType, std::size_t N>

@@ -23,4 +23,37 @@ namespace cctbx { namespace af {
 
 }} // namespace cctbx::af
 
+#if !defined(BOOST_NO_TEMPLATE_PARTIAL_SPECIALIZATION)
+
+namespace boost {
+
+  template<>
+  struct has_trivial_destructor<cctbx::af::int3> {
+    static const bool value = true;
+  };
+
+  template<>
+  struct has_trivial_destructor<cctbx::af::int9> {
+    static const bool value = true;
+  };
+
+  template<>
+  struct has_trivial_destructor<cctbx::af::double3> {
+    static const bool value = true;
+  };
+
+  template<>
+  struct has_trivial_destructor<cctbx::af::double6> {
+    static const bool value = true;
+  };
+
+  template<>
+  struct has_trivial_destructor<cctbx::af::double9> {
+    static const bool value = true;
+  };
+
+}
+
+#endif // !defined(BOOST_NO_TEMPLATE_PARTIAL_SPECIALIZATION)
+
 #endif // CCTBX_ARRAY_FAMILY_TINY_TYPES_H

@@ -19,6 +19,16 @@ namespace {
 
   typedef sftbx::XrayScatterer<double, eltbx::CAASF_WK1995> ex_xray_scatterer;
 
+  double
+  py_rms_coordinates(
+    const uctbx::UnitCell& ucell,
+    const af::shared<ex_xray_scatterer>& sites1,
+    const af::shared<ex_xray_scatterer>& sites2)
+  {
+    return sftbx::rms_coordinates(
+      ucell, sites1.const_ref(), sites2.const_ref());
+  }
+
   std::complex<double>
   py_StructureFactor_plain(const sgtbx::SpaceGroup& SgOps,
                            const Miller::Index& H,
@@ -100,6 +110,32 @@ namespace {
     return result;
   }
 
+  void pack_coordinates(
+    const af::shared<ex_xray_scatterer>& sites,
+    af::shared<double> x)
+  {
+    for(std::size_t i=0;i<sites.size();i++) {
+      const af::double3& c = sites[i].Coordinates();
+      x.insert(x.end(), c.begin(), c.end());
+    }
+  }
+
+  void unpack_coordinates(
+    af::shared<double> x,
+    std::size_t start,
+    af::shared<ex_xray_scatterer> sites)
+  {
+    cctbx_assert(x.size() >= start + sites.size() * 3);
+    for(std::size_t i=0;i<sites.size();i++) {
+      sites[i].set_Coordinates(fractional<double>(&x[i * 3]));
+    }
+  }
+
+  af::shared<double>
+  flatten_dF_dX(af::shared<af::double3> dF_dX) {
+    return af::shared<double>(dF_dX.handle());
+  }
+
 #   include <cctbx/basic/from_bpl_import.h>
 
   void init_module(python::module_builder& this_module)
@@ -116,6 +152,9 @@ namespace {
     py_SpaceGroupInfo("cctbx_boost.sgtbx", "SpaceGroupInfo");
     python::import_converters<eltbx::CAASF_WK1995>
     py_CAASF_WK1995("cctbx_boost.eltbx.caasf_wk1995", "CAASF_WK1995");
+
+    python::import_converters<af::shared<double> >
+    py_shared_double("cctbx_boost.arraytbx.shared", "double");
 
     python::import_converters<af::shared<std::complex<double> > >
     py_shared_complex_double(
@@ -183,6 +222,8 @@ namespace {
     py_XrayScatterer.def(
       &ex_xray_scatterer::StructureFactor_dX, "StructureFactor_dX");
 
+    this_module.def(py_rms_coordinates, "rms_coordinates");
+
     this_module.def(py_StructureFactorArray, "StructureFactorArray");
     this_module.def(py_StructureFactor_dX_Array, "StructureFactor_dX_Array");
 
@@ -190,6 +231,10 @@ namespace {
                       "BuildMillerIndices");
     this_module.def(py_BuildMillerIndices_MaxIndex,
                       "BuildMillerIndices");
+
+    this_module.def(pack_coordinates, "pack_coordinates");
+    this_module.def(unpack_coordinates, "unpack_coordinates");
+    this_module.def(flatten_dF_dX, "flatten_dF_dX");
   }
 
 }

@@ -48,6 +48,51 @@ namespace cctbx { namespace af {
     const std::size_t global_max_size(std::size_t(-1));
   }
 
+  class sharing_handle {
+    public:
+      sharing_handle()
+        : use_count(1), weak_count(0), size(0), capacity(0),
+          data(0)
+      {}
+
+      sharing_handle(weak_ref_flag)
+        : use_count(0), weak_count(1), size(0), capacity(0),
+          data(0)
+      {}
+
+      explicit
+      sharing_handle(const std::size_t& sz)
+        : use_count(1), weak_count(0), size(0), capacity(sz),
+          data(new char[sz])
+      {}
+
+      ~sharing_handle() {
+        delete[] data;
+      }
+
+      void deallocate() {
+        delete[] data;
+        capacity = 0;
+        data = 0;
+      }
+
+      void swap(sharing_handle& other) {
+        std::swap(size, other.size);
+        std::swap(capacity, other.capacity);
+        std::swap(data, other.data);
+      }
+
+      std::size_t use_count;
+      std::size_t weak_count;
+      std::size_t size;
+      std::size_t capacity;
+      char* data;
+
+    private:
+      sharing_handle(const sharing_handle&);
+      sharing_handle& operator=(const sharing_handle&);
+  };
+
   template <typename ElementType>
   class shared_plain
   {
@@ -56,62 +101,16 @@ namespace cctbx { namespace af {
 
       static size_type element_size() { return sizeof(ElementType); }
 
-    protected:
-      class handle_type {
-        public:
-          handle_type()
-            : use_count(1), weak_count(0), size(0), capacity(0),
-              data(0)
-          {}
-
-          handle_type(weak_ref_flag)
-            : use_count(0), weak_count(1), size(0), capacity(0),
-              data(0)
-          {}
-
-          explicit
-          handle_type(const size_type& sz)
-            : use_count(1), weak_count(0), size(0), capacity(sz),
-              data(new char[sz])
-          {}
-
-          ~handle_type() {
-            delete[] data;
-          }
-
-          void deallocate() {
-            delete[] data;
-            capacity = 0;
-            data = 0;
-          }
-
-          void swap(handle_type& other) {
-            std::swap(size, other.size);
-            std::swap(capacity, other.capacity);
-            std::swap(data, other.data);
-          }
-
-          size_type use_count;
-          size_type weak_count;
-          size_type size;
-          size_type capacity;
-          char* data;
-
-        private:
-          handle_type(const handle_type&);
-          handle_type& operator=(const handle_type&);
-      };
-
     public:
       shared_plain()
         : m_is_weak_ref(false),
-          m_handle(new handle_type)
+          m_handle(new sharing_handle)
       {}
 
       explicit
       shared_plain(const size_type& sz)
         : m_is_weak_ref(false),
-          m_handle(new handle_type(sz * element_size()))
+          m_handle(new sharing_handle(sz * element_size()))
       {
         std::uninitialized_fill_n(begin(), sz, ElementType());
         m_handle->size = m_handle->capacity;
@@ -120,12 +119,12 @@ namespace cctbx { namespace af {
       // non-std
       shared_plain(const size_type& sz, reserve_flag)
         : m_is_weak_ref(false),
-          m_handle(new handle_type(sz * element_size()))
+          m_handle(new sharing_handle(sz * element_size()))
       {}
 
       shared_plain(const size_type& sz, const ElementType& x)
         : m_is_weak_ref(false),
-          m_handle(new handle_type(sz * element_size()))
+          m_handle(new sharing_handle(sz * element_size()))
       {
         std::uninitialized_fill_n(begin(), sz, x);
         m_handle->size = m_handle->capacity;
@@ -136,7 +135,7 @@ namespace cctbx { namespace af {
       template <typename InitFunctorType>
       shared_plain(const size_type& sz, InitFunctorType ftor)
         : m_is_weak_ref(false),
-          m_handle(new handle_type(sz * element_size()))
+          m_handle(new sharing_handle(sz * element_size()))
       {
         ftor(begin(), sz);
         m_handle->size = m_handle->capacity;
@@ -145,7 +144,7 @@ namespace cctbx { namespace af {
 
       shared_plain(const ElementType* first, const ElementType* last)
         : m_is_weak_ref(false),
-          m_handle(new handle_type((last - first) * element_size()))
+          m_handle(new sharing_handle((last - first) * element_size()))
       {
         std::uninitialized_copy(first, last, begin());
         m_handle->size = m_handle->capacity;
@@ -155,7 +154,7 @@ namespace cctbx { namespace af {
       template <typename OtherElementType>
       shared_plain(const OtherElementType* first, const OtherElementType* last)
         : m_is_weak_ref(false),
-          m_handle(new handle_type((last - first) * element_size()))
+          m_handle(new sharing_handle((last - first) * element_size()))
       {
         uninitialized_copy_typeconv(first, last, begin());
         m_handle->size = m_handle->capacity;
@@ -181,7 +180,7 @@ namespace cctbx { namespace af {
 
       // non-std
       explicit
-      shared_plain(handle_type* other_handle)
+      shared_plain(sharing_handle* other_handle)
         : m_is_weak_ref(false),
           m_handle(other_handle)
       {
@@ -190,8 +189,7 @@ namespace cctbx { namespace af {
       }
 
       // non-std
-      explicit
-      shared_plain(handle_type* other_handle, weak_ref_flag)
+      shared_plain(sharing_handle* other_handle, weak_ref_flag)
         : m_is_weak_ref(true),
           m_handle(other_handle)
       {
@@ -217,8 +215,8 @@ namespace cctbx { namespace af {
         return *this;
       }
 
-      // non-std, const correctness is lost
-      handle_type* handle() const {
+      // non-std
+      sharing_handle* handle() {
         CCTBX_ARRAY_FAMILY_STATIC_ASSERT_HAS_TRIVIAL_DESTRUCTOR
         return m_handle;
       }
@@ -343,7 +341,7 @@ namespace cctbx { namespace af {
       }
 
       bool m_is_weak_ref;
-      handle_type* m_handle;
+      sharing_handle* m_handle;
   };
 
 }} // namespace cctbx::af

@@ -23,7 +23,6 @@ namespace cctbx { namespace af {
       CCTBX_ARRAY_FAMILY_TYPEDEFS
 
       typedef shared_plain<ElementType> base_class;
-      typedef typename base_class::handle_type handle_type;
 
       shared()
       {}
@@ -73,13 +72,12 @@ namespace cctbx { namespace af {
 
       // non-std
       explicit
-      shared(const handle_type& other_handle)
+      shared(sharing_handle* other_handle)
         : base_class(other_handle)
       {}
 
       // non-std
-      explicit
-      shared(const handle_type& other_handle, weak_ref_flag)
+      shared(sharing_handle* other_handle, weak_ref_flag)
         : base_class(other_handle, weak_ref_flag())
       {}
 
