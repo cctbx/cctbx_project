@@ -36,13 +36,10 @@ namespace {
     return cctbx::af::shared<std::complex<double> >(a.handle());
   }
 
-  cctbx::af::shared<double>
-  py_square(const cctbx::af::shared<double>& a) {
-    cctbx::af::shared<double> result(a.size()); // FUTURE: avoid default init.
-    for(std::size_t i=0;i<a.size();i++) {
-      result[i] = a[i] * a[i];
-    }
-    return result;
+  void
+  py_square(cctbx::af::shared<double> a)
+  {
+    for(std::size_t i=0;i<a.size();i++) a[i] *= a[i];
   }
 
   // to preserve VC6 compatibility we are not using shared_algebra.h
