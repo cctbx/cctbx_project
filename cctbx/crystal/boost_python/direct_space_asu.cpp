@@ -52,6 +52,12 @@ namespace {
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
       volume_vertices_overloads, volume_vertices, 0, 2)
 
+    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
+      box_min_overloads, box_min, 0, 1)
+
+    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
+      box_max_overloads, box_max, 0, 1)
+
     static void
     wrap()
     {
@@ -71,8 +77,10 @@ namespace {
         .def("_add_buffer", &w_t::add_buffer)
         .def("volume_vertices", &w_t::volume_vertices,
           volume_vertices_overloads((arg_("cartesian"), arg_("epsilon"))))
-        .def("box_min", &w_t::box_min, ccr())
-        .def("box_max", &w_t::box_max, ccr())
+        .def("box_min", &w_t::box_min, box_min_overloads(
+          (arg_("cartesian")))[ccr()])
+        .def("box_max", &w_t::box_max, box_max_overloads(
+          (arg_("cartesian")))[ccr()])
       ;
       {
         using namespace scitbx::boost_python::container_conversions;

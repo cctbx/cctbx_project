@@ -86,7 +86,7 @@ namespace direct_space_asu {
   {
     public:
       //! Array type for facets.
-      typedef af::small<float_cut_plane<FloatType>, 9> facets_t;
+      typedef af::small<float_cut_plane<FloatType>, 12> facets_t;
 
       //! Default constructor. Some data members are not initialized!
       float_asu() {}
@@ -152,6 +152,7 @@ namespace direct_space_asu {
       {
         CCTBX_ASSERT(epsilon > 0);
         af::shared<scitbx::vec3<FloatType> > result;
+        if (facets_.size() < 3) return result;
         scitbx::mat3<FloatType> m;
         scitbx::vec3<FloatType> b;
         for(std::size_t i0=0   ;i0<facets_.size()-2;i0++) {
@@ -181,24 +182,26 @@ namespace direct_space_asu {
         return result;
       }
 
-      /*! \brief Fractional coordinates of lower-left corner of
+      /*! \brief Coordinates of lower-left corner of
           box covering the asymmetric unit.
        */
-      fractional<FloatType> const&
-      box_min() const
+      scitbx::vec3<FloatType> const&
+      box_min(bool cartesian=false) const
       {
-        if (!have_box_) compute_box();
-        return box_min_;
+        if (!have_box_) compute_box(cartesian);
+        if (cartesian) return box_min_cart_;
+        return box_min_frac_;
       }
 
-      /*! \brief Fractional coordinates of upper-right corner of
+      /*! Coordinates of upper-right corner of
           box covering the asymmetric unit.
        */
-      fractional<FloatType> const&
-      box_max() const
+      scitbx::vec3<FloatType> const&
+      box_max(bool cartesian=false) const
       {
-        if (!have_box_) compute_box();
-        return box_max_;
+        if (!have_box_) compute_box(cartesian);
+        if (cartesian) return box_max_cart_;
+        return box_max_frac_;
       }
 
     protected:
@@ -206,21 +209,30 @@ namespace direct_space_asu {
       facets_t facets_;
       FloatType is_inside_epsilon_;
       mutable bool have_box_;
-      mutable fractional<FloatType> box_min_;
-      mutable fractional<FloatType> box_max_;
+      mutable scitbx::vec3<FloatType> box_min_frac_;
+      mutable scitbx::vec3<FloatType> box_max_frac_;
+      mutable scitbx::vec3<FloatType> box_min_cart_;
+      mutable scitbx::vec3<FloatType> box_max_cart_;
 
       void
-      compute_box() const
+      compute_box(bool cartesian) const
       {
+        scitbx::mat3<FloatType> orth_mx = unit_cell_.orthogonalization_matrix();
         af::shared<scitbx::vec3<FloatType> > vertices_ = volume_vertices();
         af::const_ref<scitbx::vec3<FloatType> > vertices = vertices_.ref();
         CCTBX_ASSERT(vertices.size() >= 4);
-        box_min_ = box_max_ = vertices[0];
+        box_min_frac_ = box_max_frac_ = vertices[0];
+        box_min_cart_ = box_max_cart_ = orth_mx * vertices[0];
         for(std::size_t i=1;i<vertices.size();i++) {
-          scitbx::vec3<FloatType> const& vertex = vertices[i];
+          scitbx::vec3<FloatType> vertex = vertices[i];
           for(std::size_t j=0;j<3;j++) {
-            scitbx::math::update_min(box_min_[j], vertex[j]);
-            scitbx::math::update_max(box_max_[j], vertex[j]);
+            scitbx::math::update_min(box_min_frac_[j], vertex[j]);
+            scitbx::math::update_max(box_max_frac_[j], vertex[j]);
+          }
+          vertex = orth_mx * vertex;
+          for(std::size_t j=0;j<3;j++) {
+            scitbx::math::update_min(box_min_cart_[j], vertex[j]);
+            scitbx::math::update_max(box_max_cart_[j], vertex[j]);
           }
         }
         have_box_ = true;
