@@ -46,11 +46,20 @@ def exercise():
     ['resname', '\'"']],
   ["name o1'",
     ['name', 'o1\'']],
+  ['name """o1\'"""',
+    ['name', 'o1\'']],
+  ['name """o1\n  o2\'"""',
+    ['name', "o1\n  o2'"]],
+  ['name """o1\\\n  o2\'"""',
+    ['name', "o1  o2'"]],
   ]
   for input_string,expected_result in tests:
-    assert [word.value
-      for word in simple_tokenizer.split_into_words(input_string=input_string)
-           ] == expected_result
+    result = [word.value
+      for word in simple_tokenizer.split_into_words(input_string=input_string)]
+    if (expected_result is None):
+      print result
+    else:
+      assert result == expected_result
   print "OK"
 
 if (__name__ == "__main__"):
