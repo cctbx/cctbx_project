@@ -349,6 +349,7 @@ namespace direct_space_asu {
             asu.volume_vertices(true).const_ref())
           .expand(buffer_thickness+sym_equiv_tolerance_)),
         mappings_const_ref_(mappings_.const_ref()),
+        special_position_flags_const_ref_(special_position_flags_.const_ref()),
         n_sites_in_asu_and_buffer_(0),
         mapped_sites_min_(0,0,0),
         mapped_sites_max_(0,0,0),
@@ -361,6 +362,8 @@ namespace direct_space_asu {
       {
         mappings_.reserve(n_sites_final);
         mappings_const_ref_ = mappings_.const_ref();
+        special_position_flags_.reserve(n_sites_final);
+        special_position_flags_const_ref_=special_position_flags_.const_ref();
       }
 
       //! Space group as passed to the constructor.
@@ -415,7 +418,10 @@ namespace direct_space_asu {
       process(fractional<FloatType> const& original_site)
       {
         CCTBX_ASSERT(!is_locked_);
-        CCTBX_ASSERT(mappings_.begin() == mappings_const_ref_.begin());
+        CCTBX_ASSERT(mappings_.begin()
+                  == mappings_const_ref_.begin());
+        CCTBX_ASSERT(special_position_flags_.begin()
+                  == special_position_flags_const_ref_.begin());
         mappings_.push_back(array_of_mappings_for_one_site());
         mappings_const_ref_ = mappings_.const_ref();
         array_of_mappings_for_one_site& site_mappings = mappings_.back();
@@ -425,6 +431,8 @@ namespace direct_space_asu {
           original_site,
           sym_equiv_minimum_distance_,
           sym_equiv_tolerance_);
+        special_position_flags_.push_back(equiv_sites.is_special_position());
+        special_position_flags_const_ref_=special_position_flags_.const_ref();
         af::const_ref<typename sgtbx::sym_equiv_sites<FloatType>::coor_t>
           coordinates = equiv_sites.coordinates().const_ref();
         af::const_ref<std::size_t>
@@ -543,6 +551,22 @@ namespace direct_space_asu {
         return mapped_sites_max_ - mapped_sites_min_;
       }
 
+      //! Special position flag for each processed site.
+      af::shared<bool> const&
+      special_position_flags() const
+      {
+        return special_position_flags_;
+      }
+
+      //! Use for maximum performance.
+      /*! Not available in Python.
+       */
+      af::const_ref<bool> const&
+      special_position_flags_ref() const
+      {
+        return special_position_flags_const_ref_;
+      }
+
       //! mappings()[i_seq][i_sym] with range checking of i_seq and i_sym.
       /*! Not available in Python.
        */
@@ -633,26 +657,19 @@ namespace direct_space_asu {
         return r_inv_cart_[get_asu_mapping(i_seq, i_sym).i_sym_op()];
       }
 
-      //! True if the interaction is due to a symmetry operation.
-      /*! This test is relatively expensive.
+      /*! \brief True if the interaction is between sites on general
+          positions as passed to process().
+       */
+      /*! For sites in special positions the return value is always false.
        */
       bool
-      is_symmetry_interaction(asu_mapping_index_pair const& pair) const
+      is_direct_interaction(asu_mapping_index_pair const& pair) const
       {
+        if (   special_position_flags_const_ref_[pair.i_seq]
+            || special_position_flags_const_ref_[pair.j_seq]) return false;
         sgtbx::rt_mx rt_i = get_rt_mx(pair.i_seq, 0);
         sgtbx::rt_mx rt_j = get_rt_mx(pair.j_seq, pair.j_sym);
-        if (rt_i == rt_j) return false;
-        sgtbx::rt_mx rt_ij = rt_i * rt_j.inverse();
-        if (rt_ij.is_unit_mx()) return false;
-        uc_vec3 mapped_site_j = mappings_const_ref_[pair.j_seq][pair.j_sym]
-          .mapped_site();
-        uc_vec3 remapped_site_j = unit_cell().orthogonalization_matrix()
-          * (rt_ij * (unit_cell().fractionalization_matrix() * mapped_site_j));
-        if (  (remapped_site_j - mapped_site_j).length_sq()
-            < sym_equiv_minimum_distance_*sym_equiv_minimum_distance_) {
-          return false;
-        }
-        return true;
+        return (rt_i == rt_j);
       }
 
       //! Returns a new pair after checking the indices.
@@ -681,6 +698,8 @@ namespace direct_space_asu {
       scitbx::math::sphere_3d<FloatType> buffer_covering_sphere_;
       array_of_array_of_mappings_for_one_site mappings_;
       af::const_ref<array_of_mappings_for_one_site> mappings_const_ref_;
+      af::shared<bool> special_position_flags_;
+      af::const_ref<bool> special_position_flags_const_ref_;
       std::size_t n_sites_in_asu_and_buffer_;
       cartesian<FloatType> mapped_sites_min_;
       cartesian<FloatType> mapped_sites_max_;

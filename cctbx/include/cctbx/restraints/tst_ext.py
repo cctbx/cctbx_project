@@ -66,26 +66,26 @@ def exercise_bond():
   assert p.pair.j_sym == 0
   assert approx_equal(p.distance_ideal, 2)
   assert approx_equal(p.weight, 10)
-  proxies = restraints.shared_bond_sym_proxy([p,p])
-  for proxy in proxies:
+  sym_proxies = restraints.shared_bond_sym_proxy([p,p])
+  for proxy in sym_proxies:
     assert approx_equal(proxy.distance_ideal, 2)
   assert approx_equal(
     restraints.bond_deltas(
       sites_cart=sites_cart,
       asu_mappings=asu_mappings,
-      proxies=proxies),
+      proxies=sym_proxies),
     [2-3**.5]*2)
   assert approx_equal(
     restraints.bond_residuals(
       sites_cart=sites_cart,
       asu_mappings=asu_mappings,
-      proxies=proxies),
+      proxies=sym_proxies),
     [10*(2-3**.5)**2]*2)
   assert approx_equal(
     restraints.bond_residual_sum(
       sites_cart=sites_cart,
       asu_mappings=asu_mappings,
-      proxies=proxies,
+      proxies=sym_proxies,
       gradient_array=None),
     (10*(2-3**.5)**2)*2)
   gradient_array = flex.vec3_double(2, [0,0,0])
@@ -93,12 +93,36 @@ def exercise_bond():
     restraints.bond_residual_sum(
       sites_cart=sites_cart,
       asu_mappings=asu_mappings,
-      proxies=proxies,
+      proxies=sym_proxies,
       gradient_array=gradient_array),
     (10*(2-3**.5)**2)*2)
   assert approx_equal(gradient_array,
     [[ 6.1880215351700611]*3,
      [-6.1880215351700611]*3])
+  #
+  sorted_proxies = restraints.bond_sorted_proxies(asu_mappings=asu_mappings)
+  assert sorted_proxies.asu_mappings().is_locked()
+  assert not sorted_proxies.process(proxy=proxies[0])
+  assert not sorted_proxies.process(proxy=sym_proxies[0])
+  assert sorted_proxies.proxies.size() == 2
+  assert sorted_proxies.sym_proxies.size() == 0
+  assert sorted_proxies.n_total() == 2
+  residual_0 = restraints.bond(
+    sites_cart=sites_cart,
+    proxy=proxies[0]).residual()
+  residual_1 = restraints.bond(
+    sites_cart=sites_cart,
+    asu_mappings=asu_mappings,
+    proxy=sym_proxies[0]).residual()
+  assert approx_equal(residual_1, 10*(2-3**.5)**2)
+  gradient_array = flex.vec3_double(2, [0,0,0])
+  assert approx_equal(restraints.bond_residual_sum(
+    sites_cart=sites_cart,
+    sorted_proxies=sorted_proxies,
+    gradient_array=gradient_array), residual_0+residual_1)
+  assert approx_equal(gradient_array,
+    [(5.1354626519124107, 5.1354626519124107, 5.1354626519124107),
+     (-5.1354626519124107, -5.1354626519124107, -5.1354626519124107)])
 
 def exercise_repulsion():
   sites_cart = flex.vec3_double([[1,2,3],[2,3,4]])

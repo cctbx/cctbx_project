@@ -11,6 +11,7 @@ class energies:
                      asu_mappings=None,
                      bond_proxies=None,
                      bond_sym_proxies=None,
+                     bond_sorted_proxies=None,
                      angle_proxies=None,
                      dihedral_proxies=None,
                      chirality_proxies=None,
@@ -40,6 +41,16 @@ class energies:
         sites_cart=sites_cart,
         asu_mappings=asu_mappings,
         proxies=bond_sym_proxies,
+        gradient_array=self.gradients)
+    if (bond_sorted_proxies is None):
+      self.n_bond_sorted_proxies = 0
+      self.bond_sorted_residual_sum = 0
+    else:
+      assert asu_mappings is not None
+      self.n_bond_sorted_proxies = bond_sorted_proxies.n_total()
+      self.bond_sorted_residual_sum=restraints.bond_residual_sum(
+        sites_cart=sites_cart,
+        sorted_proxies=bond_sorted_proxies,
         gradient_array=self.gradients)
     if (angle_proxies is None):
       self.n_angle_proxies = 0
@@ -94,6 +105,7 @@ class energies:
   def target(self):
     return(self.bond_residual_sum
          + self.bond_sym_residual_sum
+         + self.bond_sorted_residual_sum
          + self.angle_residual_sum
          + self.dihedral_residual_sum
          + self.chirality_residual_sum
@@ -111,6 +123,8 @@ class energies:
       self.bond_residual_sum
     print >> f, "  bond_sym_residual_sum (n=%d):" % self.n_bond_sym_proxies,\
       self.bond_sym_residual_sum
+    print >> f, "  bond_sorted_residual_sum (n=%d):" % \
+      self.n_bond_sorted_proxies, self.bond_sorted_residual_sum
     print >> f, "  angle_residual_sum (n=%d):" % self.n_angle_proxies,\
       self.angle_residual_sum
     print >> f, "  dihedral_residual_sum (n=%d):" % self.n_dihedral_proxies,\
@@ -131,6 +145,7 @@ class lbfgs:
                      asu_mappings=None,
                      bond_proxies=None,
                      bond_sym_proxies=None,
+                     bond_sorted_proxies=None,
                      angle_proxies=None,
                      dihedral_proxies=None,
                      chirality_proxies=None,
@@ -182,6 +197,7 @@ class lbfgs:
       asu_mappings=self.asu_mappings,
       bond_proxies=self.bond_proxies,
       bond_sym_proxies=self.bond_sym_proxies,
+      bond_sorted_proxies=self.bond_sorted_proxies,
       angle_proxies=self.angle_proxies,
       dihedral_proxies=self.dihedral_proxies,
       chirality_proxies=self.chirality_proxies,

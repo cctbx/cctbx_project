@@ -4,6 +4,7 @@
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
 #include <boost/python/return_value_policy.hpp>
+#include <boost/python/copy_const_reference.hpp>
 #include <boost/python/return_by_value.hpp>
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
 #include <cctbx/restraints/bond.h>
@@ -92,6 +93,32 @@ namespace {
     }
   };
 
+  struct bond_sorted_proxies_wrappers
+  {
+    typedef bond_sorted_proxies w_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      typedef boost::python::arg arg_; // gcc 2.96 workaround
+      typedef return_value_policy<copy_const_reference> ccr;
+      class_<w_t>("bond_sorted_proxies", no_init)
+        .def(init<
+          boost::shared_ptr<direct_space_asu::asu_mappings<> > const&>(
+            (arg_("asu_mappings"))))
+        .def("asu_mappings", &w_t::asu_mappings, ccr())
+        .def("process", (bool(w_t::*)(bond_proxy const&)) &w_t::process,
+          (arg_("proxy")))
+        .def("process", (bool(w_t::*)(bond_sym_proxy const&)) &w_t::process,
+          (arg_("proxy")))
+        .def("n_total", &w_t::n_total)
+        .def_readonly("proxies", &w_t::proxies)
+        .def_readonly("sym_proxies", &w_t::sym_proxies)
+      ;
+    }
+  };
+
   void
   wrap_all()
   {
@@ -100,6 +127,7 @@ namespace {
     bond_proxy_wrappers::wrap();
     bond_sym_proxy_wrappers::wrap();
     bond_wrappers::wrap();
+    bond_sorted_proxies_wrappers::wrap();
     def("bond_deltas",
       (af::shared<double>(*)(
         af::const_ref<scitbx::vec3<double> > const&,
@@ -143,6 +171,15 @@ namespace {
       (arg_("sites_cart"),
        arg_("asu_mappings"),
        arg_("proxies"),
+       arg_("gradient_array")));
+    def("bond_residual_sum",
+      (double(*)(
+        af::const_ref<scitbx::vec3<double> > const&,
+        bond_sorted_proxies const&,
+        af::ref<scitbx::vec3<double> > const&))
+      bond_residual_sum,
+      (arg_("sites_cart"),
+       arg_("sorted_proxies"),
        arg_("gradient_array")));
     def("bond_sets", bond_sets,
       (arg_("n_sites"), arg_("bond_proxies")));

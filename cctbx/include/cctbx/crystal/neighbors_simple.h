@@ -33,7 +33,7 @@ namespace neighbors {
       simple_pair_generator(
         boost::shared_ptr<
           direct_space_asu::asu_mappings<
-            FloatType, IntShiftType> >& asu_mappings,
+            FloatType, IntShiftType> > const& asu_mappings,
         FloatType const& distance_cutoff=0)
       :
         asu_mappings_owner_(asu_mappings),
@@ -101,12 +101,12 @@ namespace neighbors {
         return result;
       }
 
-      //! Calls direct_space_asu::asu_mappings::is_symmetry_interaction.
+      //! Calls direct_space_asu::asu_mappings::is_direct_interaction.
       bool
-      is_symmetry_interaction(
+      is_direct_interaction(
         direct_space_asu::asu_mapping_index_pair const& pair) const
       {
-        return asu_mappings_->is_symmetry_interaction(pair);
+        return asu_mappings_->is_direct_interaction(pair);
       }
 
     protected:
