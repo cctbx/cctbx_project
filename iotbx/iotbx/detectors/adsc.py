@@ -40,12 +40,12 @@ class ADSCImage:
     self.file_length = self.ptr+2*self.size1*self.size2
     return self.file_length
     # pure supposition:
-    #  size1 corresponds to number of rows.  Columns are slow. 
+    #  size1 corresponds to number of rows.  Columns are slow.
     #  size2 corresponds to number of columns.  Rows are fast.
 
   def read(self):
     self.fileLength()
-    #ADSC Quantum 210, ALS beamline 5.0.2; SUN: unsigned short little endian 
+    #ADSC Quantum 210, ALS beamline 5.0.2; SUN: unsigned short little endian
     #ADSC Quantum 4R, ALS beamline 5.0.3; WINDOWS: unsigned short big endian
     if self.parameters['BYTE_ORDER'].lower().find('big')>=0:
       self.linearintdata = ReadADSC(self.filename,self.ptr,
@@ -53,7 +53,7 @@ class ADSCImage:
     else:
       self.linearintdata = ReadADSC(self.filename,self.ptr,
                                     self.size1,self.size2,0) #little_endian
-      
+
 
   def __getattr__(self, attr):
     if   attr=='size1' : return self.parameters['SIZE1']
