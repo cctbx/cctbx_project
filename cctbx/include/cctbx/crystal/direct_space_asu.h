@@ -732,8 +732,9 @@ namespace direct_space_asu {
         CCTBX_ASSERT(i_seq < mappings_const_ref_.size());
         std::size_t i_special_op = special_op_indices_const_ref_[i_seq];
         if (i_special_op == 0) {
+          sgtbx::rt_mx rt_mx_sp = rt_mx.cancel();
           for(int i_sym=0; i_sym<mappings_const_ref_[i_seq].size(); i_sym++) {
-            if (get_rt_mx(i_seq, i_sym) == rt_mx) {
+            if (get_rt_mx(i_seq, i_sym).cancel() == rt_mx) {
               return i_sym;
             }
           }
