@@ -357,7 +357,7 @@ namespace cctbx {
           Conversions between isotropic and anisotropic displacement
           parameters are provided by the cctbx::adptbx.
        */
-      const af::tiny<FloatType, 6>& Uaniso() { return m_U; }
+      const af::tiny<FloatType, 6>& Uaniso() const { return m_U; }
       //! Redefinition of f-prime and f-double-prime.
       void set_fpfdp(const std::complex<FloatType> fpfdp) {
         m_fpfdp = fpfdp;
@@ -385,17 +385,13 @@ namespace cctbx {
         m_w = m_Occ * m_M / SgOps.OrderZ();
       }
       //! Redefinition of the isotropic displacement parameter.
-      /*! Requires isAnisotropic() == <code>false</code>.
-       */
       void set_Uiso(const FloatType& Uiso) {
-        cctbx_assert(!m_Anisotropic);
+        m_Anisotropic = false;
         m_U[0] = Uiso;
       }
       //! Redefinition of the anisotropic displacement parameters.
-      /*! Requires isAnisotropic() == <code>true</code>.
-       */
       void set_Uaniso(const af::tiny<FloatType, 6>& Uaniso) {
-        cctbx_assert(m_Anisotropic);
+        m_Anisotropic = true;
         m_U = Uaniso;
       }
       //! Compute multiplicity and average anisotropic displacement parameters.

@@ -43,8 +43,8 @@ namespace cctbx {
   //! Convert anisotropic displacement parameters U -> B.
   template <typename FloatType>
   af::tiny<FloatType, 6>
-  U_as_B(const af::tiny<FloatType, 6>& Uaniso) {
-    return constants::eight_pi_sq * Uaniso;
+  U_as_B(const af::tiny_plain<FloatType, 6>& Uaniso) {
+    return constants::eight_pi_sq * af::tiny<FloatType, 6>(Uaniso);
   }
   //! Convert anisotropic displacement parameters B -> U.
   template <typename FloatType>
@@ -210,7 +210,7 @@ namespace cctbx {
    */
   template <typename FloatType>
   inline FloatType
-  Ucart_as_Uiso(const af::tiny<FloatType, 6>& Ucart)
+  Ucart_as_Uiso(const af::tiny_plain<FloatType, 6>& Ucart)
   {
     return (Ucart[0] + Ucart[1] + Ucart[2]) / 3.;
   }

@@ -17,6 +17,7 @@
 #include <cctbx/error.h>
 #include <cctbx/array_family/versa.h>
 #include <cctbx/array_family/reductions.h>
+#include <cctbx/sym_mat3.h>
 #include <cctbx/maps/accessors.h>
 #include <cctbx/maps/gridding.h>
 #include <cctbx/maps/sym_tags.h>
@@ -136,37 +137,119 @@ namespace cctbx { namespace sftbx {
       }
     }
 
+    // ff(hc) =
+    //   a Exp[hc.b_arg.hc]
+    // rho_anisotropic(rc) =
+    //   a / (2 Sqrt[2] Sqrt[Det[b_arg]]) Exp[-1/4 rc.Inverse[b_arg].rc]
+    // XXX explanation for additional factors?
+    template <typename FloatType>
+    inline
+    void
+    anisotropic_3d_gaussian_fourier_transform(
+      const FloatType& a,
+      const sym_mat3<FloatType>& b_all,
+      FloatType& as,
+      sym_mat3<FloatType>& bs)
+    {
+      FloatType d = b_all.determinant();
+      cctbx_assert(d != 0);
+      sym_mat3<FloatType> cfmt = b_all.co_factor_matrix_transposed();
+      as = a / ((2 * std::sqrt(2)) * std::sqrt(d))
+        * (16 * std::sqrt(2) * constants::pi * std::sqrt(constants::pi));
+      bs = cfmt / FloatType(-4 * d)
+        * FloatType(16 * constants::pi_sq);
+    }
+
+    template <typename FloatType>
+    inline
+    void
+    isotropic_3d_gaussian_fourier_transform(
+      const FloatType& a,
+      const FloatType& b_all,
+      FloatType& as,
+      FloatType& bs)
+    {
+      FloatType d = b_all * b_all * b_all;
+      cctbx_assert(d != 0);
+      as = a / ((2 * std::sqrt(2)) * std::sqrt(d))
+        * (16 * std::sqrt(2) * constants::pi * std::sqrt(constants::pi));
+      bs = 1 / (-4 * b_all)
+        * FloatType(16 * constants::pi_sq);
+    }
+
+    template <typename FloatTypeCaasfB,
+              typename FloatType>
+    inline
+    sym_mat3<FloatType>
+    compose_anisotropic_b_all(
+      const FloatTypeCaasfB& caasf_b,
+      const FloatType& u_extra,
+      const sym_mat3<FloatType>& u_cart)
+    {
+      return sym_mat3<FloatType>(caasf_b + adptbx::U_as_B(u_extra))
+           + sym_mat3<FloatType>(adptbx::U_as_B(u_cart));
+    }
+
     template <typename FloatType,
               typename CaasfType>
     class caasf_fourier_transformed
     {
       public:
+        caasf_fourier_transformed() {}
+
         caasf_fourier_transformed(
           const CaasfType& caasf,
           const std::complex<FloatType>& fpfdp,
           const FloatType& w,
-          const FloatType& u_incl_extra)
+          const FloatType& u_iso,
+          const FloatType& u_extra)
+          : is_anisotropic_(false)
         {
-          using constants::four_pi;
-          using constants::four_pi_sq;
-          FloatType b_incl_extra = adptbx::U_as_B(u_incl_extra);
+          FloatType b_incl_extra = adptbx::U_as_B(u_iso + u_extra);
           std::size_t i = 0;
           for(;i<caasf.n_ab();i++) {
-            FloatType b_i_b_incl_extra = caasf.b(i) + b_incl_extra;
-            FloatType f = std::pow(four_pi / b_i_b_incl_extra, 1.5);
-            a_real_[i] = w * caasf.a(i) * f;
-            b_real_[i] = -four_pi_sq / b_i_b_incl_extra;
+            isotropic_3d_gaussian_fourier_transform(
+              w * caasf.a(i), caasf.b(i) + b_incl_extra,
+              as_real_[i], bs_real_[i]);
           }
-          FloatType f = std::pow(four_pi / b_incl_extra, 1.5);
-          a_real_[i] = w * (caasf.c() + fpfdp.real()) * f;
-          b_real_[i] = -four_pi_sq / b_incl_extra;
-          a_imag_ = w * fpfdp.imag() * f;
-          b_imag_ = b_real_[i];
+          isotropic_3d_gaussian_fourier_transform(
+            w * (caasf.c() + fpfdp.real()), b_incl_extra,
+            as_real_[i], bs_real_[i]);
+          isotropic_3d_gaussian_fourier_transform(
+            w * (fpfdp.imag()), b_incl_extra,
+            as_imag_, bs_imag_);
         }
+
+        caasf_fourier_transformed(
+          const CaasfType& caasf,
+          const std::complex<FloatType>& fpfdp,
+          const FloatType& w,
+          const sym_mat3<FloatType>& u_cart,
+          const FloatType& u_extra)
+          : is_anisotropic_(true)
+        {
+          std::size_t i = 0;
+          for(;i<caasf.n_ab();i++) {
+            anisotropic_3d_gaussian_fourier_transform(
+              w * caasf.a(i),
+              compose_anisotropic_b_all(caasf.b(i), u_extra, u_cart),
+              as_real_[i], aniso_bs_real_[i]);
+          }
+          anisotropic_3d_gaussian_fourier_transform(
+            w * (caasf.c() + fpfdp.real()),
+            compose_anisotropic_b_all(0, u_extra, u_cart),
+            as_real_[i], aniso_bs_real_[i]);
+          anisotropic_3d_gaussian_fourier_transform(
+            w * (fpfdp.imag()),
+            compose_anisotropic_b_all(0, u_extra, u_cart),
+            as_imag_, aniso_bs_imag_);
+        }
+
+        bool is_anisotropic() const { return is_anisotropic_; }
 
         FloatType rho_real_0() const
         {
-          return af::sum(a_real_.const_ref());
+          return af::sum(as_real_.const_ref());
         }
 
         FloatType
@@ -174,8 +257,19 @@ namespace cctbx { namespace sftbx {
                  const FloatType& d_sq) const
         {
           FloatType r(0);
-          for (std::size_t i=0;i<a_real_.size();i++) {
-            r += a_real_[i] * exp_table(b_real_[i] * d_sq);
+          for (std::size_t i=0;i<as_real_.size();i++) {
+            r += as_real_[i] * exp_table(bs_real_[i] * d_sq);
+          }
+          return r;
+        }
+
+        FloatType
+        rho_real(exponent_table<FloatType>& exp_table,
+                 const vec3<FloatType>& d) const
+        {
+          FloatType r(0);
+          for (std::size_t i=0;i<as_real_.size();i++) {
+            r += as_real_[i] * exp_table(d * aniso_bs_real_[i] * d);
           }
           return r;
         }
@@ -184,16 +278,27 @@ namespace cctbx { namespace sftbx {
         rho_imag(exponent_table<FloatType>& exp_table,
                  const FloatType& d_sq) const
         {
-          return a_imag_ * exp_table(b_imag_ * d_sq);
+          return as_imag_ * exp_table(bs_imag_ * d_sq);
+        }
+
+        FloatType
+        rho_imag(exponent_table<FloatType>& exp_table,
+                 const vec3<FloatType>& d) const
+        {
+          return as_imag_ * exp_table(d * aniso_bs_imag_ * d);
         }
 
       private:
-        af::tiny<FloatType, CaasfType::n_plus_1> a_real_;
-        af::tiny<FloatType, CaasfType::n_plus_1> b_real_;
-        FloatType a_imag_;
-        FloatType b_imag_;
+        bool is_anisotropic_;
+        af::tiny<FloatType, CaasfType::n_plus_1> as_real_;
+        af::tiny<FloatType, CaasfType::n_plus_1> bs_real_;
+        af::tiny<sym_mat3<FloatType>, CaasfType::n_plus_1> aniso_bs_real_;
+        FloatType as_imag_;
+        FloatType bs_imag_;
+        sym_mat3<FloatType> aniso_bs_imag_;
     };
 
+    // XXX deal properly with anisotropic displacements
     template <typename FloatType>
     struct calc_shell
     {
@@ -217,9 +322,19 @@ namespace cctbx { namespace sftbx {
           for (ig = 1; ig < grid_n[i_basis_vec]; ig++) {
             fractional<FloatType> d_frac(0,0,0);
             d_frac[i_basis_vec] = ig / grid_n_f[i_basis_vec];
-            FloatType d_sq = ucell.Length2(d_frac);
-            if (detail::abs(caasf_ft.rho_real(exp_table, d_sq)) < rho_cutoff) {
-              break;
+            vec3<FloatType> d_cart = ucell.orthogonalize(d_frac);
+            FloatType d_sq = d_cart.length2();
+            if (!caasf_ft.is_anisotropic()) {
+              if (  detail::abs(caasf_ft.rho_real(exp_table, d_sq))
+                  < rho_cutoff) {
+                break;
+              }
+            }
+            else {
+              if (  detail::abs(caasf_ft.rho_real(exp_table, d_cart))
+                  < rho_cutoff) {
+                break;
+              }
             }
             if (max_d_sq < d_sq) max_d_sq = d_sq;
           }
@@ -373,16 +488,23 @@ namespace cctbx { namespace sftbx {
         for(site=sites.begin();site!=sites.end();site++)
         {
           if (site->w() == 0) continue;
-          cctbx_assert(!site->isAnisotropic());
           FloatType fdp = site->fpfdp().imag();
           const fractional<FloatType>& coor_frac = site->Coordinates();
-          detail::caasf_fourier_transformed<FloatType, caasf_type> caasf_ft(
-            site->CAASF(), site->fpfdp(), site->w(), site->Uiso() + u_extra_);
+          detail::caasf_fourier_transformed<FloatType, caasf_type> caasf_ft;
+          if (!site->isAnisotropic()) {
+            caasf_ft = detail::caasf_fourier_transformed<FloatType,caasf_type>(
+              site->CAASF(), site->fpfdp(), site->w(),
+              site->Uiso(), u_extra_);
+          }
+          else {
+            caasf_ft = detail::caasf_fourier_transformed<FloatType,caasf_type>(
+              site->CAASF(), site->fpfdp(), site->w(),
+              adptbx::Ustar_as_Ucart(ucell_, site->Uaniso()), u_extra_);
+          }
           detail::calc_shell<FloatType> shell(
             ucell_, wing_cutoff_, grid_nl, caasf_ft, exp_table);
           if (electron_density_must_be_positive) {
-            if (   caasf_ft.rho_real_0() < 0
-                || caasf_ft.rho_real(exp_table, shell.max_d_sq) < 0) {
+            if (caasf_ft.rho_real_0() < 0) {
               throw error("Negative electron density at sampling point.");
             }
           }
@@ -407,20 +529,24 @@ namespace cctbx { namespace sftbx {
             c11 = orth_mx[4] * f1;
           for(gp[2] = g_min[2]; gp[2] <= g_max[2]; gp[2]++) {
             f2 = FloatType(gp[2]) / grid_nl[2] - coor_frac[2];
-            c02 = orth_mx[2] * f2 + c01;
-            c12 = orth_mx[5] * f2 + c11;
-            c22 = orth_mx[8] * f2;
-            FloatType d_sq = c02*c02 + c12*c12 + c22*c22;
+            vec3<FloatType> d(
+              orth_mx[2] * f2 + c01,
+              orth_mx[5] * f2 + c11,
+              orth_mx[8] * f2);
+            FloatType d_sq = d.length2();
             if (d_sq > shell.max_d_sq) continue;
             std::size_t i_map = g0112 + detail::mod_positive(gp[2],grid_nl[2]);
-            if (friedel_flag) {
-              map_begin[i_map] += caasf_ft.rho_real(exp_table, d_sq);
-            }
-            else {
-              i_map *= 2;
+            if (!friedel_flag) i_map *= 2;
+            if (!site->isAnisotropic()) {
               map_begin[i_map] += caasf_ft.rho_real(exp_table, d_sq);
               if (fdp) {
                 map_begin[i_map+1] += caasf_ft.rho_imag(exp_table, d_sq);
+              }
+            }
+            else {
+              map_begin[i_map] += caasf_ft.rho_real(exp_table, d);
+              if (fdp) {
+                map_begin[i_map+1] += caasf_ft.rho_imag(exp_table, d);
               }
             }
           }}}
