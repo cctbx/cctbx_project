@@ -303,10 +303,10 @@ double maximum_likelihood_target_one_h(double fo,
                                        int c)
 {
   CCTBX_ASSERT( (c == 1 || c == 0) && (e > 0) );
-  CCTBX_ASSERT( fo >= 0 && fc >= 0 );
-  CCTBX_ASSERT( std::abs(k) > 1.e-9 );
+  //CCTBX_ASSERT( fo >= 0 && fc >= 0 );
+  //CCTBX_ASSERT( std::abs(k) > 1.e-9 );
   double target = 0.0;
-  if(a <= 0.0 || b <= 0.0) {
+  if(a <= 0.0 || b <= 0.0 || fo <= 0.0 || fc <= 0.0) {
      return 0.0;
   }
   a *= k;
@@ -395,10 +395,11 @@ double d_maximum_likelihood_target_one_h_over_k(double fo,
                                                 int c)
 {
   CCTBX_ASSERT( (c == 1 || c == 0) && (e > 0) );
-  CCTBX_ASSERT( fo >= 0 && fc > 0 );
+  //CCTBX_ASSERT( fo >= 0 );
+  //CCTBX_ASSERT( fc >  0 );
   CCTBX_ASSERT( std::abs(k) > 1.e-9 );
   double d_target_over_k = 0.0;
-  if(a <= 0.0 || b <= 0.0) {
+  if(a <= 0.0 || b <= 0.0 || fo <= 0.0 || fc <= 0.0) {
      return 0.0;
   }
   double eb = e * b;
