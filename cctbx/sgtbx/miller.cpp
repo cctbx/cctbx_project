@@ -162,14 +162,28 @@ namespace cctbx { namespace sgtbx {
   }
 
   bool
-  PhaseInfo::isValidPhase_(double Period, double phi, double tolerance) const
+  PhaseInfo::isValidPhase(double phi, bool deg, double tolerance) const
   {
-    if (m_HT < 0) return true;
-    double delta = std::fmod(phi - HT_angle_(Period), Period);
-    if (delta >  tolerance) delta -= Period;
-    if (delta < -tolerance) delta += Period;
+    if (!isCentric()) return true;
+    double period = ht_period(deg);
+    double delta = std::fmod(phi - HT_angle(deg), period);
+    if (delta >  tolerance) delta -= period;
+    if (delta < -tolerance) delta += period;
     if (delta <= tolerance) return true;
     return false;
+  }
+
+  double
+  PhaseInfo::nearest_valid_phase(double phi, bool deg) const
+  {
+    if (!isCentric()) return phi;
+    double period = ht_period(deg);
+    double phi_restr = HT_angle(deg);
+    double delta0 = phi - phi_restr;
+    double delta1 = delta0 - period;
+    if (  math::abs(std::fmod(delta1, period))
+        < math::abs(std::fmod(delta0, period))) return phi_restr + period;
+    return phi_restr;
   }
 
   SymEquivMillerIndices

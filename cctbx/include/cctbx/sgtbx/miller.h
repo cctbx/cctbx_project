@@ -276,8 +276,8 @@ namespace cctbx {
          */
         double HT_angle(bool deg = false) const
         {
-          if (deg) return HT_angle_(180.);
-          return HT_angle_(cctbx::constants::pi);
+          if (!isCentric()) return -1.;
+          return (ht_period(deg) * m_HT) / m_TBF;
         }
 
         /*! \brief Test if phase phi (with given Period) is
@@ -287,20 +287,21 @@ namespace cctbx {
         /*! The tolerance compensates for rounding errors.
          */
         bool isValidPhase(
-          double phi, bool deg = false, double tolerance = 1.e-5) const
-        {
-          if (deg) return isValidPhase_(180., phi, tolerance);
-          return isValidPhase_(cctbx::constants::pi, phi, tolerance);
-        }
+          double phi, bool deg = false, double tolerance = 1.e-5) const;
+
+        //! Nearest valid phase.
+        /*! For acentric reflections equivalent to the input phase phi.
+            For centric reflections, the restricted phase which is
+            closest to the input phase phi.
+         */
+        double nearest_valid_phase(double phi, bool deg = false) const;
 
       private:
-        double HT_angle_(double Period) const
+        double ht_period(bool deg) const
         {
-          if (!isCentric()) return -1.;
-          return (Period * m_HT) / m_TBF;
+          if (deg) return 180.;
+          return cctbx::constants::pi;
         }
-
-        bool isValidPhase_(double Period, double phi, double tolerance) const;
 
         int m_HT;
         int m_TBF;

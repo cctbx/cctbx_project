@@ -291,6 +291,40 @@ def test_loop_internal_symbol_table():
     print sgtbx.SpaceGroupSymbols(enantiomorphic_pairs[p]).Hermann_Mauguin()
   assert len(enantiomorphic_pairs) == 22
 
+def convert_angle(phi, deg):
+  import math
+  if (not deg): return phi * math.pi / 180
+  return phi
+
+def test_nearest_valid_phase():
+  sgops = sgtbx.SpaceGroup(sgtbx.SpaceGroupSymbols("88:1"))
+  phinfo = sgops.getPhaseRestriction((0,0,1))
+  for deg in (0,1):
+    for i in xrange(-5, 6):
+      phi = 45 + i * 180
+      assert phinfo.isValidPhase(convert_angle(phi, deg), deg)
+      assert not phinfo.isValidPhase(convert_angle(phi + 1, deg), deg)
+      if (not deg):
+        assert phinfo.isValidPhase(convert_angle(phi, deg))
+        assert not phinfo.isValidPhase(convert_angle(phi + 1, deg))
+      target = 45 + (i % 2) * 180
+      for delta in range(0, 90, 10) + [89.99, 90.01]:
+        try:
+          assert (
+              phinfo.nearest_valid_phase(convert_angle(phi + delta, deg), deg)
+            - convert_angle(target, deg)) < 1.e-5
+          if (not deg):
+            assert (
+                phinfo.nearest_valid_phase(convert_angle(phi + delta, deg))
+              - convert_angle(target, deg)) < 1.e-5
+        except AssertionError:
+          assert delta > 90
+  sgops = sgtbx.SpaceGroup()
+  phinfo = sgops.getPhaseRestriction((0,0,1))
+  assert (phinfo.nearest_valid_phase(1.23) - 1.23) < 1.e-5
+  assert (phinfo.nearest_valid_phase(1.23, 0) - 1.23) < 1.e-5
+  assert (phinfo.nearest_valid_phase(1.23, 1) - 1.23) < 1.e-5
+
 def run():
   import sys, os
   Flags = debug_utils.command_line_options(sys.argv[1:], (
@@ -314,6 +348,7 @@ def run():
   test_pickle()
   test_site_symmetry()
   test_loop_internal_symbol_table()
+  test_nearest_valid_phase()
   import tst6, tst7, tst9, tst10, tst11, tst12, tst13, tst14
   tst6.run(0)
   tst7.run(0)
