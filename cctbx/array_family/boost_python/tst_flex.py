@@ -88,6 +88,7 @@ def exercise_flex_xray_scatterer():
     assert ai.u_star == bi.u_star
     assert ai.multiplicity() == bi.multiplicity()
     assert approx_equal(ai.weight(), bi.weight())
+  assert list(a.extract_labels()) == ["Si1", "O1", "K1"]
   assert approx_equal(a.extract_sites(),
                       ((0.1,0.2,0.3),(0.2,0.3,0.4),(0.3,0.4,0.5)))
   a.set_sites(sites=flex.vec3_double(
