@@ -149,6 +149,15 @@ namespace {
   {
     typedef asu_mappings<> w_t;
 
+    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
+      process_overloads, process, 1, 2)
+
+    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
+      process_sites_frac_overloads, process_sites_frac, 1, 2)
+
+    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
+      process_sites_cart_overloads, process_sites_cart, 1, 2)
+
     static void
     wrap()
     {
@@ -160,32 +169,31 @@ namespace {
           "direct_space_asu_asu_mappings", no_init)
         .def(init<sgtbx::space_group const&,
                   float_asu<> const&,
-                  double const&,
-                  optional<double const&> >((
+                  double const&>((
           arg_("space_group"),
           arg_("asu"),
-          arg_("buffer_thickness"),
-          arg_("min_distance_sym_equiv"))))
+          arg_("buffer_thickness"))))
         .def("reserve", &w_t::reserve, (arg_("n_sites_final")))
         .def("space_group", &w_t::space_group, rir())
         .def("asu", &w_t::asu, rir())
         .def("unit_cell", &w_t::unit_cell, rir())
         .def("buffer_thickness", &w_t::buffer_thickness)
         .def("asu_buffer", &w_t::asu_buffer, rir())
-        .def("min_distance_sym_equiv", &w_t::min_distance_sym_equiv)
         .def("buffer_covering_sphere", &w_t::buffer_covering_sphere, rir())
         .def("process",
-          (void(w_t::*)(fractional<> const&))
-            &w_t::process, (
-          arg_("original_site")))
+          (void(w_t::*)(fractional<> const&, double const&))
+            &w_t::process, process_overloads((
+          arg_("original_site"), arg_("min_distance_sym_equiv"))))
         .def("process",
           (void(w_t::*)(fractional<> const&, sgtbx::site_symmetry_ops const&))
             &w_t::process, (
           arg_("original_site"), arg_("site_symmetry_ops")))
         .def("process_sites_frac",
-          (void(w_t::*)(af::const_ref<scitbx::vec3<double> > const&))
-            &w_t::process_sites_frac, (
-          arg_("original_sites")))
+          (void(w_t::*)(
+            af::const_ref<scitbx::vec3<double> > const&,
+            double const&))
+              &w_t::process_sites_frac, process_sites_frac_overloads((
+          arg_("original_sites"), arg_("min_distance_sym_equiv"))))
         .def("process_sites_frac",
           (void(w_t::*)(
             af::const_ref<scitbx::vec3<double> > const&,
@@ -193,9 +201,11 @@ namespace {
               &w_t::process_sites_frac, (
           arg_("original_sites"), arg_("site_symmetry_table")))
         .def("process_sites_cart",
-          (void(w_t::*)(af::const_ref<scitbx::vec3<double> > const&))
-            &w_t::process_sites_cart, (
-          arg_("original_sites")))
+          (void(w_t::*)(
+            af::const_ref<scitbx::vec3<double> > const&,
+            double const&))
+              &w_t::process_sites_cart, process_sites_cart_overloads((
+          arg_("original_sites"), arg_("min_distance_sym_equiv"))))
         .def("process_sites_cart",
           (void(w_t::*)(
             af::const_ref<scitbx::vec3<double> > const&,

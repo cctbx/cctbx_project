@@ -71,8 +71,7 @@ def exercise_direct_space_asu():
     space_group=sgtbx.space_group("P 2 3").change_basis(
       sgtbx.change_of_basis_op("x+1/4,y-1/4,z+1/2")),
     asu=asu,
-    buffer_thickness=0.1,
-    min_distance_sym_equiv=0.01)
+    buffer_thickness=0.1)
   asu_mappings.reserve(n_sites_final=10)
   assert asu_mappings.space_group().order_z() == 12
   assert len(asu_mappings.asu().facets()) == 4
@@ -80,13 +79,14 @@ def exercise_direct_space_asu():
   assert approx_equal(asu_mappings.buffer_thickness(), 0.1)
   assert approx_equal(asu_mappings.asu_buffer().box_min(),
     [0.0085786, -0.4914214, 0.4])
-  assert approx_equal(asu_mappings.min_distance_sym_equiv(), 0.01)
   assert approx_equal(asu_mappings.buffer_covering_sphere().radius(),0.8071081)
   sites_seq = [
     [3.1,-2.2,1.3],
     [-4.3,1.7,0.4]]
   assert asu_mappings.mappings().size() == 0
-  asu_mappings.process(original_site=sites_seq[0])
+  asu_mappings.process(
+    original_site=sites_seq[0],
+    min_distance_sym_equiv=0.01)
   assert asu_mappings.mappings().size() == 1
   site_symmetry = sgtbx.site_symmetry(
     unit_cell=asu_mappings.asu().unit_cell(),
@@ -158,15 +158,16 @@ def exercise_direct_space_asu():
       space_group=sgtbx.space_group("P 2 3").change_basis(
         sgtbx.change_of_basis_op("x+1/4,y-1/4,z+1/2")),
       asu=asu,
-      buffer_thickness=buffer_thickness,
-      min_distance_sym_equiv=0.01)
+      buffer_thickness=buffer_thickness)
     asu_mappings.process_sites_frac(
-      original_sites=flex.vec3_double([[3.1,-2.2,1.3]]))
+      original_sites=flex.vec3_double([[3.1,-2.2,1.3]]),
+      min_distance_sym_equiv=0.01)
     assert asu_mappings.mappings().size() == 1
     if (two_flag):
       asu_mappings.process_sites_cart(
         original_sites=flex.vec3_double([
-          asu.unit_cell().orthogonalize([-4.3,1.7,0.4])]))
+          asu.unit_cell().orthogonalize([-4.3,1.7,0.4])]),
+      min_distance_sym_equiv=0.01)
     pair_generator = crystal.neighbors_simple_pair_generator(asu_mappings)
     index_pairs = []
     for index_pair in pair_generator:

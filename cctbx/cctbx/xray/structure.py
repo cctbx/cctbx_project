@@ -342,8 +342,7 @@ class structure(crystal.special_position_settings):
       space_group=self.space_group(),
       asu=self.direct_space_asu().as_float_asu(
         is_inside_epsilon=is_inside_epsilon),
-      buffer_thickness=buffer_thickness,
-      min_distance_sym_equiv=self.min_distance_sym_equiv())
+      buffer_thickness=buffer_thickness)
     ext.asu_mappings_process(
       asu_mappings=result,
       scatterers=self._scatterers,
