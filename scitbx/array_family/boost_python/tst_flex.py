@@ -14,6 +14,7 @@ def exercise_flex_grid():
   assert g.last(0) == ()
   assert g.is_0_based()
   assert not g.is_padded()
+  assert not g.is_trivial_1d()
   g = flex.grid((2,3,5))
   assert g.nd() == 3
   assert g.size_1d() == 30
@@ -26,6 +27,7 @@ def exercise_flex_grid():
   assert g((1,2,4)) == 29
   assert g.is_0_based()
   assert not g.is_padded()
+  assert not g.is_trivial_1d()
   assert flex.grid(1).all() == (1,)
   assert flex.grid(1,2).all() == (1,2,)
   assert flex.grid(1,2,3).all() == (1,2,3)
@@ -52,6 +54,7 @@ def exercise_flex_grid():
   assert not g.is_valid_index((0,0,0))
   assert not g.is_0_based()
   assert not g.is_padded()
+  assert not g.is_trivial_1d()
   g = flex.grid((1,2,3), (4,6,8), 0)
   assert g.nd() == 3
   assert g.size_1d() == 120
@@ -66,6 +69,7 @@ def exercise_flex_grid():
   assert not g.is_valid_index((5,0,0))
   assert not g.is_0_based()
   assert not g.is_padded()
+  assert not g.is_trivial_1d()
   assert not g.has_focus()
   g.set_focus((3,-9,5))
   assert g.has_focus()
@@ -75,6 +79,7 @@ def exercise_flex_grid():
   assert g.focus() == (4,-8,6)
   assert not g.is_0_based()
   assert g.is_padded()
+  assert not g.is_trivial_1d()
   import pickle
   s = pickle.dumps(g)
   l = pickle.loads(s)
@@ -122,6 +127,7 @@ def exercise_flex_constructors():
   assert tuple(f.accessor().focus(0)) == (-1,)
   assert f.accessor().is_0_based()
   assert not f.accessor().is_padded()
+  assert f.accessor().is_trivial_1d()
   assert f.nd() == 1
   assert not f.has_origin()
   assert tuple(f.origin()) == (0,)
@@ -136,6 +142,7 @@ def exercise_flex_constructors():
   assert f.focus_size_1d() == 0
   assert f.is_0_based()
   assert not f.is_padded()
+  assert f.is_trivial_1d()
   assert tuple(f) == ()
   f = flex.double(flex.grid((2,3,5)))
   assert f.size() == 30

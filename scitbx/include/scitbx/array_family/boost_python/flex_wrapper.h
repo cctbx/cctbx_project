@@ -136,6 +136,9 @@ namespace scitbx { namespace af { namespace boost_python {
     static bool
     is_padded(f_t const& a) { return a.accessor().is_padded(); }
 
+    static bool
+    is_trivial_1d(f_t const& a) { return a.accessor().is_trivial_1d(); }
+
     static f_t
     shift_origin(f_t const& a)
     {
@@ -698,6 +701,7 @@ namespace scitbx { namespace af { namespace boost_python {
         .def("focus_size_1d", focus_size_1d)
         .def("is_0_based", is_0_based)
         .def("is_padded", is_padded)
+        .def("is_trivial_1d", is_trivial_1d)
         .def("shift_origin", shift_origin)
         .def("id", id)
         .def("size", size)

@@ -49,7 +49,7 @@ namespace scitbx { namespace af { namespace boost_python {
     flex_double
     as_double(flex<vec3<double> >::type const& a)
     {
-      CCTBX_ASSERT(!a.accessor().is_padded());
+      CCTBX_ASSERT(a.accessor().is_trivial_1d());
       flex_double result(a.size()*3, init_functor_null<double>());
       double* r = result.begin();
       const_ref<vec3<double> > a_ref = a.const_ref().as_1d();

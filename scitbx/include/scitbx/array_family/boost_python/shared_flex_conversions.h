@@ -49,9 +49,7 @@ namespace scitbx { namespace af { namespace boost_python {
       boost::python::extract<flex_type const&> flex_proxy(obj);
       if (!flex_proxy.check()) return 0;
       flex_type const& a = flex_proxy();
-      if (a.accessor().nd() != 1) return 0;
-      if (!a.accessor().is_0_based()) return 0;
-      if (a.accessor().is_padded()) return 0;
+      if (!a.accessor().is_trivial_1d()) return 0;
       return obj_ptr;
     }
 
@@ -62,9 +60,7 @@ namespace scitbx { namespace af { namespace boost_python {
       boost::python::object obj(boost::python::borrowed(obj_ptr));
       flex_type const& a = boost::python::extract<flex_type const&>(obj)();
       if (!a.check_shared_size()) raise_shared_size_mismatch();
-      assert(a.accessor().nd() == 1);
-      assert(a.accessor().is_0_based());
-      assert(!a.accessor().is_padded());
+      assert(a.accessor().is_trivial_1d());
       void* storage = (
         (boost::python::converter::rvalue_from_python_storage<SharedType>*)
           data)->storage.bytes;

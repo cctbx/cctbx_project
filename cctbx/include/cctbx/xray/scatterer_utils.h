@@ -80,9 +80,7 @@ namespace cctbx { namespace xray {
     bool u_iso_flag,
     bool occupancy_flag)
   {
-    CCTBX_ASSERT(x.accessor().is_0_based());
-    CCTBX_ASSERT(x.accessor().nd() == 1);
-    CCTBX_ASSERT(!x.accessor().is_padded());
+    CCTBX_ASSERT(x.accessor().is_trivial_1d());
     af::shared_plain<FloatTypePacked> xb = x.as_base_array();
     CCTBX_ASSERT(xb.size() == x.size());
     if (site_flag) {
