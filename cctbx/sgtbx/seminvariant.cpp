@@ -18,7 +18,7 @@ namespace sgtbx {
   namespace seminvariant_cpp { // anonymous namespace causes
                                // warnings with some compilers
 
-    inline void copy(const int *source, int* target, std::size_t n) {
+    inline void copy(const RotMx& source, int* target, std::size_t n) {
       for(std::size_t i=0;i<n;i++) target[i] = source[i];
     }
 
@@ -29,14 +29,14 @@ namespace sgtbx {
       for(std::size_t i=0;i<Gen.nGen;i++) {
         const RotMx R = Gen.ZGen[i].Rpart();
         if (!Primitive) {
-          copy(R.minusUnit().elems, &result.elems[i * 3*3], 3*3);
+          copy(R.minusUnit(), &result.elems[i * 3*3], 3*3);
         }
         else {
-          copy(Gen.Z2POp(R).minusUnit().elems, &result.elems[i * 3*3], 3*3);
+          copy(Gen.Z2POp(R).minusUnit(), &result.elems[i * 3*3], 3*3);
         }
       }
       if (Gen.ZInvT.isValid()) {
-        copy(RotMx(1, -2).elems, &result.elems[Gen.nGen * 3*3], 3*3);
+        copy(RotMx(1, -2), &result.elems[Gen.nGen * 3*3], 3*3);
       }
       return result;
     }
