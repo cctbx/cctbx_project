@@ -4,9 +4,7 @@
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
 #include <boost/python/module.hpp>
-#include <boost/smart_ptr.hpp>
 #include <fstream>
-#include <string>
 #include <cstdlib>
 #include <cstdio>
 
@@ -14,74 +12,48 @@ namespace af = scitbx::af;
 
 namespace {
 
-class ScientificFormatter {
-  //Necessary because Microsoft Visual C Runtime formats printf incorrectly
-  //%12.5E becomes -d.dddddE+000
-  //Usage:  ScientificFormatter pretty("%12.5E");
-  //Some drawbacks to this approach:
-  //1.  Need to use the get method:  fprintf(FH,"%s",pretty(2.0).get());
-  //2.  Takes 0.3 sec per 100000 calls on tru64 (additional time over printf)
-
-  //XXX No attempt has been made to optimize this! Certainly it can be improved.
-private:
-  char oformat[10];
-  char iformat[10];
-  int digits, frac;
-  bool stdprintf;
-  const char pad;
-public:
-  ScientificFormatter(std::string const& s);
-  boost::shared_array<char> operator() (double d);
-};
-
-ScientificFormatter::ScientificFormatter(std::string const& s): pad(' ') {
-    //parse the format %12.5E becomes TOKEN digits TOKEN decimal LETTER
-    //could re-implement this with the boost tokenizer
-    SCITBX_ASSERT(s.find("%") == 0);
-
-    int dot = s.find("."); std::string(s,dot)/* essentially an assertion */;
-    int letter = s.find("E"); std::string(s,letter);
-
-    digits   = std::atoi(std::string(s,1,dot-1).c_str());
-    frac = std::atoi(std::string(s,dot+1,letter-dot).c_str());
-
-    SCITBX_ASSERT(frac+7 <= digits); // otherwise format too small to
-                                     // hold the frac
-    sprintf (iformat, "%c%d.%dE\0",'%',frac+8,frac);
-    sprintf (oformat, "%s\0",s.c_str());
-    SCITBX_ASSERT(std::string(iformat).size() < 8);
-    SCITBX_ASSERT(std::string(oformat).size() < 8);
-
-    //Now determine if we use standard or MSVC printf format
-    boost::shared_array<char> t(new char[frac+9]); //ie., "-d.dddddE+00\0"
-    sprintf (t.get(),iformat,-1.0);
-    if (t[frac+5]=='0') {stdprintf=false;} else {stdprintf=true;}
-  }
-
-boost::shared_array<char> ScientificFormatter::operator() (double d) {
-    boost::shared_array<char> b(new char[frac+10]);
-    if (stdprintf) {
-      sprintf(b.get(),oformat,d);
-      return b;
+  template <unsigned Width>
+  struct format_e
+  {
+    static void
+    throw_error()
+    {
+      throw scitbx::error("Floating-point value too large for format.");
     }
-    boost::shared_array<char> a(new char[frac+10]);
-    sprintf(a.get(),iformat,d);
-    assert (*(a.get()+frac+5)=='0'); //Prevent floating overflow or underflow
-    for (int x=0; x<digits-frac-7; ++x){ //forward padding
-      std::strncpy(b.get()+x, &pad, 1);}
-    std::strncpy(b.get()+digits-frac-7, a.get(), frac+5);
-    std::strncpy(b.get()+digits-2, a.get()+frac+6, 3);
-    return b;
-  }
+
+    format_e(const char* fmt, double val)
+    {
+#if !defined(BOOST_MSVC)
+      s = buf;
+      std::sprintf(buf, fmt, val);
+      if (*(s + Width)) throw_error();
+#else
+      s = buf + 1;
+      std::sprintf(s, fmt, val);
+      char* p = s + Width;
+      if (*p) {
+        p++;
+        if (*p) throw_error();
+      }
+      else {
+        s--;
+        *s = ' ';
+      }
+      if (*(p-3) != '0') throw_error();
+      *(p-3) = *(p-2);
+      *(p-2) = *(p-1);
+      *(p-1) = '\0';
+#endif
+    }
+
+    char buf[32];
+    char* s;
+  };
 
   class XplorMap
   {
-    private:
-      ScientificFormatter pretty;
-      ScientificFormatter pretty4;
-
     public:
-      XplorMap();
+      XplorMap() {}
 
       af::versa<double, af::flex_grid<> >
       ReadXplorMap(
@@ -132,7 +104,8 @@ boost::shared_array<char> ScientificFormatter::operator() (double d) {
         FILE* fh = fopen(file_name.c_str(), "ab");
         SCITBX_ASSERT(fh != 0);
         for(std::size_t i=0;i<6;i++) {
-          fprintf(fh, "%s", pretty(unit_cell.parameters()[i]).get());
+          fprintf(fh, "%s",
+            format_e<12>("%12.5E", unit_cell.parameters()[i]).s);
         }
         fprintf(fh, "\n");
         fprintf(fh, "ZYX\n");
@@ -144,7 +117,7 @@ boost::shared_array<char> ScientificFormatter::operator() (double d) {
           std::size_t i_fld = 0;
           for(std::size_t iy=0;iy<map_ref.accessor()[1];iy++) {
             for(std::size_t ix=0;ix<map_ref.accessor()[0];ix++) {
-              fprintf(fh, "%s", pretty(map_ref(ix,iy,iz)).get());
+              fprintf(fh, "%s", format_e<12>("%12.5E", map_ref(ix,iy,iz)).s);
               i_fld++;
               if (i_fld == 6) {
                 fprintf(fh, "\n");
@@ -158,12 +131,11 @@ boost::shared_array<char> ScientificFormatter::operator() (double d) {
         }
         fprintf(fh, "   -9999\n");
         fprintf(fh, "%s%s\n",
-          pretty4(average).get(), pretty4(standard_deviation).get());
+          format_e<12>("%12.4E", average).s,
+          format_e<12>("%12.4E", standard_deviation).s);
         fclose(fh);
       }
   };
-
-  XplorMap::XplorMap():pretty("%12.5E"),pretty4("%12.4E"){}
 
 } // namespace <anonymous>
 
