@@ -22,25 +22,30 @@ namespace bessel {
       -0.1031555E-1, 0.2282967E-1,-0.2895312E-1,0.1787654E-1,-0.420059E-2};
     f_t be1 = 0;
     f_t be0 = 0;
-    if (fabs(x) < 3.75) {
-       f_t y=pow((x/3.75),2);
-       for(int i=0; i<7; i++) {
-          be0 += p[i]*pow(y,i);
-          be1 += x*pp[i]*pow(y,i);
-       }
-    }
-    else {
-       f_t y=3.75/fabs(x);
-       for(int i=0; i<9; i++) {
-          be0 += q[i]*pow(y,i);
-          be1 += qq[i]*pow(y,i);
+    f_t abs_x = x;
+    if (abs_x < 0) abs_x = -abs_x;
+    if (abs_x < 3.75) {
+      f_t y=x/3.75;
+      y *= y;
+      f_t pow_y_i = 1;
+      for(int i=0; i<7; i++) {
+        be0 += p[i]*pow_y_i;
+        be1 += x*pp[i]*pow_y_i;
+        pow_y_i *= y;
       }
     }
-    double result = be1/be0;
-    if (x < 0.0 && result > 0.0)
-      return -1.0*result;
-    else
-      return result;
+    else {
+      f_t y=3.75/abs_x;
+      f_t pow_y_i = 1;
+      for(int i=0; i<9; i++) {
+        be0 += q[i]*pow_y_i;
+        be1 += qq[i]*pow_y_i;
+        pow_y_i *= y;
+      }
+    }
+    f_t result = be1/be0;
+    if (x < 0.0 && result > 0.0) return -result;
+    return result;
   }
 
 }}} // namespace scitbx::math::bessel
