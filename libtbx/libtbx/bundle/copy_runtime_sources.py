@@ -21,6 +21,7 @@ def copy_dist_files(dist_copy, dirname, names):
         or name == "academic_software_licence.pdf"
         or name == "symop.lib"
         or name.endswith(".py")
+        or name.endswith(".params")
         or name.endswith(".html")
         or name.endswith(".csh")
         or name.endswith(".sh")):
