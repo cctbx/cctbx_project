@@ -349,7 +349,7 @@ def run():
   test_site_symmetry()
   test_loop_internal_symbol_table()
   test_nearest_valid_phase()
-  import tst6, tst7, tst9, tst10, tst11, tst12, tst13, tst14
+  import tst6, tst7, tst9, tst10, tst11, tst12, tst13, tst14, tst15
   tst6.run(0)
   tst7.run(0)
   tst9.run(0)
@@ -358,6 +358,7 @@ def run():
   tst12.run(0)
   tst13.run(0)
   tst14.run(0)
+  tst15.run(0)
   t = os.times()
   print "u+s,u,s:", t[0] + t[1], t[0], t[1]
 

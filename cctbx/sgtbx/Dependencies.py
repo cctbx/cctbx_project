@@ -42,6 +42,7 @@ class write_makefiles(makefile_generator.write_makefiles):
       "sgtbx/tst12.py",
       "sgtbx/tst13.py",
       "sgtbx/tst14.py",
+      "sgtbx/tst15.py",
     )
 
     lib = (
