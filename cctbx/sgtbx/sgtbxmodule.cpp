@@ -644,6 +644,7 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_SgOps.def(SgOps_getitem, "__getitem__");
     py_SgOps.def(&SgOps::isChiral, "isChiral");
     py_SgOps.def(&SgOps::isEnantiomorphic, "isEnantiomorphic");
+    py_SgOps.def(&SgOps::getEnantiomorphSgOps, "getEnantiomorphSgOps");
     py_SgOps.def(&SgOps::isSysAbsent, "isSysAbsent");
     py_SgOps.def(SgOps_isCentric_0, "isCentric");
     py_SgOps.def(SgOps_isCentric_1, "isCentric");

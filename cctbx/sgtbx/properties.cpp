@@ -138,4 +138,15 @@ namespace sgtbx {
            != FlipSgOps.getSpaceGroupType().SgNumber();
   }
 
+  SgOps SgOps::getEnantiomorphSgOps() const
+  {
+    RTMx FlipCBMx(RotMx(CRBF, -1), CTBF);
+    SgOps FlipSgOps = ChangeBasis(ChOfBasisOp(FlipCBMx, FlipCBMx));
+    if (             getSpaceGroupType().SgNumber()
+        != FlipSgOps.getSpaceGroupType().SgNumber()) {
+      return FlipSgOps;
+    }
+    return *this;
+  }
+
 } // namespace sgtbx
