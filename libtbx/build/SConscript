@@ -34,9 +34,8 @@ assert env_etc.compiler in (
   #"irix_CC",
 )
 
-env_base = Environment(ENV=os.environ)
-
 if (sys.platform == "win32"):
+  env_base = Environment(ENV=os.environ)
   env_etc.python_include = r"c:\Python22\include"
   env_etc.boost_include = r"r:\boost"
   env_etc.scitbx_include = r"r:\bpl2\scitbx\include"
@@ -62,6 +61,9 @@ if (sys.platform == "win32"):
   else:
     raise "Unknown compiler choice:", env_etc.compiler
 else:
+  env_base = Environment(ENV=os.environ,
+    # XXX hack to create a default configuration that we can customize
+    tools=['g++', 'gnulink', 'ar'])
   env_etc.python_include = "/usr/local_cci/Python-2.2.1/include/python2.2"
   env_etc.boost_include = "/net/cci/rwgk/boost"
   env_etc.scitbx_include = "/net/cci/rwgk/bpl2/scitbx/include"
