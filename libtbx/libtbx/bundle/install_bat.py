@@ -13,17 +13,25 @@ type %(bundle)s_sources\TAG
 echo.
 echo Trying to find Python:
 cd %(bundle)s_build
+if not exist python\python.exe goto try_plain_python
 set python=python\python
 call "%%python%%" -V
 if %%errorlevel%% == 0 goto have_python
+:try_plain_python
 set python=python
 call "%%python%%" -V
 if %%errorlevel%% == 0 goto have_python
 set python=C:\python%(py_major)d%(py_minor)d\python
 call "%%python%%" -V
 if %%errorlevel%% == 0 goto have_python
+cd ..
 echo.
-echo Cannot find Python. Stop.
+echo Cannot find Python.
+echo.
+echo Please download a binary bundle with Python included
+echo or add a matching Python to the PATH environment variable.
+echo.
+echo Installation aborted.
 echo.
 goto end
 
