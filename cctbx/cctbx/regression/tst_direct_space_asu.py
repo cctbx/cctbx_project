@@ -220,6 +220,12 @@ def exercise_neighbors_pair_generators(structure, verbose=0):
             mp_j.mapped_site())
         assert len(pair_dict) == 0
 
+def asu_mappings_is_simple_interaction_emulation(asu_mappings, pair):
+  is_special_position = asu_mappings.site_symmetry_table().is_special_position
+  if (is_special_position(i_seq=pair.i_seq)): return 00000
+  if (is_special_position(i_seq=pair.j_seq)): return 00000
+  return asu_mappings.get_rt_mx_i(pair) == asu_mappings.get_rt_mx_j(pair)
+
 def exercise_is_simple_interaction():
   for space_group_symbol in ["P1", "P41"]:
     for shifts in flex.nested_loop((-2,-2,-2),(2,2,2),00000):
@@ -236,15 +242,20 @@ def exercise_is_simple_interaction():
       pair_generator = crystal.neighbors_simple_pair_generator(
         asu_mappings=asu_mappings,
         distance_cutoff=7)
-      direct_interactions = {}
+      simple_interactions = {}
       for i_pair,pair in zip(count(),pair_generator):
         if (asu_mappings.is_simple_interaction(pair)):
+          assert asu_mappings_is_simple_interaction_emulation(
+            asu_mappings, pair)
           key = (pair.i_seq,pair.j_seq)
-          assert direct_interactions.get(key, None) is None
-          direct_interactions[key] = 1
-      assert len(direct_interactions) == 2
-      assert direct_interactions[(0,2)] == 1
-      assert direct_interactions[(1,2)] == 1
+          assert simple_interactions.get(key, None) is None
+          simple_interactions[key] = 1
+        else:
+          assert not asu_mappings_is_simple_interaction_emulation(
+            asu_mappings, pair)
+      assert len(simple_interactions) == 2
+      assert simple_interactions[(0,2)] == 1
+      assert simple_interactions[(1,2)] == 1
 
 def exercise_non_crystallographic_asu_mappings():
   asu_mappings = crystal.direct_space_asu.non_crystallographic_asu_mappings(
