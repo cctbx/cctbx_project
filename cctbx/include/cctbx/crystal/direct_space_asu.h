@@ -424,7 +424,7 @@ namespace direct_space_asu {
       buffer_covering_sphere() const { return buffer_covering_sphere_; }
 
       //! Processes one site and appends the results to mappings().
-      void
+      asu_mappings&
       process(
         fractional<FloatType> const& original_site,
         FloatType const& min_distance_sym_equiv=0.5)
@@ -435,11 +435,11 @@ namespace direct_space_asu {
           original_site,
           min_distance_sym_equiv,
           true);
-        process(original_site, site_symmetry);
+        return process(original_site, site_symmetry);
       }
 
       //! Processes one site and appends the results to mappings().
-      void
+      asu_mappings&
       process(
         fractional<FloatType> const& original_site,
         sgtbx::site_symmetry_ops const& site_symmetry_ops)
@@ -510,10 +510,11 @@ namespace direct_space_asu {
           }}}
         }
         CCTBX_ASSERT(have_site_in_asu);
+        return *this;
       }
 
       //! Calls process() for each original site.
-      void
+      asu_mappings&
       process_sites_frac(
         af::const_ref<scitbx::vec3<FloatType> > const& original_sites,
         FloatType const& min_distance_sym_equiv=0.5)
@@ -521,10 +522,11 @@ namespace direct_space_asu {
         for(std::size_t i=0;i<original_sites.size();i++) {
           process(original_sites[i], min_distance_sym_equiv);
         }
+        return *this;
       }
 
       //! Calls process() for each original site.
-      void
+      asu_mappings&
       process_sites_frac(
         af::const_ref<scitbx::vec3<FloatType> > const& original_sites,
         sgtbx::site_symmetry_table const& site_symmetry_table)
@@ -534,10 +536,11 @@ namespace direct_space_asu {
         for(std::size_t i=0;i<original_sites.size();i++) {
           process(original_sites[i], site_symmetry_table.get(i));
         }
+        return *this;
       }
 
       //! Calls process() for each original site.
-      void
+      asu_mappings&
       process_sites_cart(
         af::const_ref<scitbx::vec3<FloatType> > const& original_sites,
         FloatType const& min_distance_sym_equiv=0.5)
@@ -546,10 +549,11 @@ namespace direct_space_asu {
         for(std::size_t i=0;i<original_sites.size();i++) {
           process(frac * original_sites[i], min_distance_sym_equiv);
         }
+        return *this;
       }
 
       //! Calls process() for each original site.
-      void
+      asu_mappings&
       process_sites_cart(
         af::const_ref<scitbx::vec3<FloatType> > const& original_sites,
         sgtbx::site_symmetry_table const& site_symmetry_table)
@@ -560,6 +564,7 @@ namespace direct_space_asu {
         for(std::size_t i=0;i<original_sites.size();i++) {
           process(frac * original_sites[i], site_symmetry_table.get(i));
         }
+        return *this;
       }
 
       /*! \brief Total number of sites in the asymmetric unit and the
