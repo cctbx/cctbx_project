@@ -28,6 +28,7 @@
 #include <cctbx/uctbx.h>
 #include <cctbx/adptbx.h>
 #include <cctbx/array_family/shared.h>
+#include <cctbx/array_family/reductions.h> // XXX new
 
 namespace cctbx { namespace sgtbx {
 
@@ -524,7 +525,7 @@ namespace cctbx { namespace sgtbx {
           for(int i=0;i<OrderZ();i++) {
             ref_grid = operator()(i).refine_gridding(ref_grid);
           }
-          if (prev_grid == ref_grid) break;
+          if (cmp_tiny(prev_grid, ref_grid) == 0) break;
           prev_grid = ref_grid;
         }
         return ref_grid;

@@ -139,7 +139,7 @@ namespace cctbx { namespace sgtbx {
           if (CartDelta2 <= m_Parameters->m_MinMateDistance2) {
             TrVec MTU = MT + UShifts;
             TrVec IntrinsicPart = CumR * MTU;
-            if (IntrinsicPart.vec() == 0) {
+            if (cmp_tiny(IntrinsicPart.vec(), 0) == 0) {
               CloseMates.push_back(
                 detail::CloseMate(RTMx(M.Rpart(), MTU), CartDelta2));
               special = true;

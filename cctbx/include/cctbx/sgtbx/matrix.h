@@ -22,6 +22,39 @@
 
 namespace cctbx { namespace sgtbx {
 
+  // tiny-specific cmp() for Visual C++ 6 compatibility.
+
+  template <typename ElementType1, std::size_t N1,
+            typename ElementType2, std::size_t N2>
+  int
+  inline
+  cmp_tiny(
+    af::tiny<ElementType1, N1> const& a1,
+    af::tiny<ElementType2, N2> const& a2)
+  {
+    return af::cmp(a1.const_ref(), a2.const_ref());
+  }
+
+  template <typename ElementType, std::size_t N>
+  int
+  inline
+  cmp_tiny(
+    af::tiny<ElementType, N> const& a1,
+    ElementType const& a2)
+  {
+    return af::cmp(a1.const_ref(), a2);
+  }
+
+  template <typename ElementType, std::size_t N>
+  int
+  inline
+  cmp_tiny(
+    ElementType const& a1,
+    af::tiny<ElementType, N> const& a2)
+  {
+    return af::cmp(a1, a2.const_ref());
+  }
+
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
   class TrVec {
     private:

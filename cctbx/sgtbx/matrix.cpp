@@ -400,7 +400,7 @@ namespace cctbx { namespace sgtbx {
 
   bool RTMx::isPerpendicular(const af::int3& v) const
   {
-    return Rpart().accumulate() * v == 0;
+    return cmp_tiny(Rpart().accumulate() * v, 0) == 0;
   }
 
   TrVec RTMx::getIntrinsicPart() const

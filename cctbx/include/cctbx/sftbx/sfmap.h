@@ -739,7 +739,7 @@ namespace cctbx { namespace sftbx {
       }
       sfmap::grid_point_type ih = detail::h_as_ih_array(
         friedel_flag, h, n_complex);
-      cctbx_assert(ih >= sfmap::grid_point_element_type(0));
+      cctbx_assert(sgtbx::cmp_tiny(ih, sfmap::grid_point_element_type(0)) >= 0);
       if (!f_conj) structure_factors.push_back(complex_map(ih));
       else         structure_factors.push_back(std::conj(complex_map(ih)));
     }
@@ -767,7 +767,8 @@ namespace cctbx { namespace sftbx {
         if (friedel_flag && h[2] < 0) continue;
         sfmap::grid_point_type ih = detail::h_as_ih_array(
           friedel_flag, h, n_complex);
-        cctbx_assert(ih >= sfmap::grid_point_element_type(0));
+        cctbx_assert(
+          sgtbx::cmp_tiny(ih, sfmap::grid_point_element_type(0)) >= 0);
         map(ih) = h_seq.complex_eq(structure_factors[i]);
       }
     }

@@ -869,25 +869,14 @@ namespace cctbx { namespace af {
     int
     cmp_a_a(f_t const& a1, f_t const& a2)
     {
-      if (a1.id() == a2.id()) return 0;
-      if (a1.size() < a2.size()) return -1;
-      if (a1.size() > a2.size()) return  1;
-      for(std::size_t i=0;i<a1.size();i++) {
-        if (a1[i] < a2[i]) return -1;
-        if (a1[i] > a2[i]) return  1;
-      }
-      return 0;
+      return af::cmp(a1.const_ref(), a2.const_ref());
     }
 
     static
     int
     cmp_a_s(f_t const& a1, e_t const& a2)
     {
-      for(std::size_t i=0;i<a1.size();i++) {
-        if (a1[i] < a2) return -1;
-        if (a1[i] > a2) return  1;
-      }
-      return 0;
+      return af::cmp(a1.const_ref(), a2);
     }
 
     static
@@ -1308,25 +1297,11 @@ CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(sqrt)
 
     static
     f_class_builders
-    eq_comparable(
-      boost::python::module_builder& bpl_module,
-      std::string const& python_name)
-    {
-      f_class_builders class_blds = plain(bpl_module, python_name);
-      class_blds.first.def(eq_a_a, "__eq__");
-      class_blds.first.def(ne_a_a, "__ne__");
-      class_blds.first.def(eq_a_s, "__eq__");
-      class_blds.first.def(ne_a_s, "__ne__");
-      return class_blds;
-    }
-
-    static
-    f_class_builders
     cmp_comparable(
       boost::python::module_builder& bpl_module,
       std::string const& python_name)
     {
-      f_class_builders class_blds = eq_comparable(bpl_module, python_name);
+      f_class_builders class_blds = plain(bpl_module, python_name);
       class_blds.first.def(cmp_a_a, "__cmp__");
       class_blds.first.def(cmp_a_s, "__cmp__");
       return class_blds;
@@ -1356,7 +1331,7 @@ CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(sqrt)
       boost::python::module_builder& bpl_module,
       std::string const& python_name)
     {
-      f_class_builders class_blds = eq_comparable(bpl_module, python_name);
+      f_class_builders class_blds = plain(bpl_module, python_name);
       class_blds.first.def(neg_a, "__neg__");
       class_blds.first.def(add_a_a, "__add__");
       class_blds.first.def(sub_a_a, "__sub__");
@@ -1386,6 +1361,10 @@ CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(sqrt)
       class_blds.first.def(as_double, "as_double");
       class_blds.first.def(cmp_a_a, "__cmp__");
       class_blds.first.def(cmp_a_s, "cmp"); // XXX __cmp__ did not work
+      class_blds.first.def(eq_a_a, "__eq__");
+      class_blds.first.def(ne_a_a, "__ne__");
+      class_blds.first.def(eq_a_s, "__eq__");
+      class_blds.first.def(ne_a_s, "__ne__");
       class_blds.first.def(lt_a_a, "__lt__");
       class_blds.first.def(gt_a_a, "__gt__");
       class_blds.first.def(le_a_a, "__le__");
@@ -1455,6 +1434,10 @@ CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(sqrt)
       std::string const& python_name)
     {
       f_class_builders class_blds = numeric_common(bpl_module, python_name);
+      class_blds.first.def(eq_a_a, "__eq__");
+      class_blds.first.def(ne_a_a, "__ne__");
+      class_blds.first.def(eq_a_s, "__eq__");
+      class_blds.first.def(ne_a_s, "__ne__");
       bpl_module.def(real_complex, "real");
       bpl_module.def(imag_complex, "imag");
       bpl_module.def(abs_complex, "abs");

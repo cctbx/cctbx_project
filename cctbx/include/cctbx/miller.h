@@ -89,6 +89,18 @@ namespace cctbx {
           return false;
         }
         //@}
+
+        //! Test for equality.
+        bool operator==(const Index& m2) const
+        {
+          return af::cmp(this->const_ref(), m2.const_ref()) == 0;
+        }
+
+        //! Test for inequality.
+        bool operator!=(const Index& m2) const
+        {
+          return af::cmp(this->const_ref(), m2.const_ref()) != 0;
+        }
     };
 
     //! Multiplication of Miller indices and fractional coordiantes.

@@ -10,33 +10,6 @@ namespace {
 # include "tst_af_helpers.cpp"
 
 #if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1300) // VC++ 7.0
-  template <typename ArrayType1,
-            typename ArrayType2>
-  void
-  exercise_reducing_bool(const ArrayType1& a1, const ArrayType2& a2)
-  {
-    typedef typename ArrayType1::value_type element_type1;
-    check_false(__LINE__, a1 == a2);
-    check_true(__LINE__, a1 == a1);
-    check_false(__LINE__, a1 == element_type1(0));
-    check_false(__LINE__, element_type1(0) == a1);
-    check_true(__LINE__, a1 != a2);
-    check_false(__LINE__, a1 != a1);
-    check_true(__LINE__, a1 != element_type1(0));
-    check_true(__LINE__, element_type1(0) != a1);
-    check_false(__LINE__, a1 > a2);
-    check_true(__LINE__, a1 > element_type1(0));
-    check_false(__LINE__, element_type1(0) > a1);
-    check_true(__LINE__, a1 < a2);
-    check_false(__LINE__, a1 < element_type1(0));
-    check_true(__LINE__, element_type1(0) < a1);
-    check_false(__LINE__, a1 >= a2);
-    check_true(__LINE__, a1 >= element_type1(0));
-    check_false(__LINE__, element_type1(0) >= a1);
-    check_true(__LINE__, a1 <= a2);
-    check_false(__LINE__, a1 <= element_type1(0));
-    check_true(__LINE__, element_type1(0) <= a1);
-  }
 
   template <typename ArrayType1,
             typename ArrayType2>
@@ -162,8 +135,6 @@ namespace {
                ArrayType4& a4,
                ArrayType5& a5)
   {
-    exercise_reducing_bool(a1, a2);
-    exercise_reducing_bool(a1, a3);
     exercise_ew_bool(a1, a2);
     exercise_ew_bool(a1, a3);
     exercise_logical(a1, a2);

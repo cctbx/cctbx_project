@@ -107,7 +107,7 @@ namespace cctbx { namespace sgtbx {
         for(int i=0;i<3;i++) {
           if (Zf[i]) {
             if (   CmpOLen2()(Zc.vec(), BestZc[iDL].vec())
-                || (Zc.vec() == BestZc[iDL].vec()
+                || (cmp_tiny(Zc.vec(), BestZc[iDL].vec()) == 0
                     && Zc.BF() < BestZc[iDL].BF())) {
               BestZf[iDL] = Zf;
               BestZc[iDL] = Zc;

@@ -366,7 +366,8 @@ namespace cctbx { namespace maps {
       sum_sym_equiv_points(af::ref<FloatType, padded_grid_p1<3> > map) const
       {
         cctbx_assert(m_is_valid);
-        cctbx_assert(this->accessor() == map.accessor().n_logical());
+        cctbx_assert(
+          sgtbx::cmp_tiny(this->accessor(), map.accessor().n_logical()) == 0);
         {
           // 1. pass: accumulate contributions for sym. equiv. grid points.
           const sgtbx::SpaceGroup& sgops = m_SgInfo.SgOps();
