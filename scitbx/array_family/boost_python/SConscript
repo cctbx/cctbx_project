@@ -1,4 +1,23 @@
-Import("env_scitbx_boost_python")
+Import("env_etc", "env_scitbx_boost_python")
+
 env_scitbx_boost_python.SharedLibrary(target="regression_test_ext", source=[
   "regression_test_module.cpp",
 ])
+
+env_scitbx_boost_python.Command(
+  "#/libtbx/scitbx_boost/array_family/__init__.py",
+  "#/libtbx/build/SConscript", env_etc.touch_init)
+
+flex_pyd = env_scitbx_boost_python.SharedLibrary(target="flex", source=[
+  "flex_module.cpp",
+  "flex_bool.cpp",
+  "flex_size_t.cpp",
+  "flex_int.cpp",
+  "flex_long.cpp",
+  "flex_float.cpp",
+  "flex_double.cpp",
+  "flex_complex_double.cpp",
+  "flex_std_string.cpp",
+])
+env_scitbx_boost_python.Install(
+  "#/libtbx/scitbx_boost/array_family", flex_pyd)

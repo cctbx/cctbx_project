@@ -1,0 +1,20 @@
+Import("env_base", "env_etc")
+
+env = env_base.Copy(
+  CXXFLAGS=env_etc.cxxflags_base,
+  CPPPATH=[env_etc.scitbx_include,
+           env_etc.boost_include,
+           env_etc.python_include],
+)
+env.Append(CXXFLAGS=env_etc.cxxflags_bpl_defines_base)
+
+scitbx_boost_python_sources = [
+  "#/scitbx/boost_python/utils.cpp",
+  "#/scitbx/array_family/boost_python/utils.cpp",
+  "#/scitbx/array_family/boost_python/tiny_conversions.cpp",
+  "#/scitbx/array_family/boost_python/small_conversions.cpp",
+]
+lib_scitbx_boost_python = env.StaticLibrary(
+  target="scitbx_boost_python",
+  source=scitbx_boost_python_sources)
+env.Install("#/libtbx", lib_scitbx_boost_python)

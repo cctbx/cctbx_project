@@ -1,7 +1,7 @@
 Import("env_base", "env_etc")
 env = env_base.Copy(
   CXXFLAGS=env_etc.cxxflags_base,
-  CPPPATH=[".", env_etc.scitbx_include, env_etc.boost_include],
+  CPPPATH=[env_etc.scitbx_include, env_etc.boost_include],
 )
 envlm = env.Copy(
   LIBS=env_etc.libm
