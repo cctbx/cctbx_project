@@ -147,10 +147,11 @@ namespace cctbx { namespace miller {
        */
       template <class FloatType>
       std::complex<FloatType>
-      complex_in(std::complex<FloatType> f_eq) const
+      complex_in(std::complex<FloatType> const& f_eq) const
       {
-        if (friedel_flag_) f_eq = std::conj(f_eq);
-        return f_eq * std::polar(FloatType(1), ht_angle());
+        std::complex<FloatType> shift = std::polar(FloatType(1), ht_angle());
+        if (friedel_flag_) return std::conj(f_eq) * shift;
+        return f_eq * shift;
       }
 
       /*! \brief Hendrickson-Lattman coefficients for equivalent index,
