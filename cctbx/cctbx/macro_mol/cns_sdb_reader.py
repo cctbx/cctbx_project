@@ -150,7 +150,7 @@ def run():
   unit_cell = None
   for arg in sys.argv[1:]:
     if (arg.startswith("--unit_cell=")):
-      params = [float(x) for x in arg.split("=", 1)[1].split()]
+      params = arg.split("=", 1)[1]
       unit_cell = uctbx.unit_cell(params)
   for file_name in sys.argv[1:]:
     if (file_name.startswith("--")): continue
