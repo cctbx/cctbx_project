@@ -116,33 +116,33 @@ namespace cctbx { namespace dmtbx {
         if (expanded_indices.size() ==  0) return;
         std::size_t i_low = 0;
         std::size_t i_high = expanded_indices.size() - 1;
+        const expanded_index* e_low = &expanded_indices[i_low];
+        const expanded_index* e_high = &expanded_indices[i_high];
         while (i_low <= i_high) {
-          expanded_index const& e_low = expanded_indices[i_low];
-          expanded_index const& e_high = expanded_indices[i_high];
           for(std::size_t i=0;i<3;i++) {
-            int s = e_low.h[i] + e_high.h[i];
+            int s = e_low->h[i] + e_high->h[i];
             if (h[i] > s) {
-              i_low++;
+              i_low++; e_low++;
               goto loop_tail;
             }
             if (h[i] < s) {
               if (i_high == 0) return;
-              i_high--;
+              i_high--; e_high--;
               goto loop_tail;
             }
           }
           {
             triplet_phase_relation tpr(
-              e_low.ih,
-              e_low.friedel_flag,
-              e_low.ht,
-              e_high.ih,
-              e_high.friedel_flag,
-              e_high.ht,
+              e_low->ih,
+              e_low->friedel_flag,
+              e_low->ht,
+              e_high->ih,
+              e_high->friedel_flag,
+              e_high->ht,
               this->t_den_);
             tpr_map[tpr] += (i_low == i_high ? 1 : 2);
-            i_low++;
-            i_high--;
+            i_low++; e_low++;
+            i_high--; e_high--;
           }
           loop_tail:;
         }
