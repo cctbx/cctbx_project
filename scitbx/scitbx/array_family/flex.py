@@ -6,11 +6,18 @@ from scitbx_array_family_flex_ext import *
 import scitbx_array_family_flex_ext as ext
 
 import scitbx.stl.map
+import md5
 import time
 import sys, os
 
 builtin_int = __builtins__["int"]
 builtin_long = __builtins__["long"]
+
+def bool_md5(self):
+  result = md5.new()
+  result.update(self.__getstate__()[1])
+  return result
+bool.md5 = bool_md5
 
 class grid_(boost.python.injector, grid):
 

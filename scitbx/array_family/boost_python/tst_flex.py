@@ -235,6 +235,10 @@ def exercise_misc():
   f = flex.double(g)
   assert f.focus_size_1d() == 2*3*4
   assert f.shift_origin().accessor() == g.shift_origin()
+  b = flex.bool([0,0,1,0,1,1,1,0,0,1,1,0,0,0])
+  assert b.md5().hexdigest() == "a3a1ff7423c672e6252003c23ad5420f"
+  b = flex.bool([0,0,1,0,1,0,1,0,0,1,1,0,0,0])
+  assert b.md5().hexdigest() == "bc115dabbd6dc87323302b082152be14"
 
 def exercise_1d_slicing_core(a):
   assert tuple(a[:]) == (1,2,3,4,5)
