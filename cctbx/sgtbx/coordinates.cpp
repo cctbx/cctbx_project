@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 Oct 12: SpecialPosition -> SiteSymmetry (R.W. Grosse-Kunstleve)
      2001 Jul 02: Merged from CVS branch sgtbx_special_pos (rwgk)
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
  */
@@ -46,19 +47,6 @@ namespace sgtbx {
           if (a.CartDelta2 < b.CartDelta2) return true;
           return false;
         }
-    };
-
-    class RT_PointGroup {
-      public:
-        typedef std::vector<RTMx> vec_type;
-        vec_type Matrices;
-        bool invalid;
-        RT_PointGroup() : invalid(false) {}
-        void reset(const RTMx& M);
-        void add(const RTMx& M);
-        void expand(const RTMx& M);
-        bool try_expand(const RTMx& M);
-        RTMx accumulate() const;
     };
 
     void RT_PointGroup::reset(const RTMx& M)
@@ -119,7 +107,7 @@ namespace sgtbx {
 
   } // namespace detail
 
-  void SpecialPosition::BuildSpecialOp(detail::RT_PointGroup& SiteSymmetry)
+  void SiteSymmetry::BuildSpecialOp()
   {
     const uctbx::UnitCell& uc = m_Parameters.m_UnitCell;
     const SpaceGroup& SgOps = m_Parameters.m_SgOps;
@@ -165,60 +153,50 @@ namespace sgtbx {
       std::sort(CloseMates.begin() + 1, CloseMates.end(),
                 detail::CmpCloseMates());
     }
-    SiteSymmetry.reset(CloseMates[0].M);
+    m_PointGroup.reset(CloseMates[0].M);
     for(std::size_t i=1;i<CloseMates.size();i++) {
-      if (!SiteSymmetry.try_expand(CloseMates[i].M)) {
+      if (!m_PointGroup.try_expand(CloseMates[i].M)) {
         if (m_ShortestDistance2 > CloseMates[i].CartDelta2)
             m_ShortestDistance2 = CloseMates[i].CartDelta2;
       }
     }
-    cctbx_assert(SgOps.OrderZ() % SiteSymmetry.Matrices.size() == 0);
-    m_M = SgOps.OrderZ() / SiteSymmetry.Matrices.size();
-    m_SpecialOp = SiteSymmetry.accumulate();
+    cctbx_assert(SgOps.OrderZ() % m_PointGroup.Matrices.size() == 0);
+    m_M = SgOps.OrderZ() / m_PointGroup.Matrices.size();
+    m_SpecialOp = m_PointGroup.accumulate();
     m_SnapPosition = m_SpecialOp * m_OriginalPosition;
   }
 
-  SpecialPosition::SpecialPosition(const SpecialPositionSnapParameters& params,
-                                   const fractional<double>& X,
-                                   bool auto_expand,
-                                   bool determinePointGroupType)
+  SiteSymmetry::SiteSymmetry(const SpecialPositionSnapParameters& params,
+                             const fractional<double>& X,
+                             bool auto_expand)
 
     : m_Parameters(params),
       m_OriginalPosition(X),
       m_SnapPosition(X),
       m_ShortestDistance2(-1.),
       m_M(0),
-      m_SpecialOp(0, 0),
-      m_PointGroupType(tables::MatrixGroup::Undefined)
+      m_SpecialOp(0, 0)
   {
-    detail::RT_PointGroup SiteSymmetry;
     RTMx LastSpecialOp(1, 1);
     for (;;) {
-      BuildSpecialOp(SiteSymmetry);
+      BuildSpecialOp();
       if (m_SpecialOp == LastSpecialOp) break;
       LastSpecialOp = m_SpecialOp;
     }
     if (m_Parameters.m_MustBeWellBehaved && !isWellBehaved()) {
-      throw error("SpecialPosition: MinMateDistance too large.");
-    }
-    if (determinePointGroupType) {
-      SpaceGroup SiteSgOps;
-      for(std::size_t i=0;i<SiteSymmetry.Matrices.size();i++) {
-        SiteSgOps.expandSMx(SiteSymmetry.Matrices[i]);
-      }
-      cctbx_assert(SiteSgOps.nLTr() == 1);
-      m_PointGroupType = SiteSgOps.getPointGroupType();
+      throw error("SiteSymmetry: MinMateDistance too large.");
     }
     if (auto_expand) expand();
   }
 
-  tables::MatrixGroup::Code SpecialPosition::getPointGroupType() const
+  tables::MatrixGroup::Code SiteSymmetry::PointGroupType() const
   {
-    if (m_PointGroupType == tables::MatrixGroup::Undefined) {
-      throw error(
-      "Point group type is undefined. Use determinePointGroupType = true.");
+    SpaceGroup SiteSgOps;
+    for(std::size_t i=0;i<m_PointGroup.Matrices.size();i++) {
+      SiteSgOps.expandSMx(m_PointGroup.Matrices[i]);
     }
-    return m_PointGroupType;
+    cctbx_assert(SiteSgOps.nLTr() == 1);
+    return SiteSgOps.getPointGroupType();
   }
 
 } // namespace sgtbx

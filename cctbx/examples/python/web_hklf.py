@@ -190,9 +190,9 @@ if (__name__ == "__main__"):
       site = SiteInfo(flds)
       if (inp.coor_type != "Fractional"):
         site.Coordinates = UnitCell.fractionalize(site.Coordinates)
-      SP = sgtbx.SpecialPosition(SnapParameters, site.Coordinates, 0, 1)
-      site.WyckoffMapping = WyckoffTable.getWyckoffMapping(SP)
-      site.SiteSymmetry = SP.getPointGroupType()
+      SS = sgtbx.SiteSymmetry(SnapParameters, site.Coordinates, 0)
+      site.WyckoffMapping = WyckoffTable.getWyckoffMapping(SS)
+      site.SiteSymmetry = SS.PointGroupType()
       Sites.append(site)
       print "<tr>"
       print (  "<td>%s<td>%s"

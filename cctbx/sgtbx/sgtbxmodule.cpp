@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 Oct 12: SpecialPosition -> SiteSymmetry (R.W. Grosse-Kunstleve)
      2001 Sep 13: SpaceGroupType -> SpaceGroupInfo (R.W. Grosse-Kunstleve)
      2001 Jul 02: Merged from CVS branch sgtbx_special_pos (rwgk)
      2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
@@ -409,9 +410,9 @@ namespace {
   }
 
   WyckoffMapping
-  WyckoffTable_getWyckoffMapping_SP(const WyckoffTable& WTab,
-                                    const SpecialPosition& SP) {
-    return WTab.getWyckoffMapping(SP);
+  WyckoffTable_getWyckoffMapping_SS(const WyckoffTable& WTab,
+                                    const SiteSymmetry& SS) {
+    return WTab.getWyckoffMapping(SS);
   }
   WyckoffMapping
   WyckoffTable_getWyckoffMapping_3(const WyckoffTable& WTab,
@@ -429,14 +430,14 @@ namespace {
     return WTab.getWyckoffMapping(uc, SgOps, X, SnapRadius);
   }
 
-  const char* SpecialPosition_getPointGroupType(const SpecialPosition& SP) {
-    return SP.getPointGroupType().Label();
+  const char* SiteSymmetry_PointGroupType(const SiteSymmetry& SS) {
+    return SS.PointGroupType().Label();
   }
 
-  RTMx SpecialPosition_getitem(const SpecialPosition& SP,
-                               std::size_t key) {
+  RTMx SiteSymmetry_getitem(const SiteSymmetry& SS,
+                            std::size_t key) {
     try {
-      return SP(key);
+      return SS(key);
     }
     catch (const error_index& e) {
       PyErr_SetString(PyExc_IndexError, e.what());
@@ -562,8 +563,8 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
       "SpecialPositionSnapParameters");
     class_builder<SpecialPositionTolerances>
     py_SpecialPositionTolerances(this_module, "SpecialPositionTolerances");
-    class_builder<SpecialPosition>
-    py_SpecialPosition(this_module, "SpecialPosition");
+    class_builder<SiteSymmetry>
+    py_SiteSymmetry(this_module, "SiteSymmetry");
     class_builder<SymEquivCoordinates<double> >
     py_SymEquivCoordinates(this_module, "SymEquivCoordinates");
     class_builder<BrickPoint>
@@ -850,7 +851,7 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_WyckoffTable.def(&WyckoffTable::N, "__len__");
     py_WyckoffTable.def(WyckoffTable_getitem, "__getitem__");
     py_WyckoffTable.def(&WyckoffTable::LookupIndex, "LookupIndex");
-    py_WyckoffTable.def(WyckoffTable_getWyckoffMapping_SP,"getWyckoffMapping");
+    py_WyckoffTable.def(WyckoffTable_getWyckoffMapping_SS,"getWyckoffMapping");
     py_WyckoffTable.def(WyckoffTable_getWyckoffMapping_3, "getWyckoffMapping");
     py_WyckoffTable.def(WyckoffTable_getWyckoffMapping_4, "getWyckoffMapping");
 
@@ -874,45 +875,34 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
                                                  double,
                                                  double>());
 
-    py_SpecialPosition.def(
+    py_SiteSymmetry.def(
       constructor<const SpecialPositionSnapParameters&,
-      const fractional<double>&>());
-    py_SpecialPosition.def(
+                  const fractional<double>&>());
+    py_SiteSymmetry.def(
       constructor<const SpecialPositionSnapParameters&,
-      const fractional<double>&,
-      bool>());
-    py_SpecialPosition.def(
-      constructor<const SpecialPositionSnapParameters&,
-      const fractional<double>&,
-      bool,
-      bool>());
-    py_SpecialPosition.def(&SpecialPosition::OriginalPosition,
-                                            "OriginalPosition");
-    py_SpecialPosition.def(&SpecialPosition::SnapPosition, "SnapPosition");
-    py_SpecialPosition.def(&SpecialPosition::DistanceMoved2,
-                                            "DistanceMoved2");
-    py_SpecialPosition.def(&SpecialPosition::DistanceMoved,
-                                            "DistanceMoved");
-    py_SpecialPosition.def(&SpecialPosition::ShortestDistance2,
-                                            "ShortestDistance2");
-    py_SpecialPosition.def(&SpecialPosition::ShortestDistance,
-                                            "ShortestDistance");
-    py_SpecialPosition.def(&SpecialPosition::isWellBehaved, "isWellBehaved");
-    py_SpecialPosition.def(&SpecialPosition::M, "M");
-    py_SpecialPosition.def(&SpecialPosition::SpecialOp, "SpecialOp");
-    py_SpecialPosition.def(SpecialPosition_getPointGroupType,
-                                          "getPointGroupType");
-    py_SpecialPosition.def(&SpecialPosition::expand, "expand");
-    py_SpecialPosition.def(&SpecialPosition::isExpanded, "isExpanded");
-    py_SpecialPosition.def(&SpecialPosition::CheckExpanded, "CheckExpanded");
-    py_SpecialPosition.def(&SpecialPosition::operator(), "__call__");
-    py_SpecialPosition.def(&SpecialPosition::M, "__len__");
-    py_SpecialPosition.def(SpecialPosition_getitem, "__getitem__");
+                  const fractional<double>&,
+                  bool>());
+    py_SiteSymmetry.def(&SiteSymmetry::OriginalPosition, "OriginalPosition");
+    py_SiteSymmetry.def(&SiteSymmetry::SnapPosition, "SnapPosition");
+    py_SiteSymmetry.def(&SiteSymmetry::DistanceMoved2, "DistanceMoved2");
+    py_SiteSymmetry.def(&SiteSymmetry::DistanceMoved, "DistanceMoved");
+    py_SiteSymmetry.def(&SiteSymmetry::ShortestDistance2, "ShortestDistance2");
+    py_SiteSymmetry.def(&SiteSymmetry::ShortestDistance, "ShortestDistance");
+    py_SiteSymmetry.def(&SiteSymmetry::isWellBehaved, "isWellBehaved");
+    py_SiteSymmetry.def(&SiteSymmetry::M, "M");
+    py_SiteSymmetry.def(&SiteSymmetry::SpecialOp, "SpecialOp");
+    py_SiteSymmetry.def(SiteSymmetry_PointGroupType, "PointGroupType");
+    py_SiteSymmetry.def(&SiteSymmetry::expand, "expand");
+    py_SiteSymmetry.def(&SiteSymmetry::isExpanded, "isExpanded");
+    py_SiteSymmetry.def(&SiteSymmetry::CheckExpanded, "CheckExpanded");
+    py_SiteSymmetry.def(&SiteSymmetry::operator(), "__call__");
+    py_SiteSymmetry.def(&SiteSymmetry::M, "__len__");
+    py_SiteSymmetry.def(SiteSymmetry_getitem, "__getitem__");
 
     py_SymEquivCoordinates.def(
       constructor<const SpecialPositionSnapParameters&,
                   const fractional<double>&>());
-    py_SymEquivCoordinates.def(constructor<const SpecialPosition&>());
+    py_SymEquivCoordinates.def(constructor<const SiteSymmetry&>());
     py_SymEquivCoordinates.def(
       constructor<const WyckoffMapping&,
       const fractional<double>&>());

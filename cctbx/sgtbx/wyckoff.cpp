@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 Oct 12: SpecialPosition -> SiteSymmetry (R.W. Grosse-Kunstleve)
      2001 Sep 13: SpaceGroupType -> SpaceGroupInfo (R.W. Grosse-Kunstleve)
      2001 Jul 02: Merged from CVS branch sgtbx_special_pos (rwgk)
      Created: 17-Jun-2001 (R.W. Grosse-Kunstleve)
@@ -2297,15 +2298,15 @@ namespace sgtbx {
   } // namespace detail
 
   const WyckoffMapping
-  WyckoffTable::getWyckoffMapping(const SpecialPosition& SP) const
+  WyckoffTable::getWyckoffMapping(const SiteSymmetry& SS) const
   {
     const WyckoffTable& WTab = *this;
-    if (WTab[0].M() == SP.M()) return WyckoffMapping(WTab[0], RTMx(1, 1));
-    const RotMx& Rs = SP.SpecialOp().Rpart();
-    const TrVec& Ts = SP.SpecialOp().Tpart();
-    const SpaceGroup& SgOps = SP.m_Parameters.m_SgOps;
+    if (WTab[0].M() == SS.M()) return WyckoffMapping(WTab[0], RTMx(1, 1));
+    const RotMx& Rs = SS.SpecialOp().Rpart();
+    const TrVec& Ts = SS.SpecialOp().Tpart();
+    const SpaceGroup& SgOps = SS.m_Parameters.m_SgOps;
     for(std::size_t iWP=1;iWP<WTab.N();iWP++) {
-      if (WTab[iWP].M() == SP.M()) {
+      if (WTab[iWP].M() == SS.M()) {
         const RotMx& Rw = WTab[iWP].SpecialOp().Rpart();
         const TrVec& Tw = WTab[iWP].SpecialOp().Tpart();
         for(int iSMx=0;iSMx<SgOps.OrderP();iSMx++) {
