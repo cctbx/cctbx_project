@@ -5,6 +5,25 @@ class store:
   def __init__(self, **kw):
     self.__dict__.update(kw)
 
+class sorted_store:
+
+  def keys(self):
+    raise RuntimeError, "Programming error: derived class must override keys()"
+
+  def __init__(self, *args, **kw):
+    assert len(args) + len(kw) == len(self.keys())
+    for key,value in zip(self.keys()[:len(args)], args):
+      setattr(self, key, value)
+    for key,value in kw.items():
+      assert key in self.keys()
+      assert getattr(self, key, None) is None
+      setattr(self, key, value)
+
+  def show(self, f=None, indentation=""):
+    if (f is None): f = sys.stdout
+    for key in self.keys():
+      print >> f, "%s%s:" % (indentation, key), getattr(self, key)
+
 class user_plus_sys_time:
 
   def __init__(self):
