@@ -1113,11 +1113,11 @@ class array(set):
     if (f is None): f = sys.stdout
     assert self.data().size() == self.indices().size()
     if (self.sigmas() is None):
-      for i,h in self.indices().items():
+      for i,h in enumerate(self.indices()):
         print >> f, h, self.data()[i]
     else:
       assert self.indices().size() == self.sigmas().size()
-      for i,h in self.indices().items():
+      for i,h in enumerate(self.indices()):
         print >> f, h, self.data()[i], self.sigmas()[i]
     return self
 

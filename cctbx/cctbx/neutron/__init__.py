@@ -129,7 +129,7 @@ class structure(crystal.special_position_settings):
         site_symmetry = self.site_symmetry(scatterer.site)
         equiv_sites = sgtbx.sym_equiv_sites(site_symmetry)
         sum_exp_j_two_pi_hx = 0j
-        for i_symop,x in equiv_sites.coordinates().items():
+        for i_symop,x in enumerate(equiv_sites.coordinates()):
           sum_hx = 0
           for i in xrange(3):
             sum_hx += h[i] * x[i]

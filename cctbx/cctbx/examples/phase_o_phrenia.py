@@ -12,7 +12,7 @@ def peak_cluster_reduction(crystal_symmetry, peak_list,
     crystal_symmetry=crystal_symmetry,
     min_distance_sym_equiv=min_peak_distance)
   peaks = []
-  for i,site in peak_list.sites().items():
+  for i,site in enumerate(peak_list.sites()):
     peaks.append(dicts.easy(
       site=special_position_settings.site_symmetry(site).exact_site(),
       height=peak_list.heights()[i]))

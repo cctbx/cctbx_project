@@ -243,8 +243,7 @@ def site(structure_ideal, d_min, f_obs, verbose=0):
     verbose=verbose)
   sfd_d_target_d_site_cart = sfd.d_target_d_site_cart()
   top_gradient = None
-  for i_scatterer in sh.structure_shifted.scatterers().indices():
-    scatterer = sh.structure_shifted.scatterers()[i_scatterer]
+  for i_scatterer,scatterer in enumerate(sh.structure_shifted.scatterers()):
     for i_xyz in (0,1,2):
       direct_summ = sfd_d_target_d_site_cart[i_scatterer][i_xyz]
       if (top_gradient is None): top_gradient = direct_summ
@@ -291,8 +290,7 @@ def u_iso(structure_ideal, d_min, f_obs, verbose=0):
     n_parameters=0,
     verbose=verbose)
   top_gradient = None
-  for i_scatterer in sh.structure_shifted.scatterers().indices():
-    scatterer = sh.structure_shifted.scatterers()[i_scatterer]
+  for i_scatterer,scatterer in enumerate(sh.structure_shifted.scatterers()):
     direct_summ = sfd.d_target_d_u_iso()[i_scatterer]
     if (top_gradient is None): top_gradient = direct_summ
     fast_gradie = map0.d_target_d_u_iso()[i_scatterer]
@@ -343,8 +341,7 @@ def u_star(structure_ideal, d_min, f_obs, verbose=0):
   sfd_d_target_d_u_cart = sfd.d_target_d_u_cart()
   map0_d_target_d_u_cart = map0.d_target_d_u_cart()
   top_gradient = None
-  for i_scatterer in sh.structure_shifted.scatterers().indices():
-    scatterer = sh.structure_shifted.scatterers()[i_scatterer]
+  for i_scatterer,scatterer in enumerate(sh.structure_shifted.scatterers()):
     sfd_star = sfd.d_target_d_u_star()[i_scatterer]
     sfd_cart = adptbx.grad_u_star_as_u_cart(
       structure_ideal.unit_cell(), sfd_star)
@@ -397,8 +394,7 @@ def occupancy(structure_ideal, d_min, f_obs, verbose=0):
     n_parameters=0,
     verbose=verbose)
   top_gradient = None
-  for i_scatterer in sh.structure_shifted.scatterers().indices():
-    scatterer = sh.structure_shifted.scatterers()[i_scatterer]
+  for i_scatterer,scatterer in enumerate(sh.structure_shifted.scatterers()):
     direct_summ = sfd.d_target_d_occupancy()[i_scatterer]
     if (top_gradient is None): top_gradient = direct_summ
     fast_gradie = map0.d_target_d_occupancy()[i_scatterer]
@@ -444,8 +440,7 @@ def fp(structure_ideal, d_min, f_obs, verbose=0):
     n_parameters=0,
     verbose=verbose)
   top_gradient = None
-  for i_scatterer in sh.structure_shifted.scatterers().indices():
-    scatterer = sh.structure_shifted.scatterers()[i_scatterer]
+  for i_scatterer,scatterer in enumerate(sh.structure_shifted.scatterers()):
     direct_summ = sfd.d_target_d_fp()[i_scatterer]
     if (top_gradient is None): top_gradient = direct_summ
     fast_gradie = map0.d_target_d_fp()[i_scatterer]
@@ -491,8 +486,7 @@ def fdp(structure_ideal, d_min, f_obs, verbose=0):
     n_parameters=0,
     verbose=verbose)
   top_gradient = None
-  for i_scatterer in sh.structure_shifted.scatterers().indices():
-    scatterer = sh.structure_shifted.scatterers()[i_scatterer]
+  for i_scatterer,scatterer in enumerate(sh.structure_shifted.scatterers()):
     direct_summ = sfd.d_target_d_fdp()[i_scatterer]
     if (top_gradient is None): top_gradient = direct_summ
     fast_gradie = map0.d_target_d_fdp()[i_scatterer]

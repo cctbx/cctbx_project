@@ -4,7 +4,6 @@
 #include <scitbx/array_family/boost_python/flex_fwd.h>
 
 #include <boost/python/def.hpp>
-#include <boost/python/tuple.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/scope.hpp>
 #include <boost/python/return_value_policy.hpp>
@@ -23,27 +22,6 @@
 namespace scitbx { namespace af { namespace boost_python {
 
   using scitbx::boost_python::positive_getitem_index;
-
-  template <typename ElementType>
-  struct flex_items
-  {
-    flex_items() {}
-
-    flex_items(versa<ElementType, flex_grid<> > const& data)
-    : data_(data)
-    {}
-
-    std::size_t size() const { return data_.size(); }
-
-    boost::python::tuple
-    getitem(long i) const
-    {
-      std::size_t j = positive_getitem_index(i, data_.size());
-      return boost::python::make_tuple(j, data_[j]);
-    }
-
-    versa<ElementType, flex_grid<> > data_;
-  };
 
   template <typename ElementType,
             typename GetitemReturnValuePolicy
@@ -355,20 +333,6 @@ namespace scitbx { namespace af { namespace boost_python {
       a.resize(flex_grid<>(b.size()));
     }
 
-    static boost::python::object
-    indices(f_t const& a)
-    {
-      if (!a.check_shared_size()) raise_shared_size_mismatch();
-      return scitbx::boost_python::range(a.size());
-    }
-
-    static flex_items<e_t>
-    items(f_t const& a)
-    {
-      if (!a.check_shared_size()) raise_shared_size_mismatch();
-      return flex_items<e_t>(a);
-    }
-
     static shared<e_t>
     select_bool(
       af::const_ref<e_t> const& a,
@@ -671,13 +635,6 @@ namespace scitbx { namespace af { namespace boost_python {
       shared_flex_conversions<ElementType>();
       ref_flex_conversions<ElementType>();
 
-      class_<flex_items<ElementType> >((python_name+"_items").c_str())
-        .def(init<>())
-        .def(init<f_t const&>())
-        .def("__len__", &flex_items<ElementType>::size)
-        .def("__getitem__", &flex_items<ElementType>::getitem)
-      ;
-
       return class_f_t(python_name.c_str())
         .def(init<>())
         .def(init<flex_grid<> const&, optional<ElementType const&> >())
@@ -727,8 +684,6 @@ namespace scitbx { namespace af { namespace boost_python {
         .def("resize", resize_flex_grid_2)
         .def("clear", clear)
         .def("extend", extend)
-        .def("indices", indices)
-        .def("items", items)
         .def("select", select_bool)
         .def("select", select_size_t)
         .def("set_selected", set_selected_bool_a)

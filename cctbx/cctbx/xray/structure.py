@@ -317,7 +317,7 @@ class structure(crystal.special_position_settings):
     sites_cart = self.sites_cart()
     sum_w = 0
     sum_wc = matrix.col((0,0,0))
-    for i,site_cart in sites_cart.items():
+    for i,site_cart in enumerate(sites_cart):
       w = atomic_weights[i]
       sum_w += w
       sum_wc += matrix.col(site_cart) * w

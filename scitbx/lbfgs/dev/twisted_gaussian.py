@@ -1,5 +1,5 @@
 from scitbx import lbfgs as scitbx_lbfgs
-from cctbx.array_family import flex
+from scitbx.array_family import flex
 from scitbx.python_utils.misc import adopt_init_args
 import random
 import math
@@ -321,19 +321,19 @@ class fortran_minimizer:
     self.iflag = Numeric.array([0], Numeric.Int32)
 
   def __call__(self, x, f, g, diag=None, diagco=False):
-    for i,v in x.items(): self.x[i] = v
-    for i,v in g.items(): self.g[i] = v
+    for i,v in enumerate(x): self.x[i] = v
+    for i,v in enumerate(g): self.g[i] = v
     if (diag is not None):
-      for i,v in diag.items(): self.diag[i] = v
+      for i,v in enumerate(diag): self.diag[i] = v
     from fortran_lbfgs import lbfgs as fortran_lbfgs
     fortran_lbfgs(
       self.n, self.m,
       self.x, f, self.g, diagco, self.diag,
       self.iprint, self.eps, self.xtol, self.w, self.iflag)
-    for i in x.indices(): x[i] = self.x[i]
-    for i in g.indices(): g[i] = self.g[i]
+    for i,v in enumerate(self.x): x[i] = v
+    for i,v in enumerate(self.g): g[i] = v
     if (diag is not None):
-      for i in diag.indices(): diag[i] = self.diag[i]
+      for i,v in enumerate(self.diag): diag[i] = v
 
 def fortran_lbfgs_run(target_evaluator,
                       max_calls=100000,

@@ -9,7 +9,7 @@ def miller_export_as_shelx_hklf(self, file_object=None):
   sigmas = self.sigmas()
   s = 0.01
   fmt = "%4d%4d%4d%8.2f%8.2f"
-  for i,h in self.indices().items():
+  for i,h in enumerate(self.indices()):
     if (sigmas is not None): s = sigmas[i]
     print >> file_object, fmt % (h + (data[i],s))
   print >> file_object, fmt % (0,0,0,0,0)

@@ -36,7 +36,7 @@ def run(server_info, inp, status):
   status.in_table = True
   print "<tr>"
   print "<th>hkl<th>Amplitude<th>Phase"
-  for i,h in f_calc.indices().items():
+  for i,h in enumerate(f_calc.indices()):
     print "<tr>"
     print "<td>%3d %3d %3d<td>%.6g<td align=right>%.3f" % (
       h + complex_math.abs_arg(f_calc.data()[i], deg=True))

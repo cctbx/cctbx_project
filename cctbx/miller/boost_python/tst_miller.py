@@ -93,17 +93,17 @@ def exercise_map_to_asu(sg_symbol):
     a = flex.double()
     p = flex.double()
     c = flex.hendrickson_lattman()
-    for i in m.indices():
+    for i in xrange(m.size()):
       a.append(random.random())
       p.append(random.random() * 2)
-      c.append([random.random() for i in xrange(4)])
+      c.append([random.random() for j in xrange(4)])
     f = flex.polar(a, p)
     p = [p, p*(180/math.pi)]
   m_random = flex.miller_index()
   p_random = [flex.double(), flex.double()]
   c_random = flex.hendrickson_lattman()
   f_random = flex.complex_double()
-  for i,h_asym in m.items():
+  for i,h_asym in enumerate(m):
     h_eq = miller.sym_equiv_indices(sg_type.group(), h_asym)
     i_eq = random.randrange(h_eq.multiplicity(anomalous_flag))
     h_i = h_eq(i_eq)
@@ -114,34 +114,34 @@ def exercise_map_to_asu(sg_symbol):
     c_random.append(h_i.hendrickson_lattman_eq(c[i]))
   m_random_copy = m_random.deep_copy()
   miller.map_to_asu(sg_type, anomalous_flag, m_random_copy)
-  for i,h_asym in m.items():
+  for i,h_asym in enumerate(m):
     assert h_asym == m_random_copy[i]
   m_random_copy = m_random.deep_copy()
   miller.map_to_asu(sg_type, anomalous_flag, m_random_copy, f_random)
-  for i,h_asym in m.items():
+  for i,h_asym in enumerate(m):
     assert h_asym == m_random_copy[i]
-  for i,f_asym in f.items():
+  for i,f_asym in enumerate(f):
     assert abs(f_asym - f_random[i]) < 1.e-6
   m_random_copy = m_random.deep_copy()
   a_random = a.deep_copy()
   miller.map_to_asu(sg_type, anomalous_flag, m_random_copy, a_random)
-  for i,h_asym in m.items():
+  for i,h_asym in enumerate(m):
     assert h_asym == m_random_copy[i]
-  for i,a_asym in a.items():
+  for i,a_asym in enumerate(a):
     assert a_asym == a_random[i]
   for deg in (0,1):
     m_random_copy = m_random.deep_copy()
     miller.map_to_asu(
       sg_type, anomalous_flag, m_random_copy, p_random[deg], deg)
-    for i,h_asym in m.items():
+    for i,h_asym in enumerate(m):
       assert h_asym == m_random_copy[i]
-    for i,p_asym in p[deg].items():
+    for i,p_asym in enumerate(p[deg]):
       assert scitbx.math.phase_error(p_asym, p_random[deg][i], deg) < 1.e-5
   m_random_copy = m_random.deep_copy()
   miller.map_to_asu(sg_type, anomalous_flag, m_random_copy, c_random)
-  for i,h_asym in m.items():
+  for i,h_asym in enumerate(m):
     assert h_asym == m_random_copy[i]
-  for i,c_asym in c.items():
+  for i,c_asym in enumerate(c):
     for j in xrange(4):
       assert abs(c_asym[j] - c_random[i][j]) < 1.e-5
 
@@ -182,7 +182,7 @@ def exercise_bins():
   d_min = 1
   m = miller.index_generator(uc, sg_type, anomalous_flag, d_min).to_array()
   f = flex.double()
-  for i in m.indices(): f.append(random.random())
+  for i in xrange(m.size()): f.append(random.random())
   n_bins = 10
   b = miller.binning(uc, n_bins, 0, d_min)
   b = miller.binning(uc, n_bins, 0, d_min, 1.e-6)
@@ -222,7 +222,7 @@ def exercise_bins():
     binning1.bin_d_min(n_bins))
   binner2 = miller.binner(binning2, m)
   assert tuple(binner1.counts())[1:-1] == tuple(binner2.counts())
-  array_indices = flex.size_t(tuple(m.indices()))
+  array_indices = flex.size_t(range(m.size()))
   perm_array_indices1 = flex.size_t()
   perm_array_indices2 = flex.size_t()
   for i_bin in binner1.range_all():

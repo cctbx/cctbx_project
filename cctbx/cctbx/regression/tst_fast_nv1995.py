@@ -21,7 +21,7 @@ def run_fast_terms(structure_fixed, structure_p1,
   else:
     f_part = f_calc_fixed.data()
   m = flex.double()
-  for i in f_obs.indices().indices():
+  for i in xrange(f_obs.indices().size()):
     m.append(random.random())
   assert f_obs.anomalous_flag() == f_calc_p1.anomalous_flag()
   fast_terms = translation_search.fast_terms(
@@ -103,7 +103,7 @@ def run_fast_nv1995(f_obs, f_calc_fixed, f_calc_p1,
     interpolate=True)
   if (0 or verbose):
     print "gridding:", gridding
-    for i,site in peak_list.sites().items():
+    for i,site in enumerate(peak_list.sites()):
       print "(%.4f,%.4f,%.4f)" % site, "%.6g" % peak_list.heights()[i]
   assert approx_equal(map_stats.max(), flex.max(peak_list.grid_heights()))
   return peak_list

@@ -15,7 +15,7 @@ def verify(crystal_symmetry, anomalous_flag, reflection_file):
   for cns_x in (cns_e, cns_c, cns_a, cns_p):
     assert cns_x.indices.id() == cns_m.indices.id()
   space_group = crystal_symmetry.space_group()
-  for i,h in cns_m.indices.items():
+  for i,h in enumerate(cns_m.indices):
     m_i = cns_m.data[i]
     e_i = cns_e.data[i]
     c_i = cns_c.data[i]
