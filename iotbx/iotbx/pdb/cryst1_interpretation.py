@@ -50,8 +50,8 @@ class categorize:
   def __init__(self, symbol):
     self.symbol = None
     try:
-      self.symbol = symbol.strip()
-      self.category = _all[self.symbol.replace(" ","").upper()]
+      self.symbol = symbol.strip().replace(" ","").upper()
+      self.category = _all[self.symbol]
     except:
       self.category = None
 
