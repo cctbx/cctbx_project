@@ -54,7 +54,7 @@ class euclidean_match_symmetry:
     print self.continuous_shifts
     print
 
-class labelled_position:
+class labeled_position:
 
   def __init__(self, label, coordinates):
     python_utils.adopt_init_args(self, locals())
@@ -64,9 +64,9 @@ class labelled_position:
 
 class model(xutils.crystal_symmetry):
 
-  def __init__(self, xsym, labelled_positions):
+  def __init__(self, xsym, labeled_positions):
     xutils.crystal_symmetry.__init__(self, xsym.UnitCell, xsym.SgInfo)
-    self.labelled_positions = list(labelled_positions)
+    self.labeled_positions = list(labeled_positions)
 
   def transform_to_reference_setting(self):
     CBOp = self.SgInfo.CBOp()
@@ -75,25 +75,25 @@ class model(xutils.crystal_symmetry):
       self.SgInfo.SgNumber()))
     ref_space_group.CheckUnitCell(cb_unit_cell)
     cb_positions = []
-    for pos in self.labelled_positions:
-      cb_positions.append(labelled_position(
+    for pos in self.labeled_positions:
+      cb_positions.append(labeled_position(
         pos.label,
         CBOp(pos.coordinates)))
     return model(
       xutils.crystal_symmetry(cb_unit_cell, ref_space_group.Info()),
       cb_positions)
 
-  def __len__(self): return len(self.labelled_positions)
-  def    size(self): return len(self.labelled_positions)
+  def __len__(self): return len(self.labeled_positions)
+  def    size(self): return len(self.labeled_positions)
 
   def __getitem__(self, key):
-    return self.labelled_positions[key]
+    return self.labeled_positions[key]
 
   def show(self, title):
     print title
     print "Unit cell:", self.UnitCell
     print "Space group:", self.SgInfo.BuildLookupSymbol()
-    for lp in self.labelled_positions: print lp
+    for lp in self.labeled_positions: print lp
     print
 
 def generate_singles(n, i):
@@ -209,7 +209,7 @@ class match_refine:
     print "       rotation:", self.rt.r.mathematica_form()
     print "    translation:", self.rt.t.elems
     print "rms coordinate error: %.2f" % (self.rms,)
-    print "  Pairs:"
+    print "  Pairs:", len(self.pairs)
     for pair in self.pairs:
       print "   ", self.ref_model1[pair[0]].label,
       print self.ref_model2[pair[1]].label
@@ -353,14 +353,14 @@ class test_model(model):
   def __init__(self, model_id = "SBT", n_elements = 4):
     if (model_id == None): return
     self.model_id = model_id
-    lp = labelled_position
+    lp = labeled_position
     if (type(model_id) == type("")):
       if (model_id == "SBT"):
         unit_cell = uctbx.UnitCell(
           (16.8986, 16.8986, 16.8986, 61.1483, 61.1483, 61.1483))
         space_group_info = sgtbx.SpaceGroup(sgtbx.SpaceGroupSymbols(
           "R -3 m :R")).Info()
-        labelled_positions = (
+        labeled_positions = (
           lp("SI1", (-0.3584, 0.2844, 0.4622)),
           lp("SI2", (-0.2133, 0.9659, -0.6653)),
           lp("SI3", (-0.8358, 0.7, 0.3431)),
@@ -369,7 +369,7 @@ class test_model(model):
         raise RuntimeError, "Unknown model_id: " + model_id
       model.__init__(self,
         xutils.crystal_symmetry(unit_cell, space_group_info),
-        labelled_positions)
+        labeled_positions)
     else:
       from cctbx.development import debug_utils
       elements = ["S"] * n_elements
@@ -377,34 +377,34 @@ class test_model(model):
         volume_per_atom=50.,
         min_distance = 2.0,
         general_positions_only = 0)
-      labelled_positions = []
+      labeled_positions = []
       for site in xtal:
-        labelled_positions.append(labelled_position(
+        labeled_positions.append(labeled_position(
           site.Label(), site.Coordinates()))
-      model.__init__(self, xtal, labelled_positions)
+      model.__init__(self, xtal, labeled_positions)
 
-  def create_new_test_model(self, new_labelled_positions):
+  def create_new_test_model(self, new_labeled_positions):
     new_test_model = test_model(None)
     model.__init__(new_test_model,
       xutils.crystal_symmetry(self.UnitCell, self.SgInfo),
-      new_labelled_positions)
+      new_labeled_positions)
     return new_test_model
 
   def shuffle_positions(self):
     from cctbx.development import debug_utils
-    shuffled_positions = list(self.labelled_positions)
+    shuffled_positions = list(self.labeled_positions)
     debug_utils.random.shuffle(shuffled_positions)
     return self.create_new_test_model(shuffled_positions)
 
   def random_symmetry_mates(self):
     from cctbx.development import debug_utils
-    new_labelled_positions = []
-    for lp in self.labelled_positions:
+    new_labeled_positions = []
+    for lp in self.labeled_positions:
       equiv_coor = sgtbx.SymEquivCoordinates(self.SgOps, lp.coordinates)
       i = debug_utils.random.randrange(equiv_coor.M())
-      new_labelled_positions.append(labelled_position(
+      new_labeled_positions.append(labeled_position(
         lp.label, equiv_coor(i)))
-    return self.create_new_test_model(new_labelled_positions)
+    return self.create_new_test_model(new_labeled_positions)
 
   def apply_random_eucl_op(self, models_are_diffraction_index_equivalent = 0):
     from cctbx.development import debug_utils
@@ -416,19 +416,19 @@ class test_model(model):
     eucl_symop = match_symmetry.rtmx(i)
     shift = [debug_utils.random.random() for i in xrange(3)]
     allowed_shift = match_symmetry.filter_shift(shift, selector=1)
-    new_labelled_positions = []
-    for lp in self.labelled_positions:
+    new_labeled_positions = []
+    for lp in self.labeled_positions:
       new_coor = eucl_symop.multiply(lp.coordinates)
       new_coor = python_utils.list_plus(new_coor, allowed_shift)
-      new_labelled_positions.append(labelled_position(
+      new_labeled_positions.append(labeled_position(
         lp.label, new_coor))
-    return self.create_new_test_model(new_labelled_positions)
+    return self.create_new_test_model(new_labeled_positions)
 
   def add_random_positions(self, number_of_new_positions = 3, label = "R",
                            min_distance = 1.0):
     from cctbx.development import debug_utils
     existing_positions = []
-    for lp in self.labelled_positions:
+    for lp in self.labeled_positions:
       existing_positions.append(lp.coordinates)
     new_positions = debug_utils.generate_positions(
       number_of_new_positions,
@@ -438,27 +438,27 @@ class test_model(model):
       min_hetero_distance = min_distance,
       general_positions_only = 0,
       existing_positions = existing_positions)
-    new_labelled_positions = []
+    new_labeled_positions = []
     i = 0
     for coor in new_positions:
       i += 1
-      new_labelled_positions.append(labelled_position(
+      new_labeled_positions.append(labeled_position(
         "%s%d" % (label, i), coor))
     return self.create_new_test_model(
-      list(self.labelled_positions) + new_labelled_positions)
+      list(self.labeled_positions) + new_labeled_positions)
 
   def shake_positions(self, sigma = 0.2, min_distance = 1.0):
     from cctbx.development import debug_utils
     snap_parameters = sgtbx.SpecialPositionSnapParameters(
       self.UnitCell, self.SgOps, 1, min_distance)
-    new_labelled_positions = []
-    for lp in self.labelled_positions:
+    new_labeled_positions = []
+    for lp in self.labeled_positions:
       new_coor = debug_utils.shake_position(
         self, snap_parameters, lp.coordinates,
         sigma, max_diff = min_distance * 0.99)
-      new_labelled_positions.append(labelled_position(
+      new_labeled_positions.append(labeled_position(
         lp.label, new_coor))
-    return self.create_new_test_model(new_labelled_positions)
+    return self.create_new_test_model(new_labeled_positions)
 
 def run_test(argv):
   from cctbx.development import debug_utils
