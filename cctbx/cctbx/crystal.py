@@ -3,7 +3,7 @@ from cctbx import sgtbx
 
 import sys
 
-class symmetry:
+class symmetry(object):
 
   def __init__(self, unit_cell=None,
                      space_group_symbol=None,
