@@ -19,22 +19,6 @@ def quality_factor_from_any(d_min=None,
     quality_factor = 100
   return quality_factor
 
-class from_scatterers_common:
-
-  def __init__(self, manager, xray_structure, miller_set):
-    adopt_init_args(self, locals(), hide=0001)
-    assert xray_structure is not None and miller_set is not None
-    assert xray_structure.unit_cell().is_similar_to(miller_set.unit_cell())
-    assert xray_structure.space_group() == miller_set.space_group()
-    if (manager is not None):
-      assert xray_structure.unit_cell().is_similar_to(manager.unit_cell())
-      assert xray_structure.space_group() == manager.space_group()
-
-  def manager(self):
-    return self._manager
-
-  def xray_structure(self):
-    return self._xray_structure
-
-  def miller_set(self):
-    return self._miller_set
+expensive_function_call_message = (
+    "Programming problem: Calling this function is expensive."
+  + " Please assign the result to an intermediate variable.")

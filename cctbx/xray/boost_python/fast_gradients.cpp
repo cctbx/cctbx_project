@@ -25,9 +25,9 @@ namespace {
                            double const&,
                            double const&,
                            bool> >())
-        .def("d_target_d_site", &w_t::d_target_d_site)
+        .def("d_target_d_site_cart", &w_t::d_target_d_site_cart)
         .def("d_target_d_u_iso", &w_t::d_target_d_u_iso)
-        .def("d_target_d_u_star", &w_t::d_target_d_u_star)
+        .def("d_target_d_u_cart", &w_t::d_target_d_u_cart)
         .def("d_target_d_occupancy", &w_t::d_target_d_occupancy)
         .def("d_target_d_fp", &w_t::d_target_d_fp)
         .def("d_target_d_fdp", &w_t::d_target_d_fdp)

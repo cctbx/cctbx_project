@@ -93,7 +93,7 @@ def flex_tuple_as_flex_double(flex_tuple):
     result.append(flex.double(tuple(t)))
   return result
 
-def linear_regression_test(d_analytical, d_numerical, test_hard,
+def linear_regression_test(d_analytical, d_numerical, test_hard=0001,
                            slope_tolerance=1.e-3,
                            correlation_min=0.999,
                            verbose=0):
@@ -104,6 +104,9 @@ def linear_regression_test(d_analytical, d_numerical, test_hard,
   if (0 or verbose):
     print "analytical:", tuple(d_analytical)
     print "numerical: ", tuple(d_numerical)
+  if (    flex.max(flex.abs(d_analytical)) == 0
+      and flex.max(flex.abs(d_numerical)) == 0):
+    return
   regr = flex.linear_regression(d_analytical, d_numerical)
   corr = flex.linear_correlation(d_analytical, d_numerical).coefficient()
   assert regr.is_well_defined()
@@ -158,7 +161,7 @@ def exercise(target_functor, parameter_name, space_group_info,
     try: print "correlation = %.6g" % (target_result.correlation(),)
     except: pass
     print "target = %.6g" % (target_result.target(),)
-  sf = xray.structure_factors.from_scatterers_direct(
+  sf = xray.structure_factors.gradients_direct(
     xray_structure=structure,
     miller_set=f_obs,
     d_target_d_f_calc=target_result.derivatives(),
@@ -170,11 +173,11 @@ def exercise(target_functor, parameter_name, space_group_info,
       fp=(parameter_name=="fp" or random.choice((0,1))),
       fdp=(parameter_name=="fdp" or random.choice((0,1)))))
   if (parameter_name == "site"):
-    d_analytical = sf.d_target_d_site()
+    d_analytical = sf.d_target_d_site_frac()
     if (cartesian_flag): # average d_analytical or d_numerical, but not both
       structure_ideal.apply_special_position_ops_d_target_d_site(d_analytical)
     if (cartesian_flag):
-      sf.d_target_d_site_inplace_frac_as_cart(d_analytical)
+      d_analytical = sf.d_target_d_site_cart()
     d_numerical = finite_differences_site(
       cartesian_flag, target_ftor, structure)
     if (not cartesian_flag): # aver. d_analytical or d_numerical, but not both

@@ -1,24 +1,20 @@
-from cctbx.xray.structure_factors.misc import from_scatterers_common
+from cctbx.xray.structure_factors.manager import managed_calculation_base
 from cctbx.xray import ext
 from cctbx import miller
 from cctbx import maptbx
 from scitbx import fftpack
 from scitbx.python_utils.misc import user_plus_sys_time
 
-class from_scatterers_fft(from_scatterers_common):
+class from_scatterers_fft(managed_calculation_base):
 
   def __init__(self, manager,
                      xray_structure,
                      miller_set,
-                     d_target_d_f_calc=None,
-                     gradient_flags=None,
                      force_complex=00000,
                      electron_density_must_be_positive=0001):
-    from_scatterers_common.__init__(self, manager, xray_structure, miller_set)
+    managed_calculation_base.__init__(self, manager, xray_structure, miller_set)
     assert manager.symmetry_flags().use_space_group_symmetry()
     assert miller_set.d_min() >= manager.d_min()
-    assert d_target_d_f_calc is None, "FFT derivatives not implemented."
-    assert gradient_flags is None, "FFT derivatives not implemented."
     manager.setup_fft() # before timing
     time_sampling = user_plus_sys_time()
     sampled_density = ext.sampled_model_density(

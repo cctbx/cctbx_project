@@ -43,19 +43,31 @@ namespace {
     calc_u_extra_overloads, calc_u_extra, 2, 4)
 
   void
-  eliminate_u_extra_double(
+  apply_u_extra_double(
     uctbx::unit_cell const& unit_cell,
     double const& u_extra,
     af::const_ref<miller::index<> > const& miller_indices,
     af::ref<std::complex<double> > const& structure_factors,
-    double const& norm=1)
+    double const& multiplier=1)
   {
-    eliminate_u_extra(unit_cell, u_extra, miller_indices, structure_factors,
-                      norm);
+    apply_u_extra(unit_cell, u_extra, miller_indices, structure_factors,
+                      multiplier);
   }
 
   BOOST_PYTHON_FUNCTION_OVERLOADS(
-    eliminate_u_extra_double_overloads, eliminate_u_extra_double, 4, 5)
+    apply_u_extra_double_overloads, apply_u_extra_double, 4, 5)
+
+  void
+  apply_u_extra_array_double(
+    uctbx::unit_cell const& unit_cell,
+    double const& u_extra,
+    af::const_ref<miller::index<> > const& miller_indices,
+    af::ref<std::complex<double> > const& structure_factors,
+    af::const_ref<double> const& multipliers)
+  {
+    apply_u_extra(unit_cell, u_extra, miller_indices, structure_factors,
+                      multipliers);
+  }
 
 } // namespace <anoymous>
 
@@ -64,8 +76,8 @@ namespace {
     using namespace boost::python;
 
     def("calc_u_extra", calc_u_extra, calc_u_extra_overloads());
-    def("eliminate_u_extra", eliminate_u_extra_double,
-                             eliminate_u_extra_double_overloads());
+    def("apply_u_extra",apply_u_extra_double,apply_u_extra_double_overloads());
+    def("apply_u_extra", apply_u_extra_array_double);
 
     sampling_base_wrappers::wrap();
   }
