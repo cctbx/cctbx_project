@@ -264,8 +264,8 @@ class stage_1:
                or not approx_equal(
             self.scale_matrix[0],
             [0,0,0])))):
-        sites_frac = self.scale_matrix[0] * self._sites_cart \
-                   + self.scale_matrix[1]
+        sites_frac = self._sites_cart * self.scale_matrix[0] \
+                                      + self.scale_matrix[1]
         self._sites_cart = \
           self.crystal_symmetry.unit_cell().orthogonalization_matrix() \
           * sites_frac
