@@ -71,11 +71,13 @@ class MARImage:
       file_comments = f.read(512) # read file_comments
 
       parameters={}
-      for item in ['Detector Serial Number']:
+      for item in ['Detector Serial Number']: #expected integers
         pattern = re.compile(item+' = '+r'(.*)')
         matches = pattern.findall(file_comments)
         if len(matches) > 0:
           parameters[item] = int(matches[-1])
+        else:
+          parameters[item] = 0
 
       f.seek(offset+28)
       rawdata = f.read(8)
@@ -103,7 +105,9 @@ class MARImage:
       f.seek(offset+728)
       rawdata = f.read(4)
       end_xtal_to_detector = struct.unpack(format+'i',rawdata)[0]/1000.
-      assert start_xtal_to_detector == end_xtal_to_detector
+      #assert start_xtal_to_detector == end_xtal_to_detector
+      #that assertion would've been nice but ESRF BM14 frames fail; instead:
+      assert start_xtal_to_detector>0.
       parameters['DISTANCE'] = start_xtal_to_detector
 
       f.seek(offset+772)
