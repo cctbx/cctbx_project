@@ -262,6 +262,15 @@ namespace sgtbx {
     return result;
   }
 
+  boost::array<int, 12> RTMx::as_int_array() const
+  {
+    boost::array<int, 12> result;
+    int i;
+    for(i=0;i<9;i++) result[i    ] = Rpart()[i];
+    for(i=0;i<3;i++) result[i + 9] = Tpart()[i];
+    return result;
+  }
+
   RTMx::RTMx(parse_string& StrXYZ, const char* StopChars, int RBF, int TBF)
     : m_R(0), m_T(0)
   {
