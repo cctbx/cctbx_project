@@ -41,13 +41,23 @@ def exercise_symmetry():
   cn = nc.change_basis(cb.inverse())
   assert cn.unit_cell().is_similar_to(xs.unit_cell())
   assert cn.space_group() == xs.space_group()
-  xs = crystal.symmetry((3,4,5), "P 2 2 2")
+  xs = crystal.symmetry((5,3,4), "P 2 2 2")
   p1 = xs.cell_equivalent_p1()
-  assert p1.unit_cell().is_similar_to(uctbx.unit_cell((3,4,5)))
+  assert p1.unit_cell().is_similar_to(uctbx.unit_cell((5,3,4)))
   assert p1.space_group().order_z() == 1
   ps = xs.patterson_symmetry()
   assert ps.unit_cell().is_similar_to(xs.unit_cell())
   assert str(ps.space_group_info()) == "P m m m"
+  bc = ps.best_cell()
+  assert bc.unit_cell().is_similar_to(uctbx.unit_cell((3,4,5)))
+  assert str(bc.space_group_info()) == "P m m m"
+  xs = crystal.symmetry((5,3,4,90,130,90), "P 1 2 1")
+  bc = xs.best_cell()
+  assert bc.unit_cell().is_similar_to(
+    uctbx.unit_cell((3.91005,3,4,90,101.598,90)))
+  assert str(bc.space_group_info()) == "P 1 2 1"
+  cb = xs.change_of_basis_op_to_best_cell()
+  assert str(cb.c()) == "-x,-y,-x+z"
 
 def exercise_special_position_settings():
   xs = crystal.symmetry((3,4,5), "P 2 2 2")

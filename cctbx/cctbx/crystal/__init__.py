@@ -1,3 +1,4 @@
+from cctbx.crystal.find_best_cell import find_best_cell
 from cctbx import uctbx
 from cctbx import sgtbx
 
@@ -67,6 +68,16 @@ class symmetry(object):
   def primitive_setting(self):
     return self.change_basis(self.space_group().z2p_op())
 
+  def as_reference_setting(self):
+    return self.change_basis(self.space_group_info().type().cb_op())
+
+  def change_of_basis_op_to_best_cell(self, angular_tolerance=3):
+    return find_best_cell(self, angular_tolerance=angular_tolerance).cb_op()
+
+  def best_cell(self, angular_tolerance=3):
+    return self.change_basis(self.change_of_basis_op_to_best_cell(
+      angular_tolerance=angular_tolerance))
+
   def change_of_basis_op_to_niggli_cell(self):
     z2p_op = self.space_group().z2p_op()
     r_inv = z2p_op.c_inv().r()
@@ -75,9 +86,6 @@ class symmetry(object):
     p2n_op = sgtbx.change_of_basis_op(
       sgtbx.rt_mx(sgtbx.rot_mx(red.r_inv().elems, 1))).inverse()
     return p2n_op.new_denominators(z2p_op) * z2p_op
-
-  def as_reference_setting(self):
-    return self.change_basis(self.space_group_info().type().cb_op())
 
   def niggli_cell(self):
     return self.change_basis(self.change_of_basis_op_to_niggli_cell())
