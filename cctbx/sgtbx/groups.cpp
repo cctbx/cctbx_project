@@ -5,6 +5,10 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001-Apr-23 Initial m_isTidy = false (R.W. Grosse-Kunstleve)
+       This fixes a bug (interaction with SgOps::ChangeBasis())
+       and is safer in general.
+     2001-Apr-23 Bug fix in TrOps::expand() (R.W. Grosse-Kunstleve)
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
@@ -38,7 +42,7 @@ namespace sgtbx {
         j = 1;
       }
       if (i == m_Vects.size()) break;
-      TrVec TrialTr = m_Vects[j] + m_Vects[j];
+      TrVec TrialTr = m_Vects[j] + m_Vects[i];
       pNewTr = &TrialTr;
       j++;
     }
@@ -55,7 +59,7 @@ namespace sgtbx {
     m_InvT = TrVec();
     rangei(m_SMx.max_size()) m_SMx[i] = RTMx(RotMx(0, 0), TrVec(0));
     m_SMx[0] = RTMx();
-    m_isTidy = true;
+    m_isTidy = false;
   }
 
   void SgOps::addInv(const TrVec& NewInvT)
