@@ -23,7 +23,23 @@ namespace sgtbx {
 
   namespace detail {
 
-    TrVec getUnitShifts(const fractional<double>& Delta);
+    template <class T>
+    TrVec getUnitShifts(const boost::array<T, 3>& Delta)
+    {
+      TrVec result(1);
+      for(std::size_t i=0;i<3;i++) {
+        if (Delta[i] >= 0.) result[i] = static_cast<int>(Delta[i] + 0.5);
+        else                result[i] = static_cast<int>(Delta[i] - 0.5);
+      }
+      return result;
+    }
+
+    template <class T>
+    double modShortLength2(const uctbx::UnitCell& uc,
+                           const boost::array<T, 3>& Diff) {
+      return uc.Length2(fractional<T>(Diff).modShort());
+    }
+
     void SetUniqueOps(const SgOps& sgo,
                       const RTMx& SpecialOp,
                       std::vector<RTMx>& UniqueOps);
@@ -77,6 +93,8 @@ namespace sgtbx {
       bool m_MustBeWellBehaved;
       double m_MinMateDistance2;
   };
+
+  template <class T> class SymEquivCoordinates;
 
   //! Container for special position tolerance parameters.
   class SpecialPositionTolerances {
@@ -134,7 +152,8 @@ namespace sgtbx {
         cctbx_assert(m_MinimumDistance2 >= m_Tolerance2);
       }
     private:
-      friend class SymEquivCoordinates;
+      friend class SymEquivCoordinates<float>; // XXX
+      friend class SymEquivCoordinates<double>; // XXX
       const uctbx::UnitCell& m_UnitCell;
       const SgOps& m_SgOps;
       double m_MinimumDistance2;
@@ -500,20 +519,33 @@ namespace sgtbx {
   };
 
   //! Container for symmetry equivalent (atomic) coordinates.
+  template <class T>
   class SymEquivCoordinates {
     public:
       //! Compute symmetry equivalent coordinates using a robust algorithm.
       /*! See class SpecialPositionSnapParameters for details.
        */
       SymEquivCoordinates(const SpecialPositionSnapParameters& params,
-                          const fractional<double>& X);
+                          const fractional<T>& X)
+      {
+        SpecialPosition SP(params, X, true);
+        for(std::size_t i=0;i<SP.M();i++) {
+          m_Coordinates.push_back(SP[i] * SP.SnapPosition());
+        }
+      }
       //! Compute symmetry equivalent coordinates using a robust algorithm.
       /*! See class SpecialPosition for details.
           <p>
           SpecialPosition::expand() has to be called for SP before SP
           can be used in this constructor.
        */
-      SymEquivCoordinates(const SpecialPosition& SP);
+      SymEquivCoordinates(const SpecialPosition& SP)
+      {
+        SP.CheckExpanded();
+        for(std::size_t i=0;i<SP.M();i++) {
+          m_Coordinates.push_back(SP[i] * SP.SnapPosition());
+        }
+      }
       //! Compute symmetry equivalent coordinates using a WyckoffMapping.
       /*! See class WyckoffMapping for details.
           <p>
@@ -522,7 +554,15 @@ namespace sgtbx {
           by calling WyckoffTable::expand().
        */
       SymEquivCoordinates(const WyckoffMapping& WM,
-                          const fractional<double>& X);
+                          const fractional<T>& X)
+      {
+        const WyckoffPosition& WP = WM.WP();
+        WP.CheckExpanded();
+        fractional<T> Xr = WM.snap_to_representative(X);
+        for(std::size_t i=0;i<WP.M();i++) {
+          m_Coordinates.push_back(WP[i] * Xr);
+        }
+      }
       //! Compute symmetry equivalent coordinates using a WyckoffPosition.
       /*! See class WyckoffMapping for details. If X is known to be
           close to the representative Wyckoff position, the
@@ -538,8 +578,16 @@ namespace sgtbx {
           when calling getSpaceGroupType().
        */
       SymEquivCoordinates(const WyckoffPosition& WP,
-                          const fractional<double>& X);
-      //! Compute symmetry equivalent coordinates using simple distance calculations.
+                          const fractional<T>& X)
+      {
+        WP.CheckExpanded();
+        for(std::size_t i=0;i<WP.M();i++) {
+          m_Coordinates.push_back(WP[i] * X);
+        }
+      }
+      /*! \brief Compute symmetry equivalent coordinates using simple
+          distance calculations.
+       */
       /*! See class SpecialPositionTolerances for details.
           <p>
           To ensure numerical stability, this constructor should only
@@ -550,8 +598,33 @@ namespace sgtbx {
           is only marginally slower.
        */
       SymEquivCoordinates(const SpecialPositionTolerances& params,
-                          const fractional<double>& X);
-      //! Compute symmetry equivalent coordinates without treatment of special positions.
+                          const fractional<T>& X)
+      {
+        T Tolerance2 = params.m_Tolerance2;
+        T MinimumDistance2 = params.m_MinimumDistance2;
+        m_Coordinates.push_back(X);
+        for(int i=1;i<params.m_SgOps.OrderZ();i++) {
+          fractional<T> SX = params.m_SgOps(i) * X;
+          T Delta2 = getShortestDistance2(params.m_UnitCell, SX);
+          if (Delta2 >= Tolerance2) {
+            if (Delta2 < MinimumDistance2) {
+              throw error(
+              "Special position not well defined."
+              " Use SpecialPositionSnapParameters.");
+            }
+            else {
+              m_Coordinates.push_back(SX);
+            }
+          }
+        }
+        if (params.m_SgOps.OrderZ() % m_Coordinates.size() != 0) {
+          throw error(
+          "Numerical instability. Use SpecialPositionSnapParameters.");
+        }
+      }
+      /*! \brief Compute symmetry equivalent coordinates without
+          treatment of special positions.
+       */
       /*! The symmetry operations are applied to X. Duplicates on
           special positions are not removed. The multiplicty M() will
           always be equal to SgOps::OrderZ(). This algorithm is
@@ -561,21 +634,28 @@ namespace sgtbx {
           as a weight in structure factor calculations.
        */
       SymEquivCoordinates(const SgOps& sgo,
-                          const fractional<double>& X);
+                          const fractional<T>& X)
+      {
+        m_Coordinates.push_back(X);
+        for(int i=1;i<sgo.OrderZ();i++) {
+          fractional<T> SX = sgo(i) * X;
+          m_Coordinates.push_back(SX);
+        }
+      }
       //! Number of symmetry equivalent coordinates (multiplicity).
       inline int M() const { return m_Coordinates.size(); }
       //! Return the i'th symmetry equivalent coordinate.
       /*! i must be in the range [0,M()[. No range checking is
           performed for maximal performance.
        */
-      inline const fractional<double>&
+      inline const fractional<T>&
       operator[](std::size_t i) const {
         return m_Coordinates[i];
       }
       //! Return the i'th symmetry equivalent coordinate.
       /*! An exception is thrown if i is out of range.
        */
-      inline const fractional<double>&
+      inline const fractional<T>&
       operator()(std::size_t i) const {
         if (i >= M()) throw error_index();
         return m_Coordinates[i];
@@ -584,26 +664,42 @@ namespace sgtbx {
       /*! Determine the shortest distance between Y and the symmetry
           mates in the internal table.
        */
-      double
-      getShortestDistance2(const uctbx::UnitCell& uc,
-                           const fractional<double>& Y) const;
+      T getShortestDistance2(const uctbx::UnitCell& uc,
+                             const fractional<T>& Y) const
+      {
+        T result = detail::modShortLength2(uc, Y - m_Coordinates[0]);
+        for(std::size_t i=1;i<m_Coordinates.size();i++) {
+          T Delta2 = detail::modShortLength2(uc, Y - m_Coordinates[i]);
+          if (result > Delta2)
+              result = Delta2;
+        }
+        return result;
+      }
       //! Shortest distance between the symmetry mates of X and Y.
       /*! Determine the shortest distance between Y and the symmetry
           mates in the internal table.
        */
-      inline double
-      getShortestDistance(const uctbx::UnitCell& uc,
-                          const fractional<double>& Y) const {
+      inline T getShortestDistance(const uctbx::UnitCell& uc,
+                                   const fractional<T>& Y) const {
         return std::sqrt(getShortestDistance2(uc, Y));
       }
       //! Compute Sum(exp(2 pi i H X)) for all symmetry equivalent X.
       /*! This sum is a sub-expression in the structure factor
           calculation. See file examples/python/generate_hklf.py.
        */
-      std::complex<double> StructureFactor(const Miller::Index& H) const;
+      std::complex<T> StructureFactor(const Miller::Index& H) const
+      {
+        using cctbx::constants::pi;
+        std::complex<T> F(0., 0.);
+        for(std::size_t i=0;i<M();i++) {
+          T phase = 2. * pi * (H * m_Coordinates[i]);
+          F += std::complex<T>(std::cos(phase), std::sin(phase));
+        }
+        return F;
+      }
 
     private:
-      std::vector<fractional<double> > m_Coordinates;
+      std::vector<fractional<T> > m_Coordinates;
   };
 
 } // namespace sgtbx

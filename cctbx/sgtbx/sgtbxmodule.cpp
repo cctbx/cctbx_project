@@ -404,7 +404,7 @@ namespace {
   }
 
   fractional<double>
-  SymEquivCoordinates_getitem(const SymEquivCoordinates& SEC,
+  SymEquivCoordinates_getitem(const SymEquivCoordinates<double>& SEC,
                               std::size_t key) {
     try {
       return SEC(key);
@@ -473,7 +473,7 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_SpecialPositionTolerances(this_module, "SpecialPositionTolerances");
     class_builder<SpecialPosition>
     py_SpecialPosition(this_module, "SpecialPosition");
-    class_builder<SymEquivCoordinates>
+    class_builder<SymEquivCoordinates<double> >
     py_SymEquivCoordinates(this_module, "SymEquivCoordinates");
 
     python::import_converters<uctbx::UnitCell>
@@ -777,16 +777,20 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_SymEquivCoordinates.def(
       constructor<const SgOps&,
       const fractional<double>&>());
-    py_SymEquivCoordinates.def(&SymEquivCoordinates::M, "M");
-    py_SymEquivCoordinates.def(&SymEquivCoordinates::operator(), "__call__");
-    py_SymEquivCoordinates.def(&SymEquivCoordinates::M, "__len__");
+    py_SymEquivCoordinates.def(&SymEquivCoordinates<double>::M, "M");
+    py_SymEquivCoordinates.def(
+      &SymEquivCoordinates<double>::operator(), "__call__");
+    py_SymEquivCoordinates.def(&SymEquivCoordinates<double>::M, "__len__");
     py_SymEquivCoordinates.def(SymEquivCoordinates_getitem, "__getitem__");
-    py_SymEquivCoordinates.def(&SymEquivCoordinates::getShortestDistance2,
-                                                    "getShortestDistance2");
-    py_SymEquivCoordinates.def(&SymEquivCoordinates::getShortestDistance,
-                                                    "getShortestDistance");
-    py_SymEquivCoordinates.def(&SymEquivCoordinates::StructureFactor,
-                                                    "StructureFactor");
+    py_SymEquivCoordinates.def(
+      &SymEquivCoordinates<double>::getShortestDistance2,
+                                   "getShortestDistance2");
+    py_SymEquivCoordinates.def(
+      &SymEquivCoordinates<double>::getShortestDistance,
+                                   "getShortestDistance");
+    py_SymEquivCoordinates.def(
+      &SymEquivCoordinates<double>::StructureFactor,
+                                   "StructureFactor");
     sgtbx::sanity_check();
   }
   catch(...)
