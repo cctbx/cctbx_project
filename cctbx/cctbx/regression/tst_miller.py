@@ -10,7 +10,7 @@ from cctbx.array_family import flex
 import cctbx
 import scitbx.math
 from scitbx.python_utils import complex_math
-from libtbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal, show_diff
 from cStringIO import StringIO
 import pickle
 import random
@@ -418,6 +418,26 @@ def exercise_array():
       assert sa.indices().size() \
           == ((36, 33), (29, 29))[use_binning][use_multiplicities]
   assert approx_equal(ma.statistical_mean(), 1.380312)
+  s = StringIO()
+  ma.count_and_fraction_in_bins(
+    data_value_to_count=2).show(f=s)
+  assert not show_diff(s.getvalue(), """\
+unused:        - 5.0001 [ 0/0 ] 0 0.0000
+bin  1: 5.0001 - 1.4346 [21/21] 1 0.0476
+bin  2: 1.4346 - 1.1432 [18/18] 0 0.0000
+bin  3: 1.1432 - 1.0000 [ 9/10] 0 0.0000
+unused: 1.0000 -        [ 0/0 ] 0 0.0000
+""")
+  s = StringIO()
+  ma.count_and_fraction_in_bins(
+    data_value_to_count=2, count_not_equal=True).show(f=s)
+  assert not show_diff(s.getvalue(), """\
+unused:        - 5.0001 [ 0/0 ]  0 0.0000
+bin  1: 5.0001 - 1.4346 [21/21] 20 0.9524
+bin  2: 1.4346 - 1.1432 [18/18] 18 1.0000
+bin  3: 1.1432 - 1.0000 [ 9/10]  9 1.0000
+unused: 1.0000 -        [ 0/0 ]  0 0.0000
+""")
   assert approx_equal(tuple(ma.statistical_mean(True)),
                       (1.768026, 1.208446, 0.9950434))
   no = ma.remove_patterson_origin_peak()
@@ -507,6 +527,13 @@ def exercise_array():
     miller.set(xs, flex.miller_index(((0,0,-5), (1,-2,3)))),
     flex.double((3,4)),
     flex.double((5,6)))
+  m1 = a1.matching_set(other=a2, data_substitute=13)
+  assert m1.indices() is a2.indices()
+  assert approx_equal(m1.data(), (13, 1))
+  m2 = a2.matching_set(other=a1, data_substitute=15, sigmas_substitute=17)
+  assert m2.indices() is a1.indices()
+  assert approx_equal(m2.data(), (4, 15))
+  assert approx_equal(m2.sigmas(), (6, 17))
   c1 = a1.common_set(a2)
   assert tuple(c1.indices()) == ((1,-2,3),)
   assert tuple(c1.data()) == (1,)

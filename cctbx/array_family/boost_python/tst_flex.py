@@ -25,6 +25,8 @@ def exercise_flex_hendrickson_lattman():
   a = flex.hendrickson_lattman()
   a = flex.hendrickson_lattman(((1,2,3,4), (2,3,4,5), (3,4,5,6)))
   assert a.size() == 3
+  assert a.count((1,2,3,4)) == 1
+  assert a.count((0,0,0,0)) == 0
   assert tuple(a) == ((1,2,3,4), (2,3,4,5), (3,4,5,6))
   assert tuple(a+a) == ((2,4,6,8), (4,6,8,10), (6,8,10,12))
   a += a
