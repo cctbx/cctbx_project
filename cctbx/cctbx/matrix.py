@@ -87,6 +87,13 @@ class rec:
            - m[1] * (m[3] * m[8] - m[5] * m[6]) \
            + m[2] * (m[3] * m[7] - m[4] * m[6])
 
+  def transpose(self):
+    elems = []
+    for j in xrange(self.n_columns()):
+      for i in xrange(self.n_rows()):
+        elems.append(self(i,j))
+    return rec(elems, (self.n_columns(), self.n_rows()))
+
   def mathematica_form(self, label=""):
     s = ""
     if (label): s = label + "="
@@ -179,4 +186,14 @@ if (__name__ == "__main__"):
   assert g.r.mathematica_form() == \
     "{{90, 96, 102}, {216, 231, 246}, {342, 366, 390}}"
   assert g.t.mathematica_form() == "{{33}, {79}, {125}}"
+  rt = g.r.transpose()
+  assert rt.mathematica_form() == \
+    "{{90, 216, 342}, {96, 231, 366}, {102, 246, 390}}"
+  rtt = rt.transpose()
+  assert rtt.mathematica_form() == \
+    "{{90, 96, 102}, {216, 231, 246}, {342, 366, 390}}"
+  tt = g.t.transpose()
+  assert tt.mathematica_form() == "{{33, 79, 125}}"
+  ttt = tt.transpose()
+  assert ttt.mathematica_form() == "{{33}, {79}, {125}}"
   print "OK"
