@@ -105,11 +105,14 @@ namespace cctbx {
             m_w * (m_CAASF.Q(Q) + m_fpfdp)
           * SgOps.StructureFactor(H, *this, m_U);
       }
+      template <class MillerVectorType,
+                class doubleVectorType,
+                class StdComplexVectorType>
       inline void
       StructureFactorVector(const sgtbx::SpaceGroup& SgOps,
-                            const std::vector<Miller::Index>& H,
-                            const std::vector<double>& Q,
-                            std::vector<std::complex<FloatType> >& Fcalc) const
+                            const MillerVectorType& H,
+                            const doubleVectorType& Q,
+                            StdComplexVectorType& Fcalc) const
       {
         cctbx_assert(Q.size() == H.size());
         cctbx_assert(Fcalc.size() == H.size());
@@ -128,26 +131,31 @@ namespace cctbx {
       FloatType m_w;
   };
 
-  template<class FloatType, class XrayScattererType>
+  template <class MillerVectorType,
+            class doubleVectorType,
+            class XrayScattererVectorType,
+            class StdComplexVectorType>
   inline void
   StructureFactorVector(const sgtbx::SpaceGroup& SgOps,
-                        const std::vector<Miller::Index>& H,
-                        const std::vector<double>& Q,
-                        const std::vector<XrayScattererType>& Sites,
-                        std::vector<std::complex<FloatType> >& Fcalc)
+                        const MillerVectorType& H,
+                        const doubleVectorType& Q,
+                        const XrayScattererVectorType& Sites,
+                        StdComplexVectorType& Fcalc)
   {
     for (std::size_t i = 0; i < Sites.size(); i++) {
       Sites[i].StructureFactorVector(SgOps, H, Q, Fcalc);
     }
   }
 
-  template<class FloatType, class XrayScattererType>
+  template <class MillerVectorType,
+            class XrayScattererVectorType,
+            class StdComplexVectorType>
   inline void
   StructureFactorVector(const uctbx::UnitCell& UC,
                         const sgtbx::SpaceGroup& SgOps,
-                        const std::vector<Miller::Index>& H,
-                        const std::vector<XrayScattererType>& Sites,
-                        std::vector<std::complex<FloatType> >& Fcalc)
+                        const MillerVectorType& H,
+                        const XrayScattererVectorType& Sites,
+                        StdComplexVectorType& Fcalc)
   {
     std::vector<double> Q(H.size());
     for (std::size_t i = 0; i < H.size(); i++) {
