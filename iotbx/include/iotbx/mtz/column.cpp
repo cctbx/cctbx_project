@@ -37,6 +37,18 @@ namespace iotbx { namespace mtz {
     return result;
   }
 
+  af::shared<float>
+  column::extract_valid_values() const
+  {
+    af::shared<float> result;
+    result.reserve(n_valid_values());
+    int n_refl = mtz_object().n_reflections();
+    for(int i_refl=0;i_refl<n_refl;i_refl++) {
+      if (!is_ccp4_nan(i_refl)) result.push_back(float_datum(i_refl));
+    }
+    return result;
+  }
+
   af::shared<int>
   column::set_reals(
     af::const_ref<cctbx::miller::index<> > const& miller_indices,

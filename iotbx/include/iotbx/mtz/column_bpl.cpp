@@ -31,6 +31,7 @@ namespace {
         .def("path", &w_t::path)
         .def("get_other", &w_t::get_other, (arg_("label")))
         .def("n_valid_values", &w_t::n_valid_values)
+        .def("extract_valid_values", &w_t::extract_valid_values)
         .def("set_reals",
           (af::shared<int>(w_t::*)(
             af::const_ref<cctbx::miller::index<> > const&,
