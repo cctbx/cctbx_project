@@ -196,15 +196,10 @@ namespace {
     CheckPositiveDefinite(adp);
   }
 
-  tuple
-  py_Eigenvectors(const boost::array<double, 6>& adp) {
-    boost::array<boost::array<double, 3>, 3>
-    EVs = Eigenvectors(adp);
-    tuple result(3);
-    for(std::size_t i=0;i<result.size();i++) {
-      result.set_item(i, boost::python::ref(to_python(EVs[i])));
-    }
-    return result;
+  // We need this wrapper only to make Visual C++ 6 happy.
+  boost::array<double, 3>
+  py_Eigensystem_vectors(const Eigensystem<double>& ES, std::size_t i) {
+    return ES.vectors(i);
   }
 
 }
@@ -223,6 +218,9 @@ BOOST_PYTHON_MODULE_INIT(adptbx)
 
     python::import_converters<uctbx::UnitCell>
     UnitCell_converters("uctbx", "UnitCell");
+
+    class_builder<Eigensystem<double> >
+    py_Eigensystem(this_module, "Eigensystem");
 
     this_module.def(py_U_as_B_iso, "U_as_B");
     this_module.def(py_B_as_U_iso, "B_as_U");
@@ -265,7 +263,12 @@ BOOST_PYTHON_MODULE_INIT(adptbx)
                       "CheckPositiveDefinite");
     this_module.def(py_CheckPositiveDefinite_adp,
                       "CheckPositiveDefinite");
-    this_module.def(py_Eigenvectors, "Eigenvectors");
+
+    py_Eigensystem.def(constructor<>());
+    py_Eigensystem.def(constructor<const boost::array<double, 6>&>());
+    py_Eigensystem.def(constructor<const boost::array<double, 6>&, double>());
+    py_Eigensystem.def(py_Eigensystem_vectors, "vectors");
+    py_Eigensystem.def(&Eigensystem<double>::values, "values");
   }
   catch(...)
   {

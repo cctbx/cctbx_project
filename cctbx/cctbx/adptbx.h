@@ -16,6 +16,7 @@
 #define CCTBX_ADPTBX_H
 
 #include <complex>
+#include <utility>
 #include <cctbx/uctbx.h>
 
 //! ADP Toolbox namespace.
@@ -448,7 +449,7 @@ namespace adptbx {
   namespace detail {
 
     template <class FloatType>
-    boost::array<FloatType, 3>
+    std::pair<boost::array<FloatType, 3>, FloatType>
     recursively_multiply(const boost::array<FloatType, 9>& M,
                          boost::array<FloatType, 3> V,
                          FloatType tolerance = 1.e-6)
@@ -458,7 +459,7 @@ namespace adptbx {
         boost::array<FloatType, 3> MV;
         MatrixLite::multiply<FloatType>(M.elems, V.elems, 3, 3, 1, MV.elems);
         FloatType abs_lambda = std::sqrt(MV * MV);
-        if (abs_lambda == 0.) return MV;
+        if (abs_lambda == 0.) throw not_positive_definite;
         MV = MV / abs_lambda;
         boost::array<FloatType, 3> absMV = boost::array_abs(MV);
         std::size_t iMax = boost::array_max_index(absMV);
@@ -468,64 +469,98 @@ namespace adptbx {
           throw not_positive_definite; // lambda < 0
         }
         V = MV;
-        if (converged) break;
+        if (converged) return std::make_pair(V, abs_lambda);
         RunAwayCounter++;
         if (RunAwayCounter > 10000000) throw cctbx_internal_error();
       }
-      return V;
     }
 
   } // namespace detail
 
-  //! Determine the eigenvectors of the anisotropic displacement tensor.
-  /*! Since the anisotropic displacement tensor is a symmetric matrix,
-      all eigenvalues lambda are real and the eigenvectors can
-      be chosen orthonormal.
-      <p>
-      The eigenvectors are determined according to the procedure
-      outlined in J.F. Nye, Physical Properties of Crystals,
-      Oxford Science Publications, 1992, pp.165-168.
-      The given tolerance is used to determine convergence.
-      <p>
-      An exception is thrown if any of the eigenvalues is
-      less than or equal to zero. This indicates that the
-      anisotropic displacement tensor is not positive definite.
-   */
+  //! Group of associated eigenvectors and values.
   template <class FloatType>
-  boost::array<boost::array<FloatType, 3>, 3>
-  Eigenvectors(const boost::array<FloatType, 6>& adp, double tolerance = 1.e-6)
+  class Eigensystem
   {
-    boost::array<FloatType, 9> M[2];
-    M[0] = MatrixLite::CondensedSymMx33_as_FullSymMx33(adp,
-           MatrixLite::return_type<FloatType>());
-    FloatType d = MatrixLite::Determinant(M[0]);
-    if (d == 0.) {
-      throw not_positive_definite;
-    }
-    M[1] = MatrixLite::CoFactorMxTp(M[0]) / d;
-    std::size_t iLarge[2];
-    boost::array<boost::array<FloatType, 3>, 3> result;
-    for(std::size_t iM=0;iM<2;iM++) {
-      boost::array<FloatType, 3>
-      absDiag = boost::array_abs(MatrixLite::DiagonalElements(M[iM]));
-      iLarge[iM] = boost::array_max_index(absDiag);
-      if (iM != 0 && iLarge[1] == iLarge[0]) {
-        absDiag[iLarge[1]] = -1.;
-        iLarge[1] = boost::array_max_index(absDiag);
-        cctbx_assert(iLarge[1] != iLarge[0]);
+    public:
+      //! Default constructor.
+      /*! The eigenvectors and eigenvalues are not initialized!
+       */
+      Eigensystem() {}
+      /*! \brief Determine the eigenvectors and eigenvalues of the
+          anisotropic displacement tensor.
+       */
+      /*! Since the anisotropic displacement tensor is a symmetric matrix,
+          all eigenvalues are real and the eigenvectors can be chosen
+          orthonormal.
+          <p>
+          The eigenvectors are determined with the method of
+          successive approximations as outlined in J.F. Nye,
+          Physical Properties of Crystals, Oxford Science
+          Publications, 1992, pp.165-168.
+          The given tolerance is used to determine convergence.
+          <p>
+          An exception is thrown if any of the eigenvalues is
+          less than or equal to zero. This indicates that the
+          anisotropic displacement tensor is not positive definite.
+          <p>
+          See also: Eigenvalues().
+       */
+      Eigensystem(const boost::array<FloatType, 6>& adp,
+                  FloatType tolerance = 1.e-6)
+      {
+        boost::array<FloatType, 9> M[2];
+        M[0] = MatrixLite::CondensedSymMx33_as_FullSymMx33(adp,
+               MatrixLite::return_type<FloatType>());
+        FloatType d = MatrixLite::Determinant(M[0]);
+        if (d == 0.) {
+          throw not_positive_definite;
+        }
+        M[1] = MatrixLite::CoFactorMxTp(M[0]) / d;
+        std::size_t iLarge[2];
+        for(std::size_t iM=0;iM<2;iM++) {
+          boost::array<FloatType, 3>
+          absDiag = boost::array_abs(MatrixLite::DiagonalElements(M[iM]));
+          iLarge[iM] = boost::array_max_index(absDiag);
+          if (iM != 0 && iLarge[1] == iLarge[0]) {
+            absDiag[iLarge[1]] = -1.;
+            iLarge[1] = boost::array_max_index(absDiag);
+            cctbx_assert(iLarge[1] != iLarge[0]);
+          }
+          boost::array<FloatType, 3> V;
+          V.assign(0.);
+          V[iLarge[iM]] = 1.;
+          std::pair<boost::array<FloatType, 3>, FloatType>
+          V_lambda = detail::recursively_multiply(M[iM], V);
+          m_vectors[iM] = V_lambda.first;
+          m_values[iM] = V_lambda.second;
+        }
+        m_vectors[2] = MatrixLite::cross_product(m_vectors[0], m_vectors[1]);
+        cctbx_assert(m_vectors[2] * m_vectors[2] != 0.);
+        m_values[1] = 1. / m_values[1];
+        m_values[2] = (adp[0] + adp[1] + adp[2]) - (m_values[0] + m_values[1]);
       }
-      boost::array<FloatType, 3> V;
-      V.assign(0.);
-      V[iLarge[iM]] = 1.;
-      result[iM] = detail::recursively_multiply(M[iM], V);
-      if (result[iM] * result[iM] == 0.) {
-        throw not_positive_definite;
+      //! Access the i'th eigenvector.
+      /*! An exception is thrown if i >= 3.
+       */
+      inline
+      const boost::array<FloatType, 3>&
+      vectors(std::size_t i) const {
+        if (i >= m_vectors.size()) throw error_index();
+        return m_vectors[i];
       }
-    }
-    result[2] = MatrixLite::cross_product(result[0], result[1]);
-    cctbx_assert(result[2] * result[2] != 0.);
-    return result;
-  }
+      //! Access the i'th eigenvalue.
+      /*! An exception is thrown if i >= 3.
+       */
+      inline
+      FloatType
+      values(std::size_t i) const {
+        if (i >= m_values.size()) throw error_index();
+        return m_values[i];
+      }
+    private:
+      boost::array<boost::array<FloatType, 3>, 3> m_vectors;
+      boost::array<FloatType, 3> m_values;
+  };
 
 } // namespace adptbx
 
