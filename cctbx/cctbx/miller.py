@@ -4,7 +4,10 @@ import_regular_symbols(globals(), ext.__dict__)
 del import_regular_symbols
 
 from cctbx import crystal
+from cctbx import maptbx
+from cctbx import uctbx
 from cctbx.array_family import flex
+from scitbx import fftpack
 import sys
 import math
 
@@ -16,15 +19,11 @@ def make_lookup_dict(indices): # XXX push to C++
 
 class set(crystal.symmetry):
 
-  def __init__(self, other, indices, anomalous_flag=None,
-               copy_anomalous_flag=False):
-    assert anomalous_flag == None or copy_anomalous_flag == False
-    crystal.symmetry._copy_constructor(self, other)
+  def __init__(self, crystal_symmetry, indices, anomalous_flag=None):
+    assert anomalous_flag in (None, False, True)
+    crystal.symmetry._copy_constructor(self, crystal_symmetry)
     self._indices = indices
-    if (copy_anomalous_flag):
-      self._anomalous_flag = other.anomalous_flag()
-    else:
-      self._anomalous_flag = anomalous_flag
+    self._anomalous_flag = anomalous_flag
 
   def _copy_constructor(self, other):
     crystal.symmetry._copy_constructor(self, other)
@@ -61,9 +60,12 @@ class set(crystal.symmetry):
     return array(
       self, self.unit_cell().stol_sq(self.indices()))
 
+  def d_min(self):
+    return uctbx.d_star_sq_as_d(self.unit_cell().max_d_star_sq(self.indices()))
+
   def resolution_range(self):
     r = self.unit_cell().min_max_d_star_sq(self.indices())
-    return tuple([1 / math.sqrt(x) for x in r])
+    return tuple([uctbx.d_star_sq_as_d(x) for x in r])
 
   def expand_to_p1(self):
     assert self.space_group() != None
@@ -202,7 +204,7 @@ class array(set):
     if (self.data() != None): d = self.data().select(flags)
     s = None
     if (self.sigmas() != None): s = self.sigmas().select(flags)
-    return array(set(self, i), d, s, self.anomalous_flag())
+    return array(set(self, i, self.anomalous_flag()), d, s)
 
   def resolution_filter(self, d_max=0, d_min=0, negate=0):
     d = self.d_spacings().data()
@@ -340,3 +342,64 @@ class array(set):
       for i,h in self.indices().items():
         print h, self.data()[i], self.sigmas()[i]
     return self
+
+class fft_map(crystal.symmetry):
+
+  def __init__(self, coeff_array,
+                     grid_resolution_factor=1./3,
+                     max_prime=5):
+    assert coeff_array.anomalous_flag() in (False, True)
+    crystal.symmetry._copy_constructor(self, coeff_array)
+    self._grid_resolution_factor = grid_resolution_factor
+    self._max_prime = max_prime
+    self._anomalous_flag = coeff_array.anomalous_flag()
+    cf = coeff_array.data()
+    if (cf.size() == 0):
+      cf = flex.complex_double()
+    elif (type(cf[0]) != type(0j)):
+      ph = flex.double(cf.size(), 0)
+      cf = flex.polar(cf, ph)
+      del ph
+    n_real = maptbx.determine_grid(
+      unit_cell=coeff_array.unit_cell(),
+      d_min=coeff_array.d_min(),
+      resolution_factor=grid_resolution_factor,
+      max_prime=self.max_prime(),
+      mandatory_factors=coeff_array.space_group().gridding())
+    if (not self.anomalous_flag()):
+      rfft = fftpack.real_to_complex_3d(n_real)
+      n_complex = rfft.n_complex()
+    else:
+      cfft = fftpack.complex_to_complex_3d(n_real)
+      n_complex = cfft.n()
+    conjugate_flag = False # XXX correct?
+    map = maptbx.structure_factors.to_map(
+      self.space_group(),
+      self.anomalous_flag(),
+      coeff_array.indices(),
+      cf,
+      flex.grid(n_complex),
+      conjugate_flag)
+    if (not self.anomalous_flag()):
+      self._real_map = rfft.backward(map.complex_map())
+    else:
+      self._complex_map = cfft.backward(map.complex_map())
+
+  def grid_resolution_factor(self):
+    return self._grid_resolution_factor
+
+  def max_prime(self):
+    return self._max_prime
+
+  def anomalous_flag(self):
+    return self._anomalous_flag
+
+  def real_map(self):
+    if (not self.anomalous_flag()):
+      return self._real_map
+    else:
+      return flex.real(self._complex_map)
+
+  def complex_map(self):
+    assert self.anomalous_flag()
+    return self._complex_map

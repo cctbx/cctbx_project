@@ -24,8 +24,8 @@ def exercise_map_gridding():
     space_group_type=space_group_type,
     symmetry_flags=translation_search.symmetry_flags(True, False),
     resolution_factor=1./3,
-    max_prime=5,
-    miller_indices_f_obs=miller_indices_f_obs)
+    miller_indices_f_obs=miller_indices_f_obs,
+    max_prime=5)
   assert g.target() == (20,30,36)
   assert g.quarter() == (40,60,72)
   assert g.eighth() == (60,90,108)

@@ -10,7 +10,6 @@ def exercise_set():
   ms = miller.set(xs, mi)
   ms = miller.set(xs, mi, False)
   ms = miller.set(xs, mi, True)
-  ms = miller.set(ms, mi, copy_anomalous_flag=True)
   assert ms.indices() == mi
   assert ms.anomalous_flag() == True
   assert tuple(ms.multiplicities().data()) == (4, 2)
@@ -18,6 +17,7 @@ def exercise_set():
   assert approx_equal(tuple(ms.d_spacings().data()), (1.177603, 1.25))
   assert approx_equal(tuple(ms.sin_theta_over_lambda_sq().data()),
                       (0.1802778, 0.16))
+  assert approx_equal(ms.d_min(), 1.177603)
   assert approx_equal(ms.resolution_range(), (1.25, 1.177603))
   p1 = ms.expand_to_p1()
   assert p1.indices().size() == 6
@@ -134,9 +134,25 @@ def exercise_array():
   assert s.sigmas() == None
   assert v.sigmas() == None
 
+def exercise_fft_map():
+  xs = crystal.symmetry((3,4,5), "P 2 2 2")
+  mi = flex.miller_index(((1,-2,3), (0,0,-4)))
+  for anomalous_flag in (False, True):
+    for data in (flex.double((1,2)), flex.complex_double((1,2))):
+      ms = miller.set(xs, mi, anomalous_flag=anomalous_flag)
+      ma = miller.array(ms, data)
+      fft_map = miller.fft_map(ma)
+      assert approx_equal(fft_map.grid_resolution_factor(), 1./3)
+      assert approx_equal(fft_map.max_prime(), 5)
+      assert fft_map.anomalous_flag() == anomalous_flag
+      assert fft_map.real_map().size() > 0
+      if (anomalous_flag):
+        assert fft_map.complex_map().size() > 0
+
 def run():
   exercise_set()
   exercise_array()
+  exercise_fft_map()
   print "OK"
 
 if (__name__ == "__main__"):

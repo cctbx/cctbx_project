@@ -79,6 +79,15 @@ def exercise_xray_scatterer():
   assert approx_equal(c.site, (1,2,3))
   assert approx_equal(x.site, (0,0,0.3))
 
+def exercise_rotate():
+  uc = uctbx.unit_cell((10, 10, 13))
+  s = flex.xray_scatterer((xray.scatterer("Si1", site=(0.01,0.02,0.3)),))
+  r = xray.rotate(uc, ((1,0,0, 0,1,0, 0,0,1)), s)
+  assert r.size() == 1
+  assert approx_equal(s[0].site, r[0].site)
+  r = xray.rotate(uc, ((0,-1,0, -1,0,0, 0,0,-1)), s)
+  assert approx_equal(r[0].site, (-0.02,-0.01,-0.3))
+
 def exercise_structure_factors():
   uc = uctbx.unit_cell((10, 10, 13))
   sg = sgtbx.space_group_info("P 4")
@@ -195,6 +204,7 @@ def exercise_sampled_model_density():
 def run():
   exercise_conversions()
   exercise_xray_scatterer()
+  exercise_rotate()
   exercise_structure_factors()
   exercise_targets()
   exercise_sampled_model_density()

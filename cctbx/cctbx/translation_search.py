@@ -11,11 +11,10 @@ def map_gridding(unit_cell,
                  space_group_type,
                  symmetry_flags,
                  resolution_factor,
-                 max_prime,
-                 miller_indices_f_obs):
+                 miller_indices_f_obs,
+                 max_prime=5):
   return ext.map_gridding(unit_cell, space_group_type, symmetry_flags,
-                          resolution_factor, max_prime,
-                          miller_indices_f_obs)
+                          resolution_factor, miller_indices_f_obs, max_prime)
 
 def fast_nv1995(gridding,
                 space_group,
