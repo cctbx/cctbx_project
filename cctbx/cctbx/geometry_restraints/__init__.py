@@ -440,7 +440,7 @@ class _shared_dihedral_proxy(boost.python.injector, shared_dihedral_proxy):
         proxy=proxy)
       if (labels is not None):
         for i_seq in proxy.i_seqs:
-          print "%s%s" % (prefix, labels[i_seq])
+          print >> f, "%s%s" % (prefix, labels[i_seq])
       print >> f, "%s    ideal   model   delta" \
         " periodicty    weight residual" % prefix
       print >> f, "%s  %7.2f %7.2f %7.2f %5d       %6.2e %6.2e" % (
