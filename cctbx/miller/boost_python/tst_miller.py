@@ -419,6 +419,20 @@ def exercise_merge_equivalents():
   assert approx_equal(m.data(), (17/13., (16*3+36*4+9*5)/(16+36+9.), 6))
   assert approx_equal(m.sigmas(), (math.sqrt(1/2.), 0.84077140277, 1/5.))
   assert tuple(m.redundancies()) == (2,3,1)
+  d = flex.hendrickson_lattman(
+    [(-1.706478,  0.248638,  1.653352, -2.411313),
+     ( 1.097872, -0.983523, -2.756402,  0.294464),
+     ( 0.147183,  2.625064,  1.003636,  2.563517),
+     (-0.933310,  2.496886,  2.040418,  0.371885),
+     ( 1.745500, -0.686761, -2.291345, -2.386650),
+     (-0.620066,  2.097776,  0.099784,  0.268107)])
+  m = miller.ext.merge_equivalents_hl(i, d)
+  assert tuple(m.indices()) == ((1,2,3), (3,0,3), (1,1,2))
+  assert approx_equal(m.data(), [
+    (-0.3043030, -0.3674425, -0.5515250, -1.0584245),
+    ( 0.3197910,  1.4783963,  0.2509030,  0.1829173),
+    (-0.6200660,  2.0977760,  0.0997840,  0.2681070)])
+  assert tuple(m.redundancies()) == (2,3,1)
 
 def exercise_phase_integral():
   sg = sgtbx.space_group_info("P 21 21 21").group()

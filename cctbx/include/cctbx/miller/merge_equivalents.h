@@ -1,12 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2003 Apr: Created (R.W. Grosse-Kunstleve)
- */
-
 #ifndef CCTBX_MILLER_MERGE_EQUIVALENTS_H
 #define CCTBX_MILLER_MERGE_EQUIVALENTS_H
 
@@ -113,6 +104,78 @@ namespace cctbx { namespace miller {
       af::shared<index<> > indices_;
       af::shared<FloatType> data_;
       af::shared<FloatType> sigmas_;
+      af::shared<int> redundancies_;
+  };
+
+  template <typename FloatType = double>
+  class merge_equivalents_hl
+  {
+    public:
+      merge_equivalents_hl() {}
+
+      merge_equivalents_hl(
+        af::const_ref<index<> > const& unmerged_indices,
+        af::const_ref<hendrickson_lattman<FloatType> > const& unmerged_data)
+      {
+        CCTBX_ASSERT(unmerged_data.size() == unmerged_indices.size());
+        init(unmerged_indices, unmerged_data);
+      }
+
+      af::shared<index<> >
+      indices() const { return indices_; }
+
+      af::shared<hendrickson_lattman<FloatType> >
+      data() const { return data_; }
+
+      af::shared<int>
+      redundancies() const { return redundancies_; }
+
+    protected:
+      void
+      init(
+        af::const_ref<index<> > const& unmerged_indices,
+        af::const_ref<hendrickson_lattman<FloatType> > const& unmerged_data)
+      {
+        if (unmerged_indices.size() == 0) return;
+        std::size_t group_begin = 0;
+        std::size_t group_end = 1;
+        for(;group_end<unmerged_indices.size();group_end++) {
+          if (unmerged_indices[group_end] != unmerged_indices[group_begin]) {
+            process_group(group_begin, group_end,
+                          unmerged_indices[group_begin],
+                          unmerged_data);
+            group_begin = group_end;
+          }
+        }
+        process_group(group_begin, group_end,
+                      unmerged_indices[group_begin],
+                      unmerged_data);
+      }
+
+      void
+      process_group(
+        std::size_t group_begin,
+        std::size_t group_end,
+        index<> const& current_index,
+        af::const_ref<hendrickson_lattman<FloatType> > const& unmerged_data)
+      {
+        std::size_t n = group_end - group_begin;
+        if (n == 0) return;
+        indices_.push_back(current_index);
+        if (n == 1) {
+          data_.push_back(unmerged_data[group_begin]);
+        }
+        else {
+          af::const_ref<hendrickson_lattman<FloatType> > data_group(
+            &unmerged_data[group_begin], n);
+          af::mean(data_group);
+          data_.push_back(af::mean(data_group));
+        }
+        redundancies_.push_back(n);
+      }
+
+      af::shared<index<> > indices_;
+      af::shared<hendrickson_lattman<FloatType> > data_;
       af::shared<int> redundancies_;
   };
 

@@ -29,6 +29,7 @@ namespace cctbx {
       {}
 
       //! Initializtion from plain pointer to coefficients.
+      explicit
       hendrickson_lattman(const FloatType* coeff)
       {
         std::copy(coeff, coeff + 4, this->begin());
@@ -146,6 +147,17 @@ namespace cctbx {
           this->elems[i] += rhs[i];
         }
         return *this;
+      }
+
+      //! Division by integer (for averaging).
+      hendrickson_lattman
+      operator/(std::size_t const& rhs) const
+      {
+        hendrickson_lattman result;
+        for(unsigned i=0;i<4;i++) {
+          result[i] = this->elems[i] / static_cast<FloatType>(rhs);
+        }
+        return result;
       }
 
       //! Test for exact equality.

@@ -58,7 +58,7 @@ def verify(sg_fcalc, sg_hl, sg_cns, p1_cns):
       if (0): return
       raise AssertionError
 
-def write_cns_input(fcalc_array, hl):
+def write_cns_input(fcalc_array, hl, test_merge=False):
   assert fcalc_array.data().size() == hl.size()
   cns_input = make_cns_input.xray_unit_cell(fcalc_array.unit_cell())
   cns_input += make_cns_input.xray_symmetry(fcalc_array.space_group())
@@ -80,14 +80,18 @@ def write_cns_input(fcalc_array, hl):
   for i,h in enumerate(fcalc_array.indices()):
     l(  ("    index %d %d %d" % h)
       + (" fcalc=%.6g %.6g\n" % abs_arg(fcalc_array.data()[i], deg=True))
-      + (" pa=%.6g pb=%.6g pc=%.6g pd=%.6g" % hl[i]))
+      + ("    pa=%.6g pb=%.6g pc=%.6g pd=%.6g" % hl[i]))
   l("  end")
-  l("  declare name=pi domain=reciprocal type=complex end")
-  l("  do (pi=get_fom[phistep=5,CEN360=false](pa,pb,pc,pd)) (all)")
-  l("  write reflections output=\"tmp_sg.hkl\" end")
-  l("  expand")
-  l("  do (pi=get_fom[phistep=5,CEN360=false](pa,pb,pc,pd)) (all)")
-  l("  write reflections output=\"tmp_p1.hkl\" end")
+  if (not test_merge):
+    l("  declare name=pi domain=reciprocal type=complex end")
+    l("  do (pi=get_fom[phistep=5,CEN360=false](pa,pb,pc,pd)) (all)")
+    l("  write reflections output=\"tmp_sg.hkl\" end")
+    l("  expand")
+    l("  do (pi=get_fom[phistep=5,CEN360=false](pa,pb,pc,pd)) (all)")
+    l("  write reflections output=\"tmp_p1.hkl\" end")
+  else:
+    l("  anomalous=false")
+    l("  write reflections output=\"tmp_merged.hkl\" end")
   l("end")
   l("stop")
   f = open("tmp.cns", "w")
@@ -118,16 +122,38 @@ def exercise(space_group_info, anomalous_flag=False, d_min=2., verbose=0):
     random_occupancy=True
     ).structure_factors(
       anomalous_flag=anomalous_flag, d_min=d_min, algorithm="direct").f_calc()
-  sg_hl = generate_random_hl(sg_fcalc).data()
-  write_cns_input(sg_fcalc, sg_hl)
+  sg_hl = generate_random_hl(sg_fcalc)
+  write_cns_input(sg_fcalc, sg_hl.data())
   try: os.unlink("tmp_sg.hkl")
-  except: pass
+  except OSError: pass
   try: os.unlink("tmp_p1.hkl")
-  except: pass
+  except OSError: pass
   os.system("cns < tmp.cns > tmp.out")
   sg_cns = read_reflection_arrays("tmp_sg.hkl", anomalous_flag, verbose)
   p1_cns = read_reflection_arrays("tmp_p1.hkl", anomalous_flag, verbose)
-  verify(sg_fcalc, sg_hl, sg_cns, p1_cns)
+  verify(sg_fcalc, sg_hl.data(), sg_cns, p1_cns)
+  if (anomalous_flag):
+    hl_merged = sg_hl.average_bijvoet_mates()
+    write_cns_input(sg_fcalc, sg_hl.data(), test_merge=True)
+    try: os.unlink("tmp_merged.hkl")
+    except OSError: pass
+    os.system("cns < tmp.cns > tmp.out")
+    reflection_file = reflection_reader.cns_reflection_file(
+      open("tmp_merged.hkl"))
+    names, miller_indices, hl = reflection_file.join_hl_group()
+    assert names == ["PA", "PB", "PC", "PD"]
+    hl_merged_cns = hl_merged.customized_copy(indices=miller_indices, data=hl)\
+      .map_to_asu().common_set(hl_merged)
+    assert hl_merged_cns.indices().all_eq(hl_merged.indices())
+    for h,a,b in zip(hl_merged.indices(),
+                     hl_merged.data(),
+                     hl_merged_cns.data()):
+      if (not approx_equal(a, b, eps=5.e-3)):
+        print h
+        print "cctbx:", a
+        print "  cns:", b
+        if (0): return
+        raise AssertionError
 
 def run_call_back(flags, space_group_info):
   for anomalous_flag in (False, True):

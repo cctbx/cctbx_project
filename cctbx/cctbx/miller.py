@@ -1597,27 +1597,37 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
 class merge_equivalents:
 
   def __init__(self, miller_array):
-    assert isinstance(miller_array.data(), flex.double)
-    if (miller_array.sigmas() is not None):
-      assert isinstance(miller_array.sigmas(), flex.double)
-      sel = (miller_array.sigmas() <= 0) & (miller_array.data() == 0)
-      if (sel.count(True) > 0):
-        miller_array = miller_array.select(~sel)
-    asu_set = set.map_to_asu(miller_array)
-    perm = asu_set.sort_permutation(by_value="packed_indices")
-    if (miller_array.sigmas() is not None):
-      sigmas_squared = flex.pow2(miller_array.sigmas().select(perm))
-      assert flex.min(sigmas_squared) > 0
-      merge_ext = ext.merge_equivalents(
-        asu_set.indices().select(perm),
-        miller_array.data().select(perm),
-        1./sigmas_squared)
-      sigmas = merge_ext.sigmas()
-    else:
-      merge_ext = ext.merge_equivalents(
-        asu_set.indices().select(perm),
-        miller_array.data().select(perm))
+    if (isinstance(miller_array.data(), flex.hendrickson_lattman)):
+      asu_array = miller_array.map_to_asu()
+      perm = asu_array.sort_permutation(by_value="packed_indices")
+      merge_ext = ext.merge_equivalents_hl(
+        asu_array.indices().select(perm),
+        asu_array.data().select(perm))
       sigmas = None
+      del asu_array
+    else:
+      assert isinstance(miller_array.data(), flex.double)
+      if (miller_array.sigmas() is not None):
+        assert isinstance(miller_array.sigmas(), flex.double)
+        sel = (miller_array.sigmas() <= 0) & (miller_array.data() == 0)
+        if (sel.count(True) > 0):
+          miller_array = miller_array.select(~sel)
+      asu_set = set.map_to_asu(miller_array)
+      perm = asu_set.sort_permutation(by_value="packed_indices")
+      if (miller_array.sigmas() is not None):
+        sigmas_squared = flex.pow2(miller_array.sigmas().select(perm))
+        assert flex.min(sigmas_squared) > 0
+        merge_ext = ext.merge_equivalents(
+          asu_set.indices().select(perm),
+          miller_array.data().select(perm),
+          1./sigmas_squared)
+        sigmas = merge_ext.sigmas()
+      else:
+        merge_ext = ext.merge_equivalents(
+          asu_set.indices().select(perm),
+          miller_array.data().select(perm))
+        sigmas = None
+      del asu_set
     self._array = array(
       miller_set=set(
         crystal_symmetry=miller_array,
