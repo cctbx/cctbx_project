@@ -12,6 +12,7 @@
 #ifndef CCTBX_ARRAY_FAMILY_SHARED_BPL_H
 #define CCTBX_ARRAY_FAMILY_SHARED_BPL_H
 
+#include <cctbx/array_family/reductions.h>
 #include <cctbx/array_family/shared.h>
 
 namespace cctbx { namespace af {
@@ -273,6 +274,39 @@ namespace cctbx { namespace af {
       py_shared.def(&shared_access<ElementType>::items, "items");
 
       return std::make_pair(py_shared, py_shared_items);
+    }
+  };
+
+  template <typename ElementType>
+  struct wrap_shared_reductions
+  {
+    typedef ElementType e_t;
+    typedef typename af::integer_to_float<ElementType>::float_type f_e_t;
+    typedef af::shared<ElementType> sh_t;
+
+    static std::size_t
+    max_index(sh_t const& a) { return af::max_index(a.const_ref()); }
+    static std::size_t
+    min_index(sh_t const& a) { return af::min_index(a.const_ref()); }
+    static e_t max(sh_t const& a) { return af::max(a.const_ref()); }
+    static e_t min(sh_t const& a) { return af::min(a.const_ref()); }
+    static e_t sum(sh_t const& a) { return af::sum(a.const_ref()); }
+    static e_t product(sh_t const& a) { return af::product(a.const_ref()); }
+    static f_e_t mean(sh_t const& a) { return af::mean(a.const_ref()); }
+    static f_e_t rms(sh_t const& a) { return af::rms(a.const_ref()); }
+
+    static
+    void
+    run(boost::python::module_builder& module)
+    {
+      module.def(min_index, "min_index");
+      module.def(max_index, "max_index");
+      module.def(min, "min");
+      module.def(max, "max");
+      module.def(sum, "sum");
+      module.def(product, "product");
+      module.def(mean, "mean");
+      module.def(rms, "rms");
     }
   };
 

@@ -54,17 +54,34 @@ class reciprocal_space_array(miller_set):
     self.sigmas = sigmas
 
   def anomalous_differences(self):
-    jbm = miller.join_bijvoet_mates(self.H)
-    h = jbm.select(self.H, 1)
+    if (hasattr(self, "SgInfo")):
+      jbm = miller.join_bijvoet_mates(self.SgInfo, self.H)
+    else:
+      jbm = miller.join_bijvoet_mates(self.H)
+    h = jbm.miller_indices_in_hemisphere("+")
     f = jbm.minus(self.F)
     s = 0
     if (self.sigmas):
       s = jbm.additive_sigmas(self.sigmas)
     return reciprocal_space_array(miller_set(self, h), f, s)
 
+  def sigma_filter(self, cutoff_factor, negate=0):
+    sel = miller.selection(self.H)
+    sel.sigma_filter(self.F, self.sigmas, cutoff_factor)
+    if (negate): sel.negate()
+    h = sel.selected_miller_indices()
+    f = sel.selected_data(self.F)
+    s = sel.selected_data(self.sigmas)
+    return reciprocal_space_array(miller_set(self, h), f, s)
+
+  def rms_filter(self, cutoff_factor, negate=0):
+    rms = shared.rms(self.F)
+    pass # XXX
+
   def __add__(self, other):
     if (type(other) != type(self)):
       # add a scalar
+      # XXX push to C++
       f = self.F.deep_copy()
       for i in f.indices(): f[i] += other
       s = 0
@@ -74,7 +91,7 @@ class reciprocal_space_array(miller_set):
       return reciprocal_space_array(self, f, s)
     # add arrays
     js = miller.join_sets(self.H, other.H)
-    h = js.select(self.H)
+    h = js.common_miller_indices()
     f = js.plus(self.F, other.F)
     s = 0
     if (self.sigmas):

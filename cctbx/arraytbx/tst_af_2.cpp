@@ -150,6 +150,35 @@ namespace {
         a[0], a[2], element_type(1))); }
   }
 
+  template <typename ElementType>
+  struct exercise_rms
+  {
+    template <typename ArrayType>
+    exercise_rms(const ArrayType& a)
+    {}
+  };
+
+  template <>
+  struct exercise_rms<double>
+  {
+    template <typename ArrayType>
+    exercise_rms(const ArrayType& a)
+    {
+      check_true(__LINE__, af::rms(a)
+        == std::sqrt(double(a[0]*a[0] + a[1]*a[1] + a[2]*a[2]) / 3));
+    }
+  };
+
+  template <>
+  struct exercise_rms<int>
+  {
+    template <typename ArrayType>
+    exercise_rms(const ArrayType& a)
+    {
+      exercise_rms<double> x(a);
+    }
+  };
+
   template <typename ArrayType>
   void
   exercise_1arg_reductions(const ArrayType& a)
@@ -161,6 +190,8 @@ namespace {
     check_true(__LINE__, af::sum(a) == a[0] + a[1] + a[2]);
     check_true(__LINE__, af::product(a) == a[0] * a[1] * a[2]);
     check_true(__LINE__, af::mean(a) == (a[0] + a[1] + a[2]) / 3);
+    typedef typename ArrayType::value_type value_type;
+    exercise_rms<value_type> x(a);
   }
 
   template <typename ArrayType1,
