@@ -57,8 +57,8 @@ def exercise_small_conversions(verbose=0):
 
 def exercise_shared_flex_conversions(verbose=0):
   if (verbose): print 'Checking shared<->flex conversions'
-  assert tuple(rt.return_shared()) == (3,1,2)
-  s = rt.return_shared()
+  assert tuple(rt.make_shared()) == (3,1,2)
+  s = rt.make_shared()
   assert rt.use_shared(s) == 6
   # rt.modify_shared(s) # XXX needs lvalue converter
   # assert tuple(s) == (6,2,4)
@@ -67,10 +67,20 @@ def exercise_shared_flex_conversions(verbose=0):
 
 def exercise_ref_flex_conversions(verbose=0):
   if (verbose): print 'Checking flex->ref conversions'
-  s = rt.return_shared()
+  s = rt.make_shared()
   assert rt.use_const_ref(s) == 6
   rt.modify_ref(s)
   assert tuple(s) == (6,2,4)
+  if (verbose): print 'OK'
+
+def exercise_to_tuple(verbose=0):
+  if (verbose): print 'Checking to_tuple conversions'
+  if (not hasattr(rt, "make_boost_int_2")): # XXX
+    if (verbose): print 'SKIPPED'
+    return
+  assert rt.make_boost_int_2(3, 5) == (3, 5)
+  assert rt.make_boost_int_2(3) == (3, 2)
+  #assert rt.make_boost_int_2() == (7, 2) XXX currently not supported
   if (verbose): print 'OK'
 
 def run(args):
@@ -87,6 +97,7 @@ def run(args):
     exercise_small_conversions(verbose)
     exercise_shared_flex_conversions(verbose)
     exercise_ref_flex_conversions(verbose)
+    exercise_to_tuple(verbose)
     i += 1
   if (not verbose): print 'OK'
 
