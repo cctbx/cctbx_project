@@ -1,5 +1,5 @@
 #include <cctbx/sgtbx/rt_mx.h>
-#include <cctbx/sgtbx/row_echelon.h>
+#include <scitbx/matrix/row_echelon.h>
 #include <ctype.h>
 #include <string.h>
 
@@ -281,10 +281,10 @@ namespace cctbx { namespace sgtbx {
     rot_mx p(1);
     scitbx::mat_ref<int> ref_rmi(rmi.num().begin(), 3, 3);
     scitbx::mat_ref<int> ref_p(p.num().begin(), 3, 3);
-    row_echelon::form_t(ref_rmi, ref_p);
+    scitbx::matrix::row_echelon::form_t(ref_rmi, ref_p);
     tr_vec pwl = p * wl;
     tr_vec sh(0);
-    sh.den() = row_echelon::back_substitution(
+    sh.den() = scitbx::matrix::row_echelon::back_substitution_int(
       ref_rmi, pwl.num().begin(), sh.num().begin());
     CCTBX_ASSERT(sh.den() > 0);
     sh.den() *= pwl.den();

@@ -1,9 +1,9 @@
 from cctbx.sgtbx.direct_space_asu import cut_plane
-from cctbx import sgtbx
 from cctbx.array_family import flex
 from scitbx import matrix
-from boost import rational
+import scitbx.math
 from scitbx.python_utils import list_algebra
+from boost import rational
 
 def intersection(facets):
   assert len(facets) == 3
@@ -17,12 +17,12 @@ def intersection(facets):
     t.append(-int(facet.c * denominator))
   m.resize(flex.grid(3,3))
   t.resize(flex.grid(3,1))
-  r = sgtbx.row_echelon_form_t(m, t)
+  r = scitbx.math.row_echelon_form_t(m, t)
   assert r in (2,3)
   if (r != 3): return None
   t.resize(flex.grid(3))
   sol = flex.int(3)
-  d = sgtbx.row_echelon_back_substitution(m, t, sol)
+  d = scitbx.math.row_echelon_back_substitution_int(m, t, sol)
   assert d > 0
   return tuple([rational.int(s,d) for s in sol])
 

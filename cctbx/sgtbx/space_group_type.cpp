@@ -177,7 +177,7 @@ namespace cctbx { namespace sgtbx {
       }
       rot_mx cum_mx = r[0].accumulate(ord[0]);
       scitbx::mat_ref<int> re_mx(cum_mx.num().begin(), 3, 3);
-      CCTBX_ASSERT(row_echelon::form(re_mx) == 1);
+      CCTBX_ASSERT(scitbx::matrix::row_echelon::form(re_mx) == 1);
       af::tiny<sg_vec3, 4> sol = row_echelon::solve::homog_rank_1(re_mx);
       std::size_t n_ix = 1; if (ord[0] == 2) n_ix++;
       rot_mx trial_basis;

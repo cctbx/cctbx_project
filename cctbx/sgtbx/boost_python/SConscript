@@ -10,7 +10,6 @@ env.SharedLibrary(target="#libtbx/cctbx_sgtbx_ext", source=[
   "phase_info.cpp",
   "reciprocal_space_asu.cpp",
   "rot_mx.cpp",
-  "row_echelon.cpp",
   "rt_mx.cpp",
   "search_symmetry.cpp",
   "seminvariant.cpp",

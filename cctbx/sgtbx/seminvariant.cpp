@@ -71,16 +71,16 @@ namespace cctbx { namespace sgtbx {
       af::small<ss_vec_mod, 3> result;
       af::tiny<int, 3 * 3 * 3> gen_rmi = construct_gen_rmi(gen, false);
       scitbx::mat_ref<int> re_mx(gen_rmi.begin(), gen.n_all() * 3, 3);
-      CCTBX_ASSERT(row_echelon::form(re_mx) <= 3);
-      row_echelon::independent<int> indep(re_mx);
+      CCTBX_ASSERT(scitbx::matrix::row_echelon::form(re_mx) <= 3);
+      scitbx::matrix::row_echelon::independent<int> indep(re_mx);
       if (indep.indices.size() != 2) {
         for (std::size_t i_indep=0;i_indep<indep.indices.size();i_indep++) {
           ss_vec_mod vm;
           if (gen.n_all() == 0) vm.v.fill(0);
           vm.v[indep.indices[i_indep]] = 1;
           int* n_a = 0;
-          CCTBX_ASSERT(
-            row_echelon::back_substitution(re_mx, n_a, vm.v.begin()) > 0);
+          CCTBX_ASSERT(scitbx::matrix::row_echelon::back_substitution_int(
+            re_mx, n_a, vm.v.begin()) > 0);
           vm.m = 0;
           result.push_back(vm);
         }
