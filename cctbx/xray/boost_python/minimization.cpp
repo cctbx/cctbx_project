@@ -13,20 +13,14 @@ namespace cctbx { namespace xray { namespace boost_python {
     def("minimization_apply_shifts",
       (af::shared<scatterer<> >(*)(
         uctbx::unit_cell const&,
-        sgtbx::space_group_type const&,
         af::const_ref<scatterer<> > const&,
-        scattering_dictionary const&,
         gradient_flags const&,
-        af::const_ref<double> const&,
-        double const&))
+        af::const_ref<double> const&))
           minimization::apply_shifts, (
       arg_("unit_cell"),
-      arg_("space_group_type"),
       arg_("scatterers"),
-      arg_("scattering_dict"),
       arg_("gradient_flags"),
-      arg_("shifts"),
-      arg_("d_min")));
+      arg_("shifts")));
 
     def("minimization_add_site_gradients",
       (void(*)(

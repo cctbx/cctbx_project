@@ -5,11 +5,48 @@ from cctbx import crystal
 from cctbx.array_family import flex
 import scitbx.lbfgs
 from scitbx.python_utils.misc import adopt_init_args
+from libtbx import introspection
 from stdlib import math
+
+class u_penalty_singular_at_zero:
+
+  def __init__(self,
+        penalty_factor=1,
+        penalty_scale=8*math.pi**2,
+        u_min=1.e-6,
+        u_max=1.0):
+    introspection.adopt_init_args()
+
+  def functional(self, u):
+    if (u > self.u_max): return 0
+    u = max(u, self.u_min)
+    s = self.penalty_scale
+    return 1/(s*u)*math.exp(-(s*u)*self.penalty_factor)
+
+  def gradient(self, u):
+    if (u > self.u_max): return 0
+    u = max(u, self.u_min)
+    s = self.penalty_scale
+    return -1/(math.exp(s*self.penalty_factor*u)*s*u**2) \
+           - self.penalty_factor/(math.exp(s*self.penalty_factor*u)*u)
+
+class u_penalty_exp:
+
+  def __init__(self, penalty_factor=1, penalty_scale=10*8*math.pi**2):
+    introspection.adopt_init_args()
+
+  def functional(self, u):
+    s = self.penalty_scale
+    return math.exp(-s*u*self.penalty_factor)
+
+  def gradient(self, u):
+    s = self.penalty_scale
+    return -s*self.penalty_factor*math.exp(-s*u*self.penalty_factor)
 
 class lbfgs:
 
   def __init__(self, target_functor, gradient_flags, xray_structure,
+                     u_penalty=None,
                      lbfgs_termination_params=None,
                      lbfgs_core_params=None,
                      cos_sin_table=True,
@@ -26,6 +63,7 @@ class lbfgs:
         cos_sin_table=cos_sin_table)
     self.n = xray_structure.n_parameters(gradient_flags)
     self.x = flex.double(self.n, 0)
+    xray_structure.tidy_us(u_min=1.e-6)
     self._scatterers_start = xray_structure.scatterers()
     self._scattering_dict = xray_structure.scattering_dict()
     self._d_min = self.target_functor.f_obs().d_min()
@@ -45,12 +83,9 @@ class lbfgs:
     unit_cell = self.xray_structure.unit_cell()
     scatterers_shifted = ext.minimization_apply_shifts(
       unit_cell=unit_cell,
-      space_group_type=self.xray_structure.space_group_info().type(),
       scatterers=self._scatterers_start,
-      scattering_dict=self._scattering_dict,
       gradient_flags=self.gradient_flags,
-      shifts=self.x,
-      d_min=self._d_min)
+      shifts=self.x)
     site_symmetry_table = self.xray_structure.site_symmetry_table()
     for i_seq in site_symmetry_table.special_position_indices():
       scatterers_shifted[i_seq].site = crystal.correct_special_position(
@@ -77,6 +112,11 @@ class lbfgs:
     self.f = self.target_result.target()
     if (self.first_target_value is None):
       self.first_target_value = self.f
+    if (self.u_penalty is not None and self.gradient_flags.u_iso):
+      u_isos = self.xray_structure.scatterers().extract_u_iso(
+        unit_cell=self.xray_structure.unit_cell())
+      for u_iso in u_isos:
+        self.f += self.u_penalty.functional(u=u_iso)
     sf = self.structure_factor_gradients(
       xray_structure=self.xray_structure,
       miller_set=self.target_functor.f_obs(),
@@ -85,6 +125,16 @@ class lbfgs:
       n_parameters=self.x.size(),
       algorithm=self.structure_factor_algorithm)
     self.g = sf.packed()
+    if (self.u_penalty is not None and self.gradient_flags.u_iso):
+      g = flex.double()
+      for u_iso in u_isos:
+        g.append(self.u_penalty.gradient(u=u_iso))
+      del u_isos
+      ext.minimization_add_u_iso_gradients(
+        scatterers=self.xray_structure.scatterers(),
+        gradient_flags=self.gradient_flags,
+        xray_gradients=self.g,
+        u_iso_gradients=g)
     if (self.verbose > 1):
       print "xray.minimization line search: f,rms(g):",
       print self.f, math.sqrt(flex.mean_sq(self.g))
