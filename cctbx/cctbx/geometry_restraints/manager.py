@@ -34,11 +34,14 @@ class manager:
       assert nonbonded_types.size() == site_symmetry_table.indices().size()
     adopt_init_args(self, locals())
     self._sites_cart_used_for_pair_proxies = None
+    self._flags_bond_used_for_pair_proxies = False
+    self._flags_nonbonded_used_for_pair_proxies = False
     self._pair_proxies = None
     self.n_updates_pair_proxies = 0
 
   def pair_proxies(self,
         sites_cart=None,
+        flags=None,
         lock=False,
         asu_is_inside_epsilon=None,
         bonded_distance_cutoff_epsilon=None):
@@ -48,14 +51,26 @@ class manager:
       if (self._pair_proxies is None):
         self.n_updates_pair_proxies += 1
         self._pair_proxies = geometry_restraints.pair_proxies(
+          flags=flags,
           bond_params_table=self.bond_params_table)
     elif (sites_cart is not None
           and (self._sites_cart_used_for_pair_proxies is None
+               or flags is not None
+                  and (self._flags_bond_used_for_pair_proxies
+                          != flags.bond
+                       or self._flags_nonbonded_used_for_pair_proxies
+                             != flags.nonbonded)
           or (not lock
           and self._sites_cart_used_for_pair_proxies.max_distance(sites_cart)
               > self.nonbonded_buffer))):
       self.n_updates_pair_proxies += 1
       self._sites_cart_used_for_pair_proxies = sites_cart.deep_copy()
+      if (flags is None):
+        self._flags_bond_used_for_pair_proxies = True
+        self._flags_nonbonded_used_for_pair_proxies = True
+      else:
+        self._flags_bond_used_for_pair_proxies = flags.bond
+        self._flags_nonbonded_used_for_pair_proxies = flags.nonbonded
       bonded_distance_cutoff = 0
       if (self.crystal_symmetry is None):
         for shell_sym_table in self.shell_sym_tables:
@@ -90,15 +105,15 @@ class manager:
           .add_pair_sym_table(sym_table=shell_sym_table)
             for shell_sym_table in self.shell_sym_tables]
       self._pair_proxies = geometry_restraints.pair_proxies(
+        flags=flags,
+        bond_params_table=self.bond_params_table,
+        shell_asu_tables=shell_asu_tables,
         model_indices=self.model_indices,
         conformer_indices=self.conformer_indices,
         nonbonded_params=self.nonbonded_params,
         nonbonded_types=self.nonbonded_types,
-        bond_params_table=self.bond_params_table,
-        shell_asu_tables=shell_asu_tables,
-        bonded_distance_cutoff=bonded_distance_cutoff,
-        nonbonded_distance_cutoff=self.nonbonded_distance_cutoff,
-        nonbonded_buffer=self.nonbonded_buffer)
+        nonbonded_distance_cutoff_plus_buffer=
+          self.nonbonded_distance_cutoff+self.nonbonded_buffer)
     elif (self._pair_proxies is None):
       raise AssertionError("pair_proxies not defined already.")
     return self._pair_proxies
@@ -112,6 +127,7 @@ class manager:
     if (flags is None):
       flags = geometry_restraints.flags.flags(default=True)
     pair_proxies = self.pair_proxies(
+      flags=flags,
       sites_cart=sites_cart,
       lock=lock_pair_proxies)
     (bond_proxies,
@@ -121,8 +137,11 @@ class manager:
      dihedral_proxies,
      chirality_proxies,
      planarity_proxies) = [None]*7
-    if (flags.bond):      bond_proxies = pair_proxies.bond_proxies
+    if (flags.bond):
+      assert pair_proxies.bond_proxies is not None
+      bond_proxies = pair_proxies.bond_proxies
     if (flags.nonbonded and self.nonbonded_types is not None):
+      assert pair_proxies.nonbonded_proxies is not None
       nonbonded_proxies = pair_proxies.nonbonded_proxies
       nonbonded_function = self.nonbonded_function
     if (flags.angle):     angle_proxies = self.angle_proxies
@@ -141,9 +160,9 @@ class manager:
       compute_gradients=compute_gradients,
       disable_asu_cache=disable_asu_cache)
 
-  def show_interactions(self, sites_cart=None, i_seq=None, f=None):
+  def show_interactions(self, flags=None, sites_cart=None, i_seq=None, f=None):
     if (f is None): f = sys.stdout
-    pair_proxies = self.pair_proxies(sites_cart=sites_cart)
+    pair_proxies = self.pair_proxies(flags=flags, sites_cart=sites_cart)
     if (pair_proxies.bond_proxies is not None):
       for proxy in pair_proxies.bond_proxies.simple:
         if (i_seq is None or i_seq in proxy.i_seqs):

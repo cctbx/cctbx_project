@@ -348,14 +348,14 @@ namespace cctbx { namespace geometry_restraints {
 
   //! Managed group of bond_simple_proxy and bond_asu_proxy arrays.
   typedef sorted_asu_proxies<bond_simple_proxy, bond_asu_proxy>
-    bond_sorted_asu_proxies;
+    bond_sorted_asu_proxies_base;
 
   //! Fast computation of bond::delta given managed proxies.
   inline
   af::shared<double>
   bond_deltas(
     af::const_ref<scitbx::vec3<double> > const& sites_cart,
-    bond_sorted_asu_proxies const& sorted_asu_proxies)
+    bond_sorted_asu_proxies_base const& sorted_asu_proxies)
   {
     af::shared<double> result = bond_deltas(
       sites_cart, sorted_asu_proxies.simple.const_ref());
@@ -377,7 +377,7 @@ namespace cctbx { namespace geometry_restraints {
   af::shared<double>
   bond_residuals(
     af::const_ref<scitbx::vec3<double> > const& sites_cart,
-    bond_sorted_asu_proxies const& sorted_asu_proxies)
+    bond_sorted_asu_proxies_base const& sorted_asu_proxies)
   {
     af::shared<double> result = bond_residuals(
       sites_cart, sorted_asu_proxies.simple.const_ref());
@@ -458,7 +458,7 @@ namespace cctbx { namespace geometry_restraints {
   double
   bond_residual_sum(
     af::const_ref<scitbx::vec3<double> > const& sites_cart,
-    bond_sorted_asu_proxies const& sorted_asu_proxies,
+    bond_sorted_asu_proxies_base const& sorted_asu_proxies,
     af::ref<scitbx::vec3<double> > const& gradient_array,
     bool disable_cache=false)
   {

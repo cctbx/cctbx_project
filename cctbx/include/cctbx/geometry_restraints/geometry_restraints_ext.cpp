@@ -3,8 +3,9 @@
 namespace cctbx { namespace geometry_restraints { namespace boost_python {
 
   void wrap_bond();
+  void wrap_bond_sorted();
   void wrap_nonbonded();
-  void wrap_pair_proxies();
+  void wrap_nonbonded_sorted();
   void wrap_angle();
   void wrap_dihedral();
   void wrap_chirality();
@@ -15,8 +16,9 @@ namespace {
   void init_module()
   {
     wrap_bond();
+    wrap_bond_sorted();
     wrap_nonbonded();
-    wrap_pair_proxies();
+    wrap_nonbonded_sorted();
     wrap_angle();
     wrap_dihedral();
     wrap_chirality();

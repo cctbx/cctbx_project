@@ -5,7 +5,6 @@
 #include <boost/python/args.hpp>
 #include <boost/python/overloads.hpp>
 #include <boost/python/return_value_policy.hpp>
-#include <boost/python/copy_const_reference.hpp>
 #include <boost/python/return_by_value.hpp>
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
 #include <scitbx/stl/map_wrapper.h>
@@ -119,47 +118,6 @@ namespace {
     }
   };
 
-  struct bond_sorted_asu_proxies_wrappers
-  {
-    typedef bond_sorted_asu_proxies w_t;
-
-    static void
-    wrap()
-    {
-      using namespace boost::python;
-      typedef return_value_policy<copy_const_reference> ccr;
-      class_<w_t>("bond_sorted_asu_proxies", no_init)
-        .def(init<
-          boost::shared_ptr<asu_mappings> const&>(
-            (arg_("asu_mappings"))))
-        .def("asu_mappings", &w_t::asu_mappings, ccr())
-        .def("process", (bool(w_t::*)(bond_simple_proxy const&)) &w_t::process,
-          (arg_("proxy")))
-        .def("process",
-          (void(w_t::*)(af::const_ref<bond_simple_proxy> const&))
-            &w_t::process,
-          (arg_("proxies")))
-        .def("process",
-          (bool(w_t::*)(bond_asu_proxy const&)) &w_t::process,
-            (arg_("proxy")))
-        .def("process",
-          (void(w_t::*)(af::const_ref<bond_asu_proxy> const&))
-            &w_t::process,
-          (arg_("proxies")))
-        .def("push_back",
-          (void(w_t::*)(bond_asu_proxy const&)) &w_t::push_back,
-            (arg_("proxy")))
-        .def("push_back",
-          (void(w_t::*)(af::const_ref<bond_asu_proxy> const&))
-            &w_t::push_back,
-          (arg_("proxies")))
-        .def("n_total", &w_t::n_total)
-        .def_readonly("simple", &w_t::simple)
-        .def_readonly("asu", &w_t::asu)
-      ;
-    }
-  };
-
   BOOST_PYTHON_FUNCTION_OVERLOADS(
     bond_residual_sum_overloads, bond_residual_sum, 3, 4)
 
@@ -172,7 +130,6 @@ namespace {
     bond_simple_proxy_wrappers::wrap();
     bond_asu_proxy_wrappers::wrap();
     bond_wrappers::wrap();
-    bond_sorted_asu_proxies_wrappers::wrap();
     def("extract_bond_params", extract_bond_params, (
       (arg_("n_seq"), arg_("bond_simple_proxies"))));
     def("bond_distances_model",
@@ -203,19 +160,19 @@ namespace {
     def("bond_deltas",
       (af::shared<double>(*)(
         af::const_ref<scitbx::vec3<double> > const&,
-        bond_sorted_asu_proxies const&))
+        bond_sorted_asu_proxies_base const&))
       bond_deltas,
       (arg_("sites_cart"), arg_("sorted_asu_proxies")));
     def("bond_residuals",
       (af::shared<double>(*)(
         af::const_ref<scitbx::vec3<double> > const&,
-        bond_sorted_asu_proxies const&))
+        bond_sorted_asu_proxies_base const&))
       bond_residuals,
       (arg_("sites_cart"), arg_("sorted_asu_proxies")));
     def("bond_residual_sum",
       (double(*)(
         af::const_ref<scitbx::vec3<double> > const&,
-        bond_sorted_asu_proxies const&,
+        bond_sorted_asu_proxies_base const&,
         af::ref<scitbx::vec3<double> > const&,
         bool)) bond_residual_sum,
       bond_residual_sum_overloads((

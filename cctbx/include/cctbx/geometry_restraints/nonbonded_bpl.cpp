@@ -5,7 +5,6 @@
 #include <boost/python/args.hpp>
 #include <boost/python/overloads.hpp>
 #include <boost/python/return_value_policy.hpp>
-#include <boost/python/copy_const_reference.hpp>
 #include <boost/python/return_internal_reference.hpp>
 #include <boost/python/return_by_value.hpp>
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
@@ -164,41 +163,6 @@ namespace {
     }
   };
 
-  struct nonbonded_sorted_asu_proxies_wrappers
-  {
-    typedef nonbonded_sorted_asu_proxies w_t;
-
-    static void
-    wrap()
-    {
-      using namespace boost::python;
-      typedef return_value_policy<copy_const_reference> ccr;
-      class_<w_t>("nonbonded_sorted_asu_proxies", no_init)
-        .def(init<
-          boost::shared_ptr<asu_mappings> const&>(
-            (arg_("asu_mappings"))))
-        .def("asu_mappings", &w_t::asu_mappings, ccr())
-        .def("process",
-          (bool(w_t::*)(nonbonded_simple_proxy const&)) &w_t::process,
-            (arg_("proxy")))
-        .def("process",
-          (void(w_t::*)(af::const_ref<nonbonded_simple_proxy> const&))
-            &w_t::process,
-          (arg_("proxies")))
-        .def("process",
-          (bool(w_t::*)(nonbonded_asu_proxy const&)) &w_t::process,
-            (arg_("proxy")))
-        .def("process",
-          (void(w_t::*)(af::const_ref<nonbonded_asu_proxy> const&))
-            &w_t::process,
-          (arg_("proxies")))
-        .def("n_total", &w_t::n_total)
-        .def_readonly("simple", &w_t::simple)
-        .def_readonly("asu", &w_t::asu)
-      ;
-    }
-  };
-
   BOOST_PYTHON_FUNCTION_OVERLOADS(
     nonbonded_residual_sum_overloads, nonbonded_residual_sum, 4, 5)
 
@@ -231,19 +195,19 @@ namespace {
     def("nonbonded_deltas",
       (af::shared<double>(*)(
         af::const_ref<scitbx::vec3<double> > const&,
-        nonbonded_sorted_asu_proxies const&,
+        nonbonded_sorted_asu_proxies_base const&,
         NonbondedFunction const& function)) nonbonded_deltas,
       (arg_("sites_cart"), arg_("sorted_asu_proxies"), arg_("function")));
     def("nonbonded_residuals",
       (af::shared<double>(*)(
         af::const_ref<scitbx::vec3<double> > const&,
-        nonbonded_sorted_asu_proxies const&,
+        nonbonded_sorted_asu_proxies_base const&,
         NonbondedFunction const& function)) nonbonded_residuals,
       (arg_("sites_cart"), arg_("sorted_asu_proxies"), arg_("function")));
     def("nonbonded_residual_sum",
       (double(*)(
         af::const_ref<scitbx::vec3<double> > const&,
-        nonbonded_sorted_asu_proxies const&,
+        nonbonded_sorted_asu_proxies_base const&,
         af::ref<scitbx::vec3<double> > const&,
         NonbondedFunction const&,
         bool)) nonbonded_residual_sum,
@@ -265,7 +229,6 @@ namespace {
       "nonbonded_prolsq");
     nonbonded_wrappers<inverse_power_repulsion_function>::wrap(
       "nonbonded_inverse_power");
-    nonbonded_sorted_asu_proxies_wrappers::wrap();
     wrap_functions(scitbx::type_holder<prolsq_repulsion_function>());
     wrap_functions(scitbx::type_holder<inverse_power_repulsion_function>());
   }

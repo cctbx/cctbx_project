@@ -339,3 +339,39 @@ class _bond_sorted_asu_proxies(boost.python.injector, bond_sorted_asu_proxies):
     n_not_shown = residuals.size() - i_proxies_sorted.size()
     if (n_not_shown != 0):
       print >> f, prefix + "... (remaining %d not shown)" % n_not_shown
+
+class pair_proxies:
+
+  def __init__(self,
+        flags=None,
+        bond_params_table=None,
+        shell_asu_tables=None,
+        model_indices=None,
+        conformer_indices=None,
+        nonbonded_params=None,
+        nonbonded_types=None,
+        nonbonded_distance_cutoff_plus_buffer=None):
+    self.bond_proxies = None
+    self.nonbonded_proxies = None
+    if (bond_params_table is not None
+        and (flags is None or flags.bond)):
+      if (shell_asu_tables is None):
+        self.bond_proxies = bond_sorted_asu_proxies(
+          bond_params_table=bond_params_table)
+      else:
+        assert len(shell_asu_tables) > 0
+        self.bond_proxies = bond_sorted_asu_proxies(
+          bond_params_table=bond_params_table,
+          bond_asu_table=shell_asu_tables[0])
+    if (nonbonded_types is not None
+        and (flags is None or flags.nonbonded)):
+      assert nonbonded_params is not None
+      assert nonbonded_distance_cutoff_plus_buffer is not None
+      self.nonbonded_proxies = nonbonded_sorted_asu_proxies(
+        model_indices=model_indices,
+        conformer_indices=conformer_indices,
+        nonbonded_params=nonbonded_params,
+        nonbonded_types=nonbonded_types,
+        nonbonded_distance_cutoff_plus_buffer=\
+          nonbonded_distance_cutoff_plus_buffer,
+        shell_asu_tables=shell_asu_tables)

@@ -447,14 +447,14 @@ namespace cctbx { namespace geometry_restraints {
 
   //! Managed group of nonbonded_simple_proxy and nonbonded_asu_proxy arrays.
   typedef sorted_asu_proxies<nonbonded_simple_proxy, nonbonded_asu_proxy>
-    nonbonded_sorted_asu_proxies;
+    nonbonded_sorted_asu_proxies_base;
 
   //! Fast computation of nonbonded::delta given managed proxies.
   template <typename NonbondedFunction>
   af::shared<double>
   nonbonded_deltas(
     af::const_ref<scitbx::vec3<double> > const& sites_cart,
-    nonbonded_sorted_asu_proxies const& sorted_asu_proxies,
+    nonbonded_sorted_asu_proxies_base const& sorted_asu_proxies,
     NonbondedFunction const& function)
   {
     af::shared<double> result = nonbonded_deltas(
@@ -479,7 +479,7 @@ namespace cctbx { namespace geometry_restraints {
   af::shared<double>
   nonbonded_residuals(
     af::const_ref<scitbx::vec3<double> > const& sites_cart,
-    nonbonded_sorted_asu_proxies const& sorted_asu_proxies,
+    nonbonded_sorted_asu_proxies_base const& sorted_asu_proxies,
     NonbondedFunction const& function)
   {
     af::shared<double> result = nonbonded_residuals(
@@ -565,7 +565,7 @@ namespace cctbx { namespace geometry_restraints {
   double
   nonbonded_residual_sum(
     af::const_ref<scitbx::vec3<double> > const& sites_cart,
-    nonbonded_sorted_asu_proxies const& sorted_asu_proxies,
+    nonbonded_sorted_asu_proxies_base const& sorted_asu_proxies,
     af::ref<scitbx::vec3<double> > const& gradient_array,
     NonbondedFunction const& function,
     bool disable_cache=false)

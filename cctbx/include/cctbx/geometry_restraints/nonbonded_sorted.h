@@ -1,53 +1,31 @@
-#ifndef CCTBX_GEOMETRY_RESTRAINTS_PAIR_PROXIES_H
-#define CCTBX_GEOMETRY_RESTRAINTS_PAIR_PROXIES_H
+#ifndef CCTBX_GEOMETRY_RESTRAINTS_NONBONDED_SORTED_H
+#define CCTBX_GEOMETRY_RESTRAINTS_NONBONDED_SORTED_H
 
-#include <cctbx/geometry_restraints/bond.h>
 #include <cctbx/geometry_restraints/nonbonded.h>
 #include <cctbx/crystal/pair_tables.h>
 
 namespace cctbx { namespace geometry_restraints {
 
-  //! Adds all pairs defined by bond_simple_proxies[i].i_seqs.
-  void
-  add_pairs(
-    crystal::pair_asu_table<>& pair_asu_table,
-    af::const_ref<bond_simple_proxy> const& bond_simple_proxies)
-  {
-    for(unsigned i=0;i<bond_simple_proxies.size();i++) {
-      pair_asu_table.add_pair(bond_simple_proxies[i].i_seqs);
-    }
-  }
-
-  //! Generation of sorted bond and respulsion proxies.
-  class pair_proxies
+  //! Generation of sorted nonbonded proxies.
+  class nonbonded_sorted_asu_proxies : public nonbonded_sorted_asu_proxies_base
   {
     public:
       //! Default constructor. Some data members are not initialized!
-      pair_proxies() {}
+      nonbonded_sorted_asu_proxies() {}
 
-      //! Generation of bond proxies only.
-      pair_proxies(
-        af::const_ref<bond_params_dict> const& bond_params_table)
+      //! Initialization with asu_mappings.
+      nonbonded_sorted_asu_proxies(
+        boost::shared_ptr<
+          direct_space_asu::asu_mappings<> > const& asu_mappings)
       :
-        n_bonded(0),
+        nonbonded_sorted_asu_proxies_base(asu_mappings),
         n_1_3(0),
         n_1_4(0),
         n_nonbonded(0),
         n_unknown_nonbonded_type_pairs(0)
-      {
-        for(unsigned i_seq=0;i_seq<bond_params_table.size();i_seq++) {
-          for(bond_params_dict::const_iterator
-                dict_i=bond_params_table[i_seq].begin();
-                dict_i!=bond_params_table[i_seq].end();
-                dict_i++) {
-            bond_proxies.process(bond_simple_proxy(
-              af::tiny<unsigned, 2>(i_seq, dict_i->first),
-              dict_i->second));
-          }
-        }
-      }
+      {}
 
-      //! Generation of bond and nonbonded proxies.
+      //! Generation of nonbonded proxies.
       /*! Bonds (1-2) interactions are defined by shell_asu_tables[0]
           and are used at the same time as nonbonded exclusions.
 
@@ -58,18 +36,15 @@ namespace cctbx { namespace geometry_restraints {
           and are used to attenuate nonbonded energies according to
           nonbonded_params.
        */
-      pair_proxies(
+      nonbonded_sorted_asu_proxies(
         af::const_ref<std::size_t> const& model_indices,
         af::const_ref<std::size_t> const& conformer_indices,
         geometry_restraints::nonbonded_params const& nonbonded_params,
         af::const_ref<std::string> const& nonbonded_types,
-        af::const_ref<bond_params_dict> const& bond_params_table,
-        std::vector<crystal::pair_asu_table<> > const& shell_asu_tables,
-        double bonded_distance_cutoff,
-        double nonbonded_distance_cutoff,
-        double nonbonded_buffer)
+        double nonbonded_distance_cutoff_plus_buffer,
+        std::vector<crystal::pair_asu_table<> > const& shell_asu_tables)
       :
-        n_bonded(0),
+        nonbonded_sorted_asu_proxies_base(shell_asu_tables[0].asu_mappings()),
         n_1_3(0),
         n_1_4(0),
         n_nonbonded(0),
@@ -79,87 +54,54 @@ namespace cctbx { namespace geometry_restraints {
                   || model_indices.size() == nonbonded_types.size());
         CCTBX_ASSERT(conformer_indices.size() == 0
                   || conformer_indices.size() == nonbonded_types.size());
-        CCTBX_ASSERT(bond_params_table.size() == nonbonded_types.size());
         CCTBX_ASSERT(shell_asu_tables.size() > 0);
         for(unsigned i=0; i<shell_asu_tables.size(); i++) {
           CCTBX_ASSERT(shell_asu_tables[i].table().size()
-                    == bond_params_table.size());
+                    == nonbonded_types.size());
         }
-        for(unsigned i=1; i<shell_asu_tables.size(); i++) {
+        unsigned shell_asu_tables_size = shell_asu_tables.size();
+        for(unsigned i=1; i<shell_asu_tables_size; i++) {
           CCTBX_ASSERT(shell_asu_tables[i].asu_mappings().get()
                     == shell_asu_tables[0].asu_mappings().get());
         }
-        bond_proxies = bond_sorted_asu_proxies(
-          shell_asu_tables[0].asu_mappings());
-        nonbonded_proxies = nonbonded_sorted_asu_proxies(
-          shell_asu_tables[0].asu_mappings());
-        double distance_cutoff = std::max(
-          bonded_distance_cutoff,
-          nonbonded_distance_cutoff+nonbonded_buffer);
         bool minimal = false;
         crystal::neighbors::fast_pair_generator<> pair_generator(
           shell_asu_tables[0].asu_mappings(),
-          distance_cutoff,
+          nonbonded_distance_cutoff_plus_buffer,
           minimal);
-        double nonbonded_distance_cutoff_sq = nonbonded_distance_cutoff
-                                            * nonbonded_distance_cutoff;
         while (!pair_generator.at_end()) {
           direct_space_asu::asu_mapping_index_pair_and_diff<>
             pair = pair_generator.next();
           if (shell_asu_tables[0].contains(pair)) {
-            bond_proxies.process(
-              make_bond_asu_proxy(bond_params_table, pair));
-            n_bonded++;
+            continue;
           }
-          else if (shell_asu_tables.size() > 1
-                   && shell_asu_tables[1].contains(pair)) {
+          if (   shell_asu_tables_size > 1
+              && shell_asu_tables[1].contains(pair)) {
             n_1_3++;
+            continue;
           }
-          else if ((model_indices.size() == 0
-                    || model_indices[pair.i_seq] == model_indices[pair.j_seq])
-                   && (conformer_indices.size() == 0
-                       || conformer_indices[pair.i_seq] == 0
-                       || conformer_indices[pair.j_seq] == 0
-                       || conformer_indices[pair.i_seq]
-                       == conformer_indices[pair.j_seq])) {
-            if (shell_asu_tables.size() > 2
-                && shell_asu_tables[2].contains(pair)) {
-              nonbonded_proxies.process(make_nonbonded_asu_proxy(
-                nonbonded_params, nonbonded_types, pair, true));
-              n_1_4++;
-            }
-            else if (pair.dist_sq <= nonbonded_distance_cutoff_sq) {
-              nonbonded_proxies.process(make_nonbonded_asu_proxy(
-                nonbonded_params, nonbonded_types, pair, false));
-              n_nonbonded++;
-            }
+          if (   model_indices.size() != 0
+              && model_indices[pair.i_seq] != model_indices[pair.j_seq]) {
+            continue;
           }
+          if (   conformer_indices.size() != 0
+              && conformer_indices[pair.i_seq] != 0
+              && conformer_indices[pair.j_seq] != 0
+              && conformer_indices[pair.i_seq]
+              != conformer_indices[pair.j_seq]) {
+            continue;
+          }
+          if (   shell_asu_tables_size > 2
+              && shell_asu_tables[2].contains(pair)) {
+            process(make_nonbonded_asu_proxy(
+              nonbonded_params, nonbonded_types, pair, true));
+            n_1_4++;
+            continue;
+          }
+          process(make_nonbonded_asu_proxy(
+            nonbonded_params, nonbonded_types, pair, false));
+          n_nonbonded++;
         }
-      }
-
-      //! For internal use only.
-      static
-      bond_asu_proxy
-      make_bond_asu_proxy(
-        af::const_ref<bond_params_dict> const& bond_params_table,
-        direct_space_asu::asu_mapping_index_pair const& pair)
-      {
-        unsigned i, j;
-        if (pair.i_seq <= pair.j_seq) {
-          i = pair.i_seq;
-          j = pair.j_seq;
-        }
-        else {
-          i = pair.j_seq;
-          j = pair.i_seq;
-        }
-        bond_params_dict const& params_dict = bond_params_table[i];
-        bond_params_dict::const_iterator params = params_dict.find(j);
-        if (params == params_dict.end()) {
-          throw error(
-            "Unknown bond parameters (incomplete bond_params_table).");
-        }
-        return bond_asu_proxy(pair, params->second);
       }
 
       //! For internal use only.
@@ -229,12 +171,6 @@ namespace cctbx { namespace geometry_restraints {
         return std::max(nonbonded_params.minimum_distance, distance);
       }
 
-      //! Final bond proxies.
-      bond_sorted_asu_proxies bond_proxies;
-      //! Final nonbonded proxies.
-      nonbonded_sorted_asu_proxies nonbonded_proxies;
-      //! Total number of bond proxies (simple + asu).
-      unsigned n_bonded;
       //! Number of 1-3 interactions excluded from nonbonded proxies.
       unsigned n_1_3;
       //! Number of attenuated 1-4 interactions.
@@ -249,4 +185,4 @@ namespace cctbx { namespace geometry_restraints {
 
 }} // namespace cctbx::geometry_restraints
 
-#endif // CCTBX_GEOMETRY_RESTRAINTS_PAIR_PROXIES_H
+#endif // CCTBX_GEOMETRY_RESTRAINTS_NONBONDED_SORTED_H
