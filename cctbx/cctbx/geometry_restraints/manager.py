@@ -151,9 +151,11 @@ class manager:
           if (bonded_distance_cutoff < 0):
             for shell_sym_table in self.shell_sym_tables:
               bonded_distance_cutoff = max(bonded_distance_cutoff,
-                flex.max(crystal.get_distances(
-                  pair_sym_table=shell_sym_table,
-                  sites_cart=sites_cart)))
+                flex.max_default(
+                  values=crystal.get_distances(
+                    pair_sym_table=shell_sym_table,
+                    sites_cart=sites_cart),
+                  default=0))
             bonded_distance_cutoff *= (1 + bonded_distance_cutoff_epsilon)
             asu_mappings = \
               crystal.direct_space_asu.non_crystallographic_asu_mappings(
@@ -166,10 +168,13 @@ class manager:
             sites_frac = unit_cell.fractionalization_matrix() * sites_cart
             for shell_sym_table in self.shell_sym_tables:
               bonded_distance_cutoff = max(bonded_distance_cutoff,
-                flex.max(crystal.get_distances(
-                  pair_sym_table=shell_sym_table,
-                  orthogonalization_matrix=unit_cell.orthogonalization_matrix(),
-                  sites_frac=sites_frac)))
+                flex.max_default(
+                  values=crystal.get_distances(
+                    pair_sym_table=shell_sym_table,
+                    orthogonalization_matrix=
+                      unit_cell.orthogonalization_matrix(),
+                    sites_frac=sites_frac),
+                  default=0))
             bonded_distance_cutoff *= (1 + bonded_distance_cutoff_epsilon)
           if (asu_mappings is None
               or asu_mappings.buffer_thickness()
