@@ -27,7 +27,8 @@ def OneCycle(settings):
       for h_asym in miller_indices:
         h_seq = SgOps.getEquivMillerIndices(h_asym)
         h_asu = sgtbx.Miller_AsymIndex(SgOps, asu, h_asym)
-        h_asym == h_asu.one_column(friedel_flag).H()
+        assert h_asym == h_asu.one_column(friedel_flag).H()
+        assert h_asu.H() == h_asu.one_column(1).H()
         # exercise class PhaseInfo
         restr = h_seq.getPhaseRestriction()
         assert not restr.SysAbsWasTested()
@@ -71,6 +72,7 @@ def OneCycle(settings):
       for p1_h in p1_miller_indices:
         h_asu = sgtbx.Miller_AsymIndex(p1_sgops, p1_asu, p1_h)
         assert h_asu.one_column(friedel_flag).H() == p1_h
+        assert h_asu.H() == h_asu.one_column(1).H()
         h_asu = sgtbx.Miller_AsymIndex(SgOps, asu, p1_h)
         h_dict[h_asu.one_column(friedel_flag).H()] += 1
       f = 1
