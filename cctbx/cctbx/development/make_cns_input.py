@@ -307,6 +307,10 @@ flags exclude * include vdw pvdw end
 
 energy end
 
+show (dx) (all)
+show (dy) (all)
+show (dz) (all)
+
 distance
   from=(all)
   to=(all)
