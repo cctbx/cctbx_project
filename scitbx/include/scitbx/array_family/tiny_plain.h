@@ -25,6 +25,8 @@ namespace scitbx { namespace af {
     public:
       SCITBX_ARRAY_FAMILY_TYPEDEFS
 
+      BOOST_STATIC_CONSTANT(std::size_t, fixed_size=N);
+
       ElementType elems[N];
 
       tiny_plain() {}
