@@ -11,12 +11,12 @@ def set_python_include_and_libs(env_etc):
     env_etc.libs_python = ["python" + sys.version[0] + sys.version[2]]
     env_etc.libpath_python = [sys.prefix + r"\libs"]
   elif (env_etc.compiler == "tru64_cxx"):
-    env_etc.libs_python = ["pthread",]
+    env_etc.libs_python = ["pthread"]
     env_etc.libpath_python = []
   else:
     env_etc.libs_python = []
     env_etc.libpath_python = []
-  if (env_etc.compiler == "darwin_g++"):
+  if (env_etc.compiler.startswith("darwin_")):
     env_etc.python_framework = "/".join(
       env_etc.python_include.split("/")[:-2] + ["Python"])
 
@@ -44,7 +44,11 @@ elif (sys.platform.startswith("osf")):
 elif (sys.platform.startswith("irix")):
   env_etc.compiler = "irix_CC"
 elif (sys.platform.startswith("darwin")):
-  env_etc.compiler = "darwin_g++"
+  if (compiler == "default"):
+    env_etc.compiler = "darwin_gcc"
+  else:
+    env_etc.compiler = "darwin_"+compiler
+    compiler = None
 if (compiler not in ("default", None)):
   raise RuntimeError("Compiler not supported on this platform: %s" % compiler)
 assert env_etc.compiler in (
@@ -54,7 +58,8 @@ assert env_etc.compiler in (
   "unix_icc",
   "tru64_cxx",
   "irix_CC",
-  "darwin_g++",
+  "darwin_c++",
+  "darwin_gcc",
 )
 
 static_exe = libtbx.config.build_options.static_exe
@@ -248,7 +253,7 @@ else:
     env_etc.ccflags_base.extend(opts)
     env_etc.shlinkflags = ["-shared", "-LD_MSG:off=15,84"]
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
-  elif (env_etc.compiler == "darwin_g++"):
+  elif (env_etc.compiler == "darwin_gcc"):
     env_etc.static_libraries = 1
     env_etc.static_bpl = 0
     env_base.Replace(
@@ -267,6 +272,46 @@ else:
       -w
     """)
     env_etc.ccflags_base = Split("""
+      -w
+    """)
+    if (libtbx.config.build_options.optimization):
+      opts = ["-DNDEBUG", "-O3"]
+    else:
+      opts = ["-O0", "-fno-inline"]
+    if (libtbx.config.build_options.debug_symbols):
+      opts.insert(0, "-g")
+    env_etc.cxxflags_base.extend(opts)
+    env_etc.ccflags_base.extend(opts)
+    env_etc.shlinkflags = []
+    env_etc.shlinkflags_bpl = [
+      "-w", # for some odd reason -bundle cannot be the first option
+      "-bundle",
+      "-bundle_loader", env_etc.python_framework, env_etc.python_framework,]
+  elif (env_etc.compiler == "darwin_c++"):
+    env_etc.static_libraries = 1
+    env_etc.static_bpl = 0
+    env_base.Replace(
+      CC="cc",
+      SHCC="cc",
+      CXX="c++",
+      LINK="c++",
+      SHCXX="c++",
+      SHLINK="c++",
+      SHLIBSUFFIX=".dylib",
+    )
+    env_base.Append(LIBSUFFIXES=[".dylib"])
+    env_etc.cxxflags_base = Split("""
+      -fPIC
+      -no-cpp-precomp
+      -ftemplate-depth-120
+      -fcoalesce-templates
+      -Wno-long-double
+      -w
+    """)
+    env_etc.ccflags_base = Split("""
+      -fPIC
+      -no-cpp-precomp
+      -Wno-long-double
       -w
     """)
     if (libtbx.config.build_options.optimization):
