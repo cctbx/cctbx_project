@@ -217,6 +217,7 @@ def exercise(verbose=0):
         nonbonded_distance_cutoff=nonbonded_cutoff,
         nonbonded_buffer=1,
         angle_proxies=angle_proxies)
+      manager = manager.select(selection=flex.bool(sites_cart.size(), True))
       pair_proxies = manager.pair_proxies(sites_cart=sites_cart)
       if (0 or verbose):
         print "len(vdw_1):", pair_proxies.nonbonded_proxies.n_nonbonded
