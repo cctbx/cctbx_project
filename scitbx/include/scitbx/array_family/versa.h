@@ -12,6 +12,7 @@
 #define SCITBX_ARRAY_FAMILY_VERSA_H
 
 #include <scitbx/array_family/versa_plain.h>
+#include <scitbx/array_family/ref_reductions.h>
 
 namespace scitbx { namespace af {
 

@@ -519,6 +519,9 @@ namespace {
     check_false(__LINE__, r1.all_ge(r2));
     check_true(__LINE__, r1.all_ge(0));
     check_false(__LINE__, r1.all_ge(2));
+    check_true(__LINE__, r1.all_approx_equal(r1, 0));
+    check_false(__LINE__, r1.all_approx_equal(r2, 0));
+    check_false(__LINE__, r1.all_approx_equal(0, 0));
     check_true(__LINE__, af::order(r1, r2) == -1);
     check_true(__LINE__, af::order(r1, r1) == 0);
     check_true(__LINE__, af::order(r2, r2) == 0);

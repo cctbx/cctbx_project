@@ -50,6 +50,9 @@ namespace {
     check_false(__LINE__, a1.all_ge(a2));
     check_true(__LINE__, a1.all_ge(0));
     check_false(__LINE__, a1.all_ge(2));
+    check_true(__LINE__, a1.all_approx_equal(a1, 0));
+    check_false(__LINE__, a1.all_approx_equal(a2, 0));
+    check_false(__LINE__, a1.all_approx_equal(0, 0));
     check_true(__LINE__, af::order(a1, a2) == -1);
     check_true(__LINE__, af::order(a1, a1) == 0);
     check_true(__LINE__, af::order(a2, a2) == 0);

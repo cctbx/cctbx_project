@@ -60,3 +60,17 @@
       {
         return this->const_ref().all_ge(other);
       }
+
+      bool all_approx_equal(
+        base_class const& other,
+        ElementType const& tolerance) const
+      {
+        return this->const_ref().all_approx_equal(other.const_ref(),tolerance);
+      }
+
+      bool all_approx_equal(
+        ElementType const& other,
+        ElementType const& tolerance) const
+      {
+        return this->const_ref().all_approx_equal(other, tolerance);
+      }

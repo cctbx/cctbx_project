@@ -117,14 +117,14 @@ namespace {
       check_true(__LINE__, r[2] == std::pow(a[2], a[0])); }
     { ResultArrayType r = af::pow(a[0], a);
       check_true(__LINE__, r[2] == std::pow(a[0], a[2])); }
-    { BoolArrayType r = af::approx_equal_scaled(a, a, element_type(1));
-      check_true(__LINE__, r[2] == fn::approx_equal_scaled(
+    { BoolArrayType r = af::approx_equal(a, a, element_type(1));
+      check_true(__LINE__, r[2] == fn::approx_equal(
         a[2], a[2], element_type(1))); }
-    { BoolArrayType r = af::approx_equal_scaled(a, a[0], element_type(1));
-      check_true(__LINE__, r[2] == fn::approx_equal_scaled(
+    { BoolArrayType r = af::approx_equal(a, a[0], element_type(1));
+      check_true(__LINE__, r[2] == fn::approx_equal(
         a[2], a[0], element_type(1))); }
-    { BoolArrayType r = af::approx_equal_scaled(a[0], a, element_type(1));
-      check_true(__LINE__, r[2] == fn::approx_equal_scaled(
+    { BoolArrayType r = af::approx_equal(a[0], a, element_type(1));
+      check_true(__LINE__, r[2] == fn::approx_equal(
         a[0], a[2], element_type(1))); }
   }
 
