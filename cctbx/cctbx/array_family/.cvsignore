@@ -1,7 +1,7 @@
 operator_traits_builtin.h
-ref_operators.h
-tiny_operators.h
-small_operators.h
-shared_operators.h
-versa_operators.h
+ref_algebra.h
+tiny_algebra.h
+small_algebra.h
+shared_algebra.h
+versa_algebra.h
 flagged_value_operators.h

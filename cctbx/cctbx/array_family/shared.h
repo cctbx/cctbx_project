@@ -43,6 +43,6 @@ namespace cctbx { namespace af {
 
 }} // namespace cctbx::af
 
-#include <cctbx/array_family/shared_operators.h>
+#include <cctbx/array_family/shared_algebra.h>
 
 #endif // CCTBX_ARRAY_FAMILY_SHARED_H
