@@ -247,7 +247,7 @@ namespace iotbx { namespace mtz {
     const char* column_label)
   {
     int n_refl = n_reflections();
-    integer_group result(n_refl);
+    integer_group result(false, n_refl);
     hkl_columns hkl = get_hkl_columns();
     column data(get_column(column_label));
     for(int i=0;i<n_refl;i++) {
@@ -266,7 +266,7 @@ namespace iotbx { namespace mtz {
     const char* column_label_minus)
   {
     int n_refl = n_reflections();
-    integer_group result(2*n_refl);
+    integer_group result(true, 2*n_refl);
     hkl_columns hkl = get_hkl_columns();
     column data_plus(get_column(column_label_plus));
     column data_minus(get_column(column_label_minus));
@@ -289,7 +289,7 @@ namespace iotbx { namespace mtz {
     const char* column_label)
   {
     int n_refl = n_reflections();
-    real_group result(n_refl);
+    real_group result(false, n_refl);
     hkl_columns hkl = get_hkl_columns();
     column data(get_column(column_label));
     for(int i=0;i<n_refl;i++) {
@@ -308,7 +308,7 @@ namespace iotbx { namespace mtz {
     const char* column_label_minus)
   {
     int n_refl = n_reflections();
-    real_group result(2*n_refl);
+    real_group result(true, 2*n_refl);
     hkl_columns hkl = get_hkl_columns();
     column data_plus(get_column(column_label_plus));
     column data_minus(get_column(column_label_minus));
@@ -334,7 +334,7 @@ namespace iotbx { namespace mtz {
     const char* column_label_d)
   {
     int n_refl = n_reflections();
-    hl_group result(n_refl);
+    hl_group result(false, n_refl);
     hkl_columns hkl = get_hkl_columns();
     column data_a(get_column(column_label_a));
     column data_b(get_column(column_label_b));
@@ -377,7 +377,7 @@ namespace iotbx { namespace mtz {
     const char* column_label_d_minus)
   {
     int n_refl = n_reflections();
-    hl_group result(n_refl);
+    hl_group result(true, n_refl);
     hkl_columns hkl = get_hkl_columns();
     column data_ap(get_column(column_label_a_plus));
     column data_bp(get_column(column_label_b_plus));
@@ -437,7 +437,7 @@ namespace iotbx { namespace mtz {
     const char* column_label_sigmas)
   {
     int n_refl = n_reflections();
-    observations_group result(n_refl);
+    observations_group result(false, n_refl);
     hkl_columns hkl = get_hkl_columns();
     column data(get_column(column_label_data));
     column sigmas(get_column(column_label_sigmas));
@@ -465,7 +465,7 @@ namespace iotbx { namespace mtz {
     const char* column_label_sigmas_minus)
   {
     int n_refl = n_reflections();
-    observations_group result(2*n_refl);
+    observations_group result(true, 2*n_refl);
     hkl_columns hkl = get_hkl_columns();
     column data_plus(get_column(column_label_data_plus));
     column sigmas_plus(get_column(column_label_sigmas_plus));
@@ -511,7 +511,7 @@ namespace iotbx { namespace mtz {
     const char* column_label_d_sigmas)
   {
     int n_refl = n_reflections();
-    observations_group result(2*n_refl);
+    observations_group result(true, 2*n_refl);
     hkl_columns hkl = get_hkl_columns();
     column f_data(get_column(column_label_f_data));
     column f_sigmas(get_column(column_label_f_sigmas));
@@ -558,7 +558,7 @@ namespace iotbx { namespace mtz {
     const char* column_label_phi)
   {
     int n_refl = n_reflections();
-    complex_group result(n_refl);
+    complex_group result(false, n_refl);
     hkl_columns hkl = get_hkl_columns();
     column data_ampl(get_column(column_label_ampl));
     column data_phi(get_column(column_label_phi));
@@ -586,7 +586,7 @@ namespace iotbx { namespace mtz {
     const char* column_label_phi_minus)
   {
     int n_refl = n_reflections();
-    complex_group result(n_refl);
+    complex_group result(true, n_refl);
     hkl_columns hkl = get_hkl_columns();
     column data_ampl_plus(get_column(column_label_ampl_plus));
     column data_phi_plus(get_column(column_label_phi_plus));

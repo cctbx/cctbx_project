@@ -53,12 +53,15 @@ namespace iotbx { namespace mtz {
   {
     data_group() {}
 
-    data_group(std::size_t size)
+    data_group(bool anomalous_flag_, std::size_t size)
+    :
+      anomalous_flag(anomalous_flag_)
     {
       indices.reserve(size);
       data.reserve(size);
     }
 
+    bool anomalous_flag;
     af::shared<cctbx::miller::index<> > indices;
     af::shared<DataType> data;
   };
@@ -71,9 +74,9 @@ namespace iotbx { namespace mtz {
   {
     observations_group() {}
 
-    observations_group(std::size_t size)
+    observations_group(bool anomalous_flag, std::size_t size)
     :
-      real_group(size)
+      real_group(anomalous_flag, size)
     {
       sigmas.reserve(size);
     }
@@ -85,12 +88,15 @@ namespace iotbx { namespace mtz {
   {
     complex_group() {}
 
-    complex_group(std::size_t size)
+    complex_group(bool anomalous_flag_, std::size_t size)
+    :
+      anomalous_flag(anomalous_flag_)
     {
       indices.reserve(size);
       data.reserve(size);
     }
 
+    bool anomalous_flag;
     af::shared<cctbx::miller::index<> > indices;
     af::shared<std::complex<double> > data;
   };
