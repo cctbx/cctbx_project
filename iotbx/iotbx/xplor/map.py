@@ -29,6 +29,8 @@ That is:
 """
 
 import iotbx.xplor.ext as ext
+from cctbx import miller
+from cctbx import maptbx
 from cctbx import uctbx
 from cctbx.array_family import flex
 from libtbx.itertbx import count
@@ -54,8 +56,9 @@ class gridding:
     return flex.grid(self.first, self.last, 0)
 
   def is_compatible_flex_grid(self, flex_grid):
-    if (self.first != self.first): return 00000
-    if (self.last != self.last): return 00000
+    self_as_flex_grid = self.as_flex_grid()
+    if (flex_grid.origin() != self_as_flex_grid.origin()): return 00000
+    if (flex_grid.last() != self_as_flex_grid.last()): return 00000
     return 0001
 
 class reader:
@@ -106,3 +109,34 @@ def writer(file_name, title_lines, unit_cell, gridding, data,
     data=data,
     average=average,
     standard_deviation=standard_deviation)
+
+def cctbx_miller_fft_map_as_xplor_map(
+      self,
+      file_name,
+      title_lines=["cctbx.miller.fft_map"],
+      gridding_first=None,
+      gridding_last=None,
+      average=None,
+      standard_deviation=None):
+  if (gridding_first is None): gridding_first = (0,0,0)
+  if (gridding_last is None): gridding_last = [n-1 for n in self.n_real()]
+  gridding_ = gridding(
+    n=self.n_real(),
+    first=gridding_first,
+    last=gridding_last)
+  data = self.real_map_unpadded()
+  if (average is None or standard_deviation is None):
+    statistics = maptbx.statistics(data)
+    if (average is None): average = statistics.mean()
+    if (standard_deviation is None): standard_deviation = statistics.sigma()
+  writer(
+    file_name=file_name,
+    title_lines=title_lines,
+    unit_cell=self.unit_cell(),
+    gridding=gridding_,
+    data=data,
+    average=average,
+    standard_deviation=standard_deviation)
+
+# injecting
+miller.fft_map.as_xplor_map = cctbx_miller_fft_map_as_xplor_map
