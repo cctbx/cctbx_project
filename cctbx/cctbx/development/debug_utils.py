@@ -54,17 +54,22 @@ def get_compatible_unit_cell(SgInfo, Volume):
 def generate_positions(UnitCell, SgOps, N,
                        min_mate_distance = 1.5,
                        min_hetero_distance = 1.5,
-                       general_positions_only = 0):
+                       general_positions_only = 0,
+                       grid = None,
+                       N_grid = 0):
+  max_back_track = 100
+  max_placement_trials = 100
   SnapParameters = sgtbx.SpecialPositionSnapParameters(
     UnitCell, SgOps, 1, min_mate_distance)
-  max_back_track = 100
   for back_track in xrange(max_back_track):
     Positions = []
     for i in xrange(N):
-      max_placement_trials = 100
       have_position = 0
       for t in xrange(max_placement_trials):
-        X = (random.random(), random.random(), random.random())
+        if (not grid or i < N - N_grid):
+          X = (random.random(), random.random(), random.random())
+        else:
+          X = [random.randrange(g) / float(g) for g in grid]
         SS = sgtbx.SiteSymmetry(SnapParameters, X)
         if (general_positions_only and SS.M() != SgOps.OrderZ()): continue
         SS.expand()
@@ -117,7 +122,9 @@ class random_structure:
                volume_per_atom=1000.,
                min_distance=3.0,
                general_positions_only=0,
-               anisotropic_displacement_parameters=0):
+               anisotropic_displacement_parameters=0,
+               grid = None,
+               N_grid = 0):
     self.SgInfo = SgInfo
     self.UnitCell = get_compatible_unit_cell(
       self.SgInfo,
@@ -127,7 +134,9 @@ class random_structure:
       self.UnitCell, self.SgInfo.SgOps(), len(Elements),
       min_mate_distance = min_distance,
       min_hetero_distance = min_distance,
-      general_positions_only = general_positions_only)
+      general_positions_only = general_positions_only,
+      grid = grid,
+      N_grid = N_grid)
     n = 0
     for Elem, Pos in zip(Elements, Positions):
       n += 1
