@@ -66,12 +66,14 @@ def run():
     print "  Symmetry-adapted cell:", subsym.unit_cell()
     cb_op_niggli_ref = subsym.space_group_info().type().cb_op()
     ref_subsym = subsym.change_basis(cb_op_niggli_ref)
-    ref_subsym.space_group_info().show_summary(
+    cb_op_best_cell = ref_subsym.change_of_basis_op_to_best_cell()
+    best_subsym = ref_subsym.change_basis(cb_op_best_cell)
+    best_subsym.space_group_info().show_summary(
       prefix="   Conventional setting: ")
-    print "              Unit cell:", ref_subsym.unit_cell()
-    cb_op_inp_ref = cb_op_niggli_ref * cb_op_inp_niggli
-    print "        Change of basis:", cb_op_inp_ref.c()
-    print "                Inverse:", cb_op_inp_ref.c_inv()
+    print "              Unit cell:", best_subsym.unit_cell()
+    cb_op_inp_best = cb_op_best_cell * cb_op_niggli_ref * cb_op_inp_niggli
+    print "        Change of basis:", cb_op_inp_best.c()
+    print "                Inverse:", cb_op_inp_best.c_inv()
     print
 
 if (__name__ == "__main__"):
