@@ -9,8 +9,6 @@
  */
 
 #include <boost/python/cross_module.hpp>
-#include <cctbx/bpl_utils.h>
-#include <cctbx/carray_bpl.h>
 #include <cctbx/miller_bpl.h>
 #include <cctbx/adptbx.h>
 
@@ -238,7 +236,7 @@ BOOST_PYTHON_MODULE_INIT(adptbx)
       Revision.substr(11, Revision.size() - 11 - 2))), "__version__");
 
   python::import_converters<uctbx::UnitCell>
-  UnitCell_converters("cctbx.uctbx", "UnitCell");
+  py_UnitCell("cctbx.uctbx", "UnitCell");
 
   class_builder<Eigensystem<double> >
   py_Eigensystem(this_module, "Eigensystem");

@@ -1,3 +1,4 @@
+from cctbx.arraytbx import std_vector
 from cctbx import uctbx
 from cctbx import sgtbx
 from cctbx.eltbx.caasf_wk1995 import CAASF_WK1995
@@ -6,7 +7,7 @@ def OneCycle():
   UnitCell = uctbx.UnitCell((10.002,10.002,34.141,90.0,90.0,90.0))
   SgOps = sgtbx.SpaceGroup(sgtbx.SpaceGroupSymbols("P42/NCM:2"))
   MillerIndices = sftbx.BuildMillerIndices(UnitCell, SgOps.Info(), 5.0)
-  Sites = sftbx.vector_of_XrayScatterer()
+  Sites = std_vector.XrayScatterer()
   for Label, Coordinates in (
   ("SI1",       (0.09714,   0.70886,   0.90221)),
   ("SI2",       (0.04299,   0.04299,   0.45595)),

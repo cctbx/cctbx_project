@@ -777,6 +777,29 @@ namespace cctbx { namespace sgtbx {
     return SpaceGroupInfo(*this);
   }
 
+  //! Expand an array of Miller indices to P1 symmetry.
+  /*! The symmetry operations are applied to each element
+      of the input array in. The unique symmetrically
+      equivalent indices are appended to the output array out.
+      <p>
+      See also: class SymEquivMillerIndices
+   */
+  template <typename MillerIndexVectorType>
+  void
+  expand_to_p1(
+    const SpaceGroup& SgOps,
+    const MillerIndexVectorType& in,
+    MillerIndexVectorType& out,
+    bool friedel_flag = false)
+  {
+    for(std::size_t i_in = 0; i_in < in.size(); i_in++) {
+      SymEquivMillerIndices semi = SgOps.getEquivMillerIndices(in[i_in]);
+      for (int i_semi = 0; i_semi < semi.M(friedel_flag); i_semi++) {
+        out.push_back(semi(i_semi));
+      }
+    }
+  }
+
 }} // namespace cctbx::sgtbx
 
 #endif // CCTBX_SGTBX_GROUPS_H

@@ -11,6 +11,7 @@
 #ifndef CCTBX_COORDINATES_BPL_H
 #define CCTBX_COORDINATES_BPL_H
 
+#include <cctbx/carray_bpl.h>
 #include <cctbx/coordinates.h>
 
 BOOST_PYTHON_BEGIN_CONVERSION_NAMESPACE

@@ -120,44 +120,72 @@ namespace cctbx {
   };
 
   template <typename ValueType>
-  void
-  wrap_shared_storage(boost::python::module_builder& module,
-                      const std::string& python_name,
-                      const cctbx::type_holder<ValueType>)
-  {
+  struct wrap_shared_storage_3d {
+    static
+    boost::python::class_builder<
+      cctbx::shared_storage_nd<ValueType, cctbx::dimension<3> > >
+    run(
+      boost::python::module_builder& module,
+      const std::string& python_name,
+      boost::python::class_builder<
+        cctbx::shared_storage<ValueType>,
+        shared_storage_wrapper<ValueType> > py_ss)
+    {
+      boost::python::class_builder<
+        cctbx::shared_storage_nd<ValueType, cctbx::dimension<3> > >
+      py_ss_3d(module, python_name.c_str());
+      boost::python::export_converters(py_ss_3d);
+
+      py_ss_3d.declare_base(py_ss, boost::python::without_downcast);
+
+      py_ss_3d.def(boost::python::constructor<>());
+      py_ss_3d.def(boost::python::constructor<const cctbx::dimension<3>&>());
+      py_ss_3d.def(
+        &cctbx::shared_storage_nd<ValueType, cctbx::dimension<3> >::dim, "dim");
+      py_ss_3d.def(&shared_storage_access<ValueType>::as_1d, "as_1d");
+
+      return py_ss_3d;
+    }
+  };
+
+  template <typename ValueType>
+  struct wrap_shared_storage {
+    static
     boost::python::class_builder<
       cctbx::shared_storage<ValueType>,
       shared_storage_wrapper<ValueType> >
-    py_ss(module, python_name.c_str());
-    boost::python::export_converters(py_ss);
+    run(
+      boost::python::module_builder& module,
+      const std::string& python_name)
+    {
+      boost::python::class_builder<
+        cctbx::shared_storage<ValueType>,
+        shared_storage_wrapper<ValueType> >
+      py_ss(module, python_name.c_str());
+      boost::python::export_converters(py_ss);
 
-    boost::python::class_builder<
-      cctbx::shared_storage_nd<ValueType, cctbx::dimension<3> > >
-    py_ss_3d(module, (python_name + "_3d").c_str());
-    boost::python::export_converters(py_ss_3d);
+      py_ss.def(boost::python::constructor<>());
+      py_ss.def(boost::python::constructor<std::size_t>());
+      py_ss.def(boost::python::constructor<
+        const cctbx::shared_storage_handle_type&, std::size_t>());
+      py_ss.def(boost::python::constructor<boost::python::tuple>());
+      py_ss.def(&cctbx::shared_storage<ValueType>::size, "size");
+      py_ss.def(&cctbx::shared_storage<ValueType>::size, "__len__");
+      py_ss.def(&shared_storage_access<ValueType>::getitem, "__getitem__");
+      py_ss.def(&shared_storage_access<ValueType>::setitem, "__setitem__");
+      py_ss.def(&cctbx::shared_storage<ValueType>::deepcopy, "deepcopy");
+      py_ss.def(&shared_storage_access<ValueType>::handle, "handle");
+      py_ss.def(&shared_storage_access<ValueType>::fill, "fill");
+      py_ss.def(&shared_storage_access<ValueType>::as_tuple, "as_tuple");
 
-    py_ss_3d.declare_base(py_ss, boost::python::without_downcast);
+#if !((defined(BOOST_MSVC) && BOOST_MSVC <= 1200))
+      wrap_shared_storage_3d<ValueType>::run(
+        module, python_name + "_3d", py_ss);
+#endif
 
-    py_ss.def(boost::python::constructor<>());
-    py_ss.def(boost::python::constructor<std::size_t>());
-    py_ss.def(boost::python::constructor<
-      const cctbx::shared_storage_handle_type&, std::size_t>());
-    py_ss.def(boost::python::constructor<boost::python::tuple>());
-    py_ss.def(&cctbx::shared_storage<ValueType>::size, "size");
-    py_ss.def(&cctbx::shared_storage<ValueType>::size, "__len__");
-    py_ss.def(&shared_storage_access<ValueType>::getitem, "__getitem__");
-    py_ss.def(&shared_storage_access<ValueType>::setitem, "__setitem__");
-    py_ss.def(&cctbx::shared_storage<ValueType>::deepcopy, "deepcopy");
-    py_ss.def(&shared_storage_access<ValueType>::handle, "handle");
-    py_ss.def(&shared_storage_access<ValueType>::fill, "fill");
-    py_ss.def(&shared_storage_access<ValueType>::as_tuple, "as_tuple");
-
-    py_ss_3d.def(boost::python::constructor<>());
-    py_ss_3d.def(boost::python::constructor<const cctbx::dimension<3>&>());
-    py_ss_3d.def(
-      &cctbx::shared_storage_nd<ValueType, cctbx::dimension<3> >::dim, "dim");
-    py_ss_3d.def(&shared_storage_access<ValueType>::as_1d, "as_1d");
-  }
+      return py_ss;
+    }
+  };
 
 } // namespace cctbx
 

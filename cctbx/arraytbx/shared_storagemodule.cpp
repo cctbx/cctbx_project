@@ -9,7 +9,6 @@
  */
 
 #include <boost/python/cross_module.hpp>
-#include <cctbx/basic/meta.h>
 #include <cctbx/shared_storage_bpl.h>
 
 namespace {
@@ -25,8 +24,7 @@ namespace {
     cctbx::wrap_shared_storage_handle(this_module);
 
 #define WRAP_TYPE(python_name, ss_value_type) \
-    cctbx::wrap_shared_storage( \
-      this_module, python_name, cctbx::type_holder<ss_value_type >())
+    cctbx::wrap_shared_storage<ss_value_type >::run(this_module, python_name)
 
     WRAP_TYPE("int", int);
     WRAP_TYPE("long", long);

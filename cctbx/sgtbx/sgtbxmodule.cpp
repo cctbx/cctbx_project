@@ -19,7 +19,6 @@
 #include <cctbx/sgtbx/miller_asu.h>
 #include <cctbx/sgtbx/seminvariant.h>
 #include <boost/python/cross_module.hpp>
-#include <cctbx/carray_bpl.h>
 #include <cctbx/coordinates_bpl.h>
 #include <cctbx/miller_bpl.h>
 
@@ -270,15 +269,6 @@ namespace {
     return SgInfo.BuildHallSymbol(TidyCBOp);
   }
 
-  RTMx std_vector_RTMx_getitem(const std::vector<RTMx>& v, std::size_t key) {
-    if (key >= v.size()) {
-      PyErr_SetString(PyExc_IndexError,
-                      "std::vector<RTMx>: index out of range");
-      throw boost::python::error_already_set();
-    }
-    return v[key];
-  }
-
   int PhaseRestriction_HT_0(const PhaseRestriction& PR) {
     return PR.HT();
   }
@@ -502,6 +492,23 @@ namespace {
     return ssVM.refine_gridding(grid);
   }
 
+  void
+  py_expand_to_p1_4(
+    const SpaceGroup& SgOps,
+    const std::vector<Miller::Index>& in,
+    std::vector<Miller::Index>& out,
+    bool friedel_flag) {
+    expand_to_p1(SgOps, in, out, friedel_flag);
+  }
+  void
+  py_expand_to_p1_3(
+    const SpaceGroup& SgOps,
+    const std::vector<Miller::Index>& in,
+    std::vector<Miller::Index>& out,
+    bool friedel_flag) {
+    expand_to_p1(SgOps, in, out);
+  }
+
 } // namespace <anonymous>
 
 namespace boost { namespace python {
@@ -529,6 +536,15 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
   this_module.add(ref(to_python(
       Revision.substr(11, Revision.size() - 11 - 2))), "__version__");
 
+  python::import_converters<uctbx::UnitCell>
+  py_UnitCell("cctbx.uctbx", "UnitCell");
+
+  python::import_converters<std::vector<Miller::Index> >
+  py_std_vector_Miller_Index("cctbx.arraytbx.std_vector", "Miller_Index");
+
+  python::import_converters<std::vector<RTMx> >
+  py_std_vector_RTMx("cctbx.arraytbx.std_vector", "RTMx");
+
   this_module.add(ref(to_python(STBF)), "STBF");
   this_module.add(ref(to_python(CRBF)), "CRBF");
   this_module.add(ref(to_python(CTBF)), "CTBF");
@@ -547,6 +563,7 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
   py_TranslationComponents(this_module, "TranslationComponents");
   class_builder<RTMx>
   py_RTMx(this_module, "RTMx");
+  python::export_converters(py_RTMx);
   class_builder<ChOfBasisOp>
   py_ChOfBasisOp(this_module, "ChOfBasisOp");
   class_builder<Miller::SymEquivIndex>
@@ -558,8 +575,6 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
   class_builder<SpaceGroup>
   py_SpaceGroup(this_module, "SpaceGroup");
   python::export_converters(py_SpaceGroup);
-  class_builder<std::vector<RTMx> >
-  py_std_vector_RTMx(this_module, "std_vector_RTMx");
   class_builder<SpaceGroupInfo>
   py_SpaceGroupInfo(this_module, "SpaceGroupInfo");
   python::export_converters(py_SpaceGroupInfo);
@@ -595,9 +610,6 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
   py_Miller_AsymIndex(this_module, "Miller_AsymIndex");
   class_builder<StructureSeminvariant>
   py_StructureSeminvariant(this_module, "StructureSeminvariant");
-
-  python::import_converters<uctbx::UnitCell>
-  UnitCell_converters("cctbx.uctbx", "UnitCell");
 
   py_Miller_AsymIndex.declare_base(
     py_Miller_SymEquivIndex, python::without_downcast);
@@ -839,11 +851,6 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
   py_SpaceGroupInfo.def(&SpaceGroupInfo::BuildLookupSymbol,
                                         "BuildLookupSymbol");
 
-  py_std_vector_RTMx.def(constructor<>());
-  py_std_vector_RTMx.def(&std::vector<RTMx>::size, "size");
-  py_std_vector_RTMx.def(&std::vector<RTMx>::size, "__len__");
-  py_std_vector_RTMx.def(std_vector_RTMx_getitem, "__getitem__");
-
   py_WyckoffPosition.def(constructor<>());
   py_WyckoffPosition.def(&WyckoffPosition::M, "M");
   py_WyckoffPosition.def(&WyckoffPosition::Letter, "Letter");
@@ -1042,4 +1049,7 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
   py_StructureSeminvariant.def(
     StructureSeminvariant_refine_gridding_1, "refine_gridding");
   sgtbx::sanity_check();
+
+  this_module.def(py_expand_to_p1_4, "expand_to_p1");
+  this_module.def(py_expand_to_p1_3, "expand_to_p1");
 }
