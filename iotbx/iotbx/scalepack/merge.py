@@ -107,12 +107,13 @@ class reader:
                              info_prefix=""):
     return [self.as_miller_array(crystal_symmetry,force_symmetry,info_prefix)]
 
-def format_f8_1_or_i8(value):
+def format_f8_1_or_i8(h, label, value):
   if (value < 1.e6): return "%8.1f" % value
   result = "%8d" % iround(value)
   if (len(result) > 8):
     raise ValueError(
-      "Value is too large for scalepack merge format: " + str(value))
+      "Value is too large for scalepack merge format: hkl=%s, %s=%.6g" % (
+        str(h).replace(" ",""), label, value))
   return result
 
 def write(file_name=None, file_object=None, miller_array=None,
@@ -139,8 +140,8 @@ def write(file_name=None, file_object=None, miller_array=None,
                      miller_array.data(),
                      miller_array.sigmas()):
       print >> file_object, ((("%4d"*3) % h)
-        + format_f8_1_or_i8(f)
-        + format_f8_1_or_i8(s))
+        + format_f8_1_or_i8(h, "intensity", f)
+        + format_f8_1_or_i8(h, "sigma", s))
   else:
     asu, matches = miller_array.match_bijvoet_mates()
     sel_pairs_plus = matches.pairs_hemisphere_selection("+")
@@ -153,26 +154,26 @@ def write(file_name=None, file_object=None, miller_array=None,
     for h,fp,sp,fm,sm in zip(indices, data_plus, sigmas_plus,
                                       data_minus, sigmas_minus):
       print >> file_object, ((("%4d"*3) % h)
-        + format_f8_1_or_i8(fp)
-        + format_f8_1_or_i8(sp)
-        + format_f8_1_or_i8(fm)
-        + format_f8_1_or_i8(sm))
+        + format_f8_1_or_i8(h, "intensity", fp)
+        + format_f8_1_or_i8(h, "sigma", sp)
+        + format_f8_1_or_i8(h, "intensity", fm)
+        + format_f8_1_or_i8(h, "sigma", sm))
     sel_singles = matches.singles_hemisphere_selection("+")
     indices = asu.indices().select(sel_singles)
     data = asu.data().select(sel_singles)
     sigmas = asu.sigmas().select(sel_singles)
     for h,f,s in zip(indices, data, sigmas):
       print >> file_object, ((("%4d"*3) % h)
-        + format_f8_1_or_i8(f)
-        + format_f8_1_or_i8(s))
+        + format_f8_1_or_i8(h, "intensity", f)
+        + format_f8_1_or_i8(h, "sigma", s))
     sel_singles = matches.singles_hemisphere_selection("-")
     indices = -asu.indices().select(sel_singles)
     data = asu.data().select(sel_singles)
     sigmas = asu.sigmas().select(sel_singles)
     for h,f,s in zip(indices, data, sigmas):
       print >> file_object, ((("%4d"*3) % h) + (" "*16)
-        + format_f8_1_or_i8(f)
-        + format_f8_1_or_i8(s))
+        + format_f8_1_or_i8(h, "intensity", f)
+        + format_f8_1_or_i8(h, "sigma", s))
 
 def run(args):
   to_pickle = "--pickle" in args
