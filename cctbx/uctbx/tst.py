@@ -112,7 +112,3 @@ print pstr
 up = pickle.loads(pstr)
 print u
 print up
-
-print u.TemperatureFactorU(u.Q((7, 8, 9)) / 4, 0.025)
-print u.TemperatureFactorU((7, 8, 9), 0.025)
-print u.TemperatureFactorU((7, 8, 9), (0.1, 0.2, 0.3, -0.04, 0.05, -0.06))

@@ -27,6 +27,7 @@
 #include <cctbx/sgtbx/miller.h>
 #include <cctbx/sgtbx/tables.h>
 #include <cctbx/uctbx.h>
+#include <cctbx/adptbx.h>
 
 namespace sgtbx {
 
@@ -405,7 +406,7 @@ namespace sgtbx {
       getMasterIndex(const Miller::Index& H, const Miller::Vec3& CutP,
                      bool Pretty = false) const;
 
-      //! Structure factor without temperature factor.
+      //! Structure factor without Debye-Waller factor.
       /*! XXX
        */
       template <class FloatType>
@@ -433,7 +434,7 @@ namespace sgtbx {
         }
         return F;
       }
-      //! Structure factor with isotropic temperature factor.
+      //! Structure factor with isotropic Debye-Waller factor given Uiso.
       /*! XXX
        */
       template <class FloatType>
@@ -443,17 +444,30 @@ namespace sgtbx {
                       const cctbx::fractional<FloatType> X,
                       double Uiso) const
       {
-        return StructureFactor(H, X) * uc.TemperatureFactorU(H, Uiso);
+        return
+          StructureFactor(H, X) * adptbx::DebyeWallerFactorUiso(uc, H, Uiso);
       }
-      //! Structure factor with anisotropic temperature factor.
+      //! Structure factor with isotropic Debye-Waller factor given Uiso.
       /*! XXX
        */
       template <class FloatType>
       std::complex<FloatType>
-      StructureFactor(const uctbx::UnitCell& uc,
+      StructureFactor(double stol2,
                       const Miller::Index& H,
                       const cctbx::fractional<FloatType> X,
-                      const boost::array<FloatType, 6>& uij) const
+                      double Uiso) const
+      {
+        return
+          StructureFactor(H, X) * adptbx::DebyeWallerFactorUiso(stol2, Uiso);
+      }
+      //! Structure factor with anisotropic Debye-Waller factor given Ustar.
+      /*! XXX
+       */
+      template <class FloatType>
+      std::complex<FloatType>
+      StructureFactor(const Miller::Index& H,
+                      const cctbx::fractional<FloatType> X,
+                      const boost::array<FloatType, 6>& Ustar) const
       {
         using cctbx::constants::pi;
         std::complex<FloatType> F(0., 0.);
@@ -473,7 +487,7 @@ namespace sgtbx {
               Fs += std::complex<FloatType>(std::cos(phase), std::sin(phase));
             }
           }
-          F += Fs * uc.TemperatureFactorU(HR, uij);
+          F += Fs * adptbx::DebyeWallerFactorUstar(HR, Ustar);
         }
         return F;
       }

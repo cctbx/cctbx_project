@@ -150,6 +150,22 @@ namespace uctbx {
       //! @name Query parameters and volume.
       //@{
       uc_params getParameters(bool reciprocal = false) const;
+      inline const Vec3& getLen(bool reciprocal = false) const {
+        if (reciprocal == false) return Len;
+        /* else */               return R_Len;
+      }
+      inline const Vec3& getAng(bool reciprocal = false) const {
+        if (reciprocal == false) return Ang;
+        /* else */               return R_Ang;
+      }
+      inline const Vec3& get_sinAng(bool reciprocal = false) const {
+        if (reciprocal == false) return sinAng;
+        /* else */               return R_sinAng;
+      }
+      inline const Vec3& get_cosAng(bool reciprocal = false) const {
+        if (reciprocal == false) return cosAng;
+        /* else */               return R_cosAng;
+      }
       inline const Mx33& getMetricalMatrix(bool reciprocal = false) const {
         if (reciprocal == false) return G;
         /* else */               return R_G;
@@ -164,8 +180,10 @@ namespace uctbx {
 
       //! @name Test equality.
       //@{
-      //! Test the equality of two Unit Cell instances.  Test the fractional
-      //! difference of each of the six parameters and compare to epsilon
+      //! Test the equality of two Unit Cell instances.
+      /*! Test the fractional difference of each of the six parameters
+          and compare to epsilon.
+       */
       bool isEqual(const UnitCell& uc, const double& epsilon) const;
       //@}
 
@@ -231,7 +249,7 @@ namespace uctbx {
       //! Compute the maximum Miller indices for a given minimum d-spacing.
       Miller::Index MaxMillerIndices(double dmin) const;
       //! Inverse operation of MaxMiller indices.
-      double MaxResolution(Miller::Index) const;
+      double MaxResolution(const Miller::Index& MIx) const;
       //! d-spacing measure Q = 1 / d^2 = s^2 = (2*sin(theta)/lambda)^2.
       inline double Q(const Miller::Index& MIx) const
       {
@@ -247,146 +265,6 @@ namespace uctbx {
       inline double s(const Miller::Index& MIx) const { return Q_as_s(Q(MIx));}
       //! d-spacing measure d = 1 / s = lamda/(2*sin(theta))
       inline double d(const Miller::Index& MIx) const { return Q_as_d(Q(MIx));}
-      //@}
-
-      //! @name Temperature factors.
-      /*! Literature:
-          Jan Drenth,
-          Principles of Protein X-Ray Crystallography,
-          2nd edition, 1999, section 4.9 (pp. 89-92)
-       */
-      //@{
-      //! Convert isotropic temperature factor coefficient Uiso -> Biso.
-      inline double Uiso_as_Biso(double Uiso) const
-      {
-        using cctbx::constants::pi;
-        return Uiso * (8. * pi * pi);
-      }
-      //! Convert isotropic temperature factor coefficient Biso -> Uiso.
-      inline double Biso_as_Uiso(double Biso) const
-      {
-        using cctbx::constants::pi;
-        return Biso / (8. * pi * pi);
-      }
-      //! Convert anisotropic temperature factor coefficients Uij -> Bij.
-      template <class FloatType>
-      boost::array<FloatType, 6>
-      Uij_as_Bij(const boost::array<FloatType, 6>& Uij) const
-      {
-        using cctbx::constants::pi;
-        const FloatType TpiS = 2. * pi * pi;
-        boost::array<FloatType, 6> Bij;
-        Bij[0] = Uij[0] * (TpiS * (R_Len[0] * R_Len[0]));
-        Bij[1] = Uij[1] * (TpiS * (R_Len[1] * R_Len[1]));
-        Bij[2] = Uij[2] * (TpiS * (R_Len[2] * R_Len[2]));
-        Bij[3] = Uij[3] * (TpiS * (R_Len[0] * R_Len[1]));
-        Bij[4] = Uij[4] * (TpiS * (R_Len[0] * R_Len[2]));
-        Bij[5] = Uij[5] * (TpiS * (R_Len[1] * R_Len[2]));
-        return Bij;
-      }
-      //! Convert anisotropic temperature factor coefficients Bij -> Uij.
-      template <class FloatType>
-      boost::array<FloatType, 6>
-      Bij_as_Uij(const boost::array<FloatType, 6>& Bij) const
-      {
-        using cctbx::constants::pi;
-        const FloatType TpiS = 2. * pi * pi;
-        boost::array<FloatType, 6> Uij;
-        Uij[0] = Bij[0] / (TpiS * (R_Len[0] * R_Len[0]));
-        Uij[1] = Bij[1] / (TpiS * (R_Len[1] * R_Len[1]));
-        Uij[2] = Bij[2] / (TpiS * (R_Len[2] * R_Len[2]));
-        Uij[3] = Bij[3] / (TpiS * (R_Len[0] * R_Len[1]));
-        Uij[4] = Bij[4] / (TpiS * (R_Len[0] * R_Len[2]));
-        Uij[5] = Bij[5] / (TpiS * (R_Len[1] * R_Len[2]));
-        return Uij;
-      }
-      //! Convert Uij -> Uiso.
-      template <class FloatType>
-      inline FloatType
-      Uij_as_Uiso(const boost::array<FloatType, 6>& Uij) const
-      {
-        FloatType Uiso = 0.;
-        FloatType LRL[3];
-        for(std::size_t i=0;i<3;i++) {
-          LRL[i] = Len[i] * R_Len[i];
-          Uiso += Uij[i] * LRL[i] * LRL[i];
-        }
-        Uiso += Uij[3] * 2. * LRL[0] * LRL[1] * cosAng[2];
-        Uiso += Uij[4] * 2. * LRL[0] * LRL[2] * cosAng[1];
-        Uiso += Uij[5] * 2. * LRL[1] * LRL[2] * cosAng[0];
-        return Uiso / 3.;
-      }
-      //! Convert Uiso -> Uij.
-      template <class FloatType>
-      inline boost::array<FloatType, 6>
-      Uiso_as_Uij(const FloatType& Uiso) const
-      {
-        boost::array<FloatType, 6> Uij;
-        Uij.assign(Uiso);
-        Uij[3] *= R_cosAng[2];
-        Uij[4] *= R_cosAng[1];
-        Uij[5] *= R_cosAng[0];
-        return Uij;
-      }
-      //! Isotropic temperature factor given (sin(theta)/lambda)^2 and Biso.
-      inline double
-      TemperatureFactorB(double stol2,
-                         double Biso) const
-      {
-        using cctbx::constants::pi;
-        return std::exp(-Biso * stol2);
-      }
-      //! Isotropic temperature factor given (sin(theta)/lambda)^2 and Uiso.
-      inline double
-      TemperatureFactorU(double stol2,
-                         double Uiso) const
-      {
-        return TemperatureFactorB(stol2, Uiso_as_Biso(Uiso));
-      }
-      //! Isotropic temperature factor given Miller index and Biso.
-      inline double
-      TemperatureFactorB(const Miller::Index& MIx,
-                         double Biso) const
-      {
-        return TemperatureFactorB(Q(MIx) / 4., Biso);
-      }
-      //! Isotropic temperature factor given Miller index and Uiso.
-      inline double
-      TemperatureFactorU(const Miller::Index& MIx,
-                         double Uiso) const
-      {
-        return TemperatureFactorB(MIx, Uiso_as_Biso(Uiso));
-      }
-      //! Anisotropic temperature factor given coefficients Bij.
-      template <class FloatType>
-      inline FloatType
-      TemperatureFactorB(const Miller::Index& MIx,
-                         const boost::array<FloatType, 6>& Bij) const
-      {
-        using cctbx::constants::pi;
-        return std::exp(-(
-            (MIx[0] * MIx[0]) * Bij[0]
-          + (MIx[1] * MIx[1]) * Bij[1]
-          + (MIx[2] * MIx[2]) * Bij[2]
-          + (2 * MIx[0] * MIx[1]) * Bij[3]
-          + (2 * MIx[0] * MIx[2]) * Bij[4]
-          + (2 * MIx[1] * MIx[2]) * Bij[5]));
-      }
-      //! Anisotropic temperature factor given coefficients Uij.
-      template <class FloatType>
-      inline FloatType
-      TemperatureFactorU(const Miller::Index& MIx,
-                         const boost::array<FloatType, 6>& Uij) const
-      {
-        using cctbx::constants::pi;
-        return std::exp(FloatType(-2. * pi * pi) * (
-            (MIx[0] * MIx[0]) * (R_Len[0] * R_Len[0]) * Uij[0]
-          + (MIx[1] * MIx[1]) * (R_Len[1] * R_Len[1]) * Uij[1]
-          + (MIx[2] * MIx[2]) * (R_Len[2] * R_Len[2]) * Uij[2]
-          + (2 * MIx[0] * MIx[1]) * (R_Len[0] * R_Len[1]) * Uij[3]
-          + (2 * MIx[0] * MIx[2]) * (R_Len[0] * R_Len[2]) * Uij[4]
-          + (2 * MIx[1] * MIx[2]) * (R_Len[1] * R_Len[2]) * Uij[5]));
-      }
       //@}
 
       //! @name Stream I/O.

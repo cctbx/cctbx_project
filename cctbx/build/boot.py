@@ -25,7 +25,7 @@ if (__name__ == "__main__"):
     print "Error: Must run under Windows!"
     sys.exit(1)
   if (len(sys.argv) == 1):
-    for subdir in ("eltbx", "sgtbx", "uctbx", "examples/cpp"):
+    for subdir in ("eltbx", "sgtbx", "uctbx", "adptbx", "examples/cpp"):
       create_makefile(path_cctbx, cf, subdir)
   else:
     for subdir in sys.argv[1:]:
