@@ -869,6 +869,58 @@ namespace cctbx { namespace sgtbx {
       std::vector<fractional<FloatType> > m_Coordinates;
   };
 
+  template <typename FloatType>
+  class shortest_difference_info
+  {
+    typedef fractional<FloatType> coor_type;
+    public:
+      shortest_difference_info() {}
+
+      shortest_difference_info(
+        uctbx::UnitCell const& ucell,
+        SpaceGroup const& sgops,
+        fractional<FloatType> const& coor_ref,
+        fractional<FloatType> const& coor_cmp)
+      {
+        int s_i_sym_op;
+        coor_type s_unit_shifts;
+        FloatType s_dist_sq = 0;
+        for(int i=0;i<sgops.OrderZ();i++) {
+          RTMx sym_op = sgops(i);
+          coor_type diff_raw = sym_op * coor_cmp - coor_ref;
+          coor_type diff_mod = diff_raw.modShort();
+          FloatType dist_sq = ucell.Length2(diff_mod);
+          if (s_dist_sq > dist_sq || i == 0) {
+            s_i_sym_op = i;
+            s_unit_shifts = diff_mod - diff_raw;
+            s_dist_sq = dist_sq;
+          }
+        }
+        sym_op_ = sgops(s_i_sym_op) + TrVec(
+          cctbx::detail::getUnitShifts(s_unit_shifts), 1).scale(sgops.TBF());
+        diff_ = sym_op_ * coor_cmp - coor_ref;
+        dist_sq_ = ucell.Length2(diff_);
+      }
+
+      RTMx const& sym_op() const { return sym_op_; }
+
+      fractional<FloatType> const& diff() const { return diff_; }
+
+      FloatType const& dist_sq() const { return dist_sq_; }
+
+      FloatType dist() const { return std::sqrt(dist_sq_); }
+
+      fractional<FloatType> apply(fractional<FloatType> const& coor_cmp)
+      {
+        return sym_op_ * coor_cmp;
+      }
+
+    private:
+      RTMx sym_op_;
+      coor_type diff_;
+      FloatType dist_sq_;
+  };
+
 }} // namespace cctbx::sgtbx
 
 #endif // CCTBX_SGTBX_COORDINATES_H

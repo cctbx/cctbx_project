@@ -501,6 +501,8 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
   python::export_converters(py_SiteSymmetry);
   class_builder<SymEquivCoordinates<double> >
   py_SymEquivCoordinates(this_module, "SymEquivCoordinates");
+  class_builder<shortest_difference_info<double> >
+  py_shortest_difference_info(this_module, "shortest_difference_info");
   class_builder<BrickPoint>
   py_BrickPoint(this_module, "BrickPoint");
   class_builder<Brick>
@@ -839,6 +841,23 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
   py_SymEquivCoordinates.def(
     &SymEquivCoordinates<double>::StructureFactor,
                                  "StructureFactor");
+
+  py_shortest_difference_info.def(constructor<>());
+  py_shortest_difference_info.def(constructor<
+    uctbx::UnitCell const&,
+    SpaceGroup const&,
+    fractional<double> const&,
+    fractional<double> const&>());
+  py_shortest_difference_info.def(
+    &shortest_difference_info<double>::sym_op, "sym_op");
+  py_shortest_difference_info.def(
+    &shortest_difference_info<double>::diff, "diff");
+  py_shortest_difference_info.def(
+    &shortest_difference_info<double>::dist_sq, "dist_sq");
+  py_shortest_difference_info.def(
+    &shortest_difference_info<double>::dist, "dist");
+  py_shortest_difference_info.def(
+    &shortest_difference_info<double>::apply, "apply");
 
   py_BrickPoint.def(constructor<>());
   py_BrickPoint.def(&BrickPoint::Point, "Point");
