@@ -1,5 +1,6 @@
 import libtbx.bundle.utils
 import libtbx.config
+import libtbx.env
 import libtbx.path
 import shutil
 import sys, os
@@ -37,8 +38,8 @@ def run(target_root):
   cwd = os.getcwd()
   abs_target_root = os.path.normpath(os.path.abspath(os.path.join(
     target_root)))
-  libtbx_env = libtbx.config.env()
-  dist_root = libtbx_env.under_dist("libtbx", "..")
+  libtbx_env = libtbx.env.cache
+  dist_root = libtbx.env.under_dist("libtbx", "..")
   for package in ["libtbx"] + libtbx_env.package_list:
     for package_suf in libtbx.config.package_pair(
                          name=package).primary_first():
