@@ -1,4 +1,4 @@
-#! /bin/env python
+#! /usr/bin/env python
 from iotbx.shelx import hklf
 from scitbx.python_utils import easy_pickle
 import sys
