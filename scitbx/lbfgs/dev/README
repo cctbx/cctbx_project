@@ -1,0 +1,18 @@
+The code in this directory was used for verification purposes
+during the development of the C++ port and the Boost.Python
+bindings. This code is not actively maintained or supported.
+
+lbfgs.f   original Fortran code
+sdrive.f  original Fortran test driver
+
+lbfgs.pyf                  pyfort interface file
+pyfort.py                  trivial pyfort driver
+build_lbfgs_extension.csh  script for compiling and linking pyfort Python bindings
+tst_fortran_lbfgs.py       Python port of test driver (sdrive.f)
+
+2003-05-13:
+  tst_fortran_lbfgs.py works correctly under Tru64 Unix (Alpha chip)
+  using Python 2.2.1, Numeric 21.0 and Pyfort-7.0b2.
+  A test with the exact same source code fails under Redhat 8.0
+  using /usr/bin/python (Python 2.2.1, Numeric 23.0). The reason
+  for the failure is unknown.
