@@ -50,21 +50,21 @@ namespace cctbx {
   };
 
   template <std::size_t D, typename Index1dType = c_index_1d<D> >
-  class dimension_end : public boost::array<std::size_t, D>
+  class dimension : public boost::array<std::size_t, D>
   {
     public:
-      dimension_end() {};
-      dimension_end(const boost::array<std::size_t, D>& N) {
+      dimension() {};
+      dimension(const boost::array<std::size_t, D>& N) {
         std::copy(N.begin(), N.end(), begin());
       }
-      dimension_end(std::size_t n0) {
+      dimension(std::size_t n0) {
         elems[0] = n0;
       }
-      dimension_end(std::size_t n0, std::size_t n1) {
+      dimension(std::size_t n0, std::size_t n1) {
         elems[0] = n0;
         elems[1] = n1;
       }
-      dimension_end(std::size_t n0, std::size_t n1, std::size_t n2) {
+      dimension(std::size_t n0, std::size_t n1, std::size_t n2) {
         elems[0] = n0;
         elems[1] = n1;
         elems[2] = n2;
@@ -97,24 +97,22 @@ namespace cctbx {
 
       vecrefnd() {}
       template <typename IteratorOrPointerType>
-      vecrefnd(IteratorOrPointerType begin, const dimension_type& dimension)
-        : vecref<ValueType>(begin, dimension.size1d()),
-          m_dimension(dimension)
+      vecrefnd(IteratorOrPointerType begin, const dimension_type& dim)
+        : vecref<ValueType>(begin, dim.size1d()), m_dim(dim)
       {}
-      vecrefnd(void* begin, const dimension_type& dimension)
-        : vecref<ValueType>(begin, dimension.size1d()),
-          m_dimension(dimension)
+      vecrefnd(void* begin, const dimension_type& dim)
+        : vecref<ValueType>(begin, dim.size1d()), m_dim(dim)
       {}
 
-      const dimension_type& dimension() const { return m_dimension; }
+      const dimension_type& dim() const { return m_dim; }
 
       template <typename IndexTuple>
       value_type& operator()(const IndexTuple& I) const {
-        return m_begin[m_dimension(I)];
+        return m_begin[m_dim(I)];
       }
 
     protected:
-      dimension_type m_dimension;
+      dimension_type m_dim;
   };
 
 }
