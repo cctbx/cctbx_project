@@ -63,16 +63,6 @@ namespace cctbx { namespace maptbx {
         return result;
       }
 
-      af::int3
-      grid_factors(sgtbx::space_group_type const& sg_type) const
-      {
-        af::int3 grid_ss(1,1,1);
-        if (use_structure_seminvariants()) {
-          grid_ss = sgtbx::structure_seminvariant(sg_type.group()).gridding();
-        }
-        return select_sub_space_group(sg_type).refine_gridding(grid_ss);
-      }
-
       bool
       operator==(symmetry_flags const& rhs) const
       {

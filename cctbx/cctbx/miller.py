@@ -104,21 +104,22 @@ class set(crystal.symmetry):
       self.space_group(), self.anomalous_flag(), self.indices())
     return set(self.cell_equivalent_p1(), p1.indices(), self.anomalous_flag())
 
-  def determine_grid(self, resolution_factor=1/3.,
-                           d_min=None,
-                           symmetry_flags=None,
-                           max_prime=5):
+  def determine_gridding(self, resolution_factor=1/3.,
+                               d_min=None,
+                               symmetry_flags=None,
+                               mandatory_factors=None,
+                               max_prime=5,
+                               assert_shannon_sampling=0001):
     if (d_min == None): d_min = self.d_min()
-    if (symmetry_flags == None):
-      mandatory_factors=(1,1,1)
-    else:
-      mandatory_factors=self.space_group_info().grid_factors(symmetry_flags)
-    return maptbx.determine_grid(
+    return maptbx.determine_gridding(
       unit_cell=self.unit_cell(),
       d_min=d_min,
       resolution_factor=resolution_factor,
+      symmetry_flags=symmetry_flags,
+      space_group_info=self.space_group_info(),
+      mandatory_factors=mandatory_factors,
       max_prime=max_prime,
-      mandatory_factors=mandatory_factors)
+      assert_shannon_sampling=assert_shannon_sampling)
 
   def setup_binner(self, d_max=0, d_min=0,
                    auto_binning=0,
@@ -425,7 +426,7 @@ class fft_map(crystal.symmetry):
       ph = flex.double(cf.size(), 0)
       cf = flex.polar(cf, ph)
       del ph
-    n_real = coeff_array.determine_grid(
+    n_real = coeff_array.determine_gridding(
       resolution_factor=self.resolution_factor(),
       d_min=d_min,
       symmetry_flags=symmetry_flags,

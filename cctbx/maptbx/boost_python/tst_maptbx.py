@@ -81,7 +81,6 @@ def exercise_symmetry_flags():
   sg_info = sgtbx.space_group_info("P 3 1 2")
   assert f.select_sub_space_group(sg_info.type()).type().lookup_symbol() \
       == "P -3 1 m"
-  assert f.grid_factors(sg_info.type()) == (3,3,2)
   assert f == f
   assert not f != f
   assert f == maptbx.symmetry_flags(0001, 0001, 0001)
@@ -132,10 +131,6 @@ def exercise_peak_search():
     l = maptbx.peak_list(d, t, 0)
     assert [(e.index, e.value) for e in l.entries()] == [((0, 0, 0), 0.0)]
 
-def exercise_determine_grid():
-  u = uctbx.unit_cell((11,12,13))
-  assert maptbx.determine_grid(unit_cell=u, d_min=1) == (36,40,40)
-
 def exercise_pymol_interface():
   for flex_type in flex_types():
     m = flex_type(flex.grid(3,4,6).set_focus(3,4,5))
@@ -167,7 +162,6 @@ def run():
   exercise_symmetry_flags()
   exercise_grid_tags()
   exercise_peak_search()
-  exercise_determine_grid()
   exercise_pymol_interface()
   exercise_structure_factors()
   print "OK"

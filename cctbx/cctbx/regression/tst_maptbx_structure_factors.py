@@ -22,7 +22,7 @@ def exercise(space_group_info, anomalous_flag, conjugate_flag,
         anomalous_flag=anomalous_flag,
         d_min=d_min)
   f_calc_array = structure_factors.f_calc_array()
-  n_real = f_calc_array.determine_grid(
+  n_real = f_calc_array.determine_gridding(
     resolution_factor=resolution_factor,
     d_min=d_min,
     max_prime=max_prime)
@@ -99,7 +99,7 @@ def exercise_under_sampled(space_group_info, anomalous_flag, conjugate_flag,
         anomalous_flag=anomalous_flag,
         d_min=d_min)
   f_calc_array = structure_factors.f_calc_array()
-  n_real = maptbx.determine_grid(
+  n_real = maptbx.determine_gridding(
     unit_cell=f_calc_array.unit_cell(),
     d_min=d_min,
     resolution_factor=resolution_factor,

@@ -25,7 +25,7 @@ def exercise(space_group_info, anomalous_flag, anisotropic_flag,
   f_direct_array = structure.structure_factors_direct(
     anomalous_flag=anomalous_flag,
     d_min=d_min).f_calc_array()
-  n_real = f_direct_array.determine_grid(
+  n_real = f_direct_array.determine_gridding(
     resolution_factor=resolution_factor,
     d_min=d_min,
     symmetry_flags=maptbx.use_space_group_symmetry,

@@ -245,7 +245,7 @@ class structure_factors_fft:
     self._xray_structure = xray_structure
     self._miller_set = miller_set
     d_min = miller_set.d_min()
-    n_real = miller_set.determine_grid(
+    n_real = miller_set.determine_gridding(
       resolution_factor=grid_resolution_factor,
       d_min=d_min,
       symmetry_flags=symmetry_flags,
