@@ -25,7 +25,7 @@ namespace {
     {
       using namespace boost::python;
       class_<w_t>("fast_nv1995", no_init)
-        .def(init<map_gridding<> const&,
+        .def(init<af::int3 const&,
                   sgtbx::space_group const&,
                   bool,
                   af::const_ref<miller::index<> > const&,

@@ -34,7 +34,7 @@ def exercise_map_gridding():
 def exercise_fast_nv1995():
   space_group, miller_indices_f_obs, gridding = exercise_map_gridding()
   f = translation_search.fast_nv1995(
-    gridding=gridding,
+    gridding=gridding.target(),
     space_group=space_group,
     anomalous_flag=00000,
     miller_indices_f_obs=miller_indices_f_obs,
