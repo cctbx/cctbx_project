@@ -40,7 +40,12 @@ namespace cctbx { namespace miller {
     }
     CCTBX_ASSERT((space_group.n_smx() * space_group.f_inv()) % indices_.size()
                  == 0);
-    CCTBX_ASSERT(!is_centric() || indices_.size() % 2 == 0);
+    if (indices_.size() == 1) {
+      CCTBX_ASSERT(!is_centric() || h_in == 0);
+    }
+    else {
+      CCTBX_ASSERT(!is_centric() || indices_.size() % 2 == 0);
+    }
   }
 
   void sym_equiv_indices::add(sym_equiv_index const& eq)
