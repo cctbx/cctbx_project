@@ -222,15 +222,6 @@ namespace {
     return sel.selected_data(data);
   }
 
-  void selection_sigma_filter(
-    selection& sel,
-    af::shared<double> data,
-    af::shared<double> sigmas,
-    double cutoff_factor)
-  {
-    sel.sigma_filter(data, sigmas, cutoff_factor);
-  }
-
   void
   py_expand_to_p1_4(
     sgtbx::SpaceGroup const& SgOps,
@@ -301,6 +292,9 @@ namespace {
 
     python::import_converters<af::shared<std::complex<double> > >
     py_sh_complex_double("cctbx_boost.arraytbx.shared", "complex_double");
+
+    python::import_converters<af::shared<bool> >
+    py_sh_bool("cctbx_boost.arraytbx.shared", "bool");
 
     python::import_converters<af::shared<double> >
     py_sh_double("cctbx_boost.arraytbx.shared", "double");
@@ -511,14 +505,14 @@ namespace {
     py_selection.def(constructor<>());
     py_selection.def(constructor<af::shared<Index> >());
     py_selection.def(constructor<af::shared<Index>, bool>());
-    py_selection.def(constructor<selection>());
+    py_selection.def(constructor<af::shared<Index>, af::shared<bool> >());
     py_selection.def(&selection::size_processed, "size_processed");
     py_selection.def(&selection::n_selected, "n_selected");
     py_selection.def(&selection::selected_miller_indices,
                                 "selected_miller_indices");
     py_selection.def(selection_selected_data_double, "selected_data");
     py_selection.def(&selection::negate, "negate");
-    py_selection.def(selection_sigma_filter, "sigma_filter");
+    py_selection.def(&selection::operator(), "__call__");
 
     this_module.def(py_expand_to_p1_4, "expand_to_p1");
     this_module.def(py_expand_to_p1_9, "expand_to_p1");

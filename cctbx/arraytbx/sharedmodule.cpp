@@ -38,7 +38,7 @@ namespace {
   }
 
   void
-  py_pow(cctbx::af::shared<double> a, double exponent)
+  py_in_place_pow(cctbx::af::shared<double> a, double exponent)
   {
     for(std::size_t i=0;i<a.size();i++) a[i] = std::pow(a[i], exponent);
   }
@@ -158,7 +158,7 @@ namespace {
     this_module.def(py_reinterpret_real_as_complex,
       "reinterpret_real_as_complex");
 
-    this_module.def(py_pow, "pow");
+    this_module.def(py_in_place_pow, "in_place_pow");
     this_module.def(py_set_if_less_than, "set_if_less_than");
 
     class_builder<ex_linear_regression<double> >
