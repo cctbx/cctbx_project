@@ -138,8 +138,28 @@ def exercise_eigen_core(diag):
       check_eigenvalue(u, ev[i])
     for i in xrange(3):
       assert abs(diag[i] - ev[i]) < 1.e-4
+    evec = []
     for i in xrange(3):
       check_eigenvector(u, es.values()[i], es.vectors(i))
+      evec.extend(es.vectors(i))
+    sqrt_eval = matrix.diag(flex.sqrt(flex.double(es.values())))
+    evec = matrix.sqr(evec).transpose()
+    sqrt_u = evec * sqrt_eval * evec.transpose()
+    u_full = matrix.sym(u).elems
+    assert approx_equal(u_full, (sqrt_u.transpose()*sqrt_u).elems, eps=1.e-3)
+    assert approx_equal(u_full, (sqrt_u*sqrt_u.transpose()).elems, eps=1.e-3)
+    assert approx_equal(u_full, (sqrt_u*sqrt_u).elems, eps=1.e-3)
+    sqrt_u_plus_shifts = matrix.sym(
+      [x + 10*(random.random()-.5) for x in sqrt_u.as_sym_mat3()])
+    sts = (sqrt_u_plus_shifts.transpose()*sqrt_u_plus_shifts).as_sym_mat3()
+    ev = adptbx.eigenvalues(sts)
+    assert min(ev) >= 0
+    sts = (sqrt_u_plus_shifts*sqrt_u_plus_shifts.transpose()).as_sym_mat3()
+    ev = adptbx.eigenvalues(sts)
+    assert min(ev) >= 0
+    sts = (sqrt_u_plus_shifts*sqrt_u_plus_shifts).as_sym_mat3()
+    ev = adptbx.eigenvalues(sts)
+    assert min(ev) >= 0
 
 def exercise_eigen(n_trials=100):
   exercise_eigen_core([0,0,0])
