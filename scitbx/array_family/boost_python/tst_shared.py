@@ -1,4 +1,5 @@
 from scitbx.array_family import shared
+from libtbx.test_utils import approx_equal
 
 def native(a):
   return [tuple(elem) for elem in a]
@@ -51,6 +52,15 @@ def exercise_stl_vector_unsigned():
   a = shared.stl_vector_unsigned(3, [1,2])
   assert native(a) == [(1,2),(1,2),(1,2)]
 
+def exercise_stl_vector_double():
+  a = shared.stl_vector_double()
+  assert a.size() == 0
+  a.append([2,3])
+  assert a.size() == 1
+  assert approx_equal(a[0], [2,3])
+  a[0].append(4)
+  assert approx_equal(a[0], [2,3,4])
+
 def exercise_stl_set_unsigned():
   a = shared.stl_set_unsigned()
   assert a.size() == 0
@@ -62,6 +72,7 @@ def exercise_stl_set_unsigned():
 
 def exercise():
   exercise_stl_vector_unsigned()
+  exercise_stl_vector_double()
   exercise_stl_set_unsigned()
   print "OK"
 

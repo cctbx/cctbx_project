@@ -8,6 +8,7 @@ namespace {
   void init_module()
   {
     vector_wrapper<unsigned>::wrap("unsigned");
+    vector_wrapper<double>::wrap("double");
 
     typedef boost::python::return_internal_reference<> rir;
     vector_wrapper<std::set<unsigned>, rir>::wrap("set_unsigned");
