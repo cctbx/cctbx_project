@@ -102,11 +102,15 @@ def multi_choice_from_assigned_words(assigned_words):
 
 def unit_cell_from_assigned_words(assigned_words):
   from cctbx import uctbx
-  return uctbx.unit_cell(str_from_assigned_words(assigned_words))
+  s = str_from_assigned_words(assigned_words)
+  if (s is None): return None
+  return uctbx.unit_cell(s)
 
 def space_group_info_from_assigned_words(assigned_words):
   from cctbx import sgtbx
-  return sgtbx.space_group_info(symbol=str_from_assigned_words(assigned_words))
+  symbol = str_from_assigned_words(assigned_words)
+  if (symbol is None): return None
+  return sgtbx.space_group_info(symbol=symbol)
 
 default_definition_type_names = [
   "str", "bool", "int", "float",
@@ -407,7 +411,8 @@ class definition: # FUTURE definition(object)
       words = [simple_tokenizer.word(value="%.10g" % v)
         for v in python_object.parameters()]
     elif (self.type == "space_group"):
-      words = [simple_tokenizer.word(value=str(python_object),quote_token='"')]
+      words = [simple_tokenizer.word(
+        value=str(python_object), quote_token='"')]
     elif (custom_converters is not None):
       converter = custom_converters.get(self.type, None)
       if (converter is not None):

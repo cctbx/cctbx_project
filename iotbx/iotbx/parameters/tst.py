@@ -1659,6 +1659,10 @@ group {
     .type=unit_cell
   s=19
     .type=space_group
+  U=none
+    .type=unit_cell
+  S=none
+    .type=space_group
 }
 """)
   out = StringIO()
@@ -1677,6 +1681,8 @@ group {
   h = "var.tmp.foo"
   u = 10 12 13 80 90 100
   s = "P 21 21 21"
+  U = None
+  S = None
 }
 """
   definition = parameters.get(path="group.a").objects[0]
