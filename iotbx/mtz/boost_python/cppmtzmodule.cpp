@@ -25,6 +25,7 @@ BOOST_PYTHON_MODULE(mtz)
            return_value_policy<copy_non_const_reference>())
       .def("MIx",        &iotbx::mtz::Mtz::MIx)
       .def("printHeaderAdv",&iotbx::mtz::Mtz::printHeaderAdv)
+      .def("HL",         &iotbx::mtz::Mtz::HL)
     ;
 
     class_<iotbx::mtz::Crystal>("Crystal", no_init)

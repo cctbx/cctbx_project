@@ -74,6 +74,20 @@ af::shared< cctbx::miller::index<> > bpmtz::Mtz::MIx() {
   return miller;
 }
 
+af::shared< cctbx::hendrickson_lattman<> > bpmtz::Mtz::HL(
+  bpmtz::Column A,
+  bpmtz::Column B,
+  bpmtz::Column C,
+  bpmtz::Column D)
+{
+  af::shared<cctbx::hendrickson_lattman<> > hl(this->size());
+  for (int j=0; j<this->size(); j++) {
+    hl[j] = cctbx::hendrickson_lattman<>(A.lookup(j),B.lookup(j),
+                                         C.lookup(j),D.lookup(j));
+  }
+  return hl;
+}
+
 void bpmtz::Mtz::printHeader(int detail = 1){
   CMtz::ccp4_lhprt(mtz,detail);
 }

@@ -9,6 +9,7 @@
 #include "cmtzlib.h"
 #include <scitbx/array_family/shared.h>
 #include <cctbx/miller.h>
+#include <cctbx/hendrickson_lattman.h>
 
 /* Correction 1:  in mtzdata.h, changed CCP4File to CCP4:CCP4File*/
 
@@ -93,6 +94,8 @@ public:
   int& ncolumns(const int& xtal, const int& set);
 
   af::shared< cctbx::miller::index<> > MIx();
+  af::shared< cctbx::hendrickson_lattman<> > HL(Column,Column,
+                                                Column,Column);
 };
 }} //namespaces
 #endif /* CPPMTZ_H*/
