@@ -13,7 +13,7 @@ bpmtz::Mtz::~Mtz(){
 std::string bpmtz::Mtz::title(){return std::string(mtz->title);}
 std::string bpmtz::Mtz::SpaceGroup(){return mtz->mtzsymm.spcgrpname;}
 
-cctbx::sgtbx::space_group 
+cctbx::sgtbx::space_group
 bpmtz::Mtz::getSgtbxSpaceGroup(){
   cctbx::sgtbx::space_group sg;
   for  (int i = 0; i < mtz->mtzsymm.nsym; ++i) {
@@ -136,7 +136,9 @@ bpmtz::Mtz::valid_indices(
   for (int j=0; j<size(); j++) {
     if (!v.isnan(j)) {
       result.push_back(cctbx::miller::index<>(
-        h.lookup(j), k.lookup(j), l.lookup(j)));
+        static_cast<int>(h.lookup(j)),
+        static_cast<int>(k.lookup(j)),
+        static_cast<int>(l.lookup(j))));
     }
   }
   return result;
@@ -278,6 +280,24 @@ bpmtz::Mtz::valid_hl(
       result.push_back(cctbx::hendrickson_lattman<>(
         v_a.lookup(j), v_b.lookup(j), v_c.lookup(j), v_d.lookup(j)));
     }
+  }
+  return result;
+}
+
+af::shared<int>
+bpmtz::Mtz::valid_integers(
+  std::string const& column_label)
+{
+  bpmtz::Column v(getColumn(column_label));
+  if (   v.type() != "H"
+      && v.type() != "B"
+      && v.type() != "Y"
+      && v.type() != "I") {
+    throw bpmtz::Error("Not an integer column.");
+  }
+  af::shared<int> result((af::reserve(size())));
+  for (int j=0; j<size(); j++) {
+    if (!v.isnan(j)) result.push_back(static_cast<int>(v.lookup(j)));
   }
   return result;
 }
