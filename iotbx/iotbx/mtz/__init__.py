@@ -14,8 +14,8 @@ import cctbx.crystal
 from cctbx import sgtbx
 from cctbx import uctbx
 from cctbx.array_family import flex
-from scitbx.python_utils.str_utils import overwrite_at, contains_one_of
 from scitbx.python_utils.misc import adopt_init_args
+from libtbx.str_utils import overwrite_at, contains_one_of
 import warnings
 import sys, os
 

@@ -1,8 +1,8 @@
 from iotbx import simple_parser
-from iotbx import simple_tokenizer
 from iotbx import wildcard
 from scitbx.array_family import flex
 from scitbx import stl
+from libtbx.phil import tokenizer
 import scitbx.stl.map
 import sys
 
@@ -201,16 +201,16 @@ def _get_map_string(map, pattern, wildcard_escape_char='\\'):
       result.append(value)
   return result
 
-class selection_tokenizer(simple_tokenizer.word_iterator):
+class selection_tokenizer(tokenizer.word_iterator):
 
   def __init__(self, string, contiguous_word_characters=None):
     if (contiguous_word_characters is None):
       contiguous_word_characters \
-        = simple_tokenizer.default_contiguous_word_characters \
+        = tokenizer.default_contiguous_word_characters \
         + r"\*?[]^+-.:"
-    simple_tokenizer.word_iterator.__init__(self,
+    tokenizer.word_iterator.__init__(self,
       input_string=string,
-      list_of_settings=[simple_tokenizer.settings(
+      list_of_settings=[tokenizer.settings(
         contiguous_word_characters=contiguous_word_characters)])
 
   def pop_argument(self, keyword):

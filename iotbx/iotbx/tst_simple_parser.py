@@ -1,5 +1,5 @@
 from iotbx import simple_parser
-from iotbx import simple_tokenizer
+from libtbx.phil import tokenizer
 import sys
 
 def exercise_basic():
@@ -31,7 +31,7 @@ def exercise_basic():
   ]
   verbose = "--verbose" in sys.argv[1:]
   for input_string,expected_result in tests:
-    infix = simple_tokenizer.word_iterator(input_string=input_string)
+    infix = tokenizer.word_iterator(input_string=input_string)
     if (verbose): print input_string
     postfix = [word
       for word,word_iterator in simple_parser.infix_as_postfix(infix)]
@@ -97,7 +97,7 @@ def rewrite_parser(
   return result
 
 def rewrite(input_string):
-  word_iterator = simple_tokenizer.word_iterator(input_string=input_string)
+  word_iterator = tokenizer.word_iterator(input_string=input_string)
   return rewrite_parser(word_iterator=word_iterator)
 
 def exercise_nested():
