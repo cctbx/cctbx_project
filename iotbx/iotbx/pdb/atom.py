@@ -63,6 +63,7 @@ def labels_from_string(s):
 class attributes(labels):
 
   def __init__(self,
+        is_hetatm=False,
         name=None,
         altLoc=None,
         resName=None,
@@ -85,6 +86,10 @@ class attributes(labels):
     adopt_init_args(self, locals())
 
   def set_from_ATOM_record(self, pdb_record):
+    if (pdb_record.record_name == "HETATM"):
+      self.is_hetatm = True
+    else:
+      self.is_hetatm = False
     if (self.name is None):        self.name = pdb_record.name
     if (self.altLoc is None):      self.altLoc = pdb_record.altLoc
     if (self.resName is None):     self.resName = pdb_record.resName
@@ -113,8 +118,13 @@ class attributes(labels):
     if (self.sigUcart is None):    self.sigUcart = pdb_record.sigUcart
     return self
 
+  def record_name(self):
+    if (self.is_hetatm): return "HETATM"
+    return "ATOM"
+
   def show(self, f=None, prefix=""):
     if (f is None): f = sys.stdout
+    print >> f, "%s%-12s" % (prefix, "record name:"), self.record_name()
     for attr_name in [
         "name", "altLoc", "resName", "chainID", "resSeq", "iCode",
         "segID", "element", "charge",

@@ -3,6 +3,7 @@ import iotbx.pdb.parser
 import iotbx.pdb.cryst1_interpretation
 import iotbx.pdb.atom
 from cctbx.array_family import flex
+from scitbx.stl import set
 from libtbx.itertbx import count
 from libtbx.test_utils import approx_equal
 import string
@@ -98,12 +99,13 @@ class stage_1:
       raw_records=raw_records)
     raw_records = columns_73_76_eval.raw_records
     self.ignore_columns_73_and_following = columns_73_76_eval.is_old_style
+    self.cryst1_record = None
     self.crystal_symmetry = None
     self.scale_matrix = [[None]*9,[None]*3]
     self.remark_3_records = []
     self.remark_290_records = []
-    self.ter_indices = []
-    self.break_indices = []
+    self.ter_indices = flex.size_t()
+    self.break_indices = flex.size_t()
     self.atom_attributes_list = []
     self.conect_records = []
     self.link_records = []
@@ -117,6 +119,7 @@ class stage_1:
     for state.line_number,state.raw_record in zip(count(1), raw_records):
       record_name = state.raw_record[:6]
       if (record_name == "CRYST1"):
+        self.cryst1_record = state.raw_record
         self.crystal_symmetry = pdb.cryst1_interpretation.crystal_symmetry(
           cryst1_record=state.raw_record,
           line_number=state.line_number)
@@ -351,6 +354,55 @@ class stage_1:
           len(i_seqs)-max_lines)
         break
       print >> f, prefix + self.atom_attributes_list[i_seq].pdb_format()
+
+  def write_modified(self, out, new_sites_cart, crystal_symmetry=None):
+    assert new_sites_cart.size() == len(self.atom_attributes_list)
+    if (crystal_symmetry is None):
+      if (self.cryst1_record is not None):
+        print >> out, self.cryst1_record.rstrip()
+    else:
+      print >> out, pdb.format_cryst1_record(
+        crystal_symmetry=crystal_symmetry)
+    ter_flags = flex.bool(len(self.atom_attributes_list)+1, False)
+    ter_flags.set_selected(self.ter_indices, True)
+    break_flags = flex.bool(len(self.atom_attributes_list)+1, False)
+    break_flags.set_selected(self.break_indices, True)
+    serial = count(1)
+    prev_atom = None
+    for i_seq,atom in enumerate(self.atom_attributes_list):
+      if (prev_atom is None or atom.MODELserial != prev_atom.MODELserial):
+        if (prev_atom is not None and prev_atom.MODELserial > 0):
+          print >> out, "ENDMDL"
+        if (atom.MODELserial > 0):
+          print >> out, "MODEL     %5d" % atom.MODELserial
+      print >> out, pdb.format_atom_record(
+        record_name=atom.record_name(),
+        serial=serial.next(),
+        name=atom.name,
+        altLoc=atom.altLoc,
+        resName=atom.resName,
+        chainID=atom.chainID,
+        resSeq=atom.resSeq,
+        iCode=atom.iCode,
+        site=new_sites_cart[i_seq],
+        occupancy=atom.occupancy,
+        tempFactor=atom.tempFactor,
+        segID=atom.segID,
+        element=atom.element,
+        charge=atom.charge)
+      if (ter_flags[i_seq+1]):
+        print >> out, pdb.format_ter_record(
+          serial=serial.next(),
+          resName=atom.resName,
+          chainID=atom.chainID,
+          resSeq=atom.resSeq,
+          iCode=atom.iCode)
+      elif (break_flags[i_seq+1]):
+        print >> out, "BREAK"
+      prev_atom = atom
+    if (prev_atom is not None and prev_atom.MODELserial > 0):
+      print >> out, "ENDMDL"
+    print >> out, "END"
 
 class altLoc_grouping:
 

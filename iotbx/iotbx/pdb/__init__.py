@@ -12,9 +12,9 @@ def format_cryst1_record(crystal_symmetry, z=None):
   # 67 - 70       Integer        z             Z value.
   if (z is None): z = ""
   else: z = str(z)
-  return "CRYST1%9.3f%9.3f%9.3f%7.2f%7.2f%7.2f %-11.11s%4.4s" % (
+  return ("CRYST1%9.3f%9.3f%9.3f%7.2f%7.2f%7.2f %-11.11s%4.4s" % (
     crystal_symmetry.unit_cell().parameters()
-    + (str(crystal_symmetry.space_group_info()).replace(" ", ""), z))
+    + (str(crystal_symmetry.space_group_info()).replace(" ", ""), z))).rstrip()
 
 def format_scale_records(unit_cell=None,
                          fractionalization_matrix=None,
@@ -71,10 +71,23 @@ def format_atom_record(record_name="ATOM",
   # 73 - 76  LString(4)    segID         Segment identifier, left-justified.
   # 77 - 78  LString(2)    element       Element symbol, right-justified.
   # 79 - 80  LString(2)    charge        Charge on the atom.
-  return (
+  return ((
       "%-6.6s%5d %-4.4s%1.1s%-3.3s %1.1s%4d%1.1s   %8.3f%8.3f%8.3f"
     + "%6.2f%6.2f      %-4.4s%2.2s%2.2s") % (
     record_name, serial,
     name, altLoc, resName, chainID, resSeq, iCode,
     site[0], site[1], site[2], occupancy, tempFactor,
-    segID, element, charge)
+    segID, element, charge)).rstrip()
+
+def format_ter_record(serial=0,
+                      resName="DUM",
+                      chainID=" ",
+                      resSeq=1,
+                      iCode=" "):
+  #  7 - 11  Integer         serial     Serial number.
+  # 18 - 20  Residue name    resName    Residue name.
+  # 22       Character       chainID    Chain identifier.
+  # 23 - 26  Integer         resSeq     Residue sequence number.
+  # 27       AChar           iCode      Insertion code.
+  return ("%-6.6s%5d      %-3.3s %1.1s%4d%1.1s" % (
+    "TER", serial, resName, chainID, resSeq, iCode)).rstrip()
