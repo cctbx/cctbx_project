@@ -10,7 +10,9 @@ def copy(src, dest):
     dest.write(buf)
 
 def find_unzipsfx():
-  for command in ("unzipsfx_autorun.exe", "unzipsfx.exe"):
+  for command in ("unzipsfx_autorun_yes.exe",
+                  "unzipsfx_autorun.exe",
+                  "unzipsfx.exe"):
     path_cmd = libtbx.config.full_path(command=command, search_first=["."])
     if (path_cmd is not None): return path_cmd
   return None
