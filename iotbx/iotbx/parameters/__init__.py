@@ -279,7 +279,7 @@ class table:
         if (alt_row_name is None): continue
         if (alt_row_name == path):
           result.extend(row_objects)
-        elif (not path.startswith(alt_row_name+".")):
+        elif (path.startswith(alt_row_name+".")):
           for row_object in row_objects:
             result.extend(row_object.get(path=path[len(alt_row_name)+1:]))
     return result

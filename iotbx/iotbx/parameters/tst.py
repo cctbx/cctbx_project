@@ -383,6 +383,57 @@ b z
 """)
   check_get(parameters, path="name.row_3", expected_out="")
 
+def exercise_nested():
+  r = recycle(
+    input_string="""\
+a0 {
+  d1 a b c
+  a1 {
+    table t0 {
+      row0
+      {
+        c 3
+        table t1 {
+          {
+            x 0
+            y 1
+          }
+        }
+      }
+    }
+  }
+  d2 e f g
+}
+""",
+    expected_out="""\
+a0 {
+  d1 a b c
+
+  a1 {
+    table t0
+    {
+      row0 {
+        c 3
+
+        table t1
+        {
+          {
+            x 0
+            y 1
+          }
+        }
+      }
+    }
+  }
+
+  d2 e f g
+}
+""")
+  check_get(r.parameters, path="a0.d1", expected_out="d1 a b c\n")
+  check_get(r.parameters, path="a0.a1.t0.row0.c", expected_out="c 3\n")
+  check_get(r.parameters, path="a0.a1.t0.row0.t1.1.x", expected_out="x 0\n")
+  check_get(r.parameters, path="a0.a1.t0.row0.t1.1.y", expected_out="y 1\n")
+
 def exercise_get_with_variable_substitution():
   parameters = iotbx.parameters.parse(input_string="""\
 a b
@@ -543,6 +594,7 @@ def exercise():
   exercise_parse_and_show()
   exercise_syntax_errors()
   exercise_get()
+  exercise_nested()
   exercise_get_with_variable_substitution()
   exercise_include()
   print "OK"
