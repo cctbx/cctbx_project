@@ -34,8 +34,6 @@
  *
  */
 
-// XXX weak reference count
-
 #ifndef CCTBX_ARRAY_FAMILY_SHARED_BASE_V2_H
 #define CCTBX_ARRAY_FAMILY_SHARED_BASE_V2_H
 
@@ -44,6 +42,8 @@
 #include <cctbx/array_family/type_traits.h>
 
 namespace cctbx { namespace af {
+
+  struct weak_ref_flag {};
 
   namespace detail {
     const std::size_t global_max_size(std::size_t(-1));
@@ -61,18 +61,29 @@ namespace cctbx { namespace af {
       class handle_type {
         public:
           handle_type()
-            : use_count(1), size(0), capacity(0),
+            : use_count(1), weak_count(0), size(0), capacity(0),
+              data(0)
+          {}
+
+          handle_type(weak_ref_flag)
+            : use_count(0), weak_count(1), size(0), capacity(0),
               data(0)
           {}
 
           explicit
           handle_type(const size_type& sz)
-            : use_count(1), size(0), capacity(sz),
+            : use_count(1), weak_count(0), size(0), capacity(sz),
               data(new char[sz])
           {}
 
           ~handle_type() {
             delete[] data;
+          }
+
+          void deallocate() {
+            delete[] data;
+            capacity = 0;
+            data = 0;
           }
 
           void swap(handle_type& other) {
@@ -82,6 +93,7 @@ namespace cctbx { namespace af {
           }
 
           size_type use_count;
+          size_type weak_count;
           size_type size;
           size_type capacity;
           char* data;
@@ -93,12 +105,21 @@ namespace cctbx { namespace af {
 
     public:
       shared_base_v2()
-        : m_handle(new handle_type)
+        : m_is_weak_ref(false),
+          m_handle(new handle_type)
+      {}
+
+      // non-std
+      explicit
+      shared_base_v2(weak_ref_flag)
+        : m_is_weak_ref(true),
+          m_handle(new handle_type(weak_ref_flag()))
       {}
 
       explicit
       shared_base_v2(const size_type& sz)
-        : m_handle(new handle_type(sz * element_size()))
+        : m_is_weak_ref(false),
+          m_handle(new handle_type(sz * element_size()))
       {
         std::uninitialized_fill_n(begin(), sz, ElementType());
         m_handle->size = m_handle->capacity;
@@ -106,29 +127,32 @@ namespace cctbx { namespace af {
 
       // non-std
       shared_base_v2(const size_type& sz, reserve_flag)
-        : m_handle(new handle_type(sz * element_size()))
+        : m_is_weak_ref(false),
+          m_handle(new handle_type(sz * element_size()))
       {}
 
       shared_base_v2(const size_type& sz, const ElementType& x)
-        : m_handle(new handle_type(sz * element_size()))
+        : m_is_weak_ref(false),
+          m_handle(new handle_type(sz * element_size()))
       {
         std::uninitialized_fill_n(begin(), sz, x);
         m_handle->size = m_handle->capacity;
       }
 
       shared_base_v2(const ElementType* first, const ElementType* last)
-        : m_handle(new handle_type((last - first) * element_size()))
+        : m_is_weak_ref(false),
+          m_handle(new handle_type((last - first) * element_size()))
       {
         std::uninitialized_copy(first, last, begin());
         m_handle->size = m_handle->capacity;
       }
 
-#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200)
-                                        // 1200 == VC++ 6.0
+#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200) // VC++ 6.0
       template <typename OtherElementType>
       shared_base_v2(
         const OtherElementType* first, const OtherElementType* last)
-        : m_handle(new handle_type((last - first) * element_size()))
+        : m_is_weak_ref(false),
+          m_handle(new handle_type((last - first) * element_size()))
       {
         uninitialized_copy_typeconv(first, last, begin());
         m_handle->size = m_handle->capacity;
@@ -137,16 +161,39 @@ namespace cctbx { namespace af {
 
       // non-std: shallow copy semantics
       shared_base_v2(const shared_base_v2<ElementType>& other)
-        : m_handle(other.m_handle)
+        : m_is_weak_ref(other.m_is_weak_ref),
+          m_handle(other.m_handle)
       {
+        if (m_is_weak_ref) m_handle->weak_count++;
+        else               m_handle->use_count++;
+      }
+
+      // non-std: shallow copy semantics, weak reference
+      shared_base_v2(const shared_base_v2<ElementType>& other, weak_ref_flag)
+        : m_is_weak_ref(true),
+          m_handle(other.m_handle)
+      {
+        m_handle->weak_count++;
+      }
+
+      // non-std
+      explicit
+      shared_base_v2(const handle_type& other_handle)
+        : m_is_weak_ref(false),
+          m_handle(other_handle)
+      {
+        CCTBX_ARRAY_FAMILY_STATIC_ASSERT_HAS_TRIVIAL_DESTRUCTOR
         m_handle->use_count++;
       }
 
+      // non-std
       explicit
-      shared_base_v2(const handle_type& handle)
-        : m_handle(handle)
+      shared_base_v2(const handle_type& other_handle, weak_ref_flag)
+        : m_is_weak_ref(true),
+          m_handle(other_handle)
       {
         CCTBX_ARRAY_FAMILY_STATIC_ASSERT_HAS_TRIVIAL_DESTRUCTOR
+        m_handle->weak_count++;
       }
 
       ~shared_base_v2() {
@@ -159,8 +206,10 @@ namespace cctbx { namespace af {
       {
         if (m_handle != other.m_handle) {
           m_dispose();
+          m_is_weak_ref = other.m_is_weak_ref;
           m_handle = other.m_handle;
-          m_handle->use_count++;
+          if (m_is_weak_ref) m_handle->weak_count++;
+          else               m_handle->use_count++;
         }
         return *this;
       }
@@ -190,6 +239,12 @@ namespace cctbx { namespace af {
 
       // non-std
       size_type use_count() const { return m_handle->use_count; }
+
+      // non-std
+      size_type weak_count() const { return m_handle->weak_count; }
+
+      // non-std
+      bool is_weak_ref() const { return m_is_weak_ref; }
 
       CCTBX_ARRAY_FAMILY_BEGIN_END_ETC(
         reinterpret_cast<ElementType*>(m_handle->data), size())
@@ -385,8 +440,7 @@ namespace cctbx { namespace af {
         return result;
       }
 
-#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200)
-                                        // 1200 == VC++ 6.0
+#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200) // VC++ 6.0
       // non-std
       template <typename OtherElementType>
       void
@@ -431,16 +485,6 @@ namespace cctbx { namespace af {
         new_this.swap(*this);
       }
 
-      void m_dispose() {
-        if (m_handle->use_count > 1) {
-          m_handle->use_count--;
-        }
-        else {
-          erase(begin(), end());
-          delete m_handle;
-        }
-      }
-
       void m_set_size(const size_type& sz) {
         m_handle->size = sz * element_size();
       }
@@ -453,6 +497,17 @@ namespace cctbx { namespace af {
         m_handle->size = (size() - n) * element_size();
       }
 
+      void m_dispose() {
+        if (m_is_weak_ref) m_handle->weak_count--;
+        else               m_handle->use_count--;
+        if (m_handle->use_count == 0) {
+          clear();
+          if (m_handle->weak_count == 0) delete m_handle;
+          else m_handle->deallocate();
+        }
+      }
+
+      bool m_is_weak_ref;
       handle_type* m_handle;
   };
 
