@@ -1,4 +1,4 @@
-import iotbx.mtz
+import iotbx.mtz.wrapper
 import iotbx.cns.miller_array
 import iotbx.scalepack.merge
 import iotbx.shelx.hklf
@@ -164,7 +164,8 @@ def run(args, simply_return_all_miller_arrays=False):
       file_type_label="MTZ",
       file_extension="mtz")
     print "Writing MTZ file:", file_name
-    selected_array.export_as_mtz(file_name, file_name[:-4])
+    selected_array.as_mtz_object(column_root_label=file_name[:-4]) \
+      .write(file_name=file_name)
     n_output_files += 1
     print
   if (command_line.options.cns is not None):

@@ -31,6 +31,7 @@ def exercise_basic():
   assert mtz_object.history().size() == 0
   assert mtz_object.space_group_name() == ""
   assert mtz_object.space_group_number() == 0
+  assert mtz_object.n_symmetry_matrices() == 0
   assert mtz_object.space_group().order_z() == 1
   assert mtz_object.point_group_name() == ""
   assert mtz_object.lattice_centring_type() == "\0"
@@ -53,6 +54,7 @@ def exercise_basic():
     assert mtz_object.space_group_number() == 19
     assert mtz_object.point_group_name() == "PG222"
     assert mtz_object.lattice_centring_type() == "P"
+    assert mtz_object.n_symmetry_matrices() == 4
     assert mtz_object.space_group().type().lookup_symbol() == "P 21 21 21"
     assert mtz_object.n_batches() == 0
     assert mtz_object.batches().size() == 0
@@ -401,6 +403,7 @@ def exercise_modifiers(verbose=0):
     space_group = sgtbx.space_group(space_group_symbols)
     mtz_object.set_space_group(space_group)
     assert mtz_object.space_group() == space_group
+    assert mtz_object.n_symmetry_matrices() == space_group.order_z()
   mtz_object = mtz.wrapper.object() \
     .set_title(title="exercise") \
     .add_history(lines=flex.std_string(["h2"])) \

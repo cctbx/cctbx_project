@@ -1,4 +1,5 @@
 from iotbx import mtz
+import iotbx.mtz.wrapper
 from iotbx.scalepack import merge as scalepack_merge
 from iotbx.scalepack import no_merge_original_index as scalepack_no_merge
 from iotbx.cns import reflection_reader as cns_reflection_reader
@@ -24,7 +25,7 @@ class any_reflection_file:
     open(file_name) # test read access
     self._file_type = None
     if (self._file_type is None):
-      try: self._file_content = mtz.Mtz(file_name)
+      try: self._file_content = mtz.wrapper.object(file_name=file_name)
       except RuntimeError: pass
       else: self._file_type = "ccp4_mtz"
     if (self._file_type is None):
