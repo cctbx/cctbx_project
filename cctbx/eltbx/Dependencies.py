@@ -56,15 +56,24 @@ class write_makefiles(makefile_generator.write_makefiles):
     }
 
     self.boost_python_modules = {
-      "tinypse": ("tinypsemodule", "tinypse", "basic", "error"),
-      "icsd_radii": ("icsd_radiimodule", "icsd_radii", "basic", "error"),
-      "wavelengths": ("wavelengthsmodule", "wavelengths", "basic", "error"),
-      "caasf_it1992": ("caasf_it1992module", "caasf_it1992", "basic", "error"),
-      "caasf_wk1995": ("caasf_wk1995module", "caasf_wk1995", "basic", "error"),
-      "fpfdp": ("fpfdpmodule", "efpfdp", "basic", "error"),
-      "henke": ("henkemodule", "henke", "efpfdp", "basic", "error"),
-      "sasaki": ("sasakimodule", "sasaki", "efpfdp", "basic", "error"),
-      "neutron": ("neutronmodule", "neutron", "basic", "error"),
+      "tinypse":
+        (("tinypsemodule", "tinypse", "basic", "error"), ()),
+      "icsd_radii":
+        (("icsd_radiimodule", "icsd_radii", "basic", "error"), ()),
+      "wavelengths":
+        (("wavelengthsmodule", "wavelengths", "basic", "error"), ()),
+      "caasf_it1992":
+        (("caasf_it1992module", "caasf_it1992", "basic", "error"), ()),
+      "caasf_wk1995":
+        (("caasf_wk1995module", "caasf_wk1995", "basic", "error"), ()),
+      "fpfdp":
+        (("fpfdpmodule", "efpfdp", "basic", "error"), ()),
+      "henke":
+        (("henkemodule", "henke", "efpfdp", "basic", "error"), ()),
+      "sasaki":
+        (("sasakimodule", "sasaki", "efpfdp", "basic", "error"), ()),
+      "neutron":
+        (("neutronmodule", "neutron", "basic", "error"), ()),
     }
 
   def make_test(self):

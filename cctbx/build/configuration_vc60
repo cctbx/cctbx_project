@@ -6,6 +6,9 @@ CCTBX_UNIX="$(HOME)/cctbx"
 CCTBX_WIN="$(ROOT)\cctbx"
 CCTBXINC=-I"$(ROOT)\cctbx"
 
+CCTBXLIBDIR_UNIX=@(CCTBXLIBDIR_UNIX)
+CCTBXLIBDIR_WIN=@(CCTBXLIBDIR_WIN)
+
 BOOSTINC=-I"$(ROOT)\boost"
 BOOST_PYTHONLIB="@(CWD)\..\boost\boost_python.lib"
 
@@ -14,8 +17,6 @@ PYINC=-I"C:\Program files\Python\include"
 PYLIB="C:\Program files\Python\libs\python15.lib"
 
 STDFIXINC=
-
-CCTBXLIB=..\..\lib\lib*.lib
 
 CPP=cl.exe
 LD=link.exe

@@ -11,7 +11,9 @@ class write_makefiles(makefile_generator.write_makefiles):
       "examples/python/symop.lib",
     )
 
-    self.examples = {
-      "getting_started": ("getting_started",),
-      "convert_ccp4_symop_lib": ("convert_ccp4_symop_lib",),
+    self.executables = {
+      "getting_started":
+        (("getting_started",), ("sgtbx", "uctbx")),
+      "convert_ccp4_symop_lib":
+        (("convert_ccp4_symop_lib",), ("sgtbx",)),
     }

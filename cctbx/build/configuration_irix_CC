@@ -6,16 +6,17 @@ CCTBX_UNIX="$(ROOT)/cctbx"
 CCTBX_WIN=
 CCTBXINC=-I"$(ROOT)/cctbx"
 
+CCTBXLIBDIR_UNIX=@(CCTBXLIBDIR_UNIX)
+CCTBXLIBDIR_WIN=
+
 BOOSTINC=-I"$(ROOT)/boost"
 BOOST_PYTHONLIB=@(CWD)/../boost/libboost_python.a
 
-PYEXE=/usr/local/Python-1.5.2/bin/python
+PYEXE=PYTHONPATH=. /usr/local/Python-1.5.2/bin/python
 PYINC=-I/usr/local/Python-1.5.2/include/python1.5
 PYLIB=
 
 STDFIXINC=$(BOOSTINC)/boost/compatibility/cpp_c_headers
-
-CCTBXLIB=-L../../lib -leltbx -lsgtbx -luctbx
 
 CPP=CC -LANG:std -n32 -mips4
 LD=CC -LANG:std -n32 -mips4

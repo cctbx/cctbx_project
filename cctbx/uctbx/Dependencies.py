@@ -21,12 +21,12 @@ class write_makefiles(makefile_generator.write_makefiles):
     }
 
     self.executables = {
-      "uctbxdriver": ("uctbxdriver", "uctbx", "error"),
+      "uctbxdriver": (("uctbxdriver", "uctbx", "error"), ()),
     }
 
     self.boost_python_modules = {
-      "uctbx": ("uctbxmodule",
-                "uctbx",
-                "error",
-                "bpl_utils", "boost_array_bpl"),
+      "uctbx": (("uctbxmodule",
+                 "uctbx",
+                 "error",
+                 "bpl_utils", "boost_array_bpl"), ()),
     }

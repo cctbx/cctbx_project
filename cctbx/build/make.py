@@ -47,17 +47,6 @@ def run_in_subdirs(subdirs, command_line, verbose = 0):
     os.system(command_line)
     os.chdir(cwd)
 
-def make_libdir(platform):
-  try: os.makedirs("lib")
-  except OSError: pass
-  if (platform == "vc60"):
-    libext = ".lib"
-  else:
-    libext = ".a"
-  copy_verbose("eltbx/libeltbx" + libext, "lib")
-  copy_verbose("sgtbx/libsgtbx" + libext, "lib")
-  copy_verbose("uctbx/libuctbx" + libext, "lib")
-
 def make_libpythondir(platform):
   try: os.makedirs("lib/python/eltbx")
   except OSError: pass
@@ -68,14 +57,16 @@ def make_libpythondir(platform):
     libpyd = ".so"
   if (hasattr(os, "symlink")):
     system_verbose("cp eltbx/*%s lib/python/eltbx" % (libpyd,))
-    system_verbose("cp sgtbx/*%s lib/python" % (libpyd,))
     system_verbose("cp uctbx/*%s lib/python" % (libpyd,))
+    system_verbose("cp sgtbx/*%s lib/python" % (libpyd,))
     system_verbose("cp adptbx/*%s lib/python" % (libpyd,))
+    system_verbose("cp sftbx/*%s lib/python" % (libpyd,))
   else:
     system_verbose(r"copy eltbx\*.pyd lib\python\eltbx")
-    system_verbose(r"copy sgtbx\*.pyd lib\python")
     system_verbose(r"copy uctbx\*.pyd lib\python")
+    system_verbose(r"copy sgtbx\*.pyd lib\python")
     system_verbose(r"copy adptbx\*.pyd lib\python")
+    system_verbose(r"copy sftbx\*.pyd lib\python")
 
 if (__name__ == "__main__"):
   cf = read_configuration()
@@ -87,7 +78,7 @@ if (__name__ == "__main__"):
   compile_dev = "compile_dev" in sys.argv
   compile_all = "compile_all" in sys.argv or compile_dev
 
-  toolboxes = ("eltbx", "sgtbx", "uctbx", "adptbx")
+  toolboxes = ("eltbx", "uctbx", "sgtbx", "adptbx", "sftbx")
   examples = ("examples/cpp",)
 
   if (hasattr(os, "symlink")):
@@ -113,9 +104,6 @@ if (__name__ == "__main__"):
 
   if ("compile" in sys.argv or compile_all):
     run_in_subdirs(toolboxes, make + " compile")
-
-  if ("libdir" in sys.argv or compile_all):
-    make_libdir(platform)
 
   if ("libpythondir" in sys.argv or compile_all):
     make_libpythondir(platform)

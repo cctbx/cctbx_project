@@ -2,11 +2,21 @@
 
 import sys, os
 from string import split, strip, maketrans, translate, join
+from make import expand_cf
 transl_table_slash_backslash = maketrans("/", "\\")
+
+def paths_relative(subdir_from, subdir_to = None):
+  p = ""
+  for up in split(subdir_from, "/"):
+    p = p + "/.."
+  p = p[1:]
+  if (subdir_to):
+    p = p + "/" + subdir_to
+  return p, translate(p, transl_table_slash_backslash)
 
 class write_makefiles:
 
-  def __init__(self, configuration):
+  def __init__(self, subdir, configuration):
     self.platform = strip(configuration[0])
     if (not (self.platform in ("tru64_cxx", "linux_gcc", "irix_CC",
                                "macosx", "mingw32", "vc60"))):
@@ -26,6 +36,9 @@ class write_makefiles:
     self.macros = configuration[1:]
     # remove empty lines at beginning
     while (len(strip(self.macros[0])) == 0): del self.macros[0]
+    paths_lib = paths_relative(subdir, "lib")
+    expand_cf(self.macros, "@(CCTBXLIBDIR_UNIX)", paths_lib[0])
+    expand_cf(self.macros, "@(CCTBXLIBDIR_WIN)", paths_lib[1])
     self.dependencies()
 
   def head(self):
@@ -72,6 +85,18 @@ class write_makefiles:
     for obj in objects:
       s = s + " " + obj + doto
     return s[1:]
+
+  def format_libs(self, libs, macros):
+    s = ""
+    if (len(libs)):
+      if (self.platform == "vc60"):
+        s = s + " $(CCTBXLIBDIR_WIN)\\lib*.lib"
+      else:
+        s = s + " -L$(CCTBXLIBDIR_UNIX)"
+        for l in libs: s = s + " -l" + l
+    if (len(macros) > 0):
+      s = s + " " + join(macros)
+    return strip(s)
 
   def tail(self):
 
@@ -154,7 +179,11 @@ class write_makefiles:
       else:
         print "\trm -f %s" % (lib,)
       if   (self.platform == "tru64_cxx"):
-        print "\tar r %s %s cxx_repository/*.o" % (lib, objstr)
+        print "\tcd cxx_repository; \\"
+        print "\t  ls -1 > ../%s.input; \\" % (lib,)
+        print "\t  ar r ../%s -input ../%s.input" % (lib, lib)
+        print "\trm -f %s.input" % (lib,)
+        print "\tar r %s %s" % (lib, objstr)
       elif (self.platform == "irix_CC"):
         print "\t$(CPP) -ar -o %s %s" % (lib, objstr)
       elif (self.platform == "macosx"):
@@ -166,12 +195,21 @@ class write_makefiles:
       print "%s: %s" % (lib, objstr)
       print "\t-del %s" % (lib,)
       print "\t$(LD) -lib /nologo /out:%s %s" % (lib, objstr)
+    if (self.platform  in ("vc60", "mingw32")):
+      print "\t-mkdir $(CCTBXLIBDIR_WIN)"
+      print "\tcopy %s $(CCTBXLIBDIR_WIN)" % (lib,)
+    else:
+      print "\t-mkdir $(CCTBXLIBDIR_UNIX)"
+      print "\tcp %s $(CCTBXLIBDIR_UNIX)" % (lib,)
     print
     self.make_targets["libraries"].append(lib)
     self.update_depend(objects)
 
-  def make_executable(self, name, objects, libs = "$(LDMATH)"):
+  def make_executable(self, name, objects_and_libs):
+    objects = objects_and_libs[0]
+    libs = objects_and_libs[1]
     objstr = self.format_objects(objects)
+    libstr = self.format_libs(libs, ("$(LDMATH)",))
     if (not self.platform in ("mingw32", "vc60")):
       nameexe = name
     else:
@@ -181,38 +219,44 @@ class write_makefiles:
     else:
       out = "/out:"
     print "%s: %s" % (nameexe, objstr)
-    print "\t$(LD) $(LDEXE) %s %s%s %s" % (objstr, out, nameexe, libs)
+    print "\t$(LD) $(LDEXE) %s %s%s %s" % (objstr, out, nameexe, libstr)
     print
     self.make_targets["executables"].append(nameexe)
     self.make_targets["clean"].append(nameexe)
     self.update_depend(objects)
 
-  def make_boost_python_module(self, name, objects):
+  def make_boost_python_module(self, name, objects_and_libs):
+    objects = objects_and_libs[0]
+    libs = objects_and_libs[1]
     objstr = self.format_objects(objects)
     if   (self.platform == "mingw32"):
-      self.mingw32_pyd(name, objstr)
+      self.mingw32_pyd(name, objstr, libs)
     elif (self.platform == "vc60"):
-      self.vc60_pyd(name, objstr)
+      self.vc60_pyd(name, objstr, libs)
     else:
-      self.unix_so(name, objstr)
+      self.unix_so(name, objstr, libs)
     print
     self.update_depend(objects)
 
-  def unix_so(self, name, objstr):
+  def unix_so(self, name, objstr, libs):
+    libstr = self.format_libs(libs,
+      ("$(BOOST_PYTHONLIB)", "$(PYLIB)", "$(LDMATH)"))
     nameso = name + ".so"
     print "%s: %s" % (nameso, objstr)
-    print "\t$(LD) $(LDDLL) -o %s %s $(BOOST_PYTHONLIB) $(PYLIB) $(LDMATH)" \
-          % (nameso, objstr)
+    print "\t$(LD) $(LDDLL) -o %s %s %s" \
+          % (nameso, objstr, libstr)
     print
     self.make_targets["boost_python_modules"].append(nameso)
 
-  def mingw32_pyd(self, name, objstr):
+  def mingw32_pyd(self, name, objstr, libs):
+    libstr = self.format_libs(libs,
+      ("$(BOOST_PYTHONLIB)", "$(PYLIB)"))
     namepyd = name + ".pyd"
     namedef = name + ".def"
     print "%s: %s %s" % (namepyd, namedef, objstr)
     print (  "\tdllwrap -s --driver-name g++ --entry _DllMainCRTStartup@12"
            + " --target=i386-mingw32 --dllname %s --def %s"
-           + " %s $(BOOST_PYTHONLIB) $(PYLIB)") % (namepyd, namedef, objstr)
+           + " %s %s") % (namepyd, namedef, objstr, libstr)
     print
     print "%s:" % (namedef,)
     print "\techo EXPORTS > %s" % (namedef,)
@@ -220,11 +264,13 @@ class write_makefiles:
     print
     self.make_targets["boost_python_modules"].append(namepyd)
 
-  def vc60_pyd(self, name, objstr):
+  def vc60_pyd(self, name, objstr, libs):
+    libstr = self.format_libs(libs,
+      ("$(BOOST_PYTHONLIB)", "$(PYLIB)"))
     namepyd = name + ".pyd"
     print "%s: %s" % (namepyd, objstr)
     print (  "\t$(LD) $(LDDLL) /out:%s /export:init%s %s"
-           + " $(BOOST_PYTHONLIB) $(PYLIB)") % (namepyd, name, objstr)
+           + " %s") % (namepyd, name, objstr, libstr)
     self.make_targets["boost_python_modules"].append(namepyd)
 
   def make_clean(self):
@@ -259,10 +305,6 @@ class write_makefiles:
       if (hasattr(self, "executables")):
         for name in self.executables.keys():
           self.make_executable(name, self.executables[name])
-      if (hasattr(self, "examples")):
-        for name in self.examples.keys():
-          self.make_executable(name, self.examples[name],
-                               "$(CCTBXLIB) $(LDMATH)")
       if (hasattr(self, "boost_python_modules")):
         for name in self.boost_python_modules.keys():
           self.make_boost_python_module(name, self.boost_python_modules[name])

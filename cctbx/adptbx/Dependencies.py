@@ -14,14 +14,8 @@ class write_makefiles(makefile_generator.write_makefiles):
       "adptbx/tst.py",
     )
 
-    self.libraries = {
-    }
-
-    self.executables = {
-    }
-
     self.boost_python_modules = {
-      "adptbx": ("adptbxmodule",
-                 "error",
-                 "bpl_utils", "boost_array_bpl"),
+      "adptbx": (("adptbxmodule",
+                  "error",
+                  "bpl_utils", "boost_array_bpl"), ()),
     }
