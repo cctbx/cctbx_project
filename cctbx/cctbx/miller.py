@@ -112,6 +112,12 @@ class set(crystal.symmetry):
   def size(self):
     return self.indices().size()
 
+  def copy(self):
+    return set(
+      crystal_symmetry=self,
+      indices=self._indices,
+      anomalous_flag=self._anomalous_flag)
+
   def deep_copy(self):
     return set(
       crystal_symmetry=crystal.symmetry(

@@ -19,6 +19,12 @@ def exercise_set():
   ms = miller.set(xs, mi, 0001)
   assert ms.indices() == mi
   assert ms.anomalous_flag() == 0001
+  mc = ms.copy()
+  assert not mc is ms
+  assert mc.unit_cell() is ms.unit_cell()
+  assert mc.space_group_info() is ms.space_group_info()
+  assert mc.indices() is ms.indices()
+  assert mc.anomalous_flag() is ms.anomalous_flag()
   mc = ms.deep_copy()
   assert mc.unit_cell().is_similar_to(ms.unit_cell())
   assert mc.space_group() == ms.space_group()
@@ -65,6 +71,19 @@ def exercise_set():
     min_fraction_bijvoet_pairs=4/5.-1.e-4).anomalous_flag() == 0001
   assert ma.auto_anomalous(
     min_fraction_bijvoet_pairs=4/5.+1.e-4).anomalous_flag() == 00000
+  s = StringIO.StringIO()
+  mc.show_comprehensive_summary(f=s)
+  assert s.getvalue() == """\
+Number of Miller indices: 36
+Anomalous flag: 0
+Unit cell: (3, 4, 5, 90, 90, 90)
+Space group: P 2 2 2 (No. 16)
+Systematic absences: 0
+Centric reflections: 27
+Resolution range: 5 1.1776
+Completeness in resolution range: 1
+Completeness with d_max=infinity: 1
+"""
 
 def exercise_binner():
   crystal_symmetry = crystal.symmetry(
