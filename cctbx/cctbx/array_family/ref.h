@@ -22,7 +22,6 @@
 
 #include <cctbx/array_family/grid_accessor.h>
 #include <cctbx/array_family/ref_helpers.h>
-#include <cctbx/array_family/versa_helpers.h>
 
 namespace cctbx { namespace af {
 
