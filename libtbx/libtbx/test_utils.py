@@ -1,5 +1,8 @@
+import difflib
 from stdlib import math
 import sys
+
+diff_function = getattr(difflib, "unified_diff", difflib.ndiff)
 
 def run_tests(build_dir, dist_dir, tst_list):
   import sys, os, os.path
@@ -74,6 +77,11 @@ def eps_eq(a1, a2, eps=1.e-6):
       l2 = round(math.log(abs(a2)))
       m = math.exp(-max(l1, l2))
       if (abs(a1*m-a2*m) > eps): return False
+  return True
+
+def show_diff(a, b):
+  if (a == b): return False
+  print "".join(diff_function(a.splitlines(1), b.splitlines(1)))
   return True
 
 def exercise():
