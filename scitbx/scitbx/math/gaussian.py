@@ -28,3 +28,6 @@ class _fit(boost.python.injector, fit):
                        self.fitted_values(),
                        self.significant_relative_errors()):
       print >> f, "%4.2f %7.4f %7.4f %7.4f %7.4f" % (x,y,v,v-y,e)
+
+  def __getinitargs__(self):
+    return (self.table_x(), self.table_y(), self.table_sigmas(), sum(self))
