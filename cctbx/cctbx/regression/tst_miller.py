@@ -330,6 +330,12 @@ def exercise_array():
   assert tuple(aa.indices()) == tuple(ma.indices())
   assert approx_equal(aa.data(), ma.data())
   assert approx_equal(aa.sigmas(), ma.sigmas())
+  sa = ma.apply_scaling(target_max=10)
+  assert approx_equal(flex.max(sa.data()), 10)
+  assert approx_equal(flex.max(sa.sigmas()), 1)
+  sa = sa.apply_scaling(factor=3)
+  assert approx_equal(flex.max(sa.data()), 30)
+  assert approx_equal(flex.max(sa.sigmas()), 3)
   ma = miller.array(miller.set(xs, mi, 00000),data,sigmas).patterson_symmetry()
   assert str(ma.space_group_info()) == "P 1 1 2/m"
   assert ma.indices() == mi

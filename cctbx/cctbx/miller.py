@@ -296,6 +296,23 @@ class set(crystal.symmetry):
     if (d_min): keep &= d >= d_min
     return self.apply_selection(keep, negate)
 
+  def apply_scaling(self, target_max=None, factor=None):
+    assert [target_max, factor].count(None) == 1
+    assert self.data() is not None
+    s = None
+    if (target_max is not None):
+      current_max = flex.max(flex.abs(self.data()))
+      if (current_max == 0): return self.deep_copy()
+      factor = target_max / current_max
+    d = self.data() * factor
+    if (self.sigmas() is not None): s = self.sigmas() * factor
+    return (array(
+      miller_set = set.deep_copy(self),
+      data=d,
+      sigmas=s)
+      .set_info(self.info())
+      .set_observation_type(self))
+
   def match_bijvoet_mates(self):
     assert self.anomalous_flag() in (None, 0001)
     assert self.indices() is not None
