@@ -31,11 +31,11 @@ misc_functions_2arg = (
 reduction_functions_1arg = (
   "max_index", "min_index",
   "max", "min",
-  "sum", "product",
-  "mean", "rms",
+  "sum", "sum_sq", "product",
+  "mean", "mean_sq",
 )
 reduction_functions_2arg = (
-  "mean_weighted", "rms_weighted",
+  "mean_weighted", "mean_sq_weighted",
 )
 
 class empty:

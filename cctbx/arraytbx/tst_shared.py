@@ -133,15 +133,15 @@ def exercise_functions():
   assert shared.product(b) == 120
   assert shared.mean(a) == 6. / 4
   assert shared.mean(b) == 15. / 3
-  assert shared.rms(a) == math.sqrt((1+3.*3.+2.*2.) / 4)
-  assert shared.rms(b) == math.sqrt((4.*4.+5.*5.+6.*6.) / 3)
+  assert shared.mean_sq(a) == (1+3.*3.+2.*2.) / 4
+  assert shared.mean_sq(b) == (4.*4.+5.*5.+6.*6.) / 3
   a = shared.double((-2, 0, 3))
   assert tuple(shared.pow(a, 2)) == (4, 0, 9)
   a = shared.double((2, 0, 3))
   assert list(shared.sqrt(a)) == [math.sqrt(x) for x in a]
   b = shared.double((1, 1, 1))
   assert (shared.mean(a) - shared.mean_weighted(a, b)) < 1.e-6
-  assert (shared.rms(a) - shared.rms_weighted(a, b)) < 1.e-6
+  assert (shared.mean_sq(a) - shared.mean_sq_weighted(a, b)) < 1.e-6
 
 def exercise_complex_functions():
   c = 1+2j
