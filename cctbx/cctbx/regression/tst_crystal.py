@@ -83,6 +83,7 @@ def exercise_symmetry():
   assert asu.unit_cell is xs.unit_cell()
   asu_mappings = xs.asu_mappings(buffer_thickness=2.364)
   assert approx_equal(asu_mappings.buffer_thickness(), 2.364)
+  assert approx_equal(xs.average_b_cart((1,2,3,4,5,6)), (1,2,3,0,5,0))
 
 def exercise_special_position_settings():
   xs = crystal.symmetry((3,4,5), "P 2 2 2")

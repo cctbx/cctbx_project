@@ -213,6 +213,15 @@ class symmetry(object):
         is_inside_epsilon=is_inside_epsilon),
       buffer_thickness=buffer_thickness)
 
+  def average_u_cart(self, u_cart):
+    from cctbx import adptbx
+    return adptbx.u_star_as_u_cart(self.unit_cell(),
+      self.space_group().average_u_star(
+        adptbx.u_cart_as_u_star(self.unit_cell(), u_cart)))
+
+  def average_b_cart(self, b_cart):
+    return self.average_u_cart(u_cart=b_cart)
+
 class special_position_settings(symmetry):
 
   def __init__(self, crystal_symmetry,
