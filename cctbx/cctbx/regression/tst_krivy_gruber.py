@@ -314,6 +314,22 @@ def exercise_extreme():
     29.932540128999769, 89.92047105556459, 119.85301114570319))
   uc.niggli_reduction(iteration_limit=10000)
 
+def exercise_real_world_examples():
+  # SSZ-59, cell by Michael Treacy, infinite loop in GSAS rducll (Linux)
+  uc = uctbx.unit_cell((
+    12.7366, 29.2300, 5.0242,
+    94.6570, 100.8630, 99.7561))
+  nc = uc.niggli_cell()
+  assert nc.is_similar_to(uctbx.unit_cell(
+    (5.0242, 12.7366, 29.23, 99.7561, 94.657, 100.863)))
+  # SSZ-59, Burton et al., Table 4
+  uc = uctbx.unit_cell((
+    12.7806, 12.7366, 29.457,
+    103.42, 103.57, 22.71))
+  red = uc.niggli_reduction()
+  assert red.as_unit_cell().is_similar_to(nc)
+  assert red.r_inv().elems == (-1, 0, 1, 1, -1, 0, 0, 0, 1)
+
 def exercise():
   exercise_extreme()
   quick = "--Quick" in sys.argv[1:]
@@ -328,6 +344,7 @@ def exercise():
   if (quick): n_trials_per_type=10
   else:       n_trials_per_type=100
   exercise_gruber_types(n_trials_per_type, verbose)
+  exercise_real_world_examples()
   if (0 or verbose):
     print time_reduce.report()
   print "OK"
