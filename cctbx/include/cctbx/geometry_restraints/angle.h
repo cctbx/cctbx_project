@@ -22,6 +22,17 @@ namespace cctbx { namespace geometry_restraints {
       weight(weight_)
     {}
 
+    //! Sorts i_seqs such that i_seq[0] < i_seq[2].
+    angle_proxy
+    sort_i_seqs() const
+    {
+      angle_proxy result(*this);
+      if (result.i_seqs[0] > result.i_seqs[2]) {
+        std::swap(result.i_seqs[0], result.i_seqs[2]);
+      }
+      return result;
+    }
+
     //! Indices into array of sites.
     af::tiny<unsigned, 3> i_seqs;
     //! Parameter.

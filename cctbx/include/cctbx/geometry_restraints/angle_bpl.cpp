@@ -26,6 +26,7 @@ namespace {
       class_<w_t>("angle_proxy", no_init)
         .def(init<af::tiny<unsigned, 3> const&, double, double>(
           (arg_("i_seqs"), arg_("angle_ideal"), arg_("weight"))))
+        .def("sort_i_seqs", &w_t::sort_i_seqs)
         .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
         .def_readonly("angle_ideal", &w_t::angle_ideal)
         .def_readonly("weight", &w_t::weight)
