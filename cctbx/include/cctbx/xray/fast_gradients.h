@@ -322,7 +322,8 @@ namespace cctbx { namespace xray {
       fast_gradients(
         uctbx::unit_cell const& unit_cell,
         af::const_ref<XrayScattererType> const& scatterers,
-        af::const_ref<std::complex<FloatType>, accessor_type> const& ft_dt,
+        af::const_ref<std::complex<FloatType>, accessor_type> const&
+          ft_d_target_d_f_calc,
         grid_point_type const& fft_n_real,
         grid_point_type const& fft_m_real,
         FloatType const& u_extra=0.25,
@@ -375,22 +376,22 @@ namespace cctbx { namespace xray {
       }
 
       af::shared<scitbx::vec3<FloatType> >
-      grad_site() const { return grad_site_; }
+      d_target_d_site() const { return d_target_d_site_; }
 
       af::shared<FloatType>
-      grad_u_iso() const { return grad_u_iso_; }
+      d_target_d_u_iso() const { return d_target_d_u_iso_; }
 
       af::shared<scitbx::sym_mat3<FloatType> >
-      grad_u_star() const { return grad_u_star_; }
+      d_target_d_u_star() const { return d_target_d_u_star_; }
 
       af::shared<FloatType>
-      grad_occupancy() const { return grad_occupancy_; }
+      d_target_d_occupancy() const { return d_target_d_occupancy_; }
 
       af::shared<FloatType>
-      grad_fp() const { return grad_fp_; }
+      d_target_d_fp() const { return d_target_d_fp_; }
 
       af::shared<FloatType>
-      grad_fdp() const { return grad_fdp_; }
+      d_target_d_fdp() const { return d_target_d_fdp_; }
 
     private:
       uctbx::unit_cell unit_cell_;
@@ -404,12 +405,12 @@ namespace cctbx { namespace xray {
       accessor_type map_accessor_;
       std::size_t exp_table_size_;
       grid_point_type max_shell_radii_;
-      af::shared<scitbx::vec3<FloatType> > grad_site_;
-      af::shared<FloatType> grad_u_iso_;
-      af::shared<scitbx::sym_mat3<FloatType> > grad_u_star_;
-      af::shared<FloatType> grad_occupancy_;
-      af::shared<FloatType> grad_fp_;
-      af::shared<FloatType> grad_fdp_;
+      af::shared<scitbx::vec3<FloatType> > d_target_d_site_;
+      af::shared<FloatType> d_target_d_u_iso_;
+      af::shared<scitbx::sym_mat3<FloatType> > d_target_d_u_star_;
+      af::shared<FloatType> d_target_d_occupancy_;
+      af::shared<FloatType> d_target_d_fp_;
+      af::shared<FloatType> d_target_d_fdp_;
   };
 
   template <typename FloatType,
@@ -418,7 +419,8 @@ namespace cctbx { namespace xray {
   ::fast_gradients(
     uctbx::unit_cell const& unit_cell,
     af::const_ref<XrayScattererType> const& scatterers,
-    af::const_ref<std::complex<FloatType>, accessor_type> const& ft_dt,
+    af::const_ref<std::complex<FloatType>, accessor_type> const&
+      ft_d_target_d_f_calc,
     grid_point_type const& fft_n_real,
     grid_point_type const& fft_m_real,
     FloatType const& u_extra,
@@ -533,9 +535,9 @@ namespace cctbx { namespace xray {
           orth_mx[8] * f2);
         FloatType d_sq = d.length_sq();
         if (d_sq > shell.max_d_sq) continue;
-        std::complex<FloatType> ft_dt_gp = ft_dt(gp);
-        FloatType f_real = ft_dt_gp.real();
-        FloatType f_imag = ft_dt_gp.imag();
+        std::complex<FloatType> ft_dt_dfc_gp = ft_d_target_d_f_calc(gp);
+        FloatType f_real = ft_dt_dfc_gp.real();
+        FloatType f_imag = ft_dt_dfc_gp.imag();
         if (!scatterer->anisotropic_flag) {
           gr_site += f_real * caasf_ft.d_rho_real_d_site(d, d_sq);
           if (fdp) {
@@ -585,17 +587,18 @@ namespace cctbx { namespace xray {
           gr_fdp += f_imag * caasf_ft.d_rho_imag_d_fdp(d);
         }
       }}}
-      grad_site_.push_back(gr_site * unit_cell_.orthogonalization_matrix());
+      d_target_d_site_.push_back(
+        gr_site * unit_cell_.orthogonalization_matrix());
       if (!scatterer->anisotropic_flag) {
-        grad_u_iso_.push_back(adptbx::u_as_b(gr_b_iso));
+        d_target_d_u_iso_.push_back(adptbx::u_as_b(gr_b_iso));
       }
       else {
-        grad_u_star_.push_back(adptbx::grad_u_cart_as_u_star(
+        d_target_d_u_star_.push_back(adptbx::grad_u_cart_as_u_star(
           unit_cell_, adptbx::u_as_b(gr_b_cart)));
       }
-      grad_occupancy_.push_back(gr_occupancy);
-      grad_fp_.push_back(gr_fp);
-      grad_fdp_.push_back(gr_fdp);
+      d_target_d_occupancy_.push_back(gr_occupancy);
+      d_target_d_fp_.push_back(gr_fp);
+      d_target_d_fdp_.push_back(gr_fdp);
     }
     exp_table_size_ = exp_table.table().size();
   }

@@ -249,7 +249,7 @@ def site(structure_ideal, f_obs):
                   * gms[i_scatterer][i].conjugate()
                   * complex_math.polar((1, p)))
         print "gxm[%d][%d]:" % (i_scatterer, i_xyz), gxm
-      gl = map0.grad_site()[i_scatterer][i_xyz]
+      gl = map0.d_target_d_site()[i_scatterer][i_xyz]
       print " m0[%d][%d]: " % (i_scatterer, i_xyz), gl
       print
 
@@ -317,7 +317,7 @@ def u_iso(structure_ideal, f_obs):
                 * gms[i_scatterer][i].conjugate()
                 * complex_math.polar((1, p)))
       print "gxm[%d]:" % i_scatterer, gxm
-    gl = map0.grad_u_iso()[i_scatterer]
+    gl = map0.d_target_d_u_iso()[i_scatterer]
     print " m0[%d]: " % i_scatterer, gl
     print
 
@@ -384,7 +384,7 @@ def occupancy(structure_ideal, f_obs):
                 * gms[i_scatterer][i].conjugate()
                 * complex_math.polar((1, p)))
       print "gxm[%d]:" % i_scatterer, gxm/m.occupancy
-    gl = map0.grad_occupancy()[i_scatterer]
+    gl = map0.d_target_d_occupancy()[i_scatterer]
     print " m0[%d]: " % i_scatterer, gl
     print
 
@@ -495,7 +495,7 @@ def u_star(structure_ideal, f_obs):
                   * gms[i_scatterer][i].conjugate()
                   * complex_math.polar((1, p)))
         print "gxm[%d][%d]:" % (i_scatterer, ij), gxm
-      gl = map0.grad_u_star()[i_scatterer][ij]
+      gl = map0.d_target_d_u_star()[i_scatterer][ij]
       print " m0[%d][%d]: " % (i_scatterer, ij), gl
       print " gc[%d][%d]: " % (i_scatterer, ij), gc
       print "s2c[%d][%d]: " % (i_scatterer, ij), sfd_cart[ij]
@@ -566,7 +566,7 @@ def fp(structure_ideal, f_obs):
                 * (gms[i_scatterer][i]/f0_fp_fdp).conjugate()
                 * complex_math.polar((1, p)))
       print "gxm[%d]:" % i_scatterer, gxm
-    gl = map0.grad_fp()[i_scatterer]
+    gl = map0.d_target_d_fp()[i_scatterer]
     print " m0[%d]: " % i_scatterer, gl
     print
 
@@ -635,7 +635,7 @@ def fdp(structure_ideal, f_obs):
                 * (gms[i_scatterer][i]/(-1j*f0_fp_fdp)).conjugate()
                 * complex_math.polar((1, p)))
       print "gxm[%d]:" % i_scatterer, gxm
-    gl = map0.grad_fdp()[i_scatterer]
+    gl = map0.d_target_d_fdp()[i_scatterer]
     print " m0[%d]: " % i_scatterer, gl
     print
 
