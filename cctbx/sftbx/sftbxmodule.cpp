@@ -671,6 +671,9 @@ namespace {
     class_builder<maps::grid_tags<long> >
     py_grid_tags(this_module, "grid_tags");
 
+    class_builder<Miller::index_span>
+    py_index_span(this_module, "index_span");
+
     py_map_to_asym_index.def(constructor<>());
     py_map_to_asym_index.def(constructor<
       const sgtbx::SpaceGroupInfo&,
@@ -934,6 +937,14 @@ namespace {
     py_grid_tags.def(grid_tags_verify_2, "verify");
 
     this_module.def(py_determine_grid, "determine_grid");
+
+    py_index_span.def(constructor<>());
+    py_index_span.def(constructor<af::shared<Miller::Index> >());
+    py_index_span.def(&Miller::index_span::min, "min");
+    py_index_span.def(&Miller::index_span::max, "max");
+    py_index_span.def(&Miller::index_span::abs_range, "abs_range");
+    py_index_span.def(&Miller::index_span::map_grid, "map_grid");
+    py_index_span.def(&Miller::index_span::is_in_domain, "is_in_domain");
   }
 
 }

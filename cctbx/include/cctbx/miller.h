@@ -29,7 +29,7 @@
 #include <cctbx/indexed_value.h>
 #include <cctbx/array_family/tiny_types.h>
 #include <cctbx/array_family/shared.h>
-#include <cctbx/math/min_max.h>
+#include <cctbx/math/utils.h>
 
 namespace cctbx {
   //! %Miller index namespace.
@@ -84,8 +84,8 @@ namespace cctbx {
             if (elems[P[i]] <  0 && m2[P[i]] >= 0) return false;
           }
           for(i=0;i<3;i++) {
-            if (std::abs(elems[P[i]]) < std::abs(m2[P[i]])) return true;
-            if (std::abs(elems[P[i]]) > std::abs(m2[P[i]])) return false;
+            if (math::abs(elems[P[i]]) < math::abs(m2[P[i]])) return true;
+            if (math::abs(elems[P[i]]) > math::abs(m2[P[i]])) return false;
           }
           return false;
         }
@@ -126,24 +126,6 @@ namespace cctbx {
       return os;
     }
 
-    //! Determine max(abs(H[i]))+1, i=1..3, for an array of Miller indices.
-    template <class MillerIndexArrayType>
-    af::int3
-    IndexRange(const MillerIndexArrayType& Indices)
-    {
-      af::int3 result;
-      result.fill(0);
-      for(std::size_t i=0;i<Indices.size();i++) {
-        for(std::size_t j=0;j<3;j++) {
-          int m = Indices[i][j];
-          if (m < 0) m *= -1;
-          if (result[j] < m) result[j] = m;
-        }
-      }
-      for(std::size_t j=0;j<3;j++) result[j]++;
-      return result;
-    }
-
     /*! \brief Determine min(H[i]) and max(H[i])+1, i=1..3,
          for an array of Miller indices.
      */
@@ -154,27 +136,55 @@ namespace cctbx {
 
       index_span() {}
 
-      template <class MillerIndexArrayType>
-      index_span(MillerIndexArrayType const& Indices)
+      index_span(af::shared<Index> index_array)
       {
         this->fill(min_end(0, 0));
-        if (Indices.size()) {
+        if (index_array.size()) {
           for(std::size_t j=0;j<3;j++) {
-            (*this)[j] = min_end().fill(Indices[0][j]);
+            (*this)[j] = min_end().fill(index_array[0][j]);
           }
         }
-        for(std::size_t i=1;i<Indices.size();i++) {
+        for(std::size_t i=1;i<index_array.size();i++) {
           for(std::size_t j=0;j<3;j++) {
-            math::update_min((*this)[j][0], Indices[i][j]);
-            math::update_max((*this)[j][1], Indices[i][j]);
+            math::update_min((*this)[j][0], index_array[i][j]);
+            math::update_max((*this)[j][1], index_array[i][j]);
           }
         }
         for(std::size_t j=0;j<3;j++) (*this)[j][1]++;
       }
 
-      static int range(min_end const& span)
+      af::int3 min() const
       {
-        return span[1] - span[0];
+        af::int3 result;
+        for(std::size_t j=0;j<3;j++) result[j] = (*this)[j][0];
+        return result;
+      }
+
+      af::int3 max() const
+      {
+        af::int3 result;
+        for(std::size_t j=0;j<3;j++) result[j] = (*this)[j][1] - 1;
+        return result;
+      }
+
+      af::int3 abs_range() const
+      {
+        af::int3 result;
+        for(std::size_t j=0;j<3;j++) {
+          result[j] = math::abs((*this)[j][0]);
+          math::update_max(result[j], math::abs((*this)[j][1]-1));
+        }
+        for(std::size_t j=0;j<3;j++) result[j] += 1;
+        return result;
+      }
+
+      af::int3 map_grid() const
+      {
+        af::int3 result = abs_range();
+        for(std::size_t j=0;j<3;j++) {
+          result[j] = (result[j] - 1) * 2 + 1;
+        }
+        return result;
       }
 
       bool is_in_domain(Index const& h) const
@@ -187,10 +197,16 @@ namespace cctbx {
 
       std::size_t pack(Index const& h) const
       {
-        return ((h[0] - (*this)[0][0]) * range((*this)[1])
-              + (h[1] - (*this)[1][0])) * range((*this)[2])
+        return ((h[0] - (*this)[0][0]) * range_((*this)[1])
+              + (h[1] - (*this)[1][0])) * range_((*this)[2])
               + (h[2] - (*this)[2][0]);
       }
+
+      private:
+        static int range_(min_end const& span)
+        {
+          return span[1] - span[0];
+        }
     };
 
     class join_sets
