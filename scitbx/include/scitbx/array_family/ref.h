@@ -235,14 +235,14 @@ namespace scitbx { namespace af {
       value_type&
       operator()(index_value_type const& i0) const
       {
-        return operator()(index_type(i0));
+        return begin()[this->accessor_(i0)];
       }
 
       value_type&
       operator()(index_value_type const& i0,
                  index_value_type const& i1) const
       {
-        return operator()(index_type(i0, i1));
+        return begin()[this->accessor_(i0, i1)];
       }
 
       value_type&
@@ -250,7 +250,7 @@ namespace scitbx { namespace af {
                  index_value_type const& i1,
                  index_value_type const& i2) const
       {
-        return operator()(index_type(i0, i1, i2));
+        return begin()[this->accessor_(i0, i1, i2)];
       }
   };
 

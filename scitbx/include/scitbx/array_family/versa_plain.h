@@ -219,28 +219,28 @@ namespace scitbx { namespace af {
       // Convenience operator()
 
       value_type const& operator()(index_value_type const& i0) const {
-        return operator()(index_type(i0));
+        return begin()[m_accessor(i0)];
       }
             value_type& operator()(index_value_type const& i0)       {
-        return operator()(index_type(i0));
+        return begin()[m_accessor(i0)];
       }
       value_type const& operator()(index_value_type const& i0,
                                    index_value_type const& i1) const {
-        return operator()(index_type(i0, i1));
+        return begin()[m_accessor(i0, i1)];
       }
             value_type& operator()(index_value_type const& i0,
                                    index_value_type const& i1)       {
-        return operator()(index_type(i0, i1));
+        return begin()[m_accessor(i0, i1)];
       }
       value_type const& operator()(index_value_type const& i0,
                                    index_value_type const& i1,
                                    index_value_type const& i2) const {
-        return operator()(index_type(i0, i1, i2));
+        return begin()[m_accessor(i0, i1, i2)];
       }
             value_type& operator()(index_value_type const& i0,
                                    index_value_type const& i1,
                                    index_value_type const& i2)       {
-        return operator()(index_type(i0, i1, i2));
+        return begin()[m_accessor(i0, i1, i2)];
       }
 
     protected:

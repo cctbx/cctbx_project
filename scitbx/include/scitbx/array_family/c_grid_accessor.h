@@ -80,6 +80,13 @@ namespace scitbx { namespace af {
       {
         return i[0] * this->elems[1] + i[1];
       }
+
+      std::size_t
+      operator()(index_value_type const& i0,
+                 index_value_type const& i1) const
+      {
+        return i0 * this->elems[1] + i1;
+      }
   };
 
   template <>
@@ -113,6 +120,14 @@ namespace scitbx { namespace af {
       operator()(index_type const& i) const
       {
         return (i[0] * this->elems[1] + i[1]) * this->elems[2] + i[2];
+      }
+
+      std::size_t
+      operator()(index_value_type const& i0,
+                 index_value_type const& i1,
+                 index_value_type const& i2) const
+      {
+        return (i0 * this->elems[1] + i1) * this->elems[2] + i2;
       }
   };
 
