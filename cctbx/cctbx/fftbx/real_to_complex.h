@@ -32,6 +32,10 @@ namespace cctbx { namespace fftbx {
   inline std::size_t Ncomplex_from_Nreal(std::size_t Nreal) {
     return Nreal/2+1;
   }
+  //! XXX
+  inline std::size_t Mreal_from_Nreal(std::size_t Nreal) {
+    return 2 * Ncomplex_from_Nreal(Nreal);
+  }
 
   //! Real-to-complex Fast Fourier Transformation.
   template <typename RealType,
@@ -78,9 +82,9 @@ namespace cctbx { namespace fftbx {
           <p>
           See also: class details.
        */
-      template <typename ComplexOrRealType>
-      void forward(ComplexOrRealType* Seq_begin) {
-        forward_adaptor(Seq_begin);
+      template <typename ComplexOrRealIterOrPtrType>
+      void forward(ComplexOrRealIterOrPtrType Seq_begin) {
+        forward_adaptor(&(*Seq_begin));
       }
       /*! \brief In-place "backward" Fourier transformation of a sequence
           of Ncomplex() complex numbers to Nreal() real numbers.
@@ -90,9 +94,9 @@ namespace cctbx { namespace fftbx {
           <p>
           See also: class details.
        */
-      template <typename ComplexOrRealType>
-      void backward(ComplexOrRealType* Seq_begin) {
-        backward_adaptor(Seq_begin);
+      template <typename ComplexOrRealIterOrPtrType>
+      void backward(ComplexOrRealIterOrPtrType Seq_begin) {
+        backward_adaptor(&(*Seq_begin));
       }
     private:
       std::size_t m_Ncomplex;
@@ -187,7 +191,7 @@ namespace cctbx { namespace fftbx {
     // Computation of the sin and cos terms.
     // Based on the second part of fftpack41/rffti1.f.
     if (m_N < 2) return;
-    real_type* WA = m_WA.begin();
+    real_type* WA = &(*(m_WA.begin()));
     const real_type TPI = real_type(8) * std::atan(real_type(1));
     real_type ARGH = TPI / real_type(m_N);
     std::size_t IS = 0;

@@ -20,8 +20,8 @@ namespace cctbx { namespace fftbx {
   {
     if (m_N < 2) return;
     real_type* C = Seq_begin;
-    real_type* CH = m_CH.begin();
-    const real_type* WA = m_WA.begin();
+    real_type* CH = &(*(m_CH.begin()));
+    const real_type* WA = &(*(m_WA.begin()));
     std::size_t IDL1;
     std::size_t IDO;
     std::size_t IP;

@@ -65,7 +65,7 @@ namespace cctbx { namespace fftbx {
       void transform(select_sign<Tag> tag, NdimAccessor Map) {
   // FUTURE: move out of class body
   {
-    complex_type* Seq = m_Seq.begin();
+    complex_type* Seq = &(*(m_Seq.begin()));
     for (std::size_t iz = 0; iz < m_fft1d[2].N(); iz++) {
       for (std::size_t iy = 0; iy < m_fft1d[1].N(); iy++) {
         std::size_t ix;

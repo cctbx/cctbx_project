@@ -32,6 +32,15 @@ namespace cctbx { namespace fftbx {
     return result;
   }
 
+  //! XXX
+  template <typename IntegerType, std::size_t D>
+  inline boost::array<std::size_t, D>
+  Mreal_from_Nreal(const boost::array<IntegerType, D>& Nreal) {
+    boost::array<std::size_t, D> result = Nreal;
+    result[D-1] = Mreal_from_Nreal(result[D-1]);
+    return result;
+  }
+
   //! 3-dimensional real-to-complex Fast Fourier Transformation.
   /*! The real-to-complex Fourier transform of a real array
       is Hermitian. I.e., Map(i,j,k) is the conjugate complex
@@ -95,7 +104,7 @@ namespace cctbx { namespace fftbx {
       void forward(NdimAccessor Map)
   // FUTURE: move out of class body
   {
-    real_type* Seq = m_Seq.begin();
+    real_type* Seq = &(*(m_Seq.begin()));
     for (std::size_t ix = 0; ix < m_Nreal[0]; ix++) {
       for (std::size_t iy = 0; iy < m_Nreal[1]; iy++) {
         // Transform along z (fast direction)
@@ -141,7 +150,7 @@ namespace cctbx { namespace fftbx {
       void backward(NdimAccessor Map)
   // FUTURE: move out of class body
   {
-    real_type* Seq = m_Seq.begin();
+    real_type* Seq = &(*(m_Seq.begin()));
     for (std::size_t iz = 0; iz < m_fft1d_z.Ncomplex(); iz++) {
       for (std::size_t iy = 0; iy < m_Nreal[1]; iy++) {
         std::size_t ix;
