@@ -142,7 +142,7 @@ class resampling(crystal.symmetry):
         electron_density_must_be_positive)
       print "sampled_model_density OK"
     time_sampling = user_plus_sys_time()
-    result = xray.agarwal_1978(
+    result = xray.fast_gradients(
       xray_structure.unit_cell(),
       xray_structure.scatterers(),
       self.ft_dp(dp).complex_map(),
