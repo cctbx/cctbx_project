@@ -147,6 +147,15 @@ class rec:
       a[2] * b[0] - b[2] * a[0],
       a[0] * b[1] - b[0] * a[1]))
 
+  def cos_angle(self, other, value_if_undefined=None):
+    self_norm = self.norm()
+    if (self_norm == 0): return value_if_undefined
+    other_norm = other.norm()
+    if (other_norm == 0): return value_if_undefined
+    d = self_norm * other_norm
+    if (d == 0): return value_if_undefined
+    return self.dot(other) / math.sqrt(d)
+
   def determinant(self):
     assert self.n == (3,3)
     m = self.elems
@@ -339,4 +348,5 @@ if (__name__ == "__main__"):
   assert col((2,3,4)).product() == 2*3*4
   assert diag((1,2,3)).mathematica_form() == \
     "{{1, 0, 0}, {0, 2, 0}, {0, 0, 3}}"
+  assert approx_equal(col((1,0,0)).cos_angle(col((1,1,0)))**2, 0.5)
   print "OK"
