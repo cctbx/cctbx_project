@@ -3,6 +3,7 @@ from scitbx.math import euler_angles_as_matrix
 from scitbx.math import erf_verification, erf, erfc, erfcx
 from scitbx.math import bessel_i1_over_i0,bessel_i0,bessel_i1,bessel_ln_of_i0
 from scitbx.math import bessel_inverse_i1_over_i0
+from scitbx.math import lambertw
 from scitbx.math import eigensystem, time_eigensystem_real_symmetric
 from scitbx.math import gaussian
 from scitbx.math import golay_24_12_generator
@@ -168,6 +169,34 @@ def exercise_bessel():
   while x <= 100.0:
     assert approx_equal(bessel_ln_of_i0(x),math.log(bessel_i0(x)))
     x+=0.01
+
+def check_lambertw(x):
+  w = lambertw(x=x)
+  assert eps_eq(w*math.exp(w), x)
+
+def exercise_lambertw():
+  check_lambertw(-math.exp(-1)+1.e-4)
+  check_lambertw(-1.e-5)
+  check_lambertw(0)
+  check_lambertw(1.e-5)
+  check_lambertw(1-1.e-5)
+  check_lambertw(1+1.e-5)
+  check_lambertw(3-1.e-5)
+  check_lambertw(3+1.e-5)
+  for i in xrange(100):
+    check_lambertw(x=i/10.-0.35)
+  for i in xrange(20):
+    check_lambertw(x=2.**i)
+    check_lambertw(x=5.**i)
+    check_lambertw(x=10.**i)
+  try: lambertw(x=-math.exp(-1)-1.e-4)
+  except RuntimeError, e:
+    assert str(e) == "lambertw(x) domain error: x < -exp(-1)"
+  else: raise RuntimeError("Exception expected.")
+  try: lambertw(x=1, max_iterations=1)
+  except RuntimeError, e:
+    assert str(e) == "lambertw error: iteration did not converge"
+  else: raise RuntimeError("Exception expected.")
 
 def matrix_mul(a, ar, ac, b, br, bc):
   assert br == ac
@@ -963,6 +992,7 @@ def run():
   exercise_euler_angles()
   exercise_erf()
   exercise_bessel()
+  exercise_lambertw()
   exercise_eigensystem()
   exercise_gaussian_term()
   exercise_gaussian_sum()

@@ -3,6 +3,7 @@
 #include <scitbx/math/floating_point_epsilon.h>
 #include <scitbx/math/erf.h>
 #include <scitbx/math/bessel.h>
+#include <scitbx/math/lambertw.h>
 #include <scitbx/math/eigensystem.h>
 #include <scitbx/math/phase_error.h>
 #include <boost/python/module.hpp>
@@ -57,6 +58,8 @@ namespace {
     return result / static_cast<double>(n_repetitions);
   }
 
+  BOOST_PYTHON_FUNCTION_OVERLOADS(lambertw_overloads, lambertw, 1, 2)
+
   BOOST_PYTHON_FUNCTION_OVERLOADS(
     signed_phase_error_overloads, signed_phase_error, 2, 3)
   BOOST_PYTHON_FUNCTION_OVERLOADS(
@@ -83,6 +86,10 @@ namespace {
     def("bessel_i0", (double(*)(double const&)) bessel::i0);
     def("bessel_i1", (double(*)(double const&)) bessel::i1);
     def("bessel_ln_of_i0", (double(*)(double const&)) bessel::ln_of_i0);
+
+    def("lambertw", (double(*)(double const&, unsigned)) lambertw,
+      lambertw_overloads(
+        (arg_("x"), arg_("max_iterations")=100)));
 
     eigensystem_real_symmetric_wrappers::wrap();
 
