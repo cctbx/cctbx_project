@@ -45,6 +45,7 @@ main(int argc, char *const argv[])
   char** extended_argv;
   int n, i;
   const char* dispatcher_name = "\\dispatcher";
+  _putenv("PYTHONHOME=");
   libtbx_python_exe = getenv("LIBTBX_PYTHON_EXE");
   assert(libtbx_python_exe != NULL);
   extended_argv = malloc((argc + 3) * sizeof(char*));
