@@ -282,20 +282,20 @@ def format_round_scaled_list(l, precision=4, fmt="f"):
   return s[1:]
 
 def format_structure_factor(f, precision_ampl=3, precision_phase=0):
-  a, p = xutils.f_as_ampl_phase(f)
-  a = round_scaled(a, 10**precision_ampl)
-  p = round_scaled(p, 10**precision_phase) % 360
-  if (p <= round_scaled(-180., 10**precision_phase)): p += 360
-  return ("%%.%dg %%.%df" % (precision_ampl, precision_phase)) % (a, p)
+  if (type(f) == type(0j)):
+    a, p = xutils.f_as_ampl_phase(f)
+    a = round_scaled(a, 10**precision_ampl)
+    p = round_scaled(p, 10**precision_phase) % 360
+    if (p <= round_scaled(-180., 10**precision_phase)): p += 360
+    return ("%%.%dg %%.%df" % (precision_ampl, precision_phase)) % (a, p)
+  else:
+    a = round_scaled(f, 10**precision_ampl)
+    return ("%%.%dg" % (precision_ampl,)) % (a,)
 
 def print_structure_factors(F, precision_ampl=3, precision_phase=0):
-  if (type(F) == type(0j)):
-    for i in xrange(len(F.H)):
-      print F.H[i], format_structure_factor(
-        F.F[i], precision_ampl, precision_phase)
-  else:
-    for i in xrange(len(F.H)):
-      print F.H[i], round_scaled(F.F[i], 10**precision_ampl)
+  for i in xrange(len(F.H)):
+    print F.H[i], format_structure_factor(
+      F.F[i], precision_ampl, precision_phase)
 
 def show_regression(x, y, label, min_correlation = 0):
   xy_regr = shared.linear_regression(x, y)
