@@ -1,18 +1,4 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2003 Jan: Created (R.W. Grosse-Kunstleve)
- */
-
-#include <scitbx/boost_python/utils.h>
-#include <boost/rational.hpp>
-#include <scitbx/array_family/misc_functions.h>
-#include <scitbx/error.h>
 #include <boost/python/module.hpp>
-#include <boost/python/scope.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/return_value_policy.hpp>
@@ -20,6 +6,9 @@
 #include <boost/python/tuple.hpp>
 #include <boost/python/str.hpp>
 #include <boost/python/operators.hpp>
+#include <boost/rational.hpp>
+#include <scitbx/array_family/misc_functions.h>
+#include <scitbx/error.h>
 
 namespace scitbx { namespace boost_python { namespace {
 
@@ -134,9 +123,6 @@ namespace scitbx { namespace boost_python { namespace {
   {
     using namespace boost::python;
 
-    scope().attr("__version__") = scitbx::boost_python::cvs_revision(
-      "$Revision$");
-
     rational_int_wrappers::wrap();
     def("gcd", (int(*)(int,int))boost::gcd);
     def("lcm", (int(*)(int,int))boost::lcm);
@@ -144,7 +130,7 @@ namespace scitbx { namespace boost_python { namespace {
 
 }}} // namespace scitbx::boost_python::<anonymous>
 
-BOOST_PYTHON_MODULE(rational_ext)
+BOOST_PYTHON_MODULE(scitbx_rational_ext)
 {
   scitbx::boost_python::init_module();
 }

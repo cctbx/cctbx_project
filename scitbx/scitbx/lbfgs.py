@@ -1,8 +1,8 @@
 import scitbx.array_family.flex
 
-import scitbx.python_utils.misc
-ext = scitbx.python_utils.misc.import_ext("scitbx_boost.lbfgs_ext")
-from scitbx_boost.lbfgs_ext import *
+import libtbx.boost_python
+ext = libtbx.boost_python.import_ext("scitbx_lbfgs_ext")
+from scitbx_lbfgs_ext import *
 
 from scitbx.python_utils.misc import adopt_init_args
 

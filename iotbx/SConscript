@@ -58,10 +58,6 @@ if (not env_etc.no_boost_python):
 
   Export("env_iotbx_boost_python_ext")
 
-  env_iotbx_boost_python_ext.Command(
-    "#libtbx/iotbx_boost/__init__.py",
-    "#libtbx/libtbx/touch_init.py", env_etc.touch_init)
-
   SConscript("detectors/SConscript")
   SConscript("mtz/boost_python/SConscript")
   SConscript("xplor/boost_python/SConscript")

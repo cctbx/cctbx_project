@@ -1,20 +1,9 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Dec: Created (Ralf W. Grosse-Kunstleve)
- */
-
 #include <cctbx/boost_python/flex_fwd.h>
 
 #include <cctbx/sgtbx/sym_equiv_sites.h>
 #include <vector>
 
-#include <scitbx/boost_python/utils.h>
 #include <boost/python/module.hpp>
-#include <boost/python/scope.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/return_internal_reference.hpp>
@@ -143,9 +132,6 @@ namespace {
   {
     using namespace boost::python;
 
-    scope().attr("__version__") = scitbx::boost_python::cvs_revision(
-      "$Revision$");
-
     typedef return_internal_reference<> rir;
 
     class_<add_pair>("add_pair", no_init)
@@ -166,7 +152,7 @@ namespace {
 } // namespace <anonymous>
 }} // namespace cctbx::boost_python
 
-BOOST_PYTHON_MODULE(emma_ext)
+BOOST_PYTHON_MODULE(cctbx_emma_ext)
 {
   cctbx::boost_python::init_module();
 }

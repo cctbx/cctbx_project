@@ -105,7 +105,7 @@ namespace {
 } // namespace <anonymous>
 }}}} // namespace cctbx::eltbx::xray_scattering::boost_python
 
-BOOST_PYTHON_MODULE(xray_scattering_ext)
+BOOST_PYTHON_MODULE(cctbx_eltbx_xray_scattering_ext)
 {
   cctbx::eltbx::xray_scattering::boost_python::init_module();
 }

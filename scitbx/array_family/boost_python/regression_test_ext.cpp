@@ -1,26 +1,15 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Aug: Created (R.W. Grosse-Kunstleve)
- */
-
 #include <scitbx/array_family/boost_python/flex_fwd.h>
 
 #include <vector>
 #include <list>
 #include <boost/array.hpp>
 #include <scitbx/error.h>
-#include <scitbx/boost_python/utils.h>
 #include <scitbx/boost_python/container_conversions.h>
 #include <scitbx/array_family/small.h>
 #include <scitbx/array_family/boost_python/shared_flex_conversions.h>
 #include <scitbx/array_family/accessors/c_grid.h>
 #include <scitbx/array_family/accessors/c_grid_padded.h>
 #include <boost/python/module.hpp>
-#include <boost/python/scope.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/overloads.hpp>
 
@@ -143,9 +132,6 @@ namespace scitbx { namespace {
   void init_module()
   {
     using namespace boost::python;
-
-    scope().attr("__version__") = scitbx::boost_python::cvs_revision(
-      "$Revision$");
 
     def("std_vector", std_vector);
     def("std_list", std_list);

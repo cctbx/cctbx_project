@@ -1,7 +1,7 @@
 Import("env_cctbx_boost_python_ext")
 env = env_cctbx_boost_python_ext.Copy()
 env.Prepend(LIBS=["cctbx"])
-env.SharedLibrary(target="#libtbx/cctbx_boost/xray_ext", source=[
+env.SharedLibrary(target="#libtbx/cctbx_xray_ext", source=[
   "xray_ext.cpp",
   "conversions.cpp",
   "gradient_flags.cpp",

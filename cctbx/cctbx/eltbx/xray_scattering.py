@@ -1,9 +1,8 @@
 import scitbx.math.gaussian # base class for gaussian
 
-from scitbx.python_utils import misc
-ext = misc.import_ext("cctbx_boost.eltbx.xray_scattering_ext")
-misc.import_regular_symbols(globals(), ext.__dict__)
-del misc
+import libtbx.boost_python
+ext = libtbx.boost_python.import_ext("cctbx_eltbx_xray_scattering_ext")
+from cctbx_eltbx_xray_scattering_ext import *
 
 from scitbx.boost_python_utils import injector
 import sys

@@ -1,9 +1,8 @@
 from cctbx.uctbx import unit_cell
 
-from scitbx.python_utils.misc import import_regular_symbols
-from iotbx_boost import mtz as ext
-import_regular_symbols(globals(), ext.__dict__)
-del import_regular_symbols
+import libtbx.boost_python
+ext = libtbx.boost_python.import_ext("iotbx_mtz_ext")
+from iotbx_mtz_ext import *
 
 from iotbx.mtz import writer
 from cctbx import miller

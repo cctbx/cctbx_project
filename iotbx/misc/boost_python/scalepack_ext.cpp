@@ -163,7 +163,7 @@ namespace {
 
 } // namespace <anonymous>
 
-BOOST_PYTHON_MODULE(scalepack_ext)
+BOOST_PYTHON_MODULE(iotbx_scalepack_ext)
 {
   init_module();
 }

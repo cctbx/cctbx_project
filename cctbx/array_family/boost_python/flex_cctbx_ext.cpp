@@ -66,7 +66,7 @@ namespace {
     using namespace boost::python;
 
     object flex_root_scope(scitbx::boost_python::import_module(
-      "scitbx_boost.array_family.flex_scitbx_ext"));
+      "scitbx_array_family_flex_ext"));
 
     wrap_flex_hendrickson_lattman();
     wrap_flex_miller_index(flex_root_scope);
@@ -84,7 +84,7 @@ namespace {
 } // namespace <anonymous>
 }}} // namespace scitbx::af::boost_python
 
-BOOST_PYTHON_MODULE(flex_cctbx_ext)
+BOOST_PYTHON_MODULE(cctbx_array_family_flex_ext)
 {
   scitbx::af::boost_python::init_module();
 }

@@ -1,7 +1,6 @@
-from scitbx.python_utils import misc
-ext = misc.import_ext("scitbx_boost.rational_ext")
-misc.import_regular_symbols(globals(), ext.__dict__)
-del misc
+import libtbx.boost_python
+ext = libtbx.boost_python.import_ext("scitbx_rational_ext")
+from scitbx_rational_ext import *
 
 builtin_int = __builtins__["int"]
 

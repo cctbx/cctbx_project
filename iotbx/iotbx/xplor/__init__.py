@@ -1,11 +1,9 @@
-from scitbx.python_utils.misc import import_regular_symbols
-from iotbx_boost import xplor as ext
-import_regular_symbols(globals(), ext.__dict__)
-del import_regular_symbols
+import cctbx.array_family.flex
 
-from scitbx.array_family import flex as sciflex
-from cctbx import miller
-from cctbx.array_family import flex as ccflex
+import libtbx.boost_python
+ext = libtbx.boost_python.import_ext("iotbx_xplor_ext")
+from iotbx_xplor_ext import *
+
 from cctbx import uctbx
 
 __doc__='''Example format for Xplor Maps:
@@ -92,14 +90,15 @@ class XplorMap(ext.XplorMap):
     f = open(arg,"r")
     while (f.readline().strip()!='-9999'):
       pass
-    (self.average,self.stddev)=tuple([float(z) for z in f.readline().strip().split()])
+    (self.average,self.stddev)=tuple(
+      [float(z) for z in f.readline().strip().split()])
     return self
 
   def write(self,arg):
     assert self.order=='ZYX'
     #but the sections and the data are given as XYZ:
     for x in xrange(3):
-      assert self.data.focus()[x] == self.sections[3*x+2] - self.sections[3*x+1] + 1
+      assert self.data.focus()[x]==self.sections[3*x+2]-self.sections[3*x+1]+1
 
     f = open(arg,'wb')
     f.write("\n")

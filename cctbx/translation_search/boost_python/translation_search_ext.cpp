@@ -20,7 +20,7 @@ namespace {
 } // namespace <anonymous>
 }}} // namespace cctbx::translation_search::boost_python
 
-BOOST_PYTHON_MODULE(translation_search_ext)
+BOOST_PYTHON_MODULE(cctbx_translation_search_ext)
 {
   cctbx::translation_search::boost_python::init_module();
 }

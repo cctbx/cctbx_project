@@ -7,7 +7,8 @@ from scitbx.python_utils.misc import adopt_init_args, user_plus_sys_time
 from scitbx.python_utils import dicts
 import sys, math
 
-from cctbx_boost import emma_ext as ext
+import libtbx.boost_python
+ext = libtbx.boost_python.import_ext("cctbx_emma_ext")
 
 def sgtbx_rt_mx_as_matrix_rt(s):
   return matrix.rt((s.r().as_double(), s.t().as_double()))

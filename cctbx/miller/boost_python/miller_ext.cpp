@@ -1,19 +1,8 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Oct: Created (rwgk)
- */
-
 #include <cctbx/boost_python/flex_fwd.h>
 
 #include <cctbx/miller/sym_equiv.h>
 #include <cctbx/miller/math.h>
-#include <scitbx/boost_python/utils.h>
 #include <boost/python/module.hpp>
-#include <boost/python/scope.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
 #include <scitbx/boost_python/container_conversions.h>
@@ -44,9 +33,6 @@ namespace {
   {
     using namespace boost::python;
 
-    scope().attr("__version__") = scitbx::boost_python::cvs_revision(
-      "$Revision$");
-
     register_tuple_mappings();
 
     wrap_sym_equiv(); // must be wrapped first to enable use of bases<>
@@ -70,7 +56,7 @@ namespace {
 } // namespace <anonymous>
 }}} // namespace cctbx::miller::boost_python
 
-BOOST_PYTHON_MODULE(miller_ext)
+BOOST_PYTHON_MODULE(cctbx_miller_ext)
 {
   cctbx::miller::boost_python::init_module();
 }

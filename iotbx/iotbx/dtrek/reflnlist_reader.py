@@ -4,7 +4,8 @@ from cctbx import sgtbx
 from cctbx import uctbx
 from cctbx.array_family import flex
 
-from iotbx_boost import dtrek_ext
+import libtbx.boost_python
+dtrek_ext = libtbx.boost_python.import_ext("iotbx_dtrek_ext")
 
 class reflnlist:
 

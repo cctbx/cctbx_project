@@ -1,17 +1,6 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Sep: Created (rwgk)
- */
-
-#include <scitbx/boost_python/utils.h>
-#include <cctbx/eltbx/fp_fdp.h>
 #include <boost/python/module.hpp>
-#include <boost/python/scope.hpp>
 #include <boost/python/class.hpp>
+#include <cctbx/eltbx/fp_fdp.h>
 
 namespace cctbx { namespace eltbx { namespace boost_python {
 
@@ -39,18 +28,13 @@ namespace {
 
   void init_module()
   {
-    using namespace boost::python;
-
-    scope().attr("__version__") = scitbx::boost_python::cvs_revision(
-      "$Revision$");
-
     fp_fdp_wrappers::wrap();
   }
 
 } // namespace <anonymous>
 }}} // namespace cctbx::eltbx::boost_python
 
-BOOST_PYTHON_MODULE(fp_fdp_ext)
+BOOST_PYTHON_MODULE(cctbx_eltbx_fp_fdp_ext)
 {
   cctbx::eltbx::boost_python::init_module();
 }

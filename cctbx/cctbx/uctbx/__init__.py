@@ -1,9 +1,8 @@
 import cctbx.array_family.flex
 
-from scitbx.python_utils import misc
-ext = misc.import_ext("cctbx_boost.uctbx_ext")
-misc.import_regular_symbols(globals(), ext.__dict__)
-del misc
+import libtbx.boost_python
+ext = libtbx.boost_python.import_ext("cctbx_uctbx_ext")
+from cctbx_uctbx_ext import *
 
 from scitbx.boost_python_utils import injector
 import sys
