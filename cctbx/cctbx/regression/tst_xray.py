@@ -103,6 +103,38 @@ def exercise_structure():
   s = StringIO()
   sd.show_summary(f=s)
   assert s.getvalue().strip() == "Si:0+c*1 O:4+c*1"
+  s = StringIO()
+  sd.show(f=s)
+  assert s.getvalue() == """\
+Number of scattering types: 2
+  Type Number   Weight   Gaussians
+   O       1      8.00       4+c
+   Si      1      1.00       0+c
+"""
+  s = StringIO()
+  sd.show(f=s, show_weights=False)
+  assert s.getvalue() == """\
+Number of scattering types: 2
+  Type Number   Gaussians
+   O       1        4+c
+   Si      1        0+c
+"""
+  s = StringIO()
+  sd.show(f=s, show_gaussians=False)
+  assert s.getvalue() == """\
+Number of scattering types: 2
+  Type Number   Weight
+   O       1      8.00
+   Si      1      1.00
+"""
+  s = StringIO()
+  sd.show(f=s, show_weights=False, show_gaussians=False)
+  assert s.getvalue() == """\
+Number of scattering types: 2
+  Type Number
+   O       1
+   Si      1
+"""
   am = xs.asu_mappings(buffer_thickness=1)
   assert am.mappings().size() == xs.scatterers().size()
   rs = p1.random_shift_sites(max_shift_cart=0.2)
