@@ -30,4 +30,5 @@ int main()
     cout << sgops.BuildHallSymbol() << "\n";    // now produce the sg symbol
     cout << sgops.BuildLookupSymbol() << "\n";
   }
+  return 0;
 }
