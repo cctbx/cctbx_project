@@ -397,10 +397,11 @@ namespace scitbx { namespace af { namespace boost_python {
       return flex_object;
     }
 
+    template <typename UnsignedType>
     static boost::python::object
-    set_selected_size_t_a(
+    set_selected_unsigned_a(
       boost::python::object const& flex_object,
-      af::const_ref<std::size_t> const& indices,
+      af::const_ref<UnsignedType> const& indices,
       af::const_ref<e_t> const& new_values)
     {
       boost::python::extract<af::ref<e_t> > a_proxy(flex_object);
@@ -413,10 +414,11 @@ namespace scitbx { namespace af { namespace boost_python {
       return flex_object;
     }
 
+    template <typename UnsignedType>
     static boost::python::object
-    set_selected_size_t_s(
+    set_selected_unsigned_s(
       boost::python::object const& flex_object,
-      af::const_ref<std::size_t> const& indices,
+      af::const_ref<UnsignedType> const& indices,
       e_t const& new_value)
     {
       boost::python::extract<af::ref<e_t> > a_proxy(flex_object);
@@ -635,7 +637,8 @@ namespace scitbx { namespace af { namespace boost_python {
       shared_flex_conversions<ElementType>();
       ref_flex_conversions<ElementType>();
 
-      return class_f_t(python_name.c_str())
+      class_f_t result(python_name.c_str());
+      result
         .def(init<>())
         .def(init<flex_grid<> const&, optional<ElementType const&> >())
         .def(init<std::size_t, optional<ElementType const&> >())
@@ -688,9 +691,33 @@ namespace scitbx { namespace af { namespace boost_python {
         .def("select", select_size_t)
         .def("set_selected", set_selected_bool_a)
         .def("set_selected", set_selected_bool_s)
-        .def("set_selected", set_selected_size_t_a)
-        .def("set_selected", set_selected_size_t_s)
+        .def("set_selected",
+          (object(*)(
+            object const&,
+            af::const_ref<std::size_t> const&,
+            af::const_ref<e_t> const&)) set_selected_unsigned_a)
+        .def("set_selected",
+          (object(*)(
+            object const&,
+            af::const_ref<std::size_t> const&,
+            e_t const&)) set_selected_unsigned_s)
       ;
+      if (   boost::python::type_info(typeid(af::const_ref<std::size_t>))
+          != boost::python::type_info(typeid(af::const_ref<unsigned>))) {
+        result
+          .def("set_selected",
+            (object(*)(
+              object const&,
+              af::const_ref<unsigned> const&,
+              af::const_ref<e_t> const&)) set_selected_unsigned_a)
+          .def("set_selected",
+            (object(*)(
+              object const&,
+              af::const_ref<unsigned> const&,
+              e_t const&)) set_selected_unsigned_s)
+        ;
+      }
+      return result;
     }
 
     static class_f_t
