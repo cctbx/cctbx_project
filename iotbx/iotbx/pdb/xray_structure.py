@@ -89,7 +89,8 @@ xray.structure.as_pdb_file = xray_structure_as_pdb_file
 
 def from_pdb(file_name=None, file_iterator=None,
              crystal_symmetry=None, force_symmetry=00000,
-             fractional_coordinates=00000):
+             fractional_coordinates=00000,
+             min_distance_sym_equiv=0.5):
   assert [file_name, file_iterator].count(None) == 1
   if (file_iterator is None):
     file_iterator = open(file_name)
@@ -112,7 +113,8 @@ def from_pdb(file_name=None, file_iterator=None,
   assert crystal_symmetry.space_group_info() is not None
   structure = xray.structure(
     special_position_settings=crystal.special_position_settings(
-      crystal_symmetry=crystal_symmetry))
+      crystal_symmetry=crystal_symmetry,
+      min_distance_sym_equiv=min_distance_sym_equiv))
   scatterers = flex.xray_scatterer()
   prev_record = None
   for record in pdb_records:
