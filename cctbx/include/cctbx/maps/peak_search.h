@@ -169,13 +169,11 @@ namespace cctbx { namespace maps {
   {
     typedef typename
     DataVersaType::accessor_type::index_type index_type;
+    typedef typename
+    DataVersaType::value_type value_type;
     typedef
-      indexed_value<
-        index_type,
-        typename DataVersaType::value_type,
-        std::greater<typename DataVersaType::value_type>
-      >
-      iv_type;
+      indexed_value<index_type, value_type, std::greater<value_type> >
+        iv_type;
     af::shared<iv_type> result;
     af::nested_loop<index_type> loop(data.accessor());
     for (const index_type& pivot = loop(); !loop.over(); loop.incr()) {
