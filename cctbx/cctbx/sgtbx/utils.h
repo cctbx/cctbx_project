@@ -13,6 +13,7 @@
 #define CCTBX_SGTBX_UTILS_H
 
 #include <string>
+#include <algorithm>
 #include <cctbx/sgtbx/basic.h>
 
 namespace cctbx { namespace sgtbx {
@@ -157,8 +158,13 @@ namespace cctbx { namespace sgtbx {
   {
     public:
       NestedLoop() : m_over(1) {}
+      NestedLoop(const ArrayType& end)
+        : m_begin(end), m_end(end), m_current(end), m_over(0) {
+        std::fill(m_begin.begin(), m_begin.end(), 0);
+        m_current = m_begin;
+      }
       NestedLoop(const ArrayType& begin, const ArrayType& end)
-        : m_begin(begin), m_end(end), m_current(m_begin), m_over(0) {
+        : m_begin(begin), m_end(end), m_current(begin), m_over(0) {
         cctbx_assert(m_begin.size() == m_end.size());
       }
       bool incr()
