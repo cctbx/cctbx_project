@@ -627,13 +627,21 @@ namespace direct_space_asu {
 
       //! Symmetry operation original_site -> site in asu.
       sgtbx::rt_mx
+      get_rt_mx(asu_mapping<FloatType, IntShiftType> const& mapping) const
+      {
+        sgtbx::rt_mx const&
+          rt = space_group_ops_const_ref_[mapping.i_sym_op()];
+        int t_den = rt.t().den();
+        return rt + sgtbx::tr_vec(mapping.unit_shifts()*t_den, t_den);
+      }
+
+      //! Symmetry operation original_site -> site in asu.
+      /*! Shorthand for: get_rt_mx(get_asu_mapping(i_seq, i_sym))
+       */
+      sgtbx::rt_mx
       get_rt_mx(std::size_t i_seq, std::size_t i_sym) const
       {
-        asu_mapping<FloatType, IntShiftType> const&
-          am = get_asu_mapping(i_seq, i_sym);
-        sgtbx::rt_mx const& rt = space_group_ops_const_ref_[am.i_sym_op()];
-        int t_den = rt.t().den();
-        return rt + sgtbx::tr_vec(am.unit_shifts()*t_den, t_den);
+        return get_rt_mx(get_asu_mapping(i_seq, i_sym));
       }
 
       //! Symmetry operation original_site -> site in asu.

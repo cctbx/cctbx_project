@@ -269,3 +269,42 @@ def correct_special_position(
   if (site_cart is None):
     return site_special_frac
   return unit_cell.orthogonalize(site_special_frac)
+
+class _pair_asu_table(boost.python.injector, pair_asu_table):
+
+  def show(self, f=None, site_labels=None):
+    if (f is None): f = sys.stdout
+    if (site_labels is None):
+      for i_seq, j_seq_dict in enumerate(self.table()):
+        print >> f, "i_seq:", i_seq
+        for j_seq,j_sym_group in j_seq_dict.items():
+          print >> f, "  j_seq:", j_seq
+          for j_syms in j_sym_group:
+            print >> f, "    j_syms:", list(j_syms)
+    else:
+      assert len(site_labels) == self.table().size()
+      for i_seq, j_seq_dict in enumerate(self.table()):
+        print >> f, "%s(%d)" % (site_labels[i_seq], i_seq)
+        for j_seq,j_sym_group in j_seq_dict.items():
+          print >> f, "  %s(%d)" % (site_labels[j_seq], j_seq)
+          for j_syms in j_sym_group:
+            print >> f, "    j_syms:", list(j_syms)
+
+class _pair_sym_table(boost.python.injector, pair_sym_table):
+
+  def show(self, f=None, site_labels=None):
+    if (f is None): f = sys.stdout
+    if (site_labels is None):
+      for i_seq,pair_sym_dict in enumerate(self):
+        print >> f, "i_seq:", i_seq
+        for j_seq,sym_ops in pair_sym_dict.items():
+          print >> f, "  j_seq:", j_seq
+          for sym_op in sym_ops:
+            print >> f, "   ", sym_op
+    else:
+      for i_seq,pair_sym_dict in enumerate(self):
+        print >> f, "%s(%d)" % (site_labels[i_seq], i_seq)
+        for j_seq,sym_ops in pair_sym_dict.items():
+          print >> f, "  %s(%d)" % (site_labels[j_seq], j_seq)
+          for sym_op in sym_ops:
+            print >> f, "   ", sym_op

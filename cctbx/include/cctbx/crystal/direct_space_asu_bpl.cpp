@@ -222,7 +222,14 @@ namespace {
         .def("mapped_sites_span", &w_t::mapped_sites_span)
         .def("special_op", &w_t::special_op, (arg_("i_seq")), ccr())
         .def("site_symmetry_table", &w_t::site_symmetry_table, rir())
-        .def("get_rt_mx", &w_t::get_rt_mx, (arg_("i_seq"), arg_("i_sym")))
+        .def("get_rt_mx",
+          (sgtbx::rt_mx(w_t::*)(asu_mapping<> const&) const)
+            &w_t::get_rt_mx, (
+          arg_("mapping")))
+        .def("get_rt_mx",
+          (sgtbx::rt_mx(w_t::*)(std::size_t, std::size_t) const)
+            &w_t::get_rt_mx, (
+          arg_("i_seq"), arg_("i_sym")))
         .def("get_rt_mx_i", &w_t::get_rt_mx_i, (arg_("pair")))
         .def("get_rt_mx_j", &w_t::get_rt_mx_j, (arg_("pair")))
         .def("diff_vec", &w_t::diff_vec, (arg_("pair")))

@@ -1,9 +1,9 @@
 #! /usr/bin/env python
 
-from cctbx import euclidean_model_matching as emma
 from scitbx.python_utils import easy_pickle
 from scitbx.python_utils import dicts
 from scitbx.python_utils.misc import adopt_init_args
+from cctbx import euclidean_model_matching as emma
 import sys
 
 class match_record:
