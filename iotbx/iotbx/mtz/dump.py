@@ -32,3 +32,4 @@ def dump(file_name):
           i_column+1, column.label(),
           n_oversations, p.size(), 100.*n_oversations/p.size(),
           column.type(), mtz.column_type_legend[column.type()])
+  return p
