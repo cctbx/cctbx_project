@@ -15,15 +15,21 @@ class ADSCImage:
       header = rawdata[headeropen+1:headerclose-headeropen]
 
       parameters={}
-      for item in ['HEADER_BYTES','SIZE1','SIZE2','CCD_IMAGE_SATURATION']:
+      for item in ['HEADER_BYTES','SIZE1','SIZE2','CCD_IMAGE_SATURATION',
+                   'DETECTOR_SN']:
         pattern = re.compile(item+'='+r'(.*);')
         matches = pattern.findall(header)
         parameters[item] = int(matches[-1])
       for item in ['PIXEL_SIZE','OSC_START','DISTANCE','WAVELENGTH',
-                   'BEAM_CENTER_X','BEAM_CENTER_Y','OSC_RANGE']:
+                   'BEAM_CENTER_X','BEAM_CENTER_Y','OSC_RANGE',
+                   'TWOTHETA']:
         pattern = re.compile(item+'='+r'(.*);')
         matches = pattern.findall(header)
         parameters[item] = float(matches[-1])
+      for item in ['BYTE_ORDER']:
+        pattern = re.compile(item+'='+r'(.*);')
+        matches = pattern.findall(header)
+        parameters[item] = matches[-1]
       self.parameters=parameters
 
   def fileLength(self):
@@ -39,7 +45,15 @@ class ADSCImage:
 
   def read(self):
     self.fileLength()
-    self.linearintdata = ReadADSC(self.filename,self.ptr,self.size1,self.size2)
+    #ADSC Quantum 210, ALS beamline 5.0.2; SUN: unsigned short little endian 
+    #ADSC Quantum 4R, ALS beamline 5.0.3; WINDOWS: unsigned short big endian
+    if self.parameters['BYTE_ORDER'].lower().find('big')>=0:
+      self.linearintdata = ReadADSC(self.filename,self.ptr,
+                                    self.size1,self.size2,1) #big_endian
+    else:
+      self.linearintdata = ReadADSC(self.filename,self.ptr,
+                                    self.size1,self.size2,0) #little_endian
+      
 
   def __getattr__(self, attr):
     if   attr=='size1' : return self.parameters['SIZE1']
@@ -54,6 +68,8 @@ class ADSCImage:
     elif attr=='beamx' : return self.parameters['BEAM_CENTER_X']
     elif attr=='beamy' : return self.parameters['BEAM_CENTER_Y']
     elif attr=='deltaphi' : return self.parameters['OSC_RANGE']
+    elif attr=='twotheta' : return self.parameters['TWOTHETA']
+    elif attr=='serial_number' : return self.parameters['DETECTOR_SN']
 
 
 if __name__=='__main__':
