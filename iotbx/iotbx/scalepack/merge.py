@@ -1,4 +1,4 @@
-"Transfer of scalepack reflection files to flex arrays."
+"Transfer of scalepack merge reflection files to flex arrays."
 
 # Sample scalepack OUTPUT FILE
 #    1
@@ -19,29 +19,29 @@ import exceptions
 import os
 import sys
 
-class ScalepackFormatError(exceptions.Exception): pass
+class FormatError(exceptions.Exception): pass
 
-class scalepack_file:
+class reader:
 
   def __init__(self, file_handle, header_only=00000):
     line = file_handle.readline()
     if (line.rstrip() != "    1"):
-      raise ScalepackFormatError, "line 1: expecting '    1'"
+      raise FormatError, "line 1: expecting '    1'"
     line = file_handle.readline()
     if (line.rstrip()[:2] != " -"):
-      raise ScalepackFormatError, "line 2: expecting ' -###'"
+      raise FormatError, "line 2: expecting ' -###'"
     line_error = "line 3: expecting unit cell parameters and space group label"
     line = file_handle.readline()
     if (len(line) < 63 or line[60] != ' '):
-      raise ScalepackFormatError, line_error
+      raise FormatError, line_error
     try:
       uc_params = [float(line[i * 10 : (i + 1) * 10]) for i in xrange(6)]
     except:
-      raise ScalepackFormatError, line_error
+      raise FormatError, line_error
     self.unit_cell = uctbx.unit_cell(uc_params)
     self.space_group_symbol = line[61:].strip()
     if (len(self.space_group_symbol) == 0):
-      raise ScalepackFormatError, line_error
+      raise FormatError, line_error
     try:
       self.space_group_info = sgtbx.space_group_info(self.space_group_symbol)
     except:
@@ -67,14 +67,14 @@ class scalepack_file:
       try:
         h = [int(flds[i]) for i in xrange(3)]
       except:
-        raise ScalepackFormatError, line_error
+        raise FormatError, line_error
       for i in (0,1):
         j = 3+2*i
         if (len(flds[j])):
           try:
             i_obs, sigma = (float(flds[j]), float(flds[j+1]))
           except:
-            raise ScalepackFormatError, line_error
+            raise FormatError, line_error
           if (i):
             h = [-e for e in h]
             self.anomalous = 1
@@ -108,7 +108,7 @@ def run(args):
   to_pickle = "--pickle" in args
   for file_name in args:
     if (file_name.startswith("--")): continue
-    s = scalepack_file(open(file_name, "r"))
+    s = reader(open(file_name, "r"))
     miller_array = s.as_miller_array(info="From file: "+file_name)
     miller_array.show_summary()
     if (to_pickle):

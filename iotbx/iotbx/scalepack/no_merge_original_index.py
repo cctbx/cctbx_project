@@ -51,16 +51,34 @@ class reader:
     self.i_obs = all_arrays.i_obs()
     self.sigmas = all_arrays.sigmas()
 
-  def merge_equivalents(self, crystal_symmetry=None):
-    if (crystal_symmetry is None):
-      crystal_symmetry = crystal.symmetry(space_group=self.space_group)
+  def space_group_info(self):
+    return sgtbx.space_group_info(group=self.space_group)
+
+  def unmerged_miller_set(self, crystal_symmetry=None, force_symmetry=00000):
+    return miller.set(
+      crystal_symmetry=crystal.symmetry(
+        unit_cell=None,
+        space_group_info=self.space_group_info()).join_symmetry(
+          other_symmetry=crystal_symmetry,
+          force=force_symmetry),
+      indices=self.original_indices,
+      anomalous_flag=0001)
+
+  def merge_equivalents(self, crystal_symmetry=None, force_symmetry=00000):
     return miller.array(
-      miller_set=miller.set(
-        crystal_symmetry=crystal_symmetry,
-        indices=self.original_indices,
-        anomalous_flag=0001),
+      miller_set=self.unmerged_miller_set(crystal_symmetry, force_symmetry),
       data=self.i_obs,
       sigmas=self.sigmas).merge_equivalents()
+
+  def as_miller_array(self, crystal_symmetry=None, force_symmetry=00000,
+                            info_prefix=""):
+    return miller.intensity_array(
+       self.merge_equivalents(crystal_symmetry, force_symmetry)
+        .array()).set_info(info_prefix+"i_obs,sigma")
+
+  def as_miller_arrays(self, crystal_symmetry=None, force_symmetry=00000,
+                             info_prefix=""):
+    return [self.as_miller_array(crystal_symmetry,force_symmetry,info_prefix)]
 
 def quick_test(file_name):
   from scitbx.python_utils.misc import user_plus_sys_time
@@ -88,6 +106,7 @@ def quick_test(file_name):
   print "min redundancies:", flex.min(m.redundancies())
   print "max redundancies:", flex.max(m.redundancies())
   print "mean redundancies:", flex.mean(m.redundancies().as_double())
+  s.as_miller_arrays()
   print
 
 def run(args):
