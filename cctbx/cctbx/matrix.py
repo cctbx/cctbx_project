@@ -87,6 +87,25 @@ class rec:
            - m[1] * (m[3] * m[8] - m[5] * m[6]) \
            + m[2] * (m[3] * m[7] - m[4] * m[6])
 
+  def co_factor_matrix_transposed(self):
+    assert self.n == (3,3)
+    m = self.elems
+    return sqr((
+       m[4] * m[8] - m[5] * m[7],
+      -m[1] * m[8] + m[2] * m[7],
+       m[1] * m[5] - m[2] * m[4],
+      -m[3] * m[8] + m[5] * m[6],
+       m[0] * m[8] - m[2] * m[6],
+      -m[0] * m[5] + m[2] * m[3],
+       m[3] * m[7] - m[4] * m[6],
+      -m[0] * m[7] + m[1] * m[6],
+       m[0] * m[4] - m[1] * m[3]))
+
+  def inverse(self):
+    determinant = self.determinant()
+    assert determinant != 0
+    return self.co_factor_matrix_transposed() / determinant
+
   def transpose(self):
     elems = []
     for j in xrange(self.n_columns()):
@@ -196,4 +215,9 @@ if (__name__ == "__main__"):
   assert tt.mathematica_form() == "{{33, 79, 125}}"
   ttt = tt.transpose()
   assert ttt.mathematica_form() == "{{33}, {79}, {125}}"
+  m = sqr((7, 7, -4, 3, 1, -1, 15, 16, -9))
+  mi = m.inverse()
+  assert mi.mathematica_form() == "{{7, -1, -3}, {12, -3, -5}, {33, -7, -14}}"
+  assert (m*mi).mathematica_form() == "{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}"
+  assert (mi*m).mathematica_form() == "{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}"
   print "OK"
