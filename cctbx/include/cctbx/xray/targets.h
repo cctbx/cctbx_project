@@ -744,148 +744,20 @@ std::complex<double> mlhl_d_target_dfcalc_one_h(
       int    e  = eps[i_h];
       // acentric: c = 0, centric: c = 1
       int    c  = cs[i_h];
-      double X  = fo * fc * a / (e * b);
-      double L1 = (fo * fo + a * a * fc * fc) / (2. * e * b);
-      if(c == 0) {
-        X  *= 2.;
-        L1 *= 2.;
-      }
-      double tgx = 0.0;
-      double small = 1.e-6;
-      double A = abcd[i_h].a();
-      double B = abcd[i_h].b();
-      double C = abcd[i_h].c();
-      double D = abcd[i_h].d();
-      double A_prime = X*std::cos(pc) + A;
-      double B_prime = X*std::sin(pc) + B;
-      // if C = D = 0: calculate ML target explicitly by formulas:
-      // centric and acentric terms accumulated at once.
-      // use ln(ch(x)) = x + ln[1 + exp(-2 * x)] - ln(2) to avoid overflow
-      if((std::abs(C) < small) && (std::abs(D) < small)) {
-        double arg = std::sqrt(A_prime * A_prime + B_prime * B_prime);
-        tgx = (1-c)*( L1 - scitbx::math::bessel::ln_of_i0(arg) ) +
-                     c  *( L1 - ( arg + std::log(1.+std::exp(-2.*arg)) - std::log(2.) ) );
-        if(compute_derivatives) {
-          double X_d = 2. * fo * a / (e * b);
-          //if(c == 0) X_d *= 2.;
-          double A_prime_d = X_d * fc * std::cos(pc) + A;
-          double B_prime_d = X_d * fc * std::sin(pc) + B;
-          double arg_d = std::sqrt(A_prime_d * A_prime_d + B_prime_d * B_prime_d);
-          if(arg_d < small) {
-            double derfc = 0.;
-            double derpc = 0.;
-            double d1 = derfc*ac - derpc*bc/fc;
-            double d2 = derfc*bc + derpc*ac/fc;
-            //derivatives_[i_h] = std::complex<double> (d1,d2)/fc;
-          }
-          else {
-            double sim = scitbx::math::bessel::i1_over_i0(arg_d);
-            double derfc = sim * X_d * (X_d*fc + A*std::cos(pc) + B*std::sin(pc))/arg_d;
-            double derpc = sim * X_d * fc*(A*std::sin(pc) - B*std::cos(pc))/arg_d;
-            double d1 = derfc*ac - derpc*bc/fc;
-            double d2 = derfc*bc + derpc*ac/fc;
-//std::cout<<" "<<std::endl;
-//std::cout<<sim<<" "<<X_d<<" "<<arg_d<<" "<<derfc<<" "<<derpc<<std::endl;
-//std::cout<<d1<<" "<<d2<<" "<<A_prime_d<<" "<<B_prime_d<<" "<<C<<" "<<D<<" "<<c<<std::endl;
-            //derivatives_[i_h] = std::complex<double> (d1,d2)/fc;
-          }
-        }
-      }
-      // otherwise do it numerically
-      else {
-        // acentric reflections
-        if(c == 0) {
-          double maxv = 0.;
-          for(int i=0;i<n_steps;i++) {
-            maxv = std::max(maxv, A_prime*cos_sin_table[i][0]+
-                                  B_prime*cos_sin_table[i][1]+
-                                  C      *cos_sin_table[i][2]+
-                                  D      *cos_sin_table[i][3]);
-          }
-          double integral = 0.;
-          for(int i=0;i<n_steps;i++) {
-            integral = integral + std::exp(-maxv+A_prime*cos_sin_table[i][0]+
-                                                 B_prime*cos_sin_table[i][1]+
-                                                 C      *cos_sin_table[i][2]+
-                                                 D      *cos_sin_table[i][3]);
-          }
-          integral = integral*step_for_integration;
-          integral = std::log(integral) + maxv;
-          tgx = (L1 - integral);
-          if(compute_derivatives) {
-            double X_d = 2. * fo * a / (e * b);
-            double A_prime_d = X_d * fc * std::cos(pc) + A;
-            double B_prime_d = X_d * fc * std::sin(pc) + B;
-            double arg_d = std::sqrt(A_prime_d * A_prime_d + B_prime_d * B_prime_d);
-            double maxv = 0.;
-            for(int i=0;i<n_steps;i++) {
-              maxv = std::max(maxv, A_prime_d*cos_sin_table[i][0]+
-                                    B_prime_d*cos_sin_table[i][1]+
-                                    C        *cos_sin_table[i][2]+
-                                    D        *cos_sin_table[i][3]);
-            }
-
-            double integral = 0.;
-            for(int i=0;i<n_steps;i++) {
-              integral = integral + std::exp(-maxv+A_prime_d*cos_sin_table[i][0]+
-                                                   B_prime_d*cos_sin_table[i][1]+
-                                                   C        *cos_sin_table[i][2]+
-                                                   D        *cos_sin_table[i][3]);
-            }
-            integral = integral*step_for_integration;
-            integral = -std::log(integral) - maxv;
-
-            double deranot = 0.;
-            double derbnot = 0.;
-            for(int i=0;i<n_steps;i++) {
-              double tmp = std::exp(-integral+A_prime_d*cos_sin_table[i][0]+
-                                              B_prime_d*cos_sin_table[i][1]+
-                                              C        *cos_sin_table[i][2]+
-                                              D        *cos_sin_table[i][3]);
-              deranot = deranot + cos_sin_table[i][0]*tmp;
-              derbnot = derbnot + cos_sin_table[i][1]*tmp;
-            }
-
-            deranot = step_for_integration*deranot;
-            derbnot = step_for_integration*derbnot;
-            double derfc = X_d*(deranot*std::cos(pc) + derbnot*std::sin(pc));
-            double derpc = X_d*(deranot*std::sin(pc) - derbnot*std::cos(pc))*fc;
-            derfc = 2.*a*a*fc/(e * b) - derfc;
-            double d1 = derfc*ac - derpc*bc/fc;
-            double d2 = derfc*bc + derpc*ac/fc;
-            //derivatives_[i_h] = std::complex<double> (d1,d2)/fc;
-
-          }
-        }
-        // centric reflections
-        else {
-          double arg = -std::abs(A*std::cos(pc) + B*std::sin(pc) + X);
-          tgx =  L1 + arg - std::log((1. + std::exp(2. * arg)) / 2.);
-          if(compute_derivatives) {
-            double var = e*b;
-            double arg = A*std::cos(pc) + B*std::sin(pc) + fo*a*fc/var;
-            double derfc = a*a*fc/var - std::tanh(arg)*fo*a/var;
-            double derpc = 2.*std::tanh(arg)*(A*std::sin(pc) - B*std::cos(pc));
-            double d1 = derfc*ac - derpc*bc/fc;
-            double d2 = derfc*bc + derpc*ac/fc;
-            //derivatives_[i_h] = std::complex<double> (d1,d2)/fc;
-          }
-        }
-      }
-    target_ += mlhl_target_one_h(fo,
-                                    fc,
-                                    pc,
-                                    a,
-                                    b,
-                                    1.0,
-                                    e,
-                                    c,
-                                    abcd[i_h],
-                                    cos_sin_table,
-                                    n_steps,
-                                    step_for_integration);
-    if (compute_derivatives) {
-      derivatives_[i_h] = mlhl_d_target_dfcalc_one_h(
+      target_ += mlhl_target_one_h(fo,
+                                   fc,
+                                   pc,
+                                   a,
+                                   b,
+                                   1.0,
+                                   e,
+                                   c,
+                                   abcd[i_h],
+                                   cos_sin_table,
+                                   n_steps,
+                                   step_for_integration);
+      if(compute_derivatives) {
+         derivatives_[i_h] = mlhl_d_target_dfcalc_one_h(
                                   fo,
                                   fc,
                                   pc,
@@ -900,7 +772,7 @@ std::complex<double> mlhl_d_target_dfcalc_one_h(
                                   cos_sin_table,
                                   n_steps,
                                   step_for_integration);
-    }
+      }
     } // end loop over reflections
   }
   };
