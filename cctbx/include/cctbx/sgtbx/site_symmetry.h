@@ -227,6 +227,9 @@ namespace cctbx { namespace sgtbx {
       average_u_star(scitbx::sym_mat3<FloatType> const& u_star) const;
 
     private:
+#if defined(__MACH__) && defined(__APPLE_CC__) && __APPLE_CC__ == 1493
+      bool dummy_;
+#endif
       uctbx::unit_cell unit_cell_;
       sgtbx::space_group space_group_;
       fractional<> original_site_;

@@ -188,6 +188,9 @@ namespace cctbx { namespace sgtbx { namespace wyckoff {
       }
 
     private:
+#if defined(__MACH__) && defined(__APPLE_CC__) && __APPLE_CC__ == 1493
+      bool dummy_;
+#endif
       uctbx::unit_cell unit_cell_;
       fractional<> original_site_;
       const wyckoff::position* position_;

@@ -25,6 +25,9 @@ namespace {
 
   struct add_pair
   {
+#if defined(__MACH__) && defined(__APPLE_CC__) && __APPLE_CC__ == 1493
+      bool dummy_;
+#endif
     double tolerance_;
     af::shared<scitbx::vec3<double> > ref_model2_sites_;
     af::versa<bool, af::c_grid<2> > pair_flags_;
