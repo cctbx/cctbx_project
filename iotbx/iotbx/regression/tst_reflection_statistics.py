@@ -1,3 +1,4 @@
+from cctbx.array_family import flex
 from iotbx.command_line import reflection_statistics
 from iotbx import mtz
 from cctbx import miller
@@ -5,7 +6,6 @@ from cctbx import crystal
 from cctbx import sgtbx
 from cctbx.sgtbx import subgroups
 from cctbx.development import debug_utils
-from cctbx.array_family import flex
 from cStringIO import StringIO
 import sys
 
