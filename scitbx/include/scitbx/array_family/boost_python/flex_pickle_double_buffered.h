@@ -51,7 +51,7 @@ namespace scitbx { namespace af { namespace boost_python {
         b.push_back(proxy.value);
       }
       inp.assert_end();
-      SCITBX_ASSERT(b.size() == a_accessor.size1d());
+      SCITBX_ASSERT(b.size() == a_accessor.size_1d());
       a.resize(a_accessor);
     }
   };

@@ -48,7 +48,7 @@ namespace scitbx { namespace af {
       {}
 
       accessor_type const& accessor() const { return m_accessor; }
-      size_type size() const { return m_accessor.size1d(); }
+      size_type size() const { return m_accessor.size_1d(); }
 
       const ElementType* begin() const { return m_begin; }
       const ElementType* end() const { return m_begin + size(); }

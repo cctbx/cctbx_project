@@ -93,8 +93,9 @@ namespace scitbx { namespace af {
 
       static std::size_t nd() { return Nd; }
 
-      std::size_t size1d() const {
-        return compile_time_product<Nd>::get(IndexType(*this));
+      std::size_t size_1d() const
+      {
+        return compile_time_product<Nd>::get(*this);
       }
 
       std::size_t operator()(IndexType const& i) const {

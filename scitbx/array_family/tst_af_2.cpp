@@ -12,7 +12,7 @@ namespace {
   void exercise()
   {
     af::flex_grid<> g1;
-    check_true(__LINE__, g1.size1d() == 0);
+    check_true(__LINE__, g1.size_1d() == 0);
     af::flex_grid_default_index_type grid;
     check_true(__LINE__, grid.size() == 0);
     af::flex_grid_default_index_type origin;
@@ -22,13 +22,13 @@ namespace {
     {
       af::flex_grid<> g2(grid);
       check_true(__LINE__, g2.nd() == 0);
-      check_true(__LINE__, g2.size1d() == 0);
+      check_true(__LINE__, g2.size_1d() == 0);
       af::flex_grid<> g3(origin, last);
       check_true(__LINE__, g3.nd() == 0);
-      check_true(__LINE__, g3.size1d() == 0);
+      check_true(__LINE__, g3.size_1d() == 0);
       af::flex_grid<> g4(origin, last, true);
       check_true(__LINE__, g4.nd() == 0);
-      check_true(__LINE__, g4.size1d() == 0);
+      check_true(__LINE__, g4.size_1d() == 0);
     }
     {
       af::tiny<long, 3> g(2,3,5);
@@ -41,7 +41,7 @@ namespace {
     {
       af::flex_grid<> g2(grid);
       check_true(__LINE__, g2.nd() == 3);
-      check_true(__LINE__, g2.size1d() == 30);
+      check_true(__LINE__, g2.size_1d() == 30);
       verify(__LINE__, g2.origin(), af::tiny<long, 3>(0,0,0));
       verify(__LINE__, g2.grid(), grid);
       verify(__LINE__, g2.last(), grid);
@@ -49,7 +49,7 @@ namespace {
       verify(__LINE__, g2.last(false), af::tiny<long, 3>(1,2,4));
       af::flex_grid<> g3(origin, last, false);
       check_true(__LINE__, g3.nd() == 3);
-      check_true(__LINE__, g3.size1d() == 60);
+      check_true(__LINE__, g3.size_1d() == 60);
       verify(__LINE__, g3.origin(), origin);
       verify(__LINE__, g3.grid(), af::tiny<long, 3>(3,4,5));
       verify(__LINE__, g3.last(false), last);
@@ -57,14 +57,14 @@ namespace {
       verify(__LINE__, g3.last(), af::tiny<long, 3>(4,6,8));
       af::flex_grid<> g4(origin, last, true);
       check_true(__LINE__, g4.nd() == 3);
-      check_true(__LINE__, g4.size1d() == 24);
+      check_true(__LINE__, g4.size_1d() == 24);
       verify(__LINE__, g4.origin(), origin);
       verify(__LINE__, g4.grid(), af::tiny<long, 3>(2,3,4));
       verify(__LINE__, g4.last(false), af::tiny<long, 3>(2,4,6));
       verify(__LINE__, g4.last(true), last);
       verify(__LINE__, g4.last(), last);
       af::flex_grid<> g5(origin, last);
-      check_true(__LINE__, g5.size1d() == 24);
+      check_true(__LINE__, g5.size_1d() == 24);
     }
     {
       af::flex_grid<> g2(grid);

@@ -104,7 +104,7 @@ namespace scitbx { namespace af { namespace boost_python {
           bool>())
         .def("set_layout", flex_grid_wrappers::set_layout)
         .def("nd", &flex_grid<>::nd)
-        .def("size1d", &flex_grid<>::size1d)
+        .def("size_1d", &flex_grid<>::size_1d)
         .def("origin", &flex_grid<>::origin, copy_const_reference())
         .def("grid", &flex_grid<>::grid, copy_const_reference())
         .def("last", flex_grid_wrappers::last_0)

@@ -70,7 +70,7 @@ namespace scitbx { namespace af {
 
       std::size_t nd() const { return grid_.size(); }
 
-      std::size_t size1d() const
+      std::size_t size_1d() const
       {
         return af::product(grid_);
       }
