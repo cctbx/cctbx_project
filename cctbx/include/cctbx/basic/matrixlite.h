@@ -81,7 +81,7 @@ namespace cctbx {
 
     template <class NumType>
     af::tiny<NumType, 3>
-    DiagonalElements(const af::tiny<NumType, 9>& M)
+    DiagonalElements(const af::tiny_plain<NumType, 9>& M)
     {
       af::tiny<NumType, 3> result;
       for(std::size_t i=0;i<3;i++) {
@@ -92,7 +92,7 @@ namespace cctbx {
 
     template <class NumType>
     inline NumType
-    Determinant(const af::tiny<NumType, 9>& M) {
+    Determinant(const af::tiny_plain<NumType, 9>& M) {
       return   M[0] * (M[4] * M[8] - M[5] * M[7])
              - M[1] * (M[3] * M[8] - M[5] * M[6])
              + M[2] * (M[3] * M[7] - M[4] * M[6]);
@@ -100,7 +100,7 @@ namespace cctbx {
 
     template <class NumType>
     af::tiny<NumType, 9>
-    CoFactorMxTp(const af::tiny<NumType, 9>& M)
+    CoFactorMxTp(const af::tiny_plain<NumType, 9>& M)
     {
       af::tiny<NumType, 9> result;
       result[0] =  M[4] * M[8] - M[5] * M[7];
@@ -117,8 +117,8 @@ namespace cctbx {
 
     template <class NumType>
     af::tiny<NumType, 3>
-    cross_product(const af::tiny<NumType, 3>& a,
-                  const af::tiny<NumType, 3>& b)
+    cross_product(const af::tiny_plain<NumType, 3>& a,
+                  const af::tiny_plain<NumType, 3>& b)
     {
       af::tiny<NumType, 3> result;
       result[0] = a[1] * b[2] - b[1] * a[2];
