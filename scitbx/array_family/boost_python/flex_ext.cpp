@@ -48,6 +48,8 @@ namespace {
     tuple_mapping_fixed_size<double6>();
     tuple_mapping_fixed_size<double9>();
 
+    tuple_mapping_fixed_size<tiny<std::size_t,3> >();
+
     tuple_mapping_fixed_size<tiny<int,24> >(); // scitbx/math/golay.h
 
     tuple_mapping_fixed_size<vec3<int> >();
