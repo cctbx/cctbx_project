@@ -23,7 +23,7 @@ def bool_from_value_words(value_words):
 def number_from_value_words(value_words, number_type, number_type_name):
   value_string = str_from_value_words(value_words)
   if (value_string is None): return None
-  try: value = number_type(value_string)
+  try: return number_type(value_string)
   except:
     raise RuntimeError(
       '%s value expected, "%s" found (input line %d)' % (
@@ -54,11 +54,34 @@ def definition_type_from_value_words(value_words, type_names):
     'Unexpected definition type: "%s" (input line %d)' % (
       value_words[0].value, value_words[0].line_number))
 
+def show_attributes(self, out, prefix, attributes_level, print_width):
+  if (attributes_level <= 0): return
+  for name in self.attribute_names:
+    value = getattr(self, name)
+    if ((name == "help" and value is not None)
+        or (value is not None and attributes_level > 1)
+        or attributes_level > 2):
+      if (not isinstance(value, str)):
+        print >> out, prefix+"  ."+name, value
+      else:
+        value = '"' + value.replace('"', '\\"') + '"'
+        indent = " " * (len(prefix) + 3 + len(name) + 1)
+        if (len(indent+value) < print_width):
+          print >> out, prefix+"  ."+name, value
+        else:
+          is_first = True
+          for block in line_breaker(value[1:-1], print_width-2-len(indent)):
+            if (is_first):
+              print >> out, prefix+"  ."+name, '"'+block+'"'
+              is_first = False
+            else:
+              print >> out, indent+'"'+block+'"'
+
 class definition:
 
   def __init__(self,
-        name=None,
-        values=None,
+        name,
+        values,
         help=None,
         caption=None,
         short_caption=None,
@@ -99,33 +122,19 @@ class definition:
       else:
         line = line_plus
     print >> out, line
-    if (attributes_level > 0):
-      for name in self.attribute_names:
-        value = getattr(self, name)
-        if ((name == "help" and value is not None)
-            or (value is not None and attributes_level > 1)
-            or attributes_level > 2):
-          if (not isinstance(value, str)):
-            print >> out, prefix+"  ."+name, value
-          else:
-            value = '"' + value.replace('"', '\\"') + '"'
-            indent = " " * (len(prefix) + 3 + len(name) + 1)
-            if (len(indent+value) < print_width):
-              print >> out, prefix+"  ."+name, value
-            else:
-              is_first = True
-              for block in line_breaker(value[1:-1],print_width-2-len(indent)):
-                if (is_first):
-                  print >> out, prefix+"  ."+name, '"'+block+'"'
-                  is_first = False
-                else:
-                  print >> out, indent+'"'+block+'"'
+    show_attributes(
+      self=self,
+      out=out,
+      prefix=prefix,
+      attributes_level=attributes_level,
+      print_width=print_width)
 
 class scope:
 
   def __init__(self,
-        name=None,
-        objects=[]):
+        name,
+        objects):
+    if (objects is None): objects = []
     introspection.adopt_init_args()
 
   def show(self, out, prefix="", attributes_level=0, print_width=79,
@@ -147,16 +156,17 @@ class scope:
 class table:
 
   def __init__(self,
-        name=None,
-        row_names=[],
-        row_objects=[],
+        name,
+        row_names,
+        row_objects,
         style=None,
         help=None,
         caption=None,
         short_caption=None,
         sequential_format=None,
         disable_add=None,
-        disable_delete=None):
+        disable_delete=None,
+        expert_level=None):
     introspection.adopt_init_args()
     self.attribute_names = self.__init__varnames__[4:]
     assert style in [None, "row", "column", "block", "page"]
@@ -170,6 +180,8 @@ class table:
     assert self.has_attribute_with_name(name)
     if (name in ["disable_add", "disable_delete"]):
       value = bool_from_value_words(value_words)
+    elif (name in ["expert_level"]):
+      value = int_from_value_words(value_words)
     else:
       value = str_from_value_words(value_words)
       if (name == "style"):
@@ -190,13 +202,12 @@ class table:
     if (previous_object is not None):
       print >> out, prefix.rstrip()
     print >> out, "%stable %s" % (prefix, self.name)
-    if (attributes_level > 0):
-      for name in self.attribute_names:
-        value = getattr(self, name)
-        if ((name == "help" and value is not None)
-            or (value is not None and attributes_level > 1)
-            or attributes_level > 2):
-          print >> out, prefix+"  ."+name, value
+    show_attributes(
+      self=self,
+      out=out,
+      prefix=prefix,
+      attributes_level=attributes_level,
+      print_width=print_width)
     print >> out, prefix+"{"
     assert len(self.row_names) == len(self.row_objects)
     for name,objects in zip(self.row_names, self.row_objects):
@@ -225,7 +236,8 @@ class parse:
     self.objects = parser.collect_objects(
       word_stack=simple_tokenizer.as_word_stack(
         input_string=input_string,
-        contiguous_word_characters=""),
+        contiguous_word_characters="",
+        auto_split_unquoted={"{}": ("{", "}")}),
       definition_type_names=definition_type_names)
 
   def show(self, out, prefix="", attributes_level=0, print_width=None):
