@@ -46,6 +46,9 @@ def exercise_flex_hendrickson_lattman():
      [-3.1758749277715967, 0.43944491546724396],
      [0.0, 0.0],
      [0.0, 0.0]])
+  a = flex.hendrickson_lattman(3, (1,2,3,4))
+  assert a.all_eq((1,2,3,4))
+  assert not a.all_eq((1,2,0,4))
 
 def exercise_flex_tiny_size_t_2():
   a = flex.tiny_size_t_2()
