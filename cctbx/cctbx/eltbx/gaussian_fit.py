@@ -184,13 +184,13 @@ def decremental_fits(label, null_fit, full_fit=None, params=None,
       params=params)
     if (good_min is None):
       print "%s n_terms=%d: No successful minimization. Aborting." % (
-        label, n_terms)
+        label, last_fit.n_terms()-1)
       break
     show_fit_summary(
       "Best fit", label, good_min.final_gaussian_fit, good_min.max_error)
     show_literature_fits(
       label=label,
-      n_terms=n_terms,
+      n_terms=good_min.final_gaussian_fit.n_terms(),
       null_fit=null_fit,
       n_points=good_min.final_gaussian_fit.table_x().size(),
       e_other=good_min.max_error)
@@ -203,7 +203,7 @@ def decremental_fits(label, null_fit, full_fit=None, params=None,
     if (plots_dir):
       write_plots(
         plots_dir=plots_dir,
-        label=label+"_%d"%n_terms,
+        label=label+"_%d"%good_min.final_gaussian_fit.n_terms(),
         gaussian_fit=good_min.final_gaussian_fit)
     g = good_min.final_gaussian_fit
     results.append(xray_scattering.fitted_gaussian(
