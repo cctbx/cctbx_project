@@ -233,8 +233,8 @@ else:
     env_etc.shlinkflags = []
     env_etc.shlinkflags_bpl = [
       "-w", # for some odd reason -bundle cannot be the first option
-      "-bundle", env_etc.python_framework,
-      "-bundle_loader", env_etc.python_framework]
+      "-bundle",
+      "-bundle_loader", env_etc.python_framework, env_etc.python_framework,]
   else:
     raise "Unknown compiler choice:", env_etc.compiler
 
