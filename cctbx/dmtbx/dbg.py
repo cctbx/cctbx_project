@@ -55,7 +55,8 @@ def compute_mean_weighted_phase_error(tprs, sgops, h, f, phi1, phi2, verbose=0):
   return sum_w_phase_error / sum_w
 
 def square_emap(xtal, e000, p1_miller_indices,
-                miller_indices, e_values, phases):
+                miller_indices, e_values, phases,
+                zero_out_negative):
   index_span = sftbx.index_span(p1_miller_indices)
   # XXX index_span = xtal.SgOps.get_index_span(miller_indices)
   if (1):
@@ -88,7 +89,8 @@ def square_emap(xtal, e000, p1_miller_indices,
   # XXX map[0] = e000
   rfft.backward(map)
   rmap = shared.reinterpret_complex_as_real(map)
-  # XXX shared.set_if_less_than(rmap, 0, 0)
+  if (zero_out_negative):
+    shared.set_if_less_than(rmap, 0, 0)
   shared.square(rmap)
   rfft.forward(map)
   new_e_complex = sftbx.collect_structure_factors(
@@ -185,6 +187,7 @@ def exercise(SgInfo,
              exercise_triplets=0,
              other_than_sigma_2=0,
              exercise_squaring=0,
+             zero_out_negative=0,
              verbose=0):
   sim = simulated_data(SgInfo, number_of_point_atoms, d_min, e_min, verbose)
   p1_H = shared.Miller_Index()
@@ -232,7 +235,8 @@ def exercise(SgInfo,
         print
   if (exercise_squaring):
     new_phases = square_emap(
-      sim.xtal, sim.e000, p1_H, sim.miller_indices.H, sim.e_values, sim.phases)
+      sim.xtal, sim.e000, p1_H, sim.miller_indices.H, sim.e_values, sim.phases,
+      zero_out_negative)
     tprs_plus = [tprs_sg]
     if (tprs_sg != None): tprs_plus.append(None)
     for t in tprs_plus:
@@ -300,6 +304,9 @@ def recycle(SgInfo,
             use_triplets=0,
             other_than_sigma_2=0,
             use_squaring=0,
+            zero_out_negative=0,
+            n_trials=10,
+            n_cycles_per_trial=10,
             verbose=0):
   sim = simulated_data(SgInfo, number_of_point_atoms, d_min, e_min, verbose)
   sim_emma_model = xtal_as_emma_model(sim.xtal)
@@ -314,22 +321,34 @@ def recycle(SgInfo,
   print "Nreal:", map_calculator.rfft.Nreal()
   print "Mreal:", map_calculator.rfft.Mreal()
   new_phases = random_phi
-  for cycle in xrange(1):
-    print "cycle:", cycle
-    new_phases = square_emap(
-      sim.xtal, sim.e000, p1_H, sim.miller_indices.H, sim.e_values, new_phases)
-    if (1): # XXX
-      new_phases = sim.phases
-    map = map_calculator(sim.miller_indices.H, sim.e_values, new_phases)
-    peak_list = map_calculator.get_peak_list(map, 3, 20)
-    if (0 or verbose):
-      for peak in peak_list:
-        print "peak (%d,%d,%d)" % peak["index"], "%.6g" % (peak["value"],)
-    peaks_emma_model = peak_list_as_emma_model(
-      sim.xtal, map_calculator.rfft.Nreal(), peak_list)
-    peaks_emma_model.show("Peak list")
-    refined_matches = emma.match_models(sim_emma_model, peaks_emma_model)
-    refined_matches[0].show()
+  if (0): # XXX
+    new_phases = sim.phases
+  for i_trial in xrange(n_trials):
+    n_matches = []
+    for cycle in xrange(n_cycles_per_trial):
+      print "i_trial:", i_trial, "cycle:", cycle
+      sys.stdout.flush()
+      new_phases = square_emap(
+        sim.xtal, sim.e000,
+        p1_H, sim.miller_indices.H, sim.e_values, new_phases,
+        zero_out_negative)
+      if (0): # XXX
+        new_phases = sim.phases
+      map = map_calculator(sim.miller_indices.H, sim.e_values, new_phases)
+      peak_list = map_calculator.get_peak_list(map, 3, 20)
+      if (0 or verbose):
+        for peak in peak_list:
+          print "peak (%d,%d,%d)" % peak["index"], "%.6g" % (peak["value"],)
+      peaks_emma_model = peak_list_as_emma_model(
+        sim.xtal, map_calculator.rfft.Nreal(), peak_list)
+      peaks_emma_model.show("Peak list")
+      refined_matches = emma.match_models(sim_emma_model, peaks_emma_model)
+      refined_matches[0].show()
+      n_matches.append(len(refined_matches[0].pairs))
+      sys.stdout.flush()
+    print "i_trial:", i_trial, "n_matches:", n_matches
+    print
+    sys.stdout.flush()
 
 def run():
   Flags = debug_utils.command_line_options(sys.argv[1:], (
@@ -340,6 +359,7 @@ def run():
     "triplets",
     "sigma_2",
     "squaring",
+    "zero_out_negative",
     "recycle",
   ))
   if (not Flags.RandomSeed): debug_utils.set_random_seed(0)
@@ -377,13 +397,15 @@ def run():
         SgInfo,
         use_triplets=Flags.triplets,
         other_than_sigma_2=not Flags.sigma_2,
-        use_squaring=Flags.squaring)
+        use_squaring=Flags.squaring,
+        zero_out_negative=Flags.zero_out_negative)
     else:
       exercise(
         SgInfo,
         exercise_triplets=Flags.triplets,
         other_than_sigma_2=not Flags.sigma_2,
-        exercise_squaring=Flags.squaring)
+        exercise_squaring=Flags.squaring,
+        zero_out_negative=Flags.zero_out_negative)
     sys.stdout.flush()
 
 if (__name__ == "__main__"):
