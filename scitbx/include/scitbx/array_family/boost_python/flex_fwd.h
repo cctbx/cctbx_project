@@ -17,6 +17,24 @@
 #include <scitbx/array_family/accessors/c_grid_padded.h>
 #include <complex>
 
+/* The declarations in this file facilitate cross-module functionality
+   on platforms that do not support comparison of type expressions
+   across dynamically loaded library boundaries. On such platforms
+   Boost.Python uses type_id::name() for comparing type expressions.
+   For a given type, with some compilers (e.g. some EDG based
+   compilers) the result of type_id::name() depends on the first type
+   expression encountered in a translation unit. To ensure that
+   type_id::name() produces the same result in all translation
+   units, this file should be included at the top of all Boost.Python
+   extension modules that involve the types in the function
+   signatures below.
+
+   At the point of this writing only IRIX with MIPSpro 7.3 is known
+   to require this include file. However, since the declarations do
+   not cause any problems on other platforms it is deemed unnecessary
+   to guard them with #ifdef's.
+ */
+
 namespace scitbx { namespace af { namespace boost_python {
 
   template <typename T>
