@@ -4,6 +4,7 @@ from cctbx import sgtbx
 from cctbx import uctbx
 from cctbx.array_family import flex
 from cctbx.development import random_structure
+from scitbx.python_utils.math_utils import iround
 from libtbx.test_utils import approx_equal, eps_eq
 import sys, os
 
@@ -127,13 +128,41 @@ def exercise_fft_map_as_xplor_map(space_group_info, n_elements=10, d_min=3):
   f_calc = structure.structure_factors(
     d_min=d_min, anomalous_flag=00000).f_calc()
   fft_map = f_calc.fft_map()
-  fft_map.as_xplor_map(file_name="tmp.map")
+  fft_map.as_xplor_map(
+    file_name="tmp.map",
+    gridding_last=[n-1 for n in fft_map.n_real()])
   read = iotbx.xplor.map.reader(file_name="tmp.map")
   assert read.title_lines == ["cctbx.miller.fft_map"]
   assert read.gridding.n == fft_map.n_real()
   assert approx_equal(flex.linear_correlation(
     read.data.as_1d(),
     fft_map.real_map_unpadded().as_1d()).coefficient(), 1)
+  for first,last in [[(0,0,0),(3,5,6)],
+                     [(-1,-3,4),(6,4,5)],
+                     [(-2,3,0),(-2,3,0)],
+                     [(-2,3,0),(-2,3,3)],
+                     [(-2,3,0),(-2,8,0)],
+                     [(-2,3,0),(-2,9,0)],
+                     [(-2,3,0),(3,3,0)],
+                     [(-2,3,0),(4,3,0)]]:
+    fft_map.as_xplor_map(
+      file_name="tmp.map",
+      gridding_first=first,
+      gridding_last=last)
+    read = iotbx.xplor.map.reader(file_name="tmp.map")
+    assert read.title_lines == ["cctbx.miller.fft_map"]
+    assert read.gridding.n == fft_map.n_real()
+    assert read.gridding.first == first
+    assert read.gridding.last == last
+    real_map = fft_map.real_map()
+    first_p1 = [i%n for i,n in zip(first, fft_map.n_real())]
+    assert eps_eq(read.data[first], real_map[first_p1], eps=1.e-4)
+    last_p1 = [i%n for i,n in zip(last, fft_map.n_real())]
+    assert eps_eq(read.data[last], real_map[last_p1], eps=1.e-4)
+    for x in xrange(1,10):
+      point = [iround(f+(l-f)*x/10.) for f,l in zip(first,last)]
+      point_p1 = [i%n for i,n in zip(point, fft_map.n_real())]
+      assert eps_eq(read.data[point], real_map[point_p1], eps=1.e-4)
 
 def run():
   exercise_map_gridding()

@@ -55,10 +55,15 @@ class gridding:
   def as_flex_grid(self):
     return flex.grid(self.first, self.last, 0)
 
-  def is_compatible_flex_grid(self, flex_grid):
-    self_as_flex_grid = self.as_flex_grid()
-    if (flex_grid.origin() != self_as_flex_grid.origin()): return 00000
-    if (flex_grid.last() != self_as_flex_grid.last()): return 00000
+  def is_compatible_flex_grid(self, flex_grid, is_p1_cell=00000):
+    if (flex_grid.nd() != 3): return 00000
+    if (not is_p1_cell):
+      self_as_flex_grid = self.as_flex_grid()
+      if (flex_grid.origin() != self_as_flex_grid.origin()): return 00000
+      if (flex_grid.last() != self_as_flex_grid.last()): return 00000
+    else:
+      if (not flex_grid.is_0_based()): return 00000
+      if (flex_grid.focus() != self.n): return 00000
     return 0001
 
 class reader:
@@ -92,10 +97,13 @@ class reader:
     self.average = ext_reader.average
     self.standard_deviation = ext_reader.standard_deviation
 
-def writer(file_name, title_lines, unit_cell, gridding, data,
+def writer(file_name, title_lines, unit_cell, gridding,
+           data, is_p1_cell=00000,
            average=-1,
            standard_deviation=-1):
-  assert gridding.is_compatible_flex_grid(data.accessor())
+  assert gridding.is_compatible_flex_grid(
+    flex_grid=data.accessor(),
+    is_p1_cell=is_p1_cell)
   f = open(file_name, "wb")
   f.write("\n")
   f.write("%8d !NTITLE\n" % len(title_lines))
@@ -103,12 +111,22 @@ def writer(file_name, title_lines, unit_cell, gridding, data,
     f.write("%-264s\n" % line)
   f.write("%s\n" % gridding.format_9i8())
   f.close()
-  ext.map_writer(
-    file_name=file_name,
-    unit_cell=unit_cell,
-    data=data,
-    average=average,
-    standard_deviation=standard_deviation)
+  if (not is_p1_cell):
+    ext.map_writer(
+      file_name=file_name,
+      unit_cell=unit_cell,
+      data=data,
+      average=average,
+      standard_deviation=standard_deviation)
+  else:
+    ext.map_writer(
+      file_name=file_name,
+      unit_cell=unit_cell,
+      gridding_first=gridding.first,
+      gridding_last=gridding.last,
+      data=data,
+      average=average,
+      standard_deviation=standard_deviation)
 
 def cctbx_miller_fft_map_as_xplor_map(
       self,
@@ -119,12 +137,12 @@ def cctbx_miller_fft_map_as_xplor_map(
       average=None,
       standard_deviation=None):
   if (gridding_first is None): gridding_first = (0,0,0)
-  if (gridding_last is None): gridding_last = [n-1 for n in self.n_real()]
+  if (gridding_last is None): gridding_last = self.n_real()
   gridding_ = gridding(
     n=self.n_real(),
     first=gridding_first,
     last=gridding_last)
-  data = self.real_map_unpadded()
+  data = self.real_map()
   if (average is None or standard_deviation is None):
     statistics = maptbx.statistics(data)
     if (average is None): average = statistics.mean()
@@ -135,6 +153,7 @@ def cctbx_miller_fft_map_as_xplor_map(
     unit_cell=self.unit_cell(),
     gridding=gridding_,
     data=data,
+    is_p1_cell=0001,
     average=average,
     standard_deviation=standard_deviation)
 
