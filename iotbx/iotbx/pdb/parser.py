@@ -237,12 +237,18 @@ class pdb_record:
                                              self.raw[46:54])]
     except:
       self.raise_FormatError("Coordinates must be floating point numbers.")
-    try: self.occupancy = float(self.raw[54:60])
-    except:
-      self.raise_FormatError("Occupancy must be a floating point number.")
-    try: self.tempFactor = float(self.raw[60:66])
-    except: self.raise_FormatError(
-      "Temperature factor must be a floating point number.")
+    if (self.raw[54:60] == " "*6):
+      self.occupancy = 1.
+    else:
+      try: self.occupancy = float(self.raw[54:60])
+      except: self.raise_FormatError(
+        "Occupancy must be a floating point number.")
+    if (self.raw[60:66] == " "*6):
+      self.tempFactor = 0.
+    else:
+      try: self.tempFactor = float(self.raw[60:66])
+      except: self.raise_FormatError(
+        "Temperature factor must be a floating point number.")
     self.read_ATOM_73_80()
 
   def read_ATOM_73_80(self):
