@@ -443,6 +443,26 @@ class set(crystal.symmetry):
         miller_set=self,
         algorithm=algorithm)
 
+  def f_obs_minus_xray_structure_f_calc(self, f_obs_factor, xray_structure,
+        structure_factor_algorithm=None,
+        cos_sin_table=False,
+        quality_factor=None,
+        u_base=None,
+        b_base=None,
+        wing_cutoff=None,
+        exp_table_one_over_step_size=None):
+    return self.f_obs_minus_f_calc(
+      f_obs_factor=f_obs_factor,
+      f_calc=self.structure_factors_from_scatterers(
+        xray_structure=xray_structure,
+        algorithm=structure_factor_algorithm,
+        cos_sin_table=cos_sin_table,
+        quality_factor=quality_factor,
+        u_base=u_base,
+        b_base=b_base,
+        wing_cutoff=wing_cutoff,
+        exp_table_one_over_step_size=exp_table_one_over_step_size).f_calc())
+
   def setup_binner(self, d_max=0, d_min=0,
                    auto_binning=0,
                    reflections_per_bin=0,
@@ -789,6 +809,17 @@ class array(set):
       miller_set=set.change_basis(self, cb_op),
       data=new_data,
       sigmas=new_sigmas).set_observation_type(self)
+
+  def f_obs_minus_f_calc(self, f_obs_factor, f_calc):
+    assert self.is_real_array()
+    assert f_calc.is_complex_array()
+    assert self.indices().all_eq(f_calc.indices())
+    assert not self.anomalous_flag()
+    assert not f_calc.anomalous_flag()
+    return array(
+      miller_set=self,
+      data=f_obs_factor*self.data()-flex.abs(f_calc.data())).phase_transfer(
+        phase_source=f_calc)
 
   def phase_transfer(self, phase_source, epsilon=1.e-10, deg=False,
                            phase_integrator_n_steps=None):
