@@ -94,8 +94,8 @@ def exercise(space_group_info, const_gaussian,
     print "exp_table_one_over_step_size:", \
       sampled_density.exp_table_one_over_step_size()
     print "exp_table_size:", sampled_density.exp_table_size()
-    print "max_shell_radii:", sampled_density.max_shell_radii(),
-    print "(%.4f, %.4f, %.4f)" % sampled_density.max_shell_radii_frac()
+    print "max_sampling_box_edges:", sampled_density.max_sampling_box_edges(),
+    print "(%.4f, %.4f, %.4f)" % sampled_density.max_sampling_box_edges_frac()
   if (not sampled_density.anomalous_flag()):
     map = sampled_density.real_map()
     assert map.all() == rfft.m_real()

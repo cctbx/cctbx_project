@@ -76,8 +76,9 @@ namespace cctbx { namespace xray {
     bool electron_density_must_be_positive,
     FloatType const& tolerance_positive_definite)
   :
-    base_t(unit_cell, scatterers, u_extra, wing_cutoff,
-           exp_table_one_over_step_size, tolerance_positive_definite)
+    base_t(unit_cell, scatterers, scattering_dict, u_extra, wing_cutoff,
+           exp_table_one_over_step_size, tolerance_positive_definite,
+           fft_n_real)
   {
     CCTBX_ASSERT(scattering_dict.n_scatterers() == scatterers.size());
     FloatType* map_begin;
@@ -97,6 +98,13 @@ namespace cctbx { namespace xray {
     detail::exponent_table<FloatType> exp_table(exp_table_one_over_step_size);
     scitbx::mat3<FloatType>
       orth_mx = this->unit_cell_.orthogonalization_matrix();
+    std::vector<int> gp1g;
+    std::vector<FloatType> o1f1_;
+    std::vector<FloatType> o4f1_;
+    std::vector<int> gp2g;
+    std::vector<FloatType> o2f2_;
+    std::vector<FloatType> o5f2_;
+    std::vector<FloatType> o8f2_;
     typedef scattering_dictionary::dict_type dict_type;
     typedef dict_type::const_iterator dict_iter;
     dict_type const& scd = scattering_dict.dict();
@@ -123,12 +131,14 @@ namespace cctbx { namespace xray {
           exp_table,
           gaussian, scatterer.fp, scatterer.fdp, scatterer.weight(),
           u_iso, this->u_extra_);
-        detail::calc_shell<FloatType, grid_point_type> shell(
-          this->unit_cell_, this->wing_cutoff_, grid_f, gaussian_ft);
-        detail::array_update_max(this->max_shell_radii_, shell.radii);
+        detail::calc_box<FloatType, grid_point_type> sampling_box(
+          this->unit_cell_, this->rho_cutoff_, this->max_d_sq_upper_bound_,
+          grid_f, coor_frac, gaussian_ft);
+        this->update_sampling_box_statistics(
+          sampling_box.n_points, sampling_box.box_edges);
         if (electron_density_must_be_positive) {
           if (   gaussian_ft.rho_real_0() < 0
-              || gaussian_ft.rho_real(shell.max_d_sq) < 0) {
+              || gaussian_ft.rho_real(sampling_box.max_d_sq) < 0) {
 
             throw error("Negative electron density at sampling point.");
           }
@@ -139,12 +149,37 @@ namespace cctbx { namespace xray {
             gaussian, scatterer.fp, scatterer.fdp, scatterer.weight(),
             u_cart, this->u_extra_);
         }
-        grid_point_type pivot = detail::calc_nearest_grid_point(
-          coor_frac, grid_f);
+        std::size_t exp_tab_size = exp_table.table_.size();
 #       include <cctbx/xray/sampling_loop.h>
           if (this->anomalous_flag_) i_map *= 2;
           if (!scatterer.anisotropic_flag) {
+#ifdef CCTBX_READABLE_CODE
             map_begin[i_map] += gaussian_ft.rho_real(d_sq);
+#else
+            if (exp_table.one_over_step_size_ == 0) {
+              FloatType contr = 0;
+              for (std::size_t i=0;i<gaussian_ft.n_rho_real_terms;i++) {
+                contr += gaussian_ft.as_real_[i]
+                       * std::exp(gaussian_ft.bs_real_[i] * d_sq);
+              }
+              map_begin[i_map] += contr;
+            }
+            else {
+              FloatType contr = 0;
+              FloatType d_sq_et = d_sq * exp_table.one_over_step_size_;
+              for (std::size_t i=0;i<gaussian_ft.n_rho_real_terms;i++) {
+                FloatType xs = gaussian_ft.bs_real_[i] * d_sq_et;
+                std::size_t j = static_cast<std::size_t>(xs+.5);
+                if (j >= exp_tab_size) {
+                  exp_table.expand(j + 1);
+                  exp_tab_size = exp_table.table_.size();
+                }
+                contr += gaussian_ft.as_real_[i]
+                       * exp_table.table_[j];
+              }
+              map_begin[i_map] += contr;
+            }
+#endif
             if (fdp) {
               map_begin[i_map+1] += gaussian_ft.rho_imag(d_sq);
             }

@@ -35,8 +35,11 @@ namespace {
         .def("n_anomalous_scatterers", &w_t::n_anomalous_scatterers)
         .def("anomalous_flag", &w_t::anomalous_flag)
         .def("exp_table_size", &w_t::exp_table_size)
-        .def("max_shell_radii", &w_t::max_shell_radii, ccr())
-        .def("max_shell_radii_frac", &w_t::max_shell_radii_frac)
+        .def("max_sampling_box_n_points", &w_t::max_sampling_box_n_points)
+        .def("sum_sampling_box_n_points", &w_t::sum_sampling_box_n_points)
+        .def("ave_sampling_box_n_points", &w_t::ave_sampling_box_n_points)
+        .def("max_sampling_box_edges", &w_t::max_sampling_box_edges, ccr())
+        .def("max_sampling_box_edges_frac", &w_t::max_sampling_box_edges_frac)
       ;
     }
   };
