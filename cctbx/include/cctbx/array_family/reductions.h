@@ -15,18 +15,6 @@
 
 namespace cctbx { namespace af {
 
-  template <typename NumType>
-  struct integer_to_float { typedef NumType float_type; };
-
-  template <>
-  struct integer_to_float<int> { typedef double float_type; };
-  template <>
-  struct integer_to_float<unsigned int> { typedef double float_type; };
-  template <>
-  struct integer_to_float<long> { typedef double float_type; };
-  template <>
-  struct integer_to_float<unsigned long> { typedef double float_type; };
-
   template <typename ElementType, typename AccessorType>
   std::size_t
   max_index(const const_ref<ElementType, AccessorType>& a)
@@ -102,29 +90,25 @@ namespace cctbx { namespace af {
   }
 
   template <typename ElementType, typename AccessorType>
-  typename integer_to_float<ElementType>::float_type
+  ElementType
   mean(const const_ref<ElementType, AccessorType>& a)
   {
-    typename integer_to_float<ElementType>::float_type f_result(sum(a));
-    typename integer_to_float<ElementType>::float_type f_size(a.size());
-    return f_result / f_size;
+    return sum(a) / a.size();
   }
 
   template <typename ElementType, typename AccessorType>
-  typename integer_to_float<ElementType>::float_type
+  ElementType
   rms(const const_ref<ElementType, AccessorType>& a)
   {
     ElementType result = 0;
     for(std::size_t i=0;i<a.size();i++) result += a[i] * a[i];
-    typename integer_to_float<ElementType>::float_type f_result(result);
-    typename integer_to_float<ElementType>::float_type f_size(a.size());
-    return std::sqrt(f_result / f_size);
+    return std::sqrt(result / a.size());
   }
 
   template <typename ElementTypeValues, typename AccessorTypeValues,
             typename ElementTypeWeights, typename AccessorTypeWeights>
   ElementTypeValues
-  weighted_mean(
+  mean_weighted(
     const const_ref<ElementTypeValues, AccessorTypeValues>& values,
     const const_ref<ElementTypeWeights, AccessorTypeWeights>& weights)
   {
@@ -138,6 +122,27 @@ namespace cctbx { namespace af {
         sum_w += weights[i];
       }
       result = sum_vw / sum_w;
+    }
+    return result;
+  }
+
+  template <typename ElementTypeValues, typename AccessorTypeValues,
+            typename ElementTypeWeights, typename AccessorTypeWeights>
+  ElementTypeValues
+  rms_weighted(
+    const const_ref<ElementTypeValues, AccessorTypeValues>& values,
+    const const_ref<ElementTypeWeights, AccessorTypeWeights>& weights)
+  {
+    ElementTypeValues result;
+    if (values.size() != weights.size()) throw_range_error();
+    if (values.size() > 0) {
+      ElementTypeValues sum_vvw = 0;
+      ElementTypeWeights sum_w = 0;
+      for(std::size_t i=0;i<values.size();i++) {
+        sum_vvw += values[i] * values[i] * weights[i];
+        sum_w += weights[i];
+      }
+      result = std::sqrt(sum_vvw / sum_w);
     }
     return result;
   }

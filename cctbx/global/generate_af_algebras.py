@@ -35,7 +35,7 @@ reduction_functions_1arg = (
   "mean", "rms",
 )
 reduction_functions_2arg = (
-  "weighted_mean",
+  "mean_weighted", "rms_weighted",
 )
 
 class empty:
@@ -452,8 +452,6 @@ def generate_1arg_reductions(array_type_name):
     return_type = "ElementType"
     if (function_name in ("max_index", "min_index")):
       return_type = "std::size_t"
-    elif (function_name in ("mean", "rms")):
-      return_type = "typename integer_to_float<ElementType>::float_type"
     print """%s
   inline
   %s
