@@ -24,7 +24,9 @@ namespace {
       scitbx::stl::boost_python::map_wrapper<pair_sym_dict, rir>::wrap(
         "pair_sym_dict");
       scitbx::af::boost_python::shared_wrapper<pair_sym_dict, rir>::wrap(
-        "pair_sym_table");
+        "pair_sym_table")
+        .def("select", pair_sym_table_select)
+      ;
     }
   };
 

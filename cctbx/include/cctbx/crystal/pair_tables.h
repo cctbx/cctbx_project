@@ -82,6 +82,40 @@ namespace cctbx { namespace crystal {
     return distances;
   }
 
+  //! Applies selection to pair_sym_table instance.
+  inline
+  af::shared<crystal::pair_sym_dict>
+  pair_sym_table_select(
+    af::const_ref<crystal::pair_sym_dict> const& pair_sym_table,
+    af::const_ref<std::size_t> const& iselection)
+  {
+    std::size_t n_seq_old = pair_sym_table.size();
+    std::vector<std::size_t> reindexing_list(n_seq_old, n_seq_old);
+    for(std::size_t i_seq_new=0;i_seq_new<iselection.size();i_seq_new++) {
+      CCTBX_ASSERT(iselection[i_seq_new] < n_seq_old);
+      reindexing_list[iselection[i_seq_new]] = i_seq_new;
+    }
+    af::shared<crystal::pair_sym_dict>
+      result((af::reserve(iselection.size())));
+    for(std::size_t i_seq_new=0;i_seq_new<iselection.size();i_seq_new++) {
+      result.push_back(crystal::pair_sym_dict());
+      crystal::pair_sym_dict& new_pair_sym_dict = result.back();
+      crystal::pair_sym_dict const&
+        old_pair_sym_dict = pair_sym_table[iselection[i_seq_new]];
+      for(crystal::pair_sym_dict::const_iterator
+            old_pair_sym_dict_i=old_pair_sym_dict.begin();
+            old_pair_sym_dict_i!=old_pair_sym_dict.end();
+            old_pair_sym_dict_i++) {
+        std::size_t new_j_seq = reindexing_list[old_pair_sym_dict_i->first];
+        if (new_j_seq < n_seq_old) {
+          new_pair_sym_dict[static_cast<unsigned>(new_j_seq)]
+            = old_pair_sym_dict_i->second;
+        }
+      }
+    }
+    return result;
+  }
+
   //! Set of j_sym indices of symmetrically equivalent pair interactions.
   typedef std::set<unsigned> pair_asu_j_sym_group;
   //! Array of sets of symmetrically equivalent pair interactions.

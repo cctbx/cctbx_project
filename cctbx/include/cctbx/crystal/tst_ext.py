@@ -624,6 +624,128 @@ i_seq: 2
     pair_sym_table=sym_table,
     sites_cart=sites_cart)
   assert approx_equal(distances, [2,3])
+  #
+  # Zeolite framework type ASV
+  sym_table = crystal.pair_sym_table(5)
+  d = sym_table[0].setdefault(0)
+  d.append(sgtbx.rt_mx("x,y,-z"))
+  d.append(sgtbx.rt_mx("-y+1,x,z"))
+  d = sym_table[0].setdefault(1)
+  d.append(sgtbx.rt_mx("x,y,z"))
+  d = sym_table[0].setdefault(2)
+  d.append(sgtbx.rt_mx("x,y,z"))
+  d = sym_table[0].setdefault(3)
+  d.append(sgtbx.rt_mx("x,y,z"))
+  d.append(sgtbx.rt_mx("y,-x+1,z"))
+  d = sym_table[0].setdefault(4)
+  d.append(sgtbx.rt_mx("x,y,z"))
+  d = sym_table[1].setdefault(4)
+  d.append(sgtbx.rt_mx("x,y,z"))
+  d = sym_table[2].setdefault(3)
+  d.append(sgtbx.rt_mx("x,y,z"))
+  d.append(sgtbx.rt_mx("y,-x+1,z"))
+  d = sym_table[2].setdefault(4)
+  d.append(sgtbx.rt_mx("x,y,z"))
+  d = sym_table[3].setdefault(3)
+  d.append(sgtbx.rt_mx("-y+1,x,z"))
+  d = sym_table[3].setdefault(4)
+  d.append(sgtbx.rt_mx("x,y,z"))
+  d.append(sgtbx.rt_mx("-y+1,x,z"))
+  d = sym_table[4].setdefault(4)
+  d.append(sgtbx.rt_mx("x,-y+1,-z+1/2"))
+  d.append(sgtbx.rt_mx("-x,y,-z+1/2"))
+  d.append(sgtbx.rt_mx("-x,-y+1,z"))
+  out = StringIO()
+  sym_table.show(f=out)
+  assert out.getvalue() == """\
+i_seq: 0
+  j_seq: 0
+    x,y,-z
+    -y+1,x,z
+  j_seq: 1
+    x,y,z
+  j_seq: 2
+    x,y,z
+  j_seq: 3
+    x,y,z
+    y,-x+1,z
+  j_seq: 4
+    x,y,z
+i_seq: 1
+  j_seq: 4
+    x,y,z
+i_seq: 2
+  j_seq: 3
+    x,y,z
+    y,-x+1,z
+  j_seq: 4
+    x,y,z
+i_seq: 3
+  j_seq: 3
+    -y+1,x,z
+  j_seq: 4
+    x,y,z
+    -y+1,x,z
+i_seq: 4
+  j_seq: 4
+    x,-y+1,-z+1/2
+    -x,y,-z+1/2
+    -x,-y+1,z
+"""
+  out = StringIO()
+  for i_seq in xrange(5):
+    sym_table.select(flex.size_t([i_seq])).show(f=out)
+  assert out.getvalue() == """\
+i_seq: 0
+  j_seq: 0
+    x,y,-z
+    -y+1,x,z
+i_seq: 0
+i_seq: 0
+i_seq: 0
+  j_seq: 0
+    -y+1,x,z
+i_seq: 0
+  j_seq: 0
+    x,-y+1,-z+1/2
+    -x,y,-z+1/2
+    -x,-y+1,z
+"""
+  out = StringIO()
+  sym_table.select(flex.size_t([1,2,4])).show(f=out)
+  assert out.getvalue() == """\
+i_seq: 0
+  j_seq: 2
+    x,y,z
+i_seq: 1
+  j_seq: 2
+    x,y,z
+i_seq: 2
+  j_seq: 2
+    x,-y+1,-z+1/2
+    -x,y,-z+1/2
+    -x,-y+1,z
+"""
+  out = StringIO()
+  sym_table.select(flex.size_t([3,0,2])).show(f=out)
+  assert out.getvalue() == """\
+i_seq: 0
+  j_seq: 0
+    -y+1,x,z
+i_seq: 1
+  j_seq: 0
+    x,y,z
+    y,-x+1,z
+  j_seq: 1
+    x,y,-z
+    -y+1,x,z
+  j_seq: 2
+    x,y,z
+i_seq: 2
+  j_seq: 0
+    x,y,z
+    y,-x+1,z
+"""
 
 def exercise_coordination_sequences_simple():
   structure = trial_structure()
