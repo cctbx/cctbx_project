@@ -80,20 +80,18 @@ class crystal_gridding:
                      max_prime=5,
                      assert_shannon_sampling=0001):
     adopt_init_args(self, locals(), hide=0001)
-    assert symmetry_flags is None or mandatory_factors is None
     if (symmetry_flags is not None): assert space_group_info is not None
+    if (mandatory_factors is None): mandatory_factors = (1,1,1)
+    assert len(mandatory_factors) == 3
     if (symmetry_flags is not None):
       self._n_real = determine_gridding(
         unit_cell, d_min, resolution_factor,
         symmetry_flags, space_group_info.type(),
-        max_prime, assert_shannon_sampling)
+        mandatory_factors, max_prime, assert_shannon_sampling)
     else:
-      if (mandatory_factors is None): mandatory_factors = (1,1,1)
-      assert len(mandatory_factors) == 3
       self._n_real = determine_gridding(
         unit_cell, d_min, resolution_factor,
-        mandatory_factors,
-        max_prime, assert_shannon_sampling)
+        mandatory_factors, max_prime, assert_shannon_sampling)
 
   def _copy_constructor(self, other):
     self._unit_cell = other._unit_cell
