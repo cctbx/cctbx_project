@@ -26,19 +26,11 @@ class pair_asu_table:
     for pair in pair_generator:
       rt_mx_i = self.asu_mappings.get_rt_mx(i_seq=pair.i_seq, i_sym=0)
       rt_mx_j = self.asu_mappings.get_rt_mx(i_seq=pair.j_seq, i_sym=pair.j_sym)
-      rt_mx_ji = rt_mx_i.inverse().multiply(rt_mx_j)
-      is_new = self._process_bond(
+      self.add_pair(
         i_seq=pair.i_seq,
         j_seq=pair.j_seq,
-        rt_mx_ji=rt_mx_ji,
+        rt_mx_ji=rt_mx_i.inverse().multiply(rt_mx_j),
         verbose=verbose)
-      if (is_new and pair.i_seq != pair.j_seq):
-        is_new = self._process_bond(
-          i_seq=pair.j_seq,
-          j_seq=pair.i_seq,
-          rt_mx_ji=rt_mx_ji.inverse_cancel(),
-          verbose=verbose)
-        assert is_new
     return self
 
   def add_pair_sym_proxies(self, proxies, verbose=0):
@@ -47,21 +39,28 @@ class pair_asu_table:
     return self
 
   def add_pair_sym_proxy(self, proxy, verbose=0):
-    is_new = self._process_bond(
+    self.add_pair(
       i_seq=proxy.i_seqs[0],
       j_seq=proxy.i_seqs[1],
       rt_mx_ji=proxy.rt_mx,
       verbose=verbose)
-    if (is_new and proxy.i_seqs[0] != proxy.i_seqs[1]):
-      is_new = self._process_bond(
-        i_seq=proxy.i_seqs[1],
-        j_seq=proxy.i_seqs[0],
-        rt_mx_ji=proxy.rt_mx.inverse_cancel(),
+
+  def add_pair(self, i_seq, j_seq, rt_mx_ji, verbose=0):
+    is_new = self._process_pair(
+      i_seq=i_seq,
+      j_seq=j_seq,
+      rt_mx_ji=rt_mx_ji,
+      verbose=verbose)
+    if (is_new and i_seq != j_seq):
+      is_new = self._process_pair(
+        i_seq=j_seq,
+        j_seq=i_seq,
+        rt_mx_ji=rt_mx_ji.inverse_cancel(),
         verbose=verbose)
       assert is_new
     return self
 
-  def _process_bond(self, i_seq, j_seq, rt_mx_ji, verbose=0):
+  def _process_pair(self, i_seq, j_seq, rt_mx_ji, verbose=0):
     rt_mx_i = self.asu_mappings.get_rt_mx(i_seq=i_seq, i_sym=0)
     rt_mx_j = rt_mx_i.multiply(rt_mx_ji)
     j_sym = self.asu_mappings.find_i_sym(i_seq=j_seq, rt_mx=rt_mx_j)
@@ -91,6 +90,14 @@ class pair_asu_table:
         if (0 or verbose):
           print "    equiv b: i_seq, j_seq, j_sym", i_seq, j_seq, j_sym_eq
     return 0001
+
+  def __contains__(self, pair):
+    j_sym_groups = self.table[pair.i_seq].get(pair.j_seq, None)
+    if (j_sym_groups is not None):
+      for j_sym_group in j_sym_groups:
+        if (pair.j_sym in j_sym_group):
+          return 0001
+    return 00000
 
   def extract_pair_sym_proxies(self):
     pair_sym_proxies = []
@@ -249,17 +256,9 @@ def run():
           distance_cutoff = float(entry.title.split()[1])
         else:
           distance_cutoff = default_distance_cutoff
-        connectivities = []
         weak_check_sym_equiv = (
           entry.reference.find("weak_check_sym_equiv") >= 0)
-        for atom in entry.atoms:
-          if (atom.connectivity is None):
-            if (len(connectivities) != 0):
-              raise AssertionError(
-                "Tag %s: some atoms are missing the bond count." % entry.tag)
-            connectivities = None
-            break
-          connectivities.append(atom.connectivity)
+        connectivities = entry.connectivities(all_or_nothing=0001)
         exercise(
           structure=structure,
           distance_cutoff=distance_cutoff,
