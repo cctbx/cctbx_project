@@ -201,7 +201,7 @@ class two_p_shifted_site:
 
 def site(structure_ideal, f_obs):
   sum_f_obs_sq = flex.sum(flex.pow2(f_obs.data()))
-  sh = two_p_shifted_site(f_obs, structure_ideal, 0, 0, 0.05)
+  sh = two_p_shifted_site(f_obs, structure_ideal, 0, 0, 0.01)
   sh.structure_shifted.show_summary().show_scatterers()
   ls = xray.targets_least_squares_residual(
     f_obs.data(), sh.f_calc.data(), 0001, 1)
@@ -214,13 +214,14 @@ def site(structure_ideal, f_obs):
   gms = get_gms(sh.structure_shifted, f_obs)
   phi = flex.arg(sh.f_calc.data())
   dp0 = get_dp0(f_obs, phi, sh.e)
-  dps = []
-  for i_xyz in (0,1,2):
-    dp = flex.complex_double()
-    for i,hkl in f_obs.indices().items():
-      dp.append(-1j*2*math.pi*hkl[i_xyz]*sh.e[i]
-                *complex_math.polar((1, phi[i])))
-    dps.append(miller.array(miller_set=f_obs, data=dp))
+  if (f_obs.space_group().order_z() == 1):
+    dps = []
+    for i_xyz in (0,1,2):
+      dp = flex.complex_double()
+      for i,hkl in f_obs.indices().items():
+        dp.append(-1j*2*math.pi*hkl[i_xyz]*sh.e[i]
+                  *complex_math.polar((1, phi[i])))
+      dps.append(miller.array(miller_set=f_obs, data=dp))
   print "two_p:", sh.two_p
   print "ls.target():", ls.target() * sum_f_obs_sq
   assert approx_equal(sh.two_p, ls.target() * sum_f_obs_sq)
@@ -239,14 +240,15 @@ def site(structure_ideal, f_obs):
       print "  g[%d][%d]: " % (i_scatterer, i_xyz), g
       print "sfd[%d][%d]: " % (i_scatterer, i_xyz), \
             sfd.d_target_d_site()[i_scatterer][i_xyz] * sum_f_obs_sq/2
-      rm = matrix.col(sh.structure_shifted.scatterers()[i_scatterer].site)
-      gxm = 0
-      for i,hkl in f_obs.indices().items():
-        p = -2*math.pi * (matrix.row(hkl) * rm).elems[0]
-        gxm += (dps[i_xyz].data()[i]
-                * gms[i_scatterer][i].conjugate()
-                * complex_math.polar((1, p)))
-      print "gxm[%d][%d]:" % (i_scatterer, i_xyz), gxm
+      if (f_obs.space_group().order_z() == 1):
+        rm = matrix.col(sh.structure_shifted.scatterers()[i_scatterer].site)
+        gxm = 0
+        for i,hkl in f_obs.indices().items():
+          p = -2*math.pi * (matrix.row(hkl) * rm).elems[0]
+          gxm += (dps[i_xyz].data()[i]
+                  * gms[i_scatterer][i].conjugate()
+                  * complex_math.polar((1, p)))
+        print "gxm[%d][%d]:" % (i_scatterer, i_xyz), gxm
       gl = map0.grad_site()[i_scatterer][i_xyz]
       print " m0[%d][%d]: " % (i_scatterer, i_xyz), gl
       print
@@ -282,12 +284,13 @@ def u_iso(structure_ideal, f_obs):
   phi = flex.arg(sh.f_calc.data())
   dp0 = get_dp0(f_obs, phi, sh.e)
   uc = sh.structure_shifted.unit_cell()
-  dps = flex.complex_double()
-  for i,hkl in f_obs.indices().items():
-    s_sq = uc.d_star_sq(hkl)
-    dps.append(-s_sq/4*8*math.pi*math.pi*sh.e[i]
-               *complex_math.polar((1, phi[i])))
-  dps = miller.array(miller_set=f_obs, data=dps)
+  if (f_obs.space_group().order_z() == 1):
+    dps = flex.complex_double()
+    for i,hkl in f_obs.indices().items():
+      s_sq = uc.d_star_sq(hkl)
+      dps.append(-s_sq/4*8*math.pi*math.pi*sh.e[i]
+                 *complex_math.polar((1, phi[i])))
+    dps = miller.array(miller_set=f_obs, data=dps)
   print "two_p:", sh.two_p
   print "ls.target():", ls.target() * sum_f_obs_sq
   assert approx_equal(sh.two_p, ls.target() * sum_f_obs_sq)
@@ -305,14 +308,15 @@ def u_iso(structure_ideal, f_obs):
     print "  g[%d]: " % i_scatterer, g
     print "sfd[%d]: " % i_scatterer, \
           sfd.d_target_d_u_iso()[i_scatterer] * sum_f_obs_sq/2
-    rm = matrix.col(sh.structure_shifted.scatterers()[i_scatterer].site)
-    gxm = 0
-    for i,hkl in f_obs.indices().items():
-      p = -2*math.pi * (matrix.row(hkl) * rm).elems[0]
-      gxm += (dps.data()[i]
-              * gms[i_scatterer][i].conjugate()
-              * complex_math.polar((1, p)))
-    print "gxm[%d]:" % i_scatterer, gxm
+    if (f_obs.space_group().order_z() == 1):
+      rm = matrix.col(sh.structure_shifted.scatterers()[i_scatterer].site)
+      gxm = 0
+      for i,hkl in f_obs.indices().items():
+        p = -2*math.pi * (matrix.row(hkl) * rm).elems[0]
+        gxm += (dps.data()[i]
+                * gms[i_scatterer][i].conjugate()
+                * complex_math.polar((1, p)))
+      print "gxm[%d]:" % i_scatterer, gxm
     gl = map0.grad_u_iso()[i_scatterer]
     print " m0[%d]: " % i_scatterer, gl
     print
@@ -347,11 +351,12 @@ def occupancy(structure_ideal, f_obs):
   gms = get_gms(sh.structure_shifted, f_obs)
   phi = flex.arg(sh.f_calc.data())
   dp0 = get_dp0(f_obs, phi, sh.e)
-  dps = flex.complex_double()
-  for i,hkl in f_obs.indices().items():
-    dps.append(sh.e[i]
-               *complex_math.polar((1, phi[i])))
-  dps = miller.array(miller_set=f_obs, data=dps)
+  if (f_obs.space_group().order_z() == 1):
+    dps = flex.complex_double()
+    for i,hkl in f_obs.indices().items():
+      dps.append(sh.e[i]
+                 *complex_math.polar((1, phi[i])))
+    dps = miller.array(miller_set=f_obs, data=dps)
   print "two_p:", sh.two_p
   print "ls.target():", ls.target() * sum_f_obs_sq
   assert approx_equal(sh.two_p, ls.target() * sum_f_obs_sq)
@@ -369,15 +374,16 @@ def occupancy(structure_ideal, f_obs):
     print "  g[%d]: " % i_scatterer, g
     print "sfd[%d]: " % i_scatterer, \
           sfd.d_target_d_occupancy()[i_scatterer] * sum_f_obs_sq/2
-    m = sh.structure_shifted.scatterers()[i_scatterer]
-    rm = matrix.col(m.site)
-    gxm = 0
-    for i,hkl in f_obs.indices().items():
-      p = -2*math.pi * (matrix.row(hkl) * rm).elems[0]
-      gxm += (dps.data()[i]
-              * gms[i_scatterer][i].conjugate()
-              * complex_math.polar((1, p)))
-    print "gxm[%d]:" % i_scatterer, gxm/m.occupancy
+    if (f_obs.space_group().order_z() == 1):
+      m = sh.structure_shifted.scatterers()[i_scatterer]
+      rm = matrix.col(m.site)
+      gxm = 0
+      for i,hkl in f_obs.indices().items():
+        p = -2*math.pi * (matrix.row(hkl) * rm).elems[0]
+        gxm += (dps.data()[i]
+                * gms[i_scatterer][i].conjugate()
+                * complex_math.polar((1, p)))
+      print "gxm[%d]:" % i_scatterer, gxm/m.occupancy
     gl = map0.grad_occupancy()[i_scatterer]
     print " m0[%d]: " % i_scatterer, gl
     print
@@ -442,13 +448,14 @@ def u_star(structure_ideal, f_obs):
   gms = get_gms(sh.structure_shifted, f_obs)
   phi = flex.arg(sh.f_calc.data())
   dp0 = get_dp0(f_obs, phi, sh.e)
-  dps = []
-  for ij in xrange(6):
-    dp = flex.complex_double()
-    for i,hkl in f_obs.indices().items():
-      dp.append(-2*(math.pi**2)*ij_product(hkl,ij)*sh.e[i]
-                *complex_math.polar((1, phi[i])))
-    dps.append(miller.array(miller_set=f_obs, data=dp))
+  if (f_obs.space_group().order_z() == 1):
+    dps = []
+    for ij in xrange(6):
+      dp = flex.complex_double()
+      for i,hkl in f_obs.indices().items():
+        dp.append(-2*(math.pi**2)*ij_product(hkl,ij)*sh.e[i]
+                  *complex_math.polar((1, phi[i])))
+      dps.append(miller.array(miller_set=f_obs, data=dp))
   print "two_p:", sh.two_p
   print "ls.target():", ls.target() * sum_f_obs_sq
   assert approx_equal(sh.two_p, ls.target() * sum_f_obs_sq)
@@ -479,14 +486,15 @@ def u_star(structure_ideal, f_obs):
       print "  g[%d][%d]: " % (i_scatterer, ij), g
       print "sfd[%d][%d]: " % (i_scatterer, ij), \
             sfd.d_target_d_u_star()[i_scatterer][ij] * sum_f_obs_sq/2
-      rm = matrix.col(sh.structure_shifted.scatterers()[i_scatterer].site)
-      gxm = 0
-      for i,hkl in f_obs.indices().items():
-        p = -2*math.pi * (matrix.row(hkl) * rm).elems[0]
-        gxm += (dps[ij].data()[i]
-                * gms[i_scatterer][i].conjugate()
-                * complex_math.polar((1, p)))
-      print "gxm[%d][%d]:" % (i_scatterer, ij), gxm
+      if (f_obs.space_group().order_z() == 1):
+        rm = matrix.col(sh.structure_shifted.scatterers()[i_scatterer].site)
+        gxm = 0
+        for i,hkl in f_obs.indices().items():
+          p = -2*math.pi * (matrix.row(hkl) * rm).elems[0]
+          gxm += (dps[ij].data()[i]
+                  * gms[i_scatterer][i].conjugate()
+                  * complex_math.polar((1, p)))
+        print "gxm[%d][%d]:" % (i_scatterer, ij), gxm
       gl = map0.grad_u_star()[i_scatterer][ij]
       print " m0[%d][%d]: " % (i_scatterer, ij), gl
       print " gc[%d][%d]: " % (i_scatterer, ij), gc
@@ -523,12 +531,13 @@ def fp(structure_ideal, f_obs):
   gms = get_gms(sh.structure_shifted, f_obs)
   phi = flex.arg(sh.f_calc.data())
   dp0 = get_dp0(f_obs, phi, sh.e)
-  dps = flex.complex_double()
-  for i,hkl in f_obs.indices().items():
-    dps.append(sh.e[i]
-               *complex_math.polar((1, phi[i])))
-  uc = sh.structure_shifted.unit_cell()
-  dps = miller.array(miller_set=f_obs, data=dps)
+  if (f_obs.space_group().order_z() == 1):
+    dps = flex.complex_double()
+    for i,hkl in f_obs.indices().items():
+      dps.append(sh.e[i]
+                 *complex_math.polar((1, phi[i])))
+    dps = miller.array(miller_set=f_obs, data=dps)
+    uc = sh.structure_shifted.unit_cell()
   print "two_p:", sh.two_p
   print "ls.target():", ls.target() * sum_f_obs_sq
   assert approx_equal(sh.two_p, ls.target() * sum_f_obs_sq)
@@ -547,15 +556,16 @@ def fp(structure_ideal, f_obs):
     print "sfd[%d]: " % i_scatterer, \
           sfd.d_target_d_fp()[i_scatterer] * sum_f_obs_sq/2
     m = sh.structure_shifted.scatterers()[i_scatterer]
-    rm = matrix.col(m.site)
-    gxm = 0
-    for i,hkl in f_obs.indices().items():
-      p = -2*math.pi * (matrix.row(hkl) * rm).elems[0]
-      f0_fp_fdp = m.caasf.at_d_star_sq(uc.d_star_sq(hkl))+m.fp_fdp
-      gxm += (dps.data()[i]
-              * (gms[i_scatterer][i]/f0_fp_fdp).conjugate()
-              * complex_math.polar((1, p)))
-    print "gxm[%d]:" % i_scatterer, gxm
+    if (f_obs.space_group().order_z() == 1):
+      rm = matrix.col(m.site)
+      gxm = 0
+      for i,hkl in f_obs.indices().items():
+        p = -2*math.pi * (matrix.row(hkl) * rm).elems[0]
+        f0_fp_fdp = m.caasf.at_d_star_sq(uc.d_star_sq(hkl))+m.fp_fdp
+        gxm += (dps.data()[i]
+                * (gms[i_scatterer][i]/f0_fp_fdp).conjugate()
+                * complex_math.polar((1, p)))
+      print "gxm[%d]:" % i_scatterer, gxm
     gl = map0.grad_fp()[i_scatterer]
     print " m0[%d]: " % i_scatterer, gl
     print
@@ -590,12 +600,13 @@ def fdp(structure_ideal, f_obs):
   gms = get_gms(sh.structure_shifted, f_obs)
   phi = flex.arg(sh.f_calc.data())
   dp0 = get_dp0(f_obs, phi, sh.e)
-  dps = flex.complex_double()
-  for i,hkl in f_obs.indices().items():
-    dps.append(sh.e[i]
-               *complex_math.polar((1, phi[i])))
-  uc = sh.structure_shifted.unit_cell()
-  dps = miller.array(miller_set=f_obs, data=dps)
+  if (f_obs.space_group().order_z() == 1):
+    dps = flex.complex_double()
+    for i,hkl in f_obs.indices().items():
+      dps.append(sh.e[i]
+                 *complex_math.polar((1, phi[i])))
+    dps = miller.array(miller_set=f_obs, data=dps)
+    uc = sh.structure_shifted.unit_cell()
   print "two_p:", sh.two_p
   print "ls.target():", ls.target() * sum_f_obs_sq
   assert approx_equal(sh.two_p, ls.target() * sum_f_obs_sq)
@@ -614,15 +625,16 @@ def fdp(structure_ideal, f_obs):
     print "sfd[%d]: " % i_scatterer, \
           sfd.d_target_d_fdp()[i_scatterer] * sum_f_obs_sq/2
     m = sh.structure_shifted.scatterers()[i_scatterer]
-    rm = matrix.col(m.site)
-    gxm = 0
-    for i,hkl in f_obs.indices().items():
-      p = -2*math.pi * (matrix.row(hkl) * rm).elems[0]
-      f0_fp_fdp = m.caasf.at_d_star_sq(uc.d_star_sq(hkl))+m.fp_fdp
-      gxm += (dps.data()[i]
-              * (gms[i_scatterer][i]/(-1j*f0_fp_fdp)).conjugate()
-              * complex_math.polar((1, p)))
-    print "gxm[%d]:" % i_scatterer, gxm
+    if (f_obs.space_group().order_z() == 1):
+      rm = matrix.col(m.site)
+      gxm = 0
+      for i,hkl in f_obs.indices().items():
+        p = -2*math.pi * (matrix.row(hkl) * rm).elems[0]
+        f0_fp_fdp = m.caasf.at_d_star_sq(uc.d_star_sq(hkl))+m.fp_fdp
+        gxm += (dps.data()[i]
+                * (gms[i_scatterer][i]/(-1j*f0_fp_fdp)).conjugate()
+                * complex_math.polar((1, p)))
+      print "gxm[%d]:" % i_scatterer, gxm
     gl = map0.grad_fdp()[i_scatterer]
     print " m0[%d]: " % i_scatterer, gl
     print
@@ -630,7 +642,7 @@ def fdp(structure_ideal, f_obs):
 def run_one(n_elements=3, volume_per_atom=1000, d_min=2,
             fdp_flag=0, anisotropic_flag=0):
   structure_ideal = random_structure.xray_structure(
-    sgtbx.space_group_info("P 1"),
+    sgtbx.space_group_info("P1"),
     elements=("Se",)*n_elements,
     volume_per_atom=volume_per_atom,
     random_f_prime_d_min=d_min,
