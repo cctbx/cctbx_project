@@ -75,8 +75,9 @@ def exercise_crystal_gridding():
     use_structure_seminvariants=0001)
   crystal_gridding_tags = f_obs.crystal_gridding(
     symmetry_flags=symmetry_flags,
-    resolution_factor=1/3.).tags()
-  assert crystal_gridding_tags.n_real() == (90,90,90)
+    resolution_factor=1/3.,
+    mandatory_factors=(20,20,20)).tags()
+  assert crystal_gridding_tags.n_real() == (100,100,100)
 
 def exercise_array():
   xs = crystal.symmetry((3,4,5), "P 2 2 2")

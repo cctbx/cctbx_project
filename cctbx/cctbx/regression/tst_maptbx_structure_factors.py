@@ -1,5 +1,6 @@
 from cctbx import maptbx
 from cctbx import miller
+from cctbx import crystal
 from cctbx.development import random_structure
 from cctbx.development import structure_factor_utils
 from cctbx.development import debug_utils
@@ -7,9 +8,26 @@ from cctbx.array_family import flex
 from scitbx import fftpack
 import sys
 
-def exercise(space_group_info, anomalous_flag, conjugate_flag,
-             d_min=3., resolution_factor=0.5, max_prime=5,
-             verbose=0):
+def exercise_crystal_gridding():
+  crystal_symmetry = crystal.symmetry(
+    unit_cell=(95.2939, 95.2939, 98.4232, 94.3158, 115.226, 118.822),
+    space_group_symbol="Hall: C 2y (x+y,-x+y+z,z)")
+  for mandatory_factors,n_real in ((None,(90,90,90)),
+                                   ((20,20,20),(100,100,100))):
+    crystal_gridding = maptbx.crystal_gridding(
+      unit_cell=crystal_symmetry.unit_cell(),
+      d_min=3.5,
+      resolution_factor=1/3.,
+      symmetry_flags=maptbx.use_space_group_symmetry,
+      space_group_info=crystal_symmetry.space_group_info(),
+      mandatory_factors=mandatory_factors,
+      max_prime=5,
+      assert_shannon_sampling=0001)
+    assert crystal_gridding.n_real() == n_real
+
+def exercise_shannon_sampled(space_group_info, anomalous_flag, conjugate_flag,
+                             d_min=3., resolution_factor=0.5, max_prime=5,
+                             verbose=0):
   structure_factors = random_structure.xray_structure(
     space_group_info,
     elements=("N", "C", "C", "O"),
@@ -188,8 +206,9 @@ def exercise_under_sampled(space_group_info, anomalous_flag, conjugate_flag,
 def run_call_back(flags, space_group_info):
   for anomalous_flag in (00000, 0001)[:]: #SWITCH
     for conjugate_flag in (00000, 0001)[:]: #SWITCH
-      exercise(space_group_info, anomalous_flag, conjugate_flag,
-               verbose=flags.Verbose)
+      exercise_shannon_sampled(
+        space_group_info, anomalous_flag, conjugate_flag,
+        verbose=flags.Verbose)
   for anomalous_flag in (00000, 0001)[:]: #SWITCH
     for conjugate_flag in (00000, 0001)[:]: #SWITCH
       for under_sampling in (1,2,3,4,5):
@@ -200,6 +219,7 @@ def run_call_back(flags, space_group_info):
                                verbose=flags.Verbose)
 
 def run():
+  exercise_crystal_gridding()
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
 
 if (__name__ == "__main__"):
