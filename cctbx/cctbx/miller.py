@@ -197,6 +197,10 @@ class set(crystal.symmetry):
       self,
       self.space_group().epsilon(self.indices()))
 
+  def d_star_sq(self):
+    return array(
+      self, self.unit_cell().d_star_sq(self.indices()))
+
   def d_spacings(self):
     return array(
       self, self.unit_cell().d(self.indices()))
