@@ -11,7 +11,7 @@
 #ifndef SCITBX_VEC3_H
 #define SCITBX_VEC3_H
 
-#include <scitbx/array_family/tiny_plain.h>
+#include <scitbx/array_family/tiny.h>
 #include <scitbx/array_family/operator_traits_builtin.h>
 
 namespace scitbx {
@@ -127,6 +127,11 @@ namespace scitbx {
         // x is smallest.
         return vec3(0, -this->elems[2], this->elems[1]);
       }
+
+      //! Copies the vector to a tiny instance.
+      // XXX regression
+      af::tiny<NumType, 3>
+      as_tiny() const { return af::tiny<NumType, 3>(*this); }
 
     private:
       static NumType abs_(NumType const& x)
