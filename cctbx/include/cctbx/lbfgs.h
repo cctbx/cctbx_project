@@ -102,66 +102,30 @@ namespace cctbx {
   class mcsrch
   {
     protected:
-      int infoc[1];
-      int j;
+      int infoc;
       double dg;
       double dgm;
       double dginit;
       double dgtest;
-      double dgx[1];
-      double dgxm[1];
-      double dgy[1];
-      double dgym[1];
+      double dgx;
+      double dgxm;
+      double dgy;
+      double dgym;
       double finit;
       double ftest1;
       double fm;
-      double fx[1];
-      double fxm[1];
-      double fy[1];
-      double fym[1];
-      double p5;
-      double p66;
-      double stx[1];
-      double sty[1];
+      double fx;
+      double fxm;
+      double fy;
+      double fym;
+      double stx;
+      double sty;
       double stmin;
       double stmax;
       double width;
       double width1;
-      double xtrapf;
-      bool brackt[1];
+      bool brackt;
       bool stage1;
-
-      void init()
-      {
-        infoc[0] = 0;
-        j = 0;
-        dg = 0;
-        dgm = 0;
-        dginit = 0;
-        dgtest = 0;
-        dgx[0] = 0;
-        dgxm[0] = 0;
-        dgy[0] = 0;
-        dgym[0] = 0;
-        finit = 0;
-        ftest1 = 0;
-        fm = 0;
-        fx[0] = 0;
-        fxm[0] = 0;
-        fy[0] = 0;
-        fym[0] = 0;
-        p5 = 0;
-        p66 = 0;
-        stx[0] = 0;
-        sty[0] = 0;
-        stmin = 0;
-        stmax = 0;
-        width = 0;
-        width1 = 0;
-        xtrapf = 0;
-        brackt[0] = 0;
-        stage1 = false;
-      }
 
     public:
       static double sqr(double x) { return x * x; }
@@ -282,20 +246,17 @@ namespace cctbx {
         double* g,
         double* s,
         int is0,
-        double* stp,
+        double& stp,
         double ftol,
         double xtol,
         int maxfev,
-        int* info,
-        int* nfev,
+        int& info,
+        int& nfev,
         double* wa)
       {
-        p5 = 0.5;
-        p66 = 0.66;
-        xtrapf = 4;
-        if (info[0] != -1) {
-          infoc[0] = 1;
-          if (  n <= 0 || stp[0] <= 0 || ftol < 0
+        if (info != -1) {
+          infoc = 1;
+          if (  n <= 0 || stp <= 0 || ftol < 0
               || lbfgs_params.gtol < 0 || xtol < 0 || lbfgs_params.stpmin < 0
               || lbfgs_params.stpmax < lbfgs_params.stpmin || maxfev <= 0) {
             return true;
@@ -303,22 +264,20 @@ namespace cctbx {
           // Compute the initial gradient in the search direction
           // and check that s is a descent direction.
           dginit = 0;
-          for (j = 1; j <= n; j += 1) {
-            dginit = dginit + g [j -1] * s [is0+j -1];
+          for (int j = 0; j < n; j++) {
+            dginit += g[j] * s[is0+j];
           }
           if (dginit >= 0) {
             return false;
           }
-          brackt[0] = false;
+          brackt = false;
           stage1 = true;
-          nfev[0] = 0;
+          nfev = 0;
           finit = f;
           dgtest = ftol*dginit;
           width = lbfgs_params.stpmax - lbfgs_params.stpmin;
-          width1 = width/p5;
-          for (j = 1; j <= n; j += 1) {
-            wa [j -1] = x [j -1];
-          }
+          width1 = double(2) * width;
+          std::copy(x, x+n, wa);
           // The variables stx, fx, dgx contain the values of the step,
           // function, and directional derivative at the best step.
           // The variables sty, fy, dgy contain the value of the step,
@@ -326,73 +285,73 @@ namespace cctbx {
           // the interval of uncertainty.
           // The variables stp, f, dg contain the values of the step,
           // function, and derivative at the current step.
-          stx[0] = 0;
-          fx[0] = finit;
-          dgx[0] = dginit;
-          sty[0] = 0;
-          fy[0] = finit;
-          dgy[0] = dginit;
+          stx = 0;
+          fx = finit;
+          dgx = dginit;
+          sty = 0;
+          fy = finit;
+          dgy = dginit;
         }
         for (;;) {
-          if (info[0] != -1) {
+          if (info != -1) {
             // Set the minimum and maximum steps to correspond
             // to the present interval of uncertainty.
-            if (brackt[0]) {
-              stmin = std::min(stx[0], sty[0]);
-              stmax = std::max(stx[0], sty[0]);
+            if (brackt) {
+              stmin = std::min(stx, sty);
+              stmax = std::max(stx, sty);
             }
             else {
-              stmin = stx[0];
-              stmax = stp[0] + xtrapf * (stp[0] - stx[0]);
+              stmin = stx;
+              stmax = stp + double(4) * (stp - stx);
             }
             // Force the step to be within the bounds stpmax and stpmin.
-            stp[0] = std::max(stp[0], lbfgs_params.stpmin);
-            stp[0] = std::min(stp[0], lbfgs_params.stpmax);
+            stp = std::max(stp, lbfgs_params.stpmin);
+            stp = std::min(stp, lbfgs_params.stpmax);
             // If an unusual termination is to occur then let
             // stp be the lowest point obtained so far.
-            if (   (brackt[0] && (stp[0] <= stmin || stp[0] >= stmax))
-                || nfev[0] >= maxfev - 1 || infoc[0] == 0
-                || (brackt[0] && stmax - stmin <= xtol * stmax)) {
-              stp[0] = stx[0];
+            if (   (brackt && (stp <= stmin || stp >= stmax))
+                || nfev >= maxfev - 1 || infoc == 0
+                || (brackt && stmax - stmin <= xtol * stmax)) {
+              stp = stx;
             }
             // Evaluate the function and gradient at stp
             // and compute the directional derivative.
             // We return to main program to obtain F and G.
-            for (j = 1; j <= n; j += 1) {
-              x [j -1] = wa [j -1] + stp[0] * s [is0+j -1];
+            for (int j = 0; j < n; j++) {
+              x[j] = wa[j] + stp * s[is0+j];
             }
-            info[0]=-1;
+            info=-1;
             break;
           }
-          info[0]=0;
-          nfev[0] = nfev[0] + 1;
+          info=0;
+          nfev++;
           dg = 0;
-          for (j = 1; j <= n; j += 1) {
-            dg = dg + g [j -1] * s [is0+j -1];
+          for (int j = 0; j < n; j++) {
+            dg += g[j] * s[is0+j];
           }
-          ftest1 = finit + stp[0]*dgtest;
+          ftest1 = finit + stp*dgtest;
           // Test for convergence.
-          if (   (brackt[0] && (stp[0] <= stmin || stp[0] >= stmax))
-              || infoc[0] == 0) {
-            info[0] = 6;
+          if (   (brackt && (stp <= stmin || stp >= stmax))
+              || infoc == 0) {
+            info = 6;
           }
-          if (stp[0] == lbfgs_params.stpmax && f <= ftest1 && dg <= dgtest) {
-            info[0] = 5;
+          if (stp == lbfgs_params.stpmax && f <= ftest1 && dg <= dgtest) {
+            info = 5;
           }
-          if (stp[0] == lbfgs_params.stpmin && (f > ftest1 || dg >= dgtest)) {
-            info[0] = 4;
+          if (stp == lbfgs_params.stpmin && (f > ftest1 || dg >= dgtest)) {
+            info = 4;
           }
-          if (nfev[0] >= maxfev) {
-            info[0] = 3;
+          if (nfev >= maxfev) {
+            info = 3;
           }
-          if (brackt[0] && stmax - stmin <= xtol * stmax) {
-            info[0] = 2;
+          if (brackt && stmax - stmin <= xtol * stmax) {
+            info = 2;
           }
           if (f <= ftest1 && std::fabs(dg) <= lbfgs_params.gtol * (-dginit)) {
-            info[0] = 1;
+            info = 1;
           }
           // Check for termination.
-          if (info[0] != 0) break;
+          if (info != 0) break;
           // In the first stage we seek a step for which the modified
           // function has a nonpositive value and nonnegative derivative.
           if (   stage1 && f <= ftest1
@@ -404,23 +363,23 @@ namespace cctbx {
           // function has a nonpositive function value and nonnegative
           // derivative, and if a lower function value has been
           // obtained but the decrease is not sufficient.
-          if (stage1 && f <= fx[0] && f > ftest1) {
+          if (stage1 && f <= fx && f > ftest1) {
             // Define the modified function and derivative values.
-            fm = f - stp[0]*dgtest;
-            fxm[0] = fx[0] - stx[0]*dgtest;
-            fym[0] = fy[0] - sty[0]*dgtest;
+            fm = f - stp*dgtest;
+            fxm = fx - stx*dgtest;
+            fym = fy - sty*dgtest;
             dgm = dg - dgtest;
-            dgxm[0] = dgx[0] - dgtest;
-            dgym[0] = dgy[0] - dgtest;
+            dgxm = dgx - dgtest;
+            dgym = dgy - dgtest;
             // Call cstep to update the interval of uncertainty
             // and to compute the new step.
             mcstep(stx, fxm, dgxm, sty, fym, dgym, stp, fm, dgm,
                    brackt, stmin, stmax, infoc);
             // Reset the function and gradient values for f.
-            fx[0] = fxm[0] + stx[0]*dgtest;
-            fy[0] = fym[0] + sty[0]*dgtest;
-            dgx[0] = dgxm[0] + dgtest;
-            dgy[0] = dgym[0] + dgtest;
+            fx = fxm + stx*dgtest;
+            fy = fym + sty*dgtest;
+            dgx = dgxm + dgtest;
+            dgy = dgym + dgtest;
           }
           else {
             // Call mcstep to update the interval of uncertainty
@@ -430,12 +389,12 @@ namespace cctbx {
           }
           // Force a sufficient decrease in the size of the
           // interval of uncertainty.
-          if (brackt[0]) {
-            if (std::fabs(sty[0] - stx[0]) >= p66 * width1) {
-              stp[0] = stx[0] + p5 * (sty[0] - stx[0]);
+          if (brackt) {
+            if (std::fabs(sty - stx) >= 0.66 * width1) {
+              stp = stx + double(0.5) * (sty - stx);
             }
             width1 = width;
-            width = std::fabs(sty[0] - stx[0]);
+            width = std::fabs(sty - stx);
           }
         }
         return true;
@@ -449,7 +408,7 @@ namespace cctbx {
          least function value. The parameter <code>stp</code> contains
          the current step. It is assumed that the derivative at
          <code>stx</code> is negative in the direction of the step. If
-         <code>brackt[0]</code> is <code>true</code> when
+         <code>brackt</code> is <code>true</code> when
          <code>mcstep</code> returns then a minimizer has been
          bracketed in an interval of uncertainty with endpoints
          <code>stx</code> and <code>sty</code>.<p>
@@ -502,81 +461,81 @@ namespace cctbx {
            Robert Dodier: Java translation, August 1997.
        */
       void mcstep(
-        double* stx,
-        double* fx,
-        double* dx,
-        double* sty,
-        double* fy,
-        double* dy,
-        double* stp,
+        double& stx,
+        double& fx,
+        double& dx,
+        double& sty,
+        double& fy,
+        double& dy,
+        double& stp,
         double fp,
         double dp,
-        bool* brackt,
+        bool& brackt,
         double stpmin,
         double stpmax,
-        int* info)
+        int& info)
       {
         bool bound;
         double gamma, p, q, r, s, sgnd, stpc, stpf, stpq, theta;
-        info[0] = 0;
-        if (   (   brackt[0] && (stp[0] <= std::min(stx[0], sty[0])
-                || stp[0] >= std::max(stx[0], sty[0])))
-            || dx[0] * (stp[0] - stx[0]) >= 0.0 || stpmax < stpmin) {
+        info = 0;
+        if (   (   brackt && (stp <= std::min(stx, sty)
+                || stp >= std::max(stx, sty)))
+            || dx * (stp - stx) >= 0.0 || stpmax < stpmin) {
           return;
         }
         // Determine if the derivatives have opposite sign.
-        sgnd = dp * (dx[0] / std::fabs(dx[0]));
-        if (fp > fx[0]) {
+        sgnd = dp * (dx / std::fabs(dx));
+        if (fp > fx) {
           // First case. A higher function value.
           // The minimum is bracketed. If the cubic step is closer
           // to stx than the quadratic step, the cubic step is taken,
           // else the average of the cubic and quadratic steps is taken.
-          info[0] = 1;
+          info = 1;
           bound = true;
-          theta = 3 * (fx[0] - fp) / (stp[0] - stx[0]) + dx[0] + dp;
-          s = max3(std::fabs(theta), std::fabs(dx[0]), std::fabs(dp));
-          gamma = s * std::sqrt(sqr(theta / s) - (dx[0] / s) * (dp / s));
-          if (stp[0] < stx[0]) gamma = - gamma;
-          p = (gamma - dx[0]) + theta;
-          q = ((gamma - dx[0]) + gamma) + dp;
+          theta = 3 * (fx - fp) / (stp - stx) + dx + dp;
+          s = max3(std::fabs(theta), std::fabs(dx), std::fabs(dp));
+          gamma = s * std::sqrt(sqr(theta / s) - (dx / s) * (dp / s));
+          if (stp < stx) gamma = - gamma;
+          p = (gamma - dx) + theta;
+          q = ((gamma - dx) + gamma) + dp;
           r = p/q;
-          stpc = stx[0] + r * (stp[0] - stx[0]);
-          stpq = stx[0]
-            + ((dx[0] / ((fx[0] - fp) / (stp[0] - stx[0]) + dx[0])) / 2)
-              * (stp[0] - stx[0]);
-          if (std::fabs(stpc - stx[0]) < std::fabs(stpq - stx[0])) {
+          stpc = stx + r * (stp - stx);
+          stpq = stx
+            + ((dx / ((fx - fp) / (stp - stx) + dx)) / 2)
+              * (stp - stx);
+          if (std::fabs(stpc - stx) < std::fabs(stpq - stx)) {
             stpf = stpc;
           }
           else {
             stpf = stpc + (stpq - stpc) / 2;
           }
-          brackt[0] = true;
+          brackt = true;
         }
         else if (sgnd < 0.0) {
           // Second case. A lower function value and derivatives of
           // opposite sign. The minimum is bracketed. If the cubic
           // step is closer to stx than the quadratic (secant) step,
           // the cubic step is taken, else the quadratic step is taken.
-          info[0] = 2;
+          info = 2;
           bound = false;
-          theta = 3 * (fx[0] - fp) / (stp[0] - stx[0]) + dx[0] + dp;
-          s = max3(std::fabs(theta), std::fabs(dx[0]), std::fabs(dp));
-          gamma = s * std::sqrt(sqr(theta / s) - (dx[0] / s) * (dp / s));
-          if (stp[0] > stx[0]) gamma = - gamma;
+          theta = 3 * (fx - fp) / (stp - stx) + dx + dp;
+          s = max3(std::fabs(theta), std::fabs(dx), std::fabs(dp));
+          gamma = s * std::sqrt(sqr(theta / s) - (dx / s) * (dp / s));
+          if (stp > stx) gamma = - gamma;
           p = (gamma - dp) + theta;
-          q = ((gamma - dp) + gamma) + dx[0];
+          q = ((gamma - dp) + gamma) + dx;
           r = p/q;
-          stpc = stp[0] + r * (stx[0] - stp[0]);
-          stpq = stp[0] + (dp / (dp - dx[0])) * (stx[0] - stp[0]);
-          if (std::fabs(stpc - stp[0]) > std::fabs(stpq - stp[0])) {
+          stpc = stp + r * (stx - stp);
+          stpq = stp + (dp / (dp - dx)) * (stx - stp);
+          if (std::fabs(stpc - stp) > std::fabs(stpq - stp)) {
             stpf = stpc;
           }
           else {
             stpf = stpq;
           }
-          brackt[0] = true;
+          brackt = true;
         }
-        else if (std::fabs(dp) < std::fabs(dx[0])) {
+        else if (std::fabs(dp) < std::fabs(dx)) {
           // Third case. A lower function value, derivatives of the
           // same sign, and the magnitude of the derivative decreases.
           // The cubic step is only used if the cubic tends to infinity
@@ -585,28 +544,28 @@ namespace cctbx {
           // either stpmin or stpmax. The quadratic (secant) step is also
           // computed and if the minimum is bracketed then the the step
           // closest to stx is taken, else the step farthest away is taken.
-          info[0] = 3;
+          info = 3;
           bound = true;
-          theta = 3 * (fx[0] - fp) / (stp[0] - stx[0]) + dx[0] + dp;
-          s = max3(std::fabs(theta), std::fabs(dx[0]), std::fabs(dp));
+          theta = 3 * (fx - fp) / (stp - stx) + dx + dp;
+          s = max3(std::fabs(theta), std::fabs(dx), std::fabs(dp));
           gamma = s * std::sqrt(
-            std::max(double(0), sqr(theta / s) - (dx[0] / s) * (dp / s)));
-          if (stp[0] > stx[0]) gamma = -gamma;
+            std::max(double(0), sqr(theta / s) - (dx / s) * (dp / s)));
+          if (stp > stx) gamma = -gamma;
           p = (gamma - dp) + theta;
-          q = (gamma + (dx[0] - dp)) + gamma;
+          q = (gamma + (dx - dp)) + gamma;
           r = p/q;
           if (r < 0.0 && gamma != 0.0) {
-            stpc = stp[0] + r * (stx[0] - stp[0]);
+            stpc = stp + r * (stx - stp);
           }
-          else if (stp[0] > stx[0]) {
+          else if (stp > stx) {
             stpc = stpmax;
           }
           else {
             stpc = stpmin;
           }
-          stpq = stp[0] + (dp / (dp - dx[0])) * (stx[0] - stp[0]);
-          if (brackt[0]) {
-            if (std::fabs(stp[0] - stpc) < std::fabs(stp[0] - stpq)) {
+          stpq = stp + (dp / (dp - dx)) * (stx - stp);
+          if (brackt) {
+            if (std::fabs(stp - stpc) < std::fabs(stp - stpq)) {
               stpf = stpc;
             }
             else {
@@ -614,7 +573,7 @@ namespace cctbx {
             }
           }
           else {
-            if (std::fabs(stp[0] - stpc) > std::fabs(stp[0] - stpq)) {
+            if (std::fabs(stp - stpc) > std::fabs(stp - stpq)) {
               stpf = stpc;
             }
             else {
@@ -627,20 +586,20 @@ namespace cctbx {
           // same sign, and the magnitude of the derivative does
           // not decrease. If the minimum is not bracketed, the step
           // is either stpmin or stpmax, else the cubic step is taken.
-          info[0] = 4;
+          info = 4;
           bound = false;
-          if (brackt[0]) {
-            theta = 3 * (fp - fy[0]) / (sty[0] - stp[0]) + dy[0] + dp;
-            s = max3(std::fabs(theta), std::fabs(dy[0]), std::fabs(dp));
-            gamma = s * std::sqrt(sqr(theta / s) - (dy[0] / s) * (dp / s));
-            if (stp[0] > sty[0]) gamma = -gamma;
+          if (brackt) {
+            theta = 3 * (fp - fy) / (sty - stp) + dy + dp;
+            s = max3(std::fabs(theta), std::fabs(dy), std::fabs(dp));
+            gamma = s * std::sqrt(sqr(theta / s) - (dy / s) * (dp / s));
+            if (stp > sty) gamma = -gamma;
             p = (gamma - dp) + theta;
-            q = ((gamma - dp) + gamma) + dy[0];
+            q = ((gamma - dp) + gamma) + dy;
             r = p/q;
-            stpc = stp[0] + r * (sty[0] - stp[0]);
+            stpc = stp + r * (sty - stp);
             stpf = stpc;
           }
-          else if (stp[0] > stx[0]) {
+          else if (stp > stx) {
             stpf = stpmax;
           }
           else {
@@ -649,31 +608,31 @@ namespace cctbx {
         }
         // Update the interval of uncertainty. This update does not
         // depend on the new step or the case analysis above.
-        if (fp > fx[0]) {
-          sty[0] = stp[0];
-          fy[0] = fp;
-          dy[0] = dp;
+        if (fp > fx) {
+          sty = stp;
+          fy = fp;
+          dy = dp;
         }
         else {
           if (sgnd < 0.0) {
-            sty[0] = stx[0];
-            fy[0] = fx[0];
-            dy[0] = dx[0];
+            sty = stx;
+            fy = fx;
+            dy = dx;
           }
-          stx[0] = stp[0];
-          fx[0] = fp;
-          dx[0] = dp;
+          stx = stp;
+          fx = fp;
+          dx = dp;
         }
         // Compute the new step and safeguard it.
         stpf = std::min(stpmax, stpf);
         stpf = std::max(stpmin, stpf);
-        stp[0] = stpf;
-        if (brackt[0] && bound) {
-          if (sty[0] > stx[0]) {
-            stp[0] = std::min(stx[0] + 0.66 * (sty[0] - stx[0]), stp[0]);
+        stp = stpf;
+        if (brackt && bound) {
+          if (sty > stx) {
+            stp = std::min(stx + 0.66 * (sty - stx), stp);
           }
           else {
-            stp[0] = std::max(stx[0] + 0.66 * (sty[0] - stx[0]), stp[0]);
+            stp = std::max(stx + 0.66 * (sty - stx), stp);
           }
         }
       }
@@ -709,42 +668,8 @@ namespace cctbx {
         double gtol = 0.9,
         double stpmin = 1.e-20,
         double stpmax = 1.e20)
-        : params(gtol, stpmin, stpmax)
-      {
-        init();
-      }
-
-      //! Reinitialization.
-      void init()
-      {
-        iflag = 0;
-        gnorm = 0;
-        stp1 = 0;
-        ftol = 0;
-        stp[0] = 0;
-        ys = 0;
-        yy = 0;
-        sq = 0;
-        yr = 0;
-        beta = 0;
-        xnorm = 0;
-        iter = 0;
-        nfun = 0;
-        point = 0;
-        ispt = 0;
-        iypt = 0;
-        maxfev = 0;
-        info[0] = 0;
-        bound = 0;
-        npt = 0;
-        cp = 0;
-        i = 0;
-        nfev[0] = 0;
-        inmc = 0;
-        iycn = 0;
-        iscn = 0;
-        finish = false;
-      }
+        : params(gtol, stpmin, stpmax), iflag(0)
+      {}
 
       /*! The solution vector as it was at the end of the most recently
           completed line search. This will usually be different from
@@ -925,10 +850,13 @@ namespace cctbx {
         double eps,
         double xtol)
       {
-        bool execute_entire_while_loop = false;
-        m_w.resize(n*(2*m+1)+2*m);
+        const int maxfev = 20;
         double* w = &(*(m_w.begin()));
+        bool execute_entire_while_loop = false;
         if (iflag == 0) { // Initialize.
+          m_w.resize(n*(2*m+1)+2*m);
+          w = &(*(m_w.begin()));
+          ys = double(0);
           solution_cache.assign(x, x + n);
           iter = 0;
           if (n <= 0 || m <= 0) {
@@ -942,31 +870,30 @@ namespace cctbx {
               " It has been reset to 0.9.");
             params.gtol= 0.9;
           }
-          nfun= 1;
-          point= 0;
-          finish= false;
+          nfun = 1;
+          npt = 0;
+          point = 0;
+          finish = false;
           if (diagco) {
-            for (i = 1; i <= n; i += 1) {
-              if (diag[i -1] <= 0) {
+            for (int i = 0; i < n; i++) {
+              if (diag[i] <= 0) {
                 iflag = -2;
                 throw_diagonal_element_not_positive(i);
               }
             }
           }
           else {
-            for (i = 1; i <= n; i += 1) {
-              diag[i -1] = 1;
-            }
+            std::fill_n(diag, n, double(1));
           }
-          ispt= n+2*m;
-          iypt= ispt+n*m;
-          for (i = 1; i <= n; i += 1) {
-            w[ispt + i -1] = -g[i -1] * diag[i -1];
+          ispt = n+2*m;
+          iypt = ispt+n*m;
+          for (int i = 0; i < n; i++) {
+            w[ispt + i] = -g[i] * diag[i];
           }
           gnorm = std::sqrt(ddot(n, g, 0, 1, g, 0, 1));
           stp1= 1/gnorm;
           ftol= 0.0001;
-          maxfev= 20;
+          stp = double(0);
           if (iprint[1 -1] >= 0) {
             lb1(iprint, iter, nfun, gnorm, n, m, x, f, g, stp, finish);
           }
@@ -974,17 +901,15 @@ namespace cctbx {
         }
         for (;;) {
           if (execute_entire_while_loop) {
-            iter= iter+1;
-            info[0]=0;
-            bound=iter-1;
+            iter++;
+            info = 0;
+            bound = iter - 1;
             if (iter != 1) {
               if (iter > m) bound = m;
               ys = ddot(n, w, iypt + npt, 1, w, ispt + npt, 1);
               if (!diagco) {
-                yy = ddot(n, w, iypt + npt, 1, w, iypt + npt, 1);
-                for (i = 1; i <= n; i += 1) {
-                  diag[i -1] = ys / yy;
-                }
+                double yy = ddot(n, w, iypt + npt, 1, w, iypt + npt, 1);
+                std::fill_n(diag, n, ys / yy);
               }
               else {
                 iflag = 2;
@@ -995,81 +920,78 @@ namespace cctbx {
           if (execute_entire_while_loop || iflag == 2) {
             if (iter != 1) {
               if (diagco) {
-                for (i = 1; i <= n; i += 1) {
-                  if (diag[i -1] <= 0) {
+                for (int i = 0; i < n; i++) {
+                  if (diag[i] <= 0) {
                     iflag = -2;
                     throw_diagonal_element_not_positive(i);
                   }
                 }
               }
-              cp = point;
+              int cp = point;
               if (point == 0) cp = m;
               w[n + cp -1] = 1 / ys;
-              for (i = 1; i <= n; i += 1) {
-                w[i -1] = -g[i -1];
+              int i;
+              for (i = 0; i < n; i++) {
+                w[i] = -g[i];
               }
               cp = point;
-              for (i = 1; i <= bound; i += 1) {
-                cp=cp-1;
+              for (i = 0; i < bound; i++) {
+                cp--;
                 if (cp == -1) cp = m - 1;
-                sq = ddot(n, w, ispt + cp * n, 1, w, 0, 1);
-                inmc=n+m+cp+1;
-                iycn=iypt+cp*n;
-                w[inmc -1] = w[n + cp + 1 -1] * sq;
-                daxpy(n, -w[inmc -1], w, iycn, 1, w, 0, 1);
+                double sq = ddot(n, w, ispt + cp * n, 1, w, 0, 1);
+                int inmc=n+m+cp;
+                int iycn=iypt+cp*n;
+                w[inmc] = w[n + cp] * sq;
+                daxpy(n, -w[inmc], w, iycn, 1, w, 0, 1);
               }
-              for (i = 1; i <= n; i += 1) {
-                w[i -1] = diag[i -1] * w[i -1];
+              for (i = 0; i < n; i++) {
+                w[i] *= diag[i];
               }
-              for (i = 1; i <= bound; i += 1) {
-                yr = ddot(n, w, iypt + cp * n, 1, w, 0, 1);
-                beta = w[n + cp + 1 -1] * yr;
-                inmc=n+m+cp+1;
-                beta = w[inmc -1] - beta;
-                iscn=ispt+cp*n;
+              for (i = 0; i < bound; i++) {
+                double yr = ddot(n, w, iypt + cp * n, 1, w, 0, 1);
+                double beta = w[n + cp] * yr;
+                int inmc=n+m+cp;
+                beta = w[inmc] - beta;
+                int iscn=ispt+cp*n;
                 daxpy(n, beta, w, iscn, 1, w, 0, 1);
-                cp=cp+1;
+                cp++;
                 if (cp == m) cp = 0;
               }
-              for (i = 1; i <= n; i += 1) {
-                w[ispt + point * n + i -1] = w[i -1];
-              }
+              std::copy(w, w+n, w+(ispt + point * n));
             }
-            nfev[0]=0;
-            stp[0]=1;
-            if (iter == 1) stp[0] = stp1;
-            for (i = 1; i <= n; i += 1) {
-              w[i -1] = g[i -1];
-            }
+            stp = double(1);
+            if (iter == 1) stp = stp1;
+            std::copy(g, g+n, w);
           }
+          int nfev;
           if (!mcsrch_instance.run(params, n, x, f, g, w, ispt + point * n,
                 stp, ftol, xtol, maxfev, info, nfev, diag)) {
             m_log.push_back(
               "The search direction is not a descent direction.\n");
           }
-          if (info[0] == -1) {
+          if (info == -1) {
             iflag = 1;
             return;
           }
-          if (info[0] != 1) {
+          if (info != 1) {
             iflag = -1;
             throw error(
               "Line search failed. See documentation of routine mcsrch."
-              " Error return of line search: info = " + itoa(info[0]) +
+              " Error return of line search: info = " + itoa(info) +
               " Possible causes: function or gradient are incorrect,"
               " or incorrect tolerances.");
           }
-          nfun= nfun + nfev[0];
-          npt=point*n;
-          for (i = 1; i <= n; i += 1) {
-            w[ispt + npt + i -1] = stp[0] * w[ispt + npt + i -1];
-            w[iypt + npt + i -1] = g[i -1] - w[i -1];
+          nfun += nfev;
+          npt = point*n;
+          for (int i = 0; i < n; i++) {
+            w[ispt + npt + i] = stp * w[ispt + npt + i];
+            w[iypt + npt + i] = g[i] - w[i];
           }
-          point=point+1;
+          point++;
           if (point == m) point = 0;
           gnorm = std::sqrt(ddot(n, g, 0, 1, g, 0, 1));
-          xnorm = std::sqrt(ddot(n, x, 0, 1, x, 0, 1));
-          xnorm = std::max(1.0, xnorm);
+          double
+          xnorm = std::max(double(1), std::sqrt(ddot(n, x, 0, 1, x, 0, 1)));
           if (gnorm / xnorm <= eps) finish = true;
           if (iprint[1 -1] >= 0) {
             lb1(iprint, iter, nfun, gnorm, n, m, x, f, g, stp, finish);
@@ -1079,7 +1001,7 @@ namespace cctbx {
           // we need to go back to the top of the loop, and eventually call
           // mcsrch one more time -- but that will modify the solution vector.
           // So we need to keep a copy of the solution vector as it was at
-          // the completion (info[0]==1) of the most recent line search.
+          // the completion (info==1) of the most recent line search.
           solution_cache.assign(x, x + n);
           if (finish) {
             iflag = 0;
@@ -1161,7 +1083,7 @@ namespace cctbx {
         double* x,
         double f,
         double* g,
-        double* stp,
+        double stp,
         bool finish)
       {
         static const char* header =
@@ -1199,7 +1121,7 @@ namespace cctbx {
                 m_log.push_back(header);
               }
               m_log.push_back(
-                "\t"+itoa(iter)+"\t"+nfun+"\t"+f+"\t"+gnorm+"\t"+stp[0] + "\n");
+                "\t"+itoa(iter)+"\t"+nfun+"\t"+f+"\t"+gnorm+"\t"+stp + "\n");
             }
             else {
               return;
@@ -1210,7 +1132,7 @@ namespace cctbx {
               m_log.push_back(header);
             }
             m_log.push_back(
-              "\t"+itoa(iter)+"\t"+nfun+"\t"+f+"\t"+gnorm+"\t"+stp[0] + "\n");
+              "\t"+itoa(iter)+"\t"+nfun+"\t"+f+"\t"+gnorm+"\t"+stp + "\n");
           }
           if (iprint[2 -1] == 2 || iprint[2 -1] == 3) {
             if (finish) {
@@ -1239,13 +1161,13 @@ namespace cctbx {
         }
       }
 
-      /*! Compute the sum of a vector times a scalara plus another vector.
-          Adapted from the subroutine <code>daxpy</code> in
-          <code>lbfgs.f</code>.
-          There could well be faster ways to carry out this operation; this
-          code is a straight translation from the Fortran.
-        */
-      void daxpy(
+      /* Compute the sum of a vector times a scalara plus another vector.
+         Adapted from the subroutine <code>daxpy</code> in
+         <code>lbfgs.f</code>.
+         There could well be faster ways to carry out this operation; this
+         code is a straight translation from the Fortran.
+       */
+      static void daxpy(
         int n,
         double da,
         double* dx,
@@ -1286,13 +1208,13 @@ namespace cctbx {
         }
       }
 
-      /*! Compute the dot product of two vectors.
-          Adapted from the subroutine <code>ddot</code>
-          in <code>lbfgs.f</code>.
-          There could well be faster ways to carry out this operation;
-          this code is a straight translation from the Fortran.
-        */
-      double ddot(
+      /* Compute the dot product of two vectors.
+         Adapted from the subroutine <code>ddot</code>
+         in <code>lbfgs.f</code>.
+         There could well be faster ways to carry out this operation;
+         this code is a straight translation from the Fortran.
+       */
+      static double ddot(
         int n,
         double* dx,
         int ix0,
@@ -1333,34 +1255,23 @@ namespace cctbx {
         }
         return dtemp;
       }
+
       lbfgs_parameters params;
       mcsrch mcsrch_instance;
       int iflag;
       double gnorm;
       double stp1;
       double ftol;
-      double stp[1];
+      double stp;
       double ys;
-      double yy;
-      double sq;
-      double yr;
-      double beta;
-      double xnorm;
       int iter;
       int nfun;
       int point;
+      int npt;
       int ispt;
       int iypt;
-      int maxfev;
-      int info[1];
+      int info;
       int bound;
-      int npt;
-      int cp;
-      int i;
-      int nfev[1];
-      int inmc;
-      int iycn;
-      int iscn;
       bool finish;
       std::vector<double> m_w;
       af::shared<std::string> m_log;
