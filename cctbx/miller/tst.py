@@ -6,6 +6,7 @@ from cctbx_boost import sgtbx
 from cctbx_boost import miller
 from cctbx import xutils
 from cctbx.development import debug_utils
+random = debug_utils.random
 
 def exercise_join_sets():
   h0 = shared.miller_Index(((1,2,3), (-1,-2,-3), (2,3,4), (-2,-3,-4), (3,4,5)))
@@ -47,6 +48,7 @@ def exercise_join_sets():
   sginfo = sgtbx.SpaceGroup().Info()
   xtal = xutils.crystal_symmetry(ucell, sginfo)
   miller_set = xutils.miller_set(xtal, h0)
+  miller_set.set_friedel_flag(0)
   data_set0 = xutils.reciprocal_space_array(miller_set, d0, d0)
   anom_diffs = data_set0.anomalous_differences()
   assert tuple(anom_diffs.H) == ((1,2,3), (2,3,4))
@@ -90,9 +92,8 @@ def exercise_join_sets():
   assert tuple(selected_data_set.H) == ((1,2,3),)
   assert tuple(selected_data_set.F) == (0,)
 
-def exercise_bins(SgInfo, n_bins=10, d_min=1, verbose=0):
+def get_random_structure(SgInfo, verbose=0):
   elements = ("N", "C", "C", "O", "N", "C", "C", "O")
-  friedel_flag = 1
   xtal = debug_utils.random_structure(
     SgInfo, elements,
     volume_per_atom=50.,
@@ -101,6 +102,10 @@ def exercise_bins(SgInfo, n_bins=10, d_min=1, verbose=0):
   if (0 or verbose):
     print "Unit cell:", xtal.UnitCell
     print "Space group:", xtal.SgInfo.BuildLookupSymbol()
+  return xtal
+
+def exercise_bins(SgInfo, n_bins=10, d_min=1, friedel_flag=1, verbose=0):
+  xtal = get_random_structure(SgInfo, verbose)
   miller_set = xutils.build_miller_set(xtal, friedel_flag, d_min)
   fcalc_set = xutils.calculate_structure_factors_direct(
     miller_set, xtal, abs_F=1)
@@ -127,6 +132,17 @@ def exercise_bins(SgInfo, n_bins=10, d_min=1, verbose=0):
   binner2 = miller.binner(binning2, miller_set.H)
   if (0 or verbose): xutils.show_binner_summary(binner2)
   assert tuple(binner1.counts())[1:-1] == tuple(binner2.counts())
+  array_indices = shared.size_t(tuple(xrange(miller_set.H.size())))
+  perm_array_indices1 = shared.size_t()
+  perm_array_indices2 = shared.size_t()
+  for i_bin in binner1.range_all():
+    perm_array_indices1.append(array_indices.select(binner1(i_bin)))
+    perm_array_indices2.append(binner1.array_indices(i_bin))
+  assert perm_array_indices1.size() == miller_set.H.size()
+  assert perm_array_indices2.size() == miller_set.H.size()
+  assert tuple(perm_array_indices1) == tuple(perm_array_indices2)
+  assert tuple(perm_array_indices1.shuffle(perm_array_indices2)) \
+      == tuple(array_indices)
   fcalc_set.setup_binner(reflections_per_bin=100)
   if (0 or verbose): xutils.show_binner_summary(fcalc_set.binner)
   for use_multiplicities in (0,1):
@@ -147,6 +163,73 @@ def exercise_bins(SgInfo, n_bins=10, d_min=1, verbose=0):
     assert js1.singles(1).size() == 0
     assert (js0.single_selection(0) | js1.single_selection(0)).count(0) == 0
     assert (js0.single_selection(0) & js1.single_selection(0)).count(1) == 0
+
+def exercise_map_to_asu(SgInfo, d_min=2.5, friedel_flag=1, verbose=0):
+  xtal = get_random_structure(SgInfo, verbose)
+  miller_set = xutils.build_miller_set(xtal, friedel_flag, d_min)
+  fcalc_set = xutils.calculate_structure_factors_direct(miller_set, xtal)
+  fabs_set = xutils.reciprocal_space_array(fcalc_set, shared.abs(fcalc_set.F))
+  phases = [shared.arg(fcalc_set.F, deg) for deg in (0,1)]
+  hlc = shared.hendrickson_lattman()
+  for i in fcalc_set.H.indices():
+    hlc.append([random.random() for i in xrange(4)])
+  h_random = shared.miller_Index()
+  c_random = shared.complex_double()
+  p_random = [shared.double(), shared.double()]
+  hlc_random = shared.hendrickson_lattman()
+  for i,h_asym in miller_set.H.items():
+    h_seq = miller.SymEquivIndices(xtal.SgOps, h_asym)
+    i_eq = random.randrange(h_seq.M(friedel_flag))
+    h_eq = h_seq(i_eq)
+    h_random.append(h_eq.H())
+    c_random.append(h_eq.complex_eq(fcalc_set.F[i]))
+    for deg in (0,1):
+      p_random[deg].append(h_eq.phase_eq(phases[deg][i], deg))
+    hlc_random.append(h_eq.hl_eq(hlc[i]))
+  h_random_copy = h_random.deep_copy()
+  miller.map_to_asu(SgInfo, friedel_flag, h_random_copy, c_random)
+  for i,h_asym in miller_set.H.items():
+    assert h_asym == h_random_copy[i]
+  for i,f_asym in fcalc_set.F.items():
+    assert abs(f_asym - c_random[i]) < 1.e-6
+  h_random_copy = h_random.deep_copy()
+  a_random = fabs_set.F.deep_copy()
+  miller.map_to_asu(SgInfo, friedel_flag, h_random_copy, a_random)
+  for i,h_asym in miller_set.H.items():
+    assert h_asym == h_random_copy[i]
+  for i,f_asym in fabs_set.F.items():
+    assert f_asym == a_random[i]
+  for deg in (0,1):
+    h_random_copy = h_random.deep_copy()
+    miller.map_to_asu(SgInfo, friedel_flag, h_random_copy, p_random[deg], deg)
+    for i,h_asym in miller_set.H.items():
+      assert h_asym == h_random_copy[i]
+    for i,p_asym in phases[deg].items():
+      assert debug_utils.phase_error(p_asym, p_random[deg][i], deg) < 1.e-5
+  h_random_copy = h_random.deep_copy()
+  miller.map_to_asu(SgInfo, friedel_flag, h_random_copy, hlc_random)
+  for i,h_asym in miller_set.H.items():
+    assert h_asym == h_random_copy[i]
+  for i,hlc_asym in hlc.items():
+    for j in xrange(4):
+      assert abs(hlc_asym[j] - hlc_random[i][j]) < 1.e-5
+
+def exercise_map_fft(SgInfo, d_min=2.5, verbose=0):
+  xtal = get_random_structure(SgInfo, verbose)
+  map_min = []
+  map_max = []
+  for friedel_flag in (0,1):
+    miller_set = xutils.build_miller_set(xtal, friedel_flag, d_min)
+    fcalc_set = xutils.calculate_structure_factors_direct(miller_set, xtal)
+    map_set = xutils.fft_map(fcalc_set)
+    s = shared.statistics(map_set.get_real_map())
+    if (0 or verbose):
+      print "friedel_flag=%d, map min: %f" % (map_set.friedel_flag, s.min())
+      print "                map max: %f" % (s.max(),)
+    map_min.append(s.min())
+    map_max.append(s.max())
+  assert abs(map_min[0] - map_min[1]) < 1.e-6
+  assert abs(map_max[0] - map_max[1]) < 1.e-6
 
 def run():
   exercise_join_sets()
@@ -176,6 +259,8 @@ def run():
       print LookupSymbol
       sys.stdout.flush()
     exercise_bins(SgInfo)
+    exercise_map_to_asu(SgInfo)
+    exercise_map_fft(SgInfo)
     sys.stdout.flush()
 
 if (__name__ == "__main__"):

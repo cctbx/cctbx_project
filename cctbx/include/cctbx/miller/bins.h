@@ -102,6 +102,8 @@ namespace cctbx { namespace miller {
 
       af::shared<bool> operator()(std::size_t i_bin) const;
 
+      af::shared<std::size_t> array_indices(std::size_t i_bin) const;
+
     private:
       af::shared<std::size_t> bin_indices_;
   };

@@ -154,58 +154,123 @@ namespace cctbx { namespace miller {
       }
   };
 
-  template <typename DataType>
-  class map_to_asu
+  namespace data_classes {
+
+    struct scalar_type {};
+    struct complex_type {};
+    struct hendrickson_lattman_type {};
+    struct phase_type {};
+
+  }
+
+  template <typename DataClass>
+  struct map_to_asu_policy;
+
+  template <>
+  struct map_to_asu_policy<data_classes::scalar_type>
   {
-    public:
-      map_to_asu() {}
-
-      map_to_asu(
-        const sgtbx::SpaceGroupInfo& sginfo,
-        bool friedel_flag,
-        af::shared<miller::Index> miller_indices,
-        af::shared<DataType> data_array,
-        bool in_place = false)
-        : friedel_flag_(friedel_flag),
-          asu_(sginfo)
-      {
-        cctbx_assert(miller_indices.size() == data_array.size());
-        const sgtbx::SpaceGroup& sgops = sginfo.SgOps();
-        for(std::size_t i=0;i<miller_indices.size();i++) {
-          AsymIndex ai(sgops, asu_, miller_indices[i]);
-          IndexTableLayoutAdaptor ila = ai.one_column(friedel_flag);
-          if (in_place) {
-            miller_indices[i] = ila.H();
-            data_array[i] = ila.complex_eq(data_array[i]);
-          }
-          else {
-            asym_indices_.push_back(ila.H());
-            asym_data_array_.push_back(ila.complex_eq(data_array[i]));
-          }
-        }
-        if (in_place) {
-          asym_indices_ = miller_indices;
-          asym_data_array_ = data_array;
-        }
-      }
-
-      bool friedel_flag() const { return friedel_flag_; }
-
-      sgtbx::ReciprocalSpaceASU const& asu() const { return asu_; }
-
-      af::shared<miller::Index> asym_indices() const {
-        return asym_indices_;
-      }
-
-      af::shared<DataType> asym_data_array() const {
-        return asym_data_array_;
-      }
-    protected:
-      bool friedel_flag_;
-      sgtbx::ReciprocalSpaceASU asu_;
-      af::shared<miller::Index> asym_indices_;
-      af::shared<DataType> asym_data_array_;
+    template <typename ValueType>
+    static
+    void
+    eq(IndexTableLayoutAdaptor const& ila, ValueType& value, bool)
+    {
+    }
   };
+
+  template <>
+  struct map_to_asu_policy<data_classes::complex_type>
+  {
+    template <typename ValueType>
+    static
+    void
+    eq(IndexTableLayoutAdaptor const& ila, ValueType& value, bool)
+    {
+      value = ila.complex_eq(value);
+    }
+  };
+
+  template <>
+  struct map_to_asu_policy<data_classes::hendrickson_lattman_type>
+  {
+    template <typename ValueType>
+    static
+    void
+    eq(IndexTableLayoutAdaptor const& ila, ValueType& value, bool)
+    {
+      value = ila.hl_eq(value);
+    }
+  };
+
+  template <>
+  struct map_to_asu_policy<data_classes::phase_type>
+  {
+    template <typename ValueType>
+    static
+    void
+    eq(IndexTableLayoutAdaptor const& ila, ValueType& value, bool deg)
+    {
+      value = ila.phase_eq(value, deg);
+    }
+  };
+
+  template <> struct map_to_asu_policy<double>
+  : map_to_asu_policy<data_classes::scalar_type> {};
+
+  template <> struct map_to_asu_policy<std::complex<double> >
+  : map_to_asu_policy<data_classes::complex_type> {};
+
+  template <> struct map_to_asu_policy<hendrickson_lattman<double> >
+  : map_to_asu_policy<data_classes::hendrickson_lattman_type> {};
+
+  namespace detail {
+
+    template <typename ValueType,
+              typename PolicySelectType>
+    void
+    map_to_asu(
+      sgtbx::SpaceGroupInfo const& sginfo,
+      bool friedel_flag,
+      af::shared<miller::Index> miller_indices,
+      af::shared<ValueType> data_array,
+      bool deg)
+    {
+      sgtbx::ReciprocalSpaceASU asu(sginfo);
+      cctbx_assert(miller_indices.size() == data_array.size());
+      const sgtbx::SpaceGroup& sgops = sginfo.SgOps();
+      for(std::size_t i=0;i<miller_indices.size();i++) {
+        AsymIndex ai(sgops, asu, miller_indices[i]);
+        IndexTableLayoutAdaptor ila = ai.one_column(friedel_flag);
+        miller_indices[i] = ila.H();
+        map_to_asu_policy<PolicySelectType>::eq(ila, data_array[i], deg);
+      }
+    }
+
+  }
+
+  template <typename ValueType>
+  void
+  map_to_asu(
+    sgtbx::SpaceGroupInfo const& sginfo,
+    bool friedel_flag,
+    af::shared<miller::Index> miller_indices,
+    af::shared<ValueType> data_array)
+  {
+    detail::map_to_asu<ValueType, ValueType>(
+      sginfo, friedel_flag, miller_indices, data_array, false);
+  }
+
+  template <typename ValueType>
+  void
+  map_to_asu(
+    sgtbx::SpaceGroupInfo const& sginfo,
+    bool friedel_flag,
+    af::shared<miller::Index> miller_indices,
+    af::shared<ValueType> data_array,
+    bool deg)
+  {
+    detail::map_to_asu<ValueType, data_classes::phase_type>(
+      sginfo, friedel_flag, miller_indices, data_array, deg);
+  }
 
 }} // namespace cctbx::miller
 

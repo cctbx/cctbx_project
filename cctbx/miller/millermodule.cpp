@@ -20,6 +20,7 @@
 #include <cctbx/miller/join.h>
 #include <cctbx/miller/expand.h>
 #include <cctbx/miller/bins.h>
+#include <cctbx/miller/math.h>
 
 namespace {
 
@@ -40,13 +41,13 @@ namespace {
   }
 
   double SymEquivIndex_phase_eq_1(
-    const SymEquivIndex& SEI,
+    SymEquivIndex const& SEI,
     double phi_in)
   {
     return SEI.phase_eq(phi_in);
   }
   double SymEquivIndex_phase_eq_2(
-    const SymEquivIndex& SEI,
+    SymEquivIndex const& SEI,
     double phi_in,
     bool deg)
   {
@@ -155,6 +156,33 @@ namespace {
       SgInfo, FriedelFlag, MaxIndex).AddToArray(result);
     return result;
   }
+
+  template <typename ValueType>
+  struct map_to_asu_wrappers
+  {
+    static
+    void
+    map_to_asu_no_bool(
+      sgtbx::SpaceGroupInfo const& sginfo,
+      bool friedel_flag,
+      af::shared<miller::Index> miller_indices,
+      af::shared<ValueType> data_array)
+    {
+      map_to_asu(sginfo, friedel_flag, miller_indices, data_array);
+    }
+
+    static
+    void
+    map_to_asu_with_bool(
+      sgtbx::SpaceGroupInfo const& sginfo,
+      bool friedel_flag,
+      af::shared<miller::Index> miller_indices,
+      af::shared<ValueType> data_array,
+      bool deg)
+    {
+      map_to_asu(sginfo, friedel_flag, miller_indices, data_array, deg);
+    }
+  };
 
   af::shared<double>
   join_sets_plus(
@@ -288,6 +316,16 @@ namespace {
       h_out, ampl_out, phase_out);
   }
 
+  double
+  statistical_mean_double(
+    sgtbx::SpaceGroup const& SgOps,
+    bool friedel_flag,
+    af::shared<Index> miller_indices,
+    af::shared<double> data)
+  {
+    return statistical_mean(SgOps, friedel_flag, miller_indices, data);
+  }
+
 # include <cctbx/basic/from_bpl_import.h>
 
   void init_module(python::module_builder& this_module)
@@ -313,6 +351,10 @@ namespace {
 
     python::import_converters<af::shared<std::complex<double> > >
     py_sh_complex_double("cctbx_boost.arraytbx.shared", "complex_double");
+
+    python::import_converters<af::shared<hendrickson_lattman<double> > >
+    py_sh_hendrickson_lattman_double(
+      "cctbx_boost.arraytbx.shared", "hendrickson_lattman");
 
     python::import_converters<af::shared<bool> >
     py_sh_bool("cctbx_boost.arraytbx.shared", "bool");
@@ -343,9 +385,6 @@ namespace {
 
     class_builder<IndexGenerator>
     py_IndexGenerator(this_module, "IndexGenerator");
-
-    class_builder<map_to_asu<std::complex<double> > >
-    py_map_to_asu(this_module, "map_to_asu");
 
     class_builder<index_span>
     py_index_span(this_module, "index_span");
@@ -460,30 +499,18 @@ namespace {
     this_module.def(py_BuildIndices_Resolution_d_min, "BuildIndices");
     this_module.def(py_BuildIndices_MaxIndex, "BuildIndices");
 
-    py_map_to_asu.def(constructor<>());
-    py_map_to_asu.def(constructor<
-      const sgtbx::SpaceGroupInfo&,
-      bool,
-      af::shared<Index>,
-      af::shared<std::complex<double> >,
-      bool>());
-    py_map_to_asu.def(constructor<
-      const sgtbx::SpaceGroupInfo&,
-      bool,
-      af::shared<Index>,
-      af::shared<std::complex<double> > >());
-    py_map_to_asu.def(
-      &map_to_asu<std::complex<double> >::friedel_flag,
-                                         "friedel_flag");
-    py_map_to_asu.def(
-      &map_to_asu<std::complex<double> >::asu,
-                                         "asu");
-    py_map_to_asu.def(
-      &map_to_asu<std::complex<double> >::asym_indices,
-                                         "asym_indices");
-    py_map_to_asu.def(
-      &map_to_asu<std::complex<double> >::asym_data_array,
-                                         "asym_data_array");
+    this_module.def(
+       map_to_asu_wrappers<double>::map_to_asu_no_bool,
+      "map_to_asu");
+    this_module.def(
+      map_to_asu_wrappers<double>::map_to_asu_with_bool,
+      "map_to_asu");
+    this_module.def(
+       map_to_asu_wrappers<std::complex<double> >::map_to_asu_no_bool,
+      "map_to_asu");
+    this_module.def(
+       map_to_asu_wrappers<hendrickson_lattman<double> >::map_to_asu_no_bool,
+      "map_to_asu");
 
     py_index_span.def(constructor<>());
     py_index_span.def(constructor<af::shared<Index> >());
@@ -583,10 +610,13 @@ namespace {
     py_binner.def(&binner::count, "count");
     py_binner.def(&binner::counts, "counts");
     py_binner.def(&binner::operator(), "__call__");
+    py_binner.def(&binner::array_indices, "array_indices");
 
     this_module.def(py_expand_to_p1_4, "expand_to_p1");
     this_module.def(py_expand_to_p1_9, "expand_to_p1");
     this_module.def(py_expand_to_p1_8, "expand_to_p1");
+
+    this_module.def(statistical_mean_double, "statistical_mean");
   }
 
 }

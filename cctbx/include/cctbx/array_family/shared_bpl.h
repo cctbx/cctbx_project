@@ -12,6 +12,7 @@
 #ifndef CCTBX_ARRAY_FAMILY_SHARED_BPL_H
 #define CCTBX_ARRAY_FAMILY_SHARED_BPL_H
 
+#include <cctbx/error.h>
 #include <cctbx/constants.h>
 #include <cctbx/math/utils.h>
 #include <cctbx/array_family/reductions.h>
@@ -314,7 +315,7 @@ namespace cctbx { namespace af {
 
     static
     void
-    append(sh_t& v, sh_t& other)
+    append(sh_t& v, sh_t const& other)
     {
       v.insert(v.end(), other.begin(), other.end());
     }
@@ -344,6 +345,23 @@ namespace cctbx { namespace af {
       sh_t result;
       result.reserve(n);
       for(i=0;i<flags.size();i++) if (flags[i]) result.push_back(v[i]);
+      return result;
+    }
+
+    static
+    sh_t
+    shuffle(sh_t const& v, shared<std::size_t> const& permutation)
+    {
+      if (v.size() != permutation.size()) raise_incompatible_sizes();
+      sh_t result;
+      if (v.size()) {
+        result.resize(v.size(), v[0]); // avoid requirement that e_t is
+        for(std::size_t i=1;i<v.size();i++) {  // default constructible
+          std::size_t j = permutation[i];
+          cctbx_assert(j < v.size());
+          result[j] = v[i];
+        }
+      }
       return result;
     }
 
@@ -843,6 +861,30 @@ CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(sqrt)
 
     static
     shared<double>
+    real_complex(shared<std::complex<double> > const& a)
+    {
+      shared<double> result;
+      result.reserve(a.size());
+      for(std::size_t i=0;i<a.size();i++) {
+        result.push_back(std::real(a[i]));
+      }
+      return result;
+    }
+
+    static
+    shared<double>
+    imag_complex(shared<std::complex<double> > const& a)
+    {
+      shared<double> result;
+      result.reserve(a.size());
+      for(std::size_t i=0;i<a.size();i++) {
+        result.push_back(std::imag(a[i]));
+      }
+      return result;
+    }
+
+    static
+    shared<double>
     abs_complex(shared<std::complex<double> > const& a)
     {
       shared<double> result;
@@ -968,6 +1010,7 @@ CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(sqrt)
       py_shared.def(indices, "indices");
       py_shared.def(items, "items");
       py_shared.def(select, "select");
+      py_shared.def(shuffle, "shuffle");
 
       shared_pickle<e_t>::def(py_shared);
 
@@ -1123,6 +1166,8 @@ CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(sqrt)
       std::string const& python_name)
     {
       sh_class_builders class_blds = numeric_common(bpl_module, python_name);
+      bpl_module.def(real_complex, "real");
+      bpl_module.def(imag_complex, "imag");
       bpl_module.def(abs_complex, "abs");
       bpl_module.def(arg_complex_2, "arg");
       bpl_module.def(arg_complex_1, "arg");
