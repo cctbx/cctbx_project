@@ -19,7 +19,7 @@ MinMateDistance = 0.05
 MinMateDistance = 9.21
 MinMateDistance = 0.3
 SnapParameters = sgtbx.SpecialPositionSnapParameters(uc, sg, 0, MinMateDistance)
-SP = sgtbx.SpecialPosition(SnapParameters, X, 1)
+SP = sgtbx.SpecialPosition(SnapParameters, X, 1, 1)
 print SP.OriginalPosition()
 print SP.SnapPosition()
 print SP.DistanceMoved()
@@ -27,6 +27,7 @@ print SP.ShortestDistance()
 print SP.isWellBehaved()
 print SP.M()
 print SP.SpecialOp()
+print SP.getPointGroupType()
 for M in SP:
   print M
 SpecialPositionTolerances = sgtbx.SpecialPositionTolerances(

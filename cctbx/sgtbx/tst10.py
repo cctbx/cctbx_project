@@ -52,9 +52,10 @@ def OneCycle():
                  random.uniform(-2,2))
       print "RandomX ", RandomX
       #
-      SP = sgtbx.SpecialPosition(SnapParameters20, RandomX, 1)
+      SP = sgtbx.SpecialPosition(SnapParameters20, RandomX, 1, 1)
       SWMap = WTab.getWyckoffMapping(SP)
-      print SWMap.WP().M(), SWMap.WP().Letter(), SWMap.WP().SpecialOp()
+      print SWMap.WP().M(), SWMap.WP().Letter(), SWMap.WP().SpecialOp(),
+      print SP.getPointGroupType()
       WWMap = WTab.getWyckoffMapping(UnitCell, SgOps, SP.SnapPosition(), 0.1)
       assert SWMap.WP().Letter() == WWMap.WP().Letter()
       assert UnitCell.Distance2(SWMap.snap(RandomX), SP.SnapPosition()) < 1.e-5
@@ -68,8 +69,9 @@ def OneCycle():
       assert d < 1.e-5
       #
       WWMap = WTab.getWyckoffMapping(UnitCell, SgOps, RandomX, 2.0)
-      print WWMap.WP().M(), WWMap.WP().Letter(), WWMap.WP().SpecialOp()
-      SP = sgtbx.SpecialPosition(SnapParameters01, WWMap.snap(RandomX), 0)
+      SP = sgtbx.SpecialPosition(SnapParameters01, WWMap.snap(RandomX), 0, 1)
+      print WWMap.WP().M(), WWMap.WP().Letter(), WWMap.WP().SpecialOp(),
+      print SP.getPointGroupType()
       assert SP.DistanceMoved2() < 1.e-5
       SWMap = WTab.getWyckoffMapping(SP)
       assert SWMap.WP().Letter() == WWMap.WP().Letter()

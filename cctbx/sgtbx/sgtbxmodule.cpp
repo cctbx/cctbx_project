@@ -392,6 +392,10 @@ namespace {
     return WTab.getWyckoffMapping(uc, sgo, X, SnapRadius);
   }
 
+  const char* SpecialPosition_getPointGroupType(const SpecialPosition& SP) {
+    return SP.getPointGroupType().Label();
+  }
+
   RTMx SpecialPosition_getitem(const SpecialPosition& SP,
                                std::size_t key) {
     try {
@@ -739,7 +743,12 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_SpecialPosition.def(
       constructor<const SpecialPositionSnapParameters&,
       const fractional<double>&,
-                                       bool>());
+      bool>());
+    py_SpecialPosition.def(
+      constructor<const SpecialPositionSnapParameters&,
+      const fractional<double>&,
+      bool,
+      bool>());
     py_SpecialPosition.def(&SpecialPosition::OriginalPosition,
                                             "OriginalPosition");
     py_SpecialPosition.def(&SpecialPosition::SnapPosition, "SnapPosition");
@@ -754,6 +763,7 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_SpecialPosition.def(&SpecialPosition::isWellBehaved, "isWellBehaved");
     py_SpecialPosition.def(&SpecialPosition::M, "M");
     py_SpecialPosition.def(&SpecialPosition::SpecialOp, "SpecialOp");
+    py_SpecialPosition.def(SpecialPosition_getPointGroupType,"getPointGroupType");
     py_SpecialPosition.def(&SpecialPosition::expand, "expand");
     py_SpecialPosition.def(&SpecialPosition::isExpanded, "isExpanded");
     py_SpecialPosition.def(&SpecialPosition::CheckExpanded, "CheckExpanded");

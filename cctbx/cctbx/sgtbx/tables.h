@@ -163,10 +163,10 @@ namespace sgtbx {
             return Names[m_M];
           }
         private:
-          const CrystalSystem::Code m_X;
-          const int m_L;
-          const int m_P;
-          const int m_M;
+          CrystalSystem::Code m_X;
+          int m_L;
+          int m_P;
+          int m_M;
       };
 
       static const Code Undefined  (CrystalSystem::Undefined,     0,  0,  0);
