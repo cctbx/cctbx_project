@@ -1,3 +1,5 @@
+from stdlib import math
+
 def run_tests(build_dir, dist_dir, tst_list):
   import sys, os, os.path
   python_exe = "libtbx.python"
@@ -49,6 +51,24 @@ def approx_equal(a1, a2, eps=1.e-6, multiplier=1.e10):
       if (d != 0): return 00000
   return 0001
 
+def eps_eq(a1, a2, eps=1.e-6):
+  if (hasattr(a1, "__len__")): # traverse list
+    assert len(a1) == len(a2)
+    for i in xrange(len(a1)):
+      if (not eps_eq(a1[i], a2[i], eps)): return 00000
+  elif (hasattr(a1, "real")): # complex numbers
+    if (not eps_eq(a1.real, a2.real, eps)): return 00000
+    if (not eps_eq(a1.imag, a2.imag, eps)): return 00000
+  else:
+    if (a1 == 0 or a2 == 0):
+      if (abs(a1-a2) > eps): return 00000
+    else:
+      l1 = round(math.log(abs(a1)))
+      l2 = round(math.log(abs(a2)))
+      m = math.exp(-max(l1, l2))
+      if (abs(a1*m-a2*m) > eps): return 00000
+  return 0001
+
 def exercise():
    assert approx_equal(1, 1)
    assert not approx_equal(1, 0)
@@ -57,6 +77,13 @@ def exercise():
    assert approx_equal(1, 1+1.e-6)
    assert not approx_equal(0, 1.e-5)
    assert approx_equal(0, 1.e-6)
+   assert eps_eq(1, 1)
+   assert not eps_eq(1, 0)
+   assert not eps_eq(1, 2)
+   assert not eps_eq(1, 1+1.e-5)
+   assert eps_eq(1, 1+1.e-6)
+   assert not eps_eq(0, 1.e-5)
+   assert eps_eq(0, 1.e-6)
 
 if (__name__ == "__main__"):
   exercise()
