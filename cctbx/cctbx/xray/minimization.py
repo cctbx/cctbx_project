@@ -41,7 +41,7 @@ class lbfgs:
   def compute_target(self, compute_derivatives):
     self.f_calc_array = xray.structure_factors_direct(
       xray_structure=self.xray_structure,
-      miller_set=self.target_functor.f_obs_array).f_calc_array()
+      miller_set=self.target_functor.f_obs_array()).f_calc_array()
     self.target_result = self.target_functor(
       self.f_calc_array,
       compute_derivatives)
@@ -52,7 +52,7 @@ class lbfgs:
     self.compute_target(compute_derivatives=True)
     sf = xray.structure_factors_direct(
       xray_structure=self.xray_structure,
-      miller_set=self.target_functor.f_obs_array,
+      miller_set=self.target_functor.f_obs_array(),
       d_target_d_f_calc=self.target_result.derivatives(),
       d_site_flag=self.options.site,
       d_u_iso_flag=self.options.u_iso,
