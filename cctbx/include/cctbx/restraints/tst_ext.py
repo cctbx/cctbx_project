@@ -104,6 +104,7 @@ def exercise_bond():
     pair=pair_generator.next(),
     distance_ideal=2,
     weight=10)
+  p = restraints.bond_asu_proxy(pair=p, params=p)
   assert pair_generator.at_end()
   assert p.i_seq == 0
   assert p.j_seq == 1

@@ -1,6 +1,7 @@
 #include <cctbx/boost_python/flex_fwd.h>
 
 #include <boost/python/class.hpp>
+#include <boost/python/def.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
 #include <boost/python/return_arg.hpp>
@@ -60,16 +61,16 @@ namespace {
       typedef return_internal_reference<> rir;
       class_<w_t>("pair_asu_table", no_init)
         .def(init<
-          boost::shared_ptr<direct_space_asu::asu_mappings<> >&>(
+          boost::shared_ptr<direct_space_asu::asu_mappings<> > >(
             (arg_("asu_mappings"))))
         .def("asu_mappings", &w_t::asu_mappings)
         .def("table", &w_t::table, ccr())
         .def("__contains__",
-          (bool(w_t::*)(direct_space_asu::asu_mapping_index_pair const&))
+          (bool(w_t::*)(direct_space_asu::asu_mapping_index_pair const&) const)
             &w_t::contains, (
           arg_("pair")))
         .def("contains",
-          (bool(w_t::*)(unsigned, unsigned, unsigned))
+          (bool(w_t::*)(unsigned, unsigned, unsigned) const)
             &w_t::contains, (
           arg_("i_seq"), arg_("j_seq"), arg_("j_sym")))
         .def("__eq__", &w_t::operator==)
@@ -95,7 +96,15 @@ namespace {
   void
   wrap_all()
   {
+    using namespace boost::python;
+    typedef boost::python::arg arg_; // gcc 2.96 workaround
+
     pair_sym_table_wrappers::wrap();
+    def("get_distances", get_distances, (
+      arg_("pair_sym_table"),
+      arg_("orthogonalization_matrix"),
+      arg_("sites_frac")));
+
     pair_asu_table_table_wrappers::wrap();
     pair_asu_table_wrappers::wrap();
   }

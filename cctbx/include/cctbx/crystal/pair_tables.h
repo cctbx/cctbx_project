@@ -11,6 +11,36 @@ namespace cctbx { namespace crystal {
   typedef std::map<unsigned, pair_sym_ops> pair_sym_dict;
   typedef af::shared<pair_sym_dict> pair_sym_table;
 
+  inline
+  af::shared<double>
+  get_distances(
+    af::const_ref<crystal::pair_sym_dict> const& pair_sym_table,
+    scitbx::mat3<double> const& orthogonalization_matrix,
+    af::const_ref<scitbx::vec3<double> > const& sites_frac)
+  {
+    CCTBX_ASSERT(sites_frac.size() == pair_sym_table.size());
+    af::shared<double> distances;
+    for(unsigned i_seq=0;i_seq<pair_sym_table.size();i_seq++) {
+      crystal::pair_sym_dict const& pair_sym_dict = pair_sym_table[i_seq];
+      scitbx::vec3<double> const& site_i = sites_frac[i_seq];
+      for(crystal::pair_sym_dict::const_iterator
+            pair_sym_dict_i=pair_sym_dict.begin();
+            pair_sym_dict_i!=pair_sym_dict.end();
+            pair_sym_dict_i++) {
+        unsigned j_seq = pair_sym_dict_i->first;
+        scitbx::vec3<double> const& site_j = sites_frac[j_seq];
+        af::const_ref<sgtbx::rt_mx> rt_mx_list = af::make_const_ref(
+          pair_sym_dict_i->second);
+        for(unsigned i_op=0;i_op<rt_mx_list.size();i_op++) {
+          distances.push_back((
+            orthogonalization_matrix
+              * (site_i - rt_mx_list[i_op] * site_j)).length());
+        }
+      }
+    }
+    return distances;
+  }
+
   typedef std::set<unsigned> pair_asu_j_sym_group;
   typedef std::vector<pair_asu_j_sym_group> pair_asu_j_sym_groups;
   typedef std::map<unsigned, pair_asu_j_sym_groups> pair_asu_dict;
@@ -42,13 +72,13 @@ namespace cctbx { namespace crystal {
       table() const { return table_; }
 
       bool
-      contains(direct_space_asu::asu_mapping_index_pair const& pair)
+      contains(direct_space_asu::asu_mapping_index_pair const& pair) const
       {
         return contains(pair.i_seq, pair.j_seq, pair.j_sym);
       }
 
       bool
-      contains(unsigned i_seq, unsigned j_seq, unsigned j_sym)
+      contains(unsigned i_seq, unsigned j_seq, unsigned j_sym) const
       {
         pair_asu_dict const& asu_dict = table_[i_seq];
         pair_asu_dict::const_iterator asu_dict_i = asu_dict.find(j_seq);
@@ -67,7 +97,7 @@ namespace cctbx { namespace crystal {
 
       //! The order of the pair_asu_j_sym_groups is irrelevant.
       bool
-      operator==(pair_asu_table const& other)
+      operator==(pair_asu_table const& other) const
       {
         af::const_ref<pair_asu_dict> tab_a = table_.const_ref();
         af::const_ref<pair_asu_dict> tab_b = other.table_.const_ref();
@@ -104,7 +134,10 @@ namespace cctbx { namespace crystal {
       }
 
       bool
-      operator!=(pair_asu_table const& other) { return !((*this) == other); }
+      operator!=(pair_asu_table const& other) const
+      {
+        return !((*this) == other);
+      }
 
       pair_asu_table&
       add_all_pairs(

@@ -110,62 +110,6 @@ def make_o_si_o_asu_table(si_o_structure, si_o_bond_asu_table):
           rt_mx_ji=rt_mx_jj21)
   return o_si_o_asu_table
 
-def get_all_proxies(
-      scatterers,
-      bond_params_table,
-      repulsion_distance_table,
-      shell_asu_tables,
-      shell_distance_cutoffs,
-      nonbonded_distance_cutoff,
-      nonbonded_buffer,
-      vdw_1_4_factor=2/3.):
-  bond_asu_proxies = restraints.shared_bond_asu_proxy()
-  repulsion_asu_proxies = restraints.shared_repulsion_asu_proxy()
-  pair_generator = crystal.neighbors_fast_pair_generator(
-    asu_mappings=shell_asu_tables[0].asu_mappings(),
-    distance_cutoff=max(
-      max(shell_distance_cutoffs),
-      nonbonded_distance_cutoff+nonbonded_buffer),
-    minimal=00000)
-  for pair in pair_generator:
-    if   (pair in shell_asu_tables[0]):
-      bond_asu_proxies.append(make_bond_asu_proxy(bond_params_table, pair))
-    elif (pair in shell_asu_tables[1]):
-      continue
-    elif (pair in shell_asu_tables[2]):
-      repulsion_asu_proxies.append(make_repulsion_asu_proxy(
-        scatterers, repulsion_distance_table, pair, vdw_1_4_factor))
-    elif (pair.dist_sq**.5 <= nonbonded_distance_cutoff):
-      repulsion_asu_proxies.append(make_repulsion_asu_proxy(
-        scatterers, repulsion_distance_table, pair))
-  return bond_asu_proxies, repulsion_asu_proxies
-
-def make_bond_asu_proxy(bond_params_table, pair):
-  if (pair.i_seq <= pair.j_seq):
-    params = bond_params_table[pair.i_seq][pair.j_seq]
-  else:
-    params = bond_params_table[pair.j_seq][pair.i_seq]
-  return restraints.bond_asu_proxy(
-    pair=pair,
-    distance_ideal=params.distance_ideal,
-    weight=params.weight)
-
-def make_repulsion_asu_proxy(
-      scatterers,
-      repulsion_distance_table,
-      pair,
-      vdw_factor=1):
-  i_seqs = pair.i_seq, pair.j_seq
-  scattering_types = [scatterers[i].scattering_type for i in i_seqs]
-  try:
-    vdw_radius = repulsion_distance_table[
-      scattering_types[0]][scattering_types[1]]
-  except KeyError:
-    raise AssertionError("Unknown scattering type pair.")
-  return restraints.repulsion_asu_proxy(
-    pair=pair,
-    vdw_radius=vdw_radius*vdw_factor)
-
 class show_pairs:
 
   def __init__(self, structure, pair_asu_table):
@@ -232,17 +176,6 @@ def show_nonbonded_interactions(structure, asu_mappings, nonbonded_proxies):
       sites_frac[i_seq], rt_mx_ji*sites_frac[j_seq])
     distances.append(distance)
     print "%-20s %8.4f" % (pair_labels, distance)
-  return distances
-
-def get_distances(unit_cell, sites_cart, pair_sym_table):
-  sites_frac = unit_cell.fractionalization_matrix() * sites_cart
-  distances = flex.double()
-  for i_seq,pair_sym_dict in enumerate(pair_sym_table):
-    site_i = sites_frac[i_seq]
-    for j_seq,rt_mx_list in pair_sym_dict.items():
-      site_j = sites_frac[j_seq]
-      for rt_mx in rt_mx_list:
-        distances.append(unit_cell.distance(site_i, rt_mx*site_j))
   return distances
 
 def distance_and_repulsion_least_squares(
