@@ -71,9 +71,10 @@ namespace cctbx {
       inline const boost::array<FloatType, 6>& Uaniso() { return m_U; }
       inline int M() const { return m_M; }
       inline const FloatType& w() const { return m_w; }
-      void DetermineMultiplicity(const uctbx::UnitCell& UC,
-                                 const sgtbx::SpaceGroup& SgOps,
-                                 double MinMateDistance = 0.5)
+      void ApplySymmetry(const uctbx::UnitCell& UC,
+                         const sgtbx::SpaceGroup& SgOps,
+                         double MinMateDistance = 0.5,
+                         double Ustar_tolerance = 0.1)
       {
         sgtbx::SpecialPositionSnapParameters
         SnapParameters(UC, SgOps, true, MinMateDistance);
@@ -82,6 +83,11 @@ namespace cctbx {
         for(std::size_t i=0;i<3;i++) elems[i] = SS.SnapPosition()[i];
         m_M = SS.M();
         m_w = m_Occ * m_M / SgOps.OrderZ();
+        if (m_Anisotropic) {
+          SS.CheckUstar(m_U, Ustar_tolerance);
+          m_U = SS.AverageUstar(m_U);
+          adptbx::CheckPositiveDefinite(m_U);
+        }
       }
       inline std::complex<FloatType>
       StructureFactor(const sgtbx::SpaceGroup& SgOps,
