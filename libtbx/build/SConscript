@@ -138,7 +138,7 @@ else:
     if (env_etc.release_build):
       opts = ["-DNDEBUG", "-O3"]
     else:
-      opts = ["-g -O0 -fno-inline"]
+      opts = ["-g", "-O0", "-fno-inline"]
     env_etc.cxxflags_base.extend(opts)
     env_etc.ccflags_base.extend(opts)
     env_etc.shlinkflags = "-shared"
@@ -191,7 +191,7 @@ else:
     if (env_etc.release_build):
       opts = ["-DNDEBUG", "-O3"]
     else:
-      opts = ["-g -O0 -fno-inline"]
+      opts = ["-g", "-O0", "-fno-inline"]
     env_etc.cxxflags_base.extend(opts)
     env_etc.ccflags_base.extend(opts)
     env_etc.shlinkflags = "-dynamiclib"
