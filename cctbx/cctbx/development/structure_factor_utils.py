@@ -1,6 +1,6 @@
 from scitbx.python_utils.misc import adopt_init_args
 from scitbx.python_utils.complex_math import abs_arg
-from cctbx.utils import phase_error
+import scitbx.math
 from cctbx.array_family import flex
 import math
 
@@ -32,12 +32,14 @@ class collector:
       print h
       print " ", a1, p1
       print " ", a2, p2
-      print " " * 20, "%.2f" % (phase_error(p1, p2, deg=0001),)
+      print " " * 20, "%.2f" % scitbx.math.phase_error(
+        phi1=p1, phi2=p2, deg=0001)
     self.amp1.append(a1)
     self.amp2.append(a2)
     self.sum_amp1_minus_amp2_sq += (a1 - a2)**2
     self.sum_amp1_sq += a1**2
-    self.sum_w_phase_error += (a1 + a2) * phase_error(p1, p2, deg=0001)
+    self.sum_w_phase_error += (a1 + a2) * scitbx.math.phase_error(
+      phi1=p1, phi2=p2, deg=0001)
     self.sum_w += (a1 + a2)
 
   def report(self):

@@ -5,10 +5,12 @@
 #include <scitbx/math/bessel.h>
 #include <scitbx/math/eigensystem.h>
 #include <scitbx/math/matrix_inversion.h>
+#include <scitbx/math/phase_error.h>
 #include <boost/python/module.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
+#include <boost/python/overloads.hpp>
 
 namespace scitbx { namespace math {
 namespace boost_python {
@@ -84,6 +86,13 @@ namespace {
       a, af::ref<double, af::c_grid<2> >(0,af::c_grid<2>(0,0)));
   }
 
+  BOOST_PYTHON_FUNCTION_OVERLOADS(
+    signed_phase_error_overloads, signed_phase_error, 2, 3)
+  BOOST_PYTHON_FUNCTION_OVERLOADS(
+    phase_error_overloads, phase_error, 2, 3)
+  BOOST_PYTHON_FUNCTION_OVERLOADS(
+    nearest_phase_overloads, nearest_phase, 2, 3)
+
   void init_module()
   {
     using namespace boost::python;
@@ -116,6 +125,43 @@ namespace {
       (arg_("a"), arg_("b")));
     def("matrix_inversion_in_place", matrix_inversion_in_place_wrapper_a,
       (arg_("a")));
+
+    def("signed_phase_error",
+      (double(*)(
+        double const&, double const&, bool))
+          math::signed_phase_error,
+      signed_phase_error_overloads(
+        (arg_("phi1"), arg_("phi2"), arg_("deg")=false)));
+    def("signed_phase_error",
+      (af::shared<double>(*)(
+        af::const_ref<double> const&, af::const_ref<double> const&, bool))
+          math::signed_phase_error,
+      signed_phase_error_overloads(
+        (arg_("phi1"), arg_("phi2"), arg_("deg")=false)));
+    def("phase_error",
+      (double(*)(
+        double const&, double const&, bool))
+          math::phase_error,
+      phase_error_overloads(
+        (arg_("phi1"), arg_("phi2"), arg_("deg")=false)));
+    def("phase_error",
+      (af::shared<double>(*)(
+        af::const_ref<double> const&, af::const_ref<double> const&, bool))
+          math::phase_error,
+      phase_error_overloads(
+        (arg_("phi1"), arg_("phi2"), arg_("deg")=false)));
+    def("nearest_phase",
+      (double(*)(
+        double const&, double const&, bool))
+          math::nearest_phase,
+      nearest_phase_overloads(
+        (arg_("reference"), arg_("other"), arg_("deg")=false)));
+    def("nearest_phase",
+      (af::shared<double>(*)(
+        af::const_ref<double> const&, af::const_ref<double> const&, bool))
+          math::nearest_phase,
+      nearest_phase_overloads(
+        (arg_("reference"), arg_("other"), arg_("deg")=false)));
   }
 
 }}}} // namespace scitbx::math::boost_python::<anonymous>

@@ -2,7 +2,7 @@ from cctbx import miller
 from cctbx.array_family import flex
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
-from cctbx import utils
+import scitbx.math
 import sys
 
 def exercise(
@@ -62,7 +62,7 @@ def exercise(
     assert flex.order(miller_set_p1.indices(), phases_p1.indices()) == 0
     f_calc_p1_phases = f_calc_p1.arg(phase_deg)
     for i,phase in f_calc_p1_phases.data().items():
-      e = utils.phase_error(phase, phases_p1.data()[i], deg=phase_deg)
+      e = scitbx.math.phase_error(phase, phases_p1.data()[i], deg=phase_deg)
       assert e < 1.e-6
   ctrl_amplitudes_p1 = abs(miller_set_p1.structure_factors_from_scatterers(
     xray_structure=structure_p1,

@@ -6,8 +6,8 @@ from cctbx import sgtbx
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from cctbx.array_family import flex
-from cctbx import utils
 import cctbx
+import scitbx.math
 from scitbx.python_utils import complex_math
 from libtbx.test_utils import approx_equal
 import StringIO
@@ -617,8 +617,8 @@ def exercise_phase_integrals(space_group_info):
                                 p1_phase_integrals.data(),
                                 p1_sg_phase_integrals.data()):
       if (is_centric(h)):
-        if (utils.phase_error(complex_math.arg(pi_p1),
-                              complex_math.arg(pi_p1_sg)) > 1.e-6):
+        if (scitbx.math.phase_error(complex_math.arg(pi_p1),
+                                    complex_math.arg(pi_p1_sg)) > 1.e-6):
           print "Error:", h, pi_p1, pi_p1_sg
           print "arg(pi_p1):", complex_math.arg(pi_p1)
           print "arg(pi_p1_sg):", complex_math.arg(pi_p1_sg)

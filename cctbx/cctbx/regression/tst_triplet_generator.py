@@ -3,7 +3,7 @@ from cctbx import maptbx
 from cctbx import miller
 from scitbx import fftpack
 from scitbx.python_utils import complex_math
-from cctbx.utils import phase_error
+import scitbx.math
 from cctbx.array_family import flex
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
@@ -168,7 +168,7 @@ def exercise(space_group_info, n_scatterers=8, d_min=2, verbose=0,
         direct_space_result.data()[i], deg=1)
       amp_r,phi_r = complex_math.abs_arg(
         reciprocal_space_result.data()[i],deg=1)
-      phase_err = phase_error(phi_d, phi_r, deg=1)
+      phase_err = scitbx.math.phase_error(phi_d, phi_r, deg=1)
       assert phase_err < 1.0 or abs(from_map_data[i]) < 1.e-6
   exercise_truncate(q_large)
 
