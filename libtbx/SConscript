@@ -181,17 +181,16 @@ else:
       CC="cc",
       SHCC="cc",
       CXX=cxx,
-      LINK=cxx + " -LD_MSG:off=15,84",
+      LINK=[cxx, "-LD_MSG:off=15,84"],
       SHCXX=cxx,
       SHLINK=cxx,
     )
-    env_etc.cxxflags_base = ["-woff 1001,1234,1311,1682,3439"]
+    env_etc.cxxflags_base = ["-woff", "1001,1234,1311,1682,3439"]
     if (env_etc.libtbx_env.has_dist("boost")):
       env_etc.cxxflags_base.insert(0,
         "-I%s/boost/compatibility/cpp_c_headers"
         % env_etc.libtbx_env.dist_path("boost"))
-    env_etc.ccflags_base = Split("""
-    """)
+    env_etc.ccflags_base = []
     if (libtbx.config.build_options.optimization):
       opts = ["-DNDEBUG", "-O2", "-OPT:Olimit=0"]
     else:
@@ -200,7 +199,7 @@ else:
       opts.insert(0, "-g")
     env_etc.cxxflags_base.extend(opts)
     env_etc.ccflags_base.extend(opts)
-    env_etc.shlinkflags = "-shared -LD_MSG:off=15,84"
+    env_etc.shlinkflags = ["-shared", "-LD_MSG:off=15,84"]
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
   elif (env_etc.compiler == "darwin_g++"):
     env_etc.static_libraries = 1
