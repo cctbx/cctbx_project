@@ -291,22 +291,22 @@ namespace {
         if (verbose) std::cout << __LINE__ << std::endl;
         af::versa<IntType> a1(af::grid<1>(t1.size()));
         af::versa<IntType> a2(af::grid<1>(t2.size()));
-        af::versa<FloatType> a3(af::grid<1>(t1.size()));
+        af::versa<FloatType> a3(af::grid<1>(t2.size()));
         af::versa<bool> a4;
-        a1.as_shared().assign(t1);
-        a2.as_shared().assign(t2);
-        a3.as_shared().assign(t2);
+        a1.as_base_array().assign(t1);
+        a2.as_base_array().assign(t2);
+        a3.as_base_array().assign(t2);
         exercise_all(a1, a2, a3, a3, a4);
       }
       {
         if (verbose) std::cout << __LINE__ << std::endl;
         af::versa<IntType> a1(af::grid<1>(t1.size()));
         af::versa<IntType> a2(af::grid<1>(t2.size()));
-        af::versa<FloatType> a3(af::grid<1>(t1.size()));
+        af::versa<FloatType> a3(af::grid<1>(t2.size()));
         af::versa<bool> a4;
-        a1.as_shared().assign(t1);
-        a2.as_shared().assign(t2);
-        a3.as_shared().assign(t2);
+        a1.as_base_array().assign(t1);
+        a2.as_base_array().assign(t2);
+        a3.as_base_array().assign(t2);
         af::ref<IntType> r1 = a1.ref();
         af::ref<IntType> r2 = a2.ref();
         af::ref<FloatType> r3 = a3.ref();
