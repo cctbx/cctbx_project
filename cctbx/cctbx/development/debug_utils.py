@@ -112,6 +112,7 @@ class random_structure(xutils.symmetrized_sites):
                general_positions_only = 0,
                random_f_prime_d_min = 0,
                random_f_double_prime = 0,
+               no_random_u = 0,
                uiso = 0,
                anisotropic_displacement_parameters = 0,
                defer_build = 0):
@@ -148,7 +149,7 @@ class random_structure(xutils.symmetrized_sites):
         fdp = random.gauss(10, 3)
       fpfdp = complex(fp, fdp)
       U = self.uiso
-      if (not U):
+      if (not U and not self.no_random_u):
         U = random_adp()
       if (self.anisotropic_displacement_parameters):
         run_away_counter = 0
@@ -288,9 +289,13 @@ def format_structure_factor(f, precision_ampl=3, precision_phase=0):
   return ("%%.%dg %%.%df" % (precision_ampl, precision_phase)) % (a, p)
 
 def print_structure_factors(F, precision_ampl=3, precision_phase=0):
-  for i in xrange(len(F.H)):
-    print F.H[i], format_structure_factor(
-      F.F[i], precision_ampl, precision_phase)
+  if (type(F) == type(0j)):
+    for i in xrange(len(F.H)):
+      print F.H[i], format_structure_factor(
+        F.F[i], precision_ampl, precision_phase)
+  else:
+    for i in xrange(len(F.H)):
+      print F.H[i], round_scaled(F.F[i], 10**precision_ampl)
 
 def show_regression(x, y, label, min_correlation = 0):
   xy_regr = shared.linear_regression(x, y)
