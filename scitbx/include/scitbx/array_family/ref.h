@@ -12,13 +12,14 @@
 #define SCITBX_ARRAY_FAMILY_REF_H
 
 #include <scitbx/array_family/error.h>
-#include <scitbx/array_family/grid_accessor.h>
+#include <scitbx/array_family/trivial_accessor.h>
 #include <scitbx/array_family/detail/ref_helpers.h>
+#include <algorithm>
 
 namespace scitbx { namespace af {
 
   template <typename ElementType,
-            typename AccessorType = grid<1> >
+            typename AccessorType = trivial_accessor>
   class const_ref
   {
     public:
@@ -156,7 +157,7 @@ namespace scitbx { namespace af {
   };
 
   template <typename ElementType,
-            typename AccessorType = grid<1> >
+            typename AccessorType = trivial_accessor>
   class ref : public const_ref<ElementType, AccessorType>
   {
     public:

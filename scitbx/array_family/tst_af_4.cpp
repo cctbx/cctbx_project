@@ -188,9 +188,9 @@ namespace {
       }
       {
         if (verbose) std::cout << __LINE__ << std::endl;
-        af::versa<IntType> a1(af::grid<1>(t1.size()));
-        af::versa<IntType> a2(af::grid<1>(t2.size()));
-        af::versa<FloatType> a3(af::grid<1>(t2.size()));
+        af::versa<IntType> a1(t1.size());
+        af::versa<IntType> a2(t2.size());
+        af::versa<FloatType> a3(t2.size());
         af::versa<bool> a4;
         a1.as_base_array().assign(t1);
         a2.as_base_array().assign(t2);
@@ -199,9 +199,9 @@ namespace {
       }
       {
         if (verbose) std::cout << __LINE__ << std::endl;
-        af::versa<IntType> a1(af::grid<1>(t1.size()));
-        af::versa<IntType> a2(af::grid<1>(t2.size()));
-        af::versa<FloatType> a3(af::grid<1>(t2.size()));
+        af::versa<IntType> a1(t1.size());
+        af::versa<IntType> a2(t2.size());
+        af::versa<FloatType> a3(t2.size());
         af::versa<bool> a4;
         a1.as_base_array().assign(t1);
         a2.as_base_array().assign(t2);

@@ -13,6 +13,7 @@
 #include <scitbx/fftpack/complex_to_complex_3d.h>
 #include <scitbx/fftpack/real_to_complex_3d.h>
 #include <scitbx/array_family/versa.h>
+#include <scitbx/array_family/grid_accessor.h>
 
 int main(void)
 {

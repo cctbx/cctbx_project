@@ -1,4 +1,5 @@
 #include <scitbx/array_family/flex_types.h>
+#include <iostream>
 
 using namespace scitbx;
 
