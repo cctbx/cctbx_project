@@ -2,19 +2,19 @@
 #include <scitbx/constants.h>
 #include <scitbx/mat3.h>
 
-namespace bpmtz = iotbx::mtz;
+namespace iotbx { namespace mtz {
 
-bpmtz::Mtz::Mtz(std::string s):mtz(CMtz::MtzGet(s.c_str(),1)){
-    if (!mtz) {throw bpmtz::Error("Mtz read failed"); }
+Mtz::Mtz(std::string s):mtz(CMtz::MtzGet(s.c_str(),1)){
+    if (!mtz) {throw Error("Mtz read failed"); }
 }
-bpmtz::Mtz::~Mtz(){
+Mtz::~Mtz(){
   CMtz::MtzFree(mtz);}
 
-std::string bpmtz::Mtz::title(){return std::string(mtz->title);}
-std::string bpmtz::Mtz::SpaceGroup(){return mtz->mtzsymm.spcgrpname;}
+std::string Mtz::title(){return std::string(mtz->title);}
+std::string Mtz::SpaceGroup(){return mtz->mtzsymm.spcgrpname;}
 
 cctbx::sgtbx::space_group
-bpmtz::Mtz::getSgtbxSpaceGroup(){
+Mtz::getSgtbxSpaceGroup(){
   cctbx::sgtbx::space_group sg;
   for  (int i = 0; i < mtz->mtzsymm.nsym; ++i) {
     scitbx::mat3<double> r_double;
@@ -30,13 +30,13 @@ bpmtz::Mtz::getSgtbxSpaceGroup(){
   return sg;
 }
 
-int bpmtz::Mtz::nsym() const {return mtz->mtzsymm.nsym;}
-int& bpmtz::Mtz::size(){return mtz->nref;}
-int& bpmtz::Mtz::ncrystals() const {return mtz->nxtal;}
-int bpmtz::Mtz::ndatasets(const int& xtal) {return mtz->xtal[xtal]->nset;}
-int& bpmtz::Mtz::ncolumns(const int& xtal, const int& set) {return mtz->xtal[xtal]->set[set]->ncol;}
+int Mtz::nsym() const {return mtz->mtzsymm.nsym;}
+int& Mtz::size(){return mtz->nref;}
+int& Mtz::ncrystals() const {return mtz->nxtal;}
+int Mtz::ndatasets(const int& xtal) {return mtz->xtal[xtal]->nset;}
+int& Mtz::ncolumns(const int& xtal, const int& set) {return mtz->xtal[xtal]->set[set]->ncol;}
 
-af::shared<std::string> bpmtz::Mtz::history(){
+af::shared<std::string> Mtz::history(){
    af::shared<std::string> answer;
    for (int i = 0; i < mtz->histlines; ++i) {
      char* buffer=new char[MTZRECORDLENGTH+1];
@@ -50,7 +50,7 @@ af::shared<std::string> bpmtz::Mtz::history(){
    return answer;
 }
 
-af::shared<std::string> bpmtz::Mtz::columns() const {
+af::shared<std::string> Mtz::columns() const {
    af::shared<std::string> answer;
    /* Loop over crystals */
     for (int i = 0; i < mtz->nxtal; ++i) {
@@ -67,15 +67,15 @@ af::shared<std::string> bpmtz::Mtz::columns() const {
    return answer;
 }
 
-bpmtz::Column bpmtz::Mtz::getColumn(std::string s){
-  return bpmtz::Column(CMtz::MtzColLookup(mtz,s.c_str()));
+Column Mtz::getColumn(std::string s){
+  return Column(CMtz::MtzColLookup(mtz,s.c_str()));
 }
 
-bpmtz::Crystal bpmtz::Mtz::getCrystal(const int& xtalid) const{
-  return bpmtz::Crystal(CMtz::MtzIxtal(mtz, xtalid));
+Crystal Mtz::getCrystal(const int& xtalid) const{
+  return Crystal(CMtz::MtzIxtal(mtz, xtalid));
 }
 
-bpmtz::Crystal bpmtz::Mtz::columnToCrystal(std::string s) const{
+Crystal Mtz::columnToCrystal(std::string s) const{
   af::shared<std::string> cols = this->columns();
   bool foundlabel=false;
   for (int i = 0; i<cols.size(); ++i) {
@@ -99,10 +99,10 @@ bpmtz::Crystal bpmtz::Mtz::columnToCrystal(std::string s) const{
   throw iotbx::mtz::Error("no such column label");//Never get here but make compiler happy
 }
 
-af::shared< cctbx::miller::index<> > bpmtz::Mtz::MIx() {
-  bpmtz::Column H(getColumn("H"));
-  bpmtz::Column K(getColumn("K"));
-  bpmtz::Column L(getColumn("L"));
+af::shared< cctbx::miller::index<> > Mtz::MIx() {
+  Column H(getColumn("H"));
+  Column K(getColumn("K"));
+  Column L(getColumn("L"));
   af::shared<cctbx::miller::index<> > miller(this->size());
   for (int j=0; j<this->size(); j++) {
     miller[j] = cctbx::miller::index<>(H.lookup(j),K.lookup(j),L.lookup(j));
@@ -110,28 +110,28 @@ af::shared< cctbx::miller::index<> > bpmtz::Mtz::MIx() {
   return miller;
 }
 
-void bpmtz::Mtz::printHeader(int detail = 1){
+void Mtz::printHeader(int detail = 1){
   CMtz::ccp4_lhprt(mtz,detail);
 }
 
-void bpmtz::Mtz::printHeaderAdv(int detail = 1){
+void Mtz::printHeaderAdv(int detail = 1){
   CMtz::ccp4_lhprt_adv(mtz,detail);
 }
 
-cctbx::uctbx::unit_cell bpmtz::Mtz::UnitCell(const int& xtal){
+cctbx::uctbx::unit_cell Mtz::UnitCell(const int& xtal){
   af::tiny<double,6> answer;
   for (int j=0; j<6; j++) {answer[j] = mtz->xtal[xtal]->cell[j];}
   return cctbx::uctbx::unit_cell(answer);
 }
 
 af::shared<cctbx::miller::index<> >
-bpmtz::Mtz::valid_indices(
+Mtz::valid_indices(
   std::string const& column_label)
 {
-  bpmtz::Column h(getColumn("H"));
-  bpmtz::Column k(getColumn("K"));
-  bpmtz::Column l(getColumn("L"));
-  bpmtz::Column v(getColumn(column_label));
+  Column h(getColumn("H"));
+  Column k(getColumn("K"));
+  Column l(getColumn("L"));
+  Column v(getColumn(column_label));
   af::shared<cctbx::miller::index<> > result((af::reserve(size())));
   for (int j=0; j<size(); j++) {
     if (!v.ccp4_isnan(j)) {
@@ -145,10 +145,10 @@ bpmtz::Mtz::valid_indices(
 }
 
 af::shared<double>
-bpmtz::Mtz::valid_values(
+Mtz::valid_values(
   std::string const& column_label)
 {
-  bpmtz::Column v(getColumn(column_label));
+  Column v(getColumn(column_label));
   af::shared<double> result((af::reserve(size())));
   for (int j=0; j<size(); j++) {
     if (!v.ccp4_isnan(j)) result.push_back(v.lookup(j));
@@ -157,15 +157,15 @@ bpmtz::Mtz::valid_values(
 }
 
 af::shared<cctbx::miller::index<> >
-bpmtz::Mtz::valid_indices_anomalous(
+Mtz::valid_indices_anomalous(
   std::string const& column_label_plus,
   std::string const& column_label_minus)
 {
-  bpmtz::Column h(getColumn("H"));
-  bpmtz::Column k(getColumn("K"));
-  bpmtz::Column l(getColumn("L"));
-  bpmtz::Column v_plus(getColumn(column_label_plus));
-  bpmtz::Column v_minus(getColumn(column_label_minus));
+  Column h(getColumn("H"));
+  Column k(getColumn("K"));
+  Column l(getColumn("L"));
+  Column v_plus(getColumn(column_label_plus));
+  Column v_minus(getColumn(column_label_minus));
   af::shared<cctbx::miller::index<> > result((af::reserve(2*size())));
   for (int j=0; j<size(); j++) {
     if (!v_plus.ccp4_isnan(j)) {
@@ -181,12 +181,12 @@ bpmtz::Mtz::valid_indices_anomalous(
 }
 
 af::shared<double>
-bpmtz::Mtz::valid_values_anomalous(
+Mtz::valid_values_anomalous(
   std::string const& column_label_plus,
   std::string const& column_label_minus)
 {
-  bpmtz::Column v_plus(getColumn(column_label_plus));
-  bpmtz::Column v_minus(getColumn(column_label_minus));
+  Column v_plus(getColumn(column_label_plus));
+  Column v_minus(getColumn(column_label_minus));
   af::shared<double> result((af::reserve(2*size())));
   for (int j=0; j<size(); j++) {
     if (!v_plus.ccp4_isnan(j)) result.push_back(v_plus.lookup(j));
@@ -201,20 +201,20 @@ bpmtz::Mtz::valid_values_anomalous(
      SIGF(+) = sqrt( SIGF**2 + 0.25*SIGD**2 )
      SIGF(-) = SIGF(+)
  */
-bpmtz::observation_arrays
-bpmtz::Mtz::valid_delta_anomalous(
+observation_arrays
+Mtz::valid_delta_anomalous(
   std::string const& column_label_f_data,
   std::string const& column_label_f_sigmas,
   std::string const& column_label_d_data,
   std::string const& column_label_d_sigmas)
 {
-  bpmtz::Column h(getColumn("H"));
-  bpmtz::Column k(getColumn("K"));
-  bpmtz::Column l(getColumn("L"));
-  bpmtz::Column v_fd(getColumn(column_label_f_data));
-  bpmtz::Column v_fs(getColumn(column_label_f_sigmas));
-  bpmtz::Column v_dd(getColumn(column_label_d_data));
-  bpmtz::Column v_ds(getColumn(column_label_d_sigmas));
+  Column h(getColumn("H"));
+  Column k(getColumn("K"));
+  Column l(getColumn("L"));
+  Column v_fd(getColumn(column_label_f_data));
+  Column v_fs(getColumn(column_label_f_sigmas));
+  Column v_dd(getColumn(column_label_d_data));
+  Column v_ds(getColumn(column_label_d_sigmas));
   observation_arrays result(2*size());
   for (int j=0; j<size(); j++) {
     if (   !v_fd.ccp4_isnan(j)
@@ -248,16 +248,16 @@ namespace {
 }
 
 af::shared<std::complex<double> >
-bpmtz::Mtz::valid_complex(
+Mtz::valid_complex(
   std::string const& column_label_ampl,
   std::string const& column_label_phi)
 {
-  bpmtz::Column v_ampl(getColumn(column_label_ampl));
-  bpmtz::Column v_phi(getColumn(column_label_phi));
+  Column v_ampl(getColumn(column_label_ampl));
+  Column v_phi(getColumn(column_label_phi));
   af::shared<std::complex<double> > result((af::reserve(size())));
   for (int j=0; j<size(); j++) {
     if (v_ampl.ccp4_isnan(j) != v_phi.ccp4_isnan(j)) {
-      throw bpmtz::Error("Unexpected NAN while extracting complex array.");
+      throw Error("Unexpected NAN while extracting complex array.");
     }
     if (!v_ampl.ccp4_isnan(j)) {
       result.push_back(polar_deg(
@@ -268,27 +268,27 @@ bpmtz::Mtz::valid_complex(
 }
 
 af::shared<std::complex<double> >
-bpmtz::Mtz::valid_complex_anomalous(
+Mtz::valid_complex_anomalous(
   std::string const& column_label_ampl_plus,
   std::string const& column_label_phi_plus,
   std::string const& column_label_ampl_minus,
   std::string const& column_label_phi_minus)
 {
-  bpmtz::Column v_ampl_plus(getColumn(column_label_ampl_plus));
-  bpmtz::Column v_phi_plus(getColumn(column_label_phi_plus));
-  bpmtz::Column v_ampl_minus(getColumn(column_label_ampl_minus));
-  bpmtz::Column v_phi_minus(getColumn(column_label_phi_minus));
+  Column v_ampl_plus(getColumn(column_label_ampl_plus));
+  Column v_phi_plus(getColumn(column_label_phi_plus));
+  Column v_ampl_minus(getColumn(column_label_ampl_minus));
+  Column v_phi_minus(getColumn(column_label_phi_minus));
   af::shared<std::complex<double> > result((af::reserve(2*size())));
   for (int j=0; j<size(); j++) {
     if (v_ampl_plus.ccp4_isnan(j) != v_phi_plus.ccp4_isnan(j)) {
-      throw bpmtz::Error("Unexpected NAN while extracting complex array.");
+      throw Error("Unexpected NAN while extracting complex array.");
     }
     if (!v_ampl_plus.ccp4_isnan(j)) {
       result.push_back(polar_deg(
         v_ampl_plus.lookup(j), v_phi_plus.lookup(j)));
     }
     if (v_ampl_minus.ccp4_isnan(j) != v_phi_minus.ccp4_isnan(j)) {
-      throw bpmtz::Error("Unexpected NAN while extracting complex array.");
+      throw Error("Unexpected NAN while extracting complex array.");
     }
     if (!v_ampl_minus.ccp4_isnan(j)) {
       result.push_back(polar_deg(
@@ -299,22 +299,22 @@ bpmtz::Mtz::valid_complex_anomalous(
 }
 
 af::shared<cctbx::hendrickson_lattman<> >
-bpmtz::Mtz::valid_hl(
+Mtz::valid_hl(
   std::string const& column_label_a,
   std::string const& column_label_b,
   std::string const& column_label_c,
   std::string const& column_label_d)
 {
-  bpmtz::Column v_a(getColumn(column_label_a));
-  bpmtz::Column v_b(getColumn(column_label_b));
-  bpmtz::Column v_c(getColumn(column_label_c));
-  bpmtz::Column v_d(getColumn(column_label_d));
+  Column v_a(getColumn(column_label_a));
+  Column v_b(getColumn(column_label_b));
+  Column v_c(getColumn(column_label_c));
+  Column v_d(getColumn(column_label_d));
   af::shared<cctbx::hendrickson_lattman<> > result((af::reserve(size())));
   for (int j=0; j<size(); j++) {
     if (   v_a.ccp4_isnan(j) != v_b.ccp4_isnan(j)
         || v_a.ccp4_isnan(j) != v_c.ccp4_isnan(j)
         || v_a.ccp4_isnan(j) != v_d.ccp4_isnan(j)) {
-      throw bpmtz::Error(
+      throw Error(
         "Unexpected NAN while extracting Hendrickson-Lattman array.");
     }
     if (!v_a.ccp4_isnan(j)) {
@@ -326,15 +326,15 @@ bpmtz::Mtz::valid_hl(
 }
 
 af::shared<int>
-bpmtz::Mtz::valid_integers(
+Mtz::valid_integers(
   std::string const& column_label)
 {
-  bpmtz::Column v(getColumn(column_label));
+  Column v(getColumn(column_label));
   if (   v.type() != "H"
       && v.type() != "B"
       && v.type() != "Y"
       && v.type() != "I") {
-    throw bpmtz::Error("Not an integer column.");
+    throw Error("Not an integer column.");
   }
   af::shared<int> result((af::reserve(size())));
   for (int j=0; j<size(); j++) {
@@ -343,46 +343,48 @@ bpmtz::Mtz::valid_integers(
   return result;
 }
 
-std::string bpmtz::Crystal::crystal_name() {
+std::string Crystal::crystal_name() {
   return std::string(p_xtal->xname);
 }
 
-std::string bpmtz::Crystal::project_name() {
+std::string Crystal::project_name() {
   return std::string(p_xtal->pname);
 }
 
-cctbx::uctbx::unit_cell bpmtz::Crystal::UnitCell(){
+cctbx::uctbx::unit_cell Crystal::UnitCell(){
   af::tiny<double,6> answer;
   for (int j=0; j<6; j++) {answer[j] = p_xtal->cell[j];}
   return cctbx::uctbx::unit_cell(answer);
 }
 
-int bpmtz::Crystal::ndatasets() {return p_xtal->nset;}
+int Crystal::ndatasets() {return p_xtal->nset;}
 
-bpmtz::Dataset bpmtz::Crystal::getDataset(const int& setid){
-  return bpmtz::Dataset(CMtz::MtzIsetInXtal(p_xtal, setid));
+Dataset Crystal::getDataset(const int& setid){
+  return Dataset(CMtz::MtzIsetInXtal(p_xtal, setid));
 }
 
-std::string bpmtz::Dataset::dataset_name() {
+std::string Dataset::dataset_name() {
   return std::string(p_set->dname);
 }
 
-double bpmtz::Dataset::wavelength() {
+double Dataset::wavelength() {
   return p_set->wavelength;
 }
 
-int bpmtz::Dataset::ncolumns() {
+int Dataset::ncolumns() {
   return p_set->ncol;
 }
 
-bpmtz::Column bpmtz::Dataset::getColumn(const int& colid){
-  return bpmtz::Column(CMtz::MtzIcolInSet(p_set, colid));
+Column Dataset::getColumn(const int& colid){
+  return Column(CMtz::MtzIcolInSet(p_set, colid));
 }
 
-std::string bpmtz::Column::label() {
+std::string Column::label() {
   return std::string(p_col->label);
 }
 
-std::string bpmtz::Column::type() {
+std::string Column::type() {
   return std::string(p_col->type);
 }
+
+}} // namespace iotbx::mtz
