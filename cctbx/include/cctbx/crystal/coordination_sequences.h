@@ -9,10 +9,15 @@ namespace cctbx { namespace crystal {
 //! Coordination sequence algorithms.
 namespace coordination_sequences {
 
+  /*! \brief Grouping of symmetry operations characterizing a node in a
+      graph of bonded sites.
+   */
   struct node
   {
+    //! Default constructor. Some data members are not initialized!
     node() {}
 
+    //! Initialization of rt_mx and rt_mx_unique.
     node(
       direct_space_asu::asu_mappings<> const& asu_mappings,
       unsigned i_seq,
@@ -22,12 +27,16 @@ namespace coordination_sequences {
       rt_mx_unique(rt_mx_.multiply(asu_mappings.special_op(i_seq)))
     {}
 
+    //! Matrix as passed to the constructor.
     sgtbx::rt_mx rt_mx;
+    //! rt_mx * special_op(i_seq).
     sgtbx::rt_mx rt_mx_unique;
   };
 
+  //! Buffer for nodes in three shells.
   struct three_shells
   {
+    //! Initialization of three empty shells.
     three_shells()
     {
       prev   = &all[0];
@@ -35,6 +44,10 @@ namespace coordination_sequences {
       next   = &all[2];
     }
 
+    //! To be called when starting with a new pivot site.
+    /*! Clearing of the three shells. The next shell is initialized
+        with the identity matrix (for the pivot site).
+     */
     void
     clear(
       direct_space_asu::asu_mappings<> const& asu_mappings,
@@ -47,6 +60,7 @@ namespace coordination_sequences {
         node(asu_mappings, i_seq_pivot, sgtbx::rt_mx(1,1)));
     }
 
+    //! To be called when starting with a new shell.
     void
     shift()
     {
@@ -57,6 +71,7 @@ namespace coordination_sequences {
       next->clear();
     }
 
+    //! Number of nodes in next shell.
     unsigned
     count_next() const
     {
@@ -70,6 +85,9 @@ namespace coordination_sequences {
       return result;
     }
 
+    //! Search for node in all three shells.
+    /*! Returns true if the test_node was found, false otherwise.
+     */
     bool
     find_node(unsigned j_seq, node const& test_node) const
     {
@@ -90,15 +108,21 @@ namespace coordination_sequences {
       return false;
     }
 
+    //! Memory for all three shells.
     af::tiny<std::map<unsigned, std::vector<node> >, 3> all;
+    //! Pointer to memory for prev shell.
     std::map<unsigned, std::vector<node> >* prev;
+    //! Pointer to memory for middle shell.
     std::map<unsigned, std::vector<node> >* middle;
+    //! Pointer to memory for next shell.
     std::map<unsigned, std::vector<node> >* next;
   };
 
+  //! Generic coordination sequence algorithm.
   template <typename Actions>
   struct core : Actions
   {
+    //! Execution of the coordination sequence algorithm.
     core(
       crystal::pair_asu_table<> const& pair_asu_table,
       unsigned max_shell)
@@ -170,8 +194,10 @@ namespace coordination_sequences {
     }
   };
 
+  //! Actions for simple counting.
   struct term_table_actions
   {
+    //! Called at start of core<term_table_actions>.
     term_table_actions(
       crystal::pair_asu_table<> const& pair_asu_table,
       unsigned max_shell)
@@ -181,6 +207,7 @@ namespace coordination_sequences {
       term_table.reserve(pair_asu_table.table().size());
     }
 
+    //! Called when the next shell is complete.
     void
     shell_complete(three_shells const& shells)
     {
@@ -192,15 +219,21 @@ namespace coordination_sequences {
       terms->push_back(shells.count_next());
     }
 
+    //! Called when a pivot site is completed.
     void
     pivot_complete() { terms = 0; }
 
+    //! Index of current pivot site.
     unsigned i_seq_pivot;
+    //! Index of current shell - 1.
     unsigned i_shell_minus_1;
+    //! Final table of terms.
     af::shared<std::vector<unsigned> > term_table;
+    //! Pointer to term_table[i_seq_pivot].
     std::vector<unsigned>* terms;
   };
 
+  //! Friendly interface to core<term_table_actions>.
   af::shared<std::vector<unsigned> >
   simple(
     crystal::pair_asu_table<> const& pair_asu_table,
@@ -209,8 +242,10 @@ namespace coordination_sequences {
     return core<term_table_actions>(pair_asu_table, max_shell).term_table;
   }
 
+  //! Actions for simple counting.
   struct shell_asu_tables_actions
   {
+    //! Called at start of core<term_table_actions>.
     shell_asu_tables_actions(
       crystal::pair_asu_table<> const& pair_asu_table,
       unsigned max_shell)
@@ -227,6 +262,7 @@ namespace coordination_sequences {
       }
     }
 
+    //! Called when the next shell is complete.
     void
     shell_complete(three_shells const& shells)
     {
@@ -256,14 +292,19 @@ namespace coordination_sequences {
       }
     }
 
+    //! Called when a pivot site is completed.
     void
     pivot_complete() {}
 
+    //! Index of current pivot site.
     unsigned i_seq_pivot;
+    //! Index of current shell - 1.
     unsigned i_shell_minus_1;
+    //! Final array of pair_asu_table instances.
     std::vector<pair_asu_table<> > shell_asu_tables;
   };
 
+  //! Friendly interface to core<shell_asu_tables_actions>.
   std::vector<pair_asu_table<> >
   shell_asu_tables(
     crystal::pair_asu_table<> const& pair_asu_table,
