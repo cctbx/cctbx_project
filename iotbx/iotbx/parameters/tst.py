@@ -256,6 +256,18 @@ e {
   b=x
 }
 e=g""")
+  check_get(parameters, path="", expected_out="""\
+a = b
+c = d
+
+e
+{
+  a = 1
+  b = x
+}
+
+e = g
+""")
   check_get(parameters, path="a", expected_out="""\
 a = b
 """)
@@ -292,6 +304,7 @@ a0 {
     }
   }
   d2=e f 0g
+  #d3=x
 }
 """,
     expected_out="""\
@@ -316,6 +329,7 @@ a0
   }
 
   d2 = e f 0g
+  #d3 = x
 }
 """).parameters
   check_get(parameters, path="a0.d1", expected_out="d1 = a b c\n")
@@ -355,6 +369,7 @@ a0
 
   d2 = e f 0g
     .type = "UNKNOWN"
+  #d3 = x
 }
 """
   parameters = iotbx.parameters.parse(input_string="""\
@@ -718,6 +733,224 @@ def exercise_fetch():
   master = iotbx.parameters.parse(input_string="""\
 a=None
   .expert_level=1
+""")
+  source = iotbx.parameters.parse(input_string="""\
+a=1
+a=2
+""")
+  out = StringIO()
+  master.fetch(source).show(out=out, attributes_level=2)
+  assert out.getvalue() == """\
+a = 2
+  .expert_level = 1
+"""
+  source = iotbx.parameters.parse(input_string="""\
+a=1
+#a=2
+""")
+  out = StringIO()
+  master.fetch(source).show(out=out, attributes_level=2)
+  assert out.getvalue() == """\
+a = 1
+  .expert_level = 1
+"""
+  #
+  master_plain = iotbx.parameters.parse(input_string="""\
+s
+  .expert_level=1
+{
+  a=None
+    .expert_level=2
+}
+""")
+  master_optional = iotbx.parameters.parse(input_string="""\
+s
+  .optional=yes
+  .expert_level=1
+{
+  a=None
+    .expert_level=2
+}
+""")
+  master_multiple = iotbx.parameters.parse(input_string="""\
+s
+  .multiple=1
+  .expert_level=1
+{
+  a=None
+    .expert_level=2
+}
+""")
+  master_optional_multiple = iotbx.parameters.parse(input_string="""\
+s
+  .multiple=1
+  .optional=yes
+  .expert_level=1
+{
+  a=None
+    .expert_level=2
+}
+""")
+  source = iotbx.parameters.parse(input_string="""\
+s {
+  a=1
+  a=2
+}
+""")
+  out = StringIO()
+  master_plain.fetch(source).show(out=out, attributes_level=2)
+  assert out.getvalue() == """\
+s
+  .expert_level = 1
+{
+  a = 2
+    .expert_level = 2
+}
+"""
+  source = iotbx.parameters.parse(input_string="""\
+s {
+  a=1
+  #a=2
+}
+""")
+  out = StringIO()
+  master_plain.fetch(source).show(out=out, attributes_level=2)
+  assert out.getvalue() == """\
+s
+  .expert_level = 1
+{
+  a = 1
+    .expert_level = 2
+}
+"""
+  source = iotbx.parameters.parse(input_string="""\
+s {
+  a=1
+}
+s {
+  a=2
+}
+""")
+  out = StringIO()
+  master_plain.fetch(source).show(out=out, attributes_level=2)
+  assert out.getvalue() == """\
+s
+  .expert_level = 1
+{
+  a = 2
+    .expert_level = 2
+}
+"""
+  out = StringIO()
+  master_multiple.fetch(source).show(out=out)
+  assert out.getvalue() == """\
+s
+{
+  a = 1
+}
+
+s
+{
+  a = 2
+}
+"""
+  source = iotbx.parameters.parse(input_string="""\
+s {
+  a=1
+}
+s {
+  #a=2
+}
+""")
+  for master in [master_plain, master_optional]:
+    out = StringIO()
+    master.fetch(source).show(out=out)
+    assert out.getvalue() == """\
+s
+{
+  a = 1
+}
+"""
+  for master in [master_multiple, master_optional_multiple]:
+    out = StringIO()
+    master.fetch(source).show(out=out)
+    assert out.getvalue() == """\
+s
+{
+  a = 1
+}
+
+s
+{
+  a = None
+}
+"""
+  source = iotbx.parameters.parse(input_string="""\
+#s {
+  a=1
+}
+s {
+  #a=2
+}
+""")
+  for master in [master_plain, master_optional, master_multiple]:
+    out = StringIO()
+    master.fetch(source).show(out=out)
+    assert out.getvalue() == """\
+s
+{
+  a = None
+}
+"""
+  out = StringIO()
+  master_optional_multiple.fetch(source).show(out=out)
+  assert out.getvalue() == """\
+#s
+{
+  a = None
+}
+"""
+  source = iotbx.parameters.parse(input_string="")
+  out = StringIO()
+  master_optional_multiple.fetch(source).show(out=out)
+  assert out.getvalue() == """\
+#s
+{
+  a = None
+}
+"""
+  #
+  master = iotbx.parameters.parse(input_string="""\
+a=None
+b {}
+c { a=None
+}
+d { a {} }
+""")
+  source = iotbx.parameters.parse(input_string="a { }")
+  try: master.fetch(source=source)
+  except RuntimeError, e:
+    assert str(e) == 'Incompatible parameter objects.'
+  else: raise RuntimeError("Exception expected.")
+  source = iotbx.parameters.parse(input_string="b=None")
+  try: master.fetch(source=source)
+  except RuntimeError, e:
+    assert str(e) == 'Incompatible parameter objects.'
+  else: raise RuntimeError("Exception expected.")
+  source = iotbx.parameters.parse(input_string="c { a { } }")
+  try: master.fetch(source=source)
+  except RuntimeError, e:
+    assert str(e) == 'Incompatible parameter objects.'
+  else: raise RuntimeError("Exception expected.")
+  source = iotbx.parameters.parse(input_string="d { a=None\n}")
+  try: master.fetch(source=source)
+  except RuntimeError, e:
+    assert str(e) == 'Incompatible parameter objects.'
+  else: raise RuntimeError("Exception expected.")
+  #
+  master = iotbx.parameters.parse(input_string="""\
+a=None
+  .expert_level=1
 b=None
   .expert_level=2
 c
@@ -792,8 +1025,10 @@ u=e b f *c a g
   out = StringIO()
   fetched.show(out=out, attributes_level=2)
   assert out.getvalue() == """\
-a = 7
+a = 9
   .expert_level = 1
+b = None
+  .expert_level = 2
 
 c
 {
@@ -805,6 +1040,8 @@ c
   c
     .expert_level = 5
   {
+    x = 1
+      .expert_level = 6
     y = 3
       .type = "int"
       .expert_level = 7
@@ -815,9 +1052,6 @@ c
       r = x
         .help = "help"
     }
-
-    x = 1
-      .expert_level = 6
   }
 }
 
@@ -826,26 +1060,12 @@ t
 {
   a = 1
     .expert_level = 10
-  b = 2
-    .expert_level = 11
-}
-
-a = 9
-  .expert_level = 1
-
-t
-  .expert_level = 9
-{
   b = 3
     .expert_level = 11
-  a = 4
-    .expert_level = 10
 }
 
 u = a b *c
   .type = "choice"
-b = None
-  .expert_level = 2
 """
   master = iotbx.parameters.parse(input_string="""\
 c=a *b c
@@ -859,7 +1079,19 @@ c=a *d c
     assert str(e) == "Not a possible choice: *d (input line 1)"
   else: raise RuntimeError("Exception expected.")
   #
-  parameters = iotbx.parameters.parse(input_string="""\
+  master = iotbx.parameters.parse(input_string="""\
+v
+  .multiple=true
+{
+  x=None
+}
+c
+  .multiple=true
+{
+  a=None
+}
+""")
+  source = iotbx.parameters.parse(input_string="""\
 v {
   x=y
 }
@@ -869,13 +1101,21 @@ c {
 v {
   x=z
 }
+c {
+  a=${v.x}
+}
 """)
   out = StringIO()
-  parameters.fetch(source=parameters).show(out=out)
+  master.fetch(source=source).show(out=out)
   assert out.getvalue() == """\
 v
 {
   x = y
+}
+
+v
+{
+  x = z
 }
 
 c
@@ -883,9 +1123,9 @@ c
   a = y
 }
 
-v
+c
 {
-  x = z
+  a = z
 }
 """
   parameters = iotbx.parameters.parse(input_string="""\
@@ -900,6 +1140,166 @@ v {
   except RuntimeError, e:
     assert str(e) == 'Undefined variable: $v.x (input line 2)'
   else: raise RuntimeError("Exception expected.")
+  #
+  master = iotbx.parameters.parse(input_string="""\
+s {
+  a=None
+}
+""")
+  source = iotbx.parameters.parse(input_string="s.a=x")
+  out = StringIO()
+  master.fetch(source=source).show(out=out)
+  assert out.getvalue() == """\
+s
+{
+  a = x
+}
+"""
+  master = iotbx.parameters.parse(input_string="""\
+s {
+  t {
+    a=None
+  }
+}
+""")
+  source = iotbx.parameters.parse(input_string="s.t.a=x")
+  out = StringIO()
+  master.fetch(source=source).show(out=out)
+  assert out.getvalue() == """\
+s
+{
+  t
+  {
+    a = x
+  }
+}
+"""
+  master = iotbx.parameters.parse(input_string="""\
+s.t {
+  a=None
+}
+""")
+  source = iotbx.parameters.parse(input_string="s.t.a=x")
+  out = StringIO()
+  master.fetch(source=source).show(out=out)
+  assert out.getvalue() == """\
+s.t
+{
+  a = x
+}
+"""
+  master = iotbx.parameters.parse(input_string="""\
+s.t {
+  a.b=None
+}
+""")
+  source = iotbx.parameters.parse(input_string="s.t.a.b=x")
+  out = StringIO()
+  master.fetch(source=source).show(out=out)
+  assert out.getvalue() == """\
+s.t
+{
+  a.b = x
+}
+"""
+  master = iotbx.parameters.parse(input_string="""\
+s.t.u {
+  a.b.c=None
+}
+""")
+  source = iotbx.parameters.parse(input_string="""\
+v.w {
+  p.q=z
+}
+s.t.u.a.b.c=${v.w.p.q}
+""")
+  out = StringIO()
+  master.fetch(source=source).show(out=out)
+  assert out.getvalue() == """\
+s.t.u
+{
+  a.b.c = z
+}
+"""
+  for input_string in ["s{t.u.a.b.c=x\n}",
+                       "s.t{u.a.b.c=x\n}",
+                       "s.t.u{a.b.c=x\n}",
+                       "s.t.u.a{b.c=x\n}",
+                       "s.t.u.a.b{c=x\n}",
+                       "s{t{u.a.b.c=x\n}}",
+                       "s{t.u{a.b.c=x\n}}",
+                       "s{t.u.a{b.c=x\n}}"]:
+    source = iotbx.parameters.parse(input_string=input_string)
+    out = StringIO()
+    master.fetch(source=source).show(out=out)
+    assert out.getvalue() == """\
+s.t.u
+{
+  a.b.c = x
+}
+"""
+  #
+  master = iotbx.parameters.parse(input_string="""\
+s.t
+  .multiple=true
+{
+  a.b=None
+}
+""")
+  source = iotbx.parameters.parse(input_string="""\
+s.t.a.b=x
+s.t.a.b=y
+s{t.a.b=z
+  t.a.b=q
+}
+s.t{a.b=r
+    a.b=w
+}
+s.t.a{b=e
+      b=f
+}
+s.t.a{b=e
+      #b=f
+}
+""")
+  out = StringIO()
+  master.fetch(source=source).show(out=out)
+  assert out.getvalue() == """\
+s.t
+{
+  a.b = x
+}
+
+s.t
+{
+  a.b = y
+}
+
+s.t
+{
+  a.b = z
+}
+
+s.t
+{
+  a.b = q
+}
+
+s.t
+{
+  a.b = w
+}
+
+s.t
+{
+  a.b = f
+}
+
+s.t
+{
+  a.b = e
+}
+"""
 
 def exercise_extract():
   parameters = iotbx.parameters.parse(input_string="""\
@@ -1029,6 +1429,55 @@ group {
   assert group.a is True
   assert group.b == 13
   assert group.s.type().number() == 19
+  #
+  parameters = iotbx.parameters.parse(input_string="""\
+a=1
+  .type=int
+b {
+  a=2
+    .type=int
+  b {
+    a=3
+      .type=int
+  }
+}
+c.a {
+  b=4
+    .type=int
+  c.d=5
+    .type=int
+  c.e=6
+    .type=int
+}
+""")
+  extracted = parameters.extract()
+  assert extracted.a == 1
+  assert extracted.b.a == 2
+  assert extracted.b.b.a == 3
+  assert extracted.c.a.b == 4
+  assert extracted.c.a.c.d == 5
+  #
+  parameters = iotbx.parameters.parse(input_string="""\
+a=1
+ .type=int
+a=2
+ .type=int
+b {
+  a=3
+    .type=int
+  a=4
+    .type=int
+}
+b {
+  b=5
+    .type=int
+  b=6
+    .type=int
+}
+""")
+  extracted = parameters.extract()
+  assert extracted.a == 2
+  assert extracted.b.b == 6
 
 def exercise_format():
   parameters = iotbx.parameters.parse(input_string="""\
@@ -1083,55 +1532,6 @@ group
     assert str(e) == 'No converter for parameter definition type "foo"' \
       + ' required for converting values for "a" (input line 4)'
   else: raise RuntimeError("Exception expected.")
-  #
-  parameters = iotbx.parameters.parse(input_string="""\
-a=1
-  .type=int
-b {
-  a=2
-    .type=int
-  b {
-    a=3
-      .type=int
-  }
-}
-c.a {
-  b=4
-    .type=int
-  c.d=5
-    .type=int
-  c.e=6
-    .type=int
-}
-""")
-  extracted = parameters.extract()
-  assert extracted.a == 1
-  assert extracted.b.a == 2
-  assert extracted.b.b.a == 3
-  assert extracted.c.a.b == 4
-  assert extracted.c.a.c.d == 5
-  #
-  parameters = iotbx.parameters.parse(input_string="""\
-a=1
- .type=int
-a=2
- .type=int
-b {
-  a=3
-    .type=int
-  a=4
-    .type=int
-}
-b {
-  b=5
-    .type=int
-  b=6
-    .type=int
-}
-""")
-  extracted = parameters.extract()
-  assert extracted.a == 2
-  assert extracted.b.b == 6
   #
   master = iotbx.parameters.parse(input_string="""\
 a=None
@@ -1192,6 +1592,7 @@ c {
   assert extracted.b[1].c is None
   assert extracted.c == []
   assert extracted.d[0].a is None
+  # XXX master.format(extracted).show()
   #
   master = iotbx.parameters.parse(input_string="""\
 a=None
@@ -1204,16 +1605,25 @@ a=2
 """)
   extracted = master.fetch(custom).extract()
   assert extracted.a == 2
+  out = StringIO()
+  master.format(extracted).show(out=out)
+  assert out.getvalue() == "a = 2\n"
   custom = iotbx.parameters.parse(input_string="""\
 a=1
 #a=2
 """)
   extracted = master.fetch(custom).extract()
   assert extracted.a == 1
+  out = StringIO()
+  master.format(extracted).show(out=out)
+  assert out.getvalue() == "a = 1\n"
   custom = iotbx.parameters.parse(input_string="""\
 """)
   extracted = master.fetch(custom).extract()
   assert extracted.a == None
+  out = StringIO()
+  master.format(extracted).show(out=out)
+  assert out.getvalue() == "a = None\n"
   #
   master = iotbx.parameters.parse(input_string="""\
 a=None
@@ -1226,16 +1636,19 @@ a=2
 """)
   extracted = master.fetch(custom).extract()
   assert extracted.a == [1,2]
+  # XXX master.format(extracted).show()
   custom = iotbx.parameters.parse(input_string="""\
 a=1
 #a=2
 """)
   extracted = master.fetch(custom).extract()
   assert extracted.a == [1]
+  # XXX master.format(extracted).show()
   custom = iotbx.parameters.parse(input_string="""\
 """)
   extracted = master.fetch(custom).extract()
   assert extracted.a == [None]
+  # XXX master.format(extracted).show()
   #
   master = iotbx.parameters.parse(input_string="""\
 a=None
@@ -1249,21 +1662,25 @@ a=2
 """)
   extracted = master.fetch(custom).extract()
   assert extracted.a == [1,2]
+  # XXX master.format(extracted).show()
   custom = iotbx.parameters.parse(input_string="""\
 a=1
 #a=2
 """)
   extracted = master.fetch(custom).extract()
   assert extracted.a == [1]
+  # XXX master.format(extracted).show()
   custom = iotbx.parameters.parse(input_string="""\
 """)
   extracted = master.fetch(custom).extract()
   assert extracted.a == []
+  # XXX master.format(extracted).show()
   custom = iotbx.parameters.parse(input_string="""\
 a=None
 """)
   extracted = master.fetch(custom).extract()
   assert extracted.a == []
+  # XXX master.format(extracted).show()
   #
   master = iotbx.parameters.parse(input_string="""\
 s
@@ -1278,6 +1695,14 @@ s
 """)
   extracted = master.fetch(custom).extract()
   assert extracted.s.a is None
+  out = StringIO()
+  master.format(extracted).show(out=out)
+  assert out.getvalue() == """\
+s
+{
+  a = None
+}
+"""
   custom = iotbx.parameters.parse(input_string="""\
 s {
   a=1
@@ -1288,6 +1713,14 @@ s {
 """)
   extracted = master.fetch(custom).extract()
   assert extracted.s.a == 2
+  out = StringIO()
+  master.format(extracted).show(out=out)
+  assert out.getvalue() == """\
+s
+{
+  a = 2
+}
+"""
   custom = iotbx.parameters.parse(input_string="""\
 s {
   a=1
@@ -1299,6 +1732,14 @@ s {
 """)
   extracted = master.fetch(custom).extract()
   assert extracted.s.a == 3
+  out = StringIO()
+  master.format(extracted).show(out=out)
+  assert out.getvalue() == """\
+s
+{
+  a = 3
+}
+"""
   #
   master = iotbx.parameters.parse(input_string="""\
 s
@@ -1313,6 +1754,14 @@ s
 """)
   extracted = master.fetch(custom).extract()
   assert extracted.s[0].a == None
+  out = StringIO()
+  master.format(extracted).show(out=out)
+  assert out.getvalue() == """\
+s
+{
+  a = None
+}
+"""
   custom = iotbx.parameters.parse(input_string="""\
 s {
   a=None
@@ -1320,6 +1769,14 @@ s {
 """)
   extracted = master.fetch(custom).extract()
   assert extracted.s[0].a == None
+  out = StringIO()
+  master.format(extracted).show(out=out)
+  assert out.getvalue() == """\
+s
+{
+  a = None
+}
+"""
   custom = iotbx.parameters.parse(input_string="""\
 s {
   a=1
@@ -1331,6 +1788,7 @@ s {
   extracted = master.fetch(custom).extract()
   assert extracted.s[0].a == 1
   assert extracted.s[1].a == 2
+  # XXX master.format(extracted).show()
   custom = iotbx.parameters.parse(input_string="""\
 s {
   a=1
@@ -1343,6 +1801,7 @@ s {
   extracted = master.fetch(custom).extract()
   assert extracted.s[0].a == 1
   assert extracted.s[1].a == 3
+  # XXX master.format(extracted).show()
   master = iotbx.parameters.parse(input_string="""\
 s
   .multiple=True
@@ -1357,6 +1816,7 @@ s
 """)
   extracted = master.fetch(custom).extract()
   assert extracted.s == []
+  # XXX master.format(extracted).show()
   custom = iotbx.parameters.parse(input_string="""\
 s {
   a=None
@@ -1364,6 +1824,7 @@ s {
 """)
   extracted = master.fetch(custom).extract()
   assert extracted.s == []
+  # XXX master.format(extracted).show()
   custom = iotbx.parameters.parse(input_string="""\
 s {
   a=1
@@ -1375,6 +1836,7 @@ s {
   extracted = master.fetch(custom).extract()
   assert extracted.s[0].a == 1
   assert extracted.s[1].a == 2
+  # XXX master.format(extracted).show()
   custom = iotbx.parameters.parse(input_string="""\
 s {
   a=1
@@ -1387,6 +1849,7 @@ s {
   extracted = master.fetch(custom).extract()
   assert extracted.s[0].a == 1
   assert extracted.s[1].a == 3
+  # XXX master.format(extracted).show()
 
 def exercise():
   exercise_parse_and_show()

@@ -204,6 +204,8 @@ class definition: # FUTURE definition(object)
     return definition(**keyword_args)
 
   def fetch(self, source, substitution_scope=None):
+    if (not isinstance(source, definition)):
+      raise RuntimeError("Incompatible parameter objects.") # XXX where
     if (substitution_scope):
       source = substitution_scope.variable_substitution(
         object=source, path_memory={})
@@ -540,12 +542,14 @@ class scope:
   def _all_definitions(self, parent, parent_path, result):
     parent_path += self.name+"."
     for object in self.objects:
+      if (object.is_disabled): continue
       object._all_definitions(
         parent=self, parent_path=parent_path, result=result)
 
   def all_definitions(self):
     result = []
     for object in self.objects:
+      if (object.is_disabled): continue
       object._all_definitions(parent=self, parent_path="", result=result)
     return result
 
@@ -562,6 +566,7 @@ class scope:
       else:
         result = []
         for object in self.objects:
+          if (object.is_disabled): continue
           result.extend(object.get_without_substitution(
             path=path,
             stopper=stopper))
@@ -574,6 +579,7 @@ class scope:
         path = path[len(self.name)+1:]
         result = []
         for object in self.objects:
+          if (object.is_disabled): continue
           result.extend(object.get_without_substitution(
             path=path,
             stopper=stopper))
@@ -582,6 +588,7 @@ class scope:
         result = []
         if (stopper is not None):
           for object in self.objects:
+            if (object.is_disabled): continue
             object.get_without_substitution(
               path="",
               stopper=stopper)
@@ -591,6 +598,7 @@ class scope:
   def substitute_all(self, substitution_scope, path_memory):
     result = []
     for object in self.objects:
+      if (object.is_disabled): continue
       result.append(object.substitute_all(
         substitution_scope=substitution_scope,
         path_memory=path_memory))
@@ -640,6 +648,7 @@ class scope:
   def format(self, python_object, custom_converters=None):
     result = []
     for object in self.objects:
+      if (object.is_disabled): continue
       if (isinstance(python_object, scope_extract)):
         python_object = [python_object]
       for python_object_i in python_object:
@@ -651,34 +660,55 @@ class scope:
   def _fetch(self, source, substitution_scope=None):
     if (substitution_scope is None):
       substitution_scope = source
+    if (source.name == self.name):
+      if (not isinstance(source, scope)):
+        raise RuntimeError("Incompatible parameter objects.") # XXX where
+    else:
+      assert source.name.startswith(self.name+".")
+      source_name = source.name[len(self.name)+1:]
+      source = scope(
+        name=self.name,
+        objects=[source.copy(name=source_name)])
     result_objects = []
-    master_lookup_dict = {}
     for master_object in self.objects:
-      master_lookup_dict[master_object.name] = master_object
-    master_use = {}
-    for master_object in self.objects:
-      master_use[master_object.name] = -1
-    for source_object in source.objects:
-      if (source_object.is_disabled): continue
-      master_object = master_lookup_dict.get(source_object.name, None)
-      if (master_object is not None):
-        if (master_use[source_object.name] == -1):
-          master_use[source_object.name] = len(result_objects)
-        else:
-          master_use[source_object.name] = -2
-        result_objects.append(master_object.fetch(
-         source=source_object,
-         substitution_scope=substitution_scope))
-    for master_object in self.objects:
-      use = master_use[master_object.name]
-      if (use == -1):
-        result_objects.append(copy.deepcopy(master_object))
-        if (master_object.multiple and master_object.optional):
+      if (master_object.is_disabled): continue
+      if (len(self.name) == 0):
+        path = master_object.name
+        master_object_for_fetch = master_object
+      else:
+        path = self.name + "." + master_object.name
+      master_object_for_fetch = master_object.copy(
+        name=master_object.name.split(".")[-1])
+      matching_sources = source.get(path=path, with_substitution=False)
+      fetch_count = 0
+      if (master_object.multiple):
+        for matching_source in matching_sources.objects:
+          if (matching_source.is_disabled): continue
+          fetch_count += 1
+          result_objects.append(master_object_for_fetch.fetch(
+            source=matching_source,
+            substitution_scope=substitution_scope)
+              .copy(name=master_object.name))
+        if (fetch_count == 0):
+          result_objects.append(copy.deepcopy(master_object))
+          if (master_object.optional):
+            result_objects[-1].is_disabled = True
+        elif (fetch_count == 1
+              and master_object.multiple and master_object.optional
+              and master_object.has_same_definitions(result_objects[-1])):
           result_objects[-1].is_disabled = True
-      elif (use >= 0
-            and master_object.multiple and master_object.optional
-            and master_object.has_same_definitions(result_objects[use])):
-        result_objects[use].is_disabled = True
+      else:
+        result_object = master_object_for_fetch
+        for matching_source in matching_sources.objects:
+          if (matching_source.is_disabled): continue
+          fetch_count += 1
+          result_object = result_object.fetch(
+            source=matching_source,
+            substitution_scope=substitution_scope)
+        if (fetch_count == 0):
+          result_objects.append(copy.deepcopy(master_object))
+        else:
+          result_objects.append(result_object.copy(name=master_object.name))
     return result_objects
 
   def fetch(self, source=None, sources=None, substitution_scope=None):
