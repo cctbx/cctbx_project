@@ -378,6 +378,7 @@ def coordination_sequences(structure, proxies, n_shells=10, coseq_terms=None):
   sums_terms = flex.double()
   multiplicities = flex.double()
   for i_seq_pivot in xrange(len(pair_lists)):
+    rt_mx_pivot = asu_mappings.get_rt_mx(i_seq=i_seq_pivot, i_sym=0)
     bond_reg = bond_registry()
     if (len(pair_lists[i_seq_pivot]) == 0):
       bond_registries.append(bond_reg)
@@ -417,8 +418,11 @@ def coordination_sequences(structure, proxies, n_shells=10, coseq_terms=None):
       if (i_shell <= 3):
         bond_reg.start_next_shell()
         for n in nodes_next:
-          i_sym = asu_mappings.find_i_sym(i_seq=n.i_seq, rt_mx=n.rt_mx)
-          if (i_sym > 0 or i_sym == 0  and i_seq_pivot < n.i_seq):
+          i_sym = asu_mappings.find_i_sym(
+            i_seq=n.i_seq,
+            rt_mx=rt_mx_pivot.multiply(n.rt_mx))
+          if (i_shell == 1): assert i_sym >= 0
+          if (i_sym > 0 or (i_sym == 0 and i_seq_pivot < n.i_seq)):
             bond_reg.enter_sym((n.i_seq, i_sym))
       if (0):
         nodes_for_pdb.extend(nodes_next)
@@ -471,13 +475,10 @@ def coordination_sequences_sorted(structure, proxies, n_shells=10):
   asu_mappings = proxies.asu_mappings
   special_ops = [site_symmetry.special_op()
     for site_symmetry in proxies.site_symmetries]
-  bond_registries = []
   term_table = []
   for i_seq_pivot in xrange(len(pair_lists_sym)):
-    bond_reg = bond_registry()
     if (  len(pair_lists_direct[i_seq_pivot])
         + len(pair_lists_sym[i_seq_pivot]) == 0):
-      bond_registries.append(bond_reg)
       term_table.append(flex.size_t())
       continue
     nodes_middle = []
@@ -523,13 +524,6 @@ def coordination_sequences_sorted(structure, proxies, n_shells=10):
               and not find_node(test_node=new_node, node_list=nodes_next)):
             nodes_next.append(new_node)
       terms.append(len(nodes_next))
-      if (i_shell <= 3):
-        bond_reg.start_next_shell()
-        for n in nodes_next:
-          i_sym = asu_mappings.find_i_sym(i_seq=n.i_seq, rt_mx=n.rt_mx)
-          if (i_sym > 0 or i_sym == 0  and i_seq_pivot < n.i_seq):
-            bond_reg.enter_sym((n.i_seq, i_sym))
-    bond_registries.append(bond_reg)
     term_table.append(terms)
     print scatterers[i_seq_pivot].label, list(terms)
   return term_table
