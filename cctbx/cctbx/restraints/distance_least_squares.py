@@ -1,5 +1,7 @@
-from cctbx.crystal import minimization
 from cctbx import restraints
+import cctbx.restraints.flags
+import cctbx.restraints.manager
+import cctbx.restraints.lbfgs
 from cctbx import xray
 from cctbx import crystal
 from cctbx import sgtbx
@@ -110,74 +112,6 @@ def make_o_si_o_asu_table(si_o_structure, si_o_bond_asu_table):
           rt_mx_ji=rt_mx_jj21)
   return o_si_o_asu_table
 
-class show_pairs:
-
-  def __init__(self, structure, pair_asu_table):
-    self.distances = flex.double()
-    self.pair_counts = flex.size_t()
-    unit_cell = structure.unit_cell()
-    scatterers = structure.scatterers()
-    sites_frac = structure.sites_frac()
-    asu_mappings = pair_asu_table.asu_mappings()
-    for i_seq,asu_dict in enumerate(pair_asu_table.table()):
-      rt_mx_i_inv = asu_mappings.get_rt_mx(i_seq, 0).inverse()
-      site_frac_i = sites_frac[i_seq]
-      pair_count = 0
-      dists = flex.double()
-      j_seq_i_group = []
-      for j_seq,j_sym_groups in asu_dict.items():
-        site_frac_j = sites_frac[j_seq]
-        for i_group,j_sym_group in enumerate(j_sym_groups):
-          pair_count += j_sym_group.size()
-          j_sym = j_sym_group[0]
-          rt_mx_ji = rt_mx_i_inv.multiply(asu_mappings.get_rt_mx(j_seq, j_sym))
-          distance = unit_cell.distance(site_frac_i, rt_mx_ji * site_frac_j)
-          dists.append(distance)
-          j_seq_i_group.append((j_seq,i_group))
-      s = "%s(%d):" % (scatterers[i_seq].label, i_seq+1)
-      s = "%-15s pair count: %3d" % (s, pair_count)
-      print "%-32s"%s, "<<"+",".join([" %7.4f" % x for x in site_frac_i])+">>"
-      permutation = flex.sort_permutation(dists)
-      for j_seq,i_group in flex.select(j_seq_i_group, permutation):
-        site_frac_j = sites_frac[j_seq]
-        j_sym_groups = asu_dict[j_seq]
-        j_sym_group = j_sym_groups[i_group]
-        for i_j_sym,j_sym in enumerate(j_sym_group):
-          rt_mx_ji = rt_mx_i_inv.multiply(
-            asu_mappings.get_rt_mx(j_seq, j_sym))
-          site_frac_ji = rt_mx_ji * site_frac_j
-          distance = unit_cell.distance(site_frac_i, site_frac_ji)
-          self.distances.append(distance)
-          print "  %-10s" % ("%s(%d):" % (scatterers[j_seq].label, j_seq+1)),
-          print "%8.4f" % distance,
-          if (i_j_sym != 0):
-            s = "sym. equiv."
-          else:
-            s = "           "
-          s += " (" + ",".join([" %7.4f" % x for x in site_frac_ji]) +")"
-          print s
-      if (pair_count == 0):
-        print "  no neighbors"
-      self.pair_counts.append(pair_count)
-
-def show_nonbonded_interactions(structure, asu_mappings, nonbonded_proxies):
-  distances = flex.double()
-  unit_cell = structure.unit_cell()
-  scatterers = structure.scatterers()
-  sites_frac = structure.sites_frac()
-  for proxy in nonbonded_proxies:
-    i_seq, j_seq, j_sym = proxy.i_seq, proxy.j_seq, proxy.j_sym
-    rt_mx_i_inv = asu_mappings.get_rt_mx(i_seq, 0).inverse()
-    rt_mx_ji = rt_mx_i_inv.multiply(asu_mappings.get_rt_mx(j_seq, j_sym))
-    pair_labels = "%s(%d) - %s(%d):" % (
-      scatterers[i_seq].label, i_seq+1,
-      scatterers[j_seq].label, j_seq+1)
-    distance = unit_cell.distance(
-      sites_frac[i_seq], rt_mx_ji*sites_frac[j_seq])
-    distances.append(distance)
-    print "%-20s %8.4f" % (pair_labels, distance)
-  return distances
-
 def distance_and_repulsion_least_squares(
       si_structure,
       distance_cutoff,
@@ -193,8 +127,8 @@ def distance_and_repulsion_least_squares(
   si_pair_asu_table = crystal.pair_asu_table(
     asu_mappings=si_asu_mappings)
   si_pair_asu_table.add_all_pairs(distance_cutoff=distance_cutoff)
-  si_pairs = show_pairs(
-    structure=si_structure,
+  si_pairs = xray.show_pairs(
+    xray_structure=si_structure,
     pair_asu_table=si_pair_asu_table)
   if (connectivities is not None):
     assert list(si_pairs.pair_counts) == connectivities
@@ -211,8 +145,8 @@ def distance_and_repulsion_least_squares(
   si_o_bond_asu_table = crystal.pair_asu_table(
     asu_mappings=si_o_asu_mappings)
   si_o_bond_asu_table.add_pair_sym_table(sym_table=si_o.bond_sym_table)
-  si_o_bonds = show_pairs(
-    structure=si_o.structure,
+  si_o_bonds = xray.show_pairs(
+    xray_structure=si_o.structure,
     pair_asu_table=si_o_bond_asu_table)
   n_si = si_pairs.pair_counts.size()
   n_si_o = si_o_bonds.pair_counts.size()
@@ -222,8 +156,8 @@ def distance_and_repulsion_least_squares(
   o_si_o_asu_table = make_o_si_o_asu_table(
     si_o_structure=si_o.structure,
     si_o_bond_asu_table=si_o_bond_asu_table)
-  o_si_o_pairs = show_pairs(
-    structure=si_o.structure,
+  o_si_o_pairs = xray.show_pairs(
+    xray_structure=si_o.structure,
     pair_asu_table=o_si_o_asu_table)
   assert o_si_o_pairs.pair_counts[:n_si].all_eq(0)
   if (si_pairs.pair_counts.count(4) == n_si):
@@ -248,6 +182,15 @@ def distance_and_repulsion_least_squares(
   repulsion_types = flex.std_string()
   for scatterer in si_o.structure.scatterers():
     repulsion_types.append(scatterer.scattering_type)
+  restraints_manager = restraints.manager.manager(
+    crystal_symmetry=si_o.structure,
+    site_symmetry_table=si_o.structure.site_symmetry_table(),
+    bond_params_table=bond_params_table,
+    shell_sym_tables=shell_sym_tables,
+    repulsion_params=repulsion_params,
+    repulsion_types=repulsion_types,
+    nonbonded_distance_cutoff=nonbonded_distance_cutoff,
+    nonbonded_buffer=nonbonded_buffer)
   minimized = None
   for i_trial in xrange(n_trials):
     trial_structure = si_o.structure.deep_copy_scatterers()
@@ -258,46 +201,65 @@ def distance_and_repulsion_least_squares(
         trial_structure.set_sites_frac(flex.vec3_double(flex.random_double(
           size=n_scatterers*3)))
         trial_structure.apply_symmetry_sites()
-      try:
-        trial_minimized = minimization.lbfgs(
-          structure=trial_structure,
-          repulsion_params=repulsion_params,
-          repulsion_types=repulsion_types,
-          bond_params_table=bond_params_table,
-          shell_sym_tables=shell_sym_tables,
-          nonbonded_distance_cutoff=nonbonded_distance_cutoff,
-          nonbonded_buffer=nonbonded_buffer,
-          lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
-            max_iterations=100))
-      except RuntimeError, e:
-        if (str(e) != "lbfgs error: Line search failed:"
-                    + " The step is at the lower bound stpmin()."):
-          raise
-        assert i_trial > 0
-      else:
+      trial_minimized = []
+      for enable_repulsions in [00000, 0001]:
+        if (not enable_repulsions):
+          restraints_flags = restraints.flags.flags(
+            bond=0001)
+        else:
+          restraints_flags = restraints.flags.flags(
+            bond=0001,
+            repulsion=0001)
+          trial_structure.set_sites_cart(sites_cart=trial_sites_cart)
+          trial_structure = trial_structure.random_shift_sites(
+            max_shift_cart=0.2)
+          trial_structure.apply_symmetry_sites()
+        trial_sites_cart = trial_structure.sites_cart()
+        try:
+          trial_minimized.append(restraints.lbfgs.lbfgs(
+            sites_cart=trial_sites_cart,
+            restraints_manager=restraints_manager,
+            restraints_flags=restraints_flags,
+            lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
+              max_iterations=100)))
+        except RuntimeError, e:
+          if (str(e) != "lbfgs error: Line search failed:"
+                      + " The step is at the lower bound stpmin()."):
+            raise
+          assert i_trial > 0
+          trial_minimized = None
+          break
+      if (trial_minimized is not None):
+        trial_structure.set_sites_cart(sites_cart=trial_sites_cart)
         break
     print "i_trial, target value: %d, %.6g" % (
-      i_trial, trial_minimized.final_target_result.target())
-    if (minimized is None or       minimized.final_target_result.target()
-                           > trial_minimized.final_target_result.target()):
+      i_trial, trial_minimized[1].final_target_result.target())
+    if (minimized is None or       minimized[1].final_target_result.target()
+                           > trial_minimized[1].final_target_result.target()):
       minimized = trial_minimized
       minimized_structure = trial_structure
       best_i_trial = i_trial
   assert minimized is not None
   print
-  print "Energies at start:"
-  minimized.first_target_result.show()
+  print "Energies at start of 1. minimization:"
+  minimized[0].first_target_result.show()
   print
-  print "Energies at end:"
-  minimized.final_target_result.show()
+  print "Energies at end of 1. minimization:"
+  minimized[0].final_target_result.show()
+  print
+  print "Energies at start of 2. minimization:"
+  minimized[1].first_target_result.show()
+  print
+  print "Energies at end of 2. minimization:"
+  minimized[1].final_target_result.show()
   print
   print "Final target value (i_trial=%d): %.6g" % (
-    best_i_trial, minimized.final_target_result.target())
-  if (minimized.final_target_result.target() > 0.1):
+    best_i_trial, minimized[1].final_target_result.target())
+  if (minimized[1].final_target_result.target() > 0.1):
     print "WARNING: LARGE final target value: %.6g" % (
-      minimized.final_target_result.target())
+      minimized[1].final_target_result.target())
   print
-  show_pairs(
-    structure=minimized_structure,
+  xray.show_pairs(
+    xray_structure=minimized_structure,
     pair_asu_table=si_o_bond_asu_table)
   print

@@ -1,5 +1,5 @@
 from cctbx.crystal import coordination_sequences
-from cctbx.crystal import distance_ls
+from cctbx import xray
 from cctbx import crystal
 from iotbx.kriber import strudat
 from iotbx.option_parser import iotbx_option_parser
@@ -61,8 +61,8 @@ def run():
         asu_mappings=asu_mappings)
       pair_asu_table.add_all_pairs(
         distance_cutoff=command_line.options.distance_cutoff)
-      pairs = distance_ls.show_pairs(
-        structure=structure,
+      pairs = xray.show_pairs(
+        xray_structure=structure,
         pair_asu_table=pair_asu_table)
       print
       print "Pair counts:", list(pairs.pair_counts)

@@ -18,7 +18,7 @@ class energies:
     else:
       self.gradients = None
     if (bond_proxies is None):
-      self.n_bond_proxies = 0
+      self.n_bond_proxies = None
       self.bond_residual_sum = 0
     else:
       self.n_bond_proxies = bond_proxies.n_total()
@@ -28,7 +28,7 @@ class energies:
         gradient_array=self.gradients,
         disable_cache=disable_asu_cache)
     if (repulsion_proxies is None):
-      self.n_repulsion_proxies = 0
+      self.n_repulsion_proxies = None
       self.repulsion_residual_sum = 0
     else:
       self.n_repulsion_proxies = repulsion_proxies.n_total()
@@ -39,7 +39,7 @@ class energies:
         function=restraints.repulsion_function(),
         disable_cache=00000)
     if (angle_proxies is None):
-      self.n_angle_proxies = 0
+      self.n_angle_proxies = None
       self.angle_residual_sum = 0
     else:
       self.n_angle_proxies = len(angle_proxies)
@@ -48,7 +48,7 @@ class energies:
         proxies=angle_proxies,
         gradient_array=self.gradients)
     if (dihedral_proxies is None):
-      self.n_dihedral_proxies = 0
+      self.n_dihedral_proxies = None
       self.dihedral_residual_sum = 0
     else:
       self.n_dihedral_proxies = len(dihedral_proxies)
@@ -57,7 +57,7 @@ class energies:
           proxies=dihedral_proxies,
           gradient_array=self.gradients)
     if (chirality_proxies is None):
-      self.n_chirality_proxies = 0
+      self.n_chirality_proxies = None
       self.chirality_residual_sum = 0
     else:
       self.n_chirality_proxies = len(chirality_proxies)
@@ -66,7 +66,7 @@ class energies:
           proxies=chirality_proxies,
           gradient_array=self.gradients)
     if (planarity_proxies is None):
-      self.n_planarity_proxies = 0
+      self.n_planarity_proxies = None
       self.planarity_residual_sum = 0
     else:
       self.n_planarity_proxies = len(planarity_proxies)
@@ -89,18 +89,24 @@ class energies:
 
   def show(self, f=None):
     if (f is None): f = sys.stdout
-    print >> f, "target:", self.target()
-    print >> f, "  bond_residual_sum (n=%d):" % self.n_bond_proxies,\
-      self.bond_residual_sum
-    print >> f, "  repulsion_residual_sum (n=%d):" % self.n_repulsion_proxies,\
-      self.repulsion_residual_sum
-    print >> f, "  angle_residual_sum (n=%d):" % self.n_angle_proxies,\
-      self.angle_residual_sum
-    print >> f, "  dihedral_residual_sum (n=%d):" % self.n_dihedral_proxies,\
-      self.dihedral_residual_sum
-    print >> f, "  chirality_residual_sum (n=%d):" % self.n_chirality_proxies,\
-      self.chirality_residual_sum
-    print >> f, "  planarity_residual_sum (n=%d):" % self.n_planarity_proxies,\
-      self.planarity_residual_sum
+    print >> f, "target: %.6g" % self.target()
+    if (self.n_bond_proxies is not None):
+      print >> f, "  bond_residual_sum (n=%d): %.6g" % (
+        self.n_bond_proxies, self.bond_residual_sum)
+    if (self.n_repulsion_proxies is not None):
+      print >> f, "  repulsion_residual_sum (n=%d): %.6g" % (
+        self.n_repulsion_proxies, self.repulsion_residual_sum)
+    if (self.n_angle_proxies is not None):
+      print >> f, "  angle_residual_sum (n=%d): %.6g" % (
+        self.n_angle_proxies, self.angle_residual_sum)
+    if (self.n_dihedral_proxies is not None):
+      print >> f, "  dihedral_residual_sum (n=%d): %.6g" % (
+        self.n_dihedral_proxies, self.dihedral_residual_sum)
+    if (self.n_chirality_proxies is not None):
+      print >> f, "  chirality_residual_sum (n=%d): %.6g" % (
+        self.n_chirality_proxies, self.chirality_residual_sum)
+    if (self.n_planarity_proxies is not None):
+      print >> f, "  planarity_residual_sum (n=%d): %.6g" % (
+        self.n_planarity_proxies, self.planarity_residual_sum)
     if (self.gradients is not None):
-      print >> f, "  norm of gradients:", self.gradient_norm()
+      print >> f, "  norm of gradients: %.6g" % self.gradient_norm()
