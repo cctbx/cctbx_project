@@ -1,30 +1,10 @@
-import sys
-
 Import("env_base","env_etc")
 
-myccflags_base = env_etc.ccflags_base[:]
-mycxxflags_base = env_etc.cxxflags_base[:]
-
-if (sys.platform == "win32"):
-  myccflags_base.extend(['-D_MVS','-Di386'])
-  mycxxflags_base.extend(['-D_MVS','-Di386'])  
-
 env = env_base.Copy(
-  CXXFLAGS=mycxxflags_base,
-  CCFLAGS=myccflags_base,
+  CXXFLAGS=env_etc.cxxflags_base,
+  CCFLAGS=env_etc.ccflags_base,
   CPPPATH=["."] + env_etc.iotbx_common_includes,
 )
-
-env.StaticLibrary(target='#libtbx/cmtz',
-  source = ["../../ccp4/lib/src/library_err.c",
-            "../../ccp4/lib/src/library_file.c",
-            "../../ccp4/lib/src/library_utils.c",
-            "../../ccp4/lib/src/ccp4_array.c",
-            "../../ccp4/lib/src/ccp4_parser.c",
-            "../../ccp4/lib/src/cvecmat.c",
-            "../../ccp4/lib/src/cmtzlib.c",
-            "../../ccp4/lib/src/csymlib.c",
-           ])
 
 env.Append(LIBPATH=["#libtbx",])
 env.Prepend(LIBS=["iotbx","cmtz","cctbx"])
