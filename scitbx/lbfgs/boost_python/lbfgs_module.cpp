@@ -12,6 +12,7 @@
 #include <scitbx/lbfgs.h>
 #include <scitbx/lbfgs/drop_convergence_test.h>
 #include <scitbx/array_family/flex_types.h>
+#include <scitbx/array_family/boost_python/utils.h>
 #include <scitbx/boost_python/utils.h>
 #include <boost/python/module.hpp>
 #include <boost/python/class.hpp>
@@ -30,9 +31,10 @@ namespace scitbx { namespace lbfgs { namespace {
       af::flex_double const& g,
       af::flex_double& diag)
     {
-      SCITBX_ASSERT(x.size() == minimizer.n());
-      SCITBX_ASSERT(g.size() == minimizer.n());
-      SCITBX_ASSERT(diag.size() == minimizer.n());
+      using namespace scitbx::af::boost_python;
+      SCITBX_ASSERT(flex_as_base_array(x).size() == minimizer.n());
+      SCITBX_ASSERT(flex_as_base_array(g).size() == minimizer.n());
+      SCITBX_ASSERT(flex_as_base_array(diag).size() == minimizer.n());
       return minimizer.run(x.begin(), f, g.begin(), diag.begin());
     }
 
@@ -43,8 +45,9 @@ namespace scitbx { namespace lbfgs { namespace {
       double f,
       af::flex_double const& g)
     {
-      SCITBX_ASSERT(x.size() == minimizer.n());
-      SCITBX_ASSERT(g.size() == minimizer.n());
+      using namespace scitbx::af::boost_python;
+      SCITBX_ASSERT(flex_as_base_array(x).size() == minimizer.n());
+      SCITBX_ASSERT(flex_as_base_array(g).size() == minimizer.n());
       return minimizer.run(x.begin(), f, g.begin());
     }
 
@@ -53,7 +56,8 @@ namespace scitbx { namespace lbfgs { namespace {
       w_t const& minimizer,
       af::flex_double const& a)
     {
-      SCITBX_ASSERT(a.size() == minimizer.n());
+      using namespace scitbx::af::boost_python;
+      SCITBX_ASSERT(flex_as_base_array(a).size() == minimizer.n());
       return minimizer.euclidean_norm(a.begin());
     }
 
@@ -104,8 +108,9 @@ namespace scitbx { namespace lbfgs { namespace {
       af::flex_double const& x,
       af::flex_double const& g)
     {
-      SCITBX_ASSERT(x.size() == is_converged.n());
-      SCITBX_ASSERT(g.size() == is_converged.n());
+      using namespace scitbx::af::boost_python;
+      SCITBX_ASSERT(flex_as_base_array(x).size() == is_converged.n());
+      SCITBX_ASSERT(flex_as_base_array(g).size() == is_converged.n());
       return is_converged(x.begin(), g.begin());
     }
 

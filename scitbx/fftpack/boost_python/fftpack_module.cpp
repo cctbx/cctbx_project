@@ -107,6 +107,7 @@ namespace scitbx { namespace fftpack { namespace {
     static flex_complex_array
     forward_complex(w_t& fft, flex_complex_array a)
     {
+      a.size(); // assertion
       assert_0_based_1d_size(a.accessor(), fft.n());
       fft.forward(a.begin());
       return flex_complex_array(a, af::flex_grid<>(fft.n())
@@ -116,6 +117,7 @@ namespace scitbx { namespace fftpack { namespace {
     static flex_complex_array
     forward_real(w_t& fft, flex_real_array a)
     {
+      a.size(); // assertion
       assert_0_based_1d_size(a.accessor(), 2 * fft.n());
       fft.forward(a.begin());
       return flex_complex_array(a.handle(), af::flex_grid<>(fft.n())
@@ -125,6 +127,7 @@ namespace scitbx { namespace fftpack { namespace {
     static flex_complex_array
     backward_complex(w_t& fft, flex_complex_array a)
     {
+      a.size(); // assertion
       assert_0_based_1d_size(a.accessor(), fft.n());
       fft.backward(a.begin());
       return flex_complex_array(a, af::flex_grid<>(fft.n())
@@ -134,6 +137,7 @@ namespace scitbx { namespace fftpack { namespace {
     static flex_complex_array
     backward_real(w_t& fft, flex_real_array a)
     {
+      a.size(); // assertion
       assert_0_based_1d_size(a.accessor(), 2 * fft.n());
       fft.backward(a.begin());
       return flex_complex_array(a.handle(), af::flex_grid<>(fft.n())
@@ -164,6 +168,7 @@ namespace scitbx { namespace fftpack { namespace {
     static flex_complex_array
     forward_complex(w_t& fft, flex_complex_array a)
     {
+      a.size(); // assertion
       assert_0_based_1d_size(a.accessor(), fft.n_complex());
       fft.forward(a.begin());
       return flex_complex_array(a, af::flex_grid<>((fft.n_complex()))
@@ -173,6 +178,7 @@ namespace scitbx { namespace fftpack { namespace {
     static flex_complex_array
     forward_real(w_t& fft, flex_real_array a)
     {
+      a.size(); // assertion
       assert_0_based_1d_size(a.accessor(), fft.m_real());
       fft.forward(a.begin());
       return flex_complex_array(a.handle(), af::flex_grid<>((fft.n_complex()))
@@ -182,6 +188,7 @@ namespace scitbx { namespace fftpack { namespace {
     static flex_real_array
     backward_complex(w_t& fft, flex_complex_array a)
     {
+      a.size(); // assertion
       assert_0_based_1d_size(a.accessor(), fft.n_complex());
       fft.backward(a.begin());
       return flex_real_array(a.handle(), af::flex_grid<>((fft.m_real()))
@@ -191,6 +198,7 @@ namespace scitbx { namespace fftpack { namespace {
     static flex_real_array
     backward_real(w_t& fft, flex_real_array a)
     {
+      a.size(); // assertion
       assert_0_based_1d_size(a.accessor(), fft.m_real());
       fft.backward(a.begin());
       return flex_real_array(a, af::flex_grid<>((fft.m_real()))
@@ -224,6 +232,7 @@ namespace scitbx { namespace fftpack { namespace {
     static flex_complex_array
     forward_complex(w_t& fft, flex_complex_array a)
     {
+      a.size(); // assertion
       assert_0_based_3d_size(a.accessor(), fft.n());
       ref_3d_complex_array map(a.begin(), af::grid<3>(fft.n()));
       fft.forward(map);
@@ -234,6 +243,7 @@ namespace scitbx { namespace fftpack { namespace {
     static flex_complex_array
     forward_real(w_t& fft, flex_real_array a)
     {
+      a.size(); // assertion
       assert_0_based_3d_size(a.accessor(), n_real_from_n_complex(fft.n()));
       ref_3d_real_array map(
         a.begin(), af::grid<3>(n_real_from_n_complex(fft.n())));
@@ -245,6 +255,7 @@ namespace scitbx { namespace fftpack { namespace {
     static flex_complex_array
     backward_complex(w_t& fft, flex_complex_array a)
     {
+      a.size(); // assertion
       assert_0_based_3d_size(a.accessor(), fft.n());
       ref_3d_complex_array map(a.begin(), af::grid<3>(fft.n()));
       fft.backward(map);
@@ -255,6 +266,7 @@ namespace scitbx { namespace fftpack { namespace {
     static flex_complex_array
     backward_real(w_t& fft, flex_real_array a)
     {
+      a.size(); // assertion
       assert_0_based_3d_size(a.accessor(), n_real_from_n_complex(fft.n()));
       ref_3d_real_array map(
         a.begin(), af::grid<3>(n_real_from_n_complex(fft.n())));
@@ -288,6 +300,7 @@ namespace scitbx { namespace fftpack { namespace {
     static flex_complex_array
     forward_complex(w_t& fft, flex_complex_array a)
     {
+      a.size(); // assertion
       assert_0_based_3d_size(a.accessor(), fft.n_complex());
       ref_3d_complex_array map(a.begin(), af::grid<3>(fft.n_complex()));
       fft.forward(map);
@@ -299,6 +312,7 @@ namespace scitbx { namespace fftpack { namespace {
     static flex_complex_array
     forward_real(w_t& fft, flex_real_array a)
     {
+      a.size(); // assertion
       assert_0_based_3d_size(a.accessor(), fft.m_real());
       ref_3d_real_array map(a.begin(), af::grid<3>(fft.m_real()));
       fft.forward(map);
@@ -310,6 +324,7 @@ namespace scitbx { namespace fftpack { namespace {
     static flex_real_array
     backward_complex(w_t& fft, flex_complex_array a)
     {
+      a.size(); // assertion
       assert_0_based_3d_size(a.accessor(), fft.n_complex());
       ref_3d_complex_array map(a.begin(), af::grid<3>(fft.n_complex()));
       fft.backward(map);
@@ -321,6 +336,7 @@ namespace scitbx { namespace fftpack { namespace {
     static flex_real_array
     backward_real(w_t& fft, flex_real_array a)
     {
+      a.size(); // assertion
       assert_0_based_3d_size(a.accessor(), fft.m_real());
       ref_3d_real_array map(a.begin(), af::grid<3>(fft.m_real()));
       fft.backward(map);
