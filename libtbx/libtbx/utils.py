@@ -1,5 +1,7 @@
 import sys
 
+class Keep: pass
+
 class UserError(Exception):
 
   def __init__(self, *args, **keyword_args):
