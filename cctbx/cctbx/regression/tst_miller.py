@@ -12,6 +12,11 @@ def exercise_set():
   ms = miller.set(xs, mi, 0001)
   assert ms.indices() == mi
   assert ms.anomalous_flag() == 0001
+  mc = ms.deep_copy()
+  assert mc.unit_cell().is_similar_to(ms.unit_cell())
+  assert mc.space_group() == ms.space_group()
+  assert flex.order(mc.indices(), ms.indices()) == 0
+  assert mc.anomalous_flag() == ms.anomalous_flag()
   assert tuple(ms.multiplicities().data()) == (4, 2)
   assert tuple(ms.epsilons().data()) == (1, 2)
   assert approx_equal(tuple(ms.d_spacings().data()), (1.177603, 1.25))
@@ -45,6 +50,10 @@ def exercise_array():
   assert ma.info() == "test"
   ma.set_info("Test")
   assert ma.info() == "Test"
+  ac = ma.deep_copy()
+  assert flex.order(ac.data(), ma.data()) == 0
+  assert flex.order(ac.sigmas(), ma.sigmas()) == 0
+  assert ac.info() == None
   asu = ma.map_to_asu()
   assert tuple(asu.indices()) == ((1,2,3), (0,0,4))
   mi = flex.miller_index(((1,2,3), (-1,-2,-3), (2,3,4), (-2,-3,-4), (3,4,5)))
