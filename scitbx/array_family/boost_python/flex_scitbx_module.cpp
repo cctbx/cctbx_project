@@ -38,10 +38,14 @@ namespace {
   {
     typedef flex_grid_default_index_type df_i_t;
     typedef flex_grid<> w_t;
+    typedef flex_grid_default_index_type::value_type ivt;
     typedef boost::python::class_<w_t> c_w_t;
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
       last_overloads, last, 0, 1)
+
+    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
+      set_layout_overloads, set_layout, 1, 6)
 
     static boost::python::tuple
     getinitargs(w_t const& fg)
@@ -71,9 +75,15 @@ namespace {
       using namespace boost::python;
       typedef return_value_policy<copy_const_reference> copy_const_reference;
       c_w_t("grid")
+        .def(init<ivt const&, optional<ivt const&, ivt const&,
+                  ivt const&, ivt const&, ivt const&> >())
         .def(init<df_i_t const&>())
         .def(init<df_i_t const&, df_i_t const&, optional<bool> >())
         .def("set_layout", (w_t(w_t::*)(df_i_t const&))&w_t::set_layout)
+        .def("set_layout",
+          (w_t(w_t::*)(ivt const&, ivt const&, ivt const&,
+                       ivt const&, ivt const&, ivt const&)) 0,
+            set_layout_overloads())
         .def("nd", &w_t::nd)
         .def("size_1d", &w_t::size_1d)
         .def("origin", &w_t::origin, copy_const_reference())
