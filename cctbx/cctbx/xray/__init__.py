@@ -43,17 +43,27 @@ def _scatterer_copy(self,
                     label=None,
                     site=None,
                     u=None,
+                    b=None,
                     occupancy=None,
                     caasf=None,
                     fp_fdp=None):
-  result = self.raw_copy()
-  if (label != None): result.label = label
-  if (site != None): result.site = site
-  if (u != None): result.u = u
-  if (occupancy != None): result.occupancy = occupancy
-  if (caasf != None): result.caasf = caasf
-  if (fp_fdp != None): result.fp_fdp = fp_fdp
-  return result
+  assert u == None or b == None
+  if (b != None): u = adptbx.b_as_u(b)
+  if (label == None): label = self.label
+  if (site == None): site = self.site
+  if (u == None):
+    if (self.anisotropic_flag): u = self.u_star
+    else: u = self.u_iso
+  if (occupancy == None): occupancy = self.occupancy
+  if (caasf == None): caasf = self.caasf
+  if (fp_fdp == None): fp_fdp = self.fp_fdp
+  return scatterer(
+    label=label,
+    site=site,
+    u=u,
+    occupancy=occupancy,
+    caasf=caasf,
+    fp_fdp=fp_fdp)
 
 ext.scatterer.copy = _scatterer_copy
 
