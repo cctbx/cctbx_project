@@ -2,6 +2,18 @@ def adopt_init_args(obj, args):
   del args["self"]
   obj.__dict__.update(args)
 
+class dict_with_default_factory(dict):
+
+  def __init__(self, default_factory):
+    self.default_factory = default_factory
+
+  def __getitem__(self, key):
+    try: return dict.__getitem__(self, key)
+    except: pass
+    val = self.default_factory()
+    dict.__setitem__(self, key, val)
+    return val
+
 def list_plus(lhs, rhs):
   return [l + r for l, r in zip(lhs, rhs)]
 
