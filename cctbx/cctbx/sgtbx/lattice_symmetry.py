@@ -80,3 +80,28 @@ class group_search:
     return group
 
 group = group_search()
+
+def find_max_delta(niggli_cell, group, modulus=2):
+  assert group.n_ltr() == 1
+  assert group.f_inv() == 1
+  frac = matrix.sqr(niggli_cell.fractionalization_matrix())
+  orth = matrix.sqr(niggli_cell.orthogonalization_matrix())
+  result = 0
+  for s in group:
+    r_info = s.r().info()
+    if (r_info.type() != 2): continue
+    u,v,w = r_info.ev()
+    t = orth * matrix.col(r_info.ev())
+    min_delta = -1
+    for h in xrange(0,modulus+1):
+      for k in xrange(-modulus,modulus+1):
+        for l in xrange(-modulus,modulus+1):
+          abs_uh = abs(u*h+v*k+w*l)
+          if (abs_uh in (1,2)):
+            tau = matrix.col((matrix.row((h,k,l)) * frac).elems)
+            delta = abs(math.atan2(abs(t.cross(tau)), abs_uh))
+            if (min_delta == -1 or min_delta > delta):
+              min_delta = delta
+    assert min_delta != -1
+    result = max(result, min_delta)
+  return result*180/math.pi
