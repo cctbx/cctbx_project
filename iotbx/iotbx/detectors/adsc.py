@@ -30,9 +30,9 @@ class ADSCImage(DetectorImageBase):
           ('TWOTHETA','TWOTHETA',float),
           ('BYTE_ORDER','BYTE_ORDER',str),
           ('AXIS','AXIS',str),
-          ('PHI','PHI',float),          
-          ('OMEGA','OMEGA',float),          
-          ('DATE','DATE',str),          
+          ('PHI','PHI',float),
+          ('OMEGA','OMEGA',float),
+          ('DATE','DATE',str),
           ]:
           pattern = re.compile(search+'='+r'(.*);')
           matches = pattern.findall(self.header)
