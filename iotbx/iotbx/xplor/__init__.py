@@ -5,6 +5,8 @@ ext = boost.python.import_ext("iotbx_xplor_ext")
 from iotbx_xplor_ext import *
 
 from cctbx import uctbx
+from cctbx.array_family import flex
+from libtbx.itertbx import count
 
 __doc__='''Example format for Xplor Maps:
 
@@ -36,75 +38,90 @@ That is:
 ...map average and standard deviation
 '''
 
+class map_gridding:
+
+  def __init__(self, n, first, last):
+    self.n = tuple(n)
+    self.first = tuple(first)
+    self.last = tuple(last)
+    for x,ni,fi,li in zip("XYZ",n,first,last):
+      if (ni < 1 or fi > li): raise RuntimeError(
+        "Illegal xplor map gridding for dimension %s: "
+        "gridding=%d, first=%d, last=%d" % (x,ni,fi,li))
+
+  def format_9i8(self):
+    result = ""
+    for triple in zip(self.n,self.first,self.last):
+      result += ("%8d"*3) % triple
+    return result
+
+  def as_flex_grid(self):
+    return flex.grid(self.first, self.last, 0)
+
+  def is_compatible_flex_grid(self, flex_grid):
+    if (self.first != self.first): return 00000
+    if (self.last != self.last): return 00000
+    return 0001
+
 class XplorMap(ext.XplorMap):
+
   def __init__(self):
     self.title = []
-    self.sections = []
-    self.unitcell = None
-    self.order = None
+    self.gridding = None
+    self.unit_cell = None
     self.data = None
     self.average = 0.0
-    self.stddev = 1.0
+    self.standard_deviation = 1.0
     ext.XplorMap.__init__(self)
 
-  def read(self,arg):
-    f = open(arg,"r")
+  def read(self, file_name):
+    f = open(file_name, "r")
     f.readline()
-
     # title
     ntitle = int(f.readline().strip().split("!")[0])
     self.title=[]
     for x in xrange(ntitle):
       line = f.readline().rstrip()
       self.title.append(line)
-
-    # sections
+    # gridding
     line = f.readline()
-    self.sections=[]
-    for x in xrange(0,72,8):
-      literal = line[x:x+8]
-      self.sections.append(int(literal))
-    sec = self.sections
-
-    #These assertions imply that the map covers the whole unit
-    #cell.  So: get rid of the assertions in short order.
-    assert (sec[2]-sec[1] == sec[0] or sec[2]-sec[1] == sec[0]-1)
-    assert (sec[5]-sec[4] == sec[3] or sec[5]-sec[4] == sec[3]-1)
-    assert (sec[8]-sec[7] == sec[6] or sec[8]-sec[7] == sec[6]-1)
-
+    values = [int(line[i:i+8]) for i in xrange(0,72,8)]
+    self.gridding = map_gridding(
+      n     = [values[i] for i in xrange(0,9,3)],
+      first = [values[i] for i in xrange(1,9,3)],
+      last  = [values[i] for i in xrange(2,9,3)])
     # unit cell
     line = f.readline()
-    ucparams=[]
-    for x in xrange(0,72,12):
-      literal = line[x:x+12]
-      ucparams.append(float(literal))
-    self.unitcell = uctbx.unit_cell(tuple(ucparams))
-
+    params = [float(line[i:i+12]) for i in xrange(0,72,12)]
+    self.unit_cell = uctbx.unit_cell(params)
     # ordering information ZYX
-    self.order = f.readline().strip()
+    order = f.readline().strip()
+    assert order == "ZYX"
     f.close()
-
-    self.data = self.ReadXplorMap(arg,len(self.title)+5,self.sections)
-
+    self.data = self.ReadXplorMap(
+      file_name=file_name,
+      n_header_lines=len(self.title)+5,
+      grid=self.gridding.as_flex_grid())
     # average and standard deviation
-    f = open(arg,"r")
+    f = open(file_name, "r")
     while (f.readline().strip()!='-9999'):
       pass
-    (self.average,self.stddev)=tuple(
+    (self.average,self.standard_deviation)=tuple(
       [float(z) for z in f.readline().strip().split()])
     return self
 
-  def write(self,arg):
-    assert self.order=='ZYX'
-    #but the sections and the data are given as XYZ:
-    for x in xrange(3):
-      assert self.data.focus()[x]==self.sections[3*x+2]-self.sections[3*x+1]+1
-
-    f = open(arg,'wb')
+  def write(self, file_name):
+    assert self.gridding.is_compatible_flex_grid(self.data.accessor())
+    f = open(file_name, "wb")
     f.write("\n")
-    f.write("%8d !NTITLE\n"%len(self.title))
+    f.write("%8d !NTITLE\n" % len(self.title))
     for line in self.title:
-      f.write("%-264s\n"%line)
-    f.write("%8d%8d%8d%8d%8d%8d%8d%8d%8d\n"%tuple(self.sections))
+      f.write("%-264s\n" % line)
+    f.write("%s\n" % self.gridding.format_9i8())
     f.close()
-    self.WriteXplorMap(self.unitcell,self.data,self.average,self.stddev,arg)
+    self.WriteXplorMap(
+      file_name=file_name,
+      unit_cell=self.unit_cell,
+      map=self.data,
+      average=self.average,
+      standard_deviation=self.standard_deviation)
