@@ -668,7 +668,8 @@ group {
 }
 """)
   out = StringIO()
-  parameters.merge_and_extract(source=parameters).format().show(out=out)
+  extracted = parameters.fetch(source=parameters).extract()
+  parameters.format(extracted).show(out=out)
   assert out.getvalue() == """\
 group
 {
@@ -685,7 +686,7 @@ group
   s = "P 21 21 21"
 }
 """
-  definition = parameters.get_last(path="group.a")
+  definition = parameters.get(path="group.a").objects[0]
   definition.type = "foo"
   try: definition.format(python_object=0)
   except RuntimeError, e:
@@ -790,8 +791,8 @@ c {
   a=None
 }
 """)
-  merged = master.merge(custom)
-  extracted = merged.extract()
+  fetched = master.fetch(custom)
+  extracted = fetched.extract()
   assert extracted.a == [1,2]
   assert extracted.b[0].a == [3,4]
   assert extracted.b[0].b == []
@@ -811,17 +812,17 @@ a=None
 a=1
 a=2
 """)
-  extracted = master.merge(custom).extract()
+  extracted = master.fetch(custom).extract()
   assert extracted.a == 2
   custom = iotbx.parameters.parse(input_string="""\
 a=1
 #a=2
 """)
-  extracted = master.merge(custom).extract()
+  extracted = master.fetch(custom).extract()
   assert extracted.a == 1
   custom = iotbx.parameters.parse(input_string="""\
 """)
-  extracted = master.merge(custom).extract()
+  extracted = master.fetch(custom).extract()
   assert extracted.a == None
   #
   master = iotbx.parameters.parse(input_string="""\
@@ -833,17 +834,17 @@ a=None
 a=1
 a=2
 """)
-  extracted = master.merge(custom).extract()
+  extracted = master.fetch(custom).extract()
   assert extracted.a == [1,2]
   custom = iotbx.parameters.parse(input_string="""\
 a=1
 #a=2
 """)
-  extracted = master.merge(custom).extract()
+  extracted = master.fetch(custom).extract()
   assert extracted.a == [1]
   custom = iotbx.parameters.parse(input_string="""\
 """)
-  extracted = master.merge(custom).extract()
+  extracted = master.fetch(custom).extract()
   assert extracted.a == [None]
   #
   master = iotbx.parameters.parse(input_string="""\
@@ -856,22 +857,22 @@ a=None
 a=1
 a=2
 """)
-  extracted = master.merge(custom).extract()
+  extracted = master.fetch(custom).extract()
   assert extracted.a == [1,2]
   custom = iotbx.parameters.parse(input_string="""\
 a=1
 #a=2
 """)
-  extracted = master.merge(custom).extract()
+  extracted = master.fetch(custom).extract()
   assert extracted.a == [1]
   custom = iotbx.parameters.parse(input_string="""\
 """)
-  extracted = master.merge(custom).extract()
+  extracted = master.fetch(custom).extract()
   assert extracted.a == []
   custom = iotbx.parameters.parse(input_string="""\
 a=None
 """)
-  extracted = master.merge(custom).extract()
+  extracted = master.fetch(custom).extract()
   assert extracted.a == []
   #
   master = iotbx.parameters.parse(input_string="""\
@@ -885,7 +886,7 @@ s
 """)
   custom = iotbx.parameters.parse(input_string="""\
 """)
-  extracted = master.merge(custom).extract()
+  extracted = master.fetch(custom).extract()
   assert extracted.s.a is None
   custom = iotbx.parameters.parse(input_string="""\
 s {
@@ -895,7 +896,7 @@ s {
   a=2
 }
 """)
-  extracted = master.merge(custom).extract()
+  extracted = master.fetch(custom).extract()
   assert extracted.s.a == 2
   custom = iotbx.parameters.parse(input_string="""\
 s {
@@ -906,7 +907,7 @@ s {
   a=3
 }
 """)
-  extracted = master.merge(custom).extract()
+  extracted = master.fetch(custom).extract()
   assert extracted.s.a == 3
   #
   master = iotbx.parameters.parse(input_string="""\
@@ -920,14 +921,14 @@ s
 """)
   custom = iotbx.parameters.parse(input_string="""\
 """)
-  extracted = master.merge(custom).extract()
+  extracted = master.fetch(custom).extract()
   assert extracted.s[0].a == None
   custom = iotbx.parameters.parse(input_string="""\
 s {
   a=None
 }
 """)
-  extracted = master.merge(custom).extract()
+  extracted = master.fetch(custom).extract()
   assert extracted.s[0].a == None
   custom = iotbx.parameters.parse(input_string="""\
 s {
@@ -937,7 +938,7 @@ s {
   a=2
 }
 """)
-  extracted = master.merge(custom).extract()
+  extracted = master.fetch(custom).extract()
   assert extracted.s[0].a == 1
   assert extracted.s[1].a == 2
   custom = iotbx.parameters.parse(input_string="""\
@@ -949,7 +950,7 @@ s {
   a=3
 }
 """)
-  extracted = master.merge(custom).extract()
+  extracted = master.fetch(custom).extract()
   assert extracted.s[0].a == 1
   assert extracted.s[1].a == 3
   master = iotbx.parameters.parse(input_string="""\
@@ -964,14 +965,14 @@ s
 """)
   custom = iotbx.parameters.parse(input_string="""\
 """)
-  extracted = master.merge(custom).extract()
+  extracted = master.fetch(custom).extract()
   assert extracted.s == []
   custom = iotbx.parameters.parse(input_string="""\
 s {
   a=None
 }
 """)
-  extracted = master.merge(custom).extract()
+  extracted = master.fetch(custom).extract()
   assert extracted.s == []
   custom = iotbx.parameters.parse(input_string="""\
 s {
@@ -981,7 +982,7 @@ s {
   a=2
 }
 """)
-  extracted = master.merge(custom).extract()
+  extracted = master.fetch(custom).extract()
   assert extracted.s[0].a == 1
   assert extracted.s[1].a == 2
   custom = iotbx.parameters.parse(input_string="""\
@@ -993,7 +994,7 @@ s {
   a=3
 }
 """)
-  extracted = master.merge(custom).extract()
+  extracted = master.fetch(custom).extract()
   assert extracted.s[0].a == 1
   assert extracted.s[1].a == 3
 
@@ -1006,7 +1007,7 @@ def exercise_deepcopy():
 """)
   copy.deepcopy(parameters)
 
-def exercise_merge():
+def exercise_fetch():
   master = iotbx.parameters.parse(input_string="""\
 a=None
   .expert_level=1
@@ -1080,16 +1081,16 @@ t
 }
 u=e b f *c a g
 """)
-  merged = master.merge(source=source)
+  fetched = master.fetch(source=source)
   out = StringIO()
-  merged.show(out=out, attributes_level=2)
+  fetched.show(out=out, attributes_level=2)
   assert out.getvalue() == """\
 a = 7
   .expert_level = 1
 
 c
 {
-  a = ${v.x}
+  a = y
     .expert_level = 3
   b = 1
     .expert_level = 4
@@ -1097,7 +1098,7 @@ c
   c
     .expert_level = 5
   {
-    y = ${v.y}
+    y = 3
       .type = "int"
       .expert_level = 7
 
@@ -1111,12 +1112,6 @@ c
     x = 1
       .expert_level = 6
   }
-}
-
-v
-{
-  x = y
-  y = 3
 }
 
 t
@@ -1145,7 +1140,6 @@ u = a b *c
 b = None
   .expert_level = 2
 """
-  assert merged.get(path="c.c.y").objects[0].extract() == 3
   master = iotbx.parameters.parse(input_string="""\
 c=a *b c
   .type=choice
@@ -1153,7 +1147,7 @@ c=a *b c
   source = iotbx.parameters.parse(input_string="""\
 c=a *d c
 """)
-  try: merged = master.merge(sources=[source])
+  try: fetched = master.fetch(sources=[source])
   except RuntimeError, e:
     assert str(e) == "Not a possible choice: *d (input line 1)"
   else: raise RuntimeError("Exception expected.")
@@ -1168,7 +1162,7 @@ def exercise():
   exercise_extract()
   exercise_format()
   exercise_deepcopy()
-  exercise_merge()
+  exercise_fetch()
   print "OK"
 
 if (__name__ == "__main__"):
