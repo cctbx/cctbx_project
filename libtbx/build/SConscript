@@ -88,7 +88,7 @@ else:
   if (env_etc.compiler == "tru64_cxx"):
     env_etc.static_libraries = 0
     env_etc.static_bpl = 0
-    cxx = "cxx -model ansi"
+    cxx = "cxx"#-model ansi"
     env_base.Replace(
       CC="cc",
       SHCC="cc",
@@ -153,7 +153,7 @@ else:
         -DNDEBUG
     """ % (os.environ["LIBTBX_BOOST"],))
     env_etc.ccflags_base = Split("""
-        -O2 
+        -O2
     """)
     env_etc.shlinkflags = "-shared -LD_MSG:off=15,84"
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
