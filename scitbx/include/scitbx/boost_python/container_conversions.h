@@ -116,7 +116,6 @@ namespace scitbx { namespace boost_python { namespace container_conversions {
     template <typename ContainerType, typename ValueType>
     static void set_value(ContainerType& a, std::size_t i, ValueType const& v)
     {
-      assert(a.size() == i);
       a.insert(v);
     }
   };
