@@ -97,7 +97,7 @@ namespace cctbx { namespace af {
         std::swap(elems, other);
       }
 
-      void assign(size_type n, const ElementType& x) {
+      void assign(size_type n, const ElementType& x = ElementType()) {
         std::fill(begin(), begin()+n, x);
         m_size = n;
       }
@@ -114,6 +114,6 @@ namespace cctbx { namespace af {
       size_type m_size;
   };
 
-}} // namespace cctbx::array_family
+}} // namespace cctbx::af
 
 #endif // CCTBX_ARRAY_FAMILY_SMALL_BASE_H

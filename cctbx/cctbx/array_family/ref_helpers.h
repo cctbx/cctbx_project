@@ -34,15 +34,15 @@ const ElementType& at(size_type i) const { \
 #define CCTBX_ARRAY_FAMILY_TAKE_REF(beg, sz) \
 ref<ElementType> \
 take_ref() { \
-  return ref<ElementType>(this->elems, N); \
+  return ref<ElementType>(beg, sz); \
 } \
 const_ref<ElementType> \
 take_const_ref() const { \
-  return const_ref<ElementType>(this->elems, N); \
+  return const_ref<ElementType>(beg, sz); \
 } \
 operator ref<ElementType>() { \
-  return ref<ElementType>(this->elems, N); \
+  return ref<ElementType>(beg, sz); \
 } \
 operator const_ref<ElementType>() const { \
-  return const_ref<ElementType>(this->elems, N); \
+  return const_ref<ElementType>(beg, sz); \
 }

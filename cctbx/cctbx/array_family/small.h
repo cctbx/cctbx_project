@@ -27,7 +27,7 @@ namespace cctbx { namespace af {
       CCTBX_ARRAY_FAMILY_TAKE_REF(this->elems, N)
   };
 
-}} // namespace cctbx::array_family
+}} // namespace cctbx::af
 
 #include <cctbx/array_family/small_operators.h>
 

@@ -41,6 +41,6 @@ namespace cctbx { namespace af {
       static size_type capacity() { return N; }
   };
 
-}} // namespace cctbx::array_family
+}} // namespace cctbx::af
 
 #endif // CCTBX_ARRAY_FAMILY_TINY_BASE_H
