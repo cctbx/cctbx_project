@@ -208,6 +208,12 @@ def exercise_bond():
   assert approx_equal(gradient_array,
     [(5.1354626519124107, 5.1354626519124107, 5.1354626519124107),
      (-5.1354626519124107, -5.1354626519124107, -5.1354626519124107)])
+  sorted_asu_proxies.process(sorted_asu_proxies.simple.deep_copy())
+  assert sorted_asu_proxies.simple.size() == 4
+  sorted_asu_proxies.process(sorted_asu_proxies.sym.deep_copy())
+  assert sorted_asu_proxies.sym.size() == 0
+  sorted_asu_proxies.push_back(sorted_asu_proxies.sym.deep_copy())
+  assert sorted_asu_proxies.sym.size() == 0
   #
   pair_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
   assert pair_asu_table.table()[0].keys() == []
@@ -381,6 +387,10 @@ def exercise_repulsion():
   assert approx_equal(gradient_array,
     [(1290.2817767146657, 1290.2817767146657, 1290.2817767146657),
      (-1290.2817767146657, -1290.2817767146657, -1290.2817767146657)])
+  sorted_asu_proxies.process(sorted_asu_proxies.simple.deep_copy())
+  assert sorted_asu_proxies.simple.size() == 4
+  sorted_asu_proxies.process(sorted_asu_proxies.sym.deep_copy())
+  assert sorted_asu_proxies.sym.size() == 0
 
 def exercise_angle():
   p = restraints.angle_proxy(

@@ -136,8 +136,16 @@ namespace {
           (bool(w_t::*)(repulsion_simple_proxy const&)) &w_t::process,
             (arg_("proxy")))
         .def("process",
+          (void(w_t::*)(af::const_ref<repulsion_simple_proxy> const&))
+            &w_t::process,
+          (arg_("proxies")))
+        .def("process",
           (bool(w_t::*)(repulsion_asu_proxy const&)) &w_t::process,
             (arg_("proxy")))
+        .def("process",
+          (void(w_t::*)(af::const_ref<repulsion_asu_proxy> const&))
+            &w_t::process,
+          (arg_("proxies")))
         .def("n_total", &w_t::n_total)
         .def_readonly("simple", &w_t::simple)
         .def_readonly("sym", &w_t::sym)
