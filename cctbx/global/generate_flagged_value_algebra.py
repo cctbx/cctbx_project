@@ -42,7 +42,7 @@ def elementwise_binary_op(op_class, op_symbol, type_flags):
     const %s& a2) {
 %s result;
     if (%s) {
-      result.v = a1%s %s a1%s;
+      result.v = a1%s %s a2%s;
       result.f = true;
     }
     return result;
@@ -129,26 +129,74 @@ def generate_2arg_element_wise(
   equal_element_type = 0,
   addl_args = ["", ""]
 ):
-  hp = get_template_header_and_parameters(
-    "flagged_value", 2, equal_element_type)
   for function_name in function_names:
-    print """%s
+    for type_flags in ((1,1), (1,0), (0,1)):
+      d = operator_decl_params(
+        "flagged_value", "binary", "n/a", type_flags, equal_element_type)
+      a = binary_operator_algo_params(type_flags)
+      print """%s
   inline
   %s
   %s(
     const %s& a1,
     const %s& a2%s) {
     %s result;
-    if (a1.f && a2.f) {
-      result.v = %s(a1.v, a2.v%s);
+    if (%s) {
+      result.v = %s(a1%s, a2%s%s);
       result.f = true;
     }
     return result;
   }
-""" % (format_header("  ", hp.header), hp.params[0],
-       function_name, hp.params[0], hp.params[1], addl_args[0],
-       hp.params[0],
-       function_name, addl_args[1])
+""" % (format_header("  ", d.header),
+       format_list("  ", d.return_array_type),
+       function_name, d.params[0], d.params[1], addl_args[0],
+       format_list("    ", d.return_array_type),
+       a.have_both_test, function_name, a.dotv[0], a.dotv[1], addl_args[1])
+
+def generate_element_wise_special(special_def):
+  p = special_decl_params("flagged_value", special_def)
+  if (len(p.arg_array_types) == 1):
+    print """%s
+  inline
+  %s
+  %s(const %s& a) {
+    %s result;
+    if (a.f) {
+      result.v = %s(a.v);
+      result.f = true;
+    }
+    return result;
+  }
+""" % (format_header("  ", p.header), p.return_array_type,
+       p.function_name, p.arg_array_types[0],
+       p.return_array_type,
+       p.function_name)
+  else:
+    for type_flags in ((1,1), (1,0), (0,1)):
+      a = binary_operator_algo_params(type_flags)
+      params = []
+      for i in xrange(2):
+        if (type_flags[i]):
+          params.append(p.arg_array_types[i])
+        else:
+          params.append(p.arg_element_types[i])
+      print """%s
+  inline
+  %s
+  %s(
+    const %s& a1,
+    const %s& a2) {
+    %s result;
+    if (%s) {
+      result.v = %s(a1%s, a2%s);
+      result.f = true;
+    }
+    return result;
+  }
+""" % (format_header("  ", p.header), p.return_array_type,
+       p.function_name, params[0], params[1],
+       p.return_array_type,
+       a.have_both_test, p.function_name, a.dotv[0], a.dotv[1])
 
 def run():
   f = open("flagged_value_algebra.h", "w")
@@ -172,8 +220,10 @@ namespace cctbx { namespace af {
     generate_elementwise_binary_op("logical", op_symbol)
   for op_symbol in boolean_ops:
     generate_elementwise_binary_op("boolean", op_symbol)
-  generate_1arg_element_wise(cmath_1arg + cstdlib_1arg)
+  generate_1arg_element_wise(cmath_1arg + cstdlib_1arg + complex_1arg)
   generate_2arg_element_wise(cmath_2arg)
+  for special_def in complex_special:
+    generate_element_wise_special(special_def)
   for args in misc_functions_2arg:
     apply(generate_2arg_element_wise, args)
 

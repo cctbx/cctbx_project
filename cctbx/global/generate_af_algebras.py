@@ -29,9 +29,9 @@ boolean_ops = ("==", "!=", ">", "<", ">=", "<=")
 
 misc_functions_2arg = (
   (["approx_equal_scaled"], 1,
-   [", const ElementType& scaled_tolerance", ", scaled_tolerance"]),
+   [",\n    const ElementType& scaled_tolerance", ", scaled_tolerance"]),
   (["approx_equal_unscaled"], 1,
-   [", const ElementType& tolerance", ", tolerance"]),
+   [",\n    const ElementType& tolerance", ", tolerance"]),
 )
 
 reduction_functions_1arg = (
@@ -138,9 +138,35 @@ def derive_return_array_type_simple(param):
   if (not param.startswith("small")): return param
   return param.replace("N1", "(N1<N2?N1:N2)")
 
-def operator_decl_params(array_type_name, op_type, op_class, type_flags):
+def wrap_element_type(array_type_name, element_type, addl):
+  from string import join
+  r = array_type_name + "<" + join([element_type] + addl, ", ") + ">"
+  if (r.endswith(">>")): return r[:-1] + " >"
+  return r
+
+def special_decl_params(array_type_name, special_def):
+  r = empty()
+  r.return_elment_type = special_def[0]
+  r.function_name = special_def[1]
+  r.arg_element_types = special_def[2:]
+  r.nta = get_numbered_template_args(array_type_name, 1, 0)
+  addl = []
+  if (len(r.nta[0]) == 2): addl = [r.nta[0][1][1]]
+  r.header = get_template_header(r.nta)
+  r.return_array_type = wrap_element_type(
+    array_type_name, r.return_elment_type, addl)
+  r.arg_array_types = []
+  for aet in r.arg_element_types:
+    r.arg_array_types.append(wrap_element_type(
+      array_type_name, aet, addl))
+  return r
+
+def operator_decl_params(array_type_name, op_type, op_class, type_flags,
+  equal_element_type = 0
+):
   if (type_flags != (1,1)):
-    r = get_template_header_and_parameters(array_type_name, 1)
+    r = get_template_header_and_parameters(array_type_name, 1,
+      equal_element_type)
     r.params.insert(type_flags[0], "ElementType")
     r.return_element_type = ["ElementType"]
     if (op_type == "unary"):
@@ -152,8 +178,9 @@ def operator_decl_params(array_type_name, op_type, op_class, type_flags):
         "typename binary_operator_traits<",
         "  ElementType, ElementType>::" + op_class]
   else:
-    r = get_template_header_and_parameters(array_type_name, 2)
-    r.return_element_type = ["ElementType"]
+    r = get_template_header_and_parameters(
+      array_type_name, 2, equal_element_type)
+    r.return_element_type = [r.nta[0][0][1]]
     if (op_class != "n/a"):
       r.return_element_type = [
         "typename binary_operator_traits<",
@@ -173,7 +200,9 @@ def operator_decl_params(array_type_name, op_type, op_class, type_flags):
   r.return_array_type[-1] += ">"
   return r
 
-def get_result_constructor_args(array_type_name, arg_name = "a"):
+def get_result_constructor_args(array_type_name, type_flags = None):
+  arg_name = "a"
+  if (type_flags != None): arg_name = "a%d" % ((type_flags[0] + 1) % 2 + 1,)
   if (array_type_name == "tiny"): return ""
   if (array_type_name == "versa"):
     return "(%s.accessor())" % (arg_name,)
@@ -190,7 +219,7 @@ def binary_operator_algo_params(array_type_name, type_flags):
     """
     r.loop_n = "a%d.size()" % ((type_flags[0] + 1) % 2 + 1,)
     r.result_constructor_args = get_result_constructor_args(
-      array_type_name, r.loop_n[:2])
+      array_type_name, type_flags)
   r.opsqbr = ["", ""]
   for i in xrange(2):
     if (type_flags[i]): r.opsqbr[i] = "[i]"
@@ -378,27 +407,79 @@ def generate_2arg_element_wise(
   equal_element_type = 0,
   addl_args = ["", ""]
 ):
-  hp = get_template_header_and_parameters(
-    array_type_name, 2, equal_element_type)
-  rt = derive_return_array_type_simple(hp.params[0])
-  result_constructor_args = get_result_constructor_args(array_type_name, "a1")
   for function_name in function_names:
+    for type_flags in ((1,1), (1,0), (0,1)):
+      d = operator_decl_params(
+        array_type_name, "binary", "n/a", type_flags, equal_element_type)
+      a = binary_operator_algo_params(array_type_name, type_flags)
+      print """%s
+  inline
+%s
+  %s(
+    const %s& a1,
+    const %s& a2%s) {
+%s
+    result%s;
+    %sfor(std::size_t i=0;i<%s;i++) {
+      result[i] = %s(a1%s, a2%s%s);
+    }
+    return result;
+  }
+""" % (format_header("  ", d.header),
+       format_list("  ", d.return_array_type),
+       function_name, d.params[0], d.params[1], addl_args[0],
+       format_list("    ", d.return_array_type),
+       a.result_constructor_args, a.size_assert, a.loop_n,
+       function_name, a.opsqbr[0], a.opsqbr[1], addl_args[1])
+
+def generate_element_wise_special(
+  array_type_name, special_def,
+  addl_args = ["", ""]
+):
+  p = special_decl_params(array_type_name, special_def)
+  if (len(p.arg_array_types) == 1):
+    result_constructor_args = get_result_constructor_args(array_type_name)
     print """%s
+  inline
+  %s
+  %s(const %s& a%s) {
+    %s result%s;
+    for(std::size_t i=0;i<a.size();i++) {
+      result[i] = %s(a[i]%s);
+    }
+    return result;
+  }
+""" % (format_header("  ", p.header), p.return_array_type,
+       p.function_name, p.arg_array_types[0], addl_args[0],
+       p.return_array_type,
+       result_constructor_args,
+       p.function_name, addl_args[1])
+  else:
+    for type_flags in ((1,1), (1,0), (0,1)):
+      a = binary_operator_algo_params(array_type_name, type_flags)
+      params = []
+      for i in xrange(2):
+        if (type_flags[i]):
+          params.append(p.arg_array_types[i])
+        else:
+          params.append(p.arg_element_types[i])
+      print """%s
   inline
   %s
   %s(
     const %s& a1,
     const %s& a2%s) {
     %s result%s;
-    for(std::size_t i=0;i<a1.size();i++) {
-      result[i] = %s(a1[i], a2[i]%s);
+    %sfor(std::size_t i=0;i<%s;i++) {
+      result[i] = %s(a1%s, a2%s%s);
     }
     return result;
   }
-""" % (format_header("  ", hp.header), rt,
-       function_name, hp.params[0], hp.params[1], addl_args[0],
-       rt, result_constructor_args,
-       function_name, addl_args[1])
+""" % (format_header("  ", p.header), p.return_array_type,
+       p.function_name, params[0], params[1], addl_args[0],
+       p.return_array_type,
+       a.result_constructor_args, a.size_assert, a.loop_n,
+       p.function_name, a.opsqbr[0], a.opsqbr[1], addl_args[1])
 
 def one_type(array_type_name):
   f = open("%s_algebra.h" % (array_type_name,), "w")
@@ -438,8 +519,11 @@ namespace cctbx { namespace af {
         array_type_name, "boolean", op_symbol, function_name)
     for op_symbol in boolean_ops:
       generate_reducing_boolean_op(array_type_name, op_symbol)
-    generate_1arg_element_wise(array_type_name, cmath_1arg + cstdlib_1arg)
+    generate_1arg_element_wise(
+      array_type_name, cmath_1arg + cstdlib_1arg + complex_1arg)
     generate_2arg_element_wise(array_type_name, cmath_2arg)
+    for special_def in complex_special:
+      generate_element_wise_special(array_type_name, special_def)
     for args in misc_functions_2arg:
       apply(generate_2arg_element_wise, (array_type_name,) + args)
   generate_1arg_reductions(array_type_name)
@@ -452,7 +536,6 @@ namespace cctbx { namespace af {
   f.close()
 
 def run():
-  print __name__
   for array_type_name in ("ref", "tiny", "small", "shared", "versa"):
     one_type(array_type_name)
 
