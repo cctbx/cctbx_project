@@ -410,6 +410,15 @@ def exercise_phase_transfer():
   a = flex.complex_double((3.6,4.6))
   assert approx_equal(tuple(miller.phase_transfer(sg, i, a, p, 1.e-10)),
                       ((1.6099689+3.2199379j), 0j))
+  for a in(flex.double((-3.6,4.6)), flex.complex_double((3.6,4.6))):
+    p = flex.double((10,20))
+    t = miller.phase_transfer(sg, i, a, p, 0001)
+    assert approx_equal(tuple(flex.abs(t)), flex.abs(a))
+    assert approx_equal(tuple(flex.arg(t, 1)), (10,90))
+    p = p * (math.pi/180)
+    t = miller.phase_transfer(sg, i, a, p, 00000)
+    assert approx_equal(tuple(flex.abs(t)), flex.abs(a))
+    assert approx_equal(tuple(flex.arg(t, 1)), (10,90))
 
 def run():
   exercise_sym_equiv()

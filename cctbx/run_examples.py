@@ -8,6 +8,7 @@ def run():
   "$D/cctbx/examples/analyze_adp.py",
   ["$D/cctbx/examples/all_axes.py", "P31"],
   ["$D/cctbx/examples/tst_phase_o_phrenia.py", "P2"],
+  "$D/cctbx/examples/map_skewness.py",
   )
 
   build_dir = os.path.join(os.environ["LIBTBX_BUILD"], "cctbx")
