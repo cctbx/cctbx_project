@@ -324,6 +324,10 @@ END
   stage_1 = pdb.interpretation.stage_1(raw_records=pdb_file)
   sel_cache = stage_1.selection_cache()
   isel = sel_cache.iselection
+  assert isel("all").size() == sel_cache.n_seq
+  assert isel("none").size() == 0
+  assert isel("not all").size() == 0
+  assert isel("not none").size() == sel_cache.n_seq
   assert list(isel(r"name c?\*")) == [45,46,48,50,52]
   assert list(isel(r"name 'C?\*'")) == []
   assert list(isel(r"name ' C?\*'")) == [45,46,48,50,52]
@@ -332,6 +336,7 @@ END
   assert list(isel(r"altloc a and name n")) == [24]
   assert list(isel(r"altloc b and name n")) == [32]
   assert list(isel(r"altloc ' ' and name n")) == [0,6,17]
+  assert list(isel(r"altid ' ' and name n")) == [0,6,17]
   assert list(isel(r"resname hoh")) == [69]
   assert list(isel(r"resname SO4")) == [64,65,66,67,68]
   assert list(isel(r"resname so4")) == [64,65,66,67,68]
@@ -344,12 +349,14 @@ END
   assert list(isel(r"chain h and name o*")) == [41,42,43,44,47,49,51,58]
   assert list(isel(r"(chain h or chain s) and name o[2-46]")) == [58,66,67,68]
   assert list(isel(r"resseq 188")) == [64,65,66,67,68]
+  assert list(isel(r"resid 188")) == [64,65,66,67,68]
   assert list(isel(r"resseq 188:")) == [64,65,66,67,68,69]
   assert list(isel(r"resseq 188-")) == [64,65,66,67,68,69]
   assert list(isel(r"resseq :2 and name n*")) == [0,6,13,15,16]
   assert list(isel(r"resseq -2 and name n*")) == [0,6,13,15,16]
   assert list(isel(r"resseq 2:4 and name cb")) == [10,21,28,36]
   assert list(isel(r"resseq 2-4 and name cb")) == [10,21,28,36]
+  assert list(isel(r"resid 2-4 and name cb")) == [10,21,28,36]
   assert list(isel(r"model 1 and name cb")) == [4,10,21,28,36]
   assert list(isel(r"model 2-3 and name o1*")) == [41,65]
   assert list(isel(r"icode j and name c?")) == [18,21,22,23]
