@@ -8,13 +8,13 @@
 
 <hr>
 
-<h2>Superposition of two atomic models:</h2>
+<h2>Superposition of atomic models:</h2>
 
 <hr>
 
 <FORM METHOD=POST ACTION="emma.py">
 
-<h3>Model 1</h3>
+<h3>Reference model</h3>
 
 <strong>Unit cell parameters: </strong><input
 name="ucparams_1" size=40
@@ -39,17 +39,27 @@ Convention:
 <p>
 <strong>Coordinates:</strong>
 <p>
+Format:
+<select name="format_1">
+  <option value="generic" selected
+    >Generic</option>
+  <option value="cns_sdb"
+    >CNS sdb</option>
+</select>
+<p>
+Generic format only:
+<blockquote>
 <input type=radio name="coor_type_1" value="Fractional" checked>Fractional
 <br>
 <input type=radio name="coor_type_1" value="Cartesian">Cartesian
-<p>
+<br>
 Skip the left <input name="skip_columns_1" size=4 value="0"> columns.
-<p>
+</blockquote>
 <textarea name="coordinates_1" rows=16 cols=60></textarea>
 
 <hr>
 
-<h3>Model 2</h3>
+<h3>Other models:</h3>
 
 <strong>Unit cell parameters: </strong><input
 name="ucparams_2" size=40
@@ -76,12 +86,22 @@ Convention:
 <p>
 <strong>Coordinates:</strong>
 <p>
+Format:
+<select name="format_2">
+  <option value="generic" selected
+    >Generic</option>
+  <option value="cns_sdb"
+    >CNS sdb</option>
+</select>
+<p>
+Generic format only:
+<blockquote>
 <input type=radio name="coor_type_2" value="Fractional" checked>Fractional
 <br>
 <input type=radio name="coor_type_2" value="Cartesian">Cartesian
 <p>
 Skip the left <input name="skip_columns_2" size=4 value="0"> columns.
-<p>
+</blockquote>
 <textarea name="coordinates_2" rows=16 cols=60></textarea>
 
 <hr>

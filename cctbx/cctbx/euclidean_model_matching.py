@@ -228,16 +228,25 @@ def match_sort_function(match_a, match_b):
   if (i): return i
   return cmp(match_a.rms, match_b.rms)
 
-def weed_refined_matches(space_group_number, refined_matches):
+def weed_refined_matches(space_group_number, refined_matches,
+                         rms_penalty_per_site):
   n_matches = len(refined_matches)
+  if (n_matches == 0): return
+  best_rms = refined_matches[0].rms
+  best_n_pairs = len(refined_matches[0].pairs)
   is_redundant = [0] * n_matches
   for i in xrange(n_matches-1):
     match_i = refined_matches[i]
     if (is_redundant[i]): continue
+    if (match_i.rms < best_rms):
+      best_rms = match_i.rms
+      best_n_pairs = len(match_i.pairs)
     for j in xrange(i+1, n_matches):
       match_j = refined_matches[j]
-      if (match_i.pairs == match_j.pairs):
-        assert match_i.rms <= match_j.rms
+      if (   match_i.pairs == match_j.pairs
+          or (    rms_penalty_per_site
+              and match_j.rms > best_rms * (1 - rms_penalty_per_site * (
+                    best_n_pairs - len(match_j.pairs))))):
         is_redundant[j] = 1
   for i in xrange(n_matches-1, -1, -1):
     if (is_redundant[i]):
@@ -263,7 +272,8 @@ def match_rt_from_ref_eucl_rt(model1_cbop, model2_cbop, ref_eucl_rt):
   return inv_m1 * ref_eucl_rt * m2
 
 def match_models(model1, model2,
-                 tolerance=1., models_are_diffraction_index_equivalent=0):
+                 tolerance=1., models_are_diffraction_index_equivalent=0,
+                 rms_penalty_per_site = 0.05):
   ref_model1 = model1.transform_to_reference_setting()
   ref_model2 = model2.transform_to_reference_setting()
   assert xutils.are_similar_unit_cells(ref_model1.UnitCell,ref_model2.UnitCell)
@@ -299,7 +309,8 @@ def match_models(model1, model2,
             match.ref_eucl_rt)
           refined_matches.append(match)
   refined_matches.sort(match_sort_function)
-  weed_refined_matches(model1.SgInfo.SgNumber(), refined_matches)
+  weed_refined_matches(model1.SgInfo.SgNumber(), refined_matches,
+                       rms_penalty_per_site)
   return refined_matches
 
 ###############################################
@@ -483,7 +494,7 @@ def run_test(argv):
         if (j): m2 = model2.transform_to_reference_setting()
         m1.show("Model1(%d)" % (i,))
         m2.show("Model2(%d)" % (j,))
-        refined_matches = match_models(m1, m2)
+        refined_matches = match_models(m1, m2, rms_penalty_per_site=0)
         debug_analyze_refined_matches(m1, m2, refined_matches)
   else:
     for RawSgSymbol in symbols:
@@ -511,7 +522,7 @@ def run_test(argv):
       model_core.show("Core")
       model1.show("Model1")
       model2.show("Model2")
-      refined_matches = match_models(model1, model2)
+      refined_matches = match_models(model1, model2, rms_penalty_per_site=0)
       debug_analyze_refined_matches(model1, model2, refined_matches)
 
 if (__name__ == "__main__"):
