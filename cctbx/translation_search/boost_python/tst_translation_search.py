@@ -30,9 +30,26 @@ def exercise_fast_nv1995():
     p1_f_calc=flex.complex_double((12,)))
   assert f.target_map().all() == (20,20,36)
 
+def exercise_fast_terms():
+  space_group = sgtbx.space_group_info("P 21 21 21").group()
+  miller_indices_f_obs = flex.miller_index(((3,4,5),(4,5,6)))
+  f = translation_search.fast_terms(
+    (20,20,36),
+    00000,
+    flex.miller_index(((1,2,3),)),
+    flex.complex_double((12,)))
+  assert f.summation(
+    space_group,
+    miller_indices_f_obs,
+    flex.double((1,2)),
+    flex.double((1,2)),
+    flex.complex_double(),
+    00000).fft().accu_real_copy().all() == (20,20,36)
+
 def run():
   exercise_symmetry_flags()
   exercise_fast_nv1995()
+  exercise_fast_terms()
   print "OK"
 
 if (__name__ == "__main__"):
