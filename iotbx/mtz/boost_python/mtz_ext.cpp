@@ -49,6 +49,7 @@ namespace iotbx { namespace mtz { namespace boost_python {
       .def("ndatasets",  &Mtz::ndatasets)
       .def("ncolumns",   &Mtz::ncolumns,
            return_value_policy<copy_non_const_reference>())
+      .def("max_min_resolution", &Mtz::max_min_resolution)
       .def("MIx",        &Mtz::MIx)
       .def("printHeaderAdv",&Mtz::printHeaderAdv)
       .def("valid_indices", &Mtz::valid_indices)

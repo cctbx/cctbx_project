@@ -99,6 +99,38 @@ Crystal Mtz::columnToCrystal(std::string s) const{
   throw iotbx::mtz::Error("no such column label");//Never get here but make compiler happy
 }
 
+af::double2
+Mtz::max_min_resolution()
+{
+  Column H(getColumn("H"));
+  Column K(getColumn("K"));
+  Column L(getColumn("L"));
+  std::vector<cctbx::uctbx::unit_cell> unit_cells;
+  for (int i_crystal=0;i_crystal<ncrystals();i_crystal++) {
+    unit_cells.push_back(UnitCell(i_crystal));
+  }
+  double d_star_sq_min = -1;
+  double d_star_sq_max = -1;
+  for (int i_index=0; i_index<this->size(); i_index++) {
+    for (int i_crystal=0;i_crystal<ncrystals();i_crystal++) {
+      double d_star_sq = unit_cells[i_crystal].d_star_sq(
+        cctbx::miller::index<>(
+          H.lookup(i_index),
+          K.lookup(i_index),
+          L.lookup(i_index)));
+      if (d_star_sq_min > d_star_sq || d_star_sq_min < 0) {
+          d_star_sq_min = d_star_sq;
+      }
+      if (d_star_sq_max < d_star_sq) {
+          d_star_sq_max = d_star_sq;
+      }
+    }
+  }
+  return af::double2(
+    d_star_sq_min <= 0 ? -1 : 1/std::sqrt(d_star_sq_min),
+    d_star_sq_max <= 0 ? -1 : 1/std::sqrt(d_star_sq_max));
+}
+
 af::shared< cctbx::miller::index<> > Mtz::MIx() {
   Column H(getColumn("H"));
   Column K(getColumn("K"));
