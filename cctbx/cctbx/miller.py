@@ -835,22 +835,27 @@ class array(set):
       miller_set=self,
       data=self.data()/flex.sqrt(self.epsilons().data().as_double()))
 
-  def quasi_normalize_structure_factors(self):
+  def quasi_normalize_structure_factors(self, d_star_power=1):
     assert self.binner() is not None
     assert self.binner().n_bin_d_too_large_or_small() == 0
     assert self.data().all_ge(0)
     assert self.observation_type() is None or self.is_xray_amplitude_array()
-    f_sq = flex.pow2(self.data())
     epsilons = self.epsilons().data().as_double()
-    q = flex.double(f_sq.size(), -1)
+    mean_f_sq_over_epsilon = flex.double()
     for i_bin in self.binner().range_used():
       sel = self.binner().selection(i_bin)
-      sel_f_sq = f_sq.select(sel)
+      sel_f_sq = flex.pow2(self.data().select(sel))
       if (sel_f_sq.size() > 0):
         sel_epsilons = epsilons.select(sel)
         sel_f_sq_over_epsilon = sel_f_sq / sel_epsilons
-        mean_f_sq_over_epsilon = flex.mean(sel_f_sq_over_epsilon)
-        q.set_selected(sel, flex.sqrt(sel_f_sq / mean_f_sq_over_epsilon))
+        mean_f_sq_over_epsilon.append(flex.mean(sel_f_sq_over_epsilon))
+      else:
+        mean_f_sq_over_epsilon.append(0)
+    mean_f_sq_over_epsilon_interp = self.binner().interpolate(
+      mean_f_sq_over_epsilon, d_star_power)
+    assert mean_f_sq_over_epsilon_interp.all_gt(0)
+    f_sq = flex.pow2(self.data())
+    q = flex.sqrt(f_sq / mean_f_sq_over_epsilon_interp)
     assert q.all_ge(0)
     return array(self, q)
 
