@@ -10,21 +10,17 @@ class operator_priority_evaluator:
     return self.operator_dict.get(word.value, 0)
 
 def infix_as_postfix(
-      words=None,
-      word_stack=None,
+      word_iterator,
       operator_dict={"not": 3, "and": 2, "or": 1},
       stop_if_parse_stack_is_empty=False,
       stop_word=None,
       expect_nonmatching_closing_parenthesis=False):
   """http://www.programmersheaven.com/2/Art_Expressions_p1"""
-  assert (words is None) != (word_stack is None)
   operator_priority = operator_priority_evaluator(operator_dict=operator_dict)
-  if (word_stack is None):
-    word_stack = words[:]
-    word_stack.reverse()
   parse_stack = []
-  while (len(word_stack) > 0):
-    word = word_stack.pop()
+  while True:
+    word = word_iterator.try_pop()
+    if (word is None): break
     if (stop_word is not None and word.value == stop_word):
       break
     if (word.value == "("):
@@ -37,12 +33,12 @@ def infix_as_postfix(
             "Closing parenthesis without a matching opening parenthesis.")
         item = parse_stack.pop()
         if (item.value == "("): break
-        yield item, word_stack
+        yield item, word_iterator
       if (len(parse_stack) == 0 and stop_if_parse_stack_is_empty): return
     else:
       word_priority = operator_priority(word)
       if (word_priority == 0):
-        yield word, word_stack
+        yield word, word_iterator
         if (len(parse_stack) == 0 and stop_if_parse_stack_is_empty): return
       else:
         while True:

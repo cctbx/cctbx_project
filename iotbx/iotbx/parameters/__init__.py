@@ -598,7 +598,7 @@ class variable_substitution_proxy(object):
     while (c is not None):
       if (c != "$"):
         fragment_value += c
-        if (c == "\\" and char_iter.look_ahead() == "$"):
+        if (c == "\\" and char_iter.look_ahead_1() == "$"):
           fragment_value += char_iter.next()
         c = char_iter.next()
       else:
@@ -668,11 +668,16 @@ def parse(
   if (definition_type_names is None):
     definition_type_names = default_definition_type_names
   result = object_list(objects=parser.collect_objects(
-    word_stack=simple_tokenizer.as_word_stack(
+    word_iterator=simple_tokenizer.word_iterator(
       input_string=input_string,
       file_name=file_name,
-      unquoted_single_character_words="{}",
-      contiguous_word_characters=""),
+      list_of_settings=[
+        simple_tokenizer.settings(
+          unquoted_single_character_words="{}",
+          contiguous_word_characters=""),
+        simple_tokenizer.settings(
+          unquoted_single_character_words="",
+          contiguous_word_characters="")]),
     definition_type_names=definition_type_names))
   if (process_includes):
     if (file_name is None):

@@ -118,7 +118,7 @@ name
 }
 """)
   recycle(
-    input_string="name{a b\nc d}", expected_out="""\
+    input_string="name{a b\nc d\n}", expected_out="""\
 name
 {
   a b
@@ -287,7 +287,7 @@ def exercise_syntax_errors():
     'Syntax error: unexpected "{" (input line 1)')
   test_exception("a {",
     'Syntax error: no matching "}" for "{" at input line 1')
-  test_exception("table name\n.foo none {}",
+  test_exception("table name\n.foo none\n{}",
     'Unexpected table attribute: .foo (input line 2)')
   test_exception("table name foo {",
     'Syntax error: expected "{", found "foo" (input line 1)')
