@@ -45,9 +45,8 @@ namespace {
   void register_tuple_mappings()
   {
     using namespace scitbx::boost_python::container_conversions;
-    tuple_mapping<
-      scitbx::af::shared<weighted_triplet_phase_relation>,
-      variable_capacity_policy>();
+    tuple_mapping_variable_capacity<
+      scitbx::af::shared<weighted_triplet_phase_relation> >();
   }
 
 } // namespace <anonymous>

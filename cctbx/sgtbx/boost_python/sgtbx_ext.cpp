@@ -67,9 +67,9 @@ namespace {
   {
     using namespace scitbx::boost_python::container_conversions;
 
-    tuple_mapping<af::shared<rt_mx>, variable_capacity_policy>();
-    tuple_mapping<af::small<ss_vec_mod, 3>, fixed_capacity_policy>();
-    tuple_mapping<af::small<int, 3>, fixed_capacity_policy>();
+    tuple_mapping_variable_capacity<af::shared<rt_mx> >();
+    tuple_mapping_fixed_capacity<af::small<ss_vec_mod, 3> >();
+    tuple_mapping_fixed_capacity<af::small<int, 3> >();
   }
 
   void init_module()

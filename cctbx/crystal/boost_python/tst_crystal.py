@@ -102,7 +102,7 @@ def exercise_direct_space_asu():
     assert asu_mappings.asu_buffer().is_inside(am.mapped_site())
   o = matrix.sqr(asu_mappings.unit_cell().orthogonalization_matrix())
   f = matrix.sqr(asu_mappings.unit_cell().fractionalization_matrix())
-  for i_seq,m_i_seq in asu_mappings.mappings().items():
+  for i_seq,m_i_seq in zip(count(), asu_mappings.mappings()):
     for i_sym in xrange(len(m_i_seq)):
       rt_mx = asu_mappings.get_rt_mx(i_seq, i_sym)
       site_frac = rt_mx * sites_seq[i_seq]
