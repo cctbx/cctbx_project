@@ -19,10 +19,14 @@ class create_bin_sh_dispatcher:
     if (self.insert_lines is not None):
       for line in self.insert_lines:
         print >> f, line
-    cmd = "exec"
+    cmd = "  exec"
     if (not self.is_python_exe and source_file.lower().endswith(".py")):
       cmd += " python"
+    print >> f, "if [ $# -eq 0 ]; then"
+    print >> f, cmd, source_file
+    print >> f, "else"
     print >> f, cmd, source_file, '"$@"'
+    print >> f, "fi"
     f.close()
     os.chmod(target_file, 0755)
 
