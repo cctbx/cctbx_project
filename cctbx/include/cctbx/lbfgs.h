@@ -51,15 +51,47 @@
     Ralf W. Grosse-Kunstleve: C++ port, March 2002.
  */
 
+#include <exception>
 #include <vector>
 #include <string>
 #include <stdio.h>
 #include <boost/config.hpp>
-#include <cctbx/error.h>
 #include <cctbx/fixes/cstdlib>
 #include <cctbx/fixes/cmath>
 
 namespace cctbx {
+
+  class lbfgs_error : public std::exception {
+    public:
+      lbfgs_error(const std::string& msg) throw()
+        : msg_("lbfgs error: " + msg)
+      {}
+      virtual ~lbfgs_error() throw() {}
+      virtual const char* what() const throw() { return msg_.c_str(); }
+    protected:
+      std::string msg_;
+  };
+
+  class lbfgs_error_improper_input_parameter : public lbfgs_error {
+    public:
+      lbfgs_error_improper_input_parameter(const std::string& msg) throw()
+        : lbfgs_error("Improper input parameter: " + msg)
+      {}
+  };
+
+  class lbfgs_error_improper_input_data : public lbfgs_error {
+    public:
+      lbfgs_error_improper_input_data(const std::string& msg) throw()
+        : lbfgs_error("Improper input data: " + msg)
+      {}
+  };
+
+  class lbfgs_error_search_direction_not_descent : public lbfgs_error {
+    public:
+      lbfgs_error_search_direction_not_descent() throw()
+        : lbfgs_error("The search direction is not a descent direction.")
+      {}
+  };
 
   /*! This class solves the unconstrained minimization problem
       <pre>
@@ -176,15 +208,15 @@ namespace cctbx {
       {
         if (n_ <= 0) {
           iflag_ = -3;
-          throw error("Improper input parameter: n is not positive.");
+          throw lbfgs_error_improper_input_parameter("n is not positive.");
         }
         if (m_ <= 0) {
           iflag_ = -3;
-          throw error("Improper input parameter: m is not positive.");
+          throw lbfgs_error_improper_input_parameter("m is not positive.");
         }
         if (gtol_ <= 1.e-4) {
           iflag_ = -3;
-          throw error("Improper input parameter: gtol <= 1.e-4.");
+          throw lbfgs_error_improper_input_parameter("gtol <= 1.e-4.");
         }
         w_.resize(n_*(2*m_+1)+2*m_);
       }
@@ -333,8 +365,8 @@ namespace cctbx {
       }
 
       static void throw_diagonal_element_not_positive(int i) {
-        throw error(
-          "The " + itoa(i) + "-th diagonal element of the inverse"
+        throw lbfgs_error_improper_input_data(
+          "The " + itoa(i) + ". diagonal element of the inverse"
           " Hessian approximation is not positive.");
       }
 
@@ -435,7 +467,7 @@ namespace cctbx {
                  gtol_, stpmin_, stpmax_, n_, x, f, g, w, ispt + point * n_,
                  stp_, ftol, xtol_, maxfev_, info, nfev, diag)) {
             iflag_ = -1;
-            throw error("The search direction is not a descent direction.");
+            throw lbfgs_error_search_direction_not_descent(); // XXX move down
           }
           if (info == -1) {
             iflag_ = 1;
@@ -443,7 +475,7 @@ namespace cctbx {
           }
           if (info != 1) {
             iflag_ = -1;
-            throw error(
+            throw lbfgs_error(
               "Line search failed (info=" + itoa(info) + ")."
               " Possible causes: function or gradient are incorrect,"
               " or incorrect tolerances.");
