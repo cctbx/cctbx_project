@@ -200,7 +200,7 @@ namespace cctbx { namespace maps {
       iv_type;
     std::vector<iv_type> result;
     nested_loop<index_tuple_type> loop(data.dim());
-    for (index_tuple_type& pivot = loop(); !loop.over(); pivot = loop.next()) {
+    for (const index_tuple_type& pivot = loop(); !loop.over(); loop.incr()) {
       if (flags(pivot) == -2 && (!use_cutoff || data(pivot) >= cutoff)) {
         result.push_back(iv_type(pivot, data(pivot)));
       }
