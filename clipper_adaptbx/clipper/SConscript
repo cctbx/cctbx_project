@@ -2,7 +2,7 @@ Import("env_clipper_boost_python_ext")
 env = env_clipper_boost_python_ext.Copy()
 env.Prepend(LIBS=["clipper", "cctbx"])
 env.SharedLibrary(
-  target="#libtbx/clipper_ext",
+  target="#lib/clipper_ext",
   source=[
     "clipper_ext.cpp",
     "hendrickson_lattman_bpl.cpp",

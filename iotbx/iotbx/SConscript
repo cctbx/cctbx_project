@@ -8,5 +8,5 @@ if (not env_etc.no_boost_python):
            env_etc.boost_include,
            env_etc.python_include])
   env.SharedLibrary(
-    target="#libtbx/iotbx_wildcard_ext",
+    target="#lib/iotbx_wildcard_ext",
     source=["wildcard_ext.cpp"])

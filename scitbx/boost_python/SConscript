@@ -7,7 +7,7 @@ env = env_base.Copy(
 )
 env.Append(CXXFLAGS=env_etc.cxxflags_bpl_defines_base)
 env.Append(SHCXXFLAGS=env_etc.cxxflags_bpl_defines_base)
-env.Append(LIBPATH=["#libtbx"])
+env.Append(LIBPATH=["#lib"])
 env.Append(LIBS=["boost_python"])
 env_etc.include_registry.append(
   env=env,
@@ -21,5 +21,5 @@ lib_scitbx_boost_python_sources = [
 if (env_etc.static_libraries): builder = env.StaticLibrary
 else:                          builder = env.SharedLibrary
 builder(
-  target="#libtbx/scitbx_boost_python",
+  target="#lib/scitbx_boost_python",
   source=lib_scitbx_boost_python_sources)

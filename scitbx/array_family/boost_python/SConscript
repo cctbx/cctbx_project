@@ -5,7 +5,7 @@ env_scitbx_boost_python_ext.SharedLibrary(target="regression_test_ext", source=[
 ])
 
 env_scitbx_boost_python_ext.SharedLibrary(
-  target="#libtbx/scitbx_array_family_flex_ext",
+  target="#lib/scitbx_array_family_flex_ext",
   source=[
   "flex_ext.cpp",
   "flex_grid.cpp",
@@ -27,7 +27,7 @@ env_scitbx_boost_python_ext.SharedLibrary(
 ])
 
 env_scitbx_boost_python_ext.SharedLibrary(
-  target="#libtbx/scitbx_array_family_shared_ext",
+  target="#lib/scitbx_array_family_shared_ext",
   source=[
   "shared_ext.cpp",
 ])

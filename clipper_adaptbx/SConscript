@@ -15,7 +15,7 @@ env.Prepend(CPPPATH=[env_etc.clipper_include])
 
 if (env_etc.static_libraries): builder = env.StaticLibrary
 else:                          builder = env.SharedLibrary
-builder(target='#libtbx/clipper',
+builder(target='#lib/clipper',
   source = ["../clipper/clipper/core/"+file_name for file_name in """
   atomsf.cpp
   cell.cpp
@@ -54,16 +54,22 @@ builder(target='#libtbx/clipper',
 # fftmap.cpp
 
 env_exe = env.Copy(
-  LIBPATH=["#libtbx"],
+  LIBPATH=["#lib"],
 )
 env_exe.Prepend(LIBS=["clipper"])
 
-env_exe.Program(target='#libtbx/bin/clipper.symtest',
+exe = env_exe.Program(target='#exe/clipper.symtest',
   source = ["../clipper/examples/symtest.cpp",
            ])
-env_exe.Program(target='#libtbx/bin/clipper.sanity_check',
+env_etc.libtbx_env.create_dispatcher_in_bin(
+  source_file=exe[0].get_abspath(),
+  target_file="clipper.symtest")
+exe = env_exe.Program(target='#exe/clipper.sanity_check',
   source = ["sanity_check.cpp",
            ])
+env_etc.libtbx_env.create_dispatcher_in_bin(
+  source_file=exe[0].get_abspath(),
+  target_file="clipper.sanity_check")
 
 if (hasattr(env_etc, "cctbx_include")):
   if (not env_etc.no_boost_python):

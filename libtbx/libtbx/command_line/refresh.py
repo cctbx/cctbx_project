@@ -48,7 +48,7 @@ def create_show_path_duplicates(target_dir):
         target_file=target_file)
 
 def run():
-  target_dir = libtbx.env.under_build("libtbx/bin")
+  target_dir = libtbx.env.under_build("bin")
   if (not isdir(target_dir)):
     os.makedirs(target_dir)
   for file_name in ("libtbx.python", "python"):
