@@ -540,6 +540,11 @@ def exercise_flex_vec3_double():
     ((46,-24,13),(49,-26,11),(44,-20,9)))
   assert approx_equal(tuple((-1,1,0,1,0,-1,1,-1,1)*a),
     ((11,-24,24),(15,-26,19),(11,-20,22)))
+  x = flex.double([1,2,3])
+  y = flex.double([4,5,6])
+  z = flex.double([7,8,9])
+  a = flex.vec3_double(x,y,z)
+  assert approx_equal(tuple(a), ((1,4,7), (2,5,8), (3,6,9)))
 
 def exercise_histogram():
   x = flex.double(xrange(20))
