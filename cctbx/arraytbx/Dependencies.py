@@ -17,10 +17,12 @@ class write_makefiles(makefile_generator.write_makefiles):
       "arraytbx/tst_af_helpers.cpp",
       "arraytbx/tst_af_1.cpp",
       "arraytbx/tst_af_2.cpp",
+      "arraytbx/tst_vec3.cpp",
     )
 
     self.executables = {
       "tst_af_1": (("tst_af_1",), ()),
+      "tst_vec3": (("tst_vec3",), ()),
     }
     if (self.platform != "vc60"):
       self.executables["tst_af_2"] = (("tst_af_2",), ())
