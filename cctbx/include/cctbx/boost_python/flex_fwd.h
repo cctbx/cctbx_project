@@ -1,12 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Nov: Created (R.W. Grosse-Kunstleve)
- */
-
 #ifndef CCTBX_BOOST_PYTHON_FLEX_FWD_H
 #define CCTBX_BOOST_PYTHON_FLEX_FWD_H
 
@@ -27,6 +18,10 @@ namespace cctbx { namespace boost_python {
   {
     friend void f(scitbx::af::versa<T, maptbx::c_grid_p1<3> > const&);
     friend void f(scitbx::af::versa<T, maptbx::c_grid_padded_p1<3> > const&);
+    friend void f(scitbx::af::ref<T, maptbx::c_grid_p1<3> > const&);
+    friend void f(scitbx::af::ref<T, maptbx::c_grid_padded_p1<3> > const&);
+    friend void f(scitbx::af::const_ref<T, maptbx::c_grid_p1<3> > const&);
+    friend void f(scitbx::af::const_ref<T, maptbx::c_grid_padded_p1<3> > const&);
   };
 
   inline void
