@@ -26,14 +26,15 @@ class scatterer(ext.scatterer):
 
 class _scatterer(boost.python.injector, ext.scatterer):
 
-  def copy(self, label=None,
-                 site=None,
-                 u=None,
-                 b=None,
-                 occupancy=None,
-                 scattering_type=None,
-                 fp=None,
-                 fdp=None):
+  def customized_copy(self,
+        label=None,
+        site=None,
+        u=None,
+        b=None,
+        occupancy=None,
+        scattering_type=None,
+        fp=None,
+        fdp=None):
     assert u is None or b is None
     if (b is not None): u = adptbx.b_as_u(b)
     if (label is None): label = self.label
