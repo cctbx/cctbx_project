@@ -200,6 +200,9 @@ class structure(crystal.special_position_settings):
     ch_op = self.space_group_info().type().change_of_hand_op()
     return self.change_basis(ch_op)
 
+  def primitive_setting(self):
+    return self.change_basis(self.space_group().z2p_op())
+
   def apply_shift(self, shift):
     shifted_scatterers = self.scatterers().deep_copy()
     shifted_scatterers.set_sites(
