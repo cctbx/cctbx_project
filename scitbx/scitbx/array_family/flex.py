@@ -111,8 +111,18 @@ class _linear_regression(boost.python.injector, ext.linear_regression):
 
   def show_summary(self, f=None):
     if (f is None): f = sys.stdout
+    print >> f, "is_well_defined:", self.is_well_defined()
     print >> f, "y_intercept:", self.y_intercept()
     print >> f, "slope:", self.slope()
+
+class _linear_correlation(boost.python.injector, ext.linear_correlation):
+
+  def show_summary(self, f=None):
+    if (f is None): f = sys.stdout
+    print >> f, "is_well_defined:", self.is_well_defined()
+    print >> f, "mean_x:", self.mean_x()
+    print >> f, "mean_y:", self.mean_y()
+    print >> f, "coefficient:", self.coefficient()
 
 def exercise_triple(flex_triple, flex_order=None, as_double=False):
   from libtbx.test_utils import approx_equal

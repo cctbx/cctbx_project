@@ -1,6 +1,7 @@
 from scitbx.array_family import flex
 from scitbx.python_utils import command_line
 from libtbx.test_utils import approx_equal
+from cStringIO import StringIO
 import pickle
 import cPickle
 import math
@@ -710,6 +711,13 @@ def exercise_linear_regression():
   assert approx_equal(r.slope(), 0)
   r = flex.linear_regression(y, y)
   assert not r.is_well_defined()
+  s = StringIO()
+  r.show_summary(f=s)
+  assert s.getvalue() == """\
+is_well_defined: 0
+y_intercept: 0.0
+slope: 0.0
+"""
 
 def exercise_linear_correlation():
   x = flex.double((1,2,3))
@@ -735,6 +743,14 @@ def exercise_linear_correlation():
   assert c.is_well_defined()
   c = flex.linear_correlation(flex.double(), flex.double())
   assert not c.is_well_defined()
+  s = StringIO()
+  c.show_summary(f=s)
+  assert s.getvalue() == """\
+is_well_defined: 0
+mean_x: 0.0
+mean_y: 0.0
+coefficient: 0.0
+"""
 
 def exercise_mean_and_variance():
   x = flex.double((1,2,3))
