@@ -219,6 +219,7 @@ class peak_cluster_analysis:
     self._peak_list_index = 0
     self._sites = flex.vec3_double()
     self._grid_heights = flex.double()
+    self._fixed_site_indices = flex.size_t()
 
   def peak_list(self):
     return self._peak_list
@@ -238,11 +239,25 @@ class peak_cluster_analysis:
   def peak_list_indices(self):
     return self._peak_list_indices
 
+  def fixed_site_indices(self):
+    return self._fixed_site_indices
+
   def sites(self):
     return self._sites
 
   def grid_heights(self):
     return self._grid_heights
+
+  def max_grid_height(self):
+    if (len(self._peak_list_entries) == 0):
+      return None
+    return self._peak_list_entries[0].value
+
+  def append_fixed_site(self, site, height=0):
+    self._fixed_site_indices.append(self._sites.size())
+    self._sites.append(site)
+    self._grid_heights.append(height)
+    self._peak_list_indices.append(len(self._peak_list_entries))
 
   def next(self):
     while 1:
