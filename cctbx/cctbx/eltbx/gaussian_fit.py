@@ -17,7 +17,9 @@ def d_star_sq_points(d_min, n_points):
 
 class minimize:
 
-  def __init__(self, diff_gaussian, d_star_sq, weights, b_min,
+  def __init__(self, diff_gaussian, d_star_sq,
+                     weights=None,
+                     b_min=-1,
                      lbfgs_termination_params=None,
                      lbfgs_core_params=lbfgs.core_parameters(m=7)):
     adopt_init_args(self, locals())
@@ -70,7 +72,7 @@ def make_start_approximation(reference_gaussian, n_terms,
   assert 0 < d_min_random_points < d_max_random_points
   partitioning = flex.double()
   for i_term in xrange(n_terms):
-    partitioning.append(0.01 + random.random())
+    partitioning.append(min_partitioning_factor + random.random())
   min_partitioning = 1. / n_terms * min_partitioning_factor
   while 1:
     partitioning /= flex.sum(partitioning)
@@ -92,85 +94,50 @@ def make_start_approximation(reference_gaussian, n_terms,
     f0_part = partitioning[i_term] * f0_reference
     b.append(-math.log(f0_part / a[i_term]) / stol_sq)
     assert abs(a[i_term] * math.exp(-b[i_term] * stol_sq) - f0_part) < 1.e-6
-  return xray_scattering.difference_gaussian(
+  result = xray_scattering.difference_gaussian(
     reference_gaussian,
     xray_scattering.gaussian(iter(a), iter(b)))
-
-def multi_trial(reference_gaussian, n_terms, d_star_sq, n_trials, verbose=0):
-  weights = None
-  best_fit = None
-  for i in xrange(n_trials):
-    gdiff = make_start_approximation(
-      reference_gaussian=reference_gaussian,
-      n_terms=n_terms)
-    if (0 or verbose):
-      print "start_approximation:"
-      gdiff.show()
-      print
-    assert (gdiff.at_d_star_sq(0) - reference_gaussian.at_d_star_sq(0)) < 1.e-4
-    minimized = minimize(
-      gdiff, d_star_sq=d_star_sq, weights=weights, b_min=-1)
-    if (0 or verbose):
-      print "minimized.final_target_value:", minimized.final_target_value
-      minimized.final_diff_gaussian.show()
-      print
-    if (   best_fit is None
-        or best_fit.final_target_value > minimized.final_target_value):
-      best_fit = minimized
-  return best_fit
+  assert abs(result.at_d_star_sq(0)-reference_gaussian.at_d_star_sq(0)) < 1.e-4
+  return result
 
 class find_d_min:
 
-  def __init__(self, reference_gaussian, n_terms,
-                     n_trials_per_start_approximation,
-                     n_points, max_target_value,
-                     start_interval=[10,1/12.],
-                     min_interval=0.01,
-                     verbose=0):
+  def __init__(self, reference_gaussian, n_terms, max_target_value,
+                     n_points,
+                     start_interval,
+                     dead_end_d_min,
+                     min_interval):
     adopt_init_args(self, locals())
-    interval = start_interval[:]
-    fits = []
-    self.n_calls_multi_trial = 0
-    for d_min in interval:
-      d_star_sq = d_star_sq_points(d_min=d_min, n_points=n_points)
-      self.n_calls_multi_trial += 1
-      fits.append(multi_trial(
-        reference_gaussian=reference_gaussian,
-        n_terms=n_terms,
-        d_star_sq=d_star_sq,
-        n_trials=n_trials_per_start_approximation,
-        verbose=verbose))
+    diff_gaussian = make_start_approximation(
+      reference_gaussian=reference_gaussian,
+      n_terms=n_terms)
+    interval = [start_interval[0], start_interval[1]-min_interval]
+    good_min = None
     while 1:
-      if (0 or verbose):
-        print interval, [fit.final_target_value for fit in fits]
-      if (fits[1].final_target_value < max_target_value):
-        break
-      d_min = (interval[0] + interval[1]) / 2.
-      d_star_sq = d_star_sq_points(d_min=d_min, n_points=n_points)
-      self.n_calls_multi_trial += 1
-      center_fit = multi_trial(
-          reference_gaussian=reference_gaussian,
-          n_terms=n_terms,
-          d_star_sq=d_star_sq,
-          n_trials=n_trials_per_start_approximation,
-          verbose=verbose)
-      if (center_fit.final_target_value < max_target_value):
-        interval[0] = d_min
-        fits[0] = center_fit
+      self.d_min = (interval[0] + interval[1]) / 2.
+      d_star_sq = d_star_sq_points(d_min=self.d_min, n_points=n_points)
+      self.min = minimize(diff_gaussian, d_star_sq=d_star_sq)
+      if (    self.min.final_target_value <= max_target_value
+          and min(self.min.final_diff_gaussian.b()) > self.min.b_min):
+        if (interval[0] - interval[1] < min_interval):
+          break
+        diff_gaussian = self.min.final_diff_gaussian
+        interval[0] = self.d_min
+        good_min = self.min
       else:
-        interval[1] = d_min
-        fits[1] = center_fit
-      if (interval[0] - interval[1] < min_interval):
-        break
-    if (fits[1].final_target_value < max_target_value):
-      self.best = fits[1]
-      self.d_min = interval[1]
-    elif (fits[0].final_target_value < max_target_value):
-      self.best = fits[0]
-      self.d_min = interval[0]
-    else:
-      self.best = None
-      self.d_min = None
+        if (self.d_min > dead_end_d_min):
+          self.d_min = None
+          self.min = None
+          break
+        if (interval[0] - interval[1] < min_interval):
+          if (good_min is not None):
+            self.d_min = interval[0]
+            self.min = good_min
+          else:
+            self.d_min = None
+            self.min = None
+          break
+        interval[1] = self.d_min
 
 def show_fit_summary(source, label, gaussian, d_min, q, q_other=None):
   n_terms = str(gaussian.n_ab())
@@ -224,10 +191,9 @@ class fit_parameters:
 
   def __init__(self, n_points=50,
                      max_target_value=1.e-4,
-                     n_similar_fits=5,
+                     n_similar_fits=10,
                      max_d_min_spread_similar_fits=0.02,
-                     max_calls_find_d_min=1000,
-                     n_trials_per_start_approximation=1):
+                     max_calls_find_d_min_per_term=1000):
     adopt_init_args(self, locals())
 
 def run(args=[], params=fit_parameters(), verbose=0):
@@ -259,23 +225,24 @@ def run(args=[], params=fit_parameters(), verbose=0):
     for n_terms in [5,4,3,2,1]:
       fits = []
       fits_d_min = flex.double()
+      fits_min_d_min = 15
+      start_interval = [15, 1/12.]
       n_calls_find_d_min = 0
-      n_calls_multi_trial = 0
       while 1:
         n_calls_find_d_min += 1
         fit = find_d_min(
           reference_gaussian=reference_gaussian,
           n_terms=n_terms,
-          n_trials_per_start_approximation
-            =params.n_trials_per_start_approximation,
-          n_points=params.n_points,
           max_target_value=params.max_target_value,
-          verbose=verbose)
-        n_calls_multi_trial += fit.n_calls_multi_trial
-        if (fit.best is not None
-            and min(fit.best.final_diff_gaussian.b()) > fit.best.b_min):
+          start_interval=start_interval,
+          n_points=params.n_points,
+          dead_end_d_min=fits_min_d_min+params.max_d_min_spread_similar_fits,
+          min_interval=0.01)
+        if (    fit.min is not None
+            and min(fit.min.final_diff_gaussian.b()) > fit.min.b_min):
           fits.append(fit)
           fits_d_min.append(fit.d_min)
+          fits_min_d_min = min(fits_min_d_min, fit.d_min)
           if (fits_d_min.size() >= params.n_similar_fits):
             perm = flex.sort_permutation(fits_d_min)
             best_d_min = fits_d_min.select(perm[:params.n_similar_fits])
@@ -283,7 +250,7 @@ def run(args=[], params=fit_parameters(), verbose=0):
                 < params.max_d_min_spread_similar_fits):
               fit = fits[perm[0]]
               break
-        if (n_calls_find_d_min == params.max_calls_find_d_min):
+        if (n_calls_find_d_min==params.max_calls_find_d_min_per_term*n_terms):
           if (fits_d_min.size() == 0):
             fit = None
           else:
@@ -293,9 +260,9 @@ def run(args=[], params=fit_parameters(), verbose=0):
             fit = fits[perm[0]]
           break
       print "n_calls_find_d_min:", n_calls_find_d_min
-      print "n_calls_multi_trial:", n_calls_multi_trial
       print "successful fits:", fits_d_min.size()
-      print "fits_d_min:", ", ".join(["%.2f" % d for d in fits_d_min])
+      if (0 or verbose):
+        print "fits_d_min:", ", ".join(["%.2f" % d for d in fits_d_min])
       if (fit is None):
         print "No fit: %s n_terms=%d" % (g5c.label(), n_terms)
         print
@@ -304,26 +271,26 @@ def run(args=[], params=fit_parameters(), verbose=0):
           print "Warning: previous d_min was larger."
         previous_d_min = fit.d_min
         show_fit_summary(
-          "Best fit", g5c.label(), fit.best.final_diff_gaussian, fit.d_min,
-          fit.best.final_target_value)
+          "Best fit", g5c.label(), fit.min.final_diff_gaussian, fit.d_min,
+          fit.min.final_target_value)
         show_literature_fits(
           label=g5c.label(),
           reference_gaussian=reference_gaussian,
           n_terms=n_terms,
           d_min=fit.d_min,
-          d_star_sq=fit.best.d_star_sq,
-          q_other=fit.best.final_target_value)
-        fit.best.final_diff_gaussian.show()
+          d_star_sq=fit.min.d_star_sq,
+          q_other=fit.min.final_target_value)
+        fit.min.final_diff_gaussian.show()
         print
         if (plots_dir):
           write_plots(
             plots_dir=plots_dir,
             label=g5c.label(),
             reference_gaussian=reference_gaussian,
-            gaussian=fit.best.final_diff_gaussian,
+            gaussian=fit.min.final_diff_gaussian,
             d_min=fit.d_min,
             n_points=100)
-        g = fit.best.final_diff_gaussian
+        g = fit.min.final_diff_gaussian
         results[g5c.label()].append(xray_scattering.fitted_gaussian(
           d_min=fit.d_min, a=g.a(),b=g.b()))
       sys.stdout.flush()
