@@ -383,7 +383,7 @@ class selection_cache:
   def sel_charge(self, pattern):
     return self.union(iselections=self.get_charge(pattern=pattern))
 
-  def selection(self, string, contiguous_word_characters=None):
+  def selection(self, string, contiguous_word_characters=None, callback=None):
     if (contiguous_word_characters is None):
       contiguous_word_characters="ABCDEFGHIJKLMNOPQRSTUVWXYZ" \
                                 +"abcdefghijklmnopqrstuvwxyz" \
@@ -409,10 +409,14 @@ class selection_cache:
           result_stack.append(lhs | rhs)
       elif (word.quote_char is None):
         lword = word.value.lower()
-        if (lword == "name"):
+        if (lword == "all"):
+          result_stack.append(flex.bool(self.n_seq, True))
+        elif (lword == "none"):
+          result_stack.append(flex.bool(self.n_seq, False))
+        elif (lword == "name"):
           if (len(word_stack) == 0): raise RuntimeError("Missing argument.")
           result_stack.append(self.sel_name(pattern=word_stack.pop()))
-        elif (lword == "altloc"):
+        elif (lword in ["altloc", "altid"]):
           if (len(word_stack) == 0): raise RuntimeError("Missing argument.")
           result_stack.append(self.sel_altLoc(pattern=word_stack.pop()))
         elif (lword == "resname"):
@@ -421,7 +425,7 @@ class selection_cache:
         elif (lword == "chain"):
           if (len(word_stack) == 0): raise RuntimeError("Missing argument.")
           result_stack.append(self.sel_chainID(pattern=word_stack.pop()))
-        elif (lword in ["resseq", "model"]):
+        elif (lword in ["resseq", "resid", "model"]):
           if (len(word_stack) == 0): raise RuntimeError("Missing argument.")
           arg = word_stack.pop()
           if (arg.quote_char is not None): raise RuntimeError("Value error.")
@@ -430,7 +434,7 @@ class selection_cache:
           if (i_colon_or_dash < 0):
             try: i = int(arg.value)
             except ValueError: raise RuntimeError("Value error.")
-            if (lword == "resseq"):
+            if (lword != "model"):
               result_stack.append(self.sel_resSeq(i=i))
             else:
               result_stack.append(self.sel_MODELserial(i=i))
@@ -446,7 +450,7 @@ class selection_cache:
             else:
               try: j = int(j)
               except ValueError: raise RuntimeError("Value error.")
-            if (lword == "resseq"):
+            if (lword != "model"):
               result_stack.append(self.sel_resSeq_range(i=i, j=j))
             else:
               result_stack.append(self.sel_MODELserial_range(i=i, j=j))
@@ -462,6 +466,12 @@ class selection_cache:
         elif (lword == "charge"):
           if (len(word_stack) == 0): raise RuntimeError("Missing argument.")
           result_stack.append(self.sel_charge(pattern=word_stack.pop()))
+        elif (callback is not None):
+          if (not callback(
+                    word=word,
+                    word_stack=word_stack,
+                    result_stack=result_stack)):
+            raise RuntimeError("Syntax error.")
         else:
           raise RuntimeError("Syntax error.")
       else:
