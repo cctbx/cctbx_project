@@ -30,7 +30,6 @@ namespace scitbx { namespace af {
       typedef versa_plain<ElementType, AccessorType, BaseArrayType> base_class;
 
       typedef AccessorType accessor_type;
-      typedef typename accessor_type::index_type index_type;
       typedef typename accessor_type::index_value_type index_value_type;
       typedef versa<ElementType> one_dim_type;
       typedef typename one_dim_type::accessor_type one_dim_accessor_type;
