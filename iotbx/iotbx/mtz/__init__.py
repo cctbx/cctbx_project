@@ -1,7 +1,7 @@
 from cctbx.uctbx import unit_cell
 
-import libtbx.boost_python
-ext = libtbx.boost_python.import_ext("iotbx_mtz_ext")
+import boost.python
+ext = boost.python.import_ext("iotbx_mtz_ext")
 from iotbx_mtz_ext import *
 
 from iotbx.mtz import writer

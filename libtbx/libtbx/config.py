@@ -44,6 +44,29 @@ def python_api_from_include(must_exist=0001):
 def python_api_version_file_name(libtbx_build):
   return norm_join(libtbx_build, "libtbx", "PYTHON_API_VERSION")
 
+class package_pair:
+
+  def __init__(self, name):
+    suffix = "_adaptbx"
+    if (name.lower().endswith(suffix)):
+      self.primary = name[:-len(suffix)]
+      self.adaptbx = name
+    else:
+      self.primary = name
+      self.adaptbx = name + suffix
+
+  def primary_first(self):
+    return (self.primary, self.adaptbx)
+
+  def adaptbx_first(self):
+    return (self.adaptbx, self.primary)
+
+  def zip_primary_first(self, other):
+    return ((self.primary, other.primary), (self.adaptbx, other.adaptbx))
+
+  def zip_adaptbx_first(self, other):
+    return ((self.adaptbx, other.adaptbx), (self.primary, other.primary))
+
 class env:
 
   def __init__(self):

@@ -1,5 +1,5 @@
 from cctbx.xray import ext
-from scitbx.boost_python_utils import injector
+import boost.python
 import sys
 
 class gradient_flags(ext.gradient_flags):
@@ -22,7 +22,7 @@ class gradient_flags(ext.gradient_flags):
     if (fdp is None): fdp = default
     ext.gradient_flags.__init__(self, site, u_iso, u_aniso, occupancy, fp, fdp)
 
-class _gradient_flags(injector, ext.gradient_flags):
+class _gradient_flags(boost.python.injector, ext.gradient_flags):
 
   def copy(self):
     return ext.gradient_flags(self)

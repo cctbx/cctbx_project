@@ -1,10 +1,8 @@
 import cctbx.maptbx
 
-import libtbx.boost_python
-ext = libtbx.boost_python.import_ext("cctbx_translation_search_ext")
+import boost.python
+ext = boost.python.import_ext("cctbx_translation_search_ext")
 from cctbx_translation_search_ext import *
-
-from scitbx.boost_python_utils import injector
 
 class symmetry_flags(ext.symmetry_flags):
 
@@ -22,7 +20,7 @@ class fast_terms(ext.fast_terms):
     return ext.fast_terms.__init__(self,
       gridding, anomalous_flag, miller_indices_p1_f_calc, p1_f_calc)
 
-class _fast_terms(injector, ext.fast_terms):
+class _fast_terms(boost.python.injector, ext.fast_terms):
 
   def summation(self, space_group,
                       miller_indices_f_obs,

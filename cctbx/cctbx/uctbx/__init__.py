@@ -1,10 +1,9 @@
 import cctbx.array_family.flex
 
-import libtbx.boost_python
-ext = libtbx.boost_python.import_ext("cctbx_uctbx_ext")
+import boost.python
+ext = boost.python.import_ext("cctbx_uctbx_ext")
 from cctbx_uctbx_ext import *
 
-from scitbx.boost_python_utils import injector
 import sys
 
 class unit_cell(ext.unit_cell):
@@ -14,7 +13,7 @@ class unit_cell(ext.unit_cell):
       parameters = [float(p) for p in parameters.replace(",", " ").split()]
     ext.unit_cell.__init__(self, parameters, is_metrical_matrix)
 
-class _unit_cell(injector, ext.unit_cell):
+class _unit_cell(boost.python.injector, ext.unit_cell):
 
   def __str__(self):
     return "(%.6g, %.6g, %.6g, %.6g, %.6g, %.6g)" % self.parameters()

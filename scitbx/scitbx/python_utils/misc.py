@@ -114,8 +114,8 @@ removed in the future. Use import * instead.
 Here is an example for the recommended new way of importing
 Boost.Python extension modules:
 
-import libtbx.boost_python
-ext = libtbx.boost_python.import_ext("scitbx_fftpack_ext")
+import boost.python
+ext = boost.python.import_ext("scitbx_fftpack_ext")
 from scitbx_fftpack_ext import *
 """,
     DeprecationWarning)
@@ -126,12 +126,12 @@ from scitbx_fftpack_ext import *
 def import_ext(name):
   import warnings
   warnings.warn("""\
-The import_ext() function was moved to libtbx.boost_python.
+The import_ext() function was moved to boost.python.
 Here is an example for the recommended new way of importing
 Boost.Python extension modules:
 
-import libtbx.boost_python
-ext = libtbx.boost_python.import_ext("scitbx_fftpack_ext")
+import boost.python
+ext = boost.python.import_ext("scitbx_fftpack_ext")
 from scitbx_fftpack_ext import *
 """,
     DeprecationWarning)

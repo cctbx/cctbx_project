@@ -4,10 +4,10 @@ from scitbx.math.ext import gaussian_term as term
 from scitbx.math.ext import gaussian_sum as sum
 from scitbx.math.ext import gaussian_fit as fit
 
-from scitbx.boost_python_utils import injector
+import boost.python
 import sys
 
-class _sum(injector, sum):
+class _sum(boost.python.injector, sum):
 
   def show(self, f=None, format=None):
     if (f is None): f = sys.stdout

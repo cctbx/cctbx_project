@@ -134,12 +134,12 @@ def run():
   create_python_dispatchers(
     libtbx_env, target_dir, libtbx_env.LIBTBX_PYTHON_EXE)
   for dist_path in libtbx_env.dist_paths.values():
-    package_name = split(dist_path)[1]
-    for suffix in ("", "_adaptbx"):
+    package_name = os.path.basename(dist_path)
+    for dist_path_suf in libtbx.config.package_pair(dist_path).primary_first():
       create_drivers(
         target_dir,
         package_name,
-        source_dir=norm(join(dist_path+suffix, package_name, "command_line")))
+        source_dir=norm(join(dist_path_suf, package_name, "command_line")))
 
 if (__name__ == "__main__"):
   run()

@@ -1,15 +1,14 @@
 import cctbx.array_family.flex
 
-import libtbx.boost_python
-ext = libtbx.boost_python.import_ext("cctbx_dmtbx_ext")
+import boost.python
+ext = boost.python.import_ext("cctbx_dmtbx_ext")
 from cctbx_dmtbx_ext import *
 
 from cctbx.array_family import flex
-from scitbx.boost_python_utils import injector
 import sys
 
 class _weighted_triplet_phase_relation(
-  injector, weighted_triplet_phase_relation):
+  boost.python.injector, weighted_triplet_phase_relation):
 
   def format(self, miller_indices, ih=None):
     l = [miller_indices[self.ik()],
@@ -30,7 +29,7 @@ def triplet_generator(miller_set,
     amplitudes, max_relations_per_reflection,
     sigma_2_only, discard_weights)
 
-class _triplet_generator(injector, ext.triplet_generator):
+class _triplet_generator(boost.python.injector, ext.triplet_generator):
 
   def apply_tangent_formula(self, amplitudes, phases,
                                   selection_fixed=None,

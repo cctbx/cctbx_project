@@ -425,7 +425,9 @@ def exercise_gaussian_fit():
     0.098159179757290715, 0.060724224581695019, -0.10766283796372011])
   assert approx_equal(c_fit.differences(), differences)
   assert approx_equal(c_fit.significant_relative_errors(),
-    [0.0107212, 0.0005581, 0.0213236, 0.0169304, 0.0385142])
+    [0.0106379, 0.0004684, 0.0212144, 0.0167898, 0.0383344])
+  assert approx_equal(c_fit.significant_relative_errors(0),
+    [0.0106379, 0.0004684, 0.0212144, 0.0167898, 0.0383344])
   gf = gaussian.fit(
     x, reference_gaussian, flex.double(),
     gaussian.sum((1,2), (4,5)))

@@ -3,7 +3,7 @@ import cctbx.eltbx.xray_scattering
 import cctbx.eltbx.tiny_pse
 from cctbx import eltbx
 from cctbx import adptbx
-from scitbx.boost_python_utils import injector
+import boost.python
 import sys
 
 class scatterer(ext.scatterer):
@@ -24,7 +24,7 @@ class scatterer(ext.scatterer):
     ext.scatterer.__init__(
       self, label, site, u, occupancy, scattering_type, fp, fdp)
 
-class _scatterer(injector, ext.scatterer):
+class _scatterer(boost.python.injector, ext.scatterer):
 
   def copy(self, label=None,
                  site=None,

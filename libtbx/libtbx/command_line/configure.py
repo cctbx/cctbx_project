@@ -24,9 +24,9 @@ class registry:
 
   def merge(self, other):
     i = 0
-    for name in other.list:
-      if (not name in self.dict):
-        self.insert(i, name, other.dict[name])
+    for key in other.list:
+      if (not key in self.dict):
+        self.insert(i, key, other.dict[key])
         i += 1
     if (other.build_disabled):
       self.build_disabled = 1
@@ -38,17 +38,18 @@ class package:
     self.name = name
     self.dist_path = norm(join(dist_root, name))
     self.config = None
-    self.native_config = 1
     self.SConscript_path = None
-    self.native_SConscript = 1
+    self.needs_adaptbx = 00000
     self.python_path = None
     if (not isdir(self.dist_path)):
       if (must_exist):
         raise UserError("Not a directory: " + self.dist_path)
       self.dist_path = None
     else:
-      for tail in ("_adaptbx", ""):
-        path = norm(join(self.dist_path+tail, "libtbx_config"))
+      ppn = libtbx.config.package_pair(self.name)
+      ppd = libtbx.config.package_pair(self.dist_path)
+      for dist_path_suf in ppd.adaptbx_first():
+        path = norm(join(dist_path_suf, "libtbx_config"))
         if (isfile(path)):
           try:
             f = open(path)
@@ -59,17 +60,25 @@ class package:
           except:
             raise UserError("Corrupt file: " + path)
           f.close()
-          self.native_config = (tail == "")
+          if (not self.needs_adaptbx):
+            self.needs_adaptbx = (    self.name == ppn.primary
+                                  and dist_path_suf is ppd.adaptbx)
           break
-      for tail in ("_adaptbx", ""):
-        if (isfile(norm(join(self.dist_path+tail, "SConscript")))):
-          self.SConscript_path = norm(join(name+tail, "SConscript"))
-          self.native_SConscript = (tail == "")
+      for dist_path_suf,name_suf in ppd.zip_adaptbx_first(ppn):
+        if (isfile(norm(join(dist_path_suf, "SConscript")))):
+          self.SConscript_path = norm(join(name_suf, "SConscript"))
+          if (not self.needs_adaptbx):
+            self.needs_adaptbx = (    self.name == ppn.primary
+                                  and dist_path_suf is ppd.adaptbx)
           break
-      for tail in ("_adaptbx", ""):
-        if (isfile(norm(join(self.dist_path+tail, name, "__init__.py")))):
-          self.python_path = norm(self.dist_path+tail)
-          break
+      for name_suf in ppn.adaptbx_first():
+        for dist_path_suf in ppd.adaptbx_first():
+          if (isfile(norm(join(dist_path_suf, name_suf, "__init__.py")))):
+            self.python_path = norm(dist_path_suf)
+            if (not self.needs_adaptbx):
+              self.needs_adaptbx = (    self.name == ppn.primary
+                                    and dist_path_suf is ppd.adaptbx)
+            break
       self._build_dependency_registry()
 
   def _build_dependency_registry(self):
@@ -288,7 +297,6 @@ def emit_SConstruct(env, build_options, packages_dict):
 
 def run(libtbx_dist, args):
   env = libtbx_env(os.getcwd(), libtbx_dist)
-  packages = registry()
   build_options = build_options_t()
   remaining_args = []
   for arg in args:
@@ -310,6 +318,7 @@ def run(libtbx_dist, args):
       remaining_args.append(arg)
   env.compiler = build_options.compiler
   args = remaining_args
+  packages = registry()
   for arg in args:
     packages.merge(package(env.LIBTBX_DIST_ROOT, arg).dependency_registry)
   if (len(packages.list) == 0):
@@ -319,10 +328,11 @@ def run(libtbx_dist, args):
   print "Top-down list of all packages involved:"
   for package_name in packages.list:
     p = packages.dict[package_name]
-    print " ", package_name,
-    if (not p.native_config or not p.native_SConscript):
-      print "+", package_name+"_adaptbx",
-    print
+    pp = libtbx.config.package_pair(package_name)
+    if (p.needs_adaptbx and pp.adaptbx not in packages.dict):
+      print "  %s+%s" % pp.primary_first()
+    else:
+      print " ", package_name
     env.add_package(packages.dict[package_name])
   env.pickle_dict()
   if (hasattr(os, "symlink")):
