@@ -94,7 +94,7 @@ namespace cctbx { namespace sgtbx {
     os << "(";
     rangei(3) {
       if (i) os << ",";
-      os << T.vec()[i];
+      os << T[i];
     }
     os << ")/";
     os << T.BF();
@@ -233,7 +233,7 @@ namespace cctbx { namespace sgtbx {
         }
       }
       if (i != 0) result += Separator;
-      rational T_frac(m_T.vec()[i], m_T.BF());
+      rational T_frac(m_T[i], m_T.BF());
       if (T_frac == 0) {
         if (R_term.empty()) result += "0";
         else                result += R_term;
@@ -260,7 +260,7 @@ namespace cctbx { namespace sgtbx {
     af::tiny<int, 12> result;
     int i;
     for(i=0;i<9;i++) result[i    ] = Rpart()[i];
-    for(i=0;i<3;i++) result[i + 9] = Tpart().vec()[i];
+    for(i=0;i<3;i++) result[i + 9] = Tpart()[i];
     return result;
   }
 
@@ -367,7 +367,7 @@ namespace cctbx { namespace sgtbx {
                 throw error_base_factor(
                   __FILE__, __LINE__, "out of rotation-base-factor range");
             }
-            if (rationalize(ValT, result.m_T.vec()[Row], TBF) != 0)
+            if (rationalize(ValT, result.m_T[Row], TBF) != 0)
               throw error_base_factor(
                 __FILE__, __LINE__, "out of translation-base-factor range");
             Row++;
@@ -444,10 +444,10 @@ namespace cctbx { namespace sgtbx {
   {
     int g = BF();
     int i;
-    for(i=0;i<3;i++) g = gcd(g, vec()[i]);
+    for(i=0;i<3;i++) g = gcd(g, m_vec[i]);
     if (g == 0) g = 1;
     af::int3 result;
-    for(i=0;i<3;i++) result[i] = vec()[i] / g;
+    for(i=0;i<3;i++) result[i] = m_vec[i] / g;
     return TrVec(result, BF() / g);
   }
 
@@ -472,7 +472,7 @@ namespace cctbx { namespace sgtbx {
     TrVec result(lcm(BF(), rhs.BF()));
     int l = result.BF() / BF();
     int r = result.BF() / rhs.BF();
-    for(int i=0;i<3;i++) result.vec()[i] = vec()[i] * l + rhs.vec()[i] * r;
+    for(int i=0;i<3;i++) result[i] = m_vec[i] * l + rhs[i] * r;
     return result.cancel();
   }
 
@@ -481,7 +481,7 @@ namespace cctbx { namespace sgtbx {
     TrVec result(lcm(BF(), rhs.BF()));
     int l = result.BF() / BF();
     int r = result.BF() / rhs.BF();
-    for(int i=0;i<3;i++) result.vec()[i] = vec()[i] * l - rhs.vec()[i] * r;
+    for(int i=0;i<3;i++) result[i] = m_vec[i] * l - rhs[i] * r;
     return result.cancel();
   }
 

@@ -98,7 +98,7 @@ namespace cctbx {
 
     inline int operator*(const Miller::Index& lhs, const TrVec& rhs) {
       int result = 0;
-      for(int i=0;i<3;i++) result += lhs[i] * rhs.vec()[i];
+      for(int i=0;i<3;i++) result += lhs[i] * rhs[i];
       return result;
     }
 
