@@ -12,21 +12,25 @@
 #define CCTBX_ARRAY_FAMILY_VERSA_H
 
 #include <cctbx/array_family/versa_plain.h>
-#include <cctbx/array_family/shared.h>
 
 namespace cctbx { namespace af {
 
   template <typename ElementType,
-            typename AccessorType = grid<1> >
-  class versa : public versa_plain<ElementType, AccessorType>
+            typename AccessorType = grid<1>,
+            typename BaseArrayType = shared_plain<ElementType> >
+  class versa : public versa_plain<ElementType, AccessorType, BaseArrayType>
   {
     public:
+      typedef versa<ElementType, AccessorType, BaseArrayType> this_type;
+
       CCTBX_ARRAY_FAMILY_TYPEDEFS
 
-      typedef AccessorType accessor_type;
-
-      typedef versa_plain<ElementType, AccessorType> base_class;
+      typedef BaseArrayType base_array_type;
+      typedef versa_plain<ElementType, AccessorType, BaseArrayType> base_class;
       typedef typename base_class::handle_type handle_type;
+
+      typedef AccessorType accessor_type;
+      typedef typename accessor_type::index_type index_type;
       typedef versa<ElementType> one_dim_type;
       typedef typename one_dim_type::accessor_type one_dim_accessor_type;
 
@@ -69,27 +73,31 @@ namespace cctbx { namespace af {
       {}
 #endif
 
-      versa(const versa<ElementType, AccessorType>& other, weak_ref_flag)
+      versa(const base_class& other)
+        : base_class(other)
+      {}
+
+      versa(const base_class& other, weak_ref_flag)
         : base_class(other, weak_ref_flag())
       {}
 
-      versa(const shared_plain<ElementType>& other,
+      versa(const base_array_type& other,
             const AccessorType& ac)
         : base_class(other, ac)
       {}
 
-      versa(const shared_plain<ElementType>& other,
+      versa(const base_array_type& other,
             long n0)
         : base_class(other, n0)
       {}
 
-      versa(const shared_plain<ElementType>& other,
+      versa(const base_array_type& other,
             const AccessorType& ac,
             const ElementType& x)
         : base_class(other, ac, x)
       {}
 
-      versa(const shared_plain<ElementType>& other,
+      versa(const base_array_type& other,
             long n0,
             const ElementType& x)
         : base_class(other, n0, x)
@@ -117,20 +125,15 @@ namespace cctbx { namespace af {
         return one_dim_type(*this, one_dim_accessor_type(this->size()));
       }
 
-      versa<ElementType, AccessorType>
+      this_type
       deep_copy() const {
-        shared_plain<ElementType> c(this->begin(), this->end());
-        return versa<ElementType, AccessorType>(c.handle(), this->m_accessor);
+        base_array_type c(this->begin(), this->end());
+        return this_type(c, this->m_accessor);
       }
 
-      shared<ElementType>
-      as_shared() const {
-        return shared<ElementType>(*this);
-      }
-
-      versa<ElementType, AccessorType>
+      this_type
       weak_ref() const {
-        return versa<ElementType, AccessorType>(*this, weak_ref_flag());
+        return this_type(*this, weak_ref_flag());
       }
   };
 

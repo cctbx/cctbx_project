@@ -16,13 +16,15 @@
 namespace cctbx { namespace af {
 
   template <typename ElementType,
-            typename AccessorType = grid<1> >
-  class versa_plain : public shared_plain<ElementType>
+            typename AccessorType = grid<1>,
+            typename BaseArrayType = shared_plain<ElementType> >
+  class versa_plain : public BaseArrayType
   {
     public:
       CCTBX_ARRAY_FAMILY_TYPEDEFS
 
-      typedef shared_plain<ElementType> base_class;
+      typedef BaseArrayType base_array_type;
+      typedef BaseArrayType base_class;
       typedef typename base_class::handle_type handle_type;
 
       typedef AccessorType accessor_type;
@@ -174,13 +176,13 @@ namespace cctbx { namespace af {
 
       versa_plain<ElementType, AccessorType>
       deep_copy() const {
-        shared_plain<ElementType> c(begin(), end());
-        return versa_plain<ElementType, AccessorType>(c.handle(), m_accessor);
+        BaseArrayType c(begin(), end());
+        return versa_plain<ElementType, AccessorType>(c, m_accessor);
       }
 
-      shared_plain<ElementType>
-      as_shared_plain() const {
-        return shared_plain<ElementType>(*this);
+      BaseArrayType
+      as_base_array() const {
+        return BaseArrayType(*this);
       }
 
       versa_plain<ElementType, AccessorType>
