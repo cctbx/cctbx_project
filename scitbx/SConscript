@@ -1,5 +1,5 @@
 import os
-Import("env_etc", "env_boost_python_ext")
+Import("env_etc")
 
 env_etc.scitbx_dist = os.environ["SCITBX_DIST"]
 env_etc.scitbx_include = env_etc.norm_join(env_etc.scitbx_dist, "include")
@@ -11,14 +11,6 @@ env_etc.scitbx_common_includes = [
   env_etc.boost_include,
 ]
 
-env_scitbx_boost_python_ext = env_boost_python_ext.Copy()
-env_scitbx_boost_python_ext.Replace(
-  CPPPATH=env_etc.scitbx_common_includes + [env_etc.python_include])
-env_scitbx_boost_python_ext.Prepend(LIBS=["scitbx_boost_python"])
-if env_etc.compiler =="darwin_g++":
-  env_scitbx_boost_python_ext.Append(LIBS=["System.B","gcc","stdc++"])
-Export("env_scitbx_boost_python_ext")
-
 SConscript("scitbx/source_generators/array_family/SConscript")
 SConscript("array_family/SConscript")
 SConscript("serialization/SConscript")
@@ -26,6 +18,15 @@ SConscript("fftpack/timing/SConscript")
 SConscript("lbfgs/SConscript")
 
 if (not env_etc.no_boost_python):
+  Import("env_boost_python_ext")
+  env_scitbx_boost_python_ext = env_boost_python_ext.Copy()
+  env_scitbx_boost_python_ext.Replace(
+    CPPPATH=env_etc.scitbx_common_includes + [env_etc.python_include])
+  env_scitbx_boost_python_ext.Prepend(LIBS=["scitbx_boost_python"])
+  if env_etc.compiler =="darwin_g++":
+    env_scitbx_boost_python_ext.Append(LIBS=["System.B","gcc","stdc++"])
+  Export("env_scitbx_boost_python_ext")
+
   env_scitbx_boost_python_ext.Command(
     "#libtbx/scitbx_boost/__init__.py",
     "#libtbx/libtbx/touch_init.py", env_etc.touch_init)
