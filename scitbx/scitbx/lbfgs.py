@@ -25,13 +25,53 @@ class termination_parameters:
                      max_calls=None):
     adopt_init_args(self, locals())
 
+class exception_handling_parameters:
+
+  def __init__(self, ignore_line_search_failed_rounding_errors=0001,
+                     ignore_line_search_failed_step_at_lower_bound=0001,
+                     ignore_line_search_failed_step_at_upper_bound=00000,
+                     ignore_line_search_failed_maxfev=00000,
+                     ignore_line_search_failed_xtol=00000,
+                     ignore_search_direction_not_descent=00000):
+    adopt_init_args(self, locals())
+
+  def filter(self, msg, x, g):
+    if (msg.find("Rounding errors prevent further progress.") >= 0):
+      if (self.ignore_line_search_failed_rounding_errors):
+        return 0
+    elif (msg.find("The step is at the lower bound stpmax().") >= 0):
+      if (ext.traditional_convergence_test(target_evaluator.n)(x, g)):
+        return 0
+      if (self.ignore_line_search_failed_step_at_lower_bound):
+        return -1
+    elif (msg.find("The step is at the upper bound stpmax().") >= 0):
+      if (self.ignore_line_search_failed_step_at_upper_bound):
+        return -1
+    elif (msg.find("Number of function evaluations has reached"
+                 + " maxfev().") >= 0):
+      if (self.ignore_line_search_failed_maxfev):
+        return -1
+    elif (msg.find("Relative width of the interval of uncertainty"
+                 + " is at most xtol().") >= 0):
+      if (self.ignore_line_search_failed_xtol):
+        return -1
+    elif (msg.find("The search direction is not a descent direction.") >= 0):
+      if (ext.traditional_convergence_test(target_evaluator.n)(x, g)):
+        return 0
+      if (self.ignore_search_direction_not_descent):
+        return -1
+    return 1
+
 def run_c_plus_plus(target_evaluator,
                     termination_params=None,
-                    core_params=None):
+                    core_params=None,
+                    exception_handling_params=None):
   if (termination_params is None):
     termination_params = termination_parameters()
   if (core_params is None):
     core_params = core_parameters()
+  if (exception_handling_params is None):
+    exception_handling_params = exception_handling_parameters()
   minimizer = ext.minimizer(
     target_evaluator.n,
     core_params.m,
@@ -47,10 +87,13 @@ def run_c_plus_plus(target_evaluator,
   else:
     is_converged = ext.drop_convergence_test(termination_params.min_iterations)
   callback_after_step = getattr(target_evaluator, "callback_after_step", None)
+  x_after_step = None
+  x = None
   try:
     while 1:
       x, f, g = target_evaluator()
       if (minimizer.run(x, f, g)): continue
+      x_after_step = x.deep_copy()
       if (callback_after_step is not None):
         callback_after_step(minimizer)
       if (termination_params.traditional_convergence_test):
@@ -68,15 +111,20 @@ def run_c_plus_plus(target_evaluator,
       if (not minimizer.run(x, f, g)): break
   except RuntimeError, e:
     minimizer.error = str(e)
-    if (    str(e).find("Tolerances may be too small.")<0
-        and str(e).find("The search direction is not a descent direction")<0
-        and str(e).find("The step is at the lower bound")<0):
+    error_classification = exception_handling_params.filter(
+      minimizer.error, x, g)
+    if (error_classification > 0):
       raise
-    if (str(e).find("The step is at the lower bound")>=0):
-      if (not ext.traditional_convergence_test(target_evaluator.n)(x, g)):
-        raise
+    elif (error_classification < 0):
+      minimizer.is_unusual_error = 0001
+    else:
+      minimizer.is_unusual_error = 00000
+    if (x is not None and x_after_step is not None):
+      x.clear()
+      x.extend(x_after_step)
   else:
     minimizer.error = None
+    minimizer.is_unusual_error = None
   return minimizer
 
 def run_fortran(target_evaluator,
