@@ -160,6 +160,9 @@ else:
       opts.insert(0, "-g")
     env_etc.cxxflags_base.extend(opts)
     env_etc.ccflags_base.extend(opts)
+    if (static_exe):
+      env_base.Prepend(LINKFLAGS=["-non_shared"])
+      static_exe = None
     env_etc.shlinkflags = "-shared -expect_unresolved 'Py*'" \
                         + " -expect_unresolved '_Py*'"
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
@@ -281,6 +284,9 @@ else:
       opts.insert(0, "-g")
     env_etc.cxxflags_base.extend(opts)
     env_etc.ccflags_base.extend(opts)
+    if (static_exe):
+      env_base.Prepend(LINKFLAGS=["-non_shared"])
+      static_exe = None
     env_etc.shlinkflags = ["-shared", "-LD_MSG:off=15,84"]
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
   elif (env_etc.compiler == "darwin_gcc"):
