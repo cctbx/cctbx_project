@@ -61,17 +61,23 @@ def exercise_array():
   ma = miller.array(ms)
   ma = miller.array(ms, data)
   ma = miller.array(ms, data, sigmas)
-  ma = miller.array(ms, data, sigmas, "test")
+  ma = miller.array(ms, data, sigmas).set_info("test")
   assert ma.indices() == mi
   assert ma.data() == data
   assert ma.sigmas() == sigmas
   assert ma.info() == "test"
+  assert ma.observation_type() is None
   ma.set_info("Test")
   assert ma.info() == "Test"
+  ma.set_observation_type_xray_amplitude()
+  assert ma.is_xray_amplitude_array()
+  ma.set_observation_type_xray_intensity()
+  assert ma.is_xray_intensity_array()
   ac = ma.deep_copy()
   assert flex.order(ac.data(), ma.data()) == 0
   assert flex.order(ac.sigmas(), ma.sigmas()) == 0
-  assert ac.info() is None
+  assert ac.info() == "Test"
+  assert ac.is_xray_intensity_array()
   asu = ma.map_to_asu()
   assert tuple(asu.indices()) == ((1,2,3), (0,0,4))
   mi = flex.miller_index(((1,2,3), (-1,-2,-3), (2,3,4), (-2,-3,-4), (3,4,5)))
