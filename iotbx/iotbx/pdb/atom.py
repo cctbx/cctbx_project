@@ -56,7 +56,8 @@ class attributes(labels):
         sigOcc=None,
         sigTemp=None,
         Ucart=None,
-        sigUcart=None):
+        sigUcart=None,
+        line_number=None):
     adopt_init_args(self, locals())
 
   def set_from_ATOM_record(self, pdb_record):
