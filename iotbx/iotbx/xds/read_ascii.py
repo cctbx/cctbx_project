@@ -11,6 +11,7 @@ def get_rhs(line):
 class reader:
 
   def __init__(self, file_handle, header_only=00000):
+    "http://www.mpimf-heidelberg.mpg.de/~kabsch/xds/"
     f = iter(file_handle)
     flds = f.next().split()
     assert flds[0] == "!FORMAT=XDS_ASCII"
