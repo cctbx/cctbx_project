@@ -87,10 +87,11 @@ class fit_parameters:
   def __init__(self, max_n_terms=5,
                      target_powers=[2,4],
                      minimize_using_sigmas=00000,
-                     enforce_positive_b=0001,
+                     n_repeats_minimization=5,
+                     enforce_positive_b_mod_n=2,
+                     b_min=0,
                      max_max_error=0.01,
-                     n_start_fractions=5,
-                     n_repeats_minimization=5):
+                     n_start_fractions=5):
     adopt_init_args(self, locals())
 
 def incremental_fits(label, null_fit, params=None, plots_dir=None,
@@ -112,10 +113,11 @@ def incremental_fits(label, null_fit, params=None, plots_dir=None,
       existing_gaussian=existing_gaussian,
       target_powers=params.target_powers,
       minimize_using_sigmas=params.minimize_using_sigmas,
-      enforce_positive_b=params.enforce_positive_b,
+      n_repeats_minimization=params.n_repeats_minimization,
+      enforce_positive_b_mod_n=params.enforce_positive_b_mod_n,
+      b_min=params.b_min,
       max_max_error=params.max_max_error,
-      n_start_fractions=params.n_start_fractions,
-      n_repeats_minimization=params.n_repeats_minimization)
+      n_start_fractions=params.n_start_fractions)
     if (fit.min is None):
       print "Warning: No fit: %s n_terms=%d" % (label, n_terms)
       print
