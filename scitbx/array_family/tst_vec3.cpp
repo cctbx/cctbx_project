@@ -89,6 +89,16 @@ int main(int argc, char* argv[])
     check_true(__LINE__, a.cross(b) == vec3<int>(-3,6,-3));
   }
   {
+    check_true(__LINE__, vec3<int>(-1,2,3).min() == -1);
+    check_true(__LINE__, vec3<int>(1,-2,3).min() == -2);
+    check_true(__LINE__, vec3<int>(1,2,-3).min() == -3);
+    check_true(__LINE__, vec3<int>(1,-2,-3).max() == 1);
+    check_true(__LINE__, vec3<int>(-1,2,-3).max() == 2);
+    check_true(__LINE__, vec3<int>(-1,-2,3).max() == 3);
+    check_true(__LINE__, vec3<int>(3,5,7).sum() == 3+5+7);
+    check_true(__LINE__, vec3<int>(3,5,7).product() == 3*5*7);
+  }
+  {
     vec3<double> a(2., 3., 4.);
     check_true(__LINE__, std::fabs(a.length_sq() - 29.) < 1.e-6);
     check_true(__LINE__, std::fabs(a.length() - std::sqrt(29.)) < 1.e-6);
