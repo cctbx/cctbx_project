@@ -7,8 +7,8 @@
      2002 Sep: Created (rwgk)
  */
 
-#include <cctbx/sgtbx/brick.h>
 #include <boost/python/class.hpp>
+#include <cctbx/sgtbx/brick.h>
 
 namespace cctbx { namespace sgtbx { namespace boost_python {
 

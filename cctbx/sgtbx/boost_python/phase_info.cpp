@@ -7,9 +7,9 @@
      2002 Sep: Created (rwgk)
  */
 
-#include <cctbx/sgtbx/space_group.h>
 #include <boost/python/class.hpp>
 #include <boost/python/overloads.hpp>
+#include <cctbx/sgtbx/space_group.h>
 
 namespace cctbx { namespace sgtbx { namespace boost_python {
 

@@ -7,11 +7,11 @@
      2002 Sep: Created (rwgk)
  */
 
+#include <scitbx/boost_python/utils.h>
+#include <scitbx/boost_python/iterator_wrappers.h>
 #include <cctbx/eltbx/caasf.h>
 #include <scitbx/array_family/tiny.h>
 #include <cctbx/import_scitbx_af.h>
-#include <scitbx/boost_python/utils.h>
-#include <scitbx/boost_python/iterator_wrappers.h>
 #include <boost/python/module.hpp>
 #include <boost/python/scope.hpp>
 #include <boost/python/class.hpp>

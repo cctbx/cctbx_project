@@ -7,9 +7,9 @@
      2002 Sep: Created (rwgk)
  */
 
-#include <cctbx/sgtbx/reciprocal_space_asu.h>
 #include <boost/python/class.hpp>
 #include <boost/python/return_internal_reference.hpp>
+#include <cctbx/sgtbx/reciprocal_space_asu.h>
 
 namespace cctbx { namespace sgtbx { namespace boost_python {
 

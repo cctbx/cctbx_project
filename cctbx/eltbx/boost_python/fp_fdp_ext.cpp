@@ -7,8 +7,8 @@
      2002 Sep: Created (rwgk)
  */
 
-#include <cctbx/eltbx/fp_fdp.h>
 #include <scitbx/boost_python/utils.h>
+#include <cctbx/eltbx/fp_fdp.h>
 #include <boost/python/module.hpp>
 #include <boost/python/scope.hpp>
 #include <boost/python/class.hpp>

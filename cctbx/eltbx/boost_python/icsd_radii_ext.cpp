@@ -7,9 +7,9 @@
      2002 Sep: Created (rwgk)
  */
 
-#include <cctbx/eltbx/icsd_radii.h>
 #include <scitbx/boost_python/utils.h>
 #include <scitbx/boost_python/iterator_wrappers.h>
+#include <cctbx/eltbx/icsd_radii.h>
 #include <boost/python/module.hpp>
 #include <boost/python/scope.hpp>
 #include <boost/python/class.hpp>

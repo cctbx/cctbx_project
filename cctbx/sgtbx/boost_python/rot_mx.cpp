@@ -7,11 +7,11 @@
      2002 Sep: Created (rwgk)
  */
 
-#include <cctbx/sgtbx/rot_mx_info.h>
 #include <boost/python/class.hpp>
 #include <boost/python/overloads.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
+#include <cctbx/sgtbx/rot_mx_info.h>
 
 namespace cctbx { namespace sgtbx { namespace boost_python {
 
