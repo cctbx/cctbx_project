@@ -190,6 +190,32 @@ namespace {
     return result;
   }
 
+  double
+  rms_difference(
+    af::const_ref<vec3<double> > const& lhs,
+    af::const_ref<vec3<double> > const& rhs)
+  {
+    SCITBX_ASSERT(lhs.size() == rhs.size());
+    if (lhs.size() == 0) return 0;
+    double sum_length_sq = 0;
+    for(std::size_t i=0;i<lhs.size();i++) {
+      sum_length_sq += (lhs[i]-rhs[i]).length_sq();
+    }
+    return std::sqrt(sum_length_sq / lhs.size());
+  }
+
+  double
+  rms_length(
+    af::const_ref<vec3<double> > const& lhs)
+  {
+    if (lhs.size() == 0) return 0;
+    double sum_length_sq = 0;
+    for(std::size_t i=0;i<lhs.size();i++) {
+      sum_length_sq += lhs[i].length_sq();
+    }
+    return std::sqrt(sum_length_sq / lhs.size());
+  }
+
 } // namespace <anonymous>
 
 namespace boost_python {
@@ -217,6 +243,8 @@ namespace boost_python {
       .def("__rmul__", rmul_a_mat3)
       .def("dot", dot_a_a)
       .def("dot", dot_a)
+      .def("rms_difference", rms_difference)
+      .def("rms_length", rms_length)
     ;
   }
 
