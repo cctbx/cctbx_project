@@ -12,7 +12,7 @@ class registry:
   def __init__(self):
     self.dict = {}
     self.list = []
-    self.build_disabled = 0
+    self.missing_for_build = []
 
   def append(self, key, value):
     self.dict[key] = value
@@ -28,8 +28,11 @@ class registry:
       if (not key in self.dict):
         self.insert(i, key, other.dict[key])
         i += 1
-    if (other.build_disabled):
-      self.build_disabled = 1
+    i = 0
+    for key in other.missing_for_build:
+      if (not key in self.missing_for_build):
+        self.missing_for_build.insert(i, key)
+        i += 1
 
 class package:
 
@@ -107,7 +110,7 @@ class package:
         for required_package_name in required_packages:
           p = package(self.dist_root, required_package_name, must_exist=0)
           if (p.dist_path is None):
-            registry.build_disabled = 1
+            registry.missing_for_build.append(required_package_name)
           else:
             p._resolve_dependencies(registry)
 
@@ -137,6 +140,9 @@ class libtbx_env:
     self.PATH = [norm(join(self.LIBTBX_BUILD, "libtbx/bin"))]
     self.package_list = []
     self.dist_paths = {"LIBTBX_DIST": libtbx_dist}
+    self.scons_in_dist_root = 00000
+    if (os.path.isdir(join(self.LIBTBX_DIST_ROOT, "scons"))):
+      self.scons_in_dist_root = 0001
 
   def add_package(self, package):
     self.package_list.insert(0, package.name)
@@ -323,7 +329,7 @@ def run(libtbx_dist, args):
     packages.merge(package(env.LIBTBX_DIST_ROOT, arg).dependency_registry)
   if (len(packages.list) == 0):
     raise UserError("At least one package must be specified.")
-  if (not packages.build_disabled):
+  if (len(packages.missing_for_build) == 0):
     build_options.report()
   print "Top-down list of all packages involved:"
   for package_name in packages.list:
@@ -334,15 +340,21 @@ def run(libtbx_dist, args):
     else:
       print " ", package_name
     env.add_package(packages.dict[package_name])
+  if (len(packages.missing_for_build) != 0):
+    if (env.scons_in_dist_root):
+      print "************************************"
+      print "Warning: packages missing for build:"
+      for package_name in packages.missing_for_build:
+        print " ", package_name
+      print "************************************"
+    env.check_python_api()
   env.pickle_dict()
   if (hasattr(os, "symlink")):
     emit_setpaths_sh(env)
     emit_setpaths_csh(env)
   else:
     emit_setpaths_bat(env)
-  if (packages.build_disabled):
-    env.check_python_api()
-  else:
+  if (len(packages.missing_for_build) == 0):
     emit_SConstruct(env, build_options, packages.dict)
   return env
 
