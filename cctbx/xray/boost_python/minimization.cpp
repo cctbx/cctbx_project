@@ -39,6 +39,15 @@ namespace cctbx { namespace xray { namespace boost_python {
       arg_("gradient_flags"),
       arg_("xray_gradients"),
       arg_("site_gradients")));
+    def("minimization_extract_site_gradients",
+      (af::shared<scitbx::vec3<double> >(*)(
+        af::const_ref<scatterer<> > const&,
+        gradient_flags const&,
+        af::const_ref<double> const&))
+          minimization::extract_site_gradients, (
+      arg_("scatterers"),
+      arg_("gradient_flags"),
+      arg_("xray_gradients")));
     def("minimization_add_u_iso_gradients",
       (void(*)(
         af::const_ref<scatterer<> > const&,

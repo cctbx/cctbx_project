@@ -121,6 +121,52 @@ namespace cctbx { namespace xray { namespace minimization {
 
   template <typename XrayScattererType,
             typename FloatType>
+  af::shared<scitbx::vec3<FloatType> >
+  extract_site_gradients(
+    af::const_ref<XrayScattererType> const& scatterers,
+    xray::gradient_flags const& gradient_flags,
+    af::const_ref<FloatType> const& xray_gradients)
+  {
+    CCTBX_ASSERT(gradient_flags.site == true);
+    BOOST_STATIC_ASSERT(packing_order_convention == 1);
+    af::shared<scitbx::vec3<FloatType> > result(
+      (af::reserve(scatterers.size())));
+    scitbx::af::const_block_iterator<FloatType> next_xray_gradients(
+      xray_gradients, "Array of xray gradients is too small.");
+    for(std::size_t i_sc=0;i_sc<scatterers.size();i_sc++) {
+      XrayScattererType const& sc = scatterers[i_sc];
+      const FloatType* xg = next_xray_gradients(3);
+      scitbx::vec3<FloatType> grsg;
+      for(std::size_t i=0;i<3;i++) grsg[i] = xg[i];
+      result.push_back(grsg);
+      if (!sc.anisotropic_flag) {
+        if (gradient_flags.u_iso) {
+          next_xray_gradients();
+        }
+      }
+      else {
+        if (gradient_flags.u_aniso) {
+          next_xray_gradients(6);
+        }
+      }
+      if (gradient_flags.occupancy) {
+        next_xray_gradients();
+      }
+      if (gradient_flags.fp) {
+        next_xray_gradients();
+      }
+      if (gradient_flags.fdp) {
+        next_xray_gradients();
+      }
+    }
+    if (!next_xray_gradients.is_at_end()) {
+      throw error("Array of xray gradients is too large.");
+    }
+    return result;
+  }
+
+  template <typename XrayScattererType,
+            typename FloatType>
   void
   add_u_iso_gradients(
     af::const_ref<XrayScattererType> const& scatterers,
