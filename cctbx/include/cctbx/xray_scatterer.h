@@ -136,7 +136,7 @@ namespace cctbx {
   //! XXX
   template <typename FloatType>
   af::tiny<FloatType, 3>
-  StructureFactor_dX(
+  StructureFactor_dT_dX(
     const sgtbx::SpaceGroup& SgOps,
     const Miller::Index& H,
     const fractional<FloatType>& X,
@@ -171,6 +171,42 @@ namespace cctbx {
       }
     }
     result *= 2. * pi;
+    return result;
+  }
+
+  //! XXX
+  template <typename FloatType>
+  FloatType
+  StructureFactor_dT_dOcc(
+    const sgtbx::SpaceGroup& SgOps,
+    const Miller::Index& H,
+    const fractional<FloatType>& X,
+    const std::complex<FloatType>& phase_indep_coeff,
+    const std::complex<FloatType>& dTarget_dFcalc)
+  {
+    using constants::pi;
+    FloatType result(0);
+    for (int s = 0; s < SgOps.nSMx(); s++) {
+      Miller::Index HR = H * SgOps[s].Rpart();
+      FloatType HRX = HR * X;
+      sgtbx::TrVec T = SgOps[s].Tpart();
+      for (int i = 0; i < SgOps.fInv(); i++) {
+        if (i) {
+          HR = -HR;
+          HRX = -HRX;
+          T = SgOps.InvT() - T;
+        }
+        for (int l = 0; l < SgOps.nLTr(); l++) {
+          FloatType HT = FloatType(H * (T + SgOps.LTr(l))) / SgOps.TBF();
+          FloatType phase = 2. * pi * (HRX + HT);
+          std::complex<FloatType> fX = std::complex<FloatType>(
+            std::cos(phase), std::sin(phase));
+          fX *= phase_indep_coeff;
+          result +=   fX.real() * dTarget_dFcalc.real()
+                    + fX.imag() * dTarget_dFcalc.imag();
+        }
+      }
+    }
     return result;
   }
 
@@ -267,9 +303,27 @@ namespace cctbx {
           parameters are provided by the cctbx::adptbx.
        */
       const af::tiny<FloatType, 6>& Uaniso() { return m_U; }
-      //! Redefine the coordinates.
+      //! Redefinition of the coordinates.
+      /*! It is the user's responsibility to ensure that the
+          multiplicity is still correct or updated.
+       */
       void set_Coordinates(const fractional<FloatType>& Coordinates) {
         m_Coordinates = Coordinates;
+      }
+      //! Redefinition of the occupancy.
+      /*! This overload may only be used before ApplySymmetry() is called.
+       */
+      void set_Occ(const FloatType& Occ) {
+        cctbx_assert(m_M == 0);
+        m_Occ = Occ;
+      }
+      //! Redefinition of the occupancy.
+      /*! This overload must be used after ApplySymmetry() was called.
+          w() will be updated along with Occ().
+       */
+      void set_Occ(const FloatType& Occ, const sgtbx::SpaceGroup& SgOps) {
+        m_Occ = Occ;
+        m_w = m_Occ * m_M / SgOps.OrderZ();
       }
       //! Compute multiplicity and average anisotropic displacement parameters.
       /*! The given unit cell and space group are used to determine
@@ -377,16 +431,34 @@ namespace cctbx {
       }
       //! XXX
       af::tiny<FloatType, 3>
-      StructureFactor_dX(
+      StructureFactor_dT_dX(
         const sgtbx::SpaceGroup& SgOps,
         const Miller::Index& H,
         double Q,
         const std::complex<FloatType>& dTarget_dFcalc) const
       {
         if (!m_Anisotropic) {
-          return sftbx::StructureFactor_dX(
+          return sftbx::StructureFactor_dT_dX(
             SgOps, H, m_Coordinates,
               m_w
+            * adptbx::DebyeWallerFactorUiso(Q / 4., m_U[0])
+            * (m_CAASF.Q(Q) + m_fpfdp),
+            dTarget_dFcalc);
+        }
+        throw cctbx_not_implemented();
+      }
+      //! XXX
+      FloatType
+      StructureFactor_dT_dOcc(
+        const sgtbx::SpaceGroup& SgOps,
+        const Miller::Index& H,
+        double Q,
+        const std::complex<FloatType>& dTarget_dFcalc) const
+      {
+        if (!m_Anisotropic) {
+          return sftbx::StructureFactor_dT_dOcc(
+            SgOps, H, m_Coordinates,
+              FloatType(m_M) / SgOps.OrderZ()
             * adptbx::DebyeWallerFactorUiso(Q / 4., m_U[0])
             * (m_CAASF.Q(Q) + m_fpfdp),
             dTarget_dFcalc);
@@ -432,18 +504,38 @@ namespace cctbx {
                 typename QArrayType,
                 typename DerivativesArrayType>
       void
-      StructureFactor_dX_Array(
+      StructureFactor_dT_dX_Array(
         const sgtbx::SpaceGroup& SgOps,
         const MillerIndexArrayType& H,
         const QArrayType& Q,
         const DerivativesArrayType& dTarget_dFcalc,
-        af::tiny<FloatType, 3>& dF_dX) const
+        af::tiny<FloatType, 3>& dT_dX) const
       {
         CheckMultiplicity();
         cctbx_assert(Q.size() == H.size());
         cctbx_assert(dTarget_dFcalc.size() == H.size());
         for (std::size_t i = 0; i < H.size(); i++) {
-          dF_dX += StructureFactor_dX(
+          dT_dX += StructureFactor_dT_dX(
+            SgOps, H[i], Q[i], dTarget_dFcalc[i]);
+        }
+      }
+      //! XXX
+      template <typename MillerIndexArrayType,
+                typename QArrayType,
+                typename DerivativesArrayType>
+      void
+      StructureFactor_dT_dOcc_Array(
+        const sgtbx::SpaceGroup& SgOps,
+        const MillerIndexArrayType& H,
+        const QArrayType& Q,
+        const DerivativesArrayType& dTarget_dFcalc,
+        FloatType& dT_dOcc) const
+      {
+        CheckMultiplicity();
+        cctbx_assert(Q.size() == H.size());
+        cctbx_assert(dTarget_dFcalc.size() == H.size());
+        for (std::size_t i = 0; i < H.size(); i++) {
+          dT_dOcc += StructureFactor_dT_dOcc(
             SgOps, H[i], Q[i], dTarget_dFcalc[i]);
         }
       }
@@ -581,18 +673,18 @@ namespace cctbx {
             typename SiteArrayType,
             typename DerivativesXArrayType>
   void
-  StructureFactor_dX_Array(
+  StructureFactor_dT_dX_Array(
     const sgtbx::SpaceGroup& SgOps,
     const MillerIndexArrayType& H,
     const QArrayType& Q,
     const DerivativesArrayType& dTarget_dFcalc,
     const SiteArrayType& Sites,
-    DerivativesXArrayType dF_dX)
+    DerivativesXArrayType dT_dX)
   {
-    cctbx_assert(Sites.size() == dF_dX.size());
+    cctbx_assert(Sites.size() == dT_dX.size());
     for (std::size_t i = 0; i < Sites.size(); i++) {
-      Sites[i].StructureFactor_dX_Array(
-        SgOps, H, Q, dTarget_dFcalc, dF_dX[i]);
+      Sites[i].StructureFactor_dT_dX_Array(
+        SgOps, H, Q, dTarget_dFcalc, dT_dX[i]);
     }
   }
 
@@ -602,20 +694,64 @@ namespace cctbx {
             typename SiteArrayType,
             typename DerivativesXArrayType>
   void
-  StructureFactor_dX_Array(
+  StructureFactor_dT_dX_Array(
     const uctbx::UnitCell& UC,
     const sgtbx::SpaceGroup& SgOps,
     const MillerIndexArrayType& H,
     const DerivativesArrayType& dTarget_dFcalc,
     const SiteArrayType& Sites,
-    DerivativesXArrayType dF_dX)
+    DerivativesXArrayType dT_dX)
   {
     af::shared<double> Q(H.size()); // FUTURE: avoid default initialization
     for (std::size_t i = 0; i < H.size(); i++) {
       Q[i] = UC.Q(H[i]);
     }
-    StructureFactor_dX_Array(
-      SgOps, H, Q.const_ref(), dTarget_dFcalc, Sites, dF_dX);
+    StructureFactor_dT_dX_Array(
+      SgOps, H, Q.const_ref(), dTarget_dFcalc, Sites, dT_dX);
+  }
+
+  //! XXX
+  template <typename MillerIndexArrayType,
+            typename QArrayType,
+            typename DerivativesArrayType,
+            typename SiteArrayType,
+            typename DerivativesOccArrayType>
+  void
+  StructureFactor_dT_dOcc_Array(
+    const sgtbx::SpaceGroup& SgOps,
+    const MillerIndexArrayType& H,
+    const QArrayType& Q,
+    const DerivativesArrayType& dTarget_dFcalc,
+    const SiteArrayType& Sites,
+    DerivativesOccArrayType dT_dOcc)
+  {
+    cctbx_assert(Sites.size() == dT_dOcc.size());
+    for (std::size_t i = 0; i < Sites.size(); i++) {
+      Sites[i].StructureFactor_dT_dOcc_Array(
+        SgOps, H, Q, dTarget_dFcalc, dT_dOcc[i]);
+    }
+  }
+
+  //! XXX
+  template <typename MillerIndexArrayType,
+            typename DerivativesArrayType,
+            typename SiteArrayType,
+            typename DerivativesOccArrayType>
+  void
+  StructureFactor_dT_dOcc_Array(
+    const uctbx::UnitCell& UC,
+    const sgtbx::SpaceGroup& SgOps,
+    const MillerIndexArrayType& H,
+    const DerivativesArrayType& dTarget_dFcalc,
+    const SiteArrayType& Sites,
+    DerivativesOccArrayType dT_dOcc)
+  {
+    af::shared<double> Q(H.size()); // FUTURE: avoid default initialization
+    for (std::size_t i = 0; i < H.size(); i++) {
+      Q[i] = UC.Q(H[i]);
+    }
+    StructureFactor_dT_dOcc_Array(
+      SgOps, H, Q.const_ref(), dTarget_dFcalc, Sites, dT_dOcc);
   }
 
 }} // namespace cctbx::sftbx

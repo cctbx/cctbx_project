@@ -37,7 +37,7 @@ def OneCycle():
     print Site.Label(), Site.Coordinates()
   Fcalc = sftbx.StructureFactorArray(UnitCell, SgOps, MillerIndices, Sites)
   dT_dFc = shared.complex_double(MillerIndices.size())
-  dF_dX = sftbx.StructureFactor_dX_Array(
+  dT_dX = sftbx.StructureFactor_dT_dX_Array(
     UnitCell, SgOps, MillerIndices, dT_dFc, Sites)
   for i in xrange(len(MillerIndices)):
     print MillerIndices[i], Fcalc[i]
