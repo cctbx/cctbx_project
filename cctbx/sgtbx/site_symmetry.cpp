@@ -174,13 +174,13 @@ namespace cctbx { namespace sgtbx {
                 fractional<> const& original_site,
                 double min_distance_sym_equiv,
                 bool assert_min_distance_sym_equiv)
-  : unit_cell_(unit_cell),
+  :
+    unit_cell_(unit_cell),
     space_group_(space_group),
     original_site_(original_site),
     min_distance_sym_equiv_sq_(scitbx::fn::pow2(min_distance_sym_equiv)),
     shortest_distance_sq_(-1.),
     multiplicity_(0),
-    special_op_(0, 0),
     exact_site_(original_site)
   {
     rt_mx last_special_op(1, 1);
@@ -192,6 +192,7 @@ namespace cctbx { namespace sgtbx {
     if (assert_min_distance_sym_equiv && !check_min_distance_sym_equiv()) {
       throw error("site_symmetry: min_distance_sym_equiv too large.");
     }
+    matrices_ = point_group_.matrices();
   }
 
   af::shared<rt_mx>

@@ -823,7 +823,12 @@ def exercise_site_symmetry():
   g = sgtbx.space_group("P 2")
   s = site_symmetry(u, g, (0,0,0))
   s = site_symmetry(u, g, (0,0,0), 0.5)
-  s = site_symmetry(u, g, (0.05,0,0), 0.5, 1)
+  s = site_symmetry(
+    unit_cell=u,
+    space_group=g,
+    original_site=(0.05,0,0),
+    min_distance_sym_equiv=0.5,
+    assert_min_distance_sym_equiv=0001)
   assert s.unit_cell().parameters() == u.parameters()
   assert s.space_group() == g
   assert s.original_site() == (0.05,0,0)
@@ -839,12 +844,12 @@ def exercise_site_symmetry():
   assert [str(o) for o in s.unique_ops()] == ["0,0,z"]
   u = uctbx.unit_cell((3,3,5,90,90,120))
   g = sgtbx.space_group("-P 3 2")
-  s = site_symmetry(u, g, (0,0,0))
+  s = site_symmetry(unit_cell=u, space_group=g, original_site=(0,0,0))
   a = (5,2,3,-1,2,-2)
-  assert not s.is_compatible_u_star(a)
-  assert s.is_compatible_u_star(a, 1.e6)
-  a = s.average_u_star(a)
-  assert s.is_compatible_u_star(a)
+  assert not s.is_compatible_u_star(u_star=a)
+  assert s.is_compatible_u_star(u_star=a, tolerance=1.e6)
+  a = s.average_u_star(u_star=a)
+  assert s.is_compatible_u_star(u_star=a)
   assert len(s.matrices()) == 12
   assert str(s.matrices()[1]) == "-y,x-y,z"
 
