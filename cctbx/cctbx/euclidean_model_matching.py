@@ -127,21 +127,6 @@ class euclidean_match_symmetry:
 
   def __init__(self, space_group_info, use_k2l, use_l2n):
     adopt_init_args(self, locals())
-    sg_type = space_group_info.type()
-    self.rt_mx = sgtbx.space_group()
-    for s in sg_type.addl_generators_of_euclidean_normalizer(use_k2l, use_l2n):
-      self.rt_mx.expand_smx(s)
-    self.ss = space_group_info.structure_seminvariant()
-    self.continuous_shifts = []
-    for vm in self.ss.vectors_and_moduli():
-      if (vm.m == 0):
-        # collect continous allowed origin shifts
-        self.continuous_shifts.append(vm.v)
-      else:
-        # add discrete allowed origin shifts to self.rt_mx
-        self.rt_mx.expand_ltr(
-          sgtbx.tr_vec(vm.v, vm.m).new_denominator(self.rt_mx.t_den()))
-    # XXX just a test for now
     search_symmetry = sgtbx.search_symmetry(
       flags=sgtbx.search_symmetry_flags(
         use_space_group_symmetry=00000,
@@ -149,10 +134,10 @@ class euclidean_match_symmetry:
         use_seminvariant=0001,
         use_normalizer_k2l=use_k2l,
         use_normalizer_l2n=use_l2n),
-      space_group_type=sg_type,
-      seminvariant=self.ss)
-    assert search_symmetry.group() == self.rt_mx
-    assert tuple(self.continuous_shifts) == search_symmetry.continuous_shifts()
+      space_group_type=space_group_info.type(),
+      seminvariant=space_group_info.structure_seminvariant())
+    self.rt_mx = search_symmetry.group()
+    self.continuous_shifts = search_symmetry.continuous_shifts()
 
   def continuous_shifts_are_principal(self):
     for pa in self.continuous_shifts:
