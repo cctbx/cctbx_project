@@ -6,4 +6,12 @@ tiny_algebra.h
 small_algebra.h
 shared_algebra.h
 versa_algebra.h
+shared_apply.h
+shared_plain_apply.h
+small_apply.h
+small_plain_apply.h
+tiny_apply.h
+tiny_plain_apply.h
+versa_apply.h
+versa_plain_apply.h
 flagged_value_algebra.h

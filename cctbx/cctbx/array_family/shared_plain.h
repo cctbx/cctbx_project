@@ -351,4 +351,6 @@ namespace cctbx { namespace af {
 
 }} // namespace cctbx::af
 
+#include <cctbx/array_family/shared_plain_apply.h>
+
 #endif // CCTBX_ARRAY_FAMILY_SHARED_PLAIN_H

@@ -1,13 +1,5 @@
 #include <cctbx/array_family/simple_io.h>
-
-#include <cctbx/array_family/tiny.h>
-#include <cctbx/array_family/tiny_algebra.h>
-#include <cctbx/array_family/small.h>
-#include <cctbx/array_family/small_algebra.h>
-#include <cctbx/array_family/shared.h>
-#include <cctbx/array_family/shared_algebra.h>
-#include <cctbx/array_family/versa.h>
-#include <cctbx/array_family/versa_algebra.h>
+#include <cctbx/array_family_ew.h>
 
 using namespace cctbx;
 
