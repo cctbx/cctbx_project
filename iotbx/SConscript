@@ -7,14 +7,14 @@ env_etc.iotbx_dist = os.environ["IOTBX_DIST"]
 env_etc.cctbx_dist = os.environ["CCTBX_DIST"]
 
 parent_src = env_etc.norm_join(env_etc.iotbx_dist,"..")
-newsrc_src = env_etc.norm_join(parent_src,"newsrc")
+ccp4_src = env_etc.norm_join(parent_src,"ccp4","lib","src")
 env_etc.iotbx_common_includes = [
   env_etc.libtbx_include,
   env_etc.norm_join(env_etc.iotbx_dist, "include"),
   env_etc.norm_join(env_etc.scitbx_dist, "include"),
   env_etc.norm_join(env_etc.cctbx_dist, "include"),
   env_etc.boost_include,
-  newsrc_src,
+  ccp4_src,
 ]
 
 
