@@ -7,15 +7,6 @@ from scitbx.python_utils import easy_pickle
 from scitbx.python_utils.misc import user_plus_sys_time
 import sys
 
-def show_scatterer_digest(structure):
-  sd = structure.scattering_dict().dict()
-  for key,val in sd.items():
-    gn = str(val.gaussian.n_terms())
-    if (val.gaussian.c() != 0):
-      gn += "+c"
-    print "%s:%s*%d" % (key, gn, val.member_indices.size()),
-  print
-
 def timings(structure, d_min, fft_only=00000,
             wing_cutoff_reference=1.e-6,
             wing_cutoff_others=1.e-4):
@@ -62,7 +53,7 @@ def timings(structure, d_min, fft_only=00000,
   print "wing_cutoff for following fft calculations: %3.1e"%wing_cutoff_others
   for structure in (structure_ng, structure_5g, structure_4g,
                     structure_2g, structure_1g):
-    show_scatterer_digest(structure)
+    structure.scattering_dict().show_summary()
     if (not fft_only):
       for calc_type,cos_sin_flag in (("direct cos+sin function:",00000),
                                      ("direct cos+sin table:",0001)):

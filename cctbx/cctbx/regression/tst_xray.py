@@ -7,6 +7,7 @@ import cctbx.eltbx.xray_scattering
 from cctbx import eltbx
 from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
+import StringIO
 import sys
 
 def exercise_scatterer():
@@ -95,6 +96,9 @@ def exercise_structure():
   assert sd.lookup("Si").gaussian.n_terms() == 4
   sd = ys.scattering_dict(custom_dict={"Si":eltbx.xray_scattering.gaussian(1)})
   assert sd.lookup("Si").gaussian.n_terms() == 0
+  s = StringIO.StringIO()
+  sd.show_summary(f=s)
+  assert s.getvalue().strip() == "Si:0+c*1 O:4+c*1"
   am = xs.asu_mappings(buffer_thickness=1)
   assert am.mappings().size() == xs.scatterers().size()
 
