@@ -1,17 +1,18 @@
-#ifndef SCITBX_ARRAY_FAMILY_BOOST_PYTHON_SHARED_WRAPPER_H
-#define SCITBX_ARRAY_FAMILY_BOOST_PYTHON_SHARED_WRAPPER_H
+#ifndef SCITBX_STL_VECTOR_WRAPPER_H
+#define SCITBX_STL_VECTOR_WRAPPER_H
 
 #include <boost/python/class.hpp>
+#include <boost/python/tuple.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_non_const_reference.hpp>
 #include <scitbx/boost_python/slice.h>
 #include <scitbx/boost_python/utils.h>
-#include <scitbx/array_family/shared.h>
 #include <scitbx/boost_python/container_conversions.h>
 #include <scitbx/array_family/boost_python/ref_from_array.h>
 #include <scitbx/error.h>
+#include <vector>
 
-namespace scitbx { namespace af { namespace boost_python {
+namespace scitbx { namespace stl { namespace boost_python {
 
   using scitbx::boost_python::positive_getitem_index;
 
@@ -19,9 +20,9 @@ namespace scitbx { namespace af { namespace boost_python {
             typename GetitemReturnValuePolicy
               = boost::python::return_value_policy<
                   boost::python::copy_non_const_reference> >
-  struct shared_wrapper
+  struct vector_wrapper
   {
-    typedef shared<ElementType> w_t;
+    typedef std::vector<ElementType> w_t;
     typedef ElementType e_t;
 
     static e_t&
@@ -39,14 +40,15 @@ namespace scitbx { namespace af { namespace boost_python {
     static void
     delitem_1d(w_t& self, long i)
     {
-      self.erase(&self[positive_getitem_index(i, self.size())]);
+      self.erase(self.begin()+positive_getitem_index(i, self.size()));
     }
 
     static w_t
     getitem_1d_slice(w_t const& self, scitbx::boost_python::slice const& slice)
     {
       scitbx::boost_python::adapted_slice a_sl(slice, self.size());
-      w_t result((af::reserve(a_sl.size)));
+      w_t result;
+      result.reserve(a_sl.size);
       for(long i=a_sl.start;i!=a_sl.stop;i+=a_sl.step) {
         result.push_back(self[i]);
       }
@@ -58,19 +60,25 @@ namespace scitbx { namespace af { namespace boost_python {
     {
       scitbx::boost_python::adapted_slice a_sl(slice, self.size());
       SCITBX_ASSERT(a_sl.step == 1);
-      self.erase(&self[a_sl.start], &self[a_sl.stop]);
+      self.erase(self.begin()+a_sl.start, self.begin()+a_sl.stop);
     }
 
     static void
     insert(w_t& self, long i, e_t const& x)
     {
-      self.insert(&self[positive_getitem_index(i, self.size())], x);
+      self.insert(self.begin()+positive_getitem_index(i, self.size()), x);
     }
 
     static void
     extend(w_t& self, w_t const& other)
     {
       self.insert(self.end(), other.begin(), other.end());
+    }
+
+    static boost::python::tuple
+    getinitargs(w_t const& self)
+    {
+      return boost::python::make_tuple(boost::python::tuple(self));
     }
 
     static void
@@ -89,8 +97,10 @@ namespace scitbx { namespace af { namespace boost_python {
         .def("__delitem__", delitem_1d_slice)
         .def("clear", &w_t::clear)
         .def("insert", insert)
-        .def("append", &w_t::append)
+        .def("append", &w_t::push_back)
         .def("extend", extend)
+        .enable_pickling()
+        .def("__getinitargs__", getinitargs)
       ;
 
       scitbx::boost_python::container_conversions::from_python_sequence<
@@ -99,11 +109,11 @@ namespace scitbx { namespace af { namespace boost_python {
           ::variable_capacity_policy>();
 
       using scitbx::array_family::boost_python::ref_from_array;
-      ref_from_array<w_t, const_ref<ElementType> >();
-      ref_from_array<w_t, ref<ElementType> >();
+      ref_from_array<w_t, af::const_ref<ElementType> >();
+      ref_from_array<w_t, af::ref<ElementType> >();
     }
   };
 
-}}} // namespace scitbx::af::boost_python
+}}} // namespace scitbx::stl::boost_python
 
-#endif // SCITBX_ARRAY_FAMILY_BOOST_PYTHON_SHARED_WRAPPER_H
+#endif // SCITBX_STL_VECTOR_WRAPPER_H

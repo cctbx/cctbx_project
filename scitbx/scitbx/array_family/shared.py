@@ -1,4 +1,4 @@
-import scitbx.array_family.flex # for slice converters
+import scitbx.stl.vector
 
 import boost.python
 boost.python.import_ext("scitbx_array_family_shared_ext")

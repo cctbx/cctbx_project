@@ -1,0 +1,7 @@
+Import("env_scitbx_boost_python_ext")
+
+env_scitbx_boost_python_ext.SharedLibrary(
+  target="#libtbx/scitbx_boost_python_slice_ext",
+  source=[
+  "slice_ext.cpp",
+])
