@@ -291,12 +291,6 @@ class map_from_ampl_phases:
       self.rfft.Nreal(), self.rfft.Mreal(), map,
       self.tags, peak_search_level, max_peaks)
 
-def xtal_as_emma_model(xtal):
-  positions = []
-  for site in xtal.Sites:
-    positions.append(emma.labeled_position(site.Label(), site.Coordinates()))
-  return emma.model(xtal, positions)
-
 def peak_list_as_emma_model(xtal, n_real, peak_list):
   positions = []
   i_label = 0
@@ -320,7 +314,7 @@ def recycle(SgInfo,
             n_cycles_per_trial=10,
             verbose=0):
   sim = simulated_data(SgInfo, number_of_point_atoms, d_min, e_min, verbose)
-  sim_emma_model = xtal_as_emma_model(sim.xtal)
+  sim_emma_model = sim.xtal.as_emma_model()
   if (0 or verbose):
     sim_emma_model.show("Random model")
   p1_H = shared.miller_Index()
