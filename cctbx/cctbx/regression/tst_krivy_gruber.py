@@ -1,5 +1,6 @@
 from cctbx.uctbx import reduction_base
 from cctbx.uctbx import krivy_gruber_1976
+from cctbx.uctbx import gruber_1973
 from cctbx.uctbx import gruber_1973_table_1
 from cctbx import uctbx
 from cctbx import sgtbx
@@ -64,7 +65,14 @@ class reduction_with_tracking(krivy_gruber_1976.reduction):
       self.iteration_limit_exceeded = 0001
 
   def cb_update(self, m_elems):
-    self.action_log.append(int(get_caller_name()[1]))
+    caller = get_caller_name()
+    if (caller == "n3_true_action"):
+      id = 3
+    elif (caller == "n3_false_action"):
+      id = 4
+    else:
+      id = int(caller[1])
+    self.action_log.append(id)
     self.cell_log.append(self.as_unit_cell())
     self.type_log.append(self.type())
     self.meets_primary_conditions_log.append(self.meets_primary_conditions())
@@ -86,16 +94,41 @@ class reduction_with_tracking_and_eq_always_false(reduction_with_tracking):
 relative_epsilon = None
 track_infinite = 00000
 eq_always_false = 00000
-time_reduce = time_log("krivy_gruber_1976.reduction")
+time_krivy_gruber_1976 = time_log("krivy_gruber_1976.reduction")
+time_gruber_1973 = time_log("gruber_1973.reduction")
+time_krivy_gruber_1976_minimal=time_log("krivy_gruber_1976.minimal_reduction")
+time_gruber_1973_minimal = time_log("gruber_1973.minimal_reduction")
 
 def reduce(inp):
-  time_reduce.start()
-  red = krivy_gruber_1976.reduction(inp, relative_epsilon=relative_epsilon)
-  time_reduce.stop()
+  time_krivy_gruber_1976.start()
+  red = krivy_gruber_1976.reduction(
+    inp, relative_epsilon=relative_epsilon)
+  time_krivy_gruber_1976.stop()
   assert red.is_niggli_cell()
-  assert inp.change_basis(red.r_inv().elems).is_similar_to(red.as_unit_cell())
+  red_cell = red.as_unit_cell()
+  assert inp.change_basis(red.r_inv().elems).is_similar_to(red_cell)
   if (relative_epsilon is None):
-    assert check_is_niggli_cell(red.as_unit_cell()).itva_is_niggli_cell()
+    assert check_is_niggli_cell(red_cell).itva_is_niggli_cell()
+  time_gruber_1973.start()
+  gruber_reduction = gruber_1973.reduction(
+    inp, relative_epsilon=relative_epsilon)
+  time_gruber_1973.stop()
+  assert gruber_reduction.is_buerger_cell()
+  buerger_cell = gruber_reduction.as_unit_cell()
+  assert inp.change_basis(gruber_reduction.r_inv().elems).is_similar_to(
+    buerger_cell)
+  time_krivy_gruber_1976_minimal.start()
+  min_reduction = krivy_gruber_1976.minimal_reduction(inp)
+  time_krivy_gruber_1976_minimal.stop()
+  assert min_reduction.type() in (1,2)
+  min_cell = min_reduction.as_unit_cell()
+  assert approx_equal(min_cell.parameters()[:3], red_cell.parameters()[:3])
+  time_gruber_1973_minimal.start()
+  min_reduction = gruber_1973.minimal_reduction(inp)
+  time_gruber_1973_minimal.stop()
+  assert min_reduction.type() in (1,2)
+  min_cell = min_reduction.as_unit_cell()
+  assert approx_equal(min_cell.parameters()[:3], red_cell.parameters()[:3])
   if (track_infinite):
     if (eq_always_false):
       red0 = reduction_with_tracking_and_eq_always_false(inp)
@@ -115,6 +148,7 @@ def reduce(inp):
         for cell in red0.cell_log[-n:]:
           print cell
         print
+      sys.stdout.flush()
   return red
 
 def ucgmx((a,b,c,d,e,f)): # unit cell given Gruber matrix
@@ -414,7 +448,10 @@ def exercise():
   exercise_gruber_types(n_trials_per_type, verbose)
   exercise_real_world_examples()
   if (0 or verbose):
-    print time_reduce.report()
+    print time_krivy_gruber_1976.report()
+    print time_gruber_1973.report()
+    print time_krivy_gruber_1976_minimal.report()
+    print time_gruber_1973_minimal.report()
   print "OK"
 
 if (__name__ == "__main__"):
