@@ -21,9 +21,10 @@ class UnknownRecordName(FormatError): pass
 
 class pdb_record:
 
-  def __init__(self, raw_record, line_number=None):
+  def __init__(self, raw_record, line_number=None, strict=00000):
     self.raw = (raw_record + " " * 80)[:80]
     self.line_number = line_number
+    self.strict = strict
     self.record_name = (self.raw)[:6].upper().strip()
     if (self.record_name == "REMARK"):
       try:
@@ -260,7 +261,11 @@ class pdb_record:
 
   def read_MODEL(self):
     # 11 - 14  Integer        serial        Model serial number.
-    try: self.serial = int(self.raw[10:14])
+    if (self.strict):
+      fld = self.raw[10:14]
+    else:
+      fld = self.raw[6:]
+    try: self.serial = int(fld)
     except: self.raise_FormatError("Model serial number must be an integer.")
 
   def read_ENDMDL(self):
