@@ -179,6 +179,11 @@ namespace sgtbx {
       inline bool isUnit() const {
         return *this == Unit();
       }
+      inline RotMx minusUnit() const {
+        RotMx result(*this);
+        for (int i = 0; i < 9; i += 4) result[i] -= BF();
+        return result;
+      }
       RotMx newBaseFactor(int NewBF) const;
       inline RotMx scale(int factor) const {
         if (factor == 1) return *this;

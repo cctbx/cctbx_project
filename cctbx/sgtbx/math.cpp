@@ -129,6 +129,25 @@ namespace sgtbx {
     return nIndep;
   }
 
+  void SolveHomRE1(const int REMx[3], const int IxIndep[2], Vec3 Sol[4])
+  {
+    // REMx must be in row echelon form with Rank 1.
+
+    const int  TrialV[4][2] =
+      {{ 1,  0 },
+       { 0,  1 },
+       { 1,  1 },
+       { 1, -1 },
+      };
+
+    for (int iPV = 0; iPV < 4; iPV++) {
+      int i;
+      for(i=0;i<3;i++) Sol[iPV][i] = 0;
+      for(i=0;i<2;i++) Sol[iPV][IxIndep[i]] = TrialV[iPV][i];
+      cctbx_assert(iREBacksubst(REMx, 0, 2, 3, Sol[iPV].elems, 0) > 0);
+    }
+  }
+
   int SmithNormalForm(int *M, int mr, int mc, int *P, int *Q)
   {
     int rr = mr;
@@ -148,7 +167,7 @@ namespace sgtbx {
       MatrixLite::transpose(M, rc, rr);
     }
 
-    MatrixLite::transpose(Q, mc, mc);
+    if (Q) MatrixLite::transpose(Q, mc, mc);
     return rr;
   }
 

@@ -108,6 +108,10 @@ namespace sgtbx {
         Mx.modShort();
         InvMx.modShort();
       }
+      //! M().Rpart() * R * InvM().Rpart(), for R with rotation base factor 1.
+      /*! The rotation base factor of the result is 1.
+       */
+      RotMx operator()(const RotMx& R) const;
       //! M() * RT * InvM(), for RT with rotation base factor 1.
       /*! Similar to apply(), but faster. The translation base factor
           of the result is equal to the translation base factor of RT.

@@ -114,17 +114,13 @@ namespace sgtbx {
         : m_min(min), m_max(max), m_cur(m_min), m_over(0) {}
       bool incr()
       {
-        std::size_t i = m_cur.size() - 1;
-        for (;;) {
+        for (std::size_t i = m_cur.size(); i != 0;) {
+          i--;
           m_cur[i]++;
           if (m_cur[i] <= m_max[i]) return true;
           m_cur[i] = m_min[i];
-          if (i == 0) {
-            m_over++;
-            break;
-          }
-          i--;
         }
+        m_over++;
         return false;
       }
       inline const ArrayType& min() const { return m_min; }

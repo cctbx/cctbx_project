@@ -8,19 +8,26 @@
      2001 Sep 02: start port of sglite/sgss.c (R.W. Grosse-Kunstleve)
  */
 
+#include <cctbx/static_vector.h>
 #include <cctbx/sgtbx/groups.h>
 
 namespace sgtbx {
 
   class ssVM {
     public:
-      boost::array<int, 3> V;
+      Vec3 V;
       int M;
       inline void zero_out() {
         V.assign(0);
         M = -1;
       }
   };
+
+  namespace detail {
+    class AnyGenerators;
+    class DiscrList;
+    const int mDiscrList = 8;
+  }
 
   class StructureSeminvariant {
     public:
@@ -34,6 +41,11 @@ namespace sgtbx {
     private:
       boost::array<ssVM, 3> m_VM;
       std::size_t m_size;
+      void GetContNullSpace(const detail::AnyGenerators& Gen);
+      void BestVectors(
+        const SgOps& sgo,
+        cctbx::static_vector<detail::DiscrList,
+                             detail::mDiscrList>& DiscrLst) const;
   };
 
 } // namespace sgtbx

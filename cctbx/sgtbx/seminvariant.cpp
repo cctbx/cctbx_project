@@ -8,6 +8,7 @@
      2001 Sep 02: start port of sglite/sgss.c (R.W. Grosse-Kunstleve)
  */
 
+#include <algorithm>
 #include <cctbx/sgtbx/seminvariant.h>
 #include <cctbx/sgtbx/reference.h>
 
@@ -20,14 +21,16 @@ using std::endl;
 
 namespace sgtbx {
 
-#ifdef JUNK
-  const int mDiscrGr = 8;
+  namespace detail {
 
-  struct T_DiscrGr
-    {
-      int  P[3]; // primitive cell
-      int  Z[3]; // centred cell
+    struct DiscrList {
+      TrVec P; // primitive cell
+      TrVec Z; // centred cell
     };
+
+  }
+
+#ifdef JUNK
 
   int Is_ss(const T_ssVM *ssVM, int n_ssVM, int h, int k, int l)
   {
@@ -68,8 +71,12 @@ namespace sgtbx {
 
   namespace detail {
 
-    struct AnyGenerators {
+    struct AnyGenerators { // see also: StdGenerators
       AnyGenerators(const SgOps& sgo);
+      inline int nAll() const {
+        if (ZInvT.isValid()) return nGen + 1;
+        return nGen;
+      }
       void setPrimitive();
       ChOfBasisOp Z2POp;
       TrVec ZInvT;
@@ -185,157 +192,95 @@ namespace sgtbx {
       }
     }
 
-  } // namespace detail
-
-
-#ifdef JUNK
-  static int CmpOLen2(const int a[3], const int b[3])
-  {
-    int OLen2a, OLen2b, i;
-
-    OLen2a = 0; rangei(3) OLen2a += a[i] * a[i];
-    OLen2b = 0; rangei(3) OLen2b += b[i] * b[i];
-
-    if (OLen2a < OLen2b) return -1;
-    if (OLen2a > OLen2b) return  1;
-
-    return CmpiVect(a, b, 3);
-  }
-
-
-  static int ConstructGenRmI(const T_SgOps *SgOps, const T_RTMx Z2PCBMx[2],
-                             const int IxGen[2], int nGen,
-                             int GenRmI[3 * 3 * 3])
-  {
-    int  nrGenRmI;
-    int  iRmI, iGen, i;
-
-        nrGenRmI = (SgOps->fInv - 1 + nGen) * 3;
-    if (nrGenRmI > 9) return IE(-1);
-
-    iRmI = 0;
-
-    if (SgOps->fInv == 2) {
-      SetRminusI(SgOps->SMx[0].s.R, GenRmI, 1);
-      iRmI++;
+    void copy(const int *source, int* target, std::size_t n) {
+      for(std::size_t i=0;i<n;i++) target[i] = source[i];
     }
 
-    if (Z2PCBMx == NULL) {
-      range1(iGen, nGen) {
-        SetRminusI(SgOps->SMx[IxGen[iGen]].s.R, &GenRmI[iRmI * 9], 0);
-        iRmI++;
+  } // namespace detail
+
+  boost::array<int, 3 * 3 * 3>
+  ConstructGenRmI(const detail::AnyGenerators& Gen, bool Primitive)
+  {
+    boost::array<int, 3 * 3 * 3> result;
+    for(std::size_t i=0;i<Gen.nGen;i++) {
+      const RotMx R = Gen.ZGen[i].Rpart();
+      if (!Primitive) {
+        detail::copy(R.minusUnit().elems,
+                     &result.elems[i * 3 * 3], 3 * 3);
+      }
+      else {
+        detail::copy(Gen.Z2POp(R).minusUnit().elems,
+                     &result.elems[i * 3 * 3], 3 * 3);
+      }
+    }
+    if (Gen.ZInvT.isValid()) {
+      detail::copy(RotMx(1, -2).elems,
+                   &result.elems[Gen.nGen * 3 * 3], 3 * 3);
+    }
+    return result;
+  }
+
+  class CmpOLen2 {
+    public:
+      CmpOLen2() : CmpT(3) {}
+      bool operator()(const Vec3& a, const Vec3& b) const
+      {
+        int i;
+        int OLen2a = 0; for(i=0;i<3;i++) OLen2a += a[i] * a[i];
+        int OLen2b = 0; for(i=0;i<3;i++) OLen2b += b[i] * b[i];
+        if (OLen2a < OLen2b) return true;
+        if (OLen2a > OLen2b) return false;
+        return CmpT(a.elems, b.elems);
+      }
+    private:
+      const CmpiVect CmpT;
+  };
+
+  void
+  StructureSeminvariant::GetContNullSpace(const detail::AnyGenerators& Gen)
+  {
+    boost::array<int, 3 * 3 * 3> GenRmI = ConstructGenRmI(Gen, false);
+    int RankGenRmI = iRowEchelonFormT(GenRmI.elems, Gen.nAll() * 3, 3, 0, 0);
+    cctbx_assert(RankGenRmI >= 0 && RankGenRmI <= 3);
+    m_size = 3 - RankGenRmI;
+    int IxIndep[3];
+    int nIndep = iRESetIxIndep(GenRmI.elems, RankGenRmI, 3, IxIndep, 3);
+    cctbx_assert(nIndep >= 0);
+    if (nIndep != 2) {
+      for (int iIndep = 0; iIndep < nIndep; iIndep++) {
+        m_VM[iIndep].V[IxIndep[iIndep]] = 1;
+        cctbx_assert(iREBacksubst(GenRmI.elems, 0, RankGenRmI, 3,
+                                  m_VM[iIndep].V.elems, 0) > 0);
+        m_VM[iIndep].M = 0;
       }
     }
     else {
-      range1(iGen, nGen) {
-        if (CB_RMx(&GenRmI[iRmI * 9],
-                   Z2PCBMx[0].s.R,
-                   SgOps->SMx[IxGen[iGen]].s.R,
-                   Z2PCBMx[1].s.R) != 0) return -1;
-        range3(i, 0, 9, 4) GenRmI[iRmI * 9 + i] -= 1;
-        iRmI++;
+      boost::array<Vec3, 4> Sol;
+      SolveHomRE1(GenRmI.elems, IxIndep, Sol.elems);
+      std::sort(Sol.begin(), Sol.end(), CmpOLen2());
+      for (int iIndep = 0; iIndep < 2; iIndep++) {
+        m_VM[iIndep].V = Sol[iIndep];
+        m_VM[iIndep].M = 0;
       }
     }
-
-    if (iRmI * 3 != nrGenRmI) return IE(-1);
-
-    return nrGenRmI;
   }
 
-
-  static int GetContNullSpace(const T_SgOps *SgOps, int IxGen[2], int nGen,
-                              T_ssVM ssVM[3])
+  void UpdateBestZ(int nDiscrLst,
+                   const TrVec OrigZf[detail::mDiscrList],
+                   const TrVec& Shift,
+                   TrVec BestZf[detail::mDiscrList],
+                   TrVec BestZc[detail::mDiscrList])
   {
-    int  GenRmI[3 * 3 * 3];
-    int  nrGenRmI, RankGenRmI;
-    int  nIndep, iIndep, IxIndep[3], Sol[4][3];
-    int  n_ssVM;
-
-        nrGenRmI = ConstructGenRmI(SgOps, NULL, IxGen, nGen, GenRmI);
-    if (nrGenRmI < 0) return IE(-1);
-
-        RankGenRmI = iRowEchelonFormT(GenRmI, nrGenRmI, 3, NULL, 0);
-    if (RankGenRmI < 0 || RankGenRmI > 3)
-      return IE(-1);
-
-    n_ssVM = 3 - RankGenRmI;
-
-        nIndep = iRESetIxIndep(GenRmI, RankGenRmI, 3, IxIndep, 3);
-    if (nIndep < 0) return IE(-1);
-
-    if (nIndep != 2)
-    {
-      range1(iIndep, nIndep)
-      {
-        ssVM[iIndep].V[IxIndep[iIndep]] = 1;
-
-        if (iREBacksubst(GenRmI, NULL, RankGenRmI, 3,
-                         ssVM[iIndep].V, NULL) < 1)
-          return IE(-1);
-
-        ssVM[iIndep].M = 0;
-      }
-    }
-    else
-    {
-      if (SolveHomRE1(GenRmI, IxIndep, Sol) != 0) return -1;
-
-      qsort((void *) Sol, 4, sizeof (*Sol),
-            (int (*)(const void *, const void *)) CmpOLen2);
-
-      range1(iIndep, 2) {
-        MemCpy(ssVM[iIndep].V, Sol[iIndep], 3);
-        ssVM[iIndep].M = 0;
-      }
-    }
-
-    return n_ssVM;
-  }
-
-
-  static int nDLoopStep(int *i, int n, int Low, int High)
-  {
-    int  p, l;
-
-    p = l = n - 1;
-
-    for (; p >= 0;)
-    {
-          i[p]++;
-      if (i[p] > High)
-        p--;
-      else if (p < l)
-        i[++p] = Low - 1;
-      else
-        return 1;
-    }
-
-    return 0;
-  }
-
-
-  static void UpdateBestZ(int OrigZf[mDiscrGr][3], int nDiscrGr,
-                          int BestZf[mDiscrGr][3], int BestM[mDiscrGr],
-                          int BestZc[mDiscrGr][3],
-                          int Shift[3], int LTBF)
-  {
-    int  iDG, c, i;
-    int  Zf[3], M;
-    int  Zc[3];
-
-    range2(iDG, 1, nDiscrGr)
-    {
-      rangei(3) Zf[i] = iModPositive(Shift[i] + OrigZf[iDG][i], LTBF);
-      MemCpy(Zc, Zf, 3);
-      M = CancelBFGCD(Zc, 3, LTBF);
-
-      rangei(3) {
+    for (int iDL = 1; iDL < nDiscrLst; iDL++) {
+      TrVec Zf = (OrigZf[iDL] + Shift).modPositive();
+      TrVec Zc = Zf.cancel();
+      for(int i=0;i<3;i++) {
         if (Zf[i]) {
-          c = CmpOLen2(BestZc[iDG], Zc);
-          if (c > 0 || (c == 0 && BestM[iDG] > M)) {
-            MemCpy(BestZf[iDG], Zf, 3);
-            MemCpy(BestZc[iDG], Zc, 3);
-            BestM[iDG] = M;
+          if (   CmpOLen2()(Zc, BestZc[iDL])
+              || (   static_cast<Vec3>(Zc) == static_cast<Vec3>(BestZc[iDL])
+                  && Zc.BF() < BestZc[iDL].BF())) {
+            BestZf[iDL] = Zf;
+            BestZc[iDL] = Zc;
           }
           break;
         }
@@ -343,222 +288,223 @@ namespace sgtbx {
     }
   }
 
-
-  static int BestVect(const T_SgOps *SgOps,
-                      const T_ssVM *ssVM, int n_ssVM,
-                      int DTBF, T_DiscrGr DiscrGr[mDiscrGr], int nDiscrGr)
+  void StructureSeminvariant::BestVectors(
+    const SgOps& sgo,
+    cctbx::static_vector<detail::DiscrList,
+                         detail::mDiscrList>& DiscrLst) const
   {
-    int  iLTr, i_ssVM, iDG, gcd, i, j;
-    int  fGrd, LTBF, f[2];
-    int  OrigZf[mDiscrGr][3];
-    int  BestZf[mDiscrGr][3], BestM[mDiscrGr];
-    int  BestZc[mDiscrGr][3];
-    int  LTr[3][3];
-
-    fGrd = 1;
-    LTBF = 1;
-
-    range2(iDG, 1, nDiscrGr) {
-      rangei(3) {
-        gcd = iGCD(DiscrGr[iDG].Z[i], DTBF * CRBF);
-        LTBF = iLCM(LTBF, (DTBF * CRBF) / gcd);
+    int LTBF = 1;
+    int iDL;
+    for (iDL = 1; iDL < DiscrLst.size(); iDL++) {
+      int BF = DiscrLst[iDL].Z.BF();
+      for(int i=0;i<3;i++) {
+        int g = gcd(DiscrLst[iDL].Z[i], BF);
+        LTBF = lcm(LTBF, BF / g);
       }
     }
-
-    range2(iLTr, 1, SgOps->nLTr) {
-      rangei(3) {
-        gcd = iGCD(SgOps->LTr[iLTr].v[i], STBF);
-        LTBF = iLCM(LTBF, STBF / gcd);
+    int iLTr;
+    for (iLTr = 1; iLTr < sgo.nLTr(); iLTr++) {
+      int BF = sgo.LTr(iLTr).BF();
+      for(int i=0;i<3;i++) {
+        int g = gcd(sgo.LTr(iLTr)[i], BF);
+        LTBF = lcm(LTBF, BF / g);
       }
     }
-
-    range1(i_ssVM, n_ssVM)
-      rangei(3) fGrd = iLCM(fGrd, ssVM[i_ssVM].V[i]);
-
+    int fGrd = 1;
+    int iVM;
+    for (iVM = 0; iVM < m_size; iVM++) {
+      for(int i=0;i<3;i++) {
+        if (m_VM[iVM].V[i]) fGrd = lcm(fGrd, m_VM[iVM].V[i]);
+      }
+    }
     LTBF *= fGrd;
-
-    if (LTBF > 6) LTBF = iLCM(LTBF,  6);
-    else          LTBF = iLCM(LTBF, 12);
-
-    if (SgOps->nLTr == 1 && n_ssVM == 0) return 0;
-
-    range2(iDG, 1, nDiscrGr) {
-      if (ChangeBaseFactor(DiscrGr[iDG].Z, DTBF * CRBF,
-                              OrigZf[iDG],        LTBF, 3) != 0)
-        return IE(-1);
-      rangei(3) OrigZf[iDG][i] = iModPositive(OrigZf[iDG][i], LTBF);
-      MemCpy(BestZf[iDG], OrigZf[iDG], 3);
-      MemCpy(BestZc[iDG], OrigZf[iDG], 3);
-      BestM[iDG] = CancelBFGCD(BestZc[iDG], 3, LTBF);
+    cctbx_assert(LTBF > 0);
+    if (LTBF > 6) LTBF = lcm(LTBF,  6);
+    else          LTBF = lcm(LTBF, 12);
+    if (sgo.nLTr() == 1 && m_size == 0) return; // XXX move up
+    TrVec OrigZf[detail::mDiscrList];
+    TrVec BestZf[detail::mDiscrList];
+    TrVec BestZc[detail::mDiscrList];
+    for (iDL = 1; iDL < DiscrLst.size(); iDL++) {
+      OrigZf[iDL] = DiscrLst[iDL].Z.newBaseFactor(LTBF);
+      BestZf[iDL] = OrigZf[iDL];
+      BestZc[iDL] = BestZf[iDL].cancel();
     }
-
-    if (n_ssVM > 2) return IE(-1);
-
-    range1(iLTr, SgOps->nLTr)
-    {
-      if (ChangeBaseFactor(SgOps->LTr[iLTr].v, STBF, LTr[0], LTBF, 3) != 0)
-        return IE(-1);
-
-      rangei(n_ssVM) f[i] = 0;
-
-      do
-      {
-        rangei(n_ssVM)
-          range1(j, 3) LTr[i + 1][j] = LTr[i][j] + f[i] * ssVM[i].V[j];
-
-        UpdateBestZ(OrigZf, nDiscrGr, BestZf, BestM, BestZc,
-                    LTr[n_ssVM], LTBF);
-      }
-      while (nDLoopStep(f, n_ssVM, 0, LTBF - 1));
+    cctbx_assert(m_size < 3);
+    cctbx::static_vector<int, 2> loop_min, loop_max;
+    for (iVM = 0; iVM < m_size; iVM++) {
+      loop_min.push_back(0);
+      loop_max.push_back(LTBF - 1);
     }
-
-    range2(iDG, 1, nDiscrGr)
-      if (ChangeBaseFactor(BestZf[iDG],           LTBF,
-                           DiscrGr[iDG].Z, DTBF * CRBF, 3) != 0)
-        return IE(-1);
-
-    return 0;
-  }
-
-
-  static int SelectDiscrete(int LTBF, int nDiscrGr, T_DiscrGr DiscrGr[mDiscrGr],
-                            int mIx, int Ix[3])
-  {
-    int    nIx, iIx;
-    T_LTr  LLTr[mDiscrGr];
-    int    nLLTr;
-
-    if (nDiscrGr == 1) return 0;
-
-    for (nIx = 1; nIx <= nDiscrGr - 1 && nIx <= mIx; nIx++)
-    {
-      range1(iIx, nIx) Ix[iIx] = iIx;
-
-      do
-      {
-        ResetLLTr(LLTr, &nLLTr);
-        range1(iIx, nIx)
-          if (ExpLLTr(LTBF, mDiscrGr,
-                      LLTr, &nLLTr, DiscrGr[Ix[iIx] + 1].P) < 0)
-            return IE(-1);
-
-        if (nLLTr >  nDiscrGr) return IE(-1);
-        if (nLLTr == nDiscrGr) return nIx;
-      }
-      while (NextOf_n_from_m(nDiscrGr - 1, nIx, Ix) != 0);
-    }
-
-    return IE(-1);
-  }
-
-
-  static int CmpDiscr(const T_DiscrGr *a, const T_DiscrGr *b)
-  {
-    return CmpiVect(a->Z, b->Z, 3);
-  }
-
-
-  static int Cmp_ssVM(const T_ssVM *a, const T_ssVM *b)
-  {
-    return CmpiVect(a->V, b->V, 3);
-  }
-
-
-  int Set_ss(const T_SgOps *SgOps, T_ssVM ssVM[3])
-  {
-    int        ir, i;
-    int        nGen, IxGen[2];
-    int        n_ssVM;
-    T_RTMx     Z2PCBMx[2];
-    int        nrSNF, DTBF, nd, id, d, f;
-    int        SNF[3 * 3 * 3], Q[3 * 3], xp[3], x[3];
-    int        nDiscrGr, iDG;
-    T_LTr      LLTr[mDiscrGr];
-    T_DiscrGr  DiscrGr[mDiscrGr];
-    int        nIx, Ix[3];
-
-    range1(ir, 3) rangei(3) ssVM[ir].V[i] = 0;
-    range1(ir, 3) ssVM[ir].M = -1;
-
-    // XXX new: P 1 -> ngen - 0
-        nGen = SetAnyIxGen(SgOps, MGC_Undefined, IxGen);
-    if (nGen < 0 || nGen > 2) return IE(-1);
-
-        n_ssVM = GetContNullSpace(SgOps, IxGen, nGen, ssVM);
-    if (n_ssVM < 0) return -1;
-    if (n_ssVM == 3) return n_ssVM;
-
-    if (GetZ2PCBMx(SgOps, Z2PCBMx) != 0) return -1;
-
-        nrSNF = ConstructGenRmI(SgOps, Z2PCBMx, IxGen, nGen, SNF);
-    if (nrSNF < 0) return IE(-1);
-
-        nd = SmithNormalForm(SNF, nrSNF, 3, NULL, Q);
-    if (nd < 0 || nd > 3) return IE(-1);
-
-    DTBF = 1; range1(id, 3) DTBF = iLCM(DTBF, SNF[(nd + 1) * id]);
-
-    ResetLLTr(LLTr, &nDiscrGr);
-
-    range1(id, nd) {
-      d = SNF[(nd + 1) * id];
-      range2(f, 1, d) {
-        rangei(3) xp[i] = 0;
-        xp[id] = f * DTBF / d;
-        iMxMultiply(x, xp, Q, 1, 3, 3);
-        if (ExpLLTr(DTBF, mDiscrGr, LLTr, &nDiscrGr, x) < 0)
-          return IE(-1);
-      }
-    }
-
-    range1(iDG, nDiscrGr) {
-      MemCpy(DiscrGr[iDG].P, LLTr[iDG].v, 3);
-      RotMx_t_Vector(DiscrGr[iDG].Z, Z2PCBMx[1].s.R, DiscrGr[iDG].P, 0);
-      rangei(3)
-        DiscrGr[iDG].Z[i] = iModPositive(DiscrGr[iDG].Z[i], DTBF * CRBF);
-    }
-
-    if (BestVect(SgOps, ssVM, n_ssVM, DTBF, DiscrGr, nDiscrGr) != 0)
-      return IE(-1);
-
-    qsort((void *) DiscrGr, nDiscrGr, sizeof (*DiscrGr),
-          (int (*)(const void *, const void *)) CmpDiscr);
-
-        nIx = SelectDiscrete(DTBF, nDiscrGr, DiscrGr, 3 - n_ssVM, Ix);
-    if (nIx < 0) return IE(-1);
-
-    rangei(nIx) {
-      if (n_ssVM >= 3) return IE(-1);
-      MemCpy(ssVM[n_ssVM].V, DiscrGr[Ix[i] + 1].Z, 3);
-      ssVM[n_ssVM].M = CancelBFGCD(ssVM[n_ssVM].V, 3, DTBF * CRBF);
-      n_ssVM++;
-    }
-
-    qsort((void *) ssVM, n_ssVM, sizeof (*ssVM),
-          (int (*)(const void *, const void *)) Cmp_ssVM);
-
-    return n_ssVM;
-  }
+    TrVec LTr[3];
+    for (iLTr = 0; iLTr < sgo.nLTr(); iLTr++) {
+      LTr[0] = sgo.LTr(iLTr).newBaseFactor(LTBF);
+      NestedLoop<cctbx::static_vector<int, 2> > loop(loop_min, loop_max);
+      do {
+        for (iVM = 0; iVM < m_size; iVM++) {
+          const cctbx::static_vector<int, 2>& f = loop();
+          LTr[iVM + 1] = LTr[iVM] + f[iVM] * TrVec(m_VM[iVM].V, LTBF);
+        }
+        UpdateBestZ(DiscrLst.size(), OrigZf, LTr[m_size], BestZf, BestZc);
+#ifdef JUNK
+cout << "Shift ";
+for (int ic=0;ic<3;ic++) {
+   cout << " " << LTr[m_size][ic];
+}
+cout << endl;
+cout << "BestZf ";
+for (int ic=0;ic<3;ic++) {
+   cout << " " << BestZf[1][ic];
+}
+cout << endl;
 #endif
+        loop.incr();
+      }
+      while (loop.over() == 0);
+    }
+    for (iDL = 1; iDL < DiscrLst.size(); iDL++) {
+      DiscrLst[iDL].Z = BestZf[iDL].newBaseFactor(DiscrLst[iDL].Z.BF());
+    }
+  }
+
+  cctbx::static_vector<TrVec, 3>
+  SelectDiscreteGenerators(cctbx::static_vector<detail::DiscrList,
+                                                detail::mDiscrList> DiscrLst)
+  {
+    if (DiscrLst.size() == 1) return cctbx::static_vector<TrVec, 3>();
+    for (int nIx = 1; nIx <= DiscrLst.size() - 1 && nIx <= 3; nIx++) {
+      int Ix[3], iIx;
+      for (iIx = 0; iIx < nIx; iIx++) Ix[iIx] = iIx;
+      do {
+        cctbx::static_vector<TrVec, 3> result;
+        TrOps DiscrGrp(DiscrLst[0].P.BF());
+        for (iIx = 0; iIx < nIx; iIx++) {
+          DiscrGrp.expand(DiscrLst[Ix[iIx] + 1].P);
+          result.push_back(DiscrLst[Ix[iIx] + 1].Z);
+        }
+        if (DiscrGrp.nVects() == DiscrLst.size()) return result;
+        cctbx_assert(DiscrGrp.nVects() < DiscrLst.size());
+      }
+      while (NextOf_n_from_m(DiscrLst.size() - 1, nIx, Ix) != 0);
+    }
+    throw cctbx_internal_error();
+  }
+
+  class CmpDiscr {
+    public:
+      CmpDiscr() : CmpT(3) {}
+      inline bool operator()(const detail::DiscrList& a,
+                             const detail::DiscrList& b) const {
+        return CmpT(a.Z.elems, b.Z.elems);
+      }
+    private:
+      const CmpiVect CmpT;
+  };
+
+  class Cmp_ssVM {
+    public:
+      Cmp_ssVM() : CmpT(3) {}
+      inline bool operator()(const ssVM& a, const ssVM& b) const {
+        return CmpT(a.V.elems, b.V.elems);
+      }
+    private:
+      const CmpiVect CmpT;
+  };
 
   StructureSeminvariant::StructureSeminvariant(const SgOps& sgo)
     : m_size(0)
   {
     for(std::size_t i = 0; i < 3; i++) m_VM[i].zero_out();
-
-    // XXX new: P 1 -> ngen = 0
     detail::AnyGenerators Gen(sgo);
-
-    int j;
-    SgOps VfySgOps;
-    for(j=0; j < sgo.nLTr(); j++) {
-      VfySgOps.expandLTr(sgo.LTr(j));
+    GetContNullSpace(Gen);
+    for(int j=0;j<m_size;j++) {
+      cout << m_VM[j].V[0] << " ";
+      cout << m_VM[j].V[1] << " ";
+      cout << m_VM[j].V[2] << endl;
     }
-    if (Gen.ZInvT.isValid()) VfySgOps.expandInv(Gen.ZInvT);
-    for(j=0; j < Gen.nGen; j++) {
-      VfySgOps.expandSMx(Gen.ZGen[j]);
+    if (m_size == 3) return; // space group P1
+    boost::array<int, 3 * 3 * 3> SNF = ConstructGenRmI(Gen, true);
+#ifdef JUNK
+cout << "SNF before\n";
+for (int d = 0; d < Gen.nAll(); d++) {
+  for (int ir=0;ir<3;ir++) {
+    for (int ic=0;ic<3;ic++) {
+      cout << " " << SNF[(d * 3 + ir) * 3 + ic];
     }
-    cctbx_assert(VfySgOps == sgo);
+    cout << endl;
+  }
+}
+#endif
+    int Q[3 * 3];
+    int nd = SmithNormalForm(SNF.elems, Gen.nAll() * 3, 3, 0, Q);
+#ifdef JUNK
+cout << "SNF after\n";
+for (int d = 0; d < Gen.nAll(); d++) {
+  for (int ir=0;ir<3;ir++) {
+    for (int ic=0;ic<3;ic++) {
+      cout << " " << SNF[(d * 3 + ir) * 3 + ic];
+    }
+    cout << endl;
+  }
+}
+#endif
+    cctbx_assert(nd >=0 && nd <= 3);
+    int id;
+    int DTBF = 1;
+    for (id = 0; id < nd; id++) DTBF = lcm(DTBF, SNF[(nd + 1) * id]);
+    cout << "DTBF " << DTBF << endl;
+    TrOps DiscrGrpP(DTBF);
+    for (id = 0; id < nd; id++) {
+      int d = SNF[(nd + 1) * id];
+      cout << "d " << d << endl;
+      for (int f = 1; f < d; f++) {
+        Vec3 xp;
+        xp.assign(0);
+        xp[id] = f * DTBF / d;
+        //cout << "xp " << xp << endl;
+        TrVec x(DTBF);
+        MatrixLite::multiply<int>(Q, xp.elems, 3, 3, 1, x.elems);
+        //cout << "x " << x << endl;
+        DiscrGrpP.expand(x);
+      }
+    }
+    cout << Gen.nAll() * 3 << " " << nd << " " << DiscrGrpP.nVects() << endl;
+    cctbx_assert(DiscrGrpP.nVects() <= detail::mDiscrList);
+    cctbx::static_vector<detail::DiscrList, detail::mDiscrList> DiscrLst;
+    for (int iDL = 0; iDL < DiscrGrpP.nVects(); iDL++) {
+      detail::DiscrList v;
+      v.P = DiscrGrpP[iDL];
+      v.Z = (Gen.Z2POp.InvM().Rpart() * v.P).modPositive();
+      //cout << iDL << " P " << v.P[0] << " " << v.P[1] << " " << v.P[2] << endl;
+      //cout << iDL << " Z " << v.Z[0] << " " << v.Z[1] << " " << v.Z[2] << endl;
+      DiscrLst.push_back(v);
+    }
+    cctbx_assert(DiscrLst.size() == DiscrGrpP.nVects());
+    BestVectors(sgo, DiscrLst);
+    std::sort(DiscrLst.begin(), DiscrLst.end(), CmpDiscr());
+    for(int k=0;k<DiscrLst.size();k++) {
+      cout << DiscrLst[k].Z[0] << " ";
+      cout << DiscrLst[k].Z[1] << " ";
+      cout << DiscrLst[k].Z[2] << "  ";
+      cout << DiscrLst[k].Z.BF() << endl;
+    }
+    cctbx::static_vector<TrVec, 3>
+    DiscrGen = SelectDiscreteGenerators(DiscrLst);
+    for (int iG = 0; iG < DiscrGen.size(); iG++) {
+      cctbx_assert(m_size < 3);
+      TrVec VM = DiscrGen[iG].cancel();
+      m_VM[m_size].V = static_cast<Vec3>(VM);
+      m_VM[m_size].M = VM.BF();
+      m_size++;
+    }
+    std::sort(m_VM.begin(), m_VM.begin() + m_size, Cmp_ssVM());
+    for(int l=0;l<m_size;l++) {
+      cout << "ssVM ";
+      cout << m_VM[l].V[0] << " ";
+      cout << m_VM[l].V[1] << " ";
+      cout << m_VM[l].V[2] << "  ";
+      cout << m_VM[l].M << endl;
+    }
   }
 
 } // namespace sgtbx
