@@ -126,4 +126,4 @@ def run():
 if (__name__ == "__main__"):
   run()
   t = os.times()
-  print "u+s,u,s:", t[0] + t[1], t[0], t[1]
+  print "u+s,u,s: %.2f %.2f %.2f" % (t[0] + t[1], t[0], t[1])
