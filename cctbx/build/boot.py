@@ -1,4 +1,4 @@
-import sys, os, os.path, shutil
+import sys, os, shutil
 
 def create_makefiles(path_cctbx, configuration):
   for subdir in ("eltbx", "sgtbx", "uctbx", "examples/cpp"):
@@ -32,16 +32,14 @@ if (__name__ == "__main__"):
       try: os.symlink(path_cctbx + "/build/" + file, file)
       except: pass
     file = "setpythonpath.csh"
-    set = "setenv PYTHONPATH %s/lib/python\n"
+    set = "setenv PYTHONPATH '%s/lib/python'\n"
   else:
     for file in ("make.py", "test.py"):
       print "Copying:", file
       shutil.copy(path_cctbx + "/build/" + file, file)
     file = "setpythonpath.bat"
     set = "set PYTHONPATH=%s\\lib\\python\n"
-  try:
-    open(file, "r").close()
-  except:
+  if (not os.path.exists(file)):
     print "Creating:", file
     f = open(file, "w")
     f.write(set % (os.getcwd(),))

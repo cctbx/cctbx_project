@@ -11,7 +11,7 @@ while 1:
   if (wl() == 0.): break
   print wl.Label(), wl(), wl.Energy()
   i = i + 1
-  
+
 for lbl in ("CrA1", "Cu", "MoA1", "AgA2"):
   wl = WaveLength(lbl)
   print wl.Label(), wl(), wl.Energy()

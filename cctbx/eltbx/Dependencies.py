@@ -68,14 +68,12 @@ class write_makefiles(makefile_generator.write_makefiles):
     }
 
   def make_test(self):
-    print r"""
-tst:
-	python tst_tinypse.py
-	python tst_icsd_radii.py
-	python tst_wavelengths.py
-	python tst_caasf_it1992.py
-	python tst_caasf_wk1995.py
-	python tst_henke.py
-	python tst_sasaki.py
-	python tst_neutron.py
-"""
+    print "tst:"
+    print "\tpython tst_tinypse.py"
+    print "\tpython tst_icsd_radii.py"
+    print "\tpython tst_wavelengths.py"
+    print "\tpython tst_caasf_it1992.py"
+    print "\tpython tst_caasf_wk1995.py"
+    print "\tpython tst_henke.py"
+    print "\tpython tst_sasaki.py"
+    print "\tpython tst_neutron.py"
