@@ -13,7 +13,33 @@ from cctbx import sgtbx
 from cctbx.array_family import flex
 from scitbx.python_utils.str_utils import overwrite_at, contains_one_of
 from scitbx.python_utils.misc import adopt_init_args
-import sys
+import warnings
+import sys, os
+
+expected_cmtz_struct_sizes = (
+  (56, 84, 176, 500, 12336, 12488), # Linux 32-bit
+  (64, 88, 184, 504, 12336, 12528), # Tru64
+)
+if (tuple(ext.cmtz_struct_sizes()) not in expected_cmtz_struct_sizes):
+  warnings.warn("""Unexpected iotbx.mtz.wrapper.cmtz_struct_sizes(): %s
+
+os.name: %s
+sys.platform: %s
+boost.python.platform_info: %s
+
+The iotbx.mtz module makes certain assumptions about the C structs in
+the CMtz library. This warning appears if the sizes of the C structs
+are not in a table of expected sizes. It may appear on platforms
+where the iotbx.mtz module was not tested before, or if the CMtz
+library structs have changed. If you see this warning, please send
+the complete output to cctbx@cci.lbl.gov to give us the opportunity
+to investigate.
+Thank you!
+""" % (
+  str(tuple(ext.cmtz_struct_sizes())),
+  os.name,
+  sys.platform,
+  boost.python.platform_info))
 
 column_type_legend_source = \
   "http://www.ccp4.ac.uk/dist/html/mtzlib.html#fileformat"
