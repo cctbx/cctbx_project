@@ -1,13 +1,13 @@
 from libtbx import test_utils
-import os
+import libtbx.env
 
 def run():
   tst_list = (
   "$D/tst_rational.py",
   )
 
-  build_dir = os.path.join(os.environ["LIBTBX_BUILD"], "boost_adaptbx")
-  dist_dir = os.environ["BOOST_ADAPTBX_DIST"]
+  build_dir = libtbx.env.under_build("boost_adaptbx")
+  dist_dir = libtbx.env.dist_path("boost_adaptbx")
 
   test_utils.run_tests(build_dir, dist_dir, tst_list)
 

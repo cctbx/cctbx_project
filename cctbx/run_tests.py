@@ -1,5 +1,5 @@
-import os, os.path
 from libtbx import test_utils
+import libtbx.env
 
 def run():
   tst_list = (
@@ -65,8 +65,8 @@ def run():
   ["$D/cctbx/development/run_shelx.py", "P31"],
   )
 
-  build_dir = os.path.join(os.environ["LIBTBX_BUILD"], "cctbx")
-  dist_dir = os.environ["CCTBX_DIST"]
+  build_dir = libtbx.env.under_build("cctbx")
+  dist_dir = libtbx.env.dist_path("cctbx")
 
   test_utils.run_tests(build_dir, dist_dir, tst_list)
 

@@ -5,6 +5,7 @@ from cctbx.array_family import flex
 from scitbx.python_utils.misc import adopt_init_args
 import scitbx.math
 from libtbx.test_utils import approx_equal
+import libtbx.env
 from cStringIO import StringIO
 import math
 import sys, os
@@ -199,8 +200,7 @@ def run():
   verbose = "--verbose" in sys.argv[1:]
   exercise_icosahedron(verbose=verbose)
   default_distance_cutoff=3.5
-  regression_misc = os.path.join(
-    os.environ["LIBTBX_DIST_ROOT"], "regression", "misc")
+  regression_misc = libtbx.env.under_dist_root("regression/misc")
   file_names = []
   for file_name in ["strudat_zeolite_atlas", "strudat_special_bonds"]:
     path = os.path.join(regression_misc, file_name)

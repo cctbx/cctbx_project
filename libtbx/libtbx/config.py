@@ -116,7 +116,7 @@ class env:
 
   def __init__(self, application_prefix="LIBTBX"):
     self.application_prefix = application_prefix
-    libtbx_build = os.environ["LIBTBX_BUILD"]
+    libtbx_build = os.environ["LIBTBX_BUILD"] # XXX XXX XXX XXX XXX XXX XXX XXX
     file_name = join(libtbx_build, "libtbx_env")
     try:
       f = open(file_name)

@@ -3,6 +3,7 @@ from cctbx.regression import tst_direct_space_asu
 from cctbx import crystal
 from cctbx import uctbx
 from cctbx.array_family import flex
+import libtbx.env
 from cStringIO import StringIO
 import sys, os
 
@@ -129,8 +130,8 @@ O  0.0 0.0 0.0
   assert all_entries.get("cubi").as_xray_structure().scatterers().size() == 2
 
 def exercise_zeolite_atlas(distance_cutoff=3.5):
-  atlas_file = os.path.join(os.environ["LIBTBX_DIST_ROOT"],
-    "regression", "misc", "strudat_zeolite_atlas")
+  atlas_file = libtbx.env.under_dist_root(
+    "regression/misc/strudat_zeolite_atlas")
   if (not os.path.isfile(atlas_file)):
     print "Skipping exercise_zeolite_atlas(): input file not available"
     return
