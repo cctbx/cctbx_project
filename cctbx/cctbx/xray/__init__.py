@@ -127,7 +127,7 @@ class structure(crystal.special_position_settings):
     self._scatterers.append(scatterer)
     self.apply_symmetry(i)
 
-  def apply_symmetry(self, i):
+  def apply_symmetry(self, i, update_special_position_indices=0001):
     site_symmetry = self._scatterers[i].apply_symmetry(
       self.unit_cell(),
       self.space_group(),
@@ -135,7 +135,8 @@ class structure(crystal.special_position_settings):
       self.u_star_tolerance(),
       self.assert_is_positive_definite(),
       self.assert_min_distance_sym_equiv())
-    if (not site_symmetry.is_point_group_1()):
+    if (update_special_position_indices
+        and not site_symmetry.is_point_group_1()):
       self.special_position_indices().append(i)
 
   def add_scatterers(self, scatterers):
@@ -156,6 +157,14 @@ class structure(crystal.special_position_settings):
       self.u_star_tolerance(),
       self.assert_is_positive_definite(),
       self.assert_min_distance_sym_equiv())
+
+  def set_occupancy(self, i, value):
+    self.scatterers()[i].occupancy = value
+    self.apply_symmetry(i, update_special_position_indices=00000)
+
+  def shift_occupancy(self, i, delta):
+    self.scatterers()[i].occupancy += delta
+    self.apply_symmetry(i, update_special_position_indices=00000)
 
   def structure_factors(self, anomalous_flag=None, d_min=None,
                               direct=00000, fft=00000):
