@@ -10,15 +10,8 @@ namespace {
 
   void init_module()
   {
-    shared_wrapper<std::vector<std::size_t> >::wrap(
-      "std_vector_size_t");
-    scitbx::boost_python::container_conversions
-    ::tuple_mapping_variable_capacity<std::vector<std::size_t> >();
-
-    shared_wrapper<std::set<std::size_t> >::wrap(
-      "std_set_size_t");
-    scitbx::boost_python::container_conversions
-    ::tuple_mapping_set<std::set<std::size_t> >();
+    shared_wrapper<std::vector<unsigned> >::wrap("stl_vector_unsigned");
+    shared_wrapper<std::set<unsigned> >::wrap("stl_set_unsigned");
   }
 
 }}}} // namespace scitbx::af::boost_python::<anonymous>

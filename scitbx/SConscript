@@ -26,6 +26,8 @@ if (not env_etc.no_boost_python):
   Export("env_scitbx_boost_python_ext")
 
   SConscript("boost_python/SConscript")
+  SConscript("include/scitbx/boost_python/SConscript")
+  SConscript("include/scitbx/stl/SConscript")
   SConscript("array_family/boost_python/SConscript")
   SConscript("math/boost_python/SConscript")
   SConscript("fftpack/boost_python/SConscript")

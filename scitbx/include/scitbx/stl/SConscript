@@ -1,0 +1,8 @@
+Import("env_scitbx_boost_python_ext")
+
+for stl_type in ["set", "vector"]:
+  env_scitbx_boost_python_ext.SharedLibrary(
+    target="#libtbx/scitbx_stl_%s_ext" % stl_type,
+    source=[
+    "%s_ext.cpp" % stl_type,
+  ])

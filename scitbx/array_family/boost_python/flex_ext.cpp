@@ -51,10 +51,23 @@ namespace {
     tuple_mapping_fixed_size<double6>();
     tuple_mapping_fixed_size<double9>();
 
+    tuple_mapping_fixed_size<tiny<bool, 3> >();
+
+    tuple_mapping_fixed_capacity<small<double, 6> >();
+
+    tuple_mapping_fixed_size<tiny<int, 12> >();
+    tuple_mapping_fixed_size<tiny<int, 24> >(); // scitbx/math/golay.h
+
+    tuple_mapping_fixed_size<tiny<double, 12> >();
+
+    tuple_mapping_fixed_size<tiny<std::size_t, 2> >();
     tuple_mapping_fixed_size<tiny<std::size_t, 3> >();
     tuple_mapping_fixed_size<tiny<std::size_t, 4> >();
-
-    tuple_mapping_fixed_size<tiny<int,24> >(); // scitbx/math/golay.h
+    if (sizeof(unsigned) != sizeof(std::size_t)) {
+      tuple_mapping_fixed_size<tiny<unsigned, 2> >();
+      tuple_mapping_fixed_size<tiny<unsigned, 3> >();
+      tuple_mapping_fixed_size<tiny<unsigned, 4> >();
+    }
 
     tuple_mapping_fixed_size<vec3<unsigned int> >();
     tuple_mapping_fixed_size<vec3<unsigned long> >();
@@ -154,7 +167,6 @@ namespace {
 
     register_scitbx_tuple_mappings();
 
-    scitbx::boost_python::slice_from_python();
     wrap_flex_grid();
 
     wrap_flex_bool();

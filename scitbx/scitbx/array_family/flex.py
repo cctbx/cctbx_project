@@ -1,3 +1,5 @@
+import scitbx.boost_python.slice
+
 import boost.python
 boost.python.import_ext("scitbx_array_family_flex_ext")
 from scitbx_array_family_flex_ext import *
