@@ -33,10 +33,10 @@ class character_iterator:
       if (result == "\n"): self.line_number += 1
     return result
 
-def where(file_name, line_number):
+def where(source_info, line_number):
   result = []
-  if (file_name is not None):
-    result.append('file "%s"' % file_name)
+  if (source_info is not None):
+    result.append(source_info)
     if (line_number is not None):
       result.append("line %d" % line_number)
   elif (line_number is not None):
@@ -44,19 +44,24 @@ def where(file_name, line_number):
   if (len(result) == 0): return None
   return ", ".join(result)
 
+def where_str(source_info, line_number):
+  s = where(source_info, line_number)
+  if (s is None): return ""
+  return " (%s)" % s
+
 class word: # FUTURE word(object)
 
-  __slots__ = ["value", "quote_token", "line_number", "file_name"]
+  __slots__ = ["value", "quote_token", "line_number", "source_info"]
 
   def __init__(self,
         value,
         quote_token=None,
         line_number=None,
-        file_name=None):
+        source_info=None):
     self.value = value
     self.quote_token = quote_token
     self.line_number = line_number
-    self.file_name = file_name
+    self.source_info = source_info
 
   def __str__(self):
     if (self.quote_token is None):
@@ -68,12 +73,10 @@ class word: # FUTURE word(object)
          + self.quote_token
 
   def where(self):
-    return where(self.file_name, self.line_number)
+    return where(self.source_info, self.line_number)
 
   def where_str(self):
-    where = self.where()
-    if (self.where() is None): return ""
-    return " (%s)" % where
+    return where_str(self.source_info, self.line_number)
 
   def raise_syntax_error(self, message):
     raise RuntimeError(
@@ -108,9 +111,17 @@ class settings:
 
 class word_iterator:
 
-  def __init__(self, input_string, file_name=None, list_of_settings=None):
+  def __init__(self,
+        input_string,
+        source_info=None,
+        file_name=None,
+        list_of_settings=None):
+    assert source_info is None or file_name is None
     self.char_iter = character_iterator(input_string)
-    self.file_name = file_name
+    if (source_info is None and file_name is not None):
+      self.source_info = 'file "%s"' % file_name
+    else:
+      self.source_info = source_info
     if (list_of_settings is None):
       self.list_of_settings = [settings()]
     else:
@@ -160,14 +171,14 @@ class word_iterator:
               c = char_iter.next()
           if (c is None):
             raise RuntimeError(
-              "Syntax error: missing closing quote (%s)" % (
-                where(self.file_name, char_iter.line_number)))
+              "Syntax error: missing closing quote%s" % (
+                where_str(self.source_info, char_iter.line_number)))
           word_value += c
         return word(
           value=word_value,
           quote_token=quote_token,
           line_number=word_line_number,
-          file_name=self.file_name)
+          source_info=self.source_info)
       else:
         word_value = c
         word_line_number = char_iter.line_number
@@ -189,7 +200,7 @@ class word_iterator:
         return word(
           value=word_value,
           line_number=word_line_number,
-          file_name=self.file_name)
+          source_info=self.source_info)
     raise StopIteration
 
   def try_pop(self, settings_index=0):
