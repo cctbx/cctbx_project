@@ -15,8 +15,8 @@ def run():
   "$B/array_family/tst_accessors",
   "$D/array_family/boost_python/regression_test.py",
   "$D/array_family/boost_python/tst_flex.py",
-  "$D/lbfgs/boost_python/tst_lbfgs.py",
-  "$D/fftpack/boost_python/tst_fftpack.py",
+  ["$D/lbfgs/boost_python/tst_lbfgs.py"],
+  ["$D/fftpack/boost_python/tst_fftpack.py"],
   )
 
   build_dir = os.path.join(os.environ["LIBTBX_BUILD"], "scitbx")

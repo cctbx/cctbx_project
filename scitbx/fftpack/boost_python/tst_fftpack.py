@@ -173,11 +173,11 @@ def test_comprehensive_rc_1d(max_transform_size):
 
 def run():
   from scitbx.python_utils import command_line
-  Flags = command_line.parse_options(sys.argv[1:], (
+  flags = command_line.parse_options(sys.argv[1:], (
     "RandomSeed",
-    "verbose",
+    "Verbose",
   ))
-  if (not Flags.RandomSeed): random.seed(0)
+  if (not flags.RandomSeed): random.seed(0)
   assert fftpack.adjust_gridding(13, 5) == 15
   assert fftpack.adjust_gridding(13, 5, 6) == 18
   assert fftpack.adjust_gridding_triple((13,22,34), 5) == (15,24,36)
@@ -185,10 +185,10 @@ def run():
   f = fftpack.factorization(30, 0)
   assert f.n() == 30
   assert tuple(f.factors()) == (2, 3, 5)
-  test_complex_to_complex(Flags.verbose)
-  test_real_to_complex(Flags.verbose)
-  test_complex_to_complex_3d(Flags.verbose)
-  test_real_to_complex_3d(Flags.verbose)
+  test_complex_to_complex(flags.Verbose)
+  test_real_to_complex(flags.Verbose)
+  test_complex_to_complex_3d(flags.Verbose)
+  test_real_to_complex_3d(flags.Verbose)
   max_transform_size = 300
   test_comprehensive_cc_1d(max_transform_size)
   test_comprehensive_rc_1d(max_transform_size)

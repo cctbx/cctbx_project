@@ -66,7 +66,7 @@ def exercise_minimization(verbose):
 def run():
   import os, sys
   Endless = "--Endless" in sys.argv
-  verbose = "--verbose" in sys.argv and not Endless
+  verbose = "--Verbose" in sys.argv and not Endless
   exercise_drop_convergence_test()
   while 1:
     exercise_minimization(verbose)

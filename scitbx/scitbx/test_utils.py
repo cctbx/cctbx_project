@@ -3,6 +3,14 @@ def run_tests(build_dir, dist_dir, tst_list):
   try: python_exe = os.environ["LIBTBX_PYTHON_EXE"]
   except: python_exe = "python"
   for tst in tst_list:
+    cmd_args = ""
+    if (type(tst) == type([])):
+      if ("--Verbose" in sys.argv[1:]):
+        cmd_args = " " + " ".join(["--Verbose"] + tst[1:])
+      tst = tst[0]
+    else:
+      if ("--Verbose" in sys.argv[1:]):
+        continue
     if (tst.startswith("$B")):
       tst_path = tst.replace("$B", build_dir)
     else:
@@ -13,6 +21,7 @@ def run_tests(build_dir, dist_dir, tst_list):
       cmd = python_exe + " " + tst_path
     else:
       cmd = tst_path
+    cmd += cmd_args
     print cmd
     sys.stdout.flush()
     os.system(cmd)
