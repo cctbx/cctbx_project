@@ -68,13 +68,16 @@ def show(input_symmetry, max_delta):
     sort_values.append(order_z*1000+space_group_number)
   perm = flex.sort_permutation(sort_values, 0001)
   for i_subgrs in perm:
+    acentric_subgroup = subgrs[i_subgrs]
+    centric_group = sgtbx.space_group(acentric_subgroup)
+    centric_group.expand_inv(sgtbx.tr_vec((0,0,0)))
     subsym = crystal.symmetry(
       unit_cell=minimum_symmetry.unit_cell(),
-      space_group=subgrs[i_subgrs],
+      space_group=centric_group,
       assert_is_compatible_unit_cell=00000)
     cb_op_minimum_ref = subsym.space_group_info().type().cb_op()
     ref_subsym = subsym.change_basis(cb_op_minimum_ref)
-    if (not str(ref_subsym.space_group_info()) in bravais_types.acentric):
+    if (not str(ref_subsym.space_group_info()) in bravais_types.centric):
       continue
     cb_op_best_cell = ref_subsym.change_of_basis_op_to_best_cell()
     best_subsym = ref_subsym.change_basis(cb_op_best_cell)
@@ -91,7 +94,7 @@ def show(input_symmetry, max_delta):
     print "      Maximal angular difference: %.3f degrees" % (
       lattice_symmetry.find_max_delta(
         minimum_cell=minimum_symmetry.unit_cell(),
-        group=subsym.space_group()))
+        group=acentric_subgroup))
     print
 
 if (__name__ == "__main__"):
