@@ -8,6 +8,9 @@ del misc
 class empty: pass
 
 from cctbx.array_family import flex
+from cctbx import matrix
+from scitbx import rational
+from scitbx.boost_python_utils import injector
 import sys
 
 class space_group_info:
@@ -121,3 +124,18 @@ def row_echelon_back_substitution(rt_mx, v=None, sol=None, indep=None):
   if (sol == None): sol = flex.int()
   if (indep == None): indep = flex.bool()
   return ext.row_echelon_back_substitution(rt_mx, v, sol, indep)
+
+class _tr_vec(injector, tr_vec):
+
+  def as_rational(self):
+    return matrix.col(rational.vector(self.num(), self.den()))
+
+class _rot_mx(injector, rot_mx):
+
+  def as_rational(self):
+    return matrix.sqr(rational.vector(self.num(), self.den()))
+
+class _rt_mx(injector, rt_mx):
+
+  def as_rational(self):
+    return matrix.rt((self.r().as_rational(), self.t().as_rational()))
