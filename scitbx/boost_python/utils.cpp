@@ -1,13 +1,6 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Aug: Fragments from cctbx/misc/bpl_utils.cpp (R.W. Grosse-Kunstleve)
-     2001 Apr: SourceForge release (R.W. Grosse-Kunstleve)
- */
-
+#if defined(_SGI_COMPILER_VERSION) && _SGI_COMPILER_VERSION == 741
+# include <complex>
+#endif
 #include <scitbx/boost_python/utils.h>
 
 namespace scitbx { namespace boost_python {
