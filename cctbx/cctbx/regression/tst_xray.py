@@ -46,6 +46,17 @@ def exercise_structure():
   assert approx_equal(s.scatterers().extract_occupancies(), (0.2,0.5))
   assert s.scatterers()[0].label == "O1"
   assert s.scatterers()[1].label == "Si1"
+  aw = xs.atomic_weights()
+  assert approx_equal(aw, (28.086, 15.999))
+  center_of_mass = xs.center_of_mass(atomic_weights=aw)
+  assert approx_equal(center_of_mass.elems, (1.335228, 1.071897, 2.815899))
+  center_of_mass = xs.center_of_mass()
+  assert approx_equal(center_of_mass.elems, (1.335228, 1.071897, 2.815899))
+  ys = xs.apply_shift(xs.unit_cell().fractionalize((-center_of_mass).elems))
+  assert approx_equal(ys.center_of_mass().elems, (0,0,0))
+  ys = xray.structure(xs)
+  assert ys.atomic_weights().size() == 0
+  assert ys.center_of_mass().elems == (0,0,0)
 
 def run():
   exercise_structure()
