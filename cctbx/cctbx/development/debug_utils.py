@@ -17,10 +17,13 @@ class command_line_options:
   def __init__(self, argv, keywords):
     self.n = 0
     for keyword in keywords:
-      is_keyword = ("--" + keyword in argv)
-      setattr(self, keyword, is_keyword)
-      if (is_keyword):
-        self.n += 1
+      setattr(self, keyword, 0)
+    for arg in argv:
+      if (not arg.startswith("--")): continue
+      if (not arg[2:] in keywords):
+        raise AssertionError, "Unknown option: " + arg
+      setattr(self, arg[2:], 1)
+      self.n += 1
 
 def get_test_space_group_symbols(FlagAllSpaceGroups):
   if (FlagAllSpaceGroups):
@@ -49,34 +52,33 @@ def get_compatible_unit_cell(SgInfo, Volume):
   for i in xrange(3): p[i] *= f
   uc = uctbx.UnitCell(p)
   SgInfo.SgOps().CheckUnitCell(uc)
-  return uc
+  return xutils.crystal_symmetry(uc, SgInfo)
 
-def generate_positions(UnitCell, SgOps, N,
+def generate_positions(xtal, N,
                        min_mate_distance = 1.5,
                        min_hetero_distance = 1.5,
                        general_positions_only = 0,
                        grid = None,
-                       N_grid = 0):
+                       N_on_grid = 0):
   max_back_track = 100
   max_placement_trials = 100
-  SnapParameters = sgtbx.SpecialPositionSnapParameters(
-    UnitCell, SgOps, 1, min_mate_distance)
   for back_track in xrange(max_back_track):
     Positions = []
     for i in xrange(N):
       have_position = 0
       for t in xrange(max_placement_trials):
-        if (not grid or i < N - N_grid):
+        if (not grid or i < N - N_on_grid):
           X = (random.random(), random.random(), random.random())
         else:
           X = [random.randrange(g) / float(g) for g in grid]
-        SS = sgtbx.SiteSymmetry(SnapParameters, X)
-        if (general_positions_only and SS.M() != SgOps.OrderZ()): continue
+        SS = xtal.get_site_symmetry(X)
+        if (general_positions_only and SS.M() != xtal.SgOps.OrderZ()):
+          continue
         SS.expand()
         sec = sgtbx.SymEquivCoordinates(SS)
-        min_d2 = UnitCell.getLongestVector2()
+        min_d2 = xtal.UnitCell.getLongestVector2()
         for p in Positions:
-          min_d2 = min(min_d2, sec.getShortestDistance2(UnitCell, p))
+          min_d2 = min(min_d2, sec.getShortestDistance2(xtal.UnitCell, p))
         if (min_d2 >= min_hetero_distance**2):
           have_position = 1
           break
@@ -86,63 +88,48 @@ def generate_positions(UnitCell, SgOps, N,
   assert len(Positions) == N, "Cannot find position matching all constraints."
   return Positions
 
-def get_site_symmetry(UnitCell, SgOps, X,
-                      min_mate_distance = 3.):
-  SnapParameters = sgtbx.SpecialPositionSnapParameters(
-    UnitCell, SgOps, 1, min_mate_distance)
-  return sgtbx.SiteSymmetry(SnapParameters, X)
-
-def perturb_coordinates(ucell, sgops, x, sigma, vary_z_only = 0):
-  SSx = get_site_symmetry(ucell, sgops, x)
-  xc = ucell.orthogonalize(x)
-  max_placement_trials = 100
-  have_position = 0
-  for t in xrange(max_placement_trials):
-    if (vary_z_only):
-      xcp = [xc[0], xc[1], xc[2] + random.gauss(0, sigma)]
-    else:
-      xcp = [e + random.gauss(0, sigma) for e in xc]
-    xp = ucell.fractionalize(xcp)
-    xps = SSx.ApplySpecialOp(xp)
-    SSxps = get_site_symmetry(ucell, sgops, xps)
-    if (str(SSxps.SpecialOp()) == str(SSx.SpecialOp())):
-      have_position = 1
-      break
-  assert have_position, "Cannot find position matching all constraints."
-  return xps
-
 def random_rotate_ellipsoid(Ucart):
   C = rotation_parameters.amore_alpha_beta_gamma_as_matrix(
     [random.uniform(0,360) for i in xrange(3)]).elems
   return adptbx.CondensedTensorTransformation(C, Ucart)
 
-class random_structure:
+class random_structure(xutils.symmetrized_sites):
 
-  def __init__(self, SgInfo, Elements,
-               volume_per_atom=1000.,
-               min_distance=3.0,
-               general_positions_only=0,
-               anisotropic_displacement_parameters=0,
-               grid = None,
-               N_grid = 0):
-    self.SgInfo = SgInfo
-    self.UnitCell = get_compatible_unit_cell(
-      self.SgInfo,
-      len(Elements) * volume_per_atom * self.SgInfo.SgOps().OrderZ())
-    self.Sites = shared.XrayScatterer()
-    Positions = generate_positions(
-      self.UnitCell, self.SgInfo.SgOps(), len(Elements),
-      min_mate_distance = min_distance,
-      min_hetero_distance = min_distance,
-      general_positions_only = general_positions_only,
+  def __init__(self, SgInfo, elements,
+               volume_per_atom = 1000.,
+               min_distance = 3.0,
+               general_positions_only = 0,
+               anisotropic_displacement_parameters = 0,
+               defer_build = 0):
+    self.elements = elements
+    self.volume_per_atom = volume_per_atom
+    self.general_positions_only = general_positions_only
+    self.anisotropic_displacement_parameters = \
+         anisotropic_displacement_parameters
+    xutils.symmetrized_sites.__init__(self,
+      get_compatible_unit_cell(
+        SgInfo,
+        len(self.elements) * self.volume_per_atom * SgInfo.SgOps().OrderZ()),
+      MinMateDistance = min_distance,
+      Ustar_tolerance = 0,
+      TestPositiveDefiniteness = 1)
+    if (not defer_build):
+      self.build_sites()
+
+  def build_sites(self, grid = None, N_on_grid = 0):
+    assert self.Sites.size() == 0
+    positions = generate_positions(self, len(self.elements),
+      min_mate_distance = self.MinMateDistance,
+      min_hetero_distance = self.MinMateDistance,
+      general_positions_only = self.general_positions_only,
       grid = grid,
-      N_grid = N_grid)
+      N_on_grid = N_on_grid)
     n = 0
-    for Elem, Pos in zip(Elements, Positions):
+    for Elem, Pos in zip(self.elements, positions):
       n += 1
       SF = CAASF_WK1995(Elem)
       U = 0.01 + abs(random.gauss(0, 0.05))
-      if (anisotropic_displacement_parameters):
+      if (self.anisotropic_displacement_parameters):
         Uiso = U
         run_away_counter = 0
         while 1:
@@ -154,7 +141,7 @@ class random_structure:
           U = adptbx.Ucart_as_Ustar(self.UnitCell, U)
           Site = sftbx.XrayScatterer(Elem + str(n), SF, 0j, Pos, 1., U)
           Site.ApplySymmetry(
-            self.UnitCell, self.SgInfo.SgOps(), min_distance, 0, 0)
+            self.UnitCell, self.SgOps, self.MinMateDistance, 0, 0)
           U = adptbx.Ustar_as_Ucart(self.UnitCell, Site.Uaniso())
           try:
             Ev = adptbx.Eigenvalues(U)
@@ -165,44 +152,54 @@ class random_structure:
               break
         U = Site.Uaniso()
       Site = sftbx.XrayScatterer(Elem + str(n), SF, 0j, Pos, 1., U)
-      Site.ApplySymmetry(
-        self.UnitCell, self.SgInfo.SgOps(), min_distance, 0, 1)
-      self.Sites.append(Site)
+      self.add_site(Site)
 
-class shake_structure:
+def shake_position(xtal, x, sigma, vary_z_only):
+  SSx = xtal.get_site_symmetry(x)
+  xc = xtal.UnitCell.orthogonalize(x)
+  max_placement_trials = 100
+  have_position = 0
+  for t in xrange(max_placement_trials):
+    if (vary_z_only):
+      xcp = [xc[0], xc[1], xc[2] + random.gauss(0, sigma)]
+    else:
+      xcp = [e + random.gauss(0, sigma) for e in xc]
+    xp = xtal.UnitCell.fractionalize(xcp)
+    xps = SSx.ApplySpecialOp(xp)
+    SSxps = xtal.get_site_symmetry(xps)
+    if (str(SSxps.SpecialOp()) == str(SSx.SpecialOp())):
+      have_position = 1
+      break
+  assert have_position, "Cannot find position matching all constraints."
+  return xps
 
-  def __init__(self, structure, sigma = 0.0001, vary_z_only = 0):
-    self.SgInfo = structure.SgInfo
-    self.UnitCell = structure.UnitCell
-    self.Sites = shared.XrayScatterer()
-    for Site in structure.Sites:
-      Site.set_Coordinates(perturb_coordinates(
-        self.UnitCell, self.SgInfo.SgOps(),
-        Site.Coordinates(), sigma, vary_z_only))
-      self.Sites.append(Site)
+def shake_structure(xtal, sigma = 0.0001, vary_z_only = 0):
+  xtal_shake = xtal.copy_attributes()
+  for site in xtal:
+    site.set_Coordinates(shake_position(
+      xtal, site.Coordinates(), sigma, vary_z_only))
+    xtal_shake.add_site(site)
+  return xtal_shake
 
-class modify_sites:
+def random_modify_atomic_parmeters(xtal, parameter_type, sigma = 0.0001):
+  xtal_mod = xtal.copy_attributes()
+  for site in xtal:
+    if (parameter_type == "Occ"):
+      site.set_Occ(max(0.1,
+        site.Occ() - abs(random.gauss(0, sigma))), xtal.SgOps)
+    elif (parameter_type == "Uiso"):
+      site.set_Uiso(max(0.1,
+        site.Uiso() - abs(random.gauss(0, sigma))))
+    else:
+      raise RuntimeError, \
+        "parameter_type " + str(parameter_type) + " not recognized."
+    xtal_mod.add_site(site)
+  return xtal_mod
 
-  def __init__(self, structure, value_type, sigma = 0.0001):
-    self.SgInfo = structure.SgInfo
-    self.UnitCell = structure.UnitCell
-    self.Sites = shared.XrayScatterer()
-    for Site in structure.Sites:
-      if (value_type == "Occ"):
-        Site.set_Occ(max(0.1,
-          Site.Occ() - abs(random.gauss(0, sigma))), self.SgInfo.SgOps())
-      elif (value_type == "Uiso"):
-        Site.set_Uiso(max(0.1,
-          Site.Uiso() - abs(random.gauss(0, sigma))))
-      else:
-        raise RuntimeError, \
-          "value_type " + str(value_type) + " not recognized."
-      self.Sites.append(Site)
-
-def print_sites(SymSites):
+def print_sites(xtal):
   print "Label  M  Coordinates            Occ   Uiso or Uaniso"
   print "     fp     fdp"
-  for Site in SymSites:
+  for Site in xtal:
     print "%-4s" % (Site.Label(),),
     print "%3d" % (Site.M(),),
     print "%7.4f %7.4f %7.4f" % Site.Coordinates(),
@@ -211,36 +208,36 @@ def print_sites(SymSites):
       print "%6.4f" % (Site.Uiso(),),
     else:
       print ("%6.3f " * 5 + "%6.3f") % adptbx.Ustar_as_Ucart(
-        SymSites.UnitCell, Site.Uaniso()),
+        xtal.UnitCell, Site.Uaniso()),
     print
     if (abs(Site.fpfdp()) != 0):
       print "     %6.4f %6.4f" % (Site.fpfdp().real, Site.fpfdp().imag)
 
-def write_kriber(file_name, structure, key="z"):
+def write_kriber(file_name, xtal, key="z"):
   f = open(file_name, "a")
   print >> f, "*" + key
   print >> f
   print >> f
-  print >> f, structure.SgInfo.BuildLookupSymbol()
-  print >> f, structure.UnitCell
-  for site in structure.Sites:
+  print >> f, xtal.SgInfo.BuildLookupSymbol()
+  print >> f, xtal.UnitCell
+  for site in xtal.Sites:
     print >> f, site.Label(), "%.6g %.6g %.6g" % site.Coordinates()
   print >> f, "-" * 40
   f.close()
 
-def write_pdb(file_name, structure):
+def write_pdb(file_name, xtal):
   f = open(file_name, "w")
   i = 0
-  for site in structure.Sites:
+  for site in xtal.Sites:
     i += 1
     print >> f, "ATOM  %5d %-4s %-3s  %4d%3s" % (
       i, site.Label().upper(), site.Label().upper(), i, ""),
     print >> f, "%8.3f%8.3f%8.3f%6.2f%6.2f" % (
-      structure.UnitCell.orthogonalize(site.Coordinates()) +
+      xtal.UnitCell.orthogonalize(site.Coordinates()) +
       (site.Occ(), adptbx.U_as_B(site.Uiso())))
   print >> f, "CRYST1%9.3f%9.3f%9.3f%7.2f%7.2f%7.2f %-11s" % (
-    structure.UnitCell.getParameters()
-    + (structure.SgInfo.BuildLookupSymbol(),))
+    xtal.UnitCell.getParameters()
+    + (xtal.SgInfo.BuildLookupSymbol(),))
   print >> f, "END"
   f.close()
 

@@ -5,18 +5,16 @@ from cctbx import xutils
 from cctbx.development import debug_utils
 
 def print_structure_factors(SgInfo, adp=0, d_min=3.):
-  Elements = ("N", "C", "C", "O", "N", "C", "C", "O")
+  elements = ("N", "C", "C", "O", "N", "C", "C", "O")
   xtal = debug_utils.random_structure(
-    SgInfo, Elements,
+    SgInfo, elements,
     volume_per_atom=50.,
     min_distance=1.5,
     general_positions_only=0,
     anisotropic_displacement_parameters=adp)
-  xsym = xutils.crystal_symmetry(xtal.UnitCell, xtal.SgInfo)
-  SymSites = xutils.symmetrized_sites(xsym, xtal.Sites)
-  debug_utils.print_sites(SymSites)
-  MillerIndices = xutils.miller_index_set(xsym, d_min)
-  Fcalc = xutils.structure_factors(MillerIndices, SymSites)
+  debug_utils.print_sites(xtal)
+  MillerIndices = xutils.miller_index_set(xtal, d_min)
+  Fcalc = xutils.structure_factors(MillerIndices, xtal)
   debug_utils.print_structure_factors(Fcalc)
 
 def run():
