@@ -63,11 +63,14 @@ namespace scitbx { namespace af { namespace boost_python {
   inline void
   flex_fwd_types()
   {
+    flex_fwd<bool>();
     flex_fwd<int>();
     flex_fwd<long>();
+    flex_fwd<std::size_t>();
     flex_fwd<float>();
     flex_fwd<double>();
     flex_fwd<std::complex<double> >();
+    flex_fwd<std::string>();
   }
 
 }}} // namespace scitbx::af::boost_python

@@ -7,6 +7,8 @@
      2002 Oct: Created (R.W. Grosse-Kunstleve)
  */
 
+#include <cctbx/boost_python/flex_fwd.h>
+
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
 #include <scitbx/array_family/boost_python/flex_pickle_double_buffered.h>
 #include <scitbx/array_family/boost_python/ref_pickle_double_buffered.h>

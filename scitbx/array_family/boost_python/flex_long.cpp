@@ -7,8 +7,6 @@
      2002 Aug: Created (R.W. Grosse-Kunstleve)
  */
 
-#include <scitbx/array_family/boost_python/flex_fwd.h>
-
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
 
 namespace scitbx { namespace af { namespace boost_python {
