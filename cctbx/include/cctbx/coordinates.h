@@ -12,6 +12,7 @@
 #define CCTBX_COORDINATES_H
 
 #include <cctbx/array_family/tiny_types.h>
+#include <cctbx/array_family/tiny_reductions.h>
 #include <cctbx/array_family/tiny_algebra.h>
 
 namespace cctbx {

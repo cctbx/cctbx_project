@@ -60,7 +60,7 @@ namespace cctbx { namespace af {
 
   template <typename ElementType, typename AccessorType>
   std::size_t
-  max_index(const const_ref<ElementType, AccessorType>& a)
+  max_index(const_ref<ElementType, AccessorType> const& a)
   {
     std::size_t result;
     if (a.size() > 0) {
@@ -74,7 +74,7 @@ namespace cctbx { namespace af {
 
   template <typename ElementType, typename AccessorType>
   std::size_t
-  min_index(const const_ref<ElementType, AccessorType>& a)
+  min_index(const_ref<ElementType, AccessorType> const& a)
   {
     std::size_t result;
     if (a.size() > 0) {
@@ -88,7 +88,7 @@ namespace cctbx { namespace af {
 
   template <typename ElementType, typename AccessorType>
   ElementType
-  max(const const_ref<ElementType, AccessorType>& a)
+  max(const_ref<ElementType, AccessorType> const& a)
   {
     ElementType result;
     if (a.size() > 0) {
@@ -102,7 +102,7 @@ namespace cctbx { namespace af {
 
   template <typename ElementType, typename AccessorType>
   ElementType
-  min(const const_ref<ElementType, AccessorType>& a)
+  min(const_ref<ElementType, AccessorType> const& a)
   {
     ElementType result;
     if (a.size() > 0) {
@@ -116,7 +116,7 @@ namespace cctbx { namespace af {
 
   template <typename ElementType, typename AccessorType>
   ElementType
-  sum(const const_ref<ElementType, AccessorType>& a)
+  sum(const_ref<ElementType, AccessorType> const& a)
   {
     ElementType result = 0;
     for(std::size_t i=0;i<a.size();i++) result += a[i];
@@ -125,7 +125,7 @@ namespace cctbx { namespace af {
 
   template <typename ElementType, typename AccessorType>
   ElementType
-  sum_sq(const const_ref<ElementType, AccessorType>& a)
+  sum_sq(const_ref<ElementType, AccessorType> const& a)
   {
     ElementType result = 0;
     for(std::size_t i=0;i<a.size();i++) result += a[i] * a[i];
@@ -134,7 +134,7 @@ namespace cctbx { namespace af {
 
   template <typename ElementType, typename AccessorType>
   ElementType
-  product(const const_ref<ElementType, AccessorType>& a)
+  product(const_ref<ElementType, AccessorType> const& a)
   {
     std::size_t sz = a.size();
     if (sz == 0) return 0;
@@ -145,14 +145,14 @@ namespace cctbx { namespace af {
 
   template <typename ElementType, typename AccessorType>
   ElementType
-  mean(const const_ref<ElementType, AccessorType>& a)
+  mean(const_ref<ElementType, AccessorType> const& a)
   {
     return sum(a) / a.size();
   }
 
   template <typename ElementType, typename AccessorType>
   ElementType
-  mean_sq(const const_ref<ElementType, AccessorType>& a)
+  mean_sq(const_ref<ElementType, AccessorType> const& a)
   {
     return sum_sq(a) / a.size();
   }
@@ -161,8 +161,8 @@ namespace cctbx { namespace af {
             typename ElementTypeWeights, typename AccessorTypeWeights>
   ElementTypeValues
   mean_weighted(
-    const const_ref<ElementTypeValues, AccessorTypeValues>& values,
-    const const_ref<ElementTypeWeights, AccessorTypeWeights>& weights)
+    const_ref<ElementTypeValues, AccessorTypeValues> const& values,
+    const_ref<ElementTypeWeights, AccessorTypeWeights> const& weights)
   {
     if (values.size() != weights.size()) throw_range_error();
     if (!values.size()) return 0;
@@ -179,8 +179,8 @@ namespace cctbx { namespace af {
             typename ElementTypeWeights, typename AccessorTypeWeights>
   ElementTypeValues
   mean_sq_weighted(
-    const const_ref<ElementTypeValues, AccessorTypeValues>& values,
-    const const_ref<ElementTypeWeights, AccessorTypeWeights>& weights)
+    const_ref<ElementTypeValues, AccessorTypeValues> const& values,
+    const_ref<ElementTypeWeights, AccessorTypeWeights> const& weights)
   {
     if (values.size() != weights.size()) throw_range_error();
     if (!values.size()) return 0;

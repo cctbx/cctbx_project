@@ -1,4 +1,5 @@
 import os, shutil
+import generate_af_reductions
 import generate_operator_traits_builtin
 import generate_af_std_imports
 import generate_af_operator_functors
@@ -7,6 +8,7 @@ import generate_af_apply
 import generate_af_tiny_bpl
 import generate_henke_cpp
 import generate_sasaki_cpp
+generate_af_reductions.run()
 generate_operator_traits_builtin.run()
 generate_af_std_imports.run()
 generate_af_operator_functors.run()
@@ -19,6 +21,10 @@ array_family_include = "../include/cctbx/array_family/"
 misc_src = "../misc/"
 eltbx_src = "../eltbx/"
 for file, dir in (
+  ("tiny_reductions.h", array_family_include),
+  ("small_reductions.h", array_family_include),
+  ("shared_reductions.h", array_family_include),
+  ("versa_reductions.h", array_family_include),
   ("operator_traits_builtin.h", array_family_include),
   ("std_imports.h", array_family_include),
   ("operator_functors.h", array_family_include),
