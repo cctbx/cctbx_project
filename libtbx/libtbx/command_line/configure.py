@@ -2,6 +2,7 @@ import sys, os, pickle
 from os.path import normpath, join, abspath, dirname, isdir, isfile
 norm = normpath
 
+import libtbx.config
 from libtbx.config import UserError
 
 class registry:
@@ -138,6 +139,22 @@ class libtbx_env:
     pickle.dump(self.__dict__, f)
     f.close()
 
+  def python_api_from_libtbx_build_libtbx(self):
+    api_file_name = libtbx.config.python_api_version_file_name(
+      self.LIBTBX_BUILD)
+    if (os.path.isfile(api_file_name)):
+      return open(api_file_name).readline().strip()
+    return None
+
+  def check_python_api(self):
+    api_from_include = libtbx.config.python_api_from_include(must_exist=False)
+    if (api_from_include == None): return
+    api_from_build = self.python_api_from_libtbx_build_libtbx()
+    if (api_from_build == None): return
+    if (api_from_include != api_from_build):
+      raise UserError(("Incompatible Python API's: current version: %s,"
+        + " used to build binaries: %s") % (api_from_include, api_from_build))
+
 def emit_env_run_sh(env):
   env_run_sh_path = norm(join(env.LIBTBX_BUILD, "env_run.sh"))
   f = open_info(env_run_sh_path)
@@ -261,7 +278,9 @@ def run(libtbx_dist, args):
     emit_setpaths_csh(env)
   else:
     emit_setpaths_bat(env)
-  if (not packages.build_disabled):
+  if (packages.build_disabled):
+    env.check_python_api()
+  else:
     emit_SConstruct(env, build_mode, packages.dict)
   return env
 

@@ -6,21 +6,20 @@ import sys, os
 class empty: pass
 
 def set_python_include_and_libs(env_etc):
+  env_etc.python_include = libtbx.config.python_include_path()
   if (sys.platform == "win32"):
-    env_etc.python_include = sys.prefix + r"\include"
     env_etc.libs_python = ["python" + sys.version[0] + sys.version[2]]
     env_etc.libpath_python = [sys.prefix + r"\libs"]
   elif (env_etc.compiler == "tru64_cxx"):
-    env_etc.python_include = sys.prefix + "/include/python" + sys.version[0:3]
     env_etc.libs_python = ["pthread",]
     env_etc.libpath_python = []
   else:
-    env_etc.python_include = sys.prefix + "/include/python" + sys.version[0:3]
     env_etc.libs_python = []
     env_etc.libpath_python = []
 
 env_etc = empty()
 env_etc.libtbx_env = libtbx.config.env()
+env_etc.libtbx_env.write_api_file()
 env_etc.compiler = ARGUMENTS.get("compiler", 0)
 env_etc.no_boost_python = ARGUMENTS.get("no_boost_python", 0)
 env_etc.touch_init = touch_init
