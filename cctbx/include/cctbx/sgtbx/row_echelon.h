@@ -98,7 +98,7 @@ namespace cctbx { namespace sgtbx { namespace row_echelon {
   IntType
   back_substitution(
     scitbx::mat_const_ref<IntType> const& re_mx,
-    IntType* v = 0,
+    const IntType* v = 0,
     IntType* sol = 0,
     bool* flag_indep = 0)
   {
@@ -133,7 +133,7 @@ namespace cctbx { namespace sgtbx { namespace row_echelon {
           sol[ic] = 0;
         }
         if (v) sol[ic] += d * v[ir];
-                         IntType mrc = re_mx(ir,ic);
+                                IntType mrc = re_mx(ir,ic);
         IntType f = boost::gcd(sol[ic], mrc);
         if (mrc < 0) f *= -1;
         sol[ic] /= f;

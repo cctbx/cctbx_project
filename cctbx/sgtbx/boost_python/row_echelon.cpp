@@ -51,6 +51,33 @@ namespace {
     return rank;
   }
 
+  int
+  row_echelon_back_substitution(
+    af::versa<int, af::flex_grid<> >& re_mx,
+    af::const_ref<int> const& v,
+    af::ref<int> const& sol,
+    af::ref<bool> const& indep)
+  {
+    scitbx::mat_ref<int> re_mx_ref = flex_as_mat_ref(re_mx);
+    const int* v_ptr = 0;
+    int* sol_ptr = 0;
+    bool* indep_ptr = 0;
+    if (v.size()) {
+      CCTBX_ASSERT(v.size() == re_mx_ref.n_rows());
+      v_ptr = v.begin();
+    }
+    if (sol.size()) {
+      CCTBX_ASSERT(sol.size() == re_mx_ref.n_columns());
+      sol_ptr = sol.begin();
+    }
+    if (indep.size()) {
+      CCTBX_ASSERT(indep.size() == re_mx_ref.n_columns());
+      indep_ptr = indep.begin();
+    }
+    return row_echelon::back_substitution(
+      re_mx_ref, v_ptr, sol_ptr, indep_ptr);
+  }
+
 } // namespace <anoymous>
 
   void wrap_row_echelon()
@@ -58,6 +85,7 @@ namespace {
     using namespace boost::python;
     def("row_echelon_form_t", row_echelon_form_t);
     def("row_echelon_form", row_echelon_form);
+    def("row_echelon_back_substitution", row_echelon_back_substitution);
   }
 
 }}} // namespace cctbx::sgtbx::boost_python

@@ -7,6 +7,7 @@ del misc
 
 class empty: pass
 
+from cctbx.array_family import flex
 import sys
 
 class space_group_info:
@@ -114,3 +115,9 @@ class space_group_info:
     params = list(unit_cell.parameters())
     for i in xrange(3): params[i] *= f
     return uctbx.unit_cell(params)
+
+def row_echelon_back_substitution(rt_mx, v=None, sol=None, indep=None):
+  if (v == None): v = flex.int()
+  if (sol == None): sol = flex.int()
+  if (indep == None): indep = flex.bool()
+  return ext.row_echelon_back_substitution(rt_mx, v, sol, indep)
