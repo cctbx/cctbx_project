@@ -8,15 +8,20 @@ import sgtbx
 settings = [0]
 for i in xrange(1, 231): settings.append({})
 
+ListCBOp = []
+for xyz in ("x,y,z", "z,x,y", "y,z,x"):
+  ListCBOp.append(sgtbx.ChOfBasisOp(sgtbx.RTMx(xyz)))
+
 nBuilt = 0
 for i in sgtbx.SpaceGroupSymbolIterator():
   HallSymbol = i.Hall()
   for Z in "PABCIRHF":
     HSym = HallSymbol[0] + Z + HallSymbol[2:]
-    SgOps = sgtbx.SgOps(HSym)
-    SgType = SgOps.getSpaceGroupType()
-    settings[SgType.SgNumber()][SgOps.BuildLookupSymbol(SgType)] = 0
-    nBuilt = nBuilt + 1
+    for CBOp in ListCBOp:
+      SgOps = sgtbx.SgOps(HSym).ChangeBasis(CBOp)
+      SgType = SgOps.getSpaceGroupType()
+      settings[SgType.SgNumber()][SgOps.BuildLookupSymbol(SgType)] = 0
+      nBuilt = nBuilt + 1
 
 print "# nBuilt =", nBuilt
 print "settings = ("
