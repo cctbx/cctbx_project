@@ -589,6 +589,31 @@ namespace cctbx { namespace af {
     }
 
     static
+    int
+    cmp_a_a(sh_t const& a1, sh_t const& a2)
+    {
+      if (a1.id() == a2.id()) return 0;
+      if (a1.size() < a2.size()) return -1;
+      if (a1.size() > a2.size()) return  1;
+      for(std::size_t i=0;i<a1.size();i++) {
+        if (a1[i] < a2[i]) return -1;
+        if (a1[i] > a2[i]) return  1;
+      }
+      return 0;
+    }
+
+    static
+    int
+    cmp_a_s(sh_t const& a1, e_t const& a2)
+    {
+      for(std::size_t i=0;i<a1.size();i++) {
+        if (a1[i] < a2) return -1;
+        if (a1[i] > a2) return  1;
+      }
+      return 0;
+    }
+
+    static
     shared<bool>
     eq_a_a(sh_t const& a1, sh_t const& a2)
     {
@@ -896,11 +921,23 @@ namespace cctbx { namespace af {
 
     static
     sh_class_builders
-    logical(
+    cmp_comparable(
       boost::python::module_builder& bpl_module,
       std::string const& python_name)
     {
       sh_class_builders class_blds = eq_comparable(bpl_module, python_name);
+      class_blds.first.def(cmp_a_a, "__cmp__");
+      class_blds.first.def(cmp_a_s, "__cmp__");
+      return class_blds;
+    }
+
+    static
+    sh_class_builders
+    logical(
+      boost::python::module_builder& bpl_module,
+      std::string const& python_name)
+    {
+      sh_class_builders class_blds = cmp_comparable(bpl_module, python_name);
       class_blds.first.def(invert_a, "__invert__");
       class_blds.first.def(and_a_a, "__and__");
       class_blds.first.def(or_a_a, "__or__");
@@ -924,10 +961,10 @@ namespace cctbx { namespace af {
       class_blds.first.def(sub_a_a, "__sub__");
       class_blds.first.def(mul_a_a, "__mul__");
       class_blds.first.def(div_a_a, "__div__");
-      class_blds.first.def(add_a_s, "add");
-      class_blds.first.def(sub_a_s, "sub");
-      class_blds.first.def(mul_a_s, "mul");
-      class_blds.first.def(div_a_s, "div");
+      class_blds.first.def(add_a_s, "add"); // XXX __add__ did not work
+      class_blds.first.def(sub_a_s, "sub"); // XXX __sub__ did not work
+      class_blds.first.def(mul_a_s, "mul"); // XXX __mul__ did not work
+      class_blds.first.def(div_a_s, "div"); // XXX __div__ did not work
       class_blds.first.def(iadd_a_s, "__iadd__");
       class_blds.first.def(isub_a_s, "__isub__");
       class_blds.first.def(imul_a_s, "__imul__");
@@ -945,6 +982,8 @@ namespace cctbx { namespace af {
     {
       sh_class_builders class_blds = numeric_common(bpl_module, python_name);
       class_blds.first.def(as_double, "as_double");
+      class_blds.first.def(cmp_a_a, "__cmp__");
+      class_blds.first.def(cmp_a_s, "cmp"); // XXX __cmp__ did not work
       class_blds.first.def(lt_a_a, "__lt__");
       class_blds.first.def(gt_a_a, "__gt__");
       class_blds.first.def(le_a_a, "__le__");
