@@ -61,7 +61,7 @@ def generate_in_place_binary(name, op):
   };""" % (name, op)
 
 def run():
-  output_file_name = path_to_include.expand("operator_functors.h")
+  output_file_name = path_to_include.expand("detail/operator_functors.h")
   print "Generating:", output_file_name
   f = open(output_file_name, "w")
   sys.stdout = f

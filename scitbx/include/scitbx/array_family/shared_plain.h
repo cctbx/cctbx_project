@@ -287,7 +287,7 @@ namespace scitbx { namespace af {
         return shared_plain<ElementType>(*this, weak_ref_flag());
       }
 
-#     include <scitbx/array_family/push_back_etc.h>
+#     include <scitbx/array_family/detail/push_back_etc.h>
 
     protected:
 

@@ -45,7 +45,7 @@ def one_type(array_type_name):
 
 #include <scitbx/type_holder.h>
 #include <scitbx/array_family/%s.h>
-#include <scitbx/array_family/generic_array_%s.h>
+#include <scitbx/array_family/detail/generic_array_%s.h>
 
 namespace scitbx { namespace af {
 """ % ((array_type_name.upper(),) * 2 + (

@@ -12,7 +12,7 @@
 #define SCITBX_ARRAY_FAMILY_SMALL_PLAIN_H
 
 #include <scitbx/array_family/tiny.h>
-#include <scitbx/array_family/auto_allocator.h>
+#include <scitbx/array_family/detail/auto_allocator.h>
 
 namespace scitbx { namespace af {
 
@@ -125,7 +125,7 @@ namespace scitbx { namespace af {
         if (N < sz) throw_range_error();
       }
 
-#     include <scitbx/array_family/push_back_etc.h>
+#     include <scitbx/array_family/detail/push_back_etc.h>
 
     protected:
       void m_insert_overflow(ElementType* pos,

@@ -13,7 +13,7 @@
 
 #include <cstddef>
 #include <algorithm>
-#include <scitbx/array_family/tiny_helpers.h>
+#include <scitbx/array_family/detail/tiny_helpers.h>
 #include <scitbx/array_family/array_adaptor.h>
 
 // forward declaration

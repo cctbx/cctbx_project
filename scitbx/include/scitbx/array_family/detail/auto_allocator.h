@@ -16,7 +16,7 @@
 
 #if !defined(BOOST_NO_TEMPLATE_PARTIAL_SPECIALIZATION)
 
-#include <scitbx/array_family/alignment_calculator.h>
+#include <scitbx/array_family/detail/alignment_calculator.h>
 
 namespace scitbx { namespace af { namespace detail {
 

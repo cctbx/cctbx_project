@@ -87,7 +87,7 @@ def generate_2arg():
       function_name, function_name + "(x, y)")
 
 def run():
-  output_file_name = path_to_include.expand("std_imports.h")
+  output_file_name = path_to_include.expand("detail/std_imports.h")
   print "Generating:", output_file_name
   f = open(output_file_name, "w")
   sys.stdout = f

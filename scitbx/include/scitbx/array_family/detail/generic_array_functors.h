@@ -11,7 +11,7 @@
 #ifndef SCITBX_ARRAY_FAMILY_GENERIC_ARRAY_FUNCTORS_H
 #define SCITBX_ARRAY_FAMILY_GENERIC_ARRAY_FUNCTORS_H
 
-#include <scitbx/array_family/generic_array_operators.h>
+#include <scitbx/array_family/detail/generic_array_operators.h>
 
 namespace scitbx { namespace af {
 
