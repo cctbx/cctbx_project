@@ -77,7 +77,7 @@ namespace {
 
     scitbx::boost_python::container_conversions::from_python_sequence<
       std::vector<double>,
-      scitbx::boost_python::container_conversions::variable_size_policy>();
+      scitbx::boost_python::container_conversions::variable_capacity_policy>();
 
     scitbx::boost_python::container_conversions::from_python_sequence<
       std::list<double>,
