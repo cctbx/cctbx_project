@@ -126,11 +126,11 @@ namespace sgtbx {
           To avoid numerical instabilities and potentially inaccurate
           results, MinimumDistance should be strictly greater than
           Tolerance. Only under this condition are the results
-          guaranteed to be correct. The numerical instablities
+          guaranteed to be correct. The numerical instabilities
           are rare, but real. In a test with 530 conventional
           space group settings, using random coordinates and
           Tolerance = MinimumDistance = 1.0, about
-          one in 500 coordinates triggeres an exception due to
+          one in 500 coordinates triggers an exception due to
           rounding errors. This number will probably be significantly
           smaller when using coordinates from databases and more
           realistic values for Tolerance and Minimumdistance, but the
