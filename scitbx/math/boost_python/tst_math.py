@@ -188,14 +188,18 @@ def exercise_matrix_inversion_in_place():
   m.resize(flex.grid(3,3))
   matrix_inversion_in_place(m)
   assert approx_equal(m, [1/7.,-1/14.,5/56.,0,1/4.,1/16.,-2/7.,1/7.,1/14.])
-  for n in xrange(12):
+  for n in xrange(1,12):
+    u = flex.double(n*n, 0)
+    for i in xrange(0,n*n,n+1): u[i] = 1
     for diag in [1,2]:
       m = flex.double(n*n, 0)
       for i in xrange(0,n*n,n+1): m[i] = diag
       m.resize(flex.grid(n,n))
-      m_orig = m.deep_copy()
+      m_orig = matrix.rec(m, (n,n))
       matrix_inversion_in_place(m)
-      assert approx_equal(m, 1/m_orig)
+      m_inv = matrix.rec(m, (n,n))
+      assert approx_equal(m_orig*m_inv, u)
+      assert approx_equal(m_inv*m_orig, u)
   for n in xrange(1,12):
     u = flex.double(n*n, 0)
     for i in xrange(0,n*n,n+1): u[i] = 1
