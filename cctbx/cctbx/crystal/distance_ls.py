@@ -12,6 +12,7 @@ from scitbx import matrix
 from scitbx.python_utils.misc import adopt_init_args
 from libtbx.itertbx import count
 from libtbx.test_utils import approx_equal
+import math
 import sys, os
 
 if (1):
@@ -361,6 +362,19 @@ class bond_registry:
     elif (type_id == 0):
       self.sym[-1].append(entry)
 
+  def get_interaction_shell(self, asu_mappings, pair):
+    type_id = asu_mappings.interaction_type_id(pair=pair)
+    if (type_id > 0):
+      for i,j_seqs in zip(count(), self.direct):
+        if (pair.j_seq in j_seqs):
+          return i+1
+    elif (type_id == 0):
+      entry = (pair.j_seq, pair.j_sym)
+      for i,entries in zip(count(), self.sym):
+        if (entry in entries):
+          return i+1
+    return 0
+
 def coordination_sequences(structure, proxies, n_shells=10, coseq_terms=None):
   scatterers = structure.scatterers()
   pair_lists = [[] for i in xrange(scatterers.size())]
@@ -552,7 +566,43 @@ def coordination_sequences_sorted(structure, proxies, n_shells=10):
     print scatterers[i_seq_pivot].label, list(terms)
   return term_table, bond_registries
 
-def run(distance_cutoff=3.5):
+class start_repulsion_proxies:
+
+  def __init__(self, bond_registries, pair_generator,
+                     vdw_radius, vdw_radius_1_4):
+    self.vdw_radius = vdw_radius
+    self.vdw_radius_1_4 = vdw_radius_1_4
+    self.sorted_proxies = restraints.repulsion_sorted_proxies(
+      asu_mappings=pair_generator.asu_mappings())
+    self.n_nonbonded = 0
+    self.n_1_4 = 0
+    self.min_distance_nonbonded = -1
+    self.min_distance_1_4 = -1
+    for pair in pair_generator:
+      bonded_interaction_shell = bond_registries[pair.i_seq] \
+        .get_interaction_shell(pair_generator.asu_mappings(), pair)
+      if (bonded_interaction_shell == 0):
+        self.sorted_proxies.process(restraints.repulsion_sym_proxy(
+          pair=pair,
+          vdw_radius=vdw_radius))
+        self.n_nonbonded += 1
+        if (   self.min_distance_nonbonded == -1
+            or self.min_distance_nonbonded > pair.dist_sq):
+          self.min_distance_nonbonded = pair.dist_sq
+      elif (bonded_interaction_shell == 3):
+        self.sorted_proxies.process(restraints.repulsion_sym_proxy(
+          pair=pair,
+          vdw_radius=vdw_radius_1_4))
+        self.n_1_4 += 1
+        if (   self.min_distance_1_4 == -1
+            or self.min_distance_1_4 > pair.dist_sq):
+          self.min_distance_1_4 = pair.dist_sq
+    if (self.min_distance_nonbonded > 0):
+      self.min_distance_nonbonded = math.sqrt(self.min_distance_nonbonded)
+    if (self.min_distance_1_4 > 0):
+      self.min_distance_1_4 = math.sqrt(self.min_distance_1_4)
+
+def run(distance_cutoff=3.5, nonbonded_cutoff=5):
   command_line = (iotbx_option_parser(
     usage="python distance_ls.py [options] studat_file [...]",
     description="Example: python distance_ls.py strudat --tag=SOD")
@@ -577,20 +627,28 @@ def run(distance_cutoff=3.5):
       si_structure.show_summary().show_scatterers()
       show_distances(si_structure, distance_cutoff=distance_cutoff)
       si_proxies = create_bond_proxies(
-        structure=si_structure, distance_cutoff=distance_cutoff)
+        structure=si_structure,
+        distance_cutoff=distance_cutoff,
+        asu_mappings_distance_cutoff=nonbonded_cutoff)
       print "number of bond proxies:", si_proxies.proxies.size()
       print "proxies.bond_counts:", list(si_proxies.bond_counts)
       if (si_proxies.bond_counts.count(4) != si_proxies.bond_counts.size()):
         print "Not fully 4-connected:", entry.tag
+      repulsion_proxies = None
+      si_bond_registries = None
       if (1):
+        repulsion_n_shells = 1
         term_table_0, bond_registries_0 = coordination_sequences(
           structure=si_structure,
           proxies=si_proxies,
+          n_shells=repulsion_n_shells,
           coseq_terms=coseq_dict.get(entry.tag, None))
+        si_bond_registries = bond_registries_0
         if (1):
           term_table_1, bond_registries_1 = coordination_sequences_sorted(
             structure=si_structure,
-            proxies=si_proxies)
+            proxies=si_proxies,
+            n_shells=repulsion_n_shells)
           for t0,t1 in  zip(term_table_0, term_table_1):
             if (not t0.all_eq(t1)):
               print "Error in coordination sequence"
@@ -598,7 +656,7 @@ def run(distance_cutoff=3.5):
             for i in xrange(3):
               assert len(r0.direct) == len(r1.direct)
               assert len(r0.sym) == len(r1.sym)
-      if (0):
+      if (1):
         if (0):
           si_o_structure = si_structure
           si_o_proxies = si_proxies
@@ -614,7 +672,7 @@ def run(distance_cutoff=3.5):
             distance_ideal=restraint_parameters_si_o.distance_ideal,
             weight=restraint_parameters_si_o.weight,
             heterogeneous_bonds_only=0001,
-            asu_mappings_distance_cutoff=distance_cutoff)
+            asu_mappings_distance_cutoff=nonbonded_cutoff)
           print "complete: number of bond proxies:", \
             si_o_proxies.proxies.size()
           print "complete: proxies.bond_counts:", \
@@ -653,6 +711,20 @@ def run(distance_cutoff=3.5):
           print si_o_proxies.sorted_proxies.proxies.size()
           print "sorted_proxies.sym_proxies.size():",
           print si_o_proxies.sorted_proxies.sym_proxies.size()
+          if (1 and si_bond_registries is not None):
+            for i in xrange(  si_o_structure.scatterers().size()
+                            - si_structure.scatterers().size()):
+              si_bond_registries.append(bond_registry())
+            pair_generator = crystal.neighbors_fast_pair_generator(
+              asu_mappings=si_o_proxies.asu_mappings,
+              distance_cutoff=nonbonded_cutoff)
+            repulsion_proxies = start_repulsion_proxies(
+              bond_registries=si_bond_registries,
+              pair_generator=pair_generator,
+              vdw_radius=1.5,
+              vdw_radius_1_4=1.5)
+            print "repulsion_proxies n_total:", \
+                  repulsion_proxies.sorted_proxies.n_total()
         if (1):
           sites_cart = si_o_structure.sites_cart()
           gradients_cart = flex.vec3_double(sites_cart.size(), [0,0,0])
@@ -713,6 +785,7 @@ def run(distance_cutoff=3.5):
                 site_symmetries=si_o_proxies.site_symmetries,
                 asu_mappings=si_o_proxies.asu_mappings,
                 bond_sym_proxies=si_o_proxies.proxies,
+                repulsion_proxies=repulsion_proxies.sorted_proxies,
                 lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
                   max_iterations=1000))
             else:
@@ -721,6 +794,7 @@ def run(distance_cutoff=3.5):
                 site_symmetries=si_o_proxies.site_symmetries,
                 asu_mappings=si_o_proxies.asu_mappings,
                 bond_sorted_proxies=si_o_proxies.sorted_proxies,
+                repulsion_proxies=repulsion_proxies.sorted_proxies,
                 lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
                   max_iterations=1000))
             if (0):
