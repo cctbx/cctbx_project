@@ -13,11 +13,20 @@
 
 #include <cctbx/array_family/tiny_types.h>
 #include <cctbx/array_family/small.h>
+#include <cctbx/array_family/versa.h>
 #include <cctbx/array_family/loops.h>
 #include <cctbx/math/linear_regression.h>
 #include <cctbx/sgtbx/groups.h>
+#include <cctbx/sgtbx/seminvariant.h>
+#include <cctbx/maps/accessors.h>
 
 namespace cctbx { namespace maps {
+
+  // Work-around for VC++ 7.0 (XXX and 6?) overload resolution bug.
+  namespace detail {
+    struct space_group_symmetry_tag {};
+    struct seminvariant_tag {};
+  }
 
   template <typename ValueType, typename TagType = bool>
   struct tagged_value
@@ -79,7 +88,8 @@ namespace cctbx { namespace maps {
   std::size_t
   mark_orbit(TagVersaType& p1_tags,
              const sgtbx::SpaceGroup& SgOps,
-             const IndexTupleType& pivot)
+             const IndexTupleType& pivot,
+             detail::space_group_symmetry_tag)
   {
     std::size_t grid_misses = 0;
     std::size_t i1d_pivot = p1_tags.accessor()(pivot);
@@ -105,7 +115,8 @@ namespace cctbx { namespace maps {
   std::size_t
   mark_orbit(TagVersaType& p1_tags,
              const GridSsType& grid_ss,
-             const IndexTupleType& pivot)
+             const IndexTupleType& pivot,
+             detail::seminvariant_tag)
   {
     std::size_t grid_misses = 0;
     std::size_t i1d_pivot = p1_tags.accessor()(pivot);
@@ -128,16 +139,18 @@ namespace cctbx { namespace maps {
   }
 
   template <typename TagVersaType,
-            typename SymmetryType>
+            typename SymmetryType,
+            typename SymmetryTypeTag>
   std::size_t
   mark_orbits(TagVersaType& p1_tags,
-              const SymmetryType& symmetry)
+              const SymmetryType& symmetry,
+              SymmetryTypeTag)
   {
     std::size_t grid_misses = 0;
     af::nested_loop<af::int3> loop(p1_tags.accessor());
     for (const af::int3& pivot = loop(); !loop.over(); loop.incr()) {
       if (p1_tags(pivot) == -1) {
-        grid_misses += mark_orbit(p1_tags, symmetry, pivot);
+        grid_misses += mark_orbit(p1_tags, symmetry, pivot, SymmetryTypeTag());
       }
     }
     return grid_misses;
@@ -160,6 +173,76 @@ namespace cctbx { namespace maps {
     }
     return n_independent;
   }
+
+  class map_symmetry_flags
+  {
+    public:
+      map_symmetry_flags() {}
+      explicit
+      map_symmetry_flags(bool use_space_group_symmetry,
+                         bool use_normalizer_K2L = false,
+                         bool use_structure_seminvariants = false)
+        : use_space_group_symmetry_(use_space_group_symmetry),
+          use_normalizer_K2L_(use_normalizer_K2L),
+          use_structure_seminvariants_(use_structure_seminvariants)
+      {}
+
+      bool use_space_group_symmetry() const {
+        return use_space_group_symmetry_;
+      }
+
+      bool use_normalizer_K2L() const {
+        return use_normalizer_K2L_;
+      }
+
+      bool use_structure_seminvariants() const {
+        return use_structure_seminvariants_;
+      }
+
+      sgtbx::SpaceGroup
+      select_sub_space_group(const sgtbx::SpaceGroupInfo& SgInfo) const
+      {
+        sgtbx::SpaceGroup result;
+        if (use_space_group_symmetry()) {
+          result = SgInfo.SgOps();
+        }
+        else if (use_structure_seminvariants()) {
+          // XXX should be method of SpaceGroup
+          for(int i=1;i<SgInfo.SgOps().nLTr();i++) {
+            result.expandLTr(SgInfo.SgOps()(i,0,0).Tpart());
+          }
+        }
+        if (use_normalizer_K2L()) {
+          result.expandSMxArray(
+            SgInfo.getAddlGeneratorsOfEuclideanNormalizer(1, 0));
+        }
+        return result;
+      }
+
+      af::int3
+      get_grid_factors(const sgtbx::SpaceGroupInfo& SgInfo) const
+      {
+        af::int3 grid_ss(1,1,1);
+        if (use_structure_seminvariants()) {
+          grid_ss = sgtbx::StructureSeminvariant(
+            SgInfo.SgOps()).refine_gridding();
+        }
+        return select_sub_space_group(SgInfo).refine_gridding(grid_ss);
+      }
+
+      bool operator==(const map_symmetry_flags& rhs) const
+      {
+        return
+             use_space_group_symmetry_ == rhs.use_space_group_symmetry_
+          && use_normalizer_K2L_ == rhs.use_normalizer_K2L_
+          && use_structure_seminvariants_ == rhs.use_structure_seminvariants_;
+      }
+
+    private:
+      bool use_space_group_symmetry_;
+      bool use_normalizer_K2L_;
+      bool use_structure_seminvariants_;
+  };
 
   template <class DataArrayType>
   struct verify_grid_tags
@@ -217,6 +300,72 @@ namespace cctbx { namespace maps {
           epsilon);
     }
     size_type n_dependent;
+  };
+
+  template <typename TagType>
+  class grid_tags : public af::versa<TagType, grid_p1<3> >
+  {
+    public:
+      typedef af::versa<TagType, grid_p1<3> > base_type;
+
+      grid_tags() {}
+      grid_tags(const af::grid<3>& dim)
+        : base_type(dim), m_is_valid(false)
+      {}
+
+      void build(const sgtbx::SpaceGroupInfo& SgInfo,
+                 const map_symmetry_flags& sym_flags)
+      {
+        if (   m_is_valid
+            && m_SgInfo.SgOps() == SgInfo.SgOps()
+            && m_sym_flags == sym_flags) {
+          return;
+        }
+        m_SgInfo = SgInfo;
+        m_sym_flags = sym_flags;
+        m_n_grid_misses = 0;
+        this->fill(-1);
+        sgtbx::SpaceGroup
+        sym = sym_flags.select_sub_space_group(m_SgInfo);
+        if (mark_orbits(*this, sym, detail::space_group_symmetry_tag()) > 0) {
+          throw error("Grid is not compatible with symmetry.");
+        }
+        if (sym_flags.use_structure_seminvariants()) {
+          sgtbx::StructureSeminvariant ss(SgInfo.SgOps());
+          m_grid_ss = ss.grid_adapted_moduli(this->accessor());
+          m_n_grid_misses = mark_orbits(
+            *this, m_grid_ss, detail::seminvariant_tag());
+        }
+        m_n_independent = optimize_tags(this->as_1d().ref());
+        m_is_valid = true;
+      }
+
+      bool is_valid() const { return m_is_valid; }
+      const sgtbx::SpaceGroupInfo& SgInfo() const { return m_SgInfo; }
+      const map_symmetry_flags& sym_flags() const { return m_sym_flags; }
+      const af::small<sgtbx::ssVM, 3>& grid_ss() const {
+        return m_grid_ss;
+      }
+      std::size_t n_grid_misses() const { return m_n_grid_misses; }
+      std::size_t n_independent() const { return m_n_independent; }
+
+      template <typename ArrayType>
+      bool
+      verify(const ArrayType& data, double min_correlation = 0.99) const
+      {
+        verify_grid_tags<ArrayType> vfy(data, this->const_ref().as_1d());
+        cctbx_assert(vfy.n_dependent + m_n_independent == this->size());
+        if (vfy.is_well_defined() && vfy.cc() < min_correlation) return false;
+        return true;
+      }
+
+    protected:
+      bool m_is_valid;
+      sgtbx::SpaceGroupInfo m_SgInfo;
+      map_symmetry_flags m_sym_flags;
+      af::small<sgtbx::ssVM, 3> m_grid_ss;
+      std::size_t m_n_grid_misses;
+      std::size_t m_n_independent;
   };
 
 }} // namespace cctbx::maps

@@ -11,8 +11,10 @@
 #include <boost/python/cross_module.hpp>
 #include <cctbx/miller_bpl.h>
 #include <cctbx/coordinates_bpl.h>
+#include <cctbx/array_family/grid_accessor_bpl.h>
 #include <cctbx/sftbx/xray_scatterer.h>
 #include <cctbx/sftbx/sfmap.h>
+#include <cctbx/maps/sym_tags.h>
 
 namespace {
 
@@ -389,6 +391,36 @@ namespace {
     return smd.map().as_base_array();
   }
 
+  af::shared<double>
+  as_shared(const af::versa<double, af::grid<3> >& a) {
+    return af::shared<double>(a.as_base_array());
+  }
+
+  bool
+  grid_tags_verify_1(
+    const maps::grid_tags<long>& tags,
+    af::versa<double, af::grid<3> >& data) {
+    return tags.verify(data);
+  }
+  bool
+  grid_tags_verify_2(
+    const maps::grid_tags<long>& tags,
+    af::versa<double, af::grid<3> >& data,
+    double min_correlation) {
+    return tags.verify(data, min_correlation);
+  }
+
+  void
+  py_eliminate_u_extra(
+    const uctbx::UnitCell& ucell,
+    double u_extra,
+    const af::shared<Miller::Index>& miller_indices,
+    af::shared<std::complex<double> > structure_factors)
+  {
+    sftbx::eliminate_u_extra(
+      ucell, u_extra, miller_indices.const_ref(), structure_factors.ref());
+  }
+
 #   include <cctbx/basic/from_bpl_import.h>
 
   tuple
@@ -409,6 +441,22 @@ namespace {
     result.set_item(0, ref(to_python(dT_dX)));
     result.set_item(1, ref(to_python(dT_dUiso)));
     return result;
+  }
+
+  void sampled_model_density_apply_symmetry(
+    sftbx::sampled_model_density<double>& dens,
+    const maps::grid_tags<long>& tags)
+  {
+    dens.apply_symmetry(tags);
+  }
+
+  void sampled_model_density_eliminate_u_extra_and_normalize(
+    const sftbx::sampled_model_density<double>& dens,
+    const af::shared<Miller::Index>& miller_indices,
+    af::shared<std::complex<double> > structure_factors)
+  {
+    dens.eliminate_u_extra_and_normalize(
+      miller_indices.const_ref(), structure_factors.ref());
   }
 
   tuple
@@ -486,6 +534,15 @@ namespace {
     class_builder<sftbx::sampled_model_density<double> >
     py_sampled_model_density(this_module, "sampled_model_density");
 
+    class_builder<af::versa<double, af::grid<3> > >
+    py_versa_double_grid_3(this_module, "versa_double_grid_3");
+
+    class_builder<maps::map_symmetry_flags>
+    py_map_symmetry_flags(this_module, "map_symmetry_flags");
+
+    class_builder<maps::grid_tags<long> >
+    py_grid_tags(this_module, "grid_tags");
+
     this_module.def(py_StructureFactor_plain, "StructureFactor");
     this_module.def(py_StructureFactor_iso,   "StructureFactor");
     this_module.def(py_StructureFactor_aniso, "StructureFactor");
@@ -557,6 +614,9 @@ namespace {
       const af::tiny<long, 3>&,
       const af::tiny<long, 3>&>());
     py_sampled_model_density.def(
+      &sftbx::sampled_model_density<double>::ucell,
+                                            "ucell");
+    py_sampled_model_density.def(
       &sftbx::sampled_model_density<double>::max_q,
                                             "max_q");
     py_sampled_model_density.def(
@@ -574,6 +634,12 @@ namespace {
     py_sampled_model_density.def(
       sampled_model_density_map_as_shared,
                            "map_as_shared");
+    py_sampled_model_density.def(
+      sampled_model_density_apply_symmetry,
+                           "apply_symmetry");
+    py_sampled_model_density.def(
+      sampled_model_density_eliminate_u_extra_and_normalize,
+                           "eliminate_u_extra_and_normalize");
 
     this_module.def(py_least_squares_shift, "least_squares_shift");
     this_module.def(py_rms_coordinates_plain, "rms_coordinates");
@@ -614,6 +680,42 @@ namespace {
     this_module.def(py_determine_grid, "determine_grid");
     this_module.def(py_collect_structure_factors, "collect_structure_factors");
     this_module.def(py_structure_factor_map, "structure_factor_map");
+
+    py_versa_double_grid_3.def(constructor<>());
+    py_versa_double_grid_3.def(as_shared, "as_shared");
+
+    py_map_symmetry_flags.def(constructor<>());
+    py_map_symmetry_flags.def(constructor<bool>());
+    py_map_symmetry_flags.def(constructor<bool, bool>());
+    py_map_symmetry_flags.def(constructor<bool, bool, bool>());
+    py_map_symmetry_flags.def(
+      &maps::map_symmetry_flags::use_space_group_symmetry,
+                                "use_space_group_symmetry");
+    py_map_symmetry_flags.def(
+      &maps::map_symmetry_flags::use_normalizer_K2L,
+                                "use_normalizer_K2L");
+    py_map_symmetry_flags.def(
+      &maps::map_symmetry_flags::use_structure_seminvariants,
+                                "use_structure_seminvariants");
+    py_map_symmetry_flags.def(
+      &maps::map_symmetry_flags::select_sub_space_group,
+                                "select_sub_space_group");
+    py_map_symmetry_flags.def(
+      &maps::map_symmetry_flags::get_grid_factors,
+                                "get_grid_factors");
+
+    py_grid_tags.def(constructor<>());
+    py_grid_tags.def(constructor<const cctbx::af::grid<3>&>());
+    py_grid_tags.def(&maps::grid_tags<long>::build, "build");
+    py_grid_tags.def(&maps::grid_tags<long>::is_valid, "is_valid");
+    py_grid_tags.def(&maps::grid_tags<long>::SgInfo, "SgInfo");
+    py_grid_tags.def(&maps::grid_tags<long>::sym_flags, "sym_flags");
+    py_grid_tags.def(&maps::grid_tags<long>::n_grid_misses, "n_grid_misses");
+    py_grid_tags.def(&maps::grid_tags<long>::n_independent, "n_independent");
+    py_grid_tags.def(grid_tags_verify_1, "verify");
+    py_grid_tags.def(grid_tags_verify_2, "verify");
+
+    this_module.def(py_eliminate_u_extra, "eliminate_u_extra");
   }
 
 }

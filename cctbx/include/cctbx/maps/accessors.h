@@ -52,6 +52,10 @@ namespace maps {
       std::size_t operator()(const IndexType& i) const {
         return Index1dCalculatorType::get(*this, p1_i(i));
       }
+
+      IndexType i_1d_as_i_nd(const value_type& i_1d) const {
+        return af::index_1d_as_c_index_nd(*this, i_1d);
+      }
   };
 
   template <std::size_t Nd,
