@@ -33,7 +33,7 @@ def format_scale_records(unit_cell=None,
   assert len(u) == 3
   return ("SCALE1    %10.6f%10.6f%10.6f     %10.5f\n"
           "SCALE2    %10.6f%10.6f%10.6f     %10.5f\n"
-          "SCALE3    %10.6f%10.6f%10.6f     %10.5f\n") % (
+          "SCALE3    %10.6f%10.6f%10.6f     %10.5f") % (
     f[0], f[1], f[2], u[0],
     f[3], f[4], f[5], u[1],
     f[6], f[7], f[8], u[2])
