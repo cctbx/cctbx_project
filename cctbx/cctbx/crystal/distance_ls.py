@@ -12,7 +12,7 @@ from scitbx import matrix
 from scitbx.python_utils.misc import adopt_init_args
 from libtbx.itertbx import count
 from libtbx.test_utils import approx_equal
-import os
+import sys, os
 
 if (1):
   flex.set_random_seed(0)
@@ -345,13 +345,18 @@ def find_node(test_node, node_list):
 class bond_registry:
 
   def __init__(self):
-    self.shells = []
+    self.direct = []
+    self.sym = []
 
   def start_next_shell(self):
-    self.shells.append([])
+    self.direct.append([])
+    self.sym.append([])
 
-  def enter(self, entry):
-    self.shells[-1].append(entry)
+  def enter_direct(self, entry):
+    self.direct[-1].append(entry)
+
+  def enter_sym(self, entry):
+    self.sym[-1].append(entry)
 
 def coordination_sequences(structure, proxies, n_shells=10, coseq_terms=None):
   scatterers = structure.scatterers()
@@ -369,12 +374,14 @@ def coordination_sequences(structure, proxies, n_shells=10, coseq_terms=None):
   special_ops = [site_symmetry.special_op()
     for site_symmetry in proxies.site_symmetries]
   bond_registries = []
+  term_table = []
   sums_terms = flex.double()
   multiplicities = flex.double()
   for i_seq_pivot in xrange(len(pair_lists)):
     bond_reg = bond_registry()
     if (len(pair_lists[i_seq_pivot]) == 0):
       bond_registries.append(bond_reg)
+      term_table.append(flex.size_t())
       continue
     nodes_middle = []
     nodes_next = [node(
@@ -412,7 +419,7 @@ def coordination_sequences(structure, proxies, n_shells=10, coseq_terms=None):
         for n in nodes_next:
           i_sym = asu_mappings.find_i_sym(i_seq=n.i_seq, rt_mx=n.rt_mx)
           if (i_sym > 0 or i_sym == 0  and i_seq_pivot < n.i_seq):
-            bond_reg.enter((n.i_seq, i_sym))
+            bond_reg.enter_sym((n.i_seq, i_sym))
       if (0):
         nodes_for_pdb.extend(nodes_next)
         write_nodes_as_pdb(
@@ -420,6 +427,7 @@ def coordination_sequences(structure, proxies, n_shells=10, coseq_terms=None):
           structure=structure,
           node_list=nodes_for_pdb)
     bond_registries.append(bond_reg)
+    term_table.append(terms)
     sums_terms.append(flex.sum(terms))
     multiplicities.append(scatterers[i_seq_pivot].multiplicity())
     print scatterers[i_seq_pivot].label, list(terms)
@@ -436,7 +444,95 @@ def coordination_sequences(structure, proxies, n_shells=10, coseq_terms=None):
         print "Found coordination sequence"
   print "TD%d:" % (terms.size()-1), \
         flex.mean_weighted(sums_terms, multiplicities)
-  print [bond_reg.shells for bond_reg in bond_registries]
+  print [bond_reg.sym for bond_reg in bond_registries]
+  return term_table
+
+def coordination_sequences_sorted(structure, proxies, n_shells=10):
+  scatterers = structure.scatterers()
+  print "sorted_proxies.proxies.size():", \
+         proxies.sorted_proxies.proxies.size()
+  print "sorted_proxies.sym_proxies.size():", \
+         proxies.sorted_proxies.sym_proxies.size()
+  if (proxies.sorted_proxies.proxies.size() > 0):
+    print "Mixed proxies"
+  pair_lists_direct = [[] for i in xrange(scatterers.size())]
+  for proxy in proxies.sorted_proxies.proxies:
+    pair_lists_direct[proxy.i_seqs[0]].append(proxy.i_seqs[1])
+    pair_lists_direct[proxy.i_seqs[1]].append(proxy.i_seqs[0])
+  pair_lists_sym = [[] for i in xrange(scatterers.size())]
+  for proxy in proxies.sorted_proxies.sym_proxies:
+    pair = proxy.pair
+    pair_lists_sym[pair.i_seq].append(pair)
+    if (pair.j_sym == 0):
+      pair_lists_sym[pair.j_seq].append(pair)
+  assert list(proxies.bond_counts) \
+      == [len(pair_list_d)+len(pair_list_s) for pair_list_d,pair_list_s
+           in zip(pair_lists_direct,pair_lists_sym)]
+  asu_mappings = proxies.asu_mappings
+  special_ops = [site_symmetry.special_op()
+    for site_symmetry in proxies.site_symmetries]
+  bond_registries = []
+  term_table = []
+  for i_seq_pivot in xrange(len(pair_lists_sym)):
+    bond_reg = bond_registry()
+    if (  len(pair_lists_direct[i_seq_pivot])
+        + len(pair_lists_sym[i_seq_pivot]) == 0):
+      bond_registries.append(bond_reg)
+      term_table.append(flex.size_t())
+      continue
+    nodes_middle = []
+    nodes_next = [node(
+      i_seq=i_seq_pivot, rt_mx=sgtbx.rt_mx(), special_ops=special_ops)]
+    if (0):
+      nodes_for_pdb = nodes_next[:]
+    terms = flex.size_t([1])
+    for i_shell in xrange(1,n_shells+1):
+      nodes_previous = nodes_middle
+      nodes_middle = nodes_next
+      nodes_next = []
+      for node_m in nodes_middle:
+        for j_seq in pair_lists_direct[node_m.i_seq]:
+          rt_mx_n = node_m.rt_mx
+          rt_mx_i = asu_mappings.get_rt_mx(i_seq=node_m.i_seq, i_sym=0)
+          rt_mx_j = rt_mx_i
+          new_node = node(
+            i_seq=j_seq,
+            rt_mx=rt_mx_n.multiply(rt_mx_i.inverse().multiply(rt_mx_j)),
+            special_ops=special_ops)
+          if (    not find_node(test_node=new_node, node_list=nodes_previous)
+              and not find_node(test_node=new_node, node_list=nodes_middle)
+              and not find_node(test_node=new_node, node_list=nodes_next)):
+            nodes_next.append(new_node)
+        for pair in pair_lists_sym[node_m.i_seq]:
+          rt_mx_n = node_m.rt_mx
+          rt_mx_i = asu_mappings.get_rt_mx(i_seq=pair.i_seq, i_sym=0)
+          rt_mx_j = asu_mappings.get_rt_mx(i_seq=pair.j_seq, i_sym=pair.j_sym)
+          if (pair.i_seq == node_m.i_seq):
+            new_node = node(
+              i_seq=pair.j_seq,
+              rt_mx=rt_mx_n.multiply(rt_mx_i.inverse().multiply(rt_mx_j)),
+              special_ops=special_ops)
+          else:
+            assert pair.j_seq == node_m.i_seq
+            new_node = node(
+              i_seq=pair.i_seq,
+              rt_mx=rt_mx_n.multiply(rt_mx_j.inverse().multiply(rt_mx_i)),
+              special_ops=special_ops)
+          if (    not find_node(test_node=new_node, node_list=nodes_previous)
+              and not find_node(test_node=new_node, node_list=nodes_middle)
+              and not find_node(test_node=new_node, node_list=nodes_next)):
+            nodes_next.append(new_node)
+      terms.append(len(nodes_next))
+      if (i_shell <= 3):
+        bond_reg.start_next_shell()
+        for n in nodes_next:
+          i_sym = asu_mappings.find_i_sym(i_seq=n.i_seq, rt_mx=n.rt_mx)
+          if (i_sym > 0 or i_sym == 0  and i_seq_pivot < n.i_seq):
+            bond_reg.enter_sym((n.i_seq, i_sym))
+    bond_registries.append(bond_reg)
+    term_table.append(terms)
+    print scatterers[i_seq_pivot].label, list(terms)
+  return term_table
 
 def run(distance_cutoff=3.5):
   command_line = (iotbx_option_parser(
@@ -469,11 +565,18 @@ def run(distance_cutoff=3.5):
       if (si_proxies.bond_counts.count(4) != si_proxies.bond_counts.size()):
         print "Not fully 4-connected:", entry.tag
       if (1):
-        coordination_sequences(
+        term_table_0 = coordination_sequences(
           structure=si_structure,
           proxies=si_proxies,
           coseq_terms=coseq_dict.get(entry.tag, None))
-      if (1):
+        if (1):
+          term_table_1 = coordination_sequences_sorted(
+            structure=si_structure,
+            proxies=si_proxies)
+          for t0,t1 in  zip(term_table_0, term_table_1):
+            if (not t0.all_eq(t1)):
+              print "Error in coordination sequence"
+      if (0):
         if (0):
           si_o_structure = si_structure
           si_o_proxies = si_proxies
@@ -622,6 +725,7 @@ def run(distance_cutoff=3.5):
           minimized_structure.show_summary().show_scatterers()
           show_distances(minimized_structure, distance_cutoff=distance_cutoff)
       print
+      sys.stdout.flush()
 
 if (__name__ == "__main__"):
   run()
