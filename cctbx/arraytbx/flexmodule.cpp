@@ -13,12 +13,12 @@
 #include <cctbx/array_family/small_bpl.h>
 #include <cctbx/array_family/flex_types.h>
 #include <cctbx/array_family/versa_reductions.h>
+#include <cctbx/array_family/versa_algebra.h>
 #include <cctbx/math/array_utils.h>
 
 #include <cctbx/miller_bpl.h>
 #include <cctbx/hendrickson_lattman_bpl.h>
 
-#include <cctbx/sgtbx/matrix.h>
 #include <cctbx/sftbx/xray_scatterer.h>
 
 # include <cctbx/basic/from_bpl_import.h>
@@ -180,8 +180,7 @@ namespace cctbx { namespace af {
 
   struct flex_grid_wrappers
   {
-    static
-    flex_grid<>
+    static flex_grid<>
     set_layout(
       flex_grid<>& fg,
       flex_grid_default_index_type const& layout)
@@ -189,22 +188,19 @@ namespace cctbx { namespace af {
       return fg.set_layout(layout);
     }
 
-    static
-    flex_grid_default_index_type
+    static flex_grid_default_index_type
     last_0(flex_grid<> const& fg)
     {
       return fg.last();
     }
 
-    static
-    flex_grid_default_index_type
+    static flex_grid_default_index_type
     last_1(flex_grid<> const& fg, bool open_range)
     {
       return fg.last(open_range);
     }
 
-    static
-    tuple
+    static tuple
     getinitargs(flex_grid<> const& fg)
     {
       bool open_range = true;
@@ -215,15 +211,13 @@ namespace cctbx { namespace af {
       return initargs;
     }
 
-    static
-    flex_grid_default_index_type
+    static flex_grid_default_index_type
     getstate(flex_grid<> const& fg)
     {
       return fg.layout();
     }
 
-    static
-    void
+    static void
     setstate(flex_grid<>& fg, flex_grid_default_index_type const& state)
     {
       fg.set_layout(state);
@@ -302,83 +296,67 @@ namespace cctbx { namespace af {
           tuple[i].get(), boost::python::type<e_t const&>());
     }
 
-    static
-    flex_grid<>
+    static flex_grid<>
     accessor(f_t const& a) { return a.accessor(); }
 
-    static
-    std::size_t
+    static std::size_t
     nd(f_t const& a) { return a.accessor().nd(); }
 
-    static
-    flex_grid_default_index_type
+    static flex_grid_default_index_type
     origin(f_t const& a) { return a.accessor().origin(); }
 
-    static
-    flex_grid_default_index_type
+    static flex_grid_default_index_type
     grid(f_t const& a) { return a.accessor().grid(); }
 
-    static
-    flex_grid_default_index_type
+    static flex_grid_default_index_type
     last_0(f_t const& a) { return a.accessor().last(); }
 
-    static
-    flex_grid_default_index_type
+    static flex_grid_default_index_type
     last_1(f_t const& a, bool open_range)
     {
       return a.accessor().last(open_range);
     }
 
-    static
-    flex_grid_default_index_type
+    static flex_grid_default_index_type
     layout(f_t const& a) { return a.accessor().layout(); }
 
-    static
-    bool
+    static bool
     is_0_based(f_t const& a) { return a.accessor().is_0_based(); }
 
-    static
-    bool
+    static bool
     is_padded(f_t const& a) { return a.accessor().is_padded(); }
 
-    static
-    std::size_t
+    static std::size_t
     id(f_t const& a) { return a.id(); }
 
-    static
-    std::size_t
+    static std::size_t
     size(f_t const& a) { return a.size(); }
 
-    static
-    std::size_t
+    static std::size_t
     capacity(f_t const& a) { return a.capacity(); }
 
-    static
-    e_t
+    static e_t
     getitem_1d(f_t const& a, std::size_t i)
     {
       if (i >= a.size()) bpl_utils::raise_index_error();
       return a[i];
     }
 
-    static
-    e_t
+    static e_t
     getitem_flex_grid(f_t const& a, flex_grid_default_index_type const& i)
     {
       if (!a.accessor().is_valid_index(i)) bpl_utils::raise_index_error();
       return a(i);
     }
 
-    static
-    void
+    static void
     setitem_1d(f_t& a, std::size_t i, e_t const& x)
     {
       if (i >= a.size()) bpl_utils::raise_index_error();
       a[i] = x;
     }
 
-    static
-    void
+    static void
     setitem_flex_grid(
       f_t& a, flex_grid_default_index_type const& i, e_t const& x)
     {
@@ -386,61 +364,51 @@ namespace cctbx { namespace af {
       a(i) = x;
     }
 
-    static
-    e_t
+    static e_t
     front(f_t const& a)
     {
       if (a.size() == 0) bpl_utils::raise_index_error();
       return a.front();
     }
 
-    static
-    e_t
+    static e_t
     back(f_t const& a)
     {
       if (a.size() == 0) bpl_utils::raise_index_error();
       return a.back();
     }
 
-    static
-    void
+    static void
     fill(f_t& a, e_t const& x)
     {
       a.fill(x);
     }
 
-    static
-    void
+    static void
     reserve(f_t& a, std::size_t sz)
     {
       a.reserve(sz);
     }
 
-    static
-    f_t
+    static f_t
     deep_copy(f_t const& a)
     {
       return a.deep_copy();
     }
 
-    static
-    f_t
+    static f_t
     shallow_copy(f_t const& a)
     {
       return a;
     }
 
-    static
-    f_t
+    static f_t
     as_1d(f_t const& a)
     {
-      flex_grid_default_index_type grid;
-      grid.push_back(a.size());
-      return f_t(a, flex_grid<>(grid));
+      return f_t(a, flex_grid<>(a.size()));
     }
 
-    static
-    void
+    static void
     assign(f_t& a, std::size_t sz, e_t const& x)
     {
       base_array_type b = bpl_utils::as_base_array(a);
@@ -448,16 +416,15 @@ namespace cctbx { namespace af {
       a.resize(flex_grid<>(b.size()));
     }
 
-    static
-    void push_back(f_t& a, e_t const& x)
+    static void
+    push_back(f_t& a, e_t const& x)
     {
       base_array_type b = bpl_utils::as_base_array(a);
       b.push_back(x);
       a.resize(flex_grid<>(b.size()));
     }
 
-    static
-    void
+    static void
     pop_back(f_t& a)
     {
       base_array_type b = bpl_utils::as_base_array(a);
@@ -466,8 +433,7 @@ namespace cctbx { namespace af {
       a.resize(flex_grid<>(b.size()));
     }
 
-    static
-    void
+    static void
     insert_i_x(f_t& a, std::size_t i, e_t const& x)
     {
       base_array_type b = bpl_utils::as_base_array(a);
@@ -476,8 +442,7 @@ namespace cctbx { namespace af {
       a.resize(flex_grid<>(b.size()));
     }
 
-    static
-    void
+    static void
     insert_i_n_x(f_t& a, std::size_t i, std::size_t n, e_t const& x)
     {
       base_array_type b = bpl_utils::as_base_array(a);
@@ -486,8 +451,7 @@ namespace cctbx { namespace af {
       a.resize(flex_grid<>(b.size()));
     }
 
-    static
-    void
+    static void
     erase_i(f_t& a, std::size_t i)
     {
       base_array_type b = bpl_utils::as_base_array(a);
@@ -496,8 +460,8 @@ namespace cctbx { namespace af {
       a.resize(flex_grid<>(b.size()));
     }
 
-    static
-    void erase_i_j(f_t& a, std::size_t i, std::size_t j)
+    static void
+    erase_i_j(f_t& a, std::size_t i, std::size_t j)
     {
       base_array_type b = bpl_utils::as_base_array(a);
       if (i >= b.size()) bpl_utils::raise_index_error();
@@ -506,8 +470,7 @@ namespace cctbx { namespace af {
       a.resize(flex_grid<>(b.size()));
     }
 
-    static
-    void
+    static void
     resize_1d_1(f_t& a, std::size_t sz)
     {
       base_array_type b = bpl_utils::as_base_array(a);
@@ -515,8 +478,7 @@ namespace cctbx { namespace af {
       a.resize(flex_grid<>(b.size()));
     }
 
-    static
-    void
+    static void
     resize_1d_2(f_t& a, std::size_t sz, e_t const& x)
     {
       base_array_type b = bpl_utils::as_base_array(a);
@@ -524,22 +486,19 @@ namespace cctbx { namespace af {
       a.resize(flex_grid<>(b.size()));
     }
 
-    static
-    void
+    static void
     resize_flex_grid_1(f_t& a, flex_grid<> const& grid)
     {
       a.resize(grid);
     }
 
-    static
-    void
+    static void
     resize_flex_grid_2(f_t& a, flex_grid<> const& grid, e_t const& x)
     {
       a.resize(grid, x);
     }
 
-    static
-    void
+    static void
     clear(f_t& a)
     {
       base_array_type b = bpl_utils::as_base_array(a);
@@ -547,8 +506,7 @@ namespace cctbx { namespace af {
       a.resize(flex_grid<>(b.size()));
     }
 
-    static
-    void
+    static void
     append(f_t& a, f_t const& other)
     {
       base_array_type b = bpl_utils::as_base_array(a);
@@ -557,22 +515,19 @@ namespace cctbx { namespace af {
       a.resize(flex_grid<>(b.size()));
     }
 
-    static
-    boost::python::ref
+    static boost::python::ref
     indices(f_t const& a)
     {
       return boost::python::ref(PyRange_New(0, a.size(), 1, 1));
     }
 
-    static
-    flex_items<e_t>
+    static flex_items<e_t>
     items(f_t const& a)
     {
       return flex_items<e_t>(a);
     }
 
-    static
-    f_t
+    static f_t
     select(f_t const& a, flex_bool const& flags)
     {
       bpl_utils::assert_0_based_1d(a.accessor());
@@ -587,8 +542,7 @@ namespace cctbx { namespace af {
       return f_t(result, flex_grid<>(result.size()));
     }
 
-    static
-    f_t
+    static f_t
     shuffle(f_t const& a, flex_size_t const& permutation)
     {
       bpl_utils::assert_0_based_1d(a.accessor());
@@ -608,44 +562,16 @@ namespace cctbx { namespace af {
       return f_t(result, a.accessor());
     }
 
-    static
-    flex_bool
-    invert_a(flex_bool const& a)
-    {
-      shared_plain<bool> result;
-      result.reserve(a.size());
-      for(std::size_t i=0;i<a.size();i++) result.push_back(!a[i]);
-      return flex_bool(result, a.accessor());
-    }
+    static flex_bool
+    invert_a(flex_bool const& a) { return !a; }
 
-    static
-    flex_bool
-    and_a_a(flex_bool const& a1, flex_bool const& a2)
-    {
-      if (a1.accessor() != a2.accessor()) {
-        bpl_utils::raise_incompatible_arrays();
-      }
-      shared_plain<bool> result;
-      result.reserve(a1.size());
-      for(std::size_t i=0;i<a1.size();i++) result.push_back(a1[i] && a2[i]);
-      return flex_bool(result, a1.accessor());
-    }
+    static flex_bool
+    and_a_a(flex_bool const& a1, flex_bool const& a2) { return a1 && a2; }
 
-    static
-    flex_bool
-    or_a_a(flex_bool const& a1, flex_bool const& a2)
-    {
-      if (a1.accessor() != a2.accessor()) {
-        bpl_utils::raise_incompatible_arrays();
-      }
-      shared_plain<bool> result;
-      result.reserve(a1.size());
-      for(std::size_t i=0;i<a1.size();i++) result.push_back(a1[i] || a2[i]);
-      return flex_bool(result, a1.accessor());
-    }
+    static flex_bool
+    or_a_a(flex_bool const& a1, flex_bool const& a2) { return a1 || a2; }
 
-    static
-    flex_bool
+    static flex_bool
     iand_a_a(flex_bool a1, flex_bool const& a2)
     {
       if (a1.accessor() != a2.accessor()) {
@@ -655,8 +581,7 @@ namespace cctbx { namespace af {
       return a1;
     }
 
-    static
-    flex_bool
+    static flex_bool
     ior_a_a(flex_bool a1, flex_bool const& a2)
     {
       if (a1.accessor() != a2.accessor()) {
@@ -666,24 +591,21 @@ namespace cctbx { namespace af {
       return a1;
     }
 
-    static
-    flex_bool
+    static flex_bool
     iand_a_s(flex_bool a1, bool a2)
     {
       if (!a2) std::fill(a1.begin(), a1.end(), false);
       return a1;
     }
 
-    static
-    flex_bool
+    static flex_bool
     ior_a_s(flex_bool a1, bool a2)
     {
       if (a2) std::fill(a1.begin(), a1.end(), true);
       return a1;
     }
 
-    static
-    std::size_t
+    static std::size_t
     count(flex_bool const& a1, bool a2)
     {
       std::size_t result = 0;
@@ -691,411 +613,78 @@ namespace cctbx { namespace af {
       return result;
     }
 
-    static
-    flex_double
+    static flex_double
     as_double(f_t const& a)
     {
-      shared_plain<double> result;
-      result.reserve(a.size());
-      for(std::size_t i=0;i<a.size();i++) result.push_back(a[i]);
+      shared_plain<double> result(a.size(), af::init_functor_null<double>());
+      for(std::size_t i=0;i<a.size();i++) result[i] = a[i];
       return flex_double(result, a.accessor());
     }
 
-    static
-    f_t
-    neg_a(f_t const& a)
-    {
-      base_array_type result;
-      result.reserve(a.size());
-      for(std::size_t i=0;i<a.size();i++) result.push_back(-a[i]);
-      return f_t(result, a.accessor());
-    }
+    static f_t neg_a(f_t const& a) { return -a; }
+    static f_t add_a_a(f_t const& a1, f_t const& a2) { return a1 + a2; }
+    static f_t sub_a_a(f_t const& a1, f_t const& a2) { return a1 - a2; }
+    static f_t mul_a_a(f_t const& a1, f_t const& a2) { return a1 * a2; }
+    static f_t div_a_a(f_t const& a1, f_t const& a2) { return a1 / a2; }
+    static f_t mod_a_a(f_t const& a1, f_t const& a2) { return a1 % a2; }
+    static f_t add_a_s(f_t const& a1, e_t const& a2) { return a1 + a2; }
+    static f_t sub_a_s(f_t const& a1, e_t const& a2) { return a1 - a2; }
+    static f_t mul_a_s(f_t const& a1, e_t const& a2) { return a1 * a2; }
+    static f_t div_a_s(f_t const& a1, e_t const& a2) { return a1 / a2; }
+    static f_t mod_a_s(f_t const& a1, e_t const& a2) { return a1 % a2; }
+    static f_t iadd_a_s(f_t& a1, e_t const& a2) { return a1 += a2; }
+    static f_t isub_a_s(f_t& a1, e_t const& a2) { return a1 -= a2; }
+    static f_t imul_a_s(f_t& a1, e_t const& a2) { return a1 *= a2; }
+    static f_t idiv_a_s(f_t& a1, e_t const& a2) { return a1 /= a2; }
+    static f_t imod_a_s(f_t& a1, e_t const& a2) { return a1 %= a2; }
 
-    static
-    f_t
-    add_a_a(f_t const& a1, f_t const& a2)
-    {
-      if (a1.accessor() != a2.accessor()) {
-        bpl_utils::raise_incompatible_arrays();
-      }
-      base_array_type result;
-      result.reserve(a1.size());
-      for(std::size_t i=0;i<a1.size();i++) result.push_back(a1[i] + a2[i]);
-      return f_t(result, a1.accessor());
-    }
+    static int
+    cmp_a_a(f_t const& a1, f_t const& a2) { return af::cmp(a1, a2); }
 
-    static
-    f_t
-    sub_a_a(f_t const& a1, f_t const& a2)
-    {
-      if (a1.accessor() != a2.accessor()) {
-        bpl_utils::raise_incompatible_arrays();
-      }
-      base_array_type result;
-      result.reserve(a1.size());
-      for(std::size_t i=0;i<a1.size();i++) result.push_back(a1[i] - a2[i]);
-      return f_t(result, a1.accessor());
-    }
+    static int
+    cmp_a_s(f_t const& a1, e_t const& a2) { return af::cmp(a1, a2); }
 
-    static
-    f_t
-    mul_a_a(f_t const& a1, f_t const& a2)
-    {
-      if (a1.accessor() != a2.accessor()) {
-        bpl_utils::raise_incompatible_arrays();
-      }
-      base_array_type result;
-      result.reserve(a1.size());
-      for(std::size_t i=0;i<a1.size();i++) result.push_back(a1[i] * a2[i]);
-      return f_t(result, a1.accessor());
-    }
+    static flex_bool eq_a_a(f_t const& a1, f_t const& a2) { return a1 == a2; }
+    static flex_bool ne_a_a(f_t const& a1, f_t const& a2) { return a1 != a2; }
+    static flex_bool lt_a_a(f_t const& a1, f_t const& a2) { return a1 < a2; }
+    static flex_bool gt_a_a(f_t const& a1, f_t const& a2) { return a1 > a2; }
+    static flex_bool le_a_a(f_t const& a1, f_t const& a2) { return a1 <= a2; }
+    static flex_bool ge_a_a(f_t const& a1, f_t const& a2) { return a1 >= a2; }
+    static flex_bool eq_a_s(f_t const& a1, e_t const& a2) { return a1 == a2; }
+    static flex_bool ne_a_s(f_t const& a1, e_t const& a2) { return a1 != a2; }
+    static flex_bool lt_a_s(f_t const& a1, e_t const& a2) { return a1 < a2; }
+    static flex_bool gt_a_s(f_t const& a1, e_t const& a2) { return a1 > a2; }
+    static flex_bool le_a_s(f_t const& a1, e_t const& a2) { return a1 <= a2; }
+    static flex_bool ge_a_s(f_t const& a1, e_t const& a2) { return a1 >= a2; }
 
-    static
-    f_t
-    div_a_a(f_t const& a1, f_t const& a2)
-    {
-      if (a1.accessor() != a2.accessor()) {
-        bpl_utils::raise_incompatible_arrays();
-      }
-      base_array_type result;
-      result.reserve(a1.size());
-      for(std::size_t i=0;i<a1.size();i++) result.push_back(a1[i] / a2[i]);
-      return f_t(result, a1.accessor());
-    }
+    static f_t abs_a(f_t const& a) { return af::absolute(a); }
+    static f_t pow2_a(f_t const& a) { return af::pow2(a); }
 
-    static
-    f_t
-    mod_a_a(f_t const& a1, f_t const& a2)
-    {
-      if (a1.accessor() != a2.accessor()) {
-        bpl_utils::raise_incompatible_arrays();
-      }
-      base_array_type result;
-      result.reserve(a1.size());
-      for(std::size_t i=0;i<a1.size();i++) result.push_back(a1[i] % a2[i]);
-      return f_t(result, a1.accessor());
-    }
+    static f_t
+    fmod_a_s(f_t const& a1, e_t const& a2) { return af::fmod(a1, a2); }
 
-    static
-    f_t
-    add_a_s(f_t const& a1, e_t const& a2)
-    {
-      base_array_type result;
-      result.reserve(a1.size());
-      for(std::size_t i=0;i<a1.size();i++) result.push_back(a1[i] + a2);
-      return f_t(result, a1.accessor());
-    }
+    static f_t
+    pow_a_s(f_t const& a, e_t const& exponent) { return af::pow(a, exponent); }
 
-    static
-    f_t
-    sub_a_s(f_t const& a1, e_t const& a2)
-    {
-      base_array_type result;
-      result.reserve(a1.size());
-      for(std::size_t i=0;i<a1.size();i++) result.push_back(a1[i] - a2);
-      return f_t(result, a1.accessor());
-    }
+    static f_t
+    atan2_a_a(f_t const& a1, f_t const& a2) { return af::atan2(a1, a2); }
 
-    static
-    f_t
-    mul_a_s(f_t const& a1, e_t const& a2)
-    {
-      base_array_type result;
-      result.reserve(a1.size());
-      for(std::size_t i=0;i<a1.size();i++) result.push_back(a1[i] * a2);
-      return f_t(result, a1.accessor());
-    }
-
-    static
-    f_t
-    div_a_s(f_t const& a1, e_t const& a2)
-    {
-      base_array_type result;
-      result.reserve(a1.size());
-      for(std::size_t i=0;i<a1.size();i++) result.push_back(a1[i] / a2);
-      return f_t(result, a1.accessor());
-    }
-
-    static
-    f_t
-    mod_a_s(f_t const& a1, e_t const& a2)
-    {
-      base_array_type result;
-      result.reserve(a1.size());
-      for(std::size_t i=0;i<a1.size();i++) result.push_back(a1[i] % a2);
-      return f_t(result, a1.accessor());
-    }
-
-    static
-    f_t
-    iadd_a_s(f_t& a1, e_t const& a2)
-    {
-      for(std::size_t i=0;i<a1.size();i++) a1[i] += a2;
-      return a1;
-    }
-
-    static
-    f_t
-    isub_a_s(f_t& a1, e_t const& a2)
-    {
-      for(std::size_t i=0;i<a1.size();i++) a1[i] -= a2;
-      return a1;
-    }
-
-    static
-    f_t
-    imul_a_s(f_t& a1, e_t const& a2)
-    {
-      for(std::size_t i=0;i<a1.size();i++) a1[i] *= a2;
-      return a1;
-    }
-
-    static
-    f_t
-    idiv_a_s(f_t& a1, e_t const& a2)
-    {
-      for(std::size_t i=0;i<a1.size();i++) a1[i] /= a2;
-      return a1;
-    }
-
-    static
-    f_t
-    imod_a_s(f_t& a1, e_t const& a2)
-    {
-      for(std::size_t i=0;i<a1.size();i++) a1[i] %= a2;
-      return a1;
-    }
-
-    static
-    int
-    cmp_a_a(f_t const& a1, f_t const& a2)
-    {
-      return af::cmp(a1, a2);
-    }
-
-    static
-    int
-    cmp_a_s(f_t const& a1, e_t const& a2)
-    {
-      return af::cmp(a1, a2);
-    }
-
-    static
-    flex_bool
-    eq_a_a(f_t const& a1, f_t const& a2)
-    {
-      if (a1.accessor() != a2.accessor()) {
-        bpl_utils::raise_incompatible_arrays();
-      }
-      shared_plain<bool> result;
-      result.reserve(a1.size());
-      for(std::size_t i=0;i<a1.size();i++) result.push_back(a1[i] == a2[i]);
-      return flex_bool(result, a1.accessor());
-    }
-
-    static
-    flex_bool
-    ne_a_a(f_t const& a1, f_t const& a2)
-    {
-      if (a1.accessor() != a2.accessor()) {
-        bpl_utils::raise_incompatible_arrays();
-      }
-      shared_plain<bool> result;
-      result.reserve(a1.size());
-      for(std::size_t i=0;i<a1.size();i++) result.push_back(a1[i] != a2[i]);
-      return flex_bool(result, a1.accessor());
-    }
-
-    static
-    flex_bool
-    lt_a_a(f_t const& a1, f_t const& a2)
-    {
-      if (a1.accessor() != a2.accessor()) {
-        bpl_utils::raise_incompatible_arrays();
-      }
-      shared_plain<bool> result;
-      result.reserve(a1.size());
-      for(std::size_t i=0;i<a1.size();i++) result.push_back(a1[i] < a2[i]);
-      return flex_bool(result, a1.accessor());
-    }
-
-    static
-    flex_bool
-    gt_a_a(f_t const& a1, f_t const& a2)
-    {
-      if (a1.accessor() != a2.accessor()) {
-        bpl_utils::raise_incompatible_arrays();
-      }
-      shared_plain<bool> result;
-      result.reserve(a1.size());
-      for(std::size_t i=0;i<a1.size();i++) result.push_back(a1[i] > a2[i]);
-      return flex_bool(result, a1.accessor());
-    }
-
-    static
-    flex_bool
-    le_a_a(f_t const& a1, f_t const& a2)
-    {
-      if (a1.accessor() != a2.accessor()) {
-        bpl_utils::raise_incompatible_arrays();
-      }
-      shared_plain<bool> result;
-      result.reserve(a1.size());
-      for(std::size_t i=0;i<a1.size();i++) result.push_back(a1[i] <= a2[i]);
-      return flex_bool(result, a1.accessor());
-    }
-
-    static
-    flex_bool
-    ge_a_a(f_t const& a1, f_t const& a2)
-    {
-      if (a1.accessor() != a2.accessor()) {
-        bpl_utils::raise_incompatible_arrays();
-      }
-      shared_plain<bool> result;
-      result.reserve(a1.size());
-      for(std::size_t i=0;i<a1.size();i++) result.push_back(a1[i] >= a2[i]);
-      return flex_bool(result, a1.accessor());
-    }
-
-    static
-    flex_bool
-    eq_a_s(f_t const& a1, e_t const& a2)
-    {
-      shared_plain<bool> result;
-      result.reserve(a1.size());
-      for(std::size_t i=0;i<a1.size();i++) result.push_back(a1[i] == a2);
-      return flex_bool(result, a1.accessor());
-    }
-
-    static
-    flex_bool
-    ne_a_s(f_t const& a1, e_t const& a2)
-    {
-      shared_plain<bool> result;
-      result.reserve(a1.size());
-      for(std::size_t i=0;i<a1.size();i++) result.push_back(a1[i] != a2);
-      return flex_bool(result, a1.accessor());
-    }
-
-    static
-    flex_bool
-    lt_a_s(f_t const& a1, e_t const& a2)
-    {
-      shared_plain<bool> result;
-      result.reserve(a1.size());
-      for(std::size_t i=0;i<a1.size();i++) result.push_back(a1[i] < a2);
-      return flex_bool(result, a1.accessor());
-    }
-
-    static
-    flex_bool
-    gt_a_s(f_t const& a1, e_t const& a2)
-    {
-      shared_plain<bool> result;
-      result.reserve(a1.size());
-      for(std::size_t i=0;i<a1.size();i++) result.push_back(a1[i] > a2);
-      return flex_bool(result, a1.accessor());
-    }
-
-    static
-    flex_bool
-    le_a_s(f_t const& a1, e_t const& a2)
-    {
-      shared_plain<bool> result;
-      result.reserve(a1.size());
-      for(std::size_t i=0;i<a1.size();i++) result.push_back(a1[i] <= a2);
-      return flex_bool(result, a1.accessor());
-    }
-
-    static
-    flex_bool
-    ge_a_s(f_t const& a1, e_t const& a2)
-    {
-      shared_plain<bool> result;
-      result.reserve(a1.size());
-      for(std::size_t i=0;i<a1.size();i++) result.push_back(a1[i] >= a2);
-      return flex_bool(result, a1.accessor());
-    }
-
-    static
-    f_t
-    abs_a(f_t const& a)
-    {
-      base_array_type result;
-      result.reserve(a.size());
-      for(std::size_t i=0;i<a.size();i++) result.append(fn::absolute(a[i]));
-      return f_t(result, a.accessor());
-    }
-
-    static
-    f_t
-    fmod_a_s(f_t const& a1, e_t const& a2)
-    {
-      base_array_type result;
-      result.reserve(a1.size());
-      for(std::size_t i=0;i<a1.size();i++) {
-        result.append(std::fmod(a1[i], a2));
-      }
-      return f_t(result, a1.accessor());
-    }
-
-    static
-    f_t
-    pow_a_s(f_t const& a, e_t const& exponent)
-    {
-      base_array_type result;
-      result.reserve(a.size());
-      for(std::size_t i=0;i<a.size();i++) {
-        result.append(std::pow(a[i], exponent));
-      }
-      return f_t(result, a.accessor());
-    }
-
-    static
-    f_t
-    atan2_a_a(f_t const& a1, f_t const& a2)
-    {
-      if (a1.accessor() != a2.accessor()) {
-        bpl_utils::raise_incompatible_arrays();
-      }
-      base_array_type result;
-      result.reserve(a1.size());
-      for(std::size_t i=0;i<a1.size();i++) {
-        result.append(std::atan2(a1[i], a2[i]));
-      }
-      return f_t(result, a1.accessor());
-    }
-
-#define CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(func) \
-    static \
-    f_t \
-    func ## _a(f_t const& a) \
-    { \
-      base_array_type result; \
-      result.reserve(a.size()); \
-      for(std::size_t i=0;i<a.size();i++) { \
-        result.append(std::func(a[i])); \
-      } \
-      return f_t(result, a.accessor()); \
-    }
-
-CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(acos)
-CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(cos)
-CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(tan)
-CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(asin)
-CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(cosh)
-CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(tanh)
-CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(atan)
-CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(exp)
-CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(sin)
-CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(fabs)
-CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(log)
-CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(sinh)
-CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(ceil)
-CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(floor)
-CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(log10)
-CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(sqrt)
+    static f_t acos_a(f_t const& a) { return af::acos(a); }
+    static f_t cos_a(f_t const& a) { return af::cos(a); }
+    static f_t tan_a(f_t const& a) { return af::tan(a); }
+    static f_t asin_a(f_t const& a) { return af::asin(a); }
+    static f_t cosh_a(f_t const& a) { return af::cosh(a); }
+    static f_t tanh_a(f_t const& a) { return af::tanh(a); }
+    static f_t atan_a(f_t const& a) { return af::atan(a); }
+    static f_t exp_a(f_t const& a) { return af::exp(a); }
+    static f_t sin_a(f_t const& a) { return af::sin(a); }
+    static f_t fabs_a(f_t const& a) { return af::fabs(a); }
+    static f_t log_a(f_t const& a) { return af::log(a); }
+    static f_t sinh_a(f_t const& a) { return af::sinh(a); }
+    static f_t ceil_a(f_t const& a) { return af::ceil(a); }
+    static f_t floor_a(f_t const& a) { return af::floor(a); }
+    static f_t log10_a(f_t const& a) { return af::log10(a); }
+    static f_t sqrt_a(f_t const& a) { return af::sqrt(a); }
 
     static std::size_t
     max_index_a(f_t const& a) { return af::max_index(a); }
@@ -1109,90 +698,62 @@ CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(sqrt)
     static e_t mean_a(f_t const& a) { return af::mean(a); }
     static e_t mean_sq_a(f_t const& a) { return af::mean_sq(a); }
 
-    static
-    e_t
+    static e_t
     mean_weighted_a_a(f_t const& a1, f_t const& a2)
     {
       return af::mean_weighted(a1, a2);
     }
 
-    static
-    e_t
+    static e_t
     mean_sq_weighted_a_a(f_t const& a1, f_t const& a2)
     {
       return af::mean_sq_weighted(a1, a2);
     }
 
-    static
-    versa<double, flex_grid<> >
+    static versa<double, flex_grid<> >
     real_complex(versa<std::complex<double>, flex_grid<> > const& a)
     {
-      shared_plain<double> result;
-      result.reserve(a.size());
-      for(std::size_t i=0;i<a.size();i++) {
-        result.push_back(std::real(a[i]));
-      }
-      return versa<double, flex_grid<> >(result, a.accessor());
+      return af::real(a);
     }
 
-    static
-    versa<double, flex_grid<> >
+    static versa<double, flex_grid<> >
     imag_complex(versa<std::complex<double>, flex_grid<> > const& a)
     {
-      shared_plain<double> result;
-      result.reserve(a.size());
-      for(std::size_t i=0;i<a.size();i++) {
-        result.push_back(std::imag(a[i]));
-      }
-      return versa<double, flex_grid<> >(result, a.accessor());
+      return af::imag(a);
     }
 
-    static
-    versa<double, flex_grid<> >
+    static versa<double, flex_grid<> >
     abs_complex(versa<std::complex<double>, flex_grid<> > const& a)
     {
-      shared_plain<double> result;
-      result.reserve(a.size());
-      for(std::size_t i=0;i<a.size();i++) {
-        result.push_back(std::abs(a[i]));
-      }
+      shared_plain<double> result(a.size(), af::init_functor_null<double>());
+      for(std::size_t i=0;i<a.size();i++) result[i] = std::abs(a[i]);
       return versa<double, flex_grid<> >(result, a.accessor());
     }
 
-    static
-    versa<double, flex_grid<> >
+    static versa<double, flex_grid<> >
     arg_complex_2(versa<std::complex<double>, flex_grid<> > const& a, bool deg)
     {
-      shared_plain<double> result;
-      result.reserve(a.size());
+      shared_plain<double> result(a.size(), af::init_functor_null<double>());
       for(std::size_t i=0;i<a.size();i++) {
-        result.push_back(std::arg(a[i]));
+        result[i] = std::arg(a[i]);
         if (deg) result[i] /= constants::pi_180;
       }
       return versa<double, flex_grid<> >(result, a.accessor());
     }
 
-    static
-    versa<double, flex_grid<> >
+    static versa<double, flex_grid<> >
     arg_complex_1(versa<std::complex<double>, flex_grid<> > const& a)
     {
       return arg_complex_2(a, false);
     }
 
-    static
-    versa<double, flex_grid<> >
+    static versa<double, flex_grid<> >
     norm_complex(versa<std::complex<double>, flex_grid<> > const& a)
     {
-      shared_plain<double> result;
-      result.reserve(a.size());
-      for(std::size_t i=0;i<a.size();i++) {
-        result.push_back(std::norm(a[i]));
-      }
-      return versa<double, flex_grid<> >(result, a.accessor());
+      return af::norm(a);
     }
 
-    static
-    versa<std::complex<double>, flex_grid<> >
+    static versa<std::complex<double>, flex_grid<> >
     polar_complex_3(
       versa<double, flex_grid<> > const& rho,
       versa<double, flex_grid<> > const& theta,
@@ -1201,23 +762,22 @@ CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(sqrt)
       if (rho.accessor() != theta.accessor()) {
         bpl_utils::raise_incompatible_arrays();
       }
-      shared_plain<std::complex<double> > result;
-      result.reserve(rho.size());
+      shared_plain<std::complex<double> > result(
+        rho.size(), af::init_functor_null<std::complex<double> >());
       if (deg) {
         for(std::size_t i=0;i<rho.size();i++) {
-          result.push_back(std::polar(rho[i], theta[i] * constants::pi_180));
+          result[i] = std::polar(rho[i], theta[i] * constants::pi_180);
         }
       }
       else {
         for(std::size_t i=0;i<rho.size();i++) {
-          result.push_back(std::polar(rho[i], theta[i]));
+          result[i] = std::polar(rho[i], theta[i]);
         }
       }
       return versa<std::complex<double>, flex_grid<> >(result, rho.accessor());
     }
 
-    static
-    versa<std::complex<double>, flex_grid<> >
+    static versa<std::complex<double>, flex_grid<> >
     polar_complex_2(
       versa<double, flex_grid<> > const& rho,
       versa<double, flex_grid<> > const& theta)
@@ -1225,8 +785,7 @@ CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(sqrt)
       return polar_complex_3(rho, theta, false);
     }
 
-    static
-    f_class_builders
+    static f_class_builders
     plain(
       boost::python::module_builder& bpl_module,
       std::string const& python_name)
@@ -1296,8 +855,7 @@ CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(sqrt)
       return std::make_pair(py_flex, py_flex_items);
     }
 
-    static
-    f_class_builders
+    static f_class_builders
     cmp_comparable(
       boost::python::module_builder& bpl_module,
       std::string const& python_name)
@@ -1308,8 +866,7 @@ CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(sqrt)
       return class_blds;
     }
 
-    static
-    f_class_builders
+    static f_class_builders
     logical(
       boost::python::module_builder& bpl_module,
       std::string const& python_name)
@@ -1326,8 +883,7 @@ CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(sqrt)
       return class_blds;
     }
 
-    static
-    f_class_builders
+    static f_class_builders
     numeric_common(
       boost::python::module_builder& bpl_module,
       std::string const& python_name)
@@ -1352,8 +908,7 @@ CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(sqrt)
       return class_blds;
     }
 
-    static
-    f_class_builders
+    static f_class_builders
     numeric_no_pow(
       boost::python::module_builder& bpl_module,
       std::string const& python_name)
@@ -1375,6 +930,7 @@ CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(sqrt)
       class_blds.first.def(le_a_s, "__le__");
       class_blds.first.def(ge_a_s, "__ge__");
       bpl_module.def(abs_a, "abs");
+      bpl_module.def(pow2_a, "pow2");
       bpl_module.def(min_index_a, "min_index");
       bpl_module.def(max_index_a, "max_index");
       bpl_module.def(min_a, "min");
@@ -1382,8 +938,7 @@ CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(sqrt)
       return class_blds;
     }
 
-    static
-    f_class_builders
+    static f_class_builders
     numeric(
       boost::python::module_builder& bpl_module,
       std::string const& python_name)
@@ -1415,8 +970,7 @@ CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(sqrt)
       return class_blds;
     }
 
-    static
-    f_class_builders
+    static f_class_builders
     integer(
       boost::python::module_builder& bpl_module,
       std::string const& python_name)
@@ -1428,8 +982,7 @@ CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(sqrt)
       return class_blds;
     }
 
-    static
-    f_class_builders
+    static f_class_builders
     complex(
       boost::python::module_builder& bpl_module,
       std::string const& python_name)
@@ -1451,7 +1004,8 @@ CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(sqrt)
     }
   };
 
-  void init_module(python::module_builder& this_module)
+  void
+  init_module(python::module_builder& this_module)
   {
     const std::string Revision = "$Revision$";
     this_module.add(python::ref(to_python(
