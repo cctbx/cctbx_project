@@ -293,8 +293,8 @@ def format_structure_factor(f, precision_ampl=3, precision_phase=0):
     return ("%%.%dg" % (precision_ampl,)) % (a,)
 
 def print_structure_factors(F, precision_ampl=3, precision_phase=0):
-  for i in xrange(len(F.H)):
-    print F.H[i], format_structure_factor(
+  for i,h in F.H.items():
+    print h, format_structure_factor(
       F.F[i], precision_ampl, precision_phase)
 
 def show_regression(x, y, label, min_correlation = 0):
@@ -359,7 +359,7 @@ def show_structure_factor_correlation(label, h1, joined_sets, f1, f2,
     label, min_corr_ampl, max_mean_w_phase_error, verbose)
   if (joined_sets == 0):
     assert f1.size() == f2.size()
-    for i in xrange(f1.size()):
+    for i in f1.indices():
       sf_cmp.add(h1[i], f1[i], f2[i])
   else:
     for i,j in joined_sets.pairs():
@@ -369,8 +369,7 @@ def show_structure_factor_correlation(label, h1, joined_sets, f1, f2,
 def random_phases(sgops, miller_indices, amplitudes, deg=0):
   assert miller_indices.size() == amplitudes.size()
   phases = shared.double()
-  for i in xrange(miller_indices.size()):
-    h = miller_indices[i]
+  for i,h in miller_indices.items():
     phi = random.random() - 0.5
     if (deg): phi *= 360
     else:     phi *= 2 * math.pi
