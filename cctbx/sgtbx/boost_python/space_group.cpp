@@ -76,7 +76,7 @@ namespace {
         .def("reset", &w_t::reset, reset_overloads())
         .def("expand_ltr", &w_t::expand_ltr)
         .def("expand_inv", &w_t::expand_inv)
-        .def("expand_smx", (void(w_t::*)(rt_mx const&)) &w_t::expand_smx)
+        .def("raw_expand_smx", (void(w_t::*)(rt_mx const&)) &w_t::expand_smx)
         .def("expand_conventional_centring_type",
           &w_t::expand_conventional_centring_type)
         .def("parse_hall_symbol",
