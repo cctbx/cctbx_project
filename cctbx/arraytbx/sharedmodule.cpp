@@ -21,6 +21,27 @@
 #include <cctbx/sgtbx/matrix.h>
 #include <cctbx/sftbx/xray_scatterer.h>
 
+namespace cctbx { namespace af {
+
+  boost::python::ref shared_miller_index_getstate(
+    shared<miller::Index> const& a);
+  void shared_miller_index_setstate(
+    shared<miller::Index>& a,
+    boost::python::ref state);
+
+  template <>
+  struct shared_pickle<miller::Index>
+  {
+    template <typename ClassBuilderType>
+    static void def(ClassBuilderType& class_bldr)
+    {
+      class_bldr.def(shared_miller_index_getstate, "__getstate__");
+      class_bldr.def(shared_miller_index_setstate, "__setstate__");
+    }
+  };
+
+}} // namespace cctbx::af
+
 namespace {
 
   cctbx::af::shared<double>
@@ -144,7 +165,6 @@ namespace {
     WRAP_PLAIN("hendrickson_lattman", cctbx::hendrickson_lattman<double>);
     WRAP_PLAIN("RTMx", cctbx::sgtbx::RTMx);
     WRAP_PLAIN("XrayScatterer", XrayScatterer);
-
     WRAP_PLAIN("double3", cctbx::af::double3);
 
     typedef std::size_t size_t;
