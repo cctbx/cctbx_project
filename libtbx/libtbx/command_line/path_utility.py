@@ -40,7 +40,7 @@ def run(args):
       if (not norm(path) in remaining_env_paths_norm):
         remaining_env_paths.append(path)
         remaining_env_paths_norm.append(norm(path))
-  if (os.name == "nt" and len(remaining_env_paths) == 0):
+  if (len(remaining_env_paths) == 0):
     return "E_M_P_T_Y"
   return os.pathsep.join(remaining_env_paths)
 
