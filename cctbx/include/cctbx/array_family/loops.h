@@ -24,14 +24,21 @@ namespace cctbx { namespace af {
   {
     public:
       nested_loop() : m_over(1) {}
-      nested_loop(const ArrayType& end)
-        : m_begin(end), m_end(end), m_current(end), m_over(0) {
+      explicit
+      nested_loop(const ArrayType& end,
+                  bool open_range = true)
+        : m_begin(end), m_end(end), m_current(end), m_over(0)
+      {
         std::fill(m_begin.begin(), m_begin.end(), 0);
         m_current = m_begin;
+        adjust_end(open_range);
       }
-      nested_loop(const ArrayType& begin, const ArrayType& end)
-        : m_begin(begin), m_end(end), m_current(begin), m_over(0) {
+      nested_loop(const ArrayType& begin, const ArrayType& end,
+                  bool open_range = true)
+        : m_begin(begin), m_end(end), m_current(begin), m_over(0)
+      {
         cctbx_assert(m_begin.size() == m_end.size());
+        adjust_end(open_range);
       }
       bool incr()
       {
@@ -53,6 +60,15 @@ namespace cctbx { namespace af {
       ArrayType m_end;
       ArrayType m_current;
       std::size_t m_over;
+
+      void adjust_end(bool open_range)
+      {
+        if (!open_range) {
+          for(std::size_t i=0;i<m_end.size();i++) {
+            m_end[i] += 1;
+          }
+        }
+      }
   };
 
 }} // namespace cctbx::af

@@ -251,7 +251,7 @@ namespace {
     py_statistics.def(&ex_statistics<double>::sigma, "sigma");
   }
 
-}
+} // namespace
 
 BOOST_PYTHON_MODULE_INIT(shared)
 {

@@ -220,7 +220,8 @@ namespace cctbx { namespace af {
 
     static
     e_t
-    back(sh_t const& v) {
+    back(sh_t const& v)
+    {
       if (v.size() == 0) raise_IndexError();
       return v.back();
     }
