@@ -301,6 +301,12 @@ def pickle_large_arrays(max_exp):
         print array_type.__name__, n, pickler_name, "%.2f %.2f" % (td, tl)
         sys.stdout.flush()
 
+def exercise_export():
+  a = shared.double(60)
+  c = shared.as_CObjectZYXfloat(a, (3,4,5), (0,0,0), (3,4,5), 0)
+  a = shared.float(60)
+  c = shared.as_CObjectZYXfloat(a, (3,4,5), (0,0,0), (3,4,5), 1)
+
 def run(iterations):
   i = 0
   while (iterations == 0 or i < iterations):
@@ -314,6 +320,7 @@ def run(iterations):
     exercise_regression_and_statistics()
     exercise_type_1_picklers()
     exercise_type_2_picklers()
+    exercise_export()
     i += 1
 
 if (__name__ == "__main__"):
