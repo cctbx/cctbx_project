@@ -74,7 +74,7 @@ def default_column_types(miller_array):
     else:
       result = "FP"
   elif (miller_array.is_xray_intensity_array()):
-    if (miller_array.anomalous_flags()):
+    if (miller_array.anomalous_flag()):
       result = "K"
       if (miller_array.sigmas() is not None):
         result += "M"
@@ -589,7 +589,7 @@ class _dataset(boost.python.injector, ext.dataset):
           column_types=column_types,
           indices=miller_array.indices(),
           data=miller_array.data())
-      elif (default_col_types == "F"):
+      elif (default_col_types in ["F", "J"]):
         self.add_column(
           label=column_root_label,
           type=column_types).set_reals(
@@ -644,7 +644,7 @@ class _dataset(boost.python.injector, ext.dataset):
             column_types=column_types,
             indices=indices,
             data=data)
-        elif (default_col_types == "G"):
+        elif (default_col_types in ["G", "K"]):
           self.add_column(
             label=label_decorator.anomalous(column_root_label, anomalous_sign),
             type=column_types).set_reals(
