@@ -115,20 +115,18 @@ class SiteInfo:
 
 def BuildMillerIndices(UnitCell, SgOps, Resolution_d_min):
   MIG = sgtbx.MillerIndexGenerator(UnitCell, SgOps, Resolution_d_min)
-  MillerIndices = {}
-  for H in MIG:
-    # pre-compute (sin(theta)/lambda)^2 = Q/4
-    MillerIndices[H] = UnitCell.Q(H) / 4.
+  MillerIndices = []
+  for H in MIG: MillerIndices.append(H)
   return MillerIndices
 
 def ComputeStructureFactors(Sites, MillerIndices):
   FcalcDict = {}
-  for H in MillerIndices.keys(): FcalcDict[H] = 0j
+  for H in MillerIndices: FcalcDict[H] = 0j
   for Site in Sites:
     SEC = sgtbx.SymEquivCoordinates(Site.WyckoffMapping,
                                     Site.Coordinates)
-    for H in MillerIndices.keys():
-      stol2 = MillerIndices[H]
+    for H in MillerIndices:
+      stol2 = UnitCell.Q(H) / 4.
       f0 = Site.Sf.stol2(stol2)
       f = f0 * math.exp(-Site.Biso * stol2) * Site.Occ
       FcalcDict[H] += f * SEC.StructureFactor(H)
