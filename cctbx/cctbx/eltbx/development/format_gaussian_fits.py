@@ -75,7 +75,7 @@ def run(gaussian_fit_pickle_file_names, itvc_file_name):
   max_errors = max_errors.select(perm)
   labeled_fits = flex.select(labeled_fits, perm)
   for me,lf in zip(max_errors, labeled_fits):
-    print lf.label, "n_terms=%d max_error:%.4f" % (
+    print lf.label, "n_terms=%d max_error: %.4f" % (
       lf.gaussian_fit.n_terms(), me)
     if (me > 0.01):
       fit = lf.gaussian_fit
