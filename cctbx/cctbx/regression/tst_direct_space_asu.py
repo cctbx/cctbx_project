@@ -15,11 +15,20 @@ def exercise_volume_vertices(asu, unit_cell):
   volume_asu = asu.volume_only()
   float_asu = asu.add_buffer(unit_cell=unit_cell, relative_thickness=1.e-6)
   asu_shrunk = float_asu.add_buffer(relative_thickness=-2.e-6)
+  mcs = asu.define_metric(unit_cell).minimum_covering_sphere()
+  center = matrix.col(mcs.center())
+  radius = mcs.radius()
+  n_near_sphere_surface = 0
   for vertex in asu.volume_vertices():
     assert volume_asu.is_inside(vertex)
     float_vertex = [float(e) for e in vertex]
     assert float_asu.is_inside(float_vertex)
     assert not asu_shrunk.is_inside(float_vertex)
+    r = abs(matrix.col(unit_cell.orthogonalize(float_vertex)) - center)
+    assert r < radius + 1.e-5
+    if (radius - r < radius * 1.e-2):
+      n_near_sphere_surface += 1
+  assert n_near_sphere_surface >= 2
 
 def exercise_direct_space_asu(space_group_info, n_grid=6):
   unit_cell = space_group_info.any_compatible_unit_cell(volume=1000)
