@@ -212,5 +212,6 @@ def column_group(crystal_symmetry, labels, indices, anomalous_flag,
     sigmas=sigmas,
     info=",".join(labels))
 
-MtzWriter.add_miller_array = writer.add_miller_array
-MtzWriter.setSpaceGroup = writer.setSpaceGroup
+for v in writer.__dict__.values():
+  if (hasattr(v, "func_name")):
+    setattr(MtzWriter, v.func_name, v)

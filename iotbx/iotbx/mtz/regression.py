@@ -9,18 +9,21 @@ from scitbx.test_utils import approx_equal
 import random
 import sys
 
-def to_mtz(miller_array, label_data, label_sigmas=None):
+def to_mtz(miller_array, mtz_label):
   w = mtz.MtzWriter()
   w.setTitle("mtz writer test")
   w.setSpaceGroup(miller_array.space_group_info())
   w.oneCrystal("test_crystal","test_project",miller_array.unit_cell())
   wavelength = 1.0
   w.oneDataset("test_dataset",wavelength)
-  w.add_miller_array(miller_array, label_data, label_sigmas)
+  w.add_miller_array(miller_array, mtz_label)
   return w
 
-def recycle(miller_array, label_data, label_sigmas=None, verbose=0):
-  to_mtz(miller_array, label_data, label_sigmas).write("tmp.mtz")
+def recycle(miller_array, mtz_label, verbose=0):
+  w = to_mtz(miller_array, mtz_label)
+  w.write("tmp.mtz")
+  label_sigmas = w.label_sigmas(mtz_label)
+  label_phases = w.label_phases(mtz_label)
   if (0 or verbose):
     p = dump("tmp.mtz")
   else:
@@ -48,25 +51,25 @@ def recycle(miller_array, label_data, label_sigmas=None, verbose=0):
         r = miller.array(
           miller_set=miller.set(
             crystal_symmetry=crystal_symmetry,
-            indices=p.valid_indices(label_data),
+            indices=p.valid_indices(mtz_label),
             anomalous_flag=False),
-          data=p.valid_complex(label_data, "phi_"+label_data))
+          data=p.valid_complex(mtz_label, label_phases))
       else:
         assert dataset.ncolumns() == 3+1
         r = miller.array(
           miller_set=miller.set(
             crystal_symmetry=crystal_symmetry,
-            indices=p.valid_indices(label_data),
+            indices=p.valid_indices(mtz_label),
             anomalous_flag=False),
-          data=p.valid_values(label_data))
+          data=p.valid_values(mtz_label))
     else:
       assert dataset.ncolumns() == 3+2
       r = miller.array(
         miller_set=miller.set(
           crystal_symmetry=crystal_symmetry,
-          indices=p.valid_indices(label_data),
+          indices=p.valid_indices(mtz_label),
           anomalous_flag=False),
-        data=p.valid_values(label_data),
+        data=p.valid_values(mtz_label),
         sigmas=p.valid_values(label_sigmas))
   else:
     if (miller_array.sigmas() == None):
@@ -75,28 +78,34 @@ def recycle(miller_array, label_data, label_sigmas=None, verbose=0):
         r = miller.array(
           miller_set=miller.set(
             crystal_symmetry=crystal_symmetry,
-            indices=p.valid_indices(label_data+"+", label_data+"-"),
+            indices=p.valid_indices(
+              w.label_plus(mtz_label), w.label_minus(mtz_label)),
             anomalous_flag=True),
           data=p.valid_complex(
-            label_data+"+", "phi_"+label_data+"+",
-            label_data+"-", "phi_"+label_data+"-"))
+            w.label_plus(mtz_label), w.label_plus(label_phases),
+            w.label_minus(mtz_label), w.label_minus(label_phases)))
       else:
         assert dataset.ncolumns() == 3+2
         r = miller.array(
           miller_set=miller.set(
             crystal_symmetry=crystal_symmetry,
-            indices=p.valid_indices(label_data+"+", label_data+"-"),
+            indices=p.valid_indices(
+              w.label_plus(mtz_label), w.label_minus(mtz_label)),
             anomalous_flag=True),
-          data=p.valid_values(label_data+"+", label_data+"-"))
+          data=p.valid_values(
+            w.label_plus(mtz_label), w.label_minus(mtz_label)))
     else:
       assert dataset.ncolumns() == 3+4
       r = miller.array(
         miller_set=miller.set(
           crystal_symmetry=crystal_symmetry,
-          indices=p.valid_indices(label_data+"+", label_data+"-"),
+          indices=p.valid_indices(
+            w.label_plus(mtz_label), w.label_minus(mtz_label)),
           anomalous_flag=True),
-        data=p.valid_values(label_data+"+", label_data+"-"),
-        sigmas=p.valid_values(label_sigmas+"+", label_sigmas+"-"))
+        data=p.valid_values(
+          w.label_plus(mtz_label), w.label_minus(mtz_label)),
+        sigmas=p.valid_values(
+          w.label_plus(label_sigmas), w.label_minus(label_sigmas)))
   verify_miller_arrays(miller_array, r)
   r = p.as_miller_arrays()
   assert len(r) == 1
@@ -134,7 +143,7 @@ def exercise(space_group_info, n_scatterers=8, d_min=5,
   recycle(miller.array(
     miller_set=f_calc,
     data=flex.abs(f_calc.data()),
-    sigmas=flex.abs(f_calc.data())/10), "f_obs", "sigma", verbose=verbose)
+    sigmas=flex.abs(f_calc.data())/10), "f_obs", verbose=verbose)
 
 def run_call_back(flags, space_group_info):
   for anomalous_flag in (False, True):
