@@ -32,6 +32,9 @@ class time_log:
     self.timer = user_plus_sys_time()
     return self
 
+  def legend(self):
+    return "time_log: label: n accumulation delta average"
+
   def log(self):
     delta = self.timer.delta()
     self.timer = None
