@@ -9,6 +9,7 @@
 #include <scitbx/array_family/ref_apply.h>
 #include <scitbx/array_family/misc_functions.h>
 #include <scitbx/array_family/ref_reductions.h>
+#include <scitbx/array_family/misc_functions.h>
 #include <scitbx/array_family/simple_io.h>
 #include <boost/bind.hpp>
 #include <vector>
@@ -420,7 +421,7 @@ namespace {
 #if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200) // VC++ 6.0
     ArrayType2 r = af::apply(boost::bind(foo, _1), a1);
     for(std::size_t i=0;i<a1.size();i++) {
-      check_true(__LINE__, std::abs(r[i] - foo(a1[i])) < 1.e-6);
+      check_true(__LINE__, fn::absolute(r[i] - foo(a1[i])) < 1.e-6);
     }
 #endif
   }
