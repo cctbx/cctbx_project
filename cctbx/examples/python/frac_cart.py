@@ -1,5 +1,7 @@
 #! /usr/local/Python-2.1/bin/python
 
+PATH_cctbx_lib_python = "/net/boa/srv/html/cci/cctbx"
+
 import sys
 sys.stderr = sys.stdout
 
@@ -12,7 +14,7 @@ class FormatError(exceptions.Exception): pass
 
 import string, cgi
 
-sys.path.insert(0, "/net/boa/srv/html/sgtbx") # for uctbx
+sys.path.insert(0, PATH_cctbx_lib_python)
 import uctbx
 
 print "uctbx version:", uctbx.__version__

@@ -1,31 +1,32 @@
 #! /usr/local/Python-2.1/bin/python
 
 PATH_cctbx_lib_python = "/net/boa/srv/html/cci/cctbx"
+URL_explore_symmetry = "http://cci.lbl.gov/cctbx/explore_symmetry.py"
 
 import sys
 sys.stderr = sys.stdout
 
-print "Content-type: text/plain"
+print "Content-type: text/html"
 print
 
 import traceback
 import exceptions
 class FormatError(exceptions.Exception): pass
 
-import string, cgi
+import string, cgi, urllib
 
 sys.path.insert(0, PATH_cctbx_lib_python)
 import sgtbx
 
 print "sgtbx version:", sgtbx.__version__
-print
+print "<p>"
 
 class Empty: pass
 
 def GetFormData():
   form = cgi.FieldStorage()
   inp = Empty()
-  for key in (("sgsymbol", "P1"),
+  for key in (("sgsymbol", ""),
               ("convention", "")):
     if (form.has_key(key[0])):
       inp.__dict__[key[0]] = string.strip(form[key[0]].value)
@@ -48,46 +49,31 @@ def Symbol_to_SgOps(sgsymbol, convention):
     raise
   return SgOps
 
-def Write_SHELX_LATT_SYMM(SgOps):
-  Z = SgOps.getConventionalCentringTypeSymbol()
-  Z_dict = {
-    "P": 1,
-    "I": 2,
-    "R": 3,
-    "F": 4,
-    "A": 5,
-    "B": 6,
-    "C": 7,
-  }
-  try:
-    LATT_N = Z_dict[Z]
-  except:
-    print "Error: Lattice type not supported by SHELX."
-    return
-
-  # N must be made negative if the structure is non-centrosymmetric.
-  if (SgOps.isCentric()):
-    if (not SgOps.isOriginCentric()):
-      print "Error:"
-      print "SHELX manual: If the structure is centrosymmetric, the"
-      print "              origin MUST lie on a center of symmetry."
-      return
-    LATT_N = -LATT_N;
-
-  print "LATT", LATT_N
-
-  # The operator x,y,z is always assumed, so MUST NOT be input.
-  for i in xrange(1, SgOps.nSMx()): print "SYMM", SgOps(i)
-
 inp = GetFormData()
 
 try:
-  SgOps = Symbol_to_SgOps(inp.sgsymbol, inp.convention)
-  SgType = SgOps.getSpaceGroupType()
-  print "Space group: (%d) %s" % (
-    SgType.SgNumber(), SgOps.BuildLookupSymbol(SgType))
-  print
-  Write_SHELX_LATT_SYMM(SgOps)
+  SgNumber = 0
+  if (len(string.strip(inp.sgsymbol)) != 0):
+    SgOps = Symbol_to_SgOps(inp.sgsymbol, inp.convention)
+    SgType = SgOps.getSpaceGroupType()
+    SgNumber = SgType.SgNumber()
+  print "<table border=2>"
+  print "<tr>"
+  print "<th>Space group<br>No."
+  print "<th>Schoenflies<br>symbol"
+  print "<th>Hermann-Mauguin<br>symbol"
+  print "<th>Hall<br>symbol"
+  for SgSymbols in sgtbx.SpaceGroupSymbolIterator():
+    if (SgNumber == 0 or SgSymbols.SgNumber() == SgNumber):
+      print "<tr>"
+      print "<td>(%d)<td>%s" % (
+        SgSymbols.SgNumber(), SgSymbols.Schoenflies())
+      print "<td><a href=\"%s?sgsymbol=%s\">%s</a>" % (
+        URL_explore_symmetry,
+        urllib.quote_plus(SgSymbols.ExtendedHermann_Mauguin()),
+        SgSymbols.ExtendedHermann_Mauguin())
+      print "<td>%s" % (SgSymbols.Hall(),)
+  print "</table>"
 
 except RuntimeError, e:
   print e

@@ -1,15 +1,15 @@
 <html>
 <head>
-<title>cctbx - SHELX LATT &amp; SYMM records</title>
+<title>cctbx - Browse alternative space group settings</title>
 </head>
 <body bgcolor=#ffffff>
 
-<h1>cctbx - SHELX LATT &amp; SYMM records</h1>
+<h1>cctbx - Browse alternative space group settings</h1>
 <hr>
 
-<FORM METHOD=POST ACTION="shelx.py">
+<FORM METHOD=POST ACTION="browse_settings.py">
 
-<strong>Space group symbol: </strong><input
+<strong>Space group symbol or number: </strong><input
 name="sgsymbol" size=40
 value=""><br>
 Convention:
@@ -23,13 +23,15 @@ Convention:
   <option value="Hall"
     >Hall symbol</option>
 </select>
+<p>
+Leave the input field blank to see the entire list of
+known space group symbols.
 
 <p>
-<input type="submit" value="Generate LATT &amp; SYMM records">
+<input type="submit" value="Show alternative settings">
 <p>
 <input type="reset"  value="Reset">
 </FORM>
-
 <hr>
 </body>
 </html>

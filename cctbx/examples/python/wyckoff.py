@@ -1,5 +1,7 @@
 #! /usr/local/Python-2.1/bin/python
 
+PATH_cctbx_lib_python = "/net/boa/srv/html/cci/cctbx"
+
 import sys
 sys.stderr = sys.stdout
 
@@ -12,7 +14,7 @@ class FormatError(exceptions.Exception): pass
 
 import string, cgi
 
-sys.path.insert(0, "/net/boa/srv/html/sgtbx") # for sgtbx, uctbx
+sys.path.insert(0, PATH_cctbx_lib_python)
 import sgtbx
 import uctbx
 
@@ -27,8 +29,8 @@ def GetFormData():
   inp = Empty()
   for key in (("ucparams", "1 1 1 90 90 90"),
               ("sgsymbol", "P1"),
-              ("MinMateDistance", "0.5"),
               ("convention", ""),
+              ("MinMateDistance", "0.5"),
               ("coor_type", None),
               ("skip_columns", "0")):
     if (form.has_key(key[0])):
