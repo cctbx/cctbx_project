@@ -23,11 +23,11 @@ namespace iotbx { namespace mtz {
     return CCP4::ccp4_utils_isnan((union float_uint_uchar *) &datum);
   }
 
-  struct observation_arrays
+  struct array_group
   {
-    observation_arrays() {}
+    array_group() {}
 
-    observation_arrays(std::size_t size)
+    array_group(std::size_t size)
     {
       indices.reserve(size);
       data.reserve(size);
@@ -191,7 +191,7 @@ namespace iotbx { namespace mtz {
         const char* column_label_ampl_minus,
         const char* column_label_phi_minus);
 
-      observation_arrays
+      array_group
       valid_delta_anomalous(
         const char* column_label_f_data,
         const char* column_label_f_sigmas,

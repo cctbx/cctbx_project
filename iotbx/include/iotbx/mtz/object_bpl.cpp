@@ -10,16 +10,16 @@
 namespace iotbx { namespace mtz {
 namespace {
 
-  struct observation_arrays_wrappers
+  struct array_group_wrappers
   {
-    typedef observation_arrays w_t;
+    typedef array_group w_t;
 
     static void
     wrap()
     {
       using namespace boost::python;
       typedef return_value_policy<return_by_value> rbv;
-      class_<w_t>("observation_arrays", no_init)
+      class_<w_t>("array_group", no_init)
         .add_property("indices", make_getter(&w_t::indices, rbv()))
         .add_property("data", make_getter(&w_t::data, rbv()))
         .add_property("sigmas", make_getter(&w_t::sigmas, rbv()))
@@ -86,7 +86,7 @@ namespace {
   {
     using namespace boost::python;
     def("ccp4_liberr_verbosity", ccp4_liberr_verbosity, (arg_("level")));
-    observation_arrays_wrappers::wrap();
+    array_group_wrappers::wrap();
     object_wrappers::wrap();
   }
 
