@@ -8,13 +8,10 @@ from scitbx.python_utils import easy_pickle
 from libtbx.optparse_wrapper import OptionParser
 import sys, os
 
-def run(file_name, args, cutoff, max_n_terms,
-        six_term=00000, full_fits=None, params=None,
+def run(file_name, args, cutoff, params,
+        zig_zag=00000, six_term=00000, full_fits=None,
         plots_dir="itvc_fits_plots", verbose=0):
   tab = itvc_section61_io.read_table6111(file_name)
-  if (params is None):
-    params = cctbx.eltbx.gaussian_fit.fit_parameters(
-      max_n_terms=max_n_terms)
   chunk_n = 1
   chunk_i = 0
   if (len(args) > 0 and len(args[0].split(",")) == 2):
@@ -51,7 +48,13 @@ def run(file_name, args, cutoff, max_n_terms,
       entry.table_y[:stols_more.size()],
       entry.table_sigmas[:stols_more.size()],
       xray_scattering.gaussian(0, 00000))
-    if (full_fits is not None):
+    if (zig_zag):
+      results[wk.label()] = cctbx.eltbx.gaussian_fit.zig_zag_fits(
+        label=wk.label(),
+        null_fit=null_fit,
+        null_fit_more=null_fit_more,
+        params=params)
+    elif (full_fits is not None):
       assert len(full_fits.all[wk.label()]) == 1
       results[wk.label()] = cctbx.eltbx.gaussian_fit.decremental_fits(
         label=wk.label(),
@@ -68,18 +71,11 @@ def run(file_name, args, cutoff, max_n_terms,
         plots_dir=plots_dir,
         verbose=verbose)
     else:
-      print "label:", wk.label()
-      sys.stdout.flush()
       best_min = scitbx.math.gaussian_fit.fit_with_golay_starts(
         label=wk.label(),
         null_fit=null_fit,
         null_fit_more=null_fit_more,
-        n_terms=6,
-        target_powers=params.target_powers,
-        minimize_using_sigmas=params.minimize_using_sigmas,
-        shift_sqrt_b_mod_n=params.shift_sqrt_b_mod_n,
-        b_min=params.b_min,
-        n_repeats_minimization=params.n_repeats_minimization)
+        params=params)
       g = best_min.final_gaussian_fit
       results[wk.label()] = [xray_scattering.fitted_gaussian(
         stol=g.table_x()[-1], gaussian_sum=g)]
@@ -102,12 +98,18 @@ def main():
   parser.add_option("-c", "--cutoff",
     type="float", dest="cutoff", default=6, metavar="FLOAT",
     help="maximum sin(theta)/lambda")
+  parser.add_option("-q", "--quick",
+    action="store_true", dest="quick", default=0,
+    help="quick mode for debugging")
   parser.add_option("-n", "--max_n_terms",
     type="int", dest="max_n_terms", default=5, metavar="INT",
     help="maximum number of Gaussian terms")
   parser.add_option("-s", "--six_term",
     action="store_true", dest="six_term", default=0,
     help="fit six-term Gaussians using Golay based starts")
+  parser.add_option("-z", "--zig_zag",
+    action="store_true", dest="zig_zag", default=0,
+    help="zig-zag fits starting from six-term Gaussians")
   parser.add_option("-r", "--full_fits",
     action="store", dest="full_fits",
     help="pickled six-term Gaussian fits")
@@ -115,16 +117,21 @@ def main():
   if (len(args) < 1):
     parser.print_help()
     return
-  assert not (options.six_term and options.full_fits)
+  assert [options.six_term, options.zig_zag, options.full_fits].count(0001) < 2
   if (options.full_fits is not None):
     full_fits = easy_pickle.load(options.full_fits)
   else:
     full_fits = None
+  params = cctbx.eltbx.gaussian_fit.fit_parameters(
+    max_n_terms=options.max_n_terms)
+  if (options.quick):
+    params = params.quick()
   run_and_time(
     file_name=args[0],
     args=args[1:],
     cutoff=options.cutoff,
-    max_n_terms=options.max_n_terms,
+    params=params,
+    zig_zag=options.zig_zag,
     six_term=options.six_term,
     full_fits=full_fits,
     verbose=options.verbose)

@@ -310,10 +310,19 @@ def exercise_gaussian_sum():
   s = StringIO.StringIO()
   g.show(s)
   assert len(s.getvalue().split()) == 14
-  g = gaussian.sum((1,-2,3,-4,5), (-.1,.2,-.3,.4,-.5))
+  g = gaussian.sum((3,-2,1,-4,5), (-.3,.2,-.1,.4,-.5))
   s = StringIO.StringIO()
   g.show(s)
   assert len(s.getvalue().split()) == 12
+  assert isinstance(g.sort(), gaussian.sum)
+  assert approx_equal(g.sort().array_of_a(), (5,-4,3,-2,1))
+  assert approx_equal(g.sort().array_of_b(), (-.5,.4,-.3,.2,-.1))
+  assert not g.sort().use_c()
+  g = gaussian.sum((1,2),(3,4),5)
+  assert approx_equal(g.sort().array_of_a(), (2,1))
+  assert approx_equal(g.sort().array_of_b(), (4,3))
+  assert approx_equal(g.sort().c(), 5)
+  assert g.sort().use_c()
 
 def gaussian_fit_finite_diff_gradients(gfit, x, eps=1.e-2):
   gr = flex.double()
@@ -411,6 +420,10 @@ def exercise_gaussian_fit():
   assert approx_equal(gf.table_x(), x)
   assert approx_equal(gf.table_y(), reference_gaussian.at_x(x))
   assert approx_equal(gf.table_sigmas(), sigmas)
+  assert isinstance(gf.sort(), gaussian.fit)
+  assert gf.sort().table_x() == gf.table_x()
+  assert gf.sort().table_y() == gf.table_y()
+  assert gf.sort().table_sigmas() == gf.table_sigmas()
   assert approx_equal(gf.differences(), gf.at_x(x)-reference_gaussian.at_x(x))
   c_fit = gaussian.fit(
     flex.double([0.0, 0.066666666666666666, 0.13333333333333333,

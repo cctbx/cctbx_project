@@ -64,7 +64,7 @@ def run(gaussian_fit_pickle_file_names, itvc_file_name, kissel_dir):
     else:
       print "scattering_type:", label
       for fit in fit_group:
-        fit.show()
+        fit.sort().show()
         gaussian_fit = None
         if (itvc_tab is not None):
           entry = itvc_tab.entries[label]

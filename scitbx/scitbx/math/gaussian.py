@@ -3,6 +3,7 @@ import scitbx.array_family.flex # for tuple mappings
 from scitbx.math.ext import gaussian_term as term
 from scitbx.math.ext import gaussian_sum as sum
 from scitbx.math.ext import gaussian_fit as fit
+from scitbx.array_family import flex
 
 import boost.python
 import sys
@@ -18,6 +19,14 @@ class _sum(boost.python.injector, sum):
       print >> f, "c:", format % self.c()
     return self
 
+  def sort(self):
+    perm = flex.sort_permutation(flex.abs(flex.double(self.array_of_a())),0001)
+    return sum(
+      flex.select(self.array_of_a(), perm),
+      flex.select(self.array_of_b(), perm),
+      self.c(),
+      self.use_c())
+
 class _fit(boost.python.injector, fit):
 
   def show_table(self, f=None):
@@ -31,3 +40,7 @@ class _fit(boost.python.injector, fit):
 
   def __getinitargs__(self):
     return (self.table_x(), self.table_y(), self.table_sigmas(), sum(self))
+
+  def sort(self):
+    return fit(self.table_x(), self.table_y(), self.table_sigmas(),
+               sum.sort(self))

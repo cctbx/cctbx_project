@@ -99,8 +99,21 @@ class fit_parameters:
                      shift_sqrt_b_mod_n=[0,1,2],
                      b_min=1.e-6,
                      max_max_error=0.01,
-                     n_start_fractions=5):
+                     n_start_fractions=5,
+                     negligible_max_error=0.001):
     adopt_init_args(self, locals())
+
+  def quick(self):
+    return fit_parameters(
+      max_n_terms=2,
+      target_powers=[2],
+      minimize_using_sigmas=self.minimize_using_sigmas,
+      n_repeats_minimization=1,
+      shift_sqrt_b_mod_n=[1],
+      b_min=self.b_min,
+      max_max_error=self.max_max_error,
+      n_start_fractions=2,
+      negligible_max_error=min(0.01,self.max_max_error))
 
 def incremental_fits(label, null_fit, params=None, plots_dir=None, verbose=0):
   if (params is None): params = fit_parameters()
@@ -165,47 +178,10 @@ def decremental_fits(label, null_fit, full_fit=None, params=None,
     null_fit.table_y(),
     null_fit.table_sigmas(),
     full_fit)
-  while last_fit.n_terms() > 1:
-    n_terms = last_fit.n_terms() - 1
-    good_min = None
-    good_x = None
-    last_a = list(last_fit.array_of_a())
-    last_b = list(last_fit.array_of_b())
-    for i_del in xrange(last_fit.n_terms()):
-      a_del = last_a[i_del]
-      sel_a = last_a[:i_del] + last_a[i_del+1:]
-      sel_b = last_b[:i_del] + last_b[i_del+1:]
-      for i_add in xrange(n_terms):
-        a = sel_a[:]
-        a[i_add] += a_del
-        start_fit = scitbx.math.gaussian.fit(
-          last_fit.table_x(),
-          last_fit.table_y(),
-          last_fit.table_sigmas(),
-          scitbx.math.gaussian.sum(a, sel_b))
-        while 1:
-          best_min = scitbx.math.gaussian_fit.minimize_multi(
-            start_fit=start_fit,
-            target_powers=params.target_powers,
-            minimize_using_sigmas=params.minimize_using_sigmas,
-            shift_sqrt_b_mod_n=params.shift_sqrt_b_mod_n,
-            b_min=params.b_min,
-            n_repeats_minimization=params.n_repeats_minimization)
-          if (best_min is None):
-            break
-          if (best_min.max_error <= params.max_max_error):
-            max_x = best_min.final_gaussian_fit.table_x()[-1]
-            if (good_min is None or good_x < max_x
-                or (good_x == max_x
-                    and best_min.max_error > good_min.max_error)):
-              good_min = best_min
-              good_x = max_x
-            break
-          start_fit = scitbx.math.gaussian.fit(
-            start_fit.table_x()[:-1],
-            start_fit.table_y()[:-1],
-            start_fit.table_sigmas()[:-1],
-            best_min.final_gaussian_fit)
+  while (last_fit.n_terms() > 1):
+    good_min = scitbx.math.gaussian_fit.decremental_fit(
+      existing_gaussian=last_fit,
+      params=params)
     if (good_min is None):
       print "%s n_terms=%d: No successful minimization. Aborting." % (
         label, n_terms)
@@ -232,4 +208,61 @@ def decremental_fits(label, null_fit, full_fit=None, params=None,
     g = good_min.final_gaussian_fit
     results.append(xray_scattering.fitted_gaussian(
       stol=g.table_x()[-1], gaussian_sum=g))
+  return results
+
+def zig_zag_fits(label, null_fit, null_fit_more, params):
+  six_term_best_min = scitbx.math.gaussian_fit.fit_with_golay_starts(
+    label=label,
+    null_fit=null_fit,
+    null_fit_more=null_fit_more,
+    params=params)
+  results = []
+  n_term_best_min = six_term_best_min
+  have_all_points_in_previous = 0001
+  while 1:
+    while 1:
+      if (n_term_best_min.final_gaussian_fit.n_terms() == 1):
+        existing_gaussian = null_fit
+      else:
+        decr_best_min = scitbx.math.gaussian_fit.decremental_fit(
+          existing_gaussian=n_term_best_min.final_gaussian_fit,
+          params=params)
+        assert decr_best_min is not None
+        print "Decremental:",
+        decr_best_min.show_summary()
+        existing_gaussian = decr_best_min.final_gaussian_fit
+        if (n_term_best_min.max_error <= params.negligible_max_error
+            and have_all_points_in_previous):
+          break
+      incr_best_min = find_max_x_multi(
+        null_fit=null_fit,
+        existing_gaussian=existing_gaussian,
+        target_powers=params.target_powers,
+        minimize_using_sigmas=params.minimize_using_sigmas,
+        n_repeats_minimization=params.n_repeats_minimization,
+        shift_sqrt_b_mod_n=params.shift_sqrt_b_mod_n,
+        b_min=params.b_min,
+        max_max_error=params.max_max_error,
+        n_start_fractions=params.n_start_fractions)
+      assert incr_best_min is not None
+      print "Incremental:",
+      incr_best_min.show_summary()
+      if (existing_gaussian is null_fit):
+        break
+      if (not incr_best_min.is_better_than(n_term_best_min)):
+        break
+      n_term_best_min = incr_best_min
+    print " Settled on:",
+    n_term_best_min.show_summary()
+    results.append(xray_scattering.fitted_gaussian(
+      stol=n_term_best_min.final_gaussian_fit.table_x()[-1],
+      gaussian_sum=n_term_best_min.final_gaussian_fit,
+      max_error=n_term_best_min.max_error))
+    if (existing_gaussian is null_fit):
+      break
+    have_all_points_in_previous = (
+         n_term_best_min.final_gaussian_fit.table_x().size()
+      == decr_best_min.final_gaussian_fit.table_x().size())
+    n_term_best_min = decr_best_min
+  print
   return results
