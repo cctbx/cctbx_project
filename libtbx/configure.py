@@ -150,7 +150,7 @@ def emit_SConstruct(env, libtbx_info):
   if (env.libtbx_scons == None):
     if (not os.path.isdir("libtbx")):
       print >> sys.stderr, "Warning:",
-      print >> "Cannot find SCons (Software Construction Tool)"
+      print >> sys.stderr, "Cannot find SCons (Software Construction Tool)"
       print >> sys.stderr, "         For more information please refer to:"
       print >> sys.stderr, "         XXX"
     return
