@@ -171,9 +171,8 @@ class find_d_min:
                      max_max_error,
                      start_interval,
                      min_interval):
-    adopt_init_args(self, locals())
-    interval = [start_interval.d_max, start_interval.d_min-min_interval]
-    good_min = None
+    interval = [start_interval.d_max, start_interval.d_min]
+    good_d_min = None
     while 1:
       self.d_min = (interval[0] + interval[1]) / 2.
       d_star_sq = d_star_sq_points(d_min=self.d_min, n_points=n_points)
@@ -187,16 +186,24 @@ class find_d_min:
         n_points=n_points*2)))
       if (    self.max_error <= max_max_error
           and min(self.min.final_diff_gaussian.b()) > self.min.b_min):
-        if (interval[0] - interval[1] < min_interval):
+        if (interval[0] == start_interval.d_min):
           break
+        if (interval[0] - interval[1] <= min_interval):
+          if (interval[1] - start_interval.d_min <= min_interval):
+            interval[0] = start_interval.d_min
+            interval[1] = start_interval.d_min
+          else:
+            break
+        else:
+          interval[0] = self.d_min
         diff_gaussian = self.min.final_diff_gaussian
-        interval[0] = self.d_min
+        good_d_min = self.d_min
         good_min = self.min
         good_max_error = self.max_error
       else:
-        if (interval[0] - interval[1] < min_interval):
-          if (good_min is not None):
-            self.d_min = interval[0]
+        if (interval[0] - interval[1] <= min_interval):
+          if (good_d_min is not None):
+            self.d_min = good_d_min
             self.min = good_min
             self.max_error = good_max_error
           else:
@@ -240,7 +247,10 @@ class find_d_min_multi:
             start_interval=start_interval,
             min_interval=min_interval)
           if (fit.d_min is not None):
-            if (best_fit is None or best_fit.d_min > fit.d_min):
+            if (best_fit is None
+                or best_fit.d_min > fit.d_min
+                or best_fit.d_min == fit.d_min
+                  and best_fit.max_error > fit.max_error):
               best_fit = fit
     if (best_fit is None):
       self.d_min = None
@@ -303,16 +313,77 @@ def write_plots(plots_dir, label, reference_gaussian, gaussian,
 
 class fit_parameters:
 
-  def __init__(self, target_powers=[2,4],
+  def __init__(self, max_n_terms=5,
+                     target_powers=[2,4],
                      n_points=50,
                      max_max_error=0.01,
+                     start_interval=d_interval(d_max=15, d_min=1/12.),
+                     find_d_min_min_interval=0.01,
                      n_trial_points_factor=5,
-                     n_start_fractions=3,
-                     find_d_min_min_interval=0.01):
+                     n_start_fractions=3):
     adopt_init_args(self, locals())
 
-def run(args=[], params=fit_parameters(), verbose=0):
+def incremental_fits(label, reference_gaussian, params=None, plots_dir=None,
+                     verbose=0):
+  if (params is None): params = fit_parameters()
+  f0 = reference_gaussian.at_d_star_sq(0)
+  results = []
+  previous_d_min = params.start_interval.d_max + 1
+  existing_gaussian = xray_scattering.gaussian([],[])
+  while (existing_gaussian.n_ab() < params.max_n_terms):
+    if (previous_d_min == params.start_interval.d_min):
+      print "%s: Full fit with %d terms. Search stopped." % (
+        label, existing_gaussian.n_ab())
+      print
+      break
+    n_terms = existing_gaussian.n_ab() + 1
+    fit = find_d_min_multi(
+      reference_gaussian=reference_gaussian,
+      existing_gaussian=existing_gaussian,
+      target_powers=params.target_powers,
+      start_interval=params.start_interval,
+      n_trial_points_factor=params.n_trial_points_factor,
+      n_start_fractions=params.n_start_fractions,
+      n_points=params.n_points,
+      max_max_error=params.max_max_error,
+      min_interval=params.find_d_min_min_interval)
+    if (fit.d_min is None):
+      print "Warning: No fit: %s n_terms=%d" % (label, n_terms)
+      print
+      break
+    if (previous_d_min < fit.d_min):
+      print "Warning: previous d_min was smaller."
+    previous_d_min = fit.d_min
+    show_fit_summary(
+      "Best fit", label, fit.min.final_diff_gaussian, fit.d_min,
+      fit.max_error)
+    show_literature_fits(
+      label=label,
+      reference_gaussian=reference_gaussian,
+      n_terms=n_terms,
+      d_min=fit.d_min,
+      n_points=params.n_points,
+      e_other=fit.max_error)
+    fit.min.final_diff_gaussian.show()
+    existing_gaussian = fit.min.final_diff_gaussian
+    print
+    sys.stdout.flush()
+    if (plots_dir):
+      write_plots(
+        plots_dir=plots_dir,
+        label=label,
+        reference_gaussian=reference_gaussian,
+        gaussian=fit.min.final_diff_gaussian,
+        d_min=fit.d_min,
+        n_points=params.n_points*2)
+    g = fit.min.final_diff_gaussian
+    results.append(xray_scattering.fitted_gaussian(
+      d_min=fit.d_min, a=g.a(),b=g.b()))
+  return results
+
+def run(args=[], params=None, verbose=0):
   timer = user_plus_sys_time()
+  if (params is None): params = fit_parameters()
   chunk_n = 1
   chunk_i = 0
   if (len(args) > 0 and len(args[0].split(",")) == 2):
@@ -330,63 +401,19 @@ def run(args=[], params=fit_parameters(), verbose=0):
     assert plots_dir is not None
   results = {}
   results["fit_parameters"] = params
-  start_interval = d_interval(d_max=15, d_min=1/12.)
   i_chunk = 0
-  for g5c in xray_scattering.wk1995_iterator():
+  for wk in xray_scattering.wk1995_iterator():
     flag = i_chunk % chunk_n == chunk_i
     i_chunk += 1
     if (not flag):
       continue
-    if (len(args) > 0 and g5c.label() not in args): continue
-    reference_gaussian = g5c.fetch()
-    f0 = reference_gaussian.at_d_star_sq(0)
-    results[g5c.label()] = []
-    previous_d_min = None
-    existing_gaussian = xray_scattering.gaussian([],[])
-    while (existing_gaussian.n_ab() < 5):
-      n_terms = existing_gaussian.n_ab() + 1
-      fit = find_d_min_multi(
-        reference_gaussian=reference_gaussian,
-        existing_gaussian=existing_gaussian,
-        target_powers=params.target_powers,
-        start_interval=start_interval,
-        n_trial_points_factor=params.n_trial_points_factor,
-        n_start_fractions=params.n_start_fractions,
-        n_points=params.n_points,
-        max_max_error=params.max_max_error,
-        min_interval=params.find_d_min_min_interval)
-      if (fit.d_min is None):
-        print "Warning: No fit: %s n_terms=%d" % (g5c.label(), n_terms)
-        print
-        break
-      if (previous_d_min is not None and previous_d_min < fit.d_min):
-        print "Warning: previous d_min was smaller."
-      previous_d_min = fit.d_min
-      show_fit_summary(
-        "Best fit", g5c.label(), fit.min.final_diff_gaussian, fit.d_min,
-        fit.max_error)
-      show_literature_fits(
-        label=g5c.label(),
-        reference_gaussian=reference_gaussian,
-        n_terms=n_terms,
-        d_min=fit.d_min,
-        n_points=params.n_points,
-        e_other=fit.max_error)
-      fit.min.final_diff_gaussian.show()
-      existing_gaussian = fit.min.final_diff_gaussian
-      print
-      sys.stdout.flush()
-      if (plots_dir):
-        write_plots(
-          plots_dir=plots_dir,
-          label=g5c.label(),
-          reference_gaussian=reference_gaussian,
-          gaussian=fit.min.final_diff_gaussian,
-          d_min=fit.d_min,
-          n_points=params.n_points*2)
-      g = fit.min.final_diff_gaussian
-      results[g5c.label()].append(xray_scattering.fitted_gaussian(
-        d_min=fit.d_min, a=g.a(),b=g.b()))
+    if (len(args) > 0 and wk.label() not in args): continue
+    results[wk.label()] = incremental_fits(
+      label=wk.label(),
+      reference_gaussian=wk.fetch(),
+      params=params,
+      plots_dir=plots_dir,
+      verbose=verbose)
     sys.stdout.flush()
     easy_pickle.dump("fits_%02d.pickle" % chunk_i, results)
   print "CPU time: %.2f seconds" % timer.elapsed()
