@@ -255,7 +255,7 @@ class definition: # FUTURE definition(object)
       attributes_level=attributes_level,
       print_width=print_width)
 
-  def all_definitions(self, parent, parent_path, result):
+  def _all_definitions(self, parent, parent_path, result):
     result.append(object_locator(
       parent=parent, path=parent_path+self.name, object=self))
 
@@ -374,28 +374,7 @@ class definition: # FUTURE definition(object)
           self.type, self.name, self.words[0].where_str()))
     return self.copy(words=words)
 
-def scope_merge(master, source):
-  result_objects = []
-  master_lookup_dict = {}
-  for master_object in master.objects:
-    master_lookup_dict[master_object.name] = master_object
-  master_use_flags = {}
-  for master_object in master.objects:
-    master_use_flags[master_object.name] = False
-  for source_object in source.objects:
-    master_object = master_lookup_dict.get(source_object.name, None)
-    if (master_object is None):
-      result_objects.append(source_object)
-    else:
-      result_objects.append(master_object.merge(source=source_object))
-      master_use_flags[source_object.name] = True
-  for master_object in master.objects:
-    if (not master_use_flags[master_object.name]
-        and master_object.required is not False):
-      result_objects.append(copy.copy(master_object))
-  return result_objects
-
-class scope_class: pass
+class scope_extract: pass
 
 class scope:
 
@@ -425,9 +404,6 @@ class scope:
     keyword_args["objects"] = objects
     return scope(**keyword_args)
 
-  def merge(self, source):
-    return self.copy(objects=scope_merge(self, source=source))
-
   def has_attribute_with_name(self, name):
     return name in self.attribute_names
 
@@ -448,74 +424,25 @@ class scope:
           assert isinstance(sequential_format % 0, str)
     setattr(self, name, value)
 
-  def show(self, out, prefix="", attributes_level=0, print_width=79,
+  def show(self, out=None, prefix="", attributes_level=0, print_width=None,
                  previous_object=None):
-    if (previous_object is not None):
-      print >> out, prefix.rstrip()
-    if (self.is_disabled): hash = "#"
-    else:                  hash = ""
-    print >> out, prefix + hash + self.name
-    show_attributes(
-      self=self,
-      out=out,
-      prefix=prefix,
-      attributes_level=attributes_level,
-      print_width=print_width)
-    print >> out, prefix+"{"
-    previous_object = None
-    for object in self.objects:
-      object.show(
-        out=out,
-        prefix=prefix+"  ",
-        attributes_level=attributes_level,
-        print_width=print_width,
-        previous_object=previous_object)
-      previous_object = object
-    print >> out, prefix + "}"
-
-  def all_definitions(self, parent, parent_path, result):
-    parent_path += self.name+"."
-    for object in self.objects:
-      object.all_definitions(
-        parent=self, parent_path=parent_path, result=result)
-
-  def get_without_substitution(self, path):
-    if (self.name == path): return [self]
-    if (not path.startswith(self.name+".")): return []
-    path = path[len(self.name)+1:]
-    result = []
-    for object in self.objects:
-      result.extend(object.get_without_substitution(path=path))
-    return result
-
-  def extract(self, custom_converters=None):
-    result = scope_class()
-    for object in self.objects:
-      setattr(result, object.name, object.extract(
-        custom_converters=custom_converters))
-    return result
-
-class object_list:
-
-  def __init__(self, objects):
-    self.objects = objects
-
-  def merge(self, source=None, sources=None):
-    assert [source, sources].count(None) == 1
-    if (source is not None):
-      return object_list(objects=scope_merge(self, source=source))
-    elif (len(sources) == 0):
-      return self
-    else:
-      objects = []
-      for source in sources:
-        objects.extend(scope_merge(self, source=source))
-      return object_list(objects=objects)
-
-  def show(self, out=None, prefix="", attributes_level=0, print_width=None):
     if (out is None): out = sys.stdout
     if (print_width is None):
       print_width = 79
+    if (previous_object is not None):
+      print >> out, prefix.rstrip()
+    if (len(self.name) != 0):
+      if (self.is_disabled): hash = "#"
+      else:                  hash = ""
+      print >> out, prefix + hash + self.name
+      show_attributes(
+        self=self,
+        out=out,
+        prefix=prefix,
+        attributes_level=attributes_level,
+        print_width=print_width)
+      print >> out, prefix+"{"
+      prefix += "  "
     previous_object = None
     for object in self.objects:
       object.show(
@@ -525,27 +452,50 @@ class object_list:
         print_width=print_width,
         previous_object=previous_object)
       previous_object = object
-    return self
+    if (len(self.name) != 0):
+      print >> out, prefix[:-2] + "}"
+
+  def _all_definitions(self, parent, parent_path, result):
+    parent_path += self.name+"."
+    for object in self.objects:
+      object._all_definitions(
+        parent=self, parent_path=parent_path, result=result)
 
   def all_definitions(self):
     result = []
     for object in self.objects:
-      object.all_definitions(parent=self, parent_path="", result=result)
+      object._all_definitions(parent=self, parent_path="", result=result)
     return result
 
+  def automatic_type_assignment(self, assignment_if_unknown=None):
+    for item in self.all_definitions():
+      item.object.automatic_type_assignment(
+        assignment_if_unknown=assignment_if_unknown)
+
   def get_without_substitution(self, path):
-    if (len(path) == 0):
-      result = [self]
+    if (len(self.name) == 0):
+      if (len(path) == 0):
+        result = [self]
+      else:
+        result = []
+        for object in self.objects:
+          result.extend(object.get_without_substitution(path=path))
     else:
-      result = []
-      for object in self.objects:
-        result.extend(object.get_without_substitution(path))
-    return object_list(objects=result)
+      if (self.name == path):
+        result = [self]
+      elif (not path.startswith(self.name+".")):
+        result = []
+      else:
+        path = path[len(self.name)+1:]
+        result = []
+        for object in self.objects:
+          result.extend(object.get_without_substitution(path=path))
+    return result
 
   def get(self, path, with_substitution=True, path_memory=None):
     result_raw = self.get_without_substitution(path=path)
     if (not with_substitution):
-      return result_raw
+      return scope(name="", objects=result_raw)
     if (path_memory is None):
       path_memory = {path: None}
     elif (path not in path_memory):
@@ -554,35 +504,73 @@ class object_list:
       raise RuntimeError("Dependency cycle in variable substitution: $%s" % (
         path))
     result_sub = []
-    for object in result_raw.objects:
+    for object in result_raw:
       if (not isinstance(object, definition)):
         result_sub.append(object)
       else:
         result_sub.append(self.variable_substitution(
           object=object, path_memory=path_memory))
     del path_memory[path]
-    return object_list(objects=result_sub)
+    return scope(name="", objects=result_sub)
 
   def get_last(self, path, with_substitution=True):
     all = self.get(path=path, with_substitution=with_substitution)
     if (len(all.objects) == 0): return None
     return all.objects[-1]
 
+  def extract(self, custom_converters=None):
+    result = scope_extract()
+    for object in self.objects:
+      setattr(result, object.name, object.extract(
+        custom_converters=custom_converters))
+    return result
+
   def extract_last(self, path, with_substitution=True, custom_converters=None):
     raw = self.get_last(path=path, with_substitution=with_substitution)
     if (raw is None): return None
     return raw.extract(custom_converters=custom_converters)
 
-  def extract(self, master, custom_converters=None):
-    return object_list_extract(
-      object_list=self, master=master, custom_converters=custom_converters)
+  def _merge(self, source):
+    result_objects = []
+    master_lookup_dict = {}
+    for master_object in self.objects:
+      master_lookup_dict[master_object.name] = master_object
+    master_use_flags = {}
+    for master_object in self.objects:
+      master_use_flags[master_object.name] = False
+    for source_object in source.objects:
+      master_object = master_lookup_dict.get(source_object.name, None)
+      if (master_object is None):
+        result_objects.append(source_object)
+      else:
+        result_objects.append(master_object.merge(source=source_object))
+        master_use_flags[source_object.name] = True
+    for master_object in self.objects:
+      if (not master_use_flags[master_object.name]
+          and master_object.required is not False):
+        result_objects.append(copy.copy(master_object))
+    return result_objects
+
+  def merge(self, source=None, sources=None):
+    assert [source, sources].count(None) == 1
+    if (source is not None):
+      return self.copy(objects=self._merge(source=source))
+    elif (len(sources) == 0):
+      return self
+    else:
+      objects = []
+      for source in sources:
+        objects.extend(self._merge(source=source))
+      return self.copy(objects=objects)
 
   def merge_and_extract(self,
         source=None,
         sources=None,
         custom_converters=None):
-    return self.merge(source=source, sources=sources).extract(
-      master=self, custom_converters=custom_converters)
+    return scope_extractor(
+      master=self,
+      custom=self.merge(source=source, sources=sources),
+      custom_converters=custom_converters)
 
   def variable_substitution(self, object, path_memory):
     new_words = []
@@ -648,22 +636,17 @@ class object_list:
               definition_type_names=definition_type_names,
               reference_directory=os.path.dirname(file_name_normalized),
               include_memory=include_memory).objects)
-    return object_list(objects=result)
+    return scope(name="", objects=result)
 
-  def automatic_type_assignment(self, assignment_if_unknown=None):
-    for item in self.all_definitions():
-      item.object.automatic_type_assignment(
-        assignment_if_unknown=assignment_if_unknown)
+class scope_extractor:
 
-class object_list_extract:
-
-  def __init__(self, object_list, master, custom_converters):
-    self.__object_list__ = object_list
+  def __init__(self, master, custom, custom_converters):
+    self.__custom__ = custom
     self.__master__ = master
     for object in master.objects:
       attr_name = object.name.split(".")[-1]
-      assert attr_name not in ["__object_list__", "__master__"]
-      setattr(self, attr_name, object_list.extract_last(
+      assert attr_name not in ["__custom__", "__master__"]
+      setattr(self, attr_name, custom.extract_last(
         path=object.name, custom_converters=custom_converters))
 
   def format(self):
@@ -678,7 +661,7 @@ class object_list_extract:
         value = getattr(py_scope, definition_object.name)
         definitions.append(definition_object.format(value))
       scopes.append(scope_object.copy(objects=definitions))
-    return object_list(objects=scopes)
+    return scope(name="", objects=scopes)
 
 class variable_substitution_fragment(object):
 
@@ -771,7 +754,7 @@ def parse(
     input_string = open(file_name).read()
   if (definition_type_names is None):
     definition_type_names = default_definition_type_names
-  result = object_list(objects=parser.collect_objects(
+  result = scope(name="", objects=parser.collect_objects(
     word_iterator=simple_tokenizer.word_iterator(
       input_string=input_string,
       file_name=file_name,
