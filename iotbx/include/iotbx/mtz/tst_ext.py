@@ -40,9 +40,6 @@ def exercise_basic():
   assert mtz_object.max_min_resolution() == (-1, -1)
   assert mtz_object.n_crystals() == 0
   assert mtz_object.n_active_crystals() == 0
-  mtz_object = mtz.object(
-    n_datasets_for_each_crystal=flex.int([3,2,3]))
-  assert mtz_object.n_crystals() == 3
   file_name = os.path.expandvars(
     "$LIBTBX_DIST_ROOT/regression/reflection_files/dano.mtz")
   if (os.path.isfile(file_name)):

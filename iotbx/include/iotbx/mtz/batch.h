@@ -5,6 +5,7 @@
 
 namespace iotbx { namespace mtz {
 
+  //! Helper function to facilitate friendly assertions.
   inline
   bool
   string_is_null_terminated(const char* str, std::size_t str_size)
@@ -44,11 +45,31 @@ namespace iotbx { namespace mtz {
         return *this; \
       }
 
+  //! Safe access to CMtz::MTZBAT* owned by an iotbx::mtz::object .
+  /*! A batch object contains (owns) an iotbx::mtz::object and
+      an integer index into the list of batches owned by the
+      object.
+
+      All members of the CMtz::MTZBAT struct are accessible through
+      both a read-only interface, and a write interface, e.g.
+      title() and set_title(). The names of the access methods
+      are determined strictly by the names in the CMtz::MTZBAT struct.
+      The access methods are not documented individually.
+      Please refer to the injected show() method in
+          $IOTBX_DIST/iotbx/mtz/__init__.py
+      to see all names.
+   */
   class batch
   {
     public:
+      //! Not available from Python.
       batch() {}
 
+      /*! \brief Initialization given a mtz_object and an integer
+          index into the list of batches owned by the mtz_object.
+       */
+      /*! An exception is thrown if i_batch is out of range.
+       */
       batch(object const& mtz_object, int i_batch)
       :
         mtz_object_(mtz_object),
@@ -58,12 +79,19 @@ namespace iotbx { namespace mtz {
         CCTBX_ASSERT(i_batch < mtz_object.n_batches());
       }
 
+      //! The contained iotbx::mtz::object instance.
       object
       mtz_object() const { return mtz_object_; }
 
+      //! Integer index into the list of batches owned by mtz_object() .
       int
       i_batch() const { return i_batch_; }
 
+      //! Raw C pointer. Not available from Python.
+      /*! The pointer is obtained by traversing the linked list
+          of batches.
+          An exception is thrown if i_batch() is out of range.
+       */
       CMtz::MTZBAT*
       ptr() const
       {

@@ -24,17 +24,6 @@ namespace iotbx { namespace mtz {
     ptr_->refs_in_memory = true;
   }
 
-  object::object(af::const_ref<int> const& n_datasets_for_each_crystal)
-  :
-    ptr_(CMtz::MtzMalloc(
-        n_datasets_for_each_crystal.size(),
-        const_cast<int*>(&*n_datasets_for_each_crystal.begin())),
-      ptr_deleter)
-  {
-    if (ptr_.get() == 0) throw cctbx::error("MtzMalloc failed.");
-    ptr_->refs_in_memory = true;
-  }
-
   object::object(const char* file_name)
   {
     CCTBX_ASSERT(file_name != 0);
