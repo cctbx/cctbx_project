@@ -85,6 +85,27 @@ def exercise_symmetry():
   assert approx_equal(asu_mappings.buffer_thickness(), 2.364)
   assert approx_equal(xs.average_b_cart((1,2,3,4,5,6)), (1,2,3,0,5,0))
 
+def exercise_non_crystallographic_symmetry():
+  sites_cart = flex.vec3_double(
+    [(0.28730079491792732, 0.14711550696452974, 0.13031757579425293),
+     (0.26144164573900441, 0.26385801128667269, 0.24113874888074088),
+     (0.19728759424697784, 0.93346148983888833, 0.91783953828686837)])
+  n = crystal.non_crystallographic_symmetry(sites_cart=sites_cart)
+  assert approx_equal(n.unit_cell().parameters(),
+    (1.6650571, 2.3613899, 2.36256589, 90, 90, 90))
+  assert n.space_group_info().type().number() == 1
+  n = crystal.non_crystallographic_symmetry(
+    sites_cart=sites_cart, min_unit_cell_length=2)
+  assert approx_equal(n.unit_cell().parameters(),
+    (2, 2.3613899, 2.36256589, 90, 90, 90))
+  sites_cart = flex.vec3_double(
+    [(0.28730079491792732, 0.14711550696452974, 0.13031757579425293)])
+  n = crystal.non_crystallographic_symmetry(sites_cart=sites_cart)
+  assert approx_equal(n.unit_cell().parameters(), (1, 1, 1, 90, 90, 90))
+  n = crystal.non_crystallographic_symmetry(
+    sites_cart=sites_cart, default_buffer_layer=1.5)
+  assert approx_equal(n.unit_cell().parameters(), (3, 3, 3, 90, 90, 90))
+
 def exercise_special_position_settings():
   xs = crystal.symmetry((3,4,5), "P 2 2 2")
   sp = crystal.special_position_settings(xs, 1, 2, False)
@@ -143,6 +164,7 @@ def run_call_back(flags, space_group_info):
 
 def run():
   exercise_symmetry()
+  exercise_non_crystallographic_symmetry()
   exercise_special_position_settings()
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
   print "OK"

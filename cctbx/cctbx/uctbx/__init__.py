@@ -5,6 +5,7 @@ import boost.python
 ext = boost.python.import_ext("cctbx_uctbx_ext")
 from cctbx_uctbx_ext import *
 
+from scitbx import matrix
 import sys
 
 class unit_cell(ext.unit_cell):
@@ -102,3 +103,32 @@ class _unit_cell(boost.python.injector, ext.unit_cell):
     shifts_frac = self.buffer_shifts_frac(buffer=buffer)
     return tuple([s-b for s,b in zip(s_min, shifts_frac)]), \
            tuple([s+b for s,b in zip(s_max, shifts_frac)])
+
+def non_crystallographic_buffer_layer(
+      sites_cart_min,
+      sites_cart_max,
+      default_buffer_layer=0.5):
+  sites_span = matrix.col(sites_cart_max) - matrix.col(sites_cart_min)
+  buffer_layer = max(list(sites_span))
+  if (buffer_layer == 0):
+    buffer_layer = default_buffer_layer
+  return buffer_layer
+
+def non_crystallographic_unit_cell(
+      sites_cart=None,
+      sites_cart_min=None,
+      sites_cart_max=None,
+      default_buffer_layer=0.5,
+      min_unit_cell_length=0):
+  assert (sites_cart is None) is not (sites_cart_min is None)
+  assert (sites_cart_min is None) is (sites_cart_max is None)
+  if (sites_cart is not None):
+    sites_cart_min = sites_cart.min()
+    sites_cart_max = sites_cart.max()
+  buffer_layer = non_crystallographic_buffer_layer(
+    sites_cart_min=sites_cart_min,
+    sites_cart_max=sites_cart_max,
+    default_buffer_layer=default_buffer_layer)
+  sites_span = matrix.col(sites_cart_max) - matrix.col(sites_cart_min)
+  return unit_cell([max(min_unit_cell_length, unit_cell_length)
+    for unit_cell_length in (sites_span + matrix.col([buffer_layer]*3)*2)])

@@ -1,5 +1,6 @@
 from cctbx import crystal
 from cctbx import sgtbx
+from cctbx import uctbx
 import cctbx.sgtbx.direct_space_asu
 from cctbx.array_family import flex
 from scitbx.math import minimum_covering_sphere
@@ -61,15 +62,15 @@ def non_crystallographic_asu_mappings(
       min_unit_cell_length=0):
   sites_min = sites_cart.min()
   sites_max = sites_cart.max()
-  sites_span = matrix.col(sites_max) - matrix.col(sites_min)
-  buffer_layer = max(list(sites_span))
-  if (buffer_layer == 0):
-    buffer_layer = default_buffer_layer
-  unit_cell_lengths = [max(min_unit_cell_length, unit_cell_length)
-    for unit_cell_length in (sites_span + matrix.col([buffer_layer]*3)*2)]
-  crystal_symmetry = crystal.symmetry(
-    unit_cell=unit_cell_lengths,
-    space_group=sgtbx.space_group())
+  crystal_symmetry = crystal.non_crystallographic_symmetry(
+      sites_cart_min=sites_min,
+      sites_cart_max=sites_max,
+      default_buffer_layer=default_buffer_layer,
+      min_unit_cell_length=min_unit_cell_length)
+  buffer_layer = uctbx.non_crystallographic_buffer_layer(
+      sites_cart_min=sites_min,
+      sites_cart_max=sites_max,
+      default_buffer_layer=default_buffer_layer)
   sites_min = crystal_symmetry.unit_cell().fractionalize(sites_min)
   sites_max = crystal_symmetry.unit_cell().fractionalize(sites_max)
   asu_facets = [float_cut_plane(n=n,c=c) for n,c in [
