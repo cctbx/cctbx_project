@@ -15,18 +15,19 @@ void iotbx::mtz::MtzWriter::setTitle(const std::string& title){
 
 void iotbx::mtz::MtzWriter::setSpaceGroup(const cctbx::sgtbx::space_group& sg){
   cctbx::sgtbx::space_group_type sgtype(sg.type());
-  mtz->mtzsymm.spcgrp = sgtype.number();
+  
   std::string whole_symbol = sgtype.lookup_symbol();
   std::size_t ind;
   while ((ind=whole_symbol.find(' '))!=std::string::npos) {
     whole_symbol = whole_symbol.erase(ind,1);
   }
-  sprintf(mtz->mtzsymm.spcgrpname,"%s",whole_symbol.c_str());
-  mtz->mtzsymm.nsym = sg.order_z();         
-  mtz->mtzsymm.nsymp = sg.order_p();            
-  mtz->mtzsymm.symtyp=sg.conventional_centring_type_symbol();
-  cctbx::sgtbx::matrix_group::code mgcode = sg.point_group_type();
-  sprintf(mtz->mtzsymm.pgname,"%c",mgcode.label());
+  char sgtype_s[11];
+  sprintf(sgtype_s,"%s",whole_symbol.c_str());
+
+  int val_nsymx = sg.order_z();
+  int val_nsympx= sg.order_p();
+  float rsymx[192][4][4];
+  
   for(std::size_t i=0;i<sg.order_z();i++) {
     cctbx::sgtbx::rt_mx s = sg(i);
     cctbx::sgtbx::rot_mx r = s.r();
@@ -37,12 +38,22 @@ void iotbx::mtz::MtzWriter::setSpaceGroup(const cctbx::sgtbx::space_group& sg){
     float t_den = t.den();
     for (std::size_t p=0;p<3;p++) {
       for (std::size_t q=0;q<3;q++) {
-        mtz->mtzsymm.sym[i][p][q] = r_num(p,q)/r_den; }
-      mtz->mtzsymm.sym[i][p][3] = t_num[p];
-      mtz->mtzsymm.sym[i][3][p] = 0.0;
+        rsymx[i][p][q] = r_num(p,q)/r_den; }
+        rsymx[i][p][3] = t_num[p];
+        rsymx[i][3][p] = 0.0;
     }
-    mtz->mtzsymm.sym[i][3][3] = 1.0;
+    rsymx[i][3][3] = 1.0;
   }
+
+  char val_ltypex = sg.conventional_centring_type_symbol();
+  int val_nspgrx = sgtype.number();
+  
+  cctbx::sgtbx::matrix_group::code mgcode = sg.point_group_type();
+  char pgname[11];
+  sprintf(pgname,"%s",mgcode.label());
+
+  ccp4_lwsymm(mtz, &val_nsymx, &val_nsympx, rsymx, &val_ltypex, 
+              &val_nspgrx, sgtype_s, pgname);
 }
 
 void iotbx::mtz::MtzWriter::oneCrystal(const std::string& crystal,
