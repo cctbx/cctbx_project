@@ -416,7 +416,7 @@ namespace iotbx { namespace mtz {
 
       inline
       hl_group
-      extract_hls(
+      extract_hendrickson_lattman(
         const char* column_label_a,
         const char* column_label_b,
         const char* column_label_c,
@@ -424,7 +424,7 @@ namespace iotbx { namespace mtz {
 
       inline
       hl_group
-      extract_hls_anomalous(
+      extract_hendrickson_lattman_anomalous(
         const char* column_label_a_plus,
         const char* column_label_b_plus,
         const char* column_label_c_plus,

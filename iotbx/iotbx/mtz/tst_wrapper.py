@@ -73,7 +73,7 @@ def recycle(miller_array, root_label, column_types=None, verbose=0):
           column_label_phi=original_dataset.label_phases(root_label))
       elif (miller_array.is_hendrickson_lattman_array()):
         assert restored_dataset.n_columns() == 3+4
-        group = restored.extract_hls(
+        group = restored.extract_hendrickson_lattman(
           column_label_a=root_label+"A",
           column_label_b=root_label+"B",
           column_label_c=root_label+"C",
@@ -113,7 +113,7 @@ def recycle(miller_array, root_label, column_types=None, verbose=0):
             original_dataset.label_phases(root_label)))
       elif (miller_array.is_hendrickson_lattman_array()):
         assert restored_dataset.n_columns() == 3+8
-        group = restored.extract_hls_anomalous(
+        group = restored.extract_hendrickson_lattman_anomalous(
           column_label_a_plus=root_label+"A(+)",
           column_label_b_plus=root_label+"B(+)",
           column_label_c_plus=root_label+"C(+)",

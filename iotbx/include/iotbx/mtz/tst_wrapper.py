@@ -151,7 +151,7 @@ def exercise_basic():
     assert group.anomalous_flag
     assert group.indices.size() == 326
     assert group.data.size() == group.indices.size()
-    group = mtz_object.extract_hls(
+    group = mtz_object.extract_hendrickson_lattman(
       column_label_a="Frem",
       column_label_b="DANOrem",
       column_label_c="Frem",
@@ -159,7 +159,7 @@ def exercise_basic():
     assert not group.anomalous_flag
     assert group.indices.size() == 163
     assert group.data.size() == group.indices.size()
-    group = mtz_object.extract_hls_anomalous(
+    group = mtz_object.extract_hendrickson_lattman_anomalous(
       column_label_a_plus="Frem",
       column_label_b_plus="DANOrem",
       column_label_c_plus="Frem",
@@ -221,7 +221,7 @@ class exercise_extract_any:
       "extract_integers": 0,
       "extract_reals": 0,
       "extract_reals_anomalous": 0,
-      "extract_hls": 0,
+      "extract_hendrickson_lattman": 0,
       "extract_observations": 0,
       "extract_observations_anomalous": 0,
       "extract_delta_anomalous": 0,
@@ -319,13 +319,13 @@ class exercise_extract_any:
     i = types.find("AAAA")
     if (i >= 0):
       labels = mtz_object.column_labels()[i:i+4]
-      group = mtz_object.extract_hls(
+      group = mtz_object.extract_hendrickson_lattman(
         column_label_a=labels[0],
         column_label_b=labels[1],
         column_label_c=labels[2],
         column_label_d=labels[3])
       assert group.data.size() == group.indices.size()
-      self.counters["extract_hls"] += 1
+      self.counters["extract_hendrickson_lattman"] += 1
 
 def walk_callback(arg, top, names):
   exercise_function, out = arg
