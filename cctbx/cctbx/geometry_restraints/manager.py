@@ -3,7 +3,7 @@ import cctbx.geometry_restraints.flags
 import cctbx.geometry_restraints.energies
 from cctbx import crystal
 from cctbx.array_family import flex
-from scitbx.python_utils.misc import adopt_init_args
+from scitbx.python_utils.misc import adopt_init_args, store
 import sys
 
 class manager:
@@ -202,6 +202,26 @@ class manager:
       planarity_proxies=planarity_proxies,
       compute_gradients=compute_gradients,
       disable_asu_cache=disable_asu_cache)
+
+  def harmonic_restraints(self, variables, type_indices, type_weights):
+    assert self.shell_sym_tables is not None
+    assert len(self.shell_sym_tables) > 0
+    assert variables.size() == self.shell_sym_tables[0].size()
+    residual_sum = 0
+    gradients = flex.double(variables.size(), 0)
+    for pair in self.shell_sym_tables[0].iterator():
+      i,j = pair.i_seqs()
+      if (type_indices is None):
+        weight = type_weights
+      else:
+        weight = (  type_weights[type_indices[i]]
+                  + type_weights[type_indices[j]]) * 0.5
+      delta = variables[i] - variables[j]
+      term = weight * delta
+      residual_sum += term * delta
+      gradients[i] += term
+      gradients[j] -= term
+    return store(residual_sum=residual_sum, gradients=gradients)
 
   def show_interactions(self, flags=None, sites_cart=None, i_seq=None, f=None):
     if (f is None): f = sys.stdout
