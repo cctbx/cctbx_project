@@ -156,6 +156,11 @@ else
 
 endif
 
+echo ""
+echo "Precompiling all .py files. This may take a minute or two."
+$python_exe $sources/libtbx/libtbx/command_line/py_compile_all.py
+
+echo ""
 cd $build
 echo "Configuring $bundle build directory"
 $python_exe $sources/libtbx/configure.py --build=$build_mode %(top_modules)s
