@@ -145,7 +145,7 @@ class euclidean_match_symmetry:
     search_symmetry = sgtbx.search_symmetry(
       flags=sgtbx.search_symmetry_flags(
         use_space_group_symmetry=00000,
-        use_space_group_ltr=00000,
+        use_space_group_ltr=-1,
         use_seminvariant=0001,
         use_normalizer_k2l=use_k2l,
         use_normalizer_l2n=use_l2n),

@@ -32,7 +32,7 @@ namespace cctbx { namespace maptbx { namespace boost_python {
         (uctbx::unit_cell const&,
          double,
          double,
-         maptbx::symmetry_flags const&,
+         sgtbx::search_symmetry_flags const&,
          sgtbx::space_group_type const&,
          af::tiny<int, 3> const&,
          int,

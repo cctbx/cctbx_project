@@ -32,25 +32,8 @@ class _statistics(boost.python.injector, ext.statistics):
     print >> f, "mean %.6g" % (self.mean())
     print >> f, "sigma %.6g" % (self.sigma())
 
-class symmetry_flags(ext.symmetry_flags):
-
-  def __init__(self, use_space_group_symmetry,
-                     use_normalizer_k2l=00000,
-                     use_structure_seminvariants=00000):
-    ext.symmetry_flags.__init__(self, use_space_group_symmetry,
-                                      use_normalizer_k2l,
-                                      use_structure_seminvariants)
-
-class _symmetry_flags(boost.python.injector, ext.symmetry_flags):
-
-  def show_summary(self, f=None):
-    if (f is None): f = sys.stdout
-    print >> f, "use_space_group_symmetry:", self.use_space_group_symmetry()
-    print >> f, "use_normalizer_k2l:", self.use_normalizer_k2l()
-    print >> f, "use_structure_seminvariants:",
-    print >> f, self.use_structure_seminvariants()
-
-use_space_group_symmetry = symmetry_flags(use_space_group_symmetry=0001)
+use_space_group_symmetry = sgtbx.search_symmetry_flags(
+  use_space_group_symmetry=0001)
 
 class peak_list(ext.peak_list):
 

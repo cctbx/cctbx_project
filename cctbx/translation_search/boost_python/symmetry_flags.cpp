@@ -1,13 +1,5 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Oct: Created (rwgk)
- */
-
 #include <boost/python/class.hpp>
+#include <boost/python/args.hpp>
 #include <cctbx/translation_search/symmetry_flags.h>
 
 namespace cctbx { namespace translation_search { namespace boost_python {
@@ -22,8 +14,11 @@ namespace {
     wrap()
     {
       using namespace boost::python;
-      class_<w_t, bases<maptbx::symmetry_flags> >("symmetry_flags", no_init)
-        .def(init<bool, bool>())
+      typedef boost::python::arg arg_; // gcc 2.96 workaround
+      class_<w_t, bases<sgtbx::search_symmetry_flags> >(
+        "symmetry_flags", no_init)
+        .def(init<bool, bool>(
+          (arg_("is_isotropic_search_model"), arg_("have_f_part"))))
         .def("is_isotropic_search_model", &w_t::is_isotropic_search_model)
         .def("have_f_part", &w_t::have_f_part)
       ;

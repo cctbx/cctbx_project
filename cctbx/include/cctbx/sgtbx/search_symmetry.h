@@ -14,7 +14,7 @@ namespace cctbx { namespace sgtbx {
       explicit
       search_symmetry_flags(
         bool use_space_group_symmetry,
-        bool use_space_group_ltr=false,
+        int use_space_group_ltr=0,
         bool use_seminvariant=false,
         bool use_normalizer_k2l=false,
         bool use_normalizer_l2n=false)
@@ -29,7 +29,7 @@ namespace cctbx { namespace sgtbx {
       bool
       use_space_group_symmetry() const { return use_space_group_symmetry_; }
 
-      bool
+      int
       use_space_group_ltr() const { return use_space_group_ltr_; }
 
       bool
@@ -60,7 +60,7 @@ namespace cctbx { namespace sgtbx {
 
     protected:
       bool use_space_group_symmetry_;
-      bool use_space_group_ltr_;
+      int use_space_group_ltr_;
       bool use_seminvariant_;
       bool use_normalizer_k2l_;
       bool use_normalizer_l2n_;
@@ -112,7 +112,9 @@ namespace cctbx { namespace sgtbx {
         if (flags_.use_space_group_symmetry()) {
           group_ = group_type.group();
         }
-        else if (flags_.use_space_group_ltr()) {
+        else if (   flags_.use_space_group_ltr() > 0
+                 || (   flags_.use_space_group_ltr() == 0
+                     && flags_.use_seminvariant())) {
           for(std::size_t i=1;i<group_type.group().n_ltr();i++) {
             group_.expand_ltr(group_type.group().ltr(i));
           }

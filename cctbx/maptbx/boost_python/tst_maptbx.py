@@ -72,41 +72,25 @@ def exercise_statistics():
     assert approx_equal(s.mean_sq(), t.mean_sq())
     assert approx_equal(s.sigma(), t.sigma())
 
-def exercise_symmetry_flags():
-  f = maptbx.symmetry_flags(use_space_group_symmetry=0001)
-  f = maptbx.symmetry_flags(
-    use_space_group_symmetry=0001,
-    use_normalizer_k2l=0001,
-    use_structure_seminvariants=0001)
-  assert f.use_space_group_symmetry()
-  assert f.use_normalizer_k2l()
-  assert f.use_structure_seminvariants()
-  sg_info = sgtbx.space_group_info("P 3 1 2")
-  assert f.select_sub_space_group(
-    space_group_type=sg_info.type()).type().lookup_symbol() == "P -3 1 m"
-  assert f == f
-  assert not f != f
-  assert f == maptbx.symmetry_flags(0001, 0001, 0001)
-  assert not f != maptbx.symmetry_flags(0001, 0001, 0001)
-  assert f != maptbx.symmetry_flags(0001)
-  assert not f == maptbx.symmetry_flags(0001)
-
 def exercise_grid_tags():
   t = maptbx.grid_tags((8,10,12))
   assert not t.is_valid()
   assert t.tag_array().all() == (8,10,12)
   s = sgtbx.space_group_info("P 21")
   for i_flags in xrange(8):
-    f = maptbx.symmetry_flags(i_flags % 2 != 0,
-                              (i_flags/2) % 2 != 0,
-                              (i_flags/4) % 2 != 0)
+    f = sgtbx.search_symmetry_flags(
+      use_space_group_symmetry=i_flags % 2 != 0,
+      use_space_group_ltr=0,
+      use_seminvariant=(i_flags/4) % 2 != 0,
+      use_normalizer_k2l=(i_flags/2) % 2 != 0,
+      use_normalizer_l2n=00000)
     t.build(s.type(), f)
     assert t.is_valid()
     assert t.space_group_type().group() == s.group()
     assert t.symmetry_flags() == f
-    if (f.use_structure_seminvariants()):
-      assert [(vm.v, vm.m) for vm in t.grid_ss()] \
-          == [((1, 0, 0), 2), ((0, 1, 0), 10), ((0, 0, 1), 2)]
+    if (f.use_seminvariant()):
+      assert [(vm.v, vm.m) for vm in t.grid_ss_continuous()] \
+          == [((0, 1, 0), 10)]
     assert t.n_grid_misses() == 0
     assert t.n_independent() == (960, 480, 484, 242, 24, 14, 14, 14)[i_flags]
     assert t.n_independent() + t.n_dependent() == t.tag_array().size()
@@ -186,7 +170,12 @@ def exercise_gridding():
   u = uctbx.unit_cell((4,6,7))
   assert maptbx.ext.determine_gridding(u, 2, 1/3., (1,1,1), 5, 0001) \
       == (8,9,12)
-  f = maptbx.symmetry_flags(0001, 0001)
+  f = sgtbx.search_symmetry_flags(
+    use_space_group_symmetry=0001,
+    use_space_group_ltr=0,
+    use_seminvariant=00000,
+    use_normalizer_k2l=0001,
+    use_normalizer_l2n=00000)
   t = sgtbx.space_group_info("F 2 2 2").primitive_setting().type()
   assert maptbx.ext.determine_gridding(u, 2, 1/3., f, t, (1,1,1), 5, 0001) \
       == (12, 12, 12)
@@ -236,7 +225,6 @@ def exercise_eight_point_interpolation():
 def run():
   exercise_copy()
   exercise_statistics()
-  exercise_symmetry_flags()
   exercise_grid_tags()
   exercise_gridding()
   exercise_misc()

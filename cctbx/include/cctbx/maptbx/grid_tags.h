@@ -1,20 +1,9 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Oct: Moved from cctbx/maps/sym_tags.h to cctbx/maptbx (rwgk)
-     2002 Jan: Created (R.W. Grosse-Kunstleve)
- */
-
 #ifndef CCTBX_MAPTBX_GRID_TAGS_H
 #define CCTBX_MAPTBX_GRID_TAGS_H
 
-#include <cctbx/maptbx/symmetry_flags.h>
 #include <cctbx/maptbx/accessors/c_grid_p1.h>
 #include <cctbx/maptbx/accessors/c_grid_padded_p1.h>
-#include <cctbx/sgtbx/seminvariant.h>
+#include <cctbx/sgtbx/search_symmetry.h>
 #include <cctbx/rational.h>
 #include <cctbx/tagged_value.h>
 #include <scitbx/array_family/versa.h>
@@ -70,18 +59,18 @@ namespace grid_tags_detail {
             typename FactorTupleType>
   inline tagged_value<IndexTupleType>
   add(DimensionType const& dim,
-      GridSsType const& grid_ss,
+      GridSsType const& grid_ss_continuous,
       IndexTupleType const& pivot,
       FactorTupleType const& f)
   {
     IndexTupleType result = pivot;
-    for(std::size_t i_ss=0;i_ss<grid_ss.size();i_ss++) {
+    for(std::size_t i_ss=0;i_ss<grid_ss_continuous.size();i_ss++) {
       for(std::size_t i=0;i<3;i++) {
-        int s = dim[i] * grid_ss[i_ss].v[i] * f[i_ss];
-        if (s % grid_ss[i_ss].m) {
+        int s = dim[i] * grid_ss_continuous[i_ss].v[i] * f[i_ss];
+        if (s % grid_ss_continuous[i_ss].m) {
           return tagged_value<IndexTupleType>(result, false);
         }
-        result[i] += s / grid_ss[i_ss].m;
+        result[i] += s / grid_ss_continuous[i_ss].m;
       }
     }
     return tagged_value<IndexTupleType>(result, true);
@@ -124,18 +113,20 @@ namespace grid_tags_detail {
             typename IndexTupleType>
   std::size_t
   mark_orbit(TagVersaType& p1_tags,
-             GridSsType const& grid_ss,
+             GridSsType const& grid_ss_continuous,
              IndexTupleType const& pivot,
              seminvariant_tag)
   {
     std::size_t grid_misses = 0;
     std::size_t i1d_pivot = p1_tags.accessor()(pivot);
-    af::small<int, 3> moduli(grid_ss.size());
-    for(std::size_t i=0;i<grid_ss.size();i++) moduli[i] = grid_ss[i].m;
+    af::small<int, 3> moduli(grid_ss_continuous.size());
+    for(std::size_t i=0;i<grid_ss_continuous.size();i++) {
+      moduli[i] = grid_ss_continuous[i].m;
+    }
     af::nested_loop<af::small<int, 3> > loop(moduli);
     for (af::small<int, 3> const& f = loop(); !loop.over(); loop.incr()) {
       tagged_value<IndexTupleType>
-      sym_equiv_point = add(p1_tags.accessor(), grid_ss, pivot, f);
+      sym_equiv_point = add(p1_tags.accessor(), grid_ss_continuous, pivot, f);
       if (sym_equiv_point.tag) {
         std::size_t i1d_sep = p1_tags.accessor()(sym_equiv_point.value);
         while (p1_tags[i1d_sep] != -1) i1d_sep = p1_tags[i1d_sep];
@@ -237,16 +228,16 @@ namespace grid_tags_detail {
 
       void
       build(sgtbx::space_group_type const& sg_type,
-            maptbx::symmetry_flags const& sym_flags);
+            sgtbx::search_symmetry_flags const& symmetry_flags);
 
       sgtbx::space_group_type const&
       space_group_type() const { return sg_type_; }
 
-      maptbx::symmetry_flags const&
-      symmetry_flags() const { return sym_flags_; }
+      sgtbx::search_symmetry_flags const&
+      symmetry_flags() const { return symmetry_flags_; }
 
       af::small<sgtbx::ss_vec_mod, 3> const&
-      grid_ss() const { return grid_ss_; }
+      grid_ss_continuous() const { return grid_ss_continuous_; }
 
       std::size_t
       n_grid_misses() const { return n_grid_misses_; }
@@ -333,8 +324,8 @@ namespace grid_tags_detail {
       bool is_valid_;
       tag_array_type tag_array_;
       sgtbx::space_group_type sg_type_;
-      maptbx::symmetry_flags sym_flags_;
-      af::small<sgtbx::ss_vec_mod, 3> grid_ss_;
+      sgtbx::search_symmetry_flags symmetry_flags_;
+      af::small<sgtbx::ss_vec_mod, 3> grid_ss_continuous_;
       std::size_t n_grid_misses_;
       std::size_t n_independent_;
   };
@@ -343,26 +334,35 @@ namespace grid_tags_detail {
   void
   grid_tags<TagType>
   ::build(sgtbx::space_group_type const& sg_type,
-          maptbx::symmetry_flags const& sym_flags)
+          sgtbx::search_symmetry_flags const& symmetry_flags)
   {
     using namespace grid_tags_detail;
     if (   is_valid_
         && sg_type_.group() == sg_type.group()
-        && sym_flags_ == sym_flags) {
+        && symmetry_flags_ == symmetry_flags) {
       return;
     }
     sg_type_ = sg_type;
-    sym_flags_ = sym_flags;
+    symmetry_flags_ = symmetry_flags;
     n_grid_misses_ = 0;
     tag_array_.fill(-1);
-    sgtbx::space_group sym = sym_flags.select_sub_space_group(sg_type_);
+    sgtbx::structure_seminvariant ss;
+    sgtbx::space_group sym;
+    if (symmetry_flags.use_seminvariant()) {
+      ss = sgtbx::structure_seminvariant(sg_type.group());
+      sym = sgtbx::search_symmetry(symmetry_flags_, sg_type_, ss).group();
+    }
+    else {
+      sym = sgtbx::search_symmetry(symmetry_flags_, sg_type_).group();
+    }
     if (mark_orbits(tag_array_, sym, space_group_symmetry_tag()) > 0) {
       throw error("Grid is not compatible with symmetry.");
     }
-    if (sym_flags.use_structure_seminvariants()) {
-      sgtbx::structure_seminvariant ss(sg_type.group());
-      grid_ss_ = ss.grid_adapted_moduli(tag_array_.accessor());
-      n_grid_misses_ = mark_orbits(tag_array_, grid_ss_, seminvariant_tag());
+    if (symmetry_flags.use_seminvariant()) {
+      grid_ss_continuous_ = ss.select(false).grid_adapted_moduli(
+        tag_array_.accessor());
+      n_grid_misses_ = mark_orbits(
+        tag_array_, grid_ss_continuous_, seminvariant_tag());
     }
     n_independent_ = grid_tags_detail::optimize_tags(tag_array_.as_1d().ref());
     is_valid_ = true;

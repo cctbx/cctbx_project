@@ -36,7 +36,7 @@ namespace {
           (arg_("space_group_type"), arg_("symmetry_flags")))
         .def("space_group_type", &w_t::space_group_type, rir())
         .def("symmetry_flags", &w_t::symmetry_flags, ccr())
-        .def("grid_ss", &w_t::grid_ss, ccr())
+        .def("grid_ss_continuous", &w_t::grid_ss_continuous, ccr())
         .def("n_grid_misses", &w_t::n_grid_misses)
         .def("n_independent", &w_t::n_independent)
         .def("n_dependent", &w_t::n_dependent)

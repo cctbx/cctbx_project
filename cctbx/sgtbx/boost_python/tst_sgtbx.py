@@ -1122,12 +1122,12 @@ def exercise_seminvariant():
   )
   for hs,vfy in tests:
     g = space_group(hs)
-    ss = structure_seminvariant(g)
+    ss = structure_seminvariant(space_group=g)
     assert ss.size() == len(ss.vectors_and_moduli())
     assert [(vm.v, vm.m) for vm in ss.vectors_and_moduli()] == vfy
   ss = structure_seminvariant(space_group("P 2 -2"))
-  assert ss.is_ss((2,-2,0))
-  assert ss.apply_mod((2,-2,0)) == (0,0,0)
+  assert ss.is_ss(miller_index=(2,-2,0))
+  assert ss.apply_mod(miller_index=(2,-2,0)) == (0,0,0)
   assert not ss.is_ss((2,1,0))
   assert ss.apply_mod((2,1,0)) == (0,1,0)
   ss = structure_seminvariant(space_group("C 2y"))
@@ -1152,15 +1152,26 @@ def exercise_seminvariant():
   assert ss.apply_mod((1,3,4)) == ()
   ss = structure_seminvariant(space_group("I -4"))
   assert ss.gridding() == (2,1,4)
-  assert ss.refine_gridding((3,2,10)) == (6,2,20)
+  assert ss.refine_gridding(grid=(3,2,10)) == (6,2,20)
   ss = structure_seminvariant(space_group("P -2x"))
-  a = ss.grid_adapted_moduli((3,5,7))
+  a = ss.grid_adapted_moduli(dim=(3,5,7))
   assert [vm.m for vm in a] == [2,5,7]
   ss = structure_seminvariant(space_group("P 3*"))
   a = ss.grid_adapted_moduli((3,5,7))
   assert [vm.m for vm in a] == [3*5*7]
   a = ss.grid_adapted_moduli((3,5,12))
   assert [vm.m for vm in a] == [60]
+  ss = structure_seminvariant(space_group("P 2 -2"))
+  ss_continuous = ss.select(discrete=00000)
+  assert ss_continuous.size() == 1
+  assert ss_continuous.vectors_and_moduli()[0].m == 0
+  assert ss_continuous.vectors_and_moduli()[0].v == (0,0,1)
+  ss_discrete = ss.select(discrete=0001)
+  assert ss_discrete.size() == 2
+  assert ss_discrete.vectors_and_moduli()[0].m == 2
+  assert ss_discrete.vectors_and_moduli()[0].v == (1,0,0)
+  assert ss_discrete.vectors_and_moduli()[1].m == 2
+  assert ss_discrete.vectors_and_moduli()[1].v == (0,1,0)
 
 def exercise_row_echelon():
   m = flex.int((1,1,1,1))
@@ -1210,21 +1221,21 @@ def exercise_search_symmetry():
   f = sgtbx.search_symmetry_flags(use_space_group_symmetry=0001)
   f = sgtbx.search_symmetry_flags(
     use_space_group_symmetry=00000,
-    use_space_group_ltr=0001,
+    use_space_group_ltr=1,
     use_seminvariant=00000,
     use_normalizer_k2l=0001,
     use_normalizer_l2n=00000)
   assert not f.use_space_group_symmetry()
-  assert f.use_space_group_ltr()
+  assert f.use_space_group_ltr() > 0
   assert not f.use_seminvariant()
   assert f.use_normalizer_k2l()
   assert not f.use_normalizer_l2n()
   assert f == f
   assert not f != f
-  assert f == sgtbx.search_symmetry_flags(00000, 0001, 00000, 0001, 00000)
-  assert not f != sgtbx.search_symmetry_flags(00000, 0001, 00000, 0001, 00000)
-  assert f != sgtbx.search_symmetry_flags(0001, 00000, 0001, 00000, 0001)
-  assert not f == sgtbx.search_symmetry_flags(00000, 00000, 0001, 00000, 0001)
+  assert f == sgtbx.search_symmetry_flags(00000, 1, 00000, 0001, 00000)
+  assert not f != sgtbx.search_symmetry_flags(00000, 1, 00000, 0001, 00000)
+  assert f != sgtbx.search_symmetry_flags(0001, 0, 0001, 00000, 0001)
+  assert not f == sgtbx.search_symmetry_flags(00000, 0, 0001, 00000, 0001)
   sg143 = sgtbx.space_group_info("P 3")
   ss143 = sg143.structure_seminvariant()
   sg146 = sgtbx.space_group_info("R 3 h")
@@ -1232,74 +1243,84 @@ def exercise_search_symmetry():
   sg149 = sgtbx.space_group_info("P 3 1 2")
   ss149 = sg149.structure_seminvariant()
   s = sgtbx.search_symmetry(
-    flags=sgtbx.search_symmetry_flags(00000, 00000, 00000, 00000, 00000),
+    flags=sgtbx.search_symmetry_flags(00000, 0, 00000, 00000, 00000),
     space_group_type=sg149.type())
   assert s.group().type().lookup_symbol() == "P 1"
   s = sgtbx.search_symmetry(
-    flags=sgtbx.search_symmetry_flags(0001, 00000, 00000, 00000, 00000),
+    flags=sgtbx.search_symmetry_flags(0001, 0, 00000, 00000, 00000),
     space_group_type=sg149.type())
   assert s.group().type().lookup_symbol() == "P 3 1 2"
   s = sgtbx.search_symmetry(
-    flags=sgtbx.search_symmetry_flags(00000, 0001, 00000, 00000, 00000),
+    flags=sgtbx.search_symmetry_flags(00000, 1, 00000, 00000, 00000),
     space_group_type=sg149.type())
   assert s.group().type().lookup_symbol() == "P 1"
   s = sgtbx.search_symmetry(
-    flags=sgtbx.search_symmetry_flags(00000, 00000, 0001, 00000, 00000),
+    flags=sgtbx.search_symmetry_flags(00000, 0, 0001, 00000, 00000),
     space_group_type=sg149.type(),
     seminvariant=ss149)
   assert s.group() == sgtbx.space_group("P 1 (-1/3*y-1/3*z,1/3*y-2/3*z,1/2*x)")
   s = sgtbx.search_symmetry(
-    flags=sgtbx.search_symmetry_flags(00000, 00000, 00000, 0001, 00000),
+    flags=sgtbx.search_symmetry_flags(00000, 0, 00000, 0001, 00000),
     space_group_type=sg149.type())
   assert s.group() == sgtbx.space_group("-P 1")
   s = sgtbx.search_symmetry(
-    flags=sgtbx.search_symmetry_flags(00000, 00000, 00000, 00000, 0001),
+    flags=sgtbx.search_symmetry_flags(00000, 0, 00000, 00000, 0001),
     space_group_type=sg149.type())
   assert s.group() == sgtbx.space_group("P 2z")
   s = sgtbx.search_symmetry(
-    flags=sgtbx.search_symmetry_flags(0001, 00000, 00000, 0001, 00000),
+    flags=sgtbx.search_symmetry_flags(0001, 0, 00000, 0001, 00000),
     space_group_type=sg149.type())
   assert s.group().type().lookup_symbol() == "P -3 1 m"
   s = sgtbx.search_symmetry(
-    flags=sgtbx.search_symmetry_flags(0001, 00000, 00000, 0001, 0001),
+    flags=sgtbx.search_symmetry_flags(0001, 0, 00000, 0001, 0001),
     space_group_type=sg149.type())
   assert s.flags()==sgtbx.search_symmetry_flags(0001, 00000, 00000, 0001, 0001)
   assert s.group().type().lookup_symbol() == "P 6/m m m"
   s = sgtbx.search_symmetry(
-    flags=sgtbx.search_symmetry_flags(0001, 00000, 0001, 0001, 0001),
+    flags=sgtbx.search_symmetry_flags(0001, 0, 0001, 0001, 0001),
     space_group_type=sg149.type(),
     seminvariant=ss149)
   assert s.group() \
       == sgtbx.space_group("-P 6 2 (1/3*x+1/3*y,-1/3*x+2/3*y,1/2*z)")
   s = sgtbx.search_symmetry(
-    flags=sgtbx.search_symmetry_flags(00000, 0001, 00000, 00000, 00000),
+    flags=sgtbx.search_symmetry_flags(00000, 1, 00000, 00000, 00000),
     space_group_type=sg146.type())
   assert s.group() == sgtbx.space_group("R 1")
   s = sgtbx.search_symmetry(
-    flags=sgtbx.search_symmetry_flags(0001, 00000, 00000, 0001, 00000),
+    flags=sgtbx.search_symmetry_flags(0001, 0, 00000, 0001, 00000),
     space_group_type=sg146.type())
   assert s.group() == sgtbx.space_group("R -3")
   s = sgtbx.search_symmetry(
-    flags=sgtbx.search_symmetry_flags(0001, 00000, 00000, 0001, 0001),
+    flags=sgtbx.search_symmetry_flags(0001, 0, 00000, 0001, 0001),
     space_group_type=sg146.type())
   assert s.group() == sgtbx.space_group('-R 3 2"')
   s = sgtbx.search_symmetry(
-    flags=sgtbx.search_symmetry_flags(0001, 00000, 00000, 0001, 0001),
+    flags=sgtbx.search_symmetry_flags(0001, 0, 00000, 0001, 0001),
     space_group_type=sg146.type())
   assert s.group() == sgtbx.space_group('-R 3 2"')
   s = sgtbx.search_symmetry(
-    flags=sgtbx.search_symmetry_flags(00000, 00000, 00000, 00000, 00000),
+    flags=sgtbx.search_symmetry_flags(00000, 0, 00000, 00000, 00000),
     space_group_type=sg146.type(),
     seminvariant=ss146)
   assert s.group().type().lookup_symbol() == "P 1"
   s = sgtbx.search_symmetry(
-    flags=sgtbx.search_symmetry_flags(00000, 00000, 0001, 00000, 00000),
+    flags=sgtbx.search_symmetry_flags(00000, 0, 0001, 00000, 00000),
+    space_group_type=sg146.type(),
+    seminvariant=ss146)
+  assert s.group() == sgtbx.space_group("R 1")
+  s = sgtbx.search_symmetry(
+    flags=sgtbx.search_symmetry_flags(00000, -1, 0001, 00000, 00000),
+    space_group_type=sg146.type(),
+    seminvariant=ss146)
+  assert s.group() == sgtbx.space_group("P 1")
+  s = sgtbx.search_symmetry(
+    flags=sgtbx.search_symmetry_flags(00000, 0, 0001, 00000, 00000),
     space_group_type=sg143.type(),
     seminvariant=ss143)
   assert s.group().type().hall_symbol() == " P 1 (2/3*x-1/3*y,1/3*x+1/3*y,z)"
   assert s.continuous_shifts() == ((0,0,1),)
   s = sgtbx.search_symmetry(
-    flags=sgtbx.search_symmetry_flags(0001, 00000, 0001, 0001, 0001),
+    flags=sgtbx.search_symmetry_flags(0001, 0, 0001, 0001, 0001),
     space_group_type=sg143.type(),
     seminvariant=ss143)
   assert s.group().type().hall_symbol()== "-P 6 2 (1/3*x+1/3*y,-1/3*x+2/3*y,z)"
@@ -1307,7 +1328,7 @@ def exercise_search_symmetry():
   sg1 = sgtbx.space_group_info(number=1)
   ss1 = sg1.structure_seminvariant()
   s = sgtbx.search_symmetry(
-    flags=sgtbx.search_symmetry_flags(0001, 00000, 0001, 0001, 0001),
+    flags=sgtbx.search_symmetry_flags(0001, 0, 0001, 0001, 0001),
     space_group_type=sg1.type(),
     seminvariant=ss1)
   assert s.group() == sgtbx.space_group("-P 1")
@@ -1315,7 +1336,7 @@ def exercise_search_symmetry():
   sg6 = sgtbx.space_group_info(number=6)
   ss6 = sg6.structure_seminvariant()
   s = sgtbx.search_symmetry(
-    flags=sgtbx.search_symmetry_flags(0001, 00000, 0001, 0001, 0001),
+    flags=sgtbx.search_symmetry_flags(0001, 0, 0001, 0001, 0001),
     space_group_type=sg6.type(),
     seminvariant=ss6)
   assert s.group() == sgtbx.space_group("-P 2y (x,1/2*y,z)")
