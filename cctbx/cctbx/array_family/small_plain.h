@@ -8,8 +8,8 @@
      Jan 2002: Created (R.W. Grosse-Kunstleve)
  */
 
-#ifndef CCTBX_ARRAY_FAMILY_SMALL_BASE_H
-#define CCTBX_ARRAY_FAMILY_SMALL_BASE_H
+#ifndef CCTBX_ARRAY_FAMILY_SMALL_PLAIN_H
+#define CCTBX_ARRAY_FAMILY_SMALL_PLAIN_H
 
 #include <algorithm>
 #include <cctbx/array_family/ref.h>
@@ -19,15 +19,15 @@ namespace cctbx { namespace af {
 
   // Automatic allocation, variable size.
   template <typename ElementType, std::size_t N>
-  class small_base
+  class small_plain
   {
     public:
       CCTBX_ARRAY_FAMILY_TYPEDEFS
 
       ElementType elems[N];
 
-      CCTBX_ARRAY_FAMILY_SMALL_CONSTRUCTORS(small_base)
-      CCTBX_ARRAY_FAMILY_SMALL_COPY_AND_ASSIGNMENT(small_base)
+      CCTBX_ARRAY_FAMILY_SMALL_CONSTRUCTORS(small_plain)
+      CCTBX_ARRAY_FAMILY_SMALL_COPY_AND_ASSIGNMENT(small_plain)
       CCTBX_ARRAY_FAMILY_TAKE_REF(elems, N)
 
       size_type size() const { return m_size; }
@@ -116,4 +116,4 @@ namespace cctbx { namespace af {
 
 }} // namespace cctbx::af
 
-#endif // CCTBX_ARRAY_FAMILY_SMALL_BASE_H
+#endif // CCTBX_ARRAY_FAMILY_SMALL_PLAIN_H

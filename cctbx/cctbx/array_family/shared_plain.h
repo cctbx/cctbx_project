@@ -8,8 +8,8 @@
      Jan 2002: Created (N.K. Sauter)
  */
 
-#ifndef CCTBX_ARRAY_FAMILY_SHARED_BASE_H
-#define CCTBX_ARRAY_FAMILY_SHARED_BASE_H
+#ifndef CCTBX_ARRAY_FAMILY_SHARED_PLAIN_H
+#define CCTBX_ARRAY_FAMILY_SHARED_PLAIN_H
 
 #include <algorithm>
 #include <cctbx/array_family/ref.h>
@@ -183,13 +183,13 @@ namespace cctbx {
       Hierarchy of classes:
         vector-provides a resizable array on top of a private pointer & size
         handle-has a vector and makes it shareable
-        shared_base-has a handle<char>, and allows different instances
+        shared_plain-has a handle<char>, and allows different instances
           to regard the handle as holding different data types.  Mechanism for
           cross-type handle sharing requires low-level API.
     */
     //! Share a resizable 1-dimensional data vector & regard as different types.
     template <typename ElementType>
-    class shared_base
+    class shared_plain
     {
       public:
         CCTBX_ARRAY_FAMILY_TYPEDEFS
@@ -198,18 +198,18 @@ namespace cctbx {
 
         static size_type element_size() {return sizeof(ElementType);}
 
-        explicit shared_base(const size_type& sz = 0)
+        explicit shared_plain(const size_type& sz = 0)
           : m_handle( element_size() * sz )      {}
 
         //! constructor from a char block and size...reference semantics
         //! use this to share data between a group of double arrays and
         //! a group of complex<double> arrays.
-        explicit shared_base(const handle_type& handle)
+        explicit shared_plain(const handle_type& handle)
           : m_handle(handle){}
 
         //! constructor from a courier block of ElementType...assumes ownership
         explicit
-        shared_base(const typename detail::handle<ElementType>::courier& c)
+        shared_plain(const typename detail::handle<ElementType>::courier& c)
           : m_handle(handle_type(handle_type::courier(
                 reinterpret_cast<handle_type::element_type*>(c.px),
                 element_size() * c.sz
@@ -225,7 +225,7 @@ namespace cctbx {
             array is initialized first XXX ???
          */
         template <class OtherElementType>
-        explicit shared_base(const shared_base<OtherElementType>& r):
+        explicit shared_plain(const shared_plain<OtherElementType>& r):
           m_handle (element_size() * r.size())
         {
           std::copy(r.begin(), r.end(), this->begin());
@@ -234,8 +234,8 @@ namespace cctbx {
         //! assignment operator templated on OtherElementType
         // ...deepcopy semantics
         template <class OtherElementType>
-        shared_base<ElementType>
-        operator= (const shared_base<OtherElementType>& r) {
+        shared_plain<ElementType>
+        operator= (const shared_plain<OtherElementType>& r) {
           resize(r.size());
           std::copy(r.begin(), r.end(), this->begin());
           return *this;
@@ -256,10 +256,10 @@ namespace cctbx {
               handle_type& handle()       { return m_handle; }
         const handle_type& handle() const { return m_handle; }
 
-        shared_base<ElementType>
+        shared_plain<ElementType>
         deepcopy() const
         {
-          shared_base<ElementType> result(size());
+          shared_plain<ElementType> result(size());
           std::copy(this->begin(), this->end(), result.begin());
           return result;
         }
@@ -278,7 +278,7 @@ namespace cctbx {
         }
 
         //! swaps in the data from another handle but preserves reference count
-        void swap(shared_base<ElementType>& other) {
+        void swap(shared_plain<ElementType>& other) {
           m_handle.swap(other.m_handle);
         }
 
@@ -294,4 +294,4 @@ namespace cctbx {
   } //namespace af
 } //namespace cctbx
 
-#endif //CCTBX_ARRAY_FAMILY_SHARED_BASE_H
+#endif //CCTBX_ARRAY_FAMILY_SHARED_PLAIN_H

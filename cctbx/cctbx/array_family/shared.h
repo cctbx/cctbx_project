@@ -11,13 +11,13 @@
 #ifndef CCTBX_ARRAY_FAMILY_SHARED_H
 #define CCTBX_ARRAY_FAMILY_SHARED_H
 
-#include <cctbx/array_family/shared_base.h>
+#include <cctbx/array_family/shared_plain.h>
 
 namespace cctbx { namespace af {
 
   // Dynamic allocation, shared (data and size), standard operators.
   template <typename ElementType>
-  class shared : public shared_base<ElementType>
+  class shared : public shared_plain<ElementType>
   {
     public:
       CCTBX_ARRAY_FAMILY_TYPEDEFS
@@ -25,11 +25,11 @@ namespace cctbx { namespace af {
       typedef detail::char_block handle_type;
 
       explicit shared(const size_type& sz = 0)
-        : shared_base<ElementType>(sz)
+        : shared_plain<ElementType>(sz)
       {}
 
       explicit shared(const handle_type& handle)
-        : shared_base<ElementType>(handle)
+        : shared_plain<ElementType>(handle)
       {}
 
       CCTBX_ARRAY_FAMILY_TAKE_REF(this->begin(), this->size())
