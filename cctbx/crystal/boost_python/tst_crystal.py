@@ -106,7 +106,7 @@ def exercise_direct_space_asu():
   assert approx_equal(asu_mappings.mapped_sites_min(), [0.15,-0.4,0.4])
   assert approx_equal(asu_mappings.mapped_sites_max(), [1.05,0.6,0.65])
   assert approx_equal(asu_mappings.mapped_sites_span(), [0.9,1.0,0.25])
-  assert list(asu_mappings.special_op_indices()) == [0, 0]
+  assert list(asu_mappings.site_symmetry_table().indices()) == [0, 0]
   for am in mappings:
     assert asu_mappings.asu_buffer().is_inside(am.mapped_site())
   o = matrix.sqr(asu_mappings.unit_cell().orthogonalization_matrix())
@@ -279,7 +279,7 @@ def exercise_direct_space_asu():
         (0.5817,0.6706,0.1254),
         (0.2478,0.0000,0.0000)]]))
   asu_mappings = structure.asu_mappings(buffer_thickness=3.5)
-  assert list(asu_mappings.special_op_indices()) == [1,0,2]
+  assert list(asu_mappings.site_symmetry_table().indices()) == [1,0,2]
   pair = asu_mappings.make_pair(i_seq=1, j_seq=0, j_sym=1)
   assert pair.i_seq == 1
   assert pair.j_seq == 0
@@ -295,9 +295,6 @@ def exercise_direct_space_asu():
         i_seq=i_seq,
         rt_mx=sgtbx.rt_mx("0,0,0"))
       assert i_sym_found == -1
-  assert str(asu_mappings.special_ops()[0]) == "x,y,z"
-  assert str(asu_mappings.special_ops()[1]) == "x,y,1/4"
-  assert str(asu_mappings.special_ops()[2]) == "x-1/2*y,0,0"
   assert str(asu_mappings.special_op(0)) == "x,y,1/4"
   assert str(asu_mappings.special_op(1)) == "x,y,z"
   assert str(asu_mappings.special_op(2)) == "x-1/2*y,0,0"

@@ -54,7 +54,7 @@ namespace cctbx { namespace sgtbx {
       /*! An exception is thrown if i_seq is out of bounds.
        */
       site_symmetry_ops const&
-      get_site_symmetry_ops(std::size_t i_seq) const
+      get(std::size_t i_seq) const
       {
         CCTBX_ASSERT(i_seq < indices_const_ref_.size());
         return table_[indices_const_ref_[i_seq]];
@@ -64,9 +64,15 @@ namespace cctbx { namespace sgtbx {
       af::shared<std::size_t> const&
       indices() const { return indices_; }
 
+      //! Reference to indices to internal table entries; use for efficiency.
+      /*! Not available in Python.
+       */
+      af::const_ref<std::size_t> const&
+      indices_const_ref() const { return indices_const_ref_; }
+
       //! Number of internal table entries.
       std::size_t
-      n_unique_site_symmetry_ops() const { return table_.size(); }
+      n_unique() const { return table_.size(); }
 
       //! Internal table of unique site_symmetry_ops.
       /*! The table is organized such that table()[0].is_point_group_1()
@@ -76,6 +82,14 @@ namespace cctbx { namespace sgtbx {
        */
       std::vector<site_symmetry_ops> const&
       table() const { return table_; }
+
+      //! Pre-allocates memory for indices(); for efficiency.
+      void
+      reserve(std::size_t n_sites_final)
+      {
+        indices_.reserve(n_sites_final);
+        indices_const_ref_ = indices_.const_ref();
+      }
 
     protected:
       af::shared<std::size_t> indices_;

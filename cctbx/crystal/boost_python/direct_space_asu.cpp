@@ -186,9 +186,8 @@ namespace {
         .def("mapped_sites_min", &w_t::mapped_sites_min, ccr())
         .def("mapped_sites_max", &w_t::mapped_sites_max, ccr())
         .def("mapped_sites_span", &w_t::mapped_sites_span)
-        .def("special_ops", &w_t::special_ops, ccr())
-        .def("special_op_indices", &w_t::special_op_indices, ccr())
         .def("special_op", &w_t::special_op, (arg_("i_seq")), ccr())
+        .def("site_symmetry_table", &w_t::site_symmetry_table, rir())
         .def("get_rt_mx", &w_t::get_rt_mx, (arg_("i_seq"), arg_("i_sym")))
         .def("diff_vec", &w_t::diff_vec, (arg_("pair")))
         .def("map_moved_site_to_asu", &w_t::map_moved_site_to_asu,

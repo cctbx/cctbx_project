@@ -42,8 +42,7 @@ def setup_bond_sym_proxies(structure, distance_cutoff, tolerance=1.e-6,
   for i_seq,bond_dict in enumerate(bond_dicts):
     rt_mx_i_inv = asu_mappings.get_rt_mx(i_seq=i_seq, i_sym=0).inverse()
     so_i = asu_mappings.special_op(i_seq)
-    ss_i = structure.site_symmetry(structure.scatterers()[i_seq].site)
-    assert ss_i.special_op() == so_i
+    sm_i = asu_mappings.site_symmetry_table().get(i_seq).matrices()
     for j_seq,j_sym_dists in bond_dict.items():
       if (0 or verbose):
         print "i_seq:", i_seq
@@ -73,7 +72,7 @@ def setup_bond_sym_proxies(structure, distance_cutoff, tolerance=1.e-6,
           else:
             ri = rt_mx_jis[i]
             rj = rt_mx_jis[j]
-            for mi in ss_i.matrices():
+            for mi in sm_i:
               if (mi.multiply(rj).multiply(so_j) == ri.multiply(so_j)):
                 is_processed[j] = i
                 if (0 or verbose):
@@ -112,8 +111,6 @@ def expand_bond_sym_proxies(structure, bond_sym_proxies, distance_cutoff=0,
     i_seq, j_seq = sym_proxy.i_seqs
     is_new = process_bond(
       asu_mappings=asu_mappings,
-      site_symmetry_i=structure.site_symmetry(
-        structure.scatterers()[i_seq].site),
       bond_asu_records=bond_asu_records,
       i_seq=i_seq,
       j_seq=j_seq,
@@ -122,8 +119,6 @@ def expand_bond_sym_proxies(structure, bond_sym_proxies, distance_cutoff=0,
     if (is_new and i_seq != j_seq):
       is_new = process_bond(
         asu_mappings=asu_mappings,
-        site_symmetry_i=structure.site_symmetry(
-          structure.scatterers()[j_seq].site),
         bond_asu_records=bond_asu_records,
         i_seq=j_seq,
         j_seq=i_seq,
@@ -132,7 +127,7 @@ def expand_bond_sym_proxies(structure, bond_sym_proxies, distance_cutoff=0,
       assert is_new
   return asu_mappings, bond_asu_records
 
-def process_bond(asu_mappings, site_symmetry_i, bond_asu_records,
+def process_bond(asu_mappings, bond_asu_records,
                  i_seq, j_seq, rt_mx_ji, verbose=0):
   rt_mx_i = asu_mappings.get_rt_mx(i_seq=i_seq, i_sym=0)
   rt_mx_j = rt_mx_i.multiply(rt_mx_ji)
@@ -146,7 +141,7 @@ def process_bond(asu_mappings, site_symmetry_i, bond_asu_records,
   j_sym_groups.append(j_syms)
   if (0 or verbose):
     print "primary:     i_seq, j_seq, j_sym", i_seq, j_seq, j_sym
-  for mi in site_symmetry_i.matrices():
+  for mi in asu_mappings.site_symmetry_table().get(i_seq).matrices():
     if (i_seq == j_seq):
       rt_mx_j_eq = rt_mx_i.multiply(rt_mx_ji.multiply(mi).inverse_cancel())
       j_sym_eq = asu_mappings.find_i_sym(i_seq=j_seq, rt_mx=rt_mx_j_eq)
