@@ -250,13 +250,22 @@ class pdb_record:
     # 22       Character       chainID    Chain identifier.
     # 23 - 26  Integer         resSeq     Residue sequence number.
     # 27       AChar           iCode      Insertion code.
-    try: self.serial = int(self.raw[6:11])
-    except: self.raise_FormatError("Serial number must be an integer.")
+    try:
+      self.serial = int(self.raw[6:11])
+    except:
+      if (self.strict):
+        self.raise_FormatError("Serial number must be an integer.")
+      else:
+        self.serial = None
     self.resName = self.raw[17:20]
     self.chainID = self.raw[21]
-    try: self.resSeq = int(self.raw[22:26])
+    try:
+      self.resSeq = int(self.raw[22:26])
     except:
-      self.raise_FormatError("Residue sequence number must be an integer.")
+      if (self.strict):
+        self.raise_FormatError("Residue sequence number must be an integer.")
+      else:
+        self.resSeq = None
     self.iCode = self.raw[26]
 
   def read_MODEL(self):
