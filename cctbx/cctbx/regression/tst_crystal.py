@@ -1,5 +1,6 @@
-from cctbx import uctbx
 from cctbx import crystal
+from cctbx import sgtbx
+from cctbx import uctbx
 from cctbx.development import debug_utils
 import sys
 
@@ -88,6 +89,11 @@ def exercise_site_symmetry(space_group_info):
     crystal_symmetry=crystal.symmetry(
       unit_cell=space_group_info.any_compatible_unit_cell(volume=1000),
       space_group_info=space_group_info))
+  z2p_op = space_group_info.group().z2p_op()
+  special_position_settings_p = crystal.special_position_settings(
+    crystal_symmetry=special_position_settings.change_basis(z2p_op),
+    min_distance_sym_equiv
+      =special_position_settings.min_distance_sym_equiv()*0.99)
   wyckoff_table = space_group_info.wyckoff_table()
   for i_position in xrange(wyckoff_table.size()):
     site_symmetry = wyckoff_table.random_site_symmetry(
@@ -97,6 +103,20 @@ def exercise_site_symmetry(space_group_info):
     assert s.multiply(s) == s
     for m in site_symmetry.matrices():
       assert m.multiply(s) == s
+    tab = sgtbx.site_symmetry_table()
+    tab.process(site_symmetry)
+    ss_ops = tab.get(0)
+    assert ss_ops.multiplicity(site_symmetry.space_group().order_z()) \
+        == site_symmetry.multiplicity()
+    site_p = z2p_op.c() * site_symmetry.exact_site()
+    site_symmetry_p = special_position_settings_p.site_symmetry(site_p)
+    ss_ops_p = ss_ops.change_basis(z2p_op)
+    assert ss_ops_p.special_op() == site_symmetry_p.special_op()
+    references = [str(m) for m in site_symmetry_p.matrices()]
+    testees = [str(m) for m in ss_ops_p.matrices()]
+    references.sort()
+    testees.sort()
+    assert " ".join(testees) == " ".join(references)
 
 def run_call_back(flags, space_group_info):
   exercise_site_symmetry(space_group_info)
