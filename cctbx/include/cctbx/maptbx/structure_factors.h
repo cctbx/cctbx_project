@@ -89,7 +89,10 @@ namespace cctbx { namespace maptbx { namespace structure_factors {
         double d_min,
         af::const_ref<std::complex<OtherFloatType>,
                       af::c_grid_padded<3> > const& complex_map,
-        bool conjugate_flag)
+        bool conjugate_flag,
+        bool discard_indices_affected_by_aliasing=false)
+      :
+        n_indices_affected_by_aliasing_(0)
       {
         CCTBX_ASSERT(d_min > 0);
         double d_star_sq_max = 1. / (d_min * d_min);
@@ -118,10 +121,24 @@ namespace cctbx { namespace maptbx { namespace structure_factors {
             h[2] = ih[2];
           }
           if (incr_d_star_sq.get(h[2]) > d_star_sq_max) continue;
-          CCTBX_ASSERT(ih[0]*2 != n_complex[0]);
-          CCTBX_ASSERT(ih[1]*2 != n_complex[1]);
-          if (anomalous_flag) {
-            CCTBX_ASSERT(ih[2]*2 != n_complex[2]);
+          if (discard_indices_affected_by_aliasing) {
+            bool discard = false;
+            if      (ih[0]*2 == n_complex[0]) discard = true;
+            else if (ih[1]*2 == n_complex[1]) discard = true;
+            else if (anomalous_flag) {
+              if (ih[2]*2 == n_complex[2]) discard = true;
+            }
+            if (discard) {
+              n_indices_affected_by_aliasing_++;
+              continue;
+            }
+          }
+          else {
+            CCTBX_ASSERT(ih[0]*2 != n_complex[0]);
+            CCTBX_ASSERT(ih[1]*2 != n_complex[1]);
+            if (anomalous_flag) {
+              CCTBX_ASSERT(ih[2]*2 != n_complex[2]);
+            }
           }
           mh[2] = -h[2];
           int asu_which = asu.which(h, mh);
@@ -161,6 +178,8 @@ namespace cctbx { namespace maptbx { namespace structure_factors {
                       af::c_grid_padded<3> > const& complex_map,
         bool conjugate_flag,
         bool allow_miller_indices_outside_map=false)
+      :
+        n_indices_affected_by_aliasing_(0)
       {
         af::int3 map_grid_focus = complex_map.accessor().focus();
         data_.reserve(miller_indices.size());
@@ -200,12 +219,19 @@ namespace cctbx { namespace maptbx { namespace structure_factors {
       af::shared<std::complex<FloatType> >
       data() const { return data_; }
 
+      std::size_t
+      n_indices_affected_by_aliasing() const
+      {
+        return n_indices_affected_by_aliasing_;
+      }
+
       af::shared<std::size_t>
       outside_map() const { return outside_map_; }
 
     protected:
       af::shared<miller::index<> > miller_indices_;
       af::shared<std::complex<FloatType> > data_;
+      std::size_t n_indices_affected_by_aliasing_;
       af::shared<std::size_t> outside_map_;
   };
 

@@ -163,6 +163,7 @@ def exercise_structure_factors():
         anomalous_flag, mi, t.complex_map(), conjugate_flag, 0001)
       assert f.miller_indices().size() == 0
       assert f.data().size() == mi.size()
+      assert f.n_indices_affected_by_aliasing() == 0
       assert f.outside_map().size() == 0
 
 def exercise_gridding():
