@@ -2,9 +2,11 @@ import os
 Import("env_etc", "env_boost_python_ext")
 
 env_etc.scitbx_dist = os.environ["SCITBX_DIST"]
+env_etc.scitbx_include = env_etc.norm_join(env_etc.scitbx_dist, "include")
+CScanRegisterFlags(scitbx=env_etc.scitbx_include)
 env_etc.scitbx_common_includes = [
   env_etc.libtbx_include,
-  env_etc.norm_join(env_etc.scitbx_dist, "include"),
+  env_etc.scitbx_include,
   env_etc.boost_include,
 ]
 
@@ -29,3 +31,5 @@ if (not env_etc.no_boost_python):
   SConscript("array_family/boost_python/SConscript")
   SConscript("fftpack/boost_python/SConscript")
   SConscript("lbfgs/boost_python/SConscript")
+"""
+"""
