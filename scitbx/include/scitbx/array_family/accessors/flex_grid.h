@@ -14,6 +14,7 @@
 #include <scitbx/error.h>
 #include <scitbx/array_family/small.h>
 #include <scitbx/array_family/small_reductions.h>
+#include <scitbx/array_family/small_algebra.h>
 
 namespace scitbx { namespace af {
 
@@ -237,8 +238,19 @@ namespace scitbx { namespace af {
       {
         if (layout_.size() == 0) return false;
         SCITBX_ASSERT(grid_.size() == layout_.size());
-        SCITBX_ASSERT(grid_.all_ge(layout_));
-        return !grid_.all_eq(layout_);
+        SCITBX_ASSERT(last().all_ge(layout_));
+        return !last().all_eq(layout_);
+      }
+
+      flex_grid
+      shift_origin() const
+      {
+        if (is_0_based()) return *this;
+        if (layout_.size() == 0) return flex_grid(grid_);
+        SCITBX_ASSERT(layout_.size() == origin_.size());
+        index_type result_layout = layout_; // three steps to avoid
+        result_layout -= origin_;           // gcc 2.96 internal error
+        return flex_grid(grid_).set_layout(result_layout);
       }
 
       std::size_t operator()(index_type const& i) const

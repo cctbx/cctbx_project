@@ -82,6 +82,7 @@ namespace {
         .def("layout", &w_t::layout, copy_const_reference())
         .def("is_0_based", &w_t::is_0_based)
         .def("is_padded", &w_t::is_padded)
+        .def("shift_origin", &w_t::shift_origin)
         .def("__call__", &w_t::operator())
         .def("is_valid_index", &w_t::is_valid_index)
         .def("__eq__", &w_t::operator==)
