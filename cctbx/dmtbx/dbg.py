@@ -78,7 +78,7 @@ def exercise(SgInfo,
     sum_w_phase_error += e_values[i] * phase_error
     sum_w += e_values[i]
   print "mean weighted phase error: %.2f" % (sum_w_phase_error / sum_w,)
-  if (1 or verbose):
+  if (0 or verbose):
     tprs.dump_triplets(MillerIndices.H)
   print
 
@@ -86,8 +86,10 @@ def run():
   Flags = debug_utils.command_line_options(sys.argv[1:], (
     "RandomSeed",
     "AllSpaceGroups",
+    "IncludeVeryHighSymmetry",
     "loop_k_equiv",
     "use_weights",
+    "ShowSymbolOnly",
   ))
   if (not Flags.RandomSeed): debug_utils.set_random_seed(0)
   symbols_to_stdout = 0
@@ -107,9 +109,17 @@ def run():
     if (symbols_to_stdout):
       print LookupSymbol
       sys.stdout.flush()
-    exercise(SgInfo,
-      loop_k_equiv=Flags.loop_k_equiv,
-      use_weights=Flags.use_weights)
+    if (SgInfo.SgOps().OrderZ() > 48 and not Flags.IncludeVeryHighSymmetry):
+      print "High symmetry space group skipped."
+      print
+      sys.stdout.flush()
+      continue
+    if (Flags.ShowSymbolOnly):
+      print "Space group:", LookupSymbol
+    else:
+      exercise(SgInfo,
+        loop_k_equiv=Flags.loop_k_equiv,
+        use_weights=Flags.use_weights)
     sys.stdout.flush()
 
 if (__name__ == "__main__"):

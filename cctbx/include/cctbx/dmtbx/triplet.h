@@ -35,6 +35,28 @@ namespace cctbx { namespace dmtbx {
     std::size_t ihmk;
     Miller::AsymIndex asym_k;
     Miller::AsymIndex asym_hmk;
+
+    static bool are_equal_asym(
+      Miller::AsymIndex const& lhs,
+      Miller::AsymIndex const& rhs)
+    {
+      if (lhs.HT() != rhs.HT()) return false;
+      if (lhs.FriedelFlag() == rhs.FriedelFlag()) return false;
+      return true;
+    }
+
+    bool operator==(triplet_phase_relation const& other) const
+    {
+      if (ik == other.ik && ihmk == other.ihmk) {
+        if (!are_equal_asym(asym_k, other.asym_k)) return false;
+        if (are_equal_asym(asym_hmk, other.asym_hmk)) return true;
+      }
+      if (ik == other.ihmk && ihmk == other.ik) {
+        if (!are_equal_asym(asym_k, other.asym_hmk)) return false;
+        if (are_equal_asym(asym_hmk, other.asym_k)) return true;
+      }
+      return false;
+    }
   };
 
   template <typename FloatType>
@@ -181,8 +203,7 @@ namespace cctbx { namespace dmtbx {
       {
         if (use_weights) {
           for(std::size_t i=0;i<tpr_array.size();i++) {
-            if ((tpr_array[i].ik == tpr.ik && tpr_array[i].ihmk == tpr.ihmk)
-             || (tpr_array[i].ik == tpr.ihmk && tpr_array[i].ihmk == tpr.ik)) {
+            if (tpr_array[i] == tpr) {
               tpr_array[i].weight++;
               return;
             }
