@@ -46,22 +46,20 @@ class conformer:
       atom = stage_1.atom_attributes_list[i_seq]
       residue_labels = atom.residue_labels()
       ter_block_identifier = ter_block_identifiers[i_seq]
-      if (   prev_atom is None
-          or atom.chainID != prev_atom.chainID
-          or atom.segID != prev_atom.segID
-          or ter_block_identifier != prev_ter_block_identifier
-          or atom.resSeq < prev_atom.resSeq):
-        if (isel_residue.size() > 0):
-          residue_iselections.append(isel_residue)
-          isel_residue = flex.size_t()
-        if (len(residue_iselections) > 0):
-          chains.append(pdb.interpretation.chain(
-            conformer=self, residue_iselections=residue_iselections))
-          residue_iselections = []
-      elif (residue_labels != prev_residue_labels):
-        if (isel_residue.size() > 0):
-          residue_iselections.append(isel_residue)
-          isel_residue = flex.size_t()
+      if (prev_atom is not None):
+        if (   ter_block_identifier != prev_ter_block_identifier
+            or not atom.is_in_same_chain(prev_atom)):
+          if (isel_residue.size() > 0):
+            residue_iselections.append(isel_residue)
+            isel_residue = flex.size_t()
+          if (len(residue_iselections) > 0):
+            chains.append(pdb.interpretation.chain(
+              conformer=self, residue_iselections=residue_iselections))
+            residue_iselections = []
+        elif (residue_labels != prev_residue_labels):
+          if (isel_residue.size() > 0):
+            residue_iselections.append(isel_residue)
+            isel_residue = flex.size_t()
       isel_residue.append(i_seq)
       prev_atom = atom
       prev_residue_labels = residue_labels
