@@ -73,9 +73,9 @@ def finite_differences_scalar(parameter_name, target_ftor, structure,
         ms.occupancy += d_sign * delta
         ms.update_weight(structure.space_group().order_z())
       elif (parameter_name == "fp"):
-        ms.fp_fdp = complex(ms.fp_fdp.real + d_sign * delta, ms.fp_fdp.imag)
+        ms.fp = ms.fp + d_sign * delta
       elif (parameter_name == "fdp"):
-        ms.fp_fdp = complex(ms.fp_fdp.real, ms.fp_fdp.imag + d_sign * delta)
+        ms.fdp = ms.fdp + d_sign * delta
       else:
         raise RuntimeError
       f_calc = target_ftor.f_obs().structure_factors_from_scatterers(

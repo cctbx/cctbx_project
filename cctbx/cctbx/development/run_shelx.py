@@ -48,7 +48,7 @@ def SFAC_DISP_UNIT(xray_structure, short_sfac):
          a[2], b[2]))
       l("     %.6g %.6g %.6g %.6g %.6g 0 1 1" %
         (a[3], b[3], caasf.c(),
-         scatterer.fp_fdp.real, scatterer.fp_fdp.imag))
+         scatterer.fp, scatterer.fdp))
       UNIT.append(
         str(max(1, int(scatterer.occupancy * scatterer.multiplicity() + 0.5))))
   l("UNIT " + " ".join(UNIT))

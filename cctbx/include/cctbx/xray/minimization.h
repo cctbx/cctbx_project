@@ -52,16 +52,16 @@ namespace cctbx { namespace xray { namespace minimization {
         if (sc.occupancy < 0) sc.occupancy = 0;
       }
       if (gradient_flags.fp) {
-        sc.fp_fdp += std::complex<sc_f_t>(next_shifts(), 0);
+        sc.fp += next_shifts();
         if (d_star_sq_max != 0) {
           sc_f_t f0 = sc.caasf.at_d_star_sq(d_star_sq_max);
-          if (f0 + sc.fp_fdp.real() < 0) {
-            sc.fp_fdp = std::complex<sc_f_t>(-f0, sc.fp_fdp.imag());
+          if (f0 + sc.fp < 0) {
+            sc.fp = -f0;
           }
         }
       }
       if (gradient_flags.fdp) {
-        sc.fp_fdp += std::complex<sc_f_t>(0, next_shifts());
+        sc.fdp += next_shifts();
       }
       result.push_back(sc);
     }

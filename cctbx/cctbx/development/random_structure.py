@@ -176,7 +176,8 @@ class xray_structure(xray.structure):
       if (self.random_f_double_prime):
         f0 = scatterer.caasf.at_d_star_sq(0)
         fdp = f0 * random.random() * self.random_f_double_prime_scale
-      scatterer.fp_fdp = complex(fp, fdp)
+      scatterer.fp = fp
+      scatterer.fdp = fdp
       if (not self.anisotropic_flag):
         scatterer.anisotropic_flag = 00000
         u_iso = self.u_iso
@@ -263,13 +264,9 @@ class xray_structure(xray.structure):
           self.random_modify_occupancy(scatterer.occupancy, gauss_sigma)
         scatterer.update_weight(self.space_group().order_z())
       elif (parameter_name == "fp"):
-        scatterer.fp_fdp = complex(
-          self.random_modify_fp(scatterer.fp_fdp.real, gauss_sigma),
-          scatterer.fp_fdp.imag)
+        scatterer.fp = self.random_modify_fp(scatterer.fp, gauss_sigma)
       elif (parameter_name == "fdp"):
-        scatterer.fp_fdp = complex(
-          scatterer.fp_fdp.real,
-          self.random_modify_fdp(scatterer.fp_fdp.imag, gauss_sigma))
+        scatterer.fdp = self.random_modify_fdp(scatterer.fdp, gauss_sigma)
       else:
         raise RuntimeError
     return modified_structure

@@ -1,12 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Oct: Created (R.W. Grosse-Kunstleve)
- */
-
 #include <cctbx/boost_python/flex_fwd.h>
 
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
@@ -26,7 +17,8 @@ namespace {
     {
       *this << val.label
             << val.caasf.label()
-            << val.fp_fdp;
+            << val.fp
+            << val.fdp;
       *this << val.site.const_ref()
             << val.occupancy
             << val.anisotropic_flag
@@ -53,7 +45,8 @@ namespace {
       cctbx::xray::scatterer<>::float_type weight_without_occupancy;
       *this >> val.label
             >> caasf_label
-            >> val.fp_fdp;
+            >> val.fp
+            >> val.fdp;
       *this >> val.site.ref()
             >> val.occupancy
             >> val.anisotropic_flag

@@ -22,7 +22,8 @@ namespace cctbx { namespace xray {
           gradient_flags const& gf,
           exponent_table<FloatType>& exp_table,
           CaasfType const& caasf,
-          std::complex<FloatType> const& fp_fdp,
+          FloatType const& fp,
+          FloatType const& fdp,
           FloatType const& occupancy,
           FloatType const& weight_without_occupancy,
           FloatType const& w,
@@ -30,7 +31,7 @@ namespace cctbx { namespace xray {
           FloatType const& u_extra)
         :
           caasf_fourier_transformed<FloatType, CaasfType>(
-            exp_table, caasf, fp_fdp, w, u_iso, u_extra)
+            exp_table, caasf, fp, fdp, w, u_iso, u_extra)
         {
           if (gf.u_iso || gf.occupancy || gf.fp || gf.fdp) {
             FloatType b_incl_extra = adptbx::u_as_b(u_iso + u_extra);
@@ -50,10 +51,10 @@ namespace cctbx { namespace xray {
                   caasf.b(i) + b_incl_extra);
               }
               as_occupancy_real_[i]=isotropic_3d_gaussian_fourier_transform(
-                weight_without_occupancy * (caasf.c() + fp_fdp.real()),
+                weight_without_occupancy * (caasf.c() + fp),
                 b_incl_extra);
               as_occupancy_imag_=isotropic_3d_gaussian_fourier_transform(
-                weight_without_occupancy * fp_fdp.imag(),
+                weight_without_occupancy * fdp,
                 b_incl_extra);
             }
             if (gf.fp || gf.fdp) {
@@ -67,7 +68,8 @@ namespace cctbx { namespace xray {
           gradient_flags const& gf,
           exponent_table<FloatType>& exp_table,
           CaasfType const& caasf,
-          std::complex<FloatType> const& fp_fdp,
+          FloatType const& fp,
+          FloatType const& fdp,
           FloatType const& occupancy,
           FloatType const& weight_without_occupancy,
           FloatType const& w,
@@ -75,7 +77,7 @@ namespace cctbx { namespace xray {
           FloatType const& u_extra)
         :
           caasf_fourier_transformed<FloatType, CaasfType>(
-            exp_table, caasf, fp_fdp, w, u_cart, u_extra)
+            exp_table, caasf, fp, fdp, w, u_cart, u_extra)
         {
           if (gf.u_aniso) {
             for(std::size_t i=0;i<caasf.n_ab();i++) {
@@ -108,11 +110,11 @@ namespace cctbx { namespace xray {
             }
             as_occupancy_real_[i] =
               anisotropic_3d_gaussian_fourier_transform(
-                weight_without_occupancy * (caasf.c() + fp_fdp.real()),
+                weight_without_occupancy * (caasf.c() + fp),
                 compose_anisotropic_b_all(0, u_extra, u_cart));
             as_occupancy_imag_ =
               anisotropic_3d_gaussian_fourier_transform(
-                weight_without_occupancy * (fp_fdp.imag()),
+                weight_without_occupancy * fdp,
                 compose_anisotropic_b_all(0, u_extra, u_cart));
           }
         }
@@ -426,7 +428,7 @@ namespace cctbx { namespace xray {
       FloatType gr_fdp(0);
       CCTBX_ASSERT(scatterer->weight() >= 0);
       if (scatterer->weight() != 0) {
-        FloatType fdp = scatterer->fp_fdp.imag();
+        FloatType fdp = scatterer->fdp;
         fractional<FloatType> coor_frac = scatterer->site;
         FloatType u_iso;
         scitbx::sym_mat3<FloatType> u_cart;
@@ -440,7 +442,7 @@ namespace cctbx { namespace xray {
         detail::d_caasf_fourier_transformed<FloatType, caasf_type> caasf_ft(
           grad_flags,
           exp_table,
-          scatterer->caasf, scatterer->fp_fdp, scatterer->occupancy,
+          scatterer->caasf,scatterer->fp,scatterer->fdp,scatterer->occupancy,
           scatterer->weight_without_occupancy(), scatterer->weight(),
           u_iso, this->u_extra_);
         detail::calc_shell<FloatType, grid_point_type> shell(
@@ -457,7 +459,7 @@ namespace cctbx { namespace xray {
           caasf_ft = detail::d_caasf_fourier_transformed<FloatType,caasf_type>(
             grad_flags,
             exp_table,
-            scatterer->caasf, scatterer->fp_fdp, scatterer->occupancy,
+            scatterer->caasf,scatterer->fp,scatterer->fdp,scatterer->occupancy,
             scatterer->weight_without_occupancy(), scatterer->weight(),
             u_cart, this->u_extra_);
         }
