@@ -7,8 +7,9 @@ import sys
 
 class iotbx_option_parser(OptionParser):
 
-  def __init__(self, usage=None, description=None):
+  def __init__(self, usage=None, description=None, more_help=None):
     OptionParser.__init__(self, usage=usage, description=description)
+    self.more_help = more_help
     self.symmetry_callback = symmetry_callback()
     self.chunk_callback = chunk_callback()
 
@@ -23,6 +24,9 @@ class iotbx_option_parser(OptionParser):
       result.append("\n")
       result.append(self.format_description(formatter) + "\n")
       result.append("\n")
+    if (self.more_help is not None):
+      for line in self.more_help:
+        result.append(line + "\n")
     return "".join(result)
 
   def show_help(self, f=None):
