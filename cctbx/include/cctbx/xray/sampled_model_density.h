@@ -97,6 +97,7 @@ namespace cctbx { namespace xray {
     const xray_scatterer_type* scatterer;
     for(scatterer=scatterers.begin();scatterer!=scatterers.end();scatterer++)
     {
+      CCTBX_ASSERT(scatterer->weight() >= 0);
       if (scatterer->weight() == 0) continue;
       FloatType fdp = scatterer->fp_fdp.imag();
       fractional<FloatType> coor_frac = scatterer->site;

@@ -1,19 +1,16 @@
 import cctbx.xray.structure_factors
 from cctbx.xray import ext
+from cctbx.xray.structure import structure as cctbx_xray_structure
 from cctbx.array_family import flex
 import scitbx.lbfgs
 from scitbx.python_utils.misc import adopt_init_args
 
-class options:
-  def __init__(self, site=00000, u_iso=00000, occupancy=00000):
-    adopt_init_args(self, locals())
-
 class lbfgs:
 
-  def __init__(self, target_functor, options, xray_structure,
+  def __init__(self, target_functor, gradient_flags, xray_structure,
                      min_iterations=10, max_iterations=None,
                      cos_sin_table=0001,
-                     direct=0001, # XXX TODO stabilize u, occ refinement
+                     direct=00000,
                      fft=00000):
     adopt_init_args(self, locals())
     self.structure_factors_from_scatterers = \
@@ -24,35 +21,30 @@ class lbfgs:
       cctbx.xray.structure_factors.gradients(
         miller_set=self.target_functor.f_obs(),
         cos_sin_table=cos_sin_table)
-    self.pack_parameters()
+    self.n = xray_structure.n_parameters(gradient_flags)
+    self.x = flex.double(self.n, 0)
+    self._scatterers_start = xray_structure.scatterers()
+    self._d_min = self.target_functor.f_obs().d_min()
     self.first_target_value = None
     self.minimizer = scitbx.lbfgs.run(
       self, min_iterations=min_iterations, max_iterations=max_iterations)
-    self.unpack_parameters()
-    self.compute_target(compute_derivatives=00000)
+    self.apply_shifts()
+    del self._scatterers_start
+    del self._d_min
+    self.compute_target(compute_gradients=00000)
     self.final_target_value = self.target_result.target()
 
-  def pack_parameters(self):
-    self.x = flex.double()
-    self.n = ext.pack_parameters(
-      None,
-      self.xray_structure.scatterers(),
+  def apply_shifts(self):
+    scatterers_shifted = ext.minimization_apply_shifts(
+      self.xray_structure.unit_cell(),
+      self.xray_structure.space_group_info().type(),
+      self._scatterers_start,
+      self.gradient_flags,
       self.x,
-      self.options.site,
-      self.options.u_iso,
-      self.options.occupancy)
+      self._d_min)
+    self.xray_structure.replace_scatterers(scatterers_shifted)
 
-  def unpack_parameters(self):
-    ext.unpack_parameters(
-      None,
-      self.xray_structure.space_group().order_z(),
-      self.x, 0,
-      self.xray_structure.scatterers(),
-      self.options.site,
-      self.options.u_iso,
-      self.options.occupancy)
-
-  def compute_target(self, compute_derivatives):
+  def compute_target(self, compute_gradients):
     self.f_calc = self.structure_factors_from_scatterers(
       xray_structure=self.xray_structure,
       miller_set=self.target_functor.f_obs(),
@@ -60,36 +52,24 @@ class lbfgs:
       fft=self.fft).f_calc()
     self.target_result = self.target_functor(
       self.f_calc,
-      compute_derivatives)
+      compute_gradients)
 
   def __call__(self):
-    if (self.first_target_value is not None):
-      self.unpack_parameters()
-    self.compute_target(compute_derivatives=0001)
+    if (self.first_target_value is None):
+      assert self.x.all_eq(0)
+    else:
+      self.apply_shifts()
+    self.compute_target(compute_gradients=0001)
+    self.f = self.target_result.target()
+    if (self.first_target_value is None):
+      self.first_target_value = self.f
     sf = self.structure_factor_gradients(
       xray_structure=self.xray_structure,
       miller_set=self.target_functor.f_obs(),
       d_target_d_f_calc=self.target_result.derivatives(),
-      gradient_flags=cctbx.xray.structure_factors.gradient_flags(
-        site=self.options.site,
-        u_iso=self.options.u_iso,
-        occupancy=self.options.occupancy),
-      n_parameters=0,
+      gradient_flags=self.gradient_flags,
+      n_parameters=self.x.size(),
       direct=self.direct,
       fft=self.fft)
-    self.g = flex.double()
-    if (self.options.site):
-      d_target_d_site = sf.d_target_d_site_frac()
-      self.xray_structure.apply_special_position_ops_d_target_d_site(
-        d_target_d_site)
-      self.g.append(d_target_d_site.as_double())
-    if (self.options.u_iso):
-      self.g.append(sf.d_target_d_u_iso())
-    if (self.options.occupancy):
-      self.g.append(sf.d_target_d_occupancy())
-    if (self.first_target_value is None):
-      self.pack_parameters()
-    self.f = self.target_result.target()
-    if (self.first_target_value is None):
-      self.first_target_value = self.f
+    self.g = sf.packed()
     return self.x, self.f, self.g
