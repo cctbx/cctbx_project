@@ -267,11 +267,11 @@ class _object(boost.python.injector, ext.object):
                   all_column_labels[i_column+4:i_column+8])):
           labels = all_column_labels[i_column:i_column+8]
           i_column += 7
-          group = self.extract_hls_anomalous(*labels)
+          group = self.extract_hendrickson_lattman_anomalous(*labels)
         else:
           labels = all_column_labels[i_column:i_column+4]
           i_column += 3
-          group = self.extract_hls(*labels)
+          group = self.extract_hendrickson_lattman(*labels)
       elif (remaining_types[:4] == "FQDQ"):
         labels = all_column_labels[i_column:i_column+4]
         i_column += 3

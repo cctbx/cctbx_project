@@ -138,12 +138,14 @@ namespace {
           (arg_("column_label"))))
         .def("extract_reals_anomalous", &w_t::extract_reals_anomalous, (
           arg_("column_label_plus"), arg_("column_label_minus")))
-        .def("extract_hls", &w_t::extract_hls, (
+        .def("extract_hendrickson_lattman",
+            &w_t::extract_hendrickson_lattman, (
           arg_("column_label_a"),
           arg_("column_label_b"),
           arg_("column_label_c"),
           arg_("column_label_d")))
-        .def("extract_hls_anomalous", &w_t::extract_hls_anomalous, (
+        .def("extract_hendrickson_lattman_anomalous",
+            &w_t::extract_hendrickson_lattman_anomalous, (
           arg_("column_label_a_plus"),
           arg_("column_label_b_plus"),
           arg_("column_label_c_plus"),
