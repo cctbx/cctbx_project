@@ -1,12 +1,12 @@
 from __future__ import generators
 from cctbx.array_family import flex
-from cctbx import sgtbx
 
 import boost.python
 ext = boost.python.import_ext("cctbx_crystal_ext")
 from cctbx_crystal_ext import *
 
 from cctbx.crystal.find_best_cell import find_best_cell
+from cctbx import sgtbx
 from cctbx import uctbx
 
 from scitbx.array_family import shared
