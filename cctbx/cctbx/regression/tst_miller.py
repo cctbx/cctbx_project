@@ -106,13 +106,13 @@ def exercise_binner():
       d_min=10)
     set1.setup_binner(n_bins=3)
     s = StringIO()
-    set1.binner().show_summary(f=s)
+    set1.binner().show_summary(f=s, prefix="..")
     assert s.getvalue() == """\
-unused:         - 28.7186 [0/0]
-bin  1: 28.7186 - 14.1305 [3/3]
-bin  2: 14.1305 - 11.4473 [3/3]
-bin  3: 11.4473 - 10.0715 [2/2]
-unused: 10.0715 -         [0/0]
+..unused:         - 28.7186 [0/0]
+..bin  1: 28.7186 - 14.1305 [3/3]
+..bin  2: 14.1305 - 11.4473 [3/3]
+..bin  3: 11.4473 - 10.0715 [2/2]
+..unused: 10.0715 -         [0/0]
 """
     set2 = miller.build_set(
       crystal_symmetry=crystal_symmetry,
@@ -120,13 +120,13 @@ unused: 10.0715 -         [0/0]
       d_min=8)
     set2.use_binning_of(set1)
     s = StringIO()
-    set2.completeness(use_binning=True).show(f=s)
+    set2.completeness(use_binning=True).show(f=s, prefix=". ")
     assert s.getvalue() == """\
-unused:         - 28.7186 [0/0]
-bin  1: 28.7186 - 14.1305 [3/3] 1.000
-bin  2: 14.1305 - 11.4473 [3/3] 1.000
-bin  3: 11.4473 - 10.0715 [2/2] 1.000
-unused: 10.0715 -         [8/8] 1.000
+. unused:         - 28.7186 [0/0]
+. bin  1: 28.7186 - 14.1305 [3/3] 1.000
+. bin  2: 14.1305 - 11.4473 [3/3] 1.000
+. bin  3: 11.4473 - 10.0715 [2/2] 1.000
+. unused: 10.0715 -         [8/8] 1.000
 """
     s = StringIO()
     set2.completeness(use_binning=True).show(show_bin_number=False, f=s)
@@ -191,7 +191,19 @@ def exercise_array():
   ms = miller.set(xs, mi)
   ma = miller.array(ms)
   ma = miller.array(ms, data)
+  s = StringIO()
+  ma.show_array(f=s, prefix=": ")
+  assert s.getvalue() == """\
+: (1, -2, 3) 1.0
+: (0, 0, -4) 2.0
+"""
   ma = miller.array(ms, data, sigmas)
+  s = StringIO()
+  ma.show_array(f=s, prefix=" :")
+  assert s.getvalue() == """\
+ :(1, -2, 3) 1.0 0.1
+ :(0, 0, -4) 2.0 0.2
+"""
   ma = miller.array(ms, data, sigmas).set_info("test")
   assert ma.indices() == mi
   assert ma.data() == data
