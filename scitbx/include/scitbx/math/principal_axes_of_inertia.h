@@ -3,7 +3,7 @@
 namespace scitbx { namespace math {
 
   template <typename FloatType=double>
-  class principle_axes_of_inertia
+  class principal_axes_of_inertia
   {
     private:
       vec3<FloatType> center_of_mass_;
@@ -11,9 +11,9 @@ namespace scitbx { namespace math {
       eigensystem::real_symmetric<FloatType> eigensystem_;
 
     public:
-      principle_axes_of_inertia() {}
+      principal_axes_of_inertia() {}
 
-      principle_axes_of_inertia(
+      principal_axes_of_inertia(
         af::const_ref<vec3<FloatType> > const& points)
       :
         center_of_mass_(0,0,0),
@@ -43,7 +43,7 @@ namespace scitbx { namespace math {
           inertia_tensor_);
       }
 
-      principle_axes_of_inertia(
+      principal_axes_of_inertia(
         af::const_ref<vec3<FloatType> > const& points,
         af::const_ref<FloatType> const& weights)
       :

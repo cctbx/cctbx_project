@@ -5,7 +5,7 @@ from scitbx.math import bessel_i1_over_i0
 from scitbx.math import eigensystem, time_eigensystem_real_symmetric
 from scitbx.math import gaussian
 from scitbx.math import golay_24_12_generator
-from scitbx.math import principle_axes_of_inertia
+from scitbx.math import principal_axes_of_inertia
 from scitbx.math import sphere_3d, minimum_covering_sphere
 from scitbx.array_family import flex
 from scitbx import matrix
@@ -633,7 +633,7 @@ def exercise_golay():
     weights[list(code).count(1)] += 1
   assert weights == [1,0,0,0,0,0,0,0,759,0,0,0,2576,0,0,0,759,0,0,0,0,0,0,0,1]
 
-def exercise_principle_axes_of_inertia():
+def exercise_principal_axes_of_inertia():
   rnd = random.random
   for i_trial in xrange(10):
     if (i_trial == 0):
@@ -642,7 +642,7 @@ def exercise_principle_axes_of_inertia():
       points = flex.vec3_double([[0,0,0]])
     else:
       points = flex.vec3_double([[rnd(),rnd(),rnd()]])
-    pai = principle_axes_of_inertia(points=points)
+    pai = principal_axes_of_inertia(points=points)
     if (i_trial == 0):
       assert approx_equal(pai.center_of_mass(), [0,0,0])
     else:
@@ -659,7 +659,7 @@ def exercise_principle_axes_of_inertia():
     points = flex.vec3_double()
     for point in flex.nested_loop([-1,-1,-1], [2,2,2]):
       points.append((matrix.col(point) + matrix.col(center_of_mass)).elems)
-    pai = principle_axes_of_inertia(points=points)
+    pai = principal_axes_of_inertia(points=points)
     assert approx_equal(pai.center_of_mass(), center_of_mass)
     assert approx_equal(pai.inertia_tensor(), [36,36,36,0,0,0])
     es = pai.eigensystem()
@@ -675,7 +675,7 @@ def exercise_principle_axes_of_inertia():
     for point in flex.nested_loop([-1,-1,-1], [2,2,2]):
       points.append((matrix.col([point[0],point[1]*2,point[2]*3])
                    + matrix.col(center_of_mass)).elems)
-    pai = principle_axes_of_inertia(points=points)
+    pai = principal_axes_of_inertia(points=points)
     assert approx_equal(pai.center_of_mass(), center_of_mass)
     assert approx_equal(pai.inertia_tensor(), [234,180,90,0,0,0])
     es = pai.eigensystem()
@@ -702,7 +702,7 @@ def exercise_principle_axes_of_inertia():
       [ 0, 0,-1],
       [ 0, 0, 1]]:
       points.append((rot*matrix.col(point)+matrix.col(center_of_mass)).elems)
-    pai = principle_axes_of_inertia(points=points)
+    pai = principal_axes_of_inertia(points=points)
     assert approx_equal(pai.center_of_mass(), center_of_mass)
     if (i_trial < 2):
       assert approx_equal(pai.inertia_tensor(), [10,16,14,0,0,0])
@@ -721,8 +721,8 @@ def exercise_principle_axes_of_inertia():
     for i_p in [0,3,5,5,9,10,10,10]:
       points_plus.append(points[i_p])
       weights[i_p] += 1
-    paip = principle_axes_of_inertia(points=points_plus)
-    paiw = principle_axes_of_inertia(points=points, weights=weights)
+    paip = principal_axes_of_inertia(points=points_plus)
+    paiw = principal_axes_of_inertia(points=points, weights=weights)
     assert approx_equal(paip.center_of_mass(), paiw.center_of_mass())
     assert approx_equal(paip.inertia_tensor(), paiw.inertia_tensor())
 
@@ -850,7 +850,7 @@ def run():
   exercise_gaussian_sum()
   exercise_gaussian_fit()
   exercise_golay()
-  exercise_principle_axes_of_inertia()
+  exercise_principal_axes_of_inertia()
   forever = "--Forever" in sys.argv[1:]
   while 1:
     exercise_minimum_covering_sphere()
