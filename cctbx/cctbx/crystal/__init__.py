@@ -8,7 +8,14 @@ from cctbx_crystal_ext import *
 from cctbx.crystal.find_best_cell import find_best_cell
 from cctbx import uctbx
 
+import scitbx.stl.set
+import scitbx.stl.vector
 import sys
+
+pair_sym_ops = sgtbx.stl_vector_rt_mx
+
+pair_asu_j_sym_groups = scitbx.stl.vector.set_unsigned
+pair_asu_j_sym_group = scitbx.stl.set.unsigned
 
 class symmetry(object):
 

@@ -4,7 +4,7 @@
 #include <cctbx/sgtbx/rt_mx.h>
 #include <map>
 
-namespace cctbx { namespace restraints {
+namespace cctbx { namespace crystal {
 
   typedef sgtbx::rt_mx pair_sym_op;
   typedef std::vector<sgtbx::rt_mx> pair_sym_ops;
@@ -14,8 +14,8 @@ namespace cctbx { namespace restraints {
   typedef std::set<unsigned> pair_asu_j_sym_group;
   typedef std::vector<pair_asu_j_sym_group> pair_asu_j_sym_groups;
   typedef std::map<unsigned, pair_asu_j_sym_groups> pair_asu_dict;
-  typedef af::shared<pair_asu_dict> pair_asu_table;
+  typedef af::shared<pair_asu_dict> pair_asu_table_table;
 
-}} // namespace cctbx::restraints
+}} // namespace cctbx::crystal
 
 #endif // CCTBX_RESTRAINTS_PAIR_TABLES_H

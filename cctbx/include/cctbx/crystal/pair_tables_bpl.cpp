@@ -4,9 +4,9 @@
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
 #include <scitbx/stl/map_wrapper.h>
 #include <scitbx/stl/vector_wrapper.h>
-#include <cctbx/restraints/pair_tables.h>
+#include <cctbx/crystal/pair_tables.h>
 
-namespace cctbx { namespace restraints {
+namespace cctbx { namespace crystal {
 namespace {
 
   struct pair_sym_table_wrappers
@@ -33,7 +33,7 @@ namespace {
       scitbx::stl::boost_python::map_wrapper<pair_asu_dict, rir>::wrap(
         "pair_asu_dict");
       scitbx::af::boost_python::shared_wrapper<pair_asu_dict, rir>::wrap(
-        "pair_asu_table");
+        "pair_asu_table_table");
     }
   };
 
@@ -51,4 +51,4 @@ namespace boost_python {
   void
   wrap_pair_tables() { wrap_all(); }
 
-}}} // namespace cctbx::restraints::boost_python
+}}} // namespace cctbx::crystal::boost_python

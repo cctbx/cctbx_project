@@ -117,7 +117,6 @@ if (not env_etc.no_boost_python):
   SConscript("eltbx/boost_python/SConscript")
   SConscript("uctbx/boost_python/SConscript")
   SConscript("sgtbx/boost_python/SConscript")
-  SConscript("crystal/boost_python/SConscript")
   SConscript("adptbx/boost_python/SConscript")
   SConscript("miller/boost_python/SConscript")
   SConscript("xray/boost_python/SConscript")
@@ -126,4 +125,5 @@ if (not env_etc.no_boost_python):
   SConscript("mintbx/boost_python/SConscript")
   SConscript("dmtbx/boost_python/SConscript")
   SConscript("boost_python/SConscript")
+  SConscript("include/cctbx/crystal/SConscript")
   SConscript("include/cctbx/restraints/SConscript")
