@@ -52,9 +52,9 @@ namespace cctbx { namespace eltbx { namespace xray_scattering {
       }
 
       double
-      target_at_d_star_sq(double d_star_sq) const
+      target_at_d_star_sq(double d_star_sq, double weight) const
       {
-        return scitbx::fn::pow2(target_term_at_d_star_sq(d_star_sq));
+        return weight * scitbx::fn::pow2(target_term_at_d_star_sq(d_star_sq));
       }
 
       af::shared<double>
@@ -71,20 +71,22 @@ namespace cctbx { namespace eltbx { namespace xray_scattering {
       af::shared<double>
       sum_of_gradients_at_points(
         af::const_ref<double> const& d_star_sq,
+        af::const_ref<double> const& weights,
         af::const_ref<double> const& target_terms)
       {
+        CCTBX_ASSERT(weights.size() == d_star_sq.size());
         CCTBX_ASSERT(target_terms.size() == d_star_sq.size());
         af::shared<double> result(n_ab() * 2, 0);
         af::ref<double> g = result.ref();
         for(std::size_t i_point=0;i_point<d_star_sq.size();i_point++) {
           gaussian grg = gradients_at_d_star_sq(d_star_sq[i_point]);
-          double ttt = 2 * target_terms[i_point];
+          double twtt = 2 * weights[i_point] * target_terms[i_point];
           std::size_t i=0;
           for(;i<n_ab();i++) {
-            g[i] += ttt * grg.a(i);
+            g[i] += twtt * grg.a(i);
           }
           for(std::size_t j=0;j<n_ab();j++,i++) {
-            g[i] += ttt * grg.b(j);
+            g[i] += twtt * grg.b(j);
           }
         }
         return result;

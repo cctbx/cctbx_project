@@ -14,11 +14,13 @@ def d_star_sq_points(d_min, n_points):
 
 class minimize:
 
-  def __init__(self, diff_gaussian, d_star_sq, b_min,
+  def __init__(self, diff_gaussian, d_star_sq, weights, b_min,
                      lbfgs_termination_params=None,
                      lbfgs_core_params=lbfgs.core_parameters(m=10)):
     adopt_init_args(self, locals())
     self.n = diff_gaussian.n_ab() * 2
+    if (weights is None):
+      self.weights = flex.double(d_star_sq.size(), 1)
     self.x = flex.double(self.n, 0)
     self.first_target_value = None
     self.minimizer = lbfgs.run(
@@ -37,9 +39,9 @@ class minimize:
   def compute_target(self, compute_gradients):
     dg = self.diff_gaussian_shifted
     tt = dg.target_terms_at_points(self.d_star_sq)
-    self.f = flex.sum(flex.pow2(tt))
+    self.f = flex.sum(self.weights * flex.pow2(tt))
     if (compute_gradients):
-      self.g = dg.sum_of_gradients_at_points(self.d_star_sq, tt)
+      self.g = dg.sum_of_gradients_at_points(self.d_star_sq, self.weights, tt)
     else:
       self.g = None
 
@@ -80,7 +82,8 @@ def multi_trial(reference_gaussian, n_terms, d_star_sq, n_trials, verbose=0):
       reference_gaussian=reference_gaussian,
       n_terms=n_terms,
       random_select=random_select)
-    minimized = minimize(gdiff, d_star_sq=d_star_sq, b_min=-1)
+    minimized = minimize(
+      gdiff, d_star_sq=d_star_sq, weights=d_star_sq, b_min=-1)
     if (0 or verbose):
       print minimized.final_target_value
       minimized.final_diff_gaussian.show()
