@@ -69,7 +69,7 @@ def exercise_flex_xray_scatterer():
   assert approx_equal(a[-1].occupancy, 0.7)
   p = pickle.dumps(a)
   b = pickle.loads(p)
-  for i,ai in a.items():
+  for i,ai in enumerate(a):
     bi = b[i]
     assert ai.label == bi.label
     assert ai.scattering_type == bi.scattering_type

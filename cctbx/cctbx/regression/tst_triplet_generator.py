@@ -51,7 +51,7 @@ def direct_space_squaring(start, selection_fixed):
 def reciprocal_space_squaring(start, selection_fixed, verbose):
   tprs = dmtbx.triplet_generator(miller_set=start)
   if (0 or verbose):
-    for ih in start.indices()[:1].indices():
+    for ih in xrange(start.indices()[:1].size()):
       for relation in tprs.relations_for(ih):
         print relation.format(start.indices(), ih),
         if (not relation.is_sigma_2(ih)):
@@ -97,7 +97,7 @@ def exercise_truncate(q_large):
   n_rel_full = tprs_full.n_relations()
   n_rel = tprs.n_relations()
   amp = q_large.data()
-  for ih in q_large.indices().indices():
+  for ih in xrange(q_large.indices().size()):
     if (n_rel[ih] == n_rel_full[ih]): continue
     aa_full = flex.double()
     for relation in tprs_full.relations_for(ih):
@@ -163,7 +163,7 @@ def exercise(space_group_info, n_scatterers=8, d_min=2, verbose=0,
       reciprocal_space_result)
     if (0 or verbose):
       print "mwpe: %.2f" % mwpe, start.space_group_info()
-    for i,h in direct_space_result.indices().items():
+    for i,h in enumerate(direct_space_result.indices()):
       amp_d,phi_d = complex_math.abs_arg(
         direct_space_result.data()[i], deg=1)
       amp_r,phi_r = complex_math.abs_arg(

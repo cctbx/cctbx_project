@@ -1112,7 +1112,7 @@ def exercise_sym_equiv_sites():
       assert tuple(e.sym_op_indices()) == sym_i
       assert e.is_special_position() \
           == (len(e.coordinates()) < e.space_group().order_z())
-      for i in e.coordinates().indices():
+      for i in xrange(e.coordinates().size()):
         assert e.sym_op(i) == g(sym_i[i])
     for i in xrange(2):
       if (i == 0):
@@ -1209,9 +1209,9 @@ def exercise_sym_equiv_sites():
       assert approx_equal(d.sym_op() * x, x)
       a = d.apply(sites_frac=e.coordinates())
       assert a.size() == e.coordinates().size()
-      for i in e.coordinates().indices():
-        assert approx_equal(a[i], e.coordinates()[i])
-      for i,y in e.coordinates().items():
+      for i,y in enumerate(e.coordinates()):
+        assert approx_equal(a[i], y)
+      for i,y in enumerate(e.coordinates()):
         d = sgtbx.min_sym_equiv_distance_info(e, y)
         assert approx_equal(d.dist(), 0)
         assert approx_equal(d.sym_op() * y, x)
@@ -1233,8 +1233,8 @@ def exercise_sym_equiv_sites():
     e = sym_equiv_sites(g, x)
     c = e.coordinates()
     assert c.size() == g.order_z()
-    for i in c.indices():
-      assert approx_equal(g(i) * x, c[i])
+    for i,v in enumerate(c):
+      assert approx_equal(g(i) * x, v)
   g = sgtbx.space_group()
   e = sym_equiv_sites(g, (0.016, 0.895, 0.111), uctbx.unit_cell(()))
   d = sgtbx.min_sym_equiv_distance_info(e, (0.939, 0.128, 0.178))

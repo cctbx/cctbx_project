@@ -236,7 +236,7 @@ def exercise_from_scatterers_direct(space_group_info,
     structure.scatterers(),
     structure.scattering_dict()).f_calc()
   if (0 or verbose):
-    for i,h in f_obs_exact.indices().items():
+    for i,h in enumerate(f_obs_exact.indices()):
       print h
       print f_obs_simple[i]
       print f_obs_exact.data()[i]

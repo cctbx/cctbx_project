@@ -49,7 +49,7 @@ class weighted_choice:
 
   def next(self):
     r = random.random()
-    for i,w in self.accumulated_weights.items():
+    for i,w in enumerate(self.accumulated_weights):
       if (w >= r): return i
     return self.accumulated_weights.size()-1
 

@@ -141,7 +141,7 @@ def xray_reflection(names, miller_array):
   a("  reflection")
   data = miller_array.data()
   sigmas = miller_array.sigmas()
-  for i,h in miller_array.indices().items():
+  for i,h in enumerate(miller_array.indices()):
     s = "    index %d %d %d" % h + " %s %s" % (names[0], str(data[i]))
     if (sigmas is not None):
       s += " %s %s" % (names[1], str(sigmas[i]))

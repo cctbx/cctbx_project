@@ -61,7 +61,7 @@ def exercise(
     phases_p1 = phases.expand_to_p1(phase_deg)
     assert flex.order(miller_set_p1.indices(), phases_p1.indices()) == 0
     f_calc_p1_phases = f_calc_p1.arg(phase_deg)
-    for i,phase in f_calc_p1_phases.data().items():
+    for i,phase in enumerate(f_calc_p1_phases.data()):
       e = scitbx.math.phase_error(phase, phases_p1.data()[i], deg=phase_deg)
       assert e < 1.e-6
   ctrl_amplitudes_p1 = abs(miller_set_p1.structure_factors_from_scatterers(

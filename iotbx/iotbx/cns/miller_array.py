@@ -21,7 +21,7 @@ def miller_array_export_as_cns_hkl(self, file_object, file_name=None, info=[]):
       f_obs = self
     print >> f, "DECLare NAME=FOBS  DOMAin=RECIprocal TYPE=REAL END"
     print >> f, "DECLare NAME=SIGMA DOMAin=RECIprocal TYPE=REAL END"
-    for i,h in f_obs.indices().items():
+    for i,h in enumerate(f_obs.indices()):
       print >> f, "INDEx %d %d %d" % h,
       print >> f, "FOBS=%.6g" % f_obs.data()[i],
       print >> f, "SIGMA=%.6g" % f_obs.sigmas()[i]
@@ -29,7 +29,7 @@ def miller_array_export_as_cns_hkl(self, file_object, file_name=None, info=[]):
     print >> f, "DECLare NAME=F  DOMAin=RECIprocal TYPE=COMPLEX END"
     a = flex.abs(self.data())
     p = flex.arg(self.data(), True)
-    for i,h in self.indices().items():
+    for i,h in enumerate(self.indices()):
       print >> f, "INDEx %d %d %d" % h,
       print >> f, "F=%.6g %.6g" % (a[i], p[i])
   else:
@@ -42,7 +42,7 @@ def miller_array_export_as_cns_hkl(self, file_object, file_name=None, info=[]):
     else:
       raise RuntimeError, \
         "Cannot write array type %s to CNS reflection file" % type(self.data())
-    for i,h in self.indices().items():
+    for i,h in enumerate(self.indices()):
       print >> f, "INDEx %d %d %d" % h,
       print >> f, ("DATA="+fmt) % self.data()[i]
 

@@ -88,7 +88,7 @@ def exercise(space_group_info, anomalous_flag, d_min=2., verbose=0):
     if (anisotropic_flag):
       u_star = adptbx.u_cif_as_u_star(
         f_ref.unit_cell(), adptbx.b_as_u(b_cif))
-    for i,h in f_ref.indices().items():
+    for i,h in enumerate(f_ref.indices()):
       if (anisotropic_flag):
         dw = adptbx.debye_waller_factor_u_star(h, u_star)
       else:

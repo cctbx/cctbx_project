@@ -202,11 +202,6 @@ def exercise_misc():
   assert f1.id() == f.id()
   assert f1.nd() == 1
   assert f1.size() == 6
-  i = flex.double_items()
-  f = flex.double(flex.grid((2,3)), 12)
-  i = flex.double_items(f)
-  assert list(f.indices()) == range(6)
-  assert list(f.items()) == zip(range(6), [12] * 6)
   g = flex.grid((1,2,3), (4,6,8)).set_focus((3,5,7))
   f = flex.double(g)
   assert f.focus_size_1d() == 2*3*4
@@ -296,8 +291,6 @@ def exercise_push_back_etc():
   b = flex.double((4, 5, 6))
   a.extend(b)
   assert tuple(a) == (0, 1, 2, 3, 4, 5, 6)
-  assert tuple(a.indices()) == tuple(xrange(a.size()))
-  assert list(a.items()) == zip(xrange(a.size()), a)
   g = flex.grid((2,3,5))
   f = flex.double(g, 11)
   g = flex.grid((2,3,7))

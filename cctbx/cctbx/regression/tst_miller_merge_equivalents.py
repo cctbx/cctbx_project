@@ -22,13 +22,13 @@ def exercise(space_group_info, anomalous_flags,
       assert flex.linear_correlation(j.sigmas(),
                                      a.sigmas()).coefficient() > 1-1.e-6
   redundancies = flex.size_t()
-  for i in fs.indices().indices():
+  for i in xrange(fs.indices().size()):
     redundancies.append(random.randrange(5)+1)
   space_group = space_group_info.group()
   r_indices = flex.miller_index()
   r_data = flex.double()
   r_sigmas = flex.double()
-  for i,n in redundancies.items():
+  for i,n in enumerate(redundancies):
     h = fs.indices()[i]
     h_eq = miller.sym_equiv_indices(space_group, h).indices()
     for j in xrange(n):
@@ -42,9 +42,7 @@ def exercise(space_group_info, anomalous_flags,
       anomalous_flag=fs.anomalous_flag()),
     data=r_data,
     sigmas=r_sigmas)
-  noise = flex.double()
-  for i in r.indices().indices():
-    noise.append(random.random())
+  noise = flex.random_double(size=r.indices().size())
   r = r.sort(by_value=noise)
   m = r.merge_equivalents()
   j = m.array().adopt_set(fs)

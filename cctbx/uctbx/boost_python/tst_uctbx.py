@@ -151,16 +151,16 @@ def exercise_miller_index_methods():
                             u.stol,
                             u.d):
     values = d_spacing_measure(miller_indices)
-    for i,v in values.items():
+    for i,v in enumerate(values):
       assert approx_equal(
         v, d_spacing_measure(miller_indices[i]))
   values = u.two_theta(miller_indices, 1.5)
-  for i,v in values.items():
+  for i,v in enumerate(values):
     assert approx_equal(
       v, u.two_theta(miller_indices[i], 1.5))
   for deg in (0,1):
     values = u.two_theta(miller_indices, 1.5, deg)
-    for i,v in values.items():
+    for i,v in enumerate(values):
       assert approx_equal(
         v, u.two_theta(miller_indices[i], 1.5, deg))
   assert u.max_d_star_sq(miller_indices) == u.d_star_sq((-3,4,-5))

@@ -96,7 +96,7 @@ def HKLF(f_calc):
   lines = []
   l = lines.append
   l("HKLF -3")
-  for i,h in f_calc.indices().items():
+  for i,h in enumerate(f_calc.indices()):
     f = abs(f_calc.data()[i])
     s = "%8.2f" % (f,)
     assert  len(s) == 8, "structure factor does not fit f8.2 format."

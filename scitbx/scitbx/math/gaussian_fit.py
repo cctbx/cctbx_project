@@ -394,7 +394,7 @@ def find_max_x_multi(null_fit,
   i_x_begin = None
   i_x_end = None
   y0 = null_fit.table_y()[0]
-  for i,target_value in null_fit.table_y().items():
+  for i,target_value in enumerate(null_fit.table_y()):
     if (i_x_begin is None and target_value < y0 * factor_y_x_begin):
       i_x_begin = i
     if (i_x_end is None and target_value < y0 * factor_y_x_end):

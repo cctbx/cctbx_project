@@ -331,7 +331,7 @@ class cns_reflection_file:
       assert not match.have_singles()
       matches.append(match)
     hl = flex.hendrickson_lattman()
-    for ih in miller_indices.indices():
+    for ih in xrange(miller_indices.size()):
       coeff = []
       for ic in xrange(4):
         ih0, ih1 = matches[ic].pairs()[ih]
