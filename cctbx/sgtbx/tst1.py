@@ -51,6 +51,13 @@ print P2ZOp.InvM().as_xyz()
 sgop = sgo.ChangeBasis(Z2POp)
 sgoz = sgop.ChangeBasis(P2ZOp)
 assert sgo == sgoz
+x = (0.123, 0.456, 0.789)
+px = Z2POp(x)
+zx = P2ZOp(px)
+print "x", str(x)
+print "px", str(px)
+print "zx", str(zx)
+assert str(x) == str(zx)
 
 sgo = sgtbx.SgOps("P 2")
 sgo.ParseHallSymbol("P 2x")

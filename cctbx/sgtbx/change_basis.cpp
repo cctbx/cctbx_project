@@ -36,6 +36,20 @@ namespace sgtbx {
     return mx_rt_invmx.newBaseFactors(M);
   }
 
+  MatrixLite::dtype::Vec3
+  ChOfBasisOp::operator()(const MatrixLite::dtype::Vec3& X) const {
+    MatrixLite::dtype::Vec3 result;
+    const double RBF = Mx.RBF();
+    const double TBF = Mx.TBF();
+    for(int i=0;i<3;i++) {
+      result[i] = (  Mx.Rpart()[3 * i + 0] * X[0]
+                   + Mx.Rpart()[3 * i + 1] * X[1]
+                   + Mx.Rpart()[3 * i + 2] * X[2]) / RBF
+                  + Mx.Tpart()[i] / TBF;
+    }
+    return result;
+  }
+
   TrOps TrOps::ChangeBasis(const ChOfBasisOp& CBOp) const
   {
     TrOps result;

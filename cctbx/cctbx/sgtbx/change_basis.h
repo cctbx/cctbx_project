@@ -110,6 +110,9 @@ namespace sgtbx {
       RTMx operator()(const RTMx& RT) const;
       //! M() * (RotMx(SignI)|T) * InvM()
       TrVec operator()(const TrVec& T, int SignI) const;
+      //! Transform fractional coordinates: M() * X
+      MatrixLite::dtype::Vec3
+      operator()(const MatrixLite::dtype::Vec3& X) const;
       //! M() = CBOp.M() * M(); InvM() = InvM() * CBOp.InvM();
       inline void update(const ChOfBasisOp& CBOp) {
         Mx = (CBOp.M() * Mx).newBaseFactors(CBOp.M());

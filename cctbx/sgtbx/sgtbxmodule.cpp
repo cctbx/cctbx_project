@@ -73,6 +73,11 @@ namespace {
     return RTMx(RotMx(Rpart, RBF), TrVec(Tpart, TBF));
   }
 
+  MatrixLite::dtype::Vec3
+  ChOfBasisOp_call(const ChOfBasisOp& CBOp, const MatrixLite::dtype::Vec3& X) {
+    return CBOp(X);
+  }
+
   int SgOps_ParseHallSymbol_parse_string(SgOps& sgo, parse_string& HSym) {
     return sgo.ParseHallSymbol(HSym);
   }
@@ -440,6 +445,7 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_ChOfBasisOp.def(&ChOfBasisOp::M, "M");
     py_ChOfBasisOp.def(&ChOfBasisOp::InvM, "InvM");
     py_ChOfBasisOp.def(&ChOfBasisOp::swap, "swap");
+    py_ChOfBasisOp.def(ChOfBasisOp_call, "__call__");
 
     py_Miller_SymEquivIndex.def(&Miller::SymEquivIndex::HR, "HR");
     py_Miller_SymEquivIndex.def(&Miller::SymEquivIndex::HT, "HT");
