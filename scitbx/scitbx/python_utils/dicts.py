@@ -1,4 +1,12 @@
-class value(dict):
+class easy(dict):
+
+  def __getattr__(self, key):
+    dict.__getitem__(self, key)
+
+  def __setattr__(self, key, value):
+    dict.__setitem__(self, key, value)
+
+class with_default_value(dict):
 
   def __init__(self, default_value):
     self.default_value = default_value
@@ -10,7 +18,7 @@ class value(dict):
     dict.__setitem__(self, key, val)
     return val
 
-class factory(dict):
+class with_default_factory(dict):
 
   def __init__(self, default_factory):
     self.default_factory = default_factory
