@@ -1,4 +1,5 @@
-from cctbx import xray
+import cctbx.xray.structure_factors
+from cctbx.xray import ext
 from cctbx.array_family import flex
 import scitbx.lbfgs
 from scitbx.python_utils.misc import adopt_init_args
@@ -13,7 +14,7 @@ class lbfgs:
                      min_iterations=10, max_iterations=None):
     adopt_init_args(self, locals())
     self.structure_factors_from_scatterers = \
-      xray.structure_factors.from_scatterers(
+      cctbx.xray.structure_factors.from_scatterers(
         miller_set=self.target_functor.f_obs())
     self.pack_parameters()
     self.first_target_value = None
@@ -25,7 +26,7 @@ class lbfgs:
 
   def pack_parameters(self):
     self.x = flex.double()
-    self.n = xray.pack_parameters(
+    self.n = ext.pack_parameters(
       None,
       self.xray_structure.scatterers(),
       self.x,
@@ -34,7 +35,7 @@ class lbfgs:
       self.options.occupancy)
 
   def unpack_parameters(self):
-    xray.unpack_parameters(
+    ext.unpack_parameters(
       None,
       self.xray_structure.space_group().order_z(),
       self.x, 0,
@@ -59,7 +60,7 @@ class lbfgs:
       xray_structure=self.xray_structure,
       miller_set=self.target_functor.f_obs(),
       d_target_d_f_calc=self.target_result.derivatives(),
-      gradient_flags=xray.gradient_flags(
+      gradient_flags=cctbx.xray.structure_factors.gradient_flags(
         site=self.options.site,
         u_iso=self.options.u_iso,
         occupancy=self.options.occupancy),

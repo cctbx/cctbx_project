@@ -1,28 +1,13 @@
-from cctbx import miller
+from cctbx.xray.structure_factors.misc import quality_factor_from_any
+from cctbx.xray.structure_factors.from_scatterers_direct \
+  import from_scatterers_direct
+from cctbx.xray.structure_factors.from_scatterers_fft \
+  import from_scatterers_fft
+from cctbx.xray import ext
 from cctbx import maptbx
 from cctbx import crystal
-from cctbx import adptbx
-from cctbx.array_family import flex
 from scitbx import fftpack
-from scitbx.python_utils.misc import adopt_init_args, user_plus_sys_time
-
-def quality_factor_from_any(d_min=None,
-                            grid_resolution_factor=None,
-                            quality_factor=None,
-                            u_extra=None,
-                            b_extra=None):
-  assert [quality_factor, u_extra, b_extra].count(None) >= 2
-  if (u_extra is not None):
-    b_extra = adptbx.u_as_b(u_extra)
-  if (b_extra is not None):
-    assert [d_min, grid_resolution_factor].count(None) == 0
-    assert d_min > 0
-    sigma = 1 / (2 * grid_resolution_factor)
-    log_quality_factor = b_extra * sigma * (sigma - 1) / (d_min * d_min)
-    quality_factor = 10**log_quality_factor
-  elif (quality_factor is None):
-    quality_factor = 100
-  return quality_factor
+from scitbx.python_utils.misc import adopt_init_args
 
 class from_scatterers(crystal.symmetry):
 
@@ -108,8 +93,7 @@ class from_scatterers(crystal.symmetry):
 
   def u_extra(self):
     if (self._u_extra is None):
-      from cctbx import xray
-      self._u_extra = xray.calc_u_extra(
+      self._u_extra = ext.calc_u_extra(
         self.d_min(),
         self.grid_resolution_factor(),
         self.quality_factor())
@@ -233,157 +217,3 @@ class _estimate_time_fft:
              self.min_n_miller_indices, self.max_n_miller_indices,
              self.min_time_collect, self.max_time_collect,
              n_miller_indices)
-
-class _from_scatterers_base:
-
-  def __init__(self, manager, xray_structure, miller_set):
-    adopt_init_args(self, locals(), hide=0001)
-    assert xray_structure is not None and miller_set is not None
-    assert xray_structure.unit_cell().is_similar_to(miller_set.unit_cell())
-    assert xray_structure.space_group() == miller_set.space_group()
-    if (manager is not None):
-      assert xray_structure.unit_cell().is_similar_to(manager.unit_cell())
-      assert xray_structure.space_group() == manager.space_group()
-
-  def manager(self):
-    return self._manager
-
-  def xray_structure(self):
-    return self._xray_structure
-
-  def miller_set(self):
-    return self._miller_set
-
-class from_scatterers_direct(_from_scatterers_base):
-
-  def __init__(self, manager=None,
-                     xray_structure=None,
-                     miller_set=None,
-                     d_target_d_f_calc=None,
-                     gradient_flags=None):
-    _from_scatterers_base.__init__(self, manager, xray_structure, miller_set)
-    self._d_target_d_f_calc = d_target_d_f_calc
-    if (d_target_d_f_calc is None):
-      d_target_d_f_calc = flex.complex_double()
-    from cctbx import xray
-    if (gradient_flags is None):
-      gradient_flags = xray.gradient_flags()
-    timer = user_plus_sys_time()
-    self._results = xray.structure_factors_direct_with_first_derivatives(
-      self._miller_set.unit_cell(),
-      self._miller_set.space_group(),
-      self._miller_set.indices(),
-      self._xray_structure.scatterers(),
-      d_target_d_f_calc,
-      gradient_flags)
-    if (manager is not None):
-      manager.estimate_time_direct.register(
-        xray_structure.scatterers().size() * miller_set.indices().size(),
-        timer.elapsed())
-
-  def f_calc(self):
-    return miller.array(self._miller_set, self._results.f_calc())
-
-  def d_target_d_f_calc(self):
-    return self._d_target_d_f_calc
-
-  def d_target_d_site(self):
-    d_target_d_site = self._results.d_target_d_site()
-    xray_structure = self.xray_structure()
-    assert d_target_d_site.size() == xray_structure.scatterers().size()
-    return d_target_d_site
-
-  def d_target_d_u_iso(self):
-    d_target_d_u_iso = self._results.d_target_d_u_iso()
-    xray_structure = self.xray_structure()
-    assert d_target_d_u_iso.size() == xray_structure.scatterers().size()
-    return d_target_d_u_iso
-
-  def d_target_d_u_star(self):
-    d_target_d_u_star = self._results.d_target_d_u_star()
-    xray_structure = self.xray_structure()
-    assert d_target_d_u_star.size() == xray_structure.scatterers().size()
-    return d_target_d_u_star
-
-  def d_target_d_occupancy(self):
-    d_target_d_occupancy = self._results.d_target_d_occupancy()
-    xray_structure = self.xray_structure()
-    assert d_target_d_occupancy.size() == xray_structure.scatterers().size()
-    return d_target_d_occupancy
-
-  def d_target_d_fp(self):
-    d_target_d_fp = self._results.d_target_d_fp()
-    xray_structure = self.xray_structure()
-    assert d_target_d_fp.size() == xray_structure.scatterers().size()
-    return d_target_d_fp
-
-  def d_target_d_fdp(self):
-    d_target_d_fdp = self._results.d_target_d_fdp()
-    xray_structure = self.xray_structure()
-    assert d_target_d_fdp.size() == xray_structure.scatterers().size()
-    return d_target_d_fdp
-
-  def d_target_d_site_inplace_frac_as_cart(self, d_target_d_site):
-    from cctbx import xray
-    xray.structure_factors_d_target_d_site_in_place_frac_as_cart(
-      self.miller_set().unit_cell(), d_target_d_site)
-
-class from_scatterers_fft(_from_scatterers_base):
-
-  def __init__(self, manager,
-                     xray_structure,
-                     miller_set,
-                     d_target_d_f_calc=None,
-                     gradient_flags=None,
-                     force_complex=00000,
-                     electron_density_must_be_positive=0001):
-    _from_scatterers_base.__init__(self, manager, xray_structure, miller_set)
-    assert manager.symmetry_flags().use_space_group_symmetry()
-    assert miller_set.d_min() >= manager.d_min()
-    assert d_target_d_f_calc is None, "FFT derivatives not implemented."
-    assert gradient_flags is None, "FFT derivatives not implemented."
-    manager.setup_fft() # before timing
-    time_sampling = user_plus_sys_time()
-    from cctbx import xray
-    sampled_density = xray.sampled_model_density(
-      xray_structure.unit_cell(),
-      xray_structure.scatterers(),
-      manager.rfft().n_real(),
-      manager.rfft().m_real(),
-      manager.u_extra(),
-      manager.wing_cutoff(),
-      manager.exp_table_one_over_step_size(),
-      force_complex,
-      electron_density_must_be_positive)
-    time_sampling = time_sampling.elapsed()
-    time_symmetry_mapping = user_plus_sys_time()
-    sampled_density.apply_symmetry(manager.crystal_gridding_tags().tags())
-    time_symmetry_mapping = time_symmetry_mapping.elapsed()
-    time_fft = user_plus_sys_time()
-    if (not sampled_density.anomalous_flag()):
-      map = sampled_density.real_map()
-      sf_map = manager.rfft().forward(map)
-      collect_conj = 1
-    else:
-      cfft = fftpack.complex_to_complex_3d(manager.rfft().n_real())
-      map = sampled_density.complex_map()
-      sf_map = cfft.backward(map)
-      collect_conj = 0
-    time_fft = time_fft.elapsed()
-    time_collect = user_plus_sys_time()
-    self._f_calc_data = maptbx.structure_factors.from_map(
-      sampled_density.anomalous_flag(),
-      miller_set.indices(),
-      sf_map,
-      collect_conj).data()
-    sampled_density.eliminate_u_extra_and_normalize(
-      miller_set.indices(),
-      self._f_calc_data)
-    time_collect = time_collect.elapsed()
-    manager.estimate_time_fft.register(
-      xray_structure.scatterers().size(),
-      miller_set.indices().size(),
-      time_sampling, time_symmetry_mapping, time_fft, time_collect)
-
-  def f_calc(self):
-    return miller.array(self.miller_set(), self._f_calc_data)

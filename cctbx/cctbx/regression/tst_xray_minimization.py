@@ -1,4 +1,3 @@
-from cctbx.xray import minimization
 from cctbx import xray
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
@@ -37,7 +36,7 @@ def exercise(target_functor, space_group_info, anomalous_flag,
       == tuple(structure_shake.special_position_indices())
   if (0 or verbose):
     structure_shake.show_summary().show_scatterers()
-  minimizer = minimization.lbfgs(
+  minimizer = xray.minimization.lbfgs(
     target_functor(f_obs),
     minimization_options,
     structure_shake)
@@ -55,9 +54,9 @@ def exercise(target_functor, space_group_info, anomalous_flag,
   assert c.coefficient() > 0.999
 
 def run_call_back(flags, space_group_info):
-  for target_functor in xray.target_functors.values():
+  for target_functor in xray.target_functors.registry().values():
     for i_options in (1,2,4): #SWITCH
-      minimization_options = minimization.options(
+      minimization_options = xray.minimization.options(
         site=(i_options % 2),
         u_iso=(i_options/2 % 2),
         occupancy=(i_options/4 % 2))

@@ -162,7 +162,7 @@ def exercise(target_functor, parameter_name, space_group_info,
     xray_structure=structure,
     miller_set=f_obs,
     d_target_d_f_calc=target_result.derivatives(),
-    gradient_flags=xray.gradient_flags(
+    gradient_flags=xray.structure_factors.gradient_flags(
       site=(parameter_name=="site" or random.choice((0,1))),
       u_iso=(parameter_name=="u_iso" or random.choice((0,1))),
       u_aniso=(parameter_name=="u_star" or random.choice((0,1))),
@@ -204,7 +204,7 @@ def run_call_back(flags, space_group_info):
   if (flags.Cart): coordinate_systems.append(0001)
   if (len(coordinate_systems) == 0):
     coordinate_systems = [00000, 0001]
-  for target_functor in xray.target_functors.values():
+  for target_functor in xray.target_functors.registry().values():
     for parameter_name in ("site", "u_iso", "u_star", "occupancy",
                            "fp", "fdp")[:]: #SWITCH
       for anomalous_flag in (00000, 0001)[:]: #SWITCH
