@@ -24,6 +24,20 @@ namespace {
 
 # include <cctbx/basic/from_bpl_import.h>
 
+  int rational_numerator(const rational& r) {
+    return r.numerator();
+  }
+  int rational_denominator(const rational& r) {
+    return r.denominator();
+  }
+
+  std::string rational_format_0(const rational& r) {
+    return r.format();
+  }
+  std::string rational_format_1(const rational& r, bool Decimal) {
+    return r.format(Decimal);
+  }
+
   SpaceGroupSymbols
   SpaceGroupSymbolIterator_getitem(SpaceGroupSymbolIterator& iter,
                                    std::size_t) {
@@ -209,6 +223,14 @@ namespace {
   std::string SgOps_BuildLookupSymbol_1(const SgOps& sgo,
                                         const SpaceGroupType& SgType) {
     return sgo.BuildLookupSymbol(SgType);
+  }
+
+  Brick SgOps_getBrick_0(const SgOps& sgo) {
+    return sgo.getBrick();
+  }
+  Brick SgOps_getBrick_1(const SgOps& sgo,
+                               const SpaceGroupType& SgType) {
+    return sgo.getBrick(SgType);
   }
 
   python::string SgOps_repr(const SgOps& sgo)
@@ -441,6 +463,8 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     this_module.add(ref(to_python(CRBF)), "CRBF");
     this_module.add(ref(to_python(CTBF)), "CTBF");
 
+    class_builder<rational>
+    py_rational(this_module, "rational");
     class_builder<SpaceGroupSymbols>
     py_SpaceGroupSymbols(this_module, "SpaceGroupSymbols");
     class_builder<SpaceGroupSymbolIterator>
@@ -483,9 +507,21 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_SpecialPosition(this_module, "SpecialPosition");
     class_builder<SymEquivCoordinates<double> >
     py_SymEquivCoordinates(this_module, "SymEquivCoordinates");
+    class_builder<BrickPoint>
+    py_BrickPoint(this_module, "BrickPoint");
+    class_builder<Brick>
+    py_Brick(this_module, "Brick");
 
     python::import_converters<uctbx::UnitCell>
     UnitCell_converters("uctbx", "UnitCell");
+
+    py_rational.def(constructor<int>());
+    py_rational.def(constructor<int, int>());
+    py_rational.def(rational_numerator, "numerator");
+    py_rational.def(rational_denominator, "denominator");
+    py_rational.def(rational_format_0, "format");
+    py_rational.def(rational_format_0, "__repr__");
+    py_rational.def(rational_format_1, "format");
 
     py_SpaceGroupSymbols.def(constructor<const std::string&>());
     py_SpaceGroupSymbols.def(constructor<const std::string&,
@@ -689,6 +725,8 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_SgOps.def(&SgOps::MatchTabulatedSettings, "MatchTabulatedSettings");
     py_SgOps.def(SgOps_BuildLookupSymbol_0, "BuildLookupSymbol");
     py_SgOps.def(SgOps_BuildLookupSymbol_1, "BuildLookupSymbol");
+    py_SgOps.def(SgOps_getBrick_0, "getBrick");
+    py_SgOps.def(SgOps_getBrick_1, "getBrick");
     py_SgOps.def(SgOps_repr, "__repr__");
     py_SgOps.def(SgOps_getinitargs, "__getinitargs__");
 
@@ -769,7 +807,8 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_SpecialPosition.def(&SpecialPosition::isWellBehaved, "isWellBehaved");
     py_SpecialPosition.def(&SpecialPosition::M, "M");
     py_SpecialPosition.def(&SpecialPosition::SpecialOp, "SpecialOp");
-    py_SpecialPosition.def(SpecialPosition_getPointGroupType,"getPointGroupType");
+    py_SpecialPosition.def(SpecialPosition_getPointGroupType,
+                                          "getPointGroupType");
     py_SpecialPosition.def(&SpecialPosition::expand, "expand");
     py_SpecialPosition.def(&SpecialPosition::isExpanded, "isExpanded");
     py_SpecialPosition.def(&SpecialPosition::CheckExpanded, "CheckExpanded");
@@ -807,6 +846,14 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_SymEquivCoordinates.def(
       &SymEquivCoordinates<double>::StructureFactor,
                                    "StructureFactor");
+
+    py_BrickPoint.def(&BrickPoint::Point, "Point");
+    py_BrickPoint.def(&BrickPoint::Off, "Off");
+
+    py_Brick.def(&Brick::operator(), "__call__");
+    py_Brick.def(&Brick::format, "format");
+    py_Brick.def(&Brick::format, "__repr__");
+
     sgtbx::sanity_check();
   }
   catch(...)

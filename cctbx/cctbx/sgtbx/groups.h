@@ -23,6 +23,7 @@
 #include <cctbx/sgtbx/utils.h>
 #include <cctbx/sgtbx/miller.h>
 #include <cctbx/sgtbx/tables.h>
+#include <cctbx/sgtbx/asym_units.h>
 #include <cctbx/uctbx.h>
 
 namespace sgtbx {
@@ -610,6 +611,16 @@ namespace sgtbx {
       /*! See previous overload for this function.
        */
       std::string BuildLookupSymbol() const;
+      //! Get a parallelepiped that contains an asymmetric unit.
+      /*! See class Brick for details.
+       */
+      inline Brick getBrick() const { return Brick(*this); }
+      //! Get a parallelepiped that contains an asymmetric unit.
+      /*! See class Brick for details.
+       */
+      inline Brick getBrick(const SpaceGroupType& SgType) const {
+        return Brick(*this, SgType);
+      }
   };
 
   //! iostream output operator for class SgOps.

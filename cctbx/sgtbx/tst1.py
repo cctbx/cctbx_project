@@ -95,6 +95,12 @@ for s in iter:
   sgo = sgtbx.SgOps(s.Hall())#ChangeBasis(cbop)
   ch1 = sgo.getChangeOfHandOp()
   print s.ExtendedHermann_Mauguin(), ch1.M()
+  b = sgo.getBrick()
+  print b
+  for i in xrange(3):
+    for j in xrange(2):
+      p = b(i, j)
+      print p.Point(), p.Off()
   e = sgo.ChangeBasis(ch1)
   if (e != sgo):
     assert sgo.isEnantiomorphic()
