@@ -32,43 +32,56 @@ namespace cctbx { namespace miller {
 
       binning(
         uctbx::UnitCell const& unit_cell,
-        af::shared<Index> miller_indices,
         std::size_t n_bins,
-        double d_max = 0,
-        double d_min = 0);
+        double d_max,
+        double d_min,
+        double relative_tolerance = 1.e-6)
+      : unit_cell_(unit_cell)
+      {
+        init_limits(n_bins, d_max, d_min, relative_tolerance);
+      }
 
       binning(
         uctbx::UnitCell const& unit_cell,
         std::size_t n_bins,
-        double d_max,
-        double d_min);
+        af::shared<Index> miller_indices,
+        double d_max = 0,
+        double d_min = 0,
+        double relative_tolerance = 1.e-6);
 
       uctbx::UnitCell const& unit_cell() const { return unit_cell_; }
 
-      std::size_t n_bins() const { return limits_.size() - 1; }
+      std::size_t n_bins_used() const { return limits_.size() - 1; }
 
-      double d(std::size_t i) const
-      {
-        if (i >= limits_.size()) throw error_index();
-        return 1 / std::sqrt(limits_[i]);
-      }
+      std::size_t n_bins_all() const { return limits_.size() + 1; }
 
-      double d_min() const { return d(n_bins()); }
+      std::size_t i_bin_d_too_large() const { return 0; }
+
+      std::size_t i_bin_d_too_small() const { return limits_.size(); }
+
+      double d_max() const { return bin_d_min(1); }
+
+      double d_min() const { return bin_d_min(n_bins_all()-1); }
+
+      af::double2 bin_d_range(std::size_t i_bin) const;
+
+      double bin_d_min(std::size_t i) const;
 
       af::shared<double> limits() const { return limits_; }
 
-      std::size_t
-      get_bin_index(double d_star_sq, double relative_tolerance=1.e-6) const;
+      std::size_t get_i_bin(double d_star_sq) const;
 
-      std::size_t
-      get_bin_index(Index const& h, double relative_tolerance=1.e-6) const
+      std::size_t get_i_bin(Index const& h) const
       {
-        return get_bin_index(unit_cell_.Q(h), relative_tolerance);
+        return get_i_bin(unit_cell_.Q(h));
       }
 
     protected:
       void init_limits(
-        double d_star_sq_min, double d_star_sq_max, std::size_t n_bins);
+        std::size_t n_bins,
+        double d_star_sq_min,
+        double d_star_sq_max,
+        double relative_tolerance);
 
       uctbx::UnitCell unit_cell_;
       af::shared<double> limits_;

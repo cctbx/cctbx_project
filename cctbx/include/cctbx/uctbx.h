@@ -303,7 +303,7 @@ namespace cctbx {
       double
       max_Q(const af::shared<miller::Index>& MIx) const;
       //! Minimum and maximum Q for given list of Miller indices.
-      af::tiny<double, 2>
+      af::double2
       min_max_Q(const af::shared<miller::Index>& MIx) const;
 
       //! d-spacing measure (sin(theta)/lambda)^2 = Q/4.

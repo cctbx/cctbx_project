@@ -17,6 +17,7 @@ namespace cctbx { namespace af {
 
   typedef tiny<int, 3> int3;
   typedef tiny<int, 9> int9;
+  typedef tiny<double, 2> double2;
   typedef tiny<double, 3> double3;
   typedef tiny<double, 6> double6;
   typedef tiny<double, 9> double9;
@@ -34,6 +35,11 @@ namespace boost {
 
   template<>
   struct has_trivial_destructor<cctbx::af::int9> {
+    static const bool value = true;
+  };
+
+  template<>
+  struct has_trivial_destructor<cctbx::af::double2> {
     static const bool value = true;
   };
 

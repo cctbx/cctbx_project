@@ -379,44 +379,37 @@ namespace cctbx { namespace miller {
 
   binning::binning(
     uctbx::UnitCell const& unit_cell,
+    std::size_t n_bins,
     af::shared<Index> miller_indices,
-    std::size_t n_bins,
     double d_max,
-    double d_min)
+    double d_min,
+    double relative_tolerance)
   : unit_cell_(unit_cell)
   {
-    cctbx_assert(d_max >= 0);
-    cctbx_assert(d_min >= 0);
-    af::tiny<double, 2> min_max_q(0, 0);
     if (!(d_max || d_min)) {
-      min_max_q = unit_cell.min_max_Q(miller_indices);
+      af::double2 min_max_q = unit_cell.min_max_Q(miller_indices);
+      if (!d_max && min_max_q[0]) d_max = 1 / std::sqrt(min_max_q[0]);
+      if (!d_min && min_max_q[1]) d_min = 1 / std::sqrt(min_max_q[1]);
     }
-    if (d_max) min_max_q[0] = 1 / (d_max * d_max);
-    if (d_min) min_max_q[1] = 1 / (d_min * d_min);
-    init_limits(min_max_q[0], min_max_q[1], n_bins);
-  }
-
-  binning::binning(
-    uctbx::UnitCell const& unit_cell,
-    std::size_t n_bins,
-    double d_max,
-    double d_min)
-  : unit_cell_(unit_cell)
-  {
-    cctbx_assert(d_max >= 0);
-    cctbx_assert(d_min >= 0);
-    af::tiny<double, 2> min_max_q(0, 0);
-    if (d_max) min_max_q[0] = 1 / (d_max * d_max);
-    if (d_min) min_max_q[1] = 1 / (d_min * d_min);
-    init_limits(min_max_q[0], min_max_q[1], n_bins);
+    init_limits(n_bins, d_max, d_min, relative_tolerance);
   }
 
   void binning::init_limits(
-    double d_star_sq_min, double d_star_sq_max, std::size_t n_bins)
+    std::size_t n_bins,
+    double d_max,
+    double d_min,
+    double relative_tolerance)
   {
     cctbx_assert(n_bins > 0);
-    cctbx_assert(d_star_sq_max > 0);
-    cctbx_assert(d_star_sq_max > d_star_sq_min);
+    cctbx_assert(d_max >= 0);
+    cctbx_assert(d_min > 0);
+    cctbx_assert(d_min < d_max);
+    double d_star_sq_min = 0;
+    if (d_max) d_star_sq_min = 1 / (d_max * d_max);
+    double     d_star_sq_max = 1 / (d_min * d_min);
+    double span = d_star_sq_max - d_star_sq_min;
+    d_star_sq_max += span * relative_tolerance;
+    d_star_sq_min -= span * relative_tolerance;
     double r_low = std::sqrt(d_star_sq_min);
     double r_high = std::sqrt(d_star_sq_max);
     double volume_low = sphere_volume(r_low);
@@ -429,19 +422,29 @@ namespace cctbx { namespace miller {
       limits_.push_back(r_sq_i);
     }
     limits_.push_back(d_star_sq_max);
-    span_ = d_star_sq_max - d_star_sq_min;
+  }
+
+  af::double2 binning::bin_d_range(std::size_t i_bin) const
+  {
+    return af::double2(bin_d_min(i_bin), bin_d_min(i_bin+1));
+  }
+
+  double binning::bin_d_min(std::size_t i_bin) const
+  {
+    if (i_bin == 0) return 0;
+    if (i_bin == n_bins_all()) return 0;
+    if (i_bin > n_bins_all()) throw error_index();
+    return 1 / std::sqrt(limits_[i_bin - 1]);
   }
 
   std::size_t
-  binning::get_bin_index(double d_star_sq, double relative_tolerance) const
+  binning::get_i_bin(double d_star_sq) const
   {
-    double abs_tolerance = relative_tolerance * span_;
-    if (d_star_sq < limits_[0] + abs_tolerance) return 0;
+    if (d_star_sq < limits_[0]) return 0;
     std::size_t i = 1;
     for(;i<limits_.size();i++) {
-      if (d_star_sq > limits_[i]) return i;
+      if (d_star_sq < limits_[i]) return i;
     }
-    if (d_star_sq > limits_[i-1] + abs_tolerance) i--;
     return i;
   }
 
@@ -449,7 +452,7 @@ namespace cctbx { namespace miller {
   {
     bin_indices_.reserve(miller_indices.size());
     for(std::size_t i=0;i<miller_indices.size();i++) {
-      bin_indices_.push_back(bng.get_bin_index(miller_indices[i]));
+      bin_indices_.push_back(bng.get_i_bin(miller_indices[i]));
     }
   }
 

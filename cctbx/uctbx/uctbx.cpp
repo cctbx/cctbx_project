@@ -275,10 +275,10 @@ namespace cctbx { namespace uctbx {
     return result;
   }
 
-  af::tiny<double, 2>
+  af::double2
   UnitCell::min_max_Q(const af::shared<miller::Index>& MIx) const
   {
-    af::tiny<double, 2> result(0, 0);
+    af::double2 result(0, 0);
     if (MIx.size()) {
       result.fill(Q(MIx[0]));
       for(std::size_t i=1;i<MIx.size();i++) {
