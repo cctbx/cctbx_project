@@ -38,6 +38,7 @@ class lbfgs:
     sites_cart.clear()
     sites_cart.extend(self.tmp.sites_shifted)
     del self.tmp
+    del self.x
     self.first_target_value = self.first_target_result.target()
     self.final_target_value = self.final_target_result.target()
 
