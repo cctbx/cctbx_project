@@ -10,10 +10,10 @@ class copy_libtbx_files:
     self.dispatcher_front_end_exe = libtbx_env.dispatcher_front_end_exe()
 
   def __call__(self, target_root_dir, dirname, names):
-    is_libtbx_bin = 00000
+    is_libtbx_bin = False
     if (os.path.split(dirname.lower()) == (".", "bin")):
-      is_libtbx_bin = 0001
-    create_target_dir = 0001
+      is_libtbx_bin = True
+    create_target_dir = True
     for file_name in names:
       name = file_name.lower()
       if (   name == ".sconsign"
@@ -29,14 +29,14 @@ class copy_libtbx_files:
       dest = os.path.normpath(os.path.join(target_root_dir, src))
       if (create_target_dir):
         libtbx.path.create_target_dir(dest)
-        create_target_dir = 00000
+        create_target_dir = False
       shutil.copy(src, dest)
 
   def is_disposable_file(self, name, path):
     if (    self.dispatcher_front_end_exe is not None
         and name.endswith(".exe")):
       if (open(path, "rb").read() == self.dispatcher_front_end_exe):
-        return 0001
+        return True
     else:
       f = open(path, "r")
       lines = []
@@ -49,11 +49,11 @@ class copy_libtbx_files:
       if (len(lines) == 2
           and lines[0][0] == "#"
           and lines[1] == "# LIBTBX_DISPATCHER DO NOT EDIT"):
-        return 0001
-    return 00000
+        return True
+    return False
 
 def copy_python_files(target_root_dir, dirname, names):
-  create_target_dir = 0001
+  create_target_dir = True
   for file_name in names:
     name = file_name.lower()
     if (name.endswith(".pyc")):
@@ -63,7 +63,7 @@ def copy_python_files(target_root_dir, dirname, names):
     dest = os.path.normpath(os.path.join(target_root_dir, src))
     if (create_target_dir):
       libtbx.path.create_target_dir(dest)
-      create_target_dir = 00000
+      create_target_dir = False
     shutil.copy(src, dest)
 
 def run(target_root):

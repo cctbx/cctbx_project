@@ -17,7 +17,7 @@ def get_hostname():
   try: return socket.gethostname()
   except: return None
 
-def python_include_path(must_exist=0001):
+def python_include_path(must_exist=True):
   if (sys.platform == "win32"):
     include_path = sys.prefix + r"\include"
   else:
@@ -28,7 +28,7 @@ def python_include_path(must_exist=0001):
       % include_path)
   return include_path
 
-def python_api_from_process(must_exist=0001):
+def python_api_from_process(must_exist=True):
   try: return str(sys.api_version) # Python 2.3 or higher
   except AttributeError: pass
   include_path = python_include_path(must_exist)
@@ -122,7 +122,7 @@ class include_registry:
     self.scan_boost()
     self._had_message = {}
 
-  def scan_boost(self, flag=00000):
+  def scan_boost(self, flag=False):
     self._scan_boost = flag
     return self
 
@@ -132,8 +132,8 @@ class include_registry:
         print "libtbx.scons: implicit dependency scan disabled for directory",
         print path
         self._had_message[path] = 1
-      return 00000
-    return 0001
+      return False
+    return True
 
   def prepend_include_switch(self, env, path):
     assert isinstance(path, str)

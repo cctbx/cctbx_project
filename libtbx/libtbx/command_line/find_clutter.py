@@ -2,21 +2,21 @@ import sys, os
 
 def show_status(path, flag_x):
   is_executable = os.access(path, os.X_OK)
-  dos_format = 00000
+  dos_format = False
   n_tabs_or_trailing_whitespace = 0
   n_trailing_empty_lines = 0
-  missing_eol = 00000
+  missing_eol = False
   stream = open(path, "rb").read()
   if (len(stream) > 0):
     if (stream[-1] != "\n"):
-      missing_eol = 0001
+      missing_eol = True
     else:
       stream = stream[:-1]
     text = stream.split("\n")
     for line in text:
       if (line.endswith("\r")):
         line = line[:-1]
-        dos_format = 0001
+        dos_format = True
       clean_line = line.expandtabs().rstrip()
       if (clean_line != line): n_tabs_or_trailing_whitespace += 1
       if (len(clean_line) == 0): n_trailing_empty_lines += 1
@@ -41,11 +41,11 @@ def show_status(path, flag_x):
 
 def is_text_file(file_name):
   name = file_name.lower()
-  if (name.startswith("scons")): return 0001
+  if (name.startswith("scons")): return True
   for extension in (".c", ".cpp", ".h", ".hpp", ".py",
                     ".dox", ".txt", ".html", ".csh", ".sh"):
-    if (name.endswith(extension)): return 0001
-  return 00000
+    if (name.endswith(extension)): return True
+  return False
 
 def visitor(flag_x, dirname, names):
   for file_name in names:
@@ -54,11 +54,11 @@ def visitor(flag_x, dirname, names):
       show_status(path, flag_x)
 
 def run(args):
-  flag_x = 00000
+  flag_x = False
   paths = []
   for arg in args:
     if (arg == "-x"):
-      flag_x = 0001
+      flag_x = True
     else:
       paths.append(arg)
   if (len(paths) == 0): paths = ["."]

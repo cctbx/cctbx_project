@@ -1,3 +1,4 @@
+import libtbx.forward_compatibility
 import imp
 import sys
 

@@ -43,7 +43,7 @@ class package:
     self.dist_path = norm(join(dist_root, name))
     self.config = None
     self.SConscript_path = None
-    self.needs_adaptbx = 00000
+    self.needs_adaptbx = False
     self.python_path = None
     if (not isdir(self.dist_path)):
       if (must_exist):
@@ -133,9 +133,9 @@ class libtbx_env:
     self.PATH = [norm(join(self.LIBTBX_BUILD, "libtbx/bin"))]
     self.package_list = []
     self.dist_paths = {"LIBTBX_DIST": libtbx_dist}
-    self.scons_in_dist_root = 00000
+    self.scons_in_dist_root = False
     if (os.path.isdir(join(self.LIBTBX_DIST_ROOT, "scons"))):
-      self.scons_in_dist_root = 0001
+      self.scons_in_dist_root = True
 
   def add_package(self, package, explicit_adaptbx):
     self.package_list.insert(0, package.name)
@@ -165,7 +165,7 @@ class libtbx_env:
     return None
 
   def check_python_api(self):
-    api_from_process = libtbx.config.python_api_from_process(must_exist=00000)
+    api_from_process = libtbx.config.python_api_from_process(must_exist=False)
     if (api_from_process is None): return
     api_from_build = self.python_api_from_libtbx_build_libtbx()
     if (api_from_build is None): return
@@ -271,9 +271,9 @@ class build_options_t:
   def __init__(self):
     self.compiler = "default"
     self.mode = "release"
-    self.static_libraries = 00000
-    self.static_exe = 00000
-    self.scan_boost = 00000
+    self.static_libraries = False
+    self.static_exe = False
+    self.scan_boost = False
 
   def report(self):
     print "Compiler:", self.compiler
@@ -301,7 +301,7 @@ class build_options_t:
     if (hasattr(env, "build_options_scan_boost")):
       self.scan_boost = env.build_options_scan_boost
     if (self.static_exe):
-      self.static_libraries = 0001
+      self.static_libraries = True
 
 def emit_SConstruct(env, build_options, packages_dict):
   SConstruct_path = norm(join(env.LIBTBX_BUILD, "SConstruct"))
@@ -354,25 +354,25 @@ def run(libtbx_dist, args, old_env=None):
   if (old_env is not None):
     build_options.get_from_libtbx_env(env=old_env)
   remaining_args = []
-  option_only = 00000
+  option_only = False
   for arg in args:
     if (arg in ["-h", "--help"]):
       show_help(old_env)
       sys.exit(0)
     elif (arg == "--only"):
-      option_only = 0001
+      option_only = True
     elif (arg.startswith("--build=")):
       build_options.mode = arg.split("=", 1)[1].strip().lower()
       assert build_options.mode in ("quick", "release", "debug")
     elif (arg.startswith("--compiler=")):
       build_options.compiler = arg.split("=", 1)[1].strip().lower()
     elif (arg == "--static_libraries"):
-      build_options.static_libraries = 0001
+      build_options.static_libraries = True
     elif (arg == "--static_exe"):
-      build_options.static_libraries = 0001
-      build_options.static_exe = 0001
+      build_options.static_libraries = True
+      build_options.static_exe = True
     elif (arg == "--scan_boost"):
-      build_options.scan_boost = 0001
+      build_options.scan_boost = True
     elif (arg.startswith("--")):
       show_help(old_env)
       raise UserError("Unknown option: " + arg)
@@ -395,10 +395,10 @@ def run(libtbx_dist, args, old_env=None):
     p = packages.dict[package_name]
     pp = libtbx.config.package_pair(package_name)
     if (p.needs_adaptbx and pp.adaptbx not in packages.dict):
-      explicit_adaptbx = 00000
+      explicit_adaptbx = False
       print "  %s+%s" % pp.primary_first()
     else:
-      explicit_adaptbx = 0001
+      explicit_adaptbx = True
       print " ", package_name
     env.add_package(packages.dict[package_name], explicit_adaptbx)
   if (len(packages.missing_for_build) != 0):

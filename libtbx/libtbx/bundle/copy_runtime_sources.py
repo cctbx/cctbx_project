@@ -9,7 +9,7 @@ def copy_dist_files(dist_copy, dirname, names):
     cvs_entries = libtbx.path.norm_join(dirname, "Entries")
     if (os.path.isfile(cvs_entries)):
       return
-  create_target_dir = 0001
+  create_target_dir = True
   for file_name in names:
     name = file_name.lower()
     if (   name == "libtbx_config"
@@ -26,17 +26,17 @@ def copy_dist_files(dist_copy, dirname, names):
       dest = libtbx.path.norm_join(dist_copy, src)
       if (create_target_dir):
         libtbx.path.create_target_dir(dest)
-        create_target_dir = 00000
+        create_target_dir = False
       shutil.copy(src, dest)
 
 def is_required(dist, package):
   p = libtbx.path.norm_join(dist, "libtbx_config")
-  if (os.path.isfile(p)): return 0001
+  if (os.path.isfile(p)): return True
   p = libtbx.path.norm_join(dist, package)
   if (os.path.isdir(p)):
     p = libtbx.path.norm_join(p, "__init__.py")
-    if (os.path.isfile(p)): return 0001
-  return 00000
+    if (os.path.isfile(p)): return True
+  return False
 
 def run(target_root):
   cwd = os.getcwd()
