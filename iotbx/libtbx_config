@@ -1,4 +1,5 @@
 {
   "packages_required_for_use": ["cctbx"],
   "packages_required_for_build": ["ccp4io"],
+  "optional_packages": ["cbflib"],
 }
