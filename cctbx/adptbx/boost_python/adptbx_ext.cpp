@@ -121,6 +121,13 @@ namespace {
                  sym_mat3<double> const&))
       debye_waller_factor_u_cart);
 
+    def("grad_u_star_as_u_cart",
+      (sym_mat3<double>(*)(uctbx::unit_cell const&,
+                           sym_mat3<double> const&)) grad_u_star_as_u_cart);
+    def("grad_u_cart_as_u_star",
+      (sym_mat3<double>(*)(uctbx::unit_cell const&,
+                           sym_mat3<double> const&)) grad_u_cart_as_u_star);
+
     def("eigenvalues", (vec3<double>(*)(sym_mat3<double> const&)) eigenvalues);
     def("is_positive_definite",
       (bool(*)(vec3<double> const&)) is_positive_definite);
