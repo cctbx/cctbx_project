@@ -298,7 +298,6 @@ namespace cctbx { namespace sftbx {
         sym_mat3<FloatType> aniso_bs_imag_;
     };
 
-    // XXX deal properly with anisotropic displacements
     template <typename FloatType>
     struct calc_shell
     {
@@ -314,6 +313,7 @@ namespace cctbx { namespace sftbx {
         exponent_table<FloatType>& exp_table)
         : max_d_sq(0)
       {
+        cctbx_assert(!caasf_ft.is_anisotropic());
         af::tiny<FloatType, 3> grid_n_f = grid_n;
         FloatType rho_cutoff = detail::abs(
           caasf_ft.rho_real_0() * wing_cutoff);
@@ -322,19 +322,9 @@ namespace cctbx { namespace sftbx {
           for (ig = 1; ig < grid_n[i_basis_vec]; ig++) {
             fractional<FloatType> d_frac(0,0,0);
             d_frac[i_basis_vec] = ig / grid_n_f[i_basis_vec];
-            vec3<FloatType> d_cart = ucell.orthogonalize(d_frac);
-            FloatType d_sq = d_cart.length2();
-            if (!caasf_ft.is_anisotropic()) {
-              if (  detail::abs(caasf_ft.rho_real(exp_table, d_sq))
-                  < rho_cutoff) {
-                break;
-              }
-            }
-            else {
-              if (  detail::abs(caasf_ft.rho_real(exp_table, d_cart))
-                  < rho_cutoff) {
-                break;
-              }
+            FloatType d_sq = ucell.Length2(d_frac);
+            if (detail::abs(caasf_ft.rho_real(exp_table, d_sq)) < rho_cutoff) {
+              break;
             }
             if (max_d_sq < d_sq) max_d_sq = d_sq;
           }
@@ -490,25 +480,33 @@ namespace cctbx { namespace sftbx {
           if (site->w() == 0) continue;
           FloatType fdp = site->fpfdp().imag();
           const fractional<FloatType>& coor_frac = site->Coordinates();
-          detail::caasf_fourier_transformed<FloatType, caasf_type> caasf_ft;
+          FloatType u_iso;
+          sym_mat3<FloatType> u_cart;
           if (!site->isAnisotropic()) {
-            caasf_ft = detail::caasf_fourier_transformed<FloatType,caasf_type>(
-              site->CAASF(), site->fpfdp(), site->w(),
-              site->Uiso(), u_extra_);
+            u_iso = site->Uiso();
           }
           else {
-            caasf_ft = detail::caasf_fourier_transformed<FloatType,caasf_type>(
-              site->CAASF(), site->fpfdp(), site->w(),
-              adptbx::Ustar_as_Ucart(ucell_, site->Uaniso()), u_extra_);
+            u_cart = adptbx::Ustar_as_Ucart(ucell_, site->Uaniso());
+            u_iso = af::max(adptbx::Eigenvalues(u_cart).const_ref());
           }
+          detail::caasf_fourier_transformed<FloatType, caasf_type> caasf_ft(
+            site->CAASF(), site->fpfdp(), site->w(),
+            u_iso, u_extra_);
           detail::calc_shell<FloatType> shell(
             ucell_, wing_cutoff_, grid_nl, caasf_ft, exp_table);
+          detail::array_update_max(max_shell_radii_, shell.radii);
           if (electron_density_must_be_positive) {
-            if (caasf_ft.rho_real_0() < 0) {
+            if (   caasf_ft.rho_real_0() < 0
+                || caasf_ft.rho_real(exp_table, shell.max_d_sq) < 0) { 
+
               throw error("Negative electron density at sampling point.");
             }
           }
-          detail::array_update_max(max_shell_radii_, shell.radii);
+          if (site->isAnisotropic()) {
+            caasf_ft = detail::caasf_fourier_transformed<FloatType,caasf_type>(
+              site->CAASF(), site->fpfdp(), site->w(),
+              u_cart, u_extra_);
+          }
           sfmap::grid_point_type pivot = detail::calc_nearest_grid_point(
             coor_frac, grid_nl);
           // highly hand-optimized loop over points in shell
