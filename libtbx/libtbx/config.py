@@ -10,6 +10,12 @@ def full_path(command):
       return os.path.normpath(os.path.abspath(path_command))
   return None
 
+def get_hostname():
+  try: import socket
+  except: return None
+  try: return socket.gethostname()
+  except: return None
+
 def python_include_path(must_exist=0001):
   if (sys.platform == "win32"):
     include_path = sys.prefix + r"\include"
