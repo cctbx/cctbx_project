@@ -124,6 +124,7 @@ namespace scitbx { namespace af { namespace boost_python {
       using namespace boost::python;
       class_<w_t>(python_name.c_str())
         .def(init<w_t const&>())
+        .def(init<std::size_t const&, optional<e_t const&> >())
         .def("size", &w_t::size)
         .def("__len__", &w_t::size)
         .def("__getitem__", getitem_1d, GetitemReturnValuePolicy())
