@@ -136,6 +136,9 @@ def exercise_generate_r_free_flags():
         if (i_trial < 5):
           assert flags_non_anomalous.indices().size() == 145
           assert flags_non_anomalous.data().count(True) == 15
+          flags_gen = flags_non_anomalous.generate_bijvoet_mates() \
+            .adopt_set(flags)
+          assert flags_gen.data().all_eq(flags.data())
         flags = flags.select(~flex.bool(
           flags.indices().size(),
           flags.match_bijvoet_mates()[1].pairs_hemisphere_selection("-")))
@@ -805,7 +808,7 @@ def exercise_array_correlation(space_group_info,
   exercise_common_set(arrays, permutation_only=False)
   for anomalous_flag in [False, True]:
     if (anomalous_flag):
-      arrays[0] = arrays[0].as_anomalous()
+      arrays[0] = arrays[0].generate_bijvoet_mates()
     assert approx_equal(arrays[0].correlation(arrays[0]).coefficient(), 1)
     assert approx_equal(arrays[0].correlation(arrays[1]).coefficient(),
                         arrays[1].correlation(arrays[0]).coefficient())
@@ -875,6 +878,14 @@ def generate_random_hl(miller_set, coeff_range=5):
       hl.append([one_random_hl(f) for i in xrange(4)])
   return miller.array(miller_set=miller_set, data=hl)
 
+def exercise_average_and_generate_bijvoet_mates_hl(hl):
+  hl_ave1 = hl.average_bijvoet_mates()
+  hl_gen1 = hl_ave1.generate_bijvoet_mates().adopt_set(hl)
+  hl_ave2 = hl_gen1.average_bijvoet_mates().adopt_set(hl_ave1)
+  hl_gen2 = hl_ave2.generate_bijvoet_mates().adopt_set(hl_gen1)
+  assert approx_equal(hl_ave2.data(), hl_ave1.data())
+  assert approx_equal(hl_gen2.data(), hl_gen1.data())
+
 def exercise_phase_integrals(space_group_info):
   crystal_symmetry = crystal.symmetry(
     unit_cell=space_group_info.any_compatible_unit_cell(
@@ -887,6 +898,8 @@ def exercise_phase_integrals(space_group_info):
       anomalous_flag=anomalous_flag,
       d_min=1)
     sg_hl = generate_random_hl(miller_set=miller_set)
+    if (anomalous_flag):
+      exercise_average_and_generate_bijvoet_mates_hl(sg_hl)
     p1_hl = sg_hl.expand_to_p1()
     sg_phase_integrals = sg_hl.phase_integrals(n_steps=360/5)
     p1_phase_integrals = p1_hl.phase_integrals()

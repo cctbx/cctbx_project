@@ -132,6 +132,10 @@ def exercise_average_bijvoet_mates(
     print lc.coefficient()
   assert lc.coefficient() > 1-1.e-6
   assert flex.max(flex.abs(map_c.as_1d() - map_r.as_1d())) < 1.e-6
+  #
+  fc_ma = fc_merged.generate_bijvoet_mates().adopt_set(f_calc)
+  fc_mam = fc_ma.average_bijvoet_mates().adopt_set(fc_merged)
+  assert flex.max(flex.abs(fc_mam.data()-fc_merged.data())) < 1.e-6
 
 def run_call_back(flags, space_group_info):
   run_test(space_group_info, verbose=flags.Verbose)
