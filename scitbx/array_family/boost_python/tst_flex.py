@@ -321,6 +321,10 @@ def exercise_select_shuffle():
   b = flex.size_t((3,1,0,4,2))
   assert tuple(a.shuffle(b)) == (4,2,1,5,3)
   assert tuple(a.unshuffle(b)) == (3,2,5,1,4)
+  b = flex.size_t((1,4,2))
+  assert tuple(a.shuffle(b)) == (2,5,3)
+  b = flex.size_t((2,4,1,2,4))
+  assert tuple(a.shuffle(b)) == (3,5,2,3,5)
 
 def exercise_operators():
   a = flex.bool((0, 1, 0, 1))
