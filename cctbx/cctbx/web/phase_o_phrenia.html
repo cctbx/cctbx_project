@@ -6,7 +6,7 @@
 
 [<a href="index.html">Index of services</a>]
 <hr>
-<h1>cctbx - Phase-O-Phrenia<small>**</small></h1>
+<h1>cctbx - Phase-O-Phrenia<small>*</small></h1>
 
 <hr>
 
@@ -17,9 +17,10 @@ Single Isomorphous Replacement (SIR) phasing:
 <blockquote>
 An electron density map obtained through SIR phasing is the
 superposition of the true electron density and the
-<p>
-inverse of the true electron density
-<p>
+<b>
+inverse
+</b>
+of the true electron density
 convoluted with the Fourier transform of exp(2 i phi_sub), where
 phi_sub are the phases of the heavy atom substructure. The Fourier
 coefficients of this map are given by (Ramachandran &amp; Srinivasan, 1970,
@@ -27,7 +28,7 @@ Fourier Methods in Crystallography, p. 123):
 
 <pre>
     F + conjugate(F) exp(2 i phi_sub)
-<pre>
+</pre>
 </blockquote>
 
 Single Anomalous Difference (SAD) phasing:
@@ -35,13 +36,14 @@ Single Anomalous Difference (SAD) phasing:
 <blockquote>
 An electron density map obtained through SAD phasing is the
 superposition of the true electron density and the
-<p>
-<i>negative</i> inverse of the true electron density
-<p>
+<b>
+negative inverse
+</b>
+of the true electron density
 convoluted with the Fourier transform of exp(2 i phi_sub) (p. 190 in the same book):
 <pre>
     F - conjugate(F) exp(2 i phi_sub)
-<pre>
+</pre>
 </blockquote>
 
 In general the second terms are expected only to contribute to the
@@ -76,7 +78,8 @@ for this condition:
 
 </ul>
 
-If the resulting plot shows one sharp peak the substructure is centrosymmetric.
+If the resulting plot shows one sharp peak the substructure is
+centrosymmetric<small>**</small>.
 
 <p>
 To see examples, try space group P1 with one or two atoms in any
@@ -97,17 +100,29 @@ The general rule is:
 <ul>
 
 <li>The pessimistic viewpoint:
-    A map is more difficult to interpret if the distribution in the plot is sharp.
+    A SIR or SAD map is more difficult to interpret if the distribution in the plot is sharp.
 
 <li>The optimistic viewpoint:
-    A map is easier to interpret if the distribution in the plot is flat.
+    A SIR or SAD map is easier to interpret if the distribution in the plot is flat.
 
 </ul>
 
 <p>
 <small>
-** The name of this server is derived from the term <i>double-phasing</i>
+* The name of this server is derived from the term <i>double-phasing</i>
 used by Ramachandran &amp; Srinivasan.
+</small>
+
+<p>
+<small>
+** The Fourier transform of a constant function (e.g. exp(2 i phi_sub)
+= 1) is a delta function: it is different from zero only at the origin,
+and exactly zero everywhere else. If the centre of inversion of a
+substructure is shifted away from the origin the expression exp(2 i
+phi_sub) is no longer a constant, but the Fourier transform is still a
+delta function which is different from zero only at the location (2 xc,
+2 yc, 2 zc), where (xc, yc, zc) are the coordinates of the centre of
+inversion.
 </small>
 
 <hr>
