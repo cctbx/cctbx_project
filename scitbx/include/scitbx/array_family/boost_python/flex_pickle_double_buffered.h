@@ -38,7 +38,7 @@ namespace scitbx { namespace af { namespace boost_python {
         // XXX work around bug in boost 1.29.0
         boost::python::object(boost::python::handle<>(
           PyString_FromStringAndSize(
-            accu.buffer.begin(),
+            &*accu.buffer.begin(),
             static_cast<int>(accu.buffer.size()))))
 #endif
         );
