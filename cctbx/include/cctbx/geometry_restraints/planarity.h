@@ -9,16 +9,30 @@ namespace cctbx { namespace geometry_restraints {
   //! Grouping of indices into array of sites (i_seqs) and weights.
   struct planarity_proxy
   {
+    //! Support for shared_proxy_select.
+    typedef af::shared<std::size_t> i_seqs_type;
+
     //! Default constructor. Some data members are not initialized!
     planarity_proxy() {}
 
     //! Constructor.
     planarity_proxy(
-      af::shared<std::size_t> const& i_seqs_,
+      i_seqs_type const& i_seqs_,
       af::shared<double> const& weights_)
     :
       i_seqs(i_seqs_),
       weights(weights_)
+    {
+      CCTBX_ASSERT(weights.size() == i_seqs.size());
+    }
+
+    //! Constructor.
+    planarity_proxy(
+      i_seqs_type const& i_seqs_,
+      planarity_proxy const& other)
+    :
+      i_seqs(i_seqs_),
+      weights(other.weights.begin(), other.weights.end())
     {
       CCTBX_ASSERT(weights.size() == i_seqs.size());
     }
@@ -33,7 +47,7 @@ namespace cctbx { namespace geometry_restraints {
       planarity_proxy result;
       result.i_seqs.reserve(i_seqs_cr.size());
       result.weights.reserve(i_seqs_cr.size());
-      af::shared<std::size_t> perm = af::sort_permutation(i_seqs_cr);
+      i_seqs_type perm = af::sort_permutation(i_seqs_cr);
       af::const_ref<std::size_t> perm_cr = perm.const_ref();
       for(std::size_t i=0;i<perm_cr.size();i++) {
         result.i_seqs.push_back(i_seqs_cr[perm_cr[i]]);
@@ -45,7 +59,7 @@ namespace cctbx { namespace geometry_restraints {
     }
 
     //! Indices into array of sites.
-    af::shared<std::size_t> i_seqs;
+    i_seqs_type i_seqs;
     //! Array of weights.
     af::shared<double> weights;
   };
@@ -148,7 +162,7 @@ namespace cctbx { namespace geometry_restraints {
       void
       add_gradients(
         af::ref<scitbx::vec3<double> > const& gradient_array,
-        af::shared<std::size_t> const& i_seqs) const
+        planarity_proxy::i_seqs_type const& i_seqs) const
       {
         af::const_ref<std::size_t> i_seqs_ref = i_seqs.const_ref();
         af::shared<scitbx::vec3<double> > grads = gradients();
