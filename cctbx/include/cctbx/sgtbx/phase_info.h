@@ -116,7 +116,7 @@ namespace cctbx { namespace sgtbx {
       //! Nearest valid phase.
       /*! For acentric reflections equivalent to the input phase phi.
           For centric reflections, the restricted phase which is
-          closest to the input phase phi.
+          nearest to the input phase phi.
        */
       double nearest_valid_phase(double phi, bool deg=false) const;
 
