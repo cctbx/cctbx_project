@@ -95,8 +95,8 @@ class pair_asu_table:
     for i_seq,j_seq_dict in enumerate(self.table):
       rt_mx_i_inv = self.asu_mappings.get_rt_mx(i_seq=i_seq, i_sym=0).inverse()
       for j_seq,j_sym_groups in j_seq_dict.items():
+        if (j_seq < i_seq): continue
         for j_sym_group in j_sym_groups:
-          if (j_seq < i_seq): continue
           j_sym = j_sym_group[0]
           rt_mx_j = self.asu_mappings.get_rt_mx(i_seq=j_seq, i_sym=j_sym)
           sym_table[i_seq].setdefault(j_seq).append(
