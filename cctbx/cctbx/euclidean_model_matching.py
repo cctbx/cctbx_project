@@ -118,8 +118,10 @@ class match_refine:
     self.singles2 = generate_singles(self.ref_model2.size(), self.i_pivot2)
     self.pairs = [(self.i_pivot1, self.i_pivot2)]
     self.adjusted_shift = initial_shift[:]
-    self.add_matches()
-    self.eliminate_weak_matches()
+    self.add_pairs()
+    self.eliminate_weak_pairs()
+    self.ref_eucl_rt = matrix.rt(
+      self.eucl_symop.as_tuple()) - matrix.col(self.adjusted_shift)
     self.pairs.sort(pair_sort_function)
     self.calculate_rms()
     # clean up
@@ -127,11 +129,7 @@ class match_refine:
     del self.unallowed_shift
     del self.initial_shift
 
-  def eucl_rt(self):
-    return matrix.rt(self.eucl_symop.as_tuple()) - matrix.col(
-                     self.adjusted_shift)
-
-  def add_matches(self):
+  def add_pairs(self):
     while (len(self.singles1) and len(self.singles2)):
       shortest_dist = 2 * self.tolerance
       new_pair = 0
@@ -155,7 +153,7 @@ class match_refine:
       self.singles2.remove(new_pair[1])
       self.refine_adjusted_shift()
 
-  def eliminate_weak_matches(self):
+  def eliminate_weak_pairs(self):
     while 1:
       max_dist = 0
       weak_pair = 0
@@ -207,9 +205,9 @@ class match_refine:
 
   def show(self):
     print "Match summary:"
-    print self.eucl_symop.as_xyz(),
-    print self.adjusted_shift,
-    print "%.2f" % (self.rms,)
+    print self.rt.r.mathematica_form()
+    print self.rt.t.elems
+    print "rms: %.2f" % (self.rms,)
     for pair in self.pairs:
       print self.ref_model1[pair[0]].label,
       print self.ref_model2[pair[1]].label
@@ -228,16 +226,47 @@ def match_sort_function(match_a, match_b):
   if (i): return i
   return cmp(match_a.rms, match_b.rms)
 
-#XXX def weed_refined_matches(refined_matches):
-#XXX   for match in refined_matches:
+def weed_refined_matches(space_group_number, refined_matches):
+  n_matches = len(refined_matches)
+  is_redundant = [0] * n_matches
+  for i in xrange(n_matches-1):
+    match_i = refined_matches[i]
+    if (is_redundant[i]): continue
+    for j in xrange(i+1, n_matches):
+      match_j = refined_matches[j]
+      if (match_i.pairs == match_j.pairs):
+        assert match_i.rms <= match_j.rms
+        is_redundant[j] = 1
+  for i in xrange(n_matches-1, -1, -1):
+    if (is_redundant[i]):
+      del refined_matches[i]
+  if (space_group_number == 1):
+    trivial_matches_only = True
+    for match in refined_matches:
+      if (len(match.pairs) > 1):
+        trivial_matches_only = False
+        break
+    if (trivial_matches_only):
+      while (refined_matches[0].pairs[0] != (0,0)): del refined_matches[0]
+      while (len(refined_matches) > 1): del refined_matches[-1]
+    else:
+      while (len(refined_matches[-1].pairs) == 1): del refined_matches[-1]
+
+def match_rt_from_ref_eucl_rt(model1_cbop, model2_cbop, ref_eucl_rt):
+  inv_m1 = matrix.rt(model1_cbop.InvM().as_tuple())
+  m2 = matrix.rt(model2_cbop.M().as_tuple())
+  # X2_orig -> X2_ref -> X1_ref -> X1_orig
+  #         m2   ref_eucl_rt   inv_m1
+  # X1 = inv_m1 * ref_eucl_rt * m2 * X2
+  return inv_m1 * ref_eucl_rt * m2
 
 def match_models(model1, model2,
                  tolerance=1., models_are_diffraction_index_equivalent=0):
   ref_model1 = model1.transform_to_reference_setting()
   ref_model2 = model2.transform_to_reference_setting()
-  # XXX unit cells must be compatible
-  unit_cell = ref_model1.UnitCell
+  assert xutils.are_similar_unit_cells(ref_model1.UnitCell,ref_model2.UnitCell)
   assert ref_model1.SgOps == ref_model2.SgOps
+  unit_cell = ref_model1.UnitCell
   match_symmetry = euclidean_match_symmetry(
     ref_model1.SgInfo,
     use_K2L=1, use_L2N=(not models_are_diffraction_index_equivalent))
@@ -255,26 +284,21 @@ def match_models(model1, model2,
         unallowed_shift = match_symmetry.filter_shift(diff, selector=0)
         if (unit_cell.Length(unallowed_shift) < tolerance):
           allowed_shift = match_symmetry.filter_shift(diff, selector=1)
-          matches = match_refine(tolerance,
-                                 ref_model1, ref_model2,
-                                 unit_cell, match_symmetry,
-                                 equiv1,
-                                 i_pivot1, i_pivot2,
-                                 eucl_symop,
-                                 unallowed_shift, allowed_shift)
-          refined_matches.append(matches)
+          match = match_refine(tolerance,
+                               ref_model1, ref_model2,
+                               unit_cell, match_symmetry,
+                               equiv1,
+                               i_pivot1, i_pivot2,
+                               eucl_symop,
+                               unallowed_shift, allowed_shift)
+          match.rt = match_rt_from_ref_eucl_rt(
+            model1.SgInfo.CBOp(),
+            model2.SgInfo.CBOp(),
+            match.ref_eucl_rt)
+          refined_matches.append(match)
   refined_matches.sort(match_sort_function)
+  weed_refined_matches(model1.SgInfo.SgNumber(), refined_matches)
   return refined_matches
-
-def transform_eucl_rt(model_cbop, ref_model_eucl_rt):
-  m = matrix.rt(model_cbop.M().as_tuple())
-  inv_m = matrix.rt(model_cbop.InvM().as_tuple())
-  return inv_m * ref_model_eucl_rt * m
-
-def eucl_rt_as_eucl_symop_and_adjusted_shift(eucl_rt):
-  es = sgtbx.RTMx_from_tuple((eucl_rt.r.elems, (0,0,0)), 1, sgtbx.STBF)
-  as = [-x for x in eucl_rt.t.elems]
-  return es, as
 
 ###############################################
 # The code below this line is just for testing.
@@ -284,18 +308,10 @@ def debug_analyze_refined_matches(model1, model2, refined_matches):
   solution_counter = 0
   for match in refined_matches:
     match.show()
-    #print "ref:", match.eucl_symop
-    #print "ref:", match.adjusted_shift
-    debug_verify_matches(match.ref_model1, match.ref_model2, match.tolerance,
-                         match.eucl_symop, match.adjusted_shift,
-                         match.pairs)
-    model_eucl_rt = transform_eucl_rt(model1.SgInfo.CBOp(), match.eucl_rt())
-    es, as = eucl_rt_as_eucl_symop_and_adjusted_shift(model_eucl_rt)
-    #print "orig:", es
-    #print "orig:", as
-    debug_verify_matches(model1, model2, match.tolerance,
-                         es, as,
-                         match.pairs)
+    debug_verify_match(match.ref_model1, match.ref_model2, match.tolerance,
+                       match.ref_eucl_rt, match.pairs)
+    debug_verify_match(model1, model2, match.tolerance,
+                       match.rt, match.pairs)
     if (    debug_analyze_singles(model1, match.singles1)
         and debug_analyze_singles(model2, match.singles2)):
       solution_counter += 1
@@ -308,17 +324,13 @@ def debug_analyze_singles(model, singles):
     if (model[i].label.startswith("S")): return False
   return True
 
-def debug_verify_matches(model1, model2, tolerance,
-                         eucl_symop, shift, pairs):
+def debug_verify_match(model1, model2, tolerance, match_rt, pairs):
   adj_tolerance = tolerance * (1 + 1.e-6)
   for pair in pairs:
     c1 = model1[pair[0]].coordinates
-    c2 = model2[pair[1]].coordinates
-    c2 = eucl_symop.multiply(c2)
-    c2 = python_utils.list_minus(c2, shift)
-    equiv_c2 = sgtbx.SymEquivCoordinates(model1.SgOps, c2)
+    c2 = match_rt * model2[pair[1]].coordinates
+    equiv_c2 = sgtbx.SymEquivCoordinates(model1.SgOps, c2.elems)
     diff = equiv_c2.getShortestDifference(model1.UnitCell, c1)
-    #print diff, model1.UnitCell.Length(diff)
     assert model1.UnitCell.Length(diff) < adj_tolerance, \
       model1.SgInfo.BuildLookupSymbol()
 
@@ -460,10 +472,16 @@ def run_test(argv):
       .random_symmetry_mates()
       .apply_random_eucl_op()
       .shake_positions())
-    model1.show("Model1")
-    model2.show("Model2")
-    refined_matches = match_models(model1, model2)
-    debug_analyze_refined_matches(model1, model2, refined_matches)
+    for i in xrange(2):
+      m1 = model1
+      if (i): m1 = model1.transform_to_reference_setting()
+      for j in xrange(2):
+        m2 = model2
+        if (j): m2 = model2.transform_to_reference_setting()
+        m1.show("Model1(%d)" % (i,))
+        m2.show("Model2(%d)" % (j,))
+        refined_matches = match_models(m1, m2)
+        debug_analyze_refined_matches(m1, m2, refined_matches)
   else:
     for RawSgSymbol in symbols:
       if (RawSgSymbol.startswith("--")): continue

@@ -225,6 +225,7 @@ namespace cctbx { namespace uctbx {
     return ucp;
   }
 
+  // XXX design as isSimilarTo(other, len_tolerance, ang_tolerance)
   bool
   UnitCell::isEqual(const UnitCell& other, double tolerance) const
   {
