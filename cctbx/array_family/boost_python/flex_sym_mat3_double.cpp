@@ -2,6 +2,7 @@
 
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
 #include <scitbx/boost_python/pickle_single_buffered.h>
+#include <boost/python/make_constructor.hpp>
 
 namespace scitbx { namespace boost_python { namespace pickle_single_buffered {
 
@@ -37,6 +38,21 @@ namespace scitbx { namespace af { namespace boost_python {
 
   namespace {
 
+    flex<sym_mat3<double> >::type*
+    from_double(
+      af::const_ref<double> const& x)
+    {
+      SCITBX_ASSERT(x.size() % 6 == 0);
+      std::size_t result_size = x.size() / 6;
+      af::shared<sym_mat3<double> > result((af::reserve(result_size)));
+      const double* d = x.begin();
+      for(std::size_t i=0;i<result_size;i++) {
+        result.push_back(sym_mat3<double>(d));
+        d += 6;
+      }
+      return new flex<sym_mat3<double> >::type(result, result.size());
+    }
+
     flex_double
     as_double(const_ref<sym_mat3<double> > const& a)
     {
@@ -50,23 +66,6 @@ namespace scitbx { namespace af { namespace boost_python {
       return result;
     }
 
-    flex<sym_mat3<double> >::type
-    from_double(flex<sym_mat3<double> >::type& vec, flex_double const& dbl)
-    {
-      CCTBX_ASSERT(vec.size() == 0);
-      CCTBX_ASSERT(dbl.size() % 6 == 0);
-      std::size_t vec_size = dbl.size() / 6;
-      shared<sym_mat3<double> > v = vec.as_base_array();
-      v.reserve(vec_size);
-      const double* d = dbl.begin();
-      for(std::size_t i=0;i<vec_size;i++) {
-        v.push_back(sym_mat3<double>(d));
-        d += 6;
-      }
-      vec.resize(flex_grid<>(vec_size));
-      return vec;
-    }
-
   } // namespace <anonymous>
 
   void wrap_flex_sym_mat3_double()
@@ -74,8 +73,8 @@ namespace scitbx { namespace af { namespace boost_python {
     flex_wrapper<sym_mat3<double> >::plain("sym_mat3_double")
       .def_pickle(flex_pickle_single_buffered<sym_mat3<double>,
         6*pickle_size_per_element<double>::value>())
+      .def("__init__", boost::python::make_constructor(from_double))
       .def("as_double", as_double)
-      .def("from_double", from_double)
     ;
   }
 
