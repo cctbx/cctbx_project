@@ -16,6 +16,7 @@
 
 #include <complex>
 #include <cctbx/miller.h>
+#include <cctbx/hendrickson_lattman.h>
 
 namespace cctbx {
   namespace Miller {
@@ -53,6 +54,12 @@ namespace cctbx {
         /*! This is the factor by which HT() is multiplied.
          */
         int TBF() const { return m_TBF; }
+        //! Phase shift H*T in radians or degrees.
+        double HT_angle(bool deg = false) const
+        {
+          if (deg) return HT_angle_(360.);
+          return HT_angle_(cctbx::constants::two_pi);
+        }
         //! Flag for application of Friedel's law.
         /*! For centric reflections, FriedelFlag() is always false.
          */
@@ -76,9 +83,7 @@ namespace cctbx {
         template <class FloatType>
         FloatType phase_eq(const FloatType& phi_in, bool deg = false) const
         {
-          FloatType period = cctbx::constants::two_pi;
-          if (deg) period = 360;
-          FloatType phi_eq = phi_in - (period * HT()) / TBF();
+          FloatType phi_eq = phi_in - HT_angle(deg);
           if (m_FriedelFlag) return -phi_eq;
           return phi_eq;
         }
@@ -94,9 +99,7 @@ namespace cctbx {
         FloatType phase_in(FloatType phi_eq, bool deg = false) const
         {
           if (m_FriedelFlag) phi_eq = -phi_eq;
-          FloatType period = cctbx::constants::two_pi;
-          if (deg) period = 360;
-          return phi_eq + (period * HT()) / TBF();
+          return phi_eq + HT_angle(deg);
         }
 
         /*! \brief Complex value for equivalent index, given complex
@@ -111,9 +114,8 @@ namespace cctbx {
         std::complex<FloatType>
         complex_eq(const std::complex<FloatType>& f_in) const
         {
-          FloatType theta = (-cctbx::constants::two_pi * HT()) / TBF();
           std::complex<FloatType>
-          f_eq = f_in * std::polar(FloatType(1), theta);
+          f_eq = f_in * std::polar(FloatType(1), -HT_angle());
           if (m_FriedelFlag) return std::conj(f_eq);
           return f_eq;
         }
@@ -130,11 +132,38 @@ namespace cctbx {
         complex_in(std::complex<FloatType> f_eq) const
         {
           if (m_FriedelFlag) f_eq = std::conj(f_eq);
-          FloatType theta = ( cctbx::constants::two_pi * HT()) / TBF();
-          return f_eq * std::polar(FloatType(1), theta);
+          return f_eq * std::polar(FloatType(1), HT_angle());
+        }
+
+        /*! \brief Hendrickson-Lattman coefficients for equivalent index,
+            given coefficients for input index.
+         */
+        template <class FloatType>
+        hendrickson_lattman<FloatType>
+        hl_eq(hendrickson_lattman<FloatType> const& coeff_in) const
+        {
+          hendrickson_lattman<FloatType>
+          coeff_eq = coeff_in.shift_phase(-HT_angle());
+          if (m_FriedelFlag) return coeff_eq.conj();
+          return coeff_eq;
+        }
+        /*! \brief Hendrickson-Lattman coefficients for input index,
+            given coefficients for equivalent index.
+         */
+        template <class FloatType>
+        hendrickson_lattman<FloatType>
+        hl_in(hendrickson_lattman<FloatType> coeff_eq) const
+        {
+          if (m_FriedelFlag) coeff_eq = coeff_eq.conj();
+          return coeff_eq.shift_phase(HT_angle());
         }
 
       protected:
+        double HT_angle_(double Period) const
+        {
+          return (Period * m_HT) / m_TBF;
+        }
+
         Index m_HR;
         int   m_HT;
         int   m_TBF;
@@ -173,9 +202,9 @@ namespace cctbx {
         of conditions for systematically absent reflections.
      */
     /*! A reflection with the Miller index H is "centric" if
-	there is a symmetry operation with rotation part R such that
-	H*R = -H. The phase of a centric reflection is restricted to
-	two phase angels (modulo pi).
+        there is a symmetry operation with rotation part R such that
+        H*R = -H. The phase of a centric reflection is restricted to
+        two phase angels (modulo pi).
         <p>
         A reflection with the Miller index H is "systematically absent"
         if there is a symmetry operation with the rotation part R and
@@ -265,9 +294,10 @@ namespace cctbx {
         }
 
       private:
-        double HT_angle_(double Period) const {
+        double HT_angle_(double Period) const
+        {
           if (!isCentric()) return -1.;
-          return Period * double(m_HT) / double(m_TBF);
+          return (Period * m_HT) / m_TBF;
         }
 
         bool isValidPhase_(double Period, double phi, double tolerance) const;
@@ -284,8 +314,8 @@ namespace cctbx {
         The Miller index used in the call to getEquivMillerIndices
         is referred to as the "input Miller index."
         <p>
-	The conditions for systematically absent reflections are
-	NOT tested.
+        The conditions for systematically absent reflections are
+        NOT tested.
      */
     class SymEquivMillerIndices
     {

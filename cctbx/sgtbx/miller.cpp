@@ -165,7 +165,7 @@ namespace cctbx { namespace sgtbx {
   PhaseInfo::isValidPhase_(double Period, double phi, double tolerance) const
   {
     if (m_HT < 0) return true;
-    double delta = std::fmod(phi - HT_angle(Period), Period);
+    double delta = std::fmod(phi - HT_angle_(Period), Period);
     if (delta >  tolerance) delta -= Period;
     if (delta < -tolerance) delta += Period;
     if (delta <= tolerance) return true;

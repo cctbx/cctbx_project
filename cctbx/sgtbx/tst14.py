@@ -20,6 +20,7 @@ def OneCycle(settings):
       SgInfo.BuildHallSymbol())
     sys.stdout.flush()
     UnitCell = debug_utils.get_compatible_unit_cell(SgInfo, 1000).UnitCell
+    asu = sgtbx.ReciprocalSpaceASU(SgInfo)
     for friedel_flag in (1,0):
       miller_indices = sftbx.BuildMillerIndices(
         UnitCell, SgInfo, friedel_flag, 2.)
@@ -40,6 +41,7 @@ def OneCycle(settings):
           assert not restr.isValidPhase(phi_asym[1] - 1, 1)
         # exercise class Miller_SymEquivIndices
         f_asym = xutils.ampl_phase_as_f((random.random(), phi_asym[0]))
+        hlc_asym = [random.random() for i in xrange(4)]
         for i_eq in xrange(h_seq.M(friedel_flag)):
           h_eq = h_seq(i_eq)
           for deg in (0,1):
@@ -50,20 +52,23 @@ def OneCycle(settings):
           f_in = h_eq.complex_in(f_eq)
           a, p = xutils.f_as_ampl_phase(f_in)
           assert abs(p - phi_asym[0]) < 1.e-5
+          hlc_eq = h_eq.hl_eq(hlc_asym)
+          hlc_in = h_eq.hl_in(hlc_eq)
+          for i in xrange(4):
+            assert abs(hlc_in[i] - hlc_asym[i]) < 1.e-5
       # exercise expand_to_p1, AsymIndex, IndexTableLayoutAdapter
       p1_miller_indices = shared.Miller_Index()
       sgtbx.expand_to_p1(
         SgOps, friedel_flag, miller_indices, p1_miller_indices)
-      asu = sgtbx.ReciprocalSpaceASU(SgInfo)
       h_dict = {}
       for i in xrange(miller_indices.size()):
         h_dict[miller_indices[i]] = 0
       for p1_h in p1_miller_indices:
-        h_asym = sgtbx.Miller_AsymIndex(SgOps, asu, p1_h)
+        h_asu = sgtbx.Miller_AsymIndex(SgOps, asu, p1_h)
         if (friedel_flag):
-          h_dict[h_asym.HermitianLayout().H()] += 1
+          h_dict[h_asu.HermitianLayout().H()] += 1
         else:
-          h_dict[h_asym.AnomalousLayout().H()] += 1
+          h_dict[h_asu.AnomalousLayout().H()] += 1
       f = 1
       if (friedel_flag): f = 2
       for h, c in h_dict.items():
@@ -74,7 +79,7 @@ def OneCycle(settings):
 def run(timing=1):
   from tst import run_other
   run_other(sys.argv[1:], timing, OneCycle,
-    ("C c c a :1",))
+    ("P 3 1 m",))
 
 if (__name__ == "__main__"):
   run()

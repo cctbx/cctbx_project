@@ -21,6 +21,7 @@
 #include <boost/python/cross_module.hpp>
 #include <cctbx/coordinates_bpl.h>
 #include <cctbx/miller_bpl.h>
+#include <cctbx/hendrickson_lattman_bpl.h>
 
 using namespace cctbx;
 using namespace cctbx::sgtbx;
@@ -299,6 +300,12 @@ namespace {
     return phinfo.isValidPhase(phi);
   }
 
+  double Miller_SymEquivIndex_HT_angle_0(
+    Miller::SymEquivIndex const& SEI)
+  {
+    return SEI.HT_angle();
+  }
+
   Miller::SymEquivIndex Miller_SymEquivIndex_Mate_0(
     const Miller::SymEquivIndex& SEI)
   {
@@ -344,6 +351,20 @@ namespace {
     const std::complex<double>& f_eq)
   {
     return SEI.complex_in(f_eq);
+  }
+  hendrickson_lattman<double>
+  Miller_SymEquivIndex_hl_eq(
+    Miller::SymEquivIndex const& SEI,
+    hendrickson_lattman<double> const& coeff_in)
+  {
+    return SEI.hl_eq(coeff_in);
+  }
+  hendrickson_lattman<double>
+  Miller_SymEquivIndex_hl_in(
+    Miller::SymEquivIndex const& SEI,
+    hendrickson_lattman<double> const& coeff_eq)
+  {
+    return SEI.hl_in(coeff_eq);
   }
 
   Miller::SymEquivIndex
@@ -785,6 +806,8 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
   py_Miller_SymEquivIndex.def(&Miller::SymEquivIndex::HR, "HR");
   py_Miller_SymEquivIndex.def(&Miller::SymEquivIndex::HT, "HT");
   py_Miller_SymEquivIndex.def(&Miller::SymEquivIndex::TBF, "TBF");
+  py_Miller_SymEquivIndex.def(&Miller::SymEquivIndex::HT_angle, "HT_angle");
+  py_Miller_SymEquivIndex.def(Miller_SymEquivIndex_HT_angle_0, "HT_angle");
   py_Miller_SymEquivIndex.def(
     &Miller::SymEquivIndex::FriedelFlag, "FriedelFlag");
   py_Miller_SymEquivIndex.def(Miller_SymEquivIndex_Mate_0, "Mate");
@@ -801,6 +824,10 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     Miller_SymEquivIndex_complex_eq, "complex_eq");
   py_Miller_SymEquivIndex.def(
     Miller_SymEquivIndex_complex_in, "complex_in");
+  py_Miller_SymEquivIndex.def(
+    Miller_SymEquivIndex_hl_eq, "hl_eq");
+  py_Miller_SymEquivIndex.def(
+    Miller_SymEquivIndex_hl_in, "hl_in");
 
   py_PhaseInfo.def(constructor<>());
   py_PhaseInfo.def(
