@@ -660,6 +660,52 @@ def exercise_linear_interpolation():
         [4, -1, -6+1/4.*14, -6+2/4.*14, 8, 8-18*3./8, 8-18*4./8, -10],
       eps=1.e-4)
 
+def exercise_loops():
+  points = []
+  loop = flex.nested_loop((2,3))
+  while (not loop.over()):
+    points.append(loop())
+    loop.incr()
+  assert points == [(0, 0), (0, 1), (0, 2), (1, 0), (1, 1), (1, 2)]
+  points = []
+  for index in flex.nested_loop((2,3)):
+    points.append(index)
+  assert points == [(0, 0), (0, 1), (0, 2), (1, 0), (1, 1), (1, 2)]
+  points = []
+  for index in flex.nested_loop((2,3), 0001):
+    points.append(index)
+  assert points == [(0, 0), (0, 1), (0, 2), (1, 0), (1, 1), (1, 2)]
+  points = []
+  for index in flex.nested_loop((2,3), 00000):
+    points.append(index)
+  assert points == [(0,0),(0,1),(0,2),(0,3),
+                    (1,0),(1,1),(1,2),(1,3),
+                    (2,0),(2,1),(2,2),(2,3)]
+  points = []
+  for index in flex.nested_loop((1,2),(3,4)):
+    points.append(index)
+  assert points == [(1, 2), (1, 3), (2, 2), (2, 3)]
+  points = []
+  for index in flex.nested_loop((1,2),(3,4),0001):
+    points.append(index)
+  assert points == [(1, 2), (1, 3), (2, 2), (2, 3)]
+  points = []
+  for index in flex.nested_loop((1,2),(3,4),00000):
+    points.append(index)
+  assert points == [(1,2),(1,3),(1,4),(2,2),(2,3),(2,4),(3,2),(3,3),(3,4)]
+  points = []
+  for index in flex.nested_loop((1,2),(1,2),00000):
+    points.append(index)
+  assert points == [(1, 2)]
+  points = []
+  for index in flex.nested_loop((1,2),(1,2)):
+    points.append(index)
+  assert points == []
+  points = []
+  for index in flex.nested_loop([],[]):
+    points.append(index)
+  assert points == []
+
 def exercise_exceptions():
   f = flex.double(flex.grid((2,3)))
   try: f.assign(1, 0)
@@ -817,6 +863,7 @@ def run(iterations):
     exercise_linear_correlation()
     exercise_mean_and_variance()
     exercise_linear_interpolation()
+    exercise_loops()
     exercise_exceptions()
     exercise_pickle_single_buffered()
     exercise_pickle_double_buffered()
