@@ -1,6 +1,6 @@
 from iotbx import parameters
 
-def collect_values(word_iterator, lead_word):
+def collect_assigned_words(word_iterator, lead_word):
   is_disabled = False
   last_word = lead_word
   result = []
@@ -67,9 +67,11 @@ def collect_objects(
             "Unexpected scope attribute: %s%s" % (
               word.value, word.where_str()))
         word_iterator.pop_unquoted().assert_expected("=")
-        value_words = collect_values(word_iterator, word)
+        assigned_words = collect_assigned_words(word_iterator, word)
         if (not is_disabled):
-          scope.assign_attribute(name=word.value[1:], value_words=value_words)
+          scope.assign_attribute(
+            name=word.value[1:],
+            assigned_words=assigned_words)
         word = word_iterator.pop_unquoted()
       scope.objects = collect_objects(
         word_iterator=word_iterator,
@@ -86,7 +88,7 @@ def collect_objects(
           word_iterator.pop_unquoted().assert_expected("=")
         objects.append(parameters.definition(
           name=lead_word.value,
-          values=collect_values(word_iterator, lead_word),
+          words=collect_assigned_words(word_iterator, lead_word),
           is_disabled=is_disabled))
       else:
         if (len(objects) == 0
@@ -96,11 +98,11 @@ def collect_objects(
             lead_word.value, lead_word.where_str()))
         word = word_iterator.pop_unquoted()
         word.assert_expected("=")
-        value_words = collect_values(word_iterator, lead_word)
+        assigned_words = collect_assigned_words(word_iterator, lead_word)
         if (not is_disabled):
           objects[-1].assign_attribute(
             name=lead_word.value[1:],
-            value_words=value_words,
+            assigned_words=assigned_words,
             type_names=definition_type_names)
   if (stop_token is not None):
     if (start_word is None):
