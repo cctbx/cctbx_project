@@ -27,9 +27,9 @@ namespace cctbx { namespace fftbx {
       See also: Mreal_from_Nreal()
    */
   template <typename IntegerType, std::size_t D>
-  inline boost::array<std::size_t, D>
+  inline boost::array<IntegerType, D>
   Ncomplex_from_Nreal(const boost::array<IntegerType, D>& Nreal) {
-    boost::array<std::size_t, D> result = Nreal;
+    boost::array<IntegerType, D> result = Nreal;
     result[D-1] = Ncomplex_from_Nreal(result[D-1]);
     return result;
   }
@@ -43,9 +43,9 @@ namespace cctbx { namespace fftbx {
       See also: Ncomplex_from_Nreal()
    */
   template <typename IntegerType, std::size_t D>
-  inline boost::array<std::size_t, D>
+  inline boost::array<IntegerType, D>
   Mreal_from_Nreal(const boost::array<IntegerType, D>& Nreal) {
-    boost::array<std::size_t, D> result = Nreal;
+    boost::array<IntegerType, D> result = Nreal;
     result[D-1] = Mreal_from_Nreal(result[D-1]);
     return result;
   }
