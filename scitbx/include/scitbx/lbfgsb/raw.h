@@ -7,6 +7,15 @@
 
 #include <cstdio>
 
+#if !defined(SCITBX_LBFGSB_RAW_ASSERTION_FLAG)
+# if (defined(__GNUC__) && __GNUC__ < 3) \
+  || (defined(__ICC))
+#  define SCITBX_LBFGSB_RAW_ASSERTION_FLAG 0
+# else
+#  define SCITBX_LBFGSB_RAW_ASSERTION_FLAG 1
+# endif
+#endif
+
 namespace scitbx {
 //! C++ port of L-BFGS-B Version 2.1
 /*! Original FORTRAN distribution:
@@ -37,22 +46,28 @@ namespace raw {
       ElementType&
       operator()(int i) const
       {
+#if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
         SCITBX_ASSERT(i > 0);
         SCITBX_ASSERT(i <= this->size());
+#endif
         return this->operator[](i-1);
       }
 
       ref1
       get1(int i, int n) const
       {
+#if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
         SCITBX_ASSERT(i-1+n <= this->size());
+#endif
         return ref1(&(this->operator()(i)), n);
       }
 
       ref2<ElementType>
       get2(int i, int n, int m) const
       {
+#if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
         SCITBX_ASSERT(i-1+n*m <= this->size());
+#endif
         return ref2<ElementType>(&(this->operator()(i)), n, m);
       }
   };
@@ -75,12 +90,16 @@ namespace raw {
       ElementType&
       operator()(int i, int j) const
       {
+#if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
         SCITBX_ASSERT(i > 0);
         SCITBX_ASSERT(j > 0);
         SCITBX_ASSERT(i <= this->accessor()[1]);
         SCITBX_ASSERT(j <= this->accessor()[0]);
+#endif
         std::size_t offs = this->accessor()(j-1,i-1);
+#if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
         SCITBX_ASSERT(offs < hard_size_);
+#endif
         return base_t::operator[](offs);
       }
 
@@ -88,7 +107,9 @@ namespace raw {
       get1(int i, int j, int n) const
       {
         ElementType* ref1_begin = &(this->operator()(i,j));
+#if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
         SCITBX_ASSERT(ref1_begin - this->begin() + n <= this->size());
+#endif
         return ref1<ElementType>(ref1_begin, n);
       }
 
@@ -97,8 +118,10 @@ namespace raw {
       {
         ElementType* ref2_begin = &(this->operator()(i,j));
         std::size_t begin_shift = ref2_begin - this->begin();
+#if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
         SCITBX_ASSERT(begin_shift + n*m <= this->size());
         SCITBX_ASSERT(begin_shift <= hard_size_);
+#endif
         return ref2(ref2_begin, n, m);
       }
 
@@ -107,7 +130,9 @@ namespace raw {
       {
         ElementType* ref2_begin = &(this->operator()(i,j));
         std::size_t begin_shift = ref2_begin - this->begin();
+#if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
         SCITBX_ASSERT(begin_shift <= hard_size_);
+#endif
         ref2 result(ref2_begin, n, m);
         result.hard_size_ = hard_size_ - begin_shift;
         return result;
@@ -368,8 +393,10 @@ namespace raw {
     int const& job,
     int& info)
   {
+#if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
     SCITBX_ASSERT(t.size() == ldt*n);
     SCITBX_ASSERT(b.size() == n);
+#endif
     FloatType zero = 0;
     // check for zero diagonal elements.
     for(info=1;info<=n;info++) {
@@ -486,10 +513,12 @@ namespace raw {
     ref1<FloatType> const& p,
     int& info)
   {
+#if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
     SCITBX_ASSERT(sy.size() == m*m);
     SCITBX_ASSERT(wt.size() == m*m);
     SCITBX_ASSERT(v.size() == 2*col);
     SCITBX_ASSERT(p.size() == 2*col);
+#endif
     if (col == 0) return;
     // PART I: solve [  D^(1/2)      O ] [ p1 ] = [ v1 ]
     //               [ -L*D^(-1/2)   J ] [ p2 ]   [ v2 ].
@@ -574,8 +603,10 @@ namespace raw {
     ref1<int> const& iorder,
     int const& iheap)
   {
+#if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
     SCITBX_ASSERT(t.size() == n);
     SCITBX_ASSERT(iorder.size() == n);
+#endif
     if (iheap == 0) {
       // Rearrange the elements t(1) to t(n) to form a heap.
       for(int k=2;k<=n;k++) {
@@ -652,9 +683,11 @@ namespace raw {
     int& info,
     int& k)
   {
+#if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
     SCITBX_ASSERT(l.size() == n);
     SCITBX_ASSERT(u.size() == n);
     SCITBX_ASSERT(nbd.size() == n);
+#endif
     FloatType zero = 0;
     // Check the input arguments for errors.
     if (n <= 0) task = "ERROR: N .LE. 0";
@@ -782,8 +815,10 @@ namespace raw {
     FloatType const& stp,
     FloatType const& xstep)
   {
+#if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
     SCITBX_ASSERT(x.size() == n);
     SCITBX_ASSERT(g.size() == n);
+#endif
     // 'word' records the status of subspace solutions.
     if (iword == 0) {
       // the subspace minimization converged.
@@ -1061,6 +1096,167 @@ namespace raw {
     }
   }
 
+  //! Fragment from subroutine cauchy.
+  template <typename FloatType>
+  bool
+  cauchy_loop(
+    // arguments to cauchy
+    int const& n,
+    ref1<FloatType> const& x,
+    ref1<FloatType> const& l,
+    ref1<FloatType> const& u,
+    ref1<int> const& iorder,
+    ref1<int> const& iwhere,
+    ref1<FloatType> const& t,
+    ref1<FloatType> const& d,
+    ref1<FloatType> const& xcp,
+    int const& m,
+    ref2<FloatType> const& wy,
+    ref2<FloatType> const& ws,
+    ref2<FloatType> const& sy,
+    ref2<FloatType> const& wt,
+    FloatType const& theta,
+    int const& col,
+    int const& head,
+    ref1<FloatType> const& p,
+    ref1<FloatType> const& c,
+    ref1<FloatType> const& wbp,
+    ref1<FloatType> const& v,
+    int& nint,
+    int const& iprint,
+    int& info,
+    FloatType const& epsmch,
+    // local to cauchy
+    FloatType const& bkmin,
+    bool const& bnded,
+    int const& col2,
+    FloatType& dtm,
+    FloatType& f1,
+    FloatType& f2,
+    FloatType& f2_org,
+    int const& ibkmin,
+    int const& nbreak,
+    FloatType& tsum)
+  {
+    FloatType zero = 0;
+    int nleft = nbreak;
+    int iter = 1;
+    FloatType tj = zero;
+    //------------------ the beginning of the loop -------------------------
+    while (true) { // lbl_777:
+      // Find the next smallest breakpoint;
+      // compute dt = t(nleft) - t(nleft + 1).
+      FloatType tj0 = tj;
+      int ibp; // uninitialized
+      if (iter == 1) {
+        // Since we already have the smallest breakpoint we need not do
+        // heapsort yet. Often only one breakpoint is used and the
+        // cost of heapsort is avoided.
+        tj = bkmin;
+        ibp = iorder(ibkmin);
+      }
+      else {
+        if (iter == 2) {
+          // Replace the already used smallest breakpoint with the
+          // breakpoint numbered nbreak > nlast, before heapsort call.
+          if (ibkmin != nbreak) {
+            t(ibkmin) = t(nbreak);
+            iorder(ibkmin) = iorder(nbreak);
+          }
+          // Update heap structure of breakpoints
+          // (if iter=2, initialize heap).
+        }
+        hpsolb(nleft,t.get1(1,nleft),iorder.get1(1,nleft),iter-2);
+        tj = t(nleft);
+        ibp = iorder(nleft);
+      }
+      FloatType dt = tj - tj0;
+      if (dt != zero && iprint >= 100) {
+        printf("\nPiece    %3d --f1, f2 at start point  %11.4E %11.4E\n",
+               nint,f1,f2);
+        printf("Distance to the next break point =  %11.4E\n", dt);
+        printf("Distance to the stationary point =  %11.4E\n", dtm);
+      }
+      // If a minimizer is within this interval, locate the GCP and return.
+      if (dtm < dt) return false; // goto lbl_888;
+      // Otherwise fix one variable and
+      // reset the corresponding component of d to zero.
+      tsum = tsum + dt;
+      nleft = nleft - 1;
+      iter = iter + 1;
+      FloatType dibp = d(ibp);
+      d(ibp) = zero;
+      FloatType zibp; // uninitialized
+      if (dibp > zero) {
+        zibp = u(ibp) - x(ibp);
+        xcp(ibp) = u(ibp);
+        iwhere(ibp) = 2;
+      }
+      else {
+        zibp = l(ibp) - x(ibp);
+        xcp(ibp) = l(ibp);
+        iwhere(ibp) = 1;
+      }
+      if (iprint >= 100) {
+        printf(" Variable  %12d  is fixed.\n", ibp);
+      }
+      if (nleft == 0 && nbreak == n) {
+        // all n variables are fixed,
+        // return with xcp as GCP.
+        dtm = dt;
+        return true; // goto lbl_999;
+      }
+      // Update the derivative information.
+      nint = nint + 1;
+      FloatType dibp2 = dibp*dibp;
+      // Update f1 and f2.
+      // temporarily set f1 and f2 for col=0.
+      f1 = f1 + dt*f2 + dibp2 - theta*dibp*zibp;
+      f2 = f2 - theta*dibp2;
+      if (col > 0) {
+        // update c = c + dt*p.
+        daxpy(col2,dt,p.begin(),c.begin());
+        // choose wbp,
+        // the row of W corresponding to the breakpoint encountered.
+        int pointr = head;
+        for(int j=1;j<=col;j++) {
+          wbp(j) = wy(ibp,pointr);
+          wbp(col + j) = theta*ws(ibp,pointr);
+          pointr = pointr % m + 1;
+        }
+        // compute (wbp)Mc, (wbp)Mp, and (wbp)M(wbp)'.
+        bmv(m,sy,wt,col,wbp.get1(1,2*col),v.get1(1,2*col),info);
+        if (info != 0) return false; // goto lbl_888;
+        FloatType wmc = lbfgs::detail::ddot(col2,c.begin(),v.begin());
+        FloatType wmp = lbfgs::detail::ddot(col2,p.begin(),v.begin());
+        FloatType wmw = lbfgs::detail::ddot(col2,wbp.begin(),v.begin());
+        // update p = p - dibp*wbp.
+        daxpy(col2,-dibp,wbp.begin(),p.begin());
+        // complete updating f1 and f2 while col > 0.
+        f1 = f1 + dibp*wmc;
+        f2 = f2 + 2*dibp*wmp - dibp2*wmw;
+      }
+      f2 = std::max(epsmch*f2_org,f2);
+      if (nleft > 0) {
+        dtm = -f1/f2;
+        // goto lbl_777;
+        // to repeat the loop for unsearched intervals.
+      }
+      else if(bnded) {
+        f1 = zero;
+        f2 = zero;
+        dtm = zero;
+        break;
+      }
+      else {
+        dtm = -f1/f2;
+        break;
+      }
+    }
+    //------------------ the end of the loop -------------------------------
+    return false; // next line was lbl_888
+  }
+
   /*! \brief Computation of the generalized Cauchy point (GCP).
    */
   /*! For given x, l, u, g (with sbgnrm > 0), and a limited memory
@@ -1267,6 +1463,7 @@ namespace raw {
     int& info,
     FloatType const& epsmch)
   {
+#if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
     SCITBX_ASSERT(x.size() == n);
     SCITBX_ASSERT(l.size() == n);
     SCITBX_ASSERT(u.size() == n);
@@ -1287,6 +1484,7 @@ namespace raw {
     SCITBX_ASSERT(v.size() == 2*m);
     SCITBX_ASSERT(sg.size() == m);
     SCITBX_ASSERT(yg.size() == m);
+#endif
     FloatType one = 1;
     FloatType zero = 0;
     // Check the status of the variables, reset iwhere(i) if necessary;
@@ -1420,135 +1618,31 @@ namespace raw {
       printf(" There are %12d  breakpoints \n", nbreak);
     }
     // If there are no breakpoints, locate the GCP and return.
-    if (nbreak == 0) goto lbl_888;
-    { // scope for variables
-      int nleft = nbreak;
-      int iter = 1;
-      FloatType tj = zero;
-      //------------------ the beginning of the loop -------------------------
-      lbl_777:
-      // Find the next smallest breakpoint;
-      // compute dt = t(nleft) - t(nleft + 1).
-      FloatType tj0 = tj;
-      int ibp; // uninitialized
-      if (iter == 1) {
-        // Since we already have the smallest breakpoint we need not do
-        // heapsort yet. Often only one breakpoint is used and the
-        // cost of heapsort is avoided.
-        tj = bkmin;
-        ibp = iorder(ibkmin);
-      }
-      else {
-        if (iter == 2) {
-          // Replace the already used smallest breakpoint with the
-          // breakpoint numbered nbreak > nlast, before heapsort call.
-          if (ibkmin != nbreak) {
-            t(ibkmin) = t(nbreak);
-            iorder(ibkmin) = iorder(nbreak);
-          }
-          // Update heap structure of breakpoints
-          // (if iter=2, initialize heap).
-        }
-        hpsolb(nleft,t.get1(1,nleft),iorder.get1(1,nleft),iter-2);
-        tj = t(nleft);
-        ibp = iorder(nleft);
-      }
-      FloatType dt = tj - tj0;
-      if (dt != zero && iprint >= 100) {
-        printf("\nPiece    %3d --f1, f2 at start point  %11.4E %11.4E\n",
+    bool skip_lbl_888 = false;
+    if (nbreak != 0) {
+      skip_lbl_888 = cauchy_loop(
+        n, x, l, u, iorder, iwhere, t, d, xcp,
+        m, wy, ws, sy, wt, theta, col, head, p, c, wbp,
+        v, nint, iprint, info, epsmch,
+        bkmin, bnded, col2, dtm, f1, f2, f2_org, ibkmin, nbreak, tsum);
+      // goto lbl_999;
+    }
+    if (!skip_lbl_888) {
+      // lbl_888:
+      if (iprint >= 99) {
+        printf(" \n");
+        printf(" GCP found in this segment\n");
+        printf("Piece    %3d --f1, f2 at start point  %11.4E %11.4E\n",
                nint,f1,f2);
-        printf("Distance to the next break point =  %11.4E\n", dt);
         printf("Distance to the stationary point =  %11.4E\n", dtm);
       }
-      // If a minimizer is within this interval, locate the GCP and return.
-      if (dtm < dt) goto lbl_888;
-      // Otherwise fix one variable and
-      // reset the corresponding component of d to zero.
-      tsum = tsum + dt;
-      nleft = nleft - 1;
-      iter = iter + 1;
-      FloatType dibp = d(ibp);
-      d(ibp) = zero;
-      FloatType zibp; // uninitialized
-      if (dibp > zero) {
-        zibp = u(ibp) - x(ibp);
-        xcp(ibp) = u(ibp);
-        iwhere(ibp) = 2;
-      }
-      else {
-        zibp = l(ibp) - x(ibp);
-        xcp(ibp) = l(ibp);
-        iwhere(ibp) = 1;
-      }
-      if (iprint >= 100) {
-        printf(" Variable  %12d  is fixed.\n", ibp);
-      }
-      if (nleft == 0 && nbreak == n) {
-        // all n variables are fixed,
-        // return with xcp as GCP.
-        dtm = dt;
-        goto lbl_999;
-      }
-      // Update the derivative information.
-      nint = nint + 1;
-      FloatType dibp2 = dibp*dibp;
-      // Update f1 and f2.
-      // temporarily set f1 and f2 for col=0.
-      f1 = f1 + dt*f2 + dibp2 - theta*dibp*zibp;
-      f2 = f2 - theta*dibp2;
-      if (col > 0) {
-        // update c = c + dt*p.
-        daxpy(col2,dt,p.begin(),c.begin());
-        // choose wbp,
-        // the row of W corresponding to the breakpoint encountered.
-        int pointr = head;
-        for(int j=1;j<=col;j++) {
-          wbp(j) = wy(ibp,pointr);
-          wbp(col + j) = theta*ws(ibp,pointr);
-          pointr = pointr % m + 1;
-        }
-        // compute (wbp)Mc, (wbp)Mp, and (wbp)M(wbp)'.
-        bmv(m,sy,wt,col,wbp.get1(1,2*col),v.get1(1,2*col),info);
-        if (info != 0) return;
-        FloatType wmc = lbfgs::detail::ddot(col2,c.begin(),v.begin());
-        FloatType wmp = lbfgs::detail::ddot(col2,p.begin(),v.begin());
-        FloatType wmw = lbfgs::detail::ddot(col2,wbp.begin(),v.begin());
-        // update p = p - dibp*wbp.
-        daxpy(col2,-dibp,wbp.begin(),p.begin());
-        // complete updating f1 and f2 while col > 0.
-        f1 = f1 + dibp*wmc;
-        f2 = f2 + 2*dibp*wmp - dibp2*wmw;
-      }
-      f2 = std::max(epsmch*f2_org,f2);
-      if (nleft > 0) {
-        dtm = -f1/f2;
-        goto lbl_777;
-        // to repeat the loop for unsearched intervals.
-      }
-      else if(bnded) {
-        f1 = zero;
-        f2 = zero;
-        dtm = zero;
-      }
-      else {
-        dtm = -f1/f2;
-      }
+      if (dtm <= zero) dtm = zero;
+      tsum = tsum + dtm;
+      // Move free variables (i.e., the ones w/o breakpoints) and
+      // the variables whose breakpoints haven't been reached.
+      daxpy(n,tsum,d.begin(),xcp.begin());
     }
-    //------------------ the end of the loop -------------------------------
-    lbl_888:
-    if (iprint >= 99) {
-      printf(" \n");
-      printf(" GCP found in this segment\n");
-      printf("Piece    %3d --f1, f2 at start point  %11.4E %11.4E\n",
-             nint,f1,f2);
-      printf("Distance to the stationary point =  %11.4E\n", dtm);
-    }
-    if (dtm <= zero) dtm = zero;
-    tsum = tsum + dtm;
-    // Move free variables (i.e., the ones w/o breakpoints) and
-    // the variables whose breakpoints haven't been reached.
-    daxpy(n,tsum,d.begin(),xcp.begin());
-    lbl_999:
+    // lbl_999:
     // Update c = c + dtm*p = W'(x^c - x)
     // which will be used in computing r = Z'(B(x^c - x) + g).
     if (col > 0) daxpy(col2,dtm,p.begin(),c.begin());
@@ -1609,9 +1703,11 @@ namespace raw {
     int const& iprint,
     int const& iter)
   {
+#if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
     SCITBX_ASSERT(index.size() == n);
     SCITBX_ASSERT(indx2.size() == n);
     SCITBX_ASSERT(iwhere.size() == n);
+#endif
     nenter = 0;
     ileave = n + 1;
     if (iter > 0 && cnstnd) {
@@ -1710,7 +1806,9 @@ namespace raw {
     int const& n,
     int& info)
   {
+#if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
     SCITBX_ASSERT(a.size() == lda*n);
+#endif
     for(int j=1;j<=n;j++) {
       info = j;
       FloatType s = 0;
@@ -1869,6 +1967,7 @@ namespace raw {
     int const& head,
     int& info)
   {
+#if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
     SCITBX_ASSERT(ind.size() == n);
     SCITBX_ASSERT(indx2.size() == n);
     SCITBX_ASSERT(wn.size() == 2*m*2*m);
@@ -1876,6 +1975,7 @@ namespace raw {
     SCITBX_ASSERT(ws.size() == n*m);
     SCITBX_ASSERT(wy.size() == n*m);
     SCITBX_ASSERT(sy.size() == m*m);
+#endif
     // Form the lower triangular part of
     //   WN1 = [Y' ZZ'Y   L_a'+R_z']
     //         [L_a+R_z   S'AA'S   ]
@@ -2086,6 +2186,7 @@ namespace raw {
     bool const& cnstnd,
     int& info)
   {
+#if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
     SCITBX_ASSERT(x.size() == n);
     SCITBX_ASSERT(g.size() == n);
     SCITBX_ASSERT(ws.size() == n*m);
@@ -2096,6 +2197,7 @@ namespace raw {
     SCITBX_ASSERT(r.size() == n);
     SCITBX_ASSERT(wa.size() == 4*m);
     SCITBX_ASSERT(index.size() == n);
+#endif
     if (!cnstnd && col > 0) {
       for(int i=1;i<=n;i++) {
         r(i) = -g(i);
@@ -2287,6 +2389,7 @@ namespace raw {
     int const& iprint,
     int& info)
   {
+#if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
     SCITBX_ASSERT(ind.size() == nsub);
     SCITBX_ASSERT(l.size() == n);
     SCITBX_ASSERT(u.size() == n);
@@ -2297,6 +2400,7 @@ namespace raw {
     SCITBX_ASSERT(wy.size() == n*m);
     SCITBX_ASSERT(wv.size() == 2*m);
     SCITBX_ASSERT(wn.size() == 2*m*2*m);
+#endif
     if (nsub <= 0) return;
     if (iprint >= 99) {
       printf("\n----------------SUBSM entered-----------------\n\n");
@@ -2376,7 +2480,9 @@ namespace raw {
       }
     }
     if (alpha < one) {
+#if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
       SCITBX_ASSERT(ibd_is_defined);
+#endif
       FloatType dk = d(ibd);
       int k = ind(ibd);
       if (dk > zero) {
@@ -2822,8 +2928,10 @@ namespace raw {
     ref1<int> const& isave,
     ref1<FloatType> const& dsave)
   {
+#if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
     SCITBX_ASSERT(isave.size() == 2);
     SCITBX_ASSERT(dsave.size() == 13);
+#endif
     FloatType zero=0.0e0;
     FloatType p5=0.5e0;
     FloatType p66=0.66e0;
@@ -2845,67 +2953,67 @@ namespace raw {
     FloatType gy;
     FloatType stmin;
     FloatType stmax;
-    if (task.substr(0,5) == "START") {
-      // Check the input arguments for errors.
-      if (stp < stpmin) task = "ERROR: STP .LT. STPMIN";
-      if (stp > stpmax) task = "ERROR: STP .GT. STPMAX";
-      if (g >= zero) task = "ERROR: INITIAL G .GE. ZERO";
-      if (ftol < zero) task = "ERROR: FTOL .LT. ZERO";
-      if (gtol < zero) task = "ERROR: GTOL .LT. ZERO";
-      if (xtol < zero) task = "ERROR: XTOL .LT. ZERO";
-      if (stpmin < zero) task = "ERROR: STPMIN .LT. ZERO";
-      if (stpmax < stpmin) task = "ERROR: STPMAX .LT. STPMIN";
-      // Exit if there are errors on input.
-      if (task.substr(0,5) == "ERROR") return;
-      // Initialize local variables.
-      brackt = false;
-      stage = 1;
-      finit = f;
-      ginit = g;
-      gtest = ftol*ginit;
-      width = stpmax - stpmin;
-      width1 = width/p5;
-      // The variables stx, fx, gx contain the values of the step,
-      // function, and derivative at the best step.
-      // The variables sty, fy, gy contain the value of the step,
-      // function, and derivative at sty.
-      // The variables stp, f, g contain the values of the step,
-      // function, and derivative at stp.
-      stx = zero;
-      fx = finit;
-      gx = ginit;
-      sty = zero;
-      fy = finit;
-      gy = ginit;
-      stmin = zero;
-      stmax = stp + xtrapu*stp;
-      task = "FG";
-      goto lbl_1000;
-    }
-    else {
-      // Restore local variables.
-      if (isave(1) == 1) {
-        brackt = true;
+    while (true) { // enable use of break instead of goto lbl_1000
+      if (task.substr(0,5) == "START") {
+        // Check the input arguments for errors.
+        if (stp < stpmin) task = "ERROR: STP .LT. STPMIN";
+        if (stp > stpmax) task = "ERROR: STP .GT. STPMAX";
+        if (g >= zero) task = "ERROR: INITIAL G .GE. ZERO";
+        if (ftol < zero) task = "ERROR: FTOL .LT. ZERO";
+        if (gtol < zero) task = "ERROR: GTOL .LT. ZERO";
+        if (xtol < zero) task = "ERROR: XTOL .LT. ZERO";
+        if (stpmin < zero) task = "ERROR: STPMIN .LT. ZERO";
+        if (stpmax < stpmin) task = "ERROR: STPMAX .LT. STPMIN";
+        // Exit if there are errors on input.
+        if (task.substr(0,5) == "ERROR") return;
+        // Initialize local variables.
+        brackt = false;
+        stage = 1;
+        finit = f;
+        ginit = g;
+        gtest = ftol*ginit;
+        width = stpmax - stpmin;
+        width1 = width/p5;
+        // The variables stx, fx, gx contain the values of the step,
+        // function, and derivative at the best step.
+        // The variables sty, fy, gy contain the value of the step,
+        // function, and derivative at sty.
+        // The variables stp, f, g contain the values of the step,
+        // function, and derivative at stp.
+        stx = zero;
+        fx = finit;
+        gx = ginit;
+        sty = zero;
+        fy = finit;
+        gy = ginit;
+        stmin = zero;
+        stmax = stp + xtrapu*stp;
+        task = "FG";
+        break; // goto lbl_1000;
       }
       else {
-        brackt = false;
+        // Restore local variables.
+        if (isave(1) == 1) {
+          brackt = true;
+        }
+        else {
+          brackt = false;
+        }
+        stage = isave(2);
+        ginit = dsave(1);
+        gtest = dsave(2);
+        gx = dsave(3);
+        gy = dsave(4);
+        finit = dsave(5);
+        fx = dsave(6);
+        fy = dsave(7);
+        stx = dsave(8);
+        sty = dsave(9);
+        stmin = dsave(10);
+        stmax = dsave(11);
+        width = dsave(12);
+        width1 = dsave(13);
       }
-      stage = isave(2);
-      ginit = dsave(1);
-      gtest = dsave(2);
-      gx = dsave(3);
-      gy = dsave(4);
-      finit = dsave(5);
-      fx = dsave(6);
-      fy = dsave(7);
-      stx = dsave(8);
-      sty = dsave(9);
-      stmin = dsave(10);
-      stmax = dsave(11);
-      width = dsave(12);
-      width1 = dsave(13);
-    }
-    { // scope for variables
       // If psi(stp) <= 0 and f'(stp) >= 0 for some step, then the
       // algorithm enters the second stage.
       FloatType ftest = finit + stp*gtest;
@@ -2931,7 +3039,7 @@ namespace raw {
       }
       // Test for termination.
       if (   task.substr(0,4) == "WARN"
-             || task.substr(0,4) == "CONV") goto lbl_1000;
+          || task.substr(0,4) == "CONV") break; // goto lbl_1000;
       // A modified function is used to predict the step during the
       // first stage if a lower function value has been obtained but
       // the decrease is not sufficient.
@@ -2979,8 +3087,9 @@ namespace raw {
           || (brackt && stmax-stmin <= xtol*stmax)) stp = stx;
       // Obtain another function and derivative.
       task = "FG";
+      break;
     }
-    lbl_1000:
+    // lbl_1000:
     // Save local variables.
     if (brackt) {
       isave(1) = 1;
@@ -3059,6 +3168,7 @@ namespace raw {
     ref1<int> const& isave,
     ref1<FloatType> const& dsave)
   {
+#if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
     SCITBX_ASSERT(x.size() == n);
     SCITBX_ASSERT(l.size() == n);
     SCITBX_ASSERT(u.size() == n);
@@ -3070,6 +3180,7 @@ namespace raw {
     SCITBX_ASSERT(z.size() == n);
     SCITBX_ASSERT(isave.size() == 2);
     SCITBX_ASSERT(dsave.size() == 13);
+#endif
     FloatType one=1.0e0;
     FloatType zero=0.0e0;
     FloatType big=1.0e+10;
@@ -3194,12 +3305,14 @@ namespace raw {
     FloatType const& stp,
     FloatType const& dtd)
   {
+#if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
     SCITBX_ASSERT(d.size() == n);
     SCITBX_ASSERT(r.size() == n);
     SCITBX_ASSERT(ws.size() == n*m);
     SCITBX_ASSERT(wy.size() == n*m);
     SCITBX_ASSERT(sy.size() == m*m);
     SCITBX_ASSERT(ss.size() == m*m);
+#endif
     FloatType one=1;
     // Set pointers for matrices WS and WY.
     if (iupdat <= m) {
@@ -3273,9 +3386,11 @@ namespace raw {
     FloatType const& theta,
     int& info)
   {
+#if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
     SCITBX_ASSERT(wt.size() == m*m);
     SCITBX_ASSERT(sy.size() == m*m);
     SCITBX_ASSERT(ss.size() == m*m);
+#endif
     // Form the upper half of  T = theta*SS + L*D^(-1)*L',
     // store T in the upper triangle of the array wt.
     for(int j=1;j<=col;j++) {
@@ -3512,6 +3627,7 @@ namespace raw {
     ref1<int> const& isave,
     ref1<FloatType> const& dsave)
   {
+#if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
     SCITBX_ASSERT(x.size() == n);
     SCITBX_ASSERT(l.size() == n);
     SCITBX_ASSERT(u.size() == n);
@@ -3540,6 +3656,7 @@ namespace raw {
     SCITBX_ASSERT(lsave.size() == 4);
     SCITBX_ASSERT(isave.size() == 23);
     SCITBX_ASSERT(dsave.size() == 29);
+#endif
     FloatType zero = 0;
     FloatType one = 1;
     // begin variables in [lid]save arrays
@@ -3619,19 +3736,17 @@ namespace raw {
       info = 0;
       if (iprint >= 1) {
         // open a summary file 'iterate.dat'
-        //PR        open (8, file = 'iterate.dat', status = 'unknown');
-        //PR        itfile = 8;
+        //PR open (8, file = 'iterate.dat', status = 'unknown');
+        itfile = 8;
       }
-      {
-        // Check the input arguments for errors.
-        errclb(n,m,factr,l,u,nbd,task,info,k);
-        if (task.substr(0,5) == "ERROR") {
-          prn3lb(n,x,f,task,iprint,info,itfile,
-                 iter,nfgv,nintol,nskip,nact,sbgnrm,
-                 zero,nint,word,iback,stp,xstep,k,
-                 cachyt,sbtime,lnscht);
-          return;
-        }
+      // Check the input arguments for errors.
+      errclb(n,m,factr,l,u,nbd,task,info,k);
+      if (task.substr(0,5) == "ERROR") {
+        prn3lb(n,x,f,task,iprint,info,itfile,
+               iter,nfgv,nintol,nskip,nact,sbgnrm,
+               zero,nint,word,iback,stp,xstep,k,
+               cachyt,sbtime,lnscht);
+        return;
       }
       prn1lb(n,m,l,u,x,iprint,itfile,epsmch);
       // Initialize iwhere & project x onto the feasible set.
@@ -3803,11 +3918,11 @@ namespace raw {
     // from 'cauchy').
     cmprlb(n,m,x,g,ws,wy,sy,wt,z,r,wa.get1(1,4*m),index,
            theta,col,head,nfree,cnstnd,info);
-    if (info != 0) goto lbl_444;
-    // call the direct method.
-    subsm(n,m,nfree,index.get1(1,nfree),l,u,nbd,z,r,ws,wy,theta,
-          col,head,iword,wa.get1(1,2*m),wn,iprint,info);
-    lbl_444:
+    if (info == 0) {
+      // call the direct method.
+      subsm(n,m,nfree,index.get1(1,nfree),l,u,nbd,z,r,ws,wy,theta,
+            col,head,iword,wa.get1(1,2*m),wn,iprint,info);
+    }
     if (info != 0) {
       // singular triangular system detected;
       // refresh the lbfgs memory and restart the iteration.
@@ -3931,7 +4046,7 @@ namespace raw {
           printf("  ys=%10.3E  -gs=%10.3E BFGS update SKIPPED\n",
                  dr, ddum);
         }
-        goto lbl_888;
+        goto lbl_222; // goto lbl_888;
       }
     }
     //cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
@@ -3968,7 +4083,7 @@ namespace raw {
     // Now the inverse of the middle matrix in B is
     //   [  D^(1/2)      O ] [ -D^(1/2)  D^(-1/2)*L' ]
     //   [ -L*D^(-1/2)   J ] [  0        J'          ]
-    lbl_888:
+    // lbl_888:
     //-------------------- the end of the loop -----------------------------
     goto lbl_222;
     lbl_999:
@@ -4219,6 +4334,7 @@ namespace raw {
     ref1<int> const& isave,
     ref1<FloatType> const& dsave)
   {
+#if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
     SCITBX_ASSERT(x.size() == n);
     SCITBX_ASSERT(l.size() == n);
     SCITBX_ASSERT(u.size() == n);
@@ -4229,6 +4345,7 @@ namespace raw {
     SCITBX_ASSERT(lsave.size() == 4);
     SCITBX_ASSERT(isave.size() == 44);
     SCITBX_ASSERT(dsave.size() == 29);
+#endif
     if (task.substr(0,5) == "START") {
       isave(1)  = m*n;
       isave(2)  = m*m;
@@ -4251,9 +4368,9 @@ namespace raw {
       isave(19) = isave(18) + m;
       isave(20) = isave(19) + m;
     }
-    int l1   = isave(1);
-    int l2   = isave(2);
-    int l3   = isave(3);
+    //int l1   = isave(1); // unused
+    //int l2   = isave(2); // unused
+    //int l3   = isave(3); // unused
     int lws  = isave(4);
     int lwy  = isave(5);
     int lsy  = isave(6);
