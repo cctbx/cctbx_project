@@ -66,13 +66,13 @@ namespace cctbx { namespace translation_search { namespace fast_nv1995_detail {
             result.is_conj = true;
           }
           for(std::size_t i=0;i<2;i++) {
-            i3d[i] = maptbx::h_as_ih(h[i], range_[i], false);
+            i3d[i] = maptbx::h_as_ih_exact(h[i], range_[i], false);
           }
-          i3d[2] = maptbx::h_as_ih(h[2], range_[2], true);
+          i3d[2] = maptbx::h_as_ih_exact(h[2], range_[2], true);
         }
         else {
           for(std::size_t i=0;i<3;i++) {
-            i3d[i] = maptbx::h_as_ih(h[i], range_[i], false);
+            i3d[i] = maptbx::h_as_ih_exact(h[i], range_[i], false);
           }
         }
         if (i3d.min() < 0) return result;

@@ -147,7 +147,8 @@ def exercise_structure_factors():
   for anomalous_flag in (00000, 0001):
     for conjugate_flag in (00000, 0001):
       t = maptbx.structure_factors.to_map(
-        sg.group(), anomalous_flag, mi, d, flex.grid(11,11,9), conjugate_flag)
+        sg.group(), anomalous_flag, mi, d,
+        (11,11,9), flex.grid(11,11,9), conjugate_flag)
       assert t.complex_map().focus() == (11,11,9)
       f = maptbx.structure_factors.from_map(
         uc, sg.type(), anomalous_flag, 5., t.complex_map(), conjugate_flag)

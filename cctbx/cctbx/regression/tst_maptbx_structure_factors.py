@@ -39,6 +39,7 @@ def exercise(space_group_info, anomalous_flag, conjugate_flag,
     anomalous_flag,
     f_calc_array.indices(),
     f_calc_array.data(),
+    n_real,
     flex.grid(n_complex),
     conjugate_flag)
   if (not anomalous_flag):
@@ -117,6 +118,7 @@ def exercise_under_sampled(space_group_info, anomalous_flag, conjugate_flag,
     anomalous_flag,
     f_calc_array.indices(),
     f_calc_array.data(),
+    n_real,
     flex.grid(n_complex),
     conjugate_flag)
   if (not anomalous_flag):
@@ -139,7 +141,7 @@ def exercise_under_sampled(space_group_info, anomalous_flag, conjugate_flag,
   else:
     cfft = fftpack.complex_to_complex_3d(n_real_under_sampled)
     n_complex_under_sampled = cfft.n()
-  under_sampled_map = maptbx.structure_factors.to_under_sampled_map(
+  under_sampled_map = maptbx.structure_factors.to_map(
     f_calc_array.space_group(),
     anomalous_flag,
     f_calc_array.indices(),
