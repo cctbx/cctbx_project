@@ -28,6 +28,11 @@ namespace cctbx { namespace af {
   void shared_miller_index_setstate(
     shared<miller::Index>& a,
     boost::python::ref state);
+  boost::python::ref shared_hendrickson_lattman_double_getstate(
+    shared<hendrickson_lattman<double> > const& a);
+  void shared_hendrickson_lattman_double_setstate(
+    shared<hendrickson_lattman<double> >& a,
+    boost::python::ref state);
 
   template <>
   struct shared_pickle<miller::Index>
@@ -37,6 +42,19 @@ namespace cctbx { namespace af {
     {
       class_bldr.def(shared_miller_index_getstate, "__getstate__");
       class_bldr.def(shared_miller_index_setstate, "__setstate__");
+    }
+  };
+
+  template <>
+  struct shared_pickle<hendrickson_lattman<double> >
+  {
+    template <typename ClassBuilderType>
+    static void def(ClassBuilderType& class_bldr)
+    {
+      class_bldr.def(
+        shared_hendrickson_lattman_double_getstate, "__getstate__");
+      class_bldr.def(
+        shared_hendrickson_lattman_double_setstate, "__setstate__");
     }
   };
 
