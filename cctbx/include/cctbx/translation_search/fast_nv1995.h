@@ -2,80 +2,53 @@
 #define CCTBX_TRANSLATION_SEARCH_FAST_NV1995_H
 
 #include <cctbx/translation_search/fast_nv1995/combinations.h>
-#include <cctbx/translation_search/fast_nv1995/summations.h>
-#include <cctbx/maptbx/copy.h>
-#include <cctbx/miller/index_span.h>
-#include <scitbx/fftpack/real_to_complex_3d.h>
-
-// Navaza, J. & Vernoslova, E. (1995). Acta Cryst. A51, 445-449.
+#include <cctbx/translation_search/fast_terms.h>
 
 namespace cctbx { namespace translation_search {
 
-  template <typename FloatType = double>
+  /*! \brief Fast computation of the translation function
+      (correlation of intensities).
+   */
+  /*! Navaza, J. & Vernoslova, E. (1995). Acta Cryst. A51, 445-449.
+   */
+  template <typename FloatType=double>
   class fast_nv1995
   {
     public:
-      template <typename FloatTypeFobs,
-                typename FloatTypeFpart,
-                typename FloatTypeP1Fcalc>
+      //! Carries out the computation.
       fast_nv1995(
         af::int3 const& gridding,
         sgtbx::space_group const& space_group,
         bool anomalous_flag,
         af::const_ref<miller::index<> > const& miller_indices_f_obs,
-        af::const_ref<FloatTypeFobs> const& f_obs,
-        af::const_ref<std::complex<FloatTypeFpart> > const& f_part,
+        af::const_ref<FloatType> const& f_obs,
+        af::const_ref<std::complex<FloatType> > const& f_part,
         af::const_ref<miller::index<> > const& miller_indices_p1_f_calc,
-        af::const_ref<std::complex<FloatTypeP1Fcalc> > const& p1_f_calc)
-      :
-        target_map_(af::c_grid<3>(gridding))
+        af::const_ref<std::complex<FloatType> > const& p1_f_calc)
       {
-        // FUTURE: move out of class body
-        using namespace fast_nv1995_detail;
-        typedef FloatType f_t;
-
-        intermediates<f_t> interm(
+        fast_nv1995_detail::intermediates<FloatType> interm(
           space_group, anomalous_flag, miller_indices_f_obs, f_obs, f_part);
-
-        af::int3 range = miller::index_span(
-          miller_indices_p1_f_calc).abs_range();
-        f_calc_map<f_t> fc_map(anomalous_flag, range);
-        fc_map.import(miller_indices_p1_f_calc, p1_f_calc);
-
-        scitbx::fftpack::real_to_complex_3d<f_t> rfft(gridding);
-
-        af::versa<std::complex<f_t>, af::c_grid<3> >
-          accu_mem_complex(
-            af::c_grid<3>(rfft.n_complex()));
-        af::const_ref<f_t, af::c_grid_padded<3> >
-          accu_mem_real_const_ref(
-            reinterpret_cast<f_t*>(accu_mem_complex.begin()),
-            af::c_grid_padded<3>(rfft.m_real(), rfft.n_real()));
-
-        summation_accumulator<f_t>
-          accu(
-            accu_mem_complex.begin(),
-            miller::index<>(rfft.n_real()),
-            miller::index<>(rfft.n_complex()));
-
-        summation_eq15(space_group, miller_indices_f_obs,
-          interm.m.const_ref(), f_part, fc_map, accu);
-        rfft.backward(accu_mem_complex);
-        maptbx::copy(accu_mem_real_const_ref, target_map_.ref());
-
-        accu_mem_complex.fill(0);
-        summation_eq14(space_group, miller_indices_f_obs,
-          interm.m.const_ref(), f_part, fc_map, accu);
-        rfft.backward(accu_mem_complex);
-        combination_eq13(interm, accu_mem_real_const_ref, target_map_.ref());
-
-        accu_mem_complex.fill(0);
-        summation_eq14(space_group, miller_indices_f_obs,
-          interm.m_d_i_obs.const_ref(), f_part, fc_map, accu);
-        rfft.backward(accu_mem_complex);
-        combination_eq12(interm, accu_mem_real_const_ref, target_map_.ref());
+        fast_terms<FloatType> terms(
+          gridding, anomalous_flag, miller_indices_p1_f_calc, p1_f_calc);
+        target_map_ = terms.summation(
+          space_group, miller_indices_f_obs,
+          interm.m.const_ref(), f_obs, f_part,
+          true).fft().accu_real_copy();
+        terms.summation(
+          space_group, miller_indices_f_obs,
+          interm.m.const_ref(), f_obs, f_part,
+          false).fft();
+        fast_nv1995_detail::combination_eq13(
+          interm, terms.accu_real_const_ref(), target_map_.ref());
+        terms.summation(
+          space_group, miller_indices_f_obs,
+          interm.m_d_i_obs.const_ref(), f_obs, f_part,
+          false).fft();
+        fast_nv1995_detail::combination_eq12(
+          interm, terms.accu_real_const_ref(), target_map_.ref());
       }
 
+      //! Final result (correlation of intensities).
       af::versa<FloatType, af::c_grid<3> >
       target_map() const { return target_map_; }
 
