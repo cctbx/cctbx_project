@@ -93,6 +93,9 @@ def exercise_flex_xray_scatterer():
     ((-0.1,-0.2,-0.3),(-0.2,-0.3,-0.4),(-0.3,-0.4,-0.5))))
   assert approx_equal(tuple(a.extract_sites()),
     ((-0.1,-0.2,-0.3),(-0.2,-0.3,-0.4),(-0.3,-0.4,-0.5)))
+  assert approx_equal(a.extract_occupancies(), (0.8,0.9,0.7))
+  a.set_occupancies(flex.double((0.1,0.2,0.3)))
+  assert approx_equal(a.extract_occupancies(), (0.1,0.2,0.3))
 
 def run():
   exercise_flex_triple(flex.miller_index, ordered=0001)

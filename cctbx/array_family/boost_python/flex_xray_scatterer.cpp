@@ -91,6 +91,28 @@ namespace cctbx { namespace xray { namespace {
     }
   }
 
+  af::shared<double>
+  extract_occupancies(af::const_ref<scatterer<> > const& scatterers)
+  {
+    af::shared<double>
+      result(af::reserve(scatterers.size()));
+    for(std::size_t i=0;i<scatterers.size();i++) {
+      result.push_back(scatterers[i].occupancy);
+    }
+    return result;
+  }
+
+  void
+  set_occupancies(
+    af::ref<scatterer<> > const& scatterers,
+    af::const_ref<double> const& occupancies)
+  {
+    CCTBX_ASSERT(scatterers.size() == occupancies.size());
+    for(std::size_t i=0;i<scatterers.size();i++) {
+      scatterers[i].occupancy = occupancies[i];
+    }
+  }
+
 }}} // namespace cctbx::xray::<anonymous>
 
 namespace scitbx { namespace af { namespace boost_python {
@@ -106,6 +128,8 @@ namespace scitbx { namespace af { namespace boost_python {
         cctbx::xray::scatterer<>, to_string, from_string>())
       .def("extract_sites", cctbx::xray::extract_sites)
       .def("set_sites", cctbx::xray::set_sites)
+      .def("extract_occupancies", cctbx::xray::extract_occupancies)
+      .def("set_occupancies", cctbx::xray::set_occupancies)
     ;
   }
 

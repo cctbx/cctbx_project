@@ -34,6 +34,11 @@ def exercise_structure():
   sh = p1.apply_shift((0.2,0.3,-1/6.))
   assert approx_equal(sh.scatterers()[0].site, (0.7,0.8,1/6.))
   assert approx_equal(sh.scatterers()[3].site, (0.3970,0.1030,2/3.))
+  xs.scatterers().set_occupancies(flex.double((0.5,0.2)))
+  s = xs.sort(by_value="occupancy")
+  assert approx_equal(s.scatterers().extract_occupancies(), (0.2,0.5))
+  assert s.scatterers()[0].label == "O1"
+  assert s.scatterers()[1].label == "Si1"
 
 def run():
   exercise_structure()
