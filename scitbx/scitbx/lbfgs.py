@@ -35,12 +35,14 @@ class exception_handling_parameters:
                      ignore_search_direction_not_descent=00000):
     adopt_init_args(self, locals())
 
-  def filter(self, msg, x, g):
+  def filter(self, msg, n, x, g):
+    if (not msg.startswith("lbfgs error")):
+      return 1
     if (msg.find("Rounding errors prevent further progress.") >= 0):
       if (self.ignore_line_search_failed_rounding_errors):
         return 0
     elif (msg.find("The step is at the lower bound stpmax().") >= 0):
-      if (ext.traditional_convergence_test(target_evaluator.n)(x, g)):
+      if (ext.traditional_convergence_test(n)(x, g)):
         return 0
       if (self.ignore_line_search_failed_step_at_lower_bound):
         return -1
@@ -56,7 +58,7 @@ class exception_handling_parameters:
       if (self.ignore_line_search_failed_xtol):
         return -1
     elif (msg.find("The search direction is not a descent direction.") >= 0):
-      if (ext.traditional_convergence_test(target_evaluator.n)(x, g)):
+      if (ext.traditional_convergence_test(n)(x, g)):
         return 0
       if (self.ignore_search_direction_not_descent):
         return -1
@@ -110,18 +112,18 @@ def run_c_plus_plus(target_evaluator,
         break
       if (not minimizer.run(x, f, g)): break
   except RuntimeError, e:
+    if (x is not None and x_after_step is not None):
+      x.clear()
+      x.extend(x_after_step)
     minimizer.error = str(e)
     error_classification = exception_handling_params.filter(
-      minimizer.error, x, g)
+      minimizer.error, target_evaluator.n, x, g)
     if (error_classification > 0):
       raise
     elif (error_classification < 0):
       minimizer.is_unusual_error = 0001
     else:
       minimizer.is_unusual_error = 00000
-    if (x is not None and x_after_step is not None):
-      x.clear()
-      x.extend(x_after_step)
   else:
     minimizer.error = None
     minimizer.is_unusual_error = None
