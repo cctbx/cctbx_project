@@ -25,26 +25,6 @@ namespace cctbx { namespace af {
     typedef flagged_value<typename val_traits::boolean> boolean;
   };
 
-  template<typename ValueTypeLhs, typename ValueTypeRhs>
-  struct binary_operator_traits<
-    flagged_value<ValueTypeLhs>,
-    ValueTypeRhs> {
-    typedef binary_operator_traits<ValueTypeLhs, ValueTypeRhs> val_traits;
-    typedef flagged_value<typename val_traits::arithmetic> arithmetic;
-    typedef flagged_value<typename val_traits::logical> logical;
-    typedef flagged_value<typename val_traits::boolean> boolean;
-  };
-
-  template<typename ValueTypeLhs, typename ValueTypeRhs>
-  struct binary_operator_traits<
-    ValueTypeLhs,
-    flagged_value<ValueTypeRhs> > {
-    typedef binary_operator_traits<ValueTypeLhs, ValueTypeRhs> val_traits;
-    typedef flagged_value<typename val_traits::arithmetic> arithmetic;
-    typedef flagged_value<typename val_traits::logical> logical;
-    typedef flagged_value<typename val_traits::boolean> boolean;
-  };
-
 }} // namespace cctbx::af
 
 #endif // CCTBX_ARRAY_FAMILY_OPERATOR_TRAITS_H
