@@ -12,51 +12,50 @@
 #define CCTBX_FFTBX_DETAIL_ADAPTORS_H
 
 #include <boost/array.hpp>
+#include <cctbx/ndim.h>
 
 namespace cctbx { namespace fftbx {
   namespace detail {
 
-    template <class VectorType>
-    class array_2d_tp
+    template <class VectorType, std::size_t D>
+    class array_tp
     {
       public:
-        array_2d_tp(typename VectorType::iterator Start,
-                    std::size_t Nx,
-                    std::size_t Ny)
-          : m_Start(Start),
-            m_Nx(Nx),
-            m_Ny(Ny) {}
+        template <typename SizeTypeX, typename SizeTypeY>
+        array_tp(typename VectorType::iterator Start,
+                 const SizeTypeX& Nx,
+                 const SizeTypeY& Ny)
+          : m_Start(Start) {
+          boost::array<std::size_t, D> N = { Nx, Ny };
+          m_N = N;
+        }
+        template <typename SizeTypeX, typename SizeTypeY, typename SizeTypeZ>
+        array_tp(typename VectorType::iterator Start,
+                 const SizeTypeX& Nx,
+                 const SizeTypeY& Ny,
+                 const SizeTypeZ& Nz)
+          : m_Start(Start) {
+          boost::array<std::size_t, D> N = { Nx, Ny, Nz };
+          m_N = N;
+        }
+        template <typename SizeTypeX, typename SizeTypeY>
         typename VectorType::value_type&
-        operator()(std::size_t ix, std::size_t iy) {
-          return m_Start[iy * m_Nx + ix];
+        operator()(const SizeTypeX& ix,
+                   const SizeTypeY& iy) {
+          boost::array<std::size_t, D> I = { ix, iy };
+          return m_Start[fortran_index_1d<D>()(m_N, I)];
+        }
+        template <typename SizeTypeX, typename SizeTypeY, typename SizeTypeZ>
+        typename VectorType::value_type&
+        operator()(const SizeTypeX& ix,
+                   const SizeTypeY& iy,
+                   const SizeTypeZ& iz) {
+          boost::array<std::size_t, D> I = { ix, iy, iz };
+          return m_Start[fortran_index_1d<D>()(m_N, I)];
         }
       private:
         typename VectorType::iterator m_Start;
-        std::size_t m_Nx;
-        std::size_t m_Ny;
-    };
-
-    template <class VectorType>
-    class array_3d_tp
-    {
-      public:
-        array_3d_tp(typename VectorType::iterator Start,
-                    std::size_t Nx,
-                    std::size_t Ny,
-                    std::size_t Nz)
-          : m_Start(Start),
-            m_Nx(Nx),
-            m_Ny(Ny),
-            m_Nz(Nz) {}
-        typename VectorType::value_type&
-        operator()(std::size_t ix, std::size_t iy, std::size_t iz) {
-          return m_Start[(iz * m_Ny + iy) * m_Nx + ix];
-        }
-      private:
-        typename VectorType::iterator m_Start;
-        std::size_t m_Nx;
-        std::size_t m_Ny;
-        std::size_t m_Nz;
+        boost::array<std::size_t, D> m_N;
     };
 
   } // namespace detail

@@ -11,6 +11,7 @@
 #ifndef CCTBX_FFTBX_ADAPTORS_H
 #define CCTBX_FFTBX_ADAPTORS_H
 
+#include <cctbx/ndim.h>
 #include <cctbx/fftbx/triple.h>
 
 namespace cctbx { namespace fftbx {
@@ -29,7 +30,7 @@ namespace cctbx { namespace fftbx {
         //! Iterator corresponding to the index triple.
         typename VectorType::iterator
         operator[](const triple& I) const {
-          return m_Start + ((I[0] * m_M[1] + I[1]) * m_M[2] + I[2]);
+          return m_Start + c_index_1d<3>()(m_M, I);
         }
         //! Reference to the array element corresponding to the index triple.
         typename VectorType::value_type&

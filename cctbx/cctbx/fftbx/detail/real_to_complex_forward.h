@@ -110,8 +110,8 @@ namespace cctbx { namespace fftbx {
                                       iterator_type CH_begin,
                                       const_iterator_type WA1)
   {
-    detail::array_3d_tp<VectorType> CC(CC_begin, IDO, L1, 2);
-    detail::array_3d_tp<VectorType> CH(CH_begin, IDO, 2, L1);
+    detail::array_tp<VectorType, 3> CC(CC_begin, IDO, L1, 2);
+    detail::array_tp<VectorType, 3> CH(CH_begin, IDO, 2, L1);
     std::size_t IC;
     value_type TI2;
     value_type TR2;
@@ -151,8 +151,8 @@ namespace cctbx { namespace fftbx {
                                       const_iterator_type WA1,
                                       const_iterator_type WA2)
   {
-    detail::array_3d_tp<VectorType> CC(CC_begin, IDO, L1, 3);
-    detail::array_3d_tp<VectorType> CH(CH_begin, IDO, 3, L1);
+    detail::array_tp<VectorType, 3> CC(CC_begin, IDO, L1, 3);
+    detail::array_tp<VectorType, 3> CH(CH_begin, IDO, 3, L1);
     value_type CI2;
     value_type CR2;
     value_type DI2;
@@ -208,8 +208,8 @@ namespace cctbx { namespace fftbx {
                                       const_iterator_type WA2,
                                       const_iterator_type WA3)
   {
-    detail::array_3d_tp<VectorType> CC(CC_begin, IDO, L1, 4);
-    detail::array_3d_tp<VectorType> CH(CH_begin, IDO, 4, L1);
+    detail::array_tp<VectorType, 3> CC(CC_begin, IDO, L1, 4);
+    detail::array_tp<VectorType, 3> CH(CH_begin, IDO, 4, L1);
     value_type CI2;
     value_type CI3;
     value_type CI4;
@@ -288,8 +288,8 @@ namespace cctbx { namespace fftbx {
                                       const_iterator_type WA3,
                                       const_iterator_type WA4)
   {
-    detail::array_3d_tp<VectorType> CC(CC_begin, IDO, L1, 5);
-    detail::array_3d_tp<VectorType> CH(CH_begin, IDO, 5, L1);
+    detail::array_tp<VectorType, 3> CC(CC_begin, IDO, L1, 5);
+    detail::array_tp<VectorType, 3> CH(CH_begin, IDO, 5, L1);
     value_type CI2;
     value_type CI3;
     value_type CI4;
@@ -391,11 +391,11 @@ namespace cctbx { namespace fftbx {
                                       iterator_type CH2_begin,
                                       const_iterator_type WA)
   {
-    detail::array_3d_tp<VectorType> CC(CC_begin, IDO, IP, L1);
-    detail::array_3d_tp<VectorType> C1(C1_begin, IDO, L1, IP);
-    detail::array_2d_tp<VectorType> C2(C2_begin, IDL1, IP);
-    detail::array_3d_tp<VectorType> CH(CH_begin, IDO, L1, IP);
-    detail::array_2d_tp<VectorType> CH2(CH2_begin, IDL1, IP);
+    detail::array_tp<VectorType, 3> CC(CC_begin, IDO, IP, L1);
+    detail::array_tp<VectorType, 3> C1(C1_begin, IDO, L1, IP);
+    detail::array_tp<VectorType, 2> C2(C2_begin, IDL1, IP);
+    detail::array_tp<VectorType, 3> CH(CH_begin, IDO, L1, IP);
+    detail::array_tp<VectorType, 2> CH2(CH2_begin, IDL1, IP);
     value_type AI1;
     value_type AI2;
     value_type AR1;
