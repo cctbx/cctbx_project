@@ -6,6 +6,7 @@ def run():
   "$D/iotbx/tst_wildcard.py",
   "$D/iotbx/tst_simple_tokenizer.py",
   "$D/iotbx/tst_simple_parser.py",
+  "$D/iotbx/parameters/tst.py",
   "$D/iotbx/kriber/tst_strudat.py",
   "$D/iotbx/pdb/tst_pdb.py",
   "$D/iotbx/cns/space_group_symbols.py",
