@@ -32,7 +32,7 @@ def run():
   ["$D/cctbx/regression/tst_k_b_scaling.py", "P31"],
   ["$D/cctbx/regression/tst_miller_fft_map.py", "P31"],
   ["$D/cctbx/regression/tst_sampled_model_density.py", "P31"],
-  ["$D/cctbx/regression/tst_fast_nv1995.py", "P31"],
+  ["$D/cctbx/regression/tst_fast_nv1995.py", "F222"],
   ["$D/cctbx/development/tst_cns_epsilon.py", "P31"],
   ["$D/cctbx/development/tst_cns_hl.py", "P31"],
   ["$D/cctbx/development/run_shelx.py", "P31"],

@@ -4,6 +4,7 @@ env.Prepend(LIBS=["cctbx"])
 pyd = env.SharedLibrary(target="maptbx_ext", source=[
   "maptbx_ext.cpp",
   "grid_tags.cpp",
+  "gridding.cpp",
   "peak_search.cpp",
   "pymol_interface.cpp",
   "statistics.cpp",
