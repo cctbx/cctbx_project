@@ -36,7 +36,7 @@ def topology(scatterers):
   a("")
   return cns_input
 
-def coordinates(scatterers):
+def coordinates(scatterers, xyz_only=00000):
   cns_input = []
   a = cns_input.append
   resid = 1
@@ -50,23 +50,26 @@ def coordinates(scatterers):
     fdp = scatterer.fdp
     for i in xrange(3):
       a("do (%s=%.12g) (resid=%d)" % ("xyz"[i], x[i], resid))
-    a("do (q=%.12g) (resid=%d)" % (q, resid))
-    a("do (b=%.12g) (resid=%d)" % (b, resid))
-    a("xray")
-    a("  scatter (chemical=%s)" % (scatterer.label,))
-    for i in xrange(4):
-      a("    %.6g %.6g" % (gaussian.array_of_a()[i], gaussian.array_of_b()[i]))
-    a("    %.6g" % (gaussian.c(),))
-    a("end")
-    a("do (scatter_fp=%.12g) (resid=%d)" % (fp, resid))
-    a("do (scatter_fdp=%.12g) (resid=%d)" % (fdp, resid))
+    if (not xyz_only):
+      a("do (q=%.12g) (resid=%d)" % (q, resid))
+      a("do (b=%.12g) (resid=%d)" % (b, resid))
+      a("xray")
+      a("  scatter (chemical=%s)" % (scatterer.label,))
+      for i in xrange(4):
+        a("    %.6g %.6g" %
+          (gaussian.array_of_a()[i], gaussian.array_of_b()[i]))
+      a("    %.6g" % (gaussian.c(),))
+      a("end")
+      a("do (scatter_fp=%.12g) (resid=%d)" % (fp, resid))
+      a("do (scatter_fdp=%.12g) (resid=%d)" % (fdp, resid))
     a("")
     resid += 1
   a("coordinates orthogonalize end")
   a("show (name) (all)")
   a("show (chemical) (all)")
-  a("show (scatter_fp) (all)")
-  a("show (scatter_fdp) (all)")
+  if (not xyz_only):
+    a("show (scatter_fp) (all)")
+    a("show (scatter_fdp) (all)")
   a("")
   return cns_input
 
@@ -245,6 +248,51 @@ def script_xray_gradients(d_min, f_obs, structure, method):
   a("stop")
   return cns_input
 
+def script_vdw_energy(structure):
+  cns_input = xray_unit_cell(structure.unit_cell())
+  a,e = cns_input.append,cns_input.extend
+  e(topology(structure.scatterers()))
+  e(coordinates(structure.scatterers(), xyz_only=0001))
+  a("""\
+param
+  nbonds
+    cutnb=7.0
+    wmin=1.5
+    repel = 1.0
+    rexponent = 4
+    irexponent = 1
+    rconst = 16.0
+    tolerance = 0.5
+    nbxmod = 1
+    ctonnb=5.5
+    ctofnb=6.0
+  end
+
+  ! chemical_type  vdw_eps vdw_radius  vdw_eps vdw_radius14""")
+  for scatterer in structure.scatterers():
+    a("  nonbonded %s 0.1 1.5 0.1 1.3" % scatterer.label)
+  a("""\
+
+  nbonds
+    ?
+  end
+end
+
+flags exclude * include vdw end
+
+energy end
+
+distance
+  from=(all)
+  to=(all)
+  cuton=0
+  cutoff=7
+  disp=print
+end
+
+stop""")
+  return cns_input
+
 def exercise(space_group_info,
              anomalous_flag=00000,
              d_min=2.,
@@ -264,6 +312,7 @@ def exercise(space_group_info,
   for f_obs in [f_calc, abs(f_calc)]:
     script_predict_methods_comparison(d_min, structure, f_obs)
     script_xray_gradients(d_min, f_obs, structure, method="direct")
+  script_vdw_energy(structure)
 
 def run_call_back(flags, space_group_info):
   for anomalous_flag in (00000, 0001):
