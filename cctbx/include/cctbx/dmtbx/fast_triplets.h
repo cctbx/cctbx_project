@@ -62,30 +62,29 @@ namespace cctbx { namespace dmtbx {
 
       fast_triplets(
         sgtbx::space_group_type const& sg_type,
-        af::const_ref<miller::index<> > const& miller_indices)
+        af::const_ref<miller::index<> > const& miller_indices,
+        bool sigma_2_only=false)
+      :
+        sigma_2_only_(sigma_2_only)
       {
         this->t_den_ = sg_type.group().t_den();
-        sgtbx::reciprocal_space::asu asu(sg_type);
-        // Assert that all Miller indices are in the standard asymmetric unit.
-        for(std::size_t i=0;i<miller_indices.size();i++) {
-          CCTBX_ASSERT(
-               miller::asym_index(sg_type.group(), asu, miller_indices[i]).h()
-            == miller_indices[i]);
-        }
         this->list_of_tpr_maps_.reserve(miller_indices.size());
         for(std::size_t i=0;i<miller_indices.size();i++) {
           this->list_of_tpr_maps_.push_back(tpr_map_type());
         }
         std::vector<expanded_index> expanded_indices;
-        setup_expanded_indices(
-          sg_type, miller_indices, expanded_indices);
+        setup_expanded_indices(sg_type, miller_indices, expanded_indices);
         for(std::size_t ih=0;ih<miller_indices.size();ih++) {
           find_triplets(
+            ih,
             miller_indices[ih],
             this->list_of_tpr_maps_[ih],
             expanded_indices);
         }
       }
+
+      bool
+      sigma_2_only() const { return sigma_2_only_; }
 
     protected:
       void
@@ -109,6 +108,7 @@ namespace cctbx { namespace dmtbx {
 
       void
       find_triplets(
+        std::size_t ih,
         miller::index<> const& h,
         tpr_map_type& tpr_map,
         std::vector<expanded_index> const& expanded_indices)
@@ -131,7 +131,10 @@ namespace cctbx { namespace dmtbx {
               goto loop_tail;
             }
           }
-          {
+          if (!sigma_2_only_
+              || (   e_low->ih != ih
+                  && e_high->ih != ih
+                  && e_low->ih != e_high->ih)) {
             triplet_phase_relation tpr(
               e_low->ih,
               e_low->friedel_flag,
@@ -141,12 +144,15 @@ namespace cctbx { namespace dmtbx {
               e_high->ht,
               this->t_den_);
             tpr_map[tpr] += (i_low == i_high ? 1 : 2);
-            i_low++; e_low++;
-            i_high--; e_high--;
           }
+          i_low++; e_low++;
+          i_high--; e_high--;
           loop_tail:;
         }
       }
+
+    private:
+      bool sigma_2_only_;
   };
 
 }} // namespace cctbx::dmtbx

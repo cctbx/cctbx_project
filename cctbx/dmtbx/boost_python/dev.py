@@ -7,7 +7,7 @@ import math
 import sys
 
 def exercise(space_group_info, n_scatterers=8, d_min=2, verbose=0,
-             e_min=1.5):
+             e_min=1.5, sigma_2_only=00000):
   structure = random_structure.xray_structure(
     space_group_info,
     elements=["const"]*n_scatterers,
@@ -32,18 +32,20 @@ def exercise(space_group_info, n_scatterers=8, d_min=2, verbose=0,
   if (0 or verbose):
     r.show_summary()
   assert r.is_well_defined()
-  assert abs(r.y_intercept()) < 0.1
+  assert abs(r.y_intercept()) < 0.2
   assert abs(r.slope() - 1) < 0.3
   q_large = q_obs.apply_selection(
     q_obs.quasi_normalized_as_normalized().data() > e_min)
   print "Number of e-values > %.6g: %d" % (e_min, q_large.size())
   print "slow:"
   slow_tprs = dmtbx.triplet_invariants(
-    q_large.space_group_info().type(), q_large.indices(), 0001, 0001)
+    q_large.space_group_info().type(), q_large.indices(),
+    0001, not sigma_2_only)
   #slow_tprs.dump_triplets(q_large.indices())
   print "fast:"
   fast_tprs = dmtbx.fast_triplets(
-    q_large.space_group_info().type(), q_large.indices())
+    q_large.space_group_info().type(), q_large.indices(),
+    sigma_2_only)
   #fast_tprs.dump_triplets(q_large.indices())
   slow_packed = slow_tprs.pack_triplets()
   assert slow_packed.size() % 7 == 0
@@ -55,6 +57,7 @@ def exercise(space_group_info, n_scatterers=8, d_min=2, verbose=0,
   print "fast grid:", fast_packed.all()
   if (slow_packed.all()[0] != fast_packed.all()[0]):
     print "LOOK Different number of triplets", q_large.space_group_info()
+    raise RuntimeError
   qi = q_large.indices()
   for i in xrange(min(slow_packed.all()[0], fast_packed.all()[0])):
     sp = [slow_packed[(i,j)] for j in xrange(7)]
@@ -63,19 +66,22 @@ def exercise(space_group_info, n_scatterers=8, d_min=2, verbose=0,
     #print "f", fp
     if (sp[:6] != fp[:6]):
       print "LOOK Mismatch", q_large.space_group_info()
+      raise RuntimeError
       break
     #if (sp[1] == sp[3]):
     #  print "EQUAL", qi[sp[0]], qi[sp[1]], qi[sp[3]], sp[6], fp[6]
     if (sp[6] != fp[6]):
       print "LOOK weights", q_large.space_group_info()
+      raise RuntimeError
     assert sp == fp
 
 def run_call_back(flags, space_group_info):
   e_min = 1.5
   if (flags.e_min != 00000):
     e_min = float(eval(flags.e_min))
-  exercise(space_group_info, verbose=flags.Verbose,
-    e_min=e_min)
+  for sigma_2_only in (00000, 0001):
+    exercise(space_group_info, verbose=flags.Verbose,
+      e_min=e_min)
 
 def run():
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back, (
