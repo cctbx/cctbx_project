@@ -107,6 +107,10 @@ namespace scitbx {
         slots_[i_slot]++;
       }
 
+#if defined(__APPLE__) && defined(__MACH__) \
+ && defined(__GNUC__) && __GNUC__ == 3 && __GNUC_MINOR__ == 3
+      bool dummy_;
+#endif
       ValueType data_min_;
       ValueType data_max_;
       ValueType slot_width_;
