@@ -296,7 +296,7 @@ def peak_list_as_emma_model(xtal, n_real, peak_list):
 def recycle(SgInfo,
             number_of_point_atoms = 10,
             d_min=1.,
-            e_min=1.8,
+            e_min=1.2,
             use_triplets=0,
             other_than_sigma_2=0,
             use_squaring=0,
