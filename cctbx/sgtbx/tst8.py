@@ -5,7 +5,7 @@ import sgtbx
 
 uc = uctbx.UnitCell([])
 sg = sgtbx.SpaceGroup("F 4 2")
-sginfo = sgtbx.SpaceGroupInfo(sg)
+sginfo = sg.Info()
 print sginfo.BuildLookupSymbol()
 WTab = sgtbx.WyckoffTable(sginfo)
 WTab.expand(sg)

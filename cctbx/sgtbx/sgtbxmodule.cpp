@@ -772,6 +772,7 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_SpaceGroup.def(SpaceGroup_cmp_equal, "__cmp__");
     py_SpaceGroup.def(&SpaceGroup::MatchTabulatedSettings,
                                   "MatchTabulatedSettings");
+    py_SpaceGroup.def(&SpaceGroup::Info, "Info");
     py_SpaceGroup.def(SpaceGroup_repr, "__repr__");
     py_SpaceGroup.def(SpaceGroup_getinitargs, "__getinitargs__");
 

@@ -29,7 +29,7 @@ def OneCycle():
     SgSymbols = sgtbx.SpaceGroupSymbols(LookupSymbol)
     HSym = SgSymbols.Hall()
     SgOps = sgtbx.SpaceGroup(HSym)
-    SgNumber = sgtbx.SpaceGroupInfo(SgOps).SgNumber()
+    SgNumber = SgOps.Info().SgNumber()
     RefSgOps = sgtbx.SpaceGroup(sgtbx.SpaceGroupSymbols(SgNumber).Hall())
     if (SgNumber < 75):
       RotOps = sgtbx.SpaceGroup('P 1')
@@ -54,7 +54,7 @@ def OneCycle():
             if (not QuickMode):
               assert s.ChangeBasis(t.CBOp()) == RefSgOps
               assert s == RefSgOps.ChangeBasis(t.CBOp().swap())
-            h = sgtbx.SpaceGroupInfo(s).BuildHallSymbol(TidyCBOp)
+            h = s.Info().BuildHallSymbol(TidyCBOp)
             print "BuildHallSymbol:", h
             if (not QuickMode):
               assert s == sgtbx.SpaceGroup(h)

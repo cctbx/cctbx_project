@@ -51,7 +51,7 @@ try:
   if (len(string.strip(inp.sgsymbol)) != 0):
     Symbols_Inp = sgtbx.SpaceGroupSymbols(inp.sgsymbol, inp.convention)
     SgOps = HallSymbol_to_SgOps(Symbols_Inp.Hall())
-    SgInfo = sgtbx.SpaceGroupInfo(SgOps)
+    SgInfo = SgOps.Info()
     SgNumber = SgInfo.SgNumber()
   nSettings = 0
   print "<table border=2 cellpadding=2>"

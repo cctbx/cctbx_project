@@ -210,7 +210,7 @@ try:
     InTable = 0
     print
 
-  SgInfo = sgtbx.SpaceGroupInfo(SgOps)
+  SgInfo = SgOps.Info()
   ShowSgOpsGeneric(SgInfo)
 
   if (inp.convention == "Hall" or len(inp.symxyz) != 0):

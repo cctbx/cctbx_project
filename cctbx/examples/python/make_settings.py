@@ -19,7 +19,7 @@ for i in sgtbx.SpaceGroupSymbolIterator():
     HSym = HallSymbol[0] + Z + HallSymbol[2:]
     for CBOp in ListCBOp:
       SgOps = sgtbx.SpaceGroup(HSym).ChangeBasis(CBOp)
-      SgInfo = sgtbx.SpaceGroupInfo(SgOps)
+      SgInfo = SgOps.Info()
       settings[SgInfo.SgNumber()][SgInfo.BuildLookupSymbol()] = 0
       nBuilt = nBuilt + 1
 print "# nBuilt =", nBuilt

@@ -9,7 +9,7 @@ for hsym in table_hall_std530:
   SgOps = parse(hsym[6:])
   if (SgOps):
     SgOps.makeTidy()
-    SgInfo = sgtbx.SpaceGroupInfo(SgOps)
+    SgInfo = SgOps.Info()
     print "OrderZ:", SgOps.OrderZ()
     print "isChiral:", SgOps.isChiral()
     print "isEnantiomorphic:", SgInfo.isEnantiomorphic()

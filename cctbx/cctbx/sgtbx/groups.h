@@ -57,6 +57,8 @@ namespace sgtbx {
       TrVec TidyT(const TrVec& T) const;
   };
 
+  class SpaceGroupInfo; // forward declaration
+
   //! Space Group Operations.
   /*! This is the central class of the sgtbx. It is composed of the
       following main components:<br>
@@ -511,6 +513,8 @@ namespace sgtbx {
           retrieval of conventional Hermann-Mauguin symbols.
        */
       SpaceGroupSymbols MatchTabulatedSettings() const;
+      //! Convenience method for instantiating class SpaceGroupInfo.
+      SpaceGroupInfo Info() const;
   };
 
   //! iostream output operator for class SpaceGroup.
@@ -656,6 +660,10 @@ namespace sgtbx {
       int m_SgNumber;
       ChOfBasisOp m_CBOp;
   };
+
+  inline SpaceGroupInfo SpaceGroup::Info() const {
+    return SpaceGroupInfo(*this);
+  }
 
 } // namespace sgtbx
 

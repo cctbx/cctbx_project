@@ -47,7 +47,7 @@ def hkl(SgOps):
 def BuildIndices(SgOps):
   import uctbx
   UnitCell = uctbx.UnitCell((10, 10, 10, 90, 90, 90))
-  SgInfo = sgtbx.SpaceGroupInfo(SgOps)
+  SgInfo = SgOps.Info()
   MIG = sgtbx.MillerIndexGenerator(UnitCell, SgInfo, 3)
   print MIG.ASU().ReferenceASU().representation()
   for H in MIG: print H
