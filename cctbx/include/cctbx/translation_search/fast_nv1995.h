@@ -27,7 +27,7 @@ namespace cctbx { namespace translation_search {
         af::const_ref<std::complex<FloatType> > const& p1_f_calc)
       {
         fast_nv1995_detail::intermediates<FloatType> interm(
-          space_group, anomalous_flag, miller_indices_f_obs, f_obs, f_part);
+          space_group, anomalous_flag, miller_indices_f_obs, f_obs);
         fast_terms<FloatType> terms(
           gridding, anomalous_flag, miller_indices_p1_f_calc, p1_f_calc);
         target_map_ = terms.summation(
