@@ -291,10 +291,6 @@ def exercise_sampled_model_density():
   assert d.exp_table_size() == 7201
   assert d.max_shell_radii() == (5,5,4)
   assert approx_equal(d.max_shell_radii_frac(), (5/20.,5/20.,4/22.))
-  t = maptbx.grid_tags((20,20,22))
-  f = maptbx.symmetry_flags(0001)
-  t.build(sg.type(), f)
-  d.apply_symmetry(t)
   i = flex.miller_index(((1,2,3), (2,3,4)))
   f = flex.complex_double((1+2j, 2+3j))
   d.eliminate_u_extra_and_normalize(i, f)

@@ -28,9 +28,6 @@ namespace {
                            bool> >())
         .def("real_map", &w_t::real_map)
         .def("complex_map", &w_t::complex_map)
-        .def("apply_symmetry",
-          (void(w_t::*)(maptbx::grid_tags<> const&))
-            &w_t::apply_symmetry)
         .def("eliminate_u_extra_and_normalize",
           &w_t::eliminate_u_extra_and_normalize)
       ;

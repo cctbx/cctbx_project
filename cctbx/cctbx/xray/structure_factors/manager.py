@@ -15,7 +15,7 @@ class manager(crystal.symmetry):
                      d_min=None,
                      cos_sin_table=00000,
                      grid_resolution_factor=1/3.,
-                     symmetry_flags=maptbx.use_space_group_symmetry,
+                     symmetry_flags=None,
                      mandatory_grid_factors=None,
                      quality_factor=None, u_extra=None, b_extra=None,
                      wing_cutoff=1.e-6,
@@ -38,8 +38,8 @@ class manager(crystal.symmetry):
     del miller_set
     adopt_init_args(self, locals(), hide=0001)
     self._crystal_gridding = None
-    self._crystal_gridding_tags = None
     self._rfft = None
+    self._cfft = None
     self._u_extra = None
     self.estimate_time_direct = _estimate_time_direct(
       self.space_group().order_z())
@@ -91,16 +91,17 @@ class manager(crystal.symmetry):
         assert_shannon_sampling=assert_shannon_sampling)
     return self._crystal_gridding
 
-  def crystal_gridding_tags(self, assert_shannon_sampling=0001):
-    if (self._crystal_gridding_tags is None):
-      self._crystal_gridding_tags = self.crystal_gridding(
-        assert_shannon_sampling).tags()
-    return self._crystal_gridding_tags
-
   def rfft(self):
     if (self._rfft is None):
-      self._rfft = fftpack.real_to_complex_3d(self.crystal_gridding().n_real())
+      self._rfft = fftpack.real_to_complex_3d(
+        self.crystal_gridding().n_real())
     return self._rfft
+
+  def cfft(self):
+    if (self._cfft is None):
+      self._cfft = fftpack.complex_to_complex_3d(
+        self.crystal_gridding().n_real())
+    return self._cfft
 
   def u_extra(self):
     if (self._u_extra is None):
@@ -111,8 +112,8 @@ class manager(crystal.symmetry):
     return self._u_extra
 
   def setup_fft(self):
-    self.crystal_gridding_tags()
     self.rfft()
+    self.cfft()
     self.u_extra()
     return self
 
@@ -152,24 +153,29 @@ class _estimate_time_fft:
 
   def __init__(self):
     self.min_n_scatterers = 0
-    self.min_time_sampling = 0
     self.max_n_scatterers = 0
-    self.max_time_sampling = 0
     self.min_n_miller_indices = 0
-    self.min_time_process_coefficients = 0
     self.max_n_miller_indices = 0
-    self.max_time_process_coefficients = 0
+    self.min_time_sampling = 0
+    self.max_time_sampling = 0
+    self.min_time_from_or_to_map = 0
+    self.max_time_from_or_to_map = 0
+    self.min_time_apply_u_extra = 0
+    self.max_time_apply_u_extra = 0
     self.time_sampling = 0
-    self.time_symmetry_mapping = 0
     self.time_fft = 0
-    self.time_process_coefficients = 0
+    self.time_from_or_to_map = 0
+    self.time_apply_u_extra = 0
 
   def have_good_estimate(self):
     return self.time_fft > 0
 
-  def register(self, n_scatterers, n_miller_indices,
-                     time_sampling, time_symmetry_mapping,
-                     time_fft, time_process_coefficients):
+  def register(self, n_scatterers,
+                     n_miller_indices,
+                     time_sampling,
+                     time_fft,
+                     time_from_or_to_map,
+                     time_apply_u_extra):
     if (   self.min_n_scatterers == 0
         or self.min_n_scatterers >= n_scatterers):
       self.min_n_scatterers = n_scatterers
@@ -180,27 +186,34 @@ class _estimate_time_fft:
     if (   self.min_n_miller_indices == 0
         or self.min_n_miller_indices >= n_miller_indices):
       self.min_n_miller_indices = n_miller_indices
-      self.min_time_process_coefficients = time_process_coefficients
+      self.min_time_from_or_to_map = time_from_or_to_map
+      self.min_time_apply_u_extra = time_apply_u_extra
     if (self.max_n_miller_indices <= n_miller_indices):
       self.max_n_miller_indices = n_miller_indices
-      self.max_time_process_coefficients = time_process_coefficients
+      self.max_time_from_or_to_map = time_from_or_to_map
+      self.max_time_apply_u_extra = time_apply_u_extra
     self.time_sampling = time_sampling
-    self.time_symmetry_mapping = time_symmetry_mapping
     self.time_fft = time_fft
-    self.time_process_coefficients = time_process_coefficients
+    self.time_from_or_to_map = time_from_or_to_map
+    self.time_apply_u_extra = time_apply_u_extra
 
   def __call__(self, n_scatterers, n_miller_indices):
     return _linear_estimate(
              self.min_n_scatterers, self.max_n_scatterers,
              self.min_time_sampling, self.max_time_sampling,
              n_scatterers) \
-         + self.time_symmetry_mapping \
          + self.time_fft \
          + _linear_estimate(
              self.min_n_miller_indices,
              self.max_n_miller_indices,
-             self.min_time_process_coefficients,
-             self.max_time_process_coefficients,
+             self.min_time_from_or_to_map,
+             self.max_time_from_or_to_map,
+             n_miller_indices) \
+         + _linear_estimate(
+             self.min_n_miller_indices,
+             self.max_n_miller_indices,
+             self.min_time_apply_u_extra,
+             self.max_time_apply_u_extra,
              n_miller_indices)
 
 class managed_calculation_base:
