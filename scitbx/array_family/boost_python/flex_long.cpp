@@ -10,14 +10,15 @@
 #include <scitbx/array_family/boost_python/flex_fwd.h>
 
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
-#include <scitbx/array_family/boost_python/flex_pickle_single_buffered.h>
 
 namespace scitbx { namespace af { namespace boost_python {
 
+  void wrap_flex_long_2(flex_wrapper<long>::class_f_t class_object);
+
   void wrap_flex_long()
   {
-    flex_wrapper<long>::integer("long", boost::python::scope())
-      .def_pickle(flex_pickle_single_buffered<long>());
+    wrap_flex_long_2(
+      flex_wrapper<long>::integer("long", boost::python::scope()));
   }
 
 }}} // namespace scitbx::af::boost_python
