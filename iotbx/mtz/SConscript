@@ -27,7 +27,7 @@ env.StaticLibrary(target='#libtbx/cmtz',
            ])
 
 env.Append(LIBPATH=["#libtbx",])
-env.Prepend(LIBS=["iotbx","cmtz"])
+env.Prepend(LIBS=["iotbx","cmtz","cctbx"])
 env.Append(LIBS=env_etc.libm)
 env.Program(target="test3",
             source="test3.cpp")

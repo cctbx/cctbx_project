@@ -97,10 +97,10 @@ void bpmtz::Mtz::printHeaderAdv(int detail = 1){
   CMtz::ccp4_lhprt_adv(mtz,detail);
 }
 
-af::tiny<double,6> bpmtz::Mtz::UnitCell(const int& xtal){
+cctbx::uctbx::unit_cell bpmtz::Mtz::UnitCell(const int& xtal){
   af::tiny<double,6> answer;
   for (int j=0; j<6; j++) {answer[j] = mtz->xtal[xtal]->cell[j];}
-  return answer;
+  return cctbx::uctbx::unit_cell(answer);
 }
 
 af::shared<cctbx::miller::index<> >
@@ -269,10 +269,10 @@ std::string bpmtz::Crystal::project_name() {
   return std::string(p_xtal->pname);
 }
 
-af::tiny<double,6> bpmtz::Crystal::UnitCell(){
+cctbx::uctbx::unit_cell bpmtz::Crystal::UnitCell(){
   af::tiny<double,6> answer;
   for (int j=0; j<6; j++) {answer[j] = p_xtal->cell[j];}
-  return answer;
+  return cctbx::uctbx::unit_cell(answer);
 }
 
 int bpmtz::Crystal::ndatasets() {return p_xtal->nset;}

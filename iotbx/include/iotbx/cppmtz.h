@@ -63,7 +63,7 @@ struct Crystal {
   Crystal(CMtz::MTZXTAL* c);
   std::string crystal_name();
   std::string project_name();
-  af::tiny<double,6> UnitCell();
+  cctbx::uctbx::unit_cell UnitCell();
   int ndatasets();
   Dataset getDataset(const int&);
 };
@@ -92,7 +92,7 @@ public:
   void printHeaderAdv(int);
 
   // Information indexed by crystal number
-  af::tiny<double,6> UnitCell(const int& xtal);
+  cctbx::uctbx::unit_cell UnitCell(const int& xtal);
   int ndatasets(const int& xtal);
 
   // Information indexed by crystal and dataset
