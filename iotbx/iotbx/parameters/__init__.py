@@ -4,7 +4,7 @@ from scitbx.python_utils.str_utils import line_breaker
 from libtbx.itertbx import count
 from libtbx import introspection
 import math
-import os
+import sys, os
 
 standard_identifier_start_characters = {}
 for c in "_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz":
@@ -444,7 +444,8 @@ class object_list:
   def __init__(self, objects):
     self.objects = objects
 
-  def show(self, out, prefix="", attributes_level=0, print_width=None):
+  def show(self, out=None, prefix="", attributes_level=0, print_width=None):
+    if (out is None): out = sys.stdout
     if (print_width is None):
       print_width = 79
     previous_object = None
@@ -663,4 +664,24 @@ def parse(
     result = result.process_includes(
       definition_type_names=definition_type_names,
       reference_directory=reference_directory)
+  return result
+
+def read_default(
+      params_extension=".params",
+      prefix=None,
+      definition_type_names=None,
+      process_includes=True):
+  caller_file_name = introspection.caller_location(frames_back=1).file_name
+  assert os.path.isfile(caller_file_name)
+  assert caller_file_name.endswith(".py")
+  params_file_name = caller_file_name[:-3] + params_extension
+  if (not os.path.isfile(params_file_name)):
+    raise RuntimeError("Missing parameter file: %s" % params_file_name)
+  result = parse(
+    file_name=params_file_name,
+    definition_type_names=definition_type_names,
+    process_includes=process_includes)
+  if (prefix is not None):
+    for object in result.objects:
+      object.name = prefix + "." + object.name
   return result
