@@ -76,8 +76,9 @@ def collect_tables(henke_tables_dir = "../reference/henke/tables"):
   tables = tables[:Z]
   return tables
 
-def print_table_block(tables, Z_begin, Z_end):
-  print "#define NOVAL Efpfdp_undefined"
+def print_table_block(tables, Z_begin, Z_end, define_noval=0):
+  # Visual C++ 7.0 compilation is very slow with define_noval=1
+  if (define_noval): print "#define NOVAL Efpfdp_undefined"
   print "// BEGIN_COMPILED_IN_REFERENCE_DATA"
   for Z in xrange(Z_begin, Z_end):
     tab = tables[Z]
@@ -86,13 +87,13 @@ def print_table_block(tables, Z_begin, Z_end):
     for line in tab[1]:
       flds = line.split()
       assert len(flds) == 3
-      if (flds[1] == "-9999.00"): flds[1] = "NOVAL"
+      if (define_noval and flds[1] == "-9999.00"): flds[1] = "NOVAL"
       print "{%s, %s, %s}," % tuple(flds)
     print "{0, 0, 0}"
     print "};"
     print
   print "// END_COMPILED_IN_REFERENCE_DATA"
-  print "#undef NOVAL"
+  if (define_noval): print "#undef NOVAL"
   print "}}} // namespace cctbx::eltbx::tables"
 
 def print_henke_cpp(tables):
