@@ -17,3 +17,14 @@ class _sum(boost.python.injector, sum):
     if (self.use_c()):
       print >> f, "c:", format % self.c()
     return self
+
+class _fit(boost.python.injector, fit):
+
+  def show_table(self, f=None):
+    if (f is None): f = sys.stdout
+    print >> f, "stol  table   fitted   delta rel_del"
+    for x,y,v,e in zip(self.table_x(),
+                       self.table_y(),
+                       self.fitted_values(),
+                       self.significant_relative_errors()):
+      print >> f, "%4.2f %7.4f %7.4f %7.4f %7.4f" % (x,y,v,v-y,e)

@@ -26,9 +26,7 @@ namespace scitbx { namespace math { namespace gaussian {
         table_sigmas_(table_sigmas)
       {
         SCITBX_ASSERT(table_y.size() == table_x.size());
-        SCITBX_ASSERT(   table_sigmas.size() == table_x.size()
-                      || table_sigmas.size() == 0);
-        if (table_sigmas.size() == 0) table_sigmas_.resize(table_x.size(), 1);
+        SCITBX_ASSERT(table_sigmas.size() == table_x.size());
       }
 
       fit(
@@ -42,11 +40,9 @@ namespace scitbx { namespace math { namespace gaussian {
         table_x_(table_x),
         table_sigmas_(table_sigmas)
       {
-        SCITBX_ASSERT(   table_sigmas.size() == table_x.size()
-                      || table_sigmas.size() == 0);
+        SCITBX_ASSERT(table_sigmas.size() == table_x.size());
         af::const_ref<double> x = table_x_.const_ref();
         table_y_.reserve(x.size());
-        if (table_sigmas.size() == 0) table_sigmas_.resize(x.size(), 1);
         for(std::size_t i=0;i<x.size();i++) {
           table_y_.push_back(reference.at_x(x[i]));
         }
@@ -96,8 +92,7 @@ namespace scitbx { namespace math { namespace gaussian {
       }
 
       af::shared<FloatType>
-      significant_relative_errors(
-        FloatType const& table_rounding_error=0.0005) const
+      significant_relative_errors() const
       {
         using scitbx::fn::absolute;
         af::shared<FloatType> diffs_ = differences();
@@ -107,10 +102,10 @@ namespace scitbx { namespace math { namespace gaussian {
         FloatType zero(0);
         af::shared<FloatType> results(af::reserve(diffs.size()));
         for(std::size_t i=0;i<diffs.size();i++) {
-          FloatType result = std::max(zero, absolute(diffs[i]) - 2*sigmas[i]);
+          FloatType result = std::max(zero, absolute(diffs[i]) - sigmas[i]);
           if (result > 0) {
-            SCITBX_ASSERT(absolute(y[i]) > 0 || table_rounding_error > 0);
-            result /= std::max(table_rounding_error, absolute(y[i]));
+            SCITBX_ASSERT(absolute(y[i]) > 0 || sigmas[i] > 0);
+            result /= std::max(sigmas[i], absolute(y[i]));
           }
           results.push_back(result);
         }
