@@ -42,6 +42,12 @@ def exercise_set():
   mp = ms.patterson_symmetry()
   assert str(mp.space_group_info()) == "P m m m"
   assert mp.indices() == ms.indices()
+  mc = ms.complete_set()
+  assert approx_equal(mc.completeness(), 1)
+  ma = ms.map_to_asu()
+  assert flex.order(ms.indices(), ma.indices()) == 0
+  ma = ms.remove_systematic_absences()
+  assert flex.order(ms.indices(), ma.indices()) == 0
 
 def exercise_array():
   xs = crystal.symmetry((3,4,5), "P 2 2 2")

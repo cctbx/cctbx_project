@@ -87,6 +87,11 @@ namespace {
     using namespace boost::python;
     index_table_layout_adaptor_wrappers::wrap();
     asym_index_wrappers::wrap();
+    def("map_to_asu",
+      (void(*)(sgtbx::space_group_type const&,
+               bool,
+               af::ref<index<> > const&))
+      map_to_asu);
     def("map_to_asu", map_to_asu_wrappers<double>::no_bool);
     def("map_to_asu", map_to_asu_wrappers<double>::with_bool);
     def("map_to_asu", map_to_asu_wrappers<std::complex<double> >::no_bool);

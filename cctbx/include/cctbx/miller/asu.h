@@ -260,6 +260,12 @@ namespace cctbx { namespace miller {
 
   } // namespace detail
 
+  void
+  map_to_asu(
+    sgtbx::space_group_type const& sg_type,
+    bool anomalous_flag,
+    af::ref<miller::index<> > const& miller_indices);
+
   template <typename ValueType>
   void
   map_to_asu(

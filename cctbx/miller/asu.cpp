@@ -69,4 +69,19 @@ namespace cctbx { namespace miller {
     *this = asym_index(sym_equiv_indices(sg, h));
   }
 
+  void
+  map_to_asu(
+    sgtbx::space_group_type const& sg_type,
+    bool anomalous_flag,
+    af::ref<miller::index<> > const& miller_indices)
+  {
+    sgtbx::reciprocal_space::asu asu(sg_type);
+    sgtbx::space_group const& sg = sg_type.group();
+    for(std::size_t i=0;i<miller_indices.size();i++) {
+      asym_index ai(sg, asu, miller_indices[i]);
+      index_table_layout_adaptor ila = ai.one_column(anomalous_flag);
+      miller_indices[i] = ila.h();
+    }
+  }
+
 }} // namespace cctbx::miller

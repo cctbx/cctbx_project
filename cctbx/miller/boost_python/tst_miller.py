@@ -110,6 +110,10 @@ def exercise_map_to_asu(sg_symbol):
     f_random.append(h_i.complex_eq(f[i]))
     c_random.append(h_i.hendrickson_lattman_eq(c[i]))
   m_random_copy = m_random.deep_copy()
+  miller.map_to_asu(sg_type, anomalous_flag, m_random_copy)
+  for i,h_asym in m.items():
+    assert h_asym == m_random_copy[i]
+  m_random_copy = m_random.deep_copy()
   miller.map_to_asu(sg_type, anomalous_flag, m_random_copy, f_random)
   for i,h_asym in m.items():
     assert h_asym == m_random_copy[i]
@@ -156,6 +160,7 @@ def exercise_asu():
         assert (o.h() != h) == (t.i_column() == 1)
         assert not anomalous_flag or (t.i_column() != 0) == h_i.friedel_flag()
         assert anomalous_flag or t.i_column() == 0
+  miller.map_to_asu(sg_type, 0, miller_indices)
   data = flex.double((0,0))
   miller.map_to_asu(sg_type, 0, miller_indices, data)
   miller.map_to_asu(sg_type, 0, miller_indices, data, 0)
