@@ -433,6 +433,9 @@ class array(set):
   def __abs__(self):
     return array(self, flex.abs(self.data()), self.sigmas())
 
+  def arg(self, deg=00000):
+    return array(self, flex.arg(self.data(), deg))
+
   def __add__(self, other):
     assert self.indices() != None
     assert self.data() != None
