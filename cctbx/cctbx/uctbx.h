@@ -46,9 +46,11 @@ namespace uctbx {
   //@}
 
   //! inline function for fast matrix * vector computation.
-  inline Vec3 operator*(const Mx33& m, const Vec3& v)
+  template <class T>
+  inline boost::array<T, 3>
+  operator*(const Mx33& m, const boost::array<T, 3>& v)
   {
-    Vec3 mv;
+    boost::array<T, 3> mv;
     mv[0] = m[0] * v[0] + m[1] * v[1] + m[2] * v[2];
     mv[1] = m[3] * v[0] + m[4] * v[1] + m[5] * v[2];
     mv[2] = m[6] * v[0] + m[7] * v[1] + m[8] * v[2];

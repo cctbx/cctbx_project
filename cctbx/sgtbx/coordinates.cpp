@@ -12,27 +12,16 @@
 #include <cmath>
 #include <algorithm>
 #include <cctbx/sgtbx/coordinates.h>
-#include <cctbx/basic/define_range.h>
 
 namespace sgtbx {
 
   namespace detail {
 
-    TrVec getUnitShifts(const fractional<double>& Delta)
-    {
-      TrVec result(1);
-      rangei(3) {
-        if (Delta[i] >= 0.) result[i] = static_cast<int>(Delta[i] + 0.5);
-        else                result[i] = static_cast<int>(Delta[i] - 0.5);
-      }
-      return result;
-    }
-
     void SetUniqueOps(const SgOps& sgo,
                       const RTMx& SpecialOp,
                       std::vector<RTMx>& UniqueOps)
     {
-      rangei(sgo.OrderZ()) {
+      for(int i=0;i<sgo.OrderZ();i++) {
         RTMx SS = sgo(i).multiply(SpecialOp).modPositive();
         if (std::find(UniqueOps.begin(),
                       UniqueOps.end(), SS) == UniqueOps.end()) {
@@ -203,115 +192,6 @@ namespace sgtbx {
       throw error("SpecialPosition: MinMateDistance too large.");
     }
     if (auto_expand) expand();
-  }
-
-  SymEquivCoordinates::SymEquivCoordinates(
-    const SpecialPositionSnapParameters& params,
-    const fractional<double>& X)
-  {
-    SpecialPosition SP(params, X, true);
-    for(std::size_t i=0;i<SP.M();i++) {
-      m_Coordinates.push_back(SP[i] * SP.SnapPosition());
-    }
-  }
-
-  SymEquivCoordinates::SymEquivCoordinates(const SpecialPosition& SP)
-  {
-    SP.CheckExpanded();
-    for(std::size_t i=0;i<SP.M();i++) {
-      m_Coordinates.push_back(SP[i] * SP.SnapPosition());
-    }
-  }
-
-  SymEquivCoordinates::SymEquivCoordinates(
-     const WyckoffMapping& WM,
-     const fractional<double>& X)
-  {
-    const WyckoffPosition& WP = WM.WP();
-    WP.CheckExpanded();
-    fractional<double> Xr = WM.snap_to_representative(X);
-    for(std::size_t i=0;i<WP.M();i++) {
-      m_Coordinates.push_back(WP[i] * Xr);
-    }
-  }
-
-  SymEquivCoordinates::SymEquivCoordinates(
-     const WyckoffPosition& WP,
-     const fractional<double>& X)
-  {
-    WP.CheckExpanded();
-    for(std::size_t i=0;i<WP.M();i++) {
-      m_Coordinates.push_back(WP[i] * X);
-    }
-  }
-
-  SymEquivCoordinates::SymEquivCoordinates(
-    const SpecialPositionTolerances& params,
-    const fractional<double>& X)
-  {
-    m_Coordinates.push_back(X);
-    for(int i=1;i<params.m_SgOps.OrderZ();i++) {
-      fractional<double> SX = params.m_SgOps(i) * X;
-      double Delta2 = getShortestDistance2(params.m_UnitCell, SX);
-      if (Delta2 >= params.m_Tolerance2) {
-        if (Delta2 < params.m_MinimumDistance2) {
-          throw error(
-          "Special position not well defined."
-          " Use SpecialPositionSnapParameters.");
-        }
-        else {
-          m_Coordinates.push_back(SX);
-        }
-      }
-    }
-    if (params.m_SgOps.OrderZ() % m_Coordinates.size() != 0) {
-      throw error(
-      "Numerical instability. Use SpecialPositionSnapParameters.");
-    }
-  }
-
-  SymEquivCoordinates::SymEquivCoordinates(
-    const SgOps& sgo,
-    const fractional<double>& X)
-  {
-    m_Coordinates.push_back(X);
-    for(int i=1;i<sgo.OrderZ();i++) {
-      fractional<double> SX = sgo(i) * X;
-      m_Coordinates.push_back(SX);
-    }
-  }
-
-  namespace detail {
-    double modShortLength2(const uctbx::UnitCell& uc,
-                           const fractional<double>& Diff) {
-      return uc.Length2(Diff.modShort());
-    }
-  }
-
-  double
-  SymEquivCoordinates::getShortestDistance2(
-    const uctbx::UnitCell& uc,
-    const fractional<double>& Y) const
-  {
-    double result = detail::modShortLength2(uc, Y - m_Coordinates[0]);
-    for(std::size_t i=1;i<m_Coordinates.size();i++) {
-      double Delta2 = detail::modShortLength2(uc, Y - m_Coordinates[i]);
-      if (result > Delta2)
-          result = Delta2;
-    }
-    return result;
-  }
-
-  std::complex<double>
-  SymEquivCoordinates::StructureFactor(const Miller::Index& H) const
-  {
-    using cctbx::constants::pi;
-    std::complex<double> F(0., 0.);
-    rangei(M()) {
-      double phase = 2. * pi * (H * m_Coordinates[i]);
-      F += std::complex<double>(std::cos(phase), std::sin(phase));
-    }
-    return F;
   }
 
 } // namespace sgtbx
