@@ -1,16 +1,7 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Sep: Refactored part of sgtbx/math.cpp (rwgk)
- */
-
 #ifndef CCTBX_SGTBX_SMITH_NORMAL_FORM_H
 #define CCTBX_SGTBX_SMITH_NORMAL_FORM_H
 
-#include <cctbx/sgtbx/row_echelon.h>
+#include <scitbx/matrix/row_echelon.h>
 
 namespace cctbx { namespace sgtbx {
 
@@ -25,11 +16,11 @@ namespace cctbx { namespace sgtbx {
     if (q.begin()) q.set_identity();
     for (;;)
     {
-      row_echelon::form_t(m, p);
+      scitbx::matrix::row_echelon::form_t(m, p);
       if (m.is_diagonal()) break;
       m.transpose_in_place();
 
-      row_echelon::form_t(m, q);
+      scitbx::matrix::row_echelon::form_t(m, q);
       if (m.is_diagonal()) break;
       m.transpose_in_place();
     }

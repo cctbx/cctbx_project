@@ -175,9 +175,6 @@ class space_group_info:
     for i in xrange(3): params[i] *= f
     return uctbx.unit_cell(params)
 
-def row_echelon_back_substitution(rt_mx, v=None, sol=None, indep=None):
-  return ext.row_echelon_back_substitution(rt_mx, v, sol, indep)
-
 class _tr_vec(boost.python.injector, tr_vec):
 
   def as_rational(self):

@@ -1426,33 +1426,6 @@ def exercise_seminvariant():
   assert ss_discrete.vectors_and_moduli()[1].m == 2
   assert ss_discrete.vectors_and_moduli()[1].v == (0,1,0)
 
-def exercise_row_echelon():
-  m = flex.int((1,1,1,1))
-  m.resize(flex.grid(2,2))
-  t = flex.int((2,3))
-  t.resize(flex.grid(2,1))
-  assert sgtbx.row_echelon_form_t(m, t) == 1
-  assert m.focus() == (1,2)
-  assert tuple(m) == (1,1)
-  assert tuple(t) == (2,1)
-  assert sgtbx.row_echelon_form(m) == 1
-  assert m.focus() == (1,2)
-  assert tuple(m) == (1,1)
-  m = flex.int((0,-24,0,0,0,-24,24,0,24))
-  m.resize(flex.grid(3,3))
-  t = flex.int((-3, -6, 0))
-  t.resize(flex.grid(3,1))
-  assert sgtbx.row_echelon_form_t(m, t) == 3
-  assert tuple(m) == (24,0,24,0,24,0,0,0,24)
-  assert tuple(t) == (0,3,6)
-  t.resize(flex.grid(3))
-  sol = flex.int(3)
-  assert sgtbx.row_echelon_back_substitution(m, t, sol) == 8
-  assert tuple(sol) == (-2,1,2)
-  indep = flex.bool((True,True,True))
-  assert sgtbx.row_echelon_back_substitution(m, indep=indep) == 1
-  assert tuple(indep) == (False,False,False)
-
 def exercise_lattice_symmetry():
   niggli_cell = uctbx.unit_cell((12,13,14,80,83,86))
   group_search = sgtbx.lattice_symmetry_group_search(2)
@@ -1640,7 +1613,6 @@ def run():
   exercise_wyckoff()
   exercise_sym_equiv_sites()
   exercise_seminvariant()
-  exercise_row_echelon()
   exercise_lattice_symmetry()
   exercise_find_affine()
   exercise_search_symmetry()

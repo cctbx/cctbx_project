@@ -55,7 +55,7 @@ namespace cctbx { namespace sgtbx {
     if (proper_order > 1) {
       rot_mx rmi = proper_r.minus_unit_mx();
       scitbx::mat_ref<int> re_mx(rmi.num().begin(), 3, 3);
-      if (row_echelon::form(re_mx) != 2) {
+      if (scitbx::matrix::row_echelon::form(re_mx) != 2) {
         throw error("Cannot determine Eigenvector of rotation matrix.");
       }
       ev_ = row_echelon::solve::homog_rank_2(re_mx);

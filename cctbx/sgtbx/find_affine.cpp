@@ -1,5 +1,5 @@
 #include <cctbx/sgtbx/find_affine.h>
-#include <cctbx/sgtbx/row_echelon.h>
+#include <scitbx/matrix/row_echelon.h>
 #include <scitbx/math/unimodular_generator.h>
 #include <scitbx/array_family/loops.h>
 
@@ -70,8 +70,8 @@ namespace cctbx { namespace sgtbx {
       setup_affine_row_reduced_echelon_form(group(i).r(), m);
     }
     scitbx::mat_ref<int> m_ref(&*m.begin(), n_rows, 9);
-    std::size_t r = row_echelon::form(m_ref);
-    row_echelon::independent<int, 9> indep(m_ref);
+    std::size_t r = scitbx::matrix::row_echelon::form(m_ref);
+    scitbx::matrix::row_echelon::independent<int, 9> indep(m_ref);
     typedef af::nested_loop<af::small<int, 9> > loop_t;
     af::small<int, 9> loop_begin(indep.indices.size(), -range);
     af::small<int, 9> loop_end(indep.indices.size(), range+1);
@@ -80,7 +80,7 @@ namespace cctbx { namespace sgtbx {
       for(std::size_t i=0;i<indep.indices.size();i++) {
         c[indep.indices[i]] = loop()[i];
       }
-      int den = row_echelon::back_substitution(
+      int den = scitbx::matrix::row_echelon::back_substitution_int(
         m_ref,
         static_cast<int*>(0),
         c.num().begin());
