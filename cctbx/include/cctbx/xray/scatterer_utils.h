@@ -2,6 +2,7 @@
 #define CCTBX_XRAY_SCATTERER_UTILS_H
 
 #include <cctbx/xray/scatterer.h>
+#include <cctbx/sgtbx/sym_equiv_sites.h>
 #include <cctbx/sgtbx/site_symmetry_table.h>
 #include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/accessors/flex_grid.h>
@@ -114,6 +115,50 @@ namespace cctbx { namespace xray {
       new_scatterer.site = cb_op(new_scatterer.site);
       if (new_scatterer.anisotropic_flag) {
         new_scatterer.u_star = new_scatterer.u_star.tensor_transform(c);
+      }
+    }
+    return new_scatterers;
+  }
+
+  template <typename ScattererType>
+  af::shared<ScattererType>
+  expand_to_p1(
+    uctbx::unit_cell const& unit_cell,
+    sgtbx::space_group const& space_group,
+    af::const_ref<ScattererType> const& scatterers,
+    sgtbx::site_symmetry_table const& site_symmetry_table,
+    bool append_number_to_labels)
+  {
+    af::shared<ScattererType> new_scatterers((af::reserve(scatterers.size())));
+    for(std::size_t i_seq=0;i_seq<scatterers.size();i_seq++) {
+      ScattererType const& scatterer = scatterers[i_seq];
+      const char* fmt = 0;
+      if (append_number_to_labels) {
+        if      (scatterer.multiplicity() >= 1000) fmt = "_%04u";
+        else if (scatterer.multiplicity() >= 100)  fmt = "_%03u";
+        else if (scatterer.multiplicity() >= 10)   fmt = "_%02u";
+        else                                       fmt = "_%u";
+      }
+      sgtbx::sym_equiv_sites<> equiv_sites(
+        unit_cell,
+        space_group,
+        scatterer.site,
+        site_symmetry_table.get(i_seq));
+      af::const_ref<scitbx::vec3<double> >
+        coordinates = equiv_sites.coordinates().ref();
+      ScattererType new_scatterer = scatterer;
+      for(unsigned i_coor=0;i_coor<coordinates.size();i_coor++) {
+        if (fmt) {
+          char buf[40];
+          std::sprintf(buf, fmt, i_coor);
+          new_scatterer.label = scatterer.label + buf;
+        }
+        new_scatterer.site = coordinates[i_coor];
+        if (new_scatterer.anisotropic_flag) {
+          scitbx::mat3<double> c = equiv_sites.sym_op(i_coor).r().as_double();
+          new_scatterer.u_star = scatterer.u_star.tensor_transform(c);
+        }
+        new_scatterers.push_back(new_scatterer);
       }
     }
     return new_scatterers;

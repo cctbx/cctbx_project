@@ -233,35 +233,6 @@ class structure(crystal.special_position_settings):
     new_structure._site_symmetry_table = self.site_symmetry_table().deep_copy()
     return new_structure
 
-  def expand_to_p1(self, append_number_to_labels=00000):
-    new_structure = structure(
-      crystal.special_position_settings(
-        crystal.symmetry.cell_equivalent_p1(self)),
-      scattering_dict=self._scattering_dict)
-    for i_seq,scatterer in enumerate(self.scatterers()):
-      if (append_number_to_labels):
-        if (scatterer.multiplicity() >= 100):
-          fmt = "_%03d"
-        elif (scatterer.multiplicity() >= 10):
-          fmt = "_%02d"
-        else:
-          fmt = "_%d"
-      equiv_sites = sgtbx.sym_equiv_sites(
-        unit_cell=self.unit_cell(),
-        space_group=self.space_group(),
-        original_site=scatterer.site,
-        site_symmetry_ops=self._site_symmetry_table.get(i_seq))
-      new_scatterer = scatterer.copy()
-      for i,site in enumerate(equiv_sites.coordinates()):
-        if (append_number_to_labels):
-          new_scatterer.label = scatterer.label + fmt % i
-        new_scatterer.site = site
-        if (scatterer.anisotropic_flag):
-          new_scatterer.u_star = adptbx.c_u_c_transpose(
-            float(equiv_sites.sym_op(i).r()), scatterer.u_star)
-        new_structure.add_scatterer(new_scatterer)
-    return new_structure
-
   def change_basis(self, cb_op):
     return structure(
       special_position_settings
@@ -273,6 +244,19 @@ class structure(crystal.special_position_settings):
   def change_hand(self):
     ch_op = self.space_group_info().type().change_of_hand_op()
     return self.change_basis(ch_op)
+
+  def expand_to_p1(self, append_number_to_labels=00000):
+    return structure(
+      special_position_settings
+        =crystal.special_position_settings(
+          crystal.symmetry.cell_equivalent_p1(self)),
+      scatterers=ext.expand_to_p1(
+        unit_cell=self.unit_cell(),
+        space_group=self.space_group(),
+        scatterers=self._scatterers,
+        site_symmetry_table=self._site_symmetry_table,
+        append_number_to_labels=append_number_to_labels),
+      scattering_dict=self._scattering_dict)
 
   def apply_shift(self, shift, recompute_site_symmetries=00000):
     shifted_scatterers = self.scatterers().deep_copy()

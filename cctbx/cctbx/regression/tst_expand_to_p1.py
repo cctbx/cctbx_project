@@ -29,8 +29,18 @@ def exercise(
     print "n_special_positions:", \
           structure.special_position_indices().size()
   structure_p1 = structure.expand_to_p1()
+  assert structure_p1.scatterers()[0].label == "Se1"
+  assert structure_p1.scatterers()[-1].label == ("Se%d" % n_elements)
+  structure_p1 = structure.expand_to_p1(append_number_to_labels=0001)
   if (0 or verbose):
     structure_p1.show_summary().show_scatterers()
+  l,i = structure_p1.scatterers()[0].label.split("_")
+  assert l == "Se1"
+  assert int(i) == 0
+  l,i = structure_p1.scatterers()[-1].label.split("_")
+  assert l == ("Se%d" % n_elements)
+  assert int(i) \
+      == structure.site_symmetry_table().get(n_elements-1).multiplicity()-1
   assert structure_p1.special_position_indices().size() == 0
   f_calc = structure.structure_factors(
     anomalous_flag=anomalous_flag, d_min=d_min, algorithm="direct").f_calc()
