@@ -2,9 +2,8 @@ import iotbx.xplor.map
 from cctbx import maptbx
 from cctbx import uctbx
 from cctbx.array_family import flex
-from libtbx.test_utils import approx_equal
-import urllib
-import filecmp
+from libtbx.test_utils import approx_equal, eps_eq
+import sys, os
 
 def exercise_map_gridding():
   try:
@@ -20,30 +19,53 @@ def exercise_map_gridding():
   assert fg.all() == (9,9,9)
   assert not fg.is_padded()
 
-def get_test_files():
-  urllib.urlretrieve(
-    'http://cci.lbl.gov/cctbx_downloads/regression/iotbx/NSFN_C2221.xplor',
-    'NSFN_C2221.xplor')
+def get_test_file_name():
+  """CNS commands used to generate test map:
+xray
+  MAPResolution 1
+  declare name=map domain=real end
+  do (map=ft(fcalc)) (all)
+  write map
+    from=map output=cns.map extend=box
+    xmin=1 xmax=3
+    ymin=-1 ymax=0
+    zmin=-2 zmax=-1
+  end
+end
+  """
+  return os.path.join(os.environ["LIBTBX_DIST_ROOT"],
+    "regression", "misc", "cns.map")
 
 def read_xplor(file_name):
   a = iotbx.xplor.map.reader(file_name=file_name)
-  assert a.title_lines == [' REMARKS FILENAME=""',
-                           ' REMARKS Phenix Xarray to CNS map format']
-  assert a.gridding.n == (24,120,54)
-  assert a.gridding.first == (0,0,0)
-  assert a.gridding.last == (24,120,54)
+  assert a.title_lines == [
+    ' REMARKS FILENAME="cns.map"',
+    ' REMARKS DATE:15-May-2004  02:15:56       created by user: rwgk',
+    ' REMARKS VERSION:1.1']
+  assert a.gridding.n == (24,24,40)
+  assert a.gridding.first == (1,-4,-6)
+  assert a.gridding.last == (10,0,-3)
   assert a.unit_cell.is_similar_to(
-    uctbx.unit_cell((32.042, 175.362, 79.663, 90, 90, 90)))
-  assert approx_equal(a.average, 0)
-  assert approx_equal(a.standard_deviation, 1)
-  d = a.data
-  assert approx_equal(d[0:5], (-0.284546,-0.60108,-1.11654,-1.17415,-0.827963))
-  assert a.data.origin() == (0,0,0)
-  assert a.data.last(0) == (24,120,54)
-  assert a.data.last() == (25,121,55)
-  assert a.data.focus() == (25,121,55)
-  assert approx_equal(flex.min(a.data), -1.86868)
-  assert approx_equal(flex.max(a.data), 4.18869)
+    uctbx.unit_cell((7.41407939496,7.41407939496,12.6039349714,90,90,120)))
+  assert approx_equal(a.average, -0.5274E-10)
+  assert approx_equal(a.standard_deviation, 0.1792E+00)
+  assert a.data.origin() == (1,-4,-6)
+  assert a.data.last(0) == (10,0,-3)
+  assert a.data.focus() == (11,1,-2)
+  assert approx_equal(a.data[:10],
+    [-2.63210E-01, -4.36970E-01, -5.71930E-01, -6.09230E-01, -2.07220E-01,
+     -4.15100E-01, -6.11970E-01, -7.13380E-01, -2.05500E-01, -3.60990E-01])
+  assert approx_equal(a.data[40:50],
+    [-4.08540E-01, -4.77320E-01, -5.16210E-01, -4.84100E-01, -2.93930E-01,
+     -3.58500E-01, -4.40170E-01, -4.92110E-01, -2.19660E-01, -2.40570E-01])
+  assert approx_equal(a.data[-10:],
+    [-2.13550E-01, -4.87250E-01, -4.51260E-02, -2.13540E-01, -4.57070E-01,
+     -6.38040E-01, -3.51570E-01, -5.98030E-01, -7.60270E-01, -7.62940E-01])
+  stats = maptbx.statistics(a.data)
+  assert approx_equal(stats.min(), -0.78098)
+  assert approx_equal(stats.max(), 0.27233)
+  assert approx_equal(stats.mean(), -0.363687)
+  assert approx_equal(stats.sigma(), 0.20679)
   return a
 
 def write_xplor(map, file_name):
@@ -68,7 +90,7 @@ def recycle():
     gridding = iotbx.xplor.map.gridding(
       n=n, first=first, last=last)
     flex_grid = gridding.as_flex_grid()
-    data = flex.random_double(size=flex_grid.size_1d())
+    data = 20000*flex.random_double(size=flex_grid.size_1d())-10000
     data.resize(flex_grid)
     stats = maptbx.statistics(data)
     iotbx.xplor.map.writer(
@@ -86,22 +108,22 @@ def recycle():
     assert read.gridding.last == last
     assert read.unit_cell.is_similar_to(
       uctbx.unit_cell((10,20,30,80,90,100)))
-    assert approx_equal(read.average, stats.mean(), eps=2.e-4)
-    assert approx_equal(read.standard_deviation, stats.sigma(), eps=2.e-4)
+    assert eps_eq(read.average, stats.mean(), eps=1.e-4)
+    assert eps_eq(read.standard_deviation, stats.sigma(), eps=1.e-4)
     assert read.data.origin() == first
     assert read.data.last(0) == last
     assert read.data.focus() == data.focus()
-    assert flex.max(flex.abs(read.data-data)) < 2.e-5
+    assert eps_eq(read.data, data, eps=1.e-4)
 
 def run():
   exercise_map_gridding()
   recycle()
-  get_test_files()
-  map1 = read_xplor("NSFN_C2221.xplor")
-  write_xplor(map1, "comparison.xplor")
-  assert filecmp.cmp("NSFN_C2221.xplor", "comparison.xplor")
-  map2 = read_xplor("comparison.xplor")
-  assert flex.max(flex.abs(map2.data-map1.data)) < 2.e-5
+  test_file_name = get_test_file_name()
+  if (os.path.isfile(test_file_name)):
+    map1 = read_xplor(test_file_name)
+    write_xplor(map1, "tmp.map")
+    map2 = read_xplor("tmp.map")
+    assert flex.max(flex.abs(map2.data-map1.data)) < 2.e-5
   print "OK"
 
 if (__name__=="__main__"):
