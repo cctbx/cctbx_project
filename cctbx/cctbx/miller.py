@@ -66,6 +66,9 @@ class set(crystal.symmetry):
   def anomalous_flag(self):
     return self._anomalous_flag
 
+  def size(self):
+    return self.indices().size()
+
   def deep_copy(self):
     return set(
       crystal_symmetry=crystal.symmetry(
@@ -394,6 +397,14 @@ class array(set):
 
   def observation_type(self):
     return self._observation_type
+
+  def size(self):
+    assert self.indices() is not None
+    assert self.data() is not None
+    assert self.data().size() == self.indices().size()
+    if (self.sigmas() is not None):
+      assert self.sigmas().size() == self.indices().size()
+    return set.size(self)
 
   def is_xray_amplitude_array(self):
     from cctbx.xray import observation_types
