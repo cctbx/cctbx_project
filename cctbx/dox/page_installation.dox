@@ -17,8 +17,8 @@ The %cctbx is being used on these platforms:
 </ul>
 
 \par
-<strong>Precompiled %cctbx Python modules for Windows are available at
-the SourceForge
+<strong>Precompiled %cctbx Python modules for Windows
+(<tt>cctbx_win32.exe</tt>) are available at the SourceForge
 <a href="http://sourceforge.net/project/showfiles.php?group_id=24107"
 >download page</a></strong>.
 
@@ -106,6 +106,50 @@ instructions for other platforms are provided here:
 
 <hr>
 
+\section installation_directory_separation Separation of distribution and build directories
+
+The %cctbx build system is designed to support efficient cross-platform
+development. Therefore the <i>distribution directory</i> and the
+<i>build directory</i> for a given platform are cleanly separated.
+For example:
+
+<ul>
+<li>The Boost and %cctbx distribututions are installed in
+    \c /home/user/development:
+    <ul>
+    <li> \c /home/user/development/boost
+    <li> \c /home/user/development/cctbx
+    </ul>
+<li>The build directory is \c /scratch/build
+</ul>
+
+Building (i.e. compiling and linking) the %cctbx outside the
+distribution directory tree has two important advantages:
+
+<ul>
+<li>The packages can be compiled on multiple platforms simultaneously.
+
+<li>The compilation directory can be created on a local file system,
+    as opposed to a network file system. In general this means a
+    huge time saving.
+</ul>
+
+\par
+The path names above are just examples. The distribution directory and
+the build directory can be located anywhere in the file system. The
+distribution directory is meant to be platform independent. The build
+directory is meant to be platform dependent. Ideally, there should
+only be one central distribution directory. In contrast, the number
+of build directories that refer to the central distribution directory
+can easily get quite large. There will be at least one build directory
+for each hardware architecture or operating system. On each platform,
+there could be build directories for a debug build, a release build,
+different versions of Python, etc. The separation of the distribution
+directory and the build directories ensures that this situation
+is managable.
+
+<hr>
+
 \section installation_fast_track Fast-track installation of the cctbx including Boost
 
 The %cctbx distribution includes a set of "fast track" csh and Python
@@ -151,6 +195,13 @@ both Boost.Python and the %cctbx can be installed with just one
 command by invoking the appropriate fast track script with the
 absolute path name. For example on Linux:
 
+Example directory structure:
+<ul>
+<li>The Boost and %cctbx distribututions are installed in
+    \c /home/user/development
+<li>The build directory is \c /scratch/build
+</ul>
+
 \verbatim
         cd /scratch/build
         /home/user/development/cctbx/build/fast_track_linux_gcc.csh
@@ -159,18 +210,7 @@ absolute path name. For example on Linux:
 The fast track script creates two subdirectories
 <tt>/scratch/build/linux_gcc/boost</tt> and
 <tt>/scratch/build/linux_gcc/%cctbx</tt> where the libraries and Python
-modules are built. Compiling the packages outside the distribution
-directory trees has two important advantages:
-
-<ul>
-<li>The packages can be compiled on multiple platforms simultaneously.
-
-<li>The compilation directory can be created on a local file system,
-    as opposed to a network file system. In general this means a
-    huge time saving.
-</ul>
-
-\par
+modules are built.
 The build is successful if it finishes with the following output:
 
 \verbatim
@@ -226,7 +266,7 @@ is very similar. The major difference is that on Windows Python is
 used for the fast track script instead of csh. For example:
 
 \verbatim
-        cd \\scratch\\build
+        cd \scratch\build
         python \development\%cctbx\build\fast_track_vc60.py
 \endverbatim
 
