@@ -44,6 +44,12 @@ def exercise_parse_and_show():
   recycle(
     input_string="   name\tvalue\n\n",
     expected_out="name value\n")
+  recycle(
+    input_string='name "value\\\\"',
+    expected_out='name "value\\\\"\n')
+  recycle(
+    input_string='name "value\\\\\\""',
+    expected_out='name "value\\\\\\""\n')
   r = recycle(
     input_string="   name\tvalue\n\n",
     attributes_level=3,

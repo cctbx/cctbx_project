@@ -36,6 +36,8 @@ def exercise():
     ['something', '(', 'a', 'b', ')']],
   ["something(\"a\"\"b\")",
     ['something', '(', 'a', 'b', ')']],
+  ["resname 'a \\\\'",
+    ['resname', 'a \\']],
   ["resname 'a'",
     ['resname', 'a']],
   ["resname '\"'",

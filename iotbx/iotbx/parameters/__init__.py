@@ -64,7 +64,7 @@ def show_attributes(self, out, prefix, attributes_level, print_width):
       if (not isinstance(value, str)):
         print >> out, prefix+"  ."+name, value
       else:
-        value = '"' + value.replace('"', '\\"') + '"'
+        value = str(simple_tokenizer.word(value=value, quote_token='"'))
         indent = " " * (len(prefix) + 3 + len(name) + 1)
         if (len(indent+value) < print_width):
           print >> out, prefix+"  ."+name, value
