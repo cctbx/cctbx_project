@@ -39,6 +39,7 @@ namespace eltbx {
 
 #define NOVAL Efpfdp_undefined
 
+// BEGIN_COMPILED_IN_REFERENCE_DATA
 static const eltbx::detail::Efpfdp Efpfdp_H[] = { /* Z = 1 */
 {10.0000, NOVAL, 0.239540E-16},
 {10.1617, NOVAL, 0.243414E-16},
@@ -47204,6 +47205,7 @@ static const eltbx::detail::Efpfdp Efpfdp_U[] = { /* Z = 92 */
 {30000.0, 90.6603, 7.15894},
 {0, 0, 0}
 };
+// END_COMPILED_IN_REFERENCE_DATA
 
 #undef NOVAL
 

@@ -17,12 +17,14 @@ namespace eltbx {
   namespace tables {
 
     const detail::RawWaveLength RawWaveLengths[] = {
+// BEGIN_COMPILED_IN_REFERENCE_DATA
       {"CrA1", 2.28970}, {"CrA2", 2.29361}, {"Cr", 2.2909},
       {"FeA1", 1.93604}, {"FeA2", 1.93998}, {"Fe", 1.9373},
       {"CuA1", 1.54056}, {"CuA2", 1.54439}, {"Cu", 1.5418},
       {"MoA1", 0.70930}, {"MoA2", 0.71359}, {"Mo", 0.7107},
       {"AgA1", 0.55941}, {"AgA2", 0.56380}, {"Ag", 0.5608},
       {0, 0}
+// END_COMPILED_IN_REFERENCE_DATA
     };
 
   } // namespace tables

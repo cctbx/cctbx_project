@@ -32,6 +32,7 @@ namespace sgtbx {
       */
       static const char *HallSymbols[] = {
         0,
+// BEGIN_COMPILED_IN_REFERENCE_DATA
         /* 001 */ " P 1",             /* P 1          */
         /* 002 */ "-P 1",             /* P -1         */
         /* 003 */ " P 2y",            /* P 1 2 1      */
@@ -262,6 +263,7 @@ namespace sgtbx {
         /* 228 */ "-F 4ud 2vw 3",     /* F d -3 c:2   */
         /* 229 */ "-I 4 2 3",         /* I m -3 m     */
         /* 230 */ "-I 4bd 2c 3"       /* I a -3 d     */
+// END_COMPILED_IN_REFERENCE_DATA
       };
 
       /* Matrix Group Codes (Boisen & Gibbs, 1990, pp. 225-228) corresponding
@@ -269,6 +271,7 @@ namespace sgtbx {
        */
       static const MatrixGroup::Code MatrixGroupCodes[] = {
         MatrixGroup::Unknown,
+// BEGIN_COMPILED_IN_REFERENCE_DATA
         MatrixGroup::MGC_1,
         MatrixGroup::MGC_1b,
         MatrixGroup::MGC_2,
@@ -499,6 +502,7 @@ namespace sgtbx {
         MatrixGroup::MGC_m3bm,
         MatrixGroup::MGC_m3bm,
         MatrixGroup::MGC_m3bm
+// END_COMPILED_IN_REFERENCE_DATA
       };
 
       /* List of 'additional generators' of the Euclidean and affine
@@ -512,6 +516,7 @@ namespace sgtbx {
 
       static const NormalizerAddlGenerator NormalizerAddlGenerators[] = {
                   {    0,   0 },
+// BEGIN_COMPILED_IN_REFERENCE_DATA
         /*   1 */ { "-1",   0 }, // Note: the affine normalizers for
         /*   2 */ {    0,   0 }, //   space groups 1 to 15 CANNOT be
         /*   3 */ { "-1",   0 }, //   represented by rotation symbols.
@@ -742,6 +747,7 @@ namespace sgtbx {
         /* 228 */ {    0,   0 },
         /* 229 */ {    0,   0 },
         /* 230 */ {    0,   0 }
+// END_COMPILED_IN_REFERENCE_DATA
       };
 
     } // namespace ReferenceSettings

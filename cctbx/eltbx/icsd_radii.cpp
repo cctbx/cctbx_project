@@ -48,6 +48,7 @@ namespace eltbx {
  */
 
     const detail::Label_Radius ICSD_Radii[] = {
+// BEGIN_COMPILED_IN_REFERENCE_DATA
       {"H",     0.78},
       {"H1+",  -0.38},
       {"H1-",   1.40},
@@ -491,6 +492,7 @@ namespace eltbx {
       {"No",    1.42}, /* not in ICSD manual */
       {"Lr",    1.42}, /* not in ICSD manual */
       {0, 0}
+// END_COMPILED_IN_REFERENCE_DATA
     };
 
   } // namespace tables

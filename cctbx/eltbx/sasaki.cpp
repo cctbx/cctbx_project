@@ -31,6 +31,7 @@ namespace eltbx {
   Tokyo Institute of Technology.  Email: sasaki@nc.titech.ac.jp
  */
 
+// BEGIN_COMPILED_IN_REFERENCE_DATA
 static const eltbx::detail::Efpfdp Efpfdp_Be[] = { /* Z = 4 */
 {4290.12, 0.0124, 0.0056},
 {4305.01, 0.0123, 0.0056},
@@ -72358,6 +72359,7 @@ static const eltbx::detail::Efpfdp Efpfdp_U[] = { /* Z = 92 */
 {123984, -5.9996, 2.6794},
 {0, 0, 0}
 };
+// END_COMPILED_IN_REFERENCE_DATA
 
 static const eltbx::detail::Label_Z_Efpfdp SasakiTables[] = {
 {"Be", 4, Efpfdp_Be},
