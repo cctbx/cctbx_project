@@ -275,26 +275,7 @@ namespace cctbx { namespace sftbx {
       void
       apply_symmetry(const maps::grid_tags<TagType>& tags)
       {
-        cctbx_assert(tags.is_valid());
-        cctbx_assert(tags.accessor() == map_.accessor().n_logical());
-        {
-          // 1. pass: accumulate contributions for sym. equiv. grid points.
-          af::nested_loop<grid_point_type> loop(tags.accessor());
-          for (const grid_point_type& pt = loop(); !loop.over(); loop.incr()) {
-            if (tags(pt) < 0) continue;
-            grid_point_type asym_pt = tags.accessor().i_1d_as_i_nd(tags(pt));
-            map_(asym_pt) += map_(pt);
-          }
-        }
-        {
-          // 2. pass: copy density at asym. grid point to sym. equiv. points.
-          af::nested_loop<grid_point_type> loop(tags.accessor());
-          for (const grid_point_type& pt = loop(); !loop.over(); loop.incr()) {
-            if (tags(pt) < 0) continue;
-            grid_point_type asym_pt = tags.accessor().i_1d_as_i_nd(tags(pt));
-            map_(pt) = map_(asym_pt);
-          }
-        }
+        tags.sum_sym_equiv_points(map_.ref());
       }
 
       void
