@@ -140,6 +140,11 @@ def show_attributes(self, out, prefix, attributes_level, print_width):
             else:
               print >> out, indent+'"'+block+'"'
 
+class object_locator:
+
+  def __init__(self, parent, path, object):
+    introspection.adopt_init_args()
+
 class definition(object):
 
   attribute_names = [
@@ -167,6 +172,12 @@ class definition(object):
     self.type = type
     self.input_size = input_size
     self.expert_level = expert_level
+
+  def __getstate__(self):
+    return [getattr(self, name) for name in self.__slots__]
+
+  def __setstate__(self, state):
+    for i,value in enumerate(state): setattr(self, self.__slots__[i], value)
 
   def copy(self, values):
     keyword_args = {}
@@ -213,8 +224,12 @@ class definition(object):
       attributes_level=attributes_level,
       print_width=print_width)
 
-  def all_definitions(self):
-    return [self]
+  def all_scopes_and_tables(self, parent_path, result):
+    pass
+
+  def all_definitions(self, parent, parent_path, result):
+    result.append(object_locator(
+      parent=parent, path=parent_path+self.name, object=self))
 
   def get_without_substitution(self, path):
     if (self.name == path): return [self]
@@ -332,11 +347,18 @@ class scope:
       previous_object = object
     print >> out, prefix + "}"
 
-  def all_definitions(self):
-    result = []
+  def all_scopes_and_tables(self, parent_path, result):
+    parent_path += self.name
+    result.append(object_locator(parent=None, path=parent_path, object=self))
+    parent_path += "."
     for object in self.objects:
-      result.extend(object.all_definitions())
-    return result
+      object.all_scopes_and_tables(parent_path, result)
+
+  def all_definitions(self, parent, parent_path, result):
+    parent_path += self.name+"."
+    for object in self.objects:
+      object.all_definitions(
+        parent=self, parent_path=parent_path, result=result)
 
   def get_without_substitution(self, path):
     if (self.name == path): return [self]
@@ -394,6 +416,10 @@ class table:
           assert isinstance(sequential_format % 0, str)
     setattr(self, name, value)
 
+  def replace_with(self, other):
+    for attribute_name in self.__init__varnames__[1:]:
+      setattr(self, attribute_name, getattr(other, attribute_name))
+
   def add_row(self, name, objects):
     self.row_names.append(name)
     self.row_objects.append(objects)
@@ -428,12 +454,30 @@ class table:
       print >> out, prefix+"  }"
     print >> out, prefix+"}"
 
-  def all_definitions(self):
-    result = []
-    for row_object in self.row_objects:
-      for object in row_object:
-        result.extend(object.all_definitions())
-    return result
+  def all_scopes_and_tables(self, parent_path, result):
+    parent_path += self.name
+    result.append(object_locator(parent=None, path=parent_path, object=self))
+    parent_path += "."
+    assert len(self.row_names) == len(self.row_objects)
+    for n_row,row_name,row_objects in zip(count(1),
+                                          self.row_names,
+                                          self.row_objects):
+      if (row_name is None): row_name = str(n_row)
+      row_path = parent_path + row_name + "."
+      for object in row_objects:
+        object.all_scopes_and_tables(row_path, result)
+
+  def all_definitions(self, parent, parent_path, result):
+    parent_path += self.name + "."
+    assert len(self.row_names) == len(self.row_objects)
+    for n_row,row_name,row_objects in zip(count(1),
+                                          self.row_names,
+                                          self.row_objects):
+      if (row_name is None): row_name = str(n_row)
+      row_path = parent_path + row_name + "."
+      for object in row_objects:
+        object.all_definitions(
+          parent=self, parent_path=row_path, result=result)
 
   def get_without_substitution(self, path):
     if (self.name == path): return [self]
@@ -473,16 +517,25 @@ class object_list:
       previous_object = object
     return self
 
+  def all_scopes_and_tables(self):
+    result = [object_locator(parent=None, path="", object=self)]
+    for object in self.objects:
+      object.all_scopes_and_tables("", result)
+    return result
+
   def all_definitions(self):
     result = []
     for object in self.objects:
-      result.extend(object.all_definitions())
+      object.all_definitions(parent=self, parent_path="", result=result)
     return result
 
   def get_without_substitution(self, path):
-    result = []
-    for object in self.objects:
-      result.extend(object.get_without_substitution(path))
+    if (len(path) == 0):
+      result = [self]
+    else:
+      result = []
+      for object in self.objects:
+        result.extend(object.get_without_substitution(path))
     return object_list(objects=result)
 
   def get(self, path, with_substitution=True, path_memory=None):
@@ -572,9 +625,42 @@ class object_list:
     return object_list(objects=result)
 
   def automatic_type_assignment(self, assignment_if_unknown=None):
-    for object in self.all_definitions():
-      object.automatic_type_assignment(
+    for item in self.all_definitions():
+      item.object.automatic_type_assignment(
         assignment_if_unknown=assignment_if_unknown)
+
+  def update_from(self, source):
+    table_memory = {}
+    for source_item in source.all_definitions():
+      if (isinstance(source_item.parent, table)):
+        n_strip = 2
+      else:
+        n_strip = 1
+      parent_path = ".".join(source_item.path.split(".")[:-n_strip])
+      if (n_strip == 2 and parent_path in table_memory):
+        continue
+      target_parents = self.get(path=parent_path, with_substitution=False)
+      if (len(target_parents.objects) > 1):
+        raise RuntimeError("Multiple targets: %s" % source_item.path)
+      if (len(target_parents.objects) == 1):
+        target_parent = target_parents.objects[0]
+        if (n_strip == 2):
+          target_parent.replace_with(source_item.parent)
+        else:
+          target_objects = []
+          for target_object in target_parent.objects:
+            if (target_object.name == source_item.object.name):
+              if (not isinstance(target_object, definition)):
+                raise RuntimeError(
+                  "Not a target definition: %s" % source_item.path)
+              target_objects.append(target_object)
+          if (len(target_objects) > 1):
+            raise RuntimeError("Multiple targets: %s" % source_item.path)
+          if (len(target_objects) == 1):
+            target_object = target_objects[0]
+            source_object_sub = source.variable_substitution(
+              object=source_item.object, path_memory={source_item.path: None})
+            target_object.values = source_object_sub.values
 
 class variable_substitution_fragment(object):
 
@@ -613,7 +699,6 @@ class variable_substitution_proxy(object):
         if (c is None):
           word.raise_syntax_error("$ must be followed by an identifier: ")
         if (c == "{"):
-          self.force_string = True
           while True:
             c = char_iter.next()
             if (c is None):

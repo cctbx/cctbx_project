@@ -58,6 +58,12 @@ class word(object):
     self.line_number = line_number
     self.file_name = file_name
 
+  def __getstate__(self):
+    return [getattr(self, name) for name in self.__slots__]
+
+  def __setstate__(self, state):
+    for i,value in enumerate(state): setattr(self, self.__slots__[i], value)
+
   def __str__(self):
     if (self.quote_token is None):
       return self.value
