@@ -198,6 +198,8 @@ class match_refine:
     self.ref_eucl_rt = sgtbx_rt_mx_as_matrix_rt(self.eucl_symop) \
                      + matrix.col(self.adjusted_shift)
     self.pairs.sort(pair_sort_function)
+    self.singles1.sort()
+    self.singles2.sort()
     self.calculate_rms()
 
   def exclude_pairs(self):
@@ -298,25 +300,29 @@ class match_refine:
       sum_dist2 += length(self.calculate_shortest_diff(pair))**2
     self.rms = math.sqrt(sum_dist2 / len(self.pairs))
 
-  def show(self, f=sys.stdout):
+  def show(self, f=sys.stdout, truncate_singles=None, singles_per_line=5):
     print >> f, "Match summary:"
     print >> f, "  Operator:"
     print >> f, "       rotation:", self.rt.r.mathematica_form()
     print >> f, "    translation:", self.rt.t.elems
-    print >> f, "rms coordinate error: %.2f" % (self.rms,)
+    print >> f, "  rms coordinate differences: %.2f" % (self.rms,)
     print >> f, "  Pairs:", len(self.pairs)
     for pair in self.pairs:
       print >> f, "   ", self.ref_model1[pair[0]].label,
       print >> f, self.ref_model2[pair[1]].label,
       print >> f, "%.3f" % (self.calculate_shortest_dist(pair),)
-    print >> f, "Singles model 1:", len(self.singles1)
-    for s in self.singles1:
-      print >> f, " ", self.ref_model1[s].label,
-    print >> f
-    print >> f, "Singles model 2:", len(self.singles2)
-    for s in self.singles2:
-      print >> f, " ", self.ref_model2[s].label,
-    print >> f
+    for i_model,ref_model,singles in ((1,self.ref_model1,self.singles1),
+                                      (2,self.ref_model2,self.singles2)):
+      print >> f, "  Singles model %s:" % i_model, len(singles),
+      i = 0
+      for s in singles:
+        if (i == truncate_singles): break
+        if (i % singles_per_line == 0):
+          print >> f
+          print >> f, " ",
+        print >> f, " ", ref_model[s].label,
+        i += 1
+      print >> f
     print >> f
 
 def match_sort_function(match_a, match_b):
@@ -444,6 +450,10 @@ class model_matches:
 
   def n_matches(self):
     return len(self.refined_matches)
+
+  def n_pairs_best_match(self):
+    if (len(self.refined_matches) == 0): return 0
+    return len(self.refined_matches[0].pairs)
 
   def consensus_model(self, i_model=1, i_refined_matches=0):
     assert i_model in (1,2)
