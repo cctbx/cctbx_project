@@ -22,7 +22,7 @@ STDFIXINC=$(BOOSTINC)/boost/compatibility/cpp_c_headers
 CPP=CC -LANG:std -n32 -mips4
 LD=CC -LANG:std -n32 -mips4
 STDOPTS=
-WARNOPTS=-woff 1001,1234,1682
+WARNOPTS=-woff 1001,1234,1682,3439
 OPTOPTS=-O2
 MAKEDEP=-M
 LDEXE=-LD_MSG:off=15,84

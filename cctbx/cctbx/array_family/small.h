@@ -8,29 +8,27 @@
      Jan 2002: Created (R.W. Grosse-Kunstleve)
  */
 
-#ifndef CCTBX_ARRAY_FAMILY_TINY_H
-#define CCTBX_ARRAY_FAMILY_TINY_H
+#ifndef CCTBX_ARRAY_FAMILY_SMALL_H
+#define CCTBX_ARRAY_FAMILY_SMALL_H
 
-#include <cctbx/array_family/tiny_base.h>
+#include <cctbx/array_family/small_base.h>
 
 namespace cctbx { namespace af {
 
   // Automatic allocation, fixed size, standard operators.
   template <typename ElementType, std::size_t N>
-  class tiny : public tiny_base<ElementType, N>
+  class small : public small_base<ElementType, N>
   {
     public:
       CCTBX_ARRAY_FAMILY_TYPEDEFS
 
-      tiny() {}
-
-      CCTBX_ARRAY_FAMILY_TINY_CONVENIENCE_CONSTRUCTORS(tiny)
-      CCTBX_ARRAY_FAMILY_TINY_COPY_AND_ASSIGNMENT(tiny)
+      CCTBX_ARRAY_FAMILY_SMALL_CONSTRUCTORS(small)
+      CCTBX_ARRAY_FAMILY_SMALL_COPY_AND_ASSIGNMENT(small)
       CCTBX_ARRAY_FAMILY_TAKE_REF(this->elems, N)
   };
 
 }} // namespace cctbx::array_family
 
-#include <cctbx/array_family/tiny_operators.h>
+#include <cctbx/array_family/small_operators.h>
 
-#endif // CCTBX_ARRAY_FAMILY_TINY_H
+#endif // CCTBX_ARRAY_FAMILY_SMALL_H

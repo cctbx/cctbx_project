@@ -11,7 +11,9 @@
 #ifndef CCTBX_ARRAY_FAMILY_SMALL_BASE_H
 #define CCTBX_ARRAY_FAMILY_SMALL_BASE_H
 
+#include <algorithm>
 #include <cctbx/array_family/ref.h>
+#include <cctbx/array_family/small_helpers.h>
 
 namespace cctbx { namespace af {
 
@@ -24,31 +26,8 @@ namespace cctbx { namespace af {
 
       ElementType elems[N];
 
-      small_base() : m_size(0) {}
-
-      explicit small_base(size_type n) : m_size(n) {}
-
-      small_base(size_type n, const ElementType& x) : m_size(n) {
-        std::fill(begin(), end(), x);
-      }
-
-      // Copy with type conversion.
-      template <typename OtherElementType, std::size_t OtherN>
-      small_base(const small_base<OtherElementType,OtherN>& a)
-        : m_size(a.size()) {
-        sizecheck(m_size, N);
-        for(size_type i=0;i<size();i++) elems[i] = ElementType(a[i]);
-      }
-
-      // Assignment with type conversion.
-      template <typename OtherElementType, std::size_t OtherN>
-      small_base<ElementType,N>&
-      operator=(const small_base<OtherElementType,OtherN>& rhs) {
-        resize(rhs.size());
-        for(size_type i=0;i<size();i++) elems[i] = ElementType(rhs[i]);
-        return *this;
-      }
-
+      CCTBX_ARRAY_FAMILY_SMALL_CONSTRUCTORS(small_base)
+      CCTBX_ARRAY_FAMILY_SMALL_COPY_AND_ASSIGNMENT(small_base)
       CCTBX_ARRAY_FAMILY_TAKE_REF(elems, N)
 
       size_type size() const { return m_size; }
@@ -60,12 +39,12 @@ namespace cctbx { namespace af {
       static size_type capacity() { return N; }
 
       void resize(size_type new_size) {
-        sizecheck(new_size, N);
+        if (new_size > N) throw_range_error();
         m_size = new_size;
       }
 
       void resize(size_type new_size, const ElementType& x) {
-        sizecheck(new_size, N);
+        if (new_size > N) throw_range_error();
         if (new_size > m_size) std::fill(end(), begin()+new_size, x);
         m_size = new_size;
       }
@@ -75,28 +54,29 @@ namespace cctbx { namespace af {
       void push_back(const ElementType& x) { elems[m_size++] = x; }
       void pop_back() { m_size--; }
 
-      ElementType* insert(ElementType* pos, size_type n, const ElementType& x) {
-        if (n > 0) {
-          for (ElementType* p=end()+n-1; p != pos; p--) *p = *(p-n);
-          for(size_type i=0;i<n;i++) pos[i] = x;
-          m_size += n;
-        }
+      ElementType*
+      insert(ElementType* pos, size_type n, const ElementType& x) {
+        std::copy_backward(pos, end(), end()+n);
+        std::fill(pos, pos+n, x);
+        m_size += n;
         return pos;
       }
 
-      ElementType* insert(ElementType* pos, const ElementType& x) {
+      ElementType*
+      insert(ElementType* pos, const ElementType& x) {
         return insert(pos, 1, x);
       }
 
       template <typename OtherElementType>
-      ElementType* insert(
+      ElementType*
+      insert(
         ElementType* pos,
         const OtherElementType* first,
         const OtherElementType* last) {
         size_type n = last - first;
         if (n > 0) {
-          for (ElementType* p=end()+n-1; p != pos; p--) *p = *(p-n);
-          for(size_type i=0;i<n;i++) pos[i] = ElementType(first[i]);
+          std::copy_backward(pos, end(), end()+n);
+          copy_typeconv(first, last, pos);
           m_size += n;
         }
         return pos;
@@ -104,7 +84,7 @@ namespace cctbx { namespace af {
 
       ElementType* erase(ElementType* first, ElementType* last) {
         size_type n = last - first;
-        for(ElementType* p=first;p!=end()-n;p++) p[0] = p[n];
+        std::copy(last, end(), first);
         m_size -= n;
         return first;
       }
@@ -127,7 +107,7 @@ namespace cctbx { namespace af {
         const OtherElementType* first,
         const OtherElementType* last) {
         m_size = last - first;
-        for(size_type i=0;i<size();i++) elems[i] = ElementType(first[i]);
+        copy_typeconv(first, last, elems);
       }
 
     protected:
