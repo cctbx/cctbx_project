@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <cctbx/array_family/ref.h>
 #include <cctbx/array_family/auto_allocator.h>
+#include <cctbx/array_family/type_traits.h>
 
 namespace cctbx { namespace af {
 
@@ -42,6 +43,15 @@ namespace cctbx { namespace af {
         : m_size(0)
       {
         if (N < sz) throw_range_error();
+      }
+
+      // non-std
+      small_plain(const size_type& sz, no_initialization_flag)
+        : m_size(0)
+      {
+        CCTBX_ARRAY_FAMILY_STATIC_ASSERT_HAS_TRIVIAL_DESTRUCTOR
+        if (N < sz) throw_range_error();
+        m_size = sz;
       }
 
       small_plain(const size_type& sz, const ElementType& x)

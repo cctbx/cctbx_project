@@ -12,6 +12,7 @@
 #define CCTBX_ARRAY_FAMILY_GRID_ACCESSOR_H
 
 #include <cstddef>
+#include <algorithm>
 #include <cctbx/array_family/misc.h>
 #include <cctbx/array_family/tiny_helpers.h>
 
@@ -81,9 +82,7 @@ namespace cctbx { namespace af {
       typedef IndexType index_type;
       typedef typename IndexType::value_type value_type;
 
-      grid() { // XXX more general
-        for(std::size_t i=0;i<Nd;i++) this->elems[i] = 0;
-      }
+      grid() { std::fill(this->begin(), this->end(), 0); }
 
       grid(const IndexType& n) : IndexType(n) {}
 

@@ -16,10 +16,6 @@
 // FIXES for broken compilers
 #include <boost/config.hpp>
 
-// XXX
-#include <iostream>
-#define CheckPoint std::cout << __FILE__ << "(" << __LINE__ << ")" << std::endl << std::flush
-
 #include <cctbx/array_family/grid_accessor.h>
 #include <cctbx/array_family/ref_helpers.h>
 

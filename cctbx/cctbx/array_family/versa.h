@@ -25,6 +25,7 @@ namespace cctbx { namespace af {
       typedef versa_plain<ElementType, AccessorType> base_class;
       typedef typename base_class::handle_type handle_type;
       typedef versa<ElementType> one_dim_type;
+      typedef typename one_dim_type::accessor_type one_dim_accessor_type;
 
       typedef AccessorType accessor_type;
 
@@ -39,6 +40,14 @@ namespace cctbx { namespace af {
       explicit
       versa(long n0)
         : base_class(n0)
+      {}
+
+      versa(const AccessorType& ac, no_initialization_flag)
+        : base_class(ac, no_initialization_flag())
+      {}
+
+      versa(long n0, no_initialization_flag)
+        : base_class(n0, no_initialization_flag())
       {}
 
       versa(const AccessorType& ac, const ElementType& x)
@@ -98,14 +107,18 @@ namespace cctbx { namespace af {
       {}
 
       one_dim_type as_1d() {
-        return one_dim_type(*this,
-          typename one_dim_type::accessor_type(this->size()));
+        return one_dim_type(*this, one_dim_accessor_type(size()));
       }
 
       versa<ElementType, AccessorType>
       deep_copy() const {
         shared_plain<ElementType> c(this->begin(), this->end());
         return versa<ElementType, AccessorType>(c.handle(), this->m_accessor);
+      }
+
+      versa<ElementType, AccessorType>
+      weak_ref() const {
+        return versa<ElementType, AccessorType>(*this, weak_ref_flag());
       }
   };
 

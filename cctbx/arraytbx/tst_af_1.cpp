@@ -4,6 +4,8 @@
 
 #include <vector>
 
+using namespace cctbx;
+
 namespace {
 
   bool verbose = false;
@@ -61,6 +63,8 @@ namespace {
       check_true(__LINE__, a1.size() == 0);
       ArrayType a2(10);
       check_true(__LINE__, a2.size() == 10);
+      ArrayType a3(10, af::no_initialization_flag());
+      check_true(__LINE__, a3.size() == 10);
       ArrayType a4(10, element_type(123));
       check_true(__LINE__, a4.size() == 10);
       ArrayType a5(a4.begin(), a4.begin());
@@ -227,8 +231,11 @@ namespace {
       check_true(__LINE__, a1.size() == 0);
       check_true(__LINE__, a1.capacity() == 0);
       check_true(__LINE__, a1.begin() == 0);
-      ArrayType a3(10, cctbx::af::reserve_flag());
-      check_true(__LINE__, a3.size() == 0);
+      ArrayType a2(10, af::reserve_flag());
+      check_true(__LINE__, a2.size() == 0);
+      check_true(__LINE__, a2.capacity() == 10);
+      ArrayType a3(10, af::no_initialization_flag());
+      check_true(__LINE__, a3.size() == 10);
       check_true(__LINE__, a3.capacity() == 10);
       ArrayType a4(10, element_type(123));
       check_true(__LINE__, a4.size() == 10);
@@ -307,7 +314,7 @@ namespace {
       ArrayType w1;
       {
         ArrayType a1(3);
-        w1 = ArrayType(a1, cctbx::af::weak_ref_flag());
+        w1 = ArrayType(a1, af::weak_ref_flag());
         check_false(__LINE__, a1.is_weak_ref());
         check_true(__LINE__, w1.is_weak_ref());
         check_true(__LINE__, a1.use_count() == 1);
@@ -316,7 +323,7 @@ namespace {
           ArrayType a2(a1);
           check_true(__LINE__, a2.use_count() == 2);
           check_true(__LINE__, a2.weak_count() == 1);
-          ArrayType w2(a1, cctbx::af::weak_ref_flag());
+          ArrayType w2(a1, af::weak_ref_flag());
           check_true(__LINE__, w2.use_count() == 2);
           check_true(__LINE__, w2.weak_count() == 2);
         }
@@ -348,7 +355,14 @@ namespace {
       check_true(__LINE__, w1.use_count() == 0);
       check_true(__LINE__, w1.weak_count() == 1);
       {
-        ArrayType w2(w1, cctbx::af::weak_ref_flag());
+        ArrayType w2(w1, af::weak_ref_flag());
+        check_true(__LINE__, w1.use_count() == 0);
+        check_true(__LINE__, w1.weak_count() == 2);
+      }
+      check_true(__LINE__, w1.use_count() == 0);
+      check_true(__LINE__, w1.weak_count() == 1);
+      {
+        ArrayType w2 = w1.weak_ref();
         check_true(__LINE__, w1.use_count() == 0);
         check_true(__LINE__, w1.weak_count() == 2);
       }
@@ -366,18 +380,18 @@ namespace {
     }
     static void run_1() {
       ArrayType a1;
-      a1 = ArrayType(cctbx::af::grid<1>(3));
+      a1 = ArrayType(af::grid<1>(3));
       a1 = ArrayType(3);
-      a1 = ArrayType(cctbx::af::grid<1>(3), element_type(123));
+      a1 = ArrayType(af::grid<1>(3), element_type(123));
       a1 = ArrayType(3, element_type(123));
-      ArrayType w1(a1, cctbx::af::weak_ref_flag());
+      ArrayType w1(a1, af::weak_ref_flag());
       check_true(__LINE__, w1.use_count() == 1);
       check_true(__LINE__, w1.weak_count() == 1);
       {
-        AltArrayType a2(cctbx::af::grid<2>(3, 4));
-        ArrayType a3(a2, cctbx::af::grid<1>(12));
+        AltArrayType a2(af::grid<2>(3, 4));
+        ArrayType a3(a2, af::grid<1>(12));
         ArrayType a4(a2, 12);
-        ArrayType a5(a2, cctbx::af::grid<1>(14), element_type(1));
+        ArrayType a5(a2, af::grid<1>(14), element_type(1));
         ArrayType a6(a2, 16, element_type(2));
         check_true(__LINE__, a2.use_count() == 5);
         check_true(__LINE__, a2.size() == 12);
@@ -390,10 +404,10 @@ namespace {
         check_true(__LINE__, a4.end() - a4.begin() == a4.size());
         check_true(__LINE__, a5.end() - a5.begin() == a5.size());
         check_true(__LINE__, a6.end() - a6.begin() == a6.size());
-        a2.resize(cctbx::af::grid<2>(4, 5), element_type(3));
+        a2.resize(af::grid<2>(4, 5), element_type(3));
         ArrayType a2_1d = a2.as_1d();
         check_true(__LINE__, a2.use_count() == 6);
-        cctbx::af::small<element_type, 20> v;
+        af::small<element_type, 20> v;
         v.insert(v.end(), 12, element_type());
         v.insert(v.end(), 2, element_type(1));
         v.insert(v.end(), 2, element_type(2));
@@ -402,7 +416,7 @@ namespace {
         check_true(__LINE__, a2(0,0) == element_type(0));
         check_true(__LINE__, a2(1,1) == element_type(0));
         check_true(__LINE__, a2(3,4) == element_type(3));
-        w1 = ArrayType(a2_1d, cctbx::af::weak_ref_flag());
+        w1 = a2_1d.weak_ref();
         check_true(__LINE__, w1.use_count() == 6);
       }
       check_true(__LINE__, w1.use_count() == 0);
@@ -413,15 +427,20 @@ namespace {
 
 int main(void)
 {
-  using namespace cctbx;
+  if (verbose) std::cout << __LINE__ << ":" << std::endl;
+  array_excercise<af::small_plain<int, 128> >::run();
+  if (verbose) std::cout << __LINE__ << ":" << std::endl;
+  array_excercise<af::small<int, 128> >::run();
+
+  if (verbose) std::cout << __LINE__ << ":" << std::endl;
+  array_excercise<af::shared_plain<int> >::run();
+  if (verbose) std::cout << __LINE__ << ":" << std::endl;
+  shared_excercise<af::shared_plain<int> >::run();
 
   if (verbose) std::cout << __LINE__ << ":" << std::endl;
   array_excercise<af::shared<int> >::run();
   if (verbose) std::cout << __LINE__ << ":" << std::endl;
   shared_excercise<af::shared<int> >::run();
-
-  if (verbose) std::cout << __LINE__ << ":" << std::endl;
-  array_excercise<af::small<int, 128> >::run();
 
   if (verbose) std::cout << __LINE__ << ":" << std::endl;
   versa_excercise<af::versa_plain<int>,

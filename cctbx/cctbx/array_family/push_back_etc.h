@@ -56,7 +56,8 @@
 
       void pop_back() {
         m_decr_size(1);
-        detail::destroy_array_element(end());
+        detail::destroy_array_element(end(),
+          has_trivial_destructor<ElementType>::value());
       }
 
       ElementType* insert(ElementType* pos, const ElementType& x) {
@@ -138,16 +139,14 @@
         if (pos + 1 != end()) {
           std::copy(pos + 1, end(), pos);
         }
-        m_decr_size(1);
-        detail::destroy_array_element(end());
+        pop_back();
         return pos;
       }
 
       ElementType* erase(ElementType* first, ElementType* last) {
         ElementType* i = std::copy(last, end(), first);
-        // XXX erase backwards, update size after each destroy
-        // XXX use type_traits to skip destroy
-        detail::destroy_array_elements(i, end());
+        detail::destroy_array_elements(i, end(),
+          has_trivial_destructor<ElementType>::value());
         m_decr_size(last - first);
         return first;
       }
