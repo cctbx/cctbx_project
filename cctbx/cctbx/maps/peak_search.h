@@ -11,7 +11,9 @@
 #ifndef CCTBX_MAPS_PEAK_SEARCH_H
 #define CCTBX_MAPS_PEAK_SEARCH_H
 
+#include <algorithm>
 #include <functional>
+#include <cctbx/shared_storage.h>
 
 namespace cctbx { namespace maps {
 
@@ -183,7 +185,9 @@ namespace cctbx { namespace maps {
       std::greater<typename DataVecRefNdType::value_type> >
   >
   collect_peaks(const DataVecRefNdType& data,
-                const FlagsVecRefNdType& flags)
+                const FlagsVecRefNdType& flags,
+                const typename DataVecRefNdType::value_type& cutoff,
+                bool use_cutoff = true)
   {
     typedef typename
     DataVecRefNdType::dimension_type::index_tuple_type index_tuple_type;
@@ -197,12 +201,62 @@ namespace cctbx { namespace maps {
     std::vector<iv_type> result;
     nested_loop<index_tuple_type> loop(data.dim());
     for (index_tuple_type pivot = loop(); !loop.over(); pivot = loop.next()) {
-      if (flags(pivot) == -2) {
+      if (flags(pivot) == -2 && (!use_cutoff || data(pivot) >= cutoff)) {
         result.push_back(iv_type(pivot, data(pivot)));
       }
     }
     return result;
   }
+
+  template <typename ValueType,
+            typename CountType = int>
+  struct peak_histogram
+  {
+    typedef ValueType value_type;
+    typedef CountType count_type;
+
+    peak_histogram() {}
+
+    template <typename DataVecRefType,
+              typename FlagsVecRefType>
+    peak_histogram(const DataVecRefType& data,
+                   const FlagsVecRefType& flags,
+                   std::size_t n_slots = 1000)
+      : slots(n_slots)
+    {
+      data_min = vector::min(data);
+      data_max = vector::max(data);
+      slot_width = (data_max - data_min) / slots.size();
+      std::fill(slots.begin(), slots.end(), 0);
+      for(std::size_t i=0;i<data.size();i++) {
+        if (flags[i] != -2) continue;
+        value_type d = data[i] - data_min;
+        std::size_t i_slot = 0;
+        if (d >= slot_width) {
+              i_slot = std::size_t(d / slot_width);
+          if (i_slot >= slots.size()) i_slot = slots.size() - 1;
+        }
+        slots[i_slot]++;
+      }
+    }
+
+    value_type get_cutoff(const count_type& max_peaks,
+                          const value_type& tolerance = 1.e-4) const
+    {
+      count_type cum = 0;
+      std::size_t i = slots.size();
+      for (; i; i--) {
+        cum += slots[i-1];
+        if (cum > max_peaks) break;
+      }
+      return data_min + i * slot_width + slot_width * tolerance;
+    }
+
+    value_type data_min;
+    value_type data_max;
+    value_type slot_width;
+    shared_storage<count_type> slots;
+  };
 
 }} // namespace cctbx::maps
 
