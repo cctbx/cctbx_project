@@ -36,12 +36,13 @@ def run(args, cutoff, six_term=00000, params=None,
   if (len(args) > 0 and len(args[0].split(",")) == 2):
     chunk_n, chunk_i = [int(i) for i in args[0].split(",")]
     args = args[1:]
-  if (not os.path.isdir(plots_dir)):
-    print "No plots because target directory does not exist (mkdir %s)." % \
-      plots_dir
-    plots_dir = None
-  if (chunk_n > 1):
-    assert plots_dir is not None
+  if (not six_term):
+    if (not os.path.isdir(plots_dir)):
+      print "No plots because target directory does not exist (mkdir %s)." % \
+        plots_dir
+      plots_dir = None
+    if (chunk_n > 1):
+      assert plots_dir is not None
   results = {}
   results["fit_parameters"] = params
   i_chunk = 0
