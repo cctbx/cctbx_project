@@ -1234,7 +1234,7 @@ c=a *b c
   source = iotbx.parameters.parse(input_string="""\
 c=a *d c
 """)
-  try: fetched = master.fetch(sources=[source])
+  try: fetched = master.fetch(source=source)
   except RuntimeError, e:
     assert str(e) == "Not a possible choice: *d (input line 1)"
   else: raise RuntimeError("Exception expected.")
@@ -1431,6 +1431,53 @@ s.t {
 }
 s.t {
   a.b = e
+}
+"""
+  master = iotbx.parameters.parse(input_string="""\
+s {
+  a {
+    f=None
+  }
+  b {
+    f=None
+    g=None
+  }
+}
+""")
+  source_af = iotbx.parameters.parse(input_string="s.a.f=1")
+  source_bf = iotbx.parameters.parse(input_string="s.b.f=2")
+  source_bg = iotbx.parameters.parse(input_string="s.b.g=3")
+  assert master.fetch(sources=[source_af, source_bf]).as_str() == """\
+s {
+  a {
+    f = 1
+  }
+  b {
+    f = 2
+    g = None
+  }
+}
+"""
+  assert master.fetch(sources=[source_bg, source_af]).as_str() == """\
+s {
+  a {
+    f = 1
+  }
+  b {
+    f = None
+    g = 3
+  }
+}
+"""
+  assert master.fetch(sources=[source_bg, source_af, source_bf]).as_str()=="""\
+s {
+  a {
+    f = 1
+  }
+  b {
+    f = 2
+    g = 3
+  }
 }
 """
 
