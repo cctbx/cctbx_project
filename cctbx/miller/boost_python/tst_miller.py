@@ -373,25 +373,6 @@ def exercise_match_indices():
   assert approx_equal(tuple(mi.additive_sigmas(d0, d1)), [
     math.sqrt(x*x+y*y) for x,y in ((1,30), (2,10), (3,40), (4,20))])
 
-def exercise_phase_interpolation():
-  centric_flags = flex.bool((0001, 0001, 00000, 00000, 00000))
-  reference_amplitudes = flex.double((3, 3, 4, 4, 4))
-  f_1 = flex.complex_double(
-    (polar((4, 10), deg=0001),
-     polar((5, 10), deg=0001),
-     polar((4, 30), deg=0001),
-     polar((5, 30), deg=0001),
-     polar((5, 30), deg=0001)))
-  f_2 = flex.complex_double(
-    (polar((5, 20), deg=0001),
-     polar((4, 20), deg=0001),
-     polar((5, 40), deg=0001),
-     polar((4, 40), deg=0001),
-     polar((8, 40), deg=0001)))
-  assert approx_equal(tuple(miller.phase_interpolation(
-    centric_flags, reference_amplitudes, f_1, f_2, 0001, 1.e-10)),
-    (10, 20, 30, 40, 32))
-
 def exercise_phase_transfer():
   sg = sgtbx.space_group_info("P 21 21 21").group()
   i = flex.miller_index(((1,2,3), (3,0,3)))
@@ -412,7 +393,6 @@ def run():
   exercise_index_span()
   exercise_match_bijvoet_mates()
   exercise_match_indices()
-  exercise_phase_interpolation()
   exercise_phase_transfer()
   print "OK"
 

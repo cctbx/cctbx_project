@@ -10,7 +10,6 @@ pyd = env.SharedLibrary(target="miller_ext", source=[
   "index_span.cpp",
   "match_bijvoet_mates.cpp",
   "match_indices.cpp",
-  "phase_interpolation.cpp",
   "phase_transfer.cpp",
   "sym_equiv.cpp",
 ])
