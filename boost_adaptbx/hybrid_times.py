@@ -81,7 +81,10 @@ def forever(n_terms, n=200):
     n_ratios += 1
     print "mean Python: %6.3f" % (sum_py/n_ratios)
     print "mean C++:    %6.3f" % (sum_cpp/n_ratios)
-    print "iteration %d: ratio %6.3f" % (n_ratios, sum_py/sum_cpp)
+    if (sum_cpp != 0):
+      print "iteration %d: ratio %6.3f" % (n_ratios, sum_py/sum_cpp)
+    else:
+      print "iteration %d: ratio infinity" % n_ratios
     print
 
 def end_points(n_terms):
@@ -91,7 +94,10 @@ def end_points(n_terms):
     print "n:", n
     py = time_per_python_tick(run_python, n, n_terms).report("Python")
     cpp = time_per_python_tick(run_c_plus_plus, n, n_terms).report("C++")
-    print "ratio %6.3f" % (py.time_diff / cpp.time_diff)
+    if (cpp.time_diff != 0):
+      print "ratio %6.3f" % (py.time_diff / cpp.time_diff)
+    else:
+      print "ratio infinity"
     assert abs(py.result - cpp.result) < 1.e-8
     print
     n *= 2
