@@ -17,7 +17,7 @@ def dump(file_name):
     print "  Name:", cryst.crystal_name()
     print "  Project:", cryst.project_name()
     print " ",
-    cryst.UnitCell().show_parameters(f=sys.stdout)
+    cryst.UnitCell().show_parameters()
     print "  Number of datasets:", cryst.ndatasets()
     for i_dataset in xrange(cryst.ndatasets()):
       print "  Dataset %d:" % (i_dataset+1)

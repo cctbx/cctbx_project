@@ -153,13 +153,15 @@ class structure(crystal.special_position_settings):
       miller_set=miller_set,
       data=f_calc)
 
-  def show_summary(self, f=sys.stdout):
+  def show_summary(self, f=None):
+    if (f is None): f = sys.stdout
     print >> f, "Number of scatterers:", len(self.scatterers())
     print >> f, "At special positions:", len(self.special_position_indices())
     crystal.symmetry.show_summary(self, f)
     return self
 
-  def show_scatterers(self, f=sys.stdout):
+  def show_scatterers(self, f=None):
+    if (f is None): f = sys.stdout
     print >> f, "Label  M  Coordinates            Occ  Uiso or Ucart"
     for scatterer in self.scatterers():
       print >> f, "%-4s" % (scatterer.label,),

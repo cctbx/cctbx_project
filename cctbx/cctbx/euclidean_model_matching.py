@@ -94,7 +94,8 @@ class model(crystal.special_position_settings):
           site=site))
     return new_model
 
-  def show(self, title, f=sys.stdout):
+  def show(self, title, f=None):
+    if (f is None): f = sys.stdout
     print >> f, title
     crystal.special_position_settings.show_summary(self, f)
     if (not self.cb_op().is_identity_op()):
@@ -156,7 +157,8 @@ class euclidean_match_symmetry:
       for i in xrange(3):
         if (pa[i]): self.continuous_shift_flags[i] = 1
 
-  def show(self, title="", f=sys.stdout):
+  def show(self, title="", f=None):
+    if (f is None): f = sys.stdout
     print >> f, "euclidean_match_symmetry:", title
     print >> f, self.rt_mx.info().lookup_symbol()
     print >> f, self.continuous_shifts
@@ -302,7 +304,8 @@ class match_refine:
       sum_dist2 += length(self.calculate_shortest_diff(pair))**2
     self.rms = math.sqrt(sum_dist2 / len(self.pairs))
 
-  def show(self, f=sys.stdout, truncate_singles=None, singles_per_line=5):
+  def show(self, f=None, truncate_singles=None, singles_per_line=5):
+    if (f is None): f = sys.stdout
     print >> f, "Match summary:"
     print >> f, "  Operator:"
     print >> f, "       rotation:", self.rt.r.mathematica_form()

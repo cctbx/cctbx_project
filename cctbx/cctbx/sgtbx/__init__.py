@@ -123,7 +123,8 @@ class space_group_info:
       cache._lookup_symbol = self.type().lookup_symbol()
     return cache._lookup_symbol
 
-  def show_summary(self, f=sys.stdout, prefix="Space group: "):
+  def show_summary(self, f=None, prefix="Space group: "):
+    if (f is None): f = sys.stdout
     print >> f, "%s%s (No. %d)" % (
       prefix, str(self), self.type().number())
 

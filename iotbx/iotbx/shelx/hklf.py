@@ -3,7 +3,8 @@ from cctbx import crystal
 from cctbx.array_family import flex
 import sys
 
-def miller_export_as_shelx_hklf(self, file_object=sys.stdout):
+def miller_export_as_shelx_hklf(self, file_object=None):
+  if (file_object is None): file_object = sys.stdout
   data = self.data()
   sigmas = self.sigmas()
   s = 0.01

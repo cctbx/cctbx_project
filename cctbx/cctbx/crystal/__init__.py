@@ -53,7 +53,8 @@ class symmetry(object):
   def space_group(self):
     return self.space_group_info().group()
 
-  def show_summary(self, f=sys.stdout):
+  def show_summary(self, f=None):
+    if (f is None): f = sys.stdout
     if (self.unit_cell() is None):
       print >> f, "Unit cell:", None
     else:
