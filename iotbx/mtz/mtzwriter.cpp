@@ -1,6 +1,14 @@
+#include "cmtzlib.h"
+#include "ccp4_types.h"
+#include "ccp4_array.h"
+#include "ccp4_parser.h"
+#include "ccp4_vars.h"
+#include "ccp4_errno.h"
+#include "ccp4_lib.h"
 #include <iotbx/mtzwriter.h>
 #include <cctbx/sgtbx/space_group_type.h>
 #include <scitbx/mat3.h>
+#include <iostream>
 
 using namespace CMtz;
 
@@ -71,73 +79,113 @@ void iotbx::mtz::MtzWriter::oneDataset(const std::string& dataset,
     strip_dataset.erase(ind,1);
   }
   oneset = MtzAddDataset(mtz, onextal, strip_dataset.c_str(), wavelength);
+  MtzAddColumn (mtz,oneset,"H","H");
+  MtzAddColumn (mtz,oneset,"K","H");
+  MtzAddColumn (mtz,oneset,"L","H");
+}
+
+void iotbx::mtz::MtzWriter::safe_ccp4_lwrefl(const float adata[], MTZCOL *lookup[], 
+           const int ncol, const int iref)
+{ int i,j,k,l,icol,ind[3],ind_xtal,ind_set,ind_col[3];
+  float refldata[MCOLUMNS],res;
+  double coefhkl[6];
+
+  /* if this is extra reflection, check memory */
+  if (mtz->refs_in_memory && iref > mtz->nref) {
+    if (iref > ccp4array_size(lookup[0]->ref)) {
+     /* Loop over crystals */
+      for (i = 0; i < mtz->nxtal; ++i) {
+     /* Loop over datasets for each crystal */
+       for (j = 0; j < mtz->xtal[i]->nset; ++j) {
+      /* Loop over columns for each dataset */
+        for (k = 0; k < mtz->xtal[i]->set[j]->ncol; ++k) {
+         ccp4array_resize(mtz->xtal[i]->set[j]->col[k]->ref, iref);
+        }
+       }
+      }
+    }
+  }
+
+  if (mtz->refs_in_memory && iref > mtz->nref) {
+  /* Loop over crystals */
+   for (i = 0; i < mtz->nxtal; ++i) {
+  /* Loop over datasets for each crystal */
+    for (j = 0; j < mtz->xtal[i]->nset; ++j) {
+   /* Loop over columns for each dataset */
+     for (k = 0; k < mtz->xtal[i]->set[j]->ncol; ++k) {
+      mtz->xtal[i]->set[j]->col[k]->ref[iref-1] = CCP4::ccp4_nan().f;
+     }
+    }
+   }
+  }
+  
+  icol = -1;
+  for (i = 0; i < ncol; ++i) {
+    if (lookup[i]) {
+      /* update reflection in memory or add to refldata array. */
+      if (mtz->refs_in_memory) {
+        lookup[i]->ref[iref-1] = adata[i];
+      } 
+      /* update column ranges */
+      if (!ccp4_ismnf(mtz, adata[i])) {
+        if (adata[i] < lookup[i]->min) lookup[i]->min = adata[i];
+        if (adata[i] > lookup[i]->max) lookup[i]->max = adata[i];
+      }
+    }
+  }
+
+  /* increment nref if we are adding new reflections */
+  if (iref > mtz->nref)
+    mtz->nref = iref;
 }
 
 void
-MtzWriter::addColumn(
+iotbx::mtz::MtzWriter::addColumn(
   const std::string& name,
   char type_code,
   af::const_ref<cctbx::miller::index<> > const& miller_indices,
   af::const_ref<double> const& data)
 {
   using namespace cctbx;
-  CREATE THE COLUMN name
+  MTZCOL* write_columns[4];
+  write_columns[0]=MtzColLookup(mtz,"H");
+  write_columns[1]=MtzColLookup(mtz,"K");
+  write_columns[2]=MtzColLookup(mtz,"L");
+  if (MtzColLookup(mtz,name.c_str())!=NULL) 
+    throw iotbx::mtz::Error("Attempt to overwrite existing column "+name);
+  write_columns[3]=MtzAddColumn(mtz,oneset,name.c_str(),&type_code);
   CCTBX_ASSERT(miller_indices.size() == data.size());
   typedef std::map<miller::index<>, std::size_t> lookup_dict_type;
   lookup_dict_type lookup_dict;
-  for(i=0;i<NUMBER_OF_EXISTING_INDICES;i++) {
-    lookup_dict[EXISTING_MILLER_INDEX] = i;
+  for( std::size_t i=0; i<mtz->nref; i++ ) {
+    miller::index<> M((int)write_columns[0]->ref[i],
+                      (int)write_columns[1]->ref[i],
+                      (int)write_columns[2]->ref[i]);
+    lookup_dict[M] = i;
   }
-  for(i=0;i<miller_indices.size();i++) {
+  for(std::size_t i=0; i<miller_indices.size(); i++) {
     std::size_t i_mtz;
     lookup_dict_type::const_iterator
       ld_pos = lookup_dict.find(miller_indices[i]);
     if (ld_pos != lookup_dict.end()) {
       i_mtz = ld_pos->second;
+      write_columns[3]->ref[i_mtz] = (float)data[i];
     }
     else {
-      i_mtz = NUMBER_OF_EXISTING_INDICES;
-      ADD miller_indices[i] TO THE MTZ OBJECT
-      FILL IN MISSING VALUES FOR ALL OTHER COLUMNS
+      i_mtz = mtz->nref; //NUMBER_OF_EXISTING_INDICES
+      i_mtz += 1;
+      float adata[4] = {miller_indices[i][0],
+                        miller_indices[i][1],
+                        miller_indices[i][2],
+                        data[i]}; //ADD miller_indices[i] TO THE MTZ OBJECT
+      //ccp4_lwrefl(mtz, adata, write_columns, 4, i_mtz);
+      safe_ccp4_lwrefl(adata, write_columns, 4, i_mtz);
+      
+      //FILL IN MISSING VALUES FOR ALL OTHER COLUMNS
     }
-    ASSIGN data[i] to mtz_column[i_mtz]
   }
 }
 
 void iotbx::mtz::MtzWriter::write(const std::string& filename){
   MtzPut(mtz, const_cast<char*>(filename.c_str()));
 }
-/*
-
-  int hmin=-1;
-  int hmax=1;
-  int kmin=-1;
-  int kmax=1;
-  int lmin=-1;
-  int lmax=1;
-  
-  MTZCOL *colout[4];
-  
-  colout[0]=MtzAddColumn (P1mtz,set,"H","H");
-  colout[1]=MtzAddColumn (P1mtz,set,"K","H");
-  colout[2]=MtzAddColumn (P1mtz,set,"L","H");
-  colout[3]=MtzAddColumn (P1mtz,set,"Fobs","F");
-  
-  int ncol=1;
-  float adata[4];
-  
-  int iref=0;
-  for (int h = hmin; h <= hmax; h++)
-    for (int k = kmin; k <= kmax; k++)
-      for (int l = lmin; l <= lmax; l++)
-        if (!(l == 0 && h < 0) && 
-            !(h == 0 && l == 0 && k < 0)&&
-            !(h==0 && k==0 && l==0)) {
-            iref+=1;
-            adata[0]=(float)h;
-            adata[1]=(float)k;
-            adata[2]=(float)l;
-            adata[3]=5728.02;
-            ccp4_lwrefl(P1mtz, adata, colout, 4, iref);
-        }
-*/

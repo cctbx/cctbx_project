@@ -67,6 +67,7 @@ BOOST_PYTHON_MODULE(mtz)
       .def("setSpaceGroup", &iotbx::mtz::MtzWriter::setSpaceGroup)
       .def("oneCrystal",    &iotbx::mtz::MtzWriter::oneCrystal)
       .def("oneDataset",    &iotbx::mtz::MtzWriter::oneDataset)
+      .def("addColumn",     &iotbx::mtz::MtzWriter::addColumn)
       .def("write",         &iotbx::mtz::MtzWriter::write)
     ;
 }

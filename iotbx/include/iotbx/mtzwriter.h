@@ -23,6 +23,8 @@ private:
   CMtz::MTZ* mtz;
   CMtz::MTZXTAL* onextal;
   CMtz::MTZSET*  oneset;
+  void safe_ccp4_lwrefl(const float*, CMtz::MTZCOL **, 
+           const int, const int);
 public:
   MtzWriter();
   ~MtzWriter();
