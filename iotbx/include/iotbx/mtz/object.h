@@ -1,6 +1,10 @@
 #ifndef IOTBX_MTZ_OBJECT_H
 #define IOTBX_MTZ_OBJECT_H
 
+#if defined(__sgi) && defined(__host_mips)
+# include <sys/stat.h>
+#endif
+
 #include <cmtzlib.h>
 #include <ccp4_array.h>
 #include <ccp4_errno.h>
