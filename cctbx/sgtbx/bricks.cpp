@@ -800,7 +800,8 @@ namespace cctbx { namespace sgtbx {
       for (const raw_bricks::entry* b = raw_bricks::table; b->sg_number; b++) {
         if (b->sg_number > sg_number) break;
         if (b->sg_number == sg_number) {
-          space_group tab_sg(b->hall_symbol);
+          space_group tab_sg(b->hall_symbol, false, false, false,
+                             sg_type.group().t_den());
           if (sg_type.group() == tab_sg) return b;
         }
       }

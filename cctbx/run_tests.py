@@ -23,6 +23,7 @@ def run():
   "$D/cctbx/matrix.py",
   ["$D/cctbx/regression/tst_krivy_gruber.py", "--Quick"],
   "$D/cctbx/regression/tst_sgtbx.py",
+  ["$D/cctbx/regression/tst_sgtbx_denominators.py", "P31"],
   "$D/cctbx/regression/tst_sgtbx_harker.py",
   "$D/cctbx/sgtbx/symbol_confidence.py",
   "$D/cctbx/regression/tst_crystal.py",

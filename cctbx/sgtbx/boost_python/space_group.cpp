@@ -69,8 +69,8 @@ namespace {
     {
       using namespace boost::python;
       class_<w_t>("space_group")
-        .def(init<parse_string&, optional<bool, bool, bool> >())
-        .def(init<std::string const&, optional<bool, bool, bool> >())
+        .def(init<parse_string&, optional<bool, bool, bool, int> >())
+        .def(init<std::string const&, optional<bool, bool, bool, int> >())
         .def(init<space_group_symbols const&>())
         .def(init<space_group const&>())
         .def("reset", &w_t::reset, reset_overloads())

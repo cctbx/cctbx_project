@@ -251,7 +251,7 @@ namespace cctbx { namespace sgtbx {
 
   structure_seminvariant::structure_seminvariant(space_group const& sg)
   {
-    select_generators::any gen(sg);
+    select_generators::any gen(sg, cb_r_den, cb_t_den);
     vec_mod_ = get_cont_null_space(gen);
     if (vec_mod_.size() == 3) return; // space group P1
     af::tiny<int, 3 * 3 * 3> snf = construct_gen_rmi(gen, true);

@@ -48,10 +48,10 @@ namespace cctbx { namespace sgtbx {
           Not available in Python.
        */
       explicit
-      space_group(bool no_expand=false)
+      space_group(bool no_expand=false, int t_den=sg_t_den)
       : no_expand_(no_expand)
       {
-        reset();
+        reset(t_den);
       }
 
       //! Initialization with symmetry encoded by a Hall symbol.
@@ -69,7 +69,8 @@ namespace cctbx { namespace sgtbx {
         parse_string& hall_symbol,
         bool pedantic=false,
         bool no_centring_type_symbol=false,
-        bool no_expand=false);
+        bool no_expand=false,
+        int t_den=sg_t_den);
 
       //! Initialization with symmetry encoded by a Hall symbol.
       /*! Identical to the constructor that takes a parse_string
@@ -82,7 +83,8 @@ namespace cctbx { namespace sgtbx {
         std::string const& hall_symbol,
         bool pedantic=false,
         bool no_centring_type_symbol=false,
-        bool no_expand=false);
+        bool no_expand=false,
+        int t_den=sg_t_den);
 
       /*! Identical to the constructor that takes a parse_string
           as the first argument. However, if an exception is thrown
@@ -94,13 +96,16 @@ namespace cctbx { namespace sgtbx {
         const char* hall_symbol,
         bool pedantic=false,
         bool no_centring_type_symbol=false,
-        bool no_expand=false);
+        bool no_expand=false,
+        int t_den=sg_t_den);
 
       /*! \brief Initialization with the Hall symbol of the
           space_group_symbols object.
        */
       explicit
-      space_group(space_group_symbols const& SgSymbols);
+      space_group(
+        space_group_symbols const& SgSymbols,
+        int t_den=sg_t_den);
 
       //! Resets the symmetry to P1.
       void reset(int t_den=sg_t_den);

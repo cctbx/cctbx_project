@@ -79,7 +79,8 @@ namespace cctbx { namespace sgtbx {
         std::size_t n_matches = 0;
         for(std::size_t i=0;i<size();i++) {
           for(std::size_t j=0;j<size();j++) {
-            if (!match_flags[j] && e->t[i] == elems_[j]) {
+            if (!match_flags[j]
+                && e->t[i].new_denominator(t_den()) == elems_[j]) {
               match_flags[j] = true;
               n_matches++;
               break;

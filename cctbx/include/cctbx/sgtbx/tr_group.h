@@ -46,6 +46,8 @@ namespace cctbx { namespace sgtbx {
 
       tr_vec&       operator[](std::size_t i)       { return elems_[i]; }
 
+      int t_den() const { return elems_[0].den(); }
+
       bool operator==(tr_group const& rhs)
       {
         return this->elems_ == rhs.elems_;

@@ -454,7 +454,8 @@ namespace cctbx { namespace sgtbx {
             CCTBX_ASSERT(tst_z != '\0' && tst_z != 'Q');
             if (tst_z != tab_z)
               continue;
-            select_generators::standard tst_generators(tst_sg, point_group);
+            select_generators::standard tst_generators(
+              tst_sg, r_den, t_den, point_group);
             CCTBX_ASSERT(tst_generators.n_gen == tab_generators.n_gen);
             if (    tab_generators.n_gen != 2
                 ||  (      tab_generators.z_gen[0].r()[8]
@@ -473,7 +474,8 @@ namespace cctbx { namespace sgtbx {
         }
       }
       else {
-        select_generators::standard tst_generators(work_sg, point_group);
+        select_generators::standard tst_generators(
+          work_sg, r_den, t_den, point_group);
         CCTBX_ASSERT(tst_generators.n_gen == tab_generators.n_gen);
         tst_generators.set_primitive();
         tr_vec cb_t = find_origin_shift(tab_generators, tst_generators, t_den);
@@ -501,7 +503,10 @@ namespace cctbx { namespace sgtbx {
 
       space_group transformed_sg = given_sg.change_basis(trial_cb_op);
       select_generators::standard transformed_generators(
-        transformed_sg, point_group);
+        transformed_sg,
+        trial_cb_op.c().r().den(),
+        trial_cb_op.c().t().den(),
+        point_group);
       transformed_generators.set_primitive();
       tr_vec cb_t = find_origin_shift(
         target_generators, transformed_generators, trial_cb_op.c().t().den());
@@ -581,7 +586,7 @@ namespace cctbx { namespace sgtbx {
       space_group norm_sg = target_sg;
       std::size_t old_order_p = norm_sg.order_p();
       for(std::size_t i=0;i<addl_g.size();i++) {
-        rt_mx s = cb_op(addl_g[i]);
+        rt_mx s = cb_op(addl_g[i].new_denominators(norm_sg.smx()[0]));
         norm_sg.expand_smx(s);
         std::size_t new_order_p = norm_sg.order_p();
         CCTBX_ASSERT(   old_order_p * s.r().order()
@@ -744,7 +749,7 @@ namespace cctbx { namespace sgtbx {
 
       space_group tab_sg;
       try {
-        tab_sg = space_group(hall_symbol, true);
+        tab_sg = space_group(hall_symbol, true, false, false, work_sg.t_den());
       }
       catch (error const&) {
         throw CCTBX_INTERNAL_ERROR();
@@ -753,7 +758,8 @@ namespace cctbx { namespace sgtbx {
       if (tab_sg.n_ltr() != work_sg.n_ltr())
         continue;
 
-      select_generators::standard tab_generators(tab_sg, point_group);
+      select_generators::standard tab_generators(
+        tab_sg, r_den, t_den, point_group);
       tab_generators.set_primitive();
       change_of_basis_op addl_cb_op = construct_cb_op_t::match_generators(
         r_den, t_den, work_sg, point_group, hall_symbol[1], tab_generators);
@@ -781,12 +787,11 @@ namespace cctbx { namespace sgtbx {
     }
     std::string hall_symbol(reference_settings::hall_symbol_table(number_));
     parse_string ps(hall_symbol);
-    space_group target_sg;
-    change_of_basis_op reference_cb_op;
+    space_group target_sg(false, group_.t_den());
+    change_of_basis_op reference_cb_op = cb_op_.identity_op();
     target_sg.parse_hall_symbol_cb_op(ps, reference_cb_op, true);
     change_of_basis_op cb_op = reference_cb_op;
     if (cb_op.is_valid()) {
-      cb_op = cb_op.new_denominators(cb_op_);
       cb_op = cb_op.inverse() * cb_op_;
     }
     else {
@@ -794,7 +799,11 @@ namespace cctbx { namespace sgtbx {
     }
     if (tidy_cb_op) {
       matrix_group::code point_group = target_sg.point_group_type();
-      select_generators::standard target_generators(target_sg, point_group);
+      select_generators::standard target_generators(
+        target_sg,
+        cb_op.c().r().den(),
+        cb_op.c().t().den(),
+        point_group);
       target_generators.set_primitive();
       cb_op = construct_cb_op_t::find_best_cb_op(
         group_, point_group, number_,

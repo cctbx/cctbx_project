@@ -213,7 +213,7 @@ namespace cctbx { namespace sgtbx {
       char reference_axis = '\0';
       char direction_code = '\0';
       rot_mx smx_r;
-      tr_vec smx_t;
+      tr_vec smx_t(t_den());
 
       if (hall_symbol() == '-') {
         improper = true;
@@ -274,7 +274,8 @@ namespace cctbx { namespace sgtbx {
 
         tr_vec const& hall_translation = get_translation(hall_symbol());
         if (hall_translation.is_valid()) {
-          smx_t = (smx_t + hall_translation).mod_positive();
+          smx_t = (smx_t
+                   + hall_translation.new_denominator(t_den())).mod_positive();
           hall_symbol.skip();
           continue;
         }
@@ -413,10 +414,11 @@ namespace cctbx { namespace sgtbx {
     parse_string& hall_symbol,
     bool pedantic,
     bool no_centring_type_symbol,
-    bool no_expand)
+    bool no_expand,
+    int t_den)
   : no_expand_(no_expand)
   {
-    reset();
+    reset(t_den);
     parse_hall_symbol(hall_symbol, pedantic, no_centring_type_symbol);
   }
 
@@ -424,10 +426,11 @@ namespace cctbx { namespace sgtbx {
     std::string const& hall_symbol,
     bool pedantic,
     bool no_centring_type_symbol,
-    bool no_expand)
+    bool no_expand,
+    int t_den)
   : no_expand_(no_expand)
   {
-    reset();
+    reset(t_den);
     parse_string hall_symbol_ps(hall_symbol);
     parse_hall_symbol(hall_symbol_ps, pedantic, no_centring_type_symbol);
   }
@@ -436,18 +439,21 @@ namespace cctbx { namespace sgtbx {
     const char* hall_symbol,
     bool pedantic,
     bool no_centring_type_symbol,
-    bool no_expand)
+    bool no_expand,
+    int t_den)
   : no_expand_(no_expand)
   {
-    reset();
+    reset(t_den);
     parse_string hall_symbol_ps(hall_symbol);
     parse_hall_symbol(hall_symbol_ps, pedantic, no_centring_type_symbol);
   }
 
-  space_group::space_group(space_group_symbols const& symbols)
+  space_group::space_group(
+    space_group_symbols const& symbols,
+    int t_den)
   : no_expand_(false)
   {
-    reset();
+    reset(t_den);
     parse_string hall_symbol_ps(symbols.hall());
     parse_hall_symbol(hall_symbol_ps, true);
   }
