@@ -6,6 +6,7 @@ from iotbx.dtrek import reflnlist_reader as dtrek_reflnlist_reader
 from iotbx.shelx import hklf as shelx_hklf
 from iotbx.xds.read_ascii import reader as xds_ascii_reader
 from iotbx import crystal_symmetry_from_any
+from iotbx.option_parser import iotbx_option_parser
 from cctbx import miller
 from cctbx import crystal
 from cctbx import sgtbx
@@ -106,47 +107,34 @@ def usage():
           + " any_reflection_file_format ...")
 
 def run(args):
-  unit_cell = None
-  space_group_info = None
-  force_symmetry = 00000
-  pickle_file_name = None
-  remaining_args = []
-  for arg in args:
-    if (arg.startswith("--unit_cell=")):
-      params = arg.split("=", 1)[1]
-      unit_cell = uctbx.unit_cell(params)
-    elif (arg.startswith("--space_group=")):
-      symbol = arg.split("=", 1)[1]
-      space_group_info = sgtbx.space_group_info(symbol=symbol)
-    elif (arg.startswith("--extract_symmetry=")):
-      file_name = arg.split("=", 1)[1]
-      crystal_symmetry = crystal_symmetry_from_any.extract_from(file_name)
-      unit_cell = crystal_symmetry.unit_cell()
-      space_group_info = crystal_symmetry.space_group_info()
-    elif (arg == "--force_symmetry"):
-      force_symmetry = 0001
-    elif (arg.startswith("--pickle=")):
-      pickle_file_name = arg.split("=", 1)[1]
-    elif (arg.startswith("--")):
-      print usage()
-      raise RuntimeError, "Unknown option: " + arg
-    else:
-      remaining_args.append(arg)
-  args = remaining_args
-  if (pickle_file_name is None):
+  command_line = (iotbx_option_parser(
+    usage="iotbx.reflection_file_reader [options] reflection_file ...",
+    description="Example: iotbx.reflection_file_reader w1.sca w2.mtz w3.cns")
+    .enable_symmetry_comprehensive()
+    .option(None, "--weak_symmetry",
+      action="store_true",
+      default=00000,
+      dest="weak_symmetry",
+      help="symmetry on command line is weaker than symmetry found in files")
+    .option(None, "--pickle",
+      action="store",
+      type="string",
+      dest="pickle",
+      help="write all data to FILE",
+      metavar="FILE")
+  ).process()
+  if (command_line.options.pickle is None):
     all_miller_arrays = None
   else:
     all_miller_arrays = []
-  for file_name in args:
+  for file_name in command_line.args:
     print "file_name:", file_name
     sys.stdout.flush()
     reflection_file = any_reflection_file(file_name)
     print "file_type:", reflection_file.file_type()
     miller_arrays = reflection_file.as_miller_arrays(
-      crystal_symmetry=crystal.symmetry(
-        unit_cell=unit_cell,
-        space_group_info=space_group_info),
-      force_symmetry=force_symmetry)
+      crystal_symmetry=command_line.symmetry,
+      force_symmetry=not command_line.options.weak_symmetry)
     for miller_array in miller_arrays:
       miller_array.show_comprehensive_summary()
       print
@@ -156,6 +144,7 @@ def run(args):
   if (all_miller_arrays is not None):
     if (len(all_miller_arrays) == 1):
       all_miller_arrays = all_miller_arrays[0]
+    pickle_file_name = command_line.options.pickle
     if (not pickle_file_name.lower().endswith(".pickle")):
       pickle_file_name += ".pickle"
     print "Writing all Miller arrays to file:", pickle_file_name
