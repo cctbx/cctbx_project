@@ -18,7 +18,7 @@ def run():
   "$D/boost_python/tst_rational.py",
   "$B/serialization/tst_base_256",
   "$D/scitbx/python_utils/math_utils.py",
-  "$D/math/boost_python/tst_eigensystem.py",
+  "$D/math/boost_python/tst_math.py",
   ["$D/lbfgs/boost_python/tst_lbfgs.py"],
   ["$D/fftpack/boost_python/tst_fftpack.py"],
   )

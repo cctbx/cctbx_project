@@ -1,3 +1,6 @@
+from scitbx.math.ext import *
+import scitbx.math.eigensystem
+
 class erf_verification:
 
   def __init__(self, tolerance=1.e-10):
