@@ -47,7 +47,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
       scitbx::sym_mat3<f_t> dw_coeff;
       f_t f0 = scatterer.caasf.at_d_star_sq(d_star_sq);
       f0_fp_fdp = f0 + scatterer.fp_fdp;
-      c_t f0_fp_fdp_w = f0_fp_fdp * scatterer.weight();
+      f0_fp_fdp_w = f0_fp_fdp * scatterer.weight();
       for(std::size_t s=0;s<space_group.n_smx();s++) {
         miller::index<> hr = h * space_group.smx(s).r();
         f_t hrx = hr * scatterer.site;
@@ -93,8 +93,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
         }
         const_h_sum += sum_inv;
       }
-      const_h_sum *= f0_fp_fdp_w;
-      if (!scatterer.anisotropic_flag) {
+      if (!scatterer.anisotropic_flag && scatterer.u_iso != 0) {
         f_t dw=adptbx::debye_waller_factor_u_iso(d_star_sq/4, scatterer.u_iso);
         const_h_sum *= dw;
         if (d_site_flag) d_target_d_site *= dw;
@@ -102,6 +101,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
     }
 
     std::complex<float_type> f0_fp_fdp;
+    std::complex<float_type> f0_fp_fdp_w;
     std::complex<float_type> const_h_sum;
     fractional<float_type> d_target_d_site;
     scitbx::sym_mat3<float_type> d_target_d_u_star;
@@ -147,22 +147,24 @@ namespace cctbx { namespace xray { namespace structure_factors {
           d_t_d_f,
           d_site_flag,
           d_u_star_flag);
-        f_calc[i] += sf.const_h_sum;
+        f_calc[i] += sf.const_h_sum * sf.f0_fp_fdp_w;
         if (d_t_d_f) {
           if (d_site_flag) d_target_d_site += sf.d_target_d_site;
           if (d_u_star_flag) d_target_d_u_star += sf.d_target_d_u_star;
           if (d_u_iso_flag || d_occupancy_flag) {
-            f_t d_const_h = d_t_d_f->real() * sf.const_h_sum.real()
-                          + d_t_d_f->imag() * sf.const_h_sum.imag();
+            c_t t = sf.const_h_sum * sf.f0_fp_fdp;
+            f_t d = d_t_d_f->real() * t.real()
+                  + d_t_d_f->imag() * t.imag();
+            d *= scatterer.weight_without_occupancy();
             if (d_u_iso_flag) {
-              d_target_d_u_iso += d_const_h * d_star_sq;
+              d_target_d_u_iso += d * scatterer.occupancy * d_star_sq;
             }
             if (d_occupancy_flag) {
-              d_target_d_occupancy += d_const_h / scatterer.occupancy; // XXX
+              d_target_d_occupancy += d;
             }
           }
           if (d_fp_flag || d_fdp_flag) {
-            c_t f = sf.const_h_sum / sf.f0_fp_fdp; // XXX
+            c_t f = sf.const_h_sum * scatterer.weight();
             if (d_fp_flag) {
               d_target_d_fp += d_t_d_f->real() * f.real()
                              + d_t_d_f->imag() * f.imag();
