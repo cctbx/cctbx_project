@@ -121,12 +121,6 @@ namespace cctbx { namespace mintbx {
     bool calc_gradient_k,
     bool calc_gradient_b)
   {
-    using adptbx::b_as_u;
-    using adptbx::u_cif_as_u_star;
-    using adptbx::debye_waller_factor_b_iso;
-    using adptbx::debye_waller_factor_u_star;
-    using adptbx::debye_waller_factor_u_star_coefficients;
-    using scitbx::fn::pow2;
     if (multiplicities.size()) {
       CCTBX_ASSERT(miller_indices.size() == multiplicities.size());
     }
@@ -141,34 +135,36 @@ namespace cctbx { namespace mintbx {
     std::size_t i;
     for(i=0;i<miller_indices.size();i++) {
       if (multiplicities.size()) mult = multiplicities[i];
-      sum_mult_data_scaled_sq += mult * pow2(data_scaled[i]);
+      sum_mult_data_scaled_sq += mult * scitbx::fn::pow2(data_scaled[i]);
     }
     if (sum_mult_data_scaled_sq < 1.) sum_mult_data_scaled_sq = 1.;
     scitbx::sym_mat3<FloatType> u_star;
     if (anisotropic_flag_) {
-      u_star = u_cif_as_u_star(unit_cell, b_as_u(b_cif));
+      u_star = adptbx::u_cif_as_u_star(unit_cell, adptbx::b_as_u(b_cif));
     }
     for(i=0;i<miller_indices.size();i++) {
       if (multiplicities.size()) mult = multiplicities[i];
       FloatType dw, stol_sq;
       if (anisotropic_flag_) {
-        dw = debye_waller_factor_u_star(miller_indices[i], u_star);
+        dw = adptbx::debye_waller_factor_u_star(miller_indices[i], u_star);
       }
       else {
         stol_sq = unit_cell.stol_sq(miller_indices[i]);
-        dw = debye_waller_factor_b_iso(stol_sq, b_iso);
+        dw = adptbx::debye_waller_factor_b_iso(stol_sq, b_iso);
       }
       FloatType drkdw = data_reference[i] * k * dw;
       FloatType diff = data_scaled[i] - drkdw;
-      target_ += mult * pow2(diff / std::sqrt(sum_mult_data_scaled_sq));
+      target_ += mult * scitbx::fn::pow2(
+        diff / std::sqrt(sum_mult_data_scaled_sq));
       if (calc_gradient_k || calc_gradient_b) {
         FloatType gk = -2 * mult * drkdw * diff / sum_mult_data_scaled_sq;
         if (calc_gradient_k) gradient_k_ += gk;
         if (calc_gradient_b) {
           if (anisotropic_flag_) {
-            scitbx::sym_mat3<FloatType> dwc = b_as_u(u_cif_as_u_star(unit_cell,
-              debye_waller_factor_u_star_coefficients(
-                miller_indices[i], scitbx::type_holder<FloatType>())));
+            scitbx::sym_mat3<FloatType> dwc
+              = adptbx::b_as_u(adptbx::u_cif_as_u_star(unit_cell,
+                  adptbx::debye_waller_factor_u_star_coefficients(
+                    miller_indices[i], scitbx::type_holder<FloatType>())));
             for(std::size_t j=0;j<dwc.size();j++) {
               gradients_b_cif_[j] += dwc[j] * gk;
             }

@@ -25,13 +25,10 @@ namespace scitbx { namespace af { namespace boost_python {
   {
     static PyObject* convert(versa<ElementType, CgridType> const& a)
     {
-      using namespace boost::python;
-      using boost::python::incref; // works around gcc 2.96 bug
-      using boost::python::object; // dito
       versa<ElementType, flex_grid<> > result(
         a,
         a.accessor().as_flex_grid());
-      return incref(object(result).ptr());
+      return boost::python::incref(boost::python::object(result).ptr());
     }
   };
 
@@ -52,10 +49,8 @@ namespace scitbx { namespace af { namespace boost_python {
 
     static void* convertible(PyObject* obj_ptr)
     {
-      using namespace boost::python;
-      using boost::python::borrowed; // works around gcc 2.96 bug
-      object obj(borrowed(obj_ptr));
-      extract<flex_type&> flex_proxy(obj);
+      boost::python::object obj(boost::python::borrowed(obj_ptr));
+      boost::python::extract<flex_type&> flex_proxy(obj);
       if (!flex_proxy.check()) return 0;
       flex_type& a = flex_proxy();
       try { c_grid_type(a.accessor()); }
@@ -67,14 +62,12 @@ namespace scitbx { namespace af { namespace boost_python {
       PyObject* obj_ptr,
       boost::python::converter::rvalue_from_python_stage1_data* data)
     {
-      using namespace boost::python;
-      using boost::python::borrowed;
-      object obj(borrowed(obj_ptr));
-      flex_type& a = extract<flex_type&>(obj)();
+      boost::python::object obj(boost::python::borrowed(obj_ptr));
+      flex_type& a = boost::python::extract<flex_type&>(obj)();
       if (!a.check_shared_size()) raise_shared_size_mismatch();
       c_grid_type c_grid(a.accessor());
       void* storage = (
-        (converter::rvalue_from_python_storage<RefCGridType>*)
+        (boost::python::converter::rvalue_from_python_storage<RefCGridType>*)
           data)->storage.bytes;
       new (storage) RefCGridType(a.begin(), c_grid);
       data->convertible = storage;

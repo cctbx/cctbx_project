@@ -24,10 +24,8 @@ namespace scitbx { namespace af { namespace boost_python {
   {
     static PyObject* convert(shared_plain<ElementType> const& a)
     {
-      using namespace boost::python;
-      using boost::python::incref; // works around gcc 2.96 bug
       versa<ElementType, flex_grid<> > result(a, flex_grid<>(a.size()));
-      return incref(object(result).ptr());
+      return boost::python::incref(boost::python::object(result).ptr());
     }
   };
 
@@ -47,10 +45,8 @@ namespace scitbx { namespace af { namespace boost_python {
 
     static void* convertible(PyObject* obj_ptr)
     {
-      using namespace boost::python;
-      using boost::python::borrowed; // works around gcc 2.96 bug
-      object obj(borrowed(obj_ptr));
-      extract<flex_type const&> flex_proxy(obj);
+      boost::python::object obj(boost::python::borrowed(obj_ptr));
+      boost::python::extract<flex_type const&> flex_proxy(obj);
       if (!flex_proxy.check()) return 0;
       flex_type const& a = flex_proxy();
       if (a.accessor().nd() != 1) return 0;
@@ -63,17 +59,14 @@ namespace scitbx { namespace af { namespace boost_python {
       PyObject* obj_ptr,
       boost::python::converter::rvalue_from_python_stage1_data* data)
     {
-      using namespace boost::python;
-      using boost::python::borrowed; // works around gcc 2.96 bug
-      using boost::python::converter::rvalue_from_python_storage; // dito
-      object obj(borrowed(obj_ptr));
-      flex_type const& a = extract<flex_type const&>(obj)();
+      boost::python::object obj(boost::python::borrowed(obj_ptr));
+      flex_type const& a = boost::python::extract<flex_type const&>(obj)();
       if (!a.check_shared_size()) raise_shared_size_mismatch();
       assert(a.accessor().nd() == 1);
       assert(a.accessor().is_0_based());
       assert(!a.accessor().is_padded());
       void* storage = (
-        (rvalue_from_python_storage<SharedType>*)
+        (boost::python::converter::rvalue_from_python_storage<SharedType>*)
           data)->storage.bytes;
       new (storage) SharedType(a);
       data->convertible = storage;

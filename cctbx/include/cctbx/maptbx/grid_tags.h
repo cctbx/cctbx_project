@@ -301,7 +301,6 @@ namespace grid_tags_detail {
         CCTBX_ASSERT(is_valid_);
         CCTBX_ASSERT(tag_array_.accessor().all_eq(data.accessor().focus()));
         using namespace grid_tags_detail;
-        using grid_tags_detail::multiply; // gcc 2.96 work-around
         {
           // 1. pass: accumulate contributions for sym. equiv. grid points.
           sgtbx::space_group const& space_group = sg_type_.group();
@@ -313,7 +312,8 @@ namespace grid_tags_detail {
             for(std::size_t i_smx=1;i_smx<space_group.order_z();i_smx++) {
               sgtbx::rt_mx m = space_group(i_smx);
               tagged_value<grid_point_type>
-              sym_equiv_point = multiply(tag_array_.accessor(), m, pt);
+              sym_equiv_point
+                = grid_tags_detail::multiply(tag_array_.accessor(), m, pt);
               CCTBX_ASSERT(sym_equiv_point.tag);
               sum += data(sym_equiv_point.value);
             }
@@ -349,7 +349,6 @@ namespace grid_tags_detail {
           maptbx::symmetry_flags const& sym_flags)
   {
     using namespace grid_tags_detail;
-    using grid_tags_detail::optimize_tags; // gcc 2.96 work-around
     if (   is_valid_
         && sg_type_.group() == sg_type.group()
         && sym_flags_ == sym_flags) {
@@ -368,7 +367,7 @@ namespace grid_tags_detail {
       grid_ss_ = ss.grid_adapted_moduli(tag_array_.accessor());
       n_grid_misses_ = mark_orbits(tag_array_, grid_ss_, seminvariant_tag());
     }
-    n_independent_ = optimize_tags(tag_array_.as_1d().ref());
+    n_independent_ = grid_tags_detail::optimize_tags(tag_array_.as_1d().ref());
     is_valid_ = true;
   }
 

@@ -300,16 +300,17 @@ namespace cctbx { namespace xray {
         max_d_sq(0)
       {
         CCTBX_ASSERT(!caasf_ft.anisotropic_flag());
-        using scitbx::fn::absolute;
         af::tiny<FloatType, 3> grid_n_f = grid_n;
-        FloatType rho_cutoff = absolute(caasf_ft.rho_real_0() * wing_cutoff);
+        FloatType rho_cutoff = scitbx::fn::absolute(
+          caasf_ft.rho_real_0() * wing_cutoff);
         for(std::size_t i_basis_vec=0;i_basis_vec<3;i_basis_vec++) {
           typename GridPointType::value_type ig;
           for (ig = 1; ig < grid_n[i_basis_vec]; ig++) {
             fractional<FloatType> d_frac(0,0,0);
             d_frac[i_basis_vec] = ig / grid_n_f[i_basis_vec];
             FloatType d_sq = unit_cell.length_sq(d_frac);
-            if (absolute(caasf_ft.rho_real(exp_table, d_sq)) < rho_cutoff) {
+            if (scitbx::fn::absolute(
+                  caasf_ft.rho_real(exp_table, d_sq)) < rho_cutoff) {
               break;
             }
             if (max_d_sq < d_sq) max_d_sq = d_sq;

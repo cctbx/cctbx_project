@@ -43,8 +43,6 @@ namespace cctbx { namespace sgtbx { namespace row_echelon {
     //     Computing Maximal Subgroups and Wyckoff Positions of Space Groups
     //     Acta Cryst. (1997). A53, 467 - 474
     using std::size_t;
-    using scitbx::fn::absolute;
-    using detail::swap;
     size_t mr = m.n_rows();
     size_t mc = m.n_columns();
     size_t tc = t.n_columns();
@@ -58,14 +56,14 @@ namespace cctbx { namespace sgtbx { namespace row_echelon {
         j++;
       else {
         if (i != k) {
-                  swap(&m(i,0), &m(k,0), mc);
-          if (tc) swap(&t(i,0), &t(k,0), tc);
+                  detail::swap(&m(i,0), &m(k,0), mc);
+          if (tc) detail::swap(&t(i,0), &t(k,0), tc);
         }
         for (k++; k < mr; k++) {
-          IntType a = absolute(m(k, j));
-          if (a != 0 && a < absolute(m(i,j))) {
-                    swap(&m(i,0), &m(k,0), mc);
-            if (tc) swap(&t(i,0), &t(k,0), tc);
+          IntType a = scitbx::fn::absolute(m(k, j));
+          if (a != 0 && a < scitbx::fn::absolute(m(i,j))) {
+                    detail::swap(&m(i,0), &m(k,0), mc);
+            if (tc) detail::swap(&t(i,0), &t(k,0), tc);
           }
         }
         if (m(i,j) < 0) {

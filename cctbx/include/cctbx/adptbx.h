@@ -469,13 +469,12 @@ namespace cctbx {
         std::complex<FloatType> const& c1,
         std::complex<FloatType> const& c2)
       {
-        using scitbx::fn::absolute;
         u = detail::root(c1, 3);
         v = detail::root(c2, 3);
-        FloatType diff = absolute(u.imag() + v.imag());
+        FloatType diff = scitbx::fn::absolute(u.imag() + v.imag());
         for(unsigned int k=1;k<3;k++) {
           std::complex<FloatType> trial_v = detail::root(c2, 3, k);
-          FloatType trial_diff = absolute(u.imag() + trial_v.imag());
+          FloatType trial_diff=scitbx::fn::absolute(u.imag() + trial_v.imag());
           if (diff > trial_diff) {
             diff = trial_diff;
             v = trial_v;

@@ -22,14 +22,11 @@ namespace scitbx { namespace boost_python { namespace container_conversions {
   {
     static PyObject* convert(ContainerType const& a)
     {
-      using namespace boost::python;
-      using boost::python::incref; // works around gcc 2.96 bug
-      using boost::python::list; // dito
-      list result;
+      boost::python::list result;
       for(std::size_t i=0;i<a.size();i++) {
-        result.append(object(a[i]));
+        result.append(boost::python::object(a[i]));
       }
-      return incref(tuple(result).ptr());
+      return boost::python::incref(boost::python::tuple(result).ptr());
     }
   };
 
@@ -137,8 +134,6 @@ namespace scitbx { namespace boost_python { namespace container_conversions {
 
     static void* convertible(PyObject* obj_ptr)
     {
-      using namespace boost::python;
-      using boost::python::allow_null; // works around gcc 2.96 bug
       {
         // Restriction to list, tuple, iter, xrange until
         // Boost.Python overload resolution is enhanced.
@@ -147,7 +142,8 @@ namespace scitbx { namespace boost_python { namespace container_conversions {
               || PyIter_Check(obj_ptr)
               || PyRange_Check(obj_ptr))) return 0;
       }
-      handle<> obj_iter(allow_null(PyObject_GetIter(obj_ptr)));
+      boost::python::handle<> obj_iter(
+        boost::python::allow_null(PyObject_GetIter(obj_ptr)));
       if (!obj_iter.get()) { // must be convertible to an iterator
         PyErr_Clear();
         return 0;
@@ -163,14 +159,16 @@ namespace scitbx { namespace boost_python { namespace container_conversions {
         bool is_range = PyRange_Check(obj_ptr);
         std::size_t i=0;
         for(;;i++) {
-          handle<> py_elem_hdl(allow_null(PyIter_Next(obj_iter.get())));
+          boost::python::handle<> py_elem_hdl(
+            boost::python::allow_null(PyIter_Next(obj_iter.get())));
           if (PyErr_Occurred()) {
             PyErr_Clear();
             return 0;
           }
           if (!py_elem_hdl.get()) break; // end of iteration
-          object py_elem_obj(py_elem_hdl);
-          extract<container_element_type> elem_proxy(py_elem_obj);
+          boost::python::object py_elem_obj(py_elem_hdl);
+          boost::python::extract<container_element_type>
+            elem_proxy(py_elem_obj);
           if (!elem_proxy.check()) return 0;
           if (is_range) break; // in a range all elements are of the same type
         }
@@ -183,24 +181,21 @@ namespace scitbx { namespace boost_python { namespace container_conversions {
       PyObject* obj_ptr,
       boost::python::converter::rvalue_from_python_stage1_data* data)
     {
-      using namespace boost::python;
-      using boost::python::allow_null; // works around gcc 2.96 bug
-      using boost::python::converter::rvalue_from_python_storage; // dito
-      using boost::python::throw_error_already_set; // dito
-      handle<> obj_iter(PyObject_GetIter(obj_ptr));
+      boost::python::handle<> obj_iter(PyObject_GetIter(obj_ptr));
       void* storage = (
-        (rvalue_from_python_storage<ContainerType>*)
+        (boost::python::converter::rvalue_from_python_storage<ContainerType>*)
           data)->storage.bytes;
       new (storage) ContainerType();
       data->convertible = storage;
       ContainerType& result = *((ContainerType*)storage);
       std::size_t i=0;
       for(;;i++) {
-        handle<> py_elem_hdl(allow_null(PyIter_Next(obj_iter.get())));
-        if (PyErr_Occurred()) throw_error_already_set();
+        boost::python::handle<> py_elem_hdl(
+          boost::python::allow_null(PyIter_Next(obj_iter.get())));
+        if (PyErr_Occurred()) boost::python::throw_error_already_set();
         if (!py_elem_hdl.get()) break; // end of iteration
-        object py_elem_obj(py_elem_hdl);
-        extract<container_element_type> elem_proxy(py_elem_obj);
+        boost::python::object py_elem_obj(py_elem_hdl);
+        boost::python::extract<container_element_type> elem_proxy(py_elem_obj);
         ConversionPolicy::set_value(result, i, elem_proxy());
       }
       ConversionPolicy::assert_size(boost::type<ContainerType>(), i);
