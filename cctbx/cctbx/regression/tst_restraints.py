@@ -187,18 +187,17 @@ def exercise_dihedral_core(sites, angle_ideal, angle_esd, periodicity,
     periodicity=periodicity)
   if (angle_model is not None):
     assert approx_equal(angle_model, dih.angle_model)
-  ag = dih.gradients()
+  ag = flex.vec3_double(dih.gradients())
   residual_obj = residual_functor(
     restraint_type=restraints.dihedral,
     angle_ideal=dih.angle_ideal,
     weight=dih.weight,
     periodicity=periodicity)
-  fg = finite_differences(sites, residual_obj)
-  if (0):
-    print [g.elems for g in ag]
-    print fg
-    print
-  assert eps_eq(dih.gradients(), fg, eps=1.e-4)
+  fg = flex.vec3_double(finite_differences(sites, residual_obj))
+  scale = max(1, flex.max(flex.abs(ag.as_double())))
+  ag *= 1/scale
+  fg *= 1/scale
+  assert approx_equal(ag, fg, eps=1.e-6)
 
 def exercise_dihedral():
   sites = [col(site) for site in [
