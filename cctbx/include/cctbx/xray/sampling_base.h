@@ -693,48 +693,42 @@ namespace cctbx { namespace xray {
     FloatType sum_w = 0;
     FloatType sum_w_gaussian_a = 0;
     FloatType sum_w_u_equiv = 0;
-    typedef scattering_dictionary::dict_type dict_type;
-    typedef dict_type::const_iterator dict_iter;
-    dict_type const& scd = scattering_dict.dict();
-    for(dict_iter di=scd.begin();di!=scd.end();di++) {
-      eltbx::xray_scattering::gaussian const& gaussian = di->second.gaussian;
-      af::const_ref<std::size_t>
-        member_indices = di->second.member_indices.const_ref();
+    for(std::size_t i_seq=0;i_seq<scatterers.size();i_seq++) {
+      XrayScattererType const& scatterer = scatterers[i_seq];
+      eltbx::xray_scattering::gaussian const& gaussian=scattering_dict.lookup(
+        scatterer.scattering_type).gaussian;
       FloatType gaussian_a = scitbx::fn::absolute(gaussian.at_stol_sq(0));
-      for(std::size_t mi=0;mi<member_indices.size();mi++) {
-        XrayScattererType const& scatterer = scatterers[member_indices[mi]];
-        FloatType w = scatterer.weight();
-        if (w == 0) continue;
-        n_contributing_scatterers_++;
-        if (scatterer.fdp != 0) {
-          n_anomalous_scatterers_++;
-        }
-        sum_w += w;
-        sum_w_gaussian_a += w * gaussian_a;
-        FloatType u_min;
-        if (!scatterer.anisotropic_flag) {
-          u_radius_cache_.push_back(scatterer.u_iso);
-          u_min = scatterer.u_iso;
-          sum_w_u_equiv += w * scatterer.u_iso;
-        }
-        else {
-          u_cart_cache_.push_back(adptbx::u_star_as_u_cart(unit_cell_,
-            scatterer.u_star));
-          scitbx::vec3<FloatType>
-            u_cart_eigenvalues = adptbx::eigenvalues(u_cart_cache_.back());
-          CCTBX_ASSERT(adptbx::is_positive_definite(
-            u_cart_eigenvalues, tolerance_positive_definite));
-          u_radius_cache_.push_back(af::max(u_cart_eigenvalues));
-          u_min = af::min(u_cart_eigenvalues);
-          sum_w_u_equiv += w * adptbx::u_cart_as_u_iso(u_cart_cache_.back());
-        }
-        CCTBX_ASSERT(u_radius_cache_.back() >= 0);
-        if (u_min_ < 0) {
-          u_min_ = u_min;
-        }
-        else {
-          u_min_ = std::min(u_min_, u_min);
-        }
+      FloatType w = scatterer.weight();
+      if (w == 0) continue;
+      n_contributing_scatterers_++;
+      if (scatterer.fdp != 0) {
+        n_anomalous_scatterers_++;
+      }
+      sum_w += w;
+      sum_w_gaussian_a += w * gaussian_a;
+      FloatType u_min;
+      if (!scatterer.anisotropic_flag) {
+        u_radius_cache_.push_back(scatterer.u_iso);
+        u_min = scatterer.u_iso;
+        sum_w_u_equiv += w * scatterer.u_iso;
+      }
+      else {
+        u_cart_cache_.push_back(adptbx::u_star_as_u_cart(unit_cell_,
+          scatterer.u_star));
+        scitbx::vec3<FloatType>
+          u_cart_eigenvalues = adptbx::eigenvalues(u_cart_cache_.back());
+        CCTBX_ASSERT(adptbx::is_positive_definite(
+          u_cart_eigenvalues, tolerance_positive_definite));
+        u_radius_cache_.push_back(af::max(u_cart_eigenvalues));
+        u_min = af::min(u_cart_eigenvalues);
+        sum_w_u_equiv += w * adptbx::u_cart_as_u_iso(u_cart_cache_.back());
+      }
+      CCTBX_ASSERT(u_radius_cache_.back() >= 0);
+      if (u_min_ < 0) {
+        u_min_ = u_min;
+      }
+      else {
+        u_min_ = std::min(u_min_, u_min);
       }
     }
     u_extra_ = u_base_ - u_min_;

@@ -121,13 +121,13 @@ def linear_regression_test(d_analytical, d_numerical, test_hard=0001,
 
 def exercise(target_functor, parameter_name, space_group_info,
              anomalous_flag, cartesian_flag,
-             n_elements=3, d_min=3., shake_sigma=0.25,
+             n_elements=4, d_min=3., shake_sigma=0.25,
              test_hard=0001, verbose=0):
   if (parameter_name != "site" and cartesian_flag == 0001): return
   if (parameter_name == "fdp" and not anomalous_flag): return
   structure_ideal = random_structure.xray_structure(
     space_group_info,
-    elements=("Se",)*n_elements,
+    elements=(("N","C","O")*(n_elements/3+1))[:n_elements],
     volume_per_atom=100,
     random_f_prime_d_min=d_min,
     random_f_double_prime=anomalous_flag,
