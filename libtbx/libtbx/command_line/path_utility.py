@@ -1,7 +1,7 @@
 import sys, os
 
 def norm(path):
-  return os.path.normpath(os.path.normcase(path))
+  return os.path.normcase(os.path.normpath(path))
 
 def run(args):
   assert len(args) == 3
@@ -12,6 +12,13 @@ def run(args):
   try: env_val = os.environ[env_key]
   except: env_val = ""
   env_paths = env_val.split(os.pathsep)
+  if (os.name == "nt"):
+    unquoted_paths = []
+    for path in env_paths:
+      if (len(path) >= 2 and path[:1] == '"' and path[-1:] == '"'):
+        path = path[1:-1]
+      unquoted_paths.append(path)
+    env_paths = unquoted_paths
   remaining_env_paths = []
   if (mode == "delete"):
     arg_paths_norm = []
