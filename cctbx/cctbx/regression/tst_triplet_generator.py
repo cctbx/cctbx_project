@@ -105,7 +105,7 @@ def exercise_truncate(q_large):
     aa = flex.double()
     for relation in tprs.relations_for(ih):
       aa.append(amp[relation.ik()] * amp[relation.ihmk()])
-    aa_full = aa_full.select(flex.sort_permutation(aa_full, 0001))
+    aa_full = aa_full.select(flex.sort_permutation(data=aa_full, reverse=0001))
     assert approx_equal(aa_full[:n], aa)
 
 def exercise(space_group_info, n_scatterers=8, d_min=2, verbose=0,

@@ -271,9 +271,9 @@ def exercise_direct_space_asu():
       else:
         assert pair_generator.n_boxes() == expected_n_boxes
         short_dist_sq_sorted = short_dist_sq.select(
-          flex.sort_permutation(short_dist_sq))
+          flex.sort_permutation(data=short_dist_sq))
         dist_sq_sorted = dist_sq.select(
-          flex.sort_permutation(dist_sq))
+          flex.sort_permutation(data=dist_sq))
         assert approx_equal(dist_sq_sorted, short_dist_sq_sorted)
       assert pair_generator.count_pairs() == 0
       pair_generator.restart()

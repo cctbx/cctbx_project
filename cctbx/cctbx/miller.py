@@ -333,8 +333,8 @@ class set(crystal.symmetry):
     assert by_value in ("resolution",)
     assert reverse in (00000, 0001)
     p = flex.sort_permutation(
-      self.unit_cell().d_star_sq(self.indices()),
-      reverse)
+      data=self.unit_cell().d_star_sq(self.indices()),
+      reverse=reverse)
     return set(
       crystal_symmetry=self,
       indices=self.indices().select(p),
@@ -664,14 +664,20 @@ class array(set):
     assert reverse in (00000, 0001)
     if (by_value == "resolution"):
       result = flex.sort_permutation(
-        self.unit_cell().d_star_sq(self.indices()),
-        reverse)
+        data=self.unit_cell().d_star_sq(self.indices()),
+        reverse=reverse)
     elif (by_value == "data"):
-      result = flex.sort_permutation(self.data(), not reverse)
+      result = flex.sort_permutation(
+        data=self.data(),
+        reverse=not reverse)
     elif (by_value == "abs"):
-      result = flex.sort_permutation(flex.abs(self.data()), not reverse)
+      result = flex.sort_permutation(
+        data=flex.abs(self.data()),
+        reverse=not reverse)
     else:
-      result = flex.sort_permutation(by_value, not reverse)
+      result = flex.sort_permutation(
+        data=by_value,
+        reverse=not reverse)
     return result
 
   def apply_sort_permutation(self, permutation):
@@ -1133,7 +1139,7 @@ class merge_equivalents:
     asu_set = set.map_to_asu(miller_array)
     span = index_span(asu_set.indices())
     packed_indices = span.pack(asu_set.indices())
-    p = flex.sort_permutation(packed_indices)
+    p = flex.sort_permutation(data=packed_indices)
     if (miller_array.sigmas() is not None):
       sigmas_squared = flex.pow2(miller_array.sigmas().select(p))
       assert flex.min(sigmas_squared) > 0

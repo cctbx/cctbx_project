@@ -667,7 +667,7 @@ def exercise_gaussian_fit():
   for include_constant_term in (00000, 0001):
     a = flex.double(g5c.array_of_a())
     b = flex.double(g5c.array_of_b())
-    permutation = flex.sort_permutation(flex.abs(a), 1)[:4]
+    permutation = flex.sort_permutation(data=flex.abs(a), reverse=0001)[:4]
     gf = gaussian.fit(
       flex.double([0]),
       g5c,
