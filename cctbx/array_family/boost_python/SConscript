@@ -13,7 +13,6 @@ env.SharedLibrary(
   "flex_hendrickson_lattman.cpp",
   "flex_miller_index.cpp",
   "flex_vec3_double.cpp",
-  "flex_vec3_double_2.cpp",
   "flex_sym_mat3_double.cpp",
   "flex_tiny_size_t_2.cpp",
   "flex_xray_scatterer.cpp",

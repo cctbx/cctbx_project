@@ -8,15 +8,15 @@
  */
 
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
+#include <scitbx/array_family/boost_python/flex_pickle_single_buffered.h>
 
 namespace scitbx { namespace af { namespace boost_python {
 
-  void wrap_flex_int_2(flex_wrapper<int>::class_f_t class_object);
-
   void wrap_flex_int()
   {
-    wrap_flex_int_2(
-      flex_wrapper<int>::signed_integer("int", boost::python::scope()));
+    flex_wrapper<int>::signed_integer("int", boost::python::scope())
+      .def_pickle(flex_pickle_single_buffered<int>());
+    ;
   }
 
 }}} // namespace scitbx::af::boost_python
