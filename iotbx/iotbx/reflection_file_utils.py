@@ -8,11 +8,10 @@ import sys, os
 
 class UserError_No_array_of_the_required_type(UserError): pass
 
-def find_labels(search_labels, candidate_labels):
+def find_labels(search_labels, info_string):
   for search_label in search_labels:
-    for candidate_label in candidate_labels:
-      if (candidate_label.find(search_label) < 0):
-        return False
+    if (info_string.find(search_label) < 0):
+      return False
   return True
 
 class label_table:
@@ -21,12 +20,15 @@ class label_table:
     self.miller_arrays = miller_arrays
     if (err is None): self.err = sys.stderr
     else: self.err = err
-    self.labels = []
+    self.info_strings = []
+    self.info_labels = []
     for p_array,miller_array in zip(count(1), miller_arrays):
-      if (miller_array.info() is not None):
-        self.labels.append(str(miller_array.info()))
+      info = miller_array.info()
+      if (info is not None):
+        self.info_strings.append(str(info))
       else:
-        self.labels.append(str(p_array))
+        self.info_strings.append(str(p_array))
+      self.info_labels.append(getattr(info, "labels", None))
 
   def scores(self, label=None, labels=None):
     assert [label, labels].count(None) == 1
@@ -45,14 +47,22 @@ class label_table:
           return result
     result = []
     labels_lower = [lbl.lower() for lbl in labels]
-    for lbl in self.labels:
+    for info_string,info_labels in zip(self.info_strings, self.info_labels):
       if (not find_labels(
-               search_labels=labels_lower, candidate_labels=[lbl.lower()])):
+               search_labels=labels_lower,
+               info_string=info_string.lower())):
         result.append(0)
-      elif (not find_labels(search_labels=labels, candidate_labels=[lbl])):
+      elif (not find_labels(
+                  search_labels=labels,
+                  info_string=info_string)):
         result.append(1)
       else:
-        result.append(2)
+        n_exact_matches = 0
+        if (info_labels is not None):
+          for info_label in info_labels:
+            if (info_label in labels):
+              n_exact_matches += 1
+        result.append(2 + n_exact_matches)
     return result
 
   def show_possible_choices(self,
@@ -63,12 +73,12 @@ class label_table:
     if (f is None): f = self.err
     print >> f, "Possible choices:"
     if (scores is None):
-      for lbl in self.labels:
-        print >> f, " ", lbl
+      for info_string in self.info_strings:
+        print >> f, " ", info_string
     else:
-      for lbl,score in zip(self.labels, scores):
+      for info_string,score in zip(self.info_strings, scores):
         if (score >= minimum_score):
-          print >> f, " ", lbl
+          print >> f, " ", info_string
     print >> f
     if (parameter_name is None): hint = ""
     else: hint = "use %s\nto " % parameter_name
