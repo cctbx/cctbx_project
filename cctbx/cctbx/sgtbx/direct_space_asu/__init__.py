@@ -50,6 +50,10 @@ class direct_space_asu:
       result.facets.append(facet.strip())
     return result
 
+  def volume_vertices(self):
+    from cctbx.sgtbx.direct_space_asu import facet_analysis
+    return facet_analysis.volume_vertices(self)
+
   def change_basis(self, cb_op):
     if (not isinstance(cb_op, sgtbx.change_of_basis_op)):
       cb_op = sgtbx.change_of_basis_op(cb_op)

@@ -11,12 +11,23 @@ def exercise_cut_planes(cut_planes):
   for cut_plane in cut_planes:
     assert cut_plane.strip().is_inside(cut_plane.get_point_in_plane())
 
+def exercise_volume_vertices(asu, unit_cell):
+  volume_asu = asu.volume_only()
+  float_asu = asu.add_buffer(unit_cell=unit_cell, relative_thickness=1.e-6)
+  asu_shrunk = float_asu.add_buffer(relative_thickness=-2.e-6)
+  for vertex in asu.volume_vertices():
+    assert volume_asu.is_inside(vertex)
+    float_vertex = [float(e) for e in vertex]
+    assert float_asu.is_inside(float_vertex)
+    assert not asu_shrunk.is_inside(float_vertex)
+
 def exercise_direct_space_asu(space_group_info, n_grid=6):
   unit_cell = space_group_info.any_compatible_unit_cell(volume=1000)
   ref_asu = reference_table.get_asu(space_group_info.type().number())
   exercise_cut_planes(ref_asu.facets)
   inp_asu = space_group_info.direct_space_asu()
   exercise_cut_planes(inp_asu.facets)
+  exercise_volume_vertices(inp_asu, unit_cell)
   assert sgtbx.space_group(inp_asu.hall_symbol) == space_group_info.group()
   float_asu = inp_asu.add_buffer(unit_cell=unit_cell, thickness=0.001)
   cb_mx_ref_inp = space_group_info.type().cb_op().c_inv().as_rational()
