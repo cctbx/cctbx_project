@@ -1,11 +1,15 @@
-/*! \page page_installation_python Notes on installing Python
+/*! \page page_installation_python Computational Crystallography Toolbox
 
-\section installation_python_windows Windows
+<hr>
+<h2>Notes on installing Python</h2>
+<hr>
+
+\section installation_python_windows Python Windows
 
 \par
 To be done.
 
-\section installation_python_unix Unix
+\section installation_python_unix Python Unix
 
 \par
 To be done.

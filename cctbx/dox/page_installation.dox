@@ -1,58 +1,44 @@
-/*! \page page_installation Installing the cctbx
+/*! \page page_installation Computational Crystallography Toolbox
 
-\section platforms Supported platforms
+<hr>
+<h2>Installation</h2>
+<hr>
+
+\section installation_overview Overview
 
 The cctbx is being used on these platforms:
 
 <ul>
-<li>RedHat Linux 6.2 with gcc-2.95.2
 <li>Windows 98 and Windows 2000 with Microsoft Visual C++ 6.0 Service Pack 4
 <li>Windows 98 and Windows 2000 with MINGW32 (a gcc-2.95.2 derivative)
+<li>x86 RedHat Linux 6.1 with gcc-2.95.2
+<li>x86 Debian Linux 2.2 with gcc-2.95.2
+<li>sparc64 Debian Linux 2.2 with gcc-2.95.2
 <li>Compaq Tru64 Unix with Compaq C++ V6.2 (cxx)
 <li>Silicon Graphics IRIX 6.5 with MIPSpro Compilers Version 7.3.1.1m (CC)
 </ul>
 
 \par
 The cctbx is written in ANSI C++ and should therefore compile on most
-platforms where a standards compliant C++ compiler is available.
-The cctbx build system is designed to make it easy to add support for
-additional platforms.
-
-\ref compiler_notes
-
-\section compilation_dependencies Compilation dependencies
+platforms where a standards compliant C++ compiler is available. The
+cctbx build system supports simultaneous compilation on multiple
+platforms and is designed to make it easy to add support for additional
+platforms.
 
 \par
-The core of the cctbx is written in pure ANSI C++ and can be used
-as a pure C++ library. However, the cctbx is intended to be used
-in a Python environment. This is, the cctbx also includes Python
-bindings for most high-level classes.
+The core of the cctbx is written in pure ANSI C++ and can be used as a
+pure C++ library. However, the cctbx is intended to be used in a Python
+environment. This is, the cctbx also includes Python bindings for most
+high-level classes.
 
 \par
 The cctbx requires the Boost library. This open-source library is a
 high-quality, peer-reviewed collection of generally useful C++ template
 libraries. Currently, the cctbx uses three components of Boost:
 
-<dl>
-<dt><strong>Boost.Array</strong>
-<dd>Class array, an STL Container (as Wrapper) for Arrays of Constant
-    Size.<br>
-    http://www.boost.org/libs/array/array.html
-<dt><strong>Boost.Rational</strong>
-<dd>The header rational.hpp provides an implementation of rational
-    numbers. The implementation is template-based, in a similar manner
-    to the standard complex number class.<br>
-    http://www.boost.org/libs/rational/index.html
-<dt><strong>Boost.Python</strong>
-<dd>The Boost.Python Library can be used to quickly and easily export a
-    C++ library to Python such that the Python interface is very
-    similar to the C++ interface. It is designed to be minimally
-    intrusive on the C++ design. In most cases, one should not have to
-    alter the C++ classes in any way in order to use them with
-    Boost.Python. The system should simply ``reflect'' the C++ classes
-    and functions into Python.<br>
-    http://www.boost.org/libs/python/doc/index.html
-</dl>
+<a href="http://www.boost.org/libs/array/array.html">Boost.Array</a>,
+<a href="http://www.boost.org/libs/rational/rational.html">Boost.Rational</a>,
+<a href="http://www.boost.org/libs/python/doc/index.html">Boost.Python</a>.
 
 \par
 Boost.Array and Boost.Rational are required even if the cctbx is used
@@ -71,91 +57,148 @@ cctbx Python bindings. Currently, Python version 1.5.2 is used in the
 development. Some limited testing has been done with Python 2.0. It is
 expected that the cctbx is fully functional with Python 2.0.
 
-\section installing_python Installing Python
+\section installing_compilers Compilers
 
-Installing Python is required only if the cctbx Python bindings are to
-be used. However, the cctbx build system uses Python to automatically
-generate Makefiles. The Makefiles used in the development are provided
-and could be modified by hand, but this can be quite cumbersome,
-especially if more than one platform is used. Installing Python is
-easy. Therefore it is highly recommended to always install Python
-before installing the cctbx.
+Each of the compilers or operating systems in the list below needs some
+special attention.
 
 \par
-On RedHat Linux systems, Python 1.5.2 is part of the operating system
-(<tt>/usr/bin/python</tt>). This pre-installed version of Python can be
-used for installing the cctbx. Installation instructions for other
-platforms are provided here:
+<strong>Please read the applicable section(s) very carefully!</strong>
+
+<ul>
+  <li>\ref compilers_vc60
+  <li>\ref compilers_mingw32
+  <li>\ref compilers_linux
+  <li>\ref compilers_compaq_tru64
+  <li>\ref compilers_silicon_graphics_irix
+</ul>
+
+\section installing_python Installing Python
+
+In theory, installing Python is only required if the cctbx Python
+bindings are to be used. However, the cctbx build system uses Python to
+automatically generate Makefiles. Creating the Makefiles by hand would
+be very cumbersome, especially if more than one compiler or operating
+system is used. In contrast, installing Python is very easy on all the
+platforms listed above. Therefore it is highly recommended to always
+install Python before installing the cctbx.
+
+\par
+On RedHat and Debian Linux systems, Python 1.5.2 is part of the
+operating system (<tt>/usr/bin/python</tt>). This pre-installed version
+of Python can be used for installing the cctbx. Installation
+instructions for other platforms are provided here:
 
   \ref installation_python_windows
 
   \ref installation_python_unix
 
-\section installing_boost Installing Boost
+\section installing_boost Fast-track installation of the cctbx including Boost
 
-<h3>Unix</h3>
+The cctbx distribution includes a set of "fast track" csh and Python
+installation scripts for all supported configurations. These scripts
+can be used if the following assumptions are valid:
 
-<ol>
-<li>Unpack the Boost tar file in a directory of your choice (e.g.
-    $HOME or /usr/local):
-    <p>
-    <tt>cd $HOME</tt>
-    <tt>gunzip -c boost_*.tar.gz | tar xvf -</tt>
-    <p>
-    If you do not need the cctbx Python bindings, you are done with
-    the Boost installation.
+<ul>
+<li>Both the cctbx and the boost distributions are unpacked in the same
+    directory, and the directory names are "cctbx" and "boost" (i.e.
+    have not been changed). E.g.:<pre>
+        mkdir development
+        cd development
+        gunzip -c boost_*.tar.gz | tar xf -
+        gunzip -c cctbx_*.tar.gz | tar xf -</pre>
 
-<li>Makefiles for a number of platforms are provided in the directory
-    boost/libs/python/build. Copy the appropriate Makefile to another
-    empty directory anywhere outside the boost directory tree, for
-    example $HOME/build/linux_gcc/boost. Note that compilation will
-    often be significanly faster if you choose a local file system (as
-    opposed to a network file system such as NFS).
-    <br>
-    Edit the pathnames at the top of the Makefile. The three Makefile
-    variables to change are BOOST, PYEXE, and PYINC.
+<li>For the configurations <tt>tru64_cxx</tt> and <tt>irix_CC</tt>,
+    the missing C++ C header files are installed in the subdirectory
+    <tt>C++_C_headers</tt> of the same directory where boost and cctbx
+    were unpacked, e.g. <tt>development/C++_C_headers</tt> in the
+    example above.
 
-<li>Enter "make". This will build libboost_python.a (Unix) or
-    boost_python.lib (Microsoft Visual C++). In addition a number of
-    tests and examples will be compiled. When the compilation is
-    finished, enter "make test". There should be no error messages.
+<li>Python version 1.5.2 is installed in these configuration specific
+    locations:
+    <ul>
+      <li><tt>fast_track_vc60.py: "C:\Program files\Python"</tt>
+      <li><tt>fast_track_mingw32.py: "C:\Program files\Python"</tt>
+      <li><tt>fast_track_linux_gcc.csh: /usr</tt>
+      <li><tt>fast_track_tru64_cxx.csh: /usr/local/Python-1.5.2</tt>
+      <li><tt>fast_track_irix_CC.csh: /usr/local/Python-1.5.2</tt>
+    </ul>
+    See
+    \ref installation_python_windows
+    and
+    \ref installation_python_unix
+    for comments on these choices of pathnames.
+</ul>
 
-<li>You may move libboost_python.a to a different directory such as
-    /usr/local/lib, if this is desired.
+If any of the assumptions is not valid, you have to adjust the
+pathnames in the Boost.Python <tt>makefile</tt> and the
+<tt>configuration</tt> file for the cctbx, and execute the commands in
+the fast track scripts manually. This is explained in more detail in
+the \ref installation_advanced section.
 
-</ol>
+Both Boost.Python and the cctbx can now be installed with just one
+command by invoking the appropriate fast track script with the
+absolute path name. For example on Linux:<pre>
+        cd /scratch/build
+        /home/user/development/cctbx/build/fast_track_linux_gcc.csh</pre>
 
-\section installing_cctbx Installing the cctbx
+The fast track script creates two subdirectories
+<tt>/scratch/build/linux_gcc/boost</tt> and
+<tt>/scratch/build/linux_gcc/cctbx</tt> where the libraries and Python
+modules are built. Compiling the packages outside the distribution
+directory trees has two important advantages:
 
-<h3>Unix</h3>
-<ol>
-<li>Unpack the cctbx tar file in a directory of your choice (e.g.
-    $HOME or /usr/local):
-    <p>
-    <tt>cd $HOME</tt>
-    <tt>gunzip -c cctbx_*.tar.gz | tar xvf -</tt>
+<ul>
+<li>The packages can be compiled on multiple platforms simultaneously.
 
-<li>Edit the pathnames in the Python script
-    cctbx/build/MakeMakefilesMaster.py.
+<li>The compilation directory can be created on a local file system,
+    as opposed to a network file system. In general this means a
+    huge time saving.
+</ul>
 
-<li>In the main cctbx directory enter "make makefiles". This will
-    build the individual Makefiles for all the toolboxes using
-    the pathnames configured in MakeMakefilesMaster.py.
+\par
+The build is successful if it finishes with the following output:<pre>
+11 12 13 90 100 90
+x,y,z
+-x,y,-z
+x+1/2,y+1/2,z
+-x+1/2,y+1/2,-z
+11 12 13 90 100 90
+x,y,z
+-x,y,-z
+x+1/2,y+1/2,z
+-x+1/2,y+1/2,-z
+Done.</pre>
 
-<li>Copy cctbx/build/Makefile to another empty directory anywhere
-    outside the cctbx directory tree, for example
-    $HOME/build/linux_gcc/cctbx. Note that compilation will often be
-    significanly faster if you choose a local file system (as opposed
-    to a network file system such as NFS).
+\par
+This is the output from <tt>getting_started.cpp</tt> and
+<tt>getting_started.py</tt> in the <tt>cctbx/examples</tt> directory.
 
-<li>Enter "make boot_<platform>", e.g. "make boot_linux_gcc".
+\par
+In the example, the file <tt>libboost_python.a</tt> is created in
+<tt>/scratch/build/linux_gcc/boost</tt>.
+The cctbx libraries are created in the subdirectory
+<tt>/scratch/build/linux_gcc/cctbx/lib</tt>.
+The cctbx Python modules are created in the subdirectory
+<tt>/scratch/build/linux_gcc/cctbx/lib/python</tt>.
+All these files can be moved to convenient locations, such as
+<tt>/usr/local/lib</tt>.
 
-<li>Enter "make everything". This will compile all toolboxes including
-    the Python bindings.
+\par
+The makefile that is created in
+<tt>/scratch/build/linux_gcc/cctbx/examples/cpp</tt> can be used as a
+starting point for creating makefiles for your own applications.
 
-<li>You may move the contents of cctbx/lib to another location,
-    such as /usr/local.
+\par
+The fast track build procedure for the other supported configurations
+is very similar. The major difference is that on Windows Python is
+used for the fast track script instead of csh. For example:<pre>
+        cd \\scratch\\build
+        python \development\cctbx\build\fast_track_vc60.py</pre>
+</pre>
 
-</ol>
+\par
+The resulting directory structure in <tt>\\scratch\\build\\vc60</tt> is
+similar to the one for the Unix systems.
 
 */

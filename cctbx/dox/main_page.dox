@@ -56,9 +56,9 @@ a list of the symmetry operations:
 import sgtbx
 import uctbx
 
-UnitCell = uctbx.UnitCell((10, 10, 15, 90, 90, 120))
+UnitCell = uctbx.UnitCell((11, 12, 13, 90, 100, 90))
 print UnitCell
-Symbols = sgtbx.SpaceGroupSymbols("P 62 2 2")
+Symbols = sgtbx.SpaceGroupSymbols("C 2")
 SgOps = sgtbx.SgOps(Symbols.Hall())
 SgOps.CheckUnitCell(UnitCell)
 for i in xrange(SgOps.OrderZ()):
@@ -76,9 +76,9 @@ implementation is very similar:
 
 int main()
 {
-  uctbx::UnitCell UnitCell(uctbx::uc_params(10, 10, 15, 90, 90, 120));
+  uctbx::UnitCell UnitCell(uctbx::uc_params(11, 12, 13, 90, 100, 90));
   std::cout << UnitCell << std::endl;
-  sgtbx::SpaceGroupSymbols Symbols("P 62 2 2");
+  sgtbx::SpaceGroupSymbols Symbols("C 2");
   sgtbx::SgOps SgOps(Symbols.Hall());
   SgOps.CheckUnitCell(UnitCell);
   for (int i = 0; i < SgOps.OrderZ(); i++) {
