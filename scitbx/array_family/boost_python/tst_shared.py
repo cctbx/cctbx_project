@@ -38,6 +38,12 @@ def exercise_std_vector_size_t():
   assert a.size() == 0
   a = shared.std_vector_size_t([[1,2],[2,3]])
   assert list(a) == [(1, 2), (2, 3)]
+  a = shared.std_vector_size_t(0)
+  assert list(a) == []
+  a = shared.std_vector_size_t(3)
+  assert list(a) == [(),(),()]
+  a = shared.std_vector_size_t(3, [1,2])
+  assert list(a) == [(1,2),(1,2),(1,2)]
 
 def exercise_std_set_size_t():
   a = shared.std_set_size_t()
