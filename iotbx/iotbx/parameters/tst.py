@@ -600,9 +600,9 @@ m=$k
 """)
   assert len(parameters.get(path="a", with_substitution=False).objects) == 1
   diags = {
-    "a": "Dependency cycle in variable substitution: $a",
+    "a": "Undefined variable: $a (input line 1)",
     "b": "Undefined variable: $c (input line 2)",
-    "c": "Dependency cycle in variable substitution: $c",
+    "c": "Undefined variable: $c (input line 2)",
     "d": "Undefined variable: $e (input line 4)",
     "e": "Undefined variable: $f (input line 5)",
     "f": "Undefined variable: $e (input line 4)",
@@ -610,7 +610,8 @@ m=$k
   for path in "abcdefg":
     try: parameters.get(path=path)
     except RuntimeError, e:
-      assert str(e) == diags[path]
+      if (str(e) != diags[path]):
+        raise AssertionError("%s != %s" % (repr(str(e)), repr(diags[path])))
     else: raise RuntimeError("Exception expected.")
   try: parameters.get(path="h")
   except RuntimeError, e:
@@ -682,6 +683,8 @@ s {
   s {
     a=$w
     b=${s.a}
+    c=${s.s.a}
+    d=${.s.a}
   }
 }
 """)
@@ -690,7 +693,9 @@ s {
   a = x
   s {
     a = y
-    b = x
+    b = y
+    c = y
+    d = x
   }
 }
 """)

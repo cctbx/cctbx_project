@@ -150,12 +150,6 @@ def show_attributes(self, out, prefix, attributes_level, print_width):
             else:
               print >> out, indent+'"'+block+'"'
 
-class get_stopper:
-
-  def __init__(self, object):
-    self.object = object
-    self.stop = False
-
 class object_locator:
 
   def __init__(self, parent, path, object):
@@ -214,13 +208,11 @@ class definition: # FUTURE definition(object)
       keyword_args["words"] = words
     return definition(**keyword_args)
 
-  def fetch(self, source, substitution_scope=None):
+  def fetch(self, source):
     if (not isinstance(source, definition)):
       raise RuntimeError('Incompatible parameter objects "%s"%s and "%s"%s' %
         (self.name, self.where_str, source.name, source.where_str))
-    if (substitution_scope):
-      source = substitution_scope.variable_substitution(
-        object=source, path_memory={})
+    source = source.resolve_variables()
     if (self.type not in ["choice", "multi_choice"]):
       return self.copy(words=source.words)
     flags = {}
@@ -315,17 +307,9 @@ class definition: # FUTURE definition(object)
     result.append(object_locator(
       parent=parent, path=parent_path+self.name, object=self))
 
-  def get_without_substitution(self, path, stopper):
-    if (stopper is not None and self.words is stopper.object.words):
-      stopper.stop = True
-      return []
-    if (self.is_disabled): return []
-    if (self.name == path): return [self]
-    return []
-
-  def substitute_all(self, substitution_scope, path_memory):
-    return substitution_scope.variable_substitution(
-      object=self, path_memory=path_memory)
+  def get_without_substitution(self, path):
+    if (self.is_disabled or self.name != path): return []
+    return [self]
 
   def automatic_type(self):
     types = {}
@@ -670,7 +654,7 @@ class scope:
       item.object.automatic_type_assignment(
         assignment_if_unknown=assignment_if_unknown)
 
-  def get_without_substitution(self, path, stopper):
+  def get_without_substitution(self, path):
     if (self.is_disabled): return []
     if (len(self.name) == 0):
       if (len(path) == 0): return self.objects
@@ -679,57 +663,22 @@ class scope:
     elif (path.startswith(self.name+".")):
       path = path[len(self.name)+1:]
     else:
-      if (stopper is not None):
-        primary_parent_scope = stopper.object.primary_parent_scope
-        while (primary_parent_scope is not None):
-          if (primary_parent_scope is self):
-            stopper.stop = True
-            break
-          primary_parent_scope = primary_parent_scope.primary_parent_scope
       return []
     result = []
     for object in self.active_objects():
-      result.extend(object.get_without_substitution(
-        path=path,
-        stopper=stopper))
-      if (stopper is not None and stopper.stop): break
+      result.extend(object.get_without_substitution(path=path))
     return result
 
-  def substitute_all(self, substitution_scope, path_memory):
+  def get(self, path, with_substitution=True):
+    result = scope(name="", objects=self.get_without_substitution(path=path))
+    if (not with_substitution): return result
+    return result.resolve_variables()
+
+  def resolve_variables(self):
     result = []
     for object in self.active_objects():
-      result.append(object.substitute_all(
-        substitution_scope=substitution_scope,
-        path_memory=path_memory))
+      result.append(object.resolve_variables())
     return self.copy(objects=result)
-
-  def get(self,
-        path,
-        with_substitution=True,
-        substitution_scope=None,
-        path_memory=None,
-        stopper=None):
-    result_raw = self.get_without_substitution(
-      path=path,
-      stopper=stopper)
-    if (not with_substitution):
-      return scope(name="", objects=result_raw)
-    if (substitution_scope is None):
-      substitution_scope = self
-    if (path_memory is None):
-      path_memory = {path: None}
-    elif (path not in path_memory):
-      path_memory[path] = None
-    else:
-      raise RuntimeError("Dependency cycle in variable substitution: $%s" % (
-        path))
-    result_sub = []
-    for object in result_raw:
-      result_sub.append(object.substitute_all(
-        substitution_scope=substitution_scope,
-        path_memory=path_memory))
-    del path_memory[path]
-    return scope(name="", objects=result_sub)
 
   def lexical_get(self, path, stop_id, search_up=True):
     if (path.startswith(".")):
@@ -782,9 +731,7 @@ class scope:
                 sub_python_object_i, custom_converters))
     return self.copy(objects=result)
 
-  def _fetch(self, source, substitution_scope=None):
-    if (substitution_scope is None):
-      substitution_scope = source
+  def _fetch(self, source):
     assert source.name == self.name
     if (not isinstance(source, scope)):
       raise RuntimeError('Incompatible parameter objects "%s"%s and "%s"%s' %
@@ -800,10 +747,7 @@ class scope:
       if (master_object.multiple):
         for matching_source in matching_sources.active_objects():
           fetch_count += 1
-          result_object = master_object.fetch(
-            source=matching_source,
-            substitution_scope=substitution_scope)
-          result_objects.append(result_object)
+          result_objects.append(master_object.fetch(source=matching_source))
         if (fetch_count == 0):
           result_objects.append(copy.deepcopy(master_object))
           if (master_object.optional):
@@ -816,79 +760,31 @@ class scope:
         result_object = master_object
         for matching_source in matching_sources.active_objects():
           fetch_count += 1
-          result_object = result_object.fetch(
-            source=matching_source,
-            substitution_scope=substitution_scope)
+          result_object = result_object.fetch(source=matching_source)
         if (fetch_count == 0):
           result_objects.append(copy.deepcopy(master_object))
         else:
           result_objects.append(result_object)
     return result_objects
 
-  def fetch(self, source=None, sources=None, substitution_scope=None):
+  def fetch(self, source=None, sources=None):
     assert [source, sources].count(None) == 1
     if (source is not None):
-      result = objects=self._fetch(
-        source=source,
-        substitution_scope=substitution_scope)
+      result = objects=self._fetch(source=source)
     elif (len(sources) == 0):
       return self
     else:
       result = []
       for source in sources:
-        result_objects = self._fetch(
-          source=source,
-          substitution_scope=substitution_scope)
-        result.extend(result_objects)
+        result.extend(self._fetch(source=source))
     return self.copy(objects=clean_fetched_scope(fetched_scope=result))
-
-  def variable_substitution(self, object, path_memory):
-    new_words = []
-    for word in object.words:
-      if (word.quote_token == "'"):
-        new_words.append(word)
-        continue
-      substitution_proxy = variable_substitution_proxy(word)
-      for fragment in substitution_proxy.fragments:
-        if (not fragment.is_variable):
-          fragment.result = simple_tokenizer.word(
-            value=fragment.value, quote_token='"')
-          continue
-        variable_words = None
-        for variable_object in self.get(
-                                 path=fragment.value,
-                                 path_memory=path_memory,
-                                 stopper=get_stopper(object)).objects:
-          if (isinstance(variable_object, definition)):
-            variable_words = variable_object.words
-        if (variable_words is None):
-          env_var = os.environ.get(fragment.value, None)
-          if (env_var is not None):
-            variable_words = [simple_tokenizer.word(
-              value=env_var,
-              quote_token='"',
-              source_info='environment: "%s"'%fragment.value)]
-        if (variable_words is None):
-          raise RuntimeError("Undefined variable: $%s%s" % (
-            fragment.value, word.where_str()))
-        if (not substitution_proxy.force_string):
-          fragment.result = variable_words
-        else:
-          fragment.result = simple_tokenizer.word(
-            value=" ".join([str(v) for v in variable_words]),
-            quote_token='"')
-      new_words.extend(substitution_proxy.get_new_words())
-    return object.copy(words=new_words)
 
   def process_includes(self,
         definition_type_names,
         reference_directory,
-        substitution_scope=None,
         include_stack=None):
     if (definition_type_names is None):
       definition_type_names = default_definition_type_names
-    if (substitution_scope is None):
-      substitution_scope = self
     if (include_stack is None): include_stack = []
     result = []
     for object in self.objects:
@@ -898,8 +794,7 @@ class scope:
         if (object.name != "include"):
           result.append(object)
         else:
-          object_sub = substitution_scope.variable_substitution(
-            object=object, path_memory={})
+          object_sub = object.resolve_variables()
           for file_name in [word.value for word in object_sub.words]:
             if (reference_directory is not None
                 and not os.path.isabs(file_name)):
@@ -913,7 +808,6 @@ class scope:
         result.append(object.process_includes(
           definition_type_names=definition_type_names,
           reference_directory=reference_directory,
-          substitution_scope=substitution_scope,
           include_stack=include_stack))
     return self.copy(objects=result)
 
