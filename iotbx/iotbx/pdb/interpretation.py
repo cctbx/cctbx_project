@@ -343,11 +343,11 @@ class stage_1:
       if (self.atom_attributes_list[i_seq].altLoc != " "): return False
     return True
 
-  def show_atom_labels(self, i_seqs, f=None, prefix="", max_lines=10):
+  def show_atom_labels(self, i_seqs, f=None, prefix="", max_lines=None):
     if (f is None): f = sys.stdout
     for i_line,i_seq in enumerate(i_seqs):
       if (i_line == max_lines and len(i_seqs) > max_lines+1):
-        print >> f, prefix + "... (following %d not shown)" % (
+        print >> f, prefix + "... (remaining %d not shown)" % (
           len(i_seqs)-max_lines)
         break
       print >> f, prefix + self.atom_attributes_list[i_seq].pdb_format()
