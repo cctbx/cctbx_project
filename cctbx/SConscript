@@ -99,7 +99,6 @@ lib_cctbx_node = builder(
     target="#lib/cctbx",
     source=lib_cctbx_sources)
 
-SConscript("cctbx/source_generators/eltbx/SConscript")
 SConscript("examples/SConscript")
 
 if (not env_etc.no_boost_python):
