@@ -340,6 +340,42 @@ class _bond_sorted_asu_proxies(boost.python.injector, bond_sorted_asu_proxies):
     if (n_not_shown != 0):
       print >> f, prefix + "... (remaining %d not shown)" % n_not_shown
 
+class _shared_dihedral_proxy(boost.python.injector, shared_dihedral_proxy):
+
+  def show_sorted_by_residual(self,
+        sites_cart,
+        labels=None,
+        f=None,
+        prefix="",
+        max_lines=None):
+    assert labels is None or len(labels) == sites_cart.size()
+    if (self.size() == 0): return
+    if (f is None): f = sys.stdout
+    residuals = dihedral_residuals(
+      sites_cart=sites_cart,
+      proxies=self)
+    i_proxies_sorted = flex.sort_permutation(data=residuals, reverse=True)
+    if (max_lines is not None and i_proxies_sorted.size() > max_lines+1):
+      i_proxies_sorted = i_proxies_sorted[:max_lines]
+    print >> f, "%sDihedral angles sorted by residual:" % prefix
+    for i_proxy in i_proxies_sorted:
+      proxy = self[i_proxy]
+      restraint = dihedral(
+        sites_cart=sites_cart,
+        proxy=proxy)
+      if (labels is not None):
+        for i_seq in proxy.i_seqs:
+          print "%s%s" % (prefix, labels[i_seq])
+      print >> f, "%s    ideal   model   delta" \
+        " periodicty    weight residual" % prefix
+      print >> f, "%s  %7.2f %7.2f %7.2f %5d       %6.2e %6.2e" % (
+        prefix,
+        restraint.angle_ideal, restraint.angle_model, restraint.delta,
+        restraint.periodicity, restraint.weight, restraint.residual())
+    n_not_shown = self.size() - i_proxies_sorted.size()
+    if (n_not_shown != 0):
+      print >> f, prefix + "... (remaining %d not shown)" % n_not_shown
+
 class pair_proxies:
 
   def __init__(self,
