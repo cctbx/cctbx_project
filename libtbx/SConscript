@@ -369,7 +369,7 @@ if (env_etc.static_libraries == 0
 env_etc.static_exe = libtbx.config.build_options.static_exe
 
 env_etc.libtbx_build = env_etc.libtbx_env.LIBTBX_BUILD
-env_etc.libtbx_include = norm_join(env_etc.libtbx_build, "libtbx/include")
+env_etc.libtbx_include = norm_join(env_etc.libtbx_build, "include")
 env_etc.libtbx_lib = norm_join(env_etc.libtbx_build, "libtbx")
 
 Export("env_base", "env_etc")
