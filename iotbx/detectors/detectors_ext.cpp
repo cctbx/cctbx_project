@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
+#include <exception>
 #include <scitbx/array_family/flex_types.h>
 
 namespace af = scitbx::af;
@@ -50,8 +51,9 @@ af::flex_int ReadMAR(const std::string& filename,
 
 af::flex_int Bin2_by_2(const af::flex_int& olddata) {
   int oldsize = olddata.size();
-  int olddim = std::sqrt((double)oldsize); // implicit real-valued intermediate
+  int olddim = std::sqrt((double)oldsize);
   int newdim = olddim/2;
+  if (olddim%2!=0) {throw;} // image dimension must be even so it can be divided by 2
   // always assume a square image!!!
   af::flex_int newdata(af::flex_grid<>(newdim,newdim));
   int *newptr = newdata.begin();

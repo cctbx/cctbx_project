@@ -1,12 +1,10 @@
 import re
-from iotbx.detectors import ReadADSC
+from iotbx.detectors.detectorbase import DetectorImageBase
 
-class ADSCImage:
+class ADSCImage(DetectorImageBase):
   def __init__(self,filename):
-    self.filename=filename
-    self.parameters=None
-    self.linearintdata=None
-    self.bin=1
+    DetectorImageBase.__init__(self,filename)
+    self.vendortype = "ADSC"
 
   def readHeader(self,maxlength=1024):
     if not self.parameters:
@@ -37,66 +35,23 @@ class ADSCImage:
           if len(matches)>0:
             self.parameters[tag] = datatype(matches[-1])
 
-  def fileLength(self):
-    self.readHeader()
-    self.ptr = self.parameters['HEADER_BYTES']
-    self.size1 = self.parameters['SIZE1']
-    self.size2 = self.parameters['SIZE2']
-    self.file_length = self.ptr+2*self.size1*self.size2
-    return self.file_length
-    # pure supposition:
-    #  size1 corresponds to number of rows.  Columns are slow.
-    #  size2 corresponds to number of columns.  Rows are fast.
+  def dataoffset(self):
+    return self.parameters['HEADER_BYTES']
 
-  def setBin(self,bin): #software binning.
-                        # the only bin values supported are 1 & 2
-    if self.bin!=1 or bin!=2: return
-    if self.size1%bin!=0: return
-    self.parameters['SIZE1']=self.parameters['SIZE1']/bin
-    self.parameters['SIZE2']=self.parameters['SIZE2']/bin
-    self.parameters['CCD_IMAGE_SATURATION']=self.parameters['CCD_IMAGE_SATURATION']*bin*bin
-    self.parameters['PIXEL_SIZE']=self.parameters['PIXEL_SIZE']*bin
-    self.bin = bin
+  def integerdepth(self):
+    return 2
 
-  def read(self):
-    self.fileLength()
-    #ADSC Quantum 210, ALS beamline 5.0.2; SUN: unsigned short big endian
-    #ADSC Quantum 4R, ALS beamline 5.0.3; WINDOWS: unsigned short little endian
+  #ADSC Quantum 210, ALS beamline 5.0.2; SUN: unsigned short big endian
+  #ADSC Quantum 4R, ALS beamline 5.0.3; WINDOWS: unsigned short little endian
+  def getEndian(self):
     if self.parameters['BYTE_ORDER'].lower().find('big')>=0:
-      self.linearintdata = ReadADSC(self.filename,self.ptr,
-           self.size1*self.bin,self.size2*self.bin,1) #big_endian
+      return 1 #big_endian
     else:
-      self.linearintdata = ReadADSC(self.filename,self.ptr,
-           self.size1*self.bin,self.size2*self.bin,0) #little_endian
-
-    if self.bin==2:
-      from iotbx.detectors import Bin2_by_2
-      self.linearintdata = Bin2_by_2(self.linearintdata)
-
-
-
-  def __getattr__(self, attr):
-    if   attr=='size1' : return self.parameters['SIZE1']
-    elif attr=='size2' : return self.parameters['SIZE2']
-    elif attr=='npixels' : return self.parameters['SIZE1'] * self.parameters['SIZE2']
-    elif attr=='saturation' : return self.parameters['CCD_IMAGE_SATURATION']
-    elif attr=='rawdata' : return self.linearintdata
-    elif attr=='pixel_size' : return self.parameters['PIXEL_SIZE']
-    elif attr=='osc_start' : return self.parameters['OSC_START']
-    elif attr=='distance' : return self.parameters['DISTANCE']
-    elif attr=='wavelength' : return self.parameters['WAVELENGTH']
-    elif attr=='beamx' : return self.parameters['BEAM_CENTER_X']
-    elif attr=='beamy' : return self.parameters['BEAM_CENTER_Y']
-    elif attr=='deltaphi' : return self.parameters['OSC_RANGE']
-    elif attr=='twotheta' : return self.parameters['TWOTHETA']
-    elif attr=='serial_number' : return self.parameters['DETECTOR_SN']
-
+      return 0 #little_endian
 
 if __name__=='__main__':
-  i = "./procrun0000035903/run35903_1_001.img"
-  i = "/net/boa/scratch1/sauter/lyso1128_4_001.img"
-  i = "/net/boa/scratch1/sauter/19-july-02/ProjectNorth/DD5257/52813A12a_1_001.img"
-  i = "./procrun0000035905/run35905_1_001.img"
+  import sys
+  i = sys.argv[1]
   a = ADSCImage(i)
   a.read()
   print a.linearintdata
@@ -105,4 +60,4 @@ if __name__=='__main__':
   from iotbx.detectors.jpeg import JPEGImage
   j = JPEGImage(a)
   j.calcimage()
-  j.write("/net/cci/sauter/public_html/004.jpg")
+  j.write(sys.argv[2])
