@@ -38,77 +38,24 @@ namespace cctbx { namespace af {
       static size_type max_size() { return N; }
       static size_type capacity() { return N; }
 
+      void swap(small_plain<ElementType, N>& other) {
+        std::swap(*this, other);
+      }
+
       void resize(size_type new_size) {
         if (new_size > N) throw_range_error();
         m_size = new_size;
       }
 
-      void resize(size_type new_size, const ElementType& x) {
-        if (new_size > N) throw_range_error();
-        if (new_size > m_size) std::fill(end(), begin()+new_size, x);
-        m_size = new_size;
+      void auto_resize(size_type new_size) { resize(new_size); }
+
+      void resize(const size_type& new_size, const ElementType& x) {
+        ElementType* old_end = this->end();
+        this->resize(new_size);
+        if (this->end() > old_end) std::fill(old_end, this->end(), x);
       }
 
-      void clear() { m_size = 0; }
-
-      void push_back(const ElementType& x) { elems[m_size++] = x; }
-      void pop_back() { m_size--; }
-
-      ElementType*
-      insert(ElementType* pos, size_type n, const ElementType& x) {
-        std::copy_backward(pos, end(), end()+n);
-        std::fill(pos, pos+n, x);
-        m_size += n;
-        return pos;
-      }
-
-      ElementType*
-      insert(ElementType* pos, const ElementType& x) {
-        return insert(pos, 1, x);
-      }
-
-      template <typename OtherElementType>
-      ElementType*
-      insert(
-        ElementType* pos,
-        const OtherElementType* first,
-        const OtherElementType* last) {
-        size_type n = last - first;
-        if (n > 0) {
-          std::copy_backward(pos, end(), end()+n);
-          copy_typeconv(first, last, pos);
-          m_size += n;
-        }
-        return pos;
-      }
-
-      ElementType* erase(ElementType* first, ElementType* last) {
-        size_type n = last - first;
-        std::copy(last, end(), first);
-        m_size -= n;
-        return first;
-      }
-
-      ElementType* erase(ElementType* pos) {
-        return erase(pos, pos+1);
-      }
-
-      void swap(ElementType* other) {
-        std::swap(begin(), end(), other);
-      }
-
-      void assign(size_type n, const ElementType& x = ElementType()) {
-        std::fill(begin(), begin()+n, x);
-        m_size = n;
-      }
-
-      template <typename OtherElementType>
-      void assign(
-        const OtherElementType* first,
-        const OtherElementType* last) {
-        m_size = last - first;
-        copy_typeconv(first, last, elems);
-      }
+#     include <cctbx/array_family/push_back_etc.h>
 
     protected:
       size_type m_size;

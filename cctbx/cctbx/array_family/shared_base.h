@@ -48,23 +48,23 @@ namespace cctbx { namespace af {
         // data are not considered part of the type
         ElementType* begin() const { return m_data; }
 
-        void resize(const size_type& sz) {
-          expand_capacity(sz);
-          m_size = sz;
+        void swap (basic_storage<ElementType>& other){
+          std::swap(*this, other);
         }
 
-        void auto_resize(const size_type& sz) {
-          if (sz > 0 && m_capacity == 0) {
+        void resize(const size_type& new_size) {
+          expand_capacity(new_size);
+          m_size = new_size;
+        }
+
+        void auto_resize(const size_type& new_size) {
+          if (new_size > 0 && m_capacity == 0) {
             expand_capacity(SmallestAutoCapacity);
           }
           else {
-            expand_capacity(std::max(sz, m_capacity * 2));
+            expand_capacity(std::max(new_size, m_capacity * 2));
           }
-          m_size = sz;
-        }
-
-        void swap (basic_storage<ElementType>& other){
-          std::swap(*this, other);
+          m_size = new_size;
         }
 
       private:
@@ -125,12 +125,12 @@ namespace cctbx { namespace af {
         // data are not considered part of the type
         element_type* begin() const { return m_ptr_basic_storage->begin(); }
 
-        void resize(const size_type& sz) {
-          m_ptr_basic_storage->resize(sz);
+        void resize(const size_type& new_size) {
+          m_ptr_basic_storage->resize(new_size);
         }
 
-        void auto_resize(const size_type& sz) {
-          m_ptr_basic_storage->auto_resize(sz);
+        void auto_resize(const size_type& new_size) {
+          m_ptr_basic_storage->auto_resize(new_size);
         }
 
       private:
@@ -181,7 +181,7 @@ namespace cctbx { namespace af {
       }
 
       shared_base<ElementType>
-      deepcopy() const {
+      deep_copy() const {
         shared_base<ElementType> result(size());
         std::copy(this->begin(), this->end(), result.begin());
         return result;
@@ -196,8 +196,14 @@ namespace cctbx { namespace af {
 
       CCTBX_ARRAY_FAMILY_TAKE_REF(begin(), size())
 
-      void resize(const size_type& sz) {
-        m_handle.resize(element_size() * sz);
+      void resize(const size_type& new_size) {
+        m_handle.resize(element_size() * new_size);
+      }
+
+      void resize(const size_type& new_size, const ElementType& x) {
+        ElementType* old_end = end();
+        resize(new_size);
+        if (end() > old_end) std::fill(old_end, end(), x);
       }
 
     protected:
