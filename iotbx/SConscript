@@ -35,7 +35,7 @@ lib_iotbx_sources = [
   "mtz/mtzwriter.cpp",
 ]
 
-envlm.Prepend(LIBS=["cmtz"])
+envlm.Prepend(LIBS=["cctbx", "cmtz"])
 envlm.Append(LIBPATH=["#libtbx",])
 
 if (env_etc.static_libraries): builder = envlm.StaticLibrary
