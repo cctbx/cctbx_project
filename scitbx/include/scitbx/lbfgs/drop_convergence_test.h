@@ -1,13 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Aug: Fragment from cctbx/lbfgs.h (rwgk)
-     2002 Mar: Created (R.W. Grosse-Kunstleve)
- */
-
 #ifndef SCITBX_LBFGS_DROP_CONVERGENCE_TEST_H
 #define SCITBX_LBFGS_DROP_CONVERGENCE_TEST_H
 
@@ -27,7 +17,7 @@ namespace scitbx { namespace lbfgs {
       <li>The maximum value of the drop in the objective function
           is determined (max_drop()).
           <p>
-      <li>A straight line is fitted to the last p() values
+      <li>A straight line is fitted to the last n_test_points() values
           of the objective function. Let <code>slope</code>
           be the slope of this fitted line. Convergence is
           detected if:
@@ -52,16 +42,16 @@ namespace scitbx { namespace lbfgs {
        */
       explicit
       drop_convergence_test(
-        SizeType p = 5,
-        FloatType max_drop_eps = FloatType(1.e-5),
-        FloatType iteration_coefficient = FloatType(2))
-      : p_(p),
+        SizeType n_test_points=5,
+        FloatType max_drop_eps=FloatType(1.e-5),
+        FloatType iteration_coefficient=FloatType(2))
+      : n_test_points_(n_test_points),
         max_drop_eps_(max_drop_eps),
         iteration_coefficient_(iteration_coefficient),
         max_drop_(0),
         max_f_(0)
       {
-        SCITBX_ASSERT(p >= 2);
+        SCITBX_ASSERT(n_test_points >= 2);
         SCITBX_ASSERT(max_drop_eps_ >= FloatType(0));
         SCITBX_ASSERT(iteration_coefficient_ >= FloatType(1));
       }
@@ -69,7 +59,7 @@ namespace scitbx { namespace lbfgs {
       /*! \brief Number of most recent objective function values used
            in fit of straight lines (as passed to the constructor).
        */
-      SizeType p() const { return p_; }
+      SizeType n_test_points() const { return n_test_points_; }
 
       /*! \brief Base tolerance for test of drop of objective function
            (as passed to the constructor).
@@ -84,7 +74,7 @@ namespace scitbx { namespace lbfgs {
       }
 
       //! Execution of the convergence test.
-      /*! Note that at least p() executions are required before
+      /*! Note that at least n_test_points() executions are required before
           convergence will be evaluated.
        */
       bool
@@ -99,7 +89,7 @@ namespace scitbx { namespace lbfgs {
       FloatType max_drop() const { return max_drop_; }
 
     protected:
-      const SizeType p_;
+      const SizeType n_test_points_;
       const FloatType max_drop_eps_;
       const FloatType iteration_coefficient_;
       af::shared<FloatType> x_;
@@ -118,17 +108,17 @@ namespace scitbx { namespace lbfgs {
     max_f_ = std::max(max_f_, fn::absolute(f));
     x_.push_back(x_.size() + 1);
     y_.push_back(f);
-    if (x_.size() < p_) return false;
+    if (x_.size() < n_test_points_) return false;
     if (!max_f_) return true; // y_ must be all 0
     af::shared<FloatType> y_scaled;
-    y_scaled.reserve(p_);
-    for(std::size_t i=y_.size()-p_;i<y_.size();i++) {
+    y_scaled.reserve(n_test_points_);
+    for(std::size_t i=y_.size()-n_test_points_;i<y_.size();i++) {
       y_scaled.push_back(y_[i] / max_f_);
     }
-    // fit last p_ points to straight line: y = m*x + b
+    // fit last n_test_points_ to straight line: y = m*x + b
     math::linear_regression<FloatType> linreg_y(
-      af::const_ref<FloatType>(x_.end() - p_, p_),
-      af::const_ref<FloatType>(y_scaled.begin(), p_));
+      af::const_ref<FloatType>(x_.end() - n_test_points_, n_test_points_),
+      af::const_ref<FloatType>(y_scaled.begin(), n_test_points_));
     SCITBX_ASSERT(linreg_y.is_well_defined());
     // check absolute value of slope
     FloatType sliding_tolerance =

@@ -63,41 +63,45 @@ def exercise(verbose=0):
       print >> f, iotbx.pdb.format_atom_record(serial=serial, site=site)
     print >> f, "END"
     f.close()
-  sites_cart = sites_cart_manual.deep_copy()
-  assert bond_proxies.asu.size() == 0
-  bond_params_table = geometry_restraints.extract_bond_params(
-    n_seq=sites_cart.size(),
-    bond_simple_proxies=bond_proxies.simple)
-  manager = geometry_restraints.manager.manager(
-    bond_params_table=bond_params_table,
-    angle_proxies=angle_proxies)
-  minimized = geometry_restraints.lbfgs.lbfgs(
-    sites_cart=sites_cart,
-    geometry_restraints_manager=manager,
-    lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
-      max_iterations=1000))
-  sites_cart_minimized_1 = sites_cart.deep_copy()
-  s = StringIO()
-  manager.show_interactions(f=s)
-  if (0 or verbose):
-    f = open("minimized_1.pdb", "w")
-    for serial,site in zip(count(1), sites_cart_minimized_1):
-      print >> f, iotbx.pdb.format_atom_record(serial=serial, site=site)
-    print >> f, "END"
-    f.close()
-  bond_deltas = geometry_restraints.bond_deltas(
-    sites_cart=sites_cart_minimized_1,
-    proxies=bond_proxies.simple)
-  angle_deltas = geometry_restraints.angle_deltas(
-    sites_cart=sites_cart_minimized_1,
-    proxies=angle_proxies)
-  if (0 or verbose):
-    for proxy,delta in zip(bond_proxies.simple, bond_deltas):
-      print "bond:", proxy.i_seqs, delta
-    for proxy,delta in zip(angle_proxies, angle_deltas):
-      print "angle:", proxy.i_seqs, delta
-  assert flex.max(flex.abs(bond_deltas)) < 1.e-6
-  assert flex.max(flex.abs(angle_deltas)) < 1.e-6
+  for traditional_convergence_test in [True,False]:
+    sites_cart = sites_cart_manual.deep_copy()
+    assert bond_proxies.asu.size() == 0
+    bond_params_table = geometry_restraints.extract_bond_params(
+      n_seq=sites_cart.size(),
+      bond_simple_proxies=bond_proxies.simple)
+    manager = geometry_restraints.manager.manager(
+      bond_params_table=bond_params_table,
+      angle_proxies=angle_proxies)
+    minimized = geometry_restraints.lbfgs.lbfgs(
+      sites_cart=sites_cart,
+      geometry_restraints_manager=manager,
+      lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
+        traditional_convergence_test=traditional_convergence_test,
+        drop_convergence_test_max_drop_eps=1.e-20,
+        max_iterations=1000))
+    assert minimized.minimizer.iter() > 100
+    sites_cart_minimized_1 = sites_cart.deep_copy()
+    s = StringIO()
+    manager.show_interactions(f=s)
+    if (0 or verbose):
+      f = open("minimized_1.pdb", "w")
+      for serial,site in zip(count(1), sites_cart_minimized_1):
+        print >> f, iotbx.pdb.format_atom_record(serial=serial, site=site)
+      print >> f, "END"
+      f.close()
+    bond_deltas = geometry_restraints.bond_deltas(
+      sites_cart=sites_cart_minimized_1,
+      proxies=bond_proxies.simple)
+    angle_deltas = geometry_restraints.angle_deltas(
+      sites_cart=sites_cart_minimized_1,
+      proxies=angle_proxies)
+    if (0 or verbose):
+      for proxy,delta in zip(bond_proxies.simple, bond_deltas):
+        print "bond:", proxy.i_seqs, delta
+      for proxy,delta in zip(angle_proxies, angle_deltas):
+        print "angle:", proxy.i_seqs, delta
+    assert flex.max(flex.abs(bond_deltas)) < 1.e-6
+    assert flex.max(flex.abs(angle_deltas)) < 1.e-6
   sites_cart += matrix.col((1,1,0)) - matrix.col(sites_cart.min())
   unit_cell_lengths = list(  matrix.col(sites_cart.max())
                            + matrix.col((1,-1.2,4)))
