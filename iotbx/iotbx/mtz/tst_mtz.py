@@ -28,16 +28,15 @@ def recycle(miller_array, mtz_label, verbose=0):
     p = dump("tmp.mtz")
   else:
     p = mtz.Mtz("tmp.mtz")
-  assert p.title().rstrip() == "mtz writer test"
+  assert p.title() == "mtz writer test"
   assert p.nsym() == miller_array.space_group().order_z()
-  assert p.ncrystals() in (1,2) # XXX transition from ccp4io_2003 -> Apr 2004
+  assert p.ncrystals() == 2
   assert p.getSgtbxSpaceGroup() == miller_array.space_group()
   assert p.history().size() == 0
   cryst = p.getCrystal(0)
-  if (p.ncrystals() == 2):
-    assert cryst.crystal_name() == "HKL_base"
-    assert cryst.project_name() == "HKL_base"
-    cryst = p.getCrystal(1)
+  assert cryst.crystal_name() == "HKL_base"
+  assert cryst.project_name() == "HKL_base"
+  cryst = p.getCrystal(1)
   assert cryst.crystal_name() == "test_crystal"
   assert cryst.project_name() == "test_project"
   assert cryst.UnitCell().is_similar_to(miller_array.unit_cell())
