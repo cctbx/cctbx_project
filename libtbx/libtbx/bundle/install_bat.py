@@ -55,7 +55,7 @@ echo ***
 
 :end
 if not defined LIBTBX_BATCH_INSTALL goto end_prompt
-if not %LIBTBX_BATCH_INSTALL% == 0 goto final_exit
+if not %%LIBTBX_BATCH_INSTALL%% == 0 goto final_exit
 :end_prompt
 pause
 :final_exit
