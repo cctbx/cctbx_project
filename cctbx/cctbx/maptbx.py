@@ -163,10 +163,10 @@ class crystal_gridding_tags(crystal_gridding):
   def __init__(self, gridding):
     crystal_gridding._copy_constructor(self, gridding)
     assert gridding.symmetry_flags() is not None
-    self._tags = grid_tags(self.n_real())
+    self._tags = grid_tags(dim=self.n_real())
     self._tags.build(
-      self.space_group_info().type(),
-      self.symmetry_flags())
+      space_group_type=self.space_group_info().type(),
+      symmetry_flags=self.symmetry_flags())
     assert self._tags.n_grid_misses() == 0
 
   def tags(self):

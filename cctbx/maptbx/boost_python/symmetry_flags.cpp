@@ -1,12 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Oct: Created (rwgk)
- */
-
 #include <cctbx/boost_python/flex_fwd.h>
 
 #include <cctbx/maptbx/symmetry_flags.h>
@@ -24,12 +15,17 @@ namespace {
     wrap()
     {
       using namespace boost::python;
+      typedef boost::python::arg arg_; // gcc 2.96 workaround
       class_<w_t>("symmetry_flags", no_init)
-        .def(init<bool, optional<bool, bool> >())
+        .def(init<bool, optional<bool, bool> >(
+          (arg_("use_space_group_symmetry"),
+           arg_("use_normalizer_k2l")=false,
+           arg_("use_structure_seminvariants")=false)))
         .def("use_space_group_symmetry", &w_t::use_space_group_symmetry)
         .def("use_normalizer_k2l", &w_t::use_normalizer_k2l)
         .def("use_structure_seminvariants", &w_t::use_structure_seminvariants)
-        .def("select_sub_space_group", &w_t::select_sub_space_group)
+        .def("select_sub_space_group", &w_t::select_sub_space_group,
+          (arg_("space_group_type")))
         .def("__eq__", &w_t::operator==)
         .def("__ne__", &w_t::operator!=)
       ;

@@ -18,6 +18,7 @@ namespace cctbx { namespace sgtbx { namespace boost_python {
   void wrap_rot_mx();
   void wrap_row_echelon();
   void wrap_rt_mx();
+  void wrap_search_symmetry();
   void wrap_seminvariant();
   void wrap_site_symmetry();
   void wrap_space_group();
@@ -99,6 +100,7 @@ namespace {
     wrap_rot_mx();
     wrap_row_echelon();
     wrap_rt_mx();
+    wrap_search_symmetry();
     wrap_seminvariant();
     wrap_site_symmetry();
     wrap_space_group();

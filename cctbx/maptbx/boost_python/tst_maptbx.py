@@ -73,14 +73,17 @@ def exercise_statistics():
     assert approx_equal(s.sigma(), t.sigma())
 
 def exercise_symmetry_flags():
-  f = maptbx.symmetry_flags(0001)
-  f = maptbx.symmetry_flags(0001, 0001, 0001)
+  f = maptbx.symmetry_flags(use_space_group_symmetry=0001)
+  f = maptbx.symmetry_flags(
+    use_space_group_symmetry=0001,
+    use_normalizer_k2l=0001,
+    use_structure_seminvariants=0001)
   assert f.use_space_group_symmetry()
   assert f.use_normalizer_k2l()
   assert f.use_structure_seminvariants()
   sg_info = sgtbx.space_group_info("P 3 1 2")
-  assert f.select_sub_space_group(sg_info.type()).type().lookup_symbol() \
-      == "P -3 1 m"
+  assert f.select_sub_space_group(
+    space_group_type=sg_info.type()).type().lookup_symbol() == "P -3 1 m"
   assert f == f
   assert not f != f
   assert f == maptbx.symmetry_flags(0001, 0001, 0001)
