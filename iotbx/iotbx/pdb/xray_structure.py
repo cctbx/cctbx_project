@@ -123,11 +123,14 @@ def from_pdb(file_name=None, file_iterator=None,
     special_position_settings=crystal.special_position_settings(
       crystal_symmetry=crystal_symmetry,
       min_distance_sym_equiv=min_distance_sym_equiv))
-  scatterers = flex.xray_scatterer()
   scatterer = None
   prev_record = None
   for record in pdb_records:
     if (record.record_name in ("ATOM", "HETATM")):
+      if (scatterer is not None):
+        try: structure.add_scatterer(scatterer)
+        except RuntimeError, e:
+          raise RuntimeError("%s%s" % (prev_record.error_prefix(), str(e)))
       if (ignore_atom_element_q
           and (record.element == " Q" or record.name[1] == "Q")):
         scatterer = None
@@ -143,7 +146,6 @@ def from_pdb(file_name=None, file_iterator=None,
           occupancy=record.occupancy,
           caasf=caasf_interpretation.from_pdb_atom_record(
             record, have_useful_atom_element_columns))
-        scatterers.append(scatterer)
     elif (record.record_name == "ANISOU"):
       if (not prev_record.record_name in ("ATOM", "HETATM")):
         record.raise_FormatError(
@@ -153,10 +155,16 @@ def from_pdb(file_name=None, file_iterator=None,
           "ANISOU record does not match preceeding %s record."
             % prev_record.record_name)
       if (scatterer is not None):
-        scatterers[-1] = scatterer.copy(
+        scatterer = scatterer.copy(
           u=adptbx.u_cart_as_u_star(structure.unit_cell(), record.Ucart))
-    else:
+    elif (scatterer is not None):
+      try: structure.add_scatterer(scatterer)
+      except RuntimeError, e:
+        raise RuntimeError("%s%s" % (prev_record.error_prefix(), str(e)))
       scatterer = None
     prev_record = record
-  structure.add_scatterers(scatterers)
+  if (scatterer is not None):
+    try: structure.add_scatterer(scatterer)
+    except RuntimeError, e:
+      raise RuntimeError("%s%s" % (prev_record.error_prefix(), str(e)))
   return structure
