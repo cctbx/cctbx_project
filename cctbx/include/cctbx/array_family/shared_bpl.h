@@ -30,10 +30,10 @@ namespace cctbx { namespace af {
     : data_(data)
     {}
 
-    std::size_t size() { return data_.size(); }
+    std::size_t size() const { return data_.size(); }
 
     boost::python::tuple
-    getitem(std::size_t i)
+    getitem(std::size_t i) const
     {
       if (i >= data_.size()) raise_IndexError();
       return boost::python::tuple(
