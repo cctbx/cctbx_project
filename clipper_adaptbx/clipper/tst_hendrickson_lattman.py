@@ -10,14 +10,15 @@ def exercise_Compute_phifom_from_abcd_interface(args):
     args=args, simply_return_all_miller_arrays=True)
   complex_input = None
   for miller_array in miller_arrays:
-    if (miller_array.is_complex()):
+    if (miller_array.is_complex_array()):
       complex_input = miller_array
       break
   if (complex_input is not None):
     print "complex_input.info():", complex_input.info()
   fom_input = None
   for miller_array in miller_arrays:
-    if (miller_array.is_real() and miller_array.info().lower().find("fom")):
+    if (miller_array.is_real_array()
+        and miller_array.info().lower().find("fom")):
       fom_input = miller_array
       break
   if (fom_input is not None):
