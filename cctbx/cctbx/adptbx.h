@@ -229,6 +229,27 @@ namespace adptbx {
     return result;
   }
 
+  //! Convert Ustar -> Uiso.
+  /*! This is implemented as Ucart_as_Uiso(Ustar_as_Ucart(uc, Ustar)).
+   */
+  template <class FloatType>
+  inline FloatType
+  Ustar_as_Uiso(const uctbx::UnitCell& uc,
+                const boost::array<FloatType, 6>& Ustar)
+  {
+    return Ucart_as_Uiso(Ustar_as_Ucart(uc, Ustar));
+  }
+  //! Convert Uiso -> Ustar.
+  /*! This is implemented as Ucart_as_Ustar(uc, Uiso_as_Ucart(Uiso)).
+   */
+  template <class FloatType>
+  inline boost::array<FloatType, 6>
+  Uiso_as_Ustar(const uctbx::UnitCell& uc,
+                const FloatType& Uiso)
+  {
+    return Ucart_as_Ustar(uc, Uiso_as_Ucart(Uiso));
+  }
+
   //! Convert Uuvrs -> Uiso.
   /*! This is implemented as Ucart_as_Uiso(Uuvrs_as_Ucart(uc, Uuvrs)).
    */
@@ -248,6 +269,27 @@ namespace adptbx {
                 const FloatType& Uiso)
   {
     return Ucart_as_Uuvrs(uc, Uiso_as_Ucart(Uiso));
+  }
+
+  //! Convert beta -> Uiso.
+  /*! This is implemented as Ucart_as_Uiso(beta_as_Ucart(uc, beta)).
+   */
+  template <class FloatType>
+  inline FloatType
+  beta_as_Uiso(const uctbx::UnitCell& uc,
+                const boost::array<FloatType, 6>& beta)
+  {
+    return Ucart_as_Uiso(beta_as_Ucart(uc, beta));
+  }
+  //! Convert Uiso -> beta.
+  /*! This is implemented as Ucart_as_beta(uc, Uiso_as_Ucart(Uiso)).
+   */
+  template <class FloatType>
+  inline boost::array<FloatType, 6>
+  Uiso_as_beta(const uctbx::UnitCell& uc,
+                const FloatType& Uiso)
+  {
+    return Ucart_as_beta(uc, Uiso_as_Ucart(Uiso));
   }
 
   //! Isotropic Debye-Waller factor given (sin(theta)/lambda)^2 and Biso.

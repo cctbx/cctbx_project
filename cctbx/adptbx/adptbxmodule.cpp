@@ -113,6 +113,17 @@ namespace {
   }
 
   double
+  py_Ustar_as_Uiso(const uctbx::UnitCell& uc,
+                   const boost::array<double, 6>& Ustar) {
+    return Ustar_as_Uiso(uc, Ustar);
+  }
+  boost::array<double, 6>
+  py_Uiso_as_Ustar(const uctbx::UnitCell& uc,
+                   const double& Uiso) {
+    return Uiso_as_Ustar(uc, Uiso);
+  }
+
+  double
   py_Uuvrs_as_Uiso(const uctbx::UnitCell& uc,
                    const boost::array<double, 6>& Uuvrs) {
     return Uuvrs_as_Uiso(uc, Uuvrs);
@@ -121,6 +132,17 @@ namespace {
   py_Uiso_as_Uuvrs(const uctbx::UnitCell& uc,
                    const double& Uiso) {
     return Uiso_as_Uuvrs(uc, Uiso);
+  }
+
+  double
+  py_beta_as_Uiso(const uctbx::UnitCell& uc,
+                   const boost::array<double, 6>& beta) {
+    return beta_as_Uiso(uc, beta);
+  }
+  boost::array<double, 6>
+  py_Uiso_as_beta(const uctbx::UnitCell& uc,
+                   const double& Uiso) {
+    return Uiso_as_beta(uc, Uiso);
   }
 
   double
@@ -242,8 +264,12 @@ BOOST_PYTHON_MODULE_INIT(adptbx)
 
     this_module.def(py_Ucart_as_Uiso, "Ucart_as_Uiso");
     this_module.def(py_Uiso_as_Ucart, "Uiso_as_Ucart");
+    this_module.def(py_Ustar_as_Uiso, "Ustar_as_Uiso");
+    this_module.def(py_Uiso_as_Ustar, "Uiso_as_Ustar");
     this_module.def(py_Uuvrs_as_Uiso, "Uuvrs_as_Uiso");
     this_module.def(py_Uiso_as_Uuvrs, "Uiso_as_Uuvrs");
+    this_module.def(py_beta_as_Uiso, "beta_as_Uiso");
+    this_module.def(py_Uiso_as_beta, "Uiso_as_beta");
 
     this_module.def(py_DebyeWallerFactorBiso_2, "DebyeWallerFactorBiso");
     this_module.def(py_DebyeWallerFactorUiso_2, "DebyeWallerFactorUiso");
