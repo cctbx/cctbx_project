@@ -270,7 +270,7 @@ class _object(boost.python.injector, ext.object):
     self.replace_miller_indices(cb_op.apply(self.extract_miller_indices()))
     if (new_space_group_info is None):
       new_space_group_info = self.space_group_info().change_basis(cb_op)
-    self.set_space_group_info(space_group_info=space_group_info)
+    self.set_space_group_info(space_group_info=new_space_group_info)
     for crystal in self.crystals():
       crystal_symmetry = cctbx.crystal.symmetry(
         unit_cell=cb_op.apply(crystal.unit_cell()),
