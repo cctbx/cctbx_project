@@ -74,10 +74,12 @@ namespace cctbx { namespace dmtbx {
       triplet_generator(
         sgtbx::space_group const& space_group,
         af::const_ref<miller::index<> > const& miller_indices,
-        bool sigma_2_only=false)
+        bool sigma_2_only=false,
+        bool discard_weights=false)
       :
-        sigma_2_only_(sigma_2_only),
         t_den_(space_group.t_den()),
+        sigma_2_only_(sigma_2_only),
+        discard_weights_(discard_weights),
         array_of_wtprs_((af::reserve(miller_indices.size())))
       {
         std::vector<detail::expanded_index> expanded_indices;
@@ -90,29 +92,25 @@ namespace cctbx { namespace dmtbx {
         }
       }
 
-      bool
-      sigma_2_only() const { return sigma_2_only_; }
-
       int
       t_den() const { return t_den_; }
 
+      bool
+      sigma_2_only() const { return sigma_2_only_; }
+
+      bool
+      discard_weights() const { return discard_weights_; }
+
       af::shared<std::size_t>
-      n_relations(bool discard_weights=false,
-                  bool first_only=false) const
+      n_relations() const
       {
         af::shared<std::size_t> result((af::reserve(array_of_wtprs_.size())));
         std::size_t n_miller_indices = array_of_wtprs_.size();
         for(std::size_t ih=0;ih<n_miller_indices;ih++) {
           cr_wtprs_t tprs = array_of_wtprs_[ih].const_ref();
-          const wtpr_t* prev_tpr = 0;
           std::size_t n = 0;
           for(const wtpr_t* tpr=tprs.begin();tpr!=tprs.end();tpr++) {
-            if (first_only) {
-              if (prev_tpr != 0 && tpr->is_similar_to(*prev_tpr)) continue;
-              prev_tpr = tpr;
-            }
-            if (!discard_weights) n += tpr->weight();
-            else n++;
+            n += tpr->weight();
           }
           result.push_back(n);
         }
@@ -120,35 +118,17 @@ namespace cctbx { namespace dmtbx {
       }
 
       af::shared<weighted_triplet_phase_relation>
-      relations_for(std::size_t ih,
-                    bool discard_weights=false,
-                    bool first_only=false) const
+      relations_for(std::size_t ih)
       {
         std::size_t n_miller_indices = array_of_wtprs_.size();
         CCTBX_ASSERT(ih < n_miller_indices);
-        if (!discard_weights && !first_only) {
-          return array_of_wtprs_[ih].deep_copy();
-        }
-        cr_wtprs_t tprs = array_of_wtprs_[ih].const_ref();
-        af::shared<wtpr_t> result((af::reserve(tprs.size())));
-        const wtpr_t* prev_tpr = 0;
-        for(const wtpr_t* tpr=tprs.begin();tpr!=tprs.end();tpr++) {
-          if (first_only) {
-            if (prev_tpr != 0 && tpr->is_similar_to(*prev_tpr)) continue;
-            prev_tpr = tpr;
-          }
-          if (discard_weights) result.push_back(wtpr_t(*tpr, 1));
-          else result.push_back(*tpr);
-        }
-        return result;
+        return array_of_wtprs_[ih];
       }
 
       af::shared<FloatType>
       sum_of_amplitude_products(
         af::const_ref<miller::index<> > const& miller_indices,
-        af::const_ref<FloatType> const& amplitudes,
-        bool discard_weights=false,
-        bool first_only=false) const
+        af::const_ref<FloatType> const& amplitudes) const
       {
         CCTBX_ASSERT(miller_indices.size() == array_of_wtprs_.size());
         CCTBX_ASSERT(miller_indices.size() == amplitudes.size());
@@ -156,17 +136,11 @@ namespace cctbx { namespace dmtbx {
         std::size_t n_miller_indices = array_of_wtprs_.size();
         for(std::size_t ih=0;ih<n_miller_indices;ih++) {
           cr_wtprs_t tprs = array_of_wtprs_[ih].const_ref();
-          const wtpr_t* prev_tpr = 0;
           FloatType sum = 0;
           for(const wtpr_t* tpr=tprs.begin();tpr!=tprs.end();tpr++) {
-            if (first_only) {
-              if (prev_tpr != 0 && tpr->is_similar_to(*prev_tpr)) continue;
-              prev_tpr = tpr;
-            }
-            FloatType a_k_a_hmk = amplitudes[tpr->ik()]
-                                * amplitudes[tpr->ihmk()];
-            if (!discard_weights) a_k_a_hmk *= tpr->weight();
-            sum += a_k_a_hmk;
+            sum += amplitudes[tpr->ik()]
+                 * amplitudes[tpr->ihmk()]
+                 * tpr->weight();
           }
           result.push_back(sum);
         }
@@ -180,8 +154,6 @@ namespace cctbx { namespace dmtbx {
         af::const_ref<bool> const& selection_fixed,
         af::const_ref<std::size_t> const& extrapolation_order,
         bool reuse_results=false,
-        bool discard_weights=false,
-        bool first_only=false,
         FloatType const& sum_epsilon=1.e-10) const
       {
         CCTBX_ASSERT(amplitudes.size() == array_of_wtprs_.size());
@@ -190,7 +162,6 @@ namespace cctbx { namespace dmtbx {
                      || selection_fixed.size() == amplitudes.size());
         CCTBX_ASSERT(   extrapolation_order.size() == 0
                      || extrapolation_order.size() == amplitudes.size());
-        CCTBX_ASSERT(first_only == false || discard_weights == true);
         af::shared<FloatType> result(phases.begin(), phases.end());
         const FloatType* phase_source = (
           reuse_results ? result.begin() : phases.begin());
@@ -214,24 +185,18 @@ namespace cctbx { namespace dmtbx {
           if (selection_fixed.size() != 0 && selection_fixed[ih]) continue;
           CCTBX_ASSERT(!fixed_or_extrapolated[ih]);
           cr_wtprs_t tprs = array_of_wtprs_[ih].const_ref();
-          const wtpr_t* prev_tpr = 0;
           FloatType sum_sin(0);
           FloatType sum_cos(0);
           for(const wtpr_t* tpr=tprs.begin();tpr!=tprs.end();tpr++) {
-            if (first_only) {
-              if (prev_tpr != 0 && tpr->is_similar_to(*prev_tpr)) continue;
-              prev_tpr = tpr;
-            }
             CCTBX_ASSERT(tpr->ik() < amplitudes.size());
             CCTBX_ASSERT(tpr->ihmk() < amplitudes.size());
             if (reuse_results) {
               if (!fixed_or_extrapolated[tpr->ik()]) continue;
               if (!fixed_or_extrapolated[tpr->ihmk()]) continue;
             }
-            FloatType a_k = amplitudes[tpr->ik()];
-            FloatType a_hmk = amplitudes[tpr->ihmk()];
-            FloatType a_k_a_hmk = a_k * a_hmk;
-            if (!discard_weights) a_k_a_hmk *= tpr->weight();
+            FloatType a_k_a_hmk = amplitudes[tpr->ik()]
+                                * amplitudes[tpr->ihmk()]
+                                * tpr->weight();
             FloatType phi_k_phi_hmk = tpr->phi_k_phi_hmk(phase_source, t_den_);
             sum_sin += a_k_a_hmk * std::sin(phi_k_phi_hmk);
             sum_cos += a_k_a_hmk * std::cos(phi_k_phi_hmk);
@@ -364,6 +329,7 @@ namespace cctbx { namespace dmtbx {
       {
         typedef std::map<triplet_phase_relation, std::size_t> tpr_map_t;
         tpr_map_t tpr_map;
+        tpr_map_t::const_iterator m;
         if (expanded_indices.size() != 0) {
           expanded_indices_scanner scanner(expanded_indices);
           while (scanner.find_next(h)) {
@@ -374,14 +340,25 @@ namespace cctbx { namespace dmtbx {
           }
         }
         af::shared<wtpr_t> wtpr_array((af::reserve(tpr_map.size())));
-        for(tpr_map_t::const_iterator m=tpr_map.begin();m!=tpr_map.end();m++) {
-          wtpr_array.push_back(wtpr_t(m->first, m->second));
+        if (!discard_weights_) {
+          for(m=tpr_map.begin();m!=tpr_map.end();m++) {
+            wtpr_array.push_back(wtpr_t(m->first, m->second));
+          }
+        }
+        else {
+          const triplet_phase_relation* prev_tpr = 0;
+          for(m=tpr_map.begin();m!=tpr_map.end();m++) {
+            if (prev_tpr != 0 && m->first.is_similar_to(*prev_tpr)) continue;
+            prev_tpr = &m->first;
+            wtpr_array.push_back(wtpr_t(m->first, 1));
+          }
         }
         return wtpr_array;
       }
 
-      bool sigma_2_only_;
       int t_den_;
+      bool sigma_2_only_;
+      bool discard_weights_;
       array_of_wtprs_t array_of_wtprs_;
   };
 
