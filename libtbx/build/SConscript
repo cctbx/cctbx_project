@@ -82,8 +82,8 @@ else:
   env_etc.extension_module_suffix = ".so"
   env_etc.libm = ["m"]
   if (env_etc.compiler == "tru64_cxx"):
-    env_etc.static_libraries = 1
-    env_etc.static_bpl = 1
+    env_etc.static_libraries = 0
+    env_etc.static_bpl = 0
     cxx = "cxx -model ansi"
     env_base.Replace(
       CXX=cxx,
