@@ -170,6 +170,9 @@ namespace cctbx { namespace af {
     shared_wrapper(PyObject* self, std::size_t n)
       : sh_t(n)
     {}
+    shared_wrapper(PyObject* self, std::size_t n, ElementType const& x)
+      : sh_t(n, x)
+    {}
     shared_wrapper(PyObject* self, boost::python::tuple tuple)
       : sh_t(tuple.size())
     {
@@ -365,6 +368,7 @@ namespace cctbx { namespace af {
 
       py_shared.def(constructor<>());
       py_shared.def(constructor<std::size_t>());
+      py_shared.def(constructor<std::size_t, ElementType const&>());
       py_shared.def(constructor<tuple>());
       py_shared.def(size, "size");
       py_shared.def(size, "__len__");
