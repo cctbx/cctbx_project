@@ -1,4 +1,4 @@
-import os.path
+import os
 
 def norm_join(path1, path2):
   return os.path.normpath(os.path.join(path1, path2))
@@ -6,7 +6,7 @@ def norm_join(path1, path2):
 def join_open(path1, path2, mode):
   path = norm_join(path1, path2)
   if (mode == "w"):
-    print "Generating:", path
+    print "     ", path2
   return open(path, mode)
 
 def write_this_is_auto_generated(f, file_name_generator):

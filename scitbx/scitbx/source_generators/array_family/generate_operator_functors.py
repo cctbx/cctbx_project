@@ -1,5 +1,5 @@
 from scitbx.source_generators.array_family import operator_functor_info
-from scitbx.source_generators.utils import write_this_is_auto_generated
+from scitbx.source_generators import utils
 import sys, os
 
 this = "scitbx.source_generators.array_family.generate_operator_functors"
@@ -41,11 +41,8 @@ def generate_in_place_binary(f, name, op):
   };""" % (name, op)
 
 def run(target_dir):
-  output_file_name = os.path.normpath(os.path.join(
-    target_dir, "operator_functors.h"))
-  print "Generating:", output_file_name
-  f = open(output_file_name, "w")
-  write_this_is_auto_generated(f, this)
+  f = utils.join_open(target_dir, "detail/operator_functors.h", "w")
+  utils.write_this_is_auto_generated(f, this)
   print >> f, """\
 #ifndef SCITBX_ARRAY_FAMILY_OPERATOR_FUNCTORS_H
 #define SCITBX_ARRAY_FAMILY_OPERATOR_FUNCTORS_H

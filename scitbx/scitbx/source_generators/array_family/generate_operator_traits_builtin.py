@@ -1,4 +1,4 @@
-from scitbx.source_generators.utils import write_this_is_auto_generated
+from scitbx.source_generators import utils
 import sys, os
 
 this = "scitbx.source_generators.array_family.generate_operator_traits_builtin"
@@ -51,11 +51,8 @@ def run(target_dir):
       print >> f, "%s + %s = %s" % (
         op_types[i].lhs, op_types[i].rhs, result_type[i])
   else:
-    output_file_name = os.path.normpath(os.path.join(
-      target_dir, "operator_traits_builtin.h"))
-    print "Generating:", output_file_name
-    f = open(output_file_name, "w")
-    write_this_is_auto_generated(f, this)
+    f = utils.join_open(target_dir, "operator_traits_builtin.h", "w")
+    utils.write_this_is_auto_generated(f, this)
     print >> f, """\
 #ifndef SCITBX_ARRAY_FAMILY_OPERATOR_TRAITS_BUILTIN_H
 #define SCITBX_ARRAY_FAMILY_OPERATOR_TRAITS_BUILTIN_H

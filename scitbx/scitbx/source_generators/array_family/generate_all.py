@@ -10,9 +10,10 @@ def refresh(array_family):
   assert os.path.isdir(array_family)
   array_family_detail = os.path.join(array_family, "detail")
   assert os.path.isdir(array_family_detail)
+  print '  Generating C++ header files in:\n    "%s"' % array_family
   generate_reductions.run(array_family)
-  generate_std_imports.run(array_family_detail)
-  generate_operator_functors.run(array_family_detail)
+  generate_std_imports.run(array_family)
+  generate_operator_functors.run(array_family)
   generate_operator_traits_builtin.run(array_family)
   generate_algebras.run(array_family)
   generate_apply.run(array_family)
