@@ -19,6 +19,7 @@
 
 namespace cctbx { namespace sgtbx {
 
+  //! Container for symmetrically equivalent coordinates.
   template <typename FloatType=double>
   class sym_equiv_sites
   {
