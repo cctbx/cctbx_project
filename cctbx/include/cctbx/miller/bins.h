@@ -85,10 +85,9 @@ namespace cctbx { namespace miller {
 
       uctbx::UnitCell unit_cell_;
       af::shared<double> limits_;
-      double span_;
   };
 
-  class binner
+  class binner : public binning
   {
     public:
       binner() {}

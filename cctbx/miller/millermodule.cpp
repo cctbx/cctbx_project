@@ -350,8 +350,12 @@ namespace {
 
     py_IndexTableLayoutAdaptor.declare_base(
       py_SymEquivIndex, python::without_downcast);
+
     py_AsymIndex.declare_base(
       py_SymEquivIndex, python::without_downcast);
+
+    py_binner.declare_base(
+      py_binning, python::without_downcast);
 
     py_SymEquivIndex.def(constructor<>());
     py_SymEquivIndex.def(
