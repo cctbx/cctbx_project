@@ -61,10 +61,12 @@ if (not env_etc.no_boost_python):
 
   if (env_etc.compiler == "darwin_c++"):
     env.Replace(SHLINK="libtbx.mac_os_x_ld_bpl_dll")
-    env.Prepend(SHLINKFLAGS=["c++", "-framework", "Python"])
+    env.Prepend(SHLINKFLAGS=[
+      "c++", "-F"+env_etc.darwin_framework_path(), "-framework", "Python"])
   elif (env_etc.compiler == "darwin_gcc"):
     env.Replace(SHLINK="libtbx.mac_os_x_ld_bpl_dll")
-    env.Prepend(SHLINKFLAGS=["g++", "-framework", "Python"])
+    env.Prepend(SHLINKFLAGS=[
+      "g++", "-F"+env_etc.darwin_framework_path(), "-framework", "Python"])
 
   jamfile_path = os.path.normpath(os.path.join(
     env_etc.boost_dist, "libs/python/build/Jamfile"))
