@@ -337,6 +337,16 @@ def exercise_select():
   assert tuple(a.select(b)) == (2,5,3)
   b = flex.size_t((2,4,1,2,4))
   assert tuple(a.select(b)) == (3,5,2,3,5)
+  a = flex.size_t((1,2,3))
+  for i in xrange(3):
+    for expected in ([1, 2, 3],
+                     [1, 3, 2],
+                     [2, 1, 3],
+                     [2, 3, 1],
+                     [3, 1, 2],
+                     [3, 2, 1]):
+      assert list(a) == expected
+      assert a.next_permutation() == (expected != [3, 2, 1])
 
 def exercise_operators():
   a = flex.bool((0, 1, 0, 1))
