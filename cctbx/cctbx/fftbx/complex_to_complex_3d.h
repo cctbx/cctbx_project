@@ -49,39 +49,39 @@ namespace cctbx { namespace fftbx {
       //! In-place "forward" Fourier transformation.
       /*! See also: complex_to_complex
        */
-      template <typename NdimAccessor>
-      void forward(NdimAccessor Map) {
+      template <typename VecRefNdType>
+      void forward(VecRefNdType Map) {
         transform(select_sign<forward_tag>(), Map);
       }
       //! In-place "backward" Fourier transformation.
       /*! See also: complex_to_complex
        */
-      template <typename NdimAccessor>
-      void backward(NdimAccessor Map) {
+      template <typename VecRefNdType>
+      void backward(VecRefNdType Map) {
         transform(select_sign<backward_tag>(), Map);
       }
     protected:
       // This accepts complex or real maps.
-      template <typename Tag, typename NdimAccessor>
-      void transform(select_sign<Tag> tag, NdimAccessor Map) {
-        typedef typename NdimAccessor::value_type real_or_complex_type;
+      template <typename Tag, typename VecRefNdType>
+      void transform(select_sign<Tag> tag, VecRefNdType Map) {
+        typedef typename VecRefNdType::value_type real_or_complex_type;
         transform(tag, Map, real_or_complex_type());
       }
       // Cast map of real to map of complex.
-      template <typename Tag, typename NdimAccessor>
-      void transform(select_sign<Tag> tag, NdimAccessor Map, real_type) {
-        if (Map.elems[2] % 2 != 0) {
+      template <typename Tag, typename VecRefNdType>
+      void transform(select_sign<Tag> tag, VecRefNdType Map, real_type) {
+        if (Map.dimension()[2] % 2 != 0) {
           throw error("Number of elements in third dimension must be even.");
         }
-        typedef typename NdimAccessor::dimension_type dim_type;
-        dim_type dim(Map.elems[0], Map.elems[1], Map.elems[2] / 2);
-        ndim_accessor<dim_type, complex_type*, complex_type>
-        cmap(dim, reinterpret_cast<complex_type*>(&Map[triple(0,0,0)]));
+        typedef typename VecRefNdType::dimension_type dim_type;
+        dim_type
+        dim(Map.dimension()[0], Map.dimension()[1], Map.dimension()[2] / 2);
+        vecrefnd<complex_type, dim_type> cmap(Map.cast(), dim);
         transform(tag, cmap, complex_type());
       }
       // Core routine always works on complex maps.
-      template <typename Tag, typename NdimAccessor>
-      void transform(select_sign<Tag> tag, NdimAccessor Map, complex_type) {
+      template <typename Tag, typename VecRefNdType>
+      void transform(select_sign<Tag> tag, VecRefNdType Map, complex_type) {
   // FUTURE: move out of class body
   {
     complex_type* Seq = &(*(m_Seq.begin()));
@@ -89,30 +89,30 @@ namespace cctbx { namespace fftbx {
       for (std::size_t iy = 0; iy < m_fft1d[1].N(); iy++) {
         std::size_t ix;
         for (ix = 0; ix < m_fft1d[0].N(); ix++) {
-          Seq[ix] = Map[triple(ix, iy, iz)];
+          Seq[ix] = Map(triple(ix, iy, iz));
         }
         // Transform along x (slow direction)
         m_fft1d[0].transform(tag, Seq);
         for (ix = 0; ix < m_fft1d[0].N(); ix++) {
-          Map[triple(ix, iy, iz)] = Seq[ix];
+          Map(triple(ix, iy, iz)) = Seq[ix];
         }
       }
       for (std::size_t ix = 0; ix < m_fft1d[0].N(); ix++) {
         std::size_t iy;
         for (iy = 0; iy < m_fft1d[1].N(); iy++) {
-          Seq[iy] = Map[triple(ix, iy, iz)];
+          Seq[iy] = Map(triple(ix, iy, iz));
         }
         // Transform along y (medium direction)
         m_fft1d[1].transform(tag, Seq);
         for (iy = 0; iy < m_fft1d[1].N(); iy++) {
-          Map[triple(ix, iy, iz)] = Seq[iy];
+          Map(triple(ix, iy, iz)) = Seq[iy];
         }
       }
     }
     for (std::size_t ix = 0; ix < m_fft1d[0].N(); ix++) {
       for (std::size_t iy = 0; iy < m_fft1d[1].N(); iy++) {
         // Transform along z (fast direction)
-        m_fft1d[2].transform(tag, &Map[triple(ix, iy, 0)]);
+        m_fft1d[2].transform(tag, &Map(triple(ix, iy, 0)));
       }
     }
   }

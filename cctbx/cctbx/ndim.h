@@ -12,6 +12,7 @@
 #define CCTBX_NDIM_H
 
 #include <algorithm>
+#include <cctbx/vecref.h>
 #include <cctbx/vector/reductions.h>
 
 namespace cctbx {
@@ -69,7 +70,7 @@ namespace cctbx {
         elems[2] = n2;
       }
 
-      std::size_t N1d() const { return cctbx::vector::product(*this); }
+      std::size_t size1d() const { return cctbx::vector::product(*this); }
 
       template <typename IndexTuple>
       std::size_t operator()(const IndexTuple& I) const {
@@ -87,31 +88,33 @@ namespace cctbx {
       }
   };
 
-  template <typename DimensionType,
-            typename IteratorType,
-            typename ValueType = typename IteratorType::value_type>
-  class ndim_accessor : public DimensionType {
+  template <typename ValueType, typename DimensionType>
+  class vecrefnd : public vecref<ValueType>
+  {
     public:
-      typedef DimensionType dimension_type;
-      typedef IteratorType iterator_type;
       typedef ValueType value_type;
+      typedef DimensionType dimension_type;
 
-      ndim_accessor() {}
-      ndim_accessor(const dimension_type& dim,
-                    const iterator_type& start)
-        : dimension_type(dim),
-          m_start(start)
+      vecrefnd() {}
+      template <typename IteratorOrPointerType>
+      vecrefnd(IteratorOrPointerType begin, const dimension_type& dimension)
+        : vecref<ValueType>(begin, dimension.size1d()),
+          m_dimension(dimension)
+      {}
+      vecrefnd(void* begin, const dimension_type& dimension)
+        : vecref<ValueType>(begin, dimension.size1d()),
+          m_dimension(dimension)
       {}
 
-      const iterator_type& start() const { return m_start; }
+      const dimension_type& dimension() const { return m_dimension; }
 
       template <typename IndexTuple>
-      value_type& operator[](const IndexTuple& I) const {
-        return m_start[operator()(I)];
+      value_type& operator()(const IndexTuple& I) const {
+        return m_begin[m_dimension(I)];
       }
 
     protected:
-      iterator_type m_start;
+      dimension_type m_dimension;
   };
 
 }

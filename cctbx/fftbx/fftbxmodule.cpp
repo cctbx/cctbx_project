@@ -30,18 +30,16 @@ namespace {
   }
 
   template <typename ElementType, typename CastElementType>
-  struct v3d_accessor
-    : public ndim_accessor<dimension_end<3>, ElementType*, ElementType>
+  struct v3d_accessor : public vecrefnd<ElementType, dimension_end<3> >
   {
     v3d_accessor() {}
     v3d_accessor(const boost::array<std::size_t, 3>& dim,
                  std::vector<ElementType>& vec,
                  bool resize_vector)
-      : ndim_accessor<dimension_end<3>, ElementType*, ElementType>
-          (dim, 0)
+      : vecrefnd<ElementType, dimension_end<3> >((void*) 0, dim)
     {
-      if (resize_vector) vec.resize(N1d());
-      m_start = &(*(vec.begin()));
+      if (resize_vector) vec.resize(dimension().size1d());
+      m_begin = &(*(vec.begin()));
     }
     v3d_accessor(const boost::array<std::size_t, 3>& dim,
                  std::vector<CastElementType>& vec,
@@ -50,13 +48,12 @@ namespace {
                  , bool MSVC_DUMMY = false
 #endif
                 )
-      : ndim_accessor<dimension_end<3>, ElementType*, ElementType>
-          (dim, 0)
+      : vecrefnd<ElementType, dimension_end<3> >((void*) 0, dim)
     {
       std::size_t se = sizeof(ElementType);
       std::size_t sc = sizeof(CastElementType);
       if (se >= sc) {
-        if (resize_vector) vec.resize(N1d() * se / sc);
+        if (resize_vector) vec.resize(dimension().size1d() * se / sc);
       }
       else {
         if (dim[2] % (sc / se)) {
@@ -65,19 +62,19 @@ namespace {
             " number of elements in third dimension must be even.");
           throw boost::python::error_already_set();
         }
-        if (resize_vector) vec.resize(N1d() * se / sc);
+        if (resize_vector) vec.resize(dimension().size1d() * se / sc);
       }
-      m_start = reinterpret_cast<ElementType*>(&(*(vec.begin())));
+      m_begin = reinterpret_cast<ElementType*>(&(*(vec.begin())));
     }
     ElementType
     getitem(const boost::array<std::size_t, 3>& I) const {
-      if (!is_valid_index(I)) throw_index_error();
-      return operator[](I);
+      if (!dimension().is_valid_index(I)) throw_index_error();
+      return operator()(I);
     }
     void setitem(const boost::array<std::size_t, 3>& I,
                  ElementType value) {
-      if (!is_valid_index(I)) throw_index_error();
-      operator[](I) = value;
+      if (!dimension().is_valid_index(I)) throw_index_error();
+      operator()(I) = value;
     }
   };
 
