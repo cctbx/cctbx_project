@@ -6,6 +6,7 @@
 #include <cctbx/sgtbx/site_symmetry_table.h>
 #include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/accessors/flex_grid.h>
+#include <cstdio>
 
 namespace cctbx { namespace xray {
 
