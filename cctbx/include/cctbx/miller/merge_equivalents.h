@@ -104,7 +104,7 @@ namespace cctbx { namespace miller {
             scitbx::math::mean_and_variance<FloatType> mv(
               data_group, weights_group);
             data_.push_back(mv.mean());
-            sigmas_.push_back(mv.standard_deviation());
+            sigmas_.push_back(mv.conservative_standard_deviation());
           }
         }
         redundancies_.push_back(n);
