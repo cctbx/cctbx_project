@@ -53,14 +53,19 @@ cstdlib_1arg = (
 
 class empty: pass
 
-def line_breaks(indent, str, max_line_length = 79):
+def format_header(indent, str, max_line_length = 79):
   maxlen = max_line_length - len(indent)
   extra_indent = ""
   lei = len(extra_indent)
   result = ""
   rest = str.strip()
   while (lei + len(rest) > maxlen):
-    i = rest[:maxlen-lei].rindex(",")
+    if (lei == 0):
+      i = rest.index("<")
+    else:
+      i = rest.index(",")
+      try: i += rest[i+1:].index(",") + 1
+      except: pass
     result += indent + extra_indent + rest[:i+1] + '\n'
     extra_indent = "  "
     lei = 2
@@ -212,7 +217,7 @@ def elementwise_binary_op(
     %sfor(std::size_t i=0;i<%s;i++) result[i] = a1%s %s a2%s;
     return result;
   }
-""" % (line_breaks("  ", d.header),
+""" % (format_header("  ", d.header),
        format_list("  ", d.return_array_type),
        function_name, d.params[0], d.params[1],
        format_list("    ", d.return_array_type),
@@ -232,7 +237,7 @@ def elementwise_inplace_binary_op(
     %sfor(std::size_t i=0;i<%s;i++) a1[i] %s a2%s;
     return a1;
   }
-""" % (line_breaks("  ", d.header),
+""" % (format_header("  ", d.header),
        d.params[0],
        op_symbol, d.params[0], d.params[1],
        a.size_assert, a.loop_n,
@@ -297,7 +302,7 @@ def reducing_boolean_op(array_type_name, op_symbol, type_flags):
     }
     return %s() %s %s();
   }
-""" % (line_breaks("  ", d.header),
+""" % (format_header("  ", d.header),
        format_list("  ", d.return_element_type),
        op_symbol, d.params[0], d.params[1],
        a.size_assert, a.loop_n, tests,
@@ -321,7 +326,7 @@ def generate_unary_ops(array_type_name):
     for(std::size_t i=0;i<a.size();i++) result[i] = %sa[i];
     return result;
   }
-""" % (line_breaks("  ", d.header),
+""" % (format_header("  ", d.header),
        format_list("  ", d.return_array_type),
        op_symbol, d.params[0],
        format_list("    ", d.return_array_type),
@@ -337,7 +342,7 @@ def generate_1arg_reductions(array_type_name):
   %s(const %s& a) {
     return %s(a.const_ref());
   }
-""" % (line_breaks("  ", hp.header),
+""" % (format_header("  ", hp.header),
        function_name, hp.params[0],
        function_name)
 
@@ -352,7 +357,7 @@ def generate_2arg_reductions(array_type_name):
     const %s& a2) {
     return %s(a1.const_ref(), a2.const_ref());
   }
-""" % (line_breaks("  ", hp.header),
+""" % (format_header("  ", hp.header),
        function_name, hp.params[0], hp.params[1],
        function_name)
 
@@ -369,7 +374,7 @@ def generate_1arg_element_wise(array_type_name, prefix, function_names):
     for(std::size_t i=0;i<a.size();i++) result[i] = %s(a[i]);
     return result;
   }
-""" % (line_breaks("  ", hp.header), rt,
+""" % (format_header("  ", hp.header), rt,
        function_name, hp.params[0],
        rt, result_constructor_args,
        prefix + function_name)
@@ -396,7 +401,7 @@ def generate_2arg_element_wise(
     }
     return result;
   }
-""" % (line_breaks("  ", hp.header), rt,
+""" % (format_header("  ", hp.header), rt,
        function_name, hp.params[0], hp.params[1], addl_args[0],
        rt, result_constructor_args,
        prefix + function_name, addl_args[1])
