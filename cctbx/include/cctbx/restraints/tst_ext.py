@@ -56,7 +56,7 @@ def exercise_bond():
   pair_generator = crystal.neighbors_fast_pair_generator(
     asu_mappings=asu_mappings,
     distance_cutoff=5)
-  p = restraints.bond_sym_proxy(
+  p = restraints.bond_asu_proxy(
     pair=pair_generator.next(),
     distance_ideal=2,
     weight=10)
@@ -69,7 +69,7 @@ def exercise_bond():
   assert p.as_direct_proxy().i_seqs == (0,1)
   assert approx_equal(p.as_direct_proxy().distance_ideal, 2)
   assert approx_equal(p.as_direct_proxy().weight, 10)
-  sym_proxies = restraints.shared_bond_sym_proxy([p,p])
+  sym_proxies = restraints.shared_bond_asu_proxy([p,p])
   for proxy in sym_proxies:
     assert approx_equal(proxy.distance_ideal, 2)
   assert approx_equal(
@@ -190,7 +190,7 @@ def exercise_repulsion():
   pair_generator = crystal.neighbors_fast_pair_generator(
     asu_mappings=asu_mappings,
     distance_cutoff=5)
-  p = restraints.repulsion_sym_proxy(
+  p = restraints.repulsion_asu_proxy(
     pair=pair_generator.next(),
     vdw_radius=2)
   assert pair_generator.at_end()
@@ -201,7 +201,7 @@ def exercise_repulsion():
   p.vdw_radius = 3
   assert approx_equal(p.vdw_radius, 3)
   p.vdw_radius = 2
-  sym_proxies = restraints.shared_repulsion_sym_proxy([p,p])
+  sym_proxies = restraints.shared_repulsion_asu_proxy([p,p])
   for proxy in sym_proxies:
     assert approx_equal(proxy.vdw_radius, 2)
     proxy.vdw_radius = 3

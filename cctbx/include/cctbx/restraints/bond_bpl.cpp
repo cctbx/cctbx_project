@@ -37,16 +37,16 @@ namespace {
     }
   };
 
-  struct bond_sym_proxy_wrappers
+  struct bond_asu_proxy_wrappers
   {
-    typedef bond_sym_proxy w_t;
+    typedef bond_asu_proxy w_t;
 
     static void
     wrap()
     {
       using namespace boost::python;
       typedef boost::python::arg arg_; // gcc 2.96 workaround
-      class_<w_t>("bond_sym_proxy", no_init)
+      class_<w_t>("bond_asu_proxy", no_init)
         .def(init<
           direct_space_asu::asu_mapping_index_pair const&,
           double,
@@ -59,7 +59,7 @@ namespace {
       ;
       {
         scitbx::af::boost_python::shared_wrapper<w_t>::wrap(
-          "shared_bond_sym_proxy");
+          "shared_bond_asu_proxy");
       }
     }
   };
@@ -82,7 +82,7 @@ namespace {
           (arg_("sites_cart"), arg_("proxy"))))
         .def(init<af::const_ref<scitbx::vec3<double> > const&,
                   direct_space_asu::asu_mappings<> const&,
-                  bond_sym_proxy const&>(
+                  bond_asu_proxy const&>(
           (arg_("sites_cart"), arg_("asu_mappings"), arg_("proxy"))))
         .add_property("sites", make_getter(&w_t::sites, rbv()))
         .def_readonly("distance_ideal", &w_t::distance_ideal)
@@ -113,10 +113,10 @@ namespace {
         .def("process", (bool(w_t::*)(bond_proxy const&)) &w_t::process,
           (arg_("proxy")))
         .def("process",
-          (bool(w_t::*)(bond_sym_proxy const&)) &w_t::process,
+          (bool(w_t::*)(bond_asu_proxy const&)) &w_t::process,
             (arg_("proxy")))
         .def("push_back",
-          (void(w_t::*)(bond_sym_proxy const&)) &w_t::push_back,
+          (void(w_t::*)(bond_asu_proxy const&)) &w_t::push_back,
             (arg_("proxy")))
         .def("n_total", &w_t::n_total)
         .def_readonly("proxies", &w_t::proxies)
@@ -136,7 +136,7 @@ namespace {
     using namespace boost::python;
     typedef boost::python::arg arg_; // gcc 2.96 workaround
     bond_proxy_wrappers::wrap();
-    bond_sym_proxy_wrappers::wrap();
+    bond_asu_proxy_wrappers::wrap();
     bond_wrappers::wrap();
     bond_sorted_proxies_wrappers::wrap();
     def("bond_deltas",
@@ -162,21 +162,21 @@ namespace {
       (af::shared<double>(*)(
         af::const_ref<scitbx::vec3<double> > const&,
         direct_space_asu::asu_mappings<> const&,
-        af::const_ref<bond_sym_proxy> const&))
+        af::const_ref<bond_asu_proxy> const&))
       bond_deltas,
       (arg_("sites_cart"), arg_("asu_mappings"), arg_("proxies")));
     def("bond_residuals",
       (af::shared<double>(*)(
         af::const_ref<scitbx::vec3<double> > const&,
         direct_space_asu::asu_mappings<> const&,
-        af::const_ref<bond_sym_proxy> const&))
+        af::const_ref<bond_asu_proxy> const&))
       bond_residuals,
       (arg_("sites_cart"), arg_("asu_mappings"), arg_("proxies")));
     def("bond_residual_sum",
       (double(*)(
         af::const_ref<scitbx::vec3<double> > const&,
         direct_space_asu::asu_mappings<> const&,
-        af::const_ref<bond_sym_proxy> const&,
+        af::const_ref<bond_asu_proxy> const&,
         af::ref<scitbx::vec3<double> > const&,
         bool)) bond_residual_sum,
       bond_residual_sum_overloads_1((

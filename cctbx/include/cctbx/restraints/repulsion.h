@@ -22,11 +22,11 @@ namespace cctbx { namespace restraints {
     double vdw_radius;
   };
 
-  struct repulsion_sym_proxy
+  struct repulsion_asu_proxy
   {
-    repulsion_sym_proxy() {}
+    repulsion_asu_proxy() {}
 
-    repulsion_sym_proxy(
+    repulsion_asu_proxy(
       direct_space_asu::asu_mapping_index_pair const& pair_,
       double vdw_radius_)
     :
@@ -141,7 +141,7 @@ namespace cctbx { namespace restraints {
       repulsion(
         af::const_ref<scitbx::vec3<double> > const& sites_cart,
         direct_space_asu::asu_mappings<> const& asu_mappings,
-        repulsion_sym_proxy const& proxy,
+        repulsion_asu_proxy const& proxy,
         repulsion_function const& function_=repulsion_function())
       :
         vdw_radius(proxy.vdw_radius),
@@ -157,7 +157,7 @@ namespace cctbx { namespace restraints {
       // Not available in Python.
       repulsion(
         asu_cache<> const& cache,
-        repulsion_sym_proxy const& proxy,
+        repulsion_asu_proxy const& proxy,
         repulsion_function const& function_=repulsion_function())
       :
         vdw_radius(proxy.vdw_radius),
@@ -298,7 +298,7 @@ namespace cctbx { namespace restraints {
   repulsion_deltas(
     af::const_ref<scitbx::vec3<double> > const& sites_cart,
     direct_space_asu::asu_mappings<> const& asu_mappings,
-    af::const_ref<repulsion_sym_proxy> const& proxies,
+    af::const_ref<repulsion_asu_proxy> const& proxies,
     repulsion_function const& function=repulsion_function())
   {
     af::shared<double> result((af::reserve(sites_cart.size())));
@@ -314,7 +314,7 @@ namespace cctbx { namespace restraints {
   repulsion_residuals(
     af::const_ref<scitbx::vec3<double> > const& sites_cart,
     direct_space_asu::asu_mappings<> const& asu_mappings,
-    af::const_ref<repulsion_sym_proxy> const& proxies,
+    af::const_ref<repulsion_asu_proxy> const& proxies,
     repulsion_function const& function=repulsion_function())
   {
     af::shared<double> result((af::reserve(sites_cart.size())));
@@ -331,7 +331,7 @@ namespace cctbx { namespace restraints {
   repulsion_residual_sum(
     af::const_ref<scitbx::vec3<double> > const& sites_cart,
     direct_space_asu::asu_mappings<> const& asu_mappings,
-    af::const_ref<repulsion_sym_proxy> const& proxies,
+    af::const_ref<repulsion_asu_proxy> const& proxies,
     std::vector<bool> const& sym_active_flags,
     af::ref<scitbx::vec3<double> > const& gradient_array,
     repulsion_function const& function=repulsion_function(),
@@ -374,7 +374,7 @@ namespace cctbx { namespace restraints {
   repulsion_residual_sum(
     af::const_ref<scitbx::vec3<double> > const& sites_cart,
     direct_space_asu::asu_mappings<> const& asu_mappings,
-    af::const_ref<repulsion_sym_proxy> const& proxies,
+    af::const_ref<repulsion_asu_proxy> const& proxies,
     af::ref<scitbx::vec3<double> > const& gradient_array,
     repulsion_function const& function=repulsion_function(),
     bool disable_cache=false)
@@ -393,7 +393,7 @@ namespace cctbx { namespace restraints {
       disable_cache);
   }
 
-  typedef sorted_proxies<repulsion_proxy, repulsion_sym_proxy>
+  typedef sorted_proxies<repulsion_proxy, repulsion_asu_proxy>
     repulsion_sorted_proxies;
 
   inline
