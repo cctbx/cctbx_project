@@ -2,11 +2,11 @@ from cctbx import miller
 from cctbx import crystal
 from cctbx import sgtbx
 from cctbx.array_family import flex
-import os
+import sys, os
 
 from iotbx_boost import scalepack_ext
 
-class no_merge_original_index_file:
+class reader:
 
   # scalepack manual, edition 5, page 132
   # no merge
@@ -20,7 +20,7 @@ class no_merge_original_index_file:
   # spindle), the asymmetric unit of the reflection, I (scaled, Lorentz
   # and Polarization corrected), and the s of I. The format is
   # (6i4, i6, 2i2, i3, 2f8.1).
-  # 
+  #
   #    orig. hkl   uniq. hkl    b# c s  a       I    sigI
   #    0   0   3   0   0   3    14 0 0  1    -1.8     1.3
 
@@ -65,7 +65,7 @@ class no_merge_original_index_file:
 def quick_test(file_name):
   from scitbx.python_utils.misc import user_plus_sys_time
   t = user_plus_sys_time()
-  s = no_merge_original_index_file(file_name)
+  s = reader(file_name)
   print "Time read:", t.delta()
   print tuple(s.original_indices[:3])
   print tuple(s.unique_indices[:3])
@@ -90,27 +90,30 @@ def quick_test(file_name):
   print "mean redundancies:", flex.mean(m.redundancies().as_double())
   print
 
-def run():
+def run(args):
   file_names = """
-/net/redbelly/lbnl1/share/structure-lib/p9/data/infl.sca
-/net/redbelly/lbnl1/share/structure-lib/p9/data/peak.sca
-/net/redbelly/lbnl1/share/structure-lib/p9/data/high.sca
-/net/redbelly/lbnl1/share/structure-lib/rh-dehalogenase/data/auki_rd_1.sca
-/net/redbelly/lbnl1/share/structure-lib/rh-dehalogenase/data/hgi2_rd_1.sca
-/net/redbelly/lbnl1/share/structure-lib/rh-dehalogenase/data/hgki_rd_1.sca
-/net/redbelly/lbnl1/share/structure-lib/rh-dehalogenase/data/ndac_rd_1.sca
-/net/redbelly/lbnl1/share/structure-lib/rh-dehalogenase/data/rt_rd_1.sca
-/net/redbelly/lbnl1/share/structure-lib/rh-dehalogenase/data/smac_1.sca
-/net/redbelly/lbnl1/share/structure-lib/vmp/data/infl.sca
-/net/redbelly/lbnl1/share/structure-lib/vmp/data/peak.sca
-/net/redbelly/lbnl1/share/structure-lib/vmp/data/high.sca
-/net/redbelly/scratch1/rwgk/bnl_2003/karen/shelxd/p123-unmerged.sca
-/net/redbelly/scratch1/rwgk/bnl_2003/karen/shelxd/pk1-unmerged.sca
-/net/redbelly/scratch1/rwgk/bnl_2003/karen/shelxd/pk12-unmerged.sca
-/net/redbelly/scratch1/rwgk/bnl_2003/karen/shelxd/pk1234-unmerged.sca""".split()
+lbnl1/share/structure-lib/p9/data/infl.sca
+lbnl1/share/structure-lib/p9/data/peak.sca
+lbnl1/share/structure-lib/p9/data/high.sca
+lbnl1/share/structure-lib/rh-dehalogenase/data/auki_rd_1.sca
+lbnl1/share/structure-lib/rh-dehalogenase/data/hgi2_rd_1.sca
+lbnl1/share/structure-lib/rh-dehalogenase/data/hgki_rd_1.sca
+lbnl1/share/structure-lib/rh-dehalogenase/data/ndac_rd_1.sca
+lbnl1/share/structure-lib/rh-dehalogenase/data/rt_rd_1.sca
+lbnl1/share/structure-lib/rh-dehalogenase/data/smac_1.sca
+lbnl1/share/structure-lib/vmp/data/infl.sca
+lbnl1/share/structure-lib/vmp/data/peak.sca
+lbnl1/share/structure-lib/vmp/data/high.sca
+bnl_2003/karen/shelxd/p123-unmerged.sca
+bnl_2003/karen/shelxd/pk1-unmerged.sca
+bnl_2003/karen/shelxd/pk12-unmerged.sca
+bnl_2003/karen/shelxd/pk1234-unmerged.sca""".split()
   for file_name in file_names:
-    print "File name:", file_name
-    quick_test(file_name)
+    for root_dir in args:
+      fn = root_dir + "/" + file_name
+      if (os.path.isfile(fn)):
+        print "File name:", fn
+        quick_test(fn)
 
 if (__name__ == "__main__"):
-  run()
+  run(sys.argv[1:])
