@@ -816,8 +816,8 @@ namespace cctbx { namespace sgtbx {
           fractional<FloatType> diff = Y - m_Coordinates[i];
           diff = diff.modShort();
           fractional<FloatType> diff_unallowed = diff;
-          for (std::size_t i=0;i<3;i++) {
-            if (continuous_shift_flags[i]) diff_unallowed[i] = FloatType(0);
+          for (std::size_t j=0;j<3;j++) {
+            if (continuous_shift_flags[j]) diff_unallowed[j] = FloatType(0);
           }
           FloatType dist2 = uc.Length2(diff_unallowed);
           if (shortest_dist2 > dist2 || i == 0) {
