@@ -1,10 +1,10 @@
-from cctbx.array_family import flex
-from cctbx import mintbx
 from cctbx import miller
 from cctbx import adptbx
-from scitbx import lbfgs
+from cctbx import mintbx
+from cctbx.array_family import flex
 from cctbx.development import debug_utils
 from cctbx.development import random_structure
+from scitbx import lbfgs
 from scitbx.python_utils.misc import adopt_init_args
 import sys
 

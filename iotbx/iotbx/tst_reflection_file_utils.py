@@ -1,5 +1,5 @@
-from iotbx.reflection_file_utils import reflection_file_server
 from iotbx import reflection_file_reader
+from iotbx.reflection_file_utils import reflection_file_server
 from iotbx import mtz
 from cctbx import miller
 from cctbx import crystal

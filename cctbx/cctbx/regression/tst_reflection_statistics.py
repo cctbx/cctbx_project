@@ -1,3 +1,4 @@
+from cctbx.development import debug_utils
 from cctbx import miller
 from cctbx import crystal
 from cctbx import sgtbx
@@ -5,7 +6,6 @@ import cctbx.sgtbx.lattice_symmetry
 import cctbx.sgtbx.bravais_types
 import cctbx.sgtbx.subgroups
 import cctbx.sgtbx.cosets
-from cctbx.development import debug_utils
 from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
 import random
