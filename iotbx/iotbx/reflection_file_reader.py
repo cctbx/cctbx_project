@@ -76,6 +76,8 @@ class any_reflection_file:
           try:
             for miller_array in self._file_content:
               if (isinstance(miller_array, miller.array)):
+                if (hasattr(miller_array.info(), "source")):
+                  miller_array.info().source = os.path.abspath(self._file_name)
                 miller_arrays.append(miller_array)
           except:
             pass
