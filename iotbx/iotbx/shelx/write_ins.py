@@ -40,6 +40,9 @@ def shelxd(s, title, crystal_symmetry, n_sites, scatterer_label, d_min):
   print >> s, "PATS  np  100   npt     99999   nf     5"
   print >> s, "FIND", n_sites
   print >> s, "MIND -3.5"
+  if (n_sites >= 10): # following advice in shelx-de.pdf manual
+    print >> s, "WEED 0.3"
+    print >> s, "SKIP 0.5"
   print >> s, "NTRY 100"
   print >> s, "HKLF 3"
   print >> s, "END"
