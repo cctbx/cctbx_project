@@ -36,7 +36,7 @@ for HallSymbol in table_hall:
     HSym = HallSymbol[0] + Z + HallSymbol[2:]
     SgOps = sgtbx.SpaceGroup(HSym)
     SgNumber = SgOps.Info().SgNumber()
-    RefSgOps = sgtbx.SpaceGroup(sgtbx.SpaceGroupSymbols(SgNumber).Hall())
+    RefSgOps = sgtbx.SpaceGroup(sgtbx.SpaceGroupSymbols(SgNumber))
     if (SgNumber < 75):
       RotOps = sgtbx.SpaceGroup('P 1')
     else:
@@ -75,5 +75,5 @@ for HallSymbol in table_hall:
         else:
           print "LookupSymbol:", l
           if (not QuickMode):
-            assert s == sgtbx.SpaceGroup(sgtbx.SpaceGroupSymbols(l).Hall())
+            assert s == sgtbx.SpaceGroup(sgtbx.SpaceGroupSymbols(l))
       print

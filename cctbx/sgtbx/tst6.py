@@ -30,7 +30,7 @@ def OneCycle():
     HSym = SgSymbols.Hall()
     SgOps = sgtbx.SpaceGroup(HSym)
     SgNumber = SgOps.Info().SgNumber()
-    RefSgOps = sgtbx.SpaceGroup(sgtbx.SpaceGroupSymbols(SgNumber).Hall())
+    RefSgOps = sgtbx.SpaceGroup(sgtbx.SpaceGroupSymbols(SgNumber))
     if (SgNumber < 75):
       RotOps = sgtbx.SpaceGroup('P 1')
     else:

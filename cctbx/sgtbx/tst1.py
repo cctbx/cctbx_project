@@ -92,7 +92,7 @@ cbop = sgtbx.ChOfBasisOp(sgtbx.RTMx("x+1/12,y+1/12,z+1/12"))
 iter = sgtbx.SpaceGroupSymbolIterator()
 #print iter.next().ExtendedHermann_Mauguin()
 for s in iter:
-  SgOps = sgtbx.SpaceGroup(s.Hall())#ChangeBasis(cbop)
+  SgOps = sgtbx.SpaceGroup(s)#ChangeBasis(cbop)
   SgInfo = SgOps.Info()
   ch1 = SgInfo.getChangeOfHandOp()
   print s.ExtendedHermann_Mauguin(), ch1.M()
