@@ -14,6 +14,14 @@ def exercise_bond():
   assert p.i_seqs == (0,1)
   assert approx_equal(p.distance_ideal, 3.5)
   assert approx_equal(p.weight, 1)
+  p.distance_ideal = 35
+  assert approx_equal(p.distance_ideal, 35)
+  p.distance_ideal = 3.5
+  assert approx_equal(p.distance_ideal, 3.5)
+  p.weight = 10
+  assert approx_equal(p.weight, 10)
+  p.weight = 1
+  assert approx_equal(p.weight, 1)
   b = restraints.bond(
     sites=[(1,2,3),(2,4,6)],
     distance_ideal=3.5,
@@ -38,6 +46,10 @@ def exercise_bond():
   proxies = restraints.shared_bond_proxy([p,p])
   for proxy in proxies:
     assert approx_equal(proxy.weight, 1)
+    proxy.weight = 12
+  for proxy in proxies:
+    assert approx_equal(proxy.weight, 12)
+    proxy.weight = 1
   assert approx_equal(restraints.bond_deltas(
     sites_cart=sites_cart,
     proxies=proxies), [-0.241657386774]*2)
@@ -66,12 +78,24 @@ def exercise_bond():
   assert p.pair.j_sym == 0
   assert approx_equal(p.distance_ideal, 2)
   assert approx_equal(p.weight, 10)
+  p.distance_ideal = 35
+  assert approx_equal(p.distance_ideal, 35)
+  p.distance_ideal = 2
+  assert approx_equal(p.distance_ideal, 2)
+  p.weight = 1
+  assert approx_equal(p.weight, 1)
+  p.weight = 10
+  assert approx_equal(p.weight, 10)
   assert p.as_direct_proxy().i_seqs == (0,1)
   assert approx_equal(p.as_direct_proxy().distance_ideal, 2)
   assert approx_equal(p.as_direct_proxy().weight, 10)
   sym_proxies = restraints.shared_bond_asu_proxy([p,p])
   for proxy in sym_proxies:
     assert approx_equal(proxy.distance_ideal, 2)
+    proxy.distance_ideal = -4
+  for proxy in sym_proxies:
+    assert approx_equal(proxy.distance_ideal, -4)
+    proxy.distance_ideal = 2
   assert approx_equal(
     restraints.bond_deltas(
       sites_cart=sites_cart,
