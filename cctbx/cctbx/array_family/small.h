@@ -22,13 +22,41 @@ namespace cctbx { namespace af {
     public:
       CCTBX_ARRAY_FAMILY_TYPEDEFS
 
-      CCTBX_ARRAY_FAMILY_SMALL_CONSTRUCTORS(small)
-      CCTBX_ARRAY_FAMILY_SMALL_COPY_AND_ASSIGNMENT(small)
-      CCTBX_ARRAY_FAMILY_TAKE_REF(this->elems, N)
+      typedef small_plain<ElementType, N> base_class;
+
+      small()
+      {}
+
+      explicit
+      small(const size_type& sz)
+        : base_class(sz)
+      {}
+
+      // non-std
+      small(const size_type& sz, reserve_flag)
+        : base_class(sz, reserve_flag())
+      {}
+
+      small(const size_type& sz, const ElementType& x)
+        : base_class(sz, x)
+      {}
+
+      small(const ElementType* first, const ElementType* last)
+        : base_class(first, last)
+      {}
+
+#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200) // VC++ 6.0
+      template <typename OtherElementType>
+      small(const OtherElementType* first, const OtherElementType* last)
+        : base_class(first, last)
+      {}
+#endif
   };
 
 }} // namespace cctbx::af
 
+#if !defined(BOOST_NO_TEMPLATE_PARTIAL_SPECIALIZATION)
 #include <cctbx/array_family/small_algebra.h>
+#endif
 
 #endif // CCTBX_ARRAY_FAMILY_SMALL_H

@@ -13,7 +13,6 @@
 
 #include <algorithm>
 #include <cctbx/array_family/ref.h>
-#include <cctbx/array_family/small_helpers.h>
 #include <cctbx/array_family/auto_allocator.h>
 
 namespace cctbx { namespace af {
@@ -25,12 +24,70 @@ namespace cctbx { namespace af {
     public:
       CCTBX_ARRAY_FAMILY_TYPEDEFS
 
-      CCTBX_ARRAY_FAMILY_SMALL_CONSTRUCTORS(small_plain)
-      CCTBX_ARRAY_FAMILY_SMALL_COPY_AND_ASSIGNMENT(small_plain)
+      small_plain()
+        : m_size(0)
+      {}
+
+      explicit
+      small_plain(const size_type& sz)
+        : m_size(0)
+      {
+        if (N < sz) throw_range_error();
+        std::uninitialized_fill_n(begin(), sz, ElementType());
+        m_size = sz;
+      }
+
+      // non-std
+      small_plain(const size_type& sz, reserve_flag)
+        : m_size(0)
+      {
+        if (N < sz) throw_range_error();
+      }
+
+      small_plain(const size_type& sz, const ElementType& x)
+        : m_size(0)
+      {
+        if (N < sz) throw_range_error();
+        std::uninitialized_fill_n(begin(), sz, x);
+        m_size = sz;
+      }
+
+      small_plain(const ElementType* first, const ElementType* last)
+        : m_size(0)
+      {
+        if (N < last - first) throw_range_error();
+        std::uninitialized_copy(first, last, begin());
+        m_size = last - first;
+      }
+
+#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200) // VC++ 6.0
+      template <typename OtherElementType>
+      small_plain(const OtherElementType* first, const OtherElementType* last)
+        : m_size(0)
+      {
+        if (N < last - first) throw_range_error();
+        uninitialized_copy_typeconv(first, last, begin());
+        m_size = last - first;
+      }
+#endif
+
+      small_plain(const small_plain<ElementType, N>& other)
+        : m_size(0)
+      {
+        std::uninitialized_copy(other.begin(), other.end(), begin());
+        m_size = other.m_size;
+      }
 
       ~small_plain() { clear(); }
 
-      CCTBX_ARRAY_FAMILY_TAKE_REF(begin(), N)
+      small_plain<ElementType, N>&
+      operator=(const small_plain<ElementType, N>& other)
+      {
+        clear();
+        std::uninitialized_copy(other.begin(), other.end(), begin());
+        m_size = other.m_size;
+        return *this;
+      }
 
       size_type size() const { return m_size; }
       bool empty() const { if (size() == 0) return true; return false; }
@@ -39,6 +96,8 @@ namespace cctbx { namespace af {
 
       CCTBX_ARRAY_FAMILY_BEGIN_END_ETC(
         ((ElementType*)(m_elems.buffer)), m_size) // fix this
+
+      CCTBX_ARRAY_FAMILY_TAKE_REF(begin(), N)
 
       void swap(small_plain<ElementType, N>& other) {
         std::swap(*this, other);
