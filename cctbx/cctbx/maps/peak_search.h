@@ -13,6 +13,7 @@
 
 #include <algorithm>
 #include <functional>
+#include <cctbx/loops.h>
 #include <cctbx/shared_storage.h>
 
 namespace cctbx { namespace maps {
