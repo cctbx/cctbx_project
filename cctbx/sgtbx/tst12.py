@@ -26,8 +26,10 @@ def OneCycle():
       SgOps.BuildHallSymbol(SgType))
     sys.stdout.flush()
     ss = sgtbx.StructureSeminvariant(SgOps)
+    for i in xrange(ss.size()):
+      print ss.V(i), ss.M(i)
   t = os.times()
-  print "u+s,u,s:", t[0] + t[1], t[0], t[1]
+  if (not ShortCut): print "u+s,u,s:", t[0] + t[1], t[0], t[1]
 
 while 1:
   OneCycle()

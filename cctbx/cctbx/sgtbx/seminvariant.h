@@ -17,10 +17,6 @@ namespace sgtbx {
     public:
       Vec3 V;
       int M;
-      inline void zero_out() {
-        V.assign(0);
-        M = -1;
-      }
   };
 
   namespace detail {
@@ -33,7 +29,7 @@ namespace sgtbx {
     public:
       StructureSeminvariant() {}
       StructureSeminvariant(const SgOps& sgo);
-      inline std::size_t size() const { return m_size; }
+      inline std::size_t size() const { return m_VM.size(); }
       inline const ssVM& VM(std::size_t i) const {
         if (i >= size()) throw error_index();
         return m_VM[i];
@@ -43,8 +39,7 @@ namespace sgtbx {
       bool is_ss(const Miller::Index& H) const;
       Vec3 get_uvw(const Miller::Index& H) const;
     private:
-      boost::array<ssVM, 3> m_VM;
-      std::size_t m_size;
+      cctbx::static_vector<ssVM, 3> m_VM;
       void GetContNullSpace(const detail::AnyGenerators& Gen);
       void BestVectors(
         const SgOps& sgo,

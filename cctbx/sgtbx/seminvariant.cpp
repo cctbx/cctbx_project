@@ -16,7 +16,7 @@ namespace sgtbx {
 
   namespace detail {
 
-    struct DiscrList {
+    struct DiscrList { // XXX split this up
       TrVec P; // primitive cell
       TrVec Z; // centred cell
     };
@@ -192,16 +192,18 @@ namespace sgtbx {
     boost::array<int, 3 * 3 * 3> GenRmI = ConstructGenRmI(Gen, false);
     int RankGenRmI = iRowEchelonFormT(GenRmI.elems, Gen.nAll() * 3, 3, 0, 0);
     cctbx_assert(RankGenRmI >= 0 && RankGenRmI <= 3);
-    m_size = 3 - RankGenRmI;
     int IxIndep[3];
     int nIndep = iRESetIxIndep(GenRmI.elems, RankGenRmI, 3, IxIndep, 3);
     cctbx_assert(nIndep >= 0);
     if (nIndep != 2) {
       for (int iIndep = 0; iIndep < nIndep; iIndep++) {
-        m_VM[iIndep].V[IxIndep[iIndep]] = 1;
+        ssVM VM;
+        if (Gen.nAll() == 0) VM.V.assign(0);
+        VM.V[IxIndep[iIndep]] = 1;
         cctbx_assert(iREBacksubst(GenRmI.elems, 0, RankGenRmI, 3,
-                                  m_VM[iIndep].V.elems, 0) > 0);
-        m_VM[iIndep].M = 0;
+                                  VM.V.elems, 0) > 0);
+        VM.M = 0;
+        m_VM.push_back(VM);
       }
     }
     else {
@@ -209,8 +211,10 @@ namespace sgtbx {
       SolveHomRE1(GenRmI.elems, IxIndep, Sol.elems);
       std::sort(Sol.begin(), Sol.end(), CmpOLen2());
       for (int iIndep = 0; iIndep < 2; iIndep++) {
-        m_VM[iIndep].V = Sol[iIndep];
-        m_VM[iIndep].M = 0;
+        ssVM VM;
+        VM.V = Sol[iIndep];
+        VM.M = 0;
+        m_VM.push_back(VM);
       }
     }
   }
@@ -243,7 +247,7 @@ namespace sgtbx {
     cctbx::static_vector<detail::DiscrList,
                          detail::mDiscrList>& DiscrLst) const
   {
-    if (sgo.nLTr() == 1 && m_size == 0) return;
+    if (sgo.nLTr() == 1 && m_VM.size() == 0) return;
     int LTBF = 1;
     int iDL;
     for (iDL = 1; iDL < DiscrLst.size(); iDL++) {
@@ -263,7 +267,7 @@ namespace sgtbx {
     }
     int fGrd = 1;
     int iVM;
-    for (iVM = 0; iVM < m_size; iVM++) {
+    for (iVM = 0; iVM < m_VM.size(); iVM++) {
       for(int i=0;i<3;i++) {
         if (m_VM[iVM].V[i]) fGrd = lcm(fGrd, m_VM[iVM].V[i]);
       }
@@ -280,9 +284,9 @@ namespace sgtbx {
       BestZf[iDL] = OrigZf[iDL];
       BestZc[iDL] = BestZf[iDL].cancel();
     }
-    cctbx_assert(m_size < 3);
+    cctbx_assert(m_VM.size() < 3);
     cctbx::static_vector<int, 2> loop_min, loop_max;
-    for (iVM = 0; iVM < m_size; iVM++) {
+    for (iVM = 0; iVM < m_VM.size(); iVM++) {
       loop_min.push_back(0);
       loop_max.push_back(LTBF - 1);
     }
@@ -291,11 +295,11 @@ namespace sgtbx {
       LTr[0] = sgo.LTr(iLTr).newBaseFactor(LTBF);
       NestedLoop<cctbx::static_vector<int, 2> > loop(loop_min, loop_max);
       do {
-        for (iVM = 0; iVM < m_size; iVM++) {
+        for (iVM = 0; iVM < m_VM.size(); iVM++) {
           const cctbx::static_vector<int, 2>& f = loop();
           LTr[iVM + 1] = LTr[iVM] + f[iVM] * TrVec(m_VM[iVM].V, LTBF);
         }
-        UpdateBestZ(DiscrLst.size(), OrigZf, LTr[m_size], BestZf, BestZc);
+        UpdateBestZ(DiscrLst.size(), OrigZf, LTr[m_VM.size()], BestZf, BestZc);
         loop.incr();
       }
       while (loop.over() == 0);
@@ -350,12 +354,10 @@ namespace sgtbx {
   };
 
   StructureSeminvariant::StructureSeminvariant(const SgOps& sgo)
-    : m_size(0)
   {
-    for(std::size_t i = 0; i < 3; i++) m_VM[i].zero_out();
     detail::AnyGenerators Gen(sgo);
     GetContNullSpace(Gen);
-    if (m_size == 3) return; // space group P1
+    if (m_VM.size() == 3) return; // space group P1
     boost::array<int, 3 * 3 * 3> SNF = ConstructGenRmI(Gen, true);
     int Q[3 * 3];
     int nd = SmithNormalForm(SNF.elems, Gen.nAll() * 3, 3, 0, Q);
@@ -389,18 +391,19 @@ namespace sgtbx {
     cctbx::static_vector<TrVec, 3>
     DiscrGen = SelectDiscreteGenerators(DiscrLst);
     for (int iG = 0; iG < DiscrGen.size(); iG++) {
-      cctbx_assert(m_size < 3);
-      TrVec VM = DiscrGen[iG].cancel();
-      m_VM[m_size].V = static_cast<Vec3>(VM);
-      m_VM[m_size].M = VM.BF();
-      m_size++;
+      cctbx_assert(m_VM.size() < 3);
+      TrVec G = DiscrGen[iG].cancel();
+      ssVM VM;
+      VM.V = static_cast<Vec3>(G);
+      VM.M = G.BF();
+      m_VM.push_back(VM);
     }
-    std::sort(m_VM.begin(), m_VM.begin() + m_size, Cmp_ssVM());
+    std::sort(m_VM.begin(), m_VM.end(), Cmp_ssVM());
   }
 
   bool StructureSeminvariant::is_ss(const Miller::Index& H) const
   {
-    for(std::size_t i=0;i<m_size;i++) {
+    for(std::size_t i=0;i<m_VM.size();i++) {
       int u = m_VM[i].V * H;
       if (m_VM[i].M) {
         if (u % m_VM[i].M) return false;
@@ -415,7 +418,7 @@ namespace sgtbx {
   Vec3 StructureSeminvariant::get_uvw(const Miller::Index& H) const
   {
     Vec3 result;
-    for(std::size_t i=0;i<m_size;i++) {
+    for(std::size_t i=0;i<m_VM.size();i++) {
       result[i] = m_VM[i].V * H;
       if (m_VM[i].M) result[i] %= m_VM[i].M;
     }

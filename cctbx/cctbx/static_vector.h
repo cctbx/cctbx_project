@@ -72,8 +72,8 @@ namespace cctbx {
         reference back() { return elems[size()-1]; }
         const_reference back() const { return elems[size()-1]; }
 
-        size_type size() { return m_size; }
-        bool empty() { if (size() == 0) return true; return false; }
+        size_type size() const { return m_size; }
+        bool empty() const { if (size() == 0) return true; return false; }
         static size_type max_size() { return size(); }
         enum { static_size = N };
 
