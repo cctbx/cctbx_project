@@ -149,7 +149,8 @@ def find_scons(env):
 def emit_SConstruct(env, libtbx_info):
   if (env.libtbx_scons == None):
     if (not os.path.isdir("libtbx")):
-      print >> sys.stderr, "Warning: Cannot find SCons (Software Construction Tool)"
+      print >> sys.stderr, "Warning:",
+      print >> "Cannot find SCons (Software Construction Tool)"
       print >> sys.stderr, "         For more information please refer to:"
       print >> sys.stderr, "         XXX"
     return
@@ -159,6 +160,17 @@ def emit_SConstruct(env, libtbx_info):
   print >> f, 'norm = os.path.normpath'
   print >> f, 'assert norm(os.getcwd()) == norm(os.environ["LIBTBX_BUILD"])'
   print >> f, 'Repository(r"%s")' % (env.dist_root,)
+  print >> f, 'try:'
+  print >> f, '  CScanSetFlags('
+  print >> f, '    python=0,'
+  print >> f, '    boost=0,'
+  print >> f, '    libtbx=1,'
+  for package_name in libtbx_info["package_names"]:
+    print >> f, '    %s=1,' % package_name
+  print >> f, '  )'
+  print >> f, 'except:'
+  print >> f, '  pass'
+  print >> f, '#SetContentSignatureType("timestamp")'
   print >> f, 'SConscript("libtbx/SConscript")'
   print >> f, '''\
 
@@ -168,7 +180,7 @@ def use_SConscript_if_present(package_name):
     SConscript(package_name + "/SConscript")
 '''
   for package_name in libtbx_info["package_names"]:
-    print >> f, 'use_SConscript_if_present("%s")' % (package_name,)
+    print >> f, 'use_SConscript_if_present("%s")' % package_name
   f.close()
 
 def run():

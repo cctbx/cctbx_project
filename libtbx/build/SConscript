@@ -214,6 +214,14 @@ env_etc.libtbx_lib = norm_join(env_etc.libtbx_build, "libtbx")
 env_etc.libtbx_boost = os.environ["LIBTBX_BOOST"]
 env_etc.boost_include = env_etc.libtbx_boost
 
+try:
+  CScanRegisterFlags(
+    python=env_etc.python_include,
+    boost=env_etc.boost_include,
+    libtbx=env_etc.libtbx_include)
+except:
+  pass
+
 env_boost_python_ext = env_base.Copy(
   CPPPATH=[env_etc.libtbx_include,
            env_etc.boost_include,
