@@ -84,8 +84,8 @@ import pickle
 pstr = pickle.dumps(SgOps)
 print pstr
 up = pickle.loads(pstr)
-print sgtbx.SpaceGroupInfo(SgOps).BuildHallSymbol(1)
-print sgtbx.SpaceGroupInfo(up).BuildHallSymbol(1)
+print SgOps.Info().BuildHallSymbol(1)
+print up.Info().BuildHallSymbol(1)
 
 enantiomorphic_pairs = {}
 cbop = sgtbx.ChOfBasisOp(sgtbx.RTMx("x+1/12,y+1/12,z+1/12"))
@@ -93,7 +93,7 @@ iter = sgtbx.SpaceGroupSymbolIterator()
 #print iter.next().ExtendedHermann_Mauguin()
 for s in iter:
   SgOps = sgtbx.SpaceGroup(s.Hall())#ChangeBasis(cbop)
-  SgInfo = sgtbx.SpaceGroupInfo(SgOps)
+  SgInfo = SgOps.Info()
   ch1 = SgInfo.getChangeOfHandOp()
   print s.ExtendedHermann_Mauguin(), ch1.M()
   try:
@@ -106,7 +106,7 @@ for s in iter:
       p = b(i, j)
       print p.Point(), p.Off()
   e = SgOps.ChangeBasis(ch1)
-  eInfo = sgtbx.SpaceGroupInfo(e)
+  eInfo = e.Info()
   if (e != SgOps):
     assert SgInfo.isEnantiomorphic()
     enantiomorphic_pairs[s.SgNumber()] = eInfo.SgNumber()

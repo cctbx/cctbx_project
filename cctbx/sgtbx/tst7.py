@@ -35,7 +35,7 @@ for HallSymbol in table_hall:
   for Z in "PABCIRHF":
     HSym = HallSymbol[0] + Z + HallSymbol[2:]
     SgOps = sgtbx.SpaceGroup(HSym)
-    SgNumber = sgtbx.SpaceGroupInfo(SgOps).SgNumber()
+    SgNumber = SgOps.Info().SgNumber()
     RefSgOps = sgtbx.SpaceGroup(sgtbx.SpaceGroupSymbols(SgNumber).Hall())
     if (SgNumber < 75):
       RotOps = sgtbx.SpaceGroup('P 1')

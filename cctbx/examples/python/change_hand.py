@@ -87,7 +87,7 @@ try:
   ShowInputSymbol(inp.sgsymbol, inp.convention, "Input ")
   Symbols_Inp = sgtbx.SpaceGroupSymbols(inp.sgsymbol, inp.convention)
   SgOps = HallSymbol_to_SgOps(Symbols_Inp.Hall())
-  SgInfo = sgtbx.SpaceGroupInfo(SgOps)
+  SgInfo = SgOps.Info()
   print "Space group: (%d) %s" % (
     SgInfo.SgNumber(), SgInfo.BuildLookupSymbol())
   print

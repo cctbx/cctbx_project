@@ -109,7 +109,7 @@ class StructureInfo:
           sym = string.join(flds[1:])
           SpaceGroupSymbols = sgtbx.SpaceGroupSymbols(sym)
           self.SgOps = sgtbx.SpaceGroup(SpaceGroupSymbols.Hall())
-          self.SgInfo = sgtbx.SpaceGroupInfo(self.SgOps)
+          self.SgInfo = self.SgOps.Info()
           self.WyckoffTable = sgtbx.WyckoffTable(self.SgInfo, 1)
 
         elif (keyword == "Resolution"):

@@ -89,7 +89,7 @@ try:
   ShowInputSymbol(inp.sgsymbol_old, inp.convention_old, "Old")
   Syms = sgtbx.SpaceGroupSymbols(inp.sgsymbol_old, inp.convention_old)
   SgOps_old = HallSymbol_to_SgOps(Syms.Hall())
-  SgInfo_old = sgtbx.SpaceGroupInfo(SgOps_old)
+  SgInfo_old = SgOps_old.Info()
   print
 
   if (len(inp.sgsymbol_new) == 0):

@@ -20,7 +20,7 @@ def OneCycle():
     SgSymbols = sgtbx.SpaceGroupSymbols(LookupSymbol)
     HSym = SgSymbols.Hall()
     SgOps = sgtbx.SpaceGroup(HSym)
-    SgInfo = sgtbx.SpaceGroupInfo(SgOps)
+    SgInfo = SgOps.Info()
     print "SpaceGroup %s (%d) %s" % (
       SgInfo.BuildLookupSymbol(),
       SgInfo.SgNumber(),
