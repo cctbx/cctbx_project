@@ -9,13 +9,13 @@
 
 #include <scitbx/array_family/boost_python/flex_fwd.h>
 
-#include <scitbx/array_family/boost_python/flex_wrapper.h>
+#include <scitbx/array_family/boost_python/flex_wrapper_complex.h>
 
 namespace scitbx { namespace af { namespace boost_python {
 
   void wrap_flex_complex_double_2()
   {
-    flex_wrapper<std::complex<double> >::complex_functions(
+    flex_wrapper_complex_functions<double>::wrap(
       boost::python::scope());
   }
 

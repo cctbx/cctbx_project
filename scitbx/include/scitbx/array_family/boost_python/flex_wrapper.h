@@ -596,81 +596,6 @@ namespace scitbx { namespace af { namespace boost_python {
       return mean_sq_weighted(a1, a2);
     }
 
-    static versa<double, flex_grid<> >
-    real_complex(versa<std::complex<double>, flex_grid<> > const& a)
-    {
-      return real(a);
-    }
-
-    static versa<double, flex_grid<> >
-    imag_complex(versa<std::complex<double>, flex_grid<> > const& a)
-    {
-      return imag(a);
-    }
-
-    static versa<double, flex_grid<> >
-    abs_complex(versa<std::complex<double>, flex_grid<> > const& a)
-    {
-      shared_plain<double> result(a.size(), init_functor_null<double>());
-      for(std::size_t i=0;i<a.size();i++) result[i] = std::abs(a[i]);
-      return versa<double, flex_grid<> >(result, a.accessor());
-    }
-
-    static versa<double, flex_grid<> >
-    arg_complex_2(versa<std::complex<double>, flex_grid<> > const& a, bool deg)
-    {
-      shared_plain<double> result(a.size(), init_functor_null<double>());
-      for(std::size_t i=0;i<a.size();i++) {
-        result[i] = std::arg(a[i]);
-        if (deg) result[i] /= constants::pi_180;
-      }
-      return versa<double, flex_grid<> >(result, a.accessor());
-    }
-
-    static versa<double, flex_grid<> >
-    arg_complex_1(versa<std::complex<double>, flex_grid<> > const& a)
-    {
-      return arg_complex_2(a, false);
-    }
-
-    static versa<double, flex_grid<> >
-    norm_complex(versa<std::complex<double>, flex_grid<> > const& a)
-    {
-      return norm(a);
-    }
-
-    static versa<std::complex<double>, flex_grid<> >
-    polar_complex_3(
-      versa<double, flex_grid<> > const& rho,
-      versa<double, flex_grid<> > const& theta,
-      bool deg)
-    {
-      if (rho.accessor() != theta.accessor()) {
-        raise_incompatible_arrays();
-      }
-      shared_plain<std::complex<double> > result(
-        rho.size(), init_functor_null<std::complex<double> >());
-      if (deg) {
-        for(std::size_t i=0;i<rho.size();i++) {
-          result[i] = std::polar(rho[i], theta[i] * constants::pi_180);
-        }
-      }
-      else {
-        for(std::size_t i=0;i<rho.size();i++) {
-          result[i] = std::polar(rho[i], theta[i]);
-        }
-      }
-      return versa<std::complex<double>, flex_grid<> >(result, rho.accessor());
-    }
-
-    static versa<std::complex<double>, flex_grid<> >
-    polar_complex_2(
-      versa<double, flex_grid<> > const& rho,
-      versa<double, flex_grid<> > const& theta)
-    {
-      return polar_complex_3(rho, theta, false);
-    }
-
     typedef boost::python::class_<f_t, flex_wrapper<ElementType> > class_f_t;
 
     static class_f_t
@@ -891,22 +816,6 @@ namespace scitbx { namespace af { namespace boost_python {
         .def("__mod__", mod_a_s)
         .def("__imod__", imod_a_s)
       ;
-    }
-
-    static void
-    complex_functions(boost::python::object const& flex_root_scope)
-    {
-      {
-        boost::python::scope local_scope(flex_root_scope);
-        boost::python::def("real", real_complex);
-        boost::python::def("imag", imag_complex);
-        boost::python::def("abs", abs_complex);
-        boost::python::def("arg", arg_complex_2);
-        boost::python::def("arg", arg_complex_1);
-        boost::python::def("norm", norm_complex);
-        boost::python::def("polar", polar_complex_3);
-        boost::python::def("polar", polar_complex_2);
-      }
     }
   };
 
