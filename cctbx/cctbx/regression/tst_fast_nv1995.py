@@ -67,8 +67,8 @@ def test_atom(space_group_info, n_elements=3, d_min=3.,
     space_group_type=miller_set_f_obs.space_group_info().type(),
     symmetry_flags=symmetry_flags,
     resolution_factor=map_resolution_factor,
-    max_prime=max_prime,
-    miller_indices_f_obs=miller_set_f_obs.indices())
+    miller_indices_f_obs=miller_set_f_obs.indices(),
+    max_prime=max_prime)
   structure.build_scatterers(
     elements=["Se"]*n_elements,
     grid=gridding.target())
@@ -112,8 +112,8 @@ def test_atom(space_group_info, n_elements=3, d_min=3.,
         space_group_type=miller_set_f_obs.space_group_info().type(),
         symmetry_flags=symmetry_flags,
         resolution_factor=map_resolution_factor,
-        max_prime=max_prime,
-        miller_indices_f_obs=miller_set_f_obs.indices())
+        miller_indices_f_obs=miller_set_f_obs.indices(),
+        max_prime=max_prime)
       grid_tags = maptbx.grid_tags(gridding.target())
     structure_fixed.add_scatterer(scatterer)
     if (0 or verbose):
@@ -185,8 +185,8 @@ def test_molecule(space_group_info, flag_f_part, d_min=3.,
     space_group_type=miller_set_f_obs.space_group_info().type(),
     symmetry_flags=symmetry_flags,
     resolution_factor=map_resolution_factor,
-    max_prime=max_prime,
-    miller_indices_f_obs=miller_set_f_obs.indices())
+    miller_indices_f_obs=miller_set_f_obs.indices(),
+    max_prime=max_prime)
   grid_tags = maptbx.grid_tags(gridding.target())
   peak_list = run_fast_nv1995(
     f_obs_array, f_calc_fixed_array, f_calc_p1_array,

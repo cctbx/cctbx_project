@@ -30,9 +30,8 @@ namespace {
                   sgtbx::space_group_type const&,
                   maptbx::symmetry_flags const&,
                   double,
-                  int,
-                  af::const_ref<miller::index<> > const&>())
-
+                  af::const_ref<miller::index<> > const&,
+                  int>())
         .def("target", &w_t::target, ccr())
         .def("quarter", &w_t::quarter, ccr())
         .def("eighth", &w_t::eighth, ccr())

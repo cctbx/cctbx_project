@@ -254,35 +254,6 @@ namespace xray {
     weight_ = occupancy * multiplicity_ / space_group.order_z();
   }
 
-  template <typename FloatType,
-            typename CaasfType,
-            typename LabelType>
-  af::shared<std::size_t>
-  apply_symmetry(
-    uctbx::unit_cell const& unit_cell,
-    sgtbx::space_group const& space_group,
-    af::ref<scatterer<FloatType,CaasfType,LabelType> > const& scatterers,
-    double min_distance_sym_equiv=0.5,
-    double u_star_tolerance=0.1,
-    bool assert_is_positive_definite=true,
-    bool assert_min_distance_sym_equiv=true)
-  {
-    af::shared<std::size_t> special_position_indices;
-    for(std::size_t i=0;i<scatterers.size();i++) {
-      sgtbx::site_symmetry site_symmetry = scatterers[i].apply_symmetry(
-        unit_cell,
-        space_group,
-        min_distance_sym_equiv,
-        u_star_tolerance,
-        assert_is_positive_definite,
-        assert_min_distance_sym_equiv);
-      if (!site_symmetry.is_point_group_1()) {
-        special_position_indices.push_back(i);
-      }
-    }
-    return special_position_indices;
-  }
-
 }} // namespace cctbx::xray
 
 #endif // CCTBX_XRAY_SCATTERER_H

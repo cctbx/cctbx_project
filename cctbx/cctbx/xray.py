@@ -6,9 +6,11 @@ del import_regular_symbols
 from cctbx import crystal
 from cctbx import miller
 from cctbx import adptbx
+from cctbx import maptbx
 from cctbx.eltbx.caasf import wk1995
 from cctbx.array_family import flex
 from cctbx import matrix
+from scitbx import fftpack
 from scitbx.python_utils import dicts
 from scitbx.python_utils.misc import adopt_init_args
 import sys
@@ -84,8 +86,11 @@ class structure(crystal.special_position_settings):
     self.apply_symmetry(i)
 
   def add_scatterers(self, scatterers):
-    for scatterer in scatterers:
-      self.add_scatterer(scatterer)
+    #XXX crash with RedHat 7.3/gcc 2.96 when running phenix translation search
+    #for scatterer in scatterers:
+    #  self.add_scatterer(scatterer)
+    for i in xrange(scatterers.size()):
+      self.add_scatterer(scatterers[i])
 
   def structure_factors_direct(self, anomalous_flag=None, d_min=None):
     miller_set = miller.build_set(self, anomalous_flag, d_min)
@@ -204,6 +209,87 @@ class structure_factors_direct:
   def d_target_d_site_inplace_frac_as_cart(self, d_target_d_site):
     structure_factors_d_target_d_site_in_place_frac_as_cart(
       self.miller_set().unit_cell(), d_target_d_site)
+
+class structure_factors_fft:
+
+  def __init__(self, xray_structure,
+                     miller_set,
+                     grid_resolution_factor=1./3,
+                     quality_factor=100,
+                     wing_cutoff=1.e-3,
+                     exp_table_one_over_step_size=-100,
+                     max_prime=5):
+    assert xray_structure.unit_cell().is_similar_to(miller_set.unit_cell())
+    assert xray_structure.space_group() == miller_set.space_group()
+    self._xray_structure = xray_structure
+    self._miller_set = miller_set
+    d_min = miller_set.d_min()
+    n_real = maptbx.determine_grid(
+      unit_cell=miller_set.unit_cell(),
+      d_min=d_min,
+      resolution_factor=grid_resolution_factor,
+      max_prime=max_prime,
+      mandatory_factors=miller_set.space_group().gridding())
+    rfft = fftpack.real_to_complex_3d(n_real)
+    u_extra = calc_u_extra(d_min, grid_resolution_factor, quality_factor)
+    force_complex = False
+    electron_density_must_be_positive = 1
+    sampled_density = sampled_model_density(
+      xray_structure.unit_cell(),
+      xray_structure.scatterers(),
+      rfft.n_real(),
+      rfft.m_real(),
+      u_extra,
+      wing_cutoff,
+      exp_table_one_over_step_size,
+      force_complex,
+      electron_density_must_be_positive)
+    tags = maptbx.grid_tags(rfft.n_real())
+    symmetry_flags = maptbx.symmetry_flags(use_space_group_symmetry=True)
+    tags.build(xray_structure.space_group_info().type(), symmetry_flags)
+    sampled_density.apply_symmetry(tags)
+    if (not sampled_density.anomalous_flag()):
+      map = sampled_density.real_map()
+      sf_map = rfft.forward(map)
+      collect_conj = 1
+    else:
+      cfft = fftpack.complex_to_complex_3d(rfft.n_real())
+      map = sampled_density.complex_map()
+      sf_map = cfft.backward(map)
+      collect_conj = 0
+    self._f_calc_data = maptbx.structure_factors.from_map(
+      sampled_density.anomalous_flag(),
+      miller_set.indices(),
+      sf_map,
+      collect_conj).data()
+    sampled_density.eliminate_u_extra_and_normalize(
+      miller_set.indices(),
+      self._f_calc_data)
+
+  def xray_structure(self):
+    return self._xray_structure
+
+  def miller_set(self):
+    return self._miller_set
+
+  def f_calc_array(self):
+    return miller.array(self.miller_set(), self._f_calc_data)
+
+def structure_factors(xray_structure, miller_set, method=None):
+  assert method in (None, "fft", "direct")
+  if (method == None):
+    approx_number_of_atoms = xray_structure.scatterers().size() \
+                           * xray_structure.space_group().order_z()
+    if (approx_number_of_atoms > 30):
+      method = "fft"
+    else:
+      method = "direct"
+  if (method == "fft"):
+    result = structure_factors_fft(xray_structure, miller_set)
+  else:
+    result = structure_factors_direct(xray_structure, miller_set)
+  result.f_calc_method = method
+  return result
 
 class target_functor_base:
 

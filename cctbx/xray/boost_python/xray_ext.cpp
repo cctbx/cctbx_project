@@ -8,6 +8,7 @@
  */
 
 #include <cctbx/xray/scatterer.h>
+#include <cctbx/xray/scatterer_utils.h>
 #include <scitbx/boost_python/utils.h>
 #include <boost/python/module.hpp>
 #include <boost/python/scope.hpp>
@@ -53,6 +54,12 @@ namespace {
         sgtbx::space_group const&,
         af::ref<scatterer<> > const&,
         double, double, bool, bool)) 0, apply_symmetry_overloads());
+
+    def("rotate",
+      (af::shared<scatterer<> >(*)(
+        uctbx::unit_cell const&,
+        scitbx::mat3<double> const&,
+        af::const_ref<scatterer<> > const&)) rotate);
   }
 
 } // namespace <anonymous>

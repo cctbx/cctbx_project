@@ -27,8 +27,8 @@ namespace cctbx { namespace translation_search {
         sgtbx::space_group_type const& sg_type,
         maptbx::symmetry_flags const& symmetry_flags,
         double resolution_factor,
-        int max_prime,
-        af::const_ref<miller::index<> > const& miller_indices_f_obs);
+        af::const_ref<miller::index<> > const& miller_indices_f_obs,
+        int max_prime);
 
       const GriddingTupleType&
       target() const { return target_; }
@@ -52,8 +52,8 @@ namespace cctbx { namespace translation_search {
     sgtbx::space_group_type const& sg_type,
     maptbx::symmetry_flags const& symmetry_flags,
     double resolution_factor,
-    int max_prime,
-    af::const_ref<miller::index<> > const& miller_indices_f_obs)
+    af::const_ref<miller::index<> > const& miller_indices_f_obs,
+    int max_prime)
   {
     GriddingTupleType
       sym_grid_factors = symmetry_flags.grid_factors(sg_type);

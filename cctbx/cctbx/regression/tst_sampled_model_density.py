@@ -86,8 +86,21 @@ def exercise(space_group_info, anomalous_flag, anisotropic_flag,
     f_direct_array.indices(),
     f_fft_data)
   structure_factor_utils.check_correlation(
-    "direct/fft", f_direct_array.indices(), 0,
+    "direct/fft_regression", f_direct_array.indices(), 0,
     f_direct_array.data(), f_fft_data,
+    min_corr_ampl=1*0.99, max_mean_w_phase_error=1*3.,
+    verbose=verbose)
+  f_fft_array = xray.structure_factors_fft(
+    xray_structure=structure,
+    miller_set=f_direct_array,
+    grid_resolution_factor=resolution_factor,
+    quality_factor=quality_factor,
+    wing_cutoff=wing_cutoff,
+    exp_table_one_over_step_size=exp_table_one_over_step_size,
+    max_prime=max_prime).f_calc_array()
+  structure_factor_utils.check_correlation(
+    "direct/fft_xray", f_direct_array.indices(), 0,
+    f_direct_array.data(), f_fft_array.data(),
     min_corr_ampl=1*0.99, max_mean_w_phase_error=1*3.,
     verbose=verbose)
 
