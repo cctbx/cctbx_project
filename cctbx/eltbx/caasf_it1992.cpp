@@ -5,10 +5,10 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
-#include <cctype>
 #include <cctbx/fixes/cmath>
 #include <cctbx/eltbx/caasf.h>
 

@@ -19,7 +19,7 @@ CCTBXLIB=-L../../lib -leltbx -lsgtbx -luctbx
 
 CPP=g++
 LD=g++
-STDOPTS=-ftemplate-depth-21
+STDOPTS=-ftemplate-depth-21 -fPIC
 WARNOPTS=
 OPTOPTS=-g
 MAKEDEP=-M

@@ -5,13 +5,14 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
      2001-Apr-22 Implementation of ConstructZ2POp() (R.W. Grosse-Kunstleve)
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
 #include <memory>
 #include <algorithm>
-#include <cctype>
+#include <ctype.h> // cannot use cctype b/o non-conforming compilers
 #include <cctbx/sgtbx/groups.h>
 #include <cctbx/basic/define_range.h>
 
@@ -100,7 +101,7 @@ namespace sgtbx {
   {
     char ZSymbol = getConventionalCentringTypeSymbol();
     const RotMx& Z2PMatrix = lattice::getConventionalZ2PMatrix(ZSymbol);
-    if (! Z2PMatrix.isValid()) return ChOfBasisOp(0, 0);
+    if (!Z2PMatrix.isValid()) return ChOfBasisOp(0, 0);
     return ChOfBasisOp(RTMx(Z2PMatrix.newBaseFactor(RBF), TrVec(TBF)));
   }
 
@@ -119,7 +120,7 @@ namespace sgtbx {
     bool FirstIsShorter(const Vec3& a, const Vec3& b) {
       rangei(3) {
         if (a[i]) {
-          if (abs(a[i]) > abs(b[i])) return false;
+          if (std::abs(a[i]) > std::abs(b[i])) return false;
           return true;
         }
       }
@@ -148,7 +149,7 @@ namespace sgtbx {
           int iTLT;
           for (iTLT = 0; iTLT < TLT->size(); iTLT++) {
             if (CrossProduct((*TLT)[iTLT], V) == 0) {
-              if (! FirstIsShorter((*TLT)[iTLT], V)) (*TLT)[iTLT] = V;
+              if (!FirstIsShorter((*TLT)[iTLT], V)) (*TLT)[iTLT] = V;
               break;
             }
           }
@@ -191,7 +192,7 @@ namespace sgtbx {
           result = ChOfBasisOp(RTMx(RotMx(Basis, RBF), TBF)).swap();
           PrimitiveSgOps = ChangeBasis(result);
         }
-        catch (error) {
+        catch (const error&) {
           continue;
         }
         if (PrimitiveSgOps.nLTr() == 1) {

@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
@@ -15,6 +16,12 @@
 #include <cctbx/error.h>
 
 //! Element Toolbox namespace.
+/*! The eltbx is a collection of tables of various x-ray and
+    neutron scattering factors, element names, atomic numbers,
+    atomic weights, ionic radii, and characteristic x-ray
+    wavelenghts. Associated with each table are procedures for
+    accessing the tabluated data, e.g. by using interpolation.
+ */
 namespace eltbx {
 
   using cctbx::error;

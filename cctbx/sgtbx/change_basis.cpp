@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
@@ -32,7 +33,7 @@ namespace sgtbx {
     cctbx_assert(Mx.Tpart().BF() % M.Tpart().BF() == 0);
     RTMx
     mx_rt_invmx = Mx * (M.scale(1, Mx.Tpart().BF() / M.Tpart().BF()) * InvMx);
-    return mx_rt_invmx.newBaseFactor(M.Rpart().BF(), M.Tpart().BF());
+    return mx_rt_invmx.newBaseFactors(M);
   }
 
   TrOps TrOps::ChangeBasis(const ChOfBasisOp& CBOp) const
@@ -54,7 +55,7 @@ namespace sgtbx {
   {
     SgOps result(m_NoExpand);
     result.m_LTr = m_LTr.ChangeBasis(CBOp);
-    if (m_fInv == 2) {
+    if (isCentric()) {
       result.expandInv(CBOp(m_InvT, -1));
     }
     for (int i = 1; i < m_nSMx; i++) {

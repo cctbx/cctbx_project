@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
@@ -44,7 +45,7 @@ namespace cctbx {
 #define cctbx_not_implemented() cctbx::error(__FILE__, __LINE__, \
              "Not implemented.")
 #define cctbx_assert(bool) \
-  if (! (bool)) throw cctbx::error(__FILE__, __LINE__,\
+  if (!(bool)) throw cctbx::error(__FILE__, __LINE__,\
     "cctbx_assert(" # bool ") failure.")
 
 #endif // CCTBX_ERROR_H

@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
@@ -85,7 +86,7 @@ namespace uctbx {
     D += 2. * cosAng[0] * cosAng[1] * cosAng[2];
     if (D < 0.) throw corrupt_unit_cell_parameters;
 
-        Vol = Len[0] * Len[1] * Len[2] * sqrt(D);
+        Vol = Len[0] * Len[1] * Len[2] * std::sqrt(D);
     if (Vol <= 0.) throw corrupt_unit_cell_parameters;
   }
 
@@ -118,7 +119,7 @@ namespace uctbx {
     //   j is in (a,b) plane
     //   k = i x j
 
-    double s1rca2 = sqrt(1. - R_cosAng[0] * R_cosAng[0]);
+    double s1rca2 = std::sqrt(1. - R_cosAng[0] * R_cosAng[0]);
     if (s1rca2 == 0.) throw corrupt_unit_cell_parameters;
 
     // fractional to cartesian
@@ -182,20 +183,20 @@ namespace uctbx {
     for (int i = 0; i < 9; i += 4) {
       if (MetricalMatrix[i] <= 0.) throw corrupt_metrical_matrix;
     }
-    if (   ! approx_equal(MetricalMatrix[1], MetricalMatrix[3])
-        || ! approx_equal(MetricalMatrix[2], MetricalMatrix[6])
-        || ! approx_equal(MetricalMatrix[5], MetricalMatrix[7]))
+    if (   !approx_equal(MetricalMatrix[1], MetricalMatrix[3])
+        || !approx_equal(MetricalMatrix[2], MetricalMatrix[6])
+        || !approx_equal(MetricalMatrix[5], MetricalMatrix[7]))
       throw corrupt_metrical_matrix;
-    Len[0] = sqrt(MetricalMatrix[0]);
-    Len[1] = sqrt(MetricalMatrix[4]);
-    Len[2] = sqrt(MetricalMatrix[8]);
-    Ang[0] = acos(MetricalMatrix[5] / Len[1] / Len[2]);
-    Ang[1] = acos(MetricalMatrix[2] / Len[2] / Len[0]);
-    Ang[2] = acos(MetricalMatrix[1] / Len[0] / Len[1]);
+    Len[0] = std::sqrt(MetricalMatrix[0]);
+    Len[1] = std::sqrt(MetricalMatrix[4]);
+    Len[2] = std::sqrt(MetricalMatrix[8]);
+    Ang[0] = std::acos(MetricalMatrix[5] / Len[1] / Len[2]);
+    Ang[1] = std::acos(MetricalMatrix[2] / Len[2] / Len[0]);
+    Ang[2] = std::acos(MetricalMatrix[1] / Len[0] / Len[1]);
     try {
       Initialize();
     }
-    catch (error) {
+    catch (const error&) {
       throw corrupt_metrical_matrix;
     }
   }

@@ -5,10 +5,11 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
-#include <cctype>
+#include <ctype.h> // cannot use cctype b/o non-conforming compilers
 #include <cctbx/eltbx/basic.h>
 
 namespace eltbx {
@@ -18,7 +19,7 @@ namespace eltbx {
     std::string result;
     std::string::const_iterator l;
     for (l = Label.begin(); l != Label.end(); l++) {
-      if (! isspace(*l)) break;
+      if (!isspace(*l)) break;
     }
     char digit = '\0';
     for (; l != Label.end(); l++) {
@@ -43,7 +44,7 @@ namespace eltbx {
         result += toupper(*l);
       }
     }
-    if (Exact && l != Label.end() && ! isspace(*l)) {
+    if (Exact && l != Label.end() && !isspace(*l)) {
       return "";
     }
     return result;

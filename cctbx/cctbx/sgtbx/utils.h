@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
@@ -98,6 +99,8 @@ namespace sgtbx {
       inline CmpiVect(int n) : m_n(n) { }
       bool operator()(const int *a, const int *b) const;
   };
+
+  int NextOf_n_from_m(int m, int n, int *ix);
 
 } // namespace sgtbx
 

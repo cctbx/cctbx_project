@@ -5,10 +5,11 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
-#include <cctype>
+#include <ctype.h> // cannot use cctype b/o non-conforming compilers
 #include <string>
 #include <stdio.h>
 #include <cctbx/sgtbx/basic.h>
@@ -160,6 +161,12 @@ namespace sgtbx {
         static const char* amcb = "a-cb";
       }
 
+      /* This tables corresponds to a table in the
+         International Tables for Crystallography, Volume B, 2001.
+         The Hall symbols were generated with the
+         STARTX module of the Xtal System of Crystallographic Programs,
+         version 3.7 (http://xtal.crystal.uwa.edu.au/).
+       */
       static const Main_Symbol_Dict_Entry Main_Symbol_Dict[] = {
         {   1, 0,        "P 1",        " P 1\0" },
         {   2, 0,        "P -1",       "-P 1\0" },
@@ -662,7 +669,7 @@ namespace sgtbx {
       string result;
       rangei(RawSymbol.size()) {
         const char r = RawSymbol[i];
-        if (! isspace(r) && r != '_') result += tolower(r);
+        if (!isspace(r) && r != '_') result += tolower(r);
       }
       return result;
     }
@@ -847,7 +854,7 @@ namespace sgtbx {
       try {
         return find_Main_Symbol_Dict_Entry(MonoHM);
       }
-      catch (error) {
+      catch (const error&) {
         throw cctbx_internal_error();
       }
     }
@@ -907,15 +914,15 @@ namespace sgtbx {
   {
     string::const_iterator s;
     for (s = Symbol.begin(); s != Symbol.end(); s++) {
-      if (! isspace(*s)) break;
+      if (!isspace(*s)) break;
     }
     for (int i = 0; i < 4; i++, s++) {
       if (s == Symbol.end()) return 0;
       if (tolower(*s) != "hall"[i]) return 0;
     }
     if (*s == ':') s++;
-    else if (! isspace(*s)) return 0;
-    for (; s != Symbol.end(); s++) if (! isspace(*s)) break;
+    else if (!isspace(*s)) return 0;
+    for (; s != Symbol.end(); s++) if (!isspace(*s)) break;
     if (s == Symbol.end()) return 0;
     m_Hall = string(s, Symbol.end());
     return 1;
@@ -957,7 +964,7 @@ namespace sgtbx {
         try {
           Entry = SgNumber_to_Main_Symbol_Dict_Entry(SgNo, StdTableId);
         }
-        catch (error) {
+        catch (const error&) {
           throw cctbx_internal_error();
         }
       }
@@ -983,6 +990,45 @@ namespace sgtbx {
     const tables::Main_Symbol_Dict_Entry* Entry = 0;
     Entry = SgNumber_to_Main_Symbol_Dict_Entry(SgNumber, StdTableId);
     SetAll(Entry, WorkExtension, StdTableId);
+  }
+
+  SpaceGroupSymbols::SpaceGroupSymbols(
+    const symbols::tables::Main_Symbol_Dict_Entry* Entry,
+    char Extension)
+  {
+    Clear();
+    if (Entry->SgNumber) SetAll(Entry, Extension, "");
+  }
+
+  SpaceGroupSymbolIterator::SpaceGroupSymbolIterator()
+    : Entry(symbols::tables::Main_Symbol_Dict), nHall(1), iHall(0) {}
+
+  SpaceGroupSymbols SpaceGroupSymbolIterator::next()
+  {
+    const symbols::tables::Main_Symbol_Dict_Entry* CurrentEntry = Entry;
+    char Extension = '\0';
+    if (Entry->SgNumber) {
+      if (nHall == 2) {
+        if (143 <= Entry->SgNumber && Entry->SgNumber < 168) {
+          Extension = "HR"[iHall];
+        }
+        else {
+          Extension = "12"[iHall];
+        }
+      }
+      iHall++;
+      if (iHall == nHall) {
+        Entry++;
+        nHall = 0;
+        iHall = 0;
+        if (Entry->SgNumber) {
+          nHall = 1;
+          const char* Hall2 = &Entry->Hall[string(Entry->Hall).size() + 1];
+          if (string(Hall2).size() != 0) nHall = 2;
+        }
+      }
+    }
+    return SpaceGroupSymbols(CurrentEntry, Extension);
   }
 
 } // namespace sgtbx

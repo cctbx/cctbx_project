@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
@@ -13,6 +14,7 @@
 
 #include <cstddef>
 #include <string>
+#include <ctype.h> // cannot use cctype b/o non-conforming compilers
 #include <cctbx/fixes/cmath>
 #include <cctbx/eltbx/basic.h>
 #include <cctbx/eltbx/caasf.h>
@@ -119,7 +121,7 @@ namespace eltbx {
           "Si4+" and "Si+4" will be matched with "Si4+".<br>
           See also: eltbx::StripLabel()
           <p>
-          Note that the other methods of this class are inhereted from
+          Note that the other methods of this class are inherited from
           class CAASF.
        */
       CAASF_IT1992(const std::string& Label, bool Exact = false);
@@ -140,7 +142,7 @@ namespace eltbx {
           "Si4+" and "Si+4" will be matched with "Si4+".<br>
           See also: eltbx::StripLabel()
           <p>
-          Note that the other methods of this class are inhereted from
+          Note that the other methods of this class are inherited from
           class CAASF.
        */
       CAASF_WK1995(const std::string& Label, bool Exact = false);

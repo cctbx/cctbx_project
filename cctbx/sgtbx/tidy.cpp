@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
@@ -43,8 +44,8 @@ namespace sgtbx {
       bool operator()(const RTMx& a, const RTMx& b) {
         RotMxInfo RI_a = a.Rpart().getInfo();
         RotMxInfo RI_b = b.Rpart().getInfo();
-        if (abs(RI_a.Rtype()) > abs(RI_b.Rtype())) return true;
-        if (abs(RI_a.Rtype()) < abs(RI_b.Rtype())) return false;
+        if (std::abs(RI_a.Rtype()) > std::abs(RI_b.Rtype())) return true;
+        if (std::abs(RI_a.Rtype()) < std::abs(RI_b.Rtype())) return false;
         if (RI_a.Rtype() > RI_b.Rtype()) return true;
         if (RI_a.Rtype() < RI_b.Rtype()) return false;
         if (CmpiVect(3)(RI_a.EV().elems, RI_b.EV().elems)) return true;
@@ -69,10 +70,10 @@ namespace sgtbx {
   void SgOps::makeTidy()
   {
     if (m_isTidy) return;
-    if (m_fInv == 2) {
-      m_InvT = m_LTr.TidyT(m_InvT);
+    if (isCentric()) {
+      m_InvT = InvT(true);
       for (int i = 1; i < m_nSMx; i++) {
-        if (m_SMx[i].Rpart().getRtype() < 0) {
+        if (m_SMx[i].Rpart().getRtype() < 0) { // XXX .det()
           m_SMx[i] = m_SMx[i].pre_multiply_InvT(m_InvT);
         }
       }

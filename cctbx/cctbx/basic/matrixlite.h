@@ -5,12 +5,15 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
+     2001 May 07 added: identidy, isDiagonal, transpose
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
 #ifndef CCTBX_BASIC_MATRIXLITE_H
 #define CCTBX_BASIC_MATRIXLITE_H
 
+#include <vector>
 #include <cstddef>
 #include <boost/array.hpp>
 
@@ -35,11 +38,39 @@ namespace MatrixLite {
   }
 
   template <class T>
+  void identity(T *M, const std::size_t n, const T& diagonal = 1)
+  {
+    int i;
+    for(i=0;i<n*n;i++) M[i] = 0;
+    for(i=0;i<n*n;i+=n+1) M[i] = diagonal;
+  }
+
+  template <class T>
+  bool isDiagonal(const T *M, const std::size_t nr, const std::size_t nc)
+  {
+    if (nr != nc) return false;
+    for (int ir = 0; ir < nr; ir++)
+      for (int ic = 0; ic < nc; ic++)
+        if (ir != ic && M[ir * nc + ic]) return false;
+    return true;
+  }
+
+  template <class T>
   void transpose(const T *M, const std::size_t nr, const std::size_t nc, T *Mt)
   {
     for (int ir = 0; ir < nr; ir++)
       for (int ic = 0; ic < nc; ic++)
         Mt[ic * nr + ir] = M[ir * nc + ic];
+  }
+
+  template <class T>
+  void transpose(T *M, const std::size_t nr, const std::size_t nc)
+  {
+    std::vector<T> Mt(nr * nc);
+    for (int ir = 0; ir < nr; ir++)
+      for (int ic = 0; ic < nc; ic++)
+        Mt[ic * nr + ir] = M[ir * nc + ic];
+    for (int i = 0; i < nr * nc; i++) M[i] = Mt[i];
   }
 
   template <class T>

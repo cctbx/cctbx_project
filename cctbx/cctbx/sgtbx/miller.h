@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
@@ -19,16 +20,50 @@ namespace Miller {
   //! Helper class for symmetry equivalent Miller indices.
   class SymEquivIndex {
     private:
+      int   m_TBF;
       Index m_HR;
       int   m_HT;
     public:
       //! Constructor. For internal use only.
-      inline SymEquivIndex(const Index& HR, int HT)
-        : m_HR(HR), m_HT(HT) { }
+      inline SymEquivIndex(const Index& HR, int HT, int TBF)
+        : m_HR(HR), m_HT(HT) , m_TBF(TBF) { }
       //! Product of Miller index and rotation part of symmetry operation.
       inline const Index& HR() const { return m_HR; }
       //! Product of Miller index and translation part of symmetry operation.
       inline int HT() const { return m_HT; }
+      //! Translation base factor.
+      /*! This is the factor by which HT() is multiplied.
+       */
+      inline int TBF() const { return m_TBF; }
+
+      //! Phase of this index in radians, given phase of input Miller index.
+      /*! Formula used:<br>
+          this_phi = phi - (2 * pi * HT()) / TBF();
+       */
+      template <class T>
+      T Phase_rad(const T& phi) const {
+        using cctbx::constants::pi;
+        return phi - (2. * pi * HT()) / TBF();
+      }
+      //! Phase of this index in degrees, given phase of input Miller index.
+      /*! Formula used:<br>
+          this_phi = phi - (2 * 180 * HT()) / TBF();
+       */
+      template <class T>
+      T Phase_deg(const T& phi) const {
+        return phi - (2. * 180. * HT()) / TBF();
+      }
+      //! Complex value for this index, given complex value for input index.
+      /*! Formula used:<br>
+          this_F = F * exp(-2 * pi * j * HT() / TBF());<br>
+          where j is the imaginary number.
+       */
+      template <class T>
+      std::complex<T> ShiftPhase(const std::complex<T>& F) const {
+        using cctbx::constants::pi;
+        T theta = (-2. * pi * HT()) / TBF();
+        return F * std::polar(1., theta);
+      }
   };
 
   //! Master Miller index class.
@@ -89,9 +124,8 @@ namespace Miller {
       //! For internal use only.
       inline void Update(const Miller::Index& TrialH,
                          int iMate,
-                         const Miller::SymEquivIndex& HS,
-                         int TBF) {
-        if (m_haveCutP && ! isInActiveArea(TrialH)) return;
+                         const Miller::SymEquivIndex& HS) {
+        if (m_haveCutP && !isInActiveArea(TrialH)) return;
         if (m_TBF == 0
             || (m_Pretty ? TrialH < m_H // operator< is very slow
                          : Miller::hashCompare()(TrialH, m_H))) {
@@ -99,7 +133,7 @@ namespace Miller {
           m_iMate = iMate;
           m_HR = HS.HR();
           m_HT = HS.HT();
-          m_TBF = TBF;
+          m_TBF = HS.TBF();
         }
       }
 
@@ -245,7 +279,7 @@ namespace sgtbx {
           See also: HT_rad(), HT_deg()
        */
       inline double HT(double Period) const {
-        if (! isCentric()) return -1.;
+        if (!isCentric()) return -1.;
         return Period * static_cast<double>(m_HT)
                       / static_cast<double>(m_TBF);
       }
@@ -329,7 +363,7 @@ namespace sgtbx {
           See also: N()
        */
       inline int M(bool FriedelSym) const {
-        if (FriedelSym && ! isCentric()) return 2 * N();
+        if (FriedelSym && !isCentric()) return 2 * N();
         return N();
       }
       //! Flag for Friedel mates == M(FriedelSym)/N().
@@ -338,7 +372,7 @@ namespace sgtbx {
           See also: operator()
        */
       inline int fMates(bool FriedelSym) const {
-        if (FriedelSym && ! isCentric()) return 2;
+        if (FriedelSym && !isCentric()) return 2;
         return 1;
       }
       //! Determine "epsilon" for the given Miller index.

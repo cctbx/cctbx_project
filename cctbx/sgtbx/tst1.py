@@ -59,3 +59,15 @@ assert sgo == sgtbx.SgOps("P 2 2")
 sgo = sgtbx.SgOps("P 4c -2ab -1b -1ac -1a -1bc")
 Z2POp = sgo.getZ2POp()
 print Z2POp.M().as_xyz(), Z2POp.InvM().as_xyz()
+
+import pickle
+pstr = pickle.dumps(sgo)
+print pstr
+up = pickle.loads(pstr)
+print sgo.BuildHallSymbol(1)
+print up.BuildHallSymbol(1)
+
+iter = sgtbx.SpaceGroupSymbolIterator()
+print iter.next().ExtendedHermann_Mauguin()
+for s in iter:
+  print s.ExtendedHermann_Mauguin()

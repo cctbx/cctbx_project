@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
@@ -12,6 +13,7 @@
 #define CCTBX_SGTBX_MATH_H
 
 #include <boost/rational.hpp>
+#include <cctbx/sgtbx/basic.h>
 
 namespace sgtbx {
 
@@ -52,6 +54,8 @@ namespace sgtbx {
                    const int nr, const int nc,
                    int *Sol, int *FlagIndep);
   int iRESetIxIndep(const int *REMx, int nr, int nc, int *IxIndep, int mIndep);
+
+  int SmithNormalForm(int *M, int mr, int mc, int *P, int *Q);
 
 } // namespace sgtbx
 

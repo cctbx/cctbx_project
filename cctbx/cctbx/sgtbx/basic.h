@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
@@ -20,6 +21,14 @@
 namespace sgtbx {
 
   using cctbx::error;
+
+  class error_base_factor : public error {
+    public:
+      error_base_factor(const char* file, long line,
+                        const std::string& msg = "") throw()
+        : error(file, line, msg) {}
+      virtual ~error_base_factor() throw() {}
+  };
 
   using MatrixLite::itype::Mx33;
   using MatrixLite::itype::Vec3;

@@ -5,10 +5,11 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
-#include <cctype>
+#include <ctype.h> // cannot use cctype b/o non-conforming compilers
 #include <string.h>
 #include <stdio.h>
 #include <cctbx/sgtbx/utils.h>
@@ -21,7 +22,17 @@ namespace sgtbx {
   {
     TrVec result(NewBF);
     if (ChangeBaseFactor(elems, BF(), result.elems, NewBF, 3) != 0) {
-      throw error("Change-of-basis -> out of translation-base-factor range");
+      throw error_base_factor(
+        __FILE__, __LINE__, "out of translation-base-factor range");
+    }
+    return result;
+  }
+
+  TrVec operator/(const TrVec& lhs, int rhs) {
+    TrVec result(lhs.BF());
+    for(int i=0;i<3;i++) {
+      if (lhs[i] % rhs) throw cctbx_internal_error();
+      result[i] = lhs[i] / rhs;
     }
     return result;
   }
@@ -30,12 +41,13 @@ namespace sgtbx {
   {
     RotMx result(NewBF);
     if (ChangeBaseFactor(elems, BF(), result.elems, NewBF, 9) != 0) {
-      throw error("Change-of-basis -> out of rotation-base-factor range");
+      throw error_base_factor(
+        __FILE__, __LINE__, "out of rotation-base-factor range");
     }
     return result;
   }
 
-  RTMx RTMx::newBaseFactor(int RBF, int TBF) const
+  RTMx RTMx::newBaseFactors(int RBF, int TBF) const
   {
     RTMx result(*this);
     if (RBF) result.m_R = result.m_R.newBaseFactor(RBF);
@@ -47,6 +59,13 @@ namespace sgtbx {
   {
     if (factorT == 0) factorT = factorR;
     return RTMx(m_R.scale(factorR), m_T.scale(factorT));
+  }
+
+  Vec3 operator*(const RotMx& lhs, const Vec3& rhs)
+  {
+    Vec3 result;
+    MatrixLite::multiply(lhs.elems, rhs.elems, 3, 3, 1, result.elems);
+    return result;
   }
 
   TrVec operator*(const RotMx& lhs, const TrVec& rhs)
@@ -110,7 +129,8 @@ namespace sgtbx {
   {
     RotMx result(lhs);
     if (ChangeBaseFactor(lhs.elems, rhs, result.elems, 1, 9) != 0) {
-      throw error("Division -> out of rotation-base-factor range");
+      throw error_base_factor(
+        __FILE__, __LINE__, "out of rotation-base-factor range");
     }
     return result;
   }
@@ -164,7 +184,7 @@ namespace sgtbx {
         rational R_frac(m_R(i, j), m_R.BF());
         if (R_frac != 0) {
           if (R_frac > 0) {
-            if (! R_term.empty()) {
+            if (!R_term.empty()) {
               R_term += "+";
             }
           }
@@ -223,7 +243,7 @@ namespace sgtbx {
     unsigned int P_mode = P_Add | P_Value | P_XYZ;
     for (;; StrXYZ.skip())
     {
-      if (strchr(StopChars, StrXYZ()) || ! isspace(StrXYZ()))
+      if (strchr(StopChars, StrXYZ()) || !isspace(StrXYZ()))
       {
         switch (strchr(StopChars, StrXYZ()) ? '\0' : StrXYZ())
         {
@@ -301,10 +321,12 @@ namespace sgtbx {
             else             ValT         += Value;
             for(i=0;i<3;i++) {
               if (rationalize(ValR[i], result.m_R(Row, i), RBF) != 0)
-                throw error("out of rotation-base-factor range");
+                throw error_base_factor(
+                  __FILE__, __LINE__, "out of rotation-base-factor range");
             }
             if (rationalize(ValT, result.m_T[Row], TBF) != 0)
-              throw error("out of translation-base-factor range");
+              throw error_base_factor(
+                __FILE__, __LINE__, "out of translation-base-factor range");
             Row++;
             Column = -1;
             Sign = 1;
@@ -332,6 +354,41 @@ namespace sgtbx {
   {
     parse_string StrXYZ_PS(StrXYZ);
     *this = RTMx(StrXYZ_PS, StopChars, RBF, TBF);
+  }
+
+  TrVec RTMx::getIntrinsicPart() const
+  {
+    RotMxInfo RI = Rpart().getInfo();
+    RotMx CumMx = Rpart().accumulate(RI.Rtype());
+    TrVec wi = CumMx * Tpart();
+    wi = wi / OrderOfRtype(RI.Rtype());
+    return wi;
+  }
+
+  TrVec RTMx::getLocationPart(const TrVec& wi) const
+  {
+    return wi - Tpart();
+  }
+
+  TrVec RTMx::getOriginShift(const TrVec& wl) const
+  {
+    RotMx RmI = Rpart() - Rpart().Unit();
+    RotMx P(1);
+    (void) iRowEchelonFormT(RmI.elems, 3, 3, P.elems, 3);
+    TrVec Pwl = P * wl;
+    TrVec sh(0);
+    sh.BF() = iREBacksubst(RmI.elems, Pwl.elems, 3, 3, sh.elems, 0);
+    cctbx_assert(sh.BF() > 0);
+    sh.BF() *= Pwl.BF();
+    return sh;
+  }
+
+  TranslationComponents RTMx::analyzeTpart() const
+  {
+    TrVec wi = getIntrinsicPart();
+    TrVec wl = getLocationPart(wi);
+    TrVec sh = getOriginShift(wl);
+    return TranslationComponents(wi, wl, sh);
   }
 
 } // namespace sgtbx
