@@ -1,4 +1,4 @@
-/*! \page page_installation_python Python installation
+/*! \page page_installation_python cctbx - Python installation
 
 <hr>
 
@@ -74,11 +74,11 @@ Use Ctrl-D to exit from Python.
 
 If you decide to install Python into a location other than
 <tt>/usr/local/Python-1.5.2</tt> (for example because you do not have
-root permissions), you cannot use the fast track scipts.
-In that case the corresponding path name in the
+root permissions),
+the corresponding path names in the
 Boost.Python makefile and the <tt>configuration</tt> file for the
-cctbx have to be adjusted by hand. This is explained in more detail
-in the \ref page_installation_advanced section.
+cctbx have to be adjusted. See section
+\ref installation_fast_track_adj for more information.
 
 <strong>Instructions for IRIX 6.5 using the native cc compiler</strong>
 
