@@ -103,14 +103,17 @@ def ensure_common_symbols():
   assert lbl_it == lbl_wk
 
 def exercise_custom():
-  c = caasf.custom("dummy", (1,-2,3,-4,5), (-.1,.2,-.3,.4,-.5), 6)
-  assert c.label() == "dummy"
+  c = caasf.custom(1)
+  assert c.n_ab() == 0
+  assert c.a() == ()
+  assert c.b() == ()
+  assert approx_equal(c.c(), 1)
+  c = caasf.custom((1,-2,3,-4,5), (-.1,.2,-.3,.4,-.5), 6)
   assert c.n_ab() == 5
   assert approx_equal(c.a(),(1,-2,3,-4,5))
   assert approx_equal(c.b(),(-.1,.2,-.3,.4,-.5))
   assert approx_equal(c.c(), 6)
-  c = caasf.custom("d", (), (), -2)
-  assert c.label() == "d"
+  c = caasf.custom((), (), -2)
   assert c.n_ab() == 0
   assert c.a() == ()
   assert c.b() == ()
