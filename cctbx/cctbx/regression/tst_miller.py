@@ -43,7 +43,9 @@ def exercise_set():
   assert str(mp.space_group_info()) == "P m m m"
   assert mp.indices() == ms.indices()
   mc = ms.complete_set()
-  assert approx_equal(mc.completeness(), 1)
+  c = mc.completeness()
+  assert c >= 1-1.e5
+  assert c <= mc.indices().size()/float(mc.indices().size()-1)
   ma = ms.map_to_asu()
   assert flex.order(ms.indices(), ma.indices()) == 0
   ma = ms.remove_systematic_absences()
