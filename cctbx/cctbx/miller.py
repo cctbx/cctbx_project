@@ -424,6 +424,7 @@ class fft_map(crystal.symmetry):
       self.anomalous_flag(),
       coeff_array.indices(),
       cf,
+      n_real,
       flex.grid(n_complex),
       conjugate_flag)
     if (not self.anomalous_flag()):

@@ -21,50 +21,15 @@
 
 namespace cctbx { namespace maptbx { namespace structure_factors {
 
+  //! Copies a structure factor array to a 3-dimensional complex map.
+  /*! Reference: David A. Langs (2002), J. Appl. Cryst. 35, 505.
+   */
   template <typename FloatType = double>
   class to_map
   {
     public:
       template <typename OtherFloatType>
       to_map(
-        sgtbx::space_group const& space_group,
-        bool anomalous_flag,
-        af::const_ref<miller::index<> > const& miller_indices,
-        af::const_ref<std::complex<OtherFloatType> > const& structure_factors,
-        af::flex_grid<> const& flex_grid,
-        bool conjugate_flag)
-      :
-        complex_map_(af::c_grid_padded<3>(flex_grid))
-      {
-        typename af::c_grid_padded<3>::index_type const&
-          n_complex = complex_map_.accessor().focus();
-        for(std::size_t i=0;i<miller_indices.size();i++) {
-          miller::sym_equiv_indices h_eq(space_group, miller_indices[i]);
-          for(int e=0;e<h_eq.multiplicity(anomalous_flag);e++) {
-            miller::sym_equiv_index h_eq_e = h_eq(e);
-            miller::index<> h = h_eq_e.h();
-            if (conjugate_flag) h = -h;
-            if (!anomalous_flag && h[2] < 0) continue;
-            miller::index<> ih = h_as_ih_array(anomalous_flag, h, n_complex);
-            CCTBX_ASSERT(ih.const_ref().all_ge(0));
-            complex_map_(ih) = h_eq_e.complex_eq(structure_factors[i]);
-          }
-        }
-      }
-
-      af::versa<std::complex<FloatType>, af::c_grid_padded<3> >
-      complex_map() const { return complex_map_; }
-
-    protected:
-      af::versa<std::complex<FloatType>, af::c_grid_padded<3> > complex_map_;
-  };
-
-  template <typename FloatType = double>
-  class to_under_sampled_map
-  {
-    public:
-      template <typename OtherFloatType>
-      to_under_sampled_map(
         sgtbx::space_group const& space_group,
         bool anomalous_flag,
         af::const_ref<miller::index<> > const& miller_indices,
@@ -94,7 +59,7 @@ namespace cctbx { namespace maptbx { namespace structure_factors {
             miller::sym_equiv_index h_eq_e = h_eq(e);
             miller::index<> h = h_eq_e.h();
             if (conjugate_flag) h = -h;
-            af::int3 ih = h_as_ih_array_under_sampled(h, n_real);
+            af::int3 ih = h_as_ih_mod_array(h, n_real);
             if (!ih.all_lt(map_grid_focus)) continue;
             complex_map_(ih) += h_eq_e.complex_eq(structure_factors[i]);
           }
@@ -192,8 +157,7 @@ namespace cctbx { namespace maptbx { namespace structure_factors {
                       af::c_grid_padded<3> > const& complex_map,
         bool conjugate_flag)
       {
-        typename af::c_grid_padded<3>::index_type const&
-          n_complex = complex_map.accessor().focus();
+        af::int3 map_grid_focus = complex_map.accessor().focus();
         data_.reserve(miller_indices.size());
         for(std::size_t i=0;i<miller_indices.size();i++) {
           miller::index<> h = miller_indices[i];
@@ -210,8 +174,8 @@ namespace cctbx { namespace maptbx { namespace structure_factors {
               f_conj = false;
             }
           }
-          miller::index<> ih = h_as_ih_array(anomalous_flag, h, n_complex);
-          CCTBX_ASSERT(ih.const_ref().all_ge(0));
+          af::int3 ih = h_as_ih_exact_array(anomalous_flag, h, map_grid_focus);
+          CCTBX_ASSERT(ih.all_ge(0));
           if (!f_conj) data_.push_back(complex_map(ih));
           else         data_.push_back(std::conj(complex_map(ih)));
         }

@@ -45,5 +45,4 @@ def as_CObjectZYX(map_unit_cell, first, last, apply_sigma_scaling=0001):
 
 structure_factors = dicts.easy()
 structure_factors.to_map = structure_factors_to_map
-structure_factors.to_under_sampled_map = structure_factors_to_under_sampled_map
 structure_factors.from_map = structure_factors_from_map

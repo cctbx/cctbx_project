@@ -29,26 +29,6 @@ namespace {
                   bool,
                   af::const_ref<miller::index<> > const&,
                   af::const_ref<std::complex<double> > const&,
-                  af::flex_grid<> const&,
-                  bool>())
-        .def("complex_map", &w_t::complex_map)
-      ;
-    }
-  };
-
-  struct to_under_sampled_map_wrappers
-  {
-    typedef to_under_sampled_map<> w_t;
-
-    static void
-    wrap()
-    {
-      using namespace boost::python;
-      class_<w_t>("structure_factors_to_under_sampled_map", no_init)
-        .def(init<sgtbx::space_group const&,
-                  bool,
-                  af::const_ref<miller::index<> > const&,
-                  af::const_ref<std::complex<double> > const&,
                   af::int3 const&,
                   af::flex_grid<> const&,
                   bool>())
@@ -91,7 +71,6 @@ namespace boost_python {
   void wrap_structure_factors()
   {
     structure_factors::to_map_wrappers::wrap();
-    structure_factors::to_under_sampled_map_wrappers::wrap();
     structure_factors::from_map_wrappers::wrap();
   }
 
