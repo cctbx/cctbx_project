@@ -174,15 +174,21 @@ namespace cctbx { namespace xray {
     class caasf_fourier_transformed
     {
       public:
+        BOOST_STATIC_CONSTANT(
+          std::size_t, n_rho_real_terms = CaasfType::n_plus_1);
+
         caasf_fourier_transformed() {}
 
         caasf_fourier_transformed(
+          exponent_table<FloatType>& exp_table,
           CaasfType const& caasf,
           std::complex<FloatType> const& fp_fdp,
           FloatType const& w,
           FloatType const& u_iso,
           FloatType const& u_extra)
-          : anisotropic_flag_(false)
+        :
+          exp_table_(&exp_table),
+          anisotropic_flag_(false)
         {
           FloatType b_incl_extra = adptbx::u_as_b(u_iso + u_extra);
           std::size_t i = 0;
@@ -200,12 +206,15 @@ namespace cctbx { namespace xray {
         }
 
         caasf_fourier_transformed(
+          exponent_table<FloatType>& exp_table,
           CaasfType const& caasf,
           std::complex<FloatType> const& fp_fdp,
           FloatType const& w,
           scitbx::sym_mat3<FloatType> const& u_cart,
           FloatType const& u_extra)
-          : anisotropic_flag_(true)
+        :
+          exp_table_(&exp_table),
+          anisotropic_flag_(true)
         {
           std::size_t i = 0;
           for(;i<caasf.n_ab();i++) {
@@ -224,6 +233,12 @@ namespace cctbx { namespace xray {
             as_imag_, aniso_bs_imag_);
         }
 
+        FloatType
+        exp_table(FloatType const& x) const
+        {
+          return (*exp_table_)(x);
+        }
+
         bool
         anisotropic_flag() const { return anisotropic_flag_; }
 
@@ -234,42 +249,56 @@ namespace cctbx { namespace xray {
         }
 
         FloatType
-        rho_real(exponent_table<FloatType>& exp_table,
-                 FloatType const& d_sq) const
+        exp_term(FloatType const& d_sq, std::size_t i) const
+        {
+          return exp_table(bs_real_[i] * d_sq);
+        }
+
+        FloatType
+        exp_term(scitbx::vec3<FloatType> const& d, std::size_t i) const
+        {
+          return exp_table(d * aniso_bs_real_[i] * d);
+        }
+
+        FloatType
+        exp_term(FloatType const& d_sq) const
+        {
+          return exp_table(bs_imag_ * d_sq);
+        }
+
+        FloatType
+        exp_term(scitbx::vec3<FloatType> const& d) const
+        {
+          return exp_table(d * aniso_bs_imag_ * d);
+        }
+
+        template <typename DistanceType>
+        FloatType
+        rho_real_term(DistanceType const& d_or_d_sq, std::size_t i) const
+        {
+          return as_real_[i] * exp_term(d_or_d_sq, i);
+        }
+
+        template <typename DistanceType>
+        FloatType
+        rho_real(DistanceType const& d_or_d_sq) const
         {
           FloatType r(0);
-          for (std::size_t i=0;i<as_real_.size();i++) {
-            r += as_real_[i] * exp_table(bs_real_[i] * d_sq);
+          for (std::size_t i=0;i<n_rho_real_terms;i++) {
+            r += rho_real_term(d_or_d_sq, i);
           }
           return r;
         }
 
+        template <typename DistanceType>
         FloatType
-        rho_real(exponent_table<FloatType>& exp_table,
-                 scitbx::vec3<FloatType> const& d) const
+        rho_imag(DistanceType const& d_or_d_sq) const
         {
-          FloatType r(0);
-          for (std::size_t i=0;i<as_real_.size();i++) {
-            r += as_real_[i] * exp_table(d * aniso_bs_real_[i] * d);
-          }
-          return r;
-        }
-
-        FloatType
-        rho_imag(exponent_table<FloatType>& exp_table,
-                 FloatType const& d_sq) const
-        {
-          return as_imag_ * exp_table(bs_imag_ * d_sq);
-        }
-
-        FloatType
-        rho_imag(exponent_table<FloatType>& exp_table,
-                 scitbx::vec3<FloatType> const& d) const
-        {
-          return as_imag_ * exp_table(d * aniso_bs_imag_ * d);
+          return as_imag_ * exp_term(d_or_d_sq);
         }
 
       protected:
+        exponent_table<FloatType>* exp_table_;
         bool anisotropic_flag_;
         af::tiny<FloatType, CaasfType::n_plus_1> as_real_;
         af::tiny<FloatType, CaasfType::n_plus_1> bs_real_;
@@ -292,8 +321,7 @@ namespace cctbx { namespace xray {
         uctbx::unit_cell const& unit_cell,
         FloatType const& wing_cutoff,
         GridPointType const& grid_n,
-        caasf_fourier_transformed<FloatType, CaasfType> const& caasf_ft,
-        exponent_table<FloatType>& exp_table)
+        caasf_fourier_transformed<FloatType, CaasfType> const& caasf_ft)
       :
         max_d_sq(0)
       {
@@ -308,7 +336,7 @@ namespace cctbx { namespace xray {
             d_frac[i_basis_vec] = ig / grid_n_f[i_basis_vec];
             FloatType d_sq = unit_cell.length_sq(d_frac);
             if (scitbx::fn::absolute(
-                  caasf_ft.rho_real(exp_table, d_sq)) < rho_cutoff) {
+                  caasf_ft.rho_real(d_sq)) < rho_cutoff) {
               break;
             }
             if (max_d_sq < d_sq) max_d_sq = d_sq;
@@ -539,8 +567,7 @@ namespace cctbx { namespace xray {
     }
     grid_point_type const& grid_f = map_accessor_.focus();
     grid_point_type const& grid_a = map_accessor_.all();
-    detail::exponent_table<FloatType> exp_table(
-      exp_table_one_over_step_size);
+    detail::exponent_table<FloatType> exp_table(exp_table_one_over_step_size);
     for(scatterer=scatterers.begin();scatterer!=scatterers.end();scatterer++)
     {
       if (scatterer->weight() == 0) continue;
@@ -559,20 +586,22 @@ namespace cctbx { namespace xray {
       }
       CCTBX_ASSERT(u_iso >= 0);
       detail::caasf_fourier_transformed<FloatType, caasf_type> caasf_ft(
+        exp_table,
         scatterer->caasf, scatterer->fp_fdp, scatterer->weight(),
         u_iso, u_extra_);
       detail::calc_shell<FloatType, grid_point_type> shell(
-        unit_cell_, wing_cutoff_, grid_f, caasf_ft, exp_table);
+        unit_cell_, wing_cutoff_, grid_f, caasf_ft);
       detail::array_update_max(max_shell_radii_, shell.radii);
       if (electron_density_must_be_positive) {
         if (   caasf_ft.rho_real_0() < 0
-            || caasf_ft.rho_real(exp_table, shell.max_d_sq) < 0) {
+            || caasf_ft.rho_real(shell.max_d_sq) < 0) {
 
           throw error("Negative electron density at sampling point.");
         }
       }
       if (scatterer->anisotropic_flag) {
         caasf_ft = detail::caasf_fourier_transformed<FloatType,caasf_type>(
+          exp_table,
           scatterer->caasf, scatterer->fp_fdp, scatterer->weight(),
           u_cart, u_extra_);
       }
@@ -605,15 +634,15 @@ namespace cctbx { namespace xray {
         std::size_t i_map = g0112 + math::mod_positive(gp[2],grid_f[2]);
         if (anomalous_flag) i_map *= 2;
         if (!scatterer->anisotropic_flag) {
-          map_begin[i_map] += caasf_ft.rho_real(exp_table, d_sq);
+          map_begin[i_map] += caasf_ft.rho_real(d_sq);
           if (fdp) {
-            map_begin[i_map+1] += caasf_ft.rho_imag(exp_table, d_sq);
+            map_begin[i_map+1] += caasf_ft.rho_imag(d_sq);
           }
         }
         else {
-          map_begin[i_map] += caasf_ft.rho_real(exp_table, d);
+          map_begin[i_map] += caasf_ft.rho_real(d);
           if (fdp) {
-            map_begin[i_map+1] += caasf_ft.rho_imag(exp_table, d);
+            map_begin[i_map+1] += caasf_ft.rho_imag(d);
           }
         }
       }}}

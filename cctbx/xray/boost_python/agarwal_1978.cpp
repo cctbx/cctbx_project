@@ -44,8 +44,6 @@ namespace {
         .def("n_contributing_scatterers", &w_t::n_contributing_scatterers)
         .def("n_anomalous_scatterers", &w_t::n_anomalous_scatterers)
         .def("anomalous_flag", &w_t::anomalous_flag)
-        .def("real_map", &w_t::real_map)
-        .def("complex_map", &w_t::complex_map)
         .def("exp_table_size", &w_t::exp_table_size)
         .def("max_shell_radii", &w_t::max_shell_radii, ccr())
         .def("max_shell_radii_frac", &w_t::max_shell_radii_frac)
@@ -62,11 +60,6 @@ namespace {
         .def("grad_u_12", &w_t::grad_u_12)
         .def("grad_occupancy", &w_t::grad_occupancy)
         .def("grad_fp", &w_t::grad_fp)
-        .def("apply_symmetry",
-          (void(w_t::*)(maptbx::grid_tags<> const&))
-            &w_t::apply_symmetry)
-        .def("eliminate_u_extra_and_normalize",
-          &w_t::eliminate_u_extra_and_normalize)
       ;
     }
   };
