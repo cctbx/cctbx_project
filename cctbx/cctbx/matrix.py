@@ -56,7 +56,7 @@ class rec:
     assert self.n_rows() == 1 or self.n_columns() == 1
     result = 0
     for e in self.elems:
-      result += e**2
+      result += e*e
     return result
 
   def __abs__(self):
