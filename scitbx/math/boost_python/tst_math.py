@@ -392,10 +392,6 @@ def exercise_gaussian_fit():
   assert approx_equal(gf.table_sigmas(), sigmas)
   assert approx_equal(gf.fitted_values(),
     [2.8632482881537511, 2.4896052951221748, 0.94088903489182252])
-  gf = gaussian.fit(
-    x, y, flex.double(),
-    gaussian.sum((1,2), (4,5)))
-  assert approx_equal(gf.table_sigmas(), [1,1,1])
   reference_gaussian = gaussian.sum((1,2,3), (4,5,6))
   gf = gaussian.fit(
     x, reference_gaussian, sigmas,
@@ -406,10 +402,6 @@ def exercise_gaussian_fit():
   assert approx_equal(gf.table_x(), x)
   assert approx_equal(gf.table_y(), reference_gaussian.at_x(x))
   assert approx_equal(gf.table_sigmas(), sigmas)
-  gf = gaussian.fit(
-    x, reference_gaussian, flex.double(),
-    gaussian.sum((1,2), (4,5)))
-  assert approx_equal(gf.table_sigmas(), [1,1,1])
   assert approx_equal(gf.differences(), gf.at_x(x)-reference_gaussian.at_x(x))
   c_fit = gaussian.fit(
     flex.double([0.0, 0.066666666666666666, 0.13333333333333333,
@@ -426,11 +418,9 @@ def exercise_gaussian_fit():
     0.098159179757290715, 0.060724224581695019, -0.10766283796372011])
   assert approx_equal(c_fit.differences(), differences)
   assert approx_equal(c_fit.significant_relative_errors(),
-    [0.0106379, 0.0004684, 0.0212144, 0.0167898, 0.0383344])
-  assert approx_equal(c_fit.significant_relative_errors(0),
-    [0.0106379, 0.0004684, 0.0212144, 0.0167898, 0.0383344])
+    [0.0107212, 0.0005581, 0.0213236, 0.0169304, 0.0385142])
   gf = gaussian.fit(
-    x, reference_gaussian, flex.double(),
+    x, reference_gaussian, flex.double(x.size(), 1),
     gaussian.sum((1,2), (4,5)))
   sgf = gf.apply_shifts(flex.double((3,-3,4,6)), 0001)
   assert approx_equal(sgf.array_of_a(), (1+3,2+4))
@@ -453,7 +443,7 @@ def exercise_gaussian_fit():
       sgf.gradients_d_abc(2, use_sigmas, differences),
       [15.6539271, -4.1090114, 10.4562306, -1.6376781])
   gfc = gaussian.fit(
-    x, reference_gaussian, flex.double(),
+    x, reference_gaussian, flex.double(x.size(), 1),
     gaussian.sum((1,2), (4,5), 6))
   sgfc = gfc.apply_shifts(flex.double((3,-3,4,6,-5)), 0001)
   assert approx_equal(sgfc.array_of_a(), (1+3,2+4))
@@ -497,7 +487,7 @@ def exercise_gaussian_fit():
     gf = gaussian.fit(
       flex.double([0]),
       g5c,
-      flex.double(),
+      flex.double(1, 1),
       gaussian.sum(
         iter(a.select(permutation)),
         iter(b.select(permutation)), 0, include_constant_term))
@@ -521,7 +511,7 @@ def exercise_gaussian_fit():
       gf = gaussian.fit(
         flex.double([i / 10.]),
         g5c,
-        flex.double(),
+        flex.double(1, 1),
         sgf)
       differences = flex.double([0.5])
       assert approx_equal(

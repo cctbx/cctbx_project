@@ -223,7 +223,7 @@ class find_max_x_multi:
     assert i_x_begin is not None
     assert i_x_end is not None
     n_terms = existing_gaussian.n_terms() + 1
-    i_x_step = ifloor((i_x_end-i_x_begin) / (factor_x_step*n_terms))
+    i_x_step = max(1, ifloor((i_x_end-i_x_begin) / (factor_x_step*n_terms)))
     if (n_terms == 1): n_start_fractions = 2
     best_fit = None
     for i_x in xrange(i_x_begin, i_x_end, i_x_step):
@@ -266,9 +266,9 @@ def make_golay_based_start_gaussian(null_fit, code):
   a = flex.double()
   b = flex.double()
   for i_term in xrange(6):
-    i_bits = i_term * 4
-    bits_a = code[i_bits:i_bits+2]
-    bits_b = code[i_bits+2:i_bits+4]
+    i_bits = i_term * 2
+    bits_a = code[i_bits], code[i_bits+12]
+    bits_b = code[i_bits+1], code[i_bits+12+1]
     a.append(a_starts[bits_a[0]*2+bits_a[1]])
     b.append(b_starts[bits_b[0]*2+bits_b[1]])
   a = a * null_fit.table_y()[0] / flex.sum(a)
@@ -280,7 +280,9 @@ def make_golay_based_start_gaussian(null_fit, code):
 
 class fit_with_golay_starts:
 
-  def __init__(self, null_fit,
+  def __init__(self, label,
+                     null_fit,
+                     null_fit_more,
                      n_terms,
                      target_powers,
                      minimize_using_sigmas,
@@ -322,8 +324,15 @@ class fit_with_golay_starts:
               and min(minimized.final_gaussian_fit.array_of_b()) >= b_min):
             self.min = minimized
             self.max_error = max_error
-            self.min.final_gaussian_fit.show()
-            print self.max_error
+            fit_more = scitbx.math.gaussian.fit(
+              null_fit_more.table_x(),
+              null_fit_more.table_y(),
+              null_fit_more.table_sigmas(),
+              self.min.final_gaussian_fit)
+            print label, "max_error fitted=%.4f, more=%.4f" % (
+              self.max_error, flex.max(fit_more.significant_relative_errors()))
+            fit_more.show()
+            fit_more.show_table()
             print
             sys.stdout.flush()
             if (self.max_error < 0.001):
