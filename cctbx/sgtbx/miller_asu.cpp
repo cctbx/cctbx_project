@@ -331,6 +331,12 @@ namespace cctbx {
       InitializeLoop(Miller::Index(af::abs(MaxIndex)));
     }
 
+    bool MillerIndexGenerator::set_sys_abs_test(const Miller::Index& h)
+    {
+      m_sys_abs_test = sys_absent_test(m_SgOps, h);
+      return m_sys_abs_test.is_sys_absent();
+    }
+
     Miller::Index MillerIndexGenerator::next_under_friedel_symmetry()
     {
       const int RBF = m_ASU.CBOp().M().RBF();
@@ -340,13 +346,13 @@ namespace cctbx {
         if (m_ASU.ReferenceASU()->isInASU(ReferenceH)) {
           if (m_ASU.isReferenceASU()) {
             if (m_Qhigh < 0.) {
-              if (!ReferenceH.is000() && !m_SgOps.isSysAbsent(ReferenceH)) {
+              if (!ReferenceH.is000() && !set_sys_abs_test(ReferenceH)) {
                 return ReferenceH;
               }
             }
             else {
               double Q = m_UnitCell.Q(ReferenceH);
-              if (Q != 0 && Q <= m_Qhigh && !m_SgOps.isSysAbsent(ReferenceH)) {
+              if (Q != 0 && Q <= m_Qhigh && !set_sys_abs_test(ReferenceH)) {
                 return ReferenceH;
               }
             }
@@ -357,13 +363,13 @@ namespace cctbx {
             if (HR.BF() == 1) {
               Miller::Index H(HR.vec());
               if (m_Qhigh < 0.) {
-                if (!H.is000() && !m_SgOps.isSysAbsent(H)) {
+                if (!H.is000() && !set_sys_abs_test(H)) {
                   return H;
                 }
               }
               else {
                 double Q = m_UnitCell.Q(H);
-                if (Q != 0 && Q <= m_Qhigh && !m_SgOps.isSysAbsent(H)) {
+                if (Q != 0 && Q <= m_Qhigh && !set_sys_abs_test(H)) {
                   return H;
                 }
               }
@@ -382,7 +388,7 @@ namespace cctbx {
         return -m_previous;
       }
       m_previous = next_under_friedel_symmetry();
-      m_next_is_minus_previous = !m_SgOps.isCentric(m_previous);
+      m_next_is_minus_previous = !m_sys_abs_test.is_centric();
       return m_previous;
     }
 
