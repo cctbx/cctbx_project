@@ -125,6 +125,7 @@ namespace scitbx { namespace af { namespace boost_python {
     static e_t
     getitem_1d(f_t const& a, std::size_t i)
     {
+      if (!a.check_shared_size()) raise_shared_size_mismatch();
       if (i >= a.size()) scitbx::boost_python::raise_index_error();
       return a[i];
     }
@@ -132,6 +133,7 @@ namespace scitbx { namespace af { namespace boost_python {
     static e_t
     getitem_flex_grid(f_t const& a, flex_grid_default_index_type const& i)
     {
+      if (!a.check_shared_size()) raise_shared_size_mismatch();
       if (!a.accessor().is_valid_index(i)) {
         scitbx::boost_python::raise_index_error();
       }
@@ -141,6 +143,7 @@ namespace scitbx { namespace af { namespace boost_python {
     static void
     setitem_1d(f_t& a, std::size_t i, e_t const& x)
     {
+      if (!a.check_shared_size()) raise_shared_size_mismatch();
       if (i >= a.size()) scitbx::boost_python::raise_index_error();
       a[i] = x;
     }
@@ -149,6 +152,7 @@ namespace scitbx { namespace af { namespace boost_python {
     setitem_flex_grid(
       f_t& a, flex_grid_default_index_type const& i, e_t const& x)
     {
+      if (!a.check_shared_size()) raise_shared_size_mismatch();
       if (!a.accessor().is_valid_index(i)) {
         scitbx::boost_python::raise_index_error();
       }
@@ -158,6 +162,7 @@ namespace scitbx { namespace af { namespace boost_python {
     static e_t
     front(f_t const& a)
     {
+      if (!a.check_shared_size()) raise_shared_size_mismatch();
       if (a.size() == 0) scitbx::boost_python::raise_index_error();
       return a.front();
     }
@@ -165,6 +170,7 @@ namespace scitbx { namespace af { namespace boost_python {
     static e_t
     back(f_t const& a)
     {
+      if (!a.check_shared_size()) raise_shared_size_mismatch();
       if (a.size() == 0) scitbx::boost_python::raise_index_error();
       return a.back();
     }
@@ -172,30 +178,35 @@ namespace scitbx { namespace af { namespace boost_python {
     static void
     fill(f_t& a, e_t const& x)
     {
+      if (!a.check_shared_size()) raise_shared_size_mismatch();
       a.fill(x);
     }
 
     static void
     reserve(f_t& a, std::size_t sz)
     {
+      if (!a.check_shared_size()) raise_shared_size_mismatch();
       a.reserve(sz);
     }
 
     static f_t
     deep_copy(f_t const& a)
     {
+      if (!a.check_shared_size()) raise_shared_size_mismatch();
       return a.deep_copy();
     }
 
     static f_t
     shallow_copy(f_t const& a)
     {
+      if (!a.check_shared_size()) raise_shared_size_mismatch();
       return a;
     }
 
     static f_t
     as_1d(f_t const& a)
     {
+      if (!a.check_shared_size()) raise_shared_size_mismatch();
       return f_t(a, flex_grid<>(a.size()));
     }
 
@@ -309,6 +320,7 @@ namespace scitbx { namespace af { namespace boost_python {
     static boost::python::object
     indices(f_t const& a)
     {
+      if (!a.check_shared_size()) raise_shared_size_mismatch();
       return boost::python::object(boost::python::handle<>(
         PyRange_New(0, a.size(), 1, 1)));
     }
@@ -316,12 +328,14 @@ namespace scitbx { namespace af { namespace boost_python {
     static flex_items<e_t>
     items(f_t const& a)
     {
+      if (!a.check_shared_size()) raise_shared_size_mismatch();
       return flex_items<e_t>(a);
     }
 
     static f_t
     select(f_t const& a, flex_bool const& flags)
     {
+      if (!a.check_shared_size()) raise_shared_size_mismatch();
       assert_0_based_1d(a.accessor());
       assert_0_based_1d(flags.accessor());
       if (a.size() != flags.size()) {
@@ -339,6 +353,7 @@ namespace scitbx { namespace af { namespace boost_python {
     static f_t
     shuffle(f_t const& a, flex_size_t const& permutation)
     {
+      if (!a.check_shared_size()) raise_shared_size_mismatch();
       assert_0_based_1d(a.accessor());
       assert_0_based_1d(permutation.accessor());
       if (a.size() != permutation.size()) {
