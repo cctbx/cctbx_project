@@ -1,244 +1,61 @@
-#! /usr/bin/env python
-
+import libtbx.env
 import libtbx.config
-import sys, os
-from os.path import normpath, join, split, isdir, isfile, islink, splitext
+import os
+from os.path import normpath, join, isdir, isfile, splitext
 norm = normpath
 
-class create_bin_sh_dispatcher:
-
-  def __init__(self, python_exe, precall_commands):
-    self.python_exe = python_exe
-    self.precall_commands = precall_commands
-
-  def __call__(self, source_file, target_file):
-    f = open(target_file, "w")
-    print >> f, '#! /bin/sh'
-    print >> f, '# LIBTBX_DISPATCHER DO NOT EDIT'
-    print >> f, 'unset PYTHONHOME'
-    essentials = ["PYTHONPATH"]
-    if (sys.platform.startswith("darwin")):
-      essentials.append("DYLD_LIBRARY_PATH")
-    else:
-      essentials.append("LD_LIBRARY_PATH")
-    for v in essentials:
-      print >> f, 'if [ -n "$LIBTBX0%s" ]; then' % v
-      print >> f, '  if [ ! -n "$%s" ]; then' % v
-      print >> f, '    %s="$LIBTBX0%s"' % (v, v)
-      print >> f, '    export %s' % v
-      print >> f, '  elif [ "$%s" != "$LIBTBX0%s" ]; then' % (v, v)
-      print >> f, '    x=`echo "$%s" | grep libtbx`' % v
-      print >> f, '    if [ ! -n "$x" ]; then'
-      print >> f, '      %s="$LIBTBX0%s:$%s"' % (v, v, v)
-      print >> f, '      export %s' % v
-      print >> f, '    fi'
-      print >> f, '  fi'
-      print >> f, 'fi'
-    if (self.precall_commands is not None):
-      for line in self.precall_commands:
-        print >> f, line
-    cmd = "  exec"
-    if (    source_file != self.python_exe
-        and source_file.lower().endswith(".py")):
-      cmd += " '"+self.python_exe+"'"
-    print >> f, "if [ $# -eq 0 ]; then"
-    print >> f, cmd, "'"+source_file+"'"
-    print >> f, "else"
-    print >> f, cmd, "'"+source_file+"'", '"$@"'
-    print >> f, "fi"
-    f.close()
-    os.chmod(target_file, 0755)
-
-class create_win32_dispatcher:
-
-  def __init__(self, dispatcher_front_end_exe):
-    self.dispatcher_front_end_exe = dispatcher_front_end_exe
-
-  def __call__(self, source_file, target_file):
-    open(target_file+".exe", "wb").write(self.dispatcher_front_end_exe)
-
-def create_driver(libtbx_env, precall_commands,
-                  target_dir, package_name, source_dir, file_name,
-                  dispatcher_dict):
+def create_dispatcher(target_dir, package_name, source_dir, file_name):
   source_file = norm(join(source_dir, file_name))
   if (not isfile(source_file)): return
   if (file_name.lower().startswith("__init__.py")): return
   if (file_name.lower().endswith(".pyc")): return
   if (file_name[0] == "."): return
+  if (os.name == "nt"):
+    ext = splitext(file_name)[1].lower()
+    if (ext not in libtbx.config.windows_pathext): return
   target_file = norm(join(target_dir, package_name))
   if (file_name.lower() != "main.py"):
     target_file += "." + splitext(file_name)[0]
-  if (os.name == "nt"):
-    if (not file_name.lower().endswith(".py")): return
-    action = create_win32_dispatcher(
-      dispatcher_front_end_exe=libtbx_env.dispatcher_front_end_exe())
-  else:
-    action = create_bin_sh_dispatcher(
-      python_exe=libtbx_env.LIBTBX_PYTHON_EXE,
-      precall_commands=precall_commands)
-    try: os.chmod(source_file, 0755)
-    except: pass
-  if (isfile(target_file) or islink(target_file)):
-    try: os.remove(target_file)
-    except OSError: pass
-    else: action(source_file, target_file)
-  else:
-    action(source_file, target_file)
-  dispatcher_dict[os.path.basename(target_file).lower()] = source_file
+  libtbx.env.cache.create_dispatcher(
+    source_file=source_file,
+    target_file=target_file)
 
-def create_drivers(libtbx_env, precall_commands,
-                   target_dir, package_name, source_dir,
-                   dispatcher_dict):
+def create_dispatchers(target_dir, package_name, source_dir):
   if (not isdir(source_dir)): return
   print "Processing:", source_dir
   for file_name in os.listdir(source_dir):
-    create_driver(
-      libtbx_env=libtbx_env,
-      precall_commands=precall_commands,
+    create_dispatcher(
       target_dir=target_dir,
       package_name=package_name,
       source_dir=source_dir,
-      file_name=file_name,
-      dispatcher_dict=dispatcher_dict)
-
-def create_dispatcher_back_end(libtbx_env, dispatcher_dict):
-  dispatcher_path = norm(join(libtbx_env.LIBTBX_BUILD, "dispatcher"))
-  f = open(dispatcher_path, "w")
-  print >> f, "import sys, os"
-  print >> f, "scripts = {"
-  for item in dispatcher_dict.items():
-    print >> f, '"%s": r"%s",' % item
-  print >> f, "}"
-  print >> f, """\
-cmd = os.path.basename(sys.argv[1]).lower()
-if (cmd.endswith(".exe")):
-  cmd = cmd[:-4]
-script = scripts.get(cmd, None)
-if (script is None):
-  raise RuntimeError("Unknown script: %s" % cmd)
-sys.argv = sys.argv[1:]
-execfile(script)
-  """
-  f.close()
-
-def create_posix_icc_ld_preload(libtbx_env):
-  path_icc = libtbx.config.full_path("icc")
-  if (path_icc is None): return None
-  path_lib = os.sep.join(path_icc.split(os.sep)[:-2] + ["lib"])
-  if (not os.path.isdir(path_lib)): return None
-  ld_preload = []
-  path_libirc_a = os.path.join(path_lib, "libirc.a")
-  path_libirc_so = os.path.join(path_lib, "libirc.so")
-  if (os.path.isfile(path_libirc_so)):
-    ld_preload.append(path_libirc_so)
-  else:
-    if (os.path.isfile(path_libirc_a)):
-      path_libirc_so = os.path.join(
-        libtbx_env.LIBTBX_BUILD, "libtbx", "libirc.so")
-      cmd = "%(path_icc)s -shared -o %(path_libirc_so)s %(path_libirc_a)s" \
-        % vars()
-      print cmd
-      sys.stdout.flush()
-      os.system(cmd)
-      ld_preload.append(path_libirc_so)
-  path_libunwind_so = None
-  best_version = None
-  for file_name in os.listdir(path_lib):
-    if (file_name.startswith("libunwind.so.")):
-      try: version = int(file_name.split(".")[2])
-      except: version = None
-      if (version is not None):
-        if (best_version is None or version > best_version):
-          path_libunwind_so = os.path.join(path_lib, file_name)
-          best_version = version
-  if (path_libunwind_so is not None):
-    ld_preload.append(path_libunwind_so)
-  if (len(ld_preload) == 0): return None
-  return [
-    'LD_PRELOAD="%s"' % os.pathsep.join(ld_preload),
-    'export LD_PRELOAD']
-
-def assemble_dispatcher_precall_commands(libtbx_env):
-  lines = []
-  if (    libtbx_env.python_version_major_minor == (2,2)
-      and sys.platform == "linux2"
-      and os.path.isfile("/etc/redhat-release")):
-    try: red_hat_linux_release = open("/etc/redhat-release").readline()
-    except: pass
-    else:
-      if (    red_hat_linux_release.startswith("Red Hat Linux release")
-          and red_hat_linux_release.split()[4] == "9"):
-        lines.extend([
-          'if [ ! -n "$LD_ASSUME_KERNEL" ]; then',
-          '  LD_ASSUME_KERNEL=2.4.1',
-          '  export LD_ASSUME_KERNEL',
-          'fi'])
-  if (os.name == "posix" and libtbx_env.compiler == "icc"):
-    addl_lines = create_posix_icc_ld_preload(libtbx_env)
-    if (addl_lines is None):
-      raise libtbx.config.UserError("Cannot determine LD_PRELOAD for icc.")
-    lines.extend(addl_lines)
-  return lines
-
-def create_python_dispatchers(libtbx_env, target_dir, precall_commands):
-  python_exe = libtbx_env.LIBTBX_PYTHON_EXE
-  for file_name in ("libtbx.python", "python"):
-    target_file = norm(join(target_dir, file_name))
-    if (os.name == "nt"):
-      action = create_win32_dispatcher(
-        dispatcher_front_end_exe=libtbx_env.dispatcher_front_end_exe())
-    else:
-      action = create_bin_sh_dispatcher(
-        python_exe=python_exe,
-        precall_commands=precall_commands)
-      try: os.chmod(source_file, 0755)
-      except: pass
-    if (isfile(target_file) or islink(target_file)):
-      try: os.remove(target_file)
-      except OSError: pass
-      else: action(python_exe, target_file)
-    else:
-      action(python_exe, target_file)
-
-def create_show_build_path(libtbx_env, target_dir):
-  target_file = os.path.join(target_dir, "libtbx.show_build_path")
-  f = open(target_file, "w")
-  print >> f, '#! /bin/sh'
-  print >> f, '# LIBTBX_DISPATCHER DO NOT EDIT'
-  print >> f, 'echo "%s"' % libtbx_env.LIBTBX_BUILD
-  f.close()
-  os.chmod(target_file, 0755)
+      file_name=file_name)
 
 def run():
-  libtbx_env = libtbx.config.env()
-  target_dir = norm(join(libtbx_env.LIBTBX_BUILD, "libtbx/bin"))
+  target_dir = libtbx.env.under_build("libtbx/bin")
   if (not isdir(target_dir)):
     os.makedirs(target_dir)
-  precall_commands = assemble_dispatcher_precall_commands(libtbx_env)
-  create_python_dispatchers(
-    libtbx_env=libtbx_env,
-    target_dir=target_dir,
-    precall_commands=precall_commands)
-  dispatcher_dict = {}
-  for dist_path in libtbx_env.dist_paths.values():
+  for file_name in ("libtbx.python", "python"):
+    libtbx.env.cache.create_dispatcher(
+      source_file=libtbx.env.cache.LIBTBX_PYTHON_EXE,
+      target_file=norm(join(target_dir, file_name)))
+  for dist_path in libtbx.env.cache.dist_paths.values():
     dist_root = os.path.dirname(dist_path)
     package_name = os.path.basename(dist_path)
     for dist_path_suf in libtbx.config.package_pair(
                            name=package_name,
                            dist_root=dist_root).primary_first():
-      create_drivers(
-        libtbx_env=libtbx_env,
-        precall_commands=precall_commands,
+      create_dispatchers(
         target_dir=target_dir,
         package_name=package_name,
-        source_dir=norm(join(dist_path_suf, package_name, "command_line")),
-        dispatcher_dict=dispatcher_dict)
-  if (os.name == "nt"):
-    create_dispatcher_back_end(
-      libtbx_env=libtbx_env,
-      dispatcher_dict=dispatcher_dict)
-  else:
-    create_show_build_path(libtbx_env=libtbx_env, target_dir=target_dir)
+        source_dir=norm(join(dist_path_suf, package_name, "command_line")))
+  exe_path = norm(join(libtbx.env.cache.LIBTBX_BUILD, "exe"))
+  if (os.path.isdir(exe_path)):
+    print "Processing:", exe_path
+    for file_name in os.listdir(exe_path):
+      if (file_name[0] == "."): continue
+      libtbx.env.cache.create_dispatcher(
+        source_file=norm(join(exe_path, file_name)),
+        target_file=norm(join(target_dir, file_name)))
 
 if (__name__ == "__main__"):
   run()

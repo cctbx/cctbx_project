@@ -199,7 +199,7 @@ echo ""
 cd "$build"
 echo "Configuring $bundle build directory"
 "$python_exe" "$sources/libtbx/configure.py" --build="$build_mode" %(top_modules)s
-source setpaths.csh
+source setpaths.csh all
 
 if ($have_sources != 0) then
   echo ""

@@ -38,7 +38,7 @@ def run(target_root):
   abs_target_root = os.path.normpath(os.path.abspath(os.path.join(
     target_root)))
   libtbx_env = libtbx.config.env()
-  dist_root = libtbx_env.LIBTBX_DIST_ROOT
+  dist_root = libtbx_env.under_dist("libtbx", "..")
   for package in ["libtbx"] + libtbx_env.package_list:
     for package_suf in libtbx.config.package_pair(
                          name=package).primary_first():
