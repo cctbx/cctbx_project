@@ -182,9 +182,13 @@ def run_call_back(flags, space_group_info):
     model_core.show("Core")
     model1.show("Model1")
     model2.show("Model2")
-  refined_matches = emma.match_models(model1, model2, rms_penalty_per_site=0)
-  analyze_refined_matches(model1, model2, refined_matches, verbose)
+  model_matches = emma.model_matches(model1, model2, rms_penalty_per_site=0)
+  analyze_refined_matches(
+    model1, model2, model_matches.refined_matches, verbose)
+  assert model_matches.consensus_model().size() >= model1.size()-2
+  assert model_matches.consensus_model(i_model=2).size() >= model2.size()-3
   model1.expand_to_p1()
+  model2.as_xray_structure()
 
 def run():
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back, (
