@@ -1,7 +1,6 @@
 from boost_python_hybrid_times_ext import run_c_plus_plus
 import math
-import time
-import sys
+import sys, os
 
 if (not hasattr(sys, "gettickeraccumulation")):
   print "***************************************************"
@@ -51,14 +50,18 @@ class hybrid:
     result += run_c_plus_plus(n-self.n_python, n_terms)
     return result
 
+def usr_and_sys():
+  t = os.times()
+  return t[0]+t[1]
+
 class time_per_python_tick:
 
   def __init__(self, worker, n, n_terms):
-    time_0 = time.time()
+    time_0 = usr_and_sys()
     ticks_0 = sys.gettickeraccumulation()
     self.result = worker(n, n_terms)
     self.ticks_diff = sys.gettickeraccumulation() - ticks_0
-    self.time_diff = time.time() - time_0
+    self.time_diff = usr_and_sys() - time_0
 
   def report(self, label):
     print "%-6s %6.3f %10d %10.3f" % (
@@ -72,12 +75,12 @@ def forever(n_terms, n=200):
   sum_py = 0
   sum_cpp = 0
   while True:
-    time_0 = time.time()
+    time_0 = usr_and_sys()
     run_python(n, n_terms)
-    sum_py += time.time() - time_0
-    time_0 = time.time()
+    sum_py += usr_and_sys() - time_0
+    time_0 = usr_and_sys()
     run_c_plus_plus(n, n_terms)
-    sum_cpp += time.time() - time_0
+    sum_cpp += usr_and_sys() - time_0
     n_ratios += 1
     print "mean Python: %6.3f" % (sum_py/n_ratios)
     print "mean C++:    %6.3f" % (sum_cpp/n_ratios)
