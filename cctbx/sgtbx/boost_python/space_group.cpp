@@ -39,6 +39,13 @@ namespace {
       return o(i_op);
     }
 
+    static rt_mx
+    call_3(w_t const& o,
+           std::size_t i_ltr, std::size_t i_inv, std::size_t i_smx)
+    {
+      return o(i_ltr, i_inv, i_smx);
+    }
+
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
       z2p_op_overloads, z2p_op, 0, 2)
 
@@ -80,12 +87,8 @@ namespace {
         .def("is_origin_centric", &w_t::is_origin_centric)
         .def("f_inv", &w_t::f_inv)
         .def("n_smx", &w_t::n_smx)
-        .def("__call__",
-          (rt_mx(w_t::*)(std::size_t, std::size_t, std::size_t) const)
-          &w_t::operator())
-        .def("__call__",
-          (rt_mx(w_t::*)(std::size_t) const)
-          &w_t::operator())
+        .def("__call__", call_3)
+        .def("__call__", getitem)
         .def("__getitem__", getitem)
         .def("make_tidy", &w_t::make_tidy)
         .def("__eq__", &w_t::operator==)
