@@ -81,9 +81,7 @@ def set_random_seed(value):
 
 random_size_t = random_generator.random_size_t
 random_double = random_generator.random_double
-
-def random_permutation(size):
-  return sort_permutation(data=random_double(size=size))
+random_permutation = random_generator.random_permutation
 
 class py_object:
 

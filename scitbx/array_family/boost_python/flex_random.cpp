@@ -22,23 +22,37 @@ namespace {
       void
       seed(unsigned value=0) { generator_.seed(value+1); }
 
-      af::shared<std::size_t>
+      shared<std::size_t>
       random_size_t(std::size_t size)
       {
-        af::shared<std::size_t> result(size, 0);
+        shared<std::size_t> result(size, init_functor_null<std::size_t>());
         for(std::size_t i=0;i<size;i++) {
-          result[i] = generator_();
+          result[i] = static_cast<std::size_t>(generator_());
         }
         return result;
       }
 
-      af::shared<double>
+      shared<double>
       random_double(std::size_t size)
       {
-        af::shared<double> result(size, 0);
+        shared<double> result(size, init_functor_null<double>());
         for(std::size_t i=0;i<size;i++) {
           result[i] = as_double(generator_()-generator_min_)
                     / generator_range_;
+        }
+        return result;
+      }
+
+      shared<std::size_t>
+      random_permutation(std::size_t size)
+      {
+        shared<std::size_t> result(size, init_functor_null<std::size_t>());
+        for(std::size_t i=0;i<size;i++) {
+          result[i] = i;
+        }
+        for(std::size_t i=0;i<size;i++) {
+          std::size_t j = static_cast<std::size_t>(generator_()) % size;
+          std::swap(result[i], result[j]);
         }
         return result;
       }
@@ -93,6 +107,7 @@ namespace {
         .def(init<optional<unsigned> >((arg_("seed")=0)))
         .def("random_size_t", &w_t::random_size_t, (arg_("size")))
         .def("random_double", &w_t::random_double, (arg_("size")))
+        .def("random_permutation", &w_t::random_permutation, (arg_("size")))
         .def("seed", &w_t::seed, seed_overloads((arg_("value")=0)))
       ;
     }
