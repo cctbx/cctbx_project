@@ -123,6 +123,12 @@ class line_feeder:
         self.eof = 0001
     return ""
 
+  def next_non_empty(self):
+    while 1:
+      result = self.next()
+      if (self.eof or len(result.strip()) != 0):
+        return result
+
 class input_with_prompt:
 
   def __init__(self, prompt, tracebacklimit=0):
