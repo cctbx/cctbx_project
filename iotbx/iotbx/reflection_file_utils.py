@@ -202,10 +202,7 @@ class get_r_free_flags_scores:
                 effective_test_flag_value = c_keys[i_free]
             elif (counts.size() > 3):
               if (c_keys == range(min(c_keys), max(c_keys)+1)):
-                c_values = flex.size_t(c_values)
-                count_not_almost_full = (
-                  c_values < int(flex.max(c_values)*0.5)).count(True)
-                if (count_not_almost_full == 0):
+                if (min(c_values) > max(c_values)*0.55):
                   if (looks_like_r_free_flags_info(miller_array.info())):
                     flag_score = 2
                   else:
