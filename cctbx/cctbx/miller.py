@@ -726,3 +726,23 @@ class fft_map(crystal.symmetry):
   def complex_map(self):
     assert self.anomalous_flag()
     return self._complex_map
+
+def patterson_map(coeff_array,
+                  resolution_factor=1./3,
+                  d_min=None,
+                  symmetry_flags=None,
+                  mandatory_factors=None,
+                  max_prime=5,
+                  gridding=None,
+                  f_000=None):
+  return fft_map(
+    coeff_array=array(
+      miller_set=coeff_array.patterson_symmetry(),
+      data=coeff_array.f_as_f_sq().data()),
+    resolution_factor=resolution_factor,
+    d_min=d_min,
+    symmetry_flags=symmetry_flags,
+    mandatory_factors=mandatory_factors,
+    max_prime=max_prime,
+    gridding=gridding,
+    f_000=f_000)

@@ -272,17 +272,14 @@ def exercise_squaring_and_patterson_map(space_group_info,
   if (0 or verbose):
     print "mean_weighted_phase_error: %.2f" % mwpe
   assert mwpe < 2
-  eb_patt = eb.patterson_symmetry()
-  patterson_map = miller.fft_map(
-    coeff_array=miller.array(
-      miller_set=eb_patt,
-      data=eb_patt.f_as_f_sq().data()),
+  patterson_map = miller.patterson_map(
+    coeff_array=eb,
     symmetry_flags=maptbx.use_space_group_symmetry,
     resolution_factor=grid_resolution_factor,
     f_000=e_000*e_000)
   grid_tags = maptbx.grid_tags(patterson_map.gridding())
   grid_tags.build(
-    eb_patt.space_group_info().type(),
+    patterson_map.space_group_info().type(),
     maptbx.use_space_group_symmetry)
   assert grid_tags.n_grid_misses() == 0
   assert grid_tags.verify(patterson_map.real_map())
