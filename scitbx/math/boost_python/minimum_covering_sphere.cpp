@@ -15,9 +15,10 @@ namespace {
     wrap()
     {
       using namespace boost::python;
+      typedef boost::python::arg arg_; // gcc 2.96 workaround
       class_<w_t>("minimum_covering_sphere", no_init)
         .def(init<af::const_ref<vec3<double> > const&,
-                  optional<double> >((arg("points"), arg("epsilon"))))
+                  optional<double> >((arg_("points"), arg_("epsilon"))))
         .def("n_iterations", &w_t::n_iterations)
         .def("center", &w_t::center)
         .def("radius", &w_t::radius)

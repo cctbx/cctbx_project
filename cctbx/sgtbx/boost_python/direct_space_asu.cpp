@@ -19,10 +19,11 @@ namespace {
     wrap()
     {
       using namespace boost::python;
+      typedef boost::python::arg arg_; // gcc 2.96 workaround
       typedef return_value_policy<return_by_value> rbv;
       typedef default_call_policies dcp;
       class_<w_t>("direct_space_asu_float_cut_plane", no_init)
-        .def(init<fractional<double> const&, double>((arg("n"), arg("c"))))
+        .def(init<fractional<double> const&, double>((arg_("n"), arg_("c"))))
         .add_property("n",
           make_getter(&w_t::n, rbv()),
           make_setter(&w_t::n, dcp()))
@@ -31,7 +32,7 @@ namespace {
         .def("is_inside", &w_t::is_inside)
         .def("get_point_in_plane", &w_t::get_point_in_plane)
         .def("add_buffer", &w_t::add_buffer,
-          (arg("unit_cell"), arg("thickness")))
+          (arg_("unit_cell"), arg_("thickness")))
       ;
     }
   };
@@ -44,11 +45,12 @@ namespace {
     wrap()
     {
       using namespace boost::python;
+      typedef boost::python::arg arg_; // gcc 2.96 workaround
       typedef return_value_policy<copy_const_reference> ccr;
       typedef return_internal_reference<> rir;
       class_<w_t>("direct_space_asu_float_asu", no_init)
         .def(init<uctbx::unit_cell const&, w_t::facets_t const&>(
-          (arg("unit_cell"), arg("facets"))))
+          (arg_("unit_cell"), arg_("facets"))))
         .def("unit_cell", &w_t::unit_cell, rir())
         .def("facets", &w_t::facets, ccr())
         .def("is_inside", &w_t::is_inside)
