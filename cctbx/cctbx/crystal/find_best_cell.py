@@ -25,15 +25,20 @@ def cmp_monoclinic_cell_parameters(lhs, rhs, unique_axis, angular_tolerance):
 
 class find_best_cell:
 
-  def __init__(self, input_symmetry, angular_tolerance):
+  def __init__(self, input_symmetry, angular_tolerance=None):
+    if (angular_tolerance is None):
+      angular_tolerance = 3
+    self._all_cells = []
     space_group_number = input_symmetry.space_group_info().type().number()
     if (space_group_number == 1):
       self._cb_op = input_symmetry.change_of_basis_op_to_niggli_cell()
       self._symmetry = input_symmetry.change_basis(self._cb_op)
+      self._all_cells.append(self._symmetry)
       return
     if (space_group_number < 3 or space_group_number >= 75):
       self._cb_op = sgtbx.change_of_basis_op()
       self._symmetry = input_symmetry
+      self._all_cells.append(self._symmetry)
       return
     standard_info = sgtbx.space_group_info(
       symbol=space_group_number,
@@ -63,6 +68,7 @@ class find_best_cell:
         affine_cb_op = sgtbx.change_of_basis_op(affine_s) \
           .new_denominators(best_cb_op)
         alt_symmetry = input_symmetry.change_basis(affine_cb_op)
+        self._all_cells.append(alt_symmetry)
         if (alt_symmetry.space_group() == input_symmetry.space_group()):
           alt_cell_parameters = alt_symmetry.unit_cell().parameters()
           if (unique_axis is not None):
@@ -85,6 +91,9 @@ class find_best_cell:
   def symmetry(self):
     return self._symmetry
 
+  def all_cells(self):
+    return self._all_cells
+
 def exercise():
   from cctbx import crystal
   cb_op = sgtbx.change_of_basis_op("y,z,x")
@@ -96,6 +105,7 @@ def exercise():
       angular_tolerance=3)
     best.symmetry().show_summary()
     print best.cb_op().c()
+    print len(best.all_cells())
     print
 
 if (__name__ == "__main__"):

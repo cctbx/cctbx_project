@@ -71,10 +71,10 @@ class symmetry(object):
   def as_reference_setting(self):
     return self.change_basis(self.space_group_info().type().cb_op())
 
-  def change_of_basis_op_to_best_cell(self, angular_tolerance=3):
+  def change_of_basis_op_to_best_cell(self, angular_tolerance=None):
     return find_best_cell(self, angular_tolerance=angular_tolerance).cb_op()
 
-  def best_cell(self, angular_tolerance=3):
+  def best_cell(self, angular_tolerance=None):
     return self.change_basis(self.change_of_basis_op_to_best_cell(
       angular_tolerance=angular_tolerance))
 
