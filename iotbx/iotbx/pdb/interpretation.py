@@ -297,6 +297,11 @@ class stage_1:
       models.append(model_)
     return models
 
+  def are_all_blank_altLocs(self, i_seqs):
+    for i_seq in i_seqs:
+      if (self.atom_attributes_list[i_seq].altLoc != " "): return 00000
+    return 0001
+
 class altLoc_grouping:
 
   def __init__(self):
