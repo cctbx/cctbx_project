@@ -58,49 +58,54 @@ class gruber_parameterization:
     if (n_positive == 0): return 2
     return 0
 
-  def meets_main_conditions(self):
-    lt = self.eps_lt
+  def meets_primary_conditions(self):
     gt = self.eps_gt
-    a,b,c,d,e,f = (self.a,self.b,self.c,self.d,self.e,self.f)
-    if (gt(a, b)): return 00000
-    if (gt(b, c)): return 00000
-    if (gt(abs(d), b)): return 00000
-    if (gt(abs(e), a)): return 00000
-    if (gt(abs(f), a)): return 00000
+    s = self
+    if (gt(s.a, s.b)): return 00000
+    if (gt(s.b, s.c)): return 00000
+    if (gt(abs(s.d), s.b)): return 00000
+    if (gt(abs(s.e), s.a)): return 00000
+    if (gt(abs(s.f), s.a)): return 00000
+    return 0001
+
+  def meets_main_conditions(self):
+    if (not self.meets_primary_conditions()): return 00000
     type = self.type()
     if (type == 0): return 00000
     if (type == 2):
-      if (lt(d+e+f+a+b, 0)): return 00000
+      lt = self.eps_lt
+      s = self
+      if (lt(s.d+s.e+s.f+s.a+s.b, 0)): return 00000
     return 0001
 
   def is_buerger_cell(self):
     if (not self.meets_main_conditions()): return 00000
     eq = self.eps_eq
     gt = self.eps_gt
-    a,b,c,d,e,f = (self.a,self.b,self.c,self.d,self.e,self.f)
-    if (eq(a, b)):
-      if (gt(abs(d), abs(e))): return 00000
-    if (eq(b, c)):
-      if (gt(abs(e), abs(f))): return 00000
+    s = self
+    if (eq(s.a, s.b)):
+      if (gt(abs(s.d), abs(s.e))): return 00000
+    if (eq(s.b, s.c)):
+      if (gt(abs(s.e), abs(s.f))): return 00000
     return 0001
 
   def is_niggli_cell(self):
     if (not self.is_buerger_cell()): return 00000
     eq = self.eps_eq
     gt = self.eps_gt
-    a,b,c,d,e,f = (self.a,self.b,self.c,self.d,self.e,self.f)
-    if (eq(d, b)):
-      if (gt(f, e+e)): return 00000
-    if (eq(e, a)):
-      if (gt(f, d+d)): return 00000
-    if (eq(f, a)):
-      if (gt(e, d+d)): return 00000
-    if (eq(d, -b)):
-      if (not eq(f, 0)): return 00000
-    if (eq(e, -a)):
-      if (not eq(f, 0)): return 00000
-    if (eq(f, -a)):
-      if (not eq(e, 0)): return 00000
-    if (eq(d+e+f+a+b, 0)):
-      if (gt(a+a+e+e+f, 0)): return 00000
+    s = self
+    if (eq(s.d, s.b)):
+      if (gt(s.f, s.e+s.e)): return 00000
+    if (eq(s.e, s.a)):
+      if (gt(s.f, s.d+s.d)): return 00000
+    if (eq(s.f, s.a)):
+      if (gt(s.e, s.d+s.d)): return 00000
+    if (eq(s.d, -s.b)):
+      if (not eq(s.f, 0)): return 00000
+    if (eq(s.e, -s.a)):
+      if (not eq(s.f, 0)): return 00000
+    if (eq(s.f, -s.a)):
+      if (not eq(s.e, 0)): return 00000
+    if (eq(s.d+s.e+s.f+s.a+s.b, 0)):
+      if (gt(s.a+s.a+s.e+s.e+s.f, 0)): return 00000
     return 0001
