@@ -134,18 +134,6 @@ namespace raw {
     ttime = timer_.elapsed();
   }
 
-  inline
-  bool
-  uninitialized_bool() { return false; }
-
-  inline
-  int
-  uninitialized_int() { return 12345; }
-
-  inline
-  double
-  uninitialized_double() { return 12345e6; }
-
   //! Emulation of write statement with implicit loop.
   template <typename ElementType>
   void
@@ -1317,8 +1305,8 @@ namespace raw {
     // Smallest breakpoint is identified.
     for(int i=1;i<=n;i++) {
       double neggi = -g(i);
-      double tl; // = uninitialized_double();
-      double tu; // = uninitialized_double();
+      double tl; // uninitialized
+      double tu; // uninitialized
       if (iwhere(i) != 3 && iwhere(i) != -1) {
         // if x(i) is not a constant and has bounds,
         // compute the difference between x(i) and its bounds.
@@ -1429,7 +1417,7 @@ namespace raw {
       // Find the next smallest breakpoint;
       // compute dt = t(nleft) - t(nleft + 1).
       double tj0 = tj;
-      int ibp; // = uninitialized_int();
+      int ibp; // uninitialized
       if (iter == 1) {
         // Since we already have the smallest breakpoint we need not do
         // heapsort yet. Often only one breakpoint is used and the
@@ -1468,7 +1456,7 @@ namespace raw {
       iter = iter + 1;
       double dibp = d(ibp);
       d(ibp) = zero;
-      double zibp; // = uninitialized_double();
+      double zibp; // uninitialized
       if (dibp > zero) {
         zibp = u(ibp) - x(ibp);
         xcp(ibp) = u(ibp);
@@ -1878,7 +1866,7 @@ namespace raw {
     //         [L_a+R_z   S'AA'S   ]
     // where L_a is the strictly lower triangular part of S'AA'Y
     //   R_z is the upper triangular part of S'ZZ'Y.
-    int upcl; // = uninitialized_int();
+    int upcl; // uninitialized
     if (updatd) {
       if (iupdat > m) {
         // shift old part of WN1.
@@ -2339,7 +2327,7 @@ namespace raw {
     // Backtrack to the feasible region.
     double alpha = 1;
     double temp1 = alpha;
-    int ibd; // = uninitialized_int();
+    int ibd; // uninitialized
     bool ibd_is_defined = false;
     for(int i=1;i<=nsub;i++) {
       int k = ind(i);
@@ -3569,13 +3557,13 @@ namespace raw {
     double gdold;
     double dtd;
     // end variables in [lid]save arrays
-    bool wrk; // = uninitialized_bool();
-    int k; // = uninitialized_int();
-    double cpu2; // = uninitialized_double();
-    double dr; // = uninitialized_double();
-    double rr; // = uninitialized_double();
-    double xstep; // = uninitialized_double();
-    std::string word; // = "uninitialized";
+    bool wrk; // uninitialized
+    int k; // uninitialized
+    double cpu2; // uninitialized
+    double dr; // uninitialized
+    double rr; // uninitialized
+    double xstep; // uninitialized
+    std::string word; // uninitialized
     if (task.substr(0,5) == "START") {
       timer(time1);
       // Generate the current machine precision.
