@@ -9,6 +9,8 @@ def write_copyright():
      Jan 2002: Created, based on generate_af_operators.py (rwgk)
  */"""
 
+# XXX unary ops still missing
+
 arithmetic_unary_ops = ("-")
 arithmetic_binary_ops = ("+", "-", "*", "/", "%")
 arithmetic_in_place_binary_ops = ("+=", "-=", "*=", "/=", "%=")
@@ -18,46 +20,55 @@ boolean_ops = ("==", "!=", ">", "<", ">=", "<=")
 
 class empty: pass
 
-def op_vars(type_flags):
+def op_vars(type_flags, op_class):
   v = empty()
   v.param = ["ValueTypeLhs", "ValueTypeRhs"]
   v.dotv = ["", ""]
   if (type_flags[0]):
+    v.template_types = "typename ValueTypeLhs"
+    v.result_type = "  flagged_value<ValueTypeLhs>"
     v.param[0] = "flagged_value<ValueTypeLhs>"
+    v.param[1] = "ValueTypeLhs"
     v.dotv[0] = ".v"
     v.have_both_test = "lhs.f"
   if (type_flags[1]):
+    v.template_types = "typename ValueTypeRhs"
+    v.result_type = "  flagged_value<ValueTypeRhs>"
     v.param[1] = "flagged_value<ValueTypeRhs>"
+    v.param[0] = "ValueTypeRhs"
     v.dotv[1] = ".v"
     v.have_both_test = "rhs.f"
   if (type_flags[0] and type_flags[1]):
+    v.template_types = "typename ValueTypeLhs, typename ValueTypeRhs"
+    v.param[0] = "flagged_value<ValueTypeLhs>"
+    v.param[1] = "flagged_value<ValueTypeRhs>"
     v.have_both_test = "lhs.f && rhs.f"
+    v.result_type = """  flagged_value<
+    typename binary_operator_traits<
+      ValueTypeLhs, ValueTypeRhs>::%s>""" % (op_class,)
   return v
 
 def elementwise_binary_op(op_class, op_symbol, type_flags):
-  v = op_vars(type_flags)
-  print """  template <typename ValueTypeLhs, typename ValueTypeRhs>
+  v = op_vars(type_flags, op_class)
+  print """  template <%s>
   inline
-  flagged_value<
-    typename binary_operator_traits<
-      ValueTypeLhs, ValueTypeRhs>::%s>
+%s
   operator%s(
     const %s& lhs,
     const %s& rhs) {
-    flagged_value<
-      typename binary_operator_traits<
-        ValueTypeLhs, ValueTypeRhs>::%s> result;
+%s result;
     if (%s) {
       result.v = lhs%s %s rhs%s;
       result.f = true;
     }
     return result;
   }
-""" % (op_class, op_symbol, v.param[0], v.param[1], op_class,
+""" % (v.template_types, v.result_type,
+       op_symbol, v.param[0], v.param[1], v.result_type,
        v.have_both_test, v.dotv[0], op_symbol, v.dotv[1])
 
 def elementwise_inplace_binary_op(op_symbol, type_flags):
-  v = op_vars(type_flags)
+  v = op_vars(type_flags, "n/a")
   if (type_flags == (1,1)):
     action = """    if (lhs.f) {
       if (rhs.f) lhs.v %s rhs.v;
