@@ -4,6 +4,7 @@ tests = (
 "tst_af_1",
 "tst_af_2",
 "tst_af_3",
+"tst_af_4",
 "tst_mat3",
 "tst_vec3",
 "tst_sym_mat3",

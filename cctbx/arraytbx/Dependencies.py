@@ -18,6 +18,7 @@ class write_makefiles(makefile_generator.write_makefiles):
       "arraytbx/tst_af_1.cpp",
       "arraytbx/tst_af_2.cpp",
       "arraytbx/tst_af_3.cpp",
+      "arraytbx/tst_af_4.cpp",
       "arraytbx/tst_vec3.cpp",
       "arraytbx/tst_mat3.cpp",
       "arraytbx/tst_sym_mat3.cpp",
@@ -26,8 +27,9 @@ class write_makefiles(makefile_generator.write_makefiles):
 
     self.executables = {
       "tst_af_1": (("tst_af_1",), ()),
-      "tst_af_2": (("tst_af_2",), ()),
-      "tst_af_3": (("tst_af_3",), ("cctbx_misc",)),
+      "tst_af_2": (("tst_af_2",), ("cctbx_misc",)),
+      "tst_af_3": (("tst_af_3",), ()),
+      "tst_af_4": (("tst_af_4",), ()),
       "tst_vec3": (("tst_vec3",), ()),
       "tst_mat3": (("tst_mat3",), ("cctbx_misc",)),
       "tst_sym_mat3": (("tst_sym_mat3",), ("cctbx_misc",)),
