@@ -29,17 +29,16 @@ class proxy_registry_add_result:
   def __init__(self, tabulated_proxy=None, is_new=False, is_conflicting=False):
     adopt_init_args(self, locals())
 
-class proxy_registry_mixin:
-
-  def discard_table(self):
-    self.table = None
-
-class bond_simple_proxy_registry(proxy_registry_mixin):
+class bond_simple_proxy_registry:
 
   def __init__(self, n_seq):
-    self.table = [{} for i in xrange(n_seq)]
+    self.n_seq = n_seq
     self.proxies = shared_bond_simple_proxy()
     self.counts = flex.size_t()
+    self.table = None
+
+  def initialize_table(self):
+    self.table = [{} for i in xrange(self.n_seq)]
 
   def process(self, proxy, tolerance=1.e-6):
     result = proxy_registry_add_result()
@@ -62,12 +61,15 @@ class bond_simple_proxy_registry(proxy_registry_mixin):
         self.counts[i_list] += 1
     return result
 
-class angle_proxy_registry(proxy_registry_mixin):
+class angle_proxy_registry:
 
   def __init__(self):
-    self.table = {}
     self.proxies = shared_angle_proxy()
     self.counts = flex.size_t()
+    self.table = None
+
+  def initialize_table(self):
+    self.table = {}
 
   def process(self, proxy, tolerance=1.e-6):
     result = proxy_registry_add_result()
@@ -92,12 +94,15 @@ class angle_proxy_registry(proxy_registry_mixin):
         self.counts[i_list] += 1
     return result
 
-class dihedral_proxy_registry(proxy_registry_mixin):
+class dihedral_proxy_registry:
 
   def __init__(self):
-    self.table = {}
     self.proxies = shared_dihedral_proxy()
     self.counts = flex.size_t()
+    self.table = None
+
+  def initialize_table(self):
+    self.table = {}
 
   def process(self, proxy, tolerance=1.e-6):
     result = proxy_registry_add_result()
@@ -124,12 +129,15 @@ class dihedral_proxy_registry(proxy_registry_mixin):
         self.counts[i_list] += 1
     return result
 
-class chirality_proxy_registry(proxy_registry_mixin):
+class chirality_proxy_registry:
 
   def __init__(self):
-    self.table = {}
     self.proxies = shared_chirality_proxy()
     self.counts = flex.size_t()
+    self.table = None
+
+  def initialize_table(self):
+    self.table = {}
 
   def process(self, proxy, tolerance=1.e-6):
     result = proxy_registry_add_result()
@@ -154,12 +162,15 @@ class chirality_proxy_registry(proxy_registry_mixin):
         self.counts[i_list] += 1
     return result
 
-class planarity_proxy_registry(proxy_registry_mixin):
+class planarity_proxy_registry:
 
   def __init__(self):
-    self.table = {}
     self.proxies = shared_planarity_proxy()
     self.counts = flex.size_t()
+    self.table = None
+
+  def initialize_table(self):
+    self.table = {}
 
   def process(self, proxy, tolerance=1.e-6):
     assert proxy.i_seqs.size() > 0
