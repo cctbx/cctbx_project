@@ -24,7 +24,7 @@ def update_libtbx_info(env, package_name, package_dist):
     "PATH": [norm(join(env.libtbx_dist, "libtbx/command_line"))],
     "LIBTBX_PYTHON_BIN": env.python_bin,
     "LIBTBX_DIST": env.libtbx_dist,
-    "LIBTBX_SCONS": norm(join(env.libtbx_dist, "libtbx")),
+    "LIBTBX_SCONS": env.libtbx_scons,
     "LIBTBX_BUILD": env.libtbx_build,
     package_dist_varname: package_dist,
     "package_names": [],
@@ -123,6 +123,25 @@ def emit_setpaths_bat(libtbx_build, libtbx_info):
   print >> f, 'set PATHEXT=.PY;%PATHEXT%'
   f.close()
 
+def find_scons(env):
+  from_env = 0
+  try: env.libtbx_scons = os.environ["LIBTBX_SCONS"]
+  except: env.libtbx_scons = norm(join(env.dist_root, "scons/src/engine"))
+  else: from_env = 1
+  sys.path.insert(0, env.libtbx_scons)
+  try: import SCons
+  except: del sys.path[0]
+  else: return
+  env.libtbx_scons = None
+  if (not from_env):
+    try: import SCons
+    except: pass
+    else: env.libtbx_scons = "default"
+  if (env.libtbx_scons == None):
+    print >> sys.stderr, "Cannot find SCons (Software Construction Tool)"
+    print >> sys.stderr, "Please refer to file: XXX"
+    sys.exit(1)
+
 def emit_SConstruct(env, libtbx_info):
   SConstruct_path = norm(join(env.libtbx_build, "SConstruct"))
   f = open_info(SConstruct_path)
@@ -138,6 +157,7 @@ def run():
   env.libtbx_build = norm(os.path.abspath(os.getcwd()))
   env.libtbx_dist = norm(os.path.dirname(norm(os.path.abspath(sys.argv[0]))))
   env.dist_root = norm(os.path.dirname(env.libtbx_dist))
+  find_scons(env)
   libtbx_info = None
   for arg in sys.argv[1:]:
     package_dist = norm(join(env.dist_root, arg))
