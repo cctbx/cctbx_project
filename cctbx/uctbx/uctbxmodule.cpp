@@ -15,7 +15,7 @@
 #include <cctbx/miller_bpl.h>
 #include <cctbx/uctbx.h>
 
-#include <cctbx/array_family/shared_bpl_.h>
+#include <cctbx/array_family/flex_bpl.h>
 
 namespace cctbx { namespace af { namespace bpl { namespace {
 

@@ -9,8 +9,6 @@ tst_list = (
 "./arraytbx/tst_sym_mat3",
 "./arraytbx/tst_flex.py",
 "./arraytbx/tst_flex_utils.py",
-"./arraytbx/tst_shared.py",
-"./arraytbx/tst_shared_map.py",
 "./eltbx/tst_caasf_it1992.py",
 "./eltbx/tst_caasf_wk1995.py",
 "./eltbx/tst_henke.py",
