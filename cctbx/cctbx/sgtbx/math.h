@@ -29,9 +29,16 @@ namespace sgtbx {
     return ix;
   }
 
+  inline Vec3 CrossProduct(const Vec3& r, const Vec3& s) {
+    Vec3 result;
+    result[0] = r[1] * s[2] - r[2] * s[1];
+    result[1] = r[2] * s[0] - r[0] * s[2];
+    result[2] = r[0] * s[1] - r[1] * s[0];
+    return result;
+  }
+
   using boost::gcd;
   using boost::lcm;
-  using boost::rational_cast;
   struct rational : boost::rational<int> {
     rational(int n = 0) : boost::rational<int>(n) { }
     rational(int n, int d) : boost::rational<int>(n, d) { }

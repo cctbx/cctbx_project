@@ -42,7 +42,7 @@ namespace sgtbx {
 
       char getConventionalCentringTypeSymbol() const;
       ChOfBasisOp getConventionalZ2POp(int RBF = CRBF,
-                                             int TBF = CTBF) const;
+                                       int TBF = CTBF) const;
       TrVec TidyT(const TrVec& T) const;
   };
 

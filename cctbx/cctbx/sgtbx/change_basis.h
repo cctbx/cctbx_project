@@ -24,8 +24,6 @@ namespace sgtbx {
         : Mx(M), InvMx(InvM) { }
       explicit inline ChOfBasisOp(const RTMx& M)
         : Mx(M), InvMx(M.inverse()) { }
-      explicit inline ChOfBasisOp(int RBF = CRBF)
-        : Mx(RBF), InvMx(RBF) { }
       explicit inline ChOfBasisOp(int RBF = CRBF, int TBF = CTBF)
         : Mx(RBF, TBF), InvMx(RBF, TBF) { }
       inline bool isValid() const {

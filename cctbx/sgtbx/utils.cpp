@@ -74,4 +74,25 @@ namespace sgtbx {
     return -1;
   }
 
+  bool CmpiVect::operator()(const int *a, const int *b) const {
+    int i;
+    int n0a = 0; for(i=0;i<m_n;i++) if (a[i] == 0) n0a++;
+    int n0b = 0; for(i=0;i<m_n;i++) if (b[i] == 0) n0b++;
+    if (n0a > n0b) return true;
+    if (n0a < n0b) return false;
+    for(i=0;i<m_n;i++) {
+      if (a[i] != 0 && b[i] == 0) return true;
+      if (a[i] == 0 && b[i] != 0) return false;
+    }
+    for(i=0;i<m_n;i++) {
+      if (abs(a[i]) < abs(b[i])) return true;
+      if (abs(a[i]) > abs(b[i])) return false;
+    }
+    for(i=0;i<m_n;i++) {
+      if (a[i] > b[i]) return true;
+      if (a[i] < b[i]) return false;
+    }
+    return false;
+  }
+
 } // namespace sgtbx
