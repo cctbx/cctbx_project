@@ -17,6 +17,20 @@ def are_similar_unit_cells(ucell1, ucell2,
       return False
   return True
 
+def show_binner_info(binner):
+  for i_bin in binner.range_all():
+    bin_d_range = binner.bin_d_range(i_bin)
+    count = binner.count(i_bin)
+    if (i_bin == binner.i_bin_d_too_large()):
+      assert bin_d_range[0] == 0
+      print "unused:              d > %8.4f: %5d" % (bin_d_range[1], count)
+    elif (i_bin == binner.i_bin_d_too_small()):
+      assert bin_d_range[1] == 0
+      print "unused: %9.4f >  d           : %5d" % (bin_d_range[0], count)
+    else:
+      print "bin %2d: %9.4f >= d > %8.4f: %5d" % (
+        (i_bin,) + bin_d_range + (count,))
+
 def space_group_info(space_group_symbol):
   return sgtbx.SpaceGroup(sgtbx.SpaceGroupSymbols(space_group_symbol)).Info()
 
@@ -56,6 +70,15 @@ class miller_set(crystal_symmetry):
     return miller_set(self.cell_equivalent_p1(), set_p1_H).set_friedel_flag(
       self.friedel_flag)
 
+  def setup_binner(self, d_max=0, d_min=0, reflections_per_bin=0, n_bins=0):
+    assert reflections_per_bin != 0 or n_bins != 0
+    assert reflections_per_bin == 0 or n_bins == 0
+    if (reflections_per_bin):
+      n_bins = int(self.H.size() / reflections_per_bin + .5)
+    assert n_bins > 0
+    binning = miller.binning(self.UnitCell, n_bins, self.H, d_max, d_min)
+    self.binner = miller.binner(binning, self.H)
+
 class reciprocal_space_array(miller_set):
 
   def __init__(self, miller_set_obj, F, sigmas=0):
@@ -75,6 +98,9 @@ class reciprocal_space_array(miller_set):
       s = jbm.additive_sigmas(self.sigmas)
     return reciprocal_space_array(miller_set(self, h), f, s)
 
+  def all_selection(self):
+    return shared.bool(self.H.size(), 1)
+
   def apply_selection(self, flags, negate=0):
     if (negate): flags = ~flags
     h = self.H.select(flags)
@@ -88,13 +114,40 @@ class reciprocal_space_array(miller_set):
     flags = shared.abs(self.F) >= self.sigmas.mul(cutoff_factor)
     return self.apply_selection(flags, negate)
 
-  def rms_filter(self, cutoff_factor, use_multiplicities=0, negate=0):
+  def rms(self, use_binning=0, use_multiplicities=0):
     if (use_multiplicities):
-      rms = shared.rms(self.F * self.multiplicities().as_double())
+      mult = self.multiplicities().as_double()
+    if (not use_binning):
+      if (not use_multiplicities):
+        result = shared.rms(self.F)
+      else:
+        result = shared.rms_weighted(self.F, mult)
     else:
-      rms = shared.rms(self.F)
-    flags = shared.abs(self.F) <= cutoff_factor * rms
-    return self.apply_selection(flags, negate)
+      result = shared.double()
+      for i_bin in self.binner.range_all():
+        sel = self.binner(i_bin)
+        if (sel.count(1) == 0):
+          result.append(0)
+        else:
+          sel_data = self.F.select(sel)
+          if (not use_multiplicities):
+            result.append(shared.rms(sel_data))
+          else:
+            sel_mult = mult.select(sel)
+            result.append(shared.rms_weighted(sel_data, sel_mult))
+    return result
+
+  def rms_filter(self, cutoff_factor,
+                 use_binning=0, use_multiplicities=0, negate=0):
+    rms = self.rms(use_binning, use_multiplicities)
+    abs_f = shared.abs(self.F)
+    if (not use_binning):
+      keep = abs_f <= cutoff_factor * rms
+    else:
+      keep = self.all_selection()
+      for i_bin in self.binner.range_used():
+        keep &= ~self.binner(i_bin) | (abs_f <= cutoff_factor * rms[i_bin])
+    return self.apply_selection(keep, negate)
 
   def __add__(self, other):
     if (type(other) != type(self)):
@@ -106,7 +159,7 @@ class reciprocal_space_array(miller_set):
       return reciprocal_space_array(self, f, s)
     # add arrays
     js = miller.join_sets(self.H, other.H)
-    h = js.common_miller_indices()
+    h = js.paired_miller_indices(0)
     f = js.plus(self.F, other.F)
     s = 0
     if (self.sigmas):

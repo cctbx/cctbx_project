@@ -17,7 +17,19 @@ def exercise_join_sets():
   assert list(js.pairs()) == zip(range(5), range(5))
   js = miller.join_sets(h0, h1)
   assert tuple(js.singles(0)) == (4,)
+  assert tuple(js.singles(1)) == ()
   assert tuple(js.pairs()) == ((0,2), (1,0), (2,3), (3,1))
+  assert tuple(js.pair_selection(0)) == (1, 1, 1, 1, 0)
+  assert tuple(js.single_selection(0)) == (0, 0, 0, 0, 1)
+  assert tuple(js.pair_selection(1)) == (1, 1, 1, 1)
+  assert tuple(js.single_selection(1)) == (0, 0, 0, 0)
+  assert tuple(js.paired_miller_indices(0)) \
+      == tuple(h0.select(js.pair_selection(0)))
+  l1 = list(js.paired_miller_indices(1))
+  l2 = list(h1.select(js.pair_selection(1)))
+  l1.sort()
+  l2.sort()
+  assert l1 == l2
   assert tuple(js.plus(d0, d1)) == (31, 12, 43, 24)
   assert tuple(js.minus(d0, d1)) == (-29,-8,-37,-16)
   assert tuple(js.multiplies(d0, d1)) == (30,20,120,80)
@@ -78,21 +90,7 @@ def exercise_join_sets():
   assert tuple(selected_data_set.H) == ((1,2,3),)
   assert tuple(selected_data_set.F) == (0,)
 
-def show_binner_info(binner):
-  for i_bin in binner.range_all():
-    bin_d_range = binner.bin_d_range(i_bin)
-    count = binner.count(i_bin)
-    if (i_bin == binner.i_bin_d_too_large()):
-      assert bin_d_range[0] == 0
-      print "unused:              d > %8.4f: %5d" % (bin_d_range[1], count)
-    elif (i_bin == binner.i_bin_d_too_small()):
-      assert bin_d_range[1] == 0
-      print "unused: %9.4f >  d           : %5d" % (bin_d_range[0], count)
-    else:
-      print "bin %2d: %9.4f >= d > %8.4f: %5d" % (
-        (i_bin,) + bin_d_range + (count,))
-
-def exercise_bins(SgInfo, n_bins=10, d_min=1):
+def exercise_bins(SgInfo, n_bins=10, d_min=1, verbose=0):
   elements = ("N", "C", "C", "O", "N", "C", "C", "O")
   friedel_flag = 1
   xtal = debug_utils.random_structure(
@@ -100,31 +98,54 @@ def exercise_bins(SgInfo, n_bins=10, d_min=1):
     volume_per_atom=50.,
     min_distance=1.5,
     general_positions_only=0)
-  print "Unit cell:", xtal.UnitCell
-  print "Space group:", xtal.SgInfo.BuildLookupSymbol()
+  if (verbose):
+    print "Unit cell:", xtal.UnitCell
+    print "Space group:", xtal.SgInfo.BuildLookupSymbol()
   miller_set = xutils.build_miller_set(xtal, friedel_flag, d_min)
+  fcalc_set = xutils.calculate_structure_factors(miller_set, xtal, abs_F=1)
   binning1 = miller.binning(xtal.UnitCell, n_bins, miller_set.H)
   assert binning1.n_bins_used() == n_bins
   assert binning1.limits().size() == n_bins + 1
   assert binning1.n_bins_all() == n_bins + 2
-  print "binning1.d_max():", binning1.d_max()
-  print "binning1.d_min():", binning1.d_min()
+  if (verbose):
+    print "binning1.d_max():", binning1.d_max()
+    print "binning1.d_min():", binning1.d_min()
   binner1 = miller.binner(binning1, miller_set.H)
-  show_binner_info(binner1)
+  if (verbose): xutils.show_binner_info(binner1)
   assert binner1.count(binner1.i_bin_d_too_large()) == 0
   assert binner1.count(binner1.i_bin_d_too_small()) == 0
   counts = binner1.counts()
   for i_bin in binner1.range_all():
     assert binner1.count(i_bin) == counts[i_bin]
-    assert binner1.bin_selection(i_bin).count(1) == counts[i_bin]
+    assert binner1(i_bin).count(1) == counts[i_bin]
   assert list(binner1.range_all()) == range(binner1.n_bins_all())
   assert list(binner1.range_used()) == range(1, binner1.n_bins_used()+1)
   binning2 = miller.binning(xtal.UnitCell, n_bins - 2,
     binning1.bin_d_min(2),
     binning1.bin_d_min(n_bins))
   binner2 = miller.binner(binning2, miller_set.H)
-  show_binner_info(binner2)
+  if (verbose): xutils.show_binner_info(binner2)
   assert tuple(binner1.counts())[1:-1] == tuple(binner2.counts())
+  fcalc_set.setup_binner(reflections_per_bin=100)
+  if (0 or verbose): xutils.show_binner_info(fcalc_set.binner)
+  for use_multiplicities in (0,1):
+    filtered_set = []
+    for negate in (0,1):
+      filtered_set.append(fcalc_set.rms_filter(
+        cutoff_factor=2,
+        use_binning=1,
+        use_multiplicities=use_multiplicities,
+        negate=negate))
+    assert filtered_set[0].H.size() > filtered_set[1].H.size()
+    assert filtered_set[1].H.size() > 0
+    js = miller.join_sets(filtered_set[0].H, filtered_set[1].H)
+    assert js.pairs().size() == 0
+    js0 = miller.join_sets(fcalc_set.H, filtered_set[0].H)
+    assert js0.singles(1).size() == 0
+    js1 = miller.join_sets(fcalc_set.H, filtered_set[1].H)
+    assert js1.singles(1).size() == 0
+    assert (js0.single_selection(0) | js1.single_selection(0)).count(0) == 0
+    assert (js0.single_selection(0) & js1.single_selection(0)).count(1) == 0
 
 def run():
   exercise_join_sets()

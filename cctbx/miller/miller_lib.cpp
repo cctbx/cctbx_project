@@ -321,14 +321,36 @@ namespace cctbx { namespace miller {
     }
   }
 
+  af::shared<bool>
+  join_sets::pair_selection(std::size_t i_array) const
+  {
+    size_assert_intrinsic();
+    af::shared<bool> result(miller_indices_[i_array].size(), false);
+    for(std::size_t i=0;i<pairs_.size();i++) {
+      result[pairs_[i][i_array]] = true;
+    }
+    return result;
+  }
+
+  af::shared<bool>
+  join_sets::single_selection(std::size_t i_array) const
+  {
+    size_assert_intrinsic();
+    af::shared<bool> result(miller_indices_[i_array].size(), false);
+    for(std::size_t i=0;i<singles_[i_array].size();i++) {
+      result[singles_[i_array][i]] = true;
+    }
+    return result;
+  }
+
   af::shared<Index>
-  join_sets::common_miller_indices() const
+  join_sets::paired_miller_indices(std::size_t i_array) const
   {
     size_assert_intrinsic();
     af::shared<Index> result;
     result.reserve(pairs_.size());
     for(std::size_t i=0;i<pairs_.size();i++) {
-      result.push_back(miller_indices_[0][pairs_[i][0]]);
+      result.push_back(miller_indices_[i_array][pairs_[i][i_array]]);
     }
     return result;
   }
@@ -478,7 +500,7 @@ namespace cctbx { namespace miller {
     return result;
   }
 
-  af::shared<bool> binner::bin_selection(std::size_t i_bin) const
+  af::shared<bool> binner::operator()(std::size_t i_bin) const
   {
     cctbx_assert(i_bin < this->n_bins_all());
     af::shared<bool> flags;
