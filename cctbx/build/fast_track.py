@@ -72,17 +72,33 @@ if (platform == "vc60"):
 else:
   make = "make"
 
+def update_environment_path(env_var, addl_value):
+  try: values = os.environ[env_var].split(os.pathsep)
+  except: values = []
+  values.insert(0, addl_value)
+  values = [os.path.normpath(os.path.normcase(v)) for v in values]
+  unique_values = []
+  for v in values:
+    if (not v in unique_values):
+      unique_values.append(v)
+  os.environ[env_var] = os.pathsep.join(unique_values)
+
 if (hasattr(os, "symlink")):
-  os.environ["LD_LIBRARY_PATH"] = os.path.abspath("./lib")
+  update_environment_path("LD_LIBRARY_PATH", os.path.abspath("./lib"))
   link_cmd = "softlinks"
 else:
   link_cmd = "copy"
+  update_environment_path("LD_LIBRARY_PATH", os.path.abspath("./lib"))
+update_environment_path("PYTHONPATH", os.path.abspath("./lib_python"))
 
 def system_checked(cmd):
-  if (os.system(cmd) != 0):
-    sys.exit(1)
   sys.stdout.flush()
   sys.stderr.flush()
+  status = os.system(cmd)
+  sys.stdout.flush()
+  sys.stderr.flush()
+  if (status != 0):
+    raise RuntimeError, 'system("%s")' % (cmd,)
 
 for sp in structured_package_dirs:
   os.chdir(this_target)
@@ -106,9 +122,8 @@ for sp in structured_package_dirs:
     system_checked(pyexe + " " + build_system_dir + "/make.py " + link_cmd)
     system_checked(pyexe + " " + build_system_dir + "/make.py all")
     system_checked(pyexe + " test_imports.py")
-    if os.path.isfile(norm("examples/cpp/getting_started")):
-      system_checked(norm("examples/cpp/getting_started"))
-      os.environ["PYTHONPATH"] = norm(join(os.getcwd(),"../lib_python"))
+    if (structured_package == "cctbx"):
+      system_checked(os.path.abspath("./examples/cpp/getting_started"))
       system_checked(
         pyexe + " " + norm(sp + "/examples/python/getting_started.py"))
     print "Done with %s." % (structured_package,)

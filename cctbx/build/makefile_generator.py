@@ -64,6 +64,10 @@ class write_makefiles:
     else:
       expand_cf(self.macros, "@(SUBLEVEL1)", "")
 
+    self.build_shared_libraries = 0
+    if (self.platform in ("irix_CC", "unix_gcc", "sun_gcc")):
+      self.build_shared_libraries = 1
+
   def head(self):
     print r"""# Usage:
 #
@@ -218,7 +222,7 @@ class write_makefiles:
       print "\t$(LD) -library -o %s %s" % (lib, objstr)
     else:
       lib_suffix = ".a"
-      if (self.platform in ("irix_CC", "unix_gcc")):
+      if (self.build_shared_libraries):
         lib_suffix = ".so"
       lib = "lib" + name + lib_suffix
       print "%s: %s" % (lib, objstr)
@@ -226,7 +230,9 @@ class write_makefiles:
         print "\t-del %s" % (lib,)
       else:
         print "\trm -f %s" % (lib,)
-      if   (self.platform == "tru64_cxx"):
+      if (self.build_shared_libraries):
+        print "\t$(CPP) $(LDDLL) -o %s %s" % (lib, objstr)
+      elif (self.platform == "tru64_cxx"):
         print "\tcd cxx_repository; \\"
         print "\t  ls -1 > ../%s.input; \\" % (lib,)
         print "\t  ar r ../%s -input ../%s.input" % (lib, lib)
@@ -234,8 +240,6 @@ class write_makefiles:
         print "\tar r %s %s" % (lib, objstr)
       elif (self.platform == "macosx"):
         print "\tlibtool -static -o %s %s" % (lib, objstr)
-      elif (self.platform in ("irix_CC", "unix_gcc")):
-        print "\t$(CPP) $(LDDLL) -o %s %s" % (lib, objstr)
       else:
         print "\tar r %s %s" % (lib, objstr)
     if (self.platform  in ("vc60", "mingw32", "win32_mwcc")):
