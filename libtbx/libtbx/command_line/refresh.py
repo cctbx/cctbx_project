@@ -13,9 +13,25 @@ class create_bin_sh_dispatcher:
 
   def __call__(self, source_file, target_file):
     f = open(target_file, "w")
-    print >> f, "#! /bin/sh"
-    print >> f, "# LIBTBX_DISPATCHER DO NOT EDIT"
-    print >> f, "unset PYTHONHOME"
+    print >> f, '#! /bin/sh'
+    print >> f, '# LIBTBX_DISPATCHER DO NOT EDIT'
+    print >> f, 'unset PYTHONHOME'
+    essentials = ["PYTHONPATH"]
+    if (sys.platform.startswith("darwin")):
+      essentials.append("DYLD_LIBRARY_PATH")
+    else:
+      essentials.append("LD_LIBRARY_PATH")
+    for v in essentials:
+      print >> f, 'if [ ! -n "$%s" ]; then' % v
+      print >> f, '  %s="$LIBTBX0%s"' % (v, v)
+      print >> f, '  export %s' % v
+      print >> f, 'elif [ "$%s" != "$LIBTBX0%s" ]; then' % (v, v)
+      print >> f, '  x=`echo "$%s" | grep libtbx`' % v
+      print >> f, '  if [ ! -n "$x" ]; then'
+      print >> f, '    %s="$LIBTBX0%s:$%s"' % (v, v, v)
+      print >> f, '    export %s' % v
+      print >> f, '  fi'
+      print >> f, 'fi'
     if (self.precall_commands is not None):
       for line in self.precall_commands:
         print >> f, line
