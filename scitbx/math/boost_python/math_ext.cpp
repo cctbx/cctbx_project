@@ -10,6 +10,7 @@ namespace scitbx { namespace math {
 namespace boost_python {
 
   void wrap_gaussian();
+  void wrap_golay();
 
 namespace {
 
@@ -42,6 +43,7 @@ namespace {
     eigensystem_real_symmetric_wrappers::wrap();
 
     wrap_gaussian();
+    wrap_golay();
   }
 
 }}}} // namespace scitbx::math::boost_python::<anonymous>
