@@ -91,7 +91,7 @@ namespace scitbx { namespace math { namespace eigensystem {
         ++iq;
       }
       if (anorm>0.0) {
-        anorm=sqrt(2.0*anorm);
+        anorm=std::sqrt(2.0*anorm);
         anrmx=epsilon*anorm/n;
         // Compute threshold and initialise flag.
         thr=anorm;
@@ -110,15 +110,17 @@ namespace scitbx { namespace math { namespace eigensystem {
                 // Compute sin & cos.
                 mq=m*(m+1)/2;
                 lm=l+mq;
-                if (a[lm]*a[lm]>=thr*thr) {
+                if (a[lm]*a[lm]>thr*thr) {
                   ind=1;
                   mm=m+mq;
                   x=0.5*(a[ll]-a[mm]);
-                  y=-a[lm]/sqrt(a[lm]*a[lm]+x*x);
+                  FloatType denominator=std::sqrt(a[lm]*a[lm]+x*x);
+                  SCITBX_ASSERT(denominator != 0);
+                  y=-a[lm]/denominator;
                   if (x<0.0) y=-y;
-                  sinx=y/sqrt(2.0*(1.0+(sqrt(1.0-y*y))));
+                  sinx=y/std::sqrt(2.0*(1.0+(std::sqrt(1.0-y*y))));
                   sinx2=sinx*sinx;
-                  cosx=sqrt(1.0-sinx2);
+                  cosx=std::sqrt(1.0-sinx2);
                   cosx2=cosx*cosx;
                   sincs=sinx*cosx;
                   // Rotate l & m columns.
