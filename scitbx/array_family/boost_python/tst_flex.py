@@ -1,5 +1,6 @@
 from scitbx.array_family import flex
 from scitbx.python_utils import command_line
+from scitbx import matrix
 from libtbx.test_utils import approx_equal
 from cStringIO import StringIO
 import pickle
@@ -931,6 +932,26 @@ def exercise_exceptions():
   else:
     raise AssertionError, "No exception or wrong exception."
 
+def exercise_matrix():
+  a = flex.double(range(1,7))
+  a.resize(flex.grid(3,2))
+  b = flex.double(range(1,7))
+  b.resize(flex.grid(2,3))
+  c = a.matrix_multiply(b)
+  assert c.focus() == (3,3)
+  assert list(c) == [9, 12, 15, 19, 26, 33, 29, 40, 51]
+  for a_n_rows in xrange(1,4):
+    for a_n_columns in xrange(1,4):
+      a = flex.random_double(size=a_n_rows*a_n_columns)
+      a.resize(flex.grid(a_n_rows, a_n_columns))
+      for b_n_columns in xrange(1,4):
+        b = flex.random_double(size=a_n_columns*b_n_columns)
+        b.resize(flex.grid(a_n_columns, b_n_columns))
+        c = a.matrix_multiply(b)
+        d = matrix.rec(a, a.focus()) * matrix.rec(b, b.focus())
+        assert c.focus() == d.n
+        assert approx_equal(c, d)
+
 def exercise_pickle_single_buffered():
   a = flex.bool((1,0,1))
   p = pickle.dumps(a)
@@ -1089,6 +1110,7 @@ def run(iterations):
     exercise_loops()
     exercise_extract_attributes()
     exercise_exceptions()
+    exercise_matrix()
     exercise_pickle_single_buffered()
     exercise_pickle_double_buffered()
     exercise_py_object()
