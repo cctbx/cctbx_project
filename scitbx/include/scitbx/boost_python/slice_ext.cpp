@@ -60,7 +60,7 @@ namespace {
   void init_module()
   {
     using namespace boost::python;
-    scitbx::boost_python::slice_from_python();
+    slice_from_python();
   }
 
 }}} // namespace scitbx::boost_python::<anonymous>
