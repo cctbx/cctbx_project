@@ -73,7 +73,8 @@ namespace {
     std::size_t n_iselections = boost::python::len(iselections);
     for(std::size_t i=0;i<n_iselections;i++) {
       bool ok = union_core<unsigned>(iselections[i], r).ok;
-      if (!ok && sizeof(std::size_t) != sizeof(unsigned)) {
+      if (!ok && boost::python::type_info(typeid(af::const_ref<std::size_t>))
+              != boost::python::type_info(typeid(af::const_ref<unsigned>))) {
         ok = union_core<std::size_t>(iselections[i], r).ok;
       }
       if (!ok) {
@@ -124,7 +125,8 @@ namespace {
     std::size_t n_iselections = boost::python::len(iselections);
     for(std::size_t i=0;i<n_iselections;i++) {
       bool ok = intersection_core<unsigned>(iselections[i], r, t).ok;
-      if (!ok && sizeof(std::size_t) != sizeof(unsigned)) {
+      if (!ok && boost::python::type_info(typeid(af::const_ref<std::size_t>))
+              != boost::python::type_info(typeid(af::const_ref<unsigned>))) {
         ok = intersection_core<std::size_t>(iselections[i], r, t).ok;
       }
       if (!ok) {
