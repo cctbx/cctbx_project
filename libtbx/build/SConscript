@@ -141,7 +141,7 @@ env_boost_python_ext = env_base.Copy(
   SHCXXFLAGS=env_etc.cxxflags_base,
   SHLINKFLAGS=env_etc.shlinkflags_bpl,
   SHLIBPREFIX="",
-  LIBPATH=["#/libtbx"] + env_etc.libpath_python,
+  LIBPATH=["#libtbx"] + env_etc.libpath_python,
   LIBS=["bpl"] + env_etc.libs_python + env_etc.libm,
 )
 env_boost_python_ext.Append(SHCXXFLAGS=env_etc.cxxflags_bpl_defines_base)

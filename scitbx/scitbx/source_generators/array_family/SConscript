@@ -28,7 +28,7 @@ generated_files = Split("""
 """)
 
 generated_files = [
-  "#/libtbx/include/scitbx/array_family/" + name
+  "#libtbx/include/scitbx/array_family/" + name
   for name in generated_files]
 
 env_base.Command(

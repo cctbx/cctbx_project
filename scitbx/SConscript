@@ -15,8 +15,8 @@ env_scitbx_boost_python_ext.Prepend(LIBS=["scitbx_boost_python"])
 Export("env_scitbx_boost_python_ext")
 
 env_scitbx_boost_python_ext.Command(
-  "#/libtbx/scitbx_boost/__init__.py",
-  "#/libtbx/build/SConscript", env_etc.touch_init)
+  "#libtbx/scitbx_boost/__init__.py",
+  "#libtbx/build/SConscript", env_etc.touch_init)
 
 SConscript("scitbx/source_generators/array_family/SConscript")
 SConscript("boost_python/SConscript")
