@@ -22,6 +22,24 @@ def exercise_bond():
   assert approx_equal(p.weight, 10)
   p.weight = 1
   assert approx_equal(p.weight, 1)
+  #
+  assert "map_indexing_suite_bond_params_dict_entry" in restraints.__dict__
+  t = restraints.bond_params_table()
+  assert t.size() == 0
+  d = restraints.bond_params_dict()
+  assert len(d) == 0
+  p = restraints.bond_params(distance_ideal=3, weight=2)
+  d[10] = p
+  assert approx_equal(d[10].distance_ideal, 3)
+  t.append(d)
+  t.append(d)
+  assert approx_equal(t[1][10].distance_ideal, 3)
+  t[0][13] = p
+  assert approx_equal(t[0][13].distance_ideal, 3)
+  t[0][13].distance_ideal = 5
+  assert approx_equal(t[0][13].distance_ideal, 5)
+  assert approx_equal(t[1][10].distance_ideal, 3)
+  #
   p = restraints.bond_simple_proxy(
     i_seqs=[0,1],
     distance_ideal=3.5,
@@ -185,31 +203,13 @@ def exercise_bond():
     [(5.1354626519124107, 5.1354626519124107, 5.1354626519124107),
      (-5.1354626519124107, -5.1354626519124107, -5.1354626519124107)])
 
-def exercise_bond_tables():
-  assert "map_indexing_suite_bond_params_dict_entry" in restraints.__dict__
-  assert "map_indexing_suite_bond_sym_dict_entry" in restraints.__dict__
-  assert "map_indexing_suite_bond_asu_dict_entry" in restraints.__dict__
-  t = restraints.bond_params_table()
-  assert t.size() == 0
-  d = restraints.bond_params_dict()
-  assert len(d) == 0
-  p = restraints.bond_params(distance_ideal=3, weight=2)
-  d[10] = p
-  assert approx_equal(d[10].distance_ideal, 3)
-  t.append(d)
-  t.append(d)
-  assert approx_equal(t[1][10].distance_ideal, 3)
-  t[0][13] = p
-  assert approx_equal(t[0][13].distance_ideal, 3)
-  t[0][13].distance_ideal = 5
-  assert approx_equal(t[0][13].distance_ideal, 5)
-  assert approx_equal(t[1][10].distance_ideal, 3)
-  #
-  d = restraints.bond_sym_dict()
+def exercise_pair_tables():
+  assert "map_indexing_suite_pair_sym_dict_entry" in restraints.__dict__
+  d = restraints.pair_sym_dict()
   assert len(d) == 0
   sym_ops = sgtbx.space_group("P 41").all_ops()
   for i,j_sym in enumerate([10,18,13]):
-    d[j_sym] = restraints.bond_sym_ops(sym_ops[:i])
+    d[j_sym] = restraints.pair_sym_ops(sym_ops[:i])
     assert len(d) == i+1
     assert len(d[j_sym]) == i
     assert [str(s) for s in sym_ops[:i]] == [str(s) for s in d[j_sym]]
@@ -223,31 +223,32 @@ def exercise_bond_tables():
   assert d[13].size() == 2
   d[13].clear()
   assert d[13].size() == 0
-  t = restraints.bond_sym_table()
+  t = restraints.pair_sym_table()
   t.append(d)
   assert t.size() == 1
   assert len(t[0][10]) == 0
   t.append(d)
   assert t.size() == 2
   assert len(t[1][18]) == 1
-  t = restraints.bond_sym_table(3)
+  t = restraints.pair_sym_table(3)
   for d in t:
     assert len(d) == 0
   t[1][10] = sym_ops[:2]
   assert len(t[1]) == 1
   assert len(t[1][10]) == 2
   #
-  t = restraints.bond_asu_table(3)
+  assert "map_indexing_suite_pair_asu_dict_entry" in restraints.__dict__
+  t = restraints.pair_asu_table(3)
   for d in t:
     assert len(d) == 0
-  t[1][10] = restraints.bond_asu_dict()
+  t[1][10] = restraints.pair_asu_dict()
   assert t[1][10].size() == 0
-  t[1][10].append(restraints.bond_asu_j_sym_groups())
+  t[1][10].append(restraints.pair_asu_j_sym_groups())
   assert t[1][10].size() == 1
   assert t[1][10][0].size() == 0
   t[1][10][0].insert(3)
   assert t[1][10][0].size() == 1
-  t[1][10].append(restraints.bond_asu_j_sym_groups())
+  t[1][10].append(restraints.pair_asu_j_sym_groups())
   assert t[1][10][1].size() == 0
   t[1][10][1].insert([4,5,4])
   assert t[1][10][1].size() == 2
@@ -775,7 +776,7 @@ def exercise():
   exercise_dihedral()
   exercise_chirality()
   exercise_planarity()
-  exercise_bond_tables()
+  exercise_pair_tables()
   exercise_bonded_interactions()
   print "OK"
 
