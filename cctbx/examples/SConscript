@@ -1,3 +1,4 @@
+import libtbx.load_env
 Import("env_base", "env_etc")
 env = env_base.Copy(
   CXXFLAGS=env_etc.cxxflags_base,
@@ -12,6 +13,6 @@ for target in ["getting_started",
                "convert_ccp4_symop_lib",
                "lattice_symmetry"]:
   exe = env.Program(target=target, source=target+".cpp")
-  env_etc.libtbx_env.create_dispatcher_in_bin(
+  libtbx.env.write_dispatcher_in_bin(
     source_file=exe[0].get_abspath(),
     target_file="cctbx."+target)

@@ -3,7 +3,7 @@ from cctbx import crystal
 import cctbx.crystal.coordination_sequences
 from cctbx import xray
 from iotbx.option_parser import iotbx_option_parser
-import libtbx.env
+import libtbx.load_env
 import sys, os
 
 def exercise_simple(structure, distance_cutoff, max_shell, verbose):

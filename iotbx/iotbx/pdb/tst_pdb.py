@@ -9,7 +9,7 @@ from cctbx import adptbx
 from cctbx.development import random_structure
 from cctbx.array_family import flex
 import scitbx.math
-import libtbx.env
+import libtbx.load_env
 from cStringIO import StringIO
 import sys, os
 

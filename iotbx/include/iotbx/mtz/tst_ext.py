@@ -5,7 +5,7 @@ from cctbx import uctbx
 from cctbx.array_family import flex
 from libtbx.itertbx import count
 from libtbx.test_utils import approx_equal
-import libtbx.env
+import libtbx.load_env
 from cStringIO import StringIO
 import sys, os
 

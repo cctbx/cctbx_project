@@ -18,15 +18,15 @@ cp -r $IOTBX_DIST/{iotbx,libtbx_config} iotbx
 cd ..
 
 if ($#argv == 0) then
-  mkdir -p bintbx
-  cd bintbx
-  cp -r `libtbx.show_build_path`/libtbx .
+  mkdir -p build
+  cd build
+  cp -r `libtbx.show_build_path`/lib .
   python ../dist/libtbx/configure.py iotbx
   cd ..
 endif
 
 echo '#! /bin/sh -f' > cctbx_web.cgi
-echo "exec ./bintbx/bin/libtbx.env_run CCTBX_DIST cctbx/web/dispatcher.py" >> cctbx_web.cgi
+echo "exec ./build/bin/libtbx.env_run CCTBX_DIST cctbx/web/dispatcher.py" >> cctbx_web.cgi
 chmod 755 cctbx_web.cgi
 
 cp dist/cctbx/cctbx/web/*.html .
