@@ -55,6 +55,12 @@ class rec:
   def __call__(self, ir, ic):
     return self.elems[ir * self.n_columns() + ic]
 
+  def product(self):
+    result = 1
+    for e in self.elems:
+      result *= e
+    return result
+
   def norm(self):
     assert self.n_rows() == 1 or self.n_columns() == 1
     result = 0
@@ -224,4 +230,5 @@ if (__name__ == "__main__"):
   assert mi.mathematica_form() == "{{7, -1, -3}, {12, -3, -5}, {33, -7, -14}}"
   assert (m*mi).mathematica_form() == "{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}"
   assert (mi*m).mathematica_form() == "{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}"
+  assert col((2,3,4)).product() == 2*3*4
   print "OK"
