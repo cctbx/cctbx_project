@@ -109,7 +109,7 @@ def recycle(miller_array, mtz_label, verbose=0):
   verify_miller_arrays(miller_array, r)
   r = p.as_miller_arrays()
   assert len(r) == 1
-  verify_miller_arrays(miller_array, r.values()[0])
+  verify_miller_arrays(miller_array, r[0])
 
 def verify_miller_arrays(a1, a2):
   v = a2.adopt_set(a1)
