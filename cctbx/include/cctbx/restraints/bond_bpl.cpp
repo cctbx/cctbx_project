@@ -13,9 +13,9 @@
 namespace cctbx { namespace restraints {
 namespace {
 
-  struct bond_proxy_wrappers
+  struct bond_simple_proxy_wrappers
   {
-    typedef bond_proxy w_t;
+    typedef bond_simple_proxy w_t;
 
     static void
     wrap()
@@ -23,7 +23,7 @@ namespace {
       using namespace boost::python;
       typedef boost::python::arg arg_; // gcc 2.96 workaround
       typedef return_value_policy<return_by_value> rbv;
-      class_<w_t>("bond_proxy", no_init)
+      class_<w_t>("bond_simple_proxy", no_init)
         .def(init<af::tiny<std::size_t, 2> const&, double, double>(
           (arg_("i_seqs"), arg_("distance_ideal"), arg_("weight"))))
         .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
@@ -33,7 +33,7 @@ namespace {
       {
         typedef return_internal_reference<> rir;
         scitbx::af::boost_python::shared_wrapper<w_t, rir>::wrap(
-          "shared_bond_proxy");
+          "shared_bond_simple_proxy");
       }
     }
   };
@@ -56,7 +56,7 @@ namespace {
         .def_readonly("pair", &w_t::pair)
         .def_readwrite("distance_ideal", &w_t::distance_ideal)
         .def_readwrite("weight", &w_t::weight)
-        .def("as_direct_proxy", &w_t::as_direct_proxy)
+        .def("as_simple_proxy", &w_t::as_simple_proxy)
       ;
       {
         typedef return_internal_reference<> rir;
@@ -80,7 +80,7 @@ namespace {
         .def(init<af::tiny<scitbx::vec3<double>, 2> const&, double, double>(
           (arg_("sites"), arg_("distance_ideal"), arg_("weight"))))
         .def(init<af::const_ref<scitbx::vec3<double> > const&,
-                  bond_proxy const&>(
+                  bond_simple_proxy const&>(
           (arg_("sites_cart"), arg_("proxy"))))
         .def(init<af::const_ref<scitbx::vec3<double> > const&,
                   direct_space_asu::asu_mappings<> const&,
@@ -112,7 +112,7 @@ namespace {
           boost::shared_ptr<direct_space_asu::asu_mappings<> > const&>(
             (arg_("asu_mappings"))))
         .def("asu_mappings", &w_t::asu_mappings, ccr())
-        .def("process", (bool(w_t::*)(bond_proxy const&)) &w_t::process,
+        .def("process", (bool(w_t::*)(bond_simple_proxy const&)) &w_t::process,
           (arg_("proxy")))
         .def("process",
           (bool(w_t::*)(bond_asu_proxy const&)) &w_t::process,
@@ -137,26 +137,26 @@ namespace {
   {
     using namespace boost::python;
     typedef boost::python::arg arg_; // gcc 2.96 workaround
-    bond_proxy_wrappers::wrap();
+    bond_simple_proxy_wrappers::wrap();
     bond_asu_proxy_wrappers::wrap();
     bond_wrappers::wrap();
     bond_sorted_proxies_wrappers::wrap();
     def("bond_deltas",
       (af::shared<double>(*)(
         af::const_ref<scitbx::vec3<double> > const&,
-        af::const_ref<bond_proxy> const&))
+        af::const_ref<bond_simple_proxy> const&))
       bond_deltas,
       (arg_("sites_cart"), arg_("proxies")));
     def("bond_residuals",
       (af::shared<double>(*)(
         af::const_ref<scitbx::vec3<double> > const&,
-        af::const_ref<bond_proxy> const&))
+        af::const_ref<bond_simple_proxy> const&))
       bond_residuals,
       (arg_("sites_cart"), arg_("proxies")));
     def("bond_residual_sum",
       (double(*)(
         af::const_ref<scitbx::vec3<double> > const&,
-        af::const_ref<bond_proxy> const&,
+        af::const_ref<bond_simple_proxy> const&,
         af::ref<scitbx::vec3<double> > const&))
       bond_residual_sum,
       (arg_("sites_cart"), arg_("proxies"), arg_("gradient_array")));

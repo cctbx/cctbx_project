@@ -7,7 +7,7 @@ from libtbx.test_utils import approx_equal, eps_eq
 from libtbx.itertbx import count
 
 def exercise_bond():
-  p = restraints.bond_proxy(
+  p = restraints.bond_simple_proxy(
     i_seqs=[0,1],
     distance_ideal=3.5,
     weight=1)
@@ -43,7 +43,7 @@ def exercise_bond():
   assert approx_equal(b.distance_ideal, 3.5)
   assert approx_equal(b.weight, 1)
   assert approx_equal(b.distance_model**2, 14)
-  proxies = restraints.shared_bond_proxy([p,p])
+  proxies = restraints.shared_bond_simple_proxy([p,p])
   for proxy in proxies:
     assert approx_equal(proxy.weight, 1)
     proxy.weight = 12
@@ -86,9 +86,9 @@ def exercise_bond():
   assert approx_equal(p.weight, 1)
   p.weight = 10
   assert approx_equal(p.weight, 10)
-  assert p.as_direct_proxy().i_seqs == (0,1)
-  assert approx_equal(p.as_direct_proxy().distance_ideal, 2)
-  assert approx_equal(p.as_direct_proxy().weight, 10)
+  assert p.as_simple_proxy().i_seqs == (0,1)
+  assert approx_equal(p.as_simple_proxy().distance_ideal, 2)
+  assert approx_equal(p.as_simple_proxy().weight, 10)
   sym_proxies = restraints.shared_bond_asu_proxy([p,p])
   for proxy in sym_proxies:
     assert approx_equal(proxy.distance_ideal, 2)
@@ -169,7 +169,7 @@ def exercise_bond():
      (-5.1354626519124107, -5.1354626519124107, -5.1354626519124107)])
 
 def exercise_repulsion():
-  p = restraints.repulsion_proxy(
+  p = restraints.repulsion_simple_proxy(
     i_seqs=[0,1],
     vdw_radius=5)
   assert p.i_seqs == (0,1)
@@ -193,7 +193,7 @@ def exercise_repulsion():
   assert approx_equal(r.vdw_radius, 5)
   assert approx_equal(r.function.c_rep, 16)
   assert approx_equal(r.delta, 3.74165738677)
-  proxies = restraints.shared_repulsion_proxy([p,p])
+  proxies = restraints.shared_repulsion_simple_proxy([p,p])
   for proxy in proxies:
     assert approx_equal(proxy.vdw_radius, 5)
   assert approx_equal(restraints.repulsion_deltas(
@@ -554,10 +554,10 @@ def exercise_planarity():
     assert eps_eq(g, matrix.col(e)*2)
 
 def exercise_bonded_interactions():
-  bond_proxies = restraints.shared_bond_proxy()
+  bond_proxies = restraints.shared_bond_simple_proxy()
   for pairs in [(0,1),(1,2),(2,3),(2,4),(3,5),(3,9),(5,6),(5,7),
                 (4,8),(4,9),(8,10),(9,10),(9,11),(10,11)]:
-    bond_proxies.append(restraints.bond_proxy(
+    bond_proxies.append(restraints.bond_simple_proxy(
       i_seqs=pairs,
       distance_ideal=1,
       weight=1))

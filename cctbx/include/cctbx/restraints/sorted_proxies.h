@@ -39,7 +39,7 @@ namespace cctbx { namespace restraints {
         int type_id = asu_mappings_->interaction_type_id(proxy.pair);
         if (type_id < 0) return false;
         if (type_id > 0) {
-          proxies.push_back(proxy.as_direct_proxy());
+          proxies.push_back(proxy.as_simple_proxy());
           return false;
         }
         push_back(proxy);
