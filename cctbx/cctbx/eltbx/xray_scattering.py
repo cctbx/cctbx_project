@@ -24,7 +24,7 @@ def best_approximation(scattering_type):
 
 class two_gaussian_agarwal_isaacs:
   source="ccp4/lib/data/atomsf.lib Revision 1.4, Thu Feb 13 14:10:58 1997 UTC"
-  source_short = "ccp4/lib/data/atomsf.lib Rev. 1.4"
+  source_short = "CCP4 atomsf.lib Rev. 1.4"
   table = {
     "H": gaussian([0.7932, 0.1949], [24.2157, 2.1089]),
     "C": gaussian([2.9972, 2.9791], [30.016701, 2.8886]),
