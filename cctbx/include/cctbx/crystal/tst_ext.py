@@ -6,6 +6,7 @@ from cctbx.array_family import flex
 from scitbx import matrix
 from libtbx.test_utils import approx_equal
 from libtbx.itertbx import count
+from cStringIO import StringIO
 import sys
 
 def trial_structure():
@@ -134,6 +135,8 @@ def exercise_direct_space_asu():
   for i_seq,m_i_seq in zip(count(), asu_mappings.mappings()):
     for i_sym in xrange(len(m_i_seq)):
       rt_mx = asu_mappings.get_rt_mx(i_seq, i_sym)
+      assert asu_mappings.get_rt_mx(asu_mappings.mappings()[i_seq][i_sym]) \
+          == rt_mx
       site_frac = rt_mx * sites_seq[i_seq]
       site_cart = asu_mappings.unit_cell().orthogonalize(site_frac)
       assert approx_equal(m_i_seq[i_sym].mapped_site(), site_cart)
@@ -415,6 +418,54 @@ def exercise_pair_tables():
     assert asu_table.contains(i_seq=p[0], j_seq=p[1], j_sym=p[2])
     pair = asu_mappings.make_trial_pair(*p)
     assert pair in asu_table
+  f = StringIO()
+  asu_table.show(f=f)
+  assert f.getvalue() == """\
+i_seq: 0
+  j_seq: 0
+    j_syms: [2]
+    j_syms: [1]
+  j_seq: 1
+    j_syms: [0, 8]
+i_seq: 1
+  j_seq: 0
+    j_syms: [0]
+  j_seq: 1
+    j_syms: [4]
+    j_syms: [1]
+  j_seq: 2
+    j_syms: [0]
+i_seq: 2
+  j_seq: 1
+    j_syms: [0, 11]
+  j_seq: 2
+    j_syms: [1, 2]
+"""
+  f = StringIO()
+  asu_table.show(
+    f=f,
+    site_labels=[scatterer.label for scatterer in structure.scatterers()])
+  assert f.getvalue() == """\
+Si(0)
+  Si(0)
+    j_syms: [2]
+    j_syms: [1]
+  Si(1)
+    j_syms: [0, 8]
+Si(1)
+  Si(0)
+    j_syms: [0]
+  Si(1)
+    j_syms: [4]
+    j_syms: [1]
+  Si(2)
+    j_syms: [0]
+Si(2)
+  Si(1)
+    j_syms: [0, 11]
+  Si(2)
+    j_syms: [1, 2]
+"""
   assert not asu_table.contains(i_seq=1, j_seq=1, j_sym=10)
   pair = asu_mappings.make_trial_pair(i_seq=1, j_seq=1, j_sym=10)
   assert not pair in asu_table
@@ -476,6 +527,46 @@ def exercise_pair_tables():
         [3.0504188000000001, 3.1821727999999987, 3.1703090658301503,
          3.0177940000000003, 3.1658603999999984, 3.1986122507292754,
          3.1093943999999989])
+      f = StringIO()
+      sym_table.show(f=f)
+      assert f.getvalue() == """\
+i_seq: 0
+  j_seq: 0
+    -y+1,-x+1,-z+1/2
+    x,x-y+2,-z+1/2
+  j_seq: 1
+    -y+1,x-y+1,-z+1/2
+i_seq: 1
+  j_seq: 1
+    x,x-y+1,z
+    -y+1,-x+1,z
+  j_seq: 2
+    -x+1,-x+y+1,-z
+i_seq: 2
+  j_seq: 2
+    y,-x+y,-z
+"""
+      f = StringIO()
+      sym_table.show(
+        f=f,
+        site_labels=[scatterer.label for scatterer in structure.scatterers()])
+      assert f.getvalue() == """\
+Si(0)
+  Si(0)
+    -y+1,-x+1,-z+1/2
+    x,x-y+2,-z+1/2
+  Si(1)
+    -y+1,x-y+1,-z+1/2
+Si(1)
+  Si(1)
+    x,x-y+1,z
+    -y+1,-x+1,z
+  Si(2)
+    -x+1,-x+y+1,-z
+Si(2)
+  Si(2)
+    y,-x+y,-z
+"""
 
 def exercise_coordination_sequences_simple():
   structure = trial_structure()
