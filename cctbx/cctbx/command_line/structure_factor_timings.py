@@ -19,12 +19,14 @@ def show_scatterer_digest(structure):
 def timings(structure, d_min, fft_only=00000,
             wing_cutoff_reference=1.e-6,
             wing_cutoff_others=1.e-4):
+  structure_ng = structure.deep_copy_scatterers()
   structure_5g = structure.deep_copy_scatterers()
   structure_4g = structure.deep_copy_scatterers()
   structure_2g = structure.deep_copy_scatterers()
   structure_1g = structure.deep_copy_scatterers()
-  structure_5g.scattering_dict()
-  structure_4g.scattering_dict(d_min=1, d_min_it1992=1)
+  structure_ng.scattering_dict(d_min=d_min, table="n_gaussian")
+  structure_5g.scattering_dict(table="wk1995")
+  structure_4g.scattering_dict(table="it1992")
   custom_dict = {}
   custom_dict.update(eltbx.xray_scattering.two_gaussian_agarwal_isaacs.table)
   structure_2g.scattering_dict(custom_dict=custom_dict)
@@ -58,7 +60,8 @@ def timings(structure, d_min, fft_only=00000,
     print "direct simple: %.2f seconds" % timer.elapsed()
   f_calc_reference = flex.abs(f_calc_reference)
   print "wing_cutoff for following fft calculations: %3.1e"%wing_cutoff_others
-  for structure in (structure_5g, structure_4g, structure_2g, structure_1g):
+  for structure in (structure_ng, structure_5g, structure_4g,
+                    structure_2g, structure_1g):
     show_scatterer_digest(structure)
     if (not fft_only):
       for calc_type,cos_sin_flag in (("direct cos+sin function:",00000),

@@ -49,12 +49,18 @@ class structure(crystal.special_position_settings):
   def special_position_indices(self):
     return self._special_position_indices
 
-  def scattering_dict(self, custom_dict=None, d_min=None, d_min_it1992=1):
+  def scattering_dict(self, custom_dict=None, d_min=None, table=None):
+    assert table in [None, "n_gaussian", "it1992", "wk1995"]
+    if (table == "it1992"): assert d_min == 0 or d_min <= 1/4.
+    if (table == "wk1995"): assert d_min == 0 or d_min <= 1/12.
     if (   self._scattering_dict_is_out_of_date
         or custom_dict is not None
-        or d_min is not None):
+        or d_min is not None
+        or table is not None):
       new_dict = {"const": eltbx.xray_scattering.gaussian(1) }
-      if (self._scattering_dict is not None and d_min is None):
+      if (    self._scattering_dict is not None
+          and d_min is None
+          and table is None):
         for k,v in self._scattering_dict.dict().items():
           new_dict[k] = v.gaussian
       if (custom_dict is not None):
@@ -65,10 +71,13 @@ class structure(crystal.special_position_settings):
         if (new_dict.has_key(key_undef)):
           val = new_dict[key_undef]
         else:
-          if (d_min >= d_min_it1992):
+          if (table == "it1992"):
             val = eltbx.xray_scattering.it1992(key_undef, 1).fetch()
-          else:
+          elif (table == "wk1995"):
             val = eltbx.xray_scattering.wk1995(key_undef, 1).fetch()
+          else:
+            val = eltbx.xray_scattering.n_gaussian_table_entry(
+              key_undef, d_min, 0).gaussian()
         self._scattering_dict.assign(key_undef, val)
       self._scattering_dict_is_out_of_date = 00000
     return self._scattering_dict
