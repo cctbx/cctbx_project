@@ -16,4 +16,4 @@ for hsym in table_hall_std530:
     print ts.ExtendedHermann_Mauguin()
     symbols = sgtbx.SpaceGroupSymbols(ts.ExtendedHermann_Mauguin())
     assert hsym[6:] == symbols.Hall()
-    #hkl(sgo, 1)
+    hkl(sgo)
