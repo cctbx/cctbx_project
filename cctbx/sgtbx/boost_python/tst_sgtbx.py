@@ -843,6 +843,8 @@ def exercise_site_symmetry():
   assert s.is_compatible_u_star(a, 1.e6)
   a = s.average_u_star(a)
   assert s.is_compatible_u_star(a)
+  assert len(s.matrices()) == 12
+  assert str(s.matrices()[1]) == "-y,x-y,z"
 
 def exercise_wyckoff():
   space_group_type = sgtbx.space_group_type
