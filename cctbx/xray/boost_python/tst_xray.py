@@ -162,6 +162,10 @@ def exercise_targets():
   assert approx_equal(ls.scale_factor(), 1)
   assert approx_equal(ls.target(), 0)
   assert approx_equal(tuple(ls.derivatives()), (0j,0j,0j,0j,0j))
+  ls = xray.targets_least_squares_residual(f_obs, w, f_calc, 00000, 3)
+  assert approx_equal(ls.scale_factor(), 3)
+  assert approx_equal(ls.target(), 4)
+  assert ls.derivatives().size() == 0
   ls = xray.targets_least_squares_residual(f_obs, f_calc)
   assert approx_equal(ls.scale_factor(), 1)
   assert approx_equal(ls.target(), 0)
@@ -171,6 +175,10 @@ def exercise_targets():
   assert approx_equal(ls.scale_factor(), 1/10.)
   assert approx_equal(ls.target(), 0)
   assert approx_equal(tuple(ls.derivatives()), (0j,0j,0j,0j,0j))
+  ls = xray.targets_least_squares_residual(f_obs, f_calc, 00000, 3/10.)
+  assert approx_equal(ls.scale_factor(), 3/10.)
+  assert approx_equal(ls.target(), 4)
+  assert ls.derivatives().size() == 0
   f_calc = flex.complex_double((1+2j,3+4j,-1-2j,5-4j,-5+6j))
   w = flex.double((1,2,3,2,4))
   ls = xray.targets_least_squares_residual(f_obs, w, f_calc, 0001)

@@ -92,7 +92,10 @@ namespace cctbx { namespace xray { namespace targets {
         af::const_ref<FobsValueType> const& fobs,
         af::const_ref<WeightValueType> const& weights,
         af::const_ref<FcalcValueType> const& fcalc,
-        bool compute_derivatives = false)
+        bool compute_derivatives=false,
+        FobsValueType const& scale_factor=0)
+      :
+        scale_factor_(scale_factor)
       {
         init(fobs, weights, fcalc, compute_derivatives);
       }
@@ -100,7 +103,10 @@ namespace cctbx { namespace xray { namespace targets {
       least_squares_residual(
         af::const_ref<FobsValueType> const& fobs,
         af::const_ref<FcalcValueType> const& fcalc,
-        bool compute_derivatives = false)
+        bool compute_derivatives=false,
+        FobsValueType const& scale_factor=0)
+      :
+        scale_factor_(scale_factor)
       {
         init(fobs, af::const_ref<WeightValueType>(0,0),
              fcalc, compute_derivatives);
@@ -141,8 +147,10 @@ namespace cctbx { namespace xray { namespace targets {
     af::const_ref<FcalcValueType> const& fcalc,
     bool compute_derivatives)
   {
-    scale_factor_ = detail::scale_factor_calculation(
-      fobs, weights, fcalc);
+    if (scale_factor_ == 0) {
+      scale_factor_ = detail::scale_factor_calculation(
+        fobs, weights, fcalc);
+    }
     FobsValueType sum_w_fobs2 = detail::sum_weighted_values_squared(
       fobs, weights);
     if (sum_w_fobs2 == 0) {
