@@ -1,3 +1,5 @@
+#! /usr/bin/env python
+
 import sys, os
 
 dist_root = os.environ["LIBTBX_DIST_ROOT"]

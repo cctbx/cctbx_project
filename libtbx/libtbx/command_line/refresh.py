@@ -1,33 +1,34 @@
+#! /usr/bin/env python
+
 import libtbx.config
 import sys, os
 from os.path import normpath, join, split, isdir, isfile, splitext
 norm = normpath
+import shutil
 
 def create_driver(target_dir, package_name, source_dir, file_name):
   source_file = norm(join(source_dir, file_name))
   if (not isfile(source_file)): return
   if (file_name.lower().startswith("__init__.py")): return
+  if (file_name.lower().endswith(".pyc")): return
   if (file_name[0] == "."): return
   target_file = norm(join(target_dir, package_name))
   if (file_name.lower() != "main.py"):
     target_file += "." + splitext(file_name)[0]
   if (os.name == "nt"):
-    if (file_name.lower().endswith(".py")):
-      target_file += ".bat"
-      f = open(target_file, "w")
-      print >> f, "@echo off"
-      print >> f, "python", source_file, "%1 %2 %3 %4 %5 %6 %7 %8 %9"
-      f.close()
+    if (not file_name.lower().endswith(".py")): return
+    target_file += ".py"
+    action = shutil.copyfile
   else:
-    f = open(target_file, "w")
-    cmd = "exec"
-    if (file_name.lower().endswith(".py")):
-      cmd += " python"
-    print >> f, "#! /bin/csh -f"
-    print >> f, "set noglob"
-    print >> f, cmd, source_file, "$*"
-    f.close()
-    os.chmod(target_file, 0755)
+    action = os.symlink
+    try: os.chmod(source_file, 0755)
+    except: pass
+  if (os.path.isfile(target_file)):
+    try: os.remove(target_file)
+    except OSError: pass
+    else: action(source_file, target_file)
+  else:
+    action(source_file, target_file)
 
 def create_drivers(target_dir, package_name, source_dir):
   if (not isdir(source_dir)): return
@@ -39,18 +40,16 @@ def create_python_dispatchers(target_dir, python_exe):
   for file_name in ("libtbx.python", "python"):
     target_file = norm(join(target_dir, file_name))
     if (os.name == "nt"):
-      target_file += ".bat"
-      f = open(target_file, "w")
-      print >> f, "@echo off"
-      print >> f, python_exe, "%1 %2 %3 %4 %5 %6 %7 %8 %9"
-      f.close()
+      target_file += ".exe"
+      action = shutil.copyfile
     else:
-      f = open(target_file, "w")
-      print >> f, "#! /bin/csh -f"
-      print >> f, "set noglob"
-      print >> f, "exec", python_exe, "$*"
-      f.close()
-      os.chmod(target_file, 0755)
+      action = os.symlink
+    if (os.path.isfile(target_file)):
+      try: os.remove(target_file)
+      except OSError: pass
+      else: action(python_exe, target_file)
+    else:
+      action(python_exe, target_file)
 
 def run():
   libtbx_env = libtbx.config.env()
