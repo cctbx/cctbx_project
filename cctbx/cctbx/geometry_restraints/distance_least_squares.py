@@ -265,3 +265,10 @@ def distance_and_repulsion_least_squares(
     xray_structure=minimized_structure,
     pair_asu_table=si_o_bond_asu_table)
   print
+  sites_cart = minimized_structure.sites_cart()
+  pair_proxies = geometry_restraints_manager.pair_proxies(
+    sites_cart=sites_cart)
+  pair_proxies.bond_proxies.show_sorted_by_residual(
+    sites_cart=sites_cart,
+    labels=[scatterer.label for scatterer in minimized_structure.scatterers()])
+  print
