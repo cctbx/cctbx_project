@@ -101,8 +101,23 @@ def exercise_basic():
     assert approx_equal(flex.min(valid_values), 0)
     assert approx_equal(flex.max(valid_values), 5)
     assert approx_equal(flex.mean(valid_values), 2.41818189621)
+    assert column.selection_valid().count(True) == 165
+    assert approx_equal(flex.mean(column.extract_values()), 2.41818189621)
+    assert approx_equal(flex.mean(column.extract_values(
+      not_a_number_substitute=10)), 2.41818189621)
     column = mtz_object.get_column("F*")
     assert column.label() == "Frem"
+    assert column.n_valid_values() == 163
+    valid_values = column.extract_valid_values()
+    assert valid_values.size() == 163
+    assert approx_equal(flex.min(valid_values), 32.5101776123)
+    assert approx_equal(flex.max(valid_values), 2711.84350586)
+    assert approx_equal(flex.mean(valid_values), 615.060852051)
+    assert column.selection_valid().count(True) == 163
+    assert approx_equal(flex.mean(column.extract_values()),
+      615.060852051*163/165)
+    assert approx_equal(flex.mean(column.extract_values(13)),
+      (615.060852051*163+2*13)/165)
     expected_dataset_ids = iter(range(4))
     expected_dataset_names = iter([
       "HKL_base",
@@ -440,7 +455,7 @@ def exercise_modifiers(verbose=0):
       assert approx_equal(crystal.unit_cell_parameters(),
         (10+i_crystal,20,20,90,90,120))
   if (not verbose): out = StringIO()
-  mtz_object.show_summary(out=out)
+  assert mtz_object.show_summary(out=out) is mtz_object
   if (not verbose):
     assert not show_diff(out.getvalue(), """\
 Title: exercise
@@ -825,6 +840,20 @@ Crystal 2:
     SigF       3  75.00%  1.00  3.00 Q: standard deviation
     I          3  75.00% 11.00 31.00 F: amplitude
     SigI       3  75.00%  4.00  6.00 Q: standard deviation
+""")
+  if (not verbose): out = StringIO()
+  assert mtz_object.show_column_data(out=out) is mtz_object
+  if (not verbose):
+    assert not show_diff(out.getvalue(), """\
+Column data:
+-------------------------------------------------------------------------------
+                       F            SigF               I            SigI
+
+ 1  2  3              10               1              21               5
+ 2  3  4              20               2            None            None
+ 3  4  5              30               3              31               6
+ 2  3  5            None            None              11               4
+-------------------------------------------------------------------------------
 """)
   mtz_object.write(file_name="tmp.mtz")
   if (not verbose): out = StringIO()

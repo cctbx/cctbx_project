@@ -264,12 +264,60 @@ class _object(boost.python.injector, ext.object):
             max_field_lengths[:6])
           for fields in fields_list:
             print >> out, (format % tuple(fields)).rstrip()
+    return self
+
+  def show_column_data(self, out=None):
+    if (out is None): out = sys.stdout
+    miller_indices = self.extract_miller_indices()
+    if (miller_indices.size() == 0):
+      h_width = 1
+    else:
+      h_width = len("-%d" % int(flex.max(flex.abs(
+        miller_indices.as_vec3_double().as_double()))+.5))
+    h_format = " ".join(["%%%dd" % h_width]*3)
+    h_blank = " "*(h_width*3+2)
+    labels = []
+    pairs = []
+    for column in self.columns():
+      if (column.label() in ["H", "K", "L"]): continue
+      labels.append(column.label())
+      pairs.append((column.extract_values(), column.selection_valid()))
+    def show_labels():
+      print >> out, h_blank,
+      for i,label in enumerate(labels):
+        if (i and i % 4 == 0):
+          print >> out
+          print >> out, h_blank,
+        print >> out, "%15s" % label,
+      print >> out
+      print >> out
+    n_data_lines = 0
+    print >> out, "Column data:"
+    print >> out, "-"*79
+    show_labels()
+    for iref,h in enumerate(miller_indices):
+      if (n_data_lines > 20):
+        print >> out
+        show_labels()
+        n_data_lines = 0
+      h_str = h_format % h
+      print >> out, h_str,
+      for i,(data,selection) in enumerate(pairs):
+        if (i and i % 4 == 0):
+          print >> out
+          n_data_lines += 1
+          print >> out, h_blank,
+        if (selection[iref]): print >> out, "%15.6g" % data[iref],
+        else:                 print >> out, "%15s" % "None",
+      print >> out
+      n_data_lines += 1
+    print >> out, "-"*79
+    return self
 
   def change_basis_in_place(self,
         cb_op,
         new_space_group_info=None,
-        assert_is_compatible_unit_cell=False
-        ):
+        assert_is_compatible_unit_cell=False):
     # force update if column_type_legend is changed
     assert len(column_type_legend) == 16 # programmer alert
     for column_type in self.column_types():
