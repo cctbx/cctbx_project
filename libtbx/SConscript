@@ -1,5 +1,5 @@
 SConscript("build/SConscript")
-import os.path
+import os, os.path
 Import("env_base", "env_etc")
 env = env_base.Copy(
   CPPPATH=[env_etc.boost_include, env_etc.python_include],
@@ -10,30 +10,23 @@ env.Replace(SHCXXFLAGS=env_etc.cxxflags_base)
 env.Append(SHCXXFLAGS=env_etc.cxxflags_bpl_defines_base)
 env.Append(SHCXXFLAGS="-DBOOST_PYTHON_SOURCE")
 env.Replace(SHLINKFLAGS=env_etc.shlinkflags)
-bpl_dll_sources = Split("""
-  src/list.cpp
-  src/long.cpp
-  src/dict.cpp
-  src/tuple.cpp
-  src/str.cpp
-  src/aix_init_module.cpp
-  src/converter/from_python.cpp
-  src/converter/registry.cpp
-  src/converter/type_id.cpp
-  src/object/class.cpp
-  src/object/function.cpp
-  src/object/inheritance.cpp
-  src/object/life_support.cpp
-  src/object/pickle_support.cpp
-  src/errors.cpp
-  src/module.cpp
-  src/converter/builtin_converters.cpp
-  src/converter/arg_to_python_base.cpp
-  src/object/iterator.cpp
-  src/object_protocol.cpp
-  src/object_operators.cpp
-""")
-bpl_dll_sources = [
-  os.path.join("#boost/libs/python", path)
-    for path in bpl_dll_sources]
+
+jamfile_path = os.path.normpath(os.path.join(
+  os.environ["LIBTBX_BOOST"], "libs/python/Jamfile"))
+jamfile_lines = [
+  line.strip() for line in open(str(jamfile_path), "r").readlines()]
+for i in xrange(len(jamfile_lines)):
+  line = jamfile_lines[i]
+  if (line == "dll bpl"):
+    assert jamfile_lines[i+1] == ":"
+    jamfile_lines = jamfile_lines[i+2:]
+    break
+bpl_dll_sources = []
+for i in xrange(len(jamfile_lines)):
+  line = jamfile_lines[i]
+  if (line == ":"): break
+  if (line):
+    bpl_dll_sources.append(os.path.join("#boost/libs/python", line))
+assert len(bpl_dll_sources) > 0
+
 env.SharedLibrary(target="bpl", source=bpl_dll_sources)
