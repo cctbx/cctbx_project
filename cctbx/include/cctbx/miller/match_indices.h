@@ -74,6 +74,9 @@ namespace cctbx { namespace miller {
       af::shared<index<> >
       paired_miller_indices(std::size_t i_array) const;
 
+      af::shared<std::size_t>
+      permutation() const;
+
       template <typename NumType>
       af::shared<NumType>
       plus(

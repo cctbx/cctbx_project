@@ -212,6 +212,10 @@ def exercise_array():
   assert tuple(sa.indices()) == ((0,0,-3), (0,0,1), (0,0,-4), (0,0,2))
   sa = ma.sort(by_value=flex.double((3,1,4,2)), reverse=0001)
   assert tuple(sa.indices()) == ((0,0,2), (0,0,-4), (0,0,1), (0,0,-3))
+  aa = sa.adopt_set(ma)
+  assert tuple(aa.indices()) == tuple(ma.indices())
+  assert approx_equal(aa.data(), ma.data())
+  assert approx_equal(aa.sigmas(), ma.sigmas())
   ma = miller.array(miller.set(xs, mi, 00000),data,sigmas).patterson_symmetry()
   assert str(ma.space_group_info()) == "P 1 1 2/m"
   assert ma.indices() == mi

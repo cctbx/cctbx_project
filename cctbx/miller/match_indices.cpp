@@ -105,4 +105,17 @@ namespace cctbx { namespace miller {
     return result;
   }
 
+  af::shared<std::size_t>
+  match_indices::permutation() const
+  {
+    size_assert_intrinsic();
+    CCTBX_ASSERT(!have_singles());
+    af::shared<std::size_t> result((af::reserve(pairs_.size())));
+    for(std::size_t i=0;i<pairs_.size();i++) {
+      CCTBX_ASSERT(pairs_[i][0] == i);
+      result.push_back(pairs_[i][1]);
+    }
+    return result;
+  }
+
 }} // namespace cctbx::miller
