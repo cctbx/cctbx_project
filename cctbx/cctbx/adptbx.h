@@ -255,43 +255,41 @@ namespace adptbx {
     return DebyeWallerFactorUstar(MIx, Ucart_as_Ustar(uc, Ucart));
   }
 
-  //! Test if adp tensor is positive definite.
-  /*! Necessary and sufficient conditions for positive-definiteness
-      are:
+  //! Determine the eigenvalues of the adp tensor.
+  /*! The eigenvalues lambda are determined as the three real roots
+      of the cubic equation
       <p>
-      det(U) > 0<br>
-      Uii > 0<br>
-      Uii Uij > 0 for i,j=1,2,3
+          |(adp - lambda * I)| = 0
       <p>
-      If the above conditions are violated then atomic
-      displacements could be described by imaginary
-      ellipsoids or by paraboloids or hyperboloids,
-      with the obvious meaning that the experimental
-      data are not of sufficient accuracy to
-      justify the use of anisotropic displacement
-      parameters.
-      (Giacovazzo, Fundamentals of Crystallography 1992,
-      p. 188-189).
+      where I is the identity matrix. The solution is
+      obtained analytically using Cardan's formula.
+      Detailed comments are embedded in the source code.
+      <p>
+      An exception is thrown if the cubic equation has imaginary
+      roots. This indicates that the adp tensor is not
+      positive definite.
    */
-  template <class FloatType>
-  bool
-  isPositiveDefinite_adpTensor(const boost::array<FloatType, 6>& adp)
-  {
-    for(std::size_t i=0;i<6;i++) {
-      if (adp[i] <= 0.) return false;
-    }
-    FloatType
-    det =  adp[0] * (adp[1] * adp[2] - adp[5] * adp[5]);
-    det -= adp[3] * (adp[3] * adp[2] - adp[5] * adp[4]);
-    det += adp[4] * (adp[3] * adp[5] - adp[1] * adp[4]);
-    if (det < 0.) return false;
-    return true;
-  }
-
   template <class FloatType>
   boost::array<FloatType, 3>
   EigenValues(const boost::array<FloatType, 6>& adp)
   {
+    /* The eigenvalues lambda are found by:
+         1. Determining the elements of the matrix (adp - lambda * I),
+            where I is the identity matrix.
+         2. Computing the determinant of that matrix as a function
+            of lambda. This results in a cubic equation.
+         3. Finding the three real roots of the cubic equation with
+            Cardan's formula, taken from Taschenbuch der Mathematik
+            by Bronstein & Semendjajew (p. 183 in the reprint of
+            the 20th edition from 1983).
+    */
+    /* Mathematica code used to generate the coefficients of the
+       "normal form" of the cubic equation:
+         U={{adp0,adp3,adp4},{adp3,adp1,adp5},{adp4,adp5,adp2}}
+         L={{lambda,0,0},{0,lambda,0},{0,0,lambda}}
+         Det[U-L]*(-1)
+         CForm[Det[U-L]*(-1)]
+     */
     // normal form: x^3 + r x^2 + s x + t == 0
     FloatType r = -adp[0] - adp[1] - adp[2];
     FloatType s =   adp[0] * adp[1] + adp[0] * adp[2] + adp[1] * adp[2]
@@ -299,22 +297,31 @@ namespace adptbx {
     FloatType t =   adp[0] * adp[5] * adp[5] - adp[0] * adp[1] * adp[2]
                   + adp[2] * adp[3] * adp[3] + adp[1] * adp[4] * adp[4]
                   - 2 * adp[3] * adp[4] * adp[5];
+    /* "Reduced form" of the cubic equation according to
+       Taschenbuch der Mathematik.
+     */
     // reduced form: y^3 + p y + q == 0
     FloatType p = s - r * r / 3.;
     FloatType q = 2. * r * r * r / 27. - r * s / 3. + t;
+    /* "D" is computed to test for the number of real roots.
+       There are three real roots only if D < 0.
+     */
     FloatType p3 = p * p * p;
     FloatType q2 = q * q;
     FloatType D = p3 / 27. + q2 / 4.;
     if (D >= 0.) throw error("adp tensor is not positive definite.");
+    /* At this point it is clear that there are three real eigenvaues.
+       They can now be determined without involving complex numbers.
+     */
     FloatType zeta = std::sqrt(-p3 / 27);
     FloatType phi = std::acos(-q / (2. * zeta));
     FloatType rzeta = 2. * std::pow(zeta, FloatType(1/3.));
     boost::array<FloatType, 3> result;
     for (int i = 0; i < 3; i++) {
       result[i] =   rzeta * std::cos((phi + (i * 2) * constants::pi) / 3.)
-                  - r / 3.;
-    }
-    return result;
+                  - r / 3.; // the term on this line converts the
+    }                       // solutions y of the reduced form to
+    return result;          // the solutions x of the normal form.
   }
 
 } // namespace adptbx
