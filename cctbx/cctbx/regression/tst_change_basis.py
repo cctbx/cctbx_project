@@ -35,11 +35,11 @@ def exercise(space_group_info, anomalous_flag,
   f_abs_pz_array = abs(xray.structure_factors_direct(
     xray_structure=structure_pz,
     miller_set=f_abs_z_array).f_calc_array())
-  r = flex.linear_regression(f_abs_z_array.data(), f_abs_pz_array.data())
-  assert r.is_well_defined()
+  c = flex.linear_correlation(f_abs_z_array.data(), f_abs_pz_array.data())
+  assert c.is_well_defined()
   if (0 or verbose):
-    print "correlation:", r.correlation()
-  assert r.correlation() > 0.999
+    print "correlation:", c.coefficient()
+  assert c.coefficient() > 0.999
   f_abs_p_array_cb = f_abs_z_array.change_basis(z2p_op)
   o = flex.order(f_abs_p_array_cb.indices(), f_abs_z_array.indices())
   if (f_abs_z_array.space_group().n_ltr() == 1):
@@ -51,11 +51,11 @@ def exercise(space_group_info, anomalous_flag,
   f_abs_p_array_sf = abs(xray.structure_factors_direct(
     xray_structure=structure_p,
     miller_set=f_abs_p_array_cb).f_calc_array())
-  r = flex.linear_regression(f_abs_p_array_sf.data(), f_abs_p_array_cb.data())
-  assert r.is_well_defined()
+  c = flex.linear_correlation(f_abs_p_array_sf.data(), f_abs_p_array_cb.data())
+  assert c.is_well_defined()
   if (0 or verbose):
-    print "correlation:", r.correlation()
-  assert r.correlation() > 0.999
+    print "correlation:", c.coefficient()
+  assert c.coefficient() > 0.999
 
 def run_call_back(flags, space_group_info):
   for anomalous_flag in (00000, 0001)[:]: #SWITCH

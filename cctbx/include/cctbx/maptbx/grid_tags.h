@@ -20,7 +20,7 @@
 #include <scitbx/array_family/accessors/c_grid.h>
 #include <scitbx/array_family/accessors/c_grid_padded.h>
 #include <scitbx/array_family/loops.h>
-#include <scitbx/math/linear_regression.h>
+#include <scitbx/math/linear_correlation.h>
 
 namespace cctbx { namespace maptbx {
 
@@ -162,72 +162,31 @@ namespace grid_tags_detail {
     return n_independent;
   }
 
-  // templated on TagType b/o Visual C++ 7 limitation
   template <typename FloatType, typename TagType>
-  struct verify_grid_tags : scitbx::math::linear_regression_core<FloatType>
-  {
-    verify_grid_tags() {}
-
-    verify_grid_tags(
+  scitbx::math::linear_correlation<>
+  dependent_correlation(
+      std::size_t n_dependent,
       af::const_ref<FloatType, af::c_grid_padded<3> > const& data,
       af::const_ref<TagType, c_grid_p1<3> > const& tags,
-      FloatType const& epsilon=1.e-6);
-
-    std::size_t n_dependent;
-  };
-
-  template <typename FloatType, typename TagType>
-  verify_grid_tags<FloatType, TagType>
-  ::verify_grid_tags(
-      af::const_ref<FloatType, af::c_grid_padded<3> > const& data,
-      af::const_ref<TagType, c_grid_p1<3> > const& tags,
-      FloatType const& epsilon)
-  :
-    n_dependent(0)
+      double epsilon)
   {
     CCTBX_ASSERT(tags.accessor().all_eq(data.accessor().focus()));
     typedef af::c_grid_padded<3>::index_type index_type;
     af::nested_loop<index_type> loop(data.accessor().focus());
     af::c_grid<3> tags_accessor(tags.accessor()); // index_type conversion
-    FloatType x, y, min_x, max_x, min_y, max_y;
-    FloatType sum_x, sum_x2, sum_y, sum_y2, sum_xy;
-    n_dependent = 0;
+    std::vector<FloatType> x; x.reserve(n_dependent);
+    std::vector<FloatType> y; y.reserve(n_dependent);
     std::size_t i = 0;
     for (index_type const& pt = loop(); !loop.over(); loop.incr(), i++) {
       if (tags[i] < 0) continue;
-      x = data(pt);
-      y = data(tags_accessor.index_nd(tags[i]));
-      if (n_dependent == 0) {
-        min_x = x;
-        max_x = x;
-        min_y = y;
-        max_y = y;
-        sum_x = x;
-        sum_x2 = x * x;
-        sum_y = y;
-        sum_y2 = y * y;
-        sum_xy = x * y;
-      }
-      if (min_x > x) min_x = x;
-      if (max_x < x) max_x = x;
-      if (min_y > y) min_y = y;
-      if (max_y < y) max_y = y;
-      sum_x += x;
-      sum_x2 += x * x;
-      sum_y += y;
-      sum_y2 += y * y;
-      sum_xy += x * y;
-      n_dependent++;
+      x.push_back(data(pt));
+      y.push_back(data(tags_accessor.index_nd(tags[i])));
     }
-    if (n_dependent == 0) {
-      this->reset();
-    }
-    else {
-      this->set(n_dependent,
-                min_x, max_x, min_y, max_y,
-                sum_x, sum_x2, sum_y, sum_y2, sum_xy,
-                epsilon);
-    }
+    CCTBX_ASSERT(x.size() == n_dependent);
+    return scitbx::math::linear_correlation<>(
+      af::make_const_ref(x),
+      af::make_const_ref(y),
+      epsilon);
   }
 
 } // namespace grid_tags_detail
@@ -276,20 +235,29 @@ namespace grid_tags_detail {
       std::size_t
       n_dependent() const { return tag_array_.size() - n_independent_; }
 
-      // FUTURE: move out of class body
       template <typename FloatType>
-      bool
-      verify(af::const_ref<FloatType, af::c_grid_padded<3> > const& data,
-             double min_correlation=0.99) const
+      scitbx::math::linear_correlation<>
+      dependent_correlation(
+        af::const_ref<FloatType, af::c_grid_padded<3> > const& data,
+        double epsilon=1.e-15) const
       {
         CCTBX_ASSERT(is_valid_);
         CCTBX_ASSERT(tag_array_.accessor().all_eq(data.accessor().focus()));
-        using namespace grid_tags_detail;
-        verify_grid_tags<FloatType, TagType> vfy(data, tag_array_.const_ref());
-        CCTBX_ASSERT(vfy.n_dependent == n_dependent());
-        if (   vfy.is_well_defined()
-            && vfy.correlation() < min_correlation) return false;
-        return true;
+        return grid_tags_detail::dependent_correlation(
+          n_dependent(),
+          data,
+          tag_array_.const_ref(),
+          epsilon);
+      }
+
+      template <typename FloatType>
+      bool
+      verify(
+        af::const_ref<FloatType, af::c_grid_padded<3> > const& data,
+        double min_correlation=0.99) const
+      {
+        if (n_dependent() == 0) return true;
+        return dependent_correlation(data).coefficient() >= min_correlation;
       }
 
       // FUTURE: move out of class body

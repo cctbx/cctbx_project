@@ -102,12 +102,12 @@ def linear_regression_test(d_analytical, d_numerical, test_hard,
     print "analytical:", tuple(d_analytical)
     print "numerical: ", tuple(d_numerical)
   regr = flex.linear_regression(d_analytical, d_numerical)
+  corr = flex.linear_correlation(d_analytical, d_numerical).coefficient()
   assert regr.is_well_defined()
-  if (   abs(regr.slope() - 1) > slope_tolerance
-      or regr.correlation() < correlation_min):
+  if (abs(regr.slope() - 1) > slope_tolerance or corr < correlation_min):
     print "Error: finite difference mismatch:"
     print "slope:", regr.slope()
-    print "correlation:", regr.correlation()
+    print "correlation:", corr
     if (0 or verbose):
       for a, n in zip(d_analytical, d_numerical):
         print a, n

@@ -184,8 +184,8 @@ def exercise_under_sampled(space_group_info, anomalous_flag, conjugate_flag,
       < (flex.max(flex.abs(x))+flex.max(flex.abs(y)))/2*1.e-6
   if (under_sampling == 1):
     x = maptbx.copy(x_source, flex.grid(x_source.focus())).as_1d()
-    r = flex.linear_regression(x, y)
-    assert r.correlation() >= 0.9999
+    c = flex.linear_correlation(x, y)
+    assert c.coefficient() >= 0.9999
 
 def run_call_back(flags, space_group_info):
   for anomalous_flag in (00000, 0001)[:]: #SWITCH
