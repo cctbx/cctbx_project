@@ -172,13 +172,13 @@ class libtbx_env:
     return None
 
   def check_python_api(self):
-    api_from_include = libtbx.config.python_api_from_include(must_exist=00001)
-    if (api_from_include is None): return
+    api_from_process = libtbx.config.python_api_from_process(must_exist=00000)
+    if (api_from_process is None): return
     api_from_build = self.python_api_from_libtbx_build_libtbx()
     if (api_from_build is None): return
-    if (api_from_include != api_from_build):
+    if (api_from_process != api_from_build):
       raise UserError(("Incompatible Python API's: current version: %s,"
-        + " used to build binaries: %s") % (api_from_include, api_from_build))
+        + " used to build binaries: %s") % (api_from_process, api_from_build))
 
 def emit_setpaths_sh(env):
   for file_name in ("setpaths.sh", "env_run.sh"):

@@ -23,11 +23,14 @@ def python_include_path(must_exist=0001):
   else:
     include_path = sys.prefix + "/include/python" + sys.version[0:3]
   include_path = norm_join(include_path)
-  if (must_exist):
-    assert os.path.isdir(include_path)
+  if (must_exist and not os.path.isdir(include_path)):
+    raise RuntimeError("Cannot locate Python's include directory: %s"
+      % include_path)
   return include_path
 
-def python_api_from_include(must_exist=0001):
+def python_api_from_process(must_exist=0001):
+  try: return str(sys.api_version) # Python 2.3 or higher
+  except AttributeError: pass
   include_path = python_include_path(must_exist)
   if (not os.path.isdir(include_path)): return None
   modsupport_h = open(norm_join(include_path, "modsupport.h")).readlines()
@@ -90,8 +93,8 @@ class env:
 
   def write_api_file(self):
     api_file_name = python_api_version_file_name(self.LIBTBX_BUILD)
-    api_from_include = python_api_from_include()
-    print >> open(api_file_name, "w"), api_from_include
+    api_from_process = python_api_from_process()
+    print >> open(api_file_name, "w"), api_from_process
 
   def dist_name(self, package_name):
     return package_name.upper() + "_DIST"
