@@ -70,7 +70,7 @@ class rec:
   def __getitem__(self, i):
     return self.elems[i]
 
-  def __float__(self):
+  def as_float(self):
     return rec([float(e) for e in self.elems], self.n)
 
   def each_abs(self):
@@ -303,8 +303,8 @@ class rt:
     r_inv = self.r.inverse()
     return rt((r_inv, -(r_inv*self.t)))
 
-  def __float__(self):
-    return rt((float(self.r), float(self.t)))
+  def as_float(self):
+    return rt((self.r.as_float(), self.t.as_float()))
 
   def as_augmented_matrix(self):
     assert self.r.n_rows() == self.r.n_columns()
@@ -345,7 +345,7 @@ if (__name__ == "__main__"):
   assert f.r.mathematica_form() \
       == "{{-9, -12, -15}, {-19, -26, -33}, {-29, -40, -51}}"
   assert f.t.mathematica_form() == "{{-4}, {-7}, {-9}}"
-  e = float(f)*.5
+  e = f.as_float()*.5
   assert e.r.mathematica_form() \
       == "{{-4.5, -6.0, -7.5}, {-9.5, -13.0, -16.5}, {-14.5, -20.0, -25.5}}"
   assert e.t.mathematica_form() == "{{-4.0}, {-7.0}, {-9.0}}"
@@ -397,7 +397,7 @@ if (__name__ == "__main__"):
   assert si.t.mathematica_form() == "{{0}, {-3}, {-5}}"
   assert (s*si).t.mathematica_form() == "{{0}, {0}, {0}}"
   assert (si*s).t.mathematica_form() == "{{0}, {0}, {0}}"
-  assert approx_equal(float(col((rational.int(3,4),2,1.5))).elems,(0.75,2,1.5))
+  assert approx_equal(col((rational.int(3,4),2,1.5)).as_float(),(0.75,2,1.5))
   assert approx_equal(col((-2,3,-6)).normalize().elems, (-2/7.,3/7.,-6/7.))
   assert col((-1,2,-3)).each_abs().elems == (1,2,3)
   assert col((5,3,4)).min() == 3
