@@ -11,7 +11,8 @@ namespace cctbx { namespace sgtbx {
       //! Default constructor.
       site_symmetry_table()
       :
-        indices_const_ref_(indices_.const_ref())
+        indices_const_ref_(indices_.const_ref()),
+        table_const_ref_(table_.const_ref())
       {}
 
       //! Add new site_symmetry_ops to internal table.
@@ -23,19 +24,22 @@ namespace cctbx { namespace sgtbx {
       process(site_symmetry_ops const& site_symmetry_ops_)
       {
         CCTBX_ASSERT(indices_const_ref_.end() == indices_.end());
-        if (table_.size() == 0) {
+        CCTBX_ASSERT(table_const_ref_.end() == table_.end());
+        if (table_const_ref_.size() == 0) {
           table_.push_back(site_symmetry_ops_.make_point_group_1());
+          table_const_ref_ = table_.const_ref();
         }
         if (site_symmetry_ops_.is_point_group_1()) {
           indices_.push_back(0);
         }
         else {
           std::size_t i;
-          for(i=0;i<table_.size();i++) {
-            if (table_[i].special_op() != site_symmetry_ops_.special_op()) {
+          for(i=0;i<table_const_ref_.size();i++) {
+            if (   table_const_ref_[i].special_op()
+                != site_symmetry_ops_.special_op()) {
               continue;
             }
-            af::const_ref<rt_mx> tm=table_[i].matrices().const_ref();
+            af::const_ref<rt_mx> tm=table_const_ref_[i].matrices().const_ref();
             af::const_ref<rt_mx> nm=site_symmetry_ops_.matrices().const_ref();
             if (tm.size() != nm.size()) continue;
             std::size_t j;
@@ -44,7 +48,10 @@ namespace cctbx { namespace sgtbx {
             }
             if (j == tm.size()) break;
           }
-          if (i == table_.size()) table_.push_back(site_symmetry_ops_);
+          if (i == table_const_ref_.size()) {
+            table_.push_back(site_symmetry_ops_);
+            table_const_ref_ = table_.const_ref();
+          }
           indices_.push_back(i);
         }
         indices_const_ref_ = indices_.const_ref();
@@ -57,7 +64,7 @@ namespace cctbx { namespace sgtbx {
       get(std::size_t i_seq) const
       {
         CCTBX_ASSERT(i_seq < indices_const_ref_.size());
-        return table_[indices_const_ref_[i_seq]];
+        return table_const_ref_[indices_const_ref_[i_seq]];
       }
 
       //! Indices to internal table entries.
@@ -72,7 +79,7 @@ namespace cctbx { namespace sgtbx {
 
       //! Number of internal table entries.
       std::size_t
-      n_unique() const { return table_.size(); }
+      n_unique() const { return table_const_ref_.size(); }
 
       //! Internal table of unique site_symmetry_ops.
       /*! The table is organized such that table()[0].is_point_group_1()
@@ -80,8 +87,8 @@ namespace cctbx { namespace sgtbx {
 
           Not available in Python.
        */
-      std::vector<site_symmetry_ops> const&
-      table() const { return table_; }
+      af::const_ref<site_symmetry_ops> const&
+      table() const { return table_const_ref_; }
 
       //! Pre-allocates memory for indices(); for efficiency.
       void
@@ -94,7 +101,8 @@ namespace cctbx { namespace sgtbx {
     protected:
       af::shared<std::size_t> indices_;
       af::const_ref<std::size_t> indices_const_ref_;
-      std::vector<site_symmetry_ops> table_;
+      af::shared<site_symmetry_ops> table_;
+      af::const_ref<site_symmetry_ops> table_const_ref_;
   };
 
 }} // namespace cctbx::sgtbx
