@@ -11,7 +11,7 @@ def ccp4_symbol(space_group_info):
   found_at_least_one_symop_lib = False
   for symop_lib_path in (
         environ_based_path(["CCP4_LIB", "data", "symop.lib"]),
-        environ_based_path(["CCTBX_DIST", "reference", "ccp4", "symop.lib"])):
+        environ_based_path(["CCP4IO_DIST", "lib", "data", "symop.lib"])):
     if (symop_lib_path is not None):
       found_at_least_one_symop_lib = True
       file_iter = iter(open(symop_lib_path, "r"))
@@ -41,3 +41,19 @@ def search_for_ccp4_symbol(space_group_info, file_iter):
       if (space_group_info.group() == group):
         return space_group_symbol
   return None
+
+def exercise():
+  for space_group_number in xrange(1,231):
+    space_group_info = sgtbx.space_group_info(
+      number=space_group_number,
+      table_id="A1983")
+    symbol = ccp4_symbol(space_group_info=space_group_info)
+    if (symbol[0] == "H"):
+      symbol = "R" + symbol[1:] + ":H"
+    assert sgtbx.space_group_info(
+      symbol=symbol,
+      table_id="A1983").group() == space_group_info.group()
+
+if (__name__ == "__main__"):
+  exercise()
+  print "OK"
