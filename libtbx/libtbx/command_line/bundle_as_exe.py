@@ -9,7 +9,7 @@ $AUTORUN$>.\\%(bundle_prefix)s_install_script.bat
 """ % vars()
 
 def run(args):
-  "usage: libtbx.bundle_up bundle_prefix platform_string [addl_files...]"
+  "usage: libtbx.bundle_as_exe bundle_prefix platform_string [addl_files...]"
   if (len(args) < 2):
     print run.__doc__
     return

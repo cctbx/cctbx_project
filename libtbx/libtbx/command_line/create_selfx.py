@@ -64,7 +64,7 @@ def create(tar_file_name, command):
   selfx.close()
 
 def run(args):
-  "usage: python create_selfx.py tar_file_name [command]"
+  "usage: libtbx.create_selfx tar_file_name [command]"
   if (not len(args) in (1,2) or "-h" in args or "--help" in args):
     print run.__doc__
     return
