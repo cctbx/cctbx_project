@@ -1,8 +1,16 @@
 import math
 from cctbx.misc import python_utils
+from cctbx import matrix
 from cctbx import xutils
 from cctbx_boost import uctbx
 from cctbx_boost import sgtbx
+
+def filter_shift(continuous_shift_flags, shift, selector=1):
+  filtered_shift = [0,0,0]
+  for i in xrange(3):
+    if (continuous_shift_flags[i] == selector):
+      filtered_shift[i] = shift[i]
+  return filtered_shift
 
 class euclidean_match_symmetry:
 
@@ -30,19 +38,15 @@ class euclidean_match_symmetry:
       if (not pa in ((1,0,0),(0,1,0),(0,0,1))): return False
     return True
 
+  def filter_shift(self, shift, selector=1):
+    return filter_shift(self.continuous_shift_flags, shift, selector)
+
   def set_continuous_shift_flags(self):
     assert self.continuous_shifts_are_principal()
     self.continuous_shift_flags = [0,0,0]
     for pa in self.continuous_shifts:
       for i in xrange(3):
         if (pa[i]): self.continuous_shift_flags[i] = 1
-
-  def filter_shift(self, shift, selector=1):
-    filtered_shift = [0,0,0]
-    for i in xrange(3):
-      if (self.continuous_shift_flags[i] == selector):
-        filtered_shift[i] = shift[i]
-    return filtered_shift
 
   def show(self, title=""):
     print "euclidean_match_symmetry:", title
@@ -117,11 +121,15 @@ class match_refine:
     self.add_matches()
     self.eliminate_weak_matches()
     self.pairs.sort(pair_sort_function)
+    self.calculate_rms()
+    # clean up
+    del self.equiv1
+    del self.unallowed_shift
+    del self.initial_shift
 
-  def debug_fmt_pair(self, i, j): # XXX
-    return "%s, %s:" % (
-      self.ref_model1[i].label,
-      self.ref_model2[j].label)
+  def eucl_rt(self):
+    return matrix.rt(self.eucl_symop.as_tuple()) - matrix.col(
+                     self.adjusted_shift)
 
   def add_matches(self):
     while (len(self.singles1) and len(self.singles2)):
@@ -189,19 +197,19 @@ class match_refine:
     self.adjusted_shift = python_utils.list_plus(
       self.adjusted_shift, mean_diff_frac)
 
-  def rms(self):
+  def calculate_rms(self):
     sum_diff_cart = [0,0,0]
     for diff in self.calculate_shortest_diffs():
       diff_cart = self.unit_cell.orthogonalize(diff)
       sum_diff_cart = python_utils.list_plus(sum_diff_cart, diff_cart)
     mean_diff_cart = [s / len(self.pairs) for s in sum_diff_cart]
-    return math.sqrt(python_utils.list_dot_product(mean_diff_cart))
+    self.rms = math.sqrt(python_utils.list_dot_product(mean_diff_cart))
 
   def show(self):
     print "Match summary:"
     print self.eucl_symop.as_xyz(),
     print self.adjusted_shift,
-    print "%.2f" % (self.rms(),)
+    print "%.2f" % (self.rms,)
     for pair in self.pairs:
       print self.ref_model1[pair[0]].label,
       print self.ref_model2[pair[1]].label
@@ -215,26 +223,29 @@ class match_refine:
     print
     print
 
+def match_sort_function(match_a, match_b):
+  i = -cmp(len(match_a.pairs), len(match_b.pairs))
+  if (i): return i
+  return cmp(match_a.rms, match_b.rms)
+
+#XXX def weed_refined_matches(refined_matches):
+#XXX   for match in refined_matches:
+
 def match_models(model1, model2,
-                 tolerance=1., models_are_diffraction_index_equivalent=0,
-                 pickle_on_error = 1):
-  debug_solution_counter = 0 # XXX
-  debug_match_refine_counter = 0 # XXX
+                 tolerance=1., models_are_diffraction_index_equivalent=0):
   ref_model1 = model1.transform_to_reference_setting()
-  ref_model1.show("ref_model1")
   ref_model2 = model2.transform_to_reference_setting()
-  ref_model2.show("ref_model2")
-  assert ref_model1.SgOps == ref_model2.SgOps
-  # XXX unit cells must also be compatible
+  # XXX unit cells must be compatible
   unit_cell = ref_model1.UnitCell
-  SgInfo = ref_model1.SgInfo
+  assert ref_model1.SgOps == ref_model2.SgOps
   match_symmetry = euclidean_match_symmetry(
-    SgInfo, use_K2L=1, use_L2N=(not models_are_diffraction_index_equivalent))
-  match_symmetry.show()
+    ref_model1.SgInfo,
+    use_K2L=1, use_L2N=(not models_are_diffraction_index_equivalent))
   match_symmetry.set_continuous_shift_flags()
   equiv1 = []
   for pos in ref_model1:
     equiv1.append(sgtbx.SymEquivCoordinates(ref_model1.SgOps, pos.coordinates))
+  refined_matches = []
   for i_pivot1 in xrange(ref_model1.size()):
     for i_pivot2 in xrange(ref_model2.size()):
       for eucl_symop in match_symmetry.rtmx:
@@ -251,31 +262,46 @@ def match_models(model1, model2,
                                  i_pivot1, i_pivot2,
                                  eucl_symop,
                                  unallowed_shift, allowed_shift)
-          debug_match_refine_counter += 1
-          matches.show() # XXX
-          debug_verify_matches(ref_model1, ref_model2, tolerance,
-                               eucl_symop,
-                               matches.adjusted_shift, matches.pairs)
-          if (    debug_analyze_singles(model1, matches.singles1)
-              and debug_analyze_singles(model2, matches.singles2)):
-            debug_solution_counter += 1
-  print "match refine:", debug_match_refine_counter
-  print "solutions:", debug_solution_counter
-  assert debug_solution_counter != 0
-  if (not (debug_solution_counter != 0)):
-    print "ERROR: no solution:", SgInfo.BuildLookupSymbol(), SgInfo.SgNumber()
-    if (pickle_on_error):
-      import cPickle
-      file_name = "no_sol_%03d.pickle" % (SgInfo.SgNumber(),)
-      f = open(file_name, "w")
-      del model1.SgInfo
-      del model2.SgInfo
-      cPickle.dump((model1, model2), f)
-      f.close()
+          refined_matches.append(matches)
+  refined_matches.sort(match_sort_function)
+  return refined_matches
+
+def transform_eucl_rt(model_cbop, ref_model_eucl_rt):
+  m = matrix.rt(model_cbop.M().as_tuple())
+  inv_m = matrix.rt(model_cbop.InvM().as_tuple())
+  return inv_m * ref_model_eucl_rt * m
+
+def eucl_rt_as_eucl_symop_and_adjusted_shift(eucl_rt):
+  es = sgtbx.RTMx_from_tuple((eucl_rt.r.elems, (0,0,0)), 1, sgtbx.STBF)
+  as = [-x for x in eucl_rt.t.elems]
+  return es, as
 
 ###############################################
-# The code below this line is only for testing.
+# The code below this line is just for testing.
 ###############################################
+
+def debug_analyze_refined_matches(model1, model2, refined_matches):
+  solution_counter = 0
+  for match in refined_matches:
+    match.show()
+    #print "ref:", match.eucl_symop
+    #print "ref:", match.adjusted_shift
+    debug_verify_matches(match.ref_model1, match.ref_model2, match.tolerance,
+                         match.eucl_symop, match.adjusted_shift,
+                         match.pairs)
+    model_eucl_rt = transform_eucl_rt(model1.SgInfo.CBOp(), match.eucl_rt())
+    es, as = eucl_rt_as_eucl_symop_and_adjusted_shift(model_eucl_rt)
+    #print "orig:", es
+    #print "orig:", as
+    debug_verify_matches(model1, model2, match.tolerance,
+                         es, as,
+                         match.pairs)
+    if (    debug_analyze_singles(model1, match.singles1)
+        and debug_analyze_singles(model2, match.singles2)):
+      solution_counter += 1
+  print "total matches:", len(refined_matches)
+  print "solutions:", solution_counter
+  assert solution_counter != 0
 
 def debug_analyze_singles(model, singles):
   for i in singles:
@@ -414,7 +440,6 @@ def run_test(argv):
     "RandomSeed",
     "AllSpaceGroups",
     "StaticModels",
-    "load",
   ))
   if (not Flags.RandomSeed): debug_utils.set_random_seed(0)
   symbols_to_stdout = 0
@@ -437,19 +462,8 @@ def run_test(argv):
       .shake_positions())
     model1.show("Model1")
     model2.show("Model2")
-    match_models(model1, model2)
-  elif (Flags.load):
-    import cPickle
-    for file_name in argv:
-      if (file_name.startswith("--")): continue
-      f = open(file_name, "r")
-      model1, model2 = cPickle.load(f)
-      f.close()
-      model1.SgInfo = model1.SgOps.Info()
-      model2.SgInfo = model1.SgOps.Info()
-      model1.show("Model1")
-      model2.show("Model2")
-      match_models(model1, model2, pickle_on_error=0)
+    refined_matches = match_models(model1, model2)
+    debug_analyze_refined_matches(model1, model2, refined_matches)
   else:
     for RawSgSymbol in symbols:
       if (RawSgSymbol.startswith("--")): continue
@@ -476,7 +490,8 @@ def run_test(argv):
       model_core.show("Core")
       model1.show("Model1")
       model2.show("Model2")
-      match_models(model1, model2)
+      refined_matches = match_models(model1, model2)
+      debug_analyze_refined_matches(model1, model2, refined_matches)
 
 if (__name__ == "__main__"):
   import sys, os
