@@ -35,9 +35,9 @@ namespace cctbx { namespace crystal { namespace neighbors {
         CCTBX_ASSERT(!at_end_);
         direct_space_asu::asu_mapping_index_pair_and_diff<FloatType>
           result = pair_;
-        incr();
+        incr(false);
         while (!at_end_ && pair_.dist_sq > distance_cutoff_sq_) {
-          incr();
+          incr(false);
         }
         return result;
       }
@@ -46,9 +46,9 @@ namespace cctbx { namespace crystal { namespace neighbors {
       restart()
       {
         at_end_ = false;
-        incr_to_first();
+        incr(true);
         while (!at_end_ && pair_.dist_sq > distance_cutoff_sq_) {
-          incr();
+          incr(false);
         }
       }
 
@@ -59,77 +59,35 @@ namespace cctbx { namespace crystal { namespace neighbors {
       std::size_t j_seq_n_sym_;
       bool at_end_;
 
-      typedef
-        af::const_ref<typename asu_mappings_t::array_of_mappings_for_one_site>
-          mappings_ref_t;
-
       void
-      incr_to_first()
+      incr(bool start)
       {
+        af::const_ref<typename asu_mappings_t::array_of_mappings_for_one_site>
+          const& mappings = asu_mappings_->mappings_const_ref();
+        if (!start) goto continue_after_return;
         pair_.dist_sq  = -1;
         pair_.diff_vec = cartesian<FloatType>(0,0,0);
-        mappings_ref_t mappings = asu_mappings_->mappings().const_ref();
         for(pair_.i_seq=0;
             pair_.i_seq<mappings.size();
             pair_.i_seq++) {
           for(pair_.j_seq=pair_.i_seq;
               pair_.j_seq<mappings.size();
               pair_.j_seq++) {
-            pair_.j_sym = 0;
-            j_seq_n_sym_ = mappings[pair_.j_seq].size();
-            if (pair_.i_seq == pair_.j_seq) {
-              if (j_seq_n_sym_ > 1) {
-                pair_.j_sym++;
-                set_pair_dist_sq(mappings);
-                return;
+            for(pair_.j_sym=(pair_.i_seq == pair_.j_seq ? 1 : 0);
+                pair_.j_sym<mappings[pair_.j_seq].size();
+                pair_.j_sym++) {
+              if (distance_cutoff_sq_ != 0) {
+                pair_.diff_vec =
+                    mappings[pair_.j_seq][pair_.j_sym].mapped_site()
+                  - mappings[pair_.i_seq][0].mapped_site();
+                pair_.dist_sq = pair_.diff_vec.length_sq();
               }
-            }
-            else if (j_seq_n_sym_ > 0) {
-              set_pair_dist_sq(mappings);
               return;
+              continue_after_return:;
             }
           }
         }
         at_end_ = true;
-      }
-
-      void
-      incr()
-      {
-        mappings_ref_t mappings = asu_mappings_->mappings().const_ref();
-        pair_.j_sym++;
-        while (pair_.j_sym == j_seq_n_sym_) {
-          pair_.j_sym = 0;
-          pair_.j_seq++;
-          while (pair_.j_seq == mappings.size()) {
-            pair_.i_seq++;
-            if (pair_.i_seq == mappings.size()) {
-              pair_.i_seq = 0;
-              pair_.dist_sq = -1;
-              at_end_ = true;
-              return;
-            }
-            pair_.j_seq = pair_.i_seq;
-            j_seq_n_sym_ = mappings[pair_.j_seq].size();
-            if (j_seq_n_sym_ > 1) {
-              pair_.j_sym++;
-              set_pair_dist_sq(mappings);
-              return;
-            }
-            pair_.j_seq++;
-          }
-          j_seq_n_sym_ = mappings[pair_.j_seq].size();
-        }
-        set_pair_dist_sq(mappings);
-      }
-
-      void
-      set_pair_dist_sq(mappings_ref_t const& mappings)
-      {
-        if (distance_cutoff_sq_ == 0) return;
-        pair_.diff_vec = (  mappings[pair_.j_seq][pair_.j_sym].mapped_site()
-                          - mappings[pair_.i_seq][0].mapped_site());
-        pair_.dist_sq = pair_.diff_vec.length_sq();
       }
   };
 

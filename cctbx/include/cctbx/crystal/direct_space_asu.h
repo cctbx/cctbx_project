@@ -457,6 +457,12 @@ namespace direct_space_asu {
       array_of_array_of_mappings_for_one_site const&
       mappings() const { return mappings_; }
 
+      //! Use for maximum performance.
+      /*! Not available in Python.
+       */
+      af::const_ref<array_of_mappings_for_one_site> const&
+      mappings_const_ref() const { return mappings_const_ref_; }
+
       //! Minimum coordinates of all mapped sites.
       cartesian<FloatType> const&
       mapped_sites_min() const { return mapped_sites_min_; }
