@@ -376,6 +376,10 @@ namespace sgtbx {
       ChOfBasisOp getChangeOfHandOp() const;
       //! Test for a centre of inversion.
       inline bool isCentric() const { return m_fInv == 2; }
+      //! Test if centre of inversion is at the origin.
+      inline bool isOriginCentric() const {
+        return isCentric() && InvT(true).isNull();
+      }
 
       //! Test if reflection with given Miller index is systematically absent.
       bool isSysAbsent(const Miller::Index& H) const;
