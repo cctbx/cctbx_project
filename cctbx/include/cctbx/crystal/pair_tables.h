@@ -1,5 +1,5 @@
-#ifndef CCTBX_RESTRAINTS_PAIR_TABLES_H
-#define CCTBX_RESTRAINTS_PAIR_TABLES_H
+#ifndef CCTBX_CRYSTAL_PAIR_TABLES_H
+#define CCTBX_CRYSTAL_PAIR_TABLES_H
 
 #include <cctbx/sgtbx/rt_mx.h>
 #include <map>
@@ -18,4 +18,4 @@ namespace cctbx { namespace crystal {
 
 }} // namespace cctbx::crystal
 
-#endif // CCTBX_RESTRAINTS_PAIR_TABLES_H
+#endif // CCTBX_CRYSTAL_PAIR_TABLES_H
