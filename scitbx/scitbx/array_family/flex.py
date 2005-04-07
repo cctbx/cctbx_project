@@ -85,6 +85,7 @@ def get_random_seed():
   try:
     result = builtin_long(os.getpid() * (2**16)) \
            + builtin_long(time.time() * (2**8))
+  except KeyboardInterrupt: raise
   except:
     result = time.time()
   return builtin_int(result % (2**31-1))
