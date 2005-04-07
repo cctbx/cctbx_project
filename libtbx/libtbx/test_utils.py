@@ -81,7 +81,7 @@ def eps_eq(a1, a2, eps=1.e-6):
 
 def show_diff(a, b):
   if (a == b): return False
-  print "".join(diff_function(a.splitlines(1), b.splitlines(1)))
+  print "".join(diff_function(b.splitlines(1), a.splitlines(1)))
   return True
 
 def exercise():
