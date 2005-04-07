@@ -101,11 +101,20 @@ class target_functors_manager:
                     scale_factor     = self.scale_factor,
                     fix_scale_factor = True)
     if(self.target_name == "ml"):
-      return maximum_likelihood_criterion(f_obs = f_obs)
+      epsilons      = f_obs.epsilons().data()
+      centric_flags = f_obs.centric_flags().data()
+      return maximum_likelihood_criterion(
+                               epsilons      = epsilons,
+                               centric_flags = centric_flags,
+                               f_obs         = f_obs)
     if(self.target_name == "mlhl"):
+      epsilons      = f_obs.epsilons().data()
+      centric_flags = f_obs.centric_flags().data()
       return maximum_likelihood_criterion_hl(
-                              f_obs                = f_obs,
-                              abcd                 = abcd.data())
+                              epsilons      = epsilons,
+                              centric_flags = centric_flags,
+                              f_obs         = f_obs,
+                              abcd          = abcd.data())
 
   def target_functor_t(self, selection = None):
     if(selection is None):
@@ -140,11 +149,20 @@ class target_functors_manager:
                     scale_factor     = self.scale_factor,
                     fix_scale_factor = True)
     if(self.target_name == "ml"):
-      return maximum_likelihood_criterion(f_obs = f_obs)
+      epsilons      = f_obs.epsilons().data()
+      centric_flags = f_obs.centric_flags().data()
+      return maximum_likelihood_criterion(
+                              epsilons      = epsilons,
+                              centric_flags = centric_flags,
+                              f_obs         = f_obs)
     if(self.target_name == "mlhl"):
+      epsilons      = f_obs.epsilons().data()
+      centric_flags = f_obs.centric_flags().data()
       return maximum_likelihood_criterion_hl(
-                              f_obs                = f_obs,
-                              abcd                 = abcd.data())
+                              epsilons      = epsilons,
+                              centric_flags = centric_flags,
+                              f_obs         = f_obs,
+                              abcd          = abcd.data())
 
 class ls_k1:
 
@@ -271,10 +289,8 @@ class intensity_correlation(target_functor_base):
 
 class maximum_likelihood_criterion:
 
-  def __init__(self, f_obs):
+  def __init__(self, f_obs, epsilons, centric_flags):
     adopt_init_args(self, locals(), hide=True)
-    self.epsilons = f_obs.epsilons().data()
-    self.centric_flags = f_obs.centric_flags().data()
 
   def f_obs(self):
     return self._f_obs
@@ -292,13 +308,15 @@ class maximum_likelihood_criterion:
         alpha,
         beta,
         k,
-        self.epsilons,
-        self.centric_flags,
+        self._epsilons,
+        self._centric_flags,
         compute_derivatives)
 
 class maximum_likelihood_criterion_hl:
 
-  def __init__(self, f_obs,
+  def __init__(self, epsilons,
+                     centric_flags,
+                     f_obs,
                      abcd,
                      step_for_integration = 5.0):
     adopt_init_args(self, locals(), hide=True)
@@ -324,8 +342,8 @@ class maximum_likelihood_criterion_hl:
         f_calc.data(),
         alpha,
         beta,
-        f_calc.epsilons().data(),
-        f_calc.centric_flags().data(),
+        self._epsilons,
+        self._centric_flags,
         compute_derivatives,
         self.abcd(),
         self.step_for_integration())

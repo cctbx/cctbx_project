@@ -283,6 +283,53 @@ namespace cctbx { namespace xray { namespace targets {
     target_ = 1 - correlation_;
   }
 
+// ///////////////////////////////////////////////
+inline
+   double SIMILAR(double Y)
+   {
+      double EPSILON = 1.0e-15;
+      double LOWERLIM = 20.0;
+      double ZERO = 0.0;
+      double ONE = 1.0;
+      double TWO = 2.0;
+      double FOUR = 4.0;
+      int MAXTERMS = 150;
+      double X,DPN, TOT0, TOT1, SUBTOT0, SUBTOT1;
+      int N;
+
+      X = std::abs(Y);
+      TOT0 = ONE;
+      SUBTOT0 = ONE;
+      TOT1 = ONE;
+      SUBTOT1 = ONE;
+      if (X < LOWERLIM) {
+          N=1;
+          while ((N <= MAXTERMS) && (SUBTOT0 >= EPSILON)) {
+              DPN = float(N);
+              SUBTOT0 = X*X*SUBTOT0/(FOUR*DPN*DPN);
+              SUBTOT1 = X*X*SUBTOT1/(FOUR*DPN*(DPN+ONE));
+              TOT0 = TOT0 + SUBTOT0;
+              TOT1 = TOT1 + SUBTOT1;
+              N=N+1;
+          }
+          TOT0 = TOT1*X/(TWO*TOT0);
+      }
+      else {
+          N=1;
+          while ((N <= MAXTERMS) && (std::abs(SUBTOT0) >= EPSILON)) {
+              DPN = TWO*float(N);
+              SUBTOT0 = (DPN - ONE)*(DPN - ONE) / (FOUR*X*DPN)*SUBTOT0;
+              TOT0 = TOT0 + SUBTOT0;
+              TOT1 = (TWO/(ONE - DPN) - ONE) * SUBTOT0 + TOT1;
+              N=N+1;
+          }
+          TOT0 = TOT1/TOT0;
+      }
+      if (Y < ZERO) TOT0 = -TOT0;
+      return TOT0;
+     }
+//////////////////////////////////////////////////
+
 /*  Amplitude based Maximum-Likelihood target for one miller index.
     No phase information included.
     Pavel Afonine, 28-DEC-2004.
@@ -367,6 +414,7 @@ std::complex<double> d_maximum_likelihood_target_one_h_over_fc(
   if(c == 0) {
     double d1 = 2. * a * a * fc / eb;
     double d2 = -2. * a * fo / eb * scitbx::math::bessel::i1_over_i0(2.*a*fo*fc/eb);
+    //double d2 = -2. * a * fo / eb * SIMILAR(2.*a*fo*fc/eb);
     d_target_over_fc = (d1 + d2) * ( std::conj(fc_complex) / fc );
   }
   if(c == 1) {
@@ -592,8 +640,6 @@ std::complex<double> mlhl_d_target_dfcalc_one_h(
   double small = 1.e-9;
   CCTBX_ASSERT( (cf == 1 || cf == 0) && (epsilon > 0) );
   CCTBX_ASSERT( fo >= 0 && fc >= 0 );
-  //CCTBX_ASSERT( alpha >= 0. );
-  //CCTBX_ASSERT( beta > 0. );
   CCTBX_ASSERT( std::abs(k) > small );
   std::complex<double> d_target_over_fc = std::complex<double> (0.0,0.0);
   if(alpha <= 0.0 || beta <= 0.0) {
@@ -608,21 +654,15 @@ std::complex<double> mlhl_d_target_dfcalc_one_h(
   double derfc = 0.0;
   double derpc = 0.0;
 
-  ////////////////////
   //if(std::abs(A) < small && std::abs(B) < small && std::abs(C) < small & std::abs(D) < small) {
-     //std::complex<double> grad = d_maximum_likelihood_target_one_h_over_fc(fo,fc_complex,alpha,beta,k,epsilon,cf);
-     //printf("%8.3f%8.3f%8.3f%8.3f%10.4f%9.6f%12.5f%10.4f%10.4f%10.4f%10.4f %3i%3i %12.4e %12.4e \n",A,B,C,D,fo,alpha,std::sqrt(beta),fc,pc,ac,bc,epsilon,cf, grad.real(),grad.imag());
-     //std::cout<<A<<" "<<B<<" "<<C<<" "<<D<<" "<<alpha<<" "<<beta<<" "<<d_maximum_likelihood_target_one_h_over_fc(fo,fc_complex,alpha,beta,k,epsilon,cf)<<std::endl;
   //   return d_maximum_likelihood_target_one_h_over_fc(fo,fc_complex,alpha,beta,k,epsilon,cf);
   //}
-  ////////////////////
 
   // acentric reflection
   if(cf == 0) {
      double arg = 2.0*alpha*fo/(beta*epsilon);
      double A_prime = arg * fc * std::cos(pc) + A;
      double B_prime = arg * fc * std::sin(pc) + B;
-     //printf("%3i %15.6f %15.6f %15.6f \n", cf,arg,A_prime,B_prime);
      if((std::abs(C) < small) && (std::abs(D) < small)) {
         double val = std::sqrt(A_prime*A_prime + B_prime*B_prime);
         if(val < small) {
@@ -630,7 +670,8 @@ std::complex<double> mlhl_d_target_dfcalc_one_h(
            derpc = 0.0;
         }
         else {
-           double sim = scitbx::math::bessel::i1_over_i0(val);
+           //double sim = scitbx::math::bessel::i1_over_i0(val);
+           double sim = SIMILAR(val);
            derfc = sim*arg*(arg*fc + A*std::cos(pc) + B*std::sin(pc))/val;
            derpc = sim*arg*fc*(A*std::sin(pc) - B*std::cos(pc))/val;
         }
@@ -670,32 +711,23 @@ std::complex<double> mlhl_d_target_dfcalc_one_h(
        derpc = arg*(deranot*std::sin(pc) - derbnot*std::cos(pc))*fc;
      }
      derfc = 2.0*alpha*alpha*fc/(beta*epsilon) - derfc;
-     //printf("%15.6e %15.6e \n", derfc,derpc);
   }
   // centric reflection
   if(cf == 1) {
      double var = beta*epsilon;
      double arg = A*std::cos(pc) + B*std::sin(pc) + fo*alpha*fc/var;
-     //printf("%3i %15.6f %15.6f \n", cf,arg,var);
-     derfc = alpha*alpha*fc/var - std::tanh(arg)*fo*alpha/var;
-     derpc = 2.0*std::tanh(arg)*(A*std::sin(pc) - B*std::cos(pc));
-     //printf("%15.6e %15.6e \n", derfc,derpc);
+     double tmp_tanh = (1.0-std::exp(-2.0*arg)) / (1.0+std::exp(-2.0*arg));
+     derfc = alpha*alpha*fc/var - tmp_tanh*fo*alpha/var;
+     derpc = 2.0*tmp_tanh*(A*std::sin(pc) - B*std::cos(pc));
   }
   if(fc < small) {
      d_target_over_fc = std::complex<double> (0.0,0.0);
-     //printf("%15.6e %15.6e \n", 0.0,0.0);
   }
   else {
      double d1 = derfc*ac - derpc*bc/fc;
      double d2 = derfc*bc + derpc*ac/fc;
-     //printf("%15.6e %15.6e \n", d1,d2);
      d_target_over_fc = std::complex<double> (d1,d2)/fc;
   }
-  //std::cout<<A<<" "<<B<<" "<<C<<" "<<D<<" "<<alpha<<" "<<beta<<" "<<std::conj(d_target_over_fc)<<std::endl;
-  std::complex<double> grad = std::conj(d_target_over_fc);
-  //printf("%12.4e %12.4e \n",grad.real(),grad.imag());
-  //printf("%8.3f%8.3f%8.3f%8.3f%10.4f%9.6f%12.5f%10.4f%10.4f%10.4f%10.4f %3i%3i %12.4e %12.4e \n",A,B,C,D,fo,alpha,std::sqrt(beta),fc,pc,ac,bc,epsilon,cf, grad.real(),grad.imag());
-
   return std::conj(d_target_over_fc);
 }
 
@@ -738,9 +770,13 @@ std::complex<double> mlhl_d_target_dfcalc_one_h(
     af::shared<FcalcValueType>
       derivatives() const { return derivatives_; }
 
+    af::shared<FobsValueType>
+      targets() const { return targets_; }
+
   protected:
     FobsValueType target_;
     af::shared<FcalcValueType> derivatives_;
+    af::shared<FobsValueType> targets_;
     void
     compute(af::const_ref<FobsValueType> const& fobs,
             af::const_ref<FcalcValueType> const& fcalc,
@@ -758,6 +794,7 @@ std::complex<double> mlhl_d_target_dfcalc_one_h(
     CCTBX_ASSERT(step_for_integration > 0.);
     CCTBX_ASSERT(abcd.size() == fobs.size());
     target_ = 0;
+    targets_ = af::shared<FobsValueType>(fobs.size());
     if (compute_derivatives) {
       derivatives_ = af::shared<FcalcValueType>(fobs.size());
     }
@@ -780,7 +817,7 @@ std::complex<double> mlhl_d_target_dfcalc_one_h(
       double pc = std::arg(fcalc[i_h]);
       double ac = std::real(fcalc[i_h]);
       double bc = std::imag(fcalc[i_h]);
-      CCTBX_ASSERT(std::abs(pc-std::atan2(std::imag(fcalc[i_h]), std::real(fcalc[i_h]))) < 0.001);
+      //CCTBX_ASSERT(std::abs(pc-std::atan2(std::imag(fcalc[i_h]), std::real(fcalc[i_h]))) < 0.001);
       double a  = alpha[i_h];
       double b  = beta[i_h];
       int    e  = eps[i_h];
@@ -799,6 +836,7 @@ std::complex<double> mlhl_d_target_dfcalc_one_h(
                                    n_steps,
                                    step_for_integration);
       target_ += tmp1;
+      targets_[i_h] = tmp1;
       //printf("%20.6f \n", tmp1);
       if(compute_derivatives) {
          derivatives_[i_h] = mlhl_d_target_dfcalc_one_h(
