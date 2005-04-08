@@ -373,14 +373,19 @@ class environment:
     for name,path in module.name_and_dist_path_pairs():
       self.module_dist_paths[name] = path
 
+  def find_in_repositories(self, relative_path, test=os.path.isdir):
+    for path in self.repository_paths:
+      dist_path = self.abs_path_clean(
+        libtbx.path.norm_join(path, relative_path))
+      if (test(dist_path)):
+        return dist_path
+    return None
+
   def find_dist_path(self, module_name, optional=False):
     dist_path = self.command_line_redirections.get(module_name, None)
-    if (dist_path is not None):
-      return dist_path
-    for path in self.repository_paths:
-      dist_path = self.abs_path_clean(libtbx.path.norm_join(path, module_name))
-      if (os.path.isdir(dist_path)):
-        return dist_path
+    if (dist_path is not None): return dist_path
+    dist_path = self.find_in_repositories(relative_path=module_name)
+    if (dist_path is not None): return dist_path
     if (not optional):
       msg = ["Module not found: %s" % module_name,
              "  Repository directories searched:"]
