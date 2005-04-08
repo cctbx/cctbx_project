@@ -37,7 +37,8 @@ xray
   end
 end
   """
-  return libtbx.env.under_dist("libtbx", "../regression/misc/cns.map")
+  return libtbx.env.find_in_repositories(
+    relative_path="regression/misc/cns.map", test=os.path.isfile)
 
 def read_xplor(file_name):
   a = iotbx.xplor.map.reader(file_name=file_name)
@@ -168,7 +169,7 @@ def run():
   exercise_map_gridding()
   recycle()
   test_file_name = get_test_file_name()
-  if (not os.path.isfile(test_file_name)):
+  if (test_file_name is None):
     print "Skipping original CNS map test: input file not available"
   else:
     map1 = read_xplor(test_file_name)

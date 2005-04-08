@@ -71,9 +71,10 @@ def exercise(args, distance_cutoff=3.5, max_shell=5):
       action="store_true",
       dest="verbose")
   ).process(args=args)
-  atlas_file = libtbx.env.under_dist(
-    "libtbx", "../regression/misc/strudat_zeolite_atlas")
-  if (not os.path.isfile(atlas_file)):
+  atlas_file = libtbx.env.find_in_repositories(
+    relative_path="regression/misc/strudat_zeolite_atlas",
+    test=os.path.isfile)
+  if (atlas_file is None):
     print "Skipping exercise(): input file not available"
     return
   all_entries = strudat.read_all_entries(open(atlas_file))

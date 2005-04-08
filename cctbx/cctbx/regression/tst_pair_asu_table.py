@@ -196,11 +196,14 @@ def exercise_bond_sorted_asu_proxies(
     ctrl[key] += 1
   assert ctrl.values() == [1]*len(ctrl)
 
-def run():
+def exercise_all():
   verbose = "--verbose" in sys.argv[1:]
   exercise_icosahedron(verbose=verbose)
   default_distance_cutoff=3.5
-  regression_misc = libtbx.env.under_dist("libtbx", "../regression/misc")
+  regression_misc = libtbx.env.find_in_repositories("regression/misc")
+  if (regression_misc is None):
+    print "Skipping exercise_all(): regression/misc not available"
+    return
   file_names = []
   for file_name in ["strudat_zeolite_atlas", "strudat_special_bonds"]:
     path = os.path.join(regression_misc, file_name)
@@ -236,6 +239,8 @@ def run():
         exercise_bond_sorted_asu_proxies(
           structure=structure,
           distance_cutoff=distance_cutoff)
+def run():
+  exercise_all()
   print "OK"
 
 if (__name__ == "__main__"):

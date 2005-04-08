@@ -148,9 +148,9 @@ def exercise_altLoc_grouping():
   assert replacements[0] == "X"
 
 def exercise_interpretation(verbose=0, quick=True):
-  pdb_dir = libtbx.env.under_dist("libtbx", "../regression/pdb")
-  if (not os.path.isdir(pdb_dir)):
-    print "Skipping exercise_interpretation(): input file not available"
+  pdb_dir = libtbx.env.find_in_repositories("regression/pdb")
+  if (pdb_dir is None):
+    print "Skipping exercise_interpretation(): regression/pdb not available"
     return
   for file_name in os.listdir(pdb_dir):
     if (    not file_name.endswith(".pdb")
