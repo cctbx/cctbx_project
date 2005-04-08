@@ -130,9 +130,10 @@ O  0.0 0.0 0.0
   assert all_entries.get("cubi").as_xray_structure().scatterers().size() == 2
 
 def exercise_zeolite_atlas(distance_cutoff=3.5):
-  atlas_file = libtbx.env.under_dist(
-    "libtbx", "../regression/misc/strudat_zeolite_atlas")
-  if (not os.path.isfile(atlas_file)):
+  atlas_file = libtbx.env.find_in_repositories(
+    relative_path="regression/misc/strudat_zeolite_atlas",
+    test=os.path.isfile)
+  if (atlas_file is None):
     print "Skipping exercise_zeolite_atlas(): input file not available"
     return
   all_entries = strudat.read_all_entries(open(atlas_file))
