@@ -11,6 +11,10 @@ import sys, os
 
 default_print_width = 79
 
+def is_reserved_identifier(string):
+  if (len(string) < 5): return False
+  return (string.startswith("__") and string.endswith("__"))
+
 standard_identifier_start_characters = {}
 for c in "_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz":
   standard_identifier_start_characters[c] = None
@@ -400,6 +404,8 @@ class definition: # FUTURE definition(object)
         multiple=None,
         input_size=None,
         expert_level=None):
+    if (is_reserved_identifier(name)):
+      raise RuntimeError('Reserved identifier: "%s"%s' % (name, where_str))
     if (name != "include" and "include" in name.split(".")):
       raise RuntimeError('Reserved identifier: "include"%s' % where_str)
     self.name = name
@@ -649,6 +655,8 @@ class scope:
     if (objects is None):
       self.objects = []
     assert style in [None, "row", "column", "block", "page"]
+    if (is_reserved_identifier(name)):
+      raise RuntimeError('Reserved identifier: "%s"%s' % (name, where_str))
     if ("include" in name.split(".")):
       raise RuntimeError('Reserved identifier: "include"%s' % where_str)
     if (sequential_format is not None):

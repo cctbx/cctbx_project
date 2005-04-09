@@ -276,6 +276,10 @@ def exercise_syntax_errors():
     'Reserved identifier: "include" (input line 1)')
   test_exception('a.include.b.c {}',
     'Reserved identifier: "include" (input line 1)')
+  test_exception('__foo__=None',
+    'Reserved identifier: "__foo__" (input line 1)')
+  test_exception('__foo__ {}',
+    'Reserved identifier: "__foo__" (input line 1)')
   test_exception('a=None\n.type=foo',
     'Unexpected definition type: "foo" (input line 2)')
 
