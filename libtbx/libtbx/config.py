@@ -130,10 +130,8 @@ class common_setpaths:
 
   def all_and_debug(self):
     if (self.suffix != ""):
-      self.setenv("LIBTBX_BUILD", self.env.build_path)
-      for module in self.env.module_list:
-        for name,path in module.name_and_dist_path_pairs():
-          self.setenv(name.upper()+"_DIST", path)
+      for var_name,path in self.env.var_name_and_build_or_dist_path_pairs():
+        self.setenv(var_name=var_name, val=path)
     if (self.suffix == "_debug"):
       self.update_path("PYTHONPATH", self.env.pythonpath)
       self.update_path(ld_library_path_var_name(), [self.env.lib_path])
@@ -330,6 +328,12 @@ class environment:
     for module in self.module_list:
       for dist_path in module.dist_paths_active():
         yield dist_path
+
+  def var_name_and_build_or_dist_path_pairs(self):
+    yield ("LIBTBX_BUILD", self.build_path)
+    for module in self.module_list:
+      for name,path in module.name_and_dist_path_pairs():
+        yield (name.upper()+"_DIST", path)
 
   def set_os_environ_all_dist(self):
     for module in self.module_list:
