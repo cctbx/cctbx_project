@@ -1013,6 +1013,47 @@ a = 1
   .expert_level = 1
 """
   #
+  master = phil.parse(input_string="""\
+s {
+  t {
+    v=1
+      .type=int
+  }
+}
+s {
+  u {
+    a=3
+      .type=int
+  }
+}
+""")
+  source = phil.parse("")
+  assert not show_diff(master.fetch(source=source).as_str(), """\
+s {
+  t {
+    v = 1
+  }
+}
+s {
+  u {
+    a = 3
+  }
+}
+""")
+  source = phil.parse("s.t.v=2\ns.u.a=4")
+  assert not show_diff(master.fetch(source=source).as_str(), """\
+s {
+  t {
+    v = 2
+  }
+}
+s {
+  u {
+    a = 4
+  }
+}
+""")
+  #
   master_plain = phil.parse(input_string="""\
 s
   .expert_level=1
@@ -1131,9 +1172,6 @@ s {
     assert out.getvalue() == """\
 s {
   a = 1
-}
-s {
-  a = None
 }
 """
   source = phil.parse(input_string="""\
@@ -1577,6 +1615,302 @@ s {
   }
 }
 """
+  #
+  master = phil.parse("""\
+s
+  .multiple=True
+{
+  a=None
+    .multiple=True
+  b=None
+    .multiple=False
+}
+""")
+  custom = phil.parse("""\
+s {
+  a = 1
+  a = 2
+  b = 3
+  b = 4
+}
+s {
+  a = 2
+  a = 3
+  b = 4
+  b = 5
+}
+s {
+  a = 1
+  a = 2
+  b = 4
+}
+""")
+  assert not show_diff(master.fetch(sources=[custom, custom]).as_str(), """\
+s {
+  a = 2
+  a = 3
+  b = 5
+}
+s {
+  a = 1
+  a = 2
+  b = 4
+}
+""")
+  #
+  master = phil.parse("""\
+a=None
+  .multiple=True
+b=None
+  .multiple=False
+""")
+  custom = phil.parse("""\
+a=1
+a=2
+b=3
+b=4
+""")
+  fetched = master.fetch(sources=[custom, custom])
+  assert not show_diff(fetched.as_str(), """\
+a = 1
+a = 2
+b = 4
+""")
+  master = phil.parse("""\
+s
+{
+  l
+    .multiple=False
+  {
+    a=None
+      .multiple=True
+    b=None
+      .multiple=False
+  }
+}
+""")
+  custom = phil.parse("""\
+s {
+  l {
+    a = 1
+    a = 2
+    b = 3
+    b = 4
+  }
+}
+""")
+  fetched = master.fetch(sources=[custom, custom])
+  assert not show_diff(fetched.as_str(), """\
+s {
+  l {
+    a = 1
+    a = 2
+    b = 4
+  }
+}
+""")
+  #
+  master = phil.parse("""\
+a=None
+  .type=str
+  .multiple=True
+""")
+  custom = phil.parse("""\
+a=x
+a="x"
+""")
+  assert not show_diff(master.fetch(source=custom).as_str(), """\
+a = "x"
+""")
+  custom = phil.parse("""\
+a="x"
+a=x
+""")
+  assert not show_diff(master.fetch(source=custom).as_str(), """\
+a = x
+""")
+  custom = phil.parse("""\
+a="x "
+a=x
+""")
+  assert not show_diff(master.fetch(source=custom).as_str(), """\
+a = "x "
+a = x
+""")
+  #
+  master = phil.parse("""\
+a=None
+  .type=str
+  .multiple=True
+a=x
+a=y
+""")
+  custom = phil.parse("""\
+a=z
+""")
+  assert not show_diff(master.fetch(source=custom).as_str(), """\
+a = x
+a = y
+a = z
+""")
+  custom = phil.parse("""\
+a=y
+a=y
+a=z
+a=x
+""")
+  assert not show_diff(master.fetch(source=custom).as_str(), """\
+a = y
+a = z
+a = x
+""")
+  master = phil.parse("""\
+a=d
+  .type=str
+  .multiple=True
+a=x
+a=y
+""")
+  custom = phil.parse("""\
+a=z
+""")
+  assert not show_diff(master.fetch(source=custom).as_str(), """\
+a = d
+a = x
+a = y
+a = z
+""")
+  assert not show_diff(master.fetch(sources=[custom, master]).as_str(), """\
+a = z
+a = d
+a = x
+a = y
+""")
+  master = phil.parse("""\
+a
+  .multiple=True
+{
+  x=None
+  y=None
+}
+a {
+  x=1
+}
+a {
+  y=2
+}
+""")
+  custom = phil.parse("")
+  assert not show_diff(master.fetch(sources=[custom]*3).as_str(), """\
+a {
+  x = 1
+  y = None
+}
+a {
+  x = None
+  y = 2
+}
+""")
+  custom = phil.parse("a.x=3\na.y=4")
+  assert not show_diff(master.fetch(sources=[custom]*3).as_str(), """\
+a {
+  x = 1
+  y = None
+}
+a {
+  x = None
+  y = 2
+}
+a {
+  x = 3
+  y = None
+}
+a {
+  x = None
+  y = 4
+}
+""")
+  custom = phil.parse("a {\nx=3\ny=4\n}")
+  assert not show_diff(master.fetch(sources=[custom]*3).as_str(), """\
+a {
+  x = 1
+  y = None
+}
+a {
+  x = None
+  y = 2
+}
+a {
+  x = 3
+  y = 4
+}
+""")
+  assert not show_diff(master.fetch(
+    sources=[custom, master, master, custom]).as_str(), """\
+a {
+  x = 1
+  y = None
+}
+a {
+  x = None
+  y = 2
+}
+a {
+  x = 3
+  y = 4
+}
+""")
+  assert not show_diff(master.fetch(
+    sources=[custom, master, master, custom, master]).as_str(), """\
+a {
+  x = 3
+  y = 4
+}
+a {
+  x = 1
+  y = None
+}
+a {
+  x = None
+  y = 2
+}
+""")
+  #
+  master = phil.parse("""\
+s
+{
+  a=None
+    .multiple=True
+    .optional=True
+}
+""").tidy_master()
+  prev = phil.parse(master.as_str())
+  custom = phil.parse("""\
+s {
+  a=x
+}
+""")
+  eff_phil = master.fetch(sources=[prev, custom])
+  assert not show_diff(eff_phil.as_str(), """\
+s {
+  a = x
+}
+""")
+  assert master.extract().s.a == []
+  assert custom.extract().s.a == ["x"]
+  eff = eff_phil.extract()
+  assert eff.s.a == [["x"]]
+  assert not show_diff(master.format(eff).as_str(), """\
+s {
+  a = x
+}
+""")
+  dft = master.clone(eff)
+  assert not show_diff(master.format(dft).as_str(), """\
+s {
+  a = x
+}
+""")
 
 def exercise_extract():
   parameters = phil.parse(input_string="""\
@@ -2297,6 +2631,52 @@ s {
   assert orig.a == 1
   assert orig.s.b == 2
 
+def exercise_tidy_master():
+  master = phil.parse("""\
+s
+  .multiple=True
+{
+  a=x
+}
+s {
+  a=y
+}
+""").tidy_master()
+  assert not show_diff(master.as_str(attributes_level=2), """\
+s
+  .multiple = True
+{
+  a = x
+}
+s
+  .multiple = True
+{
+  a = y
+}
+""")
+  assert not show_diff(master.format(master.extract()).as_str(), """\
+s {
+  a = x
+}
+s {
+  a = y
+}
+""")
+  master_as_str = """\
+s {
+  a = None
+    .optional = True
+    .multiple = True
+}
+"""
+  master = phil.parse(master_as_str).tidy_master()
+  assert not show_diff(master.as_str(attributes_level=2), master_as_str)
+  assert not show_diff(master.format(master.extract()).as_str(), """\
+s {
+  a = None
+}
+""")
+
 class foo1_converters:
 
   def __init__(self, bar=None):
@@ -2489,6 +2869,7 @@ def exercise():
   exercise_fetch()
   exercise_extract()
   exercise_format()
+  exercise_tidy_master()
   exercise_type_constructors()
   exercise_choice_exceptions()
   exercise_command_line()
