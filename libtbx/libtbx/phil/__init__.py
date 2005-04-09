@@ -433,7 +433,7 @@ class definition: # FUTURE definition(object)
   def full_path(self):
     return full_path(self)
 
-  def fetch(self, source):
+  def fetch(self, source, disable_empty=True):
     if (not isinstance(source, definition)):
       raise RuntimeError('Incompatible parameter objects "%s"%s and "%s"%s' %
         (self.name, self.where_str, source.name, source.where_str))
@@ -508,8 +508,9 @@ class definition: # FUTURE definition(object)
       print_width=print_width)
     return out.getvalue()
 
-  def has_same_definitions(self, other):
-    return self.as_str() == other.as_str()
+  def all_definitions_are_none(self):
+    if (self.name == "include"): return False
+    return self.extract() is None
 
   def _all_definitions(self, suppress_multiple, parent, parent_path, result):
     if (suppress_multiple and self.multiple): return
@@ -589,7 +590,7 @@ class scope_extract_is_disabled: pass
 
 class scope_extract:
 
-  def __set__(self, name, optional, multiple, value):
+  def __phil_set__(self, name, optional, multiple, value):
     assert not "." in name
     node = getattr(self, name, scope_extract_attribute_error)
     if (not multiple):
@@ -609,9 +610,19 @@ class scope_extract:
           and (value is not None or optional is not True)):
         node.append(value)
 
-  def __get__(self, name):
+  def __phil_get__(self, name):
     assert not "." in name
     return getattr(self, name, scope_extract_attribute_error)
+
+  def __phil_is_empty__(self):
+    for name,value in self.__dict__.items():
+      if (value is None): continue
+      if (name.startswith("__") and name.endswith("__")): continue
+      if (isinstance(value, scope_extract)):
+        if (not value.__phil_is_empty__()): return False
+      if (isinstance(value, list) and len(value) == 0): continue
+      return False
+    return True
 
 class scope:
 
@@ -702,6 +713,14 @@ class scope:
       if (object.is_disabled): continue
       yield object
 
+  def master_active_objects(self):
+    flags = {}
+    for object in self.objects:
+      if (object.is_disabled): continue
+      if (flags.get(object.name, False)): continue
+      flags[object.name] = object.multiple
+      yield object
+
   def show(self,
         out=None,
         merged_names=[],
@@ -721,7 +740,6 @@ class scope:
     elif (len(self.objects) == 1 and self.objects[0].merge_names):
       merged_names = merged_names + [self.name]
     else:
-      if (len(self.objects) > 1): assert not self.objects[0].merge_names
       is_proper_scope = True
       if (self.is_disabled): hash = "#"
       else:                  hash = ""
@@ -767,8 +785,11 @@ class scope:
       print_width=print_width)
     return out.getvalue()
 
-  def has_same_definitions(self, other):
-    return self.as_str() == other.as_str()
+  def all_definitions_are_none(self):
+    for obj_loc in self.all_definitions():
+      if (obj_loc.object.extract() is not None):
+        return False
+    return True
 
   def _all_definitions(self, suppress_multiple, parent, parent_path, result):
     parent_path += self.name+"."
@@ -848,7 +869,7 @@ class scope:
         value = scope_extract_is_disabled
       else:
         value = object.extract()
-      result.__set__(
+      result.__phil_set__(
         name=object.name,
         optional=object.optional,
         multiple=object.multiple,
@@ -857,14 +878,14 @@ class scope:
 
   def format(self, python_object):
     result = []
-    for object in self.active_objects():
+    for object in self.master_active_objects():
       if (python_object is None):
         result.append(object.format(None))
       else:
         if (isinstance(python_object, scope_extract)):
           python_object = [python_object]
         for python_object_i in python_object:
-          sub_python_object = python_object_i.__get__(object.name)
+          sub_python_object = python_object_i.__phil_get__(object.name)
           if (sub_python_object is not scope_extract_attribute_error):
             if (not object.multiple):
               result.append(object.format(sub_python_object))
@@ -881,48 +902,76 @@ class scope:
         .as_str(attributes_level=3),
       converter_registry=converter_registry).extract()
 
-  def fetch(self, source=None, sources=None):
+  def fetch(self, source=None, sources=None, disable_empty=True):
     assert [source, sources].count(None) == 1
-    if (sources is not None):
-      combined_objects = []
-      for source in sources:
-        combined_objects.extend(source.objects)
-      source = self.customized_copy(objects=combined_objects)
-    assert source.name == self.name
-    if (not isinstance(source, scope)):
-      raise RuntimeError('Incompatible parameter objects "%s"%s and "%s"%s' %
-        (self.name, self.where_str, source.name, source.where_str))
+    combined_objects = []
+    if (sources is None): sources = [source]
+    for source in sources:
+      assert source.name == self.name
+      if (not isinstance(source, scope)):
+        raise RuntimeError(
+          'Incompatible parameter objects "%s"%s and "%s"%s' %
+            (self.name, self.where_str, source.name, source.where_str))
+      combined_objects.extend(source.objects)
+    source = self.customized_copy(objects=combined_objects)
     result_objects = []
-    for master_object in self.active_objects():
+    for master_object in self.master_active_objects():
       if (len(self.name) == 0):
         path = master_object.name
       else:
         path = self.name + "." + master_object.name
       matching_sources = source.get(path=path, with_substitution=False)
-      fetch_count = 0
       if (master_object.multiple):
+        all_master_definitions_are_none = \
+          master_object.all_definitions_are_none()
+        matching_sources.objects \
+          = self.get(path=path, with_substitution=False).objects \
+          + matching_sources.objects
+        processed_as_str = {}
+        result_objs = []
         for matching_source in matching_sources.active_objects():
-          fetch_count += 1
-          result_objects.append(master_object.fetch(source=matching_source))
-        if (fetch_count == 0):
+          if (matching_source is master_object
+              and all_master_definitions_are_none):
+            continue
+          candidate = master_object.fetch(
+            source=matching_source, disable_empty=disable_empty)
+          candidate_extract = candidate.extract()
+          if (isinstance(candidate, scope)):
+            if (candidate_extract.__phil_is_empty__()): continue
+          elif (candidate_extract is None): continue
+          candidate_as_str = master_object.format(candidate_extract).as_str()
+          prev_index = processed_as_str.get(candidate_as_str, None)
+          if (prev_index is not None):
+            result_objs[prev_index] = None
+          processed_as_str[candidate_as_str] = len(result_objs)
+          result_objs.append(candidate)
+        if (len(processed_as_str) == 0):
           result_objects.append(master_object.copy())
-          if (master_object.optional):
-            result_objects[-1].is_disabled = True
-        elif (fetch_count == 1
-              and master_object.multiple and master_object.optional
-              and master_object.has_same_definitions(result_objects[-1])):
-          result_objects[-1].is_disabled = True
+          if (master_object.optional
+              and all_master_definitions_are_none):
+            result_objects[-1].is_disabled = disable_empty
+        else:
+          del processed_as_str
+          for candidate in result_objs:
+            if (candidate is not None):
+              result_objects.append(candidate)
+          del result_objs
       else:
+        fetch_count = 0
         result_object = master_object
         for matching_source in matching_sources.active_objects():
           fetch_count += 1
-          result_object = result_object.fetch(source=matching_source)
+          result_object = result_object.fetch(
+            source=matching_source, disable_empty=False)
         if (fetch_count == 0):
           result_objects.append(master_object.copy())
         else:
           result_objects.append(result_object)
     return self.customized_copy(
       objects=clean_fetched_scope(fetched_objects=result_objects))
+
+  def tidy_master(self):
+    return self.fetch(self, disable_empty=False)
 
   def process_includes(self,
         converter_registry,
@@ -1129,4 +1178,4 @@ def read_default(
   return parse(
     file_name=params_file_name,
     converter_registry=converter_registry,
-    process_includes=process_includes)
+    process_includes=process_includes).tidy_master()
