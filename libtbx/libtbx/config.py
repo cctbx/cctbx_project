@@ -853,6 +853,16 @@ class environment:
       else:
         self.write_setpaths_bat(suffix)
 
+  def process_exe(self):
+    for path in [self.exe_path, self.under_build("exe_dev")]:
+      if (os.path.isdir(path)):
+        print 'Processing: "%s"' % path
+        for file_name in os.listdir(path):
+          if (file_name[0] == "."): continue
+          self.write_dispatcher_in_bin(
+            source_file=libtbx.path.norm_join(path, file_name),
+            target_file=file_name)
+
   def write_python_and_show_path_duplicates(self):
     module_names = {}
     for file_name in os.listdir(self.bin_path):
@@ -919,21 +929,14 @@ class environment:
         target_file=file_name)
     for module in self.module_list:
       module.process_command_line_directories()
-    for path in [self.exe_path, self.under_build("exe_dev")]:
-      if (os.path.isdir(path)):
-        print 'Processing: "%s"' % path
-        for file_name in os.listdir(path):
-          if (file_name[0] == "."): continue
-          self.write_dispatcher_in_bin(
-            source_file=libtbx.path.norm_join(path, file_name),
-            target_file=file_name)
-    self.write_python_and_show_path_duplicates()
-    self.write_command_version_duplicates()
     os.environ["LIBTBX_BUILD"] = self.build_path # to support libtbx.load_env
     for path in self.pythonpath:
       sys.path.insert(0, path)
     for module in self.module_list:
       module.process_libtbx_refresh_py()
+    self.process_exe()
+    self.write_python_and_show_path_duplicates()
+    self.write_command_version_duplicates()
 
 class module:
 
