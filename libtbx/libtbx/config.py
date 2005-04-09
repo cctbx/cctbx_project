@@ -2,6 +2,7 @@ from __future__ import generators
 import libtbx.path
 from libtbx.optparse_wrapper import option_parser
 from libtbx import introspection
+from libtbx.str_utils import show_string
 from libtbx.utils import Sorry
 import shutil
 import pickle
@@ -938,6 +939,13 @@ class environment:
     self.write_python_and_show_path_duplicates()
     self.write_command_version_duplicates()
 
+  def get_module(self, name, must_exist=True):
+    result = self.module_dict.get(name, None)
+    if (result is None and must_exist):
+      raise RuntimeError("libtbx.env.get_module(name=%s): unknown module" % (
+        show_string(name)))
+    return result
+
 class module:
 
   def __init__(self, env, name, dist_path, mate_suffix="adaptbx"):
@@ -1086,8 +1094,7 @@ class module:
     for dist_path in self.dist_paths_active():
       for source_dir,suppress_warning in ([
             ("command_line", False),
-            (self.name+"/command_line", False),
-            ("tools", True)]):
+            (self.name+"/command_line", False)]):
         source_dir = libtbx.path.norm_join(dist_path, source_dir)
         if (not os.path.isdir(source_dir)): continue
         print 'Processing: "%s"' % source_dir
@@ -1097,12 +1104,21 @@ class module:
             file_name=file_name,
             suppress_warning=suppress_warning)
 
+  def process_python_command_line_scripts(self, source_dir, prefix="  "):
+    print prefix+'Processing: %s' % show_string(source_dir)
+    for file_name in os.listdir(source_dir):
+      if (not file_name.endswith(".py")): continue
+      self.write_dispatcher(
+        source_dir=source_dir,
+        file_name=file_name,
+        suppress_warning=False)
+
   def process_libtbx_refresh_py(self):
     for dist_path in self.dist_paths_active():
       custom_refresh = libtbx.path.norm_join(dist_path, "libtbx_refresh.py")
       if (os.path.isfile(custom_refresh)):
         print 'Processing: "%s"' % custom_refresh
-        execfile(custom_refresh, {}, {})
+        execfile(custom_refresh, {}, {"self": self})
 
   def collect_test_scripts(self,
         file_names=["run_tests.py", "run_examples.py"]):
