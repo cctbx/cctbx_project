@@ -335,8 +335,11 @@ def exercise_push_back_etc():
   g = flex.grid((1,2,3))
   f.resize(g)
   assert list(f) == [11] * 6
+  b = flex.double([10,13,17])
   assert list(a.reversed()) == [6,5,4,3,2,1,0]
   assert list(a.reversed().reversed()) == range(7)
+  assert list(a.concatenate(b)) == [0,1,2,3,4,5,6,10,13,17]
+  assert list(b.concatenate(a)) == [10,13,17,0,1,2,3,4,5,6]
 
 def exercise_setitem():
   a = flex.double(2)
