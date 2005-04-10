@@ -330,6 +330,17 @@ namespace scitbx { namespace af { namespace boost_python {
     }
 
     static shared<e_t>
+    concatenate(
+      af::const_ref<e_t> const& self,
+      af::const_ref<e_t> const& other)
+    {
+      shared<e_t> result((af::reserve(self.size()+other.size())));
+      result.insert(result.end(), self.begin(), self.end());
+      result.insert(result.end(), other.begin(), other.end());
+      return result;
+    }
+
+    static shared<e_t>
     reversed(
       af::const_ref<e_t> const& self)
     {
@@ -716,6 +727,7 @@ namespace scitbx { namespace af { namespace boost_python {
         .def("resize", resize_flex_grid_2)
         .def("clear", clear)
         .def("extend", extend)
+        .def("concatenate", concatenate)
         .def("reversed", reversed)
         .def("select", select_bool)
         .def("select", select_size_t_3, (
