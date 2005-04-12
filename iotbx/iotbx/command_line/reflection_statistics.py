@@ -24,8 +24,20 @@ def show_average_of_binned_data(binned_data_list):
 
 class array_cache:
 
-  def __init__(self, input, lattice_symmetry_max_delta):
-    self.input = input
+  def __init__(self, input, n_bins, lattice_symmetry_max_delta):
+    self.input = input.eliminate_sys_absent(integral_only=True, log=sys.stdout)
+    self.input.set_info(input.info())
+    if (not self.input.is_unique_set_under_symmetry()):
+      print "Merging symmetry-equivalent reflections:"
+      merged = self.input.merge_equivalents()
+      merged.show_summary(prefix="  ")
+      print
+      self.input = merged.array().set_info(
+        input.info().customized_copy(merged=True))
+      del merged
+    self.input.show_comprehensive_summary()
+    print
+    self.input.setup_binner(n_bins=n_bins)
     self.resolution_range = self.input.resolution_range()
     self.change_of_basis_op_to_minimum_cell \
       = self.input.change_of_basis_op_to_minimum_cell()
@@ -289,8 +301,8 @@ def run(args):
   if (len(command_line.args) == 0):
     command_line.parser.show_help()
     return
+  active_miller_arrays = []
   n_f_sq_as_f = 0
-  array_caches = []
   for file_name in command_line.args:
     reflection_file = reflection_file_reader.any_reflection_file(
       file_name=file_name)
@@ -298,7 +310,8 @@ def run(args):
     if (reflection_file.file_type() is not None):
       try:
         miller_arrays = reflection_file.as_miller_arrays(
-          crystal_symmetry=command_line.symmetry)
+          crystal_symmetry=command_line.symmetry,
+          merge_equivalents=False)
       except Sorry, KeyboardInterrupt: raise
       except: pass
     if (miller_arrays is None):
@@ -342,19 +355,17 @@ def run(args):
               d_min=command_line.options.resolution)
           miller_array = miller_array.map_to_asu()
           miller_array.set_info(info=info)
-          array_caches.append(array_cache(
-            input=miller_array,
-            lattice_symmetry_max_delta=0.1))
+          active_miller_arrays.append(miller_array)
   if (n_f_sq_as_f > 0):
     if (n_f_sq_as_f == 1):
       print "Note: Intensity array has been converted to an amplitude array."
     else:
       print "Note: Intensity arrays have been converted to amplitude arrays."
     print
-  if (len(array_caches) > 2 and not command_line.options.quick):
+  if (len(active_miller_arrays) > 2 and not command_line.options.quick):
     print "Array indices (for quick searching):"
-    for i_0,cache_0 in enumerate(array_caches):
-      print "  %2d:" % (i_0+1), cache_0.input.info()
+    for i_0,input_0 in enumerate(active_miller_arrays):
+      print "  %2d:" % (i_0+1), input_0.info()
     print
     print "Useful search patterns are:"
     print "    Summary i"
@@ -363,13 +374,16 @@ def run(args):
     print "  i and j are the indices shown above."
     print
   n_bins = command_line.options.n_bins
-  for i_0,cache_0 in enumerate(array_caches):
+  array_caches = []
+  for i_0,input_0 in enumerate(active_miller_arrays):
     print "Summary", i_0+1
-    cache_0.input.show_comprehensive_summary()
     print
+    cache_0 = array_cache(
+      input=input_0,
+      n_bins=n_bins,
+      lattice_symmetry_max_delta=0.1)
     cache_0.show_possible_twin_laws()
     print "Completeness of %s:" % str(cache_0.input.info())
-    cache_0.input.setup_binner(n_bins=n_bins)
     cache_0.input.completeness(use_binning=True).show()
     print
     cache_0.show_patterson_peaks()
@@ -388,7 +402,6 @@ def run(args):
       cache_0.show_measurability()
     if (not command_line.options.quick):
       for i_1,cache_1 in enumerate(array_caches):
-        if (i_1 == i_0): break
         unique_reindexing_operators = cache_0.unique_reindexing_operators(
           other=cache_1,
           relative_length_tolerance=0.05,
@@ -463,6 +476,7 @@ def run(args):
                   assert_is_similar_symmetry=False)
                 correlation.show()
               print
+      array_caches.append(cache_0)
     print "=" * 79
     print
 
