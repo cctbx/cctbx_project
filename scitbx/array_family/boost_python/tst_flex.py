@@ -382,6 +382,12 @@ def exercise_select():
   assert tuple(a.set_selected(flex.bool(5, 0), -9)) == (-3,-2,-3,-2,-4)
   assert tuple(a.set_selected(flex.size_t(), -9)) == (-3,-2,-3,-2,-4)
   assert tuple(a.set_selected(stl.vector.unsigned(), -9)) == (-3,-2,-3,-2,-4)
+  for i,v in enumerate([1,2,3,4]):
+    a = flex.double([1,2,3,4])
+    a.resize(flex.grid(2,2))
+    b = a.deep_copy()
+    b[i] *= 10
+    assert list(a.set_selected(a==v, v*10)) == list(b)
   a = flex.double((1,2,3,4,5))
   b = flex.size_t((3,1,0,4,2))
   assert tuple(a.select(b)) == (4,2,1,5,3)
