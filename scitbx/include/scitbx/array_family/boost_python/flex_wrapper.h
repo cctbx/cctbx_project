@@ -427,12 +427,12 @@ namespace scitbx { namespace af { namespace boost_python {
     static boost::python::object
     set_selected_bool_s(
       boost::python::object flex_object,
-      af::const_ref<bool> const& flags,
+      af::const_ref<bool, flex_grid<> > const& flags,
       e_t const& new_value)
     {
-      boost::python::extract<af::ref<e_t> > a_proxy(flex_object);
-      af::ref<e_t> a = a_proxy();
-      SCITBX_ASSERT(a.size() == flags.size());
+      boost::python::extract<af::ref<e_t, flex_grid<> > > a_proxy(flex_object);
+      af::ref<e_t, flex_grid<> > a = a_proxy();
+      SCITBX_ASSERT(a.accessor() == flags.accessor());
       for(std::size_t i=0;i<flags.size();i++) {
         if (flags[i]) a[i] = new_value;
       }
