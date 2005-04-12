@@ -11,7 +11,7 @@ namespace {
 
   struct merge_equivalents_real_wrappers
   {
-    typedef merge_equivalents_generic<double, double> w_t;
+    typedef merge_equivalents_real<> w_t;
 
     static void
     wrap()
@@ -24,6 +24,8 @@ namespace {
         .add_property("indices", make_getter(&w_t::indices, rbv()))
         .add_property("data", make_getter(&w_t::data, rbv()))
         .add_property("redundancies", make_getter(&w_t::redundancies, rbv()))
+        .add_property("r_linear", make_getter(&w_t::r_linear, rbv()))
+        .add_property("r_square", make_getter(&w_t::r_square, rbv()))
       ;
     }
   };
@@ -102,6 +104,8 @@ namespace {
         .add_property("data", make_getter(&w_t::data, rbv()))
         .add_property("sigmas", make_getter(&w_t::sigmas, rbv()))
         .add_property("redundancies", make_getter(&w_t::redundancies, rbv()))
+        .add_property("r_linear", make_getter(&w_t::r_linear, rbv()))
+        .add_property("r_square", make_getter(&w_t::r_square, rbv()))
       ;
     }
   };

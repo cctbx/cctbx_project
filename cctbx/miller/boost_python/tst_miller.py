@@ -423,6 +423,8 @@ def exercise_merge_equivalents():
   assert tuple(m.indices) == ((1,2,3), (3,0,3), (1,1,2))
   assert approx_equal(m.data, (3/2., 4, 6))
   assert tuple(m.redundancies) == (2,3,1)
+  assert approx_equal(m.r_linear, (1/3., 1/6., 0))
+  assert approx_equal(m.r_square, (0.1, 0.04, 0))
   #
   s = flex.double((1/3.,1/2.,1/4.,1/6.,1/3.,1/5.))
   m = miller.ext.merge_equivalents_obs(i, d, 1./(s*s))
@@ -430,6 +432,8 @@ def exercise_merge_equivalents():
   assert approx_equal(m.data, (17/13., (16*3+36*4+9*5)/(16+36+9.), 6))
   assert approx_equal(m.sigmas, (math.sqrt(1/2.), 0.84077140277, 1/5.))
   assert tuple(m.redundancies) == (2,3,1)
+  assert approx_equal(m.r_linear, (1/3., 0.1762295, 0))
+  assert approx_equal(m.r_square, (0.1147929, 0.0407901, 0))
   #
   d = flex.complex_double(
     [complex(-1.706478,  0.248638),

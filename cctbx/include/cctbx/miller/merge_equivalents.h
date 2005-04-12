@@ -45,40 +45,69 @@ namespace cctbx { namespace miller {
       std::size_t n = group_end - group_begin;
       if (n == 0) return;
       self.indices.push_back(current_index);
-      if (n == 1) {
-        self.data.push_back(unmerged_data[group_begin]);
-      }
-      else {
-        self.data.push_back(self.merge(
-          current_index, &unmerged_data[group_begin], n));
-      }
+      self.data.push_back(self.merge(
+        current_index, &unmerged_data[group_begin], n));
       self.redundancies.push_back(n);
     }
   };
 
-  template <typename DataType, typename FloatType>
-  struct merge_equivalents_generic : merge_equivalents_impl<DataType>
+  namespace merge_equivalents {
+
+    template <
+      typename DerivedType,
+      typename DataElementType,
+      typename FloatType>
+    void
+    compute_r_fractors(
+      DerivedType& self,
+      const DataElementType* data_group,
+      std::size_t n,
+      FloatType const& result)
+    {
+      FloatType sum_num = scitbx::fn::absolute(data_group[0] - result);
+      FloatType sum_den = scitbx::fn::absolute(data_group[0]);
+      for(std::size_t i=1;i<n;i++) {
+        sum_num += scitbx::fn::absolute(data_group[i] - result);
+        sum_den += scitbx::fn::absolute(data_group[i]);
+      }
+      if (sum_den == 0) self.r_linear.push_back(0);
+      else self.r_linear.push_back(sum_num / sum_den);
+      //
+      sum_num = scitbx::fn::pow2(data_group[0] - result);
+      sum_den = scitbx::fn::pow2(data_group[0]);
+      for(std::size_t i=1;i<n;i++) {
+        sum_num += scitbx::fn::pow2(data_group[i] - result);
+        sum_den += scitbx::fn::pow2(data_group[i]);
+      }
+      if (sum_den == 0) self.r_square.push_back(0);
+      else self.r_square.push_back(sum_num / sum_den);
+    }
+
+  } // namespace merge_equivalents
+
+  template <typename DataElementType, typename FloatType>
+  struct merge_equivalents_generic : merge_equivalents_impl<DataElementType>
   {
     merge_equivalents_generic() {}
 
     merge_equivalents_generic(
       af::const_ref<index<> > const& unmerged_indices,
-      af::const_ref<DataType> const& unmerged_data)
+      af::const_ref<DataElementType> const& unmerged_data)
     {
-      merge_equivalents_impl<DataType>
+      merge_equivalents_impl<DataElementType>
         ::loop_over_groups(*this, unmerged_indices, unmerged_data);
     }
 
     af::shared<index<> > indices;
-    af::shared<DataType> data;
+    af::shared<DataElementType> data;
     af::shared<int> redundancies;
 
-    DataType
+    DataElementType
     merge(
       miller::index<> const& current_index,
-      const DataType* data_group, std::size_t n)
+      const DataElementType* data_group, std::size_t n)
     {
-      DataType result = data_group[0];
+      DataElementType result = data_group[0];
       for(std::size_t i=1;i<n;i++) result += data_group[i];
       return result / static_cast<FloatType>(n);
     }
@@ -120,6 +149,40 @@ namespace cctbx { namespace miller {
   };
 
   template <typename FloatType=double>
+  struct merge_equivalents_real : merge_equivalents_impl<FloatType>
+  {
+    merge_equivalents_real() {}
+
+    merge_equivalents_real(
+      af::const_ref<index<> > const& unmerged_indices,
+      af::const_ref<FloatType> const& unmerged_data)
+    {
+      merge_equivalents_impl<FloatType>
+        ::loop_over_groups(*this, unmerged_indices, unmerged_data);
+    }
+
+    af::shared<index<> > indices;
+    af::shared<FloatType> data;
+    af::shared<int> redundancies;
+    //! r_linear = sum(abs(data - mean(data))) / sum(abs(data))
+    af::shared<FloatType> r_linear;
+    //! r_square = sum((data - mean(data))**2) / sum(data**2)
+    af::shared<FloatType> r_square;
+
+    FloatType
+    merge(
+      miller::index<> const& current_index,
+      const FloatType* data_group, std::size_t n)
+    {
+      FloatType result = data_group[0];
+      for(std::size_t i=1;i<n;i++) result += data_group[i];
+      result /= static_cast<FloatType>(n);
+      merge_equivalents::compute_r_fractors(*this, data_group, n, result);
+      return result;
+    }
+  };
+
+  template <typename FloatType=double>
   class merge_equivalents_obs
   {
     public:
@@ -139,6 +202,10 @@ namespace cctbx { namespace miller {
       af::shared<FloatType> data;
       af::shared<FloatType> sigmas;
       af::shared<int> redundancies;
+      //! r_linear = sum(abs(data - mean(data))) / sum(abs(data))
+      af::shared<FloatType> r_linear;
+      //! r_square = sum((data - mean(data))**2) / sum(data**2)
+      af::shared<FloatType> r_square;
 
     protected:
       void
@@ -188,6 +255,8 @@ namespace cctbx { namespace miller {
           sigmas.push_back(mv.conservative_standard_deviation());
         }
         redundancies.push_back(n);
+        merge_equivalents::compute_r_fractors(
+          *this, &unmerged_data[group_begin], n, data.back());
       }
   };
 

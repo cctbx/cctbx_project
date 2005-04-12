@@ -14,7 +14,7 @@ from scitbx import fftpack
 import scitbx.math
 from scitbx.python_utils.math_utils import iround
 from scitbx.python_utils import complex_math
-from scitbx.python_utils.misc import store
+from scitbx.python_utils.misc import store, plural_s
 from libtbx.itertbx import count
 from libtbx.utils import Keep
 from libtbx import introspection
@@ -335,10 +335,43 @@ class set(crystal.symmetry):
           no_sys_abs.anomalous_signal())
     return self
 
-  def sys_absent_flags(self):
-    return array(
-      self,
-      self.space_group().is_sys_absent(self.indices()))
+  def sys_absent_flags(self, integral_only=False):
+    effective_group = self.space_group()
+    if (integral_only):
+      effective_group = effective_group \
+        .build_derived_reflection_intensity_group(
+          anomalous_flag=self.anomalous_flag())
+    return self.array(data=effective_group.is_sys_absent(self.indices()))
+
+  def eliminate_sys_absent(self, integral_only=False, log=None, prefix=""):
+    sys_absent_flags = self.sys_absent_flags(
+      integral_only=integral_only).data()
+    n = sys_absent_flags.count(True)
+    if (n == 0): return self
+    if (log is not None):
+      if (integral_only): q = "integral "
+      else: q = ""
+      try: data_abs = flex.abs(self.data())
+      except KeyboardInterrupt: raise
+      except: data_abs = None
+      if (data_abs is None): c = "."
+      else: c = ":"
+      print >> log, prefix + "Removing %d %ssystematic absence%s%s" % (
+        n, q, plural_s(n)[1], c)
+    result = self.select(selection=~sys_absent_flags)
+    if (log is not None):
+      if (data_abs is not None):
+        print >> log, prefix + "  Average absolute value of:"
+        mean_absences = flex.mean(data_abs.select(sys_absent_flags))
+        print >> log, prefix + "    Absences: %.6g" % mean_absences
+        if (n != data_abs.size()):
+          mean_others = flex.mean(data_abs.select(~sys_absent_flags))
+          print >> log, prefix + "      Others: %.6g" % mean_others
+          if (mean_others != 0 and mean_others > mean_absences * 1.e-20):
+            print >> log, prefix + "       Ratio: %.6g" % (
+              mean_absences / mean_others)
+      print >> log
+    return result
 
   def centric_flags(self):
     return array(
@@ -485,6 +518,37 @@ class set(crystal.symmetry):
       sigmas=s)
       .set_info(self.info())
       .set_observation_type(self))
+
+  def match_indices(self, other, assert_is_similar_symmetry=True):
+    if (assert_is_similar_symmetry):
+      assert self.is_similar_symmetry(other)
+    assert self.anomalous_flag() == other.anomalous_flag()
+    return match_indices(self.indices(), other.indices())
+
+  def common_set(self, other, assert_is_similar_symmetry=True):
+    pairs = other.match_indices(
+      other=self,
+      assert_is_similar_symmetry=assert_is_similar_symmetry).pairs()
+    return self.select(pairs.column(1))
+
+  def common_sets(self, other, assert_is_similar_symmetry=True):
+    pairs = other.match_indices(
+      other=self,
+      assert_is_similar_symmetry=assert_is_similar_symmetry).pairs()
+    return [self.select(pairs.column(1)),
+            other.select(pairs.column(0))]
+
+  def lone_set(self, other, assert_is_similar_symmetry=True):
+    return self.select(other.match_indices(
+      other=self,
+      assert_is_similar_symmetry=assert_is_similar_symmetry).singles(1))
+
+  def lone_sets(self, other, assert_is_similar_symmetry=True):
+    matches = other.match_indices(
+      other=self,
+      assert_is_similar_symmetry=assert_is_similar_symmetry)
+    return [self.select(matches.singles(1)),
+            other.select(matches.singles(0))]
 
   def match_bijvoet_mates(self):
     assert self.anomalous_flag() in (None, True)
@@ -923,6 +987,9 @@ class array(set):
     assert self.is_complex_array()
     return array.customized_copy(self, data=flex.conj(self.data()))
 
+  def as_double(self):
+    return self.array(data=self.data().as_double())
+
   def __getitem__(self, slice_object):
     return array(
       miller_set=set.__getitem__(self, slice_object),
@@ -989,11 +1056,6 @@ class array(set):
     return (array(set(self, i, self.anomalous_flag()), d, self.sigmas())
       .set_observation_type(self))
 
-  def eliminate_sys_absent(self):
-    sys_absent_flags = self.sys_absent_flags().data()
-    if (sys_absent_flags.all_eq(False)): return self
-    return self.select(selection=~sys_absent_flags)
-
   def adopt_set(self, other, assert_is_similar_symmetry=True):
     if (assert_is_similar_symmetry):
       assert self.is_similar_symmetry(other)
@@ -1007,12 +1069,6 @@ class array(set):
     if (s is not None): s = s.select(p)
     return (array(miller_set=other, data=d, sigmas=s)
       .set_observation_type(self))
-
-  def match_indices(self, other, assert_is_similar_symmetry=True):
-    if (assert_is_similar_symmetry):
-      assert self.is_similar_symmetry(other)
-    assert self.anomalous_flag() == other.anomalous_flag()
-    return match_indices(self.indices(), other.indices())
 
   def matching_set(self,
         other,
@@ -1038,31 +1094,6 @@ class array(set):
       sigmas.set_selected(
         pairs.column(0), self.sigmas().select(pairs.column(1)))
     return other.array(data=data, sigmas=sigmas)
-
-  def common_set(self, other, assert_is_similar_symmetry=True):
-    pairs = other.match_indices(
-      other=self,
-      assert_is_similar_symmetry=assert_is_similar_symmetry).pairs()
-    return self.select(pairs.column(1))
-
-  def common_sets(self, other, assert_is_similar_symmetry=True):
-    pairs = other.match_indices(
-      other=self,
-      assert_is_similar_symmetry=assert_is_similar_symmetry).pairs()
-    return [self.select(pairs.column(1)),
-            other.select(pairs.column(0))]
-
-  def lone_set(self, other, assert_is_similar_symmetry=True):
-    return self.select(other.match_indices(
-      other=self,
-      assert_is_similar_symmetry=assert_is_similar_symmetry).singles(1))
-
-  def lone_sets(self, other, assert_is_similar_symmetry=True):
-    matches = other.match_indices(
-      other=self,
-      assert_is_similar_symmetry=assert_is_similar_symmetry)
-    return [self.select(matches.singles(1)),
-            other.select(matches.singles(0))]
 
   def sort_permutation(self, by_value="resolution", reverse=False):
     assert reverse in (False, True)
@@ -1734,6 +1765,8 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
 class merge_equivalents:
 
   def __init__(self, miller_array):
+    self._r_linear = None
+    self._r_square = None
     if (isinstance(miller_array.data(), flex.complex_double)):
       asu_array = miller_array.map_to_asu()
       perm = asu_array.sort_permutation(by_value="packed_indices")
@@ -1758,8 +1791,7 @@ class merge_equivalents:
         asu_array.data().select(perm))
       sigmas = None
       del asu_array
-    else:
-      assert isinstance(miller_array.data(), flex.double)
+    elif (isinstance(miller_array.data(), flex.double)):
       if (miller_array.sigmas() is not None):
         assert isinstance(miller_array.sigmas(), flex.double)
         sel = (miller_array.sigmas() <= 0) & (miller_array.data() == 0)
@@ -1781,6 +1813,14 @@ class merge_equivalents:
           miller_array.data().select(perm))
         sigmas = None
       del asu_set
+      self._r_linear = merge_ext.r_linear
+      self._r_square = merge_ext.r_square
+    else:
+      raise RuntimeError(
+        "cctbx.miller.merge_equivalents: unsupported array type:\n"
+        "  data: %s\n"
+        "  sigmas: %s" % (
+          repr(miller_array.data()), repr(miller_array.sigmas())))
     self._array = array(
       miller_set=set(
         crystal_symmetry=miller_array,
@@ -1794,7 +1834,82 @@ class merge_equivalents:
     return self._array
 
   def redundancies(self):
-    return self._redundancies
+    return self._array.array(data=self._redundancies)
+
+  def r_linear(self):
+    "R-linear = sum(abs(data - mean(data))) / sum(abs(data))"
+    if (self._r_linear is None): return None
+    return self._array.array(data=self._r_linear)
+
+  def r_square(self):
+    "R-square = sum((data - mean(data))**2) / sum(data**2)"
+    if (self._r_square is None): return None
+    return self._array.array(data=self._r_square)
+
+  def show_summary(self, n_bins=10, out=None, prefix=""):
+    if (out is None): out = sys.stdout
+    redundancies = self.redundancies().as_double()
+    redundancies.setup_binner(n_bins=n_bins)
+    red_mean = redundancies.mean(use_binning=True)
+    selection = self.redundancies().data() > 1
+    r_linear = self.r_linear()
+    if (r_linear is not None):
+      r_linear = r_linear.select(selection)
+      r_linear.use_binning_of(redundancies)
+      r_l_mean = r_linear.mean(use_binning=True)
+    r_square = self.r_square()
+    if (r_square is not None):
+      r_square = r_square.select(selection)
+      r_square.use_binning_of(redundancies)
+      r_s_mean = r_square.mean(use_binning=True)
+    fields = ["", "Min", "Max", "Mean"]
+    if (r_linear is None): fields.append("")
+    else: fields.append("R-linear")
+    if (r_square is None): fields.append("")
+    else: fields.append("R-square")
+    lines = [fields]
+    max_lengths = [len(field) for field in lines[0]]
+    for i_bin in red_mean.binner.range_all():
+      fields = [red_mean.binner.bin_legend(i_bin=i_bin, show_counts=False)]
+      sel = red_mean.binner.selection(i_bin)
+      r = self.redundancies().select(sel).data()
+      if (r.size() == 0):
+        fields.extend(["", ""])
+      else:
+        fields.append("%d" % flex.min(r))
+        fields.append("%d" % flex.max(r))
+      if (red_mean.data[i_bin] is None):
+        fields.append("")
+      else:
+        fields.append("%.3f" % red_mean.data[i_bin])
+      if (r_linear is None or r_l_mean.data[i_bin] is None):
+        fields.append("")
+      else:
+        fields.append("%.4f" % r_l_mean.data[i_bin])
+      if (r_square is None or r_s_mean.data[i_bin] is None):
+        fields.append("")
+      else:
+        fields.append("%.4f" % r_s_mean.data[i_bin])
+      lines.append(fields)
+      max_lengths = [max(max_len,len(field))
+        for max_len,field in zip(max_lengths, fields)]
+    if (r_linear is not None):
+      print >> out, prefix+self.r_linear.__doc__
+    if (r_square is not None):
+      print >> out, prefix+self.r_square.__doc__
+    if (r_linear is not None or r_square is not None):
+      print >> out, prefix+"In these sums single measurements are excluded."
+    n = flex.sum(flex.int(max_lengths[1:4]))+4
+    fmt = "%%%ds  %%%ds  %%%ds  %%%ds" % tuple(
+      [max_lengths[0], n] + max_lengths[4:])
+    fields = ["", "Redundancy"+" "*((n-10+1)//2)]
+    for r in [r_linear, r_square]:
+      if (r is None): fields.append("")
+      else: fields.append("Mean  ")
+    print >> out, prefix + (fmt % tuple(fields)).rstrip()
+    fmt = "%%%ds  %%%ds  %%%ds  %%%ds  %%%ds  %%%ds" % tuple(max_lengths)
+    for fields in lines:
+      print >> out, prefix + (fmt % tuple(fields)).rstrip()
 
 class fft_map(maptbx.crystal_gridding):
 
