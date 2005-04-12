@@ -427,6 +427,11 @@ def group_obs_sigma(real_arrays):
       s = real_arrays.get(prefix+rest)
       if (s is not None):
         break
+    if (s is None):
+      for prefix in ("sigma", "sig"):
+        s = real_arrays.get(prefix+name)
+        if (s is not None):
+          break
     if (s is not None and f.indices.all_eq(s.indices)):
       result.append((f,s,"f"))
       done[f.name] = None
