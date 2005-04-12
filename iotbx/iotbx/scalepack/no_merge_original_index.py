@@ -119,9 +119,9 @@ def quick_test(file_name):
   print tuple(s.i_obs[-3:])
   print tuple(s.sigmas[-3:])
   m = s.as_miller_array(merge_equivalents=False).merge_equivalents()
-  print "min redundancies:", flex.min(m.redundancies())
-  print "max redundancies:", flex.max(m.redundancies())
-  print "mean redundancies:", flex.mean(m.redundancies().as_double())
+  print "min redundancies:", flex.min(m.redundancies().data())
+  print "max redundancies:", flex.max(m.redundancies().data())
+  print "mean redundancies:", flex.mean(m.redundancies().data().as_double())
   s.as_miller_arrays()[0].show_summary()
   print
 

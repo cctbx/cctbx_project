@@ -328,6 +328,26 @@ def exercise_array():
   ae = aa.eliminate_sys_absent()
   assert ae is not aa
   assert tuple(ae.indices()) == ((0,0,-4),)
+  s = StringIO()
+  aa.eliminate_sys_absent(log=s, prefix="%^")
+  assert not show_diff(s.getvalue(), """\
+%^Removing 1 systematic absence:
+%^  Average absolute value of:
+%^    Absences: 1
+%^      Others: 1.41421
+%^       Ratio: 0.707107
+
+""")
+  s = StringIO()
+  aa.eliminate_sys_absent(integral_only=True, log=s, prefix="%^")
+  assert not show_diff(s.getvalue(), """\
+%^Removing 1 integral systematic absence:
+%^  Average absolute value of:
+%^    Absences: 1
+%^      Others: 1.41421
+%^       Ratio: 0.707107
+
+""")
   asu = ma.map_to_asu()
   assert tuple(asu.indices()) == ((1,2,3), (0,0,4))
   mi = flex.miller_index(((1,2,3), (-1,-2,-3), (2,3,4), (-2,-3,-4), (3,4,5)))
@@ -655,6 +675,41 @@ unused:  3.0759 -         [ 0/0 ]
   ma.show_summary(f=sa).show_array(f=sa)
   ml.show_summary(f=sl).show_array(f=sl)
   assert sa.getvalue() == sl.getvalue()
+  #
+  for i_trial in [0,1]:
+    if (i_trial == 0):
+      d = flex.random_double(size=ma.indices().size())
+    else:
+      d = d < 0.5
+    b = ma.customized_copy(
+      indices=ma.indices().concatenate(ma.indices()),
+      data=d.concatenate(d))
+    m = b.merge_equivalents()
+    s = StringIO()
+    m.show_summary(n_bins=3, out=s, prefix="@#")
+    if (i_trial == 0):
+      assert not show_diff(s.getvalue().replace("-0.0000", " 0.0000"), """\
+@#R-linear = sum(abs(data - mean(data))) / sum(abs(data))
+@#R-square = sum((data - mean(data))**2) / sum(data**2)
+@#In these sums single measurements are excluded.
+@#                             Redundancy       Mean      Mean
+@#                           Min  Max   Mean  R-linear  R-square
+@#unused:         - 13.0001
+@#bin  1: 13.0001 -  4.3977    2    2  2.000    0.0000    0.0000
+@#bin  2:  4.3977 -  3.5133    2    2  2.000    0.0000    0.0000
+@#bin  3:  3.5133 -  3.0759    2    2  2.000    0.0000    0.0000
+@#unused:  3.0759 -
+""")
+    else:
+      assert not show_diff(s.getvalue(), """\
+@#                             Redundancy
+@#                           Min  Max   Mean
+@#unused:         - 13.0001
+@#bin  1: 13.0001 -  4.3977    2    2  2.000
+@#bin  2:  4.3977 -  3.5133    2    2  2.000
+@#bin  3:  3.5133 -  3.0759    2    2  2.000
+@#unused:  3.0759 -
+""")
 
 def exercise_array_2(space_group_info):
   xs = crystal.symmetry(
@@ -678,7 +733,7 @@ def exercise_array_2(space_group_info):
       assert approx_equal(sg.data(), m.array().data().select(p))
       if (sigmas is not None):
         s = m.array().sigmas().select(p)
-        r = m.redundancies().select(p)
+        r = m.redundancies().data().select(p)
         sr = s * flex.sqrt(r.as_double())
         assert approx_equal(sr, sigmas)
       #

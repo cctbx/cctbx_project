@@ -2,6 +2,7 @@ from cctbx import miller
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from cctbx.array_family import flex
+from cStringIO import StringIO
 import random
 import sys
 
@@ -17,6 +18,7 @@ def exercise(space_group_info, anomalous_flag,
   assert fs.is_unique_set_under_symmetry()
   for a in (f, fs):
     m = a.merge_equivalents()
+    m.show_summary(out=StringIO())
     j = m.array().adopt_set(a)
     assert flex.linear_correlation(j.data(),
                                    a.data()).coefficient() > 1-1.e-6
@@ -48,6 +50,7 @@ def exercise(space_group_info, anomalous_flag,
   noise = flex.random_double(size=r.indices().size())
   r = r.sort(by_value=noise)
   m = r.merge_equivalents()
+  m.show_summary(out=StringIO())
   j = m.array().adopt_set(fs)
   assert j.is_unique_set_under_symmetry()
   assert flex.linear_correlation(
