@@ -1837,20 +1837,13 @@ class merge_equivalents:
       sigmas = None
       del asu_array
     elif (isinstance(miller_array.data(), flex.double)):
-      if (miller_array.sigmas() is not None):
-        assert isinstance(miller_array.sigmas(), flex.double)
-        sel = (miller_array.sigmas() <= 0) & (miller_array.data() == 0)
-        if (sel.count(True) > 0):
-          miller_array = miller_array.select(~sel)
       asu_set = set.map_to_asu(miller_array)
       perm = asu_set.sort_permutation(by_value="packed_indices")
       if (miller_array.sigmas() is not None):
-        sigmas_squared = flex.pow2(miller_array.sigmas().select(perm))
-        assert flex.min(sigmas_squared) > 0
         merge_ext = ext.merge_equivalents_obs(
           asu_set.indices().select(perm),
           miller_array.data().select(perm),
-          1/sigmas_squared)
+          miller_array.sigmas().select(perm))
         sigmas = merge_ext.sigmas
       else:
         merge_ext = ext.merge_equivalents_real(
