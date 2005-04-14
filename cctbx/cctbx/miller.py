@@ -335,6 +335,12 @@ class set(crystal.symmetry):
           no_sys_abs.anomalous_signal())
     return self
 
+  def reflection_intensity_symmetry(self):
+    assert self.anomalous_flag() is False or self.anomalous_flag() is True
+    return self.customized_copy(
+      crystal_symmetry=crystal.symmetry.reflection_intensity_symmetry(self,
+        anomalous_flag=self.anomalous_flag()))
+
   def sys_absent_flags(self, integral_only=False):
     effective_group = self.space_group()
     if (integral_only):
@@ -351,11 +357,13 @@ class set(crystal.symmetry):
     if (log is not None):
       if (integral_only): q = "integral "
       else: q = ""
-      try: data_abs = flex.abs(self.data())
-      except KeyboardInterrupt: raise
-      except: data_abs = None
-      if (data_abs is None): c = "."
-      else: c = ":"
+      if (   isinstance(self.data(), flex.double)
+          or isinstance(self.data(), flex.complex_double)):
+        data_abs = flex.abs(self.data())
+        c = ":"
+      else:
+        data_abs = None
+        c = "."
       print >> log, prefix + "Removing %d %ssystematic absence%s%s" % (
         n, q, plural_s(n)[1], c)
     result = self.select(selection=~sys_absent_flags)
@@ -437,6 +445,17 @@ class set(crystal.symmetry):
       space_group_type=self.space_group_info().type(),
       anomalous_flag=self.anomalous_flag(),
       miller_indices=self.indices())
+
+  def unique_under_symmetry_selection(self):
+    return ext.unique_under_symmetry_selection(
+      space_group_type=self.space_group_info().type(),
+      anomalous_flag=self.anomalous_flag(),
+      miller_indices=self.indices())
+
+  def unique_under_symmetry(self):
+    sel = self.unique_under_symmetry_selection()
+    if (sel.size() == self.indices().size()): return self
+    return self.select(sel)
 
   def map_to_asu(self):
     i = self.indices().deep_copy()
@@ -650,9 +669,11 @@ class set(crystal.symmetry):
     assert self.space_group_info() is not None
     assert self.indices() is not None
     assert self.anomalous_flag() is not None
-    p1 = expand_to_p1(
-      self.space_group(), self.anomalous_flag(), self.indices())
-    return set(self.cell_equivalent_p1(), p1.indices(), self.anomalous_flag())
+    p1 = expand_to_p1_indices(
+      space_group=self.space_group(),
+      anomalous_flag=self.anomalous_flag(),
+      indices=self.indices())
+    return set(self.cell_equivalent_p1(), p1.indices, self.anomalous_flag())
 
   def patterson_symmetry(self):
     assert self.anomalous_flag() == False
@@ -800,7 +821,8 @@ class array_info:
         source_type=None,
         history=None,
         labels=None,
-        merged=False):
+        merged=False,
+        systematic_absences_eliminated=False):
     introspection.adopt_init_args()
 
   def customized_copy(self,
@@ -808,18 +830,22 @@ class array_info:
         source_type=Keep,
         history=Keep,
         labels=Keep,
-        merged=Keep):
+        merged=Keep,
+        systematic_absences_eliminated=Keep):
     if (source is Keep): source = self.source
     if (source_type is Keep): source_type = self.source_type
     if (history is Keep): history = self.history
     if (labels is Keep): labels = self.labels
     if (merged is Keep): merged = self.merged
+    if (systematic_absences_eliminated is Keep):
+      systematic_absences_eliminated = self.systematic_absences_eliminated
     return array_info(
       source=source,
       source_type=source_type,
       history=history,
       labels=labels,
-      merged=merged)
+      merged=merged,
+      systematic_absences_eliminated=systematic_absences_eliminated)
 
   def as_string_part_2(self):
     part_2 = []
@@ -827,6 +853,8 @@ class array_info:
       part_2.extend(self.labels)
     if (self.merged):
       part_2.append("merged")
+    if (self.systematic_absences_eliminated):
+      part_2.append("systematic_absences_eliminated")
     return part_2
 
   def label_string(self):
@@ -980,6 +1008,19 @@ class array(set):
       space_group_info=space_group_info)
     return array(miller_set=miller_set, data=data, sigmas=sigmas)
 
+  def set(self,
+        crystal_symmetry=Keep,
+        indices=Keep,
+        anomalous_flag=Keep,
+        unit_cell=Keep,
+        space_group_info=Keep):
+    return set.customized_copy(self,
+      crystal_symmetry=crystal_symmetry,
+      indices=indices,
+      anomalous_flag=anomalous_flag,
+      unit_cell=unit_cell,
+      space_group_info=space_group_info)
+
   def discard_sigmas(self):
     return array.customized_copy(self, sigmas=None)
 
@@ -1125,42 +1166,56 @@ class array(set):
     assert self.indices() is not None
     assert self.anomalous_flag() is not None
     assert self.data() is not None
-    new_sigmas = None
-    if (self.is_complex_array()):
+    p1_sigmas = None
+    expand_type = {
+      "bool": expand_to_p1_bool,
+      "int": expand_to_p1_int,
+      "complex_double": expand_to_p1_complex,
+      "hendrickson_lattman": expand_to_p1_hendrickson_lattman,
+    }.get(self.data().__class__.__name__, None)
+    if (expand_type is not None):
       assert phase_deg is None
-      p1 = expand_to_p1(
-        self.space_group(), self.anomalous_flag(), self.indices(),
-        self.data())
-      new_data = p1.structure_factors()
-    elif (self.is_hendrickson_lattman_array()):
-      p1 = expand_to_p1(
-        self.space_group(), self.anomalous_flag(), self.indices(),
-        self.data())
-      new_data = p1.hendrickson_lattman_coefficients()
-    else:
-      assert isinstance(self.data(), flex.double)
+      assert self.sigmas() is None
+      p1 = expand_type(
+        space_group=self.space_group(),
+        anomalous_flag=self.anomalous_flag(),
+        indices=self.indices(),
+        data=self.data())
+    elif (isinstance(self.data(), flex.double)):
       assert phase_deg in (None, False, True)
       if (phase_deg is None):
-        p1 = expand_to_p1(
-          self.space_group(), self.anomalous_flag(), self.indices(),
-          self.data())
-        new_data = p1.amplitudes()
-        if (self.sigmas() is not None):
-          assert isinstance(self.sigmas(), flex.double)
-          p1 = expand_to_p1(
-            self.space_group(), self.anomalous_flag(), self.indices(),
-            self.sigmas())
-          new_sigmas = p1.amplitudes()
+        if (self.sigmas() is None):
+          p1 = expand_to_p1_double(
+            space_group=self.space_group(),
+            anomalous_flag=self.anomalous_flag(),
+            indices=self.indices(),
+            data=self.data())
+        else:
+          p1 = expand_to_p1_obs(
+            space_group=self.space_group(),
+            anomalous_flag=self.anomalous_flag(),
+            indices=self.indices(),
+            data=self.data(),
+            sigmas=self.sigmas())
+          p1_sigmas = p1.sigmas
       else:
-        p1 = expand_to_p1(
-          self.space_group(), self.anomalous_flag(), self.indices(),
-          self.data(), phase_deg)
-        new_data = p1.phases()
-    assert self.sigmas() is None or new_sigmas is not None
+        p1 = expand_to_p1_phases(
+          space_group=self.space_group(),
+          anomalous_flag=self.anomalous_flag(),
+          indices=self.indices(),
+          data=self.data(),
+          deg=phase_deg)
+    else:
+      raise RuntimeError(
+        "cctbx.miller.expand_to_p1(): unsupported array type:\n"
+        "  data: %s\n"
+        "  sigmas: %s" % (
+          repr(self.data()), repr(self.sigmas())))
+    assert self.sigmas() is None or p1_sigmas is not None
     return array(
-      set(self.cell_equivalent_p1(), p1.indices(), self.anomalous_flag()),
-      data=new_data,
-      sigmas=new_sigmas).set_observation_type(self)
+      set(self.cell_equivalent_p1(), p1.indices, self.anomalous_flag()),
+      data=p1.data,
+      sigmas=p1_sigmas).set_observation_type(self)
 
   def change_basis(self, cb_op, deg=None):
     if (isinstance(cb_op, str)): cb_op = sgtbx.change_of_basis_op(cb_op)
@@ -1767,26 +1822,16 @@ class merge_equivalents:
   def __init__(self, miller_array):
     self._r_linear = None
     self._r_square = None
-    if (isinstance(miller_array.data(), flex.complex_double)):
+    merge_type = {
+      "bool": ext.merge_equivalents_exact_bool,
+      "int": ext.merge_equivalents_exact_int,
+      "complex_double": ext.merge_equivalents_complex,
+      "hendrickson_lattman": ext.merge_equivalents_hl,
+    }.get(miller_array.data().__class__.__name__, None)
+    if (merge_type is not None):
       asu_array = miller_array.map_to_asu()
       perm = asu_array.sort_permutation(by_value="packed_indices")
-      merge_ext = ext.merge_equivalents_complex(
-        asu_array.indices().select(perm),
-        asu_array.data().select(perm))
-      sigmas = None
-      del asu_array
-    elif (isinstance(miller_array.data(), flex.hendrickson_lattman)):
-      asu_array = miller_array.map_to_asu()
-      perm = asu_array.sort_permutation(by_value="packed_indices")
-      merge_ext = ext.merge_equivalents_hl(
-        asu_array.indices().select(perm),
-        asu_array.data().select(perm))
-      sigmas = None
-      del asu_array
-    elif (isinstance(miller_array.data(), flex.bool)):
-      asu_array = miller_array.map_to_asu()
-      perm = asu_array.sort_permutation(by_value="packed_indices")
-      merge_ext = ext.merge_equivalents_bool(
+      merge_ext = merge_type(
         asu_array.indices().select(perm),
         asu_array.data().select(perm))
       sigmas = None

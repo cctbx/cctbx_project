@@ -113,32 +113,33 @@ namespace cctbx { namespace miller {
     }
   };
 
-  struct merge_equivalents_bool : merge_equivalents_impl<bool>
+  template <typename IntegralType>
+  struct merge_equivalents_exact : merge_equivalents_impl<IntegralType>
   {
-    merge_equivalents_bool() {}
+    merge_equivalents_exact() {}
 
-    merge_equivalents_bool(
+    merge_equivalents_exact(
       af::const_ref<index<> > const& unmerged_indices,
-      af::const_ref<bool> const& unmerged_data)
+      af::const_ref<IntegralType> const& unmerged_data)
     {
-      merge_equivalents_impl<bool>
+      merge_equivalents_impl<IntegralType>
         ::loop_over_groups(*this, unmerged_indices, unmerged_data);
     }
 
     af::shared<index<> > indices;
-    af::shared<bool> data;
+    af::shared<IntegralType> data;
     af::shared<int> redundancies;
 
-    bool
+    IntegralType
     merge(
       miller::index<> const& current_index,
-      const bool* data_group, std::size_t n)
+      const IntegralType* data_group, std::size_t n)
     {
       for(std::size_t i=1;i<n;i++) {
         if (data_group[i] != data_group[0]) {
           char buf[128];
           std::sprintf(buf,
-            "merge_equivalents_bool:"
+            "merge_equivalents_exact:"
             " incompatible flags for hkl = (%d, %d, %d)",
             current_index[0], current_index[1], current_index[2]);
           throw error(buf);

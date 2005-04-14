@@ -185,6 +185,14 @@ def exercise_asu():
     space_group_type=sg_type,
     anomalous_flag=True,
     miller_indices=miller_indices)
+  assert list(miller.unique_under_symmetry_selection(
+    space_group_type=sg_type,
+    anomalous_flag=False,
+    miller_indices=miller_indices)) == [0]
+  assert list(miller.unique_under_symmetry_selection(
+    space_group_type=sg_type,
+    anomalous_flag=True,
+    miller_indices=miller_indices)) == [0,1]
 
 def exercise_bins():
   uc = uctbx.unit_cell((11,11,13,90,90,120))
@@ -270,37 +278,59 @@ def exercise_expand():
   sg = sgtbx.space_group("P 41 (1,-1,0)")
   h = flex.miller_index(((3,1,-2), (1,-2,0)))
   assert tuple(sg.is_centric(h)) == (0, 1)
-  p1 = miller.expand_to_p1(sg, 0, h)
+  p1 = miller.expand_to_p1_indices(
+    space_group=sg, anomalous_flag=False, indices=h)
   p1_i0 = ((-3,-1,2), (-1, 3,2),(3,1,2),(1,-3,2),(1,-2, 0),(2,1,0))
-  assert tuple(p1.indices()) == p1_i0
-  assert p1.amplitudes().size() == 0
-  assert p1.phases().size() == 0
-  assert p1.structure_factors().size() == 0
-  p1 = miller.expand_to_p1(sg, 1, h)
-  assert tuple(p1.indices()) \
+  assert tuple(p1.indices) == p1_i0
+  p1 = miller.expand_to_p1_indices(
+    space_group=sg, anomalous_flag=True, indices=h)
+  assert tuple(p1.indices) \
       == ((3,1,-2), (1,-3,-2), (-3,-1,-2), (-1,3,-2),
           (1,-2,0), (-2,-1,0), (-1,2,0), (2,1,0))
   a = flex.double((1,2))
-  p1 = miller.expand_to_p1(sg, 0, h, a)
-  assert tuple(p1.indices()) == p1_i0
-  assert tuple(p1.amplitudes()) == (1,1,1,1,2,2)
+  p1 = miller.expand_to_p1_double(
+    space_group=sg, anomalous_flag=False, indices=h, data=a)
+  assert tuple(p1.indices) == p1_i0
+  assert tuple(p1.data) == (1,1,1,1,2,2)
   p = flex.double((10,90))
-  p1 = miller.expand_to_p1(sg, 0, h, p, 1)
-  assert approx_equal(tuple(p1.phases()), (-10,110,110,-10, 90,30))
-  p1 = miller.expand_to_p1(sg, 1, h, a, p, 1)
-  assert tuple(p1.amplitudes()) == (1,1,1,1,2,2,2,2)
-  assert approx_equal(tuple(p1.phases()), (10,-110,-110,10, 90,-30,-90,30))
+  p1 = miller.expand_to_p1_phases(
+    space_group=sg, anomalous_flag=False, indices=h, data=p, deg=True)
+  assert approx_equal(tuple(p1.data), (-10,110,110,-10, 90,30))
+  p1 = miller.expand_to_p1_phases(
+    space_group=sg, anomalous_flag=True, indices=h, data=p, deg=True)
+  assert approx_equal(tuple(p1.data), (10,-110,-110,10, 90,-30,-90,30))
   p = flex.double([x * math.pi/180 for x in p])
-  v = [x * math.pi/180 for x in p1.phases()]
-  p1 = miller.expand_to_p1(sg, 1, h, a, p)
-  assert approx_equal(tuple(p1.phases()), v)
-  p1 = miller.expand_to_p1(sg, 1, h, a, p, 0)
-  assert approx_equal(tuple(p1.phases()), v)
+  v = [x * math.pi/180 for x in p1.data]
+  p1 = miller.expand_to_p1_phases(
+    space_group=sg, anomalous_flag=True, indices=h, data=p, deg=False)
+  assert approx_equal(tuple(p1.data), v)
   f = flex.polar(a, p)
-  p1 = miller.expand_to_p1(sg, 1, h, f)
-  assert approx_equal(tuple(flex.abs(p1.structure_factors())),
-                      (1,1,1,1,2,2,2,2))
-  assert approx_equal(tuple(flex.arg(p1.structure_factors())), v)
+  p1 = miller.expand_to_p1_complex(
+    space_group=sg, anomalous_flag=True, indices=h, data=f)
+  assert approx_equal(tuple(flex.abs(p1.data)), (1,1,1,1,2,2,2,2))
+  assert approx_equal(tuple(flex.arg(p1.data)), v)
+  hl = flex.hendrickson_lattman([(1,2,3,4), (5,6,7,8)])
+  p1 = miller.expand_to_p1_hendrickson_lattman(
+    space_group=sg, anomalous_flag=True, indices=h, data=hl)
+  assert approx_equal(p1.data, [
+    [1,2,3,4],
+    [1.232051,-1.866025,-4.964102,0.5980762],
+    [1.232051,-1.866025,-4.964102,0.5980762],
+    [1,2,3,4],
+    [5,6,7,8],
+    [2.696152,-7.330127,-10.4282,2.062178],
+    [-5,-6,7,8],
+    [7.696152,-1.330127,3.428203,-10.06218]])
+  b = flex.bool([True,False])
+  p1 = miller.expand_to_p1_bool(
+    space_group=sg, anomalous_flag=True, indices=h, data=b)
+  assert p1.data.all_eq(
+    flex.bool([True, True, True, True, False, False, False, False]))
+  i = flex.int([13,17])
+  p1 = miller.expand_to_p1_int(
+    space_group=sg, anomalous_flag=True, indices=h, data=i)
+  assert p1.data.all_eq(flex.int([13,13,13,13,17,17,17,17]))
+  #
   assert approx_equal(miller.statistical_mean(sg, 0, h, a), 4/3.)
   assert approx_equal(miller.statistical_mean(sg, 1, h, a), 3/2.)
 
@@ -466,16 +496,19 @@ def exercise_merge_equivalents():
   assert tuple(m.redundancies) == (2,3,1)
   #
   d = flex.bool((True,True,False,False,False,True))
-  m = miller.ext.merge_equivalents_bool(i, d)
+  m = miller.ext.merge_equivalents_exact_bool(i, d)
   assert tuple(m.indices) == ((1,2,3), (3,0,3), (1,1,2))
   assert list(m.data) == [True, False, True]
   assert tuple(m.redundancies) == (2,3,1)
   d = flex.bool((True,True,False,True,False,True))
-  try: m = miller.ext.merge_equivalents_bool(i, d)
+  try: m = miller.ext.merge_equivalents_exact_bool(i, d)
   except RuntimeError, e:
-    assert str(e) == "cctbx Error: merge_equivalents_bool:"\
+    assert str(e) == "cctbx Error: merge_equivalents_exact:"\
       " incompatible flags for hkl = (3, 0, 3)"
   else: raise RuntimeError("Exception expected.")
+  d = flex.int((3,3,5,5,5,7))
+  m = miller.ext.merge_equivalents_exact_int(i, d)
+  assert list(m.data) == [3, 5, 7]
 
 def exercise_phase_integral():
   sg = sgtbx.space_group_info("P 21 21 21").group()

@@ -94,4 +94,25 @@ namespace cctbx { namespace miller {
     return true;
   }
 
+  af::shared<std::size_t>
+  unique_under_symmetry_selection(
+    sgtbx::space_group_type const& space_group_type,
+    bool anomalous_flag,
+    af::const_ref<index<> > const& miller_indices)
+  {
+    af::shared<std::size_t> result((af::reserve(miller_indices.size())));
+    std::set<index<>, fast_less_than<> > unique_set;
+    sgtbx::reciprocal_space::asu asu(space_group_type);
+    sgtbx::space_group const& sg = space_group_type.group();
+    for(std::size_t i=0;i<miller_indices.size();i++) {
+      asym_index ai(sg, asu, miller_indices[i]);
+      index_table_layout_adaptor ila = ai.one_column(anomalous_flag);
+      if (unique_set.find(ila.h()) == unique_set.end()) {
+        unique_set.insert(ila.h());
+        result.push_back(i);
+      }
+    }
+    return result;
+  }
+
 }} // namespace cctbx::miller

@@ -5,11 +5,11 @@
 
 namespace cctbx { namespace miller {
 
-  //! Expands an array of Miller indices and associated data to P1 symmetry.
-  /*! The symmetry operations are applied to each element
-      of the input array in. The unique symmetrically
-      equivalent indices and associated data are available through
-      member functions. Unused output arrays have length zero.
+  //! XXX OBSOLETE
+  /*! Expands an array of Miller indices to P1 symmetry.
+      <p>
+      The symmetry operations are applied to each element
+      of the input array.
       <p>
       If anomalous_flag == false, centric indices are treated in a
       special way: Friedel mates are suppressed. If N is the
@@ -31,219 +31,259 @@ namespace cctbx { namespace miller {
       expand_to_p1(
         sgtbx::space_group const& space_group,
         bool anomalous_flag,
-        af::const_ref<index<> > const& indices);
-
-      //! Expands a list of Miller indices and associated amplitudes.
-      expand_to_p1(
-        sgtbx::space_group const& space_group,
-        bool anomalous_flag,
-        af::const_ref<index<> > const& indices,
-        af::const_ref<FloatType> const& amplitudes);
-
-      //! Expands a list of Miller indices and associated phases.
-      expand_to_p1(
-        sgtbx::space_group const& space_group,
-        bool anomalous_flag,
-        af::const_ref<index<> > const& indices,
-        af::const_ref<FloatType> const& phases, bool phase_degrees);
-
-      /*! \brief Expands a list of Miller indices and associated amplitudes
-          and phases.
-       */
-      expand_to_p1(
-        sgtbx::space_group const& space_group,
-        bool anomalous_flag,
-        af::const_ref<index<> > const& indices,
-        af::const_ref<FloatType> const& amplitudes,
-        af::const_ref<FloatType> const& phases, bool phase_degrees=false);
-
-      //! \brief Expands a list of structure factors.
-      expand_to_p1(
-        sgtbx::space_group const& space_group,
-        bool anomalous_flag,
-        af::const_ref<index<> > const& indices,
-        af::const_ref<std::complex<FloatType> > const& structure_factors);
-
-      //! \brief Expands a list of Hendrickson-Lattman coefficients.
-      expand_to_p1(
-        sgtbx::space_group const& space_group,
-        bool anomalous_flag,
-        af::const_ref<index<> > const& indices,
-        af::const_ref<hendrickson_lattman<> > const&
-          hendrickson_lattman_coefficients);
+        af::const_ref<index<> > const& indices)
+      {
+        for(std::size_t i_indices=0;i_indices<indices.size();i_indices++) {
+          sym_equiv_indices eq(space_group, indices[i_indices]);
+          af::shared<sym_equiv_index> p1_list = eq.p1_listing(anomalous_flag);
+          for(sym_equiv_index const* p1=p1_list.begin();
+                                     p1!=p1_list.end();
+                                     p1++) {
+            indices_.push_back(p1->h());
+          }
+        }
+      }
 
       //! Indices in P1.
       af::shared<index<> > const&
       indices() const { return indices_; }
 
-      //! Amplitudes in P1.
-      af::shared<FloatType> const&
-      amplitudes() const { return amplitudes_; }
-
-      //! Phases in P1.
-      af::shared<FloatType> const&
-      phases() const { return phases_; }
-
-      //! Structure factors in P1.
-      af::shared<std::complex<FloatType> > const&
-      structure_factors() const { return structure_factors_; }
-
-      //! Hendrickson-Lattman coefficients in P1.
-      af::shared<hendrickson_lattman<> > const&
-      hendrickson_lattman_coefficients() const
-      {
-        return hendrickson_lattman_coefficients_;
-      }
-
     protected:
       af::shared<index<> > indices_;
-      af::shared<FloatType> amplitudes_;
-      af::shared<FloatType> phases_;
-      af::shared<std::complex<FloatType> > structure_factors_;
-      af::shared<hendrickson_lattman<> > hendrickson_lattman_coefficients_;
-
-      void
-      work(
-        sgtbx::space_group const& space_group,
-        bool anomalous_flag,
-        af::const_ref<index<> > const& indices,
-        af::const_ref<FloatType> const& amplitudes,
-        af::const_ref<FloatType> const& phases,
-        bool phase_degrees,
-        af::const_ref<std::complex<FloatType> > const& structure_factors,
-        af::const_ref<hendrickson_lattman<> > const&
-          hendrickson_lattman_coefficients);
   };
 
-  template <typename FloatType>
-  expand_to_p1<FloatType>::expand_to_p1(
-    sgtbx::space_group const& space_group,
-    bool anomalous_flag,
-    af::const_ref<index<> > const& indices)
-  {
-    work(space_group, anomalous_flag, indices,
-         af::const_ref<FloatType>(0,0),
-         af::const_ref<FloatType>(0,0), false,
-         af::const_ref<std::complex<FloatType> >(0,0),
-         af::const_ref<hendrickson_lattman<> >(0,0));
-  }
+  namespace detail {
 
-  template <typename FloatType>
-  expand_to_p1<FloatType>::expand_to_p1(
-    sgtbx::space_group const& space_group,
-    bool anomalous_flag,
-    af::const_ref<index<> > const& indices,
-    af::const_ref<FloatType> const& amplitudes)
-  {
-    work(space_group, anomalous_flag, indices,
-         amplitudes,
-         af::const_ref<FloatType>(0,0), false,
-         af::const_ref<std::complex<FloatType> >(0,0),
-         af::const_ref<hendrickson_lattman<> >(0,0));
-  }
+    struct expand_to_p1_generator
+    {
+      expand_to_p1_generator() {}
 
-  template <typename FloatType>
-  expand_to_p1<FloatType>::expand_to_p1(
-    sgtbx::space_group const& space_group,
-    bool anomalous_flag,
-    af::const_ref<index<> > const& indices,
-    af::const_ref<FloatType> const& phases, bool phase_degrees)
-  {
-    work(space_group, anomalous_flag, indices,
-         af::const_ref<FloatType>(0,0),
-         phases, phase_degrees,
-         af::const_ref<std::complex<FloatType> >(0,0),
-         af::const_ref<hendrickson_lattman<> >(0,0));
-  }
+      expand_to_p1_generator(
+        sgtbx::space_group const& space_group,
+        bool anomalous_flag,
+        af::const_ref<index<> > const& indices)
+      :
+        space_group_(&space_group),
+        indices_(indices),
+        anomalous_flag_(anomalous_flag),
+        start(true)
+      {}
 
-  template <typename FloatType>
-  expand_to_p1<FloatType>::expand_to_p1(
-    sgtbx::space_group const& space_group,
-    bool anomalous_flag,
-    af::const_ref<index<> > const& indices,
-    af::const_ref<FloatType> const& amplitudes,
-    af::const_ref<FloatType> const& phases,
-    bool phase_degrees)
-  {
-    work(space_group, anomalous_flag, indices,
-         amplitudes, phases, phase_degrees,
-         af::const_ref<std::complex<FloatType> >(0,0),
-         af::const_ref<hendrickson_lattman<> >(0,0));
-  }
-
-  template <typename FloatType>
-  expand_to_p1<FloatType>::expand_to_p1(
-    sgtbx::space_group const& space_group,
-    bool anomalous_flag,
-    af::const_ref<index<> > const& indices,
-    af::const_ref<std::complex<FloatType> > const& structure_factors)
-  {
-    work(space_group, anomalous_flag, indices,
-         af::const_ref<FloatType>(0,0),
-         af::const_ref<FloatType>(0,0), false,
-         structure_factors,
-         af::const_ref<hendrickson_lattman<> >(0,0));
-  }
-
-  template <typename FloatType>
-  expand_to_p1<FloatType>::expand_to_p1(
-    sgtbx::space_group const& space_group,
-    bool anomalous_flag,
-    af::const_ref<index<> > const& indices,
-    af::const_ref<hendrickson_lattman<> > const&
-      hendrickson_lattman_coefficients)
-  {
-    work(space_group, anomalous_flag, indices,
-         af::const_ref<FloatType>(0,0),
-         af::const_ref<FloatType>(0,0), false,
-         af::const_ref<std::complex<FloatType> >(0,0),
-         hendrickson_lattman_coefficients);
-  }
-
-  template <typename FloatType>
-  void
-  expand_to_p1<FloatType>::work(
-    sgtbx::space_group const& space_group,
-    bool anomalous_flag,
-    af::const_ref<index<> > const& indices,
-    af::const_ref<FloatType> const& amplitudes,
-    af::const_ref<FloatType> const& phases, bool phase_degrees,
-    af::const_ref<std::complex<FloatType> > const& structure_factors,
-    af::const_ref<hendrickson_lattman<> > const&
-      hendrickson_lattman_coefficients)
-  {
-    CCTBX_ASSERT(   amplitudes.size() == indices.size()
-                 || amplitudes.size() == 0);
-    CCTBX_ASSERT(   phases.size() == indices.size()
-                 || phases.size() == 0);
-    CCTBX_ASSERT(   structure_factors.size() == indices.size()
-                 || structure_factors.size() == 0);
-    CCTBX_ASSERT(   hendrickson_lattman_coefficients.size() == indices.size()
-                 || hendrickson_lattman_coefficients.size() == 0);
-    for(std::size_t i_indices=0;i_indices<indices.size();i_indices++) {
-      sym_equiv_indices eq(space_group, indices[i_indices]);
-      af::shared<sym_equiv_index> p1_list = eq.p1_listing(anomalous_flag);
-      for(sym_equiv_index const* p1=p1_list.begin();p1!=p1_list.end();p1++) {
-        indices_.push_back(p1->h());
-        if (amplitudes.size()) {
-          amplitudes_.push_back(amplitudes[i_indices]);
+      bool
+      incr()
+      {
+        if (!start) goto continue_after_return;
+        start = false;
+        for(i_index=0;i_index<indices_.size();i_index++) {
+          sym_equiv = sym_equiv_indices(*space_group_, indices_[i_index]);
+          p1_listing = sym_equiv.p1_listing(anomalous_flag_);
+          p1_listing_ref = p1_listing.const_ref();
+          for(p1_index=p1_listing_ref.begin();
+              p1_index!=p1_listing_ref.end();
+              p1_index++) {
+            return true;
+            continue_after_return:;
+          }
         }
-        if (phases.size()) {
-          phases_.push_back(
-            p1->phase_eq(phases[i_indices], phase_degrees));
-        }
-        if (structure_factors.size()) {
-          structure_factors_.push_back(
-            p1->complex_eq(structure_factors[i_indices]));
-        }
-        if (hendrickson_lattman_coefficients.size()) {
-          hendrickson_lattman_coefficients_.push_back(
-            p1->hendrickson_lattman_eq(
-              hendrickson_lattman_coefficients[i_indices]));
-        }
+        start = true;
+        return false;
+      }
+
+      const sgtbx::space_group* space_group_;
+      af::const_ref<index<> > indices_;
+      bool anomalous_flag_;
+      bool start;
+      std::size_t i_index;
+      sym_equiv_indices sym_equiv;
+      af::shared<sym_equiv_index> p1_listing;
+      af::const_ref<sym_equiv_index> p1_listing_ref;
+      sym_equiv_index const* p1_index;
+    };
+
+  } // namespace detail
+
+  //! Expands an array of Miller indices to P1 symmetry.
+  /*! The symmetry operations are applied to each element
+      of the input array.
+      <p>
+      If anomalous_flag == false, centric indices are treated in a
+      special way: Friedel mates are suppressed. If N is the
+      number of unique symmetrically equivalent indices for
+      a given centric index, only N/2 indices will be generated.
+      <p>
+      See also: sym_equiv_indices
+   */
+  struct expand_to_p1_indices
+  {
+    expand_to_p1_indices() {}
+
+    expand_to_p1_indices(
+      sgtbx::space_group const& space_group,
+      bool anomalous_flag,
+      af::const_ref<index<> > const& indices_)
+    {
+      detail::expand_to_p1_generator generator(
+        space_group, anomalous_flag, indices_);
+      while (generator.incr()) {
+        indices.push_back(generator.p1_index->h());
       }
     }
-  }
+
+    af::shared<index<> > indices;
+  };
+
+  /*! \brief Expands an array of Miller indices and associated
+      scalar data (e.g. bool, int, double) to P1 symmetry.
+   */
+  /*! See also: expand_to_p1_indices
+   */
+  template <typename ScalarType>
+  struct expand_to_p1_scalar
+  {
+    expand_to_p1_scalar() {}
+
+    expand_to_p1_scalar(
+      sgtbx::space_group const& space_group,
+      bool anomalous_flag,
+      af::const_ref<index<> > const& indices_,
+      af::const_ref<ScalarType> const& data_)
+    {
+      CCTBX_ASSERT(data_.size() == indices_.size());
+      detail::expand_to_p1_generator generator(
+        space_group, anomalous_flag, indices_);
+      while (generator.incr()) {
+        indices.push_back(generator.p1_index->h());
+        data.push_back(data_[generator.i_index]);
+      }
+    }
+
+    af::shared<index<> > indices;
+    af::shared<ScalarType> data;
+  };
+
+  /*! \brief Expands an array of Miller indices and associated
+      complex data to P1 symmetry.
+   */
+  /*! See also: expand_to_p1_indices
+   */
+  template <typename FloatType>
+  struct expand_to_p1_complex
+  {
+    expand_to_p1_complex() {}
+
+    expand_to_p1_complex(
+      sgtbx::space_group const& space_group,
+      bool anomalous_flag,
+      af::const_ref<index<> > const& indices_,
+      af::const_ref<std::complex<FloatType> > const& data_)
+    {
+      CCTBX_ASSERT(data_.size() == indices_.size());
+      detail::expand_to_p1_generator generator(
+        space_group, anomalous_flag, indices_);
+      while (generator.incr()) {
+        indices.push_back(generator.p1_index->h());
+        data.push_back(generator.p1_index->complex_eq(
+          data_[generator.i_index]));
+      }
+    }
+
+    af::shared<index<> > indices;
+    af::shared<std::complex<FloatType> > data;
+  };
+
+  /*! \brief Expands an array of Miller indices and associated
+      Hendrickson-Lattman coefficients to P1 symmetry.
+   */
+  /*! See also: expand_to_p1_indices
+   */
+  template <typename FloatType>
+  struct expand_to_p1_hendrickson_lattman
+  {
+    expand_to_p1_hendrickson_lattman() {}
+
+    expand_to_p1_hendrickson_lattman(
+      sgtbx::space_group const& space_group,
+      bool anomalous_flag,
+      af::const_ref<index<> > const& indices_,
+      af::const_ref<hendrickson_lattman<FloatType> > const& data_)
+    {
+      CCTBX_ASSERT(data_.size() == indices_.size());
+      detail::expand_to_p1_generator generator(
+        space_group, anomalous_flag, indices_);
+      while (generator.incr()) {
+        indices.push_back(generator.p1_index->h());
+        data.push_back(generator.p1_index->hendrickson_lattman_eq(
+          data_[generator.i_index]));
+      }
+    }
+
+    af::shared<index<> > indices;
+    af::shared<hendrickson_lattman<FloatType> > data;
+  };
+
+  /*! \brief Expands an array of Miller indices and associated
+      observations (data, sigmas) to P1 symmetry.
+   */
+  /*! See also: expand_to_p1_indices
+   */
+  template <typename FloatType>
+  struct expand_to_p1_obs
+  {
+    expand_to_p1_obs() {}
+
+    expand_to_p1_obs(
+      sgtbx::space_group const& space_group,
+      bool anomalous_flag,
+      af::const_ref<index<> > const& indices_,
+      af::const_ref<FloatType> const& data_,
+      af::const_ref<FloatType> const& sigmas_)
+    {
+      CCTBX_ASSERT(data_.size() == indices_.size());
+      CCTBX_ASSERT(sigmas_.size() == indices_.size());
+      detail::expand_to_p1_generator generator(
+        space_group, anomalous_flag, indices_);
+      while (generator.incr()) {
+        indices.push_back(generator.p1_index->h());
+        data.push_back(data_[generator.i_index]);
+        sigmas.push_back(sigmas_[generator.i_index]);
+      }
+    }
+
+    af::shared<index<> > indices;
+    af::shared<FloatType> data;
+    af::shared<FloatType> sigmas;
+  };
+
+  /*! \brief Expands an array of Miller indices and associated
+      phases to P1 symmetry.
+   */
+  /*! See also: expand_to_p1_indices
+   */
+  template <typename FloatType>
+  struct expand_to_p1_phases
+  {
+    expand_to_p1_phases() {}
+
+    expand_to_p1_phases(
+      sgtbx::space_group const& space_group,
+      bool anomalous_flag,
+      af::const_ref<index<> > const& indices_,
+      af::const_ref<FloatType> const& data_,
+      bool deg)
+    {
+      CCTBX_ASSERT(data_.size() == indices_.size());
+      detail::expand_to_p1_generator generator(
+        space_group, anomalous_flag, indices_);
+      while (generator.incr()) {
+        indices.push_back(generator.p1_index->h());
+        data.push_back(generator.p1_index->phase_eq(
+          data_[generator.i_index], deg));
+      }
+    }
+
+    af::shared<index<> > indices;
+    af::shared<FloatType> data;
+  };
 
 }} // namespace cctbx::miller
 

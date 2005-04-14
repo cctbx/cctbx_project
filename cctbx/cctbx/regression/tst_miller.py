@@ -101,6 +101,17 @@ Completeness with d_max=infinity: 1
 """ % str(False)
   c = mc.change_basis(cb_op="k,h,-l")
   assert c.unit_cell().is_similar_to(uctbx.unit_cell((4,3,5,90,90,90)))
+  #
+  s = mc.customized_copy(space_group_info=sgtbx.space_group_info(number=19))
+  assert s.sys_absent_flags().data().all_eq(flex.bool([
+    True, False, True, False, True, False, False, False, False,
+    False, False, False, False, True, False, True, False, False,
+    False, False, False, False, False, False, False, False, False,
+    False, False, False, False, False, False, False, False, False]))
+  assert s.sys_absent_flags(integral_only=True).data().all_eq(False)
+  r = s.reflection_intensity_symmetry()
+  assert str(r.space_group_info()) == "P m m m"
+  assert r.sys_absent_flags().data().all_eq(False)
 
 def exercise_generate_r_free_flags():
   for anomalous_flag in [False, True]:
@@ -301,6 +312,9 @@ def exercise_array():
     source="file", labels=["a", "b", "c"], merged=True))
   assert str(ma.info()) == "file:a,b,c,merged"
   assert ma.info().label_string() == "a,b,c,merged"
+  ma.set_info(ma.info().customized_copy(systematic_absences_eliminated=True))
+  assert ma.info().label_string() \
+      == "a,b,c,merged,systematic_absences_eliminated"
   ma.set_info("Test")
   assert ma.info() == "Test"
   ma.set_observation_type_xray_amplitude()
@@ -348,6 +362,26 @@ def exercise_array():
 %^       Ratio: 0.707107
 
 """)
+  aa = aa.customized_copy(data=flex.complex_double([1+1j,2-2j]))
+  s = StringIO()
+  aa.eliminate_sys_absent(log=s, prefix="%^")
+  assert not show_diff(s.getvalue(), """\
+%^Removing 1 systematic absence:
+%^  Average absolute value of:
+%^    Absences: 1.41421
+%^      Others: 2.82843
+%^       Ratio: 0.5
+
+""")
+  aa = aa.customized_copy(data=flex.int([3,7]), anomalous_flag=True) \
+    .expand_to_p1().customized_copy(crystal_symmetry=aa)
+  s = StringIO()
+  aa.eliminate_sys_absent(log=s, prefix="%^")
+  assert not show_diff(s.getvalue(), """\
+%^Removing 4 systematic absences.
+
+""")
+  #
   asu = ma.map_to_asu()
   assert tuple(asu.indices()) == ((1,2,3), (0,0,4))
   mi = flex.miller_index(((1,2,3), (-1,-2,-3), (2,3,4), (-2,-3,-4), (3,4,5)))
@@ -355,6 +389,9 @@ def exercise_array():
   sigmas = flex.double((0.1,0.2,0.3,0.4,0.5))
   ms = miller.set(xs, mi, anomalous_flag=True)
   ma = miller.array(ms, data, sigmas)
+  assert ma.set().__class__.__name__ == "set"
+  assert ma.set().space_group_info() is ma.space_group_info()
+  assert ma.set().indices() is ma.indices()
   assert ma.discard_sigmas().sigmas() is None
   ad = ma.anomalous_differences()
   assert tuple(ad.indices()) == ((1,2,3), (2,3,4))
@@ -393,6 +430,8 @@ def exercise_array():
     assert approx_equal(tuple(sa.data()), (1,3))
     assert approx_equal(tuple(sa.sigmas()), (0.1,0.4))
   ms = miller.build_set(xs, anomalous_flag=False, d_min=1)
+  assert ms.is_unique_set_under_symmetry()
+  assert ms.unique_under_symmetry() is ms
   ma = miller.array(ms)
   sa = ma.resolution_filter()
   assert ma.indices().size() == sa.indices().size()
@@ -594,6 +633,15 @@ unused: 1.0000 -        [ 0/0 ]  0 0.0000
   assert p1.indices().size() == 3
   assert approx_equal(tuple(p1.data()), (3,4,4))
   assert approx_equal(tuple(p1.sigmas()), (5,6,6))
+  sg = sg.customized_copy(data=flex.bool([False, True]), sigmas=None)
+  p1 = sg.expand_to_p1()
+  assert p1.indices().size() == 3
+  assert p1.data().all_eq(flex.bool([False, True, True]))
+  sg = sg.customized_copy(data=flex.int([3, 5]))
+  p1 = sg.expand_to_p1()
+  assert p1.indices().size() == 3
+  assert p1.data().all_eq(flex.int([3, 5, 5]))
+  #
   xs = crystal.symmetry((3,4,5), "P 2 2 2")
   mi = flex.miller_index(((1,-2,3), (0,0,-4)))
   data = flex.double((1,2))
@@ -676,11 +724,13 @@ unused:  3.0759 -         [ 0/0 ]
   ml.show_summary(f=sl).show_array(f=sl)
   assert sa.getvalue() == sl.getvalue()
   #
-  for i_trial in [0,1]:
+  for i_trial in [0,1,2]:
     if (i_trial == 0):
       d = flex.random_double(size=ma.indices().size())
-    else:
+    elif (i_trial == 1):
       d = d < 0.5
+    else:
+      d = flex.int(list(flex.random_size_t(size=ma.indices().size()) % 100))
     b = ma.customized_copy(
       indices=ma.indices().concatenate(ma.indices()),
       data=d.concatenate(d))
@@ -736,6 +786,12 @@ def exercise_array_2(space_group_info):
         r = m.redundancies().data().select(p)
         sr = s * flex.sqrt(r.as_double())
         assert approx_equal(sr, sigmas)
+      #
+      us = ps.select(flex.random_permutation(size=ps.indices().size())) \
+        .unique_under_symmetry()
+      assert us.indices().size() == m.array().indices().size()
+      assert us.map_to_asu().common_set(m.array()).indices().size() \
+          == m.array().indices().size()
       #
       orig = m.array()
       if (not orig.anomalous_flag()):
