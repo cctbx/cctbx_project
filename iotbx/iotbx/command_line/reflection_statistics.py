@@ -1,6 +1,7 @@
 from iotbx import reflection_file_reader
 from iotbx.option_parser import iotbx_option_parser
 from cctbx import maptbx
+from cctbx import miller
 from cctbx import crystal
 from cctbx import sgtbx
 import cctbx.sgtbx.lattice_symmetry
@@ -26,15 +27,17 @@ class array_cache:
 
   def __init__(self, input, n_bins, lattice_symmetry_max_delta):
     self.input = input.eliminate_sys_absent(integral_only=True, log=sys.stdout)
-    self.input.set_info(input.info())
     if (not self.input.is_unique_set_under_symmetry()):
       print "Merging symmetry-equivalent reflections:"
       merged = self.input.merge_equivalents()
       merged.show_summary(prefix="  ")
       print
-      self.input = merged.array().set_info(
-        input.info().customized_copy(merged=True))
+      self.input = merged.array()
       del merged
+      if (input.info() is not None):
+        self.input.set_info(input.info().customized_copy(merged=True))
+      else:
+        self.input.set_info(miller.array_info(merged=True))
     self.input.show_comprehensive_summary()
     print
     self.input.setup_binner(n_bins=n_bins)
