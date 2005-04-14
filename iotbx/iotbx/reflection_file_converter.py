@@ -5,6 +5,7 @@ import iotbx.shelx.hklf
 from iotbx import reflection_file_reader
 from iotbx import reflection_file_utils
 from iotbx.option_parser import iotbx_option_parser
+from scitbx.python_utils.misc import plural_s
 
 def run(args, simply_return_all_miller_arrays=False):
   command_line = (iotbx_option_parser(
@@ -84,6 +85,12 @@ def run(args, simply_return_all_miller_arrays=False):
     verbose=1)
   if (simply_return_all_miller_arrays):
     return all_miller_arrays
+  if (len(all_miller_arrays) == 0):
+    print
+    print "No reflection data found in input file%s." % (
+      plural_s(len(command_line.args))[1])
+    print
+    return None
   label_table = reflection_file_utils.label_table(
     miller_arrays=all_miller_arrays)
   if (len(all_miller_arrays) == 1):
