@@ -288,6 +288,12 @@ namespace cctbx { namespace miller {
     bool anomalous_flag,
     af::const_ref<index<> > const& miller_indices);
 
+  af::shared<std::size_t>
+  unique_under_symmetry_selection(
+    sgtbx::space_group_type const& space_group_type,
+    bool anomalous_flag,
+    af::const_ref<index<> > const& miller_indices);
+
 }} // namespace cctbx::miller
 
 #endif // CCTBX_MILLER_ASU_H

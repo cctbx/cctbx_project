@@ -92,6 +92,10 @@ namespace {
       arg_("space_group_type"),
       arg_("anomalous_flag"),
       arg_("miller_indices")));
+    def("unique_under_symmetry_selection", unique_under_symmetry_selection, (
+      arg_("space_group_type"),
+      arg_("anomalous_flag"),
+      arg_("miller_indices")));
   }
 
 }}} // namespace cctbx::miller::boost_python

@@ -68,18 +68,19 @@ namespace {
     }
   };
 
-  struct merge_equivalents_bool_wrappers
+  template <typename IntegralType>
+  struct merge_equivalents_exact_wrappers
   {
-    typedef merge_equivalents_bool w_t;
+    typedef merge_equivalents_exact<IntegralType> w_t;
 
     static void
-    wrap()
+    wrap(const char* python_name)
     {
       using namespace boost::python;
       typedef return_value_policy<return_by_value> rbv;
-      class_<w_t>("merge_equivalents_bool", no_init)
+      class_<w_t>(python_name, no_init)
         .def(init<af::const_ref<index<> > const&,
-                  af::const_ref<bool> const&>())
+                  af::const_ref<IntegralType> const&>())
         .add_property("indices", make_getter(&w_t::indices, rbv()))
         .add_property("data", make_getter(&w_t::data, rbv()))
         .add_property("redundancies", make_getter(&w_t::redundancies, rbv()))
@@ -117,7 +118,10 @@ namespace {
     merge_equivalents_real_wrappers::wrap();
     merge_equivalents_complex_wrappers::wrap();
     merge_equivalents_hl_wrappers::wrap();
-    merge_equivalents_bool_wrappers::wrap();
+    merge_equivalents_exact_wrappers<bool>::wrap(
+      "merge_equivalents_exact_bool");
+    merge_equivalents_exact_wrappers<int>::wrap(
+      "merge_equivalents_exact_int");
     merge_equivalents_obs_wrappers::wrap();
   }
 
