@@ -27,6 +27,18 @@ def run(args, simply_return_all_miller_arrays=False):
       dest="label",
       help="Substring of reflection data label or number",
       metavar="STRING")
+    .option(None, "--write_mtz_amplitudes",
+      action="store_true",
+      default=False,
+      dest="write_mtz_amplitudes",
+      help="Converts intensities to amplitudes before writing MTZ format;"
+           " requires --mtz_root_label")
+    .option(None, "--write_mtz_intensities",
+      action="store_true",
+      default=False,
+      dest="write_mtz_intensities",
+      help="Converts amplitudes to intensities before writing MTZ format;"
+           " requires --mtz_root_label")
     .option(None, "--scale_max",
       action="store",
       type="float",
@@ -71,6 +83,21 @@ def run(args, simply_return_all_miller_arrays=False):
       help="write data to SHELX FILE ('--shelx .' copies name of input file)",
       metavar="FILE")
   ).process(args=args)
+  if (    command_line.options.write_mtz_amplitudes
+      and command_line.options.write_mtz_intensities):
+    print
+    print "--write_mtz_amplitudes and --write_mtz_intensities" \
+          " are mutually exclusive."
+    print
+    return None
+  if (   command_line.options.write_mtz_amplitudes
+      or command_line.options.write_mtz_intensities):
+    if (command_line.options.mtz_root_label is None):
+      print
+      print "--write_mtz_amplitudes and --write_mtz_intensities" \
+            " require --mtz_root_label."
+      print
+      return None
   if (    command_line.options.scale_max is not None
       and command_line.options.scale_factor is not None):
     print
@@ -177,11 +204,21 @@ def run(args, simply_return_all_miller_arrays=False):
       file_type_label="MTZ",
       file_extension="mtz")
     print "Writing MTZ file:", file_name
+    output_array = selected_array
+    if (command_line.options.write_mtz_amplitudes):
+      if (not output_array.is_xray_amplitude_array()):
+        print "  Converting intensities to amplitudes."
+        output_array = output_array.f_sq_as_f()
+    elif (command_line.options.write_mtz_intensities):
+      if (not output_array.is_xray_intensity_array()):
+        print "  Converting amplitudes to intensities."
+        output_array = output_array.f_as_f_sq()
     column_root_label = command_line.options.mtz_root_label
     if (column_root_label is None):
       column_root_label = file_name[:min(24,len(file_name)-4)]
-    mtz_object = selected_array.as_mtz_dataset(
+    mtz_object = output_array.as_mtz_dataset(
       column_root_label=column_root_label).mtz_object()
+    del output_array
     mtz_history_buffer = flex.std_string()
     mtz_history_buffer.append(date_and_time())
     mtz_history_buffer.append("> program: iotbx.reflection_file_converter")
