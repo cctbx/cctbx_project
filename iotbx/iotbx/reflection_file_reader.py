@@ -190,11 +190,14 @@ class any_reflection_file:
           "  SCALA MTZ, XDS, or d*TREK files." % self._file_name)
     return result
 
-def collect_arrays(file_names,
-                   crystal_symmetry, force_symmetry,
-                   discard_arrays=False,
-                   verbose=2,
-                   report_out=None):
+def collect_arrays(
+      file_names,
+      crystal_symmetry,
+      force_symmetry,
+      merge_equivalents=True,
+      discard_arrays=False,
+      verbose=2,
+      report_out=None):
   if (report_out is None):
     report_out = sys.stdout
   if (discard_arrays):
@@ -212,7 +215,8 @@ def collect_arrays(file_names,
       print >> report_out
     miller_arrays = reflection_file.as_miller_arrays(
       crystal_symmetry=crystal_symmetry,
-      force_symmetry=force_symmetry)
+      force_symmetry=force_symmetry,
+      merge_equivalents=merge_equivalents)
     for miller_array in miller_arrays:
       if (verbose > 0):
         if (verbose > 1):

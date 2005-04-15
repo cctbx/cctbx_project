@@ -5,7 +5,10 @@ import iotbx.shelx.hklf
 from iotbx import reflection_file_reader
 from iotbx import reflection_file_utils
 from iotbx.option_parser import iotbx_option_parser
+from cctbx.array_family import flex
 from scitbx.python_utils.misc import plural_s
+from libtbx.utils import date_and_time
+import os
 
 def run(args, simply_return_all_miller_arrays=False):
   command_line = (iotbx_option_parser(
@@ -81,6 +84,7 @@ def run(args, simply_return_all_miller_arrays=False):
     file_names=command_line.args,
     crystal_symmetry=command_line.symmetry,
     force_symmetry=not command_line.options.weak_symmetry,
+    merge_equivalents=False,
     discard_arrays=False,
     verbose=1)
   if (simply_return_all_miller_arrays):
@@ -124,6 +128,13 @@ def run(args, simply_return_all_miller_arrays=False):
   print "  Observation type:", selected_array.observation_type()
   print
   selected_array_info = selected_array.info()
+  if (not selected_array.is_unique_set_under_symmetry()):
+    print "Merging symmetry-equivalent values:"
+    merged = selected_array.merge_equivalents()
+    merged.show_summary(prefix="  ")
+    print
+    selected_array = merged.array()
+    del merged
   d_max = command_line.options.low_resolution
   d_min = command_line.options.resolution
   if (d_max is not None or d_min is not None):
@@ -169,8 +180,17 @@ def run(args, simply_return_all_miller_arrays=False):
     column_root_label = command_line.options.mtz_root_label
     if (column_root_label is None):
       column_root_label = file_name[:min(24,len(file_name)-4)]
-    selected_array.as_mtz_dataset(column_root_label=column_root_label) \
-      .mtz_object().write(file_name=file_name)
+    mtz_object = selected_array.as_mtz_dataset(
+      column_root_label=column_root_label).mtz_object()
+    mtz_history_buffer = flex.std_string()
+    mtz_history_buffer.append(date_and_time())
+    mtz_history_buffer.append("> program: iotbx.reflection_file_converter")
+    mtz_history_buffer.append("> file name: %s" %
+      os.path.basename(file_name))
+    mtz_history_buffer.append("> directory: %s" %
+      os.path.dirname(os.path.abspath(file_name)))
+    mtz_object.add_history(mtz_history_buffer)
+    mtz_object.write(file_name=file_name)
     n_output_files += 1
     print
   if (command_line.options.cns is not None):
