@@ -669,11 +669,11 @@ class set(crystal.symmetry):
     assert self.space_group_info() is not None
     assert self.indices() is not None
     assert self.anomalous_flag() is not None
-    p1 = expand_to_p1_indices(
+    p1_indices = expand_to_p1_indices(
       space_group=self.space_group(),
       anomalous_flag=self.anomalous_flag(),
       indices=self.indices())
-    return set(self.cell_equivalent_p1(), p1.indices, self.anomalous_flag())
+    return set(self.cell_equivalent_p1(), p1_indices, self.anomalous_flag())
 
   def patterson_symmetry(self):
     assert self.anomalous_flag() == False
