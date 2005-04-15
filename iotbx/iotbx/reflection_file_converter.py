@@ -27,6 +27,11 @@ def run(args, simply_return_all_miller_arrays=False):
       dest="label",
       help="Substring of reflection data label or number",
       metavar="STRING")
+    .option(None, "--non_anomalous",
+      action="store_true",
+      default=False,
+      dest="non_anomalous",
+      help="Averages Bijvoet mates to obtain a non-anomalous array")
     .option(None, "--write_mtz_amplitudes",
       action="store_true",
       default=False,
@@ -162,6 +167,14 @@ def run(args, simply_return_all_miller_arrays=False):
     print
     selected_array = merged.array()
     del merged
+  if (selected_array.anomalous_flag()
+      and command_line.options.non_anomalous):
+    if (not selected_array.is_xray_intensity_array()):
+      selected_array = selected_array.average_bijvoet_mates()
+    else:
+      selected_array = selected_array.f_sq_as_f()
+      selected_array = selected_array.average_bijvoet_mates()
+      selected_array = selected_array.f_as_f_sq()
   d_max = command_line.options.low_resolution
   d_min = command_line.options.resolution
   if (d_max is not None or d_min is not None):
