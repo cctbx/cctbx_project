@@ -1,6 +1,7 @@
 #include <cctbx/boost_python/flex_fwd.h>
 
 #include <cctbx/miller/expand_to_p1.h>
+#include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
 #include <boost/python/return_value_policy.hpp>
@@ -9,28 +10,6 @@
 namespace cctbx { namespace miller { namespace boost_python {
 
 namespace {
-
-  struct expand_to_p1_indices_wrappers
-  {
-    typedef expand_to_p1_indices w_t;
-
-    static void
-    wrap()
-    {
-      using namespace boost::python;
-      typedef return_value_policy<return_by_value> rbv;
-      class_<w_t>("expand_to_p1_indices", no_init)
-        .def(init<
-          sgtbx::space_group const&,
-          bool,
-          af::const_ref<index<> > const&>((
-            arg_("space_group"),
-            arg_("anomalous_flag"),
-            arg_("indices"))))
-        .add_property("indices", make_getter(&w_t::indices, rbv()))
-      ;
-    }
-  };
 
   template <typename ComplexType, typename WrappedType>
   struct expand_to_p1_generic_wrappers
@@ -119,7 +98,11 @@ namespace {
 
   void wrap_expand_to_p1()
   {
-    expand_to_p1_indices_wrappers::wrap();
+    using namespace boost::python;
+    def("expand_to_p1_indices", expand_to_p1_indices, (
+      arg_("space_group"),
+      arg_("anomalous_flag"),
+      arg_("indices")));
     expand_to_p1_generic_wrappers<
       bool,
       expand_to_p1_scalar<bool> >::wrap(

@@ -278,13 +278,13 @@ def exercise_expand():
   sg = sgtbx.space_group("P 41 (1,-1,0)")
   h = flex.miller_index(((3,1,-2), (1,-2,0)))
   assert tuple(sg.is_centric(h)) == (0, 1)
-  p1 = miller.expand_to_p1_indices(
+  p1_indices = miller.expand_to_p1_indices(
     space_group=sg, anomalous_flag=False, indices=h)
   p1_i0 = ((-3,-1,2), (-1, 3,2),(3,1,2),(1,-3,2),(1,-2, 0),(2,1,0))
-  assert tuple(p1.indices) == p1_i0
-  p1 = miller.expand_to_p1_indices(
+  assert tuple(p1_indices) == p1_i0
+  p1_indices = miller.expand_to_p1_indices(
     space_group=sg, anomalous_flag=True, indices=h)
-  assert tuple(p1.indices) \
+  assert tuple(p1_indices) \
       == ((3,1,-2), (1,-3,-2), (-3,-1,-2), (-1,3,-2),
           (1,-2,0), (-2,-1,0), (-1,2,0), (2,1,0))
   a = flex.double((1,2))

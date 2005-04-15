@@ -113,24 +113,21 @@ namespace cctbx { namespace miller {
       <p>
       See also: sym_equiv_indices
    */
-  struct expand_to_p1_indices
+  inline
+  af::shared<index<> >
+  expand_to_p1_indices(
+    sgtbx::space_group const& space_group,
+    bool anomalous_flag,
+    af::const_ref<index<> > const& indices)
   {
-    expand_to_p1_indices() {}
-
-    expand_to_p1_indices(
-      sgtbx::space_group const& space_group,
-      bool anomalous_flag,
-      af::const_ref<index<> > const& indices_)
-    {
-      detail::expand_to_p1_generator generator(
-        space_group, anomalous_flag, indices_);
-      while (generator.incr()) {
-        indices.push_back(generator.p1_index->h());
-      }
+    af::shared<index<> > result;
+    detail::expand_to_p1_generator generator(
+      space_group, anomalous_flag, indices);
+    while (generator.incr()) {
+      result.push_back(generator.p1_index->h());
     }
-
-    af::shared<index<> > indices;
-  };
+    return result;
+  }
 
   /*! \brief Expands an array of Miller indices and associated
       scalar data (e.g. bool, int, double) to P1 symmetry.
