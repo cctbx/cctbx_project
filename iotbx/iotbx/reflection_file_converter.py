@@ -217,27 +217,35 @@ def run(args, simply_return_all_miller_arrays=False):
       file_type_label="MTZ",
       file_extension="mtz")
     print "Writing MTZ file:", file_name
+    mtz_history_buffer = flex.std_string()
+    mtz_history_buffer.append(date_and_time())
+    mtz_history_buffer.append("> program: iotbx.reflection_file_converter")
+    mtz_history_buffer.append("> input file name: %s" %
+      os.path.basename(selected_array_info.source))
+    mtz_history_buffer.append("> input directory: %s" %
+      os.path.dirname(os.path.abspath(selected_array_info.source)))
+    mtz_history_buffer.append("> input labels: %s" %
+      selected_array_info.label_string())
     output_array = selected_array
     if (command_line.options.write_mtz_amplitudes):
       if (not output_array.is_xray_amplitude_array()):
         print "  Converting intensities to amplitudes."
         output_array = output_array.f_sq_as_f()
+        mtz_history_buffer.append("> Intensities converted to amplitudes.")
     elif (command_line.options.write_mtz_intensities):
       if (not output_array.is_xray_intensity_array()):
         print "  Converting amplitudes to intensities."
         output_array = output_array.f_as_f_sq()
+        mtz_history_buffer.append("> Amplitudes converted to intensities.")
     column_root_label = command_line.options.mtz_root_label
     if (column_root_label is None):
       column_root_label = file_name[:min(24,len(file_name)-4)]
     mtz_object = output_array.as_mtz_dataset(
       column_root_label=column_root_label).mtz_object()
     del output_array
-    mtz_history_buffer = flex.std_string()
-    mtz_history_buffer.append(date_and_time())
-    mtz_history_buffer.append("> program: iotbx.reflection_file_converter")
-    mtz_history_buffer.append("> file name: %s" %
+    mtz_history_buffer.append("> output file name: %s" %
       os.path.basename(file_name))
-    mtz_history_buffer.append("> directory: %s" %
+    mtz_history_buffer.append("> output directory: %s" %
       os.path.dirname(os.path.abspath(file_name)))
     mtz_object.add_history(mtz_history_buffer)
     mtz_object.write(file_name=file_name)
