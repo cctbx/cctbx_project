@@ -22,6 +22,7 @@ namespace boost_python {
   void wrap_minimum_covering_sphere();
   void wrap_principal_axes_of_inertia();
   void wrap_row_echelon();
+  void wrap_tensor_rank_2();
   void wrap_icosahedron();
 
 namespace {
@@ -130,6 +131,7 @@ namespace {
     wrap_minimum_covering_sphere();
     wrap_principal_axes_of_inertia();
     wrap_row_echelon();
+    wrap_tensor_rank_2();
     wrap_icosahedron();
 
     def("time_eigensystem_real_symmetric", time_eigensystem_real_symmetric);

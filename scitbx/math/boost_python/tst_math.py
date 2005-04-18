@@ -914,6 +914,30 @@ def exercise_row_echelon():
         zeros = mm * matrix.col(sol)
         assert approx_equal(zeros, [0]*rank)
 
+def exercise_tensor_rank_2():
+  g = (2,3,5,0.2,0.3,0.5)
+  assert approx_equal(scitbx.math.tensor_rank_2_gradient_transform(
+    a=(1,0,0,0,1,0,0,0,1), g=g), g)
+  a = (-0.00266542,0.386546, 0.22833,
+        0.263694, -0.660647, 0.896465,
+        0.888726, -0.996946,-0.521507)
+  assert approx_equal(matrix.sqr(a).determinant(), 0.431857368657)
+  assert approx_equal(scitbx.math.tensor_rank_2_gradient_transform(a=a, g=g),
+    [4.2741119386687805, 6.7403365850628001, 3.6465242980395001,
+     -10.209907479357136, -2.8163934767020788, 1.6344744599549008])
+  c = scitbx.math.tensor_rank_2_gradient_average_cache_int()
+  assert c.average(g=g, denominator=1) == (0,)*6
+  rs = [(1, 0, 0, 0, 1, 0, 0, 0, 1),
+        (0, -1, 0, 1, -1, 0, 0, 0, 1),
+        (-1, 1, 0, -1, 0, 0, 0, 0, 1)]
+  for r in rs:
+    c.accumulate(r)
+  g_ave = matrix.row([0]*6)
+  for r in rs:
+    g_ave += matrix.row(scitbx.math.tensor_rank_2_gradient_transform(a=r, g=g))
+  g_ave /= 3
+  assert approx_equal(c.average(g=g, denominator=3), g_ave)
+
 def exercise_minimum_covering_sphere(epsilon=1.e-3):
   s3 = sphere_3d(center=[1,2,3], radius=4)
   assert approx_equal(s3.center(), [1,2,3])
@@ -1142,6 +1166,7 @@ def run():
   exercise_principal_axes_of_inertia()
   exercise_phase_error()
   exercise_row_echelon()
+  exercise_tensor_rank_2()
   exercise_icosahedron()
   exercise_basic_statistics()
   forever = "--Forever" in sys.argv[1:]

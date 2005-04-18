@@ -41,9 +41,11 @@ class _space_group(boost.python.injector, ext.space_group):
     scitbx.math.row_echelon_form(result)
     return result
 
-  def adp_constraints(self):
+  def adp_constraints(self, initialize_gradient_handling=False):
     from cctbx import adptbx
-    return adptbx.constraints(space_group=self)
+    return adptbx.constraints(
+      space_group=self,
+      initialize_gradient_handling=initialize_gradient_handling)
 
 class space_group_info:
 
