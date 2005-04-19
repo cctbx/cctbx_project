@@ -21,10 +21,11 @@ class constraints:
   def __init__(self, space_group, initialize_gradient_handling=False):
     self.row_echelon_form = space_group.tensor_constraints(
       reciprocal_space=True)
-    self.independent_flags = flex.bool(6, True)
+    independent_flags = flex.bool(6, True)
     scitbx.math.row_echelon_back_substitution_int(
       row_echelon_form=self.row_echelon_form,
-      independent_flags=self.independent_flags)
+      independent_flags=independent_flags)
+    self.independent_indices = independent_flags.iselection()
     if (not initialize_gradient_handling):
       self.gradient_average_denominator = 0
     else:
@@ -36,7 +37,7 @@ class constraints:
         assert r.den() == 1
         self.gradient_average_cache.accumulate(a=r.num())
       self.gradient_sum_coeffs = []
-      for indep_index in self.independent_flags.iselection():
+      for indep_index in self.independent_indices:
         coeffs = flex.double(6, 0)
         coeffs[indep_index] = 1
         scitbx.math.row_echelon_back_substitution_float(
@@ -45,17 +46,17 @@ class constraints:
         self.gradient_sum_coeffs.append(coeffs)
 
   def n_independent_params(self):
-    return self.independent_flags.count(True)
+    return self.independent_indices.size()
 
   def n_dependent_params(self):
-    return self.independent_flags.count(False)
+    return 6-self.independent_indices.size()
 
   def independent_params(self, u_star):
-    return flex.double(u_star).select(self.independent_flags)
+    return flex.double(u_star).select(self.independent_indices)
 
   def all_params(self, independent_params):
     result = flex.double(6, 0)
-    result.set_selected(self.independent_flags, independent_params)
+    result.set_selected(self.independent_indices, independent_params)
     scitbx.math.row_echelon_back_substitution_float(
       row_echelon_form=self.row_echelon_form,
       solution=result)
