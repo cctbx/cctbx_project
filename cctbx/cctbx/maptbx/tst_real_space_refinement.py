@@ -7,6 +7,7 @@ from cctbx.maptbx.real_space_refinement import lbfgs
 from cctbx import uctbx
 from scitbx.python_utils.math_utils import ifloor, iceil
 from libtbx.test_utils import approx_equal
+import math
 
 def exercise_real_space_refinement():
   crystal_symmetry = crystal.symmetry(
@@ -34,17 +35,31 @@ def exercise_real_space_refinement():
   #
   grid_cell=uctbx.unit_cell((10.0/30,10.0/30,10.0/30,90,90,90))
   grid_mat = grid_cell.fractionalization_matrix()
+  delta_h = .005
   for i_trial in xrange(100):
     sites_cart = flex.vec3_double((flex.random_double(size=3)-0.5)*1)
-    ref = lbfgs(
-      data=data,
-      grid_mat=grid_mat,
-      sites_cart=sites_cart.deep_copy())
+    tmp_sites_cart = sites_cart.deep_copy()
+    for i in xrange(3):
+      ref = lbfgs(
+        data=data,
+        grid_mat=grid_mat,
+        sites_cart=tmp_sites_cart,
+        delta_h=delta_h)
+      temp = flex.double(ref.sites_cart[0])-flex.double((0,0,0))
+      temp = math.sqrt(temp.dot(temp))
+      if temp <= 2*delta_h:
+        break
+      print "recycling:", ref.sites_cart[0]
+      tmp_sites_cart = ref.sites_cart
     for site,sitec in zip(ref.sites_cart,xray_structure.sites_cart()):
+      print i_trial
       print sitec
       print sites_cart[0]
       print site
-      assert approx_equal(site,sitec)
+      temp = flex.double(site)-flex.double(sitec)
+      temp = math.sqrt(temp.dot(temp))
+      print temp, delta_h
+      assert temp <= delta_h*2
       print
 
 if (__name__ == "__main__"):

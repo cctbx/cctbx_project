@@ -268,9 +268,11 @@ def exercise_real_space_refinement():
   sites_cart = flex.vec3_double()
   sites_cart.append((0.468661,-1.549268,3.352108))
   sites_cart.append((0.624992,1.553980,1.205578))
+  weights=flex.double(sites_cart.size(),1.0)
   assert approx_equal(maptbx.real_space_refinement_residual(map=map,
                                       gridding_matrix=grid_mat,
-                                      sites_cart=sites_cart),
+                                      sites_cart=sites_cart,
+                                      weights=weights),
                       0.260325417539)
   sites_cart = flex.vec3_double()
   sites_cart.append((0.5,0.5,0.5))
