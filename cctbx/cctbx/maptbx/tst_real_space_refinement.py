@@ -7,9 +7,16 @@ from cctbx.maptbx.real_space_refinement import lbfgs
 from cctbx import uctbx
 from scitbx.python_utils.math_utils import ifloor, iceil
 from libtbx.test_utils import approx_equal
+from libtbx.utils import format_cpu_times
+from cStringIO import StringIO
 import math
+import sys
 
-def exercise_real_space_refinement():
+def exercise_real_space_refinement(verbose):
+  if (verbose):
+    out = sys.stdout
+  else:
+    out = StringIO()
   crystal_symmetry = crystal.symmetry(
     unit_cell=(10,10,10,90,90,90),
     space_group_symbol="P 1")
@@ -49,19 +56,19 @@ def exercise_real_space_refinement():
       temp = math.sqrt(temp.dot(temp))
       if temp <= 2*delta_h:
         break
-      print "recycling:", ref.sites_cart[0]
+      print >> out, "recycling:", ref.sites_cart[0]
       tmp_sites_cart = ref.sites_cart
     for site,sitec in zip(ref.sites_cart,xray_structure.sites_cart()):
-      print i_trial
-      print sitec
-      print sites_cart[0]
-      print site
+      print >> out, i_trial
+      print >> out, sitec
+      print >> out, sites_cart[0]
+      print >> out, site
       temp = flex.double(site)-flex.double(sitec)
       temp = math.sqrt(temp.dot(temp))
-      print temp, delta_h
+      print >> out, temp, delta_h
       assert temp <= delta_h*2
-      print
+      print >> out
 
 if (__name__ == "__main__"):
-  exercise_real_space_refinement()
-  print "OK"
+  exercise_real_space_refinement("--verbose" in sys.argv[1:])
+  print format_cpu_times()
