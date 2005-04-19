@@ -669,7 +669,20 @@ def exercise_space_group():
   assert g.is_compatible_unit_cell(u)
   assert approx_equal(g.average_u_star(u_star=range(6,0,-1)),
     (6.5, 5.5, 4.0, 3.5, 2.5, 1.5))
+  assert list(g.tensor_constraints(reciprocal_space=False)) \
+      == [1,-1,0,0,0,0,0,1,0,1,1,1]
+  assert list(g.tensor_constraints(reciprocal_space=True)) \
+      == [1,-1,-1,0,0,2,0,0,1,0,-1,-1]
+  g = space_group("P 3*")
+  assert list(g.tensor_constraints(reciprocal_space=False)) \
+      == [1,-1,0,0,0,0,0,1,-1,0,0,0,0,0,0,1,0,-1,0,0,0,0,1,-1]
+  assert list(g.tensor_constraints(reciprocal_space=True)) \
+      == [1,0,-1,0,0,0,0,1,-1,0,0,0,0,0,0,1,-1,0,0,0,0,0,1,-1]
   g = space_group("C 2 -2c")
+  assert list(g.tensor_constraints(reciprocal_space=False)) \
+      == [0,0,0,2,0,0,0,0,0,0,2,0,0,0,0,0,0,2]
+  assert list(g.tensor_constraints(reciprocal_space=True)) \
+      == [0,0,0,2,0,0,0,0,0,0,2,0,0,0,0,0,0,2]
   h = g.build_derived_reflection_intensity_group(anomalous_flag=True)
   assert h == space_group("C 2 -2")
   h = h.build_derived_acentric_group()

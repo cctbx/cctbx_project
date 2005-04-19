@@ -147,6 +147,8 @@ namespace {
           (scitbx::sym_mat3<double>(w_t::*)(
             scitbx::sym_mat3<double> const&) const) &w_t::average_u_star, (
           arg_("u_star")))
+        .def("tensor_constraints",
+          &w_t::tensor_constraints, (arg_("reciprocal_space")))
         .def("build_derived_acentric_group",
           &w_t::build_derived_acentric_group)
         .def("build_derived_reflection_intensity_group",
