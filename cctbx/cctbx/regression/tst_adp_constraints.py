@@ -76,8 +76,8 @@ def are_similar(a1, a2):
   a2 = flex.double(a2)
   m = max(flex.max(flex.abs(a1)), flex.max(flex.abs(a2)))
   if (m > 0):
-    a1 /= m
-    a2 /= m
+    a1 = a1 / m
+    a2 = a2 / m
   return approx_equal(a1, a2)
 
 def exercise(space_group_info, verbose):
