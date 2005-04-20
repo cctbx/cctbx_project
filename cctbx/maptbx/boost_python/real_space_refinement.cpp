@@ -3,6 +3,8 @@
 
 #include <cctbx/maptbx/real_space_refinement.h>
 #include <boost/python/def.hpp>
+#include <boost/python/args.hpp>
+#include <boost/python/overloads.hpp>
 
 namespace cctbx { namespace maptbx { namespace boost_python {
 
@@ -10,6 +12,10 @@ namespace {
 
   struct real_space_refinement_wrappers
   {
+    BOOST_PYTHON_FUNCTION_OVERLOADS(
+      real_space_refinement_gradients_overloads,
+      real_space_refinement::gradients, 3, 5)
+
     static void
     wrap()
     {
@@ -28,10 +34,11 @@ namespace {
           scitbx::mat3<double> const&,
           af::const_ref<scitbx::vec3<double> > const&,
           double,std::size_t))
-        real_space_refinement::gradients, (
+            real_space_refinement::gradients,
+        real_space_refinement_gradients_overloads((
           arg_("map"), arg_("gridding_matrix"), arg_("sites_cart"),
           arg_("delta_h")=1.0,
-          arg_("max_iter")=std::numeric_limits<double>::digits));
+          arg_("max_iter")=0)));
     }
   };
 
