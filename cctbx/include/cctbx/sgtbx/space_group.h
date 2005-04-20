@@ -5,8 +5,6 @@
 #include <cctbx/sgtbx/symbols.h>
 #include <cctbx/sgtbx/group_codes.h>
 #include <cctbx/sgtbx/phase_info.h>
-#include <scitbx/array_family/versa.h>
-#include <scitbx/array_family/accessors/c_grid.h>
 #include <map>
 
 namespace cctbx { namespace sgtbx {
@@ -521,19 +519,6 @@ namespace cctbx { namespace sgtbx {
       {
         return average_tensor(smx_.const_ref(), u_star, true);
       }
-
-      /*! \brief Symmetry constraints for tensors of rank 2 in
-          row-reduced echelon form.
-       */
-      /*! Row-reduced echelon form of coefficients
-            r.transpose() * t * r - t = 0
-          Mathematica code:
-            r={{r0,r1,r2},{r3,r4,r5},{r6,r7,r8}}
-            t={{t0,t3,t4},{t3,t1,t5},{t4,t5,t2}}
-            FortranForm[Expand[Transpose[r].t.r - t]]
-       */
-      af::versa<int, af::c_grid<2> >
-      tensor_constraints(bool reciprocal_space) const;
 
       //! The translation parts of the symmetry operations are set to 0.
       /*! If discard_z = false, the lattice translation vectors are not

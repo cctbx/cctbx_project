@@ -1,5 +1,6 @@
 from cctbx import miller
 from cctbx import crystal
+from cctbx import sgtbx
 from cctbx import adptbx
 from cctbx.development import debug_utils
 from cctbx.array_family import flex
@@ -58,10 +59,10 @@ def dw_finite_difference_grads_indep(
   for i,u in enumerate(u_indep):
     u_shifted = list(u_indep)
     u_shifted[i] = u + eps
-    u_full = list(adp_constraints.all_params(flex.double(u_shifted)))
+    u_full = adp_constraints.all_params(u_shifted)
     dw_plus = dw_sym(space_group, h, u_full, no_assert=True)
     u_shifted[i] = u - eps
-    u_full = list(adp_constraints.all_params(flex.double(u_shifted)))
+    u_full = adp_constraints.all_params(u_shifted)
     dw_minus = dw_sym(space_group, h, u_full, no_assert=True)
     result.append((dw_plus-dw_minus) / (2*eps))
   return result
@@ -91,7 +92,7 @@ def exercise(space_group_info, verbose):
   if (verbose):
     print matrix.rec(m, (m.size()/6, 6)).mathematica_form(
       one_row_per_line=True)
-    print list(adp_constraints.independent_flags)
+    print list(adp_constraints.independent_indices)
   u_cart_p1 = adptbx.random_u_cart()
   u_star_p1 = adptbx.u_cart_as_u_star(crystal_symmetry.unit_cell(), u_cart_p1)
   u_star = space_group.average_u_star(u_star_p1)
@@ -103,6 +104,7 @@ def exercise(space_group_info, verbose):
     if (verbose):
       print "dw: %8.6f" % dw_sym(space_group, h, u_star)
     g0 = dw_analytical_grads_full(h, u_star)
+    ghrs = []
     for i in xrange(space_group.n_smx()):
       r = space_group(i).r()
       assert r.den() == 1
@@ -115,6 +117,7 @@ def exercise(space_group_info, verbose):
         print "gtr:",
         show_scaled(values=gtr, scale=u_scale)
       assert are_similar(gtr, ghr)
+      ghrs.append(ghr)
     g_full_fin = dw_finite_difference_grads_full_sym(
       space_group=space_group,
       h=h,
@@ -125,29 +128,37 @@ def exercise(space_group_info, verbose):
       h=h,
       u_star=u_star)
     if (verbose):
-      print "g_full_fin:  ",
+      print "g_full_fin:",
       show_scaled(values=g_full_fin, scale=u_scale)
-      print "g_full_ana:    ",
+      print "g_full_ana:",
       show_scaled(values=g_full_ana, scale=u_scale)
     assert are_similar(g_full_fin, g_full_ana)
-    g_full_ana_ave = adp_constraints.sym_gradients(asu_gradients=g0)
+    g_full_ave = adp_constraints.sym_gradients(asu_gradients=g0)
     if (verbose):
-      print "g_full_ana_ave:",
-      show_scaled(values=g_full_ana_ave, scale=u_scale)
-    assert are_similar(g_full_ana_ave, g_full_ana)
+      print "g_full_ave:",
+      show_scaled(values=g_full_ave, scale=u_scale)
+    assert are_similar(g_full_ave, g_full_ana)
     g_fin_indep = dw_finite_difference_grads_indep(
       space_group=space_group,
       adp_constraints=adp_constraints,
       h=h,
       u_star=u_star,
       eps=eps)
-    g_ana_indep = adp_constraints.independent_gradients(all_gradients=g0)
+    g_ave_indep = adp_constraints.independent_gradients(
+      all_gradients=g_full_ave)
     if (verbose):
       print "g_fin_indep:",
       show_scaled(values=g_fin_indep, scale=u_scale)
-      print "g_ana_indep:",
-      show_scaled(values=g_ana_indep, scale=u_scale)
-    assert are_similar(g_ana_indep, g_fin_indep)
+      print "g_ave_indep:",
+      show_scaled(values=g_ave_indep, scale=u_scale)
+    assert are_similar(g_ave_indep, g_fin_indep)
+    for ghr in ghrs:
+      g_ana_indep = adp_constraints.independent_gradients(
+        all_gradients=ghr)
+      if (verbose):
+        print "g_ana_indep:",
+        show_scaled(values=g_ana_indep, scale=u_scale)
+      assert are_similar(g_ana_indep, g_ave_indep)
 
 def run_call_back(flags, space_group_info):
   exercise(space_group_info, verbose=flags.Verbose)

@@ -25,6 +25,7 @@ namespace cctbx { namespace sgtbx { namespace boost_python {
   void wrap_space_group_type();
   void wrap_sym_equiv_sites();
   void wrap_symbols();
+  void wrap_tensor_rank_2();
   void wrap_tr_vec();
   void wrap_wyckoff();
 
@@ -107,6 +108,7 @@ namespace {
     wrap_space_group_type();
     wrap_sym_equiv_sites();
     wrap_symbols();
+    wrap_tensor_rank_2();
     wrap_tr_vec();
     wrap_wyckoff();
   }

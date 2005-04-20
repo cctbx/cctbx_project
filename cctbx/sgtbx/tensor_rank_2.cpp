@@ -1,26 +1,22 @@
-#include <cctbx/sgtbx/space_group.h>
-#include <scitbx/matrix/row_echelon.h>
-#include <scitbx/mat_ref.h>
+#include <cctbx/sgtbx/tensor_rank_2.h>
 
-namespace cctbx { namespace sgtbx {
+namespace cctbx { namespace sgtbx { namespace tensor_rank_2 {
 
-  af::versa<int, af::c_grid<2> >
-  space_group
-  ::tensor_constraints(bool reciprocal_space) const
+  int*
+  constraints_raw(
+    sgtbx::space_group const& space_group,
+    bool reciprocal_space,
+    int* c)
   {
-    af::c_grid<2> result_accessor((n_smx()-1)*6, 6);
-    af::versa<int, af::c_grid<2> >
-      result(result_accessor, af::init_functor_null<int>());
     rot_mx r_transpose;
     const int* r;
     if (reciprocal_space) r = r_transpose.num().begin();
-    int* c = result.begin();
-    for(std::size_t i_smx=1;i_smx<n_smx();i_smx++) {
+    for(std::size_t i_smx=1;i_smx<space_group.n_smx();i_smx++) {
       if (reciprocal_space) {
-        r_transpose = smx_[i_smx].r().transpose();
+        r_transpose = space_group.smx()[i_smx].r().transpose();
       }
       else {
-        r = smx_[i_smx].r().num().begin();
+        r = space_group.smx()[i_smx].r().num().begin();
       }
       // See sgtbx/space_group.h for the Mathematica code used to
       // generate the following expressions.
@@ -67,12 +63,7 @@ namespace cctbx { namespace sgtbx {
       *c++ = r[2]*r[7]+r[1]*r[8];
       *c++ = r[5]*r[7]+r[4]*r[8]-1;
     }
-    CCTBX_ASSERT(c == result.end());
-    scitbx::mat_ref<int> re_mx(result.begin(), (n_smx()-1)*6, 6);
-    CCTBX_ASSERT(scitbx::matrix::row_echelon::form(re_mx) <= 6);
-    result_accessor = af::c_grid<2>(re_mx.n_rows(), 6);
-    result.resize(result_accessor);
-    return result;
+    return c;
   }
 
-}} // namespace cctbx::sgtbx
+}}} // namespace cctbx::sgtbx::tensor_rank_2
