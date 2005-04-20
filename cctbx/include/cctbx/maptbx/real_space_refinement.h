@@ -3,14 +3,14 @@
 // Done by Erik McKee && Jacob Smith
 
 #include <cctbx/maptbx/eight_point_interpolation.h>
-//#define REPORT_ERRORS
-#ifdef REPORT_ERRORS
-#include <iostream>
+#if !(defined(__linux__) && defined(__GNUC__) \
+ && __GNUC__ == 2 && __GNUC_MINOR__ == 96)
+#include <limits>
 #endif
 
 namespace cctbx { namespace maptbx { namespace real_space_refinement {
 
-static const bool CCTBX_MAPTBX_RSR_NO_ASSERT = true;
+static const bool no_assert = true;
 
 template <typename FloatType>
 FloatType
@@ -28,11 +28,8 @@ residual(
   for(std::size_t i = 0; i < num; ++i) {
     val -= weights[i] * cctbx::maptbx::
       non_crystallographic_eight_point_interpolation<FloatType>(
-      map, gridding_matrix, sites_cart[i], CCTBX_MAPTBX_RSR_NO_ASSERT);
+      map, gridding_matrix, sites_cart[i], no_assert);
   }
-#ifdef REPORT_ERRORS
-  std::cout << "Energy: " << val << std::endl;
-#endif
   return val / af::sum(weights);
 }
 
@@ -54,10 +51,10 @@ gradient (
     h_neg[i] -= delta_h;
         FloatType e_h_pos = cctbx::maptbx::
       non_crystallographic_eight_point_interpolation<FloatType>(
-      map,gridding_matrix,h_pos,CCTBX_MAPTBX_RSR_NO_ASSERT);
+      map,gridding_matrix,h_pos,no_assert);
     FloatType e_h_neg = cctbx::maptbx::
       non_crystallographic_eight_point_interpolation<FloatType>(
-      map,gridding_matrix,h_neg,CCTBX_MAPTBX_RSR_NO_ASSERT);
+      map,gridding_matrix,h_neg,no_assert);
     result[i] = e_h_pos - e_h_neg;
     // "Numerical Analysis", Richard L. Burden, J. Douglas Faires
     // pg. 170:  f'(x) = (0.5*h)*(-f(x-h)+f(x+h))
@@ -82,9 +79,17 @@ gradients(
   af::const_ref<FloatType, af::flex_grid<> > const& map,
   scitbx::mat3<FloatType> const& gridding_matrix,
   af::const_ref<scitbx::vec3<FloatType> > const& sites_cart,
-  FloatType delta_h,
-  std::size_t search_iter)
+  FloatType delta_h=1.0,
+  std::size_t search_iter=0)
 {
+  if (search_iter == 0) {
+#if defined(__linux__) && defined(__GNUC__) \
+ && __GNUC__ == 2 && __GNUC_MINOR__ == 96
+    search_iter = 53;
+#else
+    search_iter = std::numeric_limits<FloatType>::digits;
+#endif
+  }
   af::shared<scitbx::vec3<FloatType> > grad_vals;
   scitbx::vec3<FloatType> grad_val;
   std::size_t num = sites_cart.size();
@@ -109,7 +114,7 @@ gradients(
     // Add to the list of gradients
     FloatType current_density = cctbx::maptbx::
       non_crystallographic_eight_point_interpolation<FloatType>(
-      map,gridding_matrix,sites_cart[i],CCTBX_MAPTBX_RSR_NO_ASSERT);
+      map,gridding_matrix,sites_cart[i],no_assert);
     FloatType local_delta_h = delta_h;
     bool zero_out = true;
     for ( std::size_t iter=0; iter<search_iter; ++iter )
@@ -117,7 +122,7 @@ gradients(
       scitbx::vec3<FloatType> pred = sites_cart[i] + grad_val;
       FloatType pred_dens = cctbx::maptbx::
         non_crystallographic_eight_point_interpolation<FloatType>(
-        map,gridding_matrix,pred,CCTBX_MAPTBX_RSR_NO_ASSERT);
+        map,gridding_matrix,pred,no_assert);
       if ( pred_dens < current_density )
       {
         local_delta_h *= 0.5;
@@ -133,19 +138,8 @@ gradients(
     {
       grad_val[0] = grad_val[1] = grad_val[2] = 0;
     }
-#ifdef REPORT_ERRORS
-  scitbx::vec3<FloatType> pred_pos = sites_cart[i] + grad_val;
-  FloatType predicted_e = cctbx::maptbx::
-   non_crystallographic_eight_point_interpolation<FloatType>(
-   map,gridding_matrix,pred_pos,CCTBX_MAPTBX_RSR_NO_ASSERT);
-  std::cout << "Site[" << i << "] " << current_density << " <= " << predicted_e
-   << " Loc: " << sites_cart[i][0] << " " << sites_cart[i][1] << " "
-   << sites_cart[i][2] << " Grad: " << grad_val[0] << " "
-   << grad_val[1] << " " << grad_val[2] << std::endl;
-#endif
     grad_vals.push_back(-grad_val);
   }
-
   return grad_vals;
 }
 
