@@ -99,8 +99,9 @@ def exercise_tensor_constraints_core(crystal_symmetry):
   group = crystal_symmetry.space_group()
   assert site_symmetry.n_matrices() == group.order_p()
   for reciprocal_space in [False, True]:
-    c_tensor_constraints = group.tensor_constraints(
-      reciprocal_space=reciprocal_space)
+    c_tensor_constraints = sgtbx.tensor_rank_2_constraints(
+      space_group=group,
+      reciprocal_space=reciprocal_space).row_echelon_form
     p_tensor_constraints = python_tensor_constraints(
       self=group, reciprocal_space=reciprocal_space)
     assert c_tensor_constraints.all_eq(p_tensor_constraints)
@@ -113,7 +114,7 @@ def exercise_tensor_constraints_core(crystal_symmetry):
     list(matrix.col(group.average_u_star(u_star=u_star_p1))*f),
     list(matrix.col(u_star)*f))
   independent_params = adp_constraints.independent_params(u_star)
-  assert adp_constraints.n_independent_params() == independent_params.size()
+  assert adp_constraints.n_independent_params() == len(independent_params)
   assert adp_constraints.n_independent_params() \
        + adp_constraints.n_dependent_params() == 6
   u_star_vfy = adp_constraints.all_params(independent_params)

@@ -669,20 +669,7 @@ def exercise_space_group():
   assert g.is_compatible_unit_cell(u)
   assert approx_equal(g.average_u_star(u_star=range(6,0,-1)),
     (6.5, 5.5, 4.0, 3.5, 2.5, 1.5))
-  assert list(g.tensor_constraints(reciprocal_space=False)) \
-      == [1,-1,0,0,0,0,0,1,0,1,1,1]
-  assert list(g.tensor_constraints(reciprocal_space=True)) \
-      == [1,-1,-1,0,0,2,0,0,1,0,-1,-1]
-  g = space_group("P 3*")
-  assert list(g.tensor_constraints(reciprocal_space=False)) \
-      == [1,-1,0,0,0,0,0,1,-1,0,0,0,0,0,0,1,0,-1,0,0,0,0,1,-1]
-  assert list(g.tensor_constraints(reciprocal_space=True)) \
-      == [1,0,-1,0,0,0,0,1,-1,0,0,0,0,0,0,1,-1,0,0,0,0,0,1,-1]
   g = space_group("C 2 -2c")
-  assert list(g.tensor_constraints(reciprocal_space=False)) \
-      == [0,0,0,2,0,0,0,0,0,0,2,0,0,0,0,0,0,2]
-  assert list(g.tensor_constraints(reciprocal_space=True)) \
-      == [0,0,0,2,0,0,0,0,0,0,2,0,0,0,0,0,0,2]
   h = g.build_derived_reflection_intensity_group(anomalous_flag=True)
   assert h == space_group("C 2 -2")
   h = h.build_derived_acentric_group()
@@ -1613,6 +1600,27 @@ def exercise_search_symmetry():
   assert s.projected_subgroup() \
       == sgtbx.space_group("P 3 (1/3*x+1/3*y,-1/3*x+2/3*y,z)")
 
+def exercise_tensor_rank_2_constraints():
+  g = sgtbx.space_group("P 6 2")
+  c = sgtbx.tensor_rank_2_constraints(
+    space_group=g, reciprocal_space=False)
+  assert list(c.row_echelon_form) \
+      == [1,-1,0,0,0,0,0,1,0,2,0,0,0,0,0,0,1,1,0,0,0,0,0,1]
+  c = sgtbx.tensor_rank_2_constraints(
+    space_group=g, reciprocal_space=True, initialize_gradient_handling=True)
+  assert list(c.row_echelon_form) \
+      == [1,-1,0,0,0,0,0,1,0,-2,0,0,0,0,0,0,1,-1,0,0,0,0,0,1]
+  assert list(c.independent_indices) == [2,3]
+  assert c.n_independent_params() == 2
+  assert c.n_dependent_params() == 4
+  assert approx_equal(c.independent_params(params=[1,2,3,4,5,6]), [3,4])
+  assert approx_equal(c.all_params(independent_params=[1,2]), [4,4,1,2,0,0])
+  a = [1,2,3,4,5,6]
+  s = [3+1/3.,3+1/3.,3,-3-1/3.,0,0]
+  assert approx_equal(c.sym_gradients(asu_gradients=a), s)
+  assert approx_equal(c.independent_gradients(all_gradients=a), [3,10])
+  assert approx_equal(c.independent_gradients(all_gradients=s), [3,10])
+
 def run():
   exercise_symbols()
   exercise_tr_vec()
@@ -1631,6 +1639,7 @@ def run():
   exercise_lattice_symmetry()
   exercise_find_affine()
   exercise_search_symmetry()
+  exercise_tensor_rank_2_constraints()
   print "OK"
 
 if (__name__ == "__main__"):

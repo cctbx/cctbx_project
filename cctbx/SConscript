@@ -81,7 +81,7 @@ lib_cctbx_sources = [
   "sgtbx/space_group.cpp",
   "sgtbx/space_group_type.cpp",
   "sgtbx/symbols.cpp",
-  "sgtbx/tensor_constraints.cpp",
+  "sgtbx/tensor_rank_2.cpp",
   "sgtbx/tr_group.cpp",
   "sgtbx/tr_vec.cpp",
   "sgtbx/utils.cpp",

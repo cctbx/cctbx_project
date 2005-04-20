@@ -16,9 +16,9 @@ import sys
 class _space_group(boost.python.injector, ext.space_group):
 
   def adp_constraints(self, initialize_gradient_handling=False):
-    from cctbx import adptbx
-    return adptbx.constraints(
+    return tensor_rank_2_constraints(
       space_group=self,
+      reciprocal_space=True,
       initialize_gradient_handling=initialize_gradient_handling)
 
 class space_group_info:
