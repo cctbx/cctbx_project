@@ -700,26 +700,26 @@ def exercise_random():
       if (j == 0): mt = flex.mersenne_twister()
       else: mt.seed()
       assert tuple(mt.random_size_t(3)) \
-          == (4182529786L,2180050607L,3809380472L)
+          == (1791095845, 4282876139L, 3093770124L)
       assert approx_equal(mt.random_double(3),
-       (0.68936349374460137, 0.94325460841489361, 0.92878638322669693))
+       (0.93255736141757983, 0.00011438108051996238, 0.12812444780211069))
       if (j == 0): mt = flex.mersenne_twister(seed=4357)
       else: mt.seed(value=4357)
       assert tuple(mt.random_size_t(size=3)) \
-          == (1393419875, 3943084030L, 3680293049L)
+          == (2983900864L, 1547366158, 1775641839)
       assert approx_equal(mt.random_double(size=3),
-        (0.62126747463393661, 0.47816347295375622, 0.20067452178352385))
+        (0.10064729468446394, 0.76077030360716635, 0.89184217362009044))
   assert flex.random_size_t(size=3).size() == 3
   assert flex.random_double(size=3).size() == 3
   flex.set_random_seed(value=0)
   assert tuple(flex.random_size_t(3)) \
-      == (4182529786L,2180050607L,3809380472L)
+      == (1791095845, 4282876139L, 3093770124L)
   assert approx_equal(flex.random_double(3),
-    (0.68936349374460137, 0.94325460841489361, 0.92878638322669693))
-  assert list(flex.random_permutation(size=5)) == [0, 4, 1, 2, 3]
-  assert list(flex.random_permutation(size=5)) == [2, 1, 3, 0, 4]
-  assert list(flex.random_permutation(size=5)) == [2, 3, 1, 4, 0]
-  assert list(flex.random_permutation(size=5)) == [1, 0, 3, 4, 2]
+    (0.93255736141757983, 0.00011438108051996238, 0.12812444780211069))
+  assert list(flex.random_permutation(size=5)) == [1, 0, 3, 2, 4]
+  assert list(flex.random_permutation(size=5)) == [0, 1, 3, 2, 4]
+  assert list(flex.random_permutation(size=5)) == [4, 3, 0, 1, 2]
+  assert list(flex.random_permutation(size=5)) == [3, 2, 4, 0, 1]
 
 def exercise_flex_vec3_double():
   flex.exercise_triple(flex.vec3_double, as_double=True)
