@@ -9,7 +9,7 @@ from libtbx.test_utils import approx_equal
 import sys
 
 if (1):
-  flex.set_random_seed(0)
+  flex.set_random_seed(1)
 
 def exercise_SFweight_spline_core(structure, d_min, verbose=0):
   structure.scattering_dict(d_min=d_min)
@@ -60,10 +60,10 @@ def exercise_with_fixed_structure():
         (0.6478, 0.4879, 0.3141)]]))
   sfweight = exercise_SFweight_spline_core(
     structure=structure, d_min=5, verbose="--Verbose" in sys.argv[1:])
-  assert approx_equal(flex.mean(flex.abs(sfweight.fb())), 1.22050766588)
-  assert approx_equal(flex.mean(flex.abs(sfweight.fd())), 1.61219832101)
-  assert approx_equal(flex.mean(sfweight.centroid_phases()), -0.0339791322512)
-  assert approx_equal(flex.mean(sfweight.figures_of_merit()), 0.109790067028)
+  assert approx_equal(flex.mean(flex.abs(sfweight.fb())), 2.5329658)
+  assert approx_equal(flex.mean(flex.abs(sfweight.fd())), 0.7792442)
+  assert approx_equal(flex.mean(sfweight.centroid_phases()), -0.033979132)
+  assert approx_equal(flex.mean(sfweight.figures_of_merit()), 0.55824836)
 
 def exercise_SFweight_spline(
       space_group_info,
