@@ -98,6 +98,11 @@ class lbfgs:
                      structure_factor_algorithm=None,
                      verbose=0):
     adopt_init_args(self, locals())
+    if (self.u_penalty is not None
+        and self.gradient_flags.u_iso
+        and xray_structure.scatterers().count_anisotropic() > 0):
+      raise RuntimeError(
+        "Refinement of anisotropic scatterers not currently supported.")
     self.structure_factors_from_scatterers = \
       cctbx.xray.structure_factors.from_scatterers(
         miller_set=self.target_functor.f_obs(),
@@ -157,8 +162,7 @@ class lbfgs:
     if (self.first_target_value is None):
       self.first_target_value = self.f
     if (self.u_penalty is not None and self.gradient_flags.u_iso):
-      u_isos = self.xray_structure.scatterers().extract_u_iso(
-        unit_cell=self.xray_structure.unit_cell())
+      u_isos = self.xray_structure.scatterers().extract_u_iso()
       for u_iso in u_isos:
         self.f += self.u_penalty.functional(u=u_iso)
     if (self.occupancy_penalty is not None
