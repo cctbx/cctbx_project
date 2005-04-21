@@ -59,9 +59,11 @@ class structure(crystal.special_position_settings):
   def scatterers(self):
     return self._scatterers
 
-  def set_b_iso(self, value=None, values=None):
+  def set_b_iso(self, value=None, values=None, allow_mixed=False):
     assert [value, values].count(None) == 1
     s = self._scatterers
+    if (not allow_mixed and s.count_anisotropic() > 0):
+      raise RuntimeError("set_b_iso: all scatterers must be isotropic.")
     if (value is not None):
       s.set_u_iso(flex.double(s.size(), adptbx.b_as_u(value)))
     else:
@@ -70,14 +72,18 @@ class structure(crystal.special_position_settings):
       u_iso_values = b_iso*adptbx.b_as_u(1)
       s.set_u_iso(u_iso_values)
 
-  def set_b_iso_random(self):
+  def set_b_iso_random(self, allow_mixed=False):
     s = self._scatterers
+    if (not allow_mixed and s.count_anisotropic() > 0):
+      raise RuntimeError("set_b_iso_random: all scatterers must be isotropic.")
     b_iso_new = flex.random_double(s.size())*100.
     self.set_b_iso(values = b_iso_new)
 
-  def shake_b_iso(self, deviation):
+  def shake_b_iso(self, deviation, allow_mixed=False):
     assert deviation >= 0.0 and deviation <= 100.0
     s = self._scatterers
+    if (not allow_mixed and s.count_anisotropic() > 0):
+      raise RuntimeError("shake_b_iso: all scatterers must be isotropic.")
     b_isos = s.extract_u_iso()/adptbx.b_as_u(1)
     shift_abs = b_isos * deviation/100.
     r_set = flex.random_double(s.size())-0.5
@@ -110,8 +116,15 @@ class structure(crystal.special_position_settings):
     self.set_sites_frac(
       self.unit_cell().fractionalization_matrix() * sites_cart)
 
-  def set_u_iso_from_u_star(self):
-    self._scatterers.set_u_iso_from_u_star(unit_cell=self.unit_cell())
+  def extract_u_iso_or_u_equiv(self):
+    return self._scatterers.extract_u_iso_or_u_equiv(
+      unit_cell=self.unit_cell())
+
+  def convert_to_isotropic(self):
+    self._scatterers.convert_to_isotropic(unit_cell=self.unit_cell())
+
+  def convert_to_anisotropic(self):
+    self._scatterers.convert_to_anisotropic(unit_cell=self.unit_cell())
 
   def site_symmetry_table(self):
     return self._site_symmetry_table
