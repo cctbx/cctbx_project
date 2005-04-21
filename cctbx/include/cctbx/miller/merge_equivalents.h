@@ -216,6 +216,7 @@ namespace cctbx { namespace miller {
         af::const_ref<FloatType> const& unmerged_sigmas)
       {
         if (unmerged_indices.size() == 0) return;
+        std::vector<FloatType> values;
         std::vector<FloatType> weights;
         std::size_t group_begin = 0;
         std::size_t group_end = 1;
@@ -224,14 +225,14 @@ namespace cctbx { namespace miller {
             process_group(group_begin, group_end,
                           unmerged_indices[group_begin],
                           unmerged_data, unmerged_sigmas,
-                          weights);
+                          values, weights);
             group_begin = group_end;
           }
         }
         process_group(group_begin, group_end,
                       unmerged_indices[group_begin],
                       unmerged_data, unmerged_sigmas,
-                      weights);
+                      values, weights);
       }
 
       void
@@ -240,47 +241,42 @@ namespace cctbx { namespace miller {
                     index<> const& current_index,
                     af::const_ref<FloatType> const& unmerged_data,
                     af::const_ref<FloatType> const& unmerged_sigmas,
+                    std::vector<FloatType>& values,
                     std::vector<FloatType>& weights)
       {
         std::size_t n = group_end - group_begin;
         if (n == 0) return;
         indices.push_back(current_index);
-        if (n == 1) {
-          FloatType ss = scitbx::fn::pow2(unmerged_sigmas[group_begin]);
+        values.clear();
+        values.reserve(n);
+        weights.clear();
+        weights.reserve(n);
+        FloatType unmerged_sigma = 0;
+        for(std::size_t i=0;i<n;i++) {
+          FloatType ss = scitbx::fn::pow2(unmerged_sigmas[group_begin+i]);
           if (ss > 0) {
-            data.push_back(unmerged_data[group_begin]);
-            sigmas.push_back(unmerged_sigmas[group_begin]);
-          }
-          else {
-            data.push_back(0);
-            sigmas.push_back(0);
+            values.push_back(unmerged_data[group_begin+i]);
+            weights.push_back(1 / ss);
+            unmerged_sigma = unmerged_sigmas[group_begin+i];
           }
         }
+        if (values.size() == 0) {
+          data.push_back(0);
+          sigmas.push_back(0);
+        }
+        else if (values.size() == 1) {
+          data.push_back(values[0]);
+          sigmas.push_back(unmerged_sigma);
+        }
         else {
-          weights.clear();
-          weights.resize(n, static_cast<FloatType>(0));
-          bool have_non_zero_weight = false;
-          for(std::size_t i=0;i<n;i++) {
-            FloatType ss = scitbx::fn::pow2(unmerged_sigmas[group_begin+i]);
-            if (ss > 0) {
-              weights[i] = 1 / ss;
-              have_non_zero_weight = true;
-            }
-          }
-          if (!have_non_zero_weight) {
-            data.push_back(0);
-            sigmas.push_back(0);
-          }
-          else {
-            af::const_ref<FloatType> data_group(
-              &unmerged_data[group_begin], n);
-            af::const_ref<FloatType> weights_group(
-              &*weights.begin(), n);
-            scitbx::math::mean_and_variance<FloatType> mv(
-              data_group, weights_group);
-            data.push_back(mv.mean());
-            sigmas.push_back(mv.conservative_standard_deviation());
-          }
+          af::const_ref<FloatType> data_group(
+            &*values.begin(), values.size());
+          af::const_ref<FloatType> weights_group(
+            &*weights.begin(), weights.size());
+          scitbx::math::mean_and_variance<FloatType> mv(
+            data_group, weights_group);
+          data.push_back(mv.mean());
+          sigmas.push_back(mv.conservative_standard_deviation());
         }
         redundancies.push_back(n);
         merge_equivalents::compute_r_fractors(
