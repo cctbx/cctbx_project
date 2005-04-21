@@ -231,7 +231,7 @@ Number of scattering types: 2
   assert xs2.special_position_indices().size() == 2
   xs2.set_sites_frac(xs2.sites_frac()+(0.1,0.2,0.3))
   xs2.set_sites_cart(xs2.sites_cart()+(1,2,3))
-  xs2.set_u_iso_from_u_star()
+  assert approx_equal(xs2.extract_u_iso_or_u_equiv(), [0,0,0,0,0])
   i = xs2.special_position_indices()[0]
   assert approx_equal(xs2.scatterers()[i].site, (0.2, 0.4, 0.7))
   assert list(xs2.is_positive_definite_u()) == [False]*5
@@ -281,6 +281,16 @@ C  pair count:   1       <<  0.0000,  0.0000,  0.1000>>
   results = [[7.7,9.9],[7.7,8.1],[6.3,9.9],[6.3,8.1]]
   result = flex.to_list(xs.scatterers().extract_u_iso()/adptbx.b_as_u(1))
   assert result in results
+  #
+  xs.scatterers().set_u_iso(flex.double([0.1,0.2]))
+  assert xs.scatterers().count_anisotropic() == 0
+  xs.convert_to_anisotropic()
+  assert xs.scatterers().count_anisotropic() == 2
+  assert approx_equal(xs.scatterers().extract_u_cart(unit_cell=xs.unit_cell()),
+    [[0.1]*3+[0]*3, [0.2]*3+[0]*3])
+  xs.convert_to_isotropic()
+  assert xs.scatterers().count_anisotropic() == 0
+  assert approx_equal(xs.scatterers().extract_u_iso(), [0.1,0.2])
 
 def exercise_u_base():
   d_min = 9

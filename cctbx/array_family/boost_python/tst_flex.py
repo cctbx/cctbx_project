@@ -108,11 +108,13 @@ def exercise_flex_xray_scatterer():
   assert approx_equal(a.extract_occupancies(), (0.1,0.2,0.3))
   assert approx_equal(a[1].occupancy, 0.2)
   assert approx_equal(a.extract_u_iso(), (0.0, -1.0, -1.0))
-  assert approx_equal(a.extract_u_iso(unit_cell=uc), (0.0, 258, 236+1/3.))
+  assert approx_equal(a.extract_u_iso_or_u_equiv(unit_cell=uc),
+    (0.0, 258, 236+1/3.))
   a.set_u_iso(u_iso=flex.double((3,4,5)))
-  assert approx_equal(a.extract_u_iso(), (3,4,5))
-  assert approx_equal(a.extract_u_iso(unit_cell=uc), (3, 258, 236+1/3.))
-  assert approx_equal(a[1].u_iso, 4)
+  assert approx_equal(a.extract_u_iso(), (3,-1,-1))
+  assert approx_equal(a.extract_u_iso_or_u_equiv(unit_cell=uc),
+    (3, 258, 236+1/3.))
+  assert approx_equal(a[1].u_iso, -1)
   assert approx_equal(a.extract_u_star(),
      [(-1,-1,-1,-1,-1,-1),
       (1,2,3,-0.1,0.2,-0.3),
@@ -122,7 +124,7 @@ def exercise_flex_xray_scatterer():
       (1,2,3,-0.6,0.2,-0.3),
       (3,1,2,-0.2,0.5,-0.1)]))
   assert approx_equal(a.extract_u_star(),
-     [(-1,-2,-1,-1,-1,-1),
+     [(-1,-1,-1,-1,-1,-1),
       (1,2,3,-0.6,0.2,-0.3),
       (3,1,2,-0.2,0.5,-0.1)])
   assert approx_equal(a[1].u_star, (1,2,3,-0.6,0.2,-0.3))
@@ -134,7 +136,7 @@ def exercise_flex_xray_scatterer():
       (1,2,3,-0.6,0.2,-0.3),
       (3,1,2,-0.2,0.5,-0.1)]))
   assert approx_equal(a.extract_u_cart(unit_cell=unit_cell),
-     [(-1,-2,-1,-1,-1,-1),
+     [(-1,-1,-1,-1,-1,-1),
       (1,2,3,-0.6,0.2,-0.3),
       (3,1,2,-0.2,0.5,-0.1)])
   unit_cell = uctbx.unit_cell((10,10,10,90,90,90))
@@ -145,14 +147,16 @@ def exercise_flex_xray_scatterer():
       (1,2,3,-0.6,0.2,-0.3),
       (3,1,2,-0.2,0.5,-0.1)]))
   assert approx_equal(a.extract_u_star(),
-    [(-0.01, -0.02, -0.01, -0.01, -0.01, -0.01),
+    [(-1,-1,-1,-1,-1,-1),
      (0.01, 0.02, 0.03, -0.006, 0.002, -0.003),
      (0.03, 0.01, 0.02, -0.002, 0.005, -0.001)])
-  assert approx_equal(a.extract_u_iso(), [3,4,5])
-  a.set_u_iso_from_u_star(unit_cell=unit_cell)
-  assert approx_equal(a.extract_u_iso(), [3,2,2])
+  assert approx_equal(a.extract_u_iso(), [3,-1,-1])
   assert a.count_anisotropic() == 2
   assert a.count_anomalous() == 1
+  a.convert_to_isotropic(unit_cell=unit_cell)
+  assert a.count_anisotropic() == 0
+  a.convert_to_anisotropic(unit_cell=unit_cell)
+  assert a.count_anisotropic() == 3
 
 def run():
   exercise_flex_miller_index()
