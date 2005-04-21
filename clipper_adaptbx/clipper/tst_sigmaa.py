@@ -67,7 +67,7 @@ def exercise_with_fixed_structure():
 
 def exercise_SFweight_spline(
       space_group_info,
-      n_scatterers=5,
+      n_scatterers=10,
       d_min=4,
       verbose=0):
   structure = random_structure.xray_structure(
