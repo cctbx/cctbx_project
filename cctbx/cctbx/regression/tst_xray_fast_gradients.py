@@ -540,9 +540,12 @@ def exercise_packed(structure_ideal, f_obs,
     thresholds=(1/2.,0))
   n_parameters = structure_ideal.n_parameters(gradient_flags)
   assert n_parameters > 0
-  mean_displacements = flex.sqrt(
-    sh.structure_shifted.scatterers().extract_u_iso())
-  if (gradient_flags.u_iso):
+  if (anisotropic_flag):
+    mean_displacements = None
+  else:
+    mean_displacements = flex.sqrt(
+      sh.structure_shifted.scatterers().extract_u_iso())
+  if (gradient_flags.u_iso and not anisotropic_flag):
     gradient_flags.sqrt_u_iso = (random.random() > 0.5)
   sfd = xray.structure_factors.gradients_direct(
     xray_structure=sh.structure_shifted,
