@@ -41,8 +41,9 @@ class any_reflection_file:
     file_name = self._file_name
     try:
       open(file_name) # test read access
-    except IOError:
-      if (ensure_read_access): raise
+    except IOError, e:
+      if (ensure_read_access):
+        raise Sorry(str(e))
       return
     if (self._observation_type is not None):
       try: self._file_content = shelx_hklf.reader(
