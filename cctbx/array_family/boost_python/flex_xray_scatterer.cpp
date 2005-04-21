@@ -118,20 +118,24 @@ namespace cctbx { namespace xray { namespace {
   }
 
   af::shared<double>
-  extract_u_iso_1(
+  extract_u_iso(
     af::const_ref<scatterer<> > const& self)
   {
-    af::shared<double>
-      result(af::reserve(self.size()));
+    af::shared<double> result(af::reserve(self.size()));
     for(std::size_t i=0;i<self.size();i++) {
-      result.push_back(self[i].u_iso);
+      if (self[i].anisotropic_flag) {
+        result.push_back(-1);
+      }
+      else {
+        result.push_back(self[i].u_iso);
+      }
     }
     return result;
   }
 
   af::shared<double>
-  extract_u_iso_2(
-    af::const_ref<scatterer<> > const& self,
+  extract_u_iso_or_u_equiv(
+    af::ref<scatterer<> > const& self,
     uctbx::unit_cell const& unit_cell)
   {
     af::shared<double> result(af::reserve(self.size()));
@@ -148,93 +152,112 @@ namespace cctbx { namespace xray { namespace {
 
   void
   set_u_iso(
-    af::ref<scatterer<> > const& scatterers,
+    af::ref<scatterer<> > const& self,
     af::const_ref<double> const& u_iso)
   {
-    CCTBX_ASSERT(scatterers.size() == u_iso.size());
-    for(std::size_t i=0;i<scatterers.size();i++) {
-      scatterers[i].u_iso = u_iso[i];
+    CCTBX_ASSERT(self.size() == u_iso.size());
+    for(std::size_t i=0;i<self.size();i++) {
+      if (!self[i].anisotropic_flag) {
+        self[i].u_iso = u_iso[i];
+      }
     }
   }
 
   af::shared<scitbx::sym_mat3<double> >
-  extract_u_star(af::const_ref<scatterer<> > const& scatterers)
+  extract_u_star(af::const_ref<scatterer<> > const& self)
   {
-    af::shared<scitbx::sym_mat3<double> >
-      result(af::reserve(scatterers.size()));
-    for(std::size_t i=0;i<scatterers.size();i++) {
-      result.push_back(scatterers[i].u_star);
+    af::shared<scitbx::sym_mat3<double> > result(af::reserve(self.size()));
+    for(std::size_t i=0;i<self.size();i++) {
+      if (self[i].anisotropic_flag) {
+        result.push_back(self[i].u_star);
+      }
+      else {
+        result.push_back(scitbx::sym_mat3<double>(-1,-1,-1,-1,-1,-1));
+      }
     }
     return result;
   }
 
   void
   set_u_star(
-    af::ref<scatterer<> > const& scatterers,
+    af::ref<scatterer<> > const& self,
     af::const_ref<scitbx::sym_mat3<double> > const& u_star)
   {
-    CCTBX_ASSERT(scatterers.size() == u_star.size());
-    for(std::size_t i=0;i<scatterers.size();i++) {
-      scatterers[i].u_star = u_star[i];
+    CCTBX_ASSERT(self.size() == u_star.size());
+    for(std::size_t i=0;i<self.size();i++) {
+      if (self[i].anisotropic_flag) {
+        self[i].u_star = u_star[i];
+      }
     }
   }
 
   af::shared<scitbx::sym_mat3<double> >
   extract_u_cart(
-    af::const_ref<scatterer<> > const& scatterers,
+    af::const_ref<scatterer<> > const& self,
     uctbx::unit_cell const& unit_cell)
   {
-    af::shared<scitbx::sym_mat3<double> >
-      result(af::reserve(scatterers.size()));
-    for(std::size_t i=0;i<scatterers.size();i++) {
-      result.push_back(adptbx::u_star_as_u_cart(
-        unit_cell, scatterers[i].u_star));
+    af::shared<scitbx::sym_mat3<double> > result(af::reserve(self.size()));
+    for(std::size_t i=0;i<self.size();i++) {
+      if (self[i].anisotropic_flag) {
+        result.push_back(adptbx::u_star_as_u_cart(unit_cell, self[i].u_star));
+      }
+      else {
+        result.push_back(scitbx::sym_mat3<double>(-1,-1,-1,-1,-1,-1));
+      }
     }
     return result;
   }
 
   void
   set_u_cart(
-    af::ref<scatterer<> > const& scatterers,
+    af::ref<scatterer<> > const& self,
     uctbx::unit_cell const& unit_cell,
     af::const_ref<scitbx::sym_mat3<double> > const& u_cart)
   {
-    CCTBX_ASSERT(scatterers.size() == u_cart.size());
-    for(std::size_t i=0;i<scatterers.size();i++) {
-      scatterers[i].u_star = adptbx::u_cart_as_u_star(
-        unit_cell, u_cart[i]);
-    }
-  }
-
-  void
-  set_u_iso_from_u_star(
-    af::ref<scatterer<> > const& scatterers,
-    uctbx::unit_cell const& unit_cell)
-  {
-    for(std::size_t i=0;i<scatterers.size();i++) {
-      if (scatterers[i].anisotropic_flag) {
-        scatterers[i].u_iso = adptbx::u_star_as_u_iso(
-          unit_cell, scatterers[i].u_star);
+    CCTBX_ASSERT(self.size() == u_cart.size());
+    for(std::size_t i=0;i<self.size();i++) {
+      if (self[i].anisotropic_flag) {
+        self[i].u_star = adptbx::u_cart_as_u_star(unit_cell, u_cart[i]);
       }
     }
   }
 
+  void
+  convert_to_isotropic(
+    af::ref<scatterer<> > const& self,
+    uctbx::unit_cell const& unit_cell)
+  {
+    for(std::size_t i=0;i<self.size();i++) {
+      self[i].convert_to_isotropic(unit_cell);
+    }
+  }
+
+  void
+  convert_to_anisotropic(
+    af::ref<scatterer<> > const& self,
+    uctbx::unit_cell const& unit_cell)
+  {
+    for(std::size_t i=0;i<self.size();i++) {
+      self[i].convert_to_anisotropic(unit_cell);
+    }
+  }
+
   std::size_t
-  count_anisotropic(af::const_ref<scatterer<> > const& scatterers)
+  count_anisotropic(af::const_ref<scatterer<> > const& self)
   {
     std::size_t result = 0;
-    for(std::size_t i=0;i<scatterers.size();i++) {
-      if (scatterers[i].anisotropic_flag) result++;
+    for(std::size_t i=0;i<self.size();i++) {
+      if (self[i].anisotropic_flag) result++;
     }
     return result;
   }
 
   std::size_t
-  count_anomalous(af::const_ref<scatterer<> > const& scatterers)
+  count_anomalous(af::const_ref<scatterer<> > const& self)
   {
     std::size_t result = 0;
-    for(std::size_t i=0;i<scatterers.size();i++) {
-      if (scatterers[i].fdp != 0) result++;
+    for(std::size_t i=0;i<self.size();i++) {
+      if (self[i].fdp != 0) result++;
     }
     return result;
   }
@@ -260,8 +283,8 @@ namespace scitbx { namespace af { namespace boost_python {
       .def("extract_occupancies", cctbx::xray::extract_occupancies)
       .def("set_occupancies", cctbx::xray::set_occupancies,
         (arg_("occupancies")))
-      .def("extract_u_iso", cctbx::xray::extract_u_iso_1)
-      .def("extract_u_iso", cctbx::xray::extract_u_iso_2,
+      .def("extract_u_iso", cctbx::xray::extract_u_iso)
+      .def("extract_u_iso_or_u_equiv", cctbx::xray::extract_u_iso_or_u_equiv,
         (arg_("unit_cell")))
       .def("set_u_iso", cctbx::xray::set_u_iso,
         (arg_("u_iso")))
@@ -272,7 +295,9 @@ namespace scitbx { namespace af { namespace boost_python {
         (arg_("unit_cell")))
       .def("set_u_cart", cctbx::xray::set_u_cart,
         (arg_("unit_cell"), arg_("u_cart")))
-      .def("set_u_iso_from_u_star", cctbx::xray::set_u_iso_from_u_star,
+      .def("convert_to_isotropic", cctbx::xray::convert_to_isotropic,
+        (arg_("unit_cell")))
+      .def("convert_to_anisotropic", cctbx::xray::convert_to_anisotropic,
         (arg_("unit_cell")))
       .def("count_anisotropic", cctbx::xray::count_anisotropic)
       .def("count_anomalous", cctbx::xray::count_anomalous)
