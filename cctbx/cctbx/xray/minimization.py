@@ -79,11 +79,13 @@ class occupancy_penalty_exp:
 
   def functional(self, occupancy):
     if (occupancy > self.occupancy_max): return 0
+    if (occupancy < -1): occupancy = -1 - math.log(-occupancy)
     s = self.penalty_scale
     return math.exp(-s*occupancy*self.penalty_factor)
 
   def gradient(self, occupancy):
     if (occupancy > self.occupancy_max): return 0
+    if (occupancy < -1): occupancy = -1 - math.log(-occupancy)
     s = self.penalty_scale
     return -s*self.penalty_factor*math.exp(-s*occupancy*self.penalty_factor)
 
