@@ -143,6 +143,15 @@ def exercise_xray_scatterer():
   x.site = (0.2,0.5,0.4)
   ss = x.apply_symmetry(uc, sg.group(), 1.e-10, 0)
   assert ss.is_point_group_1()
+  assert x.anisotropic_flag
+  x.convert_to_isotropic(unit_cell=uc)
+  assert not x.anisotropic_flag
+  assert approx_equal(x.u_iso, 269)
+  assert approx_equal(x.u_star, (-1,-1,-1,-1,-1,-1))
+  x.convert_to_anisotropic(unit_cell=uc)
+  assert x.anisotropic_flag
+  assert approx_equal(x.u_iso, -1)
+  assert approx_equal(x.u_star, (2.69, 2.69, 1.59171598, 0, 0, 0))
   x.u_star = (1,2,3,4,5,6)
   assert not x.is_positive_definite_u(unit_cell=uc)
   assert not x.is_positive_definite_u(unit_cell=uc, u_cart_tolerance=1.e2)

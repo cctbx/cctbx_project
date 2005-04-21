@@ -82,6 +82,10 @@ namespace {
                                make_setter(&w_t::u_iso, dcp()))
         .add_property("u_star", make_getter(&w_t::u_star, rbv()),
                                 make_setter(&w_t::u_star, dcp()))
+        .def("convert_to_isotropic", &w_t::convert_to_isotropic, (
+          arg_("unit_cell")))
+        .def("convert_to_anisotropic", &w_t::convert_to_anisotropic, (
+          arg_("unit_cell")))
         .def("is_positive_definite_u",
           (bool(w_t::*)(uctbx::unit_cell const&) const)
             &w_t::is_positive_definite_u, (

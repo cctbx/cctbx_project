@@ -132,6 +132,40 @@ namespace xray {
        */
       scitbx::sym_mat3<FloatType> u_star;
 
+      //! Converts u_star to the equivalent u_iso in place.
+      /*! The u_star values are reset to -1 and the anisotropic_flag
+          is reset to false.
+          This function has no effect if anisotropic_flag is false
+          already.
+       */
+      void
+      convert_to_isotropic(
+        uctbx::unit_cell const& unit_cell)
+      {
+        if (anisotropic_flag) {
+          u_iso = adptbx::u_star_as_u_iso(unit_cell, u_star);
+          anisotropic_flag = false;
+          u_star.fill(-1);
+        }
+      }
+
+      //! Converts u_iso to u_star in place.
+      /*! The u_iso value is reset to -1 and the anisotropic_flag
+          is reset to true.
+          This function has no effect if anisotropic_flag is true
+          already.
+       */
+      void
+      convert_to_anisotropic(
+        uctbx::unit_cell const& unit_cell)
+      {
+        if (!anisotropic_flag) {
+          u_star = adptbx::u_iso_as_u_star(unit_cell, u_iso);
+          anisotropic_flag = true;
+          u_iso = -1;
+        }
+      }
+
       //! Tests u_iso > 0 or adptbx::is_positive_definite(u_cart).
       bool
       is_positive_definite_u(
