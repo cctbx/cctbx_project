@@ -72,8 +72,8 @@ def exercise_SFweight_spline(
       verbose=0):
   structure = random_structure.xray_structure(
     space_group_info,
-    elements=["const"]*n_scatterers,
-    volume_per_atom=2000)
+    elements=["C"]*n_scatterers,
+    volume_per_atom=1000)
   sfweight = exercise_SFweight_spline_core(
     structure=structure, d_min=d_min, verbose=verbose)
 
