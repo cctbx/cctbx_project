@@ -45,14 +45,13 @@ class lbfgs:
   def apply_shifts(self):
     self.tmp.sites_shifted = self.tmp.sites_cart + flex.vec3_double(self.x)
     if (self.tmp.geometry_restraints_manager.crystal_symmetry is not None):
-      unit_cell \
-        = self.tmp.geometry_restraints_manager.crystal_symmetry.unit_cell()
+      crystal_symmetry = self.tmp.geometry_restraints_manager.crystal_symmetry
       site_symmetry_table \
         = self.tmp.geometry_restraints_manager.site_symmetry_table
       assert site_symmetry_table is not None
       for i_seq in site_symmetry_table.special_position_indices():
         self.tmp.sites_shifted[i_seq] = crystal.correct_special_position(
-          unit_cell=unit_cell,
+          crystal_symmetry=crystal_symmetry,
           special_op=site_symmetry_table.get(i_seq).special_op(),
           site_cart=self.tmp.sites_shifted[i_seq])
 

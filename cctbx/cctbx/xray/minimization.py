@@ -133,9 +133,8 @@ class lbfgs:
     self.final_target_value = self.target_result.target()
 
   def apply_shifts(self):
-    unit_cell = self.xray_structure.unit_cell()
     apply_shifts_result = ext.minimization_apply_shifts(
-      unit_cell=unit_cell,
+      unit_cell=self.xray_structure.unit_cell(),
       scatterers=self._scatterers_start,
       gradient_flags=self.gradient_flags,
       shifts=self.x)
@@ -143,7 +142,7 @@ class lbfgs:
     site_symmetry_table = self.xray_structure.site_symmetry_table()
     for i_seq in site_symmetry_table.special_position_indices():
       shifted_scatterers[i_seq].site = crystal.correct_special_position(
-        unit_cell=unit_cell,
+        crystal_symmetry=self.xray_structure,
         special_op=site_symmetry_table.get(i_seq).special_op(),
         site_frac=shifted_scatterers[i_seq].site,
         tolerance=self.correct_special_position_tolerance)
