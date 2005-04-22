@@ -325,7 +325,7 @@ class special_position_settings(symmetry):
       assert_min_distance_sym_equiv=self.assert_min_distance_sym_equiv())
 
 def correct_special_position(
-      unit_cell,
+      crystal_symmetry,
       special_op,
       site_frac=None,
       site_cart=None,
@@ -336,14 +336,26 @@ def correct_special_position(
   because otherwise rounding error accumulate over many cycles.
   """
   assert (site_frac is None) != (site_cart is None)
+  unit_cell = crystal_symmetry.unit_cell()
   if (site_frac is None):
     site_frac = unit_cell.fractionalize(site_cart)
   site_special_frac = special_op * site_frac
   distance_moved = unit_cell.distance(site_special_frac, site_frac)
   if (distance_moved > tolerance):
-    raise AssertionError(
-      error_message + " (special_op: %s; distance_moved: %.6g)"
-        % (str(special_op), distance_moved))
+    error_message += "\n  unit_cell: %s" % str(unit_cell)
+    error_message += "\n  space_group_info: %s" % str(crystal_symmetry.space_group_info())
+    error_message += "\n  special_op: %s" % str(special_op)
+    error_message += "\n  site_frac: %s" % str(site_frac)
+    error_message += "\n  site_special_frac: %s" % str(site_special_frac)
+    error_message += "\n  distance_moved: %g" % distance_moved
+    error_message += "\n  ****** This is a very critical error. ******"
+    error_message += "\n  PLEASE send this output to"
+    error_message += "\n"
+    error_message += "\n    cctbx@cci.lbl.gov"
+    error_message += "\n"
+    error_message += "\n  to help us resolve the problem."
+    error_message += "\n  Thank you in advance!"
+    raise AssertionError(error_message)
   if (site_cart is None):
     return site_special_frac
   return unit_cell.orthogonalize(site_special_frac)
