@@ -104,5 +104,7 @@ def row_echelon_back_substitution_float(
       v=None,
       solution=None):
   assert solution is not None
+  if (v is not None):
+    assert v.nd() == 1
   return ext.row_echelon_back_substitution_float(
     row_echelon_form, v, solution)
