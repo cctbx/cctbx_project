@@ -96,6 +96,7 @@ class lbfgs:
                      occupancy_penalty=None,
                      lbfgs_termination_params=None,
                      lbfgs_core_params=None,
+                     correct_special_position_tolerance=1.e-2,
                      cos_sin_table=True,
                      structure_factor_algorithm=None,
                      verbose=0):
@@ -144,7 +145,8 @@ class lbfgs:
       shifted_scatterers[i_seq].site = crystal.correct_special_position(
         unit_cell=unit_cell,
         special_op=site_symmetry_table.get(i_seq).special_op(),
-        site_frac=shifted_scatterers[i_seq].site)
+        site_frac=shifted_scatterers[i_seq].site,
+        tolerance=self.correct_special_position_tolerance)
     self.xray_structure.replace_scatterers(scatterers=shifted_scatterers)
     return apply_shifts_result.mean_displacements
 
