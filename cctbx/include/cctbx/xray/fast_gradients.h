@@ -4,6 +4,7 @@
 #include <cctbx/xray/sampling_base.h>
 #include <cctbx/xray/gradient_flags.h>
 #include <cctbx/xray/packing_order.h>
+#include <cctbx/sgtbx/site_symmetry_table.h>
 
 namespace cctbx { namespace xray {
 
@@ -349,6 +350,7 @@ namespace cctbx { namespace xray {
         af::const_ref<XrayScattererType> const& scatterers,
         af::const_ref<FloatType> const& mean_displacements,
         scattering_dictionary const& scattering_dict,
+        sgtbx::site_symmetry_table const& site_symmetry_table,
         af::const_ref<FloatType, accessor_type> const&
           ft_d_target_d_f_calc,
         gradient_flags const& grad_flags,
@@ -358,7 +360,8 @@ namespace cctbx { namespace xray {
         this->map_accessor_ = ft_d_target_d_f_calc.accessor();
         sampling_(
           scatterers, mean_displacements,
-          scattering_dict, &*ft_d_target_d_f_calc.begin(), 0,
+          scattering_dict, site_symmetry_table,
+          &*ft_d_target_d_f_calc.begin(), 0,
           grad_flags, n_parameters, sampled_density_must_be_positive);
       }
 
@@ -367,6 +370,7 @@ namespace cctbx { namespace xray {
         af::const_ref<XrayScattererType> const& scatterers,
         af::const_ref<FloatType> const& mean_displacements,
         scattering_dictionary const& scattering_dict,
+        sgtbx::site_symmetry_table const& site_symmetry_table,
         af::const_ref<std::complex<FloatType>, accessor_type> const&
           ft_d_target_d_f_calc,
         gradient_flags const& grad_flags,
@@ -376,7 +380,8 @@ namespace cctbx { namespace xray {
         this->map_accessor_ = ft_d_target_d_f_calc.accessor();
         sampling_(
           scatterers, mean_displacements,
-          scattering_dict, 0, &*ft_d_target_d_f_calc.begin(),
+          scattering_dict, site_symmetry_table,
+          0, &*ft_d_target_d_f_calc.begin(),
           grad_flags, n_parameters, sampled_density_must_be_positive);
       }
 
@@ -416,10 +421,27 @@ namespace cctbx { namespace xray {
 #endif
 
       void
+      average_special_position_site_gradient(
+        sgtbx::site_symmetry_table const& site_symmetry_table,
+        std::size_t i_seq,
+        scitbx::vec3<FloatType>& gr_site)
+      {
+        sgtbx::site_symmetry_ops const& ops = site_symmetry_table.get(i_seq);
+        if (!ops.is_point_group_1()) {
+          sgtbx::rot_mx const& r = ops.special_op().r();
+          gr_site = (((gr_site
+                  * this->unit_cell_.orthogonalization_matrix())
+                  * r.num()) / r.den())
+                  * this->unit_cell_.fractionalization_matrix();
+        }
+      }
+
+      void
       sampling_(
         af::const_ref<XrayScattererType> const& scatterers,
         af::const_ref<FloatType> const& mean_displacements,
         scattering_dictionary const& scattering_dict,
+        sgtbx::site_symmetry_table const& site_symmetry_table,
         const FloatType* ft_d_target_d_f_calc_real,
         const std::complex<FloatType>* ft_d_target_d_f_calc_complex,
         gradient_flags const& grad_flags,
@@ -435,6 +457,7 @@ namespace cctbx { namespace xray {
     af::const_ref<XrayScattererType> const& scatterers,
     af::const_ref<FloatType> const& mean_displacements,
     scattering_dictionary const& scattering_dict,
+    sgtbx::site_symmetry_table const& site_symmetry_table,
     const FloatType* ft_d_target_d_f_calc_real,
     const std::complex<FloatType>* ft_d_target_d_f_calc_complex,
     gradient_flags const& grad_flags,
@@ -596,6 +619,10 @@ namespace cctbx { namespace xray {
             }
           }
         CCTBX_XRAY_SAMPLING_LOOP_END
+      }
+      if (grad_flags.site) {
+        average_special_position_site_gradient(
+          site_symmetry_table, i_seq, gr_site);
       }
       if (n_parameters != 0) {
         BOOST_STATIC_ASSERT(packing_order_convention == 1);

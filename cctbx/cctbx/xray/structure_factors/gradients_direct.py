@@ -32,6 +32,7 @@ class gradients_direct(gradients_base):
         self._xray_structure.scatterers(),
         mean_displacements,
         self._xray_structure.scattering_dict(),
+        self._xray_structure.site_symmetry_table(),
         d_target_d_f_calc,
         gradient_flags,
         n_parameters)
@@ -44,6 +45,7 @@ class gradients_direct(gradients_base):
         self._xray_structure.scatterers(),
         mean_displacements,
         self._xray_structure.scattering_dict(),
+        self._xray_structure.site_symmetry_table(),
         d_target_d_f_calc,
         gradient_flags,
         n_parameters)

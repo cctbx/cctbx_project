@@ -351,13 +351,13 @@ def exercise_structure_factors():
     math_module.cos_sin_table(12),
     uc, sg.group(), mi, scatterers, scattering_dict).f_calc()
   xray.ext.structure_factors_gradients_direct(
-    uc, sg.group(), mi, scatterers, None, scattering_dict,
+    uc, sg.group(), mi, scatterers, None, scattering_dict, site_symmetry_table,
     flex.complex_double(mi.size()),
     xray.ext.gradient_flags(True, True, True, True, True, True, False),
     0)
   xray.ext.structure_factors_gradients_direct(
     math_module.cos_sin_table(12),
-    uc, sg.group(), mi, scatterers, None, scattering_dict,
+    uc, sg.group(), mi, scatterers, None, scattering_dict, site_symmetry_table,
     flex.complex_double(mi.size()),
     xray.ext.gradient_flags(True, True, True, True, True, True, False),
     0)

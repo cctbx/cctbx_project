@@ -180,6 +180,7 @@ class resampling(crystal.symmetry):
       scatterers=xray_structure.scatterers(),
       mean_displacements=mean_displacements,
       scattering_dict=xray_structure.scattering_dict(),
+      site_symmetry_table=xray_structure.site_symmetry_table(),
       ft_d_target_d_f_calc=gradient_map,
       grad_flags=gradient_flags,
       n_parameters=n_parameters,

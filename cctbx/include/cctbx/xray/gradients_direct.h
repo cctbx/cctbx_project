@@ -5,6 +5,7 @@
 #include <cctbx/xray/gradient_flags.h>
 #include <cctbx/xray/hr_ht_cache.h>
 #include <cctbx/xray/packing_order.h>
+#include <cctbx/sgtbx/site_symmetry_table.h>
 #include <cctbx/math/cos_sin_table.h>
 
 namespace cctbx { namespace xray { namespace structure_factors {
@@ -243,13 +244,15 @@ namespace cctbx { namespace xray { namespace structure_factors {
         af::const_ref<ScattererType> const& scatterers,
         af::const_ref<float_type> const& mean_displacements,
         scattering_dictionary const& scattering_dict,
+        sgtbx::site_symmetry_table const& site_symmetry_table,
         af::const_ref<std::complex<float_type> > const& d_target_d_f_calc,
         gradient_flags const& grad_flags,
         std::size_t n_parameters=0)
       {
         math::cos_sin_exact<float_type> cos_sin;
         compute(cos_sin, unit_cell, space_group, miller_indices,
-                scatterers, mean_displacements, scattering_dict,
+                scatterers, mean_displacements,
+                scattering_dict, site_symmetry_table,
                 d_target_d_f_calc, grad_flags, n_parameters);
       }
 
@@ -261,12 +264,14 @@ namespace cctbx { namespace xray { namespace structure_factors {
         af::const_ref<ScattererType> const& scatterers,
         af::const_ref<float_type> const& mean_displacements,
         scattering_dictionary const& scattering_dict,
+        sgtbx::site_symmetry_table const& site_symmetry_table,
         af::const_ref<std::complex<float_type> > const& d_target_d_f_calc,
         gradient_flags const& grad_flags,
         std::size_t n_parameters=0)
       {
         compute(cos_sin, unit_cell, space_group, miller_indices,
-                scatterers, mean_displacements, scattering_dict,
+                scatterers, mean_displacements,
+                scattering_dict, site_symmetry_table,
                 d_target_d_f_calc, grad_flags, n_parameters);
       }
 
@@ -300,6 +305,24 @@ namespace cctbx { namespace xray { namespace structure_factors {
       af::shared<float_type> d_target_d_fp_;
       af::shared<float_type> d_target_d_fdp_;
 
+      static
+      void
+      average_special_position_site_gradients(
+        sgtbx::site_symmetry_table const& site_symmetry_table,
+        af::ref<scitbx::vec3<float_type> > gradients)
+      {
+        CCTBX_ASSERT(gradients.size()
+                  == site_symmetry_table.indices_const_ref().size());
+        af::const_ref<std::size_t> sp_indices = site_symmetry_table
+          .special_position_indices().const_ref();
+        for(std::size_t i_sp=0;i_sp<sp_indices.size();i_sp++) {
+          std::size_t i_seq = sp_indices[i_sp];
+          sgtbx::rot_mx const&
+            r = site_symmetry_table.get(i_seq).special_op().r();
+          gradients[i_seq] = (gradients[i_seq] * r.num()) / r.den();
+        }
+      }
+
       template <typename CosSinType>
       void
       compute(
@@ -310,6 +333,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
         af::const_ref<ScattererType> const& scatterers,
         af::const_ref<float_type> const& mean_displacements,
         scattering_dictionary const& scattering_dict,
+        sgtbx::site_symmetry_table const& site_symmetry_table,
         af::const_ref<std::complex<float_type> > const& d_target_d_f_calc,
         gradient_flags const& grad_flags,
         std::size_t n_parameters)
@@ -403,6 +427,11 @@ namespace cctbx { namespace xray { namespace structure_factors {
               (*d_t_d_u) *= 2 * mean_displacements[i];
             }
           }
+        }
+        if (grad_flags.site) {
+          average_special_position_site_gradients(
+            site_symmetry_table,
+            d_target_d_site_frac_.ref());
         }
         if (n_parameters != 0) {
           // reassign gr_refs after unscrambling
