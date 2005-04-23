@@ -25,6 +25,7 @@ namespace {
                   af::const_ref<scatterer_type> const&,
                   af::const_ref<float_type> const&,
                   scattering_dictionary const&,
+                  sgtbx::site_symmetry_table const&,
                   af::const_ref<std::complex<float_type> > const&,
                   gradient_flags const&,
                   std::size_t>())
@@ -35,6 +36,7 @@ namespace {
                   af::const_ref<scatterer_type> const&,
                   af::const_ref<float_type> const&,
                   scattering_dictionary const&,
+                  sgtbx::site_symmetry_table const&,
                   af::const_ref<std::complex<float_type> > const&,
                   gradient_flags const&,
                   std::size_t>())
