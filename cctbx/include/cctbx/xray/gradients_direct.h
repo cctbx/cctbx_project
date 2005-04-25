@@ -305,6 +305,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
       af::shared<float_type> d_target_d_fp_;
       af::shared<float_type> d_target_d_fdp_;
 
+      // compensates for rounding errors
       static
       void
       average_special_position_site_gradients(
