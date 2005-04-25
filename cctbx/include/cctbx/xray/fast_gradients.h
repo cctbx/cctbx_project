@@ -420,6 +420,7 @@ namespace cctbx { namespace xray {
       bool dummy_;
 #endif
 
+      // compensates for rounding errors
       void
       average_special_position_site_gradient(
         sgtbx::site_symmetry_table const& site_symmetry_table,
