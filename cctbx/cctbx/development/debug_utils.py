@@ -1,11 +1,18 @@
 from cctbx import sgtbx
 from scitbx.python_utils.command_line import parse_options
 from libtbx.utils import format_cpu_times
+import libtbx.load_env
 import sys, os, time, random
 
 def get_test_space_group_symbols(flag_AllSpaceGroups,
                                  flag_ChiralSpaceGroups,
-                                 flag_AllSettings):
+                                 flag_AllSettings,
+                                 flag_UnusualSettings):
+  if (flag_UnusualSettings):
+    namespace = {}
+    execfile(os.path.join(
+      libtbx.env.find_in_repositories("regression"), "settings.py"), namespace)
+    return namespace["settings"]
   if (flag_AllSettings):
     return [symbols.extended_hermann_mauguin()
             for symbols in sgtbx.space_group_symbol_iterator()]
@@ -50,7 +57,8 @@ def loop_space_groups(argv, flags, call_back, symbols_to_stdout=0):
     symbols = get_test_space_group_symbols(
       flags.AllSpaceGroups,
       flags.ChiralSpaceGroups,
-      flags.AllSettings)
+      flags.AllSettings,
+      flags.UnusualSettings)
   i_loop = -1
   for symbol in symbols:
     if (symbol.startswith("--")): continue
@@ -92,6 +100,7 @@ def parse_options_loop_space_groups(argv, call_back,
     "RandomSeed",
     "AllSpaceGroups",
     "ChiralSpaceGroups",
-    "AllSettings") + keywords
+    "AllSettings",
+    "UnusualSettings") + keywords
   )
   loop_space_groups(argv, flags, call_back, symbols_to_stdout)
