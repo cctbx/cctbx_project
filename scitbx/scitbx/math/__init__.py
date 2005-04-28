@@ -96,6 +96,8 @@ def row_echelon_back_substitution_int(
       v=None,
       solution=None,
       independent_flags=None):
+  if (v is not None):
+    assert v.nd() == 1
   return ext.row_echelon_back_substitution_int(
     row_echelon_form, v, solution, independent_flags)
 
