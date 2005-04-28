@@ -443,10 +443,10 @@ class environment:
         help="path to source code repository",
         metavar="DIRECTORY")
       parser.option(None, "--build",
-        choices=("release", "quick", "debug"),
+        choices=("release", "quick", "debug", "debug_optimized"),
         default="release",
         help="build mode",
-        metavar="release|quick|debug")
+        metavar="release|quick|debug|debug_optimized")
       parser.option(None, "--compiler",
         action="store",
         type="string",
@@ -1137,9 +1137,9 @@ class build_options:
 
   def __init__(self, compiler, mode, static_libraries, static_exe, scan_boost):
     introspection.adopt_init_args()
-    assert self.mode in ["release", "quick", "debug"]
-    self.optimization = (self.mode == "release")
-    self.debug_symbols = (self.mode == "debug")
+    assert self.mode in ["release", "quick", "debug", "debug_optimized"]
+    self.optimization = (self.mode in ["release", "debug_optimized"])
+    self.debug_symbols = (self.mode in ["debug", "debug_optimized"])
 
   def report(self, f=None):
     if (f is None): f = sys.stdout
