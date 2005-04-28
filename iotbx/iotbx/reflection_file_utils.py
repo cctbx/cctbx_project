@@ -296,10 +296,11 @@ class reflection_file_server:
     if (err is None): self.err = sys.stderr
     else: self.err = err
     self.miller_arrays = []
-    for reflection_file in reflection_files:
-      self.miller_arrays.extend(reflection_file.as_miller_arrays(
-        crystal_symmetry=self.crystal_symmetry,
-        force_symmetry=self.force_symmetry))
+    if (reflection_files is not None):
+      for reflection_file in reflection_files:
+        self.miller_arrays.extend(reflection_file.as_miller_arrays(
+          crystal_symmetry=self.crystal_symmetry,
+          force_symmetry=self.force_symmetry))
     self.file_name_miller_arrays = {}
     for miller_array in self.miller_arrays:
       self.file_name_miller_arrays.setdefault(
