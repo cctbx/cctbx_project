@@ -92,7 +92,8 @@ namespace {
       w_t const& w = extract<w_t const&>(w_obj)();
       return make_tuple(
         w_obj.attr("__dict__"),
-        as_python_dict(w));
+        as_python_dict(w),
+        w.n_scatterers());
     }
 
     static
@@ -101,9 +102,9 @@ namespace {
     {
       using namespace boost::python;
       w_t& w = extract<w_t&>(w_obj)();
-      if (len(state) != 2) {
+      if (len(state) != 3) {
         PyErr_SetObject(PyExc_ValueError,
-          ("expected 2-item tuple in call to __setstate__; got %s"
+          ("expected 3-item tuple in call to __setstate__; got %s"
            % state).ptr());
         throw_error_already_set();
       }
@@ -119,6 +120,7 @@ namespace {
         scatterer_group group = extract<scatterer_group>(values[i])();
         w.dict()[label] = group;
       }
+      w.setstate(extract<std::size_t>(state[2])());
     }
 
     static bool getstate_manages_dict() { return true; }

@@ -290,6 +290,7 @@ def exercise_scattering_dictionary():
     assert vc.array_of_a() == wc.array_of_a()
     assert vc.array_of_b() == wc.array_of_b()
     assert vc.c() == wc.c()
+  assert l.n_scatterers() == sd.n_scatterers()
   try:
     sd.lookup("undef")
   except RuntimeError, e:
