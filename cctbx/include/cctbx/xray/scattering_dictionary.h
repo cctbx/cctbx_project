@@ -111,6 +111,12 @@ namespace cctbx { namespace xray {
         }
       }
 
+      //! Helper function for object serialization (Python pickle).
+      /*! For internal use only.
+       */
+      void
+      setstate(std::size_t n_scatterers) { n_scatterers_ = n_scatterers; }
+
     protected:
       std::size_t n_scatterers_;
       dict_type dict_;
