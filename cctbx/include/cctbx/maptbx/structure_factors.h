@@ -92,26 +92,37 @@ namespace cctbx { namespace maptbx { namespace structure_factors {
             std::cos(ht_angle),
             std::sin(ht_angle)));
         }
+        std::set<miller::index<>, miller::fast_less_than<> > processed;
         for(std::size_t i=0;i<miller_indices.size();i++) {
-          miller::sym_equiv_indices h_eq(space_group, miller_indices[i]);
-          for(int e=0;e<h_eq.multiplicity(anomalous_flag);e++) {
-            miller::sym_equiv_index h_eq_e = h_eq(e);
-            miller::index<> h = h_eq_e.h();
-            if (conjugate_flag) h = -h;
-            af::int3 ih = h_as_ih_mod_array(h, n_real);
-            if (!ih.all_lt(map_grid_focus)) continue;
-            // The following is an optimized version of this one line:
-            //   complex_map_(ih) += h_eq_e.complex_eq(structure_factors[i]);
-            if (!h_eq_e.friedel_flag()) {
-              complex_map_(ih) += structure_factors[i]
-                                  * trig_table[h_eq_e.ht()];
+          miller::index<> const& h = miller_indices[i];
+          std::size_t processed_size = 0;
+          processed.clear();
+          for(std::size_t i_smx=0;i_smx<space_group.n_smx();i_smx++) {
+            sgtbx::rt_mx const& s = space_group.smx(i_smx);
+            int ht = (h * s.t()) % t_den;
+            if (ht < 0) ht += t_den;
+            std::complex<FloatType>
+              term = structure_factors[i] * trig_table[ht];
+            miller::index<> hr = h * s.r();
+            if (conjugate_flag) hr = -hr;
+            processed.insert(hr);
+            if (processed.size() != processed_size) {
+              processed_size++;
+              af::int3 ih = h_as_ih_mod_array(hr, n_real);
+              if (ih.all_lt(map_grid_focus)) {
+                complex_map_(ih) += term;
+              }
             }
-            else {
-              std::complex<FloatType> const& a = structure_factors[i];
-              std::complex<FloatType> const& b = trig_table[h_eq_e.ht()];
-              complex_map_(ih) += std::complex<FloatType>(
-                 a.real()*b.real()-a.imag()*b.imag(),
-                -a.real()*b.imag()-a.imag()*b.real());
+            if (!anomalous_flag) {
+              hr = -hr;
+              processed.insert(hr);
+              if (processed.size() != processed_size) {
+                processed_size++;
+                af::int3 ih = h_as_ih_mod_array(hr, n_real);
+                if (ih.all_lt(map_grid_focus)) {
+                  complex_map_(ih) += std::conj(term);
+                }
+              }
             }
           }
         }
@@ -275,7 +286,7 @@ namespace cctbx { namespace maptbx { namespace structure_factors {
         f_t two_pi_t_den = scitbx::constants::two_pi / space_group.t_den();
         const c_t* shift_inv_t = 0;
         for(std::size_t i=0;i<miller_indices.size();i++) {
-          miller::index<> h = miller_indices[i];
+          miller::index<> const& h = miller_indices[i];
           if (space_group.is_centric()) {
             int ih = (h * space_group.inv_t()) % t_den;
             if (ih < 0) ih += t_den;

@@ -228,7 +228,7 @@ def exercise_under_sampled(space_group_info, anomalous_flag, conjugate_flag,
 def run_call_back(flags, space_group_info):
   for anomalous_flag in (False, True)[:]: #SWITCH
     for conjugate_flag in (False, True)[:]: #SWITCH
-      for with_shift in [0,1]:
+      for with_shift in (False, True)[:]: #SWITCH
         if (with_shift):
           sgi = debug_utils.random_origin_shift(space_group_info)
         else:
