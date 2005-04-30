@@ -73,10 +73,14 @@ namespace cctbx { namespace maptbx { namespace structure_factors {
              .all_ge(complex_map_.accessor().focus()));
         af::int3 map_grid_focus(complex_map_.accessor().focus());
         std::size_t count_n_real_not_equal_map_grid_focus = 0;
+        std::size_t i_focus_short = 3;
+        int focus_short = 0;
         for(std::size_t i=0;i<3;i++) {
           CCTBX_ASSERT(   map_grid_focus[i] == n_real[i]
                        || map_grid_focus[i] == n_real[i]/2+1);
           if (map_grid_focus[i] != n_real[i]) {
+            i_focus_short = i;
+            focus_short = map_grid_focus[i];
             count_n_real_not_equal_map_grid_focus++;
           }
         }
@@ -95,7 +99,6 @@ namespace cctbx { namespace maptbx { namespace structure_factors {
         std::set<miller::index<>, miller::fast_less_than<> > processed;
         for(std::size_t i=0;i<miller_indices.size();i++) {
           miller::index<> const& h = miller_indices[i];
-          std::size_t processed_size = 0;
           processed.clear();
           for(std::size_t i_smx=0;i_smx<space_group.n_smx();i_smx++) {
             sgtbx::rt_mx const& s = space_group.smx(i_smx);
@@ -105,21 +108,17 @@ namespace cctbx { namespace maptbx { namespace structure_factors {
               term = structure_factors[i] * trig_table[ht];
             miller::index<> hr = h * s.r();
             if (conjugate_flag) hr = -hr;
-            processed.insert(hr);
-            if (processed.size() != processed_size) {
-              processed_size++;
+            if (processed.insert(hr).second) {
               af::int3 ih = h_as_ih_mod_array(hr, n_real);
-              if (ih.all_lt(map_grid_focus)) {
+              if (i_focus_short == 3 || ih[i_focus_short] < focus_short) {
                 complex_map_(ih) += term;
               }
             }
             if (!anomalous_flag) {
               hr = -hr;
-              processed.insert(hr);
-              if (processed.size() != processed_size) {
-                processed_size++;
+              if (processed.insert(hr).second) {
                 af::int3 ih = h_as_ih_mod_array(hr, n_real);
-                if (ih.all_lt(map_grid_focus)) {
+                if (i_focus_short == 3 || ih[i_focus_short] < focus_short) {
                   complex_map_(ih) += std::conj(term);
                 }
               }
