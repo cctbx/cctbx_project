@@ -83,6 +83,15 @@ namespace cctbx { namespace maptbx { namespace structure_factors {
         CCTBX_ASSERT(count_n_real_not_equal_map_grid_focus <= 1);
         CCTBX_ASSERT(   anomalous_flag == false
                      || count_n_real_not_equal_map_grid_focus == 0);
+        int t_den = space_group.t_den();
+        std::vector<std::complex<FloatType> > trig_table;
+        trig_table.reserve(t_den);
+        for(int ht=0;ht<t_den;ht++) {
+          FloatType ht_angle = -scitbx::constants::two_pi * ht / t_den;
+          trig_table.push_back(std::complex<FloatType>(
+            std::cos(ht_angle),
+            std::sin(ht_angle)));
+        }
         for(std::size_t i=0;i<miller_indices.size();i++) {
           miller::sym_equiv_indices h_eq(space_group, miller_indices[i]);
           for(int e=0;e<h_eq.multiplicity(anomalous_flag);e++) {
@@ -91,7 +100,19 @@ namespace cctbx { namespace maptbx { namespace structure_factors {
             if (conjugate_flag) h = -h;
             af::int3 ih = h_as_ih_mod_array(h, n_real);
             if (!ih.all_lt(map_grid_focus)) continue;
-            complex_map_(ih) += h_eq_e.complex_eq(structure_factors[i]);
+            // The following is an optimized version of this one line:
+            //   complex_map_(ih) += h_eq_e.complex_eq(structure_factors[i]);
+            if (!h_eq_e.friedel_flag()) {
+              complex_map_(ih) += structure_factors[i]
+                                  * trig_table[h_eq_e.ht()];
+            }
+            else {
+              std::complex<FloatType> const& a = structure_factors[i];
+              std::complex<FloatType> const& b = trig_table[h_eq_e.ht()];
+              complex_map_(ih) += std::complex<FloatType>(
+                 a.real()*b.real()-a.imag()*b.imag(),
+                -a.real()*b.imag()-a.imag()*b.real());
+            }
           }
         }
       }
@@ -239,16 +260,26 @@ namespace cctbx { namespace maptbx { namespace structure_factors {
       {
         typedef FloatType f_t;
         typedef std::complex<FloatType> c_t;
+        int t_den = space_group.t_den();
+        std::vector<std::complex<FloatType> > trig_table;
+        trig_table.reserve(t_den);
+        for(int ht=0;ht<t_den;ht++) {
+          FloatType ht_angle = scitbx::constants::two_pi * ht / t_den;
+          trig_table.push_back(std::complex<FloatType>(
+            std::cos(ht_angle),
+            std::sin(ht_angle)));
+        }
         af::int3 map_grid_focus = complex_map.accessor().focus();
         data_.reserve(miller_indices.size());
         bool sum_bijvoet_pairs = (anomalous_flag && space_group.is_centric());
         f_t two_pi_t_den = scitbx::constants::two_pi / space_group.t_den();
-        c_t shift_inv_t(0,0);
+        const c_t* shift_inv_t = 0;
         for(std::size_t i=0;i<miller_indices.size();i++) {
           miller::index<> h = miller_indices[i];
           if (space_group.is_centric()) {
-            f_t phi = two_pi_t_den * f_t(h * space_group.inv_t());
-            shift_inv_t = c_t(std::cos(phi), std::sin(phi));
+            int ih = (h * space_group.inv_t()) % t_den;
+            if (ih < 0) ih += t_den;
+            shift_inv_t = &trig_table[ih];
           }
           c_t f(0,0);
           for(std::size_t i_smx=0;i_smx<space_group.n_smx();i_smx++) {
@@ -257,8 +288,9 @@ namespace cctbx { namespace maptbx { namespace structure_factors {
             array_access aa(
               anomalous_flag, map_grid_focus, conjugate_flag, hr);
             if (!aa.ih.all_ge(0)) throw_error_not_in_map();
-            f_t phi = two_pi_t_den * f_t(h * s.t());
-            c_t shift(std::cos(phi), std::sin(phi));
+            int ih = (h * s.t()) % t_den;
+            if (ih < 0) ih += t_den;
+            c_t const& shift = trig_table[ih];
             if (!aa.f_conj) f += complex_map(aa.ih) * shift;
             else            f += std::conj(complex_map(aa.ih)) * shift;
             if (sum_bijvoet_pairs) {
@@ -266,11 +298,11 @@ namespace cctbx { namespace maptbx { namespace structure_factors {
                 anomalous_flag, map_grid_focus, conjugate_flag, -hr);
               if (!aa.ih.all_ge(0)) throw_error_not_in_map();
               CCTBX_ASSERT(!aa.f_conj);
-              f += complex_map(aa.ih) * std::conj(shift) * shift_inv_t;
+              f += complex_map(aa.ih) * std::conj(shift) * (*shift_inv_t);
             }
           }
-          if (!anomalous_flag && space_group.is_centric()) {
-            f += std::conj(f) * shift_inv_t;
+          if (!anomalous_flag && shift_inv_t) {
+            f += std::conj(f) * (*shift_inv_t);
           }
           f *= space_group.n_ltr();
           data_.push_back(f);
