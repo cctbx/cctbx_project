@@ -1,12 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Oct: Fragment from cctbx/maps/accessors.h (R.W. Grosse-Kunstleve)
- */
-
 #ifndef CCTBX_MAPTBX_UTILS_H
 #define CCTBX_MAPTBX_UTILS_H
 
@@ -69,7 +60,7 @@ namespace cctbx { namespace maptbx {
   h_as_ih_mod(IntegerType h, IntegerType const& n_real)
   {
     h %= n_real;
-    if (h < 0) return h + n_real;
+    if (h < 0) h += n_real;
     return h;
   }
 
@@ -79,6 +70,7 @@ namespace cctbx { namespace maptbx {
       See also: structure_factors::to_map
    */
   template <typename IndexTypeN>
+  inline
   IndexTypeN
   h_as_ih_mod_array(miller::index<> const& h, IndexTypeN const& n_real)
   {

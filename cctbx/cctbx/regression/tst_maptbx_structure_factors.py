@@ -2,7 +2,6 @@ from cctbx import maptbx
 from cctbx import miller
 from cctbx import crystal
 from cctbx.development import random_structure
-from cctbx.development import structure_factor_utils
 from cctbx.development import debug_utils
 from cctbx.array_family import flex
 from scitbx import fftpack
@@ -58,6 +57,16 @@ def exercise_shannon_sampled(space_group_info, anomalous_flag, conjugate_flag,
     n_real,
     flex.grid(n_complex),
     conjugate_flag)
+  f_calc_p1 = f_calc.expand_to_p1()
+  map_p1 = maptbx.structure_factors.to_map(
+    f_calc_p1.space_group(),
+    anomalous_flag,
+    f_calc_p1.indices(),
+    f_calc_p1.data(),
+    n_real,
+    flex.grid(n_complex),
+    conjugate_flag)
+  assert flex.max(flex.abs(map_p1.complex_map() - map.complex_map())) < 1.e-10
   if (not anomalous_flag):
     real_map = rfft.backward(map.complex_map())
     assert real_map.all() == rfft.m_real()
@@ -76,33 +85,25 @@ def exercise_shannon_sampled(space_group_info, anomalous_flag, conjugate_flag,
     d_min,
     complex_map,
     conjugate_flag)
-  match = miller.match_indices(
-    f_calc.indices(),
-    from_map.miller_indices())
-  for i in (0,1):
-    if (i == 0): m = f_calc.indices()
-    else: m = from_map.miller_indices()
-    for j in match.singles(i):
-      assert abs(f_calc.unit_cell().d(m[j]) - d_min) < 1.e-5
-  structure_factor_utils.check_correlation(
-    "from_map-1", f_calc.indices(), match,
-    f_calc.data(), from_map.data(),
-    min_corr_ampl=0.9999, max_mean_w_phase_error=.01,
-    verbose=verbose)
+  from_map = f_calc.customized_copy(
+    indices=from_map.miller_indices(),
+    data=from_map.data())
+  lone_sets = f_calc.lone_sets(from_map)
+  for lone_set in lone_sets:
+    if (lone_set.indices().size() > 0):
+      flex.max(lone_set.d_spacings().data()-d_min) < 1.e-5
+  common_sets = f_calc.common_sets(from_map)
+  assert flex.max(flex.abs(common_sets[0].data()
+                         - common_sets[1].data())) < 1.e-10
   from_map = maptbx.structure_factors.from_map(
     anomalous_flag,
     f_calc.indices(),
     complex_map,
     conjugate_flag)
   assert from_map.miller_indices().size() == 0
-  structure_factor_utils.check_correlation(
-    "from_map-2", f_calc.indices(), 0,
-    f_calc.data(), from_map.data(),
-    min_corr_ampl=0.9999, max_mean_w_phase_error=.01,
-    verbose=verbose)
+  assert flex.max(flex.abs(f_calc.data()-from_map.data())) < 1.e-10
   structure_p1 = structure.asymmetric_unit_in_p1()
-  miller_p1 = miller.set.expand_to_p1(f_calc)
-  f_calc_p1 = miller_p1.structure_factors_from_scatterers(
+  f_calc_p1 = f_calc_p1.structure_factors_from_scatterers(
     xray_structure=structure_p1,
     algorithm="direct").f_calc()
   map = maptbx.structure_factors.to_map(
@@ -157,6 +158,16 @@ def exercise_under_sampled(space_group_info, anomalous_flag, conjugate_flag,
     n_real,
     flex.grid(n_complex),
     conjugate_flag)
+  f_calc_p1 = f_calc.expand_to_p1()
+  map_p1 = maptbx.structure_factors.to_map(
+    f_calc_p1.space_group(),
+    anomalous_flag,
+    f_calc_p1.indices(),
+    f_calc_p1.data(),
+    n_real,
+    flex.grid(n_complex),
+    conjugate_flag)
+  assert flex.max(flex.abs(map_p1.complex_map() - map.complex_map())) < 1.e-10
   if (not anomalous_flag):
     real_map = rfft.backward(map.complex_map())
     assert real_map.all() == rfft.m_real()
@@ -185,6 +196,16 @@ def exercise_under_sampled(space_group_info, anomalous_flag, conjugate_flag,
     n_real_under_sampled,
     flex.grid(n_complex_under_sampled),
     conjugate_flag)
+  under_sampled_map_p1 = maptbx.structure_factors.to_map(
+    f_calc_p1.space_group(),
+    anomalous_flag,
+    f_calc_p1.indices(),
+    f_calc_p1.data(),
+    n_real_under_sampled,
+    flex.grid(n_complex_under_sampled),
+    conjugate_flag)
+  assert flex.max(flex.abs(under_sampled_map_p1.complex_map()
+                         - under_sampled_map.complex_map())) < 1.e-10
   if (not anomalous_flag):
     under_sampled_map_before_fft = under_sampled_map.complex_map().deep_copy()
     under_sampled_real_map = rfft.backward(under_sampled_map.complex_map())
