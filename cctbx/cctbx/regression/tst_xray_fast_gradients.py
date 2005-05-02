@@ -137,8 +137,9 @@ class resampling(crystal.symmetry):
       self.unit_cell(),
       u_extra,
       coeff.indices(),
-      coeff.data(),
-      multiplier)
+      coeff.data())
+    coeff_data = coeff.data()
+    coeff_data *= flex.polar(multiplier, 0)
     return miller.fft_map(
       crystal_gridding=self.crystal_gridding(),
       fourier_coefficients=coeff)
@@ -365,7 +366,7 @@ def u_star(structure_ideal, d_min, f_obs, verbose=0):
       if (top_gradient is None): top_gradient = direct_summ
       fast_gradie = map0_d_target_d_u_cart[i_scatterer][ij]
       match = judge(scatterer, "u_cart", direct_summ,fast_gradie,top_gradient)
-      if (0 or verbose):
+      if (0 or verbose or match.is_bad):
         print "direct summ[%d][%d]: " % (i_scatterer, ij), direct_summ
         print "fast gradie[%d][%d]: " % (i_scatterer, ij), fast_gradie, match
         print
@@ -624,7 +625,7 @@ def exercise_gradient_manager(structure_ideal, f_obs,
   else:
     correlation = flex.linear_correlation(gd.packed(), gf.packed())
     assert correlation.is_well_defined()
-    assert correlation.coefficient() > 0.999
+    assert correlation.coefficient() > 0.995, correlation.coefficient()
 
 def run_one(space_group_info, n_elements=4, volume_per_atom=1000, d_min=2,
             anomalous_flag=0, anisotropic_flag=0, verbose=0):

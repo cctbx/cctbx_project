@@ -35,7 +35,7 @@ class gradients_fft(gradients_base):
     coeff_map = self._gradient_map_coeff_to_map(coeff)
     time_from_or_to_map = time_from_or_to_map.elapsed()
     time_fft = user_plus_sys_time()
-    if (not miller_set.anomalous_flag()):
+    if (not coeff.anomalous_flag()):
       gradient_map = manager.rfft().backward(coeff_map.complex_map())
     else:
       gradient_map = manager.cfft().backward(coeff_map.complex_map())
@@ -63,33 +63,37 @@ class gradients_fft(gradients_base):
     self.d_target_d_u_star_was_used = False
 
   def _gradient_map_coeff(self):
+    coeff = self.miller_set().array(data=flex.conj(self.d_target_d_f_calc()))
     multiplier = (  self.manager().unit_cell().volume()
                   / matrix.row(self.manager().rfft().n_real()).product()
-                  * self.manager().space_group().order_z()
-                  / self.miller_set().multiplicities().data().as_double())
-    coeff = flex.conj(self.d_target_d_f_calc())
+                  * self.manager().space_group().n_ltr())
+    if (    not coeff.anomalous_flag()
+        and not coeff.space_group().is_centric()):
+      multiplier /= 2
     ext.apply_u_extra(
       self.manager().unit_cell(),
       self._results.u_extra(),
-      self.miller_set().indices(),
-      coeff,
+      coeff.indices(),
+      coeff.data(),
       multiplier)
     return coeff
 
   def _gradient_map_coeff_to_map(self, coeff):
-    if (not self.miller_set().anomalous_flag()):
+    if (not coeff.anomalous_flag()):
       n_complex = self.manager().rfft().n_complex()
     else:
       n_complex = self.manager().rfft().n_real()
     conjugate_flag = True
+    treat_restricted = False
     return maptbx.structure_factors.to_map(
-      self.miller_set().space_group(),
-      self.miller_set().anomalous_flag(),
-      self.miller_set().indices(),
-      coeff,
+      coeff.space_group(),
+      coeff.anomalous_flag(),
+      coeff.indices(),
+      coeff.data(),
       self.manager().rfft().n_real(),
       flex.grid(n_complex),
-      conjugate_flag)
+      conjugate_flag,
+      treat_restricted)
 
   def d_target_d_site_cart(self):
     return self.check_size(self._results.d_target_d_site_cart())

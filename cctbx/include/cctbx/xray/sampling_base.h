@@ -84,24 +84,6 @@ namespace cctbx { namespace xray {
     }
   }
 
-  template <typename FloatType>
-  void
-  apply_u_extra(
-    uctbx::unit_cell const& unit_cell,
-    FloatType const& u_extra,
-    af::const_ref<miller::index<> > const& miller_indices,
-    af::ref<std::complex<FloatType> > const& structure_factors,
-    af::const_ref<FloatType> const& multipliers)
-  {
-    CCTBX_ASSERT(miller_indices.size() == structure_factors.size());
-    CCTBX_ASSERT(miller_indices.size() == multipliers.size());
-    for(std::size_t i=0;i<miller_indices.size();i++) {
-      apply_u_extra(
-        unit_cell, u_extra, miller_indices[i], structure_factors[i],
-        multipliers[i]);
-    }
-  }
-
   namespace detail {
 
     // self-expanding exponent table
