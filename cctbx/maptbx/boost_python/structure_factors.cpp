@@ -31,7 +31,8 @@ namespace {
                   af::const_ref<std::complex<double> > const&,
                   af::int3 const&,
                   af::flex_grid<> const&,
-                  bool>())
+                  bool,
+                  optional<bool> >())
         .def("complex_map", &w_t::complex_map)
       ;
     }

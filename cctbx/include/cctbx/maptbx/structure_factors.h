@@ -28,12 +28,13 @@ namespace cctbx { namespace maptbx { namespace structure_factors {
         af::const_ref<std::complex<OtherFloatType> > const& structure_factors,
         af::int3 const& n_real,
         af::c_grid_padded<3> const& map_grid,
-        bool conjugate_flag)
+        bool conjugate_flag,
+        bool treat_restricted=true)
       :
         complex_map_(map_grid)
       {
         init(space_group, anomalous_flag, miller_indices, structure_factors,
-             n_real, conjugate_flag);
+             n_real, conjugate_flag, treat_restricted);
       }
 
       //! Python interface.
@@ -45,12 +46,13 @@ namespace cctbx { namespace maptbx { namespace structure_factors {
         af::const_ref<std::complex<OtherFloatType> > const& structure_factors,
         af::int3 const& n_real,
         af::flex_grid<> const& map_grid,
-        bool conjugate_flag)
+        bool conjugate_flag,
+        bool treat_restricted=true)
       :
         complex_map_(af::c_grid_padded<3>(map_grid))
       {
         init(space_group, anomalous_flag, miller_indices, structure_factors,
-             n_real, conjugate_flag);
+             n_real, conjugate_flag, treat_restricted);
       }
 
       af::versa<std::complex<FloatType>, af::c_grid_padded<3> >
@@ -67,7 +69,8 @@ namespace cctbx { namespace maptbx { namespace structure_factors {
         af::const_ref<miller::index<> > const& miller_indices,
         af::const_ref<std::complex<OtherFloatType> > const& structure_factors,
         af::int3 const& n_real,
-        bool conjugate_flag)
+        bool conjugate_flag,
+        bool treat_restricted)
       {
         CCTBX_ASSERT(complex_map_.accessor().all()
              .all_ge(complex_map_.accessor().focus()));
@@ -96,10 +99,22 @@ namespace cctbx { namespace maptbx { namespace structure_factors {
             std::cos(ht_angle),
             std::sin(ht_angle)));
         }
-        std::set<miller::index<>, miller::fast_less_than<> > processed;
+        std::set<miller::index<>, miller::fast_less_than<> > processed_mem;
+        std::set<miller::index<>, miller::fast_less_than<> >* processed;
+        if (treat_restricted && space_group.order_p() > 1) {
+          processed = &processed_mem;
+        }
+        else {
+          processed = 0;
+        }
+        int h_inv_t = -1;
         for(std::size_t i=0;i<miller_indices.size();i++) {
           miller::index<> const& h = miller_indices[i];
-          processed.clear();
+          if (anomalous_flag && space_group.is_centric()) {
+            h_inv_t = (h * space_group.inv_t()) % t_den;
+            if (h_inv_t < 0) h_inv_t += t_den;
+          }
+          if (processed) processed->clear();
           for(std::size_t i_smx=0;i_smx<space_group.n_smx();i_smx++) {
             sgtbx::rt_mx const& s = space_group.smx(i_smx);
             int ht = (h * s.t()) % t_den;
@@ -108,7 +123,7 @@ namespace cctbx { namespace maptbx { namespace structure_factors {
               term = structure_factors[i] * trig_table[ht];
             miller::index<> hr = h * s.r();
             if (conjugate_flag) hr = -hr;
-            if (processed.insert(hr).second) {
+            if (processed == 0 || processed->insert(hr).second) {
               af::int3 ih = h_as_ih_mod_array(hr, n_real);
               if (i_focus_short == 3 || ih[i_focus_short] < focus_short) {
                 complex_map_(ih) += term;
@@ -116,10 +131,23 @@ namespace cctbx { namespace maptbx { namespace structure_factors {
             }
             if (!anomalous_flag) {
               hr = -hr;
-              if (processed.insert(hr).second) {
+              if (processed == 0 || processed->insert(hr).second) {
                 af::int3 ih = h_as_ih_mod_array(hr, n_real);
                 if (i_focus_short == 3 || ih[i_focus_short] < focus_short) {
                   complex_map_(ih) += std::conj(term);
+                }
+              }
+            }
+            else if (h_inv_t >= 0) {
+              int mht = (t_den - ht + h_inv_t) % t_den;
+              if (mht != ht) {
+                term = structure_factors[i] * trig_table[mht];
+              }
+              hr = -hr;
+              if (processed == 0 || processed->insert(hr).second) {
+                af::int3 ih = h_as_ih_mod_array(hr, n_real);
+                if (i_focus_short == 3 || ih[i_focus_short] < focus_short) {
+                  complex_map_(ih) += term;
                 }
               }
             }
