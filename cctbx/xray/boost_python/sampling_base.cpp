@@ -65,18 +65,6 @@ namespace {
   BOOST_PYTHON_FUNCTION_OVERLOADS(
     apply_u_extra_double_overloads, apply_u_extra_double, 4, 5)
 
-  void
-  apply_u_extra_array_double(
-    uctbx::unit_cell const& unit_cell,
-    double const& u_extra,
-    af::const_ref<miller::index<> > const& miller_indices,
-    af::ref<std::complex<double> > const& structure_factors,
-    af::const_ref<double> const& multipliers)
-  {
-    apply_u_extra(unit_cell, u_extra, miller_indices, structure_factors,
-                      multipliers);
-  }
-
 } // namespace <anoymous>
 
   void wrap_sampling_base()
@@ -85,7 +73,6 @@ namespace {
 
     def("calc_u_base", calc_u_base, calc_u_base_overloads());
     def("apply_u_extra",apply_u_extra_double,apply_u_extra_double_overloads());
-    def("apply_u_extra", apply_u_extra_array_double);
 
     sampling_base_wrappers::wrap();
   }

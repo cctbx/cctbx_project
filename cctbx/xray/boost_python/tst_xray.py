@@ -478,13 +478,6 @@ def exercise_sampled_model_density():
   f_elim = f.deep_copy()
   xray.apply_u_extra(d.unit_cell(), -0.2, i, f, 1)
   assert approx_equal(f, f_orig)
-  m = flex.double((1,2))
-  xray.apply_u_extra(d.unit_cell(), 0.2, i, f, m)
-  assert approx_equal(f[0], f_elim[0])
-  assert approx_equal(f[1], f_elim[1]*2)
-  m = flex.double((1,1/2.))
-  xray.apply_u_extra(d.unit_cell(), -0.2, i, f, m)
-  assert approx_equal(f, f_orig)
 
 def exercise_minimization_apply_shifts():
   uc = uctbx.unit_cell((20, 20, 23))
