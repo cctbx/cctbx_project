@@ -1,5 +1,8 @@
 import libtbx.load_env
+import time
 import sys, os
+
+time_start = time.time()
 
 engine = os.path.join(libtbx.env.scons_dist_path, "engine")
 if (not os.path.isdir(engine)):
@@ -14,12 +17,21 @@ def show_times():
   usr_plus_sys = t[0] + t[1]
   try: ticks = sys.gettickeraccumulation()
   except: ticks = None
-  s = "usr+sys time: %.2f" % usr_plus_sys
+  s = "usr+sys time: %.2f seconds" % usr_plus_sys
   if (ticks is not None):
     s += ", ticks: %d" % ticks
     if (ticks != 0):
       s += ", micro-seconds/tick: %.3f" % (usr_plus_sys*1.e6/ticks)
   print s
+  wall_clock_time = time.time() - time_start
+  print "wall clock time:",
+  if (wall_clock_time < 120):
+    print "%.2f seconds" % wall_clock_time
+  else:
+    m = int(wall_clock_time / 60 + 1.e-6)
+    s = wall_clock_time - m * 60
+    print "%d minutes %.2f seconds (%.2f seconds total)" % (
+      m, s, wall_clock_time)
 
 import atexit
 atexit.register(show_times)
