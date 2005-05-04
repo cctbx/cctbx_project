@@ -83,9 +83,17 @@ namespace scitbx { namespace math {
             bias_corrected_variance = sum_2 / static_cast<FloatType>(n-1);
             bias_corrected_standard_deviation = std::sqrt(
               bias_corrected_variance);
-            skew = (sum_3 / nf) / fn::pow3(biased_standard_deviation);
-            kurtosis = (sum_4 / nf) / fn::pow2(biased_variance);
-            kurtosis_excess = kurtosis - 3;
+            if (   bias_corrected_variance == 0
+                || bias_corrected_standard_deviation == 0) {
+              skew = -1;
+              kurtosis = -1;
+              kurtosis_excess = -1;
+            }
+            else {
+              skew = (sum_3 / nf) / fn::pow3(biased_standard_deviation);
+              kurtosis = (sum_4 / nf) / fn::pow2(biased_variance);
+              kurtosis_excess = kurtosis - 3;
+            }
           }
         }
       }
