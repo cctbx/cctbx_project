@@ -1,6 +1,7 @@
 import cctbx.eltbx.xray_scattering
 from cctbx import eltbx
 from cctbx.array_family import flex
+from scitbx.python_utils.misc import plural_s
 import math
 
 mean_number_of_atoms_per_amino_acid = {'C': 5, 'N': 3, 'O': 1}
@@ -11,13 +12,27 @@ class wilson_plot:
 
   def __init__(self, f_obs, asu_contents):
     self.info = f_obs.info()
+    f_obs_selected = f_obs.select(f_obs.data() > 0)
+    f_obs_selected.use_binning_of(f_obs)
     # compute <fobs^2> in resolution shells
-    self.mean_fobs_sq = flex.double(f_obs.mean_sq(
+    self.mean_fobs_sq = f_obs_selected.mean_sq(
       use_binning=True,
-      use_multiplicities=True).data[1:-1])
+      use_multiplicities=True).data[1:-1]
+    n_none = self.mean_fobs_sq.count(None)
+    if (n_none > 0):
+      error_message = "wilson_plot error: %d empty bin%s:" % plural_s(n_none)
+      if (self.info is not None):
+        error_message += "\n  Info: " + str(self.info)
+      error_message += "\n  Number of bins: %d" % len(self.mean_fobs_sq)
+      error_message += "\n  Number of f_obs > 0: %d" % (
+        f_obs_selected.indices().size())
+      error_message += "\n  Number of f_obs <= 0: %d" % (
+        f_obs.indices().size() - f_obs_selected.indices().size())
+      raise RuntimeError(error_message)
+    self.mean_fobs_sq = flex.double(self.mean_fobs_sq)
     # compute <s^2> = <(sin(theta)/lambda)^2> in resolution shells
-    stol_sq = f_obs.sin_theta_over_lambda_sq()
-    stol_sq.use_binner_of(f_obs)
+    stol_sq = f_obs_selected.sin_theta_over_lambda_sq()
+    stol_sq.use_binner_of(f_obs_selected)
     self.mean_stol_sq = flex.double(stol_sq.mean(
       use_binning=True,
       use_multiplicities=True).data[1:-1])
@@ -34,8 +49,8 @@ class wilson_plot:
         f0 = gaussians[chemical_type].at_stol_sq(stol_sq)
         sum_fj_sq += f0 * f0 * n_atoms
       self.expected_f_sq.append(sum_fj_sq)
-    self.expected_f_sq *= f_obs.space_group().order_z() \
-                        * f_obs.space_group().n_ltr()
+    self.expected_f_sq *= f_obs_selected.space_group().order_z() \
+                        * f_obs_selected.space_group().n_ltr()
     # fit to straight line
     self.x = self.mean_stol_sq
     self.y = flex.log(self.mean_fobs_sq / self.expected_f_sq)
