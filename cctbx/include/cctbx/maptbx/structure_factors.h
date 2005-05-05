@@ -6,6 +6,7 @@
 #include <cctbx/maptbx/utils.h>
 #include <scitbx/array_family/accessors/c_grid_padded.h>
 #include <scitbx/array_family/versa.h>
+#include <set>
 
 namespace cctbx { namespace maptbx { namespace structure_factors {
 
