@@ -70,6 +70,10 @@ class time_log:
     self.stop()
     return self.report()
 
+  def log_elapsed(self, local_label):
+    return "time_log: %s: %.2f elapsed %s" % (
+      self.label, self.timer.elapsed(), local_label)
+
   legend = "time_log: label: n accumulation delta average"
 
   def report(self):
