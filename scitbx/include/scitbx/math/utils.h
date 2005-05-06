@@ -45,6 +45,21 @@ namespace scitbx { namespace math {
     inline
     SignedIntType
     ifloor(FloatType const& x) { return iround(std::floor(x)); }
+
+    static
+    inline
+    SignedIntType
+    nearest_integer(FloatType const& x)
+    {
+      SignedIntType i = static_cast<SignedIntType>(x);
+      if (x >= 0) {
+        if (x - static_cast<FloatType>(i) >= .5) i++;
+      }
+      else {
+        if (x - static_cast<FloatType>(i) <= -.5) i--;
+      }
+      return i;
+    }
   };
 
   inline
@@ -58,6 +73,13 @@ namespace scitbx { namespace math {
   inline
   int
   ifloor(double x) { return float_int_conversions<double,int>::ifloor(x); }
+
+  inline
+  int
+  nearest_integer(double x)
+  {
+    return float_int_conversions<double,int>::nearest_integer(x);
+  }
 
 }} // namespace scitbx::math
 
