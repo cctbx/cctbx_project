@@ -77,13 +77,14 @@ class array_cache:
 
   def possible_twin_laws(self):
     result = []
+    cb_op = self.change_of_basis_op_to_minimum_cell.inverse()
     for partition in sgtbx.cosets.left_decomposition(
       g=self.lattice_group,
       h=self.intensity_symmetry.space_group()
           .build_derived_acentric_group()
           .make_tidy()).partitions[1:]:
       if (partition[0].r().determinant() > 0):
-        result.append(partition[0])
+        result.append(cb_op.apply(partition[0]))
     return result
 
   def show_possible_twin_laws(self):
@@ -97,12 +98,16 @@ class array_cache:
     if (len(twin_laws) == 0):
       print "Possible twin laws: None"
     else:
-      s = str(self.idealized_input_unit_cell())
+      idealized_cell = self.idealized_input_unit_cell()
+      s = str(idealized_cell)
       if (s != str(self.input.unit_cell())):
         print "Idealized unit cell:", s
-      print "Possible twin laws:"
+      print "Possible twin laws (ignoring intrinsic systematic absences):"
       for s in twin_laws:
-        print " ", s.r().as_hkl()
+        hkl_str = s.r().as_hkl()
+        cb_op = sgtbx.change_of_basis_op(hkl_str)
+        assert cb_op.apply(idealized_cell).is_similar_to(idealized_cell)
+        print " ", hkl_str
     print
 
   def show_patterson_peaks(self,
