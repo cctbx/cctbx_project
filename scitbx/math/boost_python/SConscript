@@ -11,5 +11,6 @@ env_scitbx_boost_python_ext.SharedLibrary(
     "principal_axes_of_inertia.cpp",
     "row_echelon.cpp",
     "tensor_rank_2.cpp",
+    "chebyshev.cpp",
     "icosahedron.cpp"]
 )
