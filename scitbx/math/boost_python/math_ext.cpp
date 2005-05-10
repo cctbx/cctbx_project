@@ -4,6 +4,7 @@
 #include <scitbx/math/erf.h>
 #include <scitbx/math/bessel.h>
 #include <scitbx/math/gamma.h>
+#include <scitbx/math/chebyshev.h>
 #include <scitbx/math/lambertw.h>
 #include <scitbx/math/eigensystem.h>
 #include <scitbx/math/phase_error.h>
@@ -24,6 +25,11 @@ namespace boost_python {
   void wrap_row_echelon();
   void wrap_tensor_rank_2();
   void wrap_icosahedron();
+  void wrap_chebyshev_base();
+  void wrap_chebyshev_polynome();
+  void wrap_chebyshev_fitter();
+  void wrap_chebyshev_lsq();
+
 
 namespace {
 
@@ -119,6 +125,9 @@ namespace {
                                                 arg_("x"),
                                                 arg_("max_iterations")=500 )));
 
+
+
+
     def("lambertw", (double(*)(double const&, unsigned)) lambertw,
       lambertw_overloads(
         (arg_("x"), arg_("max_iterations")=100)));
@@ -133,6 +142,12 @@ namespace {
     wrap_row_echelon();
     wrap_tensor_rank_2();
     wrap_icosahedron();
+    wrap_chebyshev_base();
+    wrap_chebyshev_polynome();
+    wrap_chebyshev_fitter();
+    wrap_chebyshev_lsq();
+
+
 
     def("time_eigensystem_real_symmetric", time_eigensystem_real_symmetric);
 
