@@ -304,14 +304,25 @@ class rt:
 
   def __mul__(self, other):
     try: return rt((self.r * other.r, self.r * other.t + self.t))
+    except KeyboardInterrupt: raise
     except: pass
-    try: return rt((self.r * other, self.t))
+    try: return self.r.elems * other + self.t.elems
+    except KeyboardInterrupt: raise
     except: pass
     try: return self.r * other + self.t
+    except KeyboardInterrupt: raise
+    except: pass
+    try: return self.r * col(other) + self.t
+    except KeyboardInterrupt: raise
+    except: pass
+    try: return rt((self.r * other, self.t))
+    except KeyboardInterrupt: raise
     except: pass
     if (len(other) == 9):
-      return rt((self.r * sqr(other), self.t))
-    return self.r * col(other) + self.t
+      try: return rt((self.r * sqr(other), self.t))
+      except KeyboardInterrupt: raise
+      except: pass
+    raise TypeError("can't multiply %s by %s" % (repr(self), repr(other)))
 
   def inverse(self):
     r_inv = self.r.inverse()
