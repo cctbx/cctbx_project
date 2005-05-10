@@ -1052,6 +1052,45 @@ def exercise_phase_integrals(space_group_info):
       assert with_phases.mean_weighted_phase_error(
         phase_source=sg_phase_integrals) < 1.e-6
 
+def exercise_map_cc():
+  xs = crystal.symmetry((3,4,5), "P 2 2 2")
+  mi = flex.miller_index(((1,-2,3), (1,-5,4)))
+
+  data = flex.double((1,2))
+  a = miller.array(miller.set(xs, mi), data)
+  ph = flex.double((10,20))
+  x = a.phase_transfer(ph, deg=True)
+
+  data = flex.double((1,2))
+  a = miller.array(miller.set(xs, mi), data)
+  ph = flex.double((10,20))
+  y = a.phase_transfer(ph, deg=True)
+  assert approx_equal(x.map_cc(y), 1.0)
+
+  data = flex.double((1,2))
+  a = miller.array(miller.set(xs, mi), data)
+  ph = flex.double((10+180,20+180))
+  y = a.phase_transfer(ph, deg=True)
+  assert approx_equal(x.map_cc(y), -1.0)
+
+  data = flex.double((1,2))
+  a = miller.array(miller.set(xs, mi), data)
+  ph = flex.double((10+90,20+90))
+  y = a.phase_transfer(ph, deg=True)
+  assert approx_equal(x.map_cc(y), 0.0)
+
+  data = flex.double((-1,-2))
+  a = miller.array(miller.set(xs, mi), data)
+  ph = flex.double((10+90,20+90))
+  y = a.phase_transfer(ph, deg=True)
+  assert approx_equal(x.map_cc(y), 0.0)
+
+  data = flex.double((-1,-2))
+  a = miller.array(miller.set(xs, mi), data)
+  ph = flex.double((10+45,20+45))
+  y = a.phase_transfer(ph, deg=True)
+  assert approx_equal(x.map_cc(y), 1./math.sqrt(2.0))
+
 def run_call_back(flags, space_group_info):
   exercise_array_2(space_group_info)
   exercise_squaring_and_patterson_map(space_group_info, verbose=flags.Verbose)
@@ -1060,6 +1099,7 @@ def run_call_back(flags, space_group_info):
   exercise_phase_integrals(space_group_info)
 
 def run():
+  exercise_map_cc()
   exercise_set()
   exercise_generate_r_free_flags()
   exercise_binner()
