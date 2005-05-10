@@ -13,6 +13,9 @@ from scitbx.math import principal_axes_of_inertia
 from scitbx.math import sphere_3d, minimum_covering_sphere
 from scitbx.math import signed_phase_error, phase_error, nearest_phase
 from scitbx.math import icosahedron
+from scitbx.math import chebyshev_base
+from scitbx.math import chebyshev_polynome
+from scitbx.math import chebyshev_fitter
 from scitbx.array_family import flex
 from scitbx import matrix
 from libtbx.test_utils import approx_equal, eps_eq
@@ -231,6 +234,128 @@ def exercise_bessel():
   while x <= 100.0:
     assert approx_equal(bessel_ln_of_i0(x),math.log(bessel_i0(x)))
     x+=0.01
+
+
+
+def exercise_random_cheb_polynome(n_terms,
+                             low_limit,
+                             high_limit,
+                             h=0.00001):
+  x = flex.double(range(100))/101.0
+  x = x*(high_limit-low_limit) + low_limit
+  coefs = flex.random_double(n_terms)
+  cheb = chebyshev_polynome(n_terms,
+                            low_limit,
+                            high_limit,
+                            coefs)
+  y = cheb.f(x)
+  y_tmp = cheb.f(x+h)
+  dydx = cheb.dfdx(x)
+  for ii in range(100):
+    assert approx_equal(dydx[ii], (y_tmp[ii]-y[ii])/h,eps=1e-4)
+
+
+def exercise_cheb_fitter(n_terms,
+                    low_limit,
+                    high_limit,
+                    h=0.0000001):
+  x = flex.double(range(100))/101.0
+  x = x*(high_limit-low_limit) + low_limit
+  coefs = flex.random_double(n_terms)
+  cheb_fitter = chebyshev_fitter(n_terms,
+                                 low_limit,
+                                 high_limit,
+                                 coefs)
+
+  finite_diffs = flex.double(n_terms,0)
+
+  for ii in range(100):
+    exact = cheb_fitter.dfdcoefs(x[ii])
+    f = cheb_fitter.f(x[ii])
+    for jj in range(n_terms):
+      coefs[jj]+=h
+      cheb_fitter.replace(coefs)
+      df = cheb_fitter.f(x[ii])
+      coefs[jj]-=h
+      finite_diffs[jj] = (df-f)/h
+      cheb_fitter.replace(coefs)
+      assert approx_equal(exact[jj], finite_diffs[jj])
+
+
+def exercise_cheb_base_and_polynome():
+  x = flex.double(100,0)
+  y1 = flex.double(100,0)
+  y2 = flex.double(100,0)
+  y3 = flex.double(100,0)
+  dy1 = flex.double(100,0)
+  dy2 = flex.double(100,0)
+  dy3 = flex.double(100,0)
+
+
+  cheb_1_coefs = flex.double([0,1])
+  cheb_1 = chebyshev_base(2,-1.,1.,cheb_1_coefs )
+  cheb_1_d = chebyshev_polynome(2,-1.,1.,cheb_1_coefs )
+
+  cheb_2_coefs = flex.double([0,0,1])
+  cheb_2 = chebyshev_base(3,-1.,1.,cheb_2_coefs )
+  cheb_2_d = chebyshev_polynome(3,-1.,1.,cheb_2_coefs )
+
+  cheb_3_coefs = flex.double([0,0,0,1])
+  cheb_3 = chebyshev_base(4,-1.,1.,cheb_3_coefs )
+  cheb_3_d = chebyshev_polynome(4,-1.,1.,cheb_3_coefs )
+
+
+  for ii in range(100):
+    x[ii] = (ii-50)/51.0
+
+    y1[ii] = x[ii]
+    dy1[ii]= 1.0
+
+    y2[ii] = 2.0* x[ii]*x[ii] - 1.0
+    dy2[ii]=4.0*x[ii]
+
+    y3[ii] = 4.0*x[ii]*x[ii]*x[ii]-3.0*x[ii]
+    dy3[ii] = 12.0*x[ii]*x[ii] - 3.0
+
+
+  cheb_1_y = cheb_1.f(x)
+  cheb_2_y = cheb_2.f(x)
+  cheb_3_y = cheb_3.f(x)
+
+  cheb_1_d_y = cheb_1_d.f(x)
+  cheb_2_d_y = cheb_2_d.f(x)
+  cheb_3_d_y = cheb_3_d.f(x)
+
+  cheb_1_d_ydx = cheb_1_d.dfdx(x)
+  cheb_2_d_ydx = cheb_2_d.dfdx(x)
+  cheb_3_d_ydx = cheb_3_d.dfdx(x)
+
+  for ii in range(100):
+    assert approx_equal(y1[ii],cheb_1_y[ii],eps=1e-4)
+    assert approx_equal(y1[ii],cheb_1_d_y[ii],eps=1e-4)
+    assert approx_equal(dy1[ii],cheb_1_d_ydx[ii],eps=1e-4)
+
+    assert approx_equal(y2[ii],cheb_2_y[ii],eps=1e-4)
+    assert approx_equal(y2[ii],cheb_2_d_y[ii],eps=1e-4)
+    assert approx_equal(dy2[ii],cheb_2_d_ydx[ii],eps=1e-4)
+
+    assert approx_equal(y2[ii],cheb_2_y[ii],eps=1e-4)
+    assert approx_equal(y2[ii],cheb_2_d_y[ii],eps=1e-4)
+    assert approx_equal(dy2[ii],cheb_2_d_ydx[ii],eps=1e-4)
+
+def exercise_cheb_family():
+  exercise_cheb_base_and_polynome()
+  for ii in range(10):
+    exercise_cheb_fitter(5,-1,1,0.00000001)
+    exercise_cheb_fitter(5,-10,1,0.00000001)
+    exercise_cheb_fitter(5,-10,10,0.00000001)
+    exercise_cheb_fitter(8,-1,1,0.00000001)
+    exercise_cheb_fitter(8,-10,1,0.00000001)
+    exercise_cheb_fitter(8,-10,10,0.00000001)
+    exercise_random_cheb_polynome(8, -1.0, 1.0,0.000000001)
+    exercise_random_cheb_polynome(5, -1.0, 1.0,0.000000001)
+    exercise_random_cheb_polynome(8, 1.0, 10.0,0.000000001)
+    exercise_random_cheb_polynome(5, -10.0, 1.0,0.000000001)
 
 def check_lambertw(x):
   w = lambertw(x=x)
@@ -1185,6 +1310,7 @@ def run():
   exercise_tensor_rank_2()
   exercise_icosahedron()
   exercise_basic_statistics()
+  exercise_cheb_family()
   forever = "--Forever" in sys.argv[1:]
   while 1:
     exercise_minimum_covering_sphere()
