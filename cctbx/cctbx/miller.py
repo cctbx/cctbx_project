@@ -804,6 +804,16 @@ class set(crystal.symmetry):
   def clear_binner(self):
     self._binner = None
 
+  def map_cc(self, other):
+    d1 = flex.abs(self.data())
+    d2 = flex.abs(other.data())
+    p1 = self.phases().data()
+    p2 = other.phases().data()
+    factor = math.sqrt( flex.sum(d1 * d1) * flex.sum(d2 * d2) )
+    assert factor > 0.0
+    return flex.sum( d1 * d2 * flex.cos(p2 - p1) ) / factor
+
+
 def build_set(crystal_symmetry, anomalous_flag, d_min):
   return set(
     crystal_symmetry,
