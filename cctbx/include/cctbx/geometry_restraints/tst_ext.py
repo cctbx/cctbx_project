@@ -5,7 +5,7 @@ from cctbx import sgtbx
 from cctbx.crystal import direct_space_asu
 from scitbx import matrix
 from scitbx import stl
-from libtbx.test_utils import approx_equal, eps_eq
+from libtbx.test_utils import approx_equal, not_approx_equal, eps_eq
 
 def exercise_bond():
   p = geometry_restraints.bond_params(
@@ -407,8 +407,8 @@ def exercise_nonbonded():
       assert approx_equal(r.residual(), 0)
       assert approx_equal(r.gradients(), [(0,0,0),(0,0,0)])
     else:
-      assert not approx_equal(r.residual(), 0)
-      assert not approx_equal(r.gradients(), [(0,0,0),(0,0,0)])
+      assert not_approx_equal(r.residual(), 0)
+      assert not_approx_equal(r.gradients(), [(0,0,0),(0,0,0)])
   r = geometry_restraints.nonbonded_prolsq(
     sites=list(sites_cart),
     vdw_distance=p.vdw_distance,
@@ -670,7 +670,7 @@ def exercise_dihedral():
         sites_cart=sites_cart,
         proxy=p)
       assert approx_equal(rp.angle_model, r.angle_model)
-      if (approx_equal(p.angle_ideal, r_orig.angle_model)):
+      if (abs(p.angle_ideal - r_orig.angle_model) < 1.e-6):
         n_equiv_direct += 1
       p_sorted = p.sort_i_seqs()
       assert p_sorted.i_seqs == (0,1,2,3)
@@ -825,7 +825,7 @@ def exercise_planarity():
     i_seqs=flex.size_t([0,1,2,3]).select(perm),
     weights=weights.select(perm))
   assert tuple(p.i_seqs) == (3,1,0,2)
-  assert not approx_equal(p.weights, weights)
+  assert not_approx_equal(p.weights, weights)
   p = p.sort_i_seqs()
   assert tuple(p.i_seqs) == (0,1,2,3)
   assert approx_equal(p.weights, weights)

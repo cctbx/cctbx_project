@@ -8,7 +8,7 @@ import cctbx.crystal.direct_space_asu
 from cctbx import xray
 from cctbx import math_module
 from cctbx.array_family import flex
-from libtbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal, not_approx_equal
 import pickle
 
 def exercise_conversions():
@@ -498,7 +498,7 @@ def exercise_minimization_apply_shifts():
       assert approx_equal(a.u_star, b.u_star)
     else:
       assert a.u_iso == b.u_iso
-      assert not approx_equal(a.u_star, b.u_star)
+      assert not_approx_equal(a.u_star, b.u_star)
     assert a.occupancy != b.occupancy
     assert a.fp != b.fp
     assert a.fdp != b.fdp
@@ -535,7 +535,7 @@ def exercise_minimization_apply_shifts():
   shifts = flex.double(6, -100)
   shifted_scatterers = xray.ext.minimization_apply_shifts(
     uc, scatterers, f, shifts).shifted_scatterers
-  assert not approx_equal(shifted_scatterers[1].u_star,
+  assert not_approx_equal(shifted_scatterers[1].u_star,
     [u_ij-100 for u_ij in scatterers[1].u_star])
   f = xray.ext.gradient_flags(False, False, False, True, False, False, False)
   shifts = flex.double(2, -10)

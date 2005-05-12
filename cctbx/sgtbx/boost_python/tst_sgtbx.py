@@ -6,7 +6,7 @@ from cctbx import sgtbx
 import cctbx.sgtbx.direct_space_asu
 from cctbx import uctbx
 from scitbx.python_utils import complex_math
-from libtbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal, not_approx_equal
 
 def exercise_symbols():
   s = sgtbx.space_group_symbols("p 2")
@@ -1295,7 +1295,7 @@ def exercise_sym_equiv_sites():
         d = sgtbx.min_sym_equiv_distance_info(e, z, shift_flags)
         assert approx_equal(d.dist(), 0)
         if (shift_flags != (0,0,0)):
-          assert not approx_equal(d.sym_op() * z, x)
+          assert not_approx_equal(d.sym_op() * z, x)
         else:
           assert approx_equal(d.sym_op() * z, x)
         fz = flex.vec3_double(1, z)

@@ -2,7 +2,7 @@ from cctbx import maptbx
 from cctbx import uctbx
 from cctbx import sgtbx
 from cctbx.array_family import flex
-from libtbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal, not_approx_equal
 import sys
 import random
 
@@ -77,11 +77,11 @@ def exercise_statistics():
     b[(2,5)] = 2
     b.resize(flex.grid((-2,3), (2,9)).set_focus((1,8)))
     t = maptbx.statistics(b)
-    assert not approx_equal(flex.min(b), t.min())
-    assert not approx_equal(flex.max(b), t.max())
-    assert not approx_equal(flex.mean(b), t.mean())
-    assert not approx_equal(flex.mean_sq(b), t.mean_sq())
-    assert not approx_equal(flex.mean_sq(b)-flex.mean(b)**2, t.sigma()**2)
+    assert not_approx_equal(flex.min(b), t.min())
+    assert not_approx_equal(flex.max(b), t.max())
+    assert not_approx_equal(flex.mean(b), t.mean())
+    assert not_approx_equal(flex.mean_sq(b), t.mean_sq())
+    assert not_approx_equal(flex.mean_sq(b)-flex.mean(b)**2, t.sigma()**2)
     assert approx_equal(s.min(), t.min())
     assert approx_equal(s.max(), t.max())
     assert approx_equal(s.mean(), t.mean())
