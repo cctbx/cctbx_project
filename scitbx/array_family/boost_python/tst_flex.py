@@ -1,7 +1,7 @@
 from scitbx.array_family import flex
 from scitbx.python_utils import command_line
 from scitbx import matrix
-from libtbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal, not_approx_equal
 from cStringIO import StringIO
 import pickle
 import cPickle
@@ -634,8 +634,8 @@ def exercise_complex_functions():
   assert approx_equal(d.imag, c.imag)
   y = flex.polar(a, p, 0)
   d = y[0]
-  assert not approx_equal(d.real, c.real)
-  assert not approx_equal(d.imag, c.imag)
+  assert not_approx_equal(d.real, c.real)
+  assert not_approx_equal(d.imag, c.imag)
   p = flex.arg(x, 0)
   y = flex.polar(x, p)
   d = y[0]
@@ -647,8 +647,8 @@ def exercise_complex_functions():
   assert approx_equal(d.imag, c.imag)
   y = flex.polar(x, p, 1)
   d = y[0]
-  assert not approx_equal(d.real, c.real)
-  assert not approx_equal(d.imag, c.imag)
+  assert not_approx_equal(d.real, c.real)
+  assert not_approx_equal(d.imag, c.imag)
   y = flex.polar(a, x)
   d = y[0]
   assert approx_equal(d.real, c.real)
