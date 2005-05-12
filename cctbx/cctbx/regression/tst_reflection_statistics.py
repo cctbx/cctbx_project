@@ -75,8 +75,8 @@ def exercise(space_group_info, anomalous_flag, verbose):
       expected_match = s.is_unit_mx()
       cb_op = sgtbx.change_of_basis_op(s)
       cb = miller_array_sub_a.change_basis(cb_op).map_to_asu()
-      is_match = approx_equal(
-        miller_array_sub_a.correlation(other=cb).coefficient(), 1)
+      is_match = abs(
+        miller_array_sub_a.correlation(other=cb).coefficient() - 1) < 1.e-6
       assert is_match == expected_match
       for s in partition[1:]:
         cb_op = sgtbx.change_of_basis_op(s)

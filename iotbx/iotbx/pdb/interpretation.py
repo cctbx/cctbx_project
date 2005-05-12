@@ -11,7 +11,7 @@ import cctbx.eltbx.xray_scattering
 from cctbx.array_family import flex
 from scitbx.stl import set
 from libtbx.itertbx import count
-from libtbx.test_utils import approx_equal
+from libtbx.test_utils import not_approx_equal
 import string
 import sys
 
@@ -264,10 +264,10 @@ class stage_1:
           or (self.scale_matrix is not None
           and self.crystal_symmetry is not None
           and self.crystal_symmetry.unit_cell() is not None
-          and (   not approx_equal(
+          and (   not_approx_equal(
             self.scale_matrix[0],
             self.crystal_symmetry.unit_cell().fractionalization_matrix()
-               or not approx_equal(
+               or not_approx_equal(
             self.scale_matrix[0],
             [0,0,0]))))):
         sites_frac = self.scale_matrix[0] * self._sites_cart \

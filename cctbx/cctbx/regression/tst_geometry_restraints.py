@@ -95,7 +95,7 @@ def exercise_nonbonded(nonbonded_type, repulsion_function):
           .as_double()
         ag = flex.vec3_double(r.gradients()).as_double()
         scale = max(1, flex.mean(flex.abs(fg)))
-        assert approx_equal(ag/scale, fg/scale, eps=1.e-3)
+        assert approx_equal(ag/scale, fg/scale, eps=1.e-2)
   sites = [[0,0,0], [0,0,0]]
   vdw_distance = 1.8
   for i_step in xrange(1,100):

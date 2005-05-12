@@ -3,7 +3,7 @@ import pickle
 from cctbx.array_family import flex
 from cctbx import uctbx
 from scitbx import matrix
-from libtbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal, not_approx_equal
 import random
 import math
 import sys
@@ -45,7 +45,7 @@ def exercise_basic():
     v = uctbx.unit_cell(p[:i])
     assert v.parameters() == u.parameters()
     if (i):
-      assert not approx_equal(u.parameters(), u.reciprocal_parameters())
+      assert not_approx_equal(u.parameters(), u.reciprocal_parameters())
       assert not u.is_similar_to(u.reciprocal())
       assert not u.is_similar_to(u.reciprocal(), 1.e-3)
       assert not u.is_similar_to(u.reciprocal(), 1.e-3, 1.e-3)
@@ -411,10 +411,10 @@ def exercise_box_frac_around_sites():
           if (c_inv_r is c_inv_rs[2]):
             assert approx_equal(max_, max0)
           else:
-            assert not approx_equal(max_, max0)
+            assert not_approx_equal(max_, max0)
         else:
-          assert not approx_equal(min_, min0)
-          assert not approx_equal(max_, max0)
+          assert not_approx_equal(min_, min0)
+          assert not_approx_equal(max_, max0)
 
 def run():
   exercise_functions()
