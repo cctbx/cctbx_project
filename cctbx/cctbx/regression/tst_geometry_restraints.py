@@ -5,7 +5,7 @@ from cctbx.array_family import flex
 from scitbx.matrix import col, sqr
 from scitbx.math import euler_angles_as_matrix
 from libtbx import itertbx
-from libtbx.test_utils import approx_equal, eps_eq
+from libtbx.test_utils import approx_equal, not_approx_equal
 import random
 import sys
 
@@ -66,7 +66,6 @@ def exercise_bond():
         assert approx_equal(analytical, finite)
 
 def exercise_nonbonded(nonbonded_type, repulsion_function):
-  n_failures = 0
   for i_trial in xrange(5):
     sites = random_sites(n_sites=2)
     r = nonbonded_type(
@@ -84,19 +83,19 @@ def exercise_nonbonded(nonbonded_type, repulsion_function):
       else:
         sites_mod = []
         for site in sites:
-          shift = col([random.uniform(-.1,.1)*vdw_distance for i in xrange(3)])
+          shift = col([random.uniform(-1,1)*vdw_distance*0.05
+            for i in xrange(3)])
           sites_mod.append(site+shift)
       r = nonbonded_type(
         sites=sites_mod,
         vdw_distance=vdw_distance,
         function=repulsion_function)
-      if (repulsion_function.irexp <= 2 or not approx_equal(r.residual(), 0)):
-        ag = r.gradients()
-        fg = finite_differences(sites_mod, residual_obj)
-        eps = max(1.e-6, r.residual()*1.e-6)
-        for analytical,finite in zip(ag,fg):
-          if (not approx_equal(analytical, finite, eps=eps)):
-            n_failures += 1
+      if (repulsion_function.irexp <= 2 or not_approx_equal(r.residual(), 0)):
+        fg = flex.vec3_double(finite_differences(sites_mod, residual_obj)) \
+          .as_double()
+        ag = flex.vec3_double(r.gradients()).as_double()
+        scale = max(1, flex.mean(flex.abs(fg)))
+        assert approx_equal(ag/scale, fg/scale, eps=1.e-3)
   sites = [[0,0,0], [0,0,0]]
   vdw_distance = 1.8
   for i_step in xrange(1,100):
@@ -107,7 +106,6 @@ def exercise_nonbonded(nonbonded_type, repulsion_function):
       vdw_distance=vdw_distance,
       function=repulsion_function)
     assert approx_equal(delta, r.delta)
-  return n_failures
 
 def exercise_angle():
   eps = 1
@@ -204,11 +202,10 @@ def exercise_dihedral_core(sites, angle_ideal, angle_esd, periodicity,
     angle_ideal=dih.angle_ideal,
     weight=dih.weight,
     periodicity=periodicity)
-  fg = flex.vec3_double(finite_differences(sites, residual_obj))
-  scale = max(1, flex.max(flex.abs(ag.as_double())))
-  ag *= 1/scale
-  fg *= 1/scale
-  assert approx_equal(ag, fg, eps=1.e-6)
+  fg = flex.vec3_double(finite_differences(sites, residual_obj)).as_double()
+  ag = ag.as_double()
+  scale = max(1, flex.mean(flex.abs(fg)))
+  assert approx_equal(ag/scale, fg/scale)
 
 def exercise_dihedral():
   sites = [col(site) for site in [
@@ -273,7 +270,6 @@ def exercise_chirality(verbose=0):
     print "volume_model:", chir.volume_model
     print "angle_ideal:", dih.angle_ideal
     print "angle model:", dih.angle_model
-  n_failures = 0
   for i_trial in xrange(50):
     volume_ideal = chir.volume_ideal
     for both_signs in [False, True]:
@@ -292,12 +288,12 @@ def exercise_chirality(verbose=0):
         volume_ideal=c.volume_ideal,
         both_signs=c.both_signs,
         weight=c.weight)
-      fg = finite_differences(sites_mod, residual_obj)
-      ag = c.gradients()
-      if (not eps_eq(ag, fg, eps=1.e-4)):
-        n_failures += 1
-        assert n_failures < 3
-        assert eps_eq(ag, fg, eps=1.e-3)
+      fg = flex.vec3_double(
+        finite_differences(sites_mod, residual_obj)).as_double()
+      ag = flex.vec3_double(
+        c.gradients()).as_double()
+      scale = max(1, flex.mean(flex.abs(fg)))
+      assert approx_equal(ag/scale, fg/scale)
       d = geometry_restraints.dihedral(
         sites=improper_permutation(sites_mod),
         angle_ideal=dih.angle_ideal,
@@ -372,23 +368,19 @@ def exercise_planarity():
 
 def exercise():
   exercise_bond()
-  n_failures = 0
   for irexp in [1,2,3,4,5]:
     for rexp in [3,4]:
-      n_failures += exercise_nonbonded(
+      exercise_nonbonded(
         nonbonded_type=geometry_restraints.nonbonded_prolsq,
         repulsion_function=geometry_restraints.prolsq_repulsion_function(
           irexp=irexp,
           rexp=rexp))
-  assert n_failures <= 3
-  n_failures = 0
   for irexp in [1,2,3,4,5]:
-    n_failures += exercise_nonbonded(
+    exercise_nonbonded(
       nonbonded_type=geometry_restraints.nonbonded_inverse_power,
       repulsion_function=geometry_restraints.inverse_power_repulsion_function(
         nonbonded_distance_cutoff=1.e20,
         irexp=irexp))
-  assert n_failures <= 2
   exercise_angle()
   exercise_dihedral()
   exercise_chirality(verbose="--verbose" in sys.argv[1:])
