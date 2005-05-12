@@ -29,7 +29,7 @@ def miller_array_export_as_cns_hkl(self,
     print >> out, "DECLare NAME=%s DOMAin=RECIprocal TYPE=REAL END" % nf
     print >> out, "DECLare NAME=%s DOMAin=RECIprocal TYPE=REAL END" % ns
     for h,f,s in zip(f_obs.indices(),f_obs.data(),f_obs.sigmas()):
-      print >> out, "INDEx %d %d %d" % h, "%s=%.6g %s=%.6g" % (nf,f,ns,s)
+      print >> out, "INDEx %d %d %d" % h, "%s= %.6g %s= %.6g" % (nf,f,ns,s)
   elif (self.is_complex_array()):
     if (array_names is None): array_names = ["F"]
     else: assert len(array_names) == 1
@@ -38,7 +38,7 @@ def miller_array_export_as_cns_hkl(self,
     for h,a,p in zip(self.indices(),
                      flex.abs(self.data()),
                      flex.arg(self.data(), True)):
-      print >> out, "INDEx %d %d %d" % h, "%s=%.6g %.6g" % (n,a,p)
+      print >> out, "INDEx %d %d %d" % h, "%s= %.6g %.6g" % (n,a,p)
   else:
     if (array_names is None): array_names = ["DATA"]
     else: assert len(array_names) == 1
@@ -54,7 +54,7 @@ def miller_array_export_as_cns_hkl(self,
     else:
       raise RuntimeError, \
         "Cannot write array type %s to CNS reflection file" % type(self.data())
-    fmt = array_names[0] + "=" + fmt
+    fmt = array_names[0] + "= " + fmt
     for h,d in zip(self.indices(),self.data()):
       print >> out, "INDEx %d %d %d" % h, fmt % d
 
