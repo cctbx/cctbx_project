@@ -73,7 +73,7 @@ namespace {
          fractional<double> const&)) eight_point_interpolation);
     def("closest_grid_point",
       (af::c_grid_padded<3>::index_type(*)
-        (af::const_ref<double, af::c_grid_padded<3> > const&,
+        (af::flex_grid<> const&,
          fractional<double> const&)) closest_grid_point);
     def("non_crystallographic_eight_point_interpolation",
       (double(*)

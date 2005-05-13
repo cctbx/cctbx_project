@@ -96,11 +96,12 @@ namespace cctbx { namespace maptbx {
   template <typename FloatType>
   typename af::c_grid_padded<3>::index_type
   closest_grid_point(
-    af::const_ref<FloatType, af::c_grid_padded<3> > const& map,
+    af::flex_grid<> const& map_accessor,
     fractional<FloatType> const& x_frac)
   {
+    af::c_grid_padded<3> c_grid(map_accessor);
     typedef af::c_grid_padded<3>::index_type index_t;
-    index_t const& grid_n = map.accessor().focus();
+    index_t const& grid_n = c_grid.focus();
     return get_corner<index_t, FloatType>(grid_n, x_frac)
       .closest_grid_point(grid_n);
   }
