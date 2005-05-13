@@ -24,8 +24,8 @@ def exercise_basic():
   out = StringIO()
   s.array(data=c).as_phases_phs(out=out)
   assert not show_diff(out.getvalue(), """\
-   1   2   349999.99    1.00  -25.00
-  -3   4  -699999.99    1.00   -5.00
+   1   2   3 4999.99    1.00  -25.00
+  -3   4  -6 9999.99    1.00   -5.00
 """)
   out = StringIO()
   s.array(data=c).as_phases_phs(out=out, scale_amplitudes=False)
@@ -38,23 +38,23 @@ def exercise_basic():
     s.array(data=c).amplitudes().as_phases_phs(
       out=out, phases=phases, phases_deg=True)
     assert not show_diff(out.getvalue(), """\
-   1   2   349999.99    1.00  -25.00
-  -3   4  -699999.99    1.00  355.00
+   1   2   3 4999.99    1.00  -25.00
+  -3   4  -6 9999.99    1.00  355.00
 """)
   for phases in [s.array(data=p*(math.pi/180)), p*(math.pi/180)]:
     out = StringIO()
     s.array(data=c).amplitudes().as_phases_phs(
       out=out, phases=phases, phases_deg=False)
     assert not show_diff(out.getvalue(), """\
-   1   2   349999.99    1.00  -25.00
-  -3   4  -699999.99    1.00  355.00
+   1   2   3 4999.99    1.00  -25.00
+  -3   4  -6 9999.99    1.00  355.00
 """)
   for figures_of_merit in [s.array(data=f), f]:
     out = StringIO()
     s.array(data=c).as_phases_phs(out=out, figures_of_merit=figures_of_merit)
     assert not show_diff(out.getvalue(), """\
-   1   2   349999.99    0.30  -25.00
-  -3   4  -699999.99    0.90   -5.00
+   1   2   3 4999.99    0.30  -25.00
+  -3   4  -6 9999.99    0.90   -5.00
 """)
 
 def generate_random_f_calc(
