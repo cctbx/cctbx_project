@@ -18,7 +18,7 @@ def run():
   "$D/iotbx/detectors/tst_adsc.py",
   "$D/iotbx/xplor/tst_xplormap.py",
   ["$D/iotbx/tst_phases.py", "P31"],
-  ["$D/iotbx/regression/tst_reflection_statistics.py", "P31m"]
+  ["$D/iotbx/regression/tst_reflection_statistics.py", "Fdd2 P31m"]
   )
 
   build_dir = libtbx.env.under_build("iotbx")
