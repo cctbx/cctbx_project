@@ -214,7 +214,7 @@ def exercise_eight_point_interpolation():
     for index in flex.nested_loop(map.focus()):
       x_frac = [float(i)/n+shift for i,n in zip(index, map.focus())]
       assert approx_equal(maptbx.eight_point_interpolation(map, x_frac), 10)
-      assert maptbx.closest_grid_point(map, x_frac) == index
+      assert maptbx.closest_grid_point(map.accessor(), x_frac) == index
   for i in xrange(100):
     x_frac = [3*random.random()-1 for i in xrange(3)]
     assert approx_equal(map.eight_point_interpolation(x_frac), 10)
@@ -225,7 +225,8 @@ def exercise_eight_point_interpolation():
     for index in flex.nested_loop(map.focus()):
       x_frac = [float(i)/n+shift for i,n in zip(index, map.focus())]
       assert approx_equal(map.eight_point_interpolation(x_frac), v)
-      assert approx_equal(map[map.closest_grid_point(x_frac)], v)
+      assert approx_equal(
+        map[maptbx.closest_grid_point(map.accessor(), x_frac)], v)
       assert approx_equal(map.value_at_closest_grid_point(x_frac), v)
       v += 1
   map = flex.double()
@@ -238,7 +239,7 @@ def exercise_eight_point_interpolation():
         x_frac = [(i+offs)/n+shift for i,n in zip(index, map.focus())]
         assert approx_equal(map.eight_point_interpolation(x_frac), v)
         if (offs != .5):
-          assert map.closest_grid_point(x_frac) == tuple(
+          assert maptbx.closest_grid_point(map.accessor(), x_frac) == tuple(
             [int(i+offs+.5)%n for i,n in zip(index,map.focus())])
         v = 1-v
 
