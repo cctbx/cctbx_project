@@ -102,12 +102,34 @@ class array_cache:
       s = str(idealized_cell)
       if (s != str(self.input.unit_cell())):
         print "Idealized unit cell:", s
-      print "Possible twin laws (ignoring intrinsic systematic absences):"
+      print "Possible twin laws:"
+      n_changed_settings = 0
       for s in twin_laws:
         hkl_str = s.r().as_hkl()
         cb_op = sgtbx.change_of_basis_op(hkl_str)
         assert cb_op.apply(idealized_cell).is_similar_to(idealized_cell)
-        print " ", hkl_str
+        info = ""
+        try:
+          cb_sg = self.input.space_group_info().change_basis(cb_op=cb_op)
+        except RuntimeError, e:
+          if (str(e).find("Unsuitable value for rational") < 0): raise
+          info = " # Info: this changes the setting of the input space group"
+          n_changed_settings += 1
+        else:
+          if (cb_sg.group() != self.input.space_group()):
+            info = " # Info: new setting: %s" % str(cb_sg)
+            n_changed_settings += 1
+        print " ", hkl_str + info
+      if (n_changed_settings > 0):
+        print "  ***************************************************"
+        print "  This is a very interesting combination of unit cell"
+        print "  parameters and space group symmetry."
+        print "  PLEASE send this output to:"
+        print
+        print "    cctbx@cci.lbl.gov"
+        print
+        print "  Thank you in advance!"
+        print "  ***************************************************"
     print
 
   def show_patterson_peaks(self,
