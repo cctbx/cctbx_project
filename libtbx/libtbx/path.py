@@ -1,3 +1,4 @@
+from libtbx.str_utils import show_string
 import os
 
 def norm_join(*args):
@@ -34,3 +35,21 @@ def full_command_path(command, search_first=[], search_last=[]):
     if (os.path.exists(path_command)):
       return os.path.normpath(os.path.abspath(path_command))
   return None
+
+class directory:
+
+  def __init__(self, path):
+    self.path = path
+
+  def get(self, name, must_exist=True):
+    assert name is not None
+    result = os.path.join(self.path, name)
+    if (must_exist and not os.path.exists(result)):
+      raise RuntimeError("No such file or directory: %s" % show_string(result))
+    return result
+
+  def sub_directory(self, name, must_exist=True):
+    result = directory(self.get(name))
+    if (must_exist and not os.path.isdir(result.path)):
+      raise RuntimeError("Not a directory: %s" % show_string(result.path))
+    return result
