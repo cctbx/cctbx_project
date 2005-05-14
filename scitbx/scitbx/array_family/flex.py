@@ -124,12 +124,8 @@ class py_object:
   def __setitem__(self, index, value):
     self._data[self._accessor(index)] = value
 
-class linear_regression(ext.linear_regression):
-
-  def __init__(self, x, y, epsilon=1.e-15):
-    ext.linear_regression.__init__(self, x, y, epsilon)
-
-class _linear_regression(boost.python.injector, ext.linear_regression):
+class _linear_regression_core(boost.python.injector,
+                              ext.linear_regression_core):
 
   def show_summary(self, f=None):
     if (f is None): f = sys.stdout
