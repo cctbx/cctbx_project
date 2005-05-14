@@ -1,6 +1,7 @@
 from cctbx.array_family import flex
 from scitbx.math import chebyshev_polynome
 from scitbx.math import chebyshev_lsq_fit
+from iotbx import data_plots
 import math
 
 
@@ -15,8 +16,8 @@ def example():
   print
   n_terms = chebyshev_lsq_fit.cross_validate_to_determine_number_of_terms(
     x_obs,y_obs,w_obs,
-    min_terms=3 ,max_terms=20,
-    n_goes=40,n_free=10)
+    min_terms=5 ,max_terms=20,
+    n_goes=20,n_free=20)
   print "Fitting with", n_terms, "terms"
   print
   fit = chebyshev_lsq_fit.chebyshev_lsq_fit(n_terms,x_obs,y_obs)
@@ -50,6 +51,22 @@ def example():
   for ii in range(10):
     print "%6.3f %6.3f %6.3f %6.3f" \
           %(x_obs[ii*9], y_obs[ii*9], y_ideal[ii*9], y_fitted[ii*9])
+
+  print "Preparing output for loggraph in a file called"
+  print "   chebyshev.loggraph"
+  chebyshev_plot = data_plots.plot_data(plot_title='Chebyshev fitting',
+                                        x_label = 'x values',
+                                        y_label = 'y values',
+                                        x_data = x_obs,
+                                        y_data = y_obs,
+                                        y_legend = 'Observed y values',
+                                        comments = 'Chebyshev fit')
+  chebyshev_plot.add_data(y_data=y_ideal,
+                          y_legend='Error free y values')
+  chebyshev_plot.add_data(y_data=y_fitted,
+                          y_legend='Fitted chebyshev approximation')
+  output_logfile=open('chebyshev.loggraph','w')
+  data_plots.plot_data_loggraph(chebyshev_plot,output_logfile)
 
 
 
