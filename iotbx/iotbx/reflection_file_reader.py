@@ -13,7 +13,7 @@ from cctbx import miller
 from cctbx import crystal
 from cctbx import sgtbx
 from cctbx import uctbx
-from scitbx.python_utils import easy_pickle
+from libtbx import easy_pickle
 from libtbx.utils import Sorry
 import sys, os
 

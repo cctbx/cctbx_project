@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 
 from cctbx import xray
-from scitbx.python_utils import easy_pickle
+from libtbx import easy_pickle
 import sys
 
 def run(args):

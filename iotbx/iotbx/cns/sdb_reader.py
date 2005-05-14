@@ -5,8 +5,8 @@ from cctbx import adptbx
 from cctbx import xray
 import cctbx.eltbx.xray_scattering
 from cctbx import eltbx
-from scitbx.python_utils import easy_pickle
 from scitbx.python_utils.misc import adopt_init_args
+from libtbx import easy_pickle
 import re
 import os
 

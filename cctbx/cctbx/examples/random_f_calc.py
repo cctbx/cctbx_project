@@ -10,7 +10,7 @@ view the electron density map with PyMOL (see view_fft_map.py).
 
 from cctbx.development import random_structure
 from cctbx import sgtbx
-from scitbx.python_utils import easy_pickle
+from libtbx import easy_pickle
 import sys
 
 def generate_random_f_calc(space_group_info, n_elements=10, d_min=1.5):
