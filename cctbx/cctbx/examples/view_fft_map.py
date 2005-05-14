@@ -17,7 +17,7 @@ print "Loading module:", __name__
 # cctbx imports
 from cctbx import maptbx
 from scitbx.array_family import flex
-from scitbx.python_utils import easy_pickle
+from libtbx import easy_pickle
 
 # PyMOL imports
 from chempy.map import Map

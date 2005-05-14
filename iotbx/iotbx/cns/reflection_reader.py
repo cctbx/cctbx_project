@@ -5,7 +5,7 @@ from cctbx import crystal
 from cctbx import miller
 from cctbx.array_family import flex
 from scitbx.python_utils import complex_math
-from scitbx.python_utils import easy_pickle
+from libtbx import easy_pickle
 import sys
 
 # <xray-reflection-statement> :==

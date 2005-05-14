@@ -6,8 +6,8 @@ import scitbx.math.gaussian_fit
 import cctbx.eltbx.gaussian_fit
 from cctbx.array_family import flex
 from scitbx.python_utils.misc import user_plus_sys_time
-from scitbx.python_utils import easy_pickle
 from libtbx.optparse_wrapper import OptionParser
+from libtbx import easy_pickle
 import sys, os
 
 def run(file_name, args, cutoff, params,

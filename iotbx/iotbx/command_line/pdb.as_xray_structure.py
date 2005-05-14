@@ -2,7 +2,7 @@
 
 from iotbx import pdb
 from iotbx.option_parser import iotbx_option_parser
-from scitbx.python_utils import easy_pickle
+from libtbx import easy_pickle
 import sys, os
 
 def run(args):

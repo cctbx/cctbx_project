@@ -14,8 +14,8 @@ from cctbx import sgtbx
 from cctbx import crystal
 from cctbx import miller
 from cctbx.array_family import flex
-from scitbx.python_utils import easy_pickle
 from scitbx.python_utils.math_utils import iround
+from libtbx import easy_pickle
 import exceptions
 import os
 import sys

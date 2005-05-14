@@ -5,9 +5,9 @@ from cctbx.eltbx.gaussian_fit import international_tables_stols
 from cctbx.eltbx import tiny_pse
 from cctbx.array_family import flex
 import scitbx.math.gaussian
-from scitbx.python_utils import easy_pickle
 from scitbx.python_utils.misc import adopt_init_args
 from libtbx.optparse_wrapper import OptionParser
+from libtbx import easy_pickle
 import os
 
 class labeled_fit:

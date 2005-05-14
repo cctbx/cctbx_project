@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 
-from scitbx.python_utils import easy_pickle
+from libtbx import easy_pickle
 from scitbx.python_utils import dicts
 from scitbx.python_utils.misc import adopt_init_args
 from cctbx import euclidean_model_matching as emma
