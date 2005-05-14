@@ -6,7 +6,7 @@ from cctbx.array_family import flex
 from scitbx.python_utils.math_utils import ifloor
 from scitbx.python_utils.misc import adopt_init_args
 from scitbx.python_utils import dicts
-from scitbx.python_utils import easy_pickle
+from libtbx import easy_pickle
 import time
 import math
 import sys
