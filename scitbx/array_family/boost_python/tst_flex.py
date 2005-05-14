@@ -812,9 +812,32 @@ def exercise_histogram():
 *15.2 - 19: 7
 """
 
+def simple_linear_regression(x_obs, y_obs, w_obs):
+  assert len(x_obs) == len(y_obs)
+  assert len(x_obs) == len(w_obs)
+  w = 0
+  x = 0
+  y = 0
+  x2 = 0
+  y2 = 0
+  xy = 0
+  for i in xrange(len(x_obs)):
+    w += w_obs[i]
+    x += x_obs[i]*w_obs[i]
+    y += y_obs[i]*w_obs[i]
+    x2 += x_obs[i]**2*w_obs[i]
+    y2 += y_obs[i]**2*w_obs[i]
+    xy += x_obs[i]*y_obs[i]*w_obs[i]
+  determinant = w*x2 - x**2
+  a = x2*y - x*xy
+  a /= determinant
+  b = w*xy - x*y
+  b /= determinant
+  return a, b
+
 def exercise_linear_regression():
   x = flex.double((1,2,3))
-  r = flex.linear_regression(x, x, 1.e-6)
+  r = flex.linear_regression(x=x, y=x, epsilon=1.e-6)
   assert r.is_well_defined()
   assert approx_equal(r.y_intercept(), 0)
   assert approx_equal(r.slope(), 1)
@@ -837,10 +860,30 @@ is_well_defined: %s
 y_intercept: 0.0
 slope: 0.0
 """ % str(False)
+  y = flex.double((-1./2+1,-2./2+1,-3./2+1))
+  for weight in [1,math.pi]:
+    weights = flex.double(3, weight)
+    r = flex.linear_regression(x=x, y=y, epsilon=1.e-6)
+    rw = flex.linear_regression(x=x, y=y, weights=weights, epsilon=1.e-6)
+    assert rw.is_well_defined()
+    assert approx_equal(rw.y_intercept(), r.y_intercept())
+    assert approx_equal(rw.slope(), r.slope())
+    a, b = simple_linear_regression(x, y, weights)
+    assert approx_equal(a, r.y_intercept())
+    assert approx_equal(b, r.slope())
+  for i_trial in xrange(100):
+    x = flex.random_double(size=10)
+    y = x + flex.random_double(size=10) * 0.2 - 0.1 + 3
+    weights = flex.random_double(size=10)
+    rw = flex.linear_regression(x=x, y=y, weights=weights)
+    a, b = simple_linear_regression(x, y, weights)
+    assert approx_equal(a, rw.y_intercept())
+    assert approx_equal(b, rw.slope())
+    assert approx_equal(rw.y_intercept(), 3, 1)
 
 def exercise_linear_correlation():
   x = flex.double((1,2,3))
-  c = flex.linear_correlation(x, x, 1.e-6)
+  c = flex.linear_correlation(x=x, y=x, epsilon=1.e-6)
   assert c.is_well_defined()
   assert c.n() == 3
   assert approx_equal(c.mean_x(), 2)

@@ -130,9 +130,22 @@ namespace {
       using namespace boost::python;
       class_<w_t, bases<math::linear_regression_core<> > >(
             "linear_regression", no_init)
-        .def(init<af::const_ref<float_t> const&,
-                  af::const_ref<float_t> const&,
-                  optional<float_t const&> >());
+        .def(init<
+          af::const_ref<float_t> const&,
+          af::const_ref<float_t> const&,
+          optional<float_t const&> >(
+            (arg_("x"),
+             arg_("y"),
+             arg_("epsilon")=1.e-15)))
+        .def(init<
+          af::const_ref<float_t> const&,
+          af::const_ref<float_t> const&,
+          af::const_ref<float_t> const&,
+          float_t const&>(
+            (arg_("x"),
+             arg_("y"),
+             arg_("weights"),
+             arg_("epsilon")=1.e-15)))
       ;
     }
   };
@@ -147,9 +160,13 @@ namespace {
     {
       using namespace boost::python;
       class_<w_t>("linear_correlation", no_init)
-        .def(init<af::const_ref<float_t> const&,
-                  af::const_ref<float_t> const&,
-                  optional<float_t const&> >())
+        .def(init<
+          af::const_ref<float_t> const&,
+          af::const_ref<float_t> const&,
+          optional<float_t const&> >(
+            (arg_("x"),
+             arg_("y"),
+             arg_("epsilon")=1.e-15)))
         .def("is_well_defined", &w_t::is_well_defined)
         .def("n", &w_t::n)
         .def("mean_x", &w_t::mean_x)
