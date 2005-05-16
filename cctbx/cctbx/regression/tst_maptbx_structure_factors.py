@@ -246,6 +246,26 @@ def exercise_under_sampled(space_group_info, anomalous_flag, conjugate_flag,
     c = flex.linear_correlation(x, y)
     assert c.coefficient() >= 0.9999
 
+def exercise_average_densities(space_group_info, d_min=1.5):
+  structure = random_structure.xray_structure(
+    space_group_info,
+    elements=("C", "H", "O", "Cl"),
+    volume_per_atom=500,
+    min_distance=5)
+  f_calc = structure.structure_factors(
+    anomalous_flag=False,
+    d_min=d_min,
+    algorithm="direct").f_calc()
+  map = f_calc.fft_map().real_map_unpadded()
+  for radius in [1,2]:
+    densities = maptbx.average_densities(
+      unit_cell=structure.unit_cell(),
+      data=map,
+      sites_frac=structure.sites_frac(),
+      radius=radius)
+    perm = flex.sort_permutation(data=densities, reverse=True)
+    assert list(perm) == [3,2,0,1]
+
 def run_call_back(flags, space_group_info):
   for anomalous_flag in (False, True)[:]: #SWITCH
     for conjugate_flag in (False, True)[:]: #SWITCH
@@ -267,6 +287,7 @@ def run_call_back(flags, space_group_info):
                                conjugate_flag,
                                under_sampling,
                                verbose=flags.Verbose)
+  exercise_average_densities(space_group_info=space_group_info)
 
 def run():
   exercise_crystal_gridding()
