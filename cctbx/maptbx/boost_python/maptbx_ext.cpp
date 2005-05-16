@@ -1,6 +1,7 @@
 #include <cctbx/boost_python/flex_fwd.h>
 
 #include <cctbx/maptbx/copy.h>
+#include <cctbx/maptbx/average_densities.h>
 #include <cctbx/maptbx/eight_point_interpolation.h>
 #include <scitbx/boost_python/utils.h>
 #include <boost/python/module.hpp>
@@ -66,6 +67,17 @@ namespace {
       arg_("map_unit_cell"),
       arg_("first"),
       arg_("last")));
+
+    def("average_densities",
+      (af::shared<double>(*)
+        (uctbx::unit_cell const&,
+         af::const_ref<double, af::c_grid<3> > const&,
+         af::const_ref<scitbx::vec3<double> > const&,
+         float)) average_densities, (
+      arg_("unit_cell"),
+      arg_("data"),
+      arg_("sites_frac"),
+      arg_("radius")));
 
     def("eight_point_interpolation",
       (double(*)
