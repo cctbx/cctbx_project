@@ -94,8 +94,8 @@ if (not env_etc.no_boost_python):
       [line.rstrip() for line in open(jamfile_path).readlines()])
     m = md5.new()
     m.update(jamfile)
-    # based on boost/libs/python/test/Jamfile revision 1.80
-    jamfile_md5 = "43a3311d27c605839e1bc08c2e864944"
+    # based on boost/libs/python/test/Jamfile revision 1.81
+    jamfile_md5 = "343c7ddc9139d37c8826e05430e78976"
     if (m.hexdigest() != jamfile_md5):
       print "***************************************************"
       print "Warning: boost/libs/python/test/Jamfile has changed"
@@ -108,6 +108,7 @@ if (not env_etc.no_boost_python):
     bpl_tests = Split("""
 staticmethod
 shared_ptr
+andreas_beyer
 polymorphism
 polymorphism2
 auto_ptr
