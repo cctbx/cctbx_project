@@ -517,3 +517,11 @@ class _pair_sym_table(boost.python.injector, pair_sym_table):
           print >> f, "  %s(%d)" % (site_labels[j_seq], j_seq)
           for sym_op in sym_ops:
             print >> f, "   ", sym_op
+
+  def full_simple_connectivity(self):
+    result = shared.stl_set_unsigned(self.size())
+    for i_seq,pair_sym_dict in enumerate(self):
+      for j_seq in pair_sym_dict:
+        result[i_seq].insert(j_seq)
+        result[j_seq].insert(i_seq)
+    return result
