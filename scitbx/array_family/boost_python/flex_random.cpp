@@ -25,6 +25,9 @@ namespace {
         .def("random_size_t", &w_t::random_size_t, (arg_("size")))
         .def("random_double", &w_t::random_double, (arg_("size")))
         .def("random_permutation", &w_t::random_permutation, (arg_("size")))
+        .def("random_integer", &w_t::random_integer,
+              ((arg_("size"),
+               arg_("limit")) ))
         .def("seed", &w_t::seed, seed_overloads((arg_("value")=0)))
       ;
     }
