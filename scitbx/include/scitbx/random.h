@@ -27,6 +27,22 @@ namespace scitbx { namespace random {
         return result;
       }
 
+
+      af::shared<std::size_t>
+      random_integer(std::size_t size, std::size_t lim)
+      {
+        af::shared<std::size_t> result(
+          size, af::init_functor_null<std::size_t>());
+        double tmp;
+        for(std::size_t i=0;i<size;i++) {
+          tmp = as_double(generator_()-generator_min_)
+                       / generator_range_;
+          result[i] = static_cast<std::size_t>(tmp*(lim));
+        }
+        return result;
+      }
+
+
       af::shared<double>
       random_double(std::size_t size)
       {

@@ -98,6 +98,7 @@ def set_random_seed(value):
 random_size_t = random_generator.random_size_t
 random_double = random_generator.random_double
 random_permutation = random_generator.random_permutation
+random_integer = random_generator.random_integer
 
 class py_object:
 
