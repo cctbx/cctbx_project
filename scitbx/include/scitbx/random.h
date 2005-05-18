@@ -20,7 +20,7 @@ namespace scitbx { namespace random {
       random_size_t(std::size_t size)
       {
         af::shared<std::size_t> result(
-	  size, af::init_functor_null<std::size_t>());
+          size, af::init_functor_null<std::size_t>());
         for(std::size_t i=0;i<size;i++) {
           result[i] = static_cast<std::size_t>(generator_());
         }
@@ -87,6 +87,5 @@ namespace scitbx { namespace random {
 #endif
       }
   };
-
 
 }} // namespace scitbx::random
