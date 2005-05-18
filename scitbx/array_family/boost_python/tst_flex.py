@@ -721,6 +721,14 @@ def exercise_random():
   assert list(flex.random_permutation(size=5)) == [4, 3, 0, 1, 2]
   assert list(flex.random_permutation(size=5)) == [3, 2, 4, 0, 1]
 
+  uniform_integers = flex.random_integer(size=10000000, limit=10).as_double()
+  assert ( uniform_integers.size() == 10000000 )
+  assert ( flex.min(uniform_integers) == 0 )
+  assert ( flex.max(uniform_integers) == 9 )
+  assert approx_equal( flex.mean(uniform_integers), 4.5, eps=1e-2)
+  assert approx_equal( flex.mean(uniform_integers*uniform_integers) -
+                       flex.mean(uniform_integers)*flex.mean(uniform_integers), 8.25, eps=1e-2)
+
 def exercise_flex_vec3_double():
   flex.exercise_triple(flex.vec3_double, as_double=True)
   a = flex.vec3_double(((1,2,5), (-2,3,4), (3,4,3)))
