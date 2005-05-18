@@ -2,6 +2,15 @@ from __future__ import division
 import time
 import sys, os
 
+def flat_list(nested_list):
+  result = []
+  if (hasattr(nested_list, "__len__")):
+    for sub_list in nested_list:
+      result.extend(flat_list(sub_list))
+  else:
+    result.append(nested_list)
+  return result
+
 class Keep: pass
 
 class Sorry(Exception):
@@ -99,6 +108,10 @@ class multi_out:
       file_object.writelines(sequence)
 
 def exercise():
+  assert flat_list(0) == [0]
+  assert flat_list([1,2,3]) == [1,2,3]
+  assert flat_list([1,[2,3,4],3]) == [1,2,3,4,3]
+  assert flat_list([1,[2,3,4],[[3,4],[5,6]]]) == [1,2,3,4,3,4,5,6]
   try:
     raise RuntimeError("Trial")
   except:
