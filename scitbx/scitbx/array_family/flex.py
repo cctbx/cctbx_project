@@ -44,6 +44,7 @@ def export_to(target_module_name):
     "random_size_t",
     "random_double",
     "random_permutation",
+    "random_integer",
     "py_object",
     "linear_regression"]
   target_module = sys.modules[target_module_name]
