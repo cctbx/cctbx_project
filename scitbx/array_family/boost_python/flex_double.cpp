@@ -1,6 +1,7 @@
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
 #include <scitbx/array_family/boost_python/flex_pickle_single_buffered.h>
 #include <scitbx/array_family/versa_matrix.h>
+#include <scitbx/math/utils.h>
 #include <boost/python/args.hpp>
 #include <boost/python/overloads.hpp>
 #include <boost/python/make_constructor.hpp>
@@ -77,6 +78,18 @@ namespace {
     return self.all_approx_equal(other, tolerance);
   }
 
+  af::shared<double>
+  round(
+    af::const_ref<double> const& self,
+    int n_digits=0)
+  {
+    af::shared<double> result(self.size(), af::init_functor_null<double>());
+    for(std::size_t i=0;i<self.size();i++) {
+      result[i] = math::round(self[i], n_digits);
+    }
+    return result;
+  }
+
 } // namespace <anonymous>
 
 namespace boost_python {
@@ -85,6 +98,8 @@ namespace boost_python {
     all_approx_equal_a_a_overloads, all_approx_equal_a_a, 2, 3)
   BOOST_PYTHON_FUNCTION_OVERLOADS(
     all_approx_equal_a_s_overloads, all_approx_equal_a_s, 2, 3)
+
+  BOOST_PYTHON_FUNCTION_OVERLOADS(round_overloads, round, 1, 2)
 
   void wrap_flex_double()
   {
@@ -106,6 +121,9 @@ namespace boost_python {
           arg_("self"),
           arg_("other"),
           arg_("tolerance")=1.e-6)))
+      .def("round", round, round_overloads((
+        arg_("self"),
+        arg_("n_digits")=0)))
       .def("matrix_diagonal",
         (shared<double>(*)(
           const_ref<double, c_grid<2> > const&)) matrix_diagonal)
