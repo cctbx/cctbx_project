@@ -23,6 +23,24 @@ namespace scitbx { namespace math {
     return m;
   }
 
+  template <typename FloatType>
+  FloatType
+  round(FloatType x, int n_digits=0)
+  {
+    // based on Python/bltinmodule.c: builtin_round()
+    FloatType f = 1;
+    int i = n_digits;
+    if (i < 0) i = -i;
+    while (--i >= 0) f *= 10;
+    if (n_digits < 0) x /= f;
+    else              x *= f;
+    if (x >= 0) x = std::floor(x + 0.5);
+    else        x = std::ceil(x - 0.5);
+    if (n_digits < 0) x *= f;
+    else              x /= f;
+    return x;
+  }
+
   template <typename FloatType,
             typename SignedIntType>
   struct float_int_conversions

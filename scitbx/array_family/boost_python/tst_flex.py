@@ -585,6 +585,15 @@ def exercise_functions():
   assert not a.all_approx_equal(1)
   assert b.all_approx_equal(other=1)
   assert a.all_approx_equal(other=1, tolerance=3)
+  #
+  a = flex.double([-3.67,-0.123,-0.678,0.321,0.765,8.01])
+  b = a.round()
+  assert approx_equal(b, [-4,0,-1,0,1,8])
+  for n_digits in [-2,1,0,1,2]:
+    b = a.round(n_digits=n_digits)
+    for x,y in zip(a,b):
+      assert approx_equal(round(x, n_digits), y)
+  #
   a = flex.std_string(["a"]*3 + ["b"]*4)
   assert a.count("a") == 3
   assert a.count("b") == 4
