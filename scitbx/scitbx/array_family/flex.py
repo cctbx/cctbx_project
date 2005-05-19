@@ -1,9 +1,11 @@
+from __future__ import generators
 import scitbx.boost_python.slice
 
 import boost.python
 boost.python.import_ext("scitbx_array_family_flex_ext")
 from scitbx_array_family_flex_ext import *
 import scitbx_array_family_flex_ext as ext
+from libtbx import introspection
 
 import scitbx.stl.map
 import md5
@@ -143,16 +145,25 @@ class _linear_correlation(boost.python.injector, ext.linear_correlation):
     print >> f, "mean_y:", self.mean_y()
     print >> f, "coefficient:", self.coefficient()
 
+class histogram_slot_info:
+
+  def __init__(self, low_cutoff, high_cutoff, n):
+    introspection.adopt_init_args()
+
 class _histogram(boost.python.injector, ext.histogram):
 
-  def show(self, f=None, prefix=""):
-    if (f is None): f = sys.stdout
+  def slot_infos(self):
     low_cutoff = self.data_min()
     for i,n in enumerate(self.slots()):
       high_cutoff = self.data_min() + self.slot_width() * (i+1)
-      print >> f, "%s%.8g - %.8g: %d" % (
-        prefix, low_cutoff, high_cutoff, n)
+      yield histogram_slot_info(low_cutoff, high_cutoff, n)
       low_cutoff = high_cutoff
+
+  def show(self, f=None, prefix=""):
+    if (f is None): f = sys.stdout
+    for info in self.slot_infos():
+      print >> f, "%s%.8g - %.8g: %d" % (
+        prefix, info.low_cutoff, info.high_cutoff, info.n)
 
 def exercise_triple(flex_triple, flex_order=None, as_double=False):
   from libtbx.test_utils import approx_equal
