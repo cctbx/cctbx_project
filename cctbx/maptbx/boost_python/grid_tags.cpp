@@ -73,6 +73,10 @@ namespace {
           (void(w_t::*)(af::ref<double, c_grid_padded_p1<3> > const&) const)
             &w_t::sum_sym_equiv_points,
               (arg_("data")))
+        .def("apply_symmetry_to_mask",
+          (std::size_t(w_t::*)(af::ref<int, af::c_grid<3> > const&) const)
+            &w_t::apply_symmetry_to_mask,
+              (arg_("data")))
       ;
     }
   };
