@@ -528,7 +528,7 @@ class definition: # FUTURE definition(object)
     if (self.is_disabled or self.name != path): return []
     return [self]
 
-  def extract(self):
+  def extract(self, parent=None):
     if (self.type is None):
       return strings_from_words(words=self.words)
     try: type_from_words = self.type.from_words
@@ -594,7 +594,45 @@ class definition: # FUTURE definition(object)
 class scope_extract_attribute_error: pass
 class scope_extract_is_disabled: pass
 
+class scope_extract_list(list):
+
+  def __init__(self, optional):
+    self.__phil_optional__ = optional
+    list.__init__(self)
+
 class scope_extract:
+
+  def __init__(self, name, parent):
+    self.__phil_name__ = name
+    self.__phil_parent__ = parent
+
+  def __phil_path__(self):
+    if (   self.__phil_parent__ is None
+        or self.__phil_parent__.__phil_name__ is None
+        or self.__phil_parent__.__phil_name__ == ""):
+      return self.__phil_name__
+    return ".".join([self.__phil_parent__.__phil_path__(),
+                     self.__phil_name__])
+
+  def __phil_join__(self, other):
+    for key,other_value in other.__dict__.items():
+      if (is_reserved_identifier(key)): continue
+      self_value = self.__dict__.get(key, None)
+      if (self_value is None):
+        self.__dict__[key] = other_value
+      elif (isinstance(self_value, scope_extract_list)):
+        assert isinstance(other_value, scope_extract_list)
+        for item in other_value:
+          if (item is not None):
+            self_value.append(item)
+        if (len(self_value) > 1 and self_value[0] is None):
+          del self_value[0]
+      else:
+        self_value_phil_join = getattr(self_value, "__phil_join__", None)
+        if (self_value_phil_join is None):
+          self.__dict__[key] = other_value
+        else:
+          self_value_phil_join(other_value)
 
   def __phil_set__(self, name, optional, multiple, value):
     assert not "." in name
@@ -607,10 +645,10 @@ class scope_extract:
           or not isinstance(node, scope_extract)):
         setattr(self, name, value)
       else:
-        node.__dict__.update(value.__dict__)
+        node.__phil_join__(value)
     else:
       if (node is scope_extract_attribute_error):
-        node = []
+        node = scope_extract_list(optional=optional)
         setattr(self, name, node)
       if (not value is scope_extract_is_disabled
           and (value is not None or optional is not True)):
@@ -870,13 +908,13 @@ class scope:
     if (self.primary_parent_scope is None): return None
     return self.primary_parent_scope.lexical_get(path=path, stop_id=stop_id)
 
-  def extract(self):
-    result = scope_extract()
+  def extract(self, parent=None):
+    result = scope_extract(name=self.name, parent=parent)
     for object in self.objects:
       if (object.is_disabled):
         value = scope_extract_is_disabled
       else:
-        value = object.extract()
+        value = object.extract(parent=result)
       result.__phil_set__(
         name=object.name,
         optional=object.optional,
