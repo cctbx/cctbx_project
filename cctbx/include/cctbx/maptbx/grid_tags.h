@@ -320,6 +320,33 @@ namespace grid_tags_detail {
         }
       }
 
+      template <typename DataType>
+      std::size_t
+      apply_symmetry_to_mask(
+        af::ref<DataType, af::c_grid<3> > const& data) const
+      {
+        CCTBX_ASSERT(tag_array_.accessor().all_eq(data.accessor()));
+        std::size_t n_overlap = 0;
+        const TagType* tags=tag_array_.begin();
+        for(std::size_t i=0;i<data.size();i++) {
+          if (tags[i] < 0) continue;
+          if (data[i] == 0) {
+            TagType j = tags[i];
+            if (data[j] == 0) {
+              n_overlap++;
+            }
+            else {
+              data[j] = 0;
+            }
+          }
+        }
+        for(std::size_t i=0;i<data.size();i++) {
+          if (tags[i] < 0) continue;
+          data[i] = data[tags[i]];
+        }
+        return n_overlap;
+      }
+
     protected:
       bool is_valid_;
       tag_array_type tag_array_;
