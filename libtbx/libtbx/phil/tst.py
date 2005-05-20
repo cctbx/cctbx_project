@@ -2149,6 +2149,80 @@ s {
 """)
   extracted = parameters.extract()
   assert extracted.s.a == []
+  #
+  parameters = phil.parse(input_string="""\
+s {
+  t {
+    u {
+    }
+  }
+}
+t {
+  b.c=None
+  c.d.e=None
+}
+""")
+  extracted = parameters.extract()
+  assert extracted.__phil_path__() == ""
+  assert extracted.s.__phil_path__() == "s"
+  assert extracted.s.t.__phil_path__() == "s.t"
+  assert extracted.s.t.u.__phil_path__() == "s.t.u"
+  assert extracted.t.__phil_path__() == "t"
+  assert extracted.t.b.__phil_path__() == "t.b"
+  assert extracted.t.c.__phil_path__() == "t.c"
+  assert extracted.t.c.d.__phil_path__() == "t.c.d"
+  #
+  parameters = phil.parse(input_string="""\
+s.t.x {
+  a=13
+    .type=int
+}
+s.t.y {
+  b=45
+    .type=int
+}
+""")
+  extracted = parameters.extract()
+  assert extracted.s.t.x.a == 13
+  assert extracted.s.t.y.b == 45
+  parameters = phil.parse(input_string="""\
+s.t.x {
+  a=13
+    .type=int
+    .multiple=True
+}
+s.t.x {
+  a=None
+    .type=int
+    .multiple=True
+}
+s.t.x {
+  a=45
+    .type=int
+    .multiple=True
+}
+""")
+  extracted = parameters.extract()
+  assert extracted.s.t.x.a == [13, 45]
+  parameters = phil.parse(input_string="""\
+s.t.x {
+  a=None
+    .type=int
+    .multiple=True
+}
+s.t.x {
+  a=45
+    .type=int
+    .multiple=True
+}
+s.t.x {
+  a=13
+    .type=int
+    .multiple=True
+}
+""")
+  extracted = parameters.extract()
+  assert extracted.s.t.x.a == [45, 13]
 
 def exercise_format():
   parameters = phil.parse(input_string="""\
