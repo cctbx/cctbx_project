@@ -411,7 +411,7 @@ def run(args):
     cache_0 = array_cache(
       input=input_0,
       n_bins=n_bins,
-      lattice_symmetry_max_delta=0.1)
+      lattice_symmetry_max_delta=3.0)
     cache_0.show_possible_twin_laws()
     print "Completeness of %s:" % str(cache_0.input.info())
     cache_0.input.completeness(use_binning=True).show()
