@@ -42,6 +42,67 @@ class manager:
     self.effective_nonbonded_buffer = self.nonbonded_buffer
     self.n_updates_pair_proxies = 0
 
+  def new_including_isolated_sites(self,
+        n_additional_sites,
+        model_indices=None,
+        conformer_indices=None,
+        site_symmetry_table=None,
+        nonbonded_types=None):
+    assert n_additional_sites >= 0
+    assert (model_indices is None) == (self.model_indices is None)
+    assert (conformer_indices is None) == (self.conformer_indices is None)
+    assert (site_symmetry_table is None) == (self.site_symmetry_table is None)
+    assert (nonbonded_types is None) == (self.nonbonded_types is None)
+    if (self.model_indices is not None):
+      assert model_indices.size() == n_additional_sites
+      model_indices = self.model_indices.concatenate(
+        model_indices)
+    if (self.conformer_indices is not None):
+      assert conformer_indices.size() == n_additional_sites
+      conformer_indices = self.conformer_indices.concatenate(
+        conformer_indices)
+    if (self.site_symmetry_table is not None):
+      assert site_symmetry_table.indices().size() == n_additional_sites
+      # XXX should become site_symmetry_table.concatenate()
+      new_site_symmetry_table = self.site_symmetry_table.deep_copy()
+      new_site_symmetry_table.reserve(new_site_symmetry_table.indices().size()
+                                    + n_additional_sites)
+      for i_seq in xrange(n_additional_sites):
+        new_site_symmetry_table.process(site_symmetry_table.get(i_seq))
+      site_symmetry_table = new_site_symmetry_table
+    bond_params_table = None
+    if (self.bond_params_table is not None):
+      bond_params_table = self.bond_params_table.deep_copy()
+      bond_params_table.extend(geometry_restraints.bond_params_table(
+        n_additional_sites))
+    shell_sym_tables = None
+    if (self.shell_sym_tables is not None):
+      shell_sym_tables = []
+      for shell_sym_table in self.shell_sym_tables:
+        shell_sym_table = shell_sym_table.deep_copy()
+        shell_sym_table.extend(crystal.pair_sym_table(n_additional_sites))
+        shell_sym_tables.append(shell_sym_table)
+    if (self.nonbonded_types is not None):
+      assert nonbonded_types.size() == n_additional_sites
+      nonbonded_types = self.nonbonded_types.concatenate(
+        nonbonded_types)
+    return manager(
+      crystal_symmetry=self.crystal_symmetry,
+      model_indices=model_indices,
+      conformer_indices=conformer_indices,
+      site_symmetry_table=site_symmetry_table,
+      bond_params_table=bond_params_table,
+      shell_sym_tables=shell_sym_tables,
+      nonbonded_params=self.nonbonded_params,
+      nonbonded_types=nonbonded_types,
+      nonbonded_function=self.nonbonded_function,
+      nonbonded_distance_cutoff=self.nonbonded_distance_cutoff,
+      nonbonded_buffer=self.nonbonded_buffer,
+      angle_proxies=self.angle_proxies,
+      dihedral_proxies=self.dihedral_proxies,
+      chirality_proxies=self.chirality_proxies,
+      planarity_proxies=self.planarity_proxies)
+
   def select(self, selection):
     iselection = selection.iselection()
     selected_model_indices = None
