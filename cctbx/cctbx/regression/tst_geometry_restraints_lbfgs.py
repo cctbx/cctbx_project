@@ -273,6 +273,14 @@ def exercise(verbose=0):
           print >> f, iotbx.pdb.format_atom_record(serial=serial, site=site)
         print >> f, "END"
         f.close()
+      if (manager.site_symmetry_table is None):
+        additional_site_symmetry_table = None
+      else:
+        additional_site_symmetry_table = sgtbx.site_symmetry_table()
+      manager.new_including_isolated_sites(
+        n_additional_sites=0,
+        site_symmetry_table=additional_site_symmetry_table,
+        nonbonded_types=flex.std_string())
   print "OK"
 
 if (__name__ == "__main__"):
