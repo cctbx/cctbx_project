@@ -505,7 +505,8 @@ class stage_1:
         new_occupancies=None,
         new_u_iso=None,
         crystal_symmetry=None,
-        selection=None):
+        selection=None,
+        write_end_record=True):
     if selection is not None:
       assert selection.size()==len(self.atom_attributes_list)
     if (new_sites_cart is not None):
@@ -573,7 +574,8 @@ class stage_1:
       prev_atom = atom
     if (prev_atom is not None and prev_atom.MODELserial > 0):
       print >> out, "ENDMDL"
-    print >> out, "END"
+    if(write_end_record):
+      print >> out, "END"
 
 class altLoc_grouping:
 
