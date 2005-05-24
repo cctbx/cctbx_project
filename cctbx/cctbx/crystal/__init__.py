@@ -527,7 +527,44 @@ class _pair_sym_table(boost.python.injector, pair_sym_table):
         result[j_seq].insert(i_seq)
     return result
 
-class incremental_clustering:
+class _clustering_mix_in:
+
+  def sites_cart(self):
+    return self.special_position_settings.unit_cell() \
+      .orthogonalization_matrix() * self.sites_frac
+
+  def tidy_index_groups_in_place(self):
+    cluster_sizes = flex.size_t()
+    for ig in self.index_groups:
+      cluster_sizes.append(len(ig))
+    permutation = flex.sort_permutation(cluster_sizes, reverse=True)
+    sorted_index_groups = flex.select(
+      sequence=self.index_groups,
+      permutation=permutation)
+    index_groups = []
+    for i,ig in enumerate(sorted_index_groups):
+      if (len(ig) == 0): break
+      ig = flex.size_t(ig)
+      index_groups.append(ig.select(flex.sort_permutation(data=ig)))
+    self.index_groups = index_groups
+    return self
+
+def _priorities_based_on_cluster_size(scores, index_groups):
+  cluster_sizes = flex.size_t()
+  for ig in index_groups:
+    cluster_sizes.append(len(ig))
+  permutation = flex.sort_permutation(cluster_sizes, reverse=True)
+  sorted_index_groups = flex.select(
+    sequence=index_groups,
+    permutation=permutation)
+  priorities = flex.size_t()
+  for i,ig in enumerate(sorted_index_groups):
+    ig = flex.size_t(ig)
+    priorities.extend(ig.select(
+     flex.sort_permutation(data=scores.select(ig), reverse=True)))
+  return priorities
+
+class incremental_clustering(_clustering_mix_in):
 
   def __init__(self,
         special_position_settings,
@@ -538,7 +575,6 @@ class incremental_clustering:
     self.special_position_settings = special_position_settings
     self.distance_cutoffs = distance_cutoffs
     unit_cell = special_position_settings.unit_cell()
-    get_distance = unit_cell.distance
     sites_frac = unit_cell.fractionalization_matrix() * sites_cart
     site_symmetry_table = special_position_settings.site_symmetry_table(
       sites_frac=sites_frac)
@@ -557,9 +593,10 @@ class incremental_clustering:
         scores = scores.select(selection)
     n_sites = sites_frac.size()
     assignments = flex.size_t(xrange(n_sites))
+    n_clusters = n_sites
     index_groups = [[i_seq] for i_seq in xrange(n_sites)]
     symmetry_ops = [special_position_settings.space_group()(0)] * n_sites
-    n_clusters = n_sites
+    get_distance = unit_cell.distance
     for distance_cutoff in distance_cutoffs:
       if (n_clusters == 1): break
       asu_mappings = special_position_settings.asu_mappings(
@@ -625,37 +662,87 @@ class incremental_clustering:
     self.sites_frac = sites_frac
     self.index_groups = index_groups
 
-  def sites_cart(self):
-    return self.special_position_settings.unit_cell() \
-      .orthogonalization_matrix() * self.sites_frac
+class distance_based_clustering(_clustering_mix_in):
 
-  def tidy_index_groups_in_place(self):
-    cluster_sizes = flex.size_t()
-    for ig in self.index_groups:
-      cluster_sizes.append(len(ig))
-    permutation = flex.sort_permutation(cluster_sizes, reverse=True)
-    sorted_index_groups = flex.select(
-      sequence=self.index_groups,
-      permutation=permutation)
-    index_groups = []
-    for i,ig in enumerate(sorted_index_groups):
-      if (len(ig) == 0): break
-      ig = flex.size_t(ig)
-      index_groups.append(ig.select(flex.sort_permutation(data=ig)))
+  def __init__(self,
+        special_position_settings,
+        sites_cart,
+        distance_cutoff,
+        discard_special_positions=False):
+    self.special_position_settings = special_position_settings
+    self.distance_cutoff = distance_cutoff
+    unit_cell = special_position_settings.unit_cell()
+    sites_frac = unit_cell.fractionalization_matrix() * sites_cart
+    site_symmetry_table = special_position_settings.site_symmetry_table(
+      sites_frac=sites_frac)
+    if (not discard_special_positions):
+      for i_seq in site_symmetry_table.special_position_indices():
+        sites_frac[i_seq] = site_symmetry_table.get(i_seq).special_op() \
+                          * sites_frac[i_seq]
+    else:
+      selection = ~flex.bool(
+        sites_frac.size(),
+        site_symmetry_table.special_position_indices())
+      site_symmetry_table = site_symmetry_table.select(selection)
+      assert site_symmetry_table.n_special_positions() == 0
+      sites_frac = sites_frac.select(selection)
+    n_sites = sites_frac.size()
+    assignments = flex.size_t(xrange(n_sites))
+    n_clusters = n_sites
+    index_groups = [[i_seq] for i_seq in xrange(n_sites)]
+    symmetry_ops = [special_position_settings.space_group()(0)] * n_sites
+    asu_mappings = special_position_settings.asu_mappings(
+      buffer_thickness=distance_cutoff,
+      sites_frac=sites_frac,
+      site_symmetry_table=site_symmetry_table)
+    pair_asu_tab = pair_asu_table(asu_mappings=asu_mappings)
+    pair_asu_tab.add_all_pairs(distance_cutoff=distance_cutoff)
+    pair_sym_tab = pair_asu_tab.extract_pair_sym_table()
+    sym_pairs = []
+    distances = flex.double()
+    get_distance = unit_cell.distance
+    for pair in pair_sym_tab.iterator():
+      site_i = sites_frac[pair.i_seq]
+      site_j = sites_frac[pair.j_seq]
+      site_ji = pair.rt_mx_ji * site_j
+      distance = get_distance(site_i, site_ji)
+      assert distance <= distance_cutoff * (1+1.e-6), distance
+      sym_pairs.append(pair)
+      distances.append(distance)
+    priorities = flex.sort_permutation(data=distances)
+    for i_pair in priorities:
+      if (n_clusters == 1): break
+      pair = sym_pairs[i_pair]
+      i_seq = pair.i_seq
+      j_seq = pair.j_seq
+      i_cluster = assignments[i_seq]
+      j_cluster = assignments[j_seq]
+      if (i_cluster == j_cluster): continue
+      if (   len(index_groups[i_cluster])
+          >= len(index_groups[j_cluster])):
+        rt_mx_c = symmetry_ops[i_seq].multiply(
+          pair.rt_mx_ji.multiply(
+            symmetry_ops[j_seq].inverse()))
+        for c_seq in index_groups[j_cluster]:
+          index_groups[i_cluster].append(c_seq)
+          assignments[c_seq] = i_cluster
+          symmetry_ops[c_seq] = rt_mx_c.multiply(symmetry_ops[c_seq])
+        index_groups[j_cluster] = []
+      else:
+        rt_mx_c = symmetry_ops[j_seq].multiply(
+          pair.rt_mx_ji.inverse().multiply(
+            symmetry_ops[i_seq].inverse()))
+        for c_seq in index_groups[i_cluster]:
+          index_groups[j_cluster].append(c_seq)
+          assignments[c_seq] = j_cluster
+          symmetry_ops[c_seq] = rt_mx_c.multiply(symmetry_ops[c_seq])
+        index_groups[i_cluster] = []
+      n_clusters -= 1
+      assert abs(get_distance(
+        symmetry_ops[i_seq]*sites_frac[i_seq],
+        symmetry_ops[j_seq]*sites_frac[j_seq]) - distances[i_pair]) < 1.e-6
+    assert n_clusters > 0
+    for i_seq,site_frac in enumerate(sites_frac):
+      sites_frac[i_seq] = symmetry_ops[i_seq] * site_frac
+    self.sites_frac = sites_frac
     self.index_groups = index_groups
-    return self
-
-def _priorities_based_on_cluster_size(scores, index_groups):
-  cluster_sizes = flex.size_t()
-  for ig in index_groups:
-    cluster_sizes.append(len(ig))
-  permutation = flex.sort_permutation(cluster_sizes, reverse=True)
-  sorted_index_groups = flex.select(
-    sequence=index_groups,
-    permutation=permutation)
-  priorities = flex.size_t()
-  for i,ig in enumerate(sorted_index_groups):
-    ig = flex.size_t(ig)
-    priorities.extend(ig.select(
-     flex.sort_permutation(data=scores.select(ig), reverse=True)))
-  return priorities
