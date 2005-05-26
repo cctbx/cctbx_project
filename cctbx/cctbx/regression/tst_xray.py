@@ -151,6 +151,10 @@ Number of scattering types: 2
    O       1
    Si      1
 """
+  wd = sd.wilson_dict()
+  assert len(wd) == 2
+  assert wd['O'] == 1
+  assert wd['Si'] == 1
   am = xs.asu_mappings(buffer_thickness=1)
   assert am.mappings().size() == xs.scatterers().size()
   rs = p1.random_shift_sites(max_shift_cart=0.2)

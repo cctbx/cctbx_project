@@ -52,3 +52,9 @@ class _scattering_dictionary(boost.python.injector, scattering_dictionary):
           line += " %7s" % str(val.gaussian.n_terms())
           if (val.gaussian.c() != 0): line += "+c"
         print >> f, line.rstrip()
+
+  def wilson_dict(self):
+    result = {}
+    for key,val in self.dict().items():
+      result[key] = val.member_indices.size()
+    return result
