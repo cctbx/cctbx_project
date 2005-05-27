@@ -8,6 +8,7 @@
 #include <scitbx/vec3.h>
 #include <scitbx/array_family/misc_functions.h>
 #include <cctbx/import_scitbx_af.h>
+#include <cctbx/error.h>
 
 namespace cctbx {
   //! Miller index namespace.
@@ -83,6 +84,19 @@ namespace cctbx {
         return index(-static_cast<base_type>(*this));
       }
 #endif
+
+      std::string
+      as_string() const
+      {
+        char buf[128];
+        buf[127] = '\0';
+        std::sprintf(buf, "(%ld,%ld,%ld)",
+          static_cast<long>(this->elems[0]),
+          static_cast<long>(this->elems[1]),
+          static_cast<long>(this->elems[2]));
+        CCTBX_ASSERT(buf[127] == '\0');
+        return std::string(buf);
+      }
   };
 
   /*! \brief Definition of fast comparison for use in,
