@@ -571,7 +571,9 @@ class incremental_clustering(_clustering_mix_in):
         sites_cart,
         distance_cutoffs,
         scores=None,
-        discard_special_positions=False):
+        discard_special_positions=False,
+        discard_not_strictly_inside_asu=False,
+        initial_required_cluster_size=0):
     self.special_position_settings = special_position_settings
     self.distance_cutoffs = distance_cutoffs
     unit_cell = special_position_settings.unit_cell()
@@ -591,13 +593,21 @@ class incremental_clustering(_clustering_mix_in):
       sites_frac = sites_frac.select(selection)
       if (scores is not None):
         scores = scores.select(selection)
+    if (discard_not_strictly_inside_asu):
+      selection = special_position_settings \
+        .direct_space_asu() \
+        .as_float_asu().is_inside_frac(sites_frac=sites_frac)
+      site_symmetry_table = site_symmetry_table.select(selection)
+      sites_frac = sites_frac.select(selection)
+      if (scores is not None):
+        scores = scores.select(selection)
     n_sites = sites_frac.size()
     assignments = flex.size_t(xrange(n_sites))
     n_clusters = n_sites
     index_groups = [[i_seq] for i_seq in xrange(n_sites)]
     symmetry_ops = [special_position_settings.space_group()(0)] * n_sites
     get_distance = unit_cell.distance
-    for distance_cutoff in distance_cutoffs:
+    for i_distance_cutoff,distance_cutoff in enumerate(distance_cutoffs):
       if (n_clusters == 1): break
       asu_mappings = special_position_settings.asu_mappings(
         buffer_thickness=distance_cutoff,
@@ -615,11 +625,20 @@ class incremental_clustering(_clustering_mix_in):
           index_groups=index_groups)
       for i_seq in priorities:
         i_cluster = assignments[i_seq]
+        if (    i_distance_cutoff != 0
+            and i_distance_cutoff != len(distance_cutoffs)-1
+            and len(index_groups[i_cluster])<initial_required_cluster_size):
+          continue
         rt_mx_ip = asu_mappings.get_rt_mx(i_seq, 0)
         site_ip = rt_mx_ip * sites_frac[i_seq]
         j_seq_dict = pair_asu_tab.table()[i_seq]
         for j_seq,j_sym_group in j_seq_dict.items():
-          if (assignments[j_seq] == i_cluster): continue
+          j_cluster = assignments[j_seq]
+          if (j_cluster == i_cluster): continue
+          if (    i_distance_cutoff != 0
+              and i_distance_cutoff != len(distance_cutoffs)-1
+              and len(index_groups[j_cluster])<initial_required_cluster_size):
+            continue
           smallest_distance = distance_cutoff*(1+1.e-6)
           best_rt_mx_jp = None
           for j_syms in j_sym_group:
@@ -632,7 +651,6 @@ class incremental_clustering(_clustering_mix_in):
               best_rt_mx_jp = rt_mx_jp
           assert best_rt_mx_jp is not None
           rt_mx_jp = best_rt_mx_jp
-          j_cluster = assignments[j_seq]
           if (   len(index_groups[i_cluster])
               >= len(index_groups[j_cluster])):
             rt_mx_c = symmetry_ops[i_seq].multiply(
@@ -746,3 +764,37 @@ class distance_based_clustering(_clustering_mix_in):
       sites_frac[i_seq] = symmetry_ops[i_seq] * site_frac
     self.sites_frac = sites_frac
     self.index_groups = index_groups
+
+def cluster_erosion(sites_cart, box_size, fraction_to_be_retained):
+  from scitbx import matrix
+  from scitbx.python_utils.math_utils import iceil
+  lower_left = matrix.col(sites_cart.min())
+  upper_right = matrix.col(sites_cart.max())
+  sites_span = upper_right - lower_left
+  n_boxes = matrix.col([iceil(x/box_size) for x in sites_span])
+  box_span = n_boxes * box_size
+  sites_center = (lower_left + upper_right) / 2
+  box_origin = sites_center - box_span / 2
+  box_coordinates = (sites_cart - box_origin) * (1./box_size)
+  box_grid = flex.grid(n_boxes)
+  box_counts = flex.size_t(box_grid.size_1d(), 0)
+  box_members = [flex.size_t() for i in xrange(box_counts.size())]
+  for i_seq,x in enumerate(box_coordinates):
+    box_index_3d = [max(0, min(int(i), n)) for i,n in zip(x, n_boxes)]
+    box_index_1d = box_grid(box_index_3d)
+    box_counts[box_index_1d] += 1
+    box_members[box_index_1d].append(i_seq)
+  perm = flex.sort_permutation(data=box_counts, reverse=True)
+  box_counts_sorted = box_counts.select(perm)
+  threshold = sites_cart.size() * fraction_to_be_retained
+  sum_counts = 0
+  for required_counts in box_counts_sorted:
+    sum_counts += required_counts
+    if (sum_counts > threshold):
+      break
+  del box_counts_sorted
+  del perm
+  site_selection = flex.size_t()
+  for i_box in (box_counts >= required_counts).iselection():
+    site_selection.extend(box_members[i_box])
+  return site_selection
