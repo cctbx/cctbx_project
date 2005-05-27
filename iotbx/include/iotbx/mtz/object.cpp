@@ -571,7 +571,8 @@ namespace iotbx { namespace mtz {
           + column_label_a + ", "
           + column_label_b + ", "
           + column_label_c + ", "
-          + column_label_d);
+          + column_label_d + ", "
+          + "hkl=" + hkl.get_miller_index(i_refl).as_string());
       }
       if (counts.n_nan == 0) {
         result.mtz_reflection_indices.push_back(i_refl);
@@ -619,7 +620,8 @@ namespace iotbx { namespace mtz {
           + column_label_a_plus + ", "
           + column_label_b_plus + ", "
           + column_label_c_plus + ", "
-          + column_label_d_plus);
+          + column_label_d_plus + ", "
+          + "hkl=" + hkl.get_miller_index(i_refl).as_string());
       }
       if (counts.n_nan == 0) {
         result.mtz_reflection_indices.push_back(i_refl);
@@ -638,7 +640,8 @@ namespace iotbx { namespace mtz {
           + column_label_a_minus + ", "
           + column_label_b_minus + ", "
           + column_label_c_minus + ", "
-          + column_label_d_minus);
+          + column_label_d_minus + ", "
+          + "hkl=" + hkl.get_miller_index(i_refl).as_string());
       }
       if (counts.n_nan == 0) {
         result.mtz_reflection_indices.push_back(i_refl);
@@ -667,7 +670,8 @@ namespace iotbx { namespace mtz {
       if (data.is_ccp4_nan(i_refl) != sigmas.is_ccp4_nan(i_refl)) {
         throw cctbx::error(std::string(
           "Unexpected NAN while extracting observation array from columns: ")
-          + column_label_data + ", " + column_label_sigmas);
+          + column_label_data + ", " + column_label_sigmas + ", "
+          + "hkl=" + hkl.get_miller_index(i_refl).as_string());
       }
       if (!data.is_ccp4_nan(i_refl)) {
         result.mtz_reflection_indices.push_back(i_refl);
@@ -697,7 +701,8 @@ namespace iotbx { namespace mtz {
       if (data_plus.is_ccp4_nan(i_refl) != sigmas_plus.is_ccp4_nan(i_refl)) {
         throw cctbx::error(std::string(
           "Unexpected NAN while extracting observation array from columns: ")
-          + column_label_data_plus + ", " + column_label_sigmas_plus);
+          + column_label_data_plus + ", " + column_label_sigmas_plus + ", "
+          + "hkl=" + hkl.get_miller_index(i_refl).as_string());
       }
       if (!data_plus.is_ccp4_nan(i_refl)) {
         result.mtz_reflection_indices.push_back(i_refl);
@@ -708,7 +713,8 @@ namespace iotbx { namespace mtz {
       if (data_minus.is_ccp4_nan(i_refl) != sigmas_minus.is_ccp4_nan(i_refl)) {
         throw cctbx::error(std::string(
           "Unexpected NAN while extracting observation array from columns: ")
-          + column_label_data_minus + ", " + column_label_sigmas_minus);
+          + column_label_data_minus + ", " + column_label_sigmas_minus + ", "
+          + "hkl=" + hkl.get_miller_index(i_refl).as_string());
       }
       if (!data_minus.is_ccp4_nan(i_refl)) {
         result.mtz_reflection_indices.push_back(i_refl);
@@ -743,7 +749,8 @@ namespace iotbx { namespace mtz {
           + column_label_f_data   + ", "
           + column_label_f_sigmas + ", "
           + column_label_d_data   + ", "
-          + column_label_d_sigmas);
+          + column_label_d_sigmas + ", "
+          + "hkl=" + hkl.get_miller_index(i_refl).as_string());
       }
       if (!f_data.is_ccp4_nan(i_refl)) {
         result.mtz_reflection_indices.push_back(i_refl);
@@ -784,7 +791,8 @@ namespace iotbx { namespace mtz {
       if (data_ampl.is_ccp4_nan(i_refl) != data_phi.is_ccp4_nan(i_refl)) {
         throw cctbx::error(std::string(
           "Unexpected NAN while extracting complex array from columns: ")
-          + column_label_ampl + ", " + column_label_phi);
+          + column_label_ampl + ", " + column_label_phi + ", "
+          + "hkl=" + hkl.get_miller_index(i_refl).as_string());
       }
       if (!data_ampl.is_ccp4_nan(i_refl)) {
         result.mtz_reflection_indices.push_back(i_refl);
@@ -815,7 +823,8 @@ namespace iotbx { namespace mtz {
           != data_phi_plus.is_ccp4_nan(i_refl)) {
         throw cctbx::error(std::string(
           "Unexpected NAN while extracting complex array from columns: ")
-          + column_label_ampl_plus + ", " + column_label_phi_plus);
+          + column_label_ampl_plus + ", " + column_label_phi_plus + ", "
+          + "hkl=" + hkl.get_miller_index(i_refl).as_string());
       }
       if (!data_ampl_plus.is_ccp4_nan(i_refl)) {
         result.mtz_reflection_indices.push_back(i_refl);
@@ -828,7 +837,8 @@ namespace iotbx { namespace mtz {
           != data_phi_minus.is_ccp4_nan(i_refl)) {
         throw cctbx::error(std::string(
           "Unexpected NAN while extracting complex array from columns: ")
-          + column_label_ampl_minus + ", " + column_label_phi_minus);
+          + column_label_ampl_minus + ", " + column_label_phi_minus + ", "
+          + "hkl=" + hkl.get_miller_index(i_refl).as_string());
       }
       if (!data_ampl_minus.is_ccp4_nan(i_refl)) {
         result.mtz_reflection_indices.push_back(i_refl);
