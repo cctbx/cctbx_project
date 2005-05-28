@@ -224,7 +224,7 @@ def exercise_basic():
       column_label_data_minus="DANOrem",
       column_label_sigmas_minus="SIGDANOrem")
     assert group.anomalous_flag
-    assert group.mtz_reflection_indices.size() == 326
+    assert group.mtz_reflection_indices.size() == 272
     assert group.indices.size() == group.mtz_reflection_indices.size()
     assert group.data.size() == group.mtz_reflection_indices.size()
     assert group.sigmas.size() == group.indices.size()
@@ -234,7 +234,7 @@ def exercise_basic():
       column_label_d_data="DANOrem",
       column_label_d_sigmas="SIGDANOrem")
     assert group.anomalous_flag
-    assert group.mtz_reflection_indices.size() == 326
+    assert group.mtz_reflection_indices.size() == 272
     assert group.indices.size() == group.mtz_reflection_indices.size()
     assert group.data.size() == group.mtz_reflection_indices.size()
     assert group.sigmas.size() == group.indices.size()
