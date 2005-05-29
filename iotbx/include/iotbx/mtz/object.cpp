@@ -819,7 +819,6 @@ namespace iotbx { namespace mtz {
     column f_sigmas(get_column(column_label_f_sigmas));
     column d_data(get_column(column_label_d_data));
     column d_sigmas(get_column(column_label_d_sigmas));
-    double d_data_i_refl = 0;
     for(int i_refl=0;i_refl<n_refl;i_refl++) {
       observation_pair_evaluator
         pair_evaluation_f(f_data, f_sigmas, i_refl);
