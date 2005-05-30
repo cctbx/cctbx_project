@@ -175,6 +175,7 @@ def run(args, simply_return_all_miller_arrays=False):
       selected_array = selected_array.f_sq_as_f()
       selected_array = selected_array.average_bijvoet_mates()
       selected_array = selected_array.f_as_f_sq()
+    selected_array.set_observation_type_xray_intensity()
   d_max = command_line.options.low_resolution
   d_min = command_line.options.resolution
   if (d_max is not None or d_min is not None):
