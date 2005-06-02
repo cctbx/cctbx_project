@@ -202,22 +202,34 @@ class rec:
         elems.append(self(i,j))
     return rec(elems, (self.n_columns(), self.n_rows()))
 
-  def mathematica_form(self, label="", one_row_per_line=False, format=None):
-    s = ""
-    if (label): s = label + "="
+  def mathematica_form(self,
+        label="",
+        one_row_per_line=False,
+        format=None,
+        prefix=""):
+    nr = self.n_rows()
+    nc = self.n_columns()
+    s = prefix
+    indent = prefix
+    if (label):
+      s += label + "="
+      indent += " " * (len(label) + 1)
     s += "{"
-    for ir in xrange(self.n_rows()):
+    for ir in xrange(nr):
       s += "{"
-      for ic in xrange(self.n_columns()):
+      for ic in xrange(nc):
         if (format is None):
           s += str(self(ir, ic))
         else:
           s += format % self(ir, ic)
-        s += ", "
-      s = s[:-2] + "},"
-      if (one_row_per_line): s += "\n  "
-      else: s += " "
-    if (self.n_rows() > 0): s = s[:-2]
+        if (ic+1 != nc): s += ", "
+        else: s += "}"
+      if (ir+1 != nr):
+        s += ","
+        if (one_row_per_line):
+          s += "\n"
+          s += indent
+        s += " "
     return s + "}"
 
   def as_sym_mat3(self):
@@ -439,4 +451,23 @@ if (__name__ == "__main__"):
   assert diag((1,2,3)).mathematica_form() == \
     "{{1, 0, 0}, {0, 2, 0}, {0, 0, 3}}"
   assert approx_equal(col((1,0,0)).cos_angle(col((1,1,0)))**2, 0.5)
+  #
+  r = sqr([-0.9533, 0.2413, -0.1815,
+           0.2702, 0.414, -0.8692,
+           -0.1346, -0.8777, -0.4599])
+  assert r.mathematica_form(
+    label="rotation",
+    format="%.6g",
+    one_row_per_line=True,
+    prefix="  ") == """\
+  rotation={{-0.9533, 0.2413, -0.1815},
+            {0.2702, 0.414, -0.8692},
+            {-0.1346, -0.8777, -0.4599}}"""
+  r = sqr([])
+  assert r.mathematica_form() == "{}"
+  assert r.mathematica_form(one_row_per_line=True) == "{}"
+  r = sqr([1])
+  assert r.mathematica_form() == "{{1}}"
+  assert r.mathematica_form(one_row_per_line=True, prefix="&$") == """\
+&${{1}}"""
   print "OK"
