@@ -295,8 +295,9 @@ class match_refine:
     if (f is None): f = sys.stdout
     print >> f, "Match summary:"
     print >> f, "  Operator:"
-    print >> f, "       rotation:", self.rt.r.mathematica_form()
-    print >> f, "    translation:", self.rt.t.elems
+    print >> f, "       rotation:", self.rt.r.mathematica_form(format="%.6g")
+    print >> f, "    translation:", \
+      self.rt.t.transpose().mathematica_form(format="%.6g")[1:-1]
     print >> f, "  rms coordinate differences: %.2f" % (self.rms,)
     print >> f, "  Pairs:", len(self.pairs)
     for pair in self.pairs:
