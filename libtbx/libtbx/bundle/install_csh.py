@@ -207,7 +207,7 @@ if ($have_sources != 0) then
   libtbx.scons -j "$n_cpu_s" .
 endif
 
-set test_py="$SCITBX_DIST/lbfgs/boost_python/tst_lbfgs.py"
+set test_py="$BOOST_ADAPTBX_DIST/tst_rational.py"
 if (-f "$test_py") then
   echo ""
   echo "Running a selected test"
