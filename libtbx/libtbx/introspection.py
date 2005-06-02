@@ -1,4 +1,5 @@
-import sys
+from __future__ import division
+import sys, os
 
 def frame_object(frames_back=0):
   try: raise Exception
@@ -38,3 +39,69 @@ class caller_location:
 def check_point(frames_back=0):
   print caller_location(frames_back=frames_back+1)
   sys.stdout.flush()
+
+try:
+  _proc_status = "/proc/%d/status" % os.getpid()
+except AttributeError:
+  _proc_status = None
+
+class virtual_memory_info:
+
+  def __init__(self):
+    try:
+      self.proc_status = open(_proc_status).read()
+    except IOError:
+      self.proc_status = None
+
+  def get_bytes(self, vm_key):
+    if (self.proc_status is None):
+      return None
+    try:
+      i = self.proc_status.index(vm_key)
+    except ValueError:
+      return None
+    flds = self.proc_status[i:].split(None, 3)
+    unit = flds[2].upper()
+    if (len(flds) < 3 or unit not in ["KB", "MB"]):
+      return None
+    try:
+      result = int(flds[1])
+    except ValueError:
+      return None
+    result *= 1024
+    if (unit == "MB"):
+      result *= 1024
+    return result
+
+  def virtual_memory_size(self):
+    return self.get_bytes('VmSize:')
+
+  def resident_set_size(self):
+    return self.get_bytes('VmRSS:')
+
+  def stack_size(self):
+    return self.get_bytes('VmStk:')
+
+  def show(self, out=None, prefix=""):
+    if (out is None): out = sys.stdout
+    def size_as_string(sz):
+      if (sz is None): return "unknown"
+      result = []
+      while (sz > 0):
+        if (sz >= 1000):
+          result.insert(0, "%03d" % (sz % 1000))
+          sz //= 1000
+        else:
+          result.insert(0, "%d" % sz)
+          break
+      return ",".join(result)
+    vms = size_as_string(self.virtual_memory_size())
+    rss = size_as_string(self.resident_set_size())
+    sts = size_as_string(self.stack_size())
+    fmt = "%%%ds" % max(len(vms), len(rss), len(sts))
+    print >> out, prefix+"Virtual memory size:", fmt % vms
+    print >> out, prefix+"Resident set size:  ", fmt % rss
+    print >> out, prefix+"Stack size:         ", fmt % sts
+
+if (__name__ == "__main__"):
+  virtual_memory_info().show()
