@@ -7,6 +7,7 @@ def miller_array_as_phases_phs(self,
       phases=None,
       phases_deg=None,
       figures_of_merit=None):
+  """http://www.sdsc.edu/CCMS/Packages/XTALVIEW/xtalviewfaq.html"""
   if (phases is not None): assert phases_deg is False or phases_deg is True
   if (self.is_complex_array()):
     amplitudes = self.amplitudes().data()
