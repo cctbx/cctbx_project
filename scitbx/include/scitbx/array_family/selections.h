@@ -1,7 +1,47 @@
 #ifndef SCITBX_ARRAY_FAMILY_SELECTIONS_H
 #define SCITBX_ARRAY_FAMILY_SELECTIONS_H
 
+#include <scitbx/array_family/shared.h>
+#include <scitbx/error.h>
+
 namespace scitbx { namespace af {
+
+  template <typename IntType, typename IntTypeOther>
+  af::shared<IntType>
+  intersection(
+    af::const_ref<IntType> const& self,
+    af::const_ref<IntTypeOther> const& other)
+  {
+    af::shared<IntType> result;
+    if (self.size() > 0 && other.size() > 0) {
+      IntType si = self[0];
+      std::size_t i = 1;
+      IntTypeOther oj = other[0];
+      std::size_t j = 1;
+      while (true) {
+        while (si < oj) {
+          if (i == self.size()) return result;
+          SCITBX_ASSERT(si < self[i]);
+          si = self[i];
+          i++;
+        }
+        while (oj < si) {
+          if (j == other.size()) return result;
+          SCITBX_ASSERT(oj < other[j]);
+          oj = other[j];
+          j++;
+        }
+        if (oj == si) {
+          result.push_back(si);
+          if (i == self.size()) break;
+          SCITBX_ASSERT(si < self[i]);
+          si = self[i];
+          i++;
+        }
+      }
+    }
+    return result;
+  }
 
   template <typename IntType>
   af::shared<IntType>
