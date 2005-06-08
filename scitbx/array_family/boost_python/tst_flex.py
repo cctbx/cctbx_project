@@ -434,6 +434,27 @@ def exercise_select():
       == (False, False, False, False, True)
   assert list(flex.intersection(size=5,iselections=[isel,isel2]).iselection())\
       == [4]
+  #
+  def iselection_intersection(a, b):
+    return list(flex.size_t(a).intersection(other=flex.size_t(b)))
+  assert iselection_intersection([], []) == []
+  assert iselection_intersection([1,2,3,4], [1,2,3,4]) == [1,2,3,4]
+  assert iselection_intersection([], [1,2,3,4]) == []
+  assert iselection_intersection([1,2,3,4], []) == []
+  assert iselection_intersection([1], [1,2,3,4]) == [1]
+  assert iselection_intersection([1,2,3,4], [1]) == [1]
+  assert iselection_intersection([4], [1,2,3,4]) == [4]
+  assert iselection_intersection([1,2,3,4], [4]) == [4]
+  assert iselection_intersection([1,4], [1,2,3,4]) == [1,4]
+  assert iselection_intersection([1,2,3,4], [1,4]) == [1,4]
+  assert iselection_intersection([1,4,5], [1,2,3,4]) == [1,4]
+  assert iselection_intersection([1,2,3,4], [1,4,5]) == [1,4]
+  assert iselection_intersection([1,2,3,4], [2]) == [2]
+  assert iselection_intersection([2], [1,2,3,4]) == [2]
+  assert iselection_intersection([1,2,3,4], [2,3]) == [2,3]
+  assert iselection_intersection([2,3], [1,2,3,4]) == [2,3]
+  assert iselection_intersection([1,2,3,4], [2,4]) == [2,4]
+  assert iselection_intersection([2,4], [1,2,3,4]) == [2,4]
 
 def exercise_from_stl_vector():
   from scitbx import stl

@@ -1,6 +1,7 @@
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
 #include <scitbx/array_family/boost_python/flex_pickle_single_buffered.h>
 #include <scitbx/array_family/counts.h>
+#include <scitbx/array_family/selections.h>
 #include <scitbx/stl/map_fwd.h>
 #include <boost/python/make_constructor.hpp>
 #include <boost/python/args.hpp>
@@ -46,6 +47,11 @@ namespace {
       .def_pickle(flex_pickle_single_buffered<std::size_t>())
       .def("__init__", make_constructor(
         from_stl_vector_unsigned, default_call_policies()))
+      .def("intersection",
+        (af::shared<std::size_t>(*)(
+          af::const_ref<std::size_t> const&,
+          af::const_ref<std::size_t> const&))
+        af::intersection, (arg_("self"), arg_("other")))
       .def("counts", counts<std::size_t, std::map<long, long> >::unlimited)
       .def("counts", counts<std::size_t, std::map<long, long> >::limited, (
         arg_("max_keys")))
