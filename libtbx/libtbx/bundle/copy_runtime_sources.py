@@ -25,6 +25,7 @@ def copy_dist_files(dist_copy, dirname, names):
         or name.endswith(".pl")
         or name.endswith(".pm")
         or name.endswith(".html")
+        or name.endswith(".txt")
         or name.endswith(".csh")
         or name.endswith(".sh")):
       src = libtbx.path.norm_join(dirname, file_name)
