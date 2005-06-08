@@ -295,6 +295,15 @@ C  pair count:   1       <<  0.0000,  0.0000,  0.1000>>
   xs.convert_to_isotropic()
   assert xs.scatterers().count_anisotropic() == 0
   assert approx_equal(xs.scatterers().extract_u_iso(), [0.1,0.2])
+  ### shake_sites
+  xs = random_structure.xray_structure(
+                               space_group_info = sgtbx.space_group_info("P1"),
+                               elements         = ["N"]*500,
+                               unit_cell        = (10, 20, 30, 70, 80, 120))
+  errors = [0.1,0.5,0.9,1.2,1.5,2.0,3.0]
+  for error in errors:
+    xs_shaked = xs.deep_copy_scatterers()
+    xs_shaked.shake_sites(mean_error = error)
 
 def exercise_u_base():
   d_min = 9

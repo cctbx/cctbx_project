@@ -12,6 +12,7 @@ from scitbx import matrix
 from stdlib import math
 import types
 import sys
+import random
 
 class structure(crystal.special_position_settings):
 
@@ -71,6 +72,32 @@ class structure(crystal.special_position_settings):
       b_iso = values
       u_iso_values = b_iso*adptbx.b_as_u(1)
       s.set_u_iso(u_iso_values)
+
+  def shake_sites(self, mean_error):
+    tolerance = 0.00005
+    sites_cart = self.sites_cart()
+    current_mean_error = 0.0
+    tolerance_scale = 1./5
+    if(mean_error >= 0.1 and mean_error < 1.0):
+       left  = mean_error - mean_error*0.1
+       right = mean_error + mean_error*0.3
+    elif(mean_error >= 1.0 and mean_error <= 3.0):
+       left  = mean_error - mean_error*0.1
+       right = mean_error + mean_error*1.0
+    else:
+       raise RuntimeError("mean_error requested is too big or too small")
+    while abs(mean_error - current_mean_error) > tolerance:
+      shift_x = (flex.random_double(sites_cart.size()) - 0.5) * 2.0 * left
+      shift_y = (flex.random_double(sites_cart.size()) - 0.5) * 2.0 * left
+      shift_z = (flex.random_double(sites_cart.size()) - 0.5) * 2.0 * left
+      sites_cart_new = sites_cart + flex.vec3_double(shift_x, shift_y, shift_z)
+      left += tolerance * tolerance_scale
+      current_mean_error = sites_cart.rms_difference(sites_cart_new)
+      if(left >= right):
+        raise RuntimeError("mean_error is not achieved within specified range")
+    self.set_sites_cart(sites_cart_new)
+    assert abs(sites_cart.rms_difference(self.sites_cart())-mean_error) <= \
+                                                                      tolerance
 
   def set_b_iso_random(self, allow_mixed=False):
     s = self._scatterers
