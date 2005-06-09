@@ -108,10 +108,8 @@ class structure(crystal.special_position_settings):
        raise RuntimeError("mean_error requested is too big or too small")
     while abs(mean_error - current_mean_error) > tolerance:
       two_left = 2.0 * left
-      shift_x = (flex.random_double(sites_cart_size) - 0.5) * two_left
-      shift_y = (flex.random_double(sites_cart_size) - 0.5) * two_left
-      shift_z = (flex.random_double(sites_cart_size) - 0.5) * two_left
-      sites_cart_new = sites_cart + flex.vec3_double(shift_x, shift_y, shift_z)
+      shift_xyz = (flex.random_double(sites_cart_size*3) - 0.5) * two_left
+      sites_cart_new = sites_cart + flex.vec3_double(shift_xyz)
       left += tolerance * tolerance_scale
       current_mean_error = sites_cart.rms_difference(sites_cart_new)
       if(left >= right):
