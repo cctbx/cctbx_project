@@ -73,9 +73,29 @@ class structure(crystal.special_position_settings):
       u_iso_values = b_iso*adptbx.b_as_u(1)
       s.set_u_iso(u_iso_values)
 
+  def random_remove_sites_selection(self, fraction):
+    if(fraction < 0.01 or fraction > 0.99):
+       raise RuntimeError("fraction must be between 0.01 and 0.99.")
+    tol = 999.
+    selection = None
+    l = max(fraction - 0.05, 0.0)
+    r = min(fraction + 0.05, 1.0)
+    scatterers_size = self._scatterers.size()
+    for i in xrange(5):
+      while l <= r:
+        arr = flex.random_double(scatterers_size)-l
+        sel = arr > 0.0
+        deleted = float((scatterers_size - sel.count(True))) / scatterers_size
+        if abs(fraction - deleted) < tol:
+           tol = abs(fraction - deleted)
+           selection = sel
+        l += 0.0001
+    return selection
+
   def shake_sites(self, mean_error):
     tolerance = 0.00005
     sites_cart = self.sites_cart()
+    sites_cart_size = sites_cart.size()
     current_mean_error = 0.0
     tolerance_scale = 1./5
     if(mean_error >= 0.1 and mean_error < 1.0):
@@ -87,17 +107,26 @@ class structure(crystal.special_position_settings):
     else:
        raise RuntimeError("mean_error requested is too big or too small")
     while abs(mean_error - current_mean_error) > tolerance:
-      shift_x = (flex.random_double(sites_cart.size()) - 0.5) * 2.0 * left
-      shift_y = (flex.random_double(sites_cart.size()) - 0.5) * 2.0 * left
-      shift_z = (flex.random_double(sites_cart.size()) - 0.5) * 2.0 * left
+      two_left = 2.0 * left
+      shift_x = (flex.random_double(sites_cart_size) - 0.5) * two_left
+      shift_y = (flex.random_double(sites_cart_size) - 0.5) * two_left
+      shift_z = (flex.random_double(sites_cart_size) - 0.5) * two_left
       sites_cart_new = sites_cart + flex.vec3_double(shift_x, shift_y, shift_z)
       left += tolerance * tolerance_scale
       current_mean_error = sites_cart.rms_difference(sites_cart_new)
       if(left >= right):
         raise RuntimeError("mean_error is not achieved within specified range")
-    self.set_sites_cart(sites_cart_new)
-    assert abs(sites_cart.rms_difference(self.sites_cart())-mean_error) <= \
+    cp = structure(self, scattering_dict = self._scattering_dict)
+    new_scatterers = self._scatterers.deep_copy()
+    sites_frac_new = self.unit_cell().fractionalization_matrix()*sites_cart_new
+    new_scatterers.set_sites(sites_frac_new)
+    cp._scatterers = new_scatterers
+    cp._site_symmetry_table = self._site_symmetry_table.deep_copy()
+    if(getattr(self, "scatterer_pdb_records", None) is not None):
+      cp.scatterer_pdb_records = self.scatterer_pdb_records
+    assert abs(sites_cart.rms_difference(cp.sites_cart())-mean_error) <= \
                                                                       tolerance
+    return cp
 
   def set_b_iso_random(self, allow_mixed=False):
     s = self._scatterers
