@@ -302,8 +302,19 @@ C  pair count:   1       <<  0.0000,  0.0000,  0.1000>>
                                unit_cell        = (10, 20, 30, 70, 80, 120))
   errors = [0.1,0.5,0.9,1.2,1.5,2.0,3.0]
   for error in errors:
-    xs_shaked = xs.deep_copy_scatterers()
-    xs_shaked.shake_sites(mean_error = error)
+    xs_shaked = xs.shake_sites(mean_error = error)
+    sites_cart_xs        = xs.sites_cart()
+    sites_cart_xs_shaked = xs_shaked.sites_cart()
+    rmsd = sites_cart_xs.rms_difference(sites_cart_xs_shaked)
+    assert approx_equal(error, rmsd, 0.00005)
+  ### random remove sites
+  for fraction in xrange(1, 99+1):
+    fraction /= 100.
+    selection = xs.random_remove_sites_selection(fraction = fraction)
+    deleted = selection.count(False) / float(selection.size())
+    retained= selection.count(True)  / float(selection.size())
+    assert approx_equal(fraction, deleted)
+    assert approx_equal(1-deleted, retained)
 
 def exercise_u_base():
   d_min = 9
