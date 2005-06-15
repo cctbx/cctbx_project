@@ -5,6 +5,7 @@
 #include <boost/python/args.hpp>
 #include <boost/python/overloads.hpp>
 #include <boost/python/make_constructor.hpp>
+#include "flex_helpers.h"
 
 namespace scitbx { namespace af {
 
@@ -109,6 +110,12 @@ namespace boost_python {
       .def_pickle(flex_pickle_single_buffered<double>())
       .def("__init__", make_constructor(
         from_stl_vector_double, default_call_policies()))
+      .def("add_selected",
+        (object(*)(
+          object const&,
+          af::const_ref<std::size_t> const&,
+          af::const_ref<double> const&)) add_selected_unsigned_a,
+        (arg_("self"), arg_("indices"), arg_("values")))
       .def("all_approx_equal",
         all_approx_equal_a_a,
         all_approx_equal_a_a_overloads((

@@ -388,6 +388,13 @@ def exercise_select():
     b = a.deep_copy()
     b[i] *= 10
     assert list(a.set_selected(a==v, v*10)) == list(b)
+  #
+  a = flex.double([1,-2,3])
+  i = flex.size_t([0,2])
+  v = flex.double([6,-4])
+  assert a.add_selected(indices=i, values=v) is a
+  assert approx_equal(a, [7,-2,-1])
+  #
   a = flex.double((1,2,3,4,5))
   b = flex.size_t((3,1,0,4,2))
   assert tuple(a.select(b)) == (4,2,1,5,3)
@@ -814,6 +821,12 @@ def exercise_flex_vec3_double():
       assert approx_equal(
         sites_1.transpose_multiply(sites_2),
         m1.transpose()*m2)
+  #
+  a = flex.vec3_double([(1,2,5), (-2,3,4), (3,4,3)])
+  i = flex.size_t([0,2])
+  v = flex.vec3_double([(6,2,-8), (-4,9,2)])
+  assert a.add_selected(indices=i, values=v) is a
+  assert approx_equal(a, [(7,4,-3), (-2,3,4), (-1,13,5)])
 
 def exercise_histogram():
   x = flex.double(xrange(20))
