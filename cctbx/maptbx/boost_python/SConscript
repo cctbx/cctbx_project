@@ -11,4 +11,5 @@ env.SharedLibrary(target="#lib/cctbx_maptbx_ext", source=[
   "statistics.cpp",
   "structure_factors.cpp",
   "real_space_refinement.cpp",
+  "abstract_interpolator.cpp"
 ])
