@@ -6,6 +6,7 @@
 #include <scitbx/math/utils.h>
 #include <boost/python/make_constructor.hpp>
 #include <boost/python/args.hpp>
+#include "flex_helpers.h"
 
 namespace scitbx { namespace boost_python { namespace pickle_single_buffered {
 
@@ -238,6 +239,12 @@ namespace boost_python {
       .def("__init__", make_constructor(join))
       .def("__init__", make_constructor(from_double))
       .def("as_double", as_double)
+      .def("add_selected",
+        (object(*)(
+          object const&,
+          af::const_ref<std::size_t> const&,
+          af::const_ref<vec3<double> > const&)) add_selected_unsigned_a,
+        (arg_("self"), arg_("indices"), arg_("values")))
       .def("min", vec3_min)
       .def("max", vec3_max)
       .def("sum", f_w::sum_a)
