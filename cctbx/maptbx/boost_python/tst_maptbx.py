@@ -350,6 +350,53 @@ def exercise_non_crystallographic_eight_point_interpolation():
     map, grid_mat, (5,5,5), True, -123), -123)
 
 
+def exercise_abstract_interpolators():
+  unit_cell=130.45,130.245,288.405,90,90,120
+  unit_cell_gridding_n=144,144,360
+  grid_cell=uctbx.unit_cell((130.45/144,130.245/144,388.405/360,90,90,120))
+  grid_mat = grid_cell.fractionalization_matrix()
+  map = test_map.deep_copy()
+  map.resize(flex.grid((-1,-2,-1),(3,3,5)))
+  interpolator = maptbx.get_non_crystallographic_interpolator(map,grid_mat)
+  for site_cart,expected_result in ([(0.468661,-1.549268,3.352108),-0.333095],
+                                    [(0.624992,1.553980,1.205578),-0.187556],
+                                    [(0.278175,0.968454,2.578265),-0.375068],
+                                    [(0.265198,-1.476055,0.704381),-0.147061],
+                                    [(1.296042,0.002101,3.459270),-0.304401],
+                                    [(0.296189,-1.346603,2.935777),-0.296395],
+                                    [(0.551586,-1.284371,3.202145),-0.363263],
+                                    [(0.856542,-0.782700,-0.985020),-0.106925],
+                                    [(0.154407,1.078936,-0.917551),-0.151128]):
+    assert approx_equal(interpolator.interpolate(site_cart), expected_result)
+  for x in range(0,2):
+    for y in range(-1,2):
+      for z in range(0,4):
+        assert approx_equal(
+          interpolator.interpolate(grid_cell.orthogonalize((x,y,z))), map[x,y,z])
+  try:
+    val = interpolator.interpolate( (5,5,5) )
+  except RuntimeError, e:
+    assert str(e) == \
+      "cctbx Error: non_crystallographic_eight_point_interpolation:" \
+      " point required for interpolation is out of bounds."
+  else: raise RuntimeError("Exception expected.")
+  interpolator = maptbx.get_non_crystallographic_interpolator(map,grid_mat,True,-123)
+  assert approx_equal(interpolator.interpolate( (5,5,5) ), -123)
+  ## test fractional crystallographic symmetry
+  frac_mtx = uctbx.unit_cell((1,1,1,90,90,90)).fractionalization_matrix()
+  map = flex.double(flex.grid(2,3,5), 10)
+  interpolators = [maptbx.get_fractional_crystallographic_interpolator(map),
+                   maptbx.get_cartesian_crystallographic_interpolator(map,frac_mtx)]
+  for intp in interpolators:
+    for shift in [0,1,-1]:
+      for index in flex.nested_loop(map.focus()):
+        x_frac = [float(i)/n+shift for i,n in zip(index, map.focus())]
+        assert approx_equal(intp.interpolate(x_frac), 10)
+    for i in xrange(100):
+      x_frac = [3*random.random()-1 for i in xrange(3)]
+      assert approx_equal(intp.interpolate(x_frac), 10)
+
+
 def exercise_average_density():
   map = test_map.deep_copy()
   map.resize(flex.grid(4,5,6))
@@ -389,6 +436,7 @@ def run():
   exercise_non_crystallographic_eight_point_interpolation()
   exercise_real_space_refinement()
   exercise_average_density()
+  exercise_abstract_interpolators()
   print "OK"
 
 if (__name__ == "__main__"):
