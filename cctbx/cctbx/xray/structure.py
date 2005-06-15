@@ -104,6 +104,8 @@ class structure(crystal.special_position_settings):
     elif(mean_error >= 1.0 and mean_error <= 3.0):
        left  = mean_error - mean_error*0.1
        right = mean_error + mean_error*1.0
+    elif(abs(mean_error-0.0) < 1.e-3):
+       return self
     else:
        raise RuntimeError("mean_error requested is too big or too small")
     while abs(mean_error - current_mean_error) > tolerance:
