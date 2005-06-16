@@ -276,9 +276,9 @@ def exercise_real_space_refinement():
   sites_cart.append((0.468661,-1.549268,3.352108))
   sites_cart.append((0.624992,1.553980,1.205578))
   weights=flex.double(sites_cart.size(),1.0)
-  assert approx_equal(maptbx.real_space_refinement_residual(map=map,
-                                      gridding_matrix=grid_mat,
-                                      sites_cart=sites_cart,
+  interpolator = maptbx.get_non_crystallographic_interpolator(map,grid_mat)
+  assert approx_equal(maptbx.real_space_refinement_residual(interpolator=interpolator,
+                                      sites=sites_cart,
                                       weights=weights),
                       0.260325417539)
   sites_cart = flex.vec3_double()
@@ -302,11 +302,27 @@ def exercise_real_space_refinement():
                   (-0.05517232417432183,
                    -0.0043710248947356201,
                    -0.046833897401769242)]
-  for grad, correct in zip(maptbx.real_space_refinement_gradients(map=map,
-                               gridding_matrix=grid_mat,
-                               sites_cart=sites_cart),
+  for grad, correct in zip(maptbx.real_space_refinement_gradients(interpolator,
+                               sites=sites_cart),
                            expected_grads):
     assert approx_equal(grad,correct)
+  ## test crystallographic
+  map = flex.double(flex.grid(2,3,5), 10)
+  frac_mtx = uctbx.unit_cell((1,1,1,90,90,90)).fractionalization_matrix()
+  interpolator = maptbx.get_cartesian_crystallographic_interpolator(map,frac_mtx)
+  sites = flex.vec3_double()
+  sites.append( (21,-3.4E10,2.6) )
+  sites.append( (1.01,2.34,2.184) )
+  sites.append( (3,14,15) )
+  sites.append( (1,61,8) )
+  weights=flex.double(sites.size(),1.0)
+  assert approx_equal( maptbx.real_space_refinement_residual(interpolator,
+                                     sites=sites,
+                                     weights=weights), -10 )
+  expected_gradients=flex.double(12,0.0)
+  for grad, correct in zip(maptbx.real_space_refinement_gradients(interpolator,
+                                sites=sites).as_double(),list(expected_gradients)):
+    assert approx_equal( grad, correct )
 
 def exercise_non_crystallographic_eight_point_interpolation():
   unit_cell=130.45,130.245,288.405,90,90,120
@@ -368,11 +384,18 @@ def exercise_abstract_interpolators():
                                     [(0.856542,-0.782700,-0.985020),-0.106925],
                                     [(0.154407,1.078936,-0.917551),-0.151128]):
     assert approx_equal(interpolator.interpolate(site_cart), expected_result)
+  orthos = flex.vec3_double()
+  vals = flex.double()
   for x in range(0,2):
     for y in range(-1,2):
       for z in range(0,4):
-        assert approx_equal(
-          interpolator.interpolate(grid_cell.orthogonalize((x,y,z))), map[x,y,z])
+        ortho = grid_cell.orthogonalize((x,y,z))
+        orthos.append( ortho )
+        val = interpolator.interpolate(ortho)
+        vals.append(val)
+        assert approx_equal(val, map[x,y,z])
+  for val,exp in zip(vals,interpolator.interpolate(orthos)):
+    assert approx_equal( val, exp )
   try:
     val = interpolator.interpolate( (5,5,5) )
   except RuntimeError, e:

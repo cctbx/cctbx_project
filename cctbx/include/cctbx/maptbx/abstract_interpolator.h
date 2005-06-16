@@ -70,7 +70,7 @@ struct fractional {};
 template < typename T=void > struct crystallographic {};
 template < typename T=void > struct non_crystallographic {};
 
-template < typename T, typename U=void > class interpolator {};
+template < typename T, typename U=void > class interpolator;
 
 template < typename FloatType > class interpolator<interface,FloatType> {
 public:
@@ -198,6 +198,19 @@ public:
     if ( this->interpolator_ != 0 )
       return this->interpolator_->interpolate(site);
     throw there_is_no_interpolator_backend();
+  }
+  af::shared<FloatType> interpolate ( af::const_ref<scitbx::vec3<FloatType> > const& sites ) const {
+    af::shared<FloatType> result(sites.size());
+    std::size_t sz = result.size();
+    for ( std::size_t i=0; i<sz; ++i )
+      result[i] = this->interpolate( sites[i] );
+    return result;
+  }
+  FloatType operator [] ( scitbx::vec3<FloatType> const& site ) const {
+    return this->interpolate( site );
+  }
+  af::shared<FloatType> operator [] ( af::const_ref<scitbx::vec3<FloatType> > const& sites ) const {
+    return this->interpolate( sites );
   }
   bool can_interpolate () const { return this->interpolator_!=0; }
 protected:
