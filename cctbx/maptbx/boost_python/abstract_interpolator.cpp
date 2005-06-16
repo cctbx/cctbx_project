@@ -30,7 +30,14 @@ namespace {
       using namespace boost::python;
 
       class_<interpolator>("abstract_interpolator",no_init)
-        .def("interpolate",&interpolator::interpolate);
+        .def("interpolate",
+          (double(interpolator::*)( scitbx::vec3<double> const& ) const)
+          &interpolator::interpolate,
+          (arg_("site")))
+        .def("interpolate",
+          (af::shared<double>(interpolator::*)( af::const_ref<scitbx::vec3<double> > const& ) const)
+          &interpolator::interpolate,
+          (arg_("sites")));
 
       def("get_non_crystallographic_interpolator",
         (interpolator(*)

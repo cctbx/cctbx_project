@@ -14,7 +14,7 @@ namespace {
   {
     BOOST_PYTHON_FUNCTION_OVERLOADS(
       real_space_refinement_gradients_overloads,
-      real_space_refinement::gradients, 3, 5)
+      real_space_refinement::gradients, 2, 4)
 
     static void
     wrap()
@@ -22,21 +22,20 @@ namespace {
       using namespace boost::python;
       def("real_space_refinement_residual",
         (double(*)(
-          af::const_ref<double, af::flex_grid<> > const&,
-          scitbx::mat3<double> const&,
+          abstract::interpolator<double> const&,
           af::const_ref<scitbx::vec3<double> > const&,
           af::const_ref<double> const&))
         real_space_refinement::residual, (
-        arg_("map"), arg_("gridding_matrix"), arg_("sites_cart"), arg_("weights")));
+        arg_("interpolator"), arg_("sites"), arg_("weights")));
       def("real_space_refinement_gradients",
         (af::shared<scitbx::vec3<double> >(*)(
-          af::const_ref<double, af::flex_grid<> > const&,
-          scitbx::mat3<double> const&,
+          abstract::interpolator<double> const&,
           af::const_ref<scitbx::vec3<double> > const&,
           double,std::size_t))
             real_space_refinement::gradients,
         real_space_refinement_gradients_overloads((
-          arg_("map"), arg_("gridding_matrix"), arg_("sites_cart"),
+          arg_("interpolator"),
+          arg_("sites"),
           arg_("delta_h")=1.0,
           arg_("max_iter")=0)));
     }
