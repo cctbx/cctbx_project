@@ -1,23 +1,10 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2001 Oct: Additional 126 settings from the "Multiple cell C or F"
-               and the "Triple cell H" removed.
-               See dox/page_multiple_cell.dox.
-     2001 Oct: six hall symbols corrected (R.W. Grosse-Kunstleve)
-     2001 May: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
-     2001 Apr: SourceForge release (R.W. Grosse-Kunstleve)
- */
-
 #include <ctype.h>
 #include <string>
 #include <stdio.h>
 #include <cstddef>
 #include <cctbx/error.h>
 #include <cctbx/sgtbx/symbols.h>
+#include <cctbx/sgtbx/reference_settings.h>
 
 using std::string;
 
@@ -1050,6 +1037,15 @@ namespace cctbx { namespace sgtbx {
   {
     clear();
     if (entry->sg_number) set_all(entry, extension, "");
+  }
+
+  matrix_group::code
+  space_group_symbols::point_group_type() const
+  {
+    std::size_t space_group_number = number();
+    CCTBX_ASSERT(space_group_number >= 1);
+    CCTBX_ASSERT(space_group_number <= 230);
+    return reference_settings::matrix_group_code_table(space_group_number);
   }
 
   space_group_symbol_iterator::space_group_symbol_iterator()

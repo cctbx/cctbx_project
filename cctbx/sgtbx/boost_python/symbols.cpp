@@ -36,6 +36,9 @@ namespace {
         .def("extension", &w_t::extension)
         .def("extended_hermann_mauguin", &w_t::extended_hermann_mauguin, ccr())
         .def("hall", &w_t::hall, ccr())
+        .def("point_group_type", &w_t::point_group_type)
+        .def("laue_group_type", &w_t::laue_group_type)
+        .def("crystal_system", &w_t::crystal_system)
       ;
     }
   };

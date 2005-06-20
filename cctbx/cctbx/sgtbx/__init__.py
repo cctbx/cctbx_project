@@ -120,6 +120,24 @@ class space_group_info:
   def primitive_setting(self):
     return self.change_basis(self.group().z2p_op())
 
+  def reflection_intensity_equivalent_groups(self, anomalous_flag=True):
+    result = []
+    cb_op = self.type().cb_op()
+    reference_group = self.change_basis(cb_op=cb_op).group()
+    reference_crystal_system = reference_group.crystal_system()
+    reference_reflection_intensity_group = reference_group \
+      .build_derived_reflection_intensity_group(anomalous_flag=anomalous_flag)
+    reference_reflection_intensity_group.make_tidy()
+    for space_group_symbols in space_group_symbol_iterator():
+      if (space_group_symbols.crystal_system() != reference_crystal_system):
+        continue
+      other_sg = space_group(space_group_symbols.hall())
+      if (other_sg.build_derived_reflection_intensity_group(
+            anomalous_flag=anomalous_flag)
+          == reference_reflection_intensity_group):
+        result.append(other_sg.change_basis(cb_op.inverse()))
+    return result
+
   def __str__(self):
     cache = self._space_group_info_cache
     if (not hasattr(cache, "_lookup_symbol")):

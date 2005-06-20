@@ -1,16 +1,7 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2001 May: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
-     2001 Apr: SourceForge release (R.W. Grosse-Kunstleve)
- */
-
 #ifndef CCTBX_SGTBX_SYMBOLS_H
 #define CCTBX_SGTBX_SYMBOLS_H
 
+#include <cctbx/sgtbx/group_codes.h>
 #include <string>
 
 namespace cctbx { namespace sgtbx {
@@ -271,6 +262,40 @@ namespace cctbx { namespace sgtbx {
           is to initialize objects of class SpaceGroup.
        */
       std::string const& hall() const { return hall_; }
+
+      //! Determines the point group type.
+      /*! The code returned is a matrix group code. There are
+          exactly 32 possible return values, corresponding to
+          the 32 crystallographic point group types.
+          <p>
+          Python: returns a string representing the point group type.
+       */
+      matrix_group::code
+      point_group_type() const;
+
+      //! Determines the Laue group type.
+      /*! The code returned is a matrix group code. There are
+          exactly 11 possible return values, corresponding to
+          the 11 Laue group types.
+          <p>
+          Python: returns a string representing the Laue group type.
+       */
+      matrix_group::code
+      laue_group_type() const
+      {
+        return point_group_type().laue_group_type();
+      }
+
+      //! Determines the crystal system.
+      /*! There are exactly 7 possible return values.
+          <p>
+          Python: returns a string representing the crystal system.
+       */
+      crystal_system::code
+      crystal_system() const
+      {
+        return point_group_type().crystal_system();
+      }
 
     private:
       int         number_;
