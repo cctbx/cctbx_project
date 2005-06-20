@@ -29,6 +29,9 @@ def exercise_symbols():
   assert s.hall() == " R 3"
   s = sgtbx.space_group_symbols(146, "", "I1952")
   assert s.hall() == " P 3*"
+  assert s.point_group_type() == "3"
+  assert s.laue_group_type() == "-3"
+  assert s.crystal_system() == "Trigonal"
   symbols = {
     "  hall p 3  ": "p 3  ",
     " hall:   p 4": "p 4",

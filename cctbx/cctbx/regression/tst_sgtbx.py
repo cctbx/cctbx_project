@@ -40,6 +40,19 @@ def exercise_space_group_info():
   asu = j.direct_space_asu()
   assert len(asu.facets) == 6
   assert sgtbx.space_group(asu.hall_symbol) == j.group()
+  i = sgtbx.space_group_info(number=19)
+  assert [str(sgtbx.space_group_info(group=group))
+    for group in i.reflection_intensity_equivalent_groups()] == [
+      "P 2 2 2",
+      "P 2 2 21",
+      "P 21 2 2",
+      "P 2 21 2",
+      "P 21 21 2",
+      "P 2 21 21",
+      "P 21 2 21",
+      "P 21 21 21"]
+  assert len(i.reflection_intensity_equivalent_groups(anomalous_flag=False)) \
+      == 127
 
 def test_enantiomorphic_pairs():
   pairs = []
