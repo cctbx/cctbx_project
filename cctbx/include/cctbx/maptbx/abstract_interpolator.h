@@ -64,6 +64,11 @@ namespace cctbx { namespace maptbx { namespace abstract {
 
 struct there_is_no_interpolator_backend : public std::exception {};
 
+#if BOOST_WORKAROUND(__EDG_VERSION__, == 238)
+class edg_workaround_cartesian { friend class cartesian; };
+class edg_workaround_fractional { friend class fractional; };
+#endif
+
 struct interface {};
 struct cartesian {};
 struct fractional {};
