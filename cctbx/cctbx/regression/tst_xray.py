@@ -305,8 +305,10 @@ C  pair count:   1       <<  0.0000,  0.0000,  0.1000>>
     xs_shaked = xs.shake_sites(mean_error = error)
     sites_cart_xs        = xs.sites_cart()
     sites_cart_xs_shaked = xs_shaked.sites_cart()
-    rmsd = sites_cart_xs.rms_difference(sites_cart_xs_shaked)
-    assert approx_equal(error, rmsd, 0.00005)
+    mean_err = flex.mean(flex.sqrt((sites_cart_xs - sites_cart_xs_shaked).dot()))
+    #rmsd = sites_cart_xs.rms_difference(sites_cart_xs_shaked)
+    #assert approx_equal(error, rmsd, 0.00005)
+    assert approx_equal(error, mean_err, 0.00005)
   ### random remove sites
   for fraction in xrange(1, 99+1):
     fraction /= 100.
