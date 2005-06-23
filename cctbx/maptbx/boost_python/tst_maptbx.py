@@ -2,6 +2,7 @@ from cctbx import maptbx
 from cctbx import uctbx
 from cctbx import sgtbx
 from cctbx.array_family import flex
+from cctbx import crystal
 from libtbx.test_utils import approx_equal, not_approx_equal
 import sys
 import random
@@ -318,11 +319,25 @@ def exercise_real_space_refinement():
   weights=flex.double(sites.size(),1.0)
   assert approx_equal( maptbx.real_space_refinement_residual(interpolator,
                                      sites=sites,
-                                     weights=weights), -10 )
+                                     weights=weights), -10, eps=1.e-4 )
   expected_gradients=flex.double(12,0.0)
   for grad, correct in zip(maptbx.real_space_refinement_gradients(interpolator,
                                 sites=sites).as_double(),list(expected_gradients)):
     assert approx_equal( grad, correct )
+
+def exercise_asu_eight_point_interpolation():
+  map = flex.double(flex.grid(2,3,5), 10)
+  cs = crystal.symmetry(
+    unit_cell=(1,1,1,90,90,90),
+    space_group="P1")
+  asu_mappings=cs.asu_mappings(buffer_thickness=0)
+  for shift in [0,1,-1]:
+    for index in flex.nested_loop(map.focus()):
+      x_frac = [float(i)/n+shift for i,n in zip(index, map.focus())]
+      assert approx_equal(
+        maptbx.asu_eight_point_interpolation(map, asu_mappings, x_frac), 10)
+  assert approx_equal(
+    maptbx.asu_eight_point_interpolation(map, asu_mappings, (10,11,12)), 10)
 
 def exercise_non_crystallographic_eight_point_interpolation():
   unit_cell=130.45,130.245,288.405,90,90,120
@@ -408,8 +423,14 @@ def exercise_abstract_interpolators():
   ## test fractional crystallographic symmetry
   frac_mtx = uctbx.unit_cell((1,1,1,90,90,90)).fractionalization_matrix()
   map = flex.double(flex.grid(2,3,5), 10)
+  cs = crystal.symmetry(
+    unit_cell=(1,1,1,90,90,90),
+    space_group="P1")
+  asu_mappings=cs.asu_mappings(buffer_thickness=0)
   interpolators = [maptbx.get_fractional_crystallographic_interpolator(map),
-                   maptbx.get_cartesian_crystallographic_interpolator(map,frac_mtx)]
+                   maptbx.get_cartesian_crystallographic_interpolator(map,frac_mtx),
+                   maptbx.get_fractional_asu_interpolator(map,asu_mappings),
+                   maptbx.get_cartesian_asu_interpolator(map,asu_mappings)]
   for intp in interpolators:
     for shift in [0,1,-1]:
       for index in flex.nested_loop(map.focus()):
@@ -418,7 +439,6 @@ def exercise_abstract_interpolators():
     for i in xrange(100):
       x_frac = [3*random.random()-1 for i in xrange(3)]
       assert approx_equal(intp.interpolate(x_frac), 10)
-
 
 def exercise_average_density():
   map = test_map.deep_copy()
@@ -457,6 +477,7 @@ def run():
   exercise_structure_factors()
   exercise_eight_point_interpolation()
   exercise_non_crystallographic_eight_point_interpolation()
+  exercise_asu_eight_point_interpolation()
   exercise_real_space_refinement()
   exercise_average_density()
   exercise_abstract_interpolators()

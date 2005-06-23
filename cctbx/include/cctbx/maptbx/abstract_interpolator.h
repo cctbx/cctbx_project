@@ -74,6 +74,7 @@ struct cartesian {};
 struct fractional {};
 template < typename T=void > struct crystallographic {};
 template < typename T=void > struct non_crystallographic {};
+template < typename T=void > struct asu {};
 
 template < typename T, typename U=void > class interpolator;
 
@@ -175,6 +176,59 @@ private:
 };
 
 template < typename FloatType >
+class interpolator<asu<fractional>,FloatType>
+  : public interpolator<interface,FloatType> {
+public:
+  interpolator (
+    af::versa<FloatType, af::flex_grid<> > const& Map,
+    crystal::direct_space_asu::asu_mappings<FloatType> & am)
+  : map_(Map)
+  , am_(am) {
+    this->map_c_ref_ = this->map_.const_ref();
+  }
+  virtual ~ interpolator () {}
+  virtual interpolator<interface,FloatType>* clone () const {
+    return new interpolator<asu<fractional>,FloatType>(this->map_,this->am_);
+  }
+  virtual FloatType interpolate ( scitbx::vec3<FloatType> const& site ) const {
+    // theoretically this works ... perhaps Ralf has some input?
+    // the idea is that fractional <==> cartesian
+    cctbx::fractional<FloatType> frac(site);
+    return cctbx::maptbx::asu_eight_point_interpolation(this->map_c_ref_,this->am_,frac);
+  }
+private:
+  af::versa<FloatType, af::flex_grid<> > map_;
+  af::const_ref<FloatType, af::flex_grid<> > map_c_ref_;
+  crystal::direct_space_asu::asu_mappings<FloatType> & am_;
+};
+
+template < typename FloatType >
+class interpolator<asu<cartesian>,FloatType>
+  : public interpolator<interface,FloatType> {
+public:
+  interpolator ( af::versa<FloatType, af::flex_grid<> > const& Map,
+                 crystal::direct_space_asu::asu_mappings<FloatType> & am )
+  : map_(Map)
+  , am_(am) {
+    this->map_c_ref_ = this->map_.const_ref();
+    this->fractionalization_matrix_ = this->am_.unit_cell().fractionalization_matrix();
+  }
+  virtual ~ interpolator () {}
+  virtual interpolator<interface,FloatType>* clone () const {
+    return new interpolator<asu<cartesian>,FloatType>(this->map_,this->am_);
+  }
+  virtual FloatType interpolate ( scitbx::vec3<FloatType> const& site ) const {
+    cctbx::fractional<FloatType> frac = this->fractionalization_matrix_ * site;
+    return cctbx::maptbx::asu_eight_point_interpolation(this->map_c_ref_,this->am_,frac);
+  }
+private:
+  af::versa<FloatType, af::flex_grid<> > map_;
+  af::const_ref<FloatType, af::flex_grid<> > map_c_ref_;
+  crystal::direct_space_asu::asu_mappings<FloatType> & am_;
+  scitbx::mat3<FloatType> fractionalization_matrix_;
+};
+
+template < typename FloatType >
 class interpolator<FloatType,void> {
 public:
   // STL container compatibility
@@ -268,6 +322,32 @@ struct get_cartesian_crystallographic {
                      scitbx::mat3<FloatType> const& fmtx ) {
     return abstract::interpolator<FloatType>(
             abstract::interpolator<crystallographic<cartesian>,FloatType>(Map,fmtx) );
+  }
+
+};
+
+template < typename FloatType >
+struct get_fractional_asu {
+
+  static
+  interpolator<FloatType>
+  interpolator (
+   af::versa<FloatType, af::flex_grid<> > const& Map,
+   crystal::direct_space_asu::asu_mappings<FloatType> & am ) {
+    return abstract::interpolator<FloatType>( abstract::interpolator<asu<fractional>,FloatType>(Map,am) );
+  }
+
+};
+
+template < typename FloatType >
+struct get_cartesian_asu {
+
+  static
+  interpolator<FloatType>
+  interpolator ( af::versa<FloatType, af::flex_grid<> > const& Map,
+                 crystal::direct_space_asu::asu_mappings<FloatType> & am) {
+    return abstract::interpolator<FloatType>(
+             abstract::interpolator<asu<cartesian>,FloatType>(Map,am) );
   }
 
 };
