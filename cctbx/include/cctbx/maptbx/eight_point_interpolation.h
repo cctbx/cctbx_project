@@ -5,6 +5,8 @@
 #include <cctbx/math/mod.h>
 #include <scitbx/array_family/accessors/c_grid_padded.h>
 #include <scitbx/math/utils.h>
+#include <cctbx/crystal/direct_space_asu.h>
+#include <limits>
 
 namespace cctbx { namespace maptbx {
 
@@ -43,6 +45,26 @@ namespace cctbx { namespace maptbx {
             FloatType, SignedIntType>::ifloor(grid_float[i]);
           i_grid[i] = ixn;
           weights_[i][1] = grid_float[i] - static_cast<FloatType>(ixn);
+          weights_[i][0] = 1 - weights_[i][1];
+        }
+      }
+
+      get_corner(
+        crystal::direct_space_asu::asu_mappings<FloatType> & am,
+        IndexType const& grid_n,
+        fractional<FloatType> const& x_frac)
+      {
+        cartesian<FloatType> const & x_cart = am.process(x_frac).mappings().back()[0].mapped_site();
+        fractional<FloatType> new_x_frac = am.unit_cell().fractionalization_matrix() * x_cart;
+        for ( std::size_t i=0; i<3; ++i )
+          if ( std::abs(new_x_frac[i]) < std::numeric_limits<FloatType>::epsilon()*10 )
+            new_x_frac[i] = 0;
+        for(std::size_t i=0;i<3;i++) {
+          FloatType xn = new_x_frac[i] * static_cast<FloatType>(grid_n[i]);
+          SignedIntType ixn = scitbx::math::float_int_conversions<
+            FloatType, SignedIntType>::ifloor(xn);
+          i_grid[i] = ixn;
+          weights_[i][1] = xn - static_cast<FloatType>(ixn);
           weights_[i][0] = 1 - weights_[i][1];
         }
       }
@@ -138,6 +160,58 @@ namespace cctbx { namespace maptbx {
     for(iv_t s2=0;s2<2;s2++) { map_index[2] = (corner.i_grid[2] + s2);
       result += map(map_index) * corner.weight(s0,s1,s2);
     }}}
+    return result;
+  }
+
+  template <typename FloatType>
+  FloatType
+  asu_eight_point_interpolation(
+    af::const_ref<FloatType, af::flex_grid<> > const& map,
+    crystal::direct_space_asu::asu_mappings<FloatType> & am,
+    fractional<FloatType> const& site_cart)
+  {
+    CCTBX_ASSERT(map.accessor().nd() == 3);
+    typedef typename af::flex_grid<>::index_type index_t;
+    typedef typename index_t::value_type iv_t;
+    index_t map_index(3, 0);
+    index_t const& grid_n = map.accessor().focus();
+    get_corner<index_t, FloatType> corner(am, grid_n, site_cart);
+
+
+    FloatType result = 0;
+    for(iv_t s0=0;s0<2;s0++) {
+      map_index[0] = (corner.i_grid[0] + s0);
+      for(iv_t s1=0;s1<2;s1++) {
+        map_index[1] = (corner.i_grid[1] + s1);
+        for(iv_t s2=0;s2<2;s2++) {
+          map_index[2] = (corner.i_grid[2] + s2);
+          // I know comments just *kill* the reader's of this file, but I think this needs
+          // a bit of explanation:
+          // (1) the ASU has grid points which are on the "open face" of the ASU
+          // (2) these grid-points are symmetrically related to other, more special grid-points
+          // (3) that means that for some grid-points we have to see if they are IN the ASU
+          //     then if they are NOT, we have to map them back into the ASU
+          // (4) note that there are some grid-points which are "valid" accesses are not
+          //     ACTUALLY valid, that's why we call is_valid_index and cross our flindas
+          // -j & E. June 22, 2005
+          if ( not map.accessor().is_valid_index(map_index) ) {
+            fractional<FloatType> lmap;
+            for ( std::size_t i=0; i<3; ++i ) {
+              lmap[i] = static_cast<FloatType>(map_index[i]) / grid_n[i];
+            }
+            cartesian<FloatType> const & xmap = am.process(lmap).mappings().back()[0].mapped_site();
+            fractional<FloatType> nxmap = am.unit_cell().fractionalization_matrix() * xmap;
+            for ( std::size_t i=0; i<3; ++i ) {
+              if ( std::abs(nxmap[i]) < std::numeric_limits<FloatType>::epsilon()*10 )
+                nxmap[i] = 0;
+              map_index[i] = scitbx::math::float_int_conversions<FloatType, long>::
+                                ifloor(nxmap[i] * static_cast<FloatType>(grid_n[i]));
+            }
+          }
+          result += map(map_index) * corner.weight(s0,s1,s2);
+        }
+      }
+    }
     return result;
   }
 

@@ -103,6 +103,11 @@ namespace {
            arg_("site_cart"),
            arg_("allow_out_of_bounds")=false,
            arg_("out_of_bounds_substitute_value")=0)));
+    def("asu_eight_point_interpolation",
+      (double(*)
+        (af::const_ref<double, af::flex_grid<> > const&,
+         crystal::direct_space_asu::asu_mappings<double> &,
+         fractional<double> const&)) asu_eight_point_interpolation);
   }
 
 } // namespace <anonymous>

@@ -18,6 +18,8 @@ namespace {
     typedef abstract::get_non_crystallographic<double> get_non_crystallographic;
     typedef abstract::get_cartesian_crystallographic<double> get_cartesian_crystallographic;
     typedef abstract::get_fractional_crystallographic<double> get_fractional_crystallographic;
+    typedef abstract::get_cartesian_asu<double> get_cartesian_asu;
+    typedef abstract::get_fractional_asu<double> get_fractional_asu;
 
     BOOST_PYTHON_FUNCTION_OVERLOADS(
       get_non_crystallographic_interpolator_overloads,
@@ -64,6 +66,19 @@ namespace {
           scitbx::mat3<double> const&))
           get_cartesian_crystallographic::interpolator,
         (arg_("map"),arg_("fractionalization_matrix")));
+
+      def("get_fractional_asu_interpolator",
+        (interpolator(*)
+          (af::versa<double, af::flex_grid<> > const&, crystal::direct_space_asu::asu_mappings<double> &))
+          get_fractional_asu::interpolator,
+        (arg_("map"),arg_("asu_mappings")));
+
+      def("get_cartesian_asu_interpolator",
+        (interpolator(*)
+          (af::versa<double, af::flex_grid<> > const&,
+          crystal::direct_space_asu::asu_mappings<double> &))
+          get_cartesian_asu::interpolator,
+        (arg_("map"),arg_("asu_mappings")));
 
     }
   };
