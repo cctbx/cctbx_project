@@ -1,4 +1,5 @@
 import libtbx.load_env
+from libtbx.str_utils import show_string
 import md5
 import sys
 Import("env_base", "env_etc")
@@ -78,18 +79,19 @@ if (not env_etc.no_boost_python):
   while (jamfile_lines.count("") > 0):
     jamfile_lines.remove("")
   bpl_dll_sources = []
+  prefix = "#"+os.path.join(
+    os.path.basename(env_etc.boost_dist), "libs", "python", "src")
   for line in jamfile_lines:
-    bpl_dll_sources.append(os.path.join("#boost/libs/python/src", line))
+    bpl_dll_sources.append(os.path.join(prefix, line))
   assert len(bpl_dll_sources) > 0
-
+  env.Repository(os.path.dirname(env_etc.boost_dist))
   if (env_etc.static_bpl):
     env.StaticLibrary(target="#lib/boost_python", source=bpl_dll_sources)
   else:
     env.SharedLibrary(target="#lib/boost_python", source=bpl_dll_sources)
 
   if (int(ARGUMENTS.get("boost_python_tests", 0))):
-    jamfile_path = os.path.normpath(os.path.join(
-      env_etc.boost_dist, "libs/python/test/Jamfile"))
+    jamfile_path = libtbx.env.under_dist("boost", "libs/python/test/Jamfile")
     jamfile = " ".join(
       [line.rstrip() for line in open(jamfile_path).readlines()])
     m = md5.new()
@@ -165,6 +167,7 @@ const_argument
 raw_ctor
 """ % disabled)
     Import("env_boost_python_ext")
+    test_dir = libtbx.env.under_dist("boost", "libs/python/test")
     all_tst = []
     for bpl_test in bpl_tests:
       if (bpl_test[0] == "#"):
@@ -180,20 +183,31 @@ raw_ctor
         src = flds[0]
         pyd = flds[1]
         tst = flds[2]
-      if (not tst in all_tst):
-        all_tst.append(tst)
-      env_pure_boost_python_ext.SharedLibrary(
-        target="#lib/%s" % pyd,
-        source=["#boost/libs/python/test/%s.cpp" % s for s in src.split(";")],
-      )
-    test_dir = os.path.normpath(os.path.join(
-      env_etc.boost_dist, "libs/python/test"))
+      env = env_pure_boost_python_ext.Copy()
+      env.Repository(os.path.dirname(env_etc.boost_dist))
+      prefix = "#"+os.path.join(
+        os.path.basename(env_etc.boost_dist), "libs", "python", "test")
+      ok = True
+      source = []
+      for s in src.split(";"):
+        cpp = "%s.cpp" % s
+        file_name = os.path.join(test_dir, cpp)
+        if (not os.path.isfile(file_name)):
+          print "Warning: source file not available:", show_string(file_name)
+          ok = False
+        else:
+          source.append(os.path.join(prefix, cpp))
+      if (ok):
+        if (not tst in all_tst):
+          all_tst.append(tst)
+        env.SharedLibrary(target="#lib/%s" % pyd, source=source)
     if (sys.platform == "win32"):
       boost_python_run_tests = \
         "%s\\boost_python_run_tests.bat" % libtbx.env.build_path
       f = open(boost_python_run_tests, "w")
       for tst in all_tst:
-        print >> f, 'call libtbx.python "%s"' % (os.path.join(test_dir, tst+".py"))
+        print >> f, 'call libtbx.python "%s"' % (
+          os.path.join(test_dir, tst+".py"))
       f.close()
     else:
       boost_python_run_tests = \
