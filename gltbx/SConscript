@@ -1,0 +1,43 @@
+import libtbx.load_env
+Import("env_etc")
+
+env_etc.gltbx_dist = libtbx.env.dist_path("gltbx")
+env_etc.gltbx_include = libtbx.env.under_dist("gltbx", "..")
+env_etc.gltbx_common_includes = [
+  env_etc.libtbx_include,
+  env_etc.gltbx_include,
+  env_etc.boost_include,
+]
+
+if (not env_etc.no_boost_python):
+  Import("env_no_includes_boost_python_ext")
+  env = env_no_includes_boost_python_ext.Copy()
+  if (env_etc.compiler == "win32_cl"):
+    env.Append(LIBS=["glu32", "opengl32"])
+  elif (env_etc.compiler.startswith("darwin_")):
+    env.Append(SHLINKFLAGS=["-framework", "OpenGL"])
+  else:
+    libs = list(env["LIBS"])
+    try: i = libs.index("m")
+    except ValueError: i = len(libs)
+    libs.insert(i, "GL")
+    libs.insert(i, "GLU")
+    env.Replace(LIBS=libs)
+  env_etc.include_registry.append(
+    env=env,
+    paths=env_etc.gltbx_common_includes + [env_etc.python_include])
+  for namespace,n_fragments_def,n_fragments_fun in [("gl", 8, 16),
+                                                    ("glu", 2, 4)]:
+    source=["%s_ext.cpp" % namespace]
+    for i_fragment in xrange(n_fragments_def):
+      source.append("#gltbx/%s_defines_%02d_bpl.cpp" % (
+        namespace, i_fragment))
+    for i_fragment in xrange(n_fragments_fun):
+      source.append("#gltbx/%s_functions_%02d_bpl.cpp" % (
+        namespace, i_fragment))
+    env.SharedLibrary(
+      target="#lib/gltbx_%s_ext" % namespace,
+      source=source)
+  env.SharedLibrary(
+    target="#lib/gltbx_util_ext",
+    source=["util_ext.cpp"])
