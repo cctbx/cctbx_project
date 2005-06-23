@@ -323,7 +323,7 @@ def exercise_real_space_refinement():
   expected_gradients=flex.double(12,0.0)
   for grad, correct in zip(maptbx.real_space_refinement_gradients(interpolator,
                                 sites=sites).as_double(),list(expected_gradients)):
-    assert approx_equal( grad, correct )
+    assert approx_equal( grad, correct, eps=1e-4 )
 
 def exercise_asu_eight_point_interpolation():
   map = flex.double(flex.grid(2,3,5), 10)
