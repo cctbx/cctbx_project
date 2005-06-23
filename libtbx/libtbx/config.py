@@ -1152,15 +1152,20 @@ class build_options:
 class include_registry:
 
   def __init__(self):
-    self.scan_boost()
+    self._boost_dir_name = "boost"
     self._had_message = {}
+    self.scan_boost()
 
   def scan_boost(self, flag=False):
     self._scan_boost = flag
     return self
 
+  def set_boost_dir_name(self, path):
+    self._boost_dir_name = os.path.basename(path).lower()
+
   def scan_flag(self, path):
-    if (not self._scan_boost and path.lower().endswith("boost")):
+    if (not self._scan_boost
+        and os.path.basename(path).lower() == self._boost_dir_name):
       if (not path in self._had_message):
         print "libtbx.scons: implicit dependency scan disabled for directory",
         print path
