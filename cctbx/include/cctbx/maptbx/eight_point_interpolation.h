@@ -185,7 +185,7 @@ namespace cctbx { namespace maptbx {
         map_index[1] = (corner.i_grid[1] + s1);
         for(iv_t s2=0;s2<2;s2++) {
           map_index[2] = (corner.i_grid[2] + s2);
-          // I know comments just *kill* the reader's of this file, but I think this needs
+          // I know comments just *kill* the readers of this file, but I think this needs
           // a bit of explanation:
           // (1) the ASU has grid points which are on the "open face" of the ASU
           // (2) these grid-points are symmetrically related to other, more special grid-points
@@ -194,7 +194,7 @@ namespace cctbx { namespace maptbx {
           // (4) note that there are some grid-points which are "valid" accesses are not
           //     ACTUALLY valid, that's why we call is_valid_index and cross our flindas
           // -j & E. June 22, 2005
-          if ( not map.accessor().is_valid_index(map_index) ) {
+          if ( ! map.accessor().is_valid_index(map_index) ) {
             fractional<FloatType> lmap;
             for ( std::size_t i=0; i<3; ++i ) {
               lmap[i] = static_cast<FloatType>(map_index[i]) / grid_n[i];
