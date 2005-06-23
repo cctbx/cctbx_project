@@ -5,8 +5,8 @@
 #include <cctbx/math/mod.h>
 #include <scitbx/array_family/accessors/c_grid_padded.h>
 #include <scitbx/math/utils.h>
+#include <scitbx/math/floating_point_epsilon.h>
 #include <cctbx/crystal/direct_space_asu.h>
-#include <limits>
 
 namespace cctbx { namespace maptbx {
 
@@ -56,8 +56,9 @@ namespace cctbx { namespace maptbx {
       {
         cartesian<FloatType> const & x_cart = am.process(x_frac).mappings().back()[0].mapped_site();
         fractional<FloatType> new_x_frac = am.unit_cell().fractionalization_matrix() * x_cart;
+        FloatType epsilon = scitbx::math::floating_point_epsilon<FloatType>::get() * 10;
         for ( std::size_t i=0; i<3; ++i )
-          if ( std::abs(new_x_frac[i]) < std::numeric_limits<FloatType>::epsilon()*10 )
+          if ( std::abs(new_x_frac[i]) < epsilon )
             new_x_frac[i] = 0;
         for(std::size_t i=0;i<3;i++) {
           FloatType xn = new_x_frac[i] * static_cast<FloatType>(grid_n[i]);
@@ -176,8 +177,7 @@ namespace cctbx { namespace maptbx {
     index_t map_index(3, 0);
     index_t const& grid_n = map.accessor().focus();
     get_corner<index_t, FloatType> corner(am, grid_n, site_cart);
-
-
+    FloatType epsilon = scitbx::math::floating_point_epsilon<FloatType>::get() * 10;
     FloatType result = 0;
     for(iv_t s0=0;s0<2;s0++) {
       map_index[0] = (corner.i_grid[0] + s0);
@@ -202,7 +202,7 @@ namespace cctbx { namespace maptbx {
             cartesian<FloatType> const & xmap = am.process(lmap).mappings().back()[0].mapped_site();
             fractional<FloatType> nxmap = am.unit_cell().fractionalization_matrix() * xmap;
             for ( std::size_t i=0; i<3; ++i ) {
-              if ( std::abs(nxmap[i]) < std::numeric_limits<FloatType>::epsilon()*10 )
+              if ( std::abs(nxmap[i]) < epsilon )
                 nxmap[i] = 0;
               map_index[i] = scitbx::math::float_int_conversions<FloatType, long>::
                                 ifloor(nxmap[i] * static_cast<FloatType>(grid_n[i]));
