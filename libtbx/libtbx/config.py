@@ -1140,6 +1140,8 @@ class build_options:
     assert self.mode in ["release", "quick", "debug", "debug_optimized"]
     self.optimization = (self.mode in ["release", "debug_optimized"])
     self.debug_symbols = (self.mode in ["debug", "debug_optimized"])
+    if (self.static_exe):
+      self.static_libraries = True
 
   def report(self, f=None):
     if (f is None): f = sys.stdout
