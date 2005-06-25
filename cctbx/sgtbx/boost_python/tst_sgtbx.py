@@ -7,6 +7,8 @@ import cctbx.sgtbx.direct_space_asu
 from cctbx import uctbx
 from scitbx.python_utils import complex_math
 from libtbx.test_utils import approx_equal, not_approx_equal
+import libtbx.load_env
+import os
 
 def exercise_symbols():
   s = sgtbx.space_group_symbols("p 2")
@@ -54,6 +56,45 @@ def exercise_symbols():
     hm = s.extended_hermann_mauguin()
     assert sgtbx.space_group_symbols(hm).extended_hermann_mauguin() == hm
   assert n == 530
+  #
+  short_symbols_i = [
+    "P2", "P21", "B2", "C2", "Pm", "Pb", "Pc", "Bm", "Cm", "Bb", "Cc", "P2/m",
+    "P21/m", "B2/m", "C2/m", "P2/b", "P2/c", "P21/b", "P21/c", "B2/b", "C2/c"]
+  expected_numbers_i=[3,4,5,5,6,7,7,8,8,9,9,10,11,12,12,13,13,14,14,15,15]
+  assert [sgtbx.space_group_symbols(short, "I").number()
+    for short in short_symbols_i] == expected_numbers_i
+  short_symbols_a = [
+   "P2", "P21", "C2", "A2", "I2", "Pm", "Pc", "Pn", "Pa", "Cm", "Am", "Im",
+   "Cc", "An", "Ia", "Aa", "Cn", "Ic", "P2/m", "P21/m", "C2/m", "A2/m",
+   "I2/m", "P2/c", "P2/n", "P2/a", "P21/c", "P21/n", "P21/a", "C2/c", "A2/n",
+   "I2/a", "A2/a", "C2/n", "I2/c"]
+  expected_numbers_a = [
+    3,4,5,5,5,6,7,7,7,8,8,8,9,9,9,9,9,9,10,11,
+    12,12,12,13,13,13,14,14,14,15,15,15,15,15,15]
+  assert [sgtbx.space_group_symbols(short, "A").number()
+    for short in short_symbols_a] == expected_numbers_a
+  symbols_cpp = libtbx.env.under_dist("cctbx", "sgtbx/symbols.cpp")
+  if (not os.path.isfile(symbols_cpp)):
+    print "Skipping checks based on %s: file not available" % symbols_cpp
+  else:
+    f = open(symbols_cpp)
+    for volume,table_name,short_symbols in [
+          ("I", "vol_i_short_mono_hm_dict", short_symbols_i),
+          ("A", "vol_a_short_mono_hm_dict", short_symbols_a)]:
+      for line in f:
+        if (line.find(table_name) > 0): break
+      else: raise AssertionError
+      symbol_pairs = []
+      for line in f:
+        if (line.find("{ 0, 0 },") > 0): break
+        for c in '{},"': line = line.replace(c,"")
+        symbol_pairs.append(line.split())
+      else: raise AssertionError
+      assert len(symbol_pairs) == len(short_symbols)
+      for expected_short,(short,long) in zip(short_symbols,symbol_pairs):
+        assert expected_short == short
+        assert sgtbx.space_group_symbols(short, volume).hall() \
+            == sgtbx.space_group_symbols(long, volume).hall()
 
 def exercise_tr_vec():
   tr_vec = sgtbx.tr_vec
