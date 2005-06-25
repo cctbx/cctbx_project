@@ -691,7 +691,7 @@ class environment:
       actual_value=command_path)
 
   def write_win32_dispatcher(self, source_file, target_file):
-    open(target_file+".exe", "wb").write(
+    open(target_file, "wb").write(
       self.windows_dispatcher(command_path=source_file))
 
   def write_dispatcher(self, source_file, target_file):
@@ -705,7 +705,7 @@ class environment:
       except OSError: pass
     target_file_ext = target_file + ext
     remove_or_rename(target_file_ext)
-    try: action(source_file, target_file)
+    try: action(source_file, target_file_ext)
     except IOError, e: print "  Ignored:", e
 
   def write_dispatcher_in_bin(self, source_file, target_file):
