@@ -1064,7 +1064,11 @@ class module:
           break
     return result
 
-  def write_dispatcher(self, source_dir, file_name, suppress_warning, infix=""):
+  def write_dispatcher(self,
+        source_dir,
+        file_name,
+        suppress_warning,
+        target_file_name_infix=""):
     source_file = libtbx.path.norm_join(source_dir, file_name)
     if (not os.path.isfile(source_file)): return
     file_name_lower = file_name.lower()
@@ -1087,7 +1091,7 @@ class module:
           print msg
           print "*"*len(msg)
         return
-    target_file = self.name + infix
+    target_file = self.name + target_file_name_infix
     if (file_name_lower != "main.py"):
       target_file += "." + os.path.splitext(file_name)[0]
     self.env.write_dispatcher_in_bin(
@@ -1108,15 +1112,18 @@ class module:
             file_name=file_name,
             suppress_warning=suppress_warning)
 
-  def process_python_command_line_scripts(self, source_dir, prefix="  ", infix=""):
-    print prefix+'Processing: %s' % show_string(source_dir)
+  def process_python_command_line_scripts(self,
+        source_dir,
+        print_prefix="  ",
+        target_file_name_infix=""):
+    print print_prefix+'Processing: %s' % show_string(source_dir)
     for file_name in os.listdir(source_dir):
       if (not file_name.endswith(".py")): continue
       self.write_dispatcher(
         source_dir=source_dir,
         file_name=file_name,
         suppress_warning=False,
-        infix=infix)
+        target_file_name_infix=target_file_name_infix)
 
   def process_libtbx_refresh_py(self):
     for dist_path in self.dist_paths_active():
