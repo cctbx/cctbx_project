@@ -15,7 +15,10 @@ and ``glEnd()``, OpenGL errors are converted to Python exceptions
 The gltbx is part of the cctbx project hosts at:
 http://cctbx.sourceforge.net/
 
-See also: http://www.opengl.org/
+See also:
+
+  - http://www.opengl.org/
+  - http://pyopengl.sourceforge.net/
 
 Requirements
 ------------
@@ -218,6 +221,18 @@ Prioritized TODO list (help appreciated!)
   are not available on all platforms listed above. Proper
   defines have to be added to enable these functions on
   platforms where they are available.
+
+Motivation
+----------
+
+The main motivation for us was to simplify our build process, and to
+minimize additional dependencies. Since we distribute our software to
+non-programmers as source code it is important to us that the build
+procedure is fully automatic and self-contained. We are already heavily
+using Boost.Python and wxPython, and our cross-platform ``libtbx``
+build system enables us to add extensions without intruding into Python
+installations. In contrast to PyOpenGL, with the gltbx we don't have to
+worry about Numeric and GLUT installations and compatibilities.
 
 Contact
 -------
