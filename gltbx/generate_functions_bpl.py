@@ -371,19 +371,19 @@ None
 
 }
 
-def type_pixels_converters(signature):
+def bytes_converters(signature):
   assert signature.return_type == "void"
-  assert signature.args[-1].name == "pixels"
-  assert not signature.disable_handle_error
   function_name = signature.function_name
   arg_type = signature.args[-1].type
-  arg_type_name = arg_type+" "+signature.args[-1].name
+  arg_name = signature.args[-1].name
+  arg_type_name = arg_type+" "+arg_name
   is_const = arg_type.startswith("const ")
   call = "\n".join(signature.format_call(
     have_write_back=not is_const, prefix="    "))
-  call += "\n    handle_error();"
+  if (not signature.disable_handle_error):
+    call += "\n    handle_error();"
   if (not is_const):
-    call += "\n    pixels_proxy.write_back();"
+    call += "\n    %s_proxy.write_back();" % arg_name
     is_const = "false"
   else:
     is_const = "true"
@@ -398,17 +398,17 @@ def type_pixels_converters(signature):
   return """\
 %(extracts)s
   if      (type == GL_BYTE) {
-    boost_python::converter_str<GLubyte> pixels_proxy(
-      "pixels", py_pixels, 0, %(is_const)s);
+    boost_python::converter_str<GLubyte> %(arg_name)s_proxy(
+      "%(arg_name)s", py_%(arg_name)s, 0, %(is_const)s);
     %(arg_type_name)s = reinterpret_cast<%(arg_type)s>(
-      pixels_proxy.get());
+      %(arg_name)s_proxy.get());
 %(call)s
   }
   else if (type == GL_UNSIGNED_BYTE) {
-    boost_python::converter_str<GLbyte> pixels_proxy(
-      "pixels", py_pixels, 0, %(is_const)s);
+    boost_python::converter_str<GLbyte> %(arg_name)s_proxy(
+      "%(arg_name)s", py_%(arg_name)s, 0, %(is_const)s);
     %(arg_type_name)s = reinterpret_cast<%(arg_type)s>(
-      pixels_proxy.get());
+      %(arg_name)s_proxy.get());
 %(call)s
   }
   else {
@@ -419,13 +419,14 @@ def type_pixels_converters(signature):
 
 special_wrapper_bodies = {
 
-"glDrawPixels": type_pixels_converters,
-"glGetTexImage": type_pixels_converters,
-"glReadPixels": type_pixels_converters,
-"glTexImage1D": type_pixels_converters,
-"glTexImage2D": type_pixels_converters,
-"glTexSubImage1D": type_pixels_converters,
-"glTexSubImage2D": type_pixels_converters,
+"glCallLists": bytes_converters,
+"glDrawPixels": bytes_converters,
+"glGetTexImage": bytes_converters,
+"glReadPixels": bytes_converters,
+"glTexImage1D": bytes_converters,
+"glTexImage2D": bytes_converters,
+"glTexSubImage1D": bytes_converters,
+"glTexSubImage2D": bytes_converters,
 
 }
 
