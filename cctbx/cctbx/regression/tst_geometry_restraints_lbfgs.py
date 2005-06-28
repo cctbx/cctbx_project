@@ -241,7 +241,8 @@ def exercise(verbose=0):
         shell_sym_tables=shell_sym_tables,
         nonbonded_distance_cutoff=nonbonded_cutoff,
         nonbonded_buffer=1,
-        angle_proxies=angle_proxies)
+        angle_proxies=angle_proxies,
+        plain_pairs_radius=5)
       manager = manager.select(selection=flex.bool(sites_cart.size(), True))
       pair_proxies = manager.pair_proxies(sites_cart=sites_cart)
       if (0 or verbose):
@@ -277,10 +278,15 @@ def exercise(verbose=0):
         additional_site_symmetry_table = None
       else:
         additional_site_symmetry_table = sgtbx.site_symmetry_table()
-      manager.new_including_isolated_sites(
+      assert manager.new_including_isolated_sites(
         n_additional_sites=0,
         site_symmetry_table=additional_site_symmetry_table,
-        nonbonded_types=flex.std_string())
+        nonbonded_types=flex.std_string()).plain_pairs_radius \
+          == manager.plain_pairs_radius
+      if (crystal_symmetry is not None):
+        assert len(manager.plain_pair_sym_table) == 16
+        if (0 or verbose):
+          manager.plain_pair_sym_table.show()
   print "OK"
 
 if (__name__ == "__main__"):

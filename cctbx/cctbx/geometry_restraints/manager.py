@@ -23,7 +23,8 @@ class manager:
         angle_proxies=None,
         dihedral_proxies=None,
         chirality_proxies=None,
-        planarity_proxies=None):
+        planarity_proxies=None,
+        plain_pairs_radius=None):
     if (site_symmetry_table is not None): assert crystal_symmetry is not None
     if (bond_params_table is not None and site_symmetry_table is not None):
       assert bond_params_table.size() == site_symmetry_table.indices().size()
@@ -37,6 +38,7 @@ class manager:
     self._flags_bond_used_for_pair_proxies = False
     self._flags_nonbonded_used_for_pair_proxies = False
     self._pair_proxies = None
+    self.plain_pair_sym_table = None
     self.nonbonded_distance_cutoff_was_determined_automatically = False
     self.adjusted_nonbonded_distance_cutoff = self.nonbonded_distance_cutoff
     self.effective_nonbonded_buffer = self.nonbonded_buffer
@@ -101,7 +103,8 @@ class manager:
       angle_proxies=self.angle_proxies,
       dihedral_proxies=self.dihedral_proxies,
       chirality_proxies=self.chirality_proxies,
-      planarity_proxies=self.planarity_proxies)
+      planarity_proxies=self.planarity_proxies,
+      plain_pairs_radius=self.plain_pairs_radius)
 
   def select(self, selection):
     iselection = selection.iselection()
@@ -160,7 +163,8 @@ class manager:
       angle_proxies=selected_angle_proxies,
       dihedral_proxies=selected_dihedral_proxies,
       chirality_proxies=selected_chirality_proxies,
-      planarity_proxies=selected_planarity_proxies)
+      planarity_proxies=selected_planarity_proxies,
+      plain_pairs_radius=self.plain_pairs_radius)
 
   def remove_angles_in_place(self, selection):
     self.angle_proxies = self.angle_proxies.proxy_remove(
@@ -240,9 +244,13 @@ class manager:
                 min_unit_cell_length=
                   2*current_nonbonded_distance_cutoff_plus_buffer)
         else:
-          if (bonded_distance_cutoff < 0):
+          if (   bonded_distance_cutoff < 0
+              or self.plain_pairs_radius is not None):
             unit_cell = self.crystal_symmetry.unit_cell()
             sites_frac = unit_cell.fractionalization_matrix() * sites_cart
+          if (self.plain_pairs_radius is not None):
+            self.update_plain_pair_sym_table(sites_frac=sites_frac)
+          if (bonded_distance_cutoff < 0):
             for shell_sym_table in self.shell_sym_tables:
               bonded_distance_cutoff = max(bonded_distance_cutoff,
                 flex.max_default(
@@ -303,6 +311,16 @@ class manager:
     elif (self._pair_proxies is None):
       raise AssertionError("pair_proxies not defined already.")
     return self._pair_proxies
+
+  def update_plain_pair_sym_table(self, sites_frac):
+    asu_mappings = crystal.symmetry.asu_mappings(self.crystal_symmetry,
+      buffer_thickness=self.plain_pairs_radius)
+    asu_mappings.process_sites_frac(
+      original_sites=sites_frac,
+      site_symmetry_table=self.site_symmetry_table)
+    pair_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
+    pair_asu_table.add_all_pairs(distance_cutoff=self.plain_pairs_radius)
+    self.plain_pair_sym_table=pair_asu_table.extract_pair_sym_table()
 
   def energies(self,
         sites_cart,
