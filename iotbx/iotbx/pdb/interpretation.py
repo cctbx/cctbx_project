@@ -44,7 +44,7 @@ class model:
     self.altLocs[conformer.altLoc] = len(self.conformers)
     self.conformers.append(conformer)
 
-class conformer:
+class conformer_base:
 
   def __init__(self, model, altLoc, iselection):
     self.model = model
@@ -55,6 +55,8 @@ class conformer:
     assert other.model.stage_1 is self.model.stage_1
     return self.model.stage_1.selection_cache().intersection(
       iselections=[self.iselection, other.iselection]).iselection()
+
+class conformer(conformer_base):
 
   def get_chains(self):
     stage_1 = self.model.stage_1
