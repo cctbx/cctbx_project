@@ -1,10 +1,12 @@
 from cctbx import maptbx
 from cctbx import miller
 from cctbx import crystal
+from cctbx import sgtbx
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from cctbx.array_family import flex
 from scitbx import fftpack
+from libtbx.test_utils import approx_equal
 import sys
 
 def exercise_crystal_gridding():
@@ -23,6 +25,41 @@ def exercise_crystal_gridding():
       max_prime=5,
       assert_shannon_sampling=True)
     assert crystal_gridding.n_real() == n_real
+
+def exercise_f000():
+  miller_indices = flex.miller_index([(0,0,0)])
+  data = flex.complex_double([1-2j])
+  n_real = [1,2,3]
+  conjugate_flag = True
+  for hall_symbol in ["P 1", "P 3", "R 3*"]:
+    for is_centric in [False, True]:
+      if (not is_centric):
+        space_group = sgtbx.space_group(hall_symbol)
+      else:
+        space_group.expand_smx("-x,-y,-z")
+      for anomalous_flag in [False, True]:
+        if (not anomalous_flag):
+          rfft = fftpack.real_to_complex_3d(n_real)
+          n_complex = rfft.n_complex()
+        else:
+          cfft = fftpack.complex_to_complex_3d(n_real)
+          n_complex = cfft.n()
+        for treat_restricted in [False, True]:
+          map = maptbx.structure_factors.to_map(
+            space_group,
+            anomalous_flag,
+            miller_indices,
+            data,
+            n_real,
+            flex.grid(n_complex),
+            conjugate_flag,
+            treat_restricted)
+          if (treat_restricted):
+            assert approx_equal(
+              map.complex_map()[0], data[0])
+          else:
+            assert approx_equal(
+              map.complex_map()[0], data[0]*space_group.order_p())
 
 def exercise_shannon_sampled(space_group_info, anomalous_flag, conjugate_flag,
                              d_min=3., resolution_factor=0.5, max_prime=5,
@@ -291,6 +328,7 @@ def run_call_back(flags, space_group_info):
 
 def run():
   exercise_crystal_gridding()
+  exercise_f000()
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
 
 if (__name__ == "__main__"):
