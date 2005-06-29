@@ -111,6 +111,11 @@ namespace cctbx { namespace maptbx { namespace structure_factors {
         int h_inv_t = -1;
         for(std::size_t i=0;i<miller_indices.size();i++) {
           miller::index<> const& h = miller_indices[i];
+          if (h[0] == 0 && h[1] == 0 && h[2] == 0) {
+            // special treatment for F000
+            complex_map_[0] += structure_factors[i];
+            continue;
+          }
           if (anomalous_flag && space_group.is_centric()) {
             h_inv_t = (h * space_group.inv_t()) % t_den;
             if (h_inv_t < 0) h_inv_t += t_den;
@@ -153,6 +158,9 @@ namespace cctbx { namespace maptbx { namespace structure_factors {
               }
             }
           }
+        }
+        if (!treat_restricted) { // special treatment for F000
+          complex_map_[0] *= static_cast<FloatType>(space_group.order_p());
         }
       }
   };
