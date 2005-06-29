@@ -215,13 +215,20 @@ namespace scitbx { namespace boost_python { namespace container_conversions {
     }
   };
 
-  template <typename ContainerType, typename ConversionPolicy>
-  struct tuple_mapping
+  template <typename ContainerType>
+  struct to_tuple_mapping
   {
-    tuple_mapping() {
+    to_tuple_mapping() {
       boost::python::to_python_converter<
         ContainerType,
         to_tuple<ContainerType> >();
+    }
+  };
+
+  template <typename ContainerType, typename ConversionPolicy>
+  struct tuple_mapping : to_tuple_mapping<ContainerType>
+  {
+    tuple_mapping() {
       from_python_sequence<
         ContainerType,
         ConversionPolicy>();
