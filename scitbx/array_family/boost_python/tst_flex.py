@@ -281,7 +281,7 @@ def exercise_1d_slicing():
   exercise_1d_slicing_core(flex.int((1,2,3,4,5)))
   try:
     import Numeric
-  except:
+  except ImportError:
     pass
   else:
     print "Testing compatibility with Numeric slicing...",
@@ -732,6 +732,9 @@ def exercise_sort():
       assert x[i] == xp[j]
 
 def exercise_random():
+  mt = flex.mersenne_twister()
+  assert mt.random_size_t() == 1791095845
+  assert approx_equal(mt.random_double(), 0.997184808365)
   for i in xrange(3):
     for j in xrange(2):
       if (j == 0): mt = flex.mersenne_twister()
@@ -748,6 +751,23 @@ def exercise_random():
         (0.10064729468446394, 0.76077030360716635, 0.89184217362009044))
   assert flex.random_size_t(size=3).size() == 3
   assert flex.random_double(size=3).size() == 3
+  for i_trial in xrange(10):
+    a = flex.random_size_t(size=100000, modulus=10)
+    assert a.size() == 100000
+    assert flex.min(a) == 0
+    assert flex.max(a) == 9
+    a = a.as_double()
+    assert approx_equal(flex.mean(a), 4.5, eps=1.e-1)
+    assert approx_equal(
+      flex.mean(a*a) - flex.mean(a)*flex.mean(a), 8.25, eps=1.e-1)
+  for i_trial in xrange(10):
+    a = flex.random_double(size=100000, factor=10)
+    assert a.size() == 100000
+    assert flex.min(a) >= 0
+    assert flex.max(a) < 10
+    assert approx_equal(flex.mean(a), 5, eps=1.e-1)
+    assert approx_equal(
+      flex.mean(a*a) - flex.mean(a)*flex.mean(a), 8.36, eps=1.e-1)
   flex.set_random_seed(value=0)
   assert tuple(flex.random_size_t(3)) \
       == (1791095845, 4282876139L, 3093770124L)
@@ -757,14 +777,6 @@ def exercise_random():
   assert list(flex.random_permutation(size=5)) == [0, 1, 3, 2, 4]
   assert list(flex.random_permutation(size=5)) == [4, 3, 0, 1, 2]
   assert list(flex.random_permutation(size=5)) == [3, 2, 4, 0, 1]
-
-  uniform_integers = flex.random_integer(size=10000000, limit=10).as_double()
-  assert ( uniform_integers.size() == 10000000 )
-  assert ( flex.min(uniform_integers) == 0 )
-  assert ( flex.max(uniform_integers) == 9 )
-  assert approx_equal( flex.mean(uniform_integers), 4.5, eps=1e-2)
-  assert approx_equal( flex.mean(uniform_integers*uniform_integers) -
-                       flex.mean(uniform_integers)*flex.mean(uniform_integers), 8.25, eps=1e-2)
 
 def exercise_flex_vec3_double():
   flex.exercise_triple(flex.vec3_double, as_double=True)
@@ -1025,6 +1037,7 @@ def exercise_linear_interpolation():
       assert approx_equal(flex.linear_interpolation(tab_x, tab_y, x), 10*x)
     for x in [0,5]:
       try: flex.linear_interpolation(tab_x, tab_y, 0)
+      except KeyboardInterrupt: raise
       except: pass
       else: raise RuntimeError("Exception expected.")
     x = flex_type([1.3,2.4,3.6])
@@ -1362,7 +1375,7 @@ def exercise_pickle_double_buffered():
   assert b.size() == 3
   assert tuple(b) == (("abc", "bcd", "cde"))
 
-def pickle_large_arrays(max_exp):
+def pickle_large_arrays(max_exp, verbose):
   try:
     for array_type in (
         flex.bool,
@@ -1416,11 +1429,12 @@ def pickle_large_arrays(max_exp):
             b = pickle.load(f)
             tl = time.time() - t0
             f.close()
-          print array_type.__name__, n, pickler_name, "%.2f %.2f" % (td, tl)
+          if (verbose):
+            print array_type.__name__, n, pickler_name, "%.2f %.2f" % (td, tl)
           sys.stdout.flush()
   finally:
     try: os.unlink("pickle.tmp")
-    except: pass
+    except OSError: pass
 
 def exercise_py_object():
   a = flex.py_object(flex.grid(2,3), value=3)
@@ -1471,6 +1485,7 @@ def run(iterations):
     exercise_matrix_inversion_in_place()
     exercise_pickle_single_buffered()
     exercise_pickle_double_buffered()
+    pickle_large_arrays(max_exp=2, verbose=0)
     exercise_py_object()
     i += 1
 
@@ -1482,7 +1497,7 @@ if (__name__ == "__main__"):
   if (len(sys.argv) > 1 + Flags.n):
     n = int(Flags.regular_args[0])
   if (Flags.large):
-    pickle_large_arrays(n)
+    pickle_large_arrays(max_exp=n, verbose=1)
   else:
     run(n)
   print "OK"

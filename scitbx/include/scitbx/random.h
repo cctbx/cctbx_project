@@ -16,40 +16,54 @@ namespace scitbx { namespace random {
       void
       seed(unsigned value=0) { generator_.seed(value+1); }
 
+      std::size_t
+      random_size_t()
+      {
+        return static_cast<std::size_t>(generator_());
+      }
+
       af::shared<std::size_t>
       random_size_t(std::size_t size)
       {
         af::shared<std::size_t> result(
           size, af::init_functor_null<std::size_t>());
-        for(std::size_t i=0;i<size;i++) {
-          result[i] = static_cast<std::size_t>(generator_());
-        }
+        for(std::size_t i=0;i<size;i++) result[i] = random_size_t();
         return result;
       }
 
-
       af::shared<std::size_t>
-      random_integer(std::size_t size, std::size_t lim)
+      random_size_t(std::size_t size, std::size_t modulus)
       {
         af::shared<std::size_t> result(
           size, af::init_functor_null<std::size_t>());
-        double tmp;
         for(std::size_t i=0;i<size;i++) {
-          tmp = as_double(generator_()-generator_min_)
-                       / generator_range_;
-          result[i] = static_cast<std::size_t>(tmp*(lim));
+          result[i] = random_size_t() % modulus;
         }
         return result;
       }
 
+      double
+      random_double()
+      {
+        return as_double(generator_()-generator_min_) / generator_range_;
+      }
 
       af::shared<double>
       random_double(std::size_t size)
       {
         af::shared<double> result(size, af::init_functor_null<double>());
         for(std::size_t i=0;i<size;i++) {
-          result[i] = as_double(generator_()-generator_min_)
-                    / generator_range_;
+          result[i] = random_double();
+        }
+        return result;
+      }
+
+      af::shared<double>
+      random_double(std::size_t size, double factor)
+      {
+        af::shared<double> result(size, af::init_functor_null<double>());
+        for(std::size_t i=0;i<size;i++) {
+          result[i] = random_double() * factor;
         }
         return result;
       }
