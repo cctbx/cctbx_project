@@ -22,13 +22,21 @@ namespace {
       using namespace boost::python;
       class_<w_t>("mersenne_twister", no_init)
         .def(init<optional<unsigned> >((arg_("seed")=0)))
-        .def("random_size_t", &w_t::random_size_t, (arg_("size")))
-        .def("random_double", &w_t::random_double, (arg_("size")))
-        .def("random_permutation", &w_t::random_permutation, (arg_("size")))
-        .def("random_integer", &w_t::random_integer,
-              ((arg_("size"),
-               arg_("limit")) ))
         .def("seed", &w_t::seed, seed_overloads((arg_("value")=0)))
+        .def("random_size_t", (std::size_t(w_t::*)()) &w_t::random_size_t)
+        .def("random_size_t",
+          (af::shared<std::size_t>(w_t::*)(std::size_t))
+            &w_t::random_size_t, (arg_("size")))
+        .def("random_size_t",
+          (af::shared<std::size_t>(w_t::*)(std::size_t, std::size_t))
+            &w_t::random_size_t, (arg_("size"), arg_("modulus")))
+        .def("random_double", (double(w_t::*)()) &w_t::random_double)
+        .def("random_double", (af::shared<double>(w_t::*)(std::size_t))
+          &w_t::random_double, (arg_("size")))
+        .def("random_double",
+          (af::shared<double>(w_t::*)(std::size_t, double))
+            &w_t::random_double, (arg_("size"), arg_("factor")))
+        .def("random_permutation", &w_t::random_permutation, (arg_("size")))
       ;
     }
   };
