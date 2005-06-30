@@ -126,6 +126,24 @@ namespace {
     { BoolArrayType r = af::approx_equal(a[0], a, element_type(1));
       check_true(__LINE__, r[2] == fn::approx_equal(
         a[0], a[2], element_type(1))); }
+    {
+      ResultArrayType x = a * element_type(0);
+      x[0] = 1.5;
+      x[1] = -5.3;
+      x[2] = 4.2;
+      ResultArrayType y = a * element_type(0);
+      y[0] = 1;
+      y[1] = 2;
+      y[2] = 3;
+      { ResultArrayType r = af::fmod(x, y);
+        check_true(__LINE__, fn::absolute(r[0] - 0.5) < 1.e-6);
+        check_true(__LINE__, fn::absolute(r[1] + 1.3) < 1.e-6);
+        check_true(__LINE__, fn::absolute(r[2] - 1.2) < 1.e-6); }
+      { ResultArrayType r = af::fmod_positive(x, y);
+        check_true(__LINE__, fn::absolute(r[0] - 0.5) < 1.e-6);
+        check_true(__LINE__, fn::absolute(r[1] - 0.7) < 1.e-6);
+        check_true(__LINE__, fn::absolute(r[2] - 1.2) < 1.e-6); }
+    }
   }
 
   template <typename ArrayType1,

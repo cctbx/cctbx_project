@@ -9,6 +9,10 @@ misc_functions_a = (
   "absolute", "pow2",
 )
 
+misc_functions_a_a = (
+  "fmod_positive",
+)
+
 misc_functions_x_x_s = (
   (["approx_equal"], 1,
    ["ElementType const& tolerance", "tolerance"]),
@@ -642,7 +646,9 @@ namespace scitbx { namespace af {
     + generate_std_imports.cstdlib_1arg
     + generate_std_imports.complex_1arg)
   generate_2arg_element_wise(f,
-    array_type_name, generate_std_imports.cmath_2arg)
+    array_type_name,
+    misc_functions_a_a
+    + generate_std_imports.cmath_2arg)
   for special_def in generate_std_imports.complex_special:
     generate_element_wise_special(f, array_type_name, special_def)
   for args in misc_functions_x_x_s:

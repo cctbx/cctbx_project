@@ -1,16 +1,7 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Aug: Copied from cctbx/array_family (R.W. Grosse-Kunstleve)
-     2002 Feb: moved from utils.h to array_family/misc_functions.h (rwgk)
-     2001 Oct: Created (R.W. Grosse-Kunstleve)
- */
-
 #ifndef SCITBX_ARRAY_FAMILY_MISC_FUNCTIONS_H
 #define SCITBX_ARRAY_FAMILY_MISC_FUNCTIONS_H
+
+#include <cmath>
 
 namespace scitbx { namespace fn {
 
@@ -22,6 +13,17 @@ namespace scitbx { namespace fn {
   {
     if (x < NumType(0)) return -x;
     return x;
+  }
+
+  //! Floating-point modulus with strictly positive result.
+  template <typename FloatType1, typename FloatType2>
+  inline
+  FloatType1
+  fmod_positive(FloatType1 const& x, FloatType2 const& y)
+  {
+    FloatType1 result = std::fmod(x, y);
+    while (result < FloatType1(0)) result += y;
+    return result;
   }
 
   //! Square of x.
@@ -74,6 +76,20 @@ namespace scitbx { namespace fn {
     typedef ResultType result_type;
     ResultType operator()(ArgumentType const& x) const {
       return ResultType(absolute(x));
+    }
+  };
+
+  //! Helper function object for array operations.
+  template <typename ResultType,
+            typename ArgumentType1,
+            typename ArgumentType2>
+  struct functor_fmod_positive
+  {
+    typedef ResultType result_type;
+    ResultType
+    operator()(ArgumentType1 const& x, ArgumentType2 const& y) const
+    {
+      return ResultType(fmod_positive(x, y));
     }
   };
 

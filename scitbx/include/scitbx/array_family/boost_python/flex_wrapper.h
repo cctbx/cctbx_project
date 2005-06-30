@@ -615,6 +615,12 @@ namespace scitbx { namespace af { namespace boost_python {
     fmod_a_s(f_t const& a1, e_t const& a2) { return fmod(a1, a2); }
 
     static f_t
+    fmod_positive_a_s(f_t const& a1, e_t const& a2)
+    {
+      return fmod_positive(a1, a2);
+    }
+
+    static f_t
     pow_a_s(f_t const& a, e_t const& exponent) { return pow(a, exponent); }
 
     static f_t
@@ -893,6 +899,7 @@ namespace scitbx { namespace af { namespace boost_python {
         boost::python::def("abs", abs_a);
         boost::python::def("pow", pow_a_s);
         boost::python::def("fmod", fmod_a_s);
+        boost::python::def("fmod_positive", fmod_positive_a_s);
         boost::python::def("atan2", atan2_a_a);
         boost::python::def("acos", acos_a);
         boost::python::def("cos", cos_a);
