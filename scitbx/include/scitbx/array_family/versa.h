@@ -1,13 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Aug: Copied from cctbx/array_family (R.W. Grosse-Kunstleve)
-     2002 Feb: Created (R.W. Grosse-Kunstleve)
- */
-
 #ifndef SCITBX_ARRAY_FAMILY_VERSA_H
 #define SCITBX_ARRAY_FAMILY_VERSA_H
 
@@ -17,17 +7,16 @@
 namespace scitbx { namespace af {
 
   template <typename ElementType,
-            typename AccessorType = trivial_accessor,
-            typename BaseArrayType = shared_plain<ElementType> >
-  class versa : public versa_plain<ElementType, AccessorType, BaseArrayType>
+            typename AccessorType = trivial_accessor>
+  class versa : public versa_plain<ElementType, AccessorType>
   {
     public:
-      typedef versa<ElementType, AccessorType, BaseArrayType> this_type;
+      typedef versa<ElementType, AccessorType> this_type;
 
       SCITBX_ARRAY_FAMILY_TYPEDEFS
 
-      typedef BaseArrayType base_array_type;
-      typedef versa_plain<ElementType, AccessorType, BaseArrayType> base_class;
+      typedef versa_plain<ElementType, AccessorType> base_class;
+      typedef typename base_class::base_array_type base_array_type;
 
       typedef AccessorType accessor_type;
       typedef typename accessor_type::index_value_type index_value_type;
