@@ -640,6 +640,10 @@ def exercise_functions():
   except RuntimeError, e:
     assert str(e) == "scitbx::af::counts::limited: max_keys exceeded."
   else: raise RuntimeError("Exception expected.")
+  #
+  x = flex.double([-6.3,7.2])
+  assert approx_equal(flex.fmod(x, 5), [-1.3, 2.2])
+  assert approx_equal(flex.fmod_positive(x, 5), [3.7, 2.2])
 
 def exercise_complex_functions():
   c = 1+2j
