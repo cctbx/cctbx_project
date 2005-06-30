@@ -1,13 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Aug: Copied from cctbx/array_family (R.W. Grosse-Kunstleve)
-     2002 Feb: Created (R.W. Grosse-Kunstleve)
- */
-
 #ifndef SCITBX_ARRAY_FAMILY_VERSA_PLAIN_H
 #define SCITBX_ARRAY_FAMILY_VERSA_PLAIN_H
 
@@ -17,15 +7,14 @@
 namespace scitbx { namespace af {
 
   template <typename ElementType,
-            typename AccessorType = trivial_accessor,
-            typename BaseArrayType = shared_plain<ElementType> >
-  class versa_plain : public BaseArrayType
+            typename AccessorType = trivial_accessor>
+  class versa_plain : public shared_plain<ElementType>
   {
     public:
       SCITBX_ARRAY_FAMILY_TYPEDEFS
 
-      typedef BaseArrayType base_array_type;
-      typedef BaseArrayType base_class;
+      typedef shared_plain<ElementType> base_class;
+      typedef base_class base_array_type;
 
       typedef AccessorType accessor_type;
       typedef typename accessor_type::index_type index_type;
@@ -190,13 +179,13 @@ namespace scitbx { namespace af {
 
       versa_plain<ElementType, AccessorType>
       deep_copy() const {
-        BaseArrayType c(begin(), end());
+        base_array_type c(begin(), end());
         return versa_plain<ElementType, AccessorType>(c, m_accessor);
       }
 
-      BaseArrayType
+      base_array_type
       as_base_array() const {
-        return BaseArrayType(*this);
+        return base_array_type(*this);
       }
 
       versa_plain<ElementType, AccessorType>
