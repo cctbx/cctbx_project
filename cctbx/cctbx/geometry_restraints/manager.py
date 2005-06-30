@@ -380,8 +380,8 @@ class manager:
       delta = variables[i] - variables[j]
       term = weight * delta
       residual_sum += term * delta
-      gradients[i] += term
-      gradients[j] -= term
+      gradients[i] += term * 2
+      gradients[j] -= term * 2
     return store(residual_sum=residual_sum, gradients=gradients)
 
   def show_interactions(self,
