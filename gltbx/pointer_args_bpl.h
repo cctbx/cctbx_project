@@ -2,7 +2,6 @@
 #include <boost/python/args.hpp>
 #include <boost/python/extract.hpp>
 #include <boost/python/str.hpp>
-#include <gltbx/include_opengl.h>
 #include <boost/shared_array.hpp>
 #include <vector>
 #include <stdexcept>
