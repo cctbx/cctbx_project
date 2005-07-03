@@ -220,3 +220,19 @@ raw_ctor
         print >> f, 'libtbx.python "%s"' % (os.path.join(test_dir, tst+".py"))
       f.close()
       os.chmod(boost_python_run_tests, 0755)
+
+  if (os.path.isfile(libtbx.env.under_build("lib/libswig_class_example.a"))):
+    # this example requires these manual steps:
+    #   gunzip -c swig-1.3.24.tar.gz | tar xf -
+    #   cd SWIG-1.3.24
+    #   ./configure
+    #   make
+    #   cd Examples/python/class
+    #   make
+    #   cp _example.so example.py $LIBTBX_BUILD/lib
+    #   ar r $LIBTBX_BUILD/lib/libswig_class_example.a example.o
+    env = env_pure_boost_python_ext.Copy()
+    env.Prepend(LIBS=["swig_class_example"])
+    env.SharedLibrary(
+      target="#lib/boost_python_swig_args_ext",
+      source="swig_args_ext.cpp")
