@@ -204,10 +204,12 @@ raw_ctor
         env.SharedLibrary(target="#lib/%s" % pyd, source=source)
     all_tst = [os.path.join(test_dir, tst+".py") for tst in all_tst]
     #
-    env.SharedLibrary(
-      target="#lib/boost_adaptbx_char_array_ext",
-      source=["char_array_ext.cpp"])
-    all_tst.append(libtbx.env.under_dist("boost_adaptbx", "tst_char_array.py"))
+    if (sys.platform != "win32"):
+      env.SharedLibrary(
+        target="#lib/boost_adaptbx_char_array_ext",
+        source=["char_array_ext.cpp"])
+      all_tst.append(
+        libtbx.env.under_dist("boost_adaptbx", "tst_char_array.py"))
     #
     if (sys.platform == "win32"):
       boost_python_run_tests = \
