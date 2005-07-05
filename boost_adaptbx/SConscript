@@ -202,13 +202,19 @@ raw_ctor
         if (not tst in all_tst):
           all_tst.append(tst)
         env.SharedLibrary(target="#lib/%s" % pyd, source=source)
+    all_tst = [os.path.join(test_dir, tst+".py") for tst in all_tst]
+    #
+    env.SharedLibrary(
+      target="#lib/boost_adaptbx_char_array_ext",
+      source=["char_array_ext.cpp"])
+    all_tst.append(libtbx.env.under_dist("boost_adaptbx", "tst_char_array.py"))
+    #
     if (sys.platform == "win32"):
       boost_python_run_tests = \
         "%s\\boost_python_run_tests.bat" % libtbx.env.build_path
       f = open(boost_python_run_tests, "w")
       for tst in all_tst:
-        print >> f, 'call libtbx.python "%s"' % (
-          os.path.join(test_dir, tst+".py"))
+        print >> f, 'call libtbx.python "%s"' % tst
       f.close()
     else:
       boost_python_run_tests = \
@@ -217,7 +223,7 @@ raw_ctor
       print >> f, "#! /bin/csh -f"
       print >> f, "set verbose"
       for tst in all_tst:
-        print >> f, 'libtbx.python "%s"' % (os.path.join(test_dir, tst+".py"))
+        print >> f, 'libtbx.python "%s"' % tst
       f.close()
       os.chmod(boost_python_run_tests, 0755)
 
