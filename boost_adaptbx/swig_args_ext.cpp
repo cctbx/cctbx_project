@@ -61,31 +61,32 @@ typedef struct {
 
 namespace boost { namespace python {
 
-template <class T>
-struct swig_arg;
+template <typename T>
+struct swig_arg
+{
+    static std::string desc;
+
+    swig_arg(const char* name, const char* prefix="_p_")
+    {
+        desc = std::string(prefix) + name;
+        converter::registry::insert(&extract, type_id<T>());
+    }
+ private:
+    static void* extract(PyObject* op)
+    {
+        if (std::strcmp(op->ob_type->tp_name, "PySwigObject") != 0) return 0;
+
+        PySwigObject* swig_obj_ptr = reinterpret_cast<PySwigObject*>(op);
+        if (std::strcmp(swig_obj_ptr->desc, desc.c_str()) != 0) return 0;
+        return swig_obj_ptr->ptr;
+    }
+};
+
+template <typename T> std::string swig_arg<T>::desc;
 
 }} // namespace boost::python
 
-#define BOOST_PYTHON_SWIG_ARG(T) \
-namespace boost { namespace python { \
-template <> \
-struct swig_arg<T> \
-{ \
-    swig_arg() \
-    { \
-        converter::registry::insert(&extract, type_id<T>()); \
-    } \
- private: \
-    static void* extract(PyObject* op) \
-    { \
-        if (std::strcmp(op->ob_type->tp_name, "PySwigObject") != 0) return 0; \
-        PySwigObject* swig_obj_ptr = reinterpret_cast<PySwigObject*>(op); \
-        if (std::strcmp(swig_obj_ptr->desc, "_p_" # T) != 0) return 0; \
-        return swig_obj_ptr->ptr; \
-    } \
-}; \
-\
-}} // namespace boost::python
+#define BOOST_PYTHON_SWIG_ARG(T) boost::python::swig_arg<T>(#T);
 
 //############################################################################
 // user code
@@ -108,15 +109,11 @@ show_square(Square* square)
   std::cout << "area: " << square->perimeter() << std::endl;
 }
 
-// specialize swig_arg template
-BOOST_PYTHON_SWIG_ARG(Circle)
-BOOST_PYTHON_SWIG_ARG(Square)
-
 BOOST_PYTHON_MODULE(boost_python_swig_args_ext)
 {
   using namespace boost::python;
-  swig_arg<Circle>();
-  swig_arg<Square>();
+  BOOST_PYTHON_SWIG_ARG(Circle);
+  BOOST_PYTHON_SWIG_ARG(Square);
   def("show", show_circle);
   def("show", show_square);
 }
