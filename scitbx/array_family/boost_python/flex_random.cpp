@@ -22,6 +22,8 @@ namespace {
       using namespace boost::python;
       class_<w_t>("mersenne_twister", no_init)
         .def(init<optional<unsigned> >((arg_("seed")=0)))
+        .def("random_size_t_min", &w_t::random_size_t_min)
+        .def("random_size_t_max", &w_t::random_size_t_max)
         .def("seed", &w_t::seed, seed_overloads((arg_("value")=0)))
         .def("random_size_t", (std::size_t(w_t::*)()) &w_t::random_size_t)
         .def("random_size_t",

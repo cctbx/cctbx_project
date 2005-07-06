@@ -741,6 +741,8 @@ def exercise_sort():
 
 def exercise_random():
   mt = flex.mersenne_twister()
+  assert mt.random_size_t_min() == 0
+  assert mt.random_size_t_max() == 4294967295
   assert mt.random_size_t() == 1791095845
   assert approx_equal(mt.random_double(), 0.997184808365)
   for i in xrange(3):
@@ -750,13 +752,13 @@ def exercise_random():
       assert tuple(mt.random_size_t(3)) \
           == (1791095845, 4282876139L, 3093770124L)
       assert approx_equal(mt.random_double(3),
-       (0.93255736141757983, 0.00011438108051996238, 0.12812444780211069))
+       (0.9325573593386588, 0.12812444792935673, 0.99904051532414473))
       if (j == 0): mt = flex.mersenne_twister(seed=4357)
       else: mt.seed(value=4357)
       assert tuple(mt.random_size_t(size=3)) \
           == (2983900864L, 1547366158, 1775641839)
       assert approx_equal(mt.random_double(size=3),
-        (0.10064729468446394, 0.76077030360716635, 0.89184217362009044))
+        (0.10064729869939604, 0.89184217257908471, 0.20721445761797463))
   assert flex.random_size_t(size=3).size() == 3
   assert flex.random_double(size=3).size() == 3
   for i_trial in xrange(10):
@@ -780,11 +782,11 @@ def exercise_random():
   assert tuple(flex.random_size_t(3)) \
       == (1791095845, 4282876139L, 3093770124L)
   assert approx_equal(flex.random_double(3),
-    (0.93255736141757983, 0.00011438108051996238, 0.12812444780211069))
-  assert list(flex.random_permutation(size=5)) == [1, 0, 3, 2, 4]
-  assert list(flex.random_permutation(size=5)) == [0, 1, 3, 2, 4]
-  assert list(flex.random_permutation(size=5)) == [4, 3, 0, 1, 2]
-  assert list(flex.random_permutation(size=5)) == [3, 2, 4, 0, 1]
+    (0.9325573593386588, 0.12812444792935673, 0.99904051532414473))
+  assert list(flex.random_permutation(size=5)) == [2, 1, 4, 0, 3]
+  assert list(flex.random_permutation(size=5)) == [1, 0, 4, 3, 2]
+  assert list(flex.random_permutation(size=5)) == [0, 2, 3, 1, 4]
+  assert list(flex.random_permutation(size=5)) == [3, 1, 0, 4, 2]
 
 def exercise_flex_vec3_double():
   flex.exercise_triple(flex.vec3_double, as_double=True)
@@ -811,6 +813,8 @@ def exercise_flex_vec3_double():
   assert approx_equal(tuple(a*2), ((22,44,70), (16,46,68), (26,48,66)))
   assert approx_equal(tuple(-3*a),
     ((-33,-66,-105), (-24,-69,-102), (-39,-72,-99)))
+  assert approx_equal(a/flex.double([1,-2,3]),
+    [(11,22,35), (-4,-11.5,-17), (4+1/3.,8,11)])
   assert approx_equal(tuple(a*(-1,1,0,1,0,-1,1,-1,1)),
     ((46,-24,13),(49,-26,11),(44,-20,9)))
   assert approx_equal(tuple((-1,1,0,1,0,-1,1,-1,1)*a),

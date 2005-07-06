@@ -1,27 +1,56 @@
 #include <boost/random/mersenne_twister.hpp>
 #include <scitbx/array_family/shared.h>
 
-namespace scitbx { namespace random {
+namespace scitbx {
+//! Easy access to Boost.Random.
+/*! See also: http://www.boost.org/libs/random/
+ */
+namespace random {
 
+  //! Wrapper for boost/random/mersenne_twister.hpp
+  /*! See also: http://www.boost.org/libs/random/
+   */
   class mersenne_twister
   {
     public:
+      //! Initialization with given seed.
       mersenne_twister(unsigned seed=0)
       :
         generator_(seed+1)
       {
-        init();
+        //init();
       }
 
+      //! Re-initialization with given seed.
       void
       seed(unsigned value=0) { generator_.seed(value+1); }
 
+      //! Smallest value returned by random_size_t().
+      std::size_t
+      random_size_t_min()
+      {
+        return static_cast<std::size_t>(generator_.min());
+      }
+
+      //! Largest value returned by random_size_t().
+      std::size_t
+      random_size_t_max()
+      {
+        return static_cast<std::size_t>(generator_.max());
+      }
+
+      /*! \brief Uniformly distributed random integer in the range
+          [random_size_t_min(), random_size_t_max()].
+       */
       std::size_t
       random_size_t()
       {
         return static_cast<std::size_t>(generator_());
       }
 
+      /*! Array of uniformly distributed random integers in the range
+          [random_size_t_min(), random_size_t_max()].
+       */
       af::shared<std::size_t>
       random_size_t(std::size_t size)
       {
@@ -31,6 +60,9 @@ namespace scitbx { namespace random {
         return result;
       }
 
+      /*! Array of uniformly distributed random integers in the range
+          [0, modulus).
+       */
       af::shared<std::size_t>
       random_size_t(std::size_t size, std::size_t modulus)
       {
@@ -42,12 +74,29 @@ namespace scitbx { namespace random {
         return result;
       }
 
+      /*! \brief Uniformly distributed random double in the range
+          [0, 1).
+       */
       double
       random_double()
       {
-        return as_double(generator_()-generator_min_) / generator_range_;
+// From Python-2.4.1/Modules/_randommodule.c
+/* genrand_res53 in the original code;
+ * generates a random number on [0,1) with 53-bit resolution; note that
+ * 9007199254740992 == 2**53; 67108864 is 2**26.  In
+ * effect, a contains 27 random bits shifted left 26, and b fills in the
+ * lower 26 bits of the 53-bit numerator.
+ * The orginal code credited Isaku Wada for this algorithm, 2002/01/09.
+ */
+        std::size_t a = random_size_t() >> 5;
+        std::size_t b = random_size_t() >> 6;
+        static const double c = 1.0/9007199254740992.0;
+        return (a*67108864.0+b)*c;
       }
 
+      /*! Array of uniformly distributed random doubles in the range
+          [0, 1).
+       */
       af::shared<double>
       random_double(std::size_t size)
       {
@@ -58,6 +107,9 @@ namespace scitbx { namespace random {
         return result;
       }
 
+      /*! Array of uniformly distributed random doubles in the range
+          [0, factor).
+       */
       af::shared<double>
       random_double(std::size_t size, double factor)
       {
@@ -68,6 +120,7 @@ namespace scitbx { namespace random {
         return result;
       }
 
+      //! Random permutation of integers in the range [0, size).
       af::shared<std::size_t>
       random_permutation(std::size_t size)
       {
@@ -85,37 +138,6 @@ namespace scitbx { namespace random {
 
     private:
       boost::mt19937 generator_;
-#if defined(__INTEL_COMPILER)
-      unsigned n_bits_half_word_;
-      boost::mt19937::result_type half_;
-#endif
-      boost::mt19937::result_type generator_min_;
-      double generator_range_;
-
-      void
-      init()
-      {
-#if defined(__INTEL_COMPILER)
-        n_bits_half_word_ = sizeof(boost::mt19937::result_type) * 4;
-        half_ = static_cast<boost::mt19937::result_type>(1)<<n_bits_half_word_;
-#endif
-        generator_min_ = generator_.min();
-        generator_range_ = as_double(generator_.max()-generator_min_);
-      }
-
-      double
-      as_double(boost::mt19937::result_type generated_value)
-      {
-#if defined(__INTEL_COMPILER)
-        double result = static_cast<double>(
-          generated_value >> n_bits_half_word_);
-        result *= static_cast<double>(half_);
-        result += static_cast<double>(generated_value % half_);
-        return result;
-#else
-        return static_cast<double>(generated_value);
-#endif
-      }
   };
 
 }} // namespace scitbx::random
