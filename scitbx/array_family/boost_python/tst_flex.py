@@ -442,6 +442,10 @@ def exercise_select():
   assert list(flex.intersection(size=5,iselections=[isel,isel2]).iselection())\
       == [4]
   #
+  a = flex.bool([True,False,False,True,True])
+  b = flex.size_t([0,1,2,3])
+  assert list(a.filter_indices(b)) == [0,3]
+  #
   def iselection_intersection(a, b):
     return list(flex.size_t(a).intersection(other=flex.size_t(b)))
   assert iselection_intersection([], []) == []

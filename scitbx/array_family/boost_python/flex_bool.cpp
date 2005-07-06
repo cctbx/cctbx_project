@@ -156,6 +156,22 @@ namespace {
     return result;
   }
 
+  template <typename UnsignedType>
+  af::shared<UnsignedType>
+  filter_indices(
+    af::const_ref<bool> const& self,
+    af::const_ref<UnsignedType> const& indices)
+  {
+    af::shared<UnsignedType> result;
+    for(std::size_t i=0;i<indices.size();i++) {
+      SCITBX_ASSERT(indices[i] < self.size());
+      if (self[indices[i]]) {
+        result.append(indices[i]);
+      }
+    }
+    return result;
+  }
+
 } // namespace <anonymous>
 
   void wrap_flex_bool()
@@ -175,6 +191,11 @@ namespace {
       .def("as_double", as_double)
       .def("iselection", iselection,
         iselection_overloads((arg_("self"), arg_("test_value")=true)))
+      .def("filter_indices",
+        (af::shared<std::size_t>(*)(
+           af::const_ref<bool> const&,
+           af::const_ref<std::size_t> const&)) filter_indices,
+        (arg_("self"), arg_("indices")))
     ;
     def("union", union_, (arg_("size"), arg_("iselections")));
     def("intersection", intersection, (arg_("size"), arg_("iselections")));
