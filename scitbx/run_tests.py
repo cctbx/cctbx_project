@@ -22,12 +22,14 @@ def run():
   "$D/array_family/boost_python/tst_shared.py",
   "$D/scitbx/matrix.py",
   "$D/scitbx/python_utils/math_utils.py",
+  "$D/scitbx/python_utils/tst_random_transform.py",
   "$D/math/boost_python/tst_math.py",
   "$D/scitbx/math/tst_superpose.py",
   ["$D/lbfgs/boost_python/tst_lbfgs.py"],
   "$D/lbfgsb/boost_python/tst_lbfgsb.py",
   ["$D/fftpack/boost_python/tst_fftpack.py"],
   "$D/scitbx/examples/lbfgs_linear_least_squares_fit.py",
+  "$D/scitbx/examples/chebyshev_lsq_example.py"
   )
 
   build_dir = libtbx.env.under_build("scitbx")
