@@ -137,6 +137,20 @@ namespace {
   }
 
   af::shared<vec3<double> >
+  div_a_as(
+    af::ref<vec3<double> > const& lhs,
+    af::ref<double> const& rhs)
+  {
+    SCITBX_ASSERT(lhs.size() == rhs.size());
+    af::shared<vec3<double> > result((af::reserve(lhs.size())));
+    for(std::size_t i=0;i<lhs.size();i++) {
+      SCITBX_ASSERT(rhs[i] != 0);
+      result.push_back(lhs[i] / rhs[i]);
+    }
+    return result;
+  }
+
+  af::shared<vec3<double> >
   mul_a_mat3(
     af::const_ref<vec3<double> > const& a,
     mat3<double> const& m)
@@ -258,6 +272,8 @@ namespace boost_python {
       .def("__isub__", f_w::isub_a_s)
       .def("__mul__", mul_a_scalar)
       .def("__rmul__", mul_a_scalar)
+      .def("__div__", div_a_as)
+      .def("__truediv__", div_a_as)
       .def("__mul__", mul_a_mat3)
       .def("__rmul__", rmul_a_mat3)
       .def("dot", dot_a_a)
