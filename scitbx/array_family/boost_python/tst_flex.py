@@ -777,7 +777,7 @@ def exercise_random():
     assert flex.max(a) < 10
     assert approx_equal(flex.mean(a), 5, eps=1.e-1)
     assert approx_equal(
-      flex.mean(a*a) - flex.mean(a)*flex.mean(a), 8.36, eps=1.e-1)
+      flex.mean(a*a) - flex.mean(a)*flex.mean(a), 8.25, eps=0.2)
   flex.set_random_seed(value=0)
   assert tuple(flex.random_size_t(3)) \
       == (1791095845, 4282876139L, 3093770124L)
