@@ -252,6 +252,7 @@ class structure(crystal.special_position_settings):
             elif (table == "wk1995"):
               val = eltbx.xray_scattering.wk1995(key_undef, True).fetch()
             else:
+              if (key_undef == "D"): key_undef = "H"
               val = eltbx.xray_scattering.n_gaussian_table_entry(
                 key_undef, d_min, 0).gaussian()
           except RuntimeError:
