@@ -20,7 +20,7 @@ def exersize_t_variate():
   mu1 = flex.mean(data)
   mu2 = flex.mean(data*data)
   assert approx_equal(mu1,0,eps=0.01)
-  assert approx_equal(mu2,1.5,eps=0.01)
+  assert approx_equal(mu2,1.5,eps=0.02)
 
 def exersize_wilson_amplitude_variate():
   data = rt.wilson_amplitude_variate(N=1000000)
@@ -34,7 +34,7 @@ def exersize_wilson_intensity_variate():
   mu1 = flex.mean(data)
   mu2 = flex.mean(data*data)
   assert approx_equal(mu1,1.000,eps=0.01)
-  assert approx_equal(mu2,2.000,eps=0.01)
+  assert approx_equal(mu2,2.000,eps=0.02)
 
 def run():
   exersize_gauss()
