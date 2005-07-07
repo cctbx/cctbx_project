@@ -1,6 +1,7 @@
 from cctbx import geometry_restraints
 from cctbx.array_family import flex
 import sys
+from stdlib import math
 
 class energies:
 
@@ -85,9 +86,25 @@ class energies:
          + self.chirality_residual_sum
          + self.planarity_residual_sum)
 
+  def target_normalized(self):
+    return(self.bond_residual_sum       / self.n_bond_proxies
+         + self.nonbonded_residual_sum  / self.n_nonbonded_proxies
+         + self.angle_residual_sum      / self.n_angle_proxies
+         + self.dihedral_residual_sum   / self.n_dihedral_proxies
+         + self.chirality_residual_sum  / self.n_chirality_proxies
+         + self.planarity_residual_sum  / self.n_planarity_proxies)
+
   def gradient_norm(self):
     if (self.gradients is not None):
-      return flex.sum_sq(self.gradients.as_double())
+      return math.sqrt(flex.sum_sq(self.gradients.as_double()))
+
+  def number_of_restraints(self):
+    return self.n_bond_proxies      +\
+           self.n_nonbonded_proxies +\
+           self.n_angle_proxies     +\
+           self.n_dihedral_proxies  +\
+           self.n_chirality_proxies +\
+           self.n_planarity_proxies
 
   def show(self, f=None, prefix=""):
     if (f is None): f = sys.stdout
