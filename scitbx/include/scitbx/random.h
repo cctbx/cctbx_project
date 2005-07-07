@@ -48,8 +48,8 @@ namespace random {
         return static_cast<std::size_t>(generator_());
       }
 
-      /*! Array of uniformly distributed random integers in the range
-          [random_size_t_min(), random_size_t_max()].
+      /*! \brief Array of uniformly distributed random integers in the
+          range [random_size_t_min(), random_size_t_max()].
        */
       af::shared<std::size_t>
       random_size_t(std::size_t size)
@@ -60,8 +60,8 @@ namespace random {
         return result;
       }
 
-      /*! Array of uniformly distributed random integers in the range
-          [0, modulus).
+      /*! \brief Array of uniformly distributed random integers in the
+          range [0, modulus).
        */
       af::shared<std::size_t>
       random_size_t(std::size_t size, std::size_t modulus)
@@ -94,8 +94,8 @@ namespace random {
         return (a*67108864.0+b)*c;
       }
 
-      /*! Array of uniformly distributed random doubles in the range
-          [0, 1).
+      /*! \brief Array of uniformly distributed random doubles in the
+          range [0, 1).
        */
       af::shared<double>
       random_double(std::size_t size)
@@ -107,8 +107,8 @@ namespace random {
         return result;
       }
 
-      /*! Array of uniformly distributed random doubles in the range
-          [0, factor).
+      /*! \brief Array of uniformly distributed random doubles in the
+          range [0, factor).
        */
       af::shared<double>
       random_double(std::size_t size, double factor)
