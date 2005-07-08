@@ -11,30 +11,30 @@ def exersize_gauss():
   mu1 = flex.mean(data)
   mu2 = flex.mean(data*data)
   mu3 = flex.mean(data*data*data)
-  assert approx_equal(mu1,0,eps=0.01)
-  assert approx_equal(mu2,1,eps=0.01)
-  assert approx_equal(mu3,0,eps=0.01)
+  assert approx_equal(mu1,0,eps=0.02)
+  assert approx_equal(mu2,1,eps=0.02)
+  assert approx_equal(mu3,0,eps=0.02)
 
 def exersize_t_variate():
   data = rt.t_variate(a=6, mu=0,sigma=1,N=1000000)
   mu1 = flex.mean(data)
   mu2 = flex.mean(data*data)
-  assert approx_equal(mu1,0,eps=0.01)
-  assert approx_equal(mu2,1.5,eps=0.02)
+  assert approx_equal(mu1,0,eps=0.02)
+  assert approx_equal(mu2,1.5,eps=0.04)
 
 def exersize_wilson_amplitude_variate():
   data = rt.wilson_amplitude_variate(N=1000000)
   mu1 = flex.mean(data)
   mu2 = flex.mean(data*data)
-  assert approx_equal(mu1,0.886,eps=0.01)
-  assert approx_equal(mu2,1.000,eps=0.01)
+  assert approx_equal(mu1,0.886,eps=0.02)
+  assert approx_equal(mu2,1.000,eps=0.02)
 
 def exersize_wilson_intensity_variate():
   data = rt.wilson_intensity_variate(N=1000000)
   mu1 = flex.mean(data)
   mu2 = flex.mean(data*data)
-  assert approx_equal(mu1,1.000,eps=0.01)
-  assert approx_equal(mu2,2.000,eps=0.02)
+  assert approx_equal(mu1,1.000,eps=0.02)
+  assert approx_equal(mu2,2.000,eps=0.04)
 
 def run():
   exersize_gauss()
