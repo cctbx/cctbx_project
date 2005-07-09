@@ -1,21 +1,11 @@
 from __future__ import division
 import sys, os
 
-def frame_object(frames_back=0):
-  try: raise Exception
-  except:
-    t = sys.exc_info()[2]
-    f = t.tb_frame
-    for i in xrange(frames_back+1):
-      if (f.f_back is None): break
-      f = f.f_back
-    return f
-
 def varnames(frames_back=0):
-  return frame_object(frames_back=frames_back+1).f_code.co_varnames
+  return sys._getframe(frames_back+1).f_code.co_varnames
 
 def adopt_init_args(exclusions=[], prefix="", frames_back=0):
-  frame = frame_object(frames_back=frames_back+1)
+  frame = sys._getframe(frames_back+1)
   varnames = frame.f_code.co_varnames
   exclusions.append(varnames[0]) # self
   init_locals = frame.f_locals
@@ -29,7 +19,7 @@ def adopt_init_args(exclusions=[], prefix="", frames_back=0):
 class caller_location:
 
   def __init__(self, frames_back=0):
-    f = frame_object(frames_back=frames_back+1)
+    f = sys._getframe(frames_back+1)
     self.file_name = f.f_code.co_filename
     self.line_number = f.f_lineno
 
@@ -104,4 +94,16 @@ class virtual_memory_info:
     print >> out, prefix+"Stack size:         ", fmt % sts
 
 if (__name__ == "__main__"):
+  def exercise_varnames(a, b, c):
+    return varnames()
+  assert exercise_varnames(1,2,3) == ("a", "b", "c")
+  class exercise_adopt_init_args:
+    def __init__(self, a, b, c):
+      adopt_init_args()
+  e = exercise_adopt_init_args(1,2,3)
+  assert e.a == 1
+  assert e.b == 2
+  assert e.c == 3
+  assert e.__init__varnames__ == ("self", "a", "b", "c")
   virtual_memory_info().show()
+  assert str(caller_location()).find("introspection") > 0
