@@ -4,7 +4,6 @@ import iotbx.pdb
 from cctbx.array_family import flex
 from scitbx.matrix import col, sqr
 from scitbx.math import euler_angles_as_matrix
-from libtbx import itertbx
 from libtbx.test_utils import approx_equal, not_approx_equal
 import random
 import sys
@@ -24,7 +23,7 @@ class residual_functor:
 def finite_differences(sites, residual_obj, eps=1.e-6):
   sites_mod = sites[:]
   gradients = []
-  for i_site,site in zip(itertbx.count(),sites):
+  for i_site,site in enumerate(sites):
     grad = []
     for i_x in xrange(3):
       t = []
@@ -236,7 +235,7 @@ def exercise_dihedral():
 
 def dump_pdb(file_name, sites_cart):
   f = open(file_name, "w")
-  for serial,site in zip(itertbx.count(1), sites_cart):
+  for serial,site in enumerate(sites_cart):
     print >> f, iotbx.pdb.format_atom_record(serial=serial, site=site)
   print >> f, "END"
   f.close()
@@ -304,7 +303,7 @@ def exercise_chirality(verbose=0):
         max_g_len = 0
         for g in ag_dih:
           max_g_len = max(max_g_len, abs(col(g)))
-        for g in fg:
+        for g in flex.vec3_double(fg):
           max_g_len = max(max_g_len, abs(col(g)))
         sticks = []
         for site,g in zip(improper_permutation(sites_mod),ag_dih):
@@ -316,7 +315,7 @@ def exercise_chirality(verbose=0):
               width=0.01))
         pml_write(f=open("dih.pml", "w"), label="dih", sticks=sticks)
         sticks = []
-        for site,g in zip(sites_mod,fg):
+        for site,g in zip(sites_mod,flex.vec3_double(fg)):
           sticks.append(
             pml_stick(
               begin=site,
