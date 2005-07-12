@@ -83,7 +83,6 @@ def run_call_back(flags, space_group_info):
 def run():
   structure = exercise_with_fixed_structure()
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
-  print "OK"
 
 if (__name__ == "__main__"):
   run()
