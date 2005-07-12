@@ -5,16 +5,16 @@ set echo
 
 mkdir -p dist
 cd dist
-cp -r $LIBTBX_DIST .
-cp -r $CCP4IO_DIST .
+cp -r "$LIBTBX_DIST" .
+cp -r "$CCP4IO_DIST" .
 mkdir -p boost_adaptbx
-cp -r $BOOST_ADAPTBX_DIST/boost boost_adaptbx
+cp -r "$BOOST_ADAPTBX_DIST"/boost boost_adaptbx
 mkdir -p scitbx
-cp -r $SCITBX_DIST/{scitbx,libtbx_config} scitbx
+cp -r "$SCITBX_DIST"/{scitbx,libtbx_config} scitbx
 mkdir -p cctbx
-cp -r $CCTBX_DIST/{cctbx,libtbx_config} cctbx
+cp -r "$CCTBX_DIST"/{cctbx,libtbx_config} cctbx
 mkdir -p iotbx
-cp -r $IOTBX_DIST/{iotbx,libtbx_config} iotbx
+cp -r "$IOTBX_DIST"/{iotbx,libtbx_config} iotbx
 cd ..
 
 if ($#argv == 0) then
