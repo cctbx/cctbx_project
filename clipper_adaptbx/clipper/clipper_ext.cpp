@@ -6,6 +6,12 @@
 # undef isnan
 #endif
 
+#if defined(__linux__) && defined(__GNUC__) \
+ && __GNUC__ == 4 && __GNUC_MINOR__ == 0 && __GNUC_PATCHLEVEL__ == 0
+# include <iostream>
+# define CLIPPER_EXT_GCC400_WORKAROUND
+#endif
+
 #include <clipper/core/clipper_util.h>
 #include <cctbx/error.h>
 #include <scitbx/constants.h>
@@ -39,6 +45,9 @@ namespace {
       CCTBX_ASSERT(Util::isnan(x));
       CCTBX_ASSERT(Util::is_null(x));
       for(int i=-10;i<10;i++) {
+#if defined(CLIPPER_EXT_GCC400_WORKAROUND)
+        std::cout << std::flush;
+#endif
         FloatType x = i;
         CCTBX_ASSERT(!Util::is_nan(x));
         CCTBX_ASSERT(!Util::isnan(x));
