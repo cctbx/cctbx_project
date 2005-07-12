@@ -2,17 +2,19 @@ from __future__ import division
 import sys, os
 
 def varnames(frames_back=0):
-  return sys._getframe(frames_back+1).f_code.co_varnames
+  f_code = sys._getframe(frames_back+1).f_code
+  return f_code.co_varnames[:f_code.co_argcount]
 
 def adopt_init_args(exclusions=[], prefix="", frames_back=0):
   frame = sys._getframe(frames_back+1)
-  varnames = frame.f_code.co_varnames
+  tmp = frame.f_code
+  varnames = tmp.co_varnames[:tmp.co_argcount]
   exclusions.append(varnames[0]) # self
-  init_locals = frame.f_locals
-  self = init_locals[varnames[0]]
+  tmp = frame.f_locals
+  self = tmp[varnames[0]]
   for varname in varnames:
     if (varname not in exclusions):
-      setattr(self, prefix+varname, init_locals[varname])
+      setattr(self, prefix+varname, tmp[varname])
   if ("__init__varnames__" not in exclusions):
     setattr(self, "__init__varnames__", varnames)
 
@@ -95,11 +97,13 @@ class virtual_memory_info:
 
 if (__name__ == "__main__"):
   def exercise_varnames(a, b, c):
+    d = 0
     return varnames()
   assert exercise_varnames(1,2,3) == ("a", "b", "c")
   class exercise_adopt_init_args:
     def __init__(self, a, b, c):
       adopt_init_args()
+      d = 0
   e = exercise_adopt_init_args(1,2,3)
   assert e.a == 1
   assert e.b == 2
@@ -107,3 +111,4 @@ if (__name__ == "__main__"):
   assert e.__init__varnames__ == ("self", "a", "b", "c")
   virtual_memory_info().show()
   assert str(caller_location()).find("introspection") > 0
+  print "OK"
