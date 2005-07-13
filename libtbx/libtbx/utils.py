@@ -64,6 +64,80 @@ def format_cpu_times(show_micro_seconds_per_tick=True):
       result += " micro-seconds/tick: %.3f" % ((t[0]+t[1])/python_ticker*1.e6)
   return result
 
+def _indentor_write_loop(write_method, indent, incomplete_line, lines):
+  for line in lines:
+    if (len(line) == 0):
+      incomplete_line = False
+    elif (incomplete_line):
+      write_method(line)
+      incomplete_line = False
+    else:
+      write_method(indent)
+      write_method(line)
+    write_method("\n")
+
+class indentor:
+
+  def __init__(self, file_object=None, indent="", parent=None):
+    if (file_object is None):
+      if (parent is None):
+        file_object = sys.stdout
+      else:
+        file_object = parent.file_object
+    self.file_object = file_object
+    if (hasattr(self.file_object, "flush")):
+      self.flush = self._flush
+    self.indent = indent
+    self.parent = parent
+    self.incomplete_line = False
+
+  def write(self, block):
+    if (len(block) == 0): return
+    if (block.endswith("\n")):
+      _indentor_write_loop(
+        write_method=self.file_object.write,
+        indent=self.indent,
+        incomplete_line=self.incomplete_line,
+        lines=block.splitlines())
+      self.incomplete_line = False
+    else:
+      lines = block.splitlines()
+      if (len(lines) == 1):
+        if (self.incomplete_line):
+          self.file_object.write(lines[-1])
+        else:
+          self.file_object.write(self.indent + lines[-1])
+      else:
+        _indentor_write_loop(
+          write_method=self.file_object.write,
+          indent=self.indent,
+          incomplete_line=self.incomplete_line,
+          lines=lines[:-1])
+        self.file_object.write(self.indent + lines[-1])
+      self.incomplete_line = True
+
+  def _flush(self):
+    self.file_object.flush()
+
+  def shift_right(self, indent="  "):
+    return self.__class__(indent=self.indent+indent, parent=self)
+
+class buffered_indentor(indentor):
+
+  def __init__(self, file_object=None, indent="", parent=None):
+    indentor.__init__(self, file_object, indent, parent)
+    self.buffer = []
+
+  def write(self, block):
+    self.buffer.append(block)
+
+  def write_buffer(self):
+    if (self.parent is not None):
+      self.parent.write_buffer()
+    for block in self.buffer:
+      indentor.write(self, block)
+    self.buffer = []
+
 class multi_out:
 
   def __init__(self):
@@ -117,17 +191,3 @@ def write_this_is_auto_generated(f, file_name_generator):
      %s
  */
 """ % file_name_generator
-
-def exercise():
-  assert flat_list(0) == [0]
-  assert flat_list([1,2,3]) == [1,2,3]
-  assert flat_list([1,[2,3,4],3]) == [1,2,3,4,3]
-  assert flat_list([1,[2,3,4],[[3,4],[5,6]]]) == [1,2,3,4,3,4,5,6]
-  try:
-    raise RuntimeError("Trial")
-  except:
-    assert format_exception() == "RuntimeError: Trial"
-  print "OK"
-
-if (__name__ == "__main__"):
-  exercise()

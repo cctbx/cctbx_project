@@ -4,7 +4,7 @@ import libtbx.load_env
 def run():
   tst_list = (
   "$D/libtbx/introspection.py",
-  "$D/libtbx/utils.py",
+  "$D/libtbx/tst_utils.py",
   "$D/libtbx/str_utils.py",
   "$D/libtbx/phil/tst_tokenizer.py",
   "$D/libtbx/phil/tst.py",
