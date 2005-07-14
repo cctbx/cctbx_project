@@ -79,7 +79,10 @@ class conformer(conformer_base):
             isel_residue = flex.size_t()
           if (len(residue_iselections) > 0):
             chains.append(pdb.interpretation.chain(
-              conformer=self, residue_iselections=residue_iselections))
+              conformer=self,
+              chainID=prev_atom.chainID,
+              segID=prev_atom.segID,
+              residue_iselections=residue_iselections))
             residue_iselections = []
         elif (residue_labels != prev_residue_labels):
           if (isel_residue.size() > 0):
@@ -93,13 +96,18 @@ class conformer(conformer_base):
       residue_iselections.append(isel_residue)
     if (len(residue_iselections) > 0):
       chains.append(pdb.interpretation.chain(
-        conformer=self, residue_iselections=residue_iselections))
+        conformer=self,
+        chainID=prev_atom.chainID,
+        segID=prev_atom.segID,
+        residue_iselections=residue_iselections))
     return chains
 
 class chain:
 
-  def __init__(self, conformer, residue_iselections):
+  def __init__(self, conformer, chainID, segID, residue_iselections):
     self.conformer = conformer
+    self.chainID = chainID
+    self.segID = segID
     self.residues = []
     for iselection in residue_iselections:
       self.residues.append(
