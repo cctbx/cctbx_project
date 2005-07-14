@@ -1,4 +1,5 @@
-from  cctbx.array_family import flex
+from cctbx.array_family import flex
+from cStringIO import StringIO
 import sys
 import os
 import string
@@ -18,7 +19,7 @@ class plot_data:
     self.y_label = y_label
     self.x_data = x_data
     self.comments = comments
-    self.domain_flag = 'N'
+    self.domain_flag = 'A'
 
     ## The x_data is an (flex) array of numbers
     ## The Y_data should be an list of (flex) arrays
@@ -29,8 +30,6 @@ class plot_data:
       assert ( len(y_data)==len(self.x_data) )
       self.y_data.append(y_data)
       self.y_legend.append(y_legend)
-      if flex.min(y_data) < 0:
-        self.domain_flag = 'A'
 
   def add_data(self,
                y_data,
@@ -38,21 +37,18 @@ class plot_data:
     assert ( len(y_data)==len(self.x_data) )
     self.y_data.append(y_data)
     self.y_legend.append(y_legend)
-    if self.domain_flag =='N':
-      if flex.min(y_data) < 0:
-        self.domain_flag = 'A'
 
 
 def plot_data_loggraph(plot_data,output):
   ## First we need to print the header information
-  output.write('$TABLE: %s:\n'%(plot_data.plot_title) )
-  output.write('$GRAPHS\n')
-  output.write(':%s \n' %(plot_data.comments))
+  print >> output, '$TABLE: %s:\n'%(plot_data.plot_title) 
+  print >> output, '$GRAPHS\n'
+  print >> output, ':%s \n' %(plot_data.comments)
   index_string = ''
   for ii in range(len(plot_data.y_data)+1):
     index_string += '%d,'%(ii+1)
-  output.write(':%s:%s:\n'%(plot_data.domain_flag,index_string[:-1]))
-  output.write('$$\n')
+  print >> output, ':%s:%s:\n'%(plot_data.domain_flag,index_string[:-1])
+  print >> output, '$$\n'
   ## replace spaces for loggraph with underscores
   tmp_legend = plot_data.x_label
   spaces = 0
@@ -69,11 +65,11 @@ def plot_data_loggraph(plot_data,output):
     if spaces>0:
       tmp_legend = tmp_legend.replace(' ','_')
     label_string += '   %s'%( tmp_legend )
-  output.write('%s   $$ \n'%(label_string))
-  output.write('$$\n')
+  print >> output, '%s   $$ \n'%(label_string)
+  print >> output, '$$\n'
   for ii in range(len(plot_data.x_data)):
     data_string = '%f'%(plot_data.x_data[ii])
     for jj in range(len(plot_data.y_data)):
       data_string +='   %f'%(plot_data.y_data[jj][ii])
-    output.write('%s\n'%(data_string))
-  output.write('$$\n')
+    print >> output '%s\n'%(data_string)
+  print >> output, '$$\n'
