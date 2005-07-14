@@ -71,5 +71,5 @@ def plot_data_loggraph(plot_data,output):
     data_string = '%f'%(plot_data.x_data[ii])
     for jj in range(len(plot_data.y_data)):
       data_string +='   %f'%(plot_data.y_data[jj][ii])
-    print >> output '%s\n'%(data_string)
+    print >> output, '%s\n'%(data_string)
   print >> output, '$$\n'
