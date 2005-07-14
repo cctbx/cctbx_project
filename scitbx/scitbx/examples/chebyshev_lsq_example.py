@@ -1,6 +1,7 @@
 from scitbx.array_family import flex
 from scitbx.math import chebyshev_polynome
 from scitbx.math import chebyshev_lsq_fit
+from cStringIO import StringIO
 import math
 
 
@@ -70,7 +71,9 @@ def example():
     chebyshev_plot.add_data(y_data=y_fitted,
                             y_legend='Fitted chebyshev approximation')
     output_logfile=open('chebyshev.loggraph','w')
-    data_plots.plot_data_loggraph(chebyshev_plot,output_logfile)
+    f = StringIO()
+    data_plots.plot_data_loggraph(chebyshev_plot,f)
+    output_logfile.write(f.getvalue())
 
 
 
