@@ -24,7 +24,8 @@ class manager:
         dihedral_proxies=None,
         chirality_proxies=None,
         planarity_proxies=None,
-        plain_pairs_radius=None):
+        plain_pairs_radius=None,
+        normalization=False):
     if (site_symmetry_table is not None): assert crystal_symmetry is not None
     if (bond_params_table is not None and site_symmetry_table is not None):
       assert bond_params_table.size() == site_symmetry_table.indices().size()
@@ -104,7 +105,8 @@ class manager:
       dihedral_proxies=self.dihedral_proxies,
       chirality_proxies=self.chirality_proxies,
       planarity_proxies=self.planarity_proxies,
-      plain_pairs_radius=self.plain_pairs_radius)
+      plain_pairs_radius=self.plain_pairs_radius,
+      normalization=self.normalization)
 
   def select(self, selection):
     iselection = selection.iselection()
@@ -164,7 +166,8 @@ class manager:
       dihedral_proxies=selected_dihedral_proxies,
       chirality_proxies=selected_chirality_proxies,
       planarity_proxies=selected_planarity_proxies,
-      plain_pairs_radius=self.plain_pairs_radius)
+      plain_pairs_radius=self.plain_pairs_radius,
+      normalization=self.normalization)
 
   def remove_angles_in_place(self, selection):
     self.angle_proxies = self.angle_proxies.proxy_remove(
@@ -362,7 +365,8 @@ class manager:
       chirality_proxies=chirality_proxies,
       planarity_proxies=planarity_proxies,
       compute_gradients=compute_gradients,
-      disable_asu_cache=disable_asu_cache)
+      disable_asu_cache=disable_asu_cache,
+      normalization=self.normalization)
 
   def harmonic_restraints(self, variables, type_indices, type_weights):
     assert self.shell_sym_tables is not None
