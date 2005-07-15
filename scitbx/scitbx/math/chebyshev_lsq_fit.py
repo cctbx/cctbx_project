@@ -14,7 +14,8 @@ class chebyshev_lsq_fit:
                w_obs=None,
                free_flags=None,
                low_limit=None,
-               high_limit=None):
+               high_limit=None,
+               randomise=False):
     self.n = n_terms
     self.x_obs = x_obs
     self.y_obs = y_obs
@@ -24,7 +25,9 @@ class chebyshev_lsq_fit:
     self.w_obs = flex.double(x_obs.size(), 1.0)
     if w_obs is not None:
       self.w_obs = w_obs
-    self.x = flex.double(self.n,0)
+    self.x = flex.double(self.n, 0)
+    if randomise:
+      self.x = (flex.random_double(self.n)-0.5)*10.0
     self.low_limit = flex.min(self.x_obs)
     self.high_limit = flex.max(self.x_obs)
     self.f = None
