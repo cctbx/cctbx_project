@@ -526,9 +526,10 @@ double d_maximum_likelihood_target_one_h_over_k(double fo,
       int c = static_cast<int>(cs[i]);
       target_ += maximum_likelihood_target_one_h(fo,fc,a,b,k,e,c);
       if(compute_derivatives) {
-        derivatives_[i] = d_maximum_likelihood_target_one_h_over_fc(fo,fcalc[i],a,b,k,e,c);
+        derivatives_[i] = d_maximum_likelihood_target_one_h_over_fc(fo,fcalc[i],a,b,k,e,c) * (1./ fobs.size());
       }
     }
+    target_ /= fobs.size();
   }
   };
 
