@@ -17,7 +17,7 @@ namespace chebyshev{
     public:
     /*! Default constructor */
     chebyshev_base() {}
-    /*! Constructor that inits all memebr to nought */
+    /*! Constructor that inits all members to nought */
     chebyshev_base(std::size_t const& n_terms,
                    FloatType const& low_limit,
                    FloatType const& high_limit)
@@ -127,11 +127,14 @@ namespace chebyshev{
   ::transform(FloatType const& x_in)
   {
     typedef FloatType f_t;
+    f_t epsilon;
+    epsilon = 1.0E-6;
     f_t result=0;
+    //std::cout << low_limit_ << " " << high_limit_ << std::endl;
     result = (x_in - (low_limit_ + high_limit_)*0.5)
       / (0.5*(high_limit_ - low_limit_));
-    SCITBX_ASSERT (result<=1);
-    SCITBX_ASSERT (result>=-1);
+    SCITBX_ASSERT (result<=1+epsilon);
+    SCITBX_ASSERT (result>=-1.0-epsilon);
     return(result);
   }
 
