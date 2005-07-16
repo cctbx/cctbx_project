@@ -1,6 +1,8 @@
 Import("env_scitbx_boost_python_ext")
 
-env_scitbx_boost_python_ext.SharedLibrary(
+env = env_scitbx_boost_python_ext.Copy()
+env.Prepend(LIBS=["scitbx_slatec"])
+env.SharedLibrary(
   target="#lib/scitbx_math_ext",
   source=[
     "math_ext.cpp",
@@ -12,5 +14,6 @@ env_scitbx_boost_python_ext.SharedLibrary(
     "row_echelon.cpp",
     "tensor_rank_2.cpp",
     "chebyshev.cpp",
-    "icosahedron.cpp"]
+    "icosahedron.cpp",
+    "slatec.cpp"]
 )
