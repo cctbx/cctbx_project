@@ -29,7 +29,7 @@ namespace boost_python {
   void wrap_chebyshev_polynome();
   void wrap_chebyshev_fitter();
   void wrap_chebyshev_lsq();
-
+  void wrap_slatec();
 
 namespace {
 
@@ -146,8 +146,7 @@ namespace {
     wrap_chebyshev_polynome();
     wrap_chebyshev_fitter();
     wrap_chebyshev_lsq();
-
-
+    wrap_slatec();
 
     def("time_eigensystem_real_symmetric", time_eigensystem_real_symmetric);
 
