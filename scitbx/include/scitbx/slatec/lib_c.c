@@ -364,7 +364,7 @@ slatec_dlngam(double x)
   }
   if (x>0.) result = sq2pil + (x-0.5)*log(x) - x + d9lgmc(y);
   if (x>0.) return result;
-  sinpiy = fabs(sin(pi*y));
+  sinpiy = fabs(sin(pi*fmod(y,2.0)));
   if (sinpiy == 0.) {
     xermsg("slatec", "dlngam",
       "x is a negative integer", 3, 2);
