@@ -1320,7 +1320,10 @@ def exercise_slatec():
   assert approx_equal(slatec_dlngam(-1+1.e-8), 18.4206807543)
   assert approx_equal(slatec_dlngam(-1-1.e-8), 18.4206807458)
   assert eps_eq(slatec_dlngam( 2.53273727e+305),  1.77853307723e+308)
-  assert eps_eq(slatec_dlngam(-2.53273727e+305), -1.77853307723e+308)
+  try: slatec_dlngam(-2.53273727e+305)
+  except RuntimeError, e:
+    assert str(e)=="slatec: dlngam: x is a negative integer (nerr=3, level=2)"
+  else: raise RuntimeError("Exception expected.")
   for x in [2.53273728e+305, -2.53273728e+305]:
     try: slatec_dlngam(x=x)
     except RuntimeError, e:
@@ -1370,7 +1373,6 @@ def exercise_slatec():
         (-3490731829165.78, -97325556732394.7),
         (-22164765511026.5, -658947950486145),
         (-354636248176425, -1.15264276699695e+16),
-        (-2.8370899854114e+15, -9.8110984132904e+16),
         (2.90518014506127e+18, 1.20602822017773e+20),
         (4.64828823209803e+19, 2.05852306758472e+21),
         (1.18059162071741e+21, 5.61020711097905e+22),
@@ -1452,8 +1454,9 @@ def exercise_slatec():
       cmp(s, m)
       try: s = slatec_dlngam(-x)
       except RuntimeError, e:
-        assert str(e) == \
-          "slatec: dgamma: x is a negative integer (nerr=4, level=2)"
+        assert str(e) in [
+          "slatec: dlngam: x is a negative integer (nerr=3, level=2)",
+          "slatec: dgamma: x is a negative integer (nerr=4, level=2)"]
       else:
         m = cmath_lgamma(-x)
         if (str(m) != "inf"):
