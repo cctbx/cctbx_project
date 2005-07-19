@@ -41,7 +41,7 @@ class plot_data:
 
 def plot_data_loggraph(plot_data,output):
   ## First we need to print the header information
-  print >> output, '$TABLE: %s:\n'%(plot_data.plot_title) 
+  print >> output, '$TABLE: %s:\n'%(plot_data.plot_title)
   print >> output, '$GRAPHS\n'
   print >> output, ':%s \n' %(plot_data.comments)
   index_string = ''
