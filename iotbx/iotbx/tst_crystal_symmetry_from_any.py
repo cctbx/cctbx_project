@@ -1,4 +1,4 @@
-import crystal_symmetry_from_any
+from iotbx import crystal_symmetry_from_any
 
 def exercise():
   space_group = "P1"
