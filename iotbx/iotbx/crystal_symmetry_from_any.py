@@ -1,4 +1,3 @@
-from cctbx import crystal
 from iotbx.scalepack import crystal_symmetry_from_hkl as from_scalepack_hkl
 from iotbx.xds import crystal_symmetry_from_hkl as from_xds_hkl
 from iotbx.dtrek import crystal_symmetry_from_ref as from_dtrek_ref
@@ -9,6 +8,7 @@ from iotbx.cns import crystal_symmetry_from_sdb as from_cns_sdb
 from iotbx.pdb import crystal_symmetry_from_pdb as from_pdb
 from iotbx.solve import crystal_symmetry_from_inp as from_solve_inp
 from iotbx.xplor import crystal_symmetry_from_map as from_xplor_map
+from cctbx import crystal
 
 def from_string(string):
   '''
@@ -32,10 +32,12 @@ def from_string(string):
   if unit_cell is not None:
     try:
       unit_cell = [float(number) for number in unit_cell]
+    except KeyboardInterrupt: raise
     except:
       return None
   try:
     return crystal.symmetry(unit_cell=unit_cell,space_group=space_group)
+  except KeyboardInterrupt: raise
   except:
     return None
 
@@ -58,5 +60,6 @@ def extract_from(file_name):
               from_solve_inp,
               from_xplor_map):
     try: return fmt.extract_from(file_name)
+    except KeyboardInterrupt: raise
     except: pass
   return from_string(file_name)
