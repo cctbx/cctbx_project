@@ -8,6 +8,7 @@
 using namespace std;
 namespace cctbx { namespace adp_restraints {
 
+
 rigid_bond_pair::rigid_bond_pair(vec3<double> const& site1,
                                  vec3<double> const& site2,
                                  sym_mat3<double> const& ustar1,

@@ -42,11 +42,11 @@ namespace {
     rigid_bond_wrappers::wrap();
   }
 
-} // namespace <anonymous>
+}
 
 namespace boost_python {
 
   void
   wrap_rigid_bond() { wrap_all(); }
 
-}}} // namespace cctbx::geometry_restraints::boost_python
+}}}
