@@ -6,8 +6,6 @@ from libtbx.test_utils import approx_equal
 from iotbx import pdb
 from cctbx.array_family import flex
 from mmtbx.monomer_library import pdb_interpretation
-from cctbx.geometry_restraints.lbfgs import lbfgs as geometry_restraints_lbfgs
-import scitbx.lbfgs
 import libtbx.load_env
 import os
 import cctbx.adp_restraints.manager
@@ -25,8 +23,13 @@ def run():
   grm = processed_pdb_file.geometry_restraints_manager(
                                                       plain_pairs_radius = 5.0)
   pair_proxies = grm.pair_proxies(sites_cart=xray_structure.sites_cart())
-  manager = cctbx.adp_restraints.manager.iso(xray_structure, grm, 1.6, 0.0,
-                                                               normalize=False)
+  manager = cctbx.adp_restraints.manager.iso(xray_structure,
+                                             grm,
+                                             sphere_radius = 1.6,
+                                             distance_power = 0.0,
+                                             wilson_b = None,
+                                             mean_power = 0.0,
+                                             normalize=False)
 
   u_iso_restraints = grm.harmonic_restraints(
                       variables    = xray_structure.extract_u_iso_or_u_equiv(),
