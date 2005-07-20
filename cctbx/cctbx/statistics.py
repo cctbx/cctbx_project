@@ -11,6 +11,7 @@ class empty: pass
 class wilson_plot:
 
   def __init__(self, f_obs, asu_contents):
+    assert f_obs.is_real_array()
     self.info = f_obs.info()
     f_obs_selected = f_obs.select(f_obs.data() > 0)
     f_obs_selected.use_binning_of(f_obs)
