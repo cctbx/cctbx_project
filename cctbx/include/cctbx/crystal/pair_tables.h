@@ -48,6 +48,71 @@ namespace cctbx { namespace crystal {
     return distances;
   }
 
+  class adp_iso_restraint_helper {
+  public:
+      adp_iso_restraint_helper::adp_iso_restraint_helper(
+                        af::const_ref<pair_sym_dict> const& pair_sym_table,
+                        scitbx::mat3<double> const& orthogonalization_matrix,
+                        af::const_ref<scitbx::vec3<double> > const& sites_frac,
+                        af::const_ref<double> const& u_isos,
+                        double const& sphere_radius,
+                        double const& power_factor,
+                        double const& mean_power,
+                        bool const& normalize)
+      {
+        CCTBX_ASSERT(sites_frac.size() == pair_sym_table.size());
+        number_of_members_ = 0;
+        target_ = 0.0;
+        derivatives_ = af::shared<double>(u_isos.size());
+        for(unsigned i_seq=0;i_seq<pair_sym_table.size();i_seq++) {
+          crystal::pair_sym_dict const& pair_sym_dict = pair_sym_table[i_seq];
+          scitbx::vec3<double> const& site_i = sites_frac[i_seq];
+          for(crystal::pair_sym_dict::const_iterator
+                pair_sym_dict_i=pair_sym_dict.begin();
+                pair_sym_dict_i!=pair_sym_dict.end();
+                pair_sym_dict_i++) {
+            unsigned j_seq = pair_sym_dict_i->first;
+            scitbx::vec3<double> const& site_j = sites_frac[j_seq];
+            af::const_ref<sgtbx::rt_mx> rt_mx_list = af::make_const_ref(
+              pair_sym_dict_i->second);
+            for(unsigned i_op=0;i_op<rt_mx_list.size();i_op++) {
+                double dist = (orthogonalization_matrix
+                              * (site_i - rt_mx_list[i_op] * site_j)).length();
+                if(dist <= sphere_radius && dist > 0.0) {
+                   double weight = 1./std::pow(dist, power_factor);
+                   double u1 = u_isos[i_seq];
+                   double u2 = u_isos[j_seq];
+                   double sum = u1 + u2;
+                   double dif = u1 - u2;
+                   double sum_pow = std::pow(sum, mean_power);
+                   double dif_sq = dif * dif;
+                   double mem1 = 2.* dif / sum_pow;
+                   double mem2 = mean_power * dif_sq / (sum * sum_pow);
+                   double g1 = mem1 - mem2;
+                   double g2 = -1. * mem1 - mem2;
+                   derivatives_[i_seq] += weight * g1;
+                   derivatives_[j_seq] += weight * g2;
+                   target_ += (weight * dif_sq / sum_pow);
+                   number_of_members_ += 1;
+                }
+            }
+          }
+        }
+        if(normalize) {
+           target_ /= number_of_members_;
+           for(int i=0;i<derivatives_.size();i++)
+               derivatives_[i] = derivatives_[i] / number_of_members_;
+        }
+      }
+      double target() const { return target_; }
+      af::shared<double> derivatives() const { return derivatives_; }
+      int number_of_members() const { return number_of_members_; }
+  private:
+      int number_of_members_;
+      double target_;
+      af::shared<double> derivatives_;
+  };
+
   /*! \brief Determination of distances of all pair interactions
       defined by pair_sym_table for exclusively non-crystallographic
       interactions.
