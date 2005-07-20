@@ -158,11 +158,11 @@ class _histogram(boost.python.injector, ext.histogram):
       yield histogram_slot_info(low_cutoff, high_cutoff, n)
       low_cutoff = high_cutoff
 
-  def show(self, f=None, prefix=""):
+  def show(self, f=None, prefix="", format_cutoffs="%.8g"):
     if (f is None): f = sys.stdout
+    fmt = "%s" + format_cutoffs + " - " + format_cutoffs + ": %d"
     for info in self.slot_infos():
-      print >> f, "%s%.8g - %.8g: %d" % (
-        prefix, info.low_cutoff, info.high_cutoff, info.n)
+      print >> f, fmt % (prefix, info.low_cutoff, info.high_cutoff, info.n)
 
 def exercise_triple(flex_triple, flex_order=None, as_double=False):
   from libtbx.test_utils import approx_equal
