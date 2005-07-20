@@ -723,8 +723,6 @@ class scope:
     for name in name_components[:-1]:
       child_scope = scope(name=name)
       child_scope.merge_names = merge_names
-      child_scope.optional = object.optional
-      child_scope.multiple = object.multiple
       primary_parent_scope.adopt(child_scope)
       primary_parent_scope = child_scope
       merge_names = True

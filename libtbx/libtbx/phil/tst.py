@@ -2223,6 +2223,24 @@ s.t.x {
 """)
   extracted = parameters.extract()
   assert extracted.s.t.x.a == [45, 13]
+  #
+  parameters = phil.parse(input_string="""\
+s.t {
+}
+s.u
+  .multiple=True
+  .optional=True
+{
+}
+""")
+  for object in parameters.get(path="s").objects:
+    assert object.optional is None
+    assert object.multiple is None
+  for object in parameters.get(path="s.u").objects:
+    assert object.optional
+    assert object.multiple
+  extracted = parameters.extract()
+  assert len(extracted.s.u) == 1
 
 def exercise_format():
   parameters = phil.parse(input_string="""\
