@@ -103,6 +103,38 @@ namespace {
     }
   };
 
+  struct adp_iso_restraint_helper_wrappers
+  {
+
+    static void
+    wrap()
+    {
+    using namespace boost::python;
+    typedef boost::python::arg arg_;
+    class_<adp_iso_restraint_helper>("adp_iso_restraint_helper",
+                             init<af::const_ref<pair_sym_dict> const&,
+                                  scitbx::mat3<double> const&,
+                                  af::const_ref<scitbx::vec3<double> > const&,
+                                  af::const_ref<double> const&,
+                                  double const&,
+                                  double const&,
+                                  double const&,
+                                  bool const&>((
+                                              arg_("pair_sym_table"),
+                                              arg_("orthogonalization_matrix"),
+                                              arg_("sites_frac"),
+                                              arg_("u_isos"),
+                                              arg_("sphere_radius"),
+                                              arg_("distance_power"),
+                                              arg_("mean_power"),
+                                              arg_("normalize"))))
+      .def("target", &adp_iso_restraint_helper::target)
+      .def("derivatives", &adp_iso_restraint_helper::derivatives)
+      .def("number_of_members", &adp_iso_restraint_helper::number_of_members)
+    ;
+    }
+  };
+
   void
   wrap_all()
   {
@@ -126,6 +158,7 @@ namespace {
 
     pair_asu_table_table_wrappers::wrap();
     pair_asu_table_wrappers::wrap();
+    adp_iso_restraint_helper_wrappers::wrap();
   }
 
 } // namespace <anonymous>
