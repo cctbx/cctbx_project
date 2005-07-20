@@ -16,7 +16,7 @@ class energies:
                      planarity_proxies=None,
                      compute_gradients=True,
                      disable_asu_cache=False,
-                     normalization=False):
+                     normalization=None):
     adopt_init_args(self, locals())
     if (nonbonded_proxies is not None): assert nonbonded_function is not None
     if (compute_gradients):
@@ -28,102 +28,73 @@ class energies:
       self.bond_residual_sum = 0
     else:
       self.n_bond_proxies = bond_proxies.n_total()
-      gradients = flex.vec3_double(sites_cart.size(), [0,0,0])
       self.bond_residual_sum = geometry_restraints.bond_residual_sum(
         sites_cart=sites_cart,
         sorted_asu_proxies=bond_proxies,
-        gradient_array=gradients,
+        gradient_array=self.gradients,
         disable_cache=disable_asu_cache)
-      if(self.normalization): factor = 1.0/self.n_bond_proxies
-      else: factor = 1.0
-      self.bond_residual_sum *= factor
-      if (compute_gradients):
-        self.gradients = self.gradients + gradients * factor
     if (nonbonded_proxies is None):
       self.n_nonbonded_proxies = None
       self.nonbonded_residual_sum = 0
     else:
       self.n_nonbonded_proxies = nonbonded_proxies.n_total()
-      gradients = flex.vec3_double(sites_cart.size(), [0,0,0])
       self.nonbonded_residual_sum = geometry_restraints.nonbonded_residual_sum(
         sites_cart=sites_cart,
         sorted_asu_proxies=nonbonded_proxies,
-        gradient_array=gradients,
+        gradient_array=self.gradients,
         function=nonbonded_function,
         disable_cache=False)
-      if(self.normalization): factor = 1.0/self.n_nonbonded_proxies
-      else: factor = 1.0
-      self.nonbonded_residual_sum *= factor
-      if (compute_gradients):
-        self.gradients = self.gradients + gradients * factor
     if (angle_proxies is None):
       self.n_angle_proxies = None
       self.angle_residual_sum = 0
     else:
       self.n_angle_proxies = len(angle_proxies)
-      gradients = flex.vec3_double(sites_cart.size(), [0,0,0])
       self.angle_residual_sum = geometry_restraints.angle_residual_sum(
         sites_cart=sites_cart,
         proxies=angle_proxies,
-        gradient_array=gradients)
-      if(self.normalization): factor = 1.0/self.n_angle_proxies
-      else: factor = 1.0
-      self.angle_residual_sum *= factor
-      if (compute_gradients):
-        self.gradients = self.gradients + gradients * factor
+        gradient_array=self.gradients)
     if (dihedral_proxies is None):
       self.n_dihedral_proxies = None
       self.dihedral_residual_sum = 0
     else:
       self.n_dihedral_proxies = len(dihedral_proxies)
-      gradients = flex.vec3_double(sites_cart.size(), [0,0,0])
       self.dihedral_residual_sum = geometry_restraints.dihedral_residual_sum(
           sites_cart=sites_cart,
           proxies=dihedral_proxies,
-          gradient_array=gradients)
-      if(self.normalization): factor = 1.0/self.n_dihedral_proxies
-      else: factor = 1.0
-      self.dihedral_residual_sum *= factor
-      if (compute_gradients):
-        self.gradients = self.gradients + gradients * factor
+          gradient_array=self.gradients)
     if (chirality_proxies is None):
       self.n_chirality_proxies = None
       self.chirality_residual_sum = 0
     else:
       self.n_chirality_proxies = len(chirality_proxies)
-      gradients = flex.vec3_double(sites_cart.size(), [0,0,0])
       self.chirality_residual_sum = geometry_restraints.chirality_residual_sum(
           sites_cart=sites_cart,
           proxies=chirality_proxies,
-          gradient_array=gradients)
-      if(self.normalization): factor = 1.0/self.n_chirality_proxies
-      else: factor = 1.0
-      self.chirality_residual_sum *= factor
-      if (compute_gradients):
-        self.gradients = self.gradients + gradients * factor
+          gradient_array=self.gradients)
     if (planarity_proxies is None):
       self.n_planarity_proxies = None
       self.planarity_residual_sum = 0
     else:
       self.n_planarity_proxies = len(planarity_proxies)
-      gradients = flex.vec3_double(sites_cart.size(), [0,0,0])
       self.planarity_residual_sum = geometry_restraints.planarity_residual_sum(
           sites_cart=sites_cart,
           proxies=planarity_proxies,
-          gradient_array=gradients)
-      if(self.normalization): factor = 1.0/self.n_planarity_proxies
-      else: factor = 1.0
-      self.planarity_residual_sum *= factor
-      if (compute_gradients):
-        self.gradients = self.gradients + gradients * factor
+          gradient_array=self.gradients)
+    if(compute_gradients):
+       if(self.normalization):
+          self.gradients = self.gradients * (1. / self.number_of_restraints())
 
   def target(self):
-    return(self.bond_residual_sum
-         + self.nonbonded_residual_sum
-         + self.angle_residual_sum
-         + self.dihedral_residual_sum
-         + self.chirality_residual_sum
-         + self.planarity_residual_sum)
+    target = self.bond_residual_sum      +\
+             self.nonbonded_residual_sum +\
+             self.angle_residual_sum     +\
+             self.dihedral_residual_sum  +\
+             self.chirality_residual_sum +\
+             self.planarity_residual_sum
+    if(self.normalization):
+       return target / self.number_of_restraints()
+    else:
+       return target
 
   def gradient_norm(self):
     if (self.gradients is not None):
