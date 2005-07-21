@@ -50,7 +50,10 @@ namespace cctbx { namespace crystal {
 
   class adp_iso_restraint_helper {
   public:
-      adp_iso_restraint_helper::adp_iso_restraint_helper(
+      //! Default constructor. Some data members are not initialized!
+      adp_iso_restraint_helper() {}
+
+      adp_iso_restraint_helper(
                         af::const_ref<pair_sym_dict> const& pair_sym_table,
                         scitbx::mat3<double> const& orthogonalization_matrix,
                         af::const_ref<scitbx::vec3<double> > const& sites_frac,
@@ -61,6 +64,7 @@ namespace cctbx { namespace crystal {
                         bool const& normalize)
       {
         CCTBX_ASSERT(sites_frac.size() == pair_sym_table.size());
+        CCTBX_ASSERT(u_isos.size() == pair_sym_table.size());
         number_of_members_ = 0;
         target_ = 0.0;
         derivatives_ = af::shared<double>(u_isos.size());
@@ -106,9 +110,9 @@ namespace cctbx { namespace crystal {
       }
       double target() const { return target_; }
       af::shared<double> derivatives() const { return derivatives_; }
-      int number_of_members() const { return number_of_members_; }
+      unsigned number_of_members() const { return number_of_members_; }
   private:
-      int number_of_members_;
+      unsigned number_of_members_;
       double target_;
       af::shared<double> derivatives_;
   };
