@@ -548,6 +548,33 @@ Si(2)
     check_pair_asu_table(asu_table_2, expected_asu_pairs)
     assert eq_flags[:-1].count(eq_flags[0]) == len(eq_flags)-1
     assert eq_flags[-1]
+    ### exercise adp_iso_restraint_helper, begin
+    omx = structure.unit_cell().orthogonalization_matrix()
+    u_isos = flex.double([0.01,0.09,0.1])
+    obj = crystal.adp_iso_restraint_helper(
+                             pair_sym_table           = sym_table,
+                             orthogonalization_matrix = omx,
+                             sites_frac               = structure.sites_frac(),
+                             u_isos                   = u_isos,
+                             sphere_radius            = 5.0,
+                             distance_power           = 0.7,
+                             mean_power               = 0.5,
+                             normalize                = True)
+    target = obj.target()
+    gradients = obj.derivatives()
+    counter = obj.number_of_members()
+    case_1 = approx_equal(target, 0.00202796953554, out=None)
+    case_2 = approx_equal(target, 0.00130369470142, out=None)
+    assert [case_1,case_2].count(True) == 1
+    case_1 = approx_equal(gradients, [-0.060161352769129386, \
+                        0.035529896242978656, 0.0044587716913385769], out=None)
+    case_2 = approx_equal(gradients, [-0.038675155351583175, \
+                        0.022840647584771993, 0.0028663532301462279], out=None)
+    assert [case_1,case_2].count(True) == 1
+    case_1 = approx_equal(counter, 9, out=None)
+    case_2 = approx_equal(counter, 7, out=None)
+    assert [case_1,case_2].count(True) == 1
+    ### exercise adp_iso_restraint_helper, end
     distances = crystal.get_distances(
       pair_sym_table=sym_table,
       orthogonalization_matrix
