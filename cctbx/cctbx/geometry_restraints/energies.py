@@ -82,7 +82,8 @@ class energies:
           gradient_array=self.gradients)
     if(compute_gradients):
        if(self.normalization):
-          self.gradients = self.gradients * (1. / self.number_of_restraints())
+          self.gradients = self.gradients \
+                         * (1. / max(1, self.number_of_restraints()))
 
   def target(self):
     target = self.bond_residual_sum      +\
@@ -92,7 +93,7 @@ class energies:
              self.chirality_residual_sum +\
              self.planarity_residual_sum
     if(self.normalization):
-       return target / self.number_of_restraints()
+       return target / max(1, self.number_of_restraints())
     else:
        return target
 
