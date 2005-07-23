@@ -378,12 +378,26 @@ class environment:
     for name,path in module.name_and_dist_path_pairs():
       self.module_dist_paths[name] = path
 
-  def find_in_repositories(self, relative_path, test=os.path.isdir):
+  def raise_sorry_not_found_in_repositories(self, message):
+    if (isinstance(message, str)): message = [message]
+    else: message = list(message)
+    message.append("  Repository directories searched:")
+    for path in self.repository_paths:
+      message.append('    "%s"' % path)
+    raise Sorry("\n".join(message))
+
+  def find_in_repositories(self,
+        relative_path,
+        test=os.path.isdir,
+        optional=True):
     for path in self.repository_paths:
       dist_path = self.abs_path_clean(
         libtbx.path.norm_join(path, relative_path))
       if (test(dist_path)):
         return dist_path
+    if (not optional):
+      self.raise_sorry_not_found_in_repositories(
+        message="Cannot locate: %s" % show_string(relative_path))
     return None
 
   def find_dist_path(self, module_name, optional=False):
@@ -392,11 +406,8 @@ class environment:
     dist_path = self.find_in_repositories(relative_path=module_name)
     if (dist_path is not None): return dist_path
     if (not optional):
-      msg = ["Module not found: %s" % module_name,
-             "  Repository directories searched:"]
-      for path in self.repository_paths:
-        msg.append('    "%s"' % path)
-      raise Sorry("\n".join(msg))
+      self.raise_sorry_not_found_in_repositories(
+        message="Module not found: %s" % module_name)
     return None
 
   def process_module(self, dependent_module, module_name, optional):
