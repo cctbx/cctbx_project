@@ -385,6 +385,14 @@ else:
       -w
       -DBOOST_DISABLE_THREADS
     """)
+    cxx_version = os.popen("c++ -dumpversion").read().strip()
+    cxx_major = cxx_version.split(".")[:1]
+    if (len(cxx_major) == 1):
+      try: cxx_major = int(cxx_major[0])
+      except ValueError: pass
+      else:
+        if (cxx_major > 3):
+          env_etc.cxxflags_base.remove("-fcoalesce-templates")
     env_etc.ccflags_base = Split("""
       -fPIC
       -no-cpp-precomp
@@ -393,6 +401,8 @@ else:
     """)
     if (libtbx.env.build_options.optimization):
       opts = ["-DNDEBUG", "-O3", "-ffast-math"]
+      if (cxx_version == "4.0.0"):
+        opts[1] = "-O2" # Apple's optimizer is broken
     else:
       opts = ["-O0", "-fno-inline"]
     if (libtbx.env.build_options.debug_symbols):
