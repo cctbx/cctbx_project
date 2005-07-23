@@ -1,17 +1,7 @@
-from mmtbx import monomer_library
-import mmtbx.monomer_library.server
-import mmtbx.monomer_library.pdb_interpretation
-import sys, math
-from libtbx.test_utils import approx_equal
-from iotbx import pdb
-from cctbx.array_family import flex
-from mmtbx.monomer_library import pdb_interpretation
-from cctbx.geometry_restraints.lbfgs import lbfgs as geometry_restraints_lbfgs
-import scitbx.lbfgs
-import libtbx.load_env
-import os
 from cctbx import crystal
-
+from cctbx.array_family import flex
+import math
+import os
 
 class iso:
   def __init__(self, xray_structure,
