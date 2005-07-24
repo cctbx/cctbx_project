@@ -16,7 +16,7 @@ class energies:
                      planarity_proxies=None,
                      compute_gradients=True,
                      disable_asu_cache=False,
-                     normalization=None):
+                     normalization=False):
     adopt_init_args(self, locals())
     if (nonbonded_proxies is not None): assert nonbonded_function is not None
     if (compute_gradients):
