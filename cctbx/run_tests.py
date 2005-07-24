@@ -3,7 +3,6 @@ import libtbx.load_env
 
 def run():
   tst_list = (
-  "$D/cctbx/adp_restraints/tst_adp.py",
   "$D/math/boost_python/tst_math.py",
   "$D/array_family/boost_python/tst_flex.py",
   "$D/uctbx/boost_python/tst_uctbx.py",
