@@ -6,6 +6,7 @@
 #include <scitbx/math/utils.h>
 #include <boost/python/make_constructor.hpp>
 #include <boost/python/args.hpp>
+#include <boost/python/return_arg.hpp>
 #include "flex_helpers.h"
 
 namespace scitbx { namespace boost_python { namespace pickle_single_buffered {
@@ -136,6 +137,14 @@ namespace {
     return result;
   }
 
+  void
+  imul_a_scalar(
+    af::ref<vec3<double> > const& a,
+    double f)
+  {
+    for(std::size_t i=0;i<a.size();i++) a[i] *= f;
+  }
+
   af::shared<vec3<double> >
   div_a_as(
     af::ref<vec3<double> > const& lhs,
@@ -197,6 +206,24 @@ namespace {
       result.push_back(lhs[i] * lhs[i]);
     }
     return result;
+  }
+
+  double
+  sum_sq_(
+    af::const_ref<vec3<double> > const& self)
+  {
+    double result = 0;
+    for(std::size_t i=0;i<self.size();i++) {
+      result += self[i] * self[i];
+    }
+    return result;
+  }
+
+  double
+  norm_(
+    af::const_ref<vec3<double> > const& self)
+  {
+    return std::sqrt(sum_sq_(self));
   }
 
   double
@@ -267,11 +294,13 @@ namespace boost_python {
       .def("__add__", f_w::add_a_s)
       .def("__add__", f_w::add_a_a)
       .def("__iadd__", f_w::iadd_a_s)
+      .def("__iadd__", f_w::iadd_a_a)
       .def("__sub__", f_w::sub_a_s)
       .def("__sub__", f_w::sub_a_a)
       .def("__isub__", f_w::isub_a_s)
       .def("__mul__", mul_a_scalar)
       .def("__rmul__", mul_a_scalar)
+      .def("__imul__", imul_a_scalar, return_self<>())
       .def("__div__", div_a_as)
       .def("__truediv__", div_a_as)
       .def("__mul__", mul_a_mat3)
@@ -282,6 +311,8 @@ namespace boost_python {
         (mat3<double>(*)(
           af::const_ref<vec3<double> > const&,
           af::const_ref<vec3<double> > const&)) matrix::transpose_multiply)
+      .def("sum_sq", sum_sq_)
+      .def("norm", norm_)
       .def("max_distance", max_distance)
       .def("rms_difference", rms_difference)
       .def("rms_length", rms_length)
