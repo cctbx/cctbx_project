@@ -51,7 +51,7 @@ class reader:
     self.miller_indices = flex.miller_index()
     self.i_obs = flex.double()
     self.sigmas = flex.double()
-    self.anomalous = 0
+    self.anomalous = False
     line_count = 3
     while 1:
       line = file_handle.readline()
@@ -82,7 +82,7 @@ class reader:
             raise FormatError, line_error
           if (i):
             h = [-e for e in h]
-            self.anomalous = 1
+            self.anomalous = True
           if (sigma != 0 or (i_obs != 0 and i_obs != 1)):
             self.miller_indices.append(h)
             self.i_obs.append(i_obs)
