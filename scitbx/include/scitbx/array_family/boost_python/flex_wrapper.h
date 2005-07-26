@@ -652,6 +652,7 @@ namespace scitbx { namespace af { namespace boost_python {
     static e_t sum_a(f_t const& a) { return sum(a); }
     static e_t sum_sq_a(f_t const& a) { return sum_sq(a); }
     static e_t product_a(f_t const& a) { return product(a); }
+    static e_t norm_a(f_t const& a) { return norm(a.const_ref()); }
     static e_t mean_a(f_t const& a) { return mean(a); }
     static e_t mean_sq_a(f_t const& a) { return mean_sq(a); }
 
@@ -917,6 +918,7 @@ namespace scitbx { namespace af { namespace boost_python {
         boost::python::def("floor", floor_a);
         boost::python::def("log10", log10_a);
         boost::python::def("sqrt", sqrt_a);
+        boost::python::def("norm", norm_a);
         boost::python::def("mean", mean_a);
         boost::python::def("mean_sq", mean_sq_a);
         boost::python::def("mean_weighted", mean_weighted_a_a);

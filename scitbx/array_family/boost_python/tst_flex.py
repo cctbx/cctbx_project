@@ -597,6 +597,8 @@ def exercise_functions():
   assert flex.max(b) == 6
   assert flex.sum(a) == 6
   assert flex.sum(b) == 15
+  assert approx_equal(flex.norm(a), 3.74165738677)
+  assert approx_equal(flex.norm(b), 8.77496438739)
   assert flex.product(a) == 0
   assert flex.product(b) == 120
   assert flex.mean(a) == 6. / 4
@@ -806,6 +808,11 @@ def exercise_flex_vec3_double():
     ((2*11,2*22,2*35), (2*8,2*23,2*34), (2*13,2*24,2*33)))
   a -= (10,20,30)
   assert approx_equal(tuple(a), ((1,2,5), (-2,3,4), (3,4,3)))
+  b = a.deep_copy()
+  b *= 3
+  assert approx_equal(tuple(b), ((3,6,15), (-6,9,12), (9,12,9)))
+  b += a
+  assert approx_equal(tuple(b), ((4,8,20), (-8,12,16), (12,16,12)))
   assert approx_equal(tuple(a-(20,30,10)),
     ((-19,-28,-5),(-22,-27,-6),(-17,-26,-7)))
   assert tuple(a-a) == ((0,0,0),(0,0,0),(0,0,0))
@@ -830,6 +837,9 @@ def exercise_flex_vec3_double():
   assert approx_equal(
     a.max_distance(b)**2,
     max(flex.vec3_double(a.as_double()-b.as_double()).dot()))
+  assert approx_equal(a.sum_sq(), 285)
+  assert approx_equal(a.sum_sq(), flex.sum_sq(a.as_double()))
+  assert approx_equal(a.norm(), math.sqrt(285))
   assert approx_equal(a.rms_difference(b), math.sqrt(flex.mean((a-b).dot())))
   assert approx_equal(a.rms_difference(b), b.rms_difference(a))
   assert approx_equal(a.rms_difference(a), 0)

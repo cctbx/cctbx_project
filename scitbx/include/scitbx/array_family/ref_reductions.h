@@ -114,6 +114,13 @@ namespace scitbx { namespace af {
 
   template <typename ElementType, typename AccessorType>
   ElementType
+  norm(const_ref<ElementType, AccessorType> const& a)
+  {
+    return std::sqrt(sum_sq(a));
+  }
+
+  template <typename ElementType, typename AccessorType>
+  ElementType
   product(const_ref<ElementType, AccessorType> const& a)
   {
     std::size_t sz = a.size();
