@@ -63,8 +63,8 @@ namespace {
 
   bool
   all_approx_equal_a_a(
-    af::const_ref<double> const& self,
-    af::const_ref<double> const& other,
+    const_ref<double> const& self,
+    const_ref<double> const& other,
     double tolerance=1.e-6)
   {
     return self.all_approx_equal(other, tolerance);
@@ -72,24 +72,38 @@ namespace {
 
   bool
   all_approx_equal_a_s(
-    af::const_ref<double> const& self,
+    const_ref<double> const& self,
     double other,
     double tolerance=1.e-6)
   {
     return self.all_approx_equal(other, tolerance);
   }
 
-  af::shared<double>
+  shared<double>
   round(
-    af::const_ref<double> const& self,
+    const_ref<double> const& self,
     int n_digits=0)
   {
-    af::shared<double> result(self.size(), af::init_functor_null<double>());
+    shared<double> result(self.size(), init_functor_null<double>());
     for(std::size_t i=0;i<self.size();i++) {
       result[i] = math::round(self[i], n_digits);
     }
     return result;
   }
+
+  template <typename T>
+  struct boost_optional_to_python_str
+  {
+    static PyObject*
+    convert(
+      boost::optional<T> const& value)
+    {
+      if (value) {
+        return boost::python::incref(boost::python::object(*value).ptr());
+      }
+      return boost::python::incref(Py_None);
+    }
+  };
 
 } // namespace <anonymous>
 
@@ -106,6 +120,10 @@ namespace boost_python {
   {
     using namespace boost::python;
 
+    boost::python::to_python_converter<
+      boost::optional<double>,
+      boost_optional_to_python_str<double> >();
+
     flex_wrapper<double>::numeric("double", scope())
       .def_pickle(flex_pickle_single_buffered<double>())
       .def("__init__", make_constructor(
@@ -113,8 +131,8 @@ namespace boost_python {
       .def("add_selected",
         (object(*)(
           object const&,
-          af::const_ref<std::size_t> const&,
-          af::const_ref<double> const&)) add_selected_unsigned_a,
+          const_ref<std::size_t> const&,
+          const_ref<double> const&)) add_selected_unsigned_a,
         (arg_("self"), arg_("indices"), arg_("values")))
       .def("all_approx_equal",
         all_approx_equal_a_a,
@@ -189,6 +207,28 @@ namespace boost_python {
         arg_("b")))
       .def("matrix_inversion_in_place",
         (void(*)(ref<double, c_grid<2> > const&)) matrix_inversion_in_place)
+      .def("cos_angle",
+        (boost::optional<double>(*)(
+          const_ref<double> const&,
+          const_ref<double> const&)) cos_angle, (
+        arg_("b")))
+      .def("cos_angle",
+        (double(*)(
+          const_ref<double> const&,
+          const_ref<double> const&,
+          const double&)) cos_angle, (
+        arg_("b"), arg_("value_if_undefined")))
+      .def("angle",
+        (boost::optional<double>(*)(
+          const_ref<double> const&,
+          const_ref<double> const&)) angle, (
+        arg_("b")))
+      .def("angle",
+        (boost::optional<double>(*)(
+          const_ref<double> const&,
+          const_ref<double> const&,
+          bool)) angle, (
+        arg_("b"), arg_("deg")=false))
     ;
 
     def("extract_double_attributes", extract_double_attributes,

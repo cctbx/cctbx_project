@@ -1257,6 +1257,32 @@ def exercise_matrix():
   assert approx_equal(matrix.sqr(m).determinant(), 21908)
   m = [0,0,0,0,6,2,-1,63,-4,1,4,6,1,0,-13,5]
   assert matrix.sqr(m).determinant() == 0
+  #
+  for size in xrange(10):
+    a = flex.double(size)
+    b = flex.double(size)
+    assert a.cos_angle(b=b, value_if_undefined=-10) == -10
+    assert a.cos_angle(b=b) is None
+    assert a.angle(b=b) is None
+  for size in xrange(1,10):
+    a = flex.double(xrange(10))
+    b = flex.double(xrange(10))
+    assert approx_equal(a.cos_angle(b=b, value_if_undefined=-10), 1,eps=1.e-10)
+    assert approx_equal(a.cos_angle(b=b), 1, eps=1.e-10)
+    assert approx_equal(a.angle(b=b), 0, eps=1.e-10)
+  a = flex.double([1,0])
+  b = flex.double([1,1])
+  assert approx_equal(a.angle(b, deg=True), 45)
+  b = flex.double([1,2])
+  assert approx_equal(a.angle(b, deg=True), 63.4349488229)
+  mersenne_twister = flex.mersenne_twister(0)
+  for size in xrange(1,100):
+    a = mersenne_twister.random_double(size=size)
+    b = mersenne_twister.random_double(size=size)
+    assert approx_equal(
+      a.cos_angle(b=b), matrix.col(a).cos_angle(matrix.col(b)))
+    assert approx_equal(a.angle(b=b, deg=False), a.angle(b))
+    assert approx_equal(a.angle(b=b, deg=True), a.angle(b)*180/math.pi)
 
 def exercise_matrix_inversion_in_place():
   m = flex.double()
