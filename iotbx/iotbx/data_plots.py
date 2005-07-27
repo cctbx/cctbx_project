@@ -41,14 +41,16 @@ class plot_data:
 
 def plot_data_loggraph(plot_data,output):
   ## First we need to print the header information
-  print >> output, '$TABLE: %s:\n'%(plot_data.plot_title)
-  print >> output, '$GRAPHS\n'
-  print >> output, ':%s \n' %(plot_data.comments)
+  print >> output
+  print >> output
+  print >> output, '$TABLE: %s:'%(plot_data.plot_title)
+  print >> output, '$GRAPHS'
+  print >> output, ':%s ' %(plot_data.comments)
   index_string = ''
   for ii in range(len(plot_data.y_data)+1):
     index_string += '%d,'%(ii+1)
-  print >> output, ':%s:%s:\n'%(plot_data.domain_flag,index_string[:-1])
-  print >> output, '$$\n'
+  print >> output, ':%s:%s:'%(plot_data.domain_flag,index_string[:-1])
+  print >> output, '$$'
   ## replace spaces for loggraph with underscores
   tmp_legend = plot_data.x_label
   spaces = 0
@@ -65,11 +67,11 @@ def plot_data_loggraph(plot_data,output):
     if spaces>0:
       tmp_legend = tmp_legend.replace(' ','_')
     label_string += '   %s'%( tmp_legend )
-  print >> output, '%s   $$ \n'%(label_string)
-  print >> output, '$$\n'
+  print >> output, '%s   $$ '%(label_string)
+  print >> output, '$$'
   for ii in range(len(plot_data.x_data)):
     data_string = '%f'%(plot_data.x_data[ii])
     for jj in range(len(plot_data.y_data)):
       data_string +='   %f'%(plot_data.y_data[jj][ii])
-    print >> output, '%s\n'%(data_string)
-  print >> output, '$$\n'
+    print >> output, '%s'%(data_string)
+  print >> output, '$$'
