@@ -268,7 +268,7 @@ namespace scitbx { namespace af {
     bool deg)
   {
     boost::optional<FloatType> rad = angle(a, b);
-    if (!rad or !deg) return rad;
+    if (!rad || !deg) return rad;
     return boost::optional<FloatType>((*rad) / constants::pi_180);
   }
 
