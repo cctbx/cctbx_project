@@ -8,6 +8,7 @@
 #include <scitbx/matrix/inversion.h>
 #include <scitbx/matrix/diagonal.h>
 #include <scitbx/mat_ref.h>
+#include <boost/optional.hpp>
 
 namespace scitbx { namespace af {
 
@@ -185,8 +186,8 @@ namespace scitbx { namespace af {
   template <typename FloatType>
   void
   matrix_inversion_in_place(
-    af::ref<FloatType, af::c_grid<2> > const& a,
-    af::ref<FloatType, af::c_grid<2> > const& b)
+    ref<FloatType, c_grid<2> > const& a,
+    ref<FloatType, c_grid<2> > const& b)
   {
     SCITBX_ASSERT(a.accessor().is_square());
     if (   b.accessor()[0] != 0
@@ -204,10 +205,71 @@ namespace scitbx { namespace af {
   template <typename FloatType>
   void
   matrix_inversion_in_place(
-    af::ref<FloatType, af::c_grid<2> > const& a)
+    ref<FloatType, c_grid<2> > const& a)
   {
     matrix_inversion_in_place(
-      a, af::ref<FloatType, af::c_grid<2> >(0, af::c_grid<2>(0,0)));
+      a, ref<FloatType, c_grid<2> >(0, c_grid<2>(0,0)));
+  }
+
+  template <typename FloatType>
+  boost::optional<FloatType>
+  cos_angle(
+    const_ref<FloatType> const& a,
+    const_ref<FloatType> const& b)
+  {
+    SCITBX_ASSERT(b.size() == a.size());
+    FloatType a_sum_sq = 0;
+    FloatType b_sum_sq = 0;
+    FloatType a_dot_b = 0;
+    for(std::size_t i=0;i<a.size();i++) {
+      const FloatType& ai = a[i];
+      a_sum_sq += ai * ai;
+      const FloatType& bi = b[i];
+      b_sum_sq += bi * bi;
+      a_dot_b +=  ai * bi;
+    }
+    if (a_sum_sq == 0 || b_sum_sq == 0) {
+      return boost::optional<FloatType>();
+    }
+    FloatType d = a_sum_sq * b_sum_sq;
+    if (d == 0) return boost::optional<FloatType>();
+    return boost::optional<FloatType>(a_dot_b / std::sqrt(d));
+  }
+
+  template <typename FloatType>
+  FloatType
+  cos_angle(
+    const_ref<FloatType> const& a,
+    const_ref<FloatType> const& b,
+    FloatType const& value_if_undefined)
+  {
+    boost::optional<FloatType> result = cos_angle(a, b);
+    if (result) return *result;
+    return value_if_undefined;
+  }
+
+  template <typename FloatType>
+  boost::optional<FloatType>
+  angle(
+    const_ref<FloatType> const& a,
+    const_ref<FloatType> const& b)
+  {
+    boost::optional<FloatType> c = cos_angle(a, b);
+    if (!c) return c;
+    FloatType result = std::acos(*c);
+    return boost::optional<FloatType>(result);
+  }
+
+  template <typename FloatType>
+  boost::optional<FloatType>
+  angle(
+    const_ref<FloatType> const& a,
+    const_ref<FloatType> const& b,
+    bool deg)
+  {
+    boost::optional<FloatType> rad = angle(a, b);
+    if (!rad or !deg) return rad;
+    return boost::optional<FloatType>((*rad) / constants::pi_180);
   }
 
 }} // namespace scitbx::af
