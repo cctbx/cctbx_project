@@ -1,17 +1,9 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Sep: Created (R.W. Grosse-Kunstleve)
- */
-
 #include <cctbx/boost_python/flex_fwd.h>
 
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
 
 namespace scitbx { namespace af { namespace boost_python {
+namespace {
 
   shared<size_t>
   column(
@@ -25,6 +17,15 @@ namespace scitbx { namespace af { namespace boost_python {
     }
     return result;
   }
+
+} // namespace <anonymous>
+
+  template <>
+  struct flex_default_element<tiny<std::size_t, 2> >
+  {
+    static tiny<std::size_t, 2>
+    get() { return tiny<std::size_t, 2>(0,0); }
+  };
 
   void wrap_flex_tiny_size_t_2()
   {

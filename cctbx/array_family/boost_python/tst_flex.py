@@ -11,6 +11,10 @@ def exercise_flex_miller_index():
 
 def exercise_flex_sym_mat3_double():
   a = flex.sym_mat3_double()
+  assert a.size() == 0
+  a = flex.sym_mat3_double(132)
+  for x in a:
+    assert x == (0,0,0,0,0,0)
   a = flex.sym_mat3_double(((1,2,3,4,5,6), (2,3,4,5,6,7)))
   assert a.size() == 2
   assert tuple(a) == ((1,2,3,4,5,6), (2,3,4,5,6,7))
@@ -23,6 +27,10 @@ def exercise_flex_sym_mat3_double():
 
 def exercise_flex_hendrickson_lattman():
   a = flex.hendrickson_lattman()
+  assert a.size() == 0
+  a = flex.hendrickson_lattman(132)
+  for x in a:
+    assert x == (0,0,0,0)
   a = flex.hendrickson_lattman(((1,2,3,4), (2,3,4,5), (3,4,5,6)))
   assert a.size() == 3
   assert a.count((1,2,3,4)) == 1
@@ -56,6 +64,10 @@ def exercise_flex_hendrickson_lattman():
 
 def exercise_flex_tiny_size_t_2():
   a = flex.tiny_size_t_2()
+  assert a.size() == 0
+  a = flex.tiny_size_t_2(132)
+  for x in a:
+    assert x == (0,0)
   a = flex.tiny_size_t_2(((1,2), (2,3), (3,4)))
   assert a.size() == 3
   assert tuple(a) == ((1,2), (2,3), (3,4))
@@ -67,6 +79,7 @@ def exercise_flex_xray_scatterer():
   uc = uctbx.unit_cell((10,11,12))
   sg = sgtbx.space_group_info("P 2")
   a = flex.xray_scatterer()
+  assert a.size() == 0
   a = flex.xray_scatterer((
     xray.scatterer("Si1", (0.1,0.2,0.3)),
     xray.scatterer("O1", (0.2,0.3,0.4), (1,2,3,-0.1,0.2,-0.3), 0.9),

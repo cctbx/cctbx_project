@@ -36,6 +36,13 @@ namespace scitbx { namespace boost_python { namespace pickle_single_buffered {
 
 namespace scitbx { namespace af { namespace boost_python {
 
+  template <>
+  struct flex_default_element<sym_mat3<double> >
+  {
+    static sym_mat3<double>
+    get() { return sym_mat3<double>(0,0,0,0,0,0); }
+  };
+
   namespace {
 
     flex<sym_mat3<double> >::type*

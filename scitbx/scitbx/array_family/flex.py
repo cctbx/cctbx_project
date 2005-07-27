@@ -168,6 +168,11 @@ def exercise_triple(flex_triple, flex_order=None, as_double=False):
   from libtbx.test_utils import approx_equal
   import pickle
   a = flex_triple()
+  assert a.size() == 0
+  a = flex_triple(132)
+  assert a.size() == 132
+  for x in a:
+    assert x == (0,0,0)
   a = flex_triple(((1,2,3), (2,3,4), (3,4,5)))
   assert a.size() == 3
   assert tuple(a) == ((1,2,3), (2,3,4), (3,4,5))
