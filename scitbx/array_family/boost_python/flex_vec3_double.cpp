@@ -270,6 +270,13 @@ namespace {
 
 namespace boost_python {
 
+  template <>
+  struct flex_default_element<vec3<double> >
+  {
+    static vec3<double>
+    get() { return vec3<double>(0,0,0); }
+  };
+
   void wrap_flex_vec3_double()
   {
     using namespace boost::python;

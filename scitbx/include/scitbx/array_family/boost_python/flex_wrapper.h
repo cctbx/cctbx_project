@@ -24,6 +24,13 @@ namespace scitbx { namespace af { namespace boost_python {
 
   using scitbx::boost_python::positive_getitem_index;
 
+  template <typename ElementType>
+  struct flex_default_element
+  {
+    static ElementType
+    get() { return ElementType(); }
+  };
+
   template <typename ElementType,
             typename GetitemReturnValuePolicy
               = boost::python::return_value_policy<
@@ -45,7 +52,7 @@ namespace scitbx { namespace af { namespace boost_python {
     {}
 
     flex_wrapper(PyObject*, flex_grid<> const& fg)
-      : f_t(fg)
+      : f_t(fg, flex_default_element<ElementType>::get())
     {}
 
     flex_wrapper(PyObject*, flex_grid<> const& fg, ElementType const& x)
@@ -53,7 +60,7 @@ namespace scitbx { namespace af { namespace boost_python {
     {}
 
     flex_wrapper(PyObject*, std::size_t n)
-      : f_t(flex_grid<>(n))
+      : f_t(flex_grid<>(n), flex_default_element<ElementType>::get())
     {}
 
     flex_wrapper(PyObject*, std::size_t n, ElementType const& x)

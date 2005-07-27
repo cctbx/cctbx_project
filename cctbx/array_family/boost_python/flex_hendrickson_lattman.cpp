@@ -84,6 +84,13 @@ namespace {
 
 } // namespace <anonymous>
 
+  template <>
+  struct flex_default_element<cctbx::hendrickson_lattman<> >
+  {
+    static cctbx::hendrickson_lattman<>
+    get() { return cctbx::hendrickson_lattman<>(0,0,0,0); }
+  };
+
   void wrap_flex_hendrickson_lattman()
   {
     using namespace boost::python;
