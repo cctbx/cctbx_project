@@ -61,7 +61,8 @@ namespace cctbx { namespace crystal {
                         double const& sphere_radius,
                         double const& power_factor,
                         double const& mean_power,
-                        bool const& normalize)
+                        bool const& normalize,
+                        bool const& collect)
       {
         CCTBX_ASSERT(sites_frac.size() == pair_sym_table.size());
         CCTBX_ASSERT(u_isos.size() == pair_sym_table.size());
@@ -98,6 +99,11 @@ namespace cctbx { namespace crystal {
                    derivatives_[j_seq] += weight * g2;
                    target_ += (weight * dif_sq / sum_pow);
                    number_of_members_ += 1;
+                   if(collect) {
+                      ui_.push_back(u1);
+                      uj_.push_back(u2);
+                      rij_.push_back(dist);
+                   }
                 }
             }
           }
@@ -111,10 +117,16 @@ namespace cctbx { namespace crystal {
       double target() const { return target_; }
       af::shared<double> derivatives() const { return derivatives_; }
       unsigned number_of_members() const { return number_of_members_; }
+      af::shared<double> ui() const { return ui_; }
+      af::shared<double> uj() const { return uj_; }
+      af::shared<double> rij() const { return rij_; }
   private:
       unsigned number_of_members_;
       double target_;
       af::shared<double> derivatives_;
+      af::shared<double> ui_;
+      af::shared<double> uj_;
+      af::shared<double> rij_;
   };
 
   /*! \brief Determination of distances of all pair interactions

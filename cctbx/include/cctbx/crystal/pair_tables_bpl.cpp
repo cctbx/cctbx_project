@@ -119,6 +119,7 @@ namespace {
                                   double const&,
                                   double const&,
                                   double const&,
+                                  bool const&,
                                   bool const&>((
                                               arg_("pair_sym_table"),
                                               arg_("orthogonalization_matrix"),
@@ -127,10 +128,14 @@ namespace {
                                               arg_("sphere_radius"),
                                               arg_("distance_power"),
                                               arg_("mean_power"),
-                                              arg_("normalize"))))
+                                              arg_("normalize"),
+                                              arg_("collect"))))
       .def("target", &adp_iso_restraint_helper::target)
       .def("derivatives", &adp_iso_restraint_helper::derivatives)
       .def("number_of_members", &adp_iso_restraint_helper::number_of_members)
+      .def("ui", &adp_iso_restraint_helper::ui)
+      .def("uj", &adp_iso_restraint_helper::uj)
+      .def("rij", &adp_iso_restraint_helper::rij)
     ;
     }
   };

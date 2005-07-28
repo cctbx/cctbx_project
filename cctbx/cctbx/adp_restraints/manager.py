@@ -10,7 +10,8 @@ class iso:
                      distance_power,
                      wilson_b,
                      mean_power,
-                     normalize):
+                     normalize,
+                     collect=False):
      assert normalize in (True, False)
      grm = geometry_restraints_manager
      assert grm.plain_pair_sym_table is not None
@@ -22,6 +23,19 @@ class iso:
      self._target = 0.0
      self._gradients = flex.double(sites.size(),0.0)
      self.counter = 0
+     self.obj = crystal.adp_iso_restraint_helper(
+                      pair_sym_table           = grm.plain_pair_sym_table,
+                      orthogonalization_matrix = uc.orthogonalization_matrix(),
+                      sites_frac               = sites,
+                      u_isos                   = u_isos,
+                      sphere_radius            = sphere_radius,
+                      distance_power           = distance_power,
+                      mean_power               = mean_power,
+                      normalize                = normalize,
+                      collect                  = collect)
+     self._target = self.obj.target()
+     self._gradients = self.obj.derivatives()
+     self.counter = self.obj.number_of_members()
      if(wilson_b is not None):
         u_mean = flex.mean(u_isos)
         u_wilson = wilson_b/(math.pi**2*8)
@@ -32,18 +46,6 @@ class iso:
              math.sqrt(flex.sum(flex.pow2(gwa))))
         self._gradients = self._gradients * w + gwa
         self._target = self._target * w + term**2
-     obj = crystal.adp_iso_restraint_helper(
-                      pair_sym_table           = grm.plain_pair_sym_table,
-                      orthogonalization_matrix = uc.orthogonalization_matrix(),
-                      sites_frac               = sites,
-                      u_isos                   = u_isos,
-                      sphere_radius            = sphere_radius,
-                      distance_power           = distance_power,
-                      mean_power               = mean_power,
-                      normalize                = normalize)
-     self._target = obj.target()
-     self._gradients = obj.derivatives()
-     self.counter = obj.number_of_members()
 
   def target(self):
     return self._target
