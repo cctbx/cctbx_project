@@ -1,7 +1,7 @@
 import libtbx.load_env
 from libtbx.str_utils import show_string
 import md5
-import sys
+import sys, os
 Import("env_base", "env_etc")
 env_etc.boost_dist = libtbx.env.dist_path("boost")
 env_etc.boost_include = env_etc.boost_dist
@@ -44,6 +44,14 @@ if (not env_etc.no_boost_python):
   env_pure_boost_python_ext.SharedLibrary(
     target="#lib/boost_rational_ext",
     source="rational_ext.cpp")
+
+  env = env_pure_boost_python_ext.Copy()
+  env_etc.include_registry.prepend(
+    env=env,
+    paths=[os.path.dirname(libtbx.env.dist_path("boost_adaptbx"))])
+  env.SharedLibrary(
+    target="#lib/boost_optional_ext",
+    source="optional_ext.cpp")
 
   import os, os.path
   env = env_base.Copy(

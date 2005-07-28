@@ -91,20 +91,6 @@ namespace {
     return result;
   }
 
-  template <typename T>
-  struct boost_optional_to_python_str
-  {
-    static PyObject*
-    convert(
-      boost::optional<T> const& value)
-    {
-      if (value) {
-        return boost::python::incref(boost::python::object(*value).ptr());
-      }
-      return boost::python::incref(Py_None);
-    }
-  };
-
 } // namespace <anonymous>
 
 namespace boost_python {
@@ -119,10 +105,6 @@ namespace boost_python {
   void wrap_flex_double()
   {
     using namespace boost::python;
-
-    boost::python::to_python_converter<
-      boost::optional<double>,
-      boost_optional_to_python_str<double> >();
 
     flex_wrapper<double>::numeric("double", scope())
       .def_pickle(flex_pickle_single_buffered<double>())
