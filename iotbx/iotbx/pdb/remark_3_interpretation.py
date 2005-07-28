@@ -260,3 +260,67 @@ def extract_tls_parameters(remark_3_records):
                         origin = origin,
                         number_of_tls_groups = number_of_tls_groups,
                         residue_range = residue_range)
+
+def get_program(st):
+  program = None
+  programs = ["SHELX", "CNS", "PROLSQ", "FROG", "REFMAC", "XPLOR", "X-PLOR",
+              "NUCLSQ", "MOPRO", "MOLLY", "PROFFT", "TNT", "CORELS", "GROMOS"
+              "XTALVIEW", "RESTRAIN", "GPRLSA", "ARP", "CNX", "EREF",
+              "NMREF", "GSAS", "BUSTER","SOLVE", "CCP4", "NUCLIN", "MAIN"]
+  diamond = "DIAMOND"
+  if(st[0:6] == "REMARK"):
+     st_split = st.split()
+     ch_1 = st.count("REMARK   3") == 1
+     ch_2 = st.count("PROGRAM") == 1
+     ch_3 = st.count("REFINEMENT") == 1
+     if(ch_1 and ch_2):
+        for item in st_split:
+            for potential_program in programs:
+                if(potential_program.count(",")):
+                   potential_program = potential_program[:-1]
+                if(item.count(potential_program)):
+                   program = potential_program
+     if(program is None and ch_1):
+        refinement_or_program = st.count("REFINEMENT")>=1 or \
+                                st.count("PROGRAM")>=1 or \
+                                st.count("PROCEDURE")>=1
+        j_and_l = st.count("JACK")==1 or st.count("LEVITT")
+        if(refinement_or_program and j_and_l): program = "JACK AND LEVITT"
+        if((ch_2 or ch_3) and st.count(diamond) != 0): program = diamond
+        k_and_h = st.count("KONNERT")==1 or st.count("HENDRICKSON")==1
+        k_and_h_1 = st.count("KONNERT AND HENDRICKSON")==1
+        if((refinement_or_program and k_and_h) or k_and_h_1):
+           program = "KONNERT AND HENDRICKSON"
+        sa = st.count("SIMULATED")==1 and st.count("ANNEALING")
+        if(refinement_or_program and sa): program = "X-PLOR"
+        if(refinement_or_program and st.count("CORELS")==1): program = "CORELS"
+        jones_and_liljas = "JONES AND A. LILJAS"
+        if(st.count(jones_and_liljas) or st.count("T.A.JONES, L.LILJAS")):
+           program = jones_and_liljas
+  if(program == "XPLOR"): program = "X-PLOR"
+  return program
+
+def format_name(program_names):
+  try:
+    new = program_names[0]
+    first = program_names[0]
+    for name in program_names:
+      if(name != first):
+         new +="/"+name
+         first = name
+  except: return program_names
+  return new
+
+
+def extract_program_name(remark_3_records):
+  p_counter = 0
+  program_names = []
+  for record in remark_3_records:
+      result = get_program(record)
+      if(result is not None):
+         program_names.append(result)
+         p_counter +=1
+  if(p_counter != 0):
+     return format_name(program_names)
+  else:
+     return None
