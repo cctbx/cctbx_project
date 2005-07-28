@@ -1,7 +1,6 @@
 from cctbx import geometry_restraints
 from cctbx.array_family import flex
 import scitbx.restraints
-from libtbx import introspection
 from stdlib import math
 import sys
 
@@ -19,7 +18,18 @@ class energies(scitbx.restraints.energies):
                      gradients=None,
                      disable_asu_cache=False,
                      normalization=False):
-    introspection.adopt_init_args()
+    self.sites_cart = sites_cart
+    self.bond_proxies = bond_proxies
+    self.nonbonded_proxies = nonbonded_proxies
+    self.nonbonded_function = nonbonded_function
+    self.angle_proxies = angle_proxies
+    self.dihedral_proxies = dihedral_proxies
+    self.chirality_proxies = chirality_proxies
+    self.planarity_proxies = planarity_proxies
+    self.compute_gradients = compute_gradients
+    self.gradients = gradients
+    self.disable_asu_cache = disable_asu_cache
+    self.normalization = normalization
     scitbx.restraints.energies.__init__(self,
       compute_gradients=compute_gradients,
       gradients=gradients,
