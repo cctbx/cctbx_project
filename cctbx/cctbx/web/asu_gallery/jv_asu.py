@@ -103,7 +103,7 @@ def shrink_polygon(vertices, shrink_length):
     j = (i-1) % n
     ei = edge_vectors[i]
     ej = edge_vectors[j]
-    phi = math.acos(-ei.dot(ej) / math.sqrt(ei.norm() * ej.norm()))
+    phi = math.acos(-ei.dot(ej) / math.sqrt(ei.norm_sq() * ej.norm_sq()))
     assert 0 < phi < math.pi
     f = shrink_length / math.tan(phi/2)
     shift_para = ei * (f / abs(ei))

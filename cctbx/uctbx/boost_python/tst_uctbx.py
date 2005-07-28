@@ -332,7 +332,7 @@ def unit_cell_bases_mean_square_difference(self, other):
   for basis_vector in [(1,0,0),(0,1,0),(0,0,1)]:
     self_v = matrix.col(self.orthogonalize(basis_vector))
     other_v = matrix.col(other.orthogonalize(basis_vector))
-    diff_sqs.append((self_v - other_v).norm())
+    diff_sqs.append((self_v - other_v).norm_sq())
   return flex.mean(diff_sqs)
 
 def exercise_bases_rmsd():

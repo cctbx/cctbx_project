@@ -176,7 +176,7 @@ def random_sites(n_sites, max_coordinate=10, min_distance=0.5,
     new_site = random_site(max_coordinate)
     ok = True
     for site in sites:
-      if ((new_site-site).norm() < min_distance**2):
+      if ((new_site-site).norm_sq() < min_distance**2):
         ok = False
         break
     if (ok):
