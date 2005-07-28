@@ -1,4 +1,5 @@
 from __future__ import generators
+import boost.optional
 import scitbx.boost_python.slice
 
 import boost.python
