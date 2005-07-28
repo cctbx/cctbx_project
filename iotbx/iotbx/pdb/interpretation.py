@@ -133,6 +133,7 @@ class stage_1:
     self.crystal_symmetry = None
     self.scale_matrix = [[None]*9,[None]*3]
     self.remark_3_records = []
+    self.remark_2_records = []
     self.remark_290_records = []
     self.remark_r_free_flags_md5_hexdigest = []
     self.break_indices = flex.size_t()
@@ -170,6 +171,8 @@ class stage_1:
           pdb_record=state.raw_record)
         if (crystal_symmetry is not None):
           self.crystal_symmetry = crystal_symmetry
+      elif (state.raw_record.startswith("REMARK   2 ")):
+        self.remark_2_records.append(state.raw_record.rstrip())
       elif (state.raw_record.startswith("REMARK   3 ")):
         self.remark_3_records.append(state.raw_record.rstrip())
       elif (state.raw_record.startswith("HEADER ")):
