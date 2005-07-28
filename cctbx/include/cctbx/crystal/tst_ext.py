@@ -241,7 +241,7 @@ def exercise_direct_space_asu():
         asu_mappings.diff_vec(pair=index_pair),
         index_pair.diff_vec)
       assert approx_equal(
-        matrix.col(asu_mappings.diff_vec(pair=index_pair)).norm(),
+        matrix.col(asu_mappings.diff_vec(pair=index_pair)).norm_sq(),
         index_pair.dist_sq)
       dist_sq.append(index_pair.dist_sq)
     assert simple_pair_generator.at_end()
@@ -277,7 +277,7 @@ def exercise_direct_space_asu():
           asu_mappings.diff_vec(pair=index_pair),
           index_pair.diff_vec)
         assert approx_equal(
-          matrix.col(asu_mappings.diff_vec(pair=index_pair)).norm(),
+          matrix.col(asu_mappings.diff_vec(pair=index_pair)).norm_sq(),
           index_pair.dist_sq)
         assert not asu_mappings.is_simple_interaction(pair=index_pair)
         dist_sq.append(index_pair.dist_sq)

@@ -161,13 +161,13 @@ def exercise_neighbors_pair_generators(structure, verbose=0):
             j_sym_start = 0
           for j_sym in xrange(j_sym_start, len(array_of_mappings_j)):
             site_1 = matrix.col(array_of_mappings_j[j_sym].mapped_site())
-            dist_sq = (site_1-site_0).norm()
+            dist_sq = (site_1-site_0).norm_sq()
             pair_list.append((i_seq,j_seq,j_sym,dist_sq))
           if (not minimal and i_seq != j_seq):
             site_1 = matrix.col(array_of_mappings_j[0].mapped_site())
             for i_sym in xrange(1, len(array_of_mappings_i)):
               site_2 = matrix.col(array_of_mappings_i[i_sym].mapped_site())
-              dist_sq = (site_2-site_1).norm()
+              dist_sq = (site_2-site_1).norm_sq()
               pair_list.append((j_seq,i_seq,i_sym,dist_sq))
       for pair_generator_type in [crystal.neighbors_simple_pair_generator,
                                   crystal.neighbors_fast_pair_generator]:

@@ -219,9 +219,9 @@ class cut(cut_expr_ops):
     rt = cb_op.c().as_rational()
     r_inv_transpose = cb_op.c_inv().r().as_rational().transpose()
     n = matrix.col(self.n)
-    n_norm = n.norm()
-    assert n_norm != 0
-    x = n * (-self.c / rational.int(n_norm))
+    n_norm_sq = n.norm_sq()
+    assert n_norm_sq != 0
+    x = n * (-self.c / rational.int(n_norm_sq))
     assert n.dot(x)+self.c == 0
     np = r_inv_transpose * n
     xp = rt.r * x + rt.t
