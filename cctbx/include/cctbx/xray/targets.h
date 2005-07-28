@@ -354,7 +354,7 @@ double maximum_likelihood_target_one_h(double fo,
   //CCTBX_ASSERT( std::abs(k) > 1.e-9 );
   if(k <= 0.0) k = 1.0;
   double target = 0.0;
-  if(a <= 0.0 || b <= 1.e-10 || fo <= 0.0 || fc <= 0.0) {
+  if(a <= 0.0 || b <= 1.e-3 || fo <= 0.0 || fc <= 0.0) {
      return 0.0;
   }
   a *= k;
@@ -405,7 +405,7 @@ std::complex<double> d_maximum_likelihood_target_one_h_over_fc(
   //CCTBX_ASSERT( std::abs(k) > 1.e-9 );
   if(k <= 0.0) k = 1.0;
   std::complex<double> d_target_over_fc = std::complex<double> (0.0,0.0);
-  if(a <= 0.0 || b <= 1.e-10) {
+  if(a <= 0.0 || b <= 1.e-3) {
      return std::complex<double> (0.0,0.0);
   }
   a *= k;
