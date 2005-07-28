@@ -322,10 +322,11 @@ class manager:
     pair_asu_table.add_all_pairs(distance_cutoff=self.plain_pairs_radius)
     self.plain_pair_sym_table=pair_asu_table.extract_pair_sym_table()
 
-  def energies(self,
+  def energies_sites(self,
         sites_cart,
         flags=None,
         compute_gradients=False,
+        gradients=None,
         disable_asu_cache=False,
         lock_pair_proxies=False,
         normalization=False):
@@ -363,6 +364,7 @@ class manager:
       chirality_proxies=chirality_proxies,
       planarity_proxies=planarity_proxies,
       compute_gradients=compute_gradients,
+      gradients=gradients,
       disable_asu_cache=disable_asu_cache,
       normalization=normalization)
 

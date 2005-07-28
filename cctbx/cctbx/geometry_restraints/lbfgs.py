@@ -39,8 +39,8 @@ class lbfgs:
     sites_cart.extend(self.tmp.sites_shifted)
     del self.tmp
     del self.x
-    self.first_target_value = self.first_target_result.target()
-    self.final_target_value = self.final_target_result.target()
+    self.first_target_value = self.first_target_result.target
+    self.final_target_value = self.final_target_result.target
 
   def apply_shifts(self):
     self.tmp.sites_shifted = self.tmp.sites_cart + flex.vec3_double(self.x)
@@ -56,12 +56,13 @@ class lbfgs:
           site_cart=self.tmp.sites_shifted[i_seq])
 
   def compute_target(self, compute_gradients):
-    self.tmp.target_result = self.tmp.geometry_restraints_manager.energies(
-      sites_cart=self.tmp.sites_shifted,
-      flags=self.tmp.geometry_restraints_flags,
-      compute_gradients=compute_gradients,
-      disable_asu_cache=self.tmp.disable_asu_cache,
-      lock_pair_proxies=self.tmp.lock_pair_proxies)
+    self.tmp.target_result = \
+      self.tmp.geometry_restraints_manager.energies_sites(
+        sites_cart=self.tmp.sites_shifted,
+        flags=self.tmp.geometry_restraints_flags,
+        compute_gradients=compute_gradients,
+        disable_asu_cache=self.tmp.disable_asu_cache,
+        lock_pair_proxies=self.tmp.lock_pair_proxies)
     self.tmp.lock_pair_proxies = True
 
   def callback_after_step(self, minimizer):
@@ -73,7 +74,7 @@ class lbfgs:
     else:
       self.apply_shifts()
     self.compute_target(compute_gradients=True)
-    self.f = self.tmp.target_result.target()
+    self.f = self.tmp.target_result.target
     if (self.first_target_result is None):
       self.first_target_result = self.tmp.target_result
     self.g = self.tmp.target_result.gradients.as_double()

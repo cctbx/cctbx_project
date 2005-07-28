@@ -1,10 +1,11 @@
 from cctbx import geometry_restraints
 from cctbx.array_family import flex
-import sys
+import scitbx.restraints
+from libtbx import introspection
 from stdlib import math
-from scitbx.python_utils.misc import adopt_init_args
+import sys
 
-class energies:
+class energies(scitbx.restraints.energies):
 
   def __init__(self, sites_cart,
                      bond_proxies=None,
@@ -15,14 +16,22 @@ class energies:
                      chirality_proxies=None,
                      planarity_proxies=None,
                      compute_gradients=True,
+                     gradients=None,
                      disable_asu_cache=False,
                      normalization=False):
-    adopt_init_args(self, locals())
+    introspection.adopt_init_args()
+    scitbx.restraints.energies.__init__(self,
+      compute_gradients=compute_gradients,
+      gradients=gradients,
+      gradients_size=sites_cart.size(),
+      gradients_factory=flex.vec3_double,
+      normalization=normalization)
     if (nonbonded_proxies is not None): assert nonbonded_function is not None
     if (compute_gradients):
-      self.gradients = flex.vec3_double(sites_cart.size(), [0,0,0])
-    else:
-      self.gradients = None
+      if (self.gradients is None):
+        self.gradients = flex.vec3_double(sites_cart.size(), [0,0,0])
+      else:
+        assert self.gradients.size() == sites_cart.size()
     if (bond_proxies is None):
       self.n_bond_proxies = None
       self.bond_residual_sum = 0
@@ -33,6 +42,8 @@ class energies:
         sorted_asu_proxies=bond_proxies,
         gradient_array=self.gradients,
         disable_cache=disable_asu_cache)
+      self.number_of_restraints += self.n_bond_proxies
+      self.residual_sum += self.bond_residual_sum
     if (nonbonded_proxies is None):
       self.n_nonbonded_proxies = None
       self.nonbonded_residual_sum = 0
@@ -44,6 +55,8 @@ class energies:
         gradient_array=self.gradients,
         function=nonbonded_function,
         disable_cache=False)
+      self.number_of_restraints += self.n_nonbonded_proxies
+      self.residual_sum += self.nonbonded_residual_sum
     if (angle_proxies is None):
       self.n_angle_proxies = None
       self.angle_residual_sum = 0
@@ -53,6 +66,8 @@ class energies:
         sites_cart=sites_cart,
         proxies=angle_proxies,
         gradient_array=self.gradients)
+      self.number_of_restraints += self.n_angle_proxies
+      self.residual_sum += self.angle_residual_sum
     if (dihedral_proxies is None):
       self.n_dihedral_proxies = None
       self.dihedral_residual_sum = 0
@@ -62,6 +77,8 @@ class energies:
           sites_cart=sites_cart,
           proxies=dihedral_proxies,
           gradient_array=self.gradients)
+      self.number_of_restraints += self.n_dihedral_proxies
+      self.residual_sum += self.dihedral_residual_sum
     if (chirality_proxies is None):
       self.n_chirality_proxies = None
       self.chirality_residual_sum = 0
@@ -71,6 +88,8 @@ class energies:
           sites_cart=sites_cart,
           proxies=chirality_proxies,
           gradient_array=self.gradients)
+      self.number_of_restraints += self.n_chirality_proxies
+      self.residual_sum += self.chirality_residual_sum
     if (planarity_proxies is None):
       self.n_planarity_proxies = None
       self.planarity_residual_sum = 0
@@ -80,34 +99,9 @@ class energies:
           sites_cart=sites_cart,
           proxies=planarity_proxies,
           gradient_array=self.gradients)
-    if(compute_gradients):
-       if(self.normalization):
-          self.gradients = self.gradients \
-                         * (1. / max(1, self.number_of_restraints()))
-
-  def target(self):
-    target = self.bond_residual_sum      +\
-             self.nonbonded_residual_sum +\
-             self.angle_residual_sum     +\
-             self.dihedral_residual_sum  +\
-             self.chirality_residual_sum +\
-             self.planarity_residual_sum
-    if(self.normalization):
-       return target / max(1, self.number_of_restraints())
-    else:
-       return target
-
-  def gradient_norm(self):
-    if (self.gradients is not None):
-      return math.sqrt(flex.sum_sq(self.gradients.as_double()))
-
-  def number_of_restraints(self):
-    return self.n_bond_proxies      +\
-           self.n_nonbonded_proxies +\
-           self.n_angle_proxies     +\
-           self.n_dihedral_proxies  +\
-           self.n_chirality_proxies +\
-           self.n_planarity_proxies
+      self.number_of_restraints += self.n_planarity_proxies
+      self.residual_sum += self.planarity_residual_sum
+    self.finalize_target_and_gradients()
 
   def bond_deviations(self):
     if(self.n_bond_proxies is not None):
@@ -178,7 +172,7 @@ class energies:
 
   def show(self, f=None, prefix=""):
     if (f is None): f = sys.stdout
-    print >> f, prefix+"target: %.6g" % self.target()
+    print >> f, prefix+"target: %.6g" % self.target
     if (self.n_bond_proxies is not None):
       print >> f, prefix+"  bond_residual_sum (n=%d): %.6g" % (
         self.n_bond_proxies, self.bond_residual_sum)
@@ -198,4 +192,4 @@ class energies:
       print >> f, prefix+"  planarity_residual_sum (n=%d): %.6g" % (
         self.n_planarity_proxies, self.planarity_residual_sum)
     if (self.gradients is not None):
-      print >> f, prefix+"  norm of gradients: %.6g" % self.gradient_norm()
+      print >> f, prefix+"  norm of gradients: %.6g" % self.gradients.norm()
