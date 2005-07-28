@@ -228,9 +228,9 @@ def distance_and_repulsion_least_squares(
         trial_structure.set_sites_cart(sites_cart=trial_sites_cart)
         break
     print "i_trial, target value: %d, %.6g" % (
-      i_trial, trial_minimized[1].final_target_result.target())
-    if (minimized is None or       minimized[1].final_target_result.target()
-                           > trial_minimized[1].final_target_result.target()):
+      i_trial, trial_minimized[1].final_target_result.target)
+    if (minimized is None or       minimized[1].final_target_result.target
+                           > trial_minimized[1].final_target_result.target):
       minimized = trial_minimized
       minimized_structure = trial_structure
       best_i_trial = i_trial
@@ -249,10 +249,10 @@ def distance_and_repulsion_least_squares(
   minimized[1].final_target_result.show()
   print
   print "Final target value (i_trial=%d): %.6g" % (
-    best_i_trial, minimized[1].final_target_result.target())
-  if (minimized[1].final_target_result.target() > 0.1):
+    best_i_trial, minimized[1].final_target_result.target)
+  if (minimized[1].final_target_result.target > 0.1):
     print "WARNING: LARGE final target value: %.6g" % (
-      minimized[1].final_target_result.target())
+      minimized[1].final_target_result.target)
   print
   minimized_structure.show_distances(pair_asu_table=si_o_bond_asu_table)
   print
