@@ -144,6 +144,7 @@ class stage_1:
     self.ssbond_records = []
     self.sltbrg_records = []
     self.model_serial_list = []
+    self.year = None
     model_serial = None
     altLoc_dict = {}
     state = empty()
@@ -171,6 +172,8 @@ class stage_1:
           self.crystal_symmetry = crystal_symmetry
       elif (state.raw_record.startswith("REMARK   3 ")):
         self.remark_3_records.append(state.raw_record.rstrip())
+      elif (state.raw_record.startswith("HEADER ")):
+        self.year = get_year(state.raw_record.rstrip())
       elif (state.raw_record.startswith("REMARK 290 ")):
         self.remark_290_records.append(state.raw_record.rstrip())
       elif (state.raw_record.startswith("REMARK r_free_flags.md5.hexdigest ")):
@@ -667,3 +670,21 @@ def get_false_blank_altLoc_replacement(
       return result
   raise RuntimeError(
     "Cannot find a replacement for false blank altLoc identifiers.")
+
+def get_year(st):
+  year = None
+  if(st[0:6] == "HEADER"):
+     st_split = st.split()
+     for item in st_split:
+       if(item.count("-")==2):
+          potential_date_stamp = item
+          break
+     year = potential_date_stamp[7:]
+     try:
+       year_as_int = int(year)
+     except:
+       potential_date_stamp = st[50:59][7:]
+       year = potential_date_stamp
+       year_as_int = int(year)
+     assert year_as_int >= 0 and year_as_int <= 99
+  return year
