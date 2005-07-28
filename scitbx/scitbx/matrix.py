@@ -116,7 +116,7 @@ class rec:
       result *= e
     return result
 
-  def norm(self):
+  def norm_sq(self):
     assert self.n_rows() == 1 or self.n_columns() == 1
     result = 0
     for e in self.elems:
@@ -124,7 +124,7 @@ class rec:
     return result
 
   def __abs__(self):
-    return math.sqrt(self.norm())
+    return math.sqrt(self.norm_sq())
 
   def normalize(self):
     return self / abs(self)
@@ -148,11 +148,11 @@ class rec:
       a[0] * b[1] - b[0] * a[1]))
 
   def cos_angle(self, other, value_if_undefined=None):
-    self_norm = self.norm()
-    if (self_norm == 0): return value_if_undefined
-    other_norm = other.norm()
-    if (other_norm == 0): return value_if_undefined
-    d = self_norm * other_norm
+    self_norm_sq = self.norm_sq()
+    if (self_norm_sq == 0): return value_if_undefined
+    other_norm_sq = other.norm_sq()
+    if (other_norm_sq == 0): return value_if_undefined
+    d = self_norm_sq * other_norm_sq
     if (d == 0): return value_if_undefined
     return self.dot(other) / math.sqrt(d)
 
