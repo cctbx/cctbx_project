@@ -559,7 +559,8 @@ Si(2)
                              sphere_radius            = 5.0,
                              distance_power           = 0.7,
                              mean_power               = 0.5,
-                             normalize                = True)
+                             normalize                = True,
+                             collect                  = False)
     target = obj.target()
     gradients = obj.derivatives()
     counter = obj.number_of_members()
