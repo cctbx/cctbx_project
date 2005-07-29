@@ -1,7 +1,6 @@
 import cctbx.crystal.direct_space_asu
 from cctbx.array_family import flex
 import scitbx.array_family.shared
-from scitbx.python_utils.misc import adopt_init_args
 from libtbx.test_utils import approx_equal
 
 import boost.python
@@ -31,7 +30,10 @@ class proxy_registry_process_result:
         is_new=False,
         is_conflicting=False,
         conflict_source_labels=None):
-    adopt_init_args(self, locals())
+    self.tabulated_proxy = tabulated_proxy
+    self.is_new = is_new
+    self.is_conflicting = is_conflicting
+    self.conflict_source_labels = conflict_source_labels
 
 class proxy_registry_base:
 

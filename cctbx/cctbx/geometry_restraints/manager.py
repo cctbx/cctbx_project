@@ -3,7 +3,8 @@ import cctbx.geometry_restraints.flags
 import cctbx.geometry_restraints.energies
 from cctbx import crystal
 from cctbx.array_family import flex
-from scitbx.python_utils.misc import adopt_init_args, store
+from scitbx.python_utils.misc import store
+from libtbx import adopt_init_args
 import sys
 
 class manager:

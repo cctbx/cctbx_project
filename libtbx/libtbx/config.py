@@ -1,9 +1,9 @@
 from __future__ import generators
 import libtbx.path
 from libtbx.optparse_wrapper import option_parser
-from libtbx import introspection
 from libtbx.str_utils import show_string
 from libtbx.utils import Sorry
+from libtbx import adopt_init_args
 import shutil
 import pickle
 from cStringIO import StringIO
@@ -1155,7 +1155,7 @@ class module:
 class build_options:
 
   def __init__(self, compiler, mode, static_libraries, static_exe, scan_boost):
-    introspection.adopt_init_args()
+    adopt_init_args(self, locals())
     assert self.mode in ["release", "quick", "debug", "debug_optimized"]
     self.optimization = (self.mode in ["release", "debug_optimized"])
     self.debug_symbols = (self.mode in ["debug", "debug_optimized"])

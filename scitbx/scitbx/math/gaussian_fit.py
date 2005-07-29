@@ -4,8 +4,8 @@ from scitbx import lbfgs
 from scitbx import lbfgsb
 from cctbx.array_family import flex
 from scitbx.python_utils.math_utils import ifloor
-from scitbx.python_utils.misc import adopt_init_args
 from scitbx.python_utils import dicts
+from libtbx import adopt_init_args
 from libtbx import easy_pickle
 import time
 import math

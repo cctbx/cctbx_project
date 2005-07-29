@@ -1,3 +1,4 @@
+from libtbx import adopt_init_args # XXX backward compatibility 2005_07_29
 import sys, os
 
 class store:
@@ -107,20 +108,6 @@ def show_total_time(
     print >> out, "Time per interpreted Python bytecode instruction:",
     print >> out, "%.3f micro seconds" % (total_time / python_ticker * 1.e6)
   print >> out, "Total CPU time: %.2f %s" % human_readable_time(total_time)
-
-def adopt_init_args(obj, args, exclude=(), hide=False):
-  del args["self"]
-  for param in exclude:
-    del args[param]
-  if (hide == False):
-    for key in args.keys():
-      assert not hasattr(obj.__dict__, key)
-    obj.__dict__.update(args)
-  else:
-    for key in args.keys():
-      _key = "_" + key
-      assert not hasattr(obj.__dict__, _key)
-      obj.__dict__[_key] = args[key]
 
 class line_feeder:
 

@@ -5,19 +5,6 @@ def varnames(frames_back=0):
   f_code = sys._getframe(frames_back+1).f_code
   return f_code.co_varnames[:f_code.co_argcount]
 
-def adopt_init_args(exclusions=[], prefix="", frames_back=0):
-  frame = sys._getframe(frames_back+1)
-  tmp = frame.f_code
-  varnames = tmp.co_varnames[:tmp.co_argcount]
-  exclusions.append(varnames[0]) # self
-  tmp = frame.f_locals
-  self = tmp[varnames[0]]
-  for varname in varnames:
-    if (varname not in exclusions):
-      setattr(self, prefix+varname, tmp[varname])
-  if ("__init__varnames__" not in exclusions):
-    setattr(self, "__init__varnames__", varnames)
-
 class caller_location:
 
   def __init__(self, frames_back=0):
@@ -100,15 +87,6 @@ if (__name__ == "__main__"):
     d = 0
     return varnames()
   assert exercise_varnames(1,2,3) == ("a", "b", "c")
-  class exercise_adopt_init_args:
-    def __init__(self, a, b, c):
-      adopt_init_args()
-      d = 0
-  e = exercise_adopt_init_args(1,2,3)
-  assert e.a == 1
-  assert e.b == 2
-  assert e.c == 3
-  assert e.__init__varnames__ == ("self", "a", "b", "c")
   virtual_memory_info().show()
   assert str(caller_location()).find("introspection") > 0
   print "OK"

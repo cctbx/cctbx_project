@@ -17,7 +17,7 @@ from scitbx.python_utils import complex_math
 from scitbx.python_utils.misc import store, plural_s
 from libtbx.itertbx import count
 from libtbx.utils import Keep
-from libtbx import introspection
+from libtbx import adopt_init_args
 import random
 import math
 import types
@@ -833,7 +833,7 @@ class array_info:
         labels=None,
         merged=False,
         systematic_absences_eliminated=False):
-    introspection.adopt_init_args()
+    adopt_init_args(self, locals())
 
   def customized_copy(self,
         source=Keep,

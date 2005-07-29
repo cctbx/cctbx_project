@@ -3,7 +3,6 @@ from __future__ import generators
 from libtbx.phil import tokenizer
 from libtbx.str_utils import line_breaker
 from libtbx.itertbx import count
-from libtbx import introspection
 from cStringIO import StringIO
 import math
 import weakref
@@ -377,7 +376,9 @@ def show_attributes(self, out, prefix, attributes_level, print_width):
 class object_locator:
 
   def __init__(self, parent, path, object):
-    introspection.adopt_init_args()
+    self.parent = parent
+    self.path = path
+    self.object = object
 
 class definition: # FUTURE definition(object)
 
@@ -668,7 +669,28 @@ class scope_extract:
       return False
     return True
 
-class scope:
+class scope: # FUTURE scope(object)
+
+  attribute_names = [
+    "style",
+    "help",
+    "caption",
+    "short_caption",
+    "optional",
+    "multiple",
+    "sequential_format",
+    "disable_add",
+    "disable_delete",
+    "expert_level"]
+
+  __slots__ = [
+    "name",
+    "objects",
+    "primary_id",
+    "primary_parent_scope",
+    "is_disabled",
+    "where_str",
+    "merge_names"] + attribute_names
 
   def __init__(self,
         name,
@@ -688,8 +710,23 @@ class scope:
         disable_add=None,
         disable_delete=None,
         expert_level=None):
-    introspection.adopt_init_args()
-    self.attribute_names = self.__init__varnames__[8:]
+    self.name = name
+    self.objects = objects
+    self.primary_id = primary_id
+    self.primary_parent_scope = primary_parent_scope
+    self.is_disabled = is_disabled
+    self.where_str = where_str
+    self.merge_names = merge_names
+    self.style = style
+    self.help = help
+    self.caption = caption
+    self.short_caption = short_caption
+    self.optional = optional
+    self.multiple = multiple
+    self.sequential_format = sequential_format
+    self.disable_add = disable_add
+    self.disable_delete = disable_delete
+    self.expert_level = expert_level
     if (objects is None):
       self.objects = []
     assert style in [None, "row", "column", "block", "page"]
@@ -702,7 +739,7 @@ class scope:
 
   def copy(self):
     keyword_args = {}
-    for keyword in self.__init__varnames__[1:]:
+    for keyword in self.__slots__:
       keyword_args[keyword] = getattr(self, keyword)
     return scope(**keyword_args)
 

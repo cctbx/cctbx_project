@@ -3,7 +3,7 @@ from cctbx import adptbx
 from cctbx import eltbx
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
-from scitbx.python_utils.misc import adopt_init_args
+from libtbx import adopt_init_args
 import sys, os
 
 def check_cns_availability():

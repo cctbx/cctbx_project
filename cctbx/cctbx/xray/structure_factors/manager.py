@@ -4,7 +4,7 @@ from cctbx import maptbx
 from cctbx import crystal
 from cctbx import math_module
 from scitbx import fftpack
-from scitbx.python_utils.misc import adopt_init_args
+from libtbx import adopt_init_args
 
 default_cos_sin_table = math_module.cos_sin_table(2**10)
 

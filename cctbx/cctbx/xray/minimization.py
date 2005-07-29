@@ -5,8 +5,7 @@ from cctbx import crystal
 from cctbx.array_family import flex
 import scitbx.lbfgs
 import scitbx.math
-from scitbx.python_utils.misc import adopt_init_args
-from libtbx import introspection
+from libtbx import adopt_init_args
 from stdlib import math
 
 def add_gradients(
@@ -31,7 +30,7 @@ class u_penalty_singular_at_zero:
         penalty_scale=8*math.pi**2,
         u_min=1.e-6,
         min_functional=1.e-10):
-    introspection.adopt_init_args()
+    adopt_init_args(self, locals())
     self.u_max = scitbx.math.lambertw(penalty_factor/min_functional) \
                / (penalty_factor * penalty_scale)
 
@@ -54,7 +53,7 @@ class u_penalty_exp:
         penalty_factor=1,
         penalty_scale=10*8*math.pi**2,
         min_functional=1.e-10):
-    introspection.adopt_init_args()
+    adopt_init_args(self, locals())
     self.u_max = -math.log(min_functional) / (penalty_factor * penalty_scale)
 
   def functional(self, u):
@@ -73,7 +72,7 @@ class occupancy_penalty_exp:
         penalty_factor=1,
         penalty_scale=100,
         min_functional=1.e-10):
-    introspection.adopt_init_args()
+    adopt_init_args(self, locals())
     self.occupancy_max = -math.log(min_functional) \
                        / (penalty_factor * penalty_scale)
 

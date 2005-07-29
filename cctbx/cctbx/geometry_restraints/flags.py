@@ -1,4 +1,4 @@
-from scitbx.python_utils.misc import adopt_init_args
+from libtbx import adopt_init_args
 import sys
 
 class flags:

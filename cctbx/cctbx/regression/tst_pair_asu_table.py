@@ -2,7 +2,6 @@ from iotbx.kriber import strudat
 from cctbx import geometry_restraints
 from cctbx import crystal
 from cctbx.array_family import flex
-from scitbx.python_utils.misc import adopt_init_args
 import scitbx.math
 from libtbx.test_utils import approx_equal
 import libtbx.load_env

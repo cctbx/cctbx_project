@@ -9,7 +9,7 @@ from cctbx import sgtbx
 from cctbx.array_family import flex
 from scitbx import matrix
 from scitbx.python_utils import dicts
-from scitbx.python_utils.misc import adopt_init_args
+from libtbx import adopt_init_args
 import sys
 
 def value_at_closest_grid_point(map, x_frac):
@@ -246,7 +246,11 @@ class peak_search_parameters:
 class cluster_site_info:
 
   def __init__(self, peak_list_index, grid_index, grid_height, site, height):
-    adopt_init_args(self, locals())
+    self.peak_list_index = peak_list_index
+    self.grid_index = grid_index
+    self.grid_height = grid_height
+    self.site = site
+    self.height = height
 
 class peak_cluster_analysis:
 
