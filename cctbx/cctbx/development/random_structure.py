@@ -6,7 +6,7 @@ from cctbx import xray
 import cctbx.eltbx.xray_scattering
 from cctbx import eltbx
 from cctbx.array_family import flex
-from scitbx.python_utils.misc import adopt_init_args
+from libtbx import adopt_init_args
 import random
 
 def have_suitable_hetero_distance(existing_sites,

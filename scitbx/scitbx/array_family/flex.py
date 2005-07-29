@@ -6,7 +6,6 @@ import boost.python
 boost.python.import_ext("scitbx_array_family_flex_ext")
 from scitbx_array_family_flex_ext import *
 import scitbx_array_family_flex_ext as ext
-from libtbx import introspection
 
 import scitbx.stl.map
 import md5
@@ -148,7 +147,9 @@ class _linear_correlation(boost.python.injector, ext.linear_correlation):
 class histogram_slot_info:
 
   def __init__(self, low_cutoff, high_cutoff, n):
-    introspection.adopt_init_args()
+    self.low_cutoff = low_cutoff
+    self.high_cutoff = high_cutoff
+    self.n = n
 
 class _histogram(boost.python.injector, ext.histogram):
 

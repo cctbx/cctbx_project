@@ -2,14 +2,14 @@
 
 from libtbx import easy_pickle
 from scitbx.python_utils import dicts
-from scitbx.python_utils.misc import adopt_init_args
 from cctbx import euclidean_model_matching as emma
 import sys
 
 class match_record:
 
   def __init__(self, n_matches, model_size):
-    adopt_init_args(self, locals())
+    self.n_matches = n_matches
+    self.model_size = model_size
 
   def __repr__(self):
     return "%d/%d" % (self.n_matches, self.model_size)

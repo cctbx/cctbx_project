@@ -13,7 +13,6 @@ from scitbx.array_family import shared
 from scitbx import stl
 import scitbx.stl.set
 import scitbx.stl.vector
-from scitbx.python_utils.misc import adopt_init_args
 from libtbx.utils import Keep
 import sys
 
@@ -489,7 +488,9 @@ class show_distances:
 class sym_pair:
 
   def __init__(self, i_seq, j_seq, rt_mx_ji):
-    adopt_init_args(self, locals())
+    self.i_seq = i_seq
+    self.j_seq = j_seq
+    self.rt_mx_ji = rt_mx_ji
 
   def i_seqs(self):
     return (self.i_seq, self.j_seq)

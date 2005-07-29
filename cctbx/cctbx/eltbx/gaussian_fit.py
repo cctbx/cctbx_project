@@ -3,7 +3,8 @@ from cctbx.array_family import flex
 import scitbx.math.gaussian
 from scitbx.math.gaussian_fit import find_max_x_multi
 from scitbx.math.gaussian_fit import show_minimize_multi_histogram
-from scitbx.python_utils.misc import adopt_init_args, user_plus_sys_time
+from scitbx.python_utils.misc import user_plus_sys_time
+from libtbx import adopt_init_args
 from libtbx import easy_pickle
 import sys, os
 

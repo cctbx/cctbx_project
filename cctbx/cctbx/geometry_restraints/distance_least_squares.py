@@ -8,7 +8,6 @@ import cctbx.crystal.coordination_sequences
 from cctbx import sgtbx
 from cctbx.array_family import flex
 from scitbx import matrix as mx
-from scitbx.python_utils.misc import adopt_init_args
 import scitbx.lbfgs
 from libtbx.itertbx import count
 
@@ -18,7 +17,8 @@ if (1):
 class restraint_parameters:
 
   def __init__(self, distance_ideal, weight):
-    adopt_init_args(self, locals())
+    self.distance_ideal = distance_ideal
+    self.weight = weight
 
 restraint_parameters_si_o = restraint_parameters(1.61, 2.0)
 restraint_parameters_o_si_o = restraint_parameters(2.629099, 0.41)

@@ -2,7 +2,7 @@ import cctbx.eltbx.gaussian_fit
 from cctbx.eltbx.gaussian_fit import international_tables_stols
 from cctbx.array_family import flex
 from scitbx.python_utils.misc import line_feeder
-from scitbx.python_utils.misc import adopt_init_args
+from libtbx import adopt_init_args
 
 class table6111_entry:
 

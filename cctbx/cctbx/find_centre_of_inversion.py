@@ -1,6 +1,5 @@
 from cctbx import sgtbx
 from scitbx.python_utils import list_algebra
-from scitbx.python_utils.misc import adopt_init_args
 
 def pair_sort_function(pair_a, pair_b):
   return cmp(pair_a[0], pair_b[0])
@@ -9,7 +8,10 @@ class match_refine:
 
   def __init__(self, equiv_sites, i_pivot1, i_pivot2, tolerance):
     assert len(equiv_sites) > 0
-    adopt_init_args(self, locals())
+    self.equiv_sites = equiv_sites
+    self.i_pivot1 = i_pivot1
+    self.i_pivot2 = i_pivot2
+    self.tolerance = tolerance
     self.singles = range(len(equiv_sites))
     self.singles.remove(self.i_pivot1)
     if (self.i_pivot1 != self.i_pivot2):

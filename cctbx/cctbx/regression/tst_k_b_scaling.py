@@ -5,7 +5,7 @@ from cctbx.array_family import flex
 from cctbx.development import debug_utils
 from cctbx.development import random_structure
 from scitbx import lbfgs
-from scitbx.python_utils.misc import adopt_init_args
+from libtbx import adopt_init_args
 import sys
 
 class k_b_scaling_minimizer:

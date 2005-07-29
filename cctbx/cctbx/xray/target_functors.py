@@ -1,6 +1,6 @@
-from scitbx.python_utils.misc import adopt_init_args
 from cctbx.xray import ext
 from cctbx.array_family import flex
+from libtbx import adopt_init_args
 
 class target_functor_base:
 

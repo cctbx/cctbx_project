@@ -1,6 +1,6 @@
 from scitbx import lbfgs as scitbx_lbfgs
 from scitbx.array_family import flex
-from scitbx.python_utils.misc import adopt_init_args
+from libtbx import adopt_init_args
 import random
 import math
 import sys
