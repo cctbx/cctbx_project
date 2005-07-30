@@ -597,8 +597,8 @@ def exercise_functions():
   assert flex.max(b) == 6
   assert flex.sum(a) == 6
   assert flex.sum(b) == 15
-  assert approx_equal(flex.norm(a), 3.74165738677)
-  assert approx_equal(flex.norm(b), 8.77496438739)
+  assert approx_equal(a.norm(), 3.74165738677)
+  assert approx_equal(b.norm(), 8.77496438739)
   assert flex.product(a) == 0
   assert flex.product(b) == 120
   assert flex.mean(a) == 6. / 4
