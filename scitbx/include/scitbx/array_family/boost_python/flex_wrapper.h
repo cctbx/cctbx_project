@@ -925,13 +925,14 @@ namespace scitbx { namespace af { namespace boost_python {
         boost::python::def("floor", floor_a);
         boost::python::def("log10", log10_a);
         boost::python::def("sqrt", sqrt_a);
-        boost::python::def("norm", norm_a);
         boost::python::def("mean", mean_a);
         boost::python::def("mean_sq", mean_sq_a);
         boost::python::def("mean_weighted", mean_weighted_a_a);
         boost::python::def("mean_sq_weighted", mean_sq_weighted_a_a);
       }
-      return numeric_no_pow(python_name, flex_root_scope);
+      return numeric_no_pow(python_name, flex_root_scope)
+        .def("norm", norm_a)
+      ;
     }
 
     static class_f_t
