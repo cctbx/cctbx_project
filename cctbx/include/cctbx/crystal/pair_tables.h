@@ -90,23 +90,25 @@ namespace cctbx { namespace crystal {
                    double u1 = u_isos[i_seq];
                    double u2 = u_isos[j_seq];
                    double sum = u1 + u2;
-                   double dif = u1 - u2;
-                   double sum_pow = std::pow(sum, mean_power);
-                   double dif_sq = dif * dif;
-                   CCTBX_ASSERT(sum_pow != 0);
-                   double mem1 = 2.* dif / sum_pow;
-                   CCTBX_ASSERT(sum * sum_pow != 0);
-                   double mem2 = mean_power * dif_sq / (sum * sum_pow);
-                   double g1 = mem1 - mem2;
-                   double g2 = -1. * mem1 - mem2;
-                   derivatives_[i_seq] += weight * g1;
-                   derivatives_[j_seq] += weight * g2;
-                   target_ += (weight * dif_sq / sum_pow);
-                   number_of_members_ += 1;
-                   if(collect) {
-                      ui_.push_back(u1);
-                      uj_.push_back(u2);
-                      rij_.push_back(dist);
+                   if(sum >= 0.1) {
+                      double dif = u1 - u2;
+                      double sum_pow = std::pow(sum, mean_power);
+                      double dif_sq = dif * dif;
+                      CCTBX_ASSERT(sum_pow != 0);
+                      double mem1 = 2.* dif / sum_pow;
+                      CCTBX_ASSERT(sum * sum_pow != 0);
+                      double mem2 = mean_power * dif_sq / (sum * sum_pow);
+                      double g1 = mem1 - mem2;
+                      double g2 = -1. * mem1 - mem2;
+                      derivatives_[i_seq] += weight * g1;
+                      derivatives_[j_seq] += weight * g2;
+                      target_ += (weight * dif_sq / sum_pow);
+                      number_of_members_ += 1;
+                      if(collect) {
+                         ui_.push_back(u1);
+                         uj_.push_back(u2);
+                         rij_.push_back(dist);
+                      }
                    }
                 }
             }
