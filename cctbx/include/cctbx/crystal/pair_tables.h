@@ -90,7 +90,7 @@ namespace cctbx { namespace crystal {
                    double u1 = u_isos[i_seq];
                    double u2 = u_isos[j_seq];
                    double sum = u1 + u2;
-                   if(sum >= 0.1) {
+                   if(sum >= 0.001) {
                       double dif = u1 - u2;
                       double sum_pow = std::pow(sum, mean_power);
                       double dif_sq = dif * dif;
