@@ -84,14 +84,18 @@ namespace cctbx { namespace crystal {
                 double dist = (orthogonalization_matrix
                               * (site_i - rt_mx_list[i_op] * site_j)).length();
                 if(dist <= sphere_radius && dist > 0.0) {
-                   double weight = 1./std::pow(dist, power_factor);
+                   double one_over_weight = std::pow(dist, power_factor);
+                   CCTBX_ASSERT(one_over_weight != 0);
+                   double weight = 1./one_over_weight;
                    double u1 = u_isos[i_seq];
                    double u2 = u_isos[j_seq];
                    double sum = u1 + u2;
                    double dif = u1 - u2;
                    double sum_pow = std::pow(sum, mean_power);
                    double dif_sq = dif * dif;
+                   CCTBX_ASSERT(sum_pow != 0);
                    double mem1 = 2.* dif / sum_pow;
+                   CCTBX_ASSERT(sum * sum_pow != 0);
                    double mem2 = mean_power * dif_sq / (sum * sum_pow);
                    double g1 = mem1 - mem2;
                    double g2 = -1. * mem1 - mem2;
@@ -108,7 +112,7 @@ namespace cctbx { namespace crystal {
             }
           }
         }
-        if(normalize) {
+        if(normalize && number_of_members_ > 0) {
            target_ /= number_of_members_;
            for(int i=0;i<derivatives_.size();i++)
                derivatives_[i] = derivatives_[i] / number_of_members_;
