@@ -7,6 +7,7 @@ from cctbx.array_family import flex
 from scitbx import matrix
 from libtbx.test_utils import approx_equal
 from libtbx.itertbx import count
+from libtbx import adopt_init_args
 from cStringIO import StringIO
 import md5
 import sys
@@ -548,34 +549,57 @@ Si(2)
     check_pair_asu_table(asu_table_2, expected_asu_pairs)
     assert eq_flags[:-1].count(eq_flags[0]) == len(eq_flags)-1
     assert eq_flags[-1]
-    ### exercise adp_iso_restraint_helper, begin
-    omx = structure.unit_cell().orthogonalization_matrix()
+    #
     u_isos = flex.double([0.01,0.09,0.1])
-    obj = crystal.adp_iso_restraint_helper(
-                             pair_sym_table           = sym_table,
-                             orthogonalization_matrix = omx,
-                             sites_frac               = structure.sites_frac(),
-                             u_isos                   = u_isos,
-                             sphere_radius            = 5.0,
-                             distance_power           = 0.7,
-                             mean_power               = 0.5,
-                             normalize                = True,
-                             collect                  = False)
-    target = obj.target()
-    gradients = obj.derivatives()
-    counter = obj.number_of_members()
-    case_1 = approx_equal(target, 0.00202796953554, out=None)
-    case_2 = approx_equal(target, 0.00130369470142, out=None)
-    assert [case_1,case_2].count(True) == 1
-    case_1 = approx_equal(gradients, [-0.060161352769129386, \
-                        0.035529896242978656, 0.0044587716913385769], out=None)
-    case_2 = approx_equal(gradients, [-0.038675155351583175, \
-                        0.022840647584771993, 0.0028663532301462279], out=None)
-    assert [case_1,case_2].count(True) == 1
-    case_1 = approx_equal(counter, 9, out=None)
-    case_2 = approx_equal(counter, 7, out=None)
-    assert [case_1,case_2].count(True) == 1
-    ### exercise adp_iso_restraint_helper, end
+    adp_energies = adp_iso_local_sphere_restraints_energies_functor(
+      pair_sym_table=sym_table,
+      orthogonalization_matrix
+        =structure.unit_cell().orthogonalization_matrix(),
+      sites_frac=structure.sites_frac())
+    for compute_gradients in [False, True]:
+      energies = adp_energies(
+        u_isos=u_isos,
+        compute_gradients=compute_gradients,
+        collect=not compute_gradients)
+      assert energies.number_of_restraints in [7,9]
+      if (energies.number_of_restraints == 9):
+        assert approx_equal(energies.residual_sum, 0.0182517258199)
+      else:
+        assert approx_equal(energies.residual_sum, 0.00912586290993)
+      if (not compute_gradients):
+        assert energies.gradients.size() == 0
+        assert energies.u_i.size() == energies.number_of_restraints
+        assert energies.u_j.size() == energies.number_of_restraints
+        assert energies.r_ij.size() == energies.number_of_restraints
+      else:
+        if (energies.number_of_restraints == 9):
+          assert approx_equal(energies.gradients,
+            [-0.54145217492216446, 0.31976906618680784, 0.040128945222047199])
+        else:
+          assert approx_equal(energies.gradients,
+            [-0.27072608746108223, 0.15988453309340392, 0.0200644726110236])
+        assert approx_equal(
+          energies.gradients,
+          adp_energies.finite_difference_gradients(u_isos=u_isos))
+        assert energies.u_i.size() == 0
+        assert energies.u_j.size() == 0
+        assert energies.r_ij.size() == 0
+    for i_trial in xrange(5):
+      u_isos = u_isos.select(flex.random_permutation(size=u_isos.size()))
+      for distance_power in [0.3, 0.8, 1, 1.7]:
+        for mean_power in [0.4, 0.9, 1, 1.5]:
+          energies = adp_energies(
+            u_isos=u_isos,
+            distance_power=distance_power,
+            mean_power=mean_power,
+            compute_gradients=True)
+          assert approx_equal(
+            energies.gradients,
+            adp_energies.finite_difference_gradients(
+            u_isos=u_isos,
+            distance_power=distance_power,
+            mean_power=mean_power))
+    #
     distances = crystal.get_distances(
       pair_sym_table=sym_table,
       orthogonalization_matrix
@@ -790,6 +814,49 @@ i_seq: 2
     x,y,z
     y,-x+1,z
 """
+
+class adp_iso_local_sphere_restraints_energies_functor:
+
+  def __init__(self, pair_sym_table, orthogonalization_matrix, sites_frac):
+    adopt_init_args(self, locals())
+
+  def __call__(self,
+        u_isos,
+        sphere_radius=5.0,
+        distance_power=0.7,
+        mean_power=0.5,
+        compute_gradients=False,
+        collect=False):
+    return crystal.adp_iso_local_sphere_restraints_energies(
+      pair_sym_table=self.pair_sym_table,
+      orthogonalization_matrix=self.orthogonalization_matrix,
+      sites_frac=self.sites_frac,
+      u_isos=u_isos,
+      sphere_radius=sphere_radius,
+      distance_power=distance_power,
+      mean_power=mean_power,
+      min_u_sum=1.e-6,
+      compute_gradients=compute_gradients,
+      collect=collect)
+
+  def finite_difference_gradients(self,
+        u_isos,
+        distance_power=0.7,
+        mean_power=0.5,
+        eps=1.e-6):
+    gs = flex.double()
+    for i_u in xrange(u_isos.size()):
+      rs = []
+      for signed_eps in [eps,-eps]:
+        u_isos_eps = u_isos.deep_copy()
+        u_isos_eps[i_u] += signed_eps
+        energies = self(
+          u_isos=u_isos_eps,
+          distance_power=distance_power,
+          mean_power=mean_power)
+        rs.append(energies.residual_sum)
+      gs.append((rs[0]-rs[1])/(2*eps))
+    return gs
 
 def exercise_coordination_sequences_simple():
   structure = trial_structure()

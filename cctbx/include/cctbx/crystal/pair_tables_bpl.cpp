@@ -103,25 +103,28 @@ namespace {
     }
   };
 
-  struct adp_iso_restraint_helper_wrappers
+  struct adp_iso_local_sphere_restraints_energies_wrappers
   {
-    typedef adp_iso_restraint_helper w_t;
+    typedef adp_iso_local_sphere_restraints_energies w_t;
 
     static void
     wrap()
     {
       using namespace boost::python;
       typedef boost::python::arg arg_;
-      class_<w_t>("adp_iso_restraint_helper",
-        init<af::const_ref<pair_sym_dict> const&,
+      typedef return_value_policy<return_by_value> rbv;
+      class_<w_t>("adp_iso_local_sphere_restraints_energies", no_init)
+        .def(init<
+          af::const_ref<pair_sym_dict> const&,
           scitbx::mat3<double> const&,
           af::const_ref<scitbx::vec3<double> > const&,
           af::const_ref<double> const&,
-          double const&,
-          double const&,
-          double const&,
-          bool const&,
-          bool const&>((
+          double,
+          double,
+          double,
+          double,
+          bool,
+          bool>((
             arg_("pair_sym_table"),
             arg_("orthogonalization_matrix"),
             arg_("sites_frac"),
@@ -129,14 +132,15 @@ namespace {
             arg_("sphere_radius"),
             arg_("distance_power"),
             arg_("mean_power"),
-            arg_("normalize"),
+            arg_("min_u_sum"),
+            arg_("compute_gradients"),
             arg_("collect"))))
-        .def("target", &w_t::target)
-        .def("derivatives", &w_t::derivatives)
-        .def("number_of_members", &w_t::number_of_members)
-        .def("ui", &w_t::ui)
-        .def("uj", &w_t::uj)
-        .def("rij", &w_t::rij)
+        .def_readonly("number_of_restraints", &w_t::number_of_restraints)
+        .def_readonly("residual_sum", &w_t::residual_sum)
+        .add_property("gradients", make_getter(&w_t::gradients, rbv()))
+        .add_property("u_i", make_getter(&w_t::u_i, rbv()))
+        .add_property("u_j", make_getter(&w_t::u_j, rbv()))
+        .add_property("r_ij", make_getter(&w_t::r_ij, rbv()))
       ;
     }
   };
@@ -164,7 +168,7 @@ namespace {
 
     pair_asu_table_table_wrappers::wrap();
     pair_asu_table_wrappers::wrap();
-    adp_iso_restraint_helper_wrappers::wrap();
+    adp_iso_local_sphere_restraints_energies_wrappers::wrap();
   }
 
 } // namespace <anonymous>
