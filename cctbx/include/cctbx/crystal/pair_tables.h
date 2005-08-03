@@ -48,27 +48,30 @@ namespace cctbx { namespace crystal {
     return distances;
   }
 
-  class adp_iso_restraint_helper {
-  public:
-      //! Default constructor. Some data members are not initialized!
-      adp_iso_restraint_helper() {}
+  class adp_iso_local_sphere_restraints_energies
+  {
+    public:
+      adp_iso_local_sphere_restraints_energies() {}
 
-      adp_iso_restraint_helper(
-                        af::const_ref<pair_sym_dict> const& pair_sym_table,
-                        scitbx::mat3<double> const& orthogonalization_matrix,
-                        af::const_ref<scitbx::vec3<double> > const& sites_frac,
-                        af::const_ref<double> const& u_isos,
-                        double const& sphere_radius,
-                        double const& power_factor,
-                        double const& mean_power,
-                        bool const& normalize,
-                        bool const& collect)
+      adp_iso_local_sphere_restraints_energies(
+        af::const_ref<pair_sym_dict> const& pair_sym_table,
+        scitbx::mat3<double> const& orthogonalization_matrix,
+        af::const_ref<scitbx::vec3<double> > const& sites_frac,
+        af::const_ref<double> const& u_isos,
+        double sphere_radius,
+        double distance_power,
+        double mean_power,
+        double min_u_sum,
+        bool compute_gradients,
+        bool collect)
       {
         CCTBX_ASSERT(sites_frac.size() == pair_sym_table.size());
         CCTBX_ASSERT(u_isos.size() == pair_sym_table.size());
-        number_of_members_ = 0;
-        target_ = 0.0;
-        derivatives_ = af::shared<double>(u_isos.size());
+        number_of_restraints = 0;
+        residual_sum = 0;
+        if (compute_gradients) {
+          gradients.resize(u_isos.size());
+        }
         for(unsigned i_seq=0;i_seq<pair_sym_table.size();i_seq++) {
           crystal::pair_sym_dict const& pair_sym_dict = pair_sym_table[i_seq];
           scitbx::vec3<double> const& site_i = sites_frac[i_seq];
@@ -81,58 +84,47 @@ namespace cctbx { namespace crystal {
             af::const_ref<sgtbx::rt_mx> rt_mx_list = af::make_const_ref(
               pair_sym_dict_i->second);
             for(unsigned i_op=0;i_op<rt_mx_list.size();i_op++) {
-                double dist = (orthogonalization_matrix
-                              * (site_i - rt_mx_list[i_op] * site_j)).length();
-                if(dist <= sphere_radius && dist > 0.0) {
-                   double one_over_weight = std::pow(dist, power_factor);
-                   CCTBX_ASSERT(one_over_weight != 0);
-                   double weight = 1./one_over_weight;
-                   double u1 = u_isos[i_seq];
-                   double u2 = u_isos[j_seq];
-                   double sum = u1 + u2;
-                   if(sum >= 0.00001) {
-                      double dif = u1 - u2;
-                      double sum_pow = std::pow(sum, mean_power);
-                      double dif_sq = dif * dif;
-                      CCTBX_ASSERT(sum_pow != 0);
-                      double mem1 = 2.* dif / sum_pow;
-                      CCTBX_ASSERT(sum * sum_pow != 0);
-                      double mem2 = mean_power * dif_sq / (sum * sum_pow);
-                      double g1 = mem1 - mem2;
-                      double g2 = -1. * mem1 - mem2;
-                      derivatives_[i_seq] += weight * g1;
-                      derivatives_[j_seq] += weight * g2;
-                      target_ += (weight * dif_sq / sum_pow);
-                      number_of_members_ += 1;
-                      if(collect) {
-                         ui_.push_back(u1);
-                         uj_.push_back(u2);
-                         rij_.push_back(dist);
-                      }
-                   }
+              double dist = (orthogonalization_matrix
+                          * (site_i - rt_mx_list[i_op] * site_j)).length();
+              if (dist <= sphere_radius && dist > 0.0) {
+                double one_over_weight = std::pow(dist, distance_power);
+                CCTBX_ASSERT(one_over_weight != 0);
+                double weight = 1./one_over_weight;
+                double u1 = u_isos[i_seq];
+                double u2 = u_isos[j_seq];
+                double sum = u1 + u2;
+                if (sum >= min_u_sum) {
+                  double sum_pow = std::pow(sum, mean_power);
+                  CCTBX_ASSERT(sum_pow != 0);
+                  double u_diff = u1 - u2;
+                  double u_diff_sq = u_diff * u_diff;
+                  number_of_restraints++;
+                  residual_sum += (weight * u_diff_sq / sum_pow);
+                  if (compute_gradients) {
+                    double mem1 = 2.* u_diff / sum_pow;
+                    CCTBX_ASSERT(sum * sum_pow != 0);
+                    double mem2 = mean_power * u_diff_sq / (sum * sum_pow);
+                    gradients[i_seq] += weight * (mem1 - mem2);
+                    gradients[j_seq] += weight * (-mem1 - mem2);
+                  }
+                  if (collect) {
+                    u_i.push_back(u1);
+                    u_j.push_back(u2);
+                    r_ij.push_back(dist);
+                  }
                 }
+              }
             }
           }
         }
-        if(normalize && number_of_members_ > 0) {
-           target_ /= number_of_members_;
-           for(int i=0;i<derivatives_.size();i++)
-               derivatives_[i] = derivatives_[i] / number_of_members_;
-        }
       }
-      double target() const { return target_; }
-      af::shared<double> derivatives() const { return derivatives_; }
-      unsigned number_of_members() const { return number_of_members_; }
-      af::shared<double> ui() const { return ui_; }
-      af::shared<double> uj() const { return uj_; }
-      af::shared<double> rij() const { return rij_; }
-  private:
-      unsigned number_of_members_;
-      double target_;
-      af::shared<double> derivatives_;
-      af::shared<double> ui_;
-      af::shared<double> uj_;
-      af::shared<double> rij_;
+
+      unsigned number_of_restraints;
+      double residual_sum;
+      af::shared<double> gradients;
+      af::shared<double> u_i;
+      af::shared<double> u_j;
+      af::shared<double> r_ij;
   };
 
   /*! \brief Determination of distances of all pair interactions

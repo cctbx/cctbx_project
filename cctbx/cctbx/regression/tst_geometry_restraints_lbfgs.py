@@ -1,6 +1,7 @@
 import iotbx.pdb
 from iotbx.pymol import pml_stick, pml_write
 from cctbx import geometry_restraints
+from cctbx import adp_restraints
 import cctbx.geometry_restraints.manager
 import cctbx.geometry_restraints.lbfgs
 from cctbx import xray
@@ -10,6 +11,7 @@ from cctbx import sgtbx
 from cctbx.array_family import flex
 import scitbx.lbfgs
 from scitbx import matrix
+from libtbx.test_utils import approx_equal
 from libtbx.itertbx import count
 from stdlib import math
 from cStringIO import StringIO
@@ -287,6 +289,68 @@ def exercise(verbose=0):
         assert len(manager.plain_pair_sym_table) == 16
         if (0 or verbose):
           manager.plain_pair_sym_table.show()
+  #
+  xray_structure.scatterers().set_u_iso(flex.double([
+    0.77599982480241358, 0.38745781137212021, 0.20667558236418682,
+    0.99759840171302094, 0.8917287406687805, 0.64780251325379845,
+    0.24878590382983534, 0.59480621182194615, 0.58695637792905142,
+    0.33997130213653637, 0.51258699130743735, 0.79760289141276675,
+    0.39996577657875021, 0.4329328819341467, 0.70422156561726479,
+    0.87260110626999332]))
+  class parameters: pass
+  parameters.sphere_radius = 5
+  parameters.distance_power = 0.7
+  parameters.mean_power = 0.9
+  parameters.wilson_b_weight = 1.3952
+  adp_energies = adp_restraints.energies_iso(
+    geometry_restraints_manager=manager,
+    xray_structure=xray_structure,
+    parameters=parameters,
+    wilson_b=None,
+    compute_gradients=False,
+    gradients=None,
+    normalization=False,
+    collect=True)
+  assert adp_energies.number_of_restraints == 69
+  assert approx_equal(adp_energies.residual_sum, 3.34857067293)
+  assert adp_energies.gradients is None
+  assert adp_energies.u_i.size() == adp_energies.number_of_restraints
+  assert adp_energies.u_j.size() == adp_energies.number_of_restraints
+  assert adp_energies.r_ij.size() == adp_energies.number_of_restraints
+  for wilson_b in [None, 10, 100]:
+    finite_difference_gradients = flex.double()
+    eps = 1.e-6
+    for i_scatterer in xrange(xray_structure.scatterers().size()):
+      rs = []
+      for signed_eps in [eps, -eps]:
+        xray_structure_eps = xray_structure.deep_copy_scatterers()
+        xray_structure_eps.scatterers()[i_scatterer].u_iso += signed_eps
+        adp_energies = adp_restraints.energies_iso(
+          geometry_restraints_manager=manager,
+          xray_structure=xray_structure_eps,
+          parameters=parameters,
+          wilson_b=wilson_b,
+          compute_gradients=True,
+          gradients=None,
+          normalization=False,
+          collect=False)
+        rs.append(adp_energies.residual_sum)
+        assert adp_energies.gradients.size() \
+            == xray_structure.scatterers().size()
+        assert adp_energies.u_i == None
+        assert adp_energies.u_j == None
+        assert adp_energies.r_ij == None
+      finite_difference_gradients.append((rs[0]-rs[1])/(2*eps))
+    adp_energies = adp_restraints.energies_iso(
+      geometry_restraints_manager=manager,
+      xray_structure=xray_structure,
+      parameters=parameters,
+      wilson_b=wilson_b,
+      compute_gradients=True,
+      gradients=None,
+      normalization=False,
+      collect=False)
+    assert approx_equal(adp_energies.gradients, finite_difference_gradients)
   print "OK"
 
 if (__name__ == "__main__"):
