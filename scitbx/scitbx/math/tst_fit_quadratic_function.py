@@ -4,7 +4,7 @@ from scitbx.math import fit_quadratic_function as fqf
 from libtbx.test_utils import approx_equal
 import math
 
-def example_and_test_fit():
+def test_fit():
   x1_obs=[]
   x2_obs=[]
   x1m=1.0
@@ -33,4 +33,4 @@ def example_and_test_fit():
   print 'OK'
 
 if (__name__ == "__main__"):
-  exercise()
+  test_fit()
