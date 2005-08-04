@@ -138,7 +138,16 @@ def eps_eq(a1, a2, eps=1.e-6, out=Default, prefix=""):
 def not_eps_eq(a1, a2, eps=1.e-6):
   return not eps_eq(a1, a2, eps, None)
 
-def show_diff(a, b):
+def show_diff(a, b, selections=None):
+  if (selections is not None):
+    a_lines = a.splitlines(1)
+    a = []
+    for selection in selections:
+      for i in selection:
+        if (i < 0): i += len(a_lines)
+        a.append(a_lines[i])
+      a.append("...\n")
+    a = "".join(a[:-1])
   if (a == b): return False
   print "".join(diff_function(b.splitlines(1), a.splitlines(1)))
   return True
