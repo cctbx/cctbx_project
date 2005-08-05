@@ -563,9 +563,9 @@ Si(2)
         collect=not compute_gradients)
       assert energies.number_of_restraints in [7,9]
       if (energies.number_of_restraints == 9):
-        assert approx_equal(energies.residual_sum, 0.0182517258199)
+        assert approx_equal(energies.residual_sum, 0.0258118381912)
       else:
-        assert approx_equal(energies.residual_sum, 0.00912586290993)
+        assert approx_equal(energies.residual_sum, 0.0129059190956)
       if (not compute_gradients):
         assert energies.gradients.size() == 0
         assert energies.u_i.size() == energies.number_of_restraints
@@ -574,10 +574,10 @@ Si(2)
       else:
         if (energies.number_of_restraints == 9):
           assert approx_equal(energies.gradients,
-            [-0.54145217492216446, 0.31976906618680784, 0.040128945222047199])
+            [-0.76572900915133457, 0.45222175022876354, 0.056750898576746159])
         else:
           assert approx_equal(energies.gradients,
-            [-0.27072608746108223, 0.15988453309340392, 0.0200644726110236])
+            [-0.38286450457566729, 0.22611087511438174, 0.028375449288373083])
         assert approx_equal(
           energies.gradients,
           adp_energies.finite_difference_gradients(u_isos=u_isos))

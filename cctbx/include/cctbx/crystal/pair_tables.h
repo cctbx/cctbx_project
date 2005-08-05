@@ -94,16 +94,16 @@ namespace cctbx { namespace crystal {
                 double u2 = u_isos[j_seq];
                 double sum = u1 + u2;
                 if (sum >= min_u_sum) {
-                  double sum_pow = std::pow(sum, mean_power);
-                  CCTBX_ASSERT(sum_pow != 0);
+                  double mean_pow = std::pow(sum/2, mean_power);
+                  CCTBX_ASSERT(mean_pow != 0);
                   double u_diff = u1 - u2;
                   double u_diff_sq = u_diff * u_diff;
                   number_of_restraints++;
-                  residual_sum += (weight * u_diff_sq / sum_pow);
+                  residual_sum += (weight * u_diff_sq / mean_pow);
                   if (compute_gradients) {
-                    double mem1 = 2.* u_diff / sum_pow;
-                    CCTBX_ASSERT(sum * sum_pow != 0);
-                    double mem2 = mean_power * u_diff_sq / (sum * sum_pow);
+                    double mem1 = 2.* u_diff / mean_pow;
+                    CCTBX_ASSERT(sum * mean_pow != 0);
+                    double mem2 = mean_power * u_diff_sq / (sum * mean_pow);
                     gradients[i_seq] += weight * (mem1 - mem2);
                     gradients[j_seq] += weight * (-mem1 - mem2);
                   }
