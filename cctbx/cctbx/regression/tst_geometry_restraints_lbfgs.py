@@ -312,7 +312,7 @@ def exercise(verbose=0):
     normalization=False,
     collect=True)
   assert adp_energies.number_of_restraints == 69
-  assert approx_equal(adp_energies.residual_sum, 3.34857067293)
+  assert approx_equal(adp_energies.residual_sum, 6.24865382467)
   assert adp_energies.gradients is None
   assert adp_energies.u_i.size() == adp_energies.number_of_restraints
   assert adp_energies.u_j.size() == adp_energies.number_of_restraints
