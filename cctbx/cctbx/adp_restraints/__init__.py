@@ -38,7 +38,7 @@ class energies_iso(scitbx.restraints.energies):
       u_isos=u_isos,
       sphere_radius=parameters.sphere_radius,
       distance_power=parameters.distance_power,
-      mean_power=parameters.mean_power,
+      average_power=parameters.average_power,
       min_u_sum=1.e-6,
       compute_gradients=compute_gradients,
       collect=collect)

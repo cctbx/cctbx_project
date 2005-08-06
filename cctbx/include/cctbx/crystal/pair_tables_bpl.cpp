@@ -131,7 +131,7 @@ namespace {
             arg_("u_isos"),
             arg_("sphere_radius"),
             arg_("distance_power"),
-            arg_("mean_power"),
+            arg_("average_power"),
             arg_("min_u_sum"),
             arg_("compute_gradients"),
             arg_("collect"))))

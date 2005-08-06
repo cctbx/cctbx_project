@@ -587,18 +587,18 @@ Si(2)
     for i_trial in xrange(5):
       u_isos = u_isos.select(flex.random_permutation(size=u_isos.size()))
       for distance_power in [0.3, 0.8, 1, 1.7]:
-        for mean_power in [0.4, 0.9, 1, 1.5]:
+        for average_power in [0.4, 0.9, 1, 1.5]:
           energies = adp_energies(
             u_isos=u_isos,
             distance_power=distance_power,
-            mean_power=mean_power,
+            average_power=average_power,
             compute_gradients=True)
           assert approx_equal(
             energies.gradients,
             adp_energies.finite_difference_gradients(
-            u_isos=u_isos,
-            distance_power=distance_power,
-            mean_power=mean_power))
+              u_isos=u_isos,
+              distance_power=distance_power,
+              average_power=average_power))
     #
     distances = crystal.get_distances(
       pair_sym_table=sym_table,
@@ -824,7 +824,7 @@ class adp_iso_local_sphere_restraints_energies_functor:
         u_isos,
         sphere_radius=5.0,
         distance_power=0.7,
-        mean_power=0.5,
+        average_power=0.5,
         compute_gradients=False,
         collect=False):
     return crystal.adp_iso_local_sphere_restraints_energies(
@@ -834,7 +834,7 @@ class adp_iso_local_sphere_restraints_energies_functor:
       u_isos=u_isos,
       sphere_radius=sphere_radius,
       distance_power=distance_power,
-      mean_power=mean_power,
+      average_power=average_power,
       min_u_sum=1.e-6,
       compute_gradients=compute_gradients,
       collect=collect)
@@ -842,7 +842,7 @@ class adp_iso_local_sphere_restraints_energies_functor:
   def finite_difference_gradients(self,
         u_isos,
         distance_power=0.7,
-        mean_power=0.5,
+        average_power=0.5,
         eps=1.e-6):
     gs = flex.double()
     for i_u in xrange(u_isos.size()):
@@ -853,7 +853,7 @@ class adp_iso_local_sphere_restraints_energies_functor:
         energies = self(
           u_isos=u_isos_eps,
           distance_power=distance_power,
-          mean_power=mean_power)
+          average_power=average_power)
         rs.append(energies.residual_sum)
       gs.append((rs[0]-rs[1])/(2*eps))
     return gs
