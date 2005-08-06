@@ -300,7 +300,7 @@ def exercise(verbose=0):
   class parameters: pass
   parameters.sphere_radius = 5
   parameters.distance_power = 0.7
-  parameters.mean_power = 0.9
+  parameters.average_power = 0.9
   parameters.wilson_b_weight = 1.3952
   adp_energies = adp_restraints.energies_iso(
     geometry_restraints_manager=manager,

@@ -60,7 +60,7 @@ namespace cctbx { namespace crystal {
         af::const_ref<double> const& u_isos,
         double sphere_radius,
         double distance_power,
-        double mean_power,
+        double average_power,
         double min_u_sum,
         bool compute_gradients,
         bool collect)
@@ -94,16 +94,16 @@ namespace cctbx { namespace crystal {
                 double u2 = u_isos[j_seq];
                 double sum = u1 + u2;
                 if (sum >= min_u_sum) {
-                  double mean_pow = std::pow(sum/2, mean_power);
-                  CCTBX_ASSERT(mean_pow != 0);
+                  double ave_pow = std::pow(sum/2, average_power);
+                  CCTBX_ASSERT(ave_pow != 0);
                   double u_diff = u1 - u2;
                   double u_diff_sq = u_diff * u_diff;
                   number_of_restraints++;
-                  residual_sum += (weight * u_diff_sq / mean_pow);
+                  residual_sum += (weight * u_diff_sq / ave_pow);
                   if (compute_gradients) {
-                    double mem1 = 2.* u_diff / mean_pow;
-                    CCTBX_ASSERT(sum * mean_pow != 0);
-                    double mem2 = mean_power * u_diff_sq / (sum * mean_pow);
+                    double mem1 = 2.* u_diff / ave_pow;
+                    CCTBX_ASSERT(sum * ave_pow != 0);
+                    double mem2 = average_power * u_diff_sq / (sum * ave_pow);
                     gradients[i_seq] += weight * (mem1 - mem2);
                     gradients[j_seq] += weight * (-mem1 - mem2);
                   }
