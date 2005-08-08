@@ -41,7 +41,7 @@ namespace {
               af::const_ref<w_t> const&,
               std::size_t,
               af::const_ref<std::size_t> const&))
-                shared_proxy_select, (
+                shared_planarity_proxy_select, (
             arg_("n_seq"), arg_("iselection")))
           .def("proxy_remove",
             (af::shared<w_t>(*)(
