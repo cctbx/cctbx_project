@@ -6,64 +6,8 @@
 
 namespace cctbx { namespace geometry_restraints {
 
-  namespace detail {
-
-    template <typename ArrayType>
-    struct new_i_seqs;
-
-    // For angle, dihedral or chirality proxies.
-    template <std::size_t N>
-    struct new_i_seqs<af::tiny<unsigned, N> > : af::tiny<unsigned, N>
-    {
-      bool is_valid;
-
-      new_i_seqs(
-        af::tiny<unsigned, N> const& i_seqs,
-        af::const_ref<std::size_t> const& reindexing_array)
-      :
-        is_valid(false)
-      {
-        std::size_t n_seq = reindexing_array.size();
-        for(unsigned i=0;i<N;i++) {
-          unsigned i_seq = i_seqs[i];
-          CCTBX_ASSERT(i_seq < n_seq);
-          this->elems[i] = static_cast<unsigned>(reindexing_array[i_seq]);
-          if (this->elems[i] == n_seq) return;
-        }
-        is_valid = true;
-      }
-    };
-
-    // For planarity proxies.
-    template <>
-    struct new_i_seqs<af::shared<std::size_t> > : af::shared<std::size_t>
-    {
-      bool is_valid;
-
-      new_i_seqs(
-        af::shared<std::size_t> const& i_seqs_,
-        af::const_ref<std::size_t> const& reindexing_array)
-      :
-        is_valid(false)
-      {
-        af::const_ref<std::size_t> i_seqs = i_seqs_.const_ref();
-        std::size_t n_seq = reindexing_array.size();
-        for(std::size_t i=0;i<i_seqs.size();i++) {
-          std::size_t i_seq = i_seqs[i];
-          CCTBX_ASSERT(i_seq < n_seq);
-          std::size_t new_i_seq = reindexing_array[i_seq];
-          if (new_i_seq != n_seq) {
-            this->push_back(new_i_seq);
-          }
-        }
-        is_valid = (this->size() > 3);
-      }
-    };
-
-  } // namespace detail
-
-  /*! \brief Applies selection to array of angle, dihedral, chirality
-      or planarity proxies.
+  /*! \brief Applies selection on array of atoms to array of
+      angle, dihedral or chirality proxies.
    */
   template <typename ProxyType>
   af::shared<ProxyType>
@@ -79,10 +23,58 @@ namespace cctbx { namespace geometry_restraints {
       reindexing_array_ref = reindexing_array.const_ref();
     for(std::size_t i_proxy=0;i_proxy<self.size();i_proxy++) {
       ProxyType const& p = self[i_proxy];
-      detail::new_i_seqs<typename ProxyType::i_seqs_type>
-        new_i_seqs(p.i_seqs, reindexing_array_ref);
-      if (new_i_seqs.is_valid) {
+      typename ProxyType::i_seqs_type new_i_seqs;
+      bool is_valid = true;
+      for(unsigned i=0;i<p.i_seqs.size();i++) {
+        unsigned i_seq = p.i_seqs[i];
+        CCTBX_ASSERT(i_seq < n_seq);
+        new_i_seqs[i] = static_cast<unsigned>(reindexing_array[i_seq]);
+        if (new_i_seqs[i] == n_seq) {
+          is_valid = false;
+          break;
+        }
+      }
+      if (is_valid) {
         result.push_back(ProxyType(new_i_seqs, p));
+      }
+    }
+    return result;
+  }
+
+  /*! \brief Applies selection on array of atoms to array of
+      planarity proxies.
+   */
+  template <typename ProxyType>
+  af::shared<ProxyType>
+  shared_planarity_proxy_select(
+    af::const_ref<ProxyType> const& self,
+    std::size_t n_seq,
+    af::const_ref<std::size_t> const& iselection)
+  {
+    af::shared<ProxyType> result;
+    af::shared<std::size_t>
+      reindexing_array = scitbx::af::reindexing_array(n_seq, iselection);
+    af::const_ref<std::size_t>
+      reindexing_array_ref = reindexing_array.const_ref();
+    for(std::size_t i_proxy=0;i_proxy<self.size();i_proxy++) {
+      ProxyType const& p = self[i_proxy];
+      af::const_ref<typename ProxyType::i_seqs_type::value_type>
+        i_seqs = p.i_seqs.const_ref();
+      af::const_ref<double>
+        weights = p.weights.const_ref();
+      af::shared<typename ProxyType::i_seqs_type::value_type> new_i_seqs;
+      af::shared<double> new_weights;
+      for(std::size_t i=0;i<i_seqs.size();i++) {
+        std::size_t i_seq = i_seqs[i];
+        CCTBX_ASSERT(i_seq < n_seq);
+        std::size_t new_i_seq = reindexing_array_ref[i_seq];
+        if (new_i_seq != n_seq) {
+          new_i_seqs.push_back(new_i_seq);
+          new_weights.push_back(weights[i]);
+        }
+      }
+      if (new_i_seqs.size() > 3) {
+        result.push_back(ProxyType(new_i_seqs, new_weights));
       }
     }
     return result;

@@ -897,6 +897,18 @@ def exercise_planarity():
   assert approx_equal(selected[0].weights, [3,4,5,6])
   assert approx_equal(selected[1].weights, [5,6,7,8])
   #
+  for i_remove in range(10,15):
+    sel = flex.size_t(range(10,i_remove)+range(i_remove+1,15))
+    pp = geometry_restraints.planarity_proxy(
+      i_seqs=flex.size_t([10, 11, 12, 13, 14]),
+      weights=flex.double(range(5))+13)
+    pps = geometry_restraints.shared_planarity_proxy()
+    pps.append(pp)
+    selected = pps.proxy_select(20, sel)
+    assert list(selected[0].i_seqs) == [0,1,2,3]
+    assert approx_equal(selected[0].weights,
+      pp.weights[:i_remove-10].concatenate(pp.weights[i_remove+1-10:]))
+  #
   rest = proxies.proxy_remove(selection=flex.bool([True,True,True,True,True]))
   assert rest.size() == 0
   rest = proxies.proxy_remove(selection=flex.bool([False,True,True,True,True]))
