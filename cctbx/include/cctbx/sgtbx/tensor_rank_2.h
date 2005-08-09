@@ -31,7 +31,7 @@ namespace cctbx { namespace sgtbx { namespace tensor_rank_2 {
       std::size_t gradient_average_denominator;
       scitbx::matrix::tensor_rank_2::gradient_average_cache<int>
         gradient_average_cache;
-      af::small<af::tiny<FloatType, 6>, 6> gradient_sum_coeffs;
+      af::versa<FloatType, af::c_grid<2> > gradient_sum_coeffs;
 
       constraints() {}
 
@@ -76,14 +76,15 @@ namespace cctbx { namespace sgtbx { namespace tensor_rank_2 {
             CCTBX_ASSERT(r.den() == 1);
             gradient_average_cache.accumulate(r.num());
           }
-          gradient_sum_coeffs.resize(independent_indices.size());
-          for(std::size_t i=0;i<independent_indices.size();i++) {
-            gradient_sum_coeffs[i].fill(0);
-            gradient_sum_coeffs[i][independent_indices[i]] = 1;
+          gradient_sum_coeffs.resize(
+            af::c_grid<2>(independent_indices.size(), 6), 0);
+          FloatType* row = gradient_sum_coeffs.begin();
+          for(std::size_t i=0;i<independent_indices.size();i++,row+=6) {
+            row[independent_indices[i]] = 1;
             scitbx::matrix::row_echelon::back_substitution_float(
               row_echelon_form_ref,
               static_cast<const FloatType*>(0),
-              gradient_sum_coeffs[i].begin());
+              row);
           }
         }
       }
@@ -130,16 +131,17 @@ namespace cctbx { namespace sgtbx { namespace tensor_rank_2 {
       }
 
       af::small<FloatType, 6>
-      independent_gradients(scitbx::sym_mat3<FloatType> const& all_gradients)
+      independent_gradients(
+        scitbx::sym_mat3<FloatType> const& all_gradients) const
       {
         if (gradient_average_denominator == 0) {
-          throw error("gradient handling was not initialized.");
-        }
+          throw error("gradient handling was not initialized."); }
         af::small<FloatType, 6> result;
-        for(std::size_t i=0;i<gradient_sum_coeffs.size();i++) {
+        const FloatType *row = gradient_sum_coeffs.begin();
+        for(std::size_t i=0;i<independent_indices.size();i++,row+=6) {
           FloatType indep_grad = 0;
           for(std::size_t j=0;j<6;j++) {
-            indep_grad += gradient_sum_coeffs[i][j] * all_gradients[j];
+            indep_grad += row[j] * all_gradients[j];
           }
           result.push_back(indep_grad);
         }
