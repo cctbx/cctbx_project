@@ -200,6 +200,33 @@ def exercise_flex_constructors():
   assert f.size() == 3
   assert tuple(f) == (10,11,12)
   assert flex.to_list(f) == [10,11,12]
+  #
+  for row_type in [list, tuple]:
+    for column_type in [list, tuple]:
+      for n_rows in range(4):
+        for n_columns in range(4):
+          matrix = list()
+          for i_row in xrange(n_rows):
+            matrix.append(column_type(flex.random_double(n_columns)))
+          m = flex.double(row_type(matrix))
+          if (n_rows == 0):
+            assert m.focus() == (0,)
+          else:
+            assert m.focus() == (n_rows, n_columns)
+          try: flex.double(row_type([column_type([]),column_type([1])]))
+          except RuntimeError, e:
+            assert str(e) == "matrix columns must have identical sizes."
+          else: raise RuntimeError("Exception expected.")
+          try: flex.double(row_type([column_type([0]),column_type(["x"])]))
+          except TypeError, e:
+            assert str(e) == "a float is required"
+          else: raise RuntimeError("Exception expected.")
+  for arg in [[[0],""], ([0],"",)]:
+    try: flex.double(arg)
+    except RuntimeError, e:
+      assert str(e) == \
+        "argument must be a Python list or tuple of lists or tuples."
+    else: raise RuntimeError("Exception expected.")
 
 def exercise_misc():
   f = flex.double((1,2,3))
@@ -211,6 +238,13 @@ def exercise_misc():
   assert f.back() == 3
   f.fill(42)
   assert tuple(f) == (42,42,42)
+  assert f.capacity() == 3
+  f.reserve(10)
+  assert f.capacity() == 10
+  assert f.size() == 3
+  f.reserve(5)
+  assert f.capacity() == 10
+  assert f.size() == 3
   f = flex.double((1,2,3,4,5,6))
   fc = f.deep_copy()
   assert fc.id() != f.id()
@@ -1193,6 +1227,9 @@ def exercise_matrix():
         d = matrix.rec(a, a.focus()) * matrix.rec(b, b.focus())
         assert c.focus() == d.n
         assert approx_equal(c, d)
+        assert c.matrix_transpose().focus() == (d.n[1], d.n[0])
+        assert approx_equal(c.matrix_transpose(), d.transpose())
+        assert approx_equal(c.matrix_transpose().matrix_transpose(), d)
         c.matrix_transpose_in_place()
         assert c.focus() == (d.n[1], d.n[0])
         assert approx_equal(c, d.transpose())

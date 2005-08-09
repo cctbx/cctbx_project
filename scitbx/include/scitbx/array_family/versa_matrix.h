@@ -100,6 +100,19 @@ namespace scitbx { namespace af {
     return ab;
   }
 
+  template <typename NumType>
+  versa<NumType, c_grid<2> >
+  matrix_transpose(const_ref<NumType, c_grid<2> > const& self)
+  {
+    shared_plain<NumType> result(self.begin(), self.end());
+    mat_ref<NumType> result_(
+      result.begin(), self.accessor()[0], self.accessor()[1]);
+    result_.transpose_in_place();
+    return versa<NumType, c_grid<2> >(
+      result,
+      c_grid<2>(self.accessor()[1], self.accessor()[0]));
+  }
+
   template <typename NumType, typename FlexGridIndexType>
   void
   matrix_transpose_in_place(versa<NumType, flex_grid<FlexGridIndexType> >& a)
