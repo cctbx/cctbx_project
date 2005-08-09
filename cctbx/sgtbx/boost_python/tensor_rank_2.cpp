@@ -28,6 +28,8 @@ namespace {
           make_getter(&w_t::row_echelon_form_memory, rbv()))
         .add_property("independent_indices",
           make_getter(&w_t::independent_indices, rbv()))
+        .add_property("gradient_sum_coeffs",
+          make_getter(&w_t::gradient_sum_coeffs, rbv()))
         .def("n_independent_params", &w_t::n_independent_params)
         .def("n_dependent_params", &w_t::n_dependent_params)
         .def("independent_params", &w_t::independent_params, (arg_("params")))

@@ -1655,6 +1655,7 @@ def exercise_tensor_rank_2_constraints():
   assert list(c.row_echelon_form) \
       == [1,-1,0,0,0,0,0,1,0,-2,0,0,0,0,0,0,1,-1,0,0,0,0,0,1]
   assert list(c.independent_indices) == [2,3]
+  assert approx_equal(c.gradient_sum_coeffs, [0,0,1,0,0,0, 2,2,0,1,0,0])
   assert c.n_independent_params() == 2
   assert c.n_dependent_params() == 4
   assert approx_equal(c.independent_params(params=[1,2,3,4,5,6]), [3,4])
