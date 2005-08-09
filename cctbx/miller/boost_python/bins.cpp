@@ -44,6 +44,12 @@ namespace {
                   std::size_t,
                   af::const_ref<index<> > const&,
                   optional<double, double, double> >())
+
+        .def(init<uctbx::unit_cell const&,
+                  af::const_ref<index<> > const&,
+                  double,
+                  double ,
+                  double  > ()  )
         .def("unit_cell", &w_t::unit_cell, rir())
         .def("n_bins_used", &w_t::n_bins_used)
         .def("n_bins_all", &w_t::n_bins_all)

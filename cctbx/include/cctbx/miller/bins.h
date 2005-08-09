@@ -41,6 +41,14 @@ namespace cctbx { namespace miller {
         double d_min=0,
         double relative_tolerance=1.e-6);
 
+      binning(
+        uctbx::unit_cell const& unit_cell,
+        af::const_ref<index<> > const& miller_indices,
+        double d_max,
+        double d_min,
+        double d_star_sq_step);
+
+
       uctbx::unit_cell const&
       unit_cell() const { return unit_cell_; }
 
@@ -87,6 +95,15 @@ namespace cctbx { namespace miller {
         double d_star_sq_min,
         double d_star_sq_max,
         double relative_tolerance);
+
+      void
+      init_limits_d_star_sq_step(
+        double d_min,
+        double d_max,
+        double d_star_sq_step);
+
+
+
 
       uctbx::unit_cell unit_cell_;
       af::shared<double> limits_;
@@ -208,6 +225,11 @@ namespace cctbx { namespace miller {
     }
     return result;
   }
+
+
+
+
+
 
 }} // namespace cctbx::miller
 

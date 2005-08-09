@@ -776,6 +776,7 @@ class set(crystal.symmetry):
                    n_bins=0):
     assert auto_binning or reflections_per_bin != 0 or n_bins != 0
     assert auto_binning or (reflections_per_bin == 0 or n_bins == 0)
+
     if (auto_binning):
       if (reflections_per_bin == 0): reflections_per_bin = 200
       if (n_bins == 0): n_bins = 8
@@ -788,6 +789,27 @@ class set(crystal.symmetry):
     assert self.unit_cell() is not None
     assert self.indices().size() > 0 or d_min > 0
     bng = binning(self.unit_cell(), n_bins, self.indices(), d_max, d_min)
+    self._binner = binner(bng, self)
+    return self.binner()
+
+  def setup_binner_d_star_sq_step(self,
+                                  auto_binning=True,
+                                  d_max=0,
+                                  d_min=0,
+                                  d_star_sq_step=0):
+    assert auto_binning or (d_min > d_max )
+
+    if auto_binning:
+      d_max=flex.min( self.d_spacings().data() )
+      d_min=flex.max( self.d_spacings().data() )
+      d_star_sq_step = 0.004
+
+    assert (d_star_sq_step>0.0)
+    bng = binning(self.unit_cell(),
+                  self.indices(),
+                  d_min,
+                  d_max,
+                  d_star_sq_step)
     self._binner = binner(bng, self)
     return self.binner()
 
@@ -1418,7 +1440,10 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
       meas = (  (ratio > cutoff)
               & (i_plus_sigma > cutoff)
               & (i_minus_sigma > cutoff) ).count(True)
-      return meas/ratio.size()
+      if ratio.size()>0:
+        return meas/ratio.size()
+      else:
+        return None
     results = []
     for i_bin in self.binner().range_all():
       sel = self.binner().selection(i_bin)
@@ -1438,6 +1463,48 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
       sel = self.binner().selection(i_bin)
       result.append(self.select(sel).second_moment())
     return binned_data(binner=self.binner(), data=result, data_fmt="%7.4f")
+
+  def wilson_plot(self, use_binning=False):
+    """<data^2>"""
+    assert not use_binning or self.binner() is not None
+    if (not use_binning):
+      if (self.indices().size() == 0): return None
+      mean_data = flex.mean(self.data())
+      if (mean_data == 0): return None
+      return mean_data
+    result = []
+    for i_bin in self.binner().range_all():
+      sel = self.binner().selection(i_bin)
+      result.append(self.select(sel).wilson_plot())
+    return binned_data(binner=self.binner(), data=result, data_fmt="%7.4f")
+
+  def i_over_sig_i(self, use_binning=False):
+    """<I/sigma_I>"""
+    assert not use_binning or self.binner is not None
+
+    if (not use_binning):
+      if (self.indices().size() == 0): return None
+      obs = None
+      if self.is_real_array():
+        if self.is_xray_amplitude_array():
+          obs = self.f_as_f_sq()
+        if self.is_xray_intensity_array():
+          obs = self
+      if obs is not None:
+        obs = obs.select(obs.sigmas()>0)
+        i_sig_i = flex.mean( obs.data()/obs.sigmas() )
+        return i_sig_i
+      else:
+        return None
+    result = []
+    for i_bin in self.binner().range_all():
+      sel =  self.binner().selection(i_bin)
+      result.append(self.select(sel).i_over_sig_i() )
+
+
+    return binned_data(binner=self.binner(),
+                       data=result,
+                       data_fmt="%7.4f")
 
   def second_moment_of_intensities(self, use_binning=False):
     "<I^2>/(<I>)^2 (2.0 for untwinned, 1.5 for twinned data)"
