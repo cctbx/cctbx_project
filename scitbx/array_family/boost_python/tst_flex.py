@@ -219,7 +219,9 @@ def exercise_flex_constructors():
           else: raise RuntimeError("Exception expected.")
           try: flex.double(row_type([column_type([0]),column_type(["x"])]))
           except TypeError, e:
-            assert str(e) == "a float is required"
+            assert str(e) in [
+              "bad argument type for built-in operation",
+              "a float is required"]
           else: raise RuntimeError("Exception expected.")
   for arg in [[[0],""], ([0],"",)]:
     try: flex.double(arg)
