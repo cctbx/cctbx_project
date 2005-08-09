@@ -21,6 +21,141 @@ namespace {
     return new flex<double>::type(result, result.size());
   }
 
+  flex<double>::type*
+  from_list_or_tuple_of_lists_or_tuples(PyObject* matrix_ptr)
+  {
+    static const char* argument_error
+      = "argument must be a Python list or tuple of lists or tuples.";
+    static const char* column_size_error
+      = "matrix columns must have identical sizes.";
+    shared<double> result;
+    std::size_t n_rows = 0;
+    std::size_t n_columns = 0;
+    if (PyList_Check(matrix_ptr)) {
+      n_rows = PyList_GET_SIZE(matrix_ptr);
+      for(std::size_t i_row=0;i_row<n_rows;i_row++) {
+        PyObject* row = PyList_GET_ITEM(matrix_ptr, i_row);
+        if (PyList_Check(row)) {
+          if (i_row == 0) {
+            n_columns = PyList_GET_SIZE(row);
+            result.reserve(n_rows*n_columns);
+          }
+          else {
+            if (PyList_GET_SIZE(row) != n_columns) {
+              throw std::runtime_error(column_size_error);
+            }
+          }
+          for(std::size_t i_column=0;i_column<n_columns;i_column++) {
+            PyObject* elem = PyList_GET_ITEM(row, i_column);
+            double value = PyFloat_AsDouble(elem);
+            if (PyErr_Occurred()) boost::python::throw_error_already_set();
+            result.push_back(value);
+          }
+        }
+        else if (PyTuple_Check(row)) {
+          if (i_row == 0) {
+            n_columns = PyTuple_GET_SIZE(row);
+          }
+          else {
+            if (PyTuple_GET_SIZE(row) != n_columns) {
+              throw std::runtime_error(column_size_error);
+            }
+          }
+          for(std::size_t i_column=0;i_column<n_columns;i_column++) {
+            PyObject* elem = PyTuple_GET_ITEM(row, i_column);
+            double value = PyFloat_AsDouble(elem);
+            if (PyErr_Occurred()) boost::python::throw_error_already_set();
+            result.push_back(value);
+          }
+        }
+        else if (i_row == 0) {
+          result.reserve(n_rows);
+          for (;i_row<n_rows;i_row++) {
+            PyObject* elem = PyList_GET_ITEM(matrix_ptr, i_row);
+            double value = PyFloat_AsDouble(elem);
+            if (PyErr_Occurred()) boost::python::throw_error_already_set();
+            result.push_back(value);
+          }
+          return new flex<double>::type(result, flex_grid<>(n_rows));
+        }
+        else {
+          throw std::runtime_error(argument_error);
+        }
+      }
+    }
+    else if (PyTuple_Check(matrix_ptr)) {
+      n_rows = PyTuple_GET_SIZE(matrix_ptr);
+      for(std::size_t i_row=0;i_row<n_rows;i_row++) {
+        PyObject* row = PyTuple_GET_ITEM(matrix_ptr, i_row);
+        if (PyList_Check(row)) {
+          if (i_row == 0) {
+            n_columns = PyList_GET_SIZE(row);
+            result.reserve(n_rows*n_columns);
+          }
+          else {
+            if (PyList_GET_SIZE(row) != n_columns) {
+              throw std::runtime_error(column_size_error);
+            }
+          }
+          for(std::size_t i_column=0;i_column<n_columns;i_column++) {
+            PyObject* elem = PyList_GET_ITEM(row, i_column);
+            double value = PyFloat_AsDouble(elem);
+            if (PyErr_Occurred()) boost::python::throw_error_already_set();
+            result.push_back(value);
+          }
+        }
+        else if (PyTuple_Check(row)) {
+          if (i_row == 0) {
+            n_columns = PyTuple_GET_SIZE(row);
+          }
+          else {
+            if (PyTuple_GET_SIZE(row) != n_columns) {
+              throw std::runtime_error(column_size_error);
+            }
+          }
+          for(std::size_t i_column=0;i_column<n_columns;i_column++) {
+            PyObject* elem = PyTuple_GET_ITEM(row, i_column);
+            double value = PyFloat_AsDouble(elem);
+            if (PyErr_Occurred()) boost::python::throw_error_already_set();
+            result.push_back(value);
+          }
+        }
+        else if (i_row == 0) {
+          result.reserve(n_rows);
+          for (;i_row<n_rows;i_row++) {
+            PyObject* elem = PyTuple_GET_ITEM(matrix_ptr, i_row);
+            double value = PyFloat_AsDouble(elem);
+            if (PyErr_Occurred()) boost::python::throw_error_already_set();
+            result.push_back(value);
+          }
+          return new flex<double>::type(result, flex_grid<>(n_rows));
+        }
+        else {
+          throw std::runtime_error(argument_error);
+        }
+      }
+    }
+    else {
+      throw std::runtime_error(argument_error);
+    }
+    if (n_rows == 0) {
+      return new flex<double>::type(result, flex_grid<>(0));
+    }
+    return new flex<double>::type(result, flex_grid<>(n_rows, n_columns));
+  }
+
+  flex<double>::type*
+  from_list_of_lists_or_tuples(boost::python::list const& matrix)
+  {
+    return from_list_or_tuple_of_lists_or_tuples(matrix.ptr());
+  }
+
+  flex<double>::type*
+  from_tuple_of_lists_or_tuples(boost::python::tuple const& matrix)
+  {
+    return from_list_or_tuple_of_lists_or_tuples(matrix.ptr());
+  }
+
   shared<double>
   extract_double_attributes(
     boost::python::object array,
@@ -110,6 +245,10 @@ namespace boost_python {
       .def_pickle(flex_pickle_single_buffered<double>())
       .def("__init__", make_constructor(
         from_stl_vector_double, default_call_policies()))
+      .def("__init__", make_constructor(
+        from_list_of_lists_or_tuples, default_call_policies()))
+      .def("__init__", make_constructor(
+        from_tuple_of_lists_or_tuples, default_call_policies()))
       .def("add_selected",
         (object(*)(
           object const&,
@@ -163,6 +302,9 @@ namespace boost_python {
         (double(*)(
           const_ref<double> const&,
           const_ref<double> const&)) matrix_multiply)
+      .def("matrix_transpose",
+        (versa<double, c_grid<2> >(*)(
+           const_ref<double, c_grid<2> > const&)) matrix_transpose)
       .def("matrix_transpose_in_place",
         (void(*)(versa<double, flex_grid<> >&)) matrix_transpose_in_place)
       .def("matrix_lu_decomposition_in_place",

@@ -724,6 +724,7 @@ namespace scitbx { namespace af { namespace boost_python {
         .def("front", front, GetitemReturnValuePolicy())
         .def("back", back, GetitemReturnValuePolicy())
         .def("fill", fill)
+        .def("reserve", reserve)
         .def("deep_copy", deep_copy)
         .def("shallow_copy", shallow_copy)
         .def("as_1d", as_1d)
