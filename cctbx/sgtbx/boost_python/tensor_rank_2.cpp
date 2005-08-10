@@ -24,6 +24,16 @@ namespace {
           arg_("space_group"),
           arg_("reciprocal_space"),
           arg_("initialize_gradient_handling")=false)))
+        .def(init<sgtbx::site_symmetry_ops const&, bool, optional<bool> >((
+          arg_("site_symmetry_ops"),
+          arg_("reciprocal_space"),
+          arg_("initialize_gradient_handling")=false)))
+        .def(init<
+            af::shared<rt_mx> const&, std::size_t, bool, optional<bool> >((
+          arg_("symmetry_matrices"),
+          arg_("i_first_matrix_to_use"),
+          arg_("reciprocal_space"),
+          arg_("initialize_gradient_handling")=false)))
         .add_property("row_echelon_form",
           make_getter(&w_t::row_echelon_form_memory, rbv()))
         .add_property("independent_indices",

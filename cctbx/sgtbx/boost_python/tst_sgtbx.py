@@ -1645,28 +1645,50 @@ def exercise_search_symmetry():
       == sgtbx.space_group("P 3 (1/3*x+1/3*y,-1/3*x+2/3*y,z)")
 
 def exercise_tensor_rank_2_constraints():
+  u = uctbx.unit_cell((12,12,15,90,90,120))
   g = sgtbx.space_group("P 6 2")
-  c = sgtbx.tensor_rank_2_constraints(
-    space_group=g, reciprocal_space=False)
-  assert list(c.row_echelon_form) \
-      == [1,-1,0,0,0,0,0,1,0,2,0,0,0,0,0,0,1,1,0,0,0,0,0,1]
-  c = sgtbx.tensor_rank_2_constraints(
-    space_group=g, reciprocal_space=True, initialize_gradient_handling=True)
-  assert list(c.row_echelon_form) \
-      == [1,-1,0,0,0,0,0,1,0,-2,0,0,0,0,0,0,1,-1,0,0,0,0,0,1]
-  assert list(c.independent_indices) == [2,3]
-  assert approx_equal(c.gradient_sum_coeffs, [0,0,1,0,0,0, 2,2,0,1,0,0])
-  assert c.n_independent_params() == 2
-  assert c.n_dependent_params() == 4
-  assert approx_equal(c.independent_params(params=[1,2,3,4,5,6]), [3,4])
-  assert approx_equal(c.all_params(independent_params=[1,2]), [4,4,1,2,0,0])
-  a = [1,2,3,4,5,6]
-  s = [3+1/3.,3+1/3.,3,-3-1/3.,0,0]
-  assert approx_equal(c.sym_gradients(asu_gradients=a), s)
-  assert approx_equal(c.independent_gradients(all_gradients=a), [3,10])
-  assert approx_equal(c.independent_gradients(all_gradients=s), [3,10])
-  a = flex.double(xrange(1,22))
-  assert approx_equal(c.independent_curvatures(all_curvatures=a), [12,35,116])
+  ss = sgtbx.site_symmetry(u, g, (0,0,0))
+  tr2c = sgtbx.tensor_rank_2_constraints
+  for c in [tr2c(
+              space_group=g,
+              reciprocal_space=False),
+            tr2c(
+              site_symmetry_ops=ss,
+              reciprocal_space=False),
+            tr2c(
+              symmetry_matrices=ss.matrices(),
+              i_first_matrix_to_use=1,
+              reciprocal_space=False)]:
+    assert list(c.row_echelon_form) \
+        == [1,-1,0,0,0,0,0,1,0,2,0,0,0,0,0,0,1,1,0,0,0,0,0,1]
+  for c in [tr2c(
+              space_group=g,
+              reciprocal_space=True,
+              initialize_gradient_handling=True),
+            tr2c(
+              site_symmetry_ops=ss,
+              reciprocal_space=True,
+              initialize_gradient_handling=True),
+            tr2c(
+              symmetry_matrices=ss.matrices(),
+              i_first_matrix_to_use=1,
+              reciprocal_space=True,
+              initialize_gradient_handling=True)]:
+    assert list(c.row_echelon_form) \
+        == [1,-1,0,0,0,0,0,1,0,-2,0,0,0,0,0,0,1,-1,0,0,0,0,0,1]
+    assert list(c.independent_indices) == [2,3]
+    assert approx_equal(c.gradient_sum_coeffs, [0,0,1,0,0,0, 2,2,0,1,0,0])
+    assert c.n_independent_params() == 2
+    assert c.n_dependent_params() == 4
+    assert approx_equal(c.independent_params(params=[1,2,3,4,5,6]), [3,4])
+    assert approx_equal(c.all_params(independent_params=[1,2]), [4,4,1,2,0,0])
+    a = [1,2,3,4,5,6]
+    s = [3+1/3.,3+1/3.,3,-3-1/3.,0,0]
+    assert approx_equal(c.sym_gradients(asu_gradients=a), s)
+    assert approx_equal(c.independent_gradients(all_gradients=a), [3,10])
+    assert approx_equal(c.independent_gradients(all_gradients=s), [3,10])
+    a = flex.double(xrange(1,22))
+    assert approx_equal(c.independent_curvatures(all_curvatures=a),[12,35,116])
 
 def run():
   exercise_symbols()
