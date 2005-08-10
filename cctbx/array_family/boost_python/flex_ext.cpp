@@ -33,6 +33,7 @@ namespace {
 
     tuple_mapping_fixed_size<cctbx::cartesian<> >();
     tuple_mapping_fixed_size<cctbx::fractional<> >();
+    tuple_mapping_fixed_size<cctbx::grid_point<> >();
     tuple_mapping_fixed_size<cctbx::hendrickson_lattman<> >();
     tuple_mapping_fixed_size<cctbx::miller::index<> >();
   }
