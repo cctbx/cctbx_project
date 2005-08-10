@@ -18,6 +18,9 @@ namespace cctbx {
   template <typename FloatType>
   class fractional;
 
+  template <typename IntType>
+  class grid_point;
+
   //! Class for cartesian (orthogonal, real) coordinates.
   /*! The template parameter FloatType should be a floating point type
       (e.g. float or double).
@@ -57,6 +60,9 @@ namespace cctbx {
       // disables construction from fractional
       template <typename OtherFloatType>
       cartesian(fractional<OtherFloatType> const&);
+      // disables construction from grid_point
+      template <typename OtherFloatType>
+      cartesian(grid_point<OtherFloatType> const&);
   };
 
   //! Class for fractional coordinates.
@@ -138,6 +144,53 @@ namespace cctbx {
       // disables construction from cartesian
       template <typename OtherFloatType>
       fractional(cartesian<OtherFloatType> const&);
+      // disables construction from grid_point
+      template <typename OtherFloatType>
+      fractional(grid_point<OtherFloatType> const&);
+  };
+
+  //! Class for grid_point coordinates.
+  /*! The template parameter IntType should be an integral type
+      (e.g. signed int or signed long).
+      <p>
+      See also: class fractional, class cartesian
+   */
+  template <typename IntType = signed long>
+  class grid_point : public scitbx::vec3<IntType>
+  {
+    public:
+      typedef scitbx::vec3<IntType> base_type;
+
+      //! Default constructor: elements are not initialized!
+      grid_point() {}
+
+      //! The elements of the coordinate vector are copied from v.
+      template <typename OtherIntType>
+      grid_point(af::tiny_plain<OtherIntType, 3> const& v)
+      {
+        for(std::size_t i=0;i<3;i++) this->elems[i] = v[i];
+      }
+
+      //! The elements of the coordinate vector are copied from xyz.
+      explicit
+      grid_point(const IntType* xyz)
+      {
+        for(std::size_t i=0;i<3;i++) this->elems[i] = xyz[i];
+      }
+
+      //! The elements of the coordinate vector are initialized with x,y,z.
+      grid_point(IntType const& x, IntType const& y, IntType const& z)
+      {
+        this->elems[0] = x; this->elems[1] = y; this->elems[2] = z;
+      }
+
+    private:
+      // disables construction from fractional
+      template <typename OtherIntType>
+      grid_point(fractional<OtherIntType> const&);
+      // disables construction from cartesian
+      template <typename OtherIntType>
+      grid_point(cartesian<OtherIntType> const&);
   };
 
 } // namespace cctbx
