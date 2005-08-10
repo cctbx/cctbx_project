@@ -43,6 +43,24 @@ namespace scitbx { namespace af {
   }
 
   template <typename NumType>
+  shared<NumType>
+  matrix_upper_diagonal(
+    const_ref<NumType, c_grid<2> > const& a)
+  {
+    SCITBX_ASSERT(a.accessor().is_square());
+    std::size_t n = a.accessor()[0];
+    shared<NumType> result((af::reserve(n*(n+1)/2)));
+    const NumType* p = a.begin();
+    for(std::size_t i=0;i<n;i++) {
+      p += i;
+      for(std::size_t j=i;j<n;j++) {
+        result.push_back(*p++);
+      }
+    }
+    return result;
+  }
+
+  template <typename NumType>
   versa<NumType, c_grid<2> >
   matrix_multiply(
     const_ref<NumType, c_grid<2> > const& a,
@@ -102,15 +120,21 @@ namespace scitbx { namespace af {
 
   template <typename NumType>
   versa<NumType, c_grid<2> >
-  matrix_transpose(const_ref<NumType, c_grid<2> > const& self)
+  matrix_transpose(const_ref<NumType, c_grid<2> > const& a)
   {
-    shared_plain<NumType> result(self.begin(), self.end());
-    mat_ref<NumType> result_(
-      result.begin(), self.accessor()[0], self.accessor()[1]);
-    result_.transpose_in_place();
-    return versa<NumType, c_grid<2> >(
-      result,
-      c_grid<2>(self.accessor()[1], self.accessor()[0]));
+    typedef typename c_grid<2>::value_type index_value_type;
+    index_value_type n_rows = a.accessor()[0];
+    index_value_type n_columns = a.accessor()[1];
+    versa<NumType, c_grid<2> > result(
+      c_grid<2>(n_columns, n_rows), init_functor_null<NumType>());
+    NumType* r = result.begin();
+    for (index_value_type ic=0;ic<n_columns;ic++) {
+      std::size_t ir_nc_ic = ic;
+      for (index_value_type ir=0;ir<n_rows;ir++,ir_nc_ic+=n_columns) {
+        *r++ = a[ir_nc_ic];
+      }
+    }
+    return result;
   }
 
   template <typename NumType, typename FlexGridIndexType>
