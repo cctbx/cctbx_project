@@ -1,4 +1,5 @@
 from cctbx import sgtbx
+from cctbx import uctbx
 from cctbx import adptbx
 import math
 
@@ -8,7 +9,7 @@ import math
 space_group = sgtbx.space_group("P 3*") # Hall symbol
 
 #
-# initialization of symmetry constraints
+# initialization of space group symmetry constraints
 #
 adp_constraints = sgtbx.tensor_rank_2_constraints(
   space_group=space_group,
@@ -63,5 +64,22 @@ assert len(g_indep) == n_indep
 c_indep = adp_constraints.independent_curvatures(all_curvatures=all_curvatures)
 assert len(c_indep) == n_indep*(n_indep+1)/2
 # feed g_indep and c_indep to the minimizer
+
+#
+# initialization of site symmetry constraints (for sites in special positions)
+#
+unit_cell = uctbx.unit_cell((12,12,15,90,90,120))
+space_group = sgtbx.space_group_info("P 6").group()
+site_symmetry = sgtbx.site_symmetry(
+  unit_cell=unit_cell,
+  space_group=space_group,
+  original_site=(1/3.,2/3.,0), # site on 3-fold axis
+  min_distance_sym_equiv=0.5)
+assert len(site_symmetry.matrices()) == 3
+adp_constraints = sgtbx.tensor_rank_2_constraints(
+  site_symmetry_ops=site_symmetry,
+  reciprocal_space=True,
+  initialize_gradient_handling=True)
+# use adp_constraints as before
 
 print "OK"
