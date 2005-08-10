@@ -282,6 +282,9 @@ namespace boost_python {
       .def("matrix_diagonal_product",
         (double(*)(
           const_ref<double, c_grid<2> > const&)) matrix_diagonal_product)
+      .def("matrix_upper_diagonal",
+        (shared<double>(*)(
+          const_ref<double, c_grid<2> > const&)) matrix_upper_diagonal)
       .def("matrix_multiply",
         (versa<double, c_grid<2> >(*)(
           const_ref<double, c_grid<2> > const&,

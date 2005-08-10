@@ -1322,6 +1322,17 @@ def exercise_matrix():
       a.cos_angle(b=b), matrix.col(a).cos_angle(matrix.col(b)))
     assert approx_equal(a.angle(b=b, deg=False), a.angle(b))
     assert approx_equal(a.angle(b=b, deg=True), a.angle(b)*180/math.pi)
+  #
+  assert list(flex.double(flex.grid(0,0)).matrix_upper_diagonal()) == []
+  assert approx_equal(flex.double([[1]]).matrix_upper_diagonal(), [1])
+  assert approx_equal(
+    flex.double([[1,2],[3,4]]).matrix_upper_diagonal(), [1,2,4])
+  assert approx_equal(
+    flex.double([[1,2,3],[4,5,6],[7,8,9]]).matrix_upper_diagonal(),
+    [1,2,3,5,6,9])
+  m = flex.double(xrange(1,17))
+  m.resize(flex.grid(4, 4))
+  assert approx_equal(m.matrix_upper_diagonal(), [1,2,3,4,6,7,8,11,12,16])
 
 def exercise_matrix_inversion_in_place():
   m = flex.double()
