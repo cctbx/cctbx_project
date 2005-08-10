@@ -9,6 +9,7 @@ def run():
   ["$D/cctbx/examples/all_axes.py", "P31"],
   ["$D/cctbx/examples/tst_phase_o_phrenia.py", "P2"],
   "$D/cctbx/examples/map_skewness.py",
+  "$D/cctbx/examples/adp_symmetry_constraints.py",
   )
 
   build_dir = libtbx.env.under_build("cctbx")

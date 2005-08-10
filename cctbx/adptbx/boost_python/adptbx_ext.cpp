@@ -12,6 +12,22 @@
 namespace cctbx { namespace adptbx { namespace boost_python {
 namespace {
 
+  sym_mat3<double>
+  debye_waller_factor_u_star_gradient_coefficients_double(
+    miller::index<> const& h)
+  {
+    return debye_waller_factor_u_star_gradient_coefficients(
+      h, scitbx::type_holder<double>());
+  }
+
+  af::shared<double>
+  debye_waller_factor_u_star_curvature_coefficients_double(
+    miller::index<> const& h)
+  {
+    return debye_waller_factor_u_star_curvature_coefficients(
+      h, scitbx::type_holder<double>());
+  }
+
   struct eigensystem_wrappers
   {
     typedef eigensystem<double> w_t;
@@ -97,6 +113,12 @@ namespace {
     def("debye_waller_factor_u_star",
       (double(*)(miller::index<> const&, sym_mat3<double> const&))
       debye_waller_factor_u_star);
+    def("debye_waller_factor_u_star_gradient_coefficients",
+      debye_waller_factor_u_star_gradient_coefficients_double, (
+        arg_("h")));
+    def("debye_waller_factor_u_star_curvature_coefficients",
+      debye_waller_factor_u_star_curvature_coefficients_double, (
+        arg_("h")));
     def("debye_waller_factor_beta",
       (double(*)(miller::index<> const&, sym_mat3<double> const&))
       debye_waller_factor_beta);

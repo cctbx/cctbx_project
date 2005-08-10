@@ -21,6 +21,7 @@ namespace cctbx { namespace sgtbx { namespace tensor_rank_2 {
     bool reciprocal_space,
     int* c);
 
+  //! Handling of symmetry constraints for tensors of rank 2.
   template <typename FloatType=double>
   class constraints
   {
@@ -144,6 +145,70 @@ namespace cctbx { namespace sgtbx { namespace tensor_rank_2 {
             indep_grad += row[j] * all_gradients[j];
           }
           result.push_back(indep_grad);
+        }
+        return result;
+      }
+
+      /*! \brief Efficient implementation of the matrix product:
+              gradient_sum_coeffs
+            * all_curvatures
+            * gradient_sum_coeffs.transpose()
+       */
+      /*! all_curvatures is the upper diagonal of
+          the (6 x 6) matrix of curvatures assuming
+          all tensor elements are independent.
+          I.e. the number of elements of all_curvatures
+          must be 6*(6+1)/2.
+
+          The result is the upper diagonal of the
+          (n_independent_params() x n_independent_params())
+          matrix of curvatures.
+          I.e. the number of elements of the result array is
+          n_independent_params()*(n_independent_params()+1)/2.
+       */
+      af::shared<FloatType>
+      independent_curvatures(
+        af::const_ref<FloatType> const& all_curvatures) const
+      {
+        if (gradient_average_denominator == 0) {
+          throw error("gradient handling was not initialized."); }
+        CCTBX_ASSERT(all_curvatures.size() == 6*(6+1)/2);
+        static const unsigned sym_mat6_indices[] = {
+          0, 1, 2, 3, 4, 5,
+          1, 6, 7, 8, 9,10,
+          2, 7,11,12,13,14,
+          3, 8,12,15,16,17,
+          4, 9,13,16,18,19,
+          5,10,14,17,19,20
+        };
+        unsigned n_indep = n_independent_params();
+        af::shared<FloatType> result(n_indep*(n_indep+1)/2, 0);
+        std::vector<FloatType> c_times_a(n_indep*6, 0);
+        typename std::vector<FloatType>::iterator ca = c_times_a.begin();
+        unsigned i6 = 0;
+        for (unsigned i=0;i<n_indep;i++,i6+=6) {
+          for (unsigned k=0;k<6;k++) {
+            unsigned i6j = i6;
+            unsigned j6k = k;
+            for (unsigned j=0;j<6;j++,i6j++,j6k+=6) {
+              *ca += gradient_sum_coeffs[i6j]
+                   * all_curvatures[sym_mat6_indices[j6k]];
+            }
+            ca++;
+          }
+        }
+        FloatType* cact = result.begin();
+        i6 = 0;
+        for (unsigned i=0;i<n_indep;i++,i6+=6) {
+          unsigned k6 = i6;
+          for (unsigned k=i;k<n_indep;k++,k6+=6) {
+            unsigned i6j = i6;
+            unsigned k6j = k6;
+            for (unsigned j=0;j<6;j++,i6j++,k6j++) {
+              *cact += c_times_a[i6j] * gradient_sum_coeffs[k6j];
+            }
+            cact++;
+          }
         }
         return result;
       }

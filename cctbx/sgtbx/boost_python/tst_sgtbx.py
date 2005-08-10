@@ -1665,6 +1665,8 @@ def exercise_tensor_rank_2_constraints():
   assert approx_equal(c.sym_gradients(asu_gradients=a), s)
   assert approx_equal(c.independent_gradients(all_gradients=a), [3,10])
   assert approx_equal(c.independent_gradients(all_gradients=s), [3,10])
+  a = flex.double(xrange(1,22))
+  assert approx_equal(c.independent_curvatures(all_curvatures=a), [12,35,116])
 
 def run():
   exercise_symbols()

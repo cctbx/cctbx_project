@@ -21,13 +21,7 @@ def dw_sym(space_group, h, u_star, no_assert=False):
   return result / n
 
 def dw_analytical_grads_full(h, u_star):
-  return -2*math.pi**2 * matrix.row([
-    h[0] * h[0],
-    h[1] * h[1],
-    h[2] * h[2],
-    2 * h[0] * h[1],
-    2 * h[0] * h[2],
-    2 * h[1] * h[2]]) * adptbx.debye_waller_factor_u_star(h, u_star)
+  return list(adptbx.debye_waller_factor_u_star_gradients(h, u_star))
 
 def dw_analytical_grads_full_sym(space_group, h, u_star):
   result = matrix.row([0]*6)
@@ -39,13 +33,13 @@ def dw_analytical_grads_full_sym(space_group, h, u_star):
 
 def dw_finite_difference_grads_full_sym(space_group, h, u_star, eps):
   result = []
-  for i,u in enumerate(u_star):
-    u_star_shifted = list(u_star)
-    u_star_shifted[i] = u + eps
-    dw_plus = dw_sym(space_group, h, u_star_shifted, no_assert=True)
-    u_star_shifted[i] = u - eps
-    dw_minus = dw_sym(space_group, h, u_star_shifted, no_assert=True)
-    result.append((dw_plus-dw_minus) / (2*eps))
+  for i in xrange(6):
+    dws = []
+    for signed_eps in [eps,-eps]:
+      u_star_eps = list(u_star)
+      u_star_eps[i] += signed_eps
+      dws.append(dw_sym(space_group, h, u_star_eps, no_assert=True))
+    result.append((dws[0]-dws[1]) / (2*eps))
   return result
 
 def dw_finite_difference_grads_indep(
@@ -66,6 +60,161 @@ def dw_finite_difference_grads_indep(
     dw_minus = dw_sym(space_group, h, u_full, no_assert=True)
     result.append((dw_plus-dw_minus) / (2*eps))
   return result
+
+def d_dw_d_uij_finite(h, u_star, ij, eps=1.e-6):
+  dws = []
+  for signed_eps in [eps,-eps]:
+    u_star_eps = list(u_star)
+    u_star_eps[ij] += signed_eps
+    dws.append(adptbx.debye_waller_factor_u_star(h, u_star_eps))
+  return (dws[0]-dws[1]) / (2*eps)
+
+def d_dw2_d_uij_d_uij_finite(h, u_star, ij1, ij2, eps=1.e-6):
+  dws = []
+  for signed_eps in [eps,-eps]:
+    u_star_eps = list(u_star)
+    u_star_eps[ij2] += signed_eps
+    dws.append(d_dw_d_uij_finite(h, u_star_eps, ij=ij1))
+  return (dws[0]-dws[1]) / (2*eps)
+
+def dw_finite_difference_curvatures(h, u_star):
+  result = flex.double()
+  for ij1 in xrange(6):
+    for ij2 in xrange(ij1,6):
+      result.append(d_dw2_d_uij_d_uij_finite(h, u_star, ij1, ij2))
+  return result
+
+def d_dw_d_u_indep_finite(adp_constraints, h, u_indep, eps=1.e-6):
+  result = []
+  for i_indep in xrange(len(u_indep)):
+    dws = []
+    for signed_eps in [eps,-eps]:
+      u_indep_eps = list(u_indep)
+      u_indep_eps[i_indep] += signed_eps
+      u_eps = adp_constraints.all_params(u_indep_eps)
+      dws.append(adptbx.debye_waller_factor_u_star(h, u_eps))
+    result.append((dws[0]-dws[1]) / (2*eps))
+  return result
+
+def d_dw2_d_u_indep_d_u_indep_finite(adp_constraints, h, u_indep, eps=1.e-6):
+  result = []
+  for i_indep in xrange(len(u_indep)):
+    dws = []
+    for signed_eps in [eps,-eps]:
+      u_indep_eps = list(u_indep)
+      u_indep_eps[i_indep] += signed_eps
+      dws.append(d_dw_d_u_indep_finite(adp_constraints, h, u_indep_eps))
+    row = [(x-y)/(2*eps) for x,y in zip(dws[0], dws[1])]
+    result.append(row)
+  return result
+
+def dw_indep_finite_difference_curvatures(adp_constraints, h, u_star):
+  u_indep = adp_constraints.independent_params(u_star)
+  return flex.double(d_dw2_d_u_indep_d_u_indep_finite(
+    adp_constraints, h, u_indep)).matrix_upper_diagonal()
+
+def p2_curv(h, u_star):
+  """\
+h = {h0,h1,h2}
+u = {{u00,0,u02},{0,u11,0},{u02,0,u22}}
+dw=Exp[mtps*h.u.h]
+FortranForm[D[dw,u00,u00]/dw]
+FortranForm[D[dw,u00,u11]/dw]
+FortranForm[D[dw,u00,u22]/dw]
+FortranForm[D[dw,u00,u02]/dw]
+FortranForm[D[dw,u11,u00]/dw]
+FortranForm[D[dw,u11,u11]/dw]
+FortranForm[D[dw,u11,u22]/dw]
+FortranForm[D[dw,u11,u02]/dw]
+FortranForm[D[dw,u22,u00]/dw]
+FortranForm[D[dw,u22,u11]/dw]
+FortranForm[D[dw,u22,u22]/dw]
+FortranForm[D[dw,u22,u02]/dw]
+FortranForm[D[dw,u02,u00]/dw]
+FortranForm[D[dw,u02,u11]/dw]
+FortranForm[D[dw,u02,u22]/dw]
+FortranForm[D[dw,u02,u02]/dw]
+"""
+  dw = adptbx.debye_waller_factor_u_star(h, u_star)
+  h0, h1, h2 = h
+  u00 = u_star[0]
+  u11 = u_star[1]
+  u22 = u_star[2]
+  u02 = u_star[4]
+  mtps = -2*math.pi**2
+  return [
+    [dw * (h0**4*mtps**2),
+     dw * (h0**2*h1**2*mtps**2),
+     dw * (h0**2*h2**2*mtps**2),
+     dw * (2*h0**3*h2*mtps**2)],
+    [dw * (h0**2*h1**2*mtps**2),
+     dw * (h1**4*mtps**2),
+     dw * (h1**2*h2**2*mtps**2),
+     dw * (2*h0*h1**2*h2*mtps**2)],
+    [dw * (h0**2*h2**2*mtps**2),
+     dw * (h1**2*h2**2*mtps**2),
+     dw * (h2**4*mtps**2),
+     dw * (2*h0*h2**3*mtps**2)],
+    [dw * (2*h0**3*h2*mtps**2),
+     dw * (2*h0*h1**2*h2*mtps**2),
+     dw * (2*h0*h2**3*mtps**2),
+     dw * (4*h0**2*h2**2*mtps**2)]]
+
+def p4_curv(h, u_star):
+  """\
+h = {h0,h1,h2}
+u = {{u11,0,0},{0,u11,0},{0,0,u22}}
+dw=Exp[mtps*h.u.h]
+FortranForm[D[dw,u11,u11]/dw]
+FortranForm[D[dw,u11,u22]/dw]
+FortranForm[D[dw,u22,u11]/dw]
+FortranForm[D[dw,u22,u22]/dw]
+"""
+  dw = adptbx.debye_waller_factor_u_star(h, u_star)
+  h0, h1, h2 = h
+  u11 = u_star[1]
+  u22 = u_star[2]
+  mtps = -2*math.pi**2
+  return [
+    [dw * ((h0**2 + h1**2)**2*mtps**2),
+     dw * ((h0**2 + h1**2)*h2**2*mtps**2)],
+    [dw * ((h0**2 + h1**2)*h2**2*mtps**2),
+     dw * (h2**4*mtps**2)]]
+
+def p3_curv(h, u_star):
+  """\
+h = {h0,h1,h2}
+u = {{2*u01,u01,0},{u01,2*u01,0},{0,0,u22}}
+dw=Exp[mtps*h.u.h]
+FortranForm[D[dw,u22,u22]/dw]
+FortranForm[D[dw,u22,u01]/dw]
+FortranForm[D[dw,u01,u22]/dw]
+FortranForm[D[dw,u01,u01]/dw]
+"""
+  dw = adptbx.debye_waller_factor_u_star(h, u_star)
+  h0, h1, h2 = h
+  u22 = u_star[2]
+  u01 = u_star[3]
+  mtps = -2*math.pi**2
+  return [
+    [dw * (h2**4*mtps**2),
+     dw * ((h0*(2*h0 + h1) + h1*(h0 + 2*h1))*h2**2*mtps**2)],
+    [dw * ((h0*(2*h0 + h1) + h1*(h0 + 2*h1))*h2**2*mtps**2),
+     dw * ((h0*(2*h0 + h1) + h1*(h0 + 2*h1))**2*mtps**2)]]
+
+def p23_curv(h, u_star):
+  """\
+h = {h0,h1,h2}
+u = {{u22,0,0},{0,u22,0},{0,0,u22}}
+dw=Exp[mtps*h.u.h]
+FortranForm[D[dw,u22,u22]/dw]
+"""
+  dw = adptbx.debye_waller_factor_u_star(h, u_star)
+  h0, h1, h2 = h
+  u22 = u_star[2]
+  mtps = -2*math.pi**2
+  return [
+    [dw * ((h0**2 + h1**2 + h2**2)**2*mtps**2)]]
 
 def show_scaled(values, scale, fmt="%10.3f"):
   for value in values:
@@ -159,6 +308,29 @@ def exercise(space_group_info, verbose):
         print "g_ana_indep:",
         show_scaled(values=g_ana_indep, scale=u_scale)
       assert are_similar(g_ana_indep, g_ave_indep)
+    #
+    f2 = dw_finite_difference_curvatures(h=h, u_star=u_star)
+    a2 = adptbx.debye_waller_factor_u_star_curvatures(h=h, u_star=u_star)
+    assert are_similar(a2, f2)
+    if2 = dw_indep_finite_difference_curvatures(adp_constraints, h, u_star)
+    ia2 = adp_constraints.independent_curvatures(all_curvatures=a2)
+    assert are_similar(ia2, if2)
+    #
+    ma2 = None
+    if (str(space_group_info) == "P 1 2 1"):
+      assert list(adp_constraints.independent_indices) == [0,1,2,4]
+      ma2 = p2_curv(h, u_star)
+    elif (str(space_group_info) == "P 4"):
+      assert list(adp_constraints.independent_indices) == [1,2]
+      ma2 = p4_curv(h, u_star)
+    elif (str(space_group_info) in ["P 3", "P 6"]):
+      assert list(adp_constraints.independent_indices) == [2,3]
+      ma2 = p3_curv(h, u_star)
+    elif (str(space_group_info) == "P 2 3"):
+      assert list(adp_constraints.independent_indices) == [2]
+      ma2 = p23_curv(h, u_star)
+    if (ma2 is not None):
+      assert are_similar(ia2, flex.double(ma2).matrix_upper_diagonal())
 
 def run_call_back(flags, space_group_info):
   exercise(space_group_info, verbose=flags.Verbose)

@@ -37,6 +37,8 @@ namespace {
         .def("sym_gradients", &w_t::sym_gradients, (arg_("asu_gradients")))
         .def("independent_gradients", &w_t::independent_gradients,
           (arg_("all_gradients")))
+        .def("independent_curvatures", &w_t::independent_curvatures,
+          (arg_("all_curvatures")))
       ;
     }
   };
