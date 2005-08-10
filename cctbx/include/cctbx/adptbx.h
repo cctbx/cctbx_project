@@ -385,14 +385,13 @@ namespace cctbx {
       + (2 * h[1] * h[2]) * u_star[5]));
   }
 
-  //! Coefficients used in anisotropic Debye-Waller factor calculation.
-  /*! Useful for computing partial gradients w.r.t. u_star.
-      <p>
-      Not available in Python.
+  //! Coefficients for gradients of Debye-Waller factor w.r.t. u_star.
+  /*! Formula for the gradients:
+        -2*pi**2 * debye_waller_factor_u_star(h, u_star) * result
    */
   template <typename NumType>
   inline sym_mat3<NumType>
-  debye_waller_factor_u_star_coefficients(
+  debye_waller_factor_u_star_gradient_coefficients(
     miller::index<> const& h,
     scitbx::type_holder<NumType>)
   {
@@ -403,6 +402,61 @@ namespace cctbx {
         (2 * h[0] * h[1]),
         (2 * h[0] * h[2]),
         (2 * h[1] * h[2]));
+  }
+
+  //! Coefficients for curvatures of Debye-Waller factor w.r.t. u_star.
+  /*! Formula for the curvatures:
+        (-2*pi**2)**2 * debye_waller_factor_u_star(h, u_star) * result
+
+      The returned array contains the 6*(6+1)/2 elements of the
+      upper diagonal of the (6 x 6) matrix of curvatures.
+   */
+  template <typename NumType>
+  af::shared<NumType>
+  debye_waller_factor_u_star_curvature_coefficients(
+    miller::index<> const& h,
+    scitbx::type_holder<NumType>)
+  {
+    /* Python script for generating the code below:
+
+         sym_mat3_indices = [(0,0),(1,1),(2,2),(0,1),(0,2),(1,2)]
+         i = 0
+         for ij1 in xrange(6):
+           i1,j1 = sym_mat3_indices[ij1]
+           for ij2 in xrange(ij1,6):
+             i2,j2 = sym_mat3_indices[ij2]
+             print "result[%d] = h%dh%d * h%dh%d;" % (i,i1,j1,i2,j2)
+             i += 1
+     */
+    af::shared<NumType> result(6*(6+1)/2, 0);
+    NumType h0h0 = h[0] * h[0];
+    NumType h1h1 = h[1] * h[1];
+    NumType h2h2 = h[2] * h[2];
+    NumType h0h1 = 2 * h[0] * h[1];
+    NumType h0h2 = 2 * h[0] * h[2];
+    NumType h1h2 = 2 * h[1] * h[2];
+    result[0] = h0h0 * h0h0;
+    result[1] = h0h0 * h1h1;
+    result[2] = h0h0 * h2h2;
+    result[3] = h0h0 * h0h1;
+    result[4] = h0h0 * h0h2;
+    result[5] = h0h0 * h1h2;
+    result[6] = h1h1 * h1h1;
+    result[7] = h1h1 * h2h2;
+    result[8] = h1h1 * h0h1;
+    result[9] = h1h1 * h0h2;
+    result[10] = h1h1 * h1h2;
+    result[11] = h2h2 * h2h2;
+    result[12] = h2h2 * h0h1;
+    result[13] = h2h2 * h0h2;
+    result[14] = h2h2 * h1h2;
+    result[15] = h0h1 * h0h1;
+    result[16] = h0h1 * h0h2;
+    result[17] = h0h1 * h1h2;
+    result[18] = h0h2 * h0h2;
+    result[19] = h0h2 * h1h2;
+    result[20] = h1h2 * h1h2;
+    return result;
   }
 
   //! Anisotropic Debye-Waller factor given a Miller index and beta.

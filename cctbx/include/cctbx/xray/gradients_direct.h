@@ -49,7 +49,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
         f_t hrx = g.hr * scatterer.site;
         f_t ht = g.ht;
         if (grad_flags_u_aniso) {
-          dw_coeff = adptbx::debye_waller_factor_u_star_coefficients(
+          dw_coeff = adptbx::debye_waller_factor_u_star_gradient_coefficients(
             g.hr, scitbx::type_holder<f_t>());
         }
         c_t sum_inv(0,0);
