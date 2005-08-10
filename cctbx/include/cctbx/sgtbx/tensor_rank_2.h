@@ -7,7 +7,10 @@
 #include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/accessors/c_grid.h>
 
-namespace cctbx { namespace sgtbx { namespace tensor_rank_2 {
+namespace cctbx { namespace sgtbx {
+
+//! Symmetry constraints for tensors of rank 2
+namespace tensor_rank_2 {
 
   //! Coefficients r.transpose() * t * r - t = 0
   /*! Mathematica code:
