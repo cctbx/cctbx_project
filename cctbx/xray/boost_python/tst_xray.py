@@ -8,7 +8,7 @@ import cctbx.crystal.direct_space_asu
 from cctbx import xray
 from cctbx import math_module
 from cctbx.array_family import flex
-from libtbx.test_utils import approx_equal, not_approx_equal
+from libtbx.test_utils import approx_equal, not_approx_equal, show_diff
 import pickle
 
 def exercise_conversions():
@@ -193,6 +193,28 @@ def exercise_xray_scatterer():
   xray.shift_us(scatterers=a, unit_cell=uc, u_shift=-10)
   assert approx_equal(a[0].u_star, x_u_star_orig)
   assert approx_equal(a[1].u_iso, 1)
+  a[0].fp = 3;
+  a[1].fdp = 4;
+  assert not show_diff(a[0].report_details(unit_cell=uc, prefix="&%"), """\
+&%scatterer label: si1
+&%scattering type: Si
+&%fractional coordinates: 0.200000 0.500000 0.400000
+&%cartesian coordinates: 2.000000 5.000000 5.200000
+&%u_star: 3.3458 4.5711 4.47205 3.90063 3.85981 4.51336
+&%u_cart: 334.58 457.11 755.776 390.063 501.775 586.737
+&%occupancy: 0.8
+&%f-prime: 3
+&%f-double-prime: 0""")
+  assert not show_diff(a[1].report_details(unit_cell=uc, prefix="=#"), """\
+=#scatterer label: si1
+=#scattering type: Si
+=#fractional coordinates: 0.200000 0.500000 0.400000
+=#cartesian coordinates: 2.000000 5.000000 5.200000
+=#u_iso: 1
+=#b_iso: 78.9568
+=#occupancy: 0.8
+=#f-prime: 0
+=#f-double-prime: 4""")
 
 def exercise_rotate():
   uc = uctbx.unit_cell((10, 10, 13))

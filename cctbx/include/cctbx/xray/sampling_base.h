@@ -395,7 +395,8 @@ namespace cctbx { namespace xray {
     };
 
     template <typename FloatType,
-              typename GridPointType>
+              typename GridPointType,
+              typename XrayScattererType>
     struct calc_box
     {
       FloatType max_d_sq;
@@ -410,7 +411,8 @@ namespace cctbx { namespace xray {
         FloatType const& max_d_sq_upper_bound,
         GridPointType const& grid_n,
         fractional<FloatType> const& coor_frac,
-        gaussian_fourier_transformed<FloatType> const& gaussian_ft)
+        gaussian_fourier_transformed<FloatType> const& gaussian_ft,
+        XrayScattererType const& scatterer)
       :
         max_d_sq(0),
         n_points(1)
@@ -428,11 +430,13 @@ namespace cctbx { namespace xray {
           box_min[i_bv] = adjust_box_limit(
             unit_cell, rho_cutoff, max_d_sq_upper_bound,
             grid_n_f, coor_frac, gaussian_ft,
-            i_bv, 1, scitbx::math::ifloor(gu_site - gu_radius));
+            i_bv, 1, scitbx::math::ifloor(gu_site - gu_radius),
+            scatterer);
           box_max[i_bv] = adjust_box_limit(
             unit_cell, rho_cutoff, max_d_sq_upper_bound,
             grid_n_f, coor_frac, gaussian_ft,
-            i_bv, -1, scitbx::math::iceil(gu_site + gu_radius));
+            i_bv, -1, scitbx::math::iceil(gu_site + gu_radius),
+            scatterer);
           box_edges[i_bv] = std::max(0, box_max[i_bv]-box_min[i_bv]+1);
           n_points *= box_edges[i_bv];
         }
@@ -449,7 +453,8 @@ namespace cctbx { namespace xray {
         gaussian_fourier_transformed<FloatType> const& gaussian_ft,
         int i_bv,
         int f,
-        int box_limit)
+        int box_limit,
+        XrayScattererType const& scatterer)
       {
         int known_required = box_limit + 2*f;
         fractional<FloatType> d_frac(0,0,0);
@@ -470,7 +475,8 @@ namespace cctbx { namespace xray {
             if (d_sq > max_d_sq_upper_bound) {
               throw error(
                 "Excessive radius for real-space sampling of"
-                " model electron density.");
+                " model electron density:\n"
+                + scatterer.report_details(unit_cell, "  "));
             }
             scitbx::math::update_max(max_d_sq, d_sq);
             known_required = box_limit;

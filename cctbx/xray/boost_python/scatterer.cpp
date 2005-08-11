@@ -143,6 +143,9 @@ namespace {
         .def("multiplicity", &w_t::multiplicity)
         .def("weight_without_occupancy", &w_t::weight_without_occupancy)
         .def("weight", &w_t::weight)
+        .def("report_details", &w_t::report_details, (
+          arg_("unit_cell"),
+          arg_("prefix")))
       ;
     }
   };
