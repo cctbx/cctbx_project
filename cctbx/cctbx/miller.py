@@ -659,6 +659,15 @@ class set(crystal.symmetry):
     del sel_sm
     return self.array(data=result_full)
 
+  def random_phases_compatible_with_phase_restrictions(self, deg=False):
+    random_phases = flex.random_double(size=self.size())-0.5
+    if (deg): random_phases *= 360
+    else:     random_phases *= 2*math.pi
+    return self.array(data=self.space_group().nearest_valid_phases(
+      miller_indices=self.indices(),
+      phases=random_phases,
+      deg=deg))
+
   def change_basis(self, cb_op):
     if (isinstance(cb_op, str)): cb_op = sgtbx.change_of_basis_op(cb_op)
     return set.customized_copy(self,
@@ -2076,16 +2085,24 @@ class fft_map(maptbx.crystal_gridding):
     assert self.anomalous_flag()
     return self._complex_map
 
+  def statistics(self):
+    return maptbx.statistics(self.real_map())
+
   def apply_sigma_scaling(self):
+    statistics = self.statistics()
     if (not self.anomalous_flag()):
-      statistics = maptbx.statistics(self._real_map)
       if (statistics.sigma() != 0):
         self._real_map /= statistics.sigma()
     else:
-      statistics = maptbx.statistics(self.real_map())
       if (statistics.sigma() != 0):
         self._complex_map /= complex(statistics.sigma())
     return self
+
+  def peak_search(self, parameters=None, verify_symmetry=True):
+    return self.tags().peak_search(
+      parameters=parameters,
+      map=self.real_map(),
+      verify_symmetry=verify_symmetry)
 
 def patterson_map(crystal_gridding, f_patt, f_000=None,
                   sharpening=False,
