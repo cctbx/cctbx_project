@@ -23,7 +23,7 @@ def show_average_of_binned_data(binned_data_list):
     print "%7.4f" % flex.mean(data),
   print
 
-class array_cache:
+class array_cache(object):
 
   def __init__(self, input, n_bins, lattice_symmetry_max_delta):
     self.input = input.eliminate_sys_absent(integral_only=True, log=sys.stdout)

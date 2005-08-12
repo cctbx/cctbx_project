@@ -1,7 +1,7 @@
 import iotbx.parameters
 from libtbx.utils import Sorry
 
-class argument_interpreter:
+class argument_interpreter(object):
 
   def __init__(self,
         master_params,

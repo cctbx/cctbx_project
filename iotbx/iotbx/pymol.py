@@ -1,6 +1,6 @@
 from libtbx import adopt_init_args
 
-class pml_stick:
+class pml_stick(object):
 
   def __init__(self, begin, end, colors=None, width=None):
     if (colors is None):

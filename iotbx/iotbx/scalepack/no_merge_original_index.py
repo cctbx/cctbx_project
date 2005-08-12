@@ -7,7 +7,7 @@ import sys, os
 import boost.python
 scalepack_ext = boost.python.import_ext("iotbx_scalepack_ext")
 
-class reader:
+class reader(object):
 
   # scalepack manual, edition 5, page 132
   # no merge

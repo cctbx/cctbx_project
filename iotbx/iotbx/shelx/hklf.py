@@ -16,7 +16,7 @@ def miller_export_as_shelx_hklf(self, file_object=None):
 
 miller.array.export_as_shelx_hklf = miller_export_as_shelx_hklf
 
-class reader:
+class reader(object):
 
   def __init__(self, file_object):
     self._indices = flex.miller_index()

@@ -2,7 +2,7 @@ from cctbx import miller
 from cctbx import crystal
 from cctbx.array_family import flex
 
-class index_fobs_sigma_line:
+class index_fobs_sigma_line(object):
 
   def __init__(self, raw_line):
     self.is_complete = False
@@ -20,7 +20,7 @@ class index_fobs_sigma_line:
     except: return
     self.is_complete = True
 
-class reader:
+class reader(object):
 
   def __init__(self, file_name=None, file_object=None, max_header_lines=30):
     assert [file_name, file_object].count(None) == 1

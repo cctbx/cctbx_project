@@ -45,7 +45,7 @@ for sym in rhombohedral.keys(): _all[sym] = rhombohedral
 for sym in short_mono: _all[sym] = short_mono
 for sym in special.keys(): _all[sym] = special
 
-class categorize:
+class categorize(object):
 
   def __init__(self, symbol):
     self.symbol = None

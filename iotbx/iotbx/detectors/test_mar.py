@@ -1,7 +1,7 @@
 import sys
 import Image # dependency on Python Image Library
 
-class ImageWorker:
+class ImageWorker(object):
   def __init__(self,relpath):
     from iotbx.detectors import mar
     from labelit.detectors import FlexImage

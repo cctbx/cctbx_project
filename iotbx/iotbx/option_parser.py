@@ -145,7 +145,7 @@ class iotbx_option_parser(option_parser):
       symmetry_callback=self.symmetry_callback,
       chunk_callback=self.chunk_callback)
 
-class processed_options:
+class processed_options(object):
 
   def __init__(self, parser, options, args,
         show_defaults_callback,
@@ -159,7 +159,7 @@ class processed_options:
     self.chunk_n = chunk_callback.n
     self.chunk_i = chunk_callback.i
 
-class show_defaults_callback:
+class show_defaults_callback(object):
 
   def __init__(self):
     self.is_enabled = False
@@ -176,7 +176,7 @@ class show_defaults_callback:
           + '  Please specify an integer value or the word "all"', opt)
       self.expert_level = value
 
-class symmetry_callback:
+class symmetry_callback(object):
 
   def __init__(self):
     self.is_enabled = False
@@ -226,7 +226,7 @@ class symmetry_callback:
       unit_cell=self.unit_cell,
       space_group_info=self.space_group_info)
 
-class chunk_callback:
+class chunk_callback(object):
 
   def __init__(self):
     self.is_enabled = False

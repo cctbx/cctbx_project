@@ -228,7 +228,7 @@ class selection_tokenizer(tokenizer.word_iterator):
     if (word is None): raise RuntimeError("Missing argument for %s." % keyword)
     return word
 
-class selection_cache:
+class selection_cache(object):
 
   def __init__(self, atom_attributes_list, wildcard_escape_char='\\'):
     self.n_seq = len(atom_attributes_list)

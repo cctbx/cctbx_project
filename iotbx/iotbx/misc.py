@@ -1,4 +1,4 @@
-class detect_binary_file:
+class detect_binary_file(object):
 
   def __init__(self, monitor_initial=None, max_fraction_non_ascii=None):
     if (monitor_initial is None):

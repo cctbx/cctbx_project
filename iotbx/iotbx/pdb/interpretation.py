@@ -31,7 +31,7 @@ def is_pdb_file(file_name):
 
 class empty: pass
 
-class model:
+class model(object):
 
   def __init__(self, stage_1, serial):
     self.stage_1 = stage_1
@@ -44,7 +44,7 @@ class model:
     self.altLocs[conformer.altLoc] = len(self.conformers)
     self.conformers.append(conformer)
 
-class conformer_base:
+class conformer_base(object):
 
   def __init__(self, model, altLoc, iselection):
     self.model = model
@@ -102,7 +102,7 @@ class conformer(conformer_base):
         residue_iselections=residue_iselections))
     return chains
 
-class chain:
+class chain(object):
 
   def __init__(self, conformer, chainID, segID, residue_iselections):
     self.conformer = conformer
@@ -113,13 +113,13 @@ class chain:
       self.residues.append(
         residue(chain=self, iselection=iselection))
 
-class residue:
+class residue(object):
 
   def __init__(self, chain, iselection):
     self.chain = chain
     self.iselection = iselection
 
-class stage_1:
+class stage_1(object):
 
   def __init__(self, file_name=None, raw_records=None):
     assert [file_name, raw_records].count(None) == 1
@@ -662,7 +662,7 @@ class stage_1:
     if(write_end_record):
       print >> out, "END"
 
-class altLoc_grouping:
+class altLoc_grouping(object):
 
   def __init__(self):
     self.group_list = []

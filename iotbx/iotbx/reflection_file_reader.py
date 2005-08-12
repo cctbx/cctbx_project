@@ -17,7 +17,7 @@ from libtbx import easy_pickle
 from libtbx.utils import Sorry
 import sys, os
 
-class any_reflection_file:
+class any_reflection_file(object):
 
   def __init__(self, file_name, ensure_read_access=True):
     if (   file_name.startswith("amplitudes=")

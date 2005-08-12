@@ -1,7 +1,7 @@
 import re,struct
 from iotbx.detectors.detectorbase import DetectorImageBase
 
-class NullAdaptor:
+class NullAdaptor(object):
   def size1(self): return 0
   def size2(self): return 0
   def overload(self): return 0

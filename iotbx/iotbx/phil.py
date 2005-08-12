@@ -3,7 +3,7 @@ from cctbx import uctbx
 import libtbx.phil
 from libtbx.phil import tokenizer
 
-class unit_cell_converters:
+class unit_cell_converters(object):
 
   def __str__(self): return "unit_cell"
 
@@ -18,7 +18,7 @@ class unit_cell_converters:
     return [tokenizer.word(value="%.10g" % v)
       for v in python_object.parameters()]
 
-class space_group_converters:
+class space_group_converters(object):
 
   def __str__(self): return "space_group"
 
