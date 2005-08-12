@@ -18,7 +18,7 @@ misc_functions_x_x_s = (
    ["ElementType const& tolerance", "tolerance"]),
 )
 
-class empty:
+class empty(object):
   def join(self, other):
     self.__dict__.update(other.__dict__)
 

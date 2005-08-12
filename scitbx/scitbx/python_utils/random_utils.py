@@ -37,7 +37,7 @@ def _random_selection_core(selection, target_set_size, flag):
      selection[set[i]] = flag
      del set[i]
 
-class weighted_choice:
+class weighted_choice(object):
 
   def __init__(self, weights):
     self.accumulated_weights = flex.double()

@@ -15,7 +15,7 @@ types_ordered = (
   "std::complex<double>",
 )
 
-class pair:
+class pair(object):
 
   def __init__(self, lhs, rhs):
     self.lhs = lhs

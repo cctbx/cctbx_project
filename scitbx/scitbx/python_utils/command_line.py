@@ -1,4 +1,4 @@
-class parse_options:
+class parse_options(object):
 
   def __init__(self, argv, keywords):
     self.keywords = keywords

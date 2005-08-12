@@ -3,7 +3,7 @@ try:
 except:
   import math
 
-class rec:
+class rec(object):
 
   def __init__(self, elems, n):
     assert len(n) == 2
@@ -289,7 +289,7 @@ class sym(rec):
                         elems[3], elems[1], elems[5],
                         elems[4], elems[5], elems[2]), (n,n))
 
-class rt:
+class rt(object):
 
   def __init__(self, tuple_r_t):
     if (hasattr(tuple_r_t[0], "elems")):

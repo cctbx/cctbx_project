@@ -1,4 +1,4 @@
-class energies:
+class energies(object):
 
   def __init__(self,
         compute_gradients,

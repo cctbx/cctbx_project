@@ -6,7 +6,7 @@ from scitbx.math import chebyshev_base
 import math
 
 
-class chebyshev_lsq_fit:
+class chebyshev_lsq_fit(object):
   def __init__(self,
                n_terms,
                x_obs,

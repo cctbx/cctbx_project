@@ -28,7 +28,7 @@ A solution for the best rotation to relate two sets of vectors
   b = matrix.sqr(b[:6]+b3)
   return b.transpose() * a
 
-class least_squares_fit:
+class least_squares_fit(object):
 
   def __init__(self, reference_sites, other_sites):
     self.reference_sites = reference_sites

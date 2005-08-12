@@ -3,7 +3,7 @@ from scitbx.array_family import flex
 import math
 
 
-class fit_quadratic_function_2d_data:
+class fit_quadratic_function_2d_data(object):
   """ Fitting the function y=a(x1-x1m)^2 +b(x2-x2m)^2 + 2c(x1-x1m)(x2-x2m) """
   def __init__(self,
                x1_obs,
