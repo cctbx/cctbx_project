@@ -12,8 +12,7 @@ class lbfgs(object):
   def __init__(self,interpolator,sites_cart,delta_h=1.0):
     self.sites_cart = sites_cart
     self.interpolator = interpolator
-    self.n = sites_cart.size()*3
-    self.x = flex.double(self.n, 0)
+    self.x = flex.double(sites_cart.size()*3, 0)
     self.weights = flex.double(sites_cart.size(),1.0)
     self.delta_h = delta_h
     self.minimizer = scitbx.lbfgs.run(target_evaluator=self,
@@ -26,10 +25,10 @@ class lbfgs(object):
     del self.sites_shifted
     del self.x
 
-  def __call__(self):
+  def compute_functional_and_gradients(self):
     self.apply_shifts()
     self.compute_target(compute_gradients=True)
-    return self.x, self.residual, self.gradients.as_double()
+    return self.residual, self.gradients.as_double()
 
   def apply_shifts(self):
     self.sites_shifted = self.sites_cart + flex.vec3_double(self.x)

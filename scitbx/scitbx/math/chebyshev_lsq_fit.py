@@ -16,7 +16,6 @@ class chebyshev_lsq_fit(object):
                low_limit=None,
                high_limit=None,
                randomise=False):
-    self.n = n_terms
     self.x_obs = x_obs
     self.y_obs = y_obs
     self.free_flags = free_flags
@@ -25,9 +24,9 @@ class chebyshev_lsq_fit(object):
     self.w_obs = flex.double(x_obs.size(), 1.0)
     if w_obs is not None:
       self.w_obs = w_obs
-    self.x = flex.double(self.n, 0)
+    self.x = flex.double(n_terms, 0)
     if randomise:
-      self.x = (flex.random_double(self.n)-0.5)*10.0
+      self.x = (flex.random_double(n_terms)-0.5)*10.0
     self.low_limit = flex.min(self.x_obs)
     self.high_limit = flex.max(self.x_obs)
     self.f = None
@@ -40,7 +39,7 @@ class chebyshev_lsq_fit(object):
     ## Although not really needed, seems like a good idea anyway.
     ## It should speed up convergence.
     self.x[0] = flex.mean(self.y_obs)*2.0
-    self.lsq_object = chebyshev_lsq(self.n,
+    self.lsq_object = chebyshev_lsq(n_terms,
                                     self.low_limit,
                                     self.high_limit,
                                     self.x_obs,
@@ -54,12 +53,12 @@ class chebyshev_lsq_fit(object):
     self.free_f = self.lsq_object.free_residual()
     del self.x
 
-  def __call__(self):
+  def compute_functional_and_gradients(self):
     self.lsq_object.replace(self.x)
     f = self.lsq_object.residual()
     g = self.lsq_object.gradient()
     self.f = f
-    return self.x, f ,g
+    return f ,g
 
 
 def cross_validate_to_determine_number_of_terms(x_obs,y_obs,w_obs=None,

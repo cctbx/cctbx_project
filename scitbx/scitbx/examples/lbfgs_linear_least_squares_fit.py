@@ -7,14 +7,13 @@ class linear_least_squares_fit(object):
   def __init__(self, x_obs, y_obs):
     self.x_obs = x_obs
     self.y_obs = y_obs
-    self.n = 2
     self.x = flex.double([1, 0]) # start with slope=1, y_intercept=0
     self.minimizer = scitbx.lbfgs.run(target_evaluator=self)
     self.slope = self.x[0]
     self.y_intercept = self.x[1]
     del self.x
 
-  def __call__(self):
+  def compute_functional_and_gradients(self):
     slope = self.x[0]
     y_intercept = self.x[1]
     y_calc = slope * self.x_obs + y_intercept
@@ -23,7 +22,7 @@ class linear_least_squares_fit(object):
     g = flex.double([
       flex.sum(-2 * y_diff * self.x_obs),
       flex.sum(-2 * y_diff)])
-    return self.x, f, g
+    return f, g
 
 def example():
   x_obs = flex.double([1,2,3,4,5,6,7,8,9,10])

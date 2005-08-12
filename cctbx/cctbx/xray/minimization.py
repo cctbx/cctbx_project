@@ -113,8 +113,7 @@ class lbfgs(object):
       cctbx.xray.structure_factors.gradients(
         miller_set=self.target_functor.f_obs(),
         cos_sin_table=cos_sin_table)
-    self.n = xray_structure.n_parameters(gradient_flags)
-    self.x = flex.double(self.n, 0)
+    self.x = flex.double(xray_structure.n_parameters(gradient_flags), 0)
     xray_structure.tidy_us(u_min=1.e-6)
     self._scatterers_start = xray_structure.scatterers()
     self._scattering_dict = xray_structure.scattering_dict()
@@ -157,7 +156,7 @@ class lbfgs(object):
       self.f_calc,
       compute_gradients)
 
-  def __call__(self):
+  def compute_functional_and_gradients(self):
     mean_displacements = self.apply_shifts()
     self.compute_target(compute_gradients=True)
     self.f = self.target_result.target()
@@ -211,7 +210,7 @@ class lbfgs(object):
     if (self.verbose > 1):
       print "xray.minimization line search: f,rms(g):",
       print self.f, math.sqrt(flex.mean_sq(self.g))
-    return self.x, self.f, self.g
+    return self.f, self.g
 
   def callback_after_step(self, minimizer):
     if (self.verbose > 0):
