@@ -28,7 +28,7 @@ import sys
 class CNS_input_Error(exceptions.Exception):
   pass
 
-class CNS_input:
+class CNS_input(object):
 
   def __init__(self, file):
     self._readline = file.readline
@@ -76,7 +76,7 @@ class CNS_input:
   def raiseError_floating_point(self, name):
     self.raiseError("floating-point value expected for array " + name)
 
-class cns_reciprocal_space_object:
+class cns_reciprocal_space_object(object):
 
   def __init__(self, name, type):
     self.name = name
@@ -293,7 +293,7 @@ class CNS_xray_reflection_Reader(CNS_input):
     if (n_words_processed == 0):
       raise CNS_input_Error("empty file")
 
-class cns_reflection_file:
+class cns_reflection_file(object):
 
   def __init__(self, file_handle):
     reader = CNS_xray_reflection_Reader(file_handle)

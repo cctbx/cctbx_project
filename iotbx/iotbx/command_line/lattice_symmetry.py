@@ -47,7 +47,7 @@ def run(args):
   Groups = metric_subgroups(input_symmetry, command_line.options.delta)
   Groups.show()
 
-class metric_subgroups:
+class metric_subgroups(object):
   def __init__(self, input_symmetry, max_delta):
     self.input_symmetry = input_symmetry
     self.max_delta = max_delta

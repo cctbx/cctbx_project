@@ -1,6 +1,6 @@
 from iotbx.detectors import ReadADSC
 
-class DetectorImageBase:
+class DetectorImageBase(object):
   def __init__(self,filename):
     self.filename=filename
     self.parameters=None

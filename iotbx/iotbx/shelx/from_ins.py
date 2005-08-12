@@ -100,7 +100,7 @@ def if_u_iso_negative(structure):
             structure.scatterers()[j].u_iso = u_iso_new
       assert structure.scatterers()[j].u_iso > 0.0
 
-class ins_record:
+class ins_record(object):
 
   def __init__(self, raw_record, line_number=None):
     self.raw = (raw_record + " " * 80)[:80]

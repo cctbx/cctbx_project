@@ -10,7 +10,7 @@ from libtbx import easy_pickle
 import re
 import os
 
-class sdb_site:
+class sdb_site(object):
 
   def __init__(self, action, segid, type, x, y, z, b, q, g):
     adopt_init_args(self, locals())
@@ -31,7 +31,7 @@ class sdb_site:
       occupancy=self.q,
       scattering_type=scattering_type)
 
-class sdb_file:
+class sdb_file(object):
 
   def __init__(self, file_name, unit_cell, space_group_info, sites):
     adopt_init_args(self, locals())
@@ -67,7 +67,7 @@ def generic_add_float(m, buffer):
   assert seq_no == len(buffer) + 1
   buffer.append(float(m.group(2)))
 
-class raw_parameters:
+class raw_parameters(object):
 
   def __init__(self, file_name):
     self.file_name = file_name

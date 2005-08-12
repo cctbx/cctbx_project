@@ -30,7 +30,7 @@ connectivity_section = (
 class FormatError(RuntimeError): pass
 class UnknownRecordName(FormatError): pass
 
-class pdb_record:
+class pdb_record(object):
 
   def __init__(self, raw_record,
         line_number=None,
@@ -421,7 +421,7 @@ class pdb_record:
     self.sym1 = self.raw[59:65]
     self.sym2 = self.raw[66:72]
 
-class columns_73_76_evaluator:
+class columns_73_76_evaluator(object):
 
   def __init__(self, raw_records,
         is_frequent_threshold_atom_records=1000,

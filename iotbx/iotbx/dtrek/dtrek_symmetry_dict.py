@@ -9,7 +9,7 @@ from cctbx import sgtbx
 import sys
 import pprint
 
-class dtrek_symmetry_entry:
+class dtrek_symmetry_entry(object):
 
   def __init__(self, lf):
     self.symbol = None

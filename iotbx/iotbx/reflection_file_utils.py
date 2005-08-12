@@ -15,7 +15,7 @@ def find_labels(search_labels, info_string):
       return False
   return True
 
-class label_table:
+class label_table(object):
 
   def __init__(self, miller_arrays, err=None):
     self.miller_arrays = miller_arrays
@@ -131,7 +131,7 @@ def looks_like_r_free_flags_info(array_info):
     if (label.find(word) >= 0): return True
   return False
 
-class get_r_free_flags_score:
+class get_r_free_flags_score(object):
 
   def __init__(self, test_flag_value, n, n_free, miller_array_info):
     if (test_flag_value is not None or n_free < n*0.50):
@@ -147,7 +147,7 @@ class get_r_free_flags_score:
       else:
         self.flag_score = 1
 
-class get_r_free_flags_scores:
+class get_r_free_flags_scores(object):
 
   def __init__(self, miller_arrays, test_flag_value):
     self.scores = []
@@ -284,7 +284,7 @@ def select_array(
     raise Sorry(error)
   return i
 
-class reflection_file_server:
+class reflection_file_server(object):
 
   def __init__(self,
         crystal_symmetry=None,

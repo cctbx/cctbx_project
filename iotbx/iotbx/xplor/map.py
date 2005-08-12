@@ -34,7 +34,7 @@ from cctbx import maptbx
 from cctbx import uctbx
 from cctbx.array_family import flex
 
-class gridding:
+class gridding(object):
 
   def __init__(self, n, first, last):
     self.n = tuple(n)
@@ -65,7 +65,7 @@ class gridding:
       if (flex_grid.focus() != self.n): return False
     return True
 
-class reader:
+class reader(object):
 
   def __init__(self, file_name, header_only=False):
     f = open(file_name, "r")

@@ -7,7 +7,7 @@ from cctbx.array_family import flex
 import boost.python
 dtrek_ext = boost.python.import_ext("iotbx_dtrek_ext")
 
-class reflnlist:
+class reflnlist(object):
 
   def __init__(self, file, header_only=False):
     self.file = file

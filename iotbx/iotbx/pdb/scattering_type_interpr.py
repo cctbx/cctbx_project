@@ -3,7 +3,7 @@ import cctbx.eltbx.xray_scattering
 from cctbx import eltbx
 import string
 
-class scan_atom_element_columns:
+class scan_atom_element_columns(object):
 
   def __init__(self, pdb_records):
     self.n_uninterpretable = 0

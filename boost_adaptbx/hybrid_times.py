@@ -40,7 +40,7 @@ def run_python(n, n_terms):
       result += sin(i * 3.14159265359/180, n_terms)
   return result
 
-class hybrid:
+class hybrid(object):
 
   def __init__(self, n_python):
     self.n_python = n_python
@@ -54,7 +54,7 @@ def usr_and_sys():
   t = os.times()
   return t[0]+t[1]
 
-class time_per_python_tick:
+class time_per_python_tick(object):
 
   def __init__(self, worker, n, n_terms):
     time_0 = usr_and_sys()

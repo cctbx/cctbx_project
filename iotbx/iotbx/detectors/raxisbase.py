@@ -67,7 +67,7 @@ header_struct = [
   ('ScanAxisNum',4,'!i'),     # Which axis is the scan axis?
   ('AxesNames',40,'s'),       # Names of the axes (space or comma separated?)'''
 ]
-class Raxis:
+class Raxis(object):
   def __init__(self,file):
     self.file = file
 

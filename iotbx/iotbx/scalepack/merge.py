@@ -22,7 +22,7 @@ import sys
 
 class FormatError(exceptions.Exception): pass
 
-class reader:
+class reader(object):
 
   def __init__(self, file_handle, header_only=False):
     line = file_handle.readline()

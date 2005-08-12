@@ -8,7 +8,7 @@ import sys
 def get_rhs(line):
   return line.split("=", 1)[1]
 
-class reader:
+class reader(object):
 
   def __init__(self, file_handle, header_only=False):
     "http://www.mpimf-heidelberg.mpg.de/~kabsch/xds/"

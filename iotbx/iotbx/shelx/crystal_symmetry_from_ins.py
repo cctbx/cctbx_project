@@ -15,7 +15,7 @@ codewords = [
   "SUMP", "SWAT", "SYMM", "TEMP", "TEXP", "TIME", "TITL", "TREF", "TWIN",
   "UNDO", "UNIT", "VECT", "VLEN", "VOID", "WGHT", "WPDB", "XHAB", "ZERR"]
 
-class read_shelx_latt:
+class read_shelx_latt(object):
 
   def __init__(self, line):
     flds = line.split()

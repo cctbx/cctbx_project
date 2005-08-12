@@ -4,7 +4,7 @@ import sys
 import os
 import string
 
-class plot_data:
+class plot_data(object):
   def __init__(self,
                plot_title,
                x_label,

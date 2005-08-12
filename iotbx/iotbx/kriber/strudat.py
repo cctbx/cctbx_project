@@ -4,7 +4,7 @@ from cctbx import sgtbx
 from cctbx import uctbx
 import sys
 
-class atom:
+class atom(object):
 
   def __init__(self, label, site, connectivity):
     self.label = label
@@ -14,7 +14,7 @@ class atom:
   def as_xray_scatterer(self):
     return xray.scatterer(label=self.label, site=self.site)
 
-class read_entry:
+class read_entry(object):
 
   def __init__(self, f):
     line = f.readline()
@@ -153,7 +153,7 @@ class read_entry:
       result.add_scatterer(atm.as_xray_scatterer())
     return result
 
-class read_all_entries:
+class read_all_entries(object):
 
   def __init__(self, f):
     self.entries = []

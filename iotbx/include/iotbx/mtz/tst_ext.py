@@ -257,7 +257,7 @@ def exercise_basic():
 
 class QuickStop(Exception): pass
 
-class exercise_extract_any:
+class exercise_extract_any(object):
 
   def __init__(self, full=True):
     self.full = full

@@ -2,7 +2,7 @@ from cctbx import miller
 from cctbx import crystal
 from cctbx.array_family import flex
 
-class reader:
+class reader(object):
 
   def __init__(self, file_name=None, file_object=None, max_header_lines=30):
     assert [file_name, file_object].count(None) == 1
