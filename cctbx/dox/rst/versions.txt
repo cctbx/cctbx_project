@@ -29,13 +29,17 @@ cctbx links
 
 - Python interfaces:
 
-  - `libtbx <current_cvs/python/libtbx/>`_
+  - `libtbx <current_cvs/python/libtbx.html>`_
 
-  - `scitbx <current_cvs/python/scitbx/>`_
+  - `boost_adaptbx <current_cvs/python/boost.html>`_
 
-  - `cctbx <current_cvs/python/cctbx/>`_
+  - `scitbx <current_cvs/python/scitbx.html>`_
 
-  - `iotbx <current_cvs/python/iotbx/>`_
+  - `cctbx <current_cvs/python/cctbx.html>`_
+
+  - `iotbx <current_cvs/python/iotbx.html>`_
+
+  - `mmtbx <current_cvs/python/mmtbx.html>`_
 
 - `C++ interfaces <current_cvs/c_plus_plus/namespaces.html>`_
 

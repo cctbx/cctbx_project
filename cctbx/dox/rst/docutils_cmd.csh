@@ -1,6 +1,6 @@
 #! /bin/csh -f
 set echo
-buildhtml.py -stg
+docutils.buildhtml -stg
 mkdir -p ../../../htdocs/current_cvs
 mv *.html ../../../htdocs/current_cvs
 cp *.txt *.css *.png ../../../htdocs/current_cvs
