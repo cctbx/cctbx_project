@@ -10,7 +10,6 @@ class fit_quadratic_function_2d_data(object):
                x2_obs,
                y_obs):
 
-    self.n = 5
     self.x1_obs = x1_obs
     self.x2_obs = x2_obs
     self.y_obs = y_obs
@@ -65,10 +64,10 @@ class fit_quadratic_function_2d_data(object):
 
     return(flex.double(g))
 
-  def __call__(self):
+  def compute_functional_and_gradients(self):
     f = self.calc_f()
     g = self.calc_g()
-    return self.x, f, g
+    return f, g
 
 ## I hope to do something more general here at the appropriate juncture.
 ## The above implementation is valid, but not as general as desired, but is

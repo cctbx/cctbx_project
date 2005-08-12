@@ -17,8 +17,7 @@ class lbfgs(object):
     if (lbfgs_termination_params is None):
       lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
         max_iterations=1000)
-    self.n = sites_cart.size()*3
-    self.x = flex.double(self.n, 0)
+    self.x = flex.double(sites_cart.size()*3, 0)
     self.tmp = empty()
     self.tmp.geometry_restraints_manager = geometry_restraints_manager
     self.tmp.geometry_restraints_flags = geometry_restraints_flags
@@ -68,7 +67,7 @@ class lbfgs(object):
   def callback_after_step(self, minimizer):
     self.tmp.lock_pair_proxies = False
 
-  def __call__(self):
+  def compute_functional_and_gradients(self):
     if (self.first_target_result is None):
       assert self.x.all_eq(0)
     else:
@@ -78,4 +77,4 @@ class lbfgs(object):
     if (self.first_target_result is None):
       self.first_target_result = self.tmp.target_result
     self.g = self.tmp.target_result.gradients.as_double()
-    return self.x, self.f, self.g
+    return self.f, self.g

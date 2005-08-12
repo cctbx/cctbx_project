@@ -81,8 +81,7 @@ class minimize_lbfgs(minimize_mixin):
                      hard_b_min=-1):
     adopt_init_args(self, locals())
     assert target_power in [2,4]
-    self.n = gaussian_fit.n_terms() * 2
-    self.x = flex.double(self.n, 0)
+    self.x = flex.double(gaussian_fit.n_terms() * 2, 0)
     self.first_target_value = None
     self.minimizer = lbfgs.run(
       target_evaluator=self,
@@ -97,11 +96,11 @@ class minimize_lbfgs(minimize_mixin):
       int(self.use_sigmas),
       int(self.shift_sqrt_b))
 
-  def __call__(self):
+  def compute_functional_and_gradients(self):
     self.compute_fg()
     if (self.first_target_value is None):
       self.first_target_value = self.f
-    return self.x, self.f, self.g
+    return self.f, self.g
 
 class minimize_lbfgsb(minimize_mixin):
 

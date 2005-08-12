@@ -82,8 +82,9 @@ def run_c_plus_plus(target_evaluator,
     core_params = core_parameters()
   if (exception_handling_params is None):
     exception_handling_params = exception_handling_parameters()
+  x = target_evaluator.x
   minimizer = ext.minimizer(
-    target_evaluator.n,
+    x.size(),
     core_params.m,
     core_params.maxfev,
     core_params.gtol,
@@ -92,7 +93,7 @@ def run_c_plus_plus(target_evaluator,
     core_params.stpmax)
   if (termination_params.traditional_convergence_test):
     is_converged = ext.traditional_convergence_test(
-      target_evaluator.n,
+      x.size(),
       termination_params.traditional_convergence_test_eps)
   else:
     is_converged = ext.drop_convergence_test(
@@ -103,10 +104,10 @@ def run_c_plus_plus(target_evaluator,
   callback_after_step = getattr(target_evaluator, "callback_after_step", None)
   first_f = None
   x_after_step = None
-  x, f, g = None, None, None
+  f, g = None, None
   try:
     while 1:
-      x, f, g = target_evaluator()
+      f, g = target_evaluator.compute_functional_and_gradients()
       if (first_f is None):
         first_f = f
         if (not termination_params.traditional_convergence_test):
@@ -134,7 +135,7 @@ def run_c_plus_plus(target_evaluator,
       x.extend(x_after_step)
     minimizer.error = str(e)
     error_classification = exception_handling_params.filter(
-      minimizer.error, target_evaluator.n, x, g)
+      minimizer.error, x.size(), x, g)
     if (error_classification > 0):
       raise
     elif (error_classification < 0):
@@ -159,15 +160,16 @@ def run_fortran(target_evaluator,
     core_params = core_parameters()
   assert termination_params.traditional_convergence_test
   assert core_params.maxfev == 20
-  n = target_evaluator.n
+  x = target_evaluator.x
+  n = x.size()
   m = core_params.m
   gtol = core_params.gtol
   xtol = core_params.xtol
   stpmin = core_params.stpmin
   stpmax = core_params.stpmax
   eps = termination_params.traditional_convergence_test_eps
-  x = Numeric.array(Numeric.arange(n), Numeric.Float64)
-  g = Numeric.array(Numeric.arange(n), Numeric.Float64)
+  x_numeric = Numeric.array(Numeric.arange(n), Numeric.Float64)
+  g_numeric = Numeric.array(Numeric.arange(n), Numeric.Float64)
   size_w = n*(2*m+1)+2*m
   w = Numeric.array(Numeric.arange(size_w), Numeric.Float64)
   diag = Numeric.array(Numeric.arange(n), Numeric.Float64)
@@ -176,11 +178,12 @@ def run_fortran(target_evaluator,
   iflag = Numeric.array([0], Numeric.Int32)
   minimizer = store(error=None)
   while 1:
-    x_, f, g_ = target_evaluator()
-    for i,xi in enumerate(x_): x[i] = xi
-    for i,gi in enumerate(g_): g[i] = gi
-    fortran_lbfgs(n, m, x, f, g, diagco, diag, iprint, eps, xtol, w, iflag)
-    for i,xi in enumerate(x): x_[i] = xi
+    f, g = target_evaluator.compute_functional_and_gradients()
+    for i,xi in enumerate(x): x_numeric[i] = xi
+    for i,gi in enumerate(g): g_numeric[i] = gi
+    fortran_lbfgs(n, m, x_numeric, f, g_numeric, diagco, diag,
+      iprint, eps, xtol, w, iflag)
+    for i,xi in enumerate(x_numeric): x[i] = xi
     if (iflag[0] == 0):
       break
     if (iflag[0] < 0):
