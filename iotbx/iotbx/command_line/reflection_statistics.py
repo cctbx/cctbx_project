@@ -71,6 +71,13 @@ class array_cache:
       space_group_info=sgtbx.space_group_info(group=self.lattice_group),
       assert_is_compatible_unit_cell=False)
 
+  def show_completeness(self):
+    print "Completeness of %s:" % str(self.input.info())
+    no_sys_abs = self.input.eliminate_sys_absent()
+    no_sys_abs.use_binning_of(self.input)
+    no_sys_abs.completeness(use_binning=True).show()
+    print
+
   def idealized_input_unit_cell(self):
     return self.change_of_basis_op_to_minimum_cell.inverse().apply(
       self.lattice_symmetry.unit_cell())
@@ -413,9 +420,7 @@ def run(args):
       n_bins=n_bins,
       lattice_symmetry_max_delta=3.0)
     cache_0.show_possible_twin_laws()
-    print "Completeness of %s:" % str(cache_0.input.info())
-    cache_0.input.completeness(use_binning=True).show()
-    print
+    cache_0.show_completeness()
     cache_0.show_patterson_peaks()
     if (not cache_0.input.space_group().is_centric()):
       cache_0.show_perfect_merohedral_twinning_test(
