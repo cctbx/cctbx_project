@@ -1,2 +1,7 @@
 import libtbx.load_env
-print libtbx.env.bin_path
+
+def run():
+  print libtbx.env.bin_path
+
+if (__name__ == "__main__"):
+  run()

@@ -33,8 +33,12 @@ def show_times():
     print "%d minutes %.2f seconds (%.2f seconds total)" % (
       m, s, wall_clock_time)
 
-import atexit
-atexit.register(show_times)
+def run():
+  import atexit
+  atexit.register(show_times)
 
-from SCons import Script
-Script.main()
+  from SCons import Script
+  Script.main()
+
+if (__name__ == "__main__"):
+  run()
