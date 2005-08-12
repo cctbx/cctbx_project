@@ -6,7 +6,7 @@ from cStringIO import StringIO
 import copy
 import sys, os
 
-class recycle:
+class recycle(object):
 
   def __init__(self,
         input_string,
@@ -2773,13 +2773,13 @@ s {
 }
 """)
 
-class foo1_converters:
+class foo1_converters(object):
 
   def __init__(self, bar=None):
     if (bar is None):
       raise RuntimeError("foo1 problem")
 
-class foo2_converters:
+class foo2_converters(object):
 
   def __str__(self): return "foo2"
 
@@ -2837,13 +2837,13 @@ c=None
   except RuntimeError, e:
     assert str(e) == \
       '.type=foo2 does not have a from_words method (input line 1):' \
-      " foo2_converters instance has no attribute 'from_words'"
+      " 'foo2_converters' object has no attribute 'from_words'"
   else: raise RuntimeError("Exception expected.")
   try: params.get(path="a").objects[0].format(python_object=0)
   except RuntimeError, e:
     assert str(e) == \
       '.type=foo2 does not have an as_words method (input line 1):' \
-      " foo2_converters instance has no attribute 'as_words'"
+      " 'foo2_converters' object has no attribute 'as_words'"
   else: raise RuntimeError("Exception expected.")
   try: phil.parse(
     input_string="""\

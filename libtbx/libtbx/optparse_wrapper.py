@@ -23,7 +23,7 @@ class option_parser(OptionParser):
       sys.exit(1)
     return processed_options(self, options, args)
 
-class processed_options:
+class processed_options(object):
 
   def __init__(self, parser, options, args):
     self.parser = parser

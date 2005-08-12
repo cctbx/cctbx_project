@@ -1,7 +1,7 @@
 try:
   from itertools import count
 except:
-  class count:
+  class count(object):
 
     def __init__(self, firstval=0):
       self.val = firstval
@@ -14,7 +14,7 @@ except:
     def __iter__(self):
       return self
 
-class step:
+class step(object):
 
   def __init__(self, firstval=0, increment=1):
     self.val = firstval

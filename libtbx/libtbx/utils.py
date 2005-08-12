@@ -76,7 +76,7 @@ def _indentor_write_loop(write_method, indent, incomplete_line, lines):
       write_method(line)
     write_method("\n")
 
-class indentor:
+class indentor(object):
 
   def __init__(self, file_object=None, indent="", parent=None):
     if (file_object is None):
@@ -138,7 +138,7 @@ class buffered_indentor(indentor):
       indentor.write(self, block)
     self.buffer = []
 
-class multi_out:
+class multi_out(object):
 
   def __init__(self):
     self.labels = []
