@@ -112,6 +112,11 @@ Completeness with d_max=infinity: 1
   r = s.reflection_intensity_symmetry()
   assert str(r.space_group_info()) == "P m m m"
   assert r.sys_absent_flags().data().all_eq(False)
+  #
+  s = s.customized_copy(indices=flex.miller_index([(1,2,3),(0,0,1)]))
+  for deg in [False, True]:
+    p = s.random_phases_compatible_with_phase_restrictions(deg=deg).data()
+    assert s.space_group().is_valid_phase((0,0,1), p[1], deg)
 
 def exercise_generate_r_free_flags():
   for anomalous_flag in [False, True]:

@@ -52,6 +52,9 @@ namespace {
       is_valid_phase_overloads, is_valid_phase, 2, 4)
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
+      nearest_valid_phases_overloads, nearest_valid_phases, 2, 3)
+
+    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
       is_compatible_unit_cell_overloads, is_compatible_unit_cell, 1, 3)
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
@@ -125,6 +128,12 @@ namespace {
         .def("is_valid_phase",
           &w_t::is_valid_phase,
           is_valid_phase_overloads())
+        .def("nearest_valid_phases",
+          &w_t::nearest_valid_phases,
+          nearest_valid_phases_overloads((
+            arg_("miller_indices"),
+            arg_("phases"),
+            arg_("deg")=false)))
         .def("multiplicity",
           (int(w_t::*)(miller::index<> const&, bool) const)
           &w_t::multiplicity)

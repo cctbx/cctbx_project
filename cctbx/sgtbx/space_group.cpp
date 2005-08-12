@@ -592,4 +592,20 @@ namespace cctbx { namespace sgtbx {
     return result;
   }
 
+  af::shared<double>
+  space_group::nearest_valid_phases(
+    af::const_ref<miller::index<> > const& miller_indices,
+    af::const_ref<double> const& phases,
+    bool deg) const
+  {
+    CCTBX_ASSERT(phases.size() == miller_indices.size());
+    af::shared<double> result((af::reserve(miller_indices.size())));
+    for(std::size_t i=0;i<miller_indices.size();i++) {
+      result.push_back(
+        phase_restriction(miller_indices[i])
+          .nearest_valid_phase(phases[i], deg));
+    }
+    return result;
+  }
+
 }} // namespace cctbx::sgtbx

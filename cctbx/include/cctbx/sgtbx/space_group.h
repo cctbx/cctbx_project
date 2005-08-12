@@ -428,6 +428,15 @@ namespace cctbx { namespace sgtbx {
         return phase_restriction(h).is_valid_phase(phi, deg, tolerance);
       }
 
+      //! Computes nearest phases compatible with the phase restrictions.
+      /*! See also: class phase_info::nearest_valid_phase()
+       */
+      af::shared<double>
+      nearest_valid_phases(
+        af::const_ref<miller::index<> > const& miller_indices,
+        af::const_ref<double> const& phases,
+        bool deg=false) const;
+
       //! Determines the reflection multiplicity for the given Miller index.
       /*! The multiplicity is defined as the number of symmetrically
           equivalent but distinct reflections.<br>
