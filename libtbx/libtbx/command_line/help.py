@@ -1,7 +1,7 @@
-import time
+import pydoc
 
 def run():
-  print time.time()
+  pydoc.cli()
 
 if (__name__ == "__main__"):
   run()

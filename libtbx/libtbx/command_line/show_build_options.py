@@ -1,2 +1,7 @@
 import libtbx.load_env
-libtbx.env.build_options.report()
+
+def run():
+  libtbx.env.build_options.report()
+
+if (__name__ == "__main__"):
+  run()
