@@ -263,7 +263,7 @@ def exercise_fast_minimum_reduction():
       if ("--Verbose" in sys.argv[1:]):
         print "Expected:", e
 
-class exercise_is_degenerate:
+class exercise_is_degenerate(object):
 
   def __init__(self, n_iterations=None):
     if (n_iterations is not None):

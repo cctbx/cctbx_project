@@ -8,7 +8,7 @@ from scitbx.python_utils import command_line
 from boost import rational
 import sys, os
 
-class colored_grid_point:
+class colored_grid_point(object):
 
   def __init__(self, site, color):
     self.site = tuple(site)
@@ -93,7 +93,7 @@ def check_asu(space_group_number, asu, n=(12,12,12), is_stripped_asu=False):
     analyze_redundancies(asu, n, redundancies)
   sys.stdout.flush()
 
-class color_server:
+class color_server(object):
 
   def __init__(self):
     self.color_pairs = (

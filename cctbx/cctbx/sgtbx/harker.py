@@ -14,7 +14,7 @@ def mod_positive3(x_frac):
     while (result[i] >= 1.): result[i] -= 1.
   return tuple(result)
 
-class plane_fractional:
+class plane_fractional(object):
 
   def __init__(self, s, n, p, c):
     self.s = s
@@ -43,7 +43,7 @@ class plane_fractional:
       if (signs[i] == -1): m[i*4] *= -1
     return str(sgtbx.rt_mx(op.r().multiply(sgtbx.rot_mx(m,d)), op.t()))
 
-class planes_fractional:
+class planes_fractional(object):
 
   def __init__(self, space_group):
     self.space_group = space_group
@@ -63,7 +63,7 @@ class planes_fractional:
         self.list.append(
           plane_fractional(s=s, n=n, p=p, c=rational.int(c,p.den())))
 
-class plane_cartesian:
+class plane_cartesian(object):
 
   def __init__(self, n, c):
     self.n = n

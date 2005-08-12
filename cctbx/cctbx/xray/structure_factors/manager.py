@@ -129,7 +129,7 @@ class manager(crystal.symmetry):
     return self.estimate_time_direct.have_good_estimate() \
        and self.estimate_time_fft.have_good_estimate()
 
-class _estimate_time_direct:
+class _estimate_time_direct(object):
 
   def __init__(self, order_z, min_product=100000):
     self.order_z = order_z
@@ -157,7 +157,7 @@ def _linear_estimate(x1, x2, y1, y2, x):
   else: y_intercept = y1 - (slope * x1)
   return slope * x + y_intercept
 
-class _estimate_time_fft:
+class _estimate_time_fft(object):
 
   def __init__(self):
     self.min_n_scatterers = 0
@@ -224,7 +224,7 @@ class _estimate_time_fft:
              self.max_time_apply_u_extra,
              n_miller_indices)
 
-class managed_calculation_base:
+class managed_calculation_base(object):
 
   def __init__(self, manager, xray_structure, miller_set):
     adopt_init_args(self, locals(), hide=True)

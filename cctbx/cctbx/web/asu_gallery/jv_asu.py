@@ -15,7 +15,7 @@ def select_color(inclusive_flag):
   if (inclusive_flag): return (0,255,0)
   return (255,0,0)
 
-class orthogonalizer:
+class orthogonalizer(object):
 
   def __init__(self, unit_cell):
     self.unit_cell = unit_cell

@@ -82,7 +82,7 @@ def sdb_file_to_emma_model(crystal_symmetry, sdb_file):
   m.label = sdb_file.file_name
   return m
 
-class web_to_models:
+class web_to_models(object):
 
   def __init__(self, ucparams, sgsymbol, convention,
                format, coor_type, skip_columns, coordinates,

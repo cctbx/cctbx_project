@@ -10,12 +10,12 @@ from libtbx import adopt_init_args
 from libtbx import easy_pickle
 import os
 
-class labeled_fit:
+class labeled_fit(object):
 
   def __init__(self, label, gaussian_fit):
     adopt_init_args(self, locals())
 
-class read_pickled_fits:
+class read_pickled_fits(object):
 
   def __init__(self, gaussian_fit_pickle_file_names):
     self.parameters = None

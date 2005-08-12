@@ -91,7 +91,7 @@ def write_plots(plots_dir, label, gaussian_fit):
   f.close()
   return file_name
 
-class fit_parameters:
+class fit_parameters(object):
 
   def __init__(self, max_n_terms=5,
                      target_powers=[2,4],

@@ -3,7 +3,7 @@ from cctbx.array_family import flex
 from cctbx import maptbx
 
 # Done by Erik McKee
-class lbfgs:
+class lbfgs(object):
   '''
      If you run the lbfgs with a non-crystallographic interpolator, and it
      throws an out-of-bounds error, then change the call to the intepolator to:

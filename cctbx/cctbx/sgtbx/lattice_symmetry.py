@@ -1,6 +1,6 @@
 from cctbx import sgtbx
 
-class group_search:
+class group_search(object):
 
   def __init__(self, modulus=2):
     self.ext = sgtbx.lattice_symmetry_group_search(modulus)

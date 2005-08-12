@@ -815,7 +815,7 @@ i_seq: 2
     y,-x+1,z
 """
 
-class adp_iso_local_sphere_restraints_energies_functor:
+class adp_iso_local_sphere_restraints_energies_functor(object):
 
   def __init__(self, pair_sym_table, orthogonalization_matrix, sites_frac):
     adopt_init_args(self, locals())

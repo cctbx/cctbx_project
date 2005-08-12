@@ -7,7 +7,7 @@ from scitbx.array_family import flex
 import math
 import sys
 
-class scatterer:
+class scatterer(object):
 
   def __init__(self, label="",
                      site=(0,0,0),

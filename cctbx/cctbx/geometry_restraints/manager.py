@@ -7,7 +7,7 @@ from scitbx.python_utils.misc import store
 from libtbx import adopt_init_args
 import sys
 
-class manager:
+class manager(object):
 
   def __init__(self,
         crystal_symmetry=None,

@@ -192,7 +192,7 @@ class resampling(crystal.symmetry):
       print
     return result
 
-class judge:
+class judge(object):
 
   def __init__(self, scatterer, label, reference, other, top):
     label += [" iso", " aniso"][int(scatterer.anisotropic_flag)]
@@ -210,7 +210,7 @@ class judge:
   def __str__(self):
     return self.s
 
-class shifted_site:
+class shifted_site(object):
 
   def __init__(self, f_obs, structure, i_scatterer, i_xyz, shift):
     self.structure_shifted = structure.deep_copy_scatterers()
@@ -262,7 +262,7 @@ def site(structure_ideal, d_min, f_obs, verbose=0):
       assert not match.is_bad
   sys.stdout.flush()
 
-class shifted_u_iso:
+class shifted_u_iso(object):
 
   def __init__(self, f_obs, structure, i_scatterer, shift):
     self.structure_shifted = structure.deep_copy_scatterers()
@@ -313,7 +313,7 @@ def u_iso(structure_ideal, d_min, f_obs, sqrt_u_iso, verbose=0):
     assert not match.is_bad
   sys.stdout.flush()
 
-class shifted_u_star:
+class shifted_u_star(object):
 
   def __init__(self, f_obs, structure, i_scatterer, ij, shift):
     self.structure_shifted = structure.deep_copy_scatterers()
@@ -373,7 +373,7 @@ def u_star(structure_ideal, d_min, f_obs, verbose=0):
       assert not match.is_bad
   sys.stdout.flush()
 
-class shifted_occupancy:
+class shifted_occupancy(object):
 
   def __init__(self, f_obs, structure, i_scatterer, shift):
     self.structure_shifted = structure.deep_copy_scatterers()
@@ -421,7 +421,7 @@ def occupancy(structure_ideal, d_min, f_obs, verbose=0):
     assert not match.is_bad
   sys.stdout.flush()
 
-class shifted_fp:
+class shifted_fp(object):
 
   def __init__(self, f_obs, structure, i_scatterer, shift):
     self.structure_shifted = structure.deep_copy_scatterers()
@@ -469,7 +469,7 @@ def fp(structure_ideal, d_min, f_obs, verbose=0):
     assert not match.is_bad
   sys.stdout.flush()
 
-class shifted_fdp:
+class shifted_fdp(object):
 
   def __init__(self, f_obs, structure, i_scatterer, shift):
     self.structure_shifted = structure.deep_copy_scatterers()

@@ -1,7 +1,7 @@
 from cctbx.sgtbx import subgroups
 from cctbx import sgtbx
 
-class subgroup_stats:
+class subgroup_stats(object):
 
   def __init__(self, parent_group_info):
     self.subgroups = subgroups.subgroups(

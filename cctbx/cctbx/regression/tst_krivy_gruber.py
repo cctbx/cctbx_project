@@ -295,7 +295,7 @@ def exercise_grid(quick=False, verbose=0):
   if (0 or verbose):
     print "exercise_grid n_trials:", n_trials
 
-class random_unimodular_integer_matrix_generator:
+class random_unimodular_integer_matrix_generator(object):
 
   def __init__(self, reset_threshold=10):
     self.reset_threshold = reset_threshold
@@ -318,7 +318,7 @@ class random_unimodular_integer_matrix_generator:
       self._mi = random.choice((self._m1, self._m2))
     return self._mi
 
-class random_abcpq:
+class random_abcpq(object):
 
   def __init__(self, ck_type):
     rr = random.randrange

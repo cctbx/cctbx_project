@@ -14,7 +14,7 @@ from libtbx.itertbx import count
 if (1):
   flex.set_random_seed(0)
 
-class restraint_parameters:
+class restraint_parameters(object):
 
   def __init__(self, distance_ideal, weight):
     self.distance_ideal = distance_ideal
@@ -59,7 +59,7 @@ def setup_nonbonded_params():
   d.setdefault("O")["O"] = 2.0
   return p
 
-class add_oxygen:
+class add_oxygen(object):
 
   def __init__(self, si_structure, si_pair_asu_table):
     self.structure = si_structure.deep_copy_scatterers()

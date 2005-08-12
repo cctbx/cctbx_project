@@ -41,7 +41,7 @@ def print_ftp_info(f):
  */
 """
 
-class sasaki_table:
+class sasaki_table(object):
 
   def __init__(self, atomic_symbol, atomic_number,
                edge_label=0, edge_wave_length=0):
@@ -115,7 +115,7 @@ def collect_tables(file_object, edge):
     tables.append(table)
   return tables
 
-class table_references:
+class table_references(object):
 
   def __init__(self, wide):
     self.wide = wide

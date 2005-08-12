@@ -20,7 +20,7 @@ from iotbx.command_line.lattice_symmetry import metric_subgroups
 import math
 import sys
 
-class MetricCriteria:
+class MetricCriteria(object):
   def equal(self,A,B):
     # A == B within stated fractional tolerance
     if self.int_tol < A/B < 1./self.int_tol or \
@@ -260,7 +260,7 @@ for line in lattice_text.split('\n')[1:-1]:
        }
   lattices.append(d)
 
-class LatticeCharacter:
+class LatticeCharacter(object):
   #assumes that unit_cell is already in primitive setting and NIGGLI reduced
   # tolerance is given as a percentage
   def __init__(self,unit_cell,tolerance=3.):

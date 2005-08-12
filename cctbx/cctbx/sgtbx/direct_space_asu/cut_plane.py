@@ -2,7 +2,7 @@ from scitbx import matrix
 from boost import rational
 import string
 
-class cut_expr_ops:
+class cut_expr_ops(object):
   def __and__(self, other): return cut_expression("&", self, other)
   def __or__(self, other): return cut_expression("|", self, other)
 

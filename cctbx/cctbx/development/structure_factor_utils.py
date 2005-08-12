@@ -13,7 +13,7 @@ def check_regression(x, y, label, min_correlation=0, verbose=0):
       xy_corr.coefficient(), xy_regr.slope())
   assert min_correlation == 0 or xy_corr.coefficient() >= min_correlation
 
-class collector:
+class collector(object):
 
   def __init__(self, label, min_corr_ampl=0, max_mean_w_phase_error=0,
                verbose=0):

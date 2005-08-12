@@ -23,7 +23,7 @@ def angle_delta_deg(angle_1, angle_2, periodicity=1):
   elif (d >  half_period): d -= 2*half_period
   return d
 
-class proxy_registry_process_result:
+class proxy_registry_process_result(object):
 
   def __init__(self,
         tabulated_proxy=None,
@@ -35,7 +35,7 @@ class proxy_registry_process_result:
     self.is_conflicting = is_conflicting
     self.conflict_source_labels = conflict_source_labels
 
-class proxy_registry_base:
+class proxy_registry_base(object):
 
   def __init__(self, proxies, strict_conflict_handling):
     self.proxies = proxies
@@ -453,7 +453,7 @@ class _shared_dihedral_proxy(boost.python.injector, shared_dihedral_proxy):
     if (n_not_shown != 0):
       print >> f, prefix + "... (remaining %d not shown)" % n_not_shown
 
-class pair_proxies:
+class pair_proxies(object):
 
   def __init__(self,
         flags=None,

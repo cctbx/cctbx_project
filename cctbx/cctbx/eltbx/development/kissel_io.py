@@ -8,7 +8,7 @@ from libtbx.optparse_wrapper import OptionParser
 from libtbx import adopt_init_args
 import sys, os
 
-class table:
+class table(object):
 
   def __init__(self, atomic_number, x, y, sigmas):
     adopt_init_args(self, locals())
