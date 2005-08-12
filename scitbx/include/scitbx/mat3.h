@@ -226,33 +226,33 @@ namespace scitbx {
       }
 
       //! Returns the inverse matrix, after minimizing the error numerically.
-    	/*! Here's the theory:
-    	    M*M^-1 = I-E, where E is the error
-    	    M*M^-1*(I+E) = (I-E)*(I+E)
-    	    M*(M^-1*(I+E)) = I^2-E^2
-    	    M*(M^-1*(I+E)) = I-E^2
-    	   		let M^-1*(I+E)	= M1
-    	   		let E^2			= E2
-    	   M*M1*(I+E2) = (I-E2)*(I+E2)
-    	   M*M2 = I-E4
-     	   M*Mi = I-E2^i
-    	   Supposedly this will drive the error pretty low after
-    	   only a few repetitions. The error rate should be ~E^(2^iterations),
-    	   which I think is pretty good. This assumes that E is "<< 1",
-    	   whatever that means. Attributed to Judah I. Rosenblatt.
+      /*! Here's the theory:
+          M*M^-1 = I-E, where E is the error
+          M*M^-1*(I+E) = (I-E)*(I+E)
+          M*(M^-1*(I+E)) = I^2-E^2
+          M*(M^-1*(I+E)) = I-E^2
+                      let M^-1*(I+E)  = M1
+                      let E^2         = E2
+          M*M1*(I+E2) = (I-E2)*(I+E2)
+          M*M2 = I-E4
+          M*Mi = I-E2^i
+          Supposedly this will drive the error pretty low after
+          only a few repetitions. The error rate should be ~E^(2^iterations),
+          which I think is pretty good. This assumes that E is "<< 1",
+          whatever that means. Attributed to Judah I. Rosenblatt.
 
-    	   2*I - (I-E) ==> 2*I - I + E = I + E
+          2*I - (I-E) ==> 2*I - I + E = I + E
        */
       mat3
       error_minimizing_inverse ( std::size_t iterations ) const
       {
-      	mat3 inverse = this->inverse();
-      	if ( 0 == iterations )
-		      return inverse;
-	      mat3 two_diagonal(2);
-      	for ( std::size_t i=0; i<iterations; ++i )
-      		inverse = inverse * (two_diagonal - this*inverse);
-      	return inverse;
+        mat3 inverse = this->inverse();
+        if ( 0 == iterations )
+                      return inverse;
+              mat3 two_diagonal(2);
+        for ( std::size_t i=0; i<iterations; ++i )
+                inverse = inverse * (two_diagonal - this*inverse);
+        return inverse;
       }
 
       //! Scale matrix in place.
