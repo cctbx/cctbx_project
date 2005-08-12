@@ -225,20 +225,20 @@ namespace dmtbx {
       af::shared<FloatType>
       apply_tangent_formula(
         af::const_ref<FloatType> const& amplitudes,
-        af::const_ref<FloatType> const& phases,
+        af::const_ref<FloatType> const& phases_rad,
         af::const_ref<bool> const& selection_fixed,
         bool use_fixed_only=false,
         bool reuse_results=false,
         FloatType const& sum_epsilon=1.e-10) const
       {
         CCTBX_ASSERT(amplitudes.size() == array_of_wtprs_.size());
-        CCTBX_ASSERT(phases.size() == amplitudes.size());
+        CCTBX_ASSERT(phases_rad.size() == amplitudes.size());
         CCTBX_ASSERT(   selection_fixed.size() == 0
                      || selection_fixed.size() == amplitudes.size());
         CCTBX_ASSERT(!use_fixed_only || selection_fixed.size() > 0);
-        af::shared<FloatType> result(phases.begin(), phases.end());
+        af::shared<FloatType> result(phases_rad.begin(), phases_rad.end());
         const FloatType* phase_source = (
-          reuse_results ? result.begin() : phases.begin());
+          reuse_results ? result.begin() : phases_rad.begin());
         std::vector<bool> fixed_or_extrapolated;
         if (selection_fixed.size() == 0) {
           fixed_or_extrapolated.resize(amplitudes.size(), false);
@@ -247,7 +247,7 @@ namespace dmtbx {
           fixed_or_extrapolated.assign(
             selection_fixed.begin(), selection_fixed.end());
         }
-        for(std::size_t ih=0;ih<phases.size();ih++) {
+        for(std::size_t ih=0;ih<phases_rad.size();ih++) {
           if (selection_fixed.size() != 0 && selection_fixed[ih]) continue;
           CCTBX_ASSERT(!fixed_or_extrapolated[ih]);
           cr_wtprs_t tprs = array_of_wtprs_[ih].const_ref();

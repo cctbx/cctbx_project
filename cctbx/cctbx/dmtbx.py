@@ -31,11 +31,11 @@ def triplet_generator(miller_set,
 
 class _triplet_generator(boost.python.injector, ext.triplet_generator):
 
-  def apply_tangent_formula(self, amplitudes, phases,
+  def apply_tangent_formula(self, amplitudes, phases_rad,
                                   selection_fixed=None,
                                   use_fixed_only=False,
                                   reuse_results=False,
                                   sum_epsilon=1.e-10):
     return self.raw_apply_tangent_formula(
-      amplitudes, phases,
+      amplitudes, phases_rad,
       selection_fixed, use_fixed_only, reuse_results, sum_epsilon)
