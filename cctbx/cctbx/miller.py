@@ -187,7 +187,7 @@ class binner(ext.binner):
     if (legend is not None): return len(legend)
     return None
 
-class binned_data:
+class binned_data(object):
 
   def __init__(self, binner, data, data_fmt=None):
     self.binner = binner
@@ -855,7 +855,7 @@ def build_set(crystal_symmetry, anomalous_flag, d_min):
       d_min).to_array(),
     anomalous_flag)
 
-class array_info:
+class array_info(object):
 
   def __init__(self,
         source=None,
@@ -1903,7 +1903,7 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
       phases_deg=phases_deg,
       figures_of_merit=figures_of_merit)
 
-class merge_equivalents:
+class merge_equivalents(object):
 
   def __init__(self, miller_array):
     self._r_linear = None

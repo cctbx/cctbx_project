@@ -396,7 +396,7 @@ class _pair_asu_table(boost.python.injector, pair_asu_table):
       keep_pair_asu_table=keep_pair_asu_table,
       out=out)
 
-class show_distances:
+class show_distances(object):
 
   def __init__(self,
         pair_asu_table,
@@ -485,7 +485,7 @@ class show_distances:
         print >> out, "  no neighbors"
       self.pair_counts.append(pair_count)
 
-class sym_pair:
+class sym_pair(object):
 
   def __init__(self, i_seq, j_seq, rt_mx_ji):
     self.i_seq = i_seq
@@ -528,7 +528,7 @@ class _pair_sym_table(boost.python.injector, pair_sym_table):
         result[j_seq].insert(i_seq)
     return result
 
-class _clustering_mix_in:
+class _clustering_mix_in(object):
 
   def sites_cart(self):
     return self.special_position_settings.unit_cell() \

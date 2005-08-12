@@ -289,7 +289,7 @@ class xray_structure(xray.structure):
         raise RuntimeError
     return modified_structure
 
-class wyckoff_pair_generator:
+class wyckoff_pair_generator(object):
 
   def __init__(self,
         space_group_info,

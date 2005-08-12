@@ -3,7 +3,7 @@ from cctbx import sgtbx
 
 hexagonal_sampling_generator=crystal.close_packing_hexagonal_sampling_generator
 
-class setup_hexagonal_sampling:
+class setup_hexagonal_sampling(object):
 
   def __init__(self, crystal_symmetry, symmetry_flags):
     self.cb_op_original_to_sampling = crystal_symmetry \

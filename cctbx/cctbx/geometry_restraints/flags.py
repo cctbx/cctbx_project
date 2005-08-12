@@ -1,7 +1,7 @@
 from libtbx import adopt_init_args
 import sys
 
-class flags:
+class flags(object):
 
   def __init__(self,
         bond=None,

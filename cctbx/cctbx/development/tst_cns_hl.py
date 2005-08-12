@@ -99,7 +99,7 @@ def write_cns_input(fcalc_array, hl, test_merge=False):
     print >> f, l
   f.close()
 
-class read_reflection_arrays:
+class read_reflection_arrays(object):
 
   def __init__(self, file_name, anomalous_flag, verbose):
     reflection_file = reflection_reader.cns_reflection_file(open(file_name))

@@ -101,7 +101,7 @@ class minimum_reduction(minimum_reduction_mixin, reduction):
     if (not self.significant_change_test()):
       raise StopIteration
 
-class fast_minimum_reduction:
+class fast_minimum_reduction(object):
   """Development and regression test code. Do not use for applications.
      Use uctbx.fast_minimum_reduction instead.
   """

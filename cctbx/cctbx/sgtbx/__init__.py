@@ -21,7 +21,7 @@ class _space_group(boost.python.injector, ext.space_group):
       reciprocal_space=True,
       initialize_gradient_handling=initialize_gradient_handling)
 
-class space_group_info:
+class space_group_info(object):
 
   __safe_for_unpickling__ = True
 
@@ -47,14 +47,12 @@ class space_group_info:
     self._group = other._group
     self._space_group_info_cache = other._space_group_info_cache
 
-  def __getinitargs__(self):
-    return (str(self),)
-
   def __getstate__(self):
-    return None
+    return (self._group,)
 
   def __setstate__(self, state):
-    pass
+    self._group = state[0]
+    self._space_group_info_cache = empty()
 
   def group(self):
     return self._group

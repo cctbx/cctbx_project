@@ -2,7 +2,7 @@ from cctbx.xray import ext
 from cctbx.array_family import flex
 from libtbx import adopt_init_args
 
-class target_functor_base:
+class target_functor_base(object):
 
   def __call__(self, f_calc, compute_derivatives):
     assert f_calc.unit_cell().is_similar_to(
@@ -18,7 +18,7 @@ class target_functor_base:
                                      f_calc.data(),
                                      compute_derivatives)
 
-class target_functors_manager:
+class target_functors_manager(object):
 
   def __init__(self, target_name,
                      f_obs,
@@ -164,7 +164,7 @@ class target_functors_manager:
                               f_obs         = f_obs,
                               abcd          = abcd.data())
 
-class ls_k1:
+class ls_k1(object):
 
   def __init__(self, f_obs,
                      weights,
@@ -196,7 +196,7 @@ class ls_k1:
                                   fix_scale           = self._fix_scale_factor,
                                   scale               = self._scale_factor)
 
-class ls_k2:
+class ls_k2(object):
 
   def __init__(self, f_obs,
                      weights,
@@ -228,7 +228,7 @@ class ls_k2:
                                   fix_scale           = self._fix_scale_factor,
                                   scale               = self._scale_factor)
 
-class least_squares_residual:
+class least_squares_residual(object):
 
   def __init__(self, f_obs,
                      weights               = None,
@@ -287,7 +287,7 @@ class intensity_correlation(target_functor_base):
   def use_multiplicities_as_weights(self):
     return self._use_multiplicities_as_weights
 
-class maximum_likelihood_criterion:
+class maximum_likelihood_criterion(object):
 
   def __init__(self, f_obs, epsilons, centric_flags):
     adopt_init_args(self, locals(), hide=True)
@@ -312,7 +312,7 @@ class maximum_likelihood_criterion:
         self._centric_flags,
         compute_derivatives)
 
-class maximum_likelihood_criterion_hl:
+class maximum_likelihood_criterion_hl(object):
 
   def __init__(self, epsilons,
                      centric_flags,

@@ -23,7 +23,7 @@ def add_gradients(
     u_iso_gradients=u_iso_gradients,
     occupancy_gradients=occupancy_gradients)
 
-class u_penalty_singular_at_zero:
+class u_penalty_singular_at_zero(object):
 
   def __init__(self,
         penalty_factor=1,
@@ -47,7 +47,7 @@ class u_penalty_singular_at_zero:
     return -1/(math.exp(s*self.penalty_factor*u)*s*u**2) \
            - self.penalty_factor/(math.exp(s*self.penalty_factor*u)*u)
 
-class u_penalty_exp:
+class u_penalty_exp(object):
 
   def __init__(self,
         penalty_factor=1,
@@ -66,7 +66,7 @@ class u_penalty_exp:
     s = self.penalty_scale
     return -s*self.penalty_factor*math.exp(-s*u*self.penalty_factor)
 
-class occupancy_penalty_exp:
+class occupancy_penalty_exp(object):
 
   def __init__(self,
         penalty_factor=1,
@@ -88,7 +88,7 @@ class occupancy_penalty_exp:
     s = self.penalty_scale
     return -s*self.penalty_factor*math.exp(-s*occupancy*self.penalty_factor)
 
-class lbfgs:
+class lbfgs(object):
 
   def __init__(self, target_functor, gradient_flags, xray_structure,
                      u_penalty=None,

@@ -1,6 +1,6 @@
 from cctbx import sgtbx
 
-class find_best_cell:
+class find_best_cell(object):
 
   def __init__(self, input_symmetry, angular_tolerance=None):
     if (angular_tolerance is None):

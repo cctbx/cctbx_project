@@ -1,4 +1,4 @@
-class left_decomposition:
+class left_decomposition(object):
 
   def __init__(self, g, h):
     g = [s for s in g]

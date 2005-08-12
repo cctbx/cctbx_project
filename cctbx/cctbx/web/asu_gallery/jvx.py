@@ -20,7 +20,7 @@ def jvx_item_colors(f, indent, items):
     print >> f, indent + '  <c>%d %d %d</c>' % item.color
   print >> f, indent + '</colors>'
 
-class point:
+class point(object):
 
   def __init__(self, vertex, color=(255,0,0)):
     self.vertex = tuple(vertex)
@@ -29,7 +29,7 @@ class point:
 def make_point(vertex):
   return point(vertex)
 
-class pointSet:
+class pointSet(object):
 
   def __init__(self, thickness=4):
     self.thickness = thickness
@@ -72,13 +72,13 @@ class pointSet:
     print >> f, '  </points>'
     print >> f, '</pointSet>'
 
-class line:
+class line(object):
 
   def __init__(self, vertices, color=(0,0,0)):
     self.vertices = tuple(vertices)
     self.color = tuple(color)
 
-class lineSet:
+class lineSet(object):
 
   def __init__(self, thickness=1):
     self.thickness = thickness
@@ -103,13 +103,13 @@ class lineSet:
     print >> f, '  </lines>'
     print >> f, '</lineSet>'
 
-class face:
+class face(object):
 
   def __init__(self, vertices, color=(255,0,255)):
     self.vertices = tuple(vertices)
     self.color = tuple(color)
 
-class faceSet:
+class faceSet(object):
 
   def __init__(self):
     self.faces = []
@@ -132,7 +132,7 @@ class faceSet:
     print >> f, '  </faces>'
     print >> f, '</faceSet>'
 
-class geometry:
+class geometry(object):
 
   def __init__(self, name):
     self.name = name

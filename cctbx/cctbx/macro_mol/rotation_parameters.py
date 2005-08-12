@@ -29,7 +29,7 @@ Revision history:
 
 import math, types
 
-class matrix33:
+class matrix33(object):
   "Minimal class for the handling of (3x3) matrices."
 
   def __init__(self, elems = None):
@@ -89,7 +89,7 @@ def preprocess_angles(params):
   s = [math.sin(a) for a in a_rad]
   return c, s
 
-class converter_base:
+class converter_base(object):
   """Base class for conversions of rotation parameters.
     m = self.matrix is a (3x3) matrix that transforms
     cartesian coordinates of the search body according to:

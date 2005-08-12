@@ -4,7 +4,7 @@ import scitbx.lbfgs
 
 class empty: pass
 
-class lbfgs:
+class lbfgs(object):
 
   def __init__(self,
       sites_cart,

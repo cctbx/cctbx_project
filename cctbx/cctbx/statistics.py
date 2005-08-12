@@ -8,7 +8,7 @@ mean_number_of_atoms_per_amino_acid = {'C': 5, 'N': 3, 'O': 1}
 
 class empty: pass
 
-class wilson_plot:
+class wilson_plot(object):
 
   def __init__(self, f_obs, asu_contents):
     assert f_obs.is_real_array()

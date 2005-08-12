@@ -17,7 +17,7 @@ def anomalous_reflection_intensity_primitive_cell(space_group):
         result.append(subgroup)
   return result
 
-class subgroups:
+class subgroups(object):
 
   def __init__(self, parent_group_info):
     self._p_groups = []

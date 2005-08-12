@@ -21,7 +21,7 @@ def best_approximation(scattering_type):
     return gaussian(1)
   return wk1995(scattering_type, 1).fetch()
 
-class two_gaussian_agarwal_isaacs:
+class two_gaussian_agarwal_isaacs(object):
   source="ccp4/lib/data/atomsf.lib Revision 1.4, Thu Feb 13 14:10:58 1997 UTC"
   source_short = "CCP4 atomsf.lib Rev. 1.4"
   table = {
@@ -32,7 +32,7 @@ class two_gaussian_agarwal_isaacs:
     "S": gaussian([5.5480, 10.4241], [33.7108, 1.9034]),
   }
 
-class two_gaussian_agarwal_1978:
+class two_gaussian_agarwal_1978(object):
   source = "Agarwal, R.C. (1978). Acta Cryst. A34, 791-809, Table 1."
   source_short = "Agarwal (1978)"
   table = {
@@ -47,7 +47,7 @@ class two_gaussian_agarwal_1978:
     "Ba2+": gaussian([12.1432, 41.8442], [21.7090, 1.4090]),
   }
 
-class one_gaussian_agarwal_1978:
+class one_gaussian_agarwal_1978(object):
   source = "Agarwal, R.C. (1978). Acta Cryst. A34, 791-809, Table 3."
   source_short = "Agarwal (1978)"
   table = {

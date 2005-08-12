@@ -1,7 +1,7 @@
 from cctbx import uctbx
 from scitbx import matrix
 
-class gruber_parameterization:
+class gruber_parameterization(object):
 
   def __init__(self, unit_cell, relative_epsilon=None):
     if (relative_epsilon is None): relative_epsilon = 1.e-5
@@ -181,7 +181,7 @@ class reduction_base(gruber_parameterization):
     self.e = -abs(self.e)
     self.f = -abs(self.f)
 
-class minimum_reduction_mixin:
+class minimum_reduction_mixin(object):
   """Development and regression test code. Do not use for applications.
      Use uctbx.fast_minimum_reduction instead.
   """

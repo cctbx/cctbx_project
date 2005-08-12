@@ -249,7 +249,7 @@ def script_xray_gradients(d_min, f_obs, structure, method):
   a("stop")
   return cns_input
 
-class parameter_nbonds:
+class parameter_nbonds(object):
 
   def __init__(self, ctofnb=7.5,
                      ctonnb=6.5,
@@ -263,7 +263,7 @@ class parameter_nbonds:
                      wmin=1.5):
     adopt_init_args(self, locals())
 
-class parameter_nonb:
+class parameter_nonb(object):
 
   def __init__(self, epsilon=0.1,
                      sigma=1.5,

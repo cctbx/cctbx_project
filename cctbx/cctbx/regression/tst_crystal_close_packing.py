@@ -19,7 +19,7 @@ def hexagonal_sampling_cell(point_distance):
     point_distance, point_distance, point_distance*math.sqrt(8/3.),
     90, 90, 120))
 
-class hexagonal_box:
+class hexagonal_box(object):
 
   def __init__(self, hex_cell, vertices_cart):
     assert len(vertices_cart) > 0

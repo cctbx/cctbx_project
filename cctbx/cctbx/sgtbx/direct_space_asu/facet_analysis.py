@@ -234,7 +234,7 @@ def packed_cut_point_sort_function(a, b):
   if (a[1] > b[1]): return  1
   return 0
 
-class edge_with_cut_points:
+class edge_with_cut_points(object):
 
   def __init__(self, end_points, cut_points):
     self.end_points = tuple(end_points)
@@ -282,14 +282,14 @@ class edge_with_cut_points:
       if (f is None): linear_dependent = False
     return linear_dependent, result
 
-class edge_segment:
+class edge_segment(object):
 
   def __init__(self, vertex, vertex_inclusive_flag, edge_inclusive_flag):
     self.vertex = vertex
     self.vertex_inclusive_flag = vertex_inclusive_flag
     self.edge_inclusive_flag = edge_inclusive_flag
 
-class consolidated_edges_with_cut_points:
+class consolidated_edges_with_cut_points(object):
 
   def __init__(self, asu, list_of_polygons):
     self.asu = asu

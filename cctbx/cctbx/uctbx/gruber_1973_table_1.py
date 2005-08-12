@@ -126,7 +126,7 @@ def get_mk2_sets():
   sets[k] = set
   return sets
 
-class type_conditions:
+class type_conditions(object):
 
   def __init__(self, ck_types, defks):
     self.ck_types = ck_types

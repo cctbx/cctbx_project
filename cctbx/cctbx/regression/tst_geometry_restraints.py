@@ -8,7 +8,7 @@ from libtbx.test_utils import approx_equal, not_approx_equal
 import random
 import sys
 
-class residual_functor:
+class residual_functor(object):
 
   def __init__(self, restraint_type, **keyword_arguments):
     assert "sites" not in keyword_arguments

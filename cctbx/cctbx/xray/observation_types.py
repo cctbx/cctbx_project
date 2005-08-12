@@ -1,4 +1,4 @@
-class any:
+class any(object):
 
   def __repr__(self):
     return "xray." + self.__class__.__name__

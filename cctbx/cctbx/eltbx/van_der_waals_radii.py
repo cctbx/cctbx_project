@@ -10,7 +10,7 @@
 #    C, O, N, S, P
 #
 
-class vdw:
+class vdw(object):
   table = {
      "H":  1.20 ,
      "D":  2.00 ,  # default 2.00 A

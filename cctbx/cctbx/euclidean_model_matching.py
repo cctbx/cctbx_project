@@ -14,7 +14,7 @@ ext = boost.python.import_ext("cctbx_emma_ext")
 def sgtbx_rt_mx_as_matrix_rt(s):
   return matrix.rt((s.r().as_double(), s.t().as_double()))
 
-class position:
+class position(object):
 
   def __init__(self, label, site):
     adopt_init_args(self, locals())
@@ -124,7 +124,7 @@ def filter_shift(continuous_shift_flags, shift, selector=1):
       filtered_shift[i] = shift[i]
   return filtered_shift
 
-class euclidean_match_symmetry:
+class euclidean_match_symmetry(object):
 
   def __init__(self, space_group_info, use_k2l, use_l2n):
     adopt_init_args(self, locals())
@@ -167,7 +167,7 @@ def match_refine_times():
     eliminate_weak_pairs=0,
     refine_adjusted_shift=0)
 
-class match_refine:
+class match_refine(object):
 
   def __init__(self, tolerance,
                ref_model1, ref_model2,
@@ -415,7 +415,7 @@ def compute_refined_matches(ref_model1, ref_model2,
   #print accumulated_match_refine_times
   return refined_matches
 
-class model_matches:
+class model_matches(object):
 
   def __init__(self, model1, model2,
                      tolerance=1.,

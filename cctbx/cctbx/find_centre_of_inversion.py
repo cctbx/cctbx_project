@@ -4,7 +4,7 @@ from scitbx.python_utils import list_algebra
 def pair_sort_function(pair_a, pair_b):
   return cmp(pair_a[0], pair_b[0])
 
-class match_refine:
+class match_refine(object):
 
   def __init__(self, equiv_sites, i_pivot1, i_pivot2, tolerance):
     assert len(equiv_sites) > 0

@@ -2,7 +2,7 @@ from cctbx.web.asu_gallery import web_links
 from cctbx import sgtbx
 import sys
 
-class symbol_table:
+class symbol_table(object):
 
   def __init__(self, point_group_type):
     self.point_group_type = point_group_type
@@ -30,7 +30,7 @@ class symbol_table:
     print >> f, "</table>"
     print >> f, "<p>"
 
-class point_group_table:
+class point_group_table(object):
 
   def __init__(self, crystal_system):
     self.crystal_system = crystal_system
@@ -48,7 +48,7 @@ class point_group_table:
     for symbols in self.symbol_table:
       symbols.format_html(f, n_columns)
 
-class crystal_system_table:
+class crystal_system_table(object):
 
   def __init__(self):
     self.point_group_tables = []

@@ -5,7 +5,7 @@ from scitbx.python_utils import dicts
 from cctbx import euclidean_model_matching as emma
 import sys
 
-class match_record:
+class match_record(object):
 
   def __init__(self, n_matches, model_size):
     self.n_matches = n_matches

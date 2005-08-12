@@ -3,7 +3,7 @@ from cctbx.sgtbx.direct_space_asu import cut_plane
 from scitbx import matrix
 import sys
 
-class direct_space_asu:
+class direct_space_asu(object):
 
   def __init__(self, hall_symbol, facets=[]):
     self.hall_symbol = hall_symbol

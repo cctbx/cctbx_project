@@ -4,7 +4,7 @@ from cctbx.array_family import flex
 from scitbx.python_utils.misc import line_feeder
 from libtbx import adopt_init_args
 
-class table6111_entry:
+class table6111_entry(object):
 
   def __init__(self, element, atomic_number, method, table_y, table_sigmas):
     assert table_y.size() == table_sigmas.size()
@@ -22,7 +22,7 @@ class table6111_entry:
           self.atomic_symbol = element[:i]
           break
 
-class table6111:
+class table6111(object):
 
   def __init__(self, file_name):
     self.file_name = file_name
