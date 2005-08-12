@@ -144,7 +144,7 @@ def LinkExploreSymmetry(Hall):
      urllib.quote_plus(Hall),
      Hall)
 
-if (__name__ == "__main__"):
+def run():
   tetragonal_list = []
   trigonal_list = []
   hexagonal_list = []
@@ -297,3 +297,6 @@ R.W. Grosse-Kunstleve, October 2001
 <hr>
 </body>
 </html>"""
+
+if (__name__ == "__main__"):
+  run()

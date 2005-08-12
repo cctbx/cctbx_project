@@ -61,10 +61,13 @@ def list_all_axes(space_group_symbol=None, space_group_info=None):
     print a
   print
 
-if (__name__ == "__main__"):
+def run():
   if (len(sys.argv) == 1):
     for i in xrange(230):
       list_all_axes(i + 1)
   else:
     for symbol in sys.argv[1:]:
       list_all_axes(symbol)
+
+if (__name__ == "__main__"):
+  run()
