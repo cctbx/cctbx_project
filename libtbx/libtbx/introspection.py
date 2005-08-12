@@ -5,7 +5,7 @@ def varnames(frames_back=0):
   f_code = sys._getframe(frames_back+1).f_code
   return f_code.co_varnames[:f_code.co_argcount]
 
-class caller_location:
+class caller_location(object):
 
   def __init__(self, frames_back=0):
     f = sys._getframe(frames_back+1)
@@ -24,7 +24,7 @@ try:
 except AttributeError:
   _proc_status = None
 
-class virtual_memory_info:
+class virtual_memory_info(object):
 
   def __init__(self):
     try:

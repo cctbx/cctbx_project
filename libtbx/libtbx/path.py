@@ -36,7 +36,7 @@ def full_command_path(command, search_first=[], search_last=[]):
       return os.path.normpath(os.path.abspath(path_command))
   return None
 
-class directory:
+class directory(object):
 
   def __init__(self, path):
     self.path = path

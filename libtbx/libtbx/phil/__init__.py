@@ -33,7 +33,7 @@ def is_standard_identifier(string):
       if (not is_standard_identifier(sub)): return False
   return True
 
-class words_converters:
+class words_converters(object):
 
   def __str__(self): return "words"
 
@@ -69,7 +69,7 @@ def strings_as_words(python_object):
       words.append(tokenizer.word(value=value, quote_token='"'))
   return words
 
-class strings_converters:
+class strings_converters(object):
 
   def __str__(self): return "strings"
 
@@ -84,7 +84,7 @@ def str_from_words(words):
     return None
   return " ".join([word.value for word in words])
 
-class str_converters:
+class str_converters(object):
 
   def __str__(self): return "str"
 
@@ -116,7 +116,7 @@ def bool_from_words(words):
     'One True or False value expected, "%s" found%s' % (
       value_string, words[0].where_str()))
 
-class bool_converters:
+class bool_converters(object):
 
   def __str__(self): return "bool"
 
@@ -153,7 +153,7 @@ def int_from_words(words):
           words[0].where_str()))
   return result
 
-class int_converters:
+class int_converters(object):
 
   def __str__(self): return "int"
 
@@ -177,7 +177,7 @@ def float_from_words(words):
           words[0].where_str()))
   return result
 
-class float_converters:
+class float_converters(object):
 
   def __str__(self): return "float"
 
@@ -189,7 +189,7 @@ class float_converters:
       return [tokenizer.word(value="None")]
     return [tokenizer.word(value="%.10g" % python_object)]
 
-class choice_converters:
+class choice_converters(object):
 
   def __init__(self, multi=False):
     self.multi = multi
@@ -373,7 +373,7 @@ def show_attributes(self, out, prefix, attributes_level, print_width):
             else:
               print >> out, indent+'"'+block+'"'
 
-class object_locator:
+class object_locator(object):
 
   def __init__(self, parent, path, object):
     self.parent = parent
@@ -601,7 +601,7 @@ class scope_extract_list(list):
     self.__phil_optional__ = optional
     list.__init__(self)
 
-class scope_extract:
+class scope_extract(object):
 
   def __init__(self, name, parent):
     self.__phil_name__ = name

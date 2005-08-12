@@ -1,4 +1,4 @@
-class character_iterator:
+class character_iterator(object):
 
   def __init__(self, input_string):
     self.input_string = input_string
@@ -133,7 +133,7 @@ default_contiguous_word_characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ" \
                                    + "abcdefghijklmnopqrstuvwxyz" \
                                    + "0123456789" \
                                    + "_"
-class settings:
+class settings(object):
 
   def __init__(self,
         unquoted_single_character_words="",
@@ -148,7 +148,7 @@ class settings:
     self.enable_unquoted_embedded_quotes = enable_unquoted_embedded_quotes
     self.comment_characters = comment_characters
 
-class word_iterator:
+class word_iterator(object):
 
   def __init__(self,
         input_string,

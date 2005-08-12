@@ -116,7 +116,7 @@ def open_info(path, mode="w", info="   "):
   except IOError, e:
     raise Sorry(str(e))
 
-class common_setpaths:
+class common_setpaths(object):
 
   def __init__(self, env, shell, suffix):
     self.env = env
