@@ -101,7 +101,7 @@ random_size_t = random_generator.random_size_t
 random_double = random_generator.random_double
 random_permutation = random_generator.random_permutation
 
-class py_object:
+class py_object(object):
 
   def __init__(self, accessor, value=None, values=None, value_factory=None):
     assert [value, values, value_factory].count(None) >= 2
@@ -144,7 +144,7 @@ class _linear_correlation(boost.python.injector, ext.linear_correlation):
     print >> f, "mean_y:", self.mean_y()
     print >> f, "coefficient:", self.coefficient()
 
-class histogram_slot_info:
+class histogram_slot_info(object):
 
   def __init__(self, low_cutoff, high_cutoff, n):
     self.low_cutoff = low_cutoff

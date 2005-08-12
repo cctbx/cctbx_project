@@ -2,7 +2,7 @@ import scitbx.lbfgs
 from scitbx.array_family import flex
 import math
 
-class linear_least_squares_fit:
+class linear_least_squares_fit(object):
 
   def __init__(self, x_obs, y_obs):
     self.x_obs = x_obs

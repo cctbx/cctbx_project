@@ -19,7 +19,7 @@ def n_less_than(sorted_array, cutoff, eps=1.e-6):
 
 class LargeNegativeB(RuntimeError): pass
 
-class minimize_mixin:
+class minimize_mixin(object):
 
   def apply_shifts(self):
     self.gaussian_fit_shifted = self.gaussian_fit.apply_shifts(

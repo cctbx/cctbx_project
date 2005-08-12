@@ -1,12 +1,12 @@
 from libtbx import adopt_init_args # XXX backward compatibility 2005_07_29
 import sys, os
 
-class store:
+class store(object):
 
   def __init__(self, **kw):
     self.__dict__.update(kw)
 
-class sorted_store:
+class sorted_store(object):
 
   def keys(self):
     raise RuntimeError, "Programming error: derived class must override keys()"
@@ -25,7 +25,7 @@ class sorted_store:
     for key in self.keys():
       print >> f, "%s%s:" % (indentation, key), getattr(self, key)
 
-class user_plus_sys_time:
+class user_plus_sys_time(object):
 
   def __init__(self):
     self.t = self.get()
@@ -45,7 +45,7 @@ class user_plus_sys_time:
     self.t = t
     return d
 
-class time_log:
+class time_log(object):
 
   def __init__(self, label):
     self.label = label
@@ -109,7 +109,7 @@ def show_total_time(
     print >> out, "%.3f micro seconds" % (total_time / python_ticker * 1.e6)
   print >> out, "Total CPU time: %.2f %s" % human_readable_time(total_time)
 
-class line_feeder:
+class line_feeder(object):
 
   def __init__(self, f):
     self.f = iter(f)
@@ -132,7 +132,7 @@ class line_feeder:
       if (self.eof or len(result.strip()) != 0):
         return result
 
-class input_with_prompt:
+class input_with_prompt(object):
 
   def __init__(self, prompt, tracebacklimit=0):
     try: import readline

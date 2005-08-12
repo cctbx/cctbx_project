@@ -258,6 +258,8 @@ def exercise_misc():
   assert f.nd() == 1
   assert fc.nd() == 2
   f = flex.double((1,2,3))
+  g = flex.double(f)
+  assert g.id() == f.id()
   f1 = f.as_1d()
   assert f1.id() == f.id()
   assert tuple(f1) == (1,2,3)
@@ -275,6 +277,28 @@ def exercise_misc():
   assert b.md5().hexdigest() == "a3a1ff7423c672e6252003c23ad5420f"
   b = flex.bool([0,0,1,0,1,0,1,0,0,1,1,0,0,0])
   assert b.md5().hexdigest() == "bc115dabbd6dc87323302b082152be14"
+  #
+  class old_style:
+    def __init__(self, elems):
+      self.elems = tuple(elems)
+    def __len__(self):
+      return len(self.elems)
+    def __getitem__(self, i):
+      return self.elems[i]
+  class new_style(object):
+    def __init__(self, elems):
+      self.elems = tuple(elems)
+    def __len__(self):
+      return len(self.elems)
+    def __getitem__(self, i):
+      return self.elems[i]
+  assert flex.double(old_style([2,3,4])).all_eq(flex.double([2,3,4]))
+  assert flex.double(new_style([3,4,5])).all_eq(flex.double([3,4,5]))
+  for s in ["", u""]:
+    try: flex.double(s)
+    except Exception, e:
+      assert str(e).startswith("Python argument types in")
+    else: raise RuntimeError("Exception expected.")
 
 def exercise_1d_slicing_core(a):
   assert tuple(a[:]) == (1,2,3,4,5)
@@ -1163,7 +1187,7 @@ def exercise_loops():
   assert points == []
 
 def exercise_extract_attributes():
-  class group:
+  class group(object):
     def __init__(self, a, b):
       self.a = a
       self.b = b

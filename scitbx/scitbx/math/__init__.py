@@ -23,7 +23,7 @@ def euler_angles_as_matrix(angles, deg=False):
      s[1]*s[2],
      c[1]))
 
-class erf_verification:
+class erf_verification(object):
 
   def __init__(self, tolerance=1.e-10):
     self.tolerance = tolerance
@@ -43,7 +43,7 @@ class erf_verification:
         if (delta > self.tolerance):
           print x, expected_result, result, delta
 
-class minimum_covering_sphere_nd:
+class minimum_covering_sphere_nd(object):
 
   def __init__(self, points, epsilon):
     if (epsilon is None): epsilon = 1.e-6

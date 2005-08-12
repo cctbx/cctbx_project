@@ -1,7 +1,7 @@
 import signal
 import sys
 
-class keyboard_interrupt_handler:
+class keyboard_interrupt_handler(object):
 
   def __init__(self, max_n_events=3):
     self.prev_handler = signal.signal(signal.SIGINT, self.__call__)

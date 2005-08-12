@@ -6,7 +6,7 @@ from scitbx_lbfgs_ext import *
 
 from libtbx import adopt_init_args
 
-class core_parameters:
+class core_parameters(object):
 
   def __init__(self, m=5,
                      maxfev=20,
@@ -16,7 +16,7 @@ class core_parameters:
                      stpmax=1.e20):
     adopt_init_args(self, locals())
 
-class termination_parameters:
+class termination_parameters(object):
 
   def __init__(self, traditional_convergence_test=True,
                      traditional_convergence_test_eps=1.e-5,
@@ -31,7 +31,7 @@ class termination_parameters:
       min_iterations)
     adopt_init_args(self, locals())
 
-class exception_handling_parameters:
+class exception_handling_parameters(object):
 
   def __init__(self, ignore_line_search_failed_rounding_errors=True,
                      ignore_line_search_failed_step_at_lower_bound=False,
