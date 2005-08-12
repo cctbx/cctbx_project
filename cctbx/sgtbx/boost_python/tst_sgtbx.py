@@ -692,6 +692,13 @@ def exercise_space_group():
   assert g.is_valid_phase((1,0,0), p.ht_angle(1), 1)
   assert not g.is_valid_phase((1,0,0), p.ht_angle()+math.pi/180, 0)
   assert g.is_valid_phase((1,0,0), p.ht_angle()+math.pi/180, 0, 1.e6)
+  assert approx_equal(g.nearest_valid_phases(
+    miller_indices=flex.miller_index([(1,2,3),(1,0,0)]),
+    phases=flex.double([0.123,0.234])), [0.123, 0.52359877559829882])
+  assert approx_equal(g.nearest_valid_phases(
+    miller_indices=flex.miller_index([(1,2,3),(1,0,0)]),
+    phases=flex.double([123,234]),
+    deg=True), [123, 210])
   assert g.multiplicity((1,2,3), 0) == 8
   assert g.multiplicity((1,2,3), 1) == 4
   assert tuple(g.multiplicity(m, 0)) == (2,2,4)
