@@ -43,4 +43,5 @@ def run():
   exersize_wilson_intensity_variate()
   print 'OK'
 
-run()
+if (__name__ == "__main__"):
+  run()

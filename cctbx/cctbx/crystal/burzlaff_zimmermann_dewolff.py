@@ -335,7 +335,7 @@ def counterexamples():
     Groups.show()
     print;print
 
-if __name__=='__main__':
+def run():
   if len(sys.argv) < 2:
     counterexamples()
     sys.exit()
@@ -351,3 +351,6 @@ if __name__=='__main__':
   # last argument is percent tolerance; default 3%
   tolerance = float(sys.argv[7])
   LatticeCharacter(uc,tolerance).show_summary()
+
+if __name__=='__main__':
+  run()

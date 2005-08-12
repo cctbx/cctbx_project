@@ -1,4 +1,8 @@
-#! /usr/bin/env python
 from iotbx.scalepack import reader
 import sys
-reader.run(sys.argv[1:])
+
+def run():
+  reader.run(sys.argv[1:])
+
+if (__name__ == "__main__"):
+  run()

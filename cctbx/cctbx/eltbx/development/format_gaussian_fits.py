@@ -188,6 +188,9 @@ def main():
   else:
     cross_check(args)
 
-if (__name__ == "__main__"):
+def run():
   from cctbx.eltbx.development import format_gaussian_fits
   format_gaussian_fits.main()
+
+if (__name__ == "__main__"):
+  run()

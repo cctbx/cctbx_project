@@ -1,3 +1,8 @@
 import sys
 import Pyfort.driver
-Pyfort.driver.run(sys.argv[1:])
+
+def run():
+  Pyfort.driver.run(sys.argv[1:])
+
+if (__name__ == "__main__"):
+  run()
