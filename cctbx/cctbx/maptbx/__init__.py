@@ -26,12 +26,12 @@ class statistics(ext.statistics):
 
 class _statistics(boost.python.injector, ext.statistics):
 
-  def show_summary(self, f=None):
+  def show_summary(self, f=None, prefix=""):
     if (f is None): f = sys.stdout
-    print >> f, "max %.6g" % (self.max())
-    print >> f, "min %.6g" % (self.min())
-    print >> f, "mean %.6g" % (self.mean())
-    print >> f, "sigma %.6g" % (self.sigma())
+    print >> f, prefix + "max %.6g" % (self.max())
+    print >> f, prefix + "min %.6g" % (self.min())
+    print >> f, prefix + "mean %.6g" % (self.mean())
+    print >> f, prefix + "sigma %.6g" % (self.sigma())
 
 use_space_group_symmetry = sgtbx.search_symmetry_flags(
   use_space_group_symmetry=True)
@@ -58,7 +58,7 @@ structure_factors = dicts.easy(
   to_map=structure_factors_to_map,
   from_map=structure_factors_from_map)
 
-class crystal_gridding:
+class crystal_gridding(object):
 
   def __init__(self, unit_cell,
                      d_min=None,
@@ -157,6 +157,8 @@ class crystal_gridding_tags(crystal_gridding):
     return self._tags
 
   def peak_search(self, parameters, map, verify_symmetry=True):
+    if (parameters is None):
+      parameters = peak_search_parameters()
     if (verify_symmetry):
       assert self._tags.verify(map)
     if (map.accessor().is_padded()):
@@ -182,7 +184,7 @@ class crystal_gridding_tags(crystal_gridding):
       min_cross_distance=parameters.min_cross_distance(),
       max_clusters=parameters.max_clusters())
 
-class peak_search_parameters:
+class peak_search_parameters(object):
 
   def __init__(self, peak_search_level=1,
                      max_peaks=0,
@@ -243,7 +245,7 @@ class peak_search_parameters:
   def max_clusters(self):
     return self._max_clusters
 
-class cluster_site_info:
+class cluster_site_info(object):
 
   def __init__(self, peak_list_index, grid_index, grid_height, site, height):
     self.peak_list_index = peak_list_index
@@ -252,7 +254,7 @@ class cluster_site_info:
     self.site = site
     self.height = height
 
-class peak_cluster_analysis:
+class peak_cluster_analysis(object):
 
   def __init__(self, peak_list,
                      special_position_settings,
