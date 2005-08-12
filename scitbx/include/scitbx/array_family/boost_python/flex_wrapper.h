@@ -695,7 +695,6 @@ namespace scitbx { namespace af { namespace boost_python {
 
       class_f_t result(python_name.c_str());
       result
-        .def(init<>())
         .def(init<flex_grid<> const&, optional<ElementType const&> >())
         .def(init<std::size_t, optional<ElementType const&> >())
         .def(init<shared_plain<ElementType> const&>())
