@@ -56,6 +56,8 @@ class rec(object):
 
   def __rmul__(self, other):
     "scalar * matrix"
+    if (isinstance(other, rec)): # work around odd Python 2.2 feature
+      return other.__mul__(self)
     return self * other
 
   def __div__(self, other):
