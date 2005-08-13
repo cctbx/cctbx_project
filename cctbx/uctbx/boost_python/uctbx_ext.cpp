@@ -112,17 +112,17 @@ namespace {
         .def("mod_short_length",
           (double(w_t::*)(frac_t const&) const)
           &w_t::mod_short_length, (
-            arg("site_frac")))
+            arg_("site_frac")))
         .def("mod_short_distance",
           (double(w_t::*)(frac_t const&, frac_t const&) const)
           &w_t::mod_short_distance, (
-            arg("site_frac_1"), arg("site_frac_2")))
+            arg_("site_frac_1"), arg_("site_frac_2")))
         .def("min_mod_short_distance",
           (double(w_t::*)
             (af::const_ref<scitbx::vec3<double> > const&,
              frac_t const&) const)
           &w_t::min_mod_short_distance, (
-            arg("site_frac_1"), arg("site_frac_2")))
+            arg_("site_frac_1"), arg_("site_frac_2")))
         .def("change_basis",
           (w_t(w_t::*)(uc_mat3 const&, double) const) 0,
           change_basis_overloads((
