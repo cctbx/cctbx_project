@@ -95,75 +95,98 @@ namespace {
         .def("orthogonalization_matrix", &w_t::orthogonalization_matrix, ccr())
         .def("fractionalize",
           (frac_t(w_t::*)(cart_t const&) const)
-          &w_t::fractionalize)
+          &w_t::fractionalize, (
+            arg_("site_cart")))
         .def("orthogonalize",
-          (cart_t(w_t::*)(frac_t const& xf) const)
-          &w_t::orthogonalize)
+          (cart_t(w_t::*)(frac_t const&) const)
+          &w_t::orthogonalize, (
+            arg_("site_frac")))
         .def("length",
-          (double(w_t::*)(frac_t const& xf) const)
-          &w_t::length)
+          (double(w_t::*)(frac_t const&) const)
+          &w_t::length, (
+            arg_("site_frac")))
         .def("distance",
-          (double(w_t::*)(frac_t const& xf, frac_t const& yf) const)
-          &w_t::distance)
+          (double(w_t::*)(frac_t const&, frac_t const&) const)
+          &w_t::distance, (
+            arg_("site_frac_1"), arg_("site_frac_2")))
         .def("mod_short_length",
-          (double(w_t::*)(frac_t const& xf) const)
-          &w_t::mod_short_length)
+          (double(w_t::*)(frac_t const&) const)
+          &w_t::mod_short_length, (
+            arg("site_frac")))
         .def("mod_short_distance",
-          (double(w_t::*)(frac_t const& xf, frac_t const& yf) const)
-          &w_t::mod_short_distance)
+          (double(w_t::*)(frac_t const&, frac_t const&) const)
+          &w_t::mod_short_distance, (
+            arg("site_frac_1"), arg("site_frac_2")))
         .def("min_mod_short_distance",
           (double(w_t::*)
-            (af::const_ref<scitbx::vec3<double> > const& xf,
-             frac_t const& yf) const)
-          &w_t::min_mod_short_distance)
+            (af::const_ref<scitbx::vec3<double> > const&,
+             frac_t const&) const)
+          &w_t::min_mod_short_distance, (
+            arg("site_frac_1"), arg("site_frac_2")))
         .def("change_basis",
           (w_t(w_t::*)(uc_mat3 const&, double) const) 0,
-          change_basis_overloads())
+          change_basis_overloads((
+            arg_("c_inv_r"), arg_("r_den")=1.)))
         .def("max_miller_indices",
           (mix_t(w_t::*)(double, double) const) 0,
-          max_miller_indices_overloads())
+          max_miller_indices_overloads((
+            arg_("d_min"), arg_("tolerance")=1.e-4)))
         .def("d_star_sq",
           (double(w_t::*)(mix_t const&) const)
-          &w_t::d_star_sq)
+          &w_t::d_star_sq, (
+            arg_("miller_index")))
         .def("d_star_sq",
           (sh_dbl_t(w_t::*)(cr_mix_t const&) const)
-          &w_t::d_star_sq)
+          &w_t::d_star_sq, (
+            arg_("miller_indices")))
         .def("max_d_star_sq",
-          (double(w_t::*)(cr_mix_t const& h) const)
-          &w_t::max_d_star_sq)
+          (double(w_t::*)(cr_mix_t const&) const)
+          &w_t::max_d_star_sq, (
+            arg_("miller_indices")))
         .def("min_max_d_star_sq",
-          (af::double2(w_t::*)(cr_mix_t const& h) const)
-          &w_t::min_max_d_star_sq)
+          (af::double2(w_t::*)(cr_mix_t const&) const)
+          &w_t::min_max_d_star_sq, (
+            arg_("miller_indices")))
         .def("stol_sq",
-          (double(w_t::*)(mix_t  const& h) const)
-          &w_t::stol_sq)
+          (double(w_t::*)(mix_t  const&) const)
+          &w_t::stol_sq, (
+            arg_("miller_index")))
         .def("stol_sq",
-          (sh_dbl_t(w_t::*)(cr_mix_t const& h) const)
-          &w_t::stol_sq)
+          (sh_dbl_t(w_t::*)(cr_mix_t const&) const)
+          &w_t::stol_sq, (
+            arg_("miller_indices")))
         .def("two_stol",
-          (double(w_t::*)(mix_t const& h) const)
-          &w_t::two_stol)
+          (double(w_t::*)(mix_t const&) const)
+          &w_t::two_stol, (
+            arg_("miller_index")))
         .def("two_stol",
-          (sh_dbl_t(w_t::*)(cr_mix_t const& h) const)
-          &w_t::two_stol)
+          (sh_dbl_t(w_t::*)(cr_mix_t const&) const)
+          &w_t::two_stol, (
+            arg_("miller_indices")))
         .def("stol",
-          (double(w_t::*)(mix_t const& h) const)
-          &w_t::stol)
+          (double(w_t::*)(mix_t const&) const)
+          &w_t::stol, (
+            arg_("miller_index")))
         .def("stol",
-          (sh_dbl_t(w_t::*)(cr_mix_t const& h) const)
-          &w_t::stol)
+          (sh_dbl_t(w_t::*)(cr_mix_t const&) const)
+          &w_t::stol, (
+            arg_("miller_indices")))
         .def("d",
-          (double(w_t::*)(mix_t const& h) const)
-          &w_t::d)
+          (double(w_t::*)(mix_t const&) const)
+          &w_t::d, (
+            arg_("miller_index")))
         .def("d",
-          (sh_dbl_t(w_t::*)(cr_mix_t const& h) const)
-          &w_t::d)
+          (sh_dbl_t(w_t::*)(cr_mix_t const&) const)
+          &w_t::d, (
+            arg_("miller_indices")))
         .def("two_theta",
           (double(w_t::*)(mix_t const&, double, bool) const) 0,
-          two_theta_overloads())
+          two_theta_overloads((
+            arg_("miller_index"), arg_("wavelength"), arg_("deg")=false)))
         .def("two_theta",
           (sh_dbl_t(w_t::*)(cr_mix_t const&, double, bool) const) 0,
-          two_theta_overloads())
+          two_theta_overloads((
+            arg_("miller_indices"), arg_("wavelength"), arg_("deg")=false)))
         .def("bases_mean_square_difference",
           &w_t::bases_mean_square_difference,
             (arg_("other")))

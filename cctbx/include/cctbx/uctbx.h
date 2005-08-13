@@ -53,7 +53,7 @@ namespace cctbx {
 
   //! Conversion of d-spacing measures.
   inline double d_star_sq_as_two_theta(double d_star_sq, double wavelength,
-                                       bool deg = false)
+                                       bool deg=false)
   {
     double result = 2. * std::asin(d_star_sq_as_stol(d_star_sq) * wavelength);
     if (deg) return scitbx::rad_as_deg(result);
@@ -194,17 +194,17 @@ namespace cctbx {
       //! Conversion of cartesian coordinates to fractional coordinates.
       template <class FloatType>
       fractional<FloatType>
-      fractionalize(cartesian<FloatType> const& xc) const
+      fractionalize(cartesian<FloatType> const& site_cart) const
       {
-        return frac_ * xc;
+        return frac_ * site_cart;
       }
 
       //! Conversion of fractional coordinates to cartesian coordinates.
       template <class FloatType>
       cartesian<FloatType>
-      orthogonalize(fractional<FloatType> const& xf) const
+      orthogonalize(fractional<FloatType> const& site_frac) const
       {
-        return orth_ * xf;
+        return orth_ * site_frac;
       }
 
       //! Length^2 of a vector of fractional coordinates.
@@ -212,17 +212,17 @@ namespace cctbx {
        */
       template <class FloatType>
       FloatType
-      length_sq(fractional<FloatType> const& xf) const
+      length_sq(fractional<FloatType> const& site_frac) const
       {
-        return orthogonalize(xf).length_sq();
+        return orthogonalize(site_frac).length_sq();
       }
 
       //! Length of a vector of fractional coordinates.
       template <class FloatType>
       FloatType
-      length(fractional<FloatType> const& xf) const
+      length(fractional<FloatType> const& site_frac) const
       {
-        return std::sqrt(length_sq(xf));
+        return std::sqrt(length_sq(site_frac));
       }
 
       //! Distance^2 between two vectors of fractional coordinates.
@@ -230,19 +230,19 @@ namespace cctbx {
        */
       template <class FloatType>
       FloatType
-      distance_sq(fractional<FloatType> const& xf,
-                  fractional<FloatType> const& yf) const
+      distance_sq(fractional<FloatType> const& site_frac_1,
+                  fractional<FloatType> const& site_frac_2) const
       {
-        return length_sq(fractional<FloatType>(xf - yf));
+        return length_sq(fractional<FloatType>(site_frac_1 - site_frac_2));
       }
 
       //! Distance between two vectors of fractional coordinates.
       template <class FloatType>
       FloatType
-      distance(fractional<FloatType> const& xf,
-               fractional<FloatType> const& yf) const
+      distance(fractional<FloatType> const& site_frac_1,
+               fractional<FloatType> const& site_frac_2) const
       {
-        return length(fractional<FloatType>(xf - yf));
+        return length(fractional<FloatType>(site_frac_1 - site_frac_2));
       }
 
       /*! \brief Shortest length^2 of a vector of fractional coordinates
@@ -251,18 +251,18 @@ namespace cctbx {
        */
       template <class FloatType>
       FloatType
-      mod_short_length_sq(fractional<FloatType> const& xf) const
+      mod_short_length_sq(fractional<FloatType> const& site_frac) const
       {
-        return length_sq(xf.mod_short());
+        return length_sq(site_frac.mod_short());
       }
 
       /*! \brief Shortest length of a vector of fractional coordinates
           under application of periodicity. */
       template <class FloatType>
       FloatType
-      mod_short_length(fractional<FloatType> const& xf) const
+      mod_short_length(fractional<FloatType> const& site_frac) const
       {
-        return std::sqrt(mod_short_length_sq(xf));
+        return std::sqrt(mod_short_length_sq(site_frac));
       }
 
       /*! \brief Shortest distance^2 between two vectors of fractional
@@ -271,52 +271,55 @@ namespace cctbx {
        */
       template <class FloatType>
       FloatType
-      mod_short_distance_sq(fractional<FloatType> const& xf,
-                            fractional<FloatType> const& yf) const
+      mod_short_distance_sq(fractional<FloatType> const& site_frac_1,
+                            fractional<FloatType> const& site_frac_2) const
       {
-        return mod_short_length_sq(fractional<FloatType>(xf - yf));
+        return mod_short_length_sq(
+          fractional<FloatType>(site_frac_1 - site_frac_2));
       }
 
       /*! \brief Shortest distance between two vectors of fractional
           coordinates under application of periodicity. */
       template <class FloatType>
       FloatType
-      mod_short_distance(fractional<FloatType> const& xf,
-                         fractional<FloatType> const& yf) const
+      mod_short_distance(fractional<FloatType> const& site_frac_1,
+                         fractional<FloatType> const& site_frac_2) const
       {
-        return std::sqrt(mod_short_distance_sq(xf, yf));
+        return std::sqrt(mod_short_distance_sq(site_frac_1, site_frac_2));
       }
 
-      /*! \brief Shortest distance^2 between all sites in xf and yf
-          under application of periodicity.
+      /*! \brief Shortest distance^2 between all sites in site_frac_1
+          and site_frac_2 under application of periodicity.
        */
       /*! Not available in Python.
        */
       template <class FloatType>
       FloatType
       min_mod_short_distance_sq(
-        af::const_ref<scitbx::vec3<FloatType> > const& xf,
-        fractional<FloatType> const& yf) const
+        af::const_ref<scitbx::vec3<FloatType> > const& sites_frac_1,
+        fractional<FloatType> const& site_frac_2) const
       {
         FloatType
-          result = mod_short_distance_sq(fractional<FloatType>(xf[0]), yf);
-        for(std::size_t i=1;i<xf.size();i++) {
+          result = mod_short_distance_sq(
+            fractional<FloatType>(sites_frac_1[0]), site_frac_2);
+        for(std::size_t i=1;i<sites_frac_1.size();i++) {
           scitbx::math::update_min(
-            result, mod_short_distance_sq(fractional<FloatType>(xf[i]), yf));
+            result, mod_short_distance_sq(
+              fractional<FloatType>(sites_frac_1[i]), site_frac_2));
         }
         return result;
       }
 
-      /*! \brief Shortest distance between all sites in xf and yf
-          under application of periodicity.
+      /*! \brief Shortest distance between all sites in sites_frac_1
+          and site_frac_2 under application of periodicity.
        */
       template <class FloatType>
       FloatType
       min_mod_short_distance(
-        af::const_ref<scitbx::vec3<FloatType> > const& xf,
-        fractional<FloatType> const& yf) const
+        af::const_ref<scitbx::vec3<FloatType> > const& sites_frac_1,
+        fractional<FloatType> const& site_frac_2) const
       {
-        return std::sqrt(min_mod_short_distance_sq(xf, yf));
+        return std::sqrt(min_mod_short_distance_sq(sites_frac_1, site_frac_2));
       }
 
       //! Transformation (change-of-basis) of unit cell parameters.
@@ -351,25 +354,27 @@ namespace cctbx {
       //! d-spacing measure d_star_sq = 1/d^2 = (2*sin(theta)/lambda)^2.
       template <typename NumType>
       double
-      d_star_sq(miller::index<NumType> const& h) const
+      d_star_sq(miller::index<NumType> const& miller_index) const
       {
         return
-            (h[0] * h[0]) * r_metr_mx_[0]
-          + (h[1] * h[1]) * r_metr_mx_[1]
-          + (h[2] * h[2]) * r_metr_mx_[2]
-          + (2 * h[0] * h[1]) * r_metr_mx_[3]
-          + (2 * h[0] * h[2]) * r_metr_mx_[4]
-          + (2 * h[1] * h[2]) * r_metr_mx_[5];
+            (miller_index[0] * miller_index[0]) * r_metr_mx_[0]
+          + (miller_index[1] * miller_index[1]) * r_metr_mx_[1]
+          + (miller_index[2] * miller_index[2]) * r_metr_mx_[2]
+          + (2 * miller_index[0] * miller_index[1]) * r_metr_mx_[3]
+          + (2 * miller_index[0] * miller_index[2]) * r_metr_mx_[4]
+          + (2 * miller_index[1] * miller_index[2]) * r_metr_mx_[5];
       }
 
       //! d-spacing measure d_star_sq = 1/d^2 = (2*sin(theta)/lambda)^2.
       template <typename NumType>
       af::shared<double>
-      d_star_sq(af::const_ref<miller::index<NumType> > const& h) const
+      d_star_sq(
+        af::const_ref<miller::index<NumType> > const& miller_indices) const
       {
-        af::shared<double> result(h.size(), af::init_functor_null<double>());
-        for(std::size_t i=0;i<result.size();i++) {
-          result[i] = d_star_sq(h[i]);
+        af::shared<double> result(
+          miller_indices.size(), af::init_functor_null<double>());
+        for(std::size_t i=0;i<miller_indices.size();i++) {
+          result[i] = d_star_sq(miller_indices[i]);
         }
         return result;
       }
@@ -377,11 +382,12 @@ namespace cctbx {
       //! Maximum d_star_sq for given list of Miller indices.
       template <typename NumType>
       double
-      max_d_star_sq(af::const_ref<miller::index<NumType> > const& h) const
+      max_d_star_sq(
+        af::const_ref<miller::index<NumType> > const& miller_indices) const
       {
         double result = 0;
-        for(std::size_t i=0;i<h.size();i++) {
-          scitbx::math::update_max(result, d_star_sq(h[i]));
+        for(std::size_t i=0;i<miller_indices.size();i++) {
+          scitbx::math::update_max(result, d_star_sq(miller_indices[i]));
         }
         return result;
       }
@@ -389,13 +395,14 @@ namespace cctbx {
       //! Minimum and maximum d_star_sq for given list of Miller indices.
       template <typename NumType>
       af::double2
-      min_max_d_star_sq(af::const_ref<miller::index<NumType> > const& h) const
+      min_max_d_star_sq(
+        af::const_ref<miller::index<NumType> > const& miller_indices) const
       {
         af::double2 result(0, 0);
-        if (h.size()) {
-          result.fill(d_star_sq(h[0]));
-          for(std::size_t i=1;i<h.size();i++) {
-            double q = d_star_sq(h[i]);
+        if (miller_indices.size()) {
+          result.fill(d_star_sq(miller_indices[0]));
+          for(std::size_t i=1;i<miller_indices.size();i++) {
+            double q = d_star_sq(miller_indices[i]);
             scitbx::math::update_min(result[0], q);
             scitbx::math::update_max(result[1], q);
           }
@@ -406,19 +413,21 @@ namespace cctbx {
       //! d-spacing measure (sin(theta)/lambda)^2 = d_star_sq/4.
       template <typename NumType>
       double
-      stol_sq(miller::index<NumType> const& h) const
+      stol_sq(miller::index<NumType> const& miller_index) const
       {
-        return d_star_sq_as_stol_sq(d_star_sq(h));
+        return d_star_sq_as_stol_sq(d_star_sq(miller_index));
       }
 
       //! d-spacing measure (sin(theta)/lambda)^2 = d_star_sq/4.
       template <typename NumType>
       af::shared<double>
-      stol_sq(af::const_ref<miller::index<NumType> > const& h) const
+      stol_sq(
+        af::const_ref<miller::index<NumType> > const& miller_indices) const
       {
-        af::shared<double> result(h.size(), af::init_functor_null<double>());
-        for(std::size_t i=0;i<result.size();i++) {
-          result[i] = stol_sq(h[i]);
+        af::shared<double> result(
+          miller_indices.size(), af::init_functor_null<double>());
+        for(std::size_t i=0;i<miller_indices.size();i++) {
+          result[i] = stol_sq(miller_indices[i]);
         }
         return result;
       }
@@ -426,19 +435,21 @@ namespace cctbx {
       //! d-spacing measure 2*sin(theta)/lambda = 1/d = sqrt(d_star_sq).
       template <typename NumType>
       double
-      two_stol(miller::index<NumType> const& h) const
+      two_stol(miller::index<NumType> const& miller_index) const
       {
-        return d_star_sq_as_two_stol(d_star_sq(h));
+        return d_star_sq_as_two_stol(d_star_sq(miller_index));
       }
 
       //! d-spacing measure 2*sin(theta)/lambda = 1/d = sqrt(d_star_sq).
       template <typename NumType>
       af::shared<double>
-      two_stol(af::const_ref<miller::index<NumType> > const& h) const
+      two_stol(
+        af::const_ref<miller::index<NumType> > const& miller_indices) const
       {
-        af::shared<double> result(h.size(), af::init_functor_null<double>());
-        for(std::size_t i=0;i<result.size();i++) {
-          result[i] = two_stol(h[i]);
+        af::shared<double> result(
+          miller_indices.size(), af::init_functor_null<double>());
+        for(std::size_t i=0;i<miller_indices.size();i++) {
+          result[i] = two_stol(miller_indices[i]);
         }
         return result;
       }
@@ -446,19 +457,20 @@ namespace cctbx {
       //! d-spacing measure sin(theta)/lambda = 1/(2*d) = sqrt(d_star_sq)/2.
       template <typename NumType>
       double
-      stol(miller::index<NumType> const& h) const
+      stol(miller::index<NumType> const& miller_index) const
       {
-        return d_star_sq_as_stol(d_star_sq(h));
+        return d_star_sq_as_stol(d_star_sq(miller_index));
       }
 
       //! d-spacing measure sin(theta)/lambda = 1/(2*d) = sqrt(d_star_sq)/2.
       template <typename NumType>
       af::shared<double>
-      stol(af::const_ref<miller::index<NumType> > const& h) const
+      stol(af::const_ref<miller::index<NumType> > const& miller_indices) const
       {
-        af::shared<double> result(h.size(), af::init_functor_null<double>());
-        for(std::size_t i=0;i<result.size();i++) {
-          result[i] = stol(h[i]);
+        af::shared<double> result(
+          miller_indices.size(), af::init_functor_null<double>());
+        for(std::size_t i=0;i<miller_indices.size();i++) {
+          result[i] = stol(miller_indices[i]);
         }
         return result;
       }
@@ -466,19 +478,20 @@ namespace cctbx {
       //! d-spacing measure d = 1/(2*sin(theta)/lambda).
       template <typename NumType>
       double
-      d(miller::index<NumType> const& h) const
+      d(miller::index<NumType> const& miller_index) const
       {
-        return d_star_sq_as_d(d_star_sq(h));
+        return d_star_sq_as_d(d_star_sq(miller_index));
       }
 
       //! d-spacing measure d = 1/(2*sin(theta)/lambda).
       template <typename NumType>
       af::shared<double>
-      d(af::const_ref<miller::index<NumType> > const& h) const
+      d(af::const_ref<miller::index<NumType> > const& miller_indices) const
       {
-        af::shared<double> result(h.size(), af::init_functor_null<double>());
-        for(std::size_t i=0;i<result.size();i++) {
-          result[i] = d(h[i]);
+        af::shared<double> result(
+          miller_indices.size(), af::init_functor_null<double>());
+        for(std::size_t i=0;i<miller_indices.size();i++) {
+          result[i] = d(miller_indices[i]);
         }
         return result;
       }
@@ -487,24 +500,26 @@ namespace cctbx {
       template <typename NumType>
       double
       two_theta(
-        miller::index<NumType> const& h,
+        miller::index<NumType> const& miller_index,
         double wavelength,
-        bool deg = false) const
+        bool deg=false) const
       {
-        return d_star_sq_as_two_theta(d_star_sq(h), wavelength, deg);
+        return d_star_sq_as_two_theta(
+          d_star_sq(miller_index), wavelength, deg);
       }
 
       //! Diffraction angle 2-theta, given wavelength.
       template <typename NumType>
       af::shared<double>
       two_theta(
-        af::const_ref<miller::index<NumType> > const& h,
+        af::const_ref<miller::index<NumType> > const& miller_indices,
         double wavelength,
-        bool deg = false) const
+        bool deg=false) const
       {
-        af::shared<double> result(h.size(), af::init_functor_null<double>());
-        for(std::size_t i=0;i<result.size();i++) {
-          result[i] = two_theta(h[i], wavelength, deg);
+        af::shared<double> result(
+          miller_indices.size(), af::init_functor_null<double>());
+        for(std::size_t i=0;i<miller_indices.size();i++) {
+          result[i] = two_theta(miller_indices[i], wavelength, deg);
         }
         return result;
       }
