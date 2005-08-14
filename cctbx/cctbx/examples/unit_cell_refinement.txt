@@ -63,7 +63,10 @@ to try the following:
       '    8.81   0  1  1\n   12.23   0  0  2\n   12.71   0  2  0\n ...
       31.56   0  1  5\n   32.12   2  2  3\n'
 
-  - At the command prompt, enter ``libtbx.help str`` to see the
+  - At the command prompt, enter
+    `libtbx.help str
+    <http://www.phenix-online.org/cctbx/cctbx_web.cgi?target_module=libtbx_help&query=str>`_
+    to see the
     full documentation for the Python ``str`` type including
     the documentation for ``splitlines()``::
 
@@ -108,8 +111,11 @@ which provides a number of array types, e.g. ``int``, ``double``,
 one-dimensional or multi-dimensional. The numeric array types provide
 a comprehensive set of functions for element-wise operations such
 as ``>``, ``+``, ``sin``, and reduction functions such as ``sum``,
-``min``, ``min_index``. Try ``libtbx.help cctbx.array_family.flex``
-and ``libtbx.help cctbx.array_family.flex.double`` to see a listing
+``min``, ``min_index``. Try `libtbx.help cctbx.array_family.flex
+<http://www.phenix-online.org/cctbx/cctbx_web.cgi?target_module=libtbx_help&query=cctbx.array_family.flex>`_
+and `cctbx.array_family.flex.double
+<http://www.phenix-online.org/cctbx/cctbx_web.cgi?target_module=libtbx_help&query=cctbx.array_family.flex.double>`_
+to see a listing
 of the available features. Almost all facilities provided by the
 ``flex`` module are implemented in C++ and are therefore very fast.
 
@@ -129,7 +135,9 @@ The next three statments loop over all lines in
     fields = line.split()
     assert len(fields) == 4
 
-Each line is split into fields. Use ``libtbx.help str`` again to
+Each line is split into fields. Use `libtbx.help str
+<http://www.phenix-online.org/cctbx/cctbx_web.cgi?target_module=libtbx_help&query=str>`_
+again to
 obtain the documentation for the ``split()`` method. The ``assert``
 statement reflects good coding practices. It is not strictly needed,
 but the following two statements assume that the input line consists
@@ -224,7 +232,8 @@ The input data in the ``unit_cell_refinement.py`` script are derived
 from a powder diffraction experiment with copper k-alpha radiation.
 A lookup table for the corresponding wavelength is compiled into
 the ``cctbx.eltbx.wavelengths`` module
-(``libtbx.help cctbx.eltbx.wavelengths.characteristic``)::
+(`libtbx.help cctbx.eltbx.wavelengths.characteristic
+<http://www.phenix-online.org/cctbx/cctbx_web.cgi?target_module=libtbx_help&query=cctbx.eltbx.wavelengths.characteristic>`_)::
 
   from cctbx.eltbx import wavelengths
   wavelength = wavelengths.characteristic("CU").as_angstrom()
@@ -232,7 +241,8 @@ the ``cctbx.eltbx.wavelengths`` module
 We don't have to calculate ``d_hkl`` explicitly since the
 ``cctbx.uctbx.unit_cell`` object "knows" about Bragg's law and also
 how to compute ``d_hkl`` given unit cell parameters
-(``libtbx.help cctbx.uctbx.unit_cell``).
+(`libtbx.help cctbx.uctbx.unit_cell
+<http://www.phenix-online.org/cctbx/cctbx_web.cgi?target_module=libtbx_help&query=cctbx.uctbx.unit_cell>`_).
 This allows us to write::
 
   from cctbx import uctbx
@@ -247,7 +257,9 @@ it is a matter of two lines to show a nice table::
   for h,o,c in zip(miller_indices, two_thetas_obs, two_thetas_calc):
     print "(%2d, %2d, %2d)" % h, "%6.2f - %6.2f = %6.2f" % (o, c, o-c)
 
-Use ``libtbx.help zip`` to learn about Python's standard ``zip()``
+Use `libtbx.help zip
+<http://www.phenix-online.org/cctbx/cctbx_web.cgi?target_module=libtbx_help&query=zip>`_
+to learn about Python's standard ``zip()``
 function, or consult the Python tutorial section on
 `Looping Techniques
 <http://docs.python.org/tut/node7.html#SECTION007600000000000000000>`_
