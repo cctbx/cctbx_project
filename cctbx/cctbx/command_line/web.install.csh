@@ -15,13 +15,15 @@ mkdir -p cctbx
 cp -r "$CCTBX_DIST"/{cctbx,libtbx_config} cctbx
 mkdir -p iotbx
 cp -r "$IOTBX_DIST"/{iotbx,libtbx_config} iotbx
+mkdir -p mmtbx
+cp -r "$MMTBX_DIST"/{mmtbx,libtbx_config} mmtbx
 cd ..
 
 if ($#argv == 0) then
   mkdir -p build
   cd build
   cp -r `libtbx.show_build_path`/lib .
-  python ../dist/libtbx/configure.py iotbx
+  python ../dist/libtbx/configure.py mmtbx
   cd ..
 endif
 
