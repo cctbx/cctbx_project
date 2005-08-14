@@ -1,5 +1,6 @@
 #include <boost/python/module.hpp>
 #include <boost/python/class.hpp>
+#include <boost/python/args.hpp>
 #include <scitbx/boost_python/iterator_wrappers.h>
 #include <cctbx/eltbx/wavelengths.h>
 
@@ -17,7 +18,7 @@ namespace {
     {
       using namespace boost::python;
       class_<w_t>("characteristic", no_init)
-        .def(init<std::string const&>())
+        .def(init<std::string const&>((arg_("label"))))
         .def("label", &w_t::label)
         .def("as_angstrom", &w_t::as_angstrom)
         .def("as_kev", &w_t::as_kev)
