@@ -115,7 +115,8 @@ def run_c_plus_plus(target_evaluator,
       if (minimizer.run(x, f, g)): continue
       x_after_step = x.deep_copy()
       if (callback_after_step is not None):
-        callback_after_step(minimizer)
+        if (callback_after_step(minimizer) is True):
+          break
       if (termination_params.traditional_convergence_test):
         if (    minimizer.iter() >= termination_params.min_iterations
             and is_converged(x, g)):
