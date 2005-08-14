@@ -3,7 +3,7 @@
 #   http://journals.iucr.org/c/issues/2001/05/00/vj1132/vj1132Isup2.hkl
 #   http://scripts.iucr.org/cgi-bin/sendcif?vj1132sup1
 #
-# Command to run this example"
+# Command to run this example:
 #   iotbx.python direct_methods_light.py vj1132Isup2.hkl vj1132sup1.cif
 #
 
