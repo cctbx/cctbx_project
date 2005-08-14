@@ -58,12 +58,12 @@ def gradients(
   for i in xrange(6):
     rs = []
     for signed_eps in [eps, -eps]:
-      abcabg_eps = list(unit_cell.parameters())
-      abcabg_eps[i] += signed_eps
+      params_eps = list(unit_cell.parameters())
+      params_eps[i] += signed_eps
       rs.append(
         residual(
           two_thetas_obs, miller_indices, wavelength,
-          uctbx.unit_cell(abcabg_eps)))
+          uctbx.unit_cell(params_eps)))
     result.append((rs[0]-rs[1])/(2*eps))
   return result
 
@@ -93,9 +93,8 @@ class refinery:
 
 def show_fit(two_thetas_obs, miller_indices, wavelength, unit_cell):
   two_thetas_calc = unit_cell.two_theta(miller_indices, wavelength, deg=True)
-  for h,obs,calc in zip(miller_indices, two_thetas_obs, two_thetas_calc):
-    print "(%2d, %2d, %2d)" % h, "%6.2f - %6.2f = %6.2f" % (
-      obs, calc, obs-calc)
+  for h,o,c in zip(miller_indices, two_thetas_obs, two_thetas_calc):
+    print "(%2d, %2d, %2d)" % h, "%6.2f - %6.2f = %6.2f" % (o, c, o-c)
   print
 
 def run():
@@ -107,10 +106,8 @@ def run():
     two_thetas_obs.append(float(fields[0]))
     miller_indices.append([int(s) for s in fields[1:]])
 
-  unit_cell_start = uctbx.unit_cell((10,10,10,90,90,90))
-
   wavelength = wavelengths.characteristic("CU").as_angstrom()
-
+  unit_cell_start = uctbx.unit_cell((10,10,10,90,90,90))
   show_fit(
     two_thetas_obs, miller_indices, wavelength, unit_cell_start)
 
