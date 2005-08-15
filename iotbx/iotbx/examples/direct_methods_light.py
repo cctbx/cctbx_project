@@ -11,8 +11,7 @@ def run():
   import sys
   reflection_file_name = sys.argv[1]
   from iotbx import acta_c
-  miller_array = acta_c.cif_as_miller_array(
-    file_name=reflection_file_name)
+  miller_array = acta_c.cif_as_miller_array(file_name=reflection_file_name)
   miller_array.show_comprehensive_summary()
   print
 
@@ -22,6 +21,9 @@ def run():
     print
 
   miller_array.setup_binner(auto_binning=True)
+  miller_array.binner().show_summary()
+  print
+
   all_e_values = miller_array.quasi_normalize_structure_factors().sort(
     by_value="data")
   large_e_values = all_e_values.select(all_e_values.data() > 1.2)
@@ -94,7 +96,7 @@ def run():
       model1=reference_model,
       model2=peak_model,
       tolerance=1.,
-      models_are_diffraction_index_equivalent=False)
+      models_are_diffraction_index_equivalent=True)
     for match in matches.refined_matches:
       match.show()
 
