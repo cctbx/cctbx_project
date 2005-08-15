@@ -12,7 +12,7 @@ the least-squares residual function::
 
   sum over all Miller indices of (two_theta_obs - two_theta_calc)**2
 
-The refinement starts with the unit cell paramters a=10, b=10, c=10,
+The refinement starts with the unit cell parameters a=10, b=10, c=10,
 alpha=90, beta=90, gamma=90. A general purpose quasi-Newton `LBFGS`_
 minimizer is used. The LBFGS minimizer requires:
 
@@ -27,12 +27,12 @@ minimizer is used. The LBFGS minimizer requires:
 To keep the example simple, the gradients are computed with the finite
 difference method.
 
-Before and after the minimzation a table comparing ``two_theta_obs``
+Before and after the minimization a table comparing ``two_theta_obs``
 and ``two_theta_calc`` is shown. The script terminates after showing
 the refined unit cell parameters.
 
-[`Complete example script`_] [`cctbx downloads`_] [`cctbx front page`_]
-[`Python tutorial`_]
+[`Complete example script`_] [`Example output`_] [`cctbx downloads`_]
+[`cctbx front page`_] [`Python tutorial`_]
 
 
 Input data
@@ -63,10 +63,7 @@ to try the following:
       '    8.81   0  1  1\n   12.23   0  0  2\n   12.71   0  2  0\n ...
       31.56   0  1  5\n   32.12   2  2  3\n'
 
-  - At the command prompt, enter
-    `libtbx.help str
-    <http://www.phenix-online.org/cctbx/cctbx_web.cgi?target_module=libtbx_help&query=str>`_
-    to see the
+  - At the command prompt, enter `libtbx.help str`_ to see the
     full documentation for the Python ``str`` type including
     the documentation for ``splitlines()``::
 
@@ -84,8 +81,8 @@ to try the following:
       ['    8.81   0  1  1', '   12.23   0  0  2', '   12.71   0  2  0', ...
       '   31.56   0  1  5', '   32.12   2  2  3']
 
-[`Complete example script`_] [`cctbx downloads`_] [`cctbx front page`_]
-[`Python tutorial`_]
+[`Complete example script`_] [`Example output`_] [`cctbx downloads`_]
+[`cctbx front page`_] [`Python tutorial`_]
 
 
 Conversion of input data to flex arrays
@@ -111,11 +108,8 @@ which provides a number of array types, e.g. ``int``, ``double``,
 one-dimensional or multi-dimensional. The numeric array types provide
 a comprehensive set of functions for element-wise operations such
 as ``>``, ``+``, ``sin``, and reduction functions such as ``sum``,
-``min``, ``min_index``. Try `libtbx.help cctbx.array_family.flex
-<http://www.phenix-online.org/cctbx/cctbx_web.cgi?target_module=libtbx_help&query=cctbx.array_family.flex>`_
-and `cctbx.array_family.flex.double
-<http://www.phenix-online.org/cctbx/cctbx_web.cgi?target_module=libtbx_help&query=cctbx.array_family.flex.double>`_
-to see a listing
+``min``, ``min_index``. Try `libtbx.help cctbx.array_family.flex`_
+and `libtbx.help cctbx.array_family.flex.double`_ to see a listing
 of the available features. Almost all facilities provided by the
 ``flex`` module are implemented in C++ and are therefore very fast.
 
@@ -128,16 +122,14 @@ to the flex array types ``double`` and ``miller_index``. The statement::
 *instantiate* brand-new one-dimensional arrays. The initial size
 of both arrays is ``0``, as can be verified by inserting ``print
 two_thetas_obs.size()`` and ``print miller_indices.size()``.
-The next three statments loop over all lines in
+The next three statements loop over all lines in
 ``two_theta_and_index_list``::
 
   for line in two_theta_and_index_list:
     fields = line.split()
     assert len(fields) == 4
 
-Each line is split into fields. Use `libtbx.help str
-<http://www.phenix-online.org/cctbx/cctbx_web.cgi?target_module=libtbx_help&query=str>`_
-again to
+Each line is split into fields. Use `libtbx.help str`_ again to
 obtain the documentation for the ``split()`` method. The ``assert``
 statement reflects good coding practices. It is not strictly needed,
 but the following two statements assume that the input line consists
@@ -188,9 +180,7 @@ added to the ``miller_indices`` array. It could be done like this::
 However, anyone who has spent frustrating hours debugging
 silly copy-and-paste mistakes like ``k = int(fields[1])``
 will prefer the alternative using Python's
-`List Comprehension
-<http://docs.python.org/tut/node7.html#SECTION007140000000000000000>`_
-syntax::
+`List Comprehension`_ syntax::
 
   hkl = [int(s) for s in fields[1:]]
 
@@ -205,15 +195,14 @@ solution, but the list comprehension solution clearly is, and since
 it is *one* expression it can be directly used as an argument for
 ``miller_indices.append()``.
 
-[`Complete example script`_] [`cctbx downloads`_] [`cctbx front page`_]
-[`Python tutorial`_]
+[`Complete example script`_] [`Example output`_] [`cctbx downloads`_]
+[`cctbx front page`_] [`Python tutorial`_]
 
 
 Calculation of 2-theta angles
 -----------------------------
 
-`Bragg's law <http://www.eserc.stonybrook.edu/ProjectJava/Bragg/>`_
-tells us how to compute diffraction angles ``theta``.
+`Bragg's law`_ tells us how to compute diffraction angles ``theta``.
 In typical textbook notation::
 
   lambda = 2 * d_hkl * sin(theta)
@@ -232,8 +221,7 @@ The input data in the ``unit_cell_refinement.py`` script are derived
 from a powder diffraction experiment with copper k-alpha radiation.
 A lookup table for the corresponding wavelength is compiled into
 the ``cctbx.eltbx.wavelengths`` module
-(`libtbx.help cctbx.eltbx.wavelengths.characteristic
-<http://www.phenix-online.org/cctbx/cctbx_web.cgi?target_module=libtbx_help&query=cctbx.eltbx.wavelengths.characteristic>`_)::
+(`libtbx.help cctbx.eltbx.wavelengths.characteristic`_)::
 
   from cctbx.eltbx import wavelengths
   wavelength = wavelengths.characteristic("CU").as_angstrom()
@@ -241,9 +229,7 @@ the ``cctbx.eltbx.wavelengths`` module
 We don't have to calculate ``d_hkl`` explicitly since the
 ``cctbx.uctbx.unit_cell`` object "knows" about Bragg's law and also
 how to compute ``d_hkl`` given unit cell parameters
-(`libtbx.help cctbx.uctbx.unit_cell
-<http://www.phenix-online.org/cctbx/cctbx_web.cgi?target_module=libtbx_help&query=cctbx.uctbx.unit_cell>`_).
-This allows us to write::
+(`libtbx.help cctbx.uctbx.unit_cell`_). This allows us to write::
 
   from cctbx import uctbx
   unit_cell = uctbx.unit_cell((10,10,10,90,90,90))
@@ -257,19 +243,14 @@ it is a matter of two lines to show a nice table::
   for h,o,c in zip(miller_indices, two_thetas_obs, two_thetas_calc):
     print "(%2d, %2d, %2d)" % h, "%6.2f - %6.2f = %6.2f" % (o, c, o-c)
 
-Use `libtbx.help zip
-<http://www.phenix-online.org/cctbx/cctbx_web.cgi?target_module=libtbx_help&query=zip>`_
-to learn about Python's standard ``zip()``
-function, or consult the Python tutorial section on
-`Looping Techniques
-<http://docs.python.org/tut/node7.html#SECTION007600000000000000000>`_
-for more information. The ``print`` statement can be understood
-by reading the tutorial section on
-`Fancier Output Formatting
-<http://docs.python.org/tut/node9.html#SECTION009100000000000000000>`_.
+Use `libtbx.help zip`_ to learn about Python's standard ``zip()``
+function, or consult the Python tutorial section on `Looping
+Techniques`_ for more information. The ``print`` statement can
+be understood by reading the tutorial section on `Fancier Output
+Formatting`_.
 
-[`Complete example script`_] [`cctbx downloads`_] [`cctbx front page`_]
-[`Python tutorial`_]
+[`Complete example script`_] [`Example output`_] [`cctbx downloads`_]
+[`cctbx front page`_] [`Python tutorial`_]
 
 
 Computation of the least-squares residual
@@ -297,16 +278,14 @@ return a single value, the least-squares residual. All intermediate
 arrays are automatically deleted during the evaluation of the nested
 expression as soon as they are no longer needed.
 
-[`Complete example script`_] [`cctbx downloads`_] [`cctbx front page`_]
-[`Python tutorial`_]
+[`Complete example script`_] [`Example output`_] [`cctbx downloads`_]
+[`cctbx front page`_] [`Python tutorial`_]
 
 Gradient calculation via finite differences
 -------------------------------------------
 
-The `Finite Difference Method
-<http://www.google.com/search?q=finite+difference+method>`_
-approximates the gradients of a function ``f(u)`` at the point ``x``
-with the simple formula::
+The `Finite Difference Method`_ approximates the gradients of a
+function ``f(u)`` at the point ``x`` with the simple formula::
 
   df/du = (f(x+eps) - f(x-eps)) / (2*eps)
 
@@ -326,7 +305,7 @@ for one function evaluation is measured in micro seconds. Using
 finite differences is exactly the right approach in this situation,
 at least as an initial implementation.
 
-To faciliate the gradient calculations, the residual calculation as
+To facilitate the gradient calculations, the residual calculation as
 introduced before is moved to a small function::
 
   def residual(two_thetas_obs, miller_indices, wavelength, unit_cell):
@@ -357,8 +336,8 @@ the residual is computed as before. We take the difference of two
 residuals divided by ``2*eps`` and append it to the resulting array
 of gradients.
 
-[`Complete example script`_] [`cctbx downloads`_] [`cctbx front page`_]
-[`Python tutorial`_]
+[`Complete example script`_] [`Example output`_] [`cctbx downloads`_]
+[`cctbx front page`_] [`Python tutorial`_]
 
 
 LBFGS minimization
@@ -368,7 +347,7 @@ As outlined at the beginning, the ``residual()`` and ``gradients()``
 are to be used in connection with the quasi-Newton `LBFGS`_
 minimizer as implemented in the ``scitbx.lbfgs`` module. A
 minimal recipe for using this module is shown in the
-``scitbx/scitbx/examples/lbfgs_recipe.py`` script::
+`scitbx/scitbx/examples/lbfgs_recipe.py`_ script::
 
   class refinery:
 
@@ -385,7 +364,7 @@ minimal recipe for using this module is shown in the
       pass
 
 This ``refinery`` class acts as a ``target_evaluator`` object for the
-``scitbx.lbfgs.run`` function. Basically, the ``target_evaluator``
+``scitbx.lbfgs.run()`` function. Basically, the ``target_evaluator``
 object can be any user-defined type, but it has to conform to certain
 requirements:
 
@@ -399,14 +378,26 @@ requirements:
     current point ``target_evaluator.x``. The size of the gradient
     array must be identical to the size of the parameter array.
 
-  - ``target_evaluator.callback_after_step`` is optional. If it
+  - ``target_evaluator.callback_after_step()`` is optional. If it
     is defined, it is called with one argument after each LBFGS step.
-    The argument is an instance of the ``scitbx::lbfgs::minimizer``
+    The argument is an instance of the `scitbx::lbfgs::minimizer`_
     C++ class and can be analyzed to monitor or report the progress
     of the minimization. ``target_evaluator.callback_after_step``
     may or may not return a value. If the returned value ``is True``
     the minimization is terminated. Otherwise the minimization
     continues until another termination condition is reached.
+
+The ``scitbx.lbfgs.run(target_evaluator=self)`` call in the
+``__init__()`` method above initiates the LBFGS procedure. This
+procedure modifies the ``self.x`` (i.e. ``target_evaluator.x``)
+array in place, according to the LBFGS algorithm. Each time
+the algorithm requires an evaluation of the functional and the
+gradients, the ``compute_functional_and_gradients()`` method is
+called. I.e. the ``refinery`` object calls ``scitbx.lbfgs.run()``
+which in turn calls a method of the ``refinery`` object. The term
+``callback`` is often used to describe this situation. Note that both
+``compute_functional_and_gradients()`` and ``callback_after_step()``
+are callback functions; they are just called in different situations.
 
 Based on the ``residual()`` and ``gradients()`` functions developed
 before, it is not difficult to customize the recipe for the refinement
@@ -443,28 +434,93 @@ refinement is run and the results are reported with these statements::
     two_thetas_obs, miller_indices, wavelength, unit_cell_start)
   print refined.unit_cell()
 
-[`Complete example script`_] [`cctbx downloads`_] [`cctbx front page`_]
-[`Python tutorial`_]
+[`Complete example script`_] [`Example output`_] [`cctbx downloads`_]
+[`cctbx front page`_] [`Python tutorial`_]
 
 
 To try goes studying over
 -------------------------
 
-The title of this section is `Google's automatic translation
-<http://translate.google.com/translate_t>`_
-of the German saying "Probieren geht ueber studieren." It is an
-invitation to copy and run this and other example scripts. Insert
-``print`` statements to develop a better understanding of how all
-the pieces interact. Use ``print list(array)`` to see the elements
-of ``flex`` arrays. It may also be useful to insert ``help(obj)``
-to see the attributes and methods of ``obj``, where ``obj`` can be
-any of the objects created in the script.
+The title of this section is `Google's automatic translation`_ of the
+German saying "Probieren geht ueber studieren." It is an invitation
+to copy and run this and other example scripts. Insert ``print``
+statements to develop a better understanding of how all the pieces
+interact. Use ``print list(array)`` to see the elements of ``flex``
+arrays. It may also be useful to insert ``help(obj)`` to see the
+attributes and methods of ``obj``, where ``obj`` can be any of the
+objects created in the script.
 
-[`Complete example script`_] [`cctbx downloads`_] [`cctbx front page`_]
-[`Python tutorial`_]
+[`Complete example script`_] [`Example output`_] [`cctbx downloads`_]
+[`cctbx front page`_] [`Python tutorial`_]
+
+
+Exercise (not very hard)
+------------------------
+
+Read the 2-theta angles and Miller indices from a file.
+
+Hint: Learn about ``import sys`` and ``sys.argv``.
+
+[`Complete example script`_] [`Example output`_] [`cctbx downloads`_]
+[`cctbx front page`_] [`Python tutorial`_]
+
+
+Exercise (not very hard)
+------------------------
+
+import ``iotbx.command_line.lattice_symmetry`` and instantiate
+the ``metric_subgroups`` class with the refined unit cell.
+
+Hint: Look for ``"P 1"`` in the ``run()`` function in
+``iotbx/iotbx/command_line/lattice_symmetry.py``.
+
+[`Complete example script`_] [`Example output`_] [`cctbx downloads`_]
+[`cctbx front page`_] [`Python tutorial`_]
+
+
+Exercise (harder)
+-----------------
+
+Estimate the start parameters from 6 indices and associated 2-theta
+angels.
+
+[`Complete example script`_] [`Example output`_] [`cctbx downloads`_]
+[`cctbx front page`_] [`Python tutorial`_]
+
+
+Exercise (advanced)
+-------------------
+
+Work out a way to use analytical gradients. The best solution is not
+clear to me (rwgk). You may have to refine metric tensor elements
+instead of the unit cell parameters to keep the problem manageable.
+See `d_star_sq_alternative.py`_ for a possible start. Compare the
+time it took you to work out the code with the analytical gradients
+to the time it takes to implement the finite difference method.
+
+[`Complete example script`_] [`Example output`_] [`cctbx downloads`_]
+[`cctbx front page`_] [`Python tutorial`_]
+
+
+Exercise (requires creativity)
+------------------------------
+
+Study `adp_symmetry_constraints.py`_. Use::
+
+  constraints = sgtbx.tensor_rank_2_constraints(
+    space_group=space_group,
+    reciprocal_space=False,
+    initialize_gradient_handling=True)
+
+to reduce the number of unit cell parameters to be refined.
+
+[`Complete example script`_] [`Example output`_] [`cctbx downloads`_]
+[`cctbx front page`_] [`Python tutorial`_]
 
 
 .. _`Complete example script`: http://phenix-online.org/cctbx_sources/cctbx/cctbx/examples/unit_cell_refinement.py
+
+.. _`Example output`: http://cci.lbl.gov/~rwgk/siena2005/unit_cell_refinement.out
 
 .. _`cctbx downloads`: http://cci.lbl.gov/cctbx_build/all.html
 
@@ -475,3 +531,34 @@ any of the objects created in the script.
 .. _`Python tutorial`: http://docs.python.org/tut/
 
 .. _`Python`: http://www.python.org/
+
+.. _`scitbx::lbfgs::minimizer`: http://cctbx.sourceforge.net/current_cvs/c_plus_plus/classscitbx_1_1lbfgs_1_1minimizer.html
+
+.. _`List Comprehension`: http://docs.python.org/tut/node7.html#SECTION007140000000000000000
+
+.. _`Looping Techniques`: http://docs.python.org/tut/node7.html#SECTION007600000000000000000
+
+.. _`Fancier Output Formatting`: http://docs.python.org/tut/node9.html#SECTION009100000000000000000
+
+.. _`Bragg's law`: http://www.eserc.stonybrook.edu/ProjectJava/Bragg/
+
+.. _`Finite Difference Method`: http://www.google.com/search?q=finite+difference+method
+
+.. _`scitbx/scitbx/examples/lbfgs_recipe.py`: http://phenix-online.org/cctbx_sources/scitbx/scitbx/examples/lbfgs_recipe.py
+
+.. _`Google's automatic translation`: http://translate.google.com/translate_t
+
+.. _`d_star_sq_alternative.py`: http://cci.lbl.gov/~rwgk/siena2005/d_star_sq_alternative.py
+
+.. _`adp_symmetry_constraints.py`: http://phenix-online.org/cctbx_sources/cctbx/cctbx/examples/adp_symmetry_constraints.py
+
+.. _`libtbx.help str`: http://www.phenix-online.org/cctbx/cctbx_web.cgi?target_module=libtbx_help&query=str
+
+.. _`libtbx.help zip`: http://www.phenix-online.org/cctbx/cctbx_web.cgi?target_module=libtbx_help&query=zip
+
+.. _`libtbx.help cctbx.array_family.flex`: http://www.phenix-online.org/cctbx/cctbx_web.cgi?target_module=libtbx_help&query=cctbx.array_family.flex
+
+.. _`libtbx.help cctbx.array_family.flex.double`: http://www.phenix-online.org/cctbx/cctbx_web.cgi?target_module=libtbx_help&query=cctbx.array_family.flex.double
+.. _`libtbx.help cctbx.eltbx.wavelengths.characteristic`: http://www.phenix-online.org/cctbx/cctbx_web.cgi?target_module=libtbx_help&query=cctbx.eltbx.wavelengths.characteristic
+
+.. _`libtbx.help cctbx.uctbx.unit_cell`: http://www.phenix-online.org/cctbx/cctbx_web.cgi?target_module=libtbx_help&query=cctbx.uctbx.unit_cell
