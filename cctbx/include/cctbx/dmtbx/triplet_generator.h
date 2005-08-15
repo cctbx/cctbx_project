@@ -1,18 +1,9 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2003 Jun: Created based on triplet.h (R.W. Grosse-Kunstleve)
- */
-
 /* References:
      C.M. Weeks, P.D. Adams, J. Berendzen, A.T. Brunger, E.J. Dodson,
      R.W. Grosse-Kunstleve, T.R. Schneider, G.M. Sheldrick,
      T.C. Terwilliger, M. Turkenburg, I. Uson
      Automatic solution of heavy-atom substructures.
-     Methods in Enzymology, in press.
+     Methods in Enzymology 2003, 374, 37-83.
 
      Sheldrick, G.M. (1982).
      Crystallographic algorithms for mini- and maxi-computers.
