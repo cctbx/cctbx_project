@@ -76,21 +76,32 @@ class u_penalty_well:
                      shape_factor_right):
     adopt_init_args(self, locals())
     assert self.u_min < self.u_max
-    self.eps = 8*math.pi**2
+    eps = 8*math.pi**2
+    self.left_limit  = self.u_min + 0.1 / eps
+    self.right_limit = self.u_max - 0.1 / eps
 
-  def functional(self, u):
-    if(u < self.u_max-100./self.eps): return 0
-    arg1 = self.shape_factor_left  * (self.u_min - u)
-    arg2 = self.shape_factor_right * (self.u_max - u)
-    return self.left_term_weight  * math.exp(arg1) + \
-           self.right_term_weight * (1. / math.exp(arg2))
+  def functional(self, u_isos):
+    result = 0.0
+    for u in u_isos:
+        arg1 = self.shape_factor_left  * (self.u_min - u)
+        arg2 = self.shape_factor_right * (self.u_max - u)
+        if(u > self.right_limit or u < self.left_limit):
+           result += self.left_term_weight  * math.exp(arg1) + \
+                     self.right_term_weight * (1. / math.exp(arg2))
+    return result / u_isos.size()
 
-  def gradient(self, u):
-    if(u < self.u_max-100./self.eps): return 0
-    arg1 = self.shape_factor_left * (self.u_min - u)
-    arg2 = self.shape_factor_right * (self.u_max - u)
-    return -self.left_term_weight  * self.shape_factor_left * math.exp(arg1) + \
-            self.right_term_weight * self.shape_factor_right * (1. / math.exp(arg2))
+  def gradient(self, u_isos):
+    result = flex.double()
+    for u in u_isos:
+        arg1 = self.shape_factor_left * (self.u_min - u)
+        arg2 = self.shape_factor_right * (self.u_max - u)
+        if(u > self.right_limit or u < self.left_limit):
+           result.append(
+            -self.left_term_weight * self.shape_factor_left*math.exp(arg1)+ \
+            self.right_term_weight* self.shape_factor_right*(1/math.exp(arg2)))
+        else:
+           result.append(0.0)
+    return result / u_isos.size()
 
 class occupancy_penalty_exp(object):
 
