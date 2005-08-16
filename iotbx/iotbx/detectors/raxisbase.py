@@ -111,6 +111,11 @@ class Raxis(object):
 
        ToRead = ToRead * ReadLines
        self.CharTemp = self.F.read(ToRead)
+    else:
+       ToRead = ToRead * ReadLines
+       temporary = self.F.read(ToRead)
+       from iotbx.detectors import unpad_raxis
+       self.CharTemp = unpad_raxis(temporary,self.head['record_length'],Pad)
 
   def dump(self):
     ptr = 0
