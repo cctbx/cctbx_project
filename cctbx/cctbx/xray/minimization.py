@@ -66,6 +66,32 @@ class u_penalty_exp(object):
     s = self.penalty_scale
     return -s*self.penalty_factor*math.exp(-s*u*self.penalty_factor)
 
+class u_penalty_well:
+
+  def __init__(self, u_min,
+                     u_max,
+                     left_term_weight,
+                     right_term_weight,
+                     shape_factor_left,
+                     shape_factor_right):
+    adopt_init_args(self, locals())
+    assert self.u_min < self.u_max
+    self.eps = 8*math.pi**2
+
+  def functional(self, u):
+    if(u < self.u_max-100./self.eps): return 0
+    arg1 = self.shape_factor_left  * (self.u_min - u)
+    arg2 = self.shape_factor_right * (self.u_max - u)
+    return self.left_term_weight  * math.exp(arg1) + \
+           self.right_term_weight * (1. / math.exp(arg2))
+
+  def gradient(self, u):
+    if(u < self.u_max-100./self.eps): return 0
+    arg1 = self.shape_factor_left * (self.u_min - u)
+    arg2 = self.shape_factor_right * (self.u_max - u)
+    return -self.left_term_weight  * self.shape_factor_left * math.exp(arg1) + \
+            self.right_term_weight * self.shape_factor_right * (1. / math.exp(arg2))
+
 class occupancy_penalty_exp(object):
 
   def __init__(self,

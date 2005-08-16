@@ -823,9 +823,10 @@ mlhl_d_target_dfcalc_one_h(
           n_steps,
           step_for_integration,
           fcalc[i_h],
-          &*workspace.begin());
+          &*workspace.begin()) * (1./ fobs.size());
       }
     } // end loop over reflections
+    target_ /= fobs.size();
   }
   };
 // max-like_hl end
