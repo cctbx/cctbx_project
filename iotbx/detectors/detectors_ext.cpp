@@ -6,6 +6,7 @@
 #include <iostream>
 #include <exception>
 #include <scitbx/array_family/flex_types.h>
+#include <scitbx/math/utils.h>
 
 namespace af = scitbx::af;
 
@@ -88,6 +89,87 @@ af::flex_int ReadRAXIS(const std::string& characters,
   return z;
 }
 
+std::string
+unpad_raxis(const std::string& in, const int& recordlength, const int& pad){
+  int number_records = in.size()/recordlength;
+  int outlength = (recordlength-pad)*number_records;
+  std::vector<char> out;
+  out.reserve(outlength);
+  std::string::const_iterator inptr=in.begin();
+  for (int irec=0; irec<number_records; ++irec){
+    for (int y=0; y<(recordlength-pad); ++y,++inptr) {
+      out.push_back(*inptr);
+    }
+    inptr+=pad;
+  }
+  return std::string(out.begin(),out.end());
+}
+
+af::flex_int MakeSquareRAXIS(const int& np,
+                             const int& extra,
+                             const int& oldnslow,
+                             const af::flex_int& rawlinearintdata) {
+  /* In application, this function resizes the Raxis II image of 1900x1900
+     rectangular pixels into a new image with 1962x1962 square pixels. The
+     fast dimension is padded on each side with zeroes, while the slow 
+     dimension is resampled so the data are stretched into the new size. 
+  */
+  af::flex_int z(af::flex_grid<>(np,np));
+
+  int* begin = z.begin();
+  const int* raw   = rawlinearintdata.begin();
+
+  for (std::size_t slow = 0; slow < 2*extra; ++slow){
+    for (std::size_t fast = 0; fast < np; ++fast){
+      *(begin+slow*np+fast) = fast;}}
+  for (std::size_t slow = 0; slow < oldnslow; ++slow){
+    for (std::size_t fast = 0; fast < extra; ++fast){
+      *(begin+(2*extra+slow)*np+fast) = 0;}
+    for (std::size_t fast = 0; fast < oldnslow; ++fast){
+      *(begin+(2*extra+slow)*np+extra+fast) = *(raw+(slow*oldnslow)+fast);}
+    for (std::size_t fast = 0; fast < extra; ++fast){
+      *(begin+(2*extra+slow)*np+extra+oldnslow+fast) = 0;}
+  }
+
+  //rearrange data in place
+  for (std::size_t newslow = 0; newslow < np; ++newslow){
+    double float_begin = (static_cast<double>(newslow)/np)*
+                          static_cast<double>(oldnslow)+(2*extra);
+    double float_end = (static_cast<double>(newslow+1)/np)*
+                        static_cast<double>(oldnslow)+(2*extra);
+    std::vector<int> signatures_addr;
+    std::vector<double> signatures_frac;
+
+    for (std::size_t xf = int(float_begin); xf < 1 + float_end; ++xf){
+        double xf_min;
+        if (float_begin < static_cast<double>(xf)){ xf_min=xf; }
+        else { xf_min=float_begin; }
+
+        double xf_max;
+        if (float_end > static_cast<double>(xf+1)){xf_max=xf+1;}
+        else { xf_max=float_end; }
+
+        if (xf_max-xf_min>1.e-7) {
+          signatures_addr.push_back(xf);
+          signatures_frac.push_back(xf_max-xf_min);}
+    }
+
+    af::flex_int row_temp(af::flex_grid<>(np,1));
+    int* rt = row_temp.begin();
+    for (std::size_t item = 0; item < signatures_addr.size(); ++item){
+      for (std::size_t fast = 0; fast < np; ++fast){
+          *(rt+fast)+=
+            *(begin + signatures_addr[item]*np + fast) * signatures_frac[item];
+      }
+      for (std::size_t fast = 0; fast < np; ++fast){
+        *(begin + newslow*np + fast)=*(rt+fast);
+      }
+    }
+  }
+
+  return z;
+}
+
 af::flex_int Bin2_by_2(const af::flex_int& olddata) {
   int oldsize = olddata.size();
   int olddim = std::sqrt((double)oldsize);
@@ -124,5 +206,7 @@ BOOST_PYTHON_MODULE(iotbx_detectors_ext)
    def("ReadADSC", ReadADSC);
    def("ReadMAR", ReadMAR);
    def("ReadRAXIS", ReadRAXIS);
+   def("unpad_raxis", unpad_raxis);
+   def("MakeSquareRAXIS", MakeSquareRAXIS);
    def("Bin2_by_2", Bin2_by_2);
 }

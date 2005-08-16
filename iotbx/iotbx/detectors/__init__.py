@@ -9,19 +9,23 @@ from iotbx.detectors.adsc import ADSCImage
 from iotbx.detectors.mar import MARImage
 from iotbx.detectors.marIP import MARIPImage
 from iotbx.detectors.raxis import RAXISImage
+from iotbx.detectors.raxis_nonsquare import NonSquareRAXISImage
 
 class ImageException(exceptions.Exception):
   def __init__(self,string):
     self.message = string
   def __str__(self): return self.message
 
-all_image_types = [ADSCImage,MARImage,MARIPImage,RAXISImage]
+all_image_types = [ADSCImage,MARImage,MARIPImage,RAXISImage,
+                   NonSquareRAXISImage]
 
 def ImageFactory(filename):
   for itype in all_image_types:
     try:
       I = itype(filename)
       I.readHeader()
+      if itype==RAXISImage:
+        assert I.head['sizeFast']==I.head['sizeSlow']
       return I
     except:
       pass

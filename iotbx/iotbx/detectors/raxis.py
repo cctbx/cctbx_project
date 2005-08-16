@@ -11,7 +11,9 @@ class RAXISImage(DetectorImageBase,Raxis):
   def readHeader(self,):
     if not self.parameters:
       Raxis.readHeader(self)
+      self.generic_param_from_vendor_head()
 
+  def generic_param_from_vendor_head(self):
       self.parameters={}
       self.parameters['SIZE1'] = self.head['nSlow']
       self.parameters['SIZE2'] = self.head['nFast']
