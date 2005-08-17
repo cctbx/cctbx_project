@@ -18,7 +18,8 @@ namespace cctbx { namespace sgtbx {
       /*! The input matrices are NOT checked for consistency.
        */
       change_of_basis_op(rt_mx const& c, rt_mx const& c_inv)
-      : c_(c), c_inv_(c_inv)
+      :
+        c_(c), c_inv_(c_inv)
       {}
 
       //! Initializes the change-of-basis operator with c.
@@ -27,7 +28,8 @@ namespace cctbx { namespace sgtbx {
        */
       explicit
       change_of_basis_op(rt_mx const& c)
-      : c_(c), c_inv_(c.inverse())
+      :
+        c_(c), c_inv_(c.inverse())
       {}
 
       /*! \brief Initializes the change-of-basis operator with
@@ -38,10 +40,11 @@ namespace cctbx { namespace sgtbx {
           <p>
           See also: constructor of class rt_mx
        */
-      change_of_basis_op(std::string const& str_xyz,
-                         const char* stop_chars="",
-                         int r_den=cb_r_den,
-                         int t_den=cb_t_den);
+      change_of_basis_op(
+        std::string const& str_xyz,
+        const char* stop_chars="",
+        int r_den=cb_r_den,
+        int t_den=cb_t_den);
 
       //! Initializes the change-of-basis operator with unit matrices.
       /*! The unit matrices are initialized with the rotation part
@@ -49,7 +52,8 @@ namespace cctbx { namespace sgtbx {
        */
       explicit
       change_of_basis_op(int r_den=cb_r_den, int t_den=cb_t_den)
-      : c_(r_den, t_den), c_inv_(r_den, t_den)
+      :
+        c_(r_den, t_den), c_inv_(r_den, t_den)
       {}
 
       //! Tests if the change-of-basis operator is valid.
@@ -107,7 +111,8 @@ namespace cctbx { namespace sgtbx {
       }
 
       //! Returns the change-of-basis matrix.
-      rt_mx const& c() const { return c_; }
+      rt_mx const&
+      c() const { return c_; }
 
       //! Returns the inverse of the change-of-basis matrix.
       rt_mx const&
@@ -187,18 +192,18 @@ namespace cctbx { namespace sgtbx {
           apply().
        */
       uctbx::unit_cell
-      apply(uctbx::unit_cell const& ucell) const
+      apply(uctbx::unit_cell const& unit_cell) const
       {
-        return ucell.change_basis(c_inv().r());
+        return unit_cell.change_basis(c_inv().r());
       }
 
       //! Transforms a Miller index.
-      /*! result = h * c_inv()
+      /*! result = miller_index * c_inv()
        */
       miller::index<>
-      apply(miller::index<> const& h) const
+      apply(miller::index<> const& miller_index) const
       {
-        miller::index<> hr = h * c_inv_.r().num();
+        miller::index<> hr = miller_index * c_inv_.r().num();
         if (utils::change_denominator(
               hr.begin(), c_inv_.r().den(), hr.begin(), 1, 3) != 0) {
           throw error("Change of basis yields non-integral Miller index.");
@@ -218,10 +223,13 @@ namespace cctbx { namespace sgtbx {
       tr_vec
       operator()(tr_vec const& t, int sign_identity) const;
 
-      //! Transform fractional coordinates: c() * xf
+      //! Transform fractional coordinates: c() * site_frac
       template <class FloatType>
       fractional<FloatType>
-      operator()(fractional<FloatType> const& xf) const { return c_ * xf; }
+      operator()(fractional<FloatType> const& site_frac) const
+      {
+        return c_ * site_frac;
+      }
 
       //! c() = other.c() * c(); c_inv() = c_inv() * other.c_inv();
       void

@@ -28,8 +28,12 @@ namespace {
       using namespace boost::python;
       typedef return_value_policy<copy_const_reference> ccr;
       class_<w_t>("rot_mx", no_init)
-        .def(init<optional<int, int> >())
-        .def(init<sg_mat3 const&, optional<int> >())
+        .def(init<optional<int, int> >((
+          arg_("denominator")=1,
+          arg_("diagonal")=1)))
+        .def(init<sg_mat3 const&, optional<int> >((
+          arg_("m")=1,
+          arg_("denominator")=1)))
         .def("num", (sg_mat3 const&(w_t::*)() const) &w_t::num, ccr())
         .def("den", (int const&(w_t::*)() const) &w_t::den, ccr())
         .def("__eq__", &w_t::operator==)
@@ -37,19 +41,24 @@ namespace {
         .def("is_valid", &w_t::is_valid)
         .def("is_unit_mx", &w_t::is_unit_mx)
         .def("minus_unit_mx", &w_t::minus_unit_mx)
-        .def("new_denominator", &w_t::new_denominator)
-        .def("scale", &w_t::scale)
+        .def("new_denominator", &w_t::new_denominator, (arg_("new_den")))
+        .def("scale", &w_t::scale, (arg_("factor")))
         .def("determinant", &w_t::determinant)
         .def("transpose", &w_t::transpose)
         .def("inverse", &w_t::inverse)
         .def("cancel", &w_t::cancel)
         .def("inverse_cancel", &w_t::inverse_cancel)
-        .def("multiply", (rot_mx (w_t::*)(rot_mx const&) const) &w_t::multiply)
-        .def("multiply", (tr_vec (w_t::*)(tr_vec const&) const) &w_t::multiply)
-        .def("divide", &w_t::divide)
+        .def("multiply",
+          (rot_mx (w_t::*)(rot_mx const&) const) &w_t::multiply, (
+            arg_("rhs")))
+        .def("multiply",
+          (tr_vec (w_t::*)(tr_vec const&) const) &w_t::multiply, (
+            arg_("rhs")))
+        .def("divide", &w_t::divide, (arg_("rhs")))
         .def("type", &w_t::type)
         .def("order", &w_t::order, order_overloads())
-        .def("accumulate", &w_t::accumulate, accumulate_overloads())
+        .def("accumulate", &w_t::accumulate, accumulate_overloads((
+          arg_("type")=0)))
         .def("info", &w_t::info)
         .def("as_double", &w_t::as_double)
         .def("as_xyz", &w_t::as_xyz, as_xyz_overloads((

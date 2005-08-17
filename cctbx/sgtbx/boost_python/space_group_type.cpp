@@ -1,12 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Sep: Created (rwgk)
- */
-
 #include <boost/python/tuple.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/overloads.hpp>
@@ -39,18 +30,27 @@ namespace {
       typedef return_value_policy<copy_const_reference> ccr;
       typedef return_internal_reference<> rir;
       class_<w_t>("space_group_type")
-        .def(init<std::string const&, optional<std::string const&> >())
-        .def(init<space_group const&, optional<bool, int, int> >())
+        .def(init<std::string const&, optional<std::string const&> >((
+          arg_("symbol"),
+          arg_("table_id")="")))
+        .def(init<space_group const&, optional<bool, int, int> >((
+          arg_("group"),
+          arg_("tidy_cb_op")=true,
+          arg_("r_den")=cb_r_den,
+          arg_("t_den")=cb_t_den)))
         .def("group", &w_t::group, rir())
         .def("number", &w_t::number)
         .def("cb_op", &w_t::cb_op, ccr())
         .def("addl_generators_of_euclidean_normalizer",
-          &w_t::addl_generators_of_euclidean_normalizer)
+          &w_t::addl_generators_of_euclidean_normalizer, (
+            arg_("flag_k2l"), arg_("flag_l2n")))
         .def("expand_addl_generators_of_euclidean_normalizer",
-          &w_t::expand_addl_generators_of_euclidean_normalizer)
+          &w_t::expand_addl_generators_of_euclidean_normalizer, (
+            arg_("flag_k2l"), arg_("flag_l2n")))
         .def("is_enantiomorphic", &w_t::is_enantiomorphic)
         .def("change_of_hand_op", &w_t::change_of_hand_op)
-        .def("hall_symbol", &w_t::hall_symbol, hall_symbol_overloads())
+        .def("hall_symbol", &w_t::hall_symbol, hall_symbol_overloads((
+          arg_("tidy_cb_op")=true)))
         .def("lookup_symbol", &w_t::lookup_symbol)
         .def_pickle(space_group_type_wrappers())
       ;

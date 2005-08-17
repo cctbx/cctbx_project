@@ -25,7 +25,10 @@ namespace {
       typedef return_internal_reference<> rir;
       class_<w_t>("site_symmetry_ops", no_init)
         .enable_pickling()
-        .def(init<int, rt_mx const&, af::shared<rt_mx> const&>()) // for pickle
+        .def(init<int, rt_mx const&, af::shared<rt_mx> const&>(( // for pickle
+          arg_("multiplicity"),
+          arg_("special_op"),
+          arg_("matrices"))))
         .def("multiplicity", &w_t::multiplicity)
         .def("special_op", &w_t::special_op, ccr())
         .def("matrices", &w_t::matrices, ccr())
@@ -94,9 +97,13 @@ namespace {
       typedef return_internal_reference<> rir;
       class_<w_t>("site_symmetry_table")
         .enable_pickling()
-        .def(init<af::shared<std::size_t> const&,
-                  af::shared<site_symmetry_ops> const&,
-                  af::shared<std::size_t> const&>()) // for pickle
+        .def(init<
+          af::shared<std::size_t> const&,
+          af::shared<site_symmetry_ops> const&,
+          af::shared<std::size_t> const&>(( // for pickle
+            arg_("indices"),
+            arg_("table"),
+            arg_("special_position_indices"))))
         .def("process",
           (void(w_t::*)(site_symmetry_ops const&))
             &w_t::process,

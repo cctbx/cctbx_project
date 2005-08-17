@@ -1,17 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Sep: Renamed miller_asu.h -> reciprocal_space_asu.h (rwgk)
-     2001 Oct: Redesign: AsymIndex (rwgk)
-     2001 Sep: SpaceGroupType -> SpaceGroupInfo (R.W. Grosse-Kunstleve)
-     2001 Aug: Redesign of Kevin Cowtan's implementation for the
-               handling of CCP4 reciprocal-space asymmetric units.
-               Motivation: implementation of MillerIndexGenerator (rwgk).
- */
-
 #ifndef CCTBX_SGTBX_RECIPROCAL_SPACE_ASU_H
 #define CCTBX_SGTBX_RECIPROCAL_SPACE_ASU_H
 
@@ -40,7 +26,8 @@ namespace cctbx { namespace sgtbx { namespace reciprocal_space {
           some of the member functions are used.
        */
       asu()
-      : is_reference_(true)
+      :
+        is_reference_(true)
       {}
 
       //! Initialization.
@@ -49,16 +36,13 @@ namespace cctbx { namespace sgtbx { namespace reciprocal_space {
           to select the corresponding tabulated
           reference_asu.
        */
-      asu(space_group_type const& sg_type);
+      asu(sgtbx::space_group_type const& space_group_type);
 
       //! Access to the selected tabulated reference_asu.
       /*! Not available in Python.
        */
       const reference_asu*
-      reference() const
-      {
-        return reference_;
-      }
+      reference() const { return reference_; }
 
       /*! \brief Access to the string representation of the selected
           tabulated reference_asu.
@@ -66,13 +50,10 @@ namespace cctbx { namespace sgtbx { namespace reciprocal_space {
       /*! Equivalent to: reference().as_string()
        */
       const char*
-      reference_as_string() const
-      {
-        return reference_->as_string();
-      }
+      reference_as_string() const { return reference_->as_string(); }
 
       //! Access to the change-of-basis operator.
-      /*! This operator is a copy of sg_type.cb_op() as passed to
+      /*! This operator is a copy of space_group_type.cb_op() as passed to
           the constructor.
        */
       change_of_basis_op const&
@@ -87,37 +68,44 @@ namespace cctbx { namespace sgtbx { namespace reciprocal_space {
 
       //! Tests if the given Miller index is in the asymmetric unit.
       /*! The change-of-basis matrix is used to transform
-          the Miller index (h * cb_op().c_inv()). It is then
+          the Miller index (miller_index * cb_op().c_inv()). It is then
           tested if the result is in the tabulated reference
           asymmetric unit.
        */
       bool
-      is_inside(miller::index<> const& h) const
+      is_inside(miller::index<> const& miller_index) const
       {
-        if (is_reference_) return reference_->is_inside(h);
-        return reference_->is_inside(h * cb_op_.c_inv().r());
+        if (is_reference_) return reference_->is_inside(miller_index);
+        return reference_->is_inside(miller_index * cb_op_.c_inv().r());
       }
 
       //! Tests Friedel pair.
-      /*! Returns 1 if is_inside(h), -1 if is_inside(minus_h), 0 otherwise.
+      /*! Returns 1 if is_inside(miller_index),
+          -1 if is_inside(minus_miller_index),
+          0 otherwise.
           <p>
           Not available in Python.
        */
       int
-      which(miller::index<> const& h, miller::index<> const& minus_h) const
+      which(
+        miller::index<> const& miller_index,
+        miller::index<> const& minus_miller_index) const
       {
-        if (is_reference_) return reference_->which(h, minus_h);
-        return reference_->which(h * cb_op_.c_inv().r());
+        if (is_reference_) {
+          return reference_->which(miller_index, minus_miller_index);
+        }
+        return reference_->which(miller_index * cb_op_.c_inv().r());
       }
 
       //! Tests Friedel pair.
-      /*! Returns 1 if is_inside(h), -1 if is_inside(-h), 0 otherwise.
+      /*! Returns 1 if is_inside(miller_index),
+          -1 if is_inside(-miller_index), 0 otherwise.
        */
       int
-      which(miller::index<> const& h) const
+      which(miller::index<> const& miller_index) const
       {
-        if (is_reference_) return reference_->which(h);
-        return reference_->which(h * cb_op_.c_inv().r());
+        if (is_reference_) return reference_->which(miller_index);
+        return reference_->which(miller_index * cb_op_.c_inv().r());
       }
 
     private:

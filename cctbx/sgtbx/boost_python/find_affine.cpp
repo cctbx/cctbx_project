@@ -1,4 +1,5 @@
 #include <boost/python/class.hpp>
+#include <boost/python/args.hpp>
 #include <cctbx/sgtbx/find_affine.h>
 
 namespace cctbx { namespace sgtbx {
@@ -14,7 +15,10 @@ namespace {
     {
       using namespace boost::python;
       class_<w_t>("find_affine", no_init)
-        .def(init<space_group const&, optional<int, bool> >())
+        .def(init<space_group const&, optional<int, bool> >((
+          arg_("group"),
+          arg_("range")=2,
+          arg_("use_p1_algorithm")=false)))
         .def("cb_mx", &w_t::cb_mx)
       ;
     }

@@ -1035,7 +1035,7 @@ namespace cctbx { namespace sgtbx {
   }
 
   space_group_symbols::space_group_symbols(
-    int sg_number,
+    int space_group_number,
     string const& extension,
     string const& table_id)
   {
@@ -1049,7 +1049,8 @@ namespace cctbx { namespace sgtbx {
     if (work_symbol.size() != 0) throw_symbol_not_recognized();
 
     const tables::main_symbol_dict_entry* entry = 0;
-    entry = sg_number_to_main_symbol_dict_entry(sg_number, std_table_id);
+    entry = sg_number_to_main_symbol_dict_entry(
+      space_group_number, std_table_id);
     set_all(entry, work_extension, std_table_id);
   }
 

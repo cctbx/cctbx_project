@@ -6,6 +6,7 @@
 #include <boost/python/module.hpp>
 #include <boost/python/scope.hpp>
 #include <boost/python/class.hpp>
+#include <boost/python/args.hpp>
 #include <scitbx/boost_python/container_conversions.h>
 
 namespace cctbx { namespace sgtbx { namespace boost_python {
@@ -40,7 +41,7 @@ namespace {
     {
       using namespace boost::python;
       class_<w_t>("parse_string", no_init)
-        .def(init<std::string const&>())
+        .def(init<std::string const&>((arg_("str"))))
         .def("string", &w_t::string)
         .def("where", &w_t::where)
       ;

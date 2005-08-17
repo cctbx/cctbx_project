@@ -51,38 +51,47 @@ namespace {
       using namespace boost::python;
       typedef return_value_policy<copy_const_reference> ccr;
       class_<w_t>("change_of_basis_op", no_init)
-        .def(init<rt_mx const&, rt_mx const&>())
-        .def(init<rt_mx const&>())
-        .def(init<std::string const&, optional<const char*, int, int> >())
-        .def(init<optional<int, int> >())
+        .def(init<rt_mx const&, rt_mx const&>((
+          arg_("c"), arg_("c_inv"))))
+        .def(init<rt_mx const&>((arg_("c"))))
+        .def(init<std::string const&, optional<const char*, int, int> >((
+          arg_("str_xyz"),
+          arg_("stop_chars"),
+          arg_("r_den"),
+          arg_("t_den"))))
+        .def(init<optional<int, int> >((
+          arg_("r_den")=cb_r_den,
+          arg_("t_den")=cb_t_den)))
         .def("is_valid", &w_t::is_valid)
         .def("identity_op", &w_t::identity_op)
         .def("is_identity_op", &w_t::is_identity_op)
-        .def("new_denominators", new_denominators_int_int)
-        .def("new_denominators", new_denominators_w_t)
+        .def("new_denominators", new_denominators_int_int, (
+          arg_("r_den"),
+          arg_("t_den")))
+        .def("new_denominators", new_denominators_w_t, (arg_("other")))
         .def("c", &w_t::c, ccr())
         .def("c_inv", &w_t::c_inv, ccr())
-        .def("select", &w_t::select, ccr())
+        .def("select", &w_t::select, (arg_("inv")), ccr())
         .def("inverse", &w_t::inverse)
         .def("mod_positive_in_place", &w_t::mod_positive_in_place)
         .def("mod_short_in_place", &w_t::mod_short_in_place)
         .def("apply",
           (rt_mx(w_t::*)(rt_mx const&) const)
-          &w_t::apply)
+          &w_t::apply, (arg_("s")))
         .def("apply",
           (uctbx::unit_cell(w_t::*)(uctbx::unit_cell const&) const)
-          &w_t::apply)
+          &w_t::apply, (arg_("unit_cell")))
         .def("apply",
           (miller::index<>(w_t::*)(miller::index<> const&) const)
-          &w_t::apply)
+          &w_t::apply, (arg_("miller_index")))
         .def("apply",
           (af::shared<miller::index<> >(w_t::*)
             (af::const_ref<miller::index<> > const&) const)
-              &w_t::apply)
+              &w_t::apply, (arg_("miller_indices")))
         .def("__call__",
           (fractional<>(w_t::*)(fractional<> const&) const)
-          &w_t::operator())
-        .def("update", update_w_t)
+          &w_t::operator(), (arg_("site_frac")))
+        .def("update", update_w_t, (arg_("other")))
         .def("__mul__", &w_t::operator*)
         .def("as_xyz", &w_t::as_xyz, as_xyz_overloads((
            arg_("decimal")=false,

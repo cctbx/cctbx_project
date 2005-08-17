@@ -1,14 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Sep: Renamed asym_units.h -> brick.h (rwgk)
-     2001 Sep: SpaceGroupType -> SpaceGroupInfo (R.W. Grosse-Kunstleve)
-     2001 Jul: Created (R.W. Grosse-Kunstleve)
- */
-
 #ifndef CCTBX_SGTBX_BRICK_H
 #define CCTBX_SGTBX_BRICK_H
 
@@ -24,7 +13,8 @@ namespace cctbx { namespace sgtbx {
       brick_point() {};
 
       //! The point as a rational number.
-      boost::rational<int> value() const { return value_; }
+      boost::rational<int>
+      value() const { return value_; }
 
       //! Flag to indicate if the point is inside the brick or just outside.
       /*! Examples for a min point:
@@ -35,7 +25,8 @@ namespace cctbx { namespace sgtbx {
           For a max point the inequalities would be 1/8 >= x and 1/8 > x,
           respectively.
        */
-      int off() const { return off_; }
+      int
+      off() const { return off_; }
 
     protected:
       friend class brick;
@@ -88,7 +79,7 @@ namespace cctbx { namespace sgtbx {
 
       //! Constructor.
       explicit
-      brick(space_group_type const& sg_type);
+      brick(sgtbx::space_group_type const& space_group_type);
 
       //! Access to the six points of the brick.
       /*! i_axis refers to the basis vectors a,b,c of the unit cell.
@@ -107,15 +98,18 @@ namespace cctbx { namespace sgtbx {
       //! Formats the information about the brick as a string.
       /*! Example: 0<=x<=1/8; -1/8<=y<=0; 1/8<z<7/8
        */
-      std::string as_string() const;
+      std::string
+      as_string() const;
 
       //! Tests if a given point is inside the brick.
       /*! Not available in Python.
        */
-      bool is_inside(scitbx::vec3<boost::rational<int> > const& p) const;
+      bool
+      is_inside(scitbx::vec3<boost::rational<int> > const& point) const;
 
       //! Tests if a given point is inside the brick.
-      bool is_inside(tr_vec const& p) const;
+      bool
+      is_inside(tr_vec const& point) const;
 
     private:
       brick_point points_[3][2];

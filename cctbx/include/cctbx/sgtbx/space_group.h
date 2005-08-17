@@ -45,8 +45,9 @@ namespace cctbx { namespace sgtbx {
           Not available in Python.
        */
       explicit
-      space_group(bool no_expand=false, int t_den=sg_t_den)
-      : no_expand_(no_expand)
+      space_group( bool no_expand=false, int t_den=sg_t_den)
+      :
+        no_expand_(no_expand)
       {
         reset(t_den);
       }
@@ -101,11 +102,12 @@ namespace cctbx { namespace sgtbx {
        */
       explicit
       space_group(
-        space_group_symbols const& SgSymbols,
+        sgtbx::space_group_symbols const& space_group_symbols,
         int t_den=sg_t_den);
 
       //! Resets the symmetry to P1.
-      void reset(int t_den=sg_t_den);
+      void
+      reset(int t_den=sg_t_den);
 
       //! Adds a lattice translation vector to the space group.
       /*! Group multiplication is automatically performed
@@ -159,14 +161,16 @@ namespace cctbx { namespace sgtbx {
           Group multiplication is automatically performed
           (unless no_expand = true).
        */
-      std::size_t expand_conventional_centring_type(char symbol);
+      std::size_t
+      expand_conventional_centring_type(char symbol);
 
       //! Parses a Hall Symbol and adds the encoded symmetry matrices.
       /*! Similar to the constructors that take a Hall symbol as the
           first argument. However, the new symmetry matrices are added
           to the existing ones.
        */
-      std::size_t parse_hall_symbol(
+      std::size_t
+      parse_hall_symbol(
         parse_string& hall_symbol,
         bool pedantic=false,
         bool no_centring_type_symbol=false);
@@ -177,7 +181,8 @@ namespace cctbx { namespace sgtbx {
           <p>
           Not available in Python.
        */
-      std::size_t parse_hall_symbol_cb_op(
+      std::size_t
+      parse_hall_symbol_cb_op(
         parse_string& hall_symbol,
         change_of_basis_op& cb_op,
         bool pedantic=false,
@@ -189,42 +194,52 @@ namespace cctbx { namespace sgtbx {
           invalid or if the new symmetry matrices can not be
           represented as integer matrices with denominators in use.
        */
-      space_group change_basis(change_of_basis_op const& cb_op) const;
+      space_group
+      change_basis(change_of_basis_op const& cb_op) const;
 
       //! Rotation part denominator of the Seitz matrices.
       int r_den() const { return smx_[0].r().den(); }
       //! Translation part denominator of the Seitz matrices.
-      int t_den() const { return smx_[0].t().den(); }
+      int
+      t_den() const { return smx_[0].t().den(); }
 
       //! Order of the point group = f_inv() * n_smx().
-      std::size_t order_p() const { return f_inv_ * n_smx(); }
+      std::size_t
+      order_p() const { return f_inv_ * n_smx(); }
 
       //! Order of the space group = n_ltr() * f_inv() * n_smx().
       /*! Python: __len__
        */
-      std::size_t order_z() const { return ltr_.size() * f_inv_ * n_smx(); }
+      std::size_t
+      order_z() const { return ltr_.size() * f_inv_ * n_smx(); }
 
       //! Alias for order_z().
-      std::size_t n_equivalent_positions() const { return order_z(); }
+      std::size_t
+      n_equivalent_positions() const { return order_z(); }
 
       //! Number of lattice translations.
-      std::size_t n_ltr() const { return ltr_.size(); }
+      std::size_t
+      n_ltr() const { return ltr_.size(); }
 
       //! Access to the group of lattice translation vectors.
       /*! Not available in Python.
        */
-      tr_group const& ltr() const { return ltr_; }
+      tr_group
+      const& ltr() const { return ltr_; }
 
       //! Access to elements of the group of lattice translation vectors.
       /*! Not available in Python.
        */
-      tr_vec const& ltr(std::size_t i) const { return ltr_[i]; }
+      tr_vec
+      const& ltr(std::size_t i) const { return ltr_[i]; }
 
       //! Tests for a centre of inversion.
-      bool is_centric() const { return f_inv_ == 2; }
+      bool
+      is_centric() const { return f_inv_ == 2; }
 
       //! Tests for a centre of inversion at the origin.
-      bool is_origin_centric() const
+      bool
+      is_origin_centric() const
       {
         return is_centric() && inv_t(true).is_zero();
       }
@@ -233,12 +248,14 @@ namespace cctbx { namespace sgtbx {
       /*! f_inv() = 1 if no inversion operation exists,<br>
           f_inv() = 2 otherwise.
        */
-      std::size_t f_inv() const { return f_inv_; }
+      std::size_t
+      f_inv() const { return f_inv_; }
 
       //! Translation part for centre of inversion.
       /*! Not available in Python.
        */
-      tr_vec inv_t(bool tidy=false) const
+      tr_vec
+      inv_t(bool tidy=false) const
       {
         if (tidy == false) return inv_t_;
         if (!inv_t_.is_valid()) return inv_t_;
@@ -246,17 +263,20 @@ namespace cctbx { namespace sgtbx {
       }
 
       //! Number of representative Seitz matrices.
-      std::size_t n_smx() const { return smx_.size(); }
+      std::size_t
+      n_smx() const { return smx_.size(); }
 
       //! Access to the list of representative Seitz matrices.
       /*! Not available in Python.
        */
-      smx_array_type const& smx() const { return smx_; }
+      smx_array_type
+      const& smx() const { return smx_; }
 
       //! Access to elements of the list of representative Seitz matrices.
       /*! Not available in Python.
        */
-      rt_mx const& smx(std::size_t i) const { return smx_[i]; }
+      rt_mx
+      const& smx(std::size_t i) const { return smx_[i]; }
 
       //! Returns a symmetry operation.
       /*! Usage:<pre>
@@ -272,7 +292,8 @@ namespace cctbx { namespace sgtbx {
           Note that the translation part of the returned Seitz matrix
           is NOT modified by application of the modulus operation.
        */
-      rt_mx operator()(
+      rt_mx
+      operator()(
         std::size_t i_ltr,
         std::size_t i_inv,
         std::size_t i_smx) const;
@@ -291,7 +312,8 @@ namespace cctbx { namespace sgtbx {
           <p>
           Python: __getitem__
        */
-      rt_mx operator()(std::size_t i_op) const;
+      rt_mx
+      operator()(std::size_t i_op) const;
 
       //! Tidies the lists of representative symmetry operations in place.
       /*! The list of lattice translations is sorted in a certain order.
@@ -322,10 +344,12 @@ namespace cctbx { namespace sgtbx {
           the test will therefore be significantly faster if make_tidy()
           is applied outside the loop.
        */
-      bool operator==(space_group const& rhs) const;
+      bool
+      operator==(space_group const& rhs) const;
 
       //! Negation of test for equality.
-      bool operator!=(space_group const& rhs) const
+      bool
+      operator!=(space_group const& rhs) const
       {
         return !((*this) == rhs);
       }
@@ -335,7 +359,8 @@ namespace cctbx { namespace sgtbx {
           any of the conventional centring types, the null character
           is returned.
        */
-      char conventional_centring_type_symbol() const
+      char
+      conventional_centring_type_symbol() const
       {
         return ltr_.conventional_centring_type_symbol();
       }
@@ -374,15 +399,16 @@ namespace cctbx { namespace sgtbx {
           Note that proteins always crystallize in a chiral space
           group.
        */
-      bool is_chiral() const;
+      bool
+      is_chiral() const;
 
       /*! \brief Tests if a reflection with given Miller index is
           systematically absent.
        */
       bool
-      is_sys_absent(miller::index<> const& h) const
+      is_sys_absent(miller::index<> const& miller_index) const
       {
-        return phase_info(*this, h, false).is_sys_absent();
+        return phase_info(*this, miller_index, false).is_sys_absent();
       }
 
       /*! \brief Tests if a reflection with given Miller index is
@@ -391,7 +417,8 @@ namespace cctbx { namespace sgtbx {
       /*! Overload for arrays.
        */
       af::shared<bool>
-      is_sys_absent(af::const_ref<miller::index<> > const& h) const;
+      is_sys_absent(
+        af::const_ref<miller::index<> > const& miller_indices) const;
 
       //! Tests if a reflection with given Miller index is centric.
       /*! A reflection with the Miller index h is "centric" if
@@ -403,29 +430,35 @@ namespace cctbx { namespace sgtbx {
           calculation it is more efficient to use phase_restriction().
        */
       bool
-      is_centric(miller::index<> const& h) const;
+      is_centric(miller::index<> const& miller_index) const;
 
       //! Tests if a reflection with given Miller index is centric.
       /*! Overload for arrays.
        */
       af::shared<bool>
-      is_centric(af::const_ref<miller::index<> > const& h) const;
+      is_centric(
+        af::const_ref<miller::index<> > const& miller_indices) const;
 
       //! Determines the phase restriction for the given Miller index.
       /*! See class phase_info. The conditions for systematically
           absent reflections are NOT tested.
        */
-      phase_info phase_restriction(miller::index<> const& h) const
+      phase_info
+      phase_restriction(miller::index<> const& miller_index) const
       {
-        return phase_info(*this, h, true);
+        return phase_info(*this, miller_index, true);
       }
 
       //! See class phase_info::is_valid_phase().
-      bool is_valid_phase(miller::index<> const& h, double phi,
-                          bool deg=false,
-                          double tolerance=1.e-5) const
+      bool
+      is_valid_phase(
+        miller::index<> const& miller_index,
+        double phi,
+        bool deg=false,
+        double tolerance=1.e-5) const
       {
-        return phase_restriction(h).is_valid_phase(phi, deg, tolerance);
+        return phase_restriction(miller_index)
+          .is_valid_phase(phi, deg, tolerance);
       }
 
       //! Computes nearest phases compatible with the phase restrictions.
@@ -444,14 +477,18 @@ namespace cctbx { namespace sgtbx {
           list of symmetry matrices considered in the determination of
           the multiplicity.
        */
-      int multiplicity(miller::index<> const& h, bool anomalous_flag) const;
+      int
+      multiplicity(
+        miller::index<> const& miller_index,
+        bool anomalous_flag) const;
 
       //! Determines the reflection multiplicity for the given Miller index.
       /*! Overload for arrays.
        */
       af::shared<int>
-      multiplicity(af::const_ref<miller::index<> > const& h,
-                   bool anomalous_flag) const;
+      multiplicity(
+        af::const_ref<miller::index<> > const& miller_indices,
+        bool anomalous_flag) const;
 
       //! Determines "epsilon" for the given Miller index.
       /*! The factor epsilon counts the number of times a Miller
@@ -460,13 +497,14 @@ namespace cctbx { namespace sgtbx {
           formulae.<br>
           See also: miller::sym_equiv_indices::epsilon()
        */
-      int epsilon(miller::index<> const& h) const;
+      int
+      epsilon(miller::index<> const& miller_index) const;
 
       //! Determines "epsilon" for the given Miller index.
       /*! Overload for arrays.
        */
       af::shared<int>
-      epsilon(af::const_ref<miller::index<> > const& h) const;
+      epsilon(af::const_ref<miller::index<> > const& miller_indices) const;
 
       //! Computes a metrical matrix compatible with the space group symmetry.
       /*! A metrical matrix g is compatible with a given space group
@@ -495,22 +533,24 @@ namespace cctbx { namespace sgtbx {
           uctbx::unit_cell(average_metrical_matrix(ucell.metrical_matrix()));
        */
       uctbx::unit_cell
-      average_unit_cell(uctbx::unit_cell const& ucell) const
+      average_unit_cell(uctbx::unit_cell const& unit_cell) const
       {
         return uctbx::unit_cell(
-          average_metrical_matrix(ucell.metrical_matrix()));
+          average_metrical_matrix(unit_cell.metrical_matrix()));
       }
 
       //! Tests if a unit cell is compatible with the symmetry operations.
       /*! Shorthand for:
           is_compatible_metrical_matrix(ucell.metrical_matrix(), tolerance);
        */
-      bool is_compatible_unit_cell(uctbx::unit_cell const& ucell,
-                                   double relative_length_tolerance=0.01,
-                                   double absolute_angle_tolerance=1.) const
+      bool
+      is_compatible_unit_cell(
+        uctbx::unit_cell const& unit_cell,
+        double relative_length_tolerance=0.01,
+        double absolute_angle_tolerance=1.) const
       {
-        return ucell.is_similar_to(
-          average_unit_cell(ucell),
+        return unit_cell.is_similar_to(
+          average_unit_cell(unit_cell),
           relative_length_tolerance,
           absolute_angle_tolerance);
       }
@@ -542,7 +582,8 @@ namespace cctbx { namespace sgtbx {
           <p>
           Not available in Python.
        */
-      space_group build_derived_group(bool discard_z, bool add_inv) const;
+      space_group
+      build_derived_group(bool discard_z, bool add_inv) const;
 
       //! New instance without a centre of inversion.
       space_group
@@ -565,7 +606,8 @@ namespace cctbx { namespace sgtbx {
           However, the lattice translation vectors are not modified.
           A centre of inversion is added at the origin.
        */
-      space_group build_derived_patterson_group() const
+      space_group
+      build_derived_patterson_group() const
       {
         return build_derived_group(false, true);
       }
@@ -574,7 +616,8 @@ namespace cctbx { namespace sgtbx {
       /*! The translation parts of the symmetry operations are set to 0,
           and the lattice translation vectors are discarded.
        */
-      space_group build_derived_point_group() const
+      space_group
+      build_derived_point_group() const
       {
         return build_derived_group(true, false);
       }
@@ -584,7 +627,8 @@ namespace cctbx { namespace sgtbx {
           the lattice translation vectors are discarded,
           and a centre of inversion is added at the origin.
        */
-      space_group build_derived_laue_group() const
+      space_group
+      build_derived_laue_group() const
       {
         return build_derived_group(true, true);
       }
@@ -601,7 +645,8 @@ namespace cctbx { namespace sgtbx {
           <p>
           Not available in Python.
        */
-      std::map<int, int> count_rotation_part_types() const;
+      std::map<int, int>
+      count_rotation_part_types() const;
 
       //! Determines the point group type.
       /*! The code returned is a matrix group code. There are
@@ -610,7 +655,8 @@ namespace cctbx { namespace sgtbx {
           <p>
           Python: returns a string representing the point group type.
        */
-      matrix_group::code point_group_type() const;
+      matrix_group::code
+      point_group_type() const;
 
       //! Determines the Laue group type.
       /*! The code returned is a matrix group code. There are
@@ -619,7 +665,8 @@ namespace cctbx { namespace sgtbx {
           <p>
           Python: returns a string representing the Laue group type.
        */
-      matrix_group::code laue_group_type() const
+      matrix_group::code
+      laue_group_type() const
       {
         return point_group_type().laue_group_type();
       }
@@ -629,7 +676,8 @@ namespace cctbx { namespace sgtbx {
           <p>
           Python: returns a string representing the crystal system.
        */
-      crystal_system::code crystal_system() const
+      crystal_system::code
+      crystal_system() const
       {
         return point_group_type().crystal_system();
       }
@@ -644,12 +692,14 @@ namespace cctbx { namespace sgtbx {
           The main purpose of this algorithm is therefore the
           retrieval of conventionally used Hermann-Mauguin symbols.
        */
-      space_group_symbols match_tabulated_settings() const;
+      space_group_symbols
+      match_tabulated_settings() const;
 
       //! Refines gridding starting with grid (1,1,1).
       /*! See also: refine_gridding()
        */
-      sg_vec3 gridding() const
+      sg_vec3
+      gridding() const
       {
         return refine_gridding(sg_vec3(1,1,1));
       }

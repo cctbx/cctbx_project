@@ -57,7 +57,7 @@ namespace wyckoff {
           See also: space_group::unique()
        */
       af::shared<rt_mx>
-      unique_ops(const space_group& sg);
+      unique_ops(const sgtbx::space_group& space_group);
 
     private:
       wyckoff::table const* table_;
@@ -98,7 +98,8 @@ namespace wyckoff {
     public:
       //! Default constructor. Calling certain methods may cause crashes!
       mapping()
-      : position_(0)
+      :
+        position_(0)
       {}
 
       //! Unit cell used in the computation of the Wyckoff mapping.
@@ -223,7 +224,7 @@ namespace wyckoff {
           transform the tabulated settings to the given setting.
        */
       explicit
-      table(sgtbx::space_group_type const& sg_type);
+      table(sgtbx::space_group_type const& space_group_type);
 
       //! The space group information as passed to the constructor.
       sgtbx::space_group_type const&
@@ -234,7 +235,8 @@ namespace wyckoff {
           <p>
           Shorthand for positions().size()
        */
-      std::size_t size() const { return positions_.size(); }
+      std::size_t
+      size() const { return positions_.size(); }
 
       //! Returns an entry from the list of Wyckoff positions().
       wyckoff::position const&
@@ -290,16 +292,17 @@ namespace wyckoff {
           sgtbx::wyckoff::mapping wm = mapping(ss);</pre>
        */
       wyckoff::mapping
-      mapping(site_symmetry const& ss) const;
+      mapping(sgtbx::site_symmetry const& site_symmetry) const;
 
       //! Determines the Wyckoff position of x.
       /*! This overload is included mainly for debugging purposes.
           It is highly recommended to use the alternative algorithm.
        */
       wyckoff::mapping
-      mapping(uctbx::unit_cell const& ucell,
-              fractional<> const& original_site,
-              double special_position_radius=0.5) const;
+      mapping(
+        uctbx::unit_cell const& unit_cell,
+        fractional<> const& original_site,
+        double special_position_radius=0.5) const;
 
     private:
       sgtbx::space_group_type space_group_type_;
