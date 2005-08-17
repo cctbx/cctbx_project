@@ -473,10 +473,15 @@ namespace cctbx { namespace xray {
           }
           else {
             if (d_sq > max_d_sq_upper_bound) {
-              throw error(
-                "Excessive radius for real-space sampling of"
-                " model electron density:\n"
-                + scatterer.report_details(unit_cell, "  "));
+              // XXX Pavel: not sure it is the best way to do...
+              // XXX        but definitely better than just ignoring such atoms
+              // XXX        It would be great if we could send a warning
+              //            meaasge from here with the list of affected atoms??
+              d_sq = max_d_sq_upper_bound;
+              //throw error(
+              //  "Excessive radius for real-space sampling of"
+              //  " model electron density:\n"
+              //  + scatterer.report_details(unit_cell, "  "));
             }
             scitbx::math::update_max(max_d_sq, d_sq);
             known_required = box_limit;
