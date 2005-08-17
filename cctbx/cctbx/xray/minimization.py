@@ -79,26 +79,37 @@ class u_penalty_well:
     eps = 8*math.pi**2
     self.left_limit  = self.u_min + 0.1 / eps
     self.right_limit = self.u_max - 0.1 / eps
+    self.overflow_limit = 700.0
 
   def functional(self, u_isos):
+    assert u_isos.size() > 0
     result = 0.0
     for u in u_isos:
         arg1 = self.shape_factor_left  * (self.u_min - u)
         arg2 = self.shape_factor_right * (self.u_max - u)
         if(u > self.right_limit or u < self.left_limit):
-           result += self.left_term_weight  * math.exp(arg1) + \
-                     self.right_term_weight * (1. / math.exp(arg2))
+           if(arg1 > self.overflow_limit): term1 = math.exp(700)
+           else:                           term1 = math.exp(arg1)
+           if(arg2 > self.overflow_limit): term2 = math.exp(700)
+           else:                           term2 = math.exp(arg2)
+           result += self.left_term_weight  * term1 + \
+                     self.right_term_weight * (1. / term2)
     return result / u_isos.size()
 
   def gradient(self, u_isos):
+    assert u_isos.size() > 0
     result = flex.double()
     for u in u_isos:
-        arg1 = self.shape_factor_left * (self.u_min - u)
+        arg1 = self.shape_factor_left  * (self.u_min - u)
         arg2 = self.shape_factor_right * (self.u_max - u)
         if(u > self.right_limit or u < self.left_limit):
+           if(arg1 > self.overflow_limit): term1 = math.exp(700)
+           else:                           term1 = math.exp(arg1)
+           if(arg2 > self.overflow_limit): term2 = math.exp(700)
+           else:                           term2 = math.exp(arg2)
            result.append(
-            -self.left_term_weight * self.shape_factor_left*math.exp(arg1)+ \
-            self.right_term_weight* self.shape_factor_right*(1/math.exp(arg2)))
+              -self.left_term_weight  * self.shape_factor_left  * term1 + \
+               self.right_term_weight * self.shape_factor_right * (1. / term2))
         else:
            result.append(0.0)
     return result / u_isos.size()
