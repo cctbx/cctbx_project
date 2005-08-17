@@ -145,8 +145,9 @@ namespace cctbx { namespace sgtbx {
           if a Hall symbol is used!
        */
       explicit
-      space_group_symbols(std::string const& symbol,
-                          std::string const& table_id = "");
+      space_group_symbols(
+        std::string const& symbol,
+        std::string const& table_id="");
 
       //! Lookup space group number.
       /*! For a general introduction see class details.<br>
@@ -155,12 +156,15 @@ namespace cctbx { namespace sgtbx {
           See also: Extension()
        */
       explicit
-      space_group_symbols(int sg_number, std::string const& extension = "",
-                          std::string const& table_id = "");
+      space_group_symbols(
+        int space_group_number,
+        std::string const& extension="",
+        std::string const& table_id="");
 
       //! For internal use only.
-      space_group_symbols(const symbols::tables::main_symbol_dict_entry* entry,
-                          char extension);
+      space_group_symbols(
+        const symbols::tables::main_symbol_dict_entry* entry,
+        char extension);
 
       //! Tests if the instance is constructed properly.
       /*! Shorthand for: number() != 0
@@ -179,7 +183,8 @@ namespace cctbx { namespace sgtbx {
           are multiple space group representations listed in the
           International Tables.
        */
-      int number() const { return number_; }
+      int
+      number() const { return number_; }
 
       //! Schoenflies symbol.
       /*! One of the 230 unique Schoenflies symbols defined in the
@@ -191,7 +196,8 @@ namespace cctbx { namespace sgtbx {
           are multiple space group representations listed in the
           International Tables.
        */
-      std::string const& schoenflies() const { return schoenflies_; }
+      std::string const&
+      schoenflies() const { return schoenflies_; }
 
       //! A qualifier for the classification of alternative representations.
       /*! A qualifier for monoclinic and orthorhombic space groups.<br>
@@ -207,7 +213,8 @@ namespace cctbx { namespace sgtbx {
           Note that this qualifier is purely informational and not
           actively used in any of the symbol lookup algorithms.
        */
-      std::string const& qualifier() const { return qualifier_; }
+      std::string const&
+      qualifier() const { return qualifier_; }
 
       //! Hermann-Mauguin symbol as defined in the International Tables.
       /*! Hermann-Mauguin (H-M) symbols were originally designed as a
@@ -222,7 +229,8 @@ namespace cctbx { namespace sgtbx {
           ambiguity in the origin selection is overcome by using an
           Extension().
        */
-      std::string const& hermann_mauguin() const { return hermann_mauguin_; }
+      std::string const&
+      hermann_mauguin() const { return hermann_mauguin_; }
 
       //! Extension to the Hermann-Mauguin symbol.
       /*! For some space groups, the extension is used to distinguish
@@ -235,7 +243,8 @@ namespace cctbx { namespace sgtbx {
           The extension is '\0' (the null character) otherwise.<br>
           See also: hermann_mauguin()
        */
-      char extension() const { return extension_; }
+      char
+      extension() const { return extension_; }
 
       //! Hermann-Mauguin symbol with extension appended (if any).
       /*! If the extension is '\0' (the null character),
@@ -246,7 +255,8 @@ namespace cctbx { namespace sgtbx {
           The extended Hermann-Mauguin symbol uniquely identifies a
           tabulated space group representation.
        */
-      std::string const& extended_hermann_mauguin() const
+      std::string const&
+      extended_hermann_mauguin() const
       {
         return extended_hermann_mauguin_;
       }
@@ -261,7 +271,8 @@ namespace cctbx { namespace sgtbx {
           The most common use of Hall symbols in this implementation
           is to initialize objects of class SpaceGroup.
        */
-      std::string const& hall() const { return hall_; }
+      std::string const&
+      hall() const { return hall_; }
 
       //! Determines the point group type.
       /*! The code returned is a matrix group code. There are

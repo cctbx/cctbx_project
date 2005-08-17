@@ -27,12 +27,14 @@ namespace cctbx { namespace sgtbx {
        */
       explicit
       rt_mx(int r_den=1, int t_den=sg_t_den)
-      : r_(r_den), t_(t_den)
+      :
+        r_(r_den), t_(t_den)
       {}
 
       //! Initialization with the given rotation matrix and translation vector.
       rt_mx(rot_mx const& r, tr_vec const& t)
-      : r_(r), t_(t)
+      :
+        r_(r), t_(t)
       {}
 
       //! Initialization with the given rotation matrix.
@@ -41,7 +43,8 @@ namespace cctbx { namespace sgtbx {
        */
       explicit
       rt_mx(rot_mx const& r, int t_den=sg_t_den)
-      : r_(r), t_(t_den)
+      :
+        r_(r), t_(t_den)
       {}
 
       //! Initialization with the given translation vector.
@@ -50,7 +53,8 @@ namespace cctbx { namespace sgtbx {
        */
       explicit
       rt_mx(tr_vec const& t, int r_den=1)
-      : r_(r_den), t_(t)
+      :
+        r_(r_den), t_(t)
       {}
 
       //! Initialization with a symbolic expression, e.g. "x+1/2,y,z".
@@ -60,9 +64,11 @@ namespace cctbx { namespace sgtbx {
           be investigated to locate the input character that triggered
           the error.
        */
-      rt_mx(parse_string& str_xyz,
-            const char* stop_chars="",
-            int r_den=1, int t_den=sg_t_den);
+      rt_mx(
+        parse_string& str_xyz,
+        const char* stop_chars="",
+        int r_den=1,
+        int t_den=sg_t_den);
 
       //! Initialize by parsing a symbolic expression, e.g. "x+1/2,y,z".
       /*! Identical to the constructor that takes a parse_string
@@ -70,35 +76,45 @@ namespace cctbx { namespace sgtbx {
           there is no way to locate the input character that triggered
           the error.
        */
-      rt_mx(std::string const& str_xyz,
-            const char* stop_chars="",
-            int r_den=1, int t_den=sg_t_den);
+      rt_mx(
+        std::string const& str_xyz,
+        const char* stop_chars="",
+        int r_den=1,
+        int t_den=sg_t_den);
 
       //! Initialize with floating point rotation and translation parts.
-      rt_mx(scitbx::mat3<double> const& r,
-            scitbx::vec3<double> const& t,
-            int r_den=1, int t_den=sg_t_den);
+      rt_mx(
+        scitbx::mat3<double> const& r,
+        scitbx::vec3<double> const& t,
+        int r_den=1,
+        int t_den=sg_t_den);
 
       //! Access to rotation part.
-      rot_mx const& r() const { return r_; };
+      rot_mx
+      const& r() const { return r_; };
 
       //! Access to rotation part.
-      rot_mx&       r()       { return r_; };
+      rot_mx&
+      r()       { return r_; };
 
       //! Access to translation part.
-      tr_vec const& t() const { return t_; };
+      tr_vec const&
+      t() const { return t_; };
 
       //! Access to translation part.
-      tr_vec&       t()       { return t_; };
+      tr_vec&
+      t()       { return t_; };
 
       //! Tests equality.
-      bool operator==(rt_mx const& rhs) const
+      bool
+      operator==(rt_mx const& rhs) const
       {
         return (this->r_ == rhs.r_) && (this->t_ == rhs.t_);
       }
 
       //! Tests inequality.
-      bool operator!=(rt_mx const& rhs) const
+      bool
+      operator!=(rt_mx const& rhs) const
       {
         return !((*this) == rhs);
       }
@@ -107,7 +123,8 @@ namespace cctbx { namespace sgtbx {
       /*! A rt_mx is valid only if both the rotation denominator and the
           translation denominator are not zero.
        */
-      bool is_valid() const
+      bool
+      is_valid() const
       {
         return r_.is_valid() && t_.is_valid();
       }
@@ -115,13 +132,15 @@ namespace cctbx { namespace sgtbx {
       //! New unit matrix.
       /*! The new matrix inherits r().den() and t().den().
        */
-      rt_mx unit_mx() const
+      rt_mx
+      unit_mx() const
       {
         return rt_mx(r().den(), t().den());
       }
 
       //! Test if the matrix is the unit matrix.
-      bool is_unit_mx() const
+      bool
+      is_unit_mx() const
       {
         return r_.is_unit_mx() && t_.is_zero();
       }
@@ -141,10 +160,11 @@ namespace cctbx { namespace sgtbx {
           Typical strings used are separator = "," and separator = ", ".
        */
       std::string
-      as_xyz(bool decimal=false,
-             bool t_first=false,
-             const char* letters_xyz="xyz",
-             const char* separator=",") const
+      as_xyz(
+        bool decimal=false,
+        bool t_first=false,
+        const char* letters_xyz="xyz",
+        const char* separator=",") const
       {
         return scitbx::matrix::rational_as_xyz(
           3, 3, r_.num().begin(), r_.den(), t_.num().begin(), t_.den(),
@@ -200,41 +220,53 @@ namespace cctbx { namespace sgtbx {
           r_den == 0 or t_den == 0 indicates that the corresponding old
           denominator is retained.
        */
-      rt_mx new_denominators(int r_den, int t_den=0) const;
+      rt_mx
+      new_denominators(int r_den, int t_den=0) const;
 
       //! Copy of this matrix with the denominators of other.
       /*! An exception is thrown if the elements cannot be scaled to
           the new denominators.
        */
-      rt_mx new_denominators(rt_mx const& other) const
+      rt_mx
+      new_denominators(rt_mx const& other) const
       {
         return new_denominators(other.r().den(), other.t().den());
       }
 
       //! Multiplies the elements and the denominators by the given factors.
       /*! if (factor_r == 0) factor_t = factor_r;
+
+          Not available in Python.
        */
-      rt_mx scale(int factor_r, int factor_t=0) const;
+      rt_mx
+      scale(int factor_r, int factor_t=0) const;
 
       //! Applies modulus operation such that 0 <= x < t().den().
       /*! The operation is applied to the elements of the
           translation vector. The vector is modified in place.
+
+          Not available in Python.
        */
-      void mod_positive_in_place() { t_ = t_.mod_positive(); }
+      void
+      mod_positive_in_place() { t_ = t_.mod_positive(); }
 
       //! Applies modulus operation such that 0 <= x < t().den().
       /*! The operation is applied to the elements of the
           translation vector. A new instance of rt_mx is created.
        */
-      rt_mx mod_positive() const { return rt_mx(r_, t_.mod_positive()); }
+      rt_mx
+      mod_positive() const { return rt_mx(r_, t_.mod_positive()); }
 
       /*! \brief Applies modulus operation such that
           -t().den()/2+1 < x <= t().den()/2.
        */
       /*! The operation is applied to the elements of the
           translation vector. The vector is modified in place.
+
+          Not available in Python.
        */
-      void mod_short_in_place() { t_ = t_.mod_short(); }
+      void
+      mod_short_in_place() { t_ = t_.mod_short(); }
 
       /*! \brief Applies modulus operation such that
           -t().den()/2+1 < x <= t().den()/2.
@@ -242,12 +274,16 @@ namespace cctbx { namespace sgtbx {
       /*! The operation is applied to the elements of the
           translation vector. A new instance of rt_mx is created.
        */
-      rt_mx mod_short() const { return rt_mx(r_, t_.mod_short()); }
+      rt_mx
+      mod_short() const { return rt_mx(r_, t_.mod_short()); }
 
       /*! \brief Tests if the vector v is perpendicular to the axis
           direction of the rotation part.
+
+          Not available in Python.
        */
-      bool is_perpendicular(sg_vec3 const& v) const;
+      bool
+      is_perpendicular(sg_vec3 const& v) const;
 
       //! Computes the intrinsic (screw or glide) part of the translation part.
       /*! Let N be the rotation-part type of r().
@@ -261,15 +297,21 @@ namespace cctbx { namespace sgtbx {
           and N = -3. For those two cases, n = -2*N. The
           intrinsic part is obtained as wi = (1/n)*t.<br>
           See also: translation_part_info
+
+          Not available in Python.
        */
-      tr_vec t_intrinsic_part() const;
+      tr_vec
+      t_intrinsic_part() const;
 
       //! Computes the location part given the intrinsic part wi.
       /*! wi is the result of intrinsic_part(). The location part
           is simply the difference wl = t() - wi.<br>
           See also: translation_part_info
+
+          Not available in Python.
        */
-      tr_vec t_location_part(tr_vec const& wi) const;
+      tr_vec
+      t_location_part(tr_vec const& wi) const;
 
       //! Computes the origin shift given the location part wl.
       /*! wl is the result of location_part(). The origin shift
@@ -282,14 +324,20 @@ namespace cctbx { namespace sgtbx {
           description of all fixed points. For the other rotation-part
           types, the fixed point is unique.<br>
           See also: translation_part_info
+
+          Not available in Python.
        */
-      tr_vec t_origin_shift(tr_vec const& wl) const;
+      tr_vec
+      t_origin_shift(tr_vec const& wl) const;
 
       //! Efficient computation of (-I|inv_t) * (r|t).
       /*! I is the identidy matrix. inv_t is the translation part
           of a centre of inversion.
+
+          Not available in Python.
        */
-      rt_mx pre_multiply_inv_t(tr_vec const& inv_t)
+      rt_mx
+      pre_multiply_inv_t(tr_vec const& inv_t)
       {
         return rt_mx(-r_, -t_ + inv_t);
       }
@@ -299,25 +347,32 @@ namespace cctbx { namespace sgtbx {
           or if the result cannot be scaled to the rotation part
           denominator or the translation part denominator.
        */
-      rt_mx inverse() const;
+      rt_mx
+      inverse() const;
 
       /*! \brief Similar to /=, but multiplies denominators instead
           of dividing elements.
+
+          Not available in Python.
        */
-      void pseudo_divide(int rhs)
+      void
+      pseudo_divide(int rhs)
       {
         r_.den() *= rhs;
         t_.den() *= rhs;
       }
 
       //! Unary minus.
-      rt_mx operator-() const { return rt_mx(-r_, -t_); }
+      rt_mx
+      operator-() const { return rt_mx(-r_, -t_); }
 
       //! Addition operator.
-      rt_mx operator+(rt_mx const& rhs) const;
+      rt_mx
+      operator+(rt_mx const& rhs) const;
 
       //! += operator.
-      rt_mx& operator+=(rt_mx const& rhs)
+      rt_mx&
+      operator+=(rt_mx const& rhs)
       {
         r_ += rhs.r_;
         t_ += rhs.t_;
@@ -340,10 +395,12 @@ namespace cctbx { namespace sgtbx {
           <p>
           operator*() is faster than multiply().
        */
-      rt_mx operator*(rt_mx const& rhs) const;
+      rt_mx
+      operator*(rt_mx const& rhs) const;
 
       //! Addition of translation vector to translation part.
-      rt_mx operator+(tr_vec const& rhs) const;
+      rt_mx
+      operator+(tr_vec const& rhs) const;
 
       /*! \brief Refines gridding such that each grid point is
           mapped onto another grid point by the symmetry operation.
@@ -357,12 +414,14 @@ namespace cctbx { namespace sgtbx {
           part are divided by their greatest common denominator.
           The same procedure is applied to the translation part.
        */
-      rt_mx cancel() const;
+      rt_mx
+      cancel() const;
 
       //! Computes the inverse matrix.
       /*! An exception is thrown if the matrix cannot be inverted.
        */
-      rt_mx inverse_cancel() const;
+      rt_mx
+      inverse_cancel() const;
 
       //! Multiplication with cancellation for general rt_mx.
       /*! Similar to opertor*(). However, the operands may have any
@@ -372,7 +431,8 @@ namespace cctbx { namespace sgtbx {
           <p>
           See also: cancel()
        */
-      rt_mx multiply(rt_mx const& rhs) const;
+      rt_mx
+      multiply(rt_mx const& rhs) const;
 
     private:
       rot_mx r_;
@@ -470,17 +530,20 @@ namespace cctbx { namespace sgtbx {
       //! Intrinsic (srew or glide) part.
       /*! See rt_mx::t_intrinsic_part()
        */
-      tr_vec const& intrinsic_part() const { return ip_; }
+      tr_vec const&
+      intrinsic_part() const { return ip_; }
 
       //! Location part.
       /*! See rt_mx::t_location_part()
        */
-      tr_vec const& location_part() const { return lp_; }
+      tr_vec const&
+      location_part() const { return lp_; }
 
       //! Origin shift.
       /*! See rt_mx::t_origin_shift()
        */
-      tr_vec const& origin_shift() const { return os_; }
+      tr_vec const&
+      origin_shift() const { return os_; }
 
     private:
       tr_vec ip_;

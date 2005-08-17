@@ -449,12 +449,12 @@ namespace cctbx { namespace sgtbx {
   }
 
   space_group::space_group(
-    space_group_symbols const& symbols,
+    sgtbx::space_group_symbols const& space_group_symbols,
     int t_den)
   : no_expand_(false)
   {
     reset(t_den);
-    parse_string hall_symbol_ps(symbols.hall());
+    parse_string hall_symbol_ps(space_group_symbols.hall());
     parse_hall_symbol(hall_symbol_ps, true);
   }
 

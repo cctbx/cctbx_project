@@ -1,16 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Sep: Refactored parts of cctbx/sgtbx/groups.h (rwgk)
-     2001 Sep: SpaceGroupType -> SpaceGroupInfo (R.W. Grosse-Kunstleve)
-     2001 Jul: Merged from CVS branch sgtbx_special_pos (rwgk)
-     2001 May: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
-     2001 Apr: SourceForge release (R.W. Grosse-Kunstleve)
- */
-
 #ifndef CCTBX_SGTBX_SPACE_GROUP_TYPE_H
 #define CCTBX_SGTBX_SPACE_GROUP_TYPE_H
 
@@ -37,8 +24,9 @@ namespace cctbx { namespace sgtbx {
           space_group_type(space_group(space_group_symbols(symbol, table_id)))
        */
       explicit
-      space_group_type(std::string const& symbol,
-                       std::string const& table_id = "");
+      space_group_type(
+        std::string const& symbol,
+        std::string const& table_id="");
 
       //! Determines the space group type.
       /*! The algorithm for the determination of the space group
@@ -68,18 +56,23 @@ namespace cctbx { namespace sgtbx {
           runtime is only a small fraction of a second.
        */
       explicit
-      space_group_type(space_group const& group,
-                       bool tidy_cb_op=true,
-                       int r_den=cb_r_den, int t_den=cb_t_den);
+      space_group_type(
+        space_group const& group,
+        bool tidy_cb_op=true,
+        int r_den=cb_r_den,
+        int t_den=cb_t_den);
 
       //! Access to space group passed to the constructor.
-      space_group const& group() const { return group_; }
+      space_group const&
+      group() const { return group_; }
 
       //! Space group number according to the International Tables.
-      int number() const { return number_; }
+      int
+      number() const { return number_; }
 
       //! Change-of-basis operator.
-      change_of_basis_op const& cb_op() const { return cb_op_; }
+      change_of_basis_op const&
+      cb_op() const { return cb_op_; }
 
       //! Gets the additional generators of the Euclidean normalizer.
       /*! See International Tables for Crystallography Volume A,
@@ -96,8 +89,9 @@ namespace cctbx { namespace sgtbx {
           See also: class StructureSeminvariant
        */
       af::shared<rt_mx>
-      addl_generators_of_euclidean_normalizer(bool flag_k2l,
-                                              bool flag_l2n) const;
+      addl_generators_of_euclidean_normalizer(
+        bool flag_k2l,
+        bool flag_l2n) const;
 
       /*! \brief Adds the additional generators of the Euclidean normalizer
           to the space group.
@@ -106,8 +100,9 @@ namespace cctbx { namespace sgtbx {
                     space_group::expand_smx()
        */
       space_group
-      expand_addl_generators_of_euclidean_normalizer(bool flag_k2l,
-                                                     bool flag_l2n) const
+      expand_addl_generators_of_euclidean_normalizer(
+        bool flag_k2l,
+        bool flag_l2n) const
       {
         space_group result = group_;
         result.expand_smx(
@@ -131,7 +126,8 @@ namespace cctbx { namespace sgtbx {
           <p>
           See also: change_of_hand_op()
        */
-      bool is_enantiomorphic() const;
+      bool
+      is_enantiomorphic() const;
 
       //! Determines a change-of-hand matrix.
       /*! If the space group is centro-symmetric, the change-of-hand
@@ -160,7 +156,8 @@ namespace cctbx { namespace sgtbx {
           See also: addl_generators_of_euclidean_normalizer(),
                     is_enantiomorphic(), space_group::change_basis()
        */
-      change_of_basis_op change_of_hand_op() const;
+      change_of_basis_op
+      change_of_hand_op() const;
 
       //! Builds a Hall symbol for the given symmetry operations.
       /*! For a given group of symmetry operations, there are in
@@ -174,7 +171,8 @@ namespace cctbx { namespace sgtbx {
           given setting that is independent of the order of
           the symmetry operations.
        */
-      std::string hall_symbol(bool tidy_cb_op = true) const;
+      std::string
+      hall_symbol(bool tidy_cb_op = true) const;
 
       //! Determines conventional Hermann-Mauguin symbol or Hall symbol.
       /*! First, group().match_tabulated_settings() is called. If the given
@@ -187,7 +185,8 @@ namespace cctbx { namespace sgtbx {
           The result of lookup_symbol() can be used as the input
           for the constructor of class space_group_symbols.
        */
-      std::string lookup_symbol() const;
+      std::string
+      lookup_symbol() const;
 
     private:
       space_group group_;

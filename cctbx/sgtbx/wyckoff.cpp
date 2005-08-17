@@ -1,16 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Sep: Refactored (R.W. Grosse-Kunstleve)
-     2001 Oct: SpecialPosition -> SiteSymmetry (R.W. Grosse-Kunstleve)
-     2001 Sep: SpaceGroupType -> SpaceGroupInfo (R.W. Grosse-Kunstleve)
-     2001 Jul: Merged from CVS branch sgtbx_special_pos (rwgk)
-     2001 Jun: Created (R.W. Grosse-Kunstleve)
- */
-
 #include <cctbx/sgtbx/wyckoff.h>
 #include <cctbx/sgtbx/reference_settings.h>
 #include <cctbx/sgtbx/smith_normal_form.h>
@@ -39,15 +26,16 @@ namespace cctbx { namespace sgtbx { namespace wyckoff {
   }
 
   af::shared<rt_mx>
-  position::unique_ops(const space_group& sg)
+  position::unique_ops(const sgtbx::space_group& space_group)
   {
-    af::shared<rt_mx> result = sg.unique(special_op_);
+    af::shared<rt_mx> result = space_group.unique(special_op_);
     CCTBX_ASSERT(result.size() == multiplicity_);
     return result;
   }
 
-  table::table(sgtbx::space_group_type const& sg_type)
-  : space_group_type_(sg_type)
+  table::table(sgtbx::space_group_type const& space_group_type)
+  :
+    space_group_type_(space_group_type)
   {
     using reference_settings::wyckoff::general_position_multiplicities;
     using reference_settings::wyckoff::raw_table;
@@ -96,16 +84,17 @@ namespace cctbx { namespace sgtbx { namespace wyckoff {
   }
 
   wyckoff::mapping
-  table::mapping(uctbx::unit_cell const& ucell,
-                 fractional<> const& x,
-                 double special_position_radius) const
+  table::mapping(
+    uctbx::unit_cell const& unit_cell,
+    fractional<> const& x,
+    double special_position_radius) const
   {
     space_group const& sg = space_group_type_.group();
     fractional<> norm_x = x.mod_short();
     tr_vec norm_u(fractional<>(norm_x - x).unit_shifts(), 1);
     for (std::size_t i_pos=size()-1;i_pos>0;i_pos--) {
       wyckoff::mapping result;
-      double shortest_distance_sq = ucell.longest_vector_sq();
+      double shortest_distance_sq = unit_cell.longest_vector_sq();
       for(std::size_t i_op = 0;i_op<sg.order_z();i_op++) {
         rt_mx sym_op = sg(i_op).mod_short();
         fractional<> sx = sym_op * norm_x;
@@ -116,11 +105,11 @@ namespace cctbx { namespace sgtbx { namespace wyckoff {
         for (u_n[2] = -1; u_n[2] <= 1; u_n[2]++) {
           fractional<> usx = sx + u.as_double();
           fractional<> exact_usx = positions_[i_pos].special_op() * usx;
-          double dist_sq = ucell.distance_sq(exact_usx, usx);
+          double dist_sq = unit_cell.distance_sq(exact_usx, usx);
           if (shortest_distance_sq > dist_sq) {
             shortest_distance_sq = dist_sq;
             result = wyckoff::mapping(
-              ucell,
+              unit_cell,
               x,
               positions_[i_pos],
               rt_mx(sym_op.r(),
@@ -132,7 +121,7 @@ namespace cctbx { namespace sgtbx { namespace wyckoff {
         return result;
       }
     }
-    return wyckoff::mapping(ucell, x, positions_[0], rt_mx(1, 1));
+    return wyckoff::mapping(unit_cell, x, positions_[0], rt_mx(1, 1));
   }
 
   namespace {
@@ -167,20 +156,23 @@ namespace cctbx { namespace sgtbx { namespace wyckoff {
   } // namespace <anonymous>
 
   wyckoff::mapping
-  table::mapping(site_symmetry const& ss) const
+  table::mapping(sgtbx::site_symmetry const& site_symmetry) const
   {
     CCTBX_ASSERT(positions_.size() > 0);
-    CCTBX_ASSERT(ss.space_group() == space_group_type_.group());
+    CCTBX_ASSERT(site_symmetry.space_group() == space_group_type_.group());
     const wyckoff::position* pos = positions_.begin();
-    if (pos->multiplicity() == ss.multiplicity()) {
-      return wyckoff::mapping(ss.unit_cell(), ss.original_site(),
-                              *pos, rt_mx(1, 1));
+    if (pos->multiplicity() == site_symmetry.multiplicity()) {
+      return wyckoff::mapping(
+        site_symmetry.unit_cell(),
+        site_symmetry.original_site(),
+        *pos,
+        rt_mx(1, 1));
     }
-    rot_mx const& r_s = ss.special_op().r();
-    tr_vec const& t_s = ss.special_op().t();
-    space_group const& sg = ss.space_group();
+    rot_mx const& r_s = site_symmetry.special_op().r();
+    tr_vec const& t_s = site_symmetry.special_op().t();
+    space_group const& sg = site_symmetry.space_group();
     for(;pos!=positions_.end();pos++) {
-      if (pos->multiplicity() == ss.multiplicity()) {
+      if (pos->multiplicity() == site_symmetry.multiplicity()) {
         rot_mx const& r_w = pos->special_op().r();
         tr_vec const& t_w = pos->special_op().t();
         for(std::size_t i_op=0;i_op<sg.order_p();i_op++) {
@@ -194,8 +186,12 @@ namespace cctbx { namespace sgtbx { namespace wyckoff {
                           .minus(r_w.multiply(t)).minus(t_w);
               tr_vec u = solve_in_z(r_w_m_i, b);
               if (u.is_valid()) {
-                return wyckoff::mapping(ss.unit_cell(), ss.original_site(),
-                                        *pos, rt_mx(r.cancel(), t.plus(u)));
+                return wyckoff::mapping(
+                  site_symmetry.unit_cell(),
+                  site_symmetry.original_site(),
+                  *pos,
+                  rt_mx(r.cancel(),
+                  t.plus(u)));
               }
             }
           }

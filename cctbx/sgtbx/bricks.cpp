@@ -784,15 +784,15 @@ namespace cctbx { namespace sgtbx {
   namespace {
 
     const raw_bricks::entry*
-    find_raw_brick(space_group_type const& sg_type)
+    find_raw_brick(sgtbx::space_group_type const& space_group_type)
     {
-      int sg_number = sg_type.number();
+      int sg_number = space_group_type.number();
       for (const raw_bricks::entry* b = raw_bricks::table; b->sg_number; b++) {
         if (b->sg_number > sg_number) break;
         if (b->sg_number == sg_number) {
           space_group tab_sg(b->hall_symbol, false, false, false,
-                             sg_type.group().t_den());
-          if (sg_type.group() == tab_sg) return b;
+                             space_group_type.group().t_den());
+          if (space_group_type.group() == tab_sg) return b;
         }
       }
       return 0;
@@ -800,9 +800,9 @@ namespace cctbx { namespace sgtbx {
 
   }
 
-  brick::brick(space_group_type const& sg_type)
+  brick::brick(sgtbx::space_group_type const& space_group_type)
   {
-    const raw_bricks::entry* raw_brick = find_raw_brick(sg_type);
+    const raw_bricks::entry* raw_brick = find_raw_brick(space_group_type);
     if (raw_brick == 0) {
       throw error(
         "Brick is not available for the given space group representation.");
@@ -822,7 +822,8 @@ namespace cctbx { namespace sgtbx {
     return points_[i_axis][i_min_max];
   }
 
-  std::string brick::as_string() const
+  std::string
+  brick::as_string() const
   {
     std::string result;
     for(std::size_t i=0;i<3;i++) {
@@ -838,33 +839,35 @@ namespace cctbx { namespace sgtbx {
     return result;
   }
 
-  bool brick::is_inside(scitbx::vec3<boost::rational<int> > const& p) const
+  bool
+  brick::is_inside(scitbx::vec3<boost::rational<int> > const& point) const
   {
     for(std::size_t i=0;i<3;i++) {
       if (!points_[i][0].off()) {
-        if (!(points_[i][0].value() <= p[i])) return false;
+        if (!(points_[i][0].value() <= point[i])) return false;
       }
       else {
-        if (!(points_[i][0].value() <  p[i])) return false;
+        if (!(points_[i][0].value() <  point[i])) return false;
       }
       if (!points_[i][1].off()) {
-        if (!(p[i] <= points_[i][1].value())) return false;
+        if (!(point[i] <= points_[i][1].value())) return false;
       }
       else {
-        if (!(p[i] <  points_[i][1].value())) return false;
+        if (!(point[i] <  points_[i][1].value())) return false;
       }
     }
     return true;
   }
 
-  bool brick::is_inside(tr_vec const& p) const
+  bool
+  brick::is_inside(tr_vec const& point) const
   {
     typedef boost::rational<int> rational;
-    int den = p.den();
+    int den = point.den();
     return is_inside(scitbx::vec3<rational>(
-      rational(p[0], den),
-      rational(p[1], den),
-      rational(p[2], den)));
+      rational(point[0], den),
+      rational(point[1], den),
+      rational(point[2], den)));
   }
 
 }} // namespace cctbx::sgtbx

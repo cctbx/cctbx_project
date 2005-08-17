@@ -93,8 +93,9 @@ namespace cctbx { namespace sgtbx {
        */
       template <class FloatType>
       bool
-      is_compatible_u_star(scitbx::sym_mat3<FloatType> const& u_star,
-                           FloatType tolerance=1.e-6) const;
+      is_compatible_u_star(
+        scitbx::sym_mat3<FloatType> const& u_star,
+        FloatType tolerance=1.e-6) const;
 
       /*! \brief Averages symmetrically equivalent u_star tensors to
           obtain a tensor that satisfies the symmetry constraints.
@@ -216,11 +217,12 @@ namespace cctbx { namespace sgtbx {
 
           See also: class wyckoff::table
        */
-      site_symmetry(uctbx::unit_cell const& unit_cell,
-                    sgtbx::space_group const& space_group,
-                    fractional<> const& original_site,
-                    double min_distance_sym_equiv=0.5,
-                    bool assert_min_distance_sym_equiv=true);
+      site_symmetry(
+        uctbx::unit_cell const& unit_cell,
+        sgtbx::space_group const& space_group,
+        fractional<> const& original_site,
+        double min_distance_sym_equiv=0.5,
+        bool assert_min_distance_sym_equiv=true);
 
       //! Unit cell used in the computation of the site symmetry.
       uctbx::unit_cell const&
@@ -262,7 +264,8 @@ namespace cctbx { namespace sgtbx {
       }
 
       //! Distance between original_site() and exact_site().
-      double distance_moved() const
+      double
+      distance_moved() const
       {
         return std::sqrt(distance_moved_sq());
       }
@@ -282,7 +285,8 @@ namespace cctbx { namespace sgtbx {
       shortest_distance() const { return std::sqrt(shortest_distance_sq_); }
 
       //! Tests if shortest_distance() > min_distance_sym_equiv().
-      bool check_min_distance_sym_equiv() const
+      bool
+      check_min_distance_sym_equiv() const
       {
         return shortest_distance_sq_ > min_distance_sym_equiv_sq_;
       }

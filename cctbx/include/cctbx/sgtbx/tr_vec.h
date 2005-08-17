@@ -24,7 +24,8 @@ namespace cctbx { namespace sgtbx {
        */
       explicit
       tr_vec(int tr_den=sg_t_den)
-      : num_(0,0,0), den_(tr_den)
+      :
+        num_(0,0,0), den_(tr_den)
       {}
 
       /*! \brief Initialization a translation with the integer numerator v
@@ -32,65 +33,80 @@ namespace cctbx { namespace sgtbx {
        */
       explicit
       tr_vec(sg_vec3 const& v, int tr_den=sg_t_den)
-      : num_(v), den_(tr_den)
+      :
+        num_(v), den_(tr_den)
       {}
 
       /*! \brief Initialization of a v0,v1,v2-translation with the
           denominator tr_den.
        */
       tr_vec(int v0, int v1, int v2, int tr_den=sg_t_den)
-      : num_(v0,v1,v2), den_(tr_den)
+      :
+        num_(v0,v1,v2), den_(tr_den)
       {}
 
       //! Numerator of the translation vector.
-      sg_vec3 const& num() const { return num_; }
+      sg_vec3 const&
+      num() const { return num_; }
       //! Numerator of the translation vector.
-      sg_vec3&       num()       { return num_; }
+      sg_vec3&
+      num()       { return num_; }
 
       //! i'th element of the numerator of the translation vector.
-      int const& operator[](std::size_t i) const { return num_[i]; }
+      int const&
+      operator[](std::size_t i) const { return num_[i]; }
       //! i'th element of the numerator of the translation vector.
-      int&       operator[](std::size_t i)       { return num_[i]; }
+      int&
+      operator[](std::size_t i)       { return num_[i]; }
 
       //! Denominator of the translation vector.
-      int const& den() const { return den_; }
+      int const&
+      den() const { return den_; }
       //! Denominator of the translation vector.
-      int&       den()       { return den_; }
+      int&
+      den()       { return den_; }
 
       //! True only if both the numerators and the denominators are equal.
-      bool operator==(tr_vec const& rhs) const
+      bool
+      operator==(tr_vec const& rhs) const
       {
         if (den_ != rhs.den_) return false;
         return num_.const_ref().all_eq(rhs.num_.const_ref());
       }
 
       //! False only if both the numerators and the denominators are equal.
-      bool operator!=(tr_vec const& rhs) const
+      bool
+      operator!=(tr_vec const& rhs) const
       {
         return !((*this) == rhs);
       }
 
       //! True only if den() != 0.
-      bool is_valid() const { return den_ != 0; }
+      bool
+      is_valid() const { return den_ != 0; }
 
       //! True only if all elements of the numertor are equal to zero.
-      bool is_zero() const { return num_.is_zero(); }
+      bool
+      is_zero() const { return num_.is_zero(); }
 
       //! New translation vector with denominator new_den.
       /*! An exception is thrown if the old translation vector
           cannot be represented using the new denominator.
        */
-      tr_vec new_denominator(int new_den) const;
+      tr_vec
+      new_denominator(int new_den) const;
 
       //! New translation vector with num()*factor and den()*factor.
-      tr_vec scale(int factor) const
+      tr_vec
+      scale(int factor) const
       {
         if (factor == 1) return *this;
         return tr_vec(num_ * factor, den_ * factor);
       }
 
       //! New translation vector with 0 <= num()[i] < den().
-      tr_vec mod_positive() const
+      tr_vec
+      mod_positive() const
       {
         tr_vec result(num_, den_);
         for(std::size_t i=0;i<3;i++) {
@@ -100,7 +116,8 @@ namespace cctbx { namespace sgtbx {
       }
 
       //! New translation vector with -den()/2 < num()[i] <= den()/2.
-      tr_vec mod_short() const
+      tr_vec
+      mod_short() const
       {
         tr_vec result(num_, den_);
         for(std::size_t i=0;i<3;i++) {
@@ -110,12 +127,14 @@ namespace cctbx { namespace sgtbx {
       }
 
       //! New translation vector with -num(), den().
-      tr_vec operator-() const { return tr_vec(-num_, den_); }
+      tr_vec
+      operator-() const { return tr_vec(-num_, den_); }
 
       //! Addition of numerators.
       /*! An exception is thrown if the denominators are not equal.
        */
-      friend tr_vec operator+(tr_vec const& lhs, tr_vec const& rhs)
+      friend tr_vec
+      operator+(tr_vec const& lhs, tr_vec const& rhs)
       {
         CCTBX_ASSERT(lhs.den_ == rhs.den_);
         return tr_vec(lhs.num_ + rhs.num_, lhs.den_);
@@ -124,7 +143,8 @@ namespace cctbx { namespace sgtbx {
       //! Subtraction of numerators.
       /*! An exception is thrown if the denominators are not equal.
        */
-      friend tr_vec operator-(tr_vec const& lhs, tr_vec const& rhs)
+      friend tr_vec
+      operator-(tr_vec const& lhs, tr_vec const& rhs)
       {
         CCTBX_ASSERT(lhs.den_ == rhs.den_);
         return tr_vec(lhs.num_ - rhs.num_, lhs.den_);
@@ -133,7 +153,8 @@ namespace cctbx { namespace sgtbx {
       //! In-place addition of numerators.
       /*! An exception is thrown if the denominators are not equal.
        */
-      tr_vec& operator+=(tr_vec const& rhs)
+      tr_vec&
+      operator+=(tr_vec const& rhs)
       {
         CCTBX_ASSERT(den_ == rhs.den_);
         num_ += rhs.num_;
@@ -141,7 +162,8 @@ namespace cctbx { namespace sgtbx {
       }
 
       //! New translation vector with num() * rhs, den().
-      friend tr_vec operator*(tr_vec const& lhs, int rhs)
+      friend tr_vec
+      operator*(tr_vec const& lhs, int rhs)
       {
         return tr_vec(lhs.num_ * rhs, lhs.den_);
       }
@@ -150,10 +172,12 @@ namespace cctbx { namespace sgtbx {
       /*! An exception is thrown if the result cannot be represented
           using den().
        */
-      friend tr_vec operator/(tr_vec const& lhs, int rhs);
+      friend tr_vec
+      operator/(tr_vec const& lhs, int rhs);
 
       //! New translation vector with rhs.num() * lhs, rhs.den().
-      friend tr_vec operator*(int const& lhs, tr_vec const& rhs)
+      friend tr_vec
+      operator*(int const& lhs, tr_vec const& rhs)
       {
         return rhs * lhs;
       }
@@ -165,10 +189,12 @@ namespace cctbx { namespace sgtbx {
       tr_vec cancel() const;
 
       //! Addition with cancellation of factors.
-      tr_vec plus(tr_vec const& rhs) const;
+      tr_vec
+      plus(tr_vec const& rhs) const;
 
       //! Subtraction with cancellation of factors.
-      tr_vec minus(tr_vec const& rhs) const;
+      tr_vec
+      minus(tr_vec const& rhs) const;
 
       //! Conversion to a floating-point array.
       template <typename FloatType>
@@ -179,8 +205,6 @@ namespace cctbx { namespace sgtbx {
       }
 
       //! Conversion to an array with element type double.
-      /*! Python: float()
-       */
       scitbx::vec3<double>
       as_double() const
       {

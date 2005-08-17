@@ -1,4 +1,5 @@
 #include <boost/python/class.hpp>
+#include <boost/python/args.hpp>
 #include <boost/python/overloads.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
@@ -49,14 +50,34 @@ namespace {
       class_<w_t>("rt_mx", no_init)
         .enable_pickling()
         .def("__init__", boost::python::make_constructor(unpickle_init))
-        .def(init<optional<int, int> >())
-        .def(init<rot_mx const&, tr_vec const&>())
-        .def(init<rot_mx const&, optional<int> >())
-        .def(init<tr_vec const&, optional<int> >())
-        .def(init<parse_string&, optional<const char*, int, int> >())
-        .def(init<std::string const&, optional<const char*, int, int> >())
-        .def(init<scitbx::mat3<double> const&,
-                  scitbx::vec3<double> const&, optional<int, int> >())
+        .def(init<optional<int, int> >((
+          arg_("r_den")=1,
+          arg_("t_den")=sg_t_den)))
+        .def(init<rot_mx const&, tr_vec const&>((arg_("r"), arg_("t"))))
+        .def(init<rot_mx const&, optional<int> >((
+          arg_("r"),
+          arg_("t_den")=sg_t_den)))
+        .def(init<tr_vec const&, optional<int> >((
+          arg_("t"),
+          arg_("r_den")=1)))
+        .def(init<parse_string&, optional<const char*, int, int> >((
+          arg_("str_xyz"),
+          arg_("stop_chars")="",
+          arg_("r_den")=1,
+          arg_("t_den")=sg_t_den)))
+        .def(init<std::string const&, optional<const char*, int, int> >((
+          arg_("str_xyz"),
+          arg_("stop_chars")="",
+          arg_("r_den")=1,
+          arg_("t_den")=sg_t_den)))
+        .def(init<
+          scitbx::mat3<double> const&,
+          scitbx::vec3<double> const&,
+          optional<int, int> >((
+            arg_("r"),
+            arg_("t"),
+            arg_("r_den")=1,
+            arg_("t_den")=sg_t_den)))
         .def("r", (rot_mx const&(w_t::*)() const) &w_t::r, rir())
         .def("t", (tr_vec const&(w_t::*)() const) &w_t::t, rir())
         .def("__eq__", &w_t::operator==)
@@ -64,24 +85,31 @@ namespace {
         .def("is_valid", &w_t::is_valid)
         .def("unit_mx", &w_t::unit_mx)
         .def("is_unit_mx", &w_t::is_unit_mx)
-        .def("as_xyz", &w_t::as_xyz, as_xyz_overloads())
+        .def("as_xyz", &w_t::as_xyz, as_xyz_overloads((
+          arg_("decimal")=false,
+          arg_("t_first")=false,
+          arg_("letters_xyz")="xyz",
+          arg_("separator")=",")))
         .def("__str__", str)
         .def("as_int_array", &w_t::as_int_array)
         .def("as_double_array", &w_t::as_double_array)
         .def("new_denominators",
           (rt_mx(w_t::*)(int, int) const) 0,
-            new_denominators_overloads())
+            new_denominators_overloads((
+              arg_("r_den"),
+              arg_("t_den")=0)))
         .def("new_denominators",
           (rt_mx(w_t::*)(rt_mx const&) const)
-            &w_t::new_denominators)
+            &w_t::new_denominators, (
+              arg_("other")))
         .def("mod_positive", &w_t::mod_positive)
         .def("mod_short", &w_t::mod_short)
         .def("inverse", &w_t::inverse)
         .def("refine_gridding", (sg_vec3(w_t::*)(sg_vec3 const&) const)
-          &w_t::refine_gridding)
+          &w_t::refine_gridding, (arg_("grid")))
         .def("cancel", &w_t::cancel)
         .def("inverse_cancel", &w_t::inverse_cancel)
-        .def("multiply", &w_t::multiply)
+        .def("multiply", &w_t::multiply, (arg_("rhs")))
         .def("__mul__", mul)
         .def("__add__", (rt_mx(w_t::*)(sg_vec3 const&) const)&w_t::operator+)
         .def("__add__", (rt_mx(w_t::*)(tr_vec const&) const)&w_t::operator+)
@@ -102,7 +130,7 @@ namespace {
       using namespace boost::python;
       typedef return_value_policy<copy_const_reference> ccr;
       class_<w_t>("translation_part_info", no_init)
-        .def(init<rt_mx const&>())
+        .def(init<rt_mx const&>((arg_("s"))))
         .def("intrinsic_part", &w_t::intrinsic_part, ccr())
         .def("location_part", &w_t::location_part, ccr())
         .def("origin_shift", &w_t::origin_shift, ccr())
