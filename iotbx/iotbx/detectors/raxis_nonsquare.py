@@ -26,7 +26,6 @@ class NonSquareRAXISImage(RAXISImage):
 
       self.extra = (self.np-self.head['nSlow'])/2
 
-      print "readHeader of non-square image"
       self.generic_param_from_vendor_head()
       self.generic_param_from_adapt_head()
 
