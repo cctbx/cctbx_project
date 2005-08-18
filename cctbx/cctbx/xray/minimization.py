@@ -90,10 +90,18 @@ class u_penalty_well:
         if(u > self.right_limit or u < self.left_limit):
            if(arg1 > self.overflow_limit): term1 = math.exp(700)
            else:                           term1 = math.exp(arg1)
-           if(arg2 > self.overflow_limit): term2 = math.exp(700)
-           else:                           term2 = math.exp(arg2)
+           if(arg2 > self.overflow_limit):    term2 = math.exp(700)
+           elif(arg2 < -self.overflow_limit): term2 = math.exp(-700)
+           else:                              term2 = math.exp(arg2)
+           try: tmp = 1. / term2
+           except:
+              print "*"*79
+              print math.exp(arg2), arg2, u, self.u_max
+              print "*"*79
+              tmp = 0.0
+              assert 0
            result += self.left_term_weight  * term1 + \
-                     self.right_term_weight * (1. / term2)
+                     self.right_term_weight * tmp
     return result / u_isos.size()
 
   def gradient(self, u_isos):
@@ -105,11 +113,19 @@ class u_penalty_well:
         if(u > self.right_limit or u < self.left_limit):
            if(arg1 > self.overflow_limit): term1 = math.exp(700)
            else:                           term1 = math.exp(arg1)
-           if(arg2 > self.overflow_limit): term2 = math.exp(700)
-           else:                           term2 = math.exp(arg2)
+           if(arg2 > self.overflow_limit):    term2 = math.exp(700)
+           elif(arg2 < -self.overflow_limit): term2 = math.exp(-700)
+           else:                              term2 = math.exp(arg2)
+           try: tmp = 1. / term2
+           except:
+              print "*"*79
+              print math.exp(arg2), arg2, u, self.u_max
+              print "*"*79
+              tmp = 0.0
+              assert 0
            result.append(
               -self.left_term_weight  * self.shape_factor_left  * term1 + \
-               self.right_term_weight * self.shape_factor_right * (1. / term2))
+               self.right_term_weight * self.shape_factor_right * tmp)
         else:
            result.append(0.0)
     return result / u_isos.size()
