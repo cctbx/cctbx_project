@@ -7,6 +7,7 @@ def run():
   "$D/array_family/boost_python/tst_flex.py",
   "$D/uctbx/boost_python/tst_uctbx.py",
   "$D/sgtbx/boost_python/tst_sgtbx.py",
+  "$D/sgtbx/boost_python/tst_N_fold_rot.py",
   "$D/include/cctbx/crystal/tst_ext.py",
   "$D/adptbx/boost_python/tst_adptbx.py",
   "$D/miller/boost_python/tst_miller.py",
