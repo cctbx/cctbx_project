@@ -3,6 +3,7 @@
 
 #include <cctbx/sgtbx/space_group.h>
 #include <scitbx/math/utils.h>
+#include <scitbx/constants.h>
 
 namespace cctbx { namespace sgtbx { namespace lattice_symmetry {
 
@@ -17,6 +18,36 @@ namespace cctbx { namespace sgtbx { namespace lattice_symmetry {
     return uc_mat3(f*x*x-1., f*x*y,    f*x*z,
                    f*y*x,    f*y*y-1., f*y*z,
                    f*z*x,    f*z*y,    f*z*z-1.);
+  }
+
+  template <int N>
+  inline
+  uc_mat3
+  N_fold_operator_from_axis_direction(uc_vec3 const& cart, int const& sense = 1){
+    if (sense!=1 && sense!= -1) {throw error("rotation sense must be 1 or -1");}
+    uc_vec3 C = cart.normalize();
+    double angle = sense*scitbx::constants::two_pi/N;
+    double cp = std::cos(angle);
+    double sp = std::sin(angle);
+    return uc_mat3(
+   cp+(1-cp)*C[0]*C[0],      (1-cp)*C[0]*C[1]-sp*C[2], (1-cp)*C[0]*C[2]+sp*C[1],
+   (1-cp)*C[0]*C[1]+sp*C[2], cp+(1-cp)*C[1]*C[1],      (1-cp)*C[1]*C[2]-sp*C[0],
+   (1-cp)*C[0]*C[2]-sp*C[1], (1-cp)*C[1]*C[2]+sp*C[0], cp+(1-cp)*C[2]*C[2]
+                  );
+  }
+
+  template <>
+  inline
+  uc_mat3
+  N_fold_operator_from_axis_direction<1>(uc_vec3 const& cart, int const& sense){
+    return uc_mat3(1,0,0,0,1,0,0,0,1);
+  }
+
+  template <>
+  inline
+  uc_mat3
+  N_fold_operator_from_axis_direction<2>(uc_vec3 const& cart, int const& sense){
+    return two_fold_matrix_from_axis_direction(cart);
   }
 
   inline
