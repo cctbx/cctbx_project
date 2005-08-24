@@ -68,12 +68,12 @@ namespace cctbx { namespace sgtbx { namespace lattice_symmetry {
     for(int h=0;h<=modulus_;h++)
     for(int k=-modulus_;k<=modulus_;k++)
     for(int l=-modulus_;l<=modulus_;l++) {
-      int abs_uh = scitbx::fn::absolute(u*h+v*k+w*l);
-      if (abs_uh == 1 || abs_uh == 2) {
+      int uh = u*h+v*k+w*l;
+      if (uh == 1 || uh == 2) {
         potential_axes_.push_back(potential_axis_t(
           sg_vec3(u,v,w),
           sg_vec3(h,k,l),
-          abs_uh));
+          uh));
       }
     }
   }
