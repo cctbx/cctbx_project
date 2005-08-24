@@ -6,7 +6,7 @@ import StringIO,sys
 from labelit.command_line.overlay_distl import OverlayDriverClass
 
 filnm = sys.argv[1] # raxis-2 *.osc file
-out = sys.argv[2] # *.png file for graphical output 
+out = sys.argv[2] # *.png file for graphical output
 
 ODC = OverlayDriverClass(filnm)
 ODC.pd={'xbeam':ODC.I.a.parameters['BEAM_CENTER_X'],

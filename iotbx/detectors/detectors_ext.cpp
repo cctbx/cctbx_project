@@ -111,8 +111,8 @@ af::flex_int MakeSquareRAXIS(const int& np,
                              const af::flex_int& rawlinearintdata) {
   /* In application, this function resizes the Raxis II image of 1900x1900
      rectangular pixels into a new image with 1962x1962 square pixels. The
-     fast dimension is padded on each side with zeroes, while the slow 
-     dimension is resampled so the data are stretched into the new size. 
+     fast dimension is padded on each side with zeroes, while the slow
+     dimension is resampled so the data are stretched into the new size.
   */
   af::flex_int z(af::flex_grid<>(np,np));
 
