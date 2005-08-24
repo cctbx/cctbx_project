@@ -9,6 +9,7 @@ from scitbx.python_utils import complex_math
 from libtbx.test_utils import approx_equal, not_approx_equal
 import libtbx.load_env
 import os
+from cctbx.sgtbx import subgroups
 
 def exercise_symbols():
   s = sgtbx.space_group_symbols("p 2")
@@ -1487,6 +1488,19 @@ def exercise_lattice_symmetry():
   assert group.order_z() == 1
   assert sgtbx.lattice_symmetry_find_max_delta(niggli_cell, group, 2) < 1.e-10
 
+def exercise_lattice_symmetry_options():
+  niggli_cell = uctbx.unit_cell((405.08382,411.53719,417.48903,
+                                  89.97113,89.77758,89.90342))
+  group_search = sgtbx.lattice_symmetry_group_search(2)
+  testing_combinations=[(0.9,False,10),(0.9,True,10),
+                        (1.4,False,10),(1.4,True,30),
+                        (1.8,False,30),(1.8,True,30)]
+  for max_delta,only_gen,n_subgrps in testing_combinations:
+    group = group_search(niggli_cell, max_delta, only_gen)
+    group_info = sgtbx.space_group_info(group=group)
+    subgrs = subgroups.subgroups(group_info).groups_parent_setting()
+    assert len(subgrs)==n_subgrps
+
 def exercise_find_affine():
   for sym,n in [("P 1",67704),("P 2",104),("C 2y",36),("B 2x",36),("A 2z",36)]:
     group = sgtbx.space_group(sym)
@@ -1713,6 +1727,7 @@ def run():
   exercise_sym_equiv_sites()
   exercise_seminvariant()
   exercise_lattice_symmetry()
+  exercise_lattice_symmetry_options()
   exercise_find_affine()
   exercise_search_symmetry()
   exercise_tensor_rank_2_constraints()
