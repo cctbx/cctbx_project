@@ -44,11 +44,12 @@ def run(args):
       unit_cell=input_symmetry.unit_cell(),
       space_group_symbol="P 1")
   # Do it
-  Groups = metric_subgroups(input_symmetry, command_line.options.delta)
+  Groups = metric_subgroups(input_symmetry, command_line.options.delta,
+    only_test_generators=False)
   Groups.show()
 
-class metric_subgroups(object):
-  def __init__(self, input_symmetry, max_delta):
+class metric_subgroups:
+  def __init__(self, input_symmetry, max_delta, only_test_generators):
     self.input_symmetry = input_symmetry
     self.max_delta = max_delta
     self.result_groups = []
@@ -61,7 +62,8 @@ class metric_subgroups(object):
 
     # Get highest symmetry compatible with lattice
     lattice_group = lattice_symmetry.group(
-      self.minimum_symmetry.unit_cell(), max_delta=self.max_delta)
+      self.minimum_symmetry.unit_cell(), max_delta=self.max_delta,
+      only_test_generators=only_test_generators)
     lattice_group_info = sgtbx.space_group_info(group=lattice_group)
 
     # Get list of sub-spacegroups

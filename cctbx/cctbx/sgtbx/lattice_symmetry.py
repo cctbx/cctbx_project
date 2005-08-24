@@ -8,8 +8,9 @@ class group_search(object):
   def n_potential_axes(self):
     return self.ext.n_potential_axes()
 
-  def __call__(self, minimum_cell, max_delta=3.):
-    return self.ext(minimum_cell, max_delta)
+  def __call__(self, minimum_cell, max_delta=3.,
+               only_test_generators=True):
+    return self.ext(minimum_cell, max_delta, only_test_generators)
 
 group = group_search()
 

@@ -31,7 +31,8 @@ namespace cctbx { namespace sgtbx { namespace boost_python {
       .def("n_potential_axes", &gs::n_potential_axes)
       .def("__call__", &gs::operator(), (
         arg_("niggli_cell"),
-        arg_("max_delta")))
+        arg_("max_delta"),
+        arg_("only_test_generators")))
     ;
 
     def("lattice_symmetry_find_max_delta", lattice_symmetry::find_max_delta);
