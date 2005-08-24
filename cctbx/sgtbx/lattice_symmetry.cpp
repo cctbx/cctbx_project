@@ -14,7 +14,8 @@ namespace cctbx { namespace sgtbx { namespace lattice_symmetry {
   space_group
   group_search::operator()(
     uctbx::unit_cell const& niggli_cell,
-    double max_delta)
+    double max_delta,
+    bool const& only_test_generators)
   {
     if (potential_axes_.size() == 0) compute_potential_axes();
     max_delta *= scitbx::constants::pi_180;
@@ -47,6 +48,10 @@ namespace cctbx { namespace sgtbx { namespace lattice_symmetry {
       }
       catch (error_non_crystallographic_rotation_matrix_encountered const&) {
         break;
+      }
+      if (!only_test_generators && scitbx::constants::pi_180*
+          find_max_delta(niggli_cell,expanded_group,2) >= max_delta) {
+          continue;
       }
       group = expanded_group;
     }

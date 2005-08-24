@@ -100,7 +100,8 @@ namespace cctbx { namespace sgtbx { namespace lattice_symmetry {
       space_group
       operator()(
         uctbx::unit_cell const& niggli_cell,
-        double max_delta=3.);
+        double max_delta=3.,
+        bool const& only_test_generators=true);
 
     private:
       int modulus_;
