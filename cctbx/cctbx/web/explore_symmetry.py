@@ -208,7 +208,9 @@ def run(server_info, inp, status):
   sg_type = sg.type()
   show_group_generic(sg_type, status)
 
-  if (inp.convention == "Hall" or len(inp.symxyz) != 0):
+  if (   inp.convention == "Hall"
+      or len(inp.shelx_latt) != 0
+      or len(inp.symxyz) != 0):
     symbols_match = sg.match_tabulated_settings()
     if (symbols_match.number() != 0):
       if (   symbols_inp is None
