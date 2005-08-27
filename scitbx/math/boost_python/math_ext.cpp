@@ -96,6 +96,8 @@ namespace {
       &floating_point_epsilon<double>::get);
 
     def("erf", (double(*)(double const&)) erf);
+    def("erf", (scitbx::af::shared<double>(*)(scitbx::af::const_ref<double> const&)) erf);
+
     def("erfc", (double(*)(double const&)) erfc);
     def("erfcx", (double(*)(double const&)) erfcx);
 
