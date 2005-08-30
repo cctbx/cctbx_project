@@ -480,7 +480,8 @@ class set(crystal.symmetry):
       anomalous_flag=self.anomalous_flag(),
       d_min=self.d_min()*(1-d_min_tolerance))
 
-  def completeness(self, use_binning=False, d_min_tolerance=1.e-6):
+  def completeness(self, use_binning=False, d_min_tolerance=1.e-6,
+                   return_fail=None):
     if (not use_binning):
       complete_set = self.complete_set(d_min_tolerance=d_min_tolerance)
       return self.indices().size() / max(1,complete_set.indices().size())
@@ -488,7 +489,7 @@ class set(crystal.symmetry):
     data = []
     for n_given,n_complete in zip(self.binner().counts_given(),
                                   self.binner().counts_complete()):
-      if (n_complete == 0): data.append(None)
+      if (n_complete == 0): data.append(return_fail)
       else: data.append(n_given/n_complete)
     return binned_data(binner=self.binner(), data=data, data_fmt="%5.3f")
 
@@ -803,15 +804,20 @@ class set(crystal.symmetry):
 
   def setup_binner_d_star_sq_step(self,
                                   auto_binning=True,
-                                  d_max=0,
-                                  d_min=0,
-                                  d_star_sq_step=0):
-    assert auto_binning or (d_min > d_max )
+                                  d_max=None,# Low reso limit
+                                  d_min=None,# High reso limit
+                                  d_star_sq_step=None):
+    assert auto_binning or ( d_min is not None )
+    assert auto_binning or ( d_max is not None )
+    assert d_star_sq_step > 0 or (d_star_sq_step is None)
+    ## Either automatic binning (with or without the choice of a d_star_sq
+    ## step) or setting everything by hand
 
     if auto_binning:
       d_max=flex.min( self.d_spacings().data() )
       d_min=flex.max( self.d_spacings().data() )
-      d_star_sq_step = 0.004
+      if d_star_sq_step is None:
+        d_star_sq_step = 0.004 ## Default of 0.004 seems to be reasonable
 
     assert (d_star_sq_step>0.0)
     bng = binning(self.unit_cell(),
@@ -1426,7 +1432,7 @@ class array(set):
       results.append(self.select(sel).anomalous_signal())
     return binned_data(binner=self.binner(), data=results, data_fmt="%7.4f")
 
-  def measurability(self, use_binning=False, cutoff=3.0):
+  def measurability(self, use_binning=False, cutoff=3.0, return_fail=None):
     ## Peter Zwart 2005-Mar-04
     """\
 Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
@@ -1438,7 +1444,7 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
       obs = self.select(self.data() > 0 )
       if (self.is_xray_amplitude_array()):
         obs = obs.f_as_f_sq()
-      if (obs.data().size() == 0): return 0
+      if (obs.data().size() == 0): return return_fail
       i_plus, i_minus = obs.hemispheres_acentrics()
       assert i_plus.data().size() == i_minus.data().size()
       ratio = flex.fabs(i_plus.data()-i_minus.data()) / flex.sqrt(
@@ -1452,11 +1458,12 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
       if ratio.size()>0:
         return meas/ratio.size()
       else:
-        return None
+        return return_fail
     results = []
     for i_bin in self.binner().range_all():
       sel = self.binner().selection(i_bin)
-      results.append(self.select(sel).measurability(cutoff=cutoff))
+      results.append(self.select(sel).measurability(cutoff=cutoff,
+                                                    return_fail=return_fail))
     return binned_data(binner=self.binner(), data=results, data_fmt="%7.4f")
 
   def second_moment(self, use_binning=False):
@@ -1487,12 +1494,12 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
       result.append(self.select(sel).wilson_plot())
     return binned_data(binner=self.binner(), data=result, data_fmt="%7.4f")
 
-  def i_over_sig_i(self, use_binning=False):
+  def i_over_sig_i(self, use_binning=False,return_fail=None):
     """<I/sigma_I>"""
     assert not use_binning or self.binner is not None
 
     if (not use_binning):
-      if (self.indices().size() == 0): return None
+      if (self.indices().size() == 0): return return_fail
       obs = None
       if self.is_real_array():
         if self.is_xray_amplitude_array():
@@ -1501,16 +1508,44 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
           obs = self
       if obs is not None:
         obs = obs.select(obs.sigmas()>0)
+        if (obs.indices().size() == 0): return return_fail
         i_sig_i = flex.mean( obs.data()/obs.sigmas() )
         return i_sig_i
       else:
-        return None
+        return 0
     result = []
     for i_bin in self.binner().range_all():
       sel =  self.binner().selection(i_bin)
-      result.append(self.select(sel).i_over_sig_i() )
+      result.append(self.select(sel).i_over_sig_i(return_fail=return_fail) )
 
+    return binned_data(binner=self.binner(),
+                       data=result,
+                       data_fmt="%7.4f")
 
+  def mean_of_intensity_divided_by_epsilon(self,
+                                           use_binning=False,
+                                           return_fail=None):
+    """ <I/epsilon> """
+    assert not use_binning or self.binner is not None
+    if (not use_binning):
+      if (self.indices().size() == 0): return return_fail
+      obs = None
+      if self.is_real_array():
+        if self.is_xray_amplitude_array():
+          obs = self.f_as_f_sq()
+        if self.is_xray_intensity_array():
+          obs = self
+      if obs is not None:
+        weighted_mean = flex.mean( obs.data() /
+                                   obs.epsilons().data().as_double() )
+        return weighted_mean
+      else:
+        return return_fail
+    result = []
+    for i_bin in self.binner().range_all():
+      sel =  self.binner().selection(i_bin)
+      result.append(self.select(sel).mean_of_intensity_divided_by_epsilon(
+        return_fail=return_fail) )
     return binned_data(binner=self.binner(),
                        data=result,
                        data_fmt="%7.4f")
