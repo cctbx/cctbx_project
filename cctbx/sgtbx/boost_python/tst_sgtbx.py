@@ -1484,7 +1484,8 @@ def exercise_lattice_symmetry():
   niggli_cell = uctbx.unit_cell((12,13,14,80,83,86))
   group_search = sgtbx.lattice_symmetry_group_search(2)
   assert group_search.n_potential_axes() == 2391
-  group = group_search(niggli_cell, 3, only_test_generators=True)
+  group = group_search(niggli_cell, 3, only_test_generators=True,
+    introspection=False)
   assert group.order_z() == 1
   assert sgtbx.lattice_symmetry_find_max_delta(niggli_cell, group, 2) < 1.e-10
 
@@ -1496,7 +1497,7 @@ def exercise_lattice_symmetry_options():
                         (1.4,False,10),(1.4,True,30),
                         (1.8,False,30),(1.8,True,30)]
   for max_delta,only_gen,n_subgrps in testing_combinations:
-    group = group_search(niggli_cell, max_delta, only_gen)
+    group = group_search(niggli_cell, max_delta, only_gen,introspection=False)
     group_info = sgtbx.space_group_info(group=group)
     subgrs = subgroups.subgroups(group_info).groups_parent_setting()
     assert len(subgrs)==n_subgrps
