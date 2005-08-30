@@ -15,7 +15,8 @@ namespace cctbx { namespace sgtbx { namespace lattice_symmetry {
   group_search::operator()(
     uctbx::unit_cell const& niggli_cell,
     double max_delta,
-    bool const& only_test_generators)
+    bool const& only_test_generators,
+    bool const& introspection)
   {
     if (potential_axes_.size() == 0) compute_potential_axes();
     max_delta *= scitbx::constants::pi_180;
@@ -23,6 +24,7 @@ namespace cctbx { namespace sgtbx { namespace lattice_symmetry {
     uc_mat3 const& orth = niggli_cell.orthogonalization_matrix();
     std::vector<double> deltas;
     std::vector<uc_vec3> ts;
+    candidates = scitbx::af::shared<evaluated_axis_t>();
     for(potential_axis_t* axis=&*potential_axes_.begin();
                           axis!=&*potential_axes_.end();axis++) {
       uc_vec3 t = orth * axis->u;
@@ -32,6 +34,9 @@ namespace cctbx { namespace sgtbx { namespace lattice_symmetry {
       if (delta < max_delta) {
         deltas.push_back(delta);
         ts.push_back(t);
+        if (introspection) {
+          candidates.push_back(evaluated_axis_t(*axis,t,tau,delta));
+          }
       }
     }
     af::shared<std::size_t> perm = af::sort_permutation(

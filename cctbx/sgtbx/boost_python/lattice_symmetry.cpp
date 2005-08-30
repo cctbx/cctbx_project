@@ -21,18 +21,31 @@ namespace cctbx { namespace sgtbx { namespace boost_python {
 
   void wrap_lattice_symmetry()
   {
-    typedef lattice_symmetry::group_search gs;
     using namespace boost::python;
     def("N_fold_operator_from_axis_direction",
       N_fold_operator_from_axis_direction);
 
+    typedef lattice_symmetry::evaluated_axis_t eat;
+    typedef return_value_policy<return_by_value> rbv;
+    class_<eat>("evaluated_axis_t",no_init)
+      .def("u",&eat::get_u)
+      .def("h",&eat::get_h)
+      .add_property("t",make_getter(&eat::t, rbv()))
+      .add_property("tau",make_getter(&eat::tau, rbv()))
+      .def_readonly("delta",&eat::delta)
+    ;
+
+    typedef lattice_symmetry::group_search gs;
     class_<gs>("lattice_symmetry_group_search", no_init)
       .def(init<int>((arg_("modulus"))))
       .def("n_potential_axes", &gs::n_potential_axes)
       .def("__call__", &gs::operator(), (
         arg_("niggli_cell"),
         arg_("max_delta"),
-        arg_("only_test_generators")))
+        arg_("only_test_generators"),
+        arg_("introspection")
+        ))
+      .add_property("candidates",make_getter(&gs::candidates, rbv()))
     ;
 
     def("lattice_symmetry_find_max_delta", lattice_symmetry::find_max_delta);
