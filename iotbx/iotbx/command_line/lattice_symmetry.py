@@ -49,7 +49,7 @@ def run(args):
   Groups.show()
 
 class metric_subgroups:
-  def __init__(self, input_symmetry, max_delta, only_test_generators):
+  def __init__(self, input_symmetry, max_delta, only_test_generators=True):
     self.input_symmetry = input_symmetry
     self.max_delta = max_delta
     self.result_groups = []
