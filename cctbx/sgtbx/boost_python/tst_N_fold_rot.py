@@ -1,6 +1,6 @@
 from scitbx import matrix
 from scitbx.python_utils.math_utils import iround
-from cctbx.sgtbx import N_fold_operator_from_axis_direction as N_fold
+from cctbx.sgtbx import n_fold_operator_from_axis_direction as n_fold
 from cctbx.uctbx import unit_cell
 
 '''Test the calculation of point-group symmetry operations by comparison
@@ -71,7 +71,7 @@ class CompareToInternationalTables:
       reference_W = tuple([int(x) for x in item.split(',')[3].split(' ')])
       D = matrix.col(direct_space_axis)
       cartesian_axis = orth*D
-      W_cart = matrix.sqr(N_fold(cartesian_axis,abs(type_plus_minus),sense))
+      W_cart = matrix.sqr(n_fold(cartesian_axis,abs(type_plus_minus),sense))
       W_frac = frac*W_cart*orth
       W_as_int = matrix.sqr([iround(e) for e in W_frac.elems])
       if type_plus_minus<0: W_as_int = -1 * W_as_int

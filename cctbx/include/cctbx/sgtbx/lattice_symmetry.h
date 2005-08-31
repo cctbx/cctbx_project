@@ -23,7 +23,7 @@ namespace cctbx { namespace sgtbx { namespace lattice_symmetry {
   template <int N>
   inline
   uc_mat3
-  N_fold_operator_from_axis_direction(uc_vec3 const& cart, int const& sense = 1){
+  n_fold_operator_from_axis_direction(uc_vec3 const& cart, int const& sense = 1){
     if (sense!=1 && sense!= -1) {throw error("rotation sense must be 1 or -1");}
     uc_vec3 C = cart.normalize();
     double angle = sense*scitbx::constants::two_pi/N;
@@ -39,14 +39,14 @@ namespace cctbx { namespace sgtbx { namespace lattice_symmetry {
   template <>
   inline
   uc_mat3
-  N_fold_operator_from_axis_direction<1>(uc_vec3 const& cart, int const& sense){
+  n_fold_operator_from_axis_direction<1>(uc_vec3 const& cart, int const& sense){
     return uc_mat3(1,0,0,0,1,0,0,0,1);
   }
 
   template <>
   inline
   uc_mat3
-  N_fold_operator_from_axis_direction<2>(uc_vec3 const& cart, int const& sense){
+  n_fold_operator_from_axis_direction<2>(uc_vec3 const& cart, int const& sense){
     return two_fold_matrix_from_axis_direction(cart);
   }
 
