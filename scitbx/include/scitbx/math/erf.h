@@ -20,12 +20,14 @@ namespace scitbx { namespace math {
 
   template <typename FloatType>
   inline
-  scitbx::af::shared<FloatType>
-  erf( scitbx::af::const_ref<FloatType> const& x)
+  af::shared<FloatType>
+  erf(af::const_ref<FloatType> const& x)
   {
-     scitbx::af::shared<FloatType> result(x.size(),0);
+    af::shared<FloatType> result(x.size(),
+                                 af::init_functor_null<FloatType>());
+     erf_engine<FloatType> engine;
      for( unsigned ii=0;ii<x.size();ii++){
-       result[ii]=erf_engine<FloatType>().compute(x[ii], 0);
+       result[ii]=engine.compute(x[ii], 0);
      }
      return ( result );
   }
