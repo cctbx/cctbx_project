@@ -4,6 +4,7 @@
      dgamlm.f
      dgamma.f
      dlngam.f
+     dlnrel.f
      initds.f
      d1mach.f
 
@@ -375,5 +376,139 @@ slatec_dlngam(double x)
       "answer lt half precision because x too near negative int", 1, 1);
   }
   result = sqpi2l + (x-0.5)*log(y) - x - log(sinpiy) - d9lgmc(y);
+  return result;
+}
+
+//! Natural logarithm of (1.0+x).
+/*! This routine should be used when X is small and accurate to
+    calculate the logarithm accurately (in the relative error sense)
+    in the neighborhood of 1.0.
+ */
+double
+slatec_dlnrel(double x)
+{
+  static const double alnrcs[] = {
+    +.10378693562743769800686267719098e+1,
+    -.13364301504908918098766041553133e+0,
+    +.19408249135520563357926199374750e-1,
+    -.30107551127535777690376537776592e-2,
+    +.48694614797154850090456366509137e-3,
+    -.81054881893175356066809943008622e-4,
+    +.13778847799559524782938251496059e-4,
+    -.23802210894358970251369992914935e-5,
+    +.41640416213865183476391859901989e-6,
+    -.73595828378075994984266837031998e-7,
+    +.13117611876241674949152294345011e-7,
+    -.23546709317742425136696092330175e-8,
+    +.42522773276034997775638052962567e-9,
+    -.77190894134840796826108107493300e-10,
+    +.14075746481359069909215356472191e-10,
+    -.25769072058024680627537078627584e-11,
+    +.47342406666294421849154395005938e-12,
+    -.87249012674742641745301263292675e-13,
+    +.16124614902740551465739833119115e-13,
+    -.29875652015665773006710792416815e-14,
+    +.55480701209082887983041321697279e-15,
+    -.10324619158271569595141333961932e-15,
+    +.19250239203049851177878503244868e-16,
+    -.35955073465265150011189707844266e-17,
+    +.67264542537876857892194574226773e-18,
+    -.12602624168735219252082425637546e-18,
+    +.23644884408606210044916158955519e-19,
+    -.44419377050807936898878389179733e-20,
+    +.83546594464034259016241293994666e-21,
+    -.15731559416479562574899253521066e-21,
+    +.29653128740247422686154369706666e-22,
+    -.55949583481815947292156013226666e-23,
+    +.10566354268835681048187284138666e-23,
+    -.19972483680670204548314999466666e-24,
+    +.37782977818839361421049855999999e-25,
+    -.71531586889081740345038165333333e-26,
+    +.13552488463674213646502024533333e-26,
+    -.25694673048487567430079829333333e-27,
+    +.48747756066216949076459519999999e-28,
+    -.92542112530849715321132373333333e-29,
+    +.17578597841760239233269760000000e-29,
+    -.33410026677731010351377066666666e-30,
+    +.63533936180236187354180266666666e-31
+  };
+  static int first = 1;
+  static int nlnrel;
+  static double xmin;
+  if (first) {
+    first = 0;
+    nlnrel = initds(alnrcs, 43, 0.1*d1mach(3));
+    xmin = -1 + sqrt(d1mach(4));
+  }
+  if (x <= -1) {
+    xermsg("slatec", "dlnrel",
+      "x is le -1" , 2, 2);
+    return 1.0;
+  }
+  if (x < xmin) {
+    xermsg("slatec", "dlnrel",
+      "answer lt half precision because x too near -1", 1, 1);
+  }
+  if (abs(x) <= 0.375) {
+    return x*(1 - x*dcsevl(x/.375, alnrcs, nlnrel));
+  }
+  return log(1+x);
+}
+
+//! Binomial coefficient for integer arguments n and m.
+/*! The result is (n!)/((m!)(n-m)!).
+ */
+double
+slatec_dbinom(unsigned n, unsigned m)
+{
+  unsigned i, k;
+  double result, xn, xk, xnk, corr;
+  static const double sq2pil = 0.91893853320467274178032973640562;
+  static int first  = 1;
+  static double bilnmx;
+  static double fintmx;
+  if (first) {
+    first = 0;
+    bilnmx = log(d1mach(2)) - 0.0001;
+    fintmx = 0.9/d1mach(3);
+  }
+  if (n < m) {
+    xermsg("slatec", "dbinom",
+      "n lt m", 2, 2);
+    return 1.0;
+  }
+  k = n-m;
+  if (k > m) k = m;
+  if (k <= 20) {
+    if (k*log((double)(n > 1 ? n : 1)) <= bilnmx) {
+      result = 1;
+      if (k == 0) return result;
+      for(i=1;i<=k;i++) {
+        xn = n - i + 1;
+        xk = i;
+        result = result * (xn/xk);
+      }
+      if (result < fintmx) result = floor(result+0.5);
+      return result;
+    }
+  }
+  if (k < 9) { // approx is not valid and answer is close to the overflow lim
+    xermsg("slatec", "dbinom",
+      "result overflows because n and/or m too big", 3, 2);
+    return 1.0;
+  }
+  xn = n + 1;
+  xk = k + 1;
+  xnk = n - k + 1;
+  corr = d9lgmc(xn) - d9lgmc(xk) - d9lgmc(xnk);
+  result = xk*log(xnk/xk) - xn*slatec_dlnrel(-(xk-1)/xn)
+    -0.5*log(xn*xnk/xk) + 1 - sq2pil + corr;
+  if (result > bilnmx) {
+    xermsg("slatec", "dbinom",
+      "result overflows because n and/or m too big", 3, 2);
+    return 1.0;
+  }
+  result = exp(result);
+  if (result < fintmx) result = floor(result+0.5);
   return result;
 }

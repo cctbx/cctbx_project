@@ -1292,7 +1292,7 @@ def exercise_basic_statistics():
       (flex.sum(d*d*d*d)/s.n) / (flex.sum(d*d)/s.n)**2)
     assert approx_equal(s.kurtosis_excess, s.kurtosis-3)
 
-def exercise_slatec():
+def exercise_slatec_dlngam():
   def cmp(a, b):
     if (abs(a) < 1):
       assert approx_equal(a, b, eps=1.e-10)
@@ -1464,6 +1464,59 @@ def exercise_slatec():
       x *= v
     print "OK"
 
+def exercise_slatec_dbinom():
+  f = scitbx.math.slatec_dlnrel
+  try: f(-1)
+  except RuntimeError, e:
+    assert str(e) == \
+      "slatec: dlnrel: x is le -1 (nerr=2, level=2)"
+  else: raise RuntimeError("Exception expected.")
+  assert approx_equal(f(-1+1.e-10), -3.84598441993)
+  assert approx_equal(f(0.374), 0.3177261938)
+  assert approx_equal(f(0.376), 0.319180739511)
+  assert eps_eq(f(-0.4), -0.510825623766)
+  assert eps_eq(f(0), 0.0)
+  assert eps_eq(f(0.3), 0.262364264467)
+  assert eps_eq(f(0.4), 0.336472236621)
+  f = scitbx.math.slatec_dbinom
+  try: f(n=0, m=1)
+  except RuntimeError, e:
+    assert str(e) == "slatec: dbinom: n lt m (nerr=2, level=2)"
+  else: raise RuntimeError("Exception expected.")
+  expected = [
+    1, 2, 1, 3, 3, 1, 4, 6, 4, 1, 5, 10, 10, 5, 1, 6, 15, 20, 15, 6,
+    1, 7, 21, 35, 35, 21, 7, 1, 8, 28, 56, 70, 56, 28, 8, 1, 9, 36, 84,
+    126, 126, 84, 36, 9, 1, 10, 45, 120, 210, 252, 210, 120, 45, 10, 1]
+  i = 0
+  for n in xrange(1,11):
+    for m in xrange(1,n+1):
+      assert approx_equal(f(n=n, m=m), expected[i])
+      i += 1
+  assert eps_eq(f(100, 10), 1.73103095E+13)
+  assert eps_eq(f(100, 33), 2.94692427E+26)
+  assert eps_eq(f(1000, 100), 6.38505119E+139)
+  assert eps_eq(f(1000, 333), 5.77613455E+274)
+  nms = [
+    (5, 2), (9, 6), (8, 3), (9, 1), (8, 2),
+    (6, 1), (8, 4), (7, 5), (7, 3), (8, 7),
+    (93, 70), (64, 57), (76, 66), (55, 22), (70, 2),
+    (90, 85), (78, 4), (82, 19), (99, 6), (71, 5),
+    (957, 516), (896, 665), (909, 253), (579, 74), (653, 651),
+    (820, 581), (638, 290), (697, 533), (937, 695), (725, 78)]
+  expected = [
+    10, 84, 56, 9, 28, 6, 70, 21, 35, 8,
+    3.73549788E+21, 621216192., 9.54526729E+11, 1.30085363E+15, 2415.,
+    43949268., 1426425., 1.97103824E+18, 1.12052926E+09, 13019909.,
+    1.66252414E+285, 3.80970836E+220, 8.43685887E+231, 6.3253529E+94, 212878.,
+    2.45633786E+213, 2.58081251E+189, 5.06707246E+163, 8.53013061E+230,
+    1.53361301E+106]
+  for nm,e in zip(nms,expected):
+    assert eps_eq(f(*nm), e)
+  try: f(n=2**32-1,m=2**5)
+  except RuntimeError, e:
+    assert str(e) == "slatec: d9lgmc: x must be ge 10 (nerr=1, level=2)"
+  else: raise RuntimeError("Exception expected.")
+
 def run():
   exercise_floating_point_epsilon()
   exercise_euler_angles()
@@ -1484,7 +1537,8 @@ def run():
   exercise_icosahedron()
   exercise_basic_statistics()
   exercise_cheb_family()
-  exercise_slatec()
+  exercise_slatec_dlngam()
+  exercise_slatec_dbinom()
   forever = "--Forever" in sys.argv[1:]
   while 1:
     exercise_minimum_covering_sphere()
