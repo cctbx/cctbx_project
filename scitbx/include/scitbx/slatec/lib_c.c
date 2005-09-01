@@ -449,7 +449,7 @@ slatec_dlnrel(double x)
     xermsg("slatec", "dlnrel",
       "answer lt half precision because x too near -1", 1, 1);
   }
-  if (abs(x) <= 0.375) {
+  if (fabs(x) <= 0.375) {
     return x*(1 - x*dcsevl(x/.375, alnrcs, nlnrel));
   }
   return log(1+x);
