@@ -1471,7 +1471,7 @@ def exercise_slatec_dbinom():
     assert str(e) == \
       "slatec: dlnrel: x is le -1 (nerr=2, level=2)"
   else: raise RuntimeError("Exception expected.")
-  assert approx_equal(f(-1+1.e-10), -3.84598441993)
+  assert approx_equal(f(-1+1.e-10), -23.0258508472)
   assert approx_equal(f(0.374), 0.3177261938)
   assert approx_equal(f(0.376), 0.319180739511)
   assert eps_eq(f(-0.4), -0.510825623766)
