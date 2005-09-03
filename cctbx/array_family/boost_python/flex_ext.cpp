@@ -24,7 +24,7 @@ namespace scitbx { namespace af { namespace boost_python {
   void wrap_flex_sym_mat3_double();
   void wrap_flex_tiny_size_t_2();
   void wrap_flex_xray_scatterer();
-  void wrap_flex_evaluated_axis();
+  void wrap_flex_evaluated_axis_t();
 
 namespace {
 
@@ -67,7 +67,7 @@ namespace {
     wrap_flex_sym_mat3_double();
     wrap_flex_tiny_size_t_2();
     wrap_flex_xray_scatterer();
-    wrap_flex_evaluated_axis();
+    wrap_flex_evaluated_axis_t();
 
     // The flex module will be used from all cctbx extension modules.
     // Therefore it is convenient to register all tuple mappings from here.

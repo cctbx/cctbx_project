@@ -20,34 +20,26 @@ namespace cctbx { namespace sgtbx { namespace lattice_symmetry {
                    f*z*x,    f*z*y,    f*z*z-1.);
   }
 
-  template <int N>
   inline
   uc_mat3
-  n_fold_operator_from_axis_direction(uc_vec3 const& cart, int const& sense = 1){
-    if (sense!=1 && sense!= -1) {throw error("rotation sense must be 1 or -1");}
-    uc_vec3 C = cart.normalize();
-    double angle = sense*scitbx::constants::two_pi/N;
-    double cp = std::cos(angle);
-    double sp = std::sin(angle);
+  n_fold_operator_from_axis_direction(
+    uc_vec3 const& cart,
+    int n,
+    int sense=1)
+  {
+    if (n == 1) return uc_mat3(1,0,0,0,1,0,0,0,1);
+    if (n == 2) return two_fold_matrix_from_axis_direction(cart);
+    CCTBX_ASSERT(sense == 1 || sense == -1);
+    CCTBX_ASSERT(n == 1 || n == 2 || n == 3 || n == 4 || n == 6);
+    uc_vec3 v = cart.normalize();
+    double angle = scitbx::constants::two_pi / (sense * n);
+    double c = std::cos(angle);
+    double s = std::sin(angle);
+    double d = 1 - c;
     return uc_mat3(
-   cp+(1-cp)*C[0]*C[0],      (1-cp)*C[0]*C[1]-sp*C[2], (1-cp)*C[0]*C[2]+sp*C[1],
-   (1-cp)*C[0]*C[1]+sp*C[2], cp+(1-cp)*C[1]*C[1],      (1-cp)*C[1]*C[2]-sp*C[0],
-   (1-cp)*C[0]*C[2]-sp*C[1], (1-cp)*C[1]*C[2]+sp*C[0], cp+(1-cp)*C[2]*C[2]
-                  );
-  }
-
-  template <>
-  inline
-  uc_mat3
-  n_fold_operator_from_axis_direction<1>(uc_vec3 const& cart, int const& sense){
-    return uc_mat3(1,0,0,0,1,0,0,0,1);
-  }
-
-  template <>
-  inline
-  uc_mat3
-  n_fold_operator_from_axis_direction<2>(uc_vec3 const& cart, int const& sense){
-    return two_fold_matrix_from_axis_direction(cart);
+      c+d*v[0]*v[0],      d*v[0]*v[1]-s*v[2], d*v[0]*v[2]+s*v[1],
+      d*v[0]*v[1]+s*v[2], c+d*v[1]*v[1],      d*v[1]*v[2]-s*v[0],
+      d*v[0]*v[2]-s*v[1], d*v[1]*v[2]+s*v[0], c+d*v[2]*v[2]);
   }
 
   inline
@@ -90,16 +82,15 @@ namespace cctbx { namespace sgtbx { namespace lattice_symmetry {
       uc_vec3 const& tau_,
       double delta_)
     :
-      potential_axis_t(pat_.u,pat_.h,pat_.abs_uh),
+      potential_axis_t(pat_.u, pat_.h, pat_.abs_uh),
       t(t_),
       tau(tau_),
       delta(delta_)
     {}
+
     uc_vec3 t;
     uc_vec3 tau;
     double delta;
-    sg_vec3 get_u(){return u;}
-    sg_vec3 get_h(){return h;}
   };
 
   /*! Reference:

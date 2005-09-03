@@ -1,6 +1,6 @@
 from scitbx import matrix
 from scitbx.python_utils.math_utils import iround
-from cctbx.sgtbx import n_fold_operator_from_axis_direction as n_fold
+from cctbx import sgtbx
 from cctbx.uctbx import unit_cell
 
 '''Test the calculation of point-group symmetry operations by comparison
@@ -64,18 +64,18 @@ class CompareToInternationalTables:
     frac = matrix.sqr(niggli_cell.fractionalization_matrix())
     orth = matrix.sqr(niggli_cell.orthogonalization_matrix())
     for item in globals()[key].split('\n')[5:]:
-      #print item,
       type_plus_minus = int(item.split(',')[0])
       sense = int(item.split(',')[1])
       direct_space_axis = [int(x) for x in item.split(',')[2].split(' ')]
       reference_W = tuple([int(x) for x in item.split(',')[3].split(' ')])
       D = matrix.col(direct_space_axis)
       cartesian_axis = orth*D
-      W_cart = matrix.sqr(n_fold(cartesian_axis,abs(type_plus_minus),sense))
+      W_cart = matrix.sqr(
+        sgtbx.lattice_symmetry_n_fold_operator_from_axis_direction(
+          cart=cartesian_axis, n=abs(type_plus_minus), sense=sense))
       W_frac = frac*W_cart*orth
       W_as_int = matrix.sqr([iround(e) for e in W_frac.elems])
       if type_plus_minus<0: W_as_int = -1 * W_as_int
-      #print W_as_int.elems
       assert W_as_int.elems == reference_W
 
 if __name__=='__main__':
