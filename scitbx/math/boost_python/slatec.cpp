@@ -26,7 +26,7 @@ namespace boost_python {
     def("slatec_dgamma", slatec::dgamma, (arg_("x")));
     def("slatec_dlngam", slatec::dlngam, (arg_("x")));
     def("slatec_dlnrel", slatec::dlnrel, (arg_("x")));
-    def("slatec_dbinom", slatec::dbinom, (arg_("n"), arg("m")));
+    def("slatec_dbinom", slatec::dbinom, (arg_("n"), arg_("m")));
 #if defined(SCITBX_MATH_BOOST_PYTHON_CMATH_LGAMMA)
     def("cmath_lgamma", cmath_lgamma, (arg_("x")));
 #endif
