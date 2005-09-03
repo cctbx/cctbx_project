@@ -379,7 +379,8 @@ slatec_dlngam(double x)
   return result;
 }
 
-//! Natural logarithm of (1.0+x).
+/*! \brief Natural logarithm of (1.0+x).
+ */
 /*! This routine should be used when X is small and accurate to
     calculate the logarithm accurately (in the relative error sense)
     in the neighborhood of 1.0.
@@ -455,7 +456,8 @@ slatec_dlnrel(double x)
   return log(1+x);
 }
 
-//! Binomial coefficient for integer arguments n and m.
+/*! \brief Binomial coefficient for integer arguments n and m.
+ */
 /*! The result is (n!)/((m!)(n-m)!).
  */
 double
@@ -492,7 +494,7 @@ slatec_dbinom(unsigned n, unsigned m)
       return result;
     }
   }
-  if (k < 9) { // approx is not valid and answer is close to the overflow lim
+  if (k < 9){ /* approx is not valid and answer is close to the overflow lim */
     xermsg("slatec", "dbinom",
       "result overflows because n and/or m too big", 3, 2);
     return 1.0;
