@@ -13,6 +13,7 @@
 #include <cctbx/hendrickson_lattman.h>
 #include <cctbx/maptbx/accessors/c_grid_p1.h>
 #include <cctbx/maptbx/accessors/c_grid_padded_p1.h>
+#include <cctbx/sgtbx/lattice_symmetry.h>
 #include <boost/python/module.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
@@ -24,7 +25,6 @@ namespace scitbx { namespace af { namespace boost_python {
   void wrap_flex_sym_mat3_double();
   void wrap_flex_tiny_size_t_2();
   void wrap_flex_xray_scatterer();
-  void wrap_flex_evaluated_axis_t();
 
 namespace {
 
@@ -37,6 +37,8 @@ namespace {
     tuple_mapping_fixed_size<cctbx::grid_point<> >();
     tuple_mapping_fixed_size<cctbx::hendrickson_lattman<> >();
     tuple_mapping_fixed_size<cctbx::miller::index<> >();
+    tuple_mapping_variable_capacity<af::shared<
+      cctbx::sgtbx::lattice_symmetry::evaluated_axis_t> >();
   }
 
   void register_cctbx_c_grid_conversions()
@@ -67,7 +69,6 @@ namespace {
     wrap_flex_sym_mat3_double();
     wrap_flex_tiny_size_t_2();
     wrap_flex_xray_scatterer();
-    wrap_flex_evaluated_axis_t();
 
     // The flex module will be used from all cctbx extension modules.
     // Therefore it is convenient to register all tuple mappings from here.
