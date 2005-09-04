@@ -1502,6 +1502,11 @@ def exercise_lattice_symmetry_options():
     subgrs = subgroups.subgroups(group_info).groups_parent_setting()
     assert len(subgrs)==n_subgrps
 
+  #test axis introspection
+  group_search(niggli_cell, 3.0, only_gen,introspection=True)
+  C = group_search.candidates
+  assert len(C)>=5 # must find at least five two-fold axes for tetragonal
+
 def exercise_find_affine():
   for sym,n in [("P 1",67704),("P 2",104),("C 2y",36),("B 2x",36),("A 2z",36)]:
     group = sgtbx.space_group(sym)
