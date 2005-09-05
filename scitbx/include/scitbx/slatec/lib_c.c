@@ -499,9 +499,9 @@ slatec_dbinom(unsigned n, unsigned m)
       "result overflows because n and/or m too big", 3, 2);
     return 1.0;
   }
-  xn = n + 1;
-  xk = k + 1;
-  xnk = n - k + 1;
+  xn = (double) n + 1;
+  xk = (double) k + 1;
+  xnk = (double) n - (double) k + 1;
   corr = d9lgmc(xn) - d9lgmc(xk) - d9lgmc(xnk);
   result = xk*log(xnk/xk) - xn*slatec_dlnrel(-(xk-1)/xn)
     -0.5*log(xn*xnk/xk) + 1 - sq2pil + corr;
