@@ -48,8 +48,14 @@ def run(args):
     only_test_generators=False)
   Groups.show()
 
+def metric_supergroup(group):
+  return sgtbx.space_group_info(group=group).type(
+    ).expand_addl_generators_of_euclidean_normalizer(True,True
+    ).build_derived_acentric_group()
+
 class metric_subgroups:
-  def __init__(self, input_symmetry, max_delta, only_test_generators=True):
+  def __init__(self, input_symmetry, max_delta, only_test_generators=True,
+    bravais_types_only=True):
     self.input_symmetry = input_symmetry
     self.max_delta = max_delta
     self.result_groups = []
@@ -80,6 +86,7 @@ class metric_subgroups:
 
     for i_subgr in perm:
       acentric_subgroup = subgrs[i_subgr]
+      acentric_supergroup = metric_supergroup(acentric_subgroup)
       # Add centre of inversion to acentric lattice symmetry
       centric_group = sgtbx.space_group(acentric_subgroup)
       centric_group.expand_inv(sgtbx.tr_vec((0,0,0)))
@@ -90,11 +97,16 @@ class metric_subgroups:
         unit_cell=self.minimum_symmetry.unit_cell(),
         space_group=centric_group,
         assert_is_compatible_unit_cell=False)
+      supersym = crystal.symmetry(
+        unit_cell=self.minimum_symmetry.unit_cell(),
+        space_group=acentric_supergroup,
+        assert_is_compatible_unit_cell=False)
       # Convert subgroup to reference setting
       cb_op_minimum_ref = subsym.space_group_info().type().cb_op()
       ref_subsym = subsym.change_basis(cb_op_minimum_ref)
       # Ignore unwanted groups
-      if (not str(ref_subsym.space_group_info()) in bravais_types.centric):
+      if (bravais_types_only and
+          not str(ref_subsym.space_group_info()) in bravais_types.centric):
         continue
       # Choose best setting for monoclinic and orthorhombic systems
       cb_op_best_cell = ref_subsym.change_of_basis_op_to_best_cell()
@@ -113,13 +125,14 @@ class metric_subgroups:
           if (best_subsym_corr.space_group() == best_subsym.space_group()):
             cb_op_inp_best = cb_op_corr * cb_op_inp_best
       self.result_groups.append({'subsym':subsym,
+                                 'supersym':supersym,
                                  'ref_subsym':ref_subsym,
                                  'best_subsym':best_subsym,
                                  'cb_op_inp_best':cb_op_inp_best,
                                  'max_angular_difference':
                                   lattice_symmetry.find_max_delta(
                                   minimum_cell=self.minimum_symmetry.unit_cell(),
-                                  group=acentric_subgroup)
+                                  group=acentric_supergroup)
                                })
   def show_input(self):
     print
