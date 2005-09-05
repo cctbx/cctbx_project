@@ -1512,9 +1512,12 @@ def exercise_slatec_dbinom():
     1.53361301E+106]
   for nm,e in zip(nms,expected):
     assert eps_eq(f(*nm), e)
-  try: f(n=2**32-1,m=2**5)
+  assert eps_eq(f(n=2**32-1,m=2**5), 6.83193552992e+272)
+  try: f(n=2**32-1,m=2**6)
   except RuntimeError, e:
-    assert str(e) == "slatec: d9lgmc: x must be ge 10 (nerr=1, level=2)"
+    assert str(e) == \
+      "slatec: dbinom: result overflows" \
+      " because n and/or m too big (nerr=3, level=2)"
   else: raise RuntimeError("Exception expected.")
 
 def run():
