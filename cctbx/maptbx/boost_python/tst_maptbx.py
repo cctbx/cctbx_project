@@ -326,7 +326,7 @@ def exercise_real_space_refinement():
                                unit_cell.orthogonalization_matrix(),
                                out_of_bounds_raise.as_handle())
   sites = flex.vec3_double()
-  sites.append( (21,-3.4E10,2.6) )
+  sites.append( (21,-3.4E8,2.6) )
   sites.append( (1.01,2.34,2.184) )
   sites.append( (3,14,15) )
   sites.append( (1,61,8) )
