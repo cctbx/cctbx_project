@@ -6,6 +6,7 @@ from cctbx import crystal
 from libtbx.test_utils import approx_equal, not_approx_equal
 import sys
 import random
+from cPickle import dumps
 
 def flex_types():
   return (flex.float, flex.double)
@@ -267,18 +268,25 @@ test_map  = flex.double([
   0.093106, 0.010392, -0.141450, -0.299110, -0.328730, -0.249500])
 
 def exercise_real_space_refinement():
-  unit_cell=130.45,130.245,288.405,90,90,120
+  ## test non_symmetric
+  unit_cell_parameters=130.45,130.245,388.405,90,90,120
   unit_cell_gridding_n=144,144,360
-  grid_cell=uctbx.unit_cell((130.45/144,130.245/144,388.405/360,90,90,120))
-  grid_mat = grid_cell.fractionalization_matrix()
-  map = test_map.deep_copy()
-  map.resize(flex.grid((-1,-2,-1),(3,3,5)))
+  unit_cell=uctbx.unit_cell(unit_cell_parameters)
+  emap = test_map.deep_copy()
+  emap.resize(flex.grid((-1,-2,-1),(3,3,5)))
+  out_of_bounds_clamp = maptbx.out_of_bounds_clamp(0)
+  basic_map = maptbx.basic_map(maptbx.basic_map_non_symmetric_flag(),
+                               emap,
+                               unit_cell_gridding_n,
+                               unit_cell.orthogonalization_matrix(),
+                               out_of_bounds_clamp.as_handle())
+
   sites_cart = flex.vec3_double()
   sites_cart.append((0.468661,-1.549268,3.352108))
   sites_cart.append((0.624992,1.553980,1.205578))
   weights=flex.double(sites_cart.size(),1.0)
-  interpolator = maptbx.get_non_crystallographic_interpolator(map,grid_mat)
-  assert approx_equal(maptbx.real_space_refinement_residual(interpolator=interpolator,
+  assert approx_equal(maptbx.real_space_refinement_residual(
+                                      basic_map=basic_map,
                                       sites=sites_cart,
                                       weights=weights),
                       0.260325417539)
@@ -303,25 +311,46 @@ def exercise_real_space_refinement():
                   (-0.05517232417432183,
                    -0.0043710248947356201,
                    -0.046833897401769242)]
-  for grad, correct in zip(maptbx.real_space_refinement_gradients(interpolator,
+  for grad, correct in zip(maptbx.real_space_refinement_gradients(
+                               basic_map=basic_map,
                                sites=sites_cart),
                            expected_grads):
     assert approx_equal(grad,correct)
-  ## test crystallographic
-  map = flex.double(flex.grid(2,3,5), 10)
-  frac_mtx = uctbx.unit_cell((1,1,1,90,90,90)).fractionalization_matrix()
-  interpolator = maptbx.get_cartesian_crystallographic_interpolator(map,frac_mtx)
+  ## test unit_cell
+  emap = flex.double(flex.grid(2,3,5), 10)
+  unit_cell = uctbx.unit_cell((1,1,1,90,90,90))
+  out_of_bounds_raise = maptbx.out_of_bounds_raise()
+  basic_map = maptbx.basic_map(maptbx.basic_map_unit_cell_flag(),
+                               emap,
+                               emap.focus(),
+                               unit_cell.orthogonalization_matrix(),
+                               out_of_bounds_raise.as_handle())
   sites = flex.vec3_double()
   sites.append( (21,-3.4E10,2.6) )
   sites.append( (1.01,2.34,2.184) )
   sites.append( (3,14,15) )
   sites.append( (1,61,8) )
   weights=flex.double(sites.size(),1.0)
-  assert approx_equal( maptbx.real_space_refinement_residual(interpolator,
+  assert approx_equal( maptbx.real_space_refinement_residual(
+                                     basic_map=basic_map,
                                      sites=sites,
                                      weights=weights), -10, eps=1.e-4 )
   expected_gradients=flex.double(12,0.0)
-  for grad, correct in zip(maptbx.real_space_refinement_gradients(interpolator,
+  for grad, correct in zip(maptbx.real_space_refinement_gradients(
+                                basic_map=basic_map,
+                                sites=sites).as_double(),list(expected_gradients)):
+    assert approx_equal( grad, correct, eps=1e-4 )
+  ## test asu
+  cs = crystal.symmetry(
+    unit_cell=unit_cell,
+    space_group="P1")
+  basic_map.as_asu(emap,cs.space_group(),cs.direct_space_asu().as_float_asu(),emap.focus())
+  assert approx_equal( maptbx.real_space_refinement_residual(
+                                     basic_map=basic_map,
+                                     sites=sites,
+                                     weights=weights), -10, eps=1.e-4 )
+  for grad, correct in zip(maptbx.real_space_refinement_gradients(
+                                basic_map=basic_map,
                                 sites=sites).as_double(),list(expected_gradients)):
     assert approx_equal( grad, correct, eps=1e-4 )
 
@@ -338,6 +367,163 @@ def exercise_asu_eight_point_interpolation():
         maptbx.asu_eight_point_interpolation(map, asu_mappings, x_frac), 10)
   assert approx_equal(
     maptbx.asu_eight_point_interpolation(map, asu_mappings, (10,11,12)), 10)
+
+def exercise_transformers():
+  unit_cell=uctbx.unit_cell((10,10,10,90,90,90))
+  sites_cart = ((9.5,10.7,3.2),(-.5,1.7,13.2))
+  sites_frac = ((1.0,1.9,-.21),(3.6,0.7,-100.7))
+  sites_grid = ((5,8,51),(-12,6,105))
+  extents = (100,100,100)
+  c2f = maptbx.cart2frac(unit_cell.fractionalization_matrix())
+  c2g = maptbx.cart2grid(unit_cell.fractionalization_matrix(),extents)
+  c2c = maptbx.cart2cart()
+  f2f = maptbx.frac2frac()
+  f2c = maptbx.frac2cart(unit_cell.orthogonalization_matrix())
+  f2g = maptbx.frac2grid(extents)
+  g2f = maptbx.grid2frac(extents)
+  g2g = maptbx.grid2grid()
+  g2c = maptbx.grid2cart(extents,unit_cell.orthogonalization_matrix())
+  for site_cart in sites_cart:
+    assert approx_equal( c2f(site_cart), unit_cell.fractionalize(site_cart) )
+    frac_pt = unit_cell.fractionalize(site_cart)
+    grid_pt = (frac_pt[0]*extents[0],frac_pt[1]*extents[1],frac_pt[2]*extents[2])
+    assert approx_equal( c2g(site_cart), grid_pt )
+    assert approx_equal( c2c(site_cart), site_cart )
+  for site_frac in sites_frac:
+    assert approx_equal( f2f(site_frac), site_frac )
+    assert approx_equal( f2c(site_frac), unit_cell.orthogonalize(site_frac) )
+    grid_pt = (site_frac[0]*extents[0],site_frac[1]*extents[1],site_frac[2]*extents[2])
+    assert approx_equal( f2g(site_frac), grid_pt )
+  for site_grid in sites_grid:
+    frac_pt = (site_grid[0]/float(extents[0]),site_grid[1]/float(extents[1]),site_grid[2]/float(extents[2]))
+    assert approx_equal( g2f(site_grid), frac_pt )
+    assert approx_equal( g2g(site_grid), site_grid )
+    assert approx_equal( g2c(site_grid), unit_cell.orthogonalize(frac_pt) )
+
+def exercise_mappers():
+  unit_cell=uctbx.unit_cell((10,10,10,90,90,90))
+  cs = crystal.symmetry(unit_cell,"P2")
+  sites_frac = ((1.0,1.9,-.21),(3.6,0.7,-100.7))
+  ns_sites_frac = ((1.0,1.9,-.21),(3.6,0.7,-100.7))
+  uc_sites_frac = ((0.0,0.9,0.79),(0.6,0.7,0.3))
+  as_sites_frac = ((0,.9,.21),(.6,0.7,.3))
+
+  nsf = maptbx.non_symmetric_factory()
+  ucf = maptbx.unit_cell_factory()
+  asf = maptbx.asu_factory(cs.space_group(),cs.direct_space_asu().as_float_asu())
+
+  for idx in xrange(len(sites_frac)):
+    assert approx_equal( maptbx.get_non_symmetric_mapper(sites_frac[idx]).mapped_coordinate, ns_sites_frac[idx] )
+    assert approx_equal( nsf.map(sites_frac[idx]).mapped_coordinate, ns_sites_frac[idx] )
+
+    assert approx_equal( maptbx.get_unit_cell_mapper(sites_frac[idx]).mapped_coordinate, uc_sites_frac[idx] )
+    assert approx_equal( ucf.map(sites_frac[idx]).mapped_coordinate, uc_sites_frac[idx] )
+
+    assert approx_equal( maptbx.get_asu_mapper(sites_frac[idx],
+        cs.space_group(),cs.direct_space_asu().as_float_asu()).mapped_coordinate, as_sites_frac[idx] )
+    assert approx_equal( asf.map(sites_frac[idx]).mapped_coordinate, as_sites_frac[idx] )
+
+def exercise_basic_map():
+  #cs = crystal.symmetry(unit_cell,"P2")
+  #### non-symmetric test ####
+  unit_cell_parameters=130.45,130.245,388.405,90,90,120
+  unit_cell_gridding_n=144,144,360
+  unit_cell=uctbx.unit_cell(unit_cell_parameters)
+  emap = test_map.deep_copy()
+  emap.resize(flex.grid((-1,-2,-1),(3,3,5)))
+  out_of_bounds_raise = maptbx.out_of_bounds_raise()
+  out_of_bounds_clamp = maptbx.out_of_bounds_clamp(-123)
+  basic_map = maptbx.basic_map(maptbx.basic_map_non_symmetric_flag(),
+                               emap,
+                               unit_cell_gridding_n,
+                               unit_cell.orthogonalization_matrix(),
+                               out_of_bounds_raise.as_handle())
+
+  for site_cart,expected_result in ([(0.468661,-1.549268,3.352108),-0.333095],
+                                    [(0.624992,1.553980,1.205578),-0.187556],
+                                    [(0.278175,0.968454,2.578265),-0.375068],
+                                    [(0.265198,-1.476055,0.704381),-0.147061],
+                                    [(1.296042,0.002101,3.459270),-0.304401],
+                                    [(0.296189,-1.346603,2.935777),-0.296395],
+                                    [(0.551586,-1.284371,3.202145),-0.363263],
+                                    [(0.856542,-0.782700,-0.985020),-0.106925],
+                                    [(0.154407,1.078936,-0.917551),-0.151128]):
+    assert approx_equal(basic_map.get_cart_value(site_cart), expected_result)
+  for x in range(0,2):
+    for y in range(-1,2):
+      for z in range(0,4):
+        assert approx_equal(
+          basic_map.get_grid_value((x,y,z)), emap[x,y,z])
+  try:
+    val = basic_map.get_cart_value((5,5,5))
+  except RuntimeError, e:
+    assert str(e) == \
+      "cctbx Error: basic_map<T>: the coordinate is out of bounds."
+  else: raise RuntimeError("Exception expected.")
+  basic_map.set_out_of_bounds_handle(out_of_bounds_clamp.as_handle())
+  assert approx_equal(basic_map.get_cart_value((5,5,5)),-123)
+  #### unit_cell test ####
+  unit_cell = uctbx.unit_cell((1,1,1,90,90,90))
+  emap = flex.double(flex.grid(2,3,5), 10)
+  basic_map = maptbx.basic_map(maptbx.basic_map_unit_cell_flag(),
+                               emap,
+                               emap.focus(),
+                               unit_cell.orthogonalization_matrix(),
+                               out_of_bounds_raise.as_handle())
+
+  assert basic_map.get_grid_value((0,0,0))==10
+  emap[(0,0,0)] = -100
+  assert basic_map.get_grid_value((0,0,0))==-100
+  emap[(0,0,0)] = 10
+  assert basic_map.get_grid_value((0,0,0))==10
+
+  for shift in [0,1,-1]:
+    for index in flex.nested_loop(emap.focus()):
+      x_frac = [float(i)/n+shift for i,n in zip(index, emap.focus())]
+      assert approx_equal(basic_map.get_frac_value(x_frac), 10)
+      assert basic_map.nearest_grid_point_fractional(x_frac) == index
+  for i in xrange(100):
+    x_frac = [3*random.random()-1 for i in xrange(3)]
+    assert approx_equal(basic_map.get_frac_value(x_frac), 10)
+  emap = flex.double(range(30))
+  emap.resize(flex.grid(2,3,5))
+  basic_map.as_unit_cell(emap)
+  for shift in [0,1,-1]:
+    v = 0
+    for index in flex.nested_loop(emap.focus()):
+      x_frac = [float(i)/n+shift for i,n in zip(index, emap.focus())]
+      assert approx_equal(basic_map.get_frac_value(x_frac), v)
+      assert approx_equal(
+        emap[basic_map.nearest_grid_point_fractional(x_frac)], v)
+      assert approx_equal(basic_map.value_at_nearest_grid_point_fractional(x_frac), v)
+      v += 1
+  emap = flex.double()
+  for i in xrange(48): emap.append(i%2)
+  emap.resize(flex.grid(2,4,6))
+  basic_map.as_unit_cell(emap)
+  basic_map.rebuild_transformers(emap.focus(),unit_cell.orthogonalization_matrix())
+  for shift in [0,1,-1]:
+    for offs in [.0,.5,.25,.75]:
+      v = offs
+      for index in flex.nested_loop(emap.focus()):
+        x_frac = [(i+offs)/n+shift for i,n in zip(index, emap.focus())]
+        assert approx_equal(basic_map.get_frac_value(x_frac), v)
+        if (offs != .5):
+          assert basic_map.nearest_grid_point_fractional(x_frac) == tuple(
+            [int(i+offs+.5)%n for i,n in zip(index,emap.focus())])
+        v = 1-v
+  #### asu test ####
+  emap = flex.double(flex.grid(2,3,5), 10)
+  cs = crystal.symmetry(
+    unit_cell=(1,1,1,90,90,90),
+    space_group="P1")
+  basic_map.as_asu(emap,cs.space_group(),cs.direct_space_asu().as_float_asu(),emap.focus())
+  basic_map.rebuild_transformers(emap.focus(),cs.unit_cell().orthogonalization_matrix())
+  for shift in [0,1,-1]:
+    for index in flex.nested_loop(emap.focus()):
+      x_frac = [float(i)/n+shift for i,n in zip(index, emap.focus())]
+      assert approx_equal( basic_map.get_frac_value(x_frac), 10)
+  assert approx_equal( basic_map.get_frac_value( (10,11,12)), 10)
 
 def exercise_non_crystallographic_eight_point_interpolation():
   unit_cell=130.45,130.245,288.405,90,90,120
@@ -380,66 +566,6 @@ def exercise_non_crystallographic_eight_point_interpolation():
   assert approx_equal(maptbx.non_crystallographic_eight_point_interpolation(
     map, grid_mat, (5,5,5), True, -123), -123)
 
-
-def exercise_abstract_interpolators():
-  unit_cell=130.45,130.245,288.405,90,90,120
-  unit_cell_gridding_n=144,144,360
-  grid_cell=uctbx.unit_cell((130.45/144,130.245/144,388.405/360,90,90,120))
-  grid_mat = grid_cell.fractionalization_matrix()
-  map = test_map.deep_copy()
-  map.resize(flex.grid((-1,-2,-1),(3,3,5)))
-  interpolator = maptbx.get_non_crystallographic_interpolator(map,grid_mat)
-  for site_cart,expected_result in ([(0.468661,-1.549268,3.352108),-0.333095],
-                                    [(0.624992,1.553980,1.205578),-0.187556],
-                                    [(0.278175,0.968454,2.578265),-0.375068],
-                                    [(0.265198,-1.476055,0.704381),-0.147061],
-                                    [(1.296042,0.002101,3.459270),-0.304401],
-                                    [(0.296189,-1.346603,2.935777),-0.296395],
-                                    [(0.551586,-1.284371,3.202145),-0.363263],
-                                    [(0.856542,-0.782700,-0.985020),-0.106925],
-                                    [(0.154407,1.078936,-0.917551),-0.151128]):
-    assert approx_equal(interpolator.interpolate(site_cart), expected_result)
-  orthos = flex.vec3_double()
-  vals = flex.double()
-  for x in range(0,2):
-    for y in range(-1,2):
-      for z in range(0,4):
-        ortho = grid_cell.orthogonalize((x,y,z))
-        orthos.append( ortho )
-        val = interpolator.interpolate(ortho)
-        vals.append(val)
-        assert approx_equal(val, map[x,y,z])
-  for val,exp in zip(vals,interpolator.interpolate(orthos)):
-    assert approx_equal( val, exp )
-  try:
-    val = interpolator.interpolate( (5,5,5) )
-  except RuntimeError, e:
-    assert str(e) == \
-      "cctbx Error: non_crystallographic_eight_point_interpolation:" \
-      " point required for interpolation is out of bounds."
-  else: raise RuntimeError("Exception expected.")
-  interpolator = maptbx.get_non_crystallographic_interpolator(map,grid_mat,True,-123)
-  assert approx_equal(interpolator.interpolate( (5,5,5) ), -123)
-  ## test fractional crystallographic symmetry
-  frac_mtx = uctbx.unit_cell((1,1,1,90,90,90)).fractionalization_matrix()
-  map = flex.double(flex.grid(2,3,5), 10)
-  cs = crystal.symmetry(
-    unit_cell=(1,1,1,90,90,90),
-    space_group="P1")
-  asu_mappings=cs.asu_mappings(buffer_thickness=0)
-  interpolators = [maptbx.get_fractional_crystallographic_interpolator(map),
-                   maptbx.get_cartesian_crystallographic_interpolator(map,frac_mtx),
-                   maptbx.get_fractional_asu_interpolator(map,asu_mappings),
-                   maptbx.get_cartesian_asu_interpolator(map,asu_mappings)]
-  for intp in interpolators:
-    for shift in [0,1,-1]:
-      for index in flex.nested_loop(map.focus()):
-        x_frac = [float(i)/n+shift for i,n in zip(index, map.focus())]
-        assert approx_equal(intp.interpolate(x_frac), 10)
-    for i in xrange(100):
-      x_frac = [3*random.random()-1 for i in xrange(3)]
-      assert approx_equal(intp.interpolate(x_frac), 10)
-
 def exercise_average_density():
   map = test_map.deep_copy()
   map.resize(flex.grid(4,5,6))
@@ -475,12 +601,14 @@ def run():
   exercise_peak_search()
   exercise_pymol_interface()
   exercise_structure_factors()
+  exercise_transformers()
+  exercise_mappers()
+  exercise_basic_map()
   exercise_eight_point_interpolation()
   exercise_non_crystallographic_eight_point_interpolation()
   exercise_asu_eight_point_interpolation()
   exercise_real_space_refinement()
   exercise_average_density()
-  exercise_abstract_interpolators()
   print "OK"
 
 if (__name__ == "__main__"):

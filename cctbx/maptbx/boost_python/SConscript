@@ -10,6 +10,8 @@ env.SharedLibrary(target="#lib/cctbx_maptbx_ext", source=[
   "pymol_interface.cpp",
   "statistics.cpp",
   "structure_factors.cpp",
+  "coordinate_transformers.cpp",
+  "mapper.cpp",
+  "basic_map.cpp",
   "real_space_refinement.cpp",
-  "abstract_interpolator.cpp"
 ])

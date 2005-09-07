@@ -22,19 +22,19 @@ namespace {
       using namespace boost::python;
       def("real_space_refinement_residual",
         (double(*)(
-          abstract::interpolator<double> const&,
+          basic_map<double,signed long> const&,
           af::const_ref<scitbx::vec3<double> > const&,
           af::const_ref<double> const&))
         real_space_refinement::residual, (
-        arg_("interpolator"), arg_("sites"), arg_("weights")));
+        arg_("basic_map"), arg_("sites"), arg_("weights")));
       def("real_space_refinement_gradients",
         (af::shared<scitbx::vec3<double> >(*)(
-          abstract::interpolator<double> const&,
+          basic_map<double,signed long> const&,
           af::const_ref<scitbx::vec3<double> > const&,
           double,std::size_t))
             real_space_refinement::gradients,
         real_space_refinement_gradients_overloads((
-          arg_("interpolator"),
+          arg_("basic_map"),
           arg_("sites"),
           arg_("delta_h")=1.0,
           arg_("max_iter")=0)));
