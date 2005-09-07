@@ -2,8 +2,7 @@
 #define CCTBX_MAPTBX_REAL_SPACE_REFINEMENT_H
 // Done by Erik McKee && Jacob Smith
 
-#include <cctbx/maptbx/abstract_interpolator.h>
-#include <cctbx/maptbx/eight_point_interpolation.h>
+#include <cctbx/maptbx/basic_map.h>
 #include <scitbx/array_family/versa_matrix.h>
 #if !(defined(__linux__) && defined(__GNUC__) \
  && __GNUC__ == 2 && __GNUC_MINOR__ == 96)
@@ -14,31 +13,31 @@ namespace cctbx { namespace maptbx { namespace real_space_refinement {
 
 static const bool no_assert = true;
 
-template <typename FloatType>
+template < typename FloatType, typename IntType >
 FloatType
 residual(
-  abstract::interpolator<FloatType> const& interpolator,
+  basic_map<FloatType,IntType> const& map,
   af::const_ref<scitbx::vec3<FloatType> > const& sites,
   af::const_ref<FloatType> const& weights)
 {
   CCTBX_ASSERT(weights.size()==sites.size());
 
-  return -af::matrix_multiply(weights,interpolator[sites].const_ref()) / af::sum(weights);
+  return -af::matrix_multiply(weights,map.get_cart_values(sites).const_ref()) / af::sum(weights);
 }
 
 // computes the gradient
-template < typename FloatType >
+template < typename FloatType, typename IntType >
 scitbx::vec3<FloatType>
 gradient (
-  abstract::interpolator<FloatType> const& interpolator,
+  basic_map<FloatType,IntType> const& map,
   scitbx::vec3<FloatType> const& site,
   FloatType const& delta_h )
 {
   scitbx::vec3<FloatType> result;
   for ( std::size_t i=0; i<3; ++i )
   {
-    scitbx::vec3<FloatType> h_pos = site;
-    scitbx::vec3<FloatType> h_neg = site;
+    cartesian<FloatType> h_pos(site);
+    cartesian<FloatType> h_neg(site);
     h_pos[i] += delta_h;
     h_neg[i] -= delta_h;
     // "Numerical Analysis", Richard L. Burden, J. Douglas Faires
@@ -46,7 +45,7 @@ gradient (
     // error: -(h*h)*(1/6.0)*f'''(P)
     // The above book has an explanation of the "2", which is nonobvious (pgs.
     // 168-171)
-    result[i] = (interpolator[h_pos] - interpolator[h_neg]) / 2*delta_h;
+    result[i] = (map[h_pos] - map[h_neg]) / 2*delta_h;
   }
   // make sure the length of the gradient vector is no shorter than or
   // equal to delta-h
@@ -58,10 +57,10 @@ gradient (
   return result;
 }
 
-template <typename FloatType>
+template < typename FloatType, typename IntType >
 af::shared<scitbx::vec3<FloatType> >
 gradients(
-  abstract::interpolator<FloatType> const& interpolator,
+  basic_map<FloatType,IntType> const& map,
   af::const_ref<scitbx::vec3<FloatType> > const& sites,
   FloatType delta_h=1.0,
   std::size_t search_iter=0)
@@ -82,7 +81,7 @@ gradients(
   // and sign it in the proper direction
   for(std::size_t i = 0; i < num; ++i)
   {
-    grad_val = gradient(interpolator,sites[i],delta_h);
+    grad_val = gradient(map,sites[i],delta_h);
     FloatType len = grad_val.length();
 
     // Full-Newton Predictor-Corrector With Early Abort
@@ -96,17 +95,17 @@ gradients(
     //    set the zero-out flag to false
     // If the zero-out flag is true, zero out the gradient
     // Add to the list of gradients
-    FloatType current_density = interpolator[sites[i]];
+    FloatType current_density = map.get_cart_value(sites[i]);
     FloatType local_delta_h = delta_h;
     bool zero_out = true;
     for ( std::size_t iter=0; iter<search_iter; ++iter )
     {
       scitbx::vec3<FloatType> pred = sites[i] + grad_val;
-      FloatType pred_dens = interpolator[pred];
+      FloatType pred_dens = map.get_cart_value(pred);
       if ( pred_dens < current_density )
       {
         local_delta_h *= 0.5;
-        grad_val = gradient(interpolator,sites[i],local_delta_h);
+        grad_val = gradient(map,sites[i],local_delta_h);
       }
       else
       {

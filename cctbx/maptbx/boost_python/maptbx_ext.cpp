@@ -18,8 +18,10 @@ namespace cctbx { namespace maptbx { namespace boost_python {
   void wrap_pymol_interface();
   void wrap_statistics();
   void wrap_structure_factors();
+  void wrap_coordinate_transformers();
+  void wrap_mappers();
+  void wrap_basic_map();
   void wrap_real_space_refinement();
-  void wrap_abstract_interpolators();
 
 namespace {
 
@@ -38,8 +40,10 @@ namespace {
     wrap_pymol_interface();
     wrap_statistics();
     wrap_structure_factors();
+    wrap_coordinate_transformers();
+    wrap_mappers();
+    wrap_basic_map();
     wrap_real_space_refinement();
-    wrap_abstract_interpolators();
 
     def("copy",
       (af::versa<float, af::flex_grid<> >(*)
