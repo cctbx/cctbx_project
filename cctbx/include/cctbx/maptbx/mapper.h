@@ -178,6 +178,8 @@ struct mapper_factory<asu,FloatType,IntType>
   typedef basic_mapper<asu,FloatType,IntType>        basic_mapper_type;
   typedef basic_mapper<void,FloatType,IntType>      mapper_type;
 
+  mapper_factory () {}
+
   mapper_factory ( tbx_space_group const& space_group,
     cdsa::float_asu<FloatType> const& asu )
   : space_group_(space_group)
@@ -218,6 +220,8 @@ struct transformer_mapper_factory {
   typedef typename transformer_types<ToFracType>::from_type  from_type;
   typedef typename transformer_types<ToFracType>::to_type    frac_type;
   typedef typename transformer_types<FromFracType>::to_type  to_type;
+
+  transformer_mapper_factory () {}
 
   transformer_mapper_factory (
     ToFracType const& tofrac,
