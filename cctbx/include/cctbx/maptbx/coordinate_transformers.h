@@ -62,17 +62,24 @@ round_fractional_gridization ( fractional<FloatType> const& coordinate,
 template <  typename FromType,
       typename ToType> struct transform;
 
+/* mips is t3h suxx0r */
 // unblobs the transform type to get the from and to types
-template < typename T > struct transformer_types;
-template < template<typename,typename> class T, typename U1, typename U2 >
-struct transformer_types< T<U1,U2> > {
-  typedef U1 from_type;
-  typedef U2 to_type;
+//template < typename T > struct transformer_types;
+//template < template<typename,typename> class T, typename U1, typename U2 >
+//struct transformer_types< T<U1,U2> > {
+//  typedef U1 from_type;
+//  typedef U2 to_type;
+//};
+template < typename T > struct transformer_types {
+  typedef typename T::from_type from_type;
+  typedef typename T::to_type to_type;
 };
 
 // T->T transformations require no work
 template < typename T >
 struct transform<T,T> {
+  typedef T from_type;
+  typedef T to_type;
   transform () {}
   T operator () ( T const& t ) const {
     return t;
@@ -85,6 +92,8 @@ struct transform<T,T> {
 // expand from fractional to grid
 template < typename FloatType, typename IntType >
 struct transform<fractional<FloatType>,grid_point<IntType> > {
+  typedef fractional<FloatType> from_type;
+  typedef grid_point<IntType> to_type;
   transform () {}
   transform ( af::tiny<IntType,dimension_3> const& to_grid ) {
     this->to_grid_ = to_grid;
@@ -107,6 +116,8 @@ struct transform<fractional<FloatType>,grid_point<IntType> > {
 // fractional to cartesian
 template < typename FloatType >
 struct transform<fractional<FloatType>,cartesian<FloatType> > {
+  typedef fractional<FloatType> from_type;
+  typedef cartesian<FloatType> to_type;
   transform () {}
   transform ( scitbx::mat3<FloatType> const& to_cart ) {
     this->to_cart_ = to_cart;
@@ -127,8 +138,11 @@ struct transform<cartesian<FloatType>,grid_point<IntType> > {
   // behold! a bug is squashed! this is an apple bug!
 #if defined(__APPLE__) && defined(__MACH__) \
  && defined(__GNUC__)  && __GNUC__ == 3 && __GNUC_MINOR__ == 3
-  bool dummy_
+  bool dummy_;
 #endif
+  typedef cartesian<FloatType> from_type;
+  typedef grid_point<IntType> to_type;
+
   transform () {}
   transform (
     transform<cartesian<FloatType>,fractional<FloatType> > const& c2f,
@@ -158,6 +172,9 @@ struct transform<cartesian<FloatType>,grid_point<IntType> > {
 // cartesian to fractional
 template < typename FloatType >
 struct transform<cartesian<FloatType>,fractional<FloatType> > {
+  typedef cartesian<FloatType> from_type;
+  typedef fractional<FloatType> to_type;
+
   transform () {}
   transform ( scitbx::mat3<FloatType> const& to_frac ) {
     this->to_frac_ = to_frac;
@@ -178,8 +195,11 @@ struct transform<grid_point<IntType>,cartesian<FloatType> > {
         // behold! a bug is squashed! this is an apple bug!
 #if defined(__APPLE__) && defined(__MACH__) \
  && defined(__GNUC__)  && __GNUC__ == 3 && __GNUC_MINOR__ == 3
-        bool dummy_
+  bool dummy_;
 #endif
+  typedef grid_point<IntType> from_type;
+  typedef cartesian<FloatType> to_type;
+
   transform () {}
   transform (
     transform<grid_point<IntType>,fractional<FloatType> > const& g2f,
@@ -207,6 +227,9 @@ struct transform<grid_point<IntType>,cartesian<FloatType> > {
 // grid to fractional
 template < typename FloatType, typename IntType >
 struct transform<grid_point<IntType>,fractional<FloatType> > {
+  typedef grid_point<IntType> from_type;
+  typedef fractional<FloatType> to_type;
+
   transform () {}
   transform ( af::tiny<IntType,dimension_3> const& to_frac ) {
     this->to_frac_ = to_frac;
