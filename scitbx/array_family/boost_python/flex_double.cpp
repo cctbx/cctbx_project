@@ -273,6 +273,16 @@ namespace boost_python {
       .def("matrix_diagonal",
         (shared<double>(*)(
           const_ref<double, c_grid<2> > const&)) matrix_diagonal)
+      .def("matrix_diagonal_set_in_place",
+        (void(*)(
+          ref<double, c_grid<2> > const&,
+          double const&)) matrix_diagonal_set_in_place,
+            arg_("value"))
+      .def("matrix_diagonal_add_in_place",
+        (void(*)(
+          ref<double, c_grid<2> > const&,
+          double const&)) matrix_diagonal_add_in_place,
+            arg_("value"))
       .def("matrix_diagonal_sum",
         (double(*)(
           const_ref<double, c_grid<2> > const&)) matrix_diagonal_sum)

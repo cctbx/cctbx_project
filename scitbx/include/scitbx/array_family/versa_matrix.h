@@ -25,6 +25,38 @@ namespace scitbx { namespace af {
   }
 
   template <typename NumType>
+  void
+  matrix_diagonal_set_in_place(
+    ref<NumType, c_grid<2> > const& a,
+    NumType const& value)
+  {
+    SCITBX_ASSERT(a.accessor().is_square());
+    typedef typename c_grid<2>::index_value_type ivt;
+    ivt n = a.accessor()[0];
+    ivt n_sq = n*n;
+    ivt n_plus_1 = n + 1;
+    for(ivt i=0;i<n_sq;i+=n_plus_1) {
+      a[i] = value;
+    }
+  }
+
+  template <typename NumType>
+  void
+  matrix_diagonal_add_in_place(
+    ref<NumType, c_grid<2> > const& a,
+    NumType const& value)
+  {
+    SCITBX_ASSERT(a.accessor().is_square());
+    typedef typename c_grid<2>::index_value_type ivt;
+    ivt n = a.accessor()[0];
+    ivt n_sq = n*n;
+    ivt n_plus_1 = n + 1;
+    for(ivt i=0;i<n_sq;i+=n_plus_1) {
+      a[i] += value;
+    }
+  }
+
+  template <typename NumType>
   NumType
   matrix_diagonal_sum(
     const_ref<NumType, c_grid<2> > const& a)
