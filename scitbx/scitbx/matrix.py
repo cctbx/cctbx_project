@@ -132,8 +132,7 @@ class rec(object):
     return self / abs(self)
 
   def dot(self, other):
-    assert self.n_rows() == 1 or self.n_columns() == 1
-    assert other.n_rows() == 1 or other.n_columns() == 1
+    assert len(self.elems) == len(other.elems)
     result = 0
     for i in xrange(len(self.elems)):
       result += self.elems[i] * other.elems[i]
@@ -367,6 +366,7 @@ if (__name__ == "__main__"):
   assert (a*3).mathematica_form() == "{{3, 6}, {9, 12}, {15, 18}}"
   assert (-2*a).mathematica_form() == "{{-2, -4}, {-6, -8}, {-10, -12}}"
   b = rec(range(1,7), (2,3))
+  assert a.dot(b) == 91
   c = a * b
   d = rt((c, (1,2,3)))
   assert (-a).mathematica_form() == "{{-1, -2}, {-3, -4}, {-5, -6}}"
