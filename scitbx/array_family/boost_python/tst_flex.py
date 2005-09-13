@@ -1285,6 +1285,11 @@ def exercise_matrix():
       m.resize(flex.grid(rank,rank))
       assert approx_equal(
         m.matrix_diagonal(), [m[j*rank+j] for j in xrange(rank)])
+      mc = m.deep_copy()
+      mc.matrix_diagonal_set_in_place(value=3)
+      assert approx_equal(mc.matrix_diagonal(), [3]*rank)
+      mc.matrix_diagonal_add_in_place(value=-5)
+      assert approx_equal(mc.matrix_diagonal(), [-2]*rank)
       assert approx_equal(
         m.matrix_diagonal_sum(), flex.sum(m.matrix_diagonal()))
       assert m.matrix_trace() == m.matrix_diagonal_sum()
