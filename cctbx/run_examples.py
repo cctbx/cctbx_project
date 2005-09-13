@@ -11,6 +11,7 @@ def run():
   "$D/cctbx/examples/map_skewness.py",
   "$D/cctbx/examples/adp_symmetry_constraints.py",
   "$D/cctbx/examples/unit_cell_refinement.py",
+  "$D/cctbx/examples/miller_common_sets.py",
   )
 
   build_dir = libtbx.env.under_build("cctbx")
