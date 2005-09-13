@@ -28,6 +28,7 @@ def run():
   ["$D/lbfgs/boost_python/tst_lbfgs.py"],
   "$D/lbfgsb/boost_python/tst_lbfgsb.py",
   ["$D/fftpack/boost_python/tst_fftpack.py"],
+  "$D/scitbx/examples/flex_array_loops.py",
   "$D/scitbx/examples/lbfgs_recipe.py",
   "$D/scitbx/examples/lbfgs_linear_least_squares_fit.py",
   "$D/scitbx/examples/chebyshev_lsq_example.py"
