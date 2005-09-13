@@ -285,6 +285,23 @@ namespace scitbx {
       inline
       sym_mat3<NumType>
       self_transpose_times_self() const;
+
+      //! Sum of element-wise products.
+      inline
+      NumType
+      dot(mat3 const& other)
+      {
+        mat3 const& m = *this;
+        return m[0] * other[0]
+             + m[1] * other[1]
+             + m[2] * other[2]
+             + m[3] * other[3]
+             + m[4] * other[4]
+             + m[5] * other[5]
+             + m[6] * other[6]
+             + m[7] * other[7]
+             + m[8] * other[8];
+      }
   };
 
   // non-inline constructor

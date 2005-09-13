@@ -1,13 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Aug: Copy of cctbx/sym_mat3.h (Ralf W. Grosse-Kunstleve)
-     2002 May: Created (R.W. Grosse-Kunstleve)
- */
-
 #ifndef SCITBX_SYM_MAT3_H
 #define SCITBX_SYM_MAT3_H
 
@@ -176,6 +166,20 @@ namespace scitbx {
       //! Tensor transform: c.transpose() * (*this) * c
       sym_mat3
       tensor_transpose_transform(mat3<NumType> const& c) const;
+
+      //! Sum of 9 element-wise products.
+      inline
+      NumType
+      dot(sym_mat3 const& other)
+      {
+        sym_mat3 const& m = *this;
+        return m[0] * other[0]
+             + m[1] * other[1]
+             + m[2] * other[2]
+             + 2 * (  m[3] * other[3]
+                    + m[4] * other[4]
+                    + m[5] * other[5]);
+      }
   };
 
   // Constructor for mat3.

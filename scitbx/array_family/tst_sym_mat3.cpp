@@ -127,6 +127,8 @@ int main(int argc, char* argv[])
     sym_mat3<double> fai = fa.inverse();
     check_true(__LINE__, std::fabs(af::max(
       ((fai * fa) - mat3<double>(1)).ref())) < 1.e-6);
+    check_true(__LINE__, a.dot(b) == 276);
+    check_true(__LINE__, b.dot(a) == 276);
   }
   {
     mat3<double> t;
