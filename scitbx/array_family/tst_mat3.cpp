@@ -154,6 +154,8 @@ int main(int argc, char* argv[])
     check_true(__LINE__, r3.determinant() == 1);
     check_true(__LINE__, r3.co_factor_matrix_transposed() == r3i);
     check_true(__LINE__, r3.inverse() == r3i);
+    check_true(__LINE__, a.dot(b) == 420);
+    check_true(__LINE__, b.dot(a) == 420);
   }
   {
     check_true(__LINE__, mat3<int>(7,-2,9,-4,5,-6,1,-8,3).max_abs() == 9);
