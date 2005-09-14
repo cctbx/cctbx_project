@@ -61,9 +61,18 @@ class energies_iso(scitbx.restraints.energies):
       wilson_u = adptbx.b_as_u(wilson_b)
       u_diff = flex.mean(u_isos) - wilson_u
       self.number_of_restraints += 1
-      self.residual_sum += parameters.wilson_b_weight * u_diff**2 / wilson_u
+      if(compute_gradients):
+         g_wilson = 2.*u_diff/u_isos.size()/wilson_u
+         g_wilson = flex.double(u_isos.size(), g_wilson)
+         norm1 = self.gradients.norm()
+         norm2 = g_wilson.norm()
+         if(norm2 > 0 and parameters.wilson_b_weight_auto):
+            w = norm1 / norm2 * parameters.wilson_b_weight
+         else:
+            w = parameters.wilson_b_weight
+      else:
+         w = parameters.wilson_b_weight
+      self.residual_sum += w * u_diff**2 / wilson_u
       if (compute_gradients):
-        g_wilson = 2. * parameters.wilson_b_weight * u_diff \
-                 / u_isos.size() / wilson_u
-        self.gradients += g_wilson
+        self.gradients = self.gradients + w * g_wilson
     self.finalize_target_and_gradients()
