@@ -192,7 +192,8 @@ public:
     return result;
   }
   frac_type remap_frac_coordinate ( frac_type const& coord ) const {
-    return this->grid_handle_->remap(coord).mapped_coordinate;
+    frac_type result = this->grid_handle_->remap(coord).mapped_coordinate;
+    return result;
   }
   cart_type remap_cart_coordinate ( cart_type const& coord ) const {
     frac_type fcoord = this->cart2frac_(coord);
