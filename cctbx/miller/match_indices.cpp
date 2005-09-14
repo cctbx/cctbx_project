@@ -100,7 +100,7 @@ namespace cctbx { namespace miller {
   match_indices::permutation() const
   {
     size_assert_intrinsic();
-    CCTBX_ASSERT(!have_singles());
+    CCTBX_ASSERT(!singles_[0].size());
     af::shared<std::size_t> result((af::reserve(pairs_.size())));
     for(std::size_t i=0;i<pairs_.size();i++) {
       CCTBX_ASSERT(pairs_[i][0] == i);
