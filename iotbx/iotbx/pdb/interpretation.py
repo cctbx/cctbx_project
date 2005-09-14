@@ -755,13 +755,14 @@ def get_year(st):
      try:
        year_as_int = int(year)
        year = year_as_int
+       assert year >= 0 and year <= 99
      except:
        potential_date_stamp = st[50:59][7:]
        year = potential_date_stamp
        try:
          year_as_int = int(year)
          year = year_as_int
+         assert year >= 0 and year <= 99
        except:
          year = None
-     assert year >= 0 and year <= 99
   return year
