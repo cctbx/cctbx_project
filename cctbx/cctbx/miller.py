@@ -1316,6 +1316,25 @@ class array(set):
 
   def phase_transfer(self, phase_source, epsilon=1.e-10, deg=False,
                            phase_integrator_n_steps=None):
+    """\
+Combines amplitudes of self with phases of phase_source.
+Centric reflections are forced to be compatible with the phase
+restrictions.
+
+phase_source can be a miller.array or a plain flex array.
+
+epsilon is only used when phase_source is a complex array. If both the
+real and the imaginary part of phase_source[i] < epsilon the phase is
+assumed to be 0.
+
+deg is only used if phase_source is an array of doubles.
+deg=True indicates that the phases are given in degrees,
+deg=False indicates phases are given in radians.
+
+phase_integrator_n_steps is only used if phase_source is an
+array of Hendrickson-Lattman coefficients. The centroid
+phases are determined on the fly using the given step size.
+"""
     assert self.data() is not None
     if (hasattr(phase_source, "data")):
       phase_source = phase_source.data()
