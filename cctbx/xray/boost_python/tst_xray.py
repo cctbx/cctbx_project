@@ -492,6 +492,7 @@ def exercise_sampled_model_density():
   assert approx_equal(d.ave_sampling_box_n_points(), 305/2.)
   assert d.max_sampling_box_edges() == (5,6,6)
   assert approx_equal(d.max_sampling_box_edges_frac(), (5/20.,6/20.,6/22.))
+  assert d.excessive_sampling_radius_i_seqs().size() == 0
   i = flex.miller_index(((1,2,3), (2,3,4)))
   f = flex.complex_double((1+2j, 2+3j))
   d.eliminate_u_extra_and_normalize(i, f)

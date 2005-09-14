@@ -404,6 +404,7 @@ namespace cctbx { namespace xray {
       GridPointType box_min;
       GridPointType box_max;
       GridPointType box_edges;
+      bool excessive_radius;
 
       calc_box(
         uctbx::unit_cell const& unit_cell,
@@ -411,11 +412,11 @@ namespace cctbx { namespace xray {
         FloatType const& max_d_sq_upper_bound,
         GridPointType const& grid_n,
         fractional<FloatType> const& coor_frac,
-        gaussian_fourier_transformed<FloatType> const& gaussian_ft,
-        XrayScattererType const& scatterer)
+        gaussian_fourier_transformed<FloatType> const& gaussian_ft)
       :
         max_d_sq(0),
-        n_points(1)
+        n_points(1),
+        excessive_radius(false)
       {
         CCTBX_ASSERT(!gaussian_ft.anisotropic_flag());
         af::tiny<FloatType, 3> grid_n_f = grid_n;
@@ -430,13 +431,11 @@ namespace cctbx { namespace xray {
           box_min[i_bv] = adjust_box_limit(
             unit_cell, rho_cutoff, max_d_sq_upper_bound,
             grid_n_f, coor_frac, gaussian_ft,
-            i_bv, 1, scitbx::math::ifloor(gu_site - gu_radius),
-            scatterer);
+            i_bv, 1, scitbx::math::ifloor(gu_site - gu_radius));
           box_max[i_bv] = adjust_box_limit(
             unit_cell, rho_cutoff, max_d_sq_upper_bound,
             grid_n_f, coor_frac, gaussian_ft,
-            i_bv, -1, scitbx::math::iceil(gu_site + gu_radius),
-            scatterer);
+            i_bv, -1, scitbx::math::iceil(gu_site + gu_radius));
           box_edges[i_bv] = std::max(0, box_max[i_bv]-box_min[i_bv]+1);
           n_points *= box_edges[i_bv];
         }
@@ -453,8 +452,7 @@ namespace cctbx { namespace xray {
         gaussian_fourier_transformed<FloatType> const& gaussian_ft,
         int i_bv,
         int f,
-        int box_limit,
-        XrayScattererType const& scatterer)
+        int box_limit)
       {
         int known_required = box_limit + 2*f;
         fractional<FloatType> d_frac(0,0,0);
@@ -473,15 +471,8 @@ namespace cctbx { namespace xray {
           }
           else {
             if (d_sq > max_d_sq_upper_bound) {
-              // XXX Pavel: not sure it is the best way to do...
-              // XXX        but definitely better than just ignoring such atoms
-              // XXX        It would be great if we could send a warning
-              //            meaasge from here with the list of affected atoms??
               d_sq = max_d_sq_upper_bound;
-              //throw error(
-              //  "Excessive radius for real-space sampling of"
-              //  " model electron density:\n"
-              //  + scatterer.report_details(unit_cell, "  "));
+              excessive_radius = true;
             }
             scitbx::math::update_max(max_d_sq, d_sq);
             known_required = box_limit;
@@ -605,6 +596,12 @@ namespace cctbx { namespace xray {
         return r;
       }
 
+      af::shared<std::size_t> const&
+      excessive_sampling_radius_i_seqs() const
+      {
+        return excessive_sampling_radius_i_seqs_;
+      }
+
     protected:
       uctbx::unit_cell unit_cell_;
       std::size_t n_scatterers_passed_;
@@ -624,6 +621,7 @@ namespace cctbx { namespace xray {
       std::size_t max_sampling_box_n_points_;
       std::size_t sum_sampling_box_n_points_;
       grid_point_type max_sampling_box_edges_;
+      af::shared<std::size_t> excessive_sampling_radius_i_seqs_;
       accessor_type map_accessor_;
       u_radius_cache_t u_radius_cache_;
       u_cart_cache_t u_cart_cache_;
