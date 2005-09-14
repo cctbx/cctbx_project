@@ -43,6 +43,8 @@ namespace {
         .def("ave_sampling_box_n_points", &w_t::ave_sampling_box_n_points)
         .def("max_sampling_box_edges", &w_t::max_sampling_box_edges, ccr())
         .def("max_sampling_box_edges_frac", &w_t::max_sampling_box_edges_frac)
+        .def("excessive_sampling_radius_i_seqs",
+          &w_t::excessive_sampling_radius_i_seqs, ccr())
       ;
     }
   };

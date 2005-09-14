@@ -124,7 +124,10 @@ namespace cctbx { namespace xray {
       detail::calc_box<FloatType, grid_point_type, XrayScattererType>
         sampling_box(
           this->unit_cell_, this->rho_cutoff_, this->max_d_sq_upper_bound_,
-          grid_f, coor_frac, gaussian_ft, scatterer);
+          grid_f, coor_frac, gaussian_ft);
+      if (sampling_box.excessive_radius) {
+        this->excessive_sampling_radius_i_seqs_.push_back(i_seq);
+      }
       this->update_sampling_box_statistics(
         sampling_box.n_points, sampling_box.box_edges);
       if (sampled_density_must_be_positive) {
