@@ -1,5 +1,4 @@
 // copyright (c) Jacob N. Smith & Erik McKee; leave this here; use at your whim
-#include <chiltbx/handle.h>
 #include <cctbx/boost_python/flex_fwd.h>
 #include <cctbx/maptbx/basic_map.h>
 #include <cctbx/maptbx/generic_grid.h>
@@ -9,6 +8,7 @@
 #include <boost/python/args.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/return_by_value.hpp>
+#include <chiltbx/handle.h>
 
 namespace cctbx { namespace maptbx { namespace boost_python {
 
