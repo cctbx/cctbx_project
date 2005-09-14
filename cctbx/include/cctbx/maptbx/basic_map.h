@@ -286,7 +286,7 @@ public:
 
     scitbx::vec3<FloatType> g_coord = this->frac2grid_.strange_transform(coord);
 
-    weight_pairs_type result(3,weight_pair_type(2,0));
+    weight_pairs_type result(3,weight_pair_type(2,0.0));
 
     grid_type corner000 = this->frac2grid_.floor_transform(coord);
 
