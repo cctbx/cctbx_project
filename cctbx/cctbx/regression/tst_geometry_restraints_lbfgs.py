@@ -302,6 +302,7 @@ def exercise(verbose=0):
   parameters.distance_power = 0.7
   parameters.average_power = 0.9
   parameters.wilson_b_weight = 1.3952
+  parameters.wilson_b_weight_auto = False
   adp_energies = adp_restraints.energies_iso(
     geometry_restraints_manager=manager,
     xray_structure=xray_structure,
