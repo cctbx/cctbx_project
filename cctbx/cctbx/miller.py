@@ -415,6 +415,13 @@ class set(crystal.symmetry):
   def d_min(self):
     return uctbx.d_star_sq_as_d(self.unit_cell().max_d_star_sq(self.indices()))
 
+  def min_max_d_star_sq(self):
+    return self.unit_cell().min_max_d_star_sq(self.indices())
+
+  def d_max_min(self):
+    return [uctbx.d_star_sq_as_d(d_star_sq)
+      for d_star_sq in self.min_max_d_star_sq()]
+
   def n_bijvoet_pairs(self):
     asu, matches = self.match_bijvoet_mates()
     return matches.pairs().size()

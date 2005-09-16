@@ -43,6 +43,7 @@ def exercise_set():
   assert approx_equal(tuple(ms.sin_theta_over_lambda_sq().data()),
                       (0.1802778, 0.16))
   assert approx_equal(ms.d_min(), 1.177603)
+  assert approx_equal(ms.d_max_min(), [1.25,1.177603])
   assert approx_equal(ms.resolution_range(), (1.25, 1.177603))
   p1 = ms.expand_to_p1()
   assert p1.indices().size() == 6
