@@ -94,6 +94,21 @@ class structure(crystal.special_position_settings):
         l += 0.0001
     return selection
 
+  def translate(self, x=0, y=0, z=0):
+    sites_cart = self.sites_cart()
+    sites_cart_size = sites_cart.size()
+    shift_vector = flex.vec3_double(sites_cart_size,[x,y,z])
+    sites_cart_new = sites_cart + shift_vector
+    cp = structure(self, scattering_dict = self._scattering_dict)
+    new_scatterers = self._scatterers.deep_copy()
+    sites_frac_new = self.unit_cell().fractionalization_matrix()*sites_cart_new
+    new_scatterers.set_sites(sites_frac_new)
+    cp._scatterers = new_scatterers
+    cp._site_symmetry_table = self._site_symmetry_table.deep_copy()
+    if(getattr(self, "scatterer_pdb_records", None) is not None):
+      cp.scatterer_pdb_records = self.scatterer_pdb_records
+    return cp
+
   def shake_sites(self, mean_error):
     tolerance = 0.00005
     sites_cart = self.sites_cart()
