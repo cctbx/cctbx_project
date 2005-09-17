@@ -31,7 +31,8 @@ def run():
   "$D/scitbx/examples/flex_array_loops.py",
   "$D/scitbx/examples/lbfgs_recipe.py",
   "$D/scitbx/examples/lbfgs_linear_least_squares_fit.py",
-  "$D/scitbx/examples/chebyshev_lsq_example.py"
+  "$D/scitbx/examples/chebyshev_lsq_example.py",
+  "$D/scitbx/examples/immoptibox_ports.py"
   )
 
   build_dir = libtbx.env.under_build("scitbx")

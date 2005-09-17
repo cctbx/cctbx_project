@@ -2,6 +2,8 @@
 #include <scitbx/array_family/boost_python/flex_pickle_single_buffered.h>
 #include <scitbx/array_family/versa_matrix.h>
 #include <scitbx/math/utils.h>
+#include <scitbx/matrix/cholesky.h>
+#include <scitbx/matrix/packed.h>
 #include <boost/python/args.hpp>
 #include <boost/python/overloads.hpp>
 #include <boost/python/make_constructor.hpp>
@@ -237,6 +239,17 @@ namespace boost_python {
 
   BOOST_PYTHON_FUNCTION_OVERLOADS(round_overloads, round, 1, 2)
 
+  BOOST_PYTHON_FUNCTION_OVERLOADS(
+    matrix_symmetric_as_packed_u_overloads,
+    matrix::symmetric_as_packed_u, 1, 2)
+  BOOST_PYTHON_FUNCTION_OVERLOADS(
+    matrix_symmetric_as_packed_l_overloads,
+    matrix::symmetric_as_packed_l, 1, 2)
+
+  BOOST_PYTHON_FUNCTION_OVERLOADS(
+    matrix_cholesky_decomposition_overloads,
+    matrix::cholesky::decomposition, 1, 2)
+
   void wrap_flex_double()
   {
     using namespace boost::python;
@@ -292,9 +305,6 @@ namespace boost_python {
       .def("matrix_diagonal_product",
         (double(*)(
           const_ref<double, c_grid<2> > const&)) matrix_diagonal_product)
-      .def("matrix_upper_diagonal",
-        (shared<double>(*)(
-          const_ref<double, c_grid<2> > const&)) matrix_upper_diagonal)
       .def("matrix_multiply",
         (versa<double, c_grid<2> >(*)(
           const_ref<double, c_grid<2> > const&,
@@ -344,6 +354,43 @@ namespace boost_python {
         arg_("b")))
       .def("matrix_inversion_in_place",
         (void(*)(ref<double, c_grid<2> > const&)) matrix_inversion_in_place)
+      .def("matrix_upper_triangle_as_packed_u",
+        (af::shared<double>(*)(
+          const_ref<double, c_grid<2> > const&))
+            matrix::upper_triangle_as_packed_u)
+      .def("matrix_lower_triangle_as_packed_l",
+        (af::shared<double>(*)(
+          const_ref<double, c_grid<2> > const&))
+            matrix::lower_triangle_as_packed_l)
+      .def("matrix_symmetric_as_packed_u",
+        (af::shared<double>(*)(
+          const_ref<double, af::c_grid<2> > const&, double const&))
+            matrix::symmetric_as_packed_u,
+              matrix_symmetric_as_packed_u_overloads((
+                arg_("self"),
+                arg_("relative_epsilon")=1.e-15)))
+      .def("matrix_symmetric_as_packed_l",
+        (af::shared<double>(*)(
+          const_ref<double, af::c_grid<2> > const&, double const&))
+            matrix::symmetric_as_packed_l,
+              matrix_symmetric_as_packed_l_overloads((
+                arg_("self"),
+                arg_("relative_epsilon")=1.e-15)))
+      .def("matrix_packed_u_as_symmetric",
+        (af::versa<double, c_grid<2> >(*)(
+          const_ref<double> const&))
+            matrix::packed_u_as_symmetric)
+      .def("matrix_packed_l_as_symmetric",
+        (af::versa<double, c_grid<2> >(*)(
+          const_ref<double> const&))
+            matrix::packed_l_as_symmetric)
+      .def("matrix_cholesky_decomposition",
+        (af::shared<double>(*)(
+          const_ref<double> const&, double const&))
+            matrix::cholesky::decomposition,
+              matrix_cholesky_decomposition_overloads((
+                arg_("self"),
+                arg_("relative_epsilon")=1.e-15)))
       .def("cos_angle",
         (boost::optional<double>(*)(
           const_ref<double> const&,

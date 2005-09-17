@@ -1352,16 +1352,119 @@ def exercise_matrix():
     assert approx_equal(a.angle(b=b, deg=False), a.angle(b))
     assert approx_equal(a.angle(b=b, deg=True), a.angle(b)*180/math.pi)
   #
-  assert list(flex.double(flex.grid(0,0)).matrix_upper_diagonal()) == []
-  assert approx_equal(flex.double([[1]]).matrix_upper_diagonal(), [1])
   assert approx_equal(
-    flex.double([[1,2],[3,4]]).matrix_upper_diagonal(), [1,2,4])
-  assert approx_equal(
-    flex.double([[1,2,3],[4,5,6],[7,8,9]]).matrix_upper_diagonal(),
+    flex.double([[1,2,3],[4,5,6],[7,8,9]]).matrix_upper_triangle_as_packed_u(),
     [1,2,3,5,6,9])
+  assert approx_equal(
+    flex.double([[1,2,3],[4,5,6],[7,8,9]]).matrix_lower_triangle_as_packed_l(),
+    [1,4,5,7,8,9])
   m = flex.double(xrange(1,17))
   m.resize(flex.grid(4, 4))
-  assert approx_equal(m.matrix_upper_diagonal(), [1,2,3,4,6,7,8,11,12,16])
+  assert approx_equal(
+    m.matrix_upper_triangle_as_packed_u(),
+    [1,2,3,4,6,7,8,11,12,16])
+  assert approx_equal(
+    m.matrix_lower_triangle_as_packed_l(),
+    [1,5,6,9,10,11,13,14,15,16])
+  def exercise_packed(n, s, u, l):
+    assert s.focus() == (n,n)
+    if (u is not None):
+      p = s.matrix_upper_triangle_as_packed_u()
+      assert approx_equal(p, u)
+      p = s.matrix_symmetric_as_packed_u()
+      assert approx_equal(p, u)
+      us = p.matrix_packed_u_as_symmetric()
+      assert us.focus() == (n,n)
+      assert approx_equal(us, s)
+    if (l is not None):
+      p = s.matrix_lower_triangle_as_packed_l()
+      assert approx_equal(p, l)
+      p = s.matrix_symmetric_as_packed_l()
+      assert approx_equal(p, l)
+      ls = p.matrix_packed_l_as_symmetric()
+      assert ls.focus() == (n,n)
+      assert approx_equal(ls, s)
+  exercise_packed(
+    n=0,
+    s=flex.double(flex.grid(0,0)),
+    u=flex.double(),
+    l=flex.double())
+  exercise_packed(
+    n=1,
+    s=flex.double([[1]]),
+    u=flex.double([1]),
+    l=flex.double([1]))
+  exercise_packed(
+    n=2,
+    s=flex.double([[1,2],[2,3]]),
+    u=flex.double([1,2,3]),
+    l=flex.double([1,2,3]))
+  exercise_packed(
+    n=3,
+    s=flex.double([[1,2,3],[2,4,5],[3,5,6]]),
+    u=flex.double([1,2,3,4,5,6]),
+    l=flex.double([1,2,4,3,5,6]))
+  exercise_packed(
+    n=4,
+    s=flex.double([[1,-2,3,4], [-2,-5,6,-7], [3,6,8,9], [4,-7,9,-10]]),
+    u=flex.double([1,-2,3,4,-5,6,-7,8,9,-10]),
+    l=flex.double([1,-2,-5,3,6,8,4,-7,9,-10]))
+  for n in xrange(20):
+    p = flex.random_double(size=n*(n+1)/2)
+    exercise_packed(
+      n=n,
+      s=p.matrix_packed_u_as_symmetric(),
+      u=p,
+      l=None)
+    exercise_packed(
+      n=n,
+      s=p.matrix_packed_l_as_symmetric(),
+      u=None,
+      l=p)
+  e = flex.double([[1,2,3],[2,4,5],[3,9,6]])
+  try: e.matrix_symmetric_as_packed_u()
+  except RuntimeError, err:
+    assert str(err) == "symmetric_as_packed_u(): matrix is not symmetric."
+  else: raise RuntimeError("Exception expected.")
+  p = e.matrix_symmetric_as_packed_u(relative_epsilon=1)
+  assert approx_equal(p, [1,2,3,4,7,6])
+  try: e.matrix_symmetric_as_packed_l()
+  except RuntimeError, err:
+    assert str(err) == "symmetric_as_packed_l(): matrix is not symmetric."
+  else: raise RuntimeError("Exception expected.")
+  p = e.matrix_symmetric_as_packed_l(relative_epsilon=1)
+  assert approx_equal(p, [1,2,4,3,7,6])
+  p = flex.double(4)
+  for method in [p.matrix_packed_u_as_symmetric,
+                 p.matrix_packed_l_as_symmetric]:
+    try: method()
+    except RuntimeError, e:
+      assert str(e).endswith(
+        "SCITBX_ASSERT(n*(n+1)/2 == packed_size) failure.")
+    else: raise RuntimeError("Exception expected.")
+  #
+  from scitbx.examples import immoptibox_ports
+  immoptibox_ports.py_cholesky_decomposition \
+    = immoptibox_ports.cholesky_decomposition
+  immoptibox_ports.cholesky_decomposition = exercise_cholesky_decomposition
+  immoptibox_ports.tst_flex_counts = 0
+  immoptibox_ports.exercise_cholesky()
+  immoptibox_ports.cholesky_decomposition \
+    = immoptibox_ports.py_cholesky_decomposition
+  assert immoptibox_ports.tst_flex_counts == 299
+  del immoptibox_ports.tst_flex_counts
+
+def exercise_cholesky_decomposition(a):
+  from scitbx.examples import immoptibox_ports
+  c = immoptibox_ports.py_cholesky_decomposition(a)
+  au = a.matrix_symmetric_as_packed_u()
+  cl = au.matrix_cholesky_decomposition()
+  if (c is None):
+    assert cl.size() == 0
+  else:
+    assert approx_equal(cl, c.matrix_lower_triangle_as_packed_l())
+  immoptibox_ports.tst_flex_counts += 1
+  return c
 
 def exercise_matrix_inversion_in_place():
   m = flex.double()

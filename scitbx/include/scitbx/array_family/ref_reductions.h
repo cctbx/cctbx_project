@@ -88,8 +88,13 @@ namespace scitbx { namespace af {
     }
     ElementType result = fn::absolute(a[0]);
     for(std::size_t i=1;i<a.size();i++) {
-      ElementType aai = fn::absolute(a[i]);
-      if (result < aai) result = aai;
+      ElementType const& ai = a[i];
+      if (ai > 0) {
+        if (result <  ai) result =  ai;
+      }
+      else {
+        if (result < -ai) result = -ai;
+      }
     }
     return result;
   }

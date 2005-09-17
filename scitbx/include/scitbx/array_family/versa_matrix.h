@@ -75,24 +75,6 @@ namespace scitbx { namespace af {
   }
 
   template <typename NumType>
-  shared<NumType>
-  matrix_upper_diagonal(
-    const_ref<NumType, c_grid<2> > const& a)
-  {
-    SCITBX_ASSERT(a.accessor().is_square());
-    std::size_t n = a.accessor()[0];
-    shared<NumType> result((af::reserve(n*(n+1)/2)));
-    const NumType* p = a.begin();
-    for(std::size_t i=0;i<n;i++) {
-      p += i;
-      for(std::size_t j=i;j<n;j++) {
-        result.push_back(*p++);
-      }
-    }
-    return result;
-  }
-
-  template <typename NumType>
   versa<NumType, c_grid<2> >
   matrix_multiply(
     const_ref<NumType, c_grid<2> > const& a,
