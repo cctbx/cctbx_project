@@ -111,7 +111,7 @@ def d_dw2_d_u_indep_d_u_indep_finite(adp_constraints, h, u_indep, eps=1.e-6):
 def dw_indep_finite_difference_curvatures(adp_constraints, h, u_star):
   u_indep = adp_constraints.independent_params(u_star)
   return flex.double(d_dw2_d_u_indep_d_u_indep_finite(
-    adp_constraints, h, u_indep)).matrix_upper_diagonal()
+    adp_constraints, h, u_indep)).matrix_upper_triangle_as_packed_u()
 
 def p2_curv(h, u_star):
   """\
@@ -330,7 +330,8 @@ def exercise(space_group_info, verbose):
       assert list(adp_constraints.independent_indices) == [2]
       ma2 = p23_curv(h, u_star)
     if (ma2 is not None):
-      assert are_similar(ia2, flex.double(ma2).matrix_upper_diagonal())
+      assert are_similar(
+        ia2, flex.double(ma2).matrix_upper_triangle_as_packed_u())
 
 def run_call_back(flags, space_group_info):
   exercise(space_group_info, verbose=flags.Verbose)
