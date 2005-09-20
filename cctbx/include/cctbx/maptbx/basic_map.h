@@ -19,35 +19,38 @@ namespace maptbx {
 template < typename FloatType, typename IntType >
 class basic_map {
 public:
-  static const std::size_t                corners_8 = 8;
-  typedef generic_grid<void,FloatType,IntType>      grid_intf_type;
-  typedef chiltbx::handle::handle<grid_intf_type>      grid_handle_type;
-  typedef fractional<FloatType>              frac_type;
-  typedef cartesian<FloatType>              cart_type;
-  typedef grid_point<IntType>                grid_type;
-  typedef scitbx::vec3<FloatType>              vec3_type;
-  typedef af::tiny<IntType,dimension_3>          tin3_type;
-  typedef scitbx::mat3<FloatType>              mat3_type;
-  typedef transform<frac_type,grid_type>          f2g_type;
-  typedef transform<frac_type,cart_type>          f2c_type;
-  typedef transform<grid_type,frac_type>          g2f_type;
-  typedef transform<cart_type,frac_type>          c2f_type;
-  typedef transform<cart_type,grid_type>          c2g_type;
-  typedef transform<grid_type,cart_type>          g2c_type;
-  typedef out_of_bounds<void,FloatType,IntType>      out_of_bounds_type;
-  typedef chiltbx::handle::handle<out_of_bounds_type>    out_of_handle_type;
+  static const std::size_t                              corners_8 = 8;
+  typedef generic_grid<void,FloatType,IntType>          grid_intf_type;
+  typedef chiltbx::handle::handle<grid_intf_type>       grid_handle_type;
+  typedef fractional<FloatType>                         frac_type;
+  typedef cartesian<FloatType>                          cart_type;
+  typedef grid_point<IntType>                           grid_type;
+  typedef scitbx::vec3<FloatType>                       vec3_type;
+  typedef af::tiny<IntType,dimension_3>                 tin3_type;
+  typedef scitbx::mat3<FloatType>                       mat3_type;
+  typedef transform<frac_type,grid_type>                f2g_type;
+  typedef transform<frac_type,cart_type>                f2c_type;
+  typedef transform<grid_type,frac_type>                g2f_type;
+  typedef transform<cart_type,frac_type>                c2f_type;
+  typedef transform<cart_type,grid_type>                c2g_type;
+  typedef transform<grid_type,cart_type>                g2c_type;
+  typedef out_of_bounds<void,FloatType,IntType>         out_of_bounds_type;
+  typedef chiltbx::handle::handle<out_of_bounds_type>   out_of_handle_type;
 
-  typedef std::vector<grid_type>              grid_list_type;
-  typedef std::vector<frac_type>              frac_list_type;
-  typedef std::vector<FloatType>              weight_pair_type;
-  typedef std::vector<weight_pair_type>          weight_pairs_type;
-  typedef basic_mapper<void,FloatType,IntType>      basic_mapper;
+  typedef std::vector<grid_type>                        grid_list_type;
+  typedef std::vector<frac_type>                        frac_list_type;
+  typedef af::tiny<FloatType,2>							weight_pair_type;
+  typedef af::tiny<weight_pair_type,3>					weight_pairs_type;
+//  typedef std::vector<FloatType>                        weight_pair_type;
+//  typedef std::vector<weight_pair_type>                 weight_pairs_type;
+  typedef basic_mapper<void,FloatType,IntType>          basic_mapper;
+  typedef af::tiny<grid_type,2>							grid_pair_type;
 
-  typedef af::ref<FloatType, af::flex_grid<> >      flex_grid_ref;
+  typedef af::ref<FloatType, af::flex_grid<> >          flex_grid_ref;
   typedef af::const_ref<FloatType, af::flex_grid<> >    const_flex_grid_ref;
-  typedef af::c_grid_padded<dimension_3>          c_grid_3;
-  typedef af::ref<FloatType, c_grid_3>          c_grid_ref;
-  typedef af::const_ref<FloatType, c_grid_3 >        const_c_grid_ref;
+  typedef af::c_grid_padded<dimension_3>                c_grid_3;
+  typedef af::ref<FloatType, c_grid_3>                  c_grid_ref;
+  typedef af::const_ref<FloatType, c_grid_3 >           const_c_grid_ref;
 
   basic_map (
     asu const&,
@@ -121,37 +124,35 @@ public:
   af::tiny<IntType,dimension_3> focus () const {
     return this->grid_handle_->focus();
   }
-  FloatType grid_value ( grid_point<IntType> const& coord ) const {
+  FloatType grid_value ( grid_point<IntType> const& coordinate ) const {
     // does not remap, check, etc. etc.
-    return this->grid_handle_->get_value(coord);
+    return this->grid_handle_->get_value(coordinate);
   }
-  void set_grid_value ( grid_point<IntType> const& coord, FloatType const& F ) {
-    this->grid_handle_->set_value(coord,F);
+  void set_grid_value ( grid_point<IntType> const& coordinate, FloatType const& F ) {
+    this->grid_handle_->set_value(coordinate,F);
   }
-  FloatType get_cart_value ( cart_type const& coord ) const {
-    return this->base_get_value( this->cart2frac_(coord) );
-  }
-  af::shared<FloatType>
-  get_cart_values ( af::const_ref<scitbx::vec3<FloatType> > const& coords ) const {
-    af::shared<FloatType> result(coords.size());
-    for ( std::size_t i=0; i<coords.size(); ++i )
-      result[i] = this->get_cart_value(coords[i]);
-    return result;
-  }
-  FloatType get_frac_value ( frac_type const& coord ) const {
-    return this->base_get_value(coord);
+  FloatType get_cart_value ( cart_type const& coordinate ) const {
+    return this->base_get_value( this->cart2frac_(coordinate) );
   }
   af::shared<FloatType>
-  get_frac_values ( af::const_ref<scitbx::vec3<FloatType> > const& coords ) const {
-    af::shared<FloatType> result(coords.size());
-    for ( std::size_t i=0; i<coords.size(); ++i )
-      result[i] = this->get_frac_value(coords[i]);
+  get_cart_values ( af::const_ref<scitbx::vec3<FloatType> > const& coordinates ) const {
+    af::shared<FloatType> result(coordinates.size());
+    for ( std::size_t i=0; i<coordinates.size(); ++i )
+      result[i] = this->get_cart_value(coordinates[i]);
     return result;
   }
-  FloatType get_grid_value ( grid_type const& coord ) const {
-    frac_type fcoord = this->grid2frac_(coord);
-    fcoord = this->remap_coordinate(fcoord);
-    grid_type gcoord = this->frac2grid_(fcoord);
+  FloatType get_frac_value ( frac_type const& coordinate ) const {
+    return this->base_get_value(coordinate);
+  }
+  af::shared<FloatType>
+  get_frac_values ( af::const_ref<scitbx::vec3<FloatType> > const& coordinates ) const {
+    af::shared<FloatType> result(coordinates.size());
+    for ( std::size_t i=0; i<coordinates.size(); ++i )
+      result[i] = this->get_frac_value(coordinates[i]);
+    return result;
+  }
+  FloatType get_grid_value ( grid_type const& coordinate ) const {
+    grid_type gcoord = this->remap_coordinate(coordinate);
     if ( this->grid_handle_->is_inside(gcoord) )
       return this->grid_handle_->get_value(gcoord);
     else
@@ -159,85 +160,85 @@ public:
         return this->out_of_handle_->retry(
             *this->grid_handle_.const_get_raw(),
             this->grid2frac_,
-            fcoord);
+            this->grid2frac_(gcoord));
       } catch ( FloatType const& result ) {
         return result;
       }
   }
   af::shared<FloatType>
-  get_grid_values ( af::const_ref<scitbx::vec3<IntType> > const& coords ) const {
-    af::shared<FloatType> result(coords.size());
+  get_grid_values ( af::const_ref<scitbx::vec3<IntType> > const& coordinates ) const {
+    af::shared<FloatType> result(coordinates.size());
     for ( std::size_t i=0; i<result.size(); ++i )
-      result[i] = this->get_grid_value(coords[i]);
+      result[i] = this->get_grid_value(coordinates[i]);
     return result;
   }
-  FloatType get_value ( cart_type const& coord ) const {
-    return this->get_cart_value(coord);
+  FloatType get_value ( cart_type const& coordinate ) const {
+    return this->get_cart_value(coordinate);
   }
-  FloatType get_value ( frac_type const& coord ) const {
-    return this->get_frac_value(coord);
+  FloatType get_value ( frac_type const& coordinate ) const {
+    return this->get_frac_value(coordinate);
   }
-  FloatType get_value ( grid_type const& coord ) const {
-    return this->get_grid_value(coord);
+  FloatType get_value ( grid_type const& coordinate ) const {
+    return this->get_grid_value(coordinate);
   }
   template < typename CoordType >
-  FloatType operator [] ( CoordType const& coord ) const {
-    return this->get_value(coord);
+  FloatType operator [] ( CoordType const& coordinate ) const {
+    return this->get_value(coordinate);
   }
   template < typename CoordType >
-  af::shared<FloatType> operator [] ( af::const_ref<CoordType> const& coords ) const {
-    af::shared<FloatType> result(coords.size());
+  af::shared<FloatType> operator [] ( af::const_ref<CoordType> const& coordinates ) const {
+    af::shared<FloatType> result(coordinates.size());
     for ( std::size_t i=0; i<result.size(); ++i )
-      result[i] = (*this)[coords[i]];
+      result[i] = (*this)[coordinates[i]];
     return result;
   }
-  frac_type remap_frac_coordinate ( frac_type const& coord ) const {
-    frac_type result = this->grid_handle_->remap(coord).mapped_coordinate;
+  frac_type remap_frac_coordinate ( frac_type const& coordinate ) const {
+    frac_type result = this->grid_handle_->remap(coordinate).mapped_coordinate;
     return result;
   }
-  cart_type remap_cart_coordinate ( cart_type const& coord ) const {
-    frac_type fcoord = this->cart2frac_(coord);
+  cart_type remap_cart_coordinate ( cart_type const& coordinate ) const {
+    frac_type fcoord = this->cart2frac_(coordinate);
     fcoord = this->grid_handle_->remap(fcoord).mapped_coordinate;
     return this->frac2cart_(fcoord);
   }
-  grid_type remap_grid_coordinate ( grid_type const& coord ) const {
-    frac_type fcoord = this->grid2frac_(coord);
+  grid_type remap_grid_coordinate ( grid_type const& coordinate ) const {
+    frac_type fcoord = this->grid2frac_(coordinate);
     fcoord = this->grid_handle_->remap(fcoord).mapped_coordinate;
     return this->frac2grid_(fcoord);
   }
-  frac_type remap_coordinate ( frac_type const& coord ) const {
-    return this->remap_frac_coordinate(coord);
+  frac_type remap_coordinate ( frac_type const& coordinate ) const {
+    return this->remap_frac_coordinate(coordinate);
   }
-  cart_type remap_coordinate ( cart_type const& coord ) const {
-    return this->remap_cart_coordinate(coord);
+  cart_type remap_coordinate ( cart_type const& coordinate ) const {
+    return this->remap_cart_coordinate(coordinate);
   }
-  grid_type remap_coordinate ( grid_type const& coord ) const {
-    return this->remap_grid_coordinate(coord);
+  grid_type remap_coordinate ( grid_type const& coordinate ) const {
+    return this->remap_grid_coordinate(coordinate);
   }
-  grid_type frac_nearest_grid_point ( frac_type const& coord ) const {
-    return this->remap_coordinate(this->frac2grid_(coord));
+  grid_type frac_nearest_grid_point ( frac_type const& coordinate ) const {
+    return this->remap_coordinate(this->frac2grid_(coordinate));
   }
-  grid_type cart_nearest_grid_point ( cart_type const& coord ) const {
-    return this->remap_coordinate(this->cart2grid_(coord));
+  grid_type cart_nearest_grid_point ( cart_type const& coordinate ) const {
+    return this->remap_coordinate(this->cart2grid_(coordinate));
   }
-  grid_type nearest_grid_point ( frac_type const& coord ) const {
-    return this->frac_nearest_grid_point(coord);
+  grid_type nearest_grid_point ( frac_type const& coordinate ) const {
+    return this->frac_nearest_grid_point(coordinate);
   }
-  grid_type nearest_grid_point ( cart_type const& coord ) const {
-    return this->cart_nearest_grid_point(coord);
+  grid_type nearest_grid_point ( cart_type const& coordinate ) const {
+    return this->cart_nearest_grid_point(coordinate);
   }
-  grid_type nearest_grid_point ( grid_type const& coord ) const {
-    return this->remap_coordinate(coord);
+  grid_type nearest_grid_point ( grid_type const& coordinate ) const {
+    return this->remap_coordinate(coordinate);
   }
-  FloatType frac_value_at_nearest_grid_point ( frac_type const& coord ) const {
-    return this->value_at_nearest_grid_point(coord);
+  FloatType frac_value_at_nearest_grid_point ( frac_type const& coordinate ) const {
+    return this->value_at_nearest_grid_point(coordinate);
   }
-  FloatType cart_value_at_nearest_grid_point ( cart_type const& coord ) const {
-    return this->value_at_nearest_grid_point(coord);
+  FloatType cart_value_at_nearest_grid_point ( cart_type const& coordinate ) const {
+    return this->value_at_nearest_grid_point(coordinate);
   }
   template < typename CoordType >
-  FloatType value_at_nearest_grid_point ( CoordType const& coord ) const {
-    return this->grid_handle_->get_value( this->nearest_grid_point(coord) );
+  FloatType value_at_nearest_grid_point ( CoordType const& coordinate ) const {
+    return this->grid_handle_->get_value( this->nearest_grid_point(coordinate) );
   }
   g2f_type grid_to_frac () const {
     return this->grid2frac_;
@@ -257,20 +258,22 @@ public:
   c2g_type cart_to_grid () const {
     return this->cart2grid_;
   }
-  basic_mapper remap ( frac_type const& coord ) const {
-    return this->grid_handle_->remap(coord);
+  basic_mapper remap ( frac_type const& coordinate ) const {
+    return this->grid_handle_->remap(coordinate);
   }
-  bool is_inside ( grid_point<IntType> const& coord ) const {
-    return this->grid_handle_->is_inside(coord);
+  bool is_inside ( grid_point<IntType> const& coordinate ) const {
+    return this->grid_handle_->is_inside(coordinate);
   }
-  bool is_inside ( fractional<FloatType> const& coord ) const {
-    return this->grid_handle_->is_inside(coord);
+  bool is_inside ( fractional<FloatType> const& coordinate ) const {
+    return this->grid_handle_->is_inside(coordinate);
   }
-  bool is_inside ( cartesian<FloatType> const& coord ) const {
-    return this->grid_handle_->is_inside( this->cart2frac_(coord) );
+  bool is_inside ( cartesian<FloatType> const& coordinate ) const {
+    return this->grid_handle_->is_inside( this->cart2frac_(coordinate) );
   }
-  grid_list_type get_corners ( frac_type const& coord ) const {
-    grid_type corner000 = this->frac2grid_.floor_transform(coord);
+  grid_type get_corner000 ( frac_type const& coordinate ) const {
+    return this->frac2grid_.floor_transform(coordinate);
+  }
+  grid_list_type get_corners ( grid_type const& corner000 ) const {
     grid_list_type corners(corners_8,corner000);
     std::size_t index = 0;
     for ( std::size_t i=0; i<2; ++i )
@@ -283,51 +286,42 @@ public:
     return corners;
   }
   weight_pairs_type
-  get_weights ( grid_list_type const& gcorners, frac_type const& coord ) const {
+  get_weights ( grid_type const& corner000, frac_type const& coordinate ) const {
 
-    scitbx::vec3<FloatType> g_coord = this->frac2grid_.strange_transform(coord);
+    scitbx::vec3<FloatType> g_coordinate = this->frac2grid_.strange_transform(coordinate);
 
-    weight_pairs_type result(3,weight_pair_type(2,0.0));
-
-    grid_type corner000 = this->frac2grid_.floor_transform(coord);
+    //weight_pairs_type result(3,weight_pair_type(2,0.0));
+    weight_pairs_type result(weight_pair_type(0.0,0.0),
+                             weight_pair_type(0.0,0.0),
+                             weight_pair_type(0.0,0.0));
 
     for ( std::size_t i=0; i<dimension_3; ++i ) {
-      result[i][0] = g_coord[i] - corner000[i];
+      result[i][0] = g_coordinate[i] - corner000[i];
       result[i][1] = 1 - result[i][0];
     }
 
     return result;
   }
-  FloatType base_get_value ( frac_type const& coord ) const {
+  FloatType base_get_value ( frac_type const& coordinate ) const {
 
     // get the corners and map into fractional
-    grid_list_type corners = this->get_corners(coord);
-    frac_list_type fcorners(corners.size());
-    for ( std::size_t i=0; i<fcorners.size(); ++i )
-      fcorners[i] = this->grid2frac_(corners[i]);
+    grid_type corner000 = this->get_corner000(coordinate);
+    grid_list_type corners = this->get_corners(corner000);
     // generate the linear-alpha-weighting
-    weight_pairs_type weights = this->get_weights(corners,coord);
-    // attempt the remapping
-    for ( std::size_t i=0; i<fcorners.size(); ++i ) {
-      fcorners[i] = this->remap_coordinate(fcorners[i]);
-      corners[i] = this->frac2grid_(fcorners[i]);
-    }
+    weight_pairs_type weights = this->get_weights(corner000,coordinate);
 
-    // get the values from the map
-    std::vector<FloatType> corner_values;
-    for ( std::size_t i=0; i<corners.size(); ++i )
-      corner_values.push_back( this->get_value(corners[i]) );
+    CCTBX_ASSERT(corners.size()==corners_8);
 
-    CCTBX_ASSERT(corner_values.size()==corners_8);
-
+    // get_grid_value remaps the coordinate
     // Build the interpolated value over the linear-alpha-weights.
     FloatType result = 0;
     std::size_t index = 0;
     for ( std::size_t i=0; i<2; ++i )
       for ( std::size_t j=0; j<2; ++j )
-        for ( std::size_t k=0; k<2; ++k, ++index )
-          result += corner_values[index]
-              * weights[0][i]*weights[1][j]*weights[2][k];
+        for ( std::size_t k=0; k<2; ++k, ++index ) {
+          result += this->get_grid_value(corners[index])
+                     *weights[0][i]*weights[1][j]*weights[2][k];
+        }
 
     return result;
   }
