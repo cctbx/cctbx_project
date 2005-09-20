@@ -9,6 +9,7 @@ def run():
   ["$D/cctbx/examples/all_axes.py", "P31"],
   ["$D/cctbx/examples/tst_phase_o_phrenia.py", "P2"],
   "$D/cctbx/examples/map_skewness.py",
+  "$D/cctbx/examples/site_symmetry_table.py",
   "$D/cctbx/examples/adp_symmetry_constraints.py",
   "$D/cctbx/examples/unit_cell_refinement.py",
   "$D/cctbx/examples/miller_common_sets.py",
