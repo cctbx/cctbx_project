@@ -1,14 +1,13 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Nov: Created (R.W. Grosse-Kunstleve)
- */
-
 #include <scitbx/error.h>
 #include <cmath>
+
+#if defined(__i386__) \
+ || defined(__x86_64__) \
+ || defined(__alpha__) \
+ || defined(__host_mips) \
+ || defined(__APPLE_CC__)
+# define SCITBX_SERIALIZATION_BASE_256_USE_BIT_SHIFTS
+#endif
 
 namespace scitbx { namespace serialization { namespace base_256 {
 
@@ -30,8 +29,13 @@ namespace scitbx { namespace serialization { namespace base_256 {
             value = -value;
           }
           for(int i=0;i<sizeof(T);i++) {
+#if !defined(SCITBX_SERIALIZATION_BASE_256_USE_BIT_SHIFTS)
             *u_buf++ = static_cast<unsigned char>(value % 256);
             value /= 256;
+#else
+            *u_buf++ = static_cast<unsigned char>(value & 0xFFU);
+            value >>= 8;
+#endif
             if (value == 0) break;
           }
           *u_buf0 += static_cast<unsigned char>(u_buf - u_buf0);
@@ -49,7 +53,11 @@ namespace scitbx { namespace serialization { namespace base_256 {
         {
           const unsigned char*
             u_end = reinterpret_cast<const unsigned char*>(end);
+#if !defined(SCITBX_SERIALIZATION_BASE_256_USE_BIT_SHIFTS)
           int len = *u_end % 128;
+#else
+          int len = *u_end & 0x7FU;
+#endif
           if (len == 0) {
             end++;
             return;
@@ -60,7 +68,11 @@ namespace scitbx { namespace serialization { namespace base_256 {
           for(;;) {
             value += static_cast<T>(*u_end--);
             if (u_end == u_buf) break;
+#if !defined(SCITBX_SERIALIZATION_BASE_256_USE_BIT_SHIFTS)
             value *= 256;
+#else
+            value <<= 8;
+#endif
           }
           if (*u_buf > 128) value = -value;
           end = buf + len;
@@ -84,8 +96,13 @@ namespace scitbx { namespace serialization { namespace base_256 {
         *u_buf++ = 0;
         if (value != 0) {
           for(int i=0;i<sizeof(T);i++) {
+#if !defined(SCITBX_SERIALIZATION_BASE_256_USE_BIT_SHIFTS)
             *u_buf++ = static_cast<unsigned char>(value % 256);
             value /= 256;
+#else
+            *u_buf++ = static_cast<unsigned char>(value & 0xFFU);
+            value >>= 8;
+#endif
             if (value == 0) break;
           }
           *u_buf0 += static_cast<unsigned char>(u_buf - u_buf0);
@@ -103,7 +120,11 @@ namespace scitbx { namespace serialization { namespace base_256 {
         {
           const unsigned char*
             u_end = reinterpret_cast<const unsigned char*>(end);
+#if !defined(SCITBX_SERIALIZATION_BASE_256_USE_BIT_SHIFTS)
           int len = *u_end % 128;
+#else
+          int len = *u_end & 0x7FU;
+#endif
           if (len == 0) {
             end++;
             return;
@@ -114,7 +135,11 @@ namespace scitbx { namespace serialization { namespace base_256 {
           for(;;) {
             value += static_cast<T>(*u_end--);
             if (u_end == u_buf) break;
+#if !defined(SCITBX_SERIALIZATION_BASE_256_USE_BIT_SHIFTS)
             value *= 256;
+#else
+            value <<= 8;
+#endif
           }
           end = buf + len;
         }
@@ -242,7 +267,11 @@ namespace scitbx { namespace serialization { namespace base_256 {
       {
         const unsigned char*
           u_end = reinterpret_cast<const unsigned char*>(end);
+#if !defined(SCITBX_SERIALIZATION_BASE_256_USE_BIT_SHIFTS)
         int len = *u_end % 128;
+#else
+        int len = *u_end & 0x7FU;
+#endif
         if (len == 0) {
           end++;
           return;
