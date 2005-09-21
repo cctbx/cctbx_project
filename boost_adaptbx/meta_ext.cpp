@@ -33,6 +33,9 @@ namespace {
 #if defined(__i386__)
     result += " __i386__";
 #endif
+#if defined(__x86_64__)
+    result += " __x86_64__";
+#endif
 #if defined(__linux)
     result += " __linux";
 #endif
