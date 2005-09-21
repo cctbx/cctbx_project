@@ -22,6 +22,7 @@ def copy_dist_files(dist_copy, dirname, names):
         or name == "symop.lib"
         or name.endswith(".py")
         or name.endswith(".params")
+        or name.endswith(".pdb")
         or name.endswith(".pl")
         or name.endswith(".pm")
         or name.endswith(".html")
