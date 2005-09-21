@@ -21,6 +21,7 @@ def run():
   "$D/array_family/boost_python/tst_flex.py",
   "$D/array_family/boost_python/tst_shared.py",
   "$D/scitbx/matrix.py",
+  "$D/scitbx/python_utils/misc.py",
   "$D/scitbx/python_utils/math_utils.py",
   "$D/scitbx/python_utils/tst_random_transform.py",
   "$D/math/boost_python/tst_math.py",

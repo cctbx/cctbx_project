@@ -97,6 +97,14 @@ def human_readable_time(time_in_seconds):
         time_unit = "days"
   return time_units, time_unit
 
+def human_readable_time_as_seconds(time_units, time_unit):
+  if (isinstance(time_units, str)): time_units = float(time_units)
+  if (time_unit == "seconds"): return time_units
+  if (time_unit == "minutes"): return time_units*60
+  if (time_unit == "hours"): return time_units*60*60
+  if (time_unit == "days"): return time_units*60*60*24
+  raise RuntimeError("Unknown time_unit: %s" % time_unit)
+
 def show_total_time(
       out=None,
       show_micro_seconds_per_bytecode_instruction=True):
@@ -162,3 +170,17 @@ def get_caller_name(n_back=2):
       if (f.f_back is None): return None
       f = f.f_back
     return f.f_code.co_name
+
+def exercise():
+  from libtbx.test_utils import approx_equal
+  time_in_seconds = 1.1
+  for i_trial in xrange(55):
+    time_in_seconds = time_in_seconds**1.1
+    time_units, time_unit = human_readable_time(
+      time_in_seconds=time_in_seconds)
+    assert approx_equal(
+      human_readable_time_as_seconds(time_units, time_unit), time_in_seconds)
+  print "OK"
+
+if (__name__ == "__main__"):
+  exercise()
