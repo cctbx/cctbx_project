@@ -419,6 +419,8 @@ else:
     sys.tracebacklimit = 0
     raise RuntimeError("Unknown compiler choice: %s" % env_etc.compiler)
 
+env_base["SHOBJSUFFIX"] = env_base["OBJSUFFIX"]
+
 if (static_exe):
   sys.tracebacklimit = 0
   raise RuntimeError("Static executables not supported on this platforms.")
