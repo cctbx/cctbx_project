@@ -5,7 +5,6 @@ http://www2.imm.dtu.dk/~hbn/immoptibox/
 import scitbx.math
 from scitbx import matrix
 from scitbx.array_family import flex
-from tntbx.generalized_inverse import generalized_inverse
 from libtbx.test_utils import approx_equal
 import math
 
@@ -75,6 +74,7 @@ class levenberg_marquardt:
       k += 1
       a_plus_mu = a.deep_copy()
       a_plus_mu.matrix_diagonal_add_in_place(value=mu)
+      from tntbx.generalized_inverse import generalized_inverse
       a_plus_mu_svd = generalized_inverse(square_matrix=a_plus_mu)
       h_lm = a_plus_mu_svd.matrix_multiply(-g)
       if (h_lm.norm() <= eps_2 * (x.norm() + eps_2)):
@@ -270,10 +270,13 @@ def exercise_cholesky():
 
 def exercise():
   exercise_cholesky()
-  for m in xrange(1,5+1):
-    for n in xrange(1,m+1):
-      linear_function_full_rank(m=m, n=n)
-  rosenbrock_function(m=2, n=2)
+  try: import tntbx
+  except ImportError: pass
+  else:
+    for m in xrange(1,5+1):
+      for n in xrange(1,m+1):
+        linear_function_full_rank(m=m, n=n)
+    rosenbrock_function(m=2, n=2)
   print "OK"
 
 if (__name__ == "__main__"):
