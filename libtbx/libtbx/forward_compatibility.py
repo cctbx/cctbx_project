@@ -23,3 +23,13 @@ if (__builtins__.get("_enumerate", None) is None):
       yield (i, it.next())
       i += 1
   __builtins__["enumerate"] = enumerate
+
+if (__builtins__.get("sum", None) is None):
+  def sum(sequence):
+    if (len(sequence) == 0): return 0
+    sequence = iter(sequence)
+    result = sequence.next()
+    for item in sequence:
+      result += item
+    return result
+  __builtins__["sum"] = sum
