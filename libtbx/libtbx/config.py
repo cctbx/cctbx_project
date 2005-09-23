@@ -939,7 +939,12 @@ class environment:
     self.clear_bin_directory()
     if (not os.path.isdir(self.bin_path)):
       os.makedirs(self.bin_path)
-    for file_name in ("libtbx.python", "python"):
+    python_dispatchers = ["libtbx.python"]
+    for module in self.module_list:
+      if (module.has_top_level_cvs_directory()):
+        python_dispatchers.append("python")
+      break
+    for file_name in python_dispatchers:
       self.write_dispatcher_in_bin(
         source_file=self.python_exe,
         target_file=file_name)
@@ -1074,6 +1079,12 @@ class module:
           result.append(os.path.dirname(os.path.dirname(path)))
           break
     return result
+
+  def has_top_level_cvs_directory(self):
+    for dist_path in self.dist_paths_active():
+      if (os.path.isdir(os.path.join(dist_path, "CVS"))):
+        return True
+    return False
 
   def write_dispatcher(self,
         source_dir,
