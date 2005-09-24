@@ -2,11 +2,14 @@
 http://www2.imm.dtu.dk/~hbn/immoptibox/
 """
 
+from __future__ import division
 import scitbx.math
 from scitbx import matrix
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
 import math
+
+floating_point_epsilon_double = scitbx.math.floating_point_epsilon_double_get()
 
 def cholesky_decomposition(a, relative_eps=1.e-15):
   assert a.nd() == 2
@@ -57,7 +60,6 @@ class levenberg_marquardt:
         eps_1=1.e-8,
         eps_2=1.e-12,
         k_max=100):
-    k = 0
     nu = 2
     x = x0
     f_x = function.f(x)
@@ -65,17 +67,20 @@ class levenberg_marquardt:
     self.f_x0 = f_x
     j = function.jacobian(x)
     number_of_jacobian_evaluations = 1
+    number_of_svds = 0
     j_t = j.matrix_transpose()
     a = j_t.matrix_multiply(j)
     g = j_t.matrix_multiply(f_x)
     found = flex.max(flex.abs(g)) <= eps_1
     mu = tau * flex.max(a.matrix_diagonal())
+    k = 0
     while (not found and k < k_max):
       k += 1
       a_plus_mu = a.deep_copy()
       a_plus_mu.matrix_diagonal_add_in_place(value=mu)
       from tntbx.generalized_inverse import generalized_inverse
       a_plus_mu_svd = generalized_inverse(square_matrix=a_plus_mu)
+      number_of_svds += 1
       h_lm = a_plus_mu_svd.matrix_multiply(-g)
       if (h_lm.norm() <= eps_2 * (x.norm() + eps_2)):
         found = True
@@ -105,6 +110,7 @@ class levenberg_marquardt:
     self.number_of_iterations = k
     self.number_of_function_evaluations = number_of_function_evaluations
     self.number_of_jacobian_evaluations = number_of_jacobian_evaluations
+    self.number_of_svds = number_of_svds
 
   def show_statistics(self):
     print "x_star:", list(self.x_star)
@@ -113,6 +119,98 @@ class levenberg_marquardt:
     print "number_of_iterations:", self.number_of_iterations
     print "number_of_function_evaluations:",self.number_of_function_evaluations
     print "number_of_jacobian_evaluations:",self.number_of_jacobian_evaluations
+    print "number_of_svds:", self.number_of_svds
+
+class damped_newton:
+
+  def __init__(self,
+        function,
+        x0,
+        mu0=None,
+        tau=1.e-3,
+        eps_1=1.e-8,
+        eps_2=1.e-12,
+        k_max=100):
+    x = x0
+    f_x = function.f(x=x)
+    number_of_function_evaluations = 1
+    self.f_x0 = f_x
+    fp = function.gradients_analytical(x=x, f_x=f_x)
+    number_of_gradient_evaluations = 1
+    number_of_hessian_evaluations = 0
+    number_of_cholesky_decompositions = 0
+    mu = mu0
+    nu = 2
+    k = 0
+    while (k < k_max):
+      if (flex.max(flex.abs(fp)) <= eps_1):
+        break
+      fdp = function.hessian(x=x)
+      number_of_hessian_evaluations += 1
+      if (mu is None):
+        mu = tau * flex.max(fdp.matrix_diagonal())
+        if (mu < floating_point_epsilon_double**0.5):
+          mu = fp.norm()/max(x.norm(), floating_point_epsilon_double**0.5)
+      while True:
+        fdp_plus_mu = fdp.deep_copy()
+        fdp_plus_mu.matrix_diagonal_add_in_place(value=mu)
+        fdp_plus_mu_cholesky = cholesky_decomposition(a=fdp_plus_mu)
+        number_of_cholesky_decompositions += 1
+        if (fdp_plus_mu_cholesky is not None):
+          break
+        mu *= 10
+      h_dn = cholesky_solve(c=fdp_plus_mu_cholesky, b=-fp)
+      if (h_dn.norm() <= eps_2*(eps_2 + x.norm())):
+        break
+      x_new = x + h_dn
+      f_x_new = function.f(x=x_new)
+      number_of_function_evaluations += 1
+      fp_new = function.gradients_analytical(x=x_new, f_x=f_x_new)
+      number_of_gradient_evaluations += 1
+      f = flex.sum_sq(f_x)
+      fn = flex.sum_sq(f_x_new)
+      df = f - fn
+      accept = 0
+      if (df > 0):
+        accept = 1
+        dl = 0.5 * h_dn.dot(h_dn * mu - fp)
+      elif (fn <= f + abs(f)*(1+100*floating_point_epsilon_double)):
+        df = (fp + fp_new).dot(fp - fp_new)
+        if (df > 0):
+          accept = 2
+      if (accept != 0):
+        if (accept == 1 and dl > 0):
+          mu *= max(1/3, 1 - (2*df/dl - 1)**3)
+          nu = 2
+        else:
+          mu *= nu
+          nu *= 2
+        x = x_new
+        f_x = f_x_new
+        fp = fp_new
+        fdp = None
+        k += 1
+      else:
+        mu *= nu
+        nu *= 2
+    self.x_star = x
+    self.f_x_star = f_x
+    self.number_of_iterations = k
+    self.number_of_function_evaluations = number_of_function_evaluations
+    self.number_of_gradient_evaluations = number_of_gradient_evaluations
+    self.number_of_hessian_evaluations = number_of_hessian_evaluations
+    self.number_of_cholesky_decompositions = number_of_cholesky_decompositions
+
+  def show_statistics(self):
+    print "x_star:", list(self.x_star)
+    print "0.5*f_x0.norm()**2:", 0.5*self.f_x0.norm()**2
+    print "0.5*f_x_star.norm()**2:", 0.5*self.f_x_star.norm()**2
+    print "number_of_iterations:", self.number_of_iterations
+    print "number_of_function_evaluations:",self.number_of_function_evaluations
+    print "number_of_gradient_evaluations:",self.number_of_gradient_evaluations
+    print "number_of_hessian_evaluations:",self.number_of_hessian_evaluations
+    print "number_of_cholesky_decompositions:", \
+      self.number_of_cholesky_decompositions
 
 class test_function:
 
@@ -124,6 +222,7 @@ class test_function:
     assert approx_equal(
       0.5*self.f(x=self.x_star).norm()**2, self.capital_f_x_star)
     self.exercise_levenberg_marquardt()
+    self.exercise_damped_newton()
 
   def jacobian_finite(self, x, relative_eps=1.e-5):
     x0 = x
@@ -145,8 +244,29 @@ class test_function:
     assert approx_equal(analytical, finite)
     return analytical
 
+  def gradients_analytical(self, x, f_x=None):
+    if (f_x is None): f_x = self.f(x=x)
+    return self.jacobian_analytical(x=x).matrix_transpose() \
+      .matrix_multiply(f_x)
+
+  def hessian_finite(self, x, relative_eps=1.e-5):
+    x0 = x
+    result = flex.double()
+    for i in xrange(self.n):
+      eps = max(1, abs(x0[i])) * relative_eps
+      gs = []
+      for signed_eps in [eps, -eps]:
+        x = x0.deep_copy()
+        x[i] += signed_eps
+        gs.append(self.gradients_analytical(x=x))
+      result.extend((gs[0]-gs[1])/(2*eps))
+    result.resize(flex.grid(self.n, self.n))
+    return result
+
   def hessian(self, x):
     analytical = self.hessian_analytical(x=x)
+    finite = self.hessian_finite(x=x)
+    assert approx_equal(analytical, finite)
     return analytical
 
   def exercise_levenberg_marquardt(self):
@@ -155,6 +275,15 @@ class test_function:
     assert approx_equal(minimized.x_star, self.x_star)
     assert approx_equal(
       0.5*minimized.f_x_star.norm()**2, self.capital_f_x_star)
+    print
+
+  def exercise_damped_newton(self):
+    minimized = damped_newton(function=self, x0=self.x0, tau=self.tau0)
+    minimized.show_statistics()
+    assert approx_equal(minimized.x_star, self.x_star)
+    assert approx_equal(
+      0.5*minimized.f_x_star.norm()**2, self.capital_f_x_star)
+    print
 
 class linear_function_full_rank(test_function):
 
