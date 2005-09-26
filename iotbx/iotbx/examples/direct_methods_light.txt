@@ -722,7 +722,7 @@ the Emma reference model multiple times.
 
 .. _`Example output`: http://cci.lbl.gov/~rwgk/siena2005/direct_methods_light.out
 
-.. _`cctbx downloads`: http://cci.lbl.gov/cctbx_build/all.html
+.. _`cctbx downloads`: http://cci.lbl.gov/cctbx_build/
 
 .. _`cctbx front page`: http://cctbx.sourceforge.net/
 
