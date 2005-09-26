@@ -150,7 +150,7 @@ else:
     )
     env_etc.cxxflags_base = Split("""
         -std strict_ansi
-        -msg_display_number -msg_disable 186,450,1115
+        -msg_display_number -msg_disable 186,450,1115,1133
         -tlocal
         -DBOOST_DISABLE_THREADS
     """)
