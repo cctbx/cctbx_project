@@ -522,7 +522,7 @@ to reduce the number of unit cell parameters to be refined.
 
 .. _`Example output`: http://cci.lbl.gov/~rwgk/siena2005/unit_cell_refinement.out
 
-.. _`cctbx downloads`: http://cci.lbl.gov/cctbx_build/all.html
+.. _`cctbx downloads`: http://cci.lbl.gov/cctbx_build/
 
 .. _`cctbx front page`: http://cctbx.sourceforge.net/
 
