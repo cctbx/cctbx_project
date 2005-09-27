@@ -11,21 +11,33 @@ cctbx links
 
 - `Downloads <http://cci.lbl.gov/cctbx_build/>`_
 
-- `CVS repository <http://cvs.sourceforge.net/cgi-bin/viewcvs.cgi/cctbx/>`_
+- `Mailing list <http://www.phenix-online.org/mailman/listinfo/cctbxbb>`_
 
-- `Project page at SourceForge <http://sourceforge.net/projects/cctbx/>`_
+- `Tutorials Siena 2005 IUCr Crystallographic Computing School <siena2005/>`_
 
-- Newsletter articles, IUCr Computing Commission:
+- Newsletter articles
 
-  - `No. 1, 2003/01 <http://cci.lbl.gov/publications/download/iucrcompcomm_jan2003.pdf>`_
+  - `IUCr Computing Commission No. 1, 2003/01 <http://cci.lbl.gov/publications/download/iucrcompcomm_jan2003.pdf>`_
 
-  - `No. 2, 2003/07 <http://cci.lbl.gov/publications/download/iucrcompcomm_jul2003.pdf>`_
+  - `IUCr Computing Commission No. 2, 2003/07 <http://cci.lbl.gov/publications/download/iucrcompcomm_jul2003.pdf>`_
 
-  - `No. 3, 2004/01 <http://cci.lbl.gov/publications/download/iucrcompcomm_jan2004.pdf>`_
+  - `IUCr Computing Commission No. 3, 2004/01 <http://cci.lbl.gov/publications/download/iucrcompcomm_jan2004.pdf>`_
 
-  - `No. 4, 2004/08 <http://cci.lbl.gov/publications/download/iucrcompcomm_aug2004.pdf>`_
+  - `IUCr Computing Commission No. 4, 2004/08 <http://cci.lbl.gov/publications/download/iucrcompcomm_aug2004.pdf>`_
 
-  - `No. 5, 2005/01 <http://cci.lbl.gov/publications/download/iucrcompcomm_jan2005.pdf>`_
+  - `IUCr Computing Commission No. 5, 2005/01 <http://cci.lbl.gov/publications/download/iucrcompcomm_jan2005.pdf>`_
+
+  - `CCP4 newsletter No. 42, Summer 2005: The Phenix refinement framework <http://www.ccp4.ac.uk/newsletters/newsletter42/articles/Afonine_GrosseKunstleve_Adams_18JUL2005.doc>`_
+
+  - `CCP4 newsletter No. 42, Summer 2005: Characterization of X-ray data sets <http://www.ccp4.ac.uk/newsletters/newsletter42/articles/CCP4_2005_PHZ_RWGK_PDA.doc>`_
+
+- Notes by Michael Hohn:
+
+  - `scitbx tour <http://cci.lbl.gov/~hohn/scitbx-tour.html>`_
+
+  - `array family tour <http://cci.lbl.gov/~hohn/array-family-tour.html>`_
+
+- `C++ interfaces <current_cvs/c_plus_plus/namespaces.html>`_
 
 - Python interfaces:
 
@@ -41,17 +53,13 @@ cctbx links
 
   - `mmtbx <current_cvs/python/mmtbx.html>`_
 
-- `C++ interfaces <current_cvs/c_plus_plus/namespaces.html>`_
+- `CVS repository <http://cvs.sourceforge.net/cgi-bin/viewcvs.cgi/cctbx/>`_
 
-- Notes by Michael Hohn:
-
-  - `scitbx tour <http://cci.lbl.gov/~hohn/scitbx-tour.html>`_
-
-  - `array family tour <http://cci.lbl.gov/~hohn/array-family-tour.html>`_
+- `Project page at SourceForge <http://sourceforge.net/projects/cctbx/>`_
 
 - `Most current source tree <http://phenix-online.org/cctbx_sources/>`_
 
-Please direct questions to cctbx@cci.lbl.gov .
+Please direct questions to cctbx@cci.lbl.gov or cctbxbb@phenix-online.org .
 
 -----------------------------------------------------------------------------
 

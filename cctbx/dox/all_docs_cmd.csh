@@ -13,3 +13,5 @@ libtbx.help -w `libtbx.show_dist_paths scitbx`
 libtbx.help -w `libtbx.show_dist_paths cctbx`
 libtbx.help -w `libtbx.show_dist_paths iotbx`
 libtbx.help -w `libtbx.show_dist_paths mmtbx`
+cd ../../siena2005
+./update_generated_files.csh
