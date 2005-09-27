@@ -1,2 +1,7 @@
 import boost.python
-print boost.python.platform_info
+
+def run():
+  print boost.python.platform_info
+
+if (__name__ == "__main__"):
+  run()
