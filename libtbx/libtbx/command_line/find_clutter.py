@@ -41,7 +41,6 @@ def show_status(path, flag_x):
 
 def is_text_file(file_name):
   name = file_name.lower()
-  if (name.startswith("scons")): return True
   for extension in (".c", ".cpp", ".h", ".hpp", ".py", ".params",
                     ".dox", ".txt", ".html", ".csh", ".sh"):
     if (name.endswith(extension)): return True
