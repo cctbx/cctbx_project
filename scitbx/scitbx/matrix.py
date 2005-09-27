@@ -118,6 +118,14 @@ class rec(object):
       result *= e
     return result
 
+  def trace(self):
+    assert self.n_rows() == self.n_columns()
+    n = self.n_rows()
+    result = 0
+    for i in xrange(n):
+      result += self.elems[i*n+i]
+    return result
+
   def norm_sq(self):
     assert self.n_rows() == 1 or self.n_columns() == 1
     result = 0
@@ -450,6 +458,7 @@ if (__name__ == "__main__"):
   assert col((4,5,3)).max_index() == 1
   assert col((4,5,3)).sum() == 12
   assert col((2,3,4)).product() == 2*3*4
+  assert sqr((1,2,3,4,5,6,7,8,9)).trace() == 15
   assert diag((1,2,3)).mathematica_form() == \
     "{{1, 0, 0}, {0, 2, 0}, {0, 0, 3}}"
   assert approx_equal(col((1,0,0)).cos_angle(col((1,1,0)))**2, 0.5)
