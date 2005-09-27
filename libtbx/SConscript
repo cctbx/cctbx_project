@@ -170,6 +170,10 @@ else:
       static_exe = None
     env_etc.shlinkflags = "-shared -expect_unresolved 'Py*'" \
                         + " -expect_unresolved '_Py*'"
+    for line in os.popen4("strings /usr/bin/ld")[1].read().splitlines():
+      if (line == "lock_registry"):
+        env_etc.shlinkflags += " -Wl,-lock_registry"
+        break
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
   elif (env_etc.compiler == "unix_gcc"):
     env_etc.static_libraries = 0
