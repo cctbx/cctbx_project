@@ -716,11 +716,11 @@ the Emma reference model multiple times.
 [`cctbx front page`_] [`Python tutorial`_]
 
 
-.. _`unit_cell_refinement.py`: http://cci.lbl.gov/~rwgk/siena2005/unit_cell_refinement.html
+.. _`unit_cell_refinement.py`: http://ctbx.sourceforge.net/siena2005/unit_cell_refinement.html
 
 .. _`Complete example script`: http://phenix-online.org/cctbx_sources/iotbx/iotbx/examples/direct_methods_light.py
 
-.. _`Example output`: http://cci.lbl.gov/~rwgk/siena2005/direct_methods_light.out
+.. _`Example output`: http://http://ctbx.sourceforge.net/siena2005/direct_methods_light.out
 
 .. _`cctbx downloads`: http://cci.lbl.gov/cctbx_build/
 
@@ -750,8 +750,8 @@ the Emma reference model multiple times.
 
 .. _`triplet_generator.h`: http://phenix-online.org/cctbx_sources/cctbx/include/cctbx/dmtbx/triplet_generator.h
 
-.. _`central type in the cctbx source tree`: http://cci.lbl.gov/~rwgk/siena2005/cctbx_central_types.pdf
-.. _`central types in the cctbx source tree`: http://cci.lbl.gov/~rwgk/siena2005/cctbx_central_types.pdf
+.. _`central type in the cctbx source tree`: http://http://ctbx.sourceforge.net/siena2005/cctbx_central_types.pdf
+.. _`central types in the cctbx source tree`: http://http://ctbx.sourceforge.net/siena2005/cctbx_central_types.pdf
 
 .. _`libtbx.help cctbx.array_family.flex.double`: http://www.phenix-online.org/cctbx/cctbx_web.cgi?target_module=libtbx_help&query=cctbx.array_family.flex.double
 
