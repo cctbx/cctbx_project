@@ -370,6 +370,55 @@ class rosenbrock_function(test_function):
     return j.matrix_transpose().matrix_multiply(j) \
          + flex.double([[-20*f[0],0],[0,0]])
 
+class helical_valley_function(test_function):
+
+  def initialization(self):
+    assert self.m == 3
+    assert self.n == 3
+    self.x0 = flex.double([-1, 0, 0])
+    self.tau0 = 1
+    self.delta0 = 1
+    self.x_star = flex.double([1,0,0])
+    self.capital_f_x_star = 0
+
+  def f(self, x):
+    x1, x2, x3 = x
+    assert x1 != 0
+    t = math.atan(x2/x1)/(2*math.pi)
+    if (x1 < 0): t += 0.5
+    nx = x[:2].norm()
+    return flex.double([10*(x3 - 10*t), 10*(nx - 1), x3])
+
+  def jacobian_analytical(self, x):
+    x1, x2, x3 = x
+    nx = x[:2].norm()
+    nx2 = nx*nx
+    k1 = 50/math.pi/nx2
+    k2 = 10/nx
+    return flex.double([
+      [k1*x2, -k1*x1, 10],
+      [k2*x1, k2*x2, 0],
+      [0, 0, 1]])
+
+  def hessian_analytical(self, x):
+    x1, x2, x3 = x
+    nx = x[:2].norm()
+    nx2 = nx*nx
+    k1 = 50/math.pi/nx2
+    k2 = 10/nx
+    f = self.f(x=x)
+    j = self.jacobian_analytical(x=x)
+    result = j.matrix_transpose().matrix_multiply(j)
+    q1 = x1**2
+    q2 = x2**2
+    p = x1*x2
+    terms = f[0]*k1/nx2*flex.double([[-2*p,q1-q2],[q1-q2,2*p]]) \
+          + f[1]*k2/nx2*flex.double([[q2,-p],[-p,q1]])
+    for i in [0,1]:
+      for j in [0,1]:
+        result[i*3+j] += terms[i*2+j]
+    return result
+
 def exercise_cholesky():
   mt = flex.mersenne_twister(seed=0)
   for n in xrange(1,10):
@@ -448,6 +497,8 @@ def exercise():
           linear_function_rank_1_with_zero_columns_and_rows(m=m, n=n)
     if (1):
       rosenbrock_function(m=2, n=2)
+    if (1):
+      helical_valley_function(m=3, n=3)
   print "OK"
 
 if (__name__ == "__main__"):
