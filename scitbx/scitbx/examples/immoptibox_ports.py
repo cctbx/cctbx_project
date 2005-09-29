@@ -57,8 +57,8 @@ class levenberg_marquardt:
         function,
         x0,
         tau=1.e-3,
-        eps_1=1.e-8,
-        eps_2=1.e-12,
+        eps_1=1.e-16,
+        eps_2=1.e-16,
         k_max=100):
     nu = 2
     x = x0
@@ -128,8 +128,8 @@ class damped_newton:
         x0,
         mu0=None,
         tau=1.e-3,
-        eps_1=1.e-8,
-        eps_2=1.e-12,
+        eps_1=1.e-16,
+        eps_2=1.e-16,
         k_max=100):
     x = x0
     f_x = function.f(x=x)
@@ -382,7 +382,7 @@ class helical_valley_function(test_function):
     self.capital_f_x_star = 0
 
   def f(self, x):
-    x1, x2, x3 = x
+    x1,x2,x3 = x
     assert x1 != 0
     t = math.atan(x2/x1)/(2*math.pi)
     if (x1 < 0): t += 0.5
@@ -390,7 +390,7 @@ class helical_valley_function(test_function):
     return flex.double([10*(x3 - 10*t), 10*(nx - 1), x3])
 
   def jacobian_analytical(self, x):
-    x1, x2, x3 = x
+    x1,x2,x3 = x
     nx = x[:2].norm()
     nx2 = nx*nx
     k1 = 50/math.pi/nx2
@@ -401,7 +401,7 @@ class helical_valley_function(test_function):
       [0, 0, 1]])
 
   def hessian_analytical(self, x):
-    x1, x2, x3 = x
+    x1,x2,x3 = x
     nx = x[:2].norm()
     nx2 = nx*nx
     k1 = 50/math.pi/nx2
@@ -417,6 +417,52 @@ class helical_valley_function(test_function):
     for i in [0,1]:
       for j in [0,1]:
         result[i*3+j] += terms[i*2+j]
+    return result
+
+class powell_singular_function(test_function):
+
+  def initialization(self):
+    assert self.m == 4
+    assert self.n == 4
+    self.x0 = flex.double([3, -1, 0, 1])
+    self.tau0 = 1.e-8
+    self.delta0 = 1
+    self.x_star = flex.double([0,0,0,0])
+    self.capital_f_x_star = 0
+
+  def check_minimized_x_star(self, x_star):
+    assert approx_equal(x_star, self.x_star, 2.e-6)
+
+  def f(self, x):
+    x1,x2,x3,x4 = x
+    return flex.double([
+      x1+10*x2,
+      5**0.5*(x3-x4),
+      (x2-2*x3)**2,
+      10**0.5*(x1-x4)**2])
+
+  def jacobian_analytical(self, x):
+    x1,x2,x3,x4 = x
+    d3 = x2 - 2*x3
+    d4 = x1 - x4
+    s5 = 5**0.5
+    s10 = 10**0.5
+    return flex.double([
+      [1, 10, 0, 0],
+      [0, 0, s5, -s5],
+      [0, 2*d3, -4*d3, 0],
+      [2*s10*d4, 0, 0, -2*s10*d4]])
+
+  def hessian_analytical(self, x):
+    s10 = 10**0.5
+    f1,f2,f3,f4 = self.f(x=x)
+    j = self.jacobian_analytical(x=x)
+    result = j.matrix_transpose().matrix_multiply(j)
+    result += flex.double([
+     [f4*2*s10,0,0,-f4*2*s10],
+     [0,f3*2,-f3*4,0],
+     [0,-f3*4,f3*8,0],
+     [-f4*2*s10,0,0,f4*2*s10]])
     return result
 
 def exercise_cholesky():
@@ -499,6 +545,8 @@ def exercise():
       rosenbrock_function(m=2, n=2)
     if (1):
       helical_valley_function(m=3, n=3)
+    if (1):
+      powell_singular_function(m=4, n=4)
   print "OK"
 
 if (__name__ == "__main__"):
