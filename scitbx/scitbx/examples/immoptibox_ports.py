@@ -219,8 +219,9 @@ class test_function:
     self.m = m
     self.n = n
     self.initialization()
-    assert approx_equal(
-      0.5*self.f(x=self.x_star).norm()**2, self.capital_f_x_star)
+    if (self.x_star is not None):
+      assert approx_equal(
+        0.5*self.f(x=self.x_star).norm()**2, self.capital_f_x_star)
     self.exercise_levenberg_marquardt()
     self.exercise_damped_newton()
 
@@ -319,13 +320,32 @@ class linear_function_rank_1(linear_function_full_rank):
     self.x0 = flex.double(n, 1)
     self.tau0 = 1.e-8
     self.delta0 = 10
-    self.x_star = flex.double(n, 1) * (6/(2*m+1)/n/(n+1))
+    self.x_star = None
     self.capital_f_x_star = (m*(m-1))/(4*(2*m+1))
 
   def check_minimized_x_star(self, x_star):
     assert approx_equal(
       flex.double(xrange(1,self.n+1)).dot(x_star),
       3/(2*self.m+1))
+
+class linear_function_rank_1_with_zero_columns_and_rows(
+        linear_function_full_rank):
+
+  def initialization(self):
+    m = self.m
+    n = self.n
+    self.a = flex.double([0]+range(1,m-2+1)+[0]).matrix_outer_product(
+             flex.double([0]+range(2,n-1+1)+[0]))
+    self.x0 = flex.double(n, 1)
+    self.tau0 = 1.e-8
+    self.delta0 = 10
+    self.x_star = None
+    self.capital_f_x_star = (m**2+3*m-6)/(4*(2*m-3))
+
+  def check_minimized_x_star(self, x_star):
+    assert approx_equal(
+      flex.double([0]+range(2,self.n-1+1)+[0]).dot(x_star),
+      3/(2*self.m-3))
 
 class rosenbrock_function(test_function):
 
@@ -421,8 +441,11 @@ def exercise():
     if (1):
       for m in xrange(1,5+1):
         for n in xrange(1,m+1):
-          print "m, n:", m, n
           linear_function_rank_1(m=m, n=n)
+    if (1):
+      for m in xrange(3,7+1):
+        for n in xrange(3,m+1):
+          linear_function_rank_1_with_zero_columns_and_rows(m=m, n=n)
     if (1):
       rosenbrock_function(m=2, n=2)
   print "OK"
