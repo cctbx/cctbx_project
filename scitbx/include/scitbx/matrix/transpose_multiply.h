@@ -14,10 +14,13 @@ namespace scitbx { namespace matrix {
     SCITBX_ASSERT(lhs.size() == rhs.size());
     mat3<NumType> result(static_cast<NumType>(0));
     for(std::size_t i=0;i<lhs.size();i++) {
+      NumType* r_jk = result.begin();
       for(unsigned j=0;j<3;j++) {
-        for(unsigned k=0;k<3;k++) {
-          result[j*3+k] += lhs[i][j] * rhs[i][k];
-        }
+        NumType lhs_ij = lhs[i][j];
+        const NumType* rhs_ik = rhs[i].begin();
+        *(r_jk++) += lhs_ij * *(rhs_ik++);
+        *(r_jk++) += lhs_ij * *(rhs_ik++);
+        *(r_jk++) += lhs_ij * *(rhs_ik  );
       }
     }
     return result;
