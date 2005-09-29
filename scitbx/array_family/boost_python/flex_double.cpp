@@ -2,6 +2,7 @@
 #include <scitbx/array_family/boost_python/flex_pickle_single_buffered.h>
 #include <scitbx/array_family/versa_matrix.h>
 #include <scitbx/math/utils.h>
+#include <scitbx/matrix/outer_product.h>
 #include <scitbx/matrix/cholesky.h>
 #include <scitbx/matrix/packed.h>
 #include <boost/python/args.hpp>
@@ -330,6 +331,10 @@ namespace boost_python {
            const_ref<double, c_grid<2> > const&)) matrix_transpose)
       .def("matrix_transpose_in_place",
         (void(*)(versa<double, flex_grid<> >&)) matrix_transpose_in_place)
+      .def("matrix_outer_product",
+        (versa<double, c_grid<2> >(*)(
+           const_ref<double> const&,
+           const_ref<double> const&)) matrix::outer_product, (arg_("rhs")))
       .def("matrix_lu_decomposition_in_place",
         (shared<std::size_t>(*)(
           ref<double, c_grid<2> > const&)) matrix_lu_decomposition_in_place)

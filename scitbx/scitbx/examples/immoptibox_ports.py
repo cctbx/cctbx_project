@@ -269,10 +269,13 @@ class test_function:
     assert approx_equal(analytical, finite)
     return analytical
 
+  def check_minimized_x_star(self, x_star):
+    assert approx_equal(x_star, self.x_star)
+
   def exercise_levenberg_marquardt(self):
     minimized = levenberg_marquardt(function=self, x0=self.x0, tau=self.tau0)
     minimized.show_statistics()
-    assert approx_equal(minimized.x_star, self.x_star)
+    self.check_minimized_x_star(x_star=minimized.x_star)
     assert approx_equal(
       0.5*minimized.f_x_star.norm()**2, self.capital_f_x_star)
     print
@@ -280,7 +283,7 @@ class test_function:
   def exercise_damped_newton(self):
     minimized = damped_newton(function=self, x0=self.x0, tau=self.tau0)
     minimized.show_statistics()
-    assert approx_equal(minimized.x_star, self.x_star)
+    self.check_minimized_x_star(x_star=minimized.x_star)
     assert approx_equal(
       0.5*minimized.f_x_star.norm()**2, self.capital_f_x_star)
     print
@@ -298,22 +301,31 @@ class linear_function_full_rank(test_function):
     self.capital_f_x_star = 0.5 * (self.m - self.n)
 
   def f(self, x):
-    result = self.a.matrix_multiply(x) - flex.double(self.m, 1)
-    return result
-    print list(result)
-    sum = flex.sum(x)
-    temp = 2*sum/self.m + 1
-    result = x - temp
-    result.resize(self.m, -temp)
-    print list(result)
-    print
-    return result
+    return self.a.matrix_multiply(x) - flex.double(self.m, 1)
 
   def jacobian_analytical(self, x):
     return self.a
 
   def hessian_analytical(self, x):
     return self.a.matrix_transpose().matrix_multiply(self.a)
+
+class linear_function_rank_1(linear_function_full_rank):
+
+  def initialization(self):
+    m = self.m
+    n = self.n
+    self.a = flex.double(xrange(1,m+1)).matrix_outer_product(
+             flex.double(xrange(1,n+1)))
+    self.x0 = flex.double(n, 1)
+    self.tau0 = 1.e-8
+    self.delta0 = 10
+    self.x_star = flex.double(n, 1) * (6/(2*m+1)/n/(n+1))
+    self.capital_f_x_star = (m*(m-1))/(4*(2*m+1))
+
+  def check_minimized_x_star(self, x_star):
+    assert approx_equal(
+      flex.double(xrange(1,self.n+1)).dot(x_star),
+      3/(2*self.m+1))
 
 class rosenbrock_function(test_function):
 
@@ -402,10 +414,17 @@ def exercise():
   try: import tntbx
   except ImportError: pass
   else:
-    for m in xrange(1,5+1):
-      for n in xrange(1,m+1):
-        linear_function_full_rank(m=m, n=n)
-    rosenbrock_function(m=2, n=2)
+    if (1):
+      for m in xrange(1,5+1):
+        for n in xrange(1,m+1):
+          linear_function_full_rank(m=m, n=n)
+    if (1):
+      for m in xrange(1,5+1):
+        for n in xrange(1,m+1):
+          print "m, n:", m, n
+          linear_function_rank_1(m=m, n=n)
+    if (1):
+      rosenbrock_function(m=2, n=2)
   print "OK"
 
 if (__name__ == "__main__"):

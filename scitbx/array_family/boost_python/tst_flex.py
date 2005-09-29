@@ -1274,6 +1274,12 @@ def exercise_matrix():
         assert d.n[0] == 1
         assert c.focus() == (d.n[1],)
         assert approx_equal(c, d)
+  assert flex.double().matrix_outer_product(rhs=flex.double()).size() == 0
+  assert flex.double([1]).matrix_outer_product(rhs=flex.double()).size() == 0
+  assert flex.double().matrix_outer_product(rhs=flex.double([1])).size() == 0
+  op = flex.double([1,2,3]).matrix_outer_product(rhs=flex.double([4,5]))
+  assert op.focus() == (3,2)
+  assert approx_equal(op, [4,5,8,10,12,15])
   lu = flex.double([1,0,0,0,1,0,0,0,1])
   lu.resize(flex.grid(3,3))
   pivot_indices = lu.matrix_lu_decomposition_in_place()
