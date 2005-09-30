@@ -135,7 +135,7 @@ class damped_newton:
     f_x = function.f(x=x)
     number_of_function_evaluations = 1
     self.f_x0 = f_x
-    fp = function.gradients_analytical(x=x, f_x=f_x)
+    fp = function.gradients(x=x, f_x=f_x)
     number_of_gradient_evaluations = 1
     number_of_hessian_evaluations = 0
     number_of_cholesky_decompositions = 0
@@ -165,7 +165,7 @@ class damped_newton:
       x_new = x + h_dn
       f_x_new = function.f(x=x_new)
       number_of_function_evaluations += 1
-      fp_new = function.gradients_analytical(x=x_new, f_x=f_x_new)
+      fp_new = function.gradients(x=x_new, f_x=f_x_new)
       number_of_gradient_evaluations += 1
       f = flex.sum_sq(f_x)
       fn = flex.sum_sq(f_x_new)
@@ -245,10 +245,29 @@ class test_function:
     assert approx_equal(analytical, finite)
     return analytical
 
+  def gradients_finite(self, x, relative_eps=1.e-5):
+    x0 = x
+    result = flex.double()
+    for i in xrange(self.n):
+      eps = max(1, abs(x0[i])) * relative_eps
+      fs = []
+      for signed_eps in [eps, -eps]:
+        x = x0.deep_copy()
+        x[i] += signed_eps
+        fs.append(0.5*flex.sum_sq(self.f(x=x)))
+      result.append((fs[0]-fs[1])/(2*eps))
+    return result
+
   def gradients_analytical(self, x, f_x=None):
     if (f_x is None): f_x = self.f(x=x)
     return self.jacobian_analytical(x=x).matrix_transpose() \
       .matrix_multiply(f_x)
+
+  def gradients(self,x, f_x=None):
+    analytical = self.gradients_analytical(x=x, f_x=f_x)
+    finite = self.gradients_finite(x=x)
+    assert approx_equal(analytical, finite)
+    return analytical
 
   def hessian_finite(self, x, relative_eps=1.e-5):
     x0 = x
@@ -465,6 +484,37 @@ class powell_singular_function(test_function):
      [-f4*2*s10,0,0,f4*2*s10]])
     return result
 
+class freudenstein_and_roth_function(test_function):
+
+  def initialization(self):
+    assert self.m == 2
+    assert self.n == 2
+    self.x0 = flex.double([0.5, -2])
+    self.tau0 = 1
+    self.delta0 = 1
+    self.x_star = flex.double([11.412779, -0.896805])
+    self.capital_f_x_star = 24.492127
+
+  def f(self, x):
+    x1,x2 = x
+    return flex.double([
+      x1-x2*(2-x2*(5-x2))-13,
+      x1-x2*(14-x2*(1+x2))-29])
+
+  def jacobian_analytical(self, x):
+    x1,x2 = x
+    return flex.double([
+      [1, (-2 + x2*(10 - 3*x2))],
+      [1, (-14 + x2*(2 + 3*x2))]])
+
+  def hessian_analytical(self, x):
+    x1,x2 = x
+    f1,f2 = self.f(x=x)
+    j = self.jacobian_analytical(x=x)
+    result = j.matrix_transpose().matrix_multiply(j)
+    result[3] += f1*(10-6*x2) + f2*(2+6*x2)
+    return result
+
 def exercise_cholesky():
   mt = flex.mersenne_twister(seed=0)
   for n in xrange(1,10):
@@ -529,24 +579,27 @@ def exercise():
   try: import tntbx
   except ImportError: pass
   else:
-    if (1):
+    default_flag = True
+    if (0 or default_flag):
       for m in xrange(1,5+1):
         for n in xrange(1,m+1):
           linear_function_full_rank(m=m, n=n)
-    if (1):
+    if (0 or default_flag):
       for m in xrange(1,5+1):
         for n in xrange(1,m+1):
           linear_function_rank_1(m=m, n=n)
-    if (1):
+    if (0 or default_flag):
       for m in xrange(3,7+1):
         for n in xrange(3,m+1):
           linear_function_rank_1_with_zero_columns_and_rows(m=m, n=n)
-    if (1):
+    if (0 or default_flag):
       rosenbrock_function(m=2, n=2)
-    if (1):
+    if (0 or default_flag):
       helical_valley_function(m=3, n=3)
-    if (1):
+    if (0 or default_flag):
       powell_singular_function(m=4, n=4)
+    if (0 or default_flag):
+      freudenstein_and_roth_function(m=2, n=2)
   print "OK"
 
 if (__name__ == "__main__"):
