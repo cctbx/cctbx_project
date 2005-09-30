@@ -1,3 +1,6 @@
+#ifndef SCITBX_RANDOM_H
+#define SCITBX_RANDOM_H 
+
 #include <boost/random/mersenne_twister.hpp>
 #include <scitbx/array_family/shared.h>
 
@@ -141,3 +144,4 @@ namespace random {
   };
 
 }} // namespace scitbx::random
+#endif // SCITBX_RANDOM_H
