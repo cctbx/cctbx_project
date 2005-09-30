@@ -492,8 +492,8 @@ class freudenstein_and_roth_function(test_function):
     self.x0 = flex.double([0.5, -2])
     self.tau0 = 1
     self.delta0 = 1
-    self.x_star = flex.double([11.412779, -0.896805])
-    self.capital_f_x_star = 24.492127
+    self.x_star = (flex.double([53,2]) - 22**0.5*flex.double([4,1]))/3
+    self.capital_f_x_star = 24.4921268396
 
   def f(self, x):
     x1,x2 = x
@@ -513,6 +513,62 @@ class freudenstein_and_roth_function(test_function):
     j = self.jacobian_analytical(x=x)
     result = j.matrix_transpose().matrix_multiply(j)
     result[3] += f1*(10-6*x2) + f2*(2+6*x2)
+    return result
+
+class bard_function(test_function):
+
+  ys = [0.14, 0.18, 0.22, 0.25, 0.29, 0.32, 0.35, 0.39, 0.37, 0.58,
+        0.73, 0.96, 1.34, 2.10, 4.39]
+
+  def initialization(self):
+    assert self.m == 15
+    assert self.n == 3
+    self.x0 = flex.double([1, 1, 1])
+    self.tau0 = 1.e-8
+    self.delta0 = 1
+    self.x_star = flex.double([0.082411, 1.133036, 2.343695])
+    self.capital_f_x_star = 4.10744e-3
+
+  def f(self, x):
+    x1,x2,x3 = x
+    result = flex.double()
+    for i,yi in zip(range(1,15+1),bard_function.ys):
+      ui = i
+      vi = 16-i
+      wi = min(ui, vi)
+      denominator = x2*vi + x3*wi
+      assert denominator != 0
+      result.append(yi - (x1 + ui / denominator))
+    return result
+
+  def jacobian_analytical(self, x):
+    x1,x2,x3 = x
+    result = flex.double()
+    for i in xrange(1,15+1):
+      ui = i
+      vi = 16-i
+      wi = min(ui, vi)
+      denominator = (x2*vi + x3*wi)**2
+      assert denominator != 0
+      result.extend(flex.double([-1, ui*vi/denominator, ui*wi/denominator]))
+    result.resize(flex.grid(self.m,self.n))
+    return result
+
+  def hessian_analytical(self, x):
+    x1,x2,x3 = x
+    j = self.jacobian_analytical(x=x)
+    result = j.matrix_transpose().matrix_multiply(j)
+    for i,fi in zip(xrange(1,15+1), self.f(x=x)):
+      ui = i
+      vi = 16-i
+      wi = min(ui, vi)
+      denominator = (x2*vi + x3*wi)**3
+      assert denominator != 0
+      term = fi*2*ui/denominator
+      result[(1,1)] -= term*vi**2
+      result[(1,2)] -= term*vi*wi
+      result[(2,1)] -= term*vi*wi
+      result[(2,2)] -= term*wi**2
     return result
 
 def exercise_cholesky():
@@ -600,6 +656,8 @@ def exercise():
       powell_singular_function(m=4, n=4)
     if (0 or default_flag):
       freudenstein_and_roth_function(m=2, n=2)
+    if (0 or default_flag):
+      bard_function(m=15, n=3)
   print "OK"
 
 if (__name__ == "__main__"):
