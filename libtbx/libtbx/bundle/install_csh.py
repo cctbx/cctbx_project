@@ -211,7 +211,7 @@ set test_py="$BOOST_ADAPTBX_DIST/tst_rational.py"
 if (-f "$test_py") then
   echo ""
   echo "Running a selected test"
-  set cmd='python "'"$test_py"'"'
+  set cmd='libtbx.python "'"$test_py"'"'
   echo "$cmd"
   eval $cmd
 endif
