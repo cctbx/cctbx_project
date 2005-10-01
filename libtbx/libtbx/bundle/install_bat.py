@@ -50,8 +50,8 @@ call %(bundle)s_build\setpaths_all.bat
 if not exist "%%BOOST_ADAPTBX_DIST%%\tst_rational.py" goto skip_test
 echo.
 echo Running a selected test
-echo python "%%BOOST_ADAPTBX_DIST%%\tst_rational.py"
-call python "%%BOOST_ADAPTBX_DIST%%\tst_rational.py"
+echo libtbx.python "%%BOOST_ADAPTBX_DIST%%\tst_rational.py"
+call libtbx.python "%%BOOST_ADAPTBX_DIST%%\tst_rational.py"
 if not %%errorlevel%% == 0 goto end
 :skip_test
 
