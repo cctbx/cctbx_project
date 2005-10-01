@@ -571,6 +571,75 @@ class bard_function(test_function):
       result[(2,2)] -= term*wi**2
     return result
 
+class kowalik_and_osborne_function(test_function):
+
+  ys = [0.1957, 0.1947, 0.1735, 0.1600, 0.0844, 0.0627,
+        0.0456, 0.0342, 0.0323, 0.0235, 0.0246]
+  us = [4.0000, 2.0000, 1.0000, 0.5000, 0.2500, 0.1670,
+        0.1250, 0.1000, 0.0833, 0.0714, 0.0625]
+
+  def initialization(self):
+    assert self.m == 11
+    assert self.n == 4
+    self.x0 = flex.double([0.25, 0.39, 0.415, 0.39])
+    self.tau0 = 1
+    self.delta0 = 0.1
+    self.x_star = flex.double([
+      0.1928069346, 0.1912823287, 0.1230565069, 0.1360623307])
+    self.capital_f_x_star = 1.53753e-4
+
+  def f(self, x):
+    x1,x2,x3,x4 = x
+    result = flex.double()
+    for yi,ui in zip(kowalik_and_osborne_function.ys,
+                     kowalik_and_osborne_function.us):
+      denominator = ui*(ui+x3)+x4
+      assert denominator != 0
+      result.append(yi-x1*ui*(ui+x2)/denominator)
+    return result
+
+  def jacobian_analytical(self, x):
+    x1,x2,x3,x4 = x
+    result = flex.double()
+    for ui in kowalik_and_osborne_function.us:
+      denominator = ui*(ui+x3)+x4
+      assert denominator != 0
+      denominator_sq = denominator**2
+      assert denominator_sq != 0
+      result.extend(flex.double([
+        -ui*(ui+x2)/denominator,
+        -ui*x1/denominator,
+        ui**2*x1*(ui+x2)/denominator_sq,
+        ui*x1*(ui+x2)/denominator_sq]))
+    result.resize(flex.grid(self.m, self.n))
+    return result
+
+  def hessian_analytical(self, x):
+    x1,x2,x3,x4 = x
+    j = self.jacobian_analytical(x=x)
+    result = j.matrix_transpose().matrix_multiply(j)
+    for ui,fi in zip(kowalik_and_osborne_function.us, self.f(x=x)):
+      denominator = ui*(ui+x3)+x4
+      assert denominator != 0
+      denominator_sq = denominator**2
+      assert denominator_sq != 0
+      denominator_cu = denominator**3
+      assert denominator_cu != 0
+      result[(0,0)] -= 0
+      result[(0,1)] -= fi*ui/denominator
+      result[(0,2)] -= -fi*(ui**2*(ui+x2))/denominator_sq
+      result[(0,3)] -= -fi*(ui*(ui+x2))/denominator_sq
+      result[(1,1)] -= 0
+      result[(1,2)] -= -fi*ui**2*x1/denominator_sq
+      result[(1,3)] -= -fi*ui*x1/denominator_sq
+      result[(2,2)] -= fi*2*ui**3*x1*(ui+x2)/denominator_cu
+      result[(2,3)] -= fi*2*ui**2*x1*(ui+x2)/denominator_cu
+      result[(3,3)] -= fi*2*ui*x1*(ui+x2)/denominator_cu
+    for i in xrange(0,4):
+      for j in xrange(i+1,4):
+        result[(j,i)] = result[(i,j)]
+    return result
+
 def exercise_cholesky():
   mt = flex.mersenne_twister(seed=0)
   for n in xrange(1,10):
@@ -658,6 +727,8 @@ def exercise():
       freudenstein_and_roth_function(m=2, n=2)
     if (0 or default_flag):
       bard_function(m=15, n=3)
+    if (0 or default_flag):
+      kowalik_and_osborne_function(m=11, n=4)
   print "OK"
 
 if (__name__ == "__main__"):
