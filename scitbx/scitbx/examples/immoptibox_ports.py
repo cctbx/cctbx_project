@@ -229,7 +229,7 @@ class test_function:
     self.exercise_levenberg_marquardt()
     self.exercise_damped_newton()
 
-  def jacobian_finite(self, x, relative_eps=1.e-5):
+  def jacobian_finite(self, x, relative_eps=1.e-8):
     x0 = x
     result = flex.double()
     for i in xrange(self.n):
@@ -250,7 +250,7 @@ class test_function:
       assert approx_equal(analytical, finite)
     return analytical
 
-  def gradients_finite(self, x, relative_eps=1.e-5):
+  def gradients_finite(self, x, relative_eps=1.e-7):
     x0 = x
     result = flex.double()
     for i in xrange(self.n):
@@ -277,7 +277,7 @@ class test_function:
         self.check_gradients_tolerance)
     return analytical
 
-  def hessian_finite(self, x, relative_eps=1.e-5):
+  def hessian_finite(self, x, relative_eps=1.e-8):
     x0 = x
     result = flex.double()
     for i in xrange(self.n):
@@ -669,7 +669,7 @@ class meyer_function(test_function):
     self.x_star = flex.double([
       5.60963646990603e-3, 6.181346346e3, 3.452236346e2])
     self.capital_f_x_star = 43.9729275853
-    self.check_gradients_tolerance = 1.e-2
+    self.check_gradients_tolerance = 1.e-5
     self.check_hessian_tolerance = 1.e-2
 
   def check_minimized_x_star(self, x_star):
@@ -705,10 +705,8 @@ class meyer_function(test_function):
     return result
 
   def hessian_analytical(self, x):
-    finite = self.hessian_finite(x=x)
     x1,x2,x3 = x
-    j = self.jacobian_analytical(x=x)
-    result = j.matrix_transpose().matrix_multiply(j)
+    result = flex.double(flex.grid(3,3), 0)
     for ti in meyer_function.ts:
       denominator = ti + x3
       assert denominator != 0
@@ -729,6 +727,8 @@ class meyer_function(test_function):
     for i in xrange(0,3):
       for j in xrange(i+1,3):
         result[(j,i)] = result[(i,j)]
+    j = self.jacobian_analytical(x=x)
+    result += j.matrix_transpose().matrix_multiply(j)
     return result
 
 def exercise_cholesky():
