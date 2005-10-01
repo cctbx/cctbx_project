@@ -13,7 +13,7 @@ class ADSCImage(DetectorImageBase):
       headerclose= rawdata.index("}")
       self.header = rawdata[headeropen+1:headerclose-headeropen]
 
-      self.parameters={}
+      self.parameters={'CCD_IMAGE_SATURATION':65535}
       for tag,search,datatype in [
           ('HEADER_BYTES','HEADER_BYTES',int),
           ('SIZE1','SIZE1',int),
