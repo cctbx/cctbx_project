@@ -268,8 +268,9 @@ namespace scitbx { namespace math { namespace gaussian {
         size_assert_intrinsic();
         af::const_ref<FloatType> x = table_x_.const_ref();
         af::const_ref<FloatType> y = table_y_.const_ref();
-        af::shared<FloatType> result = matrix_transpose_multiply_as_packed_u(
-          least_squares_jacobian_abc().const_ref());
+        af::shared<FloatType>
+          result = af::matrix_transpose_multiply_as_packed_u(
+            least_squares_jacobian_abc().const_ref());
         for(std::size_t i_point=0;i_point<x.size();i_point++) {
           FloatType x_sq = fn::pow2(x[i_point]);
           FloatType
