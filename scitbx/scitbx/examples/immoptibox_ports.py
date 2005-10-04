@@ -216,9 +216,10 @@ check_with_finite_differences = True
 
 class test_function:
 
-  def __init__(self, m, n):
+  def __init__(self, m, n, verbose=1):
     self.m = m
     self.n = n
+    self.verbose = verbose
     self.check_gradients_tolerance = 1.e-6
     self.check_hessian_tolerance = 1.e-6
     self.initialization()
@@ -314,15 +315,15 @@ class test_function:
 
   def exercise_levenberg_marquardt(self):
     minimized = levenberg_marquardt(function=self, x0=self.x0, tau=self.tau0)
-    minimized.show_statistics()
+    if (self.verbose): minimized.show_statistics()
     self.check_minimized(minimized=minimized)
-    print
+    if (self.verbose): print
 
   def exercise_damped_newton(self):
     minimized = damped_newton(function=self, x0=self.x0, tau=self.tau0)
-    minimized.show_statistics()
+    if (self.verbose): minimized.show_statistics()
     self.check_minimized(minimized=minimized)
-    print
+    if (self.verbose): print
 
 class linear_function_full_rank(test_function):
 
