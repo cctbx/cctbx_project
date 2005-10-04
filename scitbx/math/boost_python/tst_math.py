@@ -526,6 +526,7 @@ def exercise_gaussian_sum():
   assert approx_equal(g.c(), 0)
   assert g.use_c()
   assert g.n_parameters() == 1
+  assert approx_equal(g.parameters(), [0])
   g = gaussian.sum(0, True)
   assert g.use_c()
   g = gaussian.sum(0, False)
@@ -537,6 +538,7 @@ def exercise_gaussian_sum():
   assert approx_equal(g.c(), 1)
   assert g.use_c()
   assert g.n_parameters() == 1
+  assert approx_equal(g.parameters(), [1])
   g = gaussian.sum((), ())
   assert g.n_terms() == 0
   assert g.array_of_a() == ()
@@ -544,6 +546,7 @@ def exercise_gaussian_sum():
   assert g.c() == 0
   assert not g.use_c()
   assert g.n_parameters() == 0
+  assert g.parameters().size() == 0
   g = gaussian.sum((), (), -2)
   assert g.n_terms() == 0
   assert g.array_of_a() == ()
@@ -554,12 +557,18 @@ def exercise_gaussian_sum():
   assert approx_equal(g.array_of_b(), (2,4))
   assert approx_equal(g.c(), 0)
   assert not g.use_c()
+  assert approx_equal(g.parameters(), [1,2,3,4])
   g = gaussian.sum(flex.double((1,2,3,4)), 0, True)
   assert approx_equal(g.c(), 0)
   assert g.use_c()
   g = gaussian.sum(flex.double((1,2,3,4)), 5)
   assert approx_equal(g.c(), 5)
   assert g.use_c()
+  assert approx_equal(g.parameters(), [1,2,3,4,5])
+  g = gaussian.sum(flex.double((1,2,3,4,5)))
+  assert approx_equal(g.c(), 5)
+  assert g.use_c()
+  assert approx_equal(g.parameters(), [1,2,3,4,5])
   g = gaussian.sum((1,-2,3,-4,5), (-.1,.2,-.3,.4,-.5), 6)
   assert g.n_terms() == 5
   assert approx_equal(g.array_of_a(),(1,-2,3,-4,5))

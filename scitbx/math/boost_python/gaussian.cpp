@@ -70,6 +70,7 @@ namespace {
         .def("c", &w_t::c, ccr())
         .def("use_c", &w_t::use_c)
         .def("n_parameters", &w_t::n_parameters)
+        .def("parameters", &w_t::parameters)
         .def("at_x_sq", (double(w_t::*)(double const&) const) &w_t::at_x_sq)
         .def("at_x_sq",
           (af::shared<double>(w_t::*)(af::const_ref<double> const&) const)

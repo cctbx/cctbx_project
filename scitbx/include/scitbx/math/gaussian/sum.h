@@ -71,7 +71,9 @@ namespace scitbx { namespace math { namespace gaussian {
 
       //! Initialization of the terms and optionally the constant.
       /*! If c is different from zero use_c will automatically be
-          set to true.
+          set to true. If ab contains an odd number of elements
+          the last element is used to initialize c and use_c will
+          bet set to true.
        */
       sum(
         af::const_ref<FloatType> const& ab,
@@ -81,9 +83,15 @@ namespace scitbx { namespace math { namespace gaussian {
         c_(c),
         use_c_(use_c || c != 0)
       {
-        SCITBX_ASSERT(ab.size() % 2 == 0);
-        SCITBX_ASSERT(ab.size() <= max_n_terms * 2);
-        for(std::size_t i=0;i<ab.size();i+=2) {
+        SCITBX_ASSERT(!use_c || ab.size() % 2 == 0);
+        SCITBX_ASSERT(ab.size() / 2 <= max_n_terms);
+        std::size_t n = ab.size();
+        if (n % 2 != 0) {
+          n--;
+          c_ = ab.back();
+          use_c_ = true;
+        }
+        for(std::size_t i=0;i<n;i+=2) {
           terms_.push_back(term<FloatType>(ab[i], ab[i+1]));
         }
       }
@@ -134,6 +142,21 @@ namespace scitbx { namespace math { namespace gaussian {
       {
         std::size_t result = n_terms() * 2;
         if (use_c()) result++;
+        return result;
+      }
+
+      //! Array of parameters a0,b0,...,ai,bi[,c].
+      af::shared<FloatType>
+      parameters() const
+      {
+        af::shared<FloatType> result;
+        result.reserve(n_parameters());
+        for(std::size_t i=0;i<terms_.size();i++) {
+          term<FloatType> const& ti = terms_[i];
+          result.push_back(ti.a);
+          result.push_back(ti.b);
+        }
+        if (use_c()) result.push_back(c_);
         return result;
       }
 
