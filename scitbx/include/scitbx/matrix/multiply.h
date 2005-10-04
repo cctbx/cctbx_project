@@ -3,8 +3,8 @@
 
 namespace scitbx { namespace matrix {
 
-  //! Generic matrix multiplication function.
-  /*! AB[ma, nb] = A[ma, na] * B[na, nb]
+  //! Generic matrix multiplication function: a * b
+  /*! ab[ma, nb] = a[ma, na] * b[na, nb]
    */
   template <typename NumTypeA,
             typename NumTypeB,
@@ -12,20 +12,54 @@ namespace scitbx { namespace matrix {
   inline
   void
   multiply(
-    const NumTypeA *A,
-    const NumTypeB *B,
-    std::size_t ma,
-    std::size_t na,
-    std::size_t nb,
-    NumTypeAB *AB)
+    const NumTypeA *a,
+    const NumTypeB *b,
+    unsigned ma,
+    unsigned na,
+    unsigned nb,
+    NumTypeAB *ab)
   {
-    for (std::size_t i=0;i<ma;i++) {
-      for (std::size_t k=0;k<nb;k++) {
-        *AB = NumTypeAB(0);
-        for (std::size_t j=0;j<na;j++) {
-          *AB += NumTypeAB(A[i*na+j] * B[j*nb+k]);
+    for (unsigned i=0;i<ma;i++) {
+      for (unsigned k=0;k<nb;k++) {
+        *ab = static_cast<NumTypeAB>(0);
+        for (unsigned j=0;j<na;j++) {
+          *ab += NumTypeAB(a[i*na+j] * b[j*nb+k]);
         }
-        AB++;
+        ab++;
+      }
+    }
+  }
+
+  //! Generic matrix multiplication function: a.transpose() * a
+  /*! ata[na, na] = a.transpose()[ma, na] * a[ma, na]
+   */
+  template <typename NumTypeA,
+            typename NumTypeAB>
+  inline
+  void
+  transpose_multiply_as_packed_u(
+    const NumTypeA *a,
+    unsigned ma,
+    unsigned na,
+    NumTypeAB *ata)
+  {
+    if (ma == 0) {
+      std::fill(ata, ata+(na*(na+1)/2), static_cast<NumTypeAB>(0));
+      return;
+    }
+    std::size_t ik = 0;
+    for(unsigned i=0;i<na;i++) {
+      for(unsigned k=i;k<na;k++) {
+        ata[ik++] = a[i] * a[k];
+      }
+    }
+    unsigned jna = na;
+    for(unsigned j=1;j<ma;j++,jna+=na) {
+      ik = 0;
+      for(unsigned i=0;i<na;i++) {
+        for(unsigned k=i;k<na;k++) {
+          ata[ik++] += a[jna + i] * a[jna + k];
+        }
       }
     }
   }
