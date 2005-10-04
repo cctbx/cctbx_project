@@ -255,8 +255,8 @@ namespace scitbx { namespace math { namespace gaussian {
               d_ab = this->terms_[i].gradients_d_ab_at_x_sq(x_sq);
             jac[j++] = d_ab.a;
             jac[j++] = d_ab.b;
-            if (this->use_c()) jac[j++] = 1;
           }
+          if (this->use_c()) jac[j++] = 1;
         }
         SCITBX_ASSERT(j == result.size());
         return result;
@@ -265,6 +265,18 @@ namespace scitbx { namespace math { namespace gaussian {
       af::shared<FloatType>
       least_squares_hessian_abc_as_packed_u() const
       {
+        /* hessian = jacobian.transpose() * jacobian
+                   + [ 0 -p  0  0 ...  0  0]
+                     [-p  q  0  0 ...  0  0]
+                     [ 0  0  0 -p ...  0  0]
+                     [ 0  0 -p  q ...  0  0]
+                     [ 0  0  0  0 ...  0 -p]
+                     [ 0  0  0  0 ... -p  q]
+           with
+             p = d_a_b
+             q = ti.a * x_sq * d_a_b
+           in the code below.
+         */
         size_assert_intrinsic();
         af::const_ref<FloatType> x = table_x_.const_ref();
         af::const_ref<FloatType> y = table_y_.const_ref();
