@@ -60,6 +60,39 @@ class rec(object):
       return other.__mul__(self)
     return self * other
 
+  def transpose_multiply(self, other=None):
+    a = self.elems
+    ar = self.n_rows()
+    ac = self.n_columns()
+    if (other is None):
+      result = [0] * (ac * ac)
+      jac = 0
+      for j in xrange(ar):
+        ik = 0
+        for i in xrange(ac):
+          for k in xrange(ac):
+            result[ik] += a[jac + i] * a[jac + k]
+            ik += 1
+        jac += ac
+      return sqr(result)
+    b = other.elems
+    assert other.n_rows() == ar, "Incompatible matrices."
+    bc = other.n_columns()
+    result = [0] * (ac * bc)
+    jac = 0
+    jbc = 0
+    for j in xrange(ar):
+      ik = 0
+      for i in xrange(ac):
+        for k in xrange(bc):
+          result[ik] += a[jac + i] * b[jbc + k]
+          ik += 1
+      jac += ac
+      jbc += bc
+    if (ac == bc):
+      return sqr(result)
+    return rec(result, (ac, bc))
+
   def __div__(self, other):
     return rec([e/other for e in self.elems], self.n)
 
@@ -481,4 +514,12 @@ if (__name__ == "__main__"):
   assert r.mathematica_form() == "{{1}}"
   assert r.mathematica_form(one_row_per_line=True, prefix="&$") == """\
 &${{1}}"""
+  #
+  a = rec(range(1,6+1), (3,2))
+  b = rec(range(1,15+1), (3,5))
+  assert approx_equal(a.transpose_multiply(b), a.transpose() * b)
+  assert approx_equal(a.transpose_multiply(a), a.transpose() * a)
+  assert approx_equal(a.transpose_multiply(), a.transpose() * a)
+  assert approx_equal(b.transpose_multiply(b), b.transpose() * b)
+  assert approx_equal(b.transpose_multiply(), b.transpose() * b)
   print "OK"
