@@ -133,6 +133,18 @@ namespace scitbx { namespace af {
   }
 
   template <typename NumType>
+  shared<NumType>
+  matrix_transpose_multiply_as_packed_u(
+    const_ref<NumType, c_grid<2> > const& a)
+  {
+    unsigned na = a.accessor()[1];
+    shared<NumType> ata(na*(na+1)/2, init_functor_null<NumType>());
+    matrix::transpose_multiply_as_packed_u(
+      a.begin(), a.accessor()[0], na, ata.begin());
+    return ata;
+  }
+
+  template <typename NumType>
   versa<NumType, c_grid<2> >
   matrix_transpose(const_ref<NumType, c_grid<2> > const& a)
   {

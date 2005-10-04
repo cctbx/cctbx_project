@@ -1230,6 +1230,17 @@ def exercise_exceptions():
     raise AssertionError, "No exception or wrong exception."
 
 def exercise_matrix():
+  for ag,bg in [[(0,0),(0,0)],[(0,1),(1,0)],[(1,0),(0,2)]]:
+    a = flex.double(flex.grid(ag))
+    b = flex.double(flex.grid(bg))
+    c = a.matrix_multiply(b)
+    assert c.focus() == (ag[0],bg[1])
+    assert c.all_eq(0)
+    for m in [a,b]:
+      mtm = m.matrix_transpose_multiply_as_packed_u()
+      n = m.focus()[1]
+      assert mtm.size() == n*(n+1)/2
+      assert mtm.all_eq(0)
   a = flex.double(range(1,7))
   a.resize(flex.grid(3,2))
   b = flex.double(range(1,7))
@@ -1253,6 +1264,9 @@ def exercise_matrix():
         d = matrix.rec(a, a.focus()) * matrix.rec(b, b.focus())
         assert c.focus() == d.n
         assert approx_equal(c, d)
+        ata = a.matrix_transpose_multiply_as_packed_u() \
+          .matrix_packed_u_as_symmetric()
+        assert approx_equal(ata, a.matrix_transpose().matrix_multiply(a))
         assert c.matrix_transpose().focus() == (d.n[1], d.n[0])
         assert approx_equal(c.matrix_transpose(), d.transpose())
         assert approx_equal(c.matrix_transpose().matrix_transpose(), d)
