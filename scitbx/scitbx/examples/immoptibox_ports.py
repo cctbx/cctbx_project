@@ -9,6 +9,13 @@ from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
 import math
 
+try:
+  import tntbx
+except ImportError:
+  tntbx = None
+else:
+  from tntbx.generalized_inverse import generalized_inverse
+
 floating_point_epsilon_double = scitbx.math.floating_point_epsilon_double_get()
 
 def cholesky_decomposition(a, relative_eps=1.e-15):
@@ -78,7 +85,6 @@ class levenberg_marquardt:
       k += 1
       a_plus_mu = a.deep_copy()
       a_plus_mu.matrix_diagonal_add_in_place(value=mu)
-      from tntbx.generalized_inverse import generalized_inverse
       a_plus_mu_svd = generalized_inverse(square_matrix=a_plus_mu)
       number_of_svds += 1
       h_lm = a_plus_mu_svd.matrix_multiply(-g)
@@ -227,7 +233,8 @@ class test_function:
     if (self.x_star is not None):
       assert approx_equal(
         0.5*self.f(x=self.x_star).norm()**2, self.capital_f_x_star)
-    self.exercise_levenberg_marquardt()
+    if (tntbx is not None):
+      self.exercise_levenberg_marquardt()
     self.exercise_damped_newton()
 
   def jacobian_finite(self, x, relative_eps=1.e-8):
@@ -795,36 +802,33 @@ def exercise_cholesky():
 
 def exercise():
   exercise_cholesky()
-  try: import tntbx
-  except ImportError: pass
-  else:
-    default_flag = True
-    if (0 or default_flag):
-      for m in xrange(1,5+1):
-        for n in xrange(1,m+1):
-          linear_function_full_rank(m=m, n=n)
-    if (0 or default_flag):
-      for m in xrange(1,5+1):
-        for n in xrange(1,m+1):
-          linear_function_rank_1(m=m, n=n)
-    if (0 or default_flag):
-      for m in xrange(3,7+1):
-        for n in xrange(3,m+1):
-          linear_function_rank_1_with_zero_columns_and_rows(m=m, n=n)
-    if (0 or default_flag):
-      rosenbrock_function(m=2, n=2)
-    if (0 or default_flag):
-      helical_valley_function(m=3, n=3)
-    if (0 or default_flag):
-      powell_singular_function(m=4, n=4)
-    if (0 or default_flag):
-      freudenstein_and_roth_function(m=2, n=2)
-    if (0 or default_flag):
-      bard_function(m=15, n=3)
-    if (0 or default_flag):
-      kowalik_and_osborne_function(m=11, n=4)
-    if (0 or default_flag):
-      meyer_function(m=16, n=3)
+  default_flag = True
+  if (0 or default_flag):
+    for m in xrange(1,5+1):
+      for n in xrange(1,m+1):
+        linear_function_full_rank(m=m, n=n)
+  if (0 or default_flag):
+    for m in xrange(1,5+1):
+      for n in xrange(1,m+1):
+        linear_function_rank_1(m=m, n=n)
+  if (0 or default_flag):
+    for m in xrange(3,7+1):
+      for n in xrange(3,m+1):
+        linear_function_rank_1_with_zero_columns_and_rows(m=m, n=n)
+  if (0 or default_flag):
+    rosenbrock_function(m=2, n=2)
+  if (0 or default_flag):
+    helical_valley_function(m=3, n=3)
+  if (0 or default_flag):
+    powell_singular_function(m=4, n=4)
+  if (0 or default_flag):
+    freudenstein_and_roth_function(m=2, n=2)
+  if (0 or default_flag):
+    bard_function(m=15, n=3)
+  if (0 or default_flag):
+    kowalik_and_osborne_function(m=11, n=4)
+  if (0 or default_flag):
+    meyer_function(m=16, n=3)
   print "OK"
 
 if (__name__ == "__main__"):
