@@ -217,12 +217,12 @@ check_with_finite_differences = True
 class test_function:
 
   def __init__(self, m, n):
-    assert m >= n
     self.m = m
     self.n = n
     self.check_gradients_tolerance = 1.e-6
     self.check_hessian_tolerance = 1.e-6
     self.initialization()
+    assert self.m >= self.n
     if (self.x_star is not None):
       assert approx_equal(
         0.5*self.f(x=self.x_star).norm()**2, self.capital_f_x_star)
@@ -301,10 +301,12 @@ class test_function:
     return analytical
 
   def check_minimized_x_star(self, x_star):
-    assert approx_equal(x_star, self.x_star)
+    if (self.x_star is not None):
+      assert approx_equal(x_star, self.x_star)
 
   def check_minimized_capital_f_x_star(self, f_x_star):
-    assert approx_equal(0.5*f_x_star.norm()**2, self.capital_f_x_star)
+    if (self.capital_f_x_star is not None):
+      assert approx_equal(0.5*f_x_star.norm()**2, self.capital_f_x_star)
 
   def check_minimized(self, minimized):
     self.check_minimized_x_star(x_star=minimized.x_star)
