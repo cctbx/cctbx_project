@@ -2,6 +2,7 @@
 #define SCITBX_MATH_GAUSSIAN_FIT_H
 
 #include <scitbx/math/gaussian/sum.h>
+#include <scitbx/array_family/versa_matrix.h>
 
 namespace scitbx { namespace math { namespace gaussian {
 
@@ -151,7 +152,7 @@ namespace scitbx { namespace math { namespace gaussian {
         }
         if (this->use_c()) sh_c = this->c_ + shifts[j];
         else               sh_c = 0;
-        return fit(this->table_x_, this->table_y_, this->table_sigmas_,
+        return fit(table_x_, table_y_, table_sigmas_,
                    base_t(sh_terms, sh_c, this->use_c()));
       }
 
@@ -185,14 +186,14 @@ namespace scitbx { namespace math { namespace gaussian {
       gradients_d_abc(
         int power,
         bool use_sigmas,
-        af::const_ref<FloatType> const& differences)
+        af::const_ref<FloatType> const& differences) const
       {
-        SCITBX_ASSERT(differences.size() == this->table_x_.size());
+        SCITBX_ASSERT(differences.size() == table_x_.size());
         SCITBX_ASSERT(power == 2 || power == 4);
         size_assert_intrinsic();
         af::shared<FloatType> result(this->n_parameters());
-        af::const_ref<FloatType> x = this->table_x_.const_ref();
-        af::const_ref<FloatType> sigmas = this->table_sigmas_.const_ref();
+        af::const_ref<FloatType> x = table_x_.const_ref();
+        af::const_ref<FloatType> sigmas = table_sigmas_.const_ref();
         FloatType sigma_squared = 1;
         af::ref<FloatType> g = result.ref();
         for(std::size_t i_point=0;i_point<x.size();i_point++) {
@@ -231,6 +232,61 @@ namespace scitbx { namespace math { namespace gaussian {
           FloatType b = this->terms_[i].b;
           SCITBX_ASSERT(b >= 0);
           g[j] *= 2 * (std::sqrt(b) + shifts[j]);
+        }
+        return result;
+      }
+
+      af::versa<FloatType, af::c_grid<2> >
+      least_squares_jacobian_abc() const
+      {
+        size_assert_intrinsic();
+        af::const_ref<FloatType> x = table_x_.const_ref();
+        std::size_t n_par = this->n_parameters();
+        std::size_t n_tab = x.size();
+        af::versa<FloatType, af::c_grid<2> > result(
+          af::c_grid<2>(n_tab, n_par),
+          af::init_functor_null<FloatType>());
+        af::ref<FloatType, af::c_grid<2> > jac = result.ref();
+        std::size_t j=0;
+        for(std::size_t i_point=0;i_point<x.size();i_point++) {
+          FloatType x_sq = fn::pow2(x[i_point]);
+          for(std::size_t i=0;i<this->n_terms();i++) {
+            term<FloatType>
+              d_ab = this->terms_[i].gradients_d_ab_at_x_sq(x_sq);
+            jac[j++] = d_ab.a;
+            jac[j++] = d_ab.b;
+            if (this->use_c()) jac[j++] = 1;
+          }
+        }
+        SCITBX_ASSERT(j == result.size());
+        return result;
+      }
+
+      af::shared<FloatType>
+      least_squares_hessian_abc_as_packed_u() const
+      {
+        size_assert_intrinsic();
+        af::const_ref<FloatType> x = table_x_.const_ref();
+        af::const_ref<FloatType> y = table_y_.const_ref();
+        af::shared<FloatType> result = matrix_transpose_multiply_as_packed_u(
+          least_squares_jacobian_abc().const_ref());
+        for(std::size_t i_point=0;i_point<x.size();i_point++) {
+          FloatType x_sq = fn::pow2(x[i_point]);
+          FloatType
+            minus_difference_x_sq = (y[i_point] - this->at_x_sq(x_sq)) * x_sq;
+          FloatType* hu = result.begin();
+          std::size_t offs = this->n_parameters();
+          for(std::size_t i=0;i<this->n_terms();i++) {
+            term<FloatType> ti = this->terms_[i];
+            FloatType d_a_b = minus_difference_x_sq * std::exp(-ti.b*x_sq);
+            hu++;
+            *hu -= -d_a_b;
+            offs--;
+            hu += offs;
+            *hu -= ti.a * x_sq * d_a_b;
+            hu += offs;
+            offs--;
+          }
         }
         return result;
       }

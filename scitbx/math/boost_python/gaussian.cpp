@@ -114,6 +114,9 @@ namespace {
         .def("target_function", &w_t::target_function)
         .def("gradients_d_abc", &w_t::gradients_d_abc)
         .def("gradients_d_shifts", &w_t::gradients_d_shifts)
+        .def("least_squares_jacobian_abc", &w_t::least_squares_jacobian_abc)
+        .def("least_squares_hessian_abc_as_packed_u",
+          &w_t::least_squares_hessian_abc_as_packed_u)
       ;
     }
   };
