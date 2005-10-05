@@ -39,12 +39,12 @@ public:
 
   typedef std::vector<grid_type>                        grid_list_type;
   typedef std::vector<frac_type>                        frac_list_type;
-  typedef af::tiny<FloatType,2>							weight_pair_type;
-  typedef af::tiny<weight_pair_type,3>					weight_pairs_type;
+  typedef af::tiny<FloatType,2>                                                 weight_pair_type;
+  typedef af::tiny<weight_pair_type,3>                                  weight_pairs_type;
 //  typedef std::vector<FloatType>                        weight_pair_type;
 //  typedef std::vector<weight_pair_type>                 weight_pairs_type;
   typedef basic_mapper<void,FloatType,IntType>          basic_mapper;
-  typedef af::tiny<grid_type,2>							grid_pair_type;
+  typedef af::tiny<grid_type,2>                                                 grid_pair_type;
 
   typedef af::ref<FloatType, af::flex_grid<> >          flex_grid_ref;
   typedef af::const_ref<FloatType, af::flex_grid<> >    const_flex_grid_ref;
