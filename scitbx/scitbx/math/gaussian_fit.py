@@ -2,6 +2,7 @@ import scitbx.math.gaussian
 from scitbx.math import golay_24_12_generator
 from scitbx import lbfgs
 from scitbx import lbfgsb
+from scitbx.examples import immoptibox_ports
 from cctbx.array_family import flex
 from scitbx.python_utils.math_utils import ifloor
 from scitbx.python_utils import dicts
@@ -28,19 +29,7 @@ class minimize_mixin(object):
     if (min_b < self.hard_b_min):
       raise LargeNegativeB("gaussian_fit error: large negative b")
 
-  def compute_fg(self):
-    self.apply_shifts()
-    differences = self.gaussian_fit_shifted.differences()
-    self.f = self.gaussian_fit_shifted.target_function(
-      self.target_power, self.use_sigmas, differences)
-    self.g = self.gaussian_fit_shifted.gradients_d_abc(
-      self.target_power, self.use_sigmas, differences)
-    if (self.shift_sqrt_b):
-      self.g = self.gaussian_fit.gradients_d_shifts(self.x, self.g)
-
   def finalize(self):
-    self.compute_fg()
-    self.final_target_value = self.f
     self.final_gaussian_fit = self.gaussian_fit_shifted
     self.max_x = self.final_gaussian_fit.table_x()[-1]
     self.max_error = flex.max(
@@ -71,7 +60,24 @@ class minimize_mixin(object):
     f.flush()
     return self
 
-class minimize_lbfgs(minimize_mixin):
+class minimize_lbfgs_mixin(minimize_mixin):
+
+  def compute_fg(self):
+    self.apply_shifts()
+    differences = self.gaussian_fit_shifted.differences()
+    self.f = self.gaussian_fit_shifted.target_function(
+      self.target_power, self.use_sigmas, differences)
+    self.g = self.gaussian_fit_shifted.gradients_d_abc(
+      self.target_power, self.use_sigmas, differences)
+    if (self.shift_sqrt_b):
+      self.g = self.gaussian_fit.gradients_d_shifts(self.x, self.g)
+
+  def finalize(self):
+    self.compute_fg()
+    self.final_target_value = self.f
+    minimize_mixin.finalize(self)
+
+class minimize_lbfgs(minimize_lbfgs_mixin):
 
   def __init__(self, gaussian_fit, target_power,
                      use_sigmas,
@@ -102,7 +108,7 @@ class minimize_lbfgs(minimize_mixin):
       self.first_target_value = self.f
     return self.f, self.g
 
-class minimize_lbfgsb(minimize_mixin):
+class minimize_lbfgsb(minimize_lbfgs_mixin):
 
   def __init__(self, gaussian_fit, target_power,
                      use_sigmas,
@@ -234,6 +240,67 @@ def minimize_multi_lbfgsb(start_fit,
           best_min = minimized
   return best_min
 
+class immoptibox_mixin(minimize_mixin):
+
+  def f(self, x):
+    self.x = x
+    self.apply_shifts()
+    self.x = None
+    return self.gaussian_fit_shifted.differences()
+
+  def jacobian(self, x):
+    self.x = x
+    self.apply_shifts()
+    self.x = None
+    return self.gaussian_fit_shifted.least_squares_jacobian_abc()
+
+  def gradients(self, x, f_x=None):
+    if (f_x is None): f_x = self.f(x=x)
+    return self.jacobian(x=x).matrix_transpose().matrix_multiply(f_x)
+
+  def hessian(self, x):
+    self.x = x
+    self.apply_shifts()
+    self.x = None
+    return self.gaussian_fit_shifted.least_squares_hessian_abc_as_packed_u() \
+      .matrix_packed_u_as_symmetric()
+
+class minimize_levenberg_marquardt(immoptibox_mixin):
+
+  def __init__(self, gaussian_fit, k_max=500, hard_b_min=-1):
+    adopt_init_args(self, locals())
+    self.shift_sqrt_b = 0
+    self.minimizer = immoptibox_ports.levenberg_marquardt(
+      function=self,
+      x0=flex.double(self.gaussian_fit.n_parameters(), 0),
+      tau=1.e-8,
+      eps_1=1.e-16,
+      eps_2=1.e-16,
+      k_max=k_max)
+    self.final_target_value = self.minimizer.f_x_star.norm()**2
+    self.finalize()
+
+  def __str__(self):
+    return "levenberg_marquardt:k_max=%d" % self.k_max
+
+class minimize_damped_newton(immoptibox_mixin):
+
+  def __init__(self, gaussian_fit, k_max=500, hard_b_min=-1):
+    adopt_init_args(self, locals())
+    self.shift_sqrt_b = 0
+    self.minimizer = immoptibox_ports.damped_newton(
+      function=self,
+      x0=flex.double(self.gaussian_fit.n_parameters(), 0),
+      tau=1.e-8,
+      eps_1=1.e-16,
+      eps_2=1.e-16,
+      k_max=k_max)
+    self.final_target_value = self.minimizer.f_x_star.norm()**2
+    self.finalize()
+
+  def __str__(self):
+    return "damped_newton:k_max=%d" % self.k_max
+
 minimize_multi_histogram = dicts.with_default_value(0)
 
 def show_minimize_multi_histogram(f=None, reset=True):
@@ -245,7 +312,7 @@ def show_minimize_multi_histogram(f=None, reset=True):
   counts = counts.select(perm)
   n_total = flex.sum(counts)
   for m,c in zip(minimizer_types, counts):
-    print >> f, "%-32s  %5.3f" % (m, c/n_total)
+    print >> f, "%-32s  %5.3f %6d" % (m, c/n_total, c)
   print >> f
   if (reset):
     minimize_multi_histogram = dicts.with_default_value(0)
@@ -257,6 +324,11 @@ def minimize_multi(start_fit,
                    b_min,
                    n_repeats_minimization):
   best_min_list = []
+  for immoptibox_minimizer in [minimize_levenberg_marquardt,
+                               minimize_damped_newton]:
+    try: minimized = immoptibox_minimizer(gaussian_fit=start_fit)
+    except LargeNegativeB: pass
+    else: best_min_list.append(minimized)
   for current_shift_sqrt_b_mod_n in shift_sqrt_b_mod_n:
     for minimize_multi_type in [minimize_multi_lbfgs, minimize_multi_lbfgsb]:
       best_min_list.append(minimize_multi_type(
