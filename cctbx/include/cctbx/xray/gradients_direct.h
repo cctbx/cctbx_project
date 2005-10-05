@@ -318,9 +318,8 @@ namespace cctbx { namespace xray { namespace structure_factors {
           .special_position_indices().const_ref();
         for(std::size_t i_sp=0;i_sp<sp_indices.size();i_sp++) {
           std::size_t i_seq = sp_indices[i_sp];
-          sgtbx::rot_mx const&
-            r = site_symmetry_table.get(i_seq).special_op().r();
-          gradients[i_seq] = (gradients[i_seq] * r.num()) / r.den();
+          gradients[i_seq] = gradients[i_seq]
+                           * site_symmetry_table.get(i_seq).special_op().r();
         }
       }
 

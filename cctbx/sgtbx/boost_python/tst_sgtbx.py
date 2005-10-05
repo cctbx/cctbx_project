@@ -339,6 +339,9 @@ def exercise_rot_mx():
   r = rot_mx((-1,1,0,0,1,0,0,0,-1))
   assert r.as_xyz() == "-x+y,y,-z"
   assert r.as_hkl() == "-h,h+k,-l"
+  r = rot_mx([-2,3,5,1,4,-2,-3,2,-1],6)
+  assert approx_equal(r * [0.2,0.1,-0.5], [-0.4333333, 0.2666667, 0.01666667])
+  assert approx_equal([0.2,0.1,-0.5] * r, [0.2, 0, 0.21666667])
 
 def exercise_rt_mx():
   tr_vec = sgtbx.tr_vec
