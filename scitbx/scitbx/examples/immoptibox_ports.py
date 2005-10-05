@@ -679,7 +679,7 @@ class meyer_function(test_function):
     self.x_star = flex.double([
       5.60963646990603e-3, 6.181346346e3, 3.452236346e2])
     self.capital_f_x_star = 43.9729275853
-    self.check_gradients_tolerance = 1.e-5
+    self.check_gradients_tolerance = 5.e-5
     self.check_hessian_tolerance = 1.e-2
 
   def check_minimized_x_star(self, x_star):
