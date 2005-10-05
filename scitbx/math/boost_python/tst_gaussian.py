@@ -480,8 +480,8 @@ class carbon_fit(immoptibox_ports.test_function):
   def __init__(self, tab_fit, perturb, verbose):
     self.tab_fit = tab_fit
     self.perturb = perturb
-    carbon_ss = flex.double(carbon_s_y_table[0::2])
-    carbon_ys = flex.double(carbon_s_y_table[1::2])
+    carbon_ss = flex.double(carbon_s_y_table)[0::2]
+    carbon_ys = flex.double(carbon_s_y_table)[1::2]
     selection = carbon_ss <= tab_fit.limit + 1.e-3
     self.fit = gaussian.fit(
       carbon_ss.select(selection),
