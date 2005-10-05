@@ -343,6 +343,26 @@ namespace cctbx { namespace sgtbx {
       int den_;
   };
 
+  //! Multiplication of rot_mx with a vector of floating-point values.
+  /*! Python: __mul__
+   */
+  template <typename FloatType>
+  scitbx::vec3<FloatType>
+  operator*(rot_mx const& lhs, scitbx::vec3<FloatType> const& rhs)
+  {
+    return lhs.num() * rhs / lhs.den();
+  }
+
+  //! Multiplication of rot_mx with a vector of floating-point values.
+  /*! Python: __rmul__
+   */
+  template <typename FloatType>
+  scitbx::vec3<FloatType>
+  operator*(scitbx::vec3<FloatType> const& lhs, rot_mx const& rhs)
+  {
+    return lhs * rhs.num() / rhs.den();
+  }
+
 }} // namespace cctbx::sgtbx
 
 #endif // CCTBX_SGTBX_ROT_MX_H

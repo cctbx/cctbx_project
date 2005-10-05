@@ -441,10 +441,9 @@ namespace cctbx { namespace xray {
       {
         sgtbx::site_symmetry_ops const& ops = site_symmetry_table.get(i_seq);
         if (!ops.is_point_group_1()) {
-          sgtbx::rot_mx const& r = ops.special_op().r();
-          gr_site = (((gr_site
+          gr_site = ((gr_site
                   * this->unit_cell_.orthogonalization_matrix())
-                  * r.num()) / r.den())
+                  * ops.special_op().r())
                   * this->unit_cell_.fractionalization_matrix();
         }
       }

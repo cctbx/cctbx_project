@@ -22,6 +22,15 @@ namespace {
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
       as_hkl_overloads, as_hkl, 0, 3)
 
+    static
+    scitbx::vec3<double>
+    rmul_vec3_double(
+      w_t const& rhs,
+      scitbx::vec3<double> const& lhs)
+    {
+      return lhs * rhs;
+    }
+
     static void
     wrap()
     {
@@ -69,6 +78,10 @@ namespace {
            arg_("decimal")=false,
            arg_("letters_hkl")="hkl",
            arg_("separator")=",")))
+        .def("__mul__",
+          (scitbx::vec3<double>(*)(
+            rot_mx const&, scitbx::vec3<double> const&)) operator*)
+        .def("__rmul__", rmul_vec3_double)
       ;
     }
   };
