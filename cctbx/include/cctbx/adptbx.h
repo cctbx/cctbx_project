@@ -331,6 +331,89 @@ namespace cctbx {
     return u_cart_as_beta(unit_cell, u_iso_as_u_cart(u_iso));
   }
 
+  //! Factorization into isotropic and remaining anisotropic contributions.
+  template <typename FloatType=double>
+  struct factor_u_cart_u_iso
+  {
+    factor_u_cart_u_iso() {}
+
+    factor_u_cart_u_iso(sym_mat3<FloatType> const& u_cart)
+    :
+      u_iso(u_cart_as_u_iso(u_cart)),
+      u_cart_minus_u_iso(u_cart)
+    {
+      for(unsigned i=0;i<3;i++) {
+        u_cart_minus_u_iso[i] -= u_iso;
+      }
+    }
+
+    FloatType u_iso;
+    sym_mat3<FloatType> u_cart_minus_u_iso;
+  };
+
+  //! Factorization into isotropic and remaining anisotropic contributions.
+  template <typename FloatType=double>
+  struct factor_u_star_u_iso
+  {
+    factor_u_star_u_iso() {}
+
+    factor_u_star_u_iso(
+      uctbx::unit_cell const& unit_cell,
+      sym_mat3<FloatType> const& u_star)
+    {
+      factor_u_cart_u_iso<FloatType>
+        f_cart(u_star_as_u_cart(unit_cell, u_star));
+      u_iso = f_cart.u_iso;
+      u_star_minus_u_iso = u_cart_as_u_star(
+        unit_cell, f_cart.u_cart_minus_u_iso);
+    }
+
+    FloatType u_iso;
+    sym_mat3<FloatType> u_star_minus_u_iso;
+  };
+
+  //! Factorization into isotropic and remaining anisotropic contributions.
+  template <typename FloatType=double>
+  struct factor_u_cif_u_iso
+  {
+    factor_u_cif_u_iso() {}
+
+    factor_u_cif_u_iso(
+      uctbx::unit_cell const& unit_cell,
+      sym_mat3<FloatType> const& u_cif)
+    {
+      factor_u_cart_u_iso<FloatType>
+        f_cart(u_cif_as_u_cart(unit_cell, u_cif));
+      u_iso = f_cart.u_iso;
+      u_cif_minus_u_iso = u_cart_as_u_cif(
+        unit_cell, f_cart.u_cart_minus_u_iso);
+    }
+
+    FloatType u_iso;
+    sym_mat3<FloatType> u_cif_minus_u_iso;
+  };
+
+  //! Factorization into isotropic and remaining anisotropic contributions.
+  template <typename FloatType=double>
+  struct factor_beta_u_iso
+  {
+    factor_beta_u_iso() {}
+
+    factor_beta_u_iso(
+      uctbx::unit_cell const& unit_cell,
+      sym_mat3<FloatType> const& beta)
+    {
+      factor_u_cart_u_iso<FloatType>
+        f_cart(beta_as_u_cart(unit_cell, beta));
+      u_iso = f_cart.u_iso;
+      beta_minus_u_iso = u_cart_as_beta(
+        unit_cell, f_cart.u_cart_minus_u_iso);
+    }
+
+    FloatType u_iso;
+    sym_mat3<FloatType> beta_minus_u_iso;
+  };
+
   //! Isotropic Debye-Waller factor given (sin(theta)/lambda)^2 and b_iso.
   inline double
   debye_waller_factor_b_iso(
