@@ -110,6 +110,34 @@ def exercise_interface():
   uf = adptbx.eigenvalue_filtering(up)
   assert approx_equal(uf, up)
 
+def u_star_minus_u_iso_airlie(unit_cell, u_star):
+  u_iso = adptbx.u_star_as_u_iso(unit_cell,u_star)
+  u_star_as_beta = adptbx.u_star_as_beta(u_star)
+  u_iso_as_beta = adptbx.u_iso_as_beta(unit_cell,u_iso)
+  beta_minus_u_iso = [a-i for a,i in zip(u_star_as_beta,u_iso_as_beta)]
+  return adptbx.beta_as_u_star(beta_minus_u_iso)
+
+def u_star_minus_u_iso_ralf(unit_cell, u_star):
+  u_cart = adptbx.u_star_as_u_cart(unit_cell, u_star)
+  u_iso = adptbx.u_cart_as_u_iso(u_cart)
+  u_cart_minus_u_iso = [a-u_iso for a in u_cart[:3]] + list(u_cart[3:])
+  return adptbx.u_cart_as_u_star(unit_cell, u_cart_minus_u_iso)
+
+def exercise_factor_u_star_u_iso():
+  for i_trial in xrange(100):
+    a = flex.random_double(size=9, factor=3)
+    a.resize(flex.grid(3,3))
+    u = a.matrix_transpose().matrix_multiply(a) # always positive-definite
+    u_cart = [u[0],u[4],u[8],u[1],u[2],u[5]]
+    unit_cell = uctbx.unit_cell((3,5,7,80,100,110))
+    u_star = adptbx.u_cart_as_u_star(unit_cell, u_cart)
+    airlie = u_star_minus_u_iso_airlie(unit_cell, u_star)
+    ralf = u_star_minus_u_iso_ralf(unit_cell, u_star)
+    assert approx_equal(ralf, airlie, 1.e-10)
+    f = adptbx.factor_u_star_u_iso(unit_cell=unit_cell, u_star=u_star)
+    assert approx_equal(f.u_iso, adptbx.u_cart_as_u_iso(u_cart))
+    assert approx_equal(f.u_star_minus_u_iso, airlie, 1.e-10)
+
 def exercise_debye_waller():
   ucell = uctbx.unit_cell((5,7,9,80,100,130))
   assert abs(adptbx.debye_waller_factor_u_iso(ucell.d_star_sq((7,8,9))/4,0.025)
@@ -227,6 +255,7 @@ def exercise_eigen(n_trials=100):
 
 def run():
   exercise_interface()
+  exercise_factor_u_star_u_iso()
   exercise_debye_waller()
   exercise_grad_u_transformations()
   exercise_eigen()
