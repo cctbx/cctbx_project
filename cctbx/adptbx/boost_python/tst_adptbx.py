@@ -41,6 +41,29 @@ def exercise_interface():
                 (adptbx.u_iso_as_u_cif, adptbx.u_cif_as_u_iso),
                 (adptbx.u_iso_as_beta, adptbx.beta_as_u_iso)):
     assert approx_equal(bw(uc, fw(uc, 2.3)), 2.3)
+  fc = adptbx.factor_u_cart_u_iso(u_cart=u)
+  assert approx_equal(fc.u_iso, adptbx.u_cart_as_u_iso(u))
+  assert approx_equal(
+    fc.u_cart_minus_u_iso,
+    [uii-fc.u_iso for uii in u[:3]]+list(u[3:]))
+  f = adptbx.factor_u_star_u_iso(
+    unit_cell=uc, u_star=adptbx.u_cart_as_u_star(uc, u))
+  assert approx_equal(f.u_iso, fc.u_iso)
+  assert approx_equal(
+    f.u_star_minus_u_iso,
+    adptbx.u_cart_as_u_star(uc, fc.u_cart_minus_u_iso))
+  f = adptbx.factor_u_cif_u_iso(
+    unit_cell=uc, u_cif=adptbx.u_cart_as_u_cif(uc, u))
+  assert approx_equal(f.u_iso, fc.u_iso)
+  assert approx_equal(
+    f.u_cif_minus_u_iso,
+    adptbx.u_cart_as_u_cif(uc, fc.u_cart_minus_u_iso))
+  f = adptbx.factor_beta_u_iso(
+    unit_cell=uc, beta=adptbx.u_cart_as_beta(uc, u))
+  assert approx_equal(f.u_iso, fc.u_iso)
+  assert approx_equal(
+    f.beta_minus_u_iso,
+    adptbx.u_cart_as_beta(uc, fc.u_cart_minus_u_iso))
   assert approx_equal(adptbx.debye_waller_factor_b_iso(0.25,2.3),
                       math.exp(-2.3*0.25))
   assert approx_equal(adptbx.debye_waller_factor_u_iso(0.25,2.3),

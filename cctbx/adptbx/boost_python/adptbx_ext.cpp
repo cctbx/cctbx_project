@@ -7,6 +7,7 @@
 #include <boost/python/args.hpp>
 #include <boost/python/overloads.hpp>
 #include <boost/python/return_value_policy.hpp>
+#include <boost/python/return_by_value.hpp>
 #include <boost/python/copy_const_reference.hpp>
 
 namespace cctbx { namespace adptbx { namespace boost_python {
@@ -51,6 +52,7 @@ namespace {
   void init_module()
   {
     using namespace boost::python;
+    typedef return_value_policy<return_by_value> rbv;
 
     def("u_as_b", (double(*)(double)) u_as_b);
     def("b_as_u", (double(*)(double)) b_as_u);
@@ -99,6 +101,37 @@ namespace {
     CCTBX_DEF(u_iso_as_u_cif)
     CCTBX_DEF(u_iso_as_beta)
 #undef CCTBX_DEF
+
+    class_<factor_u_cart_u_iso<> >("factor_u_cart_u_iso", no_init)
+      .def(init<sym_mat3<double> const&>((arg_("u_cart"))))
+      .def_readonly("u_iso", &factor_u_cart_u_iso<>::u_iso)
+      .add_property("u_cart_minus_u_iso",
+        make_getter(&factor_u_cart_u_iso<>::u_cart_minus_u_iso, rbv()))
+    ;
+    class_<factor_u_star_u_iso<> >("factor_u_star_u_iso", no_init)
+      .def(init<
+        uctbx::unit_cell const&, sym_mat3<double> const&>((
+          arg_("unit_cell"), arg_("u_star"))))
+      .def_readonly("u_iso", &factor_u_star_u_iso<>::u_iso)
+      .add_property("u_star_minus_u_iso",
+        make_getter(&factor_u_star_u_iso<>::u_star_minus_u_iso, rbv()))
+    ;
+    class_<factor_u_cif_u_iso<> >("factor_u_cif_u_iso", no_init)
+      .def(init<
+        uctbx::unit_cell const&, sym_mat3<double> const&>((
+          arg_("unit_cell"), arg_("u_cif"))))
+      .def_readonly("u_iso", &factor_u_cif_u_iso<>::u_iso)
+      .add_property("u_cif_minus_u_iso",
+        make_getter(&factor_u_cif_u_iso<>::u_cif_minus_u_iso, rbv()))
+    ;
+    class_<factor_beta_u_iso<> >("factor_beta_u_iso", no_init)
+      .def(init<
+        uctbx::unit_cell const&, sym_mat3<double> const&>((
+          arg_("unit_cell"), arg_("beta"))))
+      .def_readonly("u_iso", &factor_beta_u_iso<>::u_iso)
+      .add_property("beta_minus_u_iso",
+        make_getter(&factor_beta_u_iso<>::beta_minus_u_iso, rbv()))
+    ;
 
     def("debye_waller_factor_b_iso",
       (double(*)(double, double)) debye_waller_factor_b_iso);
