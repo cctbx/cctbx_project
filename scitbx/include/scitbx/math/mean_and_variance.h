@@ -1,12 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2003 Jun: Created (R.W. Grosse-Kunstleve)
- */
-
 #ifndef SCITBX_MATH_MEAN_AND_VARIANCE_H
 #define SCITBX_MATH_MEAN_AND_VARIANCE_H
 
@@ -63,6 +54,9 @@ namespace scitbx { namespace math {
         return sum_weights_values_ / sum_weights_ ;
       }
 
+      //! Emulation of gsl_stats_wvariance of the GNU Scientific Library.
+      /*! http://www.gnu.org/software/gsl/manual/gsl-ref_20.html#SEC339
+       */
       FloatType
       gsl_variance() const
       {
