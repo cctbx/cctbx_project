@@ -2,7 +2,7 @@ from libtbx.str_utils import show_string
 import cPickle
 
 def _open(file_name, mode):
-  try: f = open(file_name, mode)
+  try: return open(file_name, mode)
   except IOError, e:
     raise IOError("Cannot open pickle file %s (%s)" % (
       show_string(file_name), str(e)))
