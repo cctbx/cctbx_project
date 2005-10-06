@@ -12,6 +12,8 @@ import time
 import math
 import sys
 
+minimize_multi_histogram = {}
+
 def n_less_than(sorted_array, cutoff, eps=1.e-6):
   selection = sorted_array < cutoff + eps
   result = selection.count(True)
@@ -86,6 +88,7 @@ class minimize_lbfgs(minimize_lbfgs_mixin):
                      lbfgs_core_params=lbfgs.core_parameters(m=20),
                      hard_b_min=-1):
     adopt_init_args(self, locals())
+    minimize_multi_histogram.setdefault(str(self), 0)
     assert target_power in [2,4]
     self.x = flex.double(gaussian_fit.n_terms() * 2, 0)
     self.first_target_value = None
@@ -96,7 +99,8 @@ class minimize_lbfgs(minimize_lbfgs_mixin):
     self.finalize()
 
   def __str__(self):
-    return "lbfgs:m=%d:tp=%d:us=%d:sq=%d" % (
+    return "lbfgs:np=%d:m=%d:tp=%d:us=%d:sq=%d" % (
+      self.gaussian_fit.n_parameters(),
       self.lbfgs_core_params.m,
       self.target_power,
       int(self.use_sigmas),
@@ -119,6 +123,7 @@ class minimize_lbfgsb(minimize_lbfgs_mixin):
                      iprint=-1,
                      use_fortran_library=False):
     adopt_init_args(self, locals())
+    minimize_multi_histogram.setdefault(str(self), 0)
     assert target_power in [2,4]
     self.n = gaussian_fit.n_terms() * 2
     try:
@@ -133,7 +138,8 @@ class minimize_lbfgsb(minimize_lbfgs_mixin):
     self.finalize()
 
   def __str__(self):
-    return "lbfgsb:m=%d:tp=%d:us=%d:sq=%d:lb=%d" % (
+    return "lbfgsb:np=%d:m=%d:tp=%d:us=%d:sq=%d:lb=%d" % (
+      self.gaussian_fit.n_parameters(),
       self.lbfgsb_m,
       self.target_power,
       int(self.use_sigmas),
@@ -269,6 +275,7 @@ class minimize_levenberg_marquardt(immoptibox_mixin):
 
   def __init__(self, gaussian_fit, k_max=500, hard_b_min=-1):
     adopt_init_args(self, locals())
+    minimize_multi_histogram.setdefault(str(self), 0)
     self.shift_sqrt_b = 0
     self.minimizer = immoptibox_ports.levenberg_marquardt(
       function=self,
@@ -281,12 +288,15 @@ class minimize_levenberg_marquardt(immoptibox_mixin):
     self.finalize()
 
   def __str__(self):
-    return "levenberg_marquardt:k_max=%d" % self.k_max
+    return "levenberg_marquardt:np=%d:k_max=%d" % (
+      self.gaussian_fit.n_parameters(),
+      self.k_max)
 
 class minimize_damped_newton(immoptibox_mixin):
 
   def __init__(self, gaussian_fit, k_max=500, hard_b_min=-1):
     adopt_init_args(self, locals())
+    minimize_multi_histogram.setdefault(str(self), 0)
     self.shift_sqrt_b = 0
     self.minimizer = immoptibox_ports.damped_newton(
       function=self,
@@ -299,9 +309,9 @@ class minimize_damped_newton(immoptibox_mixin):
     self.finalize()
 
   def __str__(self):
-    return "damped_newton:k_max=%d" % self.k_max
-
-minimize_multi_histogram = dicts.with_default_value(0)
+    return "damped_newton:np=%d:k_max=%d" % (
+      self.gaussian_fit.n_parameters(),
+      self.k_max)
 
 def show_minimize_multi_histogram(f=None, reset=True):
   global minimize_multi_histogram
@@ -312,10 +322,10 @@ def show_minimize_multi_histogram(f=None, reset=True):
   counts = counts.select(perm)
   n_total = flex.sum(counts)
   for m,c in zip(minimizer_types, counts):
-    print >> f, "%-32s  %5.3f %6d" % (m, c/n_total, c)
+    print >> f, "%-39s  %5.3f %6d" % (m, c/max(1,n_total), c)
   print >> f
   if (reset):
-    minimize_multi_histogram = dicts.with_default_value(0)
+    minimize_multi_histogram = {}
 
 def minimize_multi(start_fit,
                    target_powers,
