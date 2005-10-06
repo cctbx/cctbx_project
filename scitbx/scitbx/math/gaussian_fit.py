@@ -12,7 +12,7 @@ import time
 import math
 import sys
 
-minimize_multi_histogram = {None: 0}
+minimize_multi_histogram = {"None": 0}
 
 def n_less_than(sorted_array, cutoff, eps=1.e-6):
   selection = sorted_array < cutoff + eps
@@ -325,7 +325,7 @@ def show_minimize_multi_histogram(f=None, reset=True):
     print >> f, "%-39s  %5.3f %6d" % (m, c/max(1,n_total), c)
   print >> f
   if (reset):
-    minimize_multi_histogram = {None: 0}
+    minimize_multi_histogram = {"None": 0}
 
 def minimize_multi(start_fit,
                    target_powers,
