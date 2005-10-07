@@ -94,6 +94,17 @@ class structure(crystal.special_position_settings):
         l += 0.0001
     return selection
 
+  def replace_sites_cart(self, new_sites):
+    cp = structure(self, scattering_dict = self._scattering_dict)
+    new_scatterers = self._scatterers.deep_copy()
+    sites_frac_new = self.unit_cell().fractionalization_matrix()*new_sites
+    new_scatterers.set_sites(sites_frac_new)
+    cp._scatterers = new_scatterers
+    cp._site_symmetry_table = self._site_symmetry_table.deep_copy()
+    if(getattr(self, "scatterer_pdb_records", None) is not None):
+      cp.scatterer_pdb_records = self.scatterer_pdb_records
+    return cp
+
   def translate(self, x=0, y=0, z=0):
     sites_cart = self.sites_cart()
     sites_cart_size = sites_cart.size()
