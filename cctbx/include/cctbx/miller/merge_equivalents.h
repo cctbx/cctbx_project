@@ -276,7 +276,11 @@ namespace cctbx { namespace miller {
           scitbx::math::mean_and_variance<FloatType> mv(
             data_group, weights_group);
           data.push_back(mv.mean());
-          sigmas.push_back(mv.conservative_standard_deviation());
+          sigmas.push_back(
+            std::sqrt(
+              std::max(
+                mv.gsl_variance()/values.size(),
+                mv.cumulative_variance())));
         }
         redundancies.push_back(n);
         merge_equivalents::compute_r_fractors(
