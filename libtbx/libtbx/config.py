@@ -7,6 +7,7 @@ from libtbx import adopt_init_args
 import shutil
 import pickle
 from cStringIO import StringIO
+import re
 import sys, os
 
 def get_hostname():
@@ -383,8 +384,43 @@ class environment:
     else: message = list(message)
     message.append("  Repository directories searched:")
     for path in self.repository_paths:
-      message.append('    "%s"' % path)
+      message.append("    %s" % show_string(path))
     raise Sorry("\n".join(message))
+
+  def listdir_in_repositories(self, test=None):
+    for path in self.repository_paths:
+      for name in os.listdir(path):
+        if (test is None or test(os.path.join(path, name))):
+          yield path, name
+
+  def match_in_repositories(self,
+        relative_path_pattern,
+        test=os.path.isdir,
+        optional=True,
+        must_be_unique=True):
+    compiled_pattern = re.compile(relative_path_pattern)
+    all_matches = []
+    for path,name in self.listdir_in_repositories(test=test):
+      if (compiled_pattern.match(name) is not None):
+        if (len(all_matches) > 0 and all_matches[-1][0] != path):
+          break
+        all_matches.append((path, name))
+    if (len(all_matches) == 0):
+      if (not optional):
+        self.raise_sorry_not_found_in_repositories(
+          message="Cannot locate: %s" % show_string(relative_path_pattern))
+      return None
+    all_matches.sort()
+    if (len(all_matches) != 1):
+      if (must_be_unique):
+        message = ["Multiple matches for search pattern %s:" %
+          show_string(relative_path_pattern)]
+        message.append("  Repository directory: %s" %
+          show_string(all_matches[0][0]))
+        for path,name in all_matches:
+          message.append('    %s' % show_string(name))
+        raise Sorry("\n".join(message))
+    return libtbx.path.norm_join(*all_matches[0])
 
   def find_in_repositories(self,
         relative_path,
