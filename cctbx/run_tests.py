@@ -34,6 +34,7 @@ def run():
   "$D/cctbx/regression/tst_sgtbx_harker.py",
   "$D/cctbx/sgtbx/symbol_confidence.py",
   "$D/cctbx/sgtbx/bravais_types.py",
+  "$D/cctbx/regression/tst_miller_lookup_utils.py",
   ["$D/cctbx/regression/tst_crystal.py", "I41/acd"],
   ["$D/cctbx/regression/tst_direct_space_asu.py", "I41/acd"],
   "$D/cctbx/regression/tst_pair_asu_table.py",
