@@ -22,6 +22,11 @@ namespace cctbx { namespace miller { namespace boost_python {
   void wrap_phase_transfer();
   void wrap_phase_integrator();
   void wrap_sym_equiv();
+  // miller_lookup_utils
+  void wrap_miller_index_lookup_tensor();
+  void wrap_local_neighbourhood();
+  void wrap_local_area_with_property();
+
 
 namespace {
 
@@ -60,6 +65,11 @@ namespace {
     wrap_merge_equivalents();
     wrap_phase_integrator();
     wrap_phase_transfer();
+
+    wrap_miller_index_lookup_tensor();
+    wrap_local_neighbourhood();
+    wrap_local_area_with_property();
+
 
     def("statistical_mean",
       (double(*)(sgtbx::space_group const&,
