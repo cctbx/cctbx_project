@@ -441,6 +441,14 @@ class environment:
     if (dist_path is not None): return dist_path
     dist_path = self.find_in_repositories(relative_path=module_name)
     if (dist_path is not None): return dist_path
+    trial_module = module(env=self, name=module_name)
+    mate_name = trial_module.names[1]
+    if (mate_name != module_name):
+      if (self.find_in_repositories(relative_path=mate_name) is not None):
+        dist_path = self.match_in_repositories(
+          relative_path_pattern="%s(?!_%s)" % (
+            module_name, trial_module.mate_suffix))
+        if (dist_path is not None): return dist_path
     if (not optional):
       self.raise_sorry_not_found_in_repositories(
         message="Module not found: %s" % module_name)
@@ -1004,18 +1012,20 @@ class environment:
 
 class module:
 
-  def __init__(self, env, name, dist_path, mate_suffix="adaptbx"):
+  def __init__(self, env, name, dist_path=None, mate_suffix="adaptbx"):
     self.env = env
     self.mate_suffix = mate_suffix
     mate_suffix = "_" + mate_suffix
     if (os.path.normcase(name).endswith(os.path.normcase(mate_suffix))):
       self.name = name[:-len(mate_suffix)]
       self.names = [self.name, name]
-      self.dist_paths = [None, dist_path]
+      if (dist_path is not None):
+        self.dist_paths = [None, dist_path]
     else:
       self.name = name
       self.names = [name, name + mate_suffix]
-      self.dist_paths = [dist_path, None]
+      if (dist_path is not None):
+        self.dist_paths = [dist_path, None]
 
   def names_active(self):
     for name,path in zip(self.names, self.dist_paths):
