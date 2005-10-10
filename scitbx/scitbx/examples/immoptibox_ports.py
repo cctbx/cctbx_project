@@ -16,6 +16,14 @@ except ImportError:
 else:
   from tntbx.generalized_inverse import generalized_inverse
 
+import scitbx.lbfgs
+import scitbx.lbfgsb
+
+try:
+  import knitro_adaptbx
+except ImportError:
+  knitro_adaptbx = None
+
 floating_point_epsilon_double = scitbx.math.floating_point_epsilon_double_get()
 
 def cholesky_decomposition(a, relative_eps=1.e-15):
@@ -66,7 +74,8 @@ class levenberg_marquardt:
         tau=1.e-3,
         eps_1=1.e-16,
         eps_2=1.e-16,
-        k_max=100):
+        k_max=1000):
+    self.function = function
     nu = 2
     x = x0
     f_x = function.f(x)
@@ -119,13 +128,17 @@ class levenberg_marquardt:
     self.number_of_svds = number_of_svds
 
   def show_statistics(self):
-    print "x_star:", list(self.x_star)
-    print "0.5*f_x0.norm()**2:", 0.5*self.f_x0.norm()**2
-    print "0.5*f_x_star.norm()**2:", 0.5*self.f_x_star.norm()**2
-    print "number_of_iterations:", self.number_of_iterations
-    print "number_of_function_evaluations:",self.number_of_function_evaluations
-    print "number_of_jacobian_evaluations:",self.number_of_jacobian_evaluations
-    print "number_of_svds:", self.number_of_svds
+    print "levenberg_marquardt results:"
+    print "  function:", self.function.__class__.__name__
+    print "  x_star:", list(self.x_star)
+    print "  0.5*f_x0.norm()**2:", 0.5*self.f_x0.norm()**2
+    print "  0.5*f_x_star.norm()**2:", 0.5*self.f_x_star.norm()**2
+    print "  number_of_iterations:", self.number_of_iterations
+    print "  number_of_function_evaluations:", \
+        self.number_of_function_evaluations
+    print "  number_of_jacobian_evaluations:", \
+        self.number_of_jacobian_evaluations
+    print "  number_of_svds:", self.number_of_svds
 
 class damped_newton:
 
@@ -136,7 +149,8 @@ class damped_newton:
         tau=1.e-3,
         eps_1=1.e-16,
         eps_2=1.e-16,
-        k_max=100):
+        k_max=1000):
+    self.function = function
     x = x0
     f_x = function.f(x=x)
     number_of_function_evaluations = 1
@@ -208,15 +222,92 @@ class damped_newton:
     self.number_of_cholesky_decompositions = number_of_cholesky_decompositions
 
   def show_statistics(self):
-    print "x_star:", list(self.x_star)
-    print "0.5*f_x0.norm()**2:", 0.5*self.f_x0.norm()**2
-    print "0.5*f_x_star.norm()**2:", 0.5*self.f_x_star.norm()**2
-    print "number_of_iterations:", self.number_of_iterations
-    print "number_of_function_evaluations:",self.number_of_function_evaluations
-    print "number_of_gradient_evaluations:",self.number_of_gradient_evaluations
-    print "number_of_hessian_evaluations:",self.number_of_hessian_evaluations
-    print "number_of_cholesky_decompositions:", \
-      self.number_of_cholesky_decompositions
+    print "damped_newton results:"
+    print "  function:", self.function.__class__.__name__
+    print "  x_star:", list(self.x_star)
+    print "  0.5*f_x0.norm()**2:", 0.5*self.f_x0.norm()**2
+    print "  0.5*f_x_star.norm()**2:", 0.5*self.f_x_star.norm()**2
+    print "  number_of_iterations:", self.number_of_iterations
+    print "  number_of_function_evaluations:", \
+        self.number_of_function_evaluations
+    print "  number_of_gradient_evaluations:", \
+        self.number_of_gradient_evaluations
+    print "  number_of_hessian_evaluations:", \
+        self.number_of_hessian_evaluations
+    print "  number_of_cholesky_decompositions:", \
+        self.number_of_cholesky_decompositions
+
+class lbfgs_adaptor:
+
+  def __init__(self, function, x0):
+    self.function = function
+    self.f_x0 = function.f(x=x0)
+    self.x = x0.deep_copy()
+    self.number_of_function_evaluations = 0
+    self.number_of_gradient_evaluations = 0
+    minimizer = scitbx.lbfgs.run(
+      target_evaluator=self,
+      termination_params=scitbx.lbfgs.termination_parameters(
+        traditional_convergence_test=True,
+        traditional_convergence_test_eps=1.e-16))
+    self.number_of_iterations = minimizer.iter()
+    self.x_star = self.x
+    self.f_x_star = function.f(x=self.x_star)
+    del self.x
+
+  def compute_functional_and_gradients(self):
+    f = 0.5*self.function.f(x=self.x).norm()**2
+    self.number_of_function_evaluations += 1
+    g = self.function.gradients(x=self.x)
+    self.number_of_gradient_evaluations += 1
+    return f, g
+
+  def show_statistics(self):
+    print "lbfgs results:"
+    print "  function:", self.function.__class__.__name__
+    print "  x_star:", list(self.x_star)
+    print "  0.5*f_x0.norm()**2:", 0.5*self.f_x0.norm()**2
+    print "  0.5*f_x_star.norm()**2:", 0.5*self.f_x_star.norm()**2
+    print "  number_of_iterations:", self.number_of_iterations
+    print "  number_of_function_evaluations:", \
+        self.number_of_function_evaluations
+    print "  number_of_gradient_evaluations:", \
+        self.number_of_gradient_evaluations
+
+class lbfgsb_adaptor:
+
+  def __init__(self, function, x0):
+    self.function = function
+    self.f_x0 = function.f(x=x0)
+    x = x0.deep_copy()
+    self.number_of_function_evaluations = 0
+    self.number_of_gradient_evaluations = 0
+    minimizer = scitbx.lbfgsb.minimizer(n=x.size(), factr=1.e-16, pgtol=1.e-16)
+    f = 0
+    g = flex.double(x.size(), 0)
+    while True:
+      if (minimizer.process(x, f, g, False)):
+        f = 0.5*self.function.f(x=x).norm()**2
+        self.number_of_function_evaluations += 1
+        g = self.function.gradients(x=x)
+        self.number_of_gradient_evaluations += 1
+      elif (minimizer.is_terminated()):
+        break
+    self.number_of_iterations = minimizer.n_iteration()
+    self.x_star = x
+    self.f_x_star = function.f(x=self.x_star)
+
+  def show_statistics(self):
+    print "lbfgsb results:"
+    print "  function:", self.function.__class__.__name__
+    print "  x_star:", list(self.x_star)
+    print "  0.5*f_x0.norm()**2:", 0.5*self.f_x0.norm()**2
+    print "  0.5*f_x_star.norm()**2:", 0.5*self.f_x_star.norm()**2
+    print "  number_of_iterations:", self.number_of_iterations
+    print "  number_of_function_evaluations:", \
+        self.number_of_function_evaluations
+    print "  number_of_gradient_evaluations:", \
+        self.number_of_gradient_evaluations
 
 check_with_finite_differences = True
 
@@ -236,6 +327,10 @@ class test_function:
     if (tntbx is not None):
       self.exercise_levenberg_marquardt()
     self.exercise_damped_newton()
+    self.exercise_lbfgs()
+    self.exercise_lbfgsb()
+    if (knitro_adaptbx is not None):
+      self.exercise_knitro_adaptbx()
 
   def jacobian_finite(self, x, relative_eps=1.e-8):
     x0 = x
@@ -328,6 +423,24 @@ class test_function:
 
   def exercise_damped_newton(self):
     minimized = damped_newton(function=self, x0=self.x0, tau=self.tau0)
+    if (self.verbose): minimized.show_statistics()
+    self.check_minimized(minimized=minimized)
+    if (self.verbose): print
+
+  def exercise_lbfgs(self):
+    minimized = lbfgs_adaptor(function=self, x0=self.x0)
+    if (self.verbose): minimized.show_statistics()
+    self.check_minimized(minimized=minimized)
+    if (self.verbose): print
+
+  def exercise_lbfgsb(self):
+    minimized = lbfgsb_adaptor(function=self, x0=self.x0)
+    if (self.verbose): minimized.show_statistics()
+    self.check_minimized(minimized=minimized)
+    if (self.verbose): print
+
+  def exercise_knitro_adaptbx(self):
+    minimized = knitro_adaptbx.solve(function=self, x0=self.x0)
     if (self.verbose): minimized.show_statistics()
     self.check_minimized(minimized=minimized)
     if (self.verbose): print
@@ -679,7 +792,7 @@ class meyer_function(test_function):
     self.x_star = flex.double([
       5.60963646990603e-3, 6.181346346e3, 3.452236346e2])
     self.capital_f_x_star = 43.9729275853
-    self.check_gradients_tolerance = 5.e-5
+    self.check_gradients_tolerance = 1.e-3
     self.check_hessian_tolerance = 1.e-2
 
   def check_minimized_x_star(self, x_star):
