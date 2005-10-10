@@ -31,6 +31,15 @@ namespace cctbx { namespace miller {
       //! Determines the min and max elements in the array of indices.
       index_span(af::const_ref<index<> > const& indices);
 
+      //! Constructor with specified min and max values
+      index_span(af::tiny< af::tiny<int, 3>, 2 > const& min_max_miller)
+      {
+        *this = min_max_miller;
+        (*this)[0][1]++;
+        (*this)[1][1]++;
+        (*this)[2][1]++;
+      }
+
       //! The min elements found in the array passed to the constructor.
       af::int3
       min() const;
