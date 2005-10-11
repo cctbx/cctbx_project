@@ -2,6 +2,7 @@ from scitbx.examples import immoptibox_ports
 from scitbx.math import gaussian
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal, eps_eq
+from libtbx.utils import format_cpu_times
 import pickle
 from cStringIO import StringIO
 import math
@@ -480,6 +481,7 @@ class carbon_fit(immoptibox_ports.test_function):
   def __init__(self, tab_fit, perturb, verbose):
     self.tab_fit = tab_fit
     self.perturb = perturb
+    self.verbose = verbose
     carbon_ss = flex.double(carbon_s_y_table)[0::2]
     carbon_ys = flex.double(carbon_s_y_table)[1::2]
     selection = carbon_ss <= tab_fit.limit + 1.e-3
@@ -488,8 +490,12 @@ class carbon_fit(immoptibox_ports.test_function):
       carbon_ys.select(selection),
       flex.double(selection.count(True), 1),
       gaussian.sum(flex.double(tab_fit.coefficients)))
+    n = self.fit.n_parameters()
     immoptibox_ports.test_function.__init__(self,
-      m=self.fit.table_x().size(), n=self.fit.n_parameters(), verbose=verbose)
+      m=self.fit.table_x().size(),
+      n=n,
+      check_with_finite_differences=(n <= 6 or n == 9),
+      verbose=verbose)
 
   def initialization(self):
     self.x0 = self.fit.parameters()
@@ -502,8 +508,20 @@ class carbon_fit(immoptibox_ports.test_function):
     self.delta0 = 10
     self.x_star = None
 
-  def check_minimized_capital_f_x_star(self, f_x_star):
-    assert 0.5*f_x_star.norm()**2 <= self.capital_f_x_star
+  def label(self):
+    return "carbon_fit(n=%d, perturb=%s)" % (
+      self.fit.n_parameters(), str(self.perturb))
+
+  def check_minimized_capital_f_x_star(self, f_x_star, tolerance=5.e-4):
+    capital_f_x_star = 0.5*f_x_star.norm()**2
+    if (capital_f_x_star > self.capital_f_x_star):
+      assert capital_f_x_star < tolerance, (
+        capital_f_x_star, self.capital_f_x_star)
+      if (self.verbose):
+        print "  WARNING: minimization converged to larger residual", \
+          "than original solution:"
+        print "    original:", self.capital_f_x_star
+      assert self.perturb
 
   def f(self, x):
     fit = gaussian.fit(
@@ -537,7 +555,7 @@ def run():
   exercise_sum()
   exercise_fit()
   exercise_fit_jacobian_and_hessian(verbose="--verbose" in sys.argv[1:])
-  print "OK"
+  print format_cpu_times()
 
 if (__name__ == "__main__"):
   run()

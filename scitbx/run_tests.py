@@ -27,6 +27,7 @@ def run():
   "$D/math/boost_python/tst_math.py",
   "$D/math/boost_python/tst_gaussian.py",
   "$D/scitbx/math/tst_superpose.py",
+  "$D/include/scitbx/minpack/tst.py",
   ["$D/lbfgs/boost_python/tst_lbfgs.py"],
   "$D/lbfgsb/boost_python/tst_lbfgsb.py",
   ["$D/fftpack/boost_python/tst_fftpack.py"],
