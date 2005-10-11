@@ -13,8 +13,6 @@
 #include <cctbx/sgtbx/reciprocal_space_asu.h>
 #include <cctbx/sgtbx/space_group_type.h>
 
-#include <mmtbx/scaling/scaling.h>
-#include <mmtbx/scaling/absolute_scaling.h>
 #include <map>
 #include <vector>
 
