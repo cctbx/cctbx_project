@@ -7,7 +7,9 @@ import scitbx.math
 from scitbx import matrix
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
+from libtbx.utils import format_cpu_times
 import math
+import sys
 
 try:
   import tntbx
@@ -16,6 +18,7 @@ except ImportError:
 else:
   from tntbx.generalized_inverse import generalized_inverse
 
+import scitbx.minpack
 import scitbx.lbfgs
 import scitbx.lbfgsb
 
@@ -129,7 +132,7 @@ class levenberg_marquardt:
 
   def show_statistics(self):
     print "levenberg_marquardt results:"
-    print "  function:", self.function.__class__.__name__
+    print "  function:", self.function.label()
     print "  x_star:", list(self.x_star)
     print "  0.5*f_x0.norm()**2:", 0.5*self.f_x0.norm()**2
     print "  0.5*f_x_star.norm()**2:", 0.5*self.f_x_star.norm()**2
@@ -223,7 +226,7 @@ class damped_newton:
 
   def show_statistics(self):
     print "damped_newton results:"
-    print "  function:", self.function.__class__.__name__
+    print "  function:", self.function.label()
     print "  x_star:", list(self.x_star)
     print "  0.5*f_x0.norm()**2:", 0.5*self.f_x0.norm()**2
     print "  0.5*f_x_star.norm()**2:", 0.5*self.f_x_star.norm()**2
@@ -237,9 +240,56 @@ class damped_newton:
     print "  number_of_cholesky_decompositions:", \
         self.number_of_cholesky_decompositions
 
+class minpack_levenberg_marquardt_adaptor:
+
+  def __init__(self, function, x0, max_iterations=1000):
+    self.function = function
+    self.f_x0 = function.f(x=x0)
+    x = x0.deep_copy()
+    self.number_of_iterations = 0
+    self.number_of_function_evaluations = 0
+    self.number_of_jacobian_evaluations = 0
+    minimizer = scitbx.minpack.levenberg_marquardt(
+      m=function.m,
+      x=x,
+      ftol=1.e-16,
+      xtol=1.e-16,
+      gtol=0,
+      maxfev=0,
+      factor=1.0e2,
+      call_back_after_iteration=True)
+    while (not minimizer.has_terminated()):
+      if (minimizer.requests_fvec()):
+        self.number_of_function_evaluations += 1
+        minimizer.process_fvec(
+          fvec=function.f(x=x))
+      elif (minimizer.requests_fjac()):
+        self.number_of_jacobian_evaluations += 1
+        minimizer.process_fjac(
+          fjac=function.jacobian(x=x).matrix_transpose().as_1d())
+      elif (minimizer.calls_back_after_iteration()):
+        self.number_of_iterations += 1
+        if (self.number_of_iterations >= max_iterations):
+          break
+        minimizer.continue_after_call_back_after_iteration()
+    self.x_star = x
+    self.f_x_star = function.f(x=self.x_star)
+
+  def show_statistics(self):
+    print "minpack.levenberg_marquardt results:"
+    print "  function:", self.function.label()
+    print "  x_star:", list(self.x_star)
+    print "  0.5*f_x0.norm()**2:", 0.5*self.f_x0.norm()**2
+    print "  0.5*f_x_star.norm()**2:", 0.5*self.f_x_star.norm()**2
+    print "  number_of_iterations:", self.number_of_iterations
+    print "  number_of_function_evaluations:", \
+        self.number_of_function_evaluations
+    print "  number_of_jacobian_evaluations:", \
+        self.number_of_jacobian_evaluations
+
 class lbfgs_adaptor:
 
-  def __init__(self, function, x0):
+  def __init__(self, function, x0, max_iterations=1000):
     self.function = function
     self.f_x0 = function.f(x=x0)
     self.x = x0.deep_copy()
@@ -249,7 +299,8 @@ class lbfgs_adaptor:
       target_evaluator=self,
       termination_params=scitbx.lbfgs.termination_parameters(
         traditional_convergence_test=True,
-        traditional_convergence_test_eps=1.e-16))
+        traditional_convergence_test_eps=1.e-16,
+        max_iterations=max_iterations))
     self.number_of_iterations = minimizer.iter()
     self.x_star = self.x
     self.f_x_star = function.f(x=self.x_star)
@@ -264,7 +315,7 @@ class lbfgs_adaptor:
 
   def show_statistics(self):
     print "lbfgs results:"
-    print "  function:", self.function.__class__.__name__
+    print "  function:", self.function.label()
     print "  x_star:", list(self.x_star)
     print "  0.5*f_x0.norm()**2:", 0.5*self.f_x0.norm()**2
     print "  0.5*f_x_star.norm()**2:", 0.5*self.f_x_star.norm()**2
@@ -276,7 +327,7 @@ class lbfgs_adaptor:
 
 class lbfgsb_adaptor:
 
-  def __init__(self, function, x0):
+  def __init__(self, function, x0, max_iterations=1000):
     self.function = function
     self.f_x0 = function.f(x=x0)
     x = x0.deep_copy()
@@ -293,13 +344,15 @@ class lbfgsb_adaptor:
         self.number_of_gradient_evaluations += 1
       elif (minimizer.is_terminated()):
         break
+      elif (minimizer.n_iteration() >= max_iterations):
+        break
     self.number_of_iterations = minimizer.n_iteration()
     self.x_star = x
     self.f_x_star = function.f(x=self.x_star)
 
   def show_statistics(self):
     print "lbfgsb results:"
-    print "  function:", self.function.__class__.__name__
+    print "  function:", self.function.label()
     print "  x_star:", list(self.x_star)
     print "  0.5*f_x0.norm()**2:", 0.5*self.f_x0.norm()**2
     print "  0.5*f_x_star.norm()**2:", 0.5*self.f_x_star.norm()**2
@@ -309,14 +362,13 @@ class lbfgsb_adaptor:
     print "  number_of_gradient_evaluations:", \
         self.number_of_gradient_evaluations
 
-check_with_finite_differences = True
-
 class test_function:
 
-  def __init__(self, m, n, verbose=1):
+  def __init__(self, m, n, check_with_finite_differences=True, verbose=1):
     self.m = m
     self.n = n
     self.verbose = verbose
+    self.check_with_finite_differences = check_with_finite_differences
     self.check_gradients_tolerance = 1.e-6
     self.check_hessian_tolerance = 1.e-6
     self.initialization()
@@ -326,11 +378,15 @@ class test_function:
         0.5*self.f(x=self.x_star).norm()**2, self.capital_f_x_star)
     if (tntbx is not None):
       self.exercise_levenberg_marquardt()
+    self.exercise_minpack_levenberg_marquardt()
     self.exercise_damped_newton()
     self.exercise_lbfgs()
     self.exercise_lbfgsb()
     if (knitro_adaptbx is not None):
       self.exercise_knitro_adaptbx()
+
+  def label(self):
+    return self.__class__.__name__
 
   def jacobian_finite(self, x, relative_eps=1.e-8):
     x0 = x
@@ -348,9 +404,10 @@ class test_function:
 
   def jacobian(self, x):
     analytical = self.jacobian_analytical(x=x)
-    if (check_with_finite_differences):
+    if (self.check_with_finite_differences):
       finite = self.jacobian_finite(x=x)
-      assert approx_equal(analytical, finite)
+      scale = max(1, flex.max(flex.abs(analytical)))
+      assert approx_equal(analytical/scale, finite/scale, 1.e-5)
     return analytical
 
   def gradients_finite(self, x, relative_eps=1.e-7):
@@ -373,7 +430,7 @@ class test_function:
 
   def gradients(self,x, f_x=None):
     analytical = self.gradients_analytical(x=x, f_x=f_x)
-    if (check_with_finite_differences):
+    if (self.check_with_finite_differences):
       finite = self.gradients_finite(x=x)
       scale = max(1, flex.max(flex.abs(analytical)))
       assert approx_equal(analytical/scale, finite/scale,
@@ -396,7 +453,7 @@ class test_function:
 
   def hessian(self, x):
     analytical = self.hessian_analytical(x=x)
-    if (check_with_finite_differences):
+    if (self.check_with_finite_differences):
       finite = self.hessian_finite(x=x)
       scale = max(1, flex.max(flex.abs(analytical)))
       assert approx_equal(analytical/scale, finite/scale,
@@ -417,6 +474,12 @@ class test_function:
 
   def exercise_levenberg_marquardt(self):
     minimized = levenberg_marquardt(function=self, x0=self.x0, tau=self.tau0)
+    if (self.verbose): minimized.show_statistics()
+    self.check_minimized(minimized=minimized)
+    if (self.verbose): print
+
+  def exercise_minpack_levenberg_marquardt(self):
+    minimized = minpack_levenberg_marquardt_adaptor(function=self, x0=self.x0)
     if (self.verbose): minimized.show_statistics()
     self.check_minimized(minimized=minimized)
     if (self.verbose): print
@@ -796,10 +859,14 @@ class meyer_function(test_function):
     self.check_hessian_tolerance = 1.e-2
 
   def check_minimized_x_star(self, x_star):
-    print "x_star NOT CHECKED" # XXX
+    if (self.verbose):
+      print "  expected x_star: %.6g %.6g %.6g" % tuple(self.x_star)
+      print "    actual x_star: %.6g %.6g %.6g" % tuple(x_star)
 
   def check_minimized_capital_f_x_star(self, f_x_star):
-    print "f_x_star NOT CHECKED" # XXX
+    if (self.verbose):
+      print "  expected 0.5*f_x_star.norm()**2: %.6g" % self.capital_f_x_star
+      print "    actual 0.5*f_x_star.norm()**2: %.6g" % (0.5*f_x_star.norm()**2)
 
   def f(self, x):
     x1,x2,x3 = x
@@ -914,35 +981,37 @@ def exercise_cholesky():
       assert c is None
 
 def exercise():
+  verbose = "--verbose" in sys.argv[1:]
   exercise_cholesky()
   default_flag = True
   if (0 or default_flag):
     for m in xrange(1,5+1):
       for n in xrange(1,m+1):
-        linear_function_full_rank(m=m, n=n)
+        linear_function_full_rank(m=m, n=n, verbose=verbose)
   if (0 or default_flag):
     for m in xrange(1,5+1):
       for n in xrange(1,m+1):
-        linear_function_rank_1(m=m, n=n)
+        linear_function_rank_1(m=m, n=n, verbose=verbose)
   if (0 or default_flag):
     for m in xrange(3,7+1):
       for n in xrange(3,m+1):
-        linear_function_rank_1_with_zero_columns_and_rows(m=m, n=n)
+        linear_function_rank_1_with_zero_columns_and_rows(
+          m=m, n=n, verbose=verbose)
   if (0 or default_flag):
-    rosenbrock_function(m=2, n=2)
+    rosenbrock_function(m=2, n=2, verbose=verbose)
   if (0 or default_flag):
-    helical_valley_function(m=3, n=3)
+    helical_valley_function(m=3, n=3, verbose=verbose)
   if (0 or default_flag):
-    powell_singular_function(m=4, n=4)
+    powell_singular_function(m=4, n=4, verbose=verbose)
   if (0 or default_flag):
-    freudenstein_and_roth_function(m=2, n=2)
+    freudenstein_and_roth_function(m=2, n=2, verbose=verbose)
   if (0 or default_flag):
-    bard_function(m=15, n=3)
+    bard_function(m=15, n=3, verbose=verbose)
   if (0 or default_flag):
-    kowalik_and_osborne_function(m=11, n=4)
+    kowalik_and_osborne_function(m=11, n=4, verbose=verbose)
   if (0 or default_flag):
-    meyer_function(m=16, n=3)
-  print "OK"
+    meyer_function(m=16, n=3, verbose=verbose)
+  print format_cpu_times()
 
 if (__name__ == "__main__"):
   exercise()
