@@ -507,6 +507,14 @@ class test_function:
     if (self.verbose): minimized.show_statistics()
     self.check_minimized(minimized=minimized)
     if (self.verbose): print
+    minimized = knitro_adaptbx.solve(function=self, x0=self.x0,hessopt="bfgs")
+    if (self.verbose): minimized.show_statistics()
+    self.check_minimized(minimized=minimized)
+    if (self.verbose): print
+    minimized = knitro_adaptbx.solve(function=self, x0=self.x0,hessopt="lbfgs")
+    if (self.verbose): minimized.show_statistics()
+    self.check_minimized(minimized=minimized)
+    if (self.verbose): print
 
 class linear_function_full_rank(test_function):
 
@@ -650,7 +658,7 @@ class powell_singular_function(test_function):
     self.capital_f_x_star = 0
 
   def check_minimized_x_star(self, x_star):
-    assert approx_equal(x_star, self.x_star, 2.e-6)
+    assert approx_equal(x_star, self.x_star, 1.e-5)
 
   def f(self, x):
     x1,x2,x3,x4 = x
