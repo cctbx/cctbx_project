@@ -15,5 +15,5 @@ env.SharedLibrary(target="#lib/cctbx_miller_ext", source=[
   "phase_integrator.cpp",
   "phase_transfer.cpp",
   "sym_equiv.cpp",
-  "miller_lookup_utils.cpp",
+  "lookup_utils.cpp",
 ])
