@@ -503,7 +503,7 @@ class carbon_fit(immoptibox_ports.test_function):
     if (self.perturb):
       mersenne_twister = flex.mersenne_twister(seed=0)
       self.x0 *= 1 + mersenne_twister.random_double(
-        size=self.x0.size(), factor=0.1)
+        size=self.x0.size(), factor=0.01)
     self.tau0 = 1e-8
     self.delta0 = 10
     self.x_star = None
