@@ -512,7 +512,7 @@ class carbon_fit(immoptibox_ports.test_function):
     return "carbon_fit(n=%d, perturb=%s)" % (
       self.fit.n_parameters(), str(self.perturb))
 
-  def check_minimized_capital_f_x_star(self, f_x_star, tolerance=5.e-4):
+  def check_minimized_capital_f_x_star(self, f_x_star, tolerance=1.e-3):
     capital_f_x_star = 0.5*f_x_star.norm()**2
     if (capital_f_x_star > self.capital_f_x_star):
       assert capital_f_x_star < tolerance, (
