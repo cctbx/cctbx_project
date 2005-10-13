@@ -20,9 +20,18 @@ int main(int argc, char* argv[])
     a = af::flex_int(af::flex_grid<>(1));
     check_true(__LINE__, a.size() == 1);
     check_true(__LINE__, a.accessor().nd() == 1);
+    check_true(__LINE__, a.accessor().is_trivial_1d());
     a = af::flex_int(af::flex_grid<>(1, 2));
     check_true(__LINE__, a.size() == 2);
     check_true(__LINE__, a.accessor().nd() == 2);
+    check_false(__LINE__, a.accessor().is_square_matrix());
+    a = af::flex_int(af::flex_grid<>(3, 3));
+    check_true(__LINE__, a.accessor().nd() == 2);
+    check_true(__LINE__, a.accessor().is_0_based());
+    check_false(__LINE__, a.accessor().is_padded());
+    check_true(__LINE__, a.accessor().focus()[0] == 3);
+    check_true(__LINE__, a.accessor().focus()[1] == 3);
+    check_true(__LINE__, a.accessor().is_square_matrix());
     a = af::flex_int(af::flex_grid<>(1, 2, 3));
     check_true(__LINE__, a.size() == 6);
     check_true(__LINE__, a.accessor().nd() == 3);

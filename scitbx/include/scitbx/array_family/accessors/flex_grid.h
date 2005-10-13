@@ -266,7 +266,18 @@ namespace scitbx { namespace af {
       {
         if (nd() != 1) return false;
         if (!is_0_based()) return false;
-        return !is_padded();
+        if (is_padded()) return false;
+        return true;
+      }
+
+      bool
+      is_square_matrix() const
+      {
+        if (nd() != 2) return false;
+        if (all_[0] != all_[1]) return false;
+        if (!is_0_based()) return false;
+        if (is_padded()) return false;
+        return true;
       }
 
       flex_grid

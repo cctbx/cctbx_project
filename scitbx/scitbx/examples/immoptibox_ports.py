@@ -30,8 +30,7 @@ except ImportError:
 floating_point_epsilon_double = scitbx.math.floating_point_epsilon_double_get()
 
 def cholesky_decomposition(a, relative_eps=1.e-15):
-  assert a.nd() == 2
-  assert a.focus()[0] == a.focus()[1]
+  assert a.is_square_matrix()
   n = a.focus()[0]
   eps = relative_eps * flex.max(flex.abs(a))
   c = flex.double(a.accessor(), 0)
@@ -50,9 +49,8 @@ def cholesky_decomposition(a, relative_eps=1.e-15):
   return c
 
 def cholesky_solve(c, b):
-  assert c.nd() == 2
-  assert c.focus()[0] == c.focus()[1]
-  assert b.nd() == 1
+  assert c.is_square_matrix()
+  assert b.is_trivial_1d()
   assert b.size() == c.focus()[0]
   n = c.focus()[0]
   z = flex.double(n, 0)

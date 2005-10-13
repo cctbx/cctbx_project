@@ -177,6 +177,10 @@ def exercise_flex_constructors():
   assert f.focus_size_1d() == 0
   assert f.is_trivial_1d()
   assert tuple(f) == ()
+  f = flex.double(flex.grid((2,3)))
+  assert not f.is_square_matrix()
+  f = flex.double(flex.grid((4,4)))
+  assert f.is_square_matrix()
   f = flex.double(flex.grid((2,3,5)))
   assert f.size() == 30
   assert f.capacity() == 30

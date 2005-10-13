@@ -15,6 +15,7 @@ env_scitbx_boost_python_ext.SharedLibrary(
   "flex_long.cpp",
   "flex_float.cpp",
   "flex_double.cpp",
+  "flex_double_matrix.cpp",
   "flex_complex_double.cpp",
   "flex_std_string.cpp",
   "flex_random.cpp",
