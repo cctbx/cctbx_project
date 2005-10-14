@@ -163,7 +163,6 @@ namespace lookup_utils{
     construct_neighbourhood( unsigned const& center_hkl )
     {
       SCITBX_ASSERT( hkl_.size() > center_hkl);
-      SCITBX_ASSERT( center_hkl >=0 );
       return( construct_neighbourhood(hkl_[center_hkl]) );
     }
 
