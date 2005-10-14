@@ -2,7 +2,7 @@
 #include <scitbx/array_family/versa_matrix.h>
 #include <scitbx/matrix/outer_product.h>
 #include <scitbx/matrix/cholesky.h>
-#include <scitbx/matrix/packed.h>
+#include <scitbx/matrix/move.h>
 #include <boost/python/args.hpp>
 #include <boost/python/overloads.hpp>
 
@@ -156,6 +156,42 @@ namespace boost_python {
               matrix_cholesky_decomposition_overloads((
                 arg_("self"),
                 arg_("relative_epsilon")=1.e-15)))
+      .def("matrix_copy_upper_to_lower_triangle_in_place",
+        (void(*)(
+          ref<double, c_grid<2> > const&))
+            matrix::copy_upper_to_lower_triangle_in_place)
+      .def("matrix_copy_lower_to_upper_triangle_in_place",
+        (void(*)(
+          ref<double, c_grid<2> > const&))
+            matrix::copy_lower_to_upper_triangle_in_place)
+      .def("matrix_swap_rows_in_place",
+        (void(*)(
+          ref<double, c_grid<2> > const&, unsigned, unsigned))
+            matrix::swap_rows_in_place, (
+                arg_("self"),
+                arg_("i"),
+                arg_("j")))
+      .def("matrix_swap_columns_in_place",
+        (void(*)(
+          ref<double, c_grid<2> > const&, unsigned, unsigned))
+            matrix::swap_columns_in_place, (
+                arg_("self"),
+                arg_("i"),
+                arg_("j")))
+      .def("matrix_symmetric_upper_triangle_swap_rows_and_columns_in_place",
+        (void(*)(
+          ref<double, c_grid<2> > const&, unsigned, unsigned))
+            matrix::symmetric_upper_triangle_swap_rows_and_columns_in_place, (
+                arg_("self"),
+                arg_("i"),
+                arg_("j")))
+      .def("matrix_packed_u_swap_rows_and_columns_in_place",
+        (void(*)(
+          ref<double> const&, unsigned, unsigned))
+            matrix::packed_u_swap_rows_and_columns_in_place, (
+                arg_("self"),
+                arg_("i"),
+                arg_("j")))
       .def("cos_angle",
         (boost::optional<double>(*)(
           const_ref<double> const&,

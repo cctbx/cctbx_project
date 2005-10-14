@@ -1490,6 +1490,91 @@ def exercise_cholesky_decomposition(a):
   immoptibox_ports.tst_flex_counts += 1
   return c
 
+def exercise_matrix_move():
+  a = flex.double(flex.grid(0,0))
+  a.matrix_copy_upper_to_lower_triangle_in_place()
+  a.matrix_copy_lower_to_upper_triangle_in_place()
+  a = flex.double([[1]])
+  a.matrix_swap_rows_in_place(i=0, j=0)
+  a.matrix_swap_columns_in_place(i=0, j=0)
+  a.matrix_symmetric_upper_triangle_swap_rows_and_columns_in_place(i=0, j=0)
+  assert list(a) == [1]
+  u = flex.double([1])
+  u.matrix_packed_u_swap_rows_and_columns_in_place(i=0, j=0)
+  assert list(u) == [1]
+  a = flex.double([[1,2],[3,4]])
+  a.matrix_swap_rows_in_place(i=0, j=0)
+  assert list(a) == [1,2,3,4]
+  a.matrix_swap_rows_in_place(i=0, j=1)
+  assert list(a) == [3,4,1,2]
+  a.matrix_swap_rows_in_place(i=1, j=0)
+  assert list(a) == [1,2,3,4]
+  a.matrix_swap_columns_in_place(i=0, j=0)
+  assert list(a) == [1,2,3,4]
+  a.matrix_swap_columns_in_place(i=0, j=1)
+  assert list(a) == [2,1,4,3]
+  a.matrix_swap_columns_in_place(i=1, j=0)
+  assert list(a) == [1,2,3,4]
+  a.matrix_swap_rows_in_place(i=1, j=0)
+  a.matrix_swap_columns_in_place(i=1, j=0)
+  assert list(a) == [4,3,2,1]
+  a.matrix_symmetric_upper_triangle_swap_rows_and_columns_in_place(i=0, j=1)
+  assert list(a) == [1,3,2,4]
+  u = a.matrix_upper_triangle_as_packed_u()
+  u.matrix_packed_u_swap_rows_and_columns_in_place(i=0, j=1)
+  assert list(u) == [4,3,1]
+  a.matrix_copy_upper_to_lower_triangle_in_place()
+  assert list(a) == [1,3,3,4]
+  a = flex.double([[1,2],[3,4]])
+  a.matrix_copy_lower_to_upper_triangle_in_place()
+  assert list(a) == [1,3,3,4]
+  a = flex.double([[1,2,3],[4,5,6]])
+  a.matrix_swap_rows_in_place(i=1, j=0)
+  assert list(a) == [4,5,6,1,2,3]
+  a.matrix_swap_columns_in_place(i=1, j=2)
+  assert list(a) == [4,6,5,1,3,2]
+  a.matrix_swap_columns_in_place(i=2, j=0)
+  assert list(a) == [5,6,4,2,3,1]
+  a.resize(flex.grid(3,2))
+  a.matrix_swap_rows_in_place(i=1, j=2)
+  assert list(a) == [5,6,3,1,4,2]
+  a.matrix_swap_rows_in_place(i=2, j=0)
+  assert list(a) == [4,2,3,1,5,6]
+  for n in xrange(1,11): # must be at least 8 to reveal all bugs
+    a0 = flex.double(xrange(1,n+1))
+    a0.resize(flex.grid(n,n))
+    for i in xrange(n):
+      for j in xrange(n):
+        for triangle_flag in ["u","l"]:
+          a = a0.deep_copy()
+          if (triangle_flag == "u"):
+            a.matrix_copy_upper_to_lower_triangle_in_place()
+          else:
+            a.matrix_copy_lower_to_upper_triangle_in_place()
+          a.matrix_swap_rows_in_place(i=i, j=j)
+          a.matrix_swap_columns_in_place(i=i, j=j)
+          b = a0.deep_copy()
+          if (triangle_flag == "l"):
+            b.matrix_transpose_in_place()
+          b0 = b.deep_copy()
+          b.matrix_symmetric_upper_triangle_swap_rows_and_columns_in_place(
+            i=i, j=j)
+          for ii in xrange(1,n):
+            for jj in xrange(i):
+              assert b[(ii,jj)] == b0[(ii,jj)]
+          b.matrix_symmetric_upper_triangle_swap_rows_and_columns_in_place(
+            i=i, j=j)
+          assert list(b) == list(b0)
+          b.matrix_symmetric_upper_triangle_swap_rows_and_columns_in_place(
+            i=i, j=j)
+          b.matrix_copy_upper_to_lower_triangle_in_place()
+          assert list(b) == list(a)
+          u = b0.matrix_upper_triangle_as_packed_u()
+          u.matrix_packed_u_swap_rows_and_columns_in_place(i=i, j=j)
+          assert list(u) == list(b.matrix_upper_triangle_as_packed_u())
+          u.matrix_packed_u_swap_rows_and_columns_in_place(i=i, j=j)
+          assert list(u) == list(b0.matrix_upper_triangle_as_packed_u())
+
 def exercise_matrix_inversion_in_place():
   m = flex.double()
   m.resize(flex.grid(0,0))
@@ -1736,6 +1821,7 @@ def run(iterations):
     exercise_extract_attributes()
     exercise_exceptions()
     exercise_matrix()
+    exercise_matrix_move()
     exercise_matrix_inversion_in_place()
     exercise_pickle_single_buffered()
     exercise_pickle_double_buffered()

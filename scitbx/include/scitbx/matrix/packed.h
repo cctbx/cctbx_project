@@ -6,6 +6,27 @@
 
 namespace scitbx { namespace matrix {
 
+  class packed_u_accessor
+  {
+    public:
+      typedef unsigned index_value_type;
+      typedef af::tiny_plain<unsigned, 2> index_type;
+
+      explicit
+      packed_u_accessor(unsigned n_) : n(n_) {}
+
+      std::size_t
+      size_1d() const { return n; }
+
+      unsigned
+      operator()(unsigned i, unsigned j) const
+      {
+        return i*(n-1)-i*(i-1)/2+j;
+      }
+
+      unsigned n;
+  };
+
   template <typename FloatType>
   af::shared<FloatType>
   upper_triangle_as_packed_u(
