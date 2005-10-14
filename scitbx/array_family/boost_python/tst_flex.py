@@ -1068,19 +1068,24 @@ def exercise_mean_and_variance():
   for w in (None, flex.double((1,1,1))):
     if (w is None):
       mv = flex.mean_and_variance(x)
+      assert not mv.have_weights()
     else:
       mv = flex.mean_and_variance(x, w)
+      assert mv.have_weights()
     assert approx_equal(mv.mean(), 2)
     assert approx_equal(mv.sum_weights(), 3)
     assert approx_equal(mv.sum_weights_sq(), 3)
     assert approx_equal(mv.sum_weights_values(), 6)
     assert approx_equal(mv.sum_weights_delta_sq(), 2)
-    assert approx_equal(mv.gsl_variance(), 1)
-    assert approx_equal(mv.gsl_standard_deviation(), 1)
-    assert approx_equal(mv.cumulative_variance(), 1/3.)
-    assert approx_equal(mv.cumulative_standard_deviation(), 1/math.sqrt(3))
-    assert approx_equal(mv.conservative_variance(), 1)
-    assert approx_equal(mv.conservative_standard_deviation(), 1)
+    assert approx_equal(mv.gsl_stats_wvariance(), 1)
+    assert approx_equal(mv.gsl_stats_wsd(), 1)
+    assert approx_equal(
+      mv.standard_error_of_mean_calculated_from_sample_weights(),
+      1/3**0.5)
+    if (not mv.have_weights()):
+      assert approx_equal(mv.unweighted_sample_variance(), 1)
+      assert approx_equal(mv.unweighted_sample_standard_deviation(), 1)
+      assert approx_equal(mv.unweighted_standard_error_of_mean(), 1/3**0.5)
   w = flex.double((1,3,2))
   mv = flex.mean_and_variance(x, w)
   assert approx_equal(mv.mean(), 13/6.)
@@ -1088,19 +1093,22 @@ def exercise_mean_and_variance():
   assert approx_equal(mv.sum_weights_sq(), 14)
   assert approx_equal(mv.sum_weights_values(), 13)
   assert approx_equal(mv.sum_weights_delta_sq(), 17/6.)
-  assert approx_equal(mv.gsl_variance(),
+  assert approx_equal(mv.gsl_stats_wvariance(),
     (6./(36-14))*((1*(1-13/6.)**2)+(3*(2-13/6.)**2)+(2*(3-13/6.)**2)))
-  assert approx_equal(mv.gsl_standard_deviation(), math.sqrt(17/22.))
-  assert approx_equal(mv.cumulative_variance(), 1/6.)
-  assert approx_equal(mv.cumulative_standard_deviation(), 1/math.sqrt(6))
-  assert approx_equal(mv.conservative_variance(), 17/22.)
-  assert approx_equal(mv.conservative_standard_deviation(), math.sqrt(17/22.))
+  assert approx_equal(mv.gsl_stats_wsd(), math.sqrt(17/22.))
+  assert approx_equal(
+    mv.standard_error_of_mean_calculated_from_sample_weights(),
+    1/6**0.5)
   x = flex.double((1,1,1))
   mv = flex.mean_and_variance(x)
   assert approx_equal(mv.mean(), 1)
-  assert approx_equal(mv.gsl_variance(), 0)
-  assert approx_equal(mv.cumulative_variance(), 1/3.)
-  assert approx_equal(mv.conservative_variance(), 1/3.)
+  assert approx_equal(mv.gsl_stats_wvariance(), 0)
+  assert approx_equal(
+    mv.standard_error_of_mean_calculated_from_sample_weights(),
+    1/3**0.5)
+  assert approx_equal(mv.unweighted_sample_variance(), 0)
+  assert approx_equal(mv.unweighted_sample_standard_deviation(), 0)
+  assert approx_equal(mv.unweighted_standard_error_of_mean(), 0)
 
 def exercise_linear_interpolation():
   for flex_type in (flex.float, flex.double):

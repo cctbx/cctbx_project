@@ -17,6 +17,7 @@ namespace scitbx { namespace math {
       mean_and_variance(
         af::const_ref<FloatType> values)
       :
+        have_weights_(false),
         sum_weights_(values.size()),
         sum_weights_sq_(values.size()),
         sum_weights_values_(af::sum(values)),
@@ -32,6 +33,7 @@ namespace scitbx { namespace math {
         af::const_ref<FloatType> values,
         af::const_ref<FloatType> weights)
       :
+        have_weights_(true),
         sum_weights_(af::sum(weights)),
         sum_weights_sq_(af::sum_sq(weights)),
         sum_weights_values_(0),
@@ -47,6 +49,9 @@ namespace scitbx { namespace math {
         }
       }
 
+      bool
+      have_weights() const { return have_weights_; }
+
       FloatType
       mean() const
       {
@@ -58,39 +63,44 @@ namespace scitbx { namespace math {
       /*! http://www.gnu.org/software/gsl/manual/gsl-ref_20.html#SEC339
        */
       FloatType
-      gsl_variance() const
+      gsl_stats_wvariance() const
       {
         SCITBX_ASSERT(fn::pow2(sum_weights_) > sum_weights_sq_);
         return sum_weights_ / (fn::pow2(sum_weights_) - sum_weights_sq_)
              * sum_weights_delta_sq_;
       }
 
+      //! Emulation of gsl_stats_wsd of the GNU Scientific Library.
+      /*! http://www.gnu.org/software/gsl/manual/gsl-ref_20.html#SEC339
+       */
       FloatType
-      gsl_standard_deviation() const { return std::sqrt(gsl_variance()); }
+      gsl_stats_wsd() const { return std::sqrt(gsl_stats_wvariance()); }
 
       FloatType
-      cumulative_variance() const
+      standard_error_of_mean_calculated_from_sample_weights() const
       {
         SCITBX_ASSERT(sum_weights_ > 0);
-        return 1 / sum_weights_;
+        return 1 / std::sqrt((sum_weights_));
       }
 
       FloatType
-      cumulative_standard_deviation() const
+      unweighted_sample_variance() const
       {
-        return std::sqrt(cumulative_variance());
+        SCITBX_ASSERT(!have_weights_);
+        SCITBX_ASSERT(sum_weights_ > 1);
+        return sum_weights_delta_sq_ / (sum_weights_ - 1);
       }
 
       FloatType
-      conservative_variance() const
+      unweighted_sample_standard_deviation() const
       {
-        return std::max(gsl_variance(), cumulative_variance());
+        return std::sqrt(unweighted_sample_variance());
       }
 
       FloatType
-      conservative_standard_deviation() const
+      unweighted_standard_error_of_mean() const
       {
-        return std::sqrt(conservative_variance());
+        return std::sqrt(unweighted_sample_variance() / sum_weights_);
       }
 
       FloatType
@@ -106,6 +116,7 @@ namespace scitbx { namespace math {
       sum_weights_delta_sq() const { return sum_weights_delta_sq_; }
 
     protected:
+      bool have_weights_;
       FloatType sum_weights_;
       FloatType sum_weights_sq_;
       FloatType sum_weights_values_;
