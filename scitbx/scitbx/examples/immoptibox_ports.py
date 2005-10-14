@@ -379,7 +379,10 @@ class test_function:
     self.exercise_minpack_levenberg_marquardt()
     self.exercise_damped_newton()
     self.exercise_lbfgs()
-    self.exercise_lbfgsb()
+    if (isinstance(self, meyer_function) and sys.platform == "irix6"):
+      print "Skipping: exercise_lbfgsb() with", self.__class__.__name__
+    else:
+      self.exercise_lbfgsb()
     if (knitro_adaptbx is not None):
       self.exercise_knitro_adaptbx()
 
