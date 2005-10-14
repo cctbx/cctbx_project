@@ -16,7 +16,7 @@ namespace scitbx { namespace matrix {
       packed_u_accessor(unsigned n_) : n(n_) {}
 
       std::size_t
-      size_1d() const { return n; }
+      size_1d() const { return n*(n+1)/2; }
 
       unsigned
       operator()(unsigned i, unsigned j) const
