@@ -10,6 +10,27 @@ namespace scitbx { namespace af {
 
 namespace {
 
+  // test here in lack of a better place
+  void
+  exercise_packed_u_accessor()
+  {
+    af::versa<double, matrix::packed_u_accessor>
+      a(matrix::packed_u_accessor(5));
+    af::ref<double, matrix::packed_u_accessor> r = a.ref();
+    SCITBX_ASSERT(a.size() == 5*(5+1)/2);
+    SCITBX_ASSERT(r.size() == 5*(5+1)/2);
+    SCITBX_ASSERT(a.accessor().n == 5);
+    SCITBX_ASSERT(r.accessor().n == 5);
+    for(unsigned i=0;i<r.size();i++) r[i] = i+1;
+    unsigned v = 1;
+    for(unsigned i=0;i<r.accessor().n;i++) {
+      for(unsigned j=i;j<r.accessor().n;j++,v++) {
+        SCITBX_ASSERT(a(i,j) == v);
+        SCITBX_ASSERT(r(i,j) == v);
+      }
+    }
+  }
+
   bool
   is_square_matrix(
     af::versa<double, af::flex_grid<> > const& self)
@@ -36,6 +57,8 @@ namespace boost_python {
   wrap_flex_double_matrix(
     flex_wrapper<double>::class_f_t& class_f_t)
   {
+    exercise_packed_u_accessor();
+
     using namespace boost::python;
 
     class_f_t
