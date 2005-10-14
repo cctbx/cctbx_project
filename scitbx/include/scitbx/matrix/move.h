@@ -30,7 +30,6 @@ namespace scitbx { namespace matrix {
   {
     SCITBX_ASSERT(a.accessor().is_square());
     unsigned n = a.accessor()[0];
-    unsigned nn = n*n;
     unsigned i0 = 0;
     for(unsigned i=0;i<n;i++,i0+=n) {
       unsigned ij = i0;
