@@ -279,8 +279,8 @@ namespace cctbx { namespace miller {
           sigmas.push_back(
             std::sqrt(
               std::max(
-                mv.gsl_variance()/values.size(),
-                mv.cumulative_variance())));
+                mv.gsl_stats_wvariance()/values.size(),
+                1/mv.sum_weights())));
         }
         redundancies.push_back(n);
         merge_equivalents::compute_r_fractors(
