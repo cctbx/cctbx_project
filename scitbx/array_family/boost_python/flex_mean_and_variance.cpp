@@ -1,12 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2003 Jun: Created (rwgk)
- */
-
 #include <scitbx/array_family/boost_python/flex_fwd.h>
 
 #include <scitbx/math/mean_and_variance.h>
@@ -26,15 +17,17 @@ namespace scitbx { namespace af { namespace boost_python { namespace {
         .def(init<af::const_ref<double> const&>())
         .def(init<af::const_ref<double> const&,
                   af::const_ref<double> const&>())
+        .def("have_weights", &w_t::have_weights)
         .def("mean", &w_t::mean)
-        .def("gsl_variance", &w_t::gsl_variance)
-        .def("gsl_standard_deviation", &w_t::gsl_standard_deviation)
-        .def("cumulative_variance", &w_t::cumulative_variance)
-        .def("cumulative_standard_deviation",
-          &w_t::cumulative_standard_deviation)
-        .def("conservative_variance", &w_t::conservative_variance)
-        .def("conservative_standard_deviation",
-          &w_t::conservative_standard_deviation)
+        .def("gsl_stats_wvariance", &w_t::gsl_stats_wvariance)
+        .def("gsl_stats_wsd", &w_t::gsl_stats_wsd)
+        .def("standard_error_of_mean_calculated_from_sample_weights",
+          &w_t::standard_error_of_mean_calculated_from_sample_weights)
+        .def("unweighted_sample_variance", &w_t::unweighted_sample_variance)
+        .def("unweighted_sample_standard_deviation",
+          &w_t::unweighted_sample_standard_deviation)
+        .def("unweighted_standard_error_of_mean",
+          &w_t::unweighted_standard_error_of_mean)
         .def("sum_weights", &w_t::sum_weights)
         .def("sum_weights_sq", &w_t::sum_weights_sq)
         .def("sum_weights_values", &w_t::sum_weights_values)
