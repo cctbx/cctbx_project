@@ -27,6 +27,16 @@ namespace scitbx { namespace matrix {
       unsigned n;
   };
 
+  inline
+  unsigned
+  symmetric_n_from_packed_size(std::size_t packed_size)
+  {
+    unsigned n = static_cast<unsigned>(
+      (std::sqrt(1.0+8.0*static_cast<double>(packed_size))-1.0)/2.0 + 0.5);
+    SCITBX_ASSERT(n*(n+1)/2 == packed_size);
+    return n;
+  }
+
   template <typename FloatType>
   af::shared<FloatType>
   upper_triangle_as_packed_u(
@@ -43,6 +53,25 @@ namespace scitbx { namespace matrix {
       for(unsigned j=i;j<n;j++) {
         *r++ = a[ij++];
       }
+    }
+    return result;
+  }
+
+  template <typename FloatType>
+  af::versa<FloatType, af::c_grid<2> >
+  packed_u_as_upper_triangle(
+    af::const_ref<FloatType> const& a)
+  {
+    unsigned n = symmetric_n_from_packed_size(a.size());
+    af::versa<FloatType, af::c_grid<2> > result(
+      af::c_grid<2>(n,n), af::init_functor_null<FloatType>());
+    FloatType *r = result.begin();
+    std::size_t i_a = 0;
+    std::size_t ij = 0;
+    for(unsigned i=0;i<n;i++) {
+      unsigned j = 0;
+      for (;j<i;j++) r[ij++] = 0;
+      for (;j<n;j++) r[ij++] = a[i_a++];
     }
     return result;
   }
@@ -68,14 +97,23 @@ namespace scitbx { namespace matrix {
     return result;
   }
 
-  inline
-  unsigned
-  symmetric_n_from_packed_size(std::size_t packed_size)
+  template <typename FloatType>
+  af::versa<FloatType, af::c_grid<2> >
+  packed_l_as_lower_triangle(
+    af::const_ref<FloatType> const& a)
   {
-    unsigned n = static_cast<unsigned>(
-      (std::sqrt(1.0+8.0*static_cast<double>(packed_size))-1.0)/2.0 + 0.5);
-    SCITBX_ASSERT(n*(n+1)/2 == packed_size);
-    return n;
+    unsigned n = symmetric_n_from_packed_size(a.size());
+    af::versa<FloatType, af::c_grid<2> > result(
+      af::c_grid<2>(n,n), af::init_functor_null<FloatType>());
+    FloatType *r = result.begin();
+    std::size_t i_a = 0;
+    std::size_t ij = 0;
+    for(unsigned i=0;i<n;i++) {
+      unsigned j = 0;
+      for (;j<=i;j++) r[ij++] = a[i_a++];
+      for (;j<n;j++) r[ij++] = 0;
+    }
+    return result;
   }
 
   template <typename FloatType>
