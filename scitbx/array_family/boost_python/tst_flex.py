@@ -1528,7 +1528,7 @@ def exercise_matrix_cholesky_gill_murray_wright():
     c = flex.double(a)
     c.resize(flex.grid(a.n))
     u = c.matrix_upper_triangle_as_packed_u()
-    gwm = u.matrix_cholesky_gill_murray_wright()
+    gwm = u.matrix_cholesky_gill_murray_wright_decomposition_in_place()
     p, e = gwm.pivots, gwm.e
     r = matrix.sqr(u.matrix_packed_u_as_upper_triangle())
     rtr = r.transpose() * r
@@ -1542,15 +1542,17 @@ def exercise_matrix_cholesky_gill_murray_wright():
   assert p.size() == 0
   assert e.size() == 0
   assert len(r) == 0
+  n_max = 15
+  n_trials_per_n = 10
   # identity matrices
-  for n in xrange(1,6):
+  for n in xrange(1,n_max+1):
     a = matrix.diag([1]*n)
     p, e, r = core(a)
     assert list(p) == range(n)
     assert approx_equal(e, [0]*n)
     assert approx_equal(r, a)
   # null matrices
-  for n in xrange(1,6):
+  for n in xrange(1,n_max+1):
     a = matrix.sqr([0]*n*n)
     p, e, r = core(a)
     assert list(p) == range(n)
@@ -1560,8 +1562,8 @@ def exercise_matrix_cholesky_gill_murray_wright():
         if (i != j): r(i,j) == 0
         else: r(i,j) == r(0,0)
   # random semi-positive diagonal matrices
-  for n in xrange(1,6):
-    for i_trial in xrange(100):
+  for n in xrange(1,n_max+1):
+    for i_trial in xrange(n_trials_per_n):
       a = matrix.diag(flex.random_double(size=n))
       p, e, r = core(a)
       assert approx_equal(e, [0]*n)
@@ -1569,28 +1571,45 @@ def exercise_matrix_cholesky_gill_murray_wright():
         for j in xrange(n):
           if (i != j): approx_equal(r(i,j), 0)
   # random diagonal matrices
-  for n in xrange(1,6):
-    for i_trial in xrange(100):
+  for n in xrange(1,n_max+1):
+    for i_trial in xrange(n_trials_per_n):
       a = matrix.diag(flex.random_double(size=n, factor=2)-1)
       p, e, r = core(a)
       for i in xrange(n):
         for j in xrange(n):
           if (i != j): approx_equal(r(i,j), 0)
   # random semi-positive definite matrices
-  for n in xrange(1,6):
-    for i_trial in xrange(100):
+  for n in xrange(1,n_max+1):
+    for i_trial in xrange(n_trials_per_n):
       m = matrix.sqr(flex.random_double(size=n*n, factor=2)-1)
       a = m.transpose_multiply()
       p, e, r = core(a)
       assert approx_equal(e, [0]*n)
   # random matrices
-  for n in xrange(1,6):
+  for n in xrange(1,n_max+1):
     size = n*(n+1)/2
-    for i_trial in xrange(100):
-      a = matrix.sqr(
-        (flex.random_double(size=size, factor=2)-1)
-          .matrix_packed_u_as_symmetric())
-      core(a)
+    for i_trial in xrange(n_trials_per_n):
+      a = (flex.random_double(size=size, factor=2)-1) \
+            .matrix_packed_u_as_symmetric()
+      core(matrix.sqr(a))
+      a.matrix_diagonal_set_in_place(0)
+      core(matrix.sqr(a))
+  # J. Nocedal and S. Wright:
+  # Numerical Optimization.
+  # Springer, New York, 1999, pp. 145-150.
+  for i in xrange(3):
+    for j in xrange(3):
+      a = flex.double([[4,2,1],[2,6,3],[1,3,-0.004]])
+      a.matrix_swap_rows_in_place(i=i, j=j)
+      a.matrix_swap_columns_in_place(i=i, j=j)
+      p, e, r = core(matrix.sqr(a))
+      if (i == 0 and j == 0):
+        assert list(p) == [1,0,2]
+      assert approx_equal(e, [0.0, 0.0, 3.008])
+      assert approx_equal(r,
+        [2.4494897427831779, 0.81649658092772592, 1.2247448713915889,
+         0.0, 1.8257418583505538, 0.0,
+         0.0, 0.0, 1.2263767773404712])
 
 def exercise_matrix_move():
   a = flex.double(flex.grid(0,0))
