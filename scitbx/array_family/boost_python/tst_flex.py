@@ -1388,21 +1388,37 @@ def exercise_matrix():
     flex.double([[1,2,3],[4,5,6],[7,8,9]]).matrix_upper_triangle_as_packed_u(),
     [1,2,3,5,6,9])
   assert approx_equal(
+    flex.double([1,2,3,5,6,9]).matrix_packed_u_as_upper_triangle(),
+    [1,2,3, 0,5,6, 0,0,9])
+  assert approx_equal(
     flex.double([[1,2,3],[4,5,6],[7,8,9]]).matrix_lower_triangle_as_packed_l(),
     [1,4,5,7,8,9])
+  assert approx_equal(
+    flex.double([1,4,5,7,8,9]).matrix_packed_l_as_lower_triangle(),
+    [1,0,0, 4,5,0, 7,8,9])
   m = flex.double(xrange(1,17))
   m.resize(flex.grid(4, 4))
   assert approx_equal(
     m.matrix_upper_triangle_as_packed_u(),
     [1,2,3,4,6,7,8,11,12,16])
   assert approx_equal(
+    flex.double([1,2,3,4,6,7,8,11,12,16])
+      .matrix_packed_u_as_upper_triangle(),
+    [1,2,3,4,0,6,7,8,0,0,11,12,0,0,0,16])
+  assert approx_equal(
     m.matrix_lower_triangle_as_packed_l(),
     [1,5,6,9,10,11,13,14,15,16])
+  assert approx_equal(
+    flex.double([1,5,6,9,10,11,13,14,15,16])
+      .matrix_packed_l_as_lower_triangle(),
+    [1,0,0,0,5,6,0,0,9,10,11,0,13,14,15,16])
   def exercise_packed(n, s, u, l):
     assert s.focus() == (n,n)
     if (u is not None):
       p = s.matrix_upper_triangle_as_packed_u()
       assert approx_equal(p, u)
+      t = p.matrix_packed_u_as_upper_triangle()
+      assert approx_equal(t.matrix_upper_triangle_as_packed_u(), u)
       p = s.matrix_symmetric_as_packed_u()
       assert approx_equal(p, u)
       us = p.matrix_packed_u_as_symmetric()
@@ -1411,6 +1427,8 @@ def exercise_matrix():
     if (l is not None):
       p = s.matrix_lower_triangle_as_packed_l()
       assert approx_equal(p, l)
+      t = p.matrix_packed_l_as_lower_triangle()
+      assert approx_equal(t.matrix_lower_triangle_as_packed_l(), l)
       p = s.matrix_symmetric_as_packed_l()
       assert approx_equal(p, l)
       ls = p.matrix_packed_l_as_symmetric()
@@ -1497,6 +1515,82 @@ def exercise_cholesky_decomposition(a):
     assert approx_equal(cl, c.matrix_lower_triangle_as_packed_l())
   immoptibox_ports.tst_flex_counts += 1
   return c
+
+def exercise_matrix_cholesky_gill_murray_wright():
+  import scitbx.math
+  def p_as_mx(p):
+    n = len(p)
+    m = [0]*n**2
+    for i in xrange(n):
+      m[p[i]*n+i] = 1
+    return matrix.sqr(m)
+  def core(a):
+    c = flex.double(a)
+    c.resize(flex.grid(a.n))
+    u = c.matrix_upper_triangle_as_packed_u()
+    gwm = u.matrix_cholesky_gill_murray_wright()
+    p, e = gwm.pivots, gwm.e
+    r = matrix.sqr(u.matrix_packed_u_as_upper_triangle())
+    rtr = r.transpose() * r
+    pm = p_as_mx(p)
+    ptap = pm.transpose() * a * pm
+    assert approx_equal(ptap+matrix.diag(e), rtr)
+    return p, e, r
+  # empty matrix
+  a = matrix.sqr([])
+  p, e, r = core(a)
+  assert p.size() == 0
+  assert e.size() == 0
+  assert len(r) == 0
+  # identity matrices
+  for n in xrange(1,6):
+    a = matrix.diag([1]*n)
+    p, e, r = core(a)
+    assert list(p) == range(n)
+    assert approx_equal(e, [0]*n)
+    assert approx_equal(r, a)
+  # null matrices
+  for n in xrange(1,6):
+    a = matrix.sqr([0]*n*n)
+    p, e, r = core(a)
+    assert list(p) == range(n)
+    assert list(e) == [scitbx.math.floating_point_epsilon_double_get()]*n
+    for i in xrange(n):
+      for j in xrange(n):
+        if (i != j): r(i,j) == 0
+        else: r(i,j) == r(0,0)
+  # random semi-positive diagonal matrices
+  for n in xrange(1,6):
+    for i_trial in xrange(100):
+      a = matrix.diag(flex.random_double(size=n))
+      p, e, r = core(a)
+      assert approx_equal(e, [0]*n)
+      for i in xrange(n):
+        for j in xrange(n):
+          if (i != j): approx_equal(r(i,j), 0)
+  # random diagonal matrices
+  for n in xrange(1,6):
+    for i_trial in xrange(100):
+      a = matrix.diag(flex.random_double(size=n, factor=2)-1)
+      p, e, r = core(a)
+      for i in xrange(n):
+        for j in xrange(n):
+          if (i != j): approx_equal(r(i,j), 0)
+  # random semi-positive definite matrices
+  for n in xrange(1,6):
+    for i_trial in xrange(100):
+      m = matrix.sqr(flex.random_double(size=n*n, factor=2)-1)
+      a = m.transpose_multiply()
+      p, e, r = core(a)
+      assert approx_equal(e, [0]*n)
+  # random matrices
+  for n in xrange(1,6):
+    size = n*(n+1)/2
+    for i_trial in xrange(100):
+      a = matrix.sqr(
+        (flex.random_double(size=size, factor=2)-1)
+          .matrix_packed_u_as_symmetric())
+      core(a)
 
 def exercise_matrix_move():
   a = flex.double(flex.grid(0,0))
@@ -1829,6 +1923,7 @@ def run(iterations):
     exercise_extract_attributes()
     exercise_exceptions()
     exercise_matrix()
+    exercise_matrix_cholesky_gill_murray_wright()
     exercise_matrix_move()
     exercise_matrix_inversion_in_place()
     exercise_pickle_single_buffered()

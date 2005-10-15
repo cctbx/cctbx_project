@@ -2,9 +2,10 @@
 #include <scitbx/array_family/versa_matrix.h>
 #include <scitbx/matrix/outer_product.h>
 #include <scitbx/matrix/cholesky.h>
-#include <scitbx/matrix/move.h>
 #include <boost/python/args.hpp>
 #include <boost/python/overloads.hpp>
+#include <boost/python/return_value_policy.hpp>
+#include <boost/python/return_by_value.hpp>
 
 namespace scitbx { namespace af {
 
@@ -30,6 +31,26 @@ namespace {
       }
     }
   }
+
+  struct matrix_cholesky_gill_murray_wright_wrappers
+  {
+    typedef matrix::cholesky::gill_murray_wright w_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      typedef return_value_policy<return_by_value> rbv;
+      class_<w_t>("matrix_cholesky_gill_murray_wright_wrappers", no_init)
+        .def(init<ref<double> const&>(arg_("u")))
+        .add_property("e", make_getter(&w_t::e, rbv()))
+        .add_property("pivots", make_getter(&w_t::pivots, rbv()))
+      ;
+    }
+
+    static w_t
+    factory(ref<double> const& u) { return w_t(u); }
+  };
 
   bool
   is_square_matrix(
@@ -58,6 +79,7 @@ namespace boost_python {
     flex_wrapper<double>::class_f_t& class_f_t)
   {
     exercise_packed_u_accessor();
+    matrix_cholesky_gill_murray_wright_wrappers::wrap();
 
     using namespace boost::python;
 
@@ -146,10 +168,18 @@ namespace boost_python {
         (af::shared<double>(*)(
           const_ref<double, c_grid<2> > const&))
             matrix::upper_triangle_as_packed_u)
+      .def("matrix_packed_u_as_upper_triangle",
+        (af::versa<double, c_grid<2> >(*)(
+          const_ref<double> const&))
+            matrix::packed_u_as_upper_triangle)
       .def("matrix_lower_triangle_as_packed_l",
         (af::shared<double>(*)(
           const_ref<double, c_grid<2> > const&))
             matrix::lower_triangle_as_packed_l)
+      .def("matrix_packed_l_as_lower_triangle",
+        (af::versa<double, c_grid<2> >(*)(
+          const_ref<double> const&))
+            matrix::packed_l_as_lower_triangle)
       .def("matrix_symmetric_as_packed_u",
         (af::shared<double>(*)(
           const_ref<double, af::c_grid<2> > const&, double const&))
@@ -179,6 +209,8 @@ namespace boost_python {
               matrix_cholesky_decomposition_overloads((
                 arg_("self"),
                 arg_("relative_epsilon")=1.e-15)))
+      .def("matrix_cholesky_gill_murray_wright",
+        matrix_cholesky_gill_murray_wright_wrappers::factory)
       .def("matrix_copy_upper_to_lower_triangle_in_place",
         (void(*)(
           ref<double, c_grid<2> > const&))
