@@ -1,0 +1,19 @@
+import libtbx.load_env
+import os
+Import("env_base", "env_etc")
+
+env_etc.chiltbx_dist = libtbx.env.dist_path("chiltbx")
+env_etc.chiltbx_include = os.path.dirname(env_etc.chiltbx_dist)
+env_etc.chiltbx_common_includes = [
+  env_etc.chiltbx_include,
+]
+
+env = env_base.Copy(
+  CXXFLAGS=env_etc.cxxflags_base,
+)
+env_etc.include_registry.append(
+  env=env,
+  paths=env_etc.chiltbx_common_includes)
+env.Program(target="handle_test", source="handle_test.cpp")
+#env.Program(target="grammar/test", source="grammar/test.cpp")
+#env.Program(target="chil/test", source="chil/test.cpp")
