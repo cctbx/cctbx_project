@@ -169,8 +169,8 @@ class damped_newton:
       fdp = function.hessian(x=x)
       number_of_hessian_evaluations += 1
       if (mu is None):
-        mu = tau * flex.max(fdp.matrix_diagonal())
-        if (mu < floating_point_epsilon_double**0.5):
+        mu = tau * flex.max(flex.abs(fdp))
+        if (mu == 0):
           mu = fp.norm()/max(x.norm(), floating_point_epsilon_double**0.5)
       while True:
         fdp_plus_mu = fdp.deep_copy()
@@ -378,6 +378,7 @@ class test_function:
       self.exercise_levenberg_marquardt()
     self.exercise_minpack_levenberg_marquardt()
     self.exercise_damped_newton()
+    self.exercise_scitbx_minimizers_damped_newton()
     self.exercise_lbfgs()
     if (isinstance(self, meyer_function) and sys.platform == "irix6"):
       print "Skipping: exercise_lbfgsb() with", self.__class__.__name__
@@ -491,6 +492,14 @@ class test_function:
     self.check_minimized(minimized=minimized)
     if (self.verbose): print
 
+  def exercise_scitbx_minimizers_damped_newton(self):
+    import scitbx.minimizers
+    minimized = scitbx.minimizers.damped_newton(
+      function=self, x0=self.x0, tau=self.tau0)
+    if (self.verbose): minimized.show_statistics()
+    self.check_minimized(minimized=minimized)
+    if (self.verbose): print
+
   def exercise_lbfgs(self):
     minimized = lbfgs_adaptor(function=self, x0=self.x0)
     if (self.verbose): minimized.show_statistics()
@@ -528,6 +537,9 @@ class linear_function_full_rank(test_function):
     self.delta0 = 10
     self.x_star = flex.double(self.n, -1)
     self.capital_f_x_star = 0.5 * (self.m - self.n)
+
+  def label(self):
+    return "%s(m=%d, n=%d)" % (self.__class__.__name__, self.m, self.n)
 
   def f(self, x):
     return self.a.matrix_multiply(x) - flex.double(self.m, 1)

@@ -1513,6 +1513,18 @@ def exercise_cholesky_decomposition(a):
     assert cl.size() == 0
   else:
     assert approx_equal(cl, c.matrix_lower_triangle_as_packed_l())
+    cu = cl.matrix_packed_l_as_symmetric().matrix_symmetric_as_packed_u()
+    for i_trial in xrange(10):
+      b = flex.random_double(size=a.focus()[0], factor=2)-1
+      x = cu.matrix_cholesky_solve_packed_u(b=b)
+      assert approx_equal(a.matrix_multiply(x), b)
+      if (i_trial == 0):
+        pivots = flex.size_t(xrange(b.size()))
+      else:
+        pivots = flex.random_permutation(size=b.size())
+      xp = cu.matrix_cholesky_solve_packed_u(
+        b=b.select(pivots, reverse=True), pivots=pivots).select(pivots)
+      assert approx_equal(xp, x)
   immoptibox_ports.tst_flex_counts += 1
   return c
 
@@ -1529,12 +1541,18 @@ def exercise_matrix_cholesky_gill_murray_wright():
     c.resize(flex.grid(a.n))
     u = c.matrix_upper_triangle_as_packed_u()
     gwm = u.matrix_cholesky_gill_murray_wright_decomposition_in_place()
+    assert gwm.packed_u.id() == u.id()
     p, e = gwm.pivots, gwm.e
     r = matrix.sqr(u.matrix_packed_u_as_upper_triangle())
     rtr = r.transpose() * r
     pm = p_as_mx(p)
     ptap = pm.transpose() * a * pm
-    assert approx_equal(ptap+matrix.diag(e), rtr)
+    ptaep = ptap + matrix.diag(e)
+    assert approx_equal(ptaep, rtr)
+    b = flex.random_double(size=a.n[0], factor=2)-1
+    x = gwm.solve(b=b)
+    ae = pm * ptaep * pm.transpose()
+    assert approx_equal(ae*matrix.col(x), b)
     return p, e, r
   # empty matrix
   a = matrix.sqr([])

@@ -50,6 +50,74 @@ namespace scitbx { namespace matrix { namespace cholesky {
     return result;
   }
 
+  template <typename FloatType>
+  af::shared<FloatType>
+  solve_packed_u(
+    af::const_ref<FloatType> const& u,
+    af::const_ref<FloatType> const& b)
+  {
+    unsigned n = symmetric_n_from_packed_size(u.size());
+    SCITBX_ASSERT(b.size() == n);
+    af::shared<FloatType> result(n, af::init_functor_null<FloatType>());
+    std::vector<FloatType> z;
+    z.reserve(n);
+    for(unsigned k=0;k<n;k++) {
+      FloatType sum = 0;
+      unsigned jk = k;
+      for(unsigned j=0;j<k;j++,jk+=(n-j)) {
+        sum += u[jk] * z[j];
+      }
+      z.push_back((b[k] - sum) / u[jk]);
+    }
+    FloatType* x = result.begin();
+    unsigned i_u = static_cast<unsigned>(u.size());
+    for(unsigned k=n;(k--)>0;) {
+      FloatType sum = 0;
+      for(unsigned j=n;--j>k;) {
+        sum += u[--i_u] * x[j];
+      }
+      x[k] = (z[k] - sum) / u[--i_u];
+    }
+    return result;
+  }
+
+  template <typename FloatType, typename PivotType>
+  af::shared<FloatType>
+  solve_packed_u(
+    af::const_ref<FloatType> const& u,
+    af::const_ref<FloatType> const& b,
+    af::const_ref<PivotType> const& pivots)
+  {
+    unsigned n = symmetric_n_from_packed_size(u.size());
+    SCITBX_ASSERT(b.size() == n);
+    SCITBX_ASSERT(pivots.size() == n);
+    af::shared<FloatType> z_(n, af::init_functor_null<FloatType>());
+    FloatType* z = z_.begin();
+    for(unsigned k=0;k<n;k++) {
+      FloatType sum = 0;
+      unsigned jk = k;
+      for(unsigned j=0;j<k;j++,jk+=(n-j)) {
+        sum += u[jk] * z[j];
+      }
+      SCITBX_ASSERT(pivots[k] < n);
+      z[k] = (b[pivots[k]] - sum) / u[jk];
+    }
+    af::shared<FloatType> x_(n, af::init_functor_null<FloatType>());
+    FloatType* x = x_.begin();
+    unsigned i_u = static_cast<unsigned>(u.size());
+    for(unsigned k=n;(k--)>0;) {
+      FloatType sum = 0;
+      for(unsigned j=n;--j>k;) {
+        sum += u[--i_u] * x[j];
+      }
+      x[k] = (z[k] - sum) / u[--i_u];
+    }
+    for(unsigned k=0;k<n;k++) {
+      z_[pivots[k]] = x_[k];
+    }
+    return z_;
+  }
+
   //! Computes P^{T}AP + E = LDL^{T}
   /*! P. E. Gill, W. Murray, and M. H. Wright:
       Practical Optimization.
@@ -66,14 +134,18 @@ namespace scitbx { namespace matrix { namespace cholesky {
    */
   struct gill_murray_wright_decomposition_in_place
   {
+    af::shared<double> packed_u;
     af::shared<double> e;
     af::shared<std::size_t> pivots;
 
     gill_murray_wright_decomposition_in_place() {}
 
     gill_murray_wright_decomposition_in_place(
-      af::ref<double> const& u)
+      af::shared<double> const& packed_u_)
+    :
+      packed_u(packed_u_)
     {
+      af::ref<double> u = packed_u.ref();
       unsigned n = symmetric_n_from_packed_size(u.size());
       e.resize(n);
       pivots.reserve(n);
@@ -175,6 +247,12 @@ namespace scitbx { namespace matrix { namespace cholesky {
           u[ij++] *= ujj;
         }
       }
+    }
+
+    af::shared<double>
+    solve(af::const_ref<double> const& b) const
+    {
+      return solve_packed_u(packed_u.const_ref(), b, pivots.const_ref());
     }
   };
 
