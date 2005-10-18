@@ -814,6 +814,12 @@ i_seq: 2
     x,y,z
     y,-x+1,z
 """
+  #
+  sym_table = crystal.pair_sym_table(5)
+  sym_table[0].setdefault(2)
+  sym_table[3].setdefault(3)
+  assert [sym_table.is_paired(i_seq=i_seq) for i_seq in xrange(5)] \
+      == [True, False, True, True, False]
 
 class adp_iso_local_sphere_restraints_energies_functor(object):
 
