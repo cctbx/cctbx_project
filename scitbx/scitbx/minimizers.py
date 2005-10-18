@@ -13,6 +13,7 @@ class damped_newton:
         tau=1.e-3,
         eps_1=1.e-16,
         eps_2=1.e-16,
+        mu_min=1.e-300,
         k_max=1000):
     self.function = function
     x = x0
@@ -36,7 +37,8 @@ class damped_newton:
         if (mu == 0):
           mu = fp.norm()/max(x.norm(), floating_point_epsilon_double**0.5)
       fdp_plus_mu = fdp.deep_copy()
-      fdp_plus_mu.matrix_diagonal_add_in_place(value=mu)
+      if (mu > mu_min):
+        fdp_plus_mu.matrix_diagonal_add_in_place(value=mu)
       u = fdp_plus_mu.matrix_symmetric_as_packed_u()
       gmw = u.matrix_cholesky_gill_murray_wright_decomposition_in_place()
       number_of_cholesky_decompositions += 1
@@ -67,7 +69,10 @@ class damped_newton:
           accept = 2
       if (accept != 0):
         if (accept == 1 and dl > 0):
-          mu *= max(1/3, 1 - (2*df/dl - 1)**3)
+          if (mu > mu_min):
+            mu *= max(1/3, 1 - (2*df/dl - 1)**3)
+          else:
+            mu = mu_min
           nu = 2
         else:
           mu *= nu
