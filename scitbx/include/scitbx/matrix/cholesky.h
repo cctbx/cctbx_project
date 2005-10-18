@@ -132,29 +132,36 @@ namespace scitbx { namespace matrix { namespace cholesky {
         http://lib.stat.cmu.edu/S/glm
         file: dmcdc.r
    */
+  template <typename FloatType=double, typename PivotType=std::size_t>
   struct gill_murray_wright_decomposition_in_place
   {
-    af::shared<double> packed_u;
-    af::shared<double> e;
-    af::shared<std::size_t> pivots;
+    FloatType epsilon;
+    af::shared<FloatType> packed_u;
+    af::shared<FloatType> e;
+    af::shared<PivotType> pivots;
 
     gill_murray_wright_decomposition_in_place() {}
 
     gill_murray_wright_decomposition_in_place(
-      af::shared<double> const& packed_u_)
+      af::shared<FloatType> const& packed_u_,
+      FloatType const& epsilon_=0)
     :
+      epsilon(epsilon_),
       packed_u(packed_u_)
     {
-      af::ref<double> u = packed_u.ref();
+      typedef FloatType f_t;
+      static FloatType
+        floating_point_epsilon = math::floating_point_epsilon<f_t>::get();
+      if (epsilon <= 0) epsilon = floating_point_epsilon;
+      af::ref<f_t> u = packed_u.ref();
       unsigned n = symmetric_n_from_packed_size(u.size());
       e.resize(n);
       pivots.reserve(n);
       for(unsigned i=0;i<n;i++) {
         pivots.push_back(i);
       }
-      double fp_eps = math::floating_point_epsilon<double>::get();
-      double gamma = 0;
-      double chi = 0;
+      f_t gamma = 0;
+      f_t chi = 0;
       unsigned ij = 0;
       for(unsigned i=0;i<n;i++) {
         gamma = std::max(gamma, fn::absolute(u[ij++]));
@@ -162,10 +169,10 @@ namespace scitbx { namespace matrix { namespace cholesky {
           chi = std::max(chi, fn::absolute(u[ij++]));
         }
       }
-      double delta = fp_eps * std::max(gamma + chi, static_cast<double>(1));
-      double beta_sq = std::max(gamma, fp_eps);
+      f_t delta = epsilon * std::max(gamma+chi, static_cast<f_t>(1));
+      f_t beta_sq = std::max(gamma, epsilon);
       if (n > 1) {
-        beta_sq = std::max(beta_sq, chi/std::sqrt(static_cast<double>(n*n-1)));
+        beta_sq = std::max(beta_sq, chi/std::sqrt(static_cast<f_t>(n*n-1)));
       }
       unsigned jj = 0;
       for(unsigned j=0;j<n;j++) {
@@ -173,10 +180,10 @@ namespace scitbx { namespace matrix { namespace cholesky {
         {
           unsigned jmax = j;
           unsigned ii = jj;
-          double uii_max = fn::absolute(u[ii]);
+          f_t uii_max = fn::absolute(u[ii]);
           ii += (n-j);
           for(unsigned i=j+1;i<n;ii+=(n-i),i++) {
-            double uii = fn::absolute(u[ii]);
+            f_t uii = fn::absolute(u[ii]);
             if (uii_max < uii) {
                 uii_max = uii;
                 jmax = i;
@@ -199,7 +206,7 @@ namespace scitbx { namespace matrix { namespace cholesky {
         {
           unsigned kj = j;
           for(unsigned k=0;k<j;k++,kj+=(n-k)) {
-            double f = u[kj];
+            f_t f = u[kj];
             unsigned ki = kj;
             unsigned ji = jj;
             for(unsigned i=j;++i<n;) {
@@ -208,7 +215,7 @@ namespace scitbx { namespace matrix { namespace cholesky {
           }
         }
         // specify theta
-        double theta_sq;
+        f_t theta_sq;
         if (j+1 == n) {
           theta_sq = 0;
         }
@@ -216,7 +223,7 @@ namespace scitbx { namespace matrix { namespace cholesky {
           unsigned jk = jj;
           theta_sq = fn::absolute(u[++jk]);
           for(unsigned k=j+2;k<n;k++) {
-            double aajk = fn::absolute(u[++jk]);
+            f_t aajk = fn::absolute(u[++jk]);
             if (theta_sq < aajk) {
                 theta_sq = aajk;
             }
@@ -225,7 +232,7 @@ namespace scitbx { namespace matrix { namespace cholesky {
         }
         // compute diagonal (j,j)
         {
-          double f =
+          f_t f =
             std::max(delta, std::max(fn::absolute(u[jj]), theta_sq/beta_sq));
           e[j] = f - u[jj];
           u[jj] = f;
@@ -241,7 +248,7 @@ namespace scitbx { namespace matrix { namespace cholesky {
       // scale
       ij = 0;
       for(unsigned i=0;i<n;i++) {
-        double ujj = u[ij] = std::sqrt(u[ij]);
+        f_t ujj = u[ij] = std::sqrt(u[ij]);
         ij++;
         for(unsigned j=i+1;j<n;j++) {
           u[ij++] *= ujj;
@@ -249,8 +256,8 @@ namespace scitbx { namespace matrix { namespace cholesky {
       }
     }
 
-    af::shared<double>
-    solve(af::const_ref<double> const& b) const
+    af::shared<FloatType>
+    solve(af::const_ref<FloatType> const& b) const
     {
       return solve_packed_u(packed_u.const_ref(), b, pivots.const_ref());
     }
