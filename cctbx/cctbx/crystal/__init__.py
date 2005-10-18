@@ -528,6 +528,12 @@ class _pair_sym_table(boost.python.injector, pair_sym_table):
         result[j_seq].insert(i_seq)
     return result
 
+  def is_paired(self, i_seq):
+    if (self[i_seq].size() != 0): return True
+    for pair_sym_dict in self:
+      if (i_seq in pair_sym_dict): return True
+    return False
+
 class _clustering_mix_in(object):
 
   def sites_cart(self):
