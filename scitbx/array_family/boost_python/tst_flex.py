@@ -1540,7 +1540,12 @@ def exercise_matrix_cholesky_gill_murray_wright():
     c = flex.double(a)
     c.resize(flex.grid(a.n))
     u = c.matrix_upper_triangle_as_packed_u()
+    gwm = u.matrix_cholesky_gill_murray_wright_decomposition_in_place(
+      epsilon=1.e-8)
+    assert gwm.epsilon == 1.e-8
+    u = c.matrix_upper_triangle_as_packed_u()
     gwm = u.matrix_cholesky_gill_murray_wright_decomposition_in_place()
+    assert gwm.epsilon == scitbx.math.floating_point_epsilon_double_get()
     assert gwm.packed_u.id() == u.id()
     p, e = gwm.pivots, gwm.e
     r = matrix.sqr(u.matrix_packed_u_as_upper_triangle())

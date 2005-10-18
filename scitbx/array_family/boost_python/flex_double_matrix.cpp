@@ -34,7 +34,7 @@ namespace {
 
   struct matrix_cholesky_gill_murray_wright_decomposition_in_place_wrappers
   {
-    typedef matrix::cholesky::gill_murray_wright_decomposition_in_place w_t;
+    typedef matrix::cholesky::gill_murray_wright_decomposition_in_place<> w_t;
 
     static void
     wrap()
@@ -43,6 +43,7 @@ namespace {
       typedef return_value_policy<return_by_value> rbv;
       class_<w_t>(
         "matrix_cholesky_gill_murray_wright_decomposition_in_place", no_init)
+        .def_readonly("epsilon", &w_t::epsilon)
         .add_property("packed_u", make_getter(&w_t::packed_u, rbv()))
         .add_property("e", make_getter(&w_t::e, rbv()))
         .add_property("pivots", make_getter(&w_t::pivots, rbv()))
@@ -51,7 +52,18 @@ namespace {
     }
 
     static w_t
-    factory(af::shared<double> const& packed_u) { return w_t(packed_u); }
+    factory_0(
+      af::shared<double> const& packed_u)
+    {
+      return w_t(packed_u);
+    }
+
+    static w_t
+    factory_1(
+      af::shared<double> const& packed_u, double epsilon)
+    {
+      return w_t(packed_u, epsilon);
+    }
   };
 
   bool
@@ -226,7 +238,10 @@ namespace boost_python {
               (arg_("self"), arg_("b"), arg_("pivots")))
       .def("matrix_cholesky_gill_murray_wright_decomposition_in_place",
         matrix_cholesky_gill_murray_wright_decomposition_in_place_wrappers
-          ::factory)
+          ::factory_0)
+      .def("matrix_cholesky_gill_murray_wright_decomposition_in_place",
+        matrix_cholesky_gill_murray_wright_decomposition_in_place_wrappers
+          ::factory_1, (arg_("self"), arg_("epsilon")))
       .def("matrix_copy_upper_to_lower_triangle_in_place",
         (void(*)(
           ref<double, c_grid<2> > const&))
