@@ -43,13 +43,15 @@ namespace {
       typedef return_value_policy<return_by_value> rbv;
       class_<w_t>(
         "matrix_cholesky_gill_murray_wright_decomposition_in_place", no_init)
+        .add_property("packed_u", make_getter(&w_t::packed_u, rbv()))
         .add_property("e", make_getter(&w_t::e, rbv()))
         .add_property("pivots", make_getter(&w_t::pivots, rbv()))
+        .def("solve", &w_t::solve, (arg_("b")))
       ;
     }
 
     static w_t
-    factory(ref<double> const& u) { return w_t(u); }
+    factory(af::shared<double> const& packed_u) { return w_t(packed_u); }
   };
 
   bool
@@ -209,6 +211,19 @@ namespace boost_python {
               matrix_cholesky_decomposition_overloads((
                 arg_("self"),
                 arg_("relative_epsilon")=1.e-15)))
+      .def("matrix_cholesky_solve_packed_u",
+        (af::shared<double>(*)(
+          const_ref<double> const&,
+          const_ref<double> const&))
+            matrix::cholesky::solve_packed_u,
+              (arg_("self"), arg_("b")))
+      .def("matrix_cholesky_solve_packed_u",
+        (af::shared<double>(*)(
+          const_ref<double> const&,
+          const_ref<double> const&,
+          const_ref<std::size_t> const&))
+            matrix::cholesky::solve_packed_u,
+              (arg_("self"), arg_("b"), arg_("pivots")))
       .def("matrix_cholesky_gill_murray_wright_decomposition_in_place",
         matrix_cholesky_gill_murray_wright_decomposition_in_place_wrappers
           ::factory)
