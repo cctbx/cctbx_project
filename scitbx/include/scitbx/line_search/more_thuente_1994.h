@@ -110,4 +110,4 @@ namespace scitbx { namespace line_search {
 
 }} // namespace scitbx::line_search
 
-#endif SCITBX_LINE_SEARCH_MORE_THUENTE_1994_H
+#endif // SCITBX_LINE_SEARCH_MORE_THUENTE_1994_H
