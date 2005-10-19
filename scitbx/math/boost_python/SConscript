@@ -15,5 +15,6 @@ env.SharedLibrary(
     "tensor_rank_2.cpp",
     "chebyshev.cpp",
     "icosahedron.cpp",
-    "slatec.cpp"]
+    "slatec.cpp",
+    "line_search.cpp"]
 )

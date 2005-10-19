@@ -28,3 +28,19 @@ class _basic_statistics(boost.python.injector, ext.basic_statistics):
         print >> f, prefix+"skew:", self.skew
         print >> f, prefix+"kurtosis:", self.kurtosis
         print >> f, prefix+"kurtosis_excess:", self.kurtosis_excess
+
+class _line_search_more_thuente_1994(
+        boost.python.injector, ext.line_search_more_thuente_1994):
+
+  def show_status(self, f=None, prefix=""):
+    if (f is None): f = sys.stdout
+    print >> f, prefix+"xtol:", self.xtol
+    print >> f, prefix+"ftol:", self.ftol
+    print >> f, prefix+"gtol:", self.gtol
+    print >> f, prefix+"stpmin:", self.stpmin
+    print >> f, prefix+"stpmax:", self.stpmax
+    print >> f, prefix+"maxfev:", self.maxfev
+    print >> f, prefix+"info_code:", self.info_code
+    print >> f, prefix+"info_meaning:", self.info_meaning
+    print >> f, prefix+"stp:", self.stp
+    print >> f, prefix+"nfev:", self.nfev

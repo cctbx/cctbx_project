@@ -374,21 +374,34 @@ class test_function:
     if (self.x_star is not None):
       assert approx_equal(
         0.5*self.f(x=self.x_star).norm()**2, self.capital_f_x_star)
-    if (tntbx is not None):
+    if (1 and tntbx is not None):
       self.exercise_levenberg_marquardt()
-    self.exercise_minpack_levenberg_marquardt()
-    self.exercise_damped_newton()
-    self.exercise_scitbx_minimizers_damped_newton()
-    self.exercise_lbfgs()
-    if (isinstance(self, meyer_function) and sys.platform == "irix6"):
-      print "Skipping: exercise_lbfgsb() with", self.__class__.__name__
-    else:
-      self.exercise_lbfgsb()
-    if (knitro_adaptbx is not None):
+    if (1):
+      self.exercise_minpack_levenberg_marquardt()
+    if (1):
+      self.exercise_damped_newton()
+    if (1):
+      self.exercise_scitbx_minimizers_damped_newton()
+    if (1):
+      self.exercise_scitbx_minimizers_newton_more_thuente_1994()
+    if (1):
+      self.exercise_lbfgs()
+    if (1):
+      self.exercise_lbfgs()
+    if (1):
+      if (isinstance(self, meyer_function) and sys.platform == "irix6"):
+        print "Skipping: exercise_lbfgsb() with", self.__class__.__name__
+      else:
+        self.exercise_lbfgsb()
+    if (1 and knitro_adaptbx is not None):
       self.exercise_knitro_adaptbx()
 
   def label(self):
     return self.__class__.__name__
+
+  def functional(self, x=None, f_x=None):
+    if (f_x is None): f_x = self.f(x=x)
+    return 0.5*flex.sum_sq(f_x)
 
   def jacobian_finite(self, x, relative_eps=1.e-8):
     x0 = x
@@ -421,7 +434,7 @@ class test_function:
       for signed_eps in [eps, -eps]:
         x = x0.deep_copy()
         x[i] += signed_eps
-        fs.append(0.5*flex.sum_sq(self.f(x=x)))
+        fs.append(self.functional(x=x))
       result.append((fs[0]-fs[1])/(2*eps))
     return result
 
@@ -496,6 +509,14 @@ class test_function:
     import scitbx.minimizers
     minimized = scitbx.minimizers.damped_newton(
       function=self, x0=self.x0, tau=self.tau0)
+    if (self.verbose): minimized.show_statistics()
+    self.check_minimized(minimized=minimized)
+    if (self.verbose): print
+
+  def exercise_scitbx_minimizers_newton_more_thuente_1994(self):
+    import scitbx.minimizers
+    minimized = scitbx.minimizers.newton_more_thuente_1994(
+      function=self, x0=self.x0)
     if (self.verbose): minimized.show_statistics()
     self.check_minimized(minimized=minimized)
     if (self.verbose): print
