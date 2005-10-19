@@ -387,8 +387,6 @@ class test_function:
     if (1):
       self.exercise_lbfgs()
     if (1):
-      self.exercise_lbfgs()
-    if (1):
       if (isinstance(self, meyer_function) and sys.platform == "irix6"):
         print "Skipping: exercise_lbfgsb() with", self.__class__.__name__
       else:
