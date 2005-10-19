@@ -42,13 +42,7 @@ class damped_newton:
       u = fdp_plus_mu.matrix_symmetric_as_packed_u()
       gmw = u.matrix_cholesky_gill_murray_wright_decomposition_in_place()
       number_of_cholesky_decompositions += 1
-      h_dn_ = u.matrix_cholesky_solve_packed_u(
-        b=-fp.select(gmw.pivots)).select(gmw.pivots, reverse=True)
-      h_dn = u.matrix_cholesky_solve_packed_u(b=-fp, pivots=gmw.pivots)
-      from libtbx.test_utils import approx_equal
-      assert approx_equal(h_dn, h_dn_)
       h_dn = gmw.solve(b=-fp)
-      assert approx_equal(h_dn, h_dn_)
       if (h_dn.norm() <= eps_2*(eps_2 + x.norm())):
         break
       x_new = x + h_dn
@@ -108,3 +102,87 @@ class damped_newton:
         self.number_of_hessian_evaluations
     print "  number_of_cholesky_decompositions:", \
         self.number_of_cholesky_decompositions
+
+class newton_more_thuente_1994:
+
+  def __init__(self,
+        function,
+        x0,
+        xtol=None,
+        gtol=None,
+        ftol=None,
+        stpmin=None,
+        stpmax=None,
+        eps_1=1.e-16,
+        eps_2=1.e-16,
+        k_max=1000):
+    self.function = function
+    x = x0
+    f_x = function.f(x=x)
+    number_of_function_evaluations = 1
+    self.f_x0 = f_x
+    fp = function.gradients(x=x, f_x=f_x)
+    number_of_gradient_evaluations = 1
+    number_of_hessian_evaluations = 0
+    number_of_cholesky_decompositions = 0
+    line_search = scitbx.math.line_search_more_thuente_1994()
+    if (xtol is not None): line_search.xtol = xtol
+    if (ftol is not None): line_search.ftol = ftol
+    if (gtol is not None): line_search.gtol = gtol
+    if (stpmin is not None): line_search.stpmin = stpmin
+    if (stpmax is not None): line_search.stpmax = stpmax
+    k = 0
+    while (k < k_max):
+      if (flex.max(flex.abs(fp)) <= eps_1):
+        break
+      fdp = function.hessian(x=x)
+      number_of_hessian_evaluations += 1
+      u = fdp.matrix_symmetric_as_packed_u()
+      gmw = u.matrix_cholesky_gill_murray_wright_decomposition_in_place()
+      number_of_cholesky_decompositions += 1
+      h_dn = gmw.solve(b=-fp)
+      line_search.start(
+        x=x,
+        functional=function.functional(f_x=f_x),
+        gradients=fp,
+        search_direction=h_dn,
+        initial_estimate_of_satisfactory_step_length=1)
+      while (line_search.info_code == -1):
+        f_x = function.f(x=x)
+        number_of_function_evaluations += 1
+        fp = function.gradients(x=x, f_x=f_x)
+        number_of_gradient_evaluations += 1
+        line_search.next(
+          x=x,
+          functional=function.functional(f_x=f_x),
+          gradients=fp)
+      h_dn *= line_search.stp
+      k += 1
+      if (h_dn.norm() <= eps_2*(eps_2 + x.norm())):
+        break
+    self.x_star = x
+    self.f_x_star = f_x
+    self.number_of_iterations = k
+    self.number_of_function_evaluations = number_of_function_evaluations
+    self.number_of_gradient_evaluations = number_of_gradient_evaluations
+    self.number_of_hessian_evaluations = number_of_hessian_evaluations
+    self.number_of_cholesky_decompositions = number_of_cholesky_decompositions
+    self.line_search_info = line_search.info_meaning
+
+  def show_statistics(self):
+    print "scitbx.minimizers.newton_more_thuente_1994 results:"
+    print "  function:", self.function.label()
+    print "  x_star:", list(self.x_star)
+    print "  0.5*f_x0.norm()**2:", 0.5*self.f_x0.norm()**2
+    print "  0.5*f_x_star.norm()**2:", 0.5*self.f_x_star.norm()**2
+    print "  number_of_iterations:", self.number_of_iterations
+    print "  number_of_function_evaluations:", \
+        self.number_of_function_evaluations
+    print "  number_of_gradient_evaluations:", \
+        self.number_of_gradient_evaluations
+    print "  number_of_hessian_evaluations:", \
+        self.number_of_hessian_evaluations
+    print "  number_of_cholesky_decompositions:", \
+        self.number_of_cholesky_decompositions
+    print "  line_search_info:", \
+        self.line_search_info

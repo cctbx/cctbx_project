@@ -30,6 +30,7 @@ namespace boost_python {
   void wrap_chebyshev_fitter();
   void wrap_chebyshev_lsq();
   void wrap_slatec();
+  void wrap_line_search();
 
 namespace {
 
@@ -149,6 +150,7 @@ namespace {
     wrap_chebyshev_fitter();
     wrap_chebyshev_lsq();
     wrap_slatec();
+    wrap_line_search();
 
     def("time_eigensystem_real_symmetric", time_eigensystem_real_symmetric);
 
