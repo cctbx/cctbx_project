@@ -761,8 +761,8 @@ namespace scitbx { namespace af { namespace boost_python {
             af::const_ref<std::size_t> const&,
             e_t const&)) set_selected_unsigned_s)
       ;
-      if (   boost::python::type_info(typeid(af::const_ref<std::size_t>))
-          != boost::python::type_info(typeid(af::const_ref<unsigned>))) {
+      if (   boost::python::type_id<af::const_ref<std::size_t> >()
+          != boost::python::type_id<af::const_ref<unsigned> >()) {
         result
           .def("set_selected",
             (object(*)(
