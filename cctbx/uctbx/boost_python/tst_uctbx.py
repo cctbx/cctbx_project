@@ -416,7 +416,17 @@ def exercise_box_frac_around_sites():
           assert not_approx_equal(min_, min0)
           assert not_approx_equal(max_, max0)
 
+def exercise_non_crystallographic_unit_cell_with_the_sites_in_its_center():
+  sites_cart = flex.vec3_double([(-5.,-5.,-5.)])
+  box = uctbx.non_crystallographic_unit_cell_with_the_sites_in_its_center(
+                    sites_cart   = sites_cart,
+                    buffer_layer = 5)
+  assert box.unit_cell.parameters() == (10, 10, 10, 90, 90, 90)
+  assert list(box.sites_cart) == [(5.0, 5.0, 5.0)]
+
+
 def run():
+  exercise_non_crystallographic_unit_cell_with_the_sites_in_its_center()
   exercise_functions()
   exercise_basic()
   exercise_frac_orth()
