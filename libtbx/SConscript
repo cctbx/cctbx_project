@@ -45,6 +45,12 @@ env_etc.include_registry = libtbx.config.include_registry() \
 compiler = libtbx.env.build_options.compiler
 if (sys.platform == "win32"):
   env_etc.compiler = "win32_cl"
+elif (sys.platform.startswith("sunos")):
+  if (compiler == "default"):
+    env_etc.compiler = "sunos_CC"
+  else:
+    env_etc.compiler = "unix_"+compiler
+    compiler = None
 elif (sys.platform.startswith("osf")):
   if (compiler == "default"):
     env_etc.compiler = "tru64_cxx"
@@ -74,6 +80,7 @@ if (compiler not in ("default", None)):
   raise RuntimeError("Compiler not supported on this platform: %s" % compiler)
 supported_compilers = (
   "win32_cl",
+  "sunos_CC",
   "unix_gcc",
   "unix_ecc",
   "unix_icc",
@@ -174,6 +181,38 @@ else:
       if (line == "lock_registry"):
         env_etc.shlinkflags += " -Wl,-lock_registry"
         break
+    env_etc.shlinkflags_bpl = env_etc.shlinkflags
+  elif (env_etc.compiler == "sunos_CC"):
+    env_etc.static_libraries = 0
+    env_etc.static_bpl = 0
+    # boost compilation fails under Sun compilers (M.D. Winn, 2005 Oct)
+    env_etc.no_boost_python = 1
+    cxx = "CC"
+    env_base.Replace(
+      CC="cc",
+      SHCC="cc",
+      CXX=cxx,
+      LINK=cxx,
+      SHCXX=cxx,
+      SHLINK=cxx,
+    )
+    env_etc.cxxflags_base = Split("""
+    """)
+    env_etc.ccflags_base = Split("""
+    """)
+    if (libtbx.env.build_options.optimization):
+      opts = ["-O"]
+    else:
+      opts = ["-O0"]
+    if (libtbx.env.build_options.debug_symbols):
+      opts.insert(0, "-g")
+    env_etc.cxxflags_base.extend(opts)
+    env_etc.ccflags_base.extend(opts)
+    if (static_exe):
+      env_base.Prepend(LINKFLAGS=[""])
+      static_exe = None
+    env_etc.shlinkflags = "-shared -expect_unresolved 'Py*'" \
+                        + " -expect_unresolved '_Py*'"
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
   elif (env_etc.compiler == "unix_gcc"):
     env_etc.static_libraries = 0
@@ -352,8 +391,15 @@ else:
     env_etc.ccflags_base = Split("""
       -w
     """)
+    cxx_version = os.popen("c++ -dumpversion").read().strip()
+    cxx_major = cxx_version.split(".")[:1]
+    if (len(cxx_major) == 1):
+      try: cxx_major = int(cxx_major[0])
+      except ValueError: pass
     if (libtbx.env.build_options.optimization):
       opts = ["-DNDEBUG", "-O3", "-ffast-math"]
+      if (cxx_version == "4.0.0"):
+        opts[1] = "-O2" # Apple's optimizer is broken
     else:
       opts = ["-O0", "-fno-inline"]
     if (libtbx.env.build_options.debug_symbols):
@@ -366,6 +412,9 @@ else:
       "-bundle",
       "-F"+darwin_framework_path(),
       "-framework", "Python"]
+    if (static_exe):
+      # no action required
+      static_exe = None
   elif (env_etc.compiler == "darwin_c++"):
     env_etc.static_libraries = 1
     env_etc.static_bpl = 0
@@ -419,6 +468,9 @@ else:
       "-bundle",
       "-F"+darwin_framework_path(),
       "-framework", "Python"]
+    if (static_exe):
+      # no action required
+      static_exe = None
   else:
     sys.tracebacklimit = 0
     raise RuntimeError("Unknown compiler choice: %s" % env_etc.compiler)
