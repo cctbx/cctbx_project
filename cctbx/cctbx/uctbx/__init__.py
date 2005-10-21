@@ -118,6 +118,7 @@ def non_crystallographic_unit_cell(
       sites_cart=None,
       sites_cart_min=None,
       sites_cart_max=None,
+      buffer_layer=None,
       default_buffer_layer=0.5,
       min_unit_cell_length=0):
   assert (sites_cart is None) is not (sites_cart_min is None)
@@ -125,10 +126,27 @@ def non_crystallographic_unit_cell(
   if (sites_cart is not None):
     sites_cart_min = sites_cart.min()
     sites_cart_max = sites_cart.max()
-  buffer_layer = non_crystallographic_buffer_layer(
-    sites_cart_min=sites_cart_min,
-    sites_cart_max=sites_cart_max,
-    default_buffer_layer=default_buffer_layer)
+  if (buffer_layer is None):
+    buffer_layer = non_crystallographic_buffer_layer(
+      sites_cart_min=sites_cart_min,
+      sites_cart_max=sites_cart_max,
+      default_buffer_layer=default_buffer_layer)
   sites_span = matrix.col(sites_cart_max) - matrix.col(sites_cart_min)
   return unit_cell([max(min_unit_cell_length, unit_cell_length)
     for unit_cell_length in (sites_span + matrix.col([buffer_layer]*3)*2)])
+
+class non_crystallographic_unit_cell_with_the_sites_in_its_center(object):
+  def __init__(self, sites_cart,
+                     buffer_layer,
+                     min_unit_cell_length = 0):
+    sites_cart_min = sites_cart.min()
+    sites_cart_max = sites_cart.max()
+    self.unit_cell = non_crystallographic_unit_cell(
+                                   sites_cart           = None,
+                                   sites_cart_min       = sites_cart_min,
+                                   sites_cart_max       = sites_cart_max,
+                                   buffer_layer         = buffer_layer,
+                                   min_unit_cell_length = min_unit_cell_length)
+    unit_cell_center = self.unit_cell.orthogonalize([0.5,0.5,0.5])
+    model_center = (flex.double(sites_cart_max)+flex.double(sites_cart_min))/2
+    self.sites_cart = sites_cart + unit_cell_center - list(model_center)
