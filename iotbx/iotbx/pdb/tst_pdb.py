@@ -148,6 +148,31 @@ def exercise_altLoc_grouping():
   assert replacements[0] == "X"
 
 def exercise_interpretation(verbose=0, quick=True):
+  for field,expected_date in [("XX-XXX-XX", (None, None, None)),
+                              ("XX-Jan-XX", (None, "JAN", None)),
+                              ("XX-JEN-XX", (None, None, None)),
+                              ("03-XXX-XX", (3, None, None)),
+                              ("XX-XXX-04", (None, None, 4)),
+                              ("12-Jul-34", (12, "JUL", 34)),
+                              ("12-Jul-34x", (None, None, None)),
+                              ("12-Jul.34", (None, None, None)),
+                              ("12.Jul-34", (None, None, None))]:
+    date = pdb.interpretation.header_date(field=field)
+    assert (date.dd, date.mmm, date.yy) == expected_date
+    if (field == "12-Jul-34"):
+      assert date.is_fully_defined()
+    else:
+      assert not date.is_fully_defined()
+  for record,expected_year in [
+    ("HEADER    COMPLEX (SERINE PROTEASE/PEPTIDE)       05-FEB-97   1AB9",
+      97),
+    ("HEADER    ----                                    XX-XXX-XX   xxxx",
+      None),
+    ("HEADER    ----         05-FEB-94                  XX-XXX-XX   xxxx",
+      94),
+    ("HEADER    ----         05-FAB-94                  XX-XXX-XX   xxxx",
+      None)]:
+    assert pdb.interpretation.header_year(record=record) == expected_year
   pdb_dir = libtbx.env.find_in_repositories("regression/pdb")
   if (pdb_dir is None):
     print "Skipping exercise_interpretation(): regression/pdb not available"

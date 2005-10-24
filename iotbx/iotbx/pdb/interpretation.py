@@ -29,6 +29,46 @@ def is_pdb_file(file_name):
       else: return True
   return False
 
+class header_date:
+
+  def __init__(self, field):
+    "Expected format: DD-MMM-YY"
+    self.dd = None
+    self.mmm = None
+    self.yy = None
+    if (len(field) != 9): return
+    if (field.count("-") != 2): return
+    if (field[2] != "-" or field[6] != "-"): return
+    dd, mmm, yy = field.split("-")
+    try: self.dd = int(dd)
+    except ValueError: pass
+    else:
+      if (self.dd < 1 or self.dd > 31): self.dd = None
+    if (mmm.upper() in [
+          "JAN", "FEB", "MAR", "APR", "MAY", "JUN",
+          "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"]):
+      self.mmm = mmm.upper()
+    try: self.yy = int(yy)
+    except ValueError: pass
+    else:
+      if (self.yy < 0 or self.yy > 99): self.yy = None
+
+  def is_fully_defined(self):
+    return self.dd is not None \
+       and self.mmm is not None \
+       and self.yy is not None
+
+def header_year(record):
+  if (record.startswith("HEADER")):
+    date = header_date(field=record[50:59])
+    if (date.is_fully_defined()): return date.yy
+    fields = record.split()
+    fields.reverse()
+    for field in fields:
+      date = header_date(field=field)
+      if (date.is_fully_defined()): return date.yy
+  return None
+
 class empty: pass
 
 class model(object):
@@ -176,7 +216,7 @@ class stage_1(object):
       elif (state.raw_record.startswith("REMARK   3 ")):
         self.remark_3_records.append(state.raw_record.rstrip())
       elif (state.raw_record.startswith("HEADER ")):
-        self.year = get_year(state.raw_record.rstrip())
+        self.year = header_year(state.raw_record.rstrip())
       elif (state.raw_record.startswith("REMARK 290 ")):
         self.remark_290_records.append(state.raw_record.rstrip())
       elif (state.raw_record.startswith("REMARK r_free_flags.md5.hexdigest ")):
@@ -673,27 +713,3 @@ def get_false_blank_altLoc_replacement(
       return result
   raise RuntimeError(
     "Cannot find a replacement for false blank altLoc identifiers.")
-
-def get_year(st):
-  year = None
-  if(st[0:6] == "HEADER"):
-     st_split = st.split()
-     for item in st_split:
-       if(item.count("-")==2):
-          potential_date_stamp = item
-          break
-     year = potential_date_stamp[7:]
-     try:
-       year_as_int = int(year)
-       year = year_as_int
-       assert year >= 0 and year <= 99
-     except:
-       potential_date_stamp = st[50:59][7:]
-       year = potential_date_stamp
-       try:
-         year_as_int = int(year)
-         year = year_as_int
-         assert year >= 0 and year <= 99
-       except:
-         year = None
-  return year
