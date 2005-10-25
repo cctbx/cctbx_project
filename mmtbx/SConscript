@@ -1,0 +1,22 @@
+import libtbx.load_env
+import os
+Import("env_etc")
+
+env_etc.mmtbx_dist = libtbx.env.dist_path("mmtbx")
+env_etc.mmtbx_include = os.path.dirname(env_etc.mmtbx_dist)
+
+env_etc.mmtbx_common_includes = [
+  env_etc.libtbx_include,
+  env_etc.mmtbx_include,
+  env_etc.cctbx_include,
+  env_etc.scitbx_include,
+  env_etc.boost_include,
+]
+
+SConscript("masks/SConscript")
+SConscript("ncs/SConscript")
+SConscript("max_lik/SConscript")
+SConscript("dynamics/SConscript")
+SConscript("bulk_solvent/SConscript")
+SConscript("tls/SConscript")
+SConscript("scaling/SConscript")
