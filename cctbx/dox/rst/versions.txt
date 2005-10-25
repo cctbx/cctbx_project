@@ -53,7 +53,7 @@ cctbx links
 
   - `mmtbx <current_cvs/python/mmtbx.html>`_
 
-- `CVS repository <http://cvs.sourceforge.net/cgi-bin/viewcvs.cgi/cctbx/>`_
+- `CVS repository <http://cvs.sourceforge.net/viewcvs.py/cctbx/>`_
 
 - `Project page at SourceForge <http://sourceforge.net/projects/cctbx/>`_
 
