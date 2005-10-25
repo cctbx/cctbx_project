@@ -22,8 +22,9 @@ namespace boost_python{
   void wrap_local_scaling_moment_based();
   void wrap_local_scaling_ls_based();
   void wrap_least_squares_on_i();
-  void wrap_least_squares_on_i_proper();
-  
+  void wrap_least_squares_on_f();
+  void wrap_least_squares_on_i_wt();
+  void wrap_least_squares_on_f_wt();
 
 namespace {
 
@@ -351,10 +352,12 @@ namespace {
     wrap_h_test();
 
     // relative scaling
-    wrap_local_scaling_moment_based(); 
-    wrap_local_scaling_ls_based(); 
+    wrap_local_scaling_moment_based();
+    wrap_local_scaling_ls_based();
     wrap_least_squares_on_i();
-    wrap_least_squares_on_i_proper();
+    wrap_least_squares_on_f();
+    wrap_least_squares_on_i_wt();
+    wrap_least_squares_on_f_wt();
   }
 
 }}}} // mmtbx::scaling::<anonymous>

@@ -180,14 +180,14 @@ namespace relative_scaling{
 
 
   template <typename FloatType=double>
-  class least_squares_on_i_proper
+  class least_squares_on_i_wt
   {
     public:
     /*! Default constructor */
-    least_squares_on_i_proper() {};
+    least_squares_on_i_wt() {};
     /*! Pass in all that is needed */
-    least_squares_on_i_proper(
-      scitbx::af::const_ref< cctbx::miller::index<> > const& hkl,     
+    least_squares_on_i_wt(
+      scitbx::af::const_ref< cctbx::miller::index<> > const& hkl,
       scitbx::af::const_ref< FloatType > const& i_nat,
       scitbx::af::const_ref< FloatType > const& sig_nat,
       scitbx::af::const_ref< FloatType > const& i_der,
@@ -195,43 +195,43 @@ namespace relative_scaling{
       FloatType const& p_scale,
       cctbx::uctbx::unit_cell const& unit_cell,
       scitbx::sym_mat3<FloatType> const& u_rwgk)
-    :    
+    :
     p_scale_(p_scale),
     unit_cell_( unit_cell ),
     u_rwgk_( u_rwgk ),
     scale_rwgk_( pow( unit_cell_.volume(), -2.0/3.0) )
     {
-      // please check if all arrays have the same number of members      
+      // please check if all arrays have the same number of members
       SCITBX_ASSERT ( hkl.size() ==  i_nat.size() );
       SCITBX_ASSERT ( hkl.size() ==  sig_nat.size() );
       SCITBX_ASSERT ( hkl.size() ==  i_der.size() );
       SCITBX_ASSERT ( hkl.size() ==  sig_der.size() );
-      
+
       // fill up the arrays please
       for (unsigned ii=0;ii<hkl.size();ii++){
-	hkl_.push_back( hkl[ii] );
-	i_nat_.push_back( i_nat[ii] );
-	sig_nat_.push_back( sig_nat[ii] );
-	i_der_.push_back( i_der[ii] );
-	sig_der_.push_back( sig_der[ii] );
+        hkl_.push_back( hkl[ii] );
+        i_nat_.push_back( i_nat[ii] );
+        sig_nat_.push_back( sig_nat[ii] );
+        i_der_.push_back( i_der[ii] );
+        sig_der_.push_back( sig_der[ii] );
       }
-      // that should be it.   
+      // that should be it.
     }
 
 
-    
+
     //------------------------
-    scitbx::af::shared<FloatType> 
+    scitbx::af::shared<FloatType>
     get_gradient()
     {
       return( gradient() );
     }
-    
+
     FloatType
     get_function()
     {
       return( function() );
-    }    
+    }
     //------------------------
 
     void
@@ -240,46 +240,46 @@ namespace relative_scaling{
       p_scale_=p_scale;
     }
 
-    void 
+    void
     set_u_rwgk( scitbx::sym_mat3<FloatType> const& u_rwgk )
     {
       u_rwgk_[0] = u_rwgk[0];
       u_rwgk_[1] = u_rwgk[1];
       u_rwgk_[2] = u_rwgk[2];
       u_rwgk_[3] = u_rwgk[3];
-      u_rwgk_[4] = u_rwgk[4];    
-      u_rwgk_[5] = u_rwgk[5];      
+      u_rwgk_[4] = u_rwgk[4];
+      u_rwgk_[5] = u_rwgk[5];
     }
 
-    void 
+    void
     set_params(FloatType p_scale,
-	       scitbx::sym_mat3<FloatType> const& u_rwgk )
+               scitbx::sym_mat3<FloatType> const& u_rwgk )
     {
       set_p_scale(p_scale);
       set_u_rwgk(u_rwgk);
     }
 
-    
+
     protected:
 
-    FloatType 
+    FloatType
     get_k( unsigned index )
     {
       FloatType result,h,k,l;
       h = hkl_[index][0];
-      k = hkl_[index][1];      
+      k = hkl_[index][1];
       l = hkl_[index][2];
-      
+
       result = h*(h*u_rwgk_[0] + k*u_rwgk_[3] + l*u_rwgk_[4] )+
                k*(h*u_rwgk_[3] + k*u_rwgk_[1] + l*u_rwgk_[5] )+
                l*(h*u_rwgk_[4] + k*u_rwgk_[5] + l*u_rwgk_[2] );
       result = result*scitbx::constants::pi*scitbx::constants::pi
-               *2.0*scale_rwgk_-p_scale_;   
+               *2.0*scale_rwgk_-p_scale_;
       result = std::exp(result);
-      return( result );     
+      return( result );
     }
-    
-    FloatType 
+
+    FloatType
     function( unsigned index )
     {
       FloatType result=0, k, weight;
@@ -297,12 +297,12 @@ namespace relative_scaling{
     {
       FloatType result=0;
       for (unsigned ii=0;ii<hkl_.size();ii++){
-	result += function(ii);
+        result += function(ii);
       }
       return (result);
     }
 
-    scitbx::af::shared<FloatType> 
+    scitbx::af::shared<FloatType>
     gradient( unsigned index )
     {
       scitbx::af::shared<FloatType> single_grad(7,0);
@@ -312,7 +312,7 @@ namespace relative_scaling{
       tmp3 = -k*k*i_der_[index] + i_nat_[index];
       tmp4 = k*k*k*k*sig_der_[index]*sig_der_[index]
                    + sig_nat_[index]*sig_nat_[index];
-      
+
       tmp1 = -4.0*k*k*tmp3*tmp3*sig_der_[index]*sig_der_[index]/(tmp4*tmp4);
       tmp2 = -4.0*i_der_[index]*k*tmp3/tmp4;
 
@@ -321,40 +321,40 @@ namespace relative_scaling{
       FloatType tmp_const=2.0*scitbx::constants::pi*scitbx::constants::pi*
         scale_rwgk_;
 
-      single_grad[0] = result* 
-        -k;      
-      single_grad[1] = result* 
+      single_grad[0] = result*
+        -k;
+      single_grad[1] = result*
         tmp_const*hkl_[index][0]*hkl_[index][0];
-      single_grad[2] = result* 
+      single_grad[2] = result*
         tmp_const*hkl_[index][1]*hkl_[index][1];
-      single_grad[3] = result* 
+      single_grad[3] = result*
         tmp_const*hkl_[index][1]*hkl_[index][2];
       single_grad[4] = result*
-        tmp_const*hkl_[index][0]*hkl_[index][1]*2.0;      
+        tmp_const*hkl_[index][0]*hkl_[index][1]*2.0;
       single_grad[5] = result*
         tmp_const*hkl_[index][0]*hkl_[index][2]*2.0;
-      single_grad[6] = result* 
-        tmp_const*hkl_[index][1]*hkl_[index][2]*2.0;      
+      single_grad[6] = result*
+        tmp_const*hkl_[index][1]*hkl_[index][2]*2.0;
 
       return( single_grad );
     }
-    
-    scitbx::af::shared<FloatType> 
+
+    scitbx::af::shared<FloatType>
     gradient()
     {
       scitbx::af::shared<FloatType> result(7,0);
       scitbx::af::shared<FloatType> tmp_gradient(7,0);
       for (unsigned ii=0;ii<hkl_.size();ii++){
-	tmp_gradient = gradient( ii );
-	for (unsigned jj=0; jj<7; jj++){
-	  result[jj]+=tmp_gradient[jj];
-	}
+        tmp_gradient = gradient( ii );
+        for (unsigned jj=0; jj<7; jj++){
+          result[jj]+=tmp_gradient[jj];
+        }
       }
-      return(result);    
+      return(result);
     }
 
-    
-    
+
+
     scitbx::af::shared< cctbx::miller::index<> > hkl_;
     scitbx::af::shared< FloatType > i_nat_;
     scitbx::af::shared< FloatType > sig_nat_;
@@ -366,9 +366,196 @@ namespace relative_scaling{
     FloatType scale_rwgk_;
 
   };
-    
 
 
+
+  template <typename FloatType=double>
+  class least_squares_on_f_wt
+  {
+    public:
+    /*! Default constructor */
+    least_squares_on_f_wt() {};
+    /*! Pass in all that is needed */
+    least_squares_on_f_wt(
+      scitbx::af::const_ref< cctbx::miller::index<> > const& hkl,
+      scitbx::af::const_ref< FloatType > const& f_nat,
+      scitbx::af::const_ref< FloatType > const& sig_nat,
+      scitbx::af::const_ref< FloatType > const& f_der,
+      scitbx::af::const_ref< FloatType > const& sig_der,
+      FloatType const& p_scale,
+      cctbx::uctbx::unit_cell const& unit_cell,
+      scitbx::sym_mat3<FloatType> const& u_rwgk)
+    :
+    p_scale_(p_scale),
+    unit_cell_( unit_cell ),
+    u_rwgk_( u_rwgk ),
+    scale_rwgk_( pow( unit_cell_.volume(), -2.0/3.0) )
+    {
+      // please check if all arrays have the same number of members
+      SCITBX_ASSERT ( hkl.size() ==  f_nat.size() );
+      SCITBX_ASSERT ( hkl.size() ==  sig_nat.size() );
+      SCITBX_ASSERT ( hkl.size() ==  f_der.size() );
+      SCITBX_ASSERT ( hkl.size() ==  sig_der.size() );
+
+      // fill up the arrays please
+      for (unsigned ii=0;ii<hkl.size();ii++){
+        hkl_.push_back( hkl[ii] );
+        f_nat_.push_back( f_nat[ii] );
+        sig_nat_.push_back( sig_nat[ii] );
+        f_der_.push_back( f_der[ii] );
+        sig_der_.push_back( sig_der[ii] );
+      }
+      // that should be it.
+    }
+
+
+
+    //------------------------
+    scitbx::af::shared<FloatType>
+    get_gradient()
+    {
+      return( gradient() );
+    }
+
+    FloatType
+    get_function()
+    {
+      return( function() );
+    }
+    //------------------------
+
+    void
+    set_p_scale(FloatType p_scale)
+    {
+      p_scale_=p_scale;
+    }
+
+    void
+    set_u_rwgk( scitbx::sym_mat3<FloatType> const& u_rwgk )
+    {
+      u_rwgk_[0] = u_rwgk[0];
+      u_rwgk_[1] = u_rwgk[1];
+      u_rwgk_[2] = u_rwgk[2];
+      u_rwgk_[3] = u_rwgk[3];
+      u_rwgk_[4] = u_rwgk[4];
+      u_rwgk_[5] = u_rwgk[5];
+    }
+
+    void
+    set_params(FloatType p_scale,
+               scitbx::sym_mat3<FloatType> const& u_rwgk )
+    {
+      set_p_scale(p_scale);
+      set_u_rwgk(u_rwgk);
+    }
+
+
+    protected:
+
+    FloatType
+    get_k( unsigned index )
+    {
+      FloatType result,h,k,l;
+      h = hkl_[index][0];
+      k = hkl_[index][1];
+      l = hkl_[index][2];
+
+      result = h*(h*u_rwgk_[0] + k*u_rwgk_[3] + l*u_rwgk_[4] )+
+               k*(h*u_rwgk_[3] + k*u_rwgk_[1] + l*u_rwgk_[5] )+
+               l*(h*u_rwgk_[4] + k*u_rwgk_[5] + l*u_rwgk_[2] );
+      result = result*scitbx::constants::pi*scitbx::constants::pi
+               *2.0*scale_rwgk_-p_scale_;
+      result = std::exp(result);
+      return( result );
+    }
+
+    FloatType
+    function( unsigned index )
+    {
+      FloatType result=0, k, weight;
+      k=get_k( index );
+      result = f_nat_[index] - f_der_[index]*k;
+      result=result*result;
+      weight = sig_nat_[index]*sig_nat_[index];
+      weight = weight+sig_der_[index]*sig_der_[index]*k*k;
+      result = result/weight;
+      return(result);
+    }
+
+    FloatType
+    function()
+    {
+      FloatType result=0;
+      for (unsigned ii=0;ii<hkl_.size();ii++){
+        result += function(ii);
+      }
+      return (result);
+    }
+
+    scitbx::af::shared<FloatType>
+    gradient( unsigned index )
+    {
+      scitbx::af::shared<FloatType> single_grad(7,0);
+      FloatType tmp1,tmp2,tmp3,tmp4, result, k;
+      k=get_k( index );
+
+      tmp3 = -k*f_der_[index] + f_nat_[index];
+      tmp4 = k*k*sig_der_[index]*sig_der_[index]
+                   + sig_nat_[index]*sig_nat_[index];
+
+      tmp1 = -2.0*k*tmp3*tmp3*sig_der_[index]*sig_der_[index]/(tmp4*tmp4);
+      tmp2 = -2.0*f_der_[index]*tmp3/tmp4;
+
+      result = tmp1+tmp2;
+
+      FloatType tmp_const=2.0*scitbx::constants::pi*scitbx::constants::pi*
+        scale_rwgk_;
+
+      single_grad[0] = result*
+        -k;
+      single_grad[1] = result*
+        tmp_const*hkl_[index][0]*hkl_[index][0];
+      single_grad[2] = result*
+        tmp_const*hkl_[index][1]*hkl_[index][1];
+      single_grad[3] = result*
+        tmp_const*hkl_[index][1]*hkl_[index][2];
+      single_grad[4] = result*
+        tmp_const*hkl_[index][0]*hkl_[index][1]*2.0;
+      single_grad[5] = result*
+        tmp_const*hkl_[index][0]*hkl_[index][2]*2.0;
+      single_grad[6] = result*
+        tmp_const*hkl_[index][1]*hkl_[index][2]*2.0;
+
+      return( single_grad );
+    }
+
+    scitbx::af::shared<FloatType>
+    gradient()
+    {
+      scitbx::af::shared<FloatType> result(7,0);
+      scitbx::af::shared<FloatType> tmp_gradient(7,0);
+      for (unsigned ii=0;ii<hkl_.size();ii++){
+        tmp_gradient = gradient( ii );
+        for (unsigned jj=0; jj<7; jj++){
+          result[jj]+=tmp_gradient[jj];
+        }
+      }
+      return(result);
+    }
+
+
+
+    scitbx::af::shared< cctbx::miller::index<> > hkl_;
+    scitbx::af::shared< FloatType > f_nat_;
+    scitbx::af::shared< FloatType > sig_nat_;
+    scitbx::af::shared< FloatType > f_der_;
+    scitbx::af::shared< FloatType > sig_der_;
+    FloatType p_scale_;
+    cctbx::uctbx::unit_cell unit_cell_;
+    scitbx::sym_mat3<FloatType> u_rwgk_;
+    FloatType scale_rwgk_;
+
+  };
 
 
 
@@ -385,7 +572,7 @@ namespace relative_scaling{
 
 
   // This might be a more appropriate target function
-    template <typename FloatType=double>
+  template <typename FloatType=double>
   class least_squares_on_i
   {
     public:
@@ -393,7 +580,7 @@ namespace relative_scaling{
     least_squares_on_i() {};
     /*! Pass in all that is needed */
     least_squares_on_i(
-      scitbx::af::const_ref< cctbx::miller::index<> > const& hkl,     
+      scitbx::af::const_ref< cctbx::miller::index<> > const& hkl,
       scitbx::af::const_ref< FloatType > const& i_nat,
       scitbx::af::const_ref< FloatType > const& sig_nat,
       scitbx::af::const_ref< FloatType > const& i_der,
@@ -401,44 +588,44 @@ namespace relative_scaling{
       FloatType const& p_scale,
       cctbx::uctbx::unit_cell const& unit_cell,
       scitbx::sym_mat3<FloatType> const& u_rwgk)
-    :    
+    :
     p_scale_(p_scale),
     unit_cell_( unit_cell ),
     // u_rwgk_(u_rwgk[0],u_rwgk[1],u_rwgk[2],u_rwgk[3],u_rwgk[4],u_rwgk[5])
     u_rwgk_( u_rwgk ),
     scale_rwgk_( pow( unit_cell_.volume(), -2.0/3.0) )
     {
-      // please check if all arrays have the same number of members      
+      // please check if all arrays have the same number of members
       SCITBX_ASSERT ( hkl.size() ==  i_nat.size() );
       SCITBX_ASSERT ( hkl.size() ==  sig_nat.size() );
       SCITBX_ASSERT ( hkl.size() ==  i_der.size() );
       SCITBX_ASSERT ( hkl.size() ==  sig_der.size() );
-      
+
       // fill up the arrays please
       for (unsigned ii=0;ii<hkl.size();ii++){
-	hkl_.push_back( hkl[ii] );
-	i_nat_.push_back( i_nat[ii] );
-	sig_nat_.push_back( sig_nat[ii] );
-	i_der_.push_back( i_der[ii] );
-	sig_der_.push_back( sig_der[ii] );
+        hkl_.push_back( hkl[ii] );
+        i_nat_.push_back( i_nat[ii] );
+        sig_nat_.push_back( sig_nat[ii] );
+        i_der_.push_back( i_der[ii] );
+        sig_der_.push_back( sig_der[ii] );
       }
-      // that should be it.   
+      // that should be it.
     }
 
 
-    
+
     //------------------------
-    scitbx::af::shared<FloatType> 
+    scitbx::af::shared<FloatType>
     get_gradient()
     {
       return( gradient() );
     }
-    
+
     FloatType
     get_function()
     {
       return( function() );
-    }    
+    }
     //------------------------
 
     void
@@ -447,46 +634,46 @@ namespace relative_scaling{
       p_scale_=p_scale;
     }
 
-    void 
+    void
     set_u_rwgk( scitbx::sym_mat3<FloatType> const& u_rwgk )
     {
       u_rwgk_[0] = u_rwgk[0];
       u_rwgk_[1] = u_rwgk[1];
       u_rwgk_[2] = u_rwgk[2];
       u_rwgk_[3] = u_rwgk[3];
-      u_rwgk_[4] = u_rwgk[4];    
-      u_rwgk_[5] = u_rwgk[5];      
+      u_rwgk_[4] = u_rwgk[4];
+      u_rwgk_[5] = u_rwgk[5];
     }
 
-    void 
+    void
     set_params(FloatType p_scale,
-	       scitbx::sym_mat3<FloatType> const& u_rwgk )
+               scitbx::sym_mat3<FloatType> const& u_rwgk )
     {
       set_p_scale(p_scale);
       set_u_rwgk(u_rwgk);
     }
 
-    
+
     protected:
 
-    FloatType 
+    FloatType
     get_k( unsigned index )
     {
       FloatType result,h,k,l;
       h = hkl_[index][0];
-      k = hkl_[index][1];      
+      k = hkl_[index][1];
       l = hkl_[index][2];
-      
+
       result = h*(h*u_rwgk_[0] + k*u_rwgk_[3] + l*u_rwgk_[4] )+
                k*(h*u_rwgk_[3] + k*u_rwgk_[1] + l*u_rwgk_[5] )+
                l*(h*u_rwgk_[4] + k*u_rwgk_[5] + l*u_rwgk_[2] );
       result = result*scitbx::constants::pi*scitbx::constants::pi
-               *2.0*scale_rwgk_-p_scale_;   
+               *2.0*scale_rwgk_-p_scale_;
       result = std::exp(result);
-      return( result );     
+      return( result );
     }
-    
-    FloatType 
+
+    FloatType
     function( unsigned index )
     {
       FloatType result=0, k, weight;
@@ -504,12 +691,12 @@ namespace relative_scaling{
     {
       FloatType result=0;
       for (unsigned ii=0;ii<hkl_.size();ii++){
-	result += function(ii);
+        result += function(ii);
       }
       return (result);
     }
 
-    scitbx::af::shared<FloatType> 
+    scitbx::af::shared<FloatType>
     gradient( unsigned index )
     {
       scitbx::af::shared<FloatType> single_grad(7,0);
@@ -519,40 +706,40 @@ namespace relative_scaling{
       weight = weight*weight + sig_nat_[index]*sig_nat_[index];
       weight = 1.0/weight;
       result = i_nat_[index] - i_der_[index]*k*k;
-      
+
       FloatType tmp_const=2.0*scitbx::constants::pi*scitbx::constants::pi*
         scale_rwgk_;
 
-      single_grad[0] = 2.0*result*weight* -2.0*k*i_der_[index]* 
-        -k;      
-      single_grad[1] = 2.0*result*weight* -2.0*k*i_der_[index]* 
+      single_grad[0] = 2.0*result*weight* -2.0*k*i_der_[index]*
+        -k;
+      single_grad[1] = 2.0*result*weight* -2.0*k*i_der_[index]*
         tmp_const*hkl_[index][0]*hkl_[index][0];
-      single_grad[2] = 2.0*result*weight* -2.0*k*i_der_[index]* 
+      single_grad[2] = 2.0*result*weight* -2.0*k*i_der_[index]*
         tmp_const*hkl_[index][1]*hkl_[index][1];
-      single_grad[3] = 2.0*result*weight* -2.0*k*i_der_[index]* 
+      single_grad[3] = 2.0*result*weight* -2.0*k*i_der_[index]*
         tmp_const*hkl_[index][1]*hkl_[index][2];
       single_grad[4] = 2.0*result*weight* -2.0*k*i_der_[index]*
-        tmp_const*hkl_[index][0]*hkl_[index][1]*2.0;      
+        tmp_const*hkl_[index][0]*hkl_[index][1]*2.0;
       single_grad[5] = 2.0*result*weight* -2.0*k*i_der_[index]*
         tmp_const*hkl_[index][0]*hkl_[index][2]*2.0;
-      single_grad[6] = 2.0*result*weight* -2.0*k*i_der_[index]* 
-        tmp_const*hkl_[index][1]*hkl_[index][2]*2.0;      
+      single_grad[6] = 2.0*result*weight* -2.0*k*i_der_[index]*
+        tmp_const*hkl_[index][1]*hkl_[index][2]*2.0;
 
       return( single_grad );
     }
-    
-    scitbx::af::shared<FloatType> 
+
+    scitbx::af::shared<FloatType>
     gradient()
     {
       scitbx::af::shared<FloatType> result(7,0);
       scitbx::af::shared<FloatType> tmp_gradient(7,0);
       for (unsigned ii=0;ii<hkl_.size();ii++){
-	tmp_gradient = gradient( ii );
-	for (unsigned jj=0; jj<7; jj++){
-	  result[jj]+=tmp_gradient[jj];
-	}
+        tmp_gradient = gradient( ii );
+        for (unsigned jj=0; jj<7; jj++){
+          result[jj]+=tmp_gradient[jj];
+        }
       }
-      return(result);    
+      return(result);
     }
 
     scitbx::af::shared< cctbx::miller::index<> > hkl_;
@@ -566,7 +753,6 @@ namespace relative_scaling{
     FloatType scale_rwgk_;
 
   };
-    
 
 
 
@@ -582,24 +768,188 @@ namespace relative_scaling{
 
 
 
+  // This might be a more appropriate target function
+  template <typename FloatType=double>
+  class least_squares_on_f
+  {
+    public:
+    /*! Default constructor */
+    least_squares_on_f() {};
+    /*! Pass in all that is needed */
+    least_squares_on_f(
+      scitbx::af::const_ref< cctbx::miller::index<> > const& hkl,
+      scitbx::af::const_ref< FloatType > const& f_nat,
+      scitbx::af::const_ref< FloatType > const& sig_nat,
+      scitbx::af::const_ref< FloatType > const& f_der,
+      scitbx::af::const_ref< FloatType > const& sig_der,
+      FloatType const& p_scale,
+      cctbx::uctbx::unit_cell const& unit_cell,
+      scitbx::sym_mat3<FloatType> const& u_rwgk)
+    :
+    p_scale_(p_scale),
+    unit_cell_( unit_cell ),
+    // u_rwgk_(u_rwgk[0],u_rwgk[1],u_rwgk[2],u_rwgk[3],u_rwgk[4],u_rwgk[5])
+    u_rwgk_( u_rwgk ),
+    scale_rwgk_( pow( unit_cell_.volume(), -2.0/3.0) )
+    {
+      // please check if all arrays have the same number of members
+      SCITBX_ASSERT ( hkl.size() ==  f_nat.size() );
+      SCITBX_ASSERT ( hkl.size() ==  sig_nat.size() );
+      SCITBX_ASSERT ( hkl.size() ==  f_der.size() );
+      SCITBX_ASSERT ( hkl.size() ==  sig_der.size() );
+
+      // fill up the arrays please
+      for (unsigned ii=0;ii<hkl.size();ii++){
+        hkl_.push_back( hkl[ii] );
+        f_nat_.push_back( f_nat[ii] );
+        sig_nat_.push_back( sig_nat[ii] );
+        f_der_.push_back( f_der[ii] );
+        sig_der_.push_back( sig_der[ii] );
+      }
+      // that should be it.
+    }
 
 
 
+    //------------------------
+    scitbx::af::shared<FloatType>
+    get_gradient()
+    {
+      return( gradient() );
+    }
+
+    FloatType
+    get_function()
+    {
+      return( function() );
+    }
+    //------------------------
+
+    void
+    set_p_scale(FloatType p_scale)
+    {
+      p_scale_=p_scale;
+    }
+
+    void
+    set_u_rwgk( scitbx::sym_mat3<FloatType> const& u_rwgk )
+    {
+      u_rwgk_[0] = u_rwgk[0];
+      u_rwgk_[1] = u_rwgk[1];
+      u_rwgk_[2] = u_rwgk[2];
+      u_rwgk_[3] = u_rwgk[3];
+      u_rwgk_[4] = u_rwgk[4];
+      u_rwgk_[5] = u_rwgk[5];
+    }
+
+    void
+    set_params(FloatType p_scale,
+               scitbx::sym_mat3<FloatType> const& u_rwgk )
+    {
+      set_p_scale(p_scale);
+      set_u_rwgk(u_rwgk);
+    }
 
 
+    protected:
 
+    FloatType
+    get_k( unsigned index )
+    {
+      FloatType result,h,k,l;
+      h = hkl_[index][0];
+      k = hkl_[index][1];
+      l = hkl_[index][2];
 
+      result = h*(h*u_rwgk_[0] + k*u_rwgk_[3] + l*u_rwgk_[4] )+
+               k*(h*u_rwgk_[3] + k*u_rwgk_[1] + l*u_rwgk_[5] )+
+               l*(h*u_rwgk_[4] + k*u_rwgk_[5] + l*u_rwgk_[2] );
+      result = result*scitbx::constants::pi*scitbx::constants::pi
+               *2.0*scale_rwgk_-p_scale_;
+      result = std::exp(result);
+      return( result );
+    }
 
+    FloatType
+    function( unsigned index )
+    {
+      FloatType result=0, k, weight;
+      k=get_k( index );
+      weight = f_nat_[index]*sig_der_[index]/f_der_[index];
+      weight = weight*weight + sig_nat_[index]*sig_nat_[index];
+      result = f_nat_[index] - f_der_[index]*k;
+      result = result*result;
+      result = result/weight;
+      return(result);
+    }
 
+    FloatType
+    function()
+    {
+      FloatType result=0;
+      for (unsigned ii=0;ii<hkl_.size();ii++){
+        result += function(ii);
+      }
+      return (result);
+    }
 
+    scitbx::af::shared<FloatType>
+    gradient( unsigned index )
+    {
+      scitbx::af::shared<FloatType> single_grad(7,0);
+      FloatType result=0, k, weight;
+      k=get_k( index );
+      weight = f_nat_[index]*sig_der_[index]/f_der_[index];
+      weight = weight*weight + sig_nat_[index]*sig_nat_[index];
+      weight = 1.0/weight;
+      result = f_nat_[index] - f_der_[index]*k;
 
+      FloatType tmp_const=2.0*scitbx::constants::pi*scitbx::constants::pi*
+        scale_rwgk_;
 
+      single_grad[0] = result*weight* -2.0*k*f_der_[index]*
+        -k;
+      single_grad[1] = result*weight* -2.0*k*f_der_[index]*
+        tmp_const*hkl_[index][0]*hkl_[index][0];
+      single_grad[2] = result*weight* -2.0*k*f_der_[index]*
+        tmp_const*hkl_[index][1]*hkl_[index][1];
+      single_grad[3] = result*weight* -2.0*k*f_der_[index]*
+        tmp_const*hkl_[index][1]*hkl_[index][2];
+      single_grad[4] = result*weight* -2.0*k*f_der_[index]*
+        tmp_const*hkl_[index][0]*hkl_[index][1]*2.0;
+      single_grad[5] = result*weight* -2.0*k*f_der_[index]*
+        tmp_const*hkl_[index][0]*hkl_[index][2]*2.0;
+      single_grad[6] = result*weight* -2.0*k*f_der_[index]*
+        tmp_const*hkl_[index][1]*hkl_[index][2]*2.0;
 
+      return( single_grad );
+    }
 
+    scitbx::af::shared<FloatType>
+    gradient()
+    {
+      scitbx::af::shared<FloatType> result(7,0);
+      scitbx::af::shared<FloatType> tmp_gradient(7,0);
+      for (unsigned ii=0;ii<hkl_.size();ii++){
+        tmp_gradient = gradient( ii );
+        for (unsigned jj=0; jj<7; jj++){
+          result[jj]+=tmp_gradient[jj];
+        }
+      }
+      return(result);
+    }
 
+    scitbx::af::shared< cctbx::miller::index<> > hkl_;
+    scitbx::af::shared< FloatType > f_nat_;
+    scitbx::af::shared< FloatType > sig_nat_;
+    scitbx::af::shared< FloatType > f_der_;
+    scitbx::af::shared< FloatType > sig_der_;
+    FloatType p_scale_;
+    cctbx::uctbx::unit_cell unit_cell_;
+    scitbx::sym_mat3<FloatType> u_rwgk_;
+    FloatType scale_rwgk_;
 
-
-
+  };
 
 
 
@@ -611,7 +961,7 @@ namespace relative_scaling{
   // The property that is generated in this instance
   // makes sure that only neighbours are generated
   // that are both present in the natiove and derivative
-  
+
 
   template <typename FloatType=double>
   class property_matching_indices
@@ -652,6 +1002,10 @@ namespace relative_scaling{
 
   //-----------------------------------------------------------
   // local scaling routines
+  //
+  // Note that both routines can be used for
+  // intensity or amplitude based local scaling
+
   template <typename FloatType=double>
   class local_scaling_moment_based
   {
@@ -738,7 +1092,7 @@ namespace relative_scaling{
           weight = weight*weight
             + sigma_set_a_[ nb_index ]*sigma_set_a_[ nb_index ];
           weight=weight*multiplier+constant;
-	  weight=1.0/weight;
+          weight=1.0/weight;
 
           nat_mean += data_set_a_[ nb_index  ]*weight;
           nat_var += (data_set_a_[ nb_index  ]*weight*
@@ -789,7 +1143,7 @@ namespace relative_scaling{
 
 
 
-    //-----------------------------------------------------------
+  //-----------------------------------------------------------
   // local scaling routines
   template <typename FloatType=double>
   class local_scaling_ls_based
@@ -874,10 +1228,10 @@ namespace relative_scaling{
           weight = weight*weight
             + sigma_set_a_[ nb_index ]*sigma_set_a_[ nb_index ];
           weight=weight*multiplier+constant;
-	  weight=1.0/weight;
+          weight=1.0/weight;
 
-	  top+=weight*data_set_a_[nb_index]*data_set_b_[nb_index];
-	  bottom+=weight*data_set_b_[nb_index]*data_set_b_[nb_index];
+          top+=weight*data_set_a_[nb_index]*data_set_b_[nb_index];
+          bottom+=weight*data_set_b_[nb_index]*data_set_b_[nb_index];
 
          }
         if (bottom>0){
@@ -909,9 +1263,14 @@ namespace relative_scaling{
     scitbx::af::shared< FloatType > local_scales_;
     scitbx::af::shared< FloatType > local_scales_sigmas_;
     bool use_weights_;
-
-
   };
+
+
+
+
+
+
+
 
 
 
