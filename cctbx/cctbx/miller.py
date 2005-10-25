@@ -275,6 +275,10 @@ class set(crystal.symmetry):
       anomalous_flag=anomalous_flag)
 
   def array(self, data=None, sigmas=None):
+    if (data is not None):
+      assert data.size() == self._indices.size()
+    if (sigmas is not None):
+      assert sigmas.size() == self._indices.size()
     return array(miller_set=self, data=data, sigmas=sigmas)
 
   def __getitem__(self, slice_object):
