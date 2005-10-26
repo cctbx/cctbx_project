@@ -74,7 +74,7 @@ namespace relative_scaling{
     {
       return( function() );
     }
-    
+
     scitbx::af::shared<FloatType>
     get_gradient(unsigned index)
     {
@@ -276,7 +276,7 @@ namespace relative_scaling{
     {
       return( function() );
     }
-        
+
     scitbx::af::shared<FloatType>
     get_gradient(unsigned index)
     {
@@ -495,7 +495,7 @@ namespace relative_scaling{
       return( function() );
     }
 
-        
+
     scitbx::af::shared<FloatType>
     get_gradient(unsigned index)
     {
@@ -592,7 +592,7 @@ namespace relative_scaling{
       FloatType tmp_const=2.0*scitbx::constants::pi*scitbx::constants::pi*
         scale_rwgk_;
 
-      
+
 
 
       single_grad[0] = 2.0*result*weight* -2.0*k*i_der_[index]*
@@ -709,7 +709,7 @@ namespace relative_scaling{
       return( function() );
     }
 
-        
+
     scitbx::af::shared<FloatType>
     get_gradient(unsigned index)
     {
@@ -804,7 +804,7 @@ namespace relative_scaling{
       weight = 1.0/weight;
       result = f_nat_[index] - f_der_[index]*k;
 
-      
+
 
       FloatType tmp_const=2.0*scitbx::constants::pi*scitbx::constants::pi*
         scale_rwgk_;
