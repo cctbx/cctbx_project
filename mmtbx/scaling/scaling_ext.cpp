@@ -267,50 +267,6 @@ namespace {
 
 
 
-    // Relative (derivative) scaling
-    def("rel_scale_single_ls_target",
-        (double(*)(cctbx::miller::index<> const&,
-                   double const&,
-                   double const&,
-                   double const&,
-                   double const&,
-                   double const&,
-                   cctbx::uctbx::unit_cell const&,
-                   scitbx::sym_mat3<double> const&))
-         relative_scaling::rel_scale_single_ls_target);
-    def("rel_scale_total_ls_target",
-        (double(*)(scitbx::af::const_ref< cctbx::miller::index<> >const&,
-                   scitbx::af::const_ref<double> const&,
-                   scitbx::af::const_ref<double> const&,
-                   scitbx::af::const_ref<double> const&,
-                   scitbx::af::const_ref<double> const&,
-                   double const&,
-                   cctbx::uctbx::unit_cell const&,
-                   scitbx::sym_mat3<double> const&))
-         relative_scaling::rel_scale_total_ls_target);
-    def("rel_scale_single_ls_gradient",
-        (scitbx::af::shared<double>(*)
-         (cctbx::miller::index<> const&,
-          double const&,
-          double const&,
-          double const&,
-          double const&,
-          double const&,
-          cctbx::uctbx::unit_cell const&,
-          scitbx::sym_mat3<double> const&))
-        relative_scaling::rel_scale_single_ls_gradient);
-
-    def("rel_scale_total_ls_gradient",
-        (scitbx::af::shared<double>(*)
-         (scitbx::af::const_ref< cctbx::miller::index<> >const&,
-          scitbx::af::const_ref<double> const&,
-          scitbx::af::const_ref<double> const&,
-          scitbx::af::const_ref<double> const&,
-          scitbx::af::const_ref<double> const&,
-          double const&,
-          cctbx::uctbx::unit_cell const&,
-          scitbx::sym_mat3<double> const&))
-        relative_scaling::rel_scale_total_ls_gradient);
 
     def("ml_normalise_aniso",
         (scitbx::af::shared<double>(*)
