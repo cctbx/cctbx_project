@@ -500,211 +500,160 @@ def test_grads_aniso():
 
 
 ## Testing relative scaling summats
-def test_rel_scale_ls_target():
-  f_obs1 = flex.double(2,1.0)
-  f_obs2 = flex.double(2,3.0)
-  sigma_f_obs1 = 0.0001 + 1.0*f_obs1/10.0
-  sigma_f_obs2 = 0.0001 + 1.0*f_obs2/10.0
-  unit_cell = uctbx.unit_cell('20, 30, 40, 90.0, 90.0, 90.0')
-  mi = flex.miller_index(((1,2,3), (1,2,3)))
-  xs = crystal.symmetry((20,30,40), "P 2 2 2")
-  ms = miller.set(xs, mi)
-  u = [0,0,0,0,0,0]
-  ls_target = scaling.rel_scale_single_ls_target(ms.indices()[0],
-                                                 f_obs1[0],
-                                                 sigma_f_obs1[0],
-                                                 f_obs2[0],
-                                                 sigma_f_obs2[0],
-                                                 0.5*math.log(3.0),
-                                                 unit_cell,
-                                                 u)
-  assert approx_equal(ls_target, 0)
-  u = [1,1,1,0,0,0]
-  ls_target = scaling.rel_scale_single_ls_target(ms.indices()[0],
-                                                 f_obs1[0],
-                                                 sigma_f_obs1[0],
-                                                 f_obs2[0],
-                                                 sigma_f_obs2[0],
-                                                 0.0,
-                                                 unit_cell,
-                                                 u)
-  assert approx_equal(ls_target, 126.052917)
-  u = [1,1,1,1,1,1]
-  ls_target = scaling.rel_scale_single_ls_target(ms.indices()[0],
-                                                 f_obs1[0],
-                                                 sigma_f_obs1[0],
-                                                 f_obs2[0],
-                                                 sigma_f_obs2[0],
-                                                 0.0,
-                                                 unit_cell,
-                                                 u)
-  assert approx_equal(ls_target, 477.264380)
-  ls_target = scaling.rel_scale_single_ls_target(ms.indices()[0],
-                                                 f_obs1[0],
-                                                 sigma_f_obs1[0],
-                                                 f_obs2[0],
-                                                 sigma_f_obs2[0],
-                                                 10.0,
-                                                 unit_cell,
-                                                 u)
-  assert approx_equal(ls_target, 99.80028)
-  ls_target = scaling.rel_scale_total_ls_target(ms.indices(),
-                                                 f_obs1,
-                                                 sigma_f_obs1,
-                                                 f_obs2,
-                                                 sigma_f_obs2,
-                                                 0.0,
-                                                 unit_cell,
-                                                 u)
-  assert approx_equal(ls_target, 2.0*477.264380)
 
+class scaling_tester(object):
+  def __init__(self):
+    self.data_obs1 = flex.double(2,1.0)
+    self.data_obs2 = flex.double(2,3.0)
+    self.sigma_obs1 = flex.double(2,0.1)
+    self.sigma_obs2 = flex.double(2,1)
+    self.unit_cell = uctbx.unit_cell('20, 30, 40, 90.0, 90.0, 90.0')
+    #mi = flex.miller_index(((1,2,3), (1,2,3)))
+    self.mi = flex.miller_index(((1,2,3), (1,2,3)))
+    self.xs = crystal.symmetry((20,30,40), "P 2 2 2")
+    self.ms = miller.set(self.xs, self.mi)
+    self.u = [1,2,3,4,5,6]
+    self.p_scale = 1.01
 
-def finite_diffs_rel_scale(p_scale, u, h=0.00001):
-  f_obs1 = flex.double(2,1.0)
-  f_obs2 = flex.double(2,1.0)
-  sigma_f_obs1 = 1.0+f_obs1/10.0
-  sigma_f_obs2 = 1.0+f_obs2/10.0
-  unit_cell = uctbx.unit_cell('20, 30, 40, 90.0, 90.0, 90.0')
-  mi = flex.miller_index(((1,2,3), (1,2,3)))
-  xs = crystal.symmetry((20,30,40), "P 2 2 2")
-  ms = miller.set(xs, mi)
-  ls_norm = scaling.rel_scale_single_ls_target(ms.indices()[0],
-                                               f_obs1[0],
-                                               sigma_f_obs1[0],
-                                               f_obs2[0],
-                                               sigma_f_obs2[0],
-                                               p_scale,
-                                               unit_cell,
-                                               u)
-  ls_ps = scaling.rel_scale_single_ls_target(ms.indices()[0],
-                                             f_obs1[0],
-                                             sigma_f_obs1[0],
-                                             f_obs2[0],
-                                             sigma_f_obs2[0],
-                                             p_scale+h,
-                                             unit_cell,
-                                             u)
-  u[0]+=h
-  ls_u11 = scaling.rel_scale_single_ls_target(ms.indices()[0],
-                                              f_obs1[0],
-                                              sigma_f_obs1[0],
-                                              f_obs2[0],
-                                              sigma_f_obs2[0],
-                                              p_scale,
-                                              unit_cell,
-                                              u)
-  u[0]-=h
-  u[1]+=h
-  ls_u22 = scaling.rel_scale_single_ls_target(ms.indices()[0],
-                                              f_obs1[0],
-                                              sigma_f_obs1[0],
-                                              f_obs2[0],
-                                              sigma_f_obs2[0],
-                                              p_scale,
-                                              unit_cell,
-                                              u)
+    self.ls_i_wt = scaling.least_squares_on_i_wt(
+      self.mi,
+      self.data_obs1,
+      self.sigma_obs1,
+      self.data_obs2,
+      self.sigma_obs2,
+      self.p_scale,
+      self.unit_cell,
+      self.u)
+    self.ls_i = scaling.least_squares_on_i(
+      self.mi,
+      self.data_obs1,
+      self.sigma_obs1,
+      self.data_obs2,
+      self.sigma_obs2,
+      self.p_scale,
+      self.unit_cell,
+      self.u)
+    self.ls_f_wt = scaling.least_squares_on_f_wt(
+      self.mi,
+      self.data_obs1,
+      self.sigma_obs1,
+      self.data_obs2,
+      self.sigma_obs2,
+      self.p_scale,
+      self.unit_cell,
+      self.u)
+    self.ls_f = scaling.least_squares_on_f(
+      self.mi,
+      self.data_obs1,
+      self.sigma_obs1,
+      self.data_obs2,
+      self.sigma_obs2,
+      self.p_scale,
+      self.unit_cell,
+      self.u)
 
-  u[1]-=h
-  u[2]+=h
-  ls_u33 = scaling.rel_scale_single_ls_target(ms.indices()[0],
-                                              f_obs1[0],
-                                              sigma_f_obs1[0],
-                                              f_obs2[0],
-                                              sigma_f_obs2[0],
-                                              p_scale,
-                                              unit_cell,
-                                              u)
-
-  u[2]-=h
-  u[3]+=h
-  ls_u12 = scaling.rel_scale_single_ls_target(ms.indices()[0],
-                                              f_obs1[0],
-                                              sigma_f_obs1[0],
-                                              f_obs2[0],
-                                              sigma_f_obs2[0],
-                                              p_scale,
-                                              unit_cell,
-                                              u)
-  u[3]-=h
-  u[4]+=h
-  ls_u13 = scaling.rel_scale_single_ls_target(ms.indices()[0],
-                                              f_obs1[0],
-                                              sigma_f_obs1[0],
-                                              f_obs2[0],
-                                              sigma_f_obs2[0],
-                                              p_scale,
-                                              unit_cell,
-                                              u)
-  u[4]-=h
-  u[5]+=h
-  ls_u23 = scaling.rel_scale_single_ls_target(ms.indices()[0],
-                                              f_obs1[0],
-                                              sigma_f_obs1[0],
-                                              f_obs2[0],
-                                              sigma_f_obs2[0],
-                                              p_scale,
-                                              unit_cell,
-                                              u)
-
-
-  ds=(ls_norm-ls_ps)/-h
-  du11=(ls_norm-ls_u11)/-h
-  du22=(ls_norm-ls_u22)/-h
-  du33=(ls_norm-ls_u33)/-h
-  du12=(ls_norm-ls_u12)/-h
-  du13=(ls_norm-ls_u13)/-h
-  du23=(ls_norm-ls_u23)/-h
-  g = scaling.rel_scale_single_ls_gradient(ms.indices()[0],
-                                              f_obs1[0],
-                                              sigma_f_obs1[0],
-                                              f_obs2[0],
-                                              sigma_f_obs2[0],
-                                              p_scale,
-                                              unit_cell,
-                                              u)
-  ##print ds, du11, du22, du33, du12,du13,du23
-  ##print list(g)
-  ##print
-  ##print
-
-  assert approx_equal(ds, g[0]);
-  assert approx_equal(du11,g[1]);
-  assert approx_equal(du22,g[2]);
-  assert approx_equal(du33,g[3]);
-  assert approx_equal(du12,g[4]);
-  assert approx_equal(du13,g[5]);
-  assert approx_equal(du23,g[6]);
-  g2 = scaling.rel_scale_total_ls_gradient(ms.indices(),
-                                           f_obs1,
-                                           sigma_f_obs1,
-                                           f_obs2,
-                                           sigma_f_obs2,
-                                           p_scale,
-                                           unit_cell,
-                                           u)
-  assert approx_equal(ds, g2[0]/2);
-  assert approx_equal(du11,g2[1]/2);
-  assert approx_equal(du22,g2[2]/2);
-  assert approx_equal(du33,g2[3]/2);
-  assert approx_equal(du12,g2[4]/2);
-  assert approx_equal(du13,g2[5]/2);
-  assert approx_equal(du23,g2[6]/2);
+    self.tst_ls_f_wt()
+    self.tst_ls_i_wt()
+    self.tst_ls_f()
+    self.tst_ls_i()
 
 
 
-def test_ls_rel_grads():
-  finite_diffs_rel_scale(  0.0,[0,0,0,0,0,0], 0.0000001)
-  finite_diffs_rel_scale( 10.0,[0,0,0,0,0,0], 0.0000001)
-  finite_diffs_rel_scale(-10.0,[0,0,0,0,0,0], 0.0000001)
-  finite_diffs_rel_scale(  0.0,[1,2,3,4,5,6], 0.0000001)
-  finite_diffs_rel_scale(-10.0,[1,2,3,4,5,6], 0.0000001)
-  finite_diffs_rel_scale( 10.0,[1,2,3,4,5,6], 0.0000001)
+  def tst_ls_i_wt(self, h=0.0000001):
+    ## This function tests the gradients
+    tmp = self.ls_i_wt.get_function()
+    before = flex.double(7,tmp)
+    after = flex.double(7,0)
+    ## Test the pscale
+    self.ls_i_wt.set_p_scale(self.p_scale+h)
+    tmp = self.ls_i_wt.get_function()
+    after[0]=tmp
+    self.ls_i_wt.set_p_scale(self.p_scale)
+    for ii in range(6):
+      u_tmp=list(flex.double(self.u).deep_copy())
+      u_tmp[ii]+=h
+      self.ls_i_wt.set_u_rwgk(u_tmp)
+      tmp = self.ls_i_wt.get_function()
+      after[ii+1]=tmp
+      self.ls_i_wt.set_u_rwgk(self.u)
+      grads=self.ls_i_wt.get_gradient()
+    for ii in range(7):
+      assert approx_equal( (grads[ii]/-((before-after)/h)[ii]), 1, eps=1e-5)
+
+  def tst_ls_f_wt(self, h=0.0000001):
+    ## This function tests the gradients
+    tmp = self.ls_f_wt.get_function()
+    before = flex.double(7,tmp)
+    after = flex.double(7,0)
+    ## Test the pscale
+    self.ls_f_wt.set_p_scale(self.p_scale+h)
+    tmp = self.ls_f_wt.get_function()
+    after[0]=tmp
+    self.ls_f_wt.set_p_scale(self.p_scale)
+    for ii in range(6):
+      u_tmp=list(flex.double(self.u).deep_copy())
+      u_tmp[ii]+=h
+      self.ls_f_wt.set_u_rwgk(u_tmp)
+      tmp = self.ls_f_wt.get_function()
+      after[ii+1]=tmp
+      self.ls_f_wt.set_u_rwgk(self.u)
+    grads=self.ls_f_wt.get_gradient()
+    for ii in range(7):
+      assert approx_equal( (grads[ii]/-((before-after)/h)[ii]), 1, eps=1e-5)
+
+
+  def tst_ls_f(self, h=0.0000001):
+    ## This function tests the gradients
+    tmp = self.ls_f.get_function()
+    before = flex.double(7,tmp)
+    after = flex.double(7,0)
+    ## Test the pscale
+    self.ls_f.set_p_scale(self.p_scale+h)
+    tmp = self.ls_f.get_function()
+    after[0]=tmp
+    self.ls_f.set_p_scale(self.p_scale)
+    for ii in range(6):
+      u_tmp=list(flex.double(self.u).deep_copy())
+      u_tmp[ii]+=h
+      self.ls_f.set_u_rwgk(u_tmp)
+      tmp = self.ls_f.get_function()
+      after[ii+1]=tmp
+      self.ls_f.set_u_rwgk(self.u)
+    grads=self.ls_f.get_gradient()
+    for ii in range(7):
+      assert approx_equal( (grads[ii]/-((before-after)/h)[ii]), 1, eps=1e-5)
+
+
+
+
+  def tst_ls_i(self, h=0.0000001):
+    ## This function tests the gradients
+    tmp = self.ls_i.get_function()
+    before = flex.double(7,tmp)
+    after = flex.double(7,0)
+    ## Test the pscale
+    self.ls_i.set_p_scale(self.p_scale+h)
+    tmp = self.ls_i.get_function()
+    after[0]=tmp
+    self.ls_i.set_p_scale(self.p_scale)
+    for ii in range(6):
+      u_tmp=list(flex.double(self.u).deep_copy())
+      u_tmp[ii]+=h
+      self.ls_i.set_u_rwgk(u_tmp)
+      tmp = self.ls_i.get_function()
+      after[ii+1]=tmp
+      self.ls_i.set_u_rwgk(self.u)
+    grads=self.ls_i.get_gradient()
+    for ii in range(7):
+      assert approx_equal( (grads[ii]/-((before-after)/h)[ii]), 1, eps=1e-5)
+
+
 
 
 
 def random_data(B_add=35,
                 n_residues=585.0,
-                d_min=3.0):
+                d_min=3.5):
   unit_cell = uctbx.unit_cell( (81.0,  81.0,  61.0,  90.0,  90.0, 120.0) )
   xtal = crystal.symmetry(unit_cell, " P 3 ")
   ## In P3 I do not have to worry about centrics or reflections with different
@@ -872,14 +821,16 @@ if (__name__ == "__main__"):
   test_sigma_prot()
   test_likelihood_aniso()
   test_grads_aniso()
-  test_rel_scale_ls_target()
-  test_ls_rel_grads()
+
+
 
   test_scaling_on_random_data(10)
   test_scaling_on_random_data(20)
   test_scaling_on_random_data(40)
   test_scaling_on_random_data(70)
   test_scaling_on_random_data(80)
+
+  scaling_tester()
 
   twin_the_data_and_analyse('h+k,-k,-l',0)
   twin_the_data_and_analyse('h+k,-k,-l',0.10)
