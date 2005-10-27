@@ -124,10 +124,10 @@ namespace{
         .def("get_function",( double(w_t::*)(unsigned) ) &w_t::get_function)
         .def("get_gradient",( scitbx::af::shared<double>(w_t::*)() ) &w_t::get_gradient)
         .def("get_gradient",( scitbx::af::shared<double>(w_t::*)(unsigned) ) &w_t::get_gradient)
-        .def("get_hessian",( scitbx::af::versa<double, scitbx::af::c_grid<2> >
-              (w_t::*)() )  &w_t::get_hessian)
-        .def("get_hessian",( scitbx::af::versa<double, scitbx::af::c_grid<2> >
-               (w_t::*)(unsigned) ) &w_t::get_hessian)
+        .def("hessian_as_packed_u",( scitbx::af::shared<double>
+              (w_t::*)() )  &w_t::hessian_as_packed_u)
+        .def("hessian_as_packed_u",( scitbx::af::shared<double>
+               (w_t::*)(unsigned) ) &w_t::hessian_as_packed_u)
         .def("set_p_scale", &w_t::set_p_scale)
         .def("set_u_rwgk", &w_t::set_u_rwgk)
         .def("set_params", &w_t::set_params)

@@ -89,14 +89,16 @@ namespace relative_scaling{
       return( function(index) );
     }
 
-    scitbx::af::versa<FloatType, scitbx::af::c_grid<2> >
-    get_hessian(unsigned index)
+    //scitbx::af::versa<FloatType, scitbx::af::c_grid<2> >
+    scitbx::af::shared<FloatType>
+    hessian_as_packed_u(unsigned index)
     {
       return( hessian(index) );
     }
 
-    scitbx::af::versa<FloatType, scitbx::af::c_grid<2> >
-    get_hessian()
+    //scitbx::af::versa<FloatType, scitbx::af::c_grid<2> >
+    scitbx::af::shared<FloatType>
+    hessian_as_packed_u()
     {
       return( hessian() );
     }
@@ -225,7 +227,8 @@ namespace relative_scaling{
     }
 
 
-    scitbx::af::versa<  FloatType, scitbx::af::c_grid<2> >
+    //scitbx::af::versa<  FloatType, scitbx::af::c_grid<2> >
+    scitbx::af::shared< FloatType >
     hessian(unsigned index)
     {
       // first we need to know the pre-multiplier
@@ -248,8 +251,12 @@ namespace relative_scaling{
       frstder=tmp4+tmp5;
 
       //scitbx::af::shared< scitbx::af::shared<FloatType> > tmp_hes;
-      scitbx::af::versa< FloatType, scitbx::af::c_grid<2> > tmp_hes( (
-        scitbx::af::c_grid<2>(7,7)) );
+      //scitbx::af::versa< FloatType, scitbx::af::c_grid<2> > tmp_hes( (
+      //  scitbx::af::c_grid<2>(7,7)) );
+
+      scitbx::af::shared<FloatType> tmp_hes(
+        7*(7+1)/2, scitbx::af::init_functor_null<FloatType>() );
+
 
       FloatType dp,d0,d1,d2,d3,d4,d5,tps;
       tps=scitbx::constants::pi*scitbx::constants::pi*scale_rwgk_;
@@ -261,89 +268,86 @@ namespace relative_scaling{
       d4=-4*tps*hkl_[index][0]*hkl_[index][2];
       d5=-4*tps*hkl_[index][1]*hkl_[index][2];
       //-------------------------------------------
+
+      FloatType* h = tmp_hes.begin();
       // scale factor related stuff
-      tmp_hes(0,0)=frstder*k + sndder*dp*dp*k*k;
-      tmp_hes(0,1)=frstder*k*d0 + sndder*d0*k*k;
-      tmp_hes(0,2)=frstder*k*d1 + sndder*d1*k*k;
-      tmp_hes(0,3)=frstder*k*d2 + sndder*d2*k*k;
-      tmp_hes(0,4)=frstder*k*d3 + sndder*d3*k*k;
-      tmp_hes(0,5)=frstder*k*d4 + sndder*d4*k*k;
-      tmp_hes(0,6)=frstder*k*d5 + sndder*d5*k*k;
+      *h++=frstder*k + sndder*dp*dp*k*k;//0,0
+      *h++=frstder*k*d0 + sndder*d0*k*k;//0,1
+      *h++=frstder*k*d1 + sndder*d1*k*k;//0,2
+      *h++=frstder*k*d2 + sndder*d2*k*k;//0,3
+      *h++=frstder*k*d3 + sndder*d3*k*k;//0,4
+      *h++=frstder*k*d4 + sndder*d4*k*k;//0,5
+      *h++=frstder*k*d5 + sndder*d5*k*k;//0,6
 
       //------------------------------------------
-      // u tenser related stuff
-      //diagional terms
-      tmp_hes(1,1)=frstder*k*d0*d0 + sndder*k*k*d0*d0;
-      tmp_hes(2,2)=frstder*k*d1*d1 + sndder*k*k*d1*d1;
-      tmp_hes(3,3)=frstder*k*d2*d2 + sndder*k*k*d2*d2;
-      tmp_hes(4,4)=frstder*k*d3*d3 + sndder*k*k*d3*d3;
-      tmp_hes(5,5)=frstder*k*d4*d4 + sndder*k*k*d4*d4;
-      tmp_hes(6,6)=frstder*k*d5*d5 + sndder*k*k*d5*d5;
+      // u0 --> u0, u1, u2, u3, u4, u5
+      *h++=frstder*k*d0*d0 + sndder*k*k*d0*d0;//
+      *h++=frstder*k*d0*d1 + sndder*k*k*d0*d1;//
+      *h++=frstder*k*d0*d2 + sndder*k*k*d0*d2;//
+      *h++=frstder*k*d0*d3 + sndder*k*k*d0*d3;//
+      *h++=frstder*k*d0*d4 + sndder*k*k*d0*d4;//
+      *h++=frstder*k*d0*d5 + sndder*k*k*d0*d5;//
       //------------------------------------------
-      //off diagonal terms
-      // u0 --> u1, u2, u3, u4, u5
-      tmp_hes(1,2)=frstder*k*d0*d1 + sndder*k*k*d0*d1;
-      tmp_hes(1,3)=frstder*k*d0*d2 + sndder*k*k*d0*d2;
-      tmp_hes(1,4)=frstder*k*d0*d3 + sndder*k*k*d0*d3;
-      tmp_hes(1,5)=frstder*k*d0*d4 + sndder*k*k*d0*d4;
-      tmp_hes(1,6)=frstder*k*d0*d5 + sndder*k*k*d0*d5;
+      // u1 --> u1, u2, u3, u4, u5
+      *h++=frstder*k*d1*d1 + sndder*k*k*d1*d1;//
+      *h++=frstder*k*d1*d2 + sndder*k*k*d1*d2;//
+      *h++=frstder*k*d1*d3 + sndder*k*k*d1*d3;//
+      *h++=frstder*k*d1*d4 + sndder*k*k*d1*d4;//
+      *h++=frstder*k*d1*d5 + sndder*k*k*d1*d5;//
       //------------------------------------------
-      //off diagonal terms
-      // u1 --> u2, u3, u4, u5
-      tmp_hes(2,3)=frstder*k*d1*d2 + sndder*k*k*d1*d2;
-      tmp_hes(2,4)=frstder*k*d1*d3 + sndder*k*k*d1*d3;
-      tmp_hes(2,5)=frstder*k*d1*d4 + sndder*k*k*d1*d4;
-      tmp_hes(2,6)=frstder*k*d1*d5 + sndder*k*k*d1*d5;
+      // u2 --> u2, u3, u4, u5
+      *h++=frstder*k*d2*d2 + sndder*k*k*d2*d2;//
+      *h++=frstder*k*d2*d3 + sndder*k*k*d2*d3;//
+      *h++=frstder*k*d2*d4 + sndder*k*k*d2*d4;//
+      *h++=frstder*k*d2*d5 + sndder*k*k*d2*d5;//
       //------------------------------------------
-      //off diagonal terms
-      // u2 --> u3, u4, u5
-      tmp_hes(3,4)=frstder*k*d2*d3 + sndder*k*k*d2*d3;
-      tmp_hes(3,5)=frstder*k*d2*d4 + sndder*k*k*d2*d4;
-      tmp_hes(3,6)=frstder*k*d2*d5 + sndder*k*k*d2*d5;
+      // u3 --> u3, u4, u5
+      *h++=frstder*k*d3*d3 + sndder*k*k*d3*d3;//
+      *h++=frstder*k*d3*d4 + sndder*k*k*d3*d4;//
+      *h++=frstder*k*d3*d5 + sndder*k*k*d3*d5;//
       //------------------------------------------
-      //off diagonal terms
-      // u3 --> u4, u5
-      tmp_hes(4,5)=frstder*k*d3*d4 + sndder*k*k*d3*d4;
-      tmp_hes(4,6)=frstder*k*d3*d5 + sndder*k*k*d3*d5;
-      //------------------------------------------
-      //off diagonal terms
-      // u4 --> u5
-      tmp_hes(5,6)=frstder*k*d4*d5 + sndder*k*k*d4*d5;
+      // u4 --> u4, u5
+      *h++=frstder*k*d4*d4 + sndder*k*k*d4*d4;//
+      *h++=frstder*k*d4*d5 + sndder*k*k*d4*d5;//
 
+      //------------------------------------------
+      // u5 --> u5
+      *h++=frstder*k*d5*d5 + sndder*k*k*d5*d5;//
+
+      /*
       // symmetrise
       for (unsigned ii=0;ii<7;ii++){
         for (unsigned jj=ii+1;jj<7;jj++){
           tmp_hes(jj,ii)=tmp_hes(ii,jj);
         }
       }
-
+      */
 
       return (tmp_hes);
 
     }
 
-    scitbx::af::versa<FloatType, scitbx::af::c_grid<2> >
+    //scitbx::af::versa<FloatType, scitbx::af::c_grid<2> >
+    scitbx::af::shared<FloatType>
     hessian()
     {
 
-      scitbx::af::versa< FloatType, scitbx::af::c_grid<2> > hes_mat( (
-        scitbx::af::c_grid<2>(7,7)) );
-      scitbx::af::versa< FloatType, scitbx::af::c_grid<2> > tmp_hes_mat( (
-        scitbx::af::c_grid<2>(7,7)) );
-      // init the hes_mat to zero please
-      for (unsigned ii=0;ii<7;ii++){
-        for (unsigned jj=0;jj<7;jj++){
-          hes_mat(ii,jj)=0.0;
-        }
-      }
+      scitbx::af::shared<FloatType> hes_mat(
+         7*(7+1)/2, 0 );
+
+      scitbx::af::shared<FloatType> tmp_hes_mat(
+         7*(7+1)/2, scitbx::af::init_functor_null<FloatType>() );
+
+
+      //scitbx::af::versa< FloatType, scitbx::af::c_grid<2> > hes_mat( (
+      //  scitbx::af::c_grid<2>(7,7)) );
+      //scitbx::af::versa< FloatType, scitbx::af::c_grid<2> > tmp_hes_mat( (
+      //  scitbx::af::c_grid<2>(7,7)) );
+
       // loop over all reflections and get second derivatives
       for (unsigned index=0;index<hkl_.size();index++){
         tmp_hes_mat = hessian( index );
-        for (unsigned ii=0;ii<7;ii++){
-          for (unsigned jj=0;jj<7;jj++){
-            hes_mat(ii,jj)+=tmp_hes_mat(ii,jj);
-          }
-        }
+        hes_mat+=tmp_hes_mat;
       }
       return(hes_mat);
     }
