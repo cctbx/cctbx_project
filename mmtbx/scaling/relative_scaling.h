@@ -89,14 +89,12 @@ namespace relative_scaling{
       return( function(index) );
     }
 
-    //scitbx::af::versa<FloatType, scitbx::af::c_grid<2> >
     scitbx::af::shared<FloatType>
     hessian_as_packed_u(unsigned index)
     {
       return( hessian(index) );
     }
 
-    //scitbx::af::versa<FloatType, scitbx::af::c_grid<2> >
     scitbx::af::shared<FloatType>
     hessian_as_packed_u()
     {
@@ -226,8 +224,6 @@ namespace relative_scaling{
       return(result);
     }
 
-
-    //scitbx::af::versa<  FloatType, scitbx::af::c_grid<2> >
     scitbx::af::shared< FloatType >
     hessian(unsigned index)
     {
@@ -249,10 +245,6 @@ namespace relative_scaling{
       tmp4 = -4.0*k*k*k*tmp1*tmp1*tmp2/(tmp3*tmp3);
       tmp5 = -4.0*i_der_[index]*k*tmp1/tmp3;
       frstder=tmp4+tmp5;
-
-      //scitbx::af::shared< scitbx::af::shared<FloatType> > tmp_hes;
-      //scitbx::af::versa< FloatType, scitbx::af::c_grid<2> > tmp_hes( (
-      //  scitbx::af::c_grid<2>(7,7)) );
 
       scitbx::af::shared<FloatType> tmp_hes(
         7*(7+1)/2, scitbx::af::init_functor_null<FloatType>() );
@@ -314,35 +306,18 @@ namespace relative_scaling{
       // u5 --> u5
       *h++=frstder*k*d5*d5 + sndder*k*k*d5*d5;//
 
-      /*
-      // symmetrise
-      for (unsigned ii=0;ii<7;ii++){
-        for (unsigned jj=ii+1;jj<7;jj++){
-          tmp_hes(jj,ii)=tmp_hes(ii,jj);
-        }
-      }
-      */
-
       return (tmp_hes);
 
     }
 
-    //scitbx::af::versa<FloatType, scitbx::af::c_grid<2> >
     scitbx::af::shared<FloatType>
     hessian()
     {
-
       scitbx::af::shared<FloatType> hes_mat(
          7*(7+1)/2, 0 );
 
       scitbx::af::shared<FloatType> tmp_hes_mat(
          7*(7+1)/2, scitbx::af::init_functor_null<FloatType>() );
-
-
-      //scitbx::af::versa< FloatType, scitbx::af::c_grid<2> > hes_mat( (
-      //  scitbx::af::c_grid<2>(7,7)) );
-      //scitbx::af::versa< FloatType, scitbx::af::c_grid<2> > tmp_hes_mat( (
-      //  scitbx::af::c_grid<2>(7,7)) );
 
       // loop over all reflections and get second derivatives
       for (unsigned index=0;index<hkl_.size();index++){
@@ -430,6 +405,18 @@ namespace relative_scaling{
     get_function(unsigned index)
     {
       return( function(index) );
+    }
+
+    scitbx::af::shared<FloatType>
+    hessian_as_packed_u(unsigned index)
+    {
+      return( hessian(index) );
+    }
+
+    scitbx::af::shared<FloatType>
+    hessian_as_packed_u()
+    {
+      return( hessian() );
     }
 
 
@@ -556,6 +543,116 @@ namespace relative_scaling{
 
 
 
+
+    scitbx::af::shared< FloatType >
+    hessian(unsigned index)
+    {
+      // first we need to know the pre-multiplier
+      FloatType tmp1,tmp2,tmp3,tmp4,tmp5,tmp6,tmp7,tmp8, k;
+      FloatType sndder,frstder;
+      k = get_k( index );
+      tmp1=f_nat_[index]-k*f_der_[index];
+      tmp2=sig_der_[index]*sig_der_[index];
+      tmp3=k*k*tmp2+sig_nat_[index]*sig_nat_[index];
+      //------sndder-------------------------------------
+      tmp4 = 8*k*k*tmp1*tmp1*tmp2*tmp2/(tmp3*tmp3*tmp3);
+      tmp5 = 8*k*f_der_[index]*tmp1*tmp2/(tmp3*tmp3);
+      tmp6 =-2*tmp1*tmp1*tmp2/(tmp3*tmp3);
+      tmp7 = 2*f_der_[index]*f_der_[index]/tmp3;
+      sndder=tmp4+tmp5+tmp6+tmp7;
+      //------frsder-------------------------------------
+      tmp4 = -2.0*k*tmp1*tmp1*tmp2/(tmp3*tmp3);
+      tmp5 = -2.0*f_der_[index]*tmp1/tmp3;
+      frstder=tmp4+tmp5;
+
+      scitbx::af::shared<FloatType> tmp_hes(
+        7*(7+1)/2, scitbx::af::init_functor_null<FloatType>() );
+
+
+      FloatType dp,d0,d1,d2,d3,d4,d5,tps;
+      tps=scitbx::constants::pi*scitbx::constants::pi*scale_rwgk_;
+      dp=-1;
+      d0=-2*tps*hkl_[index][0]*hkl_[index][0];
+      d1=-2*tps*hkl_[index][1]*hkl_[index][1];
+      d2=-2*tps*hkl_[index][2]*hkl_[index][2];
+      d3=-4*tps*hkl_[index][0]*hkl_[index][1];
+      d4=-4*tps*hkl_[index][0]*hkl_[index][2];
+      d5=-4*tps*hkl_[index][1]*hkl_[index][2];
+      //-------------------------------------------
+
+      FloatType* h = tmp_hes.begin();
+      // scale factor related stuff
+      *h++=frstder*k + sndder*dp*dp*k*k;//0,0
+      *h++=frstder*k*d0 + sndder*d0*k*k;//0,1
+      *h++=frstder*k*d1 + sndder*d1*k*k;//0,2
+      *h++=frstder*k*d2 + sndder*d2*k*k;//0,3
+      *h++=frstder*k*d3 + sndder*d3*k*k;//0,4
+      *h++=frstder*k*d4 + sndder*d4*k*k;//0,5
+      *h++=frstder*k*d5 + sndder*d5*k*k;//0,6
+
+      //------------------------------------------
+      // u0 --> u0, u1, u2, u3, u4, u5
+      *h++=frstder*k*d0*d0 + sndder*k*k*d0*d0;//
+      *h++=frstder*k*d0*d1 + sndder*k*k*d0*d1;//
+      *h++=frstder*k*d0*d2 + sndder*k*k*d0*d2;//
+      *h++=frstder*k*d0*d3 + sndder*k*k*d0*d3;//
+      *h++=frstder*k*d0*d4 + sndder*k*k*d0*d4;//
+      *h++=frstder*k*d0*d5 + sndder*k*k*d0*d5;//
+      //------------------------------------------
+      // u1 --> u1, u2, u3, u4, u5
+      *h++=frstder*k*d1*d1 + sndder*k*k*d1*d1;//
+      *h++=frstder*k*d1*d2 + sndder*k*k*d1*d2;//
+      *h++=frstder*k*d1*d3 + sndder*k*k*d1*d3;//
+      *h++=frstder*k*d1*d4 + sndder*k*k*d1*d4;//
+      *h++=frstder*k*d1*d5 + sndder*k*k*d1*d5;//
+      //------------------------------------------
+      // u2 --> u2, u3, u4, u5
+      *h++=frstder*k*d2*d2 + sndder*k*k*d2*d2;//
+      *h++=frstder*k*d2*d3 + sndder*k*k*d2*d3;//
+      *h++=frstder*k*d2*d4 + sndder*k*k*d2*d4;//
+      *h++=frstder*k*d2*d5 + sndder*k*k*d2*d5;//
+      //------------------------------------------
+      // u3 --> u3, u4, u5
+      *h++=frstder*k*d3*d3 + sndder*k*k*d3*d3;//
+      *h++=frstder*k*d3*d4 + sndder*k*k*d3*d4;//
+      *h++=frstder*k*d3*d5 + sndder*k*k*d3*d5;//
+      //------------------------------------------
+      // u4 --> u4, u5
+      *h++=frstder*k*d4*d4 + sndder*k*k*d4*d4;//
+      *h++=frstder*k*d4*d5 + sndder*k*k*d4*d5;//
+
+      //------------------------------------------
+      // u5 --> u5
+      *h++=frstder*k*d5*d5 + sndder*k*k*d5*d5;//
+
+      return (tmp_hes);
+
+    }
+
+    scitbx::af::shared<FloatType>
+    hessian()
+    {
+      scitbx::af::shared<FloatType> hes_mat(
+         7*(7+1)/2, 0 );
+
+      scitbx::af::shared<FloatType> tmp_hes_mat(
+         7*(7+1)/2, scitbx::af::init_functor_null<FloatType>() );
+
+      // loop over all reflections and get second derivatives
+      for (unsigned index=0;index<hkl_.size();index++){
+        tmp_hes_mat = hessian( index );
+        hes_mat+=tmp_hes_mat;
+      }
+      return(hes_mat);
+    }
+
+
+
+
+
+
+
+
     scitbx::af::shared< cctbx::miller::index<> > hkl_;
     scitbx::af::shared< FloatType > f_nat_;
     scitbx::af::shared< FloatType > sig_nat_;
@@ -650,6 +747,21 @@ namespace relative_scaling{
     {
       return( function(index) );
     }
+
+    scitbx::af::shared<FloatType>
+    hessian_as_packed_u(unsigned index)
+    {
+      return( hessian(index) );
+    }
+
+    scitbx::af::shared<FloatType>
+    hessian_as_packed_u()
+    {
+      return( hessian() );
+    }
+
+
+
 
     //------------------------
 
@@ -770,6 +882,114 @@ namespace relative_scaling{
       return(result);
     }
 
+
+    scitbx::af::shared< FloatType >
+    hessian(unsigned index)
+    {
+      // first we need to know the pre-multipliers
+      FloatType tmp1,tmp2,tmp3,tmp4,tmp5,tmp6,tmp7,tmp8, k;
+      FloatType sndder,frstder;
+      k = get_k( index );
+      tmp1=i_nat_[index]-k*k*i_der_[index];
+
+      tmp2 = i_nat_[index]*sig_der_[index]/i_der_[index];
+      tmp2 = tmp2*tmp2 + sig_nat_[index]*sig_nat_[index];
+
+      //------sndder-------------------------------------
+      tmp3 = 8*i_der_[index]*i_der_[index]*k*k/tmp2;
+      tmp4 = -4*i_der_[index]*tmp1/tmp2;
+      sndder=tmp3+tmp4;
+      //------frsder-------------------------------------
+      frstder=-4*i_der_[index]*k*tmp1/tmp2;
+
+      scitbx::af::shared<FloatType> tmp_hes(
+        7*(7+1)/2, scitbx::af::init_functor_null<FloatType>() );
+
+
+      FloatType dp,d0,d1,d2,d3,d4,d5,tps;
+      tps=scitbx::constants::pi*scitbx::constants::pi*scale_rwgk_;
+      dp=-1;
+      d0=-2*tps*hkl_[index][0]*hkl_[index][0];
+      d1=-2*tps*hkl_[index][1]*hkl_[index][1];
+      d2=-2*tps*hkl_[index][2]*hkl_[index][2];
+      d3=-4*tps*hkl_[index][0]*hkl_[index][1];
+      d4=-4*tps*hkl_[index][0]*hkl_[index][2];
+      d5=-4*tps*hkl_[index][1]*hkl_[index][2];
+      //-------------------------------------------
+
+      FloatType* h = tmp_hes.begin();
+      // scale factor related stuff
+      *h++=frstder*k + sndder*dp*dp*k*k;//0,0
+      *h++=frstder*k*d0 + sndder*d0*k*k;//0,1
+      *h++=frstder*k*d1 + sndder*d1*k*k;//0,2
+      *h++=frstder*k*d2 + sndder*d2*k*k;//0,3
+      *h++=frstder*k*d3 + sndder*d3*k*k;//0,4
+      *h++=frstder*k*d4 + sndder*d4*k*k;//0,5
+      *h++=frstder*k*d5 + sndder*d5*k*k;//0,6
+
+      //------------------------------------------
+      // u0 --> u0, u1, u2, u3, u4, u5
+      *h++=frstder*k*d0*d0 + sndder*k*k*d0*d0;//
+      *h++=frstder*k*d0*d1 + sndder*k*k*d0*d1;//
+      *h++=frstder*k*d0*d2 + sndder*k*k*d0*d2;//
+      *h++=frstder*k*d0*d3 + sndder*k*k*d0*d3;//
+      *h++=frstder*k*d0*d4 + sndder*k*k*d0*d4;//
+      *h++=frstder*k*d0*d5 + sndder*k*k*d0*d5;//
+      //------------------------------------------
+      // u1 --> u1, u2, u3, u4, u5
+      *h++=frstder*k*d1*d1 + sndder*k*k*d1*d1;//
+      *h++=frstder*k*d1*d2 + sndder*k*k*d1*d2;//
+      *h++=frstder*k*d1*d3 + sndder*k*k*d1*d3;//
+      *h++=frstder*k*d1*d4 + sndder*k*k*d1*d4;//
+      *h++=frstder*k*d1*d5 + sndder*k*k*d1*d5;//
+      //------------------------------------------
+      // u2 --> u2, u3, u4, u5
+      *h++=frstder*k*d2*d2 + sndder*k*k*d2*d2;//
+      *h++=frstder*k*d2*d3 + sndder*k*k*d2*d3;//
+      *h++=frstder*k*d2*d4 + sndder*k*k*d2*d4;//
+      *h++=frstder*k*d2*d5 + sndder*k*k*d2*d5;//
+      //------------------------------------------
+      // u3 --> u3, u4, u5
+      *h++=frstder*k*d3*d3 + sndder*k*k*d3*d3;//
+      *h++=frstder*k*d3*d4 + sndder*k*k*d3*d4;//
+      *h++=frstder*k*d3*d5 + sndder*k*k*d3*d5;//
+      //------------------------------------------
+      // u4 --> u4, u5
+      *h++=frstder*k*d4*d4 + sndder*k*k*d4*d4;//
+      *h++=frstder*k*d4*d5 + sndder*k*k*d4*d5;//
+
+      //------------------------------------------
+      // u5 --> u5
+      *h++=frstder*k*d5*d5 + sndder*k*k*d5*d5;//
+
+      return (tmp_hes);
+
+    }
+
+    scitbx::af::shared<FloatType>
+    hessian()
+    {
+      scitbx::af::shared<FloatType> hes_mat(
+         7*(7+1)/2, 0 );
+
+      scitbx::af::shared<FloatType> tmp_hes_mat(
+         7*(7+1)/2, scitbx::af::init_functor_null<FloatType>() );
+
+      // loop over all reflections and get second derivatives
+      for (unsigned index=0;index<hkl_.size();index++){
+        tmp_hes_mat = hessian( index );
+        hes_mat+=tmp_hes_mat;
+      }
+      return(hes_mat);
+    }
+
+
+
+
+
+
+
+
     scitbx::af::shared< cctbx::miller::index<> > hkl_;
     scitbx::af::shared< FloatType > i_nat_;
     scitbx::af::shared< FloatType > sig_nat_;
@@ -863,6 +1083,18 @@ namespace relative_scaling{
     get_function(unsigned index)
     {
       return( function(index) );
+    }
+
+    scitbx::af::shared<FloatType>
+    hessian_as_packed_u(unsigned index)
+    {
+      return( hessian(index) );
+    }
+
+    scitbx::af::shared<FloatType>
+    hessian_as_packed_u()
+    {
+      return( hessian() );
     }
 
 
@@ -983,6 +1215,117 @@ namespace relative_scaling{
       }
       return(result);
     }
+
+
+
+        scitbx::af::shared< FloatType >
+    hessian(unsigned index)
+    {
+      // first we need to know the pre-multipliers
+      FloatType tmp1,tmp2,k;
+      FloatType sndder,frstder;
+      k = get_k( index );
+      tmp1=f_nat_[index]-k*f_der_[index];
+
+      tmp2 = f_nat_[index]*sig_der_[index]/f_der_[index];
+      tmp2 = tmp2*tmp2 + sig_nat_[index]*sig_nat_[index];
+
+      //------sndder-------------------------------------
+      sndder=2*f_der_[index]*f_der_[index]/tmp2;
+      //------frsder-------------------------------------
+      frstder=-2*f_der_[index]*tmp1/tmp2;
+
+      scitbx::af::shared<FloatType> tmp_hes(
+        7*(7+1)/2, scitbx::af::init_functor_null<FloatType>() );
+
+
+      FloatType dp,d0,d1,d2,d3,d4,d5,tps;
+      tps=scitbx::constants::pi*scitbx::constants::pi*scale_rwgk_;
+      dp=-1;
+      d0=-2*tps*hkl_[index][0]*hkl_[index][0];
+      d1=-2*tps*hkl_[index][1]*hkl_[index][1];
+      d2=-2*tps*hkl_[index][2]*hkl_[index][2];
+      d3=-4*tps*hkl_[index][0]*hkl_[index][1];
+      d4=-4*tps*hkl_[index][0]*hkl_[index][2];
+      d5=-4*tps*hkl_[index][1]*hkl_[index][2];
+      //-------------------------------------------
+
+      FloatType* h = tmp_hes.begin();
+      // scale factor related stuff
+      *h++=frstder*k + sndder*dp*dp*k*k;//0,0
+      *h++=frstder*k*d0 + sndder*d0*k*k;//0,1
+      *h++=frstder*k*d1 + sndder*d1*k*k;//0,2
+      *h++=frstder*k*d2 + sndder*d2*k*k;//0,3
+      *h++=frstder*k*d3 + sndder*d3*k*k;//0,4
+      *h++=frstder*k*d4 + sndder*d4*k*k;//0,5
+      *h++=frstder*k*d5 + sndder*d5*k*k;//0,6
+
+      //------------------------------------------
+      // u0 --> u0, u1, u2, u3, u4, u5
+      *h++=frstder*k*d0*d0 + sndder*k*k*d0*d0;//
+      *h++=frstder*k*d0*d1 + sndder*k*k*d0*d1;//
+      *h++=frstder*k*d0*d2 + sndder*k*k*d0*d2;//
+      *h++=frstder*k*d0*d3 + sndder*k*k*d0*d3;//
+      *h++=frstder*k*d0*d4 + sndder*k*k*d0*d4;//
+      *h++=frstder*k*d0*d5 + sndder*k*k*d0*d5;//
+      //------------------------------------------
+      // u1 --> u1, u2, u3, u4, u5
+      *h++=frstder*k*d1*d1 + sndder*k*k*d1*d1;//
+      *h++=frstder*k*d1*d2 + sndder*k*k*d1*d2;//
+      *h++=frstder*k*d1*d3 + sndder*k*k*d1*d3;//
+      *h++=frstder*k*d1*d4 + sndder*k*k*d1*d4;//
+      *h++=frstder*k*d1*d5 + sndder*k*k*d1*d5;//
+      //------------------------------------------
+      // u2 --> u2, u3, u4, u5
+      *h++=frstder*k*d2*d2 + sndder*k*k*d2*d2;//
+      *h++=frstder*k*d2*d3 + sndder*k*k*d2*d3;//
+      *h++=frstder*k*d2*d4 + sndder*k*k*d2*d4;//
+      *h++=frstder*k*d2*d5 + sndder*k*k*d2*d5;//
+      //------------------------------------------
+      // u3 --> u3, u4, u5
+      *h++=frstder*k*d3*d3 + sndder*k*k*d3*d3;//
+      *h++=frstder*k*d3*d4 + sndder*k*k*d3*d4;//
+      *h++=frstder*k*d3*d5 + sndder*k*k*d3*d5;//
+      //------------------------------------------
+      // u4 --> u4, u5
+      *h++=frstder*k*d4*d4 + sndder*k*k*d4*d4;//
+      *h++=frstder*k*d4*d5 + sndder*k*k*d4*d5;//
+
+      //------------------------------------------
+      // u5 --> u5
+      *h++=frstder*k*d5*d5 + sndder*k*k*d5*d5;//
+
+      return (tmp_hes);
+
+    }
+
+    scitbx::af::shared<FloatType>
+    hessian()
+    {
+      scitbx::af::shared<FloatType> hes_mat(
+         7*(7+1)/2, 0 );
+
+      scitbx::af::shared<FloatType> tmp_hes_mat(
+         7*(7+1)/2, scitbx::af::init_functor_null<FloatType>() );
+
+      // loop over all reflections and get second derivatives
+      for (unsigned index=0;index<hkl_.size();index++){
+        tmp_hes_mat = hessian( index );
+        hes_mat+=tmp_hes_mat;
+      }
+      return(hes_mat);
+    }
+
+
+
+
+
+
+
+
+
+
+
 
     scitbx::af::shared< cctbx::miller::index<> > hkl_;
     scitbx::af::shared< FloatType > f_nat_;
