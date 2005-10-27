@@ -264,8 +264,8 @@ class xray_structure(xray.structure):
     assert fdp > 0
     return max(0.1, random.gauss(fdp, gauss_sigma))
 
-  def random_modify_parmeters(self, parameter_name, gauss_sigma=0.1,
-                                    vary_z_only=False):
+  def random_modify_parameters(self, parameter_name, gauss_sigma=0.1,
+                                     vary_z_only=False):
     modified_structure = self.deep_copy_scatterers()
     for scatterer in modified_structure.scatterers():
       if (parameter_name == "site"):

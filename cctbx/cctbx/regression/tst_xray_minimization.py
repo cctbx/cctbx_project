@@ -28,13 +28,13 @@ def exercise(target_functor, space_group_info, anomalous_flag,
     print
   structure_shake = structure_ideal
   if (gradient_flags.site):
-    structure_shake = structure_shake.random_modify_parmeters(
+    structure_shake = structure_shake.random_modify_parameters(
       "site", shake_sigma)
   if (gradient_flags.u_iso):
-    structure_shake = structure_shake.random_modify_parmeters(
+    structure_shake = structure_shake.random_modify_parameters(
       "u_iso", shake_sigma)
   if (gradient_flags.occupancy):
-    structure_shake = structure_shake.random_modify_parmeters(
+    structure_shake = structure_shake.random_modify_parameters(
       "occupancy", shake_sigma)
     if (occupancy_penalty is not None):
       structure_shake.scatterers()[-1].occupancy = 0
