@@ -559,7 +559,9 @@ class scaling_tester(object):
     self.tst_ls_f()
     self.tst_ls_i()
     self.tst_hes_ls_i_wt()
-
+    self.tst_hes_ls_f_wt()
+    self.tst_hes_ls_i()
+    self.tst_hes_ls_f()
 
   def tst_ls_i_wt(self, h=0.0000001):
     ## This function tests the gradients
@@ -677,7 +679,92 @@ class scaling_tester(object):
         assert approx_equal(tmp_hess[ii][jj]/hes_anal[count], 1 , eps=1e-5)
         count+=1
 
+  def tst_hes_ls_f_wt(self,h=0.0000001):
 
+    hes_anal = self.ls_f_wt.hessian_as_packed_u()
+    hes_anal=hes_anal.matrix_packed_u_as_symmetric()
+
+    grads = self.ls_f_wt.get_gradient()
+
+    self.ls_f_wt.set_p_scale(self.p_scale+h)
+    tmp = self.ls_f_wt.get_gradient()
+    tmp = list( (grads-tmp)/-h )
+    tmp_hess=[]
+    tmp_hess.append( tmp )
+    self.ls_f_wt.set_p_scale(self.p_scale)
+
+    for ii in range(6):
+      u_tmp=list(flex.double(self.u).deep_copy())
+      u_tmp[ii]+=h
+      self.ls_f_wt.set_u_rwgk(u_tmp)
+      tmp = self.ls_f_wt.get_gradient()
+      tmp = (grads - tmp)/-h
+      tmp_hess.append( list(tmp)  )
+      self.ls_f_wt.set_u_rwgk(self.u)
+
+    count=0
+    for ii in range(7):
+      for jj in range(7):
+        assert approx_equal(tmp_hess[ii][jj]/hes_anal[count], 1 , eps=1e-5)
+        count+=1
+
+  def tst_hes_ls_i(self,h=0.0000001):
+
+    hes_anal = self.ls_i.hessian_as_packed_u()
+    hes_anal=hes_anal.matrix_packed_u_as_symmetric()
+
+    grads = self.ls_i.get_gradient()
+
+    self.ls_i.set_p_scale(self.p_scale+h)
+    tmp = self.ls_i.get_gradient()
+    tmp = list( (grads-tmp)/-h )
+    tmp_hess=[]
+    tmp_hess.append( tmp )
+    self.ls_i.set_p_scale(self.p_scale)
+
+    for ii in range(6):
+      u_tmp=list(flex.double(self.u).deep_copy())
+      u_tmp[ii]+=h
+      self.ls_i.set_u_rwgk(u_tmp)
+      tmp = self.ls_i.get_gradient()
+      tmp = (grads - tmp)/-h
+      tmp_hess.append( list(tmp)  )
+      self.ls_i.set_u_rwgk(self.u)
+
+    count=0
+    for ii in range(7):
+      for jj in range(7):
+        assert approx_equal(tmp_hess[ii][jj]/hes_anal[count], 1 , eps=1e-5)
+        count+=1
+
+  def tst_hes_ls_f(self,h=0.0000001):
+
+    hes_anal = self.ls_f.hessian_as_packed_u()
+    hes_anal=hes_anal.matrix_packed_u_as_symmetric()
+
+    grads = self.ls_f.get_gradient()
+
+    self.ls_f.set_p_scale(self.p_scale+h)
+    tmp = self.ls_f.get_gradient()
+    tmp = list( (grads-tmp)/-h )
+    tmp_hess=[]
+    tmp_hess.append( tmp )
+    self.ls_f.set_p_scale(self.p_scale)
+
+    for ii in range(6):
+      u_tmp=list(flex.double(self.u).deep_copy())
+      u_tmp[ii]+=h
+      self.ls_f.set_u_rwgk(u_tmp)
+      tmp = self.ls_f.get_gradient()
+      tmp = (grads - tmp)/-h
+      tmp_hess.append( list(tmp)  )
+      self.ls_f.set_u_rwgk(self.u)
+
+    count=0
+    for ii in range(7):
+      for jj in range(7):
+        assert approx_equal(tmp_hess[ii][jj]/hes_anal[count], 1 , eps=1e-5)
+        count+=1
 
 
 
@@ -845,7 +932,7 @@ def test_kernel_based_normalisation():
 
 
 if (__name__ == "__main__"):
-
+  """
   test_likelihood_iso()
   test_gradients_iso()
   test_gamma_prot()
@@ -860,9 +947,9 @@ if (__name__ == "__main__"):
   test_scaling_on_random_data(40)
   test_scaling_on_random_data(70)
   test_scaling_on_random_data(80)
-
+  """
   scaling_tester()
-
+  """
   twin_the_data_and_analyse('h+k,-k,-l',0)
   twin_the_data_and_analyse('h+k,-k,-l',0.10)
   twin_the_data_and_analyse('h+k,-k,-l',0.30)
@@ -871,5 +958,5 @@ if (__name__ == "__main__"):
   test_scattering_info()
 
   test_kernel_based_normalisation()
-
+  """
   print "OK"
