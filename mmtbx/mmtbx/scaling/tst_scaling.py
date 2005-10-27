@@ -509,11 +509,13 @@ class scaling_tester(object):
     self.sigma_obs2 = flex.double(2,1)
     self.unit_cell = uctbx.unit_cell('20, 30, 40, 90.0, 90.0, 90.0')
     #mi = flex.miller_index(((1,2,3), (1,2,3)))
-    self.mi = flex.miller_index(((1,2,3), (1,2,3)))
+    self.mi = flex.miller_index(((1,2,3), (5,6,7)))
     self.xs = crystal.symmetry((20,30,40), "P 2 2 2")
     self.ms = miller.set(self.xs, self.mi)
     self.u = [1,2,3,4,5,6]
-    self.p_scale = 1.01
+    self.p_scale = 0.40
+    #self.u = [0,0,0,0,0,0]
+    #self.p_scale = 0.00
 
     self.ls_i_wt = scaling.least_squares_on_i_wt(
       self.mi,
@@ -556,7 +558,7 @@ class scaling_tester(object):
     self.tst_ls_i_wt()
     self.tst_ls_f()
     self.tst_ls_i()
-
+    self.tst_hes_ls_i_wt()
 
 
   def tst_ls_i_wt(self, h=0.0000001):
@@ -647,6 +649,38 @@ class scaling_tester(object):
     for ii in range(7):
       assert approx_equal( (grads[ii]/-((before-after)/h)[ii]), 1, eps=1e-5)
 
+
+
+  def tst_hes_ls_i_wt(self,h=0.0000001):
+    
+    hes_anal = self.ls_i_wt.get_hessian()
+    
+    grads = self.ls_i_wt.get_gradient()
+
+    self.ls_i_wt.set_p_scale(self.p_scale+h)
+    tmp = self.ls_i_wt.get_gradient()    
+    tmp = list( (grads-tmp)/-h )
+    tmp_hess=[]
+    tmp_hess.append( tmp )
+    self.ls_i_wt.set_p_scale(self.p_scale)
+
+    for ii in range(6):
+      u_tmp=list(flex.double(self.u).deep_copy())
+      u_tmp[ii]+=h
+      self.ls_i_wt.set_u_rwgk(u_tmp)
+      tmp = self.ls_i_wt.get_gradient()
+      #print list( (grads - tmp)/-h )
+      tmp = (grads - tmp)/-h
+      tmp_hess.append( list(tmp)  )
+      self.ls_i_wt.set_u_rwgk(self.u)
+      
+    count=0    
+    for ii in range(7):
+      for jj in range(7):
+        assert approx_equal(tmp_hess[ii][jj]/hes_anal[count], 1 , eps=1e-5)
+        count+=1
+
+    
 
 
 
@@ -814,7 +848,7 @@ def test_kernel_based_normalisation():
 
 
 if (__name__ == "__main__"):
-
+  """
   test_likelihood_iso()
   test_gradients_iso()
   test_gamma_prot()
@@ -829,9 +863,9 @@ if (__name__ == "__main__"):
   test_scaling_on_random_data(40)
   test_scaling_on_random_data(70)
   test_scaling_on_random_data(80)
-
+  """
   scaling_tester()
-
+  """
   twin_the_data_and_analyse('h+k,-k,-l',0)
   twin_the_data_and_analyse('h+k,-k,-l',0.10)
   twin_the_data_and_analyse('h+k,-k,-l',0.30)
@@ -840,5 +874,5 @@ if (__name__ == "__main__"):
   test_scattering_info()
 
   test_kernel_based_normalisation()
-
+  """
   print "OK"
