@@ -40,7 +40,7 @@ def exercise(space_group_info, n_scatterers=8, verbose=0):
   if (0 or verbose):
     mod_structure.show_summary().show_scatterers()
   exercise_core(mod_structure, t_centre_of_inversion)
-  mod_structure = structure.random_modify_parmeters("site", gauss_sigma=0.1)
+  mod_structure = structure.random_modify_parameters("site", gauss_sigma=0.1)
   if (0 or verbose):
     mod_structure.show_summary().show_scatterers()
   refined_matches = find_centre_of_inversion.find_matches(mod_structure)

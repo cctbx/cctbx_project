@@ -145,7 +145,7 @@ def exercise(target_functor, parameter_name, space_group_info,
           structure_ideal.special_position_indices().size()
   if (0 or verbose):
     f_obs.show_summary()
-  structure_shake = structure_ideal.random_modify_parmeters(
+  structure_shake = structure_ideal.random_modify_parameters(
     parameter_name, shake_sigma, vary_z_only=False)
   assert tuple(structure_ideal.special_position_indices()) \
       == tuple(structure_shake.special_position_indices())
