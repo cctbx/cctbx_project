@@ -11,13 +11,6 @@ from libtbx.utils import format_cpu_times
 import math
 import sys
 
-try:
-  import tntbx
-except ImportError:
-  tntbx = None
-else:
-  from tntbx.generalized_inverse import generalized_inverse
-
 import scitbx.minpack
 import scitbx.lbfgs
 import scitbx.lbfgsb
@@ -84,7 +77,7 @@ class levenberg_marquardt:
     self.f_x0 = f_x
     j = function.jacobian(x)
     number_of_jacobian_evaluations = 1
-    number_of_svds = 0
+    number_of_cholesky_decompositions = 0
     j_t = j.matrix_transpose()
     a = j_t.matrix_multiply(j)
     g = j_t.matrix_multiply(f_x)
@@ -95,9 +88,10 @@ class levenberg_marquardt:
       k += 1
       a_plus_mu = a.deep_copy()
       a_plus_mu.matrix_diagonal_add_in_place(value=mu)
-      a_plus_mu_svd = generalized_inverse(square_matrix=a_plus_mu)
-      number_of_svds += 1
-      h_lm = a_plus_mu_svd.matrix_multiply(-g)
+      u = a_plus_mu.matrix_symmetric_as_packed_u()
+      gmw = u.matrix_cholesky_gill_murray_wright_decomposition_in_place()
+      number_of_cholesky_decompositions += 1
+      h_lm = gmw.solve(b=-g)
       if (h_lm.norm() <= eps_2 * (x.norm() + eps_2)):
         found = True
       else:
@@ -126,7 +120,7 @@ class levenberg_marquardt:
     self.number_of_iterations = k
     self.number_of_function_evaluations = number_of_function_evaluations
     self.number_of_jacobian_evaluations = number_of_jacobian_evaluations
-    self.number_of_svds = number_of_svds
+    self.number_of_cholesky_decompositions = number_of_cholesky_decompositions
 
   def show_statistics(self):
     print "levenberg_marquardt results:"
@@ -139,7 +133,8 @@ class levenberg_marquardt:
         self.number_of_function_evaluations
     print "  number_of_jacobian_evaluations:", \
         self.number_of_jacobian_evaluations
-    print "  number_of_svds:", self.number_of_svds
+    print "  number_of_cholesky_decompositions:", \
+      self.number_of_cholesky_decompositions
 
 class damped_newton:
 
@@ -374,7 +369,7 @@ class test_function:
     if (self.x_star is not None):
       assert approx_equal(
         0.5*self.f(x=self.x_star).norm()**2, self.capital_f_x_star)
-    if (1 and tntbx is not None):
+    if (1):
       self.exercise_levenberg_marquardt()
     if (1):
       self.exercise_minpack_levenberg_marquardt()
