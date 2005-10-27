@@ -932,31 +932,22 @@ def test_kernel_based_normalisation():
 
 
 if (__name__ == "__main__"):
-  """
   test_likelihood_iso()
   test_gradients_iso()
   test_gamma_prot()
   test_sigma_prot()
   test_likelihood_aniso()
   test_grads_aniso()
-
-
-
   test_scaling_on_random_data(10)
   test_scaling_on_random_data(20)
   test_scaling_on_random_data(40)
   test_scaling_on_random_data(70)
   test_scaling_on_random_data(80)
-  """
   scaling_tester()
-  """
   twin_the_data_and_analyse('h+k,-k,-l',0)
   twin_the_data_and_analyse('h+k,-k,-l',0.10)
   twin_the_data_and_analyse('h+k,-k,-l',0.30)
   twin_the_data_and_analyse('h+k,-k,-l',0.50)
-
   test_scattering_info()
-
   test_kernel_based_normalisation()
-  """
   print "OK"
