@@ -22,7 +22,9 @@ namespace relative_scaling{
 
 
 
-
+  /* relative scaling via minimising
+     Residual=sum (Inat-k*k*Ider)**2/(wnat+k**4*wder)
+  */
   template <typename FloatType=double>
   class least_squares_on_i_wt
   {
@@ -340,6 +342,9 @@ namespace relative_scaling{
   };
 
 
+  /* relative scaling via minimising
+     Residual=sum (Fnat-k*Fder)**2/(wnat+k**2*wder)
+  */
 
   template <typename FloatType=double>
   class least_squares_on_f_wt
@@ -548,7 +553,7 @@ namespace relative_scaling{
     hessian(unsigned index)
     {
       // first we need to know the pre-multiplier
-      FloatType tmp1,tmp2,tmp3,tmp4,tmp5,tmp6,tmp7,tmp8, k;
+      FloatType tmp1,tmp2,tmp3,tmp4,tmp5,tmp6,tmp7, k;
       FloatType sndder,frstder;
       k = get_k( index );
       tmp1=f_nat_[index]-k*f_der_[index];
@@ -678,8 +683,9 @@ namespace relative_scaling{
 
 
 
-
-  // This might be a more appropriate target function
+  /* relative scaling via minimising
+     Residual=sum (Inat-k*k*Ider)**2/(wcombined)
+  */
   template <typename FloatType=double>
   class least_squares_on_i
   {
@@ -887,7 +893,7 @@ namespace relative_scaling{
     hessian(unsigned index)
     {
       // first we need to know the pre-multipliers
-      FloatType tmp1,tmp2,tmp3,tmp4,tmp5,tmp6,tmp7,tmp8, k;
+      FloatType tmp1,tmp2,tmp3,tmp4, k;
       FloatType sndder,frstder;
       k = get_k( index );
       tmp1=i_nat_[index]-k*k*i_der_[index];
@@ -1006,17 +1012,9 @@ namespace relative_scaling{
 
 
 
-
-
-
-
-
-
-
-
-
-
-  // This might be a more appropriate target function
+  /* relative scaling via minimising
+     Residual=sum (Fnat-k*Fder)**2/(wcombined)
+  */
   template <typename FloatType=double>
   class least_squares_on_f
   {
@@ -1036,7 +1034,6 @@ namespace relative_scaling{
     :
     p_scale_(p_scale),
     unit_cell_( unit_cell ),
-    // u_rwgk_(u_rwgk[0],u_rwgk[1],u_rwgk[2],u_rwgk[3],u_rwgk[4],u_rwgk[5])
     u_rwgk_( u_rwgk ),
     scale_rwgk_( pow( unit_cell_.volume(), -2.0/3.0) )
     {
@@ -1315,16 +1312,6 @@ namespace relative_scaling{
       }
       return(hes_mat);
     }
-
-
-
-
-
-
-
-
-
-
 
 
     scitbx::af::shared< cctbx::miller::index<> > hkl_;
