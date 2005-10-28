@@ -1,23 +1,96 @@
+from __future__ import division
 from cctbx.array_family import flex
 from mmtbx import scaling
 from cctbx import uctbx
 from cctbx import adptbx
 from cctbx import sgtbx
 from cctbx import eltbx
-from scitbx.math import chebyshev_lsq
-from scitbx.math import chebyshev_polynome
-from scitbx.math import chebyshev_lsq_fit
 from libtbx.utils import Sorry
-import scitbx.lbfgs
+import scitbx
+from scitbx import matrix
 import math
 import sys
 
-class ls_relative_scaling(object):
+class newton_more_thuente_1994:
+
+  def __init__(self,
+        function,
+        x0,
+        xtol=None,
+        gtol=None,
+        ftol=None,
+        stpmin=None,
+        stpmax=None,
+        eps_1=1.e-16,
+        eps_2=1.e-16,
+        k_max=1000):
+    self.function = function
+    x = x0.deep_copy()
+    f = function.functional(x=x) ##
+    number_of_function_evaluations = 1
+    fp = function.gradients(x=x) ##
+    number_of_gradient_evaluations = 1
+    number_of_hessian_evaluations = 0
+    number_of_cholesky_decompositions = 0
+    line_search = scitbx.math.line_search_more_thuente_1994()
+    if (xtol is not None): line_search.xtol = xtol
+    if (ftol is not None): line_search.ftol = ftol
+    if (gtol is not None): line_search.gtol = gtol
+    if (stpmin is not None): line_search.stpmin = stpmin
+    if (stpmax is not None): line_search.stpmax = stpmax
+    callback_after_step = hasattr(function, "callback_after_step")
+    k = 0
+    while (k < k_max):
+      if (flex.max(flex.abs(fp)) <= eps_1):
+        break
+      fdp = function.hessian(x=x)##
+      number_of_hessian_evaluations += 1
+      u = fdp.matrix_symmetric_as_packed_u(relative_epsilon=1.e-6)
+      gmw = u.matrix_cholesky_gill_murray_wright_decomposition_in_place()
+      number_of_cholesky_decompositions += 1
+      h_dn = gmw.solve(b=-fp)
+      line_search.start(
+        x=x,
+        functional=function.functional(x=x),
+        gradients=fp,
+        search_direction=h_dn,
+        initial_estimate_of_satisfactory_step_length=1)
+      while (line_search.info_code == -1):
+        f = function.functional(x=x)##
+        number_of_function_evaluations += 1
+        fp = function.gradients(x=x)##
+        number_of_gradient_evaluations += 1
+        line_search.next(
+          x=x,
+          functional=function.functional(x=x),
+          gradients=fp)
+      h_dn *= line_search.stp
+      k += 1
+      if (callback_after_step):
+        function.callback_after_step(k=k, x=x, f=f, fp=fp, fdp=fdp)
+      if (h_dn.norm() <= eps_2*(eps_2 + x.norm())):
+        break
+    self.x_star = x
+    self.f_star = f
+    self.number_of_iterations = k
+    self.number_of_function_evaluations = number_of_function_evaluations
+    self.number_of_gradient_evaluations = number_of_gradient_evaluations
+    self.number_of_hessian_evaluations = number_of_hessian_evaluations
+    self.number_of_cholesky_decompositions = number_of_cholesky_decompositions
+    self.line_search_info = line_search.info_meaning
+
+class refinery:
+
   def __init__(self,
                miller_native,
                miller_derivative,
-               start_values=None,
-               mask=[1,1]):
+               use_intensities=True,
+               scale_weight=False,
+               use_weights=False,
+               mask=[1,1],
+               start_values=None ):
+
+
     ## This mask allows one to refine only scale factor and only B values
     self.mask = mask ## multiplier for gradients of [scale factor, u tensor]
 
@@ -32,11 +105,17 @@ class ls_relative_scaling(object):
     if not self.derivative.is_real_array():
       raise Sorry("A real array is need for ls scaling")
 
-    ## Convert into intensities
-    if not self.native.is_xray_intensity_array():
-      self.native = self.native.f_as_f_sq()
-    if not self.derivative.is_xray_intensity_array():
-      self.derivative = self.derivative.f_as_f_sq()
+
+    if use_intensities:
+      if not self.native.is_xray_intensity_array():
+        self.native = self.native.f_as_f_sq()
+      if not self.derivative.is_xray_intensity_array():
+        self.derivative = self.derivative.f_as_f_sq()
+    if not use_intensities:
+      if self.native.is_xray_intensity_array():
+        self.native = self.native.f_sq_as_f()
+      if self.derivative.is_xray_intensity_array():
+        self.derivative = self.derivative.f_sq_as_f()
 
     ## Get the common sets
     self.native, self.derivative = self.native.map_to_asu().common_sets(
@@ -45,13 +124,64 @@ class ls_relative_scaling(object):
     ## Get the requiered information
     self.hkl = self.native.indices()
 
-    self.i_nat =  self.native.data()
+    self.i_or_f_nat =  self.native.data()
     self.sig_nat = self.native.sigmas()
 
-    self.i_der = self.derivative.data()
+    self.i_or_f_der = self.derivative.data()
     self.sig_der = self.derivative.sigmas()
 
     self.unit_cell = self.native.unit_cell()
+
+    # Modifiy the weights oif requiered
+    if not use_weights:
+      self.sig_nat = self.sig_nat*0.0 + 1.0
+      self.sig_der = self.sig_der*0.0
+
+
+    ## Set up the minimiser 'cache'
+    self.minimizer_object = None
+    if use_intensities:
+      if scale_weight:
+        self.minimizer_object = scaling.least_squares_on_i_wt(
+          self.hkl,
+          self.i_or_f_nat,
+          self.sig_nat,
+          self.i_or_f_der,
+          self.sig_der,
+          0,
+          self.unit_cell,
+          [0,0,0,0,0,0])
+      else :
+        self.minimizer_object = scaling.least_squares_on_i(
+          self.hkl,
+          self.i_or_f_nat,
+          self.sig_nat,
+          self.i_or_f_der,
+          self.sig_der,
+          0,
+          self.unit_cell,
+          [0,0,0,0,0,0])
+    else:
+      if scale_weight:
+        self.minimizer_object = scaling.least_squares_on_f_wt(
+          self.hkl,
+          self.i_or_f_nat,
+          self.sig_nat,
+          self.i_or_f_der,
+          self.sig_der,
+          0,
+          self.unit_cell,
+          [0,0,0,0,0,0])
+      else :
+        self.minimizer_object = scaling.least_squares_on_f(
+          self.hkl,
+          self.i_or_f_nat,
+          self.sig_nat,
+          self.i_or_f_der,
+          self.sig_der,
+          0,
+          self.unit_cell,
+          [0,0,0,0,0,0])
 
     ## Symmetry related issues
     self.sg = self.native.space_group()
@@ -61,23 +191,23 @@ class ls_relative_scaling(object):
     ## Setup number of parameters
     assert self.dim_u()<=6
     ## Optimisation stuff
-    self.x = flex.double(self.dim_u()+1, 0.0) ## B-values and scale factor!
+    x0 = flex.double(self.dim_u()+1, 0.0) ## B-values and scale factor!
     if start_values is not None:
       assert( start_values.size()==self.x.size() )
-      self.x = start_values
+      x0 = start_values
 
-    self.minimizer = scitbx.lbfgs.run(target_evaluator=self)
-    ## All done
+    minimized = newton_more_thuente_1994(
+      function=self, x0=x0, gtol=0.9e-6, eps_1=1.e-6, eps_2=1.e-6)
+
 
     Vrwgk = math.pow(self.unit_cell.volume(),2.0/3.0)
-    self.p_scale = self.x[0]
-    self.u_star = self.unpack()
+    self.p_scale = minimized.x_star[0]
+    self.u_star = self.unpack( minimized.x_star )
     self.u_star = list( flex.double(self.u_star) / Vrwgk )
     self.b_cart = adptbx.u_as_b(adptbx.u_star_as_u_cart(self.unit_cell,
                                                         self.u_star))
     self.u_cif = adptbx.u_star_as_u_cif(self.unit_cell,
                                         self.u_star)
-
 
 
   def pack(self,grad_tensor):
@@ -86,71 +216,96 @@ class ls_relative_scaling(object):
             flex.double(self.adp_constraints.independent_gradients(
               list(grad_tensor[1:])))
             )
+    return flex.double(grad_independent)
 
-    return grad_independent
-
-  def unpack(self):
-    u_tensor = self.adp_constraints.all_params( list(self.x[1:]) )
+  def unpack(self,x):
+    u_tensor = self.adp_constraints.all_params( list(x[1:]) )
     return u_tensor
 
-  def compute_functional_and_gradients(self):
-    ## First please 'unpack' the U tensor
-    u_full = self.unpack()
-    ## Now we can compute the least squares score
-    f = scaling.rel_scale_total_ls_target(
-      self.hkl,
-      self.i_nat,
-      self.sig_nat,
-      self.i_der,
-      self.sig_der,
-      self.x[0],
-      self.unit_cell,
+  def functional(self, x):
+    ## unpack the u-tensor
+    u_full = self.unpack(x)
+    ## place the params in the whatever
+    self.minimizer_object.set_params(
+      x[0],
       u_full)
-    ## Now compute the gradients
-    g_full = scaling.rel_scale_total_ls_gradient(
-      self.hkl,
-      self.i_nat,
-      self.sig_nat,
-      self.i_der,
-      self.sig_der,
-      self.x[0],
-      self.unit_cell,
+    return self.minimizer_object.get_function()
+
+  def gradients(self, x):
+    u_full = self.unpack(x)
+    self.minimizer_object.set_params(
+      x[0],
       u_full)
-    ## g_full has to be 'packed'
+    g_full = self.minimizer_object.get_gradient()
     g = self.pack( g_full )
-    return f ,flex.double(g)
+    return g
+
+  def hessian(self, x, eps=1.e-6):
+
+    u_full = self.unpack(x)
+    self.minimizer_object.set_params(
+      x[0],
+      u_full)
+    result = self.minimizer_object.hessian_as_packed_u()
+    result = result.matrix_packed_u_as_symmetric()
+    result = self.hessian_transform(result,self.adp_constraints )
+    return(result)
+
+  ## This function is *only* for hessian with scale + utensor components
+  def hessian_transform(self,
+                        original_hessian,
+                        adp_constraints):
+    constraint_matrix_tensor = matrix.rec(
+      adp_constraints.gradient_sum_coeffs,
+      adp_constraints.gradient_sum_coeffs.focus())
+
+    hessian_matrix = matrix.rec( original_hessian,
+                                 original_hessian.focus())
+      ## now create an expanded matrix
+    rows=adp_constraints.gradient_sum_coeffs.focus()[0]+1
+    columns=adp_constraints.gradient_sum_coeffs.focus()[1]+1
+    expanded_constraint_array = flex.double(rows*columns,0)
+    count_new=0
+    count_old=0
+    for ii in range(rows):
+      for jj in range(columns):
+        if (ii>0):
+          if (jj>0):
+            expanded_constraint_array[count_new]=\
+               constraint_matrix_tensor[count_old]
+            count_old+=1
+        count_new+=1
+      ## place the first element please
+    expanded_constraint_array[0]=1
+    result=matrix.rec(  expanded_constraint_array,
+                        (rows, columns) )
+    #print result.mathematica_form()
+    new_hessian = result *  hessian_matrix * result.transpose()
+    result = flex.double(new_hessian)
+    result.resize(flex.grid( new_hessian.n ) )
+    return(result)
+
 
 
 class ls_rel_scale_driver(object):
   def __init__(self,
                miller_native,
-               miller_derivative):
-    self.nat = miller_native
-    self.der = miller_derivative
+               miller_derivative,
+               use_intensities=True,
+               scale_weight=True,
+               use_weights=True):
 
-    ## Although this might look crude, (and probably is)
-    ## It might be a goods idea to actually refine things in part
-    ## for stability reasons. Although the datastes should be reasonably
-    ## close together allready, due to absolute scaling performed idealy
-    ## in advance, for more troublesome data, the following might be
-    ## more robust.
+    self.nat = miller_native.deep_copy()
+    self.der = miller_derivative.deep_copy()
 
 
-    ## first refine the scale factor
-    lsq_object = ls_relative_scaling(miller_native,
-                                     miller_derivative,
-                                     mask=[0,1] )
 
-    ## fix the scale and refine the aniso U
-    lsq_object = ls_relative_scaling(miller_native,
-                                     miller_derivative,
-                                     start_values=lsq_object.x,
-                                     mask=[0,1] )
-    ## refine everything at once
-    lsq_object = ls_relative_scaling(miller_native,
-                                     miller_derivative,
-                                     start_values=lsq_object.x,
-                                     mask=[1,1] )
+    lsq_object = refinery(miller_native,
+                          miller_derivative,
+                          use_intensities=use_intensities,
+                          scale_weight=scale_weight,
+                          use_weights=use_weights)
+
 
     self.p_scale = lsq_object.p_scale
     self.b_cart = lsq_object.b_cart
@@ -171,7 +326,11 @@ class ls_rel_scale_driver(object):
     tmp_nat, tmp_der = self.nat.common_sets(self.der)
 
     self.r_val_after = flex.sum( flex.abs(tmp_nat.data()-tmp_der.data()) )
-    self.r_val_after /=flex.sum( flex.abs(tmp_nat.data()) )
+    self.r_val_after /=(flex.sum( flex.abs(tmp_nat.data()) ) +
+                        flex.sum( flex.abs(tmp_der.data()) ))/2.0
+
+    self.native=tmp_nat
+    self.derivative=tmp_der
 
     ## All done
 
@@ -179,6 +338,12 @@ class ls_rel_scale_driver(object):
     if out is None:
       out=sys.stdout
 
+    print >> out
+    print >> out, "p_scale                    : %5.3f"%(self.p_scale)
+    print >> out, "B_cart trace               : %5.3f, %5.3f, %5.3f"%(
+      self.b_cart[0],
+      self.b_cart[1],
+      self.b_cart[2])
     print >> out
     print >> out, "R-value before LS scaling  : %5.3f"%(self.r_val_before)
     print >> out, "R-value after LS scaling   : %5.3f"%(self.r_val_after)
