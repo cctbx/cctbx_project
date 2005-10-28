@@ -40,6 +40,27 @@ namespace cctbx { namespace xray { namespace boost_python {
   {
     using namespace boost::python;
 
+    def("minimization_shift_scales",
+      (af::shared<double>(*)(
+        af::const_ref<scatterer<> > const&,
+        gradient_flags const&,
+        std::size_t,
+        double const&,
+        double const&,
+        double const&,
+        double const&,
+        double const&,
+        double const&)) minimization::shift_scales, (
+          arg_("scatterers"),
+          arg_("gradient_flags"),
+          arg_("n_parameters"),
+          arg_("site_cart"),
+          arg_("u_iso"),
+          arg_("u_cart"),
+          arg_("occupancy"),
+          arg_("fp"),
+          arg_("fdp")));
+
     apply_shifts_wrappers::wrap();
 
     def("minimization_add_gradients",
