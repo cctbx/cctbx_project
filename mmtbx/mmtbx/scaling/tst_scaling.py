@@ -581,8 +581,8 @@ class scaling_tester(object):
       after[ii+1]=tmp
       self.ls_i_wt.set_u_rwgk(self.u)
       grads=self.ls_i_wt.get_gradient()
-    for ii in range(7):
-      assert approx_equal( (grads[ii]/-((before-after)/h)[ii]), 1, eps=1e-5)
+    f = max(1, flex.max(flex.abs(grads)))
+    assert approx_equal(grads/f, (after-before)/h/f)
 
   def tst_ls_f_wt(self, h=0.0000001):
     ## This function tests the gradients
@@ -602,9 +602,8 @@ class scaling_tester(object):
       after[ii+1]=tmp
       self.ls_f_wt.set_u_rwgk(self.u)
     grads=self.ls_f_wt.get_gradient()
-    for ii in range(7):
-      assert approx_equal( (grads[ii]/-((before-after)/h)[ii]), 1, eps=1e-5)
-
+    f = max(1, flex.max(flex.abs(grads)))
+    assert approx_equal(grads/f, (after-before)/h/f)
 
   def tst_ls_f(self, h=0.0000001):
     ## This function tests the gradients
@@ -624,8 +623,8 @@ class scaling_tester(object):
       after[ii+1]=tmp
       self.ls_f.set_u_rwgk(self.u)
     grads=self.ls_f.get_gradient()
-    for ii in range(7):
-      assert approx_equal( (grads[ii]/-((before-after)/h)[ii]), 1, eps=1e-5)
+    f = max(1, flex.max(flex.abs(grads)))
+    assert approx_equal(grads/f, (after-before)/h/f)
 
   def tst_ls_i(self, h=0.0000001):
     ## This function tests the gradients
@@ -646,9 +645,8 @@ class scaling_tester(object):
       after[ii+1]=tmp
       self.ls_i.set_u_rwgk(self.u)
     grads=self.ls_i.get_gradient()
-    for ii in range(7):
-      assert approx_equal( (grads[ii]/-((before-after)/h)[ii]), 1, eps=1e-5)
-
+    f = max(1, flex.max(flex.abs(grads)))
+    assert approx_equal(grads/f, (after-before)/h/f)
 
   def tst_hes_ls_i_wt(self,h=0.0000001):
 
@@ -673,10 +671,11 @@ class scaling_tester(object):
       tmp_hess.append( list(tmp)  )
       self.ls_i_wt.set_u_rwgk(self.u)
 
+    f = max(1, flex.max(flex.abs(hes_anal)))
     count=0
     for ii in range(7):
       for jj in range(7):
-        assert approx_equal(tmp_hess[ii][jj]/hes_anal[count], 1 , eps=1e-5)
+        assert approx_equal(tmp_hess[ii][jj]/f, hes_anal[count]/f)
         count+=1
 
   def tst_hes_ls_f_wt(self,h=0.0000001):
@@ -702,10 +701,11 @@ class scaling_tester(object):
       tmp_hess.append( list(tmp)  )
       self.ls_f_wt.set_u_rwgk(self.u)
 
+    f = max(1, flex.max(flex.abs(hes_anal)))
     count=0
     for ii in range(7):
       for jj in range(7):
-        assert approx_equal(tmp_hess[ii][jj]/hes_anal[count], 1 , eps=1e-5)
+        assert approx_equal(tmp_hess[ii][jj]/f, hes_anal[count]/f)
         count+=1
 
   def tst_hes_ls_i(self,h=0.0000001):
