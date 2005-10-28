@@ -37,7 +37,7 @@ scaling.input {
    SIR_scale
    {
 
-     target=*ml ls loc
+     target=ls loc *ls_and_loc
      .type=choice
 
      xray_data{
@@ -58,16 +58,41 @@ scaling.input {
          .type=path
          labels=None
          .type=strings
+         unit_cell=None
+         .type=unit_cell
+         space_group=None
+         .type=space_group
        }
        derivative{
          file_name=None
          .type=path
          labels=None
          .type=strings
+          unit_cell=None
+         .type=unit_cell
+         space_group=None
+         .type=space_group
        }
 
      }
 
+     least_squares_options{
+       use_experimental_sigmas=True
+       .type=bool
+       scale_data=*intensities amplitudes
+       .type=choice
+       scale_target=*basic fancy
+       .type=choice
+     }
+
+     local_scaling_options{
+       use_experimental_sigmas=True
+       .type=bool
+       scale_data=*intensities amplitudes
+       .type=choice
+       scale_target=local_lsq *local_moment
+       .type=choice
+     }
    }
 
 
@@ -80,8 +105,8 @@ scaling.input {
 
      format = mtz
      .type = strings
-
    }
+
 
 
 }
@@ -312,8 +337,6 @@ def run(args):
     miller_array_native = absolute_scaling.anisotropic_correction(
       miller_array_native,aniso_native.p_scale, u_star_correct_nat  )
 
-
-
     print >> log
     print >> log, "Anisotropic absolute scaling of derivative"
     print >> log, "------------------------------------------"
@@ -326,30 +349,101 @@ def run(args):
       n_bases = n_bases*\
         miller_array_derivative.space_group().order_z()*n_copies_solc)
     aniso_derivative.show(out=log,verbose=1)
+    print >> log
     print >> log, "removing anisotropy for derivative data"
+    print >> log
     u_star_correct_der = aniso_derivative.u_star
     miller_array_derivative = absolute_scaling.anisotropic_correction(
       miller_array_derivative,aniso_native.p_scale, u_star_correct_der  )
+
+
+    ## Limit resolution limits
+    print >> log, "Applying resolution cut"
+    print >> log, "-----------------------"
+    low_cut=999
+    if params.scaling.input.SIR_scale.xray_data.low_resolution is not None:
+      low_cut = params.scaling.input.SIR_scale.xray_data.low_resolution
+    high_cut = 0
+    if params.scaling.input.SIR_scale.xray_data.high_resolution is not None:
+      high_cut = params.scaling.input.SIR_scale.xray_data.high_resolution
+
+
+    miller_array_derivative = miller_array_derivative.resolution_filter(
+      d_max=low_cut,
+      d_min=high_cut)
+    miller_array_native = miller_array_native.resolution_filter(
+      d_max=low_cut,
+      d_min=high_cut )
+
 
     print >> log
     print >> log, "Checking for alternative indexing"
     print >> log, "---------------------------------"
     print >> log
+
     reindex_object = pair_analyses.reindexing(
       miller_array_derivative, miller_array_native)
-    #miller_array_derivative = reindex_object.select_and_transform()
-
+    miller_array_derivative = reindex_object.select_and_transform(
+      out=log,
+      input_array=miller_array_derivative)
 
     ## The reflections have now been scaled and transformed properly
     ## Get the common sets and prepare to scale according to methods
     ## specified
+    scaling_tasks={'lsq':True, 'local':True }
 
-    ls_scaling = relative_scaling.ls_rel_scale_driver(
-      miller_array_native,
-      miller_array_derivative)
-    ls_scaling.show()
+    if params.scaling.input.SIR_scale.target=='ls':
+      scaling_tasks['lsq']=True
+      scaling_tasks['local']=False
+
+    if params.scaling.input.SIR_scale.target=='loc':
+      scaling_tasks['lsq']=False
+      scaling_tasks['local']=False
+
+    if params.scaling.input.SIR_scale.target=='ls_and_loc':
+      scaling_tasks['lsq']=True
+      scaling_tasks['local']=True
+
+    if scaling_tasks['lsq']:
+      print >> log
+      print >> log, "Least squares relative scaling"
+      print >> log, "------------------------------"
+      print >> log
+
+      use_exp_sigmas=params.scaling.input.SIR_scale.least_squares_options.\
+        use_experimental_sigmas
+      use_int = True
+      if params.scaling.input.SIR_scale.least_squares_options.\
+        scale_data=='amplitudes':
+        use_int=False
+      use_wt=True
+      if params.scaling.input.SIR_scale.least_squares_options.\
+        scale_target=='basic':
+        use_wt=False
+
+      ls_scaling = relative_scaling.ls_rel_scale_driver(
+        miller_array_native,
+        miller_array_derivative,
+        use_intensities=use_int,
+        scale_weight=use_wt,
+        use_weights=use_exp_sigmas)
+      ls_scaling.show()
+      miller_array_native = ls_scaling.native
+      miller_array_derivative = ls_scaling.derivative
 
 
+    if scaling_tasks['local']:
+      print >> log
+      print >> log, "Local scaling"
+      print >> log, "-------------"
+      print >> log
+
+
+
+
+
+
+    # Generate the ismorphous differences please
 
 
 

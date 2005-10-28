@@ -186,6 +186,6 @@ class reindexing(object):
                                        postfix=' |')
 
     print >> out, self.table
-    
+
     if input_array is not None:
       return input_array.change_basis( self.matrices[location] ).map_to_asu()
