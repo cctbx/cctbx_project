@@ -68,6 +68,7 @@ class levenberg_marquardt:
         tau=1.e-3,
         eps_1=1.e-16,
         eps_2=1.e-16,
+        mu_min=1.e-300,
         k_max=1000):
     self.function = function
     nu = 2
@@ -87,7 +88,8 @@ class levenberg_marquardt:
     while (not found and k < k_max):
       k += 1
       a_plus_mu = a.deep_copy()
-      a_plus_mu.matrix_diagonal_add_in_place(value=mu)
+      if (mu > mu_min):
+        a_plus_mu.matrix_diagonal_add_in_place(value=mu)
       u = a_plus_mu.matrix_symmetric_as_packed_u()
       gmw = u.matrix_cholesky_gill_murray_wright_decomposition_in_place()
       number_of_cholesky_decompositions += 1
@@ -110,7 +112,10 @@ class levenberg_marquardt:
           a = j_t.matrix_multiply(j)
           g = j_t.matrix_multiply(f_x)
           found = flex.max(flex.abs(g)) <= eps_1
-          mu *= max(1/3., 1-(2*rho-1)**3)
+          if (mu > mu_min):
+            mu *= max(1/3., 1-(2*rho-1)**3)
+          else:
+            mu = mu_min
           nu = 2
         else:
           mu *= nu
