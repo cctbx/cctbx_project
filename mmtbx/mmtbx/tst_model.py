@@ -50,7 +50,6 @@ def exercise():
 
 #####
   class iso: pass
-  class penalty_well: pass
   iso.sphere_radius = 5.0
   iso.distance_power = 1.57
   iso.average_power = 0.58
@@ -58,13 +57,6 @@ def exercise():
   iso.wilson_b_weight = None
   iso.plain_pairs_radius = 5.0
   iso.refine_ap_and_dp = False
-  iso.penalty_well = penalty_well
-  iso.penalty_well.b_min = 0.0
-  iso.penalty_well.b_max = 1000.0
-  iso.penalty_well.shape_factor_left = 10.
-  iso.penalty_well.shape_factor_right = 10.
-  iso.penalty_well.left_term_weight = 1.0
-  iso.penalty_well.right_term_weight = 1.0
 #####
 
   mol.adp_statistics(iso_restraints = iso, show = True, other = None, wilson_b = None)
