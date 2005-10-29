@@ -428,6 +428,18 @@ namespace cctbx { namespace xray { namespace structure_factors {
             }
           }
         }
+        if (grad_flags.u_iso && grad_flags.tan_u_iso) {
+          float_type* d_t_d_u = &*d_target_d_u_iso_.begin();
+          for(std::size_t i=0;i<scatterers.size();i++,d_t_d_u++) {
+            ScattererType const& scatterer = scatterers[i];
+            if (!scatterer.anisotropic_flag) {
+              f_t pi = scitbx::constants::pi;
+              f_t u_iso_max = adptbx::b_as_u(100.);
+              (*d_t_d_u) *= u_iso_max/pi/(1.+mean_displacements[i]*
+                                             mean_displacements[i]);
+            }
+          }
+        }
         if (grad_flags.site) {
           average_special_position_site_gradients(
             site_symmetry_table,

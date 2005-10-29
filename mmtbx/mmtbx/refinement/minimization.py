@@ -23,7 +23,6 @@ class lbfgs(object):
                      wc,
                      wu,
                      fmodel,
-                     u_penalty,
                      wilson_b,
                      lbfgs_termination_params=None,
                      cos_sin_table=True,
@@ -137,25 +136,6 @@ class lbfgs(object):
                 gradient_flags = self.xray_gradient_flags,
                 xray_gradients = self.g,
                 site_gradients = self.stereochemistry_residuals.gradients * self.wc)
-    if((self.u_penalty.left_term_weight > 0.0 or
-       self.u_penalty.right_term_weight > 0.0) and
-       self.xray_gradient_flags.u_iso):
-       u_isos = self.xray_structure.extract_u_iso_or_u_equiv()
-       self.f += self.u_penalty.functional(u_isos = u_isos)
-       if(compute_gradients):
-          if(self.xray_gradient_flags.sqrt_u_iso):
-             mean_displacements_sq = mean_displacements*mean_displacements
-             g = 2 * mean_displacements * self.u_penalty.gradient(u_isos =
-                                                         mean_displacements_sq)
-          else:
-             g = self.u_penalty.gradient(u_isos = u_isos)
-          del u_isos
-          xray.minimization.add_gradients(
-                            scatterers      = self.xray_structure.scatterers(),
-                            gradient_flags  = self.xray_gradient_flags,
-                            xray_gradients  = self.g,
-                            u_iso_gradients = g)
-          del g
     if(self.xray_gradient_flags.u_iso
           and self.restraints_manager.geometry is not None
           and self.wu > 0.0
@@ -169,6 +149,8 @@ class lbfgs(object):
        if(compute_gradients):
           if(self.xray_gradient_flags.sqrt_u_iso):
              u_iso_gradients = 2*mean_displacements*energies_adp_iso.gradients
+          elif(self.xray_gradient_flags.tan_u_iso):
+             u_iso_gradients = ( adptbx.b_as_u(100.)/3.14/(flex.pow2(mean_displacements)+1.0) ) *energies_adp_iso.gradients
           else:
              u_iso_gradients = energies_adp_iso.gradients
           xray.minimization.add_gradients(

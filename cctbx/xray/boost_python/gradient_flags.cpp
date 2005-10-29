@@ -14,7 +14,7 @@ namespace {
     {
       using namespace boost::python;
       class_<w_t>("gradient_flags", no_init)
-        .def(init<bool, bool, bool, bool, bool, bool, bool>())
+        .def(init<bool, bool, bool, bool, bool, bool, bool, bool>())
         .def(init<w_t const&>())
         .def_readwrite("site", &w_t::site)
         .def_readwrite("u_iso", &w_t::u_iso)
@@ -23,6 +23,7 @@ namespace {
         .def_readwrite("fp", &w_t::fp)
         .def_readwrite("fdp", &w_t::fdp)
         .def_readwrite("sqrt_u_iso", &w_t::sqrt_u_iso)
+        .def_readwrite("tan_u_iso", &w_t::tan_u_iso)
         .def("all_false", &w_t::all_false)
         .def("adjust", &w_t::adjust)
       ;
