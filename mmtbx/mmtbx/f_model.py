@@ -47,10 +47,8 @@ class manager(object):
                      alpha_beta_params   = None,
                      xray_structure      = None,
                      f_mask              = None,
-                     mask_params         = None,
-                     log                 = None):
+                     mask_params         = None):
     adopt_init_args(self, locals())
-    if (self.log is None): self.log = sys.stdout
     assert self.f_obs is not None
     assert self.f_obs.is_real_array()
     assert self.xray_structure is not None
@@ -102,8 +100,7 @@ class manager(object):
                 abcd              = abcd,
                 alpha_beta_params = self.alpha_beta_params,
                 xray_structure    = self.xray_structure.deep_copy_scatterers(),
-                mask_params       = self.mask_params,
-                log               = self.log)
+                mask_params       = self.mask_params)
     new.f_calc                 = self.f_calc.deep_copy()
     new.f_mask                 = self.f_mask.deep_copy()
     new.f_ordered_solvent      = self.f_ordered_solvent.deep_copy()
@@ -128,8 +125,7 @@ class manager(object):
                    abcd              = abcd               ,
                    alpha_beta_params = dc.alpha_beta_params  ,
                    xray_structure    = dc.xray_structure     ,
-                   mask_params       = dc.mask_params        ,
-                   log               = dc.log                )
+                   mask_params       = dc.mask_params)
     new.f_calc                 = dc.f_calc.resolution_filter(d_max, d_min)
     new.f_mask                 = dc.f_mask.resolution_filter(d_max, d_min)
     new.f_ordered_solvent      = dc.f_ordered_solvent.resolution_filter(d_max, d_min)
@@ -205,7 +201,9 @@ class manager(object):
                             xray_structure,
                             update_f_calc = False,
                             update_f_mask = False,
-                            update_f_ordered_solvent = False):
+                            update_f_ordered_solvent = False,
+                            out = None):
+    if(out is None): out = sys.stdout
     self.xray_structure = xray_structure
     if(self.mask_params is not None):
        step = self.f_obs.d_min()/self.mask_params.grid_step_factor
@@ -240,7 +238,7 @@ class manager(object):
          bulk_solvent_mask_obj.subtract_non_uniform_solvent_region_in_place(
                                                      non_uniform_mask = nu_map)
        if(self.mask_params is not None and self.mask_params.verbose > 0):
-          bulk_solvent_mask_obj.show_summary(out = self.log)
+          bulk_solvent_mask_obj.show_summary(out = out)
        self.f_mask = \
                  bulk_solvent_mask_obj.structure_factors(miller_set=self.f_obs)
 
@@ -289,7 +287,7 @@ class manager(object):
                   assert fmodel_copy.r_work() == self.r_work()
                   if(self.mask_params is not None and self.mask_params.verbose > 0):
                      print r
-                     bulk_solvent_mask.show_summary(out = self.log)
+                     bulk_solvent_mask.show_summary()
     if(params is None):
        params = bss.solvent_and_scale_params()
     else:
@@ -324,9 +322,9 @@ class manager(object):
        if(params.k_sol_b_sol_grid_search):
           k_sols =kb_range(params.k_sol_max,params.k_sol_min,params.k_sol_step)
           b_sols =kb_range(params.b_sol_max,params.b_sol_min,params.b_sol_step)
-       if(params.verbose > 0):
-          self.show_k_sol_b_sol_u_aniso_target(header = m+str(0)+\
-                                          " (start) target= "+self.target_name)
+       #if(params.verbose > 0):
+       #   self.show_k_sol_b_sol_u_aniso_target(header = m+str(0)+\
+       #                                   " (start) target= "+self.target_name)
        if(params.fix_k_sol is not None):
           self.update(k_sol = params.fix_k_sol,
                       b_sol = params.fix_b_sol)
@@ -351,17 +349,17 @@ class manager(object):
                          b_sol_start  = self.b_sol
               self.k_sol = k_sol_start
               self.b_sol = b_sol_start
-              if(params.verbose > 0):
-                 h=m+str(mc)+": k & b: grid search; T= "+self.target_name
-                 self.show_k_sol_b_sol_u_aniso_target(header = h)
+              #if(params.verbose > 0):
+              #   h=m+str(mc)+": k & b: grid search; T= "+self.target_name
+              #   self.show_k_sol_b_sol_u_aniso_target(header = h)
            if((params.k_sol_b_sol_grid_search,params.minimization_k_sol_b_sol)\
                                                               == (False,True)):
               self.k_sol, self.b_sol = bss.k_sol_b_sol_minimizer(fmodel = \
                                                                    fmodel_copy)
               fmodel_copy = self
-              if(params.verbose > 0):
-                 h=m+str(mc)+": k & b: minimization; T= "+self.target_name
-                 self.show_k_sol_b_sol_u_aniso_target(header = h)
+              #if(params.verbose > 0):
+              #   h=m+str(mc)+": k & b: minimization; T= "+self.target_name
+              #   self.show_k_sol_b_sol_u_aniso_target(header = h)
            if(params.minimization_u_aniso):
               self._u_aniso_minimizer_helper(params, mc)
            if(params.statistical_solvent_model):
@@ -370,9 +368,9 @@ class manager(object):
               if(target > target_start):
                  print "ordered solvent: T start=, end= ",target_start,target
               target_start = target
-              if(params.verbose > 0):
-                 h=m+str(mc)+": (ordered solvent) T= "+self.target_name
-                 self.show_k_sol_b_sol_u_aniso_target(header = h)
+              #if(params.verbose > 0):
+              #   h=m+str(mc)+": (ordered solvent) T= "+self.target_name
+              #   self.show_k_sol_b_sol_u_aniso_target(header = h)
        for mc in minimization_macro_cycles:
            if(params.minimization_k_sol_b_sol):
               self._k_sol_b_sol_minimization_helper(params, mc)
@@ -391,18 +389,18 @@ class manager(object):
           save_b_sol = self.b_sol
           if(params.minimization_k_sol_b_sol):
              for mc in minimization_macro_cycles:
-                 if(params.verbose > 0):
-                    h=m+str(0)+": start k&b minimization; T= "+self.target_name
-                    self.show_k_sol_b_sol_u_aniso_target(header = h)
+                 #if(params.verbose > 0):
+                 #   h=m+str(0)+": start k&b minimization; T= "+self.target_name
+                 #   self.show_k_sol_b_sol_u_aniso_target(header = h)
                  self._k_sol_b_sol_minimization_helper(params, mc)
           self.update(target_name = save_fmodel_target)
           if(self.alpha_beta_params is not None):
              self.alpha_beta_params.interpolation = save_interpolation_flag
        if(params.apply_back_trace_of_u_aniso and abs(self.u_iso()) > 0.0):
           self.apply_back_b_iso()
-          if(params.verbose > 0):
-             h=m+str(mc)+": apply back trace of u_aniso: T= "+self.target_name
-             self.show_k_sol_b_sol_u_aniso_target(header = h)
+          #if(params.verbose > 0):
+          #   h=m+str(mc)+": apply back trace of u_aniso: T= "+self.target_name
+          #   self.show_k_sol_b_sol_u_aniso_target(header = h)
     if(abs(self.k_sol) < 1.e-2 or abs(self.b_sol) < 1.e-2):
        self.k_sol = 0.0
        self.b_sol = 0.0
@@ -428,7 +426,7 @@ class manager(object):
                   assert fmodel_copy.r_work() == self.r_work()
                   if(self.mask_params is not None and self.mask_params.verbose > 0):
                      print r
-                     bulk_solvent_mask.show_summary(out = self.log)
+                     bulk_solvent_mask.show_summary()
 
   def _u_aniso_minimizer_helper(self, params, mc):
     m="macro_cycle= "
@@ -442,16 +440,16 @@ class manager(object):
     diff = abs(abs(target_final) - abs(target_start))
     if(target_start < target_final and diff > 1.e-7):
        print "u_aniso search: T start=, final= ",target_start,target_final
-    if(params.verbose > 0):
-       h=m+str(mc)+": anisotropic scale; T= "+self.target_name
-       self.show_k_sol_b_sol_u_aniso_target(header = h)
+    #if(params.verbose > 0):
+    #   h=m+str(mc)+": anisotropic scale; T= "+self.target_name
+    #   self.show_k_sol_b_sol_u_aniso_target(header = h)
 
   def _k_sol_b_sol_minimization_helper(self, params, mc):
     m="macro_cycle= "
     self.k_sol,self.b_sol= bss.k_sol_b_sol_minimizer(fmodel = self)
-    if(params.verbose > 0):
-       h=m+str(mc)+": (k_sol & b_sol minimization) T= "+self.target_name
-       self.show_k_sol_b_sol_u_aniso_target(header = h)
+    #if(params.verbose > 0):
+    #   h=m+str(mc)+": (k_sol & b_sol minimization) T= "+self.target_name
+    #   self.show_k_sol_b_sol_u_aniso_target(header = h)
     reset_k_sol_b_sol_flag = 0
     if(self.k_sol <= params.k_sol_min or self.k_sol >= params.k_sol_max):
        k1 = abs(abs(self.k_sol) - abs(params.k_sol_min))
@@ -465,10 +463,10 @@ class manager(object):
        if(b1 >= b2): self.b_sol = params.b_sol_max
        if(b1 <= b2): self.b_sol = params.b_sol_min
        reset_k_sol_b_sol_flag = 1
-    if(params.verbose > 0 and reset_k_sol_b_sol_flag == 1):
-       h=m+str(mc)+": (k_sol & b_sol reset: values out of range) T= "+\
-                                                               self.target_name
-       self.show_k_sol_b_sol_u_aniso_target(header = h)
+    #if(params.verbose > 0 and reset_k_sol_b_sol_flag == 1):
+    #   h=m+str(mc)+": (k_sol & b_sol reset: values out of range) T= "+\
+    #                                                           self.target_name
+    #   self.show_k_sol_b_sol_u_aniso_target(header = h)
 
 
   def setup_target_functors(self):
@@ -1314,26 +1312,25 @@ class manager(object):
                                          symmetry_flags    = symmetry_flags)
 
   def show(self, out=None):
-    if(out is None): log = self.log
-    else: log = out
-    print >> log, "f_calc          = ", self.f_calc
-    print >> log, "f_obs           = ", self.f_obs
-    print >> log, "f_mask          = ", self.f_mask
-    print >> log, "r_free_flags    = ", self.r_free_flags
-    print >> log, "u_aniso         = ", self.u_aniso
-    print >> log, "k_sol           = ", self.k_sol
-    print >> log, "b_sol           = ", self.b_sol
-    print >> log, "sf_algorithm    = ", self.sf_algorithm
-    print >> log, "target_name     = ", self.target_name
-    log.flush()
+    if(out is None): out = sys.stdout
+    print >> out, "f_calc          = ", self.f_calc
+    print >> out, "f_obs           = ", self.f_obs
+    print >> out, "f_mask          = ", self.f_mask
+    print >> out, "r_free_flags    = ", self.r_free_flags
+    print >> out, "u_aniso         = ", self.u_aniso
+    print >> out, "k_sol           = ", self.k_sol
+    print >> out, "b_sol           = ", self.b_sol
+    print >> out, "sf_algorithm    = ", self.sf_algorithm
+    print >> out, "target_name     = ", self.target_name
+    out.flush()
 
-  def show_k_sol_b_sol_u_aniso_target(self, header = None, target = None):
-    log = self.log
+  def show_k_sol_b_sol_u_aniso_target(self, header=None,target=None,out=None):
+    if(out is None): out = sys.stdout
     p = " "
     if(header is None): header = ""
     line_len = len("|-"+"|"+header)
     fill_len = 80-line_len-1
-    print >> log, "|-"+header+"-"*(fill_len)+"|"
+    print >> out, "|-"+header+"-"*(fill_len)+"|"
     k_sol = self.k_sol
     b_sol = self.b_sol
     u0,u1,u2,u3,u4,u5 = self.u_aniso
@@ -1348,25 +1345,25 @@ class manager(object):
     r_work = self.r_work()
     u_isos = self.xray_structure.extract_u_iso_or_u_equiv()
     b_iso_mean = flex.mean(u_isos * math.pi**2*8)
-    print >> log, "| k_sol=%5.2f b_sol=%7.2f target_w =%20.6f r_work=%7.4f" % \
+    print >> out, "| k_sol=%5.2f b_sol=%7.2f target_w =%20.6f r_work=%7.4f" % \
                   (k_sol, b_sol, target_w, r_work) + 5*p+"|"
-    print >> log, "| B(11,22,33,12,13,23)=%9.4f%9.4f%9.4f%9.4f%9.4f%9.4f |" % \
+    print >> out, "| B(11,22,33,12,13,23)=%9.4f%9.4f%9.4f%9.4f%9.4f%9.4f |" % \
                   (u0,u1,u2,u3,u4,u5)
-    print >> log, "| n_ordered_solv=%6d b_ordered_solv=%7.2f b_mean=%7.2f " \
+    print >> out, "| n_ordered_solv=%6d b_ordered_solv=%7.2f b_mean=%7.2f " \
                   "n_atoms=%7d |" % (self.n_ordered_water,\
                                  self.b_ordered_water,b_iso_mean,u_isos.size())
-    print >> log, "| mean alpha:%8.4f  number of alpha <= 0.0:%7d" % \
+    print >> out, "| mean alpha:%8.4f  number of alpha <= 0.0:%7d" % \
                   (a_mean, a_zero)+25*p+"|"
-    print >> log, "|"+"-"*77+"|"
-    log.flush()
+    print >> out, "|"+"-"*77+"|"
+    out.flush()
 
-  def show_essential(self, header = None):
-    log = self.log
+  def show_essential(self, header = None, out=None):
+    if(out is None): out = sys.stdout
     p = " "
     if(header is None): header = ""
     line_len = len("|-"+"|"+header)
     fill_len = 80-line_len-1
-    print >> log, "|-"+header+"-"*(fill_len)+"|"
+    print >> out, "|-"+header+"-"*(fill_len)+"|"
     r_work = self.r_work()
     r_test = self.r_free()
     scale_work = self.scale_k1_w()
@@ -1379,71 +1376,80 @@ class manager(object):
     except: target_work = str(None)
     try:    target_test = "%13.6E" % self.target_t()
     except: target_test = str(None)
-    print >> log, "| r-factor (work) = %6.4f  scale (work) = %7.4f" \
+    print >> out, "| r-factor (work) = %6.4f  scale (work) = %7.4f" \
           "  ksol= %5.2f  bsol= %6.2f |" % (r_work, scale_work, k_sol,b_sol)
-    print >> log, "| r-factor (free) = %6.4f  scale (free) = %7.4f" % (
+    print >> out, "| r-factor (free) = %6.4f  scale (free) = %7.4f" % (
             r_test, scale_test) +p*28+"|"
-    print >> log, "| anisotropic scale matrix (Cartesian basis): " \
+    print >> out, "| anisotropic scale matrix (Cartesian basis): " \
         + "| xray targets:"+17*p+"|"
-    print >> log, "|  B11= %8.3f B12= %8.3f B13= %8.3f  |" % \
+    print >> out, "|  B11= %8.3f B12= %8.3f B13= %8.3f  |" % \
       (u0,u3,u4), "target name = %11s"%self.target_name+5*p+"|"
-    print >> log, "|"+16*p+"B22= %8.3f B23= %8.3f  | " % (u1,u5) \
+    print >> out, "|"+16*p+"B22= %8.3f B23= %8.3f  | " % (u1,u5) \
         + "target (work) = %13s"%target_work+" |"
-    print >> log, "|"+30*p+"B33= %8.3f  | "% (u2)+"target (free) = %13s"% \
+    print >> out, "|"+30*p+"B33= %8.3f  | "% (u2)+"target (free) = %13s"% \
           target_test+" |"
-    print >> log, "| (B11+B22+B33)/3 = %8.3f"%u_iso+18*p+"|"+31*p+"|"
-    print >> log, "|"+"-"*77+"|"
+    print >> out, "| (B11+B22+B33)/3 = %8.3f"%u_iso+18*p+"|"+31*p+"|"
+    print >> out, "|"+"-"*77+"|"
     #if (not_approx_equal(self.u_aniso,
     #                     self.f_obs.average_b_cart(self.u_aniso))):
     #  raise RuntimeError(
     #    "Internal error: Corrupt anisotropic scale matrix:\n  %s\n  %s" %
     #      (str(self.u_aniso), str(b_cart_ave)))
-    log.flush()
+    out.flush()
 
   def show_comprehensive(self, header = "",
                                reflections_per_bin = 200,
-                               max_number_of_bins  = 30):
-    log = self.log
-    self.show_essential(header = header)
-    print >> log
+                               max_number_of_bins  = 30,
+                               out=None):
+    if(out is None): out = sys.stdout
+    self.show_essential(header = header, out = out)
+    print >> out
     self.statistics_in_resolution_bins(
                                      reflections_per_bin = reflections_per_bin,
-                                     max_number_of_bins  = max_number_of_bins)
-    print >> log
+                                     max_number_of_bins  = max_number_of_bins,
+                                     out                 = out)
+    print >> out
     self.show_fom_phase_error_alpha_beta_in_bins(
                                      reflections_per_bin = reflections_per_bin,
-                                     max_number_of_bins  = max_number_of_bins)
+                                     max_number_of_bins  = max_number_of_bins,
+                                     out                 = out)
 
   def statistics_in_resolution_bins(self, reflections_per_bin = 200,
-                                          max_number_of_bins  = 30):
+                                          max_number_of_bins  = 30,
+                                          out=None):
     statistics_in_resolution_bins(
       fmodel          = self,
       target_functors = self.target_functors,
       reflections_per_bin = reflections_per_bin,
       max_number_of_bins  = max_number_of_bins,
-      out=self.log)
+      out=out)
 
   def r_factors_in_resolution_bins(self, reflections_per_bin = 200,
-                                          max_number_of_bins  = 30):
+                                          max_number_of_bins  = 30,
+                                          out=None):
+    if(out is None): out = sys.stdout
     r_factors_in_resolution_bins(
       fmodel              = self,
       reflections_per_bin = reflections_per_bin,
       max_number_of_bins  = max_number_of_bins,
-      out=self.log)
+      out=out)
 
   def show_fom_phase_error_alpha_beta_in_bins(self, reflections_per_bin = 200,
-                                                    max_number_of_bins  = 30):
+                                                    max_number_of_bins  = 30,
+                                                    out=None):
+    if(out is None): out = sys.stdout
     show_fom_phase_error_alpha_beta_in_bins(
       fmodel              = self,
       reflections_per_bin = reflections_per_bin,
       max_number_of_bins  = max_number_of_bins,
-      out=self.log)
+      out=out)
 
 def statistics_in_resolution_bins(fmodel,
                                   target_functors,
                                   reflections_per_bin,
                                   max_number_of_bins,
-                                  out):
+                                  out=None):
+  if(out is None): out = sys.stdout
   d_max,d_min = fmodel.f_obs.d_max_min()
   fo_t = fmodel.f_obs_t()
   fc_t = fmodel.f_model_t()
@@ -1513,7 +1519,8 @@ def statistics_in_resolution_bins(fmodel,
 def r_factors_in_resolution_bins(fmodel,
                                  reflections_per_bin,
                                  max_number_of_bins,
-                                 out):
+                                 out=None):
+  if(out is None): out = sys.stdout
   d_max,d_min = fmodel.f_obs.d_max_min()
   fo_t = fmodel.f_obs_t()
   fc_t = fmodel.f_model_t()
@@ -1554,7 +1561,8 @@ def r_factors_in_resolution_bins(fmodel,
 def show_fom_phase_error_alpha_beta_in_bins(fmodel,
                                             reflections_per_bin,
                                             max_number_of_bins,
-                                            out):
+                                            out=None):
+  if(out is None): out = sys.stdout
   d_max,d_min = fmodel.f_obs.d_max_min()
   fom = fmodel.figures_of_merit()
   phase_errors_work = fmodel.phase_errors_work()
