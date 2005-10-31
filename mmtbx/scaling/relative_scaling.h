@@ -1418,7 +1418,11 @@ namespace relative_scaling{
                      anomalous_flag,
                      radius,
                      depth,
-                     at_least_this_number_of_neighbours )
+                     at_least_this_number_of_neighbours ),
+    location_of_master_in_set_( hkl_sets, space_group, anomalous_flag ),
+    min_neighbours_( hkl_sets.size() ),
+    max_neighbours_( 0 ),
+    mean_neighbours_( 0 )
     {
 
       for (unsigned ii=0;ii<hkl_master.size();ii++){
@@ -1448,8 +1452,18 @@ namespace relative_scaling{
         constant=0.0;
       }
 
+      scitbx::af::shared<long> locations;
+      locations = location_of_master_in_set_.find_hkl( hkl_master_.const_ref() );
+
       for (unsigned ii=0;ii<hkl_sets_.size();ii++){
 
+        if (area_generator_.area_[property_generator_.set_lut_[ ii ] ].size() < min_neighbours_ ){
+          min_neighbours_ = area_generator_.area_[property_generator_.set_lut_[ ii ] ].size();
+        }
+        if (area_generator_.area_[property_generator_.set_lut_[ ii ] ].size() > max_neighbours_ ){
+          max_neighbours_ = area_generator_.area_[property_generator_.set_lut_[ ii ] ].size();
+        }
+        mean_neighbours_ += area_generator_.area_[property_generator_.set_lut_[ ii ] ].size();
 
         FloatType nat_mean=0, der_mean=0;
         FloatType nat_var=0, der_var=0;
@@ -1461,6 +1475,10 @@ namespace relative_scaling{
 
           nb_index = area_generator_.area_[
             property_generator_.set_lut_[ ii ] ][jj];
+          nb_index = locations[ nb_index ];
+
+          SCITBX_ASSERT(nb_index>=0);
+          SCITBX_ASSERT(nb_index<hkl_sets_.size());
 
           weight = sigma_set_b_[ nb_index ]* data_set_a_[ nb_index  ]/
             data_set_b_[ nb_index  ];
@@ -1477,12 +1495,14 @@ namespace relative_scaling{
           der_var += (data_set_b_[ nb_index  ]*weight*
                       data_set_b_[ nb_index  ]*weight);
         }
+
         if (der_mean>0){
           local_scales_[ii]=nat_mean/der_mean;
         }
 
-      }
 
+      }
+      mean_neighbours_/=hkl_sets_.size();
     }
 
     scitbx::af::shared<FloatType>
@@ -1491,11 +1511,24 @@ namespace relative_scaling{
       return( local_scales_ );
     }
 
+    scitbx::af::tiny<FloatType,3>
+    stats()
+    {
+      scitbx::af::tiny<FloatType,3> result;
+      result[0]=min_neighbours_;
+      result[1]=max_neighbours_;
+      result[2]=mean_neighbours_;
+      return(result);
+    }
 
 
     protected:
     property_matching_indices<FloatType> property_generator_;
     cctbx::miller::lookup_utils::local_area<FloatType> area_generator_;
+    cctbx::miller::lookup_utils::lookup_tensor<FloatType> location_of_master_in_set_;
+
+
+    FloatType min_neighbours_, max_neighbours_, mean_neighbours_;
 
     scitbx::af::shared< cctbx::miller::index<> > hkl_master_;
     scitbx::af::shared< cctbx::miller::index<> > hkl_sets_;
@@ -1557,7 +1590,11 @@ namespace relative_scaling{
                      anomalous_flag,
                      radius,
                      depth,
-                     at_least_this_number_of_neighbours )
+                     at_least_this_number_of_neighbours ),
+    location_of_master_in_set_( hkl_sets, space_group, anomalous_flag ),
+    min_neighbours_( hkl_sets.size() ),
+    max_neighbours_( 0 ),
+    mean_neighbours_( 0 )
     {
 
       for (unsigned ii=0;ii<hkl_master.size();ii++){
@@ -1587,7 +1624,19 @@ namespace relative_scaling{
         constant=0.0;
       }
 
+      scitbx::af::shared<long> locations;
+      locations = location_of_master_in_set_.find_hkl( hkl_master_.const_ref() );
+
       for (unsigned ii=0;ii<hkl_sets_.size();ii++){
+
+
+        if (area_generator_.area_[property_generator_.set_lut_[ ii ] ].size() < min_neighbours_ ){
+          min_neighbours_ = area_generator_.area_[property_generator_.set_lut_[ ii ] ].size();
+        }
+        if (area_generator_.area_[property_generator_.set_lut_[ ii ] ].size() > max_neighbours_ ){
+          max_neighbours_ = area_generator_.area_[property_generator_.set_lut_[ ii ] ].size();
+        }
+        mean_neighbours_ += area_generator_.area_[property_generator_.set_lut_[ ii ] ].size();
 
 
         FloatType top=0, bottom=0;
@@ -1597,6 +1646,10 @@ namespace relative_scaling{
 
           nb_index = area_generator_.area_[
             property_generator_.set_lut_[ ii ] ][jj];
+          nb_index = locations[ nb_index ];
+
+          SCITBX_ASSERT(nb_index>=0);
+          SCITBX_ASSERT(nb_index<hkl_sets_.size());
 
           weight = sigma_set_b_[ nb_index ]* data_set_a_[ nb_index  ]/
             data_set_b_[ nb_index  ];
@@ -1608,13 +1661,14 @@ namespace relative_scaling{
           top+=weight*data_set_a_[nb_index]*data_set_b_[nb_index];
           bottom+=weight*data_set_b_[nb_index]*data_set_b_[nb_index];
 
-         }
+        }
+
         if (bottom>0){
           local_scales_[ii]=top/bottom;
         }
 
       }
-
+      mean_neighbours_ /= hkl_sets_.size();
     }
 
     scitbx::af::shared<FloatType>
@@ -1623,9 +1677,24 @@ namespace relative_scaling{
       return( local_scales_ );
     }
 
+    scitbx::af::tiny<FloatType,3>
+    stats()
+    {
+      scitbx::af::tiny<FloatType,3> result;
+      result[0]=min_neighbours_;
+      result[1]=max_neighbours_;
+      result[2]=mean_neighbours_;
+      return(result);
+    }
+
+
+
     protected:
     property_matching_indices<FloatType> property_generator_;
     cctbx::miller::lookup_utils::local_area<FloatType> area_generator_;
+    cctbx::miller::lookup_utils::lookup_tensor<FloatType> location_of_master_in_set_;
+
+    FloatType min_neighbours_, max_neighbours_, mean_neighbours_;
 
     scitbx::af::shared< cctbx::miller::index<> > hkl_master_;
     scitbx::af::shared< cctbx::miller::index<> > hkl_sets_;

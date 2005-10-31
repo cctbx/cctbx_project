@@ -244,6 +244,7 @@ namespace{
                 arg_("use_experimental_sigmas")
                 )))
         .def("get_scales", &w_t::get_scales)
+        .def("stats", &w_t::stats)
         ;
 
         }
@@ -291,6 +292,7 @@ namespace{
                 arg_("use_experimental_sigmas")
                 )))
         .def("get_scales", &w_t::get_scales)
+        .def("stats", &w_t::stats)
         ;
 
         }
