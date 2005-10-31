@@ -30,7 +30,9 @@ def manager(simulated_annealing_params,
             wilson_b,
             monitor,
             fmodel,
-            model):
+            model,
+            out = None):
+  if(out is None): out = sys.stdout
   print_statistics.make_header("simulated annealing refinement")
   print_statistics.make_sub_header("lbfgs minimization: before simulated annealing")
   minimized = mmtbx.refinement.minimization.lbfgs(
@@ -54,7 +56,8 @@ def manager(simulated_annealing_params,
   fmodel.update_xray_structure(xray_structure           = model.xray_structure,
                                update_f_calc            = True,
                                update_f_mask            = False,
-                               update_f_ordered_solvent = False)
+                               update_f_ordered_solvent = False,
+                               out                      = out)
 
   monitor.collect(step           = str(macro_cycle) + "_xyz:",
                   model          = model,
@@ -71,12 +74,14 @@ def manager(simulated_annealing_params,
                        bulk_solvent_parameters    = bulk_solvent_parameters,
                        alpha_beta_parameters      = alpha_beta_parameters,
                        mask_parameters            = mask_parameters,
-                       wc                         = target_weights.wc())
+                       wc                         = target_weights.wc(),
+                       out                        = out)
 
   fmodel.update_xray_structure(xray_structure           = model.xray_structure,
                                update_f_calc            = True,
                                update_f_mask            = False,
-                               update_f_ordered_solvent = False)
+                               update_f_ordered_solvent = False,
+                               out                      = out)
 
   monitor.collect(step           = str(macro_cycle) + "_sar:",
                   model          = model,
@@ -91,7 +96,8 @@ def run_simulated_annealing(simulated_annealing_params,
                             wc,
                             bulk_solvent_parameters,
                             alpha_beta_parameters,
-                            mask_parameters):
+                            mask_parameters,
+                            out):
   assert fmodel.sf_algorithm is not None
   sf_algorithm = fmodel.sf_algorithm
   fmodel_copy = fmodel.deep_copy()
@@ -127,9 +133,11 @@ def run_simulated_annealing(simulated_annealing_params,
     fmodel_copy_1.update_xray_structure(xray_structure  = model.xray_structure,
                                         update_f_calc            = True,
                                         update_f_mask            = False,
-                                        update_f_ordered_solvent = False)
+                                        update_f_ordered_solvent = False,
+                                        out                      = out)
 
-    fmodel_copy_1.show_essential(header = "2:SA temperatrure = "+str(sa_temp))
+    fmodel_copy_1.show_essential(header = "2:SA temperatrure = "+str(sa_temp),
+                                 out    = out)
 
     geom_stat = model.geometry_statistics(
                                       show = True,
