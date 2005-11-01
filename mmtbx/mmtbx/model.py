@@ -46,7 +46,6 @@ class manager(object):
                                       show_energies      = show_energies,
                                       plain_pairs_radius = plain_pairs_radius),
            normalization = normalization)
-    print self.restraints_manager.geometry.plain_pair_sym_table
     if(not self.locked):
        selection = flex.bool(self.xray_structure_ini.scatterers().size(), True)
        self.restraints_manager_ini = mmtbx.restraints.manager(
@@ -73,8 +72,6 @@ class manager(object):
     new.atom_attributes_list = self.atom_attributes_list[:]
     new.solvent_selection = self.solvent_selection.deep_copy()
     new.locked = self.locked
-    print "&"*80
-    print new.restraints_manager.geometry.plain_pair_sym_table
     if(self.rigid_body_selections is not None):
        new.rigid_body_selections = []
        for item in self.rigid_body_selections:
