@@ -188,4 +188,86 @@ class reindexing(object):
     print >> out, self.table
 
     if input_array is not None:
-      return input_array.change_basis( self.matrices[location] ).map_to_asu()
+      return input_array.change_basis( self.matrices[location] ).map_to_asu()\
+             .set_observation_type( input_array )
+
+
+class delta_generator(object):
+  def __init__(self,nat,der):
+    self.nat=nat.deep_copy()
+    self.der=der.deep_copy()
+    assert self.nat.is_real_array()
+    assert self.nat.is_real_array()
+
+    if self.nat.is_xray_intensity_array():
+      self.nat.f_sq_as_f()
+    if self.der.is_xray_intensity_array():
+      self.der.f_sq_as_f()
+
+    self.nat,self.der = self.nat.common_sets(self.der)
+
+    self.delta_f=self.nat.customized_copy(
+      data = ( self.der.data() - self.nat.data() ),
+      sigmas = flex.sqrt( self.der.sigmas()*self.der.sigmas()+
+                          self.nat.sigmas()*self.nat.sigmas() )
+      ).set_observation_type( self.nat )
+
+    self.abs_delta_f=self.nat.customized_copy(
+      data = flex.abs( self.der.data() - self.nat.data() ),
+      sigmas = flex.sqrt( self.der.sigmas()*self.der.sigmas()+
+                          self.nat.sigmas()*self.nat.sigmas() )
+      ).set_observation_type( self.der )
+
+    if not self.nat.is_xray_intensity_array():
+      self.nat.f_as_f_sq()
+    if not self.der.is_xray_intensity_array():
+      self.der.f_as_f_sq()
+
+    self.delta_i=self.nat.customized_copy(
+      data = ( self.der.data() - self.nat.data() ),
+      sigmas = flex.sqrt( self.der.sigmas()*self.der.sigmas()+
+                          self.nat.sigmas()*self.nat.sigmas() )
+      ).set_observation_type( self.nat )
+
+    self.abs_delta_i=self.nat.customized_copy(
+      data = flex.abs( self.der.data() - self.nat.data() ),
+      sigmas = flex.sqrt( self.der.sigmas()*self.der.sigmas()+
+                          self.nat.sigmas()*self.nat.sigmas() )
+      ).set_observation_type( self.der )
+
+
+
+class outlier_rejection(object):
+  def __init__(self,
+               nat,
+               der,
+               cut_level=3,
+               out=None
+               ):
+    """
+    I toss everything > 3 sigma in the scaling,
+    where sigma comes from the rms of everything being scaled:
+
+    sigma**2 = <delta**2>- <experimental-sigmas**2>
+
+    Then if a particular
+    delta**2 > 3 sigma**2 + experimental-sigmas**2
+    then I toss it.
+    """
+    if out == None:
+      out = sys.stdout
+
+    ## Just make sure that we have the common sets
+    self.nat = nat.deep_copy()
+    self.der = der.deep_copy()
+    self.nat, self.der = self.nat.common_sets(self.der)
+
+    ## Construct delta f's
+    delta_gen = delta_generator( self.nat, self.der )
+    delta_f = delta_gen.abs_delta_f
+    ## Set up a binner please
+    delta_f.setup_binner_d_star_sq_step(auto_binning=True)
+    ## for each bin, I would like to compute
+    ## mean dF**2
+    ## mean sigma**2
+    mean_df2 = delta_f.mean_of_intensities_divided_by_epsilon(use_binning=True)

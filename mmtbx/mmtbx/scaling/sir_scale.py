@@ -81,7 +81,7 @@ scaling.input {
        .type=bool
        scale_data=*intensities amplitudes
        .type=choice
-       scale_target=*basic fancy
+       scale_target=basic *fancy
        .type=choice
      }
 
@@ -90,8 +90,14 @@ scaling.input {
        .type=bool
        scale_data=*intensities amplitudes
        .type=choice
-       scale_target=local_lsq *local_moment
+       scale_target=*local_moment local_lsq
        .type=choice
+       max_depth=10
+       .type=int
+       target_neighbours=100
+       .type=int
+       neighbourhood_sphere=1
+       .type=int
      }
    }
 
@@ -357,6 +363,14 @@ def run(args):
       miller_array_derivative,aniso_native.p_scale, u_star_correct_der  )
 
 
+    if miller_array_derivative.anomalous_flag():
+      miller_array_derivative = miller_array_derivative.average_bijvoet_mates()\
+      .set_observation_type( miller_array_derivative )
+    if miller_array_native.anomalous_flag():
+      miller_array_native = miller_array_native.average_bijvoet_mates()\
+      .set_observation_type( miller_array_native )
+
+
     ## Limit resolution limits
     print >> log, "Applying resolution cut"
     print >> log, "-----------------------"
@@ -374,7 +388,6 @@ def run(args):
     miller_array_native = miller_array_native.resolution_filter(
       d_max=low_cut,
       d_min=high_cut )
-
 
     print >> log
     print >> log, "Checking for alternative indexing"
@@ -398,7 +411,7 @@ def run(args):
 
     if params.scaling.input.SIR_scale.target=='loc':
       scaling_tasks['lsq']=False
-      scaling_tasks['local']=False
+      scaling_tasks['local']=True
 
     if params.scaling.input.SIR_scale.target=='ls_and_loc':
       scaling_tasks['lsq']=True
@@ -431,19 +444,60 @@ def run(args):
       miller_array_native = ls_scaling.native
       miller_array_derivative = ls_scaling.derivative
 
-
     if scaling_tasks['local']:
       print >> log
       print >> log, "Local scaling"
       print >> log, "-------------"
       print >> log
 
+      use_exp_sigmas=params.scaling.input.SIR_scale.\
+         local_scaling_options.use_experimental_sigmas
+      use_int = True
+      if params.scaling.input.SIR_scale.local_scaling_options.\
+        scale_data=='amplitudes':
+        use_int=False
 
+      moment_based_local_scale=False
+      if params.scaling.input.SIR_scale.local_scaling_options.\
+        scale_target=='local_moment':
+        moment_based_local_scale=True
 
+      local_scaling = relative_scaling.local_scaling_driver(
+        miller_array_native,
+        miller_array_derivative,
+        use_intensities=use_int,
+        use_weights=use_exp_sigmas,
+        moment_based=moment_based_local_scale,
+        max_depth=params.scaling.input.SIR_scale\
+        .local_scaling_options.max_depth,
+        target_neighbours=params.scaling.input.SIR_scale\
+        .local_scaling_options.target_neighbours,
+        sphere=params.scaling.input.SIR_scale\
+        .local_scaling_options.neighbourhood_sphere,
+        out=log)
 
-
+      miller_array_native = local_scaling.native
+      miller_array_derivative = local_scaling.derivative
 
     # Generate the ismorphous differences please
+    print >> log
+    print >> log, "Making delta f's"
+    print >> log, "----------------"
+    print >> log
+
+    delta_gen = pair_analyses.delta_generator( miller_array_native,
+                                               miller_array_derivative )
+    print >> log
+    print >> log, "writing mtz file"
+    print >> log, "----------------"
+    print >> log
+
+    print delta_gen.abs_delta_f.observation_type()
+
+    ## Please write out the abs_delta_f array
+    mtz_dataset = delta_gen.abs_delta_f.as_mtz_dataset(
+      column_root_label='FSIR,SIGMAFSIR')
+    mtz_dataset.mtz_object().write(file_name='test.mtz')
 
 
 
