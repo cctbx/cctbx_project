@@ -106,11 +106,9 @@ scaling.input {
      log = 'logfile.log'
      .type = path
 
-     root = SIR
-     .type = strings
+     hklout = 'test.mtz'
+     .type = path
 
-     format = mtz
-     .type = strings
    }
 
 
@@ -492,13 +490,17 @@ def run(args):
     print >> log, "----------------"
     print >> log
 
-    print delta_gen.abs_delta_f.observation_type()
+    
+    assert miller_array_native.observation_type() is not None
+    assert miller_array_derivative.observation_type() is not None
+    assert delta_gen.abs_delta_f.observation_type() is not None
 
     ## Please write out the abs_delta_f array
     mtz_dataset = delta_gen.abs_delta_f.as_mtz_dataset(
       column_root_label='FSIR,SIGMAFSIR')
-    mtz_dataset.mtz_object().write(file_name='test.mtz')
-
+    mtz_dataset.mtz_object().write(file_name=
+                                   params.scaling.input.output.hklout)
+    
 
 
 
