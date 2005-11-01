@@ -1580,6 +1580,27 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
                        data=result,
                        data_fmt="%7.4f")
 
+  def mean_of_squared_sigma_divided_by_epsilon(self,
+                                              use_binning=False,
+                                              return_fail=None):
+    """ <sigma^2/epsilon> """
+    assert not use_binning or self.binner is not None
+    if (not use_binning):
+      if (self.sigmas().size() == 0): return return_fail
+      weighted_mean = flex.mean( self.sigmas() /
+                                 self.epsilons().data().as_double() )
+      return weighted_mean
+
+    result = []
+    for i_bin in self.binner().range_all():
+      sel =  self.binner().selection(i_bin)
+      result.append(self.select(sel).mean_of_squared_sigma_divided_by_epsilon(
+        return_fail=return_fail) )
+    return binned_data(binner=self.binner(),
+                       data=result,
+                       data_fmt="%7.4f")
+
+
   def second_moment_of_intensities(self, use_binning=False):
     "<I^2>/(<I>)^2 (2.0 for untwinned, 1.5 for twinned data)"
     if (self.is_xray_intensity_array()):
