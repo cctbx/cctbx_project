@@ -434,7 +434,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
             ScattererType const& scatterer = scatterers[i];
             if (!scatterer.anisotropic_flag) {
               f_t pi = scitbx::constants::pi;
-              f_t u_iso_max = adptbx::b_as_u(100.);
+              f_t u_iso_max = adptbx::b_as_u(200.);
               (*d_t_d_u) *= u_iso_max/pi/(1.+mean_displacements[i]*
                                              mean_displacements[i]);
             }
