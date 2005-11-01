@@ -497,7 +497,7 @@ def run(args):
 
     ## Please write out the abs_delta_f array
     mtz_dataset = delta_gen.abs_delta_f.as_mtz_dataset(
-      column_root_label='FSIR,SIGMAFSIR')
+      column_root_label='FSIR')
     mtz_dataset.mtz_object().write(file_name=
                                    params.scaling.input.output.hklout)
     
