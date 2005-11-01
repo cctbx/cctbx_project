@@ -655,7 +655,7 @@ namespace cctbx { namespace xray {
             }
             else if (grad_flags.tan_u_iso) {
               FloatType pi = 3.14;//scitbx::constants::pi;
-              FloatType u_iso_max = adptbx::b_as_u(100.);
+              FloatType u_iso_max = adptbx::b_as_u(200.);
               packed_.push_back(u_iso_max/pi/(1.+mean_displacements[i_seq]*
                           mean_displacements[i_seq])*adptbx::u_as_b(gr_b_iso));
             }
@@ -692,7 +692,7 @@ namespace cctbx { namespace xray {
           }
           else if (grad_flags.tan_u_iso) {
             FloatType pi = 3.14;//scitbx::constants::pi;
-            FloatType u_iso_max = adptbx::b_as_u(100.);
+            FloatType u_iso_max = adptbx::b_as_u(200.);
             d_target_d_u_iso_.push_back(u_iso_max/pi/(1.+
                 mean_displacements[i_seq]*mean_displacements[i_seq])
                 *adptbx::u_as_b(gr_b_iso));

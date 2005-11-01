@@ -99,7 +99,7 @@ namespace cctbx { namespace xray { namespace minimization {
                 throw error(sc.report_negative_u_iso(__FILE__, __LINE__));
               }
               FloatType pi = 3.14;//scitbx::constants::pi;
-              FloatType u_iso_max = adptbx::b_as_u(100.);
+              FloatType u_iso_max = adptbx::b_as_u(200.);
               FloatType mean_displacement = std::tan(pi*(sc.u_iso/u_iso_max-
                                             1./2.))+next_shifts();
               sc.u_iso = u_iso_max*(std::atan(mean_displacement) + pi/2.) / pi;
