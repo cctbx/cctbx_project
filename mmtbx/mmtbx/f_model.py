@@ -715,8 +715,7 @@ class manager(object):
     grad_xray = flex.vec3_double(sf.packed())
     return grad_xray
 
-  def gradient_wrt_uiso(self, sqrt_u_iso=None, tan_u_iso=None):
-    assert [sqrt_u_iso, tan_u_iso].count(True) == 1
+  def gradient_wrt_uiso(self, sqrt_u_iso=None, tan_b_iso_max=None):
     structure_factor_gradients = cctbx.xray.structure_factors.gradients(
                                                 miller_set    = self.f_obs_w(),
                                                 cos_sin_table = True)
@@ -724,9 +723,11 @@ class manager(object):
                                                                  u_iso = True)
     mean_displacements = None
     if(gradient_flags.u_iso):
-       if(sqrt_u_iso is not None): gradient_flags.sqrt_u_iso = sqrt_u_iso
-       if(tan_u_iso is not None):  gradient_flags.tan_u_iso = tan_u_iso
-       if(gradient_flags.sqrt_u_iso or gradient_flags.tan_u_iso):
+       if(sqrt_u_iso is not None):
+          gradient_flags.sqrt_u_iso = sqrt_u_iso
+       if(tan_b_iso_max is not None):
+          gradient_flags.tan_b_iso_max = tan_b_iso_max
+       if(gradient_flags.sqrt_u_iso or gradient_flags.tan_b_iso_max != 0):
           mean_displacements = self.xray_structure.scatterers().extract_u_iso()
           if(not mean_displacements.all_ge(0)):
              raise RuntimeError(

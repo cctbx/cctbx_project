@@ -73,7 +73,8 @@ namespace cctbx { namespace xray { namespace minimization {
       BOOST_STATIC_ASSERT(packing_order_convention == 1);
       typedef typename XrayScattererType::float_type sc_f_t;
       shifted_scatterers.reserve(scatterers.size());
-      if (gradient_flags.u_iso && (gradient_flags.sqrt_u_iso || gradient_flags.tan_u_iso)) {
+      if (gradient_flags.u_iso && (gradient_flags.sqrt_u_iso ||
+                                         gradient_flags.tan_b_iso_max > 0.0)) {
         mean_displacements.resize(scatterers.size(), 0);
       }
       FloatType* mean_displacements_ptr = mean_displacements.begin();
@@ -94,15 +95,15 @@ namespace cctbx { namespace xray { namespace minimization {
               sc.u_iso = scitbx::fn::pow2(mean_displacement);
               mean_displacements_ptr[i_sc] = mean_displacement;
             }
-            else if (gradient_flags.tan_u_iso) {
+            else if (gradient_flags.tan_b_iso_max > 0.0) {
               if (sc.u_iso < 0) {
                 throw error(sc.report_negative_u_iso(__FILE__, __LINE__));
               }
-              FloatType pi = 3.14;//scitbx::constants::pi;
-              FloatType u_iso_max = adptbx::b_as_u(200.);
+              FloatType pi = scitbx::constants::pi;
+              FloatType u_iso_max=adptbx::b_as_u(gradient_flags.tan_b_iso_max);
               FloatType mean_displacement = std::tan(pi*(sc.u_iso/u_iso_max-
                                             1./2.))+next_shifts();
-              sc.u_iso = u_iso_max*(std::atan(mean_displacement) + pi/2.) / pi;
+              sc.u_iso = u_iso_max*(std::atan(mean_displacement)+pi/2.)/pi;
               mean_displacements_ptr[i_sc] = mean_displacement;
             }
             else {

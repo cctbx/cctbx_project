@@ -38,7 +38,6 @@ def exercise_gradient_flags():
   assert not f.fp
   assert f.fdp
   assert not f.sqrt_u_iso
-  assert f.tan_u_iso
   f.site = True
   f.u_iso = False
   f.u_aniso = True
@@ -46,7 +45,6 @@ def exercise_gradient_flags():
   f.fp = True
   f.fdp = False
   f.sqrt_u_iso = True
-  f.tan_u_iso = False
   assert f.site
   assert not f.u_iso
   assert f.u_aniso
@@ -54,7 +52,6 @@ def exercise_gradient_flags():
   assert f.fp
   assert not f.fdp
   assert f.sqrt_u_iso
-  assert not f.tan_u_iso
   c = xray.ext.gradient_flags(f)
   assert c.site
   assert not c.u_iso

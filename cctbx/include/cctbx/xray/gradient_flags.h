@@ -13,7 +13,7 @@ namespace cctbx { namespace xray {
       bool fp_,
       bool fdp_,
       bool sqrt_u_iso_,
-      bool tan_u_iso_)
+      double tan_b_iso_max_)
     :
       site(site_),
       u_iso(u_iso_),
@@ -22,7 +22,7 @@ namespace cctbx { namespace xray {
       fp(fp_),
       fdp(fdp_),
       sqrt_u_iso(sqrt_u_iso_),
-      tan_u_iso(tan_u_iso_)
+      tan_b_iso_max(tan_b_iso_max_)
     {}
 
     bool site;
@@ -32,7 +32,7 @@ namespace cctbx { namespace xray {
     bool fp;
     bool fdp;
     bool sqrt_u_iso;
-    bool tan_u_iso;
+    double tan_b_iso_max;
 
     bool
     all_false() const

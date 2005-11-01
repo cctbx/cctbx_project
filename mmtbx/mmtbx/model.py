@@ -65,13 +65,13 @@ class manager(object):
             geometry      = self.restraints_manager.geometry.select(selection),
             ncs_groups    = self.restraints_manager.ncs_groups,
             normalization = self.restraints_manager.normalization)
-       new.restraints_manager.geometry.update_plain_pair_sym_table(sites_frac =
-                                              self.xray_structure.sites_frac())
-    new.xray_structure = self.xray_structure.deep_copy_scatterers()
-    new.xray_structure_ini = self.xray_structure_ini.deep_copy_scatterers()
+       new.restraints_manager.geometry.pair_proxies(sites_cart =
+                                              self.xray_structure.sites_cart())
+    new.xray_structure       = self.xray_structure.deep_copy_scatterers()
+    new.xray_structure_ini   = self.xray_structure_ini.deep_copy_scatterers()
     new.atom_attributes_list = self.atom_attributes_list[:]
-    new.solvent_selection = self.solvent_selection.deep_copy()
-    new.locked = self.locked
+    new.solvent_selection    = self.solvent_selection.deep_copy()
+    new.locked               = self.locked
     if(self.rigid_body_selections is not None):
        new.rigid_body_selections = []
        for item in self.rigid_body_selections:
