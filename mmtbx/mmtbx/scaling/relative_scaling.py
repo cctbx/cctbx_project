@@ -5,6 +5,8 @@ from cctbx import uctbx
 from cctbx import adptbx
 from cctbx import sgtbx
 from cctbx import eltbx
+from cctbx import crystal
+from cctbx import miller
 from libtbx.utils import Sorry
 import scitbx
 from scitbx import matrix
@@ -348,3 +350,146 @@ class ls_rel_scale_driver(object):
     print >> out, "R-value before LS scaling  : %5.3f"%(self.r_val_before)
     print >> out, "R-value after LS scaling   : %5.3f"%(self.r_val_after)
     print >> out
+
+
+
+
+class local_scaling_driver(object):
+  def __init__(self,
+               miller_native,
+               miller_derivative,
+               use_intensities=True,
+               use_weights=True,
+               moment_based=True,
+               max_depth=10,
+               target_neighbours=1000,
+               sphere=1,
+               out=None):
+
+    if out == None:
+      out = sys.stdout
+
+
+    self.native = miller_native.deep_copy().set_observation_type(
+      miller_native)
+    self.derivative = miller_derivative.deep_copy().set_observation_type(
+      miller_derivative)
+    assert self.native.observation_type() != None
+    assert self.derivative.observation_type() != None
+
+    self.native, self.derivative = self.native.common_sets(
+      self.derivative)
+
+    ## Here we change things into intensities or amplitudes as asked
+    if use_intensities:
+      if not self.native.is_xray_intensity_array():
+        self.native = self.native.f_as_f_sq()
+      if not self.derivative.is_xray_intensity_array():
+        self.derivative = self.derivative.f_as_f_sq()
+    if not use_intensities:
+      if self.native.is_xray_intensity_array():
+        self.native = self.native.f_sq_as_f()
+      if self.derivative.is_xray_intensity_array():
+        self.derivative = self.derivative.f_sq_as_f()
+
+
+    ## In order to avoid problems with abseces due to lattice
+    ## types, we transform the system to the primitive setting
+
+    ## make new symmetry object
+    self.nat_primset=self.native.change_basis(
+     self.native.change_of_basis_op_to_minimum_cell() )
+
+    self.der_primset=self.derivative.change_basis(
+      self.derivative.change_of_basis_op_to_minimum_cell() )
+
+    ## Get the symmetry of the intensity group
+    intensity_group = self.nat_primset.space_group() \
+      .build_derived_reflection_intensity_group(
+      anomalous_flag=self.nat_primset.anomalous_flag() )
+
+    ## We need to define a master set
+    ## This is a miller array that encompasses
+    ## both native and derivative *and* has systematic absences present.
+
+    master_set = miller.build_set(
+    crystal_symmetry=crystal.symmetry(
+      unit_cell=self.nat_primset.unit_cell(),
+      space_group=intensity_group),
+    anomalous_flag=self.nat_primset.anomalous_flag(),
+    d_min=self.nat_primset.d_min()-0.1)
+
+
+
+
+    local_scaler=None
+    # Moment based scaling
+    if moment_based:
+      print >> out
+      print >> out, "Moment based local scaling"
+      print >> out, "Maximum depth        : %8i"%(max_depth)
+      print >> out, "Target neighbours    : %8i"%(target_neighbours)
+      print >> out, "neighbourhood sphere : %8i"%(sphere)
+      print >> out
+      local_scaler = scaling.local_scaling_moment_based(
+        hkl_master=master_set.indices(),
+        hkl_sets=self.nat_primset.indices(),
+        data_set_a=self.nat_primset.data(),
+        sigma_set_a=self.nat_primset.sigmas(),
+        data_set_b=self.der_primset.data(),
+        sigma_set_b=self.der_primset.sigmas(),
+        space_group=self.nat_primset.space_group(),
+        anomalous_flag=self.nat_primset.anomalous_flag(),
+        radius=sphere,
+        depth=max_depth,
+        target_ref=target_neighbours,
+        use_experimental_sigmas=use_weights)
+
+    # then it will be lsq based local scaling
+    if not moment_based:
+      print >> out
+      print >> out, "Least squares based local scaling"
+      print >> out, "Maximum depth        : %8i"%(max_depth)
+      print >> out, "Target neighbours    : %8i"%(target_neighbours)
+      print >> out, "neighbourhood sphere : %8i"%(sphere)
+      print >> out
+      local_scaler = scaling.local_scaling_ls_based(
+        hkl_master=master_set.indices(),
+        hkl_sets=self.nat_primset.indices(),
+        data_set_a=self.nat_primset.data(),
+        sigma_set_a=self.nat_primset.sigmas(),
+        data_set_b=self.der_primset.data(),
+        sigma_set_b=self.der_primset.sigmas(),
+        space_group=self.nat_primset.space_group(),
+        anomalous_flag=self.nat_primset.anomalous_flag(),
+        radius=sphere,
+        depth=max_depth,
+        target_ref=target_neighbours,
+        use_experimental_sigmas=use_weights)
+
+
+    scales=local_scaler.get_scales()
+    stats =local_scaler.stats()
+
+    print >> out, "Mean number of neighbours           : %8.3f"%(stats[2])
+    print >> out, "Minimum number of neighbours        : %8i"%(stats[0])
+    print >> out, "Maximum number of neighbours        : %8i"%(stats[1])
+    print >> out
+    print >> out, "Mean local scale                    : %8.3f"%(
+      flex.mean(scales) )
+    print >> out, "Standard deviation of local scale   : %8.3f"%(
+      math.sqrt(   flex.mean(scales*scales)
+                 - flex.mean(scales)*flex.mean(scales)))
+    print >> out, "Minimum local scale                 : %8.3f"%(
+      flex.min( scales ) )
+    print >> out, "Maximum local scale                 : %8.3f"%(
+      flex.max( scales ) )
+
+
+    self.derivative = self.derivative.customized_copy(
+      data=self.derivative.data()*scales,
+      sigmas = self.derivative.sigmas()*scales ).set_observation_type(
+      self.derivative)
+
+    assert self.native.observation_type() != None
+    assert self.derivative.observation_type() != None
