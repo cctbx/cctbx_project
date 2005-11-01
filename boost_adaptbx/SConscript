@@ -105,8 +105,8 @@ if (not env_etc.no_boost_python):
       [line.rstrip() for line in open(jamfile_path).readlines()])
     m = md5.new()
     m.update(jamfile)
-    # based on boost/libs/python/test/Jamfile revision 1.86
-    jamfile_md5 = "d8fe4634e5a18620bdd56bc113cdcb48"
+    # based on boost/libs/python/test/Jamfile revision 1.87
+    jamfile_md5 = "f8ee507ee22865ed59a33345aa60196c"
     if (m.hexdigest() != jamfile_md5):
       print "***************************************************"
       print "Warning: boost/libs/python/test/Jamfile has changed"
@@ -177,6 +177,7 @@ raw_ctor
 pointer_vector
 wrapper_held_type
 polymorphism2_auto_ptr
+stl_iterator
 """ % disabled)
     Import("env_boost_python_ext")
     test_dir = libtbx.env.under_dist("boost", "libs/python/test")
