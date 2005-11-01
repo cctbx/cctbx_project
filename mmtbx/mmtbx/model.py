@@ -9,6 +9,9 @@ from cctbx import adptbx
 import mmtbx.restraints
 from iotbx import pdb
 from cctbx import geometry_restraints
+from cctbx.geometry_restraints.lbfgs import lbfgs as cctbx_geometry_restraints_lbfgs
+import scitbx.lbfgs
+
 
 class manager(object):
   def __init__(self, processed_pdb_file,
@@ -17,7 +20,8 @@ class manager(object):
     self.log = log
     self.restraints_manager = None
     self.processed_pdb_file = processed_pdb_file
-    self.xray_structure = processed_pdb_file.xray_structure().deep_copy_scatterers()
+    self.xray_structure = \
+                     processed_pdb_file.xray_structure().deep_copy_scatterers()
     self.xray_structure_ini = self.xray_structure.deep_copy_scatterers()
     self.crystal_symmetry = \
                   processed_pdb_file.all_chain_proxies.stage_1.crystal_symmetry
@@ -42,6 +46,7 @@ class manager(object):
                                       show_energies      = show_energies,
                                       plain_pairs_radius = plain_pairs_radius),
            normalization = normalization)
+    print self.restraints_manager.geometry.plain_pair_sym_table
     if(not self.locked):
        selection = flex.bool(self.xray_structure_ini.scatterers().size(), True)
        self.restraints_manager_ini = mmtbx.restraints.manager(
@@ -58,14 +63,18 @@ class manager(object):
     if(self.restraints_manager is not None):
        new.restraints_manager_ini = self.restraints_manager_ini # XXX not a deep copy
        new.restraints_manager = mmtbx.restraints.manager(
-               geometry      = self.restraints_manager.geometry.select(selection),
-               ncs_groups    = self.restraints_manager.ncs_groups,
-               normalization = self.restraints_manager.normalization)
+            geometry      = self.restraints_manager.geometry.select(selection),
+            ncs_groups    = self.restraints_manager.ncs_groups,
+            normalization = self.restraints_manager.normalization)
+       new.restraints_manager.update_plain_pair_sym_table(sites_frac =
+                                              self.xray_structure.sites_frac())
     new.xray_structure = self.xray_structure.deep_copy_scatterers()
     new.xray_structure_ini = self.xray_structure_ini.deep_copy_scatterers()
     new.atom_attributes_list = self.atom_attributes_list[:]
     new.solvent_selection = self.solvent_selection.deep_copy()
     new.locked = self.locked
+    print "&"*80
+    print new.restraints_manager.geometry.plain_pair_sym_table
     if(self.rigid_body_selections is not None):
        new.rigid_body_selections = []
        for item in self.rigid_body_selections:
@@ -238,6 +247,40 @@ class manager(object):
     b_isos.set_selected(sel_outliers_min, min_b_iso)
     self.xray_structure.set_b_iso(values = b_isos)
 
+  def geometry_minimization(self,
+                            max_number_of_iterations = 100,
+                            number_of_macro_cycles   = 100):
+    if(max_number_of_iterations == 0 or number_of_macro_cycles == 0): return
+    sso_start = stereochemistry_statistics(
+                          xray_structure         = self.xray_structure,
+                          xray_structure_ref     = self.xray_structure_ini,
+                          restraints_manager     = self.restraints_manager,
+                          restraints_manager_ref = self.restraints_manager_ini,
+                          text                   = "start")
+    sites_cart = self.xray_structure.sites_cart()
+    first_target_value = None
+    for macro_cycles in xrange(1,number_of_macro_cycles+1):
+        minimized = cctbx_geometry_restraints_lbfgs(
+          sites_cart                  = sites_cart,
+          geometry_restraints_manager = self.restraints_manager.geometry,
+          lbfgs_termination_params    = scitbx.lbfgs.termination_parameters(
+                                    max_iterations = max_number_of_iterations))
+        if(first_target_value is None):
+           first_target_value = minimized.first_target_value
+    self.xray_structure = \
+                 self.xray_structure.replace_sites_cart(new_sites = sites_cart)
+    sso_end = stereochemistry_statistics(
+                          xray_structure         = self.xray_structure,
+                          xray_structure_ref     = self.xray_structure_ini,
+                          restraints_manager     = self.restraints_manager,
+                          restraints_manager_ref = self.restraints_manager_ini,
+                          text                   = "final")
+    assert approx_equal(first_target_value, sso_start.target)
+    assert approx_equal(minimized.final_target_value, sso_end.target)
+    sso_start.show(out = self.log)
+    sso_end.show(out = self.log)
+
+
   def geometry_statistics(self, other = None, show = False, text = ""):
     if(other is not None):
        stereochemistry_statistics_obj = stereochemistry_statistics(
@@ -402,10 +445,6 @@ class stereochemistry_statistics(object):
     self.energies_sites = self.restraints_manager.energies_sites(
                           sites_cart        = self.xray_structure.sites_cart(),
                           compute_gradients = True)
-    self()
-
-  def __call__(self):
-    sites_cart = self.xray_structure.sites_cart()
     esg = self.energies_sites.geometry
     self.b_target = esg.bond_residual_sum
     self.a_target = esg.angle_residual_sum
@@ -419,13 +458,11 @@ class stereochemistry_statistics(object):
     self.d_min, self.d_max, self.d_mean = esg.dihedral_deviations()
     self.c_min, self.c_max, self.c_mean = esg.chirality_deviations()
     self.p_min, self.p_max, self.p_mean = esg.planarity_deviations()
-    self.target = esg.target
-    self.gradients = esg.gradients
+    self.target               = esg.target
+    self.gradients            = esg.gradients
     self.number_of_restraints = esg.number_of_restraints
-    # XXX this does not include NCS restraints, but only bond, angles,...
-    if(esg.normalization and self.number_of_restraints > 0):
-       self.target = self.target / self.number_of_restraints
-       self.gradients = self.gradients * (1. / self.number_of_restraints)
+    self.target_normalized    = self.target / self.number_of_restraints
+    self.gradients_normalized = self.gradients * (1./self.number_of_restraints)
     self.get_model_diff()
 
   def get_model_diff(self):
