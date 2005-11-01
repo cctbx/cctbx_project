@@ -66,7 +66,7 @@ class manager(object):
             geometry      = self.restraints_manager.geometry.select(selection),
             ncs_groups    = self.restraints_manager.ncs_groups,
             normalization = self.restraints_manager.normalization)
-       new.restraints_manager.update_plain_pair_sym_table(sites_frac =
+       new.restraints_manager.geometry.update_plain_pair_sym_table(sites_frac =
                                               self.xray_structure.sites_frac())
     new.xray_structure = self.xray_structure.deep_copy_scatterers()
     new.xray_structure_ini = self.xray_structure_ini.deep_copy_scatterers()
