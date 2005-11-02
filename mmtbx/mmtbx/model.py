@@ -458,8 +458,10 @@ class stereochemistry_statistics(object):
     self.target               = esg.target
     self.gradients            = esg.gradients
     self.number_of_restraints = esg.number_of_restraints
-    self.target_normalized    = self.target / self.number_of_restraints
-    self.gradients_normalized = self.gradients * (1./self.number_of_restraints)
+    if(self.number_of_restraints > 0):
+       self.target_normalized    = self.target / self.number_of_restraints
+       self.gradients_normalized = \
+                                self.gradients * (1./self.number_of_restraints)
     self.get_model_diff()
 
   def get_model_diff(self):
