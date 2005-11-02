@@ -78,6 +78,12 @@ namespace iotbx { namespace mtz {
     CMtz::MTZCOL* column_ptr = 0;
     CCTBX_ASSERT(label != 0);
     CCTBX_ASSERT(strlen(label) < sizeof(column_ptr->label));
+    if (strchr(label, ',') != 0) {
+      throw std::runtime_error(
+          std::string("mtz::dataset::add_column(label=\"")
+        + label
+        + "\", ...): label must not include commas.");
+    }
     CCTBX_ASSERT(type != 0);
     CCTBX_ASSERT(strlen(type) < sizeof(column_ptr->type));
     CCTBX_ASSERT(!mtz_object().has_column(label));
