@@ -6,6 +6,8 @@ def run():
   "$B/../exe_dev/cctbx.getting_started",
   "$D/cctbx/examples/getting_started.py",
   "$D/cctbx/examples/analyze_adp.py",
+  "$D/cctbx/examples/g_exp_i_partial_derivatives.py",
+  "$D/cctbx/examples/tst_exp_i_alpha_derivatives.py",
   ["$D/cctbx/examples/all_axes.py", "P31"],
   ["$D/cctbx/examples/tst_phase_o_phrenia.py", "P2"],
   "$D/cctbx/examples/map_skewness.py",
