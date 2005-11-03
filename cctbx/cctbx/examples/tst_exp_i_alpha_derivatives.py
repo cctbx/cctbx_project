@@ -8,7 +8,7 @@ import sys
 
 random.seed(0)
 
-def d_target_d_dalphas_finite(obs, alphas, eps=1.e-8):
+def d_target_d_alphas_finite(obs, alphas, eps=1.e-8):
   result = []
   for i_alpha in xrange(len(alphas)):
     alphas_eps = list(alphas)
@@ -36,7 +36,7 @@ def d2_target_d_alphas_finite(obs, alphas, eps=1.e-8):
   return result
 
 def compare_analytical_and_finite(obs, alphas, out):
-  grads_fin = d_target_d_dalphas_finite(obs=obs, alphas=alphas)
+  grads_fin = d_target_d_alphas_finite(obs=obs, alphas=alphas)
   print >> out, "grads_fin:", grads_fin
   exp_sum = exp_i_alpha_sum(alphas=alphas)
   target = least_squares(obs=obs, calc=exp_sum.f())
