@@ -41,6 +41,8 @@ class lbfgs(object):
        self.scale_ml = 1.0
     assert approx_equal(       self.xray_structure.sites_cart(),
                         self.fmodel.xray_structure.sites_cart())
+    assert approx_equal(       self.xray_structure.scatterers().extract_u_iso(),
+                        self.fmodel.xray_structure.scatterers().extract_u_iso())
     self.f_obs_w = self.fmodel.f_obs_w()
     self.f_obs = self.fmodel.f_obs
     self.xray_structure.tidy_us(u_min = 1.e-6)

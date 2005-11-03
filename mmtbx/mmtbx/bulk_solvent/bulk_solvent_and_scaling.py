@@ -395,3 +395,190 @@ class uaniso_ksol_bsol_scaling_minimizer(object):
        gu = manager.grad_u_aniso()
        self.g = self.pack(u=gu, k=gk, b=gb, scale=gscale, u_factor=1.0)
     return self.f, self.g
+
+
+class bulk_solvent_and_scales(object):
+
+  def __init__(self, fmodel, params = None, log = None):
+    if(params is None): params = solvent_and_scale_params()
+    else:               params = solvent_and_scale_params(overwrite = params)
+    to_do = [params.bulk_solvent_correction,
+             params.anisotropic_scaling,
+             params.statistical_solvent_model]
+    if(to_do.count(False) != 3):
+       params_target = params.target
+       fmodel_target = fmodel.target_name
+       if(fmodel.alpha_beta_params is not None):
+          save_interpolation_flag = fmodel.alpha_beta_params.interpolation
+          fmodel.alpha_beta_params.interpolation = False
+       if(params_target != "ls_wunit_k1"): params.target = "ls_wunit_k1"
+       if(to_do == [False,False,True]): params.target = params_target
+       fmodel.update(target_name = params.target)
+       m = "macro_cycle= "
+       minimization_macro_cycles = \
+                         range(1, params.number_of_minimization_macro_cycles+1)
+       if(params.bulk_solvent_correction):
+          assert abs(flex.max(flex.abs(fmodel.f_mask.data()))) > 1.e-3
+       macro_cycles = range(1, params.number_of_macro_cycles+1)
+       if(params.k_sol_b_sol_grid_search):
+          k_sols =kb_range(params.k_sol_max,params.k_sol_min,params.k_sol_step)
+          b_sols =kb_range(params.b_sol_max,params.b_sol_min,params.b_sol_step)
+       if(params.verbose > 0):
+          fmodel.show_k_sol_b_sol_u_aniso_target(header = m + str(0)+\
+                             " (start) target= "+fmodel.target_name, out = log)
+       if(params.fix_k_sol is not None):
+          fmodel.update(k_sol = params.fix_k_sol, b_sol = params.fix_b_sol)
+       if(params.fix_u_aniso is not None):
+          fmodel.update(u_aniso = params.fix_u_aniso)
+       if(to_do.count(False) == 2): macro_cycles = range(1,2)
+       for mc in macro_cycles:
+           outf = params.verbose > 0 and mc==macro_cycles[len(macro_cycles)-1]
+           if(params.k_sol_b_sol_grid_search):
+              target_start = fmodel.target_w()
+              ksol = fmodel.k_sol
+              bsol = fmodel.b_sol
+              for ksol_ in k_sols:
+                  for bsol_ in b_sols:
+                      fmodel.update(k_sol = ksol_, b_sol = bsol_)
+                      target = fmodel.target_w()
+                      if(target < target_start):
+                         target_start = target
+                         ksol = ksol_
+                         bsol = bsol_
+              fmodel.update(k_sol = ksol, b_sol = bsol)
+              if(outf):
+                 h=m+str(mc)+": k & b: grid search; T= "+fmodel.target_name
+                 fmodel.show_k_sol_b_sol_u_aniso_target(header = h, out = log)
+           if((params.k_sol_b_sol_grid_search,params.minimization_k_sol_b_sol)\
+                                                              == (False,True)):
+              fmodel.update(k_sol   = params.start_minimization_from_k_sol,
+                            b_sol   = params.start_minimization_from_b_sol,
+                            u_aniso = params.start_minimization_from_u_aniso)
+              ksol, bsol = k_sol_b_sol_minimizer(fmodel = fmodel)
+              fmodel.update(k_sol = ksol, b_sol = bsol)
+              if(outf):
+                 h=m+str(mc)+": k & b: minimization; T= "+fmodel.target_name
+                 fmodel.show_k_sol_b_sol_u_aniso_target(header = h, out = log)
+           if(params.minimization_u_aniso):
+              self._u_aniso_minimizer_helper(params, fmodel)
+              if(outf):
+                 h=m+str(mc)+": anisotropic scale; T= "+fmodel.target_name
+                 fmodel.show_k_sol_b_sol_u_aniso_target(header = h, out = log)
+           if(params.statistical_solvent_model):
+              pass
+              #self._set_f_ordered_solvent(params = params)
+              #target = self.target_w()
+              #if(target > target_start):
+              #   print "ordered solvent: T start=, end= ",target_start,target
+              #target_start = target
+              #if(params.verbose > 0):
+              #   h=m+str(mc)+": (ordered solvent) T= "+self.target_name
+              #   self.show_k_sol_b_sol_u_aniso_target(header = h, out = log)
+       if([params.minimization_k_sol_b_sol,
+                                 params.minimization_u_aniso].count(True) > 0):
+          for mc in minimization_macro_cycles:
+              outf = params.verbose > 0 and \
+                mc==minimization_macro_cycles[len(minimization_macro_cycles)-1]
+              if(params.minimization_k_sol_b_sol):
+                 self._k_sol_b_sol_minimization_helper(params, fmodel)
+                 if(outf):
+                    h=m+str(mc)+": k_sol & b_sol min.; T= "+fmodel.target_name
+                    fmodel.show_k_sol_b_sol_u_aniso_target(header=h, out = log)
+              if(params.minimization_u_aniso):
+                 self._u_aniso_minimizer_helper(params, fmodel)
+                 if(outf):
+                    h=m+str(mc)+": anisotropic scale; T= "+fmodel.target_name
+                    fmodel.show_k_sol_b_sol_u_aniso_target(header=h, out = log)
+       ### start ml optimization
+       if(abs(fmodel.k_sol) < 0.01 or abs(fmodel.b_sol) < 1.0):
+          fmodel.update(k_sol = 0, b_sol = 0)
+       fmodel.update(target_name = fmodel_target)
+       if(params_target == "ml"):
+          params.target = params_target
+          fmodel.update(target_name = params_target)
+          if(params.minimization_k_sol_b_sol):
+             for mc in minimization_macro_cycles:
+                 outf = params.verbose > 0 and  mc == \
+                    minimization_macro_cycles[len(minimization_macro_cycles)-1]
+                 self._k_sol_b_sol_minimization_helper(params, fmodel)
+                 if(outf):
+                    h=m+str(mc)+": k_sol & b_sol min.; T= "+fmodel.target_name
+                    fmodel.show_k_sol_b_sol_u_aniso_target(header=h, out = log)
+          fmodel.update(target_name = fmodel_target)
+          if(fmodel.alpha_beta_params is not None):
+             fmodel.alpha_beta_params.interpolation = save_interpolation_flag
+       if(params.apply_back_trace_of_u_aniso and abs(fmodel.u_iso()) > 0.0):
+          fmodel.apply_back_b_iso()
+          if(params.verbose > 0):
+             h=m+str(mc)+": apply back trace(u_aniso): T= "+fmodel.target_name
+             fmodel.show_k_sol_b_sol_u_aniso_target(header = h, out = log)
+    if(abs(fmodel.k_sol) < 0.01 or abs(fmodel.b_sol) < 1.0):
+       fmodel.update(k_sol = 0, b_sol = 0)
+
+  def _set_f_ordered_solvent(self):
+    pass
+
+  def _u_aniso_minimizer_helper(self, params, fmodel):
+    symm_constr = params.symmetry_constraints_on_u_aniso
+    u_cycles = range(1, params.number_of_cycles_for_anisotropic_scaling+1)
+    for u_cycle in u_cycles:
+        u_aniso = aniso_scale_minimizer(fmodel      = fmodel,
+                                        symm_constr = symm_constr)
+        fmodel.update(u_aniso = u_aniso)
+
+  def _k_sol_b_sol_minimization_helper(self, params, fmodel):
+    ksol, bsol = k_sol_b_sol_minimizer(fmodel = fmodel)
+    reset_k_sol_b_sol_flag = 0
+    if(ksol <= params.k_sol_min or ksol >= params.k_sol_max):
+       k1 = abs(abs(ksol) - abs(params.k_sol_min))
+       k2 = abs(abs(ksol) - abs(params.k_sol_max))
+       if(k1 >= k2): ksol = params.k_sol_max
+       if(k1 <= k2): ksol = params.k_sol_min
+       reset_k_sol_b_sol_flag = 1
+    if(bsol <= params.b_sol_min or bsol >= params.b_sol_max):
+       b1 = abs(abs(bsol) - abs(params.b_sol_min))
+       b2 = abs(abs(bsol) - abs(params.b_sol_max))
+       if(b1 >= b2): bsol = params.b_sol_max
+       if(b1 <= b2): bsol = params.b_sol_min
+       reset_k_sol_b_sol_flag = 1
+    fmodel.update(k_sol = ksol, b_sol = bsol)
+
+
+  #def _optimize_fmask(self):
+  #  if(self.k_sol == 0.0):
+  #     flag_1 = False
+  #     flag_2 = True
+  #  else:
+  #     flag_1 = True
+  #     flag_2 = False
+  #  if(0 and flag_1):
+  #     r_start = self.r_free()
+  #     fmodel = self.deep_copy()
+  #     step = self.f_obs.d_min()/self.mask_params.grid_step_factor
+  #     for r_solv in (0.8,0.9,1.0,1.1,1.2,1.3,1.4):
+  #         for r_shrink in (0.8,0.9,1.0,1.1,1.2,1.3,1.4):
+  #             bulk_solvent_mask = masks.bulk_solvent(
+  #                xray_structure           = self.xray_structure,
+  #                grid_step                = step,
+  #                solvent_radius           = r_solv,
+  #                shrink_truncation_radius = r_shrink)
+  #             f_mask = bulk_solvent_mask.structure_factors(miller_set=self.f_obs)
+  #             fmodel.update(f_mask = f_mask)
+  #             r = fmodel.r_free()
+  #             if(r < r_start):
+  #                r_start = r
+  #                self.mask_params.solvent_radius = r_solv
+  #                self.mask_params.shrink_truncation_radius = r_shrink
+  #                self.f_mask = self.f_mask.array(data = f_mask.data())
+  #                assert fmodel.r_work() == self.r_work()
+  #                if(self.mask_params is not None and self.mask_params.verbose > 0):
+  #                   print r
+  #                   bulk_solvent_mask.show_summary()
+
+def kb_range(x_max, x_min, step):
+  x_range = []
+  x = x_min
+  while x <= x_max + 0.0001:
+    x_range.append(x)
+    x += step
+  return x_range
