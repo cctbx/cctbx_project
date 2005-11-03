@@ -1477,7 +1477,6 @@ namespace relative_scaling{
             property_generator_.set_lut_[ ii ] ][jj];
           nb_index = locations[ nb_index ];
 
-          SCITBX_ASSERT(nb_index>=0);
           SCITBX_ASSERT(nb_index<hkl_sets_.size());
 
           weight = sigma_set_b_[ nb_index ]* data_set_a_[ nb_index  ]/
@@ -1648,7 +1647,6 @@ namespace relative_scaling{
             property_generator_.set_lut_[ ii ] ][jj];
           nb_index = locations[ nb_index ];
 
-          SCITBX_ASSERT(nb_index>=0);
           SCITBX_ASSERT(nb_index<hkl_sets_.size());
 
           weight = sigma_set_b_[ nb_index ]* data_set_a_[ nb_index  ]/
