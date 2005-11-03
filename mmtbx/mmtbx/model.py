@@ -178,6 +178,16 @@ class manager(object):
                   remove_atoms_selection[i_seq] = True
     self.update(selection = remove_atoms_selection)
 
+  def remove_atom_with_i_seqs(self, i_seq = None, i_seqs = None):
+    assert [i_seq, i_seqs].count(None) == 1
+    remove_atom_selection = flex.bool(len(self.atom_attributes_list), True)
+    if(i_seq is not None):
+       remove_atom_selection[i_seq] = False
+    if(i_seqs is not None):
+       for i_seq_i in i_seqs:
+           remove_atom_selection[i_seq_i] = False
+    self.update(selection = remove_atom_selection)
+
   def replace_solvent(self, xray_structure,
                             solvent_selection,
                             atom_name    = None,
