@@ -19,7 +19,7 @@ from mmtbx.scaling import basic_analyses, data_statistics
 import libtbx.phil.command_line
 from cStringIO import StringIO
 from scitbx.python_utils import easy_pickle
-import sys, os
+import sys, os, math
 
 
 class reindexing(object):
@@ -241,10 +241,77 @@ class outlier_rejection(object):
   def __init__(self,
                nat,
                der,
-               cut_level=3,
+               cut_level_rms=3,
+               cut_level_sigma=0,
+               method={'solve':False,'rms':False, 'rms_and_sigma':True},
                out=None
                ):
+    self.out=out
+    self.method = method
+    if self.out == None:
+      self.out = sys.stdout
+
+    self.cut_level_rms=cut_level_rms
+    self.cut_level_sigma=cut_level_sigma
+    ## Just make sure that we have the common sets
+    self.nat = nat.deep_copy()
+    self.der = der.deep_copy()
+    self.nat, self.der = self.nat.common_sets(self.der)
+    #Make sure we have amplitudes
+    assert self.nat.is_real_array()
+    assert self.nat.is_real_array()
+
+    if self.nat.is_xray_intensity_array():
+      self.nat.f_sq_as_f()
+    if self.der.is_xray_intensity_array():
+      self.der.f_sq_as_f()
+
+    ## Construct delta f's
+    delta_gen = delta_generator( self.nat, self.der )
+    self.delta_f = delta_gen.abs_delta_f
+    ## Set up a binner please
+    self.delta_f.setup_binner_d_star_sq_step(auto_binning=True)
+    ## for each bin, I would like to compute
+    ## mean dF**2
+    ## mean sigma**2
+    self.mean_df2 = self.delta_f.mean_of_intensity_divided_by_epsilon(
+      use_binning=True,
+      return_fail=1e12)
+    self.mean_sdf2 = self.delta_f.mean_of_squared_sigma_divided_by_epsilon(
+      use_binning=True,
+      return_fail=1e12)
+
+    self.result = flex.bool(  self.delta_f.indices().size(), True )
+
+    self.detect_outliers()
+    self.remove_outliers()
+
+  def detect_outliers(self):
+    count_true = 0
+    if (self.method['solve']):
+      count_true+=1
+    if (self.method['rms']):
+      count_true+=1
+    if (self.method['rms_and_sigma']):
+      count_true+=1
+
+
+    if not count_true==1:
+      raise Sorry("Outlier removal protocol not specified properly")
+
+    if (self.method['solve']):
+      self.detect_outliers_solve()
+    if (self.method['rms']):
+      self.detect_outliers_rms()
+    if (self.method['rms_and_sigma']):
+      self.detect_outliers_sigma()
+
+
+
+
+  def detect_outliers_solve(self):
     """
+    TT says:
     I toss everything > 3 sigma in the scaling,
     where sigma comes from the rms of everything being scaled:
 
@@ -254,20 +321,81 @@ class outlier_rejection(object):
     delta**2 > 3 sigma**2 + experimental-sigmas**2
     then I toss it.
     """
-    if out == None:
-      out = sys.stdout
+    terwilliger_sigma_array = flex.double(self.mean_df2.data) -\
+                              flex.double(self.mean_sdf2.data)
 
-    ## Just make sure that we have the common sets
-    self.nat = nat.deep_copy()
-    self.der = der.deep_copy()
+    for bin_number in self.delta_f.binner().range_all():
+      ## The selection tells us wether or not somthing is in the correct bin
+      selection =  self.delta_f.binner().selection( bin_number ).iselection()
+      ## Now just make a global check to test for outlierness:
+      tmp_sigma_array =  terwilliger_sigma_array[bin_number] -\
+                         self.delta_f.sigmas()*self.delta_f.sigmas()
+      tmp_sigma_array = flex.sqrt(tmp_sigma_array)*self.cut_level_rms
+
+      potential_outliers = ( self.delta_f.data()  >  tmp_sigma_array )
+      potential_outliers =  potential_outliers.select( selection )
+
+      self.result = self.result.set_selected( selection, potential_outliers )
+
+    print >> self.out
+    print >> self.out, " %8i potential outliers detected" %(
+      self.result.count(True) )
+    print >> self.out, " They will be removed from the data set"
+    print >> self.out
+
+
+  def detect_outliers_rms(self):
+    for bin_number in self.delta_f.binner().range_all():
+      selection =  self.delta_f.binner().selection( bin_number ).iselection()
+      potential_outliers = (
+        self.delta_f.data()  >  self.cut_level_rms*math.sqrt(
+        self.mean_df2.data[bin_number])  )
+      potential_outliers =  potential_outliers.select( selection )
+      self.result = self.result.set_selected( selection, potential_outliers )
+
+    print >> self.out
+    print >> self.out, " %8i potential outliers detected" %(
+      self.result.count(True) )
+    print >> self.out, " They will be removed from the data set"
+    print >> self.out
+
+
+  def detect_outliers_sigma(self):
+    ## Locate outliers in native
+    potential_outlier_nat = (self.nat.data()/self.nat.sigmas()
+                               < self.cut_level_sigma)
+    nat_select = potential_outlier_nat.iselection()
+
+    ## Locate outliers in derivative
+    potential_outlier_der = (self.der.data()/self.der.sigmas()
+                               <self.cut_level_sigma)
+    der_select = potential_outlier_der.iselection()
+
+    for bin_number in self.delta_f.binner().range_all():
+      ## RMS outlier removal
+      selection =  self.delta_f.binner().selection( bin_number ).iselection()
+      potential_outliers = (
+        self.delta_f.data()  >  self.cut_level_rms*math.sqrt(
+        self.mean_df2.data[bin_number])  )
+      potential_outliers =  potential_outliers.select( selection )
+      self.result = self.result.set_selected( selection, potential_outliers )
+
+    self.result = self.result.set_selected( nat_select, True )
+    self.result = self.result.set_selected( der_select, True )
+
+    print >> self.out
+    print >> self.out, " %8i potential outliers detected" %(
+      self.result.count(True) )
+    print >> self.out, " They will be removed from the data set"
+    print >> self.out
+
+
+  def remove_outliers(self):
+    potential_outliers = self.nat.select( self.result )
+
+    matches = miller.match_indices( self.nat.indices(),
+                                    potential_outliers.indices()  )
+
+    self.nat = self.nat.select( matches.single_selection(0) )
+
     self.nat, self.der = self.nat.common_sets(self.der)
-
-    ## Construct delta f's
-    delta_gen = delta_generator( self.nat, self.der )
-    delta_f = delta_gen.abs_delta_f
-    ## Set up a binner please
-    delta_f.setup_binner_d_star_sq_step(auto_binning=True)
-    ## for each bin, I would like to compute
-    ## mean dF**2
-    ## mean sigma**2
-    mean_df2 = delta_f.mean_of_intensities_divided_by_epsilon(use_binning=True)
