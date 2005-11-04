@@ -1042,27 +1042,28 @@ class manager(object):
                         "2m*Fobs-D*Fmodel",
                         "m*Fobs-D*Fmodel",
                         "k*w1*Fobs-n*w2*Fmodel")
+    f_model = self.f_model()
     if(map_type == "k*Fobs-n*Fmodel"):
-       d_obs = miller.array(miller_set = self.f_calc,
+       d_obs = miller.array(miller_set = f_model,
                             data       = self.f_obs.data()*k
-                           ).phase_transfer(phase_source = self.f_calc)
+                           ).phase_transfer(phase_source = f_model)
        d_model = self.f_model_scaled_with_k1().data()*n
-       return miller.array(miller_set = self.f_calc,
+       return miller.array(miller_set = f_model,
                            data       = d_obs.data() - d_model)
     if(map_type == "2m*Fobs-D*Fmodel"):
       alpha, beta = self.alpha_beta()
-      d_obs = miller.array(miller_set = self.f_calc,
+      d_obs = miller.array(miller_set = f_model,
                            data       = self.f_obs.data()*2.*self.figures_of_merit()
-                          ).phase_transfer(phase_source = self.f_calc)
-      d_model = self.f_model().data()*alpha.data()
-      return miller.array(miller_set = self.f_calc,
+                          ).phase_transfer(phase_source = f_model)
+      d_model = f_model.data()*alpha.data()
+      return miller.array(miller_set = self.f_model(),
                           data       = d_obs.data() - d_model)
     if(map_type == "m*Fobs-D*Fmodel"):
       alpha, beta = self.alpha_beta()
-      d_obs = miller.array(miller_set = self.f_calc,
+      d_obs = miller.array(miller_set = f_model,
                            data       = self.f_obs.data()*self.figures_of_merit()
-                          ).phase_transfer(phase_source = self.f_calc)
-      d_model = self.f_model().data()*alpha.data()
+                          ).phase_transfer(phase_source = f_model)
+      d_model = f_model.data()*alpha.data()
       ####
       #result = miller.array(miller_set = self.f_calc,
       #                      data       = d_obs.data() - d_model)
@@ -1079,7 +1080,7 @@ class manager(object):
       #fom = self.figures_of_merit()
       #for i, a, b in zip(self.f_calc.indices(), fom, alpha.data()):
       #    print >> f, "%5d%5d%5d %10.3f %10.3f" % (i[0], i[1], i[2], a, b)
-      return miller.array(miller_set = self.f_calc,
+      return miller.array(miller_set = f_model,
                           data       = d_obs.data() - d_model)
     if(map_type == "k*w1*Fobs-n*w2*Fmodel"):
       raise RuntimeError("Not implemented.")
