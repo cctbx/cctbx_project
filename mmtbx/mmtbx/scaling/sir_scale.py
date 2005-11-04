@@ -99,6 +99,16 @@ scaling.input {
        neighbourhood_sphere=1
        .type=int
      }
+
+     outlier_rejection_options{
+       cut_level_sigma=3
+       .type=float
+       cut_level_rms=4
+       .type=float
+       protocol=solve rms *rms_and_sigma
+       .type=choice
+     }
+
    }
 
 
@@ -479,6 +489,106 @@ def run(args):
 
     # Generate the ismorphous differences please
     print >> log
+    print >> log, "Outlier rejection"
+    print >> log, "----------------"
+    print >> log
+    outlier_protocol ={'solve':False,'rms':False, 'rms_and_sigma':False }
+    ## Please set the protocol to what is specified
+    outlier_protocol[ params.scaling.input.SIR_scale\
+       .outlier_rejection_options.protocol]=True
+    print outlier_protocol
+
+    outlier_rejection = pair_analyses.outlier_rejection(
+      miller_array_native,
+      miller_array_derivative,
+      cut_level_rms=params.scaling.input.SIR_scale\
+       .outlier_rejection_options.cut_level_rms,
+      cut_level_sigma=params.scaling.input.SIR_scale\
+       .outlier_rejection_options.cut_level_sigma
+
+      )
+
+    print miller_array_native.indices().size()
+    miller_array_native = outlier_rejection.nat
+    miller_array_derivative = outlier_rejection.der
+    print miller_array_native.indices().size()
+
+
+
+
+    ##-------------------------------------------------------
+    if scaling_tasks['lsq']:
+      print >> log
+      print >> log, "Least squares relative scaling"
+      print >> log, "------------------------------"
+      print >> log
+
+      use_exp_sigmas=params.scaling.input.SIR_scale.least_squares_options.\
+        use_experimental_sigmas
+      use_int = True
+      if params.scaling.input.SIR_scale.least_squares_options.\
+        scale_data=='amplitudes':
+        use_int=False
+      use_wt=True
+      if params.scaling.input.SIR_scale.least_squares_options.\
+        scale_target=='basic':
+        use_wt=False
+
+      ls_scaling = relative_scaling.ls_rel_scale_driver(
+        miller_array_native,
+        miller_array_derivative,
+        use_intensities=use_int,
+        scale_weight=use_wt,
+        use_weights=use_exp_sigmas)
+      ls_scaling.show()
+      miller_array_native = ls_scaling.native
+      miller_array_derivative = ls_scaling.derivative
+
+    if scaling_tasks['local']:
+      print >> log
+      print >> log, "Local scaling"
+      print >> log, "-------------"
+      print >> log
+
+      use_exp_sigmas=params.scaling.input.SIR_scale.\
+         local_scaling_options.use_experimental_sigmas
+      use_int = True
+      if params.scaling.input.SIR_scale.local_scaling_options.\
+        scale_data=='amplitudes':
+        use_int=False
+
+      moment_based_local_scale=False
+      if params.scaling.input.SIR_scale.local_scaling_options.\
+        scale_target=='local_moment':
+        moment_based_local_scale=True
+
+      local_scaling = relative_scaling.local_scaling_driver(
+        miller_array_native,
+        miller_array_derivative,
+        use_intensities=use_int,
+        use_weights=use_exp_sigmas,
+        moment_based=moment_based_local_scale,
+        max_depth=params.scaling.input.SIR_scale\
+        .local_scaling_options.max_depth,
+        target_neighbours=params.scaling.input.SIR_scale\
+        .local_scaling_options.target_neighbours,
+        sphere=params.scaling.input.SIR_scale\
+        .local_scaling_options.neighbourhood_sphere,
+        out=log)
+
+      miller_array_native = local_scaling.native
+      miller_array_derivative = local_scaling.derivative
+      ##---------------------------------------------------
+
+
+
+
+
+
+
+
+
+    print >> log
     print >> log, "Making delta f's"
     print >> log, "----------------"
     print >> log
@@ -490,17 +600,18 @@ def run(args):
     print >> log, "----------------"
     print >> log
 
-    
+    ## some assertions to make sure nothing went weerd
     assert miller_array_native.observation_type() is not None
     assert miller_array_derivative.observation_type() is not None
     assert delta_gen.abs_delta_f.observation_type() is not None
 
     ## Please write out the abs_delta_f array
+
     mtz_dataset = delta_gen.abs_delta_f.as_mtz_dataset(
       column_root_label='FSIR')
     mtz_dataset.mtz_object().write(file_name=
                                    params.scaling.input.output.hklout)
-    
+
 
 
 
