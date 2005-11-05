@@ -104,108 +104,86 @@ class structure_factor:
     return result
 
   def d2_target_d_params(self, target):
-    """Combined application of chain rule and product rule:
-         (d2t_aa da_d. + d2t_ga dg_d.) d. + dt d2
-       Combination of
-         gg g' g" ga
-         'g '' '" 'a
-         "g "' "" "a
-         ag a' a" aa
-       and
+    """Combined application of chain rule and product rule.
+       d_target_d_.. matrix:
+         aa ag a' a"
+         ga gg g' g"
+         'a 'g '' '"
+         "a "g "' ""
+       Block in resulting matrix:
          xx xy xz xu xw x' x"
          yx yy yz yu yw y' y"
          zx zy zz zu zw z' z"
          ux uy uz uu uw '' '"
          wx wy wz wu ww "' ""
+         'x 'y 'z 'u 'w '' '"
+         "x "y "z "u "w "' ""
     """
     result = []
     exp_i_sum = self.as_exp_i_sum()
     dts = exp_i_sum.d_target_d_params(target=target)
-    d2ts = exp_i_sum.d2_target_d_params(target=target)
+    d2ti = iter(exp_i_sum.d2_target_d_params(target=target))
     ds = self.d_g_alpha_d_params()
     d2s = self.d2_g_alpha_d_params()
     idt2 = 0
     for dt,di,d2 in zip(dts, ds, d2s):
       # dx. dy. dz.
-      idt2 += 3
+      d2ti0 = d2ti.next()
       for dxi in di.xyz:
-        row = []
-        jdt2 = 0
+        row = []; ra = row.append
+        d2tij = iter(d2ti0)
         for dj in ds:
-          jdt2 += 3
-          d2t = d2ts[idt2][jdt2]
+          d2t = d2tij.next()
           for dxj in dj.xyz:
-            row.append(d2t * dxi * dxj)
-          jdt2 -= 3
-          d2t = d2ts[idt2][jdt2]
-          row.append(d2t * dxi * dj.u)
-          row.append(d2t * dxi * dj.w)
-          jdt2 += 1
-          row.append(d2ts[idt2][jdt2] * dxi)
-          jdt2 += 1
-          row.append(d2ts[idt2][jdt2] * dxi)
-          jdt2 += 2
+            ra(d2t * dxi * dxj)
+          d2t = d2tij.next()
+          ra(d2t * dxi * dj.u)
+          ra(d2t * dxi * dj.w)
+          ra(d2tij.next() * dxi)
+          ra(d2tij.next() * dxi)
         result.append(row)
       # d2u.
-      idt2 -= 3
-      row = []
-      jdt2 = 0
+      row = []; ra = row.append
+      d2ti0 = d2ti.next()
+      d2tij = iter(d2ti0)
       for dj in ds:
-        jdt2 += 3
-        d2t = d2ts[idt2][jdt2]
+        d2t = d2tij.next()
         for dxj in dj.xyz:
-          row.append(d2t * dxj * di.u)
-        jdt2 -= 3
-        d2t = d2ts[idt2][jdt2]
-        row.append(d2t * di.u * dj.u)
+          ra(d2t * dxj * di.u)
+        d2t = d2tij.next()
+        ra(d2t * di.u * dj.u)
         if (di is dj): row[-1] += dt.g * d2.uu
-        row.append(d2t * di.u * dj.w)
+        ra(d2t * di.u * dj.w)
         if (di is dj): row[-1] += dt.g * d2.uw
-        jdt2 += 1
-        row.append(d2ts[idt2][jdt2] * di.u)
-        jdt2 += 1
-        row.append(d2ts[idt2][jdt2] * di.u)
-        jdt2 += 2
+        ra(d2tij.next() * di.u)
+        ra(d2tij.next() * di.u)
       result.append(row)
       # d2w.
-      row = []
-      jdt2 = 0
+      row = []; ra = row.append
+      d2tij = iter(d2ti0)
       for dj in ds:
-        jdt2 += 3
-        d2t = d2ts[idt2][jdt2]
+        d2t = d2tij.next()
         for dxj in dj.xyz:
-          row.append(d2t * dxj * di.w)
-        jdt2 -= 3
-        d2t = d2ts[idt2][jdt2]
-        row.append(d2t * di.w * dj.u)
+          ra(d2t * dxj * di.w)
+        d2t = d2tij.next()
+        ra(d2t * di.w * dj.u)
         if (di is dj): row[-1] += dt.g * d2.uw
-        row.append(d2t * di.w * dj.w)
-        jdt2 += 1
-        row.append(d2ts[idt2][jdt2] * di.w)
-        jdt2 += 1
-        row.append(d2ts[idt2][jdt2] * di.w)
-        jdt2 += 2
+        ra(d2t * di.w * dj.w)
+        ra(d2tij.next() * di.w)
+        ra(d2tij.next() * di.w)
       result.append(row)
-      idt2 += 1
       # d2'. and d2"
       for ip in [0,1]:
-        row = []
-        jdt2 = 0
+        row = []; ra = row.append
+        d2tij = iter(d2ti.next())
         for dj in ds:
-          jdt2 += 3
-          d2t = d2ts[idt2][jdt2]
+          d2t = d2tij.next()
           for dxj in dj.xyz:
-            row.append(d2t * dxj)
-          jdt2 -= 3
-          d2t = d2ts[idt2][jdt2]
-          row.append(d2t * dj.u)
-          row.append(d2t * dj.w)
-          jdt2 += 1
-          row.append(d2ts[idt2][jdt2])
-          jdt2 += 1
-          row.append(d2ts[idt2][jdt2])
-          jdt2 += 2
+            ra(d2t * dxj)
+          d2t = d2tij.next()
+          ra(d2t * dj.u)
+          ra(d2t * dj.w)
+          ra(d2tij.next())
+          ra(d2tij.next())
         result.append(row)
-        idt2 += 1
-      idt2 += 1
     return result
