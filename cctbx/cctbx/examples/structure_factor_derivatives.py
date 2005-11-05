@@ -15,8 +15,10 @@ class parameters:
 
   def as_g_alpha(self, hkl, d_star_sq):
     return g_exp_i_alpha_derivatives.parameters(
-      alpha = 2 * math.pi * matrix.col(self.xyz).dot(matrix.col(hkl)),
-      g = self.w * math.exp(-2 * math.pi**2 * self.u * d_star_sq))
+      g = self.w * math.exp(-2 * math.pi**2 * self.u * d_star_sq),
+      ffp = 1,
+      fdp = 0,
+      alpha = 2 * math.pi * matrix.col(self.xyz).dot(matrix.col(hkl)))
 
 class gradients(parameters): pass
 
@@ -119,52 +121,52 @@ class structure_factor:
     idt2 = 0
     for dt,di,d2 in zip(dts, ds, d2s):
       # dx. dy. dz.
-      idt2 += 1
+      idt2 += 3
       for dxi in di.xyz:
         row = []
         jdt2 = 0
         for dj in ds:
-          jdt2 += 1
+          jdt2 += 3
           d2t = d2ts[idt2][jdt2]
           for dxj in dj.xyz:
             row.append(d2t * dxi * dxj)
-          jdt2 -= 1
+          jdt2 -= 3
           d2t = d2ts[idt2][jdt2]
           row.append(d2t * dxi * dj.u)
           row.append(d2t * dxi * dj.w)
-          jdt2 += 2
+          jdt2 += 4
         result.append(row)
       # d2u.
-      idt2 -= 1
+      idt2 -= 3
       row = []
       jdt2 = 0
       for dj in ds:
-        jdt2 += 1
+        jdt2 += 3
         d2t = d2ts[idt2][jdt2]
         for dxj in dj.xyz:
           row.append(d2t * dxj * di.u)
-        jdt2 -= 1
+        jdt2 -= 3
         d2t = d2ts[idt2][jdt2]
         row.append(d2t * di.u * dj.u)
         if (di is dj): row[-1] += dt.g * d2.uu
         row.append(d2t * di.u * dj.w)
         if (di is dj): row[-1] += dt.g * d2.uw
-        jdt2 += 2
+        jdt2 += 4
       result.append(row)
       # d2w.
       row = []
       jdt2 = 0
       for dj in ds:
-        jdt2 += 1
+        jdt2 += 3
         d2t = d2ts[idt2][jdt2]
         for dxj in dj.xyz:
           row.append(d2t * dxj * di.w)
-        jdt2 -= 1
+        jdt2 -= 3
         d2t = d2ts[idt2][jdt2]
         row.append(d2t * di.w * dj.u)
         if (di is dj): row[-1] += dt.g * d2.uw
         row.append(d2t * di.w * dj.w)
-        jdt2 += 2
+        jdt2 += 4
       result.append(row)
-      idt2 += 2
+      idt2 += 4
     return result
