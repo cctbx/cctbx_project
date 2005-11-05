@@ -14,7 +14,7 @@ def d_target_d_params_finite(obs, hkl, d_star_sq, params, eps=1.e-8):
   params_eps = copy.deepcopy(params)
   for i_param in xrange(len(params)):
     dx = []
-    for ix in xrange(5):
+    for ix in xrange(7):
       ts = []
       for signed_eps in [eps, -eps]:
         pi_eps = params[i_param].as_list()
@@ -32,7 +32,7 @@ def d2_target_d_params_finite(obs, hkl, d_star_sq, params, eps=1.e-8):
   result = []
   params_eps = copy.deepcopy(params)
   for i_param in xrange(len(params)):
-    for ix in xrange(5):
+    for ix in xrange(7):
       gs = []
       for signed_eps in [eps, -eps]:
         pi_eps = params[i_param].as_list()
@@ -60,7 +60,7 @@ def compare_analytical_and_finite(obs, hkl, d_star_sq, params, out):
   print >> out, "curvs_fin:", curvs_fin
   curvs_ana = sf.d2_target_d_params(target=target)
   print >> out, "curvs_ana:", curvs_ana
-  assert approx_equal(curvs_ana, curvs_fin)
+  assert approx_equal(curvs_ana, curvs_fin, 1.e-5)
   print >> out
 
 def exercise(args):
@@ -77,8 +77,10 @@ def exercise(args):
       for i in xrange(n_params):
         params.append(parameters(
           xyz=[random.random() for i in xrange(3)],
-          u=random.random(),
-          w=random.random()))
+          u=random.random()*0.1,
+          w=random.random(),
+          fp=(random.random()-0.5)*2,
+          fdp=(random.random()-0.5)*2))
       sf = structure_factor(hkl=hkl, d_star_sq=d_star_sq, params=params)
       obs = abs(sf.f())
       compare_analytical_and_finite(
