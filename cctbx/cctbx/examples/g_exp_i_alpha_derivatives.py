@@ -2,26 +2,26 @@ import cmath
 
 class parameters:
 
-  def __init__(self, g, ffp, fdp, alpha):
+  def __init__(self, alpha, g, ffp, fdp):
+    self.alpha = alpha
     self.g = g
     self.ffp = ffp
     self.fdp = fdp
-    self.alpha = alpha
 
   def as_list(self):
-    return [self.g, self.ffp, self.fdp, self.alpha]
+    return [self.alpha, self.g, self.ffp, self.fdp]
 
 class gradients(parameters): pass
 
 class curvatures:
 
-  def __init__(self, g_ffp, g_fdp, g_alpha, ffp_alpha, fdp_alpha, alpha_alpha):
+  def __init__(self, alpha_alpha, alpha_g, alpha_ffp, alpha_fdp, g_ffp, g_fdp):
+    self.alpha_alpha = alpha_alpha
+    self.alpha_g = alpha_g
+    self.alpha_ffp = alpha_ffp
+    self.alpha_fdp = alpha_fdp
     self.g_ffp = g_ffp
     self.g_fdp = g_fdp
-    self.g_alpha = g_alpha
-    self.ffp_alpha = ffp_alpha
-    self.fdp_alpha = fdp_alpha
-    self.alpha_alpha = alpha_alpha
 
 def pack_parameters(params):
   result = []
@@ -51,35 +51,35 @@ class g_exp_i_alpha_sum:
       eja = cmath.exp(1j*p.alpha)
       ffpifdp = p.ffp + 1j*p.fdp
       result.append(gradients(
+        alpha=p.g*ffpifdp*1j*eja,
         g=ffpifdp*eja,
         ffp=p.g*eja,
-        fdp=p.g*1j*eja,
-        alpha=p.g*ffpifdp*1j*eja))
+        fdp=p.g*1j*eja))
     return result
 
   def d2_params(self):
     """Mathematica:
-         D[f,g,    g]; D[f,g,    ffp]; D[f,g,    fdp]; D[f,g,    alpha]
-         D[f,ffp,  g]; D[f,ffp,  ffp]; D[f,ffp,  fdp]; D[f,ffp,  alpha]
-         D[f,fdp,  g]; D[f,fdp,  ffp]; D[f,fdp,  fdp]; D[f,fdp,  alpha]
-         D[f,alpha,g]; D[f,alpha,ffp]; D[f,alpha,fdp]; D[f,alpha,alpha]
+         D[f,alpha,alpha]; D[f,alpha,g]; D[f,alpha,ffp]; D[f,alpha,fdp]
+         D[f,g,    alpha]; D[f,g,    g]; D[f,g,    ffp]; D[f,g,    fdp]
+         D[f,ffp,  alpha]; D[f,ffp,  g]; D[f,ffp,  ffp]; D[f,ffp,  fdp]
+         D[f,fdp,  alpha]; D[f,fdp,  g]; D[f,fdp,  ffp]; D[f,fdp,  fdp]
        Zeros/non-zeros in upper triangle:
-         0 . . .
-           0 0 .
-             0 .
-               .
+         . . . .
+           0 . .
+             0 0
+               0
     """
     result = []
     for p in self.params:
       eja = cmath.exp(1j*p.alpha)
       ffpifdp = p.ffp + 1j*p.fdp
       result.append(curvatures(
+        alpha_alpha=-p.g*ffpifdp*eja,
+        alpha_g=ffpifdp*1j*eja,
+        alpha_ffp=p.g*1j*eja,
+        alpha_fdp=-p.g*eja,
         g_ffp=eja,
-        g_fdp=1j*eja,
-        g_alpha=ffpifdp*1j*eja,
-        ffp_alpha=p.g*1j*eja,
-        fdp_alpha=-p.g*eja,
-        alpha_alpha=-p.g*ffpifdp*eja))
+        g_fdp=1j*eja))
     return result
 
   def d_target_d_params(self, target):
@@ -107,24 +107,24 @@ class g_exp_i_alpha_sum:
                 + dbb * dix.imag * djx.imag \
                 + dab * (dix.real * djx.imag + dix.imag * djx.real)
             if (di is dj):
-              if   ((ixi,ixj) in [(0,1),(1,0)]):
-                sum += da * d2i.g_ffp.real \
-                     + db * d2i.g_ffp.imag
-              elif ((ixi,ixj) in [(0,2),(2,0)]):
-                sum += da * d2i.g_fdp.real \
-                     + db * d2i.g_fdp.imag
-              elif ((ixi,ixj) in [(0,3),(3,0)]):
-                sum += da * d2i.g_alpha.real \
-                     + db * d2i.g_alpha.imag
-              elif ((ixi,ixj) in [(1,3),(3,1)]):
-                sum += da * d2i.ffp_alpha.real \
-                     + db * d2i.ffp_alpha.imag
-              elif ((ixi,ixj) in [(2,3),(3,2)]):
-                sum += da * d2i.fdp_alpha.real \
-                     + db * d2i.fdp_alpha.imag
-              elif (ixi == 3 and ixj == 3):
+              if (ixi == 0 and ixj == 0):
                 sum += da * d2i.alpha_alpha.real \
                      + db * d2i.alpha_alpha.imag
+              elif ((ixi,ixj) in [(0,1),(1,0)]):
+                sum += da * d2i.alpha_g.real \
+                     + db * d2i.alpha_g.imag
+              elif ((ixi,ixj) in [(0,2),(2,0)]):
+                sum += da * d2i.alpha_ffp.real \
+                     + db * d2i.alpha_ffp.imag
+              elif ((ixi,ixj) in [(0,3),(3,0)]):
+                sum += da * d2i.alpha_fdp.real \
+                     + db * d2i.alpha_fdp.imag
+              elif ((ixi,ixj) in [(1,2),(2,1)]):
+                sum += da * d2i.g_ffp.real \
+                     + db * d2i.g_ffp.imag
+              elif ((ixi,ixj) in [(1,3),(3,1)]):
+                sum += da * d2i.g_fdp.real \
+                     + db * d2i.g_fdp.imag
             row.append(sum)
         result.append(row)
     return result
