@@ -15,7 +15,7 @@ def d_target_d_params_finite(obs, params, eps=1.e-8):
   params_eps = copy.deepcopy(params)
   for i_param in xrange(len(params)):
     dx = []
-    for ix in [0,1]:
+    for ix in xrange(4):
       ts = []
       for signed_eps in [eps, -eps]:
         pi_eps = params[i_param].as_list()
@@ -33,7 +33,7 @@ def d2_target_d_params_finite(obs, params, eps=1.e-8):
   result = []
   params_eps = copy.deepcopy(params)
   for i_param in xrange(len(params)):
-    for ix in [0,1]:
+    for ix in xrange(4):
       gs = []
       for signed_eps in [eps, -eps]:
         pi_eps = params[i_param].as_list()
@@ -73,7 +73,9 @@ def exercise(args):
       params = []
       for i in xrange(n_params):
         params.append(parameters(
-          g=random.random()*10,
+          g=(random.random()-0.5)*2,
+          ffp=(random.random()-0.5)*2,
+          fdp=(random.random()-0.5)*2,
           alpha=2*math.pi*random.random()))
       exp_sum = g_exp_i_alpha_sum(params=params)
       obs = abs(exp_sum.f())
