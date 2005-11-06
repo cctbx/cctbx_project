@@ -57,7 +57,7 @@ def compare_analytical_and_finite(obs, params, out):
   assert approx_equal(pack_gradients(grads_ana), pack_gradients(grads_fin))
   curvs_fin = d2_target_d_params_finite(obs=obs, params=params)
   print >> out, "curvs_fin:", curvs_fin
-  curvs_ana = exp_sum.d2_target_d_params(target=target)
+  curvs_ana = list(exp_sum.d2_target_d_params(target=target))
   print >> out, "curvs_ana:", curvs_ana
   assert approx_equal(curvs_ana, curvs_fin)
   print >> out

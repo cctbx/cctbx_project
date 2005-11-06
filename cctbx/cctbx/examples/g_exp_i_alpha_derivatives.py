@@ -1,3 +1,4 @@
+from __future__ import generators
 import cmath
 
 class parameters:
@@ -93,7 +94,6 @@ class g_exp_i_alpha_sum:
 
   def d2_target_d_params(self, target):
     "Product rule applied to da * d.real + db * d.imag."
-    result = []
     da, db = target.da(), target.db()
     daa, dbb, dab = target.daa(), target.dbb(), target.dab()
     d = self.d_params()
@@ -126,5 +126,4 @@ class g_exp_i_alpha_sum:
                 sum += da * d2i.g_fdp.real \
                      + db * d2i.g_fdp.imag
             row.append(sum)
-        result.append(row)
-    return result
+        yield row
