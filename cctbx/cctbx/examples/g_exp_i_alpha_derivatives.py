@@ -98,6 +98,7 @@ class g_exp_i_alpha_sum:
     daa, dbb, dab = target.daa(), target.dbb(), target.dab()
     d = self.d_params()
     d2 = self.d2_params()
+    i4 = 0
     for di,d2i in zip(d, d2):
       for ixi,dix in enumerate(di.as_list()):
         row = []
@@ -106,24 +107,24 @@ class g_exp_i_alpha_sum:
             sum = daa * dix.real * djx.real \
                 + dbb * dix.imag * djx.imag \
                 + dab * (dix.real * djx.imag + dix.imag * djx.real)
-            if (di is dj):
-              if (ixi == 0 and ixj == 0):
-                sum += da * d2i.alpha_alpha.real \
-                     + db * d2i.alpha_alpha.imag
-              elif ((ixi,ixj) in [(0,1),(1,0)]):
-                sum += da * d2i.alpha_g.real \
-                     + db * d2i.alpha_g.imag
-              elif ((ixi,ixj) in [(0,2),(2,0)]):
-                sum += da * d2i.alpha_ffp.real \
-                     + db * d2i.alpha_ffp.imag
-              elif ((ixi,ixj) in [(0,3),(3,0)]):
-                sum += da * d2i.alpha_fdp.real \
-                     + db * d2i.alpha_fdp.imag
-              elif ((ixi,ixj) in [(1,2),(2,1)]):
-                sum += da * d2i.g_ffp.real \
-                     + db * d2i.g_ffp.imag
-              elif ((ixi,ixj) in [(1,3),(3,1)]):
-                sum += da * d2i.g_fdp.real \
-                     + db * d2i.g_fdp.imag
             row.append(sum)
+        if (ixi == 0): # (0,0)
+          row[i4] += da * d2i.alpha_alpha.real \
+                   + db * d2i.alpha_alpha.imag
+        if (ixi == 0 or ixi == 1): # (0,1) or (1,0)
+          row[i4+1-ixi] += da * d2i.alpha_g.real \
+                         + db * d2i.alpha_g.imag
+        if (ixi == 0 or ixi == 2): # (0,2) or (2,0)
+          row[i4+2-ixi] += da * d2i.alpha_ffp.real \
+                         + db * d2i.alpha_ffp.imag
+        if (ixi == 0 or ixi == 3): # (0,3) or (3,0)
+          row[i4+3-ixi] += da * d2i.alpha_fdp.real \
+                         + db * d2i.alpha_fdp.imag
+        if (ixi == 1 or ixi == 2): # (1,2) or (2,1)
+          row[i4+3-ixi] += da * d2i.g_ffp.real \
+                         + db * d2i.g_ffp.imag
+        if (ixi == 1 or ixi == 3): # (1,3) or (3,1)
+          row[i4+4-ixi] += da * d2i.g_fdp.real \
+                         + db * d2i.g_fdp.imag
         yield row
+      i4 += 4
