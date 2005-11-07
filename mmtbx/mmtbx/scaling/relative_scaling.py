@@ -371,39 +371,50 @@ class local_scaling_driver(object):
 
 
     self.native = miller_native.deep_copy().set_observation_type(
-      miller_native)
+      miller_native).map_to_asu()
     self.derivative = miller_derivative.deep_copy().set_observation_type(
-      miller_derivative)
+      miller_derivative).map_to_asu()
+
     assert self.native.observation_type() != None
     assert self.derivative.observation_type() != None
 
     self.native, self.derivative = self.native.common_sets(
       self.derivative)
 
+
+
     ## Here we change things into intensities or amplitudes as asked
+    """
     if use_intensities:
       if not self.native.is_xray_intensity_array():
         self.native = self.native.f_as_f_sq()
       if not self.derivative.is_xray_intensity_array():
         self.derivative = self.derivative.f_as_f_sq()
+
     if not use_intensities:
       if self.native.is_xray_intensity_array():
         self.native = self.native.f_sq_as_f()
       if self.derivative.is_xray_intensity_array():
         self.derivative = self.derivative.f_sq_as_f()
-
+    """
 
     ## In order to avoid problems with abseces due to lattice
     ## types, we transform the system to the primitive setting
 
     ## make new symmetry object
     self.nat_primset=self.native.change_basis(
-     self.native.change_of_basis_op_to_minimum_cell() )
+     self.native.change_of_basis_op_to_minimum_cell()
+     ).set_observation_type( self.native ).map_to_asu()
 
     self.der_primset=self.derivative.change_basis(
-      self.derivative.change_of_basis_op_to_minimum_cell() )
+      self.derivative.change_of_basis_op_to_minimum_cell()
+      ).set_observation_type(  self.derivative ).map_to_asu()
+
+
+
 
     ## Get the symmetry of the intensity group
+    ## this is to make suree systematioc absense are present in the hkl list
     intensity_group = self.nat_primset.space_group() \
       .build_derived_reflection_intensity_group(
       anomalous_flag=self.nat_primset.anomalous_flag() )
@@ -417,7 +428,8 @@ class local_scaling_driver(object):
       unit_cell=self.nat_primset.unit_cell(),
       space_group=intensity_group),
     anomalous_flag=self.nat_primset.anomalous_flag(),
-    d_min=self.nat_primset.d_min()-0.1)
+    d_min=self.nat_primset.d_min()-0.1) ## The 0.1 is a bit of a hack
+                                        ## but needed for stability
 
 
 
@@ -485,11 +497,21 @@ class local_scaling_driver(object):
     print >> out, "Maximum local scale                 : %8.3f"%(
       flex.max( scales ) )
 
+    self.der_primset = self.der_primset.customized_copy(
+      data=self.der_primset.data()*scales,
+      sigmas = self.der_primset.sigmas()*scales).set_observation_type(
+      self.der_primset)
 
-    self.derivative = self.derivative.customized_copy(
-      data=self.derivative.data()*scales,
-      sigmas = self.derivative.sigmas()*scales ).set_observation_type(
-      self.derivative)
+
+
+    ## We now have to transform the thing back please
+
+    self.derivative = self.der_primset.change_basis( self.derivative.change_of_basis_op_to_minimum_cell().inverse()  )\
+                       .set_observation_type( self.der_primset ).map_to_asu()
+    self.native =  self.native.map_to_asu()
+
+    self.native, self.derivative = self.native.common_sets( self.derivative )
+
 
     assert self.native.observation_type() != None
     assert self.derivative.observation_type() != None
