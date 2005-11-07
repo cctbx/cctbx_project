@@ -449,8 +449,8 @@ def run(args):
         scale_weight=use_wt,
         use_weights=use_exp_sigmas)
       ls_scaling.show()
-      miller_array_native = ls_scaling.native
-      miller_array_derivative = ls_scaling.derivative
+      miller_array_native = ls_scaling.native.deep_copy()
+      miller_array_derivative = ls_scaling.derivative.deep_copy()
 
     if scaling_tasks['local']:
       print >> log
@@ -496,7 +496,6 @@ def run(args):
     ## Please set the protocol to what is specified
     outlier_protocol[ params.scaling.input.SIR_scale\
        .outlier_rejection_options.protocol]=True
-    print outlier_protocol
 
     outlier_rejection = pair_analyses.outlier_rejection(
       miller_array_native,
@@ -507,12 +506,10 @@ def run(args):
        .outlier_rejection_options.cut_level_sigma
 
       )
+    print >> log, "   *Scaling protocol will be carried out once more* "
 
-    print miller_array_native.indices().size()
     miller_array_native = outlier_rejection.nat
     miller_array_derivative = outlier_rejection.der
-    print miller_array_native.indices().size()
-
 
 
 
