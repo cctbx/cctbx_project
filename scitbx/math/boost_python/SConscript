@@ -16,5 +16,7 @@ env.SharedLibrary(
     "chebyshev.cpp",
     "icosahedron.cpp",
     "slatec.cpp",
-    "line_search.cpp"]
+    "line_search.cpp",
+    "resample.cpp"
+    ]
 )
