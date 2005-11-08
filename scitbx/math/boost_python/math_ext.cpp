@@ -8,6 +8,7 @@
 #include <scitbx/math/lambertw.h>
 #include <scitbx/math/eigensystem.h>
 #include <scitbx/math/phase_error.h>
+#include <scitbx/math/resample.h>
 #include <boost/python/module.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
@@ -31,7 +32,9 @@ namespace boost_python {
   void wrap_chebyshev_lsq();
   void wrap_slatec();
   void wrap_line_search();
-
+  void wrap_non_parametric_bootstrap();
+  void wrap_smooth_bootstrap();
+  
 namespace {
 
   struct eigensystem_real_symmetric_wrappers
@@ -151,6 +154,9 @@ namespace {
     wrap_chebyshev_lsq();
     wrap_slatec();
     wrap_line_search();
+    // resampling
+    wrap_non_parametric_bootstrap();
+    wrap_smooth_bootstrap();
 
     def("time_eigensystem_real_symmetric", time_eigensystem_real_symmetric);
 
