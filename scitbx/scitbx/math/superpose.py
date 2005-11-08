@@ -41,5 +41,9 @@ class least_squares_fit(object):
     self.t = matrix.col(self.reference_shift) \
            - self.r * matrix.col(self.other_shift)
 
-  def other_sites_best_fit(self):
-    return self.r.elems * self.other_sites + self.t.elems
+  def other_sites_best_fit(self, additional_sites=None):
+    if additional_sites:
+      return self.r.elems * self.other_sites.concatenate(additional_sites) \
+             + self.t.elems
+    else:
+      return self.r.elems * self.other_sites + self.t.elems
