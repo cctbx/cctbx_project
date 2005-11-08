@@ -34,7 +34,7 @@ namespace boost_python {
   void wrap_line_search();
   void wrap_non_parametric_bootstrap();
   void wrap_smooth_bootstrap();
-  
+
 namespace {
 
   struct eigensystem_real_symmetric_wrappers
