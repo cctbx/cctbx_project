@@ -78,11 +78,81 @@ namespace resample{
     scitbx::random::mersenne_twister generator_;
   };
 
+  //------------------------------------------------------------
+
+  //! resampling class
+  template <typename FloatType = std::size_t>
+  class non_parametric_bootstrap_as_int
+  {
+    public:
+    /*! Default constructor */
+    non_parametric_bootstrap_as_int() {}
+    /*! Constructor that inits all members to nought */
+    non_parametric_bootstrap_as_int(
+       scitbx::af::const_ref<FloatType> const& observations,
+       long const& seed)
+    :
+    generator_(seed)
+    {
+      for (unsigned ii=0;ii<observations.size();ii++){
+        observations_.push_back( observations[ii] );
+      }
+    }
+
+    scitbx::af::shared<FloatType>
+    draw(std::size_t n_new_obs)
+    {
+      // We have to draw n_new_obs numbers between
+      // 0 and observations_.size() (0 inclusive, the latter one exclusive)
+      scitbx::af::shared< std::size_t > random_integers(n_new_obs,0);
+      random_integers = generator_.random_size_t(
+        n_new_obs,
+        observations_.size() );
+
+      // The indices have been drawn, it is now straightforward
+      // to make a new sample
+      scitbx::af::shared<FloatType> new_data;
+      for (unsigned ii=0;ii<n_new_obs;ii++){
+        new_data.push_back( observations_[ random_integers[ ii] ] );
+      }
+      return( new_data );
+    }
+
+    scitbx::af::shared<FloatType>
+    draw_from_random_jack_knifed_sample(std::size_t n_new_obs,
+                                       std::size_t jack)
+    {
+      SCITBX_ASSERT( jack < observations_.size() );
+      // I assume one knows what one is doing, this is just an safety check
+      // first draw  observations_.size()-jack items
+      scitbx::af::shared<std::size_t> jacked, sample;
+
+      jacked = generator_.random_size_t(
+        observations_.size()-jack,
+        observations_.size() );
+      sample = generator_.random_size_t(
+        n_new_obs,
+        observations_.size()-jack );
+
+      scitbx::af::shared<FloatType> new_data;
+      for (unsigned ii=0;ii<n_new_obs;ii++){
+        new_data.push_back( observations_[ jacked[ sample[ ii] ] ] );
+      }
+      return( new_data );
+    }
+
+    protected:
+    scitbx::af::shared<FloatType> observations_;
+    scitbx::random::mersenne_twister generator_;
+  };
 
 
 
 
-    //! resampling class
+
+  //------------------------------------------------------------
+
+  //! resampling class
   template <typename FloatType = double>
   class smooth_bootstrap
   {
