@@ -24,12 +24,12 @@ namespace {
 
       class_<w_t>("non_parametric_bootstrap", no_init)
         .def(init< scitbx::af::const_ref<double> const&,
-	          long const&>
-	     ((arg_("observations"),
-	       arg_("seed") )))
-	.def("draw", &w_t::draw)
-	.def("draw_from_random_jack_knifed_sample", 
-	     &w_t::draw_from_random_jack_knifed_sample )
+                  long const&>
+             ((arg_("observations"),
+               arg_("seed") )))
+        .def("draw", &w_t::draw)
+        .def("draw_from_random_jack_knifed_sample",
+             &w_t::draw_from_random_jack_knifed_sample )
         ;
     }
 
@@ -42,7 +42,7 @@ namespace {
   //----------------------------------------------------------
 
 
- 
+
   struct smooth_bootstrap_wrappers
   {
     typedef resample::smooth_bootstrap<> w_t;
@@ -54,12 +54,12 @@ namespace {
 
       class_<w_t>("smooth_bootstrap", no_init)
         .def(init< scitbx::af::const_ref<double> const&,
-	          long const&>
-	     ((arg_("observations"),
-	       arg_("seed") )))
-	.def("draw", &w_t::draw)
-	.def("draw_from_random_jack_knifed_sample", 
-	     &w_t::draw_from_random_jack_knifed_sample )
+                  long const&>
+             ((arg_("observations"),
+               arg_("seed") )))
+        .def("draw", &w_t::draw)
+        .def("draw_from_random_jack_knifed_sample",
+             &w_t::draw_from_random_jack_knifed_sample )
         ;
     }
 
