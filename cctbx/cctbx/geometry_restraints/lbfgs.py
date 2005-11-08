@@ -13,12 +13,20 @@ class lbfgs(object):
       lbfgs_termination_params=None,
       lbfgs_core_params=None,
       lbfgs_exception_handling_params=None,
-      disable_asu_cache=False):
+      disable_asu_cache=False,
+      sites_cart_selection=None,
+               ):
     if (lbfgs_termination_params is None):
       lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
         max_iterations=1000)
-    self.x = flex.double(sites_cart.size()*3, 0)
     self.tmp = empty()
+    if sites_cart_selection:
+      self.sites_cart_selection = flex.bool(sites_cart_selection)
+      self.tmp.reduced_sites_cart=sites_cart.select(self.sites_cart_selection)
+      self.x = flex.double(self.tmp.reduced_sites_cart.size()*3, 0)
+    else:
+      self.sites_cart_selection = None
+      self.x = flex.double(sites_cart.size()*3, 0)
     self.tmp.geometry_restraints_manager = geometry_restraints_manager
     self.tmp.geometry_restraints_flags = geometry_restraints_flags
     self.tmp.disable_asu_cache = disable_asu_cache
@@ -42,7 +50,12 @@ class lbfgs(object):
     self.final_target_value = self.final_target_result.target
 
   def apply_shifts(self):
-    self.tmp.sites_shifted = self.tmp.sites_cart + flex.vec3_double(self.x)
+    if self.sites_cart_selection:
+      shifted = self.tmp.reduced_sites_cart + flex.vec3_double(self.x)
+      self.tmp.sites_shifted = self.tmp.sites_cart.deep_copy()
+      self.tmp.sites_shifted.set_selected(self.sites_cart_selection, shifted)
+    else:
+      self.tmp.sites_shifted = self.tmp.sites_cart + flex.vec3_double(self.x)
     if (self.tmp.geometry_restraints_manager.crystal_symmetry is not None):
       crystal_symmetry = self.tmp.geometry_restraints_manager.crystal_symmetry
       site_symmetry_table \
@@ -76,5 +89,9 @@ class lbfgs(object):
     self.f = self.tmp.target_result.target
     if (self.first_target_result is None):
       self.first_target_result = self.tmp.target_result
-    self.g = self.tmp.target_result.gradients.as_double()
+    if self.sites_cart_selection:
+      ptr = self.tmp.target_result.gradients
+      self.g = ptr.select(self.sites_cart_selection).as_double()
+    else:
+      self.g = self.tmp.target_result.gradients.as_double()
     return self.f, self.g
