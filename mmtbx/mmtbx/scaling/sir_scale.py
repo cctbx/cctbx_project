@@ -397,6 +397,10 @@ def run(args):
       d_max=low_cut,
       d_min=high_cut )
 
+    ## Save these arrays for later use please
+    native_save = miller_array_native.deep_copy().map_to_asu()
+    derivative_save = miller_derivative_native.deep_copy().map_to_asu()
+
     print >> log
     print >> log, "Checking for alternative indexing"
     print >> log, "---------------------------------"
@@ -498,20 +502,17 @@ def run(args):
        .outlier_rejection_options.protocol]=True
 
     outlier_rejection = pair_analyses.outlier_rejection(
-      miller_array_native,
-      miller_array_derivative,
+      native_save,
+      derivative_save,
       cut_level_rms=params.scaling.input.SIR_scale\
        .outlier_rejection_options.cut_level_rms,
       cut_level_sigma=params.scaling.input.SIR_scale\
        .outlier_rejection_options.cut_level_sigma
-
       )
     print >> log, "   *Scaling protocol will be carried out once more* "
 
     miller_array_native = outlier_rejection.nat
     miller_array_derivative = outlier_rejection.der
-
-
 
     ##-------------------------------------------------------
     if scaling_tasks['lsq']:
