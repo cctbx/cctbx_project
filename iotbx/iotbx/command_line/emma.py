@@ -1,5 +1,6 @@
 from iotbx import crystal_symmetry_from_any
 import iotbx.pdb
+import iotbx.pdb.interpretation
 from iotbx.pdb import cryst1_interpretation
 from iotbx.pdb import crystal_symmetry_from_pdb
 from iotbx.cns import sdb_reader
@@ -27,6 +28,7 @@ def get_emma_model_from_pdb(file_name=None,
       try:
         cryst1_symmetry = cryst1_interpretation.crystal_symmetry(
           cryst1_record=record)
+      except KeyboardInterrupt: raise
       except: pass
       break
   if (cryst1_symmetry is not None):
@@ -43,6 +45,8 @@ def get_emma_model_from_pdb(file_name=None,
                 record.name, record.resName, record.chainID]),
       crystal_symmetry.unit_cell().fractionalize(record.coordinates)))
   assert len(positions) > 0
+  assert crystal_symmetry.unit_cell() is not None
+  assert crystal_symmetry.space_group_info() is not None
   result = emma.model(
     crystal.special_position_settings(crystal_symmetry),
     positions)
@@ -106,30 +110,35 @@ def get_emma_model(file_name, crystal_symmetry):
     return get_emma_model_from_pdb(
       file_name=file_name,
       crystal_symmetry=crystal_symmetry)
+  except KeyboardInterrupt: raise
   except:
-    pass
+    if (iotbx.pdb.interpretation.is_pdb_file(file_name)): raise
   try:
     return get_emma_model_from_sdb(
       file_name=file_name,
       crystal_symmetry=crystal_symmetry)
   except MultipleEntriesError:
     raise
+  except KeyboardInterrupt: raise
   except:
     pass
   try:
     return get_emma_model_from_solve(
       file_name=file_name,
       crystal_symmetry=crystal_symmetry)
+  except KeyboardInterrupt: raise
   except:
     pass
   try:
     return get_emma_model_from_ins(file_name=file_name)
+  except KeyboardInterrupt: raise
   except:
     pass
   try:
     return get_emma_model_from_strudat(file_name=file_name)
   except MultipleEntriesError:
     raise
+  except KeyboardInterrupt: raise
   except:
     pass
   raise RuntimeError("Coordinate file %s: unknown format." % file_name)
