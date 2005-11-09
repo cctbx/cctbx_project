@@ -399,7 +399,7 @@ def run(args):
 
     ## Save these arrays for later use please
     native_save = miller_array_native.deep_copy().map_to_asu()
-    derivative_save = miller_derivative.deep_copy().map_to_asu()
+    derivative_save = miller_array_derivative.deep_copy().map_to_asu()
 
     print >> log
     print >> log, "Checking for alternative indexing"
