@@ -972,6 +972,18 @@ class environment:
       hash[path_normcase] = None
       self.pythonpath.append(path)
 
+  def want_python_dispatcher(self):
+    libtbx_cvs_root = self.under_dist("libtbx", "CVS/Root")
+    if (os.path.isfile(libtbx_cvs_root)):
+      try: libtbx_cvs_root = open(libtbx_cvs_root).read()
+      except IOError: pass
+      else:
+        if ("ccp" in libtbx_cvs_root.lower()): return False
+    for module in self.module_list:
+      if (module.has_top_level_cvs_directory()):
+        return True
+    return False
+
   def refresh(self):
     self.assemble_pythonpath()
     self.write_setpath_files()
@@ -984,10 +996,8 @@ class environment:
     if (not os.path.isdir(self.bin_path)):
       os.makedirs(self.bin_path)
     python_dispatchers = ["libtbx.python"]
-    for module in self.module_list:
-      if (module.has_top_level_cvs_directory()):
-        python_dispatchers.append("python")
-      break
+    if (self.want_python_dispatcher()):
+      python_dispatchers.append("python")
     for file_name in python_dispatchers:
       self.write_dispatcher_in_bin(
         source_file=self.python_exe,
