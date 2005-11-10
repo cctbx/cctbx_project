@@ -57,12 +57,9 @@ class structure_factor:
   def as_exp_i_sum(self):
     params = []
     for scatterer in self.scatterers:
-      p = scatterer_as_g_alpha(
-        scatterer=scatterer, hkl=self.hkl, d_star_sq=self.d_star_sq)
-      params.append(p)
-    result = g_exp_i_alpha_derivatives.g_exp_i_alpha_sum(
-      params=params)
-    return result
+      params.append(scatterer_as_g_alpha(
+        scatterer=scatterer, hkl=self.hkl, d_star_sq=self.d_star_sq))
+    return g_exp_i_alpha_derivatives.g_exp_i_alpha_sum(params=params)
 
   def f(self):
     return self.as_exp_i_sum().f()
@@ -142,7 +139,6 @@ class structure_factor:
     d2ti = iter(exp_i_sum.d2_target_d_params(target=target))
     ds = self.d_g_alpha_d_params()
     d2s = self.d2_g_alpha_d_params()
-    idt2 = 0
     for dt,di,d2 in zip(dts, ds, d2s):
       # dx. dy. dz.
       d2ti0 = d2ti.next()
