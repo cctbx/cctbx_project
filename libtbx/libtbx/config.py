@@ -978,7 +978,7 @@ class environment:
       try: libtbx_cvs_root = open(libtbx_cvs_root).read()
       except IOError: pass
       else:
-        if ("ccp" in libtbx_cvs_root.lower()): return False
+        if (libtbx_cvs_root.lower().find("ccp") >= 0): return False
     for module in self.module_list:
       if (module.has_top_level_cvs_directory()):
         return True
