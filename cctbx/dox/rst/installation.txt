@@ -5,7 +5,7 @@ Installation overview
 ---------------------
 
 Periodically the most recent cctbx source code including all
-its dependencies is *automatically* exported from the source code
+its dependencies is automatically exported from the source code
 databases (CVS) and bundled into self-extracting files that are
 published at:
 
@@ -18,8 +18,8 @@ instructions are shown at the download page.
 
 Source code bundles are available if a binary distribution cannot be
 used. The Unix bundles include a file ``cctbx_install_script.csh``. If
-Python 2.2.1 or higher is pre-installed on the target platform (e.g.
-Redhat 8.0) the ``cctbx_bundle.selfx`` file is most useful. Otherwise it
+Python 2.2.1 or higher is pre-installed on the target platform
+the ``cctbx_bundle.selfx`` file is most useful. Otherwise it
 is best to download the ``cctbx_python_bundle.selfx`` file because
 the installation script will automatically install Python before
 proceeding with the installation of the cctbx modules (but see the
@@ -27,11 +27,10 @@ proceeding with the installation of the cctbx modules (but see the
 The Unix installation script is known to work with the following
 compilers:
 
-  - Linux: any gcc >= 2.96 (tested with gcc up to version 3.2.2;
-    gcc 3.3 works without optimization only)
-  - Tru64 Unix: cxx 6.5.1
-  - IRIX: CC 7.3.1.2
-  - Mac OS 10.2: gcc 3.3 (works without optimization only)
+  - Linux: any gcc >= 2.96
+  - Tru64 Unix: cxx 6.5 or cxx 7.1
+  - IRIX: CC 7.3.1.2 or CC 7.41
+  - Mac OS 10.2 and OS 10.3 with Apple's compiler
 
 Other Unix platforms will most likely require adjustments of the
 build scripts.
@@ -43,12 +42,16 @@ does not include an installation script.
 Manually building from sources under Unix
 -----------------------------------------
 
+Please note: The following instructions are for developers! The
+self-extracting (.selfx) source bundles perform all the steps
+automatically.
+
 Building from sources requires Python 2.2.1 or higher and a working C++
 compiler (see above). If Python is not available already it can be
 installed in the following way::
 
-  gunzip -c Python-2.2.2.tar.gz | tar xf -
-  cd Python-2.2.2
+  gunzip -c Python-2.4.2.tar.gz | tar xf -
+  cd Python-2.4.2
   ./configure --prefix=/your/choice
   make
   make install
@@ -61,7 +64,7 @@ It may be convenient (but is not required) to add the directory
   set path=(/your/choice/bin $path)
 
 The most recent, complete cctbx source code is available in the file
-`cctbx_bundle.tar.gz <http://cci.lbl.gov/cctbx_build/results/current/cctbx_bundle.tar.gz>`_
+`cctbx_bundle.tar.gz <http://cci.lbl.gov/cctbx_build/results/most_current/cctbx_bundle.tar.gz>`_
 published at the cctbx build page. To unpack this file in a new, empty directory::
 
   gunzip -c cctbx_bundle.tar.gz | tar xf -
@@ -71,7 +74,7 @@ procedure should be executed in another directory, e.g.::
 
   mkdir cctbx_build
   cd cctbx_build
-  /your/choice/bin/python ../cctbx_sources/libtbx/configure.py iotbx
+  /your/choice/bin/python ../cctbx_sources/libtbx/configure.py mmtbx
 
 The last command initializes the ``cctbx_build`` directory and creates a
 file ``setpaths.csh`` (among others). This file must be used to
@@ -83,11 +86,11 @@ Shells other than ``csh`` may require a different command.
 
 To compile all cctbx modules enter::
 
-  libtbx.scons .
+  libtbx.scons
 
 On a machine with multiple CPUs enter::
 
-  libtbx.scons -j N .
+  libtbx.scons -j N
 
 where N is the number of CPUs available. The time required for the
 compilations scales linearly with the number of CPUs available.
@@ -95,8 +98,8 @@ compilations scales linearly with the number of CPUs available.
 To run some regression tests after the compilation is finished enter::
 
   source setpaths_all.csh
-  python $SCITBX_DIST/run_tests.py
-  python $CCTBX_DIST/run_tests.py --Quick
+  libtbx.python $SCITBX_DIST/run_tests.py
+  libtbx.python $CCTBX_DIST/run_tests.py --Quick
 
 The output should show many OK. A Python Traceback is an indicator
 for problems.
@@ -113,7 +116,7 @@ The default choices presented by the installation wizard are usually fine.
 
 The most recent, complete cctbx source code is available in the
 self-extracting file
-`cctbx_bundle.exe <http://cci.lbl.gov/cctbx_build/results/current/cctbx_bundle.exe>`_
+`cctbx_bundle.exe <http://cci.lbl.gov/cctbx_build/results/most_current/cctbx_bundle.exe>`_
 published at the cctbx build page. To unpack this file in a new, empty
 directory simply enter::
 
@@ -124,7 +127,7 @@ procedure should be executed in another directory, e.g.::
 
   mkdir cctbx_build
   cd cctbx_build
-  C:\python22\python.exe ..\cctbx_sources\libtbx\configure.py iotbx
+  C:\python24\python.exe ..\cctbx_sources\libtbx\configure.py mmtbx
 
 The last command initializes the ``cctbx_build`` directory and creates
 a file ``setpaths.bat`` (among others). This file must be used to
@@ -134,20 +137,20 @@ initialize a new shell or process with the cctbx settings::
 
 To compile all cctbx modules enter::
 
-  libtbx.scons .
+  libtbx.scons
 
 On a machine with multiple CPUs enter::
 
-  libtbx.scons -j N .
+  libtbx.scons -j N
 
 where N is the number of CPUs available. The time required for the
 compilations scales linearly with the number of CPUs available.
 
 To run some regression tests after the compilation is finished enter::
 
-  setpaths.bat all
-  python %SCITBX_DIST%\run_tests.py
-  python %CCTBX_DIST%\run_tests.py --Quick
+  setpaths_all.bat
+  libtbx.python %SCITBX_DIST%\run_tests.py
+  libtbx.python %CCTBX_DIST%\run_tests.py --Quick
 
 The output should show many OK. A Python Traceback is an indicator
 for problems.
@@ -168,35 +171,29 @@ At the prompt simply press the Enter key.
 To replace the modules extracted from a source code bundle::
 
   cd cctbx_sources
-  rm -rf libtbx boost_adaptbx scitbx cctbx iotbx
-  cvs -z3 -d:pserver:anonymous@cvs.cctbx.sourceforge.net:/cvsroot/cctbx co libtbx
-  cvs -z3 -d:pserver:anonymous@cvs.cctbx.sourceforge.net:/cvsroot/cctbx co boost_adaptbx
-  cvs -z3 -d:pserver:anonymous@cvs.cctbx.sourceforge.net:/cvsroot/cctbx co scitbx
-  cvs -z3 -d:pserver:anonymous@cvs.cctbx.sourceforge.net:/cvsroot/cctbx co cctbx
-  cvs -z3 -d:pserver:anonymous@cvs.cctbx.sourceforge.net:/cvsroot/cctbx co iotbx
+  rm -rf libtbx boost_adaptbx chiltbx scitbx cctbx iotbx mmtbx
+  cvs -z3 -d:pserver:anonymous@cvs.cctbx.sourceforge.net:/cvsroot/cctbx co libtbx boost_adaptbx chiltbx scitbx cctbx iotbx mmtbx
 
 To recompile run the ``libtbx.scons`` command again (``source setpaths.csh``
 or run ``setpaths.bat`` first if necessary). This command is similar to the
 more familar ``make`` command, only much more powerful. ``libtbx.scons``
-is a very thin wrapper around SCons_. The `SCons documentation`_ applies
+is a thin wrapper around SCons_. The `SCons documentation`_ applies
 without modification.
 
-In theory it is also possible to replace the boost directory from a
-cctbx source code bundle with a working copy of the `boost CVS tree`_
-at Sourceforge. However, many Boost_ developers do not have access to
-all platforms for testing. In practice it happens quite often that a
-``cvs update`` of the boost tree leads to compiler errors. Therefore we
-believe that most users are best served by the stable boost libraries
-included in the cctbx source code bundles. In irregular intervals we
-migrate to the latest Boost release and work out all necessary
-adjustments and fixes.
+It is also possible to replace the boost directory from a cctbx source
+code bundle with a working copy of the `boost CVS tree`_ at
+Sourceforge. However, many Boost_ developers do not have access to all
+platforms for testing. In practice it happens quite often that a
+``cvs update`` of the boost tree leads to compilation errors on one
+platform or another. Therefore we believe that most users are best
+served by the stable boost libraries included in the cctbx source code
+bundles.
 
-The source code in the ``ccp4io`` module is kindly provided by CCP4_. We
-feel that it is not appropriate to keep this code in a CVS tree on
-Sourceforge because it is developed and maintained by CCP4. Our
-distribution contains a very small number of customizations (disabled
-print and exit statements). Otherwise it is the original code
-that we keep in sync with the master version provided by CCP4.
+The source code in the ``ccp4io`` module is kindly provided by CCP4_.
+We feel that it is not appropriate to keep this code in a CVS tree on
+Sourceforge because it is developed and maintained by CCP4. The version
+included in the cctbx bundles is updated quite regularly from the
+master version provided by CCP4.
 
 Back_
 
