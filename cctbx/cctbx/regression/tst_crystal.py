@@ -123,9 +123,8 @@ def exercise_special_position_settings():
 
 def exercise_site_symmetry(space_group_info):
   special_position_settings = crystal.special_position_settings(
-    crystal_symmetry=crystal.symmetry(
-      unit_cell=space_group_info.any_compatible_unit_cell(volume=1000),
-      space_group_info=space_group_info))
+    crystal_symmetry=space_group_info.any_compatible_crystal_symmetry(
+      volume=1000))
   z2p_op = space_group_info.group().z2p_op()
   special_position_settings_p = crystal.special_position_settings(
     crystal_symmetry=special_position_settings.change_basis(z2p_op),

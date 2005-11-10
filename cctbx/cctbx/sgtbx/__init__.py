@@ -167,6 +167,12 @@ class space_group_info(object):
     for i in xrange(3): params[i] *= f
     return uctbx.unit_cell(params)
 
+  def any_compatible_crystal_symmetry(self, volume):
+    from cctbx import crystal
+    return crystal.symmetry(
+      unit_cell=self.any_compatible_unit_cell(volume=volume),
+      space_group_info=self)
+
 class _tr_vec(boost.python.injector, tr_vec):
 
   def as_rational(self):
