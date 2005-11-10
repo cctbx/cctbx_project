@@ -92,15 +92,17 @@ def loop_space_groups(argv, flags, call_back, symbols_to_stdout=0):
 def parse_options_loop_space_groups(argv, call_back,
                                     keywords=(),
                                     symbols_to_stdout=0):
-  flags = parse_options(argv, (
-    "Verbose",
-    "Threads",
-    "ChunkSize",
-    "ChunkMember",
-    "RandomSeed",
-    "AllSpaceGroups",
-    "ChiralSpaceGroups",
-    "AllSettings",
-    "UnusualSettings") + keywords
-  )
+  flags = parse_options(
+    argv=argv,
+    keywords=(
+      "Verbose",
+      "Threads",
+      "ChunkSize",
+      "ChunkMember",
+      "RandomSeed",
+      "AllSpaceGroups",
+      "ChiralSpaceGroups",
+      "AllSettings",
+      "UnusualSettings") + keywords,
+    case_sensitive=False)
   loop_space_groups(argv, flags, call_back, symbols_to_stdout)
