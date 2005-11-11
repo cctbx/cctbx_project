@@ -16,7 +16,8 @@ import math
 import sys
 from cStringIO import StringIO
 
-
+random.seed(0)
+flex.set_random_seed(0)
 
 
 ## Testing Wilson parameters
