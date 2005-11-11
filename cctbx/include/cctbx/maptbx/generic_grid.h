@@ -30,6 +30,7 @@ public:
   virtual af::tiny<IntType,dimension_3> origin () const = 0;
   virtual af::tiny<IntType,dimension_3> last () const = 0;
   virtual af::tiny<IntType,dimension_3> focus () const = 0;
+  virtual af::tiny<IntType,dimension_3> all () const = 0;
 };
 
 namespace cdsa = crystal::direct_space_asu;
@@ -121,6 +122,13 @@ public:
   virtual af::tiny<IntType,dimension_3> focus () const {
     af::tiny<IntType,dimension_3> result;
     typename af::flex_grid<>::index_type idx = this->versa_ref_.accessor().focus();
+    for ( std::size_t i=0; i<dimension_3; ++i )
+      result[i] = idx[i];
+    return result;
+  }
+  virtual af::tiny<IntType,dimension_3> all () const {
+    af::tiny<IntType,dimension_3> result;
+    typename af::flex_grid<>::index_type idx = this->versa_ref_.accessor().all();
     for ( std::size_t i=0; i<dimension_3; ++i )
       result[i] = idx[i];
     return result;
@@ -226,6 +234,14 @@ public:
       result[i] = idx[i];
     return result;
   }
+  virtual af::tiny<IntType,dimension_3> all () const {
+    af::tiny<IntType,dimension_3> result;
+    typename af::c_grid_padded<dimension_3>::index_type idx
+      = this->c_grid_ref_.accessor().all();
+    for ( std::size_t i=0; i<dimension_3; ++i )
+      result[i] = idx[i];
+    return result;
+  }
 private:
   af::versa<FloatType, af::c_grid_padded<dimension_3> >  c_grid_data_;
   af::ref<FloatType, af::c_grid_padded<dimension_3> >    c_grid_ref_;
@@ -322,6 +338,13 @@ public:
   virtual af::tiny<IntType,dimension_3> focus () const {
     af::tiny<IntType,dimension_3> result;
     typename af::flex_grid<>::index_type idx = this->versa_ref_.accessor().focus();
+    for ( std::size_t i=0; i<dimension_3; ++i )
+      result[i] = idx[i];
+    return result;
+  }
+  virtual af::tiny<IntType,dimension_3> all () const {
+    af::tiny<IntType,dimension_3> result;
+    typename af::flex_grid<>::index_type idx = this->versa_ref_.accessor().all();
     for ( std::size_t i=0; i<dimension_3; ++i )
       result[i] = idx[i];
     return result;
