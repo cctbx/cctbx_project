@@ -27,10 +27,18 @@ def run(server_info, inp, status):
     raise ValueError, "d-spacing must be greater than zero."
   print
 
-  structure = io_utils.structure_from_inp(inp, status, special_position_settings)
-  f_calc = structure.structure_factors(
-    anomalous_flag=False, d_min=d_min).f_calc()
+  structure = io_utils.structure_from_inp(
+    inp, status, special_position_settings)
+  if (structure.scatterers().size() <= 100):
+    algorithm = "direct"
+  else:
+    algorithm = None
+  f_calc_manager = structure.structure_factors(
+    anomalous_flag=False, d_min=d_min, algorithm=algorithm)
+  f_calc = f_calc_manager.f_calc()
   print "Number of Miller indices:", f_calc.indices().size()
+  print
+  print "Structure factor algorithm:", f_calc_manager.algorithm(verbose=True)
   print
   print "</pre><table border=2 cellpadding=2>"
   status.in_table = True

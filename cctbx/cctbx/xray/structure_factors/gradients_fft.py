@@ -17,7 +17,8 @@ class gradients_fft(gradients_base):
                      d_target_d_f_calc,
                      gradient_flags,
                      n_parameters):
-    gradients_base.__init__(self, manager, xray_structure, miller_set)
+    gradients_base.__init__(self,
+      manager, xray_structure, miller_set, algorithm="fft")
     self._d_target_d_f_calc = d_target_d_f_calc
     manager.setup_fft() # before timing
     time_apply_u_extra = user_plus_sys_time()
