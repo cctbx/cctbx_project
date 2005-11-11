@@ -15,7 +15,8 @@ class gradients_direct(gradients_base):
                      n_parameters,
                      manager=None,
                      cos_sin_table=False):
-    gradients_base.__init__(self, manager, xray_structure, miller_set)
+    gradients_base.__init__(self,
+      manager, xray_structure, miller_set, algorithm="direct")
     self._d_target_d_f_calc = d_target_d_f_calc
     timer = user_plus_sys_time()
     if (manager is not None):

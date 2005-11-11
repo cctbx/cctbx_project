@@ -9,7 +9,8 @@ class from_scatterers_fft(managed_calculation_base):
   def __init__(self, manager,
                      xray_structure,
                      miller_set):
-    managed_calculation_base.__init__(self, manager,xray_structure,miller_set)
+    managed_calculation_base.__init__(self,
+      manager, xray_structure, miller_set, algorithm="fft")
     assert miller_set.d_min() >= manager.d_min()
     manager.setup_fft() # before timing
     time_sampling = user_plus_sys_time()

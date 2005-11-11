@@ -10,7 +10,8 @@ class from_scatterers_direct(managed_calculation_base):
                      miller_set,
                      manager=None,
                      cos_sin_table=False):
-    managed_calculation_base.__init__(self, manager,xray_structure,miller_set)
+    managed_calculation_base.__init__(self,
+      manager, xray_structure, miller_set, algorithm="direct")
     timer = user_plus_sys_time()
     if (manager is not None):
       cos_sin_table = manager.cos_sin_table()

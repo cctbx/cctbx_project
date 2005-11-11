@@ -226,7 +226,7 @@ class _estimate_time_fft(object):
 
 class managed_calculation_base(object):
 
-  def __init__(self, manager, xray_structure, miller_set):
+  def __init__(self, manager, xray_structure, miller_set, algorithm):
     adopt_init_args(self, locals(), hide=True)
     assert xray_structure is not None and miller_set is not None
     assert xray_structure.unit_cell().is_similar_to(miller_set.unit_cell())
@@ -234,6 +234,7 @@ class managed_calculation_base(object):
     if (manager is not None):
       assert xray_structure.unit_cell().is_similar_to(manager.unit_cell())
       assert xray_structure.space_group() == manager.space_group()
+    assert algorithm in ["direct", "fft"]
 
   def manager(self):
     return self._manager
@@ -243,3 +244,10 @@ class managed_calculation_base(object):
 
   def miller_set(self):
     return self._miller_set
+
+  def algorithm(self, verbose=False):
+    if (not verbose):
+      return self._algorithm
+    if (self._algorithm == "direct"):
+      return "Direct Summation"
+    return "FFT Approximation"
