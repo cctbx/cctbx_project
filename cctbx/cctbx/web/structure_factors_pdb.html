@@ -18,36 +18,35 @@ name="d_min" size=8
 value="1.0">
 
 <p>
-<strong>Algorithm: </strong>
-<select name="algorithm">
-  <option value="fft" selected
-    >FFT</option>
-  <option value="direct"
-    >direct summation</option>
+<strong>Structure factor algorithm: </strong><select name="algorithm">
+  <option value="automatic" selected>Automatic choice</option>
+  <option value="direct">Direct Summation</option>
+  <option value="fft">FFT Approximation</option>
 </select>
 
 <p>
-<strong>Formfactors: </strong>
+<strong>Atomic form factors approximations:</strong>
 <select name="form_factors">
   <option value="wk1995" selected
     >D. Waasmaier and A. Kirfel, Acta Cryst. (1995). A51, 416-431</option>
   <option value="it1992"
-    >Intl. Tables 1992</option>
+    >International Tables for Crystallography, Volume C 1992</option>
   <option value="n_gaussian"
-    >n_gaussian (IUCr Comp Newsl 3, 2004)</option>
+    >N-Gaussian (IUCr Computing Commission Newsletter No. 3, 2004)</option>
 </select>
 
 
 <p>
 <strong>Coordinates:</strong>
+<ul>
+   <li>Please copy and paste the whole content of your PDB file.
+  <li>A CRYST1 record must be present and define both the
+     unit cell parameters and the space group symbol.
+  <li>Atomic chemical types should be defined in columns 77-78
+     (right-justified).
+</ul>
 <p>
-Format: only PDB file format accepted<br>
-Please copy and paste the whole content of your PDB file<br>
-Important: <br>
-           1: CRYST1 record must be presented (with space group symbol included!)<br>
-           2: Atomic chemical types should be in 78 column
-<p>
-<textarea name="coordinates" rows=16 cols=80></textarea>
+<textarea name="coordinates" rows=16 cols=81></textarea>
 <p>
 <input type="submit" value="Calculate structure factors">
 <p>
