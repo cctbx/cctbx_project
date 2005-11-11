@@ -39,18 +39,20 @@ public:
 
   typedef std::vector<grid_type>                        grid_list_type;
   typedef std::vector<frac_type>                        frac_list_type;
-  typedef af::tiny<FloatType,2>                                                 weight_pair_type;
-  typedef af::tiny<weight_pair_type,3>                                  weight_pairs_type;
-//  typedef std::vector<FloatType>                        weight_pair_type;
-//  typedef std::vector<weight_pair_type>                 weight_pairs_type;
+  typedef af::tiny<FloatType,2>                         weight_pair_type;
+  typedef af::tiny<weight_pair_type,3>                  weight_pairs_type;
   typedef basic_mapper<void,FloatType,IntType>          basic_mapper;
-  typedef af::tiny<grid_type,2>                                                 grid_pair_type;
+  typedef af::tiny<grid_type,2>                         grid_pair_type;
 
   typedef af::ref<FloatType, af::flex_grid<> >          flex_grid_ref;
   typedef af::const_ref<FloatType, af::flex_grid<> >    const_flex_grid_ref;
   typedef af::c_grid_padded<dimension_3>                c_grid_3;
   typedef af::ref<FloatType, c_grid_3>                  c_grid_ref;
   typedef af::const_ref<FloatType, c_grid_3 >           const_c_grid_ref;
+
+  typedef cctbx::uctbx::unit_cell                       tbx_unit_cell;
+
+  typedef cctbx::maptbx::unit_cell                      unit_cell_tag;
 
   basic_map (
     asu const&,
@@ -59,50 +61,62 @@ public:
     cdsa::float_asu<FloatType> const& fasu,
     tin3_type const& extents,
     mat3_type const& matrix,
-    out_of_handle_type const& h_out_of )
+    out_of_handle_type const& h_out_of,
+    tbx_unit_cell const& unitcell )
   : out_of_handle_(h_out_of) {
     this->set_grid_handle(data,space_group,fasu,extents);
     this->rebuild_transformers(extents,matrix);
+    this->unit_cell_ = unitcell;
   }
   basic_map (
-    unit_cell const&,
+    unit_cell_tag const&,
     af::versa<FloatType, af::flex_grid<> > const& data,
     tin3_type const& extents,
     mat3_type const& matrix,
-    out_of_handle_type const& h_out_of )
+    out_of_handle_type const& h_out_of,
+    tbx_unit_cell const& unitcell )
   : out_of_handle_(h_out_of) {
     this->set_grid_handle(data);
     this->rebuild_transformers(extents,matrix);
+    this->unit_cell_ = unitcell;
   }
   basic_map (
-    unit_cell const&,
+    unit_cell_tag const&,
     af::versa<FloatType, af::c_grid_padded<dimension_3> > const& data,
     tin3_type const& extents,
     mat3_type const& matrix,
-    out_of_handle_type const& h_out_of )
+    out_of_handle_type const& h_out_of,
+    tbx_unit_cell const& unitcell )
   : out_of_handle_(h_out_of) {
     this->set_grid_handle(data);
     this->rebuild_transformers(extents,matrix);
+    this->unit_cell_ = unitcell;
   }
   basic_map (
     non_symmetric const&,
     af::versa<FloatType, af::flex_grid<> > const& data,
     tin3_type const& extents,
     mat3_type const& matrix,
-    out_of_handle_type const& h_out_of )
+    out_of_handle_type const& h_out_of,
+    tbx_unit_cell const& unitcell )
   : out_of_handle_(h_out_of) {
     this->set_grid_handle(data,extents);
     this->rebuild_transformers(extents,matrix);
+    this->unit_cell_ = unitcell;
   }
   basic_map ( basic_map const& bm ) {
     this->grid_handle_    = bm.grid_handle_;
     this->out_of_handle_  = bm.out_of_handle_;
     this->rebuild_transformers(bm.extents_,bm.matrix_);
+    this->unit_cell_      = bm.unit_cell_;
   }
   basic_map& operator = ( basic_map const& bm ) {
+    if ( this == &bm )
+      return *this;
     this->grid_handle_    = bm.grid_handle_;
     this->out_of_handle_  = bm.out_of_handle_;
     this->rebuild_transformers(bm.extents_,bm.matrix_);
+    this->unit_cell_      = bm.unit_cell_;
     return *this;
   }
   void rebuild_transformers ( tin3_type const& extents, mat3_type const& matrix ) {
@@ -123,6 +137,9 @@ public:
   }
   af::tiny<IntType,dimension_3> focus () const {
     return this->grid_handle_->focus();
+  }
+  af::tiny<IntType,dimension_3> all () const {
+    return this->grid_handle_->all();
   }
   FloatType grid_value ( grid_point<IntType> const& coordinate ) const {
     // does not remap, check, etc. etc.
@@ -335,11 +352,11 @@ public:
         data,space_group,fasu,grid_len);
   }
   void set_grid_handle ( af::versa<FloatType,af::flex_grid<> > const& data ) {
-    this->grid_handle_ = generic_grid<unit_cell,FloatType,IntType>(data);
+    this->grid_handle_ = generic_grid<unit_cell_tag,FloatType,IntType>(data);
   }
   void set_grid_handle (
     af::versa<FloatType, af::c_grid_padded<dimension_3> > const& data ) {
-    this->grid_handle_ = generic_grid<unit_cell,FloatType,IntType>(data);
+    this->grid_handle_ = generic_grid<unit_cell_tag,FloatType,IntType>(data);
   }
   void set_grid_handle (
     af::versa<FloatType,af::flex_grid<> > const& data,
@@ -353,17 +370,24 @@ public:
   void set_out_of_bounds_handle ( out_of_handle_type const& handle ) {
     this->out_of_handle_ = handle;
   }
+  tin3_type extents () const {
+    return this->extents_;
+  }
+  tbx_unit_cell unit_cell () const {
+    return this->unit_cell_;
+  }
 private:
-  f2g_type      frac2grid_;
-  f2c_type      frac2cart_;
-  g2f_type      grid2frac_;
-  c2f_type      cart2frac_;
-  c2g_type      cart2grid_;
-  g2c_type      grid2cart_;
-  tin3_type      extents_;
-  mat3_type      matrix_;
-  grid_handle_type  grid_handle_;
+  f2g_type            frac2grid_;
+  f2c_type            frac2cart_;
+  g2f_type            grid2frac_;
+  c2f_type            cart2frac_;
+  c2g_type            cart2grid_;
+  g2c_type            grid2cart_;
+  tin3_type           extents_;
+  mat3_type           matrix_;
+  grid_handle_type    grid_handle_;
   out_of_handle_type  out_of_handle_;
+  tbx_unit_cell       unit_cell_;
 };
 
 }

@@ -67,7 +67,8 @@ def exercise_real_space_refinement(verbose):
                                real_map,
                                real_map.focus(),
                                crystal_symmetry.unit_cell().orthogonalization_matrix(),
-                               out_of_bounds_clamp.as_handle())
+                               out_of_bounds_clamp.as_handle(),
+                               crystal_symmetry.unit_cell())
   testing_function_for_rsfit(basic_map,delta_h,xray_structure,out)
   ### non_symmetric test
   #
@@ -81,7 +82,8 @@ def exercise_real_space_refinement(verbose):
                                data,
                                fft_map.n_real(),
                                crystal_symmetry.unit_cell().orthogonalization_matrix(),
-                               out_of_bounds_clamp.as_handle())
+                               out_of_bounds_clamp.as_handle(),
+                               crystal_symmetry.unit_cell())
   testing_function_for_rsfit(basic_map,delta_h,xray_structure,out)
   ### asu test
   #
@@ -97,7 +99,8 @@ def exercise_real_space_refinement(verbose):
                                crystal_symmetry.direct_space_asu().as_float_asu(),
                                real_map.focus(),
                                crystal_symmetry.unit_cell().orthogonalization_matrix(),
-                               out_of_bounds_clamp.as_handle())
+                               out_of_bounds_clamp.as_handle(),
+                               crystal_symmetry.unit_cell())
   testing_function_for_rsfit(basic_map,delta_h,xray_structure,out)
 
 

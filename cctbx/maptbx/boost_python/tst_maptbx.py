@@ -279,7 +279,8 @@ def exercise_real_space_refinement():
                                emap,
                                unit_cell_gridding_n,
                                unit_cell.orthogonalization_matrix(),
-                               out_of_bounds_clamp.as_handle())
+                               out_of_bounds_clamp.as_handle(),
+                               unit_cell)
 
   sites_cart = flex.vec3_double()
   sites_cart.append((0.468661,-1.549268,3.352108))
@@ -324,7 +325,8 @@ def exercise_real_space_refinement():
                                emap,
                                emap.focus(),
                                unit_cell.orthogonalization_matrix(),
-                               out_of_bounds_raise.as_handle())
+                               out_of_bounds_raise.as_handle(),
+                               unit_cell)
   sites = flex.vec3_double()
   sites.append( (21,-3.4E8,2.6) )
   sites.append( (1.01,2.34,2.184) )
@@ -437,7 +439,8 @@ def exercise_basic_map():
                                emap,
                                unit_cell_gridding_n,
                                unit_cell.orthogonalization_matrix(),
-                               out_of_bounds_raise.as_handle())
+                               out_of_bounds_raise.as_handle(),
+                               unit_cell)
 
   for site_cart,expected_result in ([(0.468661,-1.549268,3.352108),-0.333095],
                                     [(0.624992,1.553980,1.205578),-0.187556],
@@ -469,7 +472,8 @@ def exercise_basic_map():
                                emap,
                                emap.focus(),
                                unit_cell.orthogonalization_matrix(),
-                               out_of_bounds_raise.as_handle())
+                               out_of_bounds_raise.as_handle(),
+                               unit_cell)
 
   assert basic_map.get_grid_value((0,0,0))==10
   emap[(0,0,0)] = -100
