@@ -15,9 +15,9 @@ namespace {
   void
   exercise_packed_u_accessor()
   {
-    af::versa<double, matrix::packed_u_accessor>
+    versa<double, matrix::packed_u_accessor>
       a(matrix::packed_u_accessor(5));
-    af::ref<double, matrix::packed_u_accessor> r = a.ref();
+    ref<double, matrix::packed_u_accessor> r = a.ref();
     SCITBX_ASSERT(a.size() == 5*(5+1)/2);
     SCITBX_ASSERT(r.size() == 5*(5+1)/2);
     SCITBX_ASSERT(a.accessor().n == 5);
@@ -53,14 +53,14 @@ namespace {
 
     static w_t
     factory_0(
-      af::shared<double> const& packed_u)
+      shared<double> const& packed_u)
     {
       return w_t(packed_u);
     }
 
     static w_t
     factory_1(
-      af::shared<double> const& packed_u, double epsilon)
+      shared<double> const& packed_u, double epsilon)
     {
       return w_t(packed_u, epsilon);
     }
@@ -68,7 +68,7 @@ namespace {
 
   bool
   is_square_matrix(
-    af::versa<double, af::flex_grid<> > const& self)
+    versa<double, flex_grid<> > const& self)
   {
     return self.accessor().is_square_matrix();
   }
@@ -179,58 +179,58 @@ namespace boost_python {
       .def("matrix_inversion_in_place",
         (void(*)(ref<double, c_grid<2> > const&)) matrix_inversion_in_place)
       .def("matrix_upper_triangle_as_packed_u",
-        (af::shared<double>(*)(
+        (shared<double>(*)(
           const_ref<double, c_grid<2> > const&))
             matrix::upper_triangle_as_packed_u)
       .def("matrix_packed_u_as_upper_triangle",
-        (af::versa<double, c_grid<2> >(*)(
+        (versa<double, c_grid<2> >(*)(
           const_ref<double> const&))
             matrix::packed_u_as_upper_triangle)
       .def("matrix_lower_triangle_as_packed_l",
-        (af::shared<double>(*)(
+        (shared<double>(*)(
           const_ref<double, c_grid<2> > const&))
             matrix::lower_triangle_as_packed_l)
       .def("matrix_packed_l_as_lower_triangle",
-        (af::versa<double, c_grid<2> >(*)(
+        (versa<double, c_grid<2> >(*)(
           const_ref<double> const&))
             matrix::packed_l_as_lower_triangle)
       .def("matrix_symmetric_as_packed_u",
-        (af::shared<double>(*)(
-          const_ref<double, af::c_grid<2> > const&, double const&))
+        (shared<double>(*)(
+          const_ref<double, c_grid<2> > const&, double const&))
             matrix::symmetric_as_packed_u,
               matrix_symmetric_as_packed_u_overloads((
                 arg_("self"),
                 arg_("relative_epsilon")=1.e-15)))
       .def("matrix_symmetric_as_packed_l",
-        (af::shared<double>(*)(
-          const_ref<double, af::c_grid<2> > const&, double const&))
+        (shared<double>(*)(
+          const_ref<double, c_grid<2> > const&, double const&))
             matrix::symmetric_as_packed_l,
               matrix_symmetric_as_packed_l_overloads((
                 arg_("self"),
                 arg_("relative_epsilon")=1.e-15)))
       .def("matrix_packed_u_as_symmetric",
-        (af::versa<double, c_grid<2> >(*)(
+        (versa<double, c_grid<2> >(*)(
           const_ref<double> const&))
             matrix::packed_u_as_symmetric)
       .def("matrix_packed_l_as_symmetric",
-        (af::versa<double, c_grid<2> >(*)(
+        (versa<double, c_grid<2> >(*)(
           const_ref<double> const&))
             matrix::packed_l_as_symmetric)
       .def("matrix_cholesky_decomposition",
-        (af::shared<double>(*)(
+        (shared<double>(*)(
           const_ref<double> const&, double const&))
             matrix::cholesky::decomposition,
               matrix_cholesky_decomposition_overloads((
                 arg_("self"),
                 arg_("relative_epsilon")=1.e-15)))
       .def("matrix_cholesky_solve_packed_u",
-        (af::shared<double>(*)(
+        (shared<double>(*)(
           const_ref<double> const&,
           const_ref<double> const&))
             matrix::cholesky::solve_packed_u,
               (arg_("self"), arg_("b")))
       .def("matrix_cholesky_solve_packed_u",
-        (af::shared<double>(*)(
+        (shared<double>(*)(
           const_ref<double> const&,
           const_ref<double> const&,
           const_ref<std::size_t> const&))
@@ -250,6 +250,24 @@ namespace boost_python {
         (void(*)(
           ref<double, c_grid<2> > const&))
             matrix::copy_lower_to_upper_triangle_in_place)
+      .def("matrix_copy_block",
+        (versa<double, c_grid<2> >(*)(
+          const_ref<double, c_grid<2> > const&,
+          unsigned, unsigned, unsigned, unsigned))
+            matrix::copy_block, (
+              arg_("i_row"),
+              arg_("i_column"),
+              arg_("n_rows"),
+              arg_("n_columns")))
+      .def("matrix_paste_block_in_place",
+        (void(*)(
+          ref<double, c_grid<2> > const&,
+          const_ref<double, c_grid<2> > const&,
+          unsigned, unsigned))
+            matrix::paste_block_in_place, (
+              arg_("block"),
+              arg_("i_row"),
+              arg_("i_column")))
       .def("matrix_swap_rows_in_place",
         (void(*)(
           ref<double, c_grid<2> > const&, unsigned, unsigned))

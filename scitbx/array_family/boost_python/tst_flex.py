@@ -1636,6 +1636,85 @@ def exercise_matrix_cholesky_gill_murray_wright():
 
 def exercise_matrix_move():
   a = flex.double(flex.grid(0,0))
+  b = a.matrix_copy_block(i_row=0, i_column=0, n_rows=0, n_columns=0)
+  assert b.focus() == (0,0)
+  a.matrix_paste_block_in_place(block=b, i_row=0, i_column=0)
+  for a in [flex.double([[1]]), flex.double([[1,2],[3,4]])]:
+    b = a.matrix_copy_block(i_row=0, i_column=0, n_rows=0, n_columns=0)
+    assert b.focus() == (0,0)
+    a.matrix_paste_block_in_place(block=b, i_row=0, i_column=0)
+    b = a.matrix_copy_block(i_row=0, i_column=0, n_rows=1, n_columns=0)
+    assert b.focus() == (1,0)
+    a.matrix_paste_block_in_place(block=b, i_row=0, i_column=0)
+    b = a.matrix_copy_block(i_row=0, i_column=0, n_rows=0, n_columns=1)
+    assert b.focus() == (0,1)
+    a.matrix_paste_block_in_place(block=b, i_row=0, i_column=0)
+    b = a.matrix_copy_block(i_row=0, i_column=0, n_rows=1, n_columns=1)
+    assert b.focus() == (1,1)
+    assert list(b) == [1]
+    b[0] = 5
+    a.matrix_paste_block_in_place(block=b, i_row=0, i_column=0)
+    assert a[0] == 5
+  b = a.matrix_copy_block(0,0,2,2)
+  assert b.focus() == (2,2)
+  assert b.all_eq(a)
+  a = flex.double(xrange(1,20+1))
+  a.resize(flex.grid(4,5))
+  b = a.matrix_copy_block(0,0,4,5)
+  assert b.focus() == (4,5)
+  assert b.all_eq(a)
+  for i in xrange(4):
+    for j in xrange(5):
+      b = a.matrix_copy_block(i,j,1,1)
+      assert b.focus() == (1,1)
+      assert b[0] == a[(i,j)]
+      c = a.deep_copy()
+      c.matrix_paste_block_in_place(flex.double([[93]]), i, j)
+      assert c[(i,j)] == 93
+  for i in xrange(3):
+    for j in xrange(5):
+      b = a.matrix_copy_block(i,j,2,1)
+      assert b.focus() == (2,1)
+      assert b[0] == a[(i,j)]
+      assert b[1] == a[(i+1,j)]
+      c = a.deep_copy()
+      c.matrix_paste_block_in_place(flex.double([[91],[-10]]), i, j)
+      assert c[(i,j)] == 91
+      assert c[(i+1,j)] == -10
+  for i in xrange(3):
+    for j in xrange(4):
+      b = a.matrix_copy_block(i,j,2,2)
+      assert b.focus() == (2,2)
+      assert b[0] == a[(i,j)]
+      assert b[1] == a[(i,j+1)]
+      assert b[2] == a[(i+1,j)]
+      assert b[3] == a[(i+1,j+1)]
+      c = a.deep_copy()
+      c.matrix_paste_block_in_place(flex.double([[97,-4],[-13,84]]), i, j)
+      assert c[(i,j)] == 97
+      assert c[(i,j+1)] == -4
+      assert c[(i+1,j)] == -13
+      assert c[(i+1,j+1)] == 84
+  for i in xrange(3):
+    for j in xrange(3):
+      b = a.matrix_copy_block(i,j,2,3)
+      assert b.focus() == (2,3)
+      assert b[0] == a[(i,j)]
+      assert b[1] == a[(i,j+1)]
+      assert b[2] == a[(i,j+2)]
+      assert b[3] == a[(i+1,j)]
+      assert b[4] == a[(i+1,j+1)]
+      assert b[5] == a[(i+1,j+2)]
+      c = a.deep_copy()
+      c.matrix_paste_block_in_place(flex.double([[79,-3,75],[-31,48,-7]]),i,j)
+      assert c[(i,j)] == 79
+      assert c[(i,j+1)] == -3
+      assert c[(i,j+2)] == 75
+      assert c[(i+1,j)] == -31
+      assert c[(i+1,j+1)] == 48
+      assert c[(i+1,j+2)] == -7
+  #
+  a = flex.double(flex.grid(0,0))
   a.matrix_copy_upper_to_lower_triangle_in_place()
   a.matrix_copy_lower_to_upper_triangle_in_place()
   a = flex.double([[1]])
