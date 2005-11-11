@@ -9,6 +9,7 @@ def interpret_form_data(form):
      ("convention", ""),
      ("d_min", "1"),
      ("min_distance_sym_equiv", "0.5"),
+     ("algorithm", "automatic"),
      ("coor_type", None)))
   inp.coordinates = cgi_utils.coordinates_from_form(form)
   return inp
@@ -29,9 +30,13 @@ def run(server_info, inp, status):
 
   structure = io_utils.structure_from_inp(
     inp, status, special_position_settings)
-  if (structure.scatterers().size() <= 100):
-    algorithm = "direct"
-  else:
+  algorithm = inp.algorithm
+  if (algorithm == "automatic"):
+    if (structure.scatterers().size() <= 100):
+      algorithm = "direct"
+    else:
+      algorithm = None
+  elif (algorithm not in ["direct", "fft"]):
     algorithm = None
   f_calc_manager = structure.structure_factors(
     anomalous_flag=False, d_min=d_min, algorithm=algorithm)
