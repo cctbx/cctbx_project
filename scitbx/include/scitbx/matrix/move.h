@@ -6,6 +6,55 @@
 namespace scitbx { namespace matrix {
 
   template <typename T>
+  af::versa<T, af::c_grid<2> >
+  copy_block(
+    af::const_ref<T, af::c_grid<2> > const& self,
+    unsigned i_row,
+    unsigned i_column,
+    unsigned n_rows,
+    unsigned n_columns)
+  {
+    unsigned self_n_rows = self.accessor()[0];
+    unsigned self_n_columns = self.accessor()[1];
+    SCITBX_ASSERT(i_row + n_rows <= self_n_rows);
+    SCITBX_ASSERT(i_column + n_columns <= self_n_columns);
+    af::versa<T, af::c_grid<2> >
+      result(
+        af::c_grid<2>(n_rows, n_columns),
+        af::init_functor_null<T>());
+    T* r = result.begin();
+    const T* s = &self[i_row * self_n_columns + i_column];
+    for(;n_rows>0;n_rows--) {
+      r = std::copy(s, s+n_columns, r);
+      s += self_n_columns;
+    }
+    return result;
+  }
+
+  template <typename T>
+  void
+  paste_block_in_place(
+    af::ref<T, af::c_grid<2> > const& self,
+    af::const_ref<T, af::c_grid<2> > const& block,
+    unsigned i_row,
+    unsigned i_column)
+  {
+    unsigned self_n_rows = self.accessor()[0];
+    unsigned self_n_columns = self.accessor()[1];
+    unsigned block_n_rows = block.accessor()[0];
+    unsigned block_n_columns = block.accessor()[1];
+    SCITBX_ASSERT(i_row + block_n_rows <= self_n_rows);
+    SCITBX_ASSERT(i_column + block_n_columns <= self_n_columns);
+    const T* b = block.begin();
+    T* s = &self[i_row * self_n_columns + i_column];
+    for(;block_n_rows>0;block_n_rows--) {
+      std::copy(b, b+block_n_columns, s);
+      b += block_n_columns;
+      s += self_n_columns;
+    }
+  }
+
+  template <typename T>
   void
   copy_upper_to_lower_triangle_in_place(
     af::ref<T, af::c_grid<2> > const& a)
