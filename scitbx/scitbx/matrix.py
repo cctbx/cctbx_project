@@ -189,6 +189,16 @@ class rec(object):
       a[2] * b[0] - b[2] * a[0],
       a[0] * b[1] - b[0] * a[1]))
 
+  def outer_product(self, other=None):
+    if (other is None): other = self
+    assert self.n[0] == 1 or self.n[1] == 1
+    assert other.n[0] == 1 or other.n[1] == 1
+    result = []
+    for a in self.elems:
+      for b in other.elems:
+        result.append(a*b)
+    return rec(result, (len(self.elems), len(other.elems)))
+
   def cos_angle(self, other, value_if_undefined=None):
     self_norm_sq = self.norm_sq()
     if (self_norm_sq == 0): return value_if_undefined
@@ -522,4 +532,9 @@ if (__name__ == "__main__"):
   assert approx_equal(a.transpose_multiply(), a.transpose() * a)
   assert approx_equal(b.transpose_multiply(b), b.transpose() * b)
   assert approx_equal(b.transpose_multiply(), b.transpose() * b)
+  #
+  a = col([1,2,3])
+  b = row([10,20])
+  assert list(a.outer_product(b)) == [10,20, 20,40, 30,60]
+  assert list(a.outer_product()) == [1,2,3, 2,4,6, 3,6,9]
   print "OK"
