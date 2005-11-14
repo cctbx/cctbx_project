@@ -18,7 +18,11 @@ from mmtbx.scaling import basic_analyses, data_statistics,pair_analyses
 import libtbx.phil.command_line
 from cStringIO import StringIO
 from scitbx.python_utils import easy_pickle
+from mmtbx.scaling import pre_scale
 import sys, os
+
+
+from mmtbx.scaling import fa_estimation
 
 
 master_params = iotbx.phil.parse("""\
@@ -30,86 +34,105 @@ scaling.input {
      .type=float
      n_copies_per_asu=None
      .type=float
-     n_terms = None
-     .type=int
    }
 
-   SIR_scale
-   {
+   xray_data{
 
-     target=ls loc *ls_and_loc
-     .type=choice
+     unit_cell=None
+     .type=unit_cell
 
-     xray_data{
+     space_group=None
+     .type=space_group
 
+     native{
+       file_name=None
+       .type=path
+       labels=None
+       .type=strings
        unit_cell=None
        .type=unit_cell
-
        space_group=None
        .type=space_group
-
-       high_resolution=None
-       .type=float
-       low_resolution=None
-       .type=float
-
-       native{
-         file_name=None
-         .type=path
-         labels=None
-         .type=strings
-         unit_cell=None
-         .type=unit_cell
-         space_group=None
-         .type=space_group
-       }
-       derivative{
-         file_name=None
-         .type=path
-         labels=None
-         .type=strings
-          unit_cell=None
-         .type=unit_cell
-         space_group=None
-         .type=space_group
-       }
-
      }
 
-     least_squares_options{
-       use_experimental_sigmas=True
-       .type=bool
-       scale_data=*intensities amplitudes
-       .type=choice
-       scale_target=basic *fancy
-       .type=choice
-     }
-
-     local_scaling_options{
-       use_experimental_sigmas=True
-       .type=bool
-       scale_data=*intensities amplitudes
-       .type=choice
-       scale_target=*local_moment local_lsq
-       .type=choice
-       max_depth=10
-       .type=int
-       target_neighbours=100
-       .type=int
-       neighbourhood_sphere=1
-       .type=int
-     }
-
-     outlier_rejection_options{
-       cut_level_sigma=3
-       .type=float
-       cut_level_rms=4
-       .type=float
-       protocol=solve rms *rms_and_sigma
-       .type=choice
+     derivative{
+       file_name=None
+       .type=path
+       labels=None
+       .type=strings
+        unit_cell=None
+       .type=unit_cell
+       space_group=None
+       .type=space_group
      }
 
    }
+
+
+
+   scaling_strategy{
+
+       pre_scaler_protocol{
+         high_resolution=None
+         .type=float
+         low_resolution=None
+         .type=float
+         aniso_correction=True
+         .type=bool
+         outlier_level_wilson=1e-6
+         .type=float
+         outlier_level_extreme=1e-2
+         .type=float
+       }
+
+       iso_protocol{
+         target = ls loc *ls_and_loc
+         .type=choice
+         iterations = *auto specified_by_max_iterations
+         .type=choice
+         max_iterations = 3
+         .type=int
+
+         least_squares_options{
+           use_experimental_sigmas=True
+           .type=bool
+           scale_data=*intensities amplitudes
+           .type=choice
+           scale_target=basic *fancy
+           .type=choice
+         }
+
+         local_scaling_options{
+           use_experimental_sigmas=True
+           .type=bool
+           scale_data=*intensities amplitudes
+           .type=choice
+           scale_target=*local_moment local_lsq
+           .type=choice
+           max_depth=10
+           .type=int
+           target_neighbours=100
+           .type=int
+           neighbourhood_sphere=1
+           .type=int
+         }
+
+         outlier_rejection_options{
+           cut_level_sigma=3
+           .type=float
+           cut_level_rms_primary=4
+           .type=float
+           cut_level_rms_secondary=4
+           .type=float
+           protocol=solve rms *rms_and_sigma
+           .type=choice
+         }
+     }
+
+   }
+
+
+
 
 
    output{
@@ -118,6 +141,8 @@ scaling.input {
 
      hklout = 'test.mtz'
      .type = path
+     outlabel = 'SIR'
+     .type = str
 
    }
 
@@ -189,7 +214,6 @@ def run(args):
         except KeyboardInterrupt: raise
         except : pass
 
-
       if not arg_is_processed:
         print >> log, "##----------------------------------------------##"
         print >> log, "## Unknown phil-file or phil-command:", arg
@@ -200,7 +224,14 @@ def run(args):
 
     effective_params = master_params.fetch(sources=phil_objects)
     params = effective_params.extract()
-
+    
+    effective_params = master_params.fetch(sources=phil_objects)
+    new_params = master_params.format(python_object=params)
+    print >> log, "Effective parameters"
+    print >> log, "#phil __ON__"
+    new_params.show(out=log)
+    print >> log, "#phil __END__"
+    print >> log
 
     ## Now please read in the reflections files
 
@@ -209,29 +240,29 @@ def run(args):
     ## as reference
     crystal_symmetry_nat = None
     crystal_symmetry_nat = crystal_symmetry_from_any.extract_from(
-      file_name=params.scaling.input.SIR_scale.xray_data.native.file_name)
+      file_name=params.scaling.input.xray_data.native.file_name)
 
-    if params.scaling.input.SIR_scale.xray_data.space_group is None:
-      params.scaling.input.SIR_scale.xray_data.space_group =\
+    if params.scaling.input.xray_data.space_group is None:
+      params.scaling.input.xray_data.space_group =\
         crystal_symmetry_nat.space_group_info()
       print >> log, "Using symmetry of native data"
 
-    if params.scaling.input.SIR_scale.xray_data.unit_cell is None:
-      params.scaling.input.SIR_scale.xray_data.unit_cell =\
+    if params.scaling.input.xray_data.unit_cell is None:
+      params.scaling.input.xray_data.unit_cell =\
         crystal_symmetry_nat.unit_cell()
       print >> log, "Using cell of native data"
 
     ## Check if a unit cell is defined
-    if params.scaling.input.SIR_scale.xray_data.space_group is None:
+    if params.scaling.input.xray_data.space_group is None:
       raise Sorry("No space group defined")
-    if params.scaling.input.SIR_scale.xray_data.unit_cell is None:
+    if params.scaling.input.xray_data.unit_cell is None:
       raise Sorry("No unit cell defined")
 
 
     crystal_symmetry = crystal_symmetry = crystal.symmetry(
-      unit_cell =  params.scaling.input.SIR_scale.xray_data.unit_cell,
+      unit_cell =  params.scaling.input.xray_data.unit_cell,
       space_group_symbol = str(
-        params.scaling.input.SIR_scale.xray_data.space_group) )
+        params.scaling.input.xray_data.space_group) )
 
 
     effective_params = master_params.fetch(sources=phil_objects)
@@ -251,8 +282,8 @@ def run(args):
     ## Read in native data and make appropriatre selections
     miller_array_native = None
     miller_array_native = xray_data_server.get_xray_data(
-      file_name = params.scaling.input.SIR_scale.xray_data.native.file_name,
-      labels = params.scaling.input.SIR_scale.xray_data.native.labels,
+      file_name = params.scaling.input.xray_data.native.file_name,
+      labels = params.scaling.input.xray_data.native.labels,
       ignore_all_zeros = True,
       parameter_scope = 'scaling.input.SIR_scale.xray_data.native'
     )
@@ -269,23 +300,14 @@ def run(args):
     if not miller_array_native.is_real_array():
       raise Sorry("miller_array_native is not a real array")
     miller_array_native.set_info(info = info_native)
-    ## Print info
-    print >> log
-    print >> log, "Native data summary"
-    print >> log, "-------------------"
-    miller_array_native.show_comprehensive_summary(f=log)
-    print >> log
-    ## Do a simple outlier analyses please
-    native_outlier = data_statistics.possible_outliers(miller_array_native)
-    native_outlier.show(out=log)
-    miller_array_native = native_outlier.remove_outliers(
-      miller_array_native )
+
+
 
     ## Read in derivative data and make appropriate selections
     miller_array_derivative = None
     miller_array_derivative = xray_data_server.get_xray_data(
-      file_name = params.scaling.input.SIR_scale.xray_data.derivative.file_name,
-      labels = params.scaling.input.SIR_scale.xray_data.derivative.labels,
+      file_name = params.scaling.input.xray_data.derivative.file_name,
+      labels = params.scaling.input.xray_data.derivative.labels,
       ignore_all_zeros = True,
       parameter_scope = 'scaling.input.SIR_scale.xray_data.derivative'
     )
@@ -302,75 +324,11 @@ def run(args):
     if not miller_array_derivative.is_real_array():
       raise Sorry("miller_array_derivative is not a real array")
     miller_array_derivative.set_info(info = info_derivative)
-    ## Print data summaries
-    print >> log
-    print >> log
-    print >> log, "Derivative data"
-    print >> log, "---------------"
-    miller_array_derivative.show_comprehensive_summary(f=log)
-    print >> log
-    ## Do a simple outlier analyses please
-    derivative_outlier = data_statistics.possible_outliers(
-      miller_array_derivative)
-    derivative_outlier.show(out=log)
-    miller_array_derivative = derivative_outlier.remove_outliers(
-      miller_array_derivative )
 
 
-    ## Determine the asu contents
-    print >> log, "Determining ASU contents"
-    print >> log, "------------------------"
-    matthews_analyses =matthews.matthews_rupp(
-      miller_array = miller_array_native,
-      n_residues = params.scaling.input.basic.n_residues,
-      n_bases = params.scaling.input.basic.n_bases,
-      out=log, verbose=1)
-
-    ## Now the asu contnets is defined, we can do the 'absolute scaling'
-    ## to get the data sets on roughly the same scale
-    n_residues=matthews_analyses[0]
-    n_bases=matthews_analyses[1]
-    n_copies_solc=matthews_analyses[2]
-
-    if ((n_residues+n_bases)*n_copies_solc<=0):
-      raise Sorry("Empty ASU, check inputs")
-    print >> log
-    print >> log, "Anisotropic absolute scaling of native"
-    print >> log, "--------------------------------------"
-    print >> log
-
-    aniso_native = absolute_scaling.ml_aniso_absolute_scaling(
-      miller_array = miller_array_native,
-      n_residues = n_residues*\
-        miller_array_native.space_group().order_z()*n_copies_solc,
-      n_bases = n_bases*\
-        miller_array_native.space_group().order_z()*n_copies_solc)
-    aniso_native.show(out=log,verbose=1)
-    print >> log, "removing anisotropy for native"
-    u_star_correct_nat = aniso_native.u_star
-    miller_array_native = absolute_scaling.anisotropic_correction(
-      miller_array_native,aniso_native.p_scale, u_star_correct_nat  )
-
-    print >> log
-    print >> log, "Anisotropic absolute scaling of derivative"
-    print >> log, "------------------------------------------"
-    print >> log
-
-    aniso_derivative = absolute_scaling.ml_aniso_absolute_scaling(
-      miller_array = miller_array_derivative,
-      n_residues = n_residues*\
-        miller_array_derivative.space_group().order_z()*n_copies_solc,
-      n_bases = n_bases*\
-        miller_array_derivative.space_group().order_z()*n_copies_solc)
-    aniso_derivative.show(out=log,verbose=1)
-    print >> log
-    print >> log, "removing anisotropy for derivative data"
-    print >> log
-    u_star_correct_der = aniso_derivative.u_star
-    miller_array_derivative = absolute_scaling.anisotropic_correction(
-      miller_array_derivative,aniso_native.p_scale, u_star_correct_der  )
 
 
+    ## As this is a SIR case, we will remove any anomalous pairs
     if miller_array_derivative.anomalous_flag():
       miller_array_derivative = miller_array_derivative.average_bijvoet_mates()\
       .set_observation_type( miller_array_derivative )
@@ -379,212 +337,35 @@ def run(args):
       .set_observation_type( miller_array_native )
 
 
-    ## Limit resolution limits
-    print >> log, "Applying resolution cut"
-    print >> log, "-----------------------"
-    low_cut=999
-    if params.scaling.input.SIR_scale.xray_data.low_resolution is not None:
-      low_cut = params.scaling.input.SIR_scale.xray_data.low_resolution
-    high_cut = 0
-    if params.scaling.input.SIR_scale.xray_data.high_resolution is not None:
-      high_cut = params.scaling.input.SIR_scale.xray_data.high_resolution
-
-
-    miller_array_derivative = miller_array_derivative.resolution_filter(
-      d_max=low_cut,
-      d_min=high_cut)
-    miller_array_native = miller_array_native.resolution_filter(
-      d_max=low_cut,
-      d_min=high_cut )
-
-    ## Save these arrays for later use please
-    native_save = miller_array_native.deep_copy().map_to_asu()
-    derivative_save = miller_array_derivative.deep_copy().map_to_asu()
+    ## Print info
+    print >> log
+    print >> log, "Native data"
+    print >> log, "==========="
+    miller_array_native.show_comprehensive_summary(f=log)
+    print >> log
+    native_pre_scale = pre_scale.pre_scaler(
+      miller_array_native,
+      params.scaling.input.scaling_strategy.pre_scaler_protocol,
+      params.scaling.input.basic)
+    miller_array_native =  native_pre_scale.x1.deep_copy()
+    del native_pre_scale
 
     print >> log
-    print >> log, "Checking for alternative indexing"
-    print >> log, "---------------------------------"
+    print >> log, "Derivative data"
+    print >> log, "==============="
+    miller_array_derivative.show_comprehensive_summary(f=log)
     print >> log
+    derivative_pre_scale = pre_scale.pre_scaler(
+      miller_array_derivative,
+      params.scaling.input.scaling_strategy.pre_scaler_protocol,
+      params.scaling.input.basic)
+    miller_array_derivative =  derivative_pre_scale.x1.deep_copy()
+    del derivative_pre_scale
 
-    reindex_object = pair_analyses.reindexing(
-      miller_array_derivative, miller_array_native)
-    miller_array_derivative = reindex_object.select_and_transform(
-      out=log,
-      input_array=miller_array_derivative)
-
-    ## The reflections have now been scaled and transformed properly
-    ## Get the common sets and prepare to scale according to methods
-    ## specified
-    scaling_tasks={'lsq':True, 'local':True }
-
-    if params.scaling.input.SIR_scale.target=='ls':
-      scaling_tasks['lsq']=True
-      scaling_tasks['local']=False
-
-    if params.scaling.input.SIR_scale.target=='loc':
-      scaling_tasks['lsq']=False
-      scaling_tasks['local']=True
-
-    if params.scaling.input.SIR_scale.target=='ls_and_loc':
-      scaling_tasks['lsq']=True
-      scaling_tasks['local']=True
-
-    if scaling_tasks['lsq']:
-      print >> log
-      print >> log, "Least squares relative scaling"
-      print >> log, "------------------------------"
-      print >> log
-
-      use_exp_sigmas=params.scaling.input.SIR_scale.least_squares_options.\
-        use_experimental_sigmas
-      use_int = True
-      if params.scaling.input.SIR_scale.least_squares_options.\
-        scale_data=='amplitudes':
-        use_int=False
-      use_wt=True
-      if params.scaling.input.SIR_scale.least_squares_options.\
-        scale_target=='basic':
-        use_wt=False
-
-      ls_scaling = relative_scaling.ls_rel_scale_driver(
-        miller_array_native,
-        miller_array_derivative,
-        use_intensities=use_int,
-        scale_weight=use_wt,
-        use_weights=use_exp_sigmas)
-      ls_scaling.show()
-      miller_array_native = ls_scaling.native.deep_copy()
-      miller_array_derivative = ls_scaling.derivative.deep_copy()
-
-    if scaling_tasks['local']:
-      print >> log
-      print >> log, "Local scaling"
-      print >> log, "-------------"
-      print >> log
-
-      use_exp_sigmas=params.scaling.input.SIR_scale.\
-         local_scaling_options.use_experimental_sigmas
-      use_int = True
-      if params.scaling.input.SIR_scale.local_scaling_options.\
-        scale_data=='amplitudes':
-        use_int=False
-
-      moment_based_local_scale=False
-      if params.scaling.input.SIR_scale.local_scaling_options.\
-        scale_target=='local_moment':
-        moment_based_local_scale=True
-
-      local_scaling = relative_scaling.local_scaling_driver(
-        miller_array_native,
-        miller_array_derivative,
-        use_intensities=use_int,
-        use_weights=use_exp_sigmas,
-        moment_based=moment_based_local_scale,
-        max_depth=params.scaling.input.SIR_scale\
-        .local_scaling_options.max_depth,
-        target_neighbours=params.scaling.input.SIR_scale\
-        .local_scaling_options.target_neighbours,
-        sphere=params.scaling.input.SIR_scale\
-        .local_scaling_options.neighbourhood_sphere,
-        out=log)
-
-      miller_array_native = local_scaling.native
-      miller_array_derivative = local_scaling.derivative
-
-    # Generate the ismorphous differences please
-    print >> log
-    print >> log, "Outlier rejection"
-    print >> log, "----------------"
-    print >> log
-    outlier_protocol ={'solve':False,'rms':False, 'rms_and_sigma':False }
-    ## Please set the protocol to what is specified
-    outlier_protocol[ params.scaling.input.SIR_scale\
-       .outlier_rejection_options.protocol]=True
-
-    outlier_rejection = pair_analyses.outlier_rejection(
-      native_save,
-      derivative_save,
-      cut_level_rms=params.scaling.input.SIR_scale\
-       .outlier_rejection_options.cut_level_rms,
-      cut_level_sigma=params.scaling.input.SIR_scale\
-       .outlier_rejection_options.cut_level_sigma
-      )
-    print >> log, "   *Scaling protocol will be carried out once more* "
-
-    miller_array_native = outlier_rejection.nat
-    miller_array_derivative = outlier_rejection.der
-
-    ##-------------------------------------------------------
-    if scaling_tasks['lsq']:
-      print >> log
-      print >> log, "Least squares relative scaling"
-      print >> log, "------------------------------"
-      print >> log
-
-      use_exp_sigmas=params.scaling.input.SIR_scale.least_squares_options.\
-        use_experimental_sigmas
-      use_int = True
-      if params.scaling.input.SIR_scale.least_squares_options.\
-        scale_data=='amplitudes':
-        use_int=False
-      use_wt=True
-      if params.scaling.input.SIR_scale.least_squares_options.\
-        scale_target=='basic':
-        use_wt=False
-
-      ls_scaling = relative_scaling.ls_rel_scale_driver(
-        miller_array_native,
-        miller_array_derivative,
-        use_intensities=use_int,
-        scale_weight=use_wt,
-        use_weights=use_exp_sigmas)
-      ls_scaling.show()
-      miller_array_native = ls_scaling.native
-      miller_array_derivative = ls_scaling.derivative
-
-    if scaling_tasks['local']:
-      print >> log
-      print >> log, "Local scaling"
-      print >> log, "-------------"
-      print >> log
-
-      use_exp_sigmas=params.scaling.input.SIR_scale.\
-         local_scaling_options.use_experimental_sigmas
-      use_int = True
-      if params.scaling.input.SIR_scale.local_scaling_options.\
-        scale_data=='amplitudes':
-        use_int=False
-
-      moment_based_local_scale=False
-      if params.scaling.input.SIR_scale.local_scaling_options.\
-        scale_target=='local_moment':
-        moment_based_local_scale=True
-
-      local_scaling = relative_scaling.local_scaling_driver(
-        miller_array_native,
-        miller_array_derivative,
-        use_intensities=use_int,
-        use_weights=use_exp_sigmas,
-        moment_based=moment_based_local_scale,
-        max_depth=params.scaling.input.SIR_scale\
-        .local_scaling_options.max_depth,
-        target_neighbours=params.scaling.input.SIR_scale\
-        .local_scaling_options.target_neighbours,
-        sphere=params.scaling.input.SIR_scale\
-        .local_scaling_options.neighbourhood_sphere,
-        out=log)
-
-      miller_array_native = local_scaling.native
-      miller_array_derivative = local_scaling.derivative
-      ##---------------------------------------------------
-
-
-
-
-
-
-
-
+    fa_estimation.combined_scaling(
+      miller_array_native,
+      miller_array_derivative,
+      params.scaling.input.scaling_strategy.iso_protocol)
 
     print >> log
     print >> log, "Making delta f's"
@@ -606,11 +387,9 @@ def run(args):
     ## Please write out the abs_delta_f array
 
     mtz_dataset = delta_gen.abs_delta_f.as_mtz_dataset(
-      column_root_label='FSIR')
-    mtz_dataset.mtz_object().write(file_name=
-                                   params.scaling.input.output.hklout)
-
-
+      column_root_label=params.scaling.input.output.outlabel)
+    mtz_dataset.mtz_object().write(
+      file_name=params.scaling.input.output.hklout)
 
 
 
