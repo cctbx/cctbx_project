@@ -86,7 +86,7 @@ scaling.input {
        }
 
        iso_protocol{
-         target = ls loc *ls_and_loc
+         target = ls loc *ls_and_loc None
          .type=choice
          iterations = *auto specified_by_max_iterations
          .type=choice
@@ -131,17 +131,13 @@ scaling.input {
 
    }
 
-
-
-
-
    output{
      log = 'logfile.log'
      .type = path
 
      hklout = 'test.mtz'
      .type = path
-     outlabel = 'SIR'
+     outlabel = '_SIR'
      .type = str
 
    }
@@ -391,7 +387,7 @@ def run(args):
     ## Please write out the abs_delta_f array
 
     mtz_dataset = delta_gen.abs_delta_f.as_mtz_dataset(
-      column_root_label=params.scaling.input.output.outlabel)
+      column_root_label='F'+params.scaling.input.output.outlabel)
     mtz_dataset.mtz_object().write(
       file_name=params.scaling.input.output.hklout)
 
