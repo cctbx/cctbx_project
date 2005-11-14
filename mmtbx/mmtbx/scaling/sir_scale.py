@@ -362,10 +362,14 @@ def run(args):
     miller_array_derivative =  derivative_pre_scale.x1.deep_copy()
     del derivative_pre_scale
 
-    fa_estimation.combined_scaling(
+    scaler = fa_estimation.combined_scaling(
       miller_array_native,
       miller_array_derivative,
       params.scaling.input.scaling_strategy.iso_protocol)
+    
+    miller_array_native = scaler.x1.deep_copy()
+    miller_array_derivative = scaler.x2.deep_copy()
+    del scaler
 
     print >> log
     print >> log, "Making delta f's"
