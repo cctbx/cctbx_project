@@ -1,5 +1,5 @@
+from __future__ import generators
 from cctbx import xray
-from cctbx.examples import g_exp_i_alpha_derivatives
 from scitbx import matrix
 from scitbx.array_family import flex
 import cmath
@@ -17,14 +17,6 @@ def scatterer_from_list(l):
     fp=l[5],
     fdp=l[6])
 
-def scatterer_as_g_alpha(scatterer, hkl, d_star_sq):
-  return g_exp_i_alpha_derivatives.parameters(
-    g = scatterer.occupancy
-        * math.exp(-2 * math.pi**2 * scatterer.u_iso * d_star_sq),
-    ffp = 1 + scatterer.fp,
-    fdp = scatterer.fdp,
-    alpha = 2 * math.pi * matrix.col(scatterer.site).dot(matrix.col(hkl)))
-
 class gradients:
 
   def __init__(self, site, u_iso, occupancy, fp, fdp):
@@ -34,17 +26,13 @@ class gradients:
     self.fp = fp
     self.fdp = fdp
 
-class curvatures:
-
-  def __init__(self, uu, uw):
-    self.uu = uu
-    self.uw = uw
-
 def pack_gradients(grads):
   result = []
   for g in grads:
     result.extend(scatterer_as_list(g))
   return result
+
+mtps = -2 * math.pi**2
 
 class structure_factor:
 
@@ -55,171 +43,153 @@ class structure_factor:
     self.hkl = hkl
     self.d_star_sq = self.unit_cell.d_star_sq(hkl)
 
-  def as_exp_i_sum(self):
-    params = []
-    for scatterer in self.scatterers:
-      assert not scatterer.anisotropic_flag
-      for smx in self.space_group:
-        scatterer_s = scatterer.customized_copy(site=smx*scatterer.site)
-        params.append(scatterer_as_g_alpha(
-          scatterer=scatterer_s, hkl=self.hkl, d_star_sq=self.d_star_sq))
-    return g_exp_i_alpha_derivatives.g_exp_i_alpha_sum(params=params)
-
   def f(self):
-    return self.as_exp_i_sum().f()
-
-  def d_g_alpha_d_params(self):
-    """Mathematica:
-         alpha = 2 Pi {h,k,l}.{x,y,z}
-         g = w Exp[-2 Pi^2 u dss]
-         D[alpha,x]; D[alpha,y]; D[alpha,z]; D[g,u]; D[g,w]"
-    """
-    result = []
-    c = -2 * math.pi**2 * self.d_star_sq
+    result = 0
+    tphkl = 2 * math.pi * matrix.col(self.hkl)
     for scatterer in self.scatterers:
-      e = math.exp(c * scatterer.u_iso)
+      assert scatterer.scattering_type == "const"
+      assert not scatterer.anisotropic_flag
+      w = scatterer.occupancy
+      dw = math.exp(mtps * scatterer.u_iso * self.d_star_sq)
+      ffp = 1 + scatterer.fp
+      fdp = scatterer.fdp
+      ff = (ffp + 1j * fdp)
+      wdwff = w * dw * ff
+      for s in self.space_group:
+        s_site = s * scatterer.site
+        alpha = matrix.col(s_site).dot(tphkl)
+        result += wdwff * cmath.exp(1j*alpha)
+    return result
+
+  def df_d_params(self):
+    result = []
+    tphkl = 2 * math.pi * matrix.col(self.hkl)
+    for scatterer in self.scatterers:
+      assert scatterer.scattering_type == "const"
+      assert not scatterer.anisotropic_flag
+      w = scatterer.occupancy
+      dw = math.exp(mtps * scatterer.u_iso * self.d_star_sq)
+      ffp = 1 + scatterer.fp
+      fdp = scatterer.fdp
+      ff = (ffp + 1j * fdp)
+      d_site = matrix.col([0,0,0])
+      d_u_iso = 0
+      d_occupancy = 0
+      d_fp = 0
+      d_fdp = 0
+      for smx in self.space_group:
+        site_s = smx * scatterer.site
+        alpha = matrix.col(site_s).dot(tphkl)
+        e = cmath.exp(1j*alpha)
+        site_gtmx = smx.r().as_rational().as_float().transpose()
+        d_site += site_gtmx * (w * dw * ff * e * 1j * tphkl)
+        d_u_iso += w * dw * ff * e * mtps * self.d_star_sq
+        d_occupancy += dw * ff * e
+        d_fp += w * dw * e
+        d_fdp += w * dw * e * 1j
       result.append(gradients(
-        site=2*math.pi*matrix.col(self.hkl),
-        u_iso=scatterer.occupancy*c*e,
-        occupancy=e,
-        fp=1,
-        fdp=1))
+        site=d_site,
+        u_iso=d_u_iso,
+        occupancy=d_occupancy,
+        fp=d_fp,
+        fdp=d_fdp))
     return result
 
-  def d2_g_alpha_d_params(self):
-    """Mathematica:
-         alpha = 2 Pi {h,k,l}.{x,y,z}
-         g = w Exp[-2 Pi^2 u dss]
-         D[alpha,x,x]; D[alpha,x,y]; D[alpha,x,z]; D[g,x,u]; D[g,x,w]"
-         D[alpha,y,x]; D[alpha,y,y]; D[alpha,y,z]; D[g,y,u]; D[g,y,w]"
-         D[alpha,z,x]; D[alpha,z,y]; D[alpha,z,z]; D[g,z,u]; D[g,z,w]"
-         D[alpha,u,x]; D[alpha,u,y]; D[alpha,u,z]; D[g,u,u]; D[g,u,w]"
-         D[alpha,w,x]; D[alpha,w,y]; D[alpha,w,z]; D[g,w,u]; D[g,w,w]"
-       This curvature matrix is symmetric.
-       All D[alpha, x|y|z, x|y|z|u|w] are 0.
-       D[g,u,u] = (4 dss^2 Pi^4) w Exp[-2 Pi^2 u dss]
-       D[g,u,w] = (-2 dss Pi^2)    Exp[-2 Pi^2 u dss]
-       D[g,w,w] = 0
-    """
-    result = []
-    c = -2 * math.pi**2 * self.d_star_sq
+  def d2f_d_params(self):
+    tphkl = 2 * math.pi * matrix.col(self.hkl)
+    tphkl_outer = tphkl.outer_product()
     for scatterer in self.scatterers:
-      e = math.exp(c * scatterer.u_iso)
-      result.append(curvatures(uu=c**2*scatterer.occupancy*e, uw=c*e))
-    return result
+      assert scatterer.scattering_type == "const"
+      assert not scatterer.anisotropic_flag
+      w = scatterer.occupancy
+      dw = math.exp(mtps * scatterer.u_iso * self.d_star_sq)
+      ffp = 1 + scatterer.fp
+      fdp = scatterer.fdp
+      ff = (ffp + 1j * fdp)
+      d2_site_site = flex.complex_double(flex.grid(3,3), 0j)
+      d2_site_u_iso = flex.complex_double(flex.grid(1,3), 0j)
+      d2_site_occupancy = flex.complex_double(flex.grid(1,3), 0j)
+      d2_site_fp = flex.complex_double(flex.grid(1,3), 0j)
+      d2_site_fdp = flex.complex_double(flex.grid(1,3), 0j)
+      d2_u_iso_u_iso = 0j
+      d2_u_iso_occupancy = 0j
+      d2_u_iso_fp = 0j
+      d2_u_iso_fdp = 0j
+      d2_occupancy_fp = 0j
+      d2_occupancy_fdp = 0j
+      for smx in self.space_group:
+        site_s = smx * scatterer.site
+        alpha = matrix.col(site_s).dot(tphkl)
+        e = cmath.exp(1j*alpha)
+        site_gtmx = smx.r().as_rational().as_float().transpose()
+        d2_site_site += flex.complex_double(
+          site_gtmx *
+            (w * dw * ff * e * (-1) * tphkl_outer)
+               * site_gtmx.transpose())
+        d2_site_u_iso += flex.complex_double(site_gtmx * (
+          w * dw * ff * e * 1j * mtps * self.d_star_sq * tphkl))
+        d2_site_occupancy += flex.complex_double(site_gtmx * (
+          dw * ff * e * 1j * tphkl))
+        d2_site_fp += flex.complex_double(site_gtmx * (
+          w * dw * e * 1j * tphkl))
+        d2_site_fdp += flex.complex_double(site_gtmx * (
+          w * dw * e * (-1) * tphkl))
+        d2_u_iso_u_iso += w * dw * ff * e * (mtps * self.d_star_sq)**2
+        d2_u_iso_occupancy += dw * ff * e * mtps * self.d_star_sq
+        d2_u_iso_fp += w * dw * e * mtps * self.d_star_sq
+        d2_u_iso_fdp += 1j * w * dw * e * mtps * self.d_star_sq
+        d2_occupancy_fp += dw * e
+        d2_occupancy_fdp += dw * e * 1j
+      dp = flex.complex_double(flex.grid(7,7), 0j)
+      dp.matrix_paste_block_in_place(d2_site_site, 0,0)
+      dp.matrix_paste_block_in_place(d2_site_u_iso.matrix_transpose(), 0,3)
+      dp.matrix_paste_block_in_place(d2_site_u_iso, 3,0)
+      dp.matrix_paste_block_in_place(d2_site_occupancy.matrix_transpose(), 0,4)
+      dp.matrix_paste_block_in_place(d2_site_occupancy, 4,0)
+      dp.matrix_paste_block_in_place(d2_site_fp.matrix_transpose(), 0,5)
+      dp.matrix_paste_block_in_place(d2_site_fp, 5,0)
+      dp.matrix_paste_block_in_place(d2_site_fdp.matrix_transpose(), 0,6)
+      dp.matrix_paste_block_in_place(d2_site_fdp, 6,0)
+      dp[3*7+3] = d2_u_iso_u_iso
+      dp[3*7+4] = d2_u_iso_occupancy
+      dp[4*7+3] = d2_u_iso_occupancy
+      dp[3*7+5] = d2_u_iso_fp
+      dp[5*7+3] = d2_u_iso_fp
+      dp[3*7+6] = d2_u_iso_fdp
+      dp[6*7+3] = d2_u_iso_fdp
+      dp[4*7+5] = d2_occupancy_fp
+      dp[5*7+4] = d2_occupancy_fp
+      dp[4*7+6] = d2_occupancy_fdp
+      dp[6*7+4] = d2_occupancy_fdp
+      yield dp
 
   def d_target_d_params(self, target):
-    result = []
-    dts = iter(self.as_exp_i_sum().d_target_d_params(target=target))
-    ds = self.d_g_alpha_d_params()
-    for d in ds:
-      site = matrix.col([0,0,0])
-      u_iso = 0
-      occupancy = 0
-      fp = 0
-      fdp = 0
-      for smx in self.space_group:
-        dt = dts.next()
-        r = smx.r().as_rational().as_float()
-        site += dt.alpha * (r.transpose() * matrix.col(d.site))
-        u_iso += dt.g * d.u_iso
-        occupancy += dt.g * d.occupancy
-        fp += dt.ffp
-        fdp += dt.fdp
-      result.append(gradients(
-        site=site, u_iso=u_iso, occupancy=occupancy, fp=fp, fdp=fdp))
-    return result
+    da, db = target.da(), target.db()
+    return flex.double([[da * d.real + db * d.imag
+      for d in scatterer_as_list(d_scatterer)]
+        for d_scatterer in self.df_d_params()])
 
   def d2_target_d_params(self, target):
-    """Combined application of chain rule and product rule.
-       d_target_d_.. matrix:
-         aa ag a' a"
-         ga gg g' g"
-         'a 'g '' '"
-         "a "g "' ""
-       Block in resulting matrix:
-         xx xy xz xu xw x' x"
-         yx yy yz yu yw y' y"
-         zx zy zz zu zw z' z"
-         ux uy uz uu uw '' '"
-         wx wy wz wu ww "' ""
-         'x 'y 'z 'u 'w '' '"
-         "x "y "z "u "w "' ""
-    """
     result = []
-    exp_i_sum = self.as_exp_i_sum()
-    dts = iter(exp_i_sum.d_target_d_params(target=target))
-    d2ti = iter(exp_i_sum.d2_target_d_params(target=target))
-    ds = self.d_g_alpha_d_params()
-    d2s = self.d2_g_alpha_d_params()
-    ss = list(self.space_group)
-    for di,d2 in zip(ds, d2s):
-      for si in ss:
-        dt = dts.next()
-        # dx. dy. dz.
-        d2ti0 = d2ti.next()
-        for dxi in di.site:
-          row = []; ra = row.append
-          d2tij = iter(d2ti0)
-          for dj in ds:
-            for sj in ss:
-              d2t = d2tij.next()
-              for dxj in dj.site:
-                ra(d2t * dxi * dxj)
-              d2t = d2tij.next()
-              ra(d2t * dxi * dj.u_iso)
-              ra(d2t * dxi * dj.occupancy)
-              ra(d2tij.next() * dxi)
-              ra(d2tij.next() * dxi)
-          result.append(row)
-        # d2u.
-        row = []; ra = row.append
-        d2ti0 = d2ti.next()
-        d2tij = iter(d2ti0)
-        for dj in ds:
-          for sj in ss:
-            d2t = d2tij.next()
-            for dxj in dj.site:
-              ra(d2t * dxj * di.u_iso)
-            d2t = d2tij.next()
-            ra(d2t * di.u_iso * dj.u_iso)
-            if (di is dj and si is sj): row[-1] += dt.g * d2.uu
-            ra(d2t * di.u_iso * dj.occupancy)
-            if (di is dj and si is sj): row[-1] += dt.g * d2.uw
-            ra(d2tij.next() * di.u_iso)
-            ra(d2tij.next() * di.u_iso)
+    da, db = target.da(), target.db()
+    daa, dbb, dab = target.daa(), target.dbb(), target.dab()
+    ds = self.df_d_params()
+    d2s = self.d2f_d_params()
+    for di0,d2i in zip(ds, d2s):
+      d2ij_iter = iter(d2i)
+      for di in scatterer_as_list(di0):
+        row = []
+        for dj0 in ds:
+          for dj in scatterer_as_list(dj0):
+            sum = daa * di.real * dj.real \
+                + dbb * di.imag * dj.imag \
+                + dab * (di.real * dj.imag + di.imag * dj.real)
+            if (di0 is dj0):
+              d2ij = d2ij_iter.next()
+              sum += da * d2ij.real + db * d2ij.imag
+            row.append(sum)
         result.append(row)
-        # d2w.
-        row = []; ra = row.append
-        d2tij = iter(d2ti0)
-        for dj in ds:
-          for sj in ss:
-            d2t = d2tij.next()
-            for dxj in dj.site:
-              ra(d2t * dxj * di.occupancy)
-            d2t = d2tij.next()
-            ra(d2t * di.occupancy * dj.u_iso)
-            if (di is dj and si is sj): row[-1] += dt.g * d2.uw
-            ra(d2t * di.occupancy * dj.occupancy)
-            ra(d2tij.next() * di.occupancy)
-            ra(d2tij.next() * di.occupancy)
-        result.append(row)
-        # d2'. and d2"
-        for ip in [0,1]:
-          row = []; ra = row.append
-          d2tij = iter(d2ti.next())
-          for dj in ds:
-            for sj in ss:
-              d2t = d2tij.next()
-              for dxj in dj.site:
-                ra(d2t * dxj)
-              d2t = d2tij.next()
-              ra(d2t * dj.u_iso)
-              ra(d2t * dj.occupancy)
-              ra(d2tij.next())
-              ra(d2tij.next())
-          result.append(row)
-    return result
+    return flex.double(result)
 
 class structure_factors:
 
@@ -244,40 +214,14 @@ class structure_factors:
     for hkl,obs in zip(self.miller_indices, f_obs.data()):
       sf = structure_factor(xray_structure=self.xray_structure, hkl=hkl)
       target = target_type(obs=obs, calc=sf.f())
-      result += flex.double(
-        pack_gradients(sf.d_target_d_params(target=target)))
+      result += sf.d_target_d_params(target=target)
     return result
 
   def d2_target_d_params(self, f_obs, target_type):
     np = self.number_of_parameters
-    nps = np * self.xray_structure.space_group().order_z()
-    result_sg = flex.double(flex.grid(np, np), 0)
-    result_p1 = flex.double(flex.grid(nps, nps), 0)
+    result = flex.double(flex.grid(np, np), 0)
     for hkl,obs in zip(self.miller_indices, f_obs.data()):
       sf = structure_factor(xray_structure=self.xray_structure, hkl=hkl)
       target = target_type(obs=obs, calc=sf.f())
-      result_p1 += flex.double(sf.d2_target_d_params(target=target))
-    sevens = []
-    for s in f_obs.space_group():
-      three = flex.double(s.r().as_rational().as_float())
-      three.resize(flex.grid(3,3))
-      seven = flex.double(flex.grid(7,7), 0)
-      seven.matrix_diagonal_set_in_place(1)
-      seven.matrix_paste_block_in_place(block=three, i_row=0, i_column=0)
-      sevens.append(seven)
-    ns = len(sevens)
-    for i_row_asy in xrange(0,np,7):
-      for i_column_asy in xrange(0,np,7):
-        shs_sum = flex.double(flex.grid(7,7))
-        for ir,sr in enumerate(sevens):
-          srt = sr.matrix_transpose()
-          for ic,sc in enumerate(sevens):
-            h = result_p1.matrix_copy_block(
-              i_row=i_row_asy*ns+ir*7,
-              i_column=i_column_asy*ns+ic*7,
-              n_rows=7,
-              n_columns=7)
-            shs_sum += srt.matrix_multiply(h).matrix_multiply(sc)
-        result_sg.matrix_paste_block_in_place(
-          block=shs_sum, i_row=i_row_asy, i_column=i_column_asy)
-    return result_sg
+      result += sf.d2_target_d_params(target=target)
+    return result
