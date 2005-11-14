@@ -92,7 +92,7 @@ class pre_scaler(object):
 
     ## apply anisotropic scaling  (final B-value is going to be zero)!
     if self.options.aniso_correction:
-      
+
       print >> out
       print >> out, "Anisotropic absolute scaling of data"
       print >> out, "--------------------------------------"
