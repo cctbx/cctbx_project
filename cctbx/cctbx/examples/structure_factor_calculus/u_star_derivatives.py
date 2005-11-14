@@ -62,7 +62,8 @@ class debye_waller:
       huh = (matrix.row(self.hkl) * matrix.sym(op_u)).dot(matrix.col(self.hkl))
       d2_op_u = math.exp(mtps * huh) * mtps**2 * d2_exp_huh_d_uu
       gtmx = sym_tensor_rank_2_gradient_transform_matrix(op)
-      d2_u = gtmx.matrix_multiply(d2_op_u).matrix_multiply(gtmx.matrix_transpose())
+      d2_u = gtmx.matrix_multiply(d2_op_u).matrix_multiply(
+        gtmx.matrix_transpose())
       result += d2_u
     return result
 

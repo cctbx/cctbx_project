@@ -42,7 +42,7 @@ class cos_alpha:
       result += flex.double(op.transpose() * d2_op_site * op)
     return result
 
-def d_alpha_d_site_finite(site, ops, hkl, eps=1.e-6):
+def d_cos_alpha_d_site_finite(site, ops, hkl, eps=1.e-6):
   result = flex.double()
   site_eps = list(site)
   for ip in xrange(3):
@@ -55,7 +55,7 @@ def d_alpha_d_site_finite(site, ops, hkl, eps=1.e-6):
     result.append((vs[0]-vs[1])/(2*eps))
   return result
 
-def d2_alpha_d_site_finite(site, ops, hkl, eps=1.e-6):
+def d2_cos_alpha_d_site_finite(site, ops, hkl, eps=1.e-6):
   result = flex.double()
   site_eps = list(site)
   for ip in xrange(3):
@@ -81,12 +81,12 @@ def exercise(args):
     site = matrix.col(flex.random_double(size=3, factor=4)-2)
     hkl = matrix.row(flex.random_double(size=3, factor=4)-2)
     ca = cos_alpha(site=site, ops=ops, hkl=hkl)
-    grads_fin = d_alpha_d_site_finite(site=site, ops=ops, hkl=hkl)
+    grads_fin = d_cos_alpha_d_site_finite(site=site, ops=ops, hkl=hkl)
     print >> out, "grads_fin:", list(grads_fin)
     grads_ana = ca.d_site()
     print >> out, "grads_ana:", list(grads_ana)
     assert approx_equal(grads_ana, grads_fin)
-    curvs_fin = d2_alpha_d_site_finite(site=site, ops=ops, hkl=hkl)
+    curvs_fin = d2_cos_alpha_d_site_finite(site=site, ops=ops, hkl=hkl)
     print >> out, "curvs_fin:", list(curvs_fin)
     curvs_ana = ca.d2_site()
     print >> out, "curvs_ana:", list(curvs_ana)
