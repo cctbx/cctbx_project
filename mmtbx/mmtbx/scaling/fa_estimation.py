@@ -14,7 +14,7 @@ from iotbx import crystal_symmetry_from_any
 import mmtbx.scaling
 from mmtbx.scaling import absolute_scaling, relative_scaling
 from mmtbx.scaling import matthews, twin_analyses
-from mmtbx.scaling import basic_analyses, data_statistics,pair_analyses
+from mmtbx.scaling import basic_analyses, data_statistics, pair_analyses
 import libtbx.phil.command_line
 from cStringIO import StringIO
 from scitbx.python_utils import easy_pickle
@@ -70,7 +70,7 @@ class combined_scaling(object):
     self.s2 = self.x2.deep_copy().map_to_asu()
 
 
-    scaling_tasks={'lsq':True, 'local':True }
+    scaling_tasks={'lsq':False, 'local':False }
 
     if self.overall_protocol=='ls':
       scaling_tasks['lsq']=True
@@ -84,15 +84,18 @@ class combined_scaling(object):
       scaling_tasks['lsq']=True
       scaling_tasks['local']=True
 
-    assert ( scaling_tasks['lsq'] or scaling_tasks['local'] )
+    print scaling_tasks
+    print self.overall_protocol
+    #assert ( scaling_tasks['lsq'] or scaling_tasks['local'] )
 
     self.convergence=False
     counter = 0
-
+    
+    print >> self.out
     print >> self.out, "=========================================="
     print >> self.out, "=             Relative scaling           ="
     print >> self.out, "=========================================="
-
+    print >> self.out
 
 
     while not self.convergence:
@@ -103,15 +106,14 @@ class combined_scaling(object):
 
       if counter == 0:
         self.cut_level_rms = self.out_options.cut_level_rms_primary
-      else:
+      if counter > 0:
         self.cut_level_rms = self.out_options.cut_level_rms_secondary
 
       ## take the common sets
       self.s1 = self.s1.common_set(  self.x1 )
       self.s2 = self.s2.common_set(  self.x2 )
       self.x1, self.x2 = self.s1.common_sets( self.s2 )
-
-
+      
       if scaling_tasks['lsq']:
         self.perform_least_squares_scaling()
       if scaling_tasks['local']:
@@ -239,6 +241,8 @@ class ano_scaling(object):
 
     assert miller_array_x1.anomalous_flag()
     assert miller_array_x1.indices().size() > 0
+
+    self.options = options
 
     self.s1p, self.s1n = miller_array_x1.hemispheres_acentrics()
 
