@@ -90,7 +90,7 @@ class combined_scaling(object):
 
     self.convergence=False
     counter = 0
-    
+
     print >> self.out
     print >> self.out, "=========================================="
     print >> self.out, "=             Relative scaling           ="
@@ -113,7 +113,7 @@ class combined_scaling(object):
       self.s1 = self.s1.common_set(  self.x1 )
       self.s2 = self.s2.common_set(  self.x2 )
       self.x1, self.x2 = self.s1.common_sets( self.s2 )
-      
+
       if scaling_tasks['lsq']:
         self.perform_least_squares_scaling()
       if scaling_tasks['local']:

@@ -220,7 +220,7 @@ def run(args):
 
     effective_params = master_params.fetch(sources=phil_objects)
     params = effective_params.extract()
-    
+
     effective_params = master_params.fetch(sources=phil_objects)
     new_params = master_params.format(python_object=params)
     print >> log, "Effective parameters"
@@ -362,7 +362,7 @@ def run(args):
       miller_array_native,
       miller_array_derivative,
       params.scaling.input.scaling_strategy.iso_protocol)
-    
+
     miller_array_native = scaler.x1.deep_copy()
     miller_array_derivative = scaler.x2.deep_copy()
     del scaler
