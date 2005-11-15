@@ -93,6 +93,10 @@ def d2_debye_waller_d_u_finite(u, ops, hkl, eps=1.e-8):
     result.extend((vs[0]-vs[1])/(2*eps))
   return result
 
+def compare_derivatives(ana, fin):
+  s = max(1, flex.max(flex.abs(ana)))
+  assert approx_equal(ana/s, fin/s)
+
 def exercise(args):
   verbose =  "--verbose" in args
   if (not verbose):
@@ -110,12 +114,12 @@ def exercise(args):
     print >> out, "grads_fin:", list(grads_fin)
     grads_ana = dw.d_u()
     print >> out, "grads_ana:", list(grads_ana)
-    assert approx_equal(grads_ana, grads_fin)
+    compare_derivatives(grads_ana, grads_fin)
     curvs_fin = d2_debye_waller_d_u_finite(u=u, ops=ops, hkl=hkl)
     print >> out, "curvs_fin:", list(curvs_fin)
     curvs_ana = dw.d2_u()
     print >> out, "curvs_ana:", list(curvs_ana)
-    assert approx_equal(curvs_ana, curvs_fin)
+    compare_derivatives(curvs_ana, curvs_fin)
     print >> out
   print "OK"
 
