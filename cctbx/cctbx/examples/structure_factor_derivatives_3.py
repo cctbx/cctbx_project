@@ -1,4 +1,6 @@
 from __future__ import generators
+from cctbx.examples.structure_factor_calculus.u_star_derivatives \
+  import sym_tensor_rank_2_gradient_transform_matrix
 from cctbx import xray
 from scitbx import matrix
 from scitbx.array_family import flex
@@ -6,22 +8,35 @@ import cmath
 import math
 
 def scatterer_as_list(self):
-  return list(self.site) + [self.u_iso, self.occupancy, self.fp, self.fdp]
+  if (not self.anisotropic_flag):
+    return list(self.site) + [self.u_iso, self.occupancy, self.fp, self.fdp]
+  return list(self.site) + list(self.u_star) \
+       + [self.occupancy, self.fp, self.fdp]
 
 def scatterer_from_list(l):
+  if (len(l) == 7):
+    return xray.scatterer(
+      site=l[:3],
+      u=l[3],
+      occupancy=l[4],
+      scattering_type="const",
+      fp=l[5],
+      fdp=l[6])
   return xray.scatterer(
     site=l[:3],
-    u=l[3],
-    occupancy=l[4],
+    u=l[3:9],
+    occupancy=l[9],
     scattering_type="const",
-    fp=l[5],
-    fdp=l[6])
+    fp=l[10],
+    fdp=l[11])
 
 class gradients:
 
-  def __init__(self, site, u_iso, occupancy, fp, fdp):
+  def __init__(self, site, u_iso, u_star, occupancy, fp, fdp):
     self.site = site
     self.u_iso = u_iso
+    self.u_star = u_star
+    self.anisotropic_flag = (self.u_star is not None)
     self.occupancy = occupancy
     self.fp = fp
     self.fdp = fdp
@@ -48,49 +63,76 @@ class structure_factor:
     tphkl = 2 * math.pi * matrix.col(self.hkl)
     for scatterer in self.scatterers:
       assert scatterer.scattering_type == "const"
-      assert not scatterer.anisotropic_flag
       w = scatterer.occupancy
-      dw = math.exp(mtps * scatterer.u_iso * self.d_star_sq)
+      if (not scatterer.anisotropic_flag):
+        huh = scatterer.u_iso * self.d_star_sq
+        dw = math.exp(mtps * huh)
       ffp = 1 + scatterer.fp
       fdp = scatterer.fdp
-      ff = (ffp + 1j * fdp)
-      wdwff = w * dw * ff
+      ff = ffp + 1j * fdp
       for s in self.space_group:
         s_site = s * scatterer.site
         alpha = matrix.col(s_site).dot(tphkl)
-        result += wdwff * cmath.exp(1j*alpha)
+        if (scatterer.anisotropic_flag):
+          r = s.r().as_rational().as_float()
+          s_u_star_s = r * matrix.sym(scatterer.u_star) * r.transpose()
+          huh = (matrix.row(self.hkl) * s_u_star_s).dot(matrix.col(self.hkl))
+          dw = math.exp(mtps * huh)
+        e = cmath.exp(1j*alpha)
+        result += w * dw * ff * e
     return result
 
   def df_d_params(self):
     result = []
     tphkl = 2 * math.pi * matrix.col(self.hkl)
+    h,k,l = self.hkl
+    d_exp_huh_d_u_star = matrix.col([h**2, k**2, l**2, 2*h*k, 2*h*l, 2*k*l])
     for scatterer in self.scatterers:
       assert scatterer.scattering_type == "const"
-      assert not scatterer.anisotropic_flag
       w = scatterer.occupancy
-      dw = math.exp(mtps * scatterer.u_iso * self.d_star_sq)
+      if (not scatterer.anisotropic_flag):
+        huh = scatterer.u_iso * self.d_star_sq
+        dw = math.exp(mtps * huh)
       ffp = 1 + scatterer.fp
       fdp = scatterer.fdp
-      ff = (ffp + 1j * fdp)
+      ff = ffp + 1j * fdp
       d_site = matrix.col([0,0,0])
-      d_u_iso = 0
-      d_occupancy = 0
+      if (not scatterer.anisotropic_flag):
+        d_u_iso = 0
+        d_u_star = None
+      else:
+        d_u_iso = None
+        d_u_star = matrix.col([0,0,0,0,0,0])
+      d_occ = 0
       d_fp = 0
       d_fdp = 0
-      for smx in self.space_group:
-        site_s = smx * scatterer.site
-        alpha = matrix.col(site_s).dot(tphkl)
+      for s in self.space_group:
+        r = s.r().as_rational().as_float()
+        s_site = s * scatterer.site
+        alpha = matrix.col(s_site).dot(tphkl)
+        if (scatterer.anisotropic_flag):
+          s_u_star_s = r * matrix.sym(scatterer.u_star) * r.transpose()
+          huh = (matrix.row(self.hkl) * s_u_star_s).dot(matrix.col(self.hkl))
+          dw = math.exp(mtps * huh)
         e = cmath.exp(1j*alpha)
-        site_gtmx = smx.r().as_rational().as_float().transpose()
-        d_site += site_gtmx * (w * dw * ff * e * 1j * tphkl)
-        d_u_iso += w * dw * ff * e * mtps * self.d_star_sq
-        d_occupancy += dw * ff * e
+        site_gtmx = r.transpose()
+        d_site += site_gtmx * (
+          w * dw * ff * e * 1j * tphkl)
+        if (not scatterer.anisotropic_flag):
+          d_u_iso += w * dw * ff * e * mtps * self.d_star_sq
+        else:
+          u_star_gtmx = matrix.sqr(
+            sym_tensor_rank_2_gradient_transform_matrix(r))
+          d_u_star += u_star_gtmx * (
+            w * dw * ff * e * mtps * d_exp_huh_d_u_star)
+        d_occ += dw * ff * e
         d_fp += w * dw * e
         d_fdp += w * dw * e * 1j
       result.append(gradients(
         site=d_site,
         u_iso=d_u_iso,
-        occupancy=d_occupancy,
+        u_star=d_u_star,
+        occupancy=d_occ,
         fp=d_fp,
         fdp=d_fdp))
     return result
@@ -98,69 +140,128 @@ class structure_factor:
   def d2f_d_params(self):
     tphkl = 2 * math.pi * matrix.col(self.hkl)
     tphkl_outer = tphkl.outer_product()
+    h,k,l = self.hkl
+    d_exp_huh_d_u_star = matrix.col([h**2, k**2, l**2, 2*h*k, 2*h*l, 2*k*l])
+    d2_exp_huh_d_u_star_u_star = d_exp_huh_d_u_star.outer_product()
     for scatterer in self.scatterers:
       assert scatterer.scattering_type == "const"
-      assert not scatterer.anisotropic_flag
       w = scatterer.occupancy
-      dw = math.exp(mtps * scatterer.u_iso * self.d_star_sq)
+      if (not scatterer.anisotropic_flag):
+        huh = scatterer.u_iso * self.d_star_sq
+        dw = math.exp(mtps * huh)
       ffp = 1 + scatterer.fp
       fdp = scatterer.fdp
       ff = (ffp + 1j * fdp)
       d2_site_site = flex.complex_double(flex.grid(3,3), 0j)
-      d2_site_u_iso = flex.complex_double(flex.grid(1,3), 0j)
-      d2_site_occupancy = flex.complex_double(flex.grid(1,3), 0j)
-      d2_site_fp = flex.complex_double(flex.grid(1,3), 0j)
-      d2_site_fdp = flex.complex_double(flex.grid(1,3), 0j)
-      d2_u_iso_u_iso = 0j
-      d2_u_iso_occupancy = 0j
-      d2_u_iso_fp = 0j
-      d2_u_iso_fdp = 0j
-      d2_occupancy_fp = 0j
-      d2_occupancy_fdp = 0j
-      for smx in self.space_group:
-        site_s = smx * scatterer.site
-        alpha = matrix.col(site_s).dot(tphkl)
+      if (not scatterer.anisotropic_flag):
+        d2_site_u_iso = flex.complex_double(flex.grid(3,1), 0j)
+        d2_site_u_star = None
+      else:
+        d2_site_u_iso = None
+        d2_site_u_star = flex.complex_double(flex.grid(3,6), 0j)
+      d2_site_occ = flex.complex_double(flex.grid(3,1), 0j)
+      d2_site_fp = flex.complex_double(flex.grid(3,1), 0j)
+      d2_site_fdp = flex.complex_double(flex.grid(3,1), 0j)
+      if (not scatterer.anisotropic_flag):
+        d2_u_iso_u_iso = 0j
+        d2_u_iso_occ = 0j
+        d2_u_iso_fp = 0j
+        d2_u_iso_fdp = 0j
+      else:
+        d2_u_star_u_star = flex.complex_double(flex.grid(6,6), 0j)
+        d2_u_star_occ = flex.complex_double(flex.grid(6,1), 0j)
+        d2_u_star_fp = flex.complex_double(flex.grid(6,1), 0j)
+        d2_u_star_fdp = flex.complex_double(flex.grid(6,1), 0j)
+      d2_occ_fp = 0j
+      d2_occ_fdp = 0j
+      for s in self.space_group:
+        r = s.r().as_rational().as_float()
+        s_site = s * scatterer.site
+        alpha = matrix.col(s_site).dot(tphkl)
+        if (scatterer.anisotropic_flag):
+          s_u_star_s = r * matrix.sym(scatterer.u_star) * r.transpose()
+          huh = (matrix.row(self.hkl) * s_u_star_s).dot(matrix.col(self.hkl))
+          dw = math.exp(mtps * huh)
         e = cmath.exp(1j*alpha)
-        site_gtmx = smx.r().as_rational().as_float().transpose()
+        site_gtmx = r.transpose()
         d2_site_site += flex.complex_double(
           site_gtmx *
             (w * dw * ff * e * (-1) * tphkl_outer)
                * site_gtmx.transpose())
-        d2_site_u_iso += flex.complex_double(site_gtmx * (
-          w * dw * ff * e * 1j * mtps * self.d_star_sq * tphkl))
-        d2_site_occupancy += flex.complex_double(site_gtmx * (
+        if (not scatterer.anisotropic_flag):
+          d2_site_u_iso += flex.complex_double(site_gtmx * (
+            w * dw * ff * e * 1j * mtps * self.d_star_sq * tphkl))
+        else:
+          u_star_gtmx = matrix.sqr(
+            sym_tensor_rank_2_gradient_transform_matrix(r))
+          d2_site_u_star += flex.complex_double(
+              site_gtmx
+            * ((w * dw * ff * e * 1j * tphkl).outer_product(
+                mtps * d_exp_huh_d_u_star))
+            * u_star_gtmx.transpose())
+        d2_site_occ += flex.complex_double(site_gtmx * (
           dw * ff * e * 1j * tphkl))
         d2_site_fp += flex.complex_double(site_gtmx * (
           w * dw * e * 1j * tphkl))
         d2_site_fdp += flex.complex_double(site_gtmx * (
           w * dw * e * (-1) * tphkl))
-        d2_u_iso_u_iso += w * dw * ff * e * (mtps * self.d_star_sq)**2
-        d2_u_iso_occupancy += dw * ff * e * mtps * self.d_star_sq
-        d2_u_iso_fp += w * dw * e * mtps * self.d_star_sq
-        d2_u_iso_fdp += 1j * w * dw * e * mtps * self.d_star_sq
-        d2_occupancy_fp += dw * e
-        d2_occupancy_fdp += dw * e * 1j
-      dp = flex.complex_double(flex.grid(7,7), 0j)
-      dp.matrix_paste_block_in_place(d2_site_site, 0,0)
-      dp.matrix_paste_block_in_place(d2_site_u_iso.matrix_transpose(), 0,3)
-      dp.matrix_paste_block_in_place(d2_site_u_iso, 3,0)
-      dp.matrix_paste_block_in_place(d2_site_occupancy.matrix_transpose(), 0,4)
-      dp.matrix_paste_block_in_place(d2_site_occupancy, 4,0)
-      dp.matrix_paste_block_in_place(d2_site_fp.matrix_transpose(), 0,5)
-      dp.matrix_paste_block_in_place(d2_site_fp, 5,0)
-      dp.matrix_paste_block_in_place(d2_site_fdp.matrix_transpose(), 0,6)
-      dp.matrix_paste_block_in_place(d2_site_fdp, 6,0)
-      dp[3*7+3] = d2_u_iso_u_iso
-      dp[3*7+4] = d2_u_iso_occupancy
-      dp[4*7+3] = d2_u_iso_occupancy
-      dp[3*7+5] = d2_u_iso_fp
-      dp[5*7+3] = d2_u_iso_fp
-      dp[3*7+6] = d2_u_iso_fdp
-      dp[6*7+3] = d2_u_iso_fdp
-      dp[4*7+5] = d2_occupancy_fp
-      dp[5*7+4] = d2_occupancy_fp
-      dp[4*7+6] = d2_occupancy_fdp
-      dp[6*7+4] = d2_occupancy_fdp
+        if (not scatterer.anisotropic_flag):
+          d2_u_iso_u_iso += w * dw * ff * e * (mtps * self.d_star_sq)**2
+          d2_u_iso_occ += dw * ff * e * mtps * self.d_star_sq
+          d2_u_iso_fp += w * dw * e * mtps * self.d_star_sq
+          d2_u_iso_fdp += 1j * w * dw * e * mtps * self.d_star_sq
+        else:
+          d2_u_star_u_star += flex.complex_double(
+              u_star_gtmx
+            * (w * dw * ff * e * mtps**2 * d2_exp_huh_d_u_star_u_star)
+            * u_star_gtmx.transpose())
+          d2_u_star_occ += flex.complex_double(u_star_gtmx * (
+            dw * ff * e * mtps * d_exp_huh_d_u_star))
+          d2_u_star_fp += flex.complex_double(u_star_gtmx * (
+            w * dw * e * mtps * d_exp_huh_d_u_star))
+          d2_u_star_fdp += flex.complex_double(u_star_gtmx * (
+            w * dw * 1j * e * mtps * d_exp_huh_d_u_star))
+        d2_occ_fp += dw * e
+        d2_occ_fdp += dw * e * 1j
+      if (not scatterer.anisotropic_flag):
+        i_occ, i_fp, i_fdp, np = 4, 5, 6, 7
+      else:
+        i_occ, i_fp, i_fdp, np = 9, 10, 11, 12
+      dp = flex.complex_double(flex.grid(np,np), 0j)
+      paste = dp.matrix_paste_block_in_place
+      paste(d2_site_site, 0,0)
+      if (not scatterer.anisotropic_flag):
+        paste(d2_site_u_iso, 0,3)
+        paste(d2_site_u_iso.matrix_transpose(), 3,0)
+      else:
+        paste(d2_site_u_star, 0,3)
+        paste(d2_site_u_star.matrix_transpose(), 3,0)
+      paste(d2_site_occ, 0,i_occ)
+      paste(d2_site_occ.matrix_transpose(), i_occ,0)
+      paste(d2_site_fp, 0,i_fp)
+      paste(d2_site_fp.matrix_transpose(), i_fp,0)
+      paste(d2_site_fdp, 0,i_fdp)
+      paste(d2_site_fdp.matrix_transpose(), i_fdp,0)
+      if (not scatterer.anisotropic_flag):
+        dp[3*7+3] = d2_u_iso_u_iso
+        dp[3*7+4] = d2_u_iso_occ
+        dp[4*7+3] = d2_u_iso_occ
+        dp[3*7+5] = d2_u_iso_fp
+        dp[5*7+3] = d2_u_iso_fp
+        dp[3*7+6] = d2_u_iso_fdp
+        dp[6*7+3] = d2_u_iso_fdp
+      else:
+        paste(d2_u_star_u_star, 3,3)
+        paste(d2_u_star_occ, 3, 9)
+        paste(d2_u_star_occ.matrix_transpose(), 9, 3)
+        paste(d2_u_star_fp, 3, 10)
+        paste(d2_u_star_fp.matrix_transpose(), 10, 3)
+        paste(d2_u_star_fdp, 3, 11)
+        paste(d2_u_star_fdp.matrix_transpose(), 11, 3)
+      dp[i_occ*np+i_fp] = d2_occ_fp
+      dp[i_fp*np+i_occ] = d2_occ_fp
+      dp[i_occ*np+i_fdp] = d2_occ_fdp
+      dp[i_fdp*np+i_occ] = d2_occ_fdp
       yield dp
 
   def d_target_d_params(self, target):
@@ -197,7 +298,13 @@ class structure_factors:
     assert xray_structure.is_similar_symmetry(miller_set)
     self.xray_structure = xray_structure
     self.miller_indices = miller_set.indices()
-    self.number_of_parameters = xray_structure.scatterers().size()*7
+    np = 0
+    for scatterer in xray_structure.scatterers():
+      if (not scatterer.anisotropic_flag):
+        np += 7
+      else:
+        np += 12
+    self.number_of_parameters = np
 
   def fs(self):
     result = flex.complex_double()
