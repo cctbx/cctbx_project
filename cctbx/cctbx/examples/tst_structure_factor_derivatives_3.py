@@ -21,8 +21,12 @@ def d_target_d_params_finite(f_obs, xray_structure, eps=1.e-8):
   xray_structure_eps = xray_structure.deep_copy_scatterers()
   scatterers_eps = xray_structure_eps.scatterers()
   for i_scatterer in xrange(len(scatterers)):
+    if (not scatterers[i_scatterer].anisotropic_flag):
+      np = 7
+    else:
+      np = 12
     dx = []
-    for ix in xrange(7):
+    for ix in xrange(np):
       ts = []
       for signed_eps in [eps, -eps]:
         si_eps = scatterer_as_list(scatterers[i_scatterer])
@@ -45,7 +49,12 @@ def d2_target_d_params_finite(f_obs, xray_structure, eps=1.e-8):
   xray_structure_eps = xray_structure.deep_copy_scatterers()
   scatterers_eps = xray_structure_eps.scatterers()
   for i_scatterer in xrange(len(scatterers)):
-    for ix in xrange(7):
+    if (not scatterers[i_scatterer].anisotropic_flag):
+      np = 7
+    else:
+      np = 12
+    dx = []
+    for ix in xrange(np):
       gs = []
       for signed_eps in [eps, -eps]:
         si_eps = scatterer_as_list(scatterers[i_scatterer])
@@ -80,12 +89,17 @@ def compare_analytical_and_finite(f_obs, xray_structure, out):
   compare_derivatives(curvs_ana, curvs_fin)
   print >> out
 
-def exercise(space_group_info, anomalous_flag=False, verbose=0):
+def exercise(
+      space_group_info,
+      anisotropic_flag,
+      anomalous_flag,
+      max_n_indices=5,
+      verbose=0):
   if (not verbose):
     out = StringIO()
   else:
     out = sys.stdout
-  for n_scatterers in xrange(2,3+1):
+  for n_scatterers in xrange(3,3+1):
     for i_trial in xrange(1):
       xray_structure = random_structure.xray_structure(
         space_group_info=space_group_info,
@@ -94,7 +108,7 @@ def exercise(space_group_info, anomalous_flag=False, verbose=0):
         general_positions_only=True,
         random_f_prime_d_min=1,
         random_f_double_prime=anomalous_flag,
-        anisotropic_flag=False,
+        anisotropic_flag=anisotropic_flag,
         random_u_iso=True,
         random_u_iso_scale=0.3,
         random_occupancy=True)
@@ -103,6 +117,10 @@ def exercise(space_group_info, anomalous_flag=False, verbose=0):
         crystal_symmetry=xray_structure,
         anomalous_flag=anomalous_flag,
         d_min=max(1, min(xray_structure.unit_cell().parameters()[:3])/2.5))
+      n_indices = miller_set.indices().size()
+      if (n_indices > max_n_indices):
+        miller_set = miller_set.select(
+          flex.random_size_t(size=max_n_indices) % n_indices)
       sf = structure_factors(
         xray_structure=xray_structure,
         miller_set=miller_set)
@@ -110,6 +128,7 @@ def exercise(space_group_info, anomalous_flag=False, verbose=0):
         xray_structure=xray_structure,
         algorithm="direct",
         cos_sin_table=False).f_calc()
+      f_calc.show_summary(f=out)
       assert approx_equal(sf.fs(), f_calc.data())
       f_obs = miller_set.array(data=flex.abs(sf.fs()))
       compare_analytical_and_finite(
@@ -123,10 +142,23 @@ def exercise(space_group_info, anomalous_flag=False, verbose=0):
         out=out)
 
 def run_call_back(flags, space_group_info):
-  exercise(space_group_info, verbose=flags.Verbose)
+  if (flags.isotropic):
+    anisotropic_flags = [False]
+  elif (flags.anisotropic):
+    anisotropic_flags = [True]
+  else:
+    anisotropic_flags = [False, True]
+  for anisotropic_flag in anisotropic_flags:
+    exercise(
+      space_group_info=space_group_info,
+      anisotropic_flag=anisotropic_flag,
+      anomalous_flag=True,
+      verbose=flags.Verbose)
 
 def run(args):
-  debug_utils.parse_options_loop_space_groups(args, run_call_back)
+  debug_utils.parse_options_loop_space_groups(args, run_call_back, (
+    "isotropic",
+    "anisotropic"))
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])
