@@ -1713,6 +1713,13 @@ def exercise_matrix_move():
       assert c[(i+1,j)] == -31
       assert c[(i+1,j+1)] == 48
       assert c[(i+1,j+2)] == -7
+  a = flex.complex_double([1,2j,3j,4])
+  a.resize(flex.grid(2,2))
+  b = flex.complex_double([10,20j])
+  b.resize(flex.grid(2,1))
+  assert b.matrix_transpose().focus() == (1,2)
+  a.matrix_paste_block_in_place(block=b, i_row=0, i_column=1)
+  assert approx_equal(a, [(1+0j), (10+0j), 3j, 20j])
   #
   a = flex.double(flex.grid(0,0))
   a.matrix_copy_upper_to_lower_triangle_in_place()
