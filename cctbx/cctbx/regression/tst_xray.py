@@ -8,9 +8,13 @@ import cctbx.eltbx.xray_scattering
 from cctbx import eltbx
 from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
+import random
 import pickle
 from cStringIO import StringIO
 import sys
+
+random.seed(0)
+flex.set_random_seed(0)
 
 def exercise_scatterer():
   assert xray.scatterer(scattering_type="Cval").element_symbol() == "C"
@@ -298,25 +302,29 @@ C  pair count:   1       <<  0.0000,  0.0000,  0.1000>>
   ### shake_sites
   xs = random_structure.xray_structure(
                                space_group_info = sgtbx.space_group_info("P1"),
-                               elements         = ["N"]*500,
+                               elements         = ["N"]*100,
                                unit_cell        = (10, 20, 30, 70, 80, 120))
-  errors = [0.1,0.5,0.9,1.2,1.5,2.0,3.0]
+  errors = [0.1,0.5,1.5,3.0]
   for error in errors:
     xs_shaked = xs.shake_sites(mean_error = error)
     sites_cart_xs        = xs.sites_cart()
     sites_cart_xs_shaked = xs_shaked.sites_cart()
-    mean_err = flex.mean(flex.sqrt((sites_cart_xs - sites_cart_xs_shaked).dot()))
-    #rmsd = sites_cart_xs.rms_difference(sites_cart_xs_shaked)
-    #assert approx_equal(error, rmsd, 0.00005)
+    mean_err = flex.mean(
+      flex.sqrt((sites_cart_xs - sites_cart_xs_shaked).dot()))
     assert approx_equal(error, mean_err, 0.00005)
   ### random remove sites
-  for fraction in xrange(1, 99+1):
+  for fraction in xrange(1, 99+1, 10):
     fraction /= 100.
     selection = xs.random_remove_sites_selection(fraction = fraction)
     deleted = selection.count(False) / float(selection.size())
     retained= selection.count(True)  / float(selection.size())
     assert approx_equal(fraction, deleted)
     assert approx_equal(1-deleted, retained)
+  #
+  xs.scatterers()[0] = xs.scatterers()[0].customized_copy()
+  assert approx_equal(xs.scatterers()[0].weight(), 0.0)
+  xs.re_apply_symmetry(i_scatterer=0)
+  assert approx_equal(xs.scatterers()[0].weight(), 1.0)
 
 def exercise_u_base():
   d_min = 9
