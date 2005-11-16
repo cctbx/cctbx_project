@@ -284,6 +284,13 @@ class rec(object):
         s += " "
     return s + "}"
 
+  def as_list_of_lists(self):
+    result = []
+    nr,nc = self.n
+    for ir in xrange(nr):
+      result.append(list(self.elems[ir*nc:(ir+1)*nc]))
+    return result
+
   def as_sym_mat3(self):
     assert self.n == (3,3)
     m = self.elems
@@ -535,6 +542,6 @@ if (__name__ == "__main__"):
   #
   a = col([1,2,3])
   b = row([10,20])
-  assert list(a.outer_product(b)) == [10,20, 20,40, 30,60]
-  assert list(a.outer_product()) == [1,2,3, 2,4,6, 3,6,9]
+  assert a.outer_product(b).as_list_of_lists() == [[10,20],[20,40],[30,60]]
+  assert a.outer_product().as_list_of_lists() == [[1,2,3],[2,4,6],[3,6,9]]
   print "OK"
