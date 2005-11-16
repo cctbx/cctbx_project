@@ -6,12 +6,15 @@ This class facilitates the construction of phil parameter files
 for the FA estimation program FATSO.
 """
   def __init__(self):
+
+    self.default_expert_level_for_parameters_that_should_be_sensible_defaults='1'
+
     self.scaling_input = """ scaling.input{
 __REPLACE__
 
 expert_level=0
 .type=int
-.expert_level=1
+.expert_level=__EXPERT_LEVEL__
 }
 """
     self.basic_info = """basic{
@@ -126,6 +129,9 @@ outlier_level_wilson=1e-6
 
   def default_sad(self):
     outer_level = self.scaling_input
+    outer_level = outer_level.replace( '__EXPERT_LEVEL__',
+      self.default_expert_level_for_parameters_that_should_be_sensible_defaults)
+
     basic = self.basic_info
     data = self.data_type.replace( '__REPLACE__',
                                       'reference' )
@@ -150,6 +156,9 @@ outlier_level_wilson=1e-6
 
   def default_sir(self):
     outer_level = self.scaling_input
+    outer_level = outer_level.replace( '__EXPERT_LEVEL__',
+      self.default_expert_level_for_parameters_that_should_be_sensible_defaults)
+
     basic = self.basic_info
     data = self.data_type.replace( '__REPLACE__',
                                       'native' ) \
@@ -182,6 +191,9 @@ outlier_level_wilson=1e-6
 
   def default_siras(self):
     outer_level = self.scaling_input
+    outer_level = outer_level.replace( '__EXPERT_LEVEL__',
+      self.default_expert_level_for_parameters_that_should_be_sensible_defaults)
+
     basic = self.basic_info
     data = self.data_type.replace( '__REPLACE__',
                                       'native' ) \
@@ -216,18 +228,27 @@ outlier_level_wilson=1e-6
 
 
 def run(args):
-  tester = phil_lego()
+  okai=True
+  if len(args)==0:
+    print "Example parameter files lego-ed together from several phil blocks"
+    print
+    print "specifiy 'expert level' on command line via "
+    print "    python make_param.py <expert_level>      "
+    okai=False
 
-  print " ---------- SAD ----------"
-  master_params = iotbx.phil.parse( tester.default_sad() )
-  master_params.show(expert_level = int(args[0]) )
+  if okai:
+    tester = phil_lego()
 
-  print " ---------- SIR ----------"
-  master_params = iotbx.phil.parse( tester.default_sir() )
-  master_params.show(expert_level=int(args[0]))
-  print " ---------- SIRAS ----------"
-  master_params = iotbx.phil.parse( tester.default_siras() )
-  master_params.show(expert_level=int(args[0]))
+    print " ---------- SAD ----------"
+    master_params = iotbx.phil.parse( tester.default_sad() )
+    master_params.show(expert_level = int(args[0]) )
+
+    print " ---------- SIR ----------"
+    master_params = iotbx.phil.parse( tester.default_sir() )
+    master_params.show(expert_level=int(args[0]))
+    print " ---------- SIRAS ----------"
+    master_params = iotbx.phil.parse( tester.default_siras() )
+    master_params.show(expert_level=int(args[0]))
 
 
 
