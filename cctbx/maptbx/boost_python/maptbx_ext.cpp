@@ -74,6 +74,7 @@ namespace {
       arg_("first"),
       arg_("last")));
 
+    def("box_map_averaging",box_map_averaging);
     def("average_densities",
       (af::shared<double>(*)
         (uctbx::unit_cell const&,
