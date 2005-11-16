@@ -12,16 +12,16 @@ namespace cctbx { namespace sgtbx {
 //! Symmetry constraints for tensors of rank 2
 namespace tensor_rank_2 {
 
-  //! Coefficients r.transpose() * t * r - t = 0
+  //! Coefficients r.transpose() * c * r - c = 0
   /*! Mathematica code:
         r={{r0,r1,r2},{r3,r4,r5},{r6,r7,r8}}
-        t={{t0,t3,t4},{t3,t1,t5},{t4,t5,t2}}
-        FortranForm[Expand[Transpose[r].t.r - t]]
+        c={{c0,c3,c4},{c3,c1,c5},{c4,c5,c2}}
+        FortranForm[Expand[Transpose[r].c.r - c]]
    */
   int*
   constraints_raw(const int* r, int* c);
 
-  //! Coefficients r.transpose() * t * r - t = 0 for all symmetry_matrices.
+  //! Coefficients r.transpose() * c * r - c = 0 for all symmetry_matrices.
   int*
   constraints_raw(
     af::const_ref<rt_mx> const& symmetry_matrices,
