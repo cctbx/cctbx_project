@@ -241,6 +241,7 @@ class rigid_body_minimizer(object):
                refine_t,
                max_iterations):
     adopt_init_args(self, locals())
+    self.fmodel_copy = self.fmodel.deep_copy()
     self.n_groups = len(self.selections)
     assert self.n_groups > 0
     self.counter=0
@@ -299,13 +300,11 @@ class rigid_body_minimizer(object):
                                    rotation_matrices   = rotation_matrices,
                                    translation_vectors = translation_vectors,
                                    selections          = self.selections)
-    fmodel_copy = self.fmodel.deep_copy()
-    fmodel_copy.update_xray_structure(xray_structure = new_xrs,
-                                      update_f_calc  = True)
-    tg_obj = target_and_grads(fmodel  = fmodel_copy,
+    self.fmodel_copy.update_xray_structure(xray_structure = new_xrs,
+                                           update_f_calc  = True)
+    tg_obj = target_and_grads(fmodel  = self.fmodel_copy,
                               rot_objs = rot_objs,
                               selections = self.selections)
-    del fmodel_copy
     self.f = tg_obj.target()
     self.g = self.pack( tg_obj.gradients_wrt_r(), tg_obj.gradients_wrt_t() )
     return self.f, self.g

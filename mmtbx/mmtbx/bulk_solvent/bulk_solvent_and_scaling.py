@@ -431,18 +431,18 @@ class bulk_solvent_and_scales(object):
        if(params.fix_u_aniso is not None):
           fmodel.update(u_aniso = params.fix_u_aniso)
        if(to_do.count(False) == 2): macro_cycles = range(1,2)
+       target = fmodel.target_w()
+       ksol   = fmodel.k_sol
+       bsol   = fmodel.b_sol
        for mc in macro_cycles:
            outf = params.verbose > 0 and mc==macro_cycles[len(macro_cycles)-1]
            if(params.k_sol_b_sol_grid_search):
-              target_start = fmodel.target_w()
-              ksol = fmodel.k_sol
-              bsol = fmodel.b_sol
               for ksol_ in k_sols:
                   for bsol_ in b_sols:
                       fmodel.update(k_sol = ksol_, b_sol = bsol_)
-                      target = fmodel.target_w()
-                      if(target < target_start):
-                         target_start = target
+                      target_ = fmodel.target_w()
+                      if(target_ < target):
+                         target = target_
                          ksol = ksol_
                          bsol = bsol_
               fmodel.update(k_sol = ksol, b_sol = bsol)
@@ -492,7 +492,6 @@ class bulk_solvent_and_scales(object):
        ### start ml optimization
        if(abs(fmodel.k_sol) < 0.01 or abs(fmodel.b_sol) < 1.0):
           fmodel.update(k_sol = 0, b_sol = 0)
-       fmodel.update(target_name = fmodel_target)
        if(params_target == "ml"):
           params.target = params_target
           fmodel.update(target_name = params_target)
@@ -512,8 +511,9 @@ class bulk_solvent_and_scales(object):
           if(params.verbose > 0):
              h=m+str(mc)+": apply back trace(u_aniso): T= "+fmodel.target_name
              fmodel.show_k_sol_b_sol_u_aniso_target(header = h, out = log)
-    if(abs(fmodel.k_sol) < 0.01 or abs(fmodel.b_sol) < 1.0):
-       fmodel.update(k_sol = 0, b_sol = 0)
+       fmodel.update(target_name = fmodel_target)
+       if(abs(fmodel.k_sol) < 0.01 or abs(fmodel.b_sol) < 1.0):
+          fmodel.update(k_sol = 0, b_sol = 0)
 
   def _set_f_ordered_solvent(self):
     pass
@@ -521,27 +521,34 @@ class bulk_solvent_and_scales(object):
   def _u_aniso_minimizer_helper(self, params, fmodel):
     symm_constr = params.symmetry_constraints_on_u_aniso
     u_cycles = range(1, params.number_of_cycles_for_anisotropic_scaling+1)
+    r_start = fmodel.r_work()
     for u_cycle in u_cycles:
         u_aniso = aniso_scale_minimizer(fmodel      = fmodel,
                                         symm_constr = symm_constr)
         fmodel.update(u_aniso = u_aniso)
+    r_end = fmodel.r_work()
+    if(r_end - r_start > 0.01):
+       raise RuntimeError(
+                    "This is severe bug: please report it to PAfonine@lbl.gov")
 
   def _k_sol_b_sol_minimization_helper(self, params, fmodel):
+    ksol_orig, bsol_orig = fmodel.k_sol_b_sol()
     ksol, bsol = k_sol_b_sol_minimizer(fmodel = fmodel)
-    reset_k_sol_b_sol_flag = 0
+    r_start = fmodel.r_work()
     if(ksol <= params.k_sol_min or ksol >= params.k_sol_max):
        k1 = abs(abs(ksol) - abs(params.k_sol_min))
        k2 = abs(abs(ksol) - abs(params.k_sol_max))
        if(k1 >= k2): ksol = params.k_sol_max
        if(k1 <= k2): ksol = params.k_sol_min
-       reset_k_sol_b_sol_flag = 1
     if(bsol <= params.b_sol_min or bsol >= params.b_sol_max):
        b1 = abs(abs(bsol) - abs(params.b_sol_min))
        b2 = abs(abs(bsol) - abs(params.b_sol_max))
        if(b1 >= b2): bsol = params.b_sol_max
        if(b1 <= b2): bsol = params.b_sol_min
-       reset_k_sol_b_sol_flag = 1
     fmodel.update(k_sol = ksol, b_sol = bsol)
+    r_end = fmodel.r_work()
+    if(r_end - r_start > 0.01):
+       fmodel.update(k_sol = ksol_orig, b_sol = bsol_orig)
 
 
   #def _optimize_fmask(self):
