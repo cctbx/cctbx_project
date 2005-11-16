@@ -30,6 +30,7 @@ def run():
   "$D/cctbx/regression/tst_sgtbx_subgroups.py",
   "$D/cctbx/regression/tst_sgtbx_lattice_symmetry.py",
   ["$D/cctbx/regression/tst_adp_constraints.py", "P3"],
+  "$D/cctbx/regression/tst_sgtbx_site_constraints.py",
   "$D/cctbx/regression/tst_reflection_statistics.py",
   "$D/cctbx/regression/tst_sgtbx_harker.py",
   "$D/cctbx/sgtbx/symbol_confidence.py",
