@@ -7,6 +7,54 @@
 
 namespace cctbx { namespace maptbx {
 
+inline int nint(double x)
+// Fortran like NINT() /Nearest Integer/
+{
+    return int(ceil(x+0.5)-(fmod(x*0.5+0.25,1.0)!=0));
+}
+
+
+af::versa<double, af::c_grid<3> > box_map_averaging(
+                             cctbx::uctbx::unit_cell const& unit_cell,
+                             af::const_ref<double, af::c_grid<3> > const& data,
+                             double const& rad)
+{
+    int lx,ly,lz,kx,ky,kz,mx,my,mz,x1box,x2box,y1box,y2box,z1box,z2box;
+    int NX = data.accessor()[0];
+    int NY = data.accessor()[1];
+    int NZ = data.accessor()[2];
+    double xrad = rad*unit_cell.reciprocal_parameters()[0]*NX;
+    double yrad = rad*unit_cell.reciprocal_parameters()[1]*NY;
+    double zrad = rad*unit_cell.reciprocal_parameters()[2]*NZ;
+    af::versa<double, af::c_grid<3> > new_data;
+    new_data.resize(af::c_grid<3>(NX,NY,NZ), 0.0);
+    af::ref<double, af::c_grid<3> > new_data_ref = new_data.ref();
+
+    for (lx = 0; lx < NX; lx++) {
+      for (ly = 0; ly < NY; ly++) {
+        for (lz = 0; lz < NZ; lz++) {
+            double r_ave_xyz = 0.0;
+            int counter = 0;
+            x1box=nint(static_cast<double>(lx)-xrad) - 1;
+            x2box=nint(static_cast<double>(lx)+xrad) + 1;
+            y1box=nint(static_cast<double>(ly)-yrad) - 1;
+            y2box=nint(static_cast<double>(ly)+yrad) + 1;
+            z1box=nint(static_cast<double>(lz)-zrad) - 1;
+            z2box=nint(static_cast<double>(lz)+zrad) + 1;
+            for (kx = x1box; kx <= x2box; kx++) {
+              for (ky = y1box; ky <= y2box; ky++) {
+                for (kz = z1box; kz <= z2box; kz++) {
+                    mx = cctbx::math::mod_positive(kx, NX);
+                    my = cctbx::math::mod_positive(ky, NY);
+                    mz = cctbx::math::mod_positive(kz, NZ);
+                    r_ave_xyz += data(mx,my,mz);
+                    counter += 1;
+            }}}
+            new_data_ref(lx,ly,lz) = r_ave_xyz / counter;
+    }}}
+    return new_data;
+}
+
   template <typename DataType>
   af::shared<DataType>
   average_densities(
