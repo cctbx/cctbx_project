@@ -141,21 +141,37 @@ class manager(object):
     occupancies = self.xray_structure.scatterers().extract_occupancies()
     u_isos      = self.xray_structure.extract_u_iso_or_u_equiv()
     for i_seq,atom in enumerate(self.atom_attributes_list):
+        if(atom.name is None): name = "    "
+        else: name = atom.name
+        if(atom.altLoc is None): altLoc = " "
+        else: altLoc = atom.altLoc
+        if(atom.chainID is None): chainID = " "
+        else: chainID = atom.chainID
+        if(atom.resSeq is None): resSeq = 1
+        else: resSeq = atom.resSeq
+        if(atom.iCode is None): iCode = " "
+        else: iCode = atom.iCode
+        if(atom.segID is None): segID = "    "
+        else: segID = atom.segID
+        if(atom.element is None): element = "  "
+        else: element = atom.element
+        if(atom.charge is None): charge = "  "
+        else: charge = atom.charge
         print >> out, pdb.format_atom_record(
                                     record_name = atom.record_name(),
                                     serial      = i_seq,
-                                    name        = atom.name,
-                                    altLoc      = atom.altLoc,
+                                    name        = name,
+                                    altLoc      = altLoc,
                                     resName     = atom.resName,
-                                    chainID     = atom.chainID,
-                                    resSeq      = atom.resSeq,
-                                    iCode       = atom.iCode,
+                                    chainID     = chainID,
+                                    resSeq      = resSeq,
+                                    iCode       = iCode,
                                     site        = sites_cart[i_seq],
                                     occupancy   = occupancies[i_seq],
                                     tempFactor  = adptbx.u_as_b(u_isos[i_seq]),
-                                    segID       = atom.segID,
-                                    element     = atom.element,
-                                    charge      = atom.charge)
+                                    segID       = segID,
+                                    element     = element,
+                                    charge      = charge)
     print >> out, "END"
 
   def remove_atoms(self, atom_type         = None,
@@ -224,20 +240,22 @@ class manager(object):
                          ncs_groups    = self.restraints_manager.ncs_groups,
                          normalization = self.restraints_manager.normalization)
     self.solvent_selection = solvent_selection
+    if(atom_name is None):
+       new_atom_name = " O  "
+    else:
+       new_atom_name = atom_name.strip()
+       if(len(new_atom_name) < 4): new_atom_name = " " + new_atom_name
+       while(len(new_atom_name) < 4):
+          new_atom_name = new_atom_name+" "
     for i_seq, sc in enumerate(sol.scatterers()):
-        if(atom_name is None):    atom_name = "O"
         if(residue_name is None): residue_name = "HOH"
         if(chain_id is None):     chain_id = "S"
-        new_attr = pdb.atom.attributes(name        = atom_name,
+        new_attr = pdb.atom.attributes(name        = new_atom_name,
                                        resName     = residue_name,
                                        chainID     = chain_id,
                                        element     = sc.element_symbol(),
                                        is_hetatm   = True,
-                                       altLoc      = None,
-                                       resSeq      = i_seq,
-                                       iCode       = None,
-                                       segID       = None,
-                                       charge      = None)
+                                       resSeq      = i_seq)
         self.atom_attributes_list.append(new_attr)
 
   def build_hydrogens(self):

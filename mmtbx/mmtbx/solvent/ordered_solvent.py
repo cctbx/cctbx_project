@@ -169,14 +169,14 @@ class manager(object):
        st2 = (flex.max(b_solv),flex.max(b_prot))
        st3 = (flex.min(b_solv),flex.min(b_prot))
        st4 = (flex.mean(b_solv),flex.mean(b_prot))
-       st5 = (flex.max(q_solv),flex.max(q_prot))
-       st6 = (flex.min(q_solv),flex.min(q_prot))
+       st5 = (flex.max(q_solv),flex.min(q_prot))
+       st6 = (flex.min(q_solv),flex.max(q_prot))
     else:
        st2 = (0,flex.max(b_prot))
        st3 = (0,flex.min(b_prot))
        st4 = (0,flex.mean(b_prot))
-       st5 = (0,flex.max(q_prot))
-       st6 = (0,flex.min(q_prot))
+       st5 = (0,flex.min(q_prot))
+       st6 = (0,flex.max(q_prot))
     print >> out, header
     print >> out, "                   solvent non-solvent       total"
     print >> out, "   number    =%12d%12d%12d" % st1
