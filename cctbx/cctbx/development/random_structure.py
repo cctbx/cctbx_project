@@ -112,6 +112,11 @@ def random_modify_site(special_position_settings, site, gauss_sigma,
     return modified_site
   raise RuntimeError, "Cannot find suitable site."
 
+def random_elements(size, choices=["O", "Mg", "Si", "Ca"]):
+  return flex.select(
+    sequence=choices,
+    permutation=flex.random_size_t(size=size) % len(choices))
+
 class xray_structure(xray.structure):
 
   def __init__(self,
@@ -136,17 +141,27 @@ class xray_structure(xray.structure):
                random_u_cart_scale=0.3,
                random_occupancy=False,
                random_occupancy_min=0.1):
-    assert [elements, n_scatterers].count(None) == 1
     adopt_init_args(self, locals(),
       exclude=(
         "space_group_info",
         "unit_cell",
         "min_distance_sym_equiv",
         "sites_frac"))
-    if (elements is not None):
-      self.n_scatterers = len(elements)
     if (sites_frac is not None):
-      assert len(sites_frac) == self.n_scatterers
+      assert self.elements is not None
+      assert self.n_scatterers is None
+      self.n_scatterers = len(sites_frac)
+    if (self.elements is not None):
+      if (self.elements in ["const", "random"]):
+        assert self.n_scatterers is not None
+        if (self.elements == "const"):
+          self.elements = ["const"] * self.n_scatterers
+        else:
+          self.elements = random_elements(size=self.n_scatterers)
+      elif (self.n_scatterers is None):
+        self.n_scatterers = len(self.elements)
+      else:
+        assert len(self.elements) == self.n_scatterers
     if (unit_cell is None):
       unit_cell = space_group_info.any_compatible_unit_cell(
         self.n_scatterers
@@ -163,8 +178,8 @@ class xray_structure(xray.structure):
       u_star_tolerance=0,
       assert_min_distance_sym_equiv=True)
     xray.structure.__init__(self, special_position_settings)
-    if (elements is not None):
-      self.build_scatterers(elements, sites_frac)
+    if (self.elements is not None):
+      self.build_scatterers(self.elements, sites_frac)
 
   def build_scatterers(self,
         elements,
