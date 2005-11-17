@@ -108,11 +108,11 @@ namespace tensor_rank_2 {
       n_dependent_params() const { return 6-independent_indices.size(); }
 
       af::small<FloatType, 6>
-      independent_params(scitbx::sym_mat3<FloatType> const& params) const
+      independent_params(scitbx::sym_mat3<FloatType> const& all_params) const
       {
         af::small<FloatType, 6> result;
         for(std::size_t i=0;i<independent_indices.size();i++) {
-          result.push_back(params[independent_indices[i]]);
+          result.push_back(all_params[independent_indices[i]]);
         }
         return result;
       }

@@ -42,7 +42,8 @@ namespace {
           make_getter(&w_t::gradient_sum_coeffs, rbv()))
         .def("n_independent_params", &w_t::n_independent_params)
         .def("n_dependent_params", &w_t::n_dependent_params)
-        .def("independent_params", &w_t::independent_params, (arg_("params")))
+        .def("independent_params", &w_t::independent_params,
+          (arg_("all_params")))
         .def("all_params", &w_t::all_params, (arg_("independent_params")))
         .def("sym_gradients", &w_t::sym_gradients, (arg_("asu_gradients")))
         .def("independent_gradients", &w_t::independent_gradients,
