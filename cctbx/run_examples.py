@@ -12,6 +12,7 @@ def run():
   "$D/cctbx/examples/tst_structure_factor_derivatives.py",
   "$D/cctbx/examples/tst_structure_factor_derivatives_2.py",
   ["$D/cctbx/examples/tst_structure_factor_derivatives_3.py", "P31"],
+  ["$D/cctbx/examples/tst_structure_factor_derivatives_4.py", "--tag=internal"],
   "$D/cctbx/examples/structure_factor_calculus/site_derivatives.py",
   "$D/cctbx/examples/structure_factor_calculus/u_star_derivatives.py",
   "$D/cctbx/examples/structure_factor_calculus/sites_derivatives.py",
