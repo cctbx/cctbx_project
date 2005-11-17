@@ -77,6 +77,22 @@ namespace {
 
 namespace boost_python {
 
+  versa<double, c_grid<2> >
+  matrix_multiply_real_matrix_real_matrix(
+    const_ref<double, c_grid<2> > const& a,
+    const_ref<double, c_grid<2> > const& b)
+  {
+    return matrix_multiply(a, b);
+  }
+
+  versa<std::complex<double>, c_grid<2> >
+  matrix_multiply_real_matrix_complex_matrix(
+    const_ref<double, c_grid<2> > const& a,
+    const_ref<std::complex<double>, c_grid<2> > const& b)
+  {
+    return matrix_multiply(a, b);
+  }
+
   BOOST_PYTHON_FUNCTION_OVERLOADS(
     matrix_symmetric_as_packed_u_overloads,
     matrix::symmetric_as_packed_u, 1, 2)
@@ -121,14 +137,8 @@ namespace boost_python {
       .def("matrix_diagonal_product",
         (double(*)(
           const_ref<double, c_grid<2> > const&)) matrix_diagonal_product)
-      .def("matrix_multiply",
-        (versa<double, c_grid<2> >(*)(
-          const_ref<double, c_grid<2> > const&,
-          const_ref<double, c_grid<2> > const&)) matrix_multiply)
-      .def("matrix_multiply",
-        (versa<std::complex<double>, c_grid<2> >(*)(
-          const_ref<double, c_grid<2> > const&,
-          const_ref<std::complex<double>, c_grid<2> > const&)) matrix_multiply)
+      .def("matrix_multiply", matrix_multiply_real_matrix_real_matrix)
+      .def("matrix_multiply", matrix_multiply_real_matrix_complex_matrix)
       .def("matrix_multiply",
         (shared<double>(*)(
           const_ref<double, c_grid<2> > const&,
