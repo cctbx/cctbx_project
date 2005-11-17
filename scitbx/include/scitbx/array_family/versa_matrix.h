@@ -74,18 +74,23 @@ namespace scitbx { namespace af {
     return matrix::diagonal_product(a.begin(), a.accessor()[0]);
   }
 
-  template <typename NumType>
-  versa<NumType, c_grid<2> >
+  template <typename NumTypeA, typename NumTypeB>
+  versa<
+    typename binary_operator_traits<NumTypeA, NumTypeB>::arithmetic,
+    c_grid<2> >
   matrix_multiply(
-    const_ref<NumType, c_grid<2> > const& a,
-    const_ref<NumType, c_grid<2> > const& b)
+    const_ref<NumTypeA, c_grid<2> > const& a,
+    const_ref<NumTypeB, c_grid<2> > const& b)
   {
-    versa<NumType, c_grid<2> > ab(
+    typedef typename
+      binary_operator_traits<NumTypeA, NumTypeB>::arithmetic
+        numtype_ab;
+    versa<numtype_ab, c_grid<2> > ab(
       c_grid<2>(a.accessor()[0], b.accessor()[1]),
-      init_functor_null<NumType>());
-    mat_const_ref<NumType> a_(a.begin(), a.accessor()[0], a.accessor()[1]);
-    mat_const_ref<NumType> b_(b.begin(), b.accessor()[0], b.accessor()[1]);
-    mat_ref<NumType> ab_(ab.begin(), ab.accessor()[0], ab.accessor()[1]);
+      init_functor_null<numtype_ab>());
+    mat_const_ref<NumTypeA> a_(a.begin(), a.accessor()[0], a.accessor()[1]);
+    mat_const_ref<NumTypeB> b_(b.begin(), b.accessor()[0], b.accessor()[1]);
+    mat_ref<numtype_ab> ab_(ab.begin(), ab.accessor()[0], ab.accessor()[1]);
     multiply(a_, b_, ab_);
     return ab;
   }

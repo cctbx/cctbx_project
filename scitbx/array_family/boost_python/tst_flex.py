@@ -1300,6 +1300,19 @@ def exercise_matrix():
         assert d.n[0] == 1
         assert c.focus() == (d.n[1],)
         assert approx_equal(c, d)
+  #
+  a = flex.polar(flex.double(range(1,6+1)), flex.double(range(2,7+1)))
+  a.resize(flex.grid(2,3))
+  b = a.deep_copy()
+  b.resize(flex.grid(3,2))
+  c = a.matrix_multiply(b)
+  assert approx_equal(c, matrix.rec(a, a.focus())*matrix.rec(b, b.focus()))
+  b = flex.real(b)
+  c = a.matrix_multiply(b)
+  assert approx_equal(c, matrix.rec(a, a.focus())*matrix.rec(b, b.focus()))
+  c = b.matrix_multiply(a)
+  assert approx_equal(c, matrix.rec(b, b.focus())*matrix.rec(a, a.focus()))
+  #
   assert flex.double().matrix_outer_product(rhs=flex.double()).size() == 0
   assert flex.double([1]).matrix_outer_product(rhs=flex.double()).size() == 0
   assert flex.double().matrix_outer_product(rhs=flex.double([1])).size() == 0
