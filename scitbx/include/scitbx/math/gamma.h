@@ -173,13 +173,12 @@ namespace gamma {
     return 1 - incomplete(a, x, max_iterations);
   }
 
-  template<typename FloatType>
-  FloatType
-  exponential_integral_e1z_lower_track(FloatType const& z)
   /*! The exponential integral \integral_{z}^{\infty} \exp[-t] t^{-1} d t
    *  a modified form of AMS 55 5.1.53
    */
-
+  template<typename FloatType>
+  FloatType
+  exponential_integral_e1z_lower_track(FloatType const& z)
   {
     SCITBX_ASSERT(z>0);
     SCITBX_ASSERT(z<=1);
@@ -202,13 +201,12 @@ namespace gamma {
     return(result);
   }
 
-
-  template<typename FloatType>
-  FloatType
-  exponential_integral_e1z_upper_track(FloatType const& z)
   /*! The exponential integral \integral_{z}^{\infty} \exp[-t] t^{-1} d t
    *  a modified form of AMS 55 5.1.56
    */
+  template<typename FloatType>
+  FloatType
+  exponential_integral_e1z_upper_track(FloatType const& z)
   {
     SCITBX_ASSERT(z>=1);
     FloatType result=0;
@@ -242,24 +240,19 @@ namespace gamma {
     return( result );
   }
 
-  template<typename FloatType>
-  FloatType
-  exponential_integral_e1z(FloatType const& z)
   /*! The exponential integral \integral_{z}^{\infty} \exp[-t] t^{-1} d t
    *  a modified form of AMS 55 5.1.56
    */
+  template<typename FloatType>
+  FloatType
+  exponential_integral_e1z(FloatType const& z)
   {
-     FloatType result;
      SCITBX_ASSERT(z>=0);
      if (z<1.0){
         return( exponential_integral_e1z_lower_track(z) );
      }
      return( exponential_integral_e1z_upper_track(z) );
   }
-
-
-
-
 
 }}} // namespace scitbx::math::gamma
 
