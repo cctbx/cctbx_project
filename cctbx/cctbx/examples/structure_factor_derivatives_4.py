@@ -56,6 +56,7 @@ class structure_factor:
     self.space_group = xray_structure.space_group()
     self.scatterers = xray_structure.scatterers()
     self.site_symmetry_table = xray_structure.site_symmetry_table()
+    self.scattering_dict = xray_structure.scattering_dict()
     self.hkl = hkl
     self.d_star_sq = self.unit_cell.d_star_sq(hkl)
 
@@ -63,12 +64,14 @@ class structure_factor:
     result = 0
     tphkl = 2 * math.pi * matrix.col(self.hkl)
     for scatterer in self.scatterers:
-      assert scatterer.scattering_type == "const"
       w = scatterer.weight()
       if (not scatterer.anisotropic_flag):
         huh = scatterer.u_iso * self.d_star_sq
         dw = math.exp(mtps * huh)
-      ffp = 1 + scatterer.fp
+      gaussian = self.scattering_dict.lookup(
+        scatterer.scattering_type).gaussian
+      f0 = gaussian.at_d_star_sq(self.d_star_sq)
+      ffp = f0 + scatterer.fp
       fdp = scatterer.fdp
       ff = ffp + 1j * fdp
       for s in self.space_group:
@@ -89,7 +92,6 @@ class structure_factor:
     h,k,l = self.hkl
     d_exp_huh_d_u_star = matrix.col([h**2, k**2, l**2, 2*h*k, 2*h*l, 2*k*l])
     for i_scatterer,scatterer in enumerate(self.scatterers):
-      assert scatterer.scattering_type == "const"
       site_symmetry_ops = None
       if (self.site_symmetry_table.is_special_position(i_scatterer)):
         site_symmetry_ops = self.site_symmetry_table.get(i_scatterer)
@@ -103,7 +105,10 @@ class structure_factor:
       if (not scatterer.anisotropic_flag):
         huh = scatterer.u_iso * self.d_star_sq
         dw = math.exp(mtps * huh)
-      ffp = 1 + scatterer.fp
+      gaussian = self.scattering_dict.lookup(
+        scatterer.scattering_type).gaussian
+      f0 = gaussian.at_d_star_sq(self.d_star_sq)
+      ffp = f0 + scatterer.fp
       fdp = scatterer.fdp
       ff = ffp + 1j * fdp
       d_site = matrix.col([0,0,0])
@@ -162,7 +167,6 @@ class structure_factor:
     d_exp_huh_d_u_star = matrix.col([h**2, k**2, l**2, 2*h*k, 2*h*l, 2*k*l])
     d2_exp_huh_d_u_star_u_star = d_exp_huh_d_u_star.outer_product()
     for i_scatterer,scatterer in enumerate(self.scatterers):
-      assert scatterer.scattering_type == "const"
       site_symmetry_ops = None
       if (self.site_symmetry_table.is_special_position(i_scatterer)):
         site_symmetry_ops = self.site_symmetry_table.get(i_scatterer)
@@ -176,7 +180,10 @@ class structure_factor:
       if (not scatterer.anisotropic_flag):
         huh = scatterer.u_iso * self.d_star_sq
         dw = math.exp(mtps * huh)
-      ffp = 1 + scatterer.fp
+      gaussian = self.scattering_dict.lookup(
+        scatterer.scattering_type).gaussian
+      f0 = gaussian.at_d_star_sq(self.d_star_sq)
+      ffp = f0 + scatterer.fp
       fdp = scatterer.fdp
       ff = (ffp + 1j * fdp)
       d2_site_site = flex.complex_double(flex.grid(3,3), 0j)

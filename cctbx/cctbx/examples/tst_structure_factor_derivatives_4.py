@@ -81,11 +81,16 @@ def d_target_d_params_finite(d_order, f_obs, xray_structure, eps=1.e-8):
     scatterers_eps[i_scatterer] = scatterer
   return result
 
-def compare_derivatives(ana, fin):
+def compare_derivatives(ana, fin, eps):
   s = max(1, flex.max(flex.abs(ana)))
-  assert approx_equal(ana/s, fin/s, eps=1.e-4)
+  assert approx_equal(ana/s, fin/s, eps=eps)
 
-def compare_analytical_and_finite(f_obs, xray_structure, out):
+def compare_analytical_and_finite(
+      f_obs,
+      xray_structure,
+      gradients_should_be_zero,
+      eps,
+      out):
   grads_fin = d_target_d_params_finite(
     d_order=1, f_obs=f_obs, xray_structure=xray_structure)
   print >> out, "grads_fin:", list(grads_fin)
@@ -93,14 +98,19 @@ def compare_analytical_and_finite(f_obs, xray_structure, out):
     xray_structure=xray_structure, miller_set=f_obs)
   grads_ana = sf.d_target_d_params(f_obs=f_obs, target_type=least_squares)
   print >> out, "grads_ana:", list(grads_ana)
-  compare_derivatives(grads_ana, grads_fin)
+  if (gradients_should_be_zero):
+    compare_derivatives(grads_ana, flex.double(grads_ana.size(), 0), eps)
+  else:
+    compare_derivatives(grads_ana, grads_fin, eps)
   curvs_fin = d_target_d_params_finite(
     d_order=2, f_obs=f_obs, xray_structure=xray_structure)
   print >> out, "curvs_fin:", list(curvs_fin)
   curvs_ana = sf.d2_target_d_params(f_obs=f_obs, target_type=least_squares)
   print >> out, "curvs_ana:", list(curvs_ana)
-  compare_derivatives(curvs_ana, curvs_fin)
+  compare_derivatives(curvs_ana, curvs_fin, eps)
   print >> out
+  if (not gradients_should_be_zero):
+    return flex.max(flex.abs(grads_fin))
 
 def exercise(
       xray_structure,
@@ -126,14 +136,18 @@ def exercise(
   f_calc.show_summary(f=out)
   assert approx_equal(sf.fs(), f_calc.data())
   f_obs = miller_set.array(data=flex.abs(sf.fs()))
-  compare_analytical_and_finite(
+  noise_fin = compare_analytical_and_finite(
     f_obs=f_obs,
     xray_structure=xray_structure,
+    gradients_should_be_zero=True,
+    eps=1.e-5,
     out=out)
   compare_analytical_and_finite(
     f_obs=f_obs.customized_copy(
       data=f_obs.data()*(flex.random_double(size=f_obs.size())+0.5)),
     xray_structure=xray_structure,
+    gradients_should_be_zero=False,
+    eps=max(1.e-5, noise_fin),
     out=out)
 
 zeolite_edi = """\
@@ -186,7 +200,8 @@ def run_call_back(flags,
       for anisotropic_flag in anisotropic_flags:
         xray_structure = random_structure.xray_structure(
           space_group_info=space_group_info,
-          elements=["const"]*n_scatterers,
+          n_scatterers=n_scatterers,
+          elements="random",
           volume_per_atom=100,
           general_positions_only=False,
           random_f_prime_d_min=1,
@@ -215,7 +230,7 @@ def run_call_back(flags,
           space_group_info=xray_structure.space_group_info(),
           unit_cell=xray_structure.unit_cell(),
           sites_frac=xray_structure.sites_frac(),
-          elements=["const"]*xray_structure.scatterers().size(),
+          elements="random",
           random_f_prime_d_min=1,
           random_f_double_prime=anomalous_flag,
           anisotropic_flag=anisotropic_flag,
