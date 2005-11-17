@@ -7,12 +7,13 @@
 
 namespace cctbx { namespace maptbx {
 
-inline int nint(double x)
-// Fortran like NINT() /Nearest Integer/
+//! Fortran-like nearest integer.
+inline
+int
+nint(double x)
 {
-    return int(ceil(x+0.5)-(fmod(x*0.5+0.25,1.0)!=0));
+  return int(std::ceil(x+0.5)-(std::fmod(x*0.5+0.25,1.0)!=0));
 }
-
 
 af::versa<double, af::c_grid<3> > box_map_averaging(
                              cctbx::uctbx::unit_cell const& unit_cell,
