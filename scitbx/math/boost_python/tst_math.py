@@ -4,7 +4,7 @@ from scitbx.math import erf_verification, erf, erfc, erfcx
 from scitbx.math import bessel_i1_over_i0,bessel_i0,bessel_i1,bessel_ln_of_i0
 from scitbx.math import bessel_inverse_i1_over_i0
 from scitbx.math import gamma_incomplete, gamma_incomplete_complement
-from scitbx.math import gamma_complete
+from scitbx.math import gamma_complete, exponential_integral_e1z
 from scitbx.math import lambertw
 from scitbx.math import eigensystem, time_eigensystem_real_symmetric
 from scitbx.math import golay_24_12_generator
@@ -143,6 +143,13 @@ def exercise_erf():
   erf_verify(erfcx, -23.9658621423763, 5.540070644707187E+249)
   erf_verify(erfcx, -26.6287357137515, 1.790000000000000E+308)
   assert erf_verify.max_delta < erf_verify.tolerance
+
+def exercise_exponential_integral_e1z():
+  assert approx_equal(exponential_integral_e1z(0.5), 0.559773595)
+  assert approx_equal(exponential_integral_e1z(1.0), 0.219383934)
+  assert approx_equal(exponential_integral_e1z(1.5), 0.100019582)
+  assert approx_equal(exponential_integral_e1z(2.0), 0.048900511)
+
 
 def exercise_gamma_incomplete():
   assert approx_equal(gamma_incomplete(2.0, 0.1),0.004678840160445)
@@ -1128,6 +1135,7 @@ def run():
   exercise_erf()
   exercise_gamma_incomplete()
   exercise_gamma_complete()
+  exercise_exponential_integral_e1z()
   exercise_bessel()
   exercise_lambertw()
   exercise_eigensystem()
