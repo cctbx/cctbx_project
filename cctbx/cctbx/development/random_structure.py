@@ -118,6 +118,7 @@ class xray_structure(xray.structure):
                space_group_info,
                unit_cell=None,
                elements=None,
+               sites_frac=None,
                n_scatterers=None,
                volume_per_atom=50.,
                min_distance=1.5,
@@ -135,12 +136,17 @@ class xray_structure(xray.structure):
                random_u_cart_scale=0.3,
                random_occupancy=False,
                random_occupancy_min=0.1):
-    assert elements is None or n_scatterers is None
-    assert not (elements is None and n_scatterers is None)
+    assert [elements, n_scatterers].count(None) == 1
     adopt_init_args(self, locals(),
-      exclude=("space_group_info", "unit_cell", "min_distance_sym_equiv"))
+      exclude=(
+        "space_group_info",
+        "unit_cell",
+        "min_distance_sym_equiv",
+        "sites_frac"))
     if (elements is not None):
       self.n_scatterers = len(elements)
+    if (sites_frac is not None):
+      assert len(sites_frac) == self.n_scatterers
     if (unit_cell is None):
       unit_cell = space_group_info.any_compatible_unit_cell(
         self.n_scatterers
@@ -158,17 +164,26 @@ class xray_structure(xray.structure):
       assert_min_distance_sym_equiv=True)
     xray.structure.__init__(self, special_position_settings)
     if (elements is not None):
-      self.build_scatterers(elements)
+      self.build_scatterers(elements, sites_frac)
 
-  def build_scatterers(self, elements, grid=None, t_centre_of_inversion=None):
-    all_sites = random_sites(
-      special_position_settings=self,
-      existing_sites=[scatterer.site for scatterer in self.scatterers()],
-      n_new=len(elements),
-      min_hetero_distance=self.min_distance,
-      general_positions_only=self.general_positions_only,
-      grid=grid,
-      t_centre_of_inversion=t_centre_of_inversion)
+  def build_scatterers(self,
+        elements,
+        sites_frac=None,
+        grid=None,
+        t_centre_of_inversion=None):
+    existing_sites = [scatterer.site for scatterer in self.scatterers()]
+    if (sites_frac is None):
+      all_sites = random_sites(
+        special_position_settings=self,
+        existing_sites=existing_sites,
+        n_new=len(elements),
+        min_hetero_distance=self.min_distance,
+        general_positions_only=self.general_positions_only,
+        grid=grid,
+        t_centre_of_inversion=t_centre_of_inversion)
+    else:
+      assert len(sites_frac) == len(elements)
+      all_sites = existing_sites + list(sites_frac)
     assert len(all_sites) <= self.n_scatterers
     sf_dict = {}
     for element in elements:
