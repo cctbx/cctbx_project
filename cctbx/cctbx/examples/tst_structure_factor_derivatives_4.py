@@ -8,6 +8,7 @@ from cctbx.array_family import flex
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from iotbx.kriber import strudat
+from libtbx.itertbx import count
 from libtbx.test_utils import approx_equal
 import libtbx.load_env
 import random
@@ -82,7 +83,7 @@ def d_target_d_params_finite(d_order, f_obs, xray_structure, eps=1.e-8):
 
 def compare_derivatives(ana, fin):
   s = max(1, flex.max(flex.abs(ana)))
-  assert approx_equal(ana/s, fin/s, eps=1.e-5)
+  assert approx_equal(ana/s, fin/s, eps=1.e-4)
 
 def compare_analytical_and_finite(f_obs, xray_structure, out):
   grads_fin = d_target_d_params_finite(
@@ -154,6 +155,11 @@ def run_call_back(flags,
     out = StringIO()
   else:
     out = sys.stdout
+  if (flags.chunk):
+    chunk_n,chunk_i = [int(i) for i in flags.chunk.split(",")]
+  else:
+    chunk_n = 1
+    chunk_i = 0
   if (flags.tag):
     if (flags.tag == "internal"):
       strudat_contents = strudat.read_all_entries(StringIO(zeolite_edi))
@@ -175,6 +181,7 @@ def run_call_back(flags,
     anisotropic_flags = [True]
   else:
     anisotropic_flags = [False, True]
+  i_structure = count()
   for anisotropic_flag in anisotropic_flags:
     if (not flags.tag):
       for n_scatterers in xrange(2,3+1):
@@ -196,6 +203,8 @@ def run_call_back(flags,
           out=out)
     else:
       for entry in strudat_entries:
+        if (i_structure.next() % chunk_n != chunk_i): continue
+        print >> sys.stderr, "strudat tag:", entry.tag
         print >> out, "strudat tag:", entry.tag
         xray_structure = entry.as_xray_structure()
         xray_structure = random_structure.xray_structure(
@@ -219,6 +228,7 @@ def run_call_back(flags,
 
 def run(args):
   debug_utils.parse_options_loop_space_groups(args, run_call_back, (
+    "chunk",
     "isotropic",
     "anisotropic",
     "tag"))
