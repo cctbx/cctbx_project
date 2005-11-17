@@ -173,6 +173,94 @@ namespace gamma {
     return 1 - incomplete(a, x, max_iterations);
   }
 
+  template<typename FloatType>
+  FloatType
+  exponential_integral_e1z_lower_track(FloatType const& z)
+  /*! The exponential integral \integral_{z}^{\infty} \exp[-t] t^{-1} d t
+   *  a modified form of AMS 55 5.1.53
+   */
+
+  {
+    SCITBX_ASSERT(z>0);
+    SCITBX_ASSERT(z<=1);
+    FloatType result=0;
+    result = -std::log(z);
+    FloatType a0,a1,a2,a3,a4,a5;
+    a0=-0.57721566;
+    a1= 0.99999193;
+    a2=-0.24991055;
+    a3= 0.05519968;
+    a4=-0.00976004;
+    a5= 0.00107857;
+    result += a0 +
+              a1*z +
+              a2*z*z +
+              a3*z*z*z +
+              a4*z*z*z*z +
+              a5*z*z*z*z*z;
+
+    return(result);
+  }
+
+
+  template<typename FloatType>
+  FloatType
+  exponential_integral_e1z_upper_track(FloatType const& z)
+  /*! The exponential integral \integral_{z}^{\infty} \exp[-t] t^{-1} d t
+   *  a modified form of AMS 55 5.1.56
+   */
+  {
+    SCITBX_ASSERT(z>=1);
+    FloatType result=0;
+    FloatType a1,a2,a3,a4;
+    FloatType b1,b2,b3,b4;
+
+    a1= 8.5733287401;
+    a2=18.0590169730;
+    a3= 8.6347608925;
+    a4= 0.2677737343;
+
+    b1= 9.5733223454;
+    b2=25.6329561486;
+    b3=21.0996530827;
+    b4= 3.9584969228;
+
+    FloatType top,bottom;
+    top =   z*z*z*z +
+         a1*z*z*z +
+         a2*z*z +
+         a3*z +
+         a4;
+    bottom =    z*z*z*z +
+             b1*z*z*z +
+             b2*z*z +
+             b3*z +
+             b4;
+    result = std::log(top)-std::log(bottom);
+    result = result-std::log(z) - z;
+    result = std::exp( result );
+    return( result );
+  }
+
+  template<typename FloatType>
+  FloatType
+  exponential_integral_e1z(FloatType const& z)
+  /*! The exponential integral \integral_{z}^{\infty} \exp[-t] t^{-1} d t
+   *  a modified form of AMS 55 5.1.56
+   */
+  {
+     FloatType result;
+     SCITBX_ASSERT(z>=0);
+     if (z<1.0){
+        return( exponential_integral_e1z_lower_track(z) );
+     }
+     return( exponential_integral_e1z_upper_track(z) );
+  }
+
+
+
+
+
 }}} // namespace scitbx::math::gamma
 
 #endif // SCITBX_MATH_GAMMA_H
