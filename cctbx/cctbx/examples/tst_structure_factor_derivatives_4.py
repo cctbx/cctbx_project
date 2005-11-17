@@ -181,10 +181,9 @@ def run_call_back(flags,
     anisotropic_flags = [True]
   else:
     anisotropic_flags = [False, True]
-  i_structure = count()
-  for anisotropic_flag in anisotropic_flags:
-    if (not flags.tag):
-      for n_scatterers in xrange(2,3+1):
+  if (not flags.tag):
+    for n_scatterers in xrange(2,3+1):
+      for anisotropic_flag in anisotropic_flags:
         xray_structure = random_structure.xray_structure(
           space_group_info=space_group_info,
           elements=["const"]*n_scatterers,
@@ -201,11 +200,16 @@ def run_call_back(flags,
           anomalous_flag=anomalous_flag,
           max_n_indices=max_n_indices,
           out=out)
-    else:
-      for entry in strudat_entries:
-        if (i_structure.next() % chunk_n != chunk_i): continue
-        print >> sys.stderr, "strudat tag:", entry.tag
-        print >> out, "strudat tag:", entry.tag
+        out.flush()
+  else:
+    i_structure = count()
+    for entry in strudat_entries:
+      if (i_structure.next() % chunk_n != chunk_i): continue
+      print >> sys.stderr, "strudat tag:", entry.tag
+      sys.stderr.flush()
+      print >> out, "strudat tag:", entry.tag
+      out.flush()
+      for anisotropic_flag in anisotropic_flags:
         xray_structure = entry.as_xray_structure()
         xray_structure = random_structure.xray_structure(
           space_group_info=xray_structure.space_group_info(),
@@ -223,6 +227,7 @@ def run_call_back(flags,
           anomalous_flag=anomalous_flag,
           max_n_indices=max_n_indices,
           out=out)
+        out.flush()
   if (flags.tag):
     return False
 
