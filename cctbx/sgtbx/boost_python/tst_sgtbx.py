@@ -1710,7 +1710,7 @@ def exercise_tensor_rank_2_constraints():
     assert approx_equal(c.gradient_sum_coeffs, [0,0,1,0,0,0, 2,2,0,1,0,0])
     assert c.n_independent_params() == 2
     assert c.n_dependent_params() == 4
-    assert approx_equal(c.independent_params(params=[1,2,3,4,5,6]), [3,4])
+    assert approx_equal(c.independent_params(all_params=[1,2,3,4,5,6]), [3,4])
     assert approx_equal(c.all_params(independent_params=[1,2]), [4,4,1,2,0,0])
     a = [1,2,3,4,5,6]
     s = [3+1/3.,3+1/3.,3,-3-1/3.,0,0]

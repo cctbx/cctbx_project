@@ -71,7 +71,8 @@ def exercise(structure, out):
     site = scatterer.site
     site_symmetry_ops = structure.site_symmetry_table().get(i_scatterer)
     assert approx_equal(site_symmetry_ops.special_op()*site, site)
-    site_constraints = site_symmetry_ops.site_constraints()
+    site_constraints = site_symmetry_ops.site_constraints(
+      initialize_gradient_handling=True)
     nip = site_constraints.n_independent_params()
     if (site_symmetry_ops.n_matrices() == 1):
       assert nip == 3
@@ -79,7 +80,7 @@ def exercise(structure, out):
     else:
       assert nip < 3
       assert site_constraints.n_dependent_params() > 0
-    independent_params = site_constraints.independent_params(site=site)
+    independent_params = site_constraints.independent_params(all_params=site)
     all_params = site_constraints.all_params(
       independent_params=independent_params)
     assert approx_equal(all_params, site)

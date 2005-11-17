@@ -286,7 +286,7 @@ class _wyckoff_table(boost.python.injector, wyckoff_table):
 
 class site_constraints:
 
-  def __init__(self, matrices):
+  def __init__(self, matrices, initialize_gradient_handling=False):
     lcm = 1
     for s in matrices:
       lcm = rational.lcm(lcm, s.r().den())
@@ -309,17 +309,20 @@ class site_constraints:
     self.row_echelon_form = m
     self.constants = b
     self.independent_indices = independent_flags.iselection()
-    gradient_sum_coeffs = []
-    for indep_index in self.independent_indices:
-      coeffs = flex.double(3, 0)
-      coeffs[indep_index] = 1
-      assert scitbx.math.row_echelon_back_substitution_float(
-        row_echelon_form=m,
-        solution=coeffs)
-      gradient_sum_coeffs.append(list(coeffs))
-    self.gradient_sum_coeffs = flex.double(gradient_sum_coeffs)
-    if (self.gradient_sum_coeffs.size() == 0):
-      self.gradient_sum_coeffs.resize(flex.grid(0,3))
+    if (not initialize_gradient_handling):
+      self.gradient_sum_coeffs = None
+    else:
+      gradient_sum_coeffs = []
+      for indep_index in self.independent_indices:
+        coeffs = flex.double(3, 0)
+        coeffs[indep_index] = 1
+        assert scitbx.math.row_echelon_back_substitution_float(
+          row_echelon_form=m,
+          solution=coeffs)
+        gradient_sum_coeffs.append(list(coeffs))
+      self.gradient_sum_coeffs = flex.double(gradient_sum_coeffs)
+      if (self.gradient_sum_coeffs.size() == 0):
+        self.gradient_sum_coeffs.resize(flex.grid(0,3))
 
   def n_independent_params(self):
     return self.independent_indices.size()
@@ -327,8 +330,8 @@ class site_constraints:
   def n_dependent_params(self):
     return 3-self.independent_indices.size()
 
-  def independent_params(self, site):
-    return flex.double(site).select(self.independent_indices)
+  def independent_params(self, all_params):
+    return flex.double(all_params).select(self.independent_indices)
 
   def all_params(self, independent_params):
     result = flex.double(3, 0)
@@ -349,5 +352,13 @@ class site_constraints:
 
 class _site_symmetry_ops(boost.python.injector, site_symmetry_ops):
 
-  def site_constraints(self):
-    return site_constraints(matrices=self.matrices())
+  def site_constraints(self, initialize_gradient_handling=False):
+    return site_constraints(
+      matrices=self.matrices(),
+      initialize_gradient_handling=initialize_gradient_handling)
+
+  def adp_constraints(self, initialize_gradient_handling=False):
+    return tensor_rank_2_constraints(
+      site_symmetry_ops=self,
+      reciprocal_space=True,
+      initialize_gradient_handling=initialize_gradient_handling)

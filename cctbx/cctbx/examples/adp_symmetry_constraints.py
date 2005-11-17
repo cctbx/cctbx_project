@@ -34,7 +34,7 @@ def run():
   #
   # pass u_indep to the minimizer
   #
-  u_indep = adp_constraints.independent_params(params=u_star)
+  u_indep = adp_constraints.independent_params(all_params=u_star)
   assert len(u_indep) == n_indep
 
   #
