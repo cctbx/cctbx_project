@@ -16,6 +16,22 @@ namespace {
     return a1 * a2;
   }
 
+  versa<std::complex<double>, c_grid<2> >
+  matrix_multiply_complex_matrix_complex_matrix(
+    const_ref<std::complex<double>, c_grid<2> > const& a,
+    const_ref<std::complex<double>, c_grid<2> > const& b)
+  {
+    return matrix_multiply(a, b);
+  }
+
+  versa<std::complex<double>, c_grid<2> >
+  matrix_multiply_complex_matrix_real_matrix(
+    const_ref<std::complex<double>, c_grid<2> > const& a,
+    const_ref<double, c_grid<2> > const& b)
+  {
+    return matrix_multiply(a, b);
+  }
+
 } // namespace <anonymous>
 
   void wrap_flex_complex_double()
@@ -26,14 +42,8 @@ namespace {
       .def_pickle(flex_pickle_single_buffered<std::complex<double> >())
       .def("__mul__", mul_ac_ar)
       .def("__rmul__", mul_ac_ar)
-      .def("matrix_multiply",
-        (versa<std::complex<double>, c_grid<2> >(*)(
-          const_ref<std::complex<double>, c_grid<2> > const&,
-          const_ref<std::complex<double>, c_grid<2> > const&)) matrix_multiply)
-      .def("matrix_multiply",
-        (versa<std::complex<double>, c_grid<2> >(*)(
-          const_ref<std::complex<double>, c_grid<2> > const&,
-          const_ref<double, c_grid<2> > const&)) matrix_multiply)
+      .def("matrix_multiply", matrix_multiply_complex_matrix_complex_matrix)
+      .def("matrix_multiply", matrix_multiply_complex_matrix_real_matrix)
       .def("matrix_transpose",
         (versa<std::complex<double>, c_grid<2> >(*)(
            const_ref<std::complex<double>, c_grid<2> > const&))
