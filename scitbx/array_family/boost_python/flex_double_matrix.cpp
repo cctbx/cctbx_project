@@ -126,6 +126,10 @@ namespace boost_python {
           const_ref<double, c_grid<2> > const&,
           const_ref<double, c_grid<2> > const&)) matrix_multiply)
       .def("matrix_multiply",
+        (versa<std::complex<double>, c_grid<2> >(*)(
+          const_ref<double, c_grid<2> > const&,
+          const_ref<std::complex<double>, c_grid<2> > const&)) matrix_multiply)
+      .def("matrix_multiply",
         (shared<double>(*)(
           const_ref<double, c_grid<2> > const&,
           const_ref<double> const&)) matrix_multiply)

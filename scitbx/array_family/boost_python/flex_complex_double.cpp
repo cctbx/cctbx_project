@@ -26,6 +26,14 @@ namespace {
       .def_pickle(flex_pickle_single_buffered<std::complex<double> >())
       .def("__mul__", mul_ac_ar)
       .def("__rmul__", mul_ac_ar)
+      .def("matrix_multiply",
+        (versa<std::complex<double>, c_grid<2> >(*)(
+          const_ref<std::complex<double>, c_grid<2> > const&,
+          const_ref<std::complex<double>, c_grid<2> > const&)) matrix_multiply)
+      .def("matrix_multiply",
+        (versa<std::complex<double>, c_grid<2> >(*)(
+          const_ref<std::complex<double>, c_grid<2> > const&,
+          const_ref<double, c_grid<2> > const&)) matrix_multiply)
       .def("matrix_transpose",
         (versa<std::complex<double>, c_grid<2> >(*)(
            const_ref<std::complex<double>, c_grid<2> > const&))
