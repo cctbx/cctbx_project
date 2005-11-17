@@ -294,10 +294,8 @@ class structure_factor:
         npc = np - ndp
         iuc = 3-ndp
         gsc = site_constraints.gradient_sum_coeffs
-        gsc = matrix.rec(elems=gsc, n=gsc.focus())
         b = dp.matrix_copy_block(i_row=0, i_column=0, n_rows=3, n_columns=np)
-        bc = flex.complex_double(gsc * matrix.rec(elems=b, n=(3,np)))
-        bc.resize(flex.grid(iuc, np))
+        bc = gsc.matrix_multiply(b)
         dpr = flex.complex_double(flex.grid(npc,np))
         dpr.matrix_paste_block_in_place(block=bc, i_row=0, i_column=0)
         dpr.matrix_paste_block_in_place(
@@ -306,9 +304,7 @@ class structure_factor:
           i_row=iuc,
           i_column=0)
         b = dpr.matrix_copy_block(i_row=0, i_column=0, n_rows=npc, n_columns=3)
-        bc = flex.complex_double(
-          matrix.rec(elems=b, n=(npc,3)) * gsc.transpose())
-        bc.resize(flex.grid(npc, iuc))
+        bc = b.matrix_multiply(gsc.matrix_transpose())
         dp = flex.complex_double(flex.grid(npc, npc))
         dp.matrix_paste_block_in_place(block=bc, i_row=0, i_column=0)
         dp.matrix_paste_block_in_place(
@@ -321,11 +317,9 @@ class structure_factor:
           ndp = adp_constraints.n_dependent_params()
           npc = npc - ndp
           gsc = adp_constraints.gradient_sum_coeffs
-          gsc = matrix.rec(elems=gsc, n=gsc.focus())
           b = dp.matrix_copy_block(
             i_row=iuc, i_column=0, n_rows=6, n_columns=np)
-          bc = flex.complex_double(gsc * matrix.rec(elems=b, n=(6,np)))
-          bc.resize(flex.grid(6-ndp, np))
+          bc = gsc.matrix_multiply(b)
           dpr = flex.complex_double(flex.grid(npc,np))
           dpr.matrix_paste_block_in_place(
             block=dp.matrix_copy_block(
@@ -340,9 +334,7 @@ class structure_factor:
             i_column=0)
           b = dpr.matrix_copy_block(
             i_row=0, i_column=iuc, n_rows=npc, n_columns=6)
-          bc = flex.complex_double(
-            matrix.rec(elems=b, n=(npc,6)) * gsc.transpose())
-          bc.resize(flex.grid(npc, 6-ndp))
+          bc = b.matrix_multiply(gsc.matrix_transpose())
           dp = flex.complex_double(flex.grid(npc, npc))
           dp.matrix_paste_block_in_place(
             block=dpr.matrix_copy_block(
