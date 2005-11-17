@@ -131,7 +131,8 @@ namespace {
         gamma_incomplete_complement_overloads( (arg_("a"),
                                                 arg_("x"),
                                                 arg_("max_iterations")=500 )));
-
+    def("exponential_integral_e1z", (double(*)(double const&))
+         gamma::exponential_integral_e1z );
 
 
 
