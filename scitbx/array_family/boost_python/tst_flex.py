@@ -1715,6 +1715,8 @@ def exercise_matrix_move():
       assert c[(i+1,j+2)] == -7
   a = flex.complex_double([1,2j,3j,4])
   a.resize(flex.grid(2,2))
+  b = a.matrix_copy_block(i_row=1, i_column=0, n_rows=1, n_columns=2)
+  assert approx_equal(b, [3j,(4+0j)])
   b = flex.complex_double([10,20j])
   b.resize(flex.grid(2,1))
   assert b.matrix_transpose().focus() == (1,2)
