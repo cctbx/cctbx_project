@@ -126,6 +126,27 @@ outlier_level_wilson=1e-6
 }
 """
 
+  def add_wavelength_info(self):
+    tmp= """
+    use_anomalous=True
+    .type=bool
+    .expert_level=5
+    use_in_dispersive=True
+    .type=bool
+    .expert_level=5
+    wavelength=None
+    .type=float
+    .expert_level=15
+    f_prime=None
+    .type=float
+    .expert_level=15
+    f_double_prime=None
+    .type=float
+    .expert_level=15
+    }
+    """
+    self.data_type =self.data_type.replace( '}', tmp)
+
 
   def default_sad(self):
     outer_level = self.scaling_input
@@ -188,7 +209,6 @@ outlier_level_wilson=1e-6
     return result
 
 
-
   def default_siras(self):
     outer_level = self.scaling_input
     outer_level = outer_level.replace( '__EXPERT_LEVEL__',
@@ -224,6 +244,84 @@ outlier_level_wilson=1e-6
                                  basic+data+scaler+output)
     return result
 
+  def default_2wmad(self):
+    self.add_wavelength_info()
+
+    outer_level = self.scaling_input
+    outer_level = outer_level.replace( '__EXPERT_LEVEL__',
+      self.default_expert_level_for_parameters_that_should_be_sensible_defaults)
+
+    basic = self.basic_info
+    data = self.data_type.replace( '__REPLACE__',
+                                      'wavelength1' ) \
+                                      + \
+            self.data_type.replace( '__REPLACE__',
+                                      'wavelength2' )
+
+    data = self.xray_data_basic.replace('__REPLACE__',
+                                           data )
+
+    scaler = self.scale_protocol.replace('__REPLACE__',
+                                         'ano_protocol' )
+    scaler = scaler.replace('ls loc *ls_and_loc None',
+                            '*loc None' )
+
+    scaler = self.pre_scaler_protocol + scaler + \
+             self.scale_protocol.replace('__REPLACE__','iso_protocol' )
+
+    scaler = scaler.replace('__EXPERT_LEVEL__',
+                            '1' )
+    scaler = self.scaling_strategy.replace('__REPLACE__',
+                                           scaler )
+    scaler = scaler.replace('__EXPERT_LEVEL__',
+                            '1' )
+    output = self.output
+
+    result = outer_level.replace('__REPLACE__',
+                                 basic+data+scaler+output)
+    return result
+
+
+  def default_3wmad(self):
+    self.add_wavelength_info()
+
+    outer_level = self.scaling_input
+    outer_level = outer_level.replace( '__EXPERT_LEVEL__',
+      self.default_expert_level_for_parameters_that_should_be_sensible_defaults)
+
+    basic = self.basic_info
+    data = self.data_type.replace( '__REPLACE__',
+                                      'wavelength1' ) \
+                                      + \
+            self.data_type.replace( '__REPLACE__',
+                                      'wavelength2' )    \
+                                      + \
+            self.data_type.replace( '__REPLACE__',
+                                      'wavelength3' )
+
+    data = self.xray_data_basic.replace('__REPLACE__',
+                                           data )
+
+    scaler = self.scale_protocol.replace('__REPLACE__',
+                                         'ano_protocol' )
+    scaler = scaler.replace('ls loc *ls_and_loc None',
+                            '*loc None' )
+
+    scaler = self.pre_scaler_protocol + scaler + \
+             self.scale_protocol.replace('__REPLACE__','iso_protocol' )
+
+    scaler = scaler.replace('__EXPERT_LEVEL__',
+                            '1' )
+
+    scaler = self.scaling_strategy.replace('__REPLACE__',
+                                           scaler )
+    scaler = scaler.replace('__EXPERT_LEVEL__',
+                            '1' )
+    output = self.output
+
+    result = outer_level.replace('__REPLACE__',
+                                 basic+data+scaler+output)
+    return result
 
 
 
@@ -238,18 +336,39 @@ def run(args):
 
   if okai:
     tester = phil_lego()
-
     print " ---------- SAD ----------"
     master_params = iotbx.phil.parse( tester.default_sad() )
     master_params.show(expert_level = int(args[0]) )
-
     print " ---------- SIR ----------"
+    del master_params
+    del tester
+    tester = phil_lego()
     master_params = iotbx.phil.parse( tester.default_sir() )
     master_params.show(expert_level=int(args[0]))
     print " ---------- SIRAS ----------"
+    del master_params
+    del tester
+    tester = phil_lego()
     master_params = iotbx.phil.parse( tester.default_siras() )
     master_params.show(expert_level=int(args[0]))
-
+    print " ---------- 2WMAD ----------"
+    del master_params
+    del tester
+    tester = phil_lego()
+    master_params = iotbx.phil.parse( tester.default_2wmad() )
+    master_params.show(expert_level=int(args[0]))
+    print " ---------- 3WMAD ----------"
+    del master_params
+    del tester
+    tester = phil_lego()
+    master_params = iotbx.phil.parse( tester.default_3wmad() )
+    master_params.show(expert_level=int(args[0]))
+    print " ---------- 3WMAD ----------"
+    del master_params
+    del tester
+    tester = phil_lego()
+    master_params = iotbx.phil.parse( tester.default_3wmad() )
+    master_params.show(expert_level=int(args[0]))
 
 
 if (__name__ == "__main__"):
