@@ -257,19 +257,48 @@ class structure_factor:
             w * dw * 1j * e * mtps * d_exp_huh_d_u_star))
         d2_occ_fp += wwo * dw * e
         d2_occ_fdp += wwo * dw * e * 1j
-      if (not scatterer.anisotropic_flag):
-        i_occ, i_fp, i_fdp, np = 4, 5, 6, 7
+      if (site_symmetry_ops is None):
+        i_u = 3
       else:
-        i_occ, i_fp, i_fdp, np = 9, 10, 11, 12
+        i_u = site_constraints.n_independent_params()
+      if (not scatterer.anisotropic_flag):
+        i_occ = i_u + 1
+      elif (site_symmetry_ops is None):
+        i_occ = i_u + 6
+      else:
+        i_occ = i_u + adp_constraints.n_independent_params()
+      i_fp, i_fdp, np = i_occ+1, i_occ+2, i_occ+3
+      if (site_symmetry_ops is not None):
+        gsc = site_constraints.gradient_sum_coeffs
+        d2_site_site = gsc.matrix_multiply(
+                       d2_site_site).matrix_multiply(
+                       gsc.matrix_transpose())
+        if (not scatterer.anisotropic_flag):
+          d2_site_u_iso = gsc.matrix_multiply(d2_site_u_iso)
+        else:
+          d2_site_u_star = gsc.matrix_multiply(d2_site_u_star)
+        d2_site_occ = gsc.matrix_multiply(d2_site_occ)
+        d2_site_fp = gsc.matrix_multiply(d2_site_fp)
+        d2_site_fdp = gsc.matrix_multiply(d2_site_fdp)
+        if (scatterer.anisotropic_flag):
+          gsc = adp_constraints.gradient_sum_coeffs
+          d2_site_u_star = d2_site_u_star.matrix_multiply(
+            gsc.matrix_transpose())
+          d2_u_star_u_star = gsc.matrix_multiply(
+                             d2_u_star_u_star).matrix_multiply(
+                             gsc.matrix_transpose())
+          d2_u_star_occ = gsc.matrix_multiply(d2_u_star_occ)
+          d2_u_star_fp = gsc.matrix_multiply(d2_u_star_fp)
+          d2_u_star_fdp = gsc.matrix_multiply(d2_u_star_fdp)
       dp = flex.complex_double(flex.grid(np,np), 0j)
       paste = dp.matrix_paste_block_in_place
       paste(d2_site_site, 0,0)
       if (not scatterer.anisotropic_flag):
-        paste(d2_site_u_iso, 0,3)
-        paste(d2_site_u_iso.matrix_transpose(), 3,0)
+        paste(d2_site_u_iso, 0,i_u)
+        paste(d2_site_u_iso.matrix_transpose(), i_u,0)
       else:
-        paste(d2_site_u_star, 0,3)
-        paste(d2_site_u_star.matrix_transpose(), 3,0)
+        paste(d2_site_u_star, 0,i_u)
+        paste(d2_site_u_star.matrix_transpose(), i_u,0)
       paste(d2_site_occ, 0,i_occ)
       paste(d2_site_occ.matrix_transpose(), i_occ,0)
       paste(d2_site_fp, 0,i_fp)
@@ -277,83 +306,25 @@ class structure_factor:
       paste(d2_site_fdp, 0,i_fdp)
       paste(d2_site_fdp.matrix_transpose(), i_fdp,0)
       if (not scatterer.anisotropic_flag):
-        dp[3*7+3] = d2_u_iso_u_iso
-        dp[3*7+4] = d2_u_iso_occ
-        dp[4*7+3] = d2_u_iso_occ
-        dp[3*7+5] = d2_u_iso_fp
-        dp[5*7+3] = d2_u_iso_fp
-        dp[3*7+6] = d2_u_iso_fdp
-        dp[6*7+3] = d2_u_iso_fdp
+        dp[i_u*np+i_u] = d2_u_iso_u_iso
+        dp[i_u*np+i_occ] = d2_u_iso_occ
+        dp[i_occ*np+i_u] = d2_u_iso_occ
+        dp[i_u*np+i_fp] = d2_u_iso_fp
+        dp[i_fp*np+i_u] = d2_u_iso_fp
+        dp[i_u*np+i_fdp] = d2_u_iso_fdp
+        dp[i_fdp*np+i_u] = d2_u_iso_fdp
       else:
-        paste(d2_u_star_u_star, 3,3)
-        paste(d2_u_star_occ, 3, 9)
-        paste(d2_u_star_occ.matrix_transpose(), 9, 3)
-        paste(d2_u_star_fp, 3, 10)
-        paste(d2_u_star_fp.matrix_transpose(), 10, 3)
-        paste(d2_u_star_fdp, 3, 11)
-        paste(d2_u_star_fdp.matrix_transpose(), 11, 3)
+        paste(d2_u_star_u_star, i_u, i_u)
+        paste(d2_u_star_occ, i_u, i_occ)
+        paste(d2_u_star_occ.matrix_transpose(), i_occ, i_u)
+        paste(d2_u_star_fp, i_u, i_fp)
+        paste(d2_u_star_fp.matrix_transpose(), i_fp, i_u)
+        paste(d2_u_star_fdp, i_u, i_fdp)
+        paste(d2_u_star_fdp.matrix_transpose(), i_fdp, i_u)
       dp[i_occ*np+i_fp] = d2_occ_fp
       dp[i_fp*np+i_occ] = d2_occ_fp
       dp[i_occ*np+i_fdp] = d2_occ_fdp
       dp[i_fdp*np+i_occ] = d2_occ_fdp
-      if (site_symmetry_ops is not None):
-        ndp = site_constraints.n_dependent_params()
-        npc = np - ndp
-        iuc = 3-ndp
-        gsc = site_constraints.gradient_sum_coeffs
-        b = dp.matrix_copy_block(i_row=0, i_column=0, n_rows=3, n_columns=np)
-        bc = gsc.matrix_multiply(b)
-        dpr = flex.complex_double(flex.grid(npc,np))
-        dpr.matrix_paste_block_in_place(block=bc, i_row=0, i_column=0)
-        dpr.matrix_paste_block_in_place(
-          block=dp.matrix_copy_block(
-            i_row=3, i_column=0, n_rows=np-3, n_columns=np),
-          i_row=iuc,
-          i_column=0)
-        b = dpr.matrix_copy_block(i_row=0, i_column=0, n_rows=npc, n_columns=3)
-        bc = b.matrix_multiply(gsc.matrix_transpose())
-        dp = flex.complex_double(flex.grid(npc, npc))
-        dp.matrix_paste_block_in_place(block=bc, i_row=0, i_column=0)
-        dp.matrix_paste_block_in_place(
-          block=dpr.matrix_copy_block(
-            i_row=0, i_column=3, n_rows=npc, n_columns=np-3),
-          i_row=0,
-          i_column=iuc)
-        if (scatterer.anisotropic_flag):
-          np = npc
-          ndp = adp_constraints.n_dependent_params()
-          npc = npc - ndp
-          gsc = adp_constraints.gradient_sum_coeffs
-          b = dp.matrix_copy_block(
-            i_row=iuc, i_column=0, n_rows=6, n_columns=np)
-          bc = gsc.matrix_multiply(b)
-          dpr = flex.complex_double(flex.grid(npc,np))
-          dpr.matrix_paste_block_in_place(
-            block=dp.matrix_copy_block(
-              i_row=0, i_column=0, n_rows=iuc, n_columns=np),
-            i_row=0,
-            i_column=0)
-          dpr.matrix_paste_block_in_place(block=bc, i_row=iuc, i_column=0)
-          dpr.matrix_paste_block_in_place(
-            block=dp.matrix_copy_block(
-              i_row=iuc+6, i_column=0, n_rows=3, n_columns=np),
-            i_row=npc-3,
-            i_column=0)
-          b = dpr.matrix_copy_block(
-            i_row=0, i_column=iuc, n_rows=npc, n_columns=6)
-          bc = b.matrix_multiply(gsc.matrix_transpose())
-          dp = flex.complex_double(flex.grid(npc, npc))
-          dp.matrix_paste_block_in_place(
-            block=dpr.matrix_copy_block(
-              i_row=0, i_column=0, n_rows=npc, n_columns=iuc),
-            i_row=0,
-            i_column=0)
-          dp.matrix_paste_block_in_place(block=bc, i_row=0, i_column=iuc)
-          dp.matrix_paste_block_in_place(
-            block=dpr.matrix_copy_block(
-              i_row=0, i_column=np-3, n_rows=npc, n_columns=3),
-            i_row=0,
-            i_column=npc-3)
       yield dp
 
   def d_target_d_params(self, target):
