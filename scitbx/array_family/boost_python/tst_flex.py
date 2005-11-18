@@ -303,6 +303,17 @@ def exercise_misc():
     except Exception, e:
       assert str(e).startswith("Python argument types in")
     else: raise RuntimeError("Exception expected.")
+  #
+  a = flex.double(12)
+  assert a.focus() == (12,)
+  a.reshape(flex.grid(3,4))
+  assert a.focus() == (3,4)
+  a.reshape(flex.grid(2,3,2))
+  assert a.focus() == (2,3,2)
+  try: a.reshape(flex.grid(5,6))
+  except RuntimeError, e:
+    assert str(e).find("SCITBX_ASSERT(grid.size_1d() == a.size())") > 0
+  else: raise RuntimeError("Exception expected.")
 
 def exercise_1d_slicing_core(a):
   assert tuple(a[:]) == (1,2,3,4,5)

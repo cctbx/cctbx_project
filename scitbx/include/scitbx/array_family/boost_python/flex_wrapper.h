@@ -320,6 +320,13 @@ namespace scitbx { namespace af { namespace boost_python {
     }
 
     static void
+    reshape(f_t& a, flex_grid<> const& grid)
+    {
+      SCITBX_ASSERT(grid.size_1d() == a.size());
+      a.resize(grid);
+    }
+
+    static void
     clear(f_t& a)
     {
       base_array_type b = flex_as_base_array(a);
@@ -739,6 +746,7 @@ namespace scitbx { namespace af { namespace boost_python {
         .def("resize", resize_1d_2)
         .def("resize", resize_flex_grid_1)
         .def("resize", resize_flex_grid_2)
+        .def("reshape", reshape)
         .def("clear", clear)
         .def("extend", extend)
         .def("concatenate", concatenate)
