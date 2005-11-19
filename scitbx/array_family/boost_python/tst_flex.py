@@ -679,7 +679,7 @@ def exercise_functions():
   assert flex.mean(a) == 6. / 4
   assert flex.mean(b) == 15. / 3
   assert flex.mean_sq(a) == (1+3.*3.+2.*2.) / 4
-  assert flex.mean_sq(b) == (4.*4.+5.*5.+6.*6.) / 3
+  assert approx_equal(flex.mean_sq(b), (4.*4.+5.*5.+6.*6.) / 3)
   a = flex.double((-2, 0, 3))
   assert tuple(flex.pow(a, 2)) == (4, 0, 9)
   a = flex.double((2, 0, 3))
@@ -1311,6 +1311,40 @@ def exercise_matrix():
         assert d.n[0] == 1
         assert c.focus() == (d.n[1],)
         assert approx_equal(c, d)
+  #
+  for n_rows in xrange(10):
+    for n_columns in xrange(10):
+      m = flex.random_double(size=n_rows*n_columns)*4-2
+      m.reshape(flex.grid(n_rows,n_columns))
+      p = flex.random_double(size=n_columns*(n_columns+1)/2)
+      nopt = m.matrix_multiply(p.matrix_packed_u_as_symmetric())
+      assert nopt.focus() == (n_rows, n_columns)
+      opt = m.matrix_multiply_packed_u(p)
+      assert approx_equal(opt, nopt)
+      nopt = nopt.matrix_multiply(m.matrix_transpose()) \
+        .matrix_symmetric_as_packed_u()
+      assert nopt.size() == n_rows*(n_rows+1)/2
+      opt = m.matrix_multiply_packed_u_multiply_lhs_transpose(p)
+      assert approx_equal(opt, nopt)
+      #
+      pr = flex.random_double(size=n_columns*(n_columns+1)/2)
+      pi = flex.random_double(size=n_columns*(n_columns+1)/2)
+      p = flex.complex_double([complex(r,i) for r,i in zip(pr,pi)])
+      psr = pr.matrix_packed_u_as_symmetric()
+      psi = pi.matrix_packed_u_as_symmetric()
+      ps = flex.complex_double([complex(r,i) for r,i in zip(psr,psi)])
+      ps.reshape(flex.grid(n_columns, n_columns))
+      nopt = m.matrix_multiply(ps)
+      assert nopt.focus() == (n_rows, n_columns)
+      opt = m.matrix_multiply_packed_u(p)
+      assert approx_equal(opt, nopt)
+      nopts = nopt.matrix_multiply(m.matrix_transpose())
+      noptr = flex.real(nopts).matrix_symmetric_as_packed_u()
+      nopti = flex.imag(nopts).matrix_symmetric_as_packed_u()
+      nopt = flex.complex_double([complex(r,i) for r,i in zip(noptr,nopti)])
+      assert nopt.size() == n_rows*(n_rows+1)/2
+      opt = m.matrix_multiply_packed_u_multiply_lhs_transpose(p)
+      assert approx_equal(opt, nopt)
   #
   a = flex.polar(flex.double(range(1,6+1)), flex.double(range(2,7+1)))
   a.resize(flex.grid(2,3))

@@ -120,7 +120,7 @@ namespace scitbx { namespace matrix {
   af::shared<FloatType>
   symmetric_as_packed_u(
     af::const_ref<FloatType, af::c_grid<2> > const& a,
-    FloatType const& relative_eps=1.e-15)
+    FloatType const& relative_eps=1.e-12)
   {
     SCITBX_ASSERT(a.accessor().is_square());
     typename af::c_grid<2>::index_value_type n = a.accessor()[0];
@@ -158,7 +158,7 @@ namespace scitbx { namespace matrix {
   af::shared<FloatType>
   symmetric_as_packed_l(
     af::const_ref<FloatType, af::c_grid<2> > const& a,
-    FloatType const& relative_eps=1.e-15)
+    FloatType const& relative_eps=1.e-12)
   {
     SCITBX_ASSERT(a.accessor().is_square());
     typename af::c_grid<2>::index_value_type n = a.accessor()[0];

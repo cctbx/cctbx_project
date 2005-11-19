@@ -93,6 +93,38 @@ namespace boost_python {
     return matrix_multiply(a, b);
   }
 
+  versa<double, c_grid<2> >
+  matrix_multiply_packed_u_real_matrix_real_u(
+    const_ref<double, c_grid<2> > const& a,
+    const_ref<double> const& b)
+  {
+    return matrix_multiply_packed_u(a, b);
+  }
+
+  versa<std::complex<double>, c_grid<2> >
+  matrix_multiply_packed_u_real_matrix_complex_u(
+    const_ref<double, c_grid<2> > const& a,
+    const_ref<std::complex<double> > const& b)
+  {
+    return matrix_multiply_packed_u(a, b);
+  }
+
+  shared<double>
+  matrix_multiply_packed_u_multiply_lhs_transpose_real_matrix_real_u(
+    const_ref<double, c_grid<2> > const& a,
+    const_ref<double> const& b)
+  {
+    return matrix_multiply_packed_u_multiply_lhs_transpose(a, b);
+  }
+
+  shared<std::complex<double> >
+  matrix_multiply_packed_u_multiply_lhs_transpose_real_matrix_complex_u(
+    const_ref<double, c_grid<2> > const& a,
+    const_ref<std::complex<double> > const& b)
+  {
+    return matrix_multiply_packed_u_multiply_lhs_transpose(a, b);
+  }
+
   BOOST_PYTHON_FUNCTION_OVERLOADS(
     matrix_symmetric_as_packed_u_overloads,
     matrix::symmetric_as_packed_u, 1, 2)
@@ -155,6 +187,14 @@ namespace boost_python {
         (double(*)(
           const_ref<double> const&,
           const_ref<double> const&)) matrix_multiply)
+      .def("matrix_multiply_packed_u",
+        matrix_multiply_packed_u_real_matrix_real_u)
+      .def("matrix_multiply_packed_u",
+        matrix_multiply_packed_u_real_matrix_complex_u)
+      .def("matrix_multiply_packed_u_multiply_lhs_transpose",
+        matrix_multiply_packed_u_multiply_lhs_transpose_real_matrix_real_u)
+      .def("matrix_multiply_packed_u_multiply_lhs_transpose",
+        matrix_multiply_packed_u_multiply_lhs_transpose_real_matrix_complex_u)
       .def("matrix_transpose_multiply_as_packed_u",
         (shared<double>(*)(
           const_ref<double, c_grid<2> > const&))
@@ -214,14 +254,14 @@ namespace boost_python {
             matrix::symmetric_as_packed_u,
               matrix_symmetric_as_packed_u_overloads((
                 arg_("self"),
-                arg_("relative_epsilon")=1.e-15)))
+                arg_("relative_epsilon")=1.e-12)))
       .def("matrix_symmetric_as_packed_l",
         (shared<double>(*)(
           const_ref<double, c_grid<2> > const&, double const&))
             matrix::symmetric_as_packed_l,
               matrix_symmetric_as_packed_l_overloads((
                 arg_("self"),
-                arg_("relative_epsilon")=1.e-15)))
+                arg_("relative_epsilon")=1.e-12)))
       .def("matrix_packed_u_as_symmetric",
         (versa<double, c_grid<2> >(*)(
           const_ref<double> const&))

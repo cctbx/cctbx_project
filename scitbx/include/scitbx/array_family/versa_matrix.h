@@ -7,6 +7,7 @@
 #include <scitbx/matrix/lu_decomposition.h>
 #include <scitbx/matrix/inversion.h>
 #include <scitbx/matrix/diagonal.h>
+#include <scitbx/matrix/packed.h>
 #include <scitbx/mat_ref.h>
 #include <boost/optional.hpp>
 
@@ -135,6 +136,57 @@ namespace scitbx { namespace af {
     mat_ref<NumType> ab_(&ab, 1, 1);
     multiply(a_, b_, ab_);
     return ab;
+  }
+
+  template <typename NumTypeA, typename NumTypeB>
+  versa<
+    typename binary_operator_traits<NumTypeA, NumTypeB>::arithmetic,
+    c_grid<2> >
+  matrix_multiply_packed_u(
+    const_ref<NumTypeA, c_grid<2> > const& a,
+    const_ref<NumTypeB> const& b)
+  {
+    unsigned a_n_rows = a.accessor()[0];
+    unsigned a_n_columns = a.accessor()[1];
+    SCITBX_ASSERT(matrix::symmetric_n_from_packed_size(b.size())
+               == a_n_columns);
+    typedef typename
+      binary_operator_traits<NumTypeA, NumTypeB>::arithmetic
+        numtype_ab;
+    versa<numtype_ab, c_grid<2> > ab(
+      c_grid<2>(a_n_rows, a_n_columns),
+      init_functor_null<numtype_ab>());
+    matrix::multiply_packed_u(
+      a.begin(), b.begin(), a_n_rows, a_n_columns, ab.begin());
+    return ab;
+  }
+
+  template <typename NumTypeA, typename NumTypeB>
+  shared<typename binary_operator_traits<NumTypeA, NumTypeB>::arithmetic>
+  matrix_multiply_packed_u_multiply_lhs_transpose(
+    const_ref<NumTypeA, c_grid<2> > const& a,
+    const_ref<NumTypeB> const& b)
+  {
+    unsigned a_n_rows = a.accessor()[0];
+    unsigned a_n_columns = a.accessor()[1];
+    SCITBX_ASSERT(matrix::symmetric_n_from_packed_size(b.size())
+               == a_n_columns);
+    typedef typename
+      binary_operator_traits<NumTypeA, NumTypeB>::arithmetic
+        numtype_ab;
+    shared<numtype_ab> abat(
+      a_n_rows*(a_n_rows+1)/2, init_functor_null<numtype_ab>());
+    std::vector<numtype_ab> ab;
+    // allocate ab memory but do not initialize to maximize performance
+    ab.reserve(a_n_rows * a_n_columns);
+    matrix::multiply_packed_u_multiply_lhs_transpose(
+      a.begin(),
+      b.begin(),
+      a_n_rows,
+      a_n_columns,
+      &*ab.begin(),
+      abat.begin());
+    return abat;
   }
 
   template <typename NumType>
