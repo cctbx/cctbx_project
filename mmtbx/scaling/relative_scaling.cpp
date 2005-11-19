@@ -306,6 +306,53 @@ namespace{
 
 
 
+  struct local_scaling_nikonov_wrapper
+  {
+    typedef scaling::relative_scaling::local_scaling_nikonov<> w_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+
+      class_<w_t>("local_scaling_nikonov", no_init)
+        .def(init< scitbx::af::const_ref< cctbx::miller::index<> > const&,
+                   scitbx::af::const_ref< cctbx::miller::index<> > const&,
+
+                   scitbx::af::const_ref< double > const&,
+                   scitbx::af::const_ref< double > const&,
+                   scitbx::af::const_ref< double > const&,
+                   scitbx::af::const_ref< bool > const&,
+                   double const&,
+
+                   cctbx::sgtbx::space_group const&,
+                   bool const&,
+                   std::size_t const&,
+                   std::size_t const&,
+                   std::size_t const&
+                 >
+             ((
+                arg_("hkl_master"),
+                arg_("hkl_sets"),
+                arg_("data_set_a"),
+                arg_("data_set_b"),
+                arg_("epsilons"),
+                arg_("centric"),
+                arg_("threshold"),
+                arg_("space_group"),
+                arg_("anomalous_flag"),
+                arg_("radius"),
+                arg_("depth"),
+                arg_("target_ref")
+                )))
+        .def("get_scales", &w_t::get_scales)
+        .def("stats", &w_t::stats)
+        ;
+
+        }
+  };
+
+
 
 
 
@@ -315,6 +362,11 @@ namespace{
 }  // namespace <anonymous>
 
 namespace boost_python {
+
+  void wrap_local_scaling_nikonov()
+  {
+    local_scaling_nikonov_wrapper::wrap();
+  }
 
   void wrap_local_scaling_moment_based()
   {
