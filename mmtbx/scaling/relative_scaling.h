@@ -1845,21 +1845,19 @@ namespace relative_scaling{
         }
         k_c = 0.0;
         k_ac = 0.0;
-        if (n_c > 0){
+        if (n_c > 1e-9){
           k_c = n_c/part1_c;
         }
-        if (n_ac > 0){
+        if (n_ac > 1e-9){
           k_ac = 2.0*part1_ac/n_ac - std::sqrt( part2_ac/n_ac );
           k_ac = 1.0/k_ac;
         }
-        if (n_c+n_ac>0){
+        if (n_c+n_ac>1e-9){
           local_scales_[ii] = ( n_c*k_c + n_ac*k_ac)/(n_c+n_ac);
         }
         else{
           local_scales_[ii] = 1.0;
         }
-
-
       }
       mean_neighbours_ /= hkl_sets_.size();
     }
