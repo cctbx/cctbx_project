@@ -1330,7 +1330,7 @@ def exercise_matrix():
       nopt = nopt.matrix_multiply(m.matrix_transpose()) \
         .matrix_symmetric_as_packed_u()
       assert nopt.size() == n_rows*(n_rows+1)/2
-      opt = m.matrix_multiply_packed_u_multiply_lhs_transpose(p)
+      opt = m.matrix_multiply_packed_u_multiply_lhs_transpose(packed_u=p)
       assert approx_equal(opt, nopt)
       #
       p = flex.complex_double(
@@ -1346,7 +1346,7 @@ def exercise_matrix():
         reals=flex.real(nopts).matrix_symmetric_as_packed_u(),
         imags=flex.imag(nopts).matrix_symmetric_as_packed_u())
       assert nopt.size() == n_rows*(n_rows+1)/2
-      opt = m.matrix_multiply_packed_u_multiply_lhs_transpose(p)
+      opt = m.matrix_multiply_packed_u_multiply_lhs_transpose(packed_u=p)
       assert approx_equal(opt, nopt)
   #
   a = flex.polar(flex.double(range(1,6+1)), flex.double(range(2,7+1)))
