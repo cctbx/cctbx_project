@@ -195,6 +195,23 @@ namespace {
     throw error("array must be a Python list or tuple.");
   }
 
+  versa<std::complex<double>, flex_grid<> >
+  mul_ar_sc(
+    versa<double, flex_grid<> > const& self,
+    std::complex<double> const& rhs)
+  {
+    versa<std::complex<double>, flex_grid<> > result(
+      self.accessor(),
+      init_functor_null<std::complex<double> >());
+    std::complex<double>* r = result.begin();
+    const double* s = self.begin();
+    const double* s_end = self.end();
+    while (s != s_end) {
+      *r++ = (*s++) * rhs;
+    }
+    return result;
+  }
+
   bool
   all_approx_equal_a_a(
     const_ref<double> const& self,
@@ -244,8 +261,8 @@ namespace boost_python {
   {
     using namespace boost::python;
 
-    flex_wrapper<double>::class_f_t
-    class_f_t = flex_wrapper<double>::numeric("double", scope());
+    typedef flex_wrapper<double> f_w;
+    f_w::class_f_t class_f_t(f_w::numeric("double", scope()));
     class_f_t
       .def_pickle(flex_pickle_single_buffered<double>())
       .def("__init__", make_constructor(
@@ -254,6 +271,10 @@ namespace boost_python {
         from_list_of_lists_or_tuples, default_call_policies()))
       .def("__init__", make_constructor(
         from_tuple_of_lists_or_tuples, default_call_policies()))
+      .def("__mul__", mul_ar_sc)
+      .def("__rmul__", mul_ar_sc)
+      .def("__mul__", f_w::mul_a_s) // re-define so it is found first
+      .def("__rmul__", f_w::mul_a_s) // re-define so it is found first
       .def("add_selected",
         (object(*)(
           object const&,

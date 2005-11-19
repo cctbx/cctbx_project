@@ -603,6 +603,12 @@ def exercise_operators():
   assert flex.order(a, a) == 0
   b = a.deep_copy()
   assert flex.order(a, b) == 0
+  #
+  a = flex.double([1,2,3])
+  assert approx_equal(a*(2+3j), [(2+3j), (4+6j), (6+9j)])
+  assert approx_equal((3+2j)*a, [(2j+3), (4j+6), (6j+9)])
+  assert approx_equal(a*3, [3,6,9])
+  assert approx_equal(4*a, [4,8,12])
 
 def exercise_bool_inplace_operators():
   a = flex.bool((0, 1, 0, 1))
