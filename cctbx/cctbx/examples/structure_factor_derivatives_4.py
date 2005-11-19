@@ -161,11 +161,12 @@ class structure_factor:
     return result
 
   def d2f_d_params(self):
-    tphkl = 2 * math.pi * matrix.col(self.hkl)
-    tphkl_outer = tphkl.outer_product()
+    tphkl = 2 * math.pi * flex.double(self.hkl)
+    tphkl_outer = tphkl.matrix_outer_product(tphkl)
     h,k,l = self.hkl
-    d_exp_huh_d_u_star = matrix.col([h**2, k**2, l**2, 2*h*k, 2*h*l, 2*k*l])
-    d2_exp_huh_d_u_star_u_star = d_exp_huh_d_u_star.outer_product()
+    d_exp_huh_d_u_star = flex.double([h**2, k**2, l**2, 2*h*k, 2*h*l, 2*k*l])
+    d2_exp_huh_d_u_star_u_star = d_exp_huh_d_u_star.matrix_outer_product(
+      d_exp_huh_d_u_star)
     for i_scatterer,scatterer in enumerate(self.scatterers):
       site_symmetry_ops = None
       if (self.site_symmetry_table.is_special_position(i_scatterer)):
@@ -211,50 +212,49 @@ class structure_factor:
       for s in self.space_group:
         r = s.r().as_rational().as_float()
         s_site = s * scatterer.site
-        alpha = matrix.col(s_site).dot(tphkl)
+        alpha = tphkl.dot(flex.double(s_site))
         if (scatterer.anisotropic_flag):
           s_u_star_s = r * matrix.sym(scatterer.u_star) * r.transpose()
           huh = (matrix.row(self.hkl) * s_u_star_s).dot(matrix.col(self.hkl))
           dw = math.exp(mtps * huh)
         e = cmath.exp(1j*alpha)
-        site_gtmx = r.transpose()
-        d2_site_site += flex.complex_double(
-          site_gtmx *
-            (w * dw * ff * e * (-1) * tphkl_outer)
-               * site_gtmx.transpose())
+        site_gtmx = flex.double(r.transpose())
+        site_gtmx.reshape(flex.grid(3,3))
+        d2_site_site += (w * dw * ff * e * (-1)) * (
+          site_gtmx.matrix_multiply(
+            tphkl_outer).matrix_multiply(
+              site_gtmx.matrix_transpose()))
         if (not scatterer.anisotropic_flag):
-          d2_site_u_iso += flex.complex_double(site_gtmx * (
-            w * dw * ff * e * 1j * mtps * self.d_star_sq * tphkl))
+          d2_site_u_iso += (w * dw * ff * e * 1j * mtps * self.d_star_sq) \
+            * site_gtmx.matrix_multiply(tphkl)
         else:
-          u_star_gtmx = matrix.sqr(
-            sym_tensor_rank_2_gradient_transform_matrix(r))
-          d2_site_u_star += flex.complex_double(
-              site_gtmx
-            * ((w * dw * ff * e * 1j * tphkl).outer_product(
-                mtps * d_exp_huh_d_u_star))
-            * u_star_gtmx.transpose())
-        d2_site_occ += flex.complex_double(site_gtmx * (
-          wwo * dw * ff * e * 1j * tphkl))
-        d2_site_fp += flex.complex_double(site_gtmx * (
-          w * dw * e * 1j * tphkl))
-        d2_site_fdp += flex.complex_double(site_gtmx * (
-          w * dw * e * (-1) * tphkl))
+          u_star_gtmx = sym_tensor_rank_2_gradient_transform_matrix(r)
+          d2_site_u_star += (w * dw * ff * e * 1j * mtps) \
+            * site_gtmx.matrix_multiply(
+                tphkl.matrix_outer_product(d_exp_huh_d_u_star)) \
+                  .matrix_multiply(u_star_gtmx.matrix_transpose())
+        site_gtmx_tphkl = site_gtmx.matrix_multiply(tphkl)
+        d2_site_occ += (wwo * dw * ff * e * 1j) * site_gtmx_tphkl
+        d2_site_fp += (w * dw * e * 1j) * site_gtmx_tphkl
+        d2_site_fdp += (w * dw * e * (-1)) * site_gtmx_tphkl
         if (not scatterer.anisotropic_flag):
           d2_u_iso_u_iso += w * dw * ff * e * (mtps * self.d_star_sq)**2
           d2_u_iso_occ += wwo * dw * ff * e * mtps * self.d_star_sq
           d2_u_iso_fp += w * dw * e * mtps * self.d_star_sq
           d2_u_iso_fdp += 1j * w * dw * e * mtps * self.d_star_sq
         else:
-          d2_u_star_u_star += flex.complex_double(
-              u_star_gtmx
-            * (w * dw * ff * e * mtps**2 * d2_exp_huh_d_u_star_u_star)
-            * u_star_gtmx.transpose())
-          d2_u_star_occ += flex.complex_double(u_star_gtmx * (
-            wwo * dw * ff * e * mtps * d_exp_huh_d_u_star))
-          d2_u_star_fp += flex.complex_double(u_star_gtmx * (
-            w * dw * e * mtps * d_exp_huh_d_u_star))
-          d2_u_star_fdp += flex.complex_double(u_star_gtmx * (
-            w * dw * 1j * e * mtps * d_exp_huh_d_u_star))
+          d2_u_star_u_star +=(w * dw * ff * e * mtps**2) \
+            * u_star_gtmx.matrix_multiply(
+                d2_exp_huh_d_u_star_u_star).matrix_multiply(
+                  u_star_gtmx.matrix_transpose())
+          u_star_gtmx_d_exp_huh_d_u_star = u_star_gtmx.matrix_multiply(
+            d_exp_huh_d_u_star)
+          d2_u_star_occ += (wwo * dw * ff * e * mtps) \
+            * u_star_gtmx_d_exp_huh_d_u_star
+          d2_u_star_fp += (w * dw * e * mtps) \
+            * u_star_gtmx_d_exp_huh_d_u_star
+          d2_u_star_fdp += (w * dw * 1j * e * mtps) \
+            * u_star_gtmx_d_exp_huh_d_u_star
         d2_occ_fp += wwo * dw * e
         d2_occ_fdp += wwo * dw * e * 1j
       if (site_symmetry_ops is None):
