@@ -319,8 +319,3 @@ class naive_fa_estimation(object):
 
 
 
-    print dir( normalizer_ano )
-    for i in range(  normalizer_ano.mean_I_array.size() ):
-      print normalizer_ano.d_star_sq_array[i], \
-            normalizer_ano.mean_I_array[i], \
-            normalizer_iso.mean_I_array[i]

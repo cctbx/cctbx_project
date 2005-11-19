@@ -19,123 +19,29 @@ import libtbx.phil.command_line
 from cStringIO import StringIO
 from scitbx.python_utils import easy_pickle
 from mmtbx.scaling import pre_scale
+from mmtbx.scaling import make_param
 import sys, os
 
 
 from mmtbx.scaling import fa_estimation
 
 
-master_params = iotbx.phil.parse("""\
-scaling.input {
-   basic{
-     n_residues=None
-     .type=float
-     n_bases=None
-     .type=float
-     n_copies_per_asu=None
-     .type=float
-   }
-
-   xray_data{
-
-     unit_cell=None
-     .type=unit_cell
-
-     space_group=None
-     .type=space_group
-
-     reference{
-       file_name=None
-       .type=path
-       labels=None
-       .type=strings
-     }
-
-   }
-
-   scaling_strategy{
-
-       pre_scaler_protocol{
-         high_resolution=None
-         .type=float
-         low_resolution=None
-         .type=float
-         aniso_correction=True
-         .type=bool
-         outlier_level_wilson=1e-6
-         .type=float
-         outlier_level_extreme=1e-2
-         .type=float
-       }
-
-       ano_protocol{
-         target = loc *None
-         .type=choice
-         iterations = *auto specified_by_max_iterations
-         .type=choice
-         max_iterations = 3
-         .type=int
-
-         least_squares_options{
-           use_experimental_sigmas=True
-           .type=bool
-           scale_data=*intensities amplitudes
-           .type=choice
-           scale_target=basic *fancy
-           .type=choice
-         }
-
-         local_scaling_options{
-           use_experimental_sigmas=True
-           .type=bool
-           scale_data=*intensities amplitudes
-           .type=choice
-           scale_target=*local_moment local_lsq
-           .type=choice
-           max_depth=10
-           .type=int
-           target_neighbours=100
-           .type=int
-           neighbourhood_sphere=1
-           .type=int
-         }
-
-         outlier_rejection_options{
-           cut_level_sigma=3
-           .type=float
-           cut_level_rms_primary=4
-           .type=float
-           cut_level_rms_secondary=5
-           .type=float
-           protocol=solve rms *rms_and_sigma
-           .type=choice
-         }
-     }
-
-   }
-
-   output{
-     log = 'logfile.log'
-     .type = path
-
-     hklout = 'test.mtz'
-     .type = path
-     outlabel = '_SAD'
-     .type = str
-   }
-
-}
-""")
+params_generator = make_param.phil_lego()
+master_params = iotbx.phil.parse( params_generator.default_sad() )
 
 
 def run(args):
 
   if len(args)==0:
-    print "no help available"
+    master_params.show(expert_level=0)
   elif ( "--help" in args ):
-    print "no help available"
+    print "no help available as yet"
   elif ( "--h" in args ):
-    print "no help available"
+    print "no help availableas yet"
+  elif ( "--show_defaults" in args ):
+    master_params.show(expert_level=0)
+  elif ( "--show_defaults_all" in args ):
+    master_params.show(expert_level=10)
   else:
     log = multi_out()
     if (not "--quiet" in args):
@@ -203,11 +109,6 @@ def run(args):
 
     effective_params = master_params.fetch(sources=phil_objects)
     new_params = master_params.format(python_object=params)
-    print >> log, "Effective parameters"
-    print >> log, "#phil __ON__"
-    new_params.show(out=log)
-    print >> log, "#phil __END__"
-    print >> log
 
     ## Now please read in the reflections files
 
@@ -245,7 +146,8 @@ def run(args):
     new_params = master_params.format(python_object=params)
     print >> log, "Effective parameters"
     print >> log, "#phil __ON__"
-    new_params.show(out=log)
+    new_params.show(out=log,
+                    expert_level=params.scaling.input.expert_level)
     print >> log, "#phil __END__"
     print >> log
 
