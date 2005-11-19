@@ -1333,21 +1333,18 @@ def exercise_matrix():
       opt = m.matrix_multiply_packed_u_multiply_lhs_transpose(p)
       assert approx_equal(opt, nopt)
       #
-      pr = flex.random_double(size=n_columns*(n_columns+1)/2)
-      pi = flex.random_double(size=n_columns*(n_columns+1)/2)
-      p = flex.complex_double([complex(r,i) for r,i in zip(pr,pi)])
-      psr = pr.matrix_packed_u_as_symmetric()
-      psi = pi.matrix_packed_u_as_symmetric()
-      ps = flex.complex_double([complex(r,i) for r,i in zip(psr,psi)])
-      ps.reshape(flex.grid(n_columns, n_columns))
+      p = flex.complex_double(
+        reals=flex.random_double(size=n_columns*(n_columns+1)/2),
+        imags=flex.random_double(size=n_columns*(n_columns+1)/2))
+      ps = p.matrix_packed_u_as_symmetric()
       nopt = m.matrix_multiply(ps)
       assert nopt.focus() == (n_rows, n_columns)
       opt = m.matrix_multiply_packed_u(p)
       assert approx_equal(opt, nopt)
       nopts = nopt.matrix_multiply(m.matrix_transpose())
-      noptr = flex.real(nopts).matrix_symmetric_as_packed_u()
-      nopti = flex.imag(nopts).matrix_symmetric_as_packed_u()
-      nopt = flex.complex_double([complex(r,i) for r,i in zip(noptr,nopti)])
+      nopt = flex.complex_double(
+        reals=flex.real(nopts).matrix_symmetric_as_packed_u(),
+        imags=flex.imag(nopts).matrix_symmetric_as_packed_u())
       assert nopt.size() == n_rows*(n_rows+1)/2
       opt = m.matrix_multiply_packed_u_multiply_lhs_transpose(p)
       assert approx_equal(opt, nopt)

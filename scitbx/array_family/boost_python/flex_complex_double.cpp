@@ -3,10 +3,30 @@
 #include <scitbx/array_family/boost_python/flex_wrapper_complex.h>
 #include <scitbx/array_family/versa_matrix.h>
 #include <scitbx/matrix/move.h>
+#include <boost/python/make_constructor.hpp>
 
 namespace scitbx { namespace af { namespace boost_python {
 
 namespace {
+
+  versa<std::complex<double>, flex_grid<> >*
+  from_pair_of_flex_double(
+    versa<double, flex_grid<> > const& reals,
+    versa<double, flex_grid<> > const& imags)
+  {
+    SCITBX_ASSERT(reals.size() == imags.size());
+    typedef versa<std::complex<double>, flex_grid<> > result_type;
+    result_type result(
+      reals.accessor(), init_functor_null<std::complex<double> >());
+    std::complex<double>*c = result.begin();
+    std::complex<double>*c_end = result.end();
+    const double* r = reals.begin();
+    const double* i = imags.begin();
+    while (c != c_end) {
+      *c++ = std::complex<double>(*r++, *i++);
+    }
+    return new result_type(result);
+  }
 
   versa<std::complex<double>, flex_grid<> >
   mul_ac_ar(
@@ -39,6 +59,9 @@ namespace {
     using namespace boost::python;
     flex_wrapper<std::complex<double> >::numeric_common(
       "complex_double", boost::python::scope())
+      .def("__init__", make_constructor(
+        from_pair_of_flex_double, default_call_policies(), (
+          arg_("reals"), arg_("imags"))))
       .def_pickle(flex_pickle_single_buffered<std::complex<double> >())
       .def("__mul__", mul_ac_ar)
       .def("__rmul__", mul_ac_ar)
@@ -48,6 +71,10 @@ namespace {
         (versa<std::complex<double>, c_grid<2> >(*)(
            const_ref<std::complex<double>, c_grid<2> > const&))
              matrix_transpose)
+      .def("matrix_packed_u_as_symmetric",
+        (versa<std::complex<double>, c_grid<2> >(*)(
+          const_ref<std::complex<double> > const&))
+            matrix::packed_u_as_symmetric)
       .def("matrix_copy_block",
         (versa<std::complex<double>, c_grid<2> >(*)(
           const_ref<std::complex<double>, c_grid<2> > const&,
