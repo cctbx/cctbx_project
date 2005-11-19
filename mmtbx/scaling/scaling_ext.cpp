@@ -21,6 +21,7 @@ namespace boost_python{
   // relative scaling
   void wrap_local_scaling_moment_based();
   void wrap_local_scaling_ls_based();
+  void wrap_local_scaling_nikonov();
   void wrap_least_squares_on_i();
   void wrap_least_squares_on_f();
   void wrap_least_squares_on_i_wt();
@@ -310,6 +311,7 @@ namespace {
     // relative scaling
     wrap_local_scaling_moment_based();
     wrap_local_scaling_ls_based();
+    wrap_local_scaling_nikonov();
     wrap_least_squares_on_i();
     wrap_least_squares_on_f();
     wrap_least_squares_on_i_wt();
