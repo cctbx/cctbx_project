@@ -90,7 +90,7 @@ outlier_level_wilson=1e-6
            .type=bool
            scale_data=*intensities amplitudes
            .type=choice
-           scale_target=*local_moment local_lsq
+           scale_target=local_moment local_lsq *local_nikonov
            .type=choice
            max_depth=10
            .type=int
@@ -191,9 +191,9 @@ outlier_level_wilson=1e-6
     data = self.xray_data_basic.replace('__REPLACE__',
                                            data )
 
+    scaler = self.scale_protocol.replace('__REPLACE__','iso_protocol' )
 
-    scaler = self.pre_scaler_protocol + \
-             self.scale_protocol.replace('__REPLACE__','iso_protocol' )
+    scaler = self.pre_scaler_protocol + scaler
 
     scaler = scaler.replace('__EXPERT_LEVEL__',
                             '1' )

@@ -358,16 +358,18 @@ class local_scaling_driver(object):
   def __init__(self,
                miller_native,
                miller_derivative,
+               local_scaling_dict,
                use_intensities=True,
                use_weights=True,
-               moment_based=True,
                max_depth=10,
                target_neighbours=1000,
                sphere=1,
+               threshold=1.0,
                out=None):
 
     if out == None:
       out = sys.stdout
+
 
 
     self.native = miller_native.deep_copy().set_observation_type(
@@ -384,7 +386,7 @@ class local_scaling_driver(object):
 
 
     ## Here we change things into intensities or amplitudes as asked
-    """
+
     if use_intensities:
       if not self.native.is_xray_intensity_array():
         self.native = self.native.f_as_f_sq()
@@ -396,7 +398,7 @@ class local_scaling_driver(object):
         self.native = self.native.f_sq_as_f()
       if self.derivative.is_xray_intensity_array():
         self.derivative = self.derivative.f_sq_as_f()
-    """
+
 
     ## In order to avoid problems with abseces due to lattice
     ## types, we transform the system to the primitive setting
@@ -436,7 +438,7 @@ class local_scaling_driver(object):
 
     local_scaler=None
     # Moment based scaling
-    if moment_based:
+    if local_scaling_dict['local_moment']:
       print >> out
       print >> out, "Moment based local scaling"
       print >> out, "Maximum depth        : %8i"%(max_depth)
@@ -458,7 +460,7 @@ class local_scaling_driver(object):
         use_experimental_sigmas=use_weights)
 
     # then it will be lsq based local scaling
-    if not moment_based:
+    if local_scaling_dict['local_lsq']:
       print >> out
       print >> out, "Least squares based local scaling"
       print >> out, "Maximum depth        : %8i"%(max_depth)
@@ -478,6 +480,35 @@ class local_scaling_driver(object):
         depth=max_depth,
         target_ref=target_neighbours,
         use_experimental_sigmas=use_weights)
+
+
+    # or nikonov scaling
+    if local_scaling_dict['local_nikonov']:
+      print >> out
+      print >> out, "Nikonev based local scaling"
+      print >> out, "Maximum depth        : %8i"%(max_depth)
+      print >> out, "Target neighbours    : %8i"%(target_neighbours)
+      print >> out, "neighbourhood sphere : %8i"%(sphere)
+      print >> out
+
+      if self.der_primset.is_xray_intensity_array():
+        raise Sorry(" For Nikonev target in local scaling, amplitudes must be used")
+        assert (False)
+
+      local_scaler = scaling.local_scaling_nikonov(
+        hkl_master=master_set.indices(),
+        hkl_sets=self.nat_primset.indices(),
+        data_set_a=self.nat_primset.data(),
+        data_set_b=self.der_primset.data(),
+        epsilons=self.der_primset.epsilons().data().as_double(),
+        centric=flex.bool(self.der_primset.centric_flags().data()),
+        threshold=threshold,
+        space_group=self.nat_primset.space_group(),
+        anomalous_flag=self.nat_primset.anomalous_flag(),
+        radius=sphere,
+        depth=max_depth,
+        target_ref=target_neighbours)
+      print "------9999------"
 
 
     scales=local_scaler.get_scales()

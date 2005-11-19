@@ -177,16 +177,20 @@ class combined_scaling(object):
     if self.loc_options.scale_data=='amplitudes':
       use_int=False
 
-    moment_based_local_scale=False
-    if self.loc_options.scale_target=='local_moment':
-      moment_based_local_scale=True
+    local_scaling_target_dictionary ={
+      'local_moment':False,
+      'local_lsq':False,
+      'local_nikonov':False}
+    local_scaling_target_dictionary[self.loc_options.scale_target]=True
+    print local_scaling_target_dictionary
+
     ##--------------------
     local_scaling = relative_scaling.local_scaling_driver(
       self.x1,
       self.x2,
+      local_scaling_target_dictionary,
       use_intensities=use_int,
       use_weights=use_exp_sigmas,
-      moment_based=moment_based_local_scale,
       max_depth=self.loc_options.max_depth,
       target_neighbours=self.loc_options.target_neighbours,
       sphere=self.loc_options.neighbourhood_sphere,
@@ -265,3 +269,58 @@ class ano_scaling(object):
       self.x1n,
       options,
       out)
+    self.s1p = ano_scaler.x1.deep_copy()
+    self.s1n = ano_scaler.x2.deep_copy()
+
+    del ano_scaler
+
+
+
+class naive_fa_estimation(object):
+  def __init__(self,
+               ano,
+               iso,
+               options,
+               out=None):
+    if out == None:
+      out = sys.stdout
+
+    ## get stuff
+    self.options = options
+    self.iso = iso.deep_copy().map_to_asu()
+    self.ano = ano.deep_copy().map_to_asu()
+    ## get common sets
+    self.iso, self.ano = self.iso.common_sets( self.ano )
+
+    ## perform normalisation
+    normalizer_iso = absolute_scaling.kernel_normalisation(
+      self.iso, auto_kernel=True, n_term=options.n_terms)
+    normalizer_ano = absolute_scaling.kernel_normalisation(
+      self.ano, auto_kernel=True, n_term=options.n_terms)
+
+    self.fa = self.iso.customized_copy(
+      data = flex.sqrt( self.iso.data()*self.iso.data()\
+               /normalizer_iso.normalizer_for_miller_array
+               +
+               self.ano.data()*self.ano.data()\
+               /normalizer_ano.normalizer_for_miller_array
+              ),
+      sigmas = flex.sqrt( self.iso.sigmas()*self.iso.sigmas()\
+               /(normalizer_iso.normalizer_for_miller_array*
+                 normalizer_iso.normalizer_for_miller_array
+                 )
+               +
+               self.ano.sigmas()*self.ano.sigmas()\
+               /(normalizer_ano.normalizer_for_miller_array
+                 *normalizer_ano.normalizer_for_miller_array)
+              ))
+
+
+
+
+
+    print dir( normalizer_ano )
+    for i in range(  normalizer_ano.mean_I_array.size() ):
+      print normalizer_ano.d_star_sq_array[i], \
+            normalizer_ano.mean_I_array[i], \
+            normalizer_iso.mean_I_array[i]
