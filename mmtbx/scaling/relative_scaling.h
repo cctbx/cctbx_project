@@ -1652,7 +1652,8 @@ namespace relative_scaling{
           weight = sigma_set_b_[ nb_index ]* data_set_a_[ nb_index  ]/
             data_set_b_[ nb_index  ];
           weight = weight*weight
-            + sigma_set_a_[ nb_index ]*sigma_set_a_[ nb_index ];
+           +  sigma_set_a_[ nb_index ]*sigma_set_a_[ nb_index ];
+
           weight=weight*multiplier+constant;
           weight=1.0/weight;
 
@@ -1661,7 +1662,7 @@ namespace relative_scaling{
 
         }
 
-        if (bottom>0){
+        if (std::fabs(bottom)>1e-9){
           local_scales_[ii]=top/bottom;
         }
 
@@ -1709,6 +1710,198 @@ namespace relative_scaling{
 
 
 
+
+
+
+  //-----------------------------------------------------------
+  /*! Local scaling where scale factors are determined
+   *  using an algorithm devised by Nikonov,
+   *  Acta Cryst A39, 693-697.
+   */
+
+  template <typename FloatType=double>
+  class local_scaling_nikonov
+  {
+    public:
+    /*! default constructor */
+    local_scaling_nikonov(){}
+    /*! This does (allmost) everything */
+    local_scaling_nikonov(
+      scitbx::af::const_ref< cctbx::miller::index<> > const& hkl_master,
+      scitbx::af::const_ref< cctbx::miller::index<> > const& hkl_sets,
+
+      scitbx::af::const_ref< FloatType > const& data_set_a,
+      scitbx::af::const_ref< FloatType > const& data_set_b,
+      scitbx::af::const_ref< FloatType > const& epsilons,
+      scitbx::af::const_ref< bool > const& centric,
+      FloatType const& threshold,
+
+      cctbx::sgtbx::space_group const& space_group,
+      bool const& anomalous_flag,
+      std::size_t const& radius,
+      std::size_t const& depth,
+      std::size_t const& at_least_this_number_of_neighbours)
+    :
+    threshold_(threshold),
+    local_scales_( hkl_sets.size(), 1),
+    local_scales_sigmas_( hkl_sets.size(), 0.01),
+    property_generator_( hkl_master,
+                         hkl_sets,
+                         space_group,
+                         anomalous_flag ),
+    area_generator_( hkl_master,
+                     property_generator_.combined_property_.const_ref(),
+                     space_group,
+                     anomalous_flag,
+                     radius,
+                     depth,
+                     at_least_this_number_of_neighbours ),
+    location_of_master_in_set_( hkl_sets, space_group, anomalous_flag ),
+    min_neighbours_( hkl_sets.size() ),
+    max_neighbours_( 0 ),
+    mean_neighbours_( 0 )
+    {
+
+      for (unsigned ii=0;ii<hkl_master.size();ii++){
+        hkl_master_.push_back( hkl_master[ii] );
+      }
+
+      for (unsigned ii=0;ii<hkl_sets.size();ii++){
+        hkl_sets_.push_back( hkl_sets[ii] );
+        data_set_a_.push_back( data_set_a[ii] );
+        data_set_b_.push_back( data_set_b[ii] );
+        epsilons_.push_back( epsilons[ii] );
+        centric_.push_back( centric[ii] );
+      }
+
+      // now eveything is set, please do the local scaling
+      scale_it();
+    }
+
+    void
+    scale_it()
+    {
+      // loop over all reflections of the native
+      unsigned nb_index ;
+
+      scitbx::af::shared<long> locations;
+      locations = location_of_master_in_set_.find_hkl( hkl_master_.const_ref() );
+
+      for (unsigned ii=0;ii<hkl_sets_.size();ii++){
+
+        // get some statistics regarding number of neighbours
+        if (area_generator_.area_[property_generator_.set_lut_[ ii ] ].size() < min_neighbours_ ){
+          min_neighbours_ = area_generator_.area_[property_generator_.set_lut_[ ii ] ].size();
+        }
+        if (area_generator_.area_[property_generator_.set_lut_[ ii ] ].size() > max_neighbours_ ){
+          max_neighbours_ = area_generator_.area_[property_generator_.set_lut_[ ii ] ].size();
+        }
+        mean_neighbours_ += area_generator_.area_[property_generator_.set_lut_[ ii ] ].size();
+
+
+        FloatType mean_intensity_native=0;
+        FloatType count=0;
+
+        FloatType part1_ac=0, part1_c=0, part2_ac=0, n_ac=0, n_c=0, a,b, k_tot,k_ac,k_c;
+
+        // loop over all neighbours
+        for (unsigned jj=1;
+             jj<area_generator_.area_[property_generator_.set_lut_[ ii ] ].size();
+             jj++){
+
+          nb_index = area_generator_.area_[
+            property_generator_.set_lut_[ ii ] ][jj];
+          nb_index = locations[ nb_index ];
+
+          mean_intensity_native+=data_set_a_[ nb_index  ]/epsilons_[nb_index];
+          count++;
+        }
+        mean_intensity_native/=count;
+
+        // the exact threshold is now known
+        n_ac=0;
+        n_c=0;
+        for (unsigned jj=1;
+             jj<area_generator_.area_[property_generator_.set_lut_[ ii ] ].size();
+             jj++){
+
+          nb_index = area_generator_.area_[
+            property_generator_.set_lut_[ ii ] ][jj];
+          nb_index = locations[ nb_index ];
+
+          if (std::sqrt(mean_intensity_native)*threshold_*epsilons_[nb_index] <= data_set_a_[nb_index]  ){
+            a=data_set_a_[nb_index]/epsilons_[nb_index];
+            b=data_set_b_[nb_index]/epsilons_[nb_index];
+            if (centric_[nb_index]){ // centric
+              part1_c += b/a;
+              n_c++;
+            }
+            else{
+              part1_ac += b/a;
+              part2_ac += (b*b)/(a*a);
+              n_ac++;
+            }
+          }
+        }
+        k_c = 0.0;
+        k_ac = 0.0;
+        if (n_c > 0){
+          k_c = n_c/part1_c;
+        }
+        if (n_ac > 0){
+          k_ac = 2.0*part1_ac/n_ac - std::sqrt( part2_ac/n_ac );
+          k_ac = 1.0/k_ac;
+        }
+        if (n_c+n_ac>0){
+          local_scales_[ii] = ( n_c*k_c + n_ac*k_ac)/(n_c+n_ac);
+        }
+        else{
+          local_scales_[ii] = 1.0;
+        }
+
+
+      }
+      mean_neighbours_ /= hkl_sets_.size();
+    }
+
+    scitbx::af::shared<FloatType>
+    get_scales()
+    {
+      return( local_scales_ );
+    }
+
+    scitbx::af::tiny<FloatType,3>
+    stats()
+    {
+      scitbx::af::tiny<FloatType,3> result;
+      result[0]=min_neighbours_;
+      result[1]=max_neighbours_;
+      result[2]=mean_neighbours_;
+      return(result);
+    }
+
+
+
+    protected:
+    FloatType threshold_;
+    property_matching_indices<FloatType> property_generator_;
+    cctbx::miller::lookup_utils::local_area<FloatType> area_generator_;
+    cctbx::miller::lookup_utils::lookup_tensor<FloatType> location_of_master_in_set_;
+
+    FloatType min_neighbours_, max_neighbours_, mean_neighbours_;
+
+    scitbx::af::shared< cctbx::miller::index<> > hkl_master_;
+    scitbx::af::shared< cctbx::miller::index<> > hkl_sets_;
+
+    scitbx::af::shared< FloatType > data_set_a_;
+    scitbx::af::shared< FloatType > data_set_b_;
+    scitbx::af::shared< FloatType > epsilons_;
+    scitbx::af::shared< bool > centric_;
+
+    scitbx::af::shared< FloatType > local_scales_;
+    scitbx::af::shared< FloatType > local_scales_sigmas_;
+
+  };
 
 
 
