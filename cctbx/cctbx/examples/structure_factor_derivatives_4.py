@@ -162,11 +162,12 @@ class structure_factor:
 
   def d2f_d_params(self):
     tphkl = 2 * math.pi * flex.double(self.hkl)
-    tphkl_outer = tphkl.matrix_outer_product(tphkl)
+    tphkl_outer = tphkl.matrix_outer_product(tphkl) \
+      .matrix_symmetric_as_packed_u()
     h,k,l = self.hkl
     d_exp_huh_d_u_star = flex.double([h**2, k**2, l**2, 2*h*k, 2*h*l, 2*k*l])
     d2_exp_huh_d_u_star_u_star = d_exp_huh_d_u_star.matrix_outer_product(
-      d_exp_huh_d_u_star)
+      d_exp_huh_d_u_star).matrix_symmetric_as_packed_u()
     for i_scatterer,scatterer in enumerate(self.scatterers):
       site_symmetry_ops = None
       if (self.site_symmetry_table.is_special_position(i_scatterer)):
@@ -187,7 +188,7 @@ class structure_factor:
       ffp = f0 + scatterer.fp
       fdp = scatterer.fdp
       ff = (ffp + 1j * fdp)
-      d2_site_site = flex.complex_double(flex.grid(3,3), 0j)
+      d2_site_site = flex.complex_double(3*(3+1)/2, 0j)
       if (not scatterer.anisotropic_flag):
         d2_site_u_iso = flex.complex_double(flex.grid(3,1), 0j)
         d2_site_u_star = None
@@ -203,7 +204,7 @@ class structure_factor:
         d2_u_iso_fp = 0j
         d2_u_iso_fdp = 0j
       else:
-        d2_u_star_u_star = flex.complex_double(flex.grid(6,6), 0j)
+        d2_u_star_u_star = flex.complex_double(6*(6+1)/2, 0j)
         d2_u_star_occ = flex.complex_double(flex.grid(6,1), 0j)
         d2_u_star_fp = flex.complex_double(flex.grid(6,1), 0j)
         d2_u_star_fdp = flex.complex_double(flex.grid(6,1), 0j)
@@ -221,9 +222,8 @@ class structure_factor:
         site_gtmx = flex.double(r.transpose())
         site_gtmx.reshape(flex.grid(3,3))
         d2_site_site += (w * dw * ff * e * (-1)) * (
-          site_gtmx.matrix_multiply(
-            tphkl_outer).matrix_multiply(
-              site_gtmx.matrix_transpose()))
+          site_gtmx.matrix_multiply_packed_u_multiply_lhs_transpose(
+            tphkl_outer))
         if (not scatterer.anisotropic_flag):
           d2_site_u_iso += (w * dw * ff * e * 1j * mtps * self.d_star_sq) \
             * site_gtmx.matrix_multiply(tphkl)
@@ -244,9 +244,8 @@ class structure_factor:
           d2_u_iso_fdp += 1j * w * dw * e * mtps * self.d_star_sq
         else:
           d2_u_star_u_star +=(w * dw * ff * e * mtps**2) \
-            * u_star_gtmx.matrix_multiply(
-                d2_exp_huh_d_u_star_u_star).matrix_multiply(
-                  u_star_gtmx.matrix_transpose())
+            * u_star_gtmx.matrix_multiply_packed_u_multiply_lhs_transpose(
+                d2_exp_huh_d_u_star_u_star)
           u_star_gtmx_d_exp_huh_d_u_star = u_star_gtmx.matrix_multiply(
             d_exp_huh_d_u_star)
           d2_u_star_occ += (wwo * dw * ff * e * mtps) \
@@ -270,9 +269,8 @@ class structure_factor:
       i_fp, i_fdp, np = i_occ+1, i_occ+2, i_occ+3
       if (site_symmetry_ops is not None):
         gsc = site_constraints.gradient_sum_coeffs
-        d2_site_site = gsc.matrix_multiply(
-                       d2_site_site).matrix_multiply(
-                       gsc.matrix_transpose())
+        d2_site_site = gsc.matrix_multiply_packed_u_multiply_lhs_transpose(
+          packed_u=d2_site_site)
         if (not scatterer.anisotropic_flag):
           d2_site_u_iso = gsc.matrix_multiply(d2_site_u_iso)
         else:
@@ -284,15 +282,15 @@ class structure_factor:
           gsc = adp_constraints.gradient_sum_coeffs
           d2_site_u_star = d2_site_u_star.matrix_multiply(
             gsc.matrix_transpose())
-          d2_u_star_u_star = gsc.matrix_multiply(
-                             d2_u_star_u_star).matrix_multiply(
-                             gsc.matrix_transpose())
+          d2_u_star_u_star = gsc \
+            .matrix_multiply_packed_u_multiply_lhs_transpose(
+              packed_u=d2_u_star_u_star)
           d2_u_star_occ = gsc.matrix_multiply(d2_u_star_occ)
           d2_u_star_fp = gsc.matrix_multiply(d2_u_star_fp)
           d2_u_star_fdp = gsc.matrix_multiply(d2_u_star_fdp)
       dp = flex.complex_double(flex.grid(np,np), 0j)
       paste = dp.matrix_paste_block_in_place
-      paste(d2_site_site, 0,0)
+      paste(d2_site_site.matrix_packed_u_as_symmetric(), 0,0)
       if (not scatterer.anisotropic_flag):
         paste(d2_site_u_iso, 0,i_u)
         paste(d2_site_u_iso.matrix_transpose(), i_u,0)
@@ -314,7 +312,7 @@ class structure_factor:
         dp[i_u*np+i_fdp] = d2_u_iso_fdp
         dp[i_fdp*np+i_u] = d2_u_iso_fdp
       else:
-        paste(d2_u_star_u_star, i_u, i_u)
+        paste(d2_u_star_u_star.matrix_packed_u_as_symmetric(), i_u, i_u)
         paste(d2_u_star_occ, i_u, i_occ)
         paste(d2_u_star_occ.matrix_transpose(), i_occ, i_u)
         paste(d2_u_star_fp, i_u, i_fp)
@@ -363,13 +361,6 @@ class structure_factors:
     assert xray_structure.is_similar_symmetry(miller_set)
     self.xray_structure = xray_structure
     self.miller_indices = miller_set.indices()
-    np = 0
-    for scatterer in xray_structure.scatterers():
-      if (not scatterer.anisotropic_flag):
-        np += 7
-      else:
-        np += 12
-    self.number_of_parameters = np
 
   def fs(self):
     result = flex.complex_double()
