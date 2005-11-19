@@ -192,9 +192,11 @@ namespace boost_python {
       .def("matrix_multiply_packed_u",
         matrix_multiply_packed_u_real_matrix_complex_u)
       .def("matrix_multiply_packed_u_multiply_lhs_transpose",
-        matrix_multiply_packed_u_multiply_lhs_transpose_real_matrix_real_u)
+        matrix_multiply_packed_u_multiply_lhs_transpose_real_matrix_real_u, (
+          arg_("packed_u")))
       .def("matrix_multiply_packed_u_multiply_lhs_transpose",
-        matrix_multiply_packed_u_multiply_lhs_transpose_real_matrix_complex_u)
+        matrix_multiply_packed_u_multiply_lhs_transpose_real_matrix_complex_u,(
+          arg_("packed_u")))
       .def("matrix_transpose_multiply_as_packed_u",
         (shared<double>(*)(
           const_ref<double, c_grid<2> > const&))
