@@ -392,6 +392,23 @@ namespace scitbx { namespace af {
     return boost::optional<FloatType>((*rad) / constants::pi_180);
   }
 
+  template <typename ElementType>
+  versa<ElementType, c_grid<2> >
+  mat_const_ref_as_versa(
+    scitbx::mat_const_ref<ElementType> const& m)
+  {
+    versa<ElementType, c_grid<2> > result(
+      c_grid<2>(m.n_rows(), m.n_columns()),
+      init_functor_null<ElementType>());
+    if (m.begin() != 0) {
+      std::copy(m.begin(), m.end(), result.begin());
+    }
+    else {
+      SCITBX_ASSERT(m.size() == 0);
+    }
+    return result;
+  }
+
 }} // namespace scitbx::af
 
 #endif // SCITBX_ARRAY_FAMILY_VERSA_MATRIX_H
