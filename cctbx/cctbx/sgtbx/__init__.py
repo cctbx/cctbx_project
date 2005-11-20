@@ -1,3 +1,4 @@
+from __future__ import generators
 from __future__ import division
 from cctbx import uctbx
 
@@ -15,6 +16,10 @@ import random
 import sys
 
 class _space_group(boost.python.injector, ext.space_group):
+
+  def smx(self):
+    for i_smx in xrange(self.n_smx()):
+      yield self(i_smx)
 
   def adp_constraints(self, initialize_gradient_handling=False):
     return tensor_rank_2_constraints(
@@ -284,78 +289,7 @@ class _wyckoff_table(boost.python.injector, wyckoff_table):
         assert site_symmetry.multiplicity() == position.multiplicity()
         return site_symmetry
 
-class site_constraints:
-
-  def __init__(self, matrices, initialize_gradient_handling=False):
-    lcm = 1
-    for s in matrices:
-      lcm = rational.lcm(lcm, s.r().den())
-      lcm = rational.lcm(lcm, s.t().den())
-    m = flex.int()
-    b = flex.int()
-    for s in matrices[1:]:
-      r, t = s.r(), s.t()
-      m.extend(flex.int(r.minus_unit_mx().num()) * (lcm // r.den()))
-      b.extend(-flex.int(t.num()) * (lcm // t.den()))
-    n_rows = m.size() // 3
-    m.resize(flex.grid(n_rows, 3))
-    b.resize(flex.grid(n_rows, 1))
-    b.resize(flex.grid(scitbx.math.row_echelon_form_t(m, b)))
-    independent_flags = flex.bool(3, True)
-    assert scitbx.math.row_echelon_back_substitution_int(
-      row_echelon_form=m,
-      independent_flags=independent_flags)
-    self.lcm = lcm
-    self.row_echelon_form = m
-    self.constants = b
-    self.independent_indices = independent_flags.iselection()
-    if (not initialize_gradient_handling):
-      self.gradient_sum_coeffs = None
-    else:
-      gradient_sum_coeffs = []
-      for indep_index in self.independent_indices:
-        coeffs = flex.double(3, 0)
-        coeffs[indep_index] = 1
-        assert scitbx.math.row_echelon_back_substitution_float(
-          row_echelon_form=m,
-          solution=coeffs)
-        gradient_sum_coeffs.append(list(coeffs))
-      self.gradient_sum_coeffs = flex.double(gradient_sum_coeffs)
-      if (self.gradient_sum_coeffs.size() == 0):
-        self.gradient_sum_coeffs.resize(flex.grid(0,3))
-
-  def n_independent_params(self):
-    return self.independent_indices.size()
-
-  def n_dependent_params(self):
-    return 3-self.independent_indices.size()
-
-  def independent_params(self, all_params):
-    return flex.double(all_params).select(self.independent_indices)
-
-  def all_params(self, independent_params):
-    result = flex.double(3, 0)
-    result.set_selected(self.independent_indices, independent_params)
-    assert scitbx.math.row_echelon_back_substitution_float(
-      row_echelon_form=self.row_echelon_form,
-      v=self.constants.as_double(),
-      solution=result)
-    return result
-
-  def independent_gradients(self, all_gradients):
-    return self.gradient_sum_coeffs.matrix_multiply(flex.double(all_gradients))
-
-  def independent_curvatures(self, all_curvatures):
-    return self.gradient_sum_coeffs.matrix_multiply(
-      all_curvatures).matrix_multiply(
-        self.gradient_sum_coeffs.matrix_transpose())
-
 class _site_symmetry_ops(boost.python.injector, site_symmetry_ops):
-
-  def site_constraints(self, initialize_gradient_handling=False):
-    return site_constraints(
-      matrices=self.matrices(),
-      initialize_gradient_handling=initialize_gradient_handling)
 
   def adp_constraints(self, initialize_gradient_handling=False):
     return tensor_rank_2_constraints(

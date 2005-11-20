@@ -86,8 +86,8 @@ def python_tensor_constraints(self, reciprocal_space):
        FortranForm[Expand[Transpose[r].t.r - t]]
   """
   result = flex.int()
-  for i_smx in xrange(1,self.n_smx()):
-    r = self(i_smx).r()
+  for s in self.smx():
+    r = s.r()
     if (reciprocal_space):
       r = r.transpose()
     r0,r1,r2,r3,r4,r5,r6,r7,r8 = r.num()

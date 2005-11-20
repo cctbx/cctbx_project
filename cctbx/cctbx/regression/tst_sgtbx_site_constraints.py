@@ -24,17 +24,18 @@ class cos_alpha:
 
   def df_d_site(self):
     all_gradients = -math.sin(self.h.dot(self.site)) * self.h
-    return self.site_constraints.independent_gradients(
-      all_gradients=all_gradients)
+    return flex.double(self.site_constraints.independent_gradients(
+      all_gradients=flex.double(all_gradients)))
 
   def d2f_d_site(self):
     all_curvatures = -math.cos(self.h.dot(self.site)) * self.h.outer_product()
     return self.site_constraints.independent_curvatures(
-      all_curvatures=flex.double(all_curvatures.as_list_of_lists()))
+      all_curvatures=flex.double(
+        all_curvatures.as_list_of_lists()).matrix_symmetric_as_packed_u())
 
 def df_d_site_finite(h, site_constraints, independent_params, eps=1.e-8):
   result = flex.double()
-  independent_params_eps = independent_params.deep_copy()
+  independent_params_eps = list(independent_params)
   for ip in xrange(len(independent_params)):
     vs = []
     for signed_eps in [eps, -eps]:
@@ -50,7 +51,7 @@ def df_d_site_finite(h, site_constraints, independent_params, eps=1.e-8):
 
 def d2f_d_site_finite(h, site_constraints, independent_params, eps=1.e-8):
   result = flex.double()
-  independent_params_eps = independent_params.deep_copy()
+  independent_params_eps = list(independent_params)
   for ip in xrange(len(independent_params)):
     vs = []
     for signed_eps in [eps, -eps]:
@@ -62,7 +63,9 @@ def d2f_d_site_finite(h, site_constraints, independent_params, eps=1.e-8):
       vs.append(ca.df_d_site())
     result.extend((vs[0]-vs[1])/(2*eps))
     independent_params_eps[ip] = independent_params[ip]
-  return result
+  np = len(independent_params)
+  result.reshape(flex.grid(np,np))
+  return result.matrix_symmetric_as_packed_u(relative_epsilon=1.e-5)
 
 def exercise(structure, out):
   structure.show_summary(f=out)
@@ -71,8 +74,7 @@ def exercise(structure, out):
     site = scatterer.site
     site_symmetry_ops = structure.site_symmetry_table().get(i_scatterer)
     assert approx_equal(site_symmetry_ops.special_op()*site, site)
-    site_constraints = site_symmetry_ops.site_constraints(
-      initialize_gradient_handling=True)
+    site_constraints = site_symmetry_ops.site_constraints()
     nip = site_constraints.n_independent_params()
     if (site_symmetry_ops.n_matrices() == 1):
       assert nip == 3
@@ -85,9 +87,10 @@ def exercise(structure, out):
       independent_params=independent_params)
     assert approx_equal(all_params, site)
     for i_trial in xrange(10):
-      shifted_params = independent_params + (flex.random_double(size=nip)-0.5)
-      shifted_site = list(site_constraints.all_params(
-        independent_params=shifted_params))
+      shifted_params = flex.double(independent_params) \
+                     + (flex.random_double(size=nip)-0.5)
+      shifted_site = site_constraints.all_params(
+        independent_params=list(shifted_params))
       assert approx_equal(
         site_symmetry_ops.special_op()*shifted_site, shifted_site)
       if (nip == 0 or unit_cell.distance(shifted_site, site) > 0.1):
@@ -95,13 +98,13 @@ def exercise(structure, out):
     else:
       raise AssertionError
     independent_gradients = site_constraints.independent_gradients(
-      all_gradients=[0,0,0])
+      all_gradients=flex.double(3, 0))
     assert len(independent_gradients) == nip
     assert approx_equal(independent_gradients, [0]*nip)
     independent_curvatures = site_constraints.independent_curvatures(
-      all_curvatures=flex.double([[0,0,0],[0,0,0],[0,0,0]]))
-    assert independent_curvatures.size() == nip**2
-    assert approx_equal(independent_curvatures, [0]*(nip**2))
+      all_curvatures=flex.double(6, 0))
+    assert len(independent_curvatures) == nip*(nip+1)/2
+    assert approx_equal(independent_curvatures, [0]*(nip*(nip+1)/2))
     #
     h = math.pi * flex.random_double(size=3)*2-1
     grads_fin = df_d_site_finite(

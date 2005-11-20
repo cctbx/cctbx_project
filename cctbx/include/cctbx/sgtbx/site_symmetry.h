@@ -1,8 +1,8 @@
 #ifndef CCTBX_SGTBX_SITE_SYMMETRY_H
 #define CCTBX_SGTBX_SITE_SYMMETRY_H
 
+#include <cctbx/sgtbx/site_constraints.h>
 #include <cctbx/uctbx.h>
-#include <cctbx/sgtbx/space_group.h>
 
 namespace cctbx { namespace sgtbx {
 
@@ -50,7 +50,10 @@ namespace cctbx { namespace sgtbx {
   {
     public:
       //! Default constructor. Some data members are not initialized!
-      site_symmetry_ops() {}
+      site_symmetry_ops()
+      :
+        have_site_constraints_(false)
+      {}
 
       /*! \brief Number of distinct symmetrically equivalent positions
           of site_symmetry::exact_site().
@@ -142,6 +145,17 @@ namespace cctbx { namespace sgtbx {
         return result;
       }
 
+      //! Return reference to cached site_constraints instance.
+      sgtbx::site_constraints<> const&
+      site_constraints() const
+      {
+        if (!have_site_constraints_) {
+          site_constraints_ = sgtbx::site_constraints<>(matrices_.const_ref());
+          have_site_constraints_ = true;
+        }
+        return site_constraints_;
+      }
+
       //! Support for Python's pickle facility. Do not use for other purposes.
       site_symmetry_ops(
         int multiplicity,
@@ -150,18 +164,22 @@ namespace cctbx { namespace sgtbx {
       :
         multiplicity_(multiplicity),
         special_op_(special_op),
-        matrices_(matrices)
+        matrices_(matrices),
+        have_site_constraints_(false)
       {}
 
     protected:
       int multiplicity_;
       rt_mx special_op_;
       af::shared<rt_mx> matrices_;
+      mutable bool have_site_constraints_;
+      mutable sgtbx::site_constraints<> site_constraints_;
 
       site_symmetry_ops(int multiplicity, int r_den, int t_den)
       :
         multiplicity_(multiplicity),
-        special_op_(r_den, t_den)
+        special_op_(r_den, t_den),
+        have_site_constraints_(false)
       {}
   };
 
