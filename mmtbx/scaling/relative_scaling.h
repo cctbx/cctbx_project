@@ -1802,7 +1802,7 @@ namespace relative_scaling{
         FloatType mean_intensity_native=0;
         FloatType count=0;
 
-        FloatType part1_ac=0, part1_c=0, part2_ac=0, n_ac=0, n_c=0, a,b, k_tot,k_ac,k_c;
+        FloatType part1_ac=0, part1_c=0, part2_ac=0, n_ac=0, n_c=0, a,b, k_ac,k_c;
 
         // loop over all neighbours
         for (unsigned jj=1;
