@@ -1,3 +1,5 @@
+#include <cctbx/boost_python/flex_fwd.h>
+
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
 #include <boost/python/overloads.hpp>
@@ -5,10 +7,56 @@
 #include <boost/python/copy_const_reference.hpp>
 #include <boost/python/return_internal_reference.hpp>
 #include <cctbx/sgtbx/site_symmetry_table.h>
+#include <scitbx/array_family/versa_matrix.h>
 
 namespace cctbx { namespace sgtbx { namespace boost_python {
 
 namespace {
+
+  struct site_constraints_wrappers
+  {
+    typedef site_constraints<> w_t;
+
+    static
+    af::versa<int, af::c_grid<2> >
+    row_echelon_form_as_versa(w_t const& self)
+    {
+      return af::mat_const_ref_as_versa(self.row_echelon_form());
+    }
+
+    static
+    af::versa<double, af::c_grid<2> >
+    gradient_sum_matrix_as_versa(w_t const& self)
+    {
+      return af::mat_const_ref_as_versa(self.gradient_sum_matrix());
+    }
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      typedef return_value_policy<return_by_value> rbv;
+      class_<w_t>("site_constraints", no_init)
+        .def_readonly("row_echelon_lcm", &w_t::row_echelon_lcm)
+        .def("row_echelon_form", row_echelon_form_as_versa)
+        .add_property("row_echelon_constants",
+          make_getter(&w_t::row_echelon_constants, rbv()))
+        .add_property("independent_indices",
+          make_getter(&w_t::independent_indices, rbv()))
+        .def("n_independent_params", &w_t::n_independent_params)
+        .def("n_dependent_params", &w_t::n_dependent_params)
+        .def("independent_params", &w_t::independent_params, (
+          arg_("all_params")))
+        .def("all_params", &w_t::all_params, (
+          arg_("independent_params")))
+        .def("gradient_sum_matrix", gradient_sum_matrix_as_versa)
+        .def("independent_gradients", &w_t::independent_gradients, (
+          arg_("all_gradients")))
+        .def("independent_curvatures", &w_t::independent_curvatures, (
+          arg_("all_curvatures")))
+      ;
+    }
+  };
 
   struct site_symmetry_ops_wrappers
   {
@@ -43,6 +91,7 @@ namespace {
             (w_t::*)(scitbx::sym_mat3<double> const&) const)
           &w_t::average_u_star, (arg_("u_star")))
         .def("change_basis", &w_t::change_basis, (arg_("cb_op")))
+        .def("site_constraints", &w_t::site_constraints, rir())
       ;
     }
   };
@@ -148,6 +197,7 @@ namespace {
 
   void wrap_site_symmetry()
   {
+    site_constraints_wrappers::wrap();
     site_symmetry_ops_wrappers::wrap();
     site_symmetry_wrappers::wrap();
     site_symmetry_table_wrappers::wrap();

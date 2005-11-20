@@ -95,8 +95,7 @@ class structure_factor:
       site_symmetry_ops = None
       if (self.site_symmetry_table.is_special_position(i_scatterer)):
         site_symmetry_ops = self.site_symmetry_table.get(i_scatterer)
-        site_constraints = site_symmetry_ops.site_constraints(
-          initialize_gradient_handling=True)
+        site_constraints = site_symmetry_ops.site_constraints()
         if (scatterer.anisotropic_flag):
           adp_constraints = site_symmetry_ops.adp_constraints(
             initialize_gradient_handling=True)
@@ -144,13 +143,13 @@ class structure_factor:
         d_fp += w * dw * e
         d_fdp += w * dw * e * 1j
       if (site_symmetry_ops is not None):
-        gsc = site_constraints.gradient_sum_coeffs
-        gsc = matrix.rec(elems=gsc, n=gsc.focus())
-        d_site = gsc * d_site
+        gsm = site_constraints.gradient_sum_matrix()
+        gsm = matrix.rec(elems=gsm, n=gsm.focus())
+        d_site = gsm * d_site
         if (scatterer.anisotropic_flag):
-          gsc = adp_constraints.gradient_sum_coeffs
-          gsc = matrix.rec(elems=gsc, n=gsc.focus())
-          d_u_star = gsc * d_u_star
+          gsm = adp_constraints.gradient_sum_coeffs
+          gsm = matrix.rec(elems=gsm, n=gsm.focus())
+          d_u_star = gsm * d_u_star
       result.append(gradients(
         site=d_site,
         u_iso=d_u_iso,
@@ -172,8 +171,7 @@ class structure_factor:
       site_symmetry_ops = None
       if (self.site_symmetry_table.is_special_position(i_scatterer)):
         site_symmetry_ops = self.site_symmetry_table.get(i_scatterer)
-        site_constraints = site_symmetry_ops.site_constraints(
-          initialize_gradient_handling=True)
+        site_constraints = site_symmetry_ops.site_constraints()
         if (scatterer.anisotropic_flag):
           adp_constraints = site_symmetry_ops.adp_constraints(
             initialize_gradient_handling=True)
@@ -268,26 +266,26 @@ class structure_factor:
         i_occ = i_u + adp_constraints.n_independent_params()
       i_fp, i_fdp, np = i_occ+1, i_occ+2, i_occ+3
       if (site_symmetry_ops is not None):
-        gsc = site_constraints.gradient_sum_coeffs
-        d2_site_site = gsc.matrix_multiply_packed_u_multiply_lhs_transpose(
+        gsm = site_constraints.gradient_sum_matrix()
+        d2_site_site = gsm.matrix_multiply_packed_u_multiply_lhs_transpose(
           packed_u=d2_site_site)
         if (not scatterer.anisotropic_flag):
-          d2_site_u_iso = gsc.matrix_multiply(d2_site_u_iso)
+          d2_site_u_iso = gsm.matrix_multiply(d2_site_u_iso)
         else:
-          d2_site_u_star = gsc.matrix_multiply(d2_site_u_star)
-        d2_site_occ = gsc.matrix_multiply(d2_site_occ)
-        d2_site_fp = gsc.matrix_multiply(d2_site_fp)
-        d2_site_fdp = gsc.matrix_multiply(d2_site_fdp)
+          d2_site_u_star = gsm.matrix_multiply(d2_site_u_star)
+        d2_site_occ = gsm.matrix_multiply(d2_site_occ)
+        d2_site_fp = gsm.matrix_multiply(d2_site_fp)
+        d2_site_fdp = gsm.matrix_multiply(d2_site_fdp)
         if (scatterer.anisotropic_flag):
-          gsc = adp_constraints.gradient_sum_coeffs
+          gsm = adp_constraints.gradient_sum_coeffs
           d2_site_u_star = d2_site_u_star.matrix_multiply(
-            gsc.matrix_transpose())
-          d2_u_star_u_star = gsc \
+            gsm.matrix_transpose())
+          d2_u_star_u_star = gsm \
             .matrix_multiply_packed_u_multiply_lhs_transpose(
               packed_u=d2_u_star_u_star)
-          d2_u_star_occ = gsc.matrix_multiply(d2_u_star_occ)
-          d2_u_star_fp = gsc.matrix_multiply(d2_u_star_fp)
-          d2_u_star_fdp = gsc.matrix_multiply(d2_u_star_fdp)
+          d2_u_star_occ = gsm.matrix_multiply(d2_u_star_occ)
+          d2_u_star_fp = gsm.matrix_multiply(d2_u_star_fp)
+          d2_u_star_fdp = gsm.matrix_multiply(d2_u_star_fdp)
       dp = flex.complex_double(flex.grid(np,np), 0j)
       paste = dp.matrix_paste_block_in_place
       paste(d2_site_site.matrix_packed_u_as_symmetric(), 0,0)
