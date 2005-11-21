@@ -286,10 +286,12 @@ outlier_level_wilson=1e-6
                                            scaler )
     scaler = scaler.replace('__EXPERT_LEVEL__',
                             '1' )
+    fa = self.fa_estimation.replace('__EXPERT_LEVEL__',
+                            '10' )
     output = self.output
 
     result = outer_level.replace('__REPLACE__',
-                                 basic+data+scaler+output)
+                                 basic+data+scaler+fa+output)
     return result
 
 
@@ -328,10 +330,13 @@ outlier_level_wilson=1e-6
                                            scaler )
     scaler = scaler.replace('__EXPERT_LEVEL__',
                             '1' )
+
+    fa = self.fa_estimation.replace('__EXPERT_LEVEL__',
+                            '10' )
     output = self.output
 
     result = outer_level.replace('__REPLACE__',
-                                 basic+data+scaler+output)
+                                 basic+data+scaler+fa+output)
     return result
 
 
