@@ -1,7 +1,6 @@
 from __future__ import generators
-from cctbx.examples.structure_factor_calculus.u_star_derivatives \
-  import sym_tensor_rank_2_gradient_transform_matrix
 from cctbx import xray
+from scitbx.math import tensor_rank_2_gradient_transform_matrix
 from scitbx import matrix
 from scitbx.array_family import flex
 import cmath
@@ -121,8 +120,7 @@ class structure_factor:
         if (not scatterer.anisotropic_flag):
           d_u_iso += w * dw * ff * e * mtps * self.d_star_sq
         else:
-          u_star_gtmx = matrix.sqr(
-            sym_tensor_rank_2_gradient_transform_matrix(r))
+          u_star_gtmx = matrix.sqr(tensor_rank_2_gradient_transform_matrix(r))
           d_u_star += u_star_gtmx * (
             w * dw * ff * e * mtps * d_exp_huh_d_u_star)
         d_occ += dw * ff * e
@@ -192,8 +190,7 @@ class structure_factor:
           d2_site_u_iso += flex.complex_double(site_gtmx * (
             w * dw * ff * e * 1j * mtps * self.d_star_sq * tphkl))
         else:
-          u_star_gtmx = matrix.sqr(
-            sym_tensor_rank_2_gradient_transform_matrix(r))
+          u_star_gtmx = matrix.sqr(tensor_rank_2_gradient_transform_matrix(r))
           d2_site_u_star += flex.complex_double(
               site_gtmx
             * ((w * dw * ff * e * 1j * tphkl).outer_product(

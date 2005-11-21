@@ -1,26 +1,12 @@
 from scitbx import matrix
 from scitbx.array_family import flex
+from scitbx.math import tensor_rank_2_gradient_transform_matrix
 from libtbx.test_utils import approx_equal
 import math
 from cStringIO import StringIO
 import sys
 
 flex.set_random_seed(0)
-
-def sym_tensor_rank_2_gradient_transform_matrix(a):
-  return flex.double([
-    [a[0]*a[0], a[3]*a[3], a[6]*a[6],
-     a[0]*a[3], a[0]*a[6], a[3]*a[6]],
-    [a[1]*a[1], a[4]*a[4], a[7]*a[7],
-     a[1]*a[4], a[1]*a[7], a[4]*a[7]],
-    [a[2]*a[2], a[5]*a[5], a[8]*a[8],
-     a[2]*a[5], a[2]*a[8], a[5]*a[8]],
-    [a[0]*a[1] * 2,         a[3]*a[4] * 2,         a[6]*a[7] * 2,
-     a[1]*a[3] + a[0]*a[4], a[1]*a[6] + a[0]*a[7], a[4]*a[6] + a[3]*a[7]],
-    [a[0]*a[2] * 2,         a[3]*a[5] * 2,         a[6]*a[8] * 2,
-     a[2]*a[3] + a[0]*a[5], a[2]*a[6] + a[0]*a[8], a[5]*a[6] + a[3]*a[8]],
-    [a[1]*a[2] * 2,         a[4]*a[5] * 2,         a[7]*a[8] * 2,
-     a[2]*a[4] + a[1]*a[5], a[2]*a[7] + a[1]*a[8], a[5]*a[7] + a[4]*a[8]]])
 
 mtps = -2 * math.pi**2
 
@@ -47,7 +33,7 @@ class debye_waller:
       op_u = (op*matrix.sym(self.u)*op.transpose()).as_sym_mat3()
       huh = (matrix.row(self.hkl) * matrix.sym(op_u)).dot(matrix.col(self.hkl))
       d_op_u = math.exp(mtps * huh) * mtps * d_exp_huh_d_u
-      gtmx = sym_tensor_rank_2_gradient_transform_matrix(op)
+      gtmx = tensor_rank_2_gradient_transform_matrix(op)
       d_u = gtmx.matrix_multiply(flex.double(d_op_u))
       result += d_u
     return result
@@ -61,7 +47,7 @@ class debye_waller:
       op_u = (op*matrix.sym(self.u)*op.transpose()).as_sym_mat3()
       huh = (matrix.row(self.hkl) * matrix.sym(op_u)).dot(matrix.col(self.hkl))
       d2_op_u = math.exp(mtps * huh) * mtps**2 * d2_exp_huh_d_uu
-      gtmx = sym_tensor_rank_2_gradient_transform_matrix(op)
+      gtmx = tensor_rank_2_gradient_transform_matrix(op)
       d2_u = gtmx.matrix_multiply(d2_op_u).matrix_multiply(
         gtmx.matrix_transpose())
       result += d2_u
