@@ -280,8 +280,7 @@ class uaniso_ksol_bsol_scaling_minimizer(object):
       self.cs  = fc.centric_flags().data()
     ################################
     if(self.symmetry_constraints_on_u_aniso == True):
-       self.adp_constraints = self.sg.adp_constraints(
-         initialize_gradient_handling=True)
+       self.adp_constraints = self.sg.adp_constraints()
        u_star = adptbx.u_cart_as_u_star(
          self.uc, self.sg.average_u_star(u_star= self.u_min))
        self.dim_u = self.adp_constraints.n_independent_params()

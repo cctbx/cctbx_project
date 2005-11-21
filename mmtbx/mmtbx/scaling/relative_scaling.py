@@ -187,8 +187,7 @@ class refinery:
 
     ## Symmetry related issues
     self.sg = self.native.space_group()
-    self.adp_constraints = self.sg.adp_constraints(
-      initialize_gradient_handling=True)
+    self.adp_constraints = self.sg.adp_constraints()
     self.dim_u = self.adp_constraints.n_independent_params
     ## Setup number of parameters
     assert self.dim_u()<=6
@@ -258,14 +257,14 @@ class refinery:
                         original_hessian,
                         adp_constraints):
     constraint_matrix_tensor = matrix.rec(
-      adp_constraints.gradient_sum_coeffs,
-      adp_constraints.gradient_sum_coeffs.focus())
+      adp_constraints.gradient_sum_matrix(),
+      adp_constraints.gradient_sum_matrix().focus())
 
     hessian_matrix = matrix.rec( original_hessian,
                                  original_hessian.focus())
       ## now create an expanded matrix
-    rows=adp_constraints.gradient_sum_coeffs.focus()[0]+1
-    columns=adp_constraints.gradient_sum_coeffs.focus()[1]+1
+    rows=adp_constraints.gradient_sum_matrix().focus()[0]+1
+    columns=adp_constraints.gradient_sum_matrix().focus()[1]+1
     expanded_constraint_array = flex.double(rows*columns,0)
     count_new=0
     count_old=0
