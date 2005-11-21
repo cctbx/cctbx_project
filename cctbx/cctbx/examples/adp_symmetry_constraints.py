@@ -80,9 +80,7 @@ def run():
     original_site=(1/3.,2/3.,0), # site on 3-fold axis
     min_distance_sym_equiv=0.5)
   assert len(site_symmetry.matrices()) == 3
-  adp_constraints = sgtbx.tensor_rank_2_constraints(
-    site_symmetry_ops=site_symmetry,
-    reciprocal_space=True)
+  adp_constraints = site_symmetry.adp_constraints()
   # use adp_constraints as before
 
   print "OK"

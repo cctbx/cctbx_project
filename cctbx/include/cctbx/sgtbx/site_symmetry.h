@@ -2,6 +2,7 @@
 #define CCTBX_SGTBX_SITE_SYMMETRY_H
 
 #include <cctbx/sgtbx/site_constraints.h>
+#include <cctbx/sgtbx/tensor_rank_2.h>
 #include <cctbx/uctbx.h>
 
 namespace cctbx { namespace sgtbx {
@@ -52,7 +53,8 @@ namespace cctbx { namespace sgtbx {
       //! Default constructor. Some data members are not initialized!
       site_symmetry_ops()
       :
-        have_site_constraints_(false)
+        have_site_constraints_(false),
+        have_adp_constraints_(false)
       {}
 
       /*! \brief Number of distinct symmetrically equivalent positions
@@ -156,6 +158,18 @@ namespace cctbx { namespace sgtbx {
         return site_constraints_;
       }
 
+      //! Return reference to cached tensor_rank_2::constraints instance.
+      tensor_rank_2::constraints<> const&
+      adp_constraints() const
+      {
+        if (!have_adp_constraints_) {
+          adp_constraints_ = tensor_rank_2::constraints<>(
+            matrices_.const_ref(), 1, true);
+          have_adp_constraints_ = true;
+        }
+        return adp_constraints_;
+      }
+
       //! Support for Python's pickle facility. Do not use for other purposes.
       site_symmetry_ops(
         int multiplicity,
@@ -165,7 +179,8 @@ namespace cctbx { namespace sgtbx {
         multiplicity_(multiplicity),
         special_op_(special_op),
         matrices_(matrices),
-        have_site_constraints_(false)
+        have_site_constraints_(false),
+        have_adp_constraints_(false)
       {}
 
     protected:
@@ -174,12 +189,15 @@ namespace cctbx { namespace sgtbx {
       af::shared<rt_mx> matrices_;
       mutable bool have_site_constraints_;
       mutable sgtbx::site_constraints<> site_constraints_;
+      mutable bool have_adp_constraints_;
+      mutable tensor_rank_2::constraints<> adp_constraints_;
 
       site_symmetry_ops(int multiplicity, int r_den, int t_den)
       :
         multiplicity_(multiplicity),
         special_op_(r_den, t_den),
-        have_site_constraints_(false)
+        have_site_constraints_(false),
+        have_adp_constraints_(false)
       {}
   };
 

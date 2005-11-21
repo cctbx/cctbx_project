@@ -285,10 +285,3 @@ class _wyckoff_table(boost.python.injector, wyckoff_table):
       if (site_symmetry.distance_moved() < tolerance):
         assert site_symmetry.multiplicity() == position.multiplicity()
         return site_symmetry
-
-class _site_symmetry_ops(boost.python.injector, site_symmetry_ops):
-
-  def adp_constraints(self):
-    return tensor_rank_2_constraints(
-      site_symmetry_ops=self,
-      reciprocal_space=True)
