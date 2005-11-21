@@ -287,6 +287,8 @@ class naive_fa_estimation(object):
 
     ## get stuff
     self.options = options
+    n_terms = self.options.number_of_temrs_in_normalisation_curve
+
     self.iso = iso.deep_copy().map_to_asu()
     self.ano = ano.deep_copy().map_to_asu()
     ## get common sets
@@ -294,9 +296,9 @@ class naive_fa_estimation(object):
 
     ## perform normalisation
     normalizer_iso = absolute_scaling.kernel_normalisation(
-      self.iso, auto_kernel=True, n_term=options.n_terms)
+      self.iso, auto_kernel=True, n_term=n_terms)
     normalizer_ano = absolute_scaling.kernel_normalisation(
-      self.ano, auto_kernel=True, n_term=options.n_terms)
+      self.ano, auto_kernel=True, n_term=n_terms)
 
     self.fa = self.iso.customized_copy(
       data = flex.sqrt( self.iso.data()*self.iso.data()\
@@ -314,8 +316,3 @@ class naive_fa_estimation(object):
                /(normalizer_ano.normalizer_for_miller_array
                  *normalizer_ano.normalizer_for_miller_array)
               ))
-
-
-
-
-
