@@ -12,7 +12,7 @@ namespace cctbx { namespace sgtbx {
     protected:
       af::tiny<int, 9> row_echelon_form_memory;
       mutable af::tiny<FloatType, 9> gradient_sum_matrix_memory;
-      mutable bool have_gradient_sum_matrix_;
+      mutable bool have_gradient_sum_matrix;
 
     public:
       int row_echelon_lcm;
@@ -25,7 +25,7 @@ namespace cctbx { namespace sgtbx {
       site_constraints(
         af::const_ref<rt_mx> const& site_symmetry_matrices)
       :
-        have_gradient_sum_matrix_(false)
+        have_gradient_sum_matrix(false)
       {
         const rt_mx* const matrices = site_symmetry_matrices.begin();
         unsigned n_matrices = site_symmetry_matrices.size();
@@ -72,7 +72,6 @@ namespace cctbx { namespace sgtbx {
           }
         }
         af::tiny<bool, 3> independent_flags;
-        independent_flags.fill(true);
         CCTBX_ASSERT(scitbx::matrix::row_echelon::back_substitution_int(
           row_echelon_form(),
           (const int*) 0,
@@ -137,14 +136,14 @@ namespace cctbx { namespace sgtbx {
           scitbx::matrix::row_echelon::back_substitution_float(
             rem, static_cast<const FloatType*>(0), row);
         }
-        have_gradient_sum_matrix_ = true;
+        have_gradient_sum_matrix = true;
       }
 
     public:
       scitbx::mat_const_ref<FloatType>
       gradient_sum_matrix() const
       {
-        if (!have_gradient_sum_matrix_) initialize_gradient_sum_matrix();
+        if (!have_gradient_sum_matrix) initialize_gradient_sum_matrix();
         return scitbx::mat_const_ref<FloatType>(
           gradient_sum_matrix_memory.begin(),
           independent_indices.size(),
@@ -156,7 +155,7 @@ namespace cctbx { namespace sgtbx {
         af::const_ref<FloatType> const& all_gradients) const
       {
         CCTBX_ASSERT(all_gradients.size() == 3);
-        if (!have_gradient_sum_matrix_) initialize_gradient_sum_matrix();
+        if (!have_gradient_sum_matrix) initialize_gradient_sum_matrix();
         af::small<FloatType, 3> result;
         const FloatType *row = gradient_sum_matrix_memory.begin();
         for(std::size_t i=0;i<independent_indices.size();i++,row+=3) {
@@ -174,7 +173,7 @@ namespace cctbx { namespace sgtbx {
         af::const_ref<FloatType> const& all_curvatures) const
       {
         CCTBX_ASSERT(all_curvatures.size() == 3*(3+1)/2);
-        if (!have_gradient_sum_matrix_) initialize_gradient_sum_matrix();
+        if (!have_gradient_sum_matrix) initialize_gradient_sum_matrix();
         unsigned n_indep = n_independent_params();
         af::tiny<FloatType, 9> ca;
         af::small<FloatType, 6> result(n_indep*(n_indep+1)/2, 0);
