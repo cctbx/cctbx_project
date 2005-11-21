@@ -88,7 +88,7 @@ outlier_level_wilson=1e-6
          local_scaling_options{
            use_experimental_sigmas=True
            .type=bool
-           scale_data=*intensities amplitudes
+           scale_data=intensities *amplitudes
            .type=choice
            scale_target=local_moment local_lsq *local_nikonov
            .type=choice
@@ -113,6 +113,15 @@ outlier_level_wilson=1e-6
 
 
 }"""
+
+    self.fa_estimation="""fa_estimation
+.expert_level=__EXPERT_LEVEL__
+{
+   number_of_temrs_in_normalisation_curve=23
+   .type=int
+}
+"""
+
 
     self.output="""output
 {
@@ -201,7 +210,6 @@ outlier_level_wilson=1e-6
                                            scaler )
     scaler = scaler.replace('__EXPERT_LEVEL__',
                             '1' )
-
     output = self.output
 
     result = outer_level.replace('__REPLACE__',
@@ -238,10 +246,13 @@ outlier_level_wilson=1e-6
                                            scaler )
     scaler = scaler.replace('__EXPERT_LEVEL__',
                             '1' )
+
+    fa = self.fa_estimation.replace('__EXPERT_LEVEL__',
+                            '10' )
     output = self.output
 
     result = outer_level.replace('__REPLACE__',
-                                 basic+data+scaler+output)
+                                 basic+data+scaler+fa+output)
     return result
 
   def default_2wmad(self):
