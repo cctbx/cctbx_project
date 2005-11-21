@@ -657,21 +657,13 @@ def exercise_tensor_rank_2():
         0.263694, -0.660647, 0.896465,
         0.888726, -0.996946,-0.521507)
   assert approx_equal(matrix.sqr(a).determinant(), 0.431857368657)
-  assert approx_equal(scitbx.math.tensor_rank_2_gradient_transform(a=a, g=g),
+  ga = scitbx.math.tensor_rank_2_gradient_transform(a=a, g=g)
+  assert approx_equal(ga,
     [4.2741119386687805, 6.7403365850628001, 3.6465242980395001,
      -10.209907479357136, -2.8163934767020788, 1.6344744599549008])
-  c = scitbx.math.tensor_rank_2_gradient_average_cache_int()
-  assert c.average(g=g, denominator=1) == (0,)*6
-  rs = [(1, 0, 0, 0, 1, 0, 0, 0, 1),
-        (0, -1, 0, 1, -1, 0, 0, 0, 1),
-        (-1, 1, 0, -1, 0, 0, 0, 0, 1)]
-  for r in rs:
-    c.accumulate(r)
-  g_ave = matrix.row([0]*6)
-  for r in rs:
-    g_ave += matrix.row(scitbx.math.tensor_rank_2_gradient_transform(a=r, g=g))
-  g_ave /= 3
-  assert approx_equal(c.average(g=g, denominator=3), g_ave)
+  gtmx = scitbx.math.tensor_rank_2_gradient_transform_matrix(a=a)
+  assert gtmx.focus() == (6,6)
+  assert approx_equal(gtmx.matrix_multiply(flex.double(g)), ga)
 
 def exercise_minimum_covering_sphere(epsilon=1.e-3):
   s3 = sphere_3d(center=[1,2,3], radius=4)
