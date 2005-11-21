@@ -3,7 +3,6 @@
 
 #include <cctbx/sgtbx/site_symmetry.h>
 #include <scitbx/matrix/row_echelon.h>
-#include <scitbx/matrix/tensor_rank_2.h>
 #include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/accessors/c_grid.h>
 
@@ -33,73 +32,64 @@ namespace tensor_rank_2 {
   template <typename FloatType=double>
   class constraints
   {
-    public:
+    protected:
       af::versa<int, af::c_grid<2> > row_echelon_form_memory;
-      scitbx::mat_ref<int> row_echelon_form_ref;
+      mutable af::versa<FloatType, af::c_grid<2> > gradient_sum_matrix_memory;
+      mutable bool have_gradient_sum_matrix;
+
+    public:
       af::small<unsigned, 6> independent_indices;
-      std::size_t gradient_average_denominator;
-      scitbx::matrix::tensor_rank_2::gradient_average_cache<int>
-        gradient_average_cache;
-      af::versa<FloatType, af::c_grid<2> > gradient_sum_coeffs;
 
       constraints() {}
 
       constraints(
         sgtbx::space_group const& space_group,
-        bool reciprocal_space,
-        bool initialize_gradient_handling=false)
+        bool reciprocal_space)
       {
-        initialize(
-          space_group.smx().const_ref(),
-          1,
-          reciprocal_space,
-          initialize_gradient_handling);
+        initialize(space_group.smx().const_ref(), 1, reciprocal_space);
       }
 
       constraints(
         sgtbx::site_symmetry_ops const& site_symmetry_ops,
-        bool reciprocal_space,
-        bool initialize_gradient_handling=false)
+        bool reciprocal_space)
       {
         initialize(
-          site_symmetry_ops.matrices().const_ref(),
-          1,
-          reciprocal_space,
-          initialize_gradient_handling);
+          site_symmetry_ops.matrices().const_ref(), 1, reciprocal_space);
       }
 
       constraints(
         af::shared<rt_mx> const& symmetry_matrices,
         std::size_t i_first_matrix_to_use,
-        bool reciprocal_space,
-        bool initialize_gradient_handling=false)
+        bool reciprocal_space)
       {
         initialize(
           symmetry_matrices.const_ref(),
           i_first_matrix_to_use,
-          reciprocal_space,
-          initialize_gradient_handling);
+          reciprocal_space);
       }
 
       constraints(
         af::const_ref<rt_mx> const& symmetry_matrices,
         std::size_t i_first_matrix_to_use,
-        bool reciprocal_space,
-        bool initialize_gradient_handling=false)
+        bool reciprocal_space)
       {
-        initialize(
-          symmetry_matrices,
-          i_first_matrix_to_use,
-          reciprocal_space,
-          initialize_gradient_handling);
+        initialize(symmetry_matrices, i_first_matrix_to_use, reciprocal_space);
       }
 
       void
       initialize(
         af::const_ref<rt_mx> const& symmetry_matrices,
         std::size_t i_first_matrix_to_use,
-        bool reciprocal_space,
-        bool initialize_gradient_handling);
+        bool reciprocal_space);
+
+      scitbx::mat_const_ref<int>
+      row_echelon_form() const
+      {
+        return scitbx::mat_const_ref<int>(
+          row_echelon_form_memory.begin(),
+          6-independent_indices.size(),
+          6);
+      }
 
       std::size_t
       n_independent_params() const { return independent_indices.size(); }
@@ -125,21 +115,37 @@ namespace tensor_rank_2 {
           result[independent_indices[i]] = independent_params[i];
         }
         scitbx::matrix::row_echelon::back_substitution_float(
-          row_echelon_form_ref,
+          row_echelon_form(),
           static_cast<const FloatType*>(0),
           result.begin());
         return result;
       }
 
-      scitbx::sym_mat3<FloatType>
-      sym_gradients(scitbx::sym_mat3<FloatType> const& asu_gradients) const
+    protected:
+      void
+      initialize_gradient_sum_matrix() const
       {
-        if (gradient_average_denominator == 0) {
-          throw error("gradient handling was not initialized.");
+        gradient_sum_matrix_memory.resize(
+          af::c_grid<2>(independent_indices.size(), 6), 0);
+        FloatType* row = gradient_sum_matrix_memory.begin();
+        scitbx::mat_const_ref<int> rem = row_echelon_form();
+        for(std::size_t i=0;i<independent_indices.size();i++,row+=6) {
+          row[independent_indices[i]] = 1;
+          scitbx::matrix::row_echelon::back_substitution_float(
+            rem, static_cast<const FloatType*>(0), row);
         }
-        return gradient_average_cache.average(
-          asu_gradients,
-          static_cast<FloatType>(gradient_average_denominator));
+        have_gradient_sum_matrix = true;
+      }
+
+    public:
+      scitbx::mat_const_ref<FloatType>
+      gradient_sum_matrix() const
+      {
+        if (!have_gradient_sum_matrix) initialize_gradient_sum_matrix();
+        return scitbx::mat_const_ref<FloatType>(
+          gradient_sum_matrix_memory.begin(),
+          independent_indices.size(),
+          6);
       }
 
       af::small<FloatType, 6>
@@ -147,9 +153,9 @@ namespace tensor_rank_2 {
         scitbx::sym_mat3<FloatType> const& all_gradients) const;
 
       /*! \brief Efficient implementation of the matrix product:
-              gradient_sum_coeffs
+              gradient_sum_matrix
             * all_curvatures
-            * gradient_sum_coeffs.transpose()
+            * gradient_sum_matrix.transpose()
        */
       /*! all_curvatures is the upper diagonal of
           the (6 x 6) matrix of curvatures assuming
@@ -173,14 +179,13 @@ namespace tensor_rank_2 {
   constraints<FloatType>::initialize(
     af::const_ref<rt_mx> const& symmetry_matrices,
     std::size_t i_first_matrix_to_use,
-    bool reciprocal_space,
-    bool initialize_gradient_handling)
+    bool reciprocal_space)
   {
     CCTBX_ASSERT(i_first_matrix_to_use <= symmetry_matrices.size());
     row_echelon_form_memory = af::versa<int, af::c_grid<2> >(
       af::c_grid<2>((symmetry_matrices.size()-i_first_matrix_to_use)*6, 6),
       af::init_functor_null<int>());
-    row_echelon_form_ref = scitbx::mat_ref<int>(
+    scitbx::mat_ref<int> row_echelon_form_ref(
       row_echelon_form_memory.begin(),
       row_echelon_form_memory.accessor()[0],
       row_echelon_form_memory.accessor()[1]);
@@ -205,30 +210,7 @@ namespace tensor_rank_2 {
         independent_indices.push_back(i);
       }
     }
-    if (!initialize_gradient_handling) {
-      gradient_average_denominator = 0;
-    }
-    else {
-      CCTBX_ASSERT(symmetry_matrices.size() > 0);
-      CCTBX_ASSERT(symmetry_matrices[0].r().is_unit_mx());
-      CCTBX_ASSERT(i_first_matrix_to_use == 1);
-      gradient_average_denominator = symmetry_matrices.size();
-      for(std::size_t i=0;i<gradient_average_denominator;i++) {
-        rot_mx const& r = symmetry_matrices[i].r();
-        CCTBX_ASSERT(r.den() == 1);
-        gradient_average_cache.accumulate(r.num());
-      }
-      gradient_sum_coeffs.resize(
-        af::c_grid<2>(independent_indices.size(), 6), 0);
-      FloatType* row = gradient_sum_coeffs.begin();
-      for(std::size_t i=0;i<independent_indices.size();i++,row+=6) {
-        row[independent_indices[i]] = 1;
-        scitbx::matrix::row_echelon::back_substitution_float(
-          row_echelon_form_ref,
-          static_cast<const FloatType*>(0),
-          row);
-      }
-    }
+    have_gradient_sum_matrix = false;
   }
 
   template <typename FloatType>
@@ -236,10 +218,9 @@ namespace tensor_rank_2 {
   constraints<FloatType>::independent_gradients(
     scitbx::sym_mat3<FloatType> const& all_gradients) const
   {
-    if (gradient_average_denominator == 0) {
-      throw error("gradient handling was not initialized."); }
     af::small<FloatType, 6> result;
-    const FloatType *row = gradient_sum_coeffs.begin();
+    if (!have_gradient_sum_matrix) initialize_gradient_sum_matrix();
+    const FloatType *row = gradient_sum_matrix_memory.begin();
     for(std::size_t i=0;i<independent_indices.size();i++,row+=6) {
       FloatType indep_grad = 0;
       for(std::size_t j=0;j<6;j++) {
@@ -255,8 +236,6 @@ namespace tensor_rank_2 {
   constraints<FloatType>::independent_curvatures(
     af::const_ref<FloatType> const& all_curvatures) const
   {
-    if (gradient_average_denominator == 0) {
-      throw error("gradient handling was not initialized."); }
     CCTBX_ASSERT(all_curvatures.size() == 6*(6+1)/2);
     static const unsigned sym_mat6_indices[] = {
       0, 1, 2, 3, 4, 5,
@@ -266,6 +245,8 @@ namespace tensor_rank_2 {
       4, 9,13,16,18,19,
       5,10,14,17,19,20
     };
+    if (!have_gradient_sum_matrix) initialize_gradient_sum_matrix();
+    const FloatType* gsm = gradient_sum_matrix_memory.begin();
     unsigned n_indep = n_independent_params();
     af::shared<FloatType> result(n_indep*(n_indep+1)/2, 0);
     std::vector<FloatType> c_times_a(n_indep*6, 0);
@@ -276,8 +257,7 @@ namespace tensor_rank_2 {
         unsigned i6j = i6;
         unsigned j6k = k;
         for (unsigned j=0;j<6;j++,i6j++,j6k+=6) {
-          *ca += gradient_sum_coeffs[i6j]
-               * all_curvatures[sym_mat6_indices[j6k]];
+          *ca += gsm[i6j] * all_curvatures[sym_mat6_indices[j6k]];
         }
         ca++;
       }
@@ -290,7 +270,7 @@ namespace tensor_rank_2 {
         unsigned i6j = i6;
         unsigned k6j = k6;
         for (unsigned j=0;j<6;j++,i6j++,k6j++) {
-          *cact += c_times_a[i6j] * gradient_sum_coeffs[k6j];
+          *cact += c_times_a[i6j] * gsm[k6j];
         }
         cact++;
       }

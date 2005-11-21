@@ -15,8 +15,7 @@ def run():
   #
   adp_constraints = sgtbx.tensor_rank_2_constraints(
     space_group=space_group,
-    reciprocal_space=True,
-    initialize_gradient_handling=True)
+    reciprocal_space=True)
 
   #
   # number of independent u_star parameters
@@ -83,8 +82,7 @@ def run():
   assert len(site_symmetry.matrices()) == 3
   adp_constraints = sgtbx.tensor_rank_2_constraints(
     site_symmetry_ops=site_symmetry,
-    reciprocal_space=True,
-    initialize_gradient_handling=True)
+    reciprocal_space=True)
   # use adp_constraints as before
 
   print "OK"

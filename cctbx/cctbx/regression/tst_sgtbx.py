@@ -114,7 +114,7 @@ def exercise_tensor_constraints_core(crystal_symmetry):
   for reciprocal_space in [False, True]:
     c_tensor_constraints = sgtbx.tensor_rank_2_constraints(
       space_group=group,
-      reciprocal_space=reciprocal_space).row_echelon_form
+      reciprocal_space=reciprocal_space).row_echelon_form()
     p_tensor_constraints = python_tensor_constraints(
       self=group, reciprocal_space=reciprocal_space)
     assert c_tensor_constraints.all_eq(p_tensor_constraints)
