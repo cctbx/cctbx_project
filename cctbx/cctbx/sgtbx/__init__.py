@@ -21,11 +21,8 @@ class _space_group(boost.python.injector, ext.space_group):
     for i_smx in xrange(self.n_smx()):
       yield self(i_smx)
 
-  def adp_constraints(self, initialize_gradient_handling=False):
-    return tensor_rank_2_constraints(
-      space_group=self,
-      reciprocal_space=True,
-      initialize_gradient_handling=initialize_gradient_handling)
+  def adp_constraints(self):
+    return tensor_rank_2_constraints(space_group=self, reciprocal_space=True)
 
 class space_group_info(object):
 
@@ -291,8 +288,7 @@ class _wyckoff_table(boost.python.injector, wyckoff_table):
 
 class _site_symmetry_ops(boost.python.injector, site_symmetry_ops):
 
-  def adp_constraints(self, initialize_gradient_handling=False):
+  def adp_constraints(self):
     return tensor_rank_2_constraints(
       site_symmetry_ops=self,
-      reciprocal_space=True,
-      initialize_gradient_handling=initialize_gradient_handling)
+      reciprocal_space=True)

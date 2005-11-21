@@ -97,8 +97,7 @@ class structure_factor:
         site_symmetry_ops = self.site_symmetry_table.get(i_scatterer)
         site_constraints = site_symmetry_ops.site_constraints()
         if (scatterer.anisotropic_flag):
-          adp_constraints = site_symmetry_ops.adp_constraints(
-            initialize_gradient_handling=True)
+          adp_constraints = site_symmetry_ops.adp_constraints()
       w = scatterer.weight()
       wwo = scatterer.weight_without_occupancy()
       if (not scatterer.anisotropic_flag):
@@ -147,7 +146,7 @@ class structure_factor:
         gsm = matrix.rec(elems=gsm, n=gsm.focus())
         d_site = gsm * d_site
         if (scatterer.anisotropic_flag):
-          gsm = adp_constraints.gradient_sum_coeffs
+          gsm = adp_constraints.gradient_sum_matrix()
           gsm = matrix.rec(elems=gsm, n=gsm.focus())
           d_u_star = gsm * d_u_star
       result.append(gradients(
@@ -173,8 +172,7 @@ class structure_factor:
         site_symmetry_ops = self.site_symmetry_table.get(i_scatterer)
         site_constraints = site_symmetry_ops.site_constraints()
         if (scatterer.anisotropic_flag):
-          adp_constraints = site_symmetry_ops.adp_constraints(
-            initialize_gradient_handling=True)
+          adp_constraints = site_symmetry_ops.adp_constraints()
       w = scatterer.weight()
       wwo = scatterer.weight_without_occupancy()
       if (not scatterer.anisotropic_flag):
@@ -277,7 +275,7 @@ class structure_factor:
         d2_site_fp = gsm.matrix_multiply(d2_site_fp)
         d2_site_fdp = gsm.matrix_multiply(d2_site_fdp)
         if (scatterer.anisotropic_flag):
-          gsm = adp_constraints.gradient_sum_coeffs
+          gsm = adp_constraints.gradient_sum_matrix()
           d2_site_u_star = d2_site_u_star.matrix_multiply(
             gsm.matrix_transpose())
           d2_u_star_u_star = gsm \
