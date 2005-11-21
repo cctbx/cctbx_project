@@ -92,6 +92,7 @@ namespace {
           &w_t::average_u_star, (arg_("u_star")))
         .def("change_basis", &w_t::change_basis, (arg_("cb_op")))
         .def("site_constraints", &w_t::site_constraints, rir())
+        .def("adp_constraints", &w_t::adp_constraints, rir())
       ;
     }
   };

@@ -53,9 +53,7 @@ def demo():
   # parameters:
   #
   for i_seq in site_symmetry_table.special_position_indices():
-    adp_constraints = sgtbx.tensor_rank_2_constraints(
-      site_symmetry_ops=site_symmetry_table.get(i_seq=i_seq),
-      reciprocal_space=True)
+    adp_constraints = site_symmetry_table.get(i_seq=i_seq).adp_constraints()
   #
   # See also:
   #   cctbx/cctbx/examples/adp_symmetry_constraints.py

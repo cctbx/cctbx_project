@@ -1710,9 +1710,6 @@ def exercise_tensor_rank_2_constraints():
               space_group=g,
               reciprocal_space=False),
             tr2c(
-              site_symmetry_ops=ss,
-              reciprocal_space=False),
-            tr2c(
               symmetry_matrices=ss.matrices(),
               i_first_matrix_to_use=1,
               reciprocal_space=False)]:
@@ -1722,12 +1719,10 @@ def exercise_tensor_rank_2_constraints():
               space_group=g,
               reciprocal_space=True),
             tr2c(
-              site_symmetry_ops=ss,
-              reciprocal_space=True),
-            tr2c(
               symmetry_matrices=ss.matrices(),
               i_first_matrix_to_use=1,
-              reciprocal_space=True)]:
+              reciprocal_space=True),
+            ss.adp_constraints()]:
     assert list(c.row_echelon_form()) \
         == [1,-1,0,0,0,0,0,1,0,-2,0,0,0,0,0,0,1,-1,0,0,0,0,0,1]
     assert list(c.independent_indices) == [2,3]

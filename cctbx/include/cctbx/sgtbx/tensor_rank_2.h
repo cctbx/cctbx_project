@@ -1,7 +1,8 @@
 #ifndef CCTBX_SGTBX_TENSOR_RANK_2
 #define CCTBX_SGTBX_TENSOR_RANK_2
 
-#include <cctbx/sgtbx/site_symmetry.h>
+#include <cctbx/sgtbx/space_group.h>
+#include <scitbx/matrix/row_echelon.h>
 #include <boost/shared_array.hpp>
 #include <boost/scoped_array.hpp>
 
@@ -48,14 +49,6 @@ namespace tensor_rank_2 {
         bool reciprocal_space)
       {
         initialize(space_group.smx().const_ref(), 1, reciprocal_space);
-      }
-
-      constraints(
-        sgtbx::site_symmetry_ops const& site_symmetry_ops,
-        bool reciprocal_space)
-      {
-        initialize(
-          site_symmetry_ops.matrices().const_ref(), 1, reciprocal_space);
       }
 
       constraints(

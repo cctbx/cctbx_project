@@ -38,9 +38,6 @@ namespace {
         .def(init<sgtbx::space_group const&, bool>((
           arg_("space_group"),
           arg_("reciprocal_space"))))
-        .def(init<sgtbx::site_symmetry_ops const&, bool>((
-          arg_("site_symmetry_ops"),
-          arg_("reciprocal_space"))))
         .def(init<af::shared<rt_mx> const&, std::size_t, bool>((
           arg_("symmetry_matrices"),
           arg_("i_first_matrix_to_use"),
