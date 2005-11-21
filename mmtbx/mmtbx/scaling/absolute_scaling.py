@@ -569,8 +569,7 @@ class ml_aniso_absolute_scaling(object):
         self.centric = flex.bool(work_array.centric_flags().data())
         ## Symmetry stuff
         self.sg = work_array.space_group()
-        self.adp_constraints = self.sg.adp_constraints(
-          initialize_gradient_handling=True)
+        self.adp_constraints = self.sg.adp_constraints()
         self.dim_u = self.adp_constraints.n_independent_params
         ## Setup number of parameters
         assert self.dim_u()<=6
