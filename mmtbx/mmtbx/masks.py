@@ -20,7 +20,7 @@ class bulk_solvent(around_atoms):
         shrink_truncation_radius=1.0):
      assert [gridding_n_real, grid_step].count(None) == 1
      self.xray_structure = xray_structure
-     if(grid_step is not None): grid_step = min(0.8,grid_step)
+     if(grid_step is not None): grid_step = min(0.8, grid_step)
      if(gridding_n_real is None):
        gridding_n_real = maptbx.crystal_gridding(
          unit_cell=xray_structure.unit_cell(),
