@@ -51,7 +51,7 @@ def run():
   all_gradients = [-2*math.pi**2 * dwf * c for c in gc]
   assert len(all_gradients) == 6
   cc = adptbx.debye_waller_factor_u_star_curvature_coefficients(h)
-  # all_curvatures is an array of 21 values (upper diagonal of 6x6 matrix)
+  # all_curvatures is an array of 21 values (upper triangle of 6x6 matrix)
   all_curvatures = (-2*math.pi**2)**2 * dwf * cc
   assert len(all_curvatures) == 6*(6+1)/2
 
@@ -62,7 +62,7 @@ def run():
   g_indep = adp_constraints.independent_gradients(
     all_gradients=all_gradients)
   assert len(g_indep) == n_indep
-  # c_indep is an array of n_indep*(n_indep+1)/2 values (upper diagonal)
+  # c_indep is an array of n_indep*(n_indep+1)/2 values (upper triangle)
   c_indep = adp_constraints.independent_curvatures(
     all_curvatures=all_curvatures)
   assert len(c_indep) == n_indep*(n_indep+1)/2
