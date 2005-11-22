@@ -6,6 +6,10 @@
 
 namespace cctbx { namespace sgtbx {
 
+  //! Handling of site symmetry coordinate constraints.
+  /*! Example:
+        http://phenix-online.org/cctbx_sources/cctbx/cctbx/examples/site_symmetry_constraints.py
+   */
   template <typename FloatType=double>
   class site_constraints
   {
@@ -168,6 +172,23 @@ namespace cctbx { namespace sgtbx {
         return result;
       }
 
+      /*! \brief Matrix product:
+              gradient_sum_matrix
+            * all_curvatures
+            * gradient_sum_matrix.transpose()
+       */
+      /*! all_curvatures is the upper diagonal of
+          the (3 x 3) matrix of curvatures assuming
+          all tensor elements are independent.
+          I.e. the number of elements of all_curvatures
+          must be 3*(3+1)/2.
+
+          The result is the upper triangle of the
+          (n_independent_params() x n_independent_params())
+          matrix of curvatures.
+          I.e. the number of elements of the result array is
+          n_independent_params()*(n_independent_params()+1)/2.
+       */
       af::small<FloatType, 6>
       independent_curvatures(
         af::const_ref<FloatType> const& all_curvatures) const
