@@ -19,6 +19,20 @@ def check_point(frames_back=0):
   print caller_location(frames_back=frames_back+1)
   sys.stdout.flush()
 
+def show_stack(max_frames_back=None, out=None):
+  if (out is None): out = sys.stdout
+  try:
+    frames_back = 0
+    while True:
+      if (max_frames_back is not None and frames_back == max_frames_back):
+        break
+      f = sys._getframe(frames_back+1)
+      print >> out, "show_stack(%d): %s(%d) %s" % (
+        frames_back, f.f_code.co_filename, f.f_lineno, f.f_code.co_name)
+      frames_back += 1
+  except ValueError:
+    print >> out
+
 try:
   _proc_status = "/proc/%d/status" % os.getpid()
 except AttributeError:
