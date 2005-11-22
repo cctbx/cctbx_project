@@ -125,13 +125,13 @@ namespace tensor_rank_2 {
             * all_curvatures
             * gradient_sum_matrix.transpose()
        */
-      /*! all_curvatures is the upper diagonal of
+      /*! all_curvatures is the upper triangle of
           the (6 x 6) matrix of curvatures assuming
           all tensor elements are independent.
           I.e. the number of elements of all_curvatures
           must be 6*(6+1)/2.
 
-          The result is the upper diagonal of the
+          The result is the upper triangle of the
           (n_independent_params() x n_independent_params())
           matrix of curvatures.
           I.e. the number of elements of the result array is
