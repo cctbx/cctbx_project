@@ -59,8 +59,9 @@ class manager(object):
                   rigid_body_selections = None,
                   log                   = self.log)
     selection = flex.bool(self.xray_structure.scatterers().size(), True)
+    # XXX not a deep copy
     if(self.restraints_manager is not None):
-       new.restraints_manager_ini = self.restraints_manager_ini # XXX not a deep copy
+       new.restraints_manager_ini = self.restraints_manager_ini
        new.restraints_manager = mmtbx.restraints.manager(
             geometry      = self.restraints_manager.geometry.select(selection),
             ncs_groups    = self.restraints_manager.ncs_groups,
