@@ -9,7 +9,7 @@ from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
 from libtbx.utils import format_cpu_times
 import math
-import sys
+import sys, os
 
 import scitbx.minpack
 import scitbx.lbfgs
@@ -360,6 +360,16 @@ class lbfgsb_adaptor:
     print "  number_of_gradient_evaluations:", \
         self.number_of_gradient_evaluations
 
+def skip_meyer_function():
+  if (sys.platform == "irix6"): return True
+  if (sys.platform != "linux2"): return False
+  if (not os.path.isfile("/etc/redhat-release")): return False
+  try: rh_release = open("/etc/redhat-release").read()
+  except IOError: return False
+  if (rh_release.strip() == "Red Hat Linux release 7.3 (Valhalla)"):
+    return True
+  return False
+
 class test_function:
 
   def __init__(self, m, n, check_with_finite_differences=True, verbose=1):
@@ -387,7 +397,7 @@ class test_function:
     if (1):
       self.exercise_lbfgs()
     if (1):
-      if (isinstance(self, meyer_function) and sys.platform == "irix6"):
+      if (isinstance(self, meyer_function) and skip_meyer_function()):
         print "Skipping: exercise_lbfgsb() with", self.__class__.__name__
       else:
         self.exercise_lbfgsb()
