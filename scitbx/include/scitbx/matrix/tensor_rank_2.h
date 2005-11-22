@@ -105,14 +105,14 @@ namespace tensor_rank_2 {
       by multiplying this matrix with the vector of original
       gradients.
    */
-  template <typename NumTypeA, typename NumTypeG>
-  af::versa<NumTypeG, af::c_grid<2> >
+  template <typename NumTypeA>
+  af::versa<NumTypeA, af::c_grid<2> >
   gradient_transform_matrix(
     mat3<NumTypeA> const& a)
   {
-    af::versa<NumTypeG, af::c_grid<2> > result(
-      af::c_grid<2>(6,6), af::init_functor_null<NumTypeG>());
-    NumTypeG* r = result.begin();
+    af::versa<NumTypeA, af::c_grid<2> > result(
+      af::c_grid<2>(6,6), af::init_functor_null<NumTypeA>());
+    NumTypeA* r = result.begin();
     *r++ = a[0]*a[0];
     *r++ = a[3]*a[3];
     *r++ = a[6]*a[6];
