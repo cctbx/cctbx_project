@@ -49,7 +49,7 @@ namespace {
             &w_t::at_d_star_sq)
         .def("at_d_star", &w_t::at_d_star)
       ;
-      boost_adaptbx::optional_conversions::to_and_from_python<w_t>();
+      boost_adaptbx::optional_conversions::to_and_from_python<gaussian>();
     }
   };
 

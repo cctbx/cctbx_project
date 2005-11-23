@@ -13,7 +13,8 @@ namespace cctbx { namespace xray {
     public:
       typedef std::map<std::string, std::size_t> type_index_pairs_t;
       typedef eltbx::xray_scattering::gaussian gaussian_t;
-      typedef af::shared<boost::optional<gaussian_t> > unique_gaussians_t;
+      typedef af::shared<boost::optional<eltbx::xray_scattering::gaussian> >
+        unique_gaussians_t;
       typedef af::shared<std::size_t> unique_counts_t;
       type_index_pairs_t type_index_pairs;
       unique_gaussians_t unique_gaussians;
@@ -81,7 +82,7 @@ namespace cctbx { namespace xray {
         return result;
       }
 
-      boost::optional<gaussian_t> const&
+      boost::optional<eltbx::xray_scattering::gaussian> const&
       gaussian(std::string const& scattering_type) const
       {
         return unique_gaussians[unique_index(scattering_type)];
