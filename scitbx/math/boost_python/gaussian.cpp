@@ -85,7 +85,7 @@ namespace {
           integral_dx_at_x_overloads())
         .def_pickle(sum_wrappers())
       ;
-      boost_adaptbx::optional_conversions::to_and_from_python<w_t>();
+      boost_adaptbx::optional_conversions::to_and_from_python<sum<> >();
     }
   };
 
