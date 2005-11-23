@@ -11,6 +11,7 @@ namespace cctbx { namespace xray { namespace boost_python {
   void wrap_sampled_model_density();
   void wrap_scatterer();
   void wrap_scattering_dictionary();
+  void wrap_scattering_type_registry();
   void wrap_structure_factors_direct();
   void wrap_structure_factors_simple();
   void wrap_targets();
@@ -28,6 +29,7 @@ namespace {
     wrap_sampled_model_density();
     wrap_scatterer();
     wrap_scattering_dictionary();
+    wrap_scattering_type_registry();
     wrap_structure_factors_direct();
     wrap_structure_factors_simple();
     wrap_targets();

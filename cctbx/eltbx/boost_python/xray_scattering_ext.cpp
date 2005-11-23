@@ -10,6 +10,7 @@
 #include <cctbx/eltbx/xray_scattering.h>
 #include <cctbx/eltbx/xray_scattering/n_gaussian.h>
 #include <scitbx/boost_python/iterator_wrappers.h>
+#include <boost_adaptbx/optional_conversions.h>
 
 namespace cctbx { namespace eltbx { namespace xray_scattering {
 namespace boost_python {
@@ -48,6 +49,7 @@ namespace {
             &w_t::at_d_star_sq)
         .def("at_d_star", &w_t::at_d_star)
       ;
+      boost_adaptbx::optional_conversions::to_and_from_python<w_t>();
     }
   };
 
