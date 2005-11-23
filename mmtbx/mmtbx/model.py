@@ -374,8 +374,6 @@ class adp_statistics(object):
                                         parameters        = iso_restraints,
                                         wilson_b          = wilson_b,
                                         compute_gradients = True)
-    gu = energies_adp_iso.gradients
-    gu_ref = energies_adp_iso_ref.gradients
     eps = math.pi**2*8
     self.b_isos = xray_structure.extract_u_iso_or_u_equiv() * eps
     self.b_isos_ref = xray_structure_ref.extract_u_iso_or_u_equiv() * eps
