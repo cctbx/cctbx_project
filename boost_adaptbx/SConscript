@@ -5,6 +5,8 @@ import sys, os
 Import("env_base", "env_etc")
 env_etc.boost_dist = libtbx.env.dist_path("boost")
 env_etc.boost_include = env_etc.boost_dist
+env_etc.boost_adaptbx_dist = libtbx.env.dist_path("boost_adaptbx")
+env_etc.boost_adaptbx_include = os.path.dirname(env_etc.boost_adaptbx_dist)
 if (not env_etc.no_boost_python):
   env_etc.cxxflags_bpl_defines_base = ["-DBOOST_PYTHON_MAX_BASES=2"]
   env_no_includes_boost_python_ext = env_base.Copy(
