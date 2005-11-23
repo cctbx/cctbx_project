@@ -6,6 +6,7 @@
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
 #include <scitbx/math/gaussian/fit.h>
+#include <boost_adaptbx/optional_conversions.h>
 
 namespace scitbx { namespace math { namespace gaussian {
 
@@ -84,6 +85,7 @@ namespace {
           integral_dx_at_x_overloads())
         .def_pickle(sum_wrappers())
       ;
+      boost_adaptbx::optional_conversions::to_and_from_python<w_t>();
     }
   };
 

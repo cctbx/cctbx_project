@@ -6,6 +6,7 @@ env_etc.scitbx_include = libtbx.env.under_dist("scitbx", "include")
 env_etc.scitbx_common_includes = [
   env_etc.libtbx_include,
   env_etc.scitbx_include,
+  env_etc.boost_adaptbx_include,
   env_etc.boost_include,
 ]
 
