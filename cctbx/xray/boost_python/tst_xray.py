@@ -9,6 +9,7 @@ from cctbx import xray
 from cctbx import math_module
 from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal, not_approx_equal, show_diff
+from cStringIO import StringIO
 import pickle
 
 def exercise_conversions():
@@ -324,6 +325,156 @@ def exercise_scattering_dictionary():
       "cctbx Error: Label not in scattering dictionary: ")
   else:
     raise RuntimeError("Exception expected.")
+
+def exercise_scattering_type_registry():
+  reg = xray.scattering_type_registry()
+  assert len(reg.type_index_pairs_as_dict()) == 0
+  assert len(reg.unique_gaussians_as_list()) == 0
+  assert reg.unique_counts.size() == 0
+  assert reg.size() == 0
+  assert reg.process(scattering_type="const") == 0
+  assert reg.size() == 1
+  assert reg.type_index_pairs_as_dict() == {"const": 0}
+  assert list(reg.unique_counts) == [1]
+  scatterers = flex.xray_scatterer((
+    xray.scatterer("Si1"),
+    xray.scatterer("Si2"),
+    xray.scatterer("O1"),
+    xray.scatterer("O2"),
+    xray.scatterer("Al1"),
+    xray.scatterer("O3"),
+    xray.scatterer("Al2"),
+    xray.scatterer("const", scattering_type="const"),
+    xray.scatterer("custom", scattering_type="custom")))
+  unique_indices = reg.process(scatterers=scatterers)
+  assert list(unique_indices) == [1,1,2,2,3,2,3,0,4]
+  assert reg.unique_indices(scatterers=scatterers).all_eq(unique_indices)
+  assert reg.type_index_pairs_as_dict() \
+      == {"const": 0, "Al": 3, "O": 2, "custom": 4, "Si": 1}
+  assert reg.unique_gaussians_as_list().count(None) == 5
+  assert list(reg.unique_counts) == [2,2,3,2,1]
+  for t,i in reg.type_index_pairs_as_dict().items():
+    assert reg.unique_index(scattering_type=t) == i
+    assert reg.gaussian(scattering_type=t) is None
+  assert list(reg.unassigned_types()) == ['Al', 'O', 'Si', 'const', 'custom']
+  assert reg.assign(
+    scattering_type="const",
+    gaussian=eltbx.xray_scattering.gaussian(10))
+  assert reg.unique_gaussians_as_list().count(None) == 4
+  assert reg.unique_gaussians_as_list()[0].n_parameters() == 1
+  assert not reg.assign("const", eltbx.xray_scattering.gaussian(10))
+  assert reg.gaussian(scattering_type="const").n_parameters() == 1
+  assert reg.assign("custom", eltbx.xray_scattering.gaussian((1,2),(3,4),5))
+  assert reg.unique_gaussians_as_list().count(None) == 3
+  assert reg.unique_gaussians_as_list()[4].n_parameters() == 5
+  assert list(reg.unassigned_types()) == ['Al', 'O', 'Si']
+  for table,n_terms in (("IT1992",4), ("WK1995",5)):
+    reg = xray.scattering_type_registry()
+    reg.process(scatterers=scatterers)
+    reg.assign("const", eltbx.xray_scattering.gaussian(10))
+    reg.assign("custom", eltbx.xray_scattering.gaussian((1,2),(3,4),5))
+    reg.assign_from_table(table=table)
+    ugs = reg.unique_gaussians_as_list()
+    for t,i in reg.type_index_pairs_as_dict().items():
+      if (t in ["Al", "O", "Si"]):
+        assert ugs[i].n_terms() == n_terms
+      elif (t == "const"):
+        assert ugs[i].n_terms() == 0
+        assert approx_equal(ugs[i].c(), 10)
+      else:
+        assert ugs[i].n_terms() == 2
+        assert approx_equal(ugs[i].c(), 5)
+    reg.assign("Al", eltbx.xray_scattering.gaussian(20))
+    ugs = reg.unique_gaussians_as_list()
+    assert approx_equal(ugs[reg.unique_index("Al")].c(), 20)
+    assert reg.unassigned_types().size() == 0
+    ff = reg.unique_form_factors_at_d_star_sq(d_star_sq=0)
+    if (n_terms == 4):
+      assert approx_equal(ff, [13.9976, 7.9994, 20.0, 10.0, 8.0])
+    else:
+      assert approx_equal(ff, [13.998917, 7.999706, 20.0, 10.0, 8.0])
+    ff = reg.unique_form_factors_at_d_star_sq(d_star_sq=0.123)
+    if (n_terms == 4):
+      assert approx_equal(ff, [10.173729, 6.042655, 20.0, 10.0, 7.680404])
+    else:
+      assert approx_equal(ff, [10.174771, 6.042745, 20.0, 10.0, 7.680404])
+    reg.assign(scattering_type="custom", gaussian=None)
+    assert reg.gaussian(scattering_type="custom") is None
+    s = StringIO()
+    reg.show_summary(out=s, prefix="=-")
+    if (n_terms == 4):
+      assert not show_diff(s.getvalue(),
+        "=-Al:0+c*2 Si:4+c*2 const:0+c*1 O:4+c*3 custom:None*1\n")
+    else:
+      assert not show_diff(s.getvalue(),
+        "=-Al:0+c*2 Si:5+c*2 const:0+c*1 O:5+c*3 custom:None*1\n")
+    s = StringIO()
+    for show_weights in [False, True]:
+      for show_gaussians in [False, True]:
+        reg.show(
+          show_weights=show_weights,
+          show_gaussians=show_gaussians,
+          out=s,
+          prefix=":#")
+    assert not show_diff(s.getvalue(), """\
+:#Number of scattering types: 5
+:#  Type    Number
+:#   Al         2
+:#   Si         2
+:#   const      1
+:#   O          3
+:#   custom     1
+:#Number of scattering types: 5
+:#  Type    Number   Gaussians
+:#   Al         2        0+c
+:#   Si         2        %(n_terms)d+c
+:#   const      1        0+c
+:#   O          3        %(n_terms)d+c
+:#   custom     1       None
+:#Number of scattering types: 5
+:#  Type    Number   Weight
+:#   Al         2     20.00
+:#   Si         2     14.00
+:#   const      1     10.00
+:#   O          3      8.00
+:#   custom     1      None
+:#Number of scattering types: 5
+:#  Type    Number   Weight   Gaussians
+:#   Al         2     20.00       0+c
+:#   Si         2     14.00       %(n_terms)d+c
+:#   const      1     10.00       0+c
+:#   O          3      8.00       %(n_terms)d+c
+:#   custom     1      None      None
+""" % vars())
+    assert reg.wilson_dict() \
+        == {'Si': 2, 'const': 1, 'Al': 2, 'O': 3, 'custom': 1}
+    type_index_pairs = reg.type_index_pairs_as_dict()
+    unique_gaussians = reg.unique_gaussians_as_list()
+    unique_counts = reg.unique_counts
+    reg = xray.scattering_type_registry(
+      type_index_pairs, unique_gaussians, unique_counts)
+    assert reg.type_index_pairs_as_dict() == type_index_pairs
+    for orig,restored in zip(unique_gaussians, reg.unique_gaussians_as_list()):
+      if (restored is None):
+        assert orig is None
+        continue
+      assert restored is not orig
+      assert restored.n_parameters() == orig.n_parameters()
+      for d_star_sq in [0, 0.1, 0.234]:
+        assert approx_equal(
+          restored.at_d_star_sq(d_star_sq), orig.at_d_star_sq(d_star_sq))
+    assert reg.unique_counts.all_eq(unique_counts)
+    s = pickle.dumps(reg)
+    l = pickle.loads(s)
+    orig = StringIO()
+    restored = StringIO()
+    reg.show(out=orig)
+    l.show(out=restored)
+    assert not show_diff(restored.getvalue(), orig.getvalue())
+  try: reg.unique_index("foo")
+  except RuntimeError, e:
+    assert str(e) == 'scattering_type "foo" not in scattering_type_registry.'
+  else: raise RuntimeError("Exception expected.")
 
 def exercise_structure_factors():
   uc = uctbx.unit_cell((10, 10, 13))
@@ -916,6 +1067,7 @@ def run():
   exercise_gradient_flags()
   exercise_xray_scatterer()
   exercise_scattering_dictionary()
+  exercise_scattering_type_registry()
   exercise_rotate()
   exercise_structure_factors()
   exercise_targets()

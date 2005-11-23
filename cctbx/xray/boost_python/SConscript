@@ -10,6 +10,7 @@ env.SharedLibrary(target="#lib/cctbx_xray_ext", source=[
   "minimization.cpp",
   "scatterer.cpp",
   "scattering_dictionary.cpp",
+  "scattering_type_registry.cpp",
   "sampling_base.cpp",
   "sampled_model_density.cpp",
   "structure_factors_direct.cpp",
