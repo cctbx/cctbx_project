@@ -26,6 +26,7 @@ def run():
   "$D/cctbx/examples/unit_cell_refinement.py",
   "$D/cctbx/examples/miller_common_sets.py",
   "$D/cctbx/examples/steve_collins.py",
+  "$D/cctbx/examples/cr2o3_primitive_cell.py",
   )
 
   build_dir = libtbx.env.under_build("cctbx")
