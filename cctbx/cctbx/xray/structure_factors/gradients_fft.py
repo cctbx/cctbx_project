@@ -25,7 +25,7 @@ class gradients_fft(gradients_base):
     self._results = ext.fast_gradients(
       unit_cell=xray_structure.unit_cell(),
       scatterers=xray_structure.scatterers(),
-      scattering_dict=xray_structure.scattering_dict(),
+      scattering_type_registry=xray_structure.scattering_type_registry(),
       u_base=manager.u_base(),
       wing_cutoff=manager.wing_cutoff(),
       exp_table_one_over_step_size=manager.exp_table_one_over_step_size(),
@@ -45,7 +45,7 @@ class gradients_fft(gradients_base):
     self._results.sampling(
       scatterers=xray_structure.scatterers(),
       mean_displacements=mean_displacements,
-      scattering_dict=xray_structure.scattering_dict(),
+      scattering_type_registry=xray_structure.scattering_type_registry(),
       site_symmetry_table=xray_structure.site_symmetry_table(),
       ft_d_target_d_f_calc=gradient_map,
       grad_flags=gradient_flags,

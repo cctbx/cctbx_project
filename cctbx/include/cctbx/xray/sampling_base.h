@@ -1,7 +1,7 @@
 #ifndef CCTBX_XRAY_SAMPLING_BASE_H
 #define CCTBX_XRAY_SAMPLING_BASE_H
 
-#include <cctbx/xray/scattering_dictionary.h>
+#include <cctbx/xray/scattering_type_registry.h>
 #include <cctbx/maptbx/accessors/c_grid_padded_p1.h>
 
 namespace cctbx { namespace xray {
@@ -494,7 +494,7 @@ namespace cctbx { namespace xray {
       sampling_base(
         uctbx::unit_cell const& unit_cell,
         af::const_ref<XrayScattererType> const& scatterers,
-        scattering_dictionary const& scattering_dict,
+        xray::scattering_type_registry const& scattering_type_registry,
         FloatType const& u_base,
         FloatType const& wing_cutoff,
         FloatType const& exp_table_one_over_step_size,
@@ -621,7 +621,7 @@ namespace cctbx { namespace xray {
   ::sampling_base(
     uctbx::unit_cell const& unit_cell,
     af::const_ref<XrayScattererType> const& scatterers,
-    scattering_dictionary const& scattering_dict,
+    xray::scattering_type_registry const& scattering_type_registry,
     FloatType const& u_base,
     FloatType const& wing_cutoff,
     FloatType const& exp_table_one_over_step_size,
@@ -646,7 +646,6 @@ namespace cctbx { namespace xray {
     sum_sampling_box_n_points_(0),
     max_sampling_box_edges_(0,0,0)
   {
-    CCTBX_ASSERT(scattering_dict.n_scatterers() == scatterers.size());
     CCTBX_ASSERT(u_base > 0);
     scitbx::mat3<FloatType> orth_mx = unit_cell_.orthogonalization_matrix();
     if (orth_mx[3] != 0 || orth_mx[6] != 0 || orth_mx[7] != 0) {
@@ -665,11 +664,12 @@ namespace cctbx { namespace xray {
     bool have_u_min = false;
     for(std::size_t i_seq=0;i_seq<scatterers.size();i_seq++) {
       XrayScattererType const& scatterer = scatterers[i_seq];
-      eltbx::xray_scattering::gaussian const& gaussian=scattering_dict.lookup(
-        scatterer.scattering_type).gaussian;
-      FloatType gaussian_a = scitbx::fn::absolute(gaussian.at_stol_sq(0));
       FloatType w = scatterer.weight();
       if (w == 0) continue;
+      eltbx::xray_scattering::gaussian const&
+        gaussian = scattering_type_registry.gaussian_not_optional(
+          scatterer.scattering_type);
+      FloatType gaussian_a = scitbx::fn::absolute(gaussian.at_stol_sq(0));
       n_contributing_scatterers_++;
       if (scatterer.fdp != 0) {
         n_anomalous_scatterers_++;

@@ -364,6 +364,7 @@ def exercise_scattering_type_registry():
   assert reg.unique_gaussians_as_list()[0].n_parameters() == 1
   assert not reg.assign("const", eltbx.xray_scattering.gaussian(10))
   assert reg.gaussian(scattering_type="const").n_parameters() == 1
+  assert reg.gaussian_not_optional(scattering_type="const").n_parameters() == 1
   assert reg.assign("custom", eltbx.xray_scattering.gaussian((1,2),(3,4),5))
   assert reg.unique_gaussians_as_list().count(None) == 3
   assert reg.unique_gaussians_as_list()[4].n_parameters() == 5
@@ -474,6 +475,10 @@ def exercise_scattering_type_registry():
   try: reg.unique_index("foo")
   except RuntimeError, e:
     assert str(e) == 'scattering_type "foo" not in scattering_type_registry.'
+  else: raise RuntimeError("Exception expected.")
+  try: reg.gaussian_not_optional(scattering_type="custom")
+  except RuntimeError, e:
+    assert str(e) == 'gaussian not defined for scattering_type "custom".'
   else: raise RuntimeError("Exception expected.")
   try: reg.unique_form_factors_at_d_star_sq(d_star_sq=0)
   except RuntimeError, e:
@@ -631,12 +636,13 @@ def exercise_sampled_model_density():
                      (0.04,0.05,0.06,-.005,0.02,-0.002)))))
   for scatterer in scatterers:
     scatterer.apply_symmetry(uc, sg.group())
-  scattering_dict = xray.ext.scattering_dictionary(scatterers)
-  scattering_dict.assign_from_table("WK1995")
+  scattering_type_registry = xray.ext.scattering_type_registry()
+  scattering_type_registry.process(scatterers)
+  scattering_type_registry.assign_from_table("WK1995")
   d = xray.sampled_model_density(
     unit_cell=uc,
     scatterers=scatterers,
-    scattering_dict=scattering_dict,
+    scattering_type_registry=scattering_type_registry,
     fft_n_real=(20,20,22),
     fft_m_real=(20,20,23))
   assert d.unit_cell().is_similar_to(uc)

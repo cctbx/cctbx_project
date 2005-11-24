@@ -17,7 +17,7 @@ class from_scatterers_fft(managed_calculation_base):
     sampled_density = ext.sampled_model_density(
       unit_cell=xray_structure.unit_cell(),
       scatterers=xray_structure.scatterers(),
-      scattering_dict=xray_structure.scattering_dict(),
+      scattering_type_registry=xray_structure.scattering_type_registry(),
       fft_n_real=manager.rfft().n_real(),
       fft_m_real=manager.rfft().m_real(),
       u_base=manager.u_base(),
