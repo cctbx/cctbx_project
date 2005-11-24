@@ -65,7 +65,6 @@ class lbfgs(object):
        assert self.beta_w.data().size() == self.f_obs_w.data().size()
     self.x = flex.double(xray_structure.n_parameters(xray_gradient_flags), 0)
     self._scatterers_start = xray_structure.scatterers()
-    self._scattering_dict = xray_structure.scattering_dict()
     self._d_min = self.f_obs_w.d_min()
     self.first_target_value = None
     self._lock_for_line_search = False
@@ -77,7 +76,6 @@ class lbfgs(object):
                          ignore_line_search_failed_step_at_lower_bound = True))
     self.apply_shifts()
     del self._scatterers_start
-    del self._scattering_dict
     del self._d_min
     self._lock_for_line_search = False
     self.compute_target(compute_gradients = False, mean_displacements = None)

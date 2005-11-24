@@ -220,7 +220,7 @@ def run_tests(sf_algorithm = "fft"):
                             raw_records    = None,
                             force_symmetry = True)
   model = mmtbx.model.manager(processed_pdb_file = processed_pdb_file)
-  model.xray_structure.scattering_dict(table = "wk1995")
+  model.xray_structure.scattering_type_registry(table = "wk1995")
   model.setup_restraints_manager()
   dummy = model.xray_structure.structure_factors(algorithm = sf_algorithm,
                                                  d_min     = 2.0).f_calc()
