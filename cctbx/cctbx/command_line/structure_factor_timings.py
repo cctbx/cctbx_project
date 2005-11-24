@@ -47,7 +47,7 @@ def timings(structure, d_min, fft_only=False,
       structure_5g.space_group(),
       miller_set.indices(),
       structure_5g.scatterers(),
-      structure_5g.scattering_dict()).f_calc()
+      structure_5g.scattering_type_registry()).f_calc()
     print "direct simple: %.2f seconds" % timer.elapsed()
   f_calc_reference = flex.abs(f_calc_reference)
   print "wing_cutoff for following fft calculations: %3.1e"%wing_cutoff_others

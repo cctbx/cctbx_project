@@ -289,6 +289,23 @@ class structure(crystal.special_position_settings):
       self._scattering_dict_is_out_of_date = False
     return self._scattering_dict
 
+  def scattering_type_registry(self,
+        custom_dict=None,
+        d_min=None,
+        table=None,
+        types_without_a_scattering_contribution=None):
+    result = ext.scattering_type_registry()
+    result.process(scatterers=self._scatterers)
+    sd = self.scattering_dict(
+      custom_dict=custom_dict,
+      d_min=d_min,
+      table=table,
+      types_without_a_scattering_contribution\
+        =types_without_a_scattering_contribution)
+    for type,group in sd.dict().items():
+      result.assign(scattering_type=type, gaussian=group.gaussian)
+    return result
+
   def __getitem__(self, slice_object):
     assert type(slice_object) == types.SliceType
     assert self.scatterers() is not None

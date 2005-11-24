@@ -87,7 +87,7 @@ namespace {
         .def("unique_index", &w_t::unique_index, (arg_("scattering_type")))
         .def("unique_indices",
           (af::shared<std::size_t>(w_t::*)(
-            af::const_ref<scatterer<> > const&)) &w_t::unique_indices, (
+            af::const_ref<scatterer<> > const&) const) &w_t::unique_indices, (
               arg_("scatterers")))
         .def("gaussian", &w_t::gaussian, (arg_("scattering_type")), ccr())
         .def("unassigned_types", &w_t::unassigned_types)

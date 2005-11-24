@@ -159,6 +159,11 @@ Number of scattering types: 2
   assert len(wd) == 2
   assert wd['O'] == 1
   assert wd['Si'] == 1
+  #
+  reg = ys.scattering_type_registry()
+  assert reg.type_index_pairs_as_dict() == {"Si": 0, "O": 1}
+  assert list(reg.unique_indices(scatterers=ys.scatterers())) == [0,1]
+  #
   am = xs.asu_mappings(buffer_thickness=1)
   assert am.mappings().size() == xs.scatterers().size()
   rs = p1.random_shift_sites(max_shift_cart=0.2)
@@ -381,7 +386,7 @@ def exercise_from_scatterers_direct(space_group_info,
     f_obs_exact.space_group(),
     f_obs_exact.indices(),
     structure.scatterers(),
-    structure.scattering_dict()).f_calc()
+    structure.scattering_type_registry()).f_calc()
   if (0 or verbose):
     for i,h in enumerate(f_obs_exact.indices()):
       print h
