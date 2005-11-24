@@ -1,7 +1,6 @@
 #ifndef CCTBX_XRAY_MINIMIZATION_H
 #define CCTBX_XRAY_MINIMIZATION_H
 
-#include <cctbx/xray/scattering_dictionary.h>
 #include <cctbx/xray/gradient_flags.h>
 #include <cctbx/xray/packing_order.h>
 #include <scitbx/array_family/block_iterator.h>
