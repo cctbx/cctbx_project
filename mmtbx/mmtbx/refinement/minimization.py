@@ -9,7 +9,7 @@ from cctbx.array_family import flex
 import scitbx.lbfgs
 from libtbx import adopt_init_args
 from stdlib import math
-import math, sys
+import math, sys, time
 from mmtbx.refinement import print_statistics
 from libtbx.test_utils import approx_equal
 
@@ -32,6 +32,14 @@ class lbfgs(object):
                      alpha_w=None,
                      beta_w=None):
     adopt_init_args(self, locals())
+    self.echem_start = None
+    self.exray_start = None
+    self.eadp_start  = None
+    self.echem_final = None
+    self.exray_final = None
+    self.eadp_final  = None
+    self.etotal_start= None
+    self.etotal_final= None
     if(self.fmodel.alpha_beta_params.method == "calc"):
        if(self.fmodel.alpha_beta_params.fix_scale_for_calc_option == None):
           self.scale_ml = self.fmodel.scale_ml()
@@ -55,9 +63,6 @@ class lbfgs(object):
     else:
        assert self.alpha_w.data().size() == self.f_obs_w.data().size()
        assert self.beta_w.data().size() == self.f_obs_w.data().size()
-    self.structure_factor_gradients = cctbx.xray.structure_factors.gradients(
-                                                 miller_set    = self.f_obs_w,
-                                                 cos_sin_table = cos_sin_table)
     self.x = flex.double(xray_structure.n_parameters(xray_gradient_flags), 0)
     self._scatterers_start = xray_structure.scatterers()
     self._scattering_dict = xray_structure.scattering_dict()
@@ -78,6 +83,7 @@ class lbfgs(object):
     self.compute_target(compute_gradients = False, mean_displacements = None)
     del self._lock_for_line_search
     self.final_target_value = self.f
+
 
   def apply_shifts(self):
     apply_shifts_result = xray.ext.minimization_apply_shifts(
@@ -101,27 +107,19 @@ class lbfgs(object):
                                            update_f_calc            = True,
                                            update_f_mask            = False,
                                            update_f_ordered_solvent = False)
-    if(self.target_name in ("ml","mlhl")):
-       xrtfr = self.fmodel_copy.xray_target_functor_result(
-                                             compute_gradients = True,
-                                             alpha             = self.alpha_w,
-                                             beta              = self.beta_w,
-                                             scale_ml          = self.scale_ml,
-                                             flag              = "work")
-    if(self.target_name.count("ls") == 1):
-       xrtfr = self.fmodel_copy.xray_target_functor_result(
-                                                    compute_gradients = True,
-                                                    flag              = "work")
-    self.f = xrtfr.target() * self.wx
+    self.exray_final = self.fmodel_copy.target_w(alpha    = self.alpha_w,
+                                                 beta     = self.beta_w,
+                                                 scale_ml = self.scale_ml)
+    if(self.exray_start is None): self.exray_start = self.exray_final
+    self.f = self.exray_final * self.wx
     if(compute_gradients):
-       sf = self.structure_factor_gradients(
-                        xray_structure     = self.xray_structure,
-                        mean_displacements = mean_displacements,
-                        miller_set         = self.f_obs_w,
-                        d_target_d_f_calc  = xrtfr.derivatives(),
-                        gradient_flags     = self.xray_gradient_flags,
-                        n_parameters       = self.x.size(),
-                        algorithm          = self.fmodel.sf_algorithm).packed()
+       sf = self.fmodel_copy.gradient_wrt_atomic_parameters(
+                   sites              = self.xray_gradient_flags.site,
+                   u_iso              = self.xray_gradient_flags.u_iso,
+                   alpha              = self.alpha_w,
+                   beta               = self.beta_w,
+                   tan_b_iso_max      = self.xray_gradient_flags.tan_b_iso_max,
+                   mean_displacements = mean_displacements).packed()
        self.g = sf * self.wx
     if(self.xray_gradient_flags.site
          and self.restraints_manager is not None
@@ -131,7 +129,9 @@ class lbfgs(object):
                        compute_gradients = compute_gradients,
                        lock_for_line_search = self._lock_for_line_search)
        self._lock_for_line_search = True
-       self.f += self.stereochemistry_residuals.target * self.wc
+       self.echem_final = self.stereochemistry_residuals.target
+       if(self.echem_start is None): self.echem_start = self.echem_final
+       self.f += self.echem_final * self.wc
        if(compute_gradients):
           xray.minimization.add_gradients(
              scatterers     = self.xray_structure.scatterers(),
@@ -143,26 +143,23 @@ class lbfgs(object):
           and self.wu > 0.0
           and self.iso_restraints is not None):
        energies_adp_iso = self.restraints_manager.energies_adp_iso(
-                                       xray_structure    = self.xray_structure,
-                                       parameters        = self.iso_restraints,
-                                       wilson_b          = self.wilson_b,
-                                       compute_gradients = compute_gradients)
-       self.f += energies_adp_iso.target * self.wu
+                    xray_structure    = self.xray_structure,
+                    parameters        = self.iso_restraints,
+                    wilson_b          = self.wilson_b,
+                    tan_b_iso_max     = self.xray_gradient_flags.tan_b_iso_max,
+                    compute_gradients = compute_gradients)
+       self.eadp_final = energies_adp_iso.target
+       if(self.eadp_start is None): self.eadp_start = self.eadp_final
+       self.f += self.eadp_final * self.wu
        if(compute_gradients):
-          if(self.xray_gradient_flags.sqrt_u_iso):
-             u_iso_gradients = 2*mean_displacements*energies_adp_iso.gradients
-          elif(self.xray_gradient_flags.tan_b_iso_max != 0):
-             u_iso_max = adptbx.b_as_u(self.xray_gradient_flags.tan_b_iso_max)
-             u_iso_gradients = \
-                    (u_iso_max/math.pi/(flex.pow2(mean_displacements)+1.0)) * \
-                    energies_adp_iso.gradients
-          else:
-             u_iso_gradients = energies_adp_iso.gradients
+          u_iso_gradients = energies_adp_iso.gradients
           xray.minimization.add_gradients(
                             scatterers      = self.xray_structure.scatterers(),
                             gradient_flags  = self.xray_gradient_flags,
                             xray_gradients  = self.g,
                             u_iso_gradients = u_iso_gradients * self.wu)
+    self.etotal_final = self.f
+    if(self.etotal_start is None): self.etotal_start = self.etotal_final
 
   def callback_after_step(self, minimizer):
     self._lock_for_line_search = False
@@ -181,3 +178,60 @@ class lbfgs(object):
       print "xray.minimization line search: f,rms(g):",
       print self.f, math.sqrt(flex.mean_sq(self.g))
     return self.f, self.g
+
+  def show(self, text=None, out=None):
+    if (out is None): out = sys.stdout
+    assert (self.first_target_value, self.etotal_start)
+    assert (self.final_target_value, self.etotal_final)
+    print >> out
+    line_len = len("| "+text+"|")
+    fill_len = 80 - line_len-1
+    print >> out, "| "+text+"-"*(fill_len)+"|"
+    format = "| %s = %s * %s + %s * %s + %s * %s"
+    et = self.nn(self.etotal_start)
+    wx = self.nn(self.wx)
+    ex = self.nn(self.exray_start)
+    wc = self.nn(self.wc)
+    ec = self.nn(self.echem_start)
+    wu = self.nn(self.wu)
+    eu = self.nn(self.eadp_start)
+    h = "| T_start "+" "*abs(len("T_start")-len(et))+\
+        "= wxc"+" "*abs(len("= wxc")-len(wx)-3)+\
+        "* Exray "+" "*abs(len("* Exray ")-len(ex)-3)+\
+        "+ wc "+" "*abs(len("+ wc ")-len(wc)-3)+\
+        "* Echem "+" "*abs(len("* Echem ")-len(ec)-3)+\
+        "+ wu "+" "*abs(len("+ wu ")-len(wu)-3)+\
+        "* Eadp"
+    print >> out, h + " "*(78-len(h))+"|"
+    st = format % (et,wx,ex,wc,ec,wu,eu)
+    print >> out, st + " "*(78-len(st))+"|"
+
+    et = self.nn(self.etotal_final)
+    wx = self.nn(self.wx)
+    ex = self.nn(self.exray_final)
+    wc = self.nn(self.wc)
+    ec = self.nn(self.echem_final)
+    wu = self.nn(self.wu)
+    eu = self.nn(self.eadp_final)
+    print >> out, "| "+"  "*38+"|"
+    h = "| T_final "+" "*abs(len("T_final")-len(et))+\
+        "= wxc"+" "*abs(len("= wxc")-len(wx)-3)+\
+        "* Exray "+" "*abs(len("* Exray ")-len(ex)-3)+\
+        "+ wc "+" "*abs(len("+ wc ")-len(wc)-3)+\
+        "* Echem "+" "*abs(len("* Echem ")-len(ec)-3)+\
+        "+ wu "+" "*abs(len("+ wu ")-len(wu)-3)+\
+        "* Eadp"
+    print >> out, h + " "*(78-len(h))+"|"
+    st = format % (et,wx,ex,wc,ec,wu,eu)
+    print >> out, st + " "*(78-len(st))+"|"
+    print >> out, "| "+"  "*38+"|"
+    print >> out, "| number of iterations = %4d    |    number of function "\
+                  "evaluations = %4d   |"%(self.minimizer.iter(),
+                  self.minimizer.nfun())
+    print >> out, "|"+"-"*77+"|"
+    out.flush()
+
+  def nn(self, x):
+    x = str(x)
+    try: return x[:len(x[:x.index(".")])+7]
+    except: return "undef"
