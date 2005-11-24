@@ -88,7 +88,7 @@ class manager(object):
       result += result.ncs_groups
     result.finalize_target_and_gradients()
     if(compute_gradients):
-       if(tan_b_iso_max != 0):
+       if(tan_b_iso_max is not None and tan_b_iso_max != 0):
           u_iso_max = adptbx.b_as_u(tan_b_iso_max)
           if(mean_displacements is not None):
              scale = u_iso_max / math.pi / (flex.pow2(mean_displacements)+1.0)
