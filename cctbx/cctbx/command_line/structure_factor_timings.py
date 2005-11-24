@@ -15,14 +15,14 @@ def timings(structure, d_min, fft_only=False,
   structure_4g = structure.deep_copy_scatterers()
   structure_2g = structure.deep_copy_scatterers()
   structure_1g = structure.deep_copy_scatterers()
-  structure_ng.scattering_dict(d_min=d_min, table="n_gaussian")
-  structure_5g.scattering_dict(table="wk1995")
-  structure_4g.scattering_dict(table="it1992")
+  structure_ng.scattering_type_registry(d_min=d_min, table="n_gaussian")
+  structure_5g.scattering_type_registry(table="wk1995")
+  structure_4g.scattering_type_registry(table="it1992")
   custom_dict = {}
   custom_dict.update(eltbx.xray_scattering.two_gaussian_agarwal_isaacs.table)
-  structure_2g.scattering_dict(custom_dict=custom_dict)
+  structure_2g.scattering_type_registry(custom_dict=custom_dict)
   custom_dict.update(eltbx.xray_scattering.one_gaussian_agarwal_1978.table)
-  structure_1g.scattering_dict(custom_dict=custom_dict)
+  structure_1g.scattering_type_registry(custom_dict=custom_dict)
   miller_set = miller.build_set(
     crystal_symmetry=structure,
     d_min=d_min,
@@ -53,7 +53,7 @@ def timings(structure, d_min, fft_only=False,
   print "wing_cutoff for following fft calculations: %3.1e"%wing_cutoff_others
   for structure in (structure_ng, structure_5g, structure_4g,
                     structure_2g, structure_1g):
-    structure.scattering_dict().show_summary()
+    structure.scattering_type_registry().show_summary()
     if (not fft_only):
       for calc_type,cos_sin_flag in (("direct cos+sin function:",False),
                                      ("direct cos+sin table:",True)):

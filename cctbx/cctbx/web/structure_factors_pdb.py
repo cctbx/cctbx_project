@@ -21,13 +21,14 @@ def run(server_info, inp, status):
   print
 
   structure = io_utils.structure_from_inp_pdb(inp, status)
-  structure.scattering_dict(table = inp.form_factors,
-                            d_min = float(inp.d_min))
+  structure.scattering_type_registry(
+    table=inp.form_factors,
+    d_min=float(inp.d_min))
   print "Input model summary:"
   print
   structure.show_summary()
   print
-  structure.scattering_dict().show()
+  structure.scattering_type_registry().show()
   print
   algorithm = inp.algorithm
   if (algorithm == "automatic"):

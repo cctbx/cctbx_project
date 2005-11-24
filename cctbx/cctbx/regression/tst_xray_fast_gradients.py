@@ -153,7 +153,7 @@ class resampling(crystal.symmetry):
     result = xray.fast_gradients(
       unit_cell=xray_structure.unit_cell(),
       scatterers=xray_structure.scatterers(),
-      scattering_dict=xray_structure.scattering_dict(),
+      scattering_type_registry=xray_structure.scattering_type_registry(),
       u_base=self.u_base(),
       wing_cutoff=self.wing_cutoff(),
       exp_table_one_over_step_size=self.exp_table_one_over_step_size(),
@@ -180,7 +180,7 @@ class resampling(crystal.symmetry):
     result.sampling(
       scatterers=xray_structure.scatterers(),
       mean_displacements=mean_displacements,
-      scattering_dict=xray_structure.scattering_dict(),
+      scattering_type_registry=xray_structure.scattering_type_registry(),
       site_symmetry_table=xray_structure.site_symmetry_table(),
       ft_d_target_d_f_calc=gradient_map,
       grad_flags=gradient_flags,

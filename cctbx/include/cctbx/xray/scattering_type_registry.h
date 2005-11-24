@@ -88,6 +88,19 @@ namespace cctbx { namespace xray {
         return unique_gaussians[unique_index(scattering_type)];
       }
 
+      eltbx::xray_scattering::gaussian const&
+      gaussian_not_optional(std::string const& scattering_type) const
+      {
+        boost::optional<gaussian_t> const& result = gaussian(scattering_type);
+        if (!result) {
+          throw std::runtime_error(
+            "gaussian not defined for scattering_type \""
+            + scattering_type
+            + "\".");
+        }
+        return *result;
+      }
+
       af::shared<std::string>
       unassigned_types() const
       {

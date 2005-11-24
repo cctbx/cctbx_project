@@ -19,7 +19,7 @@ namespace {
       class_<w_t, bases<w_t::base_t> >("sampled_model_density", no_init)
         .def(init<uctbx::unit_cell const&,
                   af::const_ref<scatterer<> > const&,
-                  scattering_dictionary const&,
+                  scattering_type_registry const&,
                   grid_point_type const&,
                   grid_point_type const&,
                   optional<double const&,
@@ -30,7 +30,7 @@ namespace {
                            double const&> >(
           (arg_("unit_cell"),
            arg_("scatterers"),
-           arg_("scattering_dict"),
+           arg_("scattering_type_registry"),
            arg_("fft_n_real"),
            arg_("fft_m_real"),
            arg_("u_base"),

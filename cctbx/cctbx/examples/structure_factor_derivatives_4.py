@@ -55,7 +55,7 @@ class structure_factor:
     self.space_group = xray_structure.space_group()
     self.scatterers = xray_structure.scatterers()
     self.site_symmetry_table = xray_structure.site_symmetry_table()
-    self.scattering_dict = xray_structure.scattering_dict()
+    self.scattering_type_registry = xray_structure.scattering_type_registry()
     self.hkl = hkl
     self.d_star_sq = self.unit_cell.d_star_sq(hkl)
 
@@ -67,8 +67,8 @@ class structure_factor:
       if (not scatterer.anisotropic_flag):
         huh = scatterer.u_iso * self.d_star_sq
         dw = math.exp(mtps * huh)
-      gaussian = self.scattering_dict.lookup(
-        scatterer.scattering_type).gaussian
+      gaussian = self.scattering_type_registry.gaussian_not_optional(
+        scattering_type=scatterer.scattering_type)
       f0 = gaussian.at_d_star_sq(self.d_star_sq)
       ffp = f0 + scatterer.fp
       fdp = scatterer.fdp
@@ -102,8 +102,8 @@ class structure_factor:
       if (not scatterer.anisotropic_flag):
         huh = scatterer.u_iso * self.d_star_sq
         dw = math.exp(mtps * huh)
-      gaussian = self.scattering_dict.lookup(
-        scatterer.scattering_type).gaussian
+      gaussian = self.scattering_type_registry.gaussian_not_optional(
+        scattering_type=scatterer.scattering_type)
       f0 = gaussian.at_d_star_sq(self.d_star_sq)
       ffp = f0 + scatterer.fp
       fdp = scatterer.fdp
@@ -176,8 +176,8 @@ class structure_factor:
       if (not scatterer.anisotropic_flag):
         huh = scatterer.u_iso * self.d_star_sq
         dw = math.exp(mtps * huh)
-      gaussian = self.scattering_dict.lookup(
-        scatterer.scattering_type).gaussian
+      gaussian = self.scattering_type_registry.gaussian_not_optional(
+        scattering_type=scatterer.scattering_type)
       f0 = gaussian.at_d_star_sq(self.d_star_sq)
       ffp = f0 + scatterer.fp
       fdp = scatterer.fdp

@@ -10,9 +10,9 @@ def timings(structure, wing_cutoff=1.e-3):
     print calc_type
     for d_min in [4,3,2,1]:
       structure_ng = structure.deep_copy_scatterers()
-      structure_ng.scattering_dict(d_min=d_min, table="n_gaussian")
+      structure_ng.scattering_type_registry(d_min=d_min, table="n_gaussian")
       structure_4g = structure.deep_copy_scatterers()
-      structure_4g.scattering_dict(table="it1992")
+      structure_4g.scattering_type_registry(table="it1992")
       miller_set = miller.build_set(
         crystal_symmetry=structure,
         d_min=d_min,
@@ -20,7 +20,7 @@ def timings(structure, wing_cutoff=1.e-3):
       miller_set.show_summary()
       times = []
       for structure in (structure_ng, structure_4g):
-        structure.scattering_dict().show_summary()
+        structure.scattering_type_registry().show_summary()
         f_calc_object = xray.structure_factors.from_scatterers(
         miller_set=miller_set,
         wing_cutoff=wing_cutoff,
@@ -32,7 +32,7 @@ def timings(structure, wing_cutoff=1.e-3):
         print "  %.2f seconds," % times[-1]
       print "d_min=%d: %.2f s / %.2f s" % (d_min, times[0], times[1]),
       if (times[1] != 0):
-        print "= %.2f" % times[1],
+        print "= %.2f" % (times[0] / times[1]),
       print
       sys.stdout.flush()
   print

@@ -114,17 +114,18 @@ def exercise_structure():
   xs.replace_scatterers(xs.scatterers()[:1], None)
   assert xs.scatterers().size() == 1
   assert tuple(xs.special_position_indices()) == (0,)
-  sd = ys.scattering_dict(table="wk1995")
-  assert sd.lookup("Si").gaussian.n_terms() == 5
-  sd = ys.scattering_dict(table="it1992")
-  assert sd.lookup("Si").gaussian.n_terms() == 4
-  sd = ys.scattering_dict(custom_dict={"Si":eltbx.xray_scattering.gaussian(1)})
-  assert sd.lookup("Si").gaussian.n_terms() == 0
+  reg = ys.scattering_type_registry(table="wk1995")
+  assert reg.gaussian("Si").n_terms() == 5
+  reg = ys.scattering_type_registry(table="it1992")
+  assert reg.gaussian("Si").n_terms() == 4
+  reg = ys.scattering_type_registry(
+    custom_dict={"Si":eltbx.xray_scattering.gaussian(1)})
+  assert reg.gaussian("Si").n_terms() == 0
   s = StringIO()
-  sd.show_summary(f=s)
-  assert s.getvalue().strip() == "Si:0+c*1 O:4+c*1"
+  reg.show_summary(out=s)
+  assert s.getvalue().strip() == "O:4+c*1 Si:0+c*1"
   s = StringIO()
-  sd.show(f=s)
+  reg.show(out=s)
   assert s.getvalue() == """\
 Number of scattering types: 2
   Type Number   Weight   Gaussians
@@ -132,7 +133,7 @@ Number of scattering types: 2
    Si      1      1.00       0+c
 """
   s = StringIO()
-  sd.show(f=s, show_weights=False)
+  reg.show(out=s, show_weights=False)
   assert s.getvalue() == """\
 Number of scattering types: 2
   Type Number   Gaussians
@@ -140,7 +141,7 @@ Number of scattering types: 2
    Si      1        0+c
 """
   s = StringIO()
-  sd.show(f=s, show_gaussians=False)
+  reg.show(out=s, show_gaussians=False)
   assert s.getvalue() == """\
 Number of scattering types: 2
   Type Number   Weight
@@ -148,14 +149,14 @@ Number of scattering types: 2
    Si      1      1.00
 """
   s = StringIO()
-  sd.show(f=s, show_weights=False, show_gaussians=False)
+  reg.show(out=s, show_weights=False, show_gaussians=False)
   assert s.getvalue() == """\
 Number of scattering types: 2
   Type Number
    O       1
    Si      1
 """
-  wd = sd.wilson_dict()
+  wd = reg.wilson_dict()
   assert len(wd) == 2
   assert wd['O'] == 1
   assert wd['Si'] == 1
@@ -458,16 +459,19 @@ def exercise_n_gaussian(space_group_info, verbose=0):
     structure_five.show_summary().show_scatterers()
   structure_4g = structure_5g.deep_copy_scatterers()
   structure_2g = structure_5g.deep_copy_scatterers()
-  structure_5g.scattering_dict(table="wk1995")
-  structure_4g.scattering_dict(table="it1992")
-  structure_2g.scattering_dict(
+  structure_5g.scattering_type_registry(table="wk1995")
+  structure_4g.scattering_type_registry(table="it1992")
+  structure_2g.scattering_type_registry(
     custom_dict=eltbx.xray_scattering.two_gaussian_agarwal_isaacs.table)
-  for scatterer_group in structure_5g.scattering_dict().dict().values():
-    assert scatterer_group.gaussian.n_terms() == 5
-  for scatterer_group in structure_4g.scattering_dict().dict().values():
-    assert scatterer_group.gaussian.n_terms() == 4
-  for scatterer_group in structure_2g.scattering_dict().dict().values():
-    assert scatterer_group.gaussian.n_terms() == 2
+  for gaussian in \
+        structure_5g.scattering_type_registry().unique_gaussians_as_list():
+    assert gaussian.n_terms() == 5
+  for gaussian in \
+        structure_4g.scattering_type_registry().unique_gaussians_as_list():
+    assert gaussian.n_terms() == 4
+  for gaussian in \
+        structure_2g.scattering_type_registry().unique_gaussians_as_list():
+    assert gaussian.n_terms() == 2
   d_min = 1
   f_calc_5g = structure_5g.structure_factors(
     d_min=d_min,

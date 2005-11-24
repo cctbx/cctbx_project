@@ -90,6 +90,9 @@ namespace {
             af::const_ref<scatterer<> > const&) const) &w_t::unique_indices, (
               arg_("scatterers")))
         .def("gaussian", &w_t::gaussian, (arg_("scattering_type")), ccr())
+        .def("gaussian_not_optional",
+          &w_t::gaussian_not_optional,
+            (arg_("scattering_type")), ccr())
         .def("unassigned_types", &w_t::unassigned_types)
         .def("assign", &w_t::assign, (
           arg_("scattering_type"), arg_("gaussian")))

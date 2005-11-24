@@ -180,7 +180,6 @@ class lbfgs(object):
     self.x = flex.double(xray_structure.n_parameters(gradient_flags), 0)
     xray_structure.tidy_us(u_min=1.e-6)
     self._scatterers_start = xray_structure.scatterers()
-    self._scattering_dict = xray_structure.scattering_dict()
     self._d_min = self.target_functor.f_obs().d_min()
     self.first_target_value = None
     self.minimizer = scitbx.lbfgs.run(
@@ -189,7 +188,6 @@ class lbfgs(object):
       core_params=lbfgs_core_params)
     self.apply_shifts()
     del self._scatterers_start
-    del self._scattering_dict
     del self._d_min
     self.compute_target(compute_gradients=False)
     self.final_target_value = self.target_result.target()

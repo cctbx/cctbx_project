@@ -41,7 +41,7 @@ def run(server_info, inp, status):
   f_calc_manager = structure.structure_factors(
     anomalous_flag=False, d_min=d_min, algorithm=algorithm)
   f_calc = f_calc_manager.f_calc()
-  structure.scattering_dict().show()
+  structure.scattering_type_registry().show()
   print
   print "Number of Miller indices:", f_calc.indices().size()
   print

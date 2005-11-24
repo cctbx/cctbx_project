@@ -345,13 +345,13 @@ namespace cctbx { namespace xray {
       fast_gradients(
         uctbx::unit_cell const& unit_cell,
         af::const_ref<XrayScattererType> const& scatterers,
-        scattering_dictionary const& scattering_dict,
+        xray::scattering_type_registry const& scattering_type_registry,
         FloatType const& u_base=0.25,
         FloatType const& wing_cutoff=1.e-3,
         FloatType const& exp_table_one_over_step_size=-100,
         FloatType const& tolerance_positive_definite=1.e-5)
       :
-        base_t(unit_cell, scatterers, scattering_dict,
+        base_t(unit_cell, scatterers, scattering_type_registry,
                u_base, wing_cutoff,
                exp_table_one_over_step_size, tolerance_positive_definite),
         sampling_may_only_be_called_once(true)
@@ -361,7 +361,7 @@ namespace cctbx { namespace xray {
       sampling(
         af::const_ref<XrayScattererType> const& scatterers,
         af::const_ref<FloatType> const& mean_displacements,
-        scattering_dictionary const& scattering_dict,
+        xray::scattering_type_registry const& scattering_type_registry,
         sgtbx::site_symmetry_table const& site_symmetry_table,
         af::const_ref<FloatType, accessor_type> const&
           ft_d_target_d_f_calc,
@@ -372,7 +372,7 @@ namespace cctbx { namespace xray {
         this->map_accessor_ = ft_d_target_d_f_calc.accessor();
         sampling_(
           scatterers, mean_displacements,
-          scattering_dict, site_symmetry_table,
+          scattering_type_registry, site_symmetry_table,
           &*ft_d_target_d_f_calc.begin(), 0,
           grad_flags, n_parameters, sampled_density_must_be_positive);
       }
@@ -381,7 +381,7 @@ namespace cctbx { namespace xray {
       sampling(
         af::const_ref<XrayScattererType> const& scatterers,
         af::const_ref<FloatType> const& mean_displacements,
-        scattering_dictionary const& scattering_dict,
+        xray::scattering_type_registry const& scattering_type_registry,
         sgtbx::site_symmetry_table const& site_symmetry_table,
         af::const_ref<std::complex<FloatType>, accessor_type> const&
           ft_d_target_d_f_calc,
@@ -392,7 +392,7 @@ namespace cctbx { namespace xray {
         this->map_accessor_ = ft_d_target_d_f_calc.accessor();
         sampling_(
           scatterers, mean_displacements,
-          scattering_dict, site_symmetry_table,
+          scattering_type_registry, site_symmetry_table,
           0, &*ft_d_target_d_f_calc.begin(),
           grad_flags, n_parameters, sampled_density_must_be_positive);
       }
@@ -452,7 +452,7 @@ namespace cctbx { namespace xray {
       sampling_(
         af::const_ref<XrayScattererType> const& scatterers,
         af::const_ref<FloatType> const& mean_displacements,
-        scattering_dictionary const& scattering_dict,
+        xray::scattering_type_registry const& scattering_type_registry,
         sgtbx::site_symmetry_table const& site_symmetry_table,
         const FloatType* ft_d_target_d_f_calc_real,
         const std::complex<FloatType>* ft_d_target_d_f_calc_complex,
@@ -468,7 +468,7 @@ namespace cctbx { namespace xray {
   sampling_(
     af::const_ref<XrayScattererType> const& scatterers,
     af::const_ref<FloatType> const& mean_displacements,
-    scattering_dictionary const& scattering_dict,
+    xray::scattering_type_registry const& scattering_type_registry,
     sgtbx::site_symmetry_table const& site_symmetry_table,
     const FloatType* ft_d_target_d_f_calc_real,
     const std::complex<FloatType>* ft_d_target_d_f_calc_complex,
@@ -482,7 +482,6 @@ namespace cctbx { namespace xray {
     if (grad_flags.u_iso && grad_flags.sqrt_u_iso) {
       CCTBX_ASSERT(mean_displacements.size() == scatterers.size());
     }
-    CCTBX_ASSERT(scattering_dict.n_scatterers() == scatterers.size());
     if (this->n_anomalous_scatterers_ != 0) {
       this->anomalous_flag_ = true;
     }
@@ -517,8 +516,6 @@ namespace cctbx { namespace xray {
       this->u_cart_cache_.begin();
     for(std::size_t i_seq=0;i_seq<scatterers.size();i_seq++) {
       XrayScattererType const& scatterer = scatterers[i_seq];
-      eltbx::xray_scattering::gaussian const& gaussian=scattering_dict.lookup(
-        scatterer.scattering_type).gaussian;
       scitbx::vec3<FloatType> gr_site(0,0,0);
       FloatType gr_b_iso(0);
       scitbx::sym_mat3<FloatType> gr_b_cart(0,0,0,0,0,0);
@@ -526,6 +523,9 @@ namespace cctbx { namespace xray {
       FloatType gr_fp(0);
       FloatType gr_fdp(0);
       if (scatterer.weight() != 0) {
+        eltbx::xray_scattering::gaussian const&
+          gaussian = scattering_type_registry.gaussian_not_optional(
+            scatterer.scattering_type);
         FloatType fdp = scatterer.fdp;
         fractional<FloatType> coor_frac = scatterer.site;
         detail::d_gaussian_fourier_transformed<FloatType> gaussian_ft(

@@ -29,7 +29,7 @@ namespace cctbx { namespace xray {
       sampled_model_density(
         uctbx::unit_cell const& unit_cell,
         af::const_ref<XrayScattererType> const& scatterers,
-        scattering_dictionary const& scattering_dict,
+        xray::scattering_type_registry const& scattering_type_registry,
         grid_point_type const& fft_n_real,
         grid_point_type const& fft_m_real,
         FloatType const& u_base=0.25,
@@ -68,7 +68,7 @@ namespace cctbx { namespace xray {
   ::sampled_model_density(
     uctbx::unit_cell const& unit_cell,
     af::const_ref<XrayScattererType> const& scatterers,
-    scattering_dictionary const& scattering_dict,
+    xray::scattering_type_registry const& scattering_type_registry,
     grid_point_type const& fft_n_real,
     grid_point_type const& fft_m_real,
     FloatType const& u_base,
@@ -78,7 +78,7 @@ namespace cctbx { namespace xray {
     bool sampled_density_must_be_positive,
     FloatType const& tolerance_positive_definite)
   :
-    base_t(unit_cell, scatterers, scattering_dict,
+    base_t(unit_cell, scatterers, scattering_type_registry,
            u_base, wing_cutoff,
            exp_table_one_over_step_size, tolerance_positive_definite)
   {
@@ -112,9 +112,10 @@ namespace cctbx { namespace xray {
       this->u_cart_cache_.begin();
     for(std::size_t i_seq=0;i_seq<scatterers.size();i_seq++) {
       XrayScattererType const& scatterer = scatterers[i_seq];
-      eltbx::xray_scattering::gaussian const& gaussian=scattering_dict.lookup(
-        scatterer.scattering_type).gaussian;
       if (scatterer.weight() == 0) continue;
+      eltbx::xray_scattering::gaussian const&
+        gaussian = scattering_type_registry.gaussian_not_optional(
+          scatterer.scattering_type);
       FloatType fdp = scatterer.fdp;
       fractional<FloatType> coor_frac = scatterer.site;
       detail::gaussian_fourier_transformed<FloatType> gaussian_ft(
