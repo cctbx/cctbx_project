@@ -188,7 +188,7 @@ def test_2():
                                  volume_per_atom   = volume_per_atom,
                                  anisotropic_flag  = False,
                                  random_u_iso      = False)
-  structure.scattering_dict(table="wk1995")
+  structure.scattering_type_registry(table="wk1995")
   f_calc = structure.structure_factors(d_min          = d_min,
                                        anomalous_flag = False,
                                        algorithm      = "direct").f_calc()

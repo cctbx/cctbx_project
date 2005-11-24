@@ -17,7 +17,6 @@ def fcalc_fft_direct_accuracy_checker(xray_structure,
                                       scat_table):
   flag = "OK"
   xray_structure_copy =  xray_structure.deep_copy_scatterers()
-  #xray_structure_copy.scattering_dict(table = scat_table)
 
   f_calc_fft = f_calc.structure_factors_from_scatterers(
                                  xray_structure = xray_structure_copy,

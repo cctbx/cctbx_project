@@ -1957,15 +1957,15 @@ class process(object):
         and self.all_chain_proxies.special_position_settings is not None
         and self._xray_structure is None):
       self._xray_structure = self.all_chain_proxies.extract_xray_structure()
-      self._xray_structure.scattering_dict(
+      self._xray_structure.scattering_type_registry(
         types_without_a_scattering_contribution=["?"])
       if (self.log is not None):
         self._xray_structure.show_summary(f=self.log, prefix="  ")
         self._xray_structure.show_special_position_shifts(
           sites_cart_original=self.all_chain_proxies.sites_cart,
           out=self.log, prefix="  ")
-        self._xray_structure.scattering_dict().show(
-          show_gaussians=False, f=self.log, prefix="  ")
+        self._xray_structure.scattering_type_registry().show(
+          show_gaussians=False, out=self.log, prefix="  ")
         flush_log(self.log)
     return self._xray_structure
 

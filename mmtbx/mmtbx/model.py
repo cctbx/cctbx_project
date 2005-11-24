@@ -118,7 +118,7 @@ class manager(object):
            rigid_body_selections.append(s.select(selection))
     self.rigid_body_selections = rigid_body_selections
     self.solvent_selection = new_solvent_selection
-    self.xray_structure.scattering_dict()
+    self.xray_structure.scattering_type_registry()
     self.restraints_manager = mmtbx.restraints.manager(
             geometry      = self.restraints_manager.geometry.select(selection),
             ncs_groups    = self.restraints_manager.ncs_groups,
@@ -179,14 +179,10 @@ class manager(object):
                          leave_only_labels = None):
     assert [atom_type, leave_only_labels].count(None) == 1
     if(atom_type is not None):
-       remove_atoms_selection = None
-       sd = self.xray_structure.scattering_dict().dict()
-       if(atom_type not in sd.keys()): return
-       for key in sd.keys():
-           if(key == atom_type):
-              remove_atoms_selection = \
-                            ~flex.bool(self.xray_structure.scatterers().size(),
-                             sd[key].member_indices)
+       remove_atoms_selection = (
+         self.xray_structure.scatterers().extract_scattering_types()
+           != atom_type)
+       if (remove_atoms_selection.all_eq(True)): return
     if(leave_only_labels is not None):
        remove_atoms_selection = flex.bool(len(self.atom_attributes_list), False)
        for i_seq, atom in enumerate(self.atom_attributes_list):
