@@ -72,7 +72,7 @@ namespace cctbx { namespace xray {
 
       template <typename XrayScattererType>
       af::shared<std::size_t>
-      unique_indices(af::const_ref<XrayScattererType> const& scatterers)
+      unique_indices(af::const_ref<XrayScattererType> const& scatterers) const
       {
         af::shared<std::size_t> result(
           scatterers.size(), af::init_functor_null<std::size_t>());
@@ -143,6 +143,18 @@ namespace cctbx { namespace xray {
         }
       }
 
+      std::string
+      type_given_unique_index(std::size_t unique_index) const
+      {
+        for(type_index_pairs_t::const_iterator
+              pair=type_index_pairs.begin();
+              pair!=type_index_pairs.end();
+              pair++) {
+          if (pair->second == unique_index) return pair->first;
+        }
+        throw std::runtime_error("unique_index out of range.");
+      }
+
       af::shared<double>
       unique_form_factors_at_d_star_sq(double d_star_sq) const
       {
@@ -151,6 +163,12 @@ namespace cctbx { namespace xray {
         af::shared<double> result(ugs.size(), af::init_functor_null<double>());
         double x_sq = d_star_sq / 4;
         for(std::size_t i=0;i<ugs.size();i++) {
+          if (!ugs[i]) {
+            throw std::runtime_error(
+              "gaussian not defined for scattering_type \""
+              + type_given_unique_index(i)
+              + "\".");
+          }
           result[i] = ugs[i]->at_x_sq(x_sq);
         }
         return result;

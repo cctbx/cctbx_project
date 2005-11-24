@@ -22,7 +22,7 @@ namespace {
                   sgtbx::space_group const&,
                   af::const_ref<miller::index<> > const&,
                   af::const_ref<scatterer_type> const&,
-                  scattering_dictionary const&>())
+                  scattering_type_registry const&>())
         .def("f_calc", &w_t::f_calc)
       ;
     }

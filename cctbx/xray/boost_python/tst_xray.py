@@ -475,6 +475,10 @@ def exercise_scattering_type_registry():
   except RuntimeError, e:
     assert str(e) == 'scattering_type "foo" not in scattering_type_registry.'
   else: raise RuntimeError("Exception expected.")
+  try: reg.unique_form_factors_at_d_star_sq(d_star_sq=0)
+  except RuntimeError, e:
+    assert str(e) == 'gaussian not defined for scattering_type "custom".'
+  else: raise RuntimeError("Exception expected.")
 
 def exercise_structure_factors():
   uc = uctbx.unit_cell((10, 10, 13))
@@ -507,15 +511,21 @@ def exercise_structure_factors():
     assert s.multiplicity() != 0
   assert xray.n_undefined_multiplicities(scatterers) == 0
   mi = flex.miller_index(((1,2,3), (2,3,4)))
+  reg = xray.scattering_type_registry()
+  reg.process(scatterers=scatterers)
+  reg.assign_from_table("WK1995")
+  fc = xray.ext.structure_factors_simple(
+    uc, sg.group(), mi, scatterers, reg).f_calc()
+  assert approx_equal(flex.abs(fc), (10.50871, 9.049631))
+  assert approx_equal(flex.arg(fc, 1), (-36, 72))
   scattering_dict = xray.ext.scattering_dictionary(scatterers)
   scattering_dict.assign_from_table("WK1995")
-  for sf in (xray.ext.structure_factors_simple,
-             xray.ext.structure_factors_direct):
-    fc = sf(uc, sg.group(), mi, scatterers, scattering_dict).f_calc()
-    a = flex.abs(fc)
-    p = flex.arg(fc, 1)
-    assert approx_equal(tuple(a), (10.50871, 9.049631))
-    assert approx_equal(tuple(p), (-36, 72))
+  assert approx_equal(flex.abs(fc), (10.50871, 9.049631))
+  assert approx_equal(flex.arg(fc, 1), (-36, 72))
+  fc = xray.ext.structure_factors_direct(
+    uc, sg.group(), mi, scatterers, scattering_dict).f_calc()
+  assert approx_equal(flex.abs(fc), (10.50871, 9.049631))
+  assert approx_equal(flex.arg(fc, 1), (-36, 72))
   xray.tidy_us(
     scatterers=scatterers,
     unit_cell=uc,
