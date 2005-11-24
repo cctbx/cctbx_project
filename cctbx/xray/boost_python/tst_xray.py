@@ -511,19 +511,17 @@ def exercise_structure_factors():
     assert s.multiplicity() != 0
   assert xray.n_undefined_multiplicities(scatterers) == 0
   mi = flex.miller_index(((1,2,3), (2,3,4)))
-  reg = xray.scattering_type_registry()
-  reg.process(scatterers=scatterers)
-  reg.assign_from_table("WK1995")
+  scattering_type_registry = xray.scattering_type_registry()
+  scattering_type_registry.process(scatterers=scatterers)
+  scattering_type_registry.assign_from_table("WK1995")
   fc = xray.ext.structure_factors_simple(
-    uc, sg.group(), mi, scatterers, reg).f_calc()
+    uc, sg.group(), mi, scatterers, scattering_type_registry).f_calc()
   assert approx_equal(flex.abs(fc), (10.50871, 9.049631))
   assert approx_equal(flex.arg(fc, 1), (-36, 72))
-  scattering_dict = xray.ext.scattering_dictionary(scatterers)
-  scattering_dict.assign_from_table("WK1995")
   assert approx_equal(flex.abs(fc), (10.50871, 9.049631))
   assert approx_equal(flex.arg(fc, 1), (-36, 72))
   fc = xray.ext.structure_factors_direct(
-    uc, sg.group(), mi, scatterers, scattering_dict).f_calc()
+    uc, sg.group(), mi, scatterers, scattering_type_registry).f_calc()
   assert approx_equal(flex.abs(fc), (10.50871, 9.049631))
   assert approx_equal(flex.arg(fc, 1), (-36, 72))
   xray.tidy_us(
@@ -537,7 +535,9 @@ def exercise_structure_factors():
      -0.0026425269166861672, 0.027955730692513142, -0.0054908429234285239))
   xray.ext.structure_factors_direct(
     math_module.cos_sin_table(12),
-    uc, sg.group(), mi, scatterers, scattering_dict).f_calc()
+    uc, sg.group(), mi, scatterers, scattering_type_registry).f_calc()
+  scattering_dict = xray.ext.scattering_dictionary(scatterers)
+  scattering_dict.assign_from_table("WK1995")
   xray.ext.structure_factors_gradients_direct(
     uc, sg.group(), mi, scatterers, None, scattering_dict, site_symmetry_table,
     flex.complex_double(mi.size()),
