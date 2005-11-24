@@ -198,28 +198,6 @@ namespace cctbx { namespace xray {
     }
 
     template <typename FloatType>
-    FloatType
-    get_average_gaussian_ft_a(
-      scattering_dictionary const& scattering_dict,
-      FloatType const& average_b_iso_estimate)
-    {
-      typedef scattering_dictionary::dict_type dict_type;
-      typedef dict_type::const_iterator dict_iter;
-      FloatType sum_a = 0;
-      std::size_t sum_n = 0;
-      dict_type const& scd = scattering_dict.dict();
-      for(dict_iter di=scd.begin();di!=scd.end();di++) {
-        std::size_t n = di->second.member_indices.size();
-        sum_a += n * scitbx::fn::absolute(di->second.gaussian.at_stol_sq(0));
-        sum_n += n;
-      }
-      if (sum_n == 0) return 0;
-      return isotropic_3d_gaussian_fourier_transform(
-        sum_a / static_cast<FloatType>(sum_n),
-        average_b_iso_estimate);
-    }
-
-    template <typename FloatType>
     class gaussian_fourier_transformed
     {
       public:
