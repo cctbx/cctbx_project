@@ -536,17 +536,17 @@ def exercise_structure_factors():
   xray.ext.structure_factors_direct(
     math_module.cos_sin_table(12),
     uc, sg.group(), mi, scatterers, scattering_type_registry).f_calc()
-  scattering_dict = xray.ext.scattering_dictionary(scatterers)
-  scattering_dict.assign_from_table("WK1995")
   xray.ext.structure_factors_gradients_direct(
-    uc, sg.group(), mi, scatterers, None, scattering_dict, site_symmetry_table,
+    uc, sg.group(), mi, scatterers, None,
+    scattering_type_registry, site_symmetry_table,
     flex.complex_double(mi.size()),
     xray.ext.gradient_flags(
       True, True, True, True, True, True, False, False),
     0)
   xray.ext.structure_factors_gradients_direct(
     math_module.cos_sin_table(12),
-    uc, sg.group(), mi, scatterers, None, scattering_dict, site_symmetry_table,
+    uc, sg.group(), mi, scatterers, None,
+    scattering_type_registry, site_symmetry_table,
     flex.complex_double(mi.size()),
     xray.ext.gradient_flags(
       True, True, True, True, True, True, False, False),
