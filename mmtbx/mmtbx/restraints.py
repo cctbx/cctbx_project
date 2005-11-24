@@ -1,6 +1,8 @@
 import cctbx.adp_restraints
+import math
 from cctbx.array_family import flex
 import scitbx.restraints
+from cctbx import adptbx
 
 class manager(object):
 
@@ -55,6 +57,8 @@ class manager(object):
         parameters,
         wilson_b=None,
         compute_gradients=False,
+        tan_b_iso_max=None,
+        mean_displacements=None,
         gradients=None):
     result = scitbx.restraints.energies(
       compute_gradients=compute_gradients,
@@ -83,4 +87,19 @@ class manager(object):
         gradients=result.gradients)
       result += result.ncs_groups
     result.finalize_target_and_gradients()
+    if(compute_gradients):
+       if(tan_b_iso_max != 0):
+          u_iso_max = adptbx.b_as_u(tan_b_iso_max)
+          if(mean_displacements is not None):
+             scale = u_iso_max / math.pi / (flex.pow2(mean_displacements)+1.0)
+          else:
+             mean_displacements = flex.tan(math.pi*(xray_structure.scatterers().extract_u_iso()/u_iso_max-1./2.))
+             scale = u_iso_max / math.pi / (flex.pow2(mean_displacements)+1.0)
+
+          #a =u_iso_max / math.pi / (flex.pow2(mean_displacements)+1.0)
+          #b = u_iso_max / math.pi / (flex.pow2(flex.tan(math.pi*(xray_structure.scatterers().extract_u_iso()/u_iso_max-1./2.)))+1.0)
+          #print a[0],b[0]
+       else:
+          scale = 1.0
+       result.gradients = result.gradients * scale
     return result

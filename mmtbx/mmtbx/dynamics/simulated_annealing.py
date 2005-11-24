@@ -26,6 +26,7 @@ def manager(simulated_annealing_params,
             alpha_beta_parameters,
             mask_parameters,
             target_weights,
+            tan_b_iso_max,
             macro_cycle,
             wilson_b,
             monitor,
@@ -38,7 +39,8 @@ def manager(simulated_annealing_params,
   minimized = mmtbx.refinement.minimization.lbfgs(
     xray_gradient_flags      = xray.structure_factors.gradient_flags(
                                  site = simulated_annealing_params.refine_sites,
-                                 u_iso= simulated_annealing_params.refine_adp),
+                                 u_iso= simulated_annealing_params.refine_adp,
+                                 tan_b_iso_max  = tan_b_iso_max),
     xray_structure           = model.xray_structure,
     restraints_manager       = model.restraints_manager,
     fmodel                   = fmodel,
@@ -50,9 +52,7 @@ def manager(simulated_annealing_params,
     wilson_b                    = wilson_b,
     verbose                     = 0)
 
-  print_statistics.print_lbfgs_minimize_stat(
-    minimized = minimized,
-    text = "lbfgs minimization of target = wx * E-xray + wc * E-chem + wu * E-adp")
+  minimized.show(text = "lbfgs minimization", out = out)
   fmodel.update_xray_structure(xray_structure           = model.xray_structure,
                                update_f_calc            = True,
                                update_f_mask            = False,
@@ -62,6 +62,7 @@ def manager(simulated_annealing_params,
   monitor.collect(step           = str(macro_cycle) + "_xyz:",
                   model          = model,
                   fmodel         = fmodel,
+                  tan_b_iso_max  = tan_b_iso_max,
                   target_weights = target_weights,
                   wilson_b       = None)
 
@@ -86,6 +87,7 @@ def manager(simulated_annealing_params,
   monitor.collect(step           = str(macro_cycle) + "_sar:",
                   model          = model,
                   fmodel         = fmodel,
+                  tan_b_iso_max  = tan_b_iso_max,
                   target_weights = target_weights,
                   wilson_b       = None)
 

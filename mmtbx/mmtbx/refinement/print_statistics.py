@@ -10,22 +10,6 @@ from mmtbx import bulk_solvent
 from mmtbx import max_lik
 
 
-def print_lbfgs_minimize_stat(minimized, text, out=None):
-  if (out is None): out = sys.stdout
-  print >> out
-  line_len = len("| "+text+"|")
-  fill_len = 80 - line_len-1
-  print >> out, "| "+text+"-"*(fill_len)+"|"
-  print >> out, "| target value start = %13.4f | number of iterations           = %4d  |"%\
-        (minimized.first_target_value, minimized.minimizer.iter())
-  print >> out, "| target value end   = %13.4f | number of function evaluations = %4d  |"%\
-        (minimized.final_target_value, minimized.minimizer.nfun())
-  try: print >> out, "| wx = %17.6f | wc = %17.6f | wu = %17.6f    |"%\
-        (minimized.wx, minimized.wc, minimized.wu)
-  except: pass
-  print >> out, "|"+"-"*77+"|"
-  out.flush()
-
 def make_header(line, out=None):
   if (out is None): out = sys.stdout
   header_len = 80
@@ -208,6 +192,7 @@ class refinement_monitor(object):
                     fmodel,
                     target_weights,
                     step,
+                    tan_b_iso_max,
                     wilson_b = None):
     mxrs = model.xray_structure
     fxrs = fmodel.xray_structure
@@ -278,7 +263,8 @@ class refinement_monitor(object):
        self.bs_iso_min_s .append(flex.min_default( b_isos_s, 0)   )
        self.bs_iso_ave_s .append(flex.mean_default(b_isos_s, 0)   )
     adp = model.adp_statistics(iso_restraints = self.params.adp_restraints.iso,
-                               wilson_b       = self.wilson_b)
+                               wilson_b       = self.wilson_b,
+                               tan_b_iso_max  = tan_b_iso_max)
     self.tus             .append(adp.target_adp_iso               )
     self.wus             .append(target_weights.wu()              )
     rem = relative_errors(

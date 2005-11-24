@@ -328,6 +328,7 @@ class manager(object):
   def adp_statistics(self, iso_restraints,
                            other    = None,
                            wilson_b = None,
+                           tan_b_iso_max= None,
                            show     = False,
                            text     = ""):
     if(other is not None):
@@ -338,6 +339,7 @@ class manager(object):
                              restraints_manager_ref = other.restraints_manager,
                              iso_restraints         = iso_restraints,
                              wilson_b               = wilson_b,
+                             tan_b_iso_max              = tan_b_iso_max,
                              text                   = text)
     else:
        adp_statistics_obj = adp_statistics(
@@ -346,6 +348,7 @@ class manager(object):
                           restraints_manager     = self.restraints_manager,
                           restraints_manager_ref = self.restraints_manager_ini,
                           iso_restraints         = iso_restraints,
+                          tan_b_iso_max              = tan_b_iso_max,
                           wilson_b               = wilson_b,
                           text                   = "")
     if(show): adp_statistics_obj.show(out = self.log)
@@ -361,6 +364,7 @@ class adp_statistics(object):
                restraints_manager_ref,
                iso_restraints,
                wilson_b = None,
+               tan_b_iso_max = None,
                text=""):
     adopt_init_args(self, locals())
     self.text = self.text + "ADP statistics"
@@ -368,11 +372,13 @@ class adp_statistics(object):
                                             xray_structure    = xray_structure,
                                             parameters        = iso_restraints,
                                             wilson_b          = wilson_b,
+                                            tan_b_iso_max     = tan_b_iso_max,
                                             compute_gradients = True)
     energies_adp_iso_ref = restraints_manager_ref.energies_adp_iso(
                                         xray_structure    = xray_structure_ref,
                                         parameters        = iso_restraints,
                                         wilson_b          = wilson_b,
+                                        tan_b_iso_max     = tan_b_iso_max,
                                         compute_gradients = True)
     eps = math.pi**2*8
     self.b_isos = xray_structure.extract_u_iso_or_u_equiv() * eps
