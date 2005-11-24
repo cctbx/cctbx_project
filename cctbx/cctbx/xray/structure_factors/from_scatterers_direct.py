@@ -25,7 +25,7 @@ class from_scatterers_direct(managed_calculation_base):
         self._miller_set.space_group(),
         self._miller_set.indices(),
         self._xray_structure.scatterers(),
-        self._xray_structure.scattering_dict())
+        self._xray_structure.scattering_type_registry())
     else:
       self._results = ext.structure_factors_direct(
         cos_sin_table,
@@ -33,7 +33,7 @@ class from_scatterers_direct(managed_calculation_base):
         self._miller_set.space_group(),
         self._miller_set.indices(),
         self._xray_structure.scatterers(),
-        self._xray_structure.scattering_dict())
+        self._xray_structure.scattering_type_registry())
     if (manager is not None):
       manager.estimate_time_direct.register(
         xray_structure.scatterers().size() * miller_set.indices().size(),

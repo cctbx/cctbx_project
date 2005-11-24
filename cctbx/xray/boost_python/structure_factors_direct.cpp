@@ -23,13 +23,13 @@ namespace {
                   sgtbx::space_group const&,
                   af::const_ref<miller::index<> > const&,
                   af::const_ref<scatterer_type> const&,
-                  scattering_dictionary const&>())
+                  scattering_type_registry const&>())
         .def(init<math::cos_sin_table<float_type> const&,
                   uctbx::unit_cell const&,
                   sgtbx::space_group const&,
                   af::const_ref<miller::index<> > const&,
                   af::const_ref<scatterer_type> const&,
-                  scattering_dictionary const&>())
+                  scattering_type_registry const&>())
         .def("f_calc", &w_t::f_calc)
       ;
     }
