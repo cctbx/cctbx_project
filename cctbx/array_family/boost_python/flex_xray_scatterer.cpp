@@ -73,6 +73,16 @@ namespace cctbx { namespace xray { namespace {
     return result;
   }
 
+  af::shared<std::string>
+  extract_scattering_types(af::const_ref<scatterer<> > const& self)
+  {
+    af::shared<std::string> result(af::reserve(self.size()));
+    for(std::size_t i=0;i<self.size();i++) {
+      result.push_back(self[i].scattering_type);
+    }
+    return result;
+  }
+
   af::shared<scitbx::vec3<double> >
   extract_sites(af::const_ref<scatterer<> > const& scatterers)
   {
@@ -277,6 +287,7 @@ namespace scitbx { namespace af { namespace boost_python {
       .def_pickle(flex_pickle_double_buffered<
         cctbx::xray::scatterer<>, to_string, from_string>())
       .def("extract_labels", cctbx::xray::extract_labels)
+      .def("extract_scattering_types", cctbx::xray::extract_scattering_types)
       .def("extract_sites", cctbx::xray::extract_sites)
       .def("set_sites", cctbx::xray::set_sites,
         (arg_("sites")))
