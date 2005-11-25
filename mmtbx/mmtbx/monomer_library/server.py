@@ -160,10 +160,19 @@ class server(object):
     std_comp_id = self.comp_synonym_list_dict.get(comp_id, comp_id)
     comp_comp_id = None
     if (len(std_comp_id) > 0):
-      file_name = os.path.join(
-        self.root_path, std_comp_id[0].lower(), std_comp_id+".cif")
-      if (os.path.isfile(file_name)):
-        comp_comp_id = read_comp_cif(file_name=file_name)
+      dir_name = os.path.join(self.root_path, std_comp_id[0].lower())
+      if (os.path.isdir(dir_name)):
+        cif_name = std_comp_id + ".cif"
+        file_name = os.path.join(dir_name, cif_name)
+        if (os.path.isfile(file_name)):
+          comp_comp_id = read_comp_cif(file_name=file_name)
+        else:
+          cif_name = cif_name.lower()
+          for node in os.listdir(dir_name):
+            if (node.lower() != cif_name): continue
+            file_name = os.path.join(dir_name, node)
+            comp_comp_id = read_comp_cif(file_name=file_name)
+            break
     self.comp_comp_id_dict[std_comp_id] = comp_comp_id
     self.comp_comp_id_dict[comp_id] = comp_comp_id
     return self.comp_comp_id_dict[comp_id]
