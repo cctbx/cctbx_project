@@ -20,7 +20,7 @@ class structure(crystal.special_position_settings):
         special_position_settings=None,
         scatterers=None,
         site_symmetry_table=None,
-        scattering_dict=None,
+        scattering_type_registry=None,
         crystal_symmetry=None):
     assert [special_position_settings, crystal_symmetry].count(None) == 1
     assert scatterers is not None or site_symmetry_table is None
@@ -30,7 +30,7 @@ class structure(crystal.special_position_settings):
     crystal.special_position_settings._copy_constructor(
       self, special_position_settings)
     self.erase_scatterers()
-    self._scattering_dict = scattering_dict
+    self._scattering_type_registry = scattering_type_registry
     if (scatterers is not None):
       self.add_scatterers(
         scatterers=scatterers,
@@ -41,16 +41,18 @@ class structure(crystal.special_position_settings):
       self, special_position_settings)
     self._scatterers = other._scatterers
     self._site_symmetry_table = other._site_symmetry_table
-    self._scattering_dict = other._scattering_dict
-    self._scattering_dict_is_out_of_date=other._scattering_dict_is_out_of_date
+    self._scattering_type_registry = other._scattering_type_registry
+    self._scattering_type_registry_is_out_of_date \
+      = other._scattering_type_registry_is_out_of_date
 
   def erase_scatterers(self):
     self._scatterers = flex.xray_scatterer()
     self._site_symmetry_table = sgtbx.site_symmetry_table()
-    self._scattering_dict_is_out_of_date = True
+    self._scattering_type_registry_is_out_of_date = True
 
   def deep_copy_scatterers(self):
-    cp = structure(self, scattering_dict=self._scattering_dict)
+    cp = structure(self,
+      scattering_type_registry=self._scattering_type_registry)
     cp._scatterers = self._scatterers.deep_copy()
     cp._site_symmetry_table = self._site_symmetry_table.deep_copy()
     if (getattr(self, "scatterer_pdb_records", None) is not None):
@@ -95,7 +97,8 @@ class structure(crystal.special_position_settings):
     return selection
 
   def replace_sites_cart(self, new_sites):
-    cp = structure(self, scattering_dict = self._scattering_dict)
+    cp = structure(self,
+      scattering_type_registry=self._scattering_type_registry)
     new_scatterers = self._scatterers.deep_copy()
     sites_frac_new = self.unit_cell().fractionalization_matrix()*new_sites
     new_scatterers.set_sites(sites_frac_new)
@@ -110,7 +113,8 @@ class structure(crystal.special_position_settings):
     sites_cart_size = sites_cart.size()
     shift_vector = flex.vec3_double(sites_cart_size,[x,y,z])
     sites_cart_new = sites_cart + shift_vector
-    cp = structure(self, scattering_dict = self._scattering_dict)
+    cp = structure(self,
+      scattering_type_registry=self._scattering_type_registry)
     new_scatterers = self._scatterers.deep_copy()
     sites_frac_new = self.unit_cell().fractionalization_matrix()*sites_cart_new
     new_scatterers.set_sites(sites_frac_new)
@@ -147,7 +151,8 @@ class structure(crystal.special_position_settings):
                       flex.mean(flex.sqrt((sites_cart - sites_cart_new).dot()))
       if(left >= right):
         raise RuntimeError("mean_error is not achieved within specified range")
-    cp = structure(self, scattering_dict = self._scattering_dict)
+    cp = structure(self,
+      scattering_type_registry=self._scattering_type_registry)
     new_scatterers = self._scatterers.deep_copy()
     sites_frac_new = self.unit_cell().fractionalization_matrix()*sites_cart_new
     new_scatterers.set_sites(sites_frac_new)
@@ -242,7 +247,7 @@ class structure(crystal.special_position_settings):
   def special_position_indices(self):
     return self._site_symmetry_table.special_position_indices()
 
-  def scattering_dict(self,
+  def scattering_type_registry(self,
         custom_dict=None,
         d_min=None,
         table=None,
@@ -250,61 +255,46 @@ class structure(crystal.special_position_settings):
     assert table in [None, "n_gaussian", "it1992", "wk1995"]
     if (table == "it1992"): assert d_min in [0,None] or d_min >= 1/4.
     if (table == "wk1995"): assert d_min in [0,None] or d_min >= 1/12.
-    if (   self._scattering_dict_is_out_of_date
+    if (   self._scattering_type_registry_is_out_of_date
         or custom_dict is not None
         or d_min is not None
         or table is not None
         or types_without_a_scattering_contribution is not None):
       new_dict = {"const": eltbx.xray_scattering.gaussian(1) }
       old_dict = {}
-      if (self._scattering_dict is not None):
-        for k,v in self._scattering_dict.dict().items():
-          old_dict[k] = v.gaussian
+      if (self._scattering_type_registry is not None):
+        ugs = self._scattering_type_registry.unique_gaussians_as_list()
+        tip = self._scattering_type_registry.type_index_pairs_as_dict()
+        for t,i in tip.items():
+          if (ugs[i] is not None): old_dict[t] = ugs[i]
         if (d_min is None and table is None):
           new_dict.update(old_dict)
       if (types_without_a_scattering_contribution is not None):
-        for k in types_without_a_scattering_contribution:
-          new_dict[k] = eltbx.xray_scattering.gaussian(0)
+        for t in types_without_a_scattering_contribution:
+          new_dict[t] = eltbx.xray_scattering.gaussian(0)
       if (custom_dict is not None):
         new_dict.update(custom_dict)
       if (d_min is None): d_min = 0
-      self._scattering_dict = ext.scattering_dictionary(self.scatterers())
-      for key_undef in self._scattering_dict.find_undefined():
-        val = new_dict.get(key_undef, None)
+      self._scattering_type_registry = ext.scattering_type_registry()
+      self._scattering_type_registry.process(self._scatterers)
+      for t_undef in self._scattering_type_registry.unassigned_types():
+        val = new_dict.get(t_undef, None)
         if (val is None):
           try:
             if (table == "it1992"):
-              val = eltbx.xray_scattering.it1992(key_undef, True).fetch()
+              val = eltbx.xray_scattering.it1992(t_undef, True).fetch()
             elif (table == "wk1995"):
-              val = eltbx.xray_scattering.wk1995(key_undef, True).fetch()
+              val = eltbx.xray_scattering.wk1995(t_undef, True).fetch()
             else:
-              if (key_undef == "D"): key_undef = "H"
+              if (t_undef == "D"): t_undef = "H"
               val = eltbx.xray_scattering.n_gaussian_table_entry(
-                key_undef, d_min, 0).gaussian()
+                t_undef, d_min, 0).gaussian()
           except RuntimeError:
-            raise
-            val = old_dict.get(key_undef, None)
+            val = old_dict.get(t_undef, None)
             if (val is None): raise
-        self._scattering_dict.assign(key_undef, val)
-      self._scattering_dict_is_out_of_date = False
-    return self._scattering_dict
-
-  def scattering_type_registry(self,
-        custom_dict=None,
-        d_min=None,
-        table=None,
-        types_without_a_scattering_contribution=None):
-    result = ext.scattering_type_registry()
-    result.process(scatterers=self._scatterers)
-    sd = self.scattering_dict(
-      custom_dict=custom_dict,
-      d_min=d_min,
-      table=table,
-      types_without_a_scattering_contribution\
-        =types_without_a_scattering_contribution)
-    for type,group in sd.dict().items():
-      result.assign(scattering_type=type, gaussian=group.gaussian)
-    return result
+        self._scattering_type_registry.assign(t_undef, val)
+      self._scattering_type_registry_is_out_of_date = False
+    return self._scattering_type_registry
 
   def __getitem__(self, slice_object):
     assert type(slice_object) == types.SliceType
@@ -316,7 +306,7 @@ class structure(crystal.special_position_settings):
       special_position_settings=self,
       scatterers=self._scatterers.select(sel),
       site_symmetry_table=self._site_symmetry_table.select(sel),
-      scattering_dict=self._scattering_dict)
+      scattering_type_registry=self._scattering_type_registry)
 
   def select(self, selection, negate=False):
     assert self.scatterers() is not None
@@ -325,14 +315,14 @@ class structure(crystal.special_position_settings):
       special_position_settings=self,
       scatterers=self._scatterers.select(selection),
       site_symmetry_table=self._site_symmetry_table.select(selection),
-      scattering_dict=self._scattering_dict)
+      scattering_type_registry=self._scattering_type_registry)
 
 
   def select_inplace(self, selection):
     assert self.scatterers() is not None
     self._scatterers          = self._scatterers.select(selection)
     self._site_symmetry_table = self._site_symmetry_table.select(selection)
-    self._scattering_dict_is_out_of_date = True
+    self._scattering_type_registry_is_out_of_date = True
 
   def add_scatterer(self, scatterer, site_symmetry_ops=None):
     self._scatterers.append(scatterer)
@@ -350,7 +340,7 @@ class structure(crystal.special_position_settings):
         u_star_tolerance=self.u_star_tolerance(),
         assert_min_distance_sym_equiv=self.assert_min_distance_sym_equiv())
     self._site_symmetry_table.process(site_symmetry_ops)
-    self._scattering_dict_is_out_of_date = True
+    self._scattering_type_registry_is_out_of_date = True
 
   def add_scatterers(self, scatterers, site_symmetry_table=None):
     if (site_symmetry_table is None):
@@ -367,7 +357,7 @@ class structure(crystal.special_position_settings):
       min_distance_sym_equiv=self.min_distance_sym_equiv(),
       u_star_tolerance=self.u_star_tolerance(),
       assert_min_distance_sym_equiv=self.assert_min_distance_sym_equiv())
-    self._scattering_dict_is_out_of_date = True
+    self._scattering_type_registry_is_out_of_date = True
 
   def concatenate(self, other):
     result = self.deep_copy_scatterers()
@@ -502,7 +492,7 @@ class structure(crystal.special_position_settings):
     new_structure = structure(
       crystal.special_position_settings(
         crystal.symmetry.cell_equivalent_p1(self)),
-      scattering_dict=self._scattering_dict)
+      scattering_type_registry=self._scattering_type_registry)
     new_structure._scatterers = self.scatterers().deep_copy()
     new_structure._site_symmetry_table = self.site_symmetry_table().deep_copy()
     return new_structure
@@ -513,7 +503,7 @@ class structure(crystal.special_position_settings):
         =crystal.special_position_settings.change_basis(self, cb_op),
       scatterers=ext.change_basis(scatterers=self._scatterers, cb_op=cb_op),
       site_symmetry_table=self._site_symmetry_table.change_basis(cb_op=cb_op),
-      scattering_dict=self._scattering_dict)
+      scattering_type_registry=self._scattering_type_registry)
 
   def change_hand(self):
     ch_op = self.space_group_info().type().change_of_hand_op()
@@ -530,7 +520,7 @@ class structure(crystal.special_position_settings):
         scatterers=self._scatterers,
         site_symmetry_table=self._site_symmetry_table,
         append_number_to_labels=append_number_to_labels),
-      scattering_dict=self._scattering_dict)
+      scattering_type_registry=self._scattering_type_registry)
 
   def apply_shift(self, shift, recompute_site_symmetries=False):
     shifted_scatterers = self.scatterers().deep_copy()
@@ -543,7 +533,7 @@ class structure(crystal.special_position_settings):
       special_position_settings=self,
       scatterers=shifted_scatterers,
       site_symmetry_table=site_symmetry_table,
-      scattering_dict=self._scattering_dict)
+      scattering_type_registry=self._scattering_type_registry)
 
   def random_shift_sites(self, max_shift_cart=0.2):
     shifts = flex.vec3_double(
@@ -560,7 +550,7 @@ class structure(crystal.special_position_settings):
       special_position_settings=self,
       scatterers=self._scatterers.select(p),
       site_symmetry_table=self._site_symmetry_table.select(p),
-      scattering_dict=self._scattering_dict)
+      scattering_type_registry=self._scattering_type_registry)
 
   def as_emma_model(self):
     from cctbx import euclidean_model_matching as emma
