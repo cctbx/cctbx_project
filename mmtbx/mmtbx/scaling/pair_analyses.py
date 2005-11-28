@@ -262,9 +262,9 @@ class outlier_rejection(object):
     assert self.nat.is_real_array()
 
     if self.nat.is_xray_intensity_array():
-      self.nat.f_sq_as_f()
+      self.nat=self.nat.f_sq_as_f()
     if self.der.is_xray_intensity_array():
-      self.der.f_sq_as_f()
+      self.der=self.der.f_sq_as_f()
 
     ## Construct delta f's
     delta_gen = delta_generator( self.nat, self.der )
