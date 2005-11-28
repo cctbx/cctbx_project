@@ -236,96 +236,6 @@ def exercise_rotate():
     scatterers=s)
   assert approx_equal(r[0].site, (-0.02,-0.01,-0.3))
 
-def exercise_scattering_dictionary():
-  sd = xray.scattering_dictionary()
-  assert sd.n_scatterers() == 0
-  assert sd.dict_size() == 0
-  assert len(sd.dict()) == 0
-  scatterers = flex.xray_scatterer((
-    xray.scatterer("Si1"),
-    xray.scatterer("Si2"),
-    xray.scatterer("O1"),
-    xray.scatterer("O2"),
-    xray.scatterer("Al1"),
-    xray.scatterer("O3"),
-    xray.scatterer("Al2"),
-    xray.scatterer("const", scattering_type="const"),
-    xray.scatterer("custom", scattering_type="custom")))
-  sd = xray.scattering_dictionary(scatterers)
-  assert sd.n_scatterers() == 9
-  assert sd.dict_size() == 5
-  sd_dict = sd.dict()
-  assert len(sd_dict) == 5
-  all_keys = sd_dict.keys()
-  all_keys.sort()
-  assert all_keys == ["Al", "O", "Si", "const", "custom"]
-  for k,v in sd_dict.items():
-    if   (k == "Si"): assert tuple(v.member_indices) == (0,1)
-    elif (k == "O"): assert tuple(v.member_indices) == (2,3,5)
-    elif (k == "Al"): assert tuple(v.member_indices) == (4,6)
-    elif (k == "const"): assert tuple(v.member_indices) == (7,)
-    elif (k == "custom"): assert tuple(v.member_indices) == (8,)
-    assert v.gaussian.n_terms() == 0
-    assert v.gaussian.c() == 0
-    assert tuple(sd.lookup(k).member_indices) == tuple(v.member_indices)
-  z = list(sd.find_undefined())
-  z.sort()
-  assert z == all_keys
-  p = list(sd.scatterer_permutation())
-  p.sort()
-  assert p == range(9)
-  for table,n_terms in (("IT1992",4), ("WK1995",5)):
-    sd = xray.scattering_dictionary(scatterers)
-    sd.assign("const", eltbx.xray_scattering.gaussian(10))
-    sd.assign("custom", eltbx.xray_scattering.gaussian((1,2),(3,4),5))
-    sd.assign_from_table(table)
-    for k,v in sd.dict().items():
-      if (k in ("Al", "O", "Si")):
-        assert v.gaussian.n_terms() == n_terms
-      elif (k == "const"):
-        assert v.gaussian.n_terms() == 0
-        assert approx_equal(v.gaussian.c(), 10)
-      else:
-        assert v.gaussian.n_terms() == 2
-        assert approx_equal(v.gaussian.c(), 5)
-    sd.assign("Al", eltbx.xray_scattering.gaussian(20))
-    assert approx_equal(sd.lookup("Al").gaussian.c(), 20)
-  assert sd.find_undefined().size() == 0
-  g = sd.dict()["custom"]
-  c = g.gaussian
-  assert c.n_terms() == 2
-  assert approx_equal(c.array_of_a(), (1,2))
-  assert approx_equal(c.array_of_b(), (3,4))
-  assert approx_equal(c.c(), 5)
-  assert tuple(g.member_indices) == (8,)
-  s = pickle.dumps(g)
-  l = pickle.loads(s)
-  c = l.gaussian
-  assert c.n_terms() == 2
-  assert approx_equal(c.array_of_a(), (1,2))
-  assert approx_equal(c.array_of_b(), (3,4))
-  assert approx_equal(c.c(), 5)
-  assert tuple(l.member_indices) == (8,)
-  s = pickle.dumps(sd)
-  l = pickle.loads(s)
-  l_dict = l.dict()
-  for k,v in sd.dict().items():
-    w = l_dict[k]
-    assert tuple(v.member_indices) == tuple(w.member_indices)
-    vc = v.gaussian
-    wc = w.gaussian
-    assert vc.array_of_a() == wc.array_of_a()
-    assert vc.array_of_b() == wc.array_of_b()
-    assert vc.c() == wc.c()
-  assert l.n_scatterers() == sd.n_scatterers()
-  try:
-    sd.lookup("undef")
-  except RuntimeError, e:
-    assert str(e).startswith(
-      "cctbx Error: Label not in scattering dictionary: ")
-  else:
-    raise RuntimeError("Exception expected.")
-
 def exercise_scattering_type_registry():
   reg = xray.scattering_type_registry()
   assert len(reg.type_index_pairs_as_dict()) == 0
@@ -1082,7 +992,6 @@ def run():
   exercise_conversions()
   exercise_gradient_flags()
   exercise_xray_scatterer()
-  exercise_scattering_dictionary()
   exercise_scattering_type_registry()
   exercise_rotate()
   exercise_structure_factors()
