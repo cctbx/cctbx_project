@@ -12,7 +12,7 @@ if (1):
   flex.set_random_seed(2)
 
 def exercise_SFweight_spline_core(structure, d_min, verbose=0):
-  structure.scattering_dict(d_min=d_min)
+  structure.scattering_type_registry(d_min=d_min)
   f_obs = abs(structure.structure_factors(
     d_min=d_min, anomalous_flag=False).f_calc())
   if (0 or verbose):
