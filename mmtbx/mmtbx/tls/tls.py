@@ -410,7 +410,7 @@ class tls_fcalc_target_grads(object):
                       unit_cell,
                       tmp,#origins,
                       utls,
-                      xs.scattering_dict(),
+                      xs.scattering_type_registry(),
                       xs.scatterers(),
                       tls_group_flags)
       self.target = manager_fast.target()

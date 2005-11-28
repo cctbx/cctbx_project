@@ -50,7 +50,7 @@ namespace {
                                   cctbx::uctbx::unit_cell const&,
                                   af::const_ref<vec3<double> > const&,
                                   af::shared<sym_mat3<double> > const&,
-                                  cctbx::xray::scattering_dictionary const&,
+                                  cctbx::xray::scattering_type_registry const&,
                                   af::const_ref<cctbx::xray::scatterer<> > const&,
                                   af::const_ref<int> const& >())
       .def("target",&tls_xray_target_grads::target)

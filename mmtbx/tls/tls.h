@@ -9,7 +9,7 @@
 #include <cctbx/import_scitbx_af.h>
 #include <cmath>
 #include <cctbx/adptbx.h>
-#include <cctbx/xray/scattering_dictionary.h>
+#include <cctbx/xray/scattering_type_registry.h>
 #include <assert.h>
 #include <math.h>
 #include <iostream>
@@ -325,7 +325,7 @@ public:
                         cctbx::uctbx::unit_cell const& uc,
                         af::const_ref<vec3<double> > const& origin,
                         af::shared<sym_mat3<double> > const& uanisos,
-                        cctbx::xray::scattering_dictionary const& scattering_dict,
+                        cctbx::xray::scattering_type_registry const& scattering_type_registry,
                         af::const_ref<cctbx::xray::scatterer<> > const& scatterers,
                         af::const_ref<int> const& tls_group_flags)
   {
@@ -353,7 +353,11 @@ public:
     MMTBX_ASSERT(denum > 0.0);
     MMTBX_ASSERT(sum_fo_sq > 0);
     double scale = num/denum;
-
+    af::shared<std::size_t>
+      scattering_type_indices_memory
+        = scattering_type_registry.unique_indices(scatterers);
+    af::const_ref<std::size_t>
+      scattering_type_indices = scattering_type_indices_memory.const_ref();
     for(std::size_t i=0; i < hkl.size(); i++) {
       double delta = fo[i] - scale * std::abs(fc[i]);
       target_ += delta * delta;
@@ -365,41 +369,39 @@ public:
       d_fcalc_over_d_tls.resize(n_groups);
       double tmp1 = 0.0;
       double tmp2 = 0.0;
-      typedef cctbx::xray::scattering_dictionary::dict_type dict_type;
-      typedef dict_type::const_iterator dict_iter;
       double d_star_sq = uc.d_star_sq(mi);
-      dict_type const& scd = scattering_dict.dict();
-      for(dict_iter di=scd.begin();di!=scd.end();di++) {
-        double f0 = di->second.gaussian.at_d_star_sq(d_star_sq);
-        af::const_ref<std::size_t> member_indices = di->second.member_indices.const_ref();
-        for(std::size_t mind=0;mind<member_indices.size();mind++) {
-          int i_seq = member_indices[mind];
-          cctbx::xray::scatterer<> const& scatterer = scatterers[i_seq];
-          sym_mat3<double> const& u = scatterer.u_star;
-          //sym_mat3<double> const& u = cctbx::adptbx::u_cart_as_u_star(uc, uanisos[i_seq]);
-          int tls_group = tls_group_flags[i_seq];
-          vec3<double> const& site_frac = scatterer.site;
-          vec3<double> const& site_cart = orthogonalization_matrix * site_frac;
-          double phase = mi * site_frac * two_pi;
-          double dw = cctbx::adptbx::debye_waller_factor_u_star(mi, u);
-          double scfact = f0 * dw * minus_two_pi;
-          double acalc = scfact*std::cos(phase);
-          double bcalc = scfact*std::sin(phase);
-          tmp1 += f0*std::cos(phase) * dw;
-          tmp2 += f0*std::sin(phase) * dw;
-          gT_gL_gS_ manager(origin[tls_group-1], uc, site_cart, mi);
-          af::shared<double> gT = manager.grad_T();
-          af::shared<double> gL = manager.grad_L();
-          af::shared<double> gS = manager.grad_S();
-          for (std::size_t p=0; p < 9; p++) {
-            if(p < 6) {
-              d_fcalc_over_d_tls[tls_group-1].t[p] += std::complex<double> (acalc * gT[p],bcalc * gT[p]);
-              d_fcalc_over_d_tls[tls_group-1].l[p] += std::complex<double> (acalc * gL[p],bcalc * gL[p]);
-              d_fcalc_over_d_tls[tls_group-1].s[p] += std::complex<double> (acalc * gS[p],bcalc * gS[p]);
-            }
-            else {
-              d_fcalc_over_d_tls[tls_group-1].s[p] += std::complex<double> (acalc * gS[p],bcalc * gS[p]);
-            }
+      af::shared<double>
+        form_factors_memory
+          = scattering_type_registry.unique_form_factors_at_d_star_sq(
+              d_star_sq);
+      af::const_ref<double> form_factors = form_factors_memory.const_ref();
+      for(std::size_t i_seq=0;i_seq<scatterers.size();i_seq++) {
+        cctbx::xray::scatterer<> const& scatterer = scatterers[i_seq];
+        double f0 = form_factors[scattering_type_indices[i_seq]];
+        sym_mat3<double> const& u = scatterer.u_star;
+        //sym_mat3<double> const& u = cctbx::adptbx::u_cart_as_u_star(uc, uanisos[i_seq]);
+        int tls_group = tls_group_flags[i_seq];
+        vec3<double> const& site_frac = scatterer.site;
+        vec3<double> const& site_cart = orthogonalization_matrix * site_frac;
+        double phase = mi * site_frac * two_pi;
+        double dw = cctbx::adptbx::debye_waller_factor_u_star(mi, u);
+        double scfact = f0 * dw * minus_two_pi;
+        double acalc = scfact*std::cos(phase);
+        double bcalc = scfact*std::sin(phase);
+        tmp1 += f0*std::cos(phase) * dw;
+        tmp2 += f0*std::sin(phase) * dw;
+        gT_gL_gS_ manager(origin[tls_group-1], uc, site_cart, mi);
+        af::shared<double> gT = manager.grad_T();
+        af::shared<double> gL = manager.grad_L();
+        af::shared<double> gS = manager.grad_S();
+        for (std::size_t p=0; p < 9; p++) {
+          if(p < 6) {
+            d_fcalc_over_d_tls[tls_group-1].t[p] += std::complex<double> (acalc * gT[p],bcalc * gT[p]);
+            d_fcalc_over_d_tls[tls_group-1].l[p] += std::complex<double> (acalc * gL[p],bcalc * gL[p]);
+            d_fcalc_over_d_tls[tls_group-1].s[p] += std::complex<double> (acalc * gS[p],bcalc * gS[p]);
+          }
+          else {
+            d_fcalc_over_d_tls[tls_group-1].s[p] += std::complex<double> (acalc * gS[p],bcalc * gS[p]);
           }
         }
       }
