@@ -296,13 +296,13 @@ class ls_rel_scale_driver(object):
                scale_weight=True,
                use_weights=True):
 
-    self.nat = miller_native.deep_copy()
-    self.der = miller_derivative.deep_copy()
+    self.native = miller_native.deep_copy()
+    self.derivative = miller_derivative.deep_copy()
 
 
 
-    lsq_object = refinery(miller_native,
-                          miller_derivative,
+    lsq_object = refinery(self.native,
+                          self.derivative,
                           use_intensities=use_intensities,
                           scale_weight=scale_weight,
                           use_weights=use_weights)
@@ -312,21 +312,20 @@ class ls_rel_scale_driver(object):
     self.b_cart = lsq_object.b_cart
     self.u_star = lsq_object.u_star
 
-
     ## very well, all done and set.
     ## apply the scaling on the data please and compute some r values
-
-    tmp_nat, tmp_der = self.nat.common_sets(self.der)
+    tmp_nat, tmp_der = self.native.common_sets(self.derivative)
 
     self.r_val_before = flex.sum( flex.abs(tmp_nat.data()-tmp_der.data()) )
-    self.r_val_before /=flex.sum( flex.abs(tmp_nat.data()) )
+    self.r_val_before /=flex.sum( flex.abs(tmp_nat.data()+tmp_der.data()) )/2.0
 
-    self.der = scaling.absolute_scaling.anisotropic_correction(
-      self.der,self.p_scale,self.u_star )
+    self.derivative = scaling.absolute_scaling.anisotropic_correction(
+      self.derivative,self.p_scale,self.u_star )
 
-    tmp_nat, tmp_der = self.nat.common_sets(self.der)
+    tmp_nat, tmp_der = self.native.common_sets(self.derivative)
 
-    self.r_val_after = flex.sum( flex.abs(tmp_nat.data()-tmp_der.data()) )
+    self.r_val_after = flex.sum( flex.abs(tmp_nat.data()-
+                                          tmp_der.data()) )
     self.r_val_after /=(flex.sum( flex.abs(tmp_nat.data()) ) +
                         flex.sum( flex.abs(tmp_der.data()) ))/2.0
 
@@ -359,7 +358,7 @@ class local_scaling_driver(object):
                miller_derivative,
                local_scaling_dict,
                use_intensities=True,
-               use_weights=True,
+               use_weights=False,
                max_depth=10,
                target_neighbours=1000,
                sphere=1,
@@ -368,7 +367,6 @@ class local_scaling_driver(object):
 
     if out == None:
       out = sys.stdout
-
 
 
     self.native = miller_native.deep_copy().set_observation_type(
@@ -381,8 +379,6 @@ class local_scaling_driver(object):
 
     self.native, self.derivative = self.native.common_sets(
       self.derivative)
-
-
 
     ## Here we change things into intensities or amplitudes as asked
 
@@ -411,11 +407,8 @@ class local_scaling_driver(object):
       self.derivative.change_of_basis_op_to_minimum_cell()
       ).set_observation_type(  self.derivative ).map_to_asu()
 
-
-
-
     ## Get the symmetry of the intensity group
-    ## this is to make suree systematioc absense are present in the hkl list
+    ## this is to make suree systematic absense are present in the hkl list
     intensity_group = self.nat_primset.space_group() \
       .build_derived_reflection_intensity_group(
       anomalous_flag=self.nat_primset.anomalous_flag() )
@@ -423,95 +416,46 @@ class local_scaling_driver(object):
     ## We need to define a master set
     ## This is a miller array that encompasses
     ## both native and derivative *and* has systematic absences present.
+    tmp_reso_lim = self.nat_primset.d_min()-0.1
+    ## the 0.1 limit is a bit of a hack, but is needed
+    ## to ensure that the master set is equal or slightkly larger than
+    ## the working sets
+    assert( tmp_reso_lim > 0 )
 
-    master_set = miller.build_set(
-    crystal_symmetry=crystal.symmetry(
+    self.master_set = miller.build_set(
+      crystal_symmetry=crystal.symmetry(
       unit_cell=self.nat_primset.unit_cell(),
       space_group=intensity_group),
-    anomalous_flag=self.nat_primset.anomalous_flag(),
-    d_min=self.nat_primset.d_min()-0.1) ## The 0.1 is a bit of a hack
-                                        ## but needed for stability
+      anomalous_flag=self.nat_primset.anomalous_flag(),
+      d_min=tmp_reso_lim)
+
+    self.local_scaler=None
+    self.sphere=sphere
+    self.max_depth=max_depth
+    self.target_neighbours=target_neighbours
+    self.use_weights=use_weights
+    self.threshold=threshold
 
 
+    print "BEFORE ANYTHING"
+    self.r_value(out)
 
 
-    local_scaler=None
     # Moment based scaling
     if local_scaling_dict['local_moment']:
-      print >> out
-      print >> out, "Moment based local scaling"
-      print >> out, "Maximum depth        : %8i"%(max_depth)
-      print >> out, "Target neighbours    : %8i"%(target_neighbours)
-      print >> out, "neighbourhood sphere : %8i"%(sphere)
-      print >> out
-      local_scaler = scaling.local_scaling_moment_based(
-        hkl_master=master_set.indices(),
-        hkl_sets=self.nat_primset.indices(),
-        data_set_a=self.nat_primset.data(),
-        sigma_set_a=self.nat_primset.sigmas(),
-        data_set_b=self.der_primset.data(),
-        sigma_set_b=self.der_primset.sigmas(),
-        space_group=self.nat_primset.space_group(),
-        anomalous_flag=self.nat_primset.anomalous_flag(),
-        radius=sphere,
-        depth=max_depth,
-        target_ref=target_neighbours,
-        use_experimental_sigmas=use_weights)
+      self.local_moment_scaling(out)
 
     # then it will be lsq based local scaling
     if local_scaling_dict['local_lsq']:
-      print >> out
-      print >> out, "Least squares based local scaling"
-      print >> out, "Maximum depth        : %8i"%(max_depth)
-      print >> out, "Target neighbours    : %8i"%(target_neighbours)
-      print >> out, "neighbourhood sphere : %8i"%(sphere)
-      print >> out
-      local_scaler = scaling.local_scaling_ls_based(
-        hkl_master=master_set.indices(),
-        hkl_sets=self.nat_primset.indices(),
-        data_set_a=self.nat_primset.data(),
-        sigma_set_a=self.nat_primset.sigmas(),
-        data_set_b=self.der_primset.data(),
-        sigma_set_b=self.der_primset.sigmas(),
-        space_group=self.nat_primset.space_group(),
-        anomalous_flag=self.nat_primset.anomalous_flag(),
-        radius=sphere,
-        depth=max_depth,
-        target_ref=target_neighbours,
-        use_experimental_sigmas=use_weights)
-
+      self.local_lsq_scaling(out)
 
     # or nikonov scaling
     if local_scaling_dict['local_nikonov']:
-      print >> out
-      print >> out, "Nikonev based local scaling"
-      print >> out, "Maximum depth        : %8i"%(max_depth)
-      print >> out, "Target neighbours    : %8i"%(target_neighbours)
-      print >> out, "neighbourhood sphere : %8i"%(sphere)
-      print >> out
-
-      if self.der_primset.is_xray_intensity_array():
-        raise Sorry(" For Nikonev target in local scaling, amplitudes must be used")
-        assert (False)
-
-      local_scaler = scaling.local_scaling_nikonov(
-        hkl_master=master_set.indices(),
-        hkl_sets=self.nat_primset.indices(),
-        data_set_a=self.nat_primset.data(),
-        data_set_b=self.der_primset.data(),
-        epsilons=self.der_primset.epsilons().data().as_double(),
-        centric=flex.bool(self.der_primset.centric_flags().data()),
-        threshold=threshold,
-        space_group=self.nat_primset.space_group(),
-        anomalous_flag=self.nat_primset.anomalous_flag(),
-        radius=sphere,
-        depth=max_depth,
-        target_ref=target_neighbours)
-      print "------9999------"
+      self.local_nikonov_scaling(out)
 
 
-    scales=local_scaler.get_scales()
-    stats =local_scaler.stats()
+    scales=self.local_scaler.get_scales()
+    stats=self.local_scaler.stats()
 
     print >> out, "Mean number of neighbours           : %8.3f"%(stats[2])
     print >> out, "Minimum number of neighbours        : %8i"%(stats[0])
@@ -528,20 +472,100 @@ class local_scaling_driver(object):
       flex.max( scales ) )
 
     self.der_primset = self.der_primset.customized_copy(
-      data=self.der_primset.data()*scales,
-      sigmas = self.der_primset.sigmas()*scales).set_observation_type(
-      self.der_primset)
+       data = self.der_primset.data()*scales,
+       sigmas = self.der_primset.sigmas()*scales
+      ).set_observation_type( self.der_primset )
 
+    print "AFTER SOMETHING"
+    self.r_value(out)
 
 
     ## We now have to transform the thing back please
 
-    self.derivative = self.der_primset.change_basis( self.derivative.change_of_basis_op_to_minimum_cell().inverse()  )\
-                       .set_observation_type( self.der_primset ).map_to_asu()
-    self.native =  self.native.map_to_asu()
-
-    self.native, self.derivative = self.native.common_sets( self.derivative )
+    self.derivative = self.der_primset.change_basis(
+        self.native.change_of_basis_op_to_minimum_cell().inverse()
+      ).set_observation_type( self.der_primset ).map_to_asu()
 
 
-    assert self.native.observation_type() != None
-    assert self.derivative.observation_type() != None
+
+    del self.der_primset
+    del self.nat_primset
+
+  def r_value(self,out):
+    top = flex.abs(self.der_primset.data()-
+                   self.nat_primset.data())
+    bottom = flex.abs(self.der_primset.data() +
+                      self.nat_primset.data())/2.0
+    top=flex.sum(top)
+    bottom=flex.sum(bottom)
+    print >> out, "Current R value: %4.3f"%(top/bottom)
+
+
+  def local_moment_scaling(self,out):
+    print >> out
+    print >> out, "Moment based local scaling"
+    print >> out, "Maximum depth        : %8i"%(self.max_depth)
+    print >> out, "Target neighbours    : %8i"%(self.target_neighbours)
+    print >> out, "neighbourhood sphere : %8i"%(self.sphere)
+    print >> out
+    self.local_scaler = scaling.local_scaling_moment_based(
+      hkl_master=self.master_set.indices(),
+      hkl_sets=self.nat_primset.indices(),
+      data_set_a=self.nat_primset.data(),
+      sigma_set_a=self.nat_primset.sigmas(),
+      data_set_b=self.der_primset.data(),
+      sigma_set_b=self.der_primset.sigmas(),
+      space_group=self.nat_primset.space_group(),
+      anomalous_flag=self.nat_primset.anomalous_flag(),
+      radius=self.sphere,
+      depth=self.max_depth,
+      target_ref=self.target_neighbours,
+      use_experimental_sigmas=self.use_weights)
+
+
+  def local_lsq_scaling(self,out):
+    print >> out
+    print >> out, "Least squares based local scaling"
+    print >> out, "Maximum depth        : %8i"%(self.max_depth)
+    print >> out, "Target neighbours    : %8i"%(self.target_neighbours)
+    print >> out, "neighbourhood sphere : %8i"%(self.sphere)
+    print >> out
+    self.local_scaler = scaling.local_scaling_moment_based(
+      hkl_master=self.master_set.indices(),
+      hkl_sets=self.nat_primset.indices(),
+      data_set_a=self.nat_primset.data(),
+      sigma_set_a=self.nat_primset.sigmas(),
+      data_set_b=self.der_primset.data(),
+      sigma_set_b=self.der_primset.sigmas(),
+      space_group=self.nat_primset.space_group(),
+      anomalous_flag=self.nat_primset.anomalous_flag(),
+      radius=self.sphere,
+      depth=self.max_depth,
+      target_ref=self.target_neighbours,
+      use_experimental_sigmas=self.use_weights)
+
+  def local_nikonov_scaling(self,out):
+    print >> out
+    print >> out, "Nikonev based local scaling"
+    print >> out, "Maximum depth        : %8i"%(self.max_depth)
+    print >> out, "Target neighbours    : %8i"%(self.target_neighbours)
+    print >> out, "neighbourhood sphere : %8i"%(self.sphere)
+    print >> out
+
+    if self.der_primset.is_xray_intensity_array():
+      raise Sorry(" For Nikonev target in local scaling, amplitudes must be used")
+      assert (False)
+
+    self.local_scaler = scaling.local_scaling_nikonov(
+      hkl_master=self.master_set.indices(),
+      hkl_sets=self.nat_primset.indices(),
+      data_set_a=self.nat_primset.data(),
+      data_set_b=self.der_primset.data(),
+      epsilons=self.der_primset.epsilons().data().as_double(),
+      centric=flex.bool(self.der_primset.centric_flags().data()),
+      threshold=self.threshold,
+      space_group=self.nat_primset.space_group(),
+      anomalous_flag=self.nat_primset.anomalous_flag(),
+      radius=self.sphere,
+      depth=self.max_depth,
+      target_ref=self.target_neighbours)

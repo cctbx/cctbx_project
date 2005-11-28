@@ -34,28 +34,28 @@ def print_banner():
 def run(args):
   print_banner()
 
-  scenarios = [ "SAD",
+  scenarios = [ "SAD",#0
 
-                "SIR",
-                "RIP",
+                "SIR",#1
+                "RIP",#2
 
-                "SIRAS",
-                "RIPAS",
+                "SIRAS",#2
+                "RIPAS",#3
 
-                "MIR",
-                "MIRAS",
+                "MIR",#4
+                "MIRAS",#5
 
-                "2WMAD",
-                "3WMAD",
-                "4WMAD",
+                "2WMAD",#6
+                "3WMAD",#7
+                "4WMAD",#8
 
-                "2WMAD+NAT",
-                "3WMAD+NAT",
-                "4WMAD+NAT",
+                "2WMAD+NAT",#9
+                "3WMAD+NAT",#10
+                "4WMAD+NAT",#11
 
-                "2WSAD",
-                "3WSAD",
-                "4WSAD" ]
+                "2WSAD",#12
+                "3WSAD",#13
+                "4WSAD" ]#14
   if args[0] in scenarios:
     print "experiment: " , args[0]
   else:
@@ -82,6 +82,8 @@ def run(args):
   if args[0]==scenarios[4]:
     siras_scale.run( args[1:] )
 
+  if args[0]==scenarios[4]:
+    siras_scale.run( args[1:] )
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

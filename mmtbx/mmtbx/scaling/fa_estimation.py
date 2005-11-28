@@ -49,6 +49,7 @@ class combined_scaling(object):
     self.lsq_options = options.least_squares_options
     self.loc_options = options.local_scaling_options
     self.out_options = options.outlier_rejection_options
+
     self.overall_protocol = options.target
     self.cut_level_rms = None
     ## cycling options
