@@ -8,7 +8,7 @@ def SCons_Action_FunctionAction_get_contents(self, target, source, env,
   import cPickle, string
   try:
     code = cPickle.dumps(self.execfunction)
-  except TypeError:
+  except (TypeError, cPickle.PicklingError):
     code = self.execfunction.func_name
   return str(code) + env.subst(string.join(map(lambda v: '${'+v+'}',
                                                self.varlist)))
