@@ -18,7 +18,7 @@ from mmtbx.scaling import basic_analyses, data_statistics,pair_analyses
 import libtbx.phil.command_line
 from cStringIO import StringIO
 from scitbx.python_utils import easy_pickle
-from mmtbx.scaling import sad_scale, sir_scale, siras_scale
+from mmtbx.scaling import sad_scale, sir_scale, rip_scale, siras_scale
 import sys, os
 
 
@@ -74,7 +74,7 @@ def run(args):
     sir_scale.run( args[1:] )
 
   if args[0]==scenarios[2]:
-    sir_scale.run( args[1:] )
+    rip_scale.run( args[1:] )
 
   if args[0]==scenarios[3]:
     siras_scale.run( args[1:] )
