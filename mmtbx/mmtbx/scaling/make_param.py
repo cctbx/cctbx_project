@@ -216,6 +216,18 @@ outlier_level_wilson=1e-6
                                  basic+data+scaler+output)
     return result
 
+  def default_rip(self):
+    tmp = self.default_sir()
+    tmp = tmp.replace( 'native', 'after_burn' )
+    tmp = tmp.replace( 'derivative', 'before_burn' )
+    tmp = tmp.replace( 'least_squares_options{',
+                       """nsr_bias=1.0
+.type=float
+.expert_level=0
+
+least_squares_options{""")
+    return tmp
+
 
   def default_siras(self):
     outer_level = self.scaling_input
@@ -385,6 +397,15 @@ def run(args):
     tester = phil_lego()
     master_params = iotbx.phil.parse( tester.default_3wmad() )
     master_params.show(expert_level=int(args[0]))
+
+    print " ---------- RIP ----------"
+    del master_params
+    del tester
+    tester = phil_lego()
+    master_params = iotbx.phil.parse( tester.default_rip() )
+    master_params.show(expert_level=int(args[0]))
+
+
 
 
 if (__name__ == "__main__"):

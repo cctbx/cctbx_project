@@ -20,6 +20,8 @@ import libtbx.phil.command_line
 from cStringIO import StringIO
 from scitbx.python_utils import easy_pickle
 import sys, os, math
+import scitbx.lbfgs
+
 
 
 class reindexing(object):
@@ -193,9 +195,14 @@ class reindexing(object):
 
 
 class delta_generator(object):
-  def __init__(self,nat,der):
+  def __init__(self,
+               nat,
+               der,
+               nsr_bias=1.0):
     self.nat=nat.deep_copy()
     self.der=der.deep_copy()
+    self.nsr_bias=1.0/nsr_bias
+
     assert self.nat.is_real_array()
     assert self.nat.is_real_array()
 
@@ -205,6 +212,11 @@ class delta_generator(object):
       self.der.f_sq_as_f()
 
     self.nat,self.der = self.nat.common_sets(self.der)
+
+    self.der = self.der.customized_copy(
+      data = self.der.data()*self.nsr_bias,
+      sigmas = self.der.sigmas()*self.nsr_bias).set_observation_type(
+        self.der)
 
     self.delta_f=self.nat.customized_copy(
       data = ( self.der.data() - self.nat.data() ),
@@ -399,3 +411,63 @@ class outlier_rejection(object):
     self.nat = self.nat.select( matches.single_selection(0) )
 
     self.nat, self.der = self.nat.common_sets(self.der)
+
+
+
+
+
+class f_double_prime_ratio(object):
+  def __init__(self,
+               lambda1,
+               lambda2):
+    ## make sure we have anomalous data
+    assert ( lambda1.anomalous_flag() )
+    assert ( lambda2.anomalous_flag() )
+    ## make temporary copies
+    tmp_l1 = lambda1.deep_copy()
+    tmp_l2 = lambda2.deep_copy()
+    ##make sure we have intensities
+    assert tmp_l1.is_real_array()
+    if tmp_l1.is_xray_amplitude_array():
+      tmp_l1=tmp_l1.f_as_f_sq()
+
+    assert tmp_l2.is_real_array()
+    if tmp_l2.is_xray_amplitude_array():
+      tmp_l2=tmp_l2.f_as_f_sq()
+
+    ## we only need the anomalous diffs
+    l1p, l1n = tmp_l1.hemispheres_acentrics()
+    self.diff1 = l1p.data()-l1n.data()
+    self.v1 = ( self.l1p.sigmas()*self.l1p.sigmas() +
+                self.l1n.sigmas()*self.l1n.sigmas() )
+
+    l2p, l2n = tmp_l2.hemispheres_acentrics()
+    self.diff2 = l2p.data()-l2n.data()
+    self.v2 = ( self.l2p.sigmas()*self.l2p.sigmas() +
+                self.l2n.sigmas()*self.l2n.sigmas() )
+
+    self.x=flex.double([1.0])
+    scitbx.lbfgs.run(target_evaluator=self)
+
+  def compute_functional_and_gradients(self):
+    f = self.compute_functional()
+    g = self.compute_gradient()
+    print self.x[0], f, g
+
+    return f,g
+
+  def compute_functional(self):
+    top = self.diff1 - self.diff2*self.x[0]
+    top= top*top
+    bottom = self.v1+self.v2*self.x[0]*self.x[0]
+    result = top/bottom
+    result=flex.sum(result)
+    return result
+
+  def compute_gradient(self):
+    tmp_bottom = self.v1+self.v2*self.x[0]*self.x[0]
+    tmp_top = self.diff1 - self.diff2*self.x[0]
+    part1 = -2.0*self.x[0]*tmp_top*tmp_top*self.v2/( tmp_bottom*tmp_bottom )
+    part2 = -2.0*self.x[0]*tmp_top/tmp_bottom
+    result=flex.sum( part1+part2)
+    return(result)
