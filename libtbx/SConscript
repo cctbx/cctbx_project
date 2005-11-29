@@ -6,7 +6,10 @@ import sys, os
 def SCons_Action_FunctionAction_get_contents(self, target, source, env,
                                                    dict=None):
   import cPickle, string
-  code = cPickle.dumps(self.execfunction)
+  try:
+    code = cPickle.dumps(self.execfunction)
+  except TypeError:
+    code = self.execfunction.func_name
   return str(code) + env.subst(string.join(map(lambda v: '${'+v+'}',
                                                self.varlist)))
 if (1):
