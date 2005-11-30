@@ -3,8 +3,8 @@
 
 #include <cctbx/error.h>
 #include <scitbx/constants.h>
+#include <boost/shared_array.hpp>
 #include <complex>
-#include <vector>
 
 namespace cctbx { namespace math {
 
@@ -30,13 +30,14 @@ namespace cctbx { namespace math {
       cos_sin_table(int n_points)
       :
         n_points_(n_points),
-        n_points_4_(n_points/4)
+        n_points_4_(n_points/4),
+        values_memory_(new FloatType[n_points_+n_points_4_]),
+        values_(values_memory_.get())
       {
         CCTBX_ASSERT(n_points % 4 == 0);
         using scitbx::constants::two_pi;
-        values_.reserve(n_points_);
         for(int i=0;i<n_points_+n_points_4_;i++) {
-          values_.push_back(std::sin(i*two_pi/n_points_));
+          values_[i] = std::sin(i*two_pi/n_points_);
         }
       }
 
@@ -54,7 +55,8 @@ namespace cctbx { namespace math {
     private:
       int n_points_;
       int n_points_4_;
-      std::vector<FloatType> values_;
+      boost::shared_array<FloatType> values_memory_;
+      FloatType* values_;
   };
 
 #if defined(__sgi) && !defined(__GNUC__)
