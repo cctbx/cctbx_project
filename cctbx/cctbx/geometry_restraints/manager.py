@@ -415,15 +415,18 @@ class manager(object):
         asu_mappings = pair_proxies.bond_proxies.asu_mappings()
         for proxy in pair_proxies.bond_proxies.asu:
           if (i_seq is None or i_seq in [proxy.i_seq, proxy.j_seq]):
-            print >> f, "bond asu:", (proxy.i_seq, proxy.j_seq, proxy.j_sym)
-            if (site_labels is not None):
-              for i in (proxy.i_seq, proxy.j_seq):
-                print >> f, " ", site_labels[i]
-              if (sites_cart is not None):
-                print >> f, "  distance_model: %.6g"%geometry_restraints.bond(
-                  sites_cart=sites_cart,
-                  asu_mappings=asu_mappings,
-                  proxy=proxy).distance_model
+            rt_mx = asu_mappings.get_rt_mx_ji(pair=proxy)
+            if (site_labels is None):
+              print >> f, "bond asu:", (proxy.i_seq, proxy.j_seq), rt_mx
+            else:
+              print >> f, "bond asu:", (proxy.i_seq, proxy.j_seq)
+              print >> f, " ", site_labels[proxy.i_seq]
+              print >> f, " ", site_labels[proxy.j_seq], rt_mx
+            if (sites_cart is not None):
+              print >> f, "  distance_model: %.6g" % geometry_restraints.bond(
+                sites_cart=sites_cart,
+                asu_mappings=asu_mappings,
+                proxy=proxy).distance_model
             print >> f, "  distance_ideal: %.6g" % proxy.distance_ideal
             print >> f, "  weight: %.6g" % proxy.weight
     if (self.angle_proxies is not None):
@@ -480,3 +483,42 @@ class manager(object):
             if (delta is not None):
               print >> f, "delta: %8.5f," % delta,
             print >> f, "weight: %.6g" % weight
+    if (pair_proxies.nonbonded_proxies is not None):
+      simple = pair_proxies.nonbonded_proxies.simple
+      asu = pair_proxies.nonbonded_proxies.asu
+      simple_size = simple.size()
+      if (asu.size() > 0):
+        asu_mappings = pair_proxies.nonbonded_proxies.asu_mappings()
+      if (sites_cart is not None):
+        deltas = geometry_restraints.nonbonded_deltas(
+          sites_cart=sites_cart,
+          sorted_asu_proxies=pair_proxies.nonbonded_proxies,
+          function=self.nonbonded_function)
+        permutation = flex.sort_permutation(data=deltas)
+      else:
+        deltas = None
+        permutation = xrange(simple_size + asu.size())
+      for i_proxy in permutation:
+        if (i_proxy < simple_size):
+          proxy = simple[i_proxy]
+          if (i_seq is None or i_seq in proxy.i_seqs):
+            print >> f, "nonbonded simple:", proxy.i_seqs
+            if (site_labels is not None):
+              for i in proxy.i_seqs:
+                print >> f, " ", site_labels[i]
+            if (deltas is not None):
+              print >> f, "  distance_model: %.6g" % deltas[i_proxy]
+            print >> f, "  vdw_distance: %.6g" % proxy.vdw_distance
+        else:
+          proxy = asu[i_proxy-simple_size]
+          if (i_seq is None or i_seq in [proxy.i_seq, proxy.j_seq]):
+            rt_mx = asu_mappings.get_rt_mx_ji(pair=proxy)
+            if (site_labels is None):
+              print >> f, "nonbonded asu:", (proxy.i_seq, proxy.j_seq), rt_mx
+            else:
+              print >> f, "nonbonded asu:", (proxy.i_seq, proxy.j_seq)
+              print >> f, " ", site_labels[proxy.i_seq]
+              print >> f, " ", site_labels[proxy.j_seq], rt_mx
+            if (deltas is not None):
+              print >> f, "  distance_model: %.6g" % deltas[i_proxy]
+            print >> f, "  vdw_distance: %.6g" % proxy.vdw_distance

@@ -10,6 +10,7 @@ from cctbx.array_family import flex
 from scitbx import matrix as mx
 import scitbx.lbfgs
 from libtbx.itertbx import count
+import sys
 
 if (1):
   flex.set_random_seed(0)
@@ -113,153 +114,168 @@ def make_o_si_o_asu_table(si_o_structure, si_o_bond_asu_table):
           rt_mx_ji=rt_mx_jj21)
   return o_si_o_asu_table
 
-def distance_and_repulsion_least_squares(
-      si_structure,
-      distance_cutoff,
-      nonbonded_distance_cutoff=None,
-      nonbonded_buffer=1,
-      n_trials=1,
-      connectivities=None):
-  assert n_trials > 0
-  si_structure.show_summary().show_scatterers()
-  print
-  si_asu_mappings = si_structure.asu_mappings(
-    buffer_thickness=distance_cutoff)
-  si_pair_asu_table = crystal.pair_asu_table(
-    asu_mappings=si_asu_mappings)
-  si_pair_asu_table.add_all_pairs(distance_cutoff=distance_cutoff)
-  si_pairs = si_structure.show_distances(pair_asu_table=si_pair_asu_table)
-  if (connectivities is not None):
-    assert list(si_pairs.pair_counts) == connectivities
-  print
-  si_o = add_oxygen(
-    si_structure=si_structure,
-    si_pair_asu_table=si_pair_asu_table)
-  si_o.structure.show_summary().show_scatterers()
-  print
-  si_o_asu_mappings = si_o.structure.asu_mappings(
-    buffer_thickness=distance_cutoff/2.*3)
-  si_o_bond_asu_table = crystal.pair_asu_table(
-    asu_mappings=si_o_asu_mappings)
-  si_o_bond_asu_table.add_pair_sym_table(sym_table=si_o.bond_sym_table)
-  si_o_bonds = si_o.structure.show_distances(
-    pair_asu_table=si_o_bond_asu_table)
-  n_si = si_pairs.pair_counts.size()
-  n_si_o = si_o_bonds.pair_counts.size()
-  assert si_o_bonds.pair_counts[:n_si].all_eq(si_pairs.pair_counts)
-  assert si_o_bonds.pair_counts[n_si:].count(2) == n_si_o-n_si
-  print
-  o_si_o_asu_table = make_o_si_o_asu_table(
-    si_o_structure=si_o.structure,
-    si_o_bond_asu_table=si_o_bond_asu_table)
-  o_si_o_pairs = si_o.structure.show_distances(pair_asu_table=o_si_o_asu_table)
-  assert o_si_o_pairs.pair_counts[:n_si].all_eq(0)
-  if (si_pairs.pair_counts.count(4) == n_si):
-    assert o_si_o_pairs.pair_counts[n_si:].all_eq(6)
-  print
-  shell_asu_tables = crystal.coordination_sequences.shell_asu_tables(
-    pair_asu_table=si_o_bond_asu_table,
-    max_shell=3)
-  if (1):
-    si_o_bond_asu_table.add_pair_sym_table(
-      sym_table=si_pair_asu_table.extract_pair_sym_table())
-  if (1):
-    si_o_bond_asu_table.add_pair_sym_table(
-      sym_table=o_si_o_asu_table.extract_pair_sym_table())
-  shell_sym_tables = [si_o_bond_asu_table.extract_pair_sym_table()]
-  for shell_asu_table in shell_asu_tables[1:]:
-    shell_sym_tables.append(shell_asu_table.extract_pair_sym_table())
-  bond_params_table = setup_bond_params_table(
-    structure=si_o.structure,
-    bond_sym_table=shell_sym_tables[0])
-  nonbonded_params = setup_nonbonded_params()
-  nonbonded_types = flex.std_string()
-  for scatterer in si_o.structure.scatterers():
-    nonbonded_types.append(scatterer.scattering_type)
-  geometry_restraints_manager = geometry_restraints.manager.manager(
-    crystal_symmetry=si_o.structure,
-    site_symmetry_table=si_o.structure.site_symmetry_table(),
-    bond_params_table=bond_params_table,
-    shell_sym_tables=shell_sym_tables,
-    nonbonded_params=nonbonded_params,
-    nonbonded_types=nonbonded_types,
-    nonbonded_function=geometry_restraints.prolsq_repulsion_function(),
-    nonbonded_distance_cutoff=nonbonded_distance_cutoff,
-    nonbonded_buffer=nonbonded_buffer)
-  minimized = None
-  for i_trial in xrange(n_trials):
-    trial_structure = si_o.structure.deep_copy_scatterers()
-    for run_away_counter in count():
-      assert run_away_counter < 10
-      if (i_trial > 0):
-        n_scatterers = trial_structure.scatterers().size()
-        trial_structure.set_sites_frac(flex.vec3_double(flex.random_double(
-          size=n_scatterers*3)))
-        trial_structure.apply_symmetry_sites()
-      trial_minimized = []
-      for enable_nonbonded in [False, True]:
-        if (not enable_nonbonded):
-          geometry_restraints_flags = geometry_restraints.flags.flags(
-            bond=True)
-        else:
-          geometry_restraints_flags = geometry_restraints.flags.flags(
-            bond=True,
-            nonbonded=True)
-          trial_structure.set_sites_cart(sites_cart=trial_sites_cart)
-          trial_structure = trial_structure.random_shift_sites(
-            max_shift_cart=0.2)
+class distance_and_repulsion_least_squares:
+
+  def __init__(self,
+        si_structure,
+        distance_cutoff,
+        nonbonded_distance_cutoff=None,
+        nonbonded_buffer=1,
+        n_trials=1,
+        connectivities=None,
+        out=None):
+    assert n_trials > 0
+    if (out is None): out = sys.stdout
+    si_structure.show_summary(f=out).show_scatterers(f=out)
+    print >> out
+    si_asu_mappings = si_structure.asu_mappings(
+      buffer_thickness=distance_cutoff)
+    si_pair_asu_table = crystal.pair_asu_table(
+      asu_mappings=si_asu_mappings)
+    si_pair_asu_table.add_all_pairs(distance_cutoff=distance_cutoff)
+    si_pairs = si_structure.show_distances(
+      pair_asu_table=si_pair_asu_table,
+      out=out)
+    if (connectivities is not None):
+      assert list(si_pairs.pair_counts) == connectivities
+    print >> out
+    si_o = add_oxygen(
+      si_structure=si_structure,
+      si_pair_asu_table=si_pair_asu_table)
+    si_o.structure.show_summary(f=out).show_scatterers(f=out)
+    print >> out
+    si_o_asu_mappings = si_o.structure.asu_mappings(
+      buffer_thickness=distance_cutoff/2.*3)
+    si_o_bond_asu_table = crystal.pair_asu_table(
+      asu_mappings=si_o_asu_mappings)
+    si_o_bond_asu_table.add_pair_sym_table(sym_table=si_o.bond_sym_table)
+    si_o_bonds = si_o.structure.show_distances(
+      pair_asu_table=si_o_bond_asu_table,
+      out=out)
+    n_si = si_pairs.pair_counts.size()
+    n_si_o = si_o_bonds.pair_counts.size()
+    assert si_o_bonds.pair_counts[:n_si].all_eq(si_pairs.pair_counts)
+    assert si_o_bonds.pair_counts[n_si:].count(2) == n_si_o-n_si
+    print >> out
+    o_si_o_asu_table = make_o_si_o_asu_table(
+      si_o_structure=si_o.structure,
+      si_o_bond_asu_table=si_o_bond_asu_table)
+    o_si_o_pairs = si_o.structure.show_distances(
+      pair_asu_table=o_si_o_asu_table,
+      out=out)
+    assert o_si_o_pairs.pair_counts[:n_si].all_eq(0)
+    if (si_pairs.pair_counts.count(4) == n_si):
+      assert o_si_o_pairs.pair_counts[n_si:].all_eq(6)
+    print >> out
+    shell_asu_tables = crystal.coordination_sequences.shell_asu_tables(
+      pair_asu_table=si_o_bond_asu_table,
+      max_shell=3)
+    if (1):
+      si_o_bond_asu_table.add_pair_sym_table(
+        sym_table=si_pair_asu_table.extract_pair_sym_table())
+    if (1):
+      si_o_bond_asu_table.add_pair_sym_table(
+        sym_table=o_si_o_asu_table.extract_pair_sym_table())
+    shell_sym_tables = [si_o_bond_asu_table.extract_pair_sym_table()]
+    for shell_asu_table in shell_asu_tables[1:]:
+      shell_sym_tables.append(shell_asu_table.extract_pair_sym_table())
+    bond_params_table = setup_bond_params_table(
+      structure=si_o.structure,
+      bond_sym_table=shell_sym_tables[0])
+    nonbonded_params = setup_nonbonded_params()
+    nonbonded_types = flex.std_string()
+    for scatterer in si_o.structure.scatterers():
+      nonbonded_types.append(scatterer.scattering_type)
+    geometry_restraints_manager = geometry_restraints.manager.manager(
+      crystal_symmetry=si_o.structure,
+      site_symmetry_table=si_o.structure.site_symmetry_table(),
+      bond_params_table=bond_params_table,
+      shell_sym_tables=shell_sym_tables,
+      nonbonded_params=nonbonded_params,
+      nonbonded_types=nonbonded_types,
+      nonbonded_function=geometry_restraints.prolsq_repulsion_function(),
+      nonbonded_distance_cutoff=nonbonded_distance_cutoff,
+      nonbonded_buffer=nonbonded_buffer)
+    minimized = None
+    for i_trial in xrange(n_trials):
+      trial_structure = si_o.structure.deep_copy_scatterers()
+      for run_away_counter in count():
+        assert run_away_counter < 10
+        if (i_trial > 0):
+          n_scatterers = trial_structure.scatterers().size()
+          trial_structure.set_sites_frac(flex.vec3_double(flex.random_double(
+            size=n_scatterers*3)))
           trial_structure.apply_symmetry_sites()
-        trial_sites_cart = trial_structure.sites_cart()
-        try:
-          trial_minimized.append(geometry_restraints.lbfgs.lbfgs(
-            sites_cart=trial_sites_cart,
-            geometry_restraints_manager=geometry_restraints_manager,
-            geometry_restraints_flags=geometry_restraints_flags,
-            lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
-              max_iterations=100)))
-        except RuntimeError, e:
-          if (str(e) != "lbfgs error: Line search failed:"
-                      + " The step is at the lower bound stpmin()."):
-            raise
-          assert i_trial > 0
-          trial_minimized = None
+        trial_minimized = []
+        for enable_nonbonded in [False, True]:
+          if (not enable_nonbonded):
+            geometry_restraints_flags = geometry_restraints.flags.flags(
+              bond=True)
+          else:
+            geometry_restraints_flags = geometry_restraints.flags.flags(
+              bond=True,
+              nonbonded=True)
+            trial_structure.set_sites_cart(sites_cart=trial_sites_cart)
+            trial_structure = trial_structure.random_shift_sites(
+              max_shift_cart=0.2)
+            trial_structure.apply_symmetry_sites()
+          trial_sites_cart = trial_structure.sites_cart()
+          try:
+            trial_minimized.append(geometry_restraints.lbfgs.lbfgs(
+              sites_cart=trial_sites_cart,
+              geometry_restraints_manager=geometry_restraints_manager,
+              geometry_restraints_flags=geometry_restraints_flags,
+              lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
+                max_iterations=100)))
+          except RuntimeError, e:
+            if (str(e) != "lbfgs error: Line search failed:"
+                        + " The step is at the lower bound stpmin()."):
+              raise
+            assert i_trial > 0
+            trial_minimized = None
+            break
+        if (trial_minimized is not None):
+          trial_structure.set_sites_cart(sites_cart=trial_sites_cart)
           break
-      if (trial_minimized is not None):
-        trial_structure.set_sites_cart(sites_cart=trial_sites_cart)
-        break
-    print "i_trial, target value: %d, %.6g" % (
-      i_trial, trial_minimized[1].final_target_result.target)
-    if (minimized is None or       minimized[1].final_target_result.target
-                           > trial_minimized[1].final_target_result.target):
-      minimized = trial_minimized
-      minimized_structure = trial_structure
-      best_i_trial = i_trial
-  assert minimized is not None
-  print
-  print "Energies at start of 1. minimization:"
-  minimized[0].first_target_result.show()
-  print
-  print "Energies at end of 1. minimization:"
-  minimized[0].final_target_result.show()
-  print
-  print "Energies at start of 2. minimization:"
-  minimized[1].first_target_result.show()
-  print
-  print "Energies at end of 2. minimization:"
-  minimized[1].final_target_result.show()
-  print
-  print "Final target value (i_trial=%d): %.6g" % (
-    best_i_trial, minimized[1].final_target_result.target)
-  if (minimized[1].final_target_result.target > 0.1):
-    print "WARNING: LARGE final target value: %.6g" % (
-      minimized[1].final_target_result.target)
-  print
-  minimized_structure.show_distances(pair_asu_table=si_o_bond_asu_table)
-  print
-  sites_cart = minimized_structure.sites_cart()
-  pair_proxies = geometry_restraints_manager.pair_proxies(
-    sites_cart=sites_cart)
-  pair_proxies.bond_proxies.show_sorted_by_residual(
-    sites_cart=sites_cart,
-    labels=[scatterer.label for scatterer in minimized_structure.scatterers()])
-  print
+      print >> out, "i_trial, target value: %d, %.6g" % (
+        i_trial, trial_minimized[1].final_target_result.target)
+      if (minimized is None or       minimized[1].final_target_result.target
+                             > trial_minimized[1].final_target_result.target):
+        minimized = trial_minimized
+        minimized_structure = trial_structure
+        best_i_trial = i_trial
+    assert minimized is not None
+    print >> out
+    print >> out, "Energies at start of 1. minimization:"
+    minimized[0].first_target_result.show(f=out)
+    print >> out
+    print >> out, "Energies at end of 1. minimization:"
+    minimized[0].final_target_result.show(f=out)
+    print >> out
+    print >> out, "Energies at start of 2. minimization:"
+    minimized[1].first_target_result.show(f=out)
+    print >> out
+    print >> out, "Energies at end of 2. minimization:"
+    minimized[1].final_target_result.show(f=out)
+    print >> out
+    print >> out, "Final target value (i_trial=%d): %.6g" % (
+      best_i_trial, minimized[1].final_target_result.target)
+    if (minimized[1].final_target_result.target > 0.1):
+      print >> out, "WARNING: LARGE final target value: %.6g" % (
+        minimized[1].final_target_result.target)
+    print >> out
+    minimized_structure.show_distances(
+      pair_asu_table=si_o_bond_asu_table,
+      out=out)
+    print >> out
+    sites_cart = minimized_structure.sites_cart()
+    pair_proxies = geometry_restraints_manager.pair_proxies(
+      sites_cart=sites_cart)
+    pair_proxies.bond_proxies.show_sorted_by_residual(
+      sites_cart=sites_cart,
+      labels=[scatterer.label
+        for scatterer in minimized_structure.scatterers()],
+      f=out)
+    print >> out
+    self.geometry_restraints_manager = geometry_restraints_manager
+    self.minimized_structure = minimized_structure
