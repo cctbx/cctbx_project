@@ -364,8 +364,7 @@ class _bond_sorted_asu_proxies(boost.python.injector, bond_sorted_asu_proxies):
       else:
         proxy = self.asu[i_proxy-n_simple]
         i_seq,j_seq = proxy.i_seq,proxy.j_seq
-        rt_mx = asu_mappings.get_rt_mx_i(pair=proxy).inverse().multiply(
-                asu_mappings.get_rt_mx_j(pair=proxy))
+        rt_mx = asu_mappings.get_rt_mx_ji(pair=proxy)
         restraint = bond(
           sites_cart=sites_cart,
           asu_mappings=asu_mappings,
