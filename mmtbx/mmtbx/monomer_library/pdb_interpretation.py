@@ -1969,7 +1969,8 @@ class process(object):
         flush_log(self.log)
     return self._xray_structure
 
-def run(args, strict_conflict_handling=True, max_atoms=None):
+def run(args, strict_conflict_handling=True, max_atoms=None, log=None):
+  if (log is None): log = sys.stdout
   mon_lib_srv = server.server()
   ener_lib = server.ener_lib()
   for file_name in args:
@@ -1979,7 +1980,7 @@ def run(args, strict_conflict_handling=True, max_atoms=None):
       file_name=file_name,
       strict_conflict_handling=strict_conflict_handling,
       max_atoms=max_atoms,
-      log=sys.stdout)
+      log=log)
     processed_pdb_file.geometry_restraints_manager()
     processed_pdb_file.xray_structure()
   return processed_pdb_file
