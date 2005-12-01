@@ -165,6 +165,8 @@ def exercise_with_pdb(verbose):
   #
   out = StringIO()
   geo.show_interactions(f=out)
+  if (verbose):
+    sys.stdout.write(out.getvalue())
   assert not show_diff(out.getvalue(), """\
 bond simple: (0, 1)
   distance_model: 1.53051
@@ -206,6 +208,8 @@ nonbonded simple: (0, 23)
   #
   out = StringIO()
   geo.show_interactions(site_labels=site_labels, f=out)
+  if (verbose):
+    sys.stdout.write(out.getvalue())
   assert not show_diff(out.getvalue(), """\
 bond simple: (0, 1)
   " CA  TYR     1 "
@@ -266,6 +270,8 @@ nonbonded simple: (0, 23)
   geo._sites_cart_used_for_pair_proxies = None
   out = StringIO()
   geo.show_interactions(f=out)
+  if (verbose):
+    sys.stdout.write(out.getvalue())
   assert not show_diff(out.getvalue(), """\
 bond simple: (0, 1)
   distance_ideal: 1.53
@@ -302,6 +308,8 @@ nonbonded asu: (7, 29) x+1,y,z
   #
   out = StringIO()
   geo.show_interactions(site_labels=site_labels, f=out)
+  if (verbose):
+    sys.stdout.write(out.getvalue())
   assert not show_diff(out.getvalue(), """\
 bond simple: (0, 1)
   " CA  TYR     1 "
