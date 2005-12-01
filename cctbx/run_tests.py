@@ -62,6 +62,7 @@ def run():
   ["$D/cctbx/regression/tst_fast_nv1995.py", "F222"],
   "$D/cctbx/regression/tst_geometry_restraints.py",
   "$D/cctbx/regression/tst_geometry_restraints_lbfgs.py",
+  "$D/cctbx/regression/tst_geometry_restraints_2.py",
   ["$D/cctbx/development/make_cns_input.py", "P31"],
   ["$D/cctbx/development/tst_cns_epsilon.py", "P31"],
   ["$D/cctbx/development/tst_cns_hl.py", "P31"],
