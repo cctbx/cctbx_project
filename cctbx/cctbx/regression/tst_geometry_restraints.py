@@ -8,6 +8,10 @@ from libtbx.test_utils import approx_equal, not_approx_equal
 import random
 import sys
 
+if (1): # fixed random seed to avoid rare failures
+  random.seed(0)
+  flex.set_random_seed(0)
+
 class residual_functor(object):
 
   def __init__(self, restraint_type, **keyword_arguments):
