@@ -11,7 +11,7 @@ from cctbx import sgtbx
 from cctbx.array_family import flex
 import scitbx.lbfgs
 from scitbx import matrix
-from libtbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal, show_diff
 from libtbx.itertbx import count
 from stdlib import math
 from cStringIO import StringIO
@@ -204,6 +204,21 @@ def exercise(verbose=0):
                    ":;ideal  model  delta   weight residual"]
   assert l[-2].startswith(":;1.800  1.800")
   assert l[-1] == ":;... (remaining 15 not shown)"
+  s = StringIO()
+  pair_proxies.nonbonded_proxies.show_sorted_by_model_distance(
+    sites_cart=sites_cart,
+    max_lines=7,
+    f=s,
+    prefix=">,")
+  assert not show_diff(s.getvalue(), """\
+>,Nonbonded interactions sorted by model distance:
+>, model   vdw sym.op. j
+>, 2.164 3.600 -x+2,-y+1,z
+...
+>, 3.414 3.600
+>,... (remaining 134 not shown)
+""",
+    selections=[range(3), range(-2,0)])
   vdw_1_sticks = []
   vdw_2_sticks = []
   for proxy in pair_proxies.nonbonded_proxies.simple:

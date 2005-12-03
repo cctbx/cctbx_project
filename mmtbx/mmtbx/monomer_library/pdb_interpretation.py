@@ -1928,6 +1928,12 @@ class process(object):
           f=self.log,
           prefix="  ",
           max_lines=5)
+        pair_proxies.nonbonded_proxies.show_sorted_by_model_distance(
+          sites_cart=self.all_chain_proxies.sites_cart_exact(),
+          labels=labels,
+          f=self.log,
+          prefix="  ",
+          max_lines=5)
         self._geometry_restraints_manager.dihedral_proxies \
           .show_histogram_of_deltas(
             sites_cart=self.all_chain_proxies.sites_cart_exact(),

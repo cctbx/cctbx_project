@@ -278,4 +278,5 @@ class distance_and_repulsion_least_squares:
       f=out)
     print >> out
     self.geometry_restraints_manager = geometry_restraints_manager
+    self.start_structure = si_o.structure
     self.minimized_structure = minimized_structure
