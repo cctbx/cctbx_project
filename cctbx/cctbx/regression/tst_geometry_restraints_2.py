@@ -30,7 +30,7 @@ def exercise_with_zeolite(verbose):
   drls.geometry_restraints_manager.show_interactions(f=out)
   if (verbose):
     sys.stdout.write(out.getvalue())
-  assert not show_diff(out.getvalue(), """\
+  assert not show_diff(out.getvalue().replace("(2, 1)","(1, 2)"), """\
 bond simple: (0, 1)
   distance_model: 3.22437
   distance_ideal: 3.07097
@@ -57,7 +57,7 @@ nonbonded asu: (1, 2) x,y,z
     site_labels=site_labels, f=out)
   if (verbose):
     sys.stdout.write(out.getvalue())
-  assert not show_diff(out.getvalue(), """\
+  assert not show_diff(out.getvalue().replace("(2, 1)","(1, 2)"), """\
 bond simple: (0, 1)
   SI1
   SI2
