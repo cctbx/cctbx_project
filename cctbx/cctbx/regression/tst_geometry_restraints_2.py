@@ -138,6 +138,160 @@ nonbonded asu: (7, 4)
   vdw_distance: 2
 """,
     selections=[range(5), range(25,30), range(240,244), range(-4,0)])
+  #
+  sites_cart = drls.start_structure.sites_cart()
+  pair_proxies = drls.geometry_restraints_manager.pair_proxies()
+  out = StringIO()
+  pair_proxies.bond_proxies.show_sorted_by_residual(
+    sites_cart=sites_cart,
+    labels=site_labels,
+    f=out)
+  if (verbose):
+    sys.stdout.write(out.getvalue())
+  assert len(out.getvalue().splitlines()) == 50
+  assert out.getvalue().splitlines()[-1].find("remaining") < 0
+  out = StringIO()
+  pair_proxies.bond_proxies.show_sorted_by_residual(
+    sites_cart=sites_cart,
+    labels=site_labels,
+    f=out,
+    prefix="0^",
+    max_lines=28)
+  if (verbose):
+    sys.stdout.write(out.getvalue())
+  assert not show_diff(out.getvalue(), """\
+0^Bond restraints sorted by residual:
+0^  i - j   ideal  model  delta   weight residual sym.op. j
+0^O3  - O4  2.629  2.120  0.509 4.10e-01 1.06e-01
+...
+0^SI1 - SI1 3.071  3.216 -0.145 2.31e-01 4.83e-03 -x+1/2,-y+1/2,-z+1
+0^... (remaining 20 not shown)
+""",
+    selections=[range(3), range(-2,0)])
+  site_labels_long = ["abc"+label+"def" for label in site_labels]
+  out = StringIO()
+  pair_proxies.bond_proxies.show_sorted_by_residual(
+    sites_cart=sites_cart,
+    labels=site_labels_long,
+    f=out,
+    prefix="^0",
+    max_lines=28)
+  if (verbose):
+    sys.stdout.write(out.getvalue())
+  assert not show_diff(out.getvalue(), """\
+^0Bond restraints sorted by residual:
+^0   atom i - atom j    ideal  model  delta   weight residual sym.op. j
+^0abcO3def  - abcO4def  2.629  2.120  0.509 4.10e-01 1.06e-01
+...
+^0abcSI1def - abcSI1def 3.071  3.216 -0.145 2.31e-01 4.83e-03 -x+1/2,-y+1/2,-z+1
+^0... (remaining 20 not shown)
+""",
+    selections=[range(3), range(-2,0)])
+  out = StringIO()
+  pair_proxies.bond_proxies.show_sorted_by_residual(
+    sites_cart=sites_cart,
+    f=out,
+    prefix=".=",
+    max_lines=28)
+  if (verbose):
+    sys.stdout.write(out.getvalue())
+  assert not show_diff(out.getvalue(), """\
+.=Bond restraints sorted by residual:
+.=ideal  model  delta   weight residual sym.op. j
+.=2.629  2.120  0.509 4.10e-01 1.06e-01
+...
+.=3.071  3.216 -0.145 2.31e-01 4.83e-03 -x+1/2,-y+1/2,-z+1
+.=... (remaining 20 not shown)
+""",
+    selections=[range(3), range(-2,0)])
+  out = StringIO()
+  pair_proxies.bond_proxies.show_sorted_by_residual(
+    sites_cart=sites_cart,
+    f=out,
+    prefix="-+",
+    max_lines=1)
+  if (verbose):
+    sys.stdout.write(out.getvalue())
+  assert not show_diff(out.getvalue(), """\
+-+Bond restraints sorted by residual:
+-+ideal  model  delta   weight residual
+-+2.629  2.120  0.509 4.10e-01 1.06e-01
+-+... (remaining 47 not shown)
+""")
+  out = StringIO()
+  pair_proxies.bond_proxies.show_sorted_by_residual(
+    sites_cart=sites_cart,
+    f=out,
+    prefix="=+",
+    max_lines=0)
+  if (verbose):
+    sys.stdout.write(out.getvalue())
+  assert not show_diff(out.getvalue(), """\
+=+... (remaining 48 not shown)
+""")
+  #
+  out = StringIO()
+  pair_proxies.nonbonded_proxies.show_sorted_by_model_distance(
+    sites_cart=sites_cart,
+    labels=site_labels,
+    f=out,
+    prefix="d%")
+  if (verbose):
+    sys.stdout.write(out.getvalue())
+  assert not show_diff(out.getvalue(), """\
+d%Nonbonded interactions sorted by model distance:
+d%  i - j    model   vdw sym.op. j
+d%O3  - O3   3.067 2.000 -x+1/2,-y+1/2,-z
+...
+d%SI2 - O4   3.386 1.000
+""",
+    selections=[range(3), range(8,9)])
+  out = StringIO()
+  pair_proxies.nonbonded_proxies.show_sorted_by_model_distance(
+    sites_cart=sites_cart,
+    labels=site_labels_long,
+    f=out,
+    prefix="&u",
+    max_lines=7)
+  if (verbose):
+    sys.stdout.write(out.getvalue())
+  assert not show_diff(out.getvalue(), """\
+&uNonbonded interactions sorted by model distance:
+&u   atom i - atom j     model   vdw sym.op. j
+&uabcO3def  - abcO3def   3.067 2.000 -x+1/2,-y+1/2,-z
+...
+&uabcSI2def - abcO4def   3.386 1.000
+&u... (remaining 45 not shown)
+""",
+    selections=[range(3), range(-2,0)])
+  out = StringIO()
+  pair_proxies.nonbonded_proxies.show_sorted_by_model_distance(
+    sites_cart=sites_cart,
+    f=out,
+    prefix="*j",
+    max_lines=7)
+  if (verbose):
+    sys.stdout.write(out.getvalue())
+  assert not show_diff(out.getvalue(), """\
+*jNonbonded interactions sorted by model distance:
+*j model   vdw sym.op. j
+*j 3.067 2.000 -x+1/2,-y+1/2,-z
+...
+*j 3.386 1.000
+*j... (remaining 45 not shown)
+""",
+    selections=[range(3), range(-2,0)])
+  out = StringIO()
+  pair_proxies.nonbonded_proxies.show_sorted_by_model_distance(
+    sites_cart=sites_cart,
+    f=out,
+    prefix="@r",
+    max_lines=0)
+  if (verbose):
+    sys.stdout.write(out.getvalue())
+  assert not show_diff(out.getvalue(), """\
+@r... (remaining 52 not shown)
+""")
 
 def exercise_with_pdb(verbose):
   try: from mmtbx.monomer_library import pdb_interpretation
