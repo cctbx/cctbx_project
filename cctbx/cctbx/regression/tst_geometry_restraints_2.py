@@ -78,13 +78,10 @@ nonbonded simple: (1, 5)
   distance_model: 3.74919
   vdw_distance: 1
 ...
-nonbonded asu: (1, 2)
-  SI2
-  O1 x,y,z
   distance_model: 4.08434
   vdw_distance: 1
 """,
-    selections=[range(6), range(30,36), range(408,413), range(-5,0)])
+    selections=[range(6), range(30,36), range(408,413), range(-2,0)])
   #
   out = StringIO()
   drls.geometry_restraints_manager._sites_cart_used_for_pair_proxies = None
@@ -159,7 +156,7 @@ nonbonded asu: (7, 4)
     max_lines=28)
   if (verbose):
     sys.stdout.write(out.getvalue())
-  assert not show_diff(out.getvalue(), """\
+  assert not show_diff(out.getvalue().replace("e-00", "e-0"), """\
 0^Bond restraints sorted by residual:
 0^  i - j   ideal  model  delta   weight residual sym.op. j
 0^O3  - O4  2.629  2.120  0.509 4.10e-01 1.06e-01
@@ -178,7 +175,7 @@ nonbonded asu: (7, 4)
     max_lines=28)
   if (verbose):
     sys.stdout.write(out.getvalue())
-  assert not show_diff(out.getvalue(), """\
+  assert not show_diff(out.getvalue().replace("e-00", "e-0"), """\
 ^0Bond restraints sorted by residual:
 ^0   atom i - atom j    ideal  model  delta   weight residual sym.op. j
 ^0abcO3def  - abcO4def  2.629  2.120  0.509 4.10e-01 1.06e-01
@@ -195,7 +192,7 @@ nonbonded asu: (7, 4)
     max_lines=28)
   if (verbose):
     sys.stdout.write(out.getvalue())
-  assert not show_diff(out.getvalue(), """\
+  assert not show_diff(out.getvalue().replace("e-00", "e-0"), """\
 .=Bond restraints sorted by residual:
 .=ideal  model  delta   weight residual sym.op. j
 .=2.629  2.120  0.509 4.10e-01 1.06e-01
@@ -212,7 +209,7 @@ nonbonded asu: (7, 4)
     max_lines=1)
   if (verbose):
     sys.stdout.write(out.getvalue())
-  assert not show_diff(out.getvalue(), """\
+  assert not show_diff(out.getvalue().replace("e-00", "e-0"), """\
 -+Bond restraints sorted by residual:
 -+ideal  model  delta   weight residual
 -+2.629  2.120  0.509 4.10e-01 1.06e-01
