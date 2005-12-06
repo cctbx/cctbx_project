@@ -205,6 +205,19 @@ def exercise(verbose=0):
   assert l[-2].startswith(":;1.800  1.800")
   assert l[-1] == ":;... (remaining 15 not shown)"
   s = StringIO()
+  pair_proxies.nonbonded_proxies.show_histogram_of_model_distances(
+    sites_cart=sites_cart,
+    f=s,
+    prefix="]^")
+  assert not show_diff(s.getvalue(), """\
+]^Histogram of nonbonded interaction distances:
+]^      2.16 -     3.03: 3
+]^      3.03 -     3.89: 12
+]^      3.89 -     4.75: 28
+]^      4.75 -     5.61: 44
+]^      5.61 -     6.48: 54
+""")
+  s = StringIO()
   pair_proxies.nonbonded_proxies.show_sorted_by_model_distance(
     sites_cart=sites_cart,
     max_lines=7,

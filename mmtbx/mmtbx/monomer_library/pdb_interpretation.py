@@ -1928,6 +1928,10 @@ class process(object):
           f=self.log,
           prefix="  ",
           max_lines=5)
+        pair_proxies.nonbonded_proxies.show_histogram_of_model_distances(
+          sites_cart=self.all_chain_proxies.sites_cart_exact(),
+          f=self.log,
+          prefix="  ")
         pair_proxies.nonbonded_proxies.show_sorted_by_model_distance(
           sites_cart=self.all_chain_proxies.sites_cart_exact(),
           labels=labels,
