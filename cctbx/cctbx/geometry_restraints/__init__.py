@@ -306,7 +306,7 @@ class _bond_sorted_asu_proxies(boost.python.injector, bond_sorted_asu_proxies):
         cutoff_warn_extreme=20,
         f=None,
         prefix=""):
-    if (self.n_total() == 0): return
+    if (self.n_total() == 0): return None
     if (f is None): f = sys.stdout
     print >> f, "%sHistogram of bond lengths:" % prefix
     histogram = flex.histogram(
@@ -411,6 +411,33 @@ class _bond_sorted_asu_proxies(boost.python.injector, bond_sorted_asu_proxies):
 
 class _nonbonded_sorted_asu_proxies(boost.python.injector,
         nonbonded_sorted_asu_proxies):
+
+  def show_histogram_of_model_distances(self,
+        sites_cart,
+        n_slots=5,
+        cutoff_warn_small=1.0,
+        f=None,
+        prefix=""):
+    if (self.n_total() == 0): return None
+    if (f is None): f = sys.stdout
+    print >> f, "%sHistogram of nonbonded interaction distances:" % prefix
+    histogram = flex.histogram(
+      data=nonbonded_deltas(
+        sites_cart=sites_cart,
+        sorted_asu_proxies=self,
+        function=prolsq_repulsion_function()),
+      n_slots=n_slots)
+    low_cutoff = histogram.data_min()
+    for i,n in enumerate(histogram.slots()):
+      high_cutoff = histogram.data_min() + histogram.slot_width() * (i+1)
+      print >> f, "%s  %8.2f - %8.2f: %d" % (
+        prefix, low_cutoff, high_cutoff, n)
+      low_cutoff = high_cutoff
+    if (cutoff_warn_small is not None
+        and histogram.data_min() < cutoff_warn_small):
+      print >> f, "%sWarning: very small nonbonded interaction distances." % (
+        prefix)
+    return histogram
 
   def show_sorted_by_model_distance(self,
         sites_cart,
