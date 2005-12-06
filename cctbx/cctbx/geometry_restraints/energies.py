@@ -135,12 +135,15 @@ class energies(scitbx.restraints.energies):
        a_min = flex.min_default(a_abs, 0)
        return a_min, a_max, a_ave
 
-  def nonbonded_deviations(self):
-    if(self.n_nonbonded_proxies is not None):
-       nonbonded_deltas = geometry_restraints.nonbonded_deltas(
+  def nonbonded_distances(self):
+    return geometry_restraints.nonbonded_deltas(
                                   sites_cart         = self.sites_cart,
                                   sorted_asu_proxies = self.nonbonded_proxies,
                                   function           = self.nonbonded_function)
+
+  def nonbonded_deviations(self):
+    if(self.n_nonbonded_proxies is not None):
+       nonbonded_deltas = self.nonbonded_distances()
        r_abs = flex.abs(nonbonded_deltas)
        r_ave = flex.mean_default(r_abs, 0)
        r_max = flex.max_default(r_abs, 0)

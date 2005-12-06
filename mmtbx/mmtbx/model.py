@@ -479,22 +479,23 @@ class stereochemistry_statistics(object):
     self.energies_sites = self.restraints_manager.energies_sites(
                           sites_cart        = self.xray_structure.sites_cart(),
                           compute_gradients = True)
-    esg = self.energies_sites.geometry
-    self.b_target = esg.bond_residual_sum
-    self.a_target = esg.angle_residual_sum
-    self.d_target = esg.dihedral_residual_sum
-    self.c_target = esg.chirality_residual_sum
-    self.r_target = esg.nonbonded_residual_sum
-    self.p_target = esg.planarity_residual_sum
-    self.b_min, self.b_max, self.b_mean = esg.bond_deviations()
-    self.r_min, self.r_max, self.r_mean = esg.nonbonded_deviations()
-    self.a_min, self.a_max, self.a_mean = esg.angle_deviations()
-    self.d_min, self.d_max, self.d_mean = esg.dihedral_deviations()
-    self.c_min, self.c_max, self.c_mean = esg.chirality_deviations()
-    self.p_min, self.p_max, self.p_mean = esg.planarity_deviations()
-    self.target               = esg.target
-    self.gradients            = esg.gradients
-    self.number_of_restraints = esg.number_of_restraints
+    self.esg      = self.energies_sites.geometry
+    self.esg_ref  = self.energies_sites_ref.geometry
+    self.b_target = self.esg.bond_residual_sum
+    self.a_target = self.esg.angle_residual_sum
+    self.d_target = self.esg.dihedral_residual_sum
+    self.c_target = self.esg.chirality_residual_sum
+    self.r_target = self.esg.nonbonded_residual_sum
+    self.p_target = self.esg.planarity_residual_sum
+    self.b_min, self.b_max, self.b_mean = self.esg.bond_deviations()
+    self.r_min, self.r_max, self.r_mean = self.esg.nonbonded_deviations()
+    self.a_min, self.a_max, self.a_mean = self.esg.angle_deviations()
+    self.d_min, self.d_max, self.d_mean = self.esg.dihedral_deviations()
+    self.c_min, self.c_max, self.c_mean = self.esg.chirality_deviations()
+    self.p_min, self.p_max, self.p_mean = self.esg.planarity_deviations()
+    self.target               = self.esg.target
+    self.gradients            = self.esg.gradients
+    self.number_of_restraints = self.esg.number_of_restraints
     if(self.number_of_restraints > 0):
        self.target_normalized    = self.target / self.number_of_restraints
        self.gradients_normalized = \
@@ -534,6 +535,8 @@ class stereochemistry_statistics(object):
     angle_deltas_2 = geometry_restraints.angle_deltas(
                                  sites_cart = self.xray_structure.sites_cart(),
                                  proxies    = rmg_2.angle_proxies)
+    nonbonded_distances_1 = self.esg_ref.nonbonded_distances()
+    nonbonded_distances_2 = self.esg.nonbonded_distances()
     h_1 = flex.histogram(data    = flex.abs(bond_deltas_1),
                          n_slots = n_slots)
     h_2 = flex.histogram(other   = h_1,
@@ -542,11 +545,18 @@ class stereochemistry_statistics(object):
                          n_slots = n_slots)
     h_4 = flex.histogram(other   = h_3,
                          data    = flex.abs(angle_deltas_2))
-    print >> out, "|    Histograms of bond deltas for  |     Histograms of angle deltas for      |"
-    print >> out, "|                 |                 |                   |                     |"
-    print >> out, "|   start model   |  current model  |     start model   |    current model    |"
-    print >> out, "|                 |                 |                   |                     |"
-    show_4_histograms(h_1, h_2, h_3, h_4, n_slots = n_slots, out=out)
+    h_5 = flex.histogram(data    = flex.abs(nonbonded_distances_1),
+                         n_slots = n_slots)
+    h_6 = flex.histogram(other   = h_5,
+                         data    = flex.abs(nonbonded_distances_2))
+    print >> out, "|-----------------------------------------------------------------------------|"
+    print >> out, "|                 Histograms for start / current models of                    |"
+    print >> out, "|                        |                          |                         |"
+    print >> out, "|        deviations from ideal values for           |                         |"
+    print >> out, "|                        |                          |                         |"
+    print >> out, "| bonds                  | angles                   | nonbonded contacts      |"
+    print >> out, "|                        |                          |                         |"
+    show_6_histograms(h_1, h_2, h_3, h_4, h_5, h_6, n_slots = n_slots, out=out)
     print >> out, "|"+"-"*77+"|"
     out.flush()
 
@@ -624,4 +634,39 @@ def show_4_histograms(h_1, h_2, h_3, h_4, n_slots, out):
     lc_2 = hc_2
     lc_3 = hc_3
     lc_4 = hc_4
+  out.flush()
+
+def show_6_histograms(h_1, h_2, h_3, h_4, h_5, h_6, n_slots, out):
+  format = "|%5.3f-%5.3f: %5d/%5d|%6.2f-%6.2f: %5d/%5d|%5.2f-%5.2f: %5d/%5d |"
+  lc_1 = h_1.data_min()
+  lc_2 = h_2.data_min()
+  lc_3 = h_3.data_min()
+  lc_4 = h_4.data_min()
+  lc_5 = h_5.data_min()
+  lc_6 = h_6.data_min()
+  s_1 = enumerate(h_1.slots())
+  s_2 = enumerate(h_2.slots())
+  s_3 = enumerate(h_3.slots())
+  s_4 = enumerate(h_4.slots())
+  s_5 = enumerate(h_5.slots())
+  s_6 = enumerate(h_6.slots())
+  for (i_1,n_1),(i_2,n_2),(i_3,n_3),(i_4,n_4),(i_5,n_5),(i_6,n_6) in zip(s_1,
+                                                          s_2,s_3,s_4,s_5,s_6):
+    hc_1 = h_1.data_min() + h_1.slot_width() * (i_1+1)
+    hc_2 = h_2.data_min() + h_2.slot_width() * (i_2+1)
+    hc_3 = h_3.data_min() + h_3.slot_width() * (i_3+1)
+    hc_4 = h_4.data_min() + h_4.slot_width() * (i_4+1)
+    hc_5 = h_5.data_min() + h_5.slot_width() * (i_5+1)
+    hc_6 = h_6.data_min() + h_6.slot_width() * (i_6+1)
+    assert lc_1 == lc_2 and hc_1 == hc_2
+    assert lc_3 == lc_4 and hc_3 == hc_4
+    assert lc_5 == lc_6 and hc_5 == hc_6
+    outs = (lc_1,hc_1,n_1,n_2, lc_3,hc_3,n_3,n_4, lc_5,hc_5,n_5,n_6)
+    print >> out, format % outs
+    lc_1 = hc_1
+    lc_2 = hc_2
+    lc_3 = hc_3
+    lc_4 = hc_4
+    lc_5 = hc_5
+    lc_6 = hc_6
   out.flush()

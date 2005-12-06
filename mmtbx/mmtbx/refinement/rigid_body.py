@@ -241,6 +241,10 @@ class rigid_body_minimizer(object):
                refine_t,
                max_iterations):
     adopt_init_args(self, locals())
+    if(self.fmodel.target_name in ["ml","lsm"]):
+       self.alpha, self.beta = self.fmodel.alpha_beta_w()
+    else:
+       self.alpha, self.beta = None, None
     self.fmodel_copy = self.fmodel.deep_copy()
     self.n_groups = len(self.selections)
     assert self.n_groups > 0
@@ -302,8 +306,10 @@ class rigid_body_minimizer(object):
                                    selections          = self.selections)
     self.fmodel_copy.update_xray_structure(xray_structure = new_xrs,
                                            update_f_calc  = True)
-    tg_obj = target_and_grads(fmodel  = self.fmodel_copy,
-                              rot_objs = rot_objs,
+    tg_obj = target_and_grads(fmodel     = self.fmodel_copy,
+                              alpha      = self.alpha,
+                              beta       = self.beta,
+                              rot_objs   = rot_objs,
                               selections = self.selections)
     self.f = tg_obj.target()
     self.g = self.pack( tg_obj.gradients_wrt_r(), tg_obj.gradients_wrt_t() )
@@ -326,12 +332,20 @@ def apply_transformation(xray_structure,
 
 class target_and_grads(object):
   def __init__(self, fmodel,
+                     alpha,
+                     beta,
                      rot_objs,
                      selections):
     self.grads_wrt_r = []
     self.grads_wrt_t = []
-    target_grads_wrt_xyz = fmodel.gradient_wrt_xyz()
-    self.f = fmodel.target_w()
+    target_grads_wrt_xyz = fmodel.gradient_wrt_atomic_parameters(
+                                                             sites = True,
+                                                             u_iso = False,
+                                                             alpha = alpha,
+                                                             beta  = beta,
+                                                             tan_b_iso_max = 0)
+    target_grads_wrt_xyz = flex.vec3_double(target_grads_wrt_xyz.packed())
+    self.f = fmodel.target_w(alpha = alpha, beta = beta)
     for sel,rot_obj in zip(selections, rot_objs):
         xrs = fmodel.xray_structure.select(sel)
         cm_cart = xrs.center_of_mass()

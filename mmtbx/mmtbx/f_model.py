@@ -212,6 +212,7 @@ class manager(object):
     else:
        step = self.f_obs.d_min() / 4.0
     if(step < 0.3): step = 0.3
+    step = min(0.8, step)
     if(update_f_ordered_solvent): step = 0.3
     if(update_f_calc):
        self.f_calc = self.f_obs.structure_factors_from_scatterers(
@@ -502,6 +503,8 @@ class manager(object):
     if(self.target_name.count("ml") > 0 or self.target_name.count("lsm") > 0):
        if([alpha, beta].count(None) == 2):
           alpha, beta = self.alpha_beta_w()
+    if(self.target_name.count("ml") ==0 and self.target_name.count("lsm") ==0):
+       assert [alpha, beta].count(None) == 2
     if(selection is None):
        xrs = self.xray_structure
     else:
