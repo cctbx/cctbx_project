@@ -127,6 +127,14 @@ class manager(object):
   def number_of_ordered_solvent_molecules(self):
     return self.solvent_selection.count(True)
 
+  def show_rigid_body_groups_info(self, out):
+    print >> out, "Number of atoms  = ", self.xray_structure.scatterers().size()
+    print >> out, "Number of groups = ", len(self.rigid_body_selections)
+    for group in self.rigid_body_selections:
+        print >> out, "  group_i = ", group.count(True), group.count(False), group.size()
+
+
+
   def remove_solvent(self):
     self.update(selection = ~self.solvent_selection)
 
