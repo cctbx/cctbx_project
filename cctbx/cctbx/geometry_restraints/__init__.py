@@ -412,6 +412,12 @@ class _bond_sorted_asu_proxies(boost.python.injector, bond_sorted_asu_proxies):
 class _nonbonded_sorted_asu_proxies(boost.python.injector,
         nonbonded_sorted_asu_proxies):
 
+  def deltas(self, sites_cart):
+    return nonbonded_deltas(
+      sites_cart=sites_cart,
+      sorted_asu_proxies=self,
+      function=prolsq_repulsion_function())
+
   def show_histogram_of_model_distances(self,
         sites_cart,
         n_slots=5,
@@ -422,10 +428,7 @@ class _nonbonded_sorted_asu_proxies(boost.python.injector,
     if (f is None): f = sys.stdout
     print >> f, "%sHistogram of nonbonded interaction distances:" % prefix
     histogram = flex.histogram(
-      data=nonbonded_deltas(
-        sites_cart=sites_cart,
-        sorted_asu_proxies=self,
-        function=prolsq_repulsion_function()),
+      data=self.deltas(sites_cart=sites_cart),
       n_slots=n_slots)
     low_cutoff = histogram.data_min()
     for i,n in enumerate(histogram.slots()):
