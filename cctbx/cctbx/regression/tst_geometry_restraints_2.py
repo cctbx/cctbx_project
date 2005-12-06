@@ -1,9 +1,10 @@
 from cctbx.geometry_restraints.distance_least_squares \
   import distance_and_repulsion_least_squares
+from cctbx.array_family import flex
 from iotbx.kriber import strudat
 from cStringIO import StringIO
 import libtbx.utils
-from libtbx.test_utils import show_diff
+from libtbx.test_utils import approx_equal, show_diff
 import libtbx.load_env
 import sys, os
 
@@ -417,6 +418,8 @@ nonbonded simple: (0, 23)
 """,
     selections=[range(7), range(276,283), range(661,670), range(760,769),
       range(805,810), range(-10,0)])
+  #
+  assert approx_equal(flex.min(geo.nonbonded_model_distances()), 0.4777342)
   #
   geo._sites_cart_used_for_pair_proxies = None
   out = StringIO()

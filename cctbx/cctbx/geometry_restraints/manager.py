@@ -45,6 +45,9 @@ class manager(object):
     self.effective_nonbonded_buffer = self.nonbonded_buffer
     self.n_updates_pair_proxies = 0
 
+  def sites_cart_used_for_pair_proxies(self):
+    return self._sites_cart_used_for_pair_proxies
+
   def new_including_isolated_sites(self,
         n_additional_sites,
         model_indices=None,
@@ -312,6 +315,12 @@ class manager(object):
     elif (self._pair_proxies is None):
       raise AssertionError("pair_proxies not defined already.")
     return self._pair_proxies
+
+  def nonbonded_model_distances(self, sites_cart=None):
+    pair_proxies = self.pair_proxies(sites_cart=sites_cart)
+    if (sites_cart is None):
+      sites_cart = self._sites_cart_used_for_pair_proxies
+    return pair_proxies.nonbonded_proxies.deltas(sites_cart=sites_cart)
 
   def update_plain_pair_sym_table(self, sites_frac):
     asu_mappings = crystal.symmetry.asu_mappings(self.crystal_symmetry,
