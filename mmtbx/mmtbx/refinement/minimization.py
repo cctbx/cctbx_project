@@ -58,11 +58,12 @@ class lbfgs(object):
     self.target_name = self.fmodel.target_name
     assert self.target_name in ("ml","mlhl") or self.target_name.count("ls") == 1
     self.fmodel_copy = self.fmodel.deep_copy()
-    if(self.alpha_w is None or self.beta_w is None):
-       self.alpha_w, self.beta_w = self.fmodel_copy.alpha_beta_w()
-    else:
-       assert self.alpha_w.data().size() == self.f_obs_w.data().size()
-       assert self.beta_w.data().size() == self.f_obs_w.data().size()
+    if(self.target_name in ("ml","mlhl", "lsm")):
+       if(self.alpha_w is None or self.beta_w is None):
+          self.alpha_w, self.beta_w = self.fmodel_copy.alpha_beta_w()
+       else:
+          assert self.alpha_w.data().size() == self.f_obs_w.data().size()
+          assert self.beta_w.data().size() == self.f_obs_w.data().size()
     self.x = flex.double(xray_structure.n_parameters(xray_gradient_flags), 0)
     self._scatterers_start = xray_structure.scatterers()
     self._d_min = self.f_obs_w.d_min()
