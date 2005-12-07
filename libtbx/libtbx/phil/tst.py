@@ -2773,6 +2773,47 @@ s {
 }
 """)
 
+def exercise_inject():
+  master_1 = phil.parse("""
+s {
+  a=None
+}
+t {}
+u {}
+u {}
+""")
+  master_2 = phil.parse("""
+x=None
+  .help="abc"
+n {
+}
+""")
+  assert master_1.inject(path="t", source_scope=master_2) is master_1
+  assert not show_diff(master_1.as_str(attributes_level=1), """\
+s {
+  a = None
+}
+t {
+  x = None
+    .help = abc
+  n {
+  }
+}
+u {
+}
+u {
+}
+""")
+  assert master_1.extract().t.n.__phil_path__() == "t.n"
+  try: master_1.inject(path="v", source_scope=master_2)
+  except RuntimeError, e:
+    assert str(e) == "No matching scope for path=v"
+  else: raise RuntimeError("Exception expected.")
+  try: master_1.inject(path="u", source_scope=master_2)
+  except RuntimeError, e:
+    assert str(e) == "Multiple matching scopes for path=u"
+  else: raise RuntimeError("Exception expected.")
+
 class foo1_converters(object):
 
   def __init__(self, bar=None):
@@ -2966,6 +3007,7 @@ def exercise():
   exercise_extract()
   exercise_format()
   exercise_tidy_master()
+  exercise_inject()
   exercise_type_constructors()
   exercise_choice_exceptions()
   exercise_command_line()
