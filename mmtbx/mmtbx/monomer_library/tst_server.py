@@ -34,6 +34,7 @@ def exercise():
   quick = "--quick" in sys.argv[1:]
   list_cif = server.mon_lib_list_cif()
   srv = server.server(list_cif=list_cif)
+  print "srv.root_path:", srv.root_path
   default_switch = "--default_off" not in sys.argv[1:]
   if (False or default_switch):
     monomers_with_commas = {}
