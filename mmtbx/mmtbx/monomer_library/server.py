@@ -157,22 +157,28 @@ class server(object):
     comp_id = comp_id.strip()
     try: return self.comp_comp_id_dict[comp_id]
     except KeyError: pass
-    std_comp_id = self.comp_synonym_list_dict.get(comp_id, comp_id)
+    std_comp_id = self.comp_synonym_list_dict.get(comp_id, "")
     comp_comp_id = None
-    if (len(std_comp_id) > 0):
-      dir_name = os.path.join(self.root_path, std_comp_id[0].lower())
-      if (os.path.isdir(dir_name)):
-        cif_name = std_comp_id + ".cif"
-        file_name = os.path.join(dir_name, cif_name)
-        if (os.path.isfile(file_name)):
-          comp_comp_id = read_comp_cif(file_name=file_name)
-        else:
-          cif_name = cif_name.lower()
-          for node in os.listdir(dir_name):
-            if (node.lower() != cif_name): continue
-            file_name = os.path.join(dir_name, node)
-            comp_comp_id = read_comp_cif(file_name=file_name)
-            break
+    for i_pass in [0,1]:
+      for trial_comp_id in [std_comp_id, comp_id]:
+        if (len(trial_comp_id) == 0): continue
+        dir_name = os.path.join(self.root_path, trial_comp_id[0].lower())
+        if (os.path.isdir(dir_name)):
+          cif_name = trial_comp_id + ".cif"
+          if (i_pass == 0):
+            file_name = os.path.join(dir_name, cif_name)
+            if (os.path.isfile(file_name)):
+              comp_comp_id = read_comp_cif(file_name=file_name)
+              break
+          else:
+            cif_name = cif_name.lower()
+            for node in os.listdir(dir_name):
+              if (node.lower() != cif_name): continue
+              file_name = os.path.join(dir_name, node)
+              comp_comp_id = read_comp_cif(file_name=file_name)
+              break
+      if (comp_comp_id is not None):
+        break
     self.comp_comp_id_dict[std_comp_id] = comp_comp_id
     self.comp_comp_id_dict[comp_id] = comp_comp_id
     return self.comp_comp_id_dict[comp_id]
