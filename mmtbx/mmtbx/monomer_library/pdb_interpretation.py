@@ -1,6 +1,8 @@
 from __future__ import generators
+from __future__ import division
 from iotbx import pdb
 import iotbx.pdb.interpretation
+import iotbx.phil
 from mmtbx.monomer_library import server
 from mmtbx.monomer_library import cif_types
 from cctbx import geometry_restraints
@@ -14,6 +16,39 @@ from libtbx.utils import flat_list, Sorry
 from cStringIO import StringIO
 import string
 import sys
+
+master_params = iotbx.phil.parse("""\
+  link_distance_cutoff = 3
+    .type=float
+    .optional=False
+  disulfide_distance_cutoff = 3
+    .type=float
+    .optional=False
+  nonbonded_distance_cutoff = None
+    .type=float
+  default_vdw_distance = 1
+    .type=float
+    .optional=False
+  min_vdw_distance = 1
+    .type=float
+    .optional=False
+  nonbonded_buffer = 1
+    .type=float
+    .optional=False
+  vdw_1_4_factor = 2/3
+    .type=float
+    .optional=False
+  clash_guard
+    .expert_level=2
+  {
+    nonbonded_distance_threshold = 0.5
+      .type = float
+    max_number_of_distances_below_threshold = 100
+      .type = int
+    max_fraction_of_distances_below_threshold = 0.1
+      .type = float
+  }
+""")
 
 def flush_log(log):
   if (log is not None):
@@ -895,7 +930,7 @@ class add_planarity_proxies(object):
             counters.discarded_because_of_special_positions += 1
           else:
             i_seqs.append(i_seq)
-            weights.append(1./plane_atom.dist_esd**2)
+            weights.append(1/plane_atom.dist_esd**2)
       if (len(i_seqs) < 4):
         if (this_plane_has_unresolved_non_hydrogen):
           counters.less_than_four_sites[plane.plane_id] += 1
@@ -1406,17 +1441,19 @@ class build_all_chain_proxies(object):
   def __init__(self,
         mon_lib_srv,
         ener_lib,
+        params=None,
         file_name=None,
         raw_records=None,
         special_position_settings=None,
         crystal_symmetry=None,
         force_symmetry=False,
         substitute_non_crystallographic_unit_cell_if_necessary=False,
-        link_distance_cutoff=3,
         strict_conflict_handling=True,
         keep_monomer_mappings=False,
         max_atoms=None,
         log=None):
+    if (params is None): params = master_params.extract()
+    self.params = params
     timer = user_plus_sys_time()
     self.time_building_chain_proxies = None
     if (log is not None and file_name is not None):
@@ -1504,7 +1541,7 @@ class build_all_chain_proxies(object):
         for chain in chains:
           chain_proxies = build_chain_proxies(
             mon_lib_srv=mon_lib_srv,
-            link_distance_cutoff=link_distance_cutoff,
+            link_distance_cutoff=self.params.link_distance_cutoff,
             stage_1=self.stage_1,
             sites_cart=self.sites_cart,
             special_position_indices=special_position_indices,
@@ -1743,12 +1780,6 @@ class build_all_chain_proxies(object):
   def construct_geometry_restraints_manager(self,
         ener_lib,
         disulfide_link,
-        disulfide_distance_cutoff=3,
-        nonbonded_distance_cutoff=None,
-        default_vdw_distance=1,
-        min_vdw_distance=1,
-        nonbonded_buffer=1,
-        vdw_1_4_factor=2/3.,
         plain_pairs_radius=None,
         log=None):
     assert self.special_position_settings is not None
@@ -1782,7 +1813,7 @@ class build_all_chain_proxies(object):
           excessive_bonds.size())
     disulfide_sym_table, max_disulfide_bond_distance = \
       self.create_disulfides(
-        disulfide_distance_cutoff=disulfide_distance_cutoff,
+        disulfide_distance_cutoff=self.params.disulfide_distance_cutoff,
         model_indices=model_indices,
         conformer_indices=conformer_indices,
         log=log)
@@ -1826,9 +1857,9 @@ class build_all_chain_proxies(object):
     #
     nonbonded_params = ener_lib_as_nonbonded_params(
       ener_lib=ener_lib,
-      factor_1_4_interactions=vdw_1_4_factor,
-      default_distance=default_vdw_distance,
-      minimum_distance=min_vdw_distance)
+      factor_1_4_interactions=self.params.vdw_1_4_factor,
+      default_distance=self.params.default_vdw_distance,
+      minimum_distance=self.params.min_vdw_distance)
     result = geometry_restraints.manager.manager(
       crystal_symmetry=self.special_position_settings,
       model_indices=model_indices,
@@ -1839,8 +1870,8 @@ class build_all_chain_proxies(object):
       nonbonded_params=nonbonded_params,
       nonbonded_types=self.nonbonded_energy_type_registry.symbols,
       nonbonded_function=geometry_restraints.prolsq_repulsion_function(),
-      nonbonded_distance_cutoff=nonbonded_distance_cutoff,
-      nonbonded_buffer=1,
+      nonbonded_distance_cutoff=self.params.nonbonded_distance_cutoff,
+      nonbonded_buffer=self.params.nonbonded_buffer,
       angle_proxies=self.geometry_proxy_registries.angle.proxies,
       dihedral_proxies=self.geometry_proxy_registries.dihedral.proxies,
       chirality_proxies=self.geometry_proxy_registries.chirality.proxies,
@@ -1863,6 +1894,7 @@ class process(object):
   def __init__(self,
         mon_lib_srv,
         ener_lib,
+        params=None,
         file_name=None,
         raw_records=None,
         strict_conflict_handling=False,
@@ -1878,6 +1910,7 @@ class process(object):
     self.all_chain_proxies = build_all_chain_proxies(
       mon_lib_srv=mon_lib_srv,
       ener_lib=ener_lib,
+      params=params,
       file_name=file_name,
       raw_records=raw_records,
       special_position_settings=special_position_settings,
@@ -1938,6 +1971,7 @@ class process(object):
           f=self.log,
           prefix="  ",
           max_lines=5)
+        self.clash_guard()
         self._geometry_restraints_manager.dihedral_proxies \
           .show_histogram_of_deltas(
             sites_cart=self.all_chain_proxies.sites_cart_exact(),
@@ -1962,6 +1996,35 @@ class process(object):
           flush_log(self.log)
     return self._geometry_restraints_manager
 
+  def clash_guard(self):
+    params = self.all_chain_proxies.params.clash_guard
+    if (params.nonbonded_distance_threshold is None): return
+    geo = self._geometry_restraints_manager
+    n_below_threshold = (
+      geo.nonbonded_model_distances() < params.nonbonded_distance_threshold) \
+        .count(True)
+    if ((params.max_number_of_distances_below_threshold is not None
+         and n_below_threshold
+               > params.max_number_of_distances_below_threshold)
+        or
+        (params.max_fraction_of_distances_below_threshold is not None
+         and n_below_threshold
+               / max(1,geo.sites_cart_used_for_pair_proxies().size())
+                 > params.max_fraction_of_distances_below_threshold)):
+      phil_path = params.__phil_path__()
+      raise Sorry("""%s failure:
+  Number of nonbonded interaction distances < %.6g: %d
+  - Please inspect the histogram of nonbonded interaction distances above.
+  - This error may be the result of specifying the same PDB file
+    multiple times, e.g. once via a parameter file and a second time
+    via the command line. If this is the case, omit the file name from
+    the command line, or edit the parameter file.
+  - To disable this error, run the same command again with the following
+    additional argument:
+      %s.nonbonded_distance_threshold=None""" %
+        (phil_path, params.nonbonded_distance_threshold,
+         n_below_threshold, phil_path))
+
   def xray_structure(self):
     if (    self.all_chain_proxies.sites_cart is not None
         and self.all_chain_proxies.special_position_settings is not None
@@ -1979,7 +2042,12 @@ class process(object):
         flush_log(self.log)
     return self._xray_structure
 
-def run(args, strict_conflict_handling=True, max_atoms=None, log=None):
+def run(
+      args,
+      params=None,
+      strict_conflict_handling=True,
+      max_atoms=None,
+      log=None):
   if (log is None): log = sys.stdout
   mon_lib_srv = server.server()
   ener_lib = server.ener_lib()
@@ -1987,6 +2055,7 @@ def run(args, strict_conflict_handling=True, max_atoms=None, log=None):
     processed_pdb_file = process(
       mon_lib_srv=mon_lib_srv,
       ener_lib=ener_lib,
+      params=params,
       file_name=file_name,
       strict_conflict_handling=strict_conflict_handling,
       max_atoms=max_atoms,
