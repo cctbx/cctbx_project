@@ -270,7 +270,7 @@ class manager(object):
     b_isos = self.xray_structure.extract_u_iso_or_u_equiv() * math.pi**2*8
     b_isos_mean = flex.mean(b_isos)
     max_b_iso = b_isos_mean * scale_max
-    min_b_iso = b_isos_mean * scale_min
+    min_b_iso = b_isos_mean / scale_min
     sel_outliers_max = b_isos > max_b_iso
     sel_outliers_min = b_isos < min_b_iso
     b_isos.set_selected(sel_outliers_max, max_b_iso)

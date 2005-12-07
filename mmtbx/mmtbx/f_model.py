@@ -145,8 +145,8 @@ class manager(object):
                    u_aniso[3],      u_aniso[4],      u_aniso[5]]
     self.u_aniso = u_aniso_new
     b_sol = self.k_sol_b_sol()[1] + b_iso
-    if(b_sol > 80.0): b_sol = 80.0
-    if(b_sol < 10.0): b_sol = 10.0
+    #if(b_sol > 80.0): b_sol = 80.0
+    #if(b_sol < 10.0): b_sol = 10.0
     self.b_sol = b_sol
     self.xray_structure.shift_us(b_shift = b_iso)
     self.xray_structure.tidy_us(u_min = 1.e-6)
@@ -1202,6 +1202,7 @@ class manager(object):
                   (k_sol, b_sol, target_w, r_work) + 5*p+"|"
     print >> out, "| B(11,22,33,12,13,23)=%9.4f%9.4f%9.4f%9.4f%9.4f%9.4f |" % \
                   (u0,u1,u2,u3,u4,u5)
+    print >> out, "| trace(B) = (B11 + B22 + b33)/3 = %-10.3f                                 |"%self.u_iso()
     print >> out, "| n_ordered_solv=%6d b_ordered_solv=%7.2f b_mean=%7.2f " \
                   "n_atoms=%7d |" % (self.n_ordered_water,\
                                  self.b_ordered_water,b_iso_mean,u_isos.size())
