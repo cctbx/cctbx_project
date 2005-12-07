@@ -12,6 +12,7 @@ import cctbx.crystal.coordination_sequences
 from cctbx.array_family import flex
 from scitbx.python_utils import dicts
 from scitbx.python_utils.misc import user_plus_sys_time, plural_s
+from libtbx.str_utils import show_string
 from libtbx.utils import flat_list, Sorry
 from cStringIO import StringIO
 import string
@@ -1462,6 +1463,8 @@ class build_all_chain_proxies(object):
       file_name=file_name,
       raw_records=raw_records)
     if (log is not None):
+      print >> log, "  Monomer Library directory:"
+      print >> log, "   ", show_string(mon_lib_srv.root_path)
       print >> log, "  Total number of atoms:", \
         len(self.stage_1.atom_attributes_list)
     self.special_position_settings = None
