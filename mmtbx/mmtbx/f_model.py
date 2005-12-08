@@ -266,7 +266,7 @@ class manager(object):
     if(params is None):
        params = bss.solvent_and_scale_params()
     else:
-       params = bss.solvent_and_scale_params(overwrite = params)
+       params = bss.solvent_and_scale_params(params = params)
     bss.bulk_solvent_and_scales(fmodel = self, params = params, log = out)
 
   def setup_target_functors(self):
