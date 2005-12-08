@@ -769,6 +769,14 @@ class scope: # FUTURE scope(object)
     object.primary_parent_scope = primary_parent_scope
     primary_parent_scope.objects.append(object)
 
+  def change_primary_parent_scope(self, new_value):
+    objects = []
+    for object in self.objects:
+      obj = object.copy()
+      obj.primary_parent_scope = new_value
+      objects.append(obj)
+    return self.customized_copy(objects=objects)
+
   def has_attribute_with_name(self, name):
     return name in self.attribute_names
 
@@ -1070,7 +1078,17 @@ class scope: # FUTURE scope(object)
           result.append(object)
         else:
           object_sub = object.resolve_variables()
-          for file_name in [word.value for word in object_sub.words]:
+          if (len(object_sub.words) < 2):
+            raise RuntimeError(
+              '"include" must be followed by at least two arguments%s' % (
+                object.where_str))
+          include_type = object_sub.words[0].value.lower()
+          if (include_type == "file"):
+            if (len(object_sub.words) != 2):
+              raise RuntimeError(
+                '"include file" must be followed exactly one argument%s' % (
+                  object.where_str))
+            file_name = object_sub.words[1].value
             if (reference_directory is not None
                 and not os.path.isabs(file_name)):
               file_name = os.path.join(reference_directory, file_name)
@@ -1079,6 +1097,26 @@ class scope: # FUTURE scope(object)
               converter_registry=converter_registry,
               process_includes=True,
               include_stack=include_stack).objects)
+          elif (include_type == "scope"):
+            if (len(object_sub.words) > 3):
+              raise RuntimeError(
+                '"include scope" must be followed one or two arguments,'
+                ' i.e. an import path and optionally a phil path%s' % (
+                  object.where_str))
+            import_path = object_sub.words[1].value
+            if (len(object_sub.words) > 2):
+              phil_path = object_sub.words[2].value
+            else:
+              phil_path = None
+            result.extend(process_include_scope(
+              converter_registry=converter_registry,
+              include_stack=include_stack,
+              object=object,
+              import_path=import_path,
+              phil_path=phil_path).objects)
+          else:
+            raise RuntimeError("Unknown include type: %s%s" % (
+              include_type, object.where_str))
       else:
         result.append(object.process_includes(
           converter_registry=converter_registry,
@@ -1111,6 +1149,52 @@ class scope: # FUTURE scope(object)
       obj.primary_parent_scope = self
       target_scope.objects.append(obj)
     return self
+
+def process_include_scope(
+      converter_registry,
+      include_stack,
+      object,
+      import_path,
+      phil_path):
+  import_path = import_path.split(".")
+  if (len(import_path) < 2):
+    raise RuntimeError(
+      'include scope: import path "%s" is too short;'
+      ' target must be a phil scope%s' % (
+        ".".join(import_path), object.where_str))
+  module_path = ".".join(import_path[:-1])
+  try:
+    source_module = __import__(module_path)
+  except ImportError:
+    raise ImportError("include scope: no module %s%s" % (
+      module_path, object.where_str))
+  for attr in import_path[1:-1]:
+    source_module = getattr(source_module, attr)
+  try:
+    source_scope = getattr(source_module, import_path[-1])
+  except AttributeError:
+    raise RuntimeError(
+      'import scope: phil scope object "%s" not found in module "%s"%s' % (
+        import_path[-1], module_path, object.where_str))
+  if (not isinstance(source_scope, scope)):
+    raise RuntimeError(
+      'import scope: python object "%s" in module "%s" is not a'
+      ' libtbx.phil.scope instance%s' % (
+        import_path[-1], module_path, object.where_str))
+  source_scope = source_scope.process_includes(
+    converter_registry=converter_registry,
+    reference_directory=None,
+    include_stack=include_stack)
+  if (phil_path is None):
+    result = source_scope
+  else:
+    result = source_scope.get(path=phil_path)
+    if (len(result.objects) == 0):
+      raise RuntimeError(
+        'import scope: path "%s" not found in phil scope object "%s"' \
+        ' in module "%s"%s' % (
+          phil_path, import_path[-1], module_path, object.where_str))
+  return result.change_primary_parent_scope(object.primary_parent_scope)
 
 def clean_fetched_scope(fetched_objects):
   result = []

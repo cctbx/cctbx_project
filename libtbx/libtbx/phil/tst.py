@@ -388,7 +388,7 @@ def exercise_nested():
 d0=0
 a0 {
   d1=a b c
-  include file
+  include file name
   a1 {
     t0 {
       c=yes
@@ -407,7 +407,7 @@ a0 {
 d0 = 0
 a0 {
   d1 = a b c
-  include file
+  include file name
   a1 {
     t0 {
       c = yes
@@ -835,15 +835,16 @@ b=y
 """
   print >> open("tmp3.params", "w"), """\
 c=z
-include tmp2.params
+include file tmp2.params
 d=$z
 """
   parameters = phil.parse(
     input_string="""\
 tmp2=tmp2.params
-include tmp1.params $tmp2
+include file tmp1.params
+include file $tmp2
 r=0
-include tmp3.params
+include file tmp3.params
 s=1
 """,
     process_includes=True)
@@ -879,13 +880,13 @@ s = 1
   except OSError: pass
   #
   print >> open("tmp1.params", "w"), """\
-include tmp3.params
+include file tmp3.params
 """
   print >> open("tmp2.params", "w"), """\
-include tmp1.params
+include file tmp1.params
 """
   print >> open("tmp3.params", "w"), """\
-include tmp2.params
+include file tmp2.params
 """
   try: parameters = phil.parse(
     file_name="tmp1.params",
@@ -897,12 +898,12 @@ include tmp2.params
   #
   print >> open("tmp1.params", "w"), """\
 a=0
-include tmp/tmp1.params
+include file tmp/tmp1.params
 x=1
 """
   print >> open("tmp/tmp1.params", "w"), """\
 b=1
-include tmp2.params
+include file tmp2.params
 y=2
 """
   print >> open("tmp/tmp2.params", "w"), """\
@@ -924,15 +925,15 @@ x = 1
 """
   print >> open("tmp4.params", "w"), """\
 a=1
-include tmp1.params
+include file tmp1.params
 s {
   a=2
-  include tmp1.params
+  include file tmp1.params
   z=2
 }
 s {
   a=3
-  include tmp1.params
+  include file tmp1.params
   z=3
 }
 z=1
@@ -990,6 +991,189 @@ s {
 }
 z = 1
 """
+  #
+  try: phil.parse(input_string="""\
+include foo
+""", process_includes=True)
+  except RuntimeError, e:
+    assert str(e) \
+      == '"include" must be followed by at least two arguments (input line 1)'
+  else: raise RuntimeError("Exception expected.")
+  try: phil.parse(input_string="""\
+include foo bar
+""", process_includes=True)
+  except RuntimeError, e:
+    assert str(e) == "Unknown include type: foo (input line 1)"
+  else: raise RuntimeError("Exception expected.")
+  try: phil.parse(input_string="""\
+include file foo foo
+""", process_includes=True)
+  except RuntimeError, e:
+    assert str(e) \
+      == '"include file" must be followed exactly one argument (input line 1)'
+  else: raise RuntimeError("Exception expected.")
+  #
+  params = phil.parse(input_string="""\
+include scope libtbx.phil.tst.include_scope_target_1
+""", process_includes=True)
+  assert not show_diff(params.as_str(attributes_level=1), """\
+x = 1
+  .help = u
+s
+  .help = v
+{
+  y = 2
+    .help = w
+}
+""")
+  params = phil.parse(input_string="""\
+o {
+  include scope libtbx.phil.tst.include_scope_target_1
+}
+""", process_includes=True)
+  assert not show_diff(params.as_str(attributes_level=1), """\
+o {
+  x = 1
+    .help = u
+  s
+    .help = v
+  {
+    y = 2
+      .help = w
+  }
+}
+""")
+  params = phil.parse(input_string="""\
+include scope libtbx.phil.tst.include_scope_target_1 x
+""", process_includes=True)
+  assert not show_diff(params.as_str(attributes_level=1), """\
+x = 1
+  .help = u
+""")
+  params = phil.parse(input_string="""\
+include scope libtbx.phil.tst.include_scope_target_1 s
+""", process_includes=True)
+  assert not show_diff(params.as_str(attributes_level=1), """\
+s
+  .help = v
+{
+  y = 2
+    .help = w
+}
+""")
+  params = phil.parse(input_string="""\
+a = None
+c {
+  include scope libtbx.phil.tst.include_scope_target_1 s.y
+}
+b = None
+""", process_includes=True)
+  assert not show_diff(params.as_str(attributes_level=1), """\
+a = None
+c {
+  y = 2
+    .help = w
+}
+b = None
+""")
+  params = phil.parse(input_string="""\
+a = None
+c {
+  include scope libtbx.phil.tst.include_scope_target_2
+}
+b = None
+""", process_includes=True)
+  assert not show_diff(params.as_str(attributes_level=1), """\
+a = None
+c {
+  p = 1
+  x = 1
+    .help = u
+  s
+    .help = v
+  {
+    y = 2
+      .help = w
+  }
+  q = 2
+  r {
+    y = 2
+      .help = w
+  }
+  x = 3
+}
+b = None
+""")
+  extracted = params.extract()
+  assert extracted.c.s.__phil_path__() == "c.s"
+  try: phil.parse(input_string="""\
+include scope foo foo foo
+""", process_includes=True)
+  except RuntimeError, e:
+    assert str(e) \
+      == '"include scope" must be followed one or two arguments,' \
+         ' i.e. an import path and optionally a phil path (input line 1)'
+  else: raise RuntimeError("Exception expected.")
+  try: phil.parse(input_string="""\
+include scope libtbx
+""", process_includes=True)
+  except RuntimeError, e:
+    assert str(e) == 'include scope: import path "libtbx" is too short;' \
+      ' target must be a phil scope (input line 1)'
+  else: raise RuntimeError("Exception expected.")
+  try: phil.parse(input_string="""\
+include scope libtbx.phil.t_s_t.include_scope_target_1
+""", process_includes=True)
+  except ImportError, e:
+    assert str(e) \
+      == "include scope: no module libtbx.phil.t_s_t (input line 1)"
+  else: raise RuntimeError("Exception expected.")
+  try: phil.parse(input_string="""\
+include scope libtbx.phil.tst.include_scope_target_none
+""", process_includes=True)
+  except RuntimeError, e:
+    assert str(e) == 'import scope: phil scope object' \
+      ' "include_scope_target_none" not found in module "libtbx.phil.tst"' \
+      ' (input line 1)'
+  else: raise RuntimeError("Exception expected.")
+  try: phil.parse(input_string="""\
+include scope libtbx.phil.tst.include_scope_target_0
+""", process_includes=True)
+  except RuntimeError, e:
+    assert str(e) == 'import scope: python object' \
+      ' "include_scope_target_0" in module "libtbx.phil.tst"' \
+      ' is not a libtbx.phil.scope instance (input line 1)'
+  else: raise RuntimeError("Exception expected.")
+  try: phil.parse(input_string="""\
+include scope libtbx.phil.tst.include_scope_target_1 t
+""", process_includes=True)
+  except RuntimeError, e:
+    assert str(e) == 'import scope: path "t" not found in phil scope object' \
+      ' "include_scope_target_1" in module "libtbx.phil.tst" (input line 1)'
+  else: raise RuntimeError("Exception expected.")
+
+include_scope_target_0 = None
+
+include_scope_target_1 = phil.parse("""\
+x=1
+  .help=u
+s
+  .help=v
+{
+  y=2
+    .help=w
+}
+""")
+
+include_scope_target_2 = phil.parse("""\
+p=1
+include scope libtbx.phil.tst.include_scope_target_1
+q=2
+r {
+  include scope libtbx.phil.tst.include_scope_target_1 s.y
+}
+x=3
+""")
 
 def exercise_fetch():
   master = phil.parse(input_string="""\
