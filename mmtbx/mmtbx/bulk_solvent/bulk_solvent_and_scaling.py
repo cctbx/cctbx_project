@@ -13,40 +13,108 @@ from mmtbx.max_lik import maxlik
 from mmtbx.refinement import print_statistics
 from scitbx import matrix
 from mmtbx.max_lik import max_like_non_uniform
+import iotbx.phil
+
+master_params = iotbx.phil.parse("""\
+  bulk_solvent_correction = True
+    .type = bool
+  anisotropic_scaling = True
+    .type = bool
+  statistical_solvent_model = False
+    .type = bool
+  k_sol_b_sol_grid_search = True
+    .type = bool
+  minimization_k_sol_b_sol = True
+    .type = bool
+  minimization_u_aniso = True
+    .type = bool
+  target = ls_wunit_k1 *ml
+    .type = choice
+  symmetry_constraints_on_u_aniso = True
+    .type = bool
+  k_sol_max = 0.6
+    .type = float
+  k_sol_min = 0.0
+    .type = float
+  b_sol_max = 80.0
+    .type = float
+  b_sol_min = 10.0
+    .type = float
+  k_sol_step = 0.05
+    .type = float
+  b_sol_step = 5.0
+    .type = float
+  number_of_macro_cycles = 2
+    .type = int
+  number_of_minimization_macro_cycles = 3
+    .type = int
+  number_of_cycles_for_anisotropic_scaling = 3
+    .type = int
+  fix_k_sol = None
+    .type = float
+  fix_b_sol = None
+    .type = float
+  fix_u_aniso {
+    u11 = None
+      .type = float
+    u22 = None
+      .type = float
+    u33 = None
+      .type = float
+    u12 = None
+      .type = float
+    u13 = None
+      .type = float
+    u23 = None
+      .type = float
+  }
+  apply_back_trace_of_u_aniso = True
+    .type = bool
+  start_minimization_from_k_sol = 0.35
+    .type = float
+  start_minimization_from_b_sol = 46.0
+    .type = float
+  start_minimization_from_u_aniso {
+    u11 = 0.0
+      .type = float
+    u22 = 0.0
+      .type = float
+    u33 = 0.0
+      .type = float
+    u12 = 0.0
+      .type = float
+    u13 = 0.0
+      .type = float
+    u23 = 0.0
+      .type = float
+  }
+  nu_fix_n_atoms = None
+    .type = float
+  nu_fix_b_atoms = None
+    .type = float
+  verbose = -1
+    .type = int
+""")
+
 
 class solvent_and_scale_params(object):
-  def __init__(self, bulk_solvent_correction                  = True,
-                     anisotropic_scaling                      = True,
-                     statistical_solvent_model                = False,
-                     k_sol_b_sol_grid_search                  = True,
-                     minimization_k_sol_b_sol                 = True,
-                     minimization_u_aniso                     = True,
-                     target                                   = "ls_wunit_k1",
-                     symmetry_constraints_on_u_aniso          = True,
-                     k_sol_max                                = 0.6,
-                     k_sol_min                                = 0.1,
-                     b_sol_max                                = 80.0,
-                     b_sol_min                                = 10.0,
-                     k_sol_step                               = 0.05,
-                     b_sol_step                               = 5.0,
-                     number_of_macro_cycles                   = 2,
-                     number_of_minimization_macro_cycles      = 3,
-                     number_of_cycles_for_anisotropic_scaling = 3,
-                     fix_k_sol                                = None,
-                     fix_b_sol                                = None,
-                     fix_u_aniso                              = None,
-                     apply_back_trace_of_u_aniso              = False,
-                     start_minimization_from_k_sol            = 0.35,
-                     start_minimization_from_b_sol            = 46.0,
-                     start_minimization_from_u_aniso          = [0,0,0,0,0,0],
-                     overwrite                                = None,
-                     nu_fix_n_atoms                           = None,
-                     nu_fix_b_atoms                           = None,
-                     verbose                                  = -1):
-    adopt_init_args(self, locals())
+  def __init__(self, params = None,
+                     verbose = -1):
+    if (params is None): params = master_params.extract()
+    else: o=params
+    o=params
+    self.__dict__.update(params.__dict__)
+    if(self.fix_u_aniso is not None):
+       try: self.fix_u_aniso = [self.fix_u_aniso.u11,
+                                self.fix_u_aniso.u22,
+                                self.fix_u_aniso.u33,
+                                self.fix_u_aniso.u12,
+                                self.fix_u_aniso.u13,
+                                self.fix_u_aniso.u23]
+       except: self.fix_u_aniso = self.fix_u_aniso
     prefix = "solvent_and_scale_params: "
-    if(self.overwrite is not None):
-       o = self.overwrite
+    if(1):#(self.overwrite is not None):
+       #o = self.overwrite
        self.bulk_solvent_correction         = o.bulk_solvent_correction
        self.anisotropic_scaling             = o.anisotropic_scaling
        self.statistical_solvent_model       = o.statistical_solvent_model
@@ -74,7 +142,7 @@ class solvent_and_scale_params(object):
        self.verbose                           = o.verbose
        self.nu_fix_n_atoms                    = o.nu_fix_n_atoms
        self.nu_fix_b_atoms                    = o.nu_fix_b_atoms
-       uasc = self.overwrite.fix_u_aniso
+       uasc = o.fix_u_aniso
        if(uasc is not None):
           try:
               if([uasc.u11, uasc.u22, uasc.u33, uasc.u12, uasc.u13,
@@ -87,7 +155,7 @@ class solvent_and_scale_params(object):
               self.fix_u_aniso = uasc
        else:
           self.fix_u_aniso = None
-       uasc = self.overwrite.start_minimization_from_u_aniso
+       uasc = o.start_minimization_from_u_aniso
        try: self.start_minimization_from_u_aniso = \
                    [uasc.u11, uasc.u22, uasc.u33, uasc.u12, uasc.u13, uasc.u23]
        except: self.start_minimization_from_u_aniso = uasc
@@ -400,7 +468,7 @@ class bulk_solvent_and_scales(object):
 
   def __init__(self, fmodel, params = None, log = None):
     if(params is None): params = solvent_and_scale_params()
-    else:               params = solvent_and_scale_params(overwrite = params)
+    else:               params = solvent_and_scale_params(params = params)
     to_do = [params.bulk_solvent_correction,
              params.anisotropic_scaling,
              params.statistical_solvent_model]

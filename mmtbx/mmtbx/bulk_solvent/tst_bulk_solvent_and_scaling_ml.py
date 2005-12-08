@@ -90,34 +90,32 @@ def exercise_0(fmodel,
 
     fmodel.update(alpha_beta_params = alpha_beta_parameters(),
                   f_obs             = f_obs)
-
-    fmodel.update_solvent_and_scale(
-       params = bss.solvent_and_scale_params(
-                   bulk_solvent_correction                  = True,
-                   anisotropic_scaling                      = True,
-                   statistical_solvent_model                = False,
-                   k_sol_b_sol_grid_search                  = True,
-                   minimization_k_sol_b_sol                 = True,
-                   minimization_u_aniso                     = True,
-                   target                                   = "ml",
-                   symmetry_constraints_on_u_aniso          = True,
-                   k_sol_max                                = 0.6,
-                   k_sol_min                                = 0.1,
-                   b_sol_max                                = 80.0,
-                   b_sol_min                                = 10.0,
-                   k_sol_step                               = 0.05,
-                   b_sol_step                               = 5.0,
-                   number_of_macro_cycles                   = 3,
-                   number_of_minimization_macro_cycles      = 20,
-                   number_of_cycles_for_anisotropic_scaling = 20,
-                   fix_k_sol                                = None,
-                   fix_b_sol                                = None,
-                   fix_u_aniso                              = None,
-                   start_minimization_from_k_sol            = 0.35,
-                   start_minimization_from_b_sol            = 46.0,
-                   start_minimization_from_u_aniso          = [0,0,0,0,0,0],
-                   overwrite                                = None,
-                   verbose                                  = -1))
+    params = bss.solvent_and_scale_params()
+    params.bulk_solvent_correction                  = True
+    params.anisotropic_scaling                      = True
+    params.statistical_solvent_model                = False
+    params.k_sol_b_sol_grid_search                  = True
+    params.minimization_k_sol_b_sol                 = True
+    params.minimization_u_aniso                     = True
+    params.target                                   = "ml"
+    params.symmetry_constraints_on_u_aniso          = True
+    params.k_sol_max                                = 0.6
+    params.k_sol_min                                = 0.1
+    params.b_sol_max                                = 80.0
+    params.b_sol_min                                = 10.0
+    params.k_sol_step                               = 0.05
+    params.b_sol_step                               = 5.0
+    params.number_of_macro_cycles                   = 3
+    params.number_of_minimization_macro_cycles      = 20
+    params.number_of_cycles_for_anisotropic_scaling = 20
+    params.fix_k_sol                                = None
+    params.fix_b_sol                                = None
+    params.fix_u_aniso                              = None
+    params.start_minimization_from_k_sol            = 0.35
+    params.start_minimization_from_b_sol            = 46.0
+    params.start_minimization_from_u_aniso          = [0,0,0,0,0,0]
+    params.apply_back_trace_of_u_aniso              = False
+    fmodel.update_solvent_and_scale(params = params)
 
     assert_result(fmodel, k_sol, b_sol, u_aniso, f_obs, r_free_flags,
                   tk = 1.e-3, tb = 1.e-1, tu = 1.e-1)
@@ -132,34 +130,32 @@ def exercise_1(fmodel,
 
     fmodel.update(alpha_beta_params = alpha_beta_parameters(),
                   f_obs             = f_obs)
-
-    fmodel.update_solvent_and_scale(
-       params = bss.solvent_and_scale_params(
-                   bulk_solvent_correction                  = True,
-                   anisotropic_scaling                      = True,
-                   statistical_solvent_model                = False,
-                   k_sol_b_sol_grid_search                  = False,
-                   minimization_k_sol_b_sol                 = True,
-                   minimization_u_aniso                     = True,
-                   target                                   = "ml",
-                   symmetry_constraints_on_u_aniso          = True,
-                   k_sol_max                                = 0.6,
-                   k_sol_min                                = 0.1,
-                   b_sol_max                                = 80.0,
-                   b_sol_min                                = 10.0,
-                   k_sol_step                               = 0.025,
-                   b_sol_step                               = 1.0,
-                   number_of_macro_cycles                   = 3,
-                   number_of_minimization_macro_cycles      = 4,
-                   number_of_cycles_for_anisotropic_scaling = 4,
-                   fix_k_sol                                = None,
-                   fix_b_sol                                = None,
-                   fix_u_aniso                              = None,
-                   start_minimization_from_k_sol            = 0.35,
-                   start_minimization_from_b_sol            = 46.0,
-                   start_minimization_from_u_aniso          = [0,0,0,0,0,0],
-                   overwrite                                = None,
-                   verbose                                  = -1))
+    params = bss.solvent_and_scale_params()
+    params.bulk_solvent_correction                  = True
+    params.anisotropic_scaling                      = True
+    params.statistical_solvent_model                = False
+    params.k_sol_b_sol_grid_search                  = False
+    params.minimization_k_sol_b_sol                 = True
+    params.minimization_u_aniso                     = True
+    params.target                                   = "ml"
+    params.symmetry_constraints_on_u_aniso          = True
+    params.k_sol_max                                = 0.6
+    params.k_sol_min                                = 0.1
+    params.b_sol_max                                = 80.0
+    params.b_sol_min                                = 10.0
+    params.k_sol_step                               = 0.025
+    params.b_sol_step                               = 1.0
+    params.number_of_macro_cycles                   = 3
+    params.number_of_minimization_macro_cycles      = 4
+    params.number_of_cycles_for_anisotropic_scaling = 4
+    params.fix_k_sol                                = None
+    params.fix_b_sol                                = None
+    params.fix_u_aniso                              = None
+    params.start_minimization_from_k_sol            = 0.35
+    params.start_minimization_from_b_sol            = 46.0
+    params.start_minimization_from_u_aniso          = [0,0,0,0,0,0]
+    params.apply_back_trace_of_u_aniso              = False
+    fmodel.update_solvent_and_scale(params = params)
 
     assert_result(fmodel, k_sol, b_sol, u_aniso, f_obs, r_free_flags,
                   tk = 1.e-2, tb = 0.6, tu = 1.e-1)
@@ -174,34 +170,32 @@ def exercise_2(fmodel,
 
     fmodel.update(alpha_beta_params = alpha_beta_parameters(),
                   f_obs             = f_obs)
-
-    fmodel.update_solvent_and_scale(
-       params = bss.solvent_and_scale_params(
-                   bulk_solvent_correction                  = True,
-                   anisotropic_scaling                      = True,
-                   statistical_solvent_model                = False,
-                   k_sol_b_sol_grid_search                  = False,
-                   minimization_k_sol_b_sol                 = False,
-                   minimization_u_aniso                     = True,
-                   target                                   = "ml",
-                   symmetry_constraints_on_u_aniso          = True,
-                   k_sol_max                                = 0.6,
-                   k_sol_min                                = 0.1,
-                   b_sol_max                                = 80.0,
-                   b_sol_min                                = 10.0,
-                   k_sol_step                               = 0.1,
-                   b_sol_step                               = 5.0,
-                   number_of_macro_cycles                   = 1,
-                   number_of_minimization_macro_cycles      = 30,
-                   number_of_cycles_for_anisotropic_scaling = 30,
-                   fix_k_sol                                = 0.33,
-                   fix_b_sol                                = 55.0,
-                   fix_u_aniso                              = None,
-                   start_minimization_from_k_sol            = 0.35,
-                   start_minimization_from_b_sol            = 46.0,
-                   start_minimization_from_u_aniso          = [0,0,0,0,0,0],
-                   overwrite                                = None,
-                   verbose                                  = -1))
+    params = bss.solvent_and_scale_params()
+    params.bulk_solvent_correction                  = True
+    params.anisotropic_scaling                      = True
+    params.statistical_solvent_model                = False
+    params.k_sol_b_sol_grid_search                  = False
+    params.minimization_k_sol_b_sol                 = False
+    params.minimization_u_aniso                     = True
+    params.target                                   = "ml"
+    params.symmetry_constraints_on_u_aniso          = True
+    params.k_sol_max                                = 0.6
+    params.k_sol_min                                = 0.1
+    params.b_sol_max                                = 80.0
+    params.b_sol_min                                = 10.0
+    params.k_sol_step                               = 0.1
+    params.b_sol_step                               = 5.0
+    params.number_of_macro_cycles                   = 1
+    params.number_of_minimization_macro_cycles      = 30
+    params.number_of_cycles_for_anisotropic_scaling = 30
+    params.fix_k_sol                                = 0.33
+    params.fix_b_sol                                = 55.0
+    params.fix_u_aniso                              = None
+    params.start_minimization_from_k_sol            = 0.35
+    params.start_minimization_from_b_sol            = 46.0
+    params.start_minimization_from_u_aniso          = [0,0,0,0,0,0]
+    params.apply_back_trace_of_u_aniso              = False
+    fmodel.update_solvent_and_scale(params = params)
 
     assert_result(fmodel, k_sol, b_sol, u_aniso, f_obs, r_free_flags,
                   tk = 1.e-6, tb = 1.e-6, tu = 1.e-1)
@@ -218,34 +212,32 @@ def exercise_3(fmodel,
                   f_obs             = f_obs,
                   k_sol             = k_sol,
                   b_sol             = b_sol)
-
-    fmodel.update_solvent_and_scale(
-       params = bss.solvent_and_scale_params(
-                   bulk_solvent_correction                  = False,
-                   anisotropic_scaling                      = True,
-                   statistical_solvent_model                = False,
-                   k_sol_b_sol_grid_search                  = False,
-                   minimization_k_sol_b_sol                 = False,
-                   minimization_u_aniso                     = True,
-                   target                                   = "ml",
-                   symmetry_constraints_on_u_aniso          = True,
-                   k_sol_max                                = 0.6,
-                   k_sol_min                                = 0.1,
-                   b_sol_max                                = 80.0,
-                   b_sol_min                                = 10.0,
-                   k_sol_step                               = 0.1,
-                   b_sol_step                               = 5.0,
-                   number_of_macro_cycles                   = 1,
-                   number_of_minimization_macro_cycles      = 30,
-                   number_of_cycles_for_anisotropic_scaling = 30,
-                   fix_k_sol                                = None,
-                   fix_b_sol                                = None,
-                   fix_u_aniso                              = None,
-                   start_minimization_from_k_sol            = 0.35,
-                   start_minimization_from_b_sol            = 46.0,
-                   start_minimization_from_u_aniso          = [0,0,0,0,0,0],
-                   overwrite                                = None,
-                   verbose                                  = -1))
+    params = bss.solvent_and_scale_params()
+    params.bulk_solvent_correction                  = False
+    params.anisotropic_scaling                      = True
+    params.statistical_solvent_model                = False
+    params.k_sol_b_sol_grid_search                  = False
+    params.minimization_k_sol_b_sol                 = False
+    params.minimization_u_aniso                     = True
+    params.target                                   = "ml"
+    params.symmetry_constraints_on_u_aniso          = True
+    params.k_sol_max                                = 0.6
+    params.k_sol_min                                = 0.1
+    params.b_sol_max                                = 80.0
+    params.b_sol_min                                = 10.0
+    params.k_sol_step                               = 0.1
+    params.b_sol_step                               = 5.0
+    params.number_of_macro_cycles                   = 1
+    params.number_of_minimization_macro_cycles      = 30
+    params.number_of_cycles_for_anisotropic_scaling = 30
+    params.fix_k_sol                                = None
+    params.fix_b_sol                                = None
+    params.fix_u_aniso                              = None
+    params.start_minimization_from_k_sol            = 0.35
+    params.start_minimization_from_b_sol            = 46.0
+    params.start_minimization_from_u_aniso          = [0,0,0,0,0,0]
+    params.apply_back_trace_of_u_aniso              = False
+    fmodel.update_solvent_and_scale(params = params)
 
     assert_result(fmodel, k_sol, b_sol, u_aniso, f_obs, r_free_flags,
                   tk = 1.e-6, tb = 1.e-6, tu = 1.e-1)
@@ -263,34 +255,32 @@ def exercise_4(fmodel,
                   k_sol             = k_sol,
                   b_sol             = b_sol,
                   u_aniso           = u_aniso)
-
-    fmodel.update_solvent_and_scale(
-       params = bss.solvent_and_scale_params(
-                   bulk_solvent_correction                  = False,
-                   anisotropic_scaling                      = False,
-                   statistical_solvent_model                = False,
-                   k_sol_b_sol_grid_search                  = False,
-                   minimization_k_sol_b_sol                 = False,
-                   minimization_u_aniso                     = True,
-                   target                                   = "ml",
-                   symmetry_constraints_on_u_aniso          = True,
-                   k_sol_max                                = 0.6,
-                   k_sol_min                                = 0.1,
-                   b_sol_max                                = 80.0,
-                   b_sol_min                                = 10.0,
-                   k_sol_step                               = 0.1,
-                   b_sol_step                               = 5.0,
-                   number_of_macro_cycles                   = 2,
-                   number_of_minimization_macro_cycles      = 2,
-                   number_of_cycles_for_anisotropic_scaling = 2,
-                   fix_k_sol                                = None,
-                   fix_b_sol                                = None,
-                   fix_u_aniso                              = None,
-                   start_minimization_from_k_sol            = 0.35,
-                   start_minimization_from_b_sol            = 46.0,
-                   start_minimization_from_u_aniso          = [0,0,0,0,0,0],
-                   overwrite                                = None,
-                   verbose                                  = -1))
+    params = bss.solvent_and_scale_params()
+    params.bulk_solvent_correction                  = False
+    params.anisotropic_scaling                      = False
+    params.statistical_solvent_model                = False
+    params.k_sol_b_sol_grid_search                  = False
+    params.minimization_k_sol_b_sol                 = False
+    params.minimization_u_aniso                     = True
+    params.target                                   = "ml"
+    params.symmetry_constraints_on_u_aniso          = True
+    params.k_sol_max                                = 0.6
+    params.k_sol_min                                = 0.1
+    params.b_sol_max                                = 80.0
+    params.b_sol_min                                = 10.0
+    params.k_sol_step                               = 0.1
+    params.b_sol_step                               = 5.0
+    params.number_of_macro_cycles                   = 2
+    params.number_of_minimization_macro_cycles      = 2
+    params.number_of_cycles_for_anisotropic_scaling = 2
+    params.fix_k_sol                                = None
+    params.fix_b_sol                                = None
+    params.fix_u_aniso                              = None
+    params.start_minimization_from_k_sol            = 0.35
+    params.start_minimization_from_b_sol            = 46.0
+    params.start_minimization_from_u_aniso          = [0,0,0,0,0,0]
+    params.apply_back_trace_of_u_aniso              = False
+    fmodel.update_solvent_and_scale(params = params)
 
     assert_result(fmodel, k_sol, b_sol, u_aniso, f_obs, r_free_flags,
                   tk = 1.e-6, tb = 1.e-6, tu = 1.e-6)
@@ -305,34 +295,32 @@ def exercise_5(fmodel,
 
     fmodel.update(alpha_beta_params = alpha_beta_parameters(),
                   f_obs             = f_obs)
-
-    fmodel.update_solvent_and_scale(
-       params = bss.solvent_and_scale_params(
-                   bulk_solvent_correction                  = True,
-                   anisotropic_scaling                      = True,
-                   statistical_solvent_model                = False,
-                   k_sol_b_sol_grid_search                  = False,
-                   minimization_k_sol_b_sol                 = False,
-                   minimization_u_aniso                     = False,
-                   target                                   = "ml",
-                   symmetry_constraints_on_u_aniso          = True,
-                   k_sol_max                                = 0.6,
-                   k_sol_min                                = 0.1,
-                   b_sol_max                                = 80.0,
-                   b_sol_min                                = 10.0,
-                   k_sol_step                               = 0.1,
-                   b_sol_step                               = 5.0,
-                   number_of_macro_cycles                   = 2,
-                   number_of_minimization_macro_cycles      = 2,
-                   number_of_cycles_for_anisotropic_scaling = 2,
-                   fix_k_sol                                = k_sol,
-                   fix_b_sol                                = b_sol,
-                   fix_u_aniso                              = u_aniso,
-                   start_minimization_from_k_sol            = 0.35,
-                   start_minimization_from_b_sol            = 46.0,
-                   start_minimization_from_u_aniso          = [0,0,0,0,0,0],
-                   overwrite                                = None,
-                   verbose                                  = -1))
+    params = bss.solvent_and_scale_params()
+    params.bulk_solvent_correction                  = True
+    params.anisotropic_scaling                      = True
+    params.statistical_solvent_model                = False
+    params.k_sol_b_sol_grid_search                  = False
+    params.minimization_k_sol_b_sol                 = False
+    params.minimization_u_aniso                     = False
+    params.target                                   = "ml"
+    params.symmetry_constraints_on_u_aniso          = True
+    params.k_sol_max                                = 0.6
+    params.k_sol_min                                = 0.1
+    params.b_sol_max                                = 80.0
+    params.b_sol_min                                = 10.0
+    params.k_sol_step                               = 0.1
+    params.b_sol_step                               = 5.0
+    params.number_of_macro_cycles                   = 2
+    params.number_of_minimization_macro_cycles      = 2
+    params.number_of_cycles_for_anisotropic_scaling = 2
+    params.fix_k_sol                                = k_sol
+    params.fix_b_sol                                = b_sol
+    params.fix_u_aniso                              = u_aniso
+    params.start_minimization_from_k_sol            = 0.35
+    params.start_minimization_from_b_sol            = 46.0
+    params.start_minimization_from_u_aniso          = [0,0,0,0,0,0]
+    params.apply_back_trace_of_u_aniso              = False
+    fmodel.update_solvent_and_scale(params = params)
 
     assert_result(fmodel, k_sol, b_sol, u_aniso, f_obs, r_free_flags,
                   tk = 1.e-6, tb = 1.e-6, tu = 1.e-6)
@@ -350,34 +338,32 @@ def exercise_51(fmodel,
                   k_sol             = k_sol,
                   b_sol             = b_sol,
                   u_aniso           = u_aniso)
-
-    fmodel.update_solvent_and_scale(
-       params = bss.solvent_and_scale_params(
-                   bulk_solvent_correction                  = False,
-                   anisotropic_scaling                      = False,
-                   statistical_solvent_model                = False,
-                   k_sol_b_sol_grid_search                  = True,
-                   minimization_k_sol_b_sol                 = True,
-                   minimization_u_aniso                     = True,
-                   target                                   = "ml",
-                   symmetry_constraints_on_u_aniso          = True,
-                   k_sol_max                                = 0.6,
-                   k_sol_min                                = 0.1,
-                   b_sol_max                                = 80.0,
-                   b_sol_min                                = 10.0,
-                   k_sol_step                               = 0.1,
-                   b_sol_step                               = 5.0,
-                   number_of_macro_cycles                   = 2,
-                   number_of_minimization_macro_cycles      = 2,
-                   number_of_cycles_for_anisotropic_scaling = 2,
-                   fix_k_sol                                = None,
-                   fix_b_sol                                = None,
-                   fix_u_aniso                              = None,
-                   start_minimization_from_k_sol            = 0.35,
-                   start_minimization_from_b_sol            = 46.0,
-                   start_minimization_from_u_aniso          = [0,0,0,0,0,0],
-                   overwrite                                = None,
-                   verbose                                  = -1))
+    params = bss.solvent_and_scale_params()
+    params.bulk_solvent_correction                  = False
+    params.anisotropic_scaling                      = False
+    params.statistical_solvent_model                = False
+    params.k_sol_b_sol_grid_search                  = True
+    params.minimization_k_sol_b_sol                 = True
+    params.minimization_u_aniso                     = True
+    params.target                                   = "ml"
+    params.symmetry_constraints_on_u_aniso          = True
+    params.k_sol_max                                = 0.6
+    params.k_sol_min                                = 0.1
+    params.b_sol_max                                = 80.0
+    params.b_sol_min                                = 10.0
+    params.k_sol_step                               = 0.1
+    params.b_sol_step                               = 5.0
+    params.number_of_macro_cycles                   = 2
+    params.number_of_minimization_macro_cycles      = 2
+    params.number_of_cycles_for_anisotropic_scaling = 2
+    params.fix_k_sol                                = None
+    params.fix_b_sol                                = None
+    params.fix_u_aniso                              = None
+    params.start_minimization_from_k_sol            = 0.35
+    params.start_minimization_from_b_sol            = 46.0
+    params.start_minimization_from_u_aniso          = [0,0,0,0,0,0]
+    params.apply_back_trace_of_u_aniso              = False
+    fmodel.update_solvent_and_scale(params = params)
 
     assert_result(fmodel, k_sol, b_sol, u_aniso, f_obs, r_free_flags,
                   tk = 1.e-6, tb = 1.e-6, tu = 1.e-6)
@@ -396,34 +382,32 @@ def exercise_6(fmodel,
                   k_sol             = k_sol,
                   b_sol             = b_sol,
                   u_aniso           = u_aniso)
-
-    fmodel.update_solvent_and_scale(
-       params = bss.solvent_and_scale_params(
-                   bulk_solvent_correction                  = True,
-                   anisotropic_scaling                      = True,
-                   statistical_solvent_model                = False,
-                   k_sol_b_sol_grid_search                  = True,
-                   minimization_k_sol_b_sol                 = True,
-                   minimization_u_aniso                     = True,
-                   target                                   = "ml",
-                   symmetry_constraints_on_u_aniso          = True,
-                   k_sol_max                                = 0.6,
-                   k_sol_min                                = 0.1,
-                   b_sol_max                                = 80.0,
-                   b_sol_min                                = 10.0,
-                   k_sol_step                               = 0.1,
-                   b_sol_step                               = 5.0,
-                   number_of_macro_cycles                   = 3,
-                   number_of_minimization_macro_cycles      = 3,
-                   number_of_cycles_for_anisotropic_scaling = 3,
-                   fix_k_sol                                = None,
-                   fix_b_sol                                = None,
-                   fix_u_aniso                              = None,
-                   start_minimization_from_k_sol            = 0.35,
-                   start_minimization_from_b_sol            = 46.0,
-                   start_minimization_from_u_aniso          = [0,0,0,0,0,0],
-                   overwrite                                = None,
-                   verbose                                  = -1))
+    params = bss.solvent_and_scale_params()
+    params.bulk_solvent_correction                  = True
+    params.anisotropic_scaling                      = True
+    params.statistical_solvent_model                = False
+    params.k_sol_b_sol_grid_search                  = True
+    params.minimization_k_sol_b_sol                 = True
+    params.minimization_u_aniso                     = True
+    params.target                                   = "ml"
+    params.symmetry_constraints_on_u_aniso          = True
+    params.k_sol_max                                = 0.6
+    params.k_sol_min                                = 0.1
+    params.b_sol_max                                = 80.0
+    params.b_sol_min                                = 10.0
+    params.k_sol_step                               = 0.1
+    params.b_sol_step                               = 5.0
+    params.number_of_macro_cycles                   = 3
+    params.number_of_minimization_macro_cycles      = 3
+    params.number_of_cycles_for_anisotropic_scaling = 3
+    params.fix_k_sol                                = None
+    params.fix_b_sol                                = None
+    params.fix_u_aniso                              = None
+    params.start_minimization_from_k_sol            = 0.35
+    params.start_minimization_from_b_sol            = 46.0
+    params.start_minimization_from_u_aniso          = [0,0,0,0,0,0]
+    params.apply_back_trace_of_u_aniso              = False
+    fmodel.update_solvent_and_scale(params = params)
 
     assert_result(fmodel, k_sol, b_sol, u_aniso, f_obs, r_free_flags,
                   tk = 1.e-5, tb = 1.e-6, tu = 1.e-3)
@@ -440,34 +424,32 @@ def exercise_7(fmodel,
                   f_obs             = f_obs,
                   k_sol             = k_sol,
                   b_sol             = b_sol)
-
-    fmodel.update_solvent_and_scale(
-       params = bss.solvent_and_scale_params(
-                   bulk_solvent_correction                  = False,
-                   anisotropic_scaling                      = True,
-                   statistical_solvent_model                = False,
-                   k_sol_b_sol_grid_search                  = True,
-                   minimization_k_sol_b_sol                 = True,
-                   minimization_u_aniso                     = True,
-                   target                                   = "ml",
-                   symmetry_constraints_on_u_aniso          = True,
-                   k_sol_max                                = 0.6,
-                   k_sol_min                                = 0.1,
-                   b_sol_max                                = 80.0,
-                   b_sol_min                                = 10.0,
-                   k_sol_step                               = 0.1,
-                   b_sol_step                               = 5.0,
-                   number_of_macro_cycles                   = 1,
-                   number_of_minimization_macro_cycles      = 30,
-                   number_of_cycles_for_anisotropic_scaling = 30,
-                   fix_k_sol                                = None,
-                   fix_b_sol                                = None,
-                   fix_u_aniso                              = None,
-                   start_minimization_from_k_sol            = 0.35,
-                   start_minimization_from_b_sol            = 46.0,
-                   start_minimization_from_u_aniso          = [0,0,0,0,0,0],
-                   overwrite                                = None,
-                   verbose                                  = -1))
+    params = bss.solvent_and_scale_params()
+    params.bulk_solvent_correction                  = False
+    params.anisotropic_scaling                      = True
+    params.statistical_solvent_model                = False
+    params.k_sol_b_sol_grid_search                  = True
+    params.minimization_k_sol_b_sol                 = True
+    params.minimization_u_aniso                     = True
+    params.target                                   = "ml"
+    params.symmetry_constraints_on_u_aniso          = True
+    params.k_sol_max                                = 0.6
+    params.k_sol_min                                = 0.1
+    params.b_sol_max                                = 80.0
+    params.b_sol_min                                = 10.0
+    params.k_sol_step                               = 0.1
+    params.b_sol_step                               = 5.0
+    params.number_of_macro_cycles                   = 1
+    params.number_of_minimization_macro_cycles      = 30
+    params.number_of_cycles_for_anisotropic_scaling = 30
+    params.fix_k_sol                                = None
+    params.fix_b_sol                                = None
+    params.fix_u_aniso                              = None
+    params.start_minimization_from_k_sol            = 0.35
+    params.start_minimization_from_b_sol            = 46.0
+    params.start_minimization_from_u_aniso          = [0,0,0,0,0,0]
+    params.apply_back_trace_of_u_aniso              = False
+    fmodel.update_solvent_and_scale(params = params)
 
     assert_result(fmodel, k_sol, b_sol, u_aniso, f_obs, r_free_flags,
                   tk = 1.e-6, tb = 1.e-6, tu = 1.e-1)
@@ -484,34 +466,32 @@ def exercise_8(fmodel,
                   f_obs             = f_obs,
                   k_sol             = k_sol,
                   b_sol             = b_sol)
-
-    fmodel.update_solvent_and_scale(
-       params = bss.solvent_and_scale_params(
-                   bulk_solvent_correction                  = False,
-                   anisotropic_scaling                      = True,
-                   statistical_solvent_model                = False,
-                   k_sol_b_sol_grid_search                  = True,
-                   minimization_k_sol_b_sol                 = True,
-                   minimization_u_aniso                     = True,
-                   target                                   = "ml",
-                   symmetry_constraints_on_u_aniso          = True,
-                   k_sol_max                                = 0.6,
-                   k_sol_min                                = 0.1,
-                   b_sol_max                                = 80.0,
-                   b_sol_min                                = 10.0,
-                   k_sol_step                               = 0.1,
-                   b_sol_step                               = 5.0,
-                   number_of_macro_cycles                   = 1,
-                   number_of_minimization_macro_cycles      = 3,
-                   number_of_cycles_for_anisotropic_scaling = 3,
-                   fix_k_sol                                = None,
-                   fix_b_sol                                = None,
-                   fix_u_aniso                              = None,
-                   start_minimization_from_k_sol            = 0.35,
-                   start_minimization_from_b_sol            = 46.0,
-                   start_minimization_from_u_aniso          = [0,0,0,0,0,0],
-                   overwrite                                = None,
-                   verbose                                  = -1))
+    params = bss.solvent_and_scale_params()
+    params.bulk_solvent_correction                  = False
+    params.anisotropic_scaling                      = True
+    params.statistical_solvent_model                = False
+    params.k_sol_b_sol_grid_search                  = True
+    params.minimization_k_sol_b_sol                 = True
+    params.minimization_u_aniso                     = True
+    params.target                                   = "ml"
+    params.symmetry_constraints_on_u_aniso          = True
+    params.k_sol_max                                = 0.6
+    params.k_sol_min                                = 0.1
+    params.b_sol_max                                = 80.0
+    params.b_sol_min                                = 10.0
+    params.k_sol_step                               = 0.1
+    params.b_sol_step                               = 5.0
+    params.number_of_macro_cycles                   = 1
+    params.number_of_minimization_macro_cycles      = 3
+    params.number_of_cycles_for_anisotropic_scaling = 3
+    params.fix_k_sol                                = None
+    params.fix_b_sol                                = None
+    params.fix_u_aniso                              = None
+    params.start_minimization_from_k_sol            = 0.35
+    params.start_minimization_from_b_sol            = 46.0
+    params.start_minimization_from_u_aniso          = [0,0,0,0,0,0]
+    params.apply_back_trace_of_u_aniso              = False
+    fmodel.update_solvent_and_scale(params = params)
 
     assert_result(fmodel, k_sol, b_sol, u_aniso, f_obs, r_free_flags,
                   tk = 1.e-6, tb = 1.e-6, tu = 1.e-1)
@@ -527,34 +507,32 @@ def exercise_9(fmodel,
     fmodel.update(alpha_beta_params = alpha_beta_parameters(),
                   f_obs             = f_obs,
                   u_aniso           = u_aniso)
-
-    fmodel.update_solvent_and_scale(
-       params = bss.solvent_and_scale_params(
-                   bulk_solvent_correction                  = True,
-                   anisotropic_scaling                      = False,
-                   statistical_solvent_model                = False,
-                   k_sol_b_sol_grid_search                  = True,
-                   minimization_k_sol_b_sol                 = True,
-                   minimization_u_aniso                     = True,
-                   target                                   = "ml",
-                   symmetry_constraints_on_u_aniso          = True,
-                   k_sol_max                                = 0.6,
-                   k_sol_min                                = 0.1,
-                   b_sol_max                                = 80.0,
-                   b_sol_min                                = 10.0,
-                   k_sol_step                               = 0.025,
-                   b_sol_step                               = 5.0,
-                   number_of_macro_cycles                   = 5,
-                   number_of_minimization_macro_cycles      = 5,
-                   number_of_cycles_for_anisotropic_scaling = 5,
-                   fix_k_sol                                = None,
-                   fix_b_sol                                = None,
-                   fix_u_aniso                              = None,
-                   start_minimization_from_k_sol            = 0.35,
-                   start_minimization_from_b_sol            = 46.0,
-                   start_minimization_from_u_aniso          = [0,0,0,0,0,0],
-                   overwrite                                = None,
-                   verbose                                  = -1))
+    params = bss.solvent_and_scale_params()
+    params.bulk_solvent_correction                  = True
+    params.anisotropic_scaling                      = False
+    params.statistical_solvent_model                = False
+    params.k_sol_b_sol_grid_search                  = True
+    params.minimization_k_sol_b_sol                 = True
+    params.minimization_u_aniso                     = True
+    params.target                                   = "ml"
+    params.symmetry_constraints_on_u_aniso          = True
+    params.k_sol_max                                = 0.6
+    params.k_sol_min                                = 0.1
+    params.b_sol_max                                = 80.0
+    params.b_sol_min                                = 10.0
+    params.k_sol_step                               = 0.025
+    params.b_sol_step                               = 5.0
+    params.number_of_macro_cycles                   = 5
+    params.number_of_minimization_macro_cycles      = 5
+    params.number_of_cycles_for_anisotropic_scaling = 5
+    params.fix_k_sol                                = None
+    params.fix_b_sol                                = None
+    params.fix_u_aniso                              = None
+    params.start_minimization_from_k_sol            = 0.35
+    params.start_minimization_from_b_sol            = 46.0
+    params.start_minimization_from_u_aniso          = [0,0,0,0,0,0]
+    params.apply_back_trace_of_u_aniso              = False
+    fmodel.update_solvent_and_scale(params = params)
 
     assert_result(fmodel, k_sol, b_sol, u_aniso, f_obs, r_free_flags,
                   tk = 1.e-4, tb = 1.e-1, tu = 1.e-6)
@@ -570,34 +548,32 @@ def exercise_10(fmodel,
     fmodel.update(alpha_beta_params = alpha_beta_parameters(),
                   f_obs             = f_obs,
                   u_aniso           = u_aniso)
-
-    fmodel.update_solvent_and_scale(
-       params = bss.solvent_and_scale_params(
-                   bulk_solvent_correction                  = True,
-                   anisotropic_scaling                      = False,
-                   statistical_solvent_model                = False,
-                   k_sol_b_sol_grid_search                  = True,
-                   minimization_k_sol_b_sol                 = True,
-                   minimization_u_aniso                     = True,
-                   target                                   = "ml",
-                   symmetry_constraints_on_u_aniso          = True,
-                   k_sol_max                                = 0.6,
-                   k_sol_min                                = 0.1,
-                   b_sol_max                                = 80.0,
-                   b_sol_min                                = 10.0,
-                   k_sol_step                               = 0.05,
-                   b_sol_step                               = 5.0,
-                   number_of_macro_cycles                   = 5,
-                   number_of_minimization_macro_cycles      = 5,
-                   number_of_cycles_for_anisotropic_scaling = 5,
-                   fix_k_sol                                = None,
-                   fix_b_sol                                = None,
-                   fix_u_aniso                              = None,
-                   start_minimization_from_k_sol            = 0.35,
-                   start_minimization_from_b_sol            = 46.0,
-                   start_minimization_from_u_aniso          = [0,0,0,0,0,0],
-                   overwrite                                = None,
-                   verbose                                  = -1))
+    params = bss.solvent_and_scale_params()
+    params.bulk_solvent_correction                  = True
+    params.anisotropic_scaling                      = False
+    params.statistical_solvent_model                = False
+    params.k_sol_b_sol_grid_search                  = True
+    params.minimization_k_sol_b_sol                 = True
+    params.minimization_u_aniso                     = True
+    params.target                                   = "ml"
+    params.symmetry_constraints_on_u_aniso          = True
+    params.k_sol_max                                = 0.6
+    params.k_sol_min                                = 0.1
+    params.b_sol_max                                = 80.0
+    params.b_sol_min                                = 10.0
+    params.k_sol_step                               = 0.05
+    params.b_sol_step                               = 5.0
+    params.number_of_macro_cycles                   = 5
+    params.number_of_minimization_macro_cycles      = 5
+    params.number_of_cycles_for_anisotropic_scaling = 5
+    params.fix_k_sol                                = None
+    params.fix_b_sol                                = None
+    params.fix_u_aniso                              = None
+    params.start_minimization_from_k_sol            = 0.35
+    params.start_minimization_from_b_sol            = 46.0
+    params.start_minimization_from_u_aniso          = [0,0,0,0,0,0]
+    params.apply_back_trace_of_u_aniso              = False
+    fmodel.update_solvent_and_scale(params = params)
 
     assert_result(fmodel, k_sol, b_sol, u_aniso, f_obs, r_free_flags,
                   tk = 1.e-4, tb = 1.e-1, tu = 1.e-6)
@@ -620,34 +596,32 @@ def exercise_11(fmodel,
         fmodel_copy = fmodel.deep_copy()
         fmodel_copy.update(alpha_beta_params = alpha_beta_parameters(),
                       f_obs             = f_obs)
-
-        fmodel_copy.update_solvent_and_scale(
-           params = bss.solvent_and_scale_params(
-                       bulk_solvent_correction                  = True,
-                       anisotropic_scaling                      = True,
-                       statistical_solvent_model                = True,
-                       k_sol_b_sol_grid_search                  = True,
-                       minimization_k_sol_b_sol                 = True,
-                       minimization_u_aniso                     = True,
-                       target                                   = "ml",
-                       symmetry_constraints_on_u_aniso          = True,
-                       k_sol_max                                = 0.8,
-                       k_sol_min                                = 0.1,
-                       b_sol_max                                = 80.0,
-                       b_sol_min                                = 10.0,
-                       k_sol_step                               = 0.05,
-                       b_sol_step                               = 5.0,
-                       number_of_macro_cycles                   = 5,
-                       number_of_minimization_macro_cycles      = 10,
-                       number_of_cycles_for_anisotropic_scaling = 10,
-                       fix_k_sol                                = None,
-                       fix_b_sol                                = None,
-                       fix_u_aniso                              = None,
-                       start_minimization_from_k_sol            = 0.35,
-                       start_minimization_from_b_sol            = 46.0,
-                       start_minimization_from_u_aniso          = [0,0,0,0,0,0],
-                       overwrite                                = None,
-                       verbose                                  = -1))
+        params = bss.solvent_and_scale_params()
+        params.bulk_solvent_correction                  = True
+        params.anisotropic_scaling                      = True
+        params.statistical_solvent_model                = True
+        params.k_sol_b_sol_grid_search                  = True
+        params.minimization_k_sol_b_sol                 = True
+        params.minimization_u_aniso                     = True
+        params.target                                   = "ml"
+        params.symmetry_constraints_on_u_aniso          = True
+        params.k_sol_max                                = 0.8
+        params.k_sol_min                                = 0.1
+        params.b_sol_max                                = 80.0
+        params.b_sol_min                                = 10.0
+        params.k_sol_step                               = 0.05
+        params.b_sol_step                               = 5.0
+        params.number_of_macro_cycles                   = 5
+        params.number_of_minimization_macro_cycles      = 10
+        params.number_of_cycles_for_anisotropic_scaling = 10
+        params.fix_k_sol                                = None
+        params.fix_b_sol                                = None
+        params.fix_u_aniso                              = None
+        params.start_minimization_from_k_sol            = 0.35
+        params.start_minimization_from_b_sol            = 46.0
+        params.start_minimization_from_u_aniso          = [0,0,0,0,0,0]
+        params.apply_back_trace_of_u_aniso              = False
+        fmodel_copy.update_solvent_and_scale(params = params)
         assert_result(fmodel_copy, k_sol, b_sol, u_aniso, f_obs, r_free_flags,
                       tk = 1.e-3, tb = 5.e-1, tu = 1.e-1)
     print "OK: closest to real: ",format_cpu_times()
