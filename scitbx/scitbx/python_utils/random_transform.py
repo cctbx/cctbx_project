@@ -70,3 +70,10 @@ def wilson_amplitude_variate(N=100):
 def wilson_intensity_variate(N=100):
   "Wilson intensity variate; The exponetial distribution"
   return flex.pow2(wilson_amplitude_variate(N=N))
+
+# This random variate is distributed as the (error free) |I+-I-|
+# normalised by 4*( (sum f") * (sum  f_nought) )^(1/2)
+def pseudo_normalized_abs_delta_i(N=100):
+  x = flex.random_double(size=N)
+  x = -0.5*flex.log( 1.0-x )
+  return(x)
