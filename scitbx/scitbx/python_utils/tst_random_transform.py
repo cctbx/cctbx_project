@@ -36,11 +36,19 @@ def exersize_wilson_intensity_variate():
   assert approx_equal(mu1,1.000,eps=0.02)
   assert approx_equal(mu2,2.000,eps=0.04)
 
+def exersize_pseudo_normalized_abs_delta_i():
+  data = rt.pseudo_normalized_abs_delta_i(N=1000000)
+  mu1 = flex.mean( data )
+  assert approx_equal(mu1,0.5,eps=0.02)
+
+
 def run():
   exersize_gauss()
   exersize_t_variate()
   exersize_wilson_amplitude_variate()
   exersize_wilson_intensity_variate()
+  exersize_pseudo_normalized_abs_delta_i()
+
   print 'OK'
 
 if (__name__ == "__main__"):
