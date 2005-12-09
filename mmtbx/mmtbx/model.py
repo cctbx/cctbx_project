@@ -127,12 +127,35 @@ class manager(object):
   def number_of_ordered_solvent_molecules(self):
     return self.solvent_selection.count(True)
 
-  def show_rigid_body_groups_info(self, out):
-    print >> out, "Number of atoms  = ", self.xray_structure.scatterers().size()
-    print >> out, "Number of groups = ", len(self.rigid_body_selections)
-    for group in self.rigid_body_selections:
-        print >> out, "  group_i = ", group.count(True), group.count(False), group.size()
-
+  def show_rigid_body_groups_info(self, out,
+                                        text="Information about rigid groups"):
+    if(self.rigid_body_selections is None): return
+    if (out is None): out = sys.stdout
+    print >> out
+    line_len = len("| "+text+"|")
+    fill_len = 80 - line_len-1
+    upper_line = "|-"+text+"-"*(fill_len)+"|"
+    print >> out, upper_line
+    next = "| Total number of atoms = %-6d  Number of rigid groups = %-3d                |"
+    print >> out, next % (self.xray_structure.scatterers().size(),
+                          len(self.rigid_body_selections))
+    print >> out, "| group: start point:                        end point:                       |"
+    print >> out, "|               x      B  atom   residue <>        x      B  atom   residue   |"
+    next = "| %5d: %8.3f %6.2f %5s %4s %4d <> %8.3f %6.2f %5s %4s %4d   |"
+    sites = self.xray_structure.sites_cart()
+    b_isos = self.xray_structure.extract_u_iso_or_u_equiv() * math.pi**2*8
+    for i_seq, selection in enumerate(self.rigid_body_selections):
+        i_selection = selection.iselection()
+        start = i_selection[0]
+        final = i_selection[i_selection.size()-1]
+        first = self.atom_attributes_list[start]
+        last  = self.atom_attributes_list[final]
+        print >> out, next % (i_seq+1, sites[start][0], b_isos[start],
+          first.name, first.resName, first.resSeq, sites[final][0],
+          b_isos[final], last.name, last.resName, last.resSeq)
+    print >> out, "|"+"-"*77+"|"
+    print >> out
+    out.flush()
 
 
   def remove_solvent(self):
