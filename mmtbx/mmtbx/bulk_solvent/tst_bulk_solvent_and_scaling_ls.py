@@ -91,7 +91,7 @@ def exercise_0(fmodel,
                   f_obs             = f_obs)
 
     params = bss.solvent_and_scale_params()
-    params.bulk_solvent_correction                  = True
+    params.bulk_solvent                  = True
     params.anisotropic_scaling                      = True
     params.statistical_solvent_model                = False
     params.k_sol_b_sol_grid_search                  = True
@@ -131,7 +131,7 @@ def exercise_1(fmodel,
     fmodel.update(alpha_beta_params = alpha_beta_parameters(),
                   f_obs             = f_obs)
     params = bss.solvent_and_scale_params()
-    params.bulk_solvent_correction                  = True
+    params.bulk_solvent                  = True
     params.anisotropic_scaling                      = True
     params.statistical_solvent_model                = False
     params.k_sol_b_sol_grid_search                  = False
@@ -171,7 +171,7 @@ def exercise_2(fmodel,
     fmodel.update(alpha_beta_params = alpha_beta_parameters(),
                   f_obs             = f_obs)
     params = bss.solvent_and_scale_params()
-    params.bulk_solvent_correction                  = True
+    params.bulk_solvent                  = True
     params.anisotropic_scaling                      = True
     params.statistical_solvent_model                = False
     params.k_sol_b_sol_grid_search                  = False
@@ -213,7 +213,7 @@ def exercise_3(fmodel,
                   k_sol             = k_sol,
                   b_sol             = b_sol)
     params = bss.solvent_and_scale_params()
-    params.bulk_solvent_correction                  = False
+    params.bulk_solvent                  = False
     params.anisotropic_scaling                      = True
     params.statistical_solvent_model                = False
     params.k_sol_b_sol_grid_search                  = False
@@ -256,7 +256,7 @@ def exercise_4(fmodel,
                   b_sol             = b_sol,
                   u_aniso           = u_aniso)
     params = bss.solvent_and_scale_params()
-    params.bulk_solvent_correction                  = False
+    params.bulk_solvent                  = False
     params.anisotropic_scaling                      = False
     params.statistical_solvent_model                = False
     params.k_sol_b_sol_grid_search                  = False
@@ -296,7 +296,7 @@ def exercise_5(fmodel,
     fmodel.update(alpha_beta_params = alpha_beta_parameters(),
                   f_obs             = f_obs)
     params = bss.solvent_and_scale_params()
-    params.bulk_solvent_correction                  = True
+    params.bulk_solvent                  = True
     params.anisotropic_scaling                      = True
     params.statistical_solvent_model                = False
     params.k_sol_b_sol_grid_search                  = False
@@ -339,7 +339,7 @@ def exercise_51(fmodel,
                   b_sol             = b_sol,
                   u_aniso           = u_aniso)
     params = bss.solvent_and_scale_params()
-    params.bulk_solvent_correction                  = False
+    params.bulk_solvent                  = False
     params.anisotropic_scaling                      = False
     params.statistical_solvent_model                = False
     params.k_sol_b_sol_grid_search                  = True
@@ -382,7 +382,7 @@ def exercise_6(fmodel,
                   b_sol             = b_sol,
                   u_aniso           = u_aniso)
     params = bss.solvent_and_scale_params()
-    params.bulk_solvent_correction                  = True
+    params.bulk_solvent                  = True
     params.anisotropic_scaling                      = True
     params.statistical_solvent_model                = False
     params.k_sol_b_sol_grid_search                  = True
@@ -424,7 +424,7 @@ def exercise_7(fmodel,
                   k_sol             = k_sol,
                   b_sol             = b_sol)
     params = bss.solvent_and_scale_params()
-    params.bulk_solvent_correction                  = False
+    params.bulk_solvent                  = False
     params.anisotropic_scaling                      = True
     params.statistical_solvent_model                = False
     params.k_sol_b_sol_grid_search                  = True
@@ -466,7 +466,7 @@ def exercise_8(fmodel,
                   k_sol             = k_sol,
                   b_sol             = b_sol)
     params = bss.solvent_and_scale_params()
-    params.bulk_solvent_correction                  = False
+    params.bulk_solvent                  = False
     params.anisotropic_scaling                      = True
     params.statistical_solvent_model                = False
     params.k_sol_b_sol_grid_search                  = True
@@ -507,7 +507,7 @@ def exercise_9(fmodel,
                   f_obs             = f_obs,
                   u_aniso           = u_aniso)
     params = bss.solvent_and_scale_params()
-    params.bulk_solvent_correction                  = True
+    params.bulk_solvent                  = True
     params.anisotropic_scaling                      = False
     params.statistical_solvent_model                = False
     params.k_sol_b_sol_grid_search                  = True
@@ -548,7 +548,7 @@ def exercise_10(fmodel,
                   f_obs             = f_obs,
                   u_aniso           = u_aniso)
     params = bss.solvent_and_scale_params()
-    params.bulk_solvent_correction                  = True
+    params.bulk_solvent                  = True
     params.anisotropic_scaling                      = False
     params.statistical_solvent_model                = False
     params.k_sol_b_sol_grid_search                  = True
@@ -596,7 +596,7 @@ def exercise_11(fmodel,
         fmodel_copy.update(alpha_beta_params = alpha_beta_parameters(),
                       f_obs             = f_obs)
         params = bss.solvent_and_scale_params()
-        params.bulk_solvent_correction                  = True
+        params.bulk_solvent                  = True
         params.anisotropic_scaling                      = True
         params.statistical_solvent_model                = True
         params.k_sol_b_sol_grid_search                  = True
@@ -676,7 +676,7 @@ def exercise_12(fmodel):
                              b_sol             = 0)
           for flag in (True, False):
               params = bss.solvent_and_scale_params()
-              params.bulk_solvent_correction                  = False
+              params.bulk_solvent                  = False
               params.anisotropic_scaling                      = True
               params.statistical_solvent_model                = False
               params.k_sol_b_sol_grid_search                  = False
