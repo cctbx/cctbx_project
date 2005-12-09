@@ -34,19 +34,23 @@ def evaluate(pdb_file,
       st.append(line.split())
 
   # R-factors
+  print "R-factors= ", float(st[0][2]), float(st[0][3])
   assert approx_equal(float(st[0][2]), 0.0, rw_tol)
   assert approx_equal(float(st[0][3]), 0.0, rf_tol)
   # ksol, bsol, uaniso
+  print "ksol, bsol, uaniso= ", float(st[2][2]),float(st[2][3])
   assert approx_equal(float(st[2][2]),ksol,ksol_tol)
   assert approx_equal(float(st[2][3]),bsol,bsol_tol)
   assert approx_equal((float(st[2][4]),float(st[2][5]),float(st[2][6]),\
                 float(st[2][7]),float(st[2][8]),float(st[2][9])), u,u_tol)
   # phase error, fom, alpha, beta
+  print "phase error, fom, alpha, beta= ", float(st[3][2]),float(st[3][3]),float(st[3][4]),float(st[3][5])
   assert approx_equal(float(st[3][2]),0.1,pher_tol)
   assert approx_equal(float(st[3][3]),1.0,fom_tol)
   assert approx_equal(float(st[3][4]),1.0,alpha_tol)
   assert approx_equal(float(st[3][5]),0.0,beta_tol)
-  # mean coordinate error
+  # Number_of_waters =
+  print "Number_of_waters= ", int(st[9][2])
   assert approx_equal(int(st[9][2]),n_water,n_water_tol)
 
 
@@ -59,7 +63,7 @@ def exercise_1(pdb_file):
   print pdb,hkl
   output_file_prefix = pdb_file[:-4]
   opt1= "output.prefix="+output_file_prefix+" main.max_number_of_iterations=25 scattering_table=wk1995"
-  opt2= "main.number_of_macro_cycles=3 ordered_solvent.add=True main.rigid_body=False"
+  opt2= "main.number_of_macro_cycles=3 main.ordered_solvent=True main.rigid_body=False"
   opt3 = "--overwrite target_weights.wxc_scale=3.0 target_weights.wxu_scale=3.0 "
   cmd = " ".join(["phenix.refine", pdb, hkl, opt1, opt2, opt3])
   print cmd

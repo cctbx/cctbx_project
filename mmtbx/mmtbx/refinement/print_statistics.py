@@ -190,17 +190,15 @@ class refinement_monitor(object):
 
   def collect(self, model,
                     fmodel,
-                    target_weights,
                     step,
                     tan_b_iso_max,
-                    wilson_b = None):
-    mxrs = model.xray_structure
-    fxrs = fmodel.xray_structure
-    # XXX assert xrs from target_weights ?
+                    wilson_b = None,
+                    target_weights = None):
+    fmodel.xray_structure.approx_equal(other = model.xray_structure)
+    if(target_weights is not None):
+       target_weights.fmodel.xray_structure.approx_equal(other =
+                                                         fmodel.xray_structure)
     if(self.model_ini is None): self.model_ini = model.deep_copy()
-    assert mxrs.scatterers().size() == fxrs.scatterers().size()
-    atom_atom_distances = flex.sqrt(mxrs.difference_vectors_cart(fxrs).dot())
-    assert approx_equal(flex.mean_default(atom_atom_distances,0), 0)
     if(wilson_b is not None): self.wilson_b = wilson_b
     self.steps.append(step)
     ###
@@ -212,18 +210,19 @@ class refinement_monitor(object):
     self.k_sols          .append(fmodel.k_sol_b_sol()[0]          )
     self.b_sols          .append(fmodel.k_sol_b_sol()[1]          )
     self.b_anisos        .append(fmodel.u_aniso                   )
-    self.wxcs            .append(target_weights.wx_xyz()          )
-    self.wxus            .append(target_weights.wx_adp()          )
-    self.wxc_scales      .append(target_weights.holder.wxc_scale  )
-    self.wxu_scales      .append(target_weights.holder.wxu_scale  )
-    angle_xc = target_weights.holder.angle_xc
-    angle_xu = target_weights.holder.angle_xu
-    if(angle_xc is not None): angle_xc = angle_xc * 180 / math.pi
-    else:                     angle_xc = 0.0
-    if(angle_xu is not None): angle_xu = angle_xu * 180 / math.pi
-    else:                     angle_xu = 0.0
-    self.angles_xc       .append(angle_xc)
-    self.angles_xu       .append(angle_xu)
+    if(target_weights is not None):
+       self.wxcs            .append(target_weights.wx_xyz()          )
+       self.wxus            .append(target_weights.wx_adp()          )
+       self.wxc_scales      .append(target_weights.holder.wxc_scale  )
+       self.wxu_scales      .append(target_weights.holder.wxu_scale  )
+       angle_xc = target_weights.holder.angle_xc
+       angle_xu = target_weights.holder.angle_xu
+       if(angle_xc is not None): angle_xc = angle_xc * 180 / math.pi
+       else:                     angle_xc = 0.0
+       if(angle_xu is not None): angle_xu = angle_xu * 180 / math.pi
+       else:                     angle_xu = 0.0
+       self.angles_xc       .append(angle_xc)
+       self.angles_xu       .append(angle_xu)
     alpha, beta = fmodel.alpha_beta()
     self.alphas          .append(flex.mean_default(alpha.data(),0)          )
     self.betas           .append(flex.mean_default(beta.data(),0)           )
@@ -247,7 +246,8 @@ class refinement_monitor(object):
     if(grads is not None): norm = grads.norm()
     else:                  norm = 0.0
     self.gs_c_norm       .append(norm                             )
-    self.wcs             .append(target_weights.wc()              )
+    if(target_weights is not None):
+       self.wcs             .append(target_weights.wc()              )
     b_isos = model.xray_structure.extract_u_iso_or_u_equiv() * math.pi**2*8
     self.bs_iso_max_a    .append(flex.max_default( b_isos, 0)     )
     self.bs_iso_min_a    .append(flex.min_default( b_isos, 0)     )
@@ -266,7 +266,8 @@ class refinement_monitor(object):
                                wilson_b       = self.wilson_b,
                                tan_b_iso_max  = tan_b_iso_max)
     self.tus             .append(adp.target_adp_iso               )
-    self.wus             .append(target_weights.wu()              )
+    if(target_weights is not None):
+       self.wus             .append(target_weights.wu()              )
     rem = relative_errors(
               model                  = model,
               model_ini              = self.model_ini,
@@ -361,20 +362,24 @@ class refinement_monitor(object):
     #
     #
     a,b,c,d,e,f,g,h,i,j = [None,]*10
-    print >> out, remark + " Weights for target T = Exray * wxc * wxc_scale + Echem * wc and"
-    print >> out, remark + " angles between gradient vectors, eg. (d_Exray/d_sites, d_Echem/d_sites)"
-    print >> out, remark + \
-       " stage              wxc          wxu  wxc_sc  wxu_sc /_gxc,gc /_gxu,gu"
-    format = remark + "%9s  %12.4e %12.4e%8.3f%8.3f%9.3f%9.3f"
-    for a,b,c,d,e,f,g in zip(self.steps,
-                             self.wxcs,
-                             self.wxus,
-                             self.wxc_scales,
-                             self.wxu_scales,
-                             self.angles_xc,
-                             self.angles_xu):
-        print >> out, format % (a,b,c,d,e,f,g)
-    print >> out, remark + separator
+    if(len(self.wxcs) > 0):
+       print >> out, remark + " Weights for target T = Exray * wxc * wxc_scale + Echem * wc and"
+       print >> out, remark + " angles between gradient vectors, eg. (d_Exray/d_sites, d_Echem/d_sites)"
+       print >> out, remark + \
+          " stage              wxc          wxu  wxc_sc  wxu_sc /_gxc,gc /_gxu,gu"
+       format = remark + "%9s  %12.4e %12.4e%8.3f%8.3f%9.3f%9.3f"
+       for a,b,c,d,e,f,g in zip(self.steps,
+                                self.wxcs,
+                                self.wxus,
+                                self.wxc_scales,
+                                self.wxu_scales,
+                                self.angles_xc,
+                                self.angles_xu):
+           print >> out, format % (a,b,c,d,e,f,g)
+       print >> out, remark + separator
+    else:
+       assert len(self.wxcs)+len(self.wxus)+len(self.wxc_scales)+\
+              len(self.wxu_scales)+len(self.angles_xc)+len(self.angles_xu) == 0
     #
     #
     a,b,c,d,e,f,g,h,i,j = [None,]*10
@@ -399,19 +404,34 @@ class refinement_monitor(object):
     #
     #
     a,b,c,d,e,f,g,h,i,j = [None,]*10
-    print >> out, remark + \
-    " stage       angl   bond   chir   dihe   plan   repu  geom_target     wc"
-    format = remark + "%9s %7.3f%7.3f%7.3f%7.3f%7.3f%7.3f %12.4e%7.2f"
-    for a,b,c,d,e,f,g,h,i in zip(self.steps,
-                                 self.as_ave,
-                                 self.bs_ave,
-                                 self.cs_ave,
-                                 self.ds_ave,
-                                 self.ps_ave,
-                                 self.rs_ave,
-                                 self.targets_c,
-                                 self.wcs):
-        print >> out, format % (a,b,c,d,e,f,g,h,i)
+    if(len(self.wcs) > 0):
+       print >> out, remark + \
+       " stage       angl   bond   chir   dihe   plan   repu  geom_target     wc"
+       format = remark + "%9s %7.3f%7.3f%7.3f%7.3f%7.3f%7.3f %12.4e%7.2f"
+       for a,b,c,d,e,f,g,h,i in zip(self.steps,
+                                    self.as_ave,
+                                    self.bs_ave,
+                                    self.cs_ave,
+                                    self.ds_ave,
+                                    self.ps_ave,
+                                    self.rs_ave,
+                                    self.targets_c,
+                                    self.wcs):
+           print >> out, format % (a,b,c,d,e,f,g,h,i)
+    else:
+       print >> out, remark + \
+       " stage       angl   bond   chir   dihe   plan   repu  geom_target"
+       format = remark + "%9s %7.3f%7.3f%7.3f%7.3f%7.3f%7.3f %12.4e"
+       for a,b,c,d,e,f,g,h in zip(self.steps,
+                                    self.as_ave,
+                                    self.bs_ave,
+                                    self.cs_ave,
+                                    self.ds_ave,
+                                    self.ps_ave,
+                                    self.rs_ave,
+                                    self.targets_c):
+           print >> out, format % (a,b,c,d,e,f,g,h)
+
     print >> out, remark + separator
     #
     #
@@ -559,10 +579,16 @@ class refinement_monitor(object):
     #
     #
     a,b,c,d,e,f,g,h,i,j = [None,]*10
-    print >> out, remark + " stage      adp_target      wu"
-    format = remark + "%9s %12.4e %7.3f"
-    for a,b,c in zip(self.steps,self.tus,self.wus):
-        print >> out, format % (a,b,c)
+    if(len(self.wus) > 0):
+       print >> out, remark + " stage      adp_target      wu"
+       format = remark + "%9s %12.4e %7.3f"
+       for a,b,c in zip(self.steps,self.tus,self.wus):
+           print >> out, format % (a,b,c)
+    else:
+       print >> out, remark + " stage      adp_target"
+       format = remark + "%9s %12.4e"
+       for a,b in zip(self.steps,self.tus):
+           print >> out, format % (a,b)
     print >> out, remark + separator
     out.flush()
 

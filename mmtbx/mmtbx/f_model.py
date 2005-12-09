@@ -1203,7 +1203,8 @@ class manager(object):
     print >> out, "| B(11,22,33,12,13,23)=%9.4f%9.4f%9.4f%9.4f%9.4f%9.4f |" % \
                   (u0,u1,u2,u3,u4,u5)
     print >> out, "| trace(B) = (B11 + B22 + b33)/3 = %-10.3f                                 |"%self.u_iso()
-    print >> out, "| n_ordered_solv=%6d b_ordered_solv=%7.2f b_mean=%7.2f " \
+    if(flex.mean(flex.abs(self.f_ordered_solvent.data())) > 1.e-6):
+       print >> out, "| n_ordered_solv=%6d b_ordered_solv=%7.2f b_mean=%7.2f " \
                   "n_atoms=%7d |" % (self.n_ordered_water,\
                                  self.b_ordered_water,b_iso_mean,u_isos.size())
     print >> out, "| mean alpha:%8.4f  number of alpha <= 0.0:%7d" % \

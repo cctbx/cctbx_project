@@ -16,11 +16,11 @@ from mmtbx.max_lik import max_like_non_uniform
 import iotbx.phil
 
 master_params = iotbx.phil.parse("""\
-  bulk_solvent_correction = True
+  bulk_solvent = True
     .type = bool
   anisotropic_scaling = True
     .type = bool
-  statistical_solvent_model = False
+  statistical_solvent = False
     .type = bool
   k_sol_b_sol_grid_search = True
     .type = bool
@@ -92,7 +92,7 @@ master_params = iotbx.phil.parse("""\
     .type = float
   nu_fix_b_atoms = None
     .type = float
-  verbose = -1
+  verbose = 1
     .type = int
 """)
 
@@ -115,9 +115,9 @@ class solvent_and_scale_params(object):
     prefix = "solvent_and_scale_params: "
     if(1):#(self.overwrite is not None):
        #o = self.overwrite
-       self.bulk_solvent_correction         = o.bulk_solvent_correction
+       self.bulk_solvent         = o.bulk_solvent
        self.anisotropic_scaling             = o.anisotropic_scaling
-       self.statistical_solvent_model       = o.statistical_solvent_model
+       self.statistical_solvent       = o.statistical_solvent
        self.k_sol_b_sol_grid_search         = o.k_sol_b_sol_grid_search
        self.minimization_k_sol_b_sol        = o.minimization_k_sol_b_sol
        self.minimization_u_aniso            = o.minimization_u_aniso
@@ -163,7 +163,7 @@ class solvent_and_scale_params(object):
     if(self.target not in ("ls_wunit_k1","ml")):
        raise RuntimeError(prefix+"target name unavailable: "+self.target)
 
-    if(self.bulk_solvent_correction == True):
+    if(self.bulk_solvent == True):
        if((self.fix_k_sol, self.fix_b_sol) != (None, None)):
           if(self.fix_k_sol is None or self.fix_b_sol is None):
              raise RuntimeError(prefix+"one of k_sol or b_sol is not fixed")
@@ -192,7 +192,7 @@ class solvent_and_scale_params(object):
           assert self.start_minimization_from_k_sol is not None
           assert self.start_minimization_from_b_sol is not None
        else: raise RuntimeError(prefix+"ambiguous parameter combination")
-    if(self.bulk_solvent_correction == False):
+    if(self.bulk_solvent == False):
        self.k_sol_b_sol_grid_search                  = False
        self.minimization_k_sol_b_sol                 = False
        self.k_sol_max                                = None
@@ -236,7 +236,7 @@ class solvent_and_scale_params(object):
           self.start_minimization_from_u_aniso = None
           self.apply_back_trace_of_u_aniso = None
           self.symmetry_constraints_on_u_aniso = None
-    if(self.statistical_solvent_model):
+    if(self.statistical_solvent):
        fix_flag = [self.nu_fix_n_atoms,self.nu_fix_b_atoms].count(None)
        assert fix_flag == 2 or fix_flag == 0
 
@@ -469,9 +469,9 @@ class bulk_solvent_and_scales(object):
   def __init__(self, fmodel, params = None, log = None):
     if(params is None): params = solvent_and_scale_params()
     else:               params = solvent_and_scale_params(params = params)
-    to_do = [params.bulk_solvent_correction,
+    to_do = [params.bulk_solvent,
              params.anisotropic_scaling,
-             params.statistical_solvent_model]
+             params.statistical_solvent]
     if(to_do.count(False) != 3):
        params_target = params.target
        fmodel_target = fmodel.target_name
@@ -484,7 +484,7 @@ class bulk_solvent_and_scales(object):
        m = "macro_cycle= "
        minimization_macro_cycles = \
                          range(1, params.number_of_minimization_macro_cycles+1)
-       if(params.bulk_solvent_correction):
+       if(params.bulk_solvent):
           assert abs(flex.max(flex.abs(fmodel.f_mask.data()))) > 1.e-3
        macro_cycles = range(1, params.number_of_macro_cycles+1)
        if(params.k_sol_b_sol_grid_search):
@@ -531,7 +531,7 @@ class bulk_solvent_and_scales(object):
               if(outf):
                  h=m+str(mc)+": anisotropic scale; T= "+fmodel.target_name
                  fmodel.show_k_sol_b_sol_u_aniso_target(header = h, out = log)
-           if(params.statistical_solvent_model):
+           if(params.statistical_solvent):
               pass
               #self._set_f_ordered_solvent(params = params)
               #target = self.target_w()
