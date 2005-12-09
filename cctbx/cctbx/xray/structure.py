@@ -62,6 +62,14 @@ class structure(crystal.special_position_settings):
   def scatterers(self):
     return self._scatterers
 
+  def approx_equal(self, other):
+    assert self.scatterers().size() == other.scatterers().size()
+    atom_atom_distances = flex.sqrt(self.difference_vectors_cart(other).dot())
+    assert flex.mean_default(atom_atom_distances,0) < 1.e-6
+    u_iso_1 = self.scatterers().extract_u_iso()
+    u_iso_2 = other.scatterers().extract_u_iso()
+    assert flex.mean(flex.abs(u_iso_1-u_iso_2)) < 1.e-6
+
   def set_b_iso(self, value=None, values=None, allow_mixed=False):
     assert [value, values].count(None) == 1
     s = self._scatterers
