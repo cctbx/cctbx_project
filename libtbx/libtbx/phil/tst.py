@@ -24,8 +24,8 @@ class recycle(object):
     self.out = self.out.getvalue()
     if (expected_out is None or self.out != expected_out):
       sys.stdout.write(self.out)
-    if (expected_out is not None and self.out != expected_out):
-      raise RuntimeError("out != expected_out")
+    if (expected_out is not None):
+      assert not show_diff(self.out, expected_out)
     if (prefix == ""):
       out_parameters = phil.parse(input_string=self.out)
       out_out = StringIO()
