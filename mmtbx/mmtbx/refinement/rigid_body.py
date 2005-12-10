@@ -156,6 +156,7 @@ class manager(object):
             fmodel_copy.update_xray_structure(xray_structure = new_xrs,
                                               update_f_calc  = True)
             rwork = minimized.fmodel.r_work()
+            rfree = minimized.fmodel.r_free()
             assert approx_equal(rwork, fmodel_copy.r_work())
             if(convergence_test):
                rworks.append(rwork)
@@ -167,6 +168,7 @@ class manager(object):
                       r_mat = self.total_rotation,
                       t_vec = self.total_translation,
                       rw    = rwork,
+                      rf    = rfree,
                       tw    = minimized.fmodel.target_w(),
                       mc    = macro_cycle,
                       it    = minimized.counter,
@@ -186,6 +188,7 @@ class manager(object):
                  r_mat,
                  t_vec,
                  rw,
+                 rf,
                  tw,
                  mc,
                  it,
@@ -207,28 +210,30 @@ class manager(object):
     d_min = str("%.3f"%d_min)
     part3 = " ("
     nref = str("%d"%nref)
-    part4 = " reflections) r-work = "
-    rw = str("%.6f"%rw)
-    n = 78 - len(part1+d_max+part2+d_min+part3+nref+part4+rw)
+    if(ct): ct = "on"
+    else:   ct = "off"
+    part4 = " reflections) convergence test = "+str("%s"%ct)
+    n = 78 - len(part1+d_max+part2+d_min+part3+nref+part4)
     part5 = " "*n+"|"
-    print >> out, part1+d_max+part2+d_min+part3+nref+part4+rw+part5
+    print >> out, part1+d_max+part2+d_min+part3+nref+part4+part5
+    rw = "| r_work = "+str("%.6f"%rw)
+    rf = " r_free = "+str("%.6f"%rf)
+    tw = " target = "+str("%.6f"%tw)
+    n = 78 - len(rw+rf+tw)
+    end = " "*n+"|"
+    print >> out, rw+rf+tw+end
+    print >> out, "|                         rotation (deg.)             "\
+                  "   translation (A)      |"
+    i = 1
     for r,t in zip(r_mat,t_vec):
-        part1 = "| rotation (deg.) = "
+        part1 = "| group"+str("%5d:  "%i)
         part2 = str("%8.4f"%r[0])+" "+str("%8.4f"%r[1])+" "+str("%8.4f"%r[2])
-        n = 53 - len(part1 + part2)
-        part3 = " "*n + "target = "+str("%.6f"%tw)
-        n = 78 - len(part1 + part2 + part3)
-        part4 = " "*n+"|"
-        print >> out, part1 + part2 + part3 + part4
-        part1 = "| translation (A) = "
-        part2 = str("%8.4f"%t[0])+" "+str("%8.4f"%t[1])+" "+str("%8.4f"%t[2])
-        n = 53 - len(part1 + part2)
-        if(ct): ct = "on"
-        else:   ct = "off"
-        part3 = " "*n + "convergence test = "+str("%s"%ct)
-        n = 78 - len(part1 + part2 + part3)
-        part4 = " "*n+"|"
-        print >> out, part1 + part2 + part3 + part4
+        part3 = "     "
+        part4 = str("%8.4f"%t[0])+" "+str("%8.4f"%t[1])+" "+str("%8.4f"%t[2])
+        n = 78 - len(part1 + part2 + part3 + part4)
+        part5 = " "*n+"|"
+        print >> out, part1 + part2 + part3 + part4 + part5
+        i += 1
     print >> out, "|" +"-"*77+"|"
 
 class rigid_body_minimizer(object):
