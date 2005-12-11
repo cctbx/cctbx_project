@@ -2,6 +2,7 @@ from __future__ import division
 from __future__ import generators
 from libtbx.phil import tokenizer
 from libtbx.str_utils import line_breaker
+from libtbx.utils import import_python_object
 from libtbx.itertbx import count
 from cStringIO import StringIO
 import math
@@ -592,6 +593,57 @@ class definition: # FUTURE definition(object)
       new_words.extend(substitution_proxy.get_new_words())
     return self.customized_copy(words=new_words)
 
+def extract_args(*args, **keyword_args):
+  return args, keyword_args
+
+class scope_extract_call_proxy_object:
+
+  def __init__(self, where_str, expression, callable, keyword_args):
+    self.where_str = where_str
+    self.expression = expression
+    self.callable = callable
+    self.keyword_args = keyword_args
+
+  def __str__(self):
+    return self.expression
+
+def scope_extract_call_proxy(full_path, words, cache):
+  name = words[0].value
+  if (name.lower() == "none" and words[0].quote_token is None):
+    return None
+  call_expression = str_from_words(words).strip()
+  call_proxy = cache.get(call_expression, None)
+  if (call_proxy is None):
+    where_str = words[0].where_str()
+    flds = call_expression.split("(", 1)
+    import_path = flds[0]
+    if (len(flds) == 1):
+      keyword_args = {}
+    else:
+      extractor = "__extract_args__(" + flds[1]
+      try:
+        args, keyword_args = eval(
+          extractor, math.__dict__, {"__extract_args__": extract_args})
+      except SyntaxError, e:
+        raise RuntimeError('scope "%s" .call=%s: %s%s' % (
+          full_path, call_expression, str(e), where_str))
+    imported = import_python_object(
+      import_path=import_path,
+      error_prefix='scope "%s" .call: ' % full_path,
+      target_must_be="; target must be a callable Python object",
+      where_str=where_str)
+    if (not callable(imported.object)):
+      raise TypeError(
+        'scope "%s" .call: "%s" is not a callable Python object%s' % (
+          full_path, import_path, where_str))
+    call_proxy = scope_extract_call_proxy_object(
+      where_str=where_str,
+      expression=call_expression,
+      callable=imported.object,
+      keyword_args=keyword_args)
+    cache[call_expression] = call_proxy
+  return call_proxy
+
 class scope_extract_attribute_error: pass
 class scope_extract_is_disabled: pass
 
@@ -603,9 +655,10 @@ class scope_extract_list(list):
 
 class scope_extract(object):
 
-  def __init__(self, name, parent):
+  def __init__(self, name, parent, call):
     self.__phil_name__ = name
     self.__phil_parent__ = parent
+    self.__phil_call__ = call
 
   def __phil_path__(self):
     if (   self.__phil_parent__ is None
@@ -669,6 +722,22 @@ class scope_extract(object):
       return False
     return True
 
+  def __call__(self, **keyword_args):
+    call_proxy = self.__phil_call__
+    if (call_proxy is None):
+      raise RuntimeError('scope "%s" is not callable.' % self.__phil_path__())
+    if (len(keyword_args) == 0):
+      return call_proxy.callable(self, **call_proxy.keyword_args)
+    effective_keyword_args = dict(call_proxy.keyword_args)
+    effective_keyword_args.update(keyword_args)
+    try:
+      return call_proxy.callable(self, **effective_keyword_args)
+    except (SystemExit, KeyboardInterrupt): raise
+    except Exception, e:
+      raise RuntimeError('scope "%s" .call=%s execution: %s%s' % (
+        self.__phil_path__(), call_proxy.expression, str(e),
+        call_proxy.where_str))
+
 class scope: # FUTURE scope(object)
 
   attribute_names = [
@@ -677,6 +746,7 @@ class scope: # FUTURE scope(object)
     "caption",
     "short_caption",
     "optional",
+    "call",
     "multiple",
     "sequential_format",
     "disable_add",
@@ -705,6 +775,7 @@ class scope: # FUTURE scope(object)
         caption=None,
         short_caption=None,
         optional=None,
+        call=None,
         multiple=None,
         sequential_format=None,
         disable_add=None,
@@ -722,6 +793,7 @@ class scope: # FUTURE scope(object)
     self.caption = caption
     self.short_caption = short_caption
     self.optional = optional
+    self.call = call
     self.multiple = multiple
     self.sequential_format = sequential_format
     self.disable_add = disable_add
@@ -780,12 +852,17 @@ class scope: # FUTURE scope(object)
   def has_attribute_with_name(self, name):
     return name in self.attribute_names
 
-  def assign_attribute(self, name, words):
+  def assign_attribute(self, name, words, scope_extract_call_proxy_cache):
     assert self.has_attribute_with_name(name)
     if (name in ["optional", "multiple", "disable_add", "disable_delete"]):
       value = bool_from_words(words)
     elif (name == "expert_level"):
       value = int_from_words(words)
+    elif (name == "call"):
+      value = scope_extract_call_proxy(
+        full_path=self.full_path(),
+        words=words,
+        cache=scope_extract_call_proxy_cache)
     else:
       value = str_from_words(words)
       if (name == "style"):
@@ -952,7 +1029,7 @@ class scope: # FUTURE scope(object)
     return self.primary_parent_scope.lexical_get(path=path, stop_id=stop_id)
 
   def extract(self, parent=None):
-    result = scope_extract(name=self.name, parent=parent)
+    result = scope_extract(name=self.name, parent=parent, call=self.call)
     for object in self.objects:
       if (object.is_disabled):
         value = scope_extract_is_disabled
@@ -1156,31 +1233,17 @@ def process_include_scope(
       object,
       import_path,
       phil_path):
-  import_path = import_path.split(".")
-  if (len(import_path) < 2):
-    raise RuntimeError(
-      'include scope: import path "%s" is too short;'
-      ' target must be a phil scope%s' % (
-        ".".join(import_path), object.where_str))
-  module_path = ".".join(import_path[:-1])
-  try:
-    source_module = __import__(module_path)
-  except ImportError:
-    raise ImportError("include scope: no module %s%s" % (
-      module_path, object.where_str))
-  for attr in import_path[1:-1]:
-    source_module = getattr(source_module, attr)
-  try:
-    source_scope = getattr(source_module, import_path[-1])
-  except AttributeError:
-    raise RuntimeError(
-      'import scope: phil scope object "%s" not found in module "%s"%s' % (
-        import_path[-1], module_path, object.where_str))
+  imported = import_python_object(
+    import_path=import_path,
+    error_prefix="include scope: ",
+    target_must_be="; target must be a phil scope",
+    where_str=object.where_str)
+  source_scope = imported.object
   if (not isinstance(source_scope, scope)):
     raise RuntimeError(
-      'import scope: python object "%s" in module "%s" is not a'
+      'include scope: python object "%s" in module "%s" is not a'
       ' libtbx.phil.scope instance%s' % (
-        import_path[-1], module_path, object.where_str))
+        imported.path_elements[-1], imported.module_path, object.where_str))
   source_scope = source_scope.process_includes(
     converter_registry=converter_registry,
     reference_directory=None,
@@ -1191,9 +1254,10 @@ def process_include_scope(
     result = source_scope.get(path=phil_path)
     if (len(result.objects) == 0):
       raise RuntimeError(
-        'import scope: path "%s" not found in phil scope object "%s"' \
+        'include scope: path "%s" not found in phil scope object "%s"' \
         ' in module "%s"%s' % (
-          phil_path, import_path[-1], module_path, object.where_str))
+          phil_path, imported.path_elements[-1], imported.module_path,
+          object.where_str))
   return result.change_primary_parent_scope(object.primary_parent_scope)
 
 def clean_fetched_scope(fetched_objects):
