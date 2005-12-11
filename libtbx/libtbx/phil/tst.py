@@ -120,6 +120,7 @@ name
   .caption = None
   .short_caption = None
   .optional = None
+  .call = None
   .multiple = None
   .sequential_format = None
   .disable_add = None
@@ -1117,7 +1118,7 @@ include scope foo foo foo
   try: phil.parse(input_string="""\
 include scope libtbx
 """, process_includes=True)
-  except RuntimeError, e:
+  except ValueError, e:
     assert str(e) == 'include scope: import path "libtbx" is too short;' \
       ' target must be a phil scope (input line 1)'
   else: raise RuntimeError("Exception expected.")
@@ -1131,8 +1132,8 @@ include scope libtbx.phil.t_s_t.include_scope_target_1
   try: phil.parse(input_string="""\
 include scope libtbx.phil.tst.include_scope_target_none
 """, process_includes=True)
-  except RuntimeError, e:
-    assert str(e) == 'import scope: phil scope object' \
+  except AttributeError, e:
+    assert str(e) == 'include scope: object' \
       ' "include_scope_target_none" not found in module "libtbx.phil.tst"' \
       ' (input line 1)'
   else: raise RuntimeError("Exception expected.")
@@ -1140,7 +1141,7 @@ include scope libtbx.phil.tst.include_scope_target_none
 include scope libtbx.phil.tst.include_scope_target_0
 """, process_includes=True)
   except RuntimeError, e:
-    assert str(e) == 'import scope: python object' \
+    assert str(e) == 'include scope: python object' \
       ' "include_scope_target_0" in module "libtbx.phil.tst"' \
       ' is not a libtbx.phil.scope instance (input line 1)'
   else: raise RuntimeError("Exception expected.")
@@ -1148,7 +1149,7 @@ include scope libtbx.phil.tst.include_scope_target_0
 include scope libtbx.phil.tst.include_scope_target_1 t
 """, process_includes=True)
   except RuntimeError, e:
-    assert str(e) == 'import scope: path "t" not found in phil scope object' \
+    assert str(e) == 'include scope: path "t" not found in phil scope object' \
       ' "include_scope_target_1" in module "libtbx.phil.tst" (input line 1)'
   else: raise RuntimeError("Exception expected.")
 
@@ -3177,6 +3178,180 @@ Error interpreting command line argument as parameter definition:
     assert str(e) == 'Parameter definition has no effect: "bar {}"'
   else: raise RuntimeError("Exception expected.")
 
+def exercise_scope_call():
+  try: phil.parse("""\
+s
+  .call=libtbx.phil.tst.scope_call_none
+{
+}
+""")
+  except AttributeError, e:
+    assert str(e) == 'scope "s" .call: object "scope_call_none" not found in' \
+      ' module "libtbx.phil.tst" (input line 2)'
+  else: raise RuntimeError("Exception expected.")
+  #
+  try: phil.parse("""\
+s
+  .call=libtbx.phil.tst.scope_call_not_callable
+{
+}
+""")
+  except TypeError, e:
+    assert str(e) \
+      == 'scope "s" .call: "libtbx.phil.tst.scope_call_not_callable"' \
+        ' is not a callable Python object (input line 2)'
+  else: raise RuntimeError("Exception expected.")
+  #
+  try: phil.parse("""\
+s
+  .call=libtbx.phil.tst.scope_call_func(
+{
+}
+""")
+  except RuntimeError, e:
+    assert str(e) == 'scope "s" .call=libtbx.phil.tst.scope_call_func(:' \
+      ' unexpected EOF while parsing (line 1) (input line 2)'
+  else: raise RuntimeError("Exception expected.")
+  #
+  master = phil.parse("""\
+s
+  .call=libtbx.phil.tst.scope_call_func
+{
+}
+t
+  .call=libtbx.phil.tst.scope_call_func(a=1)
+{
+}
+u
+  .call=libtbx.phil.tst.scope_call_func(a=1, b=2)
+{
+}
+v
+{
+}
+""")
+  assert not show_diff(master.as_str(attributes_level=2), """\
+s
+  .call = libtbx.phil.tst.scope_call_func
+{
+}
+t
+  .call = libtbx.phil.tst.scope_call_func(a=1)
+{
+}
+u
+  .call = libtbx.phil.tst.scope_call_func(a=1, b=2)
+{
+}
+v {
+}
+""")
+  params = master.extract()
+  c = params.s()
+  assert c[0] is params.s
+  assert c[1] == {}
+  c = params.t()
+  assert c[0] is params.t
+  assert c[1] == {"a": 1}
+  c = params.t(x=3)
+  assert c[0] is params.t
+  assert c[1] == {"a": 1, "x": 3}
+  c = params.t(a=3)
+  assert c[0] is params.t
+  assert c[1] == {"a": 3}
+  c = params.u()
+  assert c[0] is params.u
+  assert c[1] == {"a": 1, "b": 2}
+  c = params.u(x=3)
+  assert c[0] is params.u
+  assert c[1] == {"a": 1, "b": 2, "x": 3}
+  c = params.u(a=3)
+  assert c[0] is params.u
+  assert c[1] == {"a": 3, "b": 2}
+  try: params.u(action="raise")
+  except RuntimeError, e:
+    assert str(e) \
+      == 'scope "u" .call=libtbx.phil.tst.scope_call_func(a=1, b=2)' \
+        ' execution: action==raise (input line 10)'
+  else: raise RuntimeError("Exception expected.")
+  try: params.v()
+  except RuntimeError, e:
+    assert str(e) == 'scope "v" is not callable.'
+  else: raise RuntimeError("Exception expected.")
+  #
+  master = phil.parse("""\
+s
+  .call=libtbx.phil.tst.scope_call_class
+{
+}
+u
+  .call=libtbx.phil.tst.scope_call_class(a=1, b=2)
+{
+}
+""")
+  assert not show_diff(master.as_str(attributes_level=2), """\
+s
+  .call = libtbx.phil.tst.scope_call_class
+{
+}
+u
+  .call = libtbx.phil.tst.scope_call_class(a=1, b=2)
+{
+}
+""")
+  params = master.extract()
+  c = params.s()
+  assert c.scope_extract is params.s
+  assert c.keyword_args == {}
+  c = params.u(b=3, x=4)
+  assert c.scope_extract is params.u
+  assert c.keyword_args == {"a": 1, "b": 3, "x": 4}
+  #
+  master = phil.parse("""\
+s
+  .call=libtbx.phil.tst.scope_call_class_object
+{
+}
+u
+  .call=libtbx.phil.tst.scope_call_class_object(a=1, b=2)
+{
+}
+""")
+  assert not show_diff(master.as_str(attributes_level=2), """\
+s
+  .call = libtbx.phil.tst.scope_call_class_object
+{
+}
+u
+  .call = libtbx.phil.tst.scope_call_class_object(a=1, b=2)
+{
+}
+""")
+  params = master.extract()
+  c = params.s()
+  assert c.scope_extract is params.s
+  assert c.keyword_args == {}
+  c = params.u(a=3, b=4)
+  assert c.scope_extract is params.u
+  assert c.keyword_args == {"a": 3, "b": 4}
+
+scope_call_not_callable = None
+
+def scope_call_func(scope_extract, **keyword_args):
+  if (keyword_args.get("action") == "raise"):
+    raise ValueError("action==raise")
+  return scope_extract, keyword_args
+
+class scope_call_class:
+  def __init__(self, scope_extract, **keyword_args):
+    self.scope_extract = scope_extract
+    self.keyword_args = keyword_args
+
+class scope_call_class_object(object):
+  def __init__(self, scope_extract, **keyword_args):
+    self.scope_extract = scope_extract
+    self.keyword_args = keyword_args
+
 def exercise():
   exercise_parse_and_show()
   exercise_syntax_errors()
@@ -3194,6 +3369,7 @@ def exercise():
   exercise_inject()
   exercise_type_constructors()
   exercise_choice_exceptions()
+  exercise_scope_call()
   exercise_command_line()
   print "OK"
 

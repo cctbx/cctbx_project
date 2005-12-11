@@ -30,8 +30,12 @@ def collect_objects(
       primary_parent_scope,
       stop_token=None,
       start_word=None,
-      converter_cache=None):
-  if (converter_cache is None): converter_cache = {}
+      definition_converter_cache=None,
+      scope_extract_call_proxy_cache=None):
+  if (definition_converter_cache is None):
+    definition_converter_cache = {}
+  if (scope_extract_call_proxy_cache is None):
+    scope_extract_call_proxy_cache = {}
   prev_line_number = 0
   active_definition = None
   while True:
@@ -89,7 +93,10 @@ def collect_objects(
         word_iterator.pop_unquoted().assert_expected("=")
         assigned_words = collect_assigned_words(word_iterator, word)
         if (not is_disabled):
-          scope.assign_attribute(name=word.value[1:], words=assigned_words)
+          scope.assign_attribute(
+            name=word.value[1:],
+            words=assigned_words,
+            scope_extract_call_proxy_cache=scope_extract_call_proxy_cache)
         word = word_iterator.pop_unquoted()
       collect_objects(
         word_iterator=word_iterator,
@@ -98,7 +105,8 @@ def collect_objects(
         primary_parent_scope=scope,
         stop_token="}",
         start_word=word,
-        converter_cache=converter_cache)
+        definition_converter_cache=definition_converter_cache,
+        scope_extract_call_proxy_cache=scope_extract_call_proxy_cache)
       primary_parent_scope.adopt(scope)
     else:
       word_iterator.backup()
@@ -128,7 +136,7 @@ def collect_objects(
             name=lead_word.value[1:],
             words=assigned_words,
             converter_registry=converter_registry,
-            converter_cache=converter_cache)
+            converter_cache=definition_converter_cache)
   if (stop_token is not None):
     if (start_word is None):
       where = ""

@@ -191,3 +191,27 @@ def write_this_is_auto_generated(f, file_name_generator):
      %s
  */
 """ % file_name_generator
+
+class import_python_object:
+
+  def __init__(self, import_path, error_prefix, target_must_be, where_str):
+    path_elements = import_path.split(".")
+    if (len(path_elements) < 2):
+      raise ValueError(
+        '%simport path "%s" is too short%s%s' % (
+          error_prefix, import_path, target_must_be, where_str))
+    module_path = ".".join(path_elements[:-1])
+    try: module = __import__(module_path)
+    except ImportError:
+      raise ImportError("%sno module %s%s" % (
+        error_prefix, module_path, where_str))
+    for attr in path_elements[1:-1]:
+      module = getattr(module, attr)
+    try: self.object = getattr(module, path_elements[-1])
+    except AttributeError:
+      raise AttributeError(
+        '%sobject "%s" not found in module "%s"%s' % (
+          error_prefix, path_elements[-1], module_path, where_str))
+    self.path_elements = path_elements
+    self.module_path = module_path
+    self.module = module
