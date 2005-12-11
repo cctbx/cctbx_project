@@ -1211,22 +1211,6 @@ class scope: # FUTURE scope(object)
         result.append(object.unique())
     return self.customized_copy(objects=result)
 
-  def inject(self, path, source_scope):
-    objects = self.get_without_substitution(path=path)
-    if (len(objects) == 0):
-      raise RuntimeError("No matching scope for path=%s" % path)
-    if (len(objects) > 1):
-      raise RuntimeError("Multiple matching scopes for path=%s" % path)
-    target_scope = objects[0]
-    assert isinstance(target_scope, scope)
-    assert isinstance(source_scope, scope)
-    assert len(target_scope.objects) == 0
-    for source_object in source_scope.objects:
-      obj = source_object.copy()
-      obj.primary_parent_scope = self
-      target_scope.objects.append(obj)
-    return self
-
 def process_include_scope(
       converter_registry,
       include_stack,
