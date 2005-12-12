@@ -34,8 +34,9 @@ def manager(simulated_annealing_params,
             model,
             out = None):
   if(out is None): out = sys.stdout
-  print_statistics.make_header("simulated annealing refinement")
-  print_statistics.make_sub_header("lbfgs minimization: before simulated annealing")
+  print_statistics.make_header("simulated annealing refinement", out = out)
+  print_statistics.make_sub_header(
+                   "lbfgs minimization: before simulated annealing", out = out)
   minimized = mmtbx.refinement.minimization.lbfgs(
     xray_gradient_flags      = xray.structure_factors.gradient_flags(
                                  site = simulated_annealing_params.refine_sites,
@@ -66,7 +67,7 @@ def manager(simulated_annealing_params,
                   target_weights = target_weights,
                   wilson_b       = None)
 
-  print_statistics.make_header("simulated annealing")
+  print_statistics.make_header("simulated annealing", out = out)
   run_simulated_annealing(
                        simulated_annealing_params = simulated_annealing_params,
                        model                      = model,
@@ -110,7 +111,7 @@ def run_simulated_annealing(simulated_annealing_params,
   xray_gradient = None
   reset_velocities = True
   while simulated_annealing_params.final_temperature <= sa_temp:
-    print
+    print >> out
     cd_manager = cartesian_dynamics.cartesian_dynamics(
       structure                   = model.xray_structure,
       restraints_manager          = model.restraints_manager,

@@ -324,6 +324,8 @@ class refinement_monitor(object):
     separator = "-"*72
     print >> out, remark + "*"*72
     print >> out, remark + "Refinement target            :  %s"   % self.target_name
+    if(self.params.main.rigid_body):
+       print >> out, remark + "Rigid body refinement target :  %s"   % self.params.rigid_body.target
     print >> out, remark + "Number of atoms              : %7d"   % self.natoms
     print >> out, remark + "Number of geometry restraints: %7d"   % self.number_of_restraints
     print >> out, remark + "Unit cell volume             : %15.3f"% self.volume
