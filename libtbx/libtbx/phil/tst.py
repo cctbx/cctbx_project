@@ -3168,8 +3168,20 @@ s
 }
 """)
   except RuntimeError, e:
-    assert str(e) == 'scope "s" .call=libtbx.phil.tst.scope_call_func(:' \
-      ' unexpected EOF while parsing (line 1) (input line 2)'
+    assert str(e).startswith(
+      'scope "s" .call=libtbx.phil.tst.scope_call_func(: ')
+    assert str(e).endswith(' (input line 2)')
+  else: raise RuntimeError("Exception expected.")
+  #
+  try: phil.parse("""\
+s
+  .call=libtbx.phil.tst.scope_call_func(a=b=c)
+{
+}
+""")
+  except RuntimeError, e:
+    assert str(e) == 'scope "s" .call=libtbx.phil.tst.scope_call_func(a=b=c):'\
+      ' invalid syntax (line 1) (input line 2)'
   else: raise RuntimeError("Exception expected.")
   #
   master = phil.parse("""\
@@ -3178,11 +3190,11 @@ s
 {
 }
 t
-  .call=libtbx.phil.tst.scope_call_func(a=1)
+  .call=libtbx.phil.tst.scope_call_func(a =1)
 {
 }
 u
-  .call=libtbx.phil.tst.scope_call_func(a=1, b=2)
+  .call=libtbx.phil.tst.scope_call_func (a= 1 , b=2)
 {
 }
 v
@@ -3244,7 +3256,7 @@ s
 {
 }
 u
-  .call=libtbx.phil.tst.scope_call_class(a=1, b=2)
+  .call = libtbx . phil .tst. scope_call_class ( a = 1 , b = 2 )
 {
 }
 """)

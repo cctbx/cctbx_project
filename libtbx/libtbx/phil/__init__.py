@@ -5,6 +5,7 @@ from libtbx.str_utils import line_breaker
 from libtbx.utils import import_python_object
 from libtbx.itertbx import count
 from cStringIO import StringIO
+import tokenize as python_tokenize
 import math
 import weakref
 import sys, os
@@ -596,6 +597,24 @@ class definition: # FUTURE definition(object)
 def extract_args(*args, **keyword_args):
   return args, keyword_args
 
+def normalize_scope_call_expression(expression):
+  result = []
+  p = ""
+  for info in python_tokenize.generate_tokens(StringIO(expression).readline):
+    t = info[1]
+    if (len(t) == 0): continue
+    if (    t != "."
+        and t[0] in standard_identifier_start_characters
+        and len(p) > 0
+        and p != "."
+        and p[-1] in standard_identifier_continuation_characters):
+      result.append(" ")
+    result.append(t)
+    if (t[0] == ","):
+      result.append(" ")
+    p = t
+  return "".join(result)
+
 class scope_extract_call_proxy_object:
 
   def __init__(self, where_str, expression, callable, keyword_args):
@@ -611,7 +630,13 @@ def scope_extract_call_proxy(full_path, words, cache):
   name = words[0].value
   if (name.lower() == "none" and words[0].quote_token is None):
     return None
-  call_expression = str_from_words(words).strip()
+  call_expression_raw = str_from_words(words).strip()
+  try:
+    call_expression = normalize_scope_call_expression(
+      expression=call_expression_raw)
+  except python_tokenize.TokenError, e:
+    raise RuntimeError('scope "%s" .call=%s: %s%s' % (
+      full_path, call_expression_raw, str(e), words[0].where_str()))
   call_proxy = cache.get(call_expression, None)
   if (call_proxy is None):
     where_str = words[0].where_str()
