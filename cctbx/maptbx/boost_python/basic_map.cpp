@@ -82,7 +82,9 @@ struct basic_map_wrapper {
           af_extents const&,
           mat3 const&,
           out_of_handle const&,
-          tbx_unit_cell const&>())
+          tbx_unit_cell const&,
+          FloatType const&,
+          bool>())
       .def(init<unit_cell const&,
           af_versa const&,
           af_extents const&,
@@ -107,12 +109,16 @@ struct basic_map_wrapper {
           (af_versa const&
           ,tbx_space_group const&
           ,cdsa_float_asu const&
-          ,af_extents const&))
+          ,af_extents const&
+          ,FloatType const&
+          ,bool))
         &basic_map_type::set_grid_handle,
         (arg_("data")
         ,arg_("space_group")
         ,arg_("float_asu")
-        ,arg_("grid_length")))
+        ,arg_("grid_length")
+        ,arg_("min_distance_sym_equiv")
+        ,arg_("assert_min_distance_sym_equiv")))
       .def("as_unit_cell",
         (void(basic_map_type::*)
           (af_versa const&))

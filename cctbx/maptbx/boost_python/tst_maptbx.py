@@ -346,7 +346,7 @@ def exercise_real_space_refinement():
   cs = crystal.symmetry(
     unit_cell=unit_cell,
     space_group="P1")
-  basic_map.as_asu(emap,cs.space_group(),cs.direct_space_asu().as_float_asu(),emap.focus())
+  basic_map.as_asu(emap,cs.space_group(),cs.direct_space_asu().as_float_asu(),emap.focus(),0.5,True)
   assert approx_equal( maptbx.real_space_refinement_residual(
                                      basic_map=basic_map,
                                      sites=sites,
@@ -412,7 +412,7 @@ def exercise_mappers():
 
   nsf = maptbx.non_symmetric_factory()
   ucf = maptbx.unit_cell_factory()
-  asf = maptbx.asu_factory(cs.space_group(),cs.direct_space_asu().as_float_asu())
+  asf = maptbx.asu_factory(cs.space_group(),cs.direct_space_asu().as_float_asu(),0.5,True)
 
   for idx in xrange(len(sites_frac)):
     assert approx_equal( maptbx.get_non_symmetric_mapper(sites_frac[idx]).mapped_coordinate, ns_sites_frac[idx] )
@@ -422,7 +422,7 @@ def exercise_mappers():
     assert approx_equal( ucf.map(sites_frac[idx]).mapped_coordinate, uc_sites_frac[idx] )
 
     assert approx_equal( maptbx.get_asu_mapper(sites_frac[idx],
-        cs.space_group(),cs.direct_space_asu().as_float_asu()).mapped_coordinate, as_sites_frac[idx] )
+        cs.space_group(),cs.direct_space_asu().as_float_asu(),0.5,True).mapped_coordinate, as_sites_frac[idx] )
     assert approx_equal( asf.map(sites_frac[idx]).mapped_coordinate, as_sites_frac[idx] )
 
 def exercise_basic_map():
@@ -521,7 +521,7 @@ def exercise_basic_map():
   cs = crystal.symmetry(
     unit_cell=(1,1,1,90,90,90),
     space_group="P1")
-  basic_map.as_asu(emap,cs.space_group(),cs.direct_space_asu().as_float_asu(),emap.focus())
+  basic_map.as_asu(emap,cs.space_group(),cs.direct_space_asu().as_float_asu(),emap.focus(),0.5,True)
   basic_map.rebuild_transformers(emap.focus(),cs.unit_cell().orthogonalization_matrix())
   for shift in [0,1,-1]:
     for index in flex.nested_loop(emap.focus()):
