@@ -71,12 +71,18 @@ struct basic_mapper<asu,FloatType,IntType>
 : basic_mapper<void,FloatType,IntType> {
   basic_mapper ( fractional<FloatType> const& coord,
     tbx_space_group const& space_group,
-    cdsa::float_asu<FloatType> const& asu ) {
+    cdsa::float_asu<FloatType> const& asu,
+    FloatType const& min_distance_sym_equiv=0.5,
+    bool assert_min_distance_sym_equiv=true ) {
 
-    sgtbx::sym_equiv_sites<FloatType> equiv_sites(
+    sgtbx::site_symmetry sitesym(
       asu.unit_cell(),
       space_group,
-      coord);
+      coord,
+      min_distance_sym_equiv,
+      assert_min_distance_sym_equiv);
+
+    sgtbx::sym_equiv_sites<FloatType> equiv_sites(sitesym);
 
     af::const_ref<typename sgtbx::sym_equiv_sites<FloatType>::coor_t>
       coordinates = equiv_sites.coordinates().const_ref();
@@ -181,12 +187,20 @@ struct mapper_factory<asu,FloatType,IntType>
   mapper_factory () {}
 
   mapper_factory ( tbx_space_group const& space_group,
-    cdsa::float_asu<FloatType> const& asu )
+    cdsa::float_asu<FloatType> const& asu,
+    FloatType const& min_distance_sym_equiv=0.5,
+    bool assert_min_distance_sym_equiv=true )
   : space_group_(space_group)
-  , asu_(asu) {}
+  , asu_(asu)
+  , min_distance_sym_equiv_(min_distance_sym_equiv)
+  , assert_min_distance_sym_equiv_(assert_min_distance_sym_equiv) {}
 
   virtual mapper_type map ( fractional<FloatType> const& coordinate ) const {
-    basic_mapper_type bmt(coordinate,this->space_group_,this->asu_);
+    basic_mapper_type bmt(coordinate,
+                          this->space_group_,
+                          this->asu_,
+                          this->min_distance_sym_equiv_,
+                          this->assert_min_distance_sym_equiv_);
     return mapper_type(  bmt.mapped_coordinate,
               bmt.unit_shift,
               bmt.symmetry_operation);
@@ -200,6 +214,8 @@ struct mapper_factory<asu,FloatType,IntType>
 
   tbx_space_group space_group_;
   cdsa::float_asu<FloatType> asu_;
+  FloatType min_distance_sym_equiv_;
+  bool assert_min_distance_sym_equiv_;
 };
 
 // transformer-mapper pipeline

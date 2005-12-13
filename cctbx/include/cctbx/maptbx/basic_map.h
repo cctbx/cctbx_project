@@ -62,9 +62,16 @@ public:
     tin3_type const& extents,
     mat3_type const& matrix,
     out_of_handle_type const& h_out_of,
-    tbx_unit_cell const& unitcell )
+    tbx_unit_cell const& unitcell,
+    FloatType const& min_distance_sym_equiv=0.5,
+    bool assert_min_distance_sym_equiv=true  )
   : out_of_handle_(h_out_of) {
-    this->set_grid_handle(data,space_group,fasu,extents);
+    this->set_grid_handle( data,
+                           space_group,
+                           fasu,
+                           extents,
+                           min_distance_sym_equiv,
+                           assert_min_distance_sym_equiv);
     this->rebuild_transformers(extents,matrix);
     this->unit_cell_ = unitcell;
   }
@@ -346,10 +353,14 @@ public:
     af::versa<FloatType, af::flex_grid<> > const& data,
     tbx_space_group const& space_group,
     cdsa::float_asu<FloatType> const& fasu,
-    af::tiny<IntType,dimension_3> const& grid_len ) {
+    af::tiny<IntType,dimension_3> const& grid_len,
+    FloatType const& min_distance_sym_equiv=0.5,
+    bool assert_min_distance_sym_equiv=true  ) {
     this->grid_handle_
       = generic_grid<asu,FloatType,IntType>(
-        data,space_group,fasu,grid_len);
+        data,space_group,fasu,grid_len,
+        min_distance_sym_equiv,
+        assert_min_distance_sym_equiv);
   }
   void set_grid_handle ( af::versa<FloatType,af::flex_grid<> > const& data ) {
     this->grid_handle_ = generic_grid<unit_cell_tag,FloatType,IntType>(data);
