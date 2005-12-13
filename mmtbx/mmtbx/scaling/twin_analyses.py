@@ -506,7 +506,9 @@ class n_z_test(object):
     self.z = z
     self.ac_obs = ac_obs
     self.ac_untwinned = ac_theory
-    self.frac_ac_lt_1 = n_z_less_then_one_ac/normalised_acentric.data().size()
+    self.frac_ac_lt_1 = 0
+    if normalised_acentric.data().size()>0:
+      self.frac_ac_lt_1 = n_z_less_then_one_ac/normalised_acentric.data().size()
     self.max_diff_ac = max_deviation_ac
     self.kolmogorov_smirnoff_ac = max_deviation_ac/ac_theory[10]*math.sqrt(
       n_z_less_then_one_ac )
