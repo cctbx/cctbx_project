@@ -364,55 +364,55 @@ nonbonded simple: (0, 23)
     sys.stdout.write(out.getvalue())
   assert not show_diff(out.getvalue(), """\
 bond simple: (0, 1)
-  " CA  TYR     1 "
-  " CB  TYR     1 "
+  " CA  TYR A   1 "
+  " CB  TYR A   1 "
   distance_model: 1.53051
   distance_ideal: 1.53
   weight: 2500
 bond simple: (0, 8)
 ...
 angle: (1, 0, 8)
-  " CB  TYR     1 "
-  " CA  TYR     1 "
-  " C   TYR     1 "
+  " CB  TYR A   1 "
+  " CA  TYR A   1 "
+  " C   TYR A   1 "
   angle_model: 110.543
   angle_ideal: 110.1
   weight: 0.277008
 ...
 dihedral: (2, 0, 1, 11)
-  " CG  TYR     1 "
-  " CA  TYR     1 "
-  " CB  TYR     1 "
-  " N   TYR     1 "
+  " CG  TYR A   1 "
+  " CA  TYR A   1 "
+  " CB  TYR A   1 "
+  " N   TYR A   1 "
   angle_model: 173.684
   angle_ideal: -180
   weight: 0.00444444
   periodicity: 3
 ...
 chirality: (0, 1, 8, 11)
-  " CA  TYR     1 "
-  " CB  TYR     1 "
-  " C   TYR     1 "
-  " N   TYR     1 "
+  " CA  TYR A   1 "
+  " CB  TYR A   1 "
+  " C   TYR A   1 "
+  " N   TYR A   1 "
   volume_model: -2.50215
   volume_ideal: -2.50318
   both_signs: 0
   weight: 25
 ...
 planarity: (0, 8, 10, 15)
-  " CA  TYR     1 " delta: -0.00012, weight: 2500
-  " C   TYR     1 " delta:  0.00042, weight: 2500
-  " O   TYR     1 " delta: -0.00016, weight: 2500
-  " N   GLY     2 " delta: -0.00014, weight: 2500
+  " CA  TYR A   1 " delta: -0.00012, weight: 2500
+  " C   TYR A   1 " delta:  0.00042, weight: 2500
+  " O   TYR A   1 " delta: -0.00016, weight: 2500
+  " N   GLY A   2 " delta: -0.00014, weight: 2500
 ...
 nonbonded asu: (36, 47)
-  " C   LEU     5 "
-  " H1  HOH     3 " -x+1,y+1/2,-z+1/2
+  " C   LEU A   5 "
+  " H1  HOH B   3 " -x+1,y+1/2,-z+1/2
   distance_model: 4.89425
   vdw_distance: 2.9
 nonbonded simple: (0, 23)
-  " CA  TYR     1 "
-  " CD1 PHE     4 "
+  " CA  TYR A   1 "
+  " CD1 PHE A   4 "
   distance_model: 4.89852
   vdw_distance: 3.75
 """,
@@ -466,50 +466,50 @@ nonbonded asu: (7, 29) x+1,y,z
     sys.stdout.write(out.getvalue())
   assert not show_diff(out.getvalue(), """\
 bond simple: (0, 1)
-  " CA  TYR     1 "
-  " CB  TYR     1 "
+  " CA  TYR A   1 "
+  " CB  TYR A   1 "
   distance_ideal: 1.53
   weight: 2500
 ...
 angle: (1, 0, 8)
-  " CB  TYR     1 "
-  " CA  TYR     1 "
-  " C   TYR     1 "
+  " CB  TYR A   1 "
+  " CA  TYR A   1 "
+  " C   TYR A   1 "
   angle_ideal: 110.1
   weight: 0.277008
 ...
 dihedral: (2, 0, 1, 11)
-  " CG  TYR     1 "
-  " CA  TYR     1 "
-  " CB  TYR     1 "
-  " N   TYR     1 "
+  " CG  TYR A   1 "
+  " CA  TYR A   1 "
+  " CB  TYR A   1 "
+  " N   TYR A   1 "
   angle_ideal: -180
   weight: 0.00444444
   periodicity: 3
 ...
 chirality: (0, 1, 8, 11)
-  " CA  TYR     1 "
-  " CB  TYR     1 "
-  " C   TYR     1 "
-  " N   TYR     1 "
+  " CA  TYR A   1 "
+  " CB  TYR A   1 "
+  " C   TYR A   1 "
+  " N   TYR A   1 "
   volume_ideal: -2.50318
   both_signs: 0
   weight: 25
 ...
 planarity: (0, 8, 10, 15)
-  " CA  TYR     1 " weight: 2500
-  " C   TYR     1 " weight: 2500
-  " O   TYR     1 " weight: 2500
-  " N   GLY     2 " weight: 2500
+  " CA  TYR A   1 " weight: 2500
+  " C   TYR A   1 " weight: 2500
+  " O   TYR A   1 " weight: 2500
+  " N   GLY A   2 " weight: 2500
 ...
 nonbonded simple: (5, 40)
-  " CZ  TYR     1 "
-  " O   HOH     1 "
+  " CZ  TYR A   1 "
+  " O   HOH B   1 "
   vdw_distance: 3.22
 ...
 nonbonded asu: (7, 29)
-  " CD1 TYR     1 "
-  " N   PHE     4 " x+1,y,z
+  " CD1 TYR A   1 "
+  " N   PHE A   4 " x+1,y,z
   vdw_distance: 3.55
 """,
     selections=[range(5), range(230,236), range(560,568), range(648,656),
