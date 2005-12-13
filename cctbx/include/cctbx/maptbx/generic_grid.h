@@ -52,10 +52,14 @@ public:
   generic_grid ( af::versa<FloatType, af::flex_grid<> > const& data,
     tbx_space_group const& space_group,
     cdsa::float_asu<FloatType> const& fasu,
-    af::tiny<IntType,dimension_3> const& grid_len )
+    af::tiny<IntType,dimension_3> const& grid_len,
+    FloatType const& min_distance_sym_equiv=0.5,
+    bool assert_min_distance_sym_equiv=true )
   : space_group_(space_group)
   , float_asu_(fasu)
-  , grid_length_(grid_len) {
+  , grid_length_(grid_len)
+  , min_distance_sym_equiv_(min_distance_sym_equiv)
+  , assert_min_distance_sym_equiv_(assert_min_distance_sym_equiv) {
     this->versa_data_ = data;
     this->versa_ref_ = this->versa_data_.ref();
     CCTBX_ASSERT(this->versa_ref_.accessor().nd() == 3);
@@ -134,11 +138,13 @@ public:
     return result;
   }
 private:
-  tbx_space_group              space_group_;
-  cdsa::float_asu<FloatType>         float_asu_;
-  af::tiny<IntType,dimension_3>      grid_length_;
-  af::versa<FloatType, af::flex_grid<> >  versa_data_;
-  af::ref<FloatType, af::flex_grid<> >  versa_ref_;
+  tbx_space_group                        space_group_;
+  cdsa::float_asu<FloatType>             float_asu_;
+  af::tiny<IntType,dimension_3>          grid_length_;
+  af::versa<FloatType, af::flex_grid<> > versa_data_;
+  af::ref<FloatType, af::flex_grid<> >   versa_ref_;
+  FloatType                              min_distance_sym_equiv_;
+  bool                                   assert_min_distance_sym_equiv_;
 };
 
 template < typename FloatType, typename IntType >
@@ -213,7 +219,7 @@ public:
     for ( std::size_t i=0; i<dimension_3; ++i )
       if ( coord[i] < 0 || coord[i] >= 1 )
         return false;
-    return false;
+    return true;
   }
   virtual af::tiny<IntType,dimension_3> origin () const {
     return af::tiny<IntType,dimension_3>(0,0,0);
