@@ -57,6 +57,12 @@ def run(args):
                 "2WSAD",#13
                 "3WSAD",#14
                 "4WSAD" ]#15
+  if len(args)==0:
+    print
+    print "usage: mmtbx.fest <EXPERIMENT TYPE> <FLAGS and/or PARAMETER FILE>"
+    print
+    raise Sorry("No instructions received")
+
   if args[0] in scenarios:
     print "experiment: " , args[0]
   else:
