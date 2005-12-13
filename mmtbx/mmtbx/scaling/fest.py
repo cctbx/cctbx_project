@@ -85,12 +85,12 @@ def run(args):
 
   elif args[0]==scenarios[7]:
     twmad_scale.run( args[1:] )
-  
+
   else:
-    print 
+    print
     print "Sorry, no time. This method has not yet been implemented."
     print "Currently, only SAD,SIR,RIP and 2WMAD are supported."
-    print 
+    print
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])
