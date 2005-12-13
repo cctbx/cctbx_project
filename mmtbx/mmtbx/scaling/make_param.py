@@ -148,10 +148,10 @@ outlier_level_wilson=1e-6
     .expert_level=15
     f_prime=None
     .type=float
-    .expert_level=15
+    .expert_level=0
     f_double_prime=None
     .type=float
-    .expert_level=15
+    .expert_level=0
     }
     """
     self.data_type =self.data_type.replace( '}', tmp)
