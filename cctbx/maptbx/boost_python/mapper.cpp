@@ -49,8 +49,11 @@ struct mapper_wrappers {
     }
     static void_basic_mapper
     get_asu_mapper ( fractional const& f,
-        space_group const& sg, crystal::direct_space_asu::float_asu<double> const& fa ) {
-        return as_basic_mapper(f,sg,fa);
+        space_group const& sg,
+        crystal::direct_space_asu::float_asu<double> const& fa,
+        FloatType const& mdse,
+        bool amdse ) {
+        return as_basic_mapper(f,sg,fa,mdse,amdse);
     }
 
   static void wrap() {
@@ -78,7 +81,9 @@ struct mapper_wrappers {
       &mapper_wrappers::get_asu_mapper,
       (arg_("coordinate")
       ,arg_("space_group")
-      ,arg_("float_asu")));
+      ,arg_("float_asu")
+      ,arg_("min_distance_sym_equiv")
+      ,arg_("assert_min_distance_sym_equiv")));
 
     class_<factory_handle>("factory_handle",no_init);
 
@@ -93,7 +98,7 @@ struct mapper_wrappers {
       .def("as_handle",&uc_factory::as_handle);
 
     class_<as_factory>("asu_factory",no_init)
-      .def(init<space_group,crystal::direct_space_asu::float_asu<double> >())//float_asu>())
+      .def(init<space_group,crystal::direct_space_asu::float_asu<double>,double const&,bool>())//float_asu>())
       .def("map",&as_factory::map,arg_("coordinate"))
       .def("as_handle",&as_factory::as_handle);
 
