@@ -158,7 +158,8 @@ class wilson_normalised_intensities(object):
     self.acentric = work_array.select_acentric().as_intensity_array()
     self.centric = work_array.select_centric().as_intensity_array()
 
-    assert (self.acentric.indices().size()>0)
+    if (self.acentric.indices().size()<=0):
+      raise Sorry("No acentric reflections available. Check your input")
 
     if verbose > -10:
       print >> out, "Number of centrics  :", self.centric.data().size()
@@ -1257,6 +1258,7 @@ def twin_analyses_brief(miller_array,
            is twinning
   - None : data does not behave as expected, and might or might not be
            due to twinning.
+           Also gives none when something messes up.
   """
 
   out_tmp = StringIO()
