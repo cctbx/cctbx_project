@@ -19,6 +19,7 @@ import libtbx.phil.command_line
 from cStringIO import StringIO
 from scitbx.python_utils import easy_pickle
 from mmtbx.scaling import sad_scale, sir_scale, rip_scale, siras_scale
+from mmtbx.scaling import twmad_scale
 import sys, os
 
 
@@ -26,8 +27,8 @@ from mmtbx.scaling import fa_estimation
 
 def print_banner():
   print "#########################################"
-  print "####              FATSO              ####"
-  print "####          FA eTSimatiOn          ####"
+  print "####              Fest               ####"
+  print "####    Delta F and FA estimation    ####"
   print "#########################################"
 
 
@@ -39,23 +40,23 @@ def run(args):
                 "SIR",#1
                 "RIP",#2
 
-                "SIRAS",#2
-                "RIPAS",#3
+                "SIRAS",#3
+                "RIPAS",#4
 
-                "MIR",#4
-                "MIRAS",#5
+                "MIR",#5
+                "MIRAS",#6
 
-                "2WMAD",#6
-                "3WMAD",#7
-                "4WMAD",#8
+                "2WMAD",#7
+                "3WMAD",#8
+                "4WMAD",#9
 
-                "2WMAD+NAT",#9
-                "3WMAD+NAT",#10
-                "4WMAD+NAT",#11
+                "2WMAD+NAT",#10
+                "3WMAD+NAT",#11
+                "4WMAD+NAT",#12
 
-                "2WSAD",#12
-                "3WSAD",#13
-                "4WSAD" ]#14
+                "2WSAD",#13
+                "3WSAD",#14
+                "4WSAD" ]#15
   if args[0] in scenarios:
     print "experiment: " , args[0]
   else:
@@ -70,20 +71,26 @@ def run(args):
   if args[0]==scenarios[0]:
     sad_scale.run( args[1:] )
 
-  if args[0]==scenarios[1]:
+  elif args[0]==scenarios[1]:
     sir_scale.run( args[1:] )
 
-  if args[0]==scenarios[2]:
+  elif args[0]==scenarios[2]:
     rip_scale.run( args[1:] )
 
-  if args[0]==scenarios[3]:
+  elif args[0]==scenarios[3]:
     siras_scale.run( args[1:] )
 
-  if args[0]==scenarios[4]:
+  elif args[0]==scenarios[4]:
     siras_scale.run( args[1:] )
 
-  if args[0]==scenarios[4]:
-    siras_scale.run( args[1:] )
+  elif args[0]==scenarios[7]:
+    twmad_scale.run( args[1:] )
+  
+  else:
+    print 
+    print "Sorry, no time. This method has not yet been implemented."
+    print "Currently, only SAD,SIR,RIP and 2WMAD are supported."
+    print 
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])
