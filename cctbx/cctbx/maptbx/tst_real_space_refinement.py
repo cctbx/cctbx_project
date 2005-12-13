@@ -100,7 +100,9 @@ def exercise_real_space_refinement(verbose):
                                real_map.focus(),
                                crystal_symmetry.unit_cell().orthogonalization_matrix(),
                                out_of_bounds_clamp.as_handle(),
-                               crystal_symmetry.unit_cell())
+                               crystal_symmetry.unit_cell(),
+                               0.5,
+                               True)
   testing_function_for_rsfit(basic_map,delta_h,xray_structure,out)
 
 
