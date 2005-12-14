@@ -263,24 +263,51 @@ def run(args):
       miller_array_w1,
       miller_array_w2)
 
-
-    k1 = (params.scaling.input.xray_data.wavelength1.f_double_prime/
-          params.scaling.input.xray_data.wavelength2.f_double_prime)
-
-    k2 = (params.scaling.input.xray_data.wavelength1.f_prime-
-          params.scaling.input.xray_data.wavelength2.f_prime)\
-          /params.scaling.input.xray_data.wavelength2.f_double_prime
-
-    print k1, k2
     k1 = fdpratio.ratio
     k2 = fpfdpratio.ratio
-    print k1, k2
+
+    print >> log
+    print >> log, "  The estimate of f\"(w1)/f\"(w2) is %3.2f"\
+          %(fdpratio.ratio)
+    print >> log, "  The estimate of (f'(w1)-f'(w2))/f\"(w2) is %3.2f"\
+          %(fpfdpratio.ratio)
+    print >> log
+    print >> log, "  The quality of these estimates depends to a large "
+    print >> log, "  to the quality of the data. If user supplied values"
+    print >> log, "  of f\" and f' are given, they will be used instead "
+    print >> log, "  of the estimates."
+    print >> log
+
+    if params.scaling.input.xray_data.wavelength1.f_double_prime is not None:
+      if params.scaling.input.xray_data.wavelength2.f_double_prime is not None:
+        k1 = (params.scaling.input.xray_data.wavelength1.f_double_prime/
+              params.scaling.input.xray_data.wavelength2.f_double_prime)
+        print >> log, "    Using user specified f\" values"
+        print >> log, "      user specified f\"(w1)/f\"(w2) is %3.2f"\
+              %(k1)
+        print >> log
+    if params.scaling.input.xray_data.wavelength1.f_prime is not None:
+      if params.scaling.input.xray_data.wavelength2.f_prime is not None:
+        if params.scaling.input.xray_data.wavelength2.f_double_prime is not None:
+
+          k2 = (params.scaling.input.xray_data.wavelength1.f_prime-
+                params.scaling.input.xray_data.wavelength2.f_prime)\
+                /params.scaling.input.xray_data.wavelength2.f_double_prime
+          print >> log, "    Using user specified f\" and f' values"
+          print >> log, "     user specified f\"(w1)/f\"(w2) is %3.2f"\
+                %(k2)
+          print >> log
+
     tmp = pair_analyses.singh_ramasheshan_fa_estimate(
       miller_array_w1,
       miller_array_w2,
       k1,
       k2)
 
+    tmp2 = pair_analyses.mum_dad(
+      miller_array_w1,
+      miller_array_w2,
+      k1)
 
 
     print >> log
@@ -291,11 +318,14 @@ def run(args):
     ## Please write out the abs_delta_f array
 
     fa =  tmp.fa.f_sq_as_f()
-    fa_estimation.patterson_quality(fa)
-
+    fa_dad = tmp2.dad
 
     mtz_dataset = fa.as_mtz_dataset(
       column_root_label='F'+params.scaling.input.output.outlabel)
+    mtz_dataset.add_miller_array(
+    miller_array= fa_dad ,
+    column_root_label="FDAD"+params.scaling.input.output.outlabel )
+
     mtz_dataset.mtz_object().write(
       file_name=params.scaling.input.output.hklout)
 
