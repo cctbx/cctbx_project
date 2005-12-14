@@ -344,7 +344,8 @@ class scattering_information(object):
 
 def anisotropic_correction(cache_0,
                            p_scale,
-                           u_star):
+                           u_star,
+                           b_add=None):
   ## Make sure that u_star is not rwgk scaled, i.e. like you get it from
   ## the ml_absolute_scale_aniso routine (!which is !!NOT!! scaled!)
   work_array = None
@@ -358,16 +359,26 @@ def anisotropic_correction(cache_0,
     work_array = work_array.f_sq_as_f()
   assert not work_array.is_xray_intensity_array()
 
+  if b_add is not None:
+    u_star_add =  adptbx.b_iso_as_u_star( work_array.unit_cell(),
+                                          b_add )
+    u_star = u_star+u_star_add
+
+
+
   corrected_amplitudes = scaling.ml_normalise_aniso( work_array.indices(),
                                                      work_array.data(),
                                                      p_scale,
                                                      work_array.unit_cell(),
                                                      u_star )
+
   corrected_sigmas = scaling.ml_normalise_aniso( work_array.indices(),
                                                  work_array.sigmas(),
                                                  p_scale,
                                                  work_array.unit_cell(),
                                                  u_star )
+
+
 
   work_array = work_array.customized_copy(
     data = corrected_amplitudes,
