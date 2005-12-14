@@ -41,12 +41,12 @@ class reindexing(object):
     if self.out is None:
       self.out = sys.stdout
 
-      
-    ## ameka deep copy as we, 
+
+    ## ameka deep copy as we,
     self.set_a = set_a.deep_copy().set_observation_type( set_a )
     self.set_b = set_b.deep_copy().set_observation_type( set_b )
 
-    
+
     # We need to go to the minimum cell
     self.change_of_basis_op_to_minimum_cell_a=\
       self.set_a.change_of_basis_op_to_minimum_cell()
@@ -57,7 +57,7 @@ class reindexing(object):
     self.set_a  = self.set_a.change_basis(
       self.change_of_basis_op_to_minimum_cell_a ).map_to_asu().\
        set_observation_type( set_a )
-    
+
     self.set_b  = self.set_b.change_basis(
       self.change_of_basis_op_to_minimum_cell_b ).map_to_asu().\
        set_observation_type( set_b )
@@ -80,7 +80,7 @@ class reindexing(object):
       unit_cell=self.set_b.unit_cell(),
       space_group_info=sgtbx.space_group_info(group=self.lattice_group_b),
       assert_is_compatible_unit_cell=False)
-        
+
     ## Get the intensity symmetry please
     tmp_a = crystal.symmetry.change_basis(
       self.set_a,
@@ -88,28 +88,28 @@ class reindexing(object):
     tmp_b = crystal.symmetry.change_basis(
       self.set_b,
       self.set_b.change_of_basis_op_to_minimum_cell())
-    
+
     self.intensity_symmetry_a = tmp_a.reflection_intensity_symmetry(
       anomalous_flag=self.set_a.anomalous_flag() )
     self.intensity_symmetry_b = tmp_b.reflection_intensity_symmetry(
       anomalous_flag=self.set_b.anomalous_flag() )
 
-    
+
     self.intensity_symmetry_a = self.set_a.reflection_intensity_symmetry()
     self.intensity_symmetry_b = self.set_b.reflection_intensity_symmetry()
-    
-    
+
+
     c_inv_rs = self.set_a.unit_cell().\
       similarity_transformations(
         other=self.set_b.unit_cell(),
         relative_length_tolerance=self.relative_length_tolerance,
         absolute_angle_tolerance=self.absolute_angle_tolerance)
-    
+
     min_bases_msd = None
     similarity_cb_op = None
 
     result = None
-    
+
     for c_inv_r in c_inv_rs:
       c_inv = sgtbx.rt_mx(sgtbx.rot_mx(c_inv_r))
       cb_op = sgtbx.change_of_basis_op(c_inv).inverse()
@@ -128,10 +128,10 @@ class reindexing(object):
       try: common_lattice_group.expand_smx(s)
       except RuntimeError:
         result = []
-        
+
     common_lattice_group.make_tidy()
     result = []
-    
+
     for s in sgtbx.cosets.double_unique(
                g=common_lattice_group,
                h1=self.intensity_symmetry_a.space_group()
@@ -160,9 +160,9 @@ class reindexing(object):
     for cb_op in self.matrices:
       cb_op_comb = self.combined_cb_op(cb_op)
       self.matrices_for_table.append( cb_op_comb )
-      
+
       tmp_set_b = self.set_b.change_basis(cb_op).map_to_asu()
-      
+
       tmp_set_a, tmp_set_b = self.set_a.map_to_asu().common_sets(
         tmp_set_b,
         assert_is_similar_symmetry=False)
@@ -213,7 +213,7 @@ class reindexing(object):
     transform_b = transform_b.change_basis(
       self.change_of_basis_op_to_minimum_cell_b.inverse() ).map_to_asu()\
       .set_observation_type( self.set_b )
-    
+
     return ( transform_b )
 
 
@@ -468,7 +468,6 @@ class f_double_prime_ratio(object):
 
     self.x=flex.double([1.0])
     scitbx.lbfgs.run(target_evaluator=self)
-    self.show()
     self.ratio=self.x[0]
 
   def compute_functional_and_gradients(self):
@@ -502,26 +501,27 @@ class f_double_prime_ratio(object):
     result = current - new
     result/=-h
     return flex.double([result])
-  
+
   def show(self,out=None):
     if out is None:
       out = sys.stdout
     print >> out
     print >> out, "Estimated ratio of fdp(w1)/fwp(w2): %3.2f"%(self.x[0])
     print >> out
-    
+
 
 
 class delta_f_prime_f_double_prime_ratio(object):
   def __init__(self,
                lambda1,
-               lambda2):
+               lambda2,
+               level=1.0):
     self.tmp_l1 = lambda1.deep_copy()
     self.tmp_l2 = lambda2.deep_copy()
-    
+
     ## make sure we have amplitudes please
     if self.tmp_l1.is_xray_intensity_array():
-      self.tmp_l1 = self.tmp_l1.f_sq_as_f()    
+      self.tmp_l1 = self.tmp_l1.f_sq_as_f()
     if self.tmp_l2.is_xray_intensity_array():
       self.tmp_l2 = self.tmp_l2.f_sq_as_f()
 
@@ -535,35 +535,59 @@ class delta_f_prime_f_double_prime_ratio(object):
     self.tmp_l1_no_ano.setup_binner_d_star_sq_step( auto_binning=True )
     self.tmp_l2_no_ano.setup_binner_d_star_sq_step( auto_binning=True )
 
-    self.plus2, self.minus2 = self.tmp_l2.hemispheres_acentrics() 
+    self.plus2, self.minus2 = self.tmp_l2.hemispheres_acentrics()
     self.plus2.use_binning_of( self.tmp_l1_no_ano )
     self.minus2.use_binning_of( self.tmp_l1_no_ano )
-    
 
     ## we assume that the data is properly scaled of course
     ## Loop over all bins, and in each bin,
-    ## compute <diso>, <df> and their ratio    
+    ## compute <diso>, <df> and their ratio
     estimates = flex.double()
+    count = 0
     for bin in self.tmp_l1.binner().range_all():
       selection =  self.tmp_l1_no_ano.binner().selection( bin ).iselection()
       tmp1 = self.tmp_l1_no_ano.select( selection ).data()
       tmp2 = self.tmp_l2_no_ano.select( selection ).data()
+      stmp1 = self.tmp_l1_no_ano.select( selection ).sigmas()
+      stmp2 = self.tmp_l2_no_ano.select( selection ).sigmas()
+
       selection = self.plus2.binner().selection( bin ).iselection()
       tmp3 = self.plus2.select( selection ).data()
       tmp4 = self.minus2.select( selection ).data()
+      stmp3 = self.plus2.select( selection ).sigmas()
+      stmp4 = self.minus2.select( selection ).sigmas()
+
+      tmpiso=None
+      tmpsiso=None
+      tmpano=None
+      tmpsano=None
+
       if tmp1.size() > 0:
-        if tmp3.size() > 0:
-          delta_iso_sq = math.sqrt(flex.mean( (tmp1 - tmp2)*(tmp1 - tmp2) ))
-          delta_ano_sq = math.sqrt(flex.mean( (tmp3 - tmp4)*(tmp3 - tmp4) ))
-          tmp=2.0*delta_iso_sq/delta_ano_sq
-          estimates.append( tmp )
-          print bin, tmp
+        tmpiso = flex.mean( (tmp1 - tmp2)*(tmp1 - tmp2) )
+        tmpsiso = flex.mean( stmp1*stmp1 +  stmp2*stmp2  )
+      if tmp3.size() > 0:
+        tmpano = flex.mean( (tmp3 - tmp4)*(tmp3 - tmp4) )
+        tmpsano = flex.mean( stmp3*stmp3 +  stmp4*stmp4  )
+
+      if tmp1.size() > 0: ## make sure something is there
+        if tmp3.size() > 0: ## make sure something is there
+          if math.sqrt(tmpiso/tmpsiso)>=level:  ## s/n is okai
+            if math.sqrt(tmpano/tmpsano)>=level: ## s/n is okai
+              delta_iso_sq = math.sqrt( tmpiso  )
+              delta_ano_sq = math.sqrt( tmpano  )
+              tmp=2.0*delta_iso_sq/delta_ano_sq
+              print bin, tmp
+              estimates.append( tmp )
+              count+=1.0
 
     ## compute the trimean please
-    self.ratio=robust_statistics.trimean( estimates )
-    
-    
-  
+    self.ratio = None
+    self.number = count
+    if (self.number>0):
+      self.ratio=robust_statistics.trimean( estimates )
+
+
+
 class singh_ramasheshan_fa_estimate(object):
   def __init__(self,
                w1,
@@ -572,7 +596,7 @@ class singh_ramasheshan_fa_estimate(object):
                k2):
     self.w1=w1.deep_copy()
     self.w2=w2.deep_copy()
-    
+
     if self.w1.is_xray_amplitude_array():
       self.w1 = self.w1.f_as_f_sq()
     if self.w2.is_xray_amplitude_array():
@@ -584,18 +608,18 @@ class singh_ramasheshan_fa_estimate(object):
     ## get differences and sums please
     self.p1, self.n1 = self.w1.hemispheres_acentrics()
     self.p2, self.n2 = self.w2.hemispheres_acentrics()
-    
+
     self.diff1 = self.p1.data() - self.n1.data()
     self.diff2 = self.p2.data() - self.n2.data()
-    
+
     self.s1 =   self.p1.sigmas()*self.p1.sigmas()\
               + self.n1.sigmas()*self.n1.sigmas()
     self.s1 =  flex.sqrt( self.s1 )
-    
+
     self.s2 =   self.p2.sigmas()*self.p2.sigmas()\
               + self.n2.sigmas()*self.n2.sigmas()
     self.s2 =  flex.sqrt( self.s2 )
-    
+
     self.sum1 = self.p1.data() + self.n1.data()
     self.sum2 = self.p2.data() + self.n2.data()
 
@@ -605,11 +629,11 @@ class singh_ramasheshan_fa_estimate(object):
     self.determinant=None
     self.fa=None
     self.sigfa=None
-    
-    
+
+
     self.selector=None
     self.iselector=None
-    
+
     self.a=None
     self.b=None
     self.c=None
@@ -624,35 +648,35 @@ class singh_ramasheshan_fa_estimate(object):
     tmp = self.s2/flex.abs( self.diff2 +1e-6 ) +\
           self.s1/flex.abs( self.diff1 +1e-6 )
     tmp = tmp/2.0
-    self.sigfa = tmp      
-    
+    self.sigfa = tmp
+
   def compute_coefs(self):
     self.a = ( self.k2_sq*self.k2_sq
                + self.k2_sq*(1 + self.k1_sq)
                + (self.k1_sq-1)*(self.k1_sq-1)
-             )    
+             )
     self.b = -self.k2_sq*(self.sum1 + self.sum2) \
              -(self.k1_sq-1)*(self.sum1 - self.sum2)
     self.c = 0.25*(self.sum1 - self.sum2)*(self.sum1 - self.sum2)\
             +(1.0/8.0)*self.k2_sq*(  self.diff2*self.diff2
                                    + self.diff1*self.diff1/self.k1_sq)
-    
+
   def compute_determinant(self):
     self.determinant = self.b*self.b - 4.0*self.a*self.c
     self.selector = (self.determinant>0)
     self.iselector = self.selector.iselection()
-       
+
   def compute_fa_values(self):
     self.compute_coefs()
     self.compute_determinant()
     reset_selector = (~self.selector).iselection()
     self.determinant = self.determinant.set_selected(  reset_selector, 0 )
-    
+
     choice1 = -self.b + flex.sqrt( self.determinant )
     choice1 /= 2*self.a
     choice2 = -self.b - flex.sqrt( self.determinant )
     choice2 /= 2*self.a
-    
+
     select1 = choice1 > choice2
     select2 = ~select1
 
@@ -661,11 +685,46 @@ class singh_ramasheshan_fa_estimate(object):
 
     choice1 = choice1+choice2
     select1 = (choice1<0).iselection()
-    choice1 = choice1.set_selected( select1 , 0 )    
+    choice1 = choice1.set_selected( select1 , 0 )
     self.fa =  choice1 + choice2
 
     self.set_sigma_ratio()
-    
-    self.sigfa = self.sigfa*self.fa 
-        
-    
+
+    self.sigfa = self.sigfa*self.fa
+
+
+class mum_dad(object):
+  def __init__(self,
+               lambda1,
+               lambda2,
+               k1=1.0):
+    ## assumed is of course that the data are scaled.
+    ## lambda1 is the 'reference'
+    self.w1=lambda1.deep_copy()
+    self.w2=lambda2.deep_copy()
+
+    if not self.w1.is_xray_amplitude_array():
+      self.w1 = self.w1.f_sq_as_f()
+    if not self.w2.is_xray_amplitude_array():
+      self.w2 = self.w2.f_sq_as_f()
+
+    self.w1, self.w2 = self.w1.common_sets( self.w2 )
+
+    l1p, l1n = self.w1.hemispheres_acentrics()
+    self.mean1 = l1p.data()+l1n.data()
+    self.diff1 = l1p.data()-l1n.data()
+    self.v1 = ( l1p.sigmas()*l1p.sigmas() +
+                l1n.sigmas()*l1n.sigmas() )
+
+    l2p, l2n = self.w2.hemispheres_acentrics()
+    self.mean2 = l2p.data()+l2n.data()
+    self.diff2 = l2p.data()-l2n.data()
+    self.v2 = ( l2p.sigmas()*l2p.sigmas() +
+                l2n.sigmas()*l2n.sigmas() )
+
+    self.new_diff = flex.abs( (self.diff1 + k1*self.diff2)/2.0 )
+    self.new_sigma_mean = flex.sqrt( (self.v1+k1*k1*self.v2)/2.0 )
+
+    self.dad = l1p.customized_copy(
+      data = self.new_diff,
+      sigmas = self.new_sigma_mean ).set_observation_type( self.w1 )
