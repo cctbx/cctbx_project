@@ -90,8 +90,12 @@ class pre_scaler(object):
     self.x1 = native_outlier.remove_outliers(
       self.x1 )
 
-    ## apply anisotropic scaling  (final B-value is going to be zero)!
+    ## apply anisotropic scaling  (final B-value will be set to b_add)!
     if self.options.aniso_correction:
+
+      b_final = self.options.b_add
+      if b_final is None:
+        b_final = 0.0
 
       print >> out
       print >> out, "Anisotropic absolute scaling of data"
@@ -106,7 +110,7 @@ class pre_scaler(object):
         self.x1.space_group().order_z()*n_copies_solc)
       aniso_correct.show(out=out,verbose=1)
       print >> out
-      print >> out, "  removing anisotropy for native"
+      print >> out, "  removing anisotropy for native  "
       print >> out
       u_star_correct_nat = aniso_correct.u_star
       self.x1 = absolute_scaling.anisotropic_correction(
