@@ -56,6 +56,15 @@ def exercise():
   except KeyboardInterrupt: raise
   except:
     assert utils.format_exception() == "RuntimeError: Trial"
+  else: raise RuntimeError("Exception expected.")
+  try:
+    assert 1 == 2
+  except KeyboardInterrupt: raise
+  except:
+    s = utils.format_exception()
+    assert s.startswith("AssertionError: ")
+    assert s.find("tst_utils.py line ") >= 0
+  else: raise RuntimeError("Exception expected.")
   exercise_indented_display()
   print "OK"
 

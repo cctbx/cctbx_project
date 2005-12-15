@@ -1,5 +1,6 @@
 from __future__ import division
 import time
+import traceback
 import sys, os
 
 def flat_list(nested_list):
@@ -38,10 +39,15 @@ class Sorry(Exception):
         sys.tracebacklimit = self.previous_tracebacklimit
 
 def format_exception():
-  type_, value = sys.exc_info()[:2]
-  type_ = str(type_)
+  type_, value = [str(obj) for obj in sys.exc_info()[:2]]
   if (type_.startswith("exceptions.")): type_ = type_[11:]
-  return "%s: %s" % (type_, str(value))
+  if (value == ""):
+    file_name, line = traceback.extract_tb(sys.exc_info()[2], 1)[0][:2]
+    if (file_name is not None):
+      value = file_name+" "
+    if (line is not None):
+      value += "line %d" % line
+  return ("%s: %s" % (type_, value)).rstrip()
 
 def date_and_time():
   localtime = time.localtime()
