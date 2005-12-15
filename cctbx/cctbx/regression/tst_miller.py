@@ -703,6 +703,12 @@ unused:  3.0759 -         [ 0/0 ]
 """
     s = StringIO()
     ma.wilson_ratio(use_binning=True).show(f=s)
+    d_max, d_min = ma.d_max_min()
+    cl = ma.resolution_filter(d_min = 6.0,  d_max = d_max).completeness()
+    ch = ma.resolution_filter(d_min = d_min,d_max = 6.0).completeness(d_max =
+                                                                           6.0)
+    ca = ma.resolution_filter().completeness()
+    assert approx_equal(cl+ch+ca, 3.0)
     assert s.getvalue() == """\
 unused:         - 13.0001 [ 0/0 ]
 bin  1: 13.0001 -  5.9727 [ 7/6 ]  0.6007
