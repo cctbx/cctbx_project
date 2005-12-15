@@ -15,16 +15,17 @@ class bulk_solvent(around_atoms):
   def __init__(self,
         xray_structure,
         gridding_n_real=None,
-        grid_step=None,
+        grid_step =None,
         solvent_radius=1.0,
         shrink_truncation_radius=1.0):
      assert [gridding_n_real, grid_step].count(None) == 1
      self.xray_structure = xray_structure
-     if(grid_step is not None): grid_step = min(0.8, grid_step)
+     self.grid_step = grid_step
+     if(self.grid_step is not None): self.grid_step = min(0.8, self.grid_step)
      if(gridding_n_real is None):
        gridding_n_real = maptbx.crystal_gridding(
          unit_cell=xray_structure.unit_cell(),
-         step=grid_step).n_real()
+         step= self.grid_step).n_real()
      atom_radii = flex.double()
      # XXX use scattering dictionary and set_selected
      for scatterer in xray_structure.scatterers():
@@ -41,15 +42,18 @@ class bulk_solvent(around_atoms):
 
   def show_summary(self, out=None):
     if (out is None): out = sys.stdout
-    print >> out, "Bulk-solvent mask parameters:"
-    print >> out, "   solvent radius           = %4.2f A" % (
-      self.solvent_radius)
-    print >> out, "   shrink truncation radius = %4.2f A" % (
-      self.shrink_truncation_radius)
-    print >> out, "   number of grid points    = %s" % str(
-      self.data.accessor().focus())
-    print >> out, "   solvent content          = %.1f %%" % (
-      self.contact_surface_fraction * 100)
+    print >> out, "|-mask parameters----------------------------------------"\
+                  "---------------------|"
+    print >> out, "| solvent radius        = %4.2f A           shrink truncat"\
+                  "ion radius = %4.2f A  |"%(self.solvent_radius,\
+                  self.shrink_truncation_radius)
+    print >> out, "| solvent content       = %.1f %%           grid_step     "\
+                  "           = %5.3f A | "%(self.contact_surface_fraction*100,
+                  self.grid_step)
+    part_1 = "| number of grid points = %s"%(str(self.data.accessor().focus()))
+    n = 78 - len(part_1)
+    print >> out, part_1 + " "*n +"|"
+    print >> out, "|"+"-"*77+"|"
     print >> out
 
   def mask_as_xplor_map(self, file_name):
