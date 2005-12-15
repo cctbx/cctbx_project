@@ -479,7 +479,7 @@ class set(crystal.symmetry):
       i)
     return set(self, i, self.anomalous_flag())
 
-  def complete_set(self, d_min_tolerance=1.e-6):
+  def complete_set(self, d_min_tolerance=1.e-6, d_max=None):
     assert self.anomalous_flag() in (False, True)
     if (self.indices().size() == 0):
       return set(
@@ -489,12 +489,14 @@ class set(crystal.symmetry):
     return build_set(
       crystal_symmetry=self,
       anomalous_flag=self.anomalous_flag(),
-      d_min=self.d_min()*(1-d_min_tolerance))
+      d_min=self.d_min()*(1-d_min_tolerance),
+      d_max=d_max)
 
   def completeness(self, use_binning=False, d_min_tolerance=1.e-6,
-                   return_fail=None):
+                   return_fail=None, d_max = None):
     if (not use_binning):
-      complete_set = self.complete_set(d_min_tolerance=d_min_tolerance)
+      complete_set = self.complete_set(d_min_tolerance=d_min_tolerance,
+                                       d_max = d_max)
       return self.indices().size() / max(1,complete_set.indices().size())
     assert self.binner() is not None
     data = []
@@ -862,8 +864,8 @@ class set(crystal.symmetry):
       return flex.sum( d1 * d2 * flex.cos(p2 - p1) ) / factor
     return None
 
-def build_set(crystal_symmetry, anomalous_flag, d_min):
-  return set(
+def build_set(crystal_symmetry, anomalous_flag, d_min, d_max=None):
+  result = set(
     crystal_symmetry,
     index_generator(
       crystal_symmetry.unit_cell(),
@@ -871,6 +873,8 @@ def build_set(crystal_symmetry, anomalous_flag, d_min):
       anomalous_flag,
       d_min).to_array(),
     anomalous_flag)
+  if(d_max is not None): result = result.resolution_filter(d_max = d_max)
+  return result
 
 class array_info(object):
 
