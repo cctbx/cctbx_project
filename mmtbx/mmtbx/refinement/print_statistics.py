@@ -187,13 +187,15 @@ class refinement_monitor(object):
     self.k3s_t           = []
     self.scale_ml        = []
     self.n_solv          = []
+    self.rba             = None
 
   def collect(self, model,
                     fmodel,
                     step,
                     tan_b_iso_max,
                     wilson_b = None,
-                    target_weights = None):
+                    target_weights = None,
+                    rigid_body_shift_accamulator = None):
     fmodel.xray_structure.approx_equal(other = model.xray_structure)
     if(target_weights is not None):
        target_weights.fmodel.xray_structure.approx_equal(other =
@@ -318,6 +320,9 @@ class refinement_monitor(object):
     self.nsym                = xrs.space_group().n_smx()
     self.target_name         = fmodel.target_name
     self.number_of_restraints= geom.number_of_restraints
+    ###
+    if(rigid_body_shift_accamulator is not None):
+       self.rba = rigid_body_shift_accamulator
 
   def show(self, out=None, remark=""):
     if(out is None): out = self.out
@@ -334,6 +339,21 @@ class refinement_monitor(object):
     print >> out, remark + "Wilson B-factor              : %10.3f"% self.wilson_b
     print >> out, remark + "Isotropic ADP: distance_power: %5.2f" % self.params.adp_restraints.iso.distance_power
     print >> out, remark + "Isotropic ADP: average_power : %5.2f" % self.params.adp_restraints.iso.average_power
+    #
+    if(self.rba is not None):
+       print >> out, remark + "Information about total rigid body shift of selected groups:"
+       print >> out, remark + "                          rotation (deg.)             "\
+                  "   translation (A)      "
+       i = 1
+       for r,t in zip(self.rba.rotations, self.rba.translations):
+           part1 = "  group"+str("%5d:  "%i)
+           part2 = str("%8.4f"%r[0])+" "+str("%8.4f"%r[1])+" "+str("%8.4f"%r[2])
+           part3 = "     "
+           part4 = str("%8.4f"%t[0])+" "+str("%8.4f"%t[1])+" "+str("%8.4f"%t[2])
+           n = 78 - len(part1 + part2 + part3 + part4)
+           part5 = " "*n+" "
+           print >> out, remark + part1 + part2 + part3 + part4 + part5
+           i += 1
     #
     #
     print >> out, remark + "****************** REFINEMENT STATISTICS STEP BY STEP ******************"

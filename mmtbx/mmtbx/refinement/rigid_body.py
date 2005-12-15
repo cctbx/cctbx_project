@@ -6,6 +6,48 @@ from scitbx import matrix
 from scitbx import lbfgs
 import copy
 
+class rigid_body_shift_accamulator(object):
+
+   def __init__(self):
+     self.rotations = []
+     self.translations = []
+
+   def add(self, rotations, translations):
+     assert len(rotations) == len(translations)
+     new_rotations = []
+     new_translations = []
+     if(len(self.rotations) > 0):
+        for rn, tn, r, t in zip(rotations, translations, self.rotations,
+                                                            self.translations):
+            new_rotations.append(rn + r)
+            new_translations.append(tn + t)
+     else:
+        for rn, tn in zip(rotations, translations):
+            new_rotations.append(rn)
+            new_translations.append(tn)
+     self.rotations = new_rotations
+     self.translations = new_translations
+
+   def show(self, out = None):
+     if(out is None): out = sys.stdout
+     print >> out, "|-rigid body shift (total)------------------------------"\
+                   "----------------------|"
+     print >> out, "|                         rotation (deg.)             "\
+                  "   translation (A)      |"
+     i = 1
+     for r,t in zip(self.rotations, self.translations):
+         part1 = "| group"+str("%5d:  "%i)
+         part2 = str("%8.4f"%r[0])+" "+str("%8.4f"%r[1])+" "+str("%8.4f"%r[2])
+         part3 = "     "
+         part4 = str("%8.4f"%t[0])+" "+str("%8.4f"%t[1])+" "+str("%8.4f"%t[2])
+         n = 78 - len(part1 + part2 + part3 + part4)
+         part5 = " "*n+"|"
+         print >> out, part1 + part2 + part3 + part4 + part5
+         i += 1
+     print >> out, "|"+"-"*77+"|"
+     print >> out
+
+
 class rb_mat(object):
 
    def __init__(self, phi, psi, the):
@@ -154,16 +196,12 @@ class manager(object):
                          translation_vectors = translation_vectors,
                          selections          = selections)
             fmodel_copy.update_xray_structure(xray_structure = new_xrs,
-                                              update_f_calc  = True)
+                                              update_f_calc  = True,
+                                              update_f_mask  = True,
+                                              out            = log)
             rwork = minimized.fmodel.r_work()
             rfree = minimized.fmodel.r_free()
             assert approx_equal(rwork, fmodel_copy.r_work())
-            if(convergence_test):
-               rworks.append(rwork)
-               if(rworks.size() > 1):
-                  size = rworks.size() - 1
-                  if(abs(rworks[size]-rworks[size-1])<convergence_delta):
-                     break
             self.show(f     = fmodel_copy.f_obs_w(),
                       r_mat = self.total_rotation,
                       t_vec = self.total_translation,
@@ -174,6 +212,12 @@ class manager(object):
                       it    = minimized.counter,
                       ct    = convergence_test,
                       out   = log)
+            if(convergence_test):
+               rworks.append(rwork)
+               if(rworks.size() > 1):
+                  size = rworks.size() - 1
+                  if(abs(rworks[size]-rworks[size-1])<convergence_delta):
+                     break
     fmodel.update_xray_structure(xray_structure = fmodel_copy.xray_structure,
                                  update_f_calc  = True)
     self.fmodel = fmodel

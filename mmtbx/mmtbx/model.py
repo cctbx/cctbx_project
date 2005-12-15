@@ -11,6 +11,8 @@ from iotbx import pdb
 from cctbx import geometry_restraints
 from cctbx.geometry_restraints.lbfgs import lbfgs as cctbx_geometry_restraints_lbfgs
 import scitbx.lbfgs
+from libtbx.utils import Sorry
+
 
 
 class manager(object):
@@ -137,14 +139,16 @@ class manager(object):
     upper_line = "|-"+text+"-"*(fill_len)+"|"
     print >> out, upper_line
     next = "| Total number of atoms = %-6d  Number of rigid groups = %-3d                |"
-    print >> out, next % (self.xray_structure.scatterers().size(),
-                          len(self.rigid_body_selections))
+    natoms_total = self.xray_structure.scatterers().size()
+    print >> out, next % (natoms_total, len(self.rigid_body_selections))
     print >> out, "| group: start point:                        end point:                       |"
     print >> out, "|               x      B  atom   residue <>        x      B  atom   residue   |"
     next = "| %5d: %8.3f %6.2f %5s %4s %4d <> %8.3f %6.2f %5s %4s %4d   |"
     sites = self.xray_structure.sites_cart()
     b_isos = self.xray_structure.extract_u_iso_or_u_equiv() * math.pi**2*8
+    n_atoms = 0
     for i_seq, selection in enumerate(self.rigid_body_selections):
+        n_atoms += selection.count(True)
         i_selection = selection.iselection()
         start = i_selection[0]
         final = i_selection[i_selection.size()-1]
@@ -153,6 +157,16 @@ class manager(object):
         print >> out, next % (i_seq+1, sites[start][0], b_isos[start],
           first.name, first.resName, first.resSeq, sites[final][0],
           b_isos[final], last.name, last.resName, last.resSeq)
+    if(n_atoms != natoms_total):
+       print >> out, "|                                                                             |"
+       print >> out, "|                 *** Error in rigid groups definition ***                    |"
+       print >> out, "|                                                                             |"
+       print >> out, "| Total number of atoms in specified rigid groups does not equal to the total |"
+       print >> out, "| number of atoms in the model:                                               |"
+       print >> out, "| Atoms in model        = %-7d                                             |"%natoms_total
+       print >> out, "| Atoms in rigid groups = %-7d                                             |"%n_atoms
+       print >> out, "|"+"-"*77+"|"
+       raise Sorry("Error in rigid groups definition")
     print >> out, "|"+"-"*77+"|"
     print >> out
     out.flush()

@@ -256,29 +256,29 @@ def run_tests(sf_algorithm = "fft"):
   print "test 6: "
   test_6(fmodel = fmodel.deep_copy(), model  = model.deep_copy())
   ##############################################################################
-  ##rot_obj = mmtbx.refinement.rigid_body.rb_mat(phi = 0,
-  ##                                             psi = 0,
-  ##                                             the = 0)
-  ##fmodel_copy = fmodel.deep_copy()
-  ##fmodel_copy = fmodel_copy.resolution_filter(d_min=10.0, d_max= 9999.0)
-  ##print fmodel_copy.f_obs.data().size()
-  ##dim = fmodel_copy.xray_structure.scatterers().size()
-  ##tg_obj = mmtbx.refinement.rigid_body.target_and_grads(
-  ##                                         fmodel     = fmodel_copy,
-  ##                                         rot_objs   = [rot_obj],
-  ##                                         selections = [flex.bool(dim, True)])
-  ##f = tg_obj.target()
-  ##g1, g2 = tg_obj.gradients_wrt_r(), tg_obj.gradients_wrt_t()
-  ##print list(g2[0])
-  ##rg = [i/1000000. for i in range(1,10500)] #[i/100000. for i in range(1,1050)]
-  ##sum = 99999.999
-  ##for i in rg:
-  ##    qq = fd(fmodel_copy, e = i)
-  ##    tmp = flex.sum(flex.abs(flex.abs(g2[0]) - flex.abs(flex.double(qq))))
-  ##    if( tmp < sum ):
-  ##        sum = tmp
-  ##        print qq, i, sum
-  ##assert 0
+  #rot_obj = mmtbx.refinement.rigid_body.rb_mat(phi = 0.0,
+  #                                             psi = 0.0,
+  #                                             the = 0.0)
+  #dim = fmodel.xray_structure.scatterers().size()
+  #selections = [flex.bool(dim, True)]
+  #new_xray_structure = mmtbx.refinement.rigid_body.apply_transformation(
+  #                       xray_structure      = model.xray_structure,
+  #                       rotation_matrices   = [rot_obj.rot_mat()],
+  #                       translation_vectors = [(0.001,0.001,0.001)],
+  #                       selections          = selections)
+  #fmodel_copy = fmodel.deep_copy()
+  #fmodel_copy.update_xray_structure(xray_structure = new_xray_structure,
+  #                                  update_f_calc  = True)
+  #tg_obj = mmtbx.refinement.rigid_body.target_and_grads(
+  #                                         fmodel     = fmodel_copy,
+  #                                         alpha      = None,
+  #                                         beta       = None,
+  #                                         rot_objs   = [rot_obj],
+  #                                         selections = selections)
+  #g1, g2 = tg_obj.gradients_wrt_r(), tg_obj.gradients_wrt_t()
+  #qq = fd(fmodel_copy, e = 0.001)
+  #print list(g2[0]), qq, tg_obj.target(),fmodel_copy.target_w()
+  #assert 0
   ##############################################################################
 
 
