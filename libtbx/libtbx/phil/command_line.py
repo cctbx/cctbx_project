@@ -1,5 +1,5 @@
 import libtbx.phil
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, format_exception
 
 class argument_interpreter(object):
 
@@ -33,10 +33,10 @@ class argument_interpreter(object):
       params = libtbx.phil.parse(
         input_string=arg.replace(r"\n", "\n"),
         source_info=self.argument_description+"argument")
-    except RuntimeError, e:
+    except RuntimeError:
       raise Sorry((
         'Error interpreting %sargument as parameter definition:\n'
-        '  "%s"\n  %s') % (self.argument_description, arg, str(e)))
+        '  "%s"\n  %s') % (self.argument_description, arg, format_exception()))
     if (self.target_paths is None):
       self.target_paths = [object_locator.path
         for object_locator in self.master_params.all_definitions()]

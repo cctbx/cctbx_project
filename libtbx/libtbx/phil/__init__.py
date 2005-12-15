@@ -2,7 +2,7 @@ from __future__ import division
 from __future__ import generators
 from libtbx.phil import tokenizer
 from libtbx.str_utils import line_breaker
-from libtbx.utils import import_python_object
+from libtbx.utils import format_exception, import_python_object
 from libtbx.itertbx import count
 from cStringIO import StringIO
 import tokenize as python_tokenize
@@ -137,10 +137,11 @@ def number_from_words(words):
   value_string = str_from_words(words)
   if (value_string is None): return None
   try: return eval(value_string, math.__dict__, {})
-  except Exception, e:
+  except KeyboardInterrupt: raise
+  except:
     raise RuntimeError(
       'Error interpreting "%s" as a numeric expression: %s%s' % (
-        value_string, str(e), words[0].where_str()))
+        value_string, format_exception(), words[0].where_str()))
 
 def int_from_words(words):
   result = number_from_words(words)
@@ -291,48 +292,96 @@ default_converter_registry = dict([(str(converters()), converters)
      float_converters,
      choice_converters]])
 
+def extract_args(*args, **keyword_args):
+  return args, keyword_args
+
+def normalize_call_expression(expression):
+  result = []
+  p = ""
+  for info in python_tokenize.generate_tokens(StringIO(expression).readline):
+    t = info[1]
+    if (len(t) == 0): continue
+    if (    t != "."
+        and t[0] in standard_identifier_start_characters
+        and len(p) > 0
+        and p != "."
+        and p[-1] in standard_identifier_continuation_characters):
+      result.append(" ")
+    result.append(t)
+    if (t[0] == ","):
+      result.append(" ")
+    p = t
+  return "".join(result)
+
 def definition_converters_from_words(
       words,
       converter_registry,
       converter_cache):
   name = words[0].value
-  if (len(words) == 1):
-    if (name.lower() == "none" and words[0].quote_token is None):
-      return None
-    converters_weakref = converter_cache.get(name, None)
-    if (converters_weakref is not None):
-      converters_instance = converters_weakref()
-      if (converters_instance is not None):
-        return converters_instance
-    converters = converter_registry.get(name, None)
-    if (converters is not None):
-      try: converters_instance = converters()
-      except Exception, e:
-        raise RuntimeError(
-          'Error constructing definition type "%s": %s%s' % (
-            name, str(e), words[0].where_str()))
-      converter_cache[name] = weakref.ref(converters_instance)
-      return converters_instance
-  constructor = str_from_words(words)
-  converters_weakref = converter_cache.get(constructor, None)
+  if (len(words) == 1
+      and name.lower() == "none" and words[0].quote_token is None):
+    return None
+  call_expression_raw = str_from_words(words).strip()
+  try:
+    call_expression = normalize_call_expression(expression=call_expression_raw)
+  except python_tokenize.TokenError, e:
+    raise RuntimeError(
+      'Error evaluating definition type "%s": %s%s' % (
+        call_expression_raw, str(e), words[0].where_str()))
+  converters_weakref = converter_cache.get(call_expression, None)
   if (converters_weakref is not None):
     converters_instance = converters_weakref()
     if (converters_instance is not None):
       return converters_instance
-  flds = name.split("(", 1)
-  if (len(flds) == 2):
-    name = flds[0]
-    converters = converter_registry.get(name, None)
-  if (converters is None):
-    raise RuntimeError(
-      'Unexpected definition type: "%s"%s' % (name, words[0].where_str()))
-  try:
-    converters_instance = eval(constructor, math.__dict__, {name: converters})
-  except Exception, e:
-    raise RuntimeError(
-      'Error constructing definition type "%s": %s%s' % (
-        constructor, str(e), words[0].where_str()))
-  converter_cache[constructor] = weakref.ref(converters_instance)
+  flds = call_expression.split("(", 1)
+  converters = converter_registry.get(flds[0], None)
+  if (converters is not None):
+    if (len(flds) == 1): parens = "()"
+    else:                parens = ""
+    try:
+      converters_instance = eval(
+        call_expression+parens, math.__dict__, {flds[0]: converters})
+    except KeyboardInterrupt: raise
+    except:
+      raise RuntimeError(
+        'Error constructing definition type "%s": %s%s' % (
+        call_expression, format_exception(), words[0].where_str()))
+  else:
+    import_path = flds[0] + "_phil_converters"
+    if (len(flds) == 1):
+      keyword_args = {}
+    else:
+      extractor = "__extract_args__(" + flds[1]
+      try:
+        args, keyword_args = eval(
+          extractor, math.__dict__, {"__extract_args__": extract_args})
+      except KeyboardInterrupt: raise
+      except:
+        raise RuntimeError(
+          'Error evaluating definition type "%s": %s%s' % (
+          call_expression, format_exception(), words[0].where_str()))
+    try:
+      imported = import_python_object(
+        import_path=import_path,
+        error_prefix='.type=%s: ' % call_expression,
+        target_must_be="; target must be a callable Python object",
+        where_str=words[0].where_str())
+    except (ValueError, ImportError):
+      raise RuntimeError(
+        'Unexpected definition type: "%s"%s' % (
+          call_expression, words[0].where_str()))
+    if (not callable(imported.object)):
+      raise TypeError(
+        '"%s" is not a callable Python object%s' % (
+          import_path, words[0].where_str()))
+    try:
+      converters_instance = imported.object(**keyword_args)
+    except KeyboardInterrupt: raise
+    except:
+      raise RuntimeError(
+        'Error constructing definition type "%s": %s%s' % (
+        call_expression, format_exception(), words[0].where_str()))
+  converter_cache[call_expression] = weakref.ref(converters_instance)
   return converters_instance
 
 def full_path(self):
@@ -535,9 +584,9 @@ class definition: # FUTURE definition(object)
     if (self.type is None):
       return strings_from_words(words=self.words)
     try: type_from_words = self.type.from_words
-    except AttributeError, e:
+    except AttributeError:
       raise RuntimeError('.type=%s does not have a from_words method%s: %s' %
-        (str(self.type), self.where_str, str(e)))
+        (str(self.type), self.where_str, format_exception()))
     return type_from_words(self.words, master=self)
 
   def format(self, python_object):
@@ -545,9 +594,9 @@ class definition: # FUTURE definition(object)
       words = strings_as_words(python_object=python_object)
     else:
       try: type_as_words = self.type.as_words
-      except AttributeError, e:
+      except AttributeError:
         raise RuntimeError('.type=%s does not have an as_words method%s: %s' %
-          (str(self.type), self.where_str, str(e)))
+          (str(self.type), self.where_str, format_exception()))
       words = type_as_words(python_object=python_object, master=self)
     return self.customized_copy(words=words)
 
@@ -594,27 +643,6 @@ class definition: # FUTURE definition(object)
       new_words.extend(substitution_proxy.get_new_words())
     return self.customized_copy(words=new_words)
 
-def extract_args(*args, **keyword_args):
-  return args, keyword_args
-
-def normalize_scope_call_expression(expression):
-  result = []
-  p = ""
-  for info in python_tokenize.generate_tokens(StringIO(expression).readline):
-    t = info[1]
-    if (len(t) == 0): continue
-    if (    t != "."
-        and t[0] in standard_identifier_start_characters
-        and len(p) > 0
-        and p != "."
-        and p[-1] in standard_identifier_continuation_characters):
-      result.append(" ")
-    result.append(t)
-    if (t[0] == ","):
-      result.append(" ")
-    p = t
-  return "".join(result)
-
 class scope_extract_call_proxy_object:
 
   def __init__(self, where_str, expression, callable, keyword_args):
@@ -628,12 +656,12 @@ class scope_extract_call_proxy_object:
 
 def scope_extract_call_proxy(full_path, words, cache):
   name = words[0].value
-  if (name.lower() == "none" and words[0].quote_token is None):
+  if (len(words) == 1
+      and name.lower() == "none" and words[0].quote_token is None):
     return None
   call_expression_raw = str_from_words(words).strip()
   try:
-    call_expression = normalize_scope_call_expression(
-      expression=call_expression_raw)
+    call_expression = normalize_call_expression(expression=call_expression_raw)
   except python_tokenize.TokenError, e:
     raise RuntimeError('scope "%s" .call=%s: %s%s' % (
       full_path, call_expression_raw, str(e), words[0].where_str()))
@@ -649,9 +677,10 @@ def scope_extract_call_proxy(full_path, words, cache):
       try:
         args, keyword_args = eval(
           extractor, math.__dict__, {"__extract_args__": extract_args})
-      except SyntaxError, e:
+      except KeyboardInterrupt: raise
+      except:
         raise RuntimeError('scope "%s" .call=%s: %s%s' % (
-          full_path, call_expression, str(e), where_str))
+          full_path, call_expression, format_exception(), where_str))
     imported = import_python_object(
       import_path=import_path,
       error_prefix='scope "%s" .call: ' % full_path,
@@ -757,10 +786,10 @@ class scope_extract(object):
     effective_keyword_args.update(keyword_args)
     try:
       return call_proxy.callable(self, **effective_keyword_args)
-    except (SystemExit, KeyboardInterrupt): raise
-    except Exception, e:
+    except KeyboardInterrupt: raise
+    except:
       raise RuntimeError('scope "%s" .call=%s execution: %s%s' % (
-        self.__phil_path__(), call_proxy.expression, str(e),
+        self.__phil_path__(), call_proxy.expression, format_exception(),
         call_proxy.where_str))
 
 class scope: # FUTURE scope(object)
