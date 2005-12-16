@@ -436,11 +436,6 @@ class local_scaling_driver(object):
     self.use_weights=use_weights
     self.threshold=threshold
 
-
-    print "BEFORE ANYTHING"
-    self.r_value(out)
-
-
     # Moment based scaling
     if local_scaling_dict['local_moment']:
       self.local_moment_scaling(out)
@@ -476,17 +471,11 @@ class local_scaling_driver(object):
        sigmas = self.der_primset.sigmas()*scales
       ).set_observation_type( self.der_primset )
 
-    print "AFTER SOMETHING"
-    self.r_value(out)
-
-
     ## We now have to transform the thing back please
 
     self.derivative = self.der_primset.change_basis(
         self.native.change_of_basis_op_to_minimum_cell().inverse()
       ).set_observation_type( self.der_primset ).map_to_asu()
-
-
 
     del self.der_primset
     del self.nat_primset

@@ -235,6 +235,12 @@ def run(args):
     print >> log
     print >> log, "Checking for possible reindexing schemes"
     print >> log, "----------------------------------------"
+    print >> log
+    print >> log, "Reindexing operator derived as described in:"
+    print >> log, "Grosse-Kunstleve, Afonine, Sauter & Adams. (2005)."
+    print >> log, "  IUCr Computing Commission Newsletter 5."
+    print >> log
+
     reindex_object = pair_analyses.reindexing(
        set_a=miller_array_w1,
        set_b=miller_array_w2,
@@ -254,6 +260,15 @@ def run(args):
     miller_array_w1 = scaler.x1.deep_copy()
     miller_array_w2 = scaler.x2.deep_copy()
 
+    del scaler
+    
+    print >> log
+    print >> log, "Estimating f\" and f' ratios"
+    print >> log, "----------------------------"
+    print >> log
+    
+    
+    
     # now things are scaled see if we can guestimate the ratio
     fdpratio = pair_analyses.f_double_prime_ratio(
       miller_array_w1,
@@ -266,17 +281,19 @@ def run(args):
     k1 = fdpratio.ratio
     k2 = fpfdpratio.ratio
 
-    print >> log
-    print >> log, "  The estimate of f\"(w1)/f\"(w2) is %3.2f"\
-          %(fdpratio.ratio)
-    print >> log, "  The estimate of (f'(w1)-f'(w2))/f\"(w2) is %3.2f"\
-          %(fpfdpratio.ratio)
-    print >> log
-    print >> log, "  The quality of these estimates depends to a large "
-    print >> log, "  to the quality of the data. If user supplied values"
-    print >> log, "  of f\" and f' are given, they will be used instead "
-    print >> log, "  of the estimates."
-    print >> log
+    if k1 is not None:
+      print >> log
+      print >> log, "  The estimate of f\"(w1)/f\"(w2) is %3.2f"\
+            %(fdpratio.ratio)
+    if k2 is not None: 
+      print >> log, "  The estimate of (f'(w1)-f'(w2))/f\"(w2) is %3.2f"\
+            %(fpfdpratio.ratio)
+      print >> log
+      print >> log, "  The quality of these estimates depends to a large extend"
+      print >> log, "  on the quality of the data. If user supplied values"
+      print >> log, "  of f\" and f' are given, they will be used instead "
+      print >> log, "  of the estimates."
+      print >> log
 
     if params.scaling.input.xray_data.wavelength1.f_double_prime is not None:
       if params.scaling.input.xray_data.wavelength2.f_double_prime is not None:
@@ -298,18 +315,14 @@ def run(args):
                 %(k2)
           print >> log
 
-    tmp = pair_analyses.singh_ramasheshan_fa_estimate(
-      miller_array_w1,
-      miller_array_w2,
-      k1,
-      k2)
-
-    tmp2 = pair_analyses.mum_dad(
-      miller_array_w1,
-      miller_array_w2,
-      k1)
 
 
+    fa_gen = fa_estimation.twmad_fa_driver(miller_array_w1,
+                                           miller_array_w2, 
+                                           k1,
+                                           k2,
+                                           params.scaling.input.fa_estimation)
+    
     print >> log
     print >> log, "writing mtz file"
     print >> log, "----------------"
@@ -317,18 +330,14 @@ def run(args):
 
     ## Please write out the abs_delta_f array
 
-    fa =  tmp.fa.f_sq_as_f()
-    fa_dad = tmp2.dad
+    fa =  fa_gen.fa_values
 
     mtz_dataset = fa.as_mtz_dataset(
       column_root_label='F'+params.scaling.input.output.outlabel)
-    mtz_dataset.add_miller_array(
-    miller_array= fa_dad ,
-    column_root_label="FDAD"+params.scaling.input.output.outlabel )
-
+    
     mtz_dataset.mtz_object().write(
       file_name=params.scaling.input.output.hklout)
-
+    
 
 
 
