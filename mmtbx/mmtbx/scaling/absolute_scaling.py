@@ -453,6 +453,8 @@ class ml_iso_absolute_scaling(object):
           self.sigma_f_obs = work_array.sigmas()
         else:
           self.sigma_f_obs = flex.double(self.f_obs.size(),0.0)
+        if (flex.min( self.sigma_f_obs ) < 0):
+          self.sigma_f_obs = self.sigma_f_obs*0.0
         ## multiplicities and d_star_sq
         self.epsilon = work_array.epsilons().data().as_double()
         ## centric flags
@@ -571,6 +573,9 @@ class ml_aniso_absolute_scaling(object):
           self.sigma_f_obs = work_array.sigmas()
         else:
           self.sigma_f_obs = flex.double(self.f_obs.size(),0.0)
+        if (flex.min( self.sigma_f_obs ) < 0):
+          self.sigma_f_obs = self.sigma_f_obs*0.0
+
         ## multiplicities
         self.epsilon = work_array.epsilons().data().as_double()
         ## Determine Wilson parameters
@@ -685,7 +690,7 @@ class kernel_normalisation(object):
                miller_array,
                kernel_width=None,
                n_bins=200,
-               n_term=43,
+               n_term=23,
                d_star_sq_low=None,
                d_star_sq_high=None,
                auto_kernel=False):
@@ -704,7 +709,7 @@ class kernel_normalisation(object):
     if miller_array.is_xray_amplitude_array():
       work_array = miller_array.f_as_f_sq()
     if miller_array.is_xray_intensity_array():
-      work_array = miller_array
+      work_array = miller_array.deep_copy()
       work_array = work_array.set_observation_type(miller_array)
     ## If type is not intensity or amplitude
     ## raise an execption please
@@ -775,6 +780,8 @@ class kernel_normalisation(object):
     ## chebyshev polynome we have just obtained
 
     self.normalizer_for_miller_array =  self.normalizer.f(d_star_sq_hkl)
+
+    self.normalised_miller = None
 
     if work_array.sigmas() is not None:
       self.normalised_miller = work_array.customized_copy(
