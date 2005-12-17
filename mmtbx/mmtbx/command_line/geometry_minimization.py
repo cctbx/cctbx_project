@@ -115,7 +115,7 @@ def run(args, this_command="mmtbx.geometry_minimization"):
   ).process(args=args, min_nargs=1, max_nargs=2)
   input_pdb_file_name = None
   output_pdb_file_name = None
-  preprocessed_monomers = {}
+  cif_objects = []
   arg_is_processed = False
   for arg in command_line.args:
     if (not os.path.isfile(arg)):
@@ -140,17 +140,10 @@ def run(args, this_command="mmtbx.geometry_minimization"):
         input_pdb_file_name = arg
         arg_is_processed = True
       else:
-        try:
-          monomer = mmtbx.monomer_library.server.read_comp_cif(
-            file_name=arg)
+        try: cif_object = mmtbx.monomer_library.server.read_cif(file_name=arg)
         except KeyboardInterrupt: raise
         except: pass
-        else:
-          if (    getattr(monomer, "chem_comp", None) is not None
-              and getattr(monomer.chem_comp, "id", None) is not None):
-            preprocessed_monomers[monomer.chem_comp.id] = monomer
-            arg_is_processed = True
-          del monomer
+        else: cif_objects.append(cif_object)
     if (not arg_is_processed):
       raise Sorry(
         "Command line argument not recognized: %s" %
@@ -158,8 +151,9 @@ def run(args, this_command="mmtbx.geometry_minimization"):
   log = sys.stdout
   mon_lib_srv = monomer_library.server.server()
   ener_lib = monomer_library.server.ener_lib()
-  mon_lib_srv.register_preprocessed_comp_comp_ids(
-    preprocessed=preprocessed_monomers)
+  for cif_object in cif_objects:
+    mon_lib_srv.process_cif_object(cif_object=cif_object)
+  del cif_objects
   if (output_pdb_file_name is None):
     output_pdb_file_name = list(os.path.splitext(os.path.basename(
       input_pdb_file_name)))

@@ -13,6 +13,9 @@ def exercise():
     for node in os.listdir(sub_dir):
       if (not node.lower().endswith(".cif")): continue
       comp_id = node[:-4]
+      if (comp_id.endswith("_EL")): continue
+      if (comp_id in ["CON_CON", "PRN_PRN"]):
+        comp_id = comp_id[:3]
       if (comp_id.upper() != comp_id):
         print "Mixed case:", os.path.join(first_char, node)
       comp_comp_id = srv.get_comp_comp_id(comp_id=comp_id)
