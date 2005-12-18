@@ -172,8 +172,8 @@ class stage_1(object):
     self.cryst1_record = None
     self.crystal_symmetry = None
     self.scale_matrix = [[None]*9,[None]*3]
-    self.remark_3_records = []
     self.remark_2_records = []
+    self.remark_3_records = []
     self.remark_290_records = []
     self.remark_r_free_flags_md5_hexdigest = []
     self.break_indices = flex.size_t()
@@ -255,13 +255,13 @@ class stage_1(object):
           self.atom_attributes_list[-1].set_from_SIGUIJ_record(
             self.parse_record())
       elif (record_name == "CONECT"):
-        self.conect_records.append(state.raw_record)
+        self.conect_records.append(self.parse_record())
       elif (record_name == "LINK  "):
-        self.link_records.append(state.raw_record)
+        self.link_records.append(self.parse_record())
       elif (record_name == "SSBOND"):
-        self.ssbond_records.append(state.raw_record)
+        self.ssbond_records.append(self.parse_record())
       elif (record_name == "SLTBRG"):
-        self.sltbrg_records.append(state.raw_record)
+        self.sltbrg_records.append(self.parse_record())
     del self.state
     if (   None in self.scale_matrix[0]
         or None in self.scale_matrix[1]):
