@@ -76,6 +76,16 @@ class pdb_record(object):
       message = "Corrupt " + self.record_name + " record."
     raise FormatError("%s%s" % (self.error_prefix(), message))
 
+  def convert_number(self,
+        str,
+        target_type,
+        error_message=None,
+        substitute_value=0):
+    try: return target_type(str)
+    except ValueError:
+      if (self.strict): self.raise_FormatError(message=error_message)
+    return substitute_value
+
   def assert_is_interpreted(self):
     if (not (self.record_name.startswith("REMARK") or self.is_interpreted)):
       raise UnknownRecordName("%sRecord name %s not recognized." % (
@@ -105,20 +115,17 @@ class pdb_record(object):
     # 56 - 60  Integer        numTer        Number of TER records
     # 61 - 65  Integer        numConect     Number of CONECT records
     # 66 - 70  Integer        numSeq        Number of SEQRES records
-    try:
-      self.numRemark = int(self.raw[10:15])
-      self.numHet = int(self.raw[20:25])
-      self.numHelix = int(self.raw[25:30])
-      self.numSheet = int(self.raw[30:35])
-      self.numTurn = int(self.raw[35:40])
-      self.numSite = int(self.raw[40:45])
-      self.numXform = int(self.raw[45:50])
-      self.numCoord = int(self.raw[50:55])
-      self.numTer = int(self.raw[55:60])
-      self.numConect = int(self.raw[60:65])
-      self.numSeq = int(self.raw[65:70])
-    except:
-      self.raise_FormatError()
+    self.numRemark = self.convert_number(self.raw[10:15], int)
+    self.numHet = self.convert_number(self.raw[20:25], int)
+    self.numHelix = self.convert_number(self.raw[25:30], int)
+    self.numSheet = self.convert_number(self.raw[30:35], int)
+    self.numTurn = self.convert_number(self.raw[35:40], int)
+    self.numSite = self.convert_number(self.raw[40:45], int)
+    self.numXform = self.convert_number(self.raw[45:50], int)
+    self.numCoord = self.convert_number(self.raw[50:55], int)
+    self.numTer = self.convert_number(self.raw[55:60], int)
+    self.numConect = self.convert_number(self.raw[60:65], int)
+    self.numSeq = self.convert_number(self.raw[65:70], int)
 
   def read_EXPDTA(self):
     #  9 - 10  Continuation   continuation  Allows concatenation of
@@ -168,11 +175,12 @@ class pdb_record(object):
       self.ucparams = None
     else:
       try: self.ucparams = [float(u) for u in self.ucparams]
-      except: self.raise_FormatError("Corrupt unit cell parameters.")
+      except ValueError:
+        self.raise_FormatError("Corrupt unit cell parameters.")
     if (not self.sGroup): self.sGroup = None
     if (self.z.strip()):
       try: self.z = int(self.z)
-      except: self.raise_FormatError("Corrupt Z value.")
+      except ValueError: self.raise_FormatError("Corrupt Z value.")
     else: self.z = None
 
   def read_SCALEn(self):
@@ -211,15 +219,22 @@ class pdb_record(object):
     # 23 - 26  Integer       resSeq        Residue sequence number.
     # 27       AChar         iCode         Code for insertion of residues.
     try: self.serial = int(self.raw[6:11])
-    except: self.raise_FormatError("Atom serial number must be an integer.")
+    except ValueError:
+      if (self.strict):
+        self.raise_FormatError("Atom serial number must be an integer.")
+      else:
+        self.serial = 0
     self.name = self.raw[12:16]
     self.altLoc = self.raw[16]
     self.resName = self.raw[17:20]
     self.column_21 = self.raw[20]
     self.chainID = self.raw[21]
     try: self.resSeq = int(self.raw[22:26])
-    except:
-      self.raise_FormatError("Residue sequence number must be an integer.")
+    except ValueError:
+      if (self.strict):
+        self.raise_FormatError("Residue sequence number must be an integer.")
+      else:
+        self.resSeq = 0
     self.iCode = self.raw[26]
 
   def read_ATOM(self):
@@ -236,19 +251,19 @@ class pdb_record(object):
       self.coordinates = [float(x) for x in (self.raw[30:38],
                                              self.raw[38:46],
                                              self.raw[46:54])]
-    except:
+    except ValueError:
       self.raise_FormatError("Coordinates must be floating point numbers.")
     if (self.raw[54:60] == " "*6):
       self.occupancy = 1.
     else:
       try: self.occupancy = float(self.raw[54:60])
-      except: self.raise_FormatError(
+      except ValueError: self.raise_FormatError(
         "Occupancy must be a floating point number.")
     if (self.raw[60:66] == " "*6):
       self.tempFactor = 0.
     else:
       try: self.tempFactor = float(self.raw[60:66])
-      except: self.raise_FormatError(
+      except ValueError: self.raise_FormatError(
         "Temperature factor must be a floating point number.")
     self.read_ATOM_73_80()
 
@@ -285,7 +300,7 @@ class pdb_record(object):
                               self.raw[49:56],
                               self.raw[56:63],
                               self.raw[63:70])]
-    except:
+    except ValueError:
       self.raise_FormatError("u[i][j] must be integer numbers.")
     self.Ucart = [u / 10000. for u in uij]
     self.read_ATOM_73_80()
@@ -301,22 +316,12 @@ class pdb_record(object):
     # 22       Character       chainID    Chain identifier.
     # 23 - 26  Integer         resSeq     Residue sequence number.
     # 27       AChar           iCode      Insertion code.
-    try:
-      self.serial = int(self.raw[6:11])
-    except:
-      if (self.strict):
-        self.raise_FormatError("Serial number must be an integer.")
-      else:
-        self.serial = None
+    self.serial = self.convert_number(self.raw[6:11], int,
+      error_message="Serial number must be an integer.")
     self.resName = self.raw[17:20]
     self.chainID = self.raw[21]
-    try:
-      self.resSeq = int(self.raw[22:26])
-    except:
-      if (self.strict):
-        self.raise_FormatError("Residue sequence number must be an integer.")
-      else:
-        self.resSeq = None
+    self.resSeq = self.convert_number(self.raw[22:26], int,
+      error_message="Residue sequence number must be an integer.")
     self.iCode = self.raw[26]
 
   def read_MODEL(self):
@@ -325,8 +330,8 @@ class pdb_record(object):
       fld = self.raw[10:14]
     else:
       fld = self.raw[6:]
-    try: self.serial = int(fld)
-    except: self.raise_FormatError("Model serial number must be an integer.")
+    self.serial = self.convert_number(fld, int,
+      error_message="Model serial number must be an integer.")
 
   def read_ENDMDL(self):
     pass
@@ -343,8 +348,8 @@ class pdb_record(object):
     # 47 - 51  Integer   serial          Serial number of hydrogen bonded atom
     # 52 - 56  Integer   serial          Serial number of hydrogen bonded atom
     # 57 - 61  Integer   serial          Serial number of salt bridged atom
-    try: self.serial = int(self.raw[6:11])
-    except: self.raise_FormatError("Serial number must be an integer.")
+    self.serial = self.convert_number(self.raw[6:11], int,
+      "Serial number must be an integer.")
     sn = []
     for i in xrange(11,61,5):
       fld = self.raw[i:i+5]
@@ -352,8 +357,11 @@ class pdb_record(object):
         sn.append(None)
       else:
         try: sn.append(int(fld))
-        except: self.raise_FormatError(
-          "Serial number of bonded atom must be an integer.")
+        except ValueError:
+          if (self.strict):
+            self.raise_FormatError(
+              "Serial number of bonded atom must be an integer.")
+          sn.append(None)
     assert len(sn) == 10
     self.serial_numbers_bonded_atoms = sn[:4]
     self.serial_numbers_hydrogen_bonded_atoms = sn[4:6] + sn[7:9]
@@ -374,22 +382,24 @@ class pdb_record(object):
     # 57           AChar           iCode2      Insertion code.
     # 60 - 65      SymOP           sym1        Symmetry operator for 1st atom.
     # 67 - 72      SymOP           sym2        Symmetry operator for 2nd atom.
+    # 73 - 80      margin (REFMAC extension: _chem_link.id)
     self.name1 = self.raw[12:16]
     self.altLoc1 = self.raw[16]
     self.resName1 = self.raw[17:20]
     self.chainID1 = self.raw[21]
-    try: self.resSeq1 = int(self.raw[22:26])
-    except ValueError: self.raise_FormatError("Serial number be an integer.")
+    self.resSeq1 = self.convert_number(self.raw[22:26], int,
+      "Serial number be an integer.")
     self.iCode1 = self.raw[26]
     self.name2 = self.raw[42:46]
     self.altLoc2 = self.raw[46]
     self.resName2 = self.raw[47:50]
     self.chainID2 = self.raw[51]
-    try: self.resSeq2 = int(self.raw[52:56])
-    except ValueError: self.raise_FormatError("Serial number be an integer.")
+    self.resSeq2 = self.convert_number(self.raw[52:56], int,
+      "Serial number be an integer.")
     self.iCode2 = self.raw[56]
     self.sym1 = self.raw[59:65]
     self.sym2 = self.raw[66:72]
+    self.margin = self.raw[72:80]
 
   def read_SLTBRG(self):
     self.read_LINK()
@@ -406,20 +416,22 @@ class pdb_record(object):
     # 36         AChar           icode2      Insertion code.
     # 60 - 65    SymOP           sym1        Symmetry operator for 1st residue.
     # 67 - 72    SymOP           sym2        Symmetry operator for 2nd residue.
-    try: self.serNum = int(self.raw[7:10])
-    except ValueError: self.raise_FormatError("Serial number be an integer.")
+    # 73 - 80    margin (REFMAC extension: _chem_link.id)
+    self.serNum = self.convert_number(self.raw[7:10], int,
+      "Serial number be an integer.")
     self.resName1 = self.raw[11:14]
     self.chainID1 = self.raw[15]
-    try: self.resSeq1 = int(self.raw[17:21])
-    except ValueError: self.raise_FormatError("Serial number be an integer.")
+    self.resSeq1 = self.convert_number(self.raw[17:21], int,
+      "Serial number be an integer.")
     self.iCode1 = self.raw[21]
     self.resName2 = self.raw[25:28]
     self.chainID2 = self.raw[29]
-    try: self.resSeq2 = int(self.raw[31:35])
-    except ValueError: self.raise_FormatError("Serial number be an integer.")
+    self.resSeq2 = self.convert_number(self.raw[31:35], int,
+      "Serial number be an integer.")
     self.iCode2 = self.raw[35]
     self.sym1 = self.raw[59:65]
     self.sym2 = self.raw[66:72]
+    self.margin = self.raw[72:80]
 
 class columns_73_76_evaluator(object):
 

@@ -43,16 +43,22 @@ def exercise_parser():
   for i,raw_record in enumerate("""\
 LINK         O1  DDA     1                 C3  DDL     2
 LINK        MN    MN   391                 OE2 GLU   217            2565
+LINK         NZ  LYS A 680        1.260    C4A PLP D   1                LYS-PLP
 """.splitlines()):
     r = iotbx.pdb.parser.pdb_record(raw_record=raw_record)
-    _1 = [r.name1,r.altLoc1,r.resName1,r.chainID1,r.resSeq1,r.iCode1,r.sym1]
-    _2 = [r.name2,r.altLoc2,r.resName2,r.chainID2,r.resSeq2,r.iCode2,r.sym2]
+    _1 = [r.name1,r.altLoc1,r.resName1,r.chainID1,r.resSeq1,r.iCode1,r.sym1,
+          r.margin]
+    _2 = [r.name2,r.altLoc2,r.resName2,r.chainID2,r.resSeq2,r.iCode2,r.sym2,
+          r.margin]
     if (i == 0):
-      assert _1 == [' O1 ', ' ', 'DDA', ' ', 1, ' ', '      ']
-      assert _2 == [' C3 ', ' ', 'DDL', ' ', 2, ' ', '      ']
+      assert _1 == [' O1 ', ' ', 'DDA', ' ', 1, ' ', '      ', '        ']
+      assert _2 == [' C3 ', ' ', 'DDL', ' ', 2, ' ', '      ', '        ']
+    elif (i == 1):
+      assert _1 == ['MN  ', ' ', ' MN', ' ', 391, ' ', '      ', '        ']
+      assert _2 == [' OE2', ' ', 'GLU', ' ', 217, ' ', '  2565', '        ']
     else:
-      assert _1 == ['MN  ', ' ', ' MN', ' ', 391, ' ', '      ']
-      assert _2 == [' OE2', ' ', 'GLU', ' ', 217, ' ', '  2565']
+      assert _1 == [' NZ ', ' ', 'LYS', 'A', 680, ' ', '      ', 'LYS-PLP ']
+      assert _2 == [' C4A', ' ', 'PLP', 'D', 1, ' ', '      ', 'LYS-PLP ']
 
 def exercise_remark_290_interpretation():
   symmetry_operators=pdb.remark_290_interpretation.extract_symmetry_operators(
