@@ -278,7 +278,21 @@ def run(command_name, args):
 
     crystal_symmetry = None
     crystal_symmetry = crystal_symmetry_from_any.extract_from(
-      file_name=params.scaling.input.xray_data.file_name)
+        file_name=params.scaling.input.xray_data.file_name)
+    if crystal_symmetry is None:
+      print >> log, "Cell and symmetry not specified in reflection file"
+      if params.scaling.input.xray_data.space_group is None:
+        raise Sorry("""
+No space group info available.
+Use keyword 'space_group' to specify space group
+                    """ )
+
+      if params.scaling.input.xray_data.unit_cell is None:
+        raise Sorry("""
+No unit cell info available.
+Use keyword 'unit_cell' to specify unit_cell
+                    """ )
+
 
     if params.scaling.input.xray_data.space_group is None:
       params.scaling.input.xray_data.space_group \
