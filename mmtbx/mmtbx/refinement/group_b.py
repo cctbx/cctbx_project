@@ -40,7 +40,7 @@ class manager(object):
     print >> log
     rworks = flex.double()
     minimized = None
-    for macro_cycle in xrange(number_of_macro_cycles):
+    for macro_cycle in xrange(1,number_of_macro_cycles+1,1):
         if(minimized is not None):
            u = flex.double(minimized.u_min)
            un_sel = u <= 0.0
@@ -49,11 +49,12 @@ class manager(object):
            u.set_selected(un_sel, flex.mean(up))
            assert (u <= 0).count(True) == 0
            u_initial = list(u)
-        minimized = group_u_iso_minimizer(fmodel         = fmodel_copy,
-                                          selections     = selections,
-                                          u_initial      = u_initial,
-                                          max_number_of_iterations = max_number_of_iterations,
-                                          tan_b_iso_max  = tan_b_iso_max)
+        minimized = group_u_iso_minimizer(
+                           fmodel                   = fmodel_copy,
+                           selections               = selections,
+                           u_initial                = u_initial,
+                           max_number_of_iterations = max_number_of_iterations,
+                           tan_b_iso_max            = tan_b_iso_max)
         new_xrs = apply_transformation(
                               xray_structure = minimized.fmodel.xray_structure,
                               u              = u_initial,
