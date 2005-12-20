@@ -70,6 +70,18 @@ class structure(crystal.special_position_settings):
     u_iso_2 = other.scatterers().extract_u_iso()
     assert flex.mean(flex.abs(u_iso_1-u_iso_2)) < 1.e-6
 
+  def set_u_iso(self, value=None, values=None, allow_mixed=False):
+    assert [value, values].count(None) == 1
+    s = self._scatterers
+    if (not allow_mixed and s.count_anisotropic() > 0):
+      raise RuntimeError("set_u_iso: all scatterers must be isotropic.")
+    if (value is not None):
+      s.set_u_iso(flex.double(s.size(), value))
+    else:
+      assert values.size() == s.size()
+      s.set_u_iso(values)
+    return self
+
   def set_b_iso(self, value=None, values=None, allow_mixed=False):
     assert [value, values].count(None) == 1
     s = self._scatterers

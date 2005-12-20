@@ -215,6 +215,7 @@ class manager(object):
     step = min(0.8, step)
     if(update_f_ordered_solvent): step = 0.3
     if(update_f_calc):
+       assert self.xray_structure is not None
        self.f_calc = self.f_obs.structure_factors_from_scatterers(
          xray_structure = self.xray_structure,
          algorithm      = self.sf_algorithm,
