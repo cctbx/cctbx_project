@@ -128,7 +128,29 @@ def get_rows(cif_object, data_name, table_name):
   if (cif_data is None): return []
   return cif_data.get(table_name, [])
 
-class server(object):
+class process_cif_mixin(object):
+
+  def process_cif_object(self, cif_object, file_name=None):
+    try: self.convert_all(cif_object=cif_object)
+    except KeyboardInterrupt: raise
+    except:
+      if (file_name is None): file_name = "(file name not available)"
+      raise Sorry(
+        "Error processing CIF file:\n"
+        "  %s\n"
+        "  (%s)" % (show_string(file_name), format_exception()))
+
+  def process_cif(self, file_name):
+    try: cif_object = read_cif(file_name=file_name)
+    except KeyboardInterrupt: raise
+    except:
+      raise Sorry(
+        "Error reading CIF file:\n"
+        "  %s\n"
+        "  (%s)" % (show_string(file_name), format_exception()))
+    self.process_cif_object(cif_object=cif_object, file_name=file_name)
+
+class server(process_cif_mixin):
 
   def __init__(self, list_cif=None):
     if (list_cif is None):
@@ -305,54 +327,33 @@ class server(object):
       self.comp_comp_id_dict[base_code] = comp_comp_id
       self.comp_comp_id_dict["+"+base_code] = comp_comp_id
 
-  def process_cif_object(self, cif_object):
-    try:
-      self.convert_all(cif_object=cif_object)
-    except KeyboardInterrupt: raise
-    except:
-      raise Sorry(
-        "Error processing monomer definition file:\n"
-        "  %s\n"
-        "  (%s)" % (show_string(file_name), format_exception()))
-
-  def process_cif(self, file_name):
-    try: cif_object = read_cif(file_name=file_name)
-    except KeyboardInterrupt: raise
-    except:
-      raise Sorry(
-        "Error reading monomer definition file:\n"
-        "  %s\n"
-        "  (%s)" % (show_string(file_name), format_exception()))
-    self.process_cif_object(cif_object=cif_object)
-
-class ener_lib(object):
+class ener_lib(process_cif_mixin):
 
   def __init__(self, ener_lib_cif=None):
     if (ener_lib_cif is None):
       ener_lib_cif = mon_lib_ener_lib_cif()
-    self.convert_lib_synonym(ener_lib_cif)
-    self.convert_lib_atom(ener_lib_cif)
-    self.convert_lib_vdw(ener_lib_cif)
-
-  def convert_lib_synonym(self, ener_lib_cif):
     self.lib_synonym = {}
-    for row in ener_lib_cif.cif["energy"]["lib_synonym"]:
+    self.lib_atom = {}
+    self.lib_vdw = []
+    self.convert_all(cif_object=ener_lib_cif.cif)
+
+  def convert_all(self, cif_object):
+    self.convert_lib_synonym(cif_object=cif_object)
+    self.convert_lib_atom(cif_object=cif_object)
+    self.convert_lib_vdw(cif_object=cif_object)
+
+  def convert_lib_synonym(self, cif_object):
+    for row in get_rows(cif_object, "energy", "lib_synonym"):
       syn = cif_types.energy_lib_synonym(**row)
-      if (self.lib_synonym.get(syn.atom_alternative_type, None) is not None):
-        raise AssertionError(
-          "Corrupt lib_synonym %s %s in CCP4 monomer library file: %s" % (
-            syn.atom_type, syn.atom_alternative_type, ener_lib_cif.path))
       self.lib_synonym[syn.atom_alternative_type] = syn.atom_type
 
-  def convert_lib_atom(self, ener_lib_cif):
-    self.lib_atom = {}
-    for row in ener_lib_cif.cif["energy"]["lib_atom"]:
+  def convert_lib_atom(self, cif_object):
+    for row in get_rows(cif_object, "energy", "lib_atom"):
       entry = cif_types.energy_lib_atom(**row)
       self.lib_atom[entry.type] = entry
 
-  def convert_lib_vdw(self, ener_lib_cif):
-    self.lib_vdw = []
-    for row in ener_lib_cif.cif["energy"]["lib_vdw"]:
+  def convert_lib_vdw(self, cif_object):
+    for row in get_rows(cif_object, "energy", "lib_vdw"):
       vdw = cif_types.energy_lib_vdw(**row)
       self.lib_vdw.append(vdw)
 
