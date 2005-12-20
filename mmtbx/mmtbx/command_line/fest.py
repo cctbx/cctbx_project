@@ -1,4 +1,4 @@
-from mmtbx.scaling import fest 
+from mmtbx.scaling import fest
 import sys
 
 if (__name__ == "__main__"):

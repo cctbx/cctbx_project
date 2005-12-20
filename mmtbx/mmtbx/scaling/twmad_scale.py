@@ -261,14 +261,14 @@ def run(args):
     miller_array_w2 = scaler.x2.deep_copy()
 
     del scaler
-    
+
     print >> log
     print >> log, "Estimating f\" and f' ratios"
     print >> log, "----------------------------"
     print >> log
-    
-    
-    
+
+
+
     # now things are scaled see if we can guestimate the ratio
     fdpratio = pair_analyses.f_double_prime_ratio(
       miller_array_w1,
@@ -285,7 +285,7 @@ def run(args):
       print >> log
       print >> log, "  The estimate of f\"(w1)/f\"(w2) is %3.2f"\
             %(fdpratio.ratio)
-    if k2 is not None: 
+    if k2 is not None:
       print >> log, "  The estimate of (f'(w1)-f'(w2))/f\"(w2) is %3.2f"\
             %(fpfdpratio.ratio)
       print >> log
@@ -318,11 +318,11 @@ def run(args):
 
 
     fa_gen = fa_estimation.twmad_fa_driver(miller_array_w1,
-                                           miller_array_w2, 
+                                           miller_array_w2,
                                            k1,
                                            k2,
                                            params.scaling.input.fa_estimation)
-    
+
     print >> log
     print >> log, "writing mtz file"
     print >> log, "----------------"
@@ -334,10 +334,10 @@ def run(args):
 
     mtz_dataset = fa.as_mtz_dataset(
       column_root_label='F'+params.scaling.input.output.outlabel)
-    
+
     mtz_dataset.mtz_object().write(
       file_name=params.scaling.input.output.hklout)
-    
+
 
 
 
