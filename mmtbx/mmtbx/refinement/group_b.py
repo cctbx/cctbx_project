@@ -11,12 +11,13 @@ from cctbx import adptbx
 class manager(object):
   def __init__(self, fmodel,
                      tan_b_iso_max,
-                     selections        = None,
-                     u_initial         = None,
-                     max_iterations    = 20,
-                     convergence_test  = True,
-                     convergence_delta = 0.00001,
-                     log               = None):
+                     selections               = None,
+                     u_initial                = None,
+                     max_number_of_iterations = 50,
+                     number_of_macro_cycles   = 5,
+                     convergence_test         = True,
+                     convergence_delta        = 0.00001,
+                     log                      = None):
     if(log is None): log = sys.stdout
     if(selections is None):
        selections = []
@@ -39,7 +40,7 @@ class manager(object):
     print >> log
     rworks = flex.double()
     minimized = None
-    for macro_cycle in xrange(5):
+    for macro_cycle in xrange(number_of_macro_cycles):
         if(minimized is not None):
            u = flex.double(minimized.u_min)
            un_sel = u <= 0.0
@@ -51,7 +52,7 @@ class manager(object):
         minimized = group_u_iso_minimizer(fmodel         = fmodel_copy,
                                           selections     = selections,
                                           u_initial      = u_initial,
-                                          max_iterations = max_iterations,
+                                          max_number_of_iterations = max_number_of_iterations,
                                           tan_b_iso_max  = tan_b_iso_max)
         new_xrs = apply_transformation(
                               xray_structure = minimized.fmodel.xray_structure,
@@ -150,7 +151,7 @@ class group_u_iso_minimizer(object):
                fmodel,
                selections,
                u_initial,
-               max_iterations,
+               max_number_of_iterations,
                tan_b_iso_max):
     adopt_init_args(self, locals())
     # XXX ???
@@ -165,14 +166,12 @@ class group_u_iso_minimizer(object):
     assert len(self.selections) == len(self.u_initial)
     self.u_min = copy.deepcopy(self.u_initial)
     print self.u_min
-    for i in xrange(len(self.u_min)):
-        self.u_min[i] = self.u_min[i]
     self.x = self.pack(self.u_min)
     self.n = self.x.size()
     self.minimizer = lbfgs.run(
                target_evaluator = self,
                termination_params = lbfgs.termination_parameters(
-                    max_iterations = max_iterations),
+                    max_iterations = max_number_of_iterations),
                exception_handling_params = lbfgs.exception_handling_parameters(
                     ignore_line_search_failed_step_at_lower_bound = True)
                               )
@@ -193,10 +192,10 @@ class group_u_iso_minimizer(object):
                                    selections     = self.selections)
     self.fmodel_copy.update_xray_structure(xray_structure = new_xrs,
                                            update_f_calc  = True)
-    tg_obj = target_and_grads(fmodel     = self.fmodel_copy,
-                              alpha      = self.alpha,
-                              beta       = self.beta,
-                              selections = self.selections,
+    tg_obj = target_and_grads(fmodel        = self.fmodel_copy,
+                              alpha         = self.alpha,
+                              beta          = self.beta,
+                              selections    = self.selections,
                               tan_b_iso_max = self.tan_b_iso_max)
     self.f = tg_obj.target()
     self.g = self.pack( tg_obj.gradients_wrt_u() )
