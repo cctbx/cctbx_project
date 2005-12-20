@@ -46,19 +46,23 @@ LINK        MN    MN   391                 OE2 GLU   217            2565
 LINK         NZ  LYS A 680        1.260    C4A PLP D   1                LYS-PLP
 """.splitlines()):
     r = iotbx.pdb.parser.pdb_record(raw_record=raw_record)
-    _1 = [r.name1,r.altLoc1,r.resName1,r.chainID1,r.resSeq1,r.iCode1,r.sym1,
-          r.margin]
-    _2 = [r.name2,r.altLoc2,r.resName2,r.chainID2,r.resSeq2,r.iCode2,r.sym2,
-          r.margin]
+    _1 = [r.name1,r.altLoc1,r.resName1,r.chainID1,r.resSeq1,r.iCode1,r.sym1]
+    _2 = [r.name2,r.altLoc2,r.resName2,r.chainID2,r.resSeq2,r.iCode2,r.sym2]
     if (i == 0):
-      assert _1 == [' O1 ', ' ', 'DDA', ' ', 1, ' ', '      ', '        ']
-      assert _2 == [' C3 ', ' ', 'DDL', ' ', 2, ' ', '      ', '        ']
+      assert _1 == [' O1 ', ' ', 'DDA', ' ', 1, ' ', '      ']
+      assert _2 == [' C3 ', ' ', 'DDL', ' ', 2, ' ', '      ']
+      assert r.distance is None
+      assert r.margin == '        '
     elif (i == 1):
-      assert _1 == ['MN  ', ' ', ' MN', ' ', 391, ' ', '      ', '        ']
-      assert _2 == [' OE2', ' ', 'GLU', ' ', 217, ' ', '  2565', '        ']
+      assert _1 == ['MN  ', ' ', ' MN', ' ', 391, ' ', '      ']
+      assert _2 == [' OE2', ' ', 'GLU', ' ', 217, ' ', '  2565']
+      assert r.distance is None
+      assert r.margin == '        '
     else:
-      assert _1 == [' NZ ', ' ', 'LYS', 'A', 680, ' ', '      ', 'LYS-PLP ']
-      assert _2 == [' C4A', ' ', 'PLP', 'D', 1, ' ', '      ', 'LYS-PLP ']
+      assert _1 == [' NZ ', ' ', 'LYS', 'A', 680, ' ', '      ']
+      assert _2 == [' C4A', ' ', 'PLP', 'D', 1, ' ', '      ']
+      assert r.distance == float(1.260)
+      assert r.margin == 'LYS-PLP '
 
 def exercise_remark_290_interpretation():
   symmetry_operators=pdb.remark_290_interpretation.extract_symmetry_operators(
@@ -457,6 +461,21 @@ END
   except RuntimeError, e:
     assert str(e) == "Missing argument for resSeq."
   else: raise RuntimeError("Exception expected.")
+  #
+  link_records = [
+    iotbx.pdb.parser.pdb_record(raw_record=raw_record)
+      for raw_record in """\
+LINK         S   SO4 S 188                 O1  SO4 S 188
+LINK         S   SO4 S 188                 O2  SO4 S 188
+LINK         NZ  LYS A 680        1.260    C4A PLP D   1                LYS-PLP
+""".splitlines()]
+  expected_results = [
+    [[64], [65]],
+    [[64], [66]],
+    [[], []]]
+  for link_record,expected in zip(link_records, expected_results):
+    assert [list(sel) for sel in sel_cache.link_iselections(link_record)] \
+        == expected
 
 def exercise_xray_structure(anisotropic_flag, verbose=0):
   structure = random_structure.xray_structure(
