@@ -374,6 +374,7 @@ class pdb_record(object):
     # 22           Character       chainID1    Chain identifier.
     # 23 - 26      Integer         resSeq1     Residue sequence number.
     # 27           AChar           iCode1      Insertion code.
+    # 31 - 40      distance (REFMAC extension: F10.5)
     # 43 - 46      Atom            name2       Atom name.
     # 47           Character       altLoc2     Alternate location indicator.
     # 48 - 50      Residue name    resName2    Residue name.
@@ -390,6 +391,8 @@ class pdb_record(object):
     self.resSeq1 = self.convert_number(self.raw[22:26], int,
       "Serial number be an integer.")
     self.iCode1 = self.raw[26]
+    try: self.distance = float(self.raw[30:40])
+    except ValueError: self.distance = None
     self.name2 = self.raw[42:46]
     self.altLoc2 = self.raw[46]
     self.resName2 = self.raw[47:50]

@@ -553,3 +553,20 @@ class selection_cache(object):
         isel = attr.get(arg, None)
         if (isel is not None): result.append(isel)
     return result
+
+  def link_iselections(self, link_record):
+    sel_null = stl.vector.unsigned()
+    fs = flex.size_t
+    return [
+                    fs(self.name.get(link_record.name1, sel_null))
+      .intersection(fs(self.altLoc.get(link_record.altLoc1, sel_null)))
+      .intersection(fs(self.resName.get(link_record.resName1, sel_null)))
+      .intersection(fs(self.chainID.get(link_record.chainID1, sel_null)))
+      .intersection(fs(self.resSeq.get(link_record.resSeq1, sel_null)))
+      .intersection(fs(self.iCode.get(link_record.iCode1, sel_null))),
+                    fs(self.name.get(link_record.name2, sel_null))
+      .intersection(fs(self.altLoc.get(link_record.altLoc2, sel_null)))
+      .intersection(fs(self.resName.get(link_record.resName2, sel_null)))
+      .intersection(fs(self.chainID.get(link_record.chainID2, sel_null)))
+      .intersection(fs(self.resSeq.get(link_record.resSeq2, sel_null)))
+      .intersection(fs(self.iCode.get(link_record.iCode2, sel_null)))]
