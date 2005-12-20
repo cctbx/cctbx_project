@@ -164,7 +164,8 @@ class manager(object):
                                    nref_min = nref_min)
     else:
        d_mins = [fmodel_copy.f_obs_w().d_min()]
-    print >> log, "High resolution cutoffs for grid search: ", d_mins
+    print >> log, "High resolution cutoffs for grid search: ", \
+                  [float("%10.3f"%i) for i in d_mins]
     for res in d_mins:
         print >> log
         xrs = fmodel_copy.xray_structure.deep_copy_scatterers()
