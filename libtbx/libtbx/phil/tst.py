@@ -257,6 +257,15 @@ class int_phil_converters(object):
       return [phil.tokenizer.word(value="None")]
     return [phil.tokenizer.word(value=str(python_object/self.factor))]
 
+class converter_implementation(int_phil_converters):
+
+  def __str__(self):
+    if (self.factor == 1): return "libtbx.phil.tst.converter_factory"
+    return "libtbx.phil.tst.converter_factory(factor=%d)" % self.factor
+
+def converter_factory_phil_converters(**args):
+  return converter_implementation(**args)
+
 def exercise_import_converters():
   input_string = """\
 x1=None
@@ -267,6 +276,8 @@ x2=None
   .type=libtbx.phil.tst.int(factor=2)
 y2=3
   .type=libtbx.phil.tst.int( factor = 2 )
+z3=4
+  .type=libtbx.phil.tst.converter_factory( factor= 3 )
 """
   r = recycle(input_string=input_string, expected_out="""\
 x1 = None
@@ -277,6 +288,8 @@ x2 = None
   .type = libtbx.phil.tst.int(factor=2)
 y2 = 3
   .type = libtbx.phil.tst.int(factor=2)
+z3 = 4
+  .type = libtbx.phil.tst.converter_factory(factor=3)
 """,
     attributes_level=2)
   params = r.parameters.extract()
@@ -284,6 +297,7 @@ y2 = 3
   assert params.y1 == 3
   assert params.x2 is None
   assert params.y2 == 6
+  assert params.z3 == 12
   #
   try: phil.parse("""\
 x=None
