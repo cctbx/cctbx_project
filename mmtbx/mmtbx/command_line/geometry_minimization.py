@@ -143,7 +143,10 @@ def run(args, this_command="mmtbx.geometry_minimization"):
         try: cif_object = mmtbx.monomer_library.server.read_cif(file_name=arg)
         except KeyboardInterrupt: raise
         except: pass
-        else: cif_objects.append(cif_object)
+        else:
+          if (len(cif_object) > 0):
+            cif_objects.append((arg,cif_object))
+            arg_is_processed = True
     if (not arg_is_processed):
       raise Sorry(
         "Command line argument not recognized: %s" %
@@ -151,8 +154,9 @@ def run(args, this_command="mmtbx.geometry_minimization"):
   log = sys.stdout
   mon_lib_srv = monomer_library.server.server()
   ener_lib = monomer_library.server.ener_lib()
-  for cif_object in cif_objects:
-    mon_lib_srv.process_cif_object(cif_object=cif_object)
+  for file_name,cif_object in cif_objects:
+    mon_lib_srv.process_cif_object(cif_object=cif_object, file_name=file_name)
+    ener_lib.process_cif_object(cif_object=cif_object, file_name=file_name)
   del cif_objects
   if (output_pdb_file_name is None):
     output_pdb_file_name = list(os.path.splitext(os.path.basename(
