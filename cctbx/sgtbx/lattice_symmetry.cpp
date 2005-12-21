@@ -93,32 +93,20 @@ namespace cctbx { namespace sgtbx { namespace lattice_symmetry {
     CCTBX_ASSERT(group.f_inv() == 1);
     uc_mat3 const& frac = niggli_cell.fractionalization_matrix();
     uc_mat3 const& orth = niggli_cell.orthogonalization_matrix();
-    double result = 0;
+    double min_cos_delta = 1;
     for(int i_smx=1;i_smx<group.n_smx();i_smx++) {
-      rot_mx_info r_info = group.smx()[i_smx].r().info();
+      rot_mx const& r = group.smx()[i_smx].r();
+      rot_mx_info r_info = r.info();
       if (r_info.type() != 2) continue;
-      int u = r_info.ev()[0];
-      int v = r_info.ev()[1];
-      int w = r_info.ev()[2];
       uc_vec3 t = orth * r_info.ev();
-      double min_delta = -1;
-      for(int h=0;h<=modulus;h++)
-      for(int k=-modulus;k<=modulus;k++)
-      for(int l=-modulus;l<=modulus;l++) {
-        int abs_uh = scitbx::fn::absolute(u*h+v*k+w*l);
-        if (abs_uh == 1 || abs_uh == 2) {
-          uc_vec3 tau = uc_vec3(h,k,l) * frac;
-          double delta = scitbx::fn::absolute(
-            std::atan2(t.cross(tau).length(), abs_uh));
-          if (min_delta == -1 || min_delta > delta) {
-            min_delta = delta;
-          }
-        }
-      }
-      CCTBX_ASSERT(min_delta != -1);
-      scitbx::math::update_max(result, min_delta);
+      uc_vec3 tau = r.transpose().info().ev() * frac;
+      double numerator = scitbx::fn::absolute(t * tau);
+      double denominator = std::sqrt(t.length_sq() * tau.length_sq());
+      CCTBX_ASSERT(denominator != 0);
+      double cos_delta = numerator / denominator;
+      scitbx::math::update_min(min_cos_delta, cos_delta);
     }
-    return result/scitbx::constants::pi_180;
+    return std::acos(min_cos_delta)/scitbx::constants::pi_180;
   }
 
 }}} // namespace cctbx::sgtbx::lattice_symmetry
