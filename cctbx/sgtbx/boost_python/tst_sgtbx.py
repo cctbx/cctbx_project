@@ -1530,6 +1530,11 @@ def exercise_lattice_symmetry_options():
     group_info = sgtbx.space_group_info(group=group)
     subgrs = subgroups.subgroups(group_info).groups_parent_setting()
     assert len(subgrs) == n_subgrps
+    group_fast = sgtbx.lattice_symmetry_group_search_fast(
+      niggli_cell=niggli_cell,
+      max_delta=max_delta,
+      enforce_max_delta_for_generated_two_folds=enforce)
+    assert group_fast == group
 
 def exercise_find_affine():
   for sym,n in [("P 1",67704),("P 2",104),("C 2y",36),("B 2x",36),("A 2z",36)]:

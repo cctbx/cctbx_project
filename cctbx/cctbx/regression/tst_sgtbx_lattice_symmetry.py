@@ -2,8 +2,13 @@ from cctbx import crystal
 from cctbx import sgtbx
 from cctbx.sgtbx import subgroups
 from cctbx.sgtbx import lattice_symmetry
+from cctbx.sgtbx import bravais_types
+from cctbx.array_family import flex
+from libtbx.utils import format_cpu_times
+from cStringIO import StringIO
+import sys
 
-def run():
+def exercise_quick():
   assert lattice_symmetry.group.n_potential_axes() == 2391
   for space_group_symbol in ("P-1",
                              "P2/m",
@@ -55,7 +60,56 @@ def run():
       minimum_symmetry.unit_cell(), max_delta=max_delta)
     lattice_group_info = sgtbx.space_group_info(group=lattice_group)
     assert str(lattice_group_info) == "P 4 2 2"
-  print "OK"
+
+def exercise_comprehensive(args):
+  if ("--verbose" in args):
+    out = sys.stdout
+  else:
+    out = StringIO()
+  if ("--paranoid" in args):
+    cb_range = 2
+  else:
+    cb_range = 1
+  for symbol in bravais_types.acentric:
+    print "bravais type:", symbol
+    sym = sgtbx.space_group_info(symbol=symbol) \
+      .any_compatible_crystal_symmetry(volume=1000) \
+      .niggli_cell()
+    abc = list(sym.unit_cell().parameters()[:3])
+    abc.sort()
+    for cb_elements in flex.nested_loop([-cb_range]*9,[cb_range+1]*9):
+      r = sgtbx.rot_mx(cb_elements)
+      if (r.determinant() != 1): continue
+      cb_op = sgtbx.change_of_basis_op(sgtbx.rt_mx(r))
+      sym_cb = sym.change_basis(cb_op)
+      abc_cb = list(sym_cb.unit_cell().parameters()[:3])
+      abc_cb.sort()
+      for x,y in zip(abc, abc_cb):
+        assert y-x > -1.e-6
+        if (y-x > 1.e-4): break
+      else:
+        print >> out, "cb_ob:", cb_op.c(), cb_elements
+        assert min(cb_elements) >= -1
+        assert max(cb_elements) <= 1
+        for s in sym_cb.space_group():
+          assert s.r().den() == 1
+          r_num = s.r().num()
+          print >> out, "r:", r_num
+          assert min(r_num) >= -1
+          assert max(r_num) <= 1
+        for enforce in [False, True]:
+          lattice_group = sgtbx.lattice_symmetry.group(
+            minimum_cell=sym_cb.unit_cell(),
+            max_delta=1.4,
+            enforce_max_delta_for_generated_two_folds=enforce)
+        assert lattice_group == sym_cb.space_group()
+        sys.stdout.flush()
+    print >> out
+
+def run(args):
+  exercise_quick()
+  exercise_comprehensive(args)
+  print format_cpu_times()
 
 if (__name__ == "__main__"):
-  run()
+  run(sys.argv[1:])
