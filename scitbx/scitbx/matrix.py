@@ -208,6 +208,21 @@ class rec(object):
     if (d == 0): return value_if_undefined
     return self.dot(other) / math.sqrt(d)
 
+  def angle(self, other, value_if_undefined=None, deg=False):
+    cos_angle = self.cos_angle(other=other)
+    if (cos_angle is None): return value_if_undefined
+    result = math.acos(max(-1,min(1,cos_angle)))
+    if (deg): result *= 180/math.pi
+    return result
+
+  def accute_angle(self, other, value_if_undefined=None, deg=False):
+    cos_angle = self.cos_angle(other=other)
+    if (cos_angle is None): return value_if_undefined
+    if (cos_angle < 0): cos_angle *= -1
+    result = math.acos(min(1,cos_angle))
+    if (deg): result *= 180/math.pi
+    return result
+
   def is_square(self):
     return self.n[0] == self.n[1]
 
@@ -339,14 +354,13 @@ class diag(rec):
 
 class sym(rec):
 
-  def __init__(self, elems):
-    l = len(elems)
-    n = int((-1 + (1+8*l)**(.5))/2. + 0.5)
-    assert 2 * l == (n**2 + n), "Wrong number of unique elements."
-    assert n == 3, "Not implemented."
-    rec.__init__(self, (elems[0], elems[3], elems[4],
-                        elems[3], elems[1], elems[5],
-                        elems[4], elems[5], elems[2]), (n,n))
+  def __init__(self, elems=None, sym_mat3=None):
+    assert elems is None, "Not implemented."
+    assert len(sym_mat3) == 6
+    m = sym_mat3
+    rec.__init__(self, (m[0], m[3], m[4],
+                        m[3], m[1], m[5],
+                        m[4], m[5], m[2]), (3,3))
 
 class rt(object):
 
@@ -512,6 +526,11 @@ if (__name__ == "__main__"):
   assert diag((1,2,3)).mathematica_form() == \
     "{{1, 0, 0}, {0, 2, 0}, {0, 0, 3}}"
   assert approx_equal(col((1,0,0)).cos_angle(col((1,1,0)))**2, 0.5)
+  assert approx_equal(col((1,0,0)).angle(col((1,1,0))), 0.785398163397)
+  assert approx_equal(col((1,0,0)).angle(col((1,1,0)), deg=True), 45)
+  assert approx_equal(col((-1,0,0)).angle(col((1,1,0)), deg=True), 45+90)
+  assert approx_equal(col((1,0,0)).accute_angle(col((1,1,0)), deg=True), 45)
+  assert approx_equal(col((-1,0,0)).accute_angle(col((1,1,0)), deg=True), 45)
   #
   r = sqr([-0.9533, 0.2413, -0.1815,
            0.2702, 0.414, -0.8692,
@@ -544,4 +563,9 @@ if (__name__ == "__main__"):
   b = row([10,20])
   assert a.outer_product(b).as_list_of_lists() == [[10,20],[20,40],[30,60]]
   assert a.outer_product().as_list_of_lists() == [[1,2,3],[2,4,6],[3,6,9]]
+  #
+  a = sym(sym_mat3=range(6))
+  assert a.as_list_of_lists() == [[0, 3, 4], [3, 1, 5], [4, 5, 2]]
+  assert approx_equal(a.as_sym_mat3(), range(6))
+  #
   print "OK"
