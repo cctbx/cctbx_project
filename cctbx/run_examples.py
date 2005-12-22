@@ -28,6 +28,9 @@ def run():
   "$D/cctbx/examples/steve_collins.py",
   "$D/cctbx/examples/cr2o3_primitive_cell.py",
   "$D/cctbx/examples/cr2o3_consistency_checks.py",
+  "$D/cctbx/examples/reduced_cell_two_folds.py",
+  "$D/cctbx/examples/lebedev_2005_perturbation.py",
+  "$D/cctbx/examples/le_page_1982_vs_lebedev_2005.py",
   )
 
   build_dir = libtbx.env.under_build("cctbx")
