@@ -19,7 +19,8 @@ def check_eigenvalue(adp, x):
 
 def check_eigenvector(adp, x, v):
   v = matrix.col(v)
-  assert approx_equal((matrix.sym(adp) * v * (1./x)).elems, v.elems, 1.e-4)
+  assert approx_equal(
+    (matrix.sym(sym_mat3=adp) * v * (1./x)).elems, v.elems, 1.e-4)
 
 def exercise_interface():
   episq = 8*(math.pi**2)
@@ -222,12 +223,12 @@ def exercise_eigen_core(diag):
     sqrt_eval = matrix.diag(flex.sqrt(flex.double(es.values())))
     evec = matrix.sqr(evec).transpose()
     sqrt_u = evec * sqrt_eval * evec.transpose()
-    u_full = matrix.sym(u).elems
+    u_full = matrix.sym(sym_mat3=u).elems
     assert approx_equal(u_full, (sqrt_u.transpose()*sqrt_u).elems, eps=1.e-3)
     assert approx_equal(u_full, (sqrt_u*sqrt_u.transpose()).elems, eps=1.e-3)
     assert approx_equal(u_full, (sqrt_u*sqrt_u).elems, eps=1.e-3)
     sqrt_u_plus_shifts = matrix.sym(
-      [x + 10*(random.random()-.5) for x in sqrt_u.as_sym_mat3()])
+      sym_mat3=[x + 10*(random.random()-.5) for x in sqrt_u.as_sym_mat3()])
     sts = (sqrt_u_plus_shifts.transpose()*sqrt_u_plus_shifts).as_sym_mat3()
     ev = adptbx.eigenvalues(sts)
     assert min(ev) >= 0

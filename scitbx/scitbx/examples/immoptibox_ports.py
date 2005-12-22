@@ -1002,7 +1002,7 @@ def exercise_cholesky():
     -2.121320344,    2.121320343,         0,
          0.,        -0.9428090418,   2.666666667])
   #
-  a0 = matrix.sym([3,5,7,1,2,-1])
+  a0 = matrix.sym(sym_mat3=[3,5,7,1,2,-1])
   for i_trial in xrange(100):
     r = scitbx.math.euler_angles_as_matrix(
       mt.random_double(size=3,factor=360), deg=True)

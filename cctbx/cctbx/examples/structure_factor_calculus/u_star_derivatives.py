@@ -20,8 +20,9 @@ class debye_waller:
   def f(self):
     result = 0
     for op in self.ops:
-      op_u = (op*matrix.sym(self.u)*op.transpose()).as_sym_mat3()
-      huh = (matrix.row(self.hkl) * matrix.sym(op_u)).dot(matrix.col(self.hkl))
+      op_u = (op*matrix.sym(sym_mat3=self.u)*op.transpose()).as_sym_mat3()
+      huh = (matrix.row(self.hkl) \
+          * matrix.sym(sym_mat3=op_u)).dot(matrix.col(self.hkl))
       result += math.exp(mtps * huh)
     return result
 
@@ -30,8 +31,9 @@ class debye_waller:
     h,k,l = self.hkl
     d_exp_huh_d_u = matrix.col([h**2, k**2, l**2, 2*h*k, 2*h*l, 2*k*l])
     for op in self.ops:
-      op_u = (op*matrix.sym(self.u)*op.transpose()).as_sym_mat3()
-      huh = (matrix.row(self.hkl) * matrix.sym(op_u)).dot(matrix.col(self.hkl))
+      op_u = (op*matrix.sym(sym_mat3=self.u)*op.transpose()).as_sym_mat3()
+      huh = (matrix.row(self.hkl) \
+          * matrix.sym(sym_mat3=op_u)).dot(matrix.col(self.hkl))
       d_op_u = math.exp(mtps * huh) * mtps * d_exp_huh_d_u
       gtmx = tensor_rank_2_gradient_transform_matrix(op)
       d_u = gtmx.matrix_multiply(flex.double(d_op_u))
@@ -44,8 +46,9 @@ class debye_waller:
     d_exp_huh_d_u = flex.double([h**2, k**2, l**2, 2*h*k, 2*h*l, 2*k*l])
     d2_exp_huh_d_uu = d_exp_huh_d_u.matrix_outer_product(d_exp_huh_d_u)
     for op in self.ops:
-      op_u = (op*matrix.sym(self.u)*op.transpose()).as_sym_mat3()
-      huh = (matrix.row(self.hkl) * matrix.sym(op_u)).dot(matrix.col(self.hkl))
+      op_u = (op*matrix.sym(sym_mat3=self.u)*op.transpose()).as_sym_mat3()
+      huh = (matrix.row(self.hkl) \
+          * matrix.sym(sym_mat3=op_u)).dot(matrix.col(self.hkl))
       d2_op_u = math.exp(mtps * huh) * mtps**2 * d2_exp_huh_d_uu
       gtmx = tensor_rank_2_gradient_transform_matrix(op)
       d2_u = gtmx.matrix_multiply(d2_op_u).matrix_multiply(

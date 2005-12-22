@@ -78,7 +78,7 @@ class structure_factor:
         alpha = matrix.col(s_site).dot(tphkl)
         if (scatterer.anisotropic_flag):
           r = s.r().as_rational().as_float()
-          s_u_star_s = r * matrix.sym(scatterer.u_star) * r.transpose()
+          s_u_star_s = r*matrix.sym(sym_mat3=scatterer.u_star)*r.transpose()
           huh = (matrix.row(self.hkl) * s_u_star_s).dot(matrix.col(self.hkl))
           dw = math.exp(mtps * huh)
         e = cmath.exp(1j*alpha)
@@ -123,7 +123,7 @@ class structure_factor:
         s_site = s * scatterer.site
         alpha = matrix.col(s_site).dot(tphkl)
         if (scatterer.anisotropic_flag):
-          s_u_star_s = r * matrix.sym(scatterer.u_star) * r.transpose()
+          s_u_star_s = r*matrix.sym(sym_mat3=scatterer.u_star)*r.transpose()
           huh = (matrix.row(self.hkl) * s_u_star_s).dot(matrix.col(self.hkl))
           dw = math.exp(mtps * huh)
         e = cmath.exp(1j*alpha)
@@ -209,7 +209,7 @@ class structure_factor:
         s_site = s * scatterer.site
         alpha = tphkl.dot(flex.double(s_site))
         if (scatterer.anisotropic_flag):
-          s_u_star_s = r * matrix.sym(scatterer.u_star) * r.transpose()
+          s_u_star_s = r*matrix.sym(sym_mat3=scatterer.u_star)*r.transpose()
           huh = (matrix.row(self.hkl) * s_u_star_s).dot(matrix.col(self.hkl))
           dw = math.exp(mtps * huh)
         e = cmath.exp(1j*alpha)
