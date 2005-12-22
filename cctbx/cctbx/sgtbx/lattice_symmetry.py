@@ -12,8 +12,15 @@ class group_search(object):
         minimum_cell,
         max_delta=3.,
         enforce_max_delta_for_generated_two_folds=True):
-    return self.ext(
+    result = self.ext(
       minimum_cell, max_delta, enforce_max_delta_for_generated_two_folds)
+    fast = sgtbx.lattice_symmetry_group_search_fast(
+      niggli_cell=minimum_cell,
+      max_delta=max_delta,
+      enforce_max_delta_for_generated_two_folds
+        =enforce_max_delta_for_generated_two_folds)
+    assert fast == result
+    return fast
 
 group = group_search()
 
