@@ -13,7 +13,6 @@
 #include <cctbx/hendrickson_lattman.h>
 #include <cctbx/maptbx/accessors/c_grid_p1.h>
 #include <cctbx/maptbx/accessors/c_grid_padded_p1.h>
-#include <cctbx/sgtbx/lattice_symmetry.h>
 #include <boost/python/module.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
@@ -37,8 +36,6 @@ namespace {
     tuple_mapping_fixed_size<cctbx::grid_point<> >();
     tuple_mapping_fixed_size<cctbx::hendrickson_lattman<> >();
     tuple_mapping_fixed_size<cctbx::miller::index<> >();
-    tuple_mapping_variable_capacity<af::shared<
-      cctbx::sgtbx::lattice_symmetry::evaluated_axis_t> >();
   }
 
   void register_cctbx_c_grid_conversions()

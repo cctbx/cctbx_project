@@ -1514,28 +1514,22 @@ def exercise_lattice_symmetry():
   niggli_cell = uctbx.unit_cell((12,13,14,80,83,86))
   group_search = sgtbx.lattice_symmetry_group_search(2)
   assert group_search.n_potential_axes() == 2391
-  group = group_search(niggli_cell, 3, only_test_generators=True,
-    introspection=False)
+  group = group_search(niggli_cell, 3, False)
   assert group.order_z() == 1
-  assert sgtbx.lattice_symmetry_find_max_delta(niggli_cell, group, 2) < 1.e-10
+  assert sgtbx.lattice_symmetry_find_max_delta(niggli_cell, group) < 1.e-10
 
 def exercise_lattice_symmetry_options():
   niggli_cell = uctbx.unit_cell((405.08382,411.53719,417.48903,
                                   89.97113,89.77758,89.90342))
   group_search = sgtbx.lattice_symmetry_group_search(2)
-  testing_combinations=[(0.9,False,10),(0.9,True,10),
-                        (1.4,False,10),(1.4,True,30),
-                        (1.8,False,30),(1.8,True,30)]
-  for max_delta,only_gen,n_subgrps in testing_combinations:
-    group = group_search(niggli_cell, max_delta, only_gen,introspection=False)
+  testing_combinations=[(0.9,True,10),(0.9,False,10),
+                        (1.4,True,10),(1.4,False,30),
+                        (1.8,True,30),(1.8,False,30)]
+  for max_delta,enforce,n_subgrps in testing_combinations:
+    group = group_search(niggli_cell, max_delta, enforce)
     group_info = sgtbx.space_group_info(group=group)
     subgrs = subgroups.subgroups(group_info).groups_parent_setting()
-    assert len(subgrs)==n_subgrps
-
-  #test axis introspection
-  group_search(niggli_cell, 3.0, only_gen,introspection=True)
-  C = group_search.candidates
-  assert len(C)>=5 # must find at least five two-fold axes for tetragonal
+    assert len(subgrs) == n_subgrps
 
 def exercise_find_affine():
   for sym,n in [("P 1",67704),("P 2",104),("C 2y",36),("B 2x",36),("A 2z",36)]:

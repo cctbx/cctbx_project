@@ -72,27 +72,6 @@ namespace cctbx { namespace sgtbx { namespace lattice_symmetry {
     int abs_uh;
   };
 
-  struct evaluated_axis_t: public potential_axis_t
-  {
-    evaluated_axis_t() {}
-
-    evaluated_axis_t(
-      potential_axis_t const& pat_,
-      uc_vec3 const& t_,
-      uc_vec3 const& tau_,
-      double delta_)
-    :
-      potential_axis_t(pat_.u, pat_.h, pat_.abs_uh),
-      t(t_),
-      tau(tau_),
-      delta(delta_)
-    {}
-
-    uc_vec3 t;
-    uc_vec3 tau;
-    double delta;
-  };
-
   /*! Reference:
         Y. Le Page
         The derivation of the axes of the conventional unit cell from the
@@ -114,9 +93,7 @@ namespace cctbx { namespace sgtbx { namespace lattice_symmetry {
       operator()(
         uctbx::unit_cell const& niggli_cell,
         double max_delta=3.,
-        bool const& only_test_generators=true,
-        bool const& introspection=false);
-      scitbx::af::shared<evaluated_axis_t> candidates;
+        bool enforce_max_delta_for_generated_two_folds=true);
 
     private:
       int modulus_;
@@ -129,8 +106,7 @@ namespace cctbx { namespace sgtbx { namespace lattice_symmetry {
   double
   find_max_delta(
     uctbx::unit_cell const& niggli_cell,
-    space_group const& group,
-    int modulus=2);
+    space_group const& group);
 
 }}} // namespace cctbx::sgtbx::lattice_symmetry
 
