@@ -181,10 +181,41 @@ class _tr_vec(boost.python.injector, tr_vec):
   def as_rational(self):
     return matrix.col(rational.vector(self.num(), self.den()))
 
+class le_page_1982_delta_details:
+
+  def __init__(self, reduced_cell, rot_mx, deg=False):
+    orth = matrix.sqr(reduced_cell.orthogonalization_matrix())
+    frac = matrix.sqr(reduced_cell.fractionalization_matrix())
+    r_info = rot_mx.info()
+    self.type = r_info.type()
+    self.u = rot_mx.info().ev()
+    self.h = rot_mx.transpose().info().ev()
+    self.t = orth * matrix.col(self.u)
+    self.tau = matrix.row(self.h) * frac
+    if (abs(self.type) == 1):
+      self.delta = 0.0
+    else:
+      self.delta = self.t.accute_angle(self.tau, deg=deg)
+
 class _rot_mx(boost.python.injector, rot_mx):
 
   def as_rational(self):
     return matrix.sqr(rational.vector(self.num(), self.den()))
+
+  def le_page_1982_delta_details(self, reduced_cell, deg=False):
+    return le_page_1982_delta_details(
+      reduced_cell=reduced_cell, rot_mx=self, deg=deg)
+
+  def le_page_1982_delta(self, reduced_cell, deg=False):
+    return self.le_page_1982_delta_details(
+      reduced_cell=reduced_cell, deg=deg).delta
+
+  def lebedev_2005_perturbation(self, reduced_cell):
+    s = matrix.sym(sym_mat3=reduced_cell.metrical_matrix())
+    m = self.as_rational().as_float()
+    r = m.transpose() * s * m
+    sirms = s.inverse() * (r-s)
+    return ((sirms * sirms).trace() / 12)**0.5
 
 class _rt_mx(boost.python.injector, rt_mx):
 
