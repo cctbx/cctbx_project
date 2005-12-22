@@ -44,9 +44,9 @@ def run(args):
       unit_cell=input_symmetry.unit_cell(),
       space_group_symbol="P 1")
   # Do it
-  Groups = metric_subgroups(input_symmetry, command_line.options.delta,
-    only_test_generators=False)
-  Groups.show()
+  groups = metric_subgroups(input_symmetry, command_line.options.delta,
+    enforce_max_delta_for_generated_two_folds=True)
+  groups.show()
 
 def metric_supergroup(group):
   return sgtbx.space_group_info(group=group).type(
@@ -54,8 +54,12 @@ def metric_supergroup(group):
     ).build_derived_acentric_group()
 
 class metric_subgroups:
-  def __init__(self, input_symmetry, max_delta, only_test_generators=True,
-    bravais_types_only=True):
+
+  def __init__(self,
+        input_symmetry,
+        max_delta,
+        enforce_max_delta_for_generated_two_folds=True,
+        bravais_types_only=True):
     self.input_symmetry = input_symmetry
     self.max_delta = max_delta
     self.result_groups = []
@@ -68,8 +72,10 @@ class metric_subgroups:
 
     # Get highest symmetry compatible with lattice
     lattice_group = lattice_symmetry.group(
-      self.minimum_symmetry.unit_cell(), max_delta=self.max_delta,
-      only_test_generators=only_test_generators)
+      self.minimum_symmetry.unit_cell(),
+      max_delta=self.max_delta,
+      enforce_max_delta_for_generated_two_folds
+        =enforce_max_delta_for_generated_two_folds)
     lattice_group_info = sgtbx.space_group_info(group=lattice_group)
 
     # Get list of sub-spacegroups

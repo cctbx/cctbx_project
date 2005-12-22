@@ -8,15 +8,14 @@ class group_search(object):
   def n_potential_axes(self):
     return self.ext.n_potential_axes()
 
-  def __call__(self, minimum_cell, max_delta=3.,
-               only_test_generators=True,introspection=False):
-    return self.ext(minimum_cell, max_delta, only_test_generators,
-                    introspection)
-
-  def candidates(self):
-    return self.ext.candidates
+  def __call__(self,
+        minimum_cell,
+        max_delta=3.,
+        enforce_max_delta_for_generated_two_folds=True):
+    return self.ext(
+      minimum_cell, max_delta, enforce_max_delta_for_generated_two_folds)
 
 group = group_search()
 
-def find_max_delta(minimum_cell, group, modulus=2):
-  return sgtbx.lattice_symmetry_find_max_delta(minimum_cell, group, modulus)
+def find_max_delta(minimum_cell, group):
+  return sgtbx.lattice_symmetry_find_max_delta(minimum_cell, group)
