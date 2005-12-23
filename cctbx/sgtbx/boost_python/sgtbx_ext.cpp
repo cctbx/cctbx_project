@@ -2,10 +2,13 @@
 
 #include <cctbx/sgtbx/seminvariant.h>
 #include <cctbx/sgtbx/site_symmetry.h>
+#include <cctbx/sgtbx/operator_from_axis_direction.h>
 #include <scitbx/array_family/shared.h>
 #include <boost/python/module.hpp>
 #include <boost/python/scope.hpp>
 #include <boost/python/class.hpp>
+#include <boost/python/def.hpp>
+#include <boost/python/overloads.hpp>
 #include <boost/python/args.hpp>
 #include <scitbx/boost_python/container_conversions.h>
 
@@ -76,6 +79,10 @@ namespace {
     tuple_mapping_fixed_capacity<af::small<int, 3> >();
   }
 
+  BOOST_PYTHON_FUNCTION_OVERLOADS(
+    n_fold_operator_from_axis_direction_overloads,
+    n_fold_operator_from_axis_direction, 2, 3)
+
   void init_module()
   {
     using namespace boost::python;
@@ -112,6 +119,11 @@ namespace {
     wrap_tensor_rank_2();
     wrap_tr_vec();
     wrap_wyckoff();
+
+    def("n_fold_operator_from_axis_direction",
+      n_fold_operator_from_axis_direction,
+      n_fold_operator_from_axis_direction_overloads((
+        arg_("ev_cart"), arg_("n"), arg_("sense")=1)));
   }
 
 } // namespace <anonymous>
