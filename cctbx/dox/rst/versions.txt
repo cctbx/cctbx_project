@@ -17,6 +17,11 @@ cctbx links
 
 - Newsletter articles
 
+  - **Important notice**: use ``cctbx.python`` to run the scripts shown
+    in the newsletters. The plain ``python`` command is no longer
+    supported to avoid confusion with Python versions provided by
+    some operating systems.
+
   - `IUCr Computing Commission No. 1, 2003/01 <http://cci.lbl.gov/publications/download/iucrcompcomm_jan2003.pdf>`_
 
   - `IUCr Computing Commission No. 2, 2003/07 <http://cci.lbl.gov/publications/download/iucrcompcomm_jul2003.pdf>`_
@@ -27,9 +32,13 @@ cctbx links
 
   - `IUCr Computing Commission No. 5, 2005/01 <http://cci.lbl.gov/publications/download/iucrcompcomm_jan2005.pdf>`_
 
+  - `IUCr Computing Commission No. 6, 2005/09 <http://iucrcomputing.ccp14.ac.uk/iucr-top/comm/ccom/newsletters/2005sep/index.html>`_ (see also: `Tutorials Siena 2005 IUCr Crystallographic Computing School <siena2005/>`_)
+
   - `CCP4 newsletter No. 42, Summer 2005: The Phenix refinement framework <http://www.ccp4.ac.uk/newsletters/newsletter42/articles/Afonine_GrosseKunstleve_Adams_18JUL2005.doc>`_
 
   - `CCP4 newsletter No. 42, Summer 2005: Characterization of X-ray data sets <http://www.ccp4.ac.uk/newsletters/newsletter42/articles/CCP4_2005_PHZ_RWGK_PDA.doc>`_
+
+  - `CCP4 newsletter No. 43, Winter 2005: Xtriage and Fest: automatic assessment of X-ray data and substructure structure factor estimation <http://www.ccp4.ac.uk/newsletters/newsletter43/articles/PHZ_RWGK_PDA.pdf>`_
 
 - Notes by Michael Hohn:
 
