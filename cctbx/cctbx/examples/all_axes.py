@@ -1,8 +1,8 @@
 # List all axes in the unit cell.
 
 # usage:
-#   python all_axes.py     - show axes for the 230 reference settings.
-#   python all_axes.py P2  - show axes for (e.g.) space group P2
+#   cctbx.python all_axes.py     - show axes for the 230 reference settings.
+#   cctbx.python all_axes.py P2  - show axes for (e.g.) space group P2
 
 # XXX Some further refinement is required:
 # XXX   - List only the axes of highest order (e.g. only 4, not 4 and 2).
