@@ -42,70 +42,9 @@ namespace cctbx { namespace sgtbx { namespace lattice_symmetry {
       d*v[0]*v[2]-s*v[1], d*v[1]*v[2]+s*v[0], c+d*v[2]*v[2]);
   }
 
-  inline
-  sg_mat3
-  as_integer_matrix(uc_mat3 const& m)
-  {
-    sg_mat3 result;
-    for(std::size_t i=0;i<m.size();i++) {
-      result[i] = scitbx::math::iround(m[i]);
-    }
-    return result;
-  }
-
-  struct potential_axis_t
-  {
-    potential_axis_t() {}
-
-    potential_axis_t(
-      sg_vec3 const& u_,
-      sg_vec3 const& h_,
-      int abs_uh_)
-    :
-      u(u_),
-      h(h_),
-      abs_uh(abs_uh_)
-    {}
-
-    sg_vec3 u;
-    sg_vec3 h;
-    int abs_uh;
-  };
-
-  /*! Reference:
-        Y. Le Page
-        The derivation of the axes of the conventional unit cell from the
-        dimensions of the Buerger-reduced cell
-        J. Appl. Cryst. (1982). 15, 255-259
-  */
-  class group_search
-  {
-    public:
-      group_search(int modulus=2)
-      :
-        modulus_(modulus)
-      {}
-
-      std::size_t
-      n_potential_axes();
-
-      space_group
-      operator()(
-        uctbx::unit_cell const& niggli_cell,
-        double max_delta=3.,
-        bool enforce_max_delta_for_generated_two_folds=true);
-
-    private:
-      int modulus_;
-      std::vector<potential_axis_t> potential_axes_;
-
-      void
-      compute_potential_axes();
-  };
-
   double
   find_max_delta(
-    uctbx::unit_cell const& niggli_cell,
+    uctbx::unit_cell const& reduced_cell,
     space_group const& group);
 
   struct reduced_cell_two_fold_info
@@ -200,9 +139,21 @@ namespace cctbx { namespace sgtbx { namespace lattice_symmetry {
     sg_mat3(1,1,1,0,-1,0,0,0,-1),sg_vec3(1,0,0),sg_vec3(2,1,1)
   };
 
+  /*! References:
+        Y. Le Page
+        The derivation of the axes of the conventional unit cell from the
+        dimensions of the Buerger-reduced cell
+        J. Appl. Cryst. (1982). 15, 255-259
+
+        Andrey A. Lebedev, Alexei A. Vagin & Garib N. Murshudov
+        Acta Cryst. (2006). D62, 83-95.
+        http://journals.iucr.org/d/issues/2006/01/00/ba5089/index.html
+        Appendix A1. Algorithms used in the determination of twinning
+          operators and their type of merohedry
+  */
   space_group
-  group_search_fast(
-    uctbx::unit_cell const& niggli_cell,
+  group(
+    uctbx::unit_cell const& reduced_cell,
     double max_delta=3.,
     bool enforce_max_delta_for_generated_two_folds=true);
 

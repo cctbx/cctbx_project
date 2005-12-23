@@ -166,13 +166,10 @@ namespace cctbx { namespace {
     crystal::symmetry minimum_symmetry = input_symmetry.change_basis(
       cb_op_inp_minimum);
 
-    // precomputes potential axes (slow)
-    // for repeated use store and reuse the group_search instance to save time
-    sgtbx::lattice_symmetry::group_search lattice_symmetry_group;
-
     // Get highest symmetry compatible with lattice
-    sgtbx::space_group lattice_group = lattice_symmetry_group(
-      minimum_symmetry.unit_cell(), max_delta);
+    sgtbx::space_group
+      lattice_group = sgtbx::lattice_symmetry::group(
+        minimum_symmetry.unit_cell(), max_delta);
     lattice_group.make_tidy();
 
     // Get list of sub-spacegroups

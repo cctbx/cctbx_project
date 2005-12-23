@@ -137,8 +137,8 @@ class metric_subgroups:
                                  'cb_op_inp_best':cb_op_inp_best,
                                  'max_angular_difference':
                                   lattice_symmetry.find_max_delta(
-                                  minimum_cell=self.minimum_symmetry.unit_cell(),
-                                  group=acentric_supergroup)
+                                  reduced_cell=self.minimum_symmetry.unit_cell(),
+                                  space_group=acentric_supergroup)
                                })
   def show_input(self):
     print

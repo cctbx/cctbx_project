@@ -9,7 +9,6 @@ from cStringIO import StringIO
 import sys
 
 def exercise_quick():
-  assert lattice_symmetry.group.n_potential_axes() == 2391
   for space_group_symbol in ("P-1",
                              "P2/m",
                              "C2/m",
@@ -50,8 +49,8 @@ def exercise_quick():
         assert_is_compatible_unit_cell=False)
       assert subsym.unit_cell().is_similar_to(minimum_symmetry.unit_cell())
       assert lattice_symmetry.find_max_delta(
-        minimum_cell=minimum_symmetry.unit_cell(),
-        group=group) < 0.6
+        reduced_cell=minimum_symmetry.unit_cell(),
+        space_group=group) < 0.6
   minimum_symmetry = crystal.symmetry(
     unit_cell="106.04, 181.78, 110.12, 90, 90, 90",
     space_group_symbol="P 1").minimum_cell()
@@ -99,7 +98,7 @@ def exercise_comprehensive(args):
           assert max(r_num) <= 1
         for enforce in [False, True]:
           lattice_group = sgtbx.lattice_symmetry.group(
-            minimum_cell=sym_cb.unit_cell(),
+            reduced_cell=sym_cb.unit_cell(),
             max_delta=1.4,
             enforce_max_delta_for_generated_two_folds=enforce)
         assert lattice_group == sym_cb.space_group()
