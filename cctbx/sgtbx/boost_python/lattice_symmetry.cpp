@@ -1,4 +1,3 @@
-#include <boost/python/class.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/overloads.hpp>
 #include <boost/python/args.hpp>
@@ -12,9 +11,6 @@ namespace cctbx { namespace sgtbx { namespace boost_python {
   void wrap_lattice_symmetry()
   {
     using namespace boost::python;
-    def("lattice_symmetry_n_fold_operator_from_axis_direction",
-      lattice_symmetry::n_fold_operator_from_axis_direction, (
-        arg_("cart"), arg_("n"), arg_("sense")=1));
 
     def("lattice_symmetry_find_max_delta", lattice_symmetry::find_max_delta, (
       arg_("reduced_cell"), arg_("space_group")));

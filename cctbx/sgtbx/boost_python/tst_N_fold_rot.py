@@ -71,8 +71,8 @@ class CompareToInternationalTables:
       D = matrix.col(direct_space_axis)
       cartesian_axis = orth*D
       W_cart = matrix.sqr(
-        sgtbx.lattice_symmetry_n_fold_operator_from_axis_direction(
-          cart=cartesian_axis, n=abs(type_plus_minus), sense=sense))
+        sgtbx.n_fold_operator_from_axis_direction(
+          ev_cart=cartesian_axis, n=abs(type_plus_minus), sense=sense))
       W_frac = frac*W_cart*orth
       W_as_int = matrix.sqr([iround(e) for e in W_frac.elems])
       if type_plus_minus<0: W_as_int = -1 * W_as_int
