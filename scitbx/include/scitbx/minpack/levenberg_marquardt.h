@@ -79,7 +79,8 @@ namespace scitbx { namespace minpack {
         SCITBX_ASSERT(requests_fvec());
         SCITBX_ASSERT(fvec.size() == m);
         if (minimizer.iflag == 3) {
-          std::copy(&*x_buffer.begin(), &*x_buffer.end(), x.begin());
+          std::copy(&*x_buffer.begin(), (&*x_buffer.begin())+x_buffer.size(),
+            x.begin());
           std::copy(fvec.begin(), fvec.end(), &*workspace.begin()+5*x.size());
         }
         else {
