@@ -143,7 +143,7 @@ namespace {
       verify(__LINE__, v, a);
 
       v = u;
-      a.assign(&*u.begin(), &*u.end());
+      a.assign(&*u.begin(), ((&*(u.begin()))+u.size()));
 
       v.erase(v.begin(), v.begin());
       a.erase(a.begin(), a.begin());

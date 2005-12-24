@@ -184,5 +184,5 @@
       template <typename OtherArrayType>
       void
       assign(OtherArrayType const& other) {
-        assign(&*(other.begin()), &*(other.end()));
+        assign(&*(other.begin()), (&*(other.begin()))+other.size());
       }

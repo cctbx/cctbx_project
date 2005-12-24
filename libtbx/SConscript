@@ -114,15 +114,19 @@ if (sys.platform == "win32"):
     )
     env_etc.cxxflags_base = Split("""
         /nologo
-        /MD
-        /GR /GX
+        /D_CRT_SECURE_NO_DEPRECATE
+        /wd4996
         /Zm800
+        /MD
+        /GR /EHsc
         /DBOOST_DISABLE_THREADS
     """)
     env_etc.ccflags_base = Split("""
         /nologo
-        /MD
+        /D_CRT_SECURE_NO_DEPRECATE
+        /wd4996
         /Zm800
+        /MD
     """)
     if (libtbx.env.build_options.optimization):
       opts = ["/DNDEBUG", "/Ox"]
