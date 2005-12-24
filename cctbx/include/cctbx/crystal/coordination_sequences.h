@@ -96,9 +96,11 @@ namespace coordination_sequences {
         std::map<unsigned, std::vector<node> >::const_iterator
           item = shell.find(j_seq);
         if (item == shell.end()) continue;
+        const node*
+          item_second_end = (&*item->second.begin())+item->second.size();
         for(const node*
               list_node=&*item->second.begin();
-              list_node!=&*item->second.end();
+              list_node!=item_second_end;
               list_node++) {
           if (list_node->rt_mx_unique == test_node.rt_mx_unique) {
             return true;

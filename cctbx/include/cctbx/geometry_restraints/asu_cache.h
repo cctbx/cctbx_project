@@ -47,7 +47,8 @@ namespace cctbx { namespace geometry_restraints {
             }
           }
         }
-        CCTBX_ASSERT(sites_ptr <= &*sites_memory_.end());
+        CCTBX_ASSERT(
+          sites_ptr <= (&*sites_memory_.begin())+sites_memory_.size());
         if (allocate_gradients) {
           gradients.resize(n_sites, scitbx::vec3<FloatType>(0,0,0));
         }
