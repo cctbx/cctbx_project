@@ -46,8 +46,9 @@ namespace cctbx { namespace sgtbx {
       // given the condition c*r-r*c==0
       for(std::size_t i=0;i<3;i++) {
         for(std::size_t k=0;k<3;k++) {
-          int* row = (&*m.begin())+m.size();
-          m.resize(m.size()+9, 0);
+          std::size_t prev_size = m.size();
+          m.resize(prev_size+9, 0);
+          int* row = (&*m.begin())+prev_size;
           for(std::size_t j=0;j<3;j++) {
             if (i == j && j == k) continue;
             row[i*3+j] += r_num[j*3+k];
