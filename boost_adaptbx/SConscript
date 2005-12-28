@@ -22,6 +22,11 @@ if (not env_etc.no_boost_python):
     SHCXXFLAGS=env_etc.cxxflags_bpl_defines_base)
   env_no_includes_boost_python_ext.Replace(
     SHLIBSUFFIX=env_etc.extension_module_suffix)
+  if (env_etc.compiler == "win32_cl" and env_etc.have_manifest_tool):
+    env_no_includes_boost_python_ext.Append(
+      SHLINKCOM=[
+        'mt /nologo /outputresource:"${TARGET};#2"'
+        ' /manifest ${TARGET}.manifest'])
   Export("env_no_includes_boost_python_ext")
   env_pure_boost_python_ext = env_no_includes_boost_python_ext.Copy()
   env_etc.include_registry.set_boost_dir_name(env_etc.boost_dist)

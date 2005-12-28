@@ -1,6 +1,6 @@
 import libtbx.load_env
 import libtbx.config
-from libtbx.path import norm_join
+from libtbx.path import norm_join, full_command_path
 import sys, os
 
 def SCons_Action_FunctionAction_get_contents(self, target, source, env,
@@ -107,6 +107,11 @@ if (sys.platform == "win32"):
   set_python_include_and_libs(env_etc)
   env_etc.extension_module_suffix = ".pyd"
   if (env_etc.compiler == "win32_cl"):
+    cl_exe = full_command_path("cl.exe")
+    if (cl_exe is None):
+      raise RuntimeError("cl.exe not on PATH")
+    env_etc.have_manifest_tool = os.path.isfile(
+      os.path.join(os.path.dirname(cl_exe), "mt.exe"))
     env_base.Replace(
       SHCC="cl",
       SHCXX="cl",
