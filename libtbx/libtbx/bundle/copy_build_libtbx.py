@@ -12,6 +12,7 @@ def copy_lib_and_exe_files(target_root_dir, dirname, names):
         or name.endswith(".pyc")
         or name.endswith(".lib")
         or name.endswith(".exp")
+        or name.endswith(".manifest")
         or name.endswith(".a")):
       continue
     src = os.path.normpath(os.path.join(dirname, file_name))
