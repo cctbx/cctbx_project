@@ -22,7 +22,8 @@ namespace scitbx { namespace matrix {
       vv = scratch_stack;
     }
     else {
-      scratch_dynamic.swap(boost::scoped_array<FloatType>(new FloatType[n]));
+      boost::scoped_array<FloatType> scratch(new FloatType[n]);
+      scratch_dynamic.swap(scratch);
       vv = scratch_dynamic.get();
     }
     pivot_indices[n] = 0;
