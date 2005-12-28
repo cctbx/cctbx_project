@@ -32,8 +32,8 @@ namespace scitbx { namespace matrix {
       ipivot = scratch_stack;
     }
     else {
-      scratch_dynamic.swap(
-        boost::scoped_array<std::size_t>(new std::size_t[n*3]));
+      boost::scoped_array<std::size_t> scratch(new std::size_t[n*3]);
+      scratch_dynamic.swap(scratch);
       ipivot = scratch_dynamic.get();
     }
     std::fill(ipivot, ipivot+n, 0);
