@@ -1,12 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Aug: Created (R.W. Grosse-Kunstleve)
- */
-
 #ifndef SCITBX_ARRAY_FAMILY_BOOST_PYTHON_FLEX_PICKLE_DOUBLE_BUFFERED_H
 #define SCITBX_ARRAY_FAMILY_BOOST_PYTHON_FLEX_PICKLE_DOUBLE_BUFFERED_H
 
@@ -31,17 +22,7 @@ namespace scitbx { namespace af { namespace boost_python {
       DoubleBufferedToString accu;
       accu << a.size();
       for(std::size_t i=0;i<a.size();i++) accu << a[i];
-      return boost::python::make_tuple(a.accessor(),
-#if 0
-        accu.buffer
-#else
-        // XXX work around bug in boost 1.29.0
-        boost::python::object(boost::python::handle<>(
-          PyString_FromStringAndSize(
-            &*accu.buffer.begin(),
-            static_cast<int>(accu.buffer.size()))))
-#endif
-        );
+      return boost::python::make_tuple(a.accessor(), accu.buffer);
     }
 
     static

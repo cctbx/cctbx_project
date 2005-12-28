@@ -17,6 +17,7 @@
 #include <cctbx/dmtbx/triplet_phase_relation.h>
 #include <cctbx/miller/sym_equiv.h>
 #include <scitbx/array_family/sort.h>
+#include <boost/scoped_array.hpp>
 
 namespace cctbx {
 
@@ -428,18 +429,16 @@ namespace dmtbx {
         CCTBX_ASSERT(tprs.size() > max_relations_per_reflection);
         af::shared<weighted_triplet_phase_relation>
           result((af::reserve(max_relations_per_reflection)));
-        std::vector<FloatType> values_to_sort;
-        values_to_sort.reserve(tprs.size());
+        boost::scoped_array<FloatType>
+          values_to_sort(new FloatType[tprs.size()]);
+        FloatType* v = values_to_sort.get();
         for(const wtpr_t* tpr=tprs.begin();tpr!=tprs.end();tpr++) {
-          values_to_sort.push_back(
-             amplitudes[tpr->ik()]
-           * amplitudes[tpr->ihmk()]
-           * tpr->weight());
+          *v++ = amplitudes[tpr->ik()]
+               * amplitudes[tpr->ihmk()]
+               * tpr->weight();
         }
         af::shared<std::size_t> perm = af::sort_permutation(
-          af::const_ref<FloatType>(
-            &*values_to_sort.begin(),
-            values_to_sort.size()),
+          af::const_ref<FloatType>(values_to_sort.get(), tprs.size()),
           true);
         perm.resize(max_relations_per_reflection);
         return af::select(tprs, perm.const_ref());

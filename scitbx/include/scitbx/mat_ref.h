@@ -5,7 +5,7 @@
 #include <scitbx/array_family/ref_reductions.h>
 #include <scitbx/array_family/tiny.h>
 #include <scitbx/matrix/multiply.h>
-#include <vector>
+#include <boost/scoped_array.hpp>
 
 namespace scitbx {
 
@@ -217,8 +217,8 @@ namespace scitbx {
           std::swap((*this)(ir, ic), (*this)(ic, ir));
     }
     else {
-      std::vector<NumType> mt_buffer(this->size());
-      mat_ref mt(&*mt_buffer.begin(), this->n_columns(), this->n_rows());
+      boost::scoped_array<NumType> mt_buffer(new NumType[this->size()]);
+      mat_ref mt(mt_buffer.get(), this->n_columns(), this->n_rows());
       for (index_value_type ir=0;ir<this->n_rows();ir++)
         for (index_value_type ic=0;ic<this->n_columns();ic++)
           mt(ic, ir) = (*this)(ir, ic);

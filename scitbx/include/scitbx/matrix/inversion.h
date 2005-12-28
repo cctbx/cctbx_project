@@ -1,7 +1,7 @@
 #ifndef SCITBX_MATRIX_INVERSION_H
 #define SCITBX_MATRIX_INVERSION_H
 
-#include <vector>
+#include <boost/scoped_array.hpp>
 #include <algorithm>
 #include <stdexcept>
 
@@ -26,16 +26,17 @@ namespace scitbx { namespace matrix {
     if (n == 0) return;
     const std::size_t max_n_stack = 10;
     std::size_t scratch_stack[max_n_stack*3];
-    std::vector<std::size_t> scratch_dynamic;
+    boost::scoped_array<std::size_t> scratch_dynamic;
     std::size_t* ipivot;
     if (n <= max_n_stack) {
       ipivot = scratch_stack;
-      std::fill(ipivot, ipivot+n, 0);
     }
     else {
-      scratch_dynamic.resize(n*3, 0);
-      ipivot = &*scratch_dynamic.begin();
+      scratch_dynamic.swap(
+        boost::scoped_array<std::size_t>(new std::size_t[n*3]));
+      ipivot = scratch_dynamic.get();
     }
+    std::fill(ipivot, ipivot+n, 0);
     std::size_t* indxc = ipivot + n;
     std::size_t* indxr = indxc + n;
     for(std::size_t i=0;i<n;i++) {

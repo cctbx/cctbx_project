@@ -58,6 +58,9 @@ namespace cctbx { namespace sgtbx { namespace lattice_symmetry {
         cos_deltas.push_back(numerator / denominator);
       }
     }
+    if (i_two_folds.size() == 0) {
+      return space_group();
+    }
     bool reverse = true;
     af::shared<std::size_t> perm_memory = af::sort_permutation(
       af::const_ref<double>(&*cos_deltas.begin(), cos_deltas.size()), reverse);

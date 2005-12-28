@@ -79,9 +79,9 @@ namespace scitbx { namespace minpack {
         SCITBX_ASSERT(requests_fvec());
         SCITBX_ASSERT(fvec.size() == m);
         if (minimizer.iflag == 3) {
-          std::copy(&*x_buffer.begin(), (&*x_buffer.begin())+x_buffer.size(),
-            x.begin());
-          std::copy(fvec.begin(), fvec.end(), &*workspace.begin()+5*x.size());
+          std::copy(x_buffer.begin(), x_buffer.end(), x.begin());
+          std::copy(fvec.begin(), fvec.end(),
+            (workspace.size() ? &*workspace.begin()+5*x.size() : 0));
         }
         else {
           std::copy(fvec.begin(), fvec.end(), this->fvec.begin());
@@ -113,34 +113,34 @@ namespace scitbx { namespace minpack {
       run()
       {
         int mode = 1;
+        int x_size = static_cast<int>(x.size());
+        double* ws0 = (workspace.size() ? &*workspace.begin() : 0);
         minimizer.run(
           m,
-          x.size(),
-          raw::ref1<double>(x.begin(), x.size()),
+          x_size,
+          raw::ref1<double>(x.begin(), x_size),
           raw::ref1<double>(fvec.begin(), fvec.size()),
-          raw::ref2<double>(fjac.begin(), m, x.size()),
+          raw::ref2<double>(fjac.begin(), m, x_size),
           m,
           ftol,
           xtol,
           gtol,
           maxfev,
-          raw::ref1<double>(&*workspace.begin(), x.size()),
+          raw::ref1<double>(ws0, x_size),
           mode,
           factor,
           info,
           nfev,
           njev,
-          raw::ref1<int>(&*ipvt.begin(), ipvt.size()),
-          raw::ref1<double>(&*workspace.begin()+1*x.size(), x.size()),
-          raw::ref1<double>(&*workspace.begin()+2*x.size(), x.size()),
-          raw::ref1<double>(&*workspace.begin()+3*x.size(), x.size()),
-          raw::ref1<double>(&*workspace.begin()+4*x.size(), x.size()),
-          raw::ref1<double>(&*workspace.begin()+5*x.size(), m));
+          raw::ref1<int>((ipvt.size() ? &*ipvt.begin() : 0), ipvt.size()),
+          raw::ref1<double>(ws0+1*x_size, x_size),
+          raw::ref1<double>(ws0+2*x_size, x_size),
+          raw::ref1<double>(ws0+3*x_size, x_size),
+          raw::ref1<double>(ws0+4*x_size, x_size),
+          raw::ref1<double>(ws0+5*x_size, m));
         if (minimizer.iflag == 3) {
           x_buffer.assign(x.begin(), x.end());
-          std::copy(
-            &*workspace.begin()+3*x.size(),
-            &*workspace.begin()+4*x.size(), x.begin());
+          std::copy(ws0+3*x_size, ws0+4*x_size, x.begin());
         }
       }
 

@@ -395,7 +395,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
           detail::in_place_multiply(gr_refs.fdp, n_ltr);
         }
         if (grad_flags.u_iso && grad_flags.sqrt_u_iso) {
-          float_type* d_t_d_u = &*d_target_d_u_iso_.begin();
+          float_type* d_t_d_u = d_target_d_u_iso_.begin();
           for(std::size_t i=0;i<scatterers.size();i++,d_t_d_u++) {
             ScattererType const& scatterer = scatterers[i];
             if (!scatterer.anisotropic_flag) {
@@ -404,7 +404,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
           }
         }
         if (grad_flags.u_iso && grad_flags.tan_b_iso_max > 0.0) {
-          float_type* d_t_d_u = &*d_target_d_u_iso_.begin();
+          float_type* d_t_d_u = d_target_d_u_iso_.begin();
           for(std::size_t i=0;i<scatterers.size();i++,d_t_d_u++) {
             ScattererType const& scatterer = scatterers[i];
             if (!scatterer.anisotropic_flag) {

@@ -1,17 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   The real_symmetric implementation is based on code from
-   btl/btl_matrix_algorithms.h. Included here under
-   the cctbx license with kind permission by the authors
-   (Ian Tickle, David Moss, Mark Williams).
-
-   Revision history:
-     2003 Mar: Created (R.W. Grosse-Kunstleve)
- */
-
 #ifndef SCITBX_MATH_EIGENSYSTEM_H
 #define SCITBX_MATH_EIGENSYSTEM_H
 
@@ -20,7 +6,7 @@
 #include <scitbx/array_family/shared.h>
 #include <scitbx/array_family/accessors/c_grid.h>
 #include <scitbx/sym_mat3.h>
-#include <vector>
+#include <boost/scoped_array.hpp>
 
 namespace scitbx { namespace math { namespace eigensystem {
 
@@ -194,8 +180,8 @@ namespace scitbx { namespace math { namespace eigensystem {
       FloatType* eigenvalues,
       FloatType epsilon)
     {
-      std::vector<FloatType> a(n * (n+1) / 2);
-      FloatType* trng = &*a.begin();
+      boost::scoped_array<FloatType> a(new FloatType[n * (n+1) / 2]);
+      FloatType* trng = a.get();
       // Copy lower triangle of the input matrix to a numeric vector.
       for (std::size_t row = 1; row <= n; row++) {
         for (const FloatType* in=(first+(n*(row-1)));
@@ -205,7 +191,7 @@ namespace scitbx { namespace math { namespace eigensystem {
         }
       }
       real_symmetric_given_lower_triangle(
-        &*a.begin(), n, eigenvectors, eigenvalues, epsilon);
+        a.get(), n, eigenvectors, eigenvalues, epsilon);
     }
 
   } // namespace detail

@@ -373,7 +373,7 @@ namespace cctbx { namespace xray {
         sampling_(
           scatterers, mean_displacements,
           scattering_type_registry, site_symmetry_table,
-          &*ft_d_target_d_f_calc.begin(), 0,
+          ft_d_target_d_f_calc.begin(), 0,
           grad_flags, n_parameters, sampled_density_must_be_positive);
       }
 
@@ -393,7 +393,7 @@ namespace cctbx { namespace xray {
         sampling_(
           scatterers, mean_displacements,
           scattering_type_registry, site_symmetry_table,
-          0, &*ft_d_target_d_f_calc.begin(),
+          0, ft_d_target_d_f_calc.begin(),
           grad_flags, n_parameters, sampled_density_must_be_positive);
       }
 

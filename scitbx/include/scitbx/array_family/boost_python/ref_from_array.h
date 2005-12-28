@@ -40,8 +40,8 @@ namespace scitbx { namespace array_family { namespace boost_python {
       if (obj_ptr != none.ptr()) {
         boost::python::object obj(boost::python::borrowed(obj_ptr));
         ArrayType& a = boost::python::extract<ArrayType&>(obj)();
-        bg = &*a.begin();
         sz = a.size();
+        if (sz != 0) bg = &*a.begin();
       }
       void* storage = (
         (boost::python::converter::rvalue_from_python_storage<RefType>*)

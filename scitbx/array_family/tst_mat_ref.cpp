@@ -1,4 +1,5 @@
 #include <scitbx/mat_ref.h>
+#include <vector>
 #include <iostream>
 
 using namespace scitbx;

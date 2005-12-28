@@ -33,7 +33,9 @@ namespace cctbx { namespace geometry_restraints {
         CCTBX_ASSERT(mappings_.size() == n_sites);
         sites_memory_.resize(asu_mappings.n_sites_in_asu_and_buffer());
         sites.resize(n_sites, 0);
-        scitbx::vec3<FloatType>* sites_ptr = &*sites_memory_.begin();
+        scitbx::vec3<FloatType>* sites_ptr = (
+          sites_memory_.size() ? &*sites_memory_.begin() : 0);
+        std::size_t sum_n_sym = 0;
         for(std::size_t i_seq=0;i_seq<n_sites;i_seq++) {
           if (!sym_active_flags[i_seq]) {
             sites[i_seq] = 0;
@@ -45,10 +47,10 @@ namespace cctbx { namespace geometry_restraints {
               *sites_ptr++ = asu_mappings.map_moved_site_to_asu(
                 moved_sites_cart[i_seq], i_seq, i_sym);
             }
+            sum_n_sym += n_sym;
           }
         }
-        CCTBX_ASSERT(
-          sites_ptr <= (&*sites_memory_.begin())+sites_memory_.size());
+        CCTBX_ASSERT(sum_n_sym <= sites_memory_.size());
         if (allocate_gradients) {
           gradients.resize(n_sites, scitbx::vec3<FloatType>(0,0,0));
         }
