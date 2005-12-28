@@ -773,6 +773,7 @@ mlhl_d_target_dfcalc_one_h(
       derivatives_ = af::shared<FcalcValueType>(fobs.size());
     }
     int n_steps = 360./step_for_integration;
+    CCTBX_ASSERT(n_steps > 0);
     double angular_step = scitbx::constants::two_pi / n_steps;
     std::vector<af::tiny<double, 4> > cos_sin_table;
     cos_sin_table.reserve(n_steps);

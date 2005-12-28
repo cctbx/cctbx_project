@@ -10,6 +10,7 @@
 #include <scitbx/matrix/packed.h>
 #include <scitbx/mat_ref.h>
 #include <boost/optional.hpp>
+#include <boost/scoped_array.hpp>
 
 namespace scitbx { namespace af {
 
@@ -176,15 +177,13 @@ namespace scitbx { namespace af {
         numtype_ab;
     shared<numtype_ab> abat(
       a_n_rows*(a_n_rows+1)/2, init_functor_null<numtype_ab>());
-    std::vector<numtype_ab> ab;
-    // allocate ab memory but do not initialize to maximize performance
-    ab.reserve(a_n_rows * a_n_columns);
+    boost::scoped_array<numtype_ab> ab(new numtype_ab[a_n_rows * a_n_columns]);
     matrix::multiply_packed_u_multiply_lhs_transpose(
       a.begin(),
       b.begin(),
       a_n_rows,
       a_n_columns,
-      &*ab.begin(),
+      ab.get(),
       abat.begin());
     return abat;
   }
@@ -283,16 +282,15 @@ namespace scitbx { namespace af {
     const_ref<FloatType, c_grid<2> > const& a)
   {
     SCITBX_ASSERT(a.accessor().is_square());
-    std::vector<FloatType> a_;
-    a_.reserve(a.accessor().size_1d());
-    std::copy(a.begin(), a.end(), a_.begin());
+    boost::scoped_array<FloatType> a_(new FloatType[a.accessor().size_1d()]);
+    std::copy(a.begin(), a.end(), a_.get());
     FloatType result;
     try {
       shared<std::size_t>
         pivot_indices = matrix_lu_decomposition_in_place(
-          ref<FloatType, c_grid<2> >(&*a_.begin(), a.accessor()));
+          ref<FloatType, c_grid<2> >(a_.get(), a.accessor()));
       result = matrix_diagonal_product(
-        const_ref<FloatType, c_grid<2> >(&*a_.begin(), a.accessor()));
+        const_ref<FloatType, c_grid<2> >(a_.get(), a.accessor()));
       if (pivot_indices[a.accessor()[0]] % 2) result = -result;
     }
     catch (std::runtime_error const& e) {

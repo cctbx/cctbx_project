@@ -3,6 +3,7 @@
 
 #include <cctbx/sgtbx/space_group.h>
 #include <scitbx/matrix/row_echelon.h>
+#include <boost/scoped_array.hpp>
 
 namespace cctbx { namespace sgtbx {
 
@@ -42,12 +43,10 @@ namespace cctbx { namespace sgtbx {
         row_echelon_lcm = lcm;
         unsigned n_rows = (n_matrices-1)*3;
         if (n_rows > 0) {
-          std::vector<int> row_echelon_m; // row-echelon m
-          row_echelon_m.reserve(n_rows*3);
-          std::vector<int> row_echelon_t; // row-echelon t
-          row_echelon_t.reserve(n_rows);
-          int* rem = &*row_echelon_m.begin();
-          int* ret = &*row_echelon_t.begin();
+          boost::scoped_array<int> row_echelon_m(new int [n_rows*3]);
+          boost::scoped_array<int> row_echelon_t(new int [n_rows]);
+          int* rem = row_echelon_m.get();
+          int* ret = row_echelon_t.get();
           for(unsigned i=1;i<n_matrices;i++) {
             rot_mx const& r = matrices[i].r();
             tr_vec const& t = matrices[i].t();
@@ -64,8 +63,8 @@ namespace cctbx { namespace sgtbx {
             *ret++ = (*n++)*f;
             *ret++ = (*n++)*f;
           }
-          scitbx::mat_ref<int> rem_ref(&*row_echelon_m.begin(), n_rows, 3);
-          scitbx::mat_ref<int> ret_ref(&*row_echelon_t.begin(), n_rows, 1);
+          scitbx::mat_ref<int> rem_ref(row_echelon_m.get(), n_rows, 3);
+          scitbx::mat_ref<int> ret_ref(row_echelon_t.get(), n_rows, 1);
           n_rows = scitbx::matrix::row_echelon::form_t(rem_ref, ret_ref);
           CCTBX_ASSERT(n_rows <= 3);
           std::copy(

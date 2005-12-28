@@ -243,7 +243,7 @@ namespace tensor_rank_2 {
     boost::scoped_array<FloatType> c_times_a(new FloatType[n_indep*6]);
     scitbx::matrix::multiply_packed_u_multiply_lhs_transpose(
       gsm, all_curvatures.begin(), n_indep, 6,
-      &*c_times_a.get(), result.begin());
+      c_times_a.get(), result.begin());
     return result;
   }
 

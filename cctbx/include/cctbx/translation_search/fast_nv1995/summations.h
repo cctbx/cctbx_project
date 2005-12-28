@@ -7,6 +7,7 @@
 #include <cctbx/sgtbx/miller_ops.h>
 #include <cctbx/maptbx/utils.h>
 #include <scitbx/array_family/versa_plain.h>
+#include <boost/scoped_array.hpp>
 
 namespace cctbx { namespace translation_search { namespace fast_nv1995_detail {
 
@@ -263,10 +264,10 @@ namespace cctbx { namespace translation_search { namespace fast_nv1995_detail {
     std::size_t order_p = space_group.order_p();
     FloatType n_ltr = static_cast<FloatType>(space_group.n_ltr());
     bool have_f_part = f_part.size();
-    std::vector<mi_t> hs_vector(order_p);
-    mi_t* hs = &*hs_vector.begin();
-    std::vector<cx_t> fts_vector(order_p);
-    cx_t* fts = &*fts_vector.begin();
+    boost::scoped_array<mi_t> hs_buffer(new mi_t[order_p]);
+    mi_t* hs = hs_buffer.get();
+    boost::scoped_array<cx_t> fts_buffer(new cx_t[order_p]);
+    cx_t* fts = fts_buffer.get();
     cx_t fpi(0);
     cx_t fpi_sq(0);
     cx_t two_fpi_sq_conj_fpi(0);
@@ -339,10 +340,10 @@ namespace cctbx { namespace translation_search { namespace fast_nv1995_detail {
     std::size_t order_p = space_group.order_p();
     FloatType n_ltr = static_cast<FloatType>(space_group.n_ltr());
     bool have_f_part = f_part.size();
-    std::vector<mi_t> hs_vector(order_p);
-    mi_t* hs = &*hs_vector.begin();
-    std::vector<cx_t> fts_vector(order_p);
-    cx_t* fts = &*fts_vector.begin();
+    boost::scoped_array<mi_t> hs_buffer(new mi_t[order_p]);
+    mi_t* hs = hs_buffer.get();
+    boost::scoped_array<cx_t> fts_buffer(new cx_t[order_p]);
+    cx_t* fts = fts_buffer.get();
     cx_t fpi(0);
     for (std::size_t ih = 0; ih < miller_indices.size(); ih++) {
       mi_t h = miller_indices[ih];

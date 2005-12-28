@@ -1,7 +1,7 @@
 #ifndef SCITBX_MATRIX_LU_DECOMPOSITION_H
 #define SCITBX_MATRIX_LU_DECOMPOSITION_H
 
-#include <vector>
+#include <boost/scoped_array.hpp>
 #include <algorithm>
 #include <stdexcept>
 
@@ -16,14 +16,14 @@ namespace scitbx { namespace matrix {
   {
     const std::size_t max_n_stack = 16;
     FloatType scratch_stack[max_n_stack];
-    std::vector<FloatType> scratch_dynamic;
+    boost::scoped_array<FloatType> scratch_dynamic;
     FloatType *vv;
     if (n <= max_n_stack) {
       vv = scratch_stack;
     }
     else {
-      scratch_dynamic.reserve(n);
-      vv = &*scratch_dynamic.begin();
+      scratch_dynamic.swap(boost::scoped_array<FloatType>(new FloatType[n]));
+      vv = scratch_dynamic.get();
     }
     pivot_indices[n] = 0;
     for(std::size_t i=0;i<n;i++) {
