@@ -21,7 +21,7 @@ namespace {
       {
         len_ = line.size();
         pos_ = 0;
-        buffer_.reserve(len_+1);
+        buffer_.resize(len_+1);
         for(std::size_t i=0;i<len_;i++) buffer_[i] = line[i];
         buffer_[len_] = '\0';
       }
@@ -29,7 +29,7 @@ namespace {
       const char*
       next_field(std::size_t w, char fill_char)
       {
-        field_.reserve(w+1);
+        field_.resize(w+1);
         std::size_t i;
         for(i=0; i < w && pos_ < len_; i++, pos_++) {
           field_[i] = buffer_[pos_];

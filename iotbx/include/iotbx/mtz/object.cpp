@@ -1,5 +1,6 @@
 #include <iotbx/mtz/batch.h>
 #include <iotbx/mtz/column.h>
+#include <boost/scoped_array.hpp>
 
 namespace iotbx { namespace mtz {
 
@@ -237,16 +238,15 @@ namespace iotbx { namespace mtz {
       p_tail = p;
       p = p->next;
     }
-    std::vector<float> buf(
-      static_cast<std::size_t>(NBATCHINTEGERS + NBATCHREALS),
-      static_cast<float>(0));
+    boost::scoped_array<float> buf(new float[NBATCHINTEGERS+NBATCHREALS]);
+    std::fill_n(buf.get(), NBATCHINTEGERS+NBATCHREALS, static_cast<float>(0));
 #if defined(__DECCXX_VER)
     BOOST_STATIC_ASSERT(sizeof(float) == sizeof(int));
 #else
     CCTBX_ASSERT(sizeof(float) == sizeof(int));
 #endif
     CCTBX_ASSERT(CMtz::ccp4_lwbat(
-      ptr(), 0, max_batch_number+1, &*buf.begin(), "") == 1);
+      ptr(), 0, max_batch_number+1, buf.get(), "") == 1);
     p = (p_tail == 0 ? ptr()->batch : p_tail->next);
     CCTBX_ASSERT(p != 0);
     CCTBX_ASSERT(p->next == 0);

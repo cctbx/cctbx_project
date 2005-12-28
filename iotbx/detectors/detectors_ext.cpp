@@ -17,6 +17,7 @@ af::flex_int ReadADSC(const std::string& filename,
                       const long& size2,const int& big_endian ) {
   std::ifstream cin(filename.c_str());
   long fileLength = ptr + 2 * size1 * size2;
+  SCITBX_ASSERT(fileLength > 0);
   std::vector<char> chardata(fileLength);
   cin.read(&*chardata.begin(),fileLength);
   cin.close();
