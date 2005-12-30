@@ -1316,7 +1316,7 @@ class array(set):
         indices=result.indices,
         anomalous_flag=self.anomalous_flag()),
       data=result.data,
-      sigmas=result_sigmas)
+      sigmas=result_sigmas).set_observation_type(self.observation_type())
 
   def f_obs_minus_f_calc(self, f_obs_factor, f_calc):
     assert self.is_real_array()
