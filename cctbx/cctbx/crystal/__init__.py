@@ -99,8 +99,11 @@ class symmetry(object):
       unit_cell=cb_op.apply(self.unit_cell()),
       space_group_info=self.space_group_info().change_basis(cb_op))
 
+  def change_of_basis_op_to_primitive_setting(self):
+    return self.space_group().z2p_op()
+
   def primitive_setting(self):
-    return self.change_basis(self.space_group().z2p_op())
+    return self.change_basis(self.change_of_basis_op_to_primitive_setting())
 
   def change_of_basis_op_to_reference_setting(self):
     return self.space_group_info().type().cb_op()
@@ -146,6 +149,12 @@ class symmetry(object):
     return self.change_basis(self.change_of_basis_op_to_niggli_cell(
       relative_epsilon=relative_epsilon,
       iteration_limit=iteration_limit))
+
+  def change_of_basis_op_to_inverse_hand(self):
+    return self.space_group_info().type().change_of_hand_op()
+
+  def inverse_hand(self):
+    return self.change_basis(self.change_of_basis_op_to_inverse_hand())
 
   def reflection_intensity_symmetry(self, anomalous_flag):
     return symmetry(
