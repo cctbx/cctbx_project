@@ -1,7 +1,8 @@
 import boost.python
+import sys
 
 def run():
-  print boost.python.platform_info
+  sys.stdout.write(boost.python.platform_info)
 
 if (__name__ == "__main__"):
   run()
