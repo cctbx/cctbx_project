@@ -114,7 +114,9 @@ namespace {
     P(long)
     P(std::size_t)
     P(void*)
+#if !defined(_MSC_VER) || _MSC_VER > 1200
     P(long long)
+#endif
     P(float)
     P(double)
     P(long double)
