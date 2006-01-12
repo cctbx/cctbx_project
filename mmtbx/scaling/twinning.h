@@ -235,12 +235,17 @@ namespace twinning {
     space_group_(space_group)
     {
       SCITBX_ASSERT( hkl.size() == intensity.size() );
+      SCITBX_ASSERT( (sigma_i.size()==0) ||  (hkl.size() == sigma_i.size()) );
       int ht,kt,lt;
       for (unsigned ii=0;ii<hkl.size();ii++){
         hkl_.push_back( hkl[ii] );
         intensity_.push_back( intensity[ii] );
-        sigma_.push_back( sigma_i[ii] );
-
+        if ( sigma_i.size() > 0 ){ 
+          sigma_.push_back( sigma_i[ii] );
+        }
+        if ( sigma_i.size() == 0 ){
+          sigma_.push_back( 0.0 );
+        }
         ht = twin_law[0]*hkl[ii][0] +
              twin_law[3]*hkl[ii][1] +
              twin_law[6]*hkl[ii][2];
