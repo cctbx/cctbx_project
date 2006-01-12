@@ -371,13 +371,14 @@ def anisotropic_correction(cache_0,
                                                      p_scale,
                                                      work_array.unit_cell(),
                                                      u_star )
-
-  corrected_sigmas = scaling.ml_normalise_aniso( work_array.indices(),
-                                                 work_array.sigmas(),
-                                                 p_scale,
-                                                 work_array.unit_cell(),
-                                                 u_star )
-
+  if work_array.sigmas() is not None:
+    corrected_sigmas = scaling.ml_normalise_aniso( work_array.indices(),
+                                                   work_array.sigmas(),
+                                                   p_scale,
+                                                   work_array.unit_cell(),
+                                                   u_star )
+  else:
+    corrected_sigmas = None
 
 
   work_array = work_array.customized_copy(

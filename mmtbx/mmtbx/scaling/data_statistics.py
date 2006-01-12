@@ -542,9 +542,11 @@ class basic_intensity_statistics:
       1:len(mean_observed_intensity.data)-1])
 
     ## I over sigma
-    i_over_sigma = tmp_miller.i_over_sig_i(use_binning=True,return_fail=0)
-    self.i_sig_i = i_over_sigma.data[1:len(i_over_sigma.data)-1]
-    self.i_sig_i =  flex.double( self.i_sig_i )
+    self.i_sig_i = None
+    if tmp_miller.sigmas() is not None:
+      i_over_sigma = tmp_miller.i_over_sig_i(use_binning=True,return_fail=0)
+      self.i_sig_i = i_over_sigma.data[1:len(i_over_sigma.data)-1]
+      self.i_sig_i =  flex.double( self.i_sig_i )
 
     self.low_reso_completeness=None
     self.low_reso_meas=None
@@ -687,13 +689,14 @@ class basic_intensity_statistics:
 
 
       ## I over sigma I
-      i_sig_i = data_plots.plot_data(
-        plot_title = '<I/sigma_I>',
-        x_data = self.d_star_sq_ori,
-        y_data = self.i_sig_i,
-        x_label = '1/resol^2',
-        y_label = '<I/sigma_I>',
-        y_legend = '<I/sigma_I>; Signal to noise',
-        comments = 'Signal to noise')
-      i_sig_i.domain_flag='N'
-      data_plots.plot_data_loggraph( i_sig_i,   out_plot)
+      if self.i_sig_i is not None:
+        i_sig_i = data_plots.plot_data(
+          plot_title = '<I/sigma_I>',
+          x_data = self.d_star_sq_ori,
+          y_data = self.i_sig_i,
+          x_label = '1/resol^2',
+          y_label = '<I/sigma_I>',
+          y_legend = '<I/sigma_I>; Signal to noise',
+          comments = 'Signal to noise')
+        i_sig_i.domain_flag='N'
+        data_plots.plot_data_loggraph( i_sig_i,   out_plot)
