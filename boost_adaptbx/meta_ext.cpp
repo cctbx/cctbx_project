@@ -13,10 +13,44 @@ namespace {
 
   inline
   std::string
+  to_str(bool value)
+  {
+    return std::string(value ? "true" : "false");
+  }
+
+  inline
+  std::string
+  to_str(int value)
+  {
+    char buf[256];
+    sprintf(buf, "%d", value);
+    return std::string(buf);
+  }
+
+  inline
+  std::string
+  to_str(unsigned int value)
+  {
+    char buf[256];
+    sprintf(buf, "%u", value);
+    return std::string(buf);
+  }
+
+  inline
+  std::string
   to_str(long value)
   {
     char buf[256];
     sprintf(buf, "%ld", value);
+    return std::string(buf);
+  }
+
+  inline
+  std::string
+  to_str(unsigned long value)
+  {
+    char buf[256];
+    sprintf(buf, "%lu", value);
     return std::string(buf);
   }
 
@@ -82,6 +116,10 @@ namespace {
 #endif
 #if defined(__GNUC_PATCHLEVEL__)
     result += "__GNUC_PATCHLEVEL__ = " + to_str(__GNUC_PATCHLEVEL__) + nl;
+#endif
+#if defined(BOOST_PYTHON_HAVE_CXXABI_CXA_DEMANGLE_IS_BROKEN)
+    result += "boost::python::cxxabi_cxa_demangle_is_broken(): "
+            + to_str(boost::python::cxxabi_cxa_demangle_is_broken()) + nl;
 #endif
 #if defined(__GXX_WEAK__)
     result += "__GXX_WEAK__ = " + to_str(__GXX_WEAK__) + nl;
