@@ -158,6 +158,12 @@ namespace {
     P(float)
     P(double)
     P(long double)
+#if defined(HAVE_WCHAR_H)
+    P(wchar_t)
+#endif
+#if defined(PY_UNICODE_TYPE)
+    P(PY_UNICODE_TYPE)
+#endif
 #undef P
     return result;
   }
