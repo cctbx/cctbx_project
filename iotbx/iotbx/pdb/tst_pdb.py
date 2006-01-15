@@ -242,6 +242,9 @@ def exercise_interpretation(verbose=0, quick=True):
       print "  sel_element:", sel_element.count(True)
       print "  sel_charge:", sel_charge.count(True)
       print "  sel_anisou:", sel_anisou.count(True)
+    models = stage_1.get_models_and_conformers()
+    residue_name = models[0].conformers[0].get_chains()[0].residues[0].name()
+    if (file_name == "pdb1a3k.ent"): assert residue_name == "LEU"
     if (quick): break
 
 def exercise_scalen():
