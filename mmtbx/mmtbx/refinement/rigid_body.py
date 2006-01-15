@@ -337,8 +337,32 @@ class rigid_body_minimizer(object):
            self.t_min[j] = tuple(self.x)[i:i+self.dim_t]
            i += self.dim_t
 
+  def dump(self):
+    rn = []
+    tn = []
+    for r, t in zip(self.r_min, self.t_min):
+        r = list(r)
+        t = list(t)
+        for i, ri in enumerate(r):
+            if ri < 0: sign = -1.0
+            else:      sign =  1.0
+            r[i] = min(abs(ri), 1.0)*sign
+        for i, ti in enumerate(t):
+            if ti < 0: sign = -1.0
+            else:      sign =  1.0
+            t[i] = min(abs(ti), 0.5)*sign
+        r = tuple(r)
+        t = tuple(t)
+        rn.append(r)
+        tn.append(t)
+    self.r_min = rn
+    self.t_min = tn
+
+
+
   def compute_functional_and_gradients(self):
     self.unpack_x()
+    #self.dump()
     self.counter += 1
     rotation_matrices   = []
     translation_vectors = []
