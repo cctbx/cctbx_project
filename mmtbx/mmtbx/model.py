@@ -184,7 +184,7 @@ class manager(object):
     occ_max = flex.max(occ)
     n_zeros = (occ < 0.1).count(True)
     percent_small = n_zeros * 100 / occ.size()
-    n_large = (occ < 2.0).count(True)
+    n_large = (occ > 2.0).count(True)
     if(occ_min < 0.0):
        raise Sorry("There are atoms with negative occupancies. Check input "\
                    "PDB file.")

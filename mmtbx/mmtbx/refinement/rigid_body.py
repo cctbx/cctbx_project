@@ -113,7 +113,7 @@ class rb_mat(object):
      rm = matrix.sqr((r11,r12,r13, r21,r22,r23, r31,r32,r33))
      return rm
 
-def setup_search_range(f, step, nref_min):
+def setup_search_range(f, nref_min):
   if(f.data().size() > nref_min):
      d_max, d_min = f.d_max_min()
      d_min_end = max(2.0, d_min)
