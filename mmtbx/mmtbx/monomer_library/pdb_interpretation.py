@@ -285,7 +285,7 @@ class monomer_mapping(object):
       self.is_terminus = None
       self.monomer.set_classification()
       if (self.incomplete_info is None):
-        self._resolve_unexpected(mon_lib_srv=mon_lib_srv)
+        self.resolve_unexpected(mon_lib_srv=mon_lib_srv)
 
   def _get_mappings(self, mon_lib_srv):
     self.monomer_atom_dict = atom_dict = self.monomer.atom_dict()
@@ -369,7 +369,7 @@ class monomer_mapping(object):
   def _set_incomplete_info(self):
     self.incomplete_info = self._get_incomplete_info()
 
-  def _resolve_unexpected(self, mon_lib_srv):
+  def resolve_unexpected(self, mon_lib_srv):
     mod_mod_ids = []
     if (self.monomer.classification == "peptide"):
       if ("OXT" in self.unexpected_atom_i_seqs):
@@ -398,17 +398,21 @@ class monomer_mapping(object):
       if ("HO3*" in self.unexpected_atom_i_seqs):
         mod_mod_ids.append(mon_lib_srv.mod_mod_id_dict["3*END"])
     for mod_mod_id in mod_mod_ids:
-      try:
-        mod_mon = self.monomer.apply_mod(mod_mod_id)
-      except RuntimeError:
-        return
-      self.chem_mod_ids.append(mod_mod_id.chem_mod.id)
-      self.residue_name += "%" + mod_mod_id.chem_mod.id
-      mod_mon.classification = self.monomer.classification
-      self.monomer = mod_mon
-      if (mod_mod_id.chem_mod.name.lower().find("terminus") >= 0):
-        self.is_terminus = True # AD HOC manipulation
-      self._get_mappings(mon_lib_srv=mon_lib_srv)
+      self.apply_mod(mon_lib_srv=mon_lib_srv, mod_mod_id=mod_mod_id)
+
+  def apply_mod(self, mon_lib_srv, mod_mod_id):
+    try:
+      mod_mon = self.monomer.apply_mod(mod_mod_id)
+    except RuntimeError:
+      return
+    self.chem_mod_ids.append(mod_mod_id.chem_mod.id)
+    self.residue_name += "%" + mod_mod_id.chem_mod.id
+    mod_mon.classification = self.monomer.classification
+    self.monomer = mod_mon
+    if (    mod_mod_id.chem_mod.name is not None
+        and mod_mod_id.chem_mod.name.lower().find("terminus") >= 0):
+      self.is_terminus = True # AD HOC manipulation
+    self._get_mappings(mon_lib_srv=mon_lib_srv)
 
   def residue_conformer_label(self):
     result = self.residue_name
@@ -490,17 +494,25 @@ class link_match_one(object):
       comp_group = "peptide"
     elif (comp_group in cif_types.dna_rna_comp_groups):
       comp_group = "DNA/RNA"
-    if (   chem_link_comp_id == ""
-        or comp_id.lower() == chem_link_comp_id.lower()):
+    if (   chem_link_comp_id in [None, ""]
+        or (chem_link_comp_id is not None
+            and comp_id.lower() == chem_link_comp_id.lower())):
       self.is_comp_id_match = True
-      self.len_comp_id_match = len(chem_link_comp_id)
+      if (chem_link_comp_id is None):
+        self.len_comp_id_match = 1
+      else:
+        self.len_comp_id_match = len(chem_link_comp_id)
     else:
       self.is_comp_id_match = False
       self.len_comp_id_match = 0
-    if (   chem_link_group_comp == ""
-        or comp_group.lower() == chem_link_group_comp.lower()):
+    if (   chem_link_group_comp in [None, ""]
+        or (comp_group is not None
+            and comp_group.lower() == chem_link_group_comp.lower())):
       self.is_group_match = True
-      self.len_group_match = len(chem_link_group_comp)
+      if (chem_link_group_comp is None):
+        self.len_group_match = 1
+      else:
+        self.len_group_match = len(chem_link_group_comp)
     else:
       self.is_group_match = False
       self.len_group_match = 0
@@ -1122,6 +1134,7 @@ class build_chain_proxies(object):
     n_planarities_discarded_because_of_special_positions = 0
     break_block_identifiers = stage_1.get_break_block_identifiers()
     prev_break_block_identifier = None
+    mm = None
     prev_mm = None
     for i_residue,residue in enumerate(chain.residues):
       break_block_identifier = break_block_identifiers[residue.iselection[0]]
@@ -1137,27 +1150,6 @@ class build_chain_proxies(object):
             and prev_break_block_identifier is not None):
         n_chain_breaks += 1
       else:
-        if (mm.is_unusual()):
-          unusual_residues[mm.residue_name] += 1
-        if (    mm.is_terminus == True
-            and i_residue > 0
-            and i_residue < len(chain.residues)-1):
-          inner_chain_residues_flagged_as_termini.append(
-            stage_1.atom_attributes_list[residue.iselection[0]]
-              .residue_labels())
-        n_expected_atoms += len(mm.expected_atom_i_seqs)
-        for atom_name in mm.unexpected_atom_i_seqs.keys():
-          unexpected_atoms[mm.residue_name+","+atom_name] += 1
-        for atom_name,i_seqs in mm.ignored_atom_i_seqs.items():
-          ignored_atoms[mm.residue_name+","+atom_name] += len(i_seqs)
-        for atom_name,i_seqs in mm.duplicate_atom_i_seqs.items():
-          duplicate_atoms[mm.residue_name+","+atom_name] += len(i_seqs)
-        if (mm.incomplete_info is not None):
-          incomplete_infos[mm.incomplete_info] += 1
-        if (mm.monomer.classification is not None):
-          classifications[mm.monomer.classification] += 1
-        for chem_mod_id in mm.chem_mod_ids:
-          modifications_used[chem_mod_id] += 1
         if (prev_mm is not None and prev_mm.monomer is not None):
           prev_mm.lib_link = get_lib_link(
             mon_lib_srv=mon_lib_srv,
@@ -1166,6 +1158,16 @@ class build_chain_proxies(object):
           if (prev_mm.lib_link is None):
             link_ids[None] += 1
           else:
+            mod_id = prev_mm.lib_link.chem_link.mod_id_1
+            if (mod_id not in [None, ""]):
+              mod_mod_id = mon_lib_srv.mod_mod_id_dict[mod_id]
+              prev_mm.apply_mod(mon_lib_srv=mon_lib_srv, mod_mod_id=mod_mod_id)
+              prev_mm.resolve_unexpected(mon_lib_srv=mon_lib_srv)
+            mod_id = prev_mm.lib_link.chem_link.mod_id_2
+            if (mod_id not in [None, ""]):
+              mod_mod_id = mon_lib_srv.mod_mod_id_dict[mod_id]
+              mm.apply_mod(mon_lib_srv=mon_lib_srv, mod_mod_id=mod_mod_id)
+              mm.resolve_unexpected(mon_lib_srv=mon_lib_srv)
             link_resolution = add_bond_proxies(
               counters=counters(label="link_bond"),
               m_i=prev_mm,
@@ -1219,6 +1221,27 @@ class build_chain_proxies(object):
               special_position_indices=special_position_indices)
             n_unresolved_chain_link_planarities \
               += link_resolution.counters.unresolved_non_hydrogen
+        if (mm.is_unusual()):
+          unusual_residues[mm.residue_name] += 1
+        if (    mm.is_terminus == True
+            and i_residue > 0
+            and i_residue < len(chain.residues)-1):
+          inner_chain_residues_flagged_as_termini.append(
+            stage_1.atom_attributes_list[residue.iselection[0]]
+              .residue_labels())
+        n_expected_atoms += len(mm.expected_atom_i_seqs)
+        for atom_name in mm.unexpected_atom_i_seqs.keys():
+          unexpected_atoms[mm.residue_name+","+atom_name] += 1
+        for atom_name,i_seqs in mm.ignored_atom_i_seqs.items():
+          ignored_atoms[mm.residue_name+","+atom_name] += len(i_seqs)
+        for atom_name,i_seqs in mm.duplicate_atom_i_seqs.items():
+          duplicate_atoms[mm.residue_name+","+atom_name] += len(i_seqs)
+        if (mm.incomplete_info is not None):
+          incomplete_infos[mm.incomplete_info] += 1
+        if (mm.monomer.classification is not None):
+          classifications[mm.monomer.classification] += 1
+        for chem_mod_id in mm.chem_mod_ids:
+          modifications_used[chem_mod_id] += 1
         scattering_type_registry.assign_from_monomer_mapping(
           conformer_label=conformer.altLoc, mm=mm)
         nonbonded_energy_type_registry.assign_from_monomer_mapping(

@@ -106,6 +106,15 @@ def get_bond(bond_list, atom_id_1, atom_id_2):
       return bond
   return None
 
+def normalized_bond_list(bond_list):
+  result = []
+  for bond in bond_list:
+    bond = copy.copy(bond)
+    if (bond.atom_id_1 > bond.atom_id_2):
+      bond.atom_id_1, bond.atom_id_2 = bond.atom_id_2, bond.atom_id_1
+    result.append(bond)
+  return result
+
 def get_chir_volume_ideal(volume_sign, bonds, angles):
   if (None in bonds or None in angles):
     return None
@@ -183,6 +192,9 @@ class comp_comp_id(object):
   def get_bond(self, atom_id_1, atom_id_2):
     return get_bond(self.bond_list, atom_id_1, atom_id_2)
 
+  def normalized_bond_list(self):
+    return normalized_bond_list(bond_list=self.bond_list)
+
   def get_angle(self, atom_id_1, atom_id_2, atom_id_3):
     for angle in self.angle_list:
       if (angle.atom_id_2 == atom_id_2):
@@ -191,6 +203,15 @@ class comp_comp_id(object):
         if (angle.atom_id_1 == atom_id_3 and angle.atom_id_3 == atom_id_1):
           return angle
     return None
+
+  def normalized_angle_list(self):
+    result = []
+    for angle in self.angle_list:
+      angle = copy.copy(angle)
+      if (angle.atom_id_1 > angle.atom_id_3):
+        angle.atom_id_1, angle.atom_id_3 = angle.atom_id_3, angle.atom_id_1
+      result.append(angle)
+    return result
 
   def delete_atom_in_place(self, atom_id):
     i_atom = self.i_atom_by_id(atom_id)
@@ -411,6 +432,10 @@ class comp_comp_id(object):
     if (f is None): f = sys.stdout
     show_loop(data_list=self.atom_list, f=f)
     show_loop(data_list=self.bond_list, f=f)
+    show_loop(data_list=self.angle_list, f=f)
+    show_loop(data_list=self.tor_list, f=f)
+    show_loop(data_list=self.chir_list, f=f)
+    show_loop(data_list=self.plane_atom_list, f=f)
     return self
 
 class chem_comp(looped_data):
@@ -796,9 +821,11 @@ _chem_mod_angle.new_value_angle_esd:float
       value_angle_esd=self.new_value_angle_esd)
 
   def is_matching_mod_for(self, angle):
-    return     self.atom_id_1 == angle.atom_id_1 \
-           and self.atom_id_2 == angle.atom_id_2 \
-           and self.atom_id_3 == angle.atom_id_3
+    if (self.atom_id_2 != angle.atom_id_2): return False
+    return (    self.atom_id_1 == angle.atom_id_1
+            and self.atom_id_3 == angle.atom_id_3) \
+        or (    self.atom_id_1 == angle.atom_id_3
+            and self.atom_id_3 == angle.atom_id_1)
 
   def apply_change_in_place(self, angle):
     angle.value_angle = new_if_defined(
@@ -821,6 +848,7 @@ _chem_mod_tor.new_period:int
 
   def as_chem_comp(self):
     return chem_comp_tor(
+      id=self.id,
       atom_id_1=self.atom_id_1,
       atom_id_2=self.atom_id_2,
       atom_id_3=self.atom_id_3,
