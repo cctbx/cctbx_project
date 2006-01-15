@@ -89,6 +89,10 @@ def exercise_basic():
     assert column.mtz_object().n_reflections() == 165
     assert column.label() == "H"
     assert column.type() == "H"
+    column.change_type_in_place("XX")
+    assert column.type() == "XX"
+    column.change_type_in_place("H")
+    assert column.type() == "H"
     assert column.is_active()
     assert column.array_size() == 165
     assert column.array_capacity() == 200
