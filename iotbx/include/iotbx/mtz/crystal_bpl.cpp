@@ -24,7 +24,10 @@ namespace {
         .def("id", &w_t::id)
         .def("set_id", &w_t::set_id, (arg_("id")), return_self<>())
         .def("name", &w_t::name)
+        .def("set_name", &w_t::set_name, (arg_("new_name")), return_self<>())
         .def("project_name", &w_t::project_name)
+        .def("set_project_name", &w_t::set_project_name, (
+          arg_("new_project_name")), return_self<>())
         .def("unit_cell_parameters", &w_t::unit_cell_parameters)
         .def("unit_cell", &w_t::unit_cell)
         .def("set_unit_cell_parameters", &w_t::set_unit_cell_parameters, (
@@ -33,6 +36,7 @@ namespace {
         .def("datasets", &w_t::datasets)
         .def("add_dataset", &w_t::add_dataset, (
           arg_("name"), arg_("wavelength")))
+        .def("has_dataset", &w_t::has_dataset, (arg_("name")))
       ;
       {
         scitbx::af::boost_python::shared_wrapper<w_t>::wrap(

@@ -148,7 +148,7 @@ namespace iotbx { namespace mtz {
         for(int i=0;i<3;i++) {
           strncpy(batch_ptr->gonlab[i], values[i].c_str(), n-1);
           batch_ptr->gonlab[i][n-2] = '\0';
-          if (strchr(batch_ptr->gonlab[i], ' ') != 0) {
+          if (std::strchr(batch_ptr->gonlab[i], ' ') != 0) {
             throw cctbx::error(
               "MTZ batch \"gonlab\" values must not contain spaces.");
           }

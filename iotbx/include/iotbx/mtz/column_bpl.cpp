@@ -3,6 +3,7 @@
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
 #include <boost/python/overloads.hpp>
+#include <boost/python/return_arg.hpp>
 #include <iotbx/mtz/column.h>
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
 
@@ -28,8 +29,10 @@ namespace {
         .def("mtz_crystal", &w_t::mtz_crystal)
         .def("mtz_object", &w_t::mtz_object)
         .def("label", &w_t::label)
+        .def("set_label", &w_t::set_label, (arg_("new_label")),
+          return_self<>())
         .def("type", &w_t::type)
-        .def("change_type_in_place", &w_t::change_type_in_place)
+        .def("set_type", &w_t::set_type, (arg_("new_type")), return_self<>())
         .def("is_active", &w_t::is_active)
         .def("array_size", &w_t::array_size)
         .def("array_capacity", &w_t::array_capacity)

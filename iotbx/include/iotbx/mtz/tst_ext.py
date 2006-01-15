@@ -63,12 +63,32 @@ def exercise_basic():
       (19.869975507347792, 15.001543055390009))
     assert mtz_object.n_crystals() == 4
     assert mtz_object.n_active_crystals() == 3
+    assert mtz_object.has_crystal("unknown")
+    assert not mtz_object.has_crystal("abc")
+    assert mtz_object.has_column("H")
+    assert not mtz_object.has_column("abc")
     crystal = mtz.crystal(mtz_object=mtz_object, i_crystal=1)
     assert crystal.mtz_object().n_reflections() == 165
     assert crystal.i_crystal() == 1
     assert mtz_object.crystals().size() == mtz_object.n_crystals()
     assert crystal.id() == 2
     assert crystal.name() == "unknown"
+    assert crystal.set_name(new_name="abc") is crystal
+    assert crystal.name() == "abc"
+    assert crystal.set_name("abc") is crystal
+    assert crystal.name() == "abc"
+    try: crystal.set_name("unknown3")
+    except RuntimeError, e:
+      assert str(e) == 'mtz::crystal::set_name(new_name="unknown3"):' \
+        ' new_name is used already for another crystal.'
+    else: raise RuntimeError("Exception expected.")
+    assert crystal.name() == "abc"
+    assert crystal.set_name("unknown") is crystal
+    assert crystal.name() == "unknown"
+    assert crystal.project_name() == "unknown"
+    assert crystal.set_project_name(new_project_name="abc") is crystal
+    assert crystal.project_name() == "abc"
+    assert crystal.set_project_name(new_project_name="unknown") is crystal
     assert crystal.project_name() == "unknown"
     assert approx_equal(crystal.unit_cell_parameters(),
       (84.511, 104.308, 174.103, 90, 90, 90))
@@ -81,6 +101,16 @@ def exercise_basic():
     assert dataset.mtz_object().n_crystals() == mtz_object.n_crystals()
     assert dataset.id() == 1
     assert dataset.name() == "unknown230103:23:14:49"
+    assert dataset.set_name(new_name="abc") is dataset
+    assert dataset.name() == "abc"
+    assert dataset.set_name(new_name="abc") is dataset
+    assert dataset.name() == "abc"
+    assert dataset.set_name("unknown230103:23:14:49") is dataset
+    assert dataset.name() == "unknown230103:23:14:49"
+    assert dataset.wavelength() == 0
+    assert dataset.set_wavelength(new_wavelength=0.12) is dataset
+    assert approx_equal(dataset.wavelength(), 0.12)
+    assert dataset.set_wavelength(0) is dataset
     assert dataset.wavelength() == 0
     column = mtz.column(mtz_dataset=dataset, i_column=0)
     assert column.mtz_dataset().mtz_crystal().i_crystal() == 1
@@ -88,10 +118,27 @@ def exercise_basic():
     assert column.mtz_crystal().i_crystal() == 1
     assert column.mtz_object().n_reflections() == 165
     assert column.label() == "H"
+    assert column.set_label(new_label="New") is column
+    assert column.label() == "New"
+    try: column.set_label("a,b,c")
+    except RuntimeError, e:
+      assert str(e) == 'mtz::column::set_label(new_label="a,b,c"):' \
+        ' new_label must not include commas.'
+    else: raise RuntimeError("Exception expected.")
+    assert column.label() == "New"
+    assert column.set_label(new_label="New") is column
+    assert column.label() == "New"
+    try: column.set_label(new_label="K")
+    except RuntimeError, e:
+      assert str(e) == 'mtz::column::set_label(new_label="K"):' \
+        ' new_label is used already for another column.'
+    else: raise RuntimeError("Exception expected.")
+    assert column.set_label("H") is column
+    assert column.label() == "H"
     assert column.type() == "H"
-    column.change_type_in_place("XX")
-    assert column.type() == "XX"
-    column.change_type_in_place("H")
+    assert column.set_type(new_type="Nw") is column
+    assert column.type() == "Nw"
+    assert column.set_type("H") is column
     assert column.type() == "H"
     assert column.is_active()
     assert column.array_size() == 165
@@ -502,8 +549,10 @@ Crystal 3:
     for i_crystal,crystal in enumerate(mtz_object.crystals()):
       for i_dataset in xrange(5-i_crystal):
         if (stage == 0):
-          dataset = crystal.add_dataset(
-            name="dataset_%d"%i_dataset, wavelength=10-i_dataset)
+          new_name = "dataset_%d" % i_dataset
+          assert not crystal.has_dataset(name=new_name)
+          dataset = crystal.add_dataset(name=new_name, wavelength=10-i_dataset)
+          assert crystal.has_dataset(name=new_name)
         else:
           dataset = crystal.datasets()[i_dataset]
         assert dataset.name() == "dataset_%d"%i_dataset
@@ -601,6 +650,20 @@ Crystal 3:
     Wavelength: 8
     Number of columns: 0
 """)
+  #
+  dataset_0_0 = mtz_object.crystals()[0].datasets()[0]
+  assert dataset_0_0.name() == "dataset_0"
+  assert dataset_0_0.set_name(new_name="dataset_x") is dataset_0_0
+  assert dataset_0_0.name() == "dataset_x"
+  assert dataset_0_0.set_name(new_name="dataset_0") is dataset_0_0
+  assert dataset_0_0.name() == "dataset_0"
+  try: dataset_0_0.set_name(new_name="dataset_1")
+  except RuntimeError, e:
+    assert str(e) == 'mtz::dataset::set_name(new_name="dataset_1"):' \
+      ' new_name is used already for another dataset.'
+  else: raise RuntimeError("Exception expected.")
+  assert dataset_0_0.name() == "dataset_0"
+  #
   for stage in [0,1]:
     i_seq_iter = count()
     for i_crystal,crystal in enumerate(mtz_object.crystals()):
@@ -770,6 +833,11 @@ Crystal 3:
     unit_cell=unit_cell).add_dataset(
       name="crystal_1",
       wavelength=0)
+  try: dataset.add_column(label="a,b,c", type="H")
+  except RuntimeError, e:
+    assert str(e) == 'mtz::dataset::add_column(label="a,b,c", ...):' \
+      ' label must not include commas.'
+  else: raise RuntimeError("Exception expected.")
   for label in "HKL":
     dataset.add_column(label=label, type="H")
   column = dataset.add_column(label="F", type="F")

@@ -350,6 +350,10 @@ namespace mtz {
 
       //! Test.
       bool
+      has_crystal(const char* name) const;
+
+      //! Test.
+      bool
       has_column(const char* label) const;
 
       //! Retrieves a column owned by this object.
