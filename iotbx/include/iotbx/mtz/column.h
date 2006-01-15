@@ -53,6 +53,9 @@ namespace iotbx { namespace mtz {
       const char*
       type() const { return ptr()->type; }
 
+      void
+      change_type_in_place(const char* new_type);
+
       //! Test.
       bool
       is_active() const { return (ptr()->active != 0); }

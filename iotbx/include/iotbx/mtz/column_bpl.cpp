@@ -29,6 +29,7 @@ namespace {
         .def("mtz_object", &w_t::mtz_object)
         .def("label", &w_t::label)
         .def("type", &w_t::type)
+        .def("change_type_in_place", &w_t::change_type_in_place)
         .def("is_active", &w_t::is_active)
         .def("array_size", &w_t::array_size)
         .def("array_capacity", &w_t::array_capacity)

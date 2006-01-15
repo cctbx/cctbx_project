@@ -18,6 +18,13 @@ namespace iotbx { namespace mtz {
     return CMtz::MtzIcolInSet(mtz_dataset_.ptr(), i_column_);
   }
 
+  void
+  column::change_type_in_place(const char* new_type)
+  {
+    CCTBX_ASSERT(std::strlen(new_type) <= 2);
+    std::strcpy(ptr()->type, new_type);
+  }
+
   std::string
   column::path() const
   {
