@@ -294,6 +294,19 @@ namespace iotbx { namespace mtz {
   }
 
   bool
+  object::has_crystal(const char* name) const
+  {
+    CCTBX_ASSERT(name != 0);
+    for(int i_crystal=0;i_crystal<n_crystals();i_crystal++) {
+      crystal x(*this, i_crystal);
+      if (std::strcmp(x.name(), name) == 0) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  bool
   object::has_column(const char* label) const
   {
     CCTBX_ASSERT(label != 0);

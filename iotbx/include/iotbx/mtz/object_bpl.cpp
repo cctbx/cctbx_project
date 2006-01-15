@@ -135,6 +135,7 @@ namespace {
           arg_("name"),
           arg_("project_name"),
           arg_("unit_cell")))
+        .def("has_crystal", &w_t::has_crystal, (arg_("name")))
         .def("has_column", &w_t::has_column, (arg_("label")))
         .def("get_column", &w_t::get_column, (arg_("label")))
         .def("extract_miller_indices", &w_t::extract_miller_indices)

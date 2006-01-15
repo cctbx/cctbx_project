@@ -53,9 +53,24 @@ namespace iotbx { namespace mtz {
       const char*
       name() const { return ptr()->dname; }
 
+      //! Write access.
+      /*! An exception is thrown if the new_name is used already by
+          another dataset in the mtz_crystal().
+       */
+      dataset&
+      set_name(const char* new_name);
+
       //! Read-only access.
       float
       wavelength() const { return ptr()->wavelength; }
+
+      //! Write access.
+      dataset&
+      set_wavelength(float new_wavelength)
+      {
+        ptr()->wavelength = new_wavelength;
+        return *this;
+      }
 
       //! Read-only access.
       int

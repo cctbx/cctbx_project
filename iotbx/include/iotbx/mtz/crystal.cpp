@@ -32,6 +32,31 @@ namespace iotbx { namespace mtz {
     return *this;
   }
 
+  crystal&
+  crystal::set_name(const char* new_name)
+  {
+    CCTBX_ASSERT(new_name != 0);
+    CCTBX_ASSERT(std::strlen(new_name) < sizeof(ptr()->xname));
+    if (std::strcmp(ptr()->xname, new_name) == 0) return *this;
+    if (mtz_object().has_crystal(new_name)) {
+      throw std::runtime_error(
+          std::string("mtz::crystal::set_name(new_name=\"")
+        + new_name
+        + "\"): new_name is used already for another crystal.");
+    }
+    std::strcpy(ptr()->xname, new_name);
+    return *this;
+  }
+
+  crystal&
+  crystal::set_project_name(const char* new_project_name)
+  {
+    CCTBX_ASSERT(new_project_name != 0);
+    CCTBX_ASSERT(std::strlen(new_project_name) < sizeof(ptr()->pname));
+    std::strcpy(ptr()->pname, new_project_name);
+    return *this;
+  }
+
   af::small<double, 6>
   crystal::unit_cell_parameters() const
   {
@@ -39,6 +64,14 @@ namespace iotbx { namespace mtz {
     float* cell = ptr()->cell;
     for(std::size_t i=0;i<6;i++) result.push_back(cell[i]);
     return result;
+  }
+
+  crystal&
+  crystal::set_unit_cell_parameters(af::small<double, 6> const& parameters)
+  {
+    float* cell = ptr()->cell;
+    for(std::size_t i=0;i<6;i++) cell[i] = static_cast<float>(parameters[i]);
+    return *this;
   }
 
   af::shared<dataset>
@@ -49,14 +82,6 @@ namespace iotbx { namespace mtz {
       result.push_back(dataset(*this, i_dataset));
     }
     return result;
-  }
-
-  crystal&
-  crystal::set_unit_cell_parameters(af::small<double, 6> const& parameters)
-  {
-    float* cell = ptr()->cell;
-    for(std::size_t i=0;i<6;i++) cell[i] = static_cast<float>(parameters[i]);
-    return *this;
   }
 
   dataset
@@ -72,6 +97,19 @@ namespace iotbx { namespace mtz {
     dataset result(*this, i_dataset);
     CCTBX_ASSERT(result.ptr() == dataset_ptr);
     return result;
+  }
+
+  bool
+  crystal::has_dataset(const char* name) const
+  {
+    CCTBX_ASSERT(name != 0);
+    for(int i_dataset=0;i_dataset<n_datasets();i_dataset++) {
+      dataset s(*this, i_dataset);
+      if (std::strcmp(s.name(), name) == 0) {
+        return true;
+      }
+    }
+    return false;
   }
 
 }} // namespace iotbx::mtz

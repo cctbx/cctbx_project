@@ -35,6 +35,22 @@ namespace iotbx { namespace mtz {
     return *this;
   }
 
+  dataset&
+  dataset::set_name(const char* new_name)
+  {
+    CCTBX_ASSERT(new_name != 0);
+    CCTBX_ASSERT(std::strlen(new_name) < sizeof(ptr()->dname));
+    if (std::strcmp(ptr()->dname, new_name) == 0) return *this;
+    if (mtz_crystal().has_dataset(new_name)) {
+      throw std::runtime_error(
+          std::string("mtz::dataset::set_name(new_name=\"")
+        + new_name
+        + "\"): new_name is used already for another dataset.");
+    }
+    std::strcpy(ptr()->dname, new_name);
+    return *this;
+  }
+
   af::shared<batch>
   dataset::batches() const
   {
@@ -78,7 +94,7 @@ namespace iotbx { namespace mtz {
     CMtz::MTZCOL* column_ptr = 0;
     CCTBX_ASSERT(label != 0);
     CCTBX_ASSERT(strlen(label) < sizeof(column_ptr->label));
-    if (strchr(label, ',') != 0) {
+    if (std::strchr(label, ',') != 0) {
       throw std::runtime_error(
           std::string("mtz::dataset::add_column(label=\"")
         + label

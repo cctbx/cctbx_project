@@ -18,11 +18,35 @@ namespace iotbx { namespace mtz {
     return CMtz::MtzIcolInSet(mtz_dataset_.ptr(), i_column_);
   }
 
-  void
-  column::change_type_in_place(const char* new_type)
+  column&
+  column::set_label(const char* new_label)
   {
-    CCTBX_ASSERT(std::strlen(new_type) <= 2);
+    CCTBX_ASSERT(new_label != 0);
+    CCTBX_ASSERT(std::strlen(new_label) < sizeof(ptr()->label));
+    if (std::strcmp(ptr()->label, new_label) == 0) return *this;
+    if (std::strchr(new_label, ',') != 0) {
+      throw std::runtime_error(
+          std::string("mtz::column::set_label(new_label=\"")
+        + new_label
+        + "\"): new_label must not include commas.");
+    }
+    if (mtz_object().has_column(new_label)) {
+      throw std::runtime_error(
+          std::string("mtz::column::set_label(new_label=\"")
+        + new_label
+        + "\"): new_label is used already for another column.");
+    }
+    std::strcpy(ptr()->label, new_label);
+    return *this;
+  }
+
+  column&
+  column::set_type(const char* new_type)
+  {
+    CCTBX_ASSERT(new_type != 0);
+    CCTBX_ASSERT(std::strlen(new_type) < sizeof(ptr()->type));
     std::strcpy(ptr()->type, new_type);
+    return *this;
   }
 
   std::string

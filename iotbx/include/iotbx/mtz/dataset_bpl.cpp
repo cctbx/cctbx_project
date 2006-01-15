@@ -27,7 +27,10 @@ namespace {
         .def("id", &w_t::id)
         .def("set_id", &w_t::set_id, (arg_("id")), return_self<>())
         .def("name", &w_t::name)
+        .def("set_name", &w_t::set_name, (arg_("new_name")), return_self<>())
         .def("wavelength", &w_t::wavelength)
+        .def("set_wavelength", &w_t::set_wavelength, (arg_("new_wavelength")),
+          return_self<>())
         .def("n_batches", &w_t::n_batches)
         .def("batches", &w_t::batches)
         .def("add_batch", &w_t::add_batch)

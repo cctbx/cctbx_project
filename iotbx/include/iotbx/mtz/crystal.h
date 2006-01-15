@@ -49,9 +49,20 @@ namespace iotbx { namespace mtz {
       const char*
       name() const { return ptr()->xname; }
 
+      //! Write access.
+      /*! An exception is thrown if the new_name is used already by
+          another crystal in the mtz_object().
+       */
+      crystal&
+      set_name(const char* new_name);
+
       //! Read-only access.
       const char*
       project_name() const { return ptr()->pname; }
+
+      //! Write access.
+      crystal&
+      set_project_name(const char* new_project_name);
 
       //! Read-only access.
       af::small<double, 6>
@@ -81,6 +92,10 @@ namespace iotbx { namespace mtz {
       add_dataset(
         const char *name,
         double wavelength);
+
+      //! Test.
+      bool
+      has_dataset(const char* name) const;
 
     protected:
       object mtz_object_;

@@ -49,12 +49,20 @@ namespace iotbx { namespace mtz {
       const char*
       label() const { return ptr()->label; }
 
+      //! Write access.
+      /*! An exception is thrown if the new_label is used already by
+          any other column in the mtz_object().
+       */
+      column&
+      set_label(const char* new_label);
+
       //! Read-only access.
       const char*
       type() const { return ptr()->type; }
 
-      void
-      change_type_in_place(const char* new_type);
+      //! Write access.
+      column&
+      set_type(const char* new_type);
 
       //! Test.
       bool
