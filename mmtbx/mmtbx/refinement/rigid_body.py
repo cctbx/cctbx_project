@@ -114,16 +114,17 @@ class rb_mat(object):
      return rm
 
 def setup_search_range(f, step, nref_min):
-  d_max, d_min = f.d_max_min()
-  r_maxs = [x/10. for x in range(int(d_min*10), int(d_max*10), int(step*10))]
-  for r_max in r_maxs:
-      nref = f.resolution_filter(d_max = d_max, d_min = r_max).data().size()
-      if(nref < nref_min):
-         sel = flex.double(r_maxs) < r_max
-         r_maxs = list(flex.double(r_maxs).select(sel))
-         break
-  r_maxs.reverse()
-  return r_maxs
+  if(f.data().size() > nref_min):
+     d_max, d_min = f.d_max_min()
+     d_min_end = max(2.0, d_min)
+     nref = 0
+     d_max_start = d_max
+     while nref <= nref_min:
+        nref = f.resolution_filter(d_max=999.9, d_min = d_max_start).data().size()
+        d_max_start = d_max_start - 0.01
+     return [d_max_start, d_min_end]
+  else:
+     return [d_min,]
 
 class manager(object):
   def __init__(self, fmodel,
@@ -132,9 +133,8 @@ class manager(object):
                      refine_t         = True,
                      r_initial        = None,
                      t_initial        = None,
-                     resolution_step  = 1.5,
-                     nref_min         = 100,
-                     max_iterations   = 20,
+                     nref_min         = 1000,
+                     max_iterations   = 50,
                      convergence_test = True,
                      convergence_delta= 0.00001,
                      log              = None):
@@ -160,12 +160,11 @@ class manager(object):
     fmodel_copy = fmodel.deep_copy()
     if(nref_min < fmodel_copy.f_obs_w().data().size()):
        d_mins = setup_search_range(fmodel_copy.f_obs_w(),
-                                   step     = resolution_step,
                                    nref_min = nref_min)
     else:
        d_mins = [fmodel_copy.f_obs_w().d_min()]
     print >> log, "High resolution cutoffs for grid search: ", \
-                  [float("%10.3f"%i) for i in d_mins]
+                  [str("%.3f"%i) for i in d_mins]
     for res in d_mins:
         print >> log
         xrs = fmodel_copy.xray_structure.deep_copy_scatterers()
