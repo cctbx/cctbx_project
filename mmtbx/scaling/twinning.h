@@ -240,7 +240,7 @@ namespace twinning {
       for (unsigned ii=0;ii<hkl.size();ii++){
         hkl_.push_back( hkl[ii] );
         intensity_.push_back( intensity[ii] );
-        if ( sigma_i.size() > 0 ){ 
+        if ( sigma_i.size() > 0 ){
           sigma_.push_back( sigma_i[ii] );
         }
         if ( sigma_i.size() == 0 ){
