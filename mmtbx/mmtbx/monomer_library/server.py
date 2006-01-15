@@ -107,6 +107,7 @@ def convert_list_block(
   for cif_data in cif_object:
     if (cif_data.name.startswith(data_prefix)):
       item_id = cif_data.name[len(data_prefix):]
+      if (data_prefix + item_id == list_name): continue
       obj_inner = tabulated_items.get(item_id)
       if (obj_inner is None):
         obj_inner = cif_type_inner(id=item_id)
