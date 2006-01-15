@@ -4,13 +4,13 @@ import math, sys
 from libtbx.test_utils import approx_equal
 from scitbx import matrix
 from scitbx import lbfgs
-import copy
+import copy, math
 from cctbx import adptbx
 
 
 class manager(object):
   def __init__(self, fmodel,
-                     tan_b_iso_max,
+                     tan_b_iso_max            = 0,
                      selections               = None,
                      u_initial                = None,
                      max_number_of_iterations = 50,
@@ -29,15 +29,8 @@ class manager(object):
        eps = math.pi**2*8
        for sel in selections:
            u = fmodel.xray_structure.select(sel).extract_u_iso_or_u_equiv()
-           u_initial.append(flex.mean(u)/2)
-       print >> log, "Start B-values for group B-factor refinement:"
-       if(len(u_initial) < 10):
-          print >> log, [float("%10.3f"%adptbx.u_as_b(u)) for u in u_initial]
-       else:
-          print >> log, "first 10: ", \
-                     [float("%10.3f"%adptbx.u_as_b(u)) for u in u_initial[:10]]
+           u_initial.append(flex.mean(u))
     fmodel_copy = fmodel.deep_copy()
-    print >> log
     rworks = flex.double()
     minimized = None
     for macro_cycle in xrange(1,number_of_macro_cycles+1,1):
@@ -64,27 +57,20 @@ class manager(object):
                                           out            = log)
         rwork = minimized.fmodel.r_work()
         rfree = minimized.fmodel.r_free()
-        assert approx_equal(rwork, fmodel_copy.r_work())
-        print "*"*30
-        print "rwork, rfree = ",rwork, rfree
-        print adptbx.u_as_b(minimized.u_min[0]), adptbx.u_as_b(minimized.u_min[1]), adptbx.u_as_b(minimized.u_min[2])
-        print "*"*30
-        #self.show(f     = fmodel_copy.f_obs_w(),
-        #          r_mat = self.total_rotation,
-        #          t_vec = self.total_translation,
-        #          rw    = rwork,
-        #          rf    = rfree,
-        #          tw    = minimized.fmodel.target_w(),
-        #          mc    = macro_cycle,
-        #          it    = minimized.counter,
-        #          ct    = convergence_test,
-        #          out   = log)
-        #if(convergence_test):
-        #   rworks.append(rwork)
-        #   if(rworks.size() > 1):
-        #      size = rworks.size() - 1
-        #      if(abs(rworks[size]-rworks[size-1])<convergence_delta):
-        #         break
+        self.show(f     = fmodel_copy.f_obs_w(),
+                  rw    = rwork,
+                  rf    = rfree,
+                  tw    = minimized.fmodel.target_w(),
+                  mc    = macro_cycle,
+                  it    = minimized.counter,
+                  ct    = convergence_test,
+                  out   = log)
+        if(convergence_test):
+           rworks.append(rwork)
+           if(rworks.size() > 1):
+              size = rworks.size() - 1
+              if(abs(rworks[size]-rworks[size-1])<convergence_delta):
+                 break
     fmodel.update_xray_structure(xray_structure = fmodel_copy.xray_structure,
                                  update_f_calc  = True)
     self.fmodel = fmodel
@@ -96,8 +82,6 @@ class manager(object):
     return self.total_translation
 
   def show(self, f,
-                 r_mat,
-                 t_vec,
                  rw,
                  rf,
                  tw,
@@ -110,41 +94,21 @@ class manager(object):
     nref = f.data().size()
     mc = str(mc)
     it = str(it)
-    part1 = "|-rigid body refinement (macro cycle = "
+    part1 = "|-group b-factor refinement (macro cycle = "
     part2 = "; iterations = "
     n = 77 - len(part1 + part2 + mc + it)
     part3 = ")"+"-"*n+"|"
     print >> out, part1 + mc + part2 + it + part3
-    part1 = "| resolution range: "
-    d_max = str("%.3f"%d_max)
-    part2 = " - "
-    d_min = str("%.3f"%d_min)
-    part3 = " ("
-    nref = str("%d"%nref)
+    part1 = "| "
     if(ct): ct = "on"
     else:   ct = "off"
-    part4 = " reflections) convergence test = "+str("%s"%ct)
-    n = 78 - len(part1+d_max+part2+d_min+part3+nref+part4)
-    part5 = " "*n+"|"
-    print >> out, part1+d_max+part2+d_min+part3+nref+part4+part5
+    part4 = " convergence test = "+str("%s"%ct)
     rw = "| r_work = "+str("%.6f"%rw)
     rf = " r_free = "+str("%.6f"%rf)
     tw = " target = "+str("%.6f"%tw)
-    n = 78 - len(rw+rf+tw)
+    n = 78 - len(rw+rf+tw+part4)
     end = " "*n+"|"
-    print >> out, rw+rf+tw+end
-    print >> out, "|                         rotation (deg.)             "\
-                  "   translation (A)      |"
-    i = 1
-    for r,t in zip(r_mat,t_vec):
-        part1 = "| group"+str("%5d:  "%i)
-        part2 = str("%8.4f"%r[0])+" "+str("%8.4f"%r[1])+" "+str("%8.4f"%r[2])
-        part3 = "     "
-        part4 = str("%8.4f"%t[0])+" "+str("%8.4f"%t[1])+" "+str("%8.4f"%t[2])
-        n = 78 - len(part1 + part2 + part3 + part4)
-        part5 = " "*n+"|"
-        print >> out, part1 + part2 + part3 + part4 + part5
-        i += 1
+    print >> out, rw+rf+tw+part4+end
     print >> out, "|" +"-"*77+"|"
 
 class group_u_iso_minimizer(object):
@@ -155,18 +119,16 @@ class group_u_iso_minimizer(object):
                max_number_of_iterations,
                tan_b_iso_max):
     adopt_init_args(self, locals())
-    # XXX ???
     if(self.fmodel.target_name in ["ml","lsm"]):
-       self.alpha, self.beta = None, None#self.fmodel.alpha_beta_w()
+       # XXX looks like alpha & beta must be recalcuclated in line search
+       #self.alpha, self.beta = self.fmodel.alpha_beta_w()
+       self.alpha, self.beta = None, None
     else:
        self.alpha, self.beta = None, None
     self.fmodel_copy = self.fmodel.deep_copy()
-    self.n_groups = len(self.selections)
-    assert self.n_groups > 0
     self.counter=0
     assert len(self.selections) == len(self.u_initial)
     self.u_min = copy.deepcopy(self.u_initial)
-    print self.u_min
     self.x = self.pack(self.u_min)
     self.n = self.x.size()
     self.minimizer = lbfgs.run(
@@ -180,10 +142,18 @@ class group_u_iso_minimizer(object):
     del self.x
 
   def pack(self, u):
+    if(self.tan_b_iso_max > 0):
+       for i, ui in enumerate(u):
+           u[i] =math.tan(math.pi*(ui/adptbx.b_as_u(self.tan_b_iso_max)-1./2.))
     return flex.double(tuple(u))
 
   def unpack_x(self):
-    self.u_min = tuple(self.x)
+    if(self.tan_b_iso_max > 0):
+       for i, ui in enumerate(self.x):
+           self.u_min[i] = adptbx.b_as_u(self.tan_b_iso_max)*(math.atan(ui)+\
+                                                            math.pi/2.)/math.pi
+    else:
+       self.u_min = tuple(self.x)
 
   def compute_functional_and_gradients(self):
     self.unpack_x()
@@ -197,9 +167,38 @@ class group_u_iso_minimizer(object):
                               alpha         = self.alpha,
                               beta          = self.beta,
                               selections    = self.selections,
-                              tan_b_iso_max = self.tan_b_iso_max)
+                              tan_b_iso_max = 0)
     self.f = tg_obj.target()
-    self.g = self.pack( tg_obj.gradients_wrt_u() )
+    ##########################################################################
+    #eps = 0.001
+    #new_xrs = apply_transformation(xray_structure = self.fmodel.xray_structure,
+    #                               u              = [self.u_min[0]+eps, self.u_min[1],self.u_min[2]],
+    #                               selections     = self.selections)
+    #self.fmodel_copy.update_xray_structure(xray_structure = new_xrs,
+    #                                       update_f_calc  = True)
+    #tg_obj = target_and_grads(fmodel        = self.fmodel_copy,
+    #                          alpha         = self.alpha,
+    #                          beta          = self.beta,
+    #                          selections    = self.selections,
+    #                          tan_b_iso_max = self.tan_b_iso_max)
+    #t1 = tg_obj.target()
+    ##################
+    #new_xrs = apply_transformation(xray_structure = self.fmodel.xray_structure,
+    #                               u              = [self.u_min[0]-eps, self.u_min[1],self.u_min[2]],
+    #                               selections     = self.selections)
+    #self.fmodel_copy.update_xray_structure(xray_structure = new_xrs,
+    #                                       update_f_calc  = True)
+    #tg_obj = target_and_grads(fmodel        = self.fmodel_copy,
+    #                          alpha         = self.alpha,
+    #                          beta          = self.beta,
+    #                          selections    = self.selections,
+    #                          tan_b_iso_max = self.tan_b_iso_max)
+    #t2 = tg_obj.target()
+    ##########################################################################
+    grads = tg_obj.gradients_wrt_u()
+
+    #print grads[0], (t1-t2)/(eps*2)
+    self.g = flex.double(tuple(grads))
     return self.f, self.g
 
 def apply_transformation(xray_structure,
@@ -228,7 +227,8 @@ class target_and_grads(object):
     target_grads_wrt_adp = target_grads_wrt_adp.packed()
     self.f = fmodel.target_w(alpha = alpha, beta = beta)
     for sel in selections:
-        self.grads_wrt_u.append(flex.sum(target_grads_wrt_adp.select(sel)))
+        target_grads_wrt_adp_sel = target_grads_wrt_adp.select(sel)
+        self.grads_wrt_u.append(flex.sum(target_grads_wrt_adp_sel))
 
   def target(self):
     return self.f
