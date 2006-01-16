@@ -263,3 +263,9 @@ stl_iterator
     env.SharedLibrary(
       target="#lib/boost_python_swig_args_ext",
       source="swig_args_ext.cpp")
+
+  if (os.path.isfile(libtbx.env.under_dist("boost_adaptbx", "demo.cpp"))):
+    env = env_pure_boost_python_ext.Copy()
+    env.SharedLibrary(
+      target="#lib/demo",
+      source="demo.cpp")
