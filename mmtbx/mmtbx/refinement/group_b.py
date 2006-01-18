@@ -49,18 +49,18 @@ class manager(object):
                            max_number_of_iterations = max_number_of_iterations,
                            tan_b_iso_max            = tan_b_iso_max)
         new_xrs = apply_transformation(
-                              xray_structure = minimized.fmodel.xray_structure,
-                              u              = u_initial,
-                              selections     = selections)
+                         xray_structure = minimized.fmodel_copy.xray_structure,
+                         u              = u_initial,
+                         selections     = selections)
         fmodel_copy.update_xray_structure(xray_structure = new_xrs,
                                           update_f_calc  = True,
                                           out            = log)
-        rwork = minimized.fmodel.r_work()
-        rfree = minimized.fmodel.r_free()
+        rwork = minimized.fmodel_copy.r_work()
+        rfree = minimized.fmodel_copy.r_free()
         self.show(f     = fmodel_copy.f_obs_w(),
                   rw    = rwork,
                   rf    = rfree,
-                  tw    = minimized.fmodel.target_w(),
+                  tw    = minimized.fmodel_copy.target_w(),
                   mc    = macro_cycle,
                   it    = minimized.counter,
                   ct    = convergence_test,
@@ -119,8 +119,10 @@ class group_u_iso_minimizer(object):
                max_number_of_iterations,
                tan_b_iso_max):
     adopt_init_args(self, locals())
+    #self.tan_b_iso_max=0
     if(self.fmodel.target_name in ["ml","lsm"]):
-       # XXX looks like alpha & beta must be recalcuclated in line search
+       # XXX Looks like alpha & beta must be recalcuclated in line search,
+       # XXX       what I don't like
        #self.alpha, self.beta = self.fmodel.alpha_beta_w()
        self.alpha, self.beta = None, None
     else:
@@ -170,6 +172,7 @@ class group_u_iso_minimizer(object):
                               tan_b_iso_max = 0)
     self.f = tg_obj.target()
     ##########################################################################
+    # XXX works only if self.tan_b_iso_max=0 ???
     #eps = 0.001
     #new_xrs = apply_transformation(xray_structure = self.fmodel.xray_structure,
     #                               u              = [self.u_min[0]+eps, self.u_min[1],self.u_min[2]],
@@ -180,7 +183,7 @@ class group_u_iso_minimizer(object):
     #                          alpha         = self.alpha,
     #                          beta          = self.beta,
     #                          selections    = self.selections,
-    #                          tan_b_iso_max = self.tan_b_iso_max)
+    #                          tan_b_iso_max = 0)
     #t1 = tg_obj.target()
     ##################
     #new_xrs = apply_transformation(xray_structure = self.fmodel.xray_structure,
@@ -192,12 +195,13 @@ class group_u_iso_minimizer(object):
     #                          alpha         = self.alpha,
     #                          beta          = self.beta,
     #                          selections    = self.selections,
-    #                          tan_b_iso_max = self.tan_b_iso_max)
+    #                          tan_b_iso_max = 0)
     #t2 = tg_obj.target()
     ##########################################################################
     grads = tg_obj.gradients_wrt_u()
 
     #print grads[0], (t1-t2)/(eps*2)
+    print adptbx.u_as_b(self.u_min[0]), adptbx.u_as_b(self.u_min[1]), adptbx.u_as_b(self.u_min[2]), self.f
     self.g = flex.double(tuple(grads))
     return self.f, self.g
 

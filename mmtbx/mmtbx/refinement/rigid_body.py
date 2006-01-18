@@ -131,16 +131,17 @@ def setup_search_range(f, nref_min):
 
 class manager(object):
   def __init__(self, fmodel,
-                     selections       = None,
-                     refine_r         = True,
-                     refine_t         = True,
-                     r_initial        = None,
-                     t_initial        = None,
-                     nref_min         = 1000,
-                     max_iterations   = 50,
-                     convergence_test = True,
-                     convergence_delta= 0.00001,
-                     log              = None):
+                     selections        = None,
+                     refine_r          = True,
+                     refine_t          = True,
+                     r_initial         = None,
+                     t_initial         = None,
+                     nref_min          = 1000,
+                     max_iterations    = 50,
+                     convergence_test  = True,
+                     convergence_delta = 0.00001,
+                     scan              = True,
+                     log               = None):
     if(log is None): log = sys.stdout
     if(selections is None):
        selections = []
@@ -168,6 +169,16 @@ class manager(object):
        d_mins = [fmodel_copy.f_obs_w().d_min()]
     print >> log, "High resolution cutoffs for grid search: ", \
                   [str("%.3f"%i) for i in d_mins]
+    if(scan):
+       xray_structure_pre_optimized = self.scan(
+                                           high_resolution_limit = d_mins[0],
+                                           selections            = selections,
+                                           fmodel                = fmodel_copy,
+                                           log                   = log)
+       fmodel_copy.update_xray_structure(
+                                 xray_structure = xray_structure_pre_optimized,
+                                 update_f_calc  = True,
+                                 update_f_mask  = True)
     for res in d_mins:
         print >> log
         xrs = fmodel_copy.xray_structure.deep_copy_scatterers()
@@ -224,6 +235,64 @@ class manager(object):
     fmodel.update_xray_structure(xray_structure = fmodel_copy.xray_structure,
                                  update_f_calc  = True)
     self.fmodel = fmodel
+
+  def scan(self, high_resolution_limit, selections, fmodel, log):
+    fmodel_copy = fmodel.deep_copy()
+    xray_structure_start = fmodel_copy.xray_structure.deep_copy_scatterers()
+    xray_structure_final = None
+    fmodel_copy.mask_params.verbose = -1
+    fmodel_copy = fmodel_copy.resolution_filter(d_max = 999.9,
+                                                d_min = high_resolution_limit)
+    print >> log, "Scan started..."
+    phis = [-5.0, 0., 5.0]
+    psis = [-5.0, 0., 5.0]
+    thes = [-5.0, 0., 5.0]
+    xs   = [-2.5, 0., 2.5]
+    ys   = [-2.5, 0., 2.5]
+    zs   = [-2.5, 0., 2.5]
+    print >> log, "   high resolution limit = %10.3f" % high_resolution_limit
+    print >> log, "   rotation search range     = ", phis
+    print >> log, "   translation seaarch range = ", xs
+    counter = 0
+    dim = len(phis)*len(psis)*len(thes)*len(xs)*len(ys)*len(zs)
+    r_work = fmodel_copy.r_work()
+    for phi in phis:
+      for psi in psis:
+        for the in thes:
+          for x in xs:
+            for y in ys:
+              for z in zs:
+                  counter += 1
+                  if(counter % 100 == 0):
+                     print >> log, "   done %-4d from %d"%(counter, dim)
+                  rotation_matrices   = []
+                  translation_vectors = []
+                  rot_objs = []
+                  for i in xrange(len(selections)):
+                      rot_obj = rb_mat(phi = phi,
+                                       psi = psi,
+                                       the = the)
+                      rotation_matrices.append(rot_obj.rot_mat())
+                      translation_vectors.append([x,y,z])
+                      rot_objs.append(rot_obj)
+                  new_xrs = apply_transformation(
+                                    xray_structure      = xray_structure_start,
+                                    rotation_matrices   = rotation_matrices,
+                                    translation_vectors = translation_vectors,
+                                    selections          = selections)
+                  fmodel_copy.update_xray_structure(xray_structure = new_xrs,
+                                                    update_f_calc  = True,
+                                                    update_f_mask  = True)
+                  r_work_ = fmodel_copy.r_work()
+                  if(r_work_ < r_work):
+                     r_work = r_work_
+                     xray_structure_final = new_xrs.deep_copy_scatterers()
+                     print >> log, "   phi=%8.1f psi=%8.1f the=%8.1f x=%8.1f y=%8.1f z=%8.1f r_work=%7.4f" % \
+                           (phi,psi,the,x,y,z,r_work)
+    if(xray_structure_final is None):
+       return xray_structure_start
+    else:
+       return xray_structure_final
 
   def rotation(self):
     return self.total_rotation
