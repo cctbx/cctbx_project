@@ -140,7 +140,7 @@ class manager(object):
                      max_iterations    = 50,
                      convergence_test  = True,
                      convergence_delta = 0.00001,
-                     scan              = None,
+                     scan_flag         = None,
                      log               = None):
     if(log is None): log = sys.stdout
     if(selections is None):
@@ -169,7 +169,7 @@ class manager(object):
        d_mins = [fmodel_copy.f_obs_w().d_min()]
     print >> log, "High resolution cutoffs for grid search: ", \
                   [str("%.3f"%i) for i in d_mins]
-    if(self.scan):
+    if(self.scan_flag):
        xray_structure_pre_optimized = self.scan(
                                            high_resolution_limit = d_mins[0],
                                            selections            = selections,
