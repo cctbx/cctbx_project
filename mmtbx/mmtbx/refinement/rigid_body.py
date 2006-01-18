@@ -169,7 +169,7 @@ class manager(object):
        d_mins = [fmodel_copy.f_obs_w().d_min()]
     print >> log, "High resolution cutoffs for grid search: ", \
                   [str("%.3f"%i) for i in d_mins]
-    if(scan):
+    if(self.scan):
        xray_structure_pre_optimized = self.scan(
                                            high_resolution_limit = d_mins[0],
                                            selections            = selections,
