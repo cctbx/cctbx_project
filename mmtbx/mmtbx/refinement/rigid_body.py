@@ -240,7 +240,8 @@ class manager(object):
     fmodel_copy = fmodel.deep_copy()
     xray_structure_start = fmodel_copy.xray_structure.deep_copy_scatterers()
     xray_structure_final = None
-    fmodel_copy.mask_params.verbose = -1
+    if(fmodel_copy.mask_params is not None):
+       fmodel_copy.mask_params.verbose = -1
     fmodel_copy = fmodel_copy.resolution_filter(d_max = 999.9,
                                                 d_min = high_resolution_limit)
     print >> log, "Scan started..."
