@@ -41,3 +41,10 @@ if (not env_etc.no_boost_python):
   env.SharedLibrary(
     target="#lib/gltbx_util_ext",
     source=["util_ext.cpp"])
+  env.SharedLibrary(
+    target="#lib/gltbx_fonts_ext",
+    source=[
+      "fonts_ext.cpp",
+      "font_ucs_8x13.cpp",
+      "font_ucs_9x15.cpp",
+      "font_ucs_10x20.cpp"])

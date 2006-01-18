@@ -105,7 +105,7 @@ namespace gltbx { namespace boost_python {
     }
 
     T*
-    get() { return &*data_.begin(); }
+    get() { return (data_.size() ? &*data_.begin() : 0); }
 
     void
     write_back()
