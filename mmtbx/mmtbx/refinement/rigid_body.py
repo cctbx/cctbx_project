@@ -140,7 +140,7 @@ class manager(object):
                      max_iterations    = 50,
                      convergence_test  = True,
                      convergence_delta = 0.00001,
-                     scan              = True,
+                     scan              = None,
                      log               = None):
     if(log is None): log = sys.stdout
     if(selections is None):
