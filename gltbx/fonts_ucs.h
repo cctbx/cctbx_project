@@ -123,7 +123,7 @@ namespace gltbx { namespace fonts { namespace ucs {
       bitmap_index(UnsignedInt2Type const& encoding) const
       {
         if (!have_call_lists_base) setup_call_lists();
-        std::map<UnsignedInt2Type, unsigned>::const_iterator
+        typename std::map<UnsignedInt2Type, unsigned>::const_iterator
           pair = encoding_to_bitmap_indices.find(encoding);
         if (pair == encoding_to_bitmap_indices.end()) return 0;
         return static_cast<GLuint>(pair->second);
@@ -141,7 +141,7 @@ namespace gltbx { namespace fonts { namespace ucs {
       void
       render_encodings(unsigned size, const UnsignedInt2Type* encodings) const
       {
-        boost::scoped_array<GLuint> bitmap_indices(new GLuint[string.size()]);
+        boost::scoped_array<GLuint> bitmap_indices(new GLuint[size]);
         GLuint* bi = bitmap_indices.get();
         for(unsigned i_char=0;i_char<size;i_char++) {
           *bi++ = bitmap_index(encodings[i_char]);
