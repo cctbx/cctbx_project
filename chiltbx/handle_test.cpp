@@ -31,7 +31,7 @@ struct bar {
         base_handle bh_;
 };
 
-int main ( int argc, char *argv[] ) {
+int main ( int /*argc*/, char* /*argv*/[] ) {
 
         bar B;
         B.constant();
