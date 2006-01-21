@@ -40,15 +40,15 @@ namespace twinning {
     parity_l_(parity_l),
     anomalous_flag_(anomalous_flag),
     max_delta_h_(max_delta_h),
-    hkl_(),
-    intensity_(),
-    diff_vectors_(),
     l_values_(),
     mean_l_(0),
     mean_l2_(0),
-    cumul_(50,0),
+    hkl_lookup_( hkl, space_group, anomalous_flag ),
+    hkl_(),
+    intensity_(),
+    diff_vectors_(),
     generator_(0), // always use the seed 0
-    hkl_lookup_( hkl, space_group, anomalous_flag )
+    cumul_(50,0)
     {
       SCITBX_ASSERT ( hkl.size() == intensity.size() );
       SCITBX_ASSERT ( int(max_delta_h_)>=2 );
@@ -223,16 +223,16 @@ namespace twinning {
     :
     hkl_(),
     hkl_twin_(),
-    detwinned_hkl_(),
     location_(),
-    hkl_lookup_(hkl, space_group, anomalous_flag),
     intensity_(),
     sigma_(),
+    detwinned_hkl_(),
     detwinned_i_(),
     detwinned_sigi_(),
     twin_law_(twin_law),
-    completeness_(0.0),
-    space_group_(space_group)
+    space_group_(space_group),
+    hkl_lookup_(hkl, space_group, anomalous_flag),
+    completeness_(0.0)
     {
       SCITBX_ASSERT( hkl.size() == intensity.size() );
       SCITBX_ASSERT( (sigma_i.size()==0) ||  (hkl.size() == sigma_i.size()) );
@@ -246,17 +246,22 @@ namespace twinning {
         if ( sigma_i.size() == 0 ){
           sigma_.push_back( 0.0 );
         }
-        ht = twin_law[0]*hkl[ii][0] +
-             twin_law[3]*hkl[ii][1] +
-             twin_law[6]*hkl[ii][2];
+        // XXX Peter, is this right? I think to be correct you have
+        //     to use scitbx::math::iround()
+        ht = static_cast<int>(
+               twin_law[0]*hkl[ii][0] +
+               twin_law[3]*hkl[ii][1] +
+               twin_law[6]*hkl[ii][2]);
 
-        kt = twin_law[1]*hkl[ii][0] +
-             twin_law[4]*hkl[ii][1] +
-             twin_law[7]*hkl[ii][2];
+        kt = static_cast<int>(
+               twin_law[1]*hkl[ii][0] +
+               twin_law[4]*hkl[ii][1] +
+               twin_law[7]*hkl[ii][2]);
 
-        lt = twin_law[2]*hkl[ii][0] +
-             twin_law[5]*hkl[ii][1] +
-             twin_law[8]*hkl[ii][2];
+        lt = static_cast<int>(
+               twin_law[2]*hkl[ii][0] +
+               twin_law[5]*hkl[ii][1] +
+               twin_law[8]*hkl[ii][2]);
 
         cctbx::miller::index<> tmp_ht(ht,kt,lt);
         // map the thing to the ASU please
@@ -381,12 +386,12 @@ namespace twinning {
                    space_group,
                    anomalous_flag,
                    twin_law),
+    location_(),
     intensity_(),
     h_values_(),
     h_array_(),
     h_cumul_obs_(),
     h_cumul_fit_(),
-    location_(),
     fraction_(fraction),
     distance_(),
     fitted_alpha_(),
@@ -500,7 +505,7 @@ namespace twinning {
     fit_cumul_()
     {
       // test 500 values of alpha please
-      FloatType alpha, best_alpha;
+      FloatType alpha, best_alpha=0.0;
       FloatType local_max;
       FloatType global_min=20.0;
       FloatType sh;

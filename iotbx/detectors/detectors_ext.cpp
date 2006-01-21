@@ -52,7 +52,7 @@ af::flex_int ReadMAR(const std::string& filename,
 }
 
 af::flex_int ReadRAXIS(const std::string& characters,
-                       const int& width, const long& size1,
+                       const int& /*width*/, const long& size1,
                        const long& size2,
                        const int& big_endian ) {
   af::flex_int z(af::flex_grid<>(size1,size2));
@@ -159,8 +159,8 @@ af::flex_int MakeSquareRAXIS(const int& np,
     int* rt = row_temp.begin();
     for (std::size_t item = 0; item < signatures_addr.size(); ++item){
       for (std::size_t fast = 0; fast < np; ++fast){
-          *(rt+fast)+=
-            *(begin + signatures_addr[item]*np + fast) * signatures_frac[item];
+          *(rt+fast)+= static_cast<int>(
+            *(begin+signatures_addr[item]*np+fast) * signatures_frac[item]);
       }
       for (std::size_t fast = 0; fast < np; ++fast){
         *(begin + newslow*np + fast)=*(rt+fast);
@@ -173,7 +173,7 @@ af::flex_int MakeSquareRAXIS(const int& np,
 
 af::flex_int Bin2_by_2(const af::flex_int& olddata) {
   int oldsize = olddata.size();
-  int olddim = std::sqrt((double)oldsize);
+  int olddim = static_cast<int>(std::sqrt(static_cast<double>(oldsize)));
   int newdim = olddim/2;
   if (olddim%2!=0) {throw;} // image dimension must be even so it can be divided by 2
   // always assume a square image!!!

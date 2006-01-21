@@ -1405,9 +1405,6 @@ namespace relative_scaling{
 
       bool const& weights)
     :
-    use_weights_( weights ),
-    local_scales_( hkl_sets.size(), 1),
-    local_scales_sigmas_( hkl_sets.size(), 0.01),
     property_generator_( hkl_master,
                          hkl_sets,
                          space_group,
@@ -1422,7 +1419,10 @@ namespace relative_scaling{
     location_of_master_in_set_( hkl_sets, space_group, anomalous_flag ),
     min_neighbours_( hkl_sets.size() ),
     max_neighbours_( 0 ),
-    mean_neighbours_( 0 )
+    mean_neighbours_( 0 ),
+    local_scales_( hkl_sets.size(), 1),
+    local_scales_sigmas_( hkl_sets.size(), 0.01),
+    use_weights_( weights )
     {
 
       for (unsigned ii=0;ii<hkl_master.size();ii++){
@@ -1576,9 +1576,6 @@ namespace relative_scaling{
 
       bool const& weights)
     :
-    use_weights_( weights ),
-    local_scales_( hkl_sets.size(), 1),
-    local_scales_sigmas_( hkl_sets.size(), 0.01),
     property_generator_( hkl_master,
                          hkl_sets,
                          space_group,
@@ -1593,7 +1590,10 @@ namespace relative_scaling{
     location_of_master_in_set_( hkl_sets, space_group, anomalous_flag ),
     min_neighbours_( hkl_sets.size() ),
     max_neighbours_( 0 ),
-    mean_neighbours_( 0 )
+    mean_neighbours_( 0 ),
+    local_scales_( hkl_sets.size(), 1),
+    local_scales_sigmas_( hkl_sets.size(), 0.01),
+    use_weights_( weights )
     {
 
       for (unsigned ii=0;ii<hkl_master.size();ii++){
@@ -1743,8 +1743,6 @@ namespace relative_scaling{
       std::size_t const& at_least_this_number_of_neighbours)
     :
     threshold_(threshold),
-    local_scales_( hkl_sets.size(), 1),
-    local_scales_sigmas_( hkl_sets.size(), 0.01),
     property_generator_( hkl_master,
                          hkl_sets,
                          space_group,
@@ -1759,7 +1757,9 @@ namespace relative_scaling{
     location_of_master_in_set_( hkl_sets, space_group, anomalous_flag ),
     min_neighbours_( hkl_sets.size() ),
     max_neighbours_( 0 ),
-    mean_neighbours_( 0 )
+    mean_neighbours_( 0 ),
+    local_scales_( hkl_sets.size(), 1),
+    local_scales_sigmas_( hkl_sets.size(), 0.01)
     {
 
       for (unsigned ii=0;ii<hkl_master.size();ii++){
@@ -1900,22 +1900,6 @@ namespace relative_scaling{
     scitbx::af::shared< FloatType > local_scales_sigmas_;
 
   };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 }}} // namespace mmtbx::scaling::relative_scaling
 #endif // MMTBX_SCALING_RELATIVE_SCALING_H

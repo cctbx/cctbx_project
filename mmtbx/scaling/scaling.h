@@ -94,8 +94,8 @@ namespace mmtbx { namespace scaling {
     f_t start = 0.008;
     f_t increment = 0.003478;
 
-    int bin_low = std::floor( (d_star_sq - start - increment/2.0)/increment
-                              +0.5);
+    int bin_low = static_cast<int>(
+      std::floor( (d_star_sq - start - increment/2.0)/increment +0.5));
     int bin_high = bin_low+1;
 
     f_t d_star_sq_low = bin_low*increment+start;
