@@ -104,7 +104,7 @@ namespace cctbx { namespace miller {
 
     DataElementType
     merge(
-      miller::index<> const& current_index,
+      miller::index<> const& /*current_index*/,
       const DataElementType* data_group, std::size_t n)
     {
       DataElementType result = data_group[0];
@@ -172,7 +172,7 @@ namespace cctbx { namespace miller {
 
     FloatType
     merge(
-      miller::index<> const& current_index,
+      miller::index<> const& /*current_index*/,
       const FloatType* data_group, std::size_t n)
     {
       FloatType result = data_group[0];

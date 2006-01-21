@@ -82,7 +82,6 @@ gradients(
   for(std::size_t i = 0; i < num; ++i)
   {
     grad_val = gradient(map,sites[i],delta_h);
-    FloatType len = grad_val.length();
 
     // Full-Newton Predictor-Corrector With Early Abort
     // Get energy at predicted value

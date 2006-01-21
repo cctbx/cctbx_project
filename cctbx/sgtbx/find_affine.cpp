@@ -71,7 +71,7 @@ namespace cctbx { namespace sgtbx {
       setup_affine_row_reduced_echelon_form(group(i).r(), m);
     }
     scitbx::mat_ref<int> m_ref(&*m.begin(), n_rows, 9);
-    std::size_t r = scitbx::matrix::row_echelon::form(m_ref);
+    scitbx::matrix::row_echelon::form(m_ref);
     scitbx::matrix::row_echelon::independent<int, 9> indep(m_ref);
     typedef af::nested_loop<af::small<int, 9> > loop_t;
     af::small<int, 9> loop_begin(indep.indices.size(), -range);

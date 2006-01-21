@@ -218,7 +218,7 @@ namespace direct_space_asu {
       scitbx::vec3<FloatType> const&
       box_min(bool cartesian=false) const
       {
-        if (!have_box_) compute_box(cartesian);
+        if (!have_box_) compute_box();
         if (cartesian) return box_min_cart_;
         return box_min_frac_;
       }
@@ -229,7 +229,7 @@ namespace direct_space_asu {
       scitbx::vec3<FloatType> const&
       box_max(bool cartesian=false) const
       {
-        if (!have_box_) compute_box(cartesian);
+        if (!have_box_) compute_box();
         if (cartesian) return box_max_cart_;
         return box_max_frac_;
       }
@@ -245,7 +245,7 @@ namespace direct_space_asu {
       mutable scitbx::vec3<FloatType> box_max_cart_;
 
       void
-      compute_box(bool cartesian) const
+      compute_box() const
       {
         scitbx::mat3<FloatType> orth_mx = unit_cell_.orthogonalization_matrix();
         af::shared<scitbx::vec3<FloatType> > vertices_ = volume_vertices();

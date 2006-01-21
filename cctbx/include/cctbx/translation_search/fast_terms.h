@@ -56,7 +56,6 @@ namespace cctbx { namespace translation_search {
         sgtbx::space_group const& space_group,
         af::const_ref<miller::index<> > const& miller_indices_f_obs,
         af::const_ref<FloatType> const& m,
-        af::const_ref<FloatType> const& f_obs,
         af::const_ref<std::complex<FloatType> > const& f_part,
         bool squared_flag)
       {

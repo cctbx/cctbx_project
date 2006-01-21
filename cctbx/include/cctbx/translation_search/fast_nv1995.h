@@ -32,20 +32,20 @@ namespace cctbx { namespace translation_search {
           gridding, anomalous_flag, miller_indices_p1_f_calc, p1_f_calc);
         target_map_ = terms.summation(
           space_group, miller_indices_f_obs,
-          interm.m.const_ref(), f_obs, f_part,
+          interm.m.const_ref(), f_part,
           true).fft().accu_real_copy();
         terms.summation(
           space_group, miller_indices_f_obs,
-          interm.m.const_ref(), f_obs, f_part,
+          interm.m.const_ref(), f_part,
           false).fft();
         fast_nv1995_detail::combination_eq13(
           interm, terms.accu_real_const_ref(), target_map_.ref());
         terms.summation(
           space_group, miller_indices_f_obs,
-          interm.m_d_i_obs.const_ref(), f_obs, f_part,
+          interm.m_d_i_obs.const_ref(), f_part,
           false).fft();
         fast_nv1995_detail::combination_eq12(
-          interm, terms.accu_real_const_ref(), target_map_.ref());
+          terms.accu_real_const_ref(), target_map_.ref());
       }
 
       //! Final result (correlation of intensities).

@@ -95,7 +95,6 @@ namespace cctbx { namespace xray {
   template <typename ScattererType>
   void
   apply_symmetry_u_stars(
-    uctbx::unit_cell const& unit_cell,
     sgtbx::site_symmetry_table const& site_symmetry_table,
     af::ref<ScattererType> const& scatterers,
     double u_star_tolerance=0)
@@ -107,7 +106,6 @@ namespace cctbx { namespace xray {
     for(std::size_t i_sp=0;i_sp<sp_indices.size();i_sp++) {
       std::size_t i_seq = sp_indices[i_sp];
       scatterers[i_seq].apply_symmetry_u_star(
-        unit_cell,
         site_symmetry_table.get(i_seq),
         u_star_tolerance);
     }
@@ -150,10 +148,7 @@ namespace cctbx { namespace xray {
                       i++,j++) {
         sgtbx::site_symmetry_ops const&
           site_symmetry_ops = site_symmetry_table_for_new.get(j);
-        scatterers[i].apply_symmetry(
-          unit_cell,
-          site_symmetry_ops,
-          u_star_tolerance);
+        scatterers[i].apply_symmetry(site_symmetry_ops, u_star_tolerance);
         site_symmetry_table.process(site_symmetry_ops);
       }
     }

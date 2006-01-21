@@ -66,10 +66,10 @@ namespace cctbx { namespace uctbx {
         FloatType multiplier_significant_change_test=10,
         std::size_t min_n_no_significant_change=2)
       :
-        iteration_limit_(iteration_limit),
         multiplier_significant_change_test_(
           multiplier_significant_change_test),
         min_n_no_significant_change_(min_n_no_significant_change),
+        iteration_limit_(iteration_limit),
         r_inv_(scitbx::mat3<IntFromFloatType>(1)),
         n_iterations_(0),
         n_no_significant_change_(0),

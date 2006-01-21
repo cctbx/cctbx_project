@@ -151,11 +151,11 @@ namespace cctbx {
 
       //! Division by integer (for averaging).
       hendrickson_lattman
-      operator/(std::size_t const& rhs) const
+      operator/(FloatType const& rhs) const
       {
         hendrickson_lattman result;
         for(unsigned i=0;i<4;i++) {
-          result[i] = this->elems[i] / static_cast<FloatType>(rhs);
+          result[i] = this->elems[i] / rhs;
         }
         return result;
       }

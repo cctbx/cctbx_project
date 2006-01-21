@@ -31,7 +31,6 @@ namespace {
           (arg_("space_group"),
            arg_("miller_indices_f_obs"),
            arg_("m"),
-           arg_("f_obs"),
            arg_("f_part"),
            arg_("squared_flag")))
         .def("fft", &w_t::fft, rir())

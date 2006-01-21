@@ -122,10 +122,8 @@ def exercise_xray_scatterer():
     assert str(e).find("is_compatible_u_star") > 0
   else:
     raise AssertionError("Exception expected.")
-  x.apply_symmetry(unit_cell=uc, site_symmetry_ops=ss)
-  x.apply_symmetry(unit_cell=uc, site_symmetry_ops=ss, u_star_tolerance=0.5)
-  x.apply_symmetry(unit_cell=uc, site_symmetry_ops=ss, u_star_tolerance=0.5,
-    assert_min_distance_sym_equiv=0)
+  x.apply_symmetry(site_symmetry_ops=ss)
+  x.apply_symmetry(site_symmetry_ops=ss, u_star_tolerance=0.5)
   ss = x.apply_symmetry(uc, sg.group(), 0.5, 0)
   ss = x.apply_symmetry(uc, sg.group(), 0.5, 0, 0)
   ss = x.apply_symmetry(
@@ -141,7 +139,6 @@ def exercise_xray_scatterer():
   assert approx_equal(x.site, (0,0,0.3))
   x.u_star = (1,2,3,4,5,6)
   x.apply_symmetry_u_star(
-    unit_cell=uc,
     site_symmetry_ops=ss,
     u_star_tolerance=0)
   assert approx_equal(x.u_star, (1.5,1.5,3.0,0,0,0))

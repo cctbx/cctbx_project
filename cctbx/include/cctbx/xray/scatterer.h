@@ -266,10 +266,8 @@ namespace xray {
        */
       void
       apply_symmetry(
-        uctbx::unit_cell const& unit_cell,
         sgtbx::site_symmetry_ops const& site_symmetry_ops,
-        FloatType const& u_star_tolerance=0,
-        bool assert_min_distance_sym_equiv=true);
+        FloatType const& u_star_tolerance=0);
 
       //! Apply previously determined site symmetry to site.
       /*! Shorthand for: site = site_symmetry_ops.special_op() * site
@@ -294,7 +292,6 @@ namespace xray {
        */
       void
       apply_symmetry_u_star(
-        uctbx::unit_cell const& unit_cell,
         sgtbx::site_symmetry_ops const& site_symmetry_ops,
         FloatType const& u_star_tolerance=0);
 
@@ -408,11 +405,7 @@ namespace xray {
       site,
       min_distance_sym_equiv,
       assert_min_distance_sym_equiv);
-    apply_symmetry(
-      unit_cell,
-      site_symmetry,
-      u_star_tolerance,
-      assert_min_distance_sym_equiv);
+    apply_symmetry(site_symmetry, u_star_tolerance);
     return site_symmetry;
   }
 
@@ -422,10 +415,8 @@ namespace xray {
   void
   scatterer<FloatType, LabelType, ScatteringTypeType>
   ::apply_symmetry(
-    uctbx::unit_cell const& unit_cell,
     sgtbx::site_symmetry_ops const& site_symmetry_ops,
-    FloatType const& u_star_tolerance,
-    bool assert_min_distance_sym_equiv)
+    FloatType const& u_star_tolerance)
   {
     multiplicity_ = site_symmetry_ops.multiplicity();
     if (site_symmetry_ops.is_point_group_1()) {
@@ -437,7 +428,6 @@ namespace xray {
       apply_symmetry_site(site_symmetry_ops);
     }
     apply_symmetry_u_star(
-      unit_cell,
       site_symmetry_ops,
       u_star_tolerance);
   }
@@ -448,7 +438,6 @@ namespace xray {
   void
   scatterer<FloatType, LabelType, ScatteringTypeType>
   ::apply_symmetry_u_star(
-    uctbx::unit_cell const& unit_cell,
     sgtbx::site_symmetry_ops const& site_symmetry_ops,
     FloatType const& u_star_tolerance)
   {

@@ -63,7 +63,6 @@ namespace cctbx { namespace miller {
       CCTBX_ASSERT(data_in.size() == indices_in.size());
       indices.reserve(indices_in.size());
       data.reserve(data_in.size());
-      sgtbx::rot_mx const& r = cb_op.c_inv().r();
       sgtbx::tr_vec const& t = cb_op.c_inv().t();
       for(std::size_t i=0;i<indices_in.size();i++) {
         index<> const& h = indices_in[i];

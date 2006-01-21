@@ -43,7 +43,6 @@ def exercise_fast_terms():
     space_group=space_group,
     miller_indices_f_obs=miller_indices_f_obs,
     m=flex.double((1,2)),
-    f_obs=flex.double((1,2)),
     f_part=None,
     squared_flag=False).fft().accu_real_copy().all() == (20,20,36)
 
