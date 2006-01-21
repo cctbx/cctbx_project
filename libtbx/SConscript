@@ -237,16 +237,22 @@ else:
       SHCXX="g++",
       SHLINK="g++",
     )
+    if (libtbx.env.build_options.warning_level == 0):
+      warn_options = "-w"
+    elif (libtbx.env.build_options.warning_level == 1):
+      warn_options = "-Wall -W"
+    else:
+      warn_options = "-Wall -W -Werror"
     env_etc.cxxflags_base = Split("""
       -fPIC
       -ftemplate-depth-120
-      -w
+      %s
       -DBOOST_DISABLE_THREADS
-    """)
+    """ % warn_options)
     env_etc.ccflags_base = Split("""
       -fPIC
-      -w
-    """)
+      %s
+    """ % warn_options)
     if (libtbx.env.build_options.optimization):
       opts = ["-DNDEBUG", "-O3", "-ffast-math"]
     else:

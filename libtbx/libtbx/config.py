@@ -508,6 +508,11 @@ class environment:
         default="default",
         help="select non-standard compiler",
         metavar="STRING")
+      parser.option(None, "--warning_level",
+        action="store",
+        type="int",
+        default=0,
+        help="manipulate warning options (platform dependent)")
       parser.option(None, "--static_libraries",
         action="store_true",
         default=False,
@@ -554,6 +559,7 @@ class environment:
       self.build_options = build_options(
         compiler=command_line.options.compiler,
         mode=command_line.options.build,
+        warning_level=command_line.options.warning_level,
         static_libraries=command_line.options.static_libraries,
         static_exe=command_line.options.static_exe,
         scan_boost=command_line.options.scan_boost)
@@ -1221,9 +1227,16 @@ class module:
 
 class build_options:
 
-  def __init__(self, compiler, mode, static_libraries, static_exe, scan_boost):
+  def __init__(self,
+        compiler,
+        mode,
+        warning_level,
+        static_libraries,
+        static_exe,
+        scan_boost):
     adopt_init_args(self, locals())
     assert self.mode in ["release", "quick", "debug", "debug_optimized"]
+    assert self.warning_level >= 0
     self.optimization = (self.mode in ["release", "debug_optimized"])
     self.debug_symbols = (self.mode in ["debug", "debug_optimized"])
     if (self.static_exe):
@@ -1233,6 +1246,7 @@ class build_options:
     if (f is None): f = sys.stdout
     print >> f, "Compiler:", self.compiler
     print >> f, "Build mode:", self.mode
+    print >> f, "Warning level:", self.warning_level
     print >> f, "Static libraries:", self.static_libraries
     print >> f, "Static exe:", self.static_exe
     print >> f, "Scan Boost headers:", self.scan_boost
