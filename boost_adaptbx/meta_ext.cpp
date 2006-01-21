@@ -145,6 +145,12 @@ namespace {
 #if defined(__VERSION__)
     result += "__VERSION__ = " __VERSION__ "\n";
 #endif
+#if defined(PY_VERSION)
+    result += "PY_VERSION = " PY_VERSION "\n";
+#endif
+#if defined(PYTHON_API_VERSION)
+    result += "PYTHON_API_VERSION = " + to_str(PYTHON_API_VERSION) + nl;
+#endif
 #undef P
 #define P(T) result += "sizeof(" #T ") = " + to_str(sizeof(T)) + nl;
     P(short)
