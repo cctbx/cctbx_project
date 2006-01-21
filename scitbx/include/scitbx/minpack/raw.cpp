@@ -173,7 +173,7 @@ namespace scitbx { namespace minpack { namespace raw {
     const int lda,
     const bool pivot,
     ref1<int> const& ipvt,
-    const int lipvt,
+    const int /*lipvt*/,
     ref1<double> const& rdiag,
     ref1<double> const& acnorm,
     ref1<double> const& wa)

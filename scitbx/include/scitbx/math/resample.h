@@ -164,9 +164,9 @@ namespace resample{
        scitbx::af::const_ref<FloatType> const& observations,
        long const& seed)
     :
+    generator_(seed),
     observed_mean_(0),
-    observed_std_(0),
-    generator_(seed)
+    observed_std_(0)
     {
       for (unsigned ii=0;ii<observations.size();ii++){
         observations_.push_back( observations[ii] );
@@ -248,22 +248,6 @@ namespace resample{
     FloatType observed_std_;
 
   };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 }}} // namespace scitbx::math::resample
 

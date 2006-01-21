@@ -10,7 +10,7 @@ namespace {
 
 }
 
-int main(int argc, char* argv[])
+int main(int /*argc*/, char* /*argv*/[])
 {
   {
     vec3<int> a;

@@ -11,7 +11,7 @@ namespace {
 
 }
 
-int main(int argc, char* argv[])
+int main(int /*argc*/, char* /*argv*/[])
 {
   {
     // many more tests via Python

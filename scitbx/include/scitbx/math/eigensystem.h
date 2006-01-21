@@ -174,7 +174,7 @@ namespace scitbx { namespace math { namespace eigensystem {
     void
     real_symmetric_given_full_matrix(
       const FloatType* first,
-      const FloatType* last,
+      const FloatType* /*last*/,
       std::size_t n,
       FloatType* eigenvectors,
       FloatType* eigenvalues,

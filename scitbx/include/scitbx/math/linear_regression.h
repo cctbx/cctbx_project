@@ -56,7 +56,7 @@ namespace scitbx { namespace math {
         FloatType const& min_x, FloatType const& max_x,
         FloatType const& min_y, FloatType const& max_y,
         FloatType const& sum_x, FloatType const& sum_x2,
-        FloatType const& sum_y, FloatType const& sum_y2,
+        FloatType const& sum_y, FloatType const& /*sum_y2*/,
         FloatType const& sum_xy,
         FloatType const& epsilon)
   {

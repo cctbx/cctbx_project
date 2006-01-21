@@ -125,6 +125,7 @@ dcsevl(double x, const double* cs, int n)
       "x outside the interval (-1,+1)", 1, 1);
   }
   b1 = 0.0;
+  b2 = 0.0;
   b0 = 0.0;
   twox = 2.0*x;
   for(i=1;i<=n;i++) {

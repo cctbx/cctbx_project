@@ -129,8 +129,8 @@ namespace raw {
       get2(int i, int j, int n, int m) const
       {
         ElementType* ref2_begin = &(this->operator()(i,j));
-        std::size_t begin_shift = ref2_begin - this->begin();
 #if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
+        std::size_t begin_shift = ref2_begin - this->begin();
         SCITBX_ASSERT(begin_shift + n*m <= this->size());
         SCITBX_ASSERT(begin_shift <= hard_size_);
 #endif
@@ -399,7 +399,11 @@ namespace raw {
   void
   dtrsl(
     ref2<FloatType> const& t,
-    int const& ldt,
+    int const&
+#if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
+    ldt
+#endif
+    ,
     int const& n,
     ref1<FloatType> const& b,
     int const& job,
@@ -749,7 +753,7 @@ namespace raw {
     ref1<FloatType> const& u,
     ref1<FloatType> const& x,
     int const& iprint,
-    int const& itfile,
+    int const& /*itfile*/,
     FloatType const& epsmch)
   {
     if (iprint >= 0) {
@@ -811,12 +815,12 @@ namespace raw {
   template <typename FloatType>
   void
   prn2lb(
-    int const& n,
+    int const& /*n*/,
     ref1<FloatType> const& x,
     FloatType const& f,
     ref1<FloatType> const& g,
     int const& iprint,
-    int const& itfile,
+    int const& /*itfile*/,
     int const& iter,
     int const& nfgv,
     int const& nact,
@@ -892,7 +896,7 @@ namespace raw {
     std::string const& task,
     int const& iprint,
     int const& info,
-    int const& itfile,
+    int const& /*itfile*/,
     int const& iter,
     int const& nfgv,
     int const& nintol,
@@ -1465,8 +1469,16 @@ namespace raw {
     ref1<FloatType> const& wbp,
     ref1<FloatType> const& v,
     int& nint,
-    ref1<FloatType> const& sg,
-    ref1<FloatType> const& yg,
+    ref1<FloatType> const&
+#if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
+    sg
+#endif
+    ,
+    ref1<FloatType> const&
+#if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
+    yg
+#endif
+    ,
     int const& iprint,
     FloatType const& sbgnrm,
     int& info,
@@ -1806,7 +1818,11 @@ namespace raw {
   void
   dpofa(
     ref2<FloatType> const& a,
-    int const& lda,
+    int const&
+#if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
+    lda
+#endif
+    ,
     int const& n,
     int& info)
   {
@@ -2372,7 +2388,11 @@ namespace raw {
   template <typename FloatType>
   void
   subsm(
-    int const& n,
+    int const&
+#if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
+    n
+#endif
+    ,
     int const& m,
     int const& nsub,
     ref1<int> const& ind,
@@ -3601,7 +3621,11 @@ namespace raw {
     ref2<FloatType> const& wy,
     ref2<FloatType> const& sy,
     ref2<FloatType> const& ss,
-    ref2<FloatType> const& yy,
+    ref2<FloatType> const&
+#if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
+    yy
+#endif
+    ,
     ref2<FloatType> const& wt,
     ref2<FloatType> const& wn,
     ref2<FloatType> const& snd,
@@ -3611,9 +3635,17 @@ namespace raw {
     ref1<FloatType> const& t,
     ref1<FloatType> const& wa,
     ref1<FloatType> const& sg,
-    ref1<FloatType> const& sgo,
+    ref1<FloatType> const&
+#if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
+    sgo
+#endif
+    ,
     ref1<FloatType> const& yg,
-    ref1<FloatType> const& ygo,
+    ref1<FloatType> const&
+#if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
+    ygo
+#endif
+    ,
     ref1<int> const& index,
     ref1<int> const& iwhere,
     ref1<int> const& indx2,
