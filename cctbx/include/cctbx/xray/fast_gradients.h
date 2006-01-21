@@ -26,7 +26,6 @@ namespace cctbx { namespace xray {
           eltbx::xray_scattering::gaussian const& gaussian,
           FloatType const& fp,
           FloatType const& fdp,
-          FloatType const& occupancy,
           FloatType const& weight_without_occupancy,
           FloatType const& w,
           FloatType const& u_iso,
@@ -74,7 +73,6 @@ namespace cctbx { namespace xray {
           eltbx::xray_scattering::gaussian const& gaussian,
           FloatType const& fp,
           FloatType const& fdp,
-          FloatType const& occupancy,
           FloatType const& weight_without_occupancy,
           FloatType const& w,
           scitbx::sym_mat3<FloatType> const& u_cart,
@@ -531,7 +529,7 @@ namespace cctbx { namespace xray {
         detail::d_gaussian_fourier_transformed<FloatType> gaussian_ft(
           grad_flags,
           exp_table,
-          gaussian, scatterer.fp, scatterer.fdp, scatterer.occupancy,
+          gaussian, scatterer.fp, scatterer.fdp,
           scatterer.weight_without_occupancy(), scatterer.weight(),
           *u_radius++, this->u_extra_);
         detail::calc_box<FloatType, grid_point_type, XrayScattererType>
@@ -554,7 +552,7 @@ namespace cctbx { namespace xray {
           gaussian_ft = detail::d_gaussian_fourier_transformed<FloatType>(
             grad_flags,
             exp_table,
-            gaussian, scatterer.fp, scatterer.fdp, scatterer.occupancy,
+            gaussian, scatterer.fp, scatterer.fdp,
             scatterer.weight_without_occupancy(), scatterer.weight(),
             *u_cart++, this->u_extra_);
         }

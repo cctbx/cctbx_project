@@ -43,7 +43,6 @@ namespace cctbx { namespace translation_search { namespace fast_nv1995_detail {
   template <typename FloatType>
   void
   combination_eq12(
-    intermediates<FloatType> const& interm,
     af::const_ref<FloatType, af::c_grid_padded<3> > const&
       result_eq14_with_i_obs,
     af::ref<FloatType, af::c_grid<3> > const&

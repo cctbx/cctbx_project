@@ -319,7 +319,6 @@ namespace cctbx { namespace maptbx { namespace structure_factors {
         af::int3 map_grid_focus = complex_map.accessor().focus();
         data_.reserve(miller_indices.size());
         bool sum_bijvoet_pairs = (anomalous_flag && space_group.is_centric());
-        f_t two_pi_t_den = scitbx::constants::two_pi / space_group.t_den();
         const c_t* shift_inv_t = 0;
         for(std::size_t i=0;i<miller_indices.size();i++) {
           miller::index<> const& h = miller_indices[i];

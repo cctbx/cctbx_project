@@ -34,7 +34,6 @@ def run_fast_terms(structure_fixed, structure_p1,
       space_group=f_obs.space_group(),
       miller_indices_f_obs=f_obs.indices(),
       m=m,
-      f_obs=f_obs.data(),
       f_part=f_part,
       squared_flag=squared_flag).fft().accu_real_copy()
     assert map.all() == gridding

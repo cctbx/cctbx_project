@@ -31,7 +31,7 @@ namespace cctbx { namespace eltbx { namespace xray_scattering {
   {
     public:
       //! Default constructor. Calling certain methods may cause crashes!
-      base() : entry_(0), table_(0) {}
+      base() : table_(0), entry_(0) {}
 
       //! Constructor. For internal use only.
       base(const detail::raw_table_entry<N>* table_raw,
@@ -77,7 +77,7 @@ namespace cctbx { namespace eltbx { namespace xray_scattering {
                 std::string const& label,
                 bool exact)
   :
-    entry_(0), table_(table)
+    table_(table), entry_(0)
   {
     if (label == "const") {
       throw error("Reserved scattering type label: const");

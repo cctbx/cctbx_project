@@ -60,7 +60,7 @@ namespace cctbx { namespace sgtbx { namespace tensor_rank_2 {
     int* c)
   {
     rot_mx r_transpose;
-    const int* r;
+    const int* r = 0;
     if (reciprocal_space) r = r_transpose.num().begin();
     for(std::size_t i=i_first_matrix_to_use;i<symmetry_matrices.size();i++) {
       if (reciprocal_space) {

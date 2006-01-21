@@ -624,7 +624,6 @@ mlhl_d_target_dfcalc_one_h(
   const af::tiny<double, 4>* cos_sin_table,
   int n_steps,
   double step_for_integration,
-  std::complex<double> const& fc_complex,
   double* workspace)
 {
   const double small = 1.e-9;
@@ -772,7 +771,7 @@ mlhl_d_target_dfcalc_one_h(
     if (compute_derivatives) {
       derivatives_ = af::shared<FcalcValueType>(fobs.size());
     }
-    int n_steps = 360./step_for_integration;
+    int n_steps = static_cast<int>(360./step_for_integration);
     CCTBX_ASSERT(n_steps > 0);
     double angular_step = scitbx::constants::two_pi / n_steps;
     std::vector<af::tiny<double, 4> > cos_sin_table;
@@ -823,7 +822,6 @@ mlhl_d_target_dfcalc_one_h(
           &*cos_sin_table.begin(),
           n_steps,
           step_for_integration,
-          fcalc[i_h],
           &*workspace.begin()) * (1./ fobs.size());
       }
     } // end loop over reflections

@@ -1,12 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Oct: Refactored parts of miller/miller_lib.cpp (rwgk)
- */
-
 #include <cctbx/miller/bins.h>
 #include <cctbx/error.h>
 
@@ -83,36 +74,29 @@ namespace cctbx { namespace miller {
     limits_.push_back(d_star_sq_max);
   }
 
-  // AUg 7, 2005 PHZ
-  // Binning in steps of d_star_sq ratrher on
+  // Aug 7, 2005 PHZ
+  // Binning in steps of d_star_sq rather on
   // number of reflections per ASU
   void
   binning::init_limits_d_star_sq_step(double d_min,
                                       double d_max,
                                       double d_star_sq_step)
   {
-    CCTBX_ASSERT(d_min>=0.0);
-    CCTBX_ASSERT(d_star_sq_step>=0.0);
-    bool done=false;
-    std::size_t n_bins=0.0;
+    CCTBX_ASSERT(d_min>0.0);
+    CCTBX_ASSERT(d_max>0.0);
+    CCTBX_ASSERT(d_star_sq_step>0.0);
+    std::size_t n_bins=0;
     double start_value=1.0/(d_min*d_min);
     double end_value=1.0/(d_max*d_max);
-    double current_value;
-    while (!done){
-      current_value = start_value + n_bins* d_star_sq_step;
+    while (true){
+      double current_value = start_value + n_bins * d_star_sq_step;
       limits_.push_back(current_value);
       n_bins++;
       if (current_value>=end_value){
-        done=true;
+        break;
       }
     }
   }
-
-
-
-
-
-
 
   af::double2
   binning::bin_d_range(std::size_t i_bin) const

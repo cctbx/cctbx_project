@@ -355,10 +355,8 @@ class structure(crystal.special_position_settings):
         assert_min_distance_sym_equiv=self.assert_min_distance_sym_equiv())
     else:
       self._scatterers[-1].apply_symmetry(
-        unit_cell=self.unit_cell(),
         site_symmetry_ops=site_symmetry_ops,
-        u_star_tolerance=self.u_star_tolerance(),
-        assert_min_distance_sym_equiv=self.assert_min_distance_sym_equiv())
+        u_star_tolerance=self.u_star_tolerance())
     self._site_symmetry_table.process(site_symmetry_ops)
     self._scattering_type_registry_is_out_of_date = True
 
@@ -490,17 +488,14 @@ class structure(crystal.special_position_settings):
 
   def apply_symmetry_u_stars(self):
     ext.apply_symmetry_u_stars(
-      unit_cell=self.unit_cell(),
       site_symmetry_table=self._site_symmetry_table,
       scatterers=self._scatterers,
       u_star_tolerance=self.u_star_tolerance())
 
   def re_apply_symmetry(self, i_scatterer):
     self._scatterers[i_scatterer].apply_symmetry(
-      unit_cell=self.unit_cell(),
       site_symmetry_ops=self._site_symmetry_table.get(i_scatterer),
-      u_star_tolerance=self.u_star_tolerance(),
-      assert_min_distance_sym_equiv=self.assert_min_distance_sym_equiv())
+      u_star_tolerance=self.u_star_tolerance())
 
   def apply_special_position_ops_d_target_d_site(self, d_target_d_site):
     for i in self.special_position_indices():

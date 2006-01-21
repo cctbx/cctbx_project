@@ -22,10 +22,10 @@ namespace {
       apply_symmetry_1_overloads, apply_symmetry, 2, 5)
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      apply_symmetry_2_overloads, apply_symmetry, 2, 4)
+      apply_symmetry_2_overloads, apply_symmetry, 1, 2)
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      apply_symmetry_u_star_overloads, apply_symmetry_u_star, 2, 3)
+      apply_symmetry_u_star_overloads, apply_symmetry_u_star, 1, 2)
 
     static void
     wrap()
@@ -124,20 +124,15 @@ namespace {
             arg_("assert_min_distance_sym_equiv")=true)))
         .def("apply_symmetry",
           (void(w_t::*)(
-             uctbx::unit_cell const&,
              sgtbx::site_symmetry_ops const&,
-             double const&,
-             bool)) &w_t::apply_symmetry,
+             double const&)) &w_t::apply_symmetry,
           apply_symmetry_2_overloads((
-            arg_("unit_cell"),
             arg_("site_symmetry_ops"),
-            arg_("u_star_tolerance")=0,
-            arg_("assert_min_distance_sym_equiv")=true)))
+            arg_("u_star_tolerance")=0)))
         .def("apply_symmetry_site", &w_t::apply_symmetry_site, (
           arg_("site_symmetry_ops")))
         .def("apply_symmetry_u_star", &w_t::apply_symmetry_u_star,
           apply_symmetry_u_star_overloads((
-            arg_("unit_cell"),
             arg_("site_symmetry_ops"),
             arg_("u_star_tolerance")=0)))
         .def("multiplicity", &w_t::multiplicity)
@@ -151,7 +146,7 @@ namespace {
   };
 
   BOOST_PYTHON_FUNCTION_OVERLOADS(
-    apply_symmetry_u_stars_overloads, apply_symmetry_u_stars, 3, 4)
+    apply_symmetry_u_stars_overloads, apply_symmetry_u_stars, 2, 3)
 
 } // namespace <anoymous>
 
@@ -206,11 +201,9 @@ namespace {
 
     def("apply_symmetry_u_stars",
       (void(*)(
-        uctbx::unit_cell const&,
         sgtbx::site_symmetry_table const&,
         af::ref<scatterer<> > const&,
-        double, bool, bool)) 0, apply_symmetry_u_stars_overloads((
-          arg_("unit_cell"),
+        double)) 0, apply_symmetry_u_stars_overloads((
           arg_("site_symmetry_table"),
           arg_("scatterers"),
           arg_("u_star_tolerance")=0)));

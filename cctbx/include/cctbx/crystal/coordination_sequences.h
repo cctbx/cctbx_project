@@ -201,7 +201,7 @@ namespace coordination_sequences {
     //! Called at start of core<term_table_actions>.
     term_table_actions(
       crystal::pair_asu_table<> const& pair_asu_table,
-      unsigned max_shell)
+      unsigned /*max_shell*/)
     :
       terms(0)
     {

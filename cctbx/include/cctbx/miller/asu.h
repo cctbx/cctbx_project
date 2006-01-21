@@ -176,7 +176,7 @@ namespace cctbx { namespace miller {
     template <typename ValueType>
     static
     void
-    eq(index_table_layout_adaptor const& ila, ValueType& value, bool)
+    eq(index_table_layout_adaptor const& /*ila*/, ValueType& /*value*/, bool)
     {
     }
   };

@@ -554,7 +554,7 @@ namespace cctbx { namespace sgtbx {
     af::const_ref<coor_t>
       reference_coordinates = reference_sites.coordinates().const_ref();
     bool no_continuous_shifts = continuous_shift_flags.all_eq(false);
-    std::size_t min_i_coor;
+    std::size_t min_i_coor = 0;
     frac_t min_unit_shifts;
     FloatType min_dist_sq = -1;
     for(std::size_t i_corr=0;i_corr<reference_coordinates.size();i_corr++) {
@@ -581,6 +581,7 @@ namespace cctbx { namespace sgtbx {
         }
       }
     }
+    CCTBX_ASSERT(min_dist_sq != -1);
     rt_mx s = reference_sites.sym_op(min_i_coor);
     sym_op_ = (s + tr_vec(min_unit_shifts.unit_shifts(), 1)
                    .scale(s.t().den()))
