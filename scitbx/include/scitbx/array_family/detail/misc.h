@@ -1,13 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Aug: Copied from cctbx/array_family (R.W. Grosse-Kunstleve)
-     2002 Feb: moved parts from ref.h (R.W. Grosse-Kunstleve)
- */
-
 #ifndef SCITBX_ARRAY_FAMILY_MISC_H
 #define SCITBX_ARRAY_FAMILY_MISC_H
 
@@ -64,7 +54,7 @@ namespace scitbx { namespace af {
 
     template <class ElementType>
     inline
-    void destroy_array_element(ElementType* elem, true_type) {
+    void destroy_array_element(ElementType* /*elem*/, true_type) {
     }
 
     template <class ElementType>

@@ -270,7 +270,7 @@ def generate_unary_apply(f, array_type_name):
   %s
   apply(UnaryOperation const& op,
         %s const& a,
-        type_holder<ReturnElementType> result_type_holder) {
+        type_holder<ReturnElementType> /*result_type_holder*/) {
     typedef %s return_array_type;""" % (
        format_header("  ", header1),
        return_array_type,

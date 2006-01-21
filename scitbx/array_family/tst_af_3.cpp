@@ -121,7 +121,7 @@ namespace {
 
 } // namespace <anonymous>
 
-int main(int argc, char* argv[])
+int main(int argc, char* /*argv*/[])
 {
   for(;;) {
     exercise_main<int, double>::run();

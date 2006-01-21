@@ -39,7 +39,7 @@ namespace scitbx { namespace matrix {
       }
       vv[i] = 1 / big;
     }
-    std::size_t imax;
+    std::size_t imax = 0;
     for(std::size_t j=0;j<n;j++) {
       for(std::size_t i=0;i<j;i++) {
         FloatType sum = a[i*n+j];

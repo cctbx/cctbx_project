@@ -1,13 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Aug: Copied from cctbx/array_family (R.W. Grosse-Kunstleve)
-     2002 Jan: Created (R.W. Grosse-Kunstleve)
- */
-
 #ifndef SCITBX_ARRAY_FAMILY_SMALL_PLAIN_H
 #define SCITBX_ARRAY_FAMILY_SMALL_PLAIN_H
 
@@ -128,15 +118,15 @@ namespace scitbx { namespace af {
 #     include <scitbx/array_family/detail/push_back_etc.h>
 
     protected:
-      void m_insert_overflow(ElementType* pos,
-                             size_type const& n, ElementType const& x,
-                             bool at_end) {
+      void m_insert_overflow(ElementType* /*pos*/,
+                             size_type const& /*n*/, ElementType const& /*x*/,
+                             bool /*at_end*/) {
         throw_range_error();
       }
 
-      void m_insert_overflow(ElementType* pos,
-                             const ElementType* first,
-                             const ElementType* last) {
+      void m_insert_overflow(ElementType* /*pos*/,
+                             const ElementType* /*first*/,
+                             const ElementType* /*last*/) {
         throw_range_error();
       }
 

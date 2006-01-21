@@ -41,8 +41,8 @@ namespace scitbx { namespace matrix {
     std::size_t* indxr = indxc + n;
     for(std::size_t i=0;i<n;i++) {
       FloatType a_abs_max = 0;
-      std::size_t irow;
-      std::size_t icol;
+      std::size_t irow = 0;
+      std::size_t icol = 0;
       for(std::size_t j=0;j<n;j++) {
         if (ipivot[j] != 1) {
           for(std::size_t k=0;k<n;k++) {

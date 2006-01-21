@@ -27,13 +27,13 @@ namespace scitbx { namespace boost_python { namespace container_conversions {
     static bool check_convertibility_per_element() { return false; }
 
     template <typename ContainerType>
-    static bool check_size(boost::type<ContainerType>, std::size_t sz)
+    static bool check_size(boost::type<ContainerType>, std::size_t /*sz*/)
     {
       return true;
     }
 
     template <typename ContainerType>
-    static void assert_size(boost::type<ContainerType>, std::size_t sz) {}
+    static void assert_size(boost::type<ContainerType>, std::size_t /*sz*/) {}
 
     template <typename ContainerType>
     static void reserve(ContainerType& a, std::size_t sz) {}
@@ -60,7 +60,7 @@ namespace scitbx { namespace boost_python { namespace container_conversions {
     }
 
     template <typename ContainerType>
-    static void reserve(ContainerType& a, std::size_t sz)
+    static void reserve(ContainerType& /*a*/, std::size_t sz)
     {
       if (sz > ContainerType::size()) {
         PyErr_SetString(PyExc_RuntimeError,
@@ -86,7 +86,14 @@ namespace scitbx { namespace boost_python { namespace container_conversions {
     }
 
     template <typename ContainerType, typename ValueType>
-    static void set_value(ContainerType& a, std::size_t i, ValueType const& v)
+    static void set_value(
+      ContainerType& a,
+      std::size_t
+#if !defined(NDEBUG)
+      i
+#endif
+      ,
+      ValueType const& v)
     {
       assert(a.size() == i);
       a.push_back(v);
@@ -105,7 +112,8 @@ namespace scitbx { namespace boost_python { namespace container_conversions {
   struct linked_list_policy : default_policy
   {
     template <typename ContainerType, typename ValueType>
-    static void set_value(ContainerType& a, std::size_t i, ValueType const& v)
+    static void
+    set_value(ContainerType& a, std::size_t /*i*/, ValueType const& v)
     {
       a.push_back(v);
     }
@@ -114,7 +122,8 @@ namespace scitbx { namespace boost_python { namespace container_conversions {
   struct set_policy : default_policy
   {
     template <typename ContainerType, typename ValueType>
-    static void set_value(ContainerType& a, std::size_t i, ValueType const& v)
+    static void
+    set_value(ContainerType& a, std::size_t /*i*/, ValueType const& v)
     {
       a.insert(v);
     }

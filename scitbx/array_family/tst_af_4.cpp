@@ -300,7 +300,7 @@ namespace {
 
 } // namespace <anonymous>
 
-int main(int argc, char* argv[])
+int main(int argc, char* /*argv*/[])
 {
   for(;;) {
 #if !(defined(__GNUC__) && __GNUC__ < 3) \

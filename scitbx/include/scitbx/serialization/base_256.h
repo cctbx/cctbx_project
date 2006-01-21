@@ -28,7 +28,7 @@ namespace scitbx { namespace serialization { namespace base_256 {
             *u_buf0 = 128;
             value = -value;
           }
-          for(int i=0;i<sizeof(T);i++) {
+          for(unsigned i=0;i<sizeof(T);i++) {
 #if !defined(SCITBX_SERIALIZATION_BASE_256_USE_BIT_SHIFTS)
             *u_buf++ = static_cast<unsigned char>(value % 256);
             value /= 256;
@@ -95,7 +95,7 @@ namespace scitbx { namespace serialization { namespace base_256 {
         unsigned char* u_buf0 = u_buf;
         *u_buf++ = 0;
         if (value != 0) {
-          for(int i=0;i<sizeof(T);i++) {
+          for(unsigned i=0;i<sizeof(T);i++) {
 #if !defined(SCITBX_SERIALIZATION_BASE_256_USE_BIT_SHIFTS)
             *u_buf++ = static_cast<unsigned char>(value % 256);
             value /= 256;
@@ -245,7 +245,7 @@ namespace scitbx { namespace serialization { namespace base_256 {
         value = -value;
       }
       decomposition<T> v(value);
-      for(int i=0;i<sizeof(T);i++) {
+      for(unsigned i=0;i<sizeof(T);i++) {
         v.f = static_cast<T>(std::ldexp(v.f, 8)); // v.f *= 256;
         int d = static_cast<int>(v.f);
         SCITBX_ASSERT(d < 256);

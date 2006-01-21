@@ -10,7 +10,7 @@ namespace {
 
 }
 
-int main(int argc, char* argv[])
+int main(int /*argc*/, char* /*argv*/[])
 {
   {
     mat_ref<int> va;

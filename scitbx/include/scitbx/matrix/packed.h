@@ -129,6 +129,7 @@ namespace scitbx { namespace matrix {
     bool use_eps;
     FloatType eps;
     if (relative_eps <= 0 || n == 0) {
+      eps = 0;
       use_eps = false;
     }
     else {
@@ -167,6 +168,7 @@ namespace scitbx { namespace matrix {
     bool use_eps;
     FloatType eps;
     if (relative_eps <= 0 || n == 0) {
+      eps = 0;
       use_eps = false;
     }
     else {

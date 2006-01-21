@@ -23,8 +23,8 @@ namespace chebyshev{
                    FloatType const& high_limit)
     :
     n_terms_(n_terms),
-    low_limit_(low_limit),
     high_limit_(high_limit),
+    low_limit_(low_limit),
     cheb_coefs_(n_terms,0)
     {
       SCITBX_ASSERT (n_terms>=2);
@@ -36,8 +36,8 @@ namespace chebyshev{
                    scitbx::af::const_ref<FloatType> const& cheb_coefs)
     :
     n_terms_(n_terms),
-    low_limit_(low_limit),
     high_limit_(high_limit),
+    low_limit_(low_limit),
     cheb_coefs_(n_terms,0)
     {
       SCITBX_ASSERT (n_terms>=2);
@@ -602,11 +602,11 @@ namespace chebyshev{
                   scitbx::af::const_ref<FloatType> const& w_obs,
                   scitbx::af::const_ref<bool> const& free_flags)
     :
-    n_terms_(n_terms),
     x_obs_(x_obs.size(),0),
     y_obs_(x_obs.size(),0),
     w_obs_(x_obs.size(),0),
     free_flags_(x_obs.size(),0),
+    n_terms_(n_terms),
     cheby_(n_terms, low_limit, high_limit)
     {
       SCITBX_ASSERT ( x_obs.size()==y_obs.size() );
@@ -832,84 +832,6 @@ namespace chebyshev{
     return (result) ;
 
   }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 }}} // namespace scitbx::math::chebyshev
 
