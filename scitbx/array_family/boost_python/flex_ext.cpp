@@ -182,6 +182,99 @@ namespace {
     }
   };
 
+  boost::python::tuple
+  integer_offsets_vs_pointers(
+    af::ref<double> const& data,
+    af::ref<std::size_t> const& permutation,
+    unsigned n_repeats,
+    bool use_pointers,
+    int use_iterators)
+  {
+    SCITBX_ASSERT(permutation.size() == data.size());
+    std::vector<double*> data_pointers;
+    data_pointers.reserve(data.size());
+    for(unsigned i=0;i<data.size();i++) {
+      data_pointers.push_back(&data[permutation[i]]);
+    }
+    const char* result_type = 0;
+    double result_value = 0;
+    if (!use_pointers) {
+      if (use_iterators == 0) {
+        result_type = "d[p[i]]";
+        for(unsigned i_repeat=0;i_repeat<n_repeats;i_repeat++) {
+          for(unsigned i=0;i<data.size();i++) {
+            result_value += data[permutation[i]];
+          }
+          for(unsigned i=0;i<data.size();i++) {
+            result_value -= data[permutation[i]];
+          }
+        }
+      }
+      else if (use_iterators == 1) {
+        result_type = "d[*p++]";
+        for(unsigned i_repeat=0;i_repeat<n_repeats;i_repeat++) {
+          std::size_t* p_end = permutation.end();
+          std::size_t* p = permutation.begin();
+          while (p != p_end) {
+            result_value += data[*p++];
+          }
+          p = permutation.begin();
+          while (p != p_end) {
+            result_value -= data[*p++];
+          }
+        }
+      }
+      else {
+        throw std::runtime_error("use_iterators: value error");
+      }
+    }
+    else {
+      if (use_iterators == 0) {
+        result_type = "*dp[i]";
+        for(unsigned i_repeat=0;i_repeat<n_repeats;i_repeat++) {
+          for(unsigned i=0;i<data.size();i++) {
+            result_value += *data_pointers[i];
+          }
+          for(unsigned i=0;i<data.size();i++) {
+            result_value -= *data_pointers[i];
+          }
+        }
+      }
+      else if (use_iterators == 1) {
+        result_type = "**dpi++";
+        for(unsigned i_repeat=0;i_repeat<n_repeats;i_repeat++) {
+          std::vector<double*>::const_iterator dp_end = data_pointers.end();
+          std::vector<double*>::const_iterator dp = data_pointers.begin();
+          while (dp != dp_end) {
+            result_value += **dp++;
+          }
+          dp = data_pointers.begin();
+          while (dp != dp_end) {
+            result_value -= **dp++;
+          }
+        }
+      }
+      else if (use_iterators == 2) {
+        result_type = "**dpp++";
+        for(unsigned i_repeat=0;i_repeat<n_repeats;i_repeat++) {
+          double** dp = &*data_pointers.begin();
+          double** dp_end = dp + data_pointers.size();
+          while (dp != dp_end) {
+            result_value += **dp++;
+          }
+          dp = &*data_pointers.begin();
+          while (dp != dp_end) {
+            result_value -= **dp++;
+          }
+        }
+      }
+      else {
+        throw std::runtime_error("use_iterators: value error");
+      }
+    }
+    return boost::python::make_tuple(result_type, result_value);
+  }
+
   void init_module()
   {
     using namespace boost::python;
@@ -220,6 +313,8 @@ namespace {
     linear_regression_core_wrappers::wrap();
     linear_regression_wrappers::wrap();
     linear_correlation_wrappers::wrap();
+
+    def("integer_offsets_vs_pointers", integer_offsets_vs_pointers);
   }
 
 }}}} // namespace scitbx::af::boost_python::<anonymous>
