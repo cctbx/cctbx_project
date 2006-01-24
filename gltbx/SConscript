@@ -26,25 +26,32 @@ if (not env_etc.no_boost_python):
   env_etc.include_registry.append(
     env=env,
     paths=env_etc.gltbx_common_includes + [env_etc.python_include])
-  for namespace,n_fragments_def,n_fragments_fun in [("gl", 8, 16),
-                                                    ("glu", 2, 4)]:
-    source=["%s_ext.cpp" % namespace]
-    for i_fragment in xrange(n_fragments_def):
-      source.append("#gltbx/%s_defines_%02d_bpl.cpp" % (
-        namespace, i_fragment))
-    for i_fragment in xrange(n_fragments_fun):
-      source.append("#gltbx/%s_functions_%02d_bpl.cpp" % (
-        namespace, i_fragment))
+  conf = env.Configure()
+  if (not conf.TryCompile(
+            "#include <gltbx/include_opengl.h>", extension=".cpp")):
+    print "gltbx: OpenGL headers not available."
+    print "gltbx: Compilation skipped."
+  else:
+    for namespace,n_fragments_def,n_fragments_fun in [("gl", 8, 16),
+                                                      ("glu", 2, 4)]:
+      source=["%s_ext.cpp" % namespace]
+      for i_fragment in xrange(n_fragments_def):
+        source.append("#gltbx/%s_defines_%02d_bpl.cpp" % (
+          namespace, i_fragment))
+      for i_fragment in xrange(n_fragments_fun):
+        source.append("#gltbx/%s_functions_%02d_bpl.cpp" % (
+          namespace, i_fragment))
+      env.SharedLibrary(
+        target="#lib/gltbx_%s_ext" % namespace,
+        source=source)
     env.SharedLibrary(
-      target="#lib/gltbx_%s_ext" % namespace,
-      source=source)
-  env.SharedLibrary(
-    target="#lib/gltbx_util_ext",
-    source=["util_ext.cpp"])
-  env.SharedLibrary(
-    target="#lib/gltbx_fonts_ext",
-    source=[
-      "fonts_ext.cpp",
-      "font_ucs_8x13.cpp",
-      "font_ucs_9x15.cpp",
-      "font_ucs_10x20.cpp"])
+      target="#lib/gltbx_util_ext",
+      source=["util_ext.cpp"])
+    env.SharedLibrary(
+      target="#lib/gltbx_fonts_ext",
+      source=[
+        "fonts_ext.cpp",
+        "font_ucs_8x13.cpp",
+        "font_ucs_9x15.cpp",
+        "font_ucs_10x20.cpp"])
+  env = conf.Finish()
