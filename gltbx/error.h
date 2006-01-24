@@ -1,6 +1,7 @@
 #include <gltbx/include_opengl.h>
 #include <string>
 #include <stdexcept>
+#include <cstdio>
 
 namespace gltbx {
 
