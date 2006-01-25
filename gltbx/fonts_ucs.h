@@ -155,8 +155,9 @@ namespace gltbx { namespace fonts { namespace ucs {
         boost::scoped_array<GLuint> bitmap_indices(new GLuint[string.size()]);
         GLuint* bi = bitmap_indices.get();
         for(unsigned i_char=0;i_char<string.size();i_char++) {
+          char c = string[i_char];
           UnsignedInt2Type encoding = static_cast<UnsignedInt2Type>(
-            *(reinterpret_cast<const unsigned char*>(&string[i_char])));
+            *(reinterpret_cast<const unsigned char*>(&c)));
           *bi++ = bitmap_index(encoding);
         }
         render_bitmap_indices(string.size(), bitmap_indices.get());
