@@ -379,7 +379,8 @@ def bytes_converters(signature):
   arg_type_name = arg_type+" "+arg_name
   is_const = arg_type.startswith("const ")
   call = "\n".join(signature.format_call(
-    have_write_back=not is_const, prefix="    "))
+    return_directly=is_const and signature.disable_handle_error,
+    prefix="    "))
   if (not signature.disable_handle_error):
     call += "\n    handle_error();"
   if (not is_const):
@@ -493,10 +494,10 @@ class signature:
     if (self.version_guard is not None):
       print >> f, "#endif"
 
-  def format_call(self, have_write_back, prefix):
+  def format_call(self, return_directly, prefix):
     s = ""
     if (self.return_type != "void"):
-      if (not have_write_back):
+      if (return_directly):
         s += "return "
       else:
         s += self.return_type + " result = "
@@ -537,16 +538,18 @@ class signature:
         "const GLvoid*",
         "glu_function_pointer"]
       to_write_back = []
+      ss = ""
       for arg in self.args:
         if ((arg.pointee_size is not None
              and arg.type not in opaque_pointers)
             or arg.type == "glu_function_pointer"):
           if (arg.type in not_implemented):
-            lines.append("  throw std::runtime_error(")
-            lines.append('    "Conversion not implemented:"')
-            lines.append('    " %s(): %s %s");' % (
+            lines.append(ss+"  throw std::runtime_error(")
+            lines.append(ss+'    "Conversion not implemented:"')
+            lines.append(ss+'    " %s(): %s %s");' % (
                 self.function_name, arg.type, arg.name))
-            lines.append("  %s %s = 0;" % (arg.type, arg.name))
+            ss = "//"
+            lines.append(ss+"  %s %s = 0;" % (arg.type, arg.name))
           else:
             expected_size = arg.pointee_size
             if (isinstance(expected_size, str)):
@@ -566,33 +569,33 @@ class signature:
               converter = "boost_python::converter_str"
             else:
               converter = "boost_python::converter"
-            lines.append('  %s<%s> %s_proxy(' % (
+            lines.append(ss+'  %s<%s> %s_proxy(' % (
               converter,
               converter_t,
               arg.name))
-            lines.append('    "%s", py_%s, %s, %s);' % (
+            lines.append(ss+'    "%s", py_%s, %s, %s);' % (
               arg.name,
               arg.name,
               expected_size,
               is_const))
-            lines.append("  %s %s = %s_proxy.get();" % (
+            lines.append(ss+"  %s %s = %s_proxy.get();" % (
               arg.type, arg.name, arg.name))
             if (is_const == "false"): to_write_back.append(arg)
         else:
           assert not arg.type.startswith("const ")
-          lines.append('  boost::python::extract<%s> %s_proxy(py_%s);' % (
+          lines.append(ss+'  boost::python::extract<%s> %s_proxy(py_%s);' % (
             arg.type, arg.name, arg.name))
-          lines.append("  %s %s = %s_proxy();" % (
+          lines.append(ss+"  %s %s = %s_proxy();" % (
             arg.type, arg.name, arg.name))
-      have_write_back = len(to_write_back) != 0
-      lines.extend(
-        self.format_call(have_write_back=have_write_back, prefix="  "))
+      return_directly = len(to_write_back) == 0 and self.disable_handle_error
+      lines.extend([ss+line for line in
+        self.format_call(return_directly=return_directly, prefix="  ")])
       if (not self.disable_handle_error):
-        lines.append("  handle_error();")
+        lines.append(ss+"  handle_error();")
       for arg in to_write_back:
-        lines.append("  %s_proxy.write_back();" % arg.name)
-      if (self.return_type != "void" and have_write_back):
-        lines.append("  return result;")
+        lines.append(ss+"  %s_proxy.write_back();" % arg.name)
+      if (self.return_type != "void" and not return_directly):
+        lines.append(ss+"  return result;")
     lines.append("}")
     self.write_version_guard_if(f=f)
     for line in lines:
