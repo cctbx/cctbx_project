@@ -33,6 +33,19 @@ def show_stack(max_frames_back=None, out=None):
   except ValueError:
     print >> out
 
+def print_trace(frame, event, arg):
+  if (event == "line"):
+    sys.stderr.flush()
+    print "%s(%d)" % (frame.f_code.co_filename, frame.f_lineno)
+    sys.stdout.flush()
+  return print_trace
+
+def start_print_trace():
+  sys.settrace(print_trace)
+
+def stop_print_trace():
+  sys.settrace(None)
+
 try:
   _proc_status = "/proc/%d/status" % os.getpid()
 except AttributeError:
