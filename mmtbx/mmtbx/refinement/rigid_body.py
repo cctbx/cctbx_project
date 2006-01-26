@@ -180,14 +180,14 @@ class manager(object):
                                           update_f_calc  = True)
         rworks = flex.double()
         for macro_cycle in range(1, min(int(res),4)+1):
-            if(macro_cycle == 1 or macro_cycle == 3):
+            if(macro_cycle == 1 or macro_cycle == 3 and bss is not None):
                print_statistics.make_sub_header(
                    "Bulk solvent correction (and anisotropic scaling)",out=log)
-               if(fmodel_copy.f_obs.d_min() > 3.0 and bss is not None):
+               if(fmodel_copy.f_obs.d_min() > 3.0):
                   save_bss_anisotropic_scaling = bss.anisotropic_scaling
                   bss.anisotropic_scaling=False
                fmodel_copy.update_solvent_and_scale(params = bss, out = log)
-               if(fmodel_copy.f_obs.d_min() > 3.0 and bss is not None):
+               if(fmodel_copy.f_obs.d_min() > 3.0):
                   bss.anisotropic_scaling=save_bss_anisotropic_scaling
             minimized = rigid_body_minimizer(fmodel         = fmodel_copy,
                                              selections     = selections,
