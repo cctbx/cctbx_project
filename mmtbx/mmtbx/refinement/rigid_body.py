@@ -4,6 +4,7 @@ import math, sys
 from libtbx.test_utils import approx_equal
 from scitbx import matrix
 from scitbx import lbfgs
+from mmtbx.refinement import print_statistics
 import copy
 
 class rigid_body_shift_accamulator(object):
@@ -114,13 +115,14 @@ class rb_mat(object):
      return rm
 
 def setup_search_range(f, nref_min):
+  d_max, d_min = f.d_max_min()
   if(f.data().size() > nref_min):
-     d_max, d_min = f.d_max_min()
      d_min_end = max(2.0, d_min)
      nref = 0
      d_max_start = d_max
      while nref <= nref_min:
-        nref = f.resolution_filter(d_max=999.9, d_min = d_max_start).data().size()
+        nref = f.resolution_filter(d_max = 9999.9,
+                                   d_min = d_max_start).data().size()
         d_max_start = d_max_start - 0.01
      if(d_max_start < 7.0):
         return [d_max_start, d_min_end]
@@ -131,17 +133,18 @@ def setup_search_range(f, nref_min):
 
 class manager(object):
   def __init__(self, fmodel,
-                     selections        = None,
-                     refine_r          = True,
-                     refine_t          = True,
-                     r_initial         = None,
-                     t_initial         = None,
-                     nref_min          = 1000,
-                     max_iterations    = 50,
-                     convergence_test  = True,
-                     convergence_delta = 0.00001,
-                     scan_flag         = None,
-                     log               = None):
+                     selections              = None,
+                     refine_r                = True,
+                     refine_t                = True,
+                     r_initial               = None,
+                     t_initial               = None,
+                     nref_min                = 1000,
+                     max_iterations          = 50,
+                     convergence_test        = True,
+                     convergence_delta       = 0.00001,
+                     use_only_low_resolution = False,
+                     bss                     = None,
+                     log                     = None):
     if(log is None): log = sys.stdout
     if(selections is None):
        selections = []
@@ -162,23 +165,13 @@ class manager(object):
        for item in selections:
            t_initial.append(flex.double(3,0))
     fmodel_copy = fmodel.deep_copy()
-    if(nref_min < fmodel_copy.f_obs_w().data().size()):
-       d_mins = setup_search_range(fmodel_copy.f_obs_w(),
-                                   nref_min = nref_min)
-    else:
-       d_mins = [fmodel_copy.f_obs_w().d_min()]
-    print >> log, "High resolution cutoffs for grid search: ", \
+    if(fmodel_copy.mask_params is not None):
+       fmodel_copy.mask_params.verbose = -1
+    d_mins = setup_search_range(f = fmodel_copy.f_obs_w(), nref_min = nref_min)
+    if(use_only_low_resolution):
+       if(len(d_mins) > 1): d_mins = d_mins[:-1]
+    print >> log, "High resolution cutoffs for mz-protocol: ", \
                   [str("%.3f"%i) for i in d_mins]
-    if(scan_flag):
-       xray_structure_pre_optimized = self.scan(
-                                           high_resolution_limit = d_mins[0],
-                                           selections            = selections,
-                                           fmodel                = fmodel_copy,
-                                           log                   = log)
-       fmodel_copy.update_xray_structure(
-                                 xray_structure = xray_structure_pre_optimized,
-                                 update_f_calc  = True,
-                                 update_f_mask  = True)
     for res in d_mins:
         print >> log
         xrs = fmodel_copy.xray_structure.deep_copy_scatterers()
@@ -186,7 +179,16 @@ class manager(object):
         fmodel_copy.update_xray_structure(xray_structure = xrs,
                                           update_f_calc  = True)
         rworks = flex.double()
-        for macro_cycle in xrange(min(int(res),5)):
+        for macro_cycle in range(1, min(int(res),4)+1):
+            if(macro_cycle == 1 or macro_cycle == 3):
+               print_statistics.make_sub_header(
+                   "Bulk solvent correction (and anisotropic scaling)",out=log)
+               if(fmodel_copy.f_obs.d_min() > 3.0 and bss is not None):
+                  save_bss_anisotropic_scaling = bss.anisotropic_scaling
+                  bss.anisotropic_scaling=False
+               fmodel_copy.update_solvent_and_scale(params = bss, out = log)
+               if(fmodel_copy.f_obs.d_min() > 3.0 and bss is not None):
+                  bss.anisotropic_scaling=save_bss_anisotropic_scaling
             minimized = rigid_body_minimizer(fmodel         = fmodel_copy,
                                              selections     = selections,
                                              r_initial      = r_initial,
@@ -237,6 +239,7 @@ class manager(object):
     self.fmodel = fmodel
 
   def scan(self, high_resolution_limit, selections, fmodel, log):
+    # XXX obsolete in the form it's done right now; never used
     fmodel_copy = fmodel.deep_copy()
     xray_structure_start = fmodel_copy.xray_structure.deep_copy_scatterers()
     xray_structure_final = None
