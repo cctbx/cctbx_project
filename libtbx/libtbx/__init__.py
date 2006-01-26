@@ -1,4 +1,5 @@
 import libtbx.forward_compatibility
+import os
 
 def adopt_init_args(obj, args, exclude=(), hide=False):
   del args["self"]
@@ -13,3 +14,6 @@ def adopt_init_args(obj, args, exclude=(), hide=False):
       _key = "_" + key
       assert not hasattr(obj.__dict__, _key)
       obj.__dict__[_key] = args[key]
+
+if (os.environ.has_key("LIBTBX_PRINT_TRACE")):
+  import libtbx.start_print_trace
