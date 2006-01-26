@@ -177,8 +177,8 @@ bitmap_font_record bitmap_%(width)dx%(height)d = {
 """ % vars()
 
 def convert(target_dir, font_info):
-  bdf_file = open(libtbx.env.find_in_repositories(
-    relative_path=font_info.file_name, test=os.path.isfile, optional=False))
+  bdf_file = iter(open(libtbx.env.find_in_repositories(
+    relative_path=font_info.file_name, test=os.path.isfile, optional=False)))
   full_name = None
   number_of_chars = None
   for line in bdf_file:
