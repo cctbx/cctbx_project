@@ -78,6 +78,8 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     self.autospin = 0
 
     self.initLeft = (0,0)
+    self.was_dragged = False
+    self.pick_points = None
 
   def OnEraseBackground(self, event):
     pass # Do nothing, to avoid flashing on MSW.
@@ -110,14 +112,20 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
   def OnLeftClick(self,event):
     self.OnRecordMouse(event)
     self.initLeft = event.GetX(),event.GetY()
+    self.was_dragged = False
 
   def OnLeftDClick(self,event):
     self.OnRecordMouse(event)
     self.reset()
 
   def OnLeftUp(self,event):
-    if not event.m_shiftDown:
-      self.OnAutoSpin(event)
+    if (not self.was_dragged):
+      self.get_pick_points(self.initLeft)
+      self.OnRedraw()
+    else:
+      self.was_dragged = False
+      if not event.m_shiftDown:
+        self.OnAutoSpin(event)
 
   def OnMiddleClick(self,event):
     self.OnRecordMouse(event)
@@ -131,6 +139,7 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     self.OnRedraw()
 
   def OnLeftDrag(self,event):
+    self.was_dragged = True
     self.OnRotate(event)
 
   def OnMiddleDrag(self,event):
@@ -179,7 +188,7 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     self.OnRecordMouse(event)
 
   def OnScale(self, event):
-    scale = 1 - 0.01 * (event.GetY() - self.ymouse)
+    scale = 1 + 0.01 * (event.GetY() - self.ymouse)
     self.distance = self.distance * scale
     self.OnRedraw()
     self.OnRecordMouse(event)
@@ -232,7 +241,7 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
 
   def OnTranslate(self, event):
     win_height = max( 1,self.w)
-    obj_c = (self.xcenter, self.ycenter, self.zcenter)
+    obj_center = (self.xcenter, self.ycenter, self.zcenter)
     model = [0]*16
     proj = [0]*16
     view = [0]*4
@@ -243,7 +252,7 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     winy = []
     winz = []
     assert gluProject(
-      obj_c[0], obj_c[1], obj_c[2],
+      obj_center[0], obj_center[1], obj_center[2],
       model, proj, view,
       winx, winy, winz)
     objx = []
@@ -253,12 +262,33 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
       winx[0], winy[0]+0.5*win_height, winz[0],
       model, proj, view,
       objx, objy, objz)
-    dist       = v3distsq( (objx[0],objy[0],objz[0]), obj_c )**0.5
+    dist       = v3distsq( (objx[0],objy[0],objz[0]), obj_center )**0.5
     scale      = abs( dist / ( 0.5 * win_height ) )
     gltbx.util.TranslateScene(
       scale, event.GetX(), event.GetY(), self.xmouse, self.ymouse)
     self.OnRedraw()
     self.OnRecordMouse(event)
+
+  def get_pick_points(self, mouse_xy):
+    model = [0]*16
+    proj = [0]*16
+    view = [0]*4
+    glGetDoublev(GL_MODELVIEW_MATRIX, model)
+    glGetDoublev(GL_PROJECTION_MATRIX, proj)
+    glGetIntegerv(GL_VIEWPORT, view)
+    self.pick_points = []
+    for winz in [0.0, 1.0]:
+      objx = []
+      objy = []
+      objz = []
+      ok = gluUnProject(
+        mouse_xy[0], self.h-mouse_xy[1], winz,
+        model, proj, view,
+        objx, objy, objz)
+      if (not ok):
+        self.pick_points = None
+        break
+      self.pick_points.append((objx[0], objy[0], objz[0]))
 
   def OnRedraw(self, event=None):
     dc = wx.ClientDC(self)
@@ -294,9 +324,10 @@ class show_cube(wxGLWindow):
     self.SetCenterpoint(0.5, 0.5, 0.5)
 
   def DrawGL(self):
-    self.cube()
+    self.draw_cube()
+    self.draw_pick_points()
 
-  def cube(self, f=1):
+  def draw_cube(self, f=1):
     if (self.cube_display_list is None):
       self.cube_display_list = gltbx.gl_managed.display_list()
       self.cube_display_list.compile()
@@ -343,6 +374,25 @@ class show_cube(wxGLWindow):
     font.render_string("y")
     glRasterPos3f(0, 0, 1)
     font.render_string("z")
+
+  def draw_cross_at(self, (x,y,z), f=0.1):
+    glBegin(GL_LINES)
+    glColor3f(1,1,1)
+    glVertex3f(x-f,y,z)
+    glVertex3f(x+f,y,z)
+    glVertex3f(x,y-f,z)
+    glVertex3f(x,y+f,z)
+    glVertex3f(x,y,z-f)
+    glVertex3f(x,y,z+f)
+    glEnd()
+
+  def draw_pick_points(self):
+    if (self.pick_points is not None):
+      self.draw_cross_at(self.pick_points[0])
+      glBegin(GL_LINES)
+      glVertex3fv(self.pick_points[0])
+      glVertex3fv(self.pick_points[1])
+      glEnd()
 
 class App(wx.App):
 
