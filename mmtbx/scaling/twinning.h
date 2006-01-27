@@ -246,19 +246,19 @@ namespace twinning {
         if ( sigma_i.size() == 0 ){
           sigma_.push_back( 0.0 );
         }
-        // XXX Peter, is this right? I think to be correct you have
-        //     to use scitbx::math::iround()
-        ht = static_cast<int>(
+        //
+        // using iround to prevent mess ups
+        ht = scitbx::math::iround(
                twin_law[0]*hkl[ii][0] +
                twin_law[3]*hkl[ii][1] +
                twin_law[6]*hkl[ii][2]);
 
-        kt = static_cast<int>(
+        kt = scitbx::math::iround(
                twin_law[1]*hkl[ii][0] +
                twin_law[4]*hkl[ii][1] +
                twin_law[7]*hkl[ii][2]);
 
-        lt = static_cast<int>(
+        lt = scitbx::math::iround(
                twin_law[2]*hkl[ii][0] +
                twin_law[5]*hkl[ii][1] +
                twin_law[8]*hkl[ii][2]);
