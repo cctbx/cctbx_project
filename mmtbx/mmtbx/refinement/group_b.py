@@ -201,7 +201,7 @@ class group_u_iso_minimizer(object):
     grads = tg_obj.gradients_wrt_u()
 
     #print grads[0], (t1-t2)/(eps*2)
-    print adptbx.u_as_b(self.u_min[0]), adptbx.u_as_b(self.u_min[1]), adptbx.u_as_b(self.u_min[2]), self.f
+    #print adptbx.u_as_b(self.u_min[0]), adptbx.u_as_b(self.u_min[1]), adptbx.u_as_b(self.u_min[2]), self.f
     self.g = flex.double(tuple(grads))
     return self.f, self.g
 

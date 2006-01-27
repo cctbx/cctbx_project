@@ -18,6 +18,7 @@ from libtbx.utils import Sorry
 class manager(object):
   def __init__(self, processed_pdb_file,
                      rigid_body_selections = None,
+                     group_b_selections    = None,
                      log = None):
     self.log = log
     self.restraints_manager = None
@@ -33,7 +34,9 @@ class manager(object):
     self.solvent_selection_ini = self._solvent_selection()
     self.locked = False
     self.rigid_body_selections = rigid_body_selections
+    self.group_b_selections = group_b_selections
     if(self.rigid_body_selections is not None):
+    #XXX BUG
        dim = self.xray_structure.scatterers().size()
        for sel in self.rigid_body_selections:
            assert sel.size() == dim
@@ -59,6 +62,7 @@ class manager(object):
   def deep_copy(self):
     new = manager(processed_pdb_file    = self.processed_pdb_file,
                   rigid_body_selections = None,
+                  group_b_selections    = None,
                   log                   = self.log)
     selection = flex.bool(self.xray_structure.scatterers().size(), True)
     # XXX not a deep copy
@@ -79,6 +83,10 @@ class manager(object):
        new.rigid_body_selections = []
        for item in self.rigid_body_selections:
            new.rigid_body_selections.append(item.deep_copy())
+    if(self.group_b_selections is not None):
+       new.group_b_selections = []
+       for item in self.group_b_selections:
+           new.group_b_selections.append(item.deep_copy())
     return new
 
   def _solvent_selection(self):
@@ -105,6 +113,7 @@ class manager(object):
     self.xray_structure.select_inplace(selection)
     new_atom_attributes_list = []
     rigid_body_selections = []
+    group_b_selections    = []
     new_solvent_selection = flex.bool()
     for attr, solsel, sel in zip(self.atom_attributes_list,
                                  self.solvent_selection,
@@ -119,6 +128,10 @@ class manager(object):
        for s in self.rigid_body_selections:
            rigid_body_selections.append(s.select(selection))
     self.rigid_body_selections = rigid_body_selections
+    if(self.group_b_selections is not None):
+       for s in self.group_b_selections:
+           group_b_selections.append(s.select(selection))
+    self.group_b_selections = group_b_selections
     self.solvent_selection = new_solvent_selection
     self.xray_structure.scattering_type_registry()
     self.restraints_manager = mmtbx.restraints.manager(
