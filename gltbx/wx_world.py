@@ -1,18 +1,32 @@
 # This code is based on:
 #   http://lists.wxwidgets.org/archive/wxPython-users/msg11078.html
 
-import wx
-import wx.glcanvas
 import gltbx.util
 from gltbx.gl import *
 from gltbx.glu import *
 import gltbx.gl_managed
 import gltbx.fonts
+from scitbx import matrix
+import wx
+import wx.glcanvas
 
 def v3distsq(a, b):
   result = 0
   for x,y in zip(a,b): result += (x-y)**2
   return result
+
+class line_given_points:
+  "http://mathworld.wolfram.com/Point-LineDistance3-Dimensional.html"
+
+  def __init__(self, points):
+    self.points = [matrix.col(point) for point in points]
+    self.delta = self.points[1] - self.points[0]
+    self.delta_norm_sq = self.delta.norm_sq()
+    assert self.delta_norm_sq != 0
+
+  def distance_sq(self, point):
+    return self.delta.cross(point - self.points[0]).norm_sq() \
+         / self.delta_norm_sq
 
 class wxGLWindow(wx.glcanvas.GLCanvas):
 
@@ -65,6 +79,8 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     self.xcenter = 0.0
     self.ycenter = 0.0
     self.zcenter = 0.0
+
+    self.translation = [0,0,0]
 
     self.parent = parent
     # Current coordinates of the mouse.
@@ -121,6 +137,7 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
   def OnLeftUp(self,event):
     if (not self.was_dragged):
       self.get_pick_points(self.initLeft)
+      self.process_pick_points()
       self.OnRedraw()
     else:
       self.was_dragged = False
@@ -177,6 +194,7 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
   def reset(self):
     glMatrixMode(GL_MODELVIEW)
     glLoadIdentity()
+    self.translation = [0,0,0]
     self.OnRedraw()
 
   def OnRecordMouse(self, event):
@@ -240,14 +258,11 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     self.OnRecordMouse(event)
 
   def OnTranslate(self, event):
-    win_height = max( 1,self.w)
+    win_height = max(1, self.w)
     obj_center = (self.xcenter, self.ycenter, self.zcenter)
-    model = [0]*16
-    proj = [0]*16
-    view = [0]*4
-    glGetDoublev(GL_MODELVIEW_MATRIX, model)
-    glGetDoublev(GL_PROJECTION_MATRIX, proj)
-    glGetIntegerv(GL_VIEWPORT, view)
+    model = gltbx.util.get_gl_modelview_matrix()
+    proj = gltbx.util.get_gl_projection_matrix()
+    view = gltbx.util.get_gl_viewport()
     winx = []
     winy = []
     winz = []
@@ -262,20 +277,20 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
       winx[0], winy[0]+0.5*win_height, winz[0],
       model, proj, view,
       objx, objy, objz)
-    dist       = v3distsq( (objx[0],objy[0],objz[0]), obj_center )**0.5
-    scale      = abs( dist / ( 0.5 * win_height ) )
-    gltbx.util.TranslateScene(
-      scale, event.GetX(), event.GetY(), self.xmouse, self.ymouse)
+    dist = v3distsq( (objx[0],objy[0],objz[0]), obj_center )**0.5
+    scale = abs( dist / ( 0.5 * win_height ) )
+    x,y = event.GetX(), event.GetY()
+    translation = (
+      (scale * (x - self.xmouse)), (scale * (self.ymouse - y)), 0.0)
+    self.translation = [old-new
+      for old,new in zip(self.translation, translation)]
     self.OnRedraw()
     self.OnRecordMouse(event)
 
   def get_pick_points(self, mouse_xy):
-    model = [0]*16
-    proj = [0]*16
-    view = [0]*4
-    glGetDoublev(GL_MODELVIEW_MATRIX, model)
-    glGetDoublev(GL_PROJECTION_MATRIX, proj)
-    glGetIntegerv(GL_VIEWPORT, view)
+    model = gltbx.util.get_gl_modelview_matrix()
+    proj = gltbx.util.get_gl_projection_matrix()
+    view = gltbx.util.get_gl_viewport()
     self.pick_points = []
     for winz in [0.0, 1.0]:
       objx = []
@@ -306,8 +321,9 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
     gluPerspective(self.fovy, float(self.w)/float(self.h), self.near, self.far)
+    t = self.translation
     gluLookAt(self.xcenter, self.ycenter, self.zcenter + self.distance,
-              self.xcenter, self.ycenter, self.zcenter,
+              self.xcenter+t[0], self.ycenter+t[1], self.zcenter+t[2],
               0., 1., 0.)
     glMatrixMode(GL_MODELVIEW)
     glPushMatrix()
@@ -325,7 +341,7 @@ class show_cube(wxGLWindow):
 
   def DrawGL(self):
     self.draw_cube()
-    self.draw_pick_points()
+    self.draw_center_of_rotation()
 
   def draw_cube(self, f=1):
     if (self.cube_display_list is None):
@@ -386,13 +402,29 @@ class show_cube(wxGLWindow):
     glVertex3f(x,y,z+f)
     glEnd()
 
-  def draw_pick_points(self):
-    if (self.pick_points is not None):
-      self.draw_cross_at(self.pick_points[0])
-      glBegin(GL_LINES)
-      glVertex3fv(self.pick_points[0])
-      glVertex3fv(self.pick_points[1])
-      glEnd()
+  def draw_center_of_rotation(self):
+    self.draw_cross_at((self.xcenter, self.ycenter, self.zcenter))
+
+  def process_pick_points(self):
+    line = line_given_points(self.pick_points)
+    min_dist_sq = 1**2
+    closest_point = None
+    for x in [0,1]:
+      for y in [0,1]:
+        for z in [0,1]:
+          point = matrix.col((x,y,z))
+          dist_sq = line.distance_sq(point=point)
+          if (min_dist_sq > dist_sq):
+            min_dist_sq = dist_sq
+            closest_point = point
+    if (closest_point is not None):
+      old_center = matrix.col((self.xcenter, self.ycenter, self.zcenter))
+      old_transl = matrix.col(self.translation)
+      new_center = closest_point
+      new_transl = old_transl - (new_center - old_center)
+      self.xcenter, self.ycenter, self.zcenter = new_center
+      self.translation = list(new_transl)
+      # XXX TODO update self.distance
 
 class App(wx.App):
 
