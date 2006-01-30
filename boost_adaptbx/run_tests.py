@@ -4,6 +4,7 @@ import libtbx.load_env
 def run():
   tst_list = (
   "$D/tst_rational.py",
+  "$D/tst_rational_truediv.py",
   "$D/tst_optional.py",
   )
 
