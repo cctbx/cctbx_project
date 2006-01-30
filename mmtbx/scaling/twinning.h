@@ -19,6 +19,98 @@
 namespace mmtbx { namespace scaling {
 namespace twinning {
 
+
+  template <typename FloatType=double>
+  class twin_r
+  {
+    public:
+    /*! default constructor */
+    twin_r() {}
+
+    twin_r(scitbx::af::const_ref< cctbx::miller::index<> > const& hkl,
+           scitbx::af::const_ref< FloatType > const& intensity,
+           cctbx::sgtbx::space_group const& space_group,
+           bool const& anomalous_flag,
+           scitbx::mat3<FloatType> twin_law)
+    :
+    hkl_(),
+    hkl_twin_(),
+    location_(),
+    intensity_(),
+    twin_law_(twin_law),
+    space_group_(space_group),
+    hkl_lookup_(hkl, space_group, anomalous_flag)
+    {
+      SCITBX_ASSERT( hkl.size() == intensity.size() );
+      int ht,kt,lt;
+      for (unsigned ii=0;ii<hkl.size();ii++){
+        hkl_.push_back( hkl[ii] );
+        intensity_.push_back( intensity[ii] );
+        // using iround to prevent mess ups
+        ht = scitbx::math::iround(
+               twin_law[0]*hkl[ii][0] +
+               twin_law[3]*hkl[ii][1] +
+               twin_law[6]*hkl[ii][2]);
+
+        kt = scitbx::math::iround(
+               twin_law[1]*hkl[ii][0] +
+               twin_law[4]*hkl[ii][1] +
+               twin_law[7]*hkl[ii][2]);
+
+        lt = scitbx::math::iround(
+               twin_law[2]*hkl[ii][0] +
+               twin_law[5]*hkl[ii][1] +
+               twin_law[8]*hkl[ii][2]);
+
+        cctbx::miller::index<> tmp_ht(ht,kt,lt);
+        // map the thing to the ASU please
+
+
+        hkl_twin_.push_back( tmp_ht );
+        location_.push_back( hkl_lookup_.find_hkl( tmp_ht ) );
+      }
+    }
+
+    FloatType r_value()
+    {
+      FloatType top=0, bottom=0;
+      FloatType x1,x2;
+      unsigned tmp_loc;
+      for (unsigned ii=0;ii<hkl_.size();ii++){
+        tmp_loc =  location_[ ii ];
+        if (tmp_loc >= 0){
+          if (tmp_loc != ii ){
+            x1 = intensity_[ ii ];
+            x2 = intensity_[ tmp_loc ];
+            top += std::fabs(x1-x2);
+            bottom += std::fabs( x1+x2 );
+          }
+        }
+      }
+      FloatType result=0;
+      if (top>0){
+        if (bottom>0){
+          result=top/bottom;
+        }
+      }
+      return (result);
+    }
+
+    protected:
+    scitbx::af::shared< cctbx::miller::index<> > hkl_;
+    scitbx::af::shared< cctbx::miller::index<> > hkl_twin_;
+    scitbx::af::shared< FloatType > intensity_;
+
+    scitbx::af::shared< long > location_;
+    scitbx::mat3<FloatType> twin_law_;
+    cctbx::sgtbx::space_group space_group_;
+    cctbx::miller::lookup_utils::lookup_tensor<
+      FloatType> hkl_lookup_;
+
+  };
+
+
+
   template <typename FloatType=double>
   class l_test
   {
