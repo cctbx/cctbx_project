@@ -14,6 +14,37 @@ namespace mmtbx { namespace scaling {
 
 namespace{
 
+
+  struct twin_r_wrapper
+  {
+    typedef twinning::twin_r<> w_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+
+      class_<w_t>("twin_r", no_init)
+        .def(init<
+             scitbx::af::const_ref< cctbx::miller::index<> >  const&,
+             scitbx::af::const_ref< double > const&,
+             cctbx::sgtbx::space_group const&,
+             bool const&,
+             scitbx::mat3<double> const& >
+             ((arg_("miller_indices"),
+               arg_("intensity"),
+               arg_("space_group"),
+               arg_("anomalous_flag"),
+               arg_("symop") )))
+        .def("r_value", &w_t::r_value)
+        ;
+    }
+
+  };
+
+
+
+
   struct l_test_wrapper
   {
     typedef twinning::l_test<> w_t;
@@ -134,6 +165,11 @@ namespace{
 }  // namespace <anonymous>
 
 namespace boost_python {
+
+  void wrap_twin_r()
+  {
+    twin_r_wrapper::wrap();
+  }
 
   void wrap_l_test()
   {

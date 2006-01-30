@@ -15,6 +15,7 @@ namespace mmtbx { namespace scaling {
 namespace boost_python{
 
   // twinnning related stuff
+  void wrap_twin_r();
   void wrap_l_test();
   void wrap_detwin();
   void wrap_h_test();
@@ -304,6 +305,7 @@ namespace {
 
 
     // twinning related stuff
+    wrap_twin_r();
     wrap_l_test();
     wrap_detwin();
     wrap_h_test();
