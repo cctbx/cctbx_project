@@ -921,6 +921,37 @@ def twin_the_data_and_analyse(twin_operator,twin_fraction=0.2):
     assert answer is True
 
 
+def test_twin_r_value(twin_operator):
+  miller_array = random_data(35).map_to_asu()
+  miller_array = miller_array.f_as_f_sq()
+
+  for twin_fraction, expected_r in zip( [0,0.1,0.2,0.3,0.4,0.5],
+                                        [0.50,0.40,0.30,0.20,0.10] )  :
+    cb_op =  sgtbx.change_of_basis_op( twin_operator )
+
+    miller_array_mod, miller_array_twin = miller_array.common_sets(
+      miller_array.change_basis( cb_op ).map_to_asu() )
+    twinned_miller = miller_array_mod.customized_copy(
+      data = (1.0-twin_fraction)*miller_array_mod.data()
+      + twin_fraction*miller_array_twin.data(),
+      sigmas = flex.sqrt(
+      flex.pow( ((1.0-twin_fraction)*miller_array_mod.sigmas()),2.0)+\
+      flex.pow( ((twin_fraction)*miller_array_twin.sigmas()),2.0))
+      )
+
+    twinned_miller.set_observation_type( miller_array.observation_type())
+
+    twin_r = scaling.twin_r( twinned_miller.indices(),
+                             twinned_miller.data(),
+                             twinned_miller.space_group(),
+                             twinned_miller.anomalous_flag(),
+                             cb_op.c().r().as_double()[0:9] )
+    assert approx_equal(twin_r.r_value(), expected_r, 0.08)
+
+
+
+
+
 
 def test_kernel_based_normalisation():
   miller_array = random_data(35.0, d_min=2.5 )
@@ -951,4 +982,5 @@ if (__name__ == "__main__"):
   twin_the_data_and_analyse('h+k,-k,-l',0.50)
   test_scattering_info()
   test_kernel_based_normalisation()
+  test_twin_r_value('h+k,-k,-l')
   print "OK"
