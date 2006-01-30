@@ -1,3 +1,5 @@
+from __future__ import division
+
 try:
   from stdlib import math
 except:
@@ -92,6 +94,9 @@ class rec(object):
     if (ac == bc):
       return sqr(result)
     return rec(result, (ac, bc))
+
+  def __truediv__(self, other):
+    return rec([e/other for e in self.elems], self.n)
 
   def __div__(self, other):
     return rec([e/other for e in self.elems], self.n)
@@ -244,23 +249,38 @@ class rec(object):
     return m.matrix_determinant_via_lu();
 
   def co_factor_matrix_transposed(self):
-    assert self.n == (3,3)
+    n = self.n
+    if (n == (1,1)):
+      return rec(elems=(1,), n=n)
     m = self.elems
-    return sqr((
-       m[4] * m[8] - m[5] * m[7],
-      -m[1] * m[8] + m[2] * m[7],
-       m[1] * m[5] - m[2] * m[4],
-      -m[3] * m[8] + m[5] * m[6],
-       m[0] * m[8] - m[2] * m[6],
-      -m[0] * m[5] + m[2] * m[3],
-       m[3] * m[7] - m[4] * m[6],
-      -m[0] * m[7] + m[1] * m[6],
-       m[0] * m[4] - m[1] * m[3]))
+    if (n == (2,2)):
+      return rec(elems=(m[3], -m[1], -m[2], m[0]), n=n)
+    if (n == (3,3)):
+      return rec(elems=(
+         m[4] * m[8] - m[5] * m[7],
+        -m[1] * m[8] + m[2] * m[7],
+         m[1] * m[5] - m[2] * m[4],
+        -m[3] * m[8] + m[5] * m[6],
+         m[0] * m[8] - m[2] * m[6],
+        -m[0] * m[5] + m[2] * m[3],
+         m[3] * m[7] - m[4] * m[6],
+        -m[0] * m[7] + m[1] * m[6],
+         m[0] * m[4] - m[1] * m[3]), n=n)
+    assert self.is_square()
+    raise RuntimeError("Not implemented.")
 
   def inverse(self):
-    determinant = self.determinant()
-    assert determinant != 0
-    return self.co_factor_matrix_transposed() / determinant
+    assert self.is_square()
+    n = self.n
+    if (n[0] < 4):
+      determinant = self.determinant()
+      assert determinant != 0
+      return self.co_factor_matrix_transposed() / determinant
+    from scitbx.array_family import flex
+    m = flex.double(self.elems)
+    m.resize(flex.grid(n))
+    m.matrix_inversion_in_place()
+    return rec(elems=m, n=n)
 
   def transpose(self):
     elems = []
@@ -499,20 +519,33 @@ if (__name__ == "__main__"):
   assert gttt.mathematica_form() == "{{33}, {79}, {125}}"
   assert sqr([4]).determinant() == 4
   assert sqr([3,2,-7,15]).determinant() == 59
+  m = sqr([4])
+  mi = m.inverse()
+  assert mi.mathematica_form() == "{{0.25}}"
+  m = sqr((1,5,-3,9))
+  mi = m.inverse()
+  assert mi.n == (2,2)
+  assert approx_equal(mi, (3/8, -5/24, 1/8, 1/24))
   m = sqr((7, 7, -4, 3, 1, -1, 15, 16, -9))
   assert m.determinant() == 1
   mi = m.inverse()
-  assert mi.mathematica_form() == "{{7, -1, -3}, {12, -3, -5}, {33, -7, -14}}"
-  assert (m*mi).mathematica_form() == "{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}"
-  assert (mi*m).mathematica_form() == "{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}"
+  assert mi.mathematica_form() \
+      == "{{7.0, -1.0, -3.0}, {12.0, -3.0, -5.0}, {33.0, -7.0, -14.0}}"
+  assert (m*mi).mathematica_form() \
+      == "{{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}}"
+  assert (mi*m).mathematica_form() \
+      == "{{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}}"
   s = rt((m, (1,-2,3)))
   si = s.inverse()
   assert si.r.mathematica_form() == mi.mathematica_form()
-  assert (s*si).r.mathematica_form() == "{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}"
-  assert (si*s).r.mathematica_form() == "{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}"
-  assert si.t.mathematica_form() == "{{0}, {-3}, {-5}}"
-  assert (s*si).t.mathematica_form() == "{{0}, {0}, {0}}"
-  assert (si*s).t.mathematica_form() == "{{0}, {0}, {0}}"
+  assert (s*si).r.mathematica_form() \
+      == "{{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}}"
+  assert (si*s).r.mathematica_form() \
+      == "{{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}}"
+  assert si.t.mathematica_form().replace("-0.0", "0.0") \
+      == "{{0.0}, {-3.0}, {-5.0}}"
+  assert (s*si).t.mathematica_form() == "{{0.0}, {0.0}, {0.0}}"
+  assert (si*s).t.mathematica_form() == "{{0.0}, {0.0}, {0.0}}"
   assert approx_equal(col((rational.int(3,4),2,1.5)).as_float(),(0.75,2,1.5))
   assert approx_equal(col((-2,3,-6)).normalize().elems, (-2/7.,3/7.,-6/7.))
   assert col((-1,2,-3)).each_abs().elems == (1,2,3)
@@ -531,6 +564,14 @@ if (__name__ == "__main__"):
   assert approx_equal(col((-1,0,0)).angle(col((1,1,0)), deg=True), 45+90)
   assert approx_equal(col((1,0,0)).accute_angle(col((1,1,0)), deg=True), 45)
   assert approx_equal(col((-1,0,0)).accute_angle(col((1,1,0)), deg=True), 45)
+  m = sqr([4, 4, -1, 0, -3, -3, -3, -2, -3, 2, -1, 1, -4, 1, 3, 2])
+  mi = m.inverse()
+  assert mi.n == (4,4)
+  assert approx_equal(mi, (
+    -2/15,-17/75,4/75,-19/75,
+    7/15,22/75,-14/75,29/75,
+    1/3,4/15,-8/15,8/15,
+    -1,-1,1,-1))
   #
   r = sqr([-0.9533, 0.2413, -0.1815,
            0.2702, 0.414, -0.8692,
