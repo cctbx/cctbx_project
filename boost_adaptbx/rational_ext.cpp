@@ -82,6 +82,10 @@ namespace {
       return o;
     }
 
+    static w_t truediv_rr(w_t const& lhs, w_t const& rhs) { return lhs/rhs; }
+    static w_t truediv_ri(w_t const& lhs, int rhs) { return lhs/rhs; }
+    static w_t rtruediv_ir(w_t const& rhs, int lhs) { return lhs/rhs; }
+
     static bool eq_rr(w_t const& lhs, w_t const& rhs) { return lhs == rhs; }
     static bool ne_rr(w_t const& lhs, w_t const& rhs) { return lhs != rhs; }
     static bool lt_rr(w_t const& lhs, w_t const& rhs) { return lhs < rhs; }
@@ -117,14 +121,17 @@ namespace {
         .def(self - self)
         .def(self * self)
         .def(self / self)
+        .def("__truediv__", truediv_rr)
         .def(self + int())
         .def(self - int())
         .def(self * int())
         .def(self / int())
+        .def("__truediv__", truediv_ri)
         .def(int() + self)
         .def(int() - self)
         .def(int() * self)
         .def(int() / self)
+        .def("__rtruediv__", rtruediv_ir)
         .def("__eq__", eq_rr)
         .def("__ne__", ne_rr)
         .def("__lt__", lt_rr)
