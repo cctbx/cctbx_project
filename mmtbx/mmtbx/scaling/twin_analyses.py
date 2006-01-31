@@ -1172,7 +1172,7 @@ class f_obs_vs_f_calc(object):
       print >> self.out,  "  to determine the presence of twinning and or presence of pseudo symmetry."
       print >> self.out
       ## make a neat table please
-      legend=('R_calc','R_obs', 'Class', 'distance', 'choice')
+      legend=('R_obs','R_calc', 'Class', 'distance', 'choice')
       self.table = table_utils.format( [legend]+self.rvsr_interpretation,
                                        comments=None,
                                        has_header=True,
