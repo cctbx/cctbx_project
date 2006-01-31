@@ -718,7 +718,7 @@ class kernel_normalisation(object):
       if not miller_array.is_xray_amplitude_array():
         raise RuntimeError("Observation type unknown")
 
-    ## declae some shorthands
+    ## declare some shorthands
     I_obs = work_array.data()
     epsilons = work_array.epsilons().data().as_double()
     d_star_sq_hkl = work_array.d_spacings().data()
@@ -783,19 +783,24 @@ class kernel_normalisation(object):
     self.normalizer_for_miller_array =  self.normalizer.f(d_star_sq_hkl)
 
     self.normalised_miller = None
+    self.normalised_miller_dev_eps = None
 
     if work_array.sigmas() is not None:
       self.normalised_miller = work_array.customized_copy(
         data = work_array.data()/self.normalizer_for_miller_array,
         sigmas = work_array.sigmas()/self.normalizer_for_miller_array
         ).set_observation_type(work_array)
+      self.normalised_miller_dev_eps = self.normalised_miller.customized_copy(
+        data = self.normalised_miller.data()/epsilons,
+        sigmas = self.normalised_miller.sigmas()/epsilons)\
+        .set_observation_type(work_array)
+
     else:
       self.normalised_miller = work_array.customized_copy(
         data = work_array.data()/self.normalizer_for_miller_array
         ).set_observation_type(work_array)
-    ## note that the normalized intensities are not divided by epsilon!
-
+      self.normalised_miller_dev_eps = self.normalised_miller.customized_copy(
+        data = self.normalised_miller.data()/epsilons)\
+        .set_observation_type(work_array)
 
     ## all done
-    ##
-    ##
