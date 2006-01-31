@@ -812,7 +812,10 @@ class twin_law_dependend_twin_tests(object):
   """Twin law dependent test results"""
   def __init__(self,
                twin_law,
-               miller_array, out=None,verbose=0):
+               miller_array,
+               out=None,
+               verbose=0,
+               miller_calc=None):
 
     acentric_data = miller_array.select_acentric().set_observation_type(
       miller_array)
@@ -828,6 +831,11 @@ class twin_law_dependend_twin_tests(object):
                                      acentric_data,
                                      out=out,
                                      verbose=verbose)
+
+    self.obs_vs_calc = f_obs_vs_f_calc(miller_array,
+                                       miller_calc,
+                                       twin_law.as_double_array()[0:9],
+                                       out)
 
 
 class summary_object(object):
@@ -891,6 +899,9 @@ class summary_object(object):
     self.britton_alpha = []
     self.h_test_alpha = []
 
+    self.r_vs_r_obs = []
+    self.r_vs_r_calc = []
+    self.r_vs_r_class = []
 
     self.n_twin_laws = len(twin_law_related_test)
 
@@ -900,6 +911,15 @@ class summary_object(object):
         twin_law_related_test[ii].h_test.estimated_alpha )
       self.britton_alpha.append(
         twin_law_related_test[ii].britton_test.estimated_alpha )
+
+      self.r_vs_r_obs.append(
+        twin_law_related_test[ii].obs_vs_calc.r_obs)
+      self.r_vs_r_calc.append(
+        twin_law_related_test[ii].obs_vs_calc.r_calc)
+      self.r_vs_r_class.append(
+        twin_law_related_test[ii].obs_vs_calc.rvsr_interpretation[
+          twin_law_related_test[ii].obs_vs_calc.guess][2] )
+
 
     if self.n_twin_laws>0:
       self.largest_twin_fraction = flex.max(flex.double(self.britton_alpha))
@@ -954,6 +974,10 @@ class summary_object(object):
         print >> out,"     estimated twin fraction "
         print >> out,"       - via Britton analyses : %3.2f" %(self.britton_alpha[ii])
         print >> out,"       - via H-test           : %3.2f" %(self.h_test_alpha[ii])
+        print >> out,"     R value of twin related intensities "
+        print >> out,"       - Observed data        : %3.2f"%(self.r_vs_r_obs[ii])
+        if self.r_vs_r_calc[ii] is not None:
+          print >> out,"       - Calculated data      : %3.2f"%(self.r_vs_r_calc[ii])
       print >> out
 
 
@@ -1050,6 +1074,123 @@ class summary_object(object):
 
     print >> out,"------------------------------------------------------------------"
 
+
+class f_obs_vs_f_calc(object):
+  def __init__(self,
+               miller_obs,
+               miller_calc=None,
+               twin_law=None,
+               out=None):
+
+    self.obs = miller_obs.deep_copy()
+    self.calc=None
+    if miller_calc is not None:
+      self.calc = miller_calc.deep_copy()
+      self.obs, self.calc = self.obs.common_sets( self.calc )
+    self.twin_law = twin_law
+    self.out=out
+    self.rvsr_interpretation=None
+    self.table=None
+    if out is None:
+      self.out=sys.stdout
+
+    self.r_obs=None
+    self.r_calc=None
+    self.guess=None
+    self.r_vs_r()
+    self.r_vs_r_classification()
+
+    self.show()
+
+
+  def r_vs_r(self):
+    # in order to avoid certain issues, take common sets please
+    obs = None
+    calc = None
+    if self.calc is not None:
+      obs, calc = self.obs.common_sets( self.calc )
+    else:
+      obs = self.obs.deep_copy()
+    # make sure we have intensities
+    if not obs.is_xray_intensity_array():
+      obs = obs.f_as_f_sq()
+    if calc is not None:
+      if not calc.is_xray_intensity_array():
+        calc = calc.f_as_f_sq()
+
+    obs_obj = scaling.twin_r( obs.indices(),
+                              obs.data(),
+                              obs.space_group(),
+                              obs.anomalous_flag(),
+                              self.twin_law )
+    self.r_obs = obs_obj.r_value()
+
+    if calc is not None:
+      calc_obj =  scaling.twin_r( calc.indices(),
+                                  calc.data(),
+                                  calc.space_group(),
+                                  calc.anomalous_flag(),
+                                  self.twin_law )
+      self.r_calc = calc_obj.r_value()
+
+  def r_vs_r_classification(self):
+    self.rvsr_interpretation = [
+      [ "0.1", "0.1", "Misspecified (too low) crystal symmetry \n ",None,""] ,
+      [ "0.1", "0.3", "Twin with NCS parallel to twin operator \n ",None,""],
+      [ "0.1", "0.5", "Close to perfect twinning \n ",None,""],
+      [ "0.3", "0.3", "Data is not twinned, but NCS is parallel \n   to putative twin operator",None,""],
+      [ "0.3", "0.5", "Partially twinned data \n ",None,""],
+      [ "0.5", "0.5", "No twinning or parallel NCS",None,""]
+      ]
+    guess = None
+    min=1.0
+    count=0
+    if self.r_calc is not None:
+      for test_class in  self.rvsr_interpretation:
+        tmp_obs = (float(test_class[0])-self.r_obs)**2.0
+        tmp_calc = (float(test_class[1])-self.r_calc)**2.0
+
+        d =  math.sqrt( tmp_obs+tmp_calc )
+        test_class[3]="%4.3f"%(d)
+        if d < min:
+          min = d
+          guess = count
+        count+=1
+    self.guess=guess
+    self.rvsr_interpretation[ guess ][4]="<---"
+
+  def show(self):
+    print >> self.out
+    print >> self.out, "R vs R statistic:"
+    print >> self.out, "  Lebedev, Vagin, Murshudov. Acta Cryst. (2006). D62, 83-95"
+    print >> self.out
+    print >> self.out , "  R_twin observed data   : %4.3f"%(self.r_obs)
+    if self.r_calc is not None:
+      print >> self.out , "  R_twin calculated data : %4.3f"%(self.r_calc)
+      print >> self.out
+      print >> self.out , "  The following table can be used in a simple classification scheme"
+      print >> self.out,  "  to determine the presence of twinning and or presence of pseudo symmetry."
+      print >> self.out
+      ## make a neat table please
+      legend=('R_calc','R_obs', 'Class', 'distance', 'choice')
+      self.table = table_utils.format( [legend]+self.rvsr_interpretation,
+                                       comments=None,
+                                       has_header=True,
+                                       separate_rows=False,
+                                       prefix='| ',
+                                       postfix=' |')
+      print >> self.out, self.table
+      print >> self.out
+
+    else:
+      print >> self.out , "  No calculated data available."
+      print >> self.out , "  R_twin for calculated data not determined."
+    print >> self.out
+
+
+
+
+
 class twin_analyses(object):
   """ Perform various twin related tests"""
   def __init__(self,
@@ -1060,7 +1201,8 @@ class twin_analyses(object):
                normalise=True, ## If normalised is true, normalisation is done
                out=None,
                out_plots = None,
-               verbose = 1):
+               verbose = 1,
+               miller_calc=None):
 
     ## If resolution limits are not specified
     ## use full resolution limit
@@ -1101,10 +1243,8 @@ class twin_analyses(object):
     possible_twin_laws.show(out=out)
     ##-----------------------------
 
-
     self.normalised_intensities = wilson_normalised_intensities(
       miller_array, normalise=normalise, out=out, verbose=verbose)
-
 
     ## Try to locat e pseudo translational symm.
     ## If no refls are available at low reso,
@@ -1142,8 +1282,6 @@ class twin_analyses(object):
         acentric_cut,
         2,2,2,
         out=out, verbose=verbose)
-
-
     ##--------------------------
 
     if out_plots is not None:
@@ -1200,11 +1338,12 @@ class twin_analyses(object):
 
       tmp_twin_law_stuff = twin_law_dependend_twin_tests(
         possible_twin_laws.operators[ii].operator,
-        acentric_cut,
+        miller_array,
         out=out,
-        verbose=verbose )
+        verbose=verbose,
+        miller_calc=miller_calc)
 
-      self.twin_law_dependent_analyses.append( tmp_twin_law_stuff)
+      self.twin_law_dependent_analyses.append( tmp_twin_law_stuff )
 
       ## Plotting section
       ##    Britton plot

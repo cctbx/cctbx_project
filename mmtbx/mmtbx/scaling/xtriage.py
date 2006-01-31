@@ -42,7 +42,9 @@ scaling.input {
    {
      file_name=None
      .type=path
-     labels=None
+     obs_labels=None
+     .type=strings
+     calc_labels=None
      .type=strings
      unit_cell=None
      .type=unit_cell
@@ -355,7 +357,7 @@ Use keyword 'unit_cell' to specify unit_cell
     miller_array = None
     miller_array = xray_data_server.get_xray_data(
       file_name = params.scaling.input.xray_data.file_name,
-      labels = params.scaling.input.xray_data.labels,
+      labels = params.scaling.input.xray_data.obs_labels,
       ignore_all_zeros = True,
       parameter_scope = 'scaling.input.xray_data'
     )
@@ -374,6 +376,19 @@ Use keyword 'unit_cell' to specify unit_cell
       miller_array = miller_array.f_sq_as_f()
     elif (miller_array.is_complex_array()):
       miller_array = abs(miller_array)
+
+
+    ## Check if Fcalc label is available
+    f_calc_miller = None
+    if params.scaling.input.xray_data.calc_labels is not None:
+      f_calc_miller = xray_data_server.get_xray_data(
+        file_name = params.scaling.input.xray_data.file_name,
+        labels = params.scaling.input.xray_data.calc_labels,
+        ignore_all_zeros = True,
+        parameter_scope = 'scaling.input.xray_data'
+      )
+
+
 
     twin_results = None
 
@@ -438,7 +453,10 @@ Use keyword 'unit_cell' to specify unit_cell
             d_star_sq_low_limit=d_star_sq_low_limit,
             d_star_sq_high_limit=d_star_sq_high_limit,
             normalise=True,
-            out=log,out_plots=string_buffer_plots,verbose=verbose)
+            out=log,
+            out_plots=string_buffer_plots,
+            verbose=verbose,
+            miller_calc=f_calc_miller)
         #except: pass
 
     ## Append the CCP4i plots to the log StringIO object.
