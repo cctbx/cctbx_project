@@ -887,7 +887,6 @@ def twin_the_data_and_analyse(twin_operator,twin_fraction=0.2):
                                        out=out_string,
                                        verbose=-100)
 
-  print dir(twin_anal_object.twin_summary.twin_results)
   index = twin_anal_object.twin_summary.twin_results.most_worrysome_twin_law
 
   assert approx_equal(
