@@ -6,6 +6,7 @@ env_etc.gltbx_include = libtbx.env.under_dist("gltbx", "..")
 env_etc.gltbx_common_includes = [
   env_etc.libtbx_include,
   env_etc.gltbx_include,
+  env_etc.scitbx_include,
   env_etc.boost_include,
 ]
 
