@@ -1304,7 +1304,7 @@ class f_obs_vs_f_calc(object):
                               obs.space_group(),
                               obs.anomalous_flag(),
                               self.twin_law )
-    self.r_obs = obs_obj.r_value()
+    self.r_obs = obs_obj.r_abs_value()
 
     if calc is not None:
       calc_obj =  scaling.twin_r( calc.indices(),
@@ -1312,7 +1312,7 @@ class f_obs_vs_f_calc(object):
                                   calc.space_group(),
                                   calc.anomalous_flag(),
                                   self.twin_law )
-      self.r_calc = calc_obj.r_value()
+      self.r_calc = calc_obj.r_abs_value()
 
   def r_vs_r_classification(self):
     self.rvsr_interpretation = [

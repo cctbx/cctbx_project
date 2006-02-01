@@ -929,8 +929,10 @@ def test_twin_r_value(twin_operator):
   miller_array = random_data(35).map_to_asu()
   miller_array = miller_array.f_as_f_sq()
 
-  for twin_fraction, expected_r in zip( [0,0.1,0.2,0.3,0.4,0.5],
-                                        [0.50,0.40,0.30,0.20,0.10] )  :
+  for twin_fraction, expected_r_abs,expected_r_sq in zip(
+     [0,0.1,0.2,0.3,0.4,0.5],
+     [0.50,0.40,0.30,0.20,0.10,0.0],
+     [0.333,0.213,0.120,0.0533,0.0133,0.00]):
     cb_op =  sgtbx.change_of_basis_op( twin_operator )
 
     miller_array_mod, miller_array_twin = miller_array.common_sets(
@@ -950,8 +952,8 @@ def test_twin_r_value(twin_operator):
                              twinned_miller.space_group(),
                              twinned_miller.anomalous_flag(),
                              cb_op.c().r().as_double()[0:9] )
-    assert approx_equal(twin_r.r_value(), expected_r, 0.08)
-
+    assert approx_equal(twin_r.r_abs_value(), expected_r_abs, 0.08)
+    assert approx_equal(twin_r.r_sq_value(), expected_r_sq, 0.08)
 
 
 
@@ -968,6 +970,7 @@ def test_kernel_based_normalisation():
 
 
 if (__name__ == "__main__"):
+  """
   test_likelihood_iso()
   test_gradients_iso()
   test_gamma_prot()
@@ -986,5 +989,7 @@ if (__name__ == "__main__"):
   twin_the_data_and_analyse('h+k,-k,-l',0.50)
   test_scattering_info()
   test_kernel_based_normalisation()
+  """
   test_twin_r_value('h+k,-k,-l')
+
   print "OK"
