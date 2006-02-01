@@ -822,19 +822,19 @@ class twin_law_dependend_twin_tests(object):
 
     self.twin_law = twin_law
 
-    self.h_test = h_test(twin_law.as_double_array()[0:9],
+    self.h_test = h_test(twin_law.operator.as_double_array()[0:9],
                          miller_array = acentric_data,
                          out=out,
                          verbose=verbose)
 
-    self.britton_test = britton_test(twin_law.as_double_array()[0:9],
+    self.britton_test = britton_test(twin_law.operator.as_double_array()[0:9],
                                      acentric_data,
                                      out=out,
                                      verbose=verbose)
 
     self.obs_vs_calc = f_obs_vs_f_calc(miller_array,
                                        miller_calc,
-                                       twin_law.as_double_array()[0:9],
+                                       twin_law.operator.as_double_array()[0:9],
                                        out)
 
 
@@ -916,9 +916,12 @@ class summary_object(object):
         twin_law_related_test[ii].obs_vs_calc.r_obs)
       self.r_vs_r_calc.append(
         twin_law_related_test[ii].obs_vs_calc.r_calc)
-      self.r_vs_r_class.append(
-        twin_law_related_test[ii].obs_vs_calc.rvsr_interpretation[
+      if  twin_law_related_test[ii].obs_vs_calc.r_calc is not None:
+        self.r_vs_r_class.append(
+          twin_law_related_test[ii].obs_vs_calc.rvsr_interpretation[
           twin_law_related_test[ii].obs_vs_calc.guess][2] )
+      else:
+        self.r_vs_r_class.append( None )
 
 
     if self.n_twin_laws>0:
@@ -929,14 +932,34 @@ class summary_object(object):
       self.show(out)
 
 
+    # fill up the dam things
+    export_product = twin_results_summary()
+    export_product.patterson_height = self.max_peak_height
+    export_product.patterson_p_value = self.max_peak_height_p_value
+
+    export_product.i_ratio=self.i_ratio_ac
+    export_product.f_ratio=self.f_ratio_ac
+    export_product.e_sq_minus_1=wilson_ratios.acentric_abs_e_sq_minus_one
+    export_product.l_mean=self.l
+    export_product.l_sq_mean=self.l2
+    export_product.maha_l=self.maha_distance_l
+
+    export_product.twin_laws=self.twin_law
+    export_product.twin_law_classifier=["M","M","M","M","M","M","M"]
+    export_product.r_obs=self.r_vs_r_obs
+    export_product.r_calc=self.r_vs_r_calc
+    export_product.britton_alpha=self.britton_alpha
+    export_product.h_alpha=self.h_test_alpha
+
+    export_product.show()
+
+
+    #export_product.verdict=None
+    #export_product.in_short=None
+
   def show(self,out=None):
     if out is None:
       out = sys.stdout
-
-    twin = False
-    pseudo_trans = False
-    undetermined_problem = False
-    spacegroup_is_too_low= False
 
     print >> out
     print >> out,"------------------------------------------------------------------"
@@ -1075,6 +1098,164 @@ class summary_object(object):
     print >> out,"------------------------------------------------------------------"
 
 
+
+
+class twin_results_interpretation(object):
+  def __init__(self,
+               nz_test,
+               wilson_ratios,
+               l_test,
+               translational_pseudo_symmetry=None,
+               twin_law_related_test=None,
+
+               maha_l_cut=3.5,
+               patterson_p_cut=0.01,
+
+               out=None):
+
+    self.twin_results = twin_results_summary()
+    # patterson analyses
+    if translational_pseudo_symmetry is not None:
+      self.twin_results.patterson_height = translational_pseudo_symmetry.high_peak
+      self.twin_results.patterson_p_value = translational_pseudo_symmetry.high_p_value
+
+    # wilson statistics moments, etc
+    self.twin_results.i_ratio = wilson_ratios.acentric_i_ratio
+    self.twin_results.f_ratio = wilson_ratios.acentric_f_ratio
+    self.twin_results.e_sq_minus_1 = wilson_ratios.acentric_abs_e_sq_minus_one
+
+    # l test
+    self.twin_results.l_mean = l_test.mean_l
+    self.twin_results.l_sq_mean = l_test.mean_l2
+    self.compute_maha_l()
+
+    # twin dependent tests
+    self.twin_results.n_twin_laws = len(twin_law_related_test)
+    for twin_item in twin_law_related_test:
+      self.twin_results.twin_laws.append(
+        twin_item.twin_law.operator.r().as_hkl() )
+      self.twin_results.twin_law_type.append(
+        twin_item.twin_law.twin_type)
+      self.twin_results.r_obs.append(
+        twin_item.obs_vs_calc.r_obs)
+      self.twin_results.r_calc.append(
+        twin_item.obs_vs_calc.r_calc)
+
+      self.twin_results.britton_alpha.append(
+        twin_item.britton_test.estimated_alpha)
+      self.twin_results.h_alpha.append(
+        twin_item.h_test.estimated_alpha)
+
+    if self.twin_results.n_twin_laws > 0 :
+      self.twin_results.most_worrysome_twin_law = flex.max_index(
+        flex.double(self.twin_results.britton_alpha) )
+    else:
+      self.twin_results.most_worrysome_twin_law = None
+
+    self.patterson_verdict = StringIO()
+    if translational_pseudo_symmetry is not None:
+      self.analyse_pseudo_translational_symmetry(patterson_p_cut)
+    self.twin_results.show()
+
+
+
+  def compute_maha_l(self):
+    maha_l = 117820.0
+    maha_l2 = 106570
+    maha_ll2= -212319
+    maha_mean_l = 0.487758242
+    mama_mean_l2 = 0.322836996
+    tmp_l = self.twin_results.l_mean - maha_mean_l
+    tmp_l2 = self.twin_results.l_sq_mean - mama_mean_l2
+    maha_distance_l = tmp_l*tmp_l*maha_l +\
+                      tmp_l2*tmp_l2*maha_l2 +\
+                      tmp_l*tmp_l2*maha_ll2
+    maha_distance_l = math.sqrt(maha_distance_l)
+    self.twin_results.maha_l = maha_distance_l
+
+
+  def analyse_pseudo_translational_symmetry(self,
+                                            patterson_p_cut=0.01):
+    if self.twin_results.patterson_p_value >= patterson_p_cut:
+      print >> self.patterson_verdict,\
+      "  The analyses of the Patterson function reveals a significant off-origin"
+      print >> self.patterson_verdict,\
+      "  peak that is %3.2f %s of the origin peak. The chance of findong a peak of"%(
+        self.twin_results.patterson_height,"%")
+      print >> self.patterson_verdict,\
+      "  this or larger height by random in a structure without pseudo translational"
+      print >> self.patterson_verdict,\
+      "  symmetry is equal to the %5.4e."%(self.twin_results.patterson_p_value)
+
+    else:
+      self.patterson_verdict="""No significant pseudotranslation detected."""
+
+
+class twin_results_summary(object):
+  def __init__(self):
+    self.patterson_p_value=None
+    self.patterson_height=None
+
+    self.i_ratio=None
+    self.f_ratio=None
+    self.e_sq_minus_1=None
+    self.l_mean=None
+    self.l_sq_mean=None
+    self.maha_l=None
+
+    self.n_twin_laws=None
+    self.twin_laws=[]
+    self.twin_law_type=[]
+    self.r_obs=[]
+    self.r_calc=[]
+    self.britton_alpha=[]
+    self.h_alpha=[]
+
+    self.most_worrysome_twin_law = None
+
+    self.verdict=None
+    self.in_short=None
+
+  def show(self,out=None):
+    if out is None:
+      out = sys.stdout
+    print >> out, "--------------------------------------------------------------"
+    print >> out, "Twinning and intensity statistics summary"
+    print >> out
+    print >> out, "Statistics independent of twin laws"
+    print >> out, "  - <I^2>/<I>^2 : %5.3f"%(self.i_ratio)
+    print >> out, "  - <F>^2/<F^2> : %5.3f"%(self.f_ratio)
+    print >> out, "  - <|E^2-1|>   : %5.3f"%(self.e_sq_minus_1)
+    print >> out, "  - <|L|>, <L^2>: %5.3f, %4.3f"%(self.l_mean,self.l_sq_mean)
+    print >> out, "    ( Multivariate Z score L-test: %5.3f )"%( self.maha_l )
+    print >> out
+    print >> out, "Statistics depending on twin laws"
+    for item in range( len(self.twin_laws) ):
+      print >> out, "  Twin law : %s"%( self.twin_laws[item] )
+      print >> out, "  Given the specified spacegroup, the twin law is",
+      if self.twin_law_type[item]==" PM":
+        print >> out, "pseudo merohedral."
+      if self.twin_law_type[item]=="  M":
+        print >> out, "merohedral."
+      print >> out
+      print >> out, "    Estimates of twin fraction: "
+      print >> out, "    - Britton analyses alpha : %4.3f"%(self.britton_alpha[item])
+      print >> out, "    - H analyses alpha       : %4.3f"%(self.h_alpha[item])
+      print >> out, "    R-values of twin related intensities"
+      print >> out, "    - R_twin observed data   : %4.3f"%(self.r_obs[item])
+      if self.r_calc[item] is not None:
+        print >> out, "    - R_twin calculated data : %4.3f"%(self.r_calc[item])
+
+    print >> out
+    print >> out, "Patterson analyses"
+    print >> out, "  - Largest peak height   : %5.3f"%(self.patterson_height)
+    print >> out, "   (correpsonding p value : %8.3e)"%(self.patterson_p_value)
+    print >> out
+    print >> out
+    print >> out, "--------------------------------------------------------------"
+
+
+
 class f_obs_vs_f_calc(object):
   def __init__(self,
                miller_obs,
@@ -1157,7 +1338,8 @@ class f_obs_vs_f_calc(object):
           guess = count
         count+=1
     self.guess=guess
-    self.rvsr_interpretation[ guess ][4]="<---"
+    if guess is not None:
+      self.rvsr_interpretation[ guess ][4]="<---"
 
   def show(self):
     print >> self.out
@@ -1337,7 +1519,7 @@ class twin_analyses(object):
       print >> out,"---------------------------------------------"
 
       tmp_twin_law_stuff = twin_law_dependend_twin_tests(
-        possible_twin_laws.operators[ii].operator,
+        possible_twin_laws.operators[ii],
         miller_array,
         out=out,
         verbose=verbose,
@@ -1375,7 +1557,7 @@ class twin_analyses(object):
         data_plots.plot_data_loggraph(h_plot,out_plots)
 
     ##--------------------------
-
+    """
     self.twin_summary = summary_object(miller_array.info(),
                                   self.nz_test,
                                   self.wilson_moments,
@@ -1383,6 +1565,16 @@ class twin_analyses(object):
                                   self.translation_pseudo_symmetry,
                                   self.twin_law_dependent_analyses,
                                   out=out, verbose=2 )
+    """
+    self.twin_summary = twin_results_interpretation(
+      self.nz_test,
+      self.wilson_moments,
+      self.l_test,
+      self.translation_pseudo_symmetry,
+      self.twin_law_dependent_analyses,
+      out=out)
+
+
 
 def twin_analyses_brief(miller_array,
                         cut_off=4.0,
@@ -1431,10 +1623,10 @@ def twin_analyses_brief(miller_array,
               twin_results.twin_summary.twin_law_largest
       print >> out
 
-    if (twin_results.twin_summary.maha_distance_l>cut_off):
-      if twin_results.twin_summary.l <= 0.48:
+    if (twin_results.twin_summary.twin_results.maha_l>cut_off):
+      if twin_results.twin_summary.twin_results.l_mean <= 0.48:
         twinned = True
-    if (twin_results.twin_summary.maha_distance_l<=cut_off):
+    if (twin_results.twin_summary.twin_results.maha_l<=cut_off):
         twinned = False
 
   return(twinned)
