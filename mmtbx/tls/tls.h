@@ -23,20 +23,14 @@ using scitbx::vec3;
 using scitbx::mat3;
 using scitbx::sym_mat3;
 
-
-class uaniso_from_tls {
+class grads_u_wrt_tls {
 public:
-  uaniso_from_tls(sym_mat3<double> const& T,
-                  sym_mat3<double> const& L_deg,
-                  mat3<double> const& S_deg,
-                  vec3<double> const& origin,
+  grads_u_wrt_tls(vec3<double> const& origin,
                   vec3<double> const& site)
   {
-    double deg2rad = scitbx::deg_as_rad(1.0);
-    double deg2radsq = deg2rad * deg2rad;
-    L = L_deg * deg2radsq;
-    S = S_deg * deg2rad;
-    S[8] = -(S[0]+S[4]); // condition on trace(S) = 0.0
+    // Order is : sym_mat3<double>(a11,a22,a33,a12,a13,a23);
+    //                            ( a0, a1, a2, a3, a4, a5)
+    double const nul=0.0, one=1.0;
     vec3<double> r = site - origin;
     x = r[0];
     y = r[1];
@@ -47,13 +41,80 @@ public:
     xy = x*y;
     yz = y*z;
     xz = x*z;
-    double u11 = T[0]+zz*L[1]+yy*L[2]-2.*(yz*L[5]+y*S[6]-z*S[3]);
-    double u12 = T[3]-xy*L[2]+xz*L[5]+yz*L[4]-zz*L[3]-z*(S[0]-S[4])+x*S[6]-y*S[7];
-    double u13 = T[4]-S[3]*x+y*(S[0]-S[8])+S[5]*z+L[5]*xy-L[1]*xz-L[4]*yy+L[3]*yz;
-    double u22 = T[1]+2.*(S[7]*x-S[1]*z-L[4]*xz)+L[0]*zz+L[2]*xx;
-    double u23 = T[5]-x*(S[4]-S[8])+S[1]*y-S[2]*z+L[4]*xy-L[0]*yz-L[5]*xx+L[3]*xz;
-    double u33 = T[2]-2.*(S[5]*x-S[2]*y)-L[3]*xy+L[0]*yy+L[1]*xx-L[3]*xy;
-    uaniso = sym_mat3<double>(u11,u22,u33,u12,u13,u23);
+    xy2= -2.*xy;
+    xz2= -2.*xz;
+    yz2= -2.*yz;
+    z2 = 2.*z;
+    y2 = 2.*y;
+    x2 = 2.*x;
+    gT0 = sym_mat3<double>(one, nul, nul, nul, nul, nul);
+    gT1 = sym_mat3<double>(nul, one, nul, nul, nul, nul);
+    gT2 = sym_mat3<double>(nul, nul, one, nul, nul, nul);
+    gT3 = sym_mat3<double>(nul, nul, nul, one, nul, nul);
+    gT4 = sym_mat3<double>(nul, nul, nul, nul, one, nul);
+    gT5 = sym_mat3<double>(nul, nul, nul, nul, nul, one);
+    gT_ = sym_mat3<sym_mat3<double> >(gT0,gT1,gT2,gT3,gT4,gT5);
+    gL0 = sym_mat3<double>(nul,  zz,  yy, nul, nul, -yz);
+    gL1 = sym_mat3<double>( zz, nul,  xx, nul, -xz, nul);
+    gL2 = sym_mat3<double>( yy,  xx, nul, -xy, nul, nul);
+    gL3 = sym_mat3<double>(nul, nul, xy2, -zz,  yz,  xz);
+    gL4 = sym_mat3<double>(nul, xz2, nul,  yz, -yy,  xy);
+    gL5 = sym_mat3<double>(yz2, nul, nul,  xz,  xy, -xx);
+    gL_ = sym_mat3<sym_mat3<double> >(gL0,gL1,gL2,gL3,gL4,gL5);
+    gS0 = sym_mat3<double>(nul, nul, nul,  -z,   y, nul);
+    gS1 = sym_mat3<double>(nul, -z2, nul, nul, nul,   y);
+    gS2 = sym_mat3<double>(nul, nul,  y2, nul, nul,  -z);
+    gS3 = sym_mat3<double>( z2, nul, nul, nul,  -x, nul);
+    gS4 = sym_mat3<double>(nul, nul, nul,   z, nul,  -x);
+    gS5 = sym_mat3<double>(nul, nul, -x2, nul,   z, nul);
+    gS6 = sym_mat3<double>(-y2, nul, nul,   x, nul, nul);
+    gS7 = sym_mat3<double>(nul,  x2, nul,  -y, nul, nul);
+    gS8 = sym_mat3<double>(nul, nul, nul, nul,  -y, x);
+    gS_ = mat3<sym_mat3<double> >(gS0,gS1,gS2,gS3,gS4,gS5,gS6,gS7,gS8);
+  }
+  sym_mat3<sym_mat3<double> > d_u_d_T() { return gT_; }
+  sym_mat3<sym_mat3<double> > d_u_d_L() { return gL_; }
+  mat3<sym_mat3<double> >     d_u_d_S() { return gS_; }
+private:
+  double x,y,z,xx,yy,zz,xy,yz,xz,xy2,xz2,yz2,z2,y2,x2;
+  sym_mat3<double> gT0,gT1,gT2,gT3,gT4,gT5;
+  sym_mat3<double> gL0,gL1,gL2,gL3,gL4,gL5;
+  sym_mat3<double> gS0,gS1,gS2,gS3,gS4,gS5,gS6,gS7,gS8;
+  sym_mat3<sym_mat3<double> > gT_,gL_;
+  mat3<sym_mat3<double> > gS_;
+};
+
+
+class uaniso_from_tls {
+public:
+  uaniso_from_tls(sym_mat3<double> const& T,
+                  sym_mat3<double> const& L_deg,
+                  mat3<double> const& S_deg,
+                  vec3<double> const& origin,
+                  vec3<double> const& site)
+  {
+   double deg2rad = scitbx::deg_as_rad(1.0);
+   double deg2radsq = deg2rad * deg2rad;
+   L = L_deg * deg2radsq;
+   S = S_deg * deg2rad;
+   S[8] = -(S[0]+S[4]); // condition on trace(S) = 0.0
+   vec3<double> r = site - origin;
+   x = r[0];
+   y = r[1];
+   z = r[2];
+   xx = x*x;
+   yy = y*y;
+   zz = z*z;
+   xy = x*y;
+   yz = y*z;
+   xz = x*z;
+   double u11=T[0]+zz*L[1]+yy*L[2]-2.*(yz*L[5]+y*S[6]-z*S[3]);
+   double u12=T[3]-xy*L[2]+xz*L[5]+yz*L[4]-zz*L[3]-z*(S[0]-S[4])+x*S[6]-y*S[7];
+   double u13=T[4]-S[3]*x+y*(S[0]-S[8])+S[5]*z+L[5]*xy-L[1]*xz-L[4]*yy+L[3]*yz;
+   double u22=T[1]+2.*(S[7]*x-S[1]*z-L[4]*xz)+L[0]*zz+L[2]*xx;
+   double u23=T[5]-x*(S[4]-S[8])+S[1]*y-S[2]*z+L[4]*xy-L[0]*yz-L[5]*xx+L[3]*xz;
+   double u33=T[2]-2.*(S[5]*x-S[2]*y)-L[3]*xy+L[0]*yy+L[1]*xx-L[3]*xy;
+   uaniso = sym_mat3<double>(u11,u22,u33,u12,u13,u23);
   }
   double x,y,z,xx,yy,zz,xy,yz,xz;
   sym_mat3<double> u() { return uaniso; }
@@ -76,69 +137,36 @@ public:
                                    af::shared<sym_mat3<double> > const& uanisos)
   {
     tg = 0.0;
-    for(std::size_t i=0; i <= 5; i++) {
-      gT.push_back(0.0);
-      gL.push_back(0.0);
-    }
-    for(std::size_t i=0; i <= 8; i++) {
-      gS.push_back(0.0);
-    }
+    gT.resize(6,0.0);
+    gL.resize(6,0.0);
+    gS.resize(9,0.0);
     for (std::size_t i=0; i < sites.size(); i++) {
       vec3<double> const& site = sites[i];
       uaniso_from_tls manager(T,L_deg,S_deg,origin,site);
-      mat3<double> const& S = manager.Srad();
-      MMTBX_ASSERT(std::abs(S[0] + S[4] + S[8]) < 1.e-9);
       sym_mat3<double> const& utls = manager.u();
-      double x = manager.x;
-      double y = manager.y;
-      double z = manager.z;
-      double xx = x*x;
-      double yy = y*y;
-      double zz = z*z;
-      double xy = x*y;
-      double yz = y*z;
-      double xz = x*z;
-      sym_mat3<double> uaniso = uanisos[i];
-      double d11 = utls[0]-uaniso[0];
-      double d22 = utls[1]-uaniso[1];
-      double d33 = utls[2]-uaniso[2];
-      double d12 = utls[3]-uaniso[3];
-      double d13 = utls[4]-uaniso[4];
-      double d23 = utls[5]-uaniso[5];
-      double d11sq = d11 * d11;
-      double d22sq = d22 * d22;
-      double d33sq = d33 * d33;
-      double d12sq = d12 * d12;
-      double d13sq = d13 * d13;
-      double d23sq = d23 * d23;
-      tg += d11sq + d22sq + d33sq + d12sq + d13sq + d23sq;
+      sym_mat3<double> diff = utls - uanisos[i];
+      for (std::size_t k=0; k < diff.size(); k++) {
+           tg += diff[k] * diff[k];
+      }
       // grads:
-      d11 = d11 * 2.; d22 = d22 * 2.; d33 = d33 * 2.; d12 = d12 * 2.;
-      d13 = d13 * 2.; d23 = d23 * 2.;
+      diff *= 2.0;
+      grads_u_wrt_tls grads_u_wrt_tls_manager(origin, site);
+      sym_mat3<sym_mat3<double> > d_u_d_T = grads_u_wrt_tls_manager.d_u_d_T();
+      sym_mat3<sym_mat3<double> > d_u_d_L = grads_u_wrt_tls_manager.d_u_d_L();
+      mat3<sym_mat3<double> >     d_u_d_S = grads_u_wrt_tls_manager.d_u_d_S();
 
-      gT[0] += d11;
-      gT[1] += d22;
-      gT[2] += d33;
-      gT[3] += d12;
-      gT[4] += d13;
-      gT[5] += d23;
+      for (std::size_t k=0; k < 6; k++) {
+           for (std::size_t m=0; m < 6; m++) {
+                gT[k] += diff[m] * d_u_d_T[k][m];
+                gL[k] += diff[m] * d_u_d_L[k][m];
+          }
+      }
+      for (std::size_t k=0; k < 9; k++) {
+           for (std::size_t m=0; m < 6; m++) {
+                gS[k] += diff[m] * d_u_d_S[k][m];
+          }
+      }
 
-      gL[0] += d22*zz     + d33*yy - d23*yz;
-      gL[1] += d11*zz     + d33*xx - d13*xz;
-      gL[2] += d11*yy     + d22*xx - d12*xy;
-      gL[3] +=-d33*2.0*xy - d12*zz + d13*yz + d23*xz;
-      gL[4] +=-d22*2.0*xz + d12*yz - d13*yy + d23*xy;
-      gL[5] +=-d11*2.0*yz + d12*xz + d13*xy - d23*xx;
-
-      gS[0] +=-d12*z     + d13*y;
-      gS[4] += d12*z     - d23*x;
-      gS[8] +=-d13*y     + d23*x;
-      gS[1] +=-d22*2.0*z + d23*y;
-      gS[2] += d33*2.0*y - d23*z;
-      gS[5] +=-d33*2.0*x + d13*z;
-      gS[3] += d11*2.0*z - d13*x;
-      gS[6] +=-d11*2.0*y + d12*x;
-      gS[7] += d22*2.0*x - d12*y;
     }
   }
   double target() const { return tg; }

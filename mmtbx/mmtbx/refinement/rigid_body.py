@@ -124,10 +124,13 @@ def setup_search_range(f, nref_min):
         nref = f.resolution_filter(d_max = 9999.9,
                                    d_min = d_max_start).data().size()
         d_max_start = d_max_start - 0.01
-     if(d_max_start < 7.0):
-        return [d_max_start, d_min_end]
+     if(abs(d_max_start - d_max_end) < 1.0):
+        return [d_min_end,]
      else:
-        return [d_max_start, 6.0, d_min_end]
+        if(d_max_start < 7.0):
+           return [d_max_start, d_min_end]
+        else:
+           return [d_max_start, 6.0, d_min_end]
   else:
      return [d_min,]
 
