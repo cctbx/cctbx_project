@@ -403,15 +403,26 @@ class show_cube(wxGLWindow):
 class App(wx.App):
 
   def OnInit(self):
-    frame = wx.Frame(
+    self.frame = wx.Frame(
       None, -1,
       "Simple Cube",
       wx.DefaultPosition,
       wx.Size(400,400))
-    show_cube(frame, -1, wx.Point(0,0), wx.Size(400,400))
-    frame.Show(True)
-    self.SetTopWindow(frame)
+    self.frame.CreateStatusBar()
+    menuBar = wx.MenuBar()
+    menu = wx.Menu()
+    item = menu.Append(-1, "E&xit\tAlt-X", "Exit demo")
+    self.Bind(wx.EVT_MENU, self.OnExitApp, item)
+    menuBar.Append(menu, "&File")
+    self.frame.SetMenuBar(menuBar)
+    self.frame.Show(True)
+    cube = show_cube(self.frame, -1, wx.Point(0,0), wx.Size(400,400))
+    cube.SetFocus()
+    self.SetTopWindow(self.frame)
     return True
+
+  def OnExitApp(self, event):
+    self.frame.Close(True)
 
 def run():
   App(0).MainLoop()
