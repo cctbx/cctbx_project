@@ -71,7 +71,7 @@ namespace twinning {
       }
     }
 
-    FloatType r_value()
+    FloatType r_abs_value()
     {
       FloatType top=0, bottom=0;
       FloatType x1,x2;
@@ -95,6 +95,34 @@ namespace twinning {
       }
       return (result);
     }
+
+    FloatType r_sq_value()
+    {
+      FloatType top=0, bottom=0;
+      FloatType x1,x2;
+      unsigned tmp_loc;
+      for (unsigned ii=0;ii<hkl_.size();ii++){
+        tmp_loc =  location_[ ii ];
+        if (tmp_loc >= 0){
+          if (tmp_loc != ii ){
+            x1 = intensity_[ ii ];
+            x2 = intensity_[ tmp_loc ];
+            top += (x1-x2)*(x1-x2);
+            bottom += ( x1+x2 )*( x1+x2 );
+          }
+        }
+      }
+      FloatType result=0;
+      if (top>0){
+        if (bottom>0){
+          result=top/bottom;
+        }
+      }
+      return (result);
+    }
+
+
+
 
     protected:
     scitbx::af::shared< cctbx::miller::index<> > hkl_;
