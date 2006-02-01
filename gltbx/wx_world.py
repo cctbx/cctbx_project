@@ -16,7 +16,6 @@ def v3distsq(a, b):
   return result
 
 class line_given_points:
-  "http://mathworld.wolfram.com/Point-LineDistance3-Dimensional.html"
 
   def __init__(self, points):
     self.points = [matrix.col(point) for point in points]
@@ -25,6 +24,7 @@ class line_given_points:
     assert self.delta_norm_sq != 0
 
   def distance_sq(self, point):
+    "http://mathworld.wolfram.com/Point-LineDistance3-Dimensional.html"
     return self.delta.cross(point - self.points[0]).norm_sq() \
          / self.delta_norm_sq
 
@@ -75,12 +75,8 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     self.near = 0.1
     self.far = 1000.0
 
-    # Where we are centering.
-    self.xcenter = 0.0
-    self.ycenter = 0.0
-    self.zcenter = 0.0
-
-    self.translation = [0,0,0]
+    self.rotation_center = (0,0,0)
+    self.look_at_point = (0,0,0)
 
     self.parent = parent
     # Current coordinates of the mouse.
@@ -91,7 +87,7 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     self.yspin = 0
 
     # Is the widget currently autospinning?
-    self.autospin = 0
+    self.autospin = False
 
     self.initLeft = (0,0)
     self.was_dragged = False
@@ -107,32 +103,33 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
       glViewport(0, 0, self.w, self.h)
 
   def OnPaint(self, event=None):
-    dc = wx.PaintDC(self)
+    wx.PaintDC(self)
     self.OnRedrawGL(event)
 
   def OnIdle(self,event):
-    if self.autospin:
+    if (self.autospin):
       wx.WakeUpIdle()
-      self.do_AutoSpin(event)
+      self.do_AutoSpin()
       event.Skip(1)
 
   def OnChar(self,event):
     key = event.GetKeyCode()
-    if key == ord('a'):
-      self.autospin_allowed = not self.autospin_allowed
-    if self.autospin:
-      self.autospin = 0
-    elif key == ord('q'):
+    if (key == ord('q')):
       self.parent.Destroy()
+    elif (key == ord('a')):
+      self.autospin_allowed = not self.autospin_allowed
+    self.autospin = False
 
   def OnLeftClick(self,event):
     self.OnRecordMouse(event)
     self.initLeft = event.GetX(),event.GetY()
     self.was_dragged = False
+    self.autospin = False
 
   def OnLeftDClick(self,event):
+    self.reset_modelview()
     self.OnRecordMouse(event)
-    self.reset()
+    self.OnRedraw()
 
   def OnLeftUp(self,event):
     if (not self.was_dragged):
@@ -141,18 +138,18 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
       self.OnRedraw()
     else:
       self.was_dragged = False
-      if not event.m_shiftDown:
+      if (not event.m_shiftDown):
         self.OnAutoSpin(event)
 
-  def OnMiddleClick(self,event):
+  def OnMiddleClick(self, event):
     self.OnRecordMouse(event)
 
-  def OnRightClick(self,event):
+  def OnRightClick(self, event):
     self.OnRecordMouse(event)
 
-  def OnRightDClick(self,event):
+  def OnRightDClick(self, event):
     self.OnRecordMouse(event)
-    self.distance=self.base_distance
+    self.distance = self.base_distance
     self.OnRedraw()
 
   def OnLeftDrag(self,event):
@@ -175,15 +172,11 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     elif event.RightIsDown():
       self.OnRightDrag(event)
 
-  def SetBgColour(self, r, g, b):
-    self.r_back = r
-    self.g_back = g
-    self.b_back = b
+  def set_rotation_center(self, (x,y,z)):
+    self.rotation_center = (x,y,z)
 
-  def SetCenterpoint(self, x, y, z):
-    self.xcenter = x
-    self.ycenter = y
-    self.zcenter = z
+  def set_look_at_point(self, (x,y,z)):
+    self.look_at_point = (x,y,z)
 
   def set_base_distance(self, distance):
     self.base_distance = distance
@@ -191,18 +184,17 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
   def set_distance(self, distance):
     self.distance = distance
 
-  def reset(self):
+  def reset_modelview(self):
     glMatrixMode(GL_MODELVIEW)
     glLoadIdentity()
-    self.translation = [0,0,0]
-    self.OnRedraw()
+    self.look_at_point = self.rotation_center
 
   def OnRecordMouse(self, event):
     self.xmouse = event.GetX()
     self.ymouse = event.GetY()
 
   def OnStartRotate(self, event):
-    self.autospin = 0
+    self.autospin = False
     self.OnRecordMouse(event)
 
   def OnScale(self, event):
@@ -213,77 +205,69 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
 
   def do_AutoSpin(self):
     spin_factor = 0.05
-    gltbx.util.RotateScene(
-      spin_factor, self.xcenter, self.ycenter, self.zcenter,
+    rc = self.rotation_center
+    gltbx.util.modelview_rotation_about_x_and_y(
+      spin_factor, rc[0], rc[1], rc[2],
       self.yspin, self.xspin, 0, 0)
     self.OnRedraw()
 
   def OnAutoSpin(self, event):
-    if self.autospin_allowed:
-      self.autospin = 1
-      self.yspin = .1 * (event.GetX()-self.initLeft[0])
-      self.xspin = .1 * (event.GetY()-self.initLeft[1])
-      if self.xspin == 0 and self.yspin == 0:
-        self.autospin = 0
+    if (self.autospin_allowed):
+      self.autospin = True
+      self.yspin = 0.1 * (event.GetX()-self.initLeft[0])
+      self.xspin = 0.1 * (event.GetY()-self.initLeft[1])
+      if (self.xspin == 0 and self.yspin == 0):
+        self.autospin = False
       else:
         self.do_AutoSpin()
 
   def OnRotate(self, event):
     xp = event.GetX()
     yp = event.GetY()
-    if not event.m_shiftDown:
-      gltbx.util.RotateScene(0.5,
-                    self.xcenter, self.ycenter, self.zcenter,
-                    xp, yp, self.xmouse, self.ymouse)
+    rc = self.rotation_center
+    if (not event.m_shiftDown):
+      gltbx.util.modelview_rotation_about_x_and_y(
+        0.5, rc[0], rc[1], rc[2],
+        xp, yp, self.xmouse, self.ymouse)
     else:
-      # rotate about z
       sz = self.GetClientSizeTuple()
       sz = (sz[0]/2, sz[1]/2)
       dy = (self.ymouse-yp)
       dx = (self.xmouse-xp)
-      if yp > sz[1]:
-        dx = dx * -1
-      if xp < sz[0]:
-        dy = dy * -1
-      d = dx + dy
-      gltbx.util.RotateAboutVector(
-        xcenter=self.xcenter,
-        ycenter=self.ycenter,
-        zcenter=self.zcenter,
-        xvector=0,
-        yvector=0,
-        zvector=1,
-        angle=.5*d)
+      if (yp > sz[1]): dx *= -1
+      if (xp < sz[0]): dy *= -1
+      angle = (dx + dy)/2
+      gltbx.util.modelview_rotation_about_vector(
+        xcenter=rc[0], ycenter=rc[1], zcenter=rc[2],
+        xvector=0, yvector=0, zvector=1,
+        angle=angle)
     self.OnRedraw()
     self.OnRecordMouse(event)
 
   def OnTranslate(self, event):
-    win_height = max(1, self.w)
-    obj_center = (self.xcenter, self.ycenter, self.zcenter)
     model = gltbx.util.get_gl_modelview_matrix()
     proj = gltbx.util.get_gl_projection_matrix()
     view = gltbx.util.get_gl_viewport()
     winx = []
     winy = []
     winz = []
+    rc = self.rotation_center
     assert gluProject(
-      obj_center[0], obj_center[1], obj_center[2],
+      rc[0], rc[1], rc[2],
       model, proj, view,
       winx, winy, winz)
     objx = []
     objy = []
     objz = []
+    win_height = max(1, self.w)
     assert gluUnProject(
       winx[0], winy[0]+0.5*win_height, winz[0],
       model, proj, view,
       objx, objy, objz)
-    dist = v3distsq( (objx[0],objy[0],objz[0]), obj_center )**0.5
-    scale = abs( dist / ( 0.5 * win_height ) )
+    dist = v3distsq((objx[0],objy[0],objz[0]), rc)**0.5
+    scale = abs(dist / (0.5 * win_height))
     x,y = event.GetX(), event.GetY()
-    translation = (
-      (scale * (x - self.xmouse)), (scale * (self.ymouse - y)), 0.0)
-    self.translation = [old-new
-      for old,new in zip(self.translation, translation)]
+    gltbx.util.modelview_translation(scale, x, y, self.xmouse, self.ymouse)
     self.OnRedraw()
     self.OnRecordMouse(event)
 
@@ -306,7 +290,7 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
       self.pick_points.append((objx[0], objy[0], objz[0]))
 
   def OnRedraw(self, event=None):
-    dc = wx.ClientDC(self)
+    wx.ClientDC(self)
     self.OnRedrawGL(event)
 
   def OnRedrawGL(self, event=None):
@@ -321,14 +305,9 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
     gluPerspective(self.fovy, float(self.w)/float(self.h), self.near, self.far)
-    t = self.translation
-    gluLookAt(self.xcenter, self.ycenter, self.zcenter + self.distance,
-              self.xcenter+t[0], self.ycenter+t[1], self.zcenter+t[2],
-              0., 1., 0.)
-    glMatrixMode(GL_MODELVIEW)
-    glPushMatrix()
+    p = self.look_at_point
+    gluLookAt(p[0],p[1],p[2]+self.distance, p[0],p[1],p[2], 0,1,0)
     self.DrawGL()
-    glPopMatrix()
     glFlush()
     self.SwapBuffers()
     if (event is not None): event.Skip()
@@ -337,11 +316,12 @@ class show_cube(wxGLWindow):
 
   def InitGL(self):
     self.cube_display_list = None
-    self.SetCenterpoint(0.5, 0.5, 0.5)
+    self.set_rotation_center((0.5, 0.5, 0.5))
+    self.reset_modelview()
 
   def DrawGL(self):
     self.draw_cube()
-    self.draw_center_of_rotation()
+    self.draw_rotation_center()
 
   def draw_cube(self, f=1):
     if (self.cube_display_list is None):
@@ -402,8 +382,8 @@ class show_cube(wxGLWindow):
     glVertex3f(x,y,z+f)
     glEnd()
 
-  def draw_center_of_rotation(self):
-    self.draw_cross_at((self.xcenter, self.ycenter, self.zcenter))
+  def draw_rotation_center(self):
+    self.draw_cross_at(self.rotation_center)
 
   def process_pick_points(self):
     line = line_given_points(self.pick_points)
@@ -418,13 +398,7 @@ class show_cube(wxGLWindow):
             min_dist_sq = dist_sq
             closest_point = point
     if (closest_point is not None):
-      old_center = matrix.col((self.xcenter, self.ycenter, self.zcenter))
-      old_transl = matrix.col(self.translation)
-      new_center = closest_point
-      new_transl = old_transl - (new_center - old_center)
-      self.xcenter, self.ycenter, self.zcenter = new_center
-      self.translation = list(new_transl)
-      # XXX TODO update self.distance
+      self.set_rotation_center(closest_point)
 
 class App(wx.App):
 
