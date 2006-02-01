@@ -271,9 +271,9 @@ def aniso_scale_minimizer(fmodel, symm_constr, alpha=None, beta=None):
          alpha         = alpha_data,
          beta          = beta_data,
          lbfgs_exception_handling_params = lbfgs.exception_handling_parameters(
-                         ignore_line_search_failed_step_at_lower_bound = True,
-                         ignore_line_search_failed_step_at_upper_bound = True,
-                         ignore_line_search_failed_maxfev              = True),
+                         ignore_line_search_failed_step_at_lower_bound = False,
+                         ignore_line_search_failed_step_at_upper_bound = False,
+                         ignore_line_search_failed_maxfev              = False),
          symmetry_constraints_on_u_aniso = symm_constr).u_min
 
 
@@ -589,14 +589,19 @@ class bulk_solvent_and_scales(object):
     symm_constr = params.symmetry_constraints_on_u_aniso
     u_cycles = range(1, params.number_of_cycles_for_anisotropic_scaling+1)
     r_start = fmodel.r_work()
+    u_start = fmodel.u_aniso
     for u_cycle in u_cycles:
         u_aniso = aniso_scale_minimizer(fmodel      = fmodel,
                                         symm_constr = symm_constr)
         fmodel.update(u_aniso = u_aniso)
-    r_end = fmodel.r_work()
-    if(r_end - r_start > 0.01):
-       raise RuntimeError(
-                    "This is severe bug: please report it to PAfonine@lbl.gov")
+    r_final = fmodel.r_work()
+    if(r_final - r_start > 0.005):
+       print "Warning: r went up after anisotropic scaling:"
+       print "   r_start = ", r_start
+       print "   r_final = ", r_final
+       print "   u_start = ", ["%9.3f"%u for u in u_start]
+       print "   u_final = ", ["%9.3f"%u for u in fmodel.u_aniso]
+       fmodel.update(u_aniso = u_start)
 
   def _k_sol_b_sol_minimization_helper(self, params, fmodel):
     ksol_orig, bsol_orig = fmodel.k_sol_b_sol()
