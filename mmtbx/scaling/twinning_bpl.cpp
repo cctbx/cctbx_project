@@ -36,7 +36,8 @@ namespace{
                arg_("space_group"),
                arg_("anomalous_flag"),
                arg_("symop") )))
-        .def("r_value", &w_t::r_value)
+        .def("r_abs_value", &w_t::r_abs_value)
+        .def("r_sq_value", &w_t::r_sq_value)
         ;
     }
 
