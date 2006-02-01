@@ -1155,7 +1155,7 @@ class twin_results_interpretation(object):
     self.patterson_verdict = StringIO()
     if translational_pseudo_symmetry is not None:
       self.analyse_pseudo_translational_symmetry(patterson_p_cut)
-    self.twin_results.show()
+    #self.twin_results.show()
 
 
 
