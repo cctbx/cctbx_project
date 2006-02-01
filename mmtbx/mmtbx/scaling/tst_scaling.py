@@ -970,7 +970,6 @@ def test_kernel_based_normalisation():
 
 
 if (__name__ == "__main__"):
-  """
   test_likelihood_iso()
   test_gradients_iso()
   test_gamma_prot()
@@ -989,7 +988,6 @@ if (__name__ == "__main__"):
   twin_the_data_and_analyse('h+k,-k,-l',0.50)
   test_scattering_info()
   test_kernel_based_normalisation()
-  """
   test_twin_r_value('h+k,-k,-l')
 
   print "OK"
