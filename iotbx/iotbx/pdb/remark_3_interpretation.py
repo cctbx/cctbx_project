@@ -1,8 +1,6 @@
 from iotbx import pdb
 import iotbx.pdb.interpretation
 import sys, math, time, os
-from mmtbx.tls.tls import *
-import mmtbx
 
 example_of_tls_parameters_in_remark_3 = """\
 REMARK   3
@@ -46,6 +44,13 @@ REMARK   3      S21:   0.0087 S22:  -0.0145 S23:   0.0507
 REMARK   3      S31:   0.1029 S32:  -0.0744 S33:  -0.0269
 REMARK   3
 """
+
+class tls(object):
+   def __init__(self, T, L, S, origin):
+     self.T = T
+     self.L = L
+     self.S = S
+     self.origin = origin
 
 def extract_tls_parameters(remark_3_records):
 # T = (T11, T22, T33, T12, T13, T23)
@@ -253,13 +258,10 @@ def extract_tls_parameters(remark_3_records):
 
   assert group_counter == number_of_tls_groups == len(T)
   assert len(T) == len(L) == len(S) == len(origin) == len(residue_range)
-  return mmtbx.tls.tls.tls_parameters(
-                        T = T,
-                        L = L,
-                        S = S,
-                        origin = origin,
-                        number_of_tls_groups = number_of_tls_groups,
-                        residue_range = residue_range)
+  tls_params = []
+  for t,l,s,o in zip(T,L,S,origin):
+      tls_params.append(tls(T=t,L=l,S=s,origin=o))
+  return tls_params
 
 def get_program(st):
   program = None
