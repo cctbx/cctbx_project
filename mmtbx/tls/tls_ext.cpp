@@ -67,6 +67,20 @@ namespace {
       .enable_pickling()
       .def("__getinitargs__", getinitargs)
     ;
+    typedef return_value_policy<return_by_value> rbv;
+    class_<tlso<> >("tlso")
+      .def(init<scitbx::sym_mat3<double> const&,
+                scitbx::sym_mat3<double> const&,
+                scitbx::mat3<double> const&,
+                scitbx::vec3<double> const& >((arg_("t"),arg_("l"),arg_("s"),
+                                               arg_("origin"))))
+      .add_property("t",      make_getter(&tlso<>::t,      rbv()))
+      .add_property("l",      make_getter(&tlso<>::l,      rbv()))
+      .add_property("s",      make_getter(&tlso<>::s,      rbv()))
+      .add_property("origin", make_getter(&tlso<>::origin, rbv()))
+      .enable_pickling()
+      .def("__getinitargs__", getinitargs)
+    ;
     scitbx::af::boost_python::shared_wrapper<params<> >::wrap("shared_params");
     class_<gT_gL_gS>("gT_gL_gS",
                      init<vec3<double> const&,
@@ -77,7 +91,12 @@ namespace {
       .def("grad_L", &gT_gL_gS::grad_L)
       .def("grad_S", &gT_gL_gS::grad_S)
     ;
-    def("uaniso_from_tls_domain",uaniso_from_tls_domain)
+    def("uaniso_from_tls_one_group",
+         (af::shared<sym_mat3<double> >(*)
+               (tlso<double>,
+                af::shared<vec3<double> > const&)) uaniso_from_tls_one_group,
+                                                          (arg_("tlso"),
+                                                           arg_("sites_cart")))
    ;
   }
 

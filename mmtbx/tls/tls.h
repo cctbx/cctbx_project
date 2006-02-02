@@ -23,13 +23,16 @@ using scitbx::vec3;
 using scitbx::mat3;
 using scitbx::sym_mat3;
 
-class grads_u_wrt_tls {
+class d_uaniso_d_tls {
 public:
-  grads_u_wrt_tls(vec3<double> const& origin,
-                  vec3<double> const& site)
+  d_uaniso_d_tls(vec3<double> const& origin,
+                 vec3<double> const& site)
   {
     // Order is : sym_mat3<double>(a11,a22,a33,a12,a13,a23);
-    //                            ( a0, a1, a2, a3, a4, a5)
+    //                            ( a0, a1, a2, a3, a4, a5);
+    // For general 3x3 matrix: | 0 1 2 |
+    //                         | 3 4 5 | = S
+    //                         | 6 7 8 |
     double const nul=0.0, one=1.0;
     vec3<double> r = site - origin;
     x = r[0];
@@ -84,7 +87,6 @@ private:
   mat3<sym_mat3<double> > gS_;
 };
 
-
 class uaniso_from_tls {
 public:
   uaniso_from_tls(sym_mat3<double> const& T,
@@ -126,48 +128,67 @@ private:
   mat3<double> S;
 };
 
-
-class tls_from_uaniso_target_and_grads {
+//
+class d_target_d_tls {
 public:
-  tls_from_uaniso_target_and_grads(sym_mat3<double> const& T,
-                                   sym_mat3<double> const& L_deg,
-                                   mat3<double> const& S_deg,
-                                   vec3<double> const& origin,
-                                   af::shared<vec3<double> > const& sites,
-                                   af::shared<sym_mat3<double> > const& uanisos)
+  d_target_d_tls(af::shared<vec3<double> > const& sites,
+                 vec3<double> const& origin,
+                 af::shared<sym_mat3<double> > const& d_target_d_uaniso)
   {
-    tg = 0.0;
     gT.resize(6,0.0);
     gL.resize(6,0.0);
     gS.resize(9,0.0);
     for (std::size_t i=0; i < sites.size(); i++) {
-      vec3<double> const& site = sites[i];
-      uaniso_from_tls manager(T,L_deg,S_deg,origin,site);
-      sym_mat3<double> const& utls = manager.u();
-      sym_mat3<double> diff = utls - uanisos[i];
-      for (std::size_t k=0; k < diff.size(); k++) {
-           tg += diff[k] * diff[k];
-      }
-      // grads:
-      diff *= 2.0;
-      grads_u_wrt_tls grads_u_wrt_tls_manager(origin, site);
-      sym_mat3<sym_mat3<double> > d_u_d_T = grads_u_wrt_tls_manager.d_u_d_T();
-      sym_mat3<sym_mat3<double> > d_u_d_L = grads_u_wrt_tls_manager.d_u_d_L();
-      mat3<sym_mat3<double> >     d_u_d_S = grads_u_wrt_tls_manager.d_u_d_S();
-
-      for (std::size_t k=0; k < 6; k++) {
-           for (std::size_t m=0; m < 6; m++) {
-                gT[k] += diff[m] * d_u_d_T[k][m];
-                gL[k] += diff[m] * d_u_d_L[k][m];
-          }
-      }
-      for (std::size_t k=0; k < 9; k++) {
-           for (std::size_t m=0; m < 6; m++) {
-                gS[k] += diff[m] * d_u_d_S[k][m];
-          }
-      }
-
+         vec3<double> const& site = sites[i];
+         d_uaniso_d_tls d_uaniso_d_tls_manager(origin, site);
+         sym_mat3<sym_mat3<double> > d_u_d_T =d_uaniso_d_tls_manager.d_u_d_T();
+         sym_mat3<sym_mat3<double> > d_u_d_L =d_uaniso_d_tls_manager.d_u_d_L();
+         mat3<sym_mat3<double> >     d_u_d_S =d_uaniso_d_tls_manager.d_u_d_S();
+         for (std::size_t k=0; k < 6; k++) {
+              for (std::size_t m=0; m < 6; m++) {
+                   gT[k] += d_target_d_uaniso[i][m] * d_u_d_T[k][m];
+                   gL[k] += d_target_d_uaniso[i][m] * d_u_d_L[k][m];
+             }
+         }
+         for (std::size_t k=0; k < 9; k++) {
+              for (std::size_t m=0; m < 6; m++) {
+                   gS[k] += d_target_d_uaniso[i][m] * d_u_d_S[k][m];
+             }
+         }
     }
+  }
+  af::shared<double> grad_T() { return gT; }
+  af::shared<double> grad_L() { return gL; }
+  af::shared<double> grad_S() { return gS; }
+private:
+  af::shared<double> gT, gL, gS;
+};
+
+class tls_from_uaniso_target_and_grads {
+public:
+  tls_from_uaniso_target_and_grads(
+                                  sym_mat3<double> const& T,
+                                  sym_mat3<double> const& L_deg,
+                                  mat3<double> const& S_deg,
+                                  vec3<double> const& origin,
+                                  af::shared<vec3<double> > const& sites,
+                                  af::shared<sym_mat3<double> > const& uanisos)
+  {
+    tg = 0.0;
+    for (std::size_t i=0; i < sites.size(); i++) {
+         vec3<double> const& site = sites[i];
+         uaniso_from_tls manager(T,L_deg,S_deg,origin,site);
+         sym_mat3<double> const& utls = manager.u();
+         sym_mat3<double> diff = utls - uanisos[i];
+         for (std::size_t k=0; k < diff.size(); k++) {
+              tg += diff[k] * diff[k];
+         }
+         diffs.push_back(diff*2.);
+    }
+    d_target_d_tls  d_target_d_tls_manager(sites, origin, diffs);
+    gT = d_target_d_tls_manager.grad_T();
+    gL = d_target_d_tls_manager.grad_L();
+    gS = d_target_d_tls_manager.grad_S();
   }
   double target() const { return tg; }
   af::shared<double> grad_T() { return gT; }
@@ -176,24 +197,9 @@ public:
 private:
   double tg;
   af::shared<double> gT, gL, gS;
+  af::shared<sym_mat3<double> > diffs;
 };
 
-
-af::shared<sym_mat3<double> > uaniso_from_tls_domain(
-                       sym_mat3<double> const& T,
-                       sym_mat3<double> const& L_deg,
-                       mat3<double> const& S_deg,
-                       vec3<double> const& origin,
-                       af::shared<vec3<double> > const& sites)
-{
-    af::shared<sym_mat3<double> > uanisos(sites.size());
-    for (std::size_t i=0; i < sites.size(); i++) {
-      vec3<double> const& site = sites[i];
-      uaniso_from_tls manager(T,L_deg,S_deg,origin,site);
-      uanisos[i] = manager.u();
-    }
-    return uanisos;
-}
 
 /*--------------TESTS AREA-------------------------------------------------*/
 //
@@ -322,6 +328,28 @@ private:
     af::shared<double> gT, gL, gS;
 };
 
+template <typename FloatType=double>
+class tlso
+{
+  public:
+    scitbx::sym_mat3<FloatType> t;
+    scitbx::sym_mat3<FloatType> l;
+    scitbx::mat3<FloatType> s;
+    scitbx::vec3<FloatType> origin;
+    tlso() {
+     t.fill(0.0);
+     l.fill(0.0);
+     s.fill(0.0);
+     origin.fill(0.0);
+    }
+    tlso(scitbx::sym_mat3<FloatType> const& t_,
+         scitbx::sym_mat3<FloatType> const& l_,
+         scitbx::mat3<FloatType> const& s_,
+         scitbx::vec3<FloatType> const&  origin_)
+    :
+      t(t_),l(l_),s(s_),origin(origin_)
+    {}
+};
 
 
 template <typename FloatType=double>
@@ -461,7 +489,18 @@ protected:
 
 
 
-
+af::shared<sym_mat3<double> > uaniso_from_tls_one_group(
+                                   tlso<double> tls_params,
+                                   af::shared<vec3<double> > const& sites_cart)
+{
+    af::shared<sym_mat3<double> > uanisos(sites_cart.size());
+    for (std::size_t i=0; i < sites_cart.size(); i++) {
+         vec3<double> const& site = sites_cart[i];
+         uaniso_from_tls manager(tls_params.t, tls_params.l, tls_params.s, tls_params.origin, site);
+         uanisos[i] = manager.u();
+    }
+    return uanisos;
+}
 
 
 

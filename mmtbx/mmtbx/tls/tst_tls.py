@@ -4,45 +4,76 @@ import iotbx.pdb.remark_3_interpretation
 from cctbx.array_family import flex
 from libtbx.utils import format_cpu_times
 import sys, math, time, os
-from mmtbx.tls.tls import *
 from libtbx.test_utils import approx_equal
 import libtbx.load_env
 from cctbx import adptbx
+from mmtbx import monomer_library
+import mmtbx.monomer_library.server
+import mmtbx.monomer_library.pdb_interpretation
 
+from mmtbx.tls import tools
+from mmtbx_tls_ext import *
 
 def uaniso_from_tls_and_back():
+  mon_lib_srv = monomer_library.server.server()
+  ener_lib = monomer_library.server.ener_lib()
   pdb_file = libtbx.env.find_in_repositories(
-    relative_path="regression/pdb/1OC2_tst.pdb", test=os.path.isfile)
-  if (pdb_file is None):
-    print "Skipping uaniso_from_tls_and_back(): input file not available"
-    return
-  xray_structure = pdb.as_xray_structure(file_name = pdb_file)
-  stage_1 = pdb.interpretation.stage_1(file_name   = pdb_file)
-
+              relative_path="regression/pdb/1OC2_tst.pdb", test=os.path.isfile)
+  processed_pdb_file = monomer_library.pdb_interpretation.process(
+                                       mon_lib_srv               = mon_lib_srv,
+                                       ener_lib                  = ener_lib,
+                                       file_name                 = pdb_file,
+                                       raw_records               = None,
+                                       force_symmetry            = True)
+  xray_structure = processed_pdb_file.xray_structure()
+  stage_1 = processed_pdb_file.all_chain_proxies.stage_1
+  selections = []
+  for string in ["chain A", "chain B"]:
+      selections.append(processed_pdb_file.all_chain_proxies.selection(
+                                                              string = string))
   input_tls_data = iotbx.pdb.remark_3_interpretation.extract_tls_parameters(
                                                       stage_1.remark_3_records)
-
-  input_tls_data.print_as_matrices()
-  tls_obj = tls(tls_parameters = input_tls_data,
-                xray_structure = xray_structure,
-                stage_1        = stage_1)
-  u_from_tls = tls_obj.u_from_tls()
+  tls_params = []
+  for item in input_tls_data:
+      tls_params.append(tools.tlso(t      = item.T,
+                                   l      = item.L,
+                                   s      = item.S,
+                                   origin = item.origin))
+  tools.show_tls(tlsos = tls_params)
+  uanisos_from_tls = tools.uanisos_from_tls(
+                        sites_cart = xray_structure.sites_cart(),
+                        selections = selections,
+                        tlsos      = tls_params)
 
   #i = 0
-  for utls,atom in zip(u_from_tls, stage_1.atom_attributes_list):
+  for utls,atom in zip(uanisos_from_tls, stage_1.atom_attributes_list):
     updb = atom.Ucart
     #i += 1
     #print "      ", i
-    #print "%6.4f %6.4f %6.4f %6.4f %6.4f %6.4f "%(utls[0],utls[1],utls[2],utls[3],utls[4],utls[5])
-    #print "%6.4f %6.4f %6.4f %6.4f %6.4f %6.4f "%(updb[0],updb[1],updb[2],updb[3],updb[4],updb[5])
+    #print "%6.4f %6.4f %6.4f %6.4f %6.4f %6.4f "% \
+    #                         (utls[0],utls[1],utls[2],utls[3],utls[4],utls[5])
+    #print "%6.4f %6.4f %6.4f %6.4f %6.4f %6.4f "% \
+    #                         (updb[0],updb[1],updb[2],updb[3],updb[4],updb[5])
     assert approx_equal(utls,updb, 1.e-4)
 
-  tls_from_u = tls_obj.tls_from_u()
+  tlsos_initial = []
+  for input_tls_data_ in input_tls_data:
+      tlsos_initial.append(tools.tlso(
+                                   t = ([0.0,0.0,0.0,0.0,0.0,0.0]),
+                                   l = ([0.0,0.0,0.0,0.0,0.0,0.0]),
+                                   s = ([0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]),
+                                   origin = input_tls_data_.origin))
+  tls_from_uanisos = tools.tls_from_uanisos(xray_structure = xray_structure,
+                                            selections     = selections,
+                                            tlsos_initial  = tlsos_initial)
+  print "\nTLS from Uaniso:\n"
+  tools.show_tls(tlsos = tls_from_uanisos)
 
-  assert approx_equal(input_tls_data.T, tls_from_u.T, 1.e-4)
-  assert approx_equal(input_tls_data.L, tls_from_u.L, 1.e-4)
-  assert approx_equal(input_tls_data.S, tls_from_u.S, 1.e-4)
-  assert approx_equal(input_tls_data.origin, tls_from_u.origin, 1.e-6)
+  for input_tls_data_,tls_from_uanisos_ in zip(tls_params,tls_from_uanisos):
+    assert approx_equal(input_tls_data_.t,      tls_from_uanisos_.t, 1.e-4)
+    assert approx_equal(input_tls_data_.l,      tls_from_uanisos_.l, 1.e-4)
+    assert approx_equal(input_tls_data_.s,      tls_from_uanisos_.s, 1.e-4)
+    assert approx_equal(input_tls_data_.origin, tls_from_uanisos_.origin)
 
 if (__name__ == "__main__"):
   uaniso_from_tls_and_back()
