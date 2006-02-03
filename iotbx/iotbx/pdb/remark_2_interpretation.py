@@ -1,7 +1,6 @@
 from iotbx import pdb
 import iotbx.pdb.interpretation
 import sys, math, time, os
-from mmtbx.tls.tls import *
 import mmtbx
 
 def get_resolution(st):
