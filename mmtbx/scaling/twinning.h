@@ -75,7 +75,7 @@ namespace twinning {
     {
       FloatType top=0, bottom=0;
       FloatType x1,x2;
-      unsigned tmp_loc;
+      int tmp_loc;
       for (unsigned ii=0;ii<hkl_.size();ii++){
         tmp_loc =  location_[ ii ];
         if (tmp_loc >= 0){
