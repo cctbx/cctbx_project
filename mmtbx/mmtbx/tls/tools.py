@@ -148,121 +148,135 @@ class tls_from_uaniso_minimizer(object):
     return self.f, self.g
 
 
-
-class tls(object):
-   def __init__(self, tls_parameters,
-                      xray_structure,
-                      stage_1):
-     T = tls_parameters.T
-     L = tls_parameters.L
-     S = tls_parameters.S
-     origin = tls_parameters.origin
-     number_of_tls_groups = tls_parameters.number_of_tls_groups
-     residue_range = tls_parameters.residue_range
-     adopt_init_args(self, locals())
-     self.u_from_pdb_grouped = []
-     self.xray_structures = []
-     self.u_aniso_from_tls = []
-     self.tls_groups_as_xray_structures()
-
-   def tls_groups_as_xray_structures(self):
-     for rrange in self.residue_range:
-       assert rrange[0] == rrange[2]
-       chainID = rrange[0]
-       selection_cache = self.stage_1.selection_cache()
-       chain_sel = selection_cache.get_chainID(pattern = chainID)
-       if(len(chain_sel) != 0):
-         resNumStart = int(rrange[1])
-         resNumEnd = int(rrange[3])
-         res_sel = []
-         for i in xrange(resNumStart,resNumEnd+1):
-           res_sel.extend(selection_cache.get_resSeq(i=i))
-         bool_sel = selection_cache.intersection(chain_sel) & \
-                    selection_cache.union(res_sel)
-         sel_xray_structure = self.xray_structure.select(bool_sel.iselection())
-         self.xray_structures.append(sel_xray_structure)
-         sel_atom_attributes = flex.select(self.stage_1.atom_attributes_list,
-                                           flags = bool_sel)
-         u_pdb = []
-         for atom in sel_atom_attributes:
-           if(atom.Ucart is not None):
-             u_pdb.append(atom.Ucart)
-           else:
-             u_pdb.append([0.,0.,0.,0.,0.,0.])
-         self.u_from_pdb_grouped.append(u_pdb)
-     assert len(self.T) == len(self.u_from_pdb_grouped)
-     for xray_structure,updb in zip(self.xray_structures,self.u_from_pdb_grouped):
-       assert len(updb) == xray_structure.scatterers().size()
-     print
-     print "Number of Selected Xray Structures = ", len(self.xray_structures)
-     assert len(self.xray_structures) == len(self.T)
-     for xray_structure in self.xray_structures:
-       print
-       xray_structure.show_summary()
-       print "Center of Mass = ", xray_structure.center_of_mass()
-
-   def u_from_tls_grouped(self):
-     for xray_structure,T,L,S,origin in zip(self.xray_structures,self.T,self.L,self.S,self.origin):
-       u_aniso = uaniso_from_tls_domain(T,L,S,origin,xray_structure.sites_cart())
-       self.u_aniso_from_tls.append(u_aniso)
-     return self.u_aniso_from_tls
-
-   def u_from_tls(self):
-     self.u_from_tls_grouped()
-     u_from_tls = []
-     for u_tls in self.u_aniso_from_tls:
-       for u in u_tls:
-         u_from_tls.append(u)
-     return u_from_tls
-
-   def tls_from_u(self):
-     T_min = []
-     L_min = []
-     S_min = []
-     for u,origin,xray_structure in zip(self.u_from_pdb_grouped,
-                                        self.origin,
-                                        self.xray_structures):
-       T_initial = [0.0,0.0,0.0,0.0,0.0,0.0]            #[0.5,0.5,0.5,0.5,0.5,0.5]
-       L_initial = [0.0,0.0,0.0,0.0,0.0,0.0]            #[1.0,1.0,1.0,1.0,1.0,1.0]
-       S_initial = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]#[0.0,0.5,0.5,0.5,0.0,0.5,0.5,0.5,0.0]
-       stop_flag = 0
-       target_stop = -1.0
-       for i in xrange(10000):
-         target_start = target_stop
-         minimized = tls_from_uaniso_minimizer(
-                  uaniso = u,
-                  T_initial = T_initial,
-                  L_initial = L_initial,
-                  S_initial = S_initial,
-                  refine_T = True,
-                  refine_L = True,
-                  refine_S = True,
-                  origin = origin,
-                  sites = flex.to_list(xray_structure.sites_cart()))
-         T_initial = minimized.T_min
-         L_initial = minimized.L_min
-         S_initial = minimized.S_min
-         target_stop = minimized.f
-         if(abs(target_stop - target_start) < 1.e-30): stop_flag += 1
-         if(stop_flag == 3):
-           print "convergence at step ", i
-           break
-       T_min.append(minimized.T_min)
-       L_min.append(minimized.L_min)
-       S_min.append(minimized.S_min)
-     tls_obj = tls_parameters(T = T_min,
-                              L = L_min,
-                              S = S_min,
-                              origin = self.origin,
-                              number_of_tls_groups = self.number_of_tls_groups,
-                              residue_range = self.residue_range)
-     tls_obj.print_as_matrices()
-     return tls_obj
-
-
-
-
 class tls_xray_target_minimizer(object):
+  def __init__(self,
+               fmodel,
+               T_initial,
+               L_initial,
+               S_initial,
+               refine_T,
+               refine_L,
+               refine_S,
+               origins,
+               selections,
+               min_iterations= 25,
+               max_calls= 50):
+    adopt_init_args(self, locals())
+    self.fmodel_copy = self.fmodel.deep_copy()
+    self.counter = 0
+    assert len(self.T_initial) == len(self.L_initial) == len(self.S_initial)
+    for Ti,Li,Si in zip(self.T_initial,self.L_initial,self.S_initial):
+      assert len(Ti) == 6 and len(Li) == 6 and len(Si) == 9
+    self.n_groups = len(self.T_initial)
+    self.dim_T = len(self.T_initial[0])
+    self.dim_L = len(self.L_initial[0])
+    self.dim_S = len(self.S_initial[0])
+    assert self.dim_T == 6 and self.dim_L == 6 and self.dim_S == 9
+    self.T_min = self.T_initial
+    self.L_min = self.L_initial
+    self.S_min = self.S_initial
+    self.x = self.pack(self.T_min, self.L_min, self.S_min)
+    self.minimizer = lbfgs.run(
+         target_evaluator = self,
+         termination_params = lbfgs.termination_parameters(
+              min_iterations = min_iterations,
+              max_calls = max_calls))
+    self.compute_functional_and_gradients()
+    del self.x
+
+  def pack(self, T, L, S):
+    v = []
+    for Ti,Li,Si in zip(T,L,S):
+      if (self.refine_T): v += list(Ti)
+      if (self.refine_L): v += list(Li)
+      if (self.refine_S): v += list(Si)
+    return flex.double(tuple(v))
+
+  def unpack_x(self):
+    i = 0
+    T_min = []
+    L_min = []
+    S_min = []
+    for j in xrange(self.n_groups):
+      if (self.refine_T):
+        self.T_min[j] = tuple(self.x)[i:i+self.dim_T]
+        i += self.dim_T
+      if (self.refine_L):
+        self.L_min[j] = tuple(self.x)[i:i+self.dim_L]
+        i += self.dim_L
+      if (self.refine_S):
+        self.S_min[j] = tuple(self.x)[i:i+self.dim_S]
+        i += self.dim_S
+
+
+  def compute_functional_and_gradients(self):
+    self.counter += 1
+    self.unpack_x()
+
+    S_new = []
+    for item_1 in self.S_min:
+      zz = list(item_1)
+      zz[8] = -zz[0]-zz[4]
+      S_new.append(zz)
+    self.S_min = S_new
+
+    tlsos = []
+    for T,L,S,origin in zip(self.T_min, self.L_min, self.S_min, self.origins):
+        tlsos.append(tlso(t      = T,
+                          l      = L,
+                          s      = S,
+                          origin = origin))
+
+    new_xrs = update_xray_structure_with_tls(
+                              xray_structure = self.fmodel_copy.xray_structure,
+                              selections     = self.selections,
+                              tlsos          = tlsos)
+
+    self.fmodel_copy.update_xray_structure(xray_structure = new_xrs,
+                                           update_f_calc  = True)
+
+    grad_manager = tls_xray_grads(fmodel     = self.fmodel_copy,
+                                  selections = self.selections,
+                                  tlsos      = tlsos)
+
+    self.f = self.fmodel_copy.target_w()
+    print self.f
+    self.g = self.pack(grad_manager.grad_T,
+                       grad_manager.grad_L,
+                       grad_manager.grad_S)
+    return self.f, self.g
+
+class tls_xray_grads(object):
+   def __init__(self, fmodel, selections, tlsos):
+     self.grad_T = []
+     self.grad_L = []
+     self.grad_S = []
+     d_target_d_uaniso = fmodel.gradient_wrt_u_aniso()
+     for sel, tlso in zip(selections, tlsos):
+         d_target_d_tls_manager = d_target_d_tls(
+            sites             = fmodel.xray_structure.sites_cart().select(sel),
+            origin            = tlso.origin,
+            d_target_d_uaniso = d_target_d_uaniso.select(sel))
+         self.grad_T.append(list(d_target_d_tls_manager.grad_T()))
+         self.grad_L.append(list(d_target_d_tls_manager.grad_L()))
+         self.grad_S.append(list(d_target_d_tls_manager.grad_S()))
+
+
+def update_xray_structure_with_tls(xray_structure,
+                                   selections,
+                                   tlsos):
+  u_cart_from_tls = uanisos_from_tls(sites_cart = xray_structure.sites_cart(),
+                                     selections = selections,
+                                     tlsos      = tlsos)
+  xray_structure.scatterers().set_u_cart(xray_structure.unit_cell(),
+                                         u_cart_from_tls)
+  xray_structure.apply_symmetry_u_stars()
+  return xray_structure
+
+
+
+############################## OLD CODE: MUST BE REDONE
+class tls_xray_target_minimizer__OLD(object):
   def __init__(self,
                fobs,
                T_initial,
