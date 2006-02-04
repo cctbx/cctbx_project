@@ -109,11 +109,63 @@ class virtual_memory_info(object):
     print >> out, prefix+"Resident set size:  ", fmt % rss
     print >> out, prefix+"Stack size:         ", fmt % sts
 
+"""
+/proc/meminfo
+MemTotal:      7412928 kB
+MemFree:       6519152 kB
+Buffers:         13776 kB
+Cached:          65084 kB
+SwapCached:      39868 kB
+Active:         797772 kB
+Inactive:        35760 kB
+HighTotal:           0 kB
+HighFree:            0 kB
+LowTotal:      7412928 kB
+LowFree:       6519152 kB
+SwapTotal:     2031608 kB
+SwapFree:      1941140 kB
+Dirty:             308 kB
+Writeback:           0 kB
+Mapped:         736756 kB
+Slab:            27372 kB
+Committed_AS:   839416 kB
+PageTables:       5496 kB
+VmallocTotal: 536870911 kB
+VmallocUsed:      1932 kB
+VmallocChunk: 536868747 kB
+HugePages_Total:     0
+HugePages_Free:      0
+Hugepagesize:     2048 kB
+"""
+
+try:
+  _mem_status = "/proc/meminfo"
+except AttributeError:
+  _mem_status = None
+
+class machine_memory_info(virtual_memory_info):
+  def __init__(self):
+    try:
+      self.proc_status = open(_mem_status).read()
+    except IOError:
+      self.proc_status = None
+
+  def memory_total(self):
+    return self.get_bytes("MemTotal:")
+
+  def memory_free(self):
+    return self.get_bytes("MemFree:")
+
+  def show(self):
+    print "%-20s : %d " % ("Memory total", self.memory_total())
+    print "%-20s : %d " % ("Memory free", self.memory_free())
+  
 if (__name__ == "__main__"):
   def exercise_varnames(a, b, c):
     d = 0
     return varnames()
   assert exercise_varnames(1,2,3) == ("a", "b", "c")
   virtual_memory_info().show()
+  machine_memory_info().show()
   assert str(caller_location()).find("introspection") > 0
   print "OK"
