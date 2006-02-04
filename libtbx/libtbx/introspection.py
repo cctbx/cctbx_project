@@ -156,10 +156,11 @@ class machine_memory_info(virtual_memory_info):
   def memory_free(self):
     return self.get_bytes("MemFree:")
 
-  def show(self):
-    print "%-20s : %d " % ("Memory total", self.memory_total())
-    print "%-20s : %d " % ("Memory free", self.memory_free())
-  
+  def show(self, out=None, prefix=""):
+    if (out is None): out = sys.stdout
+    print >> out, prefix+"%-20s : %d " % ("Memory total", self.memory_total())
+    print >> out, prefix+"%-20s : %d " % ("Memory free", self.memory_free())
+
 if (__name__ == "__main__"):
   def exercise_varnames(a, b, c):
     d = 0
