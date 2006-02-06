@@ -80,7 +80,7 @@ namespace gltbx { namespace fonts { namespace ucs {
       void
       setup_call_lists() const
       {
-        GLTBX_ASSERT(!have_call_lists_base);
+        if (have_call_lists_base) return;
         unsigned n_chars = font_record->number_of_chars;
         GLTBX_ASSERT(font_record->raw_bitmaps_size % n_chars == 0);
         unsigned bytes_per_char = font_record->raw_bitmaps_size / n_chars;
@@ -122,7 +122,7 @@ namespace gltbx { namespace fonts { namespace ucs {
       GLuint
       bitmap_index(UnsignedInt2Type const& encoding) const
       {
-        if (!have_call_lists_base) setup_call_lists();
+        GLTBX_ASSERT(have_call_lists_base);
         typename std::map<UnsignedInt2Type, unsigned>::const_iterator
           pair = encoding_to_bitmap_indices.find(encoding);
         if (pair == encoding_to_bitmap_indices.end()) return 0;
