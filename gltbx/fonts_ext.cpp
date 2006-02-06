@@ -43,6 +43,7 @@ namespace {
         .def("height", &w_t::height)
         .def("xorig", &w_t::xorig)
         .def("yorig", &w_t::yorig)
+        .def("setup_call_lists", &w_t::setup_call_lists)
 #if defined(GLTBX_USING_UNICODE)
         .def("render_string", render_wstring, (arg_("string")))
 #endif
