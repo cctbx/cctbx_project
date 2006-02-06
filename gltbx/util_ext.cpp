@@ -63,12 +63,48 @@ namespace gltbx { namespace util {
 
   inline
   scitbx::mat3<double>
-  extract_mat3_from_gl_matrix(GLdouble* m)
+  extract_rotation_from_gl_matrix(GLdouble* m)
   {
     return scitbx::mat3<double>(
       m[0], m[4], m[8],
       m[1], m[5], m[9],
       m[2], m[6], m[10]);
+  }
+
+  inline
+  scitbx::vec3<double>
+  extract_translation_from_gl_matrix(GLdouble* m)
+  {
+    return scitbx::vec3<double>(m[12], m[13], m[14]);
+  }
+
+  inline
+  scitbx::mat3<double>
+  extract_rotation_from_gl_modelview_matrix()
+  {
+    GLdouble mvm[16];
+    glGetDoublev(GL_MODELVIEW_MATRIX, mvm); handle_error();
+    return extract_rotation_from_gl_matrix(mvm);
+  }
+
+  inline
+  scitbx::vec3<double>
+  extract_translation_from_gl_modelview_matrix()
+  {
+    GLdouble mvm[16];
+    glGetDoublev(GL_MODELVIEW_MATRIX, mvm); handle_error();
+    return extract_translation_from_gl_matrix(mvm);
+  }
+
+  inline
+  scitbx::vec3<double>
+  object_as_eye_coordinates(
+    scitbx::vec3<double> const& object_coordinates)
+  {
+    GLdouble mvm[16];
+    glGetDoublev(GL_MODELVIEW_MATRIX, mvm); handle_error();
+    return extract_rotation_from_gl_matrix(mvm) * object_coordinates
+         + extract_translation_from_gl_matrix(mvm);
   }
 
   inline
@@ -80,9 +116,8 @@ namespace gltbx { namespace util {
     double mousex,
     double mousey)
   {
-    GLdouble mvm[16];
-    glGetDoublev(GL_MODELVIEW_MATRIX, mvm); handle_error();
-    scitbx::mat3<double> r_inv = extract_mat3_from_gl_matrix(mvm).inverse();
+    scitbx::mat3<double>
+      r_inv = extract_rotation_from_gl_modelview_matrix().inverse();
     scitbx::vec3<double> t(s * (x - mousex), s * (mousey - y), 0);
     scitbx::vec3<double> r_inv_t = r_inv * t;
     glMatrixMode(GL_MODELVIEW); handle_error();
@@ -101,9 +136,8 @@ namespace gltbx { namespace util {
     double mousex,
     double mousey)
   {
-    GLdouble mvm[16];
-    glGetDoublev(GL_MODELVIEW_MATRIX, mvm); handle_error();
-    scitbx::mat3<double> r_inv = extract_mat3_from_gl_matrix(mvm).inverse();
+    scitbx::mat3<double>
+      r_inv = extract_rotation_from_gl_modelview_matrix().inverse();
     glMatrixMode(GL_MODELVIEW); handle_error();
     glTranslated(xcenter, ycenter, zcenter); handle_error();
     glRotated((s * (y - mousey)), r_inv[0], r_inv[3], r_inv[6]); // (1,0,0)
@@ -122,9 +156,8 @@ namespace gltbx { namespace util {
     double zvector,
     double angle)
   {
-    GLdouble mvm[16];
-    glGetDoublev(GL_MODELVIEW_MATRIX, mvm); handle_error();
-    scitbx::mat3<double> r_inv = extract_mat3_from_gl_matrix(mvm).inverse();
+    scitbx::mat3<double>
+      r_inv = extract_rotation_from_gl_modelview_matrix().inverse();
     scitbx::vec3<double> t(xvector, yvector, zvector);
     scitbx::vec3<double> r_inv_t = r_inv * t;
     glMatrixMode(GL_MODELVIEW); handle_error();
@@ -201,6 +234,8 @@ namespace gltbx { namespace util {
     def("get_gl_modelview_matrix", get_gl_modelview_matrix);
     def("get_gl_projection_matrix", get_gl_projection_matrix);
     def("get_gl_viewport", get_gl_viewport);
+    def("object_as_eye_coordinates", object_as_eye_coordinates, (
+      arg_("object_coordinates")));
     def("modelview_translation", modelview_translation, (
       arg_("s"),
       arg_("x"),

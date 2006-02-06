@@ -6,9 +6,12 @@ from gltbx.gl import *
 from gltbx.glu import *
 import gltbx.gl_managed
 import gltbx.fonts
+import gltbx.images
+from scitbx.array_family import flex
 from scitbx import matrix
 import wx
 import wx.glcanvas
+import sys, os
 
 def v3distsq(a, b):
   result = 0
@@ -50,11 +53,9 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     self.Bind(wx.EVT_PAINT, self.OnPaint)
     self.Bind(wx.EVT_CHAR, self.OnChar)
     self.Bind(wx.EVT_LEFT_DOWN, self.OnLeftClick)
-    self.Bind(wx.EVT_LEFT_DCLICK, self.OnLeftDClick)
     self.Bind(wx.EVT_LEFT_UP, self.OnLeftUp)
     self.Bind(wx.EVT_MIDDLE_DOWN, self.OnMiddleClick)
     self.Bind(wx.EVT_RIGHT_DOWN, self.OnRightClick)
-    self.Bind(wx.EVT_RIGHT_DCLICK, self.OnRightDClick)
     self.Bind(wx.EVT_MOTION, self.OnMouseMotion)
     self.Bind(wx.EVT_IDLE, self.OnIdle)
 
@@ -69,7 +70,7 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     self.base_distance = self.distance = 10.0
 
     # Field of view in y direction
-    self.fovy = 30.0
+    self.fovy = 10.0
 
     # Position of clipping planes.
     self.near = 0.1
@@ -114,9 +115,16 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
 
   def OnChar(self,event):
     key = event.GetKeyCode()
-    if (key == ord('q')):
-      self.parent.Destroy()
+    if   (key == ord('c')):
+      self.look_at_rotation_center()
+      self.OnRedraw()
+    elif (key == ord('f')):
+      self.distance = self.base_distance
+      self.OnRedraw()
     elif (key == ord('a')):
+      self.reset_modelview()
+      self.OnRedraw()
+    elif (key == ord('s')):
       self.autospin_allowed = not self.autospin_allowed
     self.autospin = False
 
@@ -125,11 +133,6 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     self.initLeft = event.GetX(),event.GetY()
     self.was_dragged = False
     self.autospin = False
-
-  def OnLeftDClick(self,event):
-    self.reset_modelview()
-    self.OnRecordMouse(event)
-    self.OnRedraw()
 
   def OnLeftUp(self,event):
     if (not self.was_dragged):
@@ -147,11 +150,6 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
   def OnRightClick(self, event):
     self.OnRecordMouse(event)
 
-  def OnRightDClick(self, event):
-    self.OnRecordMouse(event)
-    self.distance = self.base_distance
-    self.OnRedraw()
-
   def OnLeftDrag(self,event):
     self.was_dragged = True
     self.OnRotate(event)
@@ -163,13 +161,13 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     self.OnScale(event)
 
   def OnMouseMotion(self,event):
-    if not event.Dragging():
+    if (not event.Dragging()):
       return
-    if event.LeftIsDown():
+    if (event.LeftIsDown()):
       self.OnLeftDrag(event)
-    elif event.MiddleIsDown():
+    elif (event.MiddleIsDown()):
       self.OnMiddleDrag(event)
-    elif event.RightIsDown():
+    elif (event.RightIsDown()):
       self.OnRightDrag(event)
 
   def set_rotation_center(self, (x,y,z)):
@@ -187,7 +185,11 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
   def reset_modelview(self):
     glMatrixMode(GL_MODELVIEW)
     glLoadIdentity()
-    self.look_at_point = self.rotation_center
+    self.look_at_rotation_center()
+
+  def look_at_rotation_center(self):
+    self.look_at_point = gltbx.util.object_as_eye_coordinates(
+      object_coordinates=self.rotation_center)
 
   def OnRecordMouse(self, event):
     self.xmouse = event.GetX()
@@ -314,14 +316,71 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
 
 class show_cube(wxGLWindow):
 
+  def __init__(self, *args, **keyword_args):
+    wxGLWindow.__init__(self, *args, **keyword_args)
+    self.labels = None
+    self.points = None
+    self.lines = None
+
+  def set_points(self, atom_attributes_list):
+    self.labels = [atom.pdb_format() for atom in atom_attributes_list]
+    self.points = [atom.coordinates for atom in atom_attributes_list]
+    self.labels_display_list = None
+    self.points_display_list = None
+
+  def set_lines(self, bond_proxies):
+    self.lines_display_list = None
+    self.bond_proxies = bond_proxies
+
   def InitGL(self):
     self.cube_display_list = None
-    self.set_rotation_center((0.5, 0.5, 0.5))
+    self.labels_display_list = None
+    self.points_display_list = None
+    self.lines_display_list = None
+    self.set_rotation_center((0, 0, 0))
     self.reset_modelview()
 
   def DrawGL(self):
-    self.draw_cube()
-    self.draw_rotation_center()
+    #self.draw_cube()
+    #self.draw_rotation_center()
+    self.draw_points()
+    self.draw_lines()
+    self.draw_labels()
+
+  def draw_points(self):
+    if (self.points_display_list is None):
+      self.points_display_list = gltbx.gl_managed.display_list()
+      self.points_display_list.compile()
+      for point in self.points:
+        self.draw_cross_at(point)
+      self.points_display_list.end()
+    self.points_display_list.call()
+
+  def draw_lines(self):
+    if (self.lines_display_list is None):
+      self.lines_display_list = gltbx.gl_managed.display_list()
+      self.lines_display_list.compile()
+      glColor3f(1,0,1)
+      glBegin(GL_LINES)
+      for proxy in self.bond_proxies.simple:
+        i_seq, j_seq = proxy.i_seqs
+        glVertex3f(*self.points[i_seq])
+        glVertex3f(*self.points[j_seq])
+      glEnd()
+      self.lines_display_list.end()
+    self.lines_display_list.call()
+
+  def draw_labels(self):
+    if (self.labels_display_list is None):
+      font = gltbx.fonts.ucs_bitmap_8x13
+      font.setup_call_lists()
+      self.labels_display_list = gltbx.gl_managed.display_list()
+      self.labels_display_list.compile()
+      for label,point in zip(self.labels, self.points):
+        glRasterPos3f(*point)
+        font.render_string(label)
+      self.labels_display_list.end()
+    self.labels_display_list.call()
 
   def draw_cube(self, f=1):
     if (self.cube_display_list is None):
@@ -389,43 +448,146 @@ class show_cube(wxGLWindow):
     line = line_given_points(self.pick_points)
     min_dist_sq = 1**2
     closest_point = None
-    for x in [0,1]:
-      for y in [0,1]:
-        for z in [0,1]:
-          point = matrix.col((x,y,z))
-          dist_sq = line.distance_sq(point=point)
-          if (min_dist_sq > dist_sq):
-            min_dist_sq = dist_sq
-            closest_point = point
+    if (0):
+      for x in [0,1]:
+        for y in [0,1]:
+          for z in [0,1]:
+            point = matrix.col((x,y,z))
+            dist_sq = line.distance_sq(point=point)
+            if (min_dist_sq > dist_sq):
+              min_dist_sq = dist_sq
+              closest_point = point
+    else:
+      for point in self.points:
+        dist_sq = line.distance_sq(point=matrix.col(point))
+        if (min_dist_sq > dist_sq):
+          min_dist_sq = dist_sq
+          closest_point = point
     if (closest_point is not None):
       self.set_rotation_center(closest_point)
 
+def pdb_interpretation(file_name):
+  from mmtbx import monomer_library
+  import mmtbx.monomer_library.server
+  import mmtbx.monomer_library.pdb_interpretation
+  #
+  mon_lib_srv = monomer_library.server.server()
+  ener_lib = monomer_library.server.ener_lib()
+  processed_pdb = monomer_library.pdb_interpretation.process(
+    mon_lib_srv=mon_lib_srv,
+    ener_lib=ener_lib,
+    file_name=file_name,
+    strict_conflict_handling=False,
+    keep_monomer_mappings=False,
+    log=sys.stdout)
+  processed_pdb.geometry_restraints_manager()
+  return processed_pdb
+
 class App(wx.App):
 
+  def __init__(self, args):
+    assert len(args) == 1
+    self.args = args
+    self.processed_pdb = pdb_interpretation(file_name=args[0])
+    wx.App.__init__(self, 0)
+
   def OnInit(self):
+    # XXX gltbx.images.create_encoded("align.bmp")
     self.frame = wx.Frame(
       None, -1,
-      "Simple Cube",
+      "Wire World",
       wx.DefaultPosition,
       wx.Size(400,400))
+
     self.frame.CreateStatusBar()
+
+    tb = self.frame.CreateToolBar(
+      style = wx.TB_HORIZONTAL | wx.NO_BORDER | wx.TB_FLAT | wx.TB_TEXT)
+    tb.SetToolBitmapSize(wx.Size(20,20))
+
+    center_bmp = gltbx.images.center_img.as_wx_Bitmap()
+    fit_bmp = gltbx.images.fit_img.as_wx_Bitmap()
+    align_bmp = gltbx.images.align_img.as_wx_Bitmap()
+    spiral_bmp = gltbx.images.spiral_img.as_wx_Bitmap()
+
+    tb.AddSimpleTool(10, center_bmp, "Center",
+      "Moves center of rotation -> center of window. Keyboard shortcut: c")
+    self.Bind(wx.EVT_TOOL, self.OnToolClick, id=10)
+
+    tb.AddSimpleTool(20, fit_bmp, "Fit size",
+      "Resize object to fit into window. Keyboard shortcut: f")
+    self.Bind(wx.EVT_TOOL, self.OnToolClick, id=20)
+
+    tb.AddSimpleTool(30, align_bmp, "Align",
+      "Aligns object and eye coordinate systems. Keyboard shortcut: a")
+    self.Bind(wx.EVT_TOOL, self.OnToolClick, id=30)
+
+    tb.AddSimpleTool(40, spiral_bmp, "Spin on/off",
+      "Turns auto-spin on/off. Keyboard shortcut: s")
+    self.Bind(wx.EVT_TOOL, self.OnToolClick, id=40)
+
+    tb.AddSeparator()
+    tb.AddControl(wx.StaticText(tb, -1, "Pick:"))
+    pick_action_choices = [
+      "Center of Rotation",
+      "Atom",
+      "Residue",
+      "Chain",
+      "Conformer",
+      "Model"]
+    pick_action_combobox = wx.ComboBox(
+      tb, -1,
+      pick_action_choices[0],
+      choices=pick_action_choices,
+      size=(-1,-1), style=wx.CB_DROPDOWN | wx.CB_READONLY)
+    tb.AddControl(pick_action_combobox)
+    self.Bind(wx.EVT_COMBOBOX, self.OnPickActionSelect, pick_action_combobox)
+
+    tb.Realize()
+
     menuBar = wx.MenuBar()
-    menu = wx.Menu()
-    item = menu.Append(-1, "E&xit\tAlt-X", "Exit demo")
+    file_menu = wx.Menu()
+    item = file_menu.Append(-1, "E&xit\tAlt-X", "Exit demo")
     self.Bind(wx.EVT_MENU, self.OnExitApp, item)
-    menuBar.Append(menu, "&File")
+    menuBar.Append(file_menu, "&File")
+
     self.frame.SetMenuBar(menuBar)
     self.frame.Show(True)
-    cube = show_cube(self.frame, -1, wx.Point(0,0), wx.Size(400,400))
-    cube.SetFocus()
+    self.cube = show_cube(self.frame, -1, wx.Point(0,0), wx.Size(400,400))
+    self.cube.set_points(
+      self.processed_pdb.all_chain_proxies.stage_1.atom_attributes_list)
+    self.cube.set_lines(
+      self.processed_pdb.geometry_restraints_manager()
+        .pair_proxies().bond_proxies)
+    self.cube.SetFocus()
     self.SetTopWindow(self.frame)
     return True
 
   def OnExitApp(self, event):
     self.frame.Close(True)
 
-def run():
-  App(0).MainLoop()
+  def OnToolClick(self, event):
+    id = event.GetId()
+    if (id == 10):
+      self.cube.look_at_rotation_center()
+      self.cube.OnRedraw()
+    elif (id == 20):
+      self.cube.distance = self.cube.base_distance
+      self.cube.OnRedraw()
+    if (id == 30):
+      self.cube.reset_modelview()
+      self.cube.OnRedraw()
+    elif (id == 40):
+      self.cube.autospin_allowed = not self.cube.autospin_allowed
+      self.cube.autospin = False
+      self.frame.SetStatusText(
+        "Auto Spin %s" % ["Off", "On"][int(self.cube.autospin_allowed)])
+
+  def OnPickActionSelect(self, event):
+    self.frame.SetStatusText(event.GetString())
+
+def run(args):
+  App(args).MainLoop()
 
 if (__name__ == "__main__"):
-  run()
+  run(sys.argv[1:])
