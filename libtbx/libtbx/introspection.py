@@ -46,19 +46,7 @@ def start_print_trace():
 def stop_print_trace():
   sys.settrace(None)
 
-try:
-  _proc_status = "/proc/%d/status" % os.getpid()
-except AttributeError:
-  _proc_status = None
-
-class virtual_memory_info(object):
-
-  def __init__(self):
-    try:
-      self.proc_status = open(_proc_status).read()
-    except IOError:
-      self.proc_status = None
-
+class proc_file_reader(object):
   def get_bytes(self, vm_key):
     if (self.proc_status is None):
       return None
@@ -78,6 +66,19 @@ class virtual_memory_info(object):
     if (unit == "MB"):
       result *= 1024
     return result
+
+try:
+  _proc_status = "/proc/%d/status" % os.getpid()
+except AttributeError:
+  _proc_status = None
+
+class virtual_memory_info(proc_file_reader):
+
+  def __init__(self):
+    try:
+      self.proc_status = open(_proc_status).read()
+    except IOError:
+      self.proc_status = None
 
   def virtual_memory_size(self):
     return self.get_bytes('VmSize:')
@@ -143,7 +144,7 @@ try:
 except AttributeError:
   _mem_status = None
 
-class machine_memory_info(virtual_memory_info):
+class machine_memory_info(proc_file_reader):
   def __init__(self):
     try:
       self.proc_status = open(_mem_status).read()
@@ -158,8 +159,22 @@ class machine_memory_info(virtual_memory_info):
 
   def show(self, out=None, prefix=""):
     if (out is None): out = sys.stdout
-    print >> out, prefix+"%-20s : %d " % ("Memory total", self.memory_total())
-    print >> out, prefix+"%-20s : %d " % ("Memory free", self.memory_free())
+    def size_as_string(sz):
+      if (sz is None): return "unknown"
+      result = []
+      while (sz > 0):
+        if (sz >= 1000):
+          result.insert(0, "%03d" % (sz % 1000))
+          sz //= 1000
+        else:
+          result.insert(0, "%d" % sz)
+          break
+      return ",".join(result)
+    mt = size_as_string(self.memory_total())
+    mf = size_as_string(self.memory_free())
+    fmt = "%%%ds" % max(len(mt), len(mf))
+    print >> out, prefix+"Memory total:  ", fmt % mt
+    print >> out, prefix+"Memory free:   ", fmt % mf
 
 if (__name__ == "__main__"):
   def exercise_varnames(a, b, c):
