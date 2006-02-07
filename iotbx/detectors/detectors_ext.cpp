@@ -45,6 +45,35 @@ af::flex_int ReadADSC(const std::string& filename,
   return z;
 }
 
+void WriteADSC(const std::string& filename,
+                      af::flex_int data, const long& size1,
+                      const long& size2,const int& big_endian ) {
+  std::ofstream c_out(filename.c_str(),std::ios::out|std::ios::app);
+
+  std::vector<unsigned char> uchardata;
+  std::size_t sz = data.size();
+  uchardata.reserve(sz*sizeof(int));
+
+  int* begin = data.begin();
+
+  if (big_endian) {
+    for (std::size_t i = 0; i < sz; i++) {
+      if (begin[i]>65535) {begin[i]=65535;}
+      uchardata.push_back(begin[i]/256);
+      uchardata.push_back(begin[i]%256);
+    }
+  } else {
+    for (std::size_t i = 0; i < sz; i++) {
+      if (begin[i]>65535) {begin[i]=65535;}
+      uchardata.push_back(begin[i]%256);
+      uchardata.push_back(begin[i]/256);
+    }
+  }
+  char* chardata = (char*) &*uchardata.begin();
+  c_out.write(chardata,uchardata.size());
+  c_out.close();
+}
+
 af::flex_int ReadMAR(const std::string& filename,
                       const long& ptr, const long& size1,
                       const long& size2,const int& big_endian ) {
@@ -205,6 +234,7 @@ BOOST_PYTHON_MODULE(iotbx_detectors_ext)
    class_<dummy>("_dummy", no_init);
 #endif
    def("ReadADSC", ReadADSC);
+   def("WriteADSC", WriteADSC);
    def("ReadMAR", ReadMAR);
    def("ReadRAXIS", ReadRAXIS);
    def("unpad_raxis", unpad_raxis);
