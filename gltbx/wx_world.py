@@ -126,6 +126,8 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
       self.OnRedraw()
     elif (key == ord('s')):
       self.autospin_allowed = not self.autospin_allowed
+    elif (key == ord('V')):
+      gltbx.util.show_versions()
     self.autospin = False
 
   def OnLeftClick(self,event):
