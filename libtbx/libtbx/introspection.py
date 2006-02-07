@@ -1,4 +1,5 @@
 from __future__ import division
+from libtbx.str_utils import size_as_string_with_commas
 import sys, os
 
 def varnames(frames_back=0):
@@ -47,6 +48,7 @@ def stop_print_trace():
   sys.settrace(None)
 
 class proc_file_reader(object):
+
   def get_bytes(self, vm_key):
     if (self.proc_status is None):
       return None
@@ -91,63 +93,24 @@ class virtual_memory_info(proc_file_reader):
 
   def show(self, out=None, prefix=""):
     if (out is None): out = sys.stdout
-    def size_as_string(sz):
-      if (sz is None): return "unknown"
-      result = []
-      while (sz > 0):
-        if (sz >= 1000):
-          result.insert(0, "%03d" % (sz % 1000))
-          sz //= 1000
-        else:
-          result.insert(0, "%d" % sz)
-          break
-      return ",".join(result)
-    vms = size_as_string(self.virtual_memory_size())
-    rss = size_as_string(self.resident_set_size())
-    sts = size_as_string(self.stack_size())
+    vms = size_as_string_with_commas(self.virtual_memory_size())
+    rss = size_as_string_with_commas(self.resident_set_size())
+    sts = size_as_string_with_commas(self.stack_size())
     fmt = "%%%ds" % max(len(vms), len(rss), len(sts))
     print >> out, prefix+"Virtual memory size:", fmt % vms
     print >> out, prefix+"Resident set size:  ", fmt % rss
     print >> out, prefix+"Stack size:         ", fmt % sts
 
-"""
-/proc/meminfo
-MemTotal:      7412928 kB
-MemFree:       6519152 kB
-Buffers:         13776 kB
-Cached:          65084 kB
-SwapCached:      39868 kB
-Active:         797772 kB
-Inactive:        35760 kB
-HighTotal:           0 kB
-HighFree:            0 kB
-LowTotal:      7412928 kB
-LowFree:       6519152 kB
-SwapTotal:     2031608 kB
-SwapFree:      1941140 kB
-Dirty:             308 kB
-Writeback:           0 kB
-Mapped:         736756 kB
-Slab:            27372 kB
-Committed_AS:   839416 kB
-PageTables:       5496 kB
-VmallocTotal: 536870911 kB
-VmallocUsed:      1932 kB
-VmallocChunk: 536868747 kB
-HugePages_Total:     0
-HugePages_Free:      0
-Hugepagesize:     2048 kB
-"""
-
 try:
-  _mem_status = "/proc/meminfo"
+  _proc_meminfo = "/proc/meminfo"
 except AttributeError:
-  _mem_status = None
+  _proc_meminfo = None
 
 class machine_memory_info(proc_file_reader):
+
   def __init__(self):
     try:
-      self.proc_status = open(_mem_status).read()
+      self.proc_status = open(_proc_meminfo).read()
     except IOError:
       self.proc_status = None
 
@@ -159,22 +122,11 @@ class machine_memory_info(proc_file_reader):
 
   def show(self, out=None, prefix=""):
     if (out is None): out = sys.stdout
-    def size_as_string(sz):
-      if (sz is None): return "unknown"
-      result = []
-      while (sz > 0):
-        if (sz >= 1000):
-          result.insert(0, "%03d" % (sz % 1000))
-          sz //= 1000
-        else:
-          result.insert(0, "%d" % sz)
-          break
-      return ",".join(result)
-    mt = size_as_string(self.memory_total())
-    mf = size_as_string(self.memory_free())
+    mt = size_as_string_with_commas(self.memory_total())
+    mf = size_as_string_with_commas(self.memory_free())
     fmt = "%%%ds" % max(len(mt), len(mf))
-    print >> out, prefix+"Memory total:  ", fmt % mt
-    print >> out, prefix+"Memory free:   ", fmt % mf
+    print >> out, prefix+"Memory total: ", fmt % mt
+    print >> out, prefix+"Memory free:  ", fmt % mf
 
 if (__name__ == "__main__"):
   def exercise_varnames(a, b, c):

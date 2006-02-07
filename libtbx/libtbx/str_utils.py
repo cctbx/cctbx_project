@@ -1,5 +1,23 @@
 from __future__ import generators
 
+def size_as_string_with_commas(sz):
+  if (sz is None): return "unknown"
+  if (sz < 0):
+    sz = -sz
+    sign = "-"
+  else:
+    sign = ""
+  result = []
+  while True:
+    if (sz >= 1000):
+      result.insert(0, "%03d" % (sz % 1000))
+      sz //= 1000
+      if (sz == 0): break
+    else:
+      result.insert(0, "%d" % sz)
+      break
+  return sign + ",".join(result)
+
 def show_string(s):
   if (s is None): return None
   if (s.find('"') < 0): return '"'+s+'"'
@@ -33,6 +51,15 @@ def line_breaker(string, width):
 
 def exercise():
   import libtbx.forward_compatibility
+  assert size_as_string_with_commas(0) == "0"
+  assert size_as_string_with_commas(1) == "1"
+  assert size_as_string_with_commas(-1) == "-1"
+  assert size_as_string_with_commas(10) == "10"
+  assert size_as_string_with_commas(100) == "100"
+  assert size_as_string_with_commas(1000) == "1,000"
+  assert size_as_string_with_commas(12345) == "12,345"
+  assert size_as_string_with_commas(12345678) == "12,345,678"
+  assert size_as_string_with_commas(-12345678) == "-12,345,678"
   assert show_string("abc") == '"abc"'
   assert show_string("a'c") == '"a\'c"'
   assert show_string('a"c') == "'a\"c'"
