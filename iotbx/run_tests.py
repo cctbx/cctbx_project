@@ -17,6 +17,7 @@ def run():
   ["$D/iotbx/mtz/tst.py", "P31"],
   "$D/iotbx/tst_reflection_file_utils.py",
   "$D/iotbx/detectors/tst_adsc.py",
+  "$D/iotbx/detectors/tst_debug_write.py",
   "$D/iotbx/xplor/tst_xplormap.py",
   ["$D/iotbx/tst_phases.py", "P31"],
   ["$D/iotbx/regression/tst_reflection_statistics.py", "Fdd2 P31m"]
