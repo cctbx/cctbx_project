@@ -713,6 +713,27 @@ def exercise_functions():
   assert a.count("a") == 3
   assert a.count("b") == 4
   assert a.count("c") == 0
+  list(flex.split_lines(multi_line_string="")) == []
+  for multi_line_string in [
+    "",
+    "\n",
+    "\r",
+    "\r\n",
+    "\n\r",
+    "a\nb\n",
+    "a\nb",
+    "a\nb",
+    "a\r\nb\n",
+    "a\r\n\nb\n",
+    "\ra\n\r\nb\n",
+    "\ra\r\n\nb\n"]:
+    for keep_ends in [False, True]:
+      for count_lines_first in [True, False]:
+        assert list(flex.split_lines(
+                      multi_line_string,
+                      keep_ends=keep_ends,
+                      count_lines_first=count_lines_first)) \
+            == multi_line_string.splitlines(keep_ends)
   #
   a = flex.int(range(-2,2) + range(2,4) + range(1,3))
   assert a.counts().items() == [(-2,1),(-1,1),(0,1),(1,2),(2,2),(3,1)]
