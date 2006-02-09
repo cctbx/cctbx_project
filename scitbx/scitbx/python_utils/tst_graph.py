@@ -1,69 +1,67 @@
 from scitbx.python_utils import graph_tools as gt
 
 def tst_graph():
-  ref_in_graph  = { 'a':[], 'b':['a','c'],'c':['a'] }
-  ref_out_graph = { 'a':['b','c'], 'b':[],'c':['b'] }
+  ll = gt.graph()
+  ll.insert_node( name = 'a',
+                  node_object = 'ploep_a',
+                  edge_object = { 'b': 'a_to_b', 'c': 'a_to_c' } )
 
-  g = gt.graph()
+  ll.insert_node( name = 'b',
+                  node_object = 'ploep_b',
+                  edge_object = { 'c': 'b_to_c' } )
 
-  g.insert_node( name = 'a',
-                 in_names = [],
-                 out_names = [ 'b', 'c' ]
-                 )
-
-  g.insert_node( name = 'c',
-                 in_names = [],
-                 out_names = [ 'b' ]
-                )
-
-  assert ( g.i == ref_in_graph )
-  assert ( g.o == ref_out_graph )
-
-  k = gt.graph()
-
-  k.insert_node( name = 'a',
-                 in_names = [],
-                 out_names = [ 'b', 'c' ]
-                 )
-  k.insert_node( name = 'b',
-                 in_names = ['c'],
-                 out_names = [  ]
-                )
+  ll.insert_node( name = 'c',
+                  node_object = 'ploep_c',
+                  edge_object = {  } )
 
 
-  assert ( k.i == ref_in_graph )
-  assert ( k.o == ref_out_graph )
 
-  g.assert_is_clean()
-  k.assert_is_clean()
 
-  assert k.is_contained_in( g )
-  assert k.is_equivalent_to( g )
-  assert g.is_equivalent_to( k )
-
-  k.insert_node( name = 'b',
-                 in_names = [],
-                 out_names = ['a']
-                )
-
-  assert ( not k.is_contained_in(g) )
-  assert ( g.is_contained_in(k) )
-  assert ( not g.is_equivalent_to(k) )
-  assert ( not k.is_equivalent_to(g) )
-
-  path_found = g.find_all_paths('a', 'b')
-  path_ref = [['a', 'b'], ['a', 'c', 'b']]
-  for path in path_ref:
+  path_found = ll.find_all_paths('a', 'c')
+  path_possible =  [['a', 'c'], ['a', 'b', 'c']]
+  for path in path_possible:
     assert (path in path_found)
 
-  shortest = g.find_shortest_path('a', 'b')
-  assert (shortest==[ 'a', 'b' ])
+  shortest = ll.find_shortest_path('a', 'c')
+  assert (shortest == ['a','c'])
+
+  assert ( (ll.o == { 'a':['b','c'], 'b':['c'],'c':[] }) or
+           (ll.o == { 'a':['c','b'], 'b':['c'],'c':[] }) )
+
+  kk = gt.graph()
+  kk.insert_node( name = 'a',
+                  node_object = 'ploep_a',
+                  edge_object = { 'b': 'a_to_b', 'c': 'a_to_c' } )
+
+  kk.insert_node( name = 'b',
+                  node_object = 'ploep_b',
+                  edge_object = { 'c': 'b_to_c' } )
+
+  kk.insert_node( name = 'c',
+                  node_object = 'ploep_c',
+                  edge_object = {  } )
+
+  assert ll.is_equivalent_to( kk )
+
+  kk.insert_node( name = 'b',
+                  node_object=None,
+                  edge_object={ 'a': 'b_to_a'} )
+
+  assert ll.is_contained_in( kk )
+  assert not kk.is_contained_in( ll )
+
+  ll.assert_is_clean()
+  kk.assert_is_clean()
+
+  kk.remove_node( 'b' )
+  kk.assert_is_clean()
+
 
 def run():
- tst_graph()
+  tst_graph()
 
 
- print 'OK'
+  print 'OK'
 
 if (__name__ == "__main__"):
   run()
