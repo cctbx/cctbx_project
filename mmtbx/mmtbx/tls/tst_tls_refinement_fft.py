@@ -54,7 +54,7 @@ def run(n_macro_cycles):
                                          xray_structure = xray_structure,
                                          algorithm      = "direct",
                                          cos_sin_table  = True).f_calc())
-  flags =f_obs.array(data=flex.size_t(xrange(1,f_obs.data().size()+1))%10 == 0)
+  flags =f_obs.array(data=flex.size_t(xrange(1,f_obs.data().size()+1))%3 == 0)
   fmodel = mmtbx.f_model.manager(xray_structure    = xray_structure,
                                  f_obs             = f_obs,
                                  r_free_flags      = flags,
@@ -105,16 +105,43 @@ def run(n_macro_cycles):
         T_initial.append([0.33,0.66,0.99,0.36,0.39,0.69])
         L_initial.append([130.0,-130.0,130.0,-130.0,130.0,-130.0])
         S_initial.append([0.22,0.24,0.26,0.42,0.44,0.46,0.62,0.64,-0.66])
+# refine only S
+  if(0):
+        T_initial.append([0.11,0.22,0.33,0.12,0.13,0.23])
+        L_initial.append([1.11,1.22,1.33,1.12,1.13,1.23])
+        S_initial.append([9.0,9.0,9.0,9.0,9.0,9.0,9.0,9.0,9.0])
+
+        T_initial.append([0.22,0.44,0.66,0.24,0.26,0.46])
+        L_initial.append([2.22,2.44,2.66,2.24,2.26,2.46])
+        S_initial.append([9.0,9.0,9.0,9.0,9.0,9.0,9.0,9.0,9.0])
+
+        T_initial.append([0.33,0.66,0.99,0.36,0.39,0.69])
+        L_initial.append([2.33,2.66,2.99,2.36,2.39,2.69])
+        S_initial.append([10.0,10.0,10.0,10.0,10.0,10.0,10.0,10.0,10.0])
 
 
+  ipd = fmodel.xray_structure.is_positive_definite_u()
+  print "fmodel.xray_structure.is_positive_definite_u() = ", ipd.count(True), ipd.count(False)
 
 
-  for i in xrange(n_macro_cycles):
+  tools.tls_refinement(fmodel                   = fmodel,
+                       selections               = selections,
+                       refine_T                 = 1,
+                       refine_L                 = 1,
+                       refine_S                 = 1,
+                       number_of_macro_cycles   = 5,
+                       max_number_of_iterations = 10)
+
+  #for i in xrange(n_macro_cycles):
+  for (i,j,k) in [(1,1,1),]*5:
+  #for (i,j,k) in [(1,0,0),(0,0,1),(1,0,1),(1,1,1)]*3 + [(0,1,0),(1,1,1)]*3:
+  #for (i,j,k) in [(1,0,0),(0,0,1),(1,0,1),(1,1,1), (1,0,0)]*3+[(0,1,0),(1,1,0),(1,1,1)]*3+[(0,0,1),(0,1,0),(0,1,1),(1,1,1)]*3:
+  #for (i,j,k) in [(1,0,0),(0,0,1),(1,0,1),(1,1,1)]*10:
     flag = False
-    i=0
-    i += 1
     print "========================================================"
-    print "MACRO_CYCLE = ", i
+    #print "MACRO_CYCLE = ", i
+    print "MACRO_CYCLE = ",i,j,k
+    fmodel.xray_structure.tidy_us(u_min = 1.e-6)
     minimized = tools.tls_xray_target_minimizer(
                                           fmodel    = fmodel,
                                           T_initial = T_initial,
@@ -125,6 +152,7 @@ def run(n_macro_cycles):
                                           refine_S  = 1,
                                           selections= selections,
                                           origins   = origins)
+    fmodel.xray_structure.tidy_us(u_min = 1.e-6)
     T_initial = minimized.T_min
     L_initial = minimized.L_min
     S_initial = minimized.S_min
@@ -140,7 +168,7 @@ def run(n_macro_cycles):
              (L[0],L[1],L[2],L[3],L[4],L[5])
       format1 = "S11=%8.4f S22=%8.4f S33=%8.4f S12=%8.4f S13=%8.4f "
       format2 = "S23=%8.4f S21=%8.4f S31=%8.4f S32=%8.4f"
-      print (format1+format2)% (S[0],S[1],S[2],S[3],S[4],S[5],S[6],S[7],S[8])
+      print (format1+format2)% (S[0],S[4],S[8],S[1],S[2],S[5],S[3],S[6],S[7])
 
 if (__name__ == "__main__"):
   if (len(sys.argv) == 1):

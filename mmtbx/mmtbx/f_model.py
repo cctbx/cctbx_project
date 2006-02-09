@@ -533,6 +533,35 @@ class manager(object):
          algorithm          = self.sf_algorithm)
     return result
 
+  def gradient_wrt_u_aniso(self, u_aniso = True,
+                                 alpha   = None,
+                                 beta    = None):
+    xray_gradient_flags = xray.structure_factors.gradient_flags(
+                                                             u_aniso = u_aniso)
+    structure_factor_gradients = cctbx.xray.structure_factors.gradients(
+                                         miller_set    = self.f_obs_w(),
+                                         cos_sin_table = self.sf_cos_sin_table)
+    if(self.target_name.count("ml") > 0 or self.target_name.count("lsm") > 0):
+       if([alpha, beta].count(None) == 2):
+          alpha, beta = self.alpha_beta_w()
+    if(self.target_name.count("ml") ==0 and self.target_name.count("lsm") ==0):
+       assert [alpha, beta].count(None) == 2
+    xrtfr = self.xray_target_functor_result(compute_gradients = True,
+                                            alpha             = alpha,
+                                            beta              = beta,
+                                            scale_ml          = None,
+                                            flag              = "work")
+    result = structure_factor_gradients(
+         mean_displacements = None,
+         d_target_d_f_calc  = xrtfr.derivatives(),
+         xray_structure     = self.xray_structure,
+         gradient_flags     = xray_gradient_flags,
+         n_parameters       = 0,
+         miller_set         = self.f_obs_w(),
+         algorithm          = self.sf_algorithm)
+    return result.d_target_d_u_cart()
+
+
 
   def gradient_wrt_xyz(self, selection = None):
     structure_factor_gradients = cctbx.xray.structure_factors.gradients(

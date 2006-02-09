@@ -12,7 +12,7 @@
 namespace mmtbx { namespace tls {
 namespace {
   boost::python::tuple
-  getinitargs(params<> const& self)
+  getinitargs(tlso<> const& self)
   {
     return boost::python::make_tuple(self.t, self.l, self.s);
   }
@@ -31,6 +31,22 @@ namespace {
                                   vec3<double> const&>())
       .def("u", &uaniso_from_tls::u)
     ;
+
+    class_<d_target_d_tls>("d_target_d_tls",
+                           init<af::shared<vec3<double> > const&,
+                                vec3<double> const&,
+                                af::shared<sym_mat3<double> > const&,
+                                bool>(
+                                   (arg_("sites"),
+                                    arg_("origin"),
+                                    arg_("d_target_d_uaniso"),
+                                    arg_("scale_l_and_s"))))
+      .def("grad_T", &d_target_d_tls::grad_T)
+      .def("grad_L", &d_target_d_tls::grad_L)
+      .def("grad_S", &d_target_d_tls::grad_S)
+    ;
+
+
     class_<tls_from_uaniso_target_and_grads>("tls_from_uaniso_target_and_grads",
                              init<sym_mat3<double> const&,
                                   sym_mat3<double> const&,
@@ -42,30 +58,6 @@ namespace {
       .def("grad_T", &tls_from_uaniso_target_and_grads::grad_T)
       .def("grad_L", &tls_from_uaniso_target_and_grads::grad_L)
       .def("grad_S", &tls_from_uaniso_target_and_grads::grad_S)
-    ;
-    class_<tls_xray_target_grads>("tls_xray_target_grads",
-                             init<af::const_ref<cctbx::miller::index<> > const&,
-                                  af::const_ref<double> const&,
-                                  af::const_ref< std::complex<double> > const&,
-                                  cctbx::uctbx::unit_cell const&,
-                                  af::const_ref<vec3<double> > const&,
-                                  af::shared<sym_mat3<double> > const&,
-                                  cctbx::xray::scattering_type_registry const&,
-                                  af::const_ref<cctbx::xray::scatterer<> > const&,
-                                  af::const_ref<int> const& >())
-      .def("target",&tls_xray_target_grads::target)
-      .def("gradTLS", &tls_xray_target_grads::gradTLS)
-    ;
-    typedef return_value_policy<return_by_value> rbv;
-    class_<params<> >("params")
-      .def(init<scitbx::sym_mat3<double> const&,
-                scitbx::sym_mat3<double> const&,
-                scitbx::mat3<double> const& >())
-      .add_property("t", make_getter(&params<>::t, rbv()))
-      .add_property("l", make_getter(&params<>::l, rbv()))
-      .add_property("s", make_getter(&params<>::s, rbv()))
-      .enable_pickling()
-      .def("__getinitargs__", getinitargs)
     ;
     typedef return_value_policy<return_by_value> rbv;
     class_<tlso<> >("tlso")
@@ -80,16 +72,6 @@ namespace {
       .add_property("origin", make_getter(&tlso<>::origin, rbv()))
       .enable_pickling()
       .def("__getinitargs__", getinitargs)
-    ;
-    scitbx::af::boost_python::shared_wrapper<params<> >::wrap("shared_params");
-    class_<gT_gL_gS>("gT_gL_gS",
-                     init<vec3<double> const&,
-                          cctbx::uctbx::unit_cell const& ,
-                          vec3<double> const& ,
-                          cctbx::miller::index<> const&>())
-      .def("grad_T", &gT_gL_gS::grad_T)
-      .def("grad_L", &gT_gL_gS::grad_L)
-      .def("grad_S", &gT_gL_gS::grad_S)
     ;
     def("uaniso_from_tls_one_group",
          (af::shared<sym_mat3<double> >(*)
