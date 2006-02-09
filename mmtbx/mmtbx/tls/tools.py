@@ -291,7 +291,8 @@ class tls_xray_grads(object):
             sites             = fmodel.xray_structure.sites_cart().select(sel),
             origin            = tlso.origin,
             d_target_d_uaniso = d_target_d_uaniso.select(sel),
-            scale_l_and_s     = True)
+            scale_l_and_s     = True,
+            use_trace_s_zero_constraint = True)
          self.grad_T.append(list(d_target_d_tls_manager.grad_T()))
          self.grad_L.append(list(d_target_d_tls_manager.grad_L()))
          self.grad_S.append(list(d_target_d_tls_manager.grad_S()))
