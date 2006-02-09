@@ -36,11 +36,13 @@ namespace {
                            init<af::shared<vec3<double> > const&,
                                 vec3<double> const&,
                                 af::shared<sym_mat3<double> > const&,
+                                bool,
                                 bool>(
                                    (arg_("sites"),
                                     arg_("origin"),
                                     arg_("d_target_d_uaniso"),
-                                    arg_("scale_l_and_s"))))
+                                    arg_("scale_l_and_s"),
+                                    arg_("use_trace_s_zero_constraint"))))
       .def("grad_T", &d_target_d_tls::grad_T)
       .def("grad_L", &d_target_d_tls::grad_L)
       .def("grad_S", &d_target_d_tls::grad_S)

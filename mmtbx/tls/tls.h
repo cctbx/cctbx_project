@@ -156,14 +156,16 @@ public:
   d_target_d_tls(af::shared<vec3<double> > const& sites,
                  vec3<double> const& origin,
                  af::shared<sym_mat3<double> > const& d_target_d_uaniso,
-                 bool scale_l_and_s)
+                 bool scale_l_and_s,
+                 bool use_trace_s_zero_constraint)
   {
     gT.resize(6,0.0);
     gL.resize(6,0.0);
     gS.resize(9,0.0);
     for (std::size_t i=0; i < sites.size(); i++) {
          vec3<double> const& site = sites[i];
-         d_uaniso_d_tls d_uaniso_d_tls_manager(origin,site,scale_l_and_s,true);
+         d_uaniso_d_tls d_uaniso_d_tls_manager(origin,site,scale_l_and_s,
+                                                  use_trace_s_zero_constraint);
          sym_mat3<sym_mat3<double> > d_u_d_T =d_uaniso_d_tls_manager.d_u_d_T();
          sym_mat3<sym_mat3<double> > d_u_d_L =d_uaniso_d_tls_manager.d_u_d_L();
          mat3<sym_mat3<double> >     d_u_d_S =d_uaniso_d_tls_manager.d_u_d_S();
@@ -217,7 +219,7 @@ public:
          }
          diffs.push_back(diff*2.);
     }
-    d_target_d_tls  d_target_d_tls_manager(sites, origin, diffs, false);
+    d_target_d_tls  d_target_d_tls_manager(sites, origin, diffs, false, false);
     gT = d_target_d_tls_manager.grad_T();
     gL = d_target_d_tls_manager.grad_L();
     gS = d_target_d_tls_manager.grad_S();
