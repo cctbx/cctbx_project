@@ -1,13 +1,9 @@
+# A *VERY* lightweight graph class
+# More efficient implementation can be found in the BPL
+#
+# For my (PHZ) purposes, a simple, leightweight python
+# implementation was good enough
 import sys, os
-
-# This graph class is intended as follows
-#
-# self.object: a python dictionairy with a text label:data object dictionary
-# self.in: incomming edges/nodes
-# self.out: outgoing edges/nodes
-#
-# weights to edges are not supported in this particular class
-# but can be if desired
 
 class graph(object):
   def __init__(self):
@@ -109,7 +105,11 @@ class graph(object):
 
   def is_contained_in(self,
                       new_graph):
-    # check if self is a sub graph of new_graph
+    # This routine does !NOT! compare topologies
+    # but relies on nodes being named in the same way
+    # It compares the incommnig and outygoing connections
+    # More efficient implementations might be possible
+    #
     new_graph.assert_is_clean()
 
     is_contained_in = True
@@ -143,6 +143,44 @@ class graph(object):
       is_equivalent = False
 
     return is_equivalent
+
+
+  def find_all_paths(self, start, end, path=[]):
+    ## please check
+    ## http://www.python.org/doc/essays/graphs.html
+    path = path + [start]
+    if start == end:
+      return [path]
+    if not self.o.has_key(start):
+      return []
+    paths = []
+    for node in self.o[start]:
+      if node not in path:
+        newpaths = self.find_all_paths(node, end, path)
+        for newpath in newpaths:
+          paths.append(newpath)
+    return paths
+
+
+  def find_shortest_path(self, start, end, path=[]):
+    ## please check
+    ## http://www.python.org/doc/essays/graphs.html
+    ## This is not the most optimal way of doing it
+    ## and a proper Dijkstra method might be implemented at a later stage
+
+    path = path + [start]
+    if start == end:
+      return path
+    if not self.o.has_key(start):
+      return None
+    shortest = None
+    for node in self.o[start]:
+      if node not in path:
+        newpath = self.find_shortest_path(node, end, path)
+        if newpath:
+          if not shortest or len(newpath) < len(shortest):
+            shortest = newpath
+    return shortest
 
 
   def show(self,out=None):
