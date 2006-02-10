@@ -189,7 +189,8 @@ class graph(object):
     print >> out
     for node_1 in self.edge_objects:
       for node_2 in self.edge_objects[ node_1 ] :
-        print node_1, node_2, "--->",  self.edge_objects[ node_1 ][ node_2 ]
+        print node_1 , " ---> ", node_2 , " :: ",  \
+              self.edge_objects[ node_1 ][ node_2 ]
     print >> out
     print >> out, "----------------------------"
     print >> out
