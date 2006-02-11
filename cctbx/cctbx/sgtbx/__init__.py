@@ -80,7 +80,7 @@ class space_group_info(object):
     if (not hasattr(cache, "_direct_space_asu")):
       reference_asu = reference_table.get_asu(self.type().number())
       cache._direct_space_asu = reference_asu.change_basis(
-        self.type().cb_op().inverse())
+        self.change_of_basis_op_to_reference_setting().inverse())
     return cache._direct_space_asu
 
   def brick(self):
@@ -104,11 +104,14 @@ class space_group_info(object):
   def reference_setting(self):
     return space_group_info(symbol=self.type().number())
 
+  def change_of_basis_op_to_reference_setting(self):
+    return self.type().cb_op()
+
   def is_reference_setting(self):
-    return self.type().cb_op().is_identity_op()
+    return self.change_of_basis_op_to_reference_setting().is_identity_op()
 
   def as_reference_setting(self):
-    return self.change_basis(self.type().cb_op())
+    return self.change_basis(self.change_of_basis_op_to_reference_setting())
 
   def change_basis(self, cb_op):
     if (isinstance(cb_op, str)):
@@ -123,7 +126,7 @@ class space_group_info(object):
 
   def reflection_intensity_equivalent_groups(self, anomalous_flag=True):
     result = []
-    cb_op = self.type().cb_op()
+    cb_op = self.change_of_basis_op_to_reference_setting()
     reference_group = self.change_basis(cb_op=cb_op).group()
     reference_crystal_system = reference_group.crystal_system()
     reference_reflection_intensity_group = reference_group \
@@ -164,7 +167,8 @@ class space_group_info(object):
       params = (1., 1., 1.7, 90, 90, 120)
     else:
       params = (1., 1., 1., 90, 90, 90)
-    unit_cell = self.type().cb_op().inverse().apply(uctbx.unit_cell(params))
+    unit_cell = self.change_of_basis_op_to_reference_setting().inverse().apply(
+      uctbx.unit_cell(params))
     f = (volume / unit_cell.volume())**(1/3.)
     params = list(unit_cell.parameters())
     for i in xrange(3): params[i] *= f
