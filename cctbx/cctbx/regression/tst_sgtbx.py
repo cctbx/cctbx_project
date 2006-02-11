@@ -30,6 +30,7 @@ def exercise_space_group_info():
   assert str(i) == str(j)
   i = sgtbx.space_group_info("B 2", "i")
   assert not i.is_reference_setting()
+  assert str(i.change_of_basis_op_to_reference_setting().c()) == "-x,z,y"
   assert str(i.reference_setting()) == "C 1 2 1"
   assert str(i.as_reference_setting()) == "C 1 2 1"
   assert str(i.primitive_setting()) == "Hall:  C 2y (-x+y,z,x+y)"
