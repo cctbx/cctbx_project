@@ -101,7 +101,7 @@ def patch_windows_dispatcher(
 def write_incomplete_libtbx_environment(f):
   message = [
     "*******************************************",
-    "Fatal Error: Incomplete libtbx environment!",
+    "Fatal Error: Incomplete libtbx environment\\!",
     "*******************************************",
     "Please re-run the libtbx/configure.py command."]
   if (os.name != "nt"):
@@ -778,7 +778,7 @@ class environment:
     setpaths = unix_setpaths(self, "sh", suffix)
     s, u = setpaths.s, setpaths.u
     for f in s, u:
-      print >> f, 'libtbx_pythonhome_save="$PYTHONHOME"'
+      print >> f, 'libtbx_pyhome_save="$PYTHONHOME"'
       print >> f, 'unset PYTHONHOME'
       print >> f, '"%s" -V > /dev/null 2>&1' % self.python_exe
       print >> f, 'if [ $? -ne 0 -o ! -f "%s" ]; then' % self.path_utility
@@ -792,18 +792,18 @@ class environment:
     setpaths.all_and_debug()
     for f in s, u:
       print >> f, 'fi'
-      print >> f, 'if [ -n "$libtbx_pythonhome_save" ]; then'
-      print >> f, '  PYTHONHOME="$libtbx_pythonhome_save"'
+      print >> f, 'if [ -n "$libtbx_pyhome_save" ]; then'
+      print >> f, '  PYTHONHOME="$libtbx_pyhome_save"'
       print >> f, '  export PYTHONHOME'
       print >> f, 'fi'
-      print >> f, 'unset libtbx_pythonhome_save'
+      print >> f, 'unset libtbx_pyhome_save'
 
   def write_setpaths_csh(self, suffix):
     setpaths = unix_setpaths(self, "csh", suffix)
     s, u = setpaths.s, setpaths.u
     for f in s, u:
       print >> f, 'if ($?PYTHONHOME) then'
-      print >> f, '  set libtbx_pythonhome_save="$PYTHONHOME"'
+      print >> f, '  set libtbx_pyhome_save="$PYTHONHOME"'
       print >> f, '  unsetenv PYTHONHOME'
       print >> f, 'endif'
       print >> f, '"%s" -V >& /dev/null' % self.python_exe
@@ -818,9 +818,9 @@ class environment:
     setpaths.all_and_debug()
     for f in s, u:
       print >> f, 'endif'
-      print >> f, 'if ($?libtbx_pythonhome_save) then'
-      print >> f, '  setenv PYTHONHOME "$libtbx_pythonhome_save"'
-      print >> f, '  unset libtbx_pythonhome_save'
+      print >> f, 'if ($?libtbx_pyhome_save) then'
+      print >> f, '  setenv PYTHONHOME "$libtbx_pyhome_save"'
+      print >> f, '  unset libtbx_pyhome_save'
       print >> f, 'endif'
 
   def write_setpaths_bat(self, suffix):
