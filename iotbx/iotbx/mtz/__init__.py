@@ -119,7 +119,7 @@ def are_anomalous_labels(sign, labels):
     if (not is_anomalous_label(sign, label)): return False
   return True
 
-class label_decorator(object):
+class label_decorator(__builtins__["object"]):
 
   def __init__(self,
         anomalous_plus_suffix="(+)",
