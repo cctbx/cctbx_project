@@ -39,10 +39,16 @@ class DetectorImageBase(object):
       self.linearintdata = Bin2_by_2(self.linearintdata)
 
   def debug_write(self,fileout,mod_data=None):
+    if not self.parameters.has_key("TWOTHETA"):
+      self.parameters["TWOTHETA"]=0.0
+    if self.getEndian()==1:
+      self.parameters["BYTE_ORDER"]="big_endian"
+    else:
+      self.parameters["BYTE_ORDER"]="little_endian"
     info = """{
 HEADER_BYTES= 1024;
 DIM=2;
-BYTE_ORDER=little_endian;
+BYTE_ORDER=%(BYTE_ORDER)s;
 TYPE=unsigned_short;
 SIZE1=%(SIZE1)4d;
 SIZE2=%(SIZE1)4d;
