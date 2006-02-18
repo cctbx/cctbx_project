@@ -1,4 +1,5 @@
 from cctbx import sgtbx
+#from cctbx import crystal
 
 class find_best_cell(object):
 
@@ -72,19 +73,178 @@ class find_best_cell(object):
   def all_cells(self):
     return self._all_cells
 
+
+# this class is an implementation of an alternative method
+# of finding the best cell. The above algorithm only works well for
+# point groups. When translations are available in the SG,
+# space group changes might occur.
+# This class does the following: it determines axis permutiatons
+# that do not change the spacegroup. Those axis permutations can
+# than be used to transform the *lattice only*(!). from the new
+# possible unit cells, the one which has all
+
+class alternative_find_best_cell(object):
+  def __init__(self,
+               unit_cell,
+               space_group,
+               assume_incomming_is_in_reference_setting=False):
+    from cctbx import crystal
+
+    self.unit_cell = unit_cell
+    self.xs = crystal.symmetry( self.unit_cell, space_group=space_group)
+    self.sg_info = sgtbx.space_group_info(group=space_group)
+    self.hall_symbol = self.sg_info.type().hall_symbol()
+    self.best_cell = None
+    self.best_cb_op = sgtbx.change_of_basis_op( 'x,y,z' )
+
+    if not assume_incomming_is_in_reference_setting:
+      # as we don't assume it is in the reference seetnig, we have to
+      # change thnisg to the reference seeting accordinly
+      tmp = self.xs.change_of_basis_op_to_niggli_cell()
+      tmp = tmp*self.sg_info.change_of_basis_op_to_reference_setting()
+      # we go via the niggli cell, in order to make sure that P1 has
+      # a proper setting as well
+      self.xs = self.xs.change_basis( tmp )
+      self.unit_cell = self.xs.unit_cell()
+      self.sg_info.change_basis( tmp )
+      self.hall_symbol = self.sg_info.type().hall_symbol()
+      self.best_cb_op = self.best_cb_op*tmp
+
+
+    # note that the order in which the operators are checked is important!
+    self.axes_permut = [ sgtbx.change_of_basis_op( 'x,y,z' ),# this will work
+
+                         sgtbx.change_of_basis_op( '-x,z,y' ),# this might for pxxy
+                         sgtbx.change_of_basis_op( 'y,x,-z' ),# this might for pxxy
+                         sgtbx.change_of_basis_op( 'z,-y,x' ),# this might for pxxy
+
+                         sgtbx.change_of_basis_op( 'z,x,y' ),# this not for pxxy
+                         sgtbx.change_of_basis_op( 'y,z,x' ) # this not for pxxy
+                         ]
+
+    fix_flags = ['Ignore',0,2,1,None,None]
+
+    self.allowed_cb_ops = [sgtbx.change_of_basis_op( 'x,y,z' )]
+
+    fixed_element = None
+
+    identity_op = sgtbx.change_of_basis_op( 'x,y,z' ).c().r()
+
+    for cb_op, fixed in zip(self.axes_permut[1:],
+                            fix_flags[1:]): # leave alone the first op
+      sg_new = self.sg_info.change_basis( cb_op )
+      sg_new_hall_symbol = sg_new.type().hall_symbol()
+
+      cp_op_to_ref_rotational_part = \
+        sg_new.change_of_basis_op_to_reference_setting().c().r()
+      if  cp_op_to_ref_rotational_part == identity_op :
+        # cb_op leaves sg invariant
+        self.allowed_cb_ops.append( cb_op )
+        #if fixed_element == None: #this works becuase there is only one fixed element
+        fixed_element = fixed
+
+    # we now have allowed cb ops, as well as an indication which axis is fixed
+    # we can now very easely generate all p;ossible cells
+    # and check for order of cell axes among non fixed cel constants
+    # the one that has all constants in proper order, is the things we are interested in
+    # cell axis order is only an issue in
+    # triclinic space groups
+    # monoclinic spacegroups
+    # orthorhombic spacegroups
+    # for other sg's the order is fixed by the symmetry
+
+    self.unit_cell_array = [ unit_cell ]
+    self.order_check_array =  [self.order_check( unit_cell, fixed )]
+
+    for cb_op in  self.allowed_cb_ops[1:]:
+      tmp_uc = self.xs.change_basis( cb_op ).unit_cell()
+      self.unit_cell_array.append( tmp_uc )
+      self.order_check_array.append( self.order_check( tmp_uc, fixed_element ) )
+    self.find_it()
+
+
+  def order_check(self, unit_cell, fixed=None):
+    prefered_order = False
+    abc = [ unit_cell.parameters()[0],
+            unit_cell.parameters()[1],
+            unit_cell.parameters()[2] ]
+    if fixed == None:
+      if abc[0] <= abc[1]:
+        if abc[1] <= abc[2]:
+          prefered_order=True
+
+    else:
+      assert fixed >= 0
+      assert fixed <= 2
+      tmp_abc = []
+      for ii in xrange(3):
+        if ii != fixed:
+          tmp_abc.append( abc[ ii ] )
+      if tmp_abc[0] <= tmp_abc[1]:
+        prefered_order = True
+
+    return prefered_order
+
+  def find_it(self):
+    # check how many trues we have
+    n_true = ( self.order_check_array ).count(True)
+    best_index = None
+    if n_true == 1: # there is only one solution
+      best_index = self.order_check_array.index( True )
+    else: # there is more then one possible solution, use the first solution one encounters
+      for order, cb_op in zip( self.order_check_array,
+                               self.allowed_cb_ops ):
+        ucc = self.xs.change_basis( cb_op ).unit_cell()
+
+      #assert  self.order_check_array[0]
+      best_index = 0
+
+    self.best_cell = self.xs.change_basis( self.allowed_cb_ops[ best_index ] ).unit_cell()
+
+    self.best_cb_op = self.best_cb_op * self.allowed_cb_ops[ best_index ]
+
+  def return_best_cell(self):
+    return self.best_cell
+
+  def return_change_of_basis_op_to_best_cell(self):
+    return self.best_cb_op
+
+
+def exercise_alternative():
+  from cctbx import crystal
+  cb_op = sgtbx.change_of_basis_op("y,z,x")
+  for space_group_number in range(16,73):
+    sgi = sgtbx.space_group_info(symbol=space_group_number)
+    uc = sgi.any_compatible_unit_cell(volume=1000)
+    xs = crystal.symmetry(unit_cell=uc, space_group_info=sgi).change_basis(cb_op)
+
+    abest = alternative_find_best_cell( xs.unit_cell(),
+                                        sgi.group() )
+    print "Space group : ", sgi
+    print "Unit cell   : ", abest.return_best_cell().parameters()
+    print "cb op       : ", abest.return_change_of_basis_op_to_best_cell().as_xyz()
+    print "N cb op     : ", len( abest.allowed_cb_ops )
+    print
+    print
+
+
+
 def exercise():
   from cctbx import crystal
   cb_op = sgtbx.change_of_basis_op("y,z,x")
-  for space_group_number in [1] + range(3,76):
+  for space_group_number in [1] + range(3,73):
     sgi = sgtbx.space_group_info(symbol=space_group_number)
     uc = sgi.any_compatible_unit_cell(volume=1000)
-    best = find_best_cell(
-      crystal.symmetry(unit_cell=uc, space_group_info=sgi).change_basis(cb_op),
-      angular_tolerance=3)
+
+    xs = crystal.symmetry(unit_cell=uc, space_group_info=sgi).change_basis(cb_op)
+
+    best = find_best_cell(xs,angular_tolerance=3)
     best.symmetry().show_summary()
+    print best.cb_op().as_xyz()
     print best.cb_op().c()
     print len(best.all_cells())
     print
 
 if (__name__ == "__main__"):
+  exercise_alternative()
   exercise()
