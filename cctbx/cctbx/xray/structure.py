@@ -261,6 +261,28 @@ class structure(crystal.special_position_settings):
   def convert_to_anisotropic(self):
     self._scatterers.convert_to_anisotropic(unit_cell=self.unit_cell())
 
+  def show_u_statistics(self, text="", out=None):
+    if(out is None): out = sys.stdout
+    size = self._scatterers.size()
+    n_anisotropic = self._scatterers.count_anisotropic()
+    n_isotropic = size - n_anisotropic
+    ipd = self.is_positive_definite_u()
+    npd = ipd.count(True)
+    nnpd = ipd.count(False)
+    bisos = self.extract_u_iso_or_u_equiv() * 8*math.pi**2
+    part1 = "|-"+text
+    part2 = "-|"
+    n = 79 - len(part1+part2)
+    print >> out, part1 + "-"*n + part2
+    part1 = "| Total number of ADPs = %-d%-s"%(size,":")
+    n = 79 - len(part1 + "|")
+    print >> out, part1+" "*n+"|"
+    print >> out, "|   iso = %-5d   aniso = %-5d   pos. def. = %-5d   "\
+                "non-pos. def. = %-5d   |"%(n_isotropic,n_anisotropic,npd,nnpd)
+    print >> out, "| Equivalent B: min = %-6.2f   max = %-6.2f   mean ="\
+        " %-6.2f"%(flex.min(bisos),flex.max(bisos),flex.mean(bisos))+" "*19+"|"
+    print >> out, "|" +"-"*77+"|"
+
   def site_symmetry_table(self):
     return self._site_symmetry_table
 
