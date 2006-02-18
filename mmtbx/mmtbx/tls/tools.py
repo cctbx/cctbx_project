@@ -6,10 +6,11 @@ from scitbx import lbfgs
 from mmtbx_tls_ext import *
 from libtbx import adopt_init_args
 from libtbx.test_utils import approx_equal
-
+import copy
 
 class show_tls(object):
-   def __init__(self, tlsos, text=""):
+   def __init__(self, tlsos, text="", out=None):
+     if(out is None): out = sys.stdout
      counter = 0
      formatT ="|T11=%8.4f T22=%8.4f T33=%8.4f T12=%8.4f T13=%8.4f T23=%8.4f|"
      formatL ="|L11=%8.4f L22=%8.4f L33=%8.4f L12=%8.4f L13=%8.4f L23=%8.4f|"
@@ -19,23 +20,24 @@ class show_tls(object):
      part1 = "|-"+text
      part2 = "-|"
      n = 79 - len(part1+part2)
-     print  part1 + "-"*n + part2
+     print >> out, part1 + "-"*n + part2
      for item in tlsos:
          counter += 1
          T = item.t
          L = item.l
          S = item.s
          origin = item.origin
-         print "|TLS group number %d: " % counter+" "*57+"|"
-         print "|"+" "*15+"Origin (x,y,z) = %9.4f %9.4f %9.4f"%\
+         print >> out, "|TLS group number %d: " % counter+" "*57+"|"
+         print >> out, "|"+" "*15+"Origin (x,y,z) = %9.4f %9.4f %9.4f"%\
                                      (origin[0],origin[1],origin[2])+" "*16+"|"
-         print formatT % (T[0],T[1],T[2],T[3],T[4],T[5])
-         print formatL % (L[0],L[1],L[2],L[3],L[4],L[5])
-         print formatS % (S[0],S[4],S[8],S[1],S[2],S[3],S[5],S[6],S[7])
-     print "|" +"-"*77+"|"
+         print >> out, formatT % (T[0],T[1],T[2],T[3],T[4],T[5])
+         print >> out, formatL % (L[0],L[1],L[2],L[3],L[4],L[5])
+         print >> out, formatS % (S[0],S[4],S[8],S[1],S[2],S[3],S[5],S[6],S[7])
+     print >> out, "|" +"-"*77+"|"
 
 class show_tls_one_group(object):
-   def __init__(self, tlso, text=""):
+   def __init__(self, tlso, text="", out=None):
+     if(out is None): out = sys.stdout
      counter = 0
      formatT ="|T11=%8.4f T22=%8.4f T33=%8.4f T12=%8.4f T13=%8.4f T23=%8.4f|"
      formatL ="|L11=%8.4f L22=%8.4f L33=%8.4f L12=%8.4f L13=%8.4f L23=%8.4f|"
@@ -45,19 +47,19 @@ class show_tls_one_group(object):
      part1 = "|-"+text
      part2 = "-|"
      n = 79 - len(part1+part2)
-     print  part1 + "-"*n + part2
+     print >> out,part1 + "-"*n + part2
      for item in tlso:
          counter += 1
          T = item.t
          L = item.l
          S = item.s
          origin = item.origin
-         print "|"+" "*15+"Origin (x,y,z) = %9.4f %9.4f %9.4f"%\
+         print >> out, "|"+" "*15+"Origin (x,y,z) = %9.4f %9.4f %9.4f"%\
                                      (origin[0],origin[1],origin[2])+" "*16+"|"
-         print formatT % (T[0],T[1],T[2],T[3],T[4],T[5])
-         print formatL % (L[0],L[1],L[2],L[3],L[4],L[5])
-         print formatS % (S[0],S[4],S[8],S[1],S[2],S[3],S[5],S[6],S[7])
-     print "|" +"-"*77+"|"
+         print >> out, formatT % (T[0],T[1],T[2],T[3],T[4],T[5])
+         print >> out, formatL % (L[0],L[1],L[2],L[3],L[4],L[5])
+         print >> out, formatS % (S[0],S[4],S[8],S[1],S[2],S[3],S[5],S[6],S[7])
+     print >> out, "|" +"-"*77+"|"
 
 def uanisos_from_tls(sites_cart, selections, tlsos):
   uanisos = flex.sym_mat3_double()
@@ -71,12 +73,16 @@ def tls_from_uanisos(xray_structure,
                      selections,
                      tlsos_initial,
                      number_of_macro_cycles = 3000,
-                     text = ""):
-  if(len(text) == 0):
-     print "\nFit TLS to individual atomic U_cart\n"
-  else:
-     print text
-  show_tls(tlsos = tlsos_initial, text  = "TLS from ADP: start TLS values")
+                     max_iterations         = 1000,
+                     refine_T               = True,
+                     refine_L               = True,
+                     refine_S               = True,
+                     verbose                = -1,
+                     out                    = None):
+  if(out is None): out = sys.stdout
+  if(verbose > 0):
+     show_tls(tlsos = tlsos_initial,
+              text  = "TLS from ADP: start TLS values", out = out)
   assert xray_structure.scatterers().count_anisotropic() == \
                                              xray_structure.scatterers().size()
   u_cart=xray_structure.scatterers().extract_u_cart(xray_structure.unit_cell())
@@ -99,32 +105,38 @@ def tls_from_uanisos(xray_structure,
                                               T_initial = T_initial,
                                               L_initial = L_initial,
                                               S_initial = S_initial,
-                                              refine_T  = True,
-                                              refine_L  = True,
-                                              refine_S  = True,
+                                              refine_T  = refine_T,
+                                              refine_L  = refine_L,
+                                              refine_S  = refine_S,
+                                              max_iterations = max_iterations,
                                               origin    = tlso_initial.origin,
                                               sites     = sites_cart_selected)
-        T_initial = minimized.T_min
-        L_initial = minimized.L_min
-        S_initial = minimized.S_min
+        if(T_initial): T_initial = minimized.T_min
+        else:          assert approx_equal(T_initial, minimized.T_min)
+        if(L_initial): L_initial = minimized.L_min
+        else:          assert approx_equal(L_initial, minimized.L_min)
+        if(S_initial): S_initial = minimized.S_min
+        else:          assert approx_equal(S_initial, minimized.S_min)
         target_stop = minimized.f
         if(abs(target_stop - target_start) < 1.e-30): stop_flag += 1
         if(stop_flag == 3):
-          print "convergence at step ", i
+          if(verbose > 0): print >> out, "convergence at step ", i
           break
-        if(i%250 == 0):
-           print "done %4d"%i, " cycles out of %4d"%number_of_macro_cycles, " cycles"
+        if(i%250 == 0 and verbose > 0):
+           print >> out, "done %4d"%i, " cycles out of %4d"%\
+                                              number_of_macro_cycles, " cycles"
 
       T_min.append(minimized.T_min)
       L_min.append(minimized.L_min)
       S_min.append(minimized.S_min)
-  tlsos_result = []
-  for T,L,S,tlso_initial_ in zip(T_min,L_min,S_min, tlsos_initial):
-      tlsos_result.append(tlso(t = T,
-                               l = L,
-                               s = S,
-                               origin = tlso_initial_.origin))
-  show_tls(tlsos = tlsos_result, text  = "TLS from ADP: final TLS values")
+  tlsos_result = generate_tlsos(selections     = selections,
+                                xray_structure = xray_structure,
+                                T              = T_min,
+                                L              = L_min,
+                                S              = S_min)
+  if(verbose > 0):
+     show_tls(tlsos = tlsos_result,
+              text  = "TLS from ADP: final TLS values", out = out)
   return tlsos_result
 
 class tls_from_uaniso_minimizer(object):
@@ -138,8 +150,7 @@ class tls_from_uaniso_minimizer(object):
                refine_S,
                origin,
                sites,
-               max_iterations=1000,
-               max_calls=1000):
+               max_iterations):
     adopt_init_args(self, locals())
     self.dim_T = len(self.T_initial)
     self.dim_L = len(self.L_initial)
@@ -154,7 +165,7 @@ class tls_from_uaniso_minimizer(object):
                              target_evaluator = self,
                              termination_params = lbfgs.termination_parameters(
                                   max_iterations = max_iterations,
-                                  max_calls = max_calls)
+                                  max_calls      = int(max_iterations*1.1))
                               )
     self.compute_functional_and_gradients()
     del self.x
@@ -201,6 +212,7 @@ class tls_xray_target_minimizer(object):
                max_iterations,
                run_finite_differences_test = False):
     adopt_init_args(self, locals())
+    self.run_finite_differences_test_counter = 0
     self.T_initial = []
     self.L_initial = []
     self.S_initial = []
@@ -224,7 +236,7 @@ class tls_xray_target_minimizer(object):
          target_evaluator = self,
          termination_params = lbfgs.termination_parameters(
               min_iterations = max_iterations,
-              max_calls = max_iterations*2))
+              max_calls = int(max_iterations*1.1)))
     self.compute_functional_and_gradients()
     del self.x
     self.tlsos_result = generate_tlsos(
@@ -270,12 +282,11 @@ class tls_xray_target_minimizer(object):
       S_new.append(zz)
     self.S_min = S_new
 
-    tlsos = []
-    for T,L,S,origin in zip(self.T_min, self.L_min, self.S_min, self.origins):
-        tlsos.append(tlso(t      = T,
-                          l      = L,
-                          s      = S,
-                          origin = origin))
+    tlsos = generate_tlsos(selections     = self.selections,
+                           xray_structure = self.fmodel_copy.xray_structure,
+                           T              = self.T_min,
+                           L              = self.L_min,
+                           S              = self.S_min)
     new_xrs = update_xray_structure_with_tls(
                               xray_structure = self.fmodel_copy.xray_structure,
                               selections     = self.selections,
@@ -290,13 +301,15 @@ class tls_xray_target_minimizer(object):
     #qqq = new_xrs.scatterers().extract_u_iso_or_u_equiv(new_xrs.unit_cell())*scale
     #ipd = new_xrs.is_positive_definite_u()
     #print "%10.2f %10.2f %10.2f %5d %5d" % (flex.max(qqq), flex.min(qqq), flex.mean(qqq), \
-    #      ipd.count(True), ipd.count(False)),self.f
+    #      ipd.count(True), ipd.count(False)),self.f, self.counter
 
 
     self.g = self.pack(grad_manager.grad_T,
                        grad_manager.grad_L,
                        grad_manager.grad_S)
-    if(self.run_finite_differences_test):
+    if(self.run_finite_differences_test and
+       self.run_finite_differences_test_counter < 2):
+       self.run_finite_differences_test_counter += 1
        GT,GL,GS = finite_differences_grads_of_xray_target_wrt_tls(
                                                  fmodel     = self.fmodel_copy,
                                                  T          = self.T_min,
@@ -307,24 +320,23 @@ class tls_xray_target_minimizer(object):
                                                  delta      = 0.00001)
        format   = "%10.6f %10.6f %10.6f %10.6f %10.6f %10.6f"
        formats="%10.6f %10.6f %10.6f %10.6f %10.6f %10.6f %10.6f %10.6f %10.6f"
-       print "T"
        for m1,m2 in zip(grad_manager.grad_T, GT):
-           print "1=" + format % (m1[0],m1[1],m1[2],m1[3],m1[4],m1[5])
-           print "2=" + format % (m2[0],m2[1],m2[2],m2[3],m2[4],m2[5])
+           if(0):
+              print "T1=" + format % (m1[0],m1[1],m1[2],m1[3],m1[4],m1[5])
+              print "T2=" + format % (m2[0],m2[1],m2[2],m2[3],m2[4],m2[5])
            assert approx_equal(m1,m2)
-       print "L"
        for m1,m2 in zip(grad_manager.grad_L, GL):
-           print "1=" + format % (m1[0],m1[1],m1[2],m1[3],m1[4],m1[5])
-           print "2=" + format % (m2[0],m2[1],m2[2],m2[3],m2[4],m2[5])
+           if(0):
+              print "L1=" + format % (m1[0],m1[1],m1[2],m1[3],m1[4],m1[5])
+              print "L2=" + format % (m2[0],m2[1],m2[2],m2[3],m2[4],m2[5])
            assert approx_equal(m1,m2)
-       print "S"
        for m1,m2 in zip(grad_manager.grad_S, GS):
-           print "1=" + formats %\
+           if(0):
+              print "S1=" + formats %\
                         (m1[0],m1[1],m1[2],m1[3],m1[4],m1[5],m1[6],m1[7],m1[8])
-           print "2=" + formats %\
+              print "S2=" + formats %\
                         (m2[0],m2[1],m2[2],m2[3],m2[4],m2[5],m2[6],m2[7],m2[8])
            assert approx_equal(m1,m2)
-       print
     return self.f, self.g
 
 class tls_xray_grads(object):
@@ -365,53 +377,114 @@ class tls_refinement(object):
                       number_of_macro_cycles,
                       max_number_of_iterations,
                       start_tls_value = None,
-                      text            = ""):
-     if(len(text) == 0):
-        print "\nRefinement of TLS parameters against experimental xray data\n"
-     else: print text
-     fmodel.xray_structure.convert_to_anisotropic()
-     fmodel.xray_structure.tidy_us(u_min = 1.e-6)
+                      run_finite_differences_test = False,
+                      eps = 1.e-6,
+                      out=None):
+     if(out is None): out = sys.stdout
+     prefix = "TLS refinement:"
+     fmodel.xray_structure.show_u_statistics(text = prefix+" start model",
+                                             out  = out)
+     fmodel.show_targets(text = prefix+" start model", out = out)
+     xrs = fmodel.xray_structure
+     xrs.convert_to_isotropic()
+     xrs.convert_to_anisotropic()
+     xrs.tidy_us(u_min = eps)
      if(start_tls_value is not None):
         try:
           crash_or_not = abs(start_tls_value + 0)
           tlsos = generate_tlsos(value          = start_tls_value,
                                  selections     = selections,
-                                 xray_structure = fmodel.xray_structure)
+                                 xray_structure = xrs)
         except:
           tlsos = start_tls_value
      else:
         tlsos = generate_tlsos(value          = 0.0,
                                selections     = selections,
-                               xray_structure = fmodel.xray_structure)
-        text = "Getting start values for TLS refinement from fit to ADP"
-        tlsos = tls_from_uanisos(xray_structure        = fmodel.xray_structure,
-                                 selections            = selections,
-                                 tlsos_initial         = tlsos,
+                               xray_structure = xrs)
+        tlsos = tls_from_uanisos(xray_structure         = xrs,
+                                 selections             = selections,
+                                 tlsos_initial          = tlsos,
                                  number_of_macro_cycles = 100,
-                                 text                   = text)
-     show_tls(tlsos = tlsos, text = "Start values for TLS refinement")
-     print "TLS refinement starts:"
+                                 max_iterations         = 100)
+     show_tls(tlsos = tlsos, text = prefix+" start parameters",out = out)
      for macro_cycle in range(1, number_of_macro_cycles+1):
+         prefix = "TLS refinement: after macrocycle "+str(macro_cycle)
          minimized = tls_xray_target_minimizer(
-                                     fmodel         = fmodel,
-                                     tlsos_initial  = tlsos,
-                                     refine_T       = refine_T,
-                                     refine_L       = refine_L,
-                                     refine_S       = refine_S,
-                                     selections     = selections,
-                                     max_iterations = max_number_of_iterations)
-         fmodel.xray_structure.tidy_us(u_min = 1.e-6)
-         tlsos = minimized.tlsos_result
-         if(macro_cycle != number_of_macro_cycles):
-            text1 = "TLS after macrocycle "+str(macro_cycle)
-         else:
-            text1 = "TLS after macrocycle "+str(macro_cycle) + " (final)"
-         text2 = " target "+fmodel.target_name + " = " + str(minimized.f)
-         show_tls(tlsos = tlsos, text = text1+text2)
+                     fmodel                      = fmodel,
+                     tlsos_initial               = tlsos,
+                     refine_T                    = refine_T,
+                     refine_L                    = refine_L,
+                     refine_S                    = refine_S,
+                     selections                  = selections,
+                     max_iterations              = max_number_of_iterations,
+                     run_finite_differences_test = run_finite_differences_test)
+         xrs = minimized.fmodel_copy.xray_structure
+         xrs.show_u_statistics(text = prefix, out  = out)
+         show_tls(tlsos = minimized.tlsos_result, text = prefix, out = out)
+         fmodel.update_xray_structure(xray_structure = xrs,
+                                      update_f_calc  = True)
+         fmodel.show_targets(text = prefix, out = out)
+         if(xrs.is_positive_definite_u().count(False) > 0):
+            xrs.tidy_us(u_min = eps)
+            xrs.show_u_statistics(
+                              text = prefix+": after making positive definite",
+                              out  = out)
+            fmodel.update_xray_structure(xray_structure = xrs,
+                                         update_f_calc  = True)
+            fmodel.show_targets(text=prefix+": after making positive definite",
+                                out = out)
+            tlsos = make_tlso_compatible_with_u_positive_definite(
+                 tlsos                            = minimized.tlsos_result,
+                 xray_structure                   = xrs.deep_copy_scatterers(),
+                 selections                       = selections,
+                 max_iterations                   = 10,
+                 number_of_u_nonpositive_definite = 0,
+                 eps                              = eps,
+                 refine_T                         = refine_T,
+                 refine_L                         = refine_L,
+                 refine_S                         = refine_S,
+                 out                              = out,
+                 number_of_macro_cycles_for_tls_from_uanisos = 10)
+         else: tlsos = minimized.tlsos_result
      self.tlsos = tlsos
-     fmodel.update_xray_structure(
-                         xray_structure = minimized.fmodel_copy.xray_structure,
-                         update_f_calc  = True)
+     self.fmodel = fmodel
+
+def make_tlso_compatible_with_u_positive_definite(
+                                  xray_structure,
+                                  selections,
+                                  max_iterations,
+                                  number_of_u_nonpositive_definite,
+                                  eps,
+                                  number_of_macro_cycles_for_tls_from_uanisos,
+                                  tlsos=None,
+                                  refine_T=True,
+                                  refine_L=True,
+                                  refine_S=True,
+                                  out=None):
+  if(out is None): out = sys.stdout
+  for i in range(1, max_iterations+1):
+      xray_structure = update_xray_structure_with_tls(
+                                  xray_structure = xray_structure,
+                                  selections     = selections,
+                                  tlsos          = tlsos)
+      ipd_1 = xray_structure.is_positive_definite_u()
+      if(i == 1 or i == max_iterations):
+         xray_structure.show_u_statistics(out = out)
+      xray_structure.tidy_us(u_min = eps)
+      tlsos = tls_from_uanisos(
+          xray_structure         = xray_structure,
+          selections             = selections,
+          tlsos_initial          = tlsos,
+          refine_T               = refine_T,
+          refine_L               = refine_L,
+          refine_S               = refine_S,
+          max_iterations         = 100,
+          number_of_macro_cycles = number_of_macro_cycles_for_tls_from_uanisos)
+      if(i == max_iterations): xray_structure.show_u_statistics(out = out)
+      if(ipd_1.count(False) == number_of_u_nonpositive_definite):
+         break
+  assert xray_structure.is_positive_definite_u().count(False) == 0
+  return tlsos
 
 def generate_tlsos(selections,
                    xray_structure,
