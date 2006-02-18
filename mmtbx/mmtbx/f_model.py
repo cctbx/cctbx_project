@@ -1194,6 +1194,17 @@ class manager(object):
                                          resolution_factor = resolution_factor,
                                          symmetry_flags    = symmetry_flags)
 
+  def show_targets(self, out=None, text=""):
+    if(out is None): out = sys.stdout
+    part1 = "|-"+text
+    part2 = "-|"
+    n = 79 - len(part1+part2)
+    print >> out, part1 + "-"*n + part2
+    print >> out, \
+      "| target(ls_wunit_k1)_work = %.6e  r_work = %6.4f  r_free = %6.4f   |"%\
+      (self.target_w(), self.r_work(), self.r_free())
+    print >> out, "|" +"-"*77+"|"
+
   def show(self, out=None):
     if(out is None): out = sys.stdout
     print >> out, "f_calc          = ", self.f_calc

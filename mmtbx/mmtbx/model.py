@@ -134,10 +134,11 @@ class manager(object):
     self.group_b_selections = group_b_selections
     self.solvent_selection = new_solvent_selection
     self.xray_structure.scattering_type_registry()
-    self.restraints_manager = mmtbx.restraints.manager(
-            geometry      = self.restraints_manager.geometry.select(selection),
-            ncs_groups    = self.restraints_manager.ncs_groups,
-            normalization = self.restraints_manager.normalization)
+    if(self.restraints_manager is not None):
+       self.restraints_manager = mmtbx.restraints.manager(
+               geometry      = self.restraints_manager.geometry.select(selection),
+               ncs_groups    = self.restraints_manager.ncs_groups,
+               normalization = self.restraints_manager.normalization)
 
   def number_of_ordered_solvent_molecules(self):
     return self.solvent_selection.count(True)
