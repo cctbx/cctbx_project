@@ -98,12 +98,9 @@ class alternative_find_best_cell(object):
     self.best_cb_op = sgtbx.change_of_basis_op( 'x,y,z' )
 
     if not assume_incomming_is_in_reference_setting:
-      # as we don't assume it is in the reference seetnig, we have to
-      # change thnisg to the reference seeting accordinly
-      tmp = self.xs.change_of_basis_op_to_niggli_cell()
-      tmp = tmp*self.sg_info.change_of_basis_op_to_reference_setting()
-      # we go via the niggli cell, in order to make sure that P1 has
-      # a proper setting as well
+      # as we don't assume it is in the reference settnig, we have to
+      # change things to the reference seeting accordinly
+      tmp = self.sg_info.change_of_basis_op_to_reference_setting()
       self.xs = self.xs.change_basis( tmp )
       self.unit_cell = self.xs.unit_cell()
       self.sg_info.change_basis( tmp )
@@ -125,6 +122,7 @@ class alternative_find_best_cell(object):
     fix_flags = ['Ignore',0,2,1,None,None]
 
     self.allowed_cb_ops = [sgtbx.change_of_basis_op( 'x,y,z' )]
+    self.allowed_cb_ops_to_ref = [sgtbx.change_of_basis_op( 'x,y,z' )]
 
     fixed_element = None
 
@@ -138,9 +136,9 @@ class alternative_find_best_cell(object):
       cp_op_to_ref_rotational_part = \
         sg_new.change_of_basis_op_to_reference_setting().c().r()
       if  cp_op_to_ref_rotational_part == identity_op :
-        # cb_op leaves sg invariant
+        # cb_op leaves sg invariantapart from may an origin shift
         self.allowed_cb_ops.append( cb_op )
-        #if fixed_element == None: #this works becuase there is only one fixed element
+        self.allowed_cb_ops_to_ref.append( sg_new.change_of_basis_op_to_reference_setting() )
         fixed_element = fixed
 
     # we now have allowed cb ops, as well as an indication which axis is fixed
@@ -192,16 +190,20 @@ class alternative_find_best_cell(object):
     if n_true == 1: # there is only one solution
       best_index = self.order_check_array.index( True )
     else: # there is more then one possible solution, use the first solution one encounters
-      for order, cb_op in zip( self.order_check_array,
-                               self.allowed_cb_ops ):
-        ucc = self.xs.change_basis( cb_op ).unit_cell()
+      for order, cb_op, ii in zip( self.order_check_array,
+                                   self.allowed_cb_ops,
+                                   range( len(self.allowed_cb_ops) )
+                             ):
+        if order:
+          best_index = ii
+          break
 
-      #assert  self.order_check_array[0]
-      best_index = 0
+    self.best_cb_op = self.best_cb_op * self.allowed_cb_ops[ best_index ] * self.allowed_cb_ops_to_ref[ best_index ]
 
-    self.best_cell = self.xs.change_basis( self.allowed_cb_ops[ best_index ] ).unit_cell()
+    self.best_xs = self.xs.change_basis( self.allowed_cb_ops[ best_index ] * self.allowed_cb_ops_to_ref[ best_index ] )
 
-    self.best_cb_op = self.best_cb_op * self.allowed_cb_ops[ best_index ]
+    self.best_cell = self.best_xs.unit_cell()
+
 
   def return_best_cell(self):
     return self.best_cell
@@ -209,11 +211,14 @@ class alternative_find_best_cell(object):
   def return_change_of_basis_op_to_best_cell(self):
     return self.best_cb_op
 
+  def return_best_xs(self):
+    return self.best_xs
+
 
 def exercise_alternative():
   from cctbx import crystal
-  cb_op = sgtbx.change_of_basis_op("y,z,x")
-  for space_group_number in range(16,73):
+  cb_op = sgtbx.change_of_basis_op("x,y,z")
+  for space_group_number in range(1,231):
     sgi = sgtbx.space_group_info(symbol=space_group_number)
     uc = sgi.any_compatible_unit_cell(volume=1000)
     xs = crystal.symmetry(unit_cell=uc, space_group_info=sgi).change_basis(cb_op)
