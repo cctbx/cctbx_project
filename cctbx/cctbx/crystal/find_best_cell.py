@@ -152,7 +152,7 @@ class alternative_find_best_cell(object):
     # for other sg's the order is fixed by the symmetry
 
     self.unit_cell_array = [ unit_cell ]
-    self.order_check_array =  [self.order_check( unit_cell, fixed )]
+    self.order_check_array =  [self.order_check( unit_cell, fixed_element )]
 
     for cb_op in  self.allowed_cb_ops[1:]:
       tmp_uc = self.xs.change_basis( cb_op ).unit_cell()
@@ -190,10 +190,7 @@ class alternative_find_best_cell(object):
     if n_true == 1: # there is only one solution
       best_index = self.order_check_array.index( True )
     else: # there is more then one possible solution, use the first solution one encounters
-      for order, cb_op, ii in zip( self.order_check_array,
-                                   self.allowed_cb_ops,
-                                   range( len(self.allowed_cb_ops) )
-                             ):
+      for order in self.order_check_array:
         if order:
           best_index = ii
           break
