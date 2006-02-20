@@ -297,24 +297,6 @@ pointee_sizes = {
   "glVertexPointer pointer": 0,
 }
 
-disable_handle_error = [
-  "glGetError",
-  "gluErrorString",
-  "glBegin",
-  "glVertex",
-  "glColor",
-  "glIndex",
-  "glNormal",
-  "glTexCoord",
-  "glEvalCoord",
-  "glEvalPoint",
-  "glArrayElement",
-  "glMaterial",
-  "glEdgeFlag",
-  "glCallList",
-  "glCallLists",
-]
-
 version_guards = {
   "glBlendColorEXT": "GL_XXX",
   "glEdgeFlagPointer": "GLTBX_XXX",
@@ -332,7 +314,6 @@ special_wrappers = {
     GLenum name = name_proxy();
     boost::python::str result(
       reinterpret_cast<const char*>(glGetString(name)));
-    handle_error();
     return result;
   }
 """,
@@ -348,7 +329,6 @@ None
     GLenum name = name_proxy();
     boost::python::str result(
       reinterpret_cast<const char*>(gluGetString(name)));
-    handle_error();
     return result;
   }
 """,
@@ -379,10 +359,8 @@ def bytes_converters(signature):
   arg_type_name = arg_type+" "+arg_name
   is_const = arg_type.startswith("const ")
   call = "\n".join(signature.format_call(
-    return_directly=is_const and signature.disable_handle_error,
+    return_directly=is_const,
     prefix="    "))
-  if (not signature.disable_handle_error):
-    call += "\n    handle_error();"
   if (not is_const):
     call += "\n    %s_proxy.write_back();" % arg_name
     is_const = "false"
@@ -466,13 +444,6 @@ class signature:
       for arg in arg_strings:
         self.args.append(argument(self.function_name, arg))
     self.version_guard = version_guards.get(self.function_name, None)
-    self.disable_handle_error = False
-    for id in disable_handle_error:
-      if (self.function_name.startswith(id)):
-        if (   len(self.function_name) == len(id)
-            or self.function_name[len(id):].islower()):
-          self.disable_handle_error = True
-          break
 
   def show(self, f=None):
     if (f is None): f = sys.stdout
@@ -587,11 +558,9 @@ class signature:
             arg.type, arg.name, arg.name))
           lines.append(ss+"  %s %s = %s_proxy();" % (
             arg.type, arg.name, arg.name))
-      return_directly = len(to_write_back) == 0 and self.disable_handle_error
+      return_directly = len(to_write_back) == 0
       lines.extend([ss+line for line in
         self.format_call(return_directly=return_directly, prefix="  ")])
-      if (not self.disable_handle_error):
-        lines.append(ss+"  handle_error();")
       for arg in to_write_back:
         lines.append(ss+"  %s_proxy.write_back();" % arg.name)
       if (self.return_type != "void" and not return_directly):

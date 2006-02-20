@@ -85,10 +85,8 @@ namespace gltbx { namespace fonts { namespace ucs {
         GLTBX_ASSERT(font_record->raw_bitmaps_size % n_chars == 0);
         unsigned bytes_per_char = font_record->raw_bitmaps_size / n_chars;
         call_lists_base = glGenLists(n_chars);
-        handle_error();
         have_call_lists_base = true;
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-        handle_error();
         const unsigned char* raw_bitmap = font_record->raw_bitmaps;
         unsigned i_char;
         for(i_char=0;i_char<n_chars;i_char++) {
@@ -102,7 +100,6 @@ namespace gltbx { namespace fonts { namespace ucs {
             0,
             raw_bitmap);
           glEndList();
-          handle_error();
           raw_bitmap += bytes_per_char;
         }
         i_char = 0;
