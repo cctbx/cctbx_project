@@ -1,3 +1,6 @@
+from __future__ import division
+from __future__ import generators
+
 # This code is based on:
 #   http://lists.wxwidgets.org/archive/wxPython-users/msg11078.html
 
@@ -8,10 +11,75 @@ import gltbx.gl_managed
 import gltbx.fonts
 import gltbx.images
 from scitbx.array_family import flex
+import scitbx.math
 from scitbx import matrix
 import wx
 import wx.glcanvas
+import math
+import time
 import sys, os
+
+# http://skal.planet-d.net/demo/matrixfaq.htm
+
+def quaternion_normalise(X,Y,Z,W):
+  n = math.sqrt(X*X+Y*Y+Z*Z+W*W)
+  if (n == 0): return 0,0,0,0
+  return X/n,Y/n,Z/n,W/n
+
+def rotation_matrix_as_axis_and_angle(mat, min_trace=1.e-6, min_sin_a=0.0005):
+  # convert matrix to quaternion
+  T = 1 + mat[0] + mat[5] + mat[10]
+  S = math.sqrt(T) * 2
+  if (abs(S) > min_trace):
+    X = ( mat[9] - mat[6] ) / S
+    Y = ( mat[2] - mat[8] ) / S
+    Z = ( mat[4] - mat[1] ) / S
+    W = 0.25 * S
+  elif ( mat[0] > mat[5] and mat[0] > mat[10] ):      # Column 0
+    S  = sqrt( 1.0 + mat[0] - mat[5] - mat[10] ) * 2
+    X = 0.25 * S
+    Y = (mat[4] + mat[1] ) / S
+    Z = (mat[2] + mat[8] ) / S
+    W = (mat[9] - mat[6] ) / S
+  elif ( mat[5] > mat[10] ):                          # Column 1
+    S  = sqrt( 1.0 + mat[5] - mat[0] - mat[10] ) * 2
+    X = (mat[4] + mat[1] ) / S
+    Y = 0.25 * S
+    Z = (mat[9] + mat[6] ) / S
+    W = (mat[2] - mat[8] ) / S
+  else:                                               # Column 2
+    S  = sqrt( 1.0 + mat[10] - mat[0] - mat[5] ) * 2
+    X = (mat[2] + mat[8] ) / S
+    Y = (mat[9] + mat[6] ) / S
+    Z = 0.25 * S
+    W = (mat[4] - mat[1] ) / S
+  X,Y,Z,W = quaternion_normalise(X,Y,Z,W)
+  # convert quaternion to axis and angle
+  cos_a = W
+  angle = math.acos( cos_a ) * 2
+  sin_a = math.sqrt( 1.0 - cos_a * cos_a )
+  if ( math.fabs( sin_a ) < min_sin_a ): sin_a = 1
+  axis_x = X / sin_a
+  axis_y = Y / sin_a
+  axis_z = Z / sin_a
+  return (axis_x,axis_y,axis_z), angle*180/math.pi
+
+def animation_stepper(time_move=0.5, frames_per_second=100):
+  n_steps = int(time_move * frames_per_second + 0.5)
+  time_per_frame = time_move / n_steps
+  i_step = 1
+  t0 = time.time()
+  while True:
+    f = min(1, i_step/n_steps)
+    yield f
+    if (f == 1): break
+    ideal_t = i_step * time_per_frame
+    i_step += 1
+    delta_t = time.time() - t0
+    if (delta_t < ideal_t):
+      time.sleep(ideal_t - delta_t)
+    else:
+      i_step = max(i_step, int(delta_t/time_per_frame + 0.5))
 
 def v3distsq(a, b):
   result = 0
@@ -66,18 +134,11 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     self.g_back = 0
     self.b_back = 0
 
-    # Where the eye is
-    self.base_distance = self.distance = 10.0
-
-    # Field of view in y direction
-    self.fovy = 10.0
-
-    # Position of clipping planes.
-    self.near = 0.1
-    self.far = 1000.0
+    self.field_of_view_y = 10.0
+    self.min_near = 1
+    self.min_viewport_use_fraction = 0.01
 
     self.rotation_center = (0,0,0)
-    self.look_at_point = (0,0,0)
 
     self.parent = parent
     # Current coordinates of the mouse.
@@ -99,13 +160,9 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
 
   def OnSize(self, event=None):
     self.w, self.h = self.GetClientSizeTuple()
-    if self.GetContext():
+    if (self.GetContext()):
       self.SetCurrent()
       glViewport(0, 0, self.w, self.h)
-
-  def OnPaint(self, event=None):
-    wx.PaintDC(self)
-    self.OnRedrawGL(event)
 
   def OnIdle(self,event):
     if (self.autospin):
@@ -116,14 +173,11 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
   def OnChar(self,event):
     key = event.GetKeyCode()
     if   (key == ord('c')):
-      self.look_at_rotation_center()
-      self.OnRedraw()
+      self.move_to_center_of_viewport(self.rotation_center)
     elif (key == ord('f')):
-      self.distance = self.base_distance
-      self.OnRedraw()
+      self.fit_into_viewport()
     elif (key == ord('a')):
-      self.reset_modelview()
-      self.OnRedraw()
+      self.reset_rotation()
     elif (key == ord('s')):
       self.autospin_allowed = not self.autospin_allowed
     elif (key == ord('V')):
@@ -172,26 +226,89 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     elif (event.RightIsDown()):
       self.OnRightDrag(event)
 
-  def set_rotation_center(self, (x,y,z)):
-    self.rotation_center = (x,y,z)
+  def setup_viewing_volume(self, orthographic=False):
+    aspect = self.w / max(1,self.h)
+    glMatrixMode(GL_PROJECTION)
+    glLoadIdentity()
+    if (orthographic):
+      s = self.minimum_covering_sphere
+      c = s.center()
+      r = s.radius()
+      rf = self.buffer_factor * r
+      left = c[0] - rf
+      right = c[0] + rf
+      bottom = c[1] - rf
+      top = c[1] + rf
+      if (aspect < 1):
+        bottom /= aspect
+        top /= aspect
+      else:
+        left *= aspect
+        right *= aspect
+      glOrtho(left, right, bottom, top, self.near, self.far)
+    else:
+      gluPerspective(self.field_of_view_y, aspect, self.near, self.far)
 
-  def set_look_at_point(self, (x,y,z)):
-    self.look_at_point = (x,y,z)
+  def compute_home_translation(self):
+    s = self.minimum_covering_sphere
+    x,y,z = [-v for v in gltbx.util.object_as_eye_coordinates(s.center())]
+    h = s.radius()
+    if (self.w < self.h):
+      h *= self.h / max(1,self.w)
+    assert 0 < self.field_of_view_y < 90
+    z -= h / math.tan(self.field_of_view_y*math.pi/180/2)
+    return x,y,z
 
-  def set_base_distance(self, distance):
-    self.base_distance = distance
-
-  def set_distance(self, distance):
-    self.distance = distance
-
-  def reset_modelview(self):
+  def initialize_modelview(self):
     glMatrixMode(GL_MODELVIEW)
     glLoadIdentity()
-    self.look_at_rotation_center()
+    gluLookAt(0,0,0, 0,0,-1, 0,1,0)
+    glTranslated(*self.compute_home_translation())
+    self.rotation_center = self.minimum_covering_sphere.center()
 
-  def look_at_rotation_center(self):
-    self.look_at_point = gltbx.util.object_as_eye_coordinates(
-      object_coordinates=self.rotation_center)
+  def fit_into_viewport(self):
+    dx,dy,dz = self.compute_home_translation()
+    mvm = gltbx.util.get_gl_modelview_matrix()
+    for f in animation_stepper():
+      glMatrixMode(GL_MODELVIEW)
+      glLoadIdentity()
+      glTranslated(f*dx, f*dy, f*dz)
+      glMultMatrixd(mvm)
+      self.OnRedraw()
+
+  def reset_rotation(self):
+    co = gltbx.util.object_as_eye_coordinates(self.rotation_center)
+    if (1):
+      rc = self.rotation_center
+      mvm = gltbx.util.get_gl_modelview_matrix()
+      axis, angle = rotation_matrix_as_axis_and_angle(mvm)
+      for f in animation_stepper():
+        glMatrixMode(GL_MODELVIEW)
+        glLoadMatrixd(mvm)
+        gltbx.util.rotate_object_about_eye_vector(
+          xcenter=rc[0], ycenter=rc[1], zcenter=rc[2],
+          xvector=axis[0], yvector=axis[1], zvector=axis[2],
+          angle=f*angle)
+        self.OnRedraw()
+    # just to eliminate round-off errors
+    glMatrixMode(GL_MODELVIEW)
+    glLoadIdentity()
+    cn = gltbx.util.object_as_eye_coordinates(self.rotation_center)
+    mvm = gltbx.util.get_gl_modelview_matrix()
+    glLoadIdentity()
+    glTranslated(*[o-n for o,n in zip(co,cn)])
+    glMultMatrixd(mvm)
+    self.OnRedraw()
+
+  def move_to_center_of_viewport(self, obj_coor):
+    dx,dy = [-x for x in gltbx.util.object_as_eye_coordinates(obj_coor)[:2]]
+    mvm = gltbx.util.get_gl_modelview_matrix()
+    for f in animation_stepper():
+      glMatrixMode(GL_MODELVIEW)
+      glLoadIdentity()
+      glTranslated(f*dx, f*dy, 0)
+      glMultMatrixd(mvm)
+      self.OnRedraw()
 
   def OnRecordMouse(self, event):
     self.xmouse = event.GetX()
@@ -202,18 +319,20 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     self.OnRecordMouse(event)
 
   def OnScale(self, event):
-    scale = 1 + 0.01 * (event.GetY() - self.ymouse)
-    self.distance = self.distance * scale
-    self.OnRedraw()
+    s = self.minimum_covering_sphere
+    r = (1+1.e-6)*s.radius()
+    d = -gltbx.util.object_as_eye_coordinates(self.rotation_center)[2]
+    dr = d + r
+    scale = 0.02 * (event.GetY() - self.ymouse)
+    if (scale > 0 and dr <= self.min_near):
+      pass # near limit
+    elif (scale < 0 and r < d * math.sin(self.field_of_view_y*math.pi/180/2)
+                              * self.min_viewport_use_fraction):
+      pass # far limit
+    else:
+      gltbx.util.translate_object(0,0,dr*scale)
+      self.OnRedraw()
     self.OnRecordMouse(event)
-
-  def do_AutoSpin(self):
-    spin_factor = 0.05
-    rc = self.rotation_center
-    gltbx.util.modelview_rotation_about_x_and_y(
-      spin_factor, rc[0], rc[1], rc[2],
-      self.yspin, self.xspin, 0, 0)
-    self.OnRedraw()
 
   def OnAutoSpin(self, event):
     if (self.autospin_allowed):
@@ -225,12 +344,21 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
       else:
         self.do_AutoSpin()
 
+  def do_AutoSpin(self):
+    spin_factor = 0.05
+    rc = self.rotation_center
+    glMatrixMode(GL_MODELVIEW)
+    gltbx.util.rotate_object_about_eye_x_and_y(
+      spin_factor, rc[0], rc[1], rc[2],
+      self.yspin, self.xspin, 0, 0)
+    self.OnRedraw()
+
   def OnRotate(self, event):
     xp = event.GetX()
     yp = event.GetY()
     rc = self.rotation_center
     if (not event.m_shiftDown):
-      gltbx.util.modelview_rotation_about_x_and_y(
+      gltbx.util.rotate_object_about_eye_x_and_y(
         0.5, rc[0], rc[1], rc[2],
         xp, yp, self.xmouse, self.ymouse)
     else:
@@ -241,7 +369,7 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
       if (yp > sz[1]): dx *= -1
       if (xp < sz[0]): dy *= -1
       angle = (dx + dy)/2
-      gltbx.util.modelview_rotation_about_vector(
+      gltbx.util.rotate_object_about_eye_vector(
         xcenter=rc[0], ycenter=rc[1], zcenter=rc[2],
         xvector=0, yvector=0, zvector=1,
         angle=angle)
@@ -271,7 +399,7 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     dist = v3distsq((objx[0],objy[0],objz[0]), rc)**0.5
     scale = abs(dist / (0.5 * win_height))
     x,y = event.GetX(), event.GetY()
-    gltbx.util.modelview_translation(scale, x, y, self.xmouse, self.ymouse)
+    gltbx.util.translate_object(scale, x, y, self.xmouse, self.ymouse)
     self.OnRedraw()
     self.OnRecordMouse(event)
 
@@ -293,25 +421,33 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
         break
       self.pick_points.append((objx[0], objy[0], objz[0]))
 
+  def OnPaint(self, event=None):
+    wx.PaintDC(self)
+    self.SetCurrent()
+    if (self.GL_uninitialised):
+      glViewport(0, 0, self.w, self.h)
+      self.InitGL()
+      self.GL_uninitialised = 0
+    self.OnRedrawGL(event)
+
   def OnRedraw(self, event=None):
     wx.ClientDC(self)
     self.OnRedrawGL(event)
 
   def OnRedrawGL(self, event=None):
-    self.SetCurrent()
-    if self.GL_uninitialised:
-      glViewport(0, 0, self.w, self.h)
-      self.InitGL()
-      self.GL_uninitialised = 0
-    glClearColor(self.r_back, self.g_back, self.b_back, 0.0)
+    gltbx.util.handle_error()
+    s = self.minimum_covering_sphere
+    r = (1+1.e-6)*s.radius()
+    z = -gltbx.util.object_as_eye_coordinates(s.center())[2]
+    self.near = max(self.min_near, z-r)
+    self.far = max(self.near*(1.e-6), z+r)
+    self.setup_viewing_volume()
+    gltbx.util.handle_error()
     glClear(GL_COLOR_BUFFER_BIT)
     glClear(GL_DEPTH_BUFFER_BIT)
-    glMatrixMode(GL_PROJECTION)
-    glLoadIdentity()
-    gluPerspective(self.fovy, float(self.w)/float(self.h), self.near, self.far)
-    p = self.look_at_point
-    gluLookAt(p[0],p[1],p[2]+self.distance, p[0],p[1],p[2], 0,1,0)
+    mvm = gltbx.util.get_gl_modelview_matrix()
     self.DrawGL()
+    gltbx.util.handle_error()
     glFlush()
     self.SwapBuffers()
     if (event is not None): event.Skip()
@@ -326,7 +462,11 @@ class show_cube(wxGLWindow):
 
   def set_points(self, atom_attributes_list):
     self.labels = [atom.pdb_format() for atom in atom_attributes_list]
-    self.points = [atom.coordinates for atom in atom_attributes_list]
+    self.points = flex.vec3_double([atom.coordinates
+      for atom in atom_attributes_list])
+    s = scitbx.math.minimum_covering_sphere_3d(points=self.points)
+    self.minimum_covering_sphere = s
+    self.buffer_factor = 1.20
     self.labels_display_list = None
     self.points_display_list = None
 
@@ -335,19 +475,43 @@ class show_cube(wxGLWindow):
     self.bond_proxies = bond_proxies
 
   def InitGL(self):
+    gltbx.util.handle_error()
+    glClearColor(self.r_back, self.g_back, self.b_back, 0.0)
     self.cube_display_list = None
     self.labels_display_list = None
     self.points_display_list = None
     self.lines_display_list = None
-    self.set_rotation_center((0, 0, 0))
-    self.reset_modelview()
+    self.minimum_covering_sphere_display_list = None
+    self.initialize_modelview()
+    gltbx.util.handle_error()
 
   def DrawGL(self):
     #self.draw_cube()
-    #self.draw_rotation_center()
+    self.draw_minimum_covering_sphere()
     self.draw_points()
     self.draw_lines()
-    self.draw_labels()
+    self.draw_rotation_center()
+    #self.draw_labels()
+
+  def draw_minimum_covering_sphere(self):
+    if (self.minimum_covering_sphere_display_list is None):
+      self.minimum_covering_sphere_display_list=gltbx.gl_managed.display_list()
+      self.minimum_covering_sphere_display_list.compile()
+      s = self.minimum_covering_sphere
+      c = s.center()
+      r = s.radius()
+      gray = 0.3
+      glColor3f(gray,gray,gray)
+      glBegin(GL_POLYGON)
+      for i in xrange(360):
+        a = i * math.pi / 180
+        rs = r * math.sin(a)
+        rc = r * math.cos(a)
+        glVertex3f(c[0]+rs,c[1]+rc,c[2])
+      glEnd()
+      self.draw_cross_at(c, color=(1,0,0))
+      self.minimum_covering_sphere_display_list.end()
+    self.minimum_covering_sphere_display_list.call()
 
   def draw_points(self):
     if (self.points_display_list is None):
@@ -386,6 +550,8 @@ class show_cube(wxGLWindow):
 
   def draw_cube(self, f=1):
     if (self.cube_display_list is None):
+      font = gltbx.fonts.ucs_bitmap_10x20
+      font.setup_call_lists()
       self.cube_display_list = gltbx.gl_managed.display_list()
       self.cube_display_list.compile()
       glBegin(GL_LINES)
@@ -420,21 +586,20 @@ class show_cube(wxGLWindow):
       glVertex3f(f,f,0)
       glVertex3f(f,f,f)
       glEnd()
+      glRasterPos3f(0, 0, 0)
+      font.render_string("O")
+      glRasterPos3f(1, 0, 0)
+      font.render_string("x")
+      glRasterPos3f(0, 1, 0)
+      font.render_string("y")
+      glRasterPos3f(0, 0, 1)
+      font.render_string("z")
       self.cube_display_list.end()
     self.cube_display_list.call()
-    font = gltbx.fonts.ucs_bitmap_10x20
-    glRasterPos3f(0, 0, 0)
-    font.render_string("O")
-    glRasterPos3f(1, 0, 0)
-    font.render_string("x")
-    glRasterPos3f(0, 1, 0)
-    font.render_string("y")
-    glRasterPos3f(0, 0, 1)
-    font.render_string("z")
 
-  def draw_cross_at(self, (x,y,z), f=0.1):
+  def draw_cross_at(self, (x,y,z), color=(1,1,1), f=0.1):
     glBegin(GL_LINES)
-    glColor3f(1,1,1)
+    glColor3f(*color)
     glVertex3f(x-f,y,z)
     glVertex3f(x+f,y,z)
     glVertex3f(x,y-f,z)
@@ -444,29 +609,19 @@ class show_cube(wxGLWindow):
     glEnd()
 
   def draw_rotation_center(self):
-    self.draw_cross_at(self.rotation_center)
+    self.draw_cross_at(self.rotation_center, color=(0,1,0))
 
   def process_pick_points(self):
     line = line_given_points(self.pick_points)
     min_dist_sq = 1**2
     closest_point = None
-    if (0):
-      for x in [0,1]:
-        for y in [0,1]:
-          for z in [0,1]:
-            point = matrix.col((x,y,z))
-            dist_sq = line.distance_sq(point=point)
-            if (min_dist_sq > dist_sq):
-              min_dist_sq = dist_sq
-              closest_point = point
-    else:
-      for point in self.points:
-        dist_sq = line.distance_sq(point=matrix.col(point))
-        if (min_dist_sq > dist_sq):
-          min_dist_sq = dist_sq
-          closest_point = point
+    for point in self.points:
+      dist_sq = line.distance_sq(point=matrix.col(point))
+      if (min_dist_sq > dist_sq):
+        min_dist_sq = dist_sq
+        closest_point = point
     if (closest_point is not None):
-      self.set_rotation_center(closest_point)
+      self.rotation_center = closest_point
 
 def pdb_interpretation(file_name):
   from mmtbx import monomer_library
@@ -513,7 +668,7 @@ class App(wx.App):
     spiral_bmp = gltbx.images.spiral_img.as_wx_Bitmap()
 
     tb.AddSimpleTool(10, center_bmp, "Center",
-      "Moves center of rotation -> center of window. Keyboard shortcut: c")
+      "Moves center of rotation to center of window. Keyboard shortcut: c")
     self.Bind(wx.EVT_TOOL, self.OnToolClick, id=10)
 
     tb.AddSimpleTool(20, fit_bmp, "Fit size",
@@ -571,14 +726,11 @@ class App(wx.App):
   def OnToolClick(self, event):
     id = event.GetId()
     if (id == 10):
-      self.cube.look_at_rotation_center()
-      self.cube.OnRedraw()
+      self.cube.move_to_center_of_viewport(self.cube.rotation_center)
     elif (id == 20):
-      self.cube.distance = self.cube.base_distance
-      self.cube.OnRedraw()
+      self.cube.fit_into_viewport()
     if (id == 30):
-      self.cube.reset_modelview()
-      self.cube.OnRedraw()
+      self.cube.reset_rotation()
     elif (id == 40):
       self.cube.autospin_allowed = not self.cube.autospin_allowed
       self.cube.autospin = False
