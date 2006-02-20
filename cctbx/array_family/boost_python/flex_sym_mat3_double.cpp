@@ -77,11 +77,14 @@ namespace scitbx { namespace af { namespace boost_python {
 
   void wrap_flex_sym_mat3_double()
   {
-    flex_wrapper<sym_mat3<double> >::plain("sym_mat3_double")
+    typedef flex_wrapper<sym_mat3<double> > f_w;
+    f_w::plain("sym_mat3_double")
       .def_pickle(flex_pickle_single_buffered<sym_mat3<double>,
         6*pickle_size_per_element<double>::value>())
       .def("__init__", boost::python::make_constructor(from_double))
       .def("as_double", as_double)
+      .def("__add__", f_w::add_a_a)
+      .def("__sub__", f_w::sub_a_a)
     ;
   }
 

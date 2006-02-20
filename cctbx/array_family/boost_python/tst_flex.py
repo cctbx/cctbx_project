@@ -24,6 +24,9 @@ def exercise_flex_sym_mat3_double():
   assert approx_equal(tuple(a.as_double()), (1,2,3,4,5,6,2,3,4,5,6,7))
   b = flex.sym_mat3_double(a.as_double())
   assert tuple(a) == tuple(b)
+  b = flex.sym_mat3_double([(7,4,-8,2,4,3), (6,2,0,3,5,1)])
+  assert approx_equal(a+b, [(8,6,-5,6,9,9), (8,5,4,8,11,8)])
+  assert approx_equal(a-b, [(-6,-2,11,2,1,3), (-4,1,4,2,1,6)])
 
 def exercise_flex_hendrickson_lattman():
   a = flex.hendrickson_lattman()
