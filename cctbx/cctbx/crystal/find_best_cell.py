@@ -79,9 +79,8 @@ class find_best_cell(object):
 # point groups. When translations are available in the SG,
 # space group changes might occur.
 # This class does the following: it determines axis permutiatons
-# that do not change the spacegroup. Those axis permutations can
-# than be used to transform the *lattice only*(!). from the new
-# possible unit cells, the one which has all
+# that do not change the spacegroup (apart from a origin shift maybe)
+
 
 class alternative_find_best_cell(object):
   def __init__(self,
@@ -132,9 +131,11 @@ class alternative_find_best_cell(object):
                             fix_flags[1:]): # leave alone the first op
       sg_new = self.sg_info.change_basis( cb_op )
       sg_new_hall_symbol = sg_new.type().hall_symbol()
-
+      #print self.sg_info, "--(", cb_op.as_xyz(),")-->>", sg_new, ";",
       cp_op_to_ref_rotational_part = \
         sg_new.change_of_basis_op_to_reference_setting().c().r()
+      #print cp_op_to_ref_rotational_part.as_xyz()
+
       if  cp_op_to_ref_rotational_part == identity_op :
         # cb_op leaves sg invariantapart from may an origin shift
         self.allowed_cb_ops.append( cb_op )
@@ -190,17 +191,21 @@ class alternative_find_best_cell(object):
     if n_true == 1: # there is only one solution
       best_index = self.order_check_array.index( True )
     else: # there is more then one possible solution, use the first solution one encounters
-      for order in self.order_check_array:
+      for order, ii in zip( self.order_check_array,
+                            range(len(self.order_check_array)) ) :
         if order:
           best_index = ii
           break
+
+    # A nasty fail safe. Try C 1 2 1
+    if best_index == None:
+      best_index = 0
 
     self.best_cb_op = self.best_cb_op * self.allowed_cb_ops[ best_index ] * self.allowed_cb_ops_to_ref[ best_index ]
 
     self.best_xs = self.xs.change_basis( self.allowed_cb_ops[ best_index ] * self.allowed_cb_ops_to_ref[ best_index ] )
 
     self.best_cell = self.best_xs.unit_cell()
-
 
   def return_best_cell(self):
     return self.best_cell
