@@ -29,9 +29,21 @@ def tst_find_best_cell():
     assert approx_equal( correct.parameters(),
                          best_cell_finder.return_best_cell().parameters() )
 
+    cb_op = best_cell_finder.return_change_of_basis_op_to_best_cell()
+    xs = crystal.symmetry( uc, space_group=sg)
+    assert approx_equal( correct.parameters(),
+                         xs.change_basis(cb_op).unit_cell().parameters() )
+
+
     best_cell_finder = fbc( uc, sg_2 )
     assert approx_equal( uc_array[0].parameters(),
                          best_cell_finder.return_best_cell().parameters() )
+
+    xs = crystal.symmetry( uc, space_group=sg_2)
+    cb_op = best_cell_finder.return_change_of_basis_op_to_best_cell()
+    assert approx_equal( uc_array[0].parameters(),
+                         xs.change_basis(cb_op).unit_cell().parameters() )
+
 
 
 def run():
