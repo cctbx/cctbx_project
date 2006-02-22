@@ -189,6 +189,13 @@ class comp_comp_id(object):
         return i_atom
     return None
 
+  def non_hydrogen_atoms(self):
+    result = []
+    for atom in self.atom_list:
+      if (atom.type_symbol != "H"):
+        result.append(atom)
+    return result
+
   def get_bond(self, atom_id_1, atom_id_2):
     return get_bond(self.bond_list, atom_id_1, atom_id_2)
 

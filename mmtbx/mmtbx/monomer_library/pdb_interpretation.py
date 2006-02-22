@@ -1952,7 +1952,7 @@ class process(object):
         "  Time building chain proxies: %.2f, per 1000 atoms: %.2f" % (
           self.all_chain_proxies.time_building_chain_proxies,
           self.all_chain_proxies.time_building_chain_proxies * 1000
-            / len(self.all_chain_proxies.stage_1.atom_attributes_list))
+            / max(1,len(self.all_chain_proxies.stage_1.atom_attributes_list)))
     self._geometry_restraints_manager = None
     self._xray_structure = None
 
