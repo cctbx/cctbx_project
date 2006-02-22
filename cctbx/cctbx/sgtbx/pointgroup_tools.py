@@ -4,6 +4,7 @@ from cctbx.array_family import flex
 from cctbx import uctbx
 from cctbx import adptbx
 from cctbx import sgtbx
+from cctbx.crystal.find_best_cell import alternative_find_best_cell
 from cctbx.sgtbx import cosets
 from cctbx import maptbx
 from cctbx import crystal
@@ -15,6 +16,65 @@ from libtbx import table_utils
 from scitbx.python_utils import graph_tools
 
 import sys,os
+
+
+def reference_setting_choices(space_group):
+  cyclic_permutations =  ['x,y,z',
+                          'y,z,x',
+                          'z,x,y' ]
+
+  adams_group = sgtbx.space_group_info(
+    group=space_group.build_derived_group(False,False) )
+
+  space_group = sgtbx.space_group_info(group=space_group)
+
+  # please check that we have something in reference setting
+  # just to make sure that thne thing is used for it's original purpose
+  assert space_group.is_reference_setting()
+
+  info = []
+
+  identity_op = sgtbx.change_of_basis_op( 'x,y,z' ).c().r()
+
+  for cyclic_permutation in cyclic_permutations:
+
+    cob_op = sgtbx.change_of_basis_op( cyclic_permutation )
+    transformed_adams_group = adams_group.change_basis( cob_op )
+    transformed_space_group = space_group.change_basis( cob_op )
+
+    cob_to_ref_sg = transformed_space_group.\
+                    change_of_basis_op_to_reference_setting()
+    cob_to_ref_pg = transformed_adams_group.\
+                    change_of_basis_op_to_reference_setting()
+
+
+    adams_norm = False
+    space_norm = False
+
+    # check if the rotation part of the cb_op to ref is
+    # the identity operator
+
+    # if hall symbols are equal, sg's are equal
+    if ( identity_op == cob_to_ref_pg.c().r() ):
+      adams_norm=True
+
+    if ( identity_op == cob_to_ref_sg.c().r() ):
+      space_norm=True
+
+    info_tuple = (cob_op, cob_to_ref_sg, adams_norm, space_norm)
+    info.append( info_tuple )
+
+  possible_additional_transforms = []
+  # we have to of course take into account the identity operator
+  possible_additional_transforms.append( info[0][0]*info[0][1] )
+  for ii in info:
+    if ii[2]: # should fall in the adams normalizer
+      if not ii[3]: # should NOT fall in the space normalizer
+        # cob should ONLY be applied on unit cell, not to the sg.
+        possible_additional_transforms.append( ii[0] )
+
+  return possible_additional_transforms
+
 
 class sub_super_point_group_relations(object):
   def __init__(self,
@@ -186,31 +246,32 @@ class edge_object(object):
     return repr
 
 
+
 class point_group_graph(object):
   def __init__(self,
-               sg_low,
-               sg_high):
+               pg_low,
+               pg_high):
 
     # It is rather import (i think) to make sure
     # that point groups are supplied. This might prevent later surprises.
-    # hopfully.
+    # hopefully.
 
     low_point_group_check = (
-      sg_low ==
-      sg_low.build_derived_point_group() )
+      pg_low ==
+      pg_low.build_derived_point_group() )
     if not low_point_group_check:
       raise Sorry("Input spacegroup not a point group")
 
     high_point_group_check = (
-      sg_high ==
-      sg_high.build_derived_point_group() )
+      pg_high ==
+      pg_high.build_derived_point_group() )
     if not high_point_group_check:
       raise Sorry("Input spacegroup not a point group")
 
 
     self.graph = graph_tools.graph()
-    self.sg_low = sg_low
-    self.sg_high = sg_high
+    self.pg_low = pg_low
+    self.pg_high = pg_high
 
     self.queue = [] # the queue used in building the space_group
     self.build_it()
@@ -220,7 +281,7 @@ class point_group_graph(object):
 
   def build_it(self):
     # we start by putting the spacegroup on the queue
-    self.queue.append( self.sg_low )
+    self.queue.append( self.pg_low )
 
     while len(self.queue) > 0 :
       this_sg = self.queue.pop( 0 )
@@ -232,7 +293,7 @@ class point_group_graph(object):
     name = str(object)
     sg_relations = sub_super_point_group_relations(
       input_sg,
-      self.sg_high)
+      self.pg_high)
 
     # loop over the possible outgoing edges
     edge_list = {}
@@ -253,6 +314,7 @@ class point_group_graph(object):
         self.queue.append( possible_super_sg )
 
     # place/insert the node with the proper connections please
+    # print object, type( object)
     self.graph.insert_node( name = name,
                             edge_object = edge_list,
                             node_object = object )
@@ -290,86 +352,78 @@ class point_group_graph(object):
 
 
 
-
 class find_compatible_space_groups(object):
   def __init__(self,
-               likely_point_group,
+               likely_pointgroup,
                xtal_sg,
                unit_cell,
-               chiral=True,
-               sys_abs_rule=True):
-    #
-    #
-    # It is assumed that the point group supplied is comming
-    # from the graph outlined above
-    #
-    # It is also assumed that the cell provided is NOT niggli reduced
-    #
-    #
-    #
-
-    self.likely_point_group = likely_point_group
+               sys_abs_flag=True):
 
     self.x_sg = xtal_sg
     self.x_uc = unit_cell
-    self.xs = crystal.symmetry( unit_cell=self.x_uc,
-                                space_group=self.x_sg )
-    self.cb_op_xs_to_nigli = self.xs.change_of_basis_op_to_minimum_cell()
-    self.cb_op_l_pg_to_ref = sgtbx.space_group_info(
-      group = self.likely_point_group).type().cb_op()
 
-    self.xs_new = None
+    self.xs = crystal.symmetry( self.x_uc,
+                                space_group=self.x_sg)
+
+    self.cb_op_xs_to_niggli = self.xs.change_of_basis_op_to_niggli_cell()
+
+    self.x_lpg = likely_pointgroup
+    self.cb_op_lpg_to_ref_set = sgtbx.space_group_info(
+      group=self.x_lpg).change_of_basis_op_to_reference_setting()
 
     self.point_group_compatible_sg = []
     self.is_chiral = []
-    self.get_space_groups_compatible_with_likely_point_group( )
+    self.get_space_groups_compatible_with_likely_point_group()
 
-    self.get_new_xtal_symmetry()
+    self.allowed_under_pg_and_sys_abs = []
 
-    self.xs_new_abs_list = self.make_sys_abs_list( self.xs_new.space_group() )
 
-    self.lpg_sg_candidates_sys_abs_list = []
-    self.xs_abs_in_sg_from_lpg_abs = []
-    self.sg_from_lpg_abs_in_xs_abs = []
-    self.allowed = []
-    self.likely_sg = []
+    for sg in self.point_group_compatible_sg:
+      additional_cb_ops = reference_setting_choices( sg )
+      for add_cb_op in additional_cb_ops: # not optimal, but EASY
+         # make a new xs object please
+        new_xs = self.xs.change_basis(add_cb_op *
+                                      self.cb_op_lpg_to_ref_set *
+                                      self.cb_op_xs_to_niggli )
+        if sys_abs_flag:
 
-    for sg_trial, is_chiral in zip(self.point_group_compatible_sg,
-                                   self.is_chiral):
-
-      trial_abs_list = self.make_sys_abs_list( sg_trial )
-      self.lpg_sg_candidates_sys_abs_list.append( trial_abs_list )
-      xs_in_sg_lpg = self.compare_abs_lists( self.xs_new_abs_list,
-                                             trial_abs_list )
-      sg_lpg_in_xs = self.compare_abs_lists( trial_abs_list,
-                                             self.xs_new_abs_list)
-      tmp_allowed = False
-
-      if sys_abs_rule:
-        if xs_in_sg_lpg:
-          tmp_allowed=True
-
-      self.allowed.append( tmp_allowed )
-      if tmp_allowed:
-        self.likely_sg.append( sg_trial )
+          # get sys abs for this setting please
+          current_xtal_sys_abs = self.make_sys_abs_list( new_xs.space_group() )
+          # get sys abs for current sg please
+          trial_sg_abs = self.make_sys_abs_list( sg )
+          # check if current abs are 'in' trial abs
+          inside = self.compare_abs_lists( current_xtal_sys_abs,
+                                           trial_sg_abs )
+          if inside:
+            final_xs = crystal.symmetry( unit_cell = new_xs.unit_cell(),
+                                         space_group = sg,
+                                         assert_is_compatible_unit_cell=False )
+            best_cell = alternative_find_best_cell(
+              final_xs.unit_cell(),
+              final_xs.space_group() )
+            final_xs = best_cell.return_best_xs()
+            # please get the total cb_op from input cell to best cell
+            tmp_cb_op = best_cell.return_change_of_basis_op_to_best_cell()
+            final_cb_op = ( tmp_cb_op*
+                            add_cb_op*
+                            self.cb_op_lpg_to_ref_set*
+                            self.cb_op_xs_to_niggli)
+            self.allowed_under_pg_and_sys_abs.append( (final_xs,
+                                                        final_cb_op) )
 
 
   def get_space_groups_compatible_with_likely_point_group(self):
-    # loop over all sg's
+    # loop over all standard sg's
     for space_group_number in xrange(1,231):
       trial_group = sgtbx.space_group_info( space_group_number ).group()
-      if trial_group.build_derived_point_group() == self.likely_point_group.\
-            change_basis( self.cb_op_l_pg_to_ref)  :
+
+      if trial_group.build_derived_group(False,False) \
+             == self.x_lpg.change_basis( self.cb_op_lpg_to_ref_set ):
         self.is_chiral.append( trial_group.is_chiral() )
         self.point_group_compatible_sg.append( trial_group )
 
-  def get_new_xtal_symmetry(self):
-    # apply first the nigli operater etc
-    self.xs_new = self.xs.change_basis( self.cb_op_xs_to_nigli )
-    self.xs_new = self.xs_new.change_basis( self.cb_op_l_pg_to_ref )
-
   def make_sys_abs_list(self, space_group):
-    max_index=(6,6,6)
+    max_index=(5,5,5)
     sg_type = sgtbx.space_group_info( 1 ).type()
     tmp_miller_list = miller.index_generator( sg_type,
                                               False,
@@ -390,12 +444,134 @@ class find_compatible_space_groups(object):
         contains=False
     return contains
 
-  def show(self):
-    print "Input space group  : ", sgtbx.space_group_info(group=self.x_sg)
-    print "Input unit cell    : ", self.x_uc.parameters()
-    print "Likely point group : ", sgtbx.space_group_info(group=self.likely_point_group)
-    print
-    print "New unit cell      : ", self.xs_new.unit_cell().parameters()
-    print "Possible space groups "
-    for sg in self.likely_sg:
-      print sgtbx.space_group_info( group=sg )
+  def show(self, out=None):
+    if out == None:
+      out=sys.stdout
+
+    print >> out, "Input space group  : ", sgtbx.space_group_info(group=self.x_sg)
+    print >> out, "Input unit cell    : ", self.x_uc.parameters()
+    print >> out, "Likely point group : ", sgtbx.space_group_info(group=self.lpg)
+    print >> out
+    print >> out, "Possible crystal symmetries: "
+    for sx_cb in self.allowed_under_pg_and_sys_abs:
+      sx_cb.show(out)
+      print >> out
+
+
+class node_object(object):
+  def __init__(self,
+               point_group_info,
+               allowed_xtal_syms):
+    self.point_group_info = point_group_info
+    self.allowed_xtal_syms = allowed_xtal_syms
+
+
+class space_group_graph_from_cell_and_sg(object):
+  def __init__(self,
+               unit_cell,
+               sg_low,
+               max_delta=5.0):
+    # No primitive settings assumed
+    self.unit_cell = unit_cell
+    self.sg_low = sg_low
+    self.pg_low = sg_low.build_derived_point_group()
+    self.xs_low = crystal.symmetry( unit_cell = self.unit_cell,
+                                    space_group=self.sg_low)
+
+    self.pg_low_prim_set = self.pg_low.change_basis(
+      self.xs_low.change_of_basis_op_to_niggli_cell() )
+
+    self.xs_prim_set = self.xs_low.change_basis(
+      self.xs_low.change_of_basis_op_to_niggli_cell() )
+
+    self.pg_high = sgtbx.lattice_symmetry.group(
+      self.xs_prim_set.unit_cell(),
+      max_delta=max_delta)
+
+
+    self.pg_graph = point_group_graph( self.pg_low_prim_set,
+                                       self.pg_high )
+    new_dict = {}
+    for pg_name in self.pg_graph.graph.node_objects:
+      # for each possible point group, find a set of allowed space_groups
+      pg_object = self.pg_graph.graph.node_objects[ pg_name ].group()
+
+      # now find out the possible space groups please
+      tmp_allowed_sgs = find_compatible_space_groups(
+        pg_object, # point group
+        self.sg_low, # sg of given system
+        self.unit_cell) # uc of given system
+
+      new_node = node_object(
+        self.pg_graph.graph.node_objects[ pg_name ],
+        tmp_allowed_sgs.allowed_under_pg_and_sys_abs)
+      # now it is good to replace the node with the one we just made
+      new_dict.update( {pg_name:
+                        new_node} )
+    #
+    self.pg_graph.graph.node_objects = new_dict
+
+
+  def return_likely_sg_and_cell(self):
+    for pg in self.pg_graph.graph.node_objects:
+      object = self.pg_graph.graph.node_objects[ pg ]
+      for sg in object.allowed_xtal_syms:
+        yield ( sg[0].space_group(), sg[0].unit_cell() )
+
+  def show(self, out=None):
+
+    if out==None:
+      out=sys.stdout
+    print >> out, "------------------------"
+    print >> out, "Vertices and their edges"
+    print >> out, "------------------------"
+    print >> out
+    for pg in self.pg_graph.graph.node_objects:
+      print >> out, "Point group", pg, "is a subgroup of :"
+      if (len( self.pg_graph.graph.o[ str( pg ) ] )==0):
+         print >> out, "  *) None"
+      else:
+        for edge in self.pg_graph.graph.o[ str( pg ) ]:
+          print >> out, "  *)", edge
+      print >> out
+
+    print >> out
+    print >> out
+    print >> out, "-------------------------"
+    print >> out, "Transforming point groups"
+    print >> out, "-------------------------"
+    print >> out
+    for pg in self.pg_graph.graph.node_objects:
+      for next_pg in self.pg_graph.graph.edge_objects[ pg ]:
+        print >> out, "From", pg, "  to ", next_pg, " using :"
+        for symop in self.pg_graph.graph.edge_objects[ pg ][ next_pg].\
+                return_used():
+          print "  *) ",symop.r().as_hkl()
+        print >> out, len(self.pg_graph.graph.edge_objects[ pg ][ next_pg].symops_unused),\
+              "symmetry operators are still unused for",next_pg
+        print >> out
+
+    print >> out
+    print >> out
+    print >> out, "----------------------"
+    print >> out, "Compatible spacegroups"
+    print >> out, "----------------------"
+    print >> out
+    print >> out, "Spacegroups compatible with a specified point group "
+    print >> out, "*and* with the systematic absenses specified by the "
+    print >> out, "input space group, are listed below."
+    print >> out
+
+    for pg in self.pg_graph.graph.node_objects:
+      print >> out, "Spacegroup candidates in point group %s:"%(pg)
+      for trial_sym in self.pg_graph.graph.node_objects[ pg ].allowed_xtal_syms:
+        trial_sg = trial_sym[0].space_group_info()
+        print >> out, "  *)", trial_sg,
+        print >> out, " %5.2f %5.2f %5.2f %5.2f %5.2f %5.2f"\
+            %(trial_sym[0].unit_cell().parameters()[0],
+              trial_sym[0].unit_cell().parameters()[1],
+              trial_sym[0].unit_cell().parameters()[2],
+              trial_sym[0].unit_cell().parameters()[3],
+              trial_sym[0].unit_cell().parameters()[4],
+              trial_sym[0].unit_cell().parameters()[5])
+      print >> out
