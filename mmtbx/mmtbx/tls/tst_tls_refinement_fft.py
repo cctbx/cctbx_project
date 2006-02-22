@@ -198,12 +198,12 @@ def exercise_1():
       assert approx_equal(m1,m2, 0.02)
 
 
-def exercise_2(eps = 1.e-4):
+def exercise_2(eps = 1.e-6):
 ###> Get started from PDB
   mon_lib_srv = monomer_library.server.server()
   ener_lib = monomer_library.server.ener_lib()
   pdb_file = libtbx.env.find_in_repositories(
-    relative_path="regression/pdb/phe_abc_tls.pdb", test=os.path.isfile)
+    relative_path="regression/pdb/phe_abc_tlsanl_out_geometry_minimized.pdb", test=os.path.isfile)
   processed_pdb_file = monomer_library.pdb_interpretation.process(
                                        mon_lib_srv               = mon_lib_srv,
                                        ener_lib                  = ener_lib,
@@ -211,11 +211,13 @@ def exercise_2(eps = 1.e-4):
                                        raw_records               = None,
                                        force_symmetry            = True)
   xray_structure = processed_pdb_file.xray_structure()
-  #xray_structure.convert_to_anisotropic()
+  xray_structure.convert_to_isotropic()
+  u_iso_start = xray_structure.extract_u_iso_or_u_equiv()
+  xray_structure.convert_to_anisotropic()
   #model = mmtbx.model.manager(processed_pdb_file    = processed_pdb_file)
   stage_1 = processed_pdb_file.all_chain_proxies.stage_1
   selections = []
-  for string in ["chain A", "chain B"]:
+  for string in ["chain A", "chain B", "chain C"]:
       selections.append(processed_pdb_file.all_chain_proxies.selection(
                                                               string = string))
 ###> Get TLS <-> Ucart
@@ -230,6 +232,10 @@ def exercise_2(eps = 1.e-4):
   L_initial.append([2.22,2.44,2.66,2.24,2.26,2.46])
   S_initial.append([0.22,0.24,0.26,0.42,0.44,0.46,0.62,0.64,-0.66])
 
+  T_initial.append([0.33,0.66,0.99,0.36,0.39,0.69])
+  L_initial.append([2.33,2.66,2.99,2.36,2.39,2.69])
+  S_initial.append([0.22,0.24,0.26,0.42,0.44,0.46,0.62,0.64,-0.66])
+
   tlsos = tools.generate_tlsos(selections     = selections,
                                xray_structure = xray_structure,
                                T              = T_initial,
@@ -242,10 +248,23 @@ def exercise_2(eps = 1.e-4):
                   max_iterations                              = 50,
                   number_of_u_nonpositive_definite            = 0,
                   eps                                         = eps,
-                  number_of_macro_cycles_for_tls_from_uanisos = 3000)
+                  number_of_macro_cycles_for_tls_from_uanisos = 30)
+
 
   u_cart_answer = xray_structure.scatterers().extract_u_cart(
                                                     xray_structure.unit_cell())
+  tools.show_tls(tlsos = tlsos, text = "ANSWER")
+
+  xrs = xray_structure.deep_copy_scatterers()
+  new_xrs = tools.update_xray_structure_with_tls(
+                              xray_structure = xrs,
+                              u_cart_offset  = None,
+                              selections     = selections,
+                              tlsos          = tlsos)
+  new_xrs.convert_to_isotropic()
+  u_iso = new_xrs.extract_u_iso_or_u_equiv()
+  for i,j in zip(u_iso_start, u_iso):
+      print "%10.6f %10.6f %10.6f" % (i, j, i-j)
 
 ###> Set up fmodel
   sf_algorithm = "direct"
@@ -264,11 +283,12 @@ def exercise_2(eps = 1.e-4):
   fmodel.show_comprehensive(reflections_per_bin = 250,
                             max_number_of_bins  = 30)
   xray_structure.convert_to_isotropic()
+  xray_structure.set_b_iso(value = 25.0)
   fmodel.update_xray_structure(xray_structure = xray_structure,
                                update_f_calc  = True)
   fmodel.show_comprehensive(reflections_per_bin = 250,
                             max_number_of_bins  = 30)
-
+  print "*"*80
 ###> TLS refinement against xray data
   tls_refinement_manager = tools.tls_refinement(
                            fmodel                      = fmodel,
@@ -281,7 +301,6 @@ def exercise_2(eps = 1.e-4):
                            start_tls_value             = 0.1,
                            run_finite_differences_test = False,
                            eps                         = eps)
-
   u_cart = tls_refinement_manager.fmodel.xray_structure.scatterers().extract_u_cart(
                                                     xray_structure.unit_cell())
   format   = "%10.6f %10.6f %10.6f %10.6f %10.6f %10.6f"
