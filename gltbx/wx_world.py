@@ -19,53 +19,9 @@ import math
 import time
 import sys, os
 
-# http://skal.planet-d.net/demo/matrixfaq.htm
-
-def quaternion_normalise(X,Y,Z,W):
-  n = math.sqrt(X*X+Y*Y+Z*Z+W*W)
-  if (n == 0): return 0,0,0,0
-  return X/n,Y/n,Z/n,W/n
-
-def rotation_matrix_as_axis_and_angle(mat, min_trace=1.e-6, min_sin_a=0.0005):
-  # convert matrix to quaternion
-  T = 1 + mat[0] + mat[5] + mat[10]
-  S = math.sqrt(T) * 2
-  if (abs(S) > min_trace):
-    X = ( mat[9] - mat[6] ) / S
-    Y = ( mat[2] - mat[8] ) / S
-    Z = ( mat[4] - mat[1] ) / S
-    W = 0.25 * S
-  elif ( mat[0] > mat[5] and mat[0] > mat[10] ):      # Column 0
-    S  = sqrt( 1.0 + mat[0] - mat[5] - mat[10] ) * 2
-    X = 0.25 * S
-    Y = (mat[4] + mat[1] ) / S
-    Z = (mat[2] + mat[8] ) / S
-    W = (mat[9] - mat[6] ) / S
-  elif ( mat[5] > mat[10] ):                          # Column 1
-    S  = sqrt( 1.0 + mat[5] - mat[0] - mat[10] ) * 2
-    X = (mat[4] + mat[1] ) / S
-    Y = 0.25 * S
-    Z = (mat[9] + mat[6] ) / S
-    W = (mat[2] - mat[8] ) / S
-  else:                                               # Column 2
-    S  = sqrt( 1.0 + mat[10] - mat[0] - mat[5] ) * 2
-    X = (mat[2] + mat[8] ) / S
-    Y = (mat[9] + mat[6] ) / S
-    Z = 0.25 * S
-    W = (mat[4] - mat[1] ) / S
-  X,Y,Z,W = quaternion_normalise(X,Y,Z,W)
-  # convert quaternion to axis and angle
-  cos_a = W
-  angle = math.acos( cos_a ) * 2
-  sin_a = math.sqrt( 1.0 - cos_a * cos_a )
-  if ( math.fabs( sin_a ) < min_sin_a ): sin_a = 1
-  axis_x = X / sin_a
-  axis_y = Y / sin_a
-  axis_z = Z / sin_a
-  return (axis_x,axis_y,axis_z), angle*180/math.pi
-
-def animation_stepper(time_move=0.5, frames_per_second=100):
-  n_steps = int(time_move * frames_per_second + 0.5)
+def animation_stepper(time_move=1.0, move_factor=1, frames_per_second=100):
+  time_move *= move_factor
+  n_steps = max(1, int(time_move * frames_per_second + 0.5))
   time_per_frame = time_move / n_steps
   i_step = 1
   t0 = time.time()
@@ -266,10 +222,18 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     glTranslated(*self.compute_home_translation())
     self.rotation_center = self.minimum_covering_sphere.center()
 
+  def rotation_move_factor(self, rotation_angle):
+    return abs(rotation_angle)/180
+
+  def translation_move_factor(self, translation_vector):
+    return min(2,  abs(matrix.col(translation_vector))
+                 / max(1,self.minimum_covering_sphere.radius()))
+
   def fit_into_viewport(self):
     dx,dy,dz = self.compute_home_translation()
     mvm = gltbx.util.get_gl_modelview_matrix()
-    for f in animation_stepper():
+    for f in animation_stepper(move_factor=self.translation_move_factor(
+                                translation_vector=(dx,dy,dz))):
       glMatrixMode(GL_MODELVIEW)
       glLoadIdentity()
       glTranslated(f*dx, f*dy, f*dz)
@@ -278,18 +242,21 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
 
   def reset_rotation(self):
     co = gltbx.util.object_as_eye_coordinates(self.rotation_center)
-    if (1):
-      rc = self.rotation_center
-      mvm = gltbx.util.get_gl_modelview_matrix()
-      axis, angle = rotation_matrix_as_axis_and_angle(mvm)
-      for f in animation_stepper():
-        glMatrixMode(GL_MODELVIEW)
-        glLoadMatrixd(mvm)
-        gltbx.util.rotate_object_about_eye_vector(
-          xcenter=rc[0], ycenter=rc[1], zcenter=rc[2],
-          xvector=axis[0], yvector=axis[1], zvector=axis[2],
-          angle=f*angle)
-        self.OnRedraw()
+    rc = self.rotation_center
+    aa = scitbx.math.r3_rotation_axis_and_angle_from_matrix(
+      r=gltbx.util.extract_rotation_from_gl_modelview_matrix())
+    u,v,w = aa.axis
+    angle = -aa.angle(deg=True)
+    mvm = gltbx.util.get_gl_modelview_matrix()
+    for f in animation_stepper(move_factor=self.rotation_move_factor(
+                                 rotation_angle=angle)):
+      glMatrixMode(GL_MODELVIEW)
+      glLoadMatrixd(mvm)
+      gltbx.util.rotate_object_about_eye_vector(
+        xcenter=rc[0], ycenter=rc[1], zcenter=rc[2],
+        xvector=u, yvector=v, zvector=w,
+        angle=f*angle)
+      self.OnRedraw()
     # just to eliminate round-off errors
     glMatrixMode(GL_MODELVIEW)
     glLoadIdentity()
@@ -302,8 +269,11 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
 
   def move_to_center_of_viewport(self, obj_coor):
     dx,dy = [-x for x in gltbx.util.object_as_eye_coordinates(obj_coor)[:2]]
+    move_factor = min(1,  abs(matrix.col((dx,dy,0)))
+                        / max(1,self.minimum_covering_sphere.radius()))
     mvm = gltbx.util.get_gl_modelview_matrix()
-    for f in animation_stepper():
+    for f in animation_stepper(move_factor=self.translation_move_factor(
+                                translation_vector=(dx,dy,0))):
       glMatrixMode(GL_MODELVIEW)
       glLoadIdentity()
       glTranslated(f*dx, f*dy, 0)
