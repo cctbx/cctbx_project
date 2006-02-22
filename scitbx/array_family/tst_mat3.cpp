@@ -173,22 +173,6 @@ int main(int /*argc*/, char* /*argv*/[])
     check_false(__LINE__, t.is_symmetric(0.001));
   }
   {
-    mat3<double> r3_111(120. * constants::pi_180, vec3<double>(1.,1.,1.));
-    mat3<double> r3_111i(-120. * constants::pi_180, vec3<double>(1.,1.,1.));
-    {
-      mat3<double> t = r3_111 * r3_111i - mat3<double>(1.);
-      check_true(__LINE__, std::fabs(af::max(t.ref())) < 1.e-6);
-    }
-    {
-      mat3<double> t = r3_111.inverse() - r3_111i;
-      check_true(__LINE__, std::fabs(af::max(t.ref())) < 1.e-6);
-    }
-    {
-      mat3<double> t = r3_111 - r3_111i.inverse();
-      check_true(__LINE__, std::fabs(af::max(t.ref())) < 1.e-6);
-    }
-  }
-  {
     mat3<int> a(1,2,3,4,5,6,7,8,9);
     a.scale(vec3<int>(1,2,3));
     check_true(__LINE__, a == mat3<int>(1,4,9,4,10,18,7,16,27));

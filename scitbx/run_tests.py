@@ -27,6 +27,7 @@ def run():
   "$D/scitbx/python_utils/tst_random_transform.py",
   "$D/scitbx/python_utils/tst_graph.py",
   "$D/math/boost_python/tst_math.py",
+  "$D/math/boost_python/tst_r3_rotation.py",
   "$D/math/boost_python/tst_resample.py",
   "$D/math/boost_python/tst_line_search.py",
   "$D/math/boost_python/tst_gaussian.py",

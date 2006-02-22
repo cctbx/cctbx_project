@@ -3,6 +3,8 @@
 
 #include <scitbx/mat_ref.h>
 #include <scitbx/array_family/small.h>
+#include <scitbx/array_family/tiny.h>
+#include <scitbx/array_family/accessors/c_grid.h>
 #include <scitbx/array_family/misc_functions.h>
 #include <boost/rational.hpp>
 
@@ -191,6 +193,132 @@ namespace scitbx { namespace matrix { namespace row_echelon {
     }
 
     af::small<std::size_t, MaxIndependentIndices> indices;
+  };
+
+  template <typename NumType, unsigned MaxNRows, unsigned NCols>
+  struct full_pivoting_small
+  {
+    af::tiny<NumType, NCols*NCols> echelon_form;
+    af::small<unsigned, MaxNRows> row_perm;
+    af::tiny<unsigned, NCols> col_perm;
+    af::small<unsigned, NCols> pivot_cols;
+    af::small<unsigned, NCols> free_cols;
+
+    full_pivoting_small() {}
+
+    full_pivoting_small(
+      af::ref<NumType, af::c_grid<2> > const& m_work,
+      NumType const& min_abs_pivot=0,
+      unsigned max_rank=NCols)
+    {
+      SCITBX_ASSERT(m_work.accessor()[0] <= MaxNRows);
+      SCITBX_ASSERT(m_work.accessor()[0] >= NCols);
+      SCITBX_ASSERT(m_work.accessor()[1] == NCols);
+      unsigned n_rows = m_work.accessor()[0];
+      for(unsigned i=0;i<n_rows;i++) row_perm.push_back(i);
+      for(unsigned i=0;i<NCols;i++) col_perm[i] = i;
+      unsigned pr = 0;
+      for(unsigned pc=0;pc<NCols;pc++) {
+        // search for the next pivot value; here "m" is for "max"
+        unsigned mr = pr;
+        unsigned mc = pc;
+        unsigned ir_nc = pr * NCols;
+        NumType mv = m_work[ir_nc+pc];
+        for(unsigned ir=pr;ir<n_rows;ir++,ir_nc+=NCols) {
+          unsigned ir_ic = ir_nc + pc;
+          for(unsigned ic=pc;ic<NCols;ic++) {
+            NumType v = scitbx::fn::absolute(m_work[ir_ic++]);
+            if (mv < v) {
+              mv = v;
+              mr = ir;
+              mc = ic;
+            }
+          }
+        }
+        if (mv > min_abs_pivot && pr < max_rank) {
+          if (mr != pr) swap_rows(m_work.begin(), pr, mr);
+          if (mc != pc) swap_cols(m_work.begin(), pc, mc);
+          // subtract multiple of pivot row from all rows below
+          unsigned ir_nc = pr * NCols;
+          unsigned pr_pc = ir_nc + pc;
+          NumType v = m_work[pr_pc++];
+          ir_nc += NCols;
+          for(unsigned ir=pr+1;ir<n_rows;ir++,ir_nc+=NCols) {
+            unsigned ir_ic = ir_nc + pc;
+            NumType f = m_work[ir_ic] / v;
+            m_work[ir_ic] = 0;
+            ir_ic++;
+            unsigned pr_ic = pr_pc;
+            for(unsigned ic=pc+1;ic<NCols;ic++) {
+              m_work[ir_ic++] -= f*m_work[pr_ic++];
+            }
+          }
+          pr++;
+          pivot_cols.push_back(pc);
+        }
+        else {
+          free_cols.push_back(pc);
+        }
+        // copy result to local memory
+        std::copy(
+          m_work.begin(),
+          m_work.begin()+(NCols*NCols),
+          echelon_form.begin());
+      }
+    }
+
+    af::tiny<NumType, NCols>
+    back_substitution(af::small<NumType, NCols> const& free_values) const
+    {
+      SCITBX_ASSERT(free_values.size() == free_cols.size());
+      af::tiny<NumType, NCols> perm_result;
+      for(unsigned i=0;i<free_cols.size();i++) {
+        perm_result[free_cols[i]] = free_values[i];
+      }
+      unsigned rank = pivot_cols.size();
+      for(unsigned ip=0;ip<rank;ip++) {
+        unsigned pr = rank-ip-1;
+        unsigned pc = pivot_cols[pr];
+        unsigned pr_pc = pr * NCols + pc;
+        unsigned pr_ic = pr_pc + 1;
+        NumType s = 0;
+        for(unsigned ic=pc+1;ic<NCols;) {
+          s -= perm_result[ic++] * echelon_form[pr_ic++];
+        }
+        perm_result[pc] = s / echelon_form[pr_pc];
+      }
+      af::tiny<NumType, NCols> result;
+      for(unsigned i=0;i<NCols;i++) {
+        result[col_perm[i]] = perm_result[i];
+      }
+      return result;
+    }
+
+    protected:
+
+      void
+      swap_rows(NumType* m_work, unsigned i, unsigned j)
+      {
+        unsigned ic = i*row_perm.size();
+        unsigned jc = j*row_perm.size();
+        for(unsigned c=0;c<NCols;c++) {
+          std::swap(m_work[ic++], m_work[jc++]);
+        }
+        std::swap(row_perm[i], row_perm[j]);
+      }
+
+      void
+      swap_cols(NumType* m_work, unsigned i, unsigned j)
+      {
+        unsigned ri = i;
+        unsigned rj = j;
+        for(unsigned r=0;r<row_perm.size();r++) {
+          std::swap(m_work[ri], m_work[rj]);
+          ri += NCols;
+          rj += NCols;
+        }
+        std::swap(col_perm[i], col_perm[j]);
+      }
   };
 
 }}} // namespace scitbx::matrix::row_echelon
