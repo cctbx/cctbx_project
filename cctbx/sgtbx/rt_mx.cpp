@@ -138,11 +138,11 @@ namespace cctbx { namespace sgtbx {
           case '9':
             if ((P_mode & P_Value) == 0) throw_parse_error();
             {
-            double V;
-            int i = 1;
-            int n = sscanf(str_xyz.peek(), "%lf%n", &V, &i);
-            str_xyz.skip(i - 1);
-            if (n != 1) throw_parse_error();
+            const char *beginptr = str_xyz.peek();
+            char *endptr;
+            double V = std::strtod(beginptr, &endptr);
+            if (endptr == beginptr) throw_parse_error();
+            str_xyz.skip((endptr-beginptr)-1);
             if (Sign == -1) { V = -V; Sign = 1; }
             if      (Mult ==  1)
               Value *= V;
