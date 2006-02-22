@@ -21,7 +21,7 @@ def tst_find_best_cell():
 
   sg_info =  sgtbx.space_group_info( 'P 21 21 2' )
   sg_info_2 = sgtbx.space_group_info( 'I 21 21 21' )
-  
+
   sg = sg_info.group()
   sg_2 = sg_info_2.group()
 
@@ -51,7 +51,7 @@ def tst_find_best_cell():
   sg_3 = sg_info_3.group()
   best_cell_finder =  fbc( uc, sg_3 )
   xs_best =  best_cell_finder.return_best_xs()
-  
+
   uc_correct = uctbx.unit_cell( '40, 30, 60, 90, 90, 90' )
   sg_correct = sgtbx.space_group_info( 'P 1 21 1' ).group()
   assert approx_equal(  xs_best.unit_cell().parameters(),
