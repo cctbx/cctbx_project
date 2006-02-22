@@ -32,6 +32,7 @@ namespace boost_python {
   void wrap_chebyshev_lsq();
   void wrap_slatec();
   void wrap_line_search();
+  void wrap_r3_rotation();
   void wrap_non_parametric_bootstrap();
   void wrap_non_parametric_bootstrap_as_int();
   void wrap_smooth_bootstrap();
@@ -156,6 +157,7 @@ namespace {
     wrap_chebyshev_lsq();
     wrap_slatec();
     wrap_line_search();
+    wrap_r3_rotation();
     // resampling
     wrap_non_parametric_bootstrap();
     wrap_non_parametric_bootstrap_as_int();

@@ -59,10 +59,6 @@ namespace scitbx {
       explicit
       inline
       mat3(sym_mat3<NumType> const& m);
-      //! Constructor for a rotation matrix.
-      /*! @param angle is in radians.
-       */
-      mat3(NumType const& angle, af::tiny_plain<NumType,3> const& axis);
 
       //! Access elements with 2-dimensional indices.
       NumType const&
@@ -303,31 +299,6 @@ namespace scitbx {
              + m[8] * other[8];
       }
   };
-
-  // non-inline constructor
-  template <typename NumType>
-  mat3<NumType>::mat3(
-    NumType const& angle, af::tiny_plain<NumType,3> const& axis)
-  {
-    NumType sqr_a = axis[0] * axis[0];
-    NumType sqr_b = axis[1] * axis[1];
-    NumType sqr_c = axis[2] * axis[2];
-    NumType len2 = sqr_a + sqr_b + sqr_c;
-    NumType k2 = std::cos(angle);
-    NumType k1 = (1. - k2) / len2;
-    NumType k3 = std::sin(angle) / std::sqrt(len2);
-    NumType k1ab = k1 * axis[0] * axis[1];
-    NumType k1ac = k1 * axis[0] * axis[2];
-    NumType k1bc = k1 * axis[1] * axis[2];
-    NumType k3a = k3 * axis[0];
-    NumType k3b = k3 * axis[1];
-    NumType k3c = k3 * axis[2];
-    base_type result(
-      k1*sqr_a+k2, k1ab-k3c, k1ac+k3b,
-      k1ab+k3c, k1*sqr_b+k2, k1bc-k3a,
-      k1ac-k3b, k1bc+k3a, k1*sqr_c+k2);
-    std::copy(result.begin(), result.end(), this->begin());
-  }
 
   // non-inline member function
   template <typename NumType>
