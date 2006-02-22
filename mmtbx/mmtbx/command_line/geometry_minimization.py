@@ -197,13 +197,19 @@ def run(args, this_command="mmtbx.geometry_minimization"):
     geometry_restraints_manager.show_interactions(
       sites_cart=sites_cart,
       site_labels=atom_labels)
-  geometry_restraints_manager.pair_proxies(
-    sites_cart=all_chain_proxies.sites_cart)\
-      .bond_proxies.show_sorted_by_residual(
-        sites_cart=sites_cart,
-        labels=atom_labels,
-        f=log,
-        max_lines=10)
+  pair_proxies =  geometry_restraints_manager.pair_proxies(
+    sites_cart=all_chain_proxies.sites_cart)
+  pair_proxies.bond_proxies.show_sorted_by_residual(
+    sites_cart=sites_cart,
+    labels=atom_labels,
+    f=log,
+    max_lines=10)
+  pair_proxies.nonbonded_proxies.show_sorted_by_model_distance(
+    sites_cart=sites_cart,
+    labels=atom_labels,
+    f=log,
+    max_lines=10)
+  del pair_proxies
   print
   log.flush()
   pymol_commands = []
