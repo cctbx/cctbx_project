@@ -79,14 +79,13 @@ class find_best_cell(object):
 # point groups. When translations are available in the SG,
 # space group changes might occur.
 # This class does the following: it determines axis permutiatons
-# that do not change the spacegroup (apart from a origin shift maybe)
+# that do not change the spacegroup (apart from an origin shift maybe)
 
 
 class alternative_find_best_cell(object):
   def __init__(self,
                unit_cell,
-               space_group,
-               assume_incomming_is_in_reference_setting=False):
+               space_group):
     from cctbx import crystal
 
     self.unit_cell = unit_cell
@@ -96,15 +95,12 @@ class alternative_find_best_cell(object):
     self.best_cell = None
     self.best_cb_op = sgtbx.change_of_basis_op( 'x,y,z' )
 
-    if not assume_incomming_is_in_reference_setting:
-      # as we don't assume it is in the reference settnig, we have to
-      # change things to the reference seeting accordinly
-      tmp = self.sg_info.change_of_basis_op_to_reference_setting()
-      self.xs = self.xs.change_basis( tmp )
-      self.unit_cell = self.xs.unit_cell()
-      self.sg_info.change_basis( tmp )
-      self.hall_symbol = self.sg_info.type().hall_symbol()
-      self.best_cb_op = self.best_cb_op*tmp
+    # now we have to go to the reference setting
+    tmp = self.sg_info.change_of_basis_op_to_reference_setting()
+    self.xs = self.xs.change_basis( tmp )
+    self.unit_cell = self.xs.unit_cell()
+    self.sg_info=self.sg_info.change_basis( tmp )
+    self.best_cb_op = self.best_cb_op*tmp
 
 
     # note that the order in which the operators are checked is important!
