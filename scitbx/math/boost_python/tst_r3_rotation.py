@@ -5,6 +5,16 @@ from libtbx.test_utils import approx_equal
 from stdlib import math
 
 def exercise(axis_range=2, angle_max_division=12, angle_min_power=-30):
+  from_matrix = scitbx.math.r3_rotation_axis_and_angle_from_matrix(
+    r=[1,0,0,0,1,0,0,0,1])
+  assert approx_equal(from_matrix.axis, [1/3**0.5]*3)
+  assert approx_equal(from_matrix.angle(deg=True), 0)
+  assert approx_equal(from_matrix.angle(deg=False), 0)
+  from_matrix = scitbx.math.r3_rotation_axis_and_angle_from_matrix(r=[0]*9)
+  assert approx_equal(from_matrix.axis, [0,0,1])
+  assert approx_equal(from_matrix.angle(deg=True), 90)
+  assert approx_equal(from_matrix.angle(deg=False), math.pi/2)
+  #
   angles = []
   for d in xrange(1,angle_max_division+1):
     angles.append(360/d)
@@ -47,6 +57,7 @@ def exercise(axis_range=2, angle_max_division=12, angle_min_power=-30):
                     min_axis_length=1+1.e-5)
                 except RuntimeError: pass
                 else: raise RuntimeError("Exception expected.")
+  #
   print format_cpu_times()
 
 if (__name__ == "__main__"):
