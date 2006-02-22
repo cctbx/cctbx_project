@@ -5,7 +5,10 @@
 #include <scitbx/mat3.h>
 #include <scitbx/constants.h>
 
-namespace scitbx { namespace math { namespace r3_rotation {
+namespace scitbx { namespace math {
+
+  //! Algorithms for R3 (i.e. 3-dimensional space) rotation matrices.
+  namespace r3_rotation {
 
   //! Conversion of axis and angle to a rotation matrix.
   /*! http://skal.planet-d.net/demo/matrixfaq.htm
