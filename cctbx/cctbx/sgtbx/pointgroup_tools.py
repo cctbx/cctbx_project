@@ -76,6 +76,21 @@ def reference_setting_choices(space_group):
   return possible_additional_transforms
 
 
+def coset_lookup(pg_low,
+                 pg_high):
+  coset = cosets.left_decomposition(g=pg_high,
+                                    h=pg_low)
+  full_cosets = []
+
+  for set in coset.partitions:
+    if (set[0].r().determinant()>0):
+      tmp = []
+      for symop in set:
+        tmp.append( symop.r().as_hkl() )
+      full_cosets.append( tmp )
+  return full_cosets
+
+
 class sub_super_point_group_relations(object):
   def __init__(self,
                sg_low,
@@ -98,9 +113,6 @@ class sub_super_point_group_relations(object):
     self.find_left_over_symops()
 
   def get_symops_from_supergroup_that_are_not_in_subgroup(self,sg_high):
-    t_den = self.sg_low.t_den()
-    r_den = self.sg_low.r_den()
-
     coset = cosets.left_decomposition(g=sg_high,
                                       h=self.sg_low)
     for set in coset.partitions[1:]:
@@ -491,6 +503,10 @@ class space_group_graph_from_cell_and_sg(object):
 
     self.pg_graph = point_group_graph( self.pg_low_prim_set,
                                        self.pg_high )
+
+    self.coset_table = coset_lookup( self.pg_low_prim_set,
+                                     self.pg_high )
+
     new_dict = {}
     for pg_name in self.pg_graph.graph.node_objects:
       # for each possible point group, find a set of allowed space_groups
@@ -527,7 +543,7 @@ class space_group_graph_from_cell_and_sg(object):
     print >> out, "------------------------"
     print >> out
     for pg in self.pg_graph.graph.node_objects:
-      print >> out, "Point group", pg, "is a subgroup of :"
+      print >> out, "Point group  ", pg, "  is a maximal subgroup of :"
       if (len( self.pg_graph.graph.o[ str( pg ) ] )==0):
          print >> out, "  *) None"
       else:
@@ -547,8 +563,6 @@ class space_group_graph_from_cell_and_sg(object):
         for symop in self.pg_graph.graph.edge_objects[ pg ][ next_pg].\
                 return_used():
           print "  *) ",symop.r().as_hkl()
-        print >> out, len(self.pg_graph.graph.edge_objects[ pg ][ next_pg].symops_unused),\
-              "symmetry operators are still unused for",next_pg
         print >> out
 
     print >> out
