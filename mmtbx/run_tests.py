@@ -18,7 +18,7 @@ def run():
   "$D/max_lik/tst_max_lik.py",
   "$D/mmtbx/dynamics/tst_cartesian_dynamics.py",
   "$D/mmtbx/tls/tst_tls.py",
-  #"$D/mmtbx/tls/tst_tls_refinement_direct.py",
+  "$D/mmtbx/tls/tst_tls_refinement_fft.py",
   "$D/mmtbx/examples/f_model_manager.py",
   "$D/mmtbx/bulk_solvent/tst_bulk_solvent_and_scaling_ls.py",
   "$D/mmtbx/bulk_solvent/tst_bulk_solvent_and_scaling_ml.py",

@@ -57,6 +57,7 @@ def exercise_1():
                                          algorithm      = "direct",
                                          cos_sin_table  = True).f_calc())
   flags =f_obs.array(data=flex.size_t(xrange(1,f_obs.data().size()+1))%3 == 0)
+  xray_structure.convert_to_isotropic()
   fmodel = mmtbx.f_model.manager(xray_structure    = xray_structure,
                                  f_obs             = f_obs,
                                  r_free_flags      = flags,
@@ -179,22 +180,22 @@ def exercise_1():
              approx_equal(i1.s, i2.s, 0.02)
 
   tls_refinement_manager = tools.tls_refinement(
-                           fmodel                      = fmodel,
-                           selections                  = selections,
-                           refine_T                    = 1,
-                           refine_L                    = 1,
-                           refine_S                    = 1,
-                           number_of_macro_cycles      = 40,
-                           max_number_of_iterations    = 50,
-                           start_tls_value             = 0.0,
-                           run_finite_differences_test = True)
+                                      fmodel                      = fmodel,
+                                      selections                  = selections,
+                                      refine_T                    = 1,
+                                      refine_L                    = 1,
+                                      refine_S                    = 1,
+                                      number_of_macro_cycles      = 40,
+                                      max_number_of_iterations    = 50,
+                                      start_tls_value             = 0.0,
+                                      run_finite_differences_test = True)
 
   u_cart = tls_refinement_manager.fmodel.xray_structure.scatterers().extract_u_cart(
                                                     xray_structure.unit_cell())
   format   = "%10.6f %10.6f %10.6f %10.6f %10.6f %10.6f"
   for m1,m2 in zip(u_cart_answer, u_cart):
-      #print "1=" + format % (m1[0],m1[1],m1[2],m1[3],m1[4],m1[5])
-      #print "2=" + format % (m2[0],m2[1],m2[2],m2[3],m2[4],m2[5])
+      print "1=" + format % (m1[0],m1[1],m1[2],m1[3],m1[4],m1[5])
+      print "2=" + format % (m2[0],m2[1],m2[2],m2[3],m2[4],m2[5])
       assert approx_equal(m1,m2, 0.02)
 
 
@@ -203,7 +204,8 @@ def exercise_2(eps = 1.e-6):
   mon_lib_srv = monomer_library.server.server()
   ener_lib = monomer_library.server.ener_lib()
   pdb_file = libtbx.env.find_in_repositories(
-    relative_path="regression/pdb/phe_abc_tlsanl_out_geometry_minimized.pdb", test=os.path.isfile)
+    relative_path="regression/pdb/phe_abc_tlsanl_out_geometry_minimized.pdb",
+    test=os.path.isfile)
   processed_pdb_file = monomer_library.pdb_interpretation.process(
                                        mon_lib_srv               = mon_lib_srv,
                                        ener_lib                  = ener_lib,
@@ -243,28 +245,19 @@ def exercise_2(eps = 1.e-6):
                                S              = S_initial)
   tlsos = tools.make_tlso_compatible_with_u_positive_definite(
                   tlsos                                       = tlsos,
-                  xray_structure                              = xray_structure,
+                  xray_structure                              = xray_structure.deep_copy_scatterers(),
                   selections                                  = selections,
                   max_iterations                              = 50,
                   number_of_u_nonpositive_definite            = 0,
                   eps                                         = eps,
                   number_of_macro_cycles_for_tls_from_uanisos = 30)
 
+  u_cart_answer = tools.uanisos_from_tls(sites_cart = xray_structure.sites_cart(),
+                                 selections = selections,
+                                 tlsos      = tlsos)
+  xray_structure.scatterers().set_u_cart(xray_structure.unit_cell(), u_cart_answer)
 
-  u_cart_answer = xray_structure.scatterers().extract_u_cart(
-                                                    xray_structure.unit_cell())
   tools.show_tls(tlsos = tlsos, text = "ANSWER")
-
-  xrs = xray_structure.deep_copy_scatterers()
-  new_xrs = tools.update_xray_structure_with_tls(
-                              xray_structure = xrs,
-                              u_cart_offset  = None,
-                              selections     = selections,
-                              tlsos          = tlsos)
-  new_xrs.convert_to_isotropic()
-  u_iso = new_xrs.extract_u_iso_or_u_equiv()
-  for i,j in zip(u_iso_start, u_iso):
-      print "%10.6f %10.6f %10.6f" % (i, j, i-j)
 
 ###> Set up fmodel
   sf_algorithm = "direct"
@@ -298,7 +291,7 @@ def exercise_2(eps = 1.e-6):
                            refine_S                    = 1,
                            number_of_macro_cycles      = 100,
                            max_number_of_iterations    = 50,
-                           start_tls_value             = 0.1,
+                           start_tls_value             = None,
                            run_finite_differences_test = False,
                            eps                         = eps)
   u_cart = tls_refinement_manager.fmodel.xray_structure.scatterers().extract_u_cart(
@@ -310,11 +303,11 @@ def exercise_2(eps = 1.e-6):
       if(counter < 10):
          print "1=" + format % (m1[0],m1[1],m1[2],m1[3],m1[4],m1[5])
          print "2=" + format % (m2[0],m2[1],m2[2],m2[3],m2[4],m2[5])
-      assert approx_equal(m1,m2, 0.01)
+      assert approx_equal(m1,m2, 0.02)
 
 
 
 if (__name__ == "__main__"):
-  #exercise_1()
+  exercise_1()
   exercise_2()
   print format_cpu_times()

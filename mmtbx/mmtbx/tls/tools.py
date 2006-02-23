@@ -365,7 +365,8 @@ def update_xray_structure_with_tls(xray_structure,
   u_cart_from_tls = uanisos_from_tls(sites_cart = xray_structure.sites_cart(),
                                      selections = selections,
                                      tlsos      = tlsos)
-  if u_cart_offset is not None: u_cart_from_tls = u_cart_from_tls + u_cart_offset
+  if(u_cart_offset is not None):
+     u_cart_from_tls = u_cart_from_tls + u_cart_offset
   xray_structure.scatterers().set_u_cart(xray_structure.unit_cell(),
                                          u_cart_from_tls)
   #XXX refinement of only S or L does not work with this:
@@ -390,7 +391,7 @@ class tls_refinement(object):
                                              out  = out)
      fmodel.show_targets(text = prefix+" start model", out = out)
      xrs = fmodel.xray_structure
-     u_cart_offset = xrs.scatterers().extract_u_cart(xrs.unit_cell())
+     u_local = None
      xrs.convert_to_anisotropic()
      xrs.tidy_us(u_min = eps)
      if(start_tls_value is not None):
@@ -402,14 +403,20 @@ class tls_refinement(object):
         except:
           tlsos = start_tls_value
      else:
-        tlsos = generate_tlsos(value          = 0.0,
-                               selections     = selections,
-                               xray_structure = xrs)
-        tlsos = tls_from_uanisos(xray_structure         = xrs,
-                                 selections             = selections,
-                                 tlsos_initial          = tlsos,
-                                 number_of_macro_cycles = 100,
-                                 max_iterations         = 100)
+        tlsos = tls_from_uanisos(
+                        xray_structure         = xrs,
+                        selections             = selections,
+                        tlsos_initial          = generate_tlsos(
+                                                   value          = 0.0,
+                                                   selections     = selections,
+                                                   xray_structure = xrs),
+                        number_of_macro_cycles = 100,
+                        max_iterations         = 100)
+        u_tls = uanisos_from_tls(sites_cart = xrs.sites_cart(),
+                                 selections = selections,
+                                 tlsos      = tlsos)
+        u_total = xrs.scatterers().extract_u_cart(xrs.unit_cell())
+        u_local = u_total - u_tls
      show_tls(tlsos = tlsos, text = prefix+" start parameters",out = out)
      for macro_cycle in range(1, number_of_macro_cycles+1):
          prefix = "TLS refinement: after macrocycle "+str(macro_cycle)
@@ -420,7 +427,7 @@ class tls_refinement(object):
                      refine_L                    = refine_L,
                      refine_S                    = refine_S,
                      selections                  = selections,
-                     u_cart_offset               = u_cart_offset,
+                     u_cart_offset               = u_local,
                      max_iterations              = max_number_of_iterations,
                      run_finite_differences_test = run_finite_differences_test)
          xrs = minimized.fmodel_copy.xray_structure
@@ -453,18 +460,14 @@ class tls_refinement(object):
          else: tlsos = minimized.tlsos_result
      show_tls(tlsos = tlsos,
               text = "TLS refinement: final correction values", out = out)
-     tlsos = tls_from_uanisos(
-          xray_structure         = fmodel.xray_structure,
-          selections             = selections,
-          tlsos_initial          = generate_tlsos(
-                                       value          = 0.0,
-                                       selections     = selections,
-                                       xray_structure = fmodel.xray_structure),
-          refine_T               = refine_T,
-          refine_L               = refine_L,
-          refine_S               = refine_S,
-          max_iterations         = 100,
-          number_of_macro_cycles = 300)
+     tlsos = tls_from_uanisos(xray_structure         = fmodel.xray_structure,
+                              selections             = selections,
+                              tlsos_initial          = tlsos,
+                              refine_T               = refine_T,
+                              refine_L               = refine_L,
+                              refine_S               = refine_S,
+                              max_iterations         = 100,
+                              number_of_macro_cycles = 300)
      show_tls(tlsos = tlsos,
               text = "TLS refinement: final values", out = out)
      self.tlsos = tlsos
