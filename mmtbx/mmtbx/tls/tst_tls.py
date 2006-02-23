@@ -73,7 +73,7 @@ def uaniso_from_tls_and_back():
     assert approx_equal(input_tls_data_.t,      tls_from_uanisos_.t, 1.e-4)
     assert approx_equal(input_tls_data_.l,      tls_from_uanisos_.l, 1.e-4)
     assert approx_equal(input_tls_data_.s,      tls_from_uanisos_.s, 1.e-4)
-    assert approx_equal(input_tls_data_.origin, tls_from_uanisos_.origin)
+    assert approx_equal(input_tls_data_.origin, tls_from_uanisos_.origin, 1.e-3)
 
 if (__name__ == "__main__"):
   uaniso_from_tls_and_back()
