@@ -41,7 +41,6 @@ class manager(object):
        for sel in self.rigid_body_selections:
            assert sel.size() == dim
 
-
   def setup_restraints_manager(self,
                                plain_pairs_radius = 5.0,
                                normalization      = True,
