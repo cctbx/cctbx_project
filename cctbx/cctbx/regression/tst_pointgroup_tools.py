@@ -38,7 +38,7 @@ def tst_pgtools():
   assert len(atlas)==2
 
   # Now lets 'disqualify' point group 'P 2 2 2'
-  pgtree.remove_point_group_and_its_super_groups_from_graph( sgtbx.space_group_info(16).group()  )
+  pgtree.remove_point_group_and_its_super_groups_from_graph( str(sgtbx.space_group_info(16)) )
   assert len(pgtree.graph.node_objects)==1
   assert pgtree.graph.node_objects.has_key ( 'P 1 2 1' )
 
