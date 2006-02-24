@@ -331,10 +331,7 @@ class point_group_graph(object):
                             edge_object = edge_list,
                             node_object = object )
 
-  def remove_point_group_and_its_super_groups_from_graph(self, group ):
-    if not( group == group.build_derived_point_group() ):
-      raise Sorry( "Provided group is not a point group" )
-
+  def remove_point_group_and_its_super_groups_from_graph(self, group_name ):
     # please find all super groups of the given group
     # and remove them from the graph
     #
@@ -350,7 +347,6 @@ class point_group_graph(object):
 
     # now see if there is a path between the given group and the end points
     to_be_removed = []
-    group_name = str(sgtbx.space_group_info(group=group))
 
     for trial_end_node in end_nodes:
       tmp_paths = self.graph.find_all_paths( group_name, trial_end_node )
@@ -545,10 +541,10 @@ class space_group_graph_from_cell_and_sg(object):
     for pg in self.pg_graph.graph.node_objects:
       print >> out, "Point group  ", pg, "  is a maximal subgroup of :"
       if (len( self.pg_graph.graph.o[ str( pg ) ] )==0):
-         print >> out, "  *) None"
+         print >> out, "  * None"
       else:
         for edge in self.pg_graph.graph.o[ str( pg ) ]:
-          print >> out, "  *)", edge
+          print >> out, "  *", edge
       print >> out
 
     print >> out
@@ -562,7 +558,7 @@ class space_group_graph_from_cell_and_sg(object):
         print >> out, "From", pg, "  to ", next_pg, " using :"
         for symop in self.pg_graph.graph.edge_objects[ pg ][ next_pg].\
                 return_used():
-          print "  *) ",symop.r().as_hkl()
+          print >> out, "  * ",symop.r().as_hkl()
         print >> out
 
     print >> out
@@ -572,7 +568,7 @@ class space_group_graph_from_cell_and_sg(object):
     print >> out, "----------------------"
     print >> out
     print >> out, "Spacegroups compatible with a specified point group "
-    print >> out, "*and* with the systematic absenses specified by the "
+    print >> out, "**and** with the systematic absenses specified by the "
     print >> out, "input space group, are listed below."
     print >> out
 
@@ -580,7 +576,7 @@ class space_group_graph_from_cell_and_sg(object):
       print >> out, "Spacegroup candidates in point group %s:"%(pg)
       for trial_sym in self.pg_graph.graph.node_objects[ pg ].allowed_xtal_syms:
         trial_sg = trial_sym[0].space_group_info()
-        print >> out, "  *)", trial_sg,
+        print >> out, "  *", trial_sg,
         print >> out, " %5.2f %5.2f %5.2f %5.2f %5.2f %5.2f"\
             %(trial_sym[0].unit_cell().parameters()[0],
               trial_sym[0].unit_cell().parameters()[1],
@@ -589,3 +585,17 @@ class space_group_graph_from_cell_and_sg(object):
               trial_sym[0].unit_cell().parameters()[4],
               trial_sym[0].unit_cell().parameters()[5])
       print >> out
+
+
+  def graphviz_pg_graph(self, out=None ):
+    if out==None:
+      out=sys.stdout
+    print >> out, "digraph f { "
+    print >> out, "rankdir=LR"
+    for pg in self.pg_graph.graph.node_objects:
+      for next_pg in self.pg_graph.graph.edge_objects[ pg ]:
+        pg = pg.replace( "\"","''" )
+        next_pg = next_pg.replace( "\"","''" )
+
+        print >> out, "\"",pg,"\" -> \"", next_pg, "\" ;"
+    print >> out, "}"
