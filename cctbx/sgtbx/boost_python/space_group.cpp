@@ -186,6 +186,8 @@ namespace {
           arg_("u_star")))
         .def("build_derived_acentric_group",
           &w_t::build_derived_acentric_group)
+        .def("build_derived_group",
+           &w_t::build_derived_group)
         .def("build_derived_reflection_intensity_group",
           &w_t::build_derived_reflection_intensity_group, (
            arg_("anomalous_flag")))
