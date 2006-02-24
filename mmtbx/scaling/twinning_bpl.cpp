@@ -38,6 +38,8 @@ namespace{
                arg_("symop") )))
         .def("r_abs_value", &w_t::r_abs_value)
         .def("r_sq_value", &w_t::r_sq_value)
+        .def("r_abs_pair", &w_t::r_abs_pair)
+        .def("r_sq_pair", &w_t::r_abs_pair)
         ;
     }
 
