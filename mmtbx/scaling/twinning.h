@@ -37,6 +37,10 @@ namespace twinning {
     hkl_twin_(),
     location_(),
     intensity_(),
+    r_sq_top_(0),
+    r_sq_bottom_(0),
+    r_abs_top_(0),
+    r_abs_bottom_(0),
     twin_law_(twin_law),
     space_group_(space_group),
     hkl_lookup_(hkl, space_group, anomalous_flag)
@@ -68,10 +72,18 @@ namespace twinning {
 
         hkl_twin_.push_back( tmp_ht );
         location_.push_back( hkl_lookup_.find_hkl( tmp_ht ) );
+
       }
+
+        compute_r_abs_value();
+        compute_r_sq_value();
+
     }
 
-    FloatType r_abs_value()
+
+
+
+    void compute_r_abs_value()
     {
       FloatType top=0, bottom=0;
       FloatType x1,x2;
@@ -87,20 +99,20 @@ namespace twinning {
           }
         }
       }
-      FloatType result=0;
+
       if (top>0){
         if (bottom>0){
-          result=top/bottom;
+          r_abs_bottom_ = bottom;
+          r_abs_top_ = top;
         }
       }
-      return (result);
     }
 
-    FloatType r_sq_value()
+    void compute_r_sq_value()
     {
       FloatType top=0, bottom=0;
       FloatType x1,x2;
-      unsigned tmp_loc;
+      int tmp_loc;
       for (unsigned ii=0;ii<hkl_.size();ii++){
         tmp_loc =  location_[ ii ];
         if (tmp_loc >= 0){
@@ -112,24 +124,67 @@ namespace twinning {
           }
         }
       }
-      FloatType result=0;
+
       if (top>0){
         if (bottom>0){
-          result=top/bottom;
+          r_sq_bottom_ = bottom;
+          r_sq_top_ = top;
         }
       }
+    }
+
+
+
+    FloatType r_abs_value()
+    {
+      FloatType result=0;
+      if (r_abs_bottom_>0){
+          result=r_abs_top_/r_abs_bottom_;
+      }
       return (result);
+    }
+
+    FloatType r_sq_value()
+    {
+      FloatType result=0;
+      if (r_sq_bottom_>0){
+          result=r_sq_top_/r_sq_bottom_;
+      }
+
+      return (result);
+    }
+
+    scitbx::af::tiny<FloatType,2> r_abs_pair()
+    {
+      scitbx::af::tiny<FloatType, 2> result;
+      result[0] = r_abs_top_;
+      result[1] = r_abs_bottom_;
+      return (result);
+    }
+
+    scitbx::af::tiny<FloatType,2> r_sq_pair()
+    {
+      scitbx::af::tiny<FloatType, 2> result;
+      result[0] = r_sq_top_;
+      result[1] = r_sq_bottom_;
+      return(result);
     }
 
 
 
 
     protected:
+
+    FloatType r_abs_top_;
+    FloatType r_abs_bottom_;
+    FloatType r_sq_top_;
+    FloatType r_sq_bottom_;
+
     scitbx::af::shared< cctbx::miller::index<> > hkl_;
     scitbx::af::shared< cctbx::miller::index<> > hkl_twin_;
     scitbx::af::shared< FloatType > intensity_;
 
-    scitbx::af::shared< long > location_;
+    scitbx::af::shared< int > location_;
     scitbx::mat3<FloatType> twin_law_;
     cctbx::sgtbx::space_group space_group_;
     cctbx::miller::lookup_utils::lookup_tensor<
