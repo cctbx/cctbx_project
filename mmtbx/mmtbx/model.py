@@ -19,6 +19,7 @@ class manager(object):
   def __init__(self, processed_pdb_file,
                      rigid_body_selections = None,
                      group_b_selections    = None,
+                     tls_selections        = None,
                      log = None):
     self.log = log
     self.restraints_manager = None
@@ -35,6 +36,7 @@ class manager(object):
     self.locked = False
     self.rigid_body_selections = rigid_body_selections
     self.group_b_selections = group_b_selections
+    self.tls_selections = tls_selections
     if(self.rigid_body_selections is not None):
     #XXX BUG
        dim = self.xray_structure.scatterers().size()
@@ -62,6 +64,7 @@ class manager(object):
     new = manager(processed_pdb_file    = self.processed_pdb_file,
                   rigid_body_selections = None,
                   group_b_selections    = None,
+                  tls_selections        = None,
                   log                   = self.log)
     selection = flex.bool(self.xray_structure.scatterers().size(), True)
     # XXX not a deep copy
@@ -86,6 +89,10 @@ class manager(object):
        new.group_b_selections = []
        for item in self.group_b_selections:
            new.group_b_selections.append(item.deep_copy())
+    if(self.tls_selections is not None):
+       new.tls_selections = []
+       for item in self.tls_selections:
+           new.tls_selections.append(item.deep_copy())
     return new
 
   def _solvent_selection(self):
@@ -113,6 +120,7 @@ class manager(object):
     new_atom_attributes_list = []
     rigid_body_selections = []
     group_b_selections    = []
+    tls_selections = []
     new_solvent_selection = flex.bool()
     for attr, solsel, sel in zip(self.atom_attributes_list,
                                  self.solvent_selection,
@@ -127,6 +135,10 @@ class manager(object):
        for s in self.rigid_body_selections:
            rigid_body_selections.append(s.select(selection))
     self.rigid_body_selections = rigid_body_selections
+    if(self.tls_selections is not None):
+       for s in self.tls_selections:
+           tls_selections.append(s.select(selection))
+    self.tls_selections = tls_selections
     if(self.group_b_selections is not None):
        for s in self.group_b_selections:
            group_b_selections.append(s.select(selection))
@@ -142,9 +154,14 @@ class manager(object):
   def number_of_ordered_solvent_molecules(self):
     return self.solvent_selection.count(True)
 
-  def show_rigid_body_groups_info(self, out,
-                                        text="Information about rigid groups"):
+  def show_groups(self, rigid_body = None, tls = None,
+                        out = None, text="Information about rigid groups"):
+    selections = None
+    if(rigid_body is not None): selections = self.rigid_body_selections
+    if(tls is not None): selections = self.tls_selections
     if(self.rigid_body_selections is None): return
+    if(self.tls_selections is None): return
+    assert selections is not None
     if (out is None): out = sys.stdout
     print >> out
     line_len = len("| "+text+"|")
@@ -153,14 +170,14 @@ class manager(object):
     print >> out, upper_line
     next = "| Total number of atoms = %-6d  Number of rigid groups = %-3d                |"
     natoms_total = self.xray_structure.scatterers().size()
-    print >> out, next % (natoms_total, len(self.rigid_body_selections))
+    print >> out, next % (natoms_total, len(selections))
     print >> out, "| group: start point:                        end point:                       |"
     print >> out, "|               x      B  atom   residue <>        x      B  atom   residue   |"
     next = "| %5d: %8.3f %6.2f %5s %4s %4d <> %8.3f %6.2f %5s %4s %4d   |"
     sites = self.xray_structure.sites_cart()
     b_isos = self.xray_structure.extract_u_iso_or_u_equiv() * math.pi**2*8
     n_atoms = 0
-    for i_seq, selection in enumerate(self.rigid_body_selections):
+    for i_seq, selection in enumerate(selections):
         n_atoms += selection.count(True)
         i_selection = selection.iselection()
         start = i_selection[0]

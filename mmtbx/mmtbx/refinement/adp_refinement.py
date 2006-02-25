@@ -25,6 +25,8 @@ tls_master_params = iotbx.phil.parse("""\
   selection                   = None
     .type=str
     .multiple=True
+  one_residue_one_group       = None
+    .type = bool
   refine_T                    = True
     .type = bool
   refine_L                    = True
@@ -136,7 +138,7 @@ class manager(object):
           log                      = log,
           tan_b_iso_max            = tan_b_iso_max)
     if(refine_tls):
-       print_statistics.make_sub_header(text = "individual ADP refinement",
+       print_statistics.make_sub_header(text = "TLS refinement",
                                         out  = log)
        tls_refinement_manager = tools.tls_refinement(
           fmodel                      = fmodel,
