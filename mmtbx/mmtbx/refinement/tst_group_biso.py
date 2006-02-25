@@ -77,7 +77,6 @@ def check_result():
 def run():
   calculate_fobs()
   exercise_1()
-  assert 0
   exercise_2()
   check_result()
   os.system("rm -rf *.geo *.mtz *.log ref1* ref2*")
