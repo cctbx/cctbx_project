@@ -159,8 +159,7 @@ class manager(object):
     selections = None
     if(rigid_body is not None): selections = self.rigid_body_selections
     if(tls is not None): selections = self.tls_selections
-    if(self.rigid_body_selections is None): return
-    if(self.tls_selections is None): return
+    if(self.rigid_body_selections is None and self.tls_selections is None): return
     assert selections is not None
     if (out is None): out = sys.stdout
     print >> out
