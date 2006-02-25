@@ -27,10 +27,10 @@ def make_header(line, out=None):
   print >> out, out_string
   out.flush()
 
-def make_sub_header(line_, out=None):
+def make_sub_header(text, out=None):
   if (out is None): out = sys.stdout
   header_len = 80
-  line = "----------"+line_+"----------"
+  line = "----------"+text+"----------"
   line_len = len(line)
   #assert line_len <= header_len
   fill_len = header_len - line_len
