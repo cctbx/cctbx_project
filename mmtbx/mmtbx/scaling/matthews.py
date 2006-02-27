@@ -120,7 +120,7 @@ def matthews_rupp(miller_array,
   if (n_residues==None):
     if (n_bases==None):
       print >> out
-      print >> out, "Number of residues unknown, asuming 50% solvent content"
+      print >> out, "Number of residues unknown, assuming 50% solvent content"
       n_residues=1
       n_bases=0
       verbose=0

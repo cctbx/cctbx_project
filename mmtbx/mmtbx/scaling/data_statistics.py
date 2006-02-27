@@ -142,7 +142,7 @@ class possible_outliers(object):
       print >> out, " value would be observed when it would selected at random from"
       print >> out, " the given data set."
       print >> out, " p(extreme) is the probability that the largest |E| value is "
-      print >> out, " larger or equal than the observed largest |E| value."
+      print >> out, " larger or equal then the observed largest |E| value."
       print >> out
       print >> out, " Both measures can be used for outlier detection. p(extreme)"
       print >> out, " takes into account the size of the dataset."
@@ -176,7 +176,7 @@ class possible_outliers(object):
       print >> out, " value would be observed when it would selected at random from"
       print >> out, " the given data set."
       print >> out, " p(extreme) is the probability that the largest |E| value is "
-      print >> out, " larger or equal than the observed largest |E| value."
+      print >> out, " larger or equal then the observed largest |E| value."
       print >> out
       print >> out, " Both measures can be used for outlier detection. p(extreme)"
       print >> out, " takes into account the size of the dataset."
@@ -308,7 +308,7 @@ class ice_ring_checker(object):
     print >> out
     print >> out, " Abnormalities in mean intensity or completeness at"
     print >> out, " resolution ranges with a relative ice ring intensity"
-    print >> out, " lower than %3.2f will be ignored."%(intensity_level)
+    print >> out, " lower then %3.2f will be ignored."%(intensity_level)
     print >> out
     comments = False
     for ii in range(10):
@@ -319,7 +319,7 @@ class ice_ring_checker(object):
           self.warnings+=1
           print >> out, " At %3.2f A there is an lower occupancy"%(
           self.ice_d_spacings[ii])
-          print >> out, "  than expected from the rest of the data set."
+          print >> out, "  then expected from the rest of the data set."
           if (abs(self.abnormality_intensity[ii])>=level):
             print >> out, "  At the same resolution range, the expected "
             print >> out, "  mean intensity does not behave as it should. "
@@ -401,7 +401,7 @@ class analyze_measurability(object):
       print >> out, "  The measurability provides an intuitive feeling"
       print >> out, "  of the quality of the data, as it is related to the "
       print >> out, "  number of reliable Bijvoet differences."
-      print >> out, "  Values larger than 0.06 are encouraging. "
+      print >> out, "  Values larger then 0.06 are encouraging. "
       print >> out
       self.meas_table.show(f=out)
       print >> out
@@ -585,7 +585,7 @@ class basic_intensity_statistics:
       print >> out, "Low resolution completeness analyses "
       print >> out
       print >> out, " The following table shows the completeness"
-      print >> out, " off the data to 5 Angstrom."
+      print >> out, " of the data to 5 Angstrom."
       self.low_resolution_completeness.show(f=out)
       print >> out
       print >> out
@@ -593,7 +593,7 @@ class basic_intensity_statistics:
     ## Mean intensity analyses
     print >> out, "Mean intensity analyses "
     print >> out, " Analyses of the mean intensity. "
-    print >> out, " Inpsired by: Morris et al. (2004). J. Synch. Rad.11, 56-59."
+    print >> out, " Inspired by: Morris et al. (2004). J. Synch. Rad.11, 56-59."
     print >> out, " The following resolution shells are worrisome: "
     worrisome = self.z_scores > z_level
     print >> out, "------------------------------------------------"
