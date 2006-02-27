@@ -133,7 +133,7 @@ class basic_analyses(object):
 
     ## Some basic statistics and sanity checks follow
     if verbose>0:
-      print >> out,"Some basis intensity statistics follow."
+      print >> out,"Some basic intensity statistics follow."
       print >> out
 
     basic_data_stats = data_statistics.basic_intensity_statistics(
