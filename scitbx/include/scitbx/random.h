@@ -3,6 +3,7 @@
 
 #include <boost/random/mersenne_twister.hpp>
 #include <scitbx/array_family/shared.h>
+#include <sstream>
 
 namespace scitbx {
 //! Easy access to Boost.Random.
@@ -137,6 +138,21 @@ namespace random {
           std::swap(result[i], result[j]);
         }
         return result;
+      }
+
+      std::string
+      getstate() const
+      {
+        std::stringstream s;
+        s << generator_;
+        return s.str();
+      }
+
+      void
+      setstate(std::string const& state)
+      {
+        std::stringstream s(state);
+        s >> generator_;
       }
 
     private:
