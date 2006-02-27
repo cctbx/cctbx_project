@@ -84,8 +84,8 @@ struct transform<T,T> {
   T operator () ( T const& t ) const {
     return t;
   }
-  transform<T,T> inverse () const {
-    return transform<T,T>();
+  maptbx::transform<T,T> inverse () const {
+    return maptbx::transform<T,T>();
   }
 };
 
@@ -101,8 +101,8 @@ struct transform<fractional<FloatType>,grid_point<IntType> > {
   grid_point<IntType> operator () ( fractional<FloatType> const& coord ) const {
     return round_fractional_gridization(coord,this->to_grid_);
   }
-  transform<grid_point<IntType>,fractional<FloatType> > inverse () const {
-    return transform<grid_point<IntType>,fractional<FloatType> >(this->to_grid_);
+  maptbx::transform<grid_point<IntType>,fractional<FloatType> > inverse () const {
+    return maptbx::transform<grid_point<IntType>,fractional<FloatType> >(this->to_grid_);
   }
   grid_point<IntType> floor_transform ( fractional<FloatType> const& coord ) const {
     return floor_fractional_gridization(coord,this->to_grid_);
@@ -125,8 +125,8 @@ struct transform<fractional<FloatType>,cartesian<FloatType> > {
   cartesian<FloatType> operator () ( fractional<FloatType> const& coord ) const {
     return this->to_cart_ * coord;
   }
-  transform<cartesian<FloatType>,fractional<FloatType> > inverse () const {
-    return transform<cartesian<FloatType>,fractional<FloatType> >(this->to_cart_.inverse());
+  maptbx::transform<cartesian<FloatType>,fractional<FloatType> > inverse () const {
+    return maptbx::transform<cartesian<FloatType>,fractional<FloatType> >(this->to_cart_.inverse());
   }
   scitbx::mat3<FloatType> to_cart_;
 };
@@ -145,8 +145,8 @@ struct transform<cartesian<FloatType>,grid_point<IntType> > {
 
   transform () {}
   transform (
-    transform<cartesian<FloatType>,fractional<FloatType> > const& c2f,
-    transform<fractional<FloatType>,grid_point<IntType> > const& f2g ) {
+    maptbx::transform<cartesian<FloatType>,fractional<FloatType> > const& c2f,
+    maptbx::transform<fractional<FloatType>,grid_point<IntType> > const& f2g ) {
     this->to_frac_ = c2f.to_frac_;
     this->to_grid_ = f2g.to_grid_;
   }
@@ -161,8 +161,8 @@ struct transform<cartesian<FloatType>,grid_point<IntType> > {
     return grid_point<IntType>( round_fractional_gridization( frac,
       this->to_grid_) );
   }
-  transform<grid_point<IntType>,cartesian<FloatType> > inverse () const {
-    return transform<grid_point<IntType>,cartesian<FloatType> >(
+  maptbx::transform<grid_point<IntType>,cartesian<FloatType> > inverse () const {
+    return maptbx::transform<grid_point<IntType>,cartesian<FloatType> >(
       this->to_grid_, this->to_frac_.inverse() );
   }
   scitbx::mat3<FloatType> to_frac_;
@@ -182,8 +182,8 @@ struct transform<cartesian<FloatType>,fractional<FloatType> > {
   fractional<FloatType> operator () ( cartesian<FloatType> const& coord ) const {
     return this->to_frac_ * coord;
   }
-  transform<fractional<FloatType>,cartesian<FloatType> > inverse () const {
-    return transform<fractional<FloatType>,cartesian<FloatType> >(this->to_frac_.inverse());
+  maptbx::transform<fractional<FloatType>,cartesian<FloatType> > inverse () const {
+    return maptbx::transform<fractional<FloatType>,cartesian<FloatType> >(this->to_frac_.inverse());
   }
   scitbx::mat3<FloatType> to_frac_;
 };
@@ -202,8 +202,8 @@ struct transform<grid_point<IntType>,cartesian<FloatType> > {
 
   transform () {}
   transform (
-    transform<grid_point<IntType>,fractional<FloatType> > const& g2f,
-    transform<fractional<FloatType>,cartesian<FloatType> > const& f2c ) {
+    maptbx::transform<grid_point<IntType>,fractional<FloatType> > const& g2f,
+    maptbx::transform<fractional<FloatType>,cartesian<FloatType> > const& f2c ) {
     this->to_cart_ = f2c.to_cart_;
     this->to_frac_ = g2f.to_frac_;
   }
@@ -216,8 +216,8 @@ struct transform<grid_point<IntType>,cartesian<FloatType> > {
     return cartesian<FloatType>( this->to_cart_ *
         grid_fractionalization<FloatType>(coord,this->to_frac_) );
   }
-  transform<cartesian<FloatType>,grid_point<IntType> > inverse () const {
-    return transform<cartesian<FloatType>,grid_point<IntType> >(
+  maptbx::transform<cartesian<FloatType>,grid_point<IntType> > inverse () const {
+    return maptbx::transform<cartesian<FloatType>,grid_point<IntType> >(
       this->to_cart_.inverse(), this->to_frac_ );
   }
   scitbx::mat3<FloatType> to_cart_;
@@ -237,8 +237,8 @@ struct transform<grid_point<IntType>,fractional<FloatType> > {
   fractional<FloatType> operator () ( grid_point<IntType> const& coord ) const {
     return grid_fractionalization<FloatType>(coord,this->to_frac_);
   }
-  transform<fractional<FloatType>,grid_point<IntType> > inverse () const {
-    return transform<fractional<FloatType>,grid_point<IntType> >(this->to_frac_);
+  maptbx::transform<fractional<FloatType>,grid_point<IntType> > inverse () const {
+    return maptbx::transform<fractional<FloatType>,grid_point<IntType> >(this->to_frac_);
   }
   af::tiny<IntType,dimension_3> to_frac_;
 };

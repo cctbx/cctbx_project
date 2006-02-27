@@ -28,12 +28,12 @@ public:
   typedef scitbx::vec3<FloatType>                       vec3_type;
   typedef af::tiny<IntType,dimension_3>                 tin3_type;
   typedef scitbx::mat3<FloatType>                       mat3_type;
-  typedef transform<frac_type,grid_type>                f2g_type;
-  typedef transform<frac_type,cart_type>                f2c_type;
-  typedef transform<grid_type,frac_type>                g2f_type;
-  typedef transform<cart_type,frac_type>                c2f_type;
-  typedef transform<cart_type,grid_type>                c2g_type;
-  typedef transform<grid_type,cart_type>                g2c_type;
+  typedef maptbx::transform<frac_type,grid_type>        f2g_type;
+  typedef maptbx::transform<frac_type,cart_type>        f2c_type;
+  typedef maptbx::transform<grid_type,frac_type>        g2f_type;
+  typedef maptbx::transform<cart_type,frac_type>        c2f_type;
+  typedef maptbx::transform<cart_type,grid_type>        c2g_type;
+  typedef maptbx::transform<grid_type,cart_type>        g2c_type;
   typedef out_of_bounds<void,FloatType,IntType>         out_of_bounds_type;
   typedef chiltbx::handle::handle<out_of_bounds_type>   out_of_handle_type;
 
