@@ -891,6 +891,13 @@ def exercise_random():
   assert list(flex.random_permutation(size=5)) == [1, 0, 4, 3, 2]
   assert list(flex.random_permutation(size=5)) == [0, 2, 3, 1, 4]
   assert list(flex.random_permutation(size=5)) == [3, 1, 0, 4, 2]
+  #
+  state = flex.random_generator.getstate()
+  r1 = flex.random_size_t(13)
+  for i_trial in xrange(10):
+    flex.random_generator.setstate(state=state)
+    r2 = flex.random_size_t(13)
+    assert r2.all_eq(r1)
 
 def exercise_flex_vec3_double():
   flex.exercise_triple(flex.vec3_double, as_double=True)
