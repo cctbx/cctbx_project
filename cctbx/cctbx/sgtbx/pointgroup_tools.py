@@ -296,7 +296,9 @@ class point_group_graph(object):
     self.queue.append( self.pg_low )
 
     while len(self.queue) > 0 :
-      this_sg = self.queue.pop( 0 )
+      this_sg = self.queue[ 0 ]
+      self.queue.remove( this_sg )
+
       self.make_and_place_nodes_and_connections( this_sg )
 
   def make_and_place_nodes_and_connections(self, input_sg):
