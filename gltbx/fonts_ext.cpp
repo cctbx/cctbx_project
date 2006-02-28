@@ -1,6 +1,7 @@
 #include <boost/python/module.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
+#include <boost/cstdint.hpp>
 
 #include <gltbx/fonts_ucs.h>
 
@@ -14,7 +15,7 @@ namespace {
 
   struct ucs_bitmap_wrappers
   {
-    typedef ucs::bitmap<unsigned short> w_t;
+    typedef ucs::bitmap<boost::uint16_t> w_t;
 
 #if defined(GLTBX_USING_UNICODE)
     static void
