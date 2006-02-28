@@ -52,21 +52,21 @@ class graph(object):
   def remove_node(self,name):
     # remove it from the object list please
     if self.node_objects.has_key( name ):
-      self.node_objects.pop( name )
+      del self.node_objects[name]
     # take care of outgoing and incomming
     if self.o.has_key( name ):
-      self.o.pop( name )
+      del self.o[name]
 
     if self.edge_objects.has_key( name ):
-      self.edge_objects.pop( name )
+      del self.edge_objects[name]
 
     for item in self.edge_objects:
       if self.edge_objects[item].has_key( name ):
-        self.edge_objects[item].pop( name )
+        del self.edge_objects[item][name]
 
     for item in self.o:
       if name in self.o[ item ]:
-        self.o[item].pop( self.o[item].index( name ) )
+        del self.o[item][self.o[item].index( name )]
 
 
   def assert_is_clean(self):
