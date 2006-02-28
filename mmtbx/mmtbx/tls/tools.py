@@ -213,6 +213,13 @@ class tls_xray_target_minimizer(object):
                max_iterations,
                run_finite_differences_test = False):
     adopt_init_args(self, locals())
+    if(self.fmodel.target_name in ["ml","lsm"]):
+       # XXX Looks like alpha & beta must be recalcuclated in line search,
+       # XXX       what I don't like
+       self.alpha, self.beta = self.fmodel.alpha_beta_w()
+       #self.alpha, self.beta = None, None
+    else:
+       self.alpha, self.beta = None, None
     self.run_finite_differences_test_counter = 0
     self.T_initial = []
     self.L_initial = []
@@ -297,8 +304,10 @@ class tls_xray_target_minimizer(object):
                                            update_f_calc  = True)
     grad_manager = tls_xray_grads(fmodel     = self.fmodel_copy,
                                   selections = self.selections,
-                                  tlsos      = tlsos)
-    self.f = self.fmodel_copy.target_w()
+                                  tlsos      = tlsos,
+                                  alpha      = self.alpha,
+                                  beta       = self.beta)
+    self.f = self.fmodel_copy.target_w(alpha = self.alpha, beta = self.beta)
     #scale = 8*math.pi**2
     #qqq = new_xrs.scatterers().extract_u_iso_or_u_equiv(new_xrs.unit_cell())*scale
     #ipd = new_xrs.is_positive_definite_u()
@@ -342,11 +351,12 @@ class tls_xray_target_minimizer(object):
     return self.f, self.g
 
 class tls_xray_grads(object):
-   def __init__(self, fmodel, selections, tlsos):
+   def __init__(self, fmodel, selections, tlsos, alpha, beta):
      self.grad_T = []
      self.grad_L = []
      self.grad_S = []
-     d_target_d_uaniso = fmodel.gradient_wrt_u_aniso()
+     d_target_d_uaniso = fmodel.gradient_wrt_u_aniso(alpha = alpha,
+                                                     beta  = beta)
      for sel, tlso in zip(selections, tlsos):
          d_target_d_tls_manager = d_target_d_tls(
             sites             = fmodel.xray_structure.sites_cart().select(sel),

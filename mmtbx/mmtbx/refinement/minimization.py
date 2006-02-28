@@ -32,6 +32,8 @@ class lbfgs(object):
                      alpha_w=None,
                      beta_w=None):
     adopt_init_args(self, locals())
+    assert self.fmodel.xray_structure.scatterers().count_anisotropic() == \
+                           self.xray_structure.scatterers().count_anisotropic()
     self.echem_start = None
     self.exray_start = None
     self.eadp_start  = None
