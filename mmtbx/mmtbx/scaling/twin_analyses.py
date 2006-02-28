@@ -1241,6 +1241,21 @@ class twin_results_interpretation(object):
           print >> self.twinning_verdict, \
             "It might be worthwhile carrying refinement with a twin specific target function."
           self.twinning_short=True
+          if not self.twin_results.input_point_group == self.twin_results.suspected_point_group:
+            print >> self.twinning_verdict
+            print >> self.twinning_verdict,\
+              "Note that the symmetry of the intensities suggest that the assumed space group"
+            print >> self.twinning_verdict, \
+              "is too low. As twinning is however suspected, it is not immediuatly clear if this"
+            print >> self.twinning_verdict, \
+              "is the case. Carefull reprocessing and (twin)refinement for all cases might resolve"
+            print >> self.twinning_verdict, \
+              "this question."
+
+
+
+
+
 
         if self.twin_results.n_twin_laws == 0:
           print >> self.twinning_verdict, \
@@ -1336,8 +1351,59 @@ class twin_results_summary(object):
     self.suspected_point_group = None
     self.possible_sgs = []
 
+    self.table = None
+
     self.verdict=None
     self.in_short=None
+
+  def make_sym_op_table(self):
+    if self.r_calc[0]==None:
+      legend = ('Operator',
+                'type',
+                'R obs.',
+                'Britton alpha',
+                'H alpha')
+
+      table_data = []
+      for item in range( len(self.twin_laws) ):
+        tmp = [ str(self.twin_laws[item]),
+                str(self.twin_law_type[item]),
+                str("%4.3f"%(self.r_obs[item])),
+                str("%4.3f"%(self.britton_alpha[item])),
+                str("%4.3f"%(self.h_alpha[item])) ]
+        table_data.append( tmp )
+
+
+    else:
+      legend = ('Operator',
+                 'type',
+                 'R_abs obs.',
+                 'R_abs calc.',
+                 'Britton alpha',
+                 'H alpha')
+
+      table_data = []
+      for item in range( len(self.twin_laws) ):
+        tmp = [ str(self.twin_laws[item]),
+                str(self.twin_law_type[item]),
+                str("%4.3f"%(self.r_obs[item])),
+                str("%4.3f"%(self.r_calc[item])),
+                str("%4.3f"%(self.britton_alpha[item])),
+                str("%4.3f"%(self.h_alpha[item])) ]
+        table_data.append( tmp )
+
+
+
+
+    self.table = table_utils.format( [legend]+table_data,
+                                comments=None,
+                                has_header=True,
+                                separate_rows=False,
+                                prefix='| ',
+                                postfix=' |')
+
+
+
 
   def show(self,out=None):
     if out is None:
@@ -1346,7 +1412,7 @@ class twin_results_summary(object):
     print >> out
     print >> out
     print >> out
-    print >> out, "--------------------------------------------------------------"
+    print >> out, "-------------------------------------------------------------------------------"
     print >> out, "Twinning and intensity statistics summary (acentric data):"
     print >> out
     print >> out, "Statistics independent of twin laws"
@@ -1358,6 +1424,9 @@ class twin_results_summary(object):
     print >> out
     if len(self.twin_laws)>0:
       print >> out, "Statistics depending on twin laws"
+      self.make_sym_op_table()
+      print >> out, self.table
+    """
     for item in range( len(self.twin_laws) ):
       print >> out, "  Twin law : %s"%( self.twin_laws[item] )
       print >> out, "  Given the specified spacegroup, the twin law is",
@@ -1374,6 +1443,7 @@ class twin_results_summary(object):
       if self.r_calc[item] is not None:
         print >> out, "    - R_twin calculated data : %4.3f"%(self.r_calc[item])
       print >> out
+    """
 
     print >> out
     print >> out, "Patterson analyses"
@@ -1382,7 +1452,8 @@ class twin_results_summary(object):
     print >> out
     print >> out
     print >> out, self.verdict
-    print >> out, "--------------------------------------------------------------"
+    print >> out, "-------------------------------------------------------------------------------"
+
 
 
 class symmetry_issues(object):
