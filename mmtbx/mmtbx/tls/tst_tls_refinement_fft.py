@@ -152,51 +152,65 @@ def exercise_1():
                                 S              = S_initial)
 
   for set in ([1,0,0,tlsosT,"T"],[0,1,0,tlsosL,"L"],[0,0,1,tlsosS,"S"]):
+      if (not "--comprehensive" in sys.argv[1:]):
+          number_of_macro_cycles   = 1
+          max_number_of_iterations = 3
+      else:
+          number_of_macro_cycles   = 10
+          max_number_of_iterations = 50
       tls_refinement_manager = tools.tls_refinement(
                            fmodel                   = fmodel.deep_copy(),
                            selections               = selections,
                            refine_T                 = set[0],
                            refine_L                 = set[1],
                            refine_S                 = set[2],
-                           number_of_macro_cycles   = 10,
-                           max_number_of_iterations = 50,
+                           number_of_macro_cycles   = number_of_macro_cycles,
+                           max_number_of_iterations = max_number_of_iterations,
                            start_tls_value          = set[3],
                            run_finite_differences_test = True)
       tlsos = tls_refinement_manager.tlsos
-      if(set[4] == "T"):
-         for i1,i2 in zip(tlsos, tlsosA):
-             approx_equal(i1.t, i2.t, 0.01)
-             approx_equal(i1.l, i2.l)
-             approx_equal(i1.s, i2.s)
-      if(set[4] == "L"):
-         for i1,i2 in zip(tlsos, tlsosA):
-             approx_equal(i1.t, i2.t)
-             approx_equal(i1.l, i2.l, 0.45)
-             approx_equal(i1.s, i2.s)
-      if(set[4] == "S"):
-         for i1,i2 in zip(tlsos, tlsosA):
-             approx_equal(i1.t, i2.t)
-             approx_equal(i1.l, i2.l)
-             approx_equal(i1.s, i2.s, 0.02)
+      if("--comprehensive" in sys.argv[1:]):
+         if(set[4] == "T"):
+            for i1,i2 in zip(tlsos, tlsosA):
+                assert approx_equal(i1.t, i2.t, 0.01)
+                assert approx_equal(i1.l, i2.l)
+                assert approx_equal(i1.s, i2.s)
+         if(set[4] == "L"):
+            for i1,i2 in zip(tlsos, tlsosA):
+                assert approx_equal(i1.t, i2.t)
+                assert approx_equal(i1.l, i2.l, 0.45)
+                assert approx_equal(i1.s, i2.s)
+         if(set[4] == "S"):
+            for i1,i2 in zip(tlsos, tlsosA):
+                assert approx_equal(i1.t, i2.t)
+                assert approx_equal(i1.l, i2.l)
+                assert approx_equal(i1.s, i2.s, 0.02)
 
+  if (not "--comprehensive" in sys.argv[1:]):
+          number_of_macro_cycles   = 1
+          max_number_of_iterations = 3
+  else:
+          number_of_macro_cycles   = 10
+          max_number_of_iterations = 50
   tls_refinement_manager = tools.tls_refinement(
-                                      fmodel                      = fmodel,
-                                      selections                  = selections,
-                                      refine_T                    = 1,
-                                      refine_L                    = 1,
-                                      refine_S                    = 1,
-                                      number_of_macro_cycles      = 40,
-                                      max_number_of_iterations    = 50,
-                                      start_tls_value             = 0.0,
-                                      run_finite_differences_test = True)
+                        fmodel                      = fmodel,
+                        selections                  = selections,
+                        refine_T                    = 1,
+                        refine_L                    = 1,
+                        refine_S                    = 1,
+                        number_of_macro_cycles      = number_of_macro_cycles,
+                        max_number_of_iterations    = max_number_of_iterations,
+                        start_tls_value             = 0.0,
+                        run_finite_differences_test = True)
 
   u_cart = tls_refinement_manager.fmodel.xray_structure.scatterers().extract_u_cart(
                                                     xray_structure.unit_cell())
-  format   = "%10.6f %10.6f %10.6f %10.6f %10.6f %10.6f"
-  for m1,m2 in zip(u_cart_answer, u_cart):
-      print "1=" + format % (m1[0],m1[1],m1[2],m1[3],m1[4],m1[5])
-      print "2=" + format % (m2[0],m2[1],m2[2],m2[3],m2[4],m2[5])
-      assert approx_equal(m1,m2, 0.02)
+  if("--comprehensive" in sys.argv[1:]):
+     format   = "%10.6f %10.6f %10.6f %10.6f %10.6f %10.6f"
+     for m1,m2 in zip(u_cart_answer, u_cart):
+         print "1=" + format % (m1[0],m1[1],m1[2],m1[3],m1[4],m1[5])
+         print "2=" + format % (m2[0],m2[1],m2[2],m2[3],m2[4],m2[5])
+         assert approx_equal(m1,m2, 0.02)
 
 
 def exercise_2(eps = 1.e-6):
@@ -283,27 +297,34 @@ def exercise_2(eps = 1.e-6):
                             max_number_of_bins  = 30)
   print "*"*80
 ###> TLS refinement against xray data
+  if (not "--comprehensive" in sys.argv[1:]):
+          number_of_macro_cycles   = 1
+          max_number_of_iterations = 3
+  else:
+          number_of_macro_cycles   = 10
+          max_number_of_iterations = 50
   tls_refinement_manager = tools.tls_refinement(
-                           fmodel                      = fmodel,
-                           selections                  = selections,
-                           refine_T                    = 1,
-                           refine_L                    = 1,
-                           refine_S                    = 1,
-                           number_of_macro_cycles      = 100,
-                           max_number_of_iterations    = 50,
-                           start_tls_value             = None,
-                           run_finite_differences_test = False,
-                           eps                         = eps)
+                        fmodel                      = fmodel,
+                        selections                  = selections,
+                        refine_T                    = 1,
+                        refine_L                    = 1,
+                        refine_S                    = 1,
+                        number_of_macro_cycles      = number_of_macro_cycles,
+                        max_number_of_iterations    = max_number_of_iterations,
+                        start_tls_value             = None,
+                        run_finite_differences_test = False,
+                        eps                         = eps)
   u_cart = tls_refinement_manager.fmodel.xray_structure.scatterers().extract_u_cart(
                                                     xray_structure.unit_cell())
-  format   = "%10.6f %10.6f %10.6f %10.6f %10.6f %10.6f"
-  counter = 0
-  for m1,m2 in zip(u_cart_answer, u_cart):
-      counter += 1
-      if(counter < 10):
-         print "1=" + format % (m1[0],m1[1],m1[2],m1[3],m1[4],m1[5])
-         print "2=" + format % (m2[0],m2[1],m2[2],m2[3],m2[4],m2[5])
-      assert approx_equal(m1,m2, 0.02)
+  if("--comprehensive" in sys.argv[1:]):
+     format   = "%10.6f %10.6f %10.6f %10.6f %10.6f %10.6f"
+     counter = 0
+     for m1,m2 in zip(u_cart_answer, u_cart):
+         counter += 1
+         if(counter < 10):
+            print "1=" + format % (m1[0],m1[1],m1[2],m1[3],m1[4],m1[5])
+            print "2=" + format % (m2[0],m2[1],m2[2],m2[3],m2[4],m2[5])
+         assert approx_equal(m1,m2, 0.02)
 
 
 
