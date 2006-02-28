@@ -1248,9 +1248,11 @@ class twin_results_interpretation(object):
           print >> self.twinning_verdict, \
             "a number of reasons for the departure of the intensity statistics from normality."
           print >> self.twinning_verdict, \
-            "Overmerging pseudo-symmetric or twinned data, as well as bad data quality might be"
+            "Overmerging pseudo-symmetric or twinned data, intenisty to amplitude conversion problems"
           print >> self.twinning_verdict, \
-            "possible reasons. It could be worthwhile considering reprocessing the data."
+            " as well as bad data quality might be possible reasons."
+          print >> self.twinning_verdict, \
+            "It could be worthwhile considering reprocessing the data."
           self.twinning_short=None
 
       else:
@@ -1278,7 +1280,7 @@ class twin_results_interpretation(object):
         print >> self.twinning_verdict, \
           "file for more details on your choice of space groups."
 
-      else:
+      if self.twin_results.n_twin_laws > 0:
         print >> self.twinning_verdict, \
           "Even though no twinning is suspected, it might be worthwhile carrying out "
         print >> self.twinning_verdict, \
@@ -1354,7 +1356,8 @@ class twin_results_summary(object):
     print >> out, "  - <|L|>, <L^2>: %5.3f, %4.3f"%(self.l_mean,self.l_sq_mean)
     print >> out, "    ( Multivariate Z score L-test: %5.3f )"%( self.maha_l )
     print >> out
-    print >> out, "Statistics depending on twin laws"
+    if len(self.twin_laws)>0:
+      print >> out, "Statistics depending on twin laws"
     for item in range( len(self.twin_laws) ):
       print >> out, "  Twin law : %s"%( self.twin_laws[item] )
       print >> out, "  Given the specified spacegroup, the twin law is",
