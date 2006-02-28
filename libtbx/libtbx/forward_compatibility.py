@@ -1,5 +1,12 @@
 from __future__ import generators
 
+import os
+if not hasattr(os.path, "devnull"):
+  if os.name == "nt":
+    os.path.devnull = "nul"
+  else:
+    os.path.devnull = "/dev/null"
+
 __builtins__.setdefault("False", 0)
 __builtins__.setdefault("True", 1)
 
