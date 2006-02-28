@@ -4,6 +4,7 @@ from mmtbx.scaling import absolute_scaling
 from cctbx import uctbx
 from cctbx import adptbx
 from cctbx import sgtbx
+from cctbx.sgtbx import pointgroup_tools
 from cctbx import maptbx
 from cctbx import crystal
 import cctbx.sgtbx.lattice_symmetry
@@ -329,7 +330,7 @@ class detect_pseudo_translations(object):
     print >> out,"     p_values smaller then 0.05 might indicate "
     print >> out,"     weak translation pseudo symmetry, or the self vector of "
     print >> out,"     a large anomalous scatterer such as Hg, whereas values "
-    print >> out,"     smaller than 1e-3 are a very strong indication for "
+    print >> out,"     smaller then 1e-3 are a very strong indication for "
     print >> out,"     the presence of translational pseudo symmetry."
     print >> out
 
@@ -350,7 +351,6 @@ class detect_pseudo_translations(object):
 
         if self.suspected_peaks[ii][2] > self.p_value_cut:
           break
-
 
 
 class wilson_moments(object):
@@ -801,7 +801,7 @@ class l_test(object):
     print >> out, "  The distribution of |L| values indicates a twin fraction of"
     print >> out, "  %3.2f. Note that this estimate is not as reliable as obtained"\
           %(self.ml_alpha)
-    print >> out,"  via a britton plot or H-test if twin laws are available. "
+    print >> out,"  via a Britton plot or H-test if twin laws are available. "
     print >> out
     print >> out
 
@@ -832,10 +832,11 @@ class twin_law_dependend_twin_tests(object):
                                      out=out,
                                      verbose=verbose)
 
-    self.obs_vs_calc = f_obs_vs_f_calc(miller_array,
-                                       miller_calc,
-                                       twin_law.operator.as_double_array()[0:9],
-                                       out)
+    self.r_values = r_values(miller_array,
+                             twin_law.operator.as_double_array()[0:9],
+                             miller_calc,
+                             out)
+
 
 
 class summary_object(object):
@@ -932,7 +933,7 @@ class summary_object(object):
       self.show(out)
 
 
-    # fill up the dam things
+    # fill up the summats
     export_product = twin_results_summary()
     export_product.patterson_height = self.max_peak_height
     export_product.patterson_p_value = self.max_peak_height_p_value
@@ -945,7 +946,7 @@ class summary_object(object):
     export_product.maha_l=self.maha_distance_l
 
     export_product.twin_laws=self.twin_law
-    export_product.twin_law_classifier=["M","M","M","M","M","M","M"]
+    export_product.twin_law_classifier=["M","M","M","M","M","M","M","M","M","M","M","M","M","M","M","M","M"]
     export_product.r_obs=self.r_vs_r_obs
     export_product.r_calc=self.r_vs_r_calc
     export_product.britton_alpha=self.britton_alpha
@@ -1107,11 +1108,16 @@ class twin_results_interpretation(object):
                l_test,
                translational_pseudo_symmetry=None,
                twin_law_related_test=None,
+               symmetry_issues=None,
 
                maha_l_cut=3.5,
                patterson_p_cut=0.01,
 
                out=None):
+
+    self.maha_l_cut = maha_l_cut
+    self.patterson_p_cut = patterson_p_cut
+
 
     self.twin_results = twin_results_summary()
     # patterson analyses
@@ -1137,9 +1143,9 @@ class twin_results_interpretation(object):
       self.twin_results.twin_law_type.append(
         twin_item.twin_law.twin_type)
       self.twin_results.r_obs.append(
-        twin_item.obs_vs_calc.r_obs)
+        twin_item.r_values.r_abs_obs)
       self.twin_results.r_calc.append(
-        twin_item.obs_vs_calc.r_calc)
+        twin_item.r_values.r_abs_calc)
 
       self.twin_results.britton_alpha.append(
         twin_item.britton_test.estimated_alpha)
@@ -1149,14 +1155,34 @@ class twin_results_interpretation(object):
     if self.twin_results.n_twin_laws > 0 :
       self.twin_results.most_worrysome_twin_law = flex.max_index(
         flex.double(self.twin_results.britton_alpha) )
+      self.twin_results.suspected_point_group = symmetry_issues.pg_choice
+      self.twin_results.possible_sgs = symmetry_issues.sg_possibilities
+      self.twin_results.input_point_group = symmetry_issues.pg_low_prim_set_name
+
     else:
+      self.twin_results.input_point_group = None
       self.twin_results.most_worrysome_twin_law = None
+      self.twin_results.suspected_point_group = None
+      self.twin_results.possible_sgs = None
 
+
+    # These items will hold the 'verdicts'
     self.patterson_verdict = StringIO()
-    if translational_pseudo_symmetry is not None:
-      self.analyse_pseudo_translational_symmetry(patterson_p_cut)
-    #self.twin_results.show()
+    self.patterson_short = None
 
+    self.twinning_verdict = StringIO()
+    self.twinning_short = None
+
+    self.space_group_issues_verdict = StringIO()
+    self.space_group_issues_short = None
+
+    if translational_pseudo_symmetry is not None:
+      self.analyse_pseudo_translational_symmetry()
+    self.analyse_intensity_stats()
+
+
+    self.twin_results.verdict = self.patterson_verdict.getvalue() + self.twinning_verdict.getvalue()
+    self.twin_results.show(out=out)
 
 
   def compute_maha_l(self):
@@ -1174,21 +1200,112 @@ class twin_results_interpretation(object):
     self.twin_results.maha_l = maha_distance_l
 
 
-  def analyse_pseudo_translational_symmetry(self,
-                                            patterson_p_cut=0.01):
-    if self.twin_results.patterson_p_value >= patterson_p_cut:
+  def analyse_pseudo_translational_symmetry(self):
+    if self.twin_results.patterson_p_value <= self.patterson_p_cut:
       print >> self.patterson_verdict,\
-      "  The analyses of the Patterson function reveals a significant off-origin"
+      "The analyses of the Patterson function reveals a significant off-origin"
       print >> self.patterson_verdict,\
-      "  peak that is %3.2f %s of the origin peak. The chance of findong a peak of"%(
+      "peak that is %3.2f %s of the origin peak, indicating pseudo translational symmetry."%(
         self.twin_results.patterson_height,"%")
       print >> self.patterson_verdict,\
-      "  this or larger height by random in a structure without pseudo translational"
+      "The chance of finding a peak of this or larger height by random in a "
       print >> self.patterson_verdict,\
-      "  symmetry is equal to the %5.4e."%(self.twin_results.patterson_p_value)
+      "structure without pseudo translational symmetry is equal to the %5.4e."%(self.twin_results.patterson_p_value)
+      if self.twin_results.i_ratio > 2:
+        print >> self.patterson_verdict,\
+        "The detected tranlational NCS is most likely also responsible for the elevated intensity ratio."
+      print >> self.patterson_verdict,\
+        "See the relevant section of the logfile for more details."
 
     else:
-      self.patterson_verdict="""No significant pseudotranslation detected."""
+      print >> self.patterson_verdict,\
+       "The largest off-origin peak in the Patterson function is %3.2f%s of the "%(self.twin_results.patterson_height,"%")
+      print >> self.patterson_verdict,\
+            "height of the origin peak. No significant pseudotranslation is detected."
+      print >> self.patterson_verdict
+
+  def analyse_intensity_stats(self):
+    if self.twin_results.maha_l >= self.maha_l_cut:
+      if self.twin_results.l_mean < 0.5 :
+        print >> self.twinning_verdict, \
+          "The results of the L-test indicate that the intensity statistics"
+        print >> self.twinning_verdict, \
+          "are significantly different then is expected from good to reasonable,"
+        print >> self.twinning_verdict, \
+          "untwinned data."
+        if self.twin_results.n_twin_laws > 0:
+          print >> self.twinning_verdict, \
+            "As there are twin laws possible given the crystal symmetry, twinning could"
+          print >> self.twinning_verdict, \
+            "be the reason for the departure of the intensity statistics from normality."
+          print >> self.twinning_verdict, \
+            "It might be worthwhile carrying refinement with a twin specific target function."
+          self.twinning_short=True
+
+        if self.twin_results.n_twin_laws == 0:
+          print >> self.twinning_verdict, \
+            "As there are no twin laws possible given the crystal symmetry, there could be"
+          print >> self.twinning_verdict, \
+            "a number of reasons for the departure of the intensity statistics from normality."
+          print >> self.twinning_verdict, \
+            "Overmerging pseudo-symmetric or twinned data, as well as bad data quality might be"
+          print >> self.twinning_verdict, \
+            "possible reasons. It could be worthwhile considering reprocessing the data."
+          self.twinning_short=None
+
+      else:
+        self.twinning_short=None
+        print >> self.twinning_verdict, \
+           "The results of the L-test indicate that the intensity statistics"
+        print >> self.twinning_verdict, \
+           "Show more centric character then is expected for acentric data."
+        if self.twin_results.patterson_p_value >= self.patterson_p_cut:
+          print >> self.twinning_verdict, \
+            "This behavoir might be explained by the presence of the detected pseudo translation."
+          self.twinning_short=False
+
+    else:
+      self.twinning_short=False
+      print >> self.twinning_verdict, \
+        "The results of the L-test indicate that the intensity statistics"
+      print >> self.twinning_verdict, \
+        "behave as expected. No twinning is suspected."
+      if not self.twin_results.input_point_group == self.twin_results.suspected_point_group:
+        print >> self.twinning_verdict, \
+          "The symmetry of the lattice and intensity however suggests that the"
+        print >> self.twinning_verdict, \
+              "input space group is too low. See the relevant sections of the log"
+        print >> self.twinning_verdict, \
+          "file for more details on your choice of space groups."
+
+      else:
+        print >> self.twinning_verdict, \
+          "Even though no twinning is suspected, it might be worthwhile carrying out "
+        print >> self.twinning_verdict, \
+          "a refinement using a dedicated twin target anyway, as twinned structures with"
+        print >> self.twinning_verdict, \
+          "low twin fractions are difficult to distinguish from non-twinned structures."
+        print >> self.twinning_verdict
+        if self.twin_results.most_worrysome_twin_law != None:
+          if self.twin_results.britton_alpha[ self.twin_results.most_worrysome_twin_law ]> 0.05:
+            print >> self.twinning_verdict,\
+                  "The correlation between the intensities related by the twin law %s with an"%(
+              self.twin_results.twin_laws[ self.twin_results.most_worrysome_twin_law ])
+            print >> self.twinning_verdict,\
+                  "estimated twin fraction of %3.2f %s "%(
+              self.twin_results.britton_alpha[ self.twin_results.most_worrysome_twin_law],
+              "%")
+            print >> self.twinning_verdict,\
+                  "is most likely due to an NCS axis parallel to the twin axis. This can be verified by"
+            print >> self.twinning_verdict,\
+                  "supplying calculated data as well."
+
+
+
+
+
+
+
 
 
 class twin_results_summary(object):
@@ -1213,14 +1330,22 @@ class twin_results_summary(object):
 
     self.most_worrysome_twin_law = None
 
+    self.input_point_group = None
+    self.suspected_point_group = None
+    self.possible_sgs = []
+
     self.verdict=None
     self.in_short=None
 
   def show(self,out=None):
     if out is None:
       out = sys.stdout
+    print >> out
+    print >> out
+    print >> out
+    print >> out
     print >> out, "--------------------------------------------------------------"
-    print >> out, "Twinning and intensity statistics summary"
+    print >> out, "Twinning and intensity statistics summary (acentric data):"
     print >> out
     print >> out, "Statistics independent of twin laws"
     print >> out, "  - <I^2>/<I>^2 : %5.3f"%(self.i_ratio)
@@ -1245,6 +1370,7 @@ class twin_results_summary(object):
       print >> out, "    - R_twin observed data   : %4.3f"%(self.r_obs[item])
       if self.r_calc[item] is not None:
         print >> out, "    - R_twin calculated data : %4.3f"%(self.r_calc[item])
+      print >> out
 
     print >> out
     print >> out, "Patterson analyses"
@@ -1252,19 +1378,286 @@ class twin_results_summary(object):
     print >> out, "   (correpsonding p value : %8.3e)"%(self.patterson_p_value)
     print >> out
     print >> out
+    print >> out, self.verdict
     print >> out, "--------------------------------------------------------------"
 
 
+class symmetry_issues(object):
+  def __init__(self,
+               miller_array,
+               max_delta=3.0,
+               r_cut=0.05,
+               scoring_function=None,
+               out=None):
 
-class f_obs_vs_f_calc(object):
+    self.out = out
+    if self.out == None:
+      self.out = sys.stdout
+
+    if scoring_function == None:
+      self.scoring_function=[ 0.08, 50.0, 0.10, 50.0 ]
+
+    self.miller_array = miller_array
+    self.xs_input = crystal.symmetry(miller_array.unit_cell(),
+                                     space_group=miller_array.space_group() )
+    self.explore_sg = pointgroup_tools.space_group_graph_from_cell_and_sg(
+      self.xs_input.unit_cell(),
+      self.xs_input.space_group(),
+      max_delta=max_delta)
+
+    self.pg_of_input_sg = self.xs_input.space_group().build_derived_group(
+      False,False)
+
+    self.pg_input_name = str(sgtbx.space_group_info(group=self.pg_of_input_sg))
+
+    self.pg_low_prim_set = self.explore_sg.pg_low_prim_set
+    self.pg_low_prim_set_name = str(sgtbx.space_group_info(group=self.explore_sg.pg_low_prim_set))
+
+    self.pg_lattice_name = str( sgtbx.space_group_info( group = self.explore_sg.pg_high ) )
+
+    self.miller_niggli =self.miller_array.change_basis(
+      self.xs_input.change_of_basis_op_to_niggli_cell()
+      )
+
+    self.ops_and_r_pairs = {}
+    self.pg_r_used_table = {}
+    self.pg_max_r_used_table = {}
+    self.pg_r_unused_table = {}
+    self.pg_min_r_unused_table = {}
+    self.pg_scores = {}
+    self.pg_choice = None
+    self.sg_possibilities = []
+
+    self.legend = None
+    self.table_data = []
+    self.table = None
+
+    self.make_r_table()
+    self.make_pg_r_table()
+    self.score_all()
+    self.wind_up()
+    self.show(self.out)
+
+
+  def make_r_table(self):
+    tmp_buffer=StringIO()
+    # please find all missing sym ops
+    start = str(sgtbx.space_group_info(group=self.pg_low_prim_set))
+    tmp_key = self.explore_sg.pg_graph.graph.edge_objects[ start ].keys()[0]
+    tmp_edge = self.explore_sg.pg_graph.graph.edge_objects[ start ][tmp_key]
+
+    for symop in tmp_edge.return_used():
+      # get the r value please for this symop
+      r_value = r_values( self.miller_niggli,
+                          symop.as_double_array()[0:9],
+                          out=tmp_buffer)
+      top = r_value.r_abs_top_obs
+      bottom = r_value.r_abs_bottom_obs
+      self.ops_and_r_pairs.update( {symop.r().as_hkl():
+                                    (top, bottom)} )
+
+    for symop in tmp_edge.return_unused():
+      r_value = r_values( self.miller_niggli,
+                          symop.as_double_array()[0:9],
+                          out=tmp_buffer)
+      top = r_value.r_abs_top_obs
+      bottom = r_value.r_abs_bottom_obs
+      self.ops_and_r_pairs.update( {symop.r().as_hkl():
+                                    (top, bottom)} )
+
+  def score_all(self):
+    for pg in self.pg_max_r_used_table:
+      max = self.pg_max_r_used_table[ pg ]
+      min = self.pg_min_r_unused_table[ pg ]
+      mean_used =  self.pg_r_used_table[ pg ]
+      mean_unused = self.pg_r_unused_table[ pg ]
+
+      if max ==  None:
+        max = 0.0
+      if min == None:
+        min = 0.50
+
+      if mean_used == None:
+        mean_used = 0.0
+      if mean_unused == None:
+        mean_unused = 0.50
+
+
+      score_max = 0.5*( 1.0-math.tanh(( max -
+                                       self.scoring_function[0])*
+                        self.scoring_function[1] ))
+
+      score_mean_used = 0.5*( 1.0-math.tanh(( mean_used -
+                                              self.scoring_function[2])*
+                                            self.scoring_function[3] ))
+
+      score_min = 0.5*( 1.0-math.tanh(-( min -
+                                       self.scoring_function[0])*
+                        self.scoring_function[1] ))
+
+      score_mean_unused = 0.5*( 1.0-math.tanh(-( mean_unused -
+                                                 self.scoring_function[0])*
+                                              self.scoring_function[1] ))
+      final_score  = -math.log(score_min*
+                               score_max*
+                               score_mean_used*
+                               score_mean_unused
+                               +1e-60)
+      self.pg_scores.update( {pg:final_score} )
+
+  def make_pg_r_table(self):
+    start = str(sgtbx.space_group_info(group=self.pg_low_prim_set))
+    end = str(sgtbx.space_group_info(group=self.explore_sg.pg_high))
+
+    for pg in self.explore_sg.pg_graph.graph.node_objects:
+      r, max_r, min_r = self.get_r_value_total(start,pg)
+      self.pg_r_used_table.update( {pg:r} )
+      self.pg_max_r_used_table.update( {pg:max_r} )
+
+      r, max_r, min_r = self.get_r_value_total(pg,end)
+      self.pg_r_unused_table.update( {pg:r} )
+      self.pg_min_r_unused_table.update( {pg:min_r} )
+
+  def get_r_value_total(self,
+                        start_pg,
+                        end_pg):
+    top = 0.0
+    bottom = 0.0
+    result=None
+    max_r=-100.0
+    min_r= 10000.0
+    # please find the shortest path from start to pg
+    path = self.explore_sg.pg_graph.graph.find_shortest_path(
+      start_pg,end_pg)
+    if len(path)>1:
+      for ii in xrange(len(path)-1):
+        start_point = path[ii]
+        end_point = path[ii+1]
+        # get the ops for this transformation please
+        tmp_edge = self.explore_sg.pg_graph.graph.edge_objects[start_point][end_point]
+        tmp_ops_used = tmp_edge.symops_used
+        tmp_ops_unused = tmp_edge.symops_unused
+        # for each used symop find the entry in the table
+        # in the same row, we have to find an entry that is in the r table
+
+        for this_s in tmp_ops_used:
+          for trial_coset in self.explore_sg.coset_table:
+            found_it = False
+            for trial_s in trial_coset:
+              if trial_s == str(this_s.r().as_hkl()):
+                found_it = True
+            if found_it:
+              for trial_s in trial_coset:
+                if self.ops_and_r_pairs.has_key( trial_s ):
+                  # key is there, update please
+                  top+=self.ops_and_r_pairs[ trial_s ][0]
+                  bottom+=self.ops_and_r_pairs[ trial_s ][1]
+                  current_r = 0
+                  if self.ops_and_r_pairs[ trial_s ][1]>0:
+                    current_r = self.ops_and_r_pairs[ trial_s ][0]/self.ops_and_r_pairs[ trial_s ][1]
+                  if (current_r> max_r):
+                    max_r = current_r
+                  if current_r <= min_r:
+                    min_r = current_r
+
+      if bottom==0:
+        result = 0
+      else:
+        result = top/bottom
+    if max_r<0:
+      max_r = None
+    if min_r > 100.0:
+      min_r = None
+    return result, max_r, min_r
+
+  def string_it(self, xin, format):
+    if xin==None:
+      xin='None'
+    else:
+      xin=format%(xin)
+    return xin
+
+  def wind_up(self):
+    self.legend = ('Point group',
+                   'mean R_used',
+                   'max R_used',
+                   'mean R_unused',
+                   'min R_unused',
+                   'choice')
+
+    self.table_data = []
+    min_score = 2e+9
+    for pg in self.pg_scores:
+
+      tmp = [pg,
+             self.string_it(self.pg_r_used_table[pg], "%4.3f"),
+             self.string_it(self.pg_max_r_used_table[pg],"%4.3f"),
+             self.string_it(self.pg_r_unused_table[pg],"%4.3f"),
+             self.string_it(self.pg_min_r_unused_table[pg],"%4.3f"),
+             "    " ]
+      self.table_data.append( tmp )
+      if self.pg_scores[ pg ] < min_score:
+        min_score = self.pg_scores[ pg ]
+        self.pg_choice = pg
+
+    for row in self.table_data:
+      if self.pg_choice == row[0]:
+        row[ 5 ] = "<---"
+
+    self.table = table_utils.format([self.legend]+self.table_data,
+                                    comments=None,
+                                    has_header=True,
+                                    separate_rows=False,
+                                    prefix='| ',
+                                    postfix=' |')
+    # store the possible spacegroups and the change of basis ops
+    # for the most likely pg
+    for xs in self.explore_sg.pg_graph.graph.node_objects[
+      self.pg_choice ].allowed_xtal_syms:
+      self.sg_possibilities.append( xs )
+
+
+
+  def show(self, out=None):
+    if out == None:
+      out = sys.stdout
+    print >> out
+    print >> out
+    print >> out, "Exploring higher metric symmetry"
+    print >> out
+    print >> out, "Point group of data as discted by the space group is", self.pg_input_name
+    print >> out, "  the point group in the niggli setting is", sgtbx.space_group_info( group=self.pg_low_prim_set )
+    print >> out, "The point group of the lattice is", self.pg_lattice_name
+    print >> out, "A summary of R values for various possible point groups follow."
+    print >> out
+    print >> out, self.table
+    print >> out
+    print >> out, "R_used: mean and maximum R value for symmetry operators *used* in this point group"
+    print >> out, "R_unused: mean and minimum R value for symmetry operators *not used* in this point group"
+    print >> out, " The likely point group of the data is: ",self.pg_choice
+    print >> out
+    print >> out, "Possible space groups in this point groups are:"
+    for sg in self.sg_possibilities:
+      sg[0].show_summary(f=out, prefix= "   ")
+      print >> out
+
+
+
+
+
+class r_values(object):
   def __init__(self,
                miller_obs,
+               twin_law,
                miller_calc=None,
-               twin_law=None,
-               out=None):
+               out=None,
+               n_reflections=400):
 
     self.obs = miller_obs.deep_copy()
     self.calc=None
+
+    self.n_reflections=n_reflections
+
     if miller_calc is not None:
       self.calc = miller_calc.deep_copy()
       self.obs, self.calc = self.obs.common_sets( self.calc )
@@ -1275,36 +1668,80 @@ class f_obs_vs_f_calc(object):
     if out is None:
       self.out=sys.stdout
 
-    self.r_obs=None
-    self.r_calc=None
+    self.r_abs_obs=None
+    self.r_abs_calc=None
+    self.r_sq_obs=None
+    self.r_sq_calc=None
+
+    self.r_abs_top_obs=None
+    self.r_abs_bottom_obs=None
+    self.r_sq_top_obs = None
+    self.r_sq_bottom_obs = None
+
+    self.d_star_sq = []
+    self.r_sq_obs_reso = []
+    self.r_sq_calc_reso = []
+
     self.guess=None
-    self.r_vs_r()
+    #self.resolution_dependent_r_values()
+    self.r_vs_r( self.obs,self.calc)
     self.r_vs_r_classification()
 
     self.show()
 
+  def resolution_dependent_r_values(self):
+    # bin the data please in the specified number of bins
+    self.obs.setup_binner(reflections_per_bin=self.n_reflections)
 
-  def r_vs_r(self):
+    # now we have to loop over all bins please
+    for bin_number in self.obs.binner().range_used():
+      selection =  self.obs.binner().selection( bin_number ).iselection()
+      tmp_obs = self.obs.select( selection )
+      tmp_calc=None
+      if self.calc is not None:
+        tmp_calc = self.calc.select( selection )
+      else:
+        self.r_sq_calc_reso = None
+
+      self.r_vs_r(tmp_obs, tmp_calc)
+
+
+      up = self.obs.binner().bin_d_range(bin_number)[0]
+      down = self.obs.binner().bin_d_range(bin_number)[1]
+
+      self.d_star_sq.append( 0.5/(up*up) + 0.5/(down*down) )
+      self.r_sq_obs_reso.append( self.r_sq_obs )
+      if self.calc is not None:
+        self.r_sq_calc_reso.append(self.r_sq_calc )
+
+
+
+  def r_vs_r(self, input_obs, input_calc):
     # in order to avoid certain issues, take common sets please
     obs = None
     calc = None
-    if self.calc is not None:
-      obs, calc = self.obs.common_sets( self.calc )
+    if input_calc is not None:
+      obs, calc = input_obs.common_sets( input_calc )
     else:
-      obs = self.obs.deep_copy()
+      obs = input_obs.deep_copy()
     # make sure we have intensities
     if not obs.is_xray_intensity_array():
       obs = obs.f_as_f_sq()
     if calc is not None:
       if not calc.is_xray_intensity_array():
         calc = calc.f_as_f_sq()
-
     obs_obj = scaling.twin_r( obs.indices(),
                               obs.data(),
                               obs.space_group(),
                               obs.anomalous_flag(),
                               self.twin_law )
-    self.r_obs = obs_obj.r_abs_value()
+
+    self.r_abs_obs = obs_obj.r_abs_value()
+    self.r_sq_obs = obs_obj.r_sq_value()
+
+    self.r_sq_top_obs, self.r_sq_bottom_obs = obs_obj.r_sq_pair()
+    self.r_abs_top_obs, self.r_abs_bottom_obs = obs_obj.r_abs_pair()
+
 
     if calc is not None:
       calc_obj =  scaling.twin_r( calc.indices(),
@@ -1312,7 +1749,11 @@ class f_obs_vs_f_calc(object):
                                   calc.space_group(),
                                   calc.anomalous_flag(),
                                   self.twin_law )
-      self.r_calc = calc_obj.r_abs_value()
+      self.r_abs_calc = calc_obj.r_abs_value()
+      self.r_sq_calc = calc_obj.r_sq_value()
+
+
+
 
   def r_vs_r_classification(self):
     self.rvsr_interpretation = [
@@ -1326,10 +1767,11 @@ class f_obs_vs_f_calc(object):
     guess = None
     min=1.0
     count=0
-    if self.r_calc is not None:
+
+    if self.r_abs_calc is not None:
       for test_class in  self.rvsr_interpretation:
-        tmp_obs = (float(test_class[0])-self.r_obs)**2.0
-        tmp_calc = (float(test_class[1])-self.r_calc)**2.0
+        tmp_obs = (float(test_class[0])-self.r_abs_obs)**2.0
+        tmp_calc = (float(test_class[1])-self.r_abs_calc)**2.0
 
         d =  math.sqrt( tmp_obs+tmp_calc )
         test_class[3]="%4.3f"%(d)
@@ -1344,17 +1786,24 @@ class f_obs_vs_f_calc(object):
   def show(self):
     print >> self.out
     print >> self.out, "R vs R statistic:"
+    print >> self.out, "  R_abs_twin = <|I1-I2|>/<|I1+I2|>"
     print >> self.out, "  Lebedev, Vagin, Murshudov. Acta Cryst. (2006). D62, 83-95"
     print >> self.out
-    print >> self.out , "  R_twin observed data   : %4.3f"%(self.r_obs)
-    if self.r_calc is not None:
-      print >> self.out , "  R_twin calculated data : %4.3f"%(self.r_calc)
+    print >> self.out, "   R_abs_twin observed data   : %4.3f"%(self.r_abs_obs)
+    if self.r_abs_calc is not None:
+      print >> self.out , "   R_abs_twin calculated data : %4.3f"%(self.r_abs_calc)
+
+    print >> self.out
+    print >> self.out, "  R_sq_twin = <(I1-I2)^2>/<(I1+I2)^2>"
+    print >> self.out , "   R_sq_twin observed data    : %4.3f"%(self.r_sq_obs)
+    if self.r_abs_calc is not None:
+      print >> self.out , "   R_sq_twin calculated data  : %4.3f"%(self.r_sq_calc)
       print >> self.out
       print >> self.out , "  The following table can be used in a simple classification scheme"
       print >> self.out,  "  to determine the presence of twinning and or presence of pseudo symmetry."
       print >> self.out
       ## make a neat table please
-      legend=('R_obs','R_calc', 'Class', 'distance', 'choice')
+      legend=('R_abs_obs','R_abs_calc', 'Class', 'distance', 'choice')
       self.table = table_utils.format( [legend]+self.rvsr_interpretation,
                                        comments=None,
                                        has_header=True,
@@ -1511,6 +1960,8 @@ class twin_analyses(object):
 
     self.twin_law_dependent_analyses = []
 
+
+
     for ii in range(self.n_twin_laws):
       print >> out
       print >> out,"---------------------------------------------"
@@ -1556,23 +2007,25 @@ class twin_analyses(object):
       if out_plots is not None:
         data_plots.plot_data_loggraph(h_plot,out_plots)
 
+
+      # now we can check for space group related issues
+    self.check_sg = None
+    if self.n_twin_laws > 0:
+      self.check_sg = symmetry_issues(
+        miller_array,
+        3.0,
+        out=out)
+
     ##--------------------------
-    """
-    self.twin_summary = summary_object(miller_array.info(),
-                                  self.nz_test,
-                                  self.wilson_moments,
-                                  self.l_test,
-                                  self.translation_pseudo_symmetry,
-                                  self.twin_law_dependent_analyses,
-                                  out=out, verbose=2 )
-    """
     self.twin_summary = twin_results_interpretation(
       self.nz_test,
       self.wilson_moments,
       self.l_test,
       self.translation_pseudo_symmetry,
       self.twin_law_dependent_analyses,
+      self.check_sg,
       out=out)
+
 
 
 
