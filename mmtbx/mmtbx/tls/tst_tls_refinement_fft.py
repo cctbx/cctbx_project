@@ -190,7 +190,7 @@ def exercise_1():
           number_of_macro_cycles   = 1
           max_number_of_iterations = 3
   else:
-          number_of_macro_cycles   = 10
+          number_of_macro_cycles   = 100
           max_number_of_iterations = 50
   tls_refinement_manager = tools.tls_refinement(
                         fmodel                      = fmodel,
