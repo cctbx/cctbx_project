@@ -6,6 +6,7 @@ from mmtbx.tls import tools
 from mmtbx.refinement import print_statistics
 import scitbx.lbfgs
 from cctbx import xray
+from libtbx.utils import Sorry
 
 group_adp_master_params = iotbx.phil.parse("""\
   number_of_macro_cycles   = 5
@@ -33,9 +34,9 @@ tls_master_params = iotbx.phil.parse("""\
     .type = bool
   refine_S                    = True
     .type = bool
-  number_of_macro_cycles      = 5
+  number_of_macro_cycles      = 3
     .type = int
-  max_number_of_iterations    = 50
+  max_number_of_iterations    = 25
     .type = int
   start_tls_value             = None
     .type = float
@@ -106,6 +107,8 @@ class manager(object):
             wu_individual             = None,
             wx                        = None,
             log                       = None):
+    if(refine_tls and [refine_adp_group, refine_adp_individual].count(True)>0):
+       raise Sorry("Simultaneous refinement of TLS and individual or group ADP or sites is not implemented")
     if(log is None): log = sys.stdout
     if(refine_adp_individual):
        lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
@@ -126,6 +129,10 @@ class manager(object):
             iso_restraints           = adp_restraints_params.iso,
             verbose                  = 0)
        self.minimized.show(text = "LBFGS minimization", out  = log)
+       fmodel.update_xray_structure(
+                               xray_structure           = self.minimized.xray_structure,
+                               update_f_calc            = True,
+                               out                      = log)
     if(refine_adp_group):
        print_statistics.make_sub_header(text= "group isotropic ADP refinement",
                                         out = log)
