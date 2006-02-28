@@ -444,6 +444,11 @@ class signature:
       for arg in arg_strings:
         self.args.append(argument(self.function_name, arg))
     self.version_guard = version_guards.get(self.function_name, None)
+    self.have_opaque_pointer = self.return_type in opaque_pointers
+    if (not self.have_opaque_pointer):
+      for arg in self.args:
+        if (arg.type in opaque_pointers):
+          self.have_opaque_pointer = True
 
   def show(self, f=None):
     if (f is None): f = sys.stdout
@@ -456,6 +461,14 @@ class signature:
     i = 2
     if (self.function_name.startswith("glu")): i = 3
     return self.function_name[:i]+"_"+self.function_name[i:]
+
+  def write_no_opaque_pointers_guard_if(self, f):
+    if (self.have_opaque_pointer):
+      print >> f, "#if !defined(GLTBX_NO_OPAQUE_POINTERS)"
+
+  def write_no_opaque_pointers_guard_endif(self, f):
+    if (self.have_opaque_pointer):
+      print >> f, "#endif"
 
   def write_version_guard_if(self, f):
     if (self.version_guard is not None):
@@ -566,10 +579,12 @@ class signature:
       if (self.return_type != "void" and not return_directly):
         lines.append(ss+"  return result;")
     lines.append("}")
+    self.write_no_opaque_pointers_guard_if(f=f)
     self.write_version_guard_if(f=f)
     for line in lines:
       print >> f, " ", line
     self.write_version_guard_endif(f=f)
+    self.write_no_opaque_pointers_guard_endif(f=f)
     print >> f
 
   def write_def(self, f):
@@ -579,6 +594,7 @@ class signature:
       return
     return_opaque = self.return_type in opaque_pointers
     def_args = (self.function_name, self.wrapper_function_name())
+    self.write_no_opaque_pointers_guard_if(f=f)
     self.write_version_guard_if(f=f)
     if (len(self.args) == 0):
       if (not return_opaque):
@@ -596,6 +612,7 @@ class signature:
       for line in line_breaker(s, 73):
         print >> f, "      "+line
     self.write_version_guard_endif(f=f)
+    self.write_no_opaque_pointers_guard_endif(f=f)
 
 def get_signatures():
   result = []
@@ -610,13 +627,18 @@ def write_function_wrappers(f, namespace, signatures, i_fragment):
   print >> f, """\
 #include <gltbx/pointer_args_bpl.h>
 #include <gltbx/error.h>
-#include <boost/python/return_value_policy.hpp>
-#include <boost/python/return_opaque_pointer.hpp>
 """
   if (namespace == "glu"):
+    print >> f, "#if defined(__GNUC__) && __GNUC__ == 2 \\"
+    print >> f, "     && __GNUC_MINOR__ == 96 && __GNUC_PATCHLEVEL__ == 0"
+    print >> f, "#define GLTBX_NO_OPAQUE_POINTERS"
+    print >> f, "#else"
+    print >> f, "#include <boost/python/return_value_policy.hpp>"
+    print >> f, "#include <boost/python/return_opaque_pointer.hpp>"
     for opaque_pointer in opaque_pointers:
       print >> f, "BOOST_PYTHON_OPAQUE_SPECIALIZED_TYPE_ID(%s)" % (
         opaque_pointer[:-1])
+    print >> f, "#endif"
     print >> f
   print >> f, """\
 namespace gltbx { namespace %s { namespace {
