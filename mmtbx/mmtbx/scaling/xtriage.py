@@ -93,7 +93,8 @@ A possible short form of the full parameter name is listed as well
   | analyses.verbose         | verb  | Verbosity level                       |
   | analyses.log             | log   | Log file with CCP4i style plots       |
   | xray_data.file_name      | file  | File containing xray data             |
-  | xray_data.labels         | lab   | Labels (for mtz / CNS files)          |
+  | xray_data.obs_labels     | obs   | Labels for experimental data          |
+  | xray_data.calc_labels    | calc  | Labels for calculated data            |
   | xray_data.unit_cell      | cell  | Unit cell constants                   |
   | xray_data.space_group    | space | Space group                           |
   | xray_data.high_resolution| high  | high resolution limit                 |
@@ -131,11 +132,16 @@ xray_data.file_name: file containing reflection information.
                      amplitudes are in the file. See appropriate error message
                      / warning when this happens.
 
-xray_data.labels: a substring of a label indentifying the data of interest.
-                  For instance, if the colum labels present in the file are
-                  F_CRYSTAL1,SIGF_CRYSTAL1,F_CRYSTAL2,SIGF_CRYSTAL2
-                  the label variable can be set to L1 to select
-                  F_CRYSTAL1,SIGF_CRYSTAL1
+xray_data.obs_labels: a substring of a label indentifying the experimental data of interest.
+                      For instance, if the colum labels present in the file are
+                      F_CRYSTAL1,SIGF_CRYSTAL1,F_CRYSTAL2,SIGF_CRYSTAL2
+                      the label variable can be set to L1 to select
+                      F_CRYSTAL1,SIGF_CRYSTAL1
+                      If the label name contains parenthesis, uses quotes around the (sub)string
+                      to avoid confusion.
+
+xray_data.calc_labels: A substring of a label idenitifying calculated data.
+                       (Used for R vs R statistic.)
 
 xray_data.unit_cell: By default, the values in the reflection file are used.
                      These keywords must be specified for CNS or SHELX files
