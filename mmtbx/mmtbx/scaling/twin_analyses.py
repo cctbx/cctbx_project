@@ -1426,30 +1426,13 @@ class twin_results_summary(object):
       print >> out, "Statistics depending on twin laws"
       self.make_sym_op_table()
       print >> out, self.table
-    """
-    for item in range( len(self.twin_laws) ):
-      print >> out, "  Twin law : %s"%( self.twin_laws[item] )
-      print >> out, "  Given the specified spacegroup, the twin law is",
-      if self.twin_law_type[item]==" PM":
-        print >> out, "pseudo merohedral."
-      if self.twin_law_type[item]=="  M":
-        print >> out, "merohedral."
-      print >> out
-      print >> out, "    Estimates of twin fraction: "
-      print >> out, "    - Britton analyses alpha : %4.3f"%(self.britton_alpha[item])
-      print >> out, "    - H analyses alpha       : %4.3f"%(self.h_alpha[item])
-      print >> out, "    R-values of twin related intensities"
-      print >> out, "    - R_twin observed data   : %4.3f"%(self.r_obs[item])
-      if self.r_calc[item] is not None:
-        print >> out, "    - R_twin calculated data : %4.3f"%(self.r_calc[item])
-      print >> out
-    """
 
-    print >> out
-    print >> out, "Patterson analyses"
-    print >> out, "  - Largest peak height   : %5.3f"%(self.patterson_height)
-    print >> out, "   (correpsonding p value : %8.3e)"%(self.patterson_p_value)
-    print >> out
+    if self.patterson_height is not None:
+      print >> out
+      print >> out, "Patterson analyses"
+      print >> out, "  - Largest peak height   : %5.3f"%(self.patterson_height)
+      print >> out, "   (correpsonding p value : %8.3e)"%(self.patterson_p_value)
+      print >> out
     print >> out
     print >> out, self.verdict
     print >> out, "-------------------------------------------------------------------------------"
@@ -2137,19 +2120,7 @@ def twin_analyses_brief(miller_array,
     out = sys.stdout
   if twin_results is not None:
     if verbose>0:
-      print >> out, "Brief summary of twin analyses"
-      print >> out
-      print >> out, "  Mahalanobis distance of L test moments: %3.2f"\
-            %(twin_results.twin_summary.maha_distance_l)
-      print >> out, "  Number of possible twin operators: %3.0f"\
-            %(twin_results.n_twin_laws)
-      if twin_results.twin_summary.n_twin_laws>0:
-        print >> out, "  Largest estimated twin fraction %3.2f"\
-              %(twin_results.twin_summary.largest_twin_fraction)
-        print >> out, "  corresponding to twin operator :", \
-              twin_results.twin_summary.twin_law_largest
-      print >> out
-
+      twin_results.twin_summary.twin_results.show(out=out)
     if (twin_results.twin_summary.twin_results.maha_l>cut_off):
       if twin_results.twin_summary.twin_results.l_mean <= 0.48:
         twinned = True
