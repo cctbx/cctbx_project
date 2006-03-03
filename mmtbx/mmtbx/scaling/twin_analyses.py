@@ -10,6 +10,7 @@ from cctbx import crystal
 import cctbx.sgtbx.lattice_symmetry
 import cctbx.sgtbx.cosets
 import scitbx.math
+from scitbx import matrix
 from scitbx.math import chebyshev_lsq
 from scitbx.math import chebyshev_polynome
 from scitbx.math import chebyshev_lsq_fit
@@ -21,13 +22,83 @@ import sys
 from iotbx import data_plots
 from libtbx import table_utils
 
+
+class twin_law_quality(object):
+  def __init__(self,
+               xs,
+               twin_law):
+    self.xs = xs
+    self.xs_niggli = xs.change_basis(
+      xs.change_of_basis_op_to_niggli_cell())
+
+    self.twin_in_nig = xs.change_of_basis_op_to_niggli_cell().apply(
+      twin_law)
+    self.cb_op = sgtbx.change_of_basis_op(
+      str_xyz = self.twin_in_nig.r().as_xyz() )
+
+    self.niggli_cell = self.xs_niggli.unit_cell()
+    self.new_niggli_cell = self.cb_op.apply( self.niggli_cell )
+
+  def delta_santoro(self, relative=True):
+    # santoros measure for quality of a twin law
+    # relative (default) or absolute is possible
+    old = self.niggli_cell.metrical_matrix()
+    new = self.new_niggli_cell.metrical_matrix()
+    old = flex.double( old )
+    new = flex.double( new )
+    delta = flex.abs(old - new)
+    result = 0
+    for oi, ni in zip(old,new):
+      tmp = math.fabs(oi-ni)
+      if relative:
+        if math.fabs(oi)>1e-12:
+          tmp = tmp/math.fabs(oi)
+      result+=tmp*100.0
+    delta = result/6.0
+    return( delta )
+
+  def strain_tensor(self):
+    # this gives a tensor describing the deformation of the unit cell needed
+    # to obtain a perfect match. the sum of diagonal elements describes
+    # the change in volume, off diagonal components measure associated shear.
+    #
+    x1 = matrix.col( (1,0,0) )
+    x2 = matrix.col( (0,1,0) )
+    x3 = matrix.col( (0,0,1) )
+
+    f1 = matrix.sqr(self.niggli_cell.fractionalization_matrix() )*x1
+    f2 = matrix.sqr(self.niggli_cell.fractionalization_matrix() )*x2
+    f3 = matrix.sqr(self.niggli_cell.fractionalization_matrix() )*x3
+
+    xn1 =  matrix.sqr(self.new_niggli_cell.orthogonalization_matrix() )*f1
+    xn2 =  matrix.sqr(self.new_niggli_cell.orthogonalization_matrix() )*f2
+    xn3 =  matrix.sqr(self.new_niggli_cell.orthogonalization_matrix() )*f3
+
+    u1 = math.sqrt( xn1.dot(xn1) )-1.0
+    u2 = math.sqrt( xn2.dot(xn2) )-1.0
+    u3 = math.sqrt( xn3.dot(xn3) )-1.0
+    e11 = u1/1.0
+    e22 = u2/1.0
+    e33 = u3/1.0
+    e12 = (u1 + u2)/2.0
+    e13 = (u1 + u3)/2.0
+    e23 = (u2 + u3)/2.0
+    result=matrix.sqr( [e11,e12,e13,
+                        e12,e22,e23,
+                        e13,e23,e33 ] )
+    return result
+
+
 ## python routines copied from iotbx.iotbx.reflection_statistics.
 ## Should be moved but are (for now) in a conveniant place.
 class twin_law(object):
-  def __init__(self,op,pseudo_merohedral_flag):
+  def __init__(self,
+               op,
+               pseudo_merohedral_flag,
+               delta):
     self.operator =  op
     self.twin_type = pseudo_merohedral_flag
-
+    self.delta = delta
 
 class twin_laws(object):
   def __init__(self,
@@ -37,12 +108,12 @@ class twin_laws(object):
 
     self.input = miller_array.eliminate_sys_absent(integral_only=True,
                                                    log=out)
-    self.change_of_basis_op_to_minimum_cell \
-      = self.input.change_of_basis_op_to_minimum_cell()
+    self.change_of_basis_op_to_niggli_cell \
+      = self.input.change_of_basis_op_to_niggli_cell()
 
     self.minimum_cell_symmetry = crystal.symmetry.change_basis(
       self.input,
-      cb_op=self.change_of_basis_op_to_minimum_cell)
+      cb_op=self.change_of_basis_op_to_niggli_cell)
 
     self.lattice_group = sgtbx.lattice_symmetry.group(
       self.minimum_cell_symmetry.unit_cell(),
@@ -60,7 +131,7 @@ class twin_laws(object):
     self.m=0
     self.pm=0
 
-    cb_op = self.change_of_basis_op_to_minimum_cell.inverse()
+    cb_op = self.change_of_basis_op_to_niggli_cell.inverse()
     for partition in sgtbx.cosets.left_decomposition(
       g=self.lattice_group,
       h=self.intensity_symmetry.space_group()
@@ -68,7 +139,7 @@ class twin_laws(object):
           .make_tidy()).partitions[1:]:
       if (partition[0].r().determinant() > 0):
         is_pseudo_merohedral=False
-        twin_type = '  M'
+        twin_type =str("  M")
         self.m+=1
         euclid_check = sgtbx.space_group( self.euclid )
         try:
@@ -76,20 +147,28 @@ class twin_laws(object):
         except KeyboardInterupt: raise
         except:
           is_pseudo_merohedral=True
-          twin_type = ' PM'
+          twin_type = str(" PM")
           self.pm+=1
           self.m-=1
 
         if ( euclid_check.order_z() != self.euclid.order_z() ):
           is_pseudo_merohedral=True
           if is_pseudo_merohedral:
-            twin_type = ' PM'
+            twin_type = str(" PM")
             self.pm+=1
             self.m-=1
 
-        self.operators.append(twin_law( cb_op.apply(partition[0]),
-                                     twin_type)
-                           )
+        tlq = twin_law_quality( miller_array,
+                                cb_op.apply(partition[0]) )
+
+        tl = twin_law( cb_op.apply(partition[0]),
+                       str(twin_type),
+                       tlq.delta_santoro() )
+
+        self.operators.append(tl)
+
+
+
 
   def show(self, out=None):
     if out is None:
@@ -103,11 +182,14 @@ PM: Pseudomerohedral twin law"""
       print >> out
       print >> out, "The following twin laws have been found:"
       print >> out
-      table_labels = ('Type','Twin law             ')
+      table_labels = ('Type','R metric (%)', 'Twin law')
       table_rows = []
       for twin_law in self.operators:
         table_rows.append(
-          [twin_law.twin_type , str(twin_law.operator.r().as_hkl())] )
+          [twin_law.twin_type,
+           str("%5.3f"%(twin_law.delta)),
+           str(twin_law.operator.r().as_hkl())] )
+
       print >> out, table_utils.format([table_labels]+table_rows,
                                        comments=comments,
                                        has_header=True,
@@ -1140,8 +1222,10 @@ class twin_results_interpretation(object):
     for twin_item in twin_law_related_test:
       self.twin_results.twin_laws.append(
         twin_item.twin_law.operator.r().as_hkl() )
+      print twin_item.twin_law.twin_type[0]
       self.twin_results.twin_law_type.append(
-        twin_item.twin_law.twin_type)
+        str(twin_item.twin_law.twin_type) )
+
       self.twin_results.r_obs.append(
         twin_item.r_values.r_abs_obs)
       self.twin_results.r_calc.append(
@@ -1252,11 +1336,6 @@ class twin_results_interpretation(object):
             print >> self.twinning_verdict, \
               "this question."
 
-
-
-
-
-
         if self.twin_results.n_twin_laws == 0:
           print >> self.twinning_verdict, \
             "As there are no twin laws possible given the crystal symmetry, there could be"
@@ -1287,7 +1366,7 @@ class twin_results_interpretation(object):
         "The results of the L-test indicate that the intensity statistics"
       print >> self.twinning_verdict, \
         "behave as expected. No twinning is suspected."
-      if not self.twin_results.input_point_group == self.twin_results.suspected_point_group:
+      if not (self.twin_results.input_point_group == self.twin_results.suspected_point_group):
         print >> self.twinning_verdict, \
           "The symmetry of the lattice and intensity however suggests that the"
         print >> self.twinning_verdict, \
@@ -1296,26 +1375,33 @@ class twin_results_interpretation(object):
           "file for more details on your choice of space groups."
 
       if self.twin_results.n_twin_laws > 0:
-        print >> self.twinning_verdict, \
-          "Even though no twinning is suspected, it might be worthwhile carrying out "
-        print >> self.twinning_verdict, \
-          "a refinement using a dedicated twin target anyway, as twinned structures with"
-        print >> self.twinning_verdict, \
-          "low twin fractions are difficult to distinguish from non-twinned structures."
-        print >> self.twinning_verdict
-        if self.twin_results.most_worrysome_twin_law != None:
-          if self.twin_results.britton_alpha[ self.twin_results.most_worrysome_twin_law ]> 0.05:
-            print >> self.twinning_verdict,\
-                  "The correlation between the intensities related by the twin law %s with an"%(
-              self.twin_results.twin_laws[ self.twin_results.most_worrysome_twin_law ])
-            print >> self.twinning_verdict,\
-                  "estimated twin fraction of %3.2f %s "%(
-              self.twin_results.britton_alpha[ self.twin_results.most_worrysome_twin_law],
-              "%")
-            print >> self.twinning_verdict,\
-                  "is most likely due to an NCS axis parallel to the twin axis. This can be verified by"
-            print >> self.twinning_verdict,\
-                  "supplying calculated data as well."
+        if (self.twin_results.input_point_group == self.twin_results.suspected_point_group):
+          print >> self.twinning_verdict, \
+            "Even though no twinning is suspected, it might be worthwhile carrying out "
+          print >> self.twinning_verdict, \
+            "a refinement using a dedicated twin target anyway, as twinned structures with"
+          print >> self.twinning_verdict, \
+            "low twin fractions are difficult to distinguish from non-twinned structures."
+          print >> self.twinning_verdict
+          if self.twin_results.most_worrysome_twin_law != None:
+            if self.twin_results.britton_alpha[ self.twin_results.most_worrysome_twin_law ]> 0.05:
+              print >> self.twinning_verdict,\
+                    "The correlation between the intensities related by the twin law %s with an"%(
+                self.twin_results.twin_laws[ self.twin_results.most_worrysome_twin_law ])
+              print >> self.twinning_verdict,\
+                    "estimated twin fraction of %3.2f %s "%(
+                self.twin_results.britton_alpha[ self.twin_results.most_worrysome_twin_law],
+                "%")
+              print >> self.twinning_verdict,\
+                    "is most likely due to an NCS axis parallel to the twin axis. This can be verified by"
+              print >> self.twinning_verdict,\
+                    "supplying calculated data as well."
+        else:
+          print >> self.twinning_verdict,\
+            "As the symmetry is suspected to be incorrect, it is advicable to reconsider data processing."
+          print >> self.twinning_verdict,\
+            " "
+
 
 
 
@@ -1366,8 +1452,8 @@ class twin_results_summary(object):
 
       table_data = []
       for item in range( len(self.twin_laws) ):
-        tmp = [ str(self.twin_laws[item]),
-                str(self.twin_law_type[item]),
+        tmp = [ self.twin_laws[item],
+                self.twin_law_type[item],
                 str("%4.3f"%(self.r_obs[item])),
                 str("%4.3f"%(self.britton_alpha[item])),
                 str("%4.3f"%(self.h_alpha[item])) ]
@@ -1384,8 +1470,8 @@ class twin_results_summary(object):
 
       table_data = []
       for item in range( len(self.twin_laws) ):
-        tmp = [ str(self.twin_laws[item]),
-                str(self.twin_law_type[item]),
+        tmp = [ self.twin_laws[item],
+                self.twin_law_type[item],
                 str("%4.3f"%(self.r_obs[item])),
                 str("%4.3f"%(self.r_calc[item])),
                 str("%4.3f"%(self.britton_alpha[item])),
@@ -1697,7 +1783,10 @@ class symmetry_issues(object):
     for sg in self.sg_possibilities:
       sg[0].show_summary(f=out, prefix= "   ")
       print >> out
-
+    print >> out, "Note that this analyses does not take into account the effects of twinning."
+    print >> out, "If the data is (allmost) perfectly twinned, the symmetry will appear to be"
+    print >> out, "higher than it actually is."
+    print >> out
 
 
 
