@@ -1,7 +1,7 @@
 class left_decomposition(object):
 
   def __init__(self, g, h):
-    g = [s for s in g]
+    g = [s for s in g] # for speed, convert to plain Python list
     h = [s for s in h]
     assert len(g) % len(h) == 0
     assert h[0].is_unit_mx()
