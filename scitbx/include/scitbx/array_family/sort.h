@@ -3,6 +3,7 @@
 
 #include <scitbx/indexed_value.h>
 #include <scitbx/array_family/shared.h>
+#include <scitbx/error.h>
 
 namespace scitbx { namespace af {
 
