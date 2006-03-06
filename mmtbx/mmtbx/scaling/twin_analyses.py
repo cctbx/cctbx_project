@@ -23,6 +23,30 @@ from iotbx import data_plots
 from libtbx import table_utils
 
 
+
+class sys_abs_detection(object):
+  def __init__(self,
+               miller_array,
+               trial_sg,
+               cb_op ):
+
+    self.miller = miller_array.deep_copy()
+
+    if not self.miller.is_xray_amplitude_arry():
+      self.miller = self.miller.f_sq_as_f()
+
+    self.miller = self.miller.change_basis( cb_op )
+
+    self.trial_sg = trial_sg
+    self.cb_op = cb_op
+
+
+
+
+
+
+
+
 class twin_law_quality(object):
   def __init__(self,
                xs,
@@ -1355,7 +1379,7 @@ class twin_results_interpretation(object):
            "The results of the L-test indicate that the intensity statistics"
         print >> self.twinning_verdict, \
            "Show more centric character then is expected for acentric data."
-        if self.twin_results.patterson_p_value >= self.patterson_p_cut:
+        if self.twin_results.patterson_p_value <= self.patterson_p_cut:
           print >> self.twinning_verdict, \
             "This behavoir might be explained by the presence of the detected pseudo translation."
           self.twinning_short=False
