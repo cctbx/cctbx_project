@@ -12,6 +12,7 @@ def run():
   "$D/iotbx/cns/space_group_symbols.py",
   "$D/iotbx/cns/tst_cns.py",
   ["$D/iotbx/scalepack/tst_merge.py", "P31"],
+  "$D/iotbx/scalepack/no_merge_original_index.py",
   "$D/include/iotbx/mtz/tst_ext.py",
   "$D/iotbx/mtz/extract_from_symop_lib.py",
   ["$D/iotbx/mtz/tst.py", "P31"],
