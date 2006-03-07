@@ -308,6 +308,11 @@ def run(args):
     usage="iotbx.reflection_statistics [options] reflection_file [...]",
     description="Example: iotbx.reflection_statistics data1.mtz data2.sca")
     .enable_symmetry_comprehensive()
+    .option(None, "--weak_symmetry",
+      action="store_true",
+      default=False,
+      dest="weak_symmetry",
+      help="symmetry on command line is weaker than symmetry found in files")
     .option(None, "--quick",
       action="store_true",
       dest="quick",
@@ -348,6 +353,7 @@ def run(args):
       try:
         miller_arrays = reflection_file.as_miller_arrays(
           crystal_symmetry=command_line.symmetry,
+          force_symmetry=not command_line.options.weak_symmetry,
           merge_equivalents=False)
       except Sorry, KeyboardInterrupt: raise
       except: pass
