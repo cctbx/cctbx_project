@@ -32,6 +32,7 @@ def run():
   "$D/math/boost_python/tst_line_search.py",
   "$D/math/boost_python/tst_gaussian.py",
   "$D/scitbx/math/tst_superpose.py",
+  "$D/scitbx/math/sieve_of_eratosthenes.py",
   "$D/include/scitbx/minpack/tst.py",
   ["$D/lbfgs/boost_python/tst_lbfgs.py"],
   "$D/lbfgsb/boost_python/tst_lbfgsb.py",
