@@ -54,6 +54,7 @@ namespace {
 
     tuple_mapping_fixed_size<tiny<bool, 3> >();
 
+    tuple_mapping_fixed_capacity<small<unsigned, 2> >();
     tuple_mapping_fixed_capacity<small<unsigned, 3> >();
     tuple_mapping_fixed_capacity<small<unsigned, 6> >();
     tuple_mapping_fixed_capacity<small<double, 3> >();
