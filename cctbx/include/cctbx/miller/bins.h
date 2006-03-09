@@ -48,6 +48,13 @@ namespace cctbx { namespace miller {
         double d_min,
         double d_star_sq_step);
 
+      binning(
+        uctbx::unit_cell const& unit_cell,
+        af::const_ref<double> const& limits)
+      :
+        unit_cell_(unit_cell),
+        limits_(limits.begin(), limits.end())
+      {}
 
       uctbx::unit_cell const&
       unit_cell() const { return unit_cell_; }
@@ -101,8 +108,6 @@ namespace cctbx { namespace miller {
         double d_min,
         double d_max,
         double d_star_sq_step);
-
-
 
 
       uctbx::unit_cell unit_cell_;

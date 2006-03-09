@@ -273,6 +273,11 @@ def exercise_bins():
     assert approx_equal(
       r.coefficient(), (0.946401,0.990764,1.0)[d_star_power-1],
       eps=1.e-4, multiplier=None)
+  #
+  limits = flex.random_double(size=10)
+  bng = miller.binning(uc, limits)
+  assert bng.unit_cell().is_similar_to(uc)
+  assert approx_equal(bng.limits(), limits)
 
 def exercise_expand():
   sg = sgtbx.space_group("P 41 (1,-1,0)")
