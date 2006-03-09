@@ -24,34 +24,12 @@ from libtbx import table_utils
 
 
 
-class sys_abs_detection(object):
-  def __init__(self,
-               miller_array,
-               trial_sg,
-               cb_op ):
-
-    self.miller = miller_array.deep_copy()
-
-    if not self.miller.is_xray_amplitude_arry():
-      self.miller = self.miller.f_sq_as_f()
-
-    self.miller = self.miller.change_basis( cb_op )
-
-    self.trial_sg = trial_sg
-    self.cb_op = cb_op
-
-
-
-
-
-
-
-
 class twin_law_quality(object):
   def __init__(self,
                xs,
                twin_law):
     self.xs = xs
+
     self.xs_niggli = xs.change_basis(
       xs.change_of_basis_op_to_niggli_cell())
 
@@ -63,7 +41,7 @@ class twin_law_quality(object):
     self.niggli_cell = self.xs_niggli.unit_cell()
     self.new_niggli_cell = self.cb_op.apply( self.niggli_cell )
 
-  def delta_santoro(self, relative=True):
+  def delta_santoro(self):
     # santoros measure for quality of a twin law
     # relative (default) or absolute is possible
     old = self.niggli_cell.metrical_matrix()
@@ -72,14 +50,21 @@ class twin_law_quality(object):
     new = flex.double( new )
     delta = flex.abs(old - new)
     result = 0
+    top = 0
+    bottom = 0
     for oi, ni in zip(old,new):
       tmp = math.fabs(oi-ni)
-      if relative:
-        if math.fabs(oi)>1e-12:
-          tmp = tmp/math.fabs(oi)
-      result+=tmp*100.0
-    delta = result/6.0
+      top += tmp
+      bottom += math.fabs(oi)
+    assert (bottom>0)
+    delta = 100.0*top/bottom
     return( delta )
+
+  def delta_le_page(self):
+    return self.twin_in_nig.r().le_page_1982_delta(reduced_cell=self.niggli_cell,deg=True)
+
+  def delta_lebedev(self):
+    return self.twin_in_nig.r().lebedev_2005_perturbation(reduced_cell=self.niggli_cell)
 
   def strain_tensor(self):
     # this gives a tensor describing the deformation of the unit cell needed
@@ -119,10 +104,14 @@ class twin_law(object):
   def __init__(self,
                op,
                pseudo_merohedral_flag,
-               delta):
+               delta_santoro,
+               delta_le_page,
+               delta_lebedev):
     self.operator =  op
     self.twin_type = pseudo_merohedral_flag
-    self.delta = delta
+    self.delta_santoro = delta_santoro
+    self.delta_le_page = delta_le_page
+    self.delta_lebedev = delta_lebedev
 
 class twin_laws(object):
   def __init__(self,
@@ -184,10 +173,12 @@ class twin_laws(object):
 
         tlq = twin_law_quality( miller_array,
                                 cb_op.apply(partition[0]) )
-
         tl = twin_law( cb_op.apply(partition[0]),
                        str(twin_type),
-                       tlq.delta_santoro() )
+                       tlq.delta_santoro(),
+                       tlq.delta_le_page(),
+                       tlq.delta_lebedev()
+                      )
 
         self.operators.append(tl)
 
@@ -206,12 +197,14 @@ PM: Pseudomerohedral twin law"""
       print >> out
       print >> out, "The following twin laws have been found:"
       print >> out
-      table_labels = ('Type','R metric (%)', 'Twin law')
+      table_labels = ('Type', 'R metric (%)', 'delta (le Page)', 'delta (Lebedev)', 'Twin law')
       table_rows = []
       for twin_law in self.operators:
         table_rows.append(
           [twin_law.twin_type,
-           str("%5.3f"%(twin_law.delta)),
+           str("%5.3f"%(twin_law.delta_santoro)),
+           str("%5.3f"%(twin_law.delta_le_page)),
+           str("%5.3f"%(twin_law.delta_lebedev)),
            str(twin_law.operator.r().as_hkl())] )
 
       print >> out, table_utils.format([table_labels]+table_rows,
