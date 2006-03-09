@@ -1,3 +1,9 @@
+import cctbx.array_family.flex
+
+import boost.python
+ext = boost.python.import_ext("iotbx_pdb_ext")
+from iotbx_pdb_ext import *
+
 from iotbx.pdb.xray_structure import from_pdb as as_xray_structure
 from scitbx.python_utils.math_utils import iround
 

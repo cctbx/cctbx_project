@@ -8,6 +8,7 @@ def run():
   "$D/iotbx/tst_phil.py",
   "$D/iotbx/tst_crystal_symmetry_from_any.py",
   "$D/iotbx/kriber/tst_strudat.py",
+  "$D/include/iotbx/pdb/tst_ext.py",
   "$D/iotbx/pdb/tst_pdb.py",
   "$D/iotbx/cns/space_group_symbols.py",
   "$D/iotbx/cns/tst_cns.py",

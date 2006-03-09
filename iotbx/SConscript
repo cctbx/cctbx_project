@@ -42,3 +42,4 @@ if (not env_etc.no_boost_python):
   SConscript("xplor/boost_python/SConscript")
   SConscript("misc/boost_python/SConscript")
   SConscript("include/iotbx/mtz/SConscript")
+  SConscript("include/iotbx/pdb/SConscript")
