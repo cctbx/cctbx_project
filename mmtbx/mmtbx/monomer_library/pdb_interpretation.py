@@ -160,7 +160,7 @@ class type_symbol_registry_base(object):
       raise_conflict = False
       if (prev_symbol == ""):
         assign = True
-      elif (prev_symbol != symbol):
+      elif (prev_symbol.upper() != symbol.upper()):
         if (self.strict_conflict_handling):
           raise_conflict = True
         elif (self.type_label == "nonbonded energy"):
