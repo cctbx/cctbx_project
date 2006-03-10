@@ -22,10 +22,10 @@ def exercise_columns_73_76_evaluator():
     assert cpp_eval.is_old_style == py_eval.is_old_style
 
 def exercise_line_info_exceptions():
-  pdb.input().process(source_info=None, lines=flex.std_string(["ATOM"]))
+  pdb.input(source_info=None, lines=flex.std_string(["ATOM"]))
   #
   try:
-    pdb.input().process(
+    pdb.input(
       source_info="some.pdb",
       lines=flex.std_string([
         "ATOM   1045  O   HOH  0+30       0.530  42.610  45.267  1.00 33.84"]))
@@ -37,7 +37,7 @@ some.pdb, line 1:
   unexpected plus sign.""")
   else: raise RuntimeError("Exception expected.")
   try:
-    pdb.input().process(
+    pdb.input(
       source_info=None,
       lines=flex.std_string([
         "ATOM   1045  O   HOH    30       0.530  42.610  45.267  1.00 33.84",
@@ -50,7 +50,7 @@ input line 2:
   unexpected minus sign.""")
   else: raise RuntimeError("Exception expected.")
   try:
-    pdb.input().process(
+    pdb.input(
       source_info=None,
       lines=flex.std_string([
         "ATOM   1045  O   HOH    30       0.530  42.610  45.267  1.00 33.84",
@@ -65,7 +65,7 @@ input line 3:
   else: raise RuntimeError("Exception expected.")
   #
   try:
-    pdb.input().process(
+    pdb.input(
       source_info="some.pdb",
       lines=flex.std_string([
         "ATOM   1045  O   HOH    30    x  0.530  42.610  45.267  1.00 33.84"]))
@@ -77,7 +77,7 @@ some.pdb, line 1:
   not a floating-point number.""")
   else: raise RuntimeError("Exception expected.")
   try:
-    pdb.input().process(
+    pdb.input(
       source_info="some.pdb",
       lines=flex.std_string([
         "ATOM   1045  O   HOH    30     x 0.530  42.610  45.267  1.00 33.84"]))
@@ -89,7 +89,7 @@ some.pdb, line 1:
   not a floating-point number.""")
   else: raise RuntimeError("Exception expected.")
   try:
-    pdb.input().process(
+    pdb.input(
       source_info="some.pdb",
       lines=flex.std_string([
         "ATOM   1045  O   HOH    30       0x530  42.610  45.267  1.00 33.84"]))
@@ -103,9 +103,10 @@ some.pdb, line 1:
 
 def exercise_pdb_input_process():
   for i_trial in xrange(3):
-    pdb_inp = pdb.input().process(
+    pdb_inp = pdb.input(
       source_info=None,
       lines=flex.split_lines(""))
+    assert pdb_inp.source_info() == ""
     assert len(pdb_inp.record_type_counts()) == 0
     assert pdb_inp.unknown_section().size() == 0
     assert pdb_inp.title_section().size() == 0
@@ -120,6 +121,7 @@ def exercise_pdb_input_process():
     assert pdb_inp.model_numbers().size() == 0
     assert pdb_inp.model_indices().size() == 0
     assert pdb_inp.ter_indices().size() == 0
+    assert pdb_inp.chain_indices().size() == 0
     assert pdb_inp.break_indices().size() == 0
     assert pdb_inp.connectivity_section().size() == 0
     assert pdb_inp.bookkeeping_section().size() == 0
@@ -127,8 +129,8 @@ def exercise_pdb_input_process():
     assert pdb_inp.model_atom_counts().size() == 0
     assert len(pdb_inp.find_duplicate_atom_labels()) == 0
     assert len(pdb_inp.find_false_blank_altloc()) == 0
-    pdb_inp = pdb.input().process(
-      source_info=None,
+    pdb_inp = pdb.input(
+      source_info="file/name",
       lines=flex.split_lines("""\
 HEADER    ISOMERASE                               02-JUL-92   1FKB
 ONHOLD    26-JUN-99
@@ -208,6 +210,7 @@ CONECT 5332 5333 5334 5335 5336
 MASTER       81    0    0    7    3    0    0    645800   20    0   12
 END
 """))
+    assert pdb_inp.source_info() == "file/name"
     assert pdb_inp.record_type_counts() == {
       "KEYWDS": 1, "SEQRES": 1, "LINK  ": 1, "ORIGX1": 1, "SITE  ": 1,
       "FTNOTE": 1, "HETSYN": 1, "SIGATM": 2, "MTRIX2": 1, "MTRIX3": 1,
@@ -279,6 +282,7 @@ TVECT    1   0.00000   0.00000  20.42000""")
     assert list(pdb_inp.model_numbers()) == [1,3]
     assert list(pdb_inp.model_indices()) == [4,6]
     assert list(pdb_inp.ter_indices()) == [5,6]
+    assert [list(v) for v in pdb_inp.chain_indices()] == [[4],[5,6]]
     assert list(pdb_inp.break_indices()) == [2]
     assert not show_diff("\n".join(pdb_inp.connectivity_section()), """\
 CONECT 5332 5333 5334 5335 5336""")
@@ -315,7 +319,7 @@ END""")
     assert len(pdb_inp.find_false_blank_altloc()) == 0
     print pdb_inp.conformer_selections()
   #
-  pdb_inp = pdb.input().process(
+  pdb_inp = pdb.input(
     source_info=None,
     lines=flex.split_lines("""\
 ATOM      1  N   MET A   1       6.215  22.789  24.067  1.00  0.00           N
@@ -324,7 +328,7 @@ ATOM      2  N   MET A   1       2.615  27.289  20.467  1.00  0.00           O
   dup = pdb_inp.find_duplicate_atom_labels()
   assert dup.size() == 1
   assert list(dup[0]) == [0,1]
-  pdb_inp = pdb.input().process(
+  pdb_inp = pdb.input(
     source_info=None,
     lines=flex.split_lines("""\
 MODEL 1
@@ -340,7 +344,7 @@ ENDMDL
   assert dup.size() == 2
   assert list(dup[0]) == [0,1]
   assert list(dup[1]) == [2,3]
-  pdb_inp = pdb.input().process(
+  pdb_inp = pdb.input(
     source_info=None,
     lines=flex.split_lines("""\
 ATOM      1  N   MET A   1       6.215  22.789  24.067  1.00  0.00           N
@@ -356,7 +360,7 @@ ATOM      8  C   MET A   1       2.615  27.289  20.467  1.00  0.00           O
   assert dup.size() == 2
   assert list(dup[0]) == [0,2,3]
   assert list(dup[1]) == [4,6,7]
-  pdb_inp = pdb.input().process(
+  pdb_inp = pdb.input(
     source_info=None,
     lines=flex.split_lines("""\
 ATOM      1  CB  LYS   109      16.113   7.345  47.084  1.00 20.00      A
@@ -373,7 +377,7 @@ ATOM      4  CG  LYS   109      27.664   2.793  16.091  1.00 20.00      B
 """.splitlines()
   for il,ef in zip(pdb_inp.input_atom_labels_list(),expected_pdb_format):
     assert il.pdb_format() == ef
-  pdb_inp = pdb.input().process(
+  pdb_inp = pdb.input(
     source_info=None,
     lines=flex.split_lines("""\
 ATOM  12345qN123AR123C1234Ixyz1234.6781234.6781234.678123.56213.56abcdefS123E1C1
@@ -388,7 +392,7 @@ HETATM12345qN123AR123C1234Ixyz1234.6781234.6781234.678123.56213.56abcdefS123E1C1
     assert ial.icode() == "I"
     assert ial.segid() == "S123"
     assert ial.pdb_format() == '"N123AR123C1234I" segid="S123"'
-  pdb_inp = pdb.input().process(
+  pdb_inp = pdb.input(
     source_info=None,
     lines=flex.split_lines("""\
 ATOM  12345qN123AR123C1234Ixyz1234.6781234.6781234.678123.56213.56abcdef    E1C1
@@ -403,7 +407,7 @@ HETATM12345qN123AR123C1234Ixyz1234.6781234.6781234.678123.56213.56abcdef    E1C1
     assert ial.icode() == "I"
     assert ial.segid() == "    "
     assert ial.pdb_format() == '"N123AR123C1234I"'
-  pdb_inp = pdb.input().process(
+  pdb_inp = pdb.input(
     source_info=None,
     lines=flex.split_lines("""\
 ATOM
@@ -418,6 +422,144 @@ HETATM
     assert ial.icode() == " "
     assert ial.segid() == "    "
     assert ial.pdb_format() == '"             0 "'
+  #
+  pdb_inp = pdb.input(
+    source_info=None,
+    lines=flex.split_lines("""\
+"""))
+  assert list(pdb_inp.model_indices()) == []
+  assert list(pdb_inp.chain_indices()) == []
+  pdb_inp = pdb.input(
+    source_info=None,
+    lines=flex.split_lines("""\
+ATOM
+"""))
+  assert list(pdb_inp.model_indices()) == [1]
+  assert [list(v) for v in pdb_inp.chain_indices()] == [[1]]
+  pdb_inp = pdb.input(
+    source_info=None,
+    lines=flex.split_lines("""\
+MODEL        1
+ENDMDL
+"""))
+  assert list(pdb_inp.model_indices()) == [0]
+  assert [list(v) for v in pdb_inp.chain_indices()] == [[]]
+  pdb_inp = pdb.input(
+    source_info=None,
+    lines=flex.split_lines("""\
+MODEL        1
+ATOM
+ENDMDL
+"""))
+  assert list(pdb_inp.model_indices()) == [1]
+  assert [list(v) for v in pdb_inp.chain_indices()] == [[1]]
+  pdb_inp = pdb.input(
+    source_info=None,
+    lines=flex.split_lines("""\
+MODEL        1
+ENDMDL
+MODEL        2
+ENDMDL
+"""))
+  assert list(pdb_inp.model_indices()) == [0,0]
+  assert [list(v) for v in pdb_inp.chain_indices()] == [[],[]]
+  pdb_inp = pdb.input(
+    source_info=None,
+    lines=flex.split_lines("""\
+MODEL        1
+ENDMDL
+MODEL        2
+ATOM
+ENDMDL
+"""))
+  assert list(pdb_inp.model_indices()) == [0,1]
+  assert [list(v) for v in pdb_inp.chain_indices()] == [[],[1]]
+  try:
+    pdb.input(
+      source_info=None,
+      lines=flex.split_lines("""\
+MODEL        1
+ENDMDL
+ATOM
+"""))
+  except RuntimeError, e:
+    assert not show_diff(str(e), """\
+input line 3:
+  ATOM
+  ^
+  ATOM or HETATM record is outside MODEL/ENDMDL block.""")
+  else: raise RuntimeError("Exception expected.")
+  try:
+    pdb.input(
+      source_info=None,
+      lines=flex.split_lines("""\
+MODEL        1
+MODEL        2
+"""))
+  except RuntimeError, e:
+    assert not show_diff(str(e), """\
+input line 2:
+  MODEL        2
+  ^
+  Missing ENDMDL for previous MODEL record.""")
+  else: raise RuntimeError("Exception expected.")
+  try:
+    pdb.input(
+      source_info=None,
+      lines=flex.split_lines("""\
+ATOM
+MODEL        1
+"""))
+  except RuntimeError, e:
+    assert not show_diff(str(e), """\
+input line 2:
+  MODEL        1
+  ^
+  MODEL record must appear before any ATOM or HETATM records.""")
+  else: raise RuntimeError("Exception expected.")
+  try:
+    pdb.input(
+      source_info=None,
+      lines=flex.split_lines("""\
+ATOM
+ENDMDL
+"""))
+  except RuntimeError, e:
+    assert not show_diff(str(e), """\
+input line 2:
+  ENDMDL
+  ^
+  No matching MODEL record.""")
+  else: raise RuntimeError("Exception expected.")
+  #
+  pdb_inp = pdb.input(
+    source_info=None,
+    lines=flex.split_lines("""\
+MODEL        1
+ATOM                 C
+ATOM                 C
+ATOM                 D
+ATOM                 E
+ATOM                 E
+ENDMDL
+MODEL        2
+ATOM                 C
+ATOM                 C
+ATOM                 D
+ATOM                 D
+ATOM                 E
+ENDMDL
+MODEL        3
+ATOM                                                                    C
+ATOM                                                                    D
+ATOM                                                                    D
+ATOM                 E                                                  X
+ATOM                 E
+ENDMDL
+"""))
+  assert list(pdb_inp.model_indices()) == [5,10,15]
+  assert [list(v) for v in pdb_inp.chain_indices()] \
+      == [[2,3,5],[7,9,10],[11,13,15]]
 
 def exercise():
   exercise_columns_73_76_evaluator()

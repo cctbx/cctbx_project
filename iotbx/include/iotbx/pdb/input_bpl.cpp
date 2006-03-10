@@ -3,7 +3,6 @@
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
 #include <boost/python/return_value_policy.hpp>
-#include <boost/python/return_arg.hpp>
 #include <boost/python/return_by_value.hpp>
 #include <boost/python/return_internal_reference.hpp>
 #include <boost/python/dict.hpp>
@@ -105,12 +104,13 @@ namespace {
       typedef return_value_policy<return_by_value> rbv;
       typedef return_internal_reference<> rir;
       class_<w_t>("input", no_init)
-        .def(init<>())
-        .def("process", &w_t::process, (
-          arg_("source_info"),
-          arg_("lines")),
-            return_self<>())
+        .def(init<
+          const char*,
+          af::const_ref<std::string> const&>((
+            arg_("source_info"),
+            arg_("lines"))))
         //
+        .def("source_info", &w_t::source_info, rbv())
         .def("record_type_counts", record_type_counts_as_dict)
         .def("unknown_section", &w_t::unknown_section, rbv())
         .def("title_section", &w_t::title_section, rbv())
@@ -129,6 +129,7 @@ namespace {
         .def("model_numbers", &w_t::model_numbers, rbv())
         .def("model_indices", &w_t::model_indices, rbv())
         .def("ter_indices", &w_t::ter_indices, rbv())
+        .def("chain_indices", &w_t::chain_indices, rbv())
         .def("break_indices", &w_t::break_indices, rbv())
         .def("connectivity_section", &w_t::connectivity_section, rbv())
         .def("bookkeeping_section", &w_t::bookkeeping_section, rbv())

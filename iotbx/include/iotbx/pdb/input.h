@@ -1056,7 +1056,7 @@ namespace iotbx { namespace pdb {
 
   class model_record_oversight
   {
-    private:
+    protected:
       pdb::line_info& line_info;
       enum styles { unknown, bare, encapsulated };
       int style;
@@ -1106,14 +1106,16 @@ namespace iotbx { namespace pdb {
         return false;
       }
 
-      void
-      check_if_endmdl_is_allowed_here()
+      bool
+      endmdl_is_allowed_here()
       {
         if (style != encapsulated || !active_block) {
           line_info.set_error(1,
             "No matching MODEL record.");
+          return false;
         }
         active_block = false;
+        return true;
       }
 
       bool
@@ -1151,6 +1153,93 @@ namespace iotbx { namespace pdb {
       unsigned size;
   };
 
+  class chain_tracker
+  {
+    protected:
+      af::shared<std::vector<unsigned> > chain_indices;
+      std::vector<unsigned>* current_chain_indices;
+      unsigned n_atoms;
+      char previous_chain_and_segid[1+4];
+
+    public:
+      chain_tracker()
+      :
+        current_chain_indices(0),
+        n_atoms(0)
+      {
+        previous_chain_and_segid[0] = '\n';
+      }
+
+      void
+      next_atom_labels(const pdb::input_atom_labels& current_labels)
+      {
+        if (current_chain_indices == 0) {
+          chain_indices.push_back(std::vector<unsigned>());
+          current_chain_indices = &chain_indices.back();
+        }
+        char* p = previous_chain_and_segid;
+        bool same_chain = (*p == *current_labels.chain_begin());
+        if (*p != '\n') {
+          // test if previous labels and current labels belong to
+          // different chains:
+          //   - change in chainid
+          //   - if common chainid is blank: change in segid
+          if (*p != *current_labels.chain_begin()) {
+            current_chain_indices->push_back(n_atoms);
+          }
+          else if (*p == ' ') {
+            const char* c = current_labels.segid_begin();
+            if (   (*++p != *  c)
+                || (*++p != *++c)
+                || (*++p != *++c)
+                || (*++p != *++c)) {
+              current_chain_indices->push_back(n_atoms);
+            }
+            p = previous_chain_and_segid;
+          }
+        }
+        // copy chain and segid
+        *p++ = *current_labels.chain_begin();
+        const char* c = current_labels.segid_begin();
+        *p++ = *c++;
+        *p++ = *c++;
+        *p++ = *c++;
+        *p   = *c;
+        n_atoms++;
+      }
+
+      void
+      transition()
+      {
+        if (*previous_chain_and_segid != '\n') {
+          if (current_chain_indices != 0) {
+            current_chain_indices->push_back(n_atoms);
+          }
+          *previous_chain_and_segid = '\n';
+        }
+      }
+
+      void
+      endmdl()
+      {
+        transition();
+        if (current_chain_indices == 0) {
+          chain_indices.push_back(std::vector<unsigned>());
+        }
+        else {
+          current_chain_indices = 0;
+        }
+      }
+
+      af::shared<std::vector<unsigned> >
+      finish()
+      {
+        transition();
+        current_chain_indices = 0;
+        return chain_indices;
+      }
+  };
+
   class conformer_selections
   {
     public:
@@ -1165,8 +1254,13 @@ namespace iotbx { namespace pdb {
       typedef std::map<std::string, std::vector<unsigned> > str_sel_cache_t;
       typedef af::shared<std::vector<unsigned> > int_sel_cache_t;
 
-      input()
+      input() {}
+
+      input(
+        const char* source_info,
+        af::const_ref<std::string> const& lines)
       :
+        source_info_(source_info ? source_info : ""),
         name_selection_cache_is_up_to_date_(false),
         altloc_selection_cache_is_up_to_date_(false),
         resname_selection_cache_is_up_to_date_(false),
@@ -1174,12 +1268,6 @@ namespace iotbx { namespace pdb {
         resseq_selection_cache_is_up_to_date_(false),
         icode_selection_cache_is_up_to_date_(false),
         segid_selection_cache_is_up_to_date_(false)
-      {}
-
-      input&
-      process(
-        const char* source_info,
-        af::const_ref<std::string> const& lines)
       {
         columns_73_76_evaluator columns_73_76_eval(lines);
         input_atom_labels_list_.reserve(
@@ -1202,6 +1290,7 @@ namespace iotbx { namespace pdb {
         unsigned siguij_counts = 0;
         pdb::line_info line_info(source_info);
         pdb::model_record_oversight model_record_oversight(line_info);
+        pdb::chain_tracker chain_tracker;
         for(unsigned i_line=0;i_line<lines.size();i_line++) {
           std::string const& line = lines[i_line];
           line_info.line_number++;
@@ -1223,6 +1312,7 @@ namespace iotbx { namespace pdb {
               else {
                 atom___counts++;
                 current_input_atom_labels = &input_atom_labels_list_.back();
+                chain_tracker.next_atom_labels(*current_input_atom_labels);
                 current_atom = atoms_.back().get();
                 expect_anisou = true;
                 expect_sigatm = true;
@@ -1241,6 +1331,7 @@ namespace iotbx { namespace pdb {
               else {
                 hetatm_counts++;
                 current_input_atom_labels = &input_atom_labels_list_.back();
+                chain_tracker.next_atom_labels(*current_input_atom_labels);
                 current_atom = atoms_.back().get();
                 expect_anisou = true;
                 expect_sigatm = true;
@@ -1289,57 +1380,67 @@ namespace iotbx { namespace pdb {
             }
             else if (record_type_info.id == record_type::ter___) {
               ter_indices_.push_back(input_atom_labels_list_.size());
+              chain_tracker.transition();
             }
             else if (record_type_info.id == record_type::break_) {
               break_indices_.push_back(input_atom_labels_list_.size());
             }
             else if (record_type_info.id == record_type::model_) {
               if (model_record_oversight.model_is_allowed_here()) {
-                if (input_atom_labels_list_.size() != 0) {
-                  model_indices_.push_back(input_atom_labels_list_.size());
-                }
                 model_numbers_.push_back(read_model_number(line_info));
               }
             }
             else if (record_type_info.id == record_type::endmdl) {
-              model_record_oversight.check_if_endmdl_is_allowed_here();
+              if (model_record_oversight.endmdl_is_allowed_here()) {
+                model_indices_.push_back(input_atom_labels_list_.size());
+                chain_tracker.endmdl();
+              }
             }
             else if (record_type_info.section == record_type::title) {
               title_section_.push_back(line_info.strip_data());
+              chain_tracker.transition();
             }
             else if (record_type_info.section
                      == record_type::primary_structure) {
               primary_structure_section_.push_back(line_info.strip_data());
+              chain_tracker.transition();
             }
             else if (record_type_info.section
                      == record_type::heterogen) {
               heterogen_section_.push_back(line_info.strip_data());
+              chain_tracker.transition();
             }
             else if (record_type_info.section
                      == record_type::secondary_structure) {
               secondary_structure_section_.push_back(line_info.strip_data());
+              chain_tracker.transition();
             }
             else if (record_type_info.section
                      == record_type::connectivity_annotation) {
               connectivity_annotation_section_.push_back(
                 line_info.strip_data());
+              chain_tracker.transition();
             }
             else if (record_type_info.section
                      == record_type::miscellaneous_features) {
               miscellaneous_features_section_.push_back(
                 line_info.strip_data());
+              chain_tracker.transition();
             }
             else if (record_type_info.section
                      == record_type::crystallographic) {
               crystallographic_section_.push_back(line_info.strip_data());
+              chain_tracker.transition();
             }
             else if (record_type_info.section
                      == record_type::connectivity) {
               connectivity_section_.push_back(line_info.strip_data());
+              chain_tracker.transition();
             }
             else if (record_type_info.section
                      == record_type::bookkeeping) {
               bookkeeping_section_.push_back(line_info.strip_data());
+              chain_tracker.transition();
             }
             else if (!line_info.is_blank_line()) {
               unknown_section_.push_back(line_info.strip_data());
@@ -1347,27 +1448,26 @@ namespace iotbx { namespace pdb {
           }
           line_info.check_and_throw_runtime_error();
         }
+        chain_indices_ = chain_tracker.finish();
+        if (model_record_oversight.expecting_endmdl_record()) {
+          throw std::runtime_error("ENDMDL record missing at end of input.");
+        }
+        if (   model_indices_.size() == 0
+            && input_atom_labels_list_.size() != 0) {
+          model_numbers_.push_back(0);
+          model_indices_.push_back(input_atom_labels_list_.size());
+        }
+        SCITBX_ASSERT(model_indices_.size() == model_numbers_.size());
+        SCITBX_ASSERT(model_indices_.size() == chain_indices_.size());
         if (atom___counts != 0) record_type_counts_["ATOM  "] += atom___counts;
         if (hetatm_counts != 0) record_type_counts_["HETATM"] += hetatm_counts;
         if (sigatm_counts != 0) record_type_counts_["SIGATM"] += sigatm_counts;
         if (anisou_counts != 0) record_type_counts_["ANISOU"] += anisou_counts;
         if (siguij_counts != 0) record_type_counts_["SIGUIJ"] += siguij_counts;
-        if (model_indices_.size() != model_numbers_.size()) {
-          model_indices_.push_back(input_atom_labels_list_.size());
-        }
-        else if (   model_indices_.size() == 0
-                 || model_indices_.back() != input_atom_labels_list_.size()) {
-          if (input_atom_labels_list_.size() != 0) {
-            model_numbers_.push_back(0);
-            model_indices_.push_back(input_atom_labels_list_.size());
-          }
-        }
-        if (model_record_oversight.expecting_endmdl_record()) {
-          throw std::runtime_error("ENDMDL record missing at end of input.");
-        }
-        SCITBX_ASSERT(model_indices_.size() == model_numbers_.size());
-        return *this;
       }
+
+      std::string const&
+      source_info() const { return source_info_; }
 
       record_type_counts_t const&
       record_type_counts() const { return record_type_counts_; }
@@ -1422,6 +1522,9 @@ namespace iotbx { namespace pdb {
 
       af::shared<std::size_t> const&
       ter_indices() const { return ter_indices_; }
+
+      af::shared<std::vector<unsigned> > const&
+      chain_indices() const { return chain_indices_; }
 
       af::shared<std::size_t> const&
       break_indices() const { return break_indices_; }
@@ -1611,6 +1714,7 @@ namespace iotbx { namespace pdb {
       }
 
     protected:
+      std::string source_info_;
       record_type_counts_t record_type_counts_;
       af::shared<std::string> unknown_section_;
       af::shared<std::string> title_section_;
@@ -1626,6 +1730,7 @@ namespace iotbx { namespace pdb {
       af::shared<int>         model_numbers_;
       af::shared<std::size_t> model_indices_;
       af::shared<std::size_t> ter_indices_;
+      af::shared<std::vector<unsigned> > chain_indices_;
       af::shared<std::size_t> break_indices_;
       af::shared<std::string> connectivity_section_;
       af::shared<std::string> bookkeeping_section_;
