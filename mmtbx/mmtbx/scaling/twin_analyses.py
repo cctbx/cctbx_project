@@ -22,7 +22,17 @@ import sys
 from iotbx import data_plots
 from libtbx import table_utils
 
-
+class obliquity(object):
+  def __init__(self, reduced_cell, rot_mx, deg=True):
+    orth = matrix.sqr(reduced_cell.orthogonalization_matrix())
+    frac = matrix.sqr(reduced_cell.fractionalization_matrix())
+    r_info = rot_mx.info()
+    self.type = r_info.type()
+    self.u = rot_mx.info().ev()
+    self.h = rot_mx.transpose().inverse().info().ev()
+    self.t = orth * matrix.col(self.u)
+    self.tau = matrix.row(self.h) * frac
+    self.delta = self.t.accute_angle(self.tau, deg=deg)
 
 class twin_law_quality(object):
   def __init__(self,
@@ -61,10 +71,16 @@ class twin_law_quality(object):
     return( delta )
 
   def delta_le_page(self):
-    return self.twin_in_nig.r().le_page_1982_delta(reduced_cell=self.niggli_cell,deg=True)
+    rot_mx_current = self.cb_op.c().r().new_denominator(1)
+    obl = obliquity(self.niggli_cell,
+                    rot_mx_current )
+    type_string = str(obl.type)+"-fold"
+    return obl.delta, type_string
 
   def delta_lebedev(self):
-    return self.twin_in_nig.r().lebedev_2005_perturbation(reduced_cell=self.niggli_cell)
+    return self.twin_in_nig.r().lebedev_2005_perturbation(
+      reduced_cell=self.niggli_cell)
+
 
   def strain_tensor(self):
     # this gives a tensor describing the deformation of the unit cell needed
@@ -104,6 +120,7 @@ class twin_law(object):
   def __init__(self,
                op,
                pseudo_merohedral_flag,
+               axis_type,
                delta_santoro,
                delta_le_page,
                delta_lebedev):
@@ -112,6 +129,7 @@ class twin_law(object):
     self.delta_santoro = delta_santoro
     self.delta_le_page = delta_le_page
     self.delta_lebedev = delta_lebedev
+    self.axis_type = axis_type
 
 class twin_laws(object):
   def __init__(self,
@@ -173,10 +191,12 @@ class twin_laws(object):
 
         tlq = twin_law_quality( miller_array,
                                 cb_op.apply(partition[0]) )
+
         tl = twin_law( cb_op.apply(partition[0]),
                        str(twin_type),
+                       tlq.delta_le_page()[1],
                        tlq.delta_santoro(),
-                       tlq.delta_le_page(),
+                       tlq.delta_le_page()[0],
                        tlq.delta_lebedev()
                       )
 
@@ -197,11 +217,12 @@ PM: Pseudomerohedral twin law"""
       print >> out
       print >> out, "The following twin laws have been found:"
       print >> out
-      table_labels = ('Type', 'R metric (%)', 'delta (le Page)', 'delta (Lebedev)', 'Twin law')
+      table_labels = ('Type', 'Axis', 'R metric (%)', 'delta (le Page)', 'delta (Lebedev)', 'Twin law')
       table_rows = []
       for twin_law in self.operators:
         table_rows.append(
           [twin_law.twin_type,
+           twin_law.axis_type,
            str("%5.3f"%(twin_law.delta_santoro)),
            str("%5.3f"%(twin_law.delta_le_page)),
            str("%5.3f"%(twin_law.delta_lebedev)),
