@@ -1,6 +1,6 @@
 from cctbx.array_family import flex
 import iotbx.phil
-import mmtbx.refinement.minimization
+from mmtbx.refinement import minimization_individual_adp
 import mmtbx.refinement.group_b
 from mmtbx.tls import tools
 from mmtbx.refinement import print_statistics
@@ -107,25 +107,22 @@ class manager(object):
             wu_individual             = None,
             wx                        = None,
             log                       = None):
-    if(refine_tls and [refine_adp_group, refine_adp_individual].count(True)>0):
-       raise Sorry("Simultaneous refinement of TLS and individual or group ADP or sites is not implemented")
+    #if(refine_tls and [refine_adp_group, refine_adp_individual].count(True)>0):
+    #   raise Sorry("Simultaneous refinement of TLS and individual or group ADP or sites is not implemented")
     if(log is None): log = sys.stdout
     if(refine_adp_individual):
+       print_statistics.make_sub_header(text= "individual ADP refinement",
+                                        out = log)
        lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
            max_iterations = individual_adp_params.iso.max_number_of_iterations)
-       self.minimized = mmtbx.refinement.minimization.lbfgs(
-            xray_gradient_flags      = xray.structure_factors.gradient_flags(
-                                                site          = False,
-                                                u_iso         = True,
-                                                tan_b_iso_max = tan_b_iso_max),
-            xray_structure           = fmodel.xray_structure,
+       self.minimized = minimization_individual_adp.lbfgs(
             restraints_manager       = restraints_manager,
             fmodel                   = fmodel,
             lbfgs_termination_params = lbfgs_termination_params,
             wx                       = wx,
-            wc                       = 0,
             wu                       = wu_individual,
             wilson_b                 = wilson_b,
+            tan_b_iso_max            = tan_b_iso_max,
             iso_restraints           = adp_restraints_params.iso,
             verbose                  = 0)
        self.minimized.show(text = "LBFGS minimization", out  = log)

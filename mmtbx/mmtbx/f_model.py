@@ -493,6 +493,7 @@ class manager(object):
                                            tan_b_iso_max = None,
                                            mean_displacements = None):
     # XXX remove sqrt_u_iso : obsolete, never used
+    if(tan_b_iso_max is None): tan_b_iso_max = 0.0
     xray_gradient_flags = xray.structure_factors.gradient_flags(
                                                  site          = sites,
                                                  u_iso         = u_iso,
@@ -515,7 +516,7 @@ class manager(object):
                                             beta              = beta,
                                             scale_ml          = None,
                                             flag              = "work")
-    if(mean_displacements is None):
+    if(u_iso and mean_displacements is None):
        if(tan_b_iso_max != 0):
           u_iso_max = adptbx.b_as_u(tan_b_iso_max)
           mean_displacements = flex.tan(math.pi*
@@ -737,13 +738,22 @@ class manager(object):
       return self.fu_aniso()
 
   def f_model(self):
+    if(self.target_name in ["ml", "mlhl"]):
+       eps = self.f_obs_t().epsilons().data().as_double()
+       mul = self.f_obs_t().multiplicities().data().as_double()
+       fu_aniso = self.fu_aniso_t()
+       fo = self.f_obs_t().data()
+       fc = flex.abs(fu_aniso * (self.f_calc_t().data() + self.f_bulk_t().data()))
+       sc = math.sqrt(flex.sum(fo * fo * mul / eps) / \
+                      flex.sum(fc * fc * mul / eps) )
+    else: sc = 1.0
     fu_aniso = self.fu_aniso()
     if(self.f_ordered_solvent is None):
        data = fu_aniso * (self.f_calc.data() + self.f_bulk().data())
     else:
        data = fu_aniso * (self.f_calc.data() + self.f_bulk().data() + \
                           self.f_ordered_solvent.data())
-    return miller.array(miller_set = self.f_calc, data = data)
+    return miller.array(miller_set = self.f_calc, data = data*sc)
 
   def f_model_scaled_with_k1(self):
     return miller.array(miller_set = self.f_calc,
@@ -1372,10 +1382,8 @@ def statistics_in_resolution_bins(fmodel,
   beta_w.use_binning_of(fo_t)
   beta_t.use_binning_of(fo_t)
   print >> out, "|"+"-"*77+"|"
-  print >> out, "| Bin     Resolution       No. Refl.    " \
-                  "R-factors              Targets        |"
-  print >> out, "|number     range         work   test   " \
-                  "work   test          work         test|"
+  print >> out, "| Bin     Resolution   Compl.  No. Refl.    R-factors          Targets        |"
+  print >> out, "|number     range              work test   work   test        work        test|"
   for i_bin in fo_t.binner().range_used():
     sel_t = fo_t.binner().selection(i_bin)
     sel_w = fo_w.binner().selection(i_bin)
@@ -1389,6 +1397,8 @@ def statistics_in_resolution_bins(fmodel,
     sel_beta_w  = beta_w.select(sel_w)
     xray_target_functor_w = target_functors.target_functor_w(selection = sel_w)
     xray_target_functor_t = target_functors.target_functor_t(selection = sel_t)
+    d_max_,d_min_ = sel_fo_t.d_max_min()
+    ch = fmodel.f_obs.resolution_filter(d_min= d_min_,d_max= d_max_).completeness(d_max = d_max_)
     if(fmodel.target_name.count("ls") == 1):
       target_w = xray_target_functor_w(sel_fc_w, False).target()
       target_t = xray_target_functor_t(sel_fc_t, False).target()
@@ -1409,8 +1419,8 @@ def statistics_in_resolution_bins(fmodel,
     nw = sel_fo_w.data().size()
     d_range = fo_t.binner().bin_legend(
       i_bin=i_bin, show_bin_number=False, show_counts=False)
-    print >> out, "|%3d: %s %6d %6d %6.4f %6.4f  %12.5E %12.5E|" % (
-      i_bin, d_range, nw, nt, r_w, r_t, target_w, target_t)
+    print >> out, "|%3d: %s %4.2f %6d %4d %6.4f %6.4f %11.4E %11.4E|" % (
+      i_bin, d_range, ch, nw, nt, r_w, r_t, target_w, target_t)
   print >> out, "|"+"-"*77+"|"
   out.flush()
 

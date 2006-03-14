@@ -177,8 +177,13 @@ class manager(object):
     b_isos = self.xray_structure.extract_u_iso_or_u_equiv() * math.pi**2*8
     n_atoms = 0
     for i_seq, selection in enumerate(selections):
-        n_atoms += selection.count(True)
-        i_selection = selection.iselection()
+        #n_atoms += selection.count(True)
+        try:
+          i_selection = selection.iselection()
+          n_atoms += i_selection.size()
+        except:
+          i_selection = selection
+          n_atoms += i_selection.size()
         start = i_selection[0]
         final = i_selection[i_selection.size()-1]
         first = self.atom_attributes_list[start]
@@ -230,7 +235,7 @@ class manager(object):
     print >> out, "|"+"-"*77+"|"
     out.flush()
 
-  def write_pdb_file(self, out, crystal_symmetry = None):
+  def write_pdb_file(self, out, crystal_symmetry = None, selection=None):
     if(crystal_symmetry is None):
        crystal_symmetry = self.crystal_symmetry
     if(crystal_symmetry is not None):
@@ -241,39 +246,76 @@ class manager(object):
     sites_cart  = self.xray_structure.sites_cart()
     occupancies = self.xray_structure.scatterers().extract_occupancies()
     u_isos      = self.xray_structure.extract_u_iso_or_u_equiv()
-    for i_seq,atom in enumerate(self.atom_attributes_list):
-        if(atom.name is None): name = "    "
-        else: name = atom.name
-        if(atom.altLoc is None): altLoc = " "
-        else: altLoc = atom.altLoc
-        if(atom.chainID is None): chainID = " "
-        else: chainID = atom.chainID
-        if(atom.resSeq is None): resSeq = 1
-        else: resSeq = atom.resSeq
-        if(atom.iCode is None): iCode = " "
-        else: iCode = atom.iCode
-        if(atom.segID is None): segID = "    "
-        else: segID = atom.segID
-        if(atom.element is None): element = "  "
-        else: element = atom.element
-        if(atom.charge is None): charge = "  "
-        else: charge = atom.charge
-        print >> out, pdb.format_atom_record(
-                                    record_name = atom.record_name(),
-                                    serial      = i_seq,
-                                    name        = name,
-                                    altLoc      = altLoc,
-                                    resName     = atom.resName,
-                                    chainID     = chainID,
-                                    resSeq      = resSeq,
-                                    iCode       = iCode,
-                                    site        = sites_cart[i_seq],
-                                    occupancy   = occupancies[i_seq],
-                                    tempFactor  = adptbx.u_as_b(u_isos[i_seq]),
-                                    segID       = segID,
-                                    element     = element,
-                                    charge      = charge)
-    print >> out, "END"
+    if(selection is None):
+       for i_seq,atom in enumerate(self.atom_attributes_list):
+           if(atom.name is None): name = "    "
+           else: name = atom.name
+           if(atom.altLoc is None): altLoc = " "
+           else: altLoc = atom.altLoc
+           if(atom.chainID is None): chainID = " "
+           else: chainID = atom.chainID
+           if(atom.resSeq is None): resSeq = 1
+           else: resSeq = atom.resSeq
+           if(atom.iCode is None): iCode = " "
+           else: iCode = atom.iCode
+           if(atom.segID is None): segID = "    "
+           else: segID = atom.segID
+           if(atom.element is None): element = "  "
+           else: element = atom.element
+           if(atom.charge is None): charge = "  "
+           else: charge = atom.charge
+           print >> out, pdb.format_atom_record(
+                                       record_name = atom.record_name(),
+                                       serial      = i_seq,
+                                       name        = name,
+                                       altLoc      = altLoc,
+                                       resName     = atom.resName,
+                                       chainID     = chainID,
+                                       resSeq      = resSeq,
+                                       iCode       = iCode,
+                                       site        = sites_cart[i_seq],
+                                       occupancy   = occupancies[i_seq],
+                                       tempFactor  = adptbx.u_as_b(u_isos[i_seq]),
+                                       segID       = segID,
+                                       element     = element,
+                                       charge      = charge)
+       print >> out, "END"
+    else:
+       for i_seq,atom in enumerate(self.atom_attributes_list):
+           if(selection[i_seq]):
+              if(atom.name is None): name = "    "
+              else: name = atom.name
+              if(atom.altLoc is None): altLoc = " "
+              else: altLoc = atom.altLoc
+              if(atom.chainID is None): chainID = " "
+              else: chainID = atom.chainID
+              if(atom.resSeq is None): resSeq = 1
+              else: resSeq = atom.resSeq
+              if(atom.iCode is None): iCode = " "
+              else: iCode = atom.iCode
+              if(atom.segID is None): segID = "    "
+              else: segID = atom.segID
+              if(atom.element is None): element = "  "
+              else: element = atom.element
+              if(atom.charge is None): charge = "  "
+              else: charge = atom.charge
+              print >> out, pdb.format_atom_record(
+                                          record_name = atom.record_name(),
+                                          serial      = i_seq,
+                                          name        = name,
+                                          altLoc      = altLoc,
+                                          resName     = atom.resName,
+                                          chainID     = chainID,
+                                          resSeq      = resSeq,
+                                          iCode       = iCode,
+                                          site        = sites_cart[i_seq],
+                                          occupancy   = occupancies[i_seq],
+                                          tempFactor  = adptbx.u_as_b(u_isos[i_seq]),
+                                          segID       = segID,
+                                          element     = element,
+                                          charge      = charge)
+       print >> out, "END"
+
 
   def remove_atoms(self, atom_type         = None,
                          leave_only_labels = None):
@@ -656,6 +698,7 @@ class stereochemistry_statistics(object):
     if (out is None): out = sys.stdout
     line_len = len("| "+self.text+"|")
     fill_len = 80 - line_len-1
+    print >> out
     print >> out, "| "+self.text+"-"*(fill_len)+"|"
     print >> out, "|Type| Deviation from ideal |   Targets  ||Target (sum)|| Deviation of start  |"
     print >> out, "|    |  mean     max    min |            ||            || model from current  |"
