@@ -27,7 +27,9 @@ class show_tls(object):
          L = item.l
          S = item.s
          origin = item.origin
-         print >> out, "|TLS group number %d: " % counter+" "*57+"|"
+         line = "|TLS group number %d: " % counter
+         n = 79 - len(line+"|")
+         print >> out, line+" "*n+"|"
          print >> out, "|"+" "*15+"Origin (x,y,z) = %9.4f %9.4f %9.4f"%\
                                      (origin[0],origin[1],origin[2])+" "*16+"|"
          print >> out, formatT % (T[0],T[1],T[2],T[3],T[4],T[5])
@@ -62,11 +64,16 @@ class show_tls_one_group(object):
      print >> out, "|" +"-"*77+"|"
 
 def uanisos_from_tls(sites_cart, selections, tlsos):
-  uanisos = flex.sym_mat3_double()
+  #uanisos = flex.sym_mat3_double()
+  #for selection, tlso in zip(selections, tlsos):
+  #    uanisos.extend(
+  #        uaniso_from_tls_one_group(tlso = tlso,
+  #                                  sites_cart = sites_cart.select(selection)))
+  uanisos = flex.sym_mat3_double(sites_cart.size(), [0,0,0,0,0,0])
   for selection, tlso in zip(selections, tlsos):
-      uanisos.extend(
-          uaniso_from_tls_one_group(tlso = tlso,
-                                    sites_cart = sites_cart.select(selection)))
+      u = uaniso_from_tls_one_group(tlso       = tlso,
+                                    sites_cart = sites_cart.select(selection))
+      uanisos.set_selected(selection, u)
   return uanisos
 
 def tls_from_uanisos(xray_structure,
@@ -211,8 +218,10 @@ class tls_xray_target_minimizer(object):
                u_cart_offset,
                selections,
                max_iterations,
-               run_finite_differences_test = False):
+               run_finite_differences_test = False,
+               correct_adp = True):
     adopt_init_args(self, locals())
+    if(self.run_finite_differences_test): self.correct_adp = False
     if(self.fmodel.target_name in ["ml","lsm"]):
        # XXX Looks like alpha & beta must be recalcuclated in line search,
        # XXX       what I don't like
@@ -289,17 +298,20 @@ class tls_xray_target_minimizer(object):
       zz[8] = -zz[0]-zz[4]
       S_new.append(zz)
     self.S_min = S_new
-
+    #print "1=", self.fmodel_copy.target_w(alpha = self.alpha, beta = self.beta)
+    #self.fmodel_copy.xray_structure.show_u_statistics()
     tlsos = generate_tlsos(selections     = self.selections,
                            xray_structure = self.fmodel_copy.xray_structure,
                            T              = self.T_min,
                            L              = self.L_min,
                            S              = self.S_min)
+    #show_tls(tlsos)
     new_xrs = update_xray_structure_with_tls(
                               xray_structure = self.fmodel_copy.xray_structure,
                               u_cart_offset  = self.u_cart_offset,
                               selections     = self.selections,
-                              tlsos          = tlsos)
+                              tlsos          = tlsos,
+                              correct_adp    = self.correct_adp)
     self.fmodel_copy.update_xray_structure(xray_structure = new_xrs,
                                            update_f_calc  = True)
     grad_manager = tls_xray_grads(fmodel     = self.fmodel_copy,
@@ -308,6 +320,8 @@ class tls_xray_target_minimizer(object):
                                   alpha      = self.alpha,
                                   beta       = self.beta)
     self.f = self.fmodel_copy.target_w(alpha = self.alpha, beta = self.beta)
+    #self.fmodel_copy.xray_structure.show_u_statistics()
+    #print "2=", self.fmodel_copy.target_w(alpha = self.alpha, beta = self.beta)
     #scale = 8*math.pi**2
     #qqq = new_xrs.scatterers().extract_u_iso_or_u_equiv(new_xrs.unit_cell())*scale
     #ipd = new_xrs.is_positive_definite_u()
@@ -371,7 +385,8 @@ class tls_xray_grads(object):
 def update_xray_structure_with_tls(xray_structure,
                                    selections,
                                    tlsos,
-                                   u_cart_offset=None):
+                                   u_cart_offset=None,
+                                   correct_adp = True):
   u_cart_from_tls = uanisos_from_tls(sites_cart = xray_structure.sites_cart(),
                                      selections = selections,
                                      tlsos      = tlsos)
@@ -380,7 +395,7 @@ def update_xray_structure_with_tls(xray_structure,
   xray_structure.scatterers().set_u_cart(xray_structure.unit_cell(),
                                          u_cart_from_tls)
   #XXX refinement of only S or L does not work with this:
-  #xray_structure.tidy_us(u_min = 1.e-6)
+  if(correct_adp): xray_structure.tidy_us(u_min = 1.e-6)
   return xray_structure
 
 class tls_refinement(object):
@@ -401,9 +416,10 @@ class tls_refinement(object):
                                              out  = out)
      fmodel.show_targets(text = prefix+" start model", out = out)
      xrs = fmodel.xray_structure
-     u_local = None
      xrs.convert_to_anisotropic()
      xrs.tidy_us(u_min = eps)
+     u_local = None
+     #u_local = xrs.scatterers().extract_u_cart(xrs.unit_cell())
      if(start_tls_value is not None):
         try:
           crash_or_not = abs(start_tls_value + 0)
@@ -574,7 +590,8 @@ def finite_differences_grads_of_xray_target_wrt_tls(fmodel,
         new_xrs = update_xray_structure_with_tls(
                                   xray_structure = fmodel_copy.xray_structure,
                                   selections     = selections,
-                                  tlsos          = tlsos)
+                                  tlsos          = tlsos,
+                                  correct_adp    = False)
         fmodel_copy.update_xray_structure(xray_structure = new_xrs,
                                           update_f_calc  = True)
         target_result = fmodel_copy.target_w()
@@ -605,7 +622,8 @@ def finite_differences_grads_of_xray_target_wrt_tls(fmodel,
         new_xrs = update_xray_structure_with_tls(
                                   xray_structure = fmodel_copy.xray_structure,
                                   selections     = selections,
-                                  tlsos          = tlsos)
+                                  tlsos          = tlsos,
+                                  correct_adp    = False)
         fmodel_copy.update_xray_structure(xray_structure = new_xrs,
                                           update_f_calc  = True)
         target_result = fmodel_copy.target_w()
@@ -636,7 +654,8 @@ def finite_differences_grads_of_xray_target_wrt_tls(fmodel,
         new_xrs = update_xray_structure_with_tls(
                                   xray_structure = fmodel_copy.xray_structure,
                                   selections     = selections,
-                                  tlsos          = tlsos)
+                                  tlsos          = tlsos,
+                                  correct_adp    = False)
         fmodel_copy.update_xray_structure(xray_structure = new_xrs,
                                           update_f_calc  = True)
         target_result = fmodel_copy.target_w()
