@@ -739,13 +739,15 @@ class manager(object):
 
   def f_model(self):
     if(self.target_name in ["ml", "mlhl"]):
-       eps = self.f_obs_t().epsilons().data().as_double()
-       mul = self.f_obs_t().multiplicities().data().as_double()
-       fu_aniso = self.fu_aniso_t()
-       fo = self.f_obs_t().data()
-       fc = flex.abs(fu_aniso * (self.f_calc_t().data() + self.f_bulk_t().data()))
-       sc = math.sqrt(flex.sum(fo * fo * mul / eps) / \
-                      flex.sum(fc * fc * mul / eps) )
+       #eps = self.f_obs_t().epsilons().data().as_double()
+       #mul = self.f_obs_t().multiplicities().data().as_double()
+       fu_aniso = self.fu_aniso_w()
+       fo = self.f_obs_w().data()
+       fc = flex.abs(fu_aniso * (self.f_calc_w().data() + self.f_bulk_w().data()))
+       #sc = math.sqrt(flex.sum(fo * fo * mul / eps) / \
+       #               flex.sum(fc * fc * mul / eps) )
+       sc = flex.sum(fo*fc) / flex.sum(fc*fc)
+       if(abs(sc-1.0) < 0.3): sc = 1.0
     else: sc = 1.0
     fu_aniso = self.fu_aniso()
     if(self.f_ordered_solvent is None):
