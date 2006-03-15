@@ -69,6 +69,47 @@ def exercise_gradient_flags():
   assert f.adjust(False).u_aniso == False
   assert f.adjust(True).u_aniso == True
 
+def exercise_refinement_flags():
+  f = xray.refinement_flags(
+    site=False, u_iso=True, u_aniso=False, occupancy=True,
+    fp=False, fdp=True, tan_u_iso=False, param=42)
+  assert not f.site()
+  assert f.u_iso()
+  assert not f.u_aniso()
+  assert f.occupancy()
+  assert not f.fp()
+  assert f.fdp()
+  assert not f.tan_u_iso()
+  assert f.param == 42
+  #
+  f = xray.refinement_flags(
+    site=True, u_iso=False, u_aniso=True, occupancy=False,
+    fp=True, fdp=False, tan_u_iso=True, param=-24)
+  assert f.site()
+  assert not f.u_iso()
+  assert f.u_aniso()
+  assert not f.occupancy()
+  assert f.fp()
+  assert not f.fdp()
+  assert f.tan_u_iso()
+  assert f.param == -24
+  #
+  for state in [False, True]:
+    f.set_site(state=state)
+    assert f.site() is state
+    f.set_u_iso(state=state)
+    assert f.u_iso() is state
+    f.set_u_aniso(state=state)
+    assert f.u_aniso() is state
+    f.set_occupancy(state=state)
+    assert f.occupancy() is state
+    f.set_fp(state=state)
+    assert f.fp() is state
+    f.set_fdp(state=state)
+    assert f.fdp() is state
+  f.param = 35
+  assert f.param == 35
+
 def exercise_xray_scatterer():
   x = xray.scatterer("a", (0.1,0.2,0.3), 0.25, 0.9, "const", 0, 0)
   assert x.label == "a"
@@ -100,6 +141,10 @@ def exercise_xray_scatterer():
   assert approx_equal(x.u_star, (3,2,1,6,5,4))
   x.anisotropic_flag = 0
   assert not x.anisotropic_flag
+  assert not x.refinement_flags.site()
+  x.refinement_flags.set_site(state=True)
+  assert x.refinement_flags.site()
+  #
   x = xray.scatterer(
     "si1", site=(0.01,0.02,0.3), occupancy=0.9, u=(0.3, 0.3, 0.2, 0,0,0))
   assert x.scattering_type == "Si"
@@ -988,6 +1033,7 @@ def exercise_ls_target_with_scale_k2():
 def run():
   exercise_conversions()
   exercise_gradient_flags()
+  exercise_refinement_flags()
   exercise_xray_scatterer()
   exercise_scattering_type_registry()
   exercise_rotate()

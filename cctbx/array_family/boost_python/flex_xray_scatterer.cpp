@@ -14,6 +14,12 @@ namespace {
   {
     using pickle_double_buffered::to_string::operator<<;
 
+    to_string()
+    {
+      unsigned version = 1;
+      *this << version;
+    }
+
     to_string& operator<<(cctbx::xray::scatterer<> const& val)
     {
       *this << val.label
@@ -27,6 +33,8 @@ namespace {
       *this << val.u_star.const_ref()
             << val.multiplicity()
             << val.weight_without_occupancy();
+      *this << val.refinement_flags.bits
+            << val.refinement_flags.param;
       return *this;
     }
   };
@@ -35,7 +43,10 @@ namespace {
   {
     from_string(PyObject* str_obj)
     : pickle_double_buffered::from_string(str_obj)
-    {}
+    {
+      *this >> version;
+      CCTBX_ASSERT(version == 1);
+    }
 
     using pickle_double_buffered::from_string::operator>>;
 
@@ -54,9 +65,13 @@ namespace {
       *this >> val.u_star.ref()
             >> multiplicity
             >> weight_without_occupancy;
+      *this >> val.refinement_flags.bits
+            >> val.refinement_flags.param;
       val.setstate(multiplicity, weight_without_occupancy);
       return *this;
     }
+
+    unsigned version;
   };
 
 }}}} // namespace scitbx::af::boost_python::<anonymous>

@@ -97,6 +97,9 @@ def exercise_flex_xray_scatterer():
   assert approx_equal(a[0].occupancy, 0.8)
   a.back().occupancy = 0.7
   assert approx_equal(a[-1].occupancy, 0.7)
+  a[0].refinement_flags.set_site(state=True)
+  a[1].refinement_flags.set_fp(state=True)
+  a[2].refinement_flags.param = -234
   p = pickle.dumps(a)
   b = pickle.loads(p)
   for i,ai in enumerate(a):
@@ -111,6 +114,13 @@ def exercise_flex_xray_scatterer():
     assert ai.u_star == bi.u_star
     assert ai.multiplicity() == bi.multiplicity()
     assert approx_equal(ai.weight(), bi.weight())
+    assert ai.refinement_flags.bits == bi.refinement_flags.bits
+    assert ai.refinement_flags.param == bi.refinement_flags.param
+  assert b[0].refinement_flags.site()
+  assert not b[0].refinement_flags.fp()
+  assert not b[1].refinement_flags.site()
+  assert b[1].refinement_flags.fp()
+  assert b[2].refinement_flags.param == -234
   assert list(a.extract_labels()) == ["Si1", "O1", "K1"]
   assert list(a.extract_scattering_types()) == ["Si", "O", "K"]
   assert approx_equal(a.extract_sites(),
