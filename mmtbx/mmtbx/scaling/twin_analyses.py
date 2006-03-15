@@ -1576,7 +1576,7 @@ class symmetry_issues(object):
       self.out = sys.stdout
 
     if scoring_function == None:
-      self.scoring_function=[ 0.08, 50.0, 0.10, 50.0 ]
+      self.scoring_function=[ 0.08, 50.0, 0.08, 50.0 ]
 
     self.miller_array = miller_array
     self.xs_input = crystal.symmetry(miller_array.unit_cell(),
@@ -1604,6 +1604,10 @@ class symmetry_issues(object):
     self.pg_r_used_table = {}
     self.pg_max_r_used_table = {}
     self.pg_r_unused_table = {}
+
+    self.pg_r_unused_split = {}
+    self.pg_r_used_split = {}
+
     self.pg_min_r_unused_table = {}
     self.pg_scores = {}
     self.pg_choice = None
@@ -1647,57 +1651,56 @@ class symmetry_issues(object):
                                     (top, bottom)} )
 
   def score_all(self):
+
+    # loop over all pg's
     for pg in self.pg_max_r_used_table:
-      max = self.pg_max_r_used_table[ pg ]
-      min = self.pg_min_r_unused_table[ pg ]
-      mean_used =  self.pg_r_used_table[ pg ]
-      mean_unused = self.pg_r_unused_table[ pg ]
+      score_used = 0
+      score_unused = 0
+      print pg
 
-      if max ==  None:
-        max = 0.0
-      if min == None:
-        min = 0.50
+      # score all used ops
+      for r in self.pg_r_used_split[pg]:
+        tmp_score =0.5*( 1.0-math.tanh(( -r +
+                                         self.scoring_function[0])*
+                                       self.scoring_function[1] ))
 
-      if mean_used == None:
-        mean_used = 0.0
-      if mean_unused == None:
-        mean_unused = 0.50
+        tmp_score = math.log( tmp_score +1e-46)
+        score_used += tmp_score
 
 
-      score_max = 0.5*( 1.0-math.tanh(( max -
-                                       self.scoring_function[0])*
-                        self.scoring_function[1] ))
+      for r in self.pg_r_unused_split[pg]:
+        tmp_score =0.5*( 1.0-math.tanh(( r -
+                                         self.scoring_function[0])*
+                                       self.scoring_function[1] ))
 
-      score_mean_used = 0.5*( 1.0-math.tanh(( mean_used -
-                                              self.scoring_function[2])*
-                                            self.scoring_function[3] ))
+        tmp_score = math.log( tmp_score+1e-46 )
+        score_unused += tmp_score
+      if len(self.pg_r_used_split[pg])>0:
+        score_used/=(len(self.pg_r_used_split[pg]))
+      if len(self.pg_r_unused_split[pg])>0:
+        score_unused/=(len(self.pg_r_unused_split[pg]))
 
-      score_min = 0.5*( 1.0-math.tanh(-( min -
-                                       self.scoring_function[0])*
-                        self.scoring_function[1] ))
 
-      score_mean_unused = 0.5*( 1.0-math.tanh(-( mean_unused -
-                                                 self.scoring_function[0])*
-                                              self.scoring_function[1] ))
-      final_score  = -math.log(score_min*
-                               score_max*
-                               score_mean_used*
-                               score_mean_unused
-                               +1e-60)
+      final_score = score_used + score_unused
       self.pg_scores.update( {pg:final_score} )
+
+
 
   def make_pg_r_table(self):
     start = str(sgtbx.space_group_info(group=self.pg_low_prim_set))
     end = str(sgtbx.space_group_info(group=self.explore_sg.pg_high))
 
     for pg in self.explore_sg.pg_graph.graph.node_objects:
-      r, max_r, min_r = self.get_r_value_total(start,pg)
+      r, max_r, min_r, all_r = self.get_r_value_total(start,pg)
       self.pg_r_used_table.update( {pg:r} )
       self.pg_max_r_used_table.update( {pg:max_r} )
+      self.pg_r_used_split.update( {pg:all_r} )
 
-      r, max_r, min_r = self.get_r_value_total(pg,end)
+      r, max_r, min_r, all_r = self.get_r_value_total(pg,end)
       self.pg_r_unused_table.update( {pg:r} )
       self.pg_min_r_unused_table.update( {pg:min_r} )
+      self.pg_r_unused_split.update( {pg:all_r} )
+
 
   def get_r_value_total(self,
                         start_pg,
@@ -1710,6 +1713,7 @@ class symmetry_issues(object):
     # please find the shortest path from start to pg
     path = self.explore_sg.pg_graph.graph.find_shortest_path(
       start_pg,end_pg)
+    all_r = []
     if len(path)>1:
       for ii in xrange(len(path)-1):
         start_point = path[ii]
@@ -1736,6 +1740,7 @@ class symmetry_issues(object):
                   current_r = 0
                   if self.ops_and_r_pairs[ trial_s ][1]>0:
                     current_r = self.ops_and_r_pairs[ trial_s ][0]/self.ops_and_r_pairs[ trial_s ][1]
+                    all_r.append(current_r)
                   if (current_r> max_r):
                     max_r = current_r
                   if current_r <= min_r:
@@ -1749,7 +1754,7 @@ class symmetry_issues(object):
       max_r = None
     if min_r > 100.0:
       min_r = None
-    return result, max_r, min_r
+    return result, max_r, min_r, all_r
 
   def string_it(self, xin, format):
     if xin==None:
