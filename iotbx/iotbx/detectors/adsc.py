@@ -6,7 +6,7 @@ class ADSCImage(DetectorImageBase):
     DetectorImageBase.__init__(self,filename)
     self.vendortype = "ADSC"
 
-  def readHeader(self,maxlength=1024):
+  def readHeader(self,maxlength=6144): # usually 1024 is OK; 6144 for ID19
     if not self.parameters:
       rawdata = open(self.filename,"rb").read(maxlength)
       headeropen = rawdata.index("{")
@@ -23,7 +23,7 @@ class ADSCImage(DetectorImageBase):
           ('PIXEL_SIZE','PIXEL_SIZE',float),
           ('OSC_START','OSC_START',float),
           ('DISTANCE','DISTANCE',float),
-          ('WAVELENGTH','WAVELENGTH',float),
+          ('WAVELENGTH',r'\nWAVELENGTH',float),
           ('BEAM_CENTER_X',r'\nBEAM_CENTER_X',float),
           ('BEAM_CENTER_Y',r'\nBEAM_CENTER_Y',float),
           ('OSC_RANGE','OSC_RANGE',float),
