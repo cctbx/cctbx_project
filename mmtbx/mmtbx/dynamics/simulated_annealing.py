@@ -26,9 +26,8 @@ def manager(simulated_annealing_params,
             alpha_beta_parameters,
             mask_parameters,
             target_weights,
-            tan_b_iso_max,
             macro_cycle,
-            wilson_b,
+            tan_b_iso_max,
             monitor,
             fmodel,
             model,
@@ -38,19 +37,12 @@ def manager(simulated_annealing_params,
   print_statistics.make_sub_header(
                    "lbfgs minimization: before simulated annealing", out = out)
   minimized = mmtbx.refinement.minimization.lbfgs(
-    xray_gradient_flags      = xray.structure_factors.gradient_flags(
-                                 site = simulated_annealing_params.refine_sites,
-                                 u_iso= simulated_annealing_params.refine_adp,
-                                 tan_b_iso_max  = tan_b_iso_max),
-    xray_structure           = model.xray_structure,
     restraints_manager       = model.restraints_manager,
     fmodel                   = fmodel,
     lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
-            max_iterations = refinement_parameters.max_number_of_iterations),
+              max_iterations = refinement_parameters.max_number_of_iterations),
     wx                          = target_weights.wx_xyz(),
     wc                          = target_weights.wc(),
-    wu                          = 0.0,
-    wilson_b                    = wilson_b,
     verbose                     = 0)
 
   minimized.show(text = "lbfgs minimization", out = out)
