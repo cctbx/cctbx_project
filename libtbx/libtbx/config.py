@@ -16,6 +16,14 @@ def get_hostname():
   try: return socket.gethostname()
   except: return None
 
+def get_hp_ux_acc_version():
+  version = os.popen4("aCC -V", "r")[1].read().strip().split()
+  # aCC: HP aC++/ANSI C B3910B A.06.01 [Jan 05 2005]
+  if (len(version) >= 6 and version[5].startswith("A.")):
+    return version[5]
+  sys.tracebacklimit = 0
+  raise RuntimeError("Unknown C++ compiler (aCC -V).")
+
 def get_mipspro_version():
   version = os.popen4("CC -version", "r")[1].read().strip().split()
   if (version[:3] == "MIPSpro Compilers: Version ".split()):
