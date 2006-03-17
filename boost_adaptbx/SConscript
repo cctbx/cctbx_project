@@ -98,14 +98,27 @@ if (not env_etc.no_boost_python):
   prefix = "#"+os.path.join(
     os.path.basename(env_etc.boost_dist), "libs", "python", "src")
   for line in jamfile_lines:
-    bpl_dll_sources.append(os.path.join(prefix, line))
+    if (line.endswith("builtin_converters.cpp")):
+      bpl_dll_sources.append("#boost_adaptbx/builtin_converters.cpp")
+    else:
+      bpl_dll_sources.append(os.path.join(prefix, line))
   assert len(bpl_dll_sources) > 0
+  #
+  builtin_converters_cpp = libtbx.env.under_dist(
+    "boost", "libs/python/src/converter/builtin_converters.cpp")
+  assert os.path.exists(builtin_converters_cpp)
+  code = open(builtin_converters_cpp).read()
+  if (eval(ARGUMENTS.get("patch_builtin_converters",
+        str(env_etc.compiler=="hp_ux11_aCC")))):
+    print "boost_adaptbx: patching builtin_converters.cpp"
+    code = code.replace("return numeric_cast", "return static_cast")
+  open("builtin_converters.cpp", "w").write(code)
+  #
   env.Repository(os.path.dirname(env_etc.boost_dist))
   if (env_etc.static_bpl):
     env.StaticLibrary(target="#lib/boost_python", source=bpl_dll_sources)
   else:
     env.SharedLibrary(target="#lib/boost_python", source=bpl_dll_sources)
-
   if (int(ARGUMENTS.get("boost_python_tests", 0))):
     jamfile_path = libtbx.env.under_dist("boost", "libs/python/test/Jamfile")
     jamfile = " ".join(
@@ -264,6 +277,11 @@ voidptr
     env.SharedLibrary(
       target="#lib/boost_python_swig_args_ext",
       source="swig_args_ext.cpp")
+
+  env = env_pure_boost_python_ext.Copy()
+  env.SharedLibrary(
+    target="#lib/boost_adaptbx_tree_ext",
+    source="tree_ext.cpp")
 
   if (os.path.isfile(libtbx.env.under_dist("boost_adaptbx", "demo.cpp"))):
     env = env_pure_boost_python_ext.Copy()
