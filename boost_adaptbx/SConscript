@@ -112,7 +112,11 @@ if (not env_etc.no_boost_python):
         str(env_etc.compiler=="hp_ux11_aCC")))):
     print "boost_adaptbx: patching builtin_converters.cpp"
     code = code.replace("return numeric_cast", "return static_cast")
-  open("builtin_converters.cpp", "w").write(code)
+  build_boost_adaptbx = libtbx.env.under_build("boost_adaptbx")
+  if (not os.path.isdir(build_boost_adaptbx)):
+    os.mkdir(build_boost_adaptbx)
+  open(os.path.join(
+    build_boost_adaptbx, "builtin_converters.cpp"), "w").write(code)
   #
   env.Repository(os.path.dirname(env_etc.boost_dist))
   if (env_etc.static_bpl):
