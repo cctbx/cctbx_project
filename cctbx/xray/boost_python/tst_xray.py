@@ -96,17 +96,17 @@ def exercise_refinement_flags():
   #
   for state in [False, True]:
     f.set_site(state=state)
-    assert f.site() is state
+    assert f.site() == state
     f.set_u_iso(state=state)
-    assert f.u_iso() is state
+    assert f.u_iso() == state
     f.set_u_aniso(state=state)
-    assert f.u_aniso() is state
+    assert f.u_aniso() == state
     f.set_occupancy(state=state)
-    assert f.occupancy() is state
+    assert f.occupancy() == state
     f.set_fp(state=state)
-    assert f.fp() is state
+    assert f.fp() == state
     f.set_fdp(state=state)
-    assert f.fdp() is state
+    assert f.fdp() == state
   f.param = 35
   assert f.param == 35
 
