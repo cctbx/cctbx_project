@@ -34,11 +34,13 @@ namespace scitbx {
       explicit
       auto_array(T* p=0) : ptr(p) {}
 
+      // This should be non-const, but that would require serious gymnastics.
       auto_array(auto_array const& other)
-      {
-        ptr = const_cast<auto_array*>(&other)->release();
-      }
+      :
+        ptr(const_cast<auto_array*>(&other)->release())
+      {}
 
+      // This should be non-const, but that would require serious gymnastics.
       auto_array&
       operator=(auto_array const& other)
       {
