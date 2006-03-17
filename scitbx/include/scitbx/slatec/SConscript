@@ -3,6 +3,7 @@ Import("env_base", "env_etc")
 env = env_base.Copy(
   CCFLAGS=env_etc.ccflags_base,
   SHCCFLAGS=env_etc.ccflags_base,
+  SHLINKFLAGS=env_etc.shlinkflags,
 )
 env.Append(LIBS=env_etc.libm)
 if (env_etc.static_libraries): builder = env.StaticLibrary
