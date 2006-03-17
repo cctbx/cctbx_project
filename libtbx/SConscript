@@ -60,6 +60,12 @@ elif (sys.platform.startswith("osf")):
   else:
     env_etc.compiler = "unix_"+compiler
     compiler = None
+elif (sys.platform.startswith("hp-ux11")):
+  if (compiler == "default"):
+    env_etc.compiler = "hp_ux11_aCC"
+  else:
+    env_etc.compiler = "unix_"+compiler
+    compiler = None
 elif (sys.platform.startswith("irix")):
   if (compiler == "default"):
     env_etc.compiler = "irix_CC"
@@ -89,6 +95,7 @@ supported_compilers = (
   "unix_icc",
   "unix_icpc",
   "tru64_cxx",
+  "hp_ux11_aCC",
   "irix_CC",
   "darwin_c++",
   "darwin_gcc",
@@ -153,7 +160,16 @@ else:
     ENV=os.environ,
     tools=['cc','g++','gnulink','ar'])
   set_python_include_and_libs(env_etc)
-  env_etc.extension_module_suffix = ".so"
+  if (sys.platform.startswith("darwin")):
+    env_etc.shlibsuffix = ".dylib"
+    env_etc.extension_module_suffix = ".so"
+    env_base.Append(LIBSUFFIXES=[".dylib"])
+  elif (sys.platform.startswith("hp-ux11")):
+    env_etc.shlibsuffix = ".sl"
+    env_etc.extension_module_suffix = ".sl"
+  else:
+    env_etc.shlibsuffix = ".so"
+    env_etc.extension_module_suffix = ".so"
   env_etc.libm = ["m"]
   if (env_etc.compiler == "tru64_cxx"):
     env_etc.static_libraries = 0
@@ -193,6 +209,46 @@ else:
       if (line == "lock_registry"):
         env_etc.shlinkflags += " -Wl,-lock_registry"
         break
+    env_etc.shlinkflags_bpl = env_etc.shlinkflags
+  elif (env_etc.compiler == "hp_ux11_aCC"):
+    hp_ux_acc_version = libtbx.config.get_hp_ux_acc_version()
+    if (hp_ux_acc_version.startswith("A.06.")):
+      edg_version = "306"
+    else:
+      raise RuntimeError("Unknown aCC compiler version.")
+    env_etc.static_libraries = 0
+    env_etc.static_bpl = 0
+    env_base.Replace(
+      CC="cc",
+      SHCC="cc",
+      CXX="aCC",
+      LINK="aCC",
+      SHCXX="aCC",
+      SHLINK="aCC",
+    )
+    env_etc.cxxflags_base = Split("""
+      -AA
+      -D__EDG__
+      -D__EDG_VERSION__=%s
+      +W2001,2021,2047,2061,2063,2068,2111,2161,2167,2177,2185,2186,2191,2236,2334,2340,2414,2461,2549,2550,2761,2811,2837,2940,2997,4067,4189,4257
+      -DBOOST_DISABLE_THREADS
+    """ % edg_version)
+    env_etc.ccflags_base = Split("""
+      -Ae
+    """)
+    if (libtbx.env.build_options.optimization):
+      opts = ["-DNDEBUG", "-O"]
+    else:
+      opts = ["-DNDEBUG", "+O0"]
+    if (libtbx.env.build_options.debug_symbols):
+      opts.insert(0, "-g")
+    env_etc.cxxflags_base.extend(opts)
+    env_etc.ccflags_base.extend(opts)
+    if (static_exe):
+      raise RuntimeError("Please customize...")
+      env_base.Prepend(LINKFLAGS=[])
+      static_exe = None
+    env_etc.shlinkflags = "-b -Wl,-E"
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
   elif (env_etc.compiler == "sunos_CC"):
     env_etc.static_libraries = 0
@@ -236,6 +292,7 @@ else:
       LINK="g++",
       SHCXX="g++",
       SHLINK="g++",
+      SHLIBSUFFIX=env_etc.shlibsuffix,
     )
     if (libtbx.env.build_options.warning_level == 0):
       warn_options = "-w"
@@ -397,9 +454,8 @@ else:
       LINK="g++",
       SHCXX="g++",
       SHLINK="g++",
-      SHLIBSUFFIX=".dylib",
+      SHLIBSUFFIX=env_etc.shlibsuffix,
     )
-    env_base.Append(LIBSUFFIXES=[".dylib"])
     env_etc.cxxflags_base = Split("""
       -fPIC
       -ftemplate-depth-130
@@ -444,9 +500,8 @@ else:
       LINKFLAGS=["-w"], # suppress "source/lib does not exist" warning
       SHCXX="c++",
       SHLINK="c++",
-      SHLIBSUFFIX=".dylib",
+      SHLIBSUFFIX=env_etc.shlibsuffix,
     )
-    env_base.Append(LIBSUFFIXES=[".dylib"])
     env_etc.cxxflags_base = Split("""
       -fPIC
       -no-cpp-precomp
