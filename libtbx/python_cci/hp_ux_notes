@@ -1,0 +1,21 @@
+HP-UX td176 B.11.23 U ia64 1928826293
+HP aC++/ANSI C B3910B A.06.06 [Nov 7 2005]
+
+unpack Python-2.4.2
+
+32-bit build:
+  ./configure --without-gcc --prefix=/var/tmp/rwgk/sw/Python-2.4.2_cci_32bit
+64-bit build:
+  env CC=cc CXX=aCC BASECFLAGS="+DD64" LDFLAGS="+DD64 -lxnet" ./configure --without-gcc --prefix=/var/tmp/rwgk/sw/Python-2.4.2_cci_64bit
+
+edit Makefile: CC=cc -Ae -mt
+edit pyconfig.h: /* #define _POSIX_C_SOURCE ... */
+make
+edit Makefile again: same change
+
+32-bit build:
+  hp_ux_build_python_cpp.csh
+64-bit build:
+  hp_ux_build_python_cpp.csh +DD64
+
+make install

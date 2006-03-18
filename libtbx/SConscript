@@ -211,30 +211,30 @@ else:
         break
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
   elif (env_etc.compiler == "hp_ux11_aCC"):
-    hp_ux_acc_version = libtbx.config.get_hp_ux_acc_version()
-    if (hp_ux_acc_version.startswith("A.06.")):
-      edg_version = "306"
+    hp_ux_acc_version = libtbx.config.get_hp_ux_acc_version() # not used
+    if (libtbx.config.get_ldd_output().find("hpux64/libc") >= 0):
+      abi = " +DD64"
     else:
-      raise RuntimeError("Unknown aCC compiler version.")
+      abi = ""
     env_etc.static_libraries = 0
     env_etc.static_bpl = 0
     env_base.Replace(
-      CC="cc",
-      SHCC="cc",
-      CXX="aCC",
-      LINK="aCC",
-      SHCXX="aCC",
-      SHLINK="aCC",
+      CC="cc"+abi,
+      SHCC="cc"+abi,
+      CXX="aCC"+abi,
+      LINK="aCC"+abi,
+      SHCXX="aCC"+abi,
+      SHLINK="aCC"+abi,
     )
     env_etc.cxxflags_base = Split("""
       -AA
-      -D__EDG__
-      -D__EDG_VERSION__=%s
+      -mt
       +W2001,2021,2047,2061,2063,2068,2111,2161,2167,2177,2185,2186,2191,2236,2334,2340,2414,2461,2549,2550,2761,2811,2837,2940,2997,4067,4189,4257
       -DBOOST_DISABLE_THREADS
-    """ % edg_version)
+    """)
     env_etc.ccflags_base = Split("""
       -Ae
+      -mt
     """)
     if (libtbx.env.build_options.optimization):
       opts = ["-DNDEBUG", "-O"]

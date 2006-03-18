@@ -16,6 +16,10 @@ def get_hostname():
   try: return socket.gethostname()
   except: return None
 
+def get_ldd_output(target=None):
+  if (target is None): target = sys.executable
+  return os.popen4("ldd '%s'" % target, "r")[1].read()
+
 def get_hp_ux_acc_version():
   version = os.popen4("aCC -V", "r")[1].read().strip().split()
   # aCC: HP aC++/ANSI C B3910B A.06.01 [Jan 05 2005]
