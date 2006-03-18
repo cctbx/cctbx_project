@@ -8,6 +8,7 @@
 #include <boost/python/module.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
+#include <boost/cstdint.hpp>
 
 namespace {
 
@@ -87,6 +88,9 @@ namespace {
 #if defined(__osf__)
     result += "__osf__\n";
 #endif
+#if defined(__hpux)
+    result += "__hpux\n";
+#endif
 #if defined(__sgi)
     result += "__sgi\n";
 #endif
@@ -105,8 +109,24 @@ namespace {
 #if defined(__DECCXX_VER)
     result += "__DECCXX_VER = " + to_str(__DECCXX_VER) + nl;
 #endif
+#if defined(__HP_aCC)
+    result += "__HP_aCC = " + to_str(__HP_aCC) + nl;
+#endif
+#if defined(__EDG__)
+    result += "__EDG__\n";
+#endif
 #if defined(__EDG_VERSION__)
     result += "__EDG_VERSION__ = " + to_str(__EDG_VERSION__) + nl;
+#endif
+#if defined(__EDG_ABI_COMPATIBILITY_VERSION)
+    result += "__EDG_ABI_COMPATIBILITY_VERSION = "
+            + to_str(__EDG_ABI_COMPATIBILITY_VERSION) + nl;
+#endif
+#if defined(__EDG_IMPLICIT_USING_STD)
+    result += "__EDG_IMPLICIT_USING_STD\n";
+#endif
+#if defined(__EDG_RUNTIME_USES_NAMESPACES)
+    result += "__EDG_RUNTIME_USES_NAMESPACES\n";
 #endif
 #if defined(__GNUC__)
     result += "__GNUC__ = " + to_str(__GNUC__) + nl;
@@ -164,6 +184,8 @@ namespace {
     P(float)
     P(double)
     P(long double)
+    P(boost::int32_t)
+    P(boost::uint32_t)
 #if defined(HAVE_WCHAR_H)
     P(wchar_t)
 #endif
