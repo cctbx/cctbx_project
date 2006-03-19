@@ -167,7 +167,15 @@ else
       cd "$python_sources"
       set py_install_log="../py_install_log"
       echo "Configuring Python"
-      ./configure --prefix="$build/python" >& "$py_install_log"
+      if ("X`uname`" == "XHP-UX") then
+        # tested with HP aC++/ANSI C B3910B A.06.06 [Nov 7 2005]
+        env CC=cc CXX="aCC -mt" BASECFLAGS="+DD64 -mt" LDFLAGS="+DD64 -lxnet" ./configure --without-gcc --prefix="$build/python" >& "$py_install_log"
+        if (-f pyconfig.h) then
+          grep -v _POSIX_C_SOURCE pyconfig.h > zz; mv zz pyconfig.h
+        endif
+      else
+        ./configure --prefix="$build/python" >& "$py_install_log"
+      endif
       echo "Compiling Python. This may take a while."
       make >>& "$py_install_log"
       echo "Installing Python"
