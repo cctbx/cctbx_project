@@ -15,8 +15,8 @@
       o2f2_.clear();
       o5f2_.clear();
       o8f2_.clear();
-      unsigned n_gp1 = g_max[1]-g_min[1]+1;
-      unsigned n_gp2 = g_max[2]-g_min[2]+1;
+      unsigned n_gp1 = sampling_box.box_edges[1];
+      unsigned n_gp2 = sampling_box.box_edges[2];
       gp1g.reserve(n_gp1);
       o1f1_.reserve(n_gp1);
       o4f1_.reserve(n_gp1);
