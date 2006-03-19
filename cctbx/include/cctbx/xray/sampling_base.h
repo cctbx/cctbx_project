@@ -91,12 +91,19 @@ namespace cctbx { namespace xray {
     class exponent_table
     {
       public:
+        static const std::size_t excessive_range_error_limit = 1000000;
+
         exponent_table() {}
 
         explicit
-        exponent_table(FloatType const& one_over_step_size)
-        : one_over_step_size_(one_over_step_size)
-        {}
+        exponent_table(
+          FloatType const& one_over_step_size,
+          std::size_t initial_reserve=2000)// avoids reallocation in most cases
+        :
+          one_over_step_size_(one_over_step_size)
+        {
+          table_.reserve(initial_reserve);
+        }
 
         FloatType
         operator()(FloatType const& x)
@@ -122,6 +129,10 @@ namespace cctbx { namespace xray {
     void
     exponent_table<FloatType>::expand(std::size_t n)
     {
+      if (n > excessive_range_error_limit) {
+        throw std::runtime_error(
+          __FILE__ ": exponent_table: excessive range.");
+      }
       table_.reserve(n);
       for(std::size_t i = table_.size(); i < n; i++) {
         table_.push_back(std::exp(i / one_over_step_size_));
