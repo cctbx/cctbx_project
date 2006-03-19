@@ -406,18 +406,24 @@ namespace cctbx { namespace xray {
           FloatType d_sq = unit_cell.length_sq(d_frac);
           FloatType gu_radius = std::sqrt(max_d_sq_estimate / d_sq);
           FloatType gu_site = coor_frac[i_bv] * grid_n_f[i_bv];
+          // ensure sampling box size is at least 2x2x2
+          int box_min_bound = scitbx::math::iround(gu_site);
+          int box_max_bound = box_min_bound;
+          if (box_max_bound < gu_site) box_max_bound++;
+          else                         box_min_bound--;
           box_min[i_bv] = adjust_box_limit(
             unit_cell, rho_cutoff, max_d_sq_upper_bound,
             grid_n_f, coor_frac, gaussian_ft,
-            i_bv, 1, scitbx::math::ifloor(gu_site - gu_radius));
+            i_bv, -1, box_min_bound,
+            std::min(box_min_bound, scitbx::math::ifloor(gu_site-gu_radius)));
           box_max[i_bv] = adjust_box_limit(
             unit_cell, rho_cutoff, max_d_sq_upper_bound,
             grid_n_f, coor_frac, gaussian_ft,
-            i_bv, -1, scitbx::math::iceil(gu_site + gu_radius));
-          box_edges[i_bv] = std::max(0, box_max[i_bv]-box_min[i_bv]+1);
+            i_bv, 1, box_max_bound,
+            std::max(box_max_bound, scitbx::math::iceil(gu_site+gu_radius)));
+          box_edges[i_bv] = box_max[i_bv] - box_min[i_bv] + 1;
           n_points *= box_edges[i_bv];
         }
-        if (n_points == 0) max_d_sq = 0;
       }
 
       int
@@ -429,34 +435,37 @@ namespace cctbx { namespace xray {
         fractional<FloatType> const& coor_frac,
         gaussian_fourier_transformed<FloatType> const& gaussian_ft,
         int i_bv,
-        int f,
+        int enlargement_step,
+        int box_bound,
         int box_limit)
       {
-        int known_required = box_limit + 2*f;
         fractional<FloatType> d_frac(0,0,0);
+        bool just_enlarged = false;
         while (true) {
-          d_frac[i_bv] = f * (coor_frac[i_bv] - box_limit/grid_n_f[i_bv]);
-          if (d_frac[i_bv] < 0) {
-            return box_limit;
-          }
+          d_frac[i_bv] = enlargement_step
+                       * (box_limit/grid_n_f[i_bv] - coor_frac[i_bv]);
           FloatType d_sq = unit_cell.length_sq(d_frac);
           FloatType abs_rho = scitbx::fn::absolute(gaussian_ft.rho_real(d_sq));
           if (abs_rho < rho_cutoff) {
-            box_limit += f;
-            if (box_limit == known_required) {
-              return box_limit;
+            if (just_enlarged) {
+              box_limit -= enlargement_step;
+              break;
             }
+            if (box_limit == box_bound) break;
+            box_limit -= enlargement_step;
           }
           else {
             if (d_sq > max_d_sq_upper_bound) {
-              d_sq = max_d_sq_upper_bound;
               excessive_radius = true;
+              if (just_enlarged) box_limit -= enlargement_step;
+              break;
             }
             scitbx::math::update_max(max_d_sq, d_sq);
-            known_required = box_limit;
-            box_limit -= f;
+            box_limit += enlargement_step;
+            just_enlarged = true;
           }
         }
+        return box_limit;
       }
     };
 
