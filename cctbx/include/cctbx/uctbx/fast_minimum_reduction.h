@@ -63,7 +63,7 @@ namespace cctbx { namespace uctbx {
       fast_minimum_reduction(
         uctbx::unit_cell const& unit_cell,
         std::size_t iteration_limit=100,
-        FloatType multiplier_significant_change_test=10,
+        FloatType multiplier_significant_change_test=16,
         std::size_t min_n_no_significant_change=2)
       :
         multiplier_significant_change_test_(

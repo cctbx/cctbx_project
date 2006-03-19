@@ -220,11 +220,11 @@ def exercise_exceptions():
 def exercise_fast_minimum_reduction():
   mr = uctbx.fast_minimum_reduction(uctbx.unit_cell((1,1,1,90,90,90)))
   assert mr.iteration_limit() == 100
-  assert mr.multiplier_significant_change_test() == 10
+  assert mr.multiplier_significant_change_test() == 16
   assert mr.min_n_no_significant_change() == 2
   mr = uctbx.fast_minimum_reduction(uctbx.unit_cell((1,1,1,90,90,90)), 90)
   assert mr.iteration_limit() == 90
-  assert mr.multiplier_significant_change_test() == 10
+  assert mr.multiplier_significant_change_test() == 16
   assert mr.min_n_no_significant_change() == 2
   mr = uctbx.fast_minimum_reduction(uctbx.unit_cell((1,1,1,90,90,90)), 90,8)
   assert mr.iteration_limit() == 90
