@@ -1,4 +1,5 @@
 #include <boost/python/class.hpp>
+#include <boost/python/args.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
 #include <cctbx/uctbx/fast_minimum_reduction.h>
@@ -18,7 +19,11 @@ namespace {
       typedef return_value_policy<copy_const_reference> ccr;
       class_<w_t>("fast_minimum_reduction", no_init)
         .def(init<unit_cell const&,
-                  optional<std::size_t, double, std::size_t> >())
+                  optional<std::size_t, double, std::size_t> >((
+          arg_("unit_cell"),
+          arg_("iteration_limit")=100,
+          arg_("multiplier_significant_change_test")=16,
+          arg_("min_n_no_significant_change")=2)))
         .def("as_gruber_matrix", &w_t::as_gruber_matrix)
         .def("as_niggli_matrix", &w_t::as_niggli_matrix)
         .def("as_sym_mat3", &w_t::as_sym_mat3)
