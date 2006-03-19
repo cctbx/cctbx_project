@@ -44,7 +44,7 @@ class _unit_cell(boost.python.injector, ext.unit_cell):
     if (iteration_limit is None):
       iteration_limit = 100
     if (multiplier_significant_change_test is None):
-      multiplier_significant_change_test = 10
+      multiplier_significant_change_test = 16
     if (min_n_no_significant_change is None):
       min_n_no_significant_change = 2
     return fast_minimum_reduction(self,

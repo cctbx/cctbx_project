@@ -107,7 +107,7 @@ class fast_minimum_reduction(object):
   """
 
   def __init__(self, unit_cell, iteration_limit=None,
-                                multiplier_significant_change_test=10,
+                                multiplier_significant_change_test=16,
                                 min_n_no_significant_change=2):
     if (iteration_limit is None):
       self._iteration_limit = 100
