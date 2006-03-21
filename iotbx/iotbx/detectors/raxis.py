@@ -37,13 +37,13 @@ class RAXISImage(DetectorImageBase,Raxis):
     return self.head['record_length']/self.head['nFast']
 
   def getEndian(self):
-    return 0
+    return 1
 
   def read(self):
     self.fileLength()
     self.data()
     self.linearintdata = ReadRAXIS(self.CharTemp,self.integerdepth(),
-         self.size1*self.bin,self.size2*self.bin,self.getEndian())
+         self.size1*self.bin,self.size2*self.bin,self.endian_swap_required())
     if self.bin==2:
       from iotbx.detectors import Bin2_by_2
       self.linearintdata = Bin2_by_2(self.linearintdata)
