@@ -9,6 +9,13 @@ from cctbx.development import debug_utils
 from cStringIO import StringIO
 import sys
 
+def exercise_compare_cb_op_as_hkl():
+  l = ["k,h,l", "h,k,l"]
+  l.sort(reflection_statistics.compare_cb_op_as_hkl)
+  assert l == ["h,k,l", "k,h,l"]
+  l.sort(reflection_statistics.compare_cb_op_as_hkl)
+  assert l == ["h,k,l", "k,h,l"]
+
 def generate_mtz_files(space_group_info, anomalous_flag):
   crystal_symmetry = crystal.symmetry(
     unit_cell=space_group_info.any_compatible_unit_cell(volume=1000),
@@ -21,6 +28,7 @@ def generate_mtz_files(space_group_info, anomalous_flag):
     miller_set=miller_set,
     data=flex.random_double(size=miller_set.indices().size()))
   miller_array_p1 = miller_array.expand_to_p1()
+  miller_arrays = []
   file_names = []
   subgrs = subgroups.subgroups(space_group_info).groups_parent_setting()
   for i_subgroup, subgroup in enumerate(subgrs):
@@ -33,14 +41,21 @@ def generate_mtz_files(space_group_info, anomalous_flag):
     file_name = "tmp%d.mtz" % i_subgroup
     mtz_object = subgroup_miller_array.as_mtz_dataset(
       column_root_label="FOBS").mtz_object().write(file_name=file_name)
+    miller_arrays.append(
+      subgroup_miller_array.f_sq_as_f().expand_to_p1().map_to_asu())
     file_names.append(file_name)
-  return file_names
+  return miller_arrays, file_names
 
-def exercise_reflection_statistics(anomalous_flag, file_names, verbose):
+def exercise_reflection_statistics(
+      anomalous_flag,
+      miller_arrays,
+      file_names,
+      verbose):
   out = StringIO()
   try:
     sys.stdout = out
-    reflection_statistics.run(args=file_names)
+    reflection_statistics.run(
+      args=["--lattice_symmetry_max_delta=0.01"]+file_names)
   finally:
     sys.stdout = sys.__stdout__
     if (0 or verbose):
@@ -48,13 +63,21 @@ def exercise_reflection_statistics(anomalous_flag, file_names, verbose):
   done = {}
   for line in out.getvalue().splitlines():
     if (line.startswith("CC ")):
-      type,i,j,cc = line.split()[1:5]
+      type,i,j,cc,cb_op = line.split()[1:6]
       key = " ".join([type,i,j])
       cc = float(cc)
       if (key not in done):
         if (cc != 1.000):
           raise AssertionError(line.strip())
         done[key] = None
+      # check reindexing matrices
+      assert type in ["Obs", "Ano"]
+      if (type == "Obs"):
+        i, j = int(i)-1, int(j)-1
+        ma_j = miller_arrays[j].change_basis(cb_op).expand_to_p1().map_to_asu()
+        ma_i, ma_j = miller_arrays[i].common_sets(other=ma_j)
+        if (float("%6.3f" % ma_i.correlation(ma_j).coefficient()) != cc):
+          raise AssertionError(line.strip())
   n = len(file_names)
   expected_number_of_cc_lines = n*(n-1)/2
   if (anomalous_flag):
@@ -66,15 +89,17 @@ def run_call_back(flags, space_group_info):
     if (flags.Verbose):
       print space_group_info, "anomalous_flag:", anomalous_flag
     if (anomalous_flag and space_group_info.group().is_centric()): continue
-    file_names = generate_mtz_files(
+    miller_arrays, file_names = generate_mtz_files(
       space_group_info=space_group_info,
       anomalous_flag=anomalous_flag)
     exercise_reflection_statistics(
       anomalous_flag=anomalous_flag,
+      miller_arrays=miller_arrays,
       file_names=file_names,
       verbose=flags.Verbose)
 
 def run():
+  exercise_compare_cb_op_as_hkl()
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
   print "OK"
 

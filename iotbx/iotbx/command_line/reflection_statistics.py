@@ -12,6 +12,11 @@ from libtbx.itertbx import count
 import math
 import sys
 
+def compare_cb_op_as_hkl(a, b):
+  if (len(a) < len(b)): return -1
+  if (len(a) > len(b)): return  1
+  return cmp(a, b)
+
 def show_average_of_binned_data(binned_data_list):
   l = len(binned_data_list[0].binner.bin_legend(0))
   print " "*(l-9), "average:",
@@ -27,6 +32,7 @@ class array_cache(object):
 
   def __init__(self, input, n_bins, lattice_symmetry_max_delta):
     self.input = input.eliminate_sys_absent(integral_only=True, log=sys.stdout)
+    self.lattice_symmetry_max_delta = lattice_symmetry_max_delta
     if (not self.input.is_unique_set_under_symmetry()):
       print "Merging symmetry-equivalent reflections:"
       merged = self.input.merge_equivalents()
@@ -63,7 +69,7 @@ class array_cache(object):
         anomalous_flag=self.input.anomalous_flag())
     self.lattice_group = sgtbx.lattice_symmetry.group(
       self.minimum_cell_symmetry.unit_cell(),
-      max_delta=lattice_symmetry_max_delta)
+      max_delta=self.lattice_symmetry_max_delta)
     self.lattice_group.expand_inv(sgtbx.tr_vec((0,0,0)))
     self.lattice_group.make_tidy()
     self.lattice_symmetry = crystal.symmetry(
@@ -90,8 +96,19 @@ class array_cache(object):
       h=self.intensity_symmetry.space_group()
           .build_derived_acentric_group()
           .make_tidy()).partitions[1:]:
-      if (partition[0].r().determinant() > 0):
-        result.append(cb_op.apply(partition[0]))
+      best_choice = None
+      best_choice_as_hkl = None
+      for choice in partition:
+        if (choice.r().determinant() < 0): continue
+        possible_choice = cb_op.apply(choice)
+        possible_choice_as_hkl = possible_choice.r().as_hkl()
+        if (best_choice_as_hkl is None
+            or compare_cb_op_as_hkl(
+                 best_choice_as_hkl, possible_choice_as_hkl) > 0):
+          best_choice = possible_choice
+          best_choice_as_hkl = possible_choice_as_hkl
+      if (best_choice is not None):
+        result.append(best_choice)
     return result
 
   def show_possible_twin_laws(self):
@@ -101,6 +118,11 @@ class array_cache(object):
     print "Space group of the metric:     ", \
       self.lattice_symmetry.space_group_info() \
         .as_reference_setting()
+    d = "%.6g" % self.lattice_symmetry_max_delta
+    if (d == "1"): d += " degree"
+    else: d += " degrees"
+    print "  Tolerance used in the determination of the"
+    print "  lattice symmetry:", d
     twin_laws = self.possible_twin_laws()
     if (len(twin_laws) == 0):
       print "Possible twin laws: None"
@@ -110,7 +132,6 @@ class array_cache(object):
       if (s != str(self.input.unit_cell())):
         print "Idealized unit cell:", s
       print "Possible twin laws:"
-      n_changed_settings = 0
       for s in twin_laws:
         hkl_str = s.r().as_hkl()
         cb_op = sgtbx.change_of_basis_op(hkl_str)
@@ -121,22 +142,14 @@ class array_cache(object):
         except RuntimeError, e:
           if (str(e).find("Unsuitable value for rational") < 0): raise
           info = " # Info: this changes the setting of the input space group"
-          n_changed_settings += 1
         else:
           if (cb_sg.group() != self.input.space_group()):
             info = " # Info: new setting: %s" % str(cb_sg)
-            n_changed_settings += 1
         print " ", hkl_str + info
-      if (n_changed_settings > 0):
-        print "  ***************************************************"
-        print "  This is a very interesting combination of unit cell"
-        print "  parameters and space group symmetry."
-        print "  PLEASE send this output to:"
-        print
-        print "    cctbx@cci.lbl.gov"
-        print
-        print "  Thank you in advance!"
-        print "  ***************************************************"
+      print "  Note:"
+      print "    mmtbx.xtriage provides comprehensive twinning analysis"
+      print "    facilities for macromolecular structures."
+      print "    For more information enter: mmtbx.xtriage --help"
     print
 
   def show_patterson_peaks(self,
@@ -267,9 +280,26 @@ class array_cache(object):
     return result
 
   def combined_cb_op(self, other, cb_op):
-    s = self.change_of_basis_op_to_minimum_cell
-    o = other.change_of_basis_op_to_minimum_cell
-    return s.inverse() * cb_op.new_denominators(s) * o
+    sc = self.change_of_basis_op_to_minimum_cell
+    oc = other.change_of_basis_op_to_minimum_cell
+    cb_op = cb_op.new_denominators(sc)
+    best_choice = None
+    best_choice_as_hkl = None
+    for s_symop in self.minimum_cell_symmetry.space_group():
+      s_symop = sgtbx.change_of_basis_op(sgtbx.rt_mx(
+        s_symop.r())).new_denominators(sc)
+      for o_symop in other.minimum_cell_symmetry.space_group():
+        o_symop = sgtbx.change_of_basis_op(sgtbx.rt_mx(
+          o_symop.r())).new_denominators(sc)
+        possible_choice = sc.inverse() * s_symop * cb_op * o_symop * oc
+        possible_choice_as_hkl = possible_choice.as_hkl()
+        if (best_choice_as_hkl is None
+            or compare_cb_op_as_hkl(
+                 best_choice_as_hkl, possible_choice_as_hkl) > 0):
+          best_choice = possible_choice
+          best_choice_as_hkl = possible_choice_as_hkl
+    assert best_choice is not None
+    return best_choice
 
   def setup_common_binner(self,
         other,
@@ -339,6 +369,13 @@ def run(args):
       default=None,
       help="Number of bins for second moments of intensities",
       metavar="INT")
+    .option(None, "--lattice_symmetry_max_delta",
+      action="store",
+      type="float",
+      default=3.,
+      dest="lattice_symmetry_max_delta",
+      help="angular tolerance in degrees used in the determination"
+           " of the lattice symmetry")
   ).process(args=args)
   if (len(command_line.args) == 0):
     command_line.parser.show_help()
@@ -424,7 +461,7 @@ def run(args):
     cache_0 = array_cache(
       input=input_0,
       n_bins=n_bins,
-      lattice_symmetry_max_delta=3.0)
+      lattice_symmetry_max_delta=command_line.options.lattice_symmetry_max_delta)
     cache_0.show_possible_twin_laws()
     cache_0.show_completeness()
     cache_0.show_patterson_peaks()
@@ -441,82 +478,81 @@ def run(args):
       anom_signal.show()
       print
       cache_0.show_measurability()
-    if (not command_line.options.quick):
-      for i_1,cache_1 in enumerate(array_caches):
-        unique_reindexing_operators = cache_0.unique_reindexing_operators(
-          other=cache_1,
-          relative_length_tolerance=0.05,
-          absolute_angle_tolerance=5)
-        if (len(unique_reindexing_operators) == 0):
-          print "Incompatible unit cells:"
-          print " ", cache_0.input.info()
-          print " ", cache_1.input.info()
-          print "No comparison."
-          print
-        else:
-          ccs = flex.double()
-          for cb_op in unique_reindexing_operators:
-            similar_array_1 = cache_1.observations \
+    for i_1,cache_1 in enumerate(array_caches):
+      unique_reindexing_operators = cache_1.unique_reindexing_operators(
+        other=cache_0,
+        relative_length_tolerance=0.05,
+        absolute_angle_tolerance=5)
+      if (len(unique_reindexing_operators) == 0):
+        print "Incompatible unit cells:"
+        print "  %2d:" % (i_1+1), cache_1.input.info()
+        print "  %2d:" % (i_0+1), cache_0.input.info()
+        print "No comparison."
+        print
+      else:
+        ccs = flex.double()
+        for cb_op in unique_reindexing_operators:
+          similar_array_0 = cache_0.observations \
+            .change_basis(cb_op) \
+            .map_to_asu()
+          ccs.append(cache_1.observations.correlation(
+            other=similar_array_0,
+            assert_is_similar_symmetry=False).coefficient())
+        permutation = flex.sort_permutation(ccs, reverse=True)
+        ccs = ccs.select(permutation)
+        unique_reindexing_operators = flex.select(
+          unique_reindexing_operators, permutation=permutation)
+        for i_cb_op,cb_op,cc in zip(count(),
+                                    unique_reindexing_operators,
+                                    ccs):
+          combined_cb_op = cache_1.combined_cb_op(other=cache_0, cb_op=cb_op)
+          if (not combined_cb_op.c().is_unit_mx()):
+            reindexing_note = "  after reindexing %d using %s" % (
+              i_0+1, combined_cb_op.as_hkl())
+          else:
+            reindexing_note = ""
+          print "CC Obs %d %d %6.3f  %s" % (
+            i_1+1, i_0+1, cc, combined_cb_op.as_hkl())
+          print "Correlation of:"
+          print "  %2d:" % (i_1+1), cache_1.input.info()
+          print "  %2d:" % (i_0+1), cache_0.input.info()
+          print "Overall correlation: %6.3f%s" % (cc, reindexing_note)
+          show_in_bins = False
+          if (i_cb_op == 0 or (cc >= 0.3 and cc >= ccs[0]-0.2)):
+            show_in_bins = True
+            similar_array_0 = cache_0.observations \
               .change_basis(cb_op) \
               .map_to_asu()
-            ccs.append(cache_0.observations.correlation(
-              other=similar_array_1,
-              assert_is_similar_symmetry=False).coefficient())
-          permutation = flex.sort_permutation(ccs, reverse=True)
-          ccs = ccs.select(permutation)
-          unique_reindexing_operators = flex.select(
-            unique_reindexing_operators, permutation=permutation)
-          for i_cb_op,cb_op,cc in zip(count(),
-                                      unique_reindexing_operators,
-                                      ccs):
-            combined_cb_op = cache_0.combined_cb_op(other=cache_1, cb_op=cb_op)
-            if (not combined_cb_op.c().is_unit_mx()):
-              reindexing_note = " with reindexing"
-              hkl_str = " "+combined_cb_op.as_hkl()
-            else:
-              reindexing_note = ""
-              hkl_str = ""
-            print "CC Obs", i_0+1, i_1+1, "%6.3f"%cc, combined_cb_op.as_hkl()
-            print "Correlation of:"
-            print " ", cache_0.input.info()
-            print " ", cache_1.input.info()
-            print "Overall correlation%s: %6.3f%s" % (
-              reindexing_note, cc, hkl_str)
-            show_in_bins = False
-            if (i_cb_op == 0 or (cc >= 0.3 and cc >= ccs[0]-0.2)):
-              show_in_bins = True
-              similar_array_1 = cache_1.observations \
-                .change_basis(cb_op) \
-                .map_to_asu()
-              cache_0.setup_common_binner(cache_1, n_bins=n_bins)
-              correlation = cache_0.observations.correlation(
-                other=similar_array_1,
+            cache_1.setup_common_binner(cache_0, n_bins=n_bins)
+            correlation = cache_1.observations.correlation(
+              other=similar_array_0,
+              use_binning=True,
+              assert_is_similar_symmetry=False)
+            correlation.show()
+          print
+          if (    cache_0.anom_diffs is not None
+              and cache_1.anom_diffs is not None):
+            similar_anom_diffs_0 = cache_0.anom_diffs \
+              .change_basis(cb_op) \
+              .map_to_asu()
+            correlation = cache_1.anom_diffs.correlation(
+              other=similar_anom_diffs_0,
+              assert_is_similar_symmetry=False)
+            print "CC Ano %d %d %6.3f  %s" % (
+              i_1+1, i_0+1, correlation.coefficient(), combined_cb_op.as_hkl())
+            print "Anomalous difference correlation of:"
+            print "  %2d:" % (i_1+1), cache_1.input.info()
+            print "  %2d:" % (i_0+1), cache_0.input.info()
+            print "Overall anomalous difference correlation: %6.3f%s" % (
+              correlation.coefficient(), reindexing_note)
+            if (show_in_bins):
+              correlation = cache_1.anom_diffs.correlation(
+                other=similar_anom_diffs_0,
                 use_binning=True,
                 assert_is_similar_symmetry=False)
               correlation.show()
             print
-            if (    cache_0.anom_diffs is not None
-                and cache_1.anom_diffs is not None):
-              similar_anom_diffs_1 = cache_1.anom_diffs \
-                .change_basis(cb_op) \
-                .map_to_asu()
-              correlation = cache_0.anom_diffs.correlation(
-                other=similar_anom_diffs_1,
-                assert_is_similar_symmetry=False)
-              print "CC Ano", i_0+1, i_1+1, \
-                "%6.3f"%correlation.coefficient(), combined_cb_op.as_hkl()
-              print "Anomalous difference correlation of:"
-              print " ", cache_0.input.info()
-              print " ", cache_1.input.info()
-              print "Overall anomalous difference correlation%s: %6.3f%s" % (
-                reindexing_note, correlation.coefficient(), hkl_str)
-              if (show_in_bins):
-                correlation = cache_0.anom_diffs.correlation(
-                  other=similar_anom_diffs_1,
-                  use_binning=True,
-                  assert_is_similar_symmetry=False)
-                correlation.show()
-              print
+    if (not command_line.options.quick):
       array_caches.append(cache_0)
     print "=" * 79
     print
