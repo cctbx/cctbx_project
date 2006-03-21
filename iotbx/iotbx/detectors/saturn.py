@@ -81,6 +81,18 @@ class SaturnImage(ADSCImage):
       assert self.parameters['CCD_GONIO_NAMES'][1]=='2Theta'
       self.parameters['TWOTHETA'] = self.parameters['CCD_GONIO_VALUES'][2]
 
+  def read(self):
+    from iotbx.detectors import ReadRAXIS
+    F = open(self.filename,'rb')
+    F.seek(self.dataoffset())
+    chardata = F.read(self.size1 * self.size2 * self.integerdepth() )
+    self.linearintdata = ReadRAXIS(chardata,self.dataoffset(),
+         self.size1*self.bin,self.size2*self.bin,not self.getEndian())
+
+    if self.bin==2:
+      from iotbx.detectors import Bin2_by_2
+      self.linearintdata = Bin2_by_2(self.linearintdata)
+
 if __name__=='__main__':
   import sys
   i = sys.argv[1]
