@@ -10,14 +10,15 @@ from iotbx.detectors.mar import MARImage
 from iotbx.detectors.marIP import MARIPImage
 from iotbx.detectors.raxis import RAXISImage
 from iotbx.detectors.raxis_nonsquare import NonSquareRAXISImage
+from iotbx.detectors.macscience import DIPImage
 
 class ImageException(exceptions.Exception):
   def __init__(self,string):
     self.message = string
   def __str__(self): return self.message
 
-all_image_types = [ADSCImage,MARImage,MARIPImage,RAXISImage,
-                   NonSquareRAXISImage]
+all_image_types = [DIPImage,ADSCImage,MARImage,MARIPImage,RAXISImage,
+                  NonSquareRAXISImage]
 
 def ImageFactory(filename):
   for itype in all_image_types:
