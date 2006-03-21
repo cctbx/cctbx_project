@@ -119,6 +119,86 @@ af::flex_int ReadRAXIS(const std::string& characters,
   return z;
 }
 
+af::flex_int ReadDIP(const std::string& filename,
+                       const long& size1,
+                       const long& size2,
+                       const bool& endian_swap_required ) {
+  af::flex_int z(af::flex_grid<>(size1,size2));
+
+  int* begin = z.begin();
+  std::size_t sz = z.size();
+
+  if (endian_swap_required) {
+
+    int i,j,k, err,m,n;
+    short s,bub;
+    char cz[6000];
+    FILE *fi;
+
+    fi=fopen(filename.c_str(),"rb");
+    if (fi==NULL) { printf("DIP open error (+) \n"); /*exit(1);*/ };
+
+    /* pixel data: read 3000 buffers of 3000 shorts ints sptp[] */
+    for (j = 0; j < 3000; j++) {
+      n = fread( cz, sizeof(char),(size_t) 6000, fi);
+      if (n != 6000) {
+        err = ferror(fi);
+        printf("DIP (+) read err %d  n %d \n",err,n); /*exit(1);*/
+      }
+      for (i=0; i < 3000; i++) {
+        char* a;
+        char* b;
+        a = cz + 2*i;
+        b = cz + (2*i+1);
+        bub = *a; *a = *b; *b = bub;
+        //std::swap(a,b); // account for byte order swap
+        s = *( (short*) (cz + 2*i) );
+        m = s;
+        if (m<0) { m = 32*(65536+m);}
+
+        /* m is now original value */
+        /* handle large pixels: negative means original count / 32 after offset */
+        /*  this is how DIP2030b handles dynamic range of 0 to 1048576 */
+        *(begin++) = m;
+      }
+    }
+
+   err = fclose(fi);
+
+  } else {
+
+    int i,j,k, err,m,n;
+    short s,sptp[3000];
+    FILE *fi;
+
+    fi=fopen(filename.c_str(),"rb");
+    if (fi==NULL) { printf("DIP open error (+) \n"); /*exit(1);*/ };
+
+    /* pixel data: read 3000 buffers of 3000 shorts ints sptp[] */
+    for (j = 0; j < 3000; j++) {
+      n = fread( sptp, sizeof(s),(size_t) 3000, fi);
+      if (n != 3000) {
+        err = ferror(fi);
+        printf("DIP (+) read err %d  n %d \n",err,n); /*exit(1);*/
+      }
+      for (i=0; i < 3000; i++) {
+        m = sptp[i];
+        if (m<0) { m = 32*(65536+m);}
+
+        /* m is now original value */
+        /* handle large pixels: negative means original count / 32 after offset */
+        /*  this is how DIP2030b handles dynamic range of 0 to 1048576 */
+        *(begin++) = m;
+      }
+    }
+
+   err = fclose(fi);
+
+  }
+
+  return z;
+}
+
 std::string
 unpad_raxis(const std::string& in, const int& recordlength, const int& pad){
   int number_records = in.size()/recordlength;
@@ -237,6 +317,7 @@ BOOST_PYTHON_MODULE(iotbx_detectors_ext)
    def("WriteADSC", WriteADSC);
    def("ReadMAR", ReadMAR);
    def("ReadRAXIS", ReadRAXIS);
+   def("ReadDIP", ReadDIP);
    def("unpad_raxis", unpad_raxis);
    def("MakeSquareRAXIS", MakeSquareRAXIS);
    def("Bin2_by_2", Bin2_by_2);
