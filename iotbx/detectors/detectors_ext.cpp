@@ -83,7 +83,7 @@ af::flex_int ReadMAR(const std::string& filename,
 af::flex_int ReadRAXIS(const std::string& characters,
                        const int& /*width*/, const long& size1,
                        const long& size2,
-                       const int& big_endian ) {
+                       const int& endian_swap_required ) {
   af::flex_int z(af::flex_grid<>(size1,size2));
 
   int* begin = z.begin();
@@ -92,9 +92,9 @@ af::flex_int ReadRAXIS(const std::string& characters,
   std::string::const_iterator ptr = characters.begin();
   char* raw = new char[2];
 
-  if (big_endian) {
+  if (endian_swap_required) {
     for (std::size_t i = 0; i < sz; i++) {
-      raw[0] = *(ptr++); raw[1] = *(ptr++);
+      raw[1] = *(ptr++); raw[0] = *(ptr++);
       unsigned short int* usi_raw = reinterpret_cast<unsigned short int*>(raw);
       if (*usi_raw <= 32767) {
         begin[i] = *usi_raw;
@@ -105,7 +105,7 @@ af::flex_int ReadRAXIS(const std::string& characters,
 
   } else {
     for (std::size_t i = 0; i < sz; i++) {
-      raw[1] = *(ptr++); raw[0] = *(ptr++);
+      raw[0] = *(ptr++); raw[1] = *(ptr++);
       unsigned short int* usi_raw = reinterpret_cast<unsigned short int*>(raw);
       if (*usi_raw <= 32767) {
         begin[i] = *usi_raw;

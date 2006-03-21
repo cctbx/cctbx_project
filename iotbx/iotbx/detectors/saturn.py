@@ -87,7 +87,8 @@ class SaturnImage(ADSCImage):
     F.seek(self.dataoffset())
     chardata = F.read(self.size1 * self.size2 * self.integerdepth() )
     self.linearintdata = ReadRAXIS(chardata,self.dataoffset(),
-         self.size1*self.bin,self.size2*self.bin,not self.getEndian())
+         self.size1*self.bin,self.size2*self.bin,
+         self.endian_swap_required())
 
     if self.bin==2:
       from iotbx.detectors import Bin2_by_2

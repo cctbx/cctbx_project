@@ -30,6 +30,14 @@ class DetectorImageBase(object):
   def getEndian(self): pass
     # must be defined in derived class
 
+  def endian_swap_required(self):
+    data_is_big_endian = self.getEndian()
+    import struct
+    platform_is_big_endian = (
+      struct.unpack('i',struct.pack('>i',3000))[0] == 3000
+    )
+    return data_is_big_endian != platform_is_big_endian
+
   def read(self):
     self.fileLength()
     self.linearintdata = ReadADSC(self.filename,self.dataoffset(),
