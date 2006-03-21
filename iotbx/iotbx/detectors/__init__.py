@@ -29,6 +29,8 @@ def ImageFactory(filename):
       I.readHeader()
       if itype==RAXISImage:
         assert I.head['sizeFast']==I.head['sizeSlow']
+      if itype==ADSCImage:
+        assert I.parameters.has_key('DETECTOR_SN')
       return I
     except:
       pass
