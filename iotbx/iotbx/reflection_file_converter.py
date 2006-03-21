@@ -212,8 +212,7 @@ def run(args, simply_return_all_miller_arrays=False):
     print "    %s [Inverse: %s]" % (cb_op.as_xyz(), cb_op.inverse().as_xyz())
     d = cb_op.c().r().determinant()
     print "  Determinant:", d
-    if (cb_op.c().r().determinant() < 0
-        and command_line.options.change_of_basis != "to_inverse_hand"):
+    if (d < 0 and command_line.options.change_of_basis != "to_inverse_hand"):
       print "  **************************************************************"
       print "  W A R N I N G: This change of basis operator changes the hand!"
       print "  **************************************************************"
