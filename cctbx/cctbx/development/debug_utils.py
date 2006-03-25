@@ -37,7 +37,12 @@ def random_origin_shift(space_group_info, grid=12):
   xyz = ",".join(xyz)
   return space_group_info.change_basis(sgtbx.change_of_basis_op(xyz))
 
-def loop_space_groups(argv, flags, call_back, symbols_to_stdout=0):
+def loop_space_groups(
+      argv,
+      flags,
+      call_back,
+      symbols_to_stdout=False,
+      show_cpu_times=True):
   chunk_size = 1
   chunk_member = 0
   if (flags.ChunkSize != False):
@@ -86,12 +91,16 @@ def loop_space_groups(argv, flags, call_back, symbols_to_stdout=0):
     while 1:
       if (threading.activeCount() == 1): break
       time.sleep(1)
+  if (show_cpu_times):
+    print format_cpu_times()
   sys.stdout.flush()
-  print format_cpu_times()
 
-def parse_options_loop_space_groups(argv, call_back,
-                                    keywords=(),
-                                    symbols_to_stdout=0):
+def parse_options_loop_space_groups(
+      argv,
+      call_back,
+      keywords=(),
+      symbols_to_stdout=False,
+      show_cpu_times=True):
   flags = parse_options(
     argv=argv,
     keywords=(
@@ -105,4 +114,5 @@ def parse_options_loop_space_groups(argv, call_back,
       "AllSettings",
       "UnusualSettings") + keywords,
     case_sensitive=False)
-  loop_space_groups(argv, flags, call_back, symbols_to_stdout)
+  loop_space_groups(
+    argv, flags, call_back, symbols_to_stdout, show_cpu_times)
