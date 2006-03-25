@@ -118,8 +118,11 @@ class space_group_info(object):
       cb_op = change_of_basis_op(cb_op)
     return space_group_info(group=self.group().change_basis(cb_op))
 
+  def change_of_basis_op_to_other_hand(self):
+    return self.type().change_of_hand_op()
+
   def change_hand(self):
-    return self.change_basis(self.type().change_of_hand_op())
+    return self.change_basis(self.change_of_basis_op_to_other_hand())
 
   def primitive_setting(self):
     return self.change_basis(self.group().z2p_op())
