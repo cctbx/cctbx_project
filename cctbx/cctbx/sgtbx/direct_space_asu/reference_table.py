@@ -941,7 +941,15 @@ def asu_095(): # P 43 2 2 (enantiomorph of 91)
   return asu_091().change_basis("-x+1,y,z")
 
 def asu_096(): # P 43 21 2 (enantiomorph of 92)
-  return asu_092().change_basis("-x+1,y,z")
+  # cannot be superimposed with enantiomorphic asu 92
+  return (direct_space_asu('P 4nw 2abw')
+    & x0
+    & +x1
+    & y0
+    & +y1
+    & z0(p0)
+    & z8(-x2)
+  )
 
 def asu_097(): # I 4 2 2
   return (direct_space_asu('I 4 2')
