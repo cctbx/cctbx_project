@@ -95,11 +95,14 @@ class rec(object):
       return sqr(result)
     return rec(result, (ac, bc))
 
+  def __div__(self, other):
+    return rec([e/other for e in self.elems], self.n)
+
   def __truediv__(self, other):
     return rec([e/other for e in self.elems], self.n)
 
-  def __div__(self, other):
-    return rec([e/other for e in self.elems], self.n)
+  def __floordiv__(self, other):
+    return rec([e//other for e in self.elems], self.n)
 
   def __call__(self, ir, ic):
     return self.elems[ir * self.n_columns() + ic]

@@ -82,9 +82,9 @@ namespace {
       return o;
     }
 
-    static w_t truediv_rr(w_t const& lhs, w_t const& rhs) { return lhs/rhs; }
-    static w_t truediv_ri(w_t const& lhs, int rhs) { return lhs/rhs; }
-    static w_t rtruediv_ir(w_t const& rhs, int lhs) { return lhs/rhs; }
+    static w_t div_rr(w_t const& lhs, w_t const& rhs) { return lhs/rhs; }
+    static w_t div_ri(w_t const& lhs, int rhs) { return lhs/rhs; }
+    static w_t rdiv_ir(w_t const& rhs, int lhs) { return lhs/rhs; }
 
     static bool eq_rr(w_t const& lhs, w_t const& rhs) { return lhs == rhs; }
     static bool ne_rr(w_t const& lhs, w_t const& rhs) { return lhs != rhs; }
@@ -120,18 +120,21 @@ namespace {
         .def(self + self)
         .def(self - self)
         .def(self * self)
-        .def(self / self)
-        .def("__truediv__", truediv_rr)
+        .def("__div__", div_rr)
+        .def("__truediv__", div_rr)
+        .def("__floordiv__", div_rr)
         .def(self + int())
         .def(self - int())
         .def(self * int())
-        .def(self / int())
-        .def("__truediv__", truediv_ri)
+        .def("__div__", div_ri)
+        .def("__truediv__", div_ri)
+        .def("__floordiv__", div_ri)
         .def(int() + self)
         .def(int() - self)
         .def(int() * self)
-        .def(int() / self)
-        .def("__rtruediv__", rtruediv_ir)
+        .def("__rdiv__", rdiv_ir)
+        .def("__rtruediv__", rdiv_ir)
+        .def("__rfloordiv__", rdiv_ir)
         .def("__eq__", eq_rr)
         .def("__ne__", ne_rr)
         .def("__lt__", lt_rr)
