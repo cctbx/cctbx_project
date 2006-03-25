@@ -193,6 +193,7 @@ def grid_asu(ops, n, u_grid, r_grid, i, j, k,
           #print "Redundancy at", v, s
           n_redundancies[0] += 1
           try: redundancies[s].append(v)
+          except KeyboardInterrupt: raise
           except: redundancies[s] = [v]
     else:
       if (u_grid[eq_gpt[0]][eq_gpt[1]][eq_gpt[2]] != 0):
@@ -281,7 +282,8 @@ def analyze_redundancies(asu, n, redundancies, verbose=1):
 
 def test_all(n):
   for space_group_number in xrange(1, 231):
-    cmd = "python %s" % sys.argv[0] + " %d,%d,%d " % n +str(space_group_number)
+    cmd = "cctbx.python %s" % sys.argv[0] \
+        + " %d,%d,%d " % n +str(space_group_number)
     print cmd
     sys.stdout.flush()
     os.system(cmd)
@@ -317,6 +319,8 @@ if (__name__=="__main__"):
       if (len(numbers) == 1): numbers *= 2
       for space_group_number in xrange(numbers[0], numbers[1]+1):
         asu_original = reference_table.get_asu(space_group_number)
+        assert sgtbx.space_group(asu_original.hall_symbol) \
+            == sgtbx.space_group_info(number=space_group_number).group()
         asu = asu_original
         if (flags.strip or flags.strip_polygons):
           asu = asu_original.volume_only()

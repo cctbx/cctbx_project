@@ -9,10 +9,17 @@ from cctbx.development import debug_utils
 from cctbx.array_family import flex
 from scitbx import matrix
 from libtbx.test_utils import approx_equal
+from libtbx.utils import format_cpu_times
 from boost import rational
 import random
 import copy
 import sys
+
+def exercise_reference_table():
+  for space_group_number in xrange(1,231):
+    space_group_info = sgtbx.space_group_info(number=space_group_number)
+    asu = reference_table.get_asu(space_group_number)
+    assert sgtbx.space_group(asu.hall_symbol) == space_group_info.group()
 
 def exercise_cut_planes(cut_planes):
   for cut_plane in cut_planes:
@@ -66,9 +73,9 @@ def exercise_float_asu(space_group_info, n_grid=6):
   ref_asu = reference_table.get_asu(space_group_info.type().number())
   exercise_cut_planes(ref_asu.facets)
   inp_asu = space_group_info.direct_space_asu()
+  assert sgtbx.space_group(inp_asu.hall_symbol) == space_group_info.group()
   exercise_cut_planes(inp_asu.facets)
   exercise_volume_vertices(inp_asu, unit_cell)
-  assert sgtbx.space_group(inp_asu.hall_symbol) == space_group_info.group()
   float_asu = inp_asu.add_buffer(unit_cell=unit_cell, thickness=0.001)
   cb_mx_ref_inp = space_group_info.type().cb_op().c_inv().as_rational()
   n = n_grid
@@ -296,10 +303,12 @@ def run_call_back(flags, space_group_info):
     exercise_all(flags, space_group_info.primitive_setting())
 
 def run():
-  debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
+  exercise_reference_table()
+  debug_utils.parse_options_loop_space_groups(
+    sys.argv[1:], run_call_back, show_cpu_times=False)
   exercise_is_simple_interaction()
   exercise_non_crystallographic_asu_mappings()
-  print "OK"
+  print format_cpu_times()
 
 if (__name__ == "__main__"):
   run()
