@@ -130,7 +130,7 @@ af::flex_int ReadDIP(const std::string& filename,
 
   if (endian_swap_required) {
 
-    int i,j,k, err,m,n;
+    int i,j, err,m,n;
     short s,bub;
     char cz[6000];
     FILE *fi;
@@ -167,7 +167,7 @@ af::flex_int ReadDIP(const std::string& filename,
 
   } else {
 
-    int i,j,k, err,m,n;
+    int i,j, err,m,n;
     short s,sptp[3000];
     FILE *fi;
 
