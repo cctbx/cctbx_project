@@ -14,6 +14,7 @@ import mmtbx.scaling
 from mmtbx.scaling import absolute_scaling
 from mmtbx.scaling import matthews, twin_analyses
 from mmtbx.scaling import basic_analyses
+from mmtbx.scaling import twin_detwin_data
 import libtbx.phil.command_line
 from cStringIO import StringIO
 from scitbx.python_utils import easy_pickle
@@ -64,6 +65,22 @@ scaling.input {
      .type=float
      isigi_level_enforcement=3.0
      .type=float
+   }
+
+   optional
+   .expert_level=10
+   {
+     hklout = None
+     .type=path
+     twinning{
+       action=detwin *None
+       .type=choice
+       twin_law=None
+       .type=str
+       fraction=None
+       .type=float
+     }
+
    }
 
 }
@@ -483,10 +500,19 @@ Use keyword 'unit_cell' to specify unit_cell
             miller_calc=f_calc_miller)
         #except: pass
 
+    if params.scaling.input.optional.hklout is not None:
+      if params.scaling.input.optional.twinning.action == "detwin":
+        twin_detwin_data.detwin_data(miller_array,
+                                     params,
+                                     log)
+
     ## Append the CCP4i plots to the log StringIO object.
     print >> string_buffer, string_buffer_plots.getvalue()
     output_file = open( params.scaling.input.analyses.log  ,'w')
     output_file.write(string_buffer.getvalue())
+
+
+
 
 
 if (__name__ == "__main__"):
