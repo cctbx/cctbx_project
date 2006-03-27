@@ -22,6 +22,7 @@ import sys
 from iotbx import data_plots
 from libtbx import table_utils
 
+
 class obliquity(object):
   def __init__(self, reduced_cell, rot_mx, deg=True):
     orth = matrix.sqr(reduced_cell.orthogonalization_matrix())
@@ -959,267 +960,6 @@ class twin_law_dependend_twin_tests(object):
 
 
 
-class summary_object(object):
-  def __init__(self,
-               file_name,
-               nz_test,
-               wilson_ratios,
-               l_test,
-               translational_pseudo_symmetry=None,
-               twin_law_related_test=None,
-               maha_cut = 3.0,
-               out=None,
-               verbose=0):
-    if out is None:
-      out = sys.stdout
-
-    self.maha_cut = maha_cut
-    self.file_name = file_name
-    self.nz_test_max_ac = nz_test.max_diff_ac
-    self.i_ratio_ac = wilson_ratios.acentric_i_ratio
-    self.f_ratio_ac = wilson_ratios.acentric_f_ratio
-    self.l = l_test.mean_l
-    self.l2 = l_test.mean_l2
-
-    self.maha_i = 393.383833
-    self.maha_f = 0.1951891
-    self.maha_if= 0.03802529
-    self.maha_mean_i = 1.980972527
-    self.mama_mean_f = 0.788604396
-    tmp_i = self.i_ratio_ac-self.maha_mean_i
-    tmp_f = self.f_ratio_ac-self.mama_mean_f
-    self.maha_distance_moments = tmp_i*tmp_i*self.maha_i +\
-                                 tmp_f*tmp_f*self.maha_f +\
-                                 tmp_i*tmp_f*self.maha_if
-    self.maha_distance_moments = math.sqrt(self.maha_distance_moments)
-
-
-    self.maha_l = 117820.0
-    self.maha_l2 = 106570
-    self.maha_ll2= -212319
-    self.maha_mean_l = 0.487758242
-    self.mama_mean_l2 = 0.322836996
-    tmp_l = self.l-self.maha_mean_l
-    tmp_l2 = self.l2-self.mama_mean_l2
-    self.maha_distance_l = tmp_l*tmp_l*self.maha_l +\
-                           tmp_l2*tmp_l2*self.maha_l2 +\
-                           tmp_l*tmp_l2*self.maha_ll2
-    self.maha_distance_l = math.sqrt(self.maha_distance_l)
-
-
-    self.max_peak_height = None
-    self.max_peak_height_p_value = None
-    self.p_value_cut =None
-
-    if translational_pseudo_symmetry is not None:
-      self.max_peak_height = translational_pseudo_symmetry.high_peak
-      self.max_peak_height_p_value = translational_pseudo_symmetry.high_p_value
-      self.p_value_cut  = translational_pseudo_symmetry.p_value_cut
-
-    self.twin_law = []
-    self.britton_alpha = []
-    self.h_test_alpha = []
-
-    self.r_vs_r_obs = []
-    self.r_vs_r_calc = []
-    self.r_vs_r_class = []
-
-    self.n_twin_laws = len(twin_law_related_test)
-
-    for ii in range(len(twin_law_related_test)):
-      self.twin_law.append( twin_law_related_test[ii].twin_law.r().as_hkl() )
-      self.h_test_alpha.append(
-        twin_law_related_test[ii].h_test.estimated_alpha )
-      self.britton_alpha.append(
-        twin_law_related_test[ii].britton_test.estimated_alpha )
-
-      self.r_vs_r_obs.append(
-        twin_law_related_test[ii].obs_vs_calc.r_obs)
-      self.r_vs_r_calc.append(
-        twin_law_related_test[ii].obs_vs_calc.r_calc)
-      if  twin_law_related_test[ii].obs_vs_calc.r_calc is not None:
-        self.r_vs_r_class.append(
-          twin_law_related_test[ii].obs_vs_calc.rvsr_interpretation[
-          twin_law_related_test[ii].obs_vs_calc.guess][2] )
-      else:
-        self.r_vs_r_class.append( None )
-
-
-    if self.n_twin_laws>0:
-      self.largest_twin_fraction = flex.max(flex.double(self.britton_alpha))
-      self.twin_law_index = flex.max_index(flex.double(self.britton_alpha))
-      self.twin_law_largest = self.twin_law[self.twin_law_index]
-    if verbose>0:
-      self.show(out)
-
-
-    # fill up the summats
-    export_product = twin_results_summary()
-    export_product.patterson_height = self.max_peak_height
-    export_product.patterson_p_value = self.max_peak_height_p_value
-
-    export_product.i_ratio=self.i_ratio_ac
-    export_product.f_ratio=self.f_ratio_ac
-    export_product.e_sq_minus_1=wilson_ratios.acentric_abs_e_sq_minus_one
-    export_product.l_mean=self.l
-    export_product.l_sq_mean=self.l2
-    export_product.maha_l=self.maha_distance_l
-
-    export_product.twin_laws=self.twin_law
-    export_product.twin_law_classifier=["M","M","M","M","M","M","M","M","M","M","M","M","M","M","M","M","M"]
-    export_product.r_obs=self.r_vs_r_obs
-    export_product.r_calc=self.r_vs_r_calc
-    export_product.britton_alpha=self.britton_alpha
-    export_product.h_alpha=self.h_test_alpha
-
-    export_product.show()
-
-
-    #export_product.verdict=None
-    #export_product.in_short=None
-
-  def show(self,out=None):
-    if out is None:
-      out = sys.stdout
-
-    print >> out
-    print >> out,"------------------------------------------------------------------"
-    print >> out,"Twin analyses summary "
-    print >> out
-    print >> out," Twinning tests independent of twin laws "
-    print >> out
-    print >> out," Ratio of moments of intensity "
-    print >> out,"   Intensity ratio                          : %5.3f  "\
-          %(self.i_ratio_ac )
-    print >> out,"   Amplitude ratio                          : %5.3f " \
-          %(self.f_ratio_ac )
-    print >> out,"     Mahalanobis distance I and F ratio     : %5.3f " \
-          %(self.maha_distance_moments)
-    print >> out
-    print >> out," L-test "
-    print >> out,"   mean |L|                                 : %5.3f "\
-          %(self.l  )
-    print >> out,"   mean L^2                                 : %5.3f "\
-          %(self.l2  )
-    print >> out,"     Mahalanobis distance of L-test moments : %5.3f " \
-          %(self.maha_distance_l)
-    print >> out
-    if self.max_peak_height is not None:
-      print >> out," Detection of translational pseudo symmtery"
-      print >> out,"   Patterson peak height                    : %5.3f (p_value: %8.3e)" \
-            %(self.max_peak_height, self.max_peak_height_p_value  )
-
-    print >> out
-    if self.n_twin_laws > 0:
-      print >> out," Twin law dependent tests "
-      for ii in range(self.n_twin_laws):
-        print >> out
-        print >> out,"   Twin law :", self.twin_law[ii]
-        print >> out,"     estimated twin fraction "
-        print >> out,"       - via Britton analyses : %3.2f" %(self.britton_alpha[ii])
-        print >> out,"       - via H-test           : %3.2f" %(self.h_test_alpha[ii])
-        print >> out,"     R value of twin related intensities "
-        print >> out,"       - Observed data        : %3.2f"%(self.r_vs_r_obs[ii])
-        if self.r_vs_r_calc[ii] is not None:
-          print >> out,"       - Calculated data      : %3.2f"%(self.r_vs_r_calc[ii])
-      print >> out
-
-
-    print >> out," Mahalanobis distance: multidimensional equivalent of Z-score."
-    print >> out,"   Values of the Mahalanobis distance larger then 4 should be "
-    print >> out,"   seen as an indication that the data does not behave as "
-    print >> out,"   expected."
-
-    print >> out
-    print >> out," Interpretation of results: "
-    print >> out
-    if self.max_peak_height is not None:
-      if self.max_peak_height_p_value < self.p_value_cut:
-        pseudo_trans = True
-        print >> out," There seems to be a significant off-origin "
-        print >> out," peak in the Patterson. Check the Patterson "
-        print >> out," section of the logfile for details."
-        if self.i_ratio_ac > 2:
-          if self.maha_distance_moments > self.maha_cut:
-            print >> out," This pseudo translation is also responsible for the large"
-            print >> out," mahalanobis distance for the I and F ratio. "
-      else:
-        print >> out," No significant pseudotranslation is detected "
-    else:
-      print >> out," Not enough low resolution data to perform detection of "
-      print >> out," pseudo translational symmetry."
-
-    if self.maha_distance_l > self.maha_cut:
-      if self.l > 0.5:
-        print >> out," The values of the L-test indicate that the data has "
-        print >> out," some more centric characteristics then expected"
-        if self.max_peak_height is not None:
-          if self.max_peak_height_p_value < self.p_value_cut:
-            print >> out," This might be due to the presence of pseudo translational"
-            print >> out," symmetry. Lowering the resolution in the analyses might"
-            print >> out," improve the results."
-          else:
-            print >> out," As there is no significant translational pseudo symmetry detected"
-            print >> out," it is not quite clear why this is the case."
-      if self.l <= 0.5:
-        print >> out," The values of the L-test indicate that the data is twinned."
-        if self.i_ratio_ac < 2:
-          if self.maha_distance_moments > self.maha_cut:
-            print >> out," This suspicion is confirmed by the Intensity ratio."
-        if self.n_twin_laws > 0:
-          twin = True
-          print >> out," As there are twin operators, there is a good possibility"
-          print >> out," that your data is actually twinned."
-        if  self.n_twin_laws == 0:
-          undetermined_problem = True
-          print >> out," There are however no twin operators available for this "
-          print >> out," crystal and the low L-values present can be explained"
-          print >> out," by either poor data quality, an incorrect spacegroup or"
-          print >> out," other reasons."
-
-    else:
-      print >> out," The data does not appear to be twinned"
-
-    print >> out
-    if self.n_twin_laws > 0:
-      if not twin:
-        print >> out," The data does not appear to be twinned as judged from the "
-        print >> out," L-test. "
-        if self.largest_twin_fraction < 0.4:
-          if self.largest_twin_fraction > 0.05:
-            print >> out," The estimated twin fractions via the britton test do however"
-            print >> out," indicate a symmetry relation between possible twin related"
-            print >> out," intensities. As the data does not apear to be twinned, one"
-            print >> out," can interpret this as origination from a 2-fold NCS axis"
-            print >> out," parallel to the putative twin axis. It might be usefull to "
-            print >> out," refine a putative twin fraction during refinement."
-        if self.largest_twin_fraction > 0.4:
-          print >> out," The estimated twin fractions via the britton test do however"
-          print >> out," indicate a symmetry relation between possible twin related"
-          print >> out," intensities. As the data does not apear to be twinned, one"
-          print >> out," can interpret this as origination from a 2-fold NCS axis"
-          print >> out," parallel to the putative twin axis or that the spacegroup"
-          print >> out," is too low. It might be usefull to refine a putative twin fraction"
-          print >> out," during refinement and/or re-assess your data processing."
-        if self.largest_twin_fraction <= 0.05:
-          print >> out," The estimated twin fraction is lower then 0.05; The Britton and"
-          print >> out," H-test confirm the suspicion that the data is not seriouly twinned "
-          print >> out," It might however be useful to refine a twin fraction in the later "
-          print >> out," stages of refinement to be sure."
-      else:
-        print >> out," The data appears to be twinned."
-        if self.n_twin_laws==1:
-          print >> out," The estimated twin fraction is %3.2f" %(self.largest_twin_fraction)
-        else:
-          print >> out," The largest possible twin fraction is equal to : %3.2f" %(self.largest_twin_fraction)
-        print >> out," and might be a good start for density modification or refinement "
-        print >> out," procedures."
-
-
-    print >> out,"------------------------------------------------------------------"
-
-
-
 
 class twin_results_interpretation(object):
   def __init__(self,
@@ -1544,12 +1284,22 @@ class twin_results_summary(object):
     print >> out, "  - <F>^2/<F^2> : %5.3f"%(self.f_ratio)
     print >> out, "  - <|E^2-1|>   : %5.3f"%(self.e_sq_minus_1)
     print >> out, "  - <|L|>, <L^2>: %5.3f, %4.3f"%(self.l_mean,self.l_sq_mean)
-    print >> out, "    ( Multivariate Z score L-test: %5.3f )"%( self.maha_l )
+    print >> out, "       Multivariate Z score L-test: %5.3f "%( self.maha_l )
+    print >> out, "       The multivariate Z score is a quality measure of the given"
+    print >> out, "       spread in intensities. Good to reasonable data is expected"
+    print >> out, "       to have a Z score lower than 3.5. "
+    print >> out, "       Large values can indicate twinning, but small values do not"
+    print >> out, "       neccesarily exclude it. "
+    print >> out
     print >> out
     if len(self.twin_laws)>0:
       print >> out, "Statistics depending on twin laws"
       self.make_sym_op_table()
       print >> out, self.table
+    else:
+      print >> out, "No (pseudo)merohedral twin laws were found."
+      print >> out
+
 
     if self.patterson_height is not None:
       print >> out
@@ -1656,7 +1406,6 @@ class symmetry_issues(object):
     for pg in self.pg_max_r_used_table:
       score_used = 0
       score_unused = 0
-      print pg
 
       # score all used ops
       for r in self.pg_r_used_split[pg]:
