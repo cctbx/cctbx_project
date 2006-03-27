@@ -502,6 +502,7 @@ namespace twinning {
       FloatType total=0;
       FloatType negatives=0;
       FloatType Iold1,Iold2,Sold1,Sold2,Inew,Snew;
+      FloatType tmp_mult = std::sqrt( 1-2*alpha +2*alpha*alpha)/(1-2.0*alpha);
 
       for (unsigned ii=0;ii<hkl_.size();ii++){
         int tmp1 = ii;
@@ -513,8 +514,9 @@ namespace twinning {
           Sold2 = sigma_[tmp2];
 
           Inew = ((1.0-alpha)*Iold1 - alpha*Iold2)/(1-2.0*alpha);
-          Snew = pow(((1-alpha)/(1-2.0*alpha)),2.0)*Sold1*Sold1
-            + pow(((alpha)/(1-2.0*alpha)),2.0)*Sold2*Sold2;
+
+          Snew =  tmp_mult*std::sqrt((Sold1*Sold1 + Sold1*Sold2)/2.0);
+
 
           detwinned_i_.push_back( Inew );
           detwinned_sigi_.push_back(Snew);
