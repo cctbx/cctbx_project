@@ -53,6 +53,16 @@ class basic_analyses(object):
     else:
       phil_object.scaling.input.basic.n_copies_per_asu = n_copies_solc
 
+
+    # first report on I over sigma
+    miller_array_new = miller_array
+    if miller_array.sigmas() is not None:
+      data_strength=data_statistics.i_sigi_completeness_stats(miller_array)
+      data_strength.show(out)
+      if phil_object.scaling.input.xray_data.high_resolution_for_twin_tests is None:
+        phil_object.scaling.input.xray_data.high_resolution_for_twin_tests=data_strength.resolution_cut
+
+
     ## Isotropic wilson scaling
     if verbose>0:
       print >> out
@@ -68,7 +78,7 @@ class basic_analyses(object):
     if n_bases+n_residues==0:
       raise Sorry("No scatterers available")
     iso_scale_and_b = absolute_scaling.ml_iso_absolute_scaling(
-      miller_array = miller_array,
+      miller_array = miller_array_new,
       n_residues = n_residues*
       miller_array.space_group().order_z()*n_copies_solc,
       n_bases=n_bases*
@@ -85,7 +95,7 @@ class basic_analyses(object):
       print >> out
       print >> out, "Maximum likelihood anisotropic Wilson scaling "
     aniso_scale_and_b = absolute_scaling.ml_aniso_absolute_scaling(
-      miller_array = miller_array,
+      miller_array = miller_array_new,
       n_residues = n_residues*miller_array.space_group().order_z()*n_copies_solc,
       n_bases = n_bases*miller_array.space_group().order_z()*n_copies_solc)
     aniso_scale_and_b.show(out=out,verbose=1)
@@ -117,7 +127,7 @@ class basic_analyses(object):
     ## I do things in two steps, but can easely be done in 1 step
     ## just for clarity, thats all.
     self.no_aniso_array = absolute_scaling.anisotropic_correction(
-      miller_array,0.0,aniso_scale_and_b.u_star )
+      miller_array_new,0.0,aniso_scale_and_b.u_star )
     self.no_aniso_array = absolute_scaling.anisotropic_correction(
       self.no_aniso_array,0.0,u_star_aniso_removed)
     self.no_aniso_array = self.no_aniso_array.set_observation_type(
@@ -143,6 +153,8 @@ class basic_analyses(object):
       iso_scale_and_b.scat_info,
       out=out,
       out_plot=out_plot)
+
+    self.miller_array = basic_data_stats.new_miller
 
 
     if verbose>0:

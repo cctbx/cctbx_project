@@ -50,9 +50,19 @@ scaling.input {
      .type=unit_cell
      space_group=None
      .type=space_group
-     high_resolution=0.0
+     high_resolution=None
      .type=float
-     low_resolution=10.0
+     low_resolution=None
+     .type=float
+     low_resolution_for_twin_tests=10.0
+     .type=float
+     high_resolution_for_twin_tests=None
+     .type=float
+     isigi_cut=0.0
+     .type=float
+     minimum_bin_completenesss_enforcement=0.75
+     .type=float
+     isigi_level_enforcement=3.0
      .type=float
    }
 
@@ -383,6 +393,12 @@ Use keyword 'unit_cell' to specify unit_cell
     elif (miller_array.is_complex_array()):
       miller_array = abs(miller_array)
 
+    # first do a low reso cutn if applicable
+    if params.scaling.input.xray_data.low_resolution is not None:
+      miller_array = miller_array.resolution_filter(d_max=params.scaling.input.xray_data.low_resolution)
+    if params.scaling.input.xray_data.high_resolution is not None:
+      miller_array = miller_array.resolution_filter(d_min=params.scaling.input.xray_data.high_resolution)
+
 
     ## Check if Fcalc label is available
     f_calc_miller = None
@@ -422,7 +438,7 @@ Use keyword 'unit_cell' to specify unit_cell
           out=log,
           out_plot=string_buffer_plots,
           verbose=verbose)
-        miller_array = basic_results.no_aniso_array.deep_copy()
+        miller_array = basic_results.miller_array.deep_copy()
         normalised_array = basic_results.normalised_miller.deep_copy()
         params =  basic_results.phil_object
 
@@ -437,18 +453,20 @@ Use keyword 'unit_cell' to specify unit_cell
         print >> log
       ## resolution check
         if (flex.min(miller_array.d_spacings().data())
-            > params.scaling.input.xray_data.high_resolution):
+            > params.scaling.input.xray_data.high_resolution_for_twin_tests):
           params.scaling.input.xray_data.resolution = \
              flex.min(miller_array.d_spacings().data())
 
         default_high_reso_limit_wilson_ratio = \
            params.scaling.input.xray_data.high_resolution
+        if default_high_reso_limit_wilson_ratio is None:
+          default_high_reso_limit_wilson_ratio = 0.0
 
         d_star_sq_high_limit = default_high_reso_limit_wilson_ratio
         d_star_sq_high_limit = 1.0/((d_star_sq_high_limit+1e-6)**2.0)
 
         default_low_reso_limit_wilson_ratio = \
-          params.scaling.input.xray_data.low_resolution
+          params.scaling.input.xray_data.low_resolution_for_twin_tests
 
 
         d_star_sq_low_limit = default_low_reso_limit_wilson_ratio

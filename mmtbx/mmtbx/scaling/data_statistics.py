@@ -19,10 +19,153 @@ from scitbx.math import chebyshev_polynome
 from scitbx.math import chebyshev_lsq_fit
 from scitbx.math import erf
 import libtbx.phil.command_line
+from libtbx import table_utils
 from scitbx.python_utils import easy_pickle
 import sys, os
 import math
 import string
+
+
+class i_sigi_completeness_stats(object):
+  def __init__(self,
+               miller,
+               n_bins=15,
+               isigi_cut=3.0,
+               completeness_cut=0.85,
+               resolution_at_least=4.0):
+    self.miller = miller.deep_copy().set_observation_type(miller)
+    #check to see if we have intensities
+    if self.miller.is_real_array():
+      if self.miller.is_xray_amplitude_array():
+        self.miller=self.miller.f_as_f_sq()
+    assert self.miller.is_xray_intensity_array()
+    #make sure we have sigmas
+    assert self.miller.sigmas() is not None
+    # select things with sigma larger then zero
+    self.miller = self.miller.select( self.miller.sigmas() > 0 )
+    self.miller.setup_binner(n_bins=n_bins)
+
+    self.resolution_bins = list(self.miller.binner().limits())
+    self.completeness_bins = []
+
+    self.table = None
+    self.make_table()
+
+    self.isigi_cut=isigi_cut
+    self.completeness_cut=completeness_cut
+    self.resolution_at_least=resolution_at_least
+    self.resolution_cut = self.guess_resolution_cut(
+      isigi_cut=isigi_cut,
+      completeness_cut=completeness_cut,
+      resolution_at_least=resolution_at_least)
+
+
+  def cut_completeness(self,cut_value):
+    tmp_miller = self.miller.select(
+      self.miller.data() > cut_value*self.miller.sigmas() )
+    tmp_miller.use_binning_of(self.miller)
+    completeness = tmp_miller.completeness(use_binning=True,
+                                           return_fail=0.0)
+    return completeness.data
+
+
+  def guess_resolution_cut(self,
+                           isigi_cut=3.0,
+                           completeness_cut=0.85,
+                           resolution_at_least=3.5):
+    comp_data = self.cut_completeness(isigi_cut)
+    reso=4.0
+    for ii in xrange(1,len(self.resolution_bins)-1):
+      a = self.resolution_bins[ii-1]
+      b = self.resolution_bins[ii]
+      if b < resolution_at_least:
+        if comp_data[ii]>completeness_cut:
+          reso = b**-0.5
+    return reso
+
+  def make_table(self):
+    table_data = []
+    cut_list=[1,2,3,5,10,15]
+    for cut_value in cut_list:
+      self.completeness_bins.append( self.cut_completeness(cut_value) )
+
+    legend = ("Res. Range", "I/sigI>1 ",
+                            "I/sigI>2 ",
+                            "I/sigI>3 ",
+                            "I/sigI>5 ",
+                            "I/sigI>10",
+                            "I/sigI>15" )
+
+    for ii in xrange(1,len(self.resolution_bins)-1):
+      row = []
+      a = self.resolution_bins[ii-1]
+      b = self.resolution_bins[ii]
+      limsa =("%4.2f"%(a**-0.5)).rjust(5)
+      limsb =("%4.2f"%(b**-0.5)).rjust(5)
+
+      lims = limsa+" -"+limsb
+      row.append( lims )
+      for jj in  self.completeness_bins:
+        tmp="%3.1f%s"%(100.0*jj[ii],"%")
+        row.append( tmp )
+      table_data.append( row )
+
+    self.table = table_utils.format([legend]+table_data,
+                                    has_header=True,
+                                    separate_rows=False,
+                                    prefix='| ',
+                                    postfix=' |')
+
+  def show(self, out=None):
+    print >> out
+    print >> out
+    print >> out, "Completeness and data strength analyses "
+    print >> out
+    print >> out, "  The following table lists the completeness in various resolution"
+    print >> out, "  ranges, after applying a I/sigI cut. Miller indices for which"
+    print >> out, "  individual I/sigI values are larger than the value specified in"
+    print >> out, "  the top row of the table, are retained, while other intensities"
+    print >> out, "  are discarded. The resulting completeness profiles are an indication"
+    print >> out, "  of the strength of the data."
+    print >> out
+    if out is None:
+      out = sys.stdout
+    print >> out, self.table
+    print
+    if self.resolution_cut < self.resolution_at_least:
+      print >> out, "  The completeness of data for which I/sig(I)>%3.2f, exceeds %3.0f%s for"%(
+        self.isigi_cut, self.completeness_cut*100,"%")
+      print >> out, "  for resolution ranges lower than %3.2fA."%(self.resolution_cut)
+      print >> out, "  The data is cut at this resolution for the potential twin tests "
+      print >> out, "  and intensity statistics."
+
+
+class completeness_enforcement(object):
+  def __init__(self,
+               miller_array,
+               minimum_completeness=0.75):
+
+    self.miller_array = miller_array.deep_copy()
+    self.miller_array.setup_binner_d_star_sq_step(auto_binning=True)
+    completeness = self.miller_array.completeness(use_binning=True,
+                                                  return_fail=1.0)
+
+    selection_array = flex.bool( self.miller_array.indices().size(), False )
+
+    #In this pass, we make sure that we have reasonable completeness
+    for bin in completeness.binner.range_all():
+      selection = completeness.binner.selection(bin).iselection()
+      if completeness.data[bin] >= minimum_completeness:
+        # the completeness is okai
+        # use these indices please
+        selection_array = selection_array.set_selected( selection, True )
+    # now select the indices please
+    self.new_miller = miller_array.select( selection_array )
+
+
+
+
+
 
 class possible_outliers(object):
   def __init__(self,
@@ -401,7 +544,9 @@ class analyze_measurability(object):
       print >> out, "  The measurability provides an intuitive feeling"
       print >> out, "  of the quality of the data, as it is related to the "
       print >> out, "  number of reliable Bijvoet differences."
-      print >> out, "  Values larger then 0.06 are encouraging. "
+      print >> out, "  When the data is processed properly and the standard "
+      print >> out, "  deviations have been estimated accurately, values larger"
+      print >> out, "  than 0.05 are encouraging. "
       print >> out
       self.meas_table.show(f=out)
       print >> out
@@ -433,6 +578,101 @@ class analyze_measurability(object):
         print >> out, " in this dataset."
       print >> out
       print >> out
+
+
+
+class i_over_sigma_and_completeness(object):
+  def __init__(self,
+               miller_array,
+               n_bins_table=15):
+    self.miller_array = miller_array.deep_copy()
+    self.resolution_bins =None
+    self.completeness_array = []
+    self.i_sigi_array = [1.0,2.0,3.0,5.0,10.0,15.0]
+    # make sure we actually have sigmas
+    if self.miller_array.sigmas() is not None:
+      self.miller_array = self.miller_array.select(
+        self.miller_array.sigmas()> 0 )
+      # I would like to have intensities
+      if not self.miller_array.is_xray_intensity_array():
+        if self.miller_array.is_real_array():
+          self.miller_array = self.miller_array.f_as_f_sq()
+
+      self.miller_array.setup_binner(n_bins=n_bins_table)
+
+      for i_i_sigi in xrange(len(self.i_sigi_array)):
+        # please select all reflection for which i sigi is larger than the given number
+        tmp_cut_off = self.i_sigi_array[ i_i_sigi ]
+        tmp_miller_array = self.miller_array.select(
+          (self.miller_array.data() > tmp_cut_off*self.miller_array.sigmas())
+        )
+        tmp_miller_array.use_binning_of( self.miller_array )
+        # now please get the completeness
+        compl =  tmp_miller_array.completeness(use_binning=True,
+                                               return_fail=0.0)
+        tmp_data = flex.double(compl.data)
+
+        tmp_bins = compl.binner.limits()
+        self.completeness_array.append( tmp_data )
+        self.resolution_bins = list(compl.binner.limits())
+
+      self.table=None
+      self.make_table()
+
+  def make_table(self):
+
+    table_data = []
+    legend = ("Res. Range", "I/sigI>1 ",
+                            "I/sigI>2 ",
+                            "I/sigI>3 ",
+                            "I/sigI>5 ",
+                            "I/sigI>10",
+                            "I/sigI>15" )
+
+    for ii in xrange(1,len(self.resolution_bins)-1):
+      row = []
+      a = self.resolution_bins[ii-1]
+      b = self.resolution_bins[ii]
+      limsa =("%4.2f"%(a**-0.5)).rjust(5)
+      limsb =("%4.2f"%(b**-0.5)).rjust(5)
+
+      lims = limsa+" -"+limsb
+      row.append( lims )
+      for jj in  self.completeness_array:
+        tmp="%3.1f%s"%(100.0*jj[ii],"%")
+        row.append( tmp )
+      table_data.append( row )
+
+    self.table = table_utils.format([legend]+table_data,
+                                    has_header=True,
+                                    separate_rows=False,
+                                    prefix='| ',
+                                    postfix=' |')
+
+
+  def show(self, out=None):
+    print >> out
+    print >> out
+    print >> out, "Completeness and data strength analyses "
+    print >> out
+    print >> out, "  The following table lists the completeness in various resolution"
+    print >> out, "  ranges, after applying a I/sigI cut. Miller indices for which"
+    print >> out, "  individual I/sigI values are larger than the value specified in"
+    print >> out, "  the top row of the table, are retained, while other intensities"
+    print >> out, "  are discarded. The resulting completeness profiles are an indication"
+    print >> out, "  of the strength of the data."
+    print >> out
+    if out is None:
+      out = sys.stdout
+    print >> out, self.table
+
+
+
+
+
+
+
+
 
 class basic_intensity_statistics:
   def __init__(self,
@@ -548,10 +788,17 @@ class basic_intensity_statistics:
       self.i_sig_i = i_over_sigma.data[1:len(i_over_sigma.data)-1]
       self.i_sig_i =  flex.double( self.i_sig_i )
 
+
+
     self.low_reso_completeness=None
     self.low_reso_meas=None
     self.low_reso_strong_ano=None
     self.suggested_reso_for_hyss=None
+
+
+
+
+
 
 
     ## For the log file, not plots
@@ -564,10 +811,11 @@ class basic_intensity_statistics:
       self.low_resolution_completeness = tmp_miller.completeness(
         use_binning=True)
 
-    #tmp_miller = miller_array.resolution_filter(d_min=3.0)
+
 
 
     self.outlier = possible_outliers(absolute_miller)
+    self.new_miller = self.outlier.remove_outliers(absolute_miller)
 
     self.ijsco = ice_ring_checker(self.d_star_sq,
                                   self.completeness,
