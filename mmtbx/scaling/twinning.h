@@ -476,7 +476,7 @@ namespace twinning {
       SCITBX_ASSERT ( detwinned_hkl_.size() >0 );
       return( detwinned_hkl_);
     }
-    
+
 
     scitbx::af::shared< long >
     location(){
