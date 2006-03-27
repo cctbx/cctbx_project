@@ -471,6 +471,13 @@ namespace twinning {
       return( detwinned_sigi_);
     }
 
+    scitbx::af::shared< cctbx::miller::index<> >
+    detwinned_hkl(){
+      SCITBX_ASSERT ( detwinned_hkl_.size() >0 );
+      return( detwinned_hkl_);
+    }
+    
+
     scitbx::af::shared< long >
     location(){
       return( location_);

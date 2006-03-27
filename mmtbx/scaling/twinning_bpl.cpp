@@ -112,6 +112,7 @@ namespace{
         .def("detwin_with_alpha", &w_t::detwin_with_alpha)
         .def("detwinned_i", &w_t::detwinned_i)
         .def("detwinned_sigi", &w_t::detwinned_sigi)
+        .def("detwinned_hkl", &w_t::detwinned_hkl)
         .def("completeness", &w_t::completeness)
         .def("location", &w_t::location)
         ;
