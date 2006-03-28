@@ -25,7 +25,7 @@ def show_average_of_binned_data(binned_data_list):
     for d in binned_data.data[1:-1]:
       if (d is not None): data.append(d)
     if (data.size() == 0): print " "*7,
-    print "%7.4f" % flex.mean(data),
+    else: print "%7.4f" % flex.mean(data),
   print
 
 class array_cache(object):
