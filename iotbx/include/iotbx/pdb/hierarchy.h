@@ -2,10 +2,14 @@
 #define IOTBX_PDB_HIERARCHY_H
 
 #include <iotbx/pdb/small_str.h>
+#include <scitbx/array_family/shared.h>
 #include <scitbx/sym_mat3.h>
 #include <boost/shared_ptr.hpp>
+#include <boost/weak_ptr.hpp>
+#include <boost/optional.hpp>
+#include <boost/noncopyable.hpp>
 #include <boost/cstdint.hpp>
-#include <map>
+#include <vector>
 #include <string>
 
 namespace iotbx {
@@ -19,83 +23,755 @@ namespace pdb {
   typedef scitbx::sym_mat3<double> sym_mat3;
   typedef boost::int32_t int32_t;
 
-  struct atom
+  using boost::shared_ptr;
+  using boost::weak_ptr;
+
+  class model_data;
+  class model;
+  class chain_data;
+  class chain;
+  class conformer_data;
+  class conformer;
+  class residue_data;
+  class residue;
+  class atom;
+
+  //! Holder for model attributes (to be held by a shared_ptr).
+  class model_data : boost::noncopyable
   {
-    str4 name;
-    str4 segid;
-    str2 element;
-    str2 charge;
-    vec3 xyz;
-    vec3 sigxyz;
-    double occ;
-    double sigocc;
-    double b;
-    double sigb;
-    sym_mat3 uij;
-    sym_mat3 siguij;
+    protected:
+      friend class model;
+    public:
+      int id;
+    protected:
+      std::vector<chain> chains;
 
-    atom() {}
-
-    atom(
-      str4 name_, str4 segid_, str2 element_, str2 charge_,
-      vec3 const& xyz_, vec3 const& sigxyz_,
-      double occ_, double sigocc_,
-      double b_, double sigb_,
-      sym_mat3 const& uij_, sym_mat3 const& siguij_)
-    :
-      name(name_), segid(segid_), element(element_), charge(charge_),
-      xyz(xyz_), sigxyz(sigxyz_),
-      occ(occ_), sigocc(sigocc_),
-      b(b_), sigb(sigb_),
-      uij(uij_), siguij(siguij_)
-    {}
+      inline
+      model_data(int id);
   };
 
-  typedef boost::shared_ptr<atom> atom_shptr;
-
-  struct residue
+  //! Holder for chain attributes (to be held by a shared_ptr).
+  class chain_data : boost::noncopyable
   {
-    str4 name;
-    int32_t seq;
-    str4 icode;
-    typedef std::map<str4, atom_shptr> atoms_t;
-    atoms_t atoms;
-    bool hetero;
+    protected:
+      friend class chain;
+      weak_ptr<model_data> parent;
+    public:
+      std::string id;
+    protected:
+      std::vector<conformer> conformers;
 
-    residue() {}
+      inline
+      chain_data(
+        weak_ptr<model_data> const& parent,
+        std::string id);
 
-    residue(residue const& other)
-    :
-      name(other.name),
-      seq(other.seq),
-      icode(other.icode),
-      hetero(other.hetero)
-    {
-      typedef atoms_t::const_iterator aci;
-      aci o_end = other.atoms.end();
-      for(aci o=other.atoms.begin();o!=o_end;o++) {
-        atoms[o->first] = atom_shptr(new atom(*(o->second)));
+      inline
+      chain_data(
+        std::string id);
+  };
+
+  //! Holder for conformer attributes (to be held by a shared_ptr).
+  class conformer_data : boost::noncopyable
+  {
+    protected:
+      friend class conformer;
+      weak_ptr<chain_data> parent;
+    public:
+      std::string id;
+    protected:
+      std::vector<residue> residues;
+
+      inline
+      conformer_data(
+        weak_ptr<chain_data> const& parent,
+        std::string id);
+
+      inline
+      conformer_data(
+        std::string id);
+  };
+
+  //! Holder for residue attributes (to be held by a shared_ptr).
+  class residue_data : boost::noncopyable
+  {
+    protected:
+      friend class residue;
+      weak_ptr<conformer_data> parent;
+    public:
+      str4 name;
+      int32_t seq;
+      str4 icode;
+    protected:
+      std::vector<atom> atoms;
+
+      inline
+      residue_data(
+        weak_ptr<conformer_data> const& parent,
+        const char* name,
+        int32_t seq,
+        const char* const& icode);
+
+      inline
+      residue_data(
+        const char* name_,
+        int32_t seq_,
+        const char* icode_);
+
+    public:
+      std::string
+      id() const
+      {
+        char buf[32];
+        std::sprintf(buf, "%-4s%4d%s", name.elems, seq, icode.elems);
+        return std::string(buf);
+      }
+  };
+
+  //! Holder for atom attributes (to be held by a shared_ptr).
+  class atom_data : boost::noncopyable
+  {
+    protected:
+      friend class atom;
+      std::vector<weak_ptr<residue_data> > parents;
+    public:
+      str4 name;
+      str4 segid;
+      str2 element;
+      str2 charge;
+      vec3 xyz;
+      vec3 sigxyz;
+      double occ;
+      double sigocc;
+      double b;
+      double sigb;
+      sym_mat3 uij;
+      sym_mat3 siguij;
+      bool hetero;
+
+    protected:
+      atom_data(
+        str4 name_, str4 segid_, str2 element_, str2 charge_,
+        vec3 const& xyz_, vec3 const& sigxyz_,
+        double occ_, double sigocc_,
+        double b_, double sigb_,
+        sym_mat3 const& uij_, sym_mat3 const& siguij_,
+        bool hetero_)
+      :
+        name(name_), segid(segid_), element(element_), charge(charge_),
+        xyz(xyz_), sigxyz(sigxyz_),
+        occ(occ_), sigocc(sigocc_),
+        b(b_), sigb(sigb_),
+        uij(uij_), siguij(siguij_),
+        hetero(hetero_)
+      {}
+  };
+
+  //! Atom attributes.
+  class atom
+  {
+    public:
+      shared_ptr<atom_data> data;
+
+      atom(shared_ptr<atom_data> const& data_)
+      :
+        data(data_)
+      {
+        SCITBX_ASSERT(data.get() != 0);
+      }
+
+      atom(
+        str4 name, str4 segid,
+        str2 element, str2 charge,
+        vec3 const& xyz, vec3 const& sigxyz,
+        double occ, double sigocc,
+        double b, double sigb,
+        sym_mat3 const& uij, sym_mat3 const& siguij,
+        bool hetero)
+      :
+        data(new atom_data(
+          name, segid, element, charge,
+          xyz, sigxyz,
+          occ, sigocc,
+          b, sigb,
+          uij, siguij,
+          hetero))
+      {}
+
+      atom(
+        const char* name="", const char* segid="",
+        const char* element="", const char* charge="",
+        vec3 const& xyz=vec3(0,0,0), vec3 const& sigxyz=vec3(0,0,0),
+        double occ=0, double sigocc=0,
+        double b=0, double sigb=0,
+        sym_mat3 const& uij=sym_mat3(0,0,0,0,0,0),
+        sym_mat3 const& siguij=sym_mat3(0,0,0,0,0,0),
+        bool hetero=false)
+      :
+        data(new atom_data(
+          name, segid, element, charge,
+          xyz, sigxyz,
+          occ, sigocc,
+          b, sigb,
+          uij, siguij,
+          hetero))
+      {}
+
+      atom&
+      set_name(const char* new_name)
+      {
+        data->name = new_name;
+        return *this;
+      }
+
+      atom&
+      set_segid(const char* new_segid)
+      {
+        data->segid = new_segid;
+        return *this;
+      }
+
+      atom&
+      set_element(const char* new_element)
+      {
+        data->element = new_element;
+        return *this;
+      }
+
+      atom&
+      set_charge(const char* new_charge)
+      {
+        data->charge = new_charge;
+        return *this;
+      }
+
+      atom&
+      set_xyz(vec3 const& new_xyz)
+      {
+        data->xyz = new_xyz;
+        return *this;
+      }
+
+      atom&
+      set_sigxyz(vec3 const& new_sigxyz)
+      {
+        data->sigxyz = new_sigxyz;
+        return *this;
+      }
+
+      atom&
+      set_occ(double new_occ)
+      {
+        data->occ = new_occ;
+        return *this;
+      }
+
+      atom&
+      set_sigocc(double new_sigocc)
+      {
+        data->sigocc = new_sigocc;
+        return *this;
+      }
+
+      atom&
+      set_b(double new_b)
+      {
+        data->b = new_b;
+        return *this;
+      }
+
+      atom&
+      set_sigb(double new_sigb)
+      {
+        data->sigb = new_sigb;
+        return *this;
+      }
+
+      atom&
+      set_uij(sym_mat3 const& new_uij)
+      {
+        data->uij = new_uij;
+        return *this;
+      }
+
+      atom&
+      set_siguij(sym_mat3 const& new_siguij)
+      {
+        data->siguij = new_siguij;
+        return *this;
+      }
+
+      atom&
+      set_hetero(double new_hetero)
+      {
+        data->hetero = new_hetero;
+        return *this;
+      }
+
+      std::size_t
+      memory_id() const { return reinterpret_cast<std::size_t>(data.get()); }
+
+      void
+      pre_allocate_parents(unsigned number_of_additional_parents)
+      {
+        data->parents.reserve(
+          data->parents.size()+number_of_additional_parents);
+      }
+
+      unsigned
+      parents_size() const
+      {
+        return static_cast<unsigned>(data->parents.size());
+      }
+
+      inline
+      af::shared<residue>
+      parents() const;
+
+      inline
+      void
+      add_parent(residue const& new_parent);
+  };
+
+  //! Residue attributes.
+  class residue
+  {
+    public:
+      shared_ptr<residue_data> data;
+
+    protected:
+      friend class atom;
+      residue(shared_ptr<residue_data> const& data_, bool) : data(data_) {}
+
+    public:
+      residue(shared_ptr<residue_data> const& data_)
+      :
+        data(data_)
+      {
+        SCITBX_ASSERT(data.get() != 0);
+      }
+
+      inline
+      residue(
+        conformer const& parent_conformer,
+        const char* name="",
+        int32_t seq=0,
+        const char* icode="");
+
+      residue(
+        const char* name="",
+        int32_t seq=0,
+        const char* icode="")
+      :
+        data(new residue_data(name, seq, icode))
+      {}
+
+      std::size_t
+      memory_id() const { return reinterpret_cast<std::size_t>(data.get()); }
+
+      inline
+      boost::optional<conformer>
+      parent() const;
+
+      inline
+      void
+      set_parent(conformer const& new_parent);
+
+      void
+      pre_allocate_atoms(unsigned number_of_additional_atoms)
+      {
+        data->atoms.reserve(data->atoms.size()+number_of_additional_atoms);
+      }
+
+      void
+      new_atoms(unsigned number_of_additional_atoms)
+      {
+        pre_allocate_atoms(number_of_additional_atoms);
+        for(unsigned i=0;i<number_of_additional_atoms;i++) {
+          atom new_atom;
+          new_atom.pre_allocate_parents(1);
+          new_atom.add_parent(*this);
+          data->atoms.push_back(new_atom);
+        }
+      }
+
+      void
+      add_atom(atom& new_atom)
+      {
+        new_atom.add_parent(*this);
+        data->atoms.push_back(new_atom);
+      }
+
+      std::vector<atom> const&
+      atoms() const { return data->atoms; }
+  };
+
+  //! Conformer attributes.
+  class conformer
+  {
+    public:
+      shared_ptr<conformer_data> data;
+
+    protected:
+      friend class residue;
+      conformer(shared_ptr<conformer_data> const& data_, bool) : data(data_) {}
+
+    public:
+      conformer(shared_ptr<conformer_data> const& data_)
+      :
+        data(data_)
+      {
+        SCITBX_ASSERT(data.get() != 0);
+      }
+
+      inline
+      conformer(
+        chain const& parent_chain,
+        std::string id="");
+
+      inline
+      conformer(
+        std::string id="")
+      :
+        data(new conformer_data(id))
+      {}
+
+      std::size_t
+      memory_id() const { return reinterpret_cast<std::size_t>(data.get()); }
+
+      inline
+      boost::optional<chain>
+      parent() const;
+
+      inline
+      void
+      set_parent(chain const& new_parent);
+
+      void
+      pre_allocate_residues(unsigned number_of_additional_residues)
+      {
+        data->residues.reserve(
+          data->residues.size()+number_of_additional_residues);
+      }
+
+      void
+      new_residues(unsigned number_of_additional_residues)
+      {
+        pre_allocate_residues(number_of_additional_residues);
+        for(unsigned i=0;i<number_of_additional_residues;i++) {
+          data->residues.push_back(residue(*this));
+        }
+      }
+
+      residue
+      new_residue(
+        const char* name="",
+        int32_t seq=0,
+        const char* icode="")
+      {
+        data->residues.push_back(residue(*this, name, seq, icode));
+        return data->residues.back();
+      }
+
+      std::vector<residue> const&
+      residues() const { return data->residues; }
+  };
+
+  //! Chain attributes.
+  class chain
+  {
+    public:
+      shared_ptr<chain_data> data;
+
+    protected:
+      friend class conformer;
+      chain(shared_ptr<chain_data> const& data_, bool) : data(data_) {}
+
+    public:
+      chain(shared_ptr<chain_data> const& data_)
+      :
+        data(data_)
+      {
+        SCITBX_ASSERT(data.get() != 0);
+      }
+
+      inline
+      chain(
+        model const& parent_model,
+        std::string id="");
+
+      chain(
+        std::string id="")
+      :
+        data(new chain_data(id))
+      {}
+
+      std::size_t
+      memory_id() const { return reinterpret_cast<std::size_t>(data.get()); }
+
+      inline
+      boost::optional<model>
+      parent() const;
+
+      inline
+      void
+      set_parent(model const& new_parent);
+
+      void
+      pre_allocate_conformers(unsigned number_of_additional_conformers)
+      {
+        data->conformers.reserve(
+          data->conformers.size()+number_of_additional_conformers);
+      }
+
+      void
+      new_conformers(unsigned number_of_additional_conformers)
+      {
+        pre_allocate_conformers(number_of_additional_conformers);
+        for(unsigned i=0;i<number_of_additional_conformers;i++) {
+          data->conformers.push_back(conformer(*this));
+        }
+      }
+
+      std::vector<conformer> const&
+      conformers() const { return data->conformers; }
+
+      //! Not available from Python.
+      conformer
+      get_conformer(unsigned i_conformer) const
+      {
+        return data->conformers[i_conformer];
+      }
+  };
+
+  //! Model attributes.
+  class model
+  {
+    public:
+      shared_ptr<model_data> data;
+
+    protected:
+      friend class chain;
+      model(shared_ptr<model_data> const& data_, bool) : data(data_) {}
+
+    public:
+      model(
+        shared_ptr<model_data> const& data_)
+      :
+        data(data_)
+      {
+        SCITBX_ASSERT(data.get() != 0);
+      }
+
+      model(int id=0) : data(new model_data(id)) {}
+
+      std::size_t
+      memory_id() const { return reinterpret_cast<std::size_t>(data.get()); }
+
+      void
+      pre_allocate_chains(unsigned number_of_additional_chains)
+      {
+        data->chains.reserve(
+          data->chains.size()+number_of_additional_chains);
+      }
+
+      void
+      new_chains(unsigned number_of_additional_chains)
+      {
+        pre_allocate_chains(number_of_additional_chains);
+        for(unsigned i=0;i<number_of_additional_chains;i++) {
+          data->chains.push_back(chain(*this));
+        }
+      }
+
+      std::vector<chain> const&
+      chains() const { return data->chains; }
+
+      //! Not available from Python.
+      chain
+      get_chain(unsigned i_chain) const
+      {
+        return data->chains[i_chain];
+      }
+
+      chain
+      new_chain(std::string const& chain_id)
+      {
+        data->chains.push_back(chain(*this, chain_id));
+        return data->chains.back();
+      }
+
+      void
+      adopt_chain(chain& new_chain)
+      {
+        new_chain.set_parent(*this);
+        data->chains.push_back(new_chain);
+      }
+  };
+
+  inline
+  model_data::model_data(int id_) : id(id_) {}
+
+  inline
+  chain_data::chain_data(
+    weak_ptr<model_data> const& parent_,
+    std::string id_)
+  :
+    parent(parent_),
+    id(id_)
+  {}
+
+  inline
+  chain_data::chain_data(
+    std::string id_)
+  :
+    id(id_)
+  {}
+
+  inline
+  chain::chain(
+    model const& parent_model,
+    std::string id)
+  :
+    data(new chain_data(parent_model.data, id))
+  {}
+
+  inline
+  boost::optional<model>
+  chain::parent() const
+  {
+    shared_ptr<model_data> parent = data->parent.lock();
+    if (parent.get() == 0) return boost::optional<model>();
+    return boost::optional<model>(model(parent, true));
+  }
+
+  inline
+  void
+  chain::set_parent(
+    model const& new_parent)
+  {
+    data->parent = new_parent.data;
+  }
+
+  inline
+  conformer_data::conformer_data(
+    weak_ptr<chain_data> const& parent_,
+    std::string id_)
+  :
+    parent(parent_),
+    id(id_)
+  {}
+
+  inline
+  conformer_data::conformer_data(
+    std::string id_)
+  :
+    id(id_)
+  {}
+
+  inline
+  conformer::conformer(
+    chain const& parent_chain,
+    std::string id)
+  :
+    data(new conformer_data(parent_chain.data, id))
+  {}
+
+  inline
+  boost::optional<chain>
+  conformer::parent() const
+  {
+    shared_ptr<chain_data> parent = data->parent.lock();
+    if (parent.get() == 0) return boost::optional<chain>();
+    return boost::optional<chain>(chain(parent, true));
+  }
+
+  inline
+  void
+  conformer::set_parent(
+    chain const& new_parent)
+  {
+    data->parent = new_parent.data;
+  }
+
+  inline
+  residue_data::residue_data(
+    weak_ptr<conformer_data> const& parent_,
+    const char* name_,
+    int32_t seq_,
+    const char* const& icode_)
+  :
+    parent(parent_),
+    name(name_),
+    seq(seq_),
+    icode(icode_)
+  {}
+
+  inline
+  residue_data::residue_data(
+    const char* name_,
+    int32_t seq_,
+    const char* icode_)
+  :
+    name(name_),
+    seq(seq_),
+    icode(icode_)
+  {}
+
+  inline
+  residue::residue(
+    conformer const& parent_conformer,
+    const char* name,
+    int32_t seq,
+    const char* icode)
+  :
+    data(new residue_data(parent_conformer.data, name, seq, icode))
+  {}
+
+  inline
+  boost::optional<conformer>
+  residue::parent() const
+  {
+    shared_ptr<conformer_data> parent = data->parent.lock();
+    if (parent.get() == 0) return boost::optional<conformer>();
+    return boost::optional<conformer>(conformer(parent, true));
+  }
+
+  inline
+  void
+  residue::set_parent(conformer const& new_parent)
+  {
+    data->parent = new_parent.data;
+  }
+
+  inline
+  af::shared<residue>
+  atom::parents() const
+  {
+    af::shared<residue> result;
+    unsigned n = parents_size();
+    result.reserve(n);
+    for(unsigned i=0;i<n;i++) {
+      shared_ptr<residue_data> parent = data->parents[i].lock();
+      if (parent.get() != 0) result.push_back(residue(parent, true));
+    }
+    return result;
+  }
+
+  inline
+  void
+  atom::add_parent(residue const& new_parent)
+  {
+    unsigned n = static_cast<unsigned>(data->parents.size());
+    for(unsigned i=0;i<n;i++) {
+      shared_ptr<residue_data> parent = data->parents[i].lock();
+      if (parent.get() == 0) {
+        data->parents[i] = new_parent.data;
+        return;
       }
     }
-  };
-
-  struct conformer
-  {
-    std::string id;
-    std::vector<residue> residues;
-  };
-
-  struct chain
-  {
-    std::string id;
-    std::vector<conformer> conformers;
-  };
-
-  struct model
-  {
-    int id;
-    std::vector<chain> chains;
-  };
+    data->parents.push_back(new_parent.data);
+  }
 
 }} // namespace iotbx::pdb
 

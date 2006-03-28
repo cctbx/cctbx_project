@@ -56,25 +56,7 @@ namespace {
       ;
       {
         scitbx::af::boost_python::shared_wrapper<w_t, rir>::wrap(
-          "shared_input_atom_labels");
-      }
-    }
-  };
-
-  struct conformer_selections_wrappers
-  {
-    typedef conformer_selections w_t;
-
-    static void
-    wrap()
-    {
-      using namespace boost::python;
-      typedef return_internal_reference<> rir;
-      class_<w_t>("conformer_selections", no_init)
-      ;
-      {
-        scitbx::af::boost_python::shared_wrapper<w_t, rir>::wrap(
-          "shared_conformer_selections");
+          "af_shared_input_atom_labels");
       }
     }
   };
@@ -145,8 +127,7 @@ namespace {
         .def("model_numbers_are_unique", &w_t::model_numbers_are_unique)
         .def("model_atom_counts", &w_t::model_atom_counts)
         .def("find_duplicate_atom_labels", &w_t::find_duplicate_atom_labels)
-        .def("find_false_blank_altloc", &w_t::find_false_blank_altloc)
-        .def("conformer_selections", &w_t::conformer_selections)
+        .def("construct_hierarchy", &w_t::construct_hierarchy)
       ;
     }
   };
@@ -157,7 +138,6 @@ namespace {
     using namespace boost::python;
     columns_73_76_evaluator_wrappers::wrap();
     input_atom_labels_wrappers::wrap();
-    conformer_selections_wrappers::wrap();
     input_wrappers::wrap();
   }
 
