@@ -1326,7 +1326,7 @@ class symmetry_issues(object):
       self.out = sys.stdout
 
     if scoring_function == None:
-      self.scoring_function=[ 0.08, 50.0, 0.08, 50.0 ]
+      self.scoring_function=[ 0.08, 75.0, 0.08, 75.0 ]
 
     self.miller_array = miller_array
     self.xs_input = crystal.symmetry(miller_array.unit_cell(),
@@ -1401,36 +1401,35 @@ class symmetry_issues(object):
                                     (top, bottom)} )
 
   def score_all(self):
-
     # loop over all pg's
     for pg in self.pg_max_r_used_table:
       score_used = 0
       score_unused = 0
 
-      # score all used ops
-      for r in self.pg_r_used_split[pg]:
-        tmp_score =0.5*( 1.0-math.tanh(( -r +
-                                         self.scoring_function[0])*
-                                       self.scoring_function[1] ))
-
-        tmp_score = math.log( tmp_score +1e-46)
-        score_used += tmp_score
-
-
-      for r in self.pg_r_unused_split[pg]:
-        tmp_score =0.5*( 1.0-math.tanh(( r -
-                                         self.scoring_function[0])*
-                                       self.scoring_function[1] ))
-
-        tmp_score = math.log( tmp_score+1e-46 )
-        score_unused += tmp_score
-      if len(self.pg_r_used_split[pg])>0:
-        score_used/=(len(self.pg_r_used_split[pg]))
-      if len(self.pg_r_unused_split[pg])>0:
-        score_unused/=(len(self.pg_r_unused_split[pg]))
+      if len( self.pg_r_used_split[pg] ) > 0 :
+        min_used = flex.min( flex.double(self.pg_r_used_split[pg]) )
+        max_used = flex.max( flex.double(self.pg_r_used_split[pg]) )
+        score_used += math.log( 0.5*( 1.0-math.tanh((
+          min_used -
+          self.scoring_function[0])*self.scoring_function[1] ))+1e-5500)
+        score_used += math.log( 0.5*( 1.0-math.tanh((
+          max_used -
+          self.scoring_function[0])*self.scoring_function[1] ))+1e-5500)
 
 
-      final_score = score_used + score_unused
+
+      if len( self.pg_r_unused_split[pg] ) > 0 :
+        min_unused = flex.min( flex.double(self.pg_r_unused_split[pg]) )
+        max_unused = flex.max( flex.double(self.pg_r_unused_split[pg]) )
+
+        score_unused += math.log( 0.5*( 1.0-math.tanh((
+          -max_unused +
+          self.scoring_function[0])*self.scoring_function[1] ))+1e-5500)
+        score_unused += math.log( 0.5*( 1.0-math.tanh((
+          -min_unused +
+          self.scoring_function[0])*self.scoring_function[1] ))+1e-5500)
+
+      final_score = -score_used -score_unused
       self.pg_scores.update( {pg:final_score} )
 
 
