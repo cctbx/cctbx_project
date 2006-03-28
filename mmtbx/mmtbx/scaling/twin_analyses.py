@@ -1411,10 +1411,10 @@ class symmetry_issues(object):
         max_used = flex.max( flex.double(self.pg_r_used_split[pg]) )
         score_used += math.log( 0.5*( 1.0-math.tanh((
           min_used -
-          self.scoring_function[0])*self.scoring_function[1] ))+1e-5500)
+          self.scoring_function[0])*self.scoring_function[1] ))+1e-12)
         score_used += math.log( 0.5*( 1.0-math.tanh((
           max_used -
-          self.scoring_function[0])*self.scoring_function[1] ))+1e-5500)
+          self.scoring_function[0])*self.scoring_function[1] ))+1e-12)
 
 
 
@@ -1424,10 +1424,10 @@ class symmetry_issues(object):
 
         score_unused += math.log( 0.5*( 1.0-math.tanh((
           -max_unused +
-          self.scoring_function[0])*self.scoring_function[1] ))+1e-5500)
+          self.scoring_function[0])*self.scoring_function[1] ))+1e-12)
         score_unused += math.log( 0.5*( 1.0-math.tanh((
           -min_unused +
-          self.scoring_function[0])*self.scoring_function[1] ))+1e-5500)
+          self.scoring_function[0])*self.scoring_function[1] ))+1e-12)
 
       final_score = -score_used -score_unused
       self.pg_scores.update( {pg:final_score} )
