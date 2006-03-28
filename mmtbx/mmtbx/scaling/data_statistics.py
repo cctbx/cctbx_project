@@ -131,7 +131,7 @@ class i_sigi_completeness_stats(object):
     if out is None:
       out = sys.stdout
     print >> out, self.table
-    print
+    print >> out
     if self.resolution_cut < self.resolution_at_least:
       print >> out, "  The completeness of data for which I/sig(I)>%3.2f, exceeds %3.0f%s for"%(
         self.isigi_cut, self.completeness_cut*100,"%")
