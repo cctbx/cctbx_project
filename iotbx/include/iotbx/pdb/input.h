@@ -5,6 +5,8 @@
 #include <scitbx/array_family/shared.h>
 #include <scitbx/array_family/tiny.h>
 #include <scitbx/auto_array.h>
+#include <boost/scoped_array.hpp>
+#include <map>
 #include <set>
 
 namespace iotbx { namespace pdb {
@@ -13,9 +15,89 @@ namespace iotbx { namespace pdb {
   static const int max_resseq = 9999;
   static const double anisou_factor = 1.e-4;
 
-  static const char        blank_altloc_char = ' ';
-  static const std::string blank_altloc_stl(" ");
+  static const char blank_altloc_char = ' ';
 
+  //! Helper for input::construct_hierarchy().
+  template <typename UnsignedConstIterator>
+  inline
+  scitbx::auto_array<unsigned>
+  union_of_unique_sorted(
+    UnsignedConstIterator a, UnsignedConstIterator a_end,
+    UnsignedConstIterator b, UnsignedConstIterator b_end)
+  {
+    scitbx::auto_array<unsigned> result(new unsigned[(a_end-a)+(b_end-b)]);
+    unsigned* r = result.get();
+    if      (a == a_end) {
+      std::copy(b, b_end, r);
+    }
+    else if (b == b_end) {
+      std::copy(a, a_end, r);
+    }
+    else {
+      while (true) {
+        if (*a < *b) {
+          *r++ = *a++;
+          if (a == a_end) {
+            std::copy(b, b_end, r);
+            break;
+          }
+        }
+        else {
+          *r++ = *b++;
+          if (b == b_end) {
+            std::copy(a, a_end, r);
+            break;
+          }
+        }
+      }
+    }
+    return result;
+  }
+
+  //! Helper for looping over index ranges.
+  template <typename ElementType>
+  struct range_loop
+  {
+    range_loop() {}
+
+    range_loop(
+      af::const_ref<ElementType> const& indices,
+      unsigned begin=0)
+    :
+      i_end(indices.end()),
+      i(indices.begin()),
+      end(begin)
+    {}
+
+    range_loop(
+      std::vector<ElementType> const& indices,
+      unsigned begin=0)
+    :
+      i_end(indices.size() == 0 ? 0 : &*indices.end()),
+      i(indices.size() == 0 ? 0 : &*indices.begin()),
+      end(begin)
+    {}
+
+    bool
+    next()
+    {
+      if (i == i_end) return false;
+      begin = end;
+      end = static_cast<unsigned>(*i++);
+      size = end - begin;
+      return true;
+    }
+
+    protected:
+      const ElementType* i_end;
+      const ElementType* i;
+    public:
+      unsigned begin;
+      unsigned end;
+      unsigned size;
+  };
+
+  //! Facilitates fast processing and comprehensive error messages.
   class line_info
   {
     public:
@@ -115,6 +197,7 @@ namespace iotbx { namespace pdb {
       }
   };
 
+  //! Fortran-style conversion of an integer input field.
   inline
   int
   field_as_int(
@@ -165,8 +248,10 @@ namespace iotbx { namespace pdb {
     return result;
   }
 
-  // i_end-i_begin must be less than 32. This is not checked to
-  // maximize performance.
+  //! Fortran-style conversion of a floating-point input field.
+  /*! i_end-i_begin must be less than 32. This is not checked to
+      maximize performance.
+   */
   inline
   double
   field_as_double(
@@ -208,6 +293,7 @@ namespace iotbx { namespace pdb {
     return result;
   }
 
+  //! Detects old-style PDB files with the PDB access code in columns 73-76.
   struct columns_73_76_evaluator
   {
     const char* finding;
@@ -354,6 +440,7 @@ namespace iotbx { namespace pdb {
     }
   };
 
+  //! Fast processing of record types.
   namespace record_type {
 
     enum section {
@@ -685,6 +772,7 @@ namespace iotbx { namespace pdb {
 
   } // namespace record_type
 
+  //! Tolerant processing of MODEL records.
   inline
   int
   read_model_number(pdb::line_info& line_info)
@@ -713,6 +801,7 @@ namespace iotbx { namespace pdb {
     return field_as_int(line_info,10,14);
   }
 
+  //! Efficient processing of input atom lables.
   struct input_atom_labels
   {
     int32_t resseq;
@@ -899,38 +988,43 @@ namespace iotbx { namespace pdb {
     }
 
     bool
-    not_equal_ignoring_altloc(input_atom_labels const& other) const
+    equal_ignoring_altloc(input_atom_labels const& other) const
     {
-      if (resseq != other.resseq) return true;
+      if (resseq != other.resseq) return false;
       const char* s = compacted;
       const char* o = other.compacted;
-      if (*  s != *  o) return true;
-      if (*++s != *++o) return true;
-      if (*++s != *++o) return true;
-      if (*++s != *++o) return true;
-      if (*++s != *++o) return true;
-      if (*++s != *++o) return true;
-      if (*++s != *++o) return true;
-      if (*++s != *++o) return true;
-      if (*++s != *++o) return true;
-      if (*++s != *++o) return true;
-      if (*++s != *++o) return true;
-      if (*++s != *++o) return true;
-      if (*++s != *++o) return true;
-      if (*++s != *++o) return true;
-      return false;
+      if (*  s != *  o) return false;
+      if (*++s != *++o) return false;
+      if (*++s != *++o) return false;
+      if (*++s != *++o) return false;
+      if (*++s != *++o) return false;
+      if (*++s != *++o) return false;
+      if (*++s != *++o) return false;
+      if (*++s != *++o) return false;
+      if (*++s != *++o) return false;
+      if (*++s != *++o) return false;
+      if (*++s != *++o) return false;
+      if (*++s != *++o) return false;
+      if (*++s != *++o) return false;
+      if (*++s != *++o) return false;
+      return true;
     }
 
     bool
-    is_alternate(input_atom_labels const& other) const
+    is_in_same_residue(input_atom_labels const& other) const
     {
-      char self_altloc = *altloc_begin();
-      if (self_altloc != blank_altloc_char) return true;
-      if (self_altloc == *other.altloc_begin()) return false;
-      return !not_equal_ignoring_altloc(other);
+      if (resseq != other.resseq) return false;
+      const char* s = resname_begin();
+      const char* o = other.resname_begin();
+      if (*  s != *  o) return false;
+      if (*++s != *++o) return false;
+      if (*++s != *++o) return false;
+      if (*++s != *++o) return false;
+      return (*icode_begin() == *other.icode_begin());
     }
   };
 
+  //! Helper for fast sorting of input atom labels.
   struct i_seq_input_atom_labels
   {
     unsigned i_seq;
@@ -947,6 +1041,9 @@ namespace iotbx { namespace pdb {
       }
       return (i_seq < other.i_seq);
     }
+
+    char
+    altloc() const { return *labels.altloc_begin(); }
   };
 
   scitbx::auto_array<i_seq_input_atom_labels>
@@ -968,8 +1065,8 @@ namespace iotbx { namespace pdb {
     return result;
   }
 
-  atom*
-  process_atom_record(pdb::line_info& line_info)
+  atom
+  process_atom_record(pdb::line_info& line_info, bool hetero)
   {
     // 13 - 16  Atom          name          Atom name.
     // 31 - 38  Real(8.3)     x             Orthogonal coordinates for X in
@@ -983,7 +1080,7 @@ namespace iotbx { namespace pdb {
     // 73 - 76  LString(4)    segID         Segment identifier, left-justified.
     // 77 - 78  LString(2)    element       Element symbol, right-justified.
     // 79 - 80  LString(2)    charge        Charge on the atom.
-    return new atom(
+    return atom(
       str4(line_info.data,line_info.size,12,' '), // name
       str4(line_info.data,line_info.size,72,' '), // segid
       str2(line_info.data,line_info.size,76,' '), // element
@@ -998,21 +1095,22 @@ namespace iotbx { namespace pdb {
       field_as_double(line_info,60,66), // b
       0, // sigb
       sym_mat3(-1,-1,-1,-1,-1,-1), // uij
-      sym_mat3(-1,-1,-1,-1,-1,-1)); // siguij
+      sym_mat3(-1,-1,-1,-1,-1,-1), // siguij
+      hetero);
   }
 
   void
   process_sigatm_record(
     pdb::line_info& line_info,
     pdb::input_atom_labels const& input_atom_labels,
-    pdb::atom& atom)
+    pdb::atom_data& atom_data)
   {
-    atom.sigxyz = vec3(
+    atom_data.sigxyz = vec3(
       field_as_double(line_info,30,38),
       field_as_double(line_info,38,46),
       field_as_double(line_info,46,54));
-    atom.sigocc = field_as_double(line_info,54,60);
-    atom.sigb = field_as_double(line_info,60,66);
+    atom_data.sigocc = field_as_double(line_info,54,60);
+    atom_data.sigb = field_as_double(line_info,60,66);
     input_atom_labels.check_equivalence(line_info);
   }
 
@@ -1020,7 +1118,7 @@ namespace iotbx { namespace pdb {
   process_anisou_record(
     pdb::line_info& line_info,
     pdb::input_atom_labels const& input_atom_labels,
-    pdb::atom& atom)
+    pdb::atom_data& atom_data)
   {
     // 29 - 35  Integer       U(1,1)
     // 36 - 42  Integer       U(2,2)
@@ -1028,13 +1126,13 @@ namespace iotbx { namespace pdb {
     // 50 - 56  Integer       U(1,2)
     // 57 - 63  Integer       U(1,3)
     // 64 - 70  Integer       U(2,3)
-    atom.uij[0] = field_as_int(line_info,28,35);
-    atom.uij[1] = field_as_int(line_info,35,42);
-    atom.uij[2] = field_as_int(line_info,42,49);
-    atom.uij[3] = field_as_int(line_info,49,56);
-    atom.uij[4] = field_as_int(line_info,56,63);
-    atom.uij[5] = field_as_int(line_info,63,70);
-    atom.uij *= anisou_factor;
+    atom_data.uij[0] = field_as_int(line_info,28,35);
+    atom_data.uij[1] = field_as_int(line_info,35,42);
+    atom_data.uij[2] = field_as_int(line_info,42,49);
+    atom_data.uij[3] = field_as_int(line_info,49,56);
+    atom_data.uij[4] = field_as_int(line_info,56,63);
+    atom_data.uij[5] = field_as_int(line_info,63,70);
+    atom_data.uij *= anisou_factor;
     input_atom_labels.check_equivalence(line_info);
   }
 
@@ -1042,18 +1140,19 @@ namespace iotbx { namespace pdb {
   process_siguij_record(
     pdb::line_info& line_info,
     pdb::input_atom_labels const& input_atom_labels,
-    pdb::atom& atom)
+    pdb::atom_data& atom_data)
   {
-    atom.siguij[0] = field_as_int(line_info,28,35);
-    atom.siguij[1] = field_as_int(line_info,35,42);
-    atom.siguij[2] = field_as_int(line_info,42,49);
-    atom.siguij[3] = field_as_int(line_info,49,56);
-    atom.siguij[4] = field_as_int(line_info,56,63);
-    atom.siguij[5] = field_as_int(line_info,63,70);
-    atom.siguij *= anisou_factor;
+    atom_data.siguij[0] = field_as_int(line_info,28,35);
+    atom_data.siguij[1] = field_as_int(line_info,35,42);
+    atom_data.siguij[2] = field_as_int(line_info,42,49);
+    atom_data.siguij[3] = field_as_int(line_info,49,56);
+    atom_data.siguij[4] = field_as_int(line_info,56,63);
+    atom_data.siguij[5] = field_as_int(line_info,63,70);
+    atom_data.siguij *= anisou_factor;
     input_atom_labels.check_equivalence(line_info);
   }
 
+  //! Processing of MODEL & ENDMDL records.
   class model_record_oversight
   {
     protected:
@@ -1122,37 +1221,7 @@ namespace iotbx { namespace pdb {
       expecting_endmdl_record() const { return active_block; }
   };
 
-  struct model_range_loop
-  {
-    model_range_loop() {}
-
-    model_range_loop(
-      af::const_ref<std::size_t> const& model_indices)
-    :
-      mii_end(model_indices.end()),
-      mii(model_indices.begin()),
-      end(0)
-    {}
-
-    bool
-    next()
-    {
-      if (mii == mii_end) return false;
-      begin = end;
-      end = static_cast<unsigned>(*mii++);
-      size = end - begin;
-      return true;
-    }
-
-    protected:
-      const std::size_t* mii_end;
-      const std::size_t* mii;
-    public:
-      unsigned begin;
-      unsigned end;
-      unsigned size;
-  };
-
+  //! Detection of chain boundaries.
   class chain_tracker
   {
     protected:
@@ -1240,13 +1309,7 @@ namespace iotbx { namespace pdb {
       }
   };
 
-  class conformer_selections
-  {
-    public:
-      std::vector<unsigned> common;
-      std::map<std::string, std::vector<unsigned> > alternates;
-  };
-
+  //! Processing of PDB strings.
   class input
   {
     public:
@@ -1277,7 +1340,7 @@ namespace iotbx { namespace pdb {
             atoms_.size()
           + columns_73_76_eval.number_of_atom_and_hetatm_lines);
         input_atom_labels* current_input_atom_labels = 0;
-        atom* current_atom = 0;
+        atom_data* current_atom_data = 0;
         bool expect_anisou;
         bool expect_sigatm;
         bool expect_siguij;
@@ -1304,7 +1367,7 @@ namespace iotbx { namespace pdb {
           if      (record_type_info.id == record_type::atom__) {
             if (model_record_oversight.atom_is_allowed_here()) {
               input_atom_labels_list_.push_back(input_atom_labels(line_info));
-              atoms_.push_back(atom_shptr(process_atom_record(line_info)));
+              atoms_.push_back(process_atom_record(line_info,/*hetero*/false));
               if (line_info.error_occured()) {
                 input_atom_labels_list_.pop_back();
                 atoms_.pop_back();
@@ -1313,7 +1376,7 @@ namespace iotbx { namespace pdb {
                 atom___counts++;
                 current_input_atom_labels = &input_atom_labels_list_.back();
                 chain_tracker.next_atom_labels(*current_input_atom_labels);
-                current_atom = atoms_.back().get();
+                current_atom_data = atoms_.back().data.get();
                 expect_anisou = true;
                 expect_sigatm = true;
                 expect_siguij = true;
@@ -1323,7 +1386,7 @@ namespace iotbx { namespace pdb {
           else if (record_type_info.id == record_type::hetatm) {
             if (model_record_oversight.atom_is_allowed_here()) {
               input_atom_labels_list_.push_back(input_atom_labels(line_info));
-              atoms_.push_back(atom_shptr(process_atom_record(line_info)));
+              atoms_.push_back(process_atom_record(line_info,/*hetero*/true));
               if (line_info.error_occured()) {
                 input_atom_labels_list_.pop_back();
                 atoms_.pop_back();
@@ -1332,7 +1395,7 @@ namespace iotbx { namespace pdb {
                 hetatm_counts++;
                 current_input_atom_labels = &input_atom_labels_list_.back();
                 chain_tracker.next_atom_labels(*current_input_atom_labels);
-                current_atom = atoms_.back().get();
+                current_atom_data = atoms_.back().data.get();
                 expect_anisou = true;
                 expect_sigatm = true;
                 expect_siguij = true;
@@ -1346,7 +1409,7 @@ namespace iotbx { namespace pdb {
             expect_anisou = false;
             anisou_counts++;
             process_anisou_record(
-              line_info, *current_input_atom_labels, *current_atom);
+              line_info, *current_input_atom_labels, *current_atom_data);
           }
           else if (record_type_info.id == record_type::sigatm) {
             if (!expect_sigatm) {
@@ -1355,7 +1418,7 @@ namespace iotbx { namespace pdb {
             expect_sigatm = false;
             sigatm_counts++;
             process_sigatm_record(
-              line_info, *current_input_atom_labels, *current_atom);
+              line_info, *current_input_atom_labels, *current_atom_data);
           }
           else if (record_type_info.id == record_type::siguij) {
             if (!expect_siguij) {
@@ -1364,13 +1427,13 @@ namespace iotbx { namespace pdb {
             expect_siguij = false;
             siguij_counts++;
             process_siguij_record(
-              line_info, *current_input_atom_labels, *current_atom);
+              line_info, *current_input_atom_labels, *current_atom_data);
           }
           else {
             record_type_counts_[
               str6(line_info.data, line_info.size, 0, ' ')]++;
             current_input_atom_labels = 0;
-            current_atom = 0;
+            current_atom_data = 0;
             expect_anisou = false;
             expect_sigatm = false;
             expect_siguij = false;
@@ -1511,7 +1574,7 @@ namespace iotbx { namespace pdb {
       af::shared<input_atom_labels> const&
       input_atom_labels_list() const { return input_atom_labels_list_; }
 
-      af::shared<atom_shptr> const&
+      af::shared<atom> const&
       atoms() const { return atoms_; }
 
       af::shared<int> const&
@@ -1598,7 +1661,7 @@ namespace iotbx { namespace pdb {
       model_atom_counts() const
       {
         af::shared<std::size_t> result(af::reserve(model_indices_.size()));
-        model_range_loop mr(model_indices_.const_ref());
+        range_loop<std::size_t> mr(model_indices_.const_ref());
         while (mr.next()) result.push_back(mr.size);
         return result;
       }
@@ -1608,7 +1671,7 @@ namespace iotbx { namespace pdb {
       {
         af::shared<std::vector<unsigned> > result;
         const input_atom_labels* iall = input_atom_labels_list_.begin();
-        model_range_loop mr(model_indices_.const_ref());
+        range_loop<std::size_t> mr(model_indices_.const_ref());
         while (mr.next()) {
           if (mr.size < 2) continue;
           std::map<unsigned, std::vector<unsigned> > dup_map;
@@ -1636,79 +1699,186 @@ namespace iotbx { namespace pdb {
         return result;
       }
 
-      af::small<unsigned, 2>
-      find_false_blank_altloc() const
+      //! not const because atom parents are modified.
+      af::shared<model>
+      construct_hierarchy()
       {
-        str_sel_cache_t const& alsc = altloc_selection_cache();
-        if (alsc.size() < 2 || alsc.find(blank_altloc_stl) == alsc.end()) {
-          return af::small<unsigned, 2>();
-        }
+        af::const_ref<int>
+          model_numbers = model_numbers_.const_ref();
+        af::const_ref<std::vector<unsigned> >
+          chain_indices = chain_indices_.const_ref();
+        SCITBX_ASSERT(chain_indices.size() == model_numbers.size());
+        af::shared<model> result(af::reserve(model_numbers.size()));
+        std::vector<unsigned> residue_indices;            // outside loop to
+        residue_indices.reserve(max_resseq-min_resseq+1); // allocate only once
         const input_atom_labels* iall = input_atom_labels_list_.begin();
-        model_range_loop mr(model_indices_.const_ref());
-        while (mr.next()) {
-          if (mr.size < 2) continue;
-          scitbx::auto_array<i_seq_input_atom_labels>
-            sorted_input_atom_labels(
-              sort_input_atom_labels(iall, mr.begin, mr.end));
-          const i_seq_input_atom_labels* sj = sorted_input_atom_labels.get();
-          const i_seq_input_atom_labels* si = sj++;
-          for(unsigned js=1;js<mr.size;js++) {
-            if (sj->labels.not_equal_ignoring_altloc(si->labels)) {
-              si = sj++;
-              continue;
-            }
-            if (   (*(sj->labels.altloc_begin()) == blank_altloc_char)
-                != (*(si->labels.altloc_begin()) == blank_altloc_char)) {
-              af::small<unsigned, 2> result;
-              result.push_back(si->i_seq);
-              result.push_back(sj->i_seq);
-              return result;
-            }
-            sj++;
-          }
-        }
-        return af::small<unsigned, 2>();
-      }
-
-      af::shared<pdb::conformer_selections>
-      conformer_selections() const
-      {
-        af::shared<pdb::conformer_selections>
-          result((af::reserve(model_indices_.size())));
-        const input_atom_labels* iall = input_atom_labels_list_.begin();
-        model_range_loop mr(model_indices_.const_ref());
-        while (mr.next()) {
-          std::vector<unsigned> common;
-          std::map<str1, std::vector<unsigned> > alternates;
-          scitbx::auto_array<i_seq_input_atom_labels>
-            sorted_input_atom_labels(
-              sort_input_atom_labels(iall, mr.begin, mr.end));
-          const i_seq_input_atom_labels* sj = sorted_input_atom_labels.get();
-          const i_seq_input_atom_labels* si = (mr.size == 1 ? sj : sj++);
-          if (mr.size != 0) {
-            if (sj->labels.is_alternate(si->labels)) {
-              alternates[sj->labels.altloc_small()].push_back(sj->i_seq);
-            }
-            else {
-              common.push_back(sj->i_seq);
-            }
-            for(unsigned js=1;js<mr.size;js++,si=sj++) {
-              if (sj->labels.is_alternate(si->labels)) {
-                alternates[sj->labels.altloc_small()].push_back(sj->i_seq);
+        atom* atoms = atoms_.begin();
+        unsigned next_chain_range_begin = 0;
+        for(unsigned i_model=0;i_model<model_numbers.size();i_model++) {
+          pdb::model model(model_numbers[i_model]);
+          result.push_back(model);
+          model.new_chains(chain_indices[i_model].size());
+          range_loop<unsigned> ch_r(
+            chain_indices[i_model], next_chain_range_begin);
+          for(unsigned i_chain=0;ch_r.next();i_chain++) {
+            pdb::chain chain = model.get_chain(i_chain);
+            chain.data->id = iall[ch_r.begin].chain();
+            // separate conformers
+            std::vector<unsigned> common_sel;
+            common_sel.reserve(ch_r.size);
+            typedef std::map<char, std::vector<unsigned> > alt_t;
+            alt_t alternates;
+            scitbx::auto_array<i_seq_input_atom_labels>
+              sorted_input_atom_labels(
+                sort_input_atom_labels(iall, ch_r.begin, ch_r.end));
+            const i_seq_input_atom_labels* si = sorted_input_atom_labels.get();
+            if (ch_r.size == 1) {
+              char ai = si->altloc();
+              if (ai != blank_altloc_char) {
+                alternates[ai].push_back(si->i_seq);
               }
               else {
-                common.push_back(sj->i_seq);
+                common_sel.push_back(si->i_seq);
+              }
+            }
+            else if (ch_r.size != 0) {
+              char ai = si->altloc();
+              bool prev_altloc_is_blank;
+              if (ai != blank_altloc_char) {
+                alternates[ai].push_back((si++)->i_seq);
+                ai = si->altloc();
+                prev_altloc_is_blank = false;
+              }
+              else {
+                ai = si[1].altloc();
+                if (   ai != blank_altloc_char
+                    && si->labels.equal_ignoring_altloc(si[1].labels)) {
+                  alternates[blank_altloc_char].push_back((si++)->i_seq);
+                }
+                else {
+                  common_sel.push_back((si++)->i_seq);
+                }
+                prev_altloc_is_blank = true;
+              }
+              for(unsigned j=2;j<ch_r.size;j++) {
+                if (ai != blank_altloc_char) {
+                  alternates[ai].push_back((si++)->i_seq);
+                  ai = si->altloc();
+                  prev_altloc_is_blank = false;
+                }
+                else {
+                  if (   !prev_altloc_is_blank
+                      && si->labels.equal_ignoring_altloc(si[-1].labels)) {
+                    alternates[blank_altloc_char].push_back((si++)->i_seq);
+                    ai = si->altloc();
+                  }
+                  else {
+                    ai = si[1].altloc();
+                    if (   ai != blank_altloc_char
+                        && si->labels.equal_ignoring_altloc(si[1].labels)) {
+                      alternates[blank_altloc_char].push_back((si++)->i_seq);
+                    }
+                    else {
+                      common_sel.push_back((si++)->i_seq);
+                    }
+                  }
+                  prev_altloc_is_blank = true;
+                }
+              }
+              if (ai != blank_altloc_char
+                  || (   !prev_altloc_is_blank
+                      && si->labels.equal_ignoring_altloc(si[-1].labels))) {
+                alternates[ai].push_back(si->i_seq);
+              }
+              else {
+                common_sel.push_back(si->i_seq);
+              }
+            }
+            std::sort(common_sel.begin(), common_sel.end());
+            // trick to simplify this algorithm
+            std::size_t alternates_size = alternates.size();
+            if (alternates_size == 0) {
+              alternates[blank_altloc_char] = std::vector<unsigned>();
+              alternates_size++;
+            }
+            // pre-allocate to avoid repeated re-allocation
+            unsigned n_cs = common_sel.size();
+            if (n_cs != 0) {
+              const unsigned* cs_i = &*common_sel.begin();
+              atoms[*cs_i].pre_allocate_parents(alternates_size);
+              for(unsigned i_cs=1;i_cs<n_cs;i_cs++) {
+                atoms[*(++cs_i)].pre_allocate_parents(alternates_size);
+              }
+            }
+            // loop over conformers
+            chain.new_conformers(alternates_size);
+            alt_t::iterator a_end = alternates.end();
+            unsigned i_conformer = 0;
+            for(alt_t::iterator
+                  alt=alternates.begin();alt!=a_end;alt++,i_conformer++) {
+              std::vector<unsigned>& alt_sel = alt->second;
+              std::sort(alt_sel.begin(), alt_sel.end());
+              unsigned n_as = alt_sel.size();
+              if (n_as) {
+                const unsigned* as_i = &*alt_sel.begin();
+                atoms[*as_i].pre_allocate_parents(1U);
+                for(unsigned i_as=1;i_as<n_as;i_as++) {
+                  atoms[*(++as_i)].pre_allocate_parents(1U);
+                }
+              }
+              // combine common_sel and alt_sel to obtain the selection
+              // for one conformer
+              unsigned n_cfs = n_as + n_cs;
+              scitbx::auto_array<unsigned> conf_sel;
+              const unsigned* cfs_i0;
+              if (n_as == 0) {
+                cfs_i0 = (n_cs ? &*common_sel.begin() : 0);
+              }
+              else {
+                conf_sel = union_of_unique_sorted(
+                  common_sel.begin(), common_sel.end(),
+                  alt_sel.begin(), alt_sel.end());
+                cfs_i0 = conf_sel.get();
+              }
+              // loop over atoms to determine residues
+              if (n_cfs != 0) {
+                // pre-scan to determine the number of residues
+                const unsigned* cfs_i = cfs_i0;
+                const input_atom_labels* leading_ial = &iall[*cfs_i];
+                residue_indices.clear();
+                for(unsigned i_cfs=1;i_cfs<n_cfs;i_cfs++) {
+                  const input_atom_labels* ial = &iall[*(++cfs_i)];
+                  if (!ial->is_in_same_residue(*leading_ial)) {
+                    leading_ial = ial;
+                    residue_indices.push_back(i_cfs);
+                  }
+                }
+                residue_indices.push_back(n_cfs);
+                pdb::conformer conformer = chain.get_conformer(i_conformer);
+                conformer.data->id = std::string(1, alt->first);
+                // pre-allocate to avoid repeated re-allocation
+                conformer.pre_allocate_residues(residue_indices.size());
+                // copy atoms to residues
+                range_loop<unsigned> res_r(af::const_ref<unsigned>(
+                  &*residue_indices.begin(), residue_indices.size()));
+                cfs_i = cfs_i0;
+                for(unsigned i_res=0;res_r.next();i_res++) {
+                  const input_atom_labels* ial = &iall[*cfs_i];
+                  pdb::residue residue = conformer.new_residue(
+                    ial->resname_small().elems,
+                    ial->resseq,
+                    ial->icode_small().elems);
+                  residue.pre_allocate_atoms(res_r.size);
+                  for(unsigned i=0;i<res_r.size;i++) {
+                    residue.add_atom(atoms[*cfs_i++]);
+                  }
+                }
+                SCITBX_ASSERT(conformer.residues().size()
+                           == residue_indices.size());
               }
             }
           }
-          result.push_back(pdb::conformer_selections());
-          pdb::conformer_selections& result_back = result.back();
-          result_back.common.assign(common.begin(), common.end());
-          for(std::map<str1, std::vector<unsigned> >::iterator
-                ai=alternates.begin(); ai!=alternates.end(); ai++) {
-            result_back.alternates[std::string(ai->first.elems)]
-              .assign(ai->second.begin(), ai->second.end());
-          }
+          next_chain_range_begin = ch_r.end;
         }
         return result;
       }
@@ -1726,7 +1896,7 @@ namespace iotbx { namespace pdb {
       af::shared<std::string> miscellaneous_features_section_;
       af::shared<std::string> crystallographic_section_;
       af::shared<input_atom_labels> input_atom_labels_list_;
-      af::shared<atom_shptr>  atoms_;
+      af::shared<atom>        atoms_;
       af::shared<int>         model_numbers_;
       af::shared<std::size_t> model_indices_;
       af::shared<std::size_t> ter_indices_;

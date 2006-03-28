@@ -46,15 +46,16 @@ namespace iotbx { namespace pdb {
       elems[j] = '\0';
     }
 
-    void
+    bool
     replace_with(const char* s)
     {
       unsigned i = 0;
       while(i<N) {
-        if (*s == '\0') break;
-        elems[i++] = *s++;
+        elems[i++] = *s;
+        if (*s++ == '\0') return true;
       }
       elems[i] = '\0';
+      return (*s == '\0');
     }
 
     static
