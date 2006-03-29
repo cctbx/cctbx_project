@@ -32,11 +32,30 @@ if (__builtins__.get("_enumerate", None) is None):
   __builtins__["enumerate"] = enumerate
 
 if (__builtins__.get("sum", None) is None):
-  def sum(sequence):
-    if (len(sequence) == 0): return 0
+  def sum(sequence, start=0):
+    """sum(sequence, start=0) -> value
+
+Returns the sum of a sequence of numbers (NOT strings) plus the value
+of parameter 'start'.  When the sequence is empty, returns start."""
+    if (len(sequence) == 0): return start
     sequence = iter(sequence)
-    result = sequence.next()
+    if (start is None):
+      result = sequence.next()
+    else:
+      result = start
     for item in sequence:
       result += item
     return result
   __builtins__["sum"] = sum
+
+if (__builtins__.get("sorted", None) is None):
+  def sorted(iterable, cmp=None, key=None, reverse=False):
+    """\
+sorted(iterable, cmp=None, key=None, reverse=False) --> new sorted list"""
+    assert key is None, "Not implemented."
+    result = list(iterable)
+    if (cmp is None): result.sort()
+    else:             result.sort(cmp)
+    if (reverse): result.reverse()
+    return result
+  __builtins__["sorted"] = sorted
