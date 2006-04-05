@@ -27,7 +27,6 @@ namespace {
                   scattering_type_registry const&,
                   sgtbx::site_symmetry_table const&,
                   af::const_ref<std::complex<float_type> > const&,
-                  gradient_flags const&,
                   std::size_t>())
         .def(init<math::cos_sin_table<double> const&,
                   uctbx::unit_cell const&,
@@ -38,7 +37,6 @@ namespace {
                   scattering_type_registry const&,
                   sgtbx::site_symmetry_table const&,
                   af::const_ref<std::complex<float_type> > const&,
-                  gradient_flags const&,
                   std::size_t>())
         .def("packed", &w_t::packed)
         .def("d_target_d_site_frac", &w_t::d_target_d_site_frac)

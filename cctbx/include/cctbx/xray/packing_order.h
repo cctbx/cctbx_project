@@ -3,7 +3,7 @@
 
 namespace cctbx { namespace xray {
 
-  static const int packing_order_convention = 1;
+  static const int packing_order_convention = 2;
 
 }} // namespace cctbx::xray
 

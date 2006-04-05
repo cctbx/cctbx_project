@@ -2,7 +2,7 @@
 #define CCTBX_XRAY_FAST_GRADIENTS_H
 
 #include <cctbx/xray/sampling_base.h>
-#include <cctbx/xray/gradient_flags.h>
+//#include <cctbx/xray/gradient_flags.h>
 #include <cctbx/xray/packing_order.h>
 #include <cctbx/sgtbx/site_symmetry_table.h>
 
@@ -21,7 +21,7 @@ namespace cctbx { namespace xray {
         d_gaussian_fourier_transformed() {}
 
         d_gaussian_fourier_transformed(
-          gradient_flags const& gf,
+          scatterer_flags const& scf,
           exponent_table<FloatType>& exp_table,
           eltbx::xray_scattering::gaussian const& gaussian,
           FloatType const& fp,
@@ -34,9 +34,9 @@ namespace cctbx { namespace xray {
           base_t(exp_table, gaussian, fp, fdp, w, u_iso, u_extra),
           i_const_term(gaussian.n_terms())
         {
-          if (gf.u_iso || gf.occupancy || gf.fp || gf.fdp) {
+          if (scf.grad_u_iso() || scf.grad_occupancy() || scf.grad_fp() || scf.grad_fdp()) {
             FloatType b_incl_extra = adptbx::u_as_b(u_iso + u_extra);
-            if (gf.u_iso)
+            if (scf.grad_u_iso())
             {
               std::size_t i = 0;
               for(;i<gaussian.n_terms();i++) {
@@ -44,7 +44,7 @@ namespace cctbx { namespace xray {
               }
               b_[i] = b_incl_extra;
             }
-            if (gf.occupancy) {
+            if (scf.grad_occupancy()) {
               std::size_t i = 0;
               for(;i<gaussian.n_terms();i++) {
                 scitbx::math::gaussian::term<double> ti = gaussian.terms()[i];
@@ -60,7 +60,7 @@ namespace cctbx { namespace xray {
                 weight_without_occupancy * fdp,
                 b_incl_extra);
             }
-            if (gf.fp || gf.fdp) {
+            if (scf.grad_fp() || scf.grad_fdp()) {
               FloatType d = b_incl_extra * b_incl_extra * b_incl_extra;
               eight_pi_pow_3_2_w_d_ = eight_pi_pow_3_2 * w / std::sqrt(d);
             }
@@ -68,7 +68,7 @@ namespace cctbx { namespace xray {
         }
 
         d_gaussian_fourier_transformed(
-          gradient_flags const& gf,
+          scatterer_flags const& scf,
           exponent_table<FloatType>& exp_table,
           eltbx::xray_scattering::gaussian const& gaussian,
           FloatType const& fp,
@@ -81,7 +81,7 @@ namespace cctbx { namespace xray {
           base_t(exp_table, gaussian, fp, fdp, w, u_cart, u_extra),
           i_const_term(gaussian.n_terms())
         {
-          if (gf.u_aniso) {
+          if (scf.grad_u_aniso()) {
             for(std::size_t i=0;i<gaussian.n_terms();i++) {
               scitbx::sym_mat3<FloatType>
                 b_all = compose_anisotropic_b_all(
@@ -90,19 +90,19 @@ namespace cctbx { namespace xray {
               bcfmt_[i] = b_all.co_factor_matrix_transposed();
             }
           }
-          if (gf.u_aniso || gf.fp || gf.fdp) {
+          if (scf.grad_u_aniso() || scf.grad_fp() || scf.grad_fdp()) {
             scitbx::sym_mat3<FloatType>
               b_all = compose_anisotropic_b_all(0, u_extra, u_cart);
             FloatType d = b_all.determinant();
-            if (gf.u_aniso) {
+            if (scf.grad_u_aniso()) {
               detb_[i_const_term] = d;
               bcfmt_[i_const_term] = b_all.co_factor_matrix_transposed();
             }
-            if (gf.fp || gf.fdp) {
+            if (scf.grad_fp() || scf.grad_fdp()) {
               eight_pi_pow_3_2_w_d_ = eight_pi_pow_3_2 * w / std::sqrt(d);
             }
           }
-          if (gf.occupancy) {
+          if (scf.grad_occupancy()) {
             std::size_t i = 0;
             for(;i<gaussian.n_terms();i++) {
               scitbx::math::gaussian::term<double> ti = gaussian.terms()[i];
@@ -358,41 +358,43 @@ namespace cctbx { namespace xray {
       void
       sampling(
         af::const_ref<XrayScattererType> const& scatterers,
-        af::const_ref<FloatType> const& mean_displacements,
+        af::const_ref<FloatType> const& u_iso_reinable_params,
         xray::scattering_type_registry const& scattering_type_registry,
         sgtbx::site_symmetry_table const& site_symmetry_table,
         af::const_ref<FloatType, accessor_type> const&
           ft_d_target_d_f_calc,
-        gradient_flags const& grad_flags,
+        //gradient_flags const& grad_flags,
         std::size_t n_parameters=0,
         bool sampled_density_must_be_positive=false)
       {
         this->map_accessor_ = ft_d_target_d_f_calc.accessor();
         sampling_(
-          scatterers, mean_displacements,
+          scatterers, u_iso_reinable_params,
           scattering_type_registry, site_symmetry_table,
           ft_d_target_d_f_calc.begin(), 0,
-          grad_flags, n_parameters, sampled_density_must_be_positive);
+          n_parameters, sampled_density_must_be_positive);
+          //grad_flags, n_parameters, sampled_density_must_be_positive);
       }
 
       void
       sampling(
         af::const_ref<XrayScattererType> const& scatterers,
-        af::const_ref<FloatType> const& mean_displacements,
+        af::const_ref<FloatType> const& u_iso_reinable_params,
         xray::scattering_type_registry const& scattering_type_registry,
         sgtbx::site_symmetry_table const& site_symmetry_table,
         af::const_ref<std::complex<FloatType>, accessor_type> const&
           ft_d_target_d_f_calc,
-        gradient_flags const& grad_flags,
+        //gradient_flags const& grad_flags,
         std::size_t n_parameters=0,
         bool sampled_density_must_be_positive=false)
       {
         this->map_accessor_ = ft_d_target_d_f_calc.accessor();
         sampling_(
-          scatterers, mean_displacements,
+          scatterers, u_iso_reinable_params,
           scattering_type_registry, site_symmetry_table,
           0, ft_d_target_d_f_calc.begin(),
-          grad_flags, n_parameters, sampled_density_must_be_positive);
+          n_parameters, sampled_density_must_be_positive);
+          //grad_flags, n_parameters, sampled_density_must_be_positive);
       }
 
       af::shared<FloatType>
@@ -449,12 +451,12 @@ namespace cctbx { namespace xray {
       void
       sampling_(
         af::const_ref<XrayScattererType> const& scatterers,
-        af::const_ref<FloatType> const& mean_displacements,
+        af::const_ref<FloatType> const& u_iso_reinable_params,
         xray::scattering_type_registry const& scattering_type_registry,
         sgtbx::site_symmetry_table const& site_symmetry_table,
         const FloatType* ft_d_target_d_f_calc_real,
         const std::complex<FloatType>* ft_d_target_d_f_calc_complex,
-        gradient_flags const& grad_flags,
+        //gradient_flags const& grad_flags,
         std::size_t n_parameters,
         bool sampled_density_must_be_positive);
   };
@@ -465,20 +467,21 @@ namespace cctbx { namespace xray {
   fast_gradients<FloatType, XrayScattererType>::
   sampling_(
     af::const_ref<XrayScattererType> const& scatterers,
-    af::const_ref<FloatType> const& mean_displacements,
+    af::const_ref<FloatType> const& u_iso_reinable_params,
     xray::scattering_type_registry const& scattering_type_registry,
     sgtbx::site_symmetry_table const& site_symmetry_table,
     const FloatType* ft_d_target_d_f_calc_real,
     const std::complex<FloatType>* ft_d_target_d_f_calc_complex,
-    gradient_flags const& grad_flags,
+    //gradient_flags const& grad_flags,
     std::size_t n_parameters,
     bool sampled_density_must_be_positive)
   {
     CCTBX_ASSERT(sampling_may_only_be_called_once);
     sampling_may_only_be_called_once = false;
     CCTBX_ASSERT(scatterers.size() == this->n_scatterers_passed_);
-    if (grad_flags.u_iso && grad_flags.sqrt_u_iso) {
-      CCTBX_ASSERT(mean_displacements.size() == scatterers.size());
+    cctbx::xray::scatterer_grad_flags_counts grad_flags_counts(scatterers);
+    if(grad_flags_counts.tan_u_iso != 0 && grad_flags_counts.u_iso != 0) {
+      CCTBX_ASSERT(u_iso_reinable_params.size() == scatterers.size());
     }
     if (this->n_anomalous_scatterers_ != 0) {
       this->anomalous_flag_ = true;
@@ -487,13 +490,18 @@ namespace cctbx { namespace xray {
       packed_.reserve(n_parameters);
     }
     else {
-      if (grad_flags.site) d_target_d_site_cart_.reserve(scatterers.size());
-      if (grad_flags.u_iso) d_target_d_u_iso_.reserve(scatterers.size());
-      if (grad_flags.u_aniso) d_target_d_u_cart_.reserve(scatterers.size());
-      if (grad_flags.occupancy) d_target_d_occupancy_.reserve(
-                                  scatterers.size());
-      if (grad_flags.fp) d_target_d_fp_.reserve(scatterers.size());
-      if (grad_flags.fdp) d_target_d_fdp_.reserve(scatterers.size());
+      if (grad_flags_counts.site != 0)
+        d_target_d_site_cart_.reserve(scatterers.size());
+      if (grad_flags_counts.u_iso != 0)
+        d_target_d_u_iso_.reserve(scatterers.size());
+      if (grad_flags_counts.u_aniso != 0)
+        d_target_d_u_cart_.reserve(scatterers.size());
+      if (grad_flags_counts.occupancy != 0)
+        d_target_d_occupancy_.reserve(scatterers.size());
+      if (grad_flags_counts.fp != 0)
+        d_target_d_fp_.reserve(scatterers.size());
+      if (grad_flags_counts.fdp != 0)
+        d_target_d_fdp_.reserve(scatterers.size());
     }
     grid_point_type const& grid_f = this->map_accessor_.focus();
     grid_point_type const& grid_a = this->map_accessor_.all();
@@ -527,7 +535,7 @@ namespace cctbx { namespace xray {
         FloatType fdp = scatterer.fdp;
         fractional<FloatType> coor_frac = scatterer.site;
         detail::d_gaussian_fourier_transformed<FloatType> gaussian_ft(
-          grad_flags,
+          scatterer.flags,
           exp_table,
           gaussian, scatterer.fp, scatterer.fdp,
           scatterer.weight_without_occupancy(), scatterer.weight(),
@@ -550,7 +558,7 @@ namespace cctbx { namespace xray {
         }
         if (scatterer.anisotropic_flag) {
           gaussian_ft = detail::d_gaussian_fourier_transformed<FloatType>(
-            grad_flags,
+            scatterer.flags,
             exp_table,
             gaussian, scatterer.fp, scatterer.fdp,
             scatterer.weight_without_occupancy(), scatterer.weight(),
@@ -568,7 +576,7 @@ namespace cctbx { namespace xray {
             f_real = -ft_dt_dfc_gp.real();
             f_imag = -ft_dt_dfc_gp.imag();
           }
-          if (grad_flags.site) {
+          if (scatterer.flags.grad_site()) {
             if (!scatterer.anisotropic_flag) {
               gaussian_ft.d_rho_real_d_site(gr_site, f_real, d, d_sq);
               if (fdp && ft_d_target_d_f_calc_real == 0) {
@@ -583,7 +591,7 @@ namespace cctbx { namespace xray {
             }
           }
           if (!scatterer.anisotropic_flag) {
-            if (grad_flags.u_iso) {
+            if (scatterer.flags.grad_u_iso()) {
               gr_b_iso += f_real * gaussian_ft.d_rho_real_d_b_iso(d_sq);
               if (fdp && ft_d_target_d_f_calc_real == 0) {
                 gr_b_iso += f_imag * gaussian_ft.d_rho_imag_d_b_iso(d_sq);
@@ -591,14 +599,14 @@ namespace cctbx { namespace xray {
             }
           }
           else {
-            if (grad_flags.u_aniso) {
+            if (scatterer.flags.grad_u_aniso()) {
               gaussian_ft.d_rho_real_d_b_cart(gr_b_cart, f_real, d);
               if (fdp && ft_d_target_d_f_calc_real == 0) {
                 gaussian_ft.d_rho_imag_d_b_cart(gr_b_cart, f_imag, d);
               }
             }
           }
-          if (grad_flags.occupancy) {
+          if (scatterer.flags.grad_occupancy()) {
             if (!scatterer.anisotropic_flag) {
               gr_occupancy += f_real
                             * gaussian_ft.d_rho_real_d_occupancy(d_sq);
@@ -616,7 +624,7 @@ namespace cctbx { namespace xray {
               }
             }
           }
-          if (grad_flags.fp) {
+          if (scatterer.flags.grad_fp()) {
             if (!scatterer.anisotropic_flag) {
               gr_fp += f_real * gaussian_ft.d_rho_real_d_fp(d_sq);
             }
@@ -624,7 +632,7 @@ namespace cctbx { namespace xray {
               gr_fp += f_real * gaussian_ft.d_rho_real_d_fp(d);
             }
           }
-          if (grad_flags.fdp && ft_d_target_d_f_calc_real == 0) {
+          if (scatterer.flags.grad_fdp() && ft_d_target_d_f_calc_real == 0) {
             if (!scatterer.anisotropic_flag) {
               gr_fdp += f_imag * gaussian_ft.d_rho_imag_d_fdp(d_sq);
             }
@@ -634,28 +642,24 @@ namespace cctbx { namespace xray {
           }
         CCTBX_XRAY_SAMPLING_LOOP_END
       }
-      if (grad_flags.site) {
+      if (scatterer.flags.grad_site()) {
         average_special_position_site_gradient(
           site_symmetry_table, i_seq, gr_site);
       }
       if (n_parameters != 0) {
-        BOOST_STATIC_ASSERT(packing_order_convention == 1);
-        if (grad_flags.site) {
+        BOOST_STATIC_ASSERT(packing_order_convention == 2);
+        if (scatterer.flags.grad_site()) {
           for(std::size_t i=0;i<3;i++) {
             packed_.push_back(gr_site[i]);
           }
         }
         if (!scatterer.anisotropic_flag) {
-          if (grad_flags.u_iso) {
-            if (grad_flags.sqrt_u_iso) {
-              packed_.push_back(2*mean_displacements[i_seq]
-                               *adptbx::u_as_b(gr_b_iso));
-            }
-            else if (grad_flags.tan_b_iso_max > 0.0) {
+          if (scatterer.flags.grad_u_iso()) {
+            if (scatterer.flags.tan_u_iso() && scatterer.flags.param > 0) {
               FloatType pi = scitbx::constants::pi;
-              FloatType u_iso_max = adptbx::b_as_u(grad_flags.tan_b_iso_max);
-              packed_.push_back(u_iso_max/pi/(1.+mean_displacements[i_seq]*
-                  mean_displacements[i_seq])*adptbx::u_as_b(gr_b_iso));
+              FloatType u_iso_max = adptbx::b_as_u(scatterer.flags.param);
+              packed_.push_back(u_iso_max/pi/(1.+u_iso_reinable_params[i_seq]*
+                  u_iso_reinable_params[i_seq])*adptbx::u_as_b(gr_b_iso));
             }
             else {
               packed_.push_back(adptbx::u_as_b(gr_b_iso));
@@ -663,52 +667,48 @@ namespace cctbx { namespace xray {
           }
         }
         else {
-          if (grad_flags.u_aniso) {
+          if (scatterer.flags.grad_u_aniso()) {
             for(std::size_t i=0;i<6;i++) {
               packed_.push_back(adptbx::u_as_b(gr_b_cart[i]));
             }
           }
         }
-        if (grad_flags.occupancy) {
+        if (scatterer.flags.grad_occupancy()) {
           packed_.push_back(gr_occupancy);
         }
-        if (grad_flags.fp) {
+        if (scatterer.flags.grad_fp()) {
           packed_.push_back(gr_fp);
         }
-        if (grad_flags.fdp) {
+        if (scatterer.flags.grad_fdp()) {
           packed_.push_back(gr_fdp);
         }
       }
       else {
-        if (grad_flags.site) {
+        if (scatterer.flags.grad_site()) {
           d_target_d_site_cart_.push_back(gr_site);
         }
-        if (grad_flags.u_iso) {
-          if (grad_flags.sqrt_u_iso) {
-            d_target_d_u_iso_.push_back(2*mean_displacements[i_seq]
-                                       *adptbx::u_as_b(gr_b_iso));
-          }
-          else if (grad_flags.tan_b_iso_max > 0.0) {
+        if (scatterer.flags.grad_u_iso()) {
+          if (scatterer.flags.tan_u_iso() && scatterer.flags.param > 0) {
             FloatType pi = scitbx::constants::pi;
-            FloatType u_iso_max = adptbx::b_as_u(grad_flags.tan_b_iso_max);
+            FloatType u_iso_max = adptbx::b_as_u(scatterer.flags.param);
             d_target_d_u_iso_.push_back(u_iso_max/pi/(1.+
-                mean_displacements[i_seq]*mean_displacements[i_seq]*10.*10.)
+                u_iso_reinable_params[i_seq]*u_iso_reinable_params[i_seq])
                 *adptbx::u_as_b(gr_b_iso));
           }
           else {
             d_target_d_u_iso_.push_back(adptbx::u_as_b(gr_b_iso));
           }
         }
-        if (grad_flags.u_aniso) {
+        if (scatterer.flags.grad_u_aniso()) {
           d_target_d_u_cart_.push_back(adptbx::u_as_b(gr_b_cart));
         }
-        if (grad_flags.occupancy) {
+        if (scatterer.flags.grad_occupancy()) {
           d_target_d_occupancy_.push_back(gr_occupancy);
         }
-        if (grad_flags.fp) {
+        if (scatterer.flags.grad_fp()) {
           d_target_d_fp_.push_back(gr_fp);
         }
-        if (grad_flags.fdp) {
+        if (scatterer.flags.grad_fdp()) {
           d_target_d_fdp_.push_back(gr_fdp);
         }
       }

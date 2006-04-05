@@ -234,14 +234,20 @@ def exercise_negative_parameters(verbose=0):
       f_obs=abs(f_direct))
     target_result = target_functor(f_fft, True)
     gradient_flags = xray.structure_factors.gradient_flags(default=True)
+    for scatterer in structure.scatterers():
+      scatterer.flags.set_grad_site(gradient_flags.site)
+      scatterer.flags.set_grad_u_iso(gradient_flags.u_iso)
+      scatterer.flags.set_grad_u_aniso(gradient_flags.u_aniso)
+      scatterer.flags.set_grad_occupancy(gradient_flags.occupancy)
+      scatterer.flags.set_grad_fp(gradient_flags.fp)
+      scatterer.flags.set_grad_fdp(gradient_flags.fdp)
     for algorithm in ["direct", "fft"]:
       grads = structure_factor_gradients(
         xray_structure=structure,
         mean_displacements=None,
         miller_set=f_direct,
         d_target_d_f_calc=target_result.derivatives(),
-        gradient_flags=gradient_flags,
-        n_parameters=structure.n_parameters(gradient_flags=gradient_flags),
+        n_parameters=structure.n_parameters(),
         algorithm=algorithm).packed()
 
 def run_call_back(flags, space_group_info):

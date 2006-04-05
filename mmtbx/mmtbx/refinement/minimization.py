@@ -23,8 +23,16 @@ class lbfgs(object):
                      alpha_w=None,
                      beta_w=None):
     adopt_init_args(self, locals())
-    self.xray_gradient_flags = xray.structure_factors.gradient_flags(site=True)
     self.xray_structure = self.fmodel.xray_structure
+    for scatterer in self.xray_structure.scatterers():
+        scatterer.flags.set_grad_site(True)
+        scatterer.flags.set_grad_u_iso(False)
+        scatterer.flags.set_grad_u_aniso(False)
+        scatterer.flags.set_grad_occupancy(False)
+        scatterer.flags.set_grad_fp(False)
+        scatterer.flags.set_grad_fdp(False)
+        scatterer.flags.set_tan_u_iso(False)
+        scatterer.flags.param = 0
     self.echem_start = None
     self.exray_start = None
     self.echem_final = None
@@ -48,7 +56,7 @@ class lbfgs(object):
        else:
           assert self.alpha_w.data().size() == self.f_obs_w.data().size()
           assert self.beta_w.data().size() == self.f_obs_w.data().size()
-    self.x = flex.double(self.xray_structure.n_parameters(self.xray_gradient_flags), 0)
+    self.x = flex.double(self.xray_structure.n_parameters(), 0)
     self._scatterers_start = self.xray_structure.scatterers()
     self.first_target_value = None
     self._lock_for_line_search = False
@@ -70,7 +78,6 @@ class lbfgs(object):
     apply_shifts_result = xray.ext.minimization_apply_shifts(
       unit_cell      = self.xray_structure.unit_cell(),
       scatterers     = self._scatterers_start,
-      gradient_flags = self.xray_gradient_flags,
       shifts         = self.x)
     scatterers_shifted = apply_shifts_result.shifted_scatterers
     site_symmetry_table = self.xray_structure.site_symmetry_table()
@@ -92,14 +99,11 @@ class lbfgs(object):
     self.f = self.exray_final * self.wx
     if(compute_gradients):
        sf = self.fmodel.gradient_wrt_atomic_parameters(
-                                        sites = self.xray_gradient_flags.site,
-                                        u_iso = self.xray_gradient_flags.u_iso,
-                                        alpha = self.alpha_w,
-                                        beta  = self.beta_w).packed()
+                                                  sites = True,
+                                                  alpha = self.alpha_w,
+                                                  beta  = self.beta_w).packed()
        self.g = sf * self.wx
-    if(self.xray_gradient_flags.site
-         and self.restraints_manager is not None
-         and self.wc > 0.0):
+    if(self.restraints_manager is not None and self.wc > 0.0):
        self.stereochemistry_residuals = self.restraints_manager.energies_sites(
                        sites_cart        = self.xray_structure.sites_cart(),
                        compute_gradients = compute_gradients,
@@ -111,7 +115,6 @@ class lbfgs(object):
        if(compute_gradients):
           xray.minimization.add_gradients(
              scatterers     = self.xray_structure.scatterers(),
-             gradient_flags = self.xray_gradient_flags,
              xray_gradients = self.g,
              site_gradients = self.stereochemistry_residuals.gradients*self.wc)
 

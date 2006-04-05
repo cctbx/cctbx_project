@@ -11,7 +11,7 @@ class gradients(manager):
                      mean_displacements,
                      miller_set,
                      d_target_d_f_calc,
-                     gradient_flags,
+                     #gradient_flags,
                      n_parameters,
                      algorithm=None):
     assert algorithm in ("direct", "fft", None)
@@ -35,5 +35,5 @@ class gradients(manager):
       mean_displacements=mean_displacements,
       miller_set=miller_set,
       d_target_d_f_calc=d_target_d_f_calc,
-      gradient_flags=gradient_flags,
+      #gradient_flags=gradient_flags,
       n_parameters=n_parameters)

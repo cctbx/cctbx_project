@@ -1,7 +1,7 @@
 #ifndef CCTBX_XRAY_MINIMIZATION_H
 #define CCTBX_XRAY_MINIMIZATION_H
 
-#include <cctbx/xray/gradient_flags.h>
+//#include <cctbx/xray/gradient_flags.h>
 #include <cctbx/xray/packing_order.h>
 #include <scitbx/array_family/block_iterator.h>
 
@@ -12,7 +12,7 @@ namespace cctbx { namespace xray { namespace minimization {
   af::shared<FloatType>
   shift_scales(
     af::const_ref<XrayScattererType> const& scatterers,
-    xray::gradient_flags const& gradient_flags,
+    //xray::gradient_flags const& gradient_flags,
     std::size_t n_parameters,
     FloatType const& site_cart,
     FloatType const& u_iso,
@@ -21,34 +21,34 @@ namespace cctbx { namespace xray { namespace minimization {
     FloatType const& fp,
     FloatType const& fdp)
   {
-    BOOST_STATIC_ASSERT(packing_order_convention == 1);
+    BOOST_STATIC_ASSERT(packing_order_convention == 2);
     af::shared<FloatType> result(n_parameters);
     scitbx::af::block_iterator<FloatType> next_shifts(
       result.ref(), "n_parameters is too small.");
     for(std::size_t i_sc=0;i_sc<scatterers.size();i_sc++) {
       XrayScattererType const& sc = scatterers[i_sc];
-      if (gradient_flags.site) {
+      if (sc.flags.grad_site()) {
         FloatType* sh = next_shifts(3);
         for(std::size_t i=0;i<3;i++) sh[i] = site_cart;
       }
       if (!sc.anisotropic_flag) {
-        if (gradient_flags.u_iso) {
+        if (sc.flags.grad_u_iso()) {
           next_shifts() = u_iso;
         }
       }
       else {
-        if (gradient_flags.u_aniso) {
+        if (sc.flags.grad_u_aniso()) {
           FloatType* sh = next_shifts(6);
           for(std::size_t i=0;i<6;i++) sh[i] = u_cart;
         }
       }
-      if (gradient_flags.occupancy) {
+      if (sc.flags.grad_occupancy()) {
         next_shifts() = occupancy;
       }
-      if (gradient_flags.fp) {
+      if (sc.flags.grad_fp()) {
         next_shifts() = fp;
       }
-      if (gradient_flags.fdp) {
+      if (sc.flags.grad_fdp()) {
         next_shifts() = fdp;
       }
     }
@@ -66,40 +66,34 @@ namespace cctbx { namespace xray { namespace minimization {
     apply_shifts(
       uctbx::unit_cell const& unit_cell,
       af::const_ref<XrayScattererType> const& scatterers,
-      xray::gradient_flags const& gradient_flags,
+      //xray::gradient_flags const& gradient_flags,
       af::const_ref<FloatType> const& shifts)
     {
-      BOOST_STATIC_ASSERT(packing_order_convention == 1);
+      BOOST_STATIC_ASSERT(packing_order_convention == 2);
       typedef typename XrayScattererType::float_type sc_f_t;
       shifted_scatterers.reserve(scatterers.size());
-      if (gradient_flags.u_iso && (gradient_flags.sqrt_u_iso ||
-                                         gradient_flags.tan_b_iso_max > 0.0)) {
+      cctbx::xray::scatterer_grad_flags_counts grad_flags_counts(scatterers);
+      if (grad_flags_counts.tan_u_iso != 0) {
+        CCTBX_ASSERT(grad_flags_counts.u_iso != 0);
         mean_displacements.resize(scatterers.size(), 0);
       }
+
       FloatType* mean_displacements_ptr = mean_displacements.begin();
       scitbx::af::const_block_iterator<FloatType> next_shifts(
         shifts, "Array of shifts is too small.");
       for(std::size_t i_sc=0;i_sc<scatterers.size();i_sc++) {
         XrayScattererType sc = scatterers[i_sc];
-        if (gradient_flags.site) {
+        if (sc.flags.grad_site()) {
           sc.site += unit_cell.fractionalize(cartesian<sc_f_t>(next_shifts(3)));
         }
         if (!sc.anisotropic_flag) {
-          if (gradient_flags.u_iso) {
-            if (gradient_flags.sqrt_u_iso) {
-              if (sc.u_iso < 0) {
-                throw error(sc.report_negative_u_iso(__FILE__, __LINE__));
-              }
-              FloatType mean_displacement = std::sqrt(sc.u_iso)+next_shifts();
-              sc.u_iso = scitbx::fn::pow2(mean_displacement);
-              mean_displacements_ptr[i_sc] = mean_displacement;
-            }
-            else if (gradient_flags.tan_b_iso_max > 0.0) {
+          if (sc.flags.grad_u_iso()) {
+            if (sc.flags.tan_u_iso() && sc.flags.param > 0) {
               if (sc.u_iso < 0) {
                 throw error(sc.report_negative_u_iso(__FILE__, __LINE__));
               }
               FloatType pi = scitbx::constants::pi;
-              FloatType u_iso_max=adptbx::b_as_u(gradient_flags.tan_b_iso_max);
+              FloatType u_iso_max=adptbx::b_as_u(sc.flags.param);
               FloatType mean_displacement = std::tan(pi*(sc.u_iso/u_iso_max-
                                             1./2.))+next_shifts();
               sc.u_iso = u_iso_max*(std::atan(mean_displacement)+pi/2.)/pi;
@@ -111,20 +105,20 @@ namespace cctbx { namespace xray { namespace minimization {
           }
         }
         else {
-          if (gradient_flags.u_aniso) {
+          if (sc.flags.grad_u_aniso()) {
             scitbx::sym_mat3<sc_f_t> u_cart = adptbx::u_star_as_u_cart(
               unit_cell, sc.u_star);
             u_cart += scitbx::sym_mat3<sc_f_t>(next_shifts(6));
             sc.u_star = adptbx::u_cart_as_u_star(unit_cell, u_cart);
           }
         }
-        if (gradient_flags.occupancy) {
+        if (sc.flags.grad_occupancy()) {
           sc.occupancy += next_shifts();
         }
-        if (gradient_flags.fp) {
+        if (sc.flags.grad_fp()) {
           sc.fp += next_shifts();
         }
-        if (gradient_flags.fdp) {
+        if (sc.flags.grad_fdp()) {
           sc.fdp += next_shifts();
         }
         shifted_scatterers.push_back(sc);
@@ -140,13 +134,13 @@ namespace cctbx { namespace xray { namespace minimization {
   void
   add_gradients(
     af::const_ref<XrayScattererType> const& scatterers,
-    xray::gradient_flags const& gradient_flags,
+    //xray::gradient_flags const& gradient_flags,
     af::ref<FloatType> const& xray_gradients,
     af::const_ref<scitbx::vec3<FloatType> > const& site_gradients,
     af::const_ref<FloatType> const& u_iso_gradients,
     af::const_ref<FloatType> const& occupancy_gradients)
   {
-    BOOST_STATIC_ASSERT(packing_order_convention == 1);
+    BOOST_STATIC_ASSERT(packing_order_convention == 2);
     CCTBX_ASSERT(site_gradients.size() == 0
               || site_gradients.size() == scatterers.size());
     CCTBX_ASSERT(u_iso_gradients.size() == 0
@@ -157,7 +151,7 @@ namespace cctbx { namespace xray { namespace minimization {
       xray_gradients, "Array of xray gradients is too small.");
     for(std::size_t i_sc=0;i_sc<scatterers.size();i_sc++) {
       XrayScattererType const& sc = scatterers[i_sc];
-      if (gradient_flags.site) {
+      if (sc.flags.grad_site()) {
         FloatType* xg = next_xray_gradients(3);
         if (site_gradients.size() != 0) {
           scitbx::vec3<FloatType> const& grsg = site_gradients[i_sc];
@@ -165,7 +159,7 @@ namespace cctbx { namespace xray { namespace minimization {
         }
       }
       if (!sc.anisotropic_flag) {
-        if (gradient_flags.u_iso) {
+        if (sc.flags.grad_u_iso()) {
           FloatType& xg = next_xray_gradients();
           if (u_iso_gradients.size() != 0) {
             xg += u_iso_gradients[i_sc];
@@ -173,20 +167,20 @@ namespace cctbx { namespace xray { namespace minimization {
         }
       }
       else {
-        if (gradient_flags.u_aniso) {
+        if (sc.flags.grad_u_aniso()) {
           next_xray_gradients(6);
         }
       }
-      if (gradient_flags.occupancy) {
+      if (sc.flags.grad_occupancy()) {
         FloatType& xg = next_xray_gradients();
         if (occupancy_gradients.size() != 0) {
           xg += occupancy_gradients[i_sc];
         }
       }
-      if (gradient_flags.fp) {
+      if (sc.flags.grad_fp()) {
         next_xray_gradients();
       }
-      if (gradient_flags.fdp) {
+      if (sc.flags.grad_fdp()) {
         next_xray_gradients();
       }
     }
@@ -200,11 +194,12 @@ namespace cctbx { namespace xray { namespace minimization {
   af::shared<scitbx::vec3<FloatType> >
   extract_site_gradients(
     af::const_ref<XrayScattererType> const& scatterers,
-    xray::gradient_flags const& gradient_flags,
+    //xray::gradient_flags const& gradient_flags,
     af::const_ref<FloatType> const& xray_gradients)
   {
-    CCTBX_ASSERT(gradient_flags.site == true);
-    BOOST_STATIC_ASSERT(packing_order_convention == 1);
+    cctbx::xray::scatterer_grad_flags_counts grad_flags_counts(scatterers);
+    CCTBX_ASSERT(grad_flags_counts.site != 0);
+    BOOST_STATIC_ASSERT(packing_order_convention == 2);
     af::shared<scitbx::vec3<FloatType> > result(
       (af::reserve(scatterers.size())));
     scitbx::af::const_block_iterator<FloatType> next_xray_gradients(
@@ -216,22 +211,22 @@ namespace cctbx { namespace xray { namespace minimization {
       for(std::size_t i=0;i<3;i++) grsg[i] = xg[i];
       result.push_back(grsg);
       if (!sc.anisotropic_flag) {
-        if (gradient_flags.u_iso) {
+        if (sc.flags.grad_u_iso()) {
           next_xray_gradients();
         }
       }
       else {
-        if (gradient_flags.u_aniso) {
+        if (sc.flags.grad_u_aniso()) {
           next_xray_gradients(6);
         }
       }
-      if (gradient_flags.occupancy) {
+      if (sc.flags.grad_occupancy()) {
         next_xray_gradients();
       }
-      if (gradient_flags.fp) {
+      if (sc.flags.grad_fp()) {
         next_xray_gradients();
       }
-      if (gradient_flags.fdp) {
+      if (sc.flags.grad_fdp()) {
         next_xray_gradients();
       }
     }

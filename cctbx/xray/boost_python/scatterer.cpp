@@ -82,7 +82,7 @@ namespace {
                                make_setter(&w_t::u_iso, dcp()))
         .add_property("u_star", make_getter(&w_t::u_star, rbv()),
                                 make_setter(&w_t::u_star, dcp()))
-        .def_readwrite("refinement_flags", &w_t::refinement_flags)
+        .def_readwrite("flags", &w_t::flags)
         .def("convert_to_isotropic", &w_t::convert_to_isotropic, (
           arg_("unit_cell")))
         .def("convert_to_anisotropic", &w_t::convert_to_anisotropic, (

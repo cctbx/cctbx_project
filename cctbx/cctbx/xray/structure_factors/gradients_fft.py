@@ -15,7 +15,7 @@ class gradients_fft(gradients_base):
                      mean_displacements,
                      miller_set,
                      d_target_d_f_calc,
-                     gradient_flags,
+                     #gradient_flags,
                      n_parameters):
     gradients_base.__init__(self,
       manager, xray_structure, miller_set, algorithm="fft")
@@ -48,7 +48,7 @@ class gradients_fft(gradients_base):
       scattering_type_registry=xray_structure.scattering_type_registry(),
       site_symmetry_table=xray_structure.site_symmetry_table(),
       ft_d_target_d_f_calc=gradient_map,
-      grad_flags=gradient_flags,
+      #grad_flags=gradient_flags,
       n_parameters=n_parameters,
       sampled_density_must_be_positive=
         manager.sampled_density_must_be_positive())

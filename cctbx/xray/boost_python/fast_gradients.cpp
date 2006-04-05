@@ -38,7 +38,7 @@ namespace {
             scattering_type_registry const&,
             sgtbx::site_symmetry_table const&,
             af::const_ref<double, w_t::accessor_type> const&,
-            gradient_flags const&,
+            //gradient_flags const&,
             std::size_t,
             bool)) &w_t::sampling,
           (arg_("scatterers"),
@@ -46,7 +46,7 @@ namespace {
            arg_("scattering_type_registry"),
            arg_("site_symmetry_table"),
            arg_("ft_d_target_d_f_calc"),
-           arg_("grad_flags"),
+           //arg_("grad_flags"),
            arg_("n_parameters"),
            arg_("sampled_density_must_be_positive")))
         .def("sampling",
@@ -56,7 +56,7 @@ namespace {
             scattering_type_registry const&,
             sgtbx::site_symmetry_table const&,
             af::const_ref<std::complex<double>, w_t::accessor_type> const&,
-            gradient_flags const&,
+            //gradient_flags const&,
             std::size_t,
             bool)) &w_t::sampling,
           (arg_("scatterers"),
@@ -64,7 +64,7 @@ namespace {
            arg_("scattering_type_registry"),
            arg_("site_symmetry_table"),
            arg_("ft_d_target_d_f_calc"),
-           arg_("grad_flags"),
+           //arg_("grad_flags"),
            arg_("n_parameters"),
            arg_("sampled_density_must_be_positive")))
         .def("packed", &w_t::packed)
