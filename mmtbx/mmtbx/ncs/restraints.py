@@ -6,7 +6,6 @@ import boost.python
 ext = boost.python.import_ext("mmtbx_ncs_restraints_ext")
 from mmtbx_ncs_restraints_ext import *
 
-from mmtbx.ncs import pairwise2
 from cctbx import adptbx
 import scitbx.restraints
 from scitbx.math import superpose
@@ -16,45 +15,6 @@ from libtbx.str_utils import show_string
 from libtbx.itertbx import count
 from libtbx.utils import Sorry, buffered_indentor
 import sys
-
-class chain_alignment(object):
-
-  def __init__(self,
-        reference_selection_string,
-        other_selection_string,
-        reference_residue_names,
-        other_residue_names,
-        gap_symbol):
-    alignments = pairwise2.align.globalxx(
-      reference_residue_names, other_residue_names, gap_char=[gap_symbol])
-    assert len(alignments) != 0
-    if (len(alignments) != 1):
-      msg = ["Ambiguous alignment of NCS restraints selections:",
-        "  Reference selection: %s" % show_string(reference_selection_string),
-        "      Other selection: %s" % show_string(other_selection_string),
-        "    Number of possible alginments: %d" % len(alignments)]
-      for i,alignmnt in enumerate(alignments):
-        msg.append("    Alignment %d:" % (i+1))
-        for rns,rno in zip(alignmnt[0], alignmnt[1]):
-          msg.append("      %s  %s" % (rns,rno))
-      raise Sorry("\n".join(msg))
-    self.pairwise2_alignment = alignments[0]
-    self.gap_symbol = gap_symbol
-
-  def iterator(self):
-    gap_symbol = self.gap_symbol
-    i_mm_i = -1
-    i_mm_j = -1
-    for resn_i,resn_j in zip(*self.pairwise2_alignment[:2]):
-      count = 0
-      if (resn_i != gap_symbol):
-        i_mm_i += 1
-        count += 1
-      if (resn_j != gap_symbol):
-        i_mm_j += 1
-        count += 1
-      if (count == 2):
-        yield i_mm_i, i_mm_j
 
 class selection_properties(object):
 
@@ -68,6 +28,53 @@ class mm_active_i_seqs(object):
     self.mm = mm
     self.active_i_seqs = active_i_seqs
 
+def match_ordered_chain_members(a, b):
+  result = []
+  na = len(a)
+  if (na == 0): return result
+  nb = len(b)
+  if (nb == 0): return result
+  ia = 0
+  ib = 0
+  while True:
+    ja = ia
+    jb = ib
+    while True:
+      if (a[ia] == b[jb]):
+        result.append((ia, jb))
+        ib = jb
+        break
+      elif (jb != ib and b[ib] == a[ja]):
+        result.append((ja, ib))
+        ia = ja
+        break
+      else:
+        ja += 1
+        if (ja == na):
+          while True:
+            jb += 1
+            if (jb == nb): break
+            if (a[ia] == b[jb]):
+              result.append((ia, jb))
+              ib = jb
+              break
+          break
+        jb += 1
+        if (jb == nb):
+          while True:
+            if (b[ib] == a[ja]):
+              result.append((ja, ib))
+              ia = ja
+              break
+            ja += 1
+            if (ja == na): break
+          break
+    ia += 1
+    if (ia == na): break
+    ib += 1
+    if (ib == nb): break
+  return result
+
 class conformer_selection_properties(object):
 
   def __init__(self, selection_properties, mma_with_selected_atoms_by_chain):
@@ -75,6 +82,7 @@ class conformer_selection_properties(object):
     self.iselection = selection_properties.iselection
     self.mma_with_selected_atoms_by_chain = mma_with_selected_atoms_by_chain
     self._residue_names_by_chain = None
+    self._residue_ids_by_chain = None
 
   def residue_names_by_chain(self):
     if (self._residue_names_by_chain is None):
@@ -86,39 +94,44 @@ class conformer_selection_properties(object):
         self._residue_names_by_chain.append(residue_names)
     return self._residue_names_by_chain
 
-  def alignments_by_chain(self, other, gap_symbol="---"):
-    nc_self = len(self.mma_with_selected_atoms_by_chain)
-    nc_other = len(other.mma_with_selected_atoms_by_chain)
-    if (nc_other != nc_self):
-      raise Sorry("Incompatible NCS restraints selections:\n"
-        + "  Reference selection: %s\n" % show_string(self.string)
-        + "    Number of chains with selected atoms: %d\n" % nc_self
-        + "  Other selection: %s\n" % show_string(other.string)
-        + "    Number of chains with selected atoms: %d" % nc_other)
+  def residue_ids_by_chain(self, atom_attributes_list=None):
+    if (self._residue_ids_by_chain is None):
+      assert atom_attributes_list is not None
+      self._residue_ids_by_chain = []
+      for mma_with_selected_atoms in self.mma_with_selected_atoms_by_chain:
+        residue_ids = []
+        for mma in mma_with_selected_atoms:
+          i_seq = mma.active_i_seqs[0]
+          residue_ids.append(atom_attributes_list[i_seq].residue_id())
+        self._residue_ids_by_chain.append(residue_ids)
+    return self._residue_ids_by_chain
+
+  def match_residue_ids(self, other, atom_attributes_list):
     result = []
-    for resn_self,resn_other in zip(self.residue_names_by_chain(),
-                                    other.residue_names_by_chain()):
-      result.append(chain_alignment(
-        reference_selection_string=self.string,
-        other_selection_string=other.string,
-        reference_residue_names=resn_self,
-        other_residue_names=resn_other,
-        gap_symbol=gap_symbol))
+    self_rnbc = self.residue_names_by_chain()
+    other_rnbc = other.residue_names_by_chain()
+    for i,an,bn in zip(count(), self_rnbc, other_rnbc):
+      if (an == bn):
+        result.append([(i,i) for i in xrange(len(an))])
+      else:
+        ai = self.residue_ids_by_chain(atom_attributes_list)[i]
+        bi = other.residue_ids_by_chain(atom_attributes_list)[i]
+        result.append(match_ordered_chain_members(a=ai, b=bi))
     return result
 
   def match_atoms(self,
         other,
-        alignments_by_chain,
+        pairs_list,
         j_ncs,
         atom_attributes_list,
         special_position_indices,
         registry,
         selection_strings):
-    for mma_i,mma_j,alignment in zip(
+    for mma_i,mma_j,pairs in zip(
           self.mma_with_selected_atoms_by_chain,
           other.mma_with_selected_atoms_by_chain,
-          alignments_by_chain):
-      for i_mm_i,i_mm_j in alignment.iterator():
+          pairs_list):
+      for i_mm_i,i_mm_j in pairs:
         other_map = {}
         for i_seq_j in mma_j[i_mm_j].active_i_seqs:
           key = atom_attributes_list[i_seq_j].name
@@ -170,8 +183,8 @@ class pair_lists_generator(object):
     self.selection_strings = selection_strings
     del selection_strings
     if (self.reference_selection_string is not None):
-      self.selection_strings = list(self.selection_strings)
-      self.selection_strings.insert(0, self.reference_selection_string)
+      self.selection_strings = [self.reference_selection_string] \
+                             + list(self.selection_strings)
     n_ncs = len(self.selection_strings)
     assert n_ncs > 0
     if (n_ncs < 2):
@@ -203,15 +216,25 @@ class pair_lists_generator(object):
         reference = conformer_selection_properties[0]
         for j_ncs in xrange(1,n_ncs):
           other = conformer_selection_properties[j_ncs]
-          alignments_by_chain = reference.alignments_by_chain(other)
           reference.match_atoms(
             other=other,
-            alignments_by_chain=alignments_by_chain,
+            pairs_list=reference.match_residue_ids(
+              other=other, atom_attributes_list=atom_attributes_list),
             j_ncs=j_ncs,
             atom_attributes_list=atom_attributes_list,
             special_position_indices=special_position_indices,
             registry=self.registry,
             selection_strings=self.selection_strings)
+    #
+    for i_pair,pair in enumerate(self.registry.selection_pairs()):
+      if (pair[0].size() < 2):
+        detail = ["do not produce any pairs",
+                  "produce only one pair"][pair[0].size()]
+        raise Sorry("\n".join([
+          "NCS restraints selections %s of matching atoms:" % detail,
+          "  Reference selection: %s" % show_string(self.selection_strings[0]),
+          "      Other selection: %s" % show_string(
+            self.selection_strings[i_pair+1])]))
 
   def get_conformer_selection_properties(self, conformer):
     result = []
