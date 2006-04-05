@@ -457,6 +457,31 @@ def exercise_modifiers(verbose=0):
   assert mtz_object.title() == "012345678 "*2 + "0123456789"*5
   mtz_object.set_title("0123456789"*100)
   assert mtz_object.title() == "0123456789"*7
+  mtz_object.set_title(title="")
+  assert mtz_object.title() == ""
+  mtz_object.set_title(title="abc", append=True)
+  assert mtz_object.title() == "abc"
+  mtz_object.set_title(title="def", append=True)
+  assert mtz_object.title() == "abc def"
+  mtz_object.set_title(title="a")
+  assert mtz_object.title() == "a"
+  mtz_object.set_title(title="bc", append=True)
+  assert mtz_object.title() == "a bc"
+  mtz_object.set_title(title=" "*70)
+  mtz_object.set_title(title="abc", append=True)
+  assert mtz_object.title() == "abc"
+  mtz_object.set_title(title="z"*70)
+  mtz_object.set_title(title="abc", append=True)
+  assert mtz_object.title() == "z"*70
+  mtz_object.set_title(title="z"*69)
+  mtz_object.set_title(title="abc", append=True)
+  assert mtz_object.title() == "z"*69
+  mtz_object.set_title(title="z"*68)
+  mtz_object.set_title(title="abc", append=True)
+  assert mtz_object.title() == "z"*68 + " a"
+  mtz_object.set_title(title="z"*67)
+  mtz_object.set_title(title="abc", append=True)
+  assert mtz_object.title() == "z"*67 + " ab"
   mtz_object.add_history(lines=flex.std_string(["a1", "a2"]))
   assert list(mtz_object.history()) == ["a1", "a2"]
   mtz_object.add_history(lines=flex.std_string(["b1", "b2"]))
