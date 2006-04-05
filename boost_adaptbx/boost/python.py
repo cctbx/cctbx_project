@@ -8,7 +8,11 @@ def import_ext(name):
   if (sys.platform == "linux2"):
     previous_dlopenflags = sys.getdlopenflags()
     sys.setdlopenflags(0x100|0x2)
-  mod = __import__(name)
+  try: mod = __import__(name)
+  except ImportError, e:
+    raise ImportError(
+      "\n  ".join(['__import__("%s"): %s' % (name, str(e)), "sys.path:"]
+      + ["  "+p for p in sys.path]))
   for comp in components[1:]:
     mod = getattr(mod, comp)
   if (previous_dlopenflags is not None):
