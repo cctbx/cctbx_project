@@ -50,10 +50,13 @@ class manager(object):
                      f_calc              = None,
                      mask_params         = None):
     adopt_init_args(self, locals())
+    zero = flex.complex_double(self.f_obs.data().size(), 0.0)
     assert self.f_obs is not None
     assert self.f_obs.is_real_array()
     if(self.xray_structure is None):
-       assert [self.f_calc, self.f_mask].count(None) == 0
+       if(self.f_mask is None):
+          self.f_mask = self.f_obs.array(data = zero)
+       #assert [self.f_calc, self.f_mask].count(None) == 0
        assert self.f_mask.is_complex_array()
        assert self.f_calc.is_complex_array()
        assert self.f_mask.indices().all_eq(self.f_obs.indices())
@@ -80,7 +83,6 @@ class manager(object):
     if(self.target_name is not None):
        assert self.target_name in self.target_names
        self.setup_target_functors()
-    zero = flex.complex_double(self.f_obs.data().size(), 0.0)
     if(self.f_mask is None):
        self.f_mask = self.f_obs.array(data = zero)
     self.f_ordered_solvent = self.f_obs.array(data = zero)
@@ -93,6 +95,12 @@ class manager(object):
        abcd = self.abcd.deep_copy()
     else:
        abcd = None
+    if(self.xray_structure is not None):
+       xrs_dc = self.xray_structure.deep_copy_scatterers()
+       fc_dc = None
+    else:
+       xrs_dc = None
+       fc_dc = self.f_calc.deep_copy()
     new=manager(f_obs             = self.f_obs.deep_copy(),
                 r_free_flags      = self.r_free_flags.deep_copy(),
                 u_aniso           = self.u_aniso,
@@ -103,7 +111,8 @@ class manager(object):
                 target_name       = self.target_name,
                 abcd              = abcd,
                 alpha_beta_params = self.alpha_beta_params,
-                xray_structure    = self.xray_structure.deep_copy_scatterers(),
+                xray_structure    = xrs_dc,
+                f_calc            = fc_dc,
                 mask_params       = self.mask_params)
     new.f_calc                 = self.f_calc.deep_copy()
     new.f_mask                 = self.f_mask.deep_copy()
@@ -119,18 +128,26 @@ class manager(object):
        abcd = dc.abcd.resolution_filter(d_max, d_min)
     else:
        abcd = None
+    if(dc.xray_structure is not None):
+       xrs_dc = dc.xray_structure.deep_copy_scatterers()
+       fc_dc = None
+    else:
+       xrs_dc = None
+       fc_dc = dc.f_calc.deep_copy().resolution_filter(d_max, d_min)
     new  = manager(f_obs             = dc.f_obs.resolution_filter(d_max, d_min),
                    r_free_flags      = dc.r_free_flags.resolution_filter(d_max, d_min),
                    u_aniso           = dc.u_aniso,
                    k_sol             = dc.k_sol,
                    b_sol             = dc.b_sol,
                    sf_algorithm      = dc.sf_algorithm       ,
+                   sf_cos_sin_table  = dc.sf_cos_sin_table,
                    target_name       = dc.target_name        ,
                    abcd              = abcd               ,
                    alpha_beta_params = dc.alpha_beta_params  ,
-                   xray_structure    = dc.xray_structure     ,
+                   xray_structure    = xrs_dc     ,
+                   f_calc            = fc_dc,
                    mask_params       = dc.mask_params)
-    new.f_calc                 = dc.f_calc.resolution_filter(d_max, d_min)
+    #new.f_calc                 = dc.f_calc.resolution_filter(d_max, d_min)
     new.f_mask                 = dc.f_mask.resolution_filter(d_max, d_min)
     new.f_ordered_solvent      = dc.f_ordered_solvent.resolution_filter(d_max, d_min)
     new.f_ordered_solvent_dist = dc.f_ordered_solvent_dist.resolution_filter(d_max, d_min)
@@ -683,6 +700,7 @@ class manager(object):
        assert f_calc.data().size() == self.f_calc.data().size()
        self.f_calc = f_calc
     if(xray_structure is not None):
+    #XXX dangerous: must use update_xray_structure
        self.xray_structure = xray_structure
     if(mask_params is not None):
        self.mask_params = mask_params
@@ -718,11 +736,17 @@ class manager(object):
       self.alpha_beta_params = alpha_beta_params
     return self
 
-
   def f_ordered_solvent_w(self):
     assert self.r_free_flags is not None
     if(self.r_free_flags.data().count(True) > 0):
       return self.f_ordered_solvent.select(~self.r_free_flags.data())
+    else:
+      return self.f_ordered_solvent
+
+  def f_ordered_solvent_t(self):
+    assert self.r_free_flags is not None
+    if(self.r_free_flags.data().count(True) > 0):
+      return self.f_ordered_solvent.select(self.r_free_flags.data())
     else:
       return self.f_ordered_solvent
 
@@ -1151,14 +1175,14 @@ class manager(object):
     else:
       return pher
 
-  def phase_errors_test(self):
-    assert self.r_free_flags is not None
-    pher = self.phase_errors()
-    if(self.r_free_flags.data().count(True) > 0):
-      return pher.select(self.r_free_flags.data())
-    else:
-      return pher
-
+#  def phase_errors_test(self):
+#    assert self.r_free_flags is not None
+#    pher = self.phase_errors()
+#    if(self.r_free_flags.data().count(True) > 0):
+#      return pher.select(self.r_free_flags.data())
+#    else:
+#      return pher
+#
   def map_coefficients(self,
                        map_type          = "k*Fobs-n*Fmodel",
                        k                 = 1,
