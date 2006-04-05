@@ -87,6 +87,9 @@ namespace {
       typedef return_internal_reference<> rir;
       class_<w_t>("input", no_init)
         .def(init<
+          std::string const&>((
+            arg_("file_name"))))
+        .def(init<
           const char*,
           af::const_ref<std::string> const&>((
             arg_("source_info"),

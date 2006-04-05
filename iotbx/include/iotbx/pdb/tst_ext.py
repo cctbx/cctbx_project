@@ -1398,6 +1398,30 @@ model id=0 #chains=1
          " O  "
          " CB "
 """)
+  #
+  open("tmp.pdb", "w")
+  pdb_inp = pdb.input(file_name="tmp.pdb")
+  assert pdb_inp.source_info() == "file tmp.pdb"
+  open("tmp.pdb", "w").write("""\
+ATOM      1  CA  SER     1       1.212 -12.134   3.757  1.00  0.00
+ATOM      2  CA  LEU     2       1.118  -9.777   0.735  1.00  0.00
+""")
+  pdb_inp = pdb.input(file_name="tmp.pdb")
+  check_hierarchy(
+    hierarchy=pdb_inp.construct_hierarchy(),
+    expected_formatted="""\
+model id=0 #chains=1
+  chain id=" " #conformers=1
+    conformer id=" " #residues=2
+      residue name="SER " seq=   1 icode=" " #atoms=1
+         " CA "
+      residue name="LEU " seq=   2 icode=" " #atoms=1
+         " CA "
+""")
+  try: pdb.input(file_name="")
+  except RuntimeError, e:
+    assert not show_diff(str(e), 'Cannot open file for reading: ""')
+  else: raise RuntimeError("Exception expected.")
 
 def exercise(args):
   forever = "--forever" in args

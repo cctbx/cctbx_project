@@ -4,6 +4,7 @@
 #include <iotbx/pdb/hierarchy.h>
 #include <scitbx/array_family/shared.h>
 #include <scitbx/array_family/tiny.h>
+#include <scitbx/misc/file_utils.h>
 #include <scitbx/auto_array.h>
 #include <boost/scoped_array.hpp>
 #include <map>
@@ -73,7 +74,7 @@ namespace iotbx { namespace pdb {
       std::vector<ElementType> const& indices,
       unsigned begin=0)
     :
-      i_end(indices.size() == 0 ? 0 : &*indices.end()),
+      i_end(indices.size() == 0 ? 0 : (&*indices.begin()) + indices.size()),
       i(indices.size() == 0 ? 0 : &*indices.begin()),
       end(begin)
     {}
@@ -1319,19 +1320,33 @@ namespace iotbx { namespace pdb {
 
       input() {}
 
+      input(std::string const& file_name)
+      :
+        source_info_("file " + file_name)
+      {
+        process(scitbx::misc::file_to_lines(file_name).const_ref());
+      }
+
       input(
         const char* source_info,
         af::const_ref<std::string> const& lines)
       :
-        source_info_(source_info ? source_info : ""),
-        name_selection_cache_is_up_to_date_(false),
-        altloc_selection_cache_is_up_to_date_(false),
-        resname_selection_cache_is_up_to_date_(false),
-        chain_selection_cache_is_up_to_date_(false),
-        resseq_selection_cache_is_up_to_date_(false),
-        icode_selection_cache_is_up_to_date_(false),
-        segid_selection_cache_is_up_to_date_(false)
+        source_info_(source_info ? source_info : "")
       {
+        process(lines);
+      }
+
+    protected:
+      void
+      process(af::const_ref<std::string> const& lines)
+      {
+        name_selection_cache_is_up_to_date_ = false;
+        altloc_selection_cache_is_up_to_date_ = false;
+        resname_selection_cache_is_up_to_date_ = false;
+        chain_selection_cache_is_up_to_date_ = false;
+        resseq_selection_cache_is_up_to_date_ = false;
+        icode_selection_cache_is_up_to_date_ = false;
+        segid_selection_cache_is_up_to_date_ = false;
         columns_73_76_evaluator columns_73_76_eval(lines);
         input_atom_labels_list_.reserve(
             input_atom_labels_list_.size()
@@ -1351,7 +1366,7 @@ namespace iotbx { namespace pdb {
         unsigned sigatm_counts = 0;
         unsigned anisou_counts = 0;
         unsigned siguij_counts = 0;
-        pdb::line_info line_info(source_info);
+        pdb::line_info line_info(source_info_.c_str());
         pdb::model_record_oversight model_record_oversight(line_info);
         pdb::chain_tracker chain_tracker;
         for(unsigned i_line=0;i_line<lines.size();i_line++) {
@@ -1529,6 +1544,7 @@ namespace iotbx { namespace pdb {
         if (siguij_counts != 0) record_type_counts_["SIGUIJ"] += siguij_counts;
       }
 
+    public:
       std::string const&
       source_info() const { return source_info_; }
 
