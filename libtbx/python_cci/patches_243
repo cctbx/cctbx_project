@@ -1,0 +1,119 @@
+diff -r -u Python-2.4.3/Include/ceval.h Python-2.4.3_cci/Include/ceval.h
+--- Python-2.4.3/Include/ceval.h	2004-10-10 19:40:51.000000000 -0700
++++ Python-2.4.3_cci/Include/ceval.h	2006-03-31 22:39:30.000000000 -0800
+@@ -68,6 +68,11 @@
+ 
+ /* this used to be handled on a per-thread basis - now just two globals */
+ PyAPI_DATA(volatile int) _Py_Ticker;
++#ifndef HAVE_LONG_LONG
++PyAPI_DATA(volatile long) _Py_TickerAccumulation;
++#else
++PyAPI_DATA(volatile PY_LONG_LONG) _Py_TickerAccumulation;
++#endif
+ PyAPI_DATA(int) _Py_CheckInterval;
+ 
+ /* Interface for threads.
+diff -r -u Python-2.4.3/PC/os2emx/python24.def Python-2.4.3_cci/PC/os2emx/python24.def
+--- Python-2.4.3/PC/os2emx/python24.def	2004-10-10 19:40:51.000000000 -0700
++++ Python-2.4.3_cci/PC/os2emx/python24.def	2006-03-31 22:39:31.000000000 -0800
+@@ -743,6 +743,7 @@
+   "_Py_CheckRecursionLimit"
+   "_Py_CheckInterval"
+   "_Py_Ticker"
++  "_Py_TickerAccumulation"
+ 
+ ; From python24_s.lib(compile)
+   "PyCode_New"
+diff -r -u Python-2.4.3/Python/ceval.c Python-2.4.3_cci/Python/ceval.c
+--- Python-2.4.3/Python/ceval.c	2006-03-07 07:59:09.000000000 -0800
++++ Python-2.4.3_cci/Python/ceval.c	2006-03-31 22:39:31.000000000 -0800
+@@ -373,6 +373,7 @@
+ 	pendinglast = j;
+ 
+ 	_Py_Ticker = 0;
++	_Py_TickerAccumulation = 0;
+ 	things_to_do = 1; /* Signal main loop */
+ 	busy = 0;
+ 	/* XXX End critical section */
+@@ -476,6 +477,11 @@
+    per thread, now just a pair o' globals */
+ int _Py_CheckInterval = 100;
+ volatile int _Py_Ticker = 100;
++#ifndef HAVE_LONG_LONG
++volatile long _Py_TickerAccumulation = 0;
++#else
++volatile PY_LONG_LONG _Py_TickerAccumulation = 0;
++#endif
+ 
+ PyObject *
+ PyEval_EvalCode(PyCodeObject *co, PyObject *globals, PyObject *locals)
+@@ -770,6 +776,7 @@
+ 		   async I/O handler); see Py_AddPendingCall() and
+ 		   Py_MakePendingCalls() above. */
+ 
++                _Py_TickerAccumulation++;
+ 		if (--_Py_Ticker < 0) {
+                         if (*next_instr == SETUP_FINALLY) {
+                                 /* Make the last opcode before
+diff -r -u Python-2.4.3/Python/pythonrun.c Python-2.4.3_cci/Python/pythonrun.c
+--- Python-2.4.3/Python/pythonrun.c	2005-10-01 18:51:56.000000000 -0700
++++ Python-2.4.3_cci/Python/pythonrun.c	2006-03-31 22:39:31.000000000 -0800
+@@ -579,8 +579,10 @@
+ Py_GetPythonHome(void)
+ {
+ 	char *home = default_home;
++/*
+ 	if (home == NULL && !Py_IgnoreEnvironmentFlag)
+ 		home = Py_GETENV("PYTHONHOME");
++*/
+ 	return home;
+ }
+ 
+diff -r -u Python-2.4.3/Python/sysmodule.c Python-2.4.3_cci/Python/sysmodule.c
+--- Python-2.4.3/Python/sysmodule.c	2005-10-02 18:03:46.000000000 -0700
++++ Python-2.4.3_cci/Python/sysmodule.c	2006-03-31 22:39:31.000000000 -0800
+@@ -442,6 +442,20 @@
+ "getcheckinterval() -> current check interval; see setcheckinterval()."
+ );
+ 
++static PyObject *
++sys_gettickeraccumulation(PyObject *self, PyObject *args)
++{
++#ifndef HAVE_LONG_LONG
++	return PyInt_FromLong(_Py_TickerAccumulation);
++#else
++	return PyLong_FromLongLong(_Py_TickerAccumulation);
++#endif
++}
++
++PyDoc_STRVAR(gettickeraccumulation_doc,
++"gettickeraccumulation() -> current count of bytecodes processed by the interpreter."
++);
++
+ #ifdef WITH_TSC
+ static PyObject *
+ sys_settscdump(PyObject *self, PyObject *args)
+@@ -763,6 +777,8 @@
+ 	 setcheckinterval_doc}, 
+ 	{"getcheckinterval",	sys_getcheckinterval, METH_NOARGS,
+ 	 getcheckinterval_doc}, 
++	{"gettickeraccumulation", sys_gettickeraccumulation, METH_NOARGS,
++	 gettickeraccumulation_doc}, 
+ #ifdef HAVE_DLOPEN
+ 	{"setdlopenflags", sys_setdlopenflags, METH_VARARGS, 
+ 	 setdlopenflags_doc},
+Only in Python-2.4.3_cci: cci_patches
+diff -r -u Python-2.4.3/setup.py Python-2.4.3_cci/setup.py
+--- Python-2.4.3/setup.py	2006-03-23 11:07:46.000000000 -0800
++++ Python-2.4.3_cci/setup.py	2006-03-31 23:09:18.838975920 -0800
+@@ -240,8 +240,8 @@
+ 
+     def detect_modules(self):
+         # Ensure that /usr/local is always used
+-        add_dir_to_list(self.compiler.library_dirs, '/usr/local/lib')
+-        add_dir_to_list(self.compiler.include_dirs, '/usr/local/include')
++        # add_dir_to_list(self.compiler.library_dirs, '/usr/local/lib')
++        # add_dir_to_list(self.compiler.include_dirs, '/usr/local/include')
+ 
+         # Add paths to popular package managers on OS X/darwin
+         if sys.platform == "darwin":
