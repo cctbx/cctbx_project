@@ -42,6 +42,9 @@ class labels(object):
       self.resName, self.chainID,
       self.resSeq, self.iCode, self.segID]])
 
+  def residue_id(self):
+    return "%-4s%4d%1s" % (self.resName, self.resSeq, self.iCode)
+
   def pdb_format(self):
     result = ""
     if (self.MODELserial is not None and self.MODELserial != 0):
