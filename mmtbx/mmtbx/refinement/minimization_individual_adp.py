@@ -25,10 +25,19 @@ class lbfgs(object):
                      alpha_w=None,
                      beta_w=None):
     adopt_init_args(self, locals())
-    self.xray_gradient_flags = xray.structure_factors.gradient_flags(
-                                            u_iso         = True,
-                                            tan_b_iso_max = self.tan_b_iso_max)
     self.xray_structure = self.fmodel.xray_structure
+
+    for scatterer in self.xray_structure.scatterers():
+        scatterer.flags.set_grad_site(False)
+        scatterer.flags.set_grad_u_iso(True)
+        scatterer.flags.set_grad_u_aniso(False)
+        scatterer.flags.set_grad_occupancy(False)
+        scatterer.flags.set_grad_fp(False)
+        scatterer.flags.set_grad_fdp(False)
+        if(self.tan_b_iso_max > 0.0):
+           scatterer.flags.set_tan_u_iso(True)
+           scatterer.flags.param= int(self.tan_b_iso_max)
+
     self.exray_start = None
     self.eadp_start  = None
     self.exray_final = None
@@ -53,7 +62,7 @@ class lbfgs(object):
           assert self.alpha_w.data().size() == self.f_obs_w.data().size()
           assert self.beta_w.data().size() == self.f_obs_w.data().size()
     self.x = \
-     flex.double(self.xray_structure.n_parameters(self.xray_gradient_flags), 0)
+     flex.double(self.xray_structure.n_parameters(), 0)
     self._scatterers_start = self.xray_structure.scatterers()
     self.first_target_value = None
     self.minimizer = scitbx.lbfgs.run(
@@ -72,7 +81,6 @@ class lbfgs(object):
     apply_shifts_result = xray.ext.minimization_apply_shifts(
                               unit_cell      = self.xray_structure.unit_cell(),
                               scatterers     = self._scatterers_start,
-                              gradient_flags = self.xray_gradient_flags,
                               shifts         = self.x)
     scatterers_shifted = apply_shifts_result.shifted_scatterers
     self.xray_structure.replace_scatterers(scatterers = scatterers_shifted)
@@ -88,22 +96,21 @@ class lbfgs(object):
     self.f = self.exray_final * self.wx
     if(compute_gradients):
        sf = self.fmodel.gradient_wrt_atomic_parameters(
-                   sites              = self.xray_gradient_flags.site,
-                   u_iso              = self.xray_gradient_flags.u_iso,
+                   sites              = False,
+                   u_iso              = True,
                    alpha              = self.alpha_w,
                    beta               = self.beta_w,
-                   tan_b_iso_max      = self.xray_gradient_flags.tan_b_iso_max,
+                   tan_b_iso_max      = self.tan_b_iso_max,
                    mean_displacements = mean_displacements).packed()
        self.g = sf * self.wx
-    if(self.xray_gradient_flags.u_iso
-          and self.restraints_manager.geometry is not None
+    if(self.restraints_manager.geometry is not None
           and self.wu > 0.0
           and self.iso_restraints is not None):
        energies_adp_iso = self.restraints_manager.energies_adp_iso(
                     xray_structure    = self.xray_structure,
                     parameters        = self.iso_restraints,
                     wilson_b          = self.wilson_b,
-                    tan_b_iso_max     = self.xray_gradient_flags.tan_b_iso_max,
+                    tan_b_iso_max     = self.tan_b_iso_max,
                     compute_gradients = compute_gradients)
        self.eadp_final = energies_adp_iso.target
        if(self.eadp_start is None): self.eadp_start = self.eadp_final
@@ -112,7 +119,6 @@ class lbfgs(object):
           u_iso_gradients = energies_adp_iso.gradients
           xray.minimization.add_gradients(
                             scatterers      = self.xray_structure.scatterers(),
-                            gradient_flags  = self.xray_gradient_flags,
                             xray_gradients  = self.g,
                             u_iso_gradients = u_iso_gradients * self.wu)
 

@@ -22,11 +22,11 @@ namespace cctbx { namespace xray { namespace boost_python {
         .def(init<
           uctbx::unit_cell const&,
           af::const_ref<scatterer<> > const&,
-          gradient_flags const&,
+          //gradient_flags const&,
           af::const_ref<double> const&>((
             arg_("unit_cell"),
             arg_("scatterers"),
-            arg_("gradient_flags"),
+            //arg_("gradient_flags"),
             arg_("shifts"))))
         .add_property("shifted_scatterers",
           make_getter(&w_t::shifted_scatterers, rbv()))
@@ -43,7 +43,7 @@ namespace cctbx { namespace xray { namespace boost_python {
     def("minimization_shift_scales",
       (af::shared<double>(*)(
         af::const_ref<scatterer<> > const&,
-        gradient_flags const&,
+        //gradient_flags const&,
         std::size_t,
         double const&,
         double const&,
@@ -52,7 +52,7 @@ namespace cctbx { namespace xray { namespace boost_python {
         double const&,
         double const&)) minimization::shift_scales, (
           arg_("scatterers"),
-          arg_("gradient_flags"),
+          //arg_("gradient_flags"),
           arg_("n_parameters"),
           arg_("site_cart"),
           arg_("u_iso"),
@@ -66,14 +66,14 @@ namespace cctbx { namespace xray { namespace boost_python {
     def("minimization_add_gradients",
       (void(*)(
         af::const_ref<scatterer<> > const&,
-        gradient_flags const&,
+        //gradient_flags const&,
         af::ref<double> const&,
         af::const_ref<scitbx::vec3<double> > const&,
         af::const_ref<double> const&,
         af::const_ref<double> const&))
           minimization::add_gradients, (
       arg_("scatterers"),
-      arg_("gradient_flags"),
+      //arg_("gradient_flags"),
       arg_("xray_gradients"),
       arg_("site_gradients"),
       arg_("u_iso_gradients"),
@@ -81,11 +81,11 @@ namespace cctbx { namespace xray { namespace boost_python {
     def("minimization_extract_site_gradients",
       (af::shared<scitbx::vec3<double> >(*)(
         af::const_ref<scatterer<> > const&,
-        gradient_flags const&,
+        //gradient_flags const&,
         af::const_ref<double> const&))
           minimization::extract_site_gradients, (
       arg_("scatterers"),
-      arg_("gradient_flags"),
+      //arg_("gradient_flags"),
       arg_("xray_gradients")));
   }
 

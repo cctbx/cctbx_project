@@ -613,18 +613,28 @@ class structure(crystal.special_position_settings):
       atomic_weights = self.atomic_weights()
     return self.sites_cart().mean_weighted(weights=atomic_weights)
 
-  def n_parameters(self, gradient_flags):
-    n_scatterers = self.scatterers().size()
-    n_anisotropic = self.scatterers().count_anisotropic()
-    n_isotropic = n_scatterers - n_anisotropic
-    result = 0
-    if (gradient_flags.site): result += n_scatterers * 3
-    if (gradient_flags.u_iso): result += n_isotropic
-    if (gradient_flags.u_aniso): result += n_anisotropic * 6
-    if (gradient_flags.occupancy): result += n_scatterers
-    if (gradient_flags.fp): result += n_scatterers
-    if (gradient_flags.fdp): result += n_scatterers
-    return result
+  def n_parameters(self):
+    #XXX move to C++; looks like it exists in all_zeros call...
+    result_ = 0
+    for sc in self.scatterers():
+        if(sc.flags.grad_site()     ): result_ +=3
+        if(sc.flags.grad_u_iso()   and sc.anisotropic_flag==False): result_ +=1
+        if(sc.flags.grad_u_aniso() and sc.anisotropic_flag==True): result_ +=6
+        if(sc.flags.grad_occupancy()): result_ +=1
+        if(sc.flags.grad_fp()       ): result_ +=1
+        if(sc.flags.grad_fdp()      ): result_ +=1
+
+    #n_scatterers = self.scatterers().size()
+    #n_anisotropic = self.scatterers().count_anisotropic()
+    #n_isotropic = n_scatterers - n_anisotropic
+    #result = 0
+    #if (gradient_flags.site): result += n_scatterers * 3
+    #if (gradient_flags.u_iso): result += n_isotropic
+    #if (gradient_flags.u_aniso): result += n_anisotropic * 6
+    #if (gradient_flags.occupancy): result += n_scatterers
+    #if (gradient_flags.fp): result += n_scatterers
+    #if (gradient_flags.fdp): result += n_scatterers
+    return result_
 
   def asu_mappings(self, buffer_thickness, is_inside_epsilon=None):
     result = crystal.symmetry.asu_mappings(self,

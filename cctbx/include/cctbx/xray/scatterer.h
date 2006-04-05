@@ -1,7 +1,7 @@
 #ifndef CCTBX_XRAY_SCATTERER_H
 #define CCTBX_XRAY_SCATTERER_H
 
-#include <cctbx/xray/refinement_flags.h>
+#include <cctbx/xray/scatterer_flags.h>
 #include <cctbx/sgtbx/site_symmetry.h>
 #include <cctbx/adptbx.h>
 
@@ -134,7 +134,7 @@ namespace xray {
       scitbx::sym_mat3<FloatType> u_star;
 
       //! Support for refinement.
-      xray::refinement_flags refinement_flags;
+      scatterer_flags flags;
 
       //! Converts u_star to the equivalent u_iso in place.
       /*! The u_star values are reset to -1 and the anisotropic_flag

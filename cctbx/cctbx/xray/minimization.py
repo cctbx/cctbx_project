@@ -10,14 +10,12 @@ from stdlib import math
 
 def add_gradients(
       scatterers,
-      gradient_flags,
       xray_gradients,
       site_gradients=None,
       u_iso_gradients=None,
       occupancy_gradients=None):
   ext.minimization_add_gradients(
     scatterers=scatterers,
-    gradient_flags=gradient_flags,
     xray_gradients=xray_gradients,
     site_gradients=site_gradients,
     u_iso_gradients=u_iso_gradients,
@@ -154,7 +152,7 @@ class occupancy_penalty_exp(object):
 
 class lbfgs(object):
 
-  def __init__(self, target_functor, gradient_flags, xray_structure,
+  def __init__(self, target_functor, xray_structure,
                      u_penalty=None,
                      occupancy_penalty=None,
                      lbfgs_termination_params=None,
@@ -164,11 +162,13 @@ class lbfgs(object):
                      structure_factor_algorithm=None,
                      verbose=0):
     adopt_init_args(self, locals())
-    if (self.u_penalty is not None
-        and self.gradient_flags.u_iso
-        and xray_structure.scatterers().count_anisotropic() > 0):
-      raise RuntimeError(
-        "Refinement of anisotropic scatterers not currently supported.")
+    self.grad_flags_counts = \
+              ext.scatterer_grad_flags_counts(self.xray_structure.scatterers())
+    #if (self.u_penalty is not None
+    #    and self.gradient_flags.u_iso
+    #    and xray_structure.scatterers().count_anisotropic() > 0):
+    #  raise RuntimeError(
+    #    "Refinement of anisotropic scatterers not currently supported.")
     self.structure_factors_from_scatterers = \
       cctbx.xray.structure_factors.from_scatterers(
         miller_set=self.target_functor.f_obs(),
@@ -177,7 +177,7 @@ class lbfgs(object):
       cctbx.xray.structure_factors.gradients(
         miller_set=self.target_functor.f_obs(),
         cos_sin_table=cos_sin_table)
-    self.x = flex.double(xray_structure.n_parameters(gradient_flags), 0)
+    self.x = flex.double(xray_structure.n_parameters(), 0)
     xray_structure.tidy_us(u_min=1.e-6)
     self._scatterers_start = xray_structure.scatterers()
     self._d_min = self.target_functor.f_obs().d_min()
@@ -196,7 +196,6 @@ class lbfgs(object):
     apply_shifts_result = ext.minimization_apply_shifts(
       unit_cell=self.xray_structure.unit_cell(),
       scatterers=self._scatterers_start,
-      gradient_flags=self.gradient_flags,
       shifts=self.x)
     shifted_scatterers = apply_shifts_result.shifted_scatterers
     site_symmetry_table = self.xray_structure.site_symmetry_table()
@@ -224,12 +223,12 @@ class lbfgs(object):
     self.f = self.target_result.target()
     if (self.first_target_value is None):
       self.first_target_value = self.f
-    if (self.u_penalty is not None and self.gradient_flags.u_iso):
-      u_isos = self.xray_structure.scatterers().extract_u_iso()
-      for u_iso in u_isos:
-        self.f += self.u_penalty.functional(u=u_iso)
+    #if (self.u_penalty is not None and self.gradient_flags.u_iso):
+    #  u_isos = self.xray_structure.scatterers().extract_u_iso()
+    #  for u_iso in u_isos:
+    #    self.f += self.u_penalty.functional(u=u_iso)
     if (self.occupancy_penalty is not None
-        and self.gradient_flags.occupancy):
+        and self.grad_flags_counts != 0):
       occupancies = self.xray_structure.scatterers().extract_occupancies()
       for occupancy in occupancies:
         self.f += self.occupancy_penalty.functional(occupancy=occupancy)
@@ -238,34 +237,32 @@ class lbfgs(object):
       mean_displacements=mean_displacements,
       miller_set=self.target_functor.f_obs(),
       d_target_d_f_calc=self.target_result.derivatives(),
-      gradient_flags=self.gradient_flags,
       n_parameters=self.x.size(),
       algorithm=self.structure_factor_algorithm).packed()
-    if (self.u_penalty is not None and self.gradient_flags.u_iso):
-      g = flex.double()
-      if (self.gradient_flags.sqrt_u_iso):
-        for mean_displacement in mean_displacements:
-          g.append(2*mean_displacement
-                  *self.u_penalty.gradient(u=mean_displacement**2))
-      else:
-        for u_iso in u_isos:
-          g.append(self.u_penalty.gradient(u=u_iso))
-      del u_isos
-      add_gradients(
-        scatterers=self.xray_structure.scatterers(),
-        gradient_flags=self.gradient_flags,
-        xray_gradients=self.g,
-        u_iso_gradients=g)
-      del g
+    #if (self.u_penalty is not None and self.gradient_flags.u_iso):
+    #  g = flex.double()
+    #  if (self.gradient_flags.sqrt_u_iso):
+    #    for mean_displacement in mean_displacements:
+    #      g.append(2*mean_displacement
+    #              *self.u_penalty.gradient(u=mean_displacement**2))
+    #  else:
+    #    for u_iso in u_isos:
+    #      g.append(self.u_penalty.gradient(u=u_iso))
+    #  del u_isos
+    #  add_gradients(
+    #    scatterers=self.xray_structure.scatterers(),
+    #    gradient_flags=self.gradient_flags,
+    #    xray_gradients=self.g,
+    #    u_iso_gradients=g)
+    #  del g
     if (self.occupancy_penalty is not None
-        and self.gradient_flags.occupancy):
+        and self.grad_flags_counts != 0):
       g = flex.double()
       for occupancy in occupancies:
         g.append(self.occupancy_penalty.gradient(occupancy=occupancy))
       del occupancies
       add_gradients(
         scatterers=self.xray_structure.scatterers(),
-        gradient_flags=self.gradient_flags,
         xray_gradients=self.g,
         occupancy_gradients=g)
       del g

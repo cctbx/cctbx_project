@@ -499,6 +499,18 @@ class manager(object):
                                                  u_iso         = u_iso,
                                                  sqrt_u_iso    = False,
                                                  tan_b_iso_max = tan_b_iso_max)
+    xrs_ = self.xray_structure.deep_copy_scatterers()
+    for scatterer in xrs_.scatterers():
+      scatterer.flags.set_grad_site(xray_gradient_flags.site)
+      scatterer.flags.set_grad_u_iso(xray_gradient_flags.u_iso)
+      scatterer.flags.set_grad_u_aniso(xray_gradient_flags.u_aniso)
+      scatterer.flags.set_grad_occupancy(xray_gradient_flags.occupancy)
+      scatterer.flags.set_grad_fp(xray_gradient_flags.fp)
+      scatterer.flags.set_grad_fdp(xray_gradient_flags.fdp)
+      if(tan_b_iso_max > 0.0 and tan_b_iso_max is not None):
+         scatterer.flags.set_tan_u_iso(True)
+         scatterer.flags.param= int(xray_gradient_flags.tan_b_iso_max)
+
     structure_factor_gradients = cctbx.xray.structure_factors.gradients(
                                          miller_set    = self.f_obs_w(),
                                          cos_sin_table = self.sf_cos_sin_table)
@@ -508,15 +520,16 @@ class manager(object):
     if(self.target_name.count("ml") ==0 and self.target_name.count("lsm") ==0):
        assert [alpha, beta].count(None) == 2
     if(selection is None):
-       xrs = self.xray_structure
+       xrs = xrs_
     else:
-       xrs = self.xray_structure.select(selection)
+       xrs = xrs_.select(selection)
     xrtfr = self.xray_target_functor_result(compute_gradients = True,
                                             alpha             = alpha,
                                             beta              = beta,
                                             scale_ml          = None,
                                             flag              = "work")
     if(u_iso and mean_displacements is None):
+       # XXX here is not clean too
        if(tan_b_iso_max != 0):
           u_iso_max = adptbx.b_as_u(tan_b_iso_max)
           mean_displacements = flex.tan(math.pi*
@@ -528,8 +541,7 @@ class manager(object):
          mean_displacements = mean_displacements,
          d_target_d_f_calc  = xrtfr.derivatives(),
          xray_structure     = xrs,
-         gradient_flags     = xray_gradient_flags,
-         n_parameters       = xrs.n_parameters(xray_gradient_flags),
+         n_parameters       = xrs.n_parameters(),
          miller_set         = self.f_obs_w(),
          algorithm          = self.sf_algorithm)
     return result
@@ -537,8 +549,16 @@ class manager(object):
   def gradient_wrt_u_aniso(self, u_aniso = True,
                                  alpha   = None,
                                  beta    = None):
-    xray_gradient_flags = xray.structure_factors.gradient_flags(
-                                                             u_aniso = u_aniso)
+    xrs_ = self.xray_structure.deep_copy_scatterers()
+    for scatterer in xrs_.scatterers():
+      scatterer.flags.set_grad_site(False)
+      scatterer.flags.set_grad_u_iso(False)
+      scatterer.flags.set_grad_u_aniso(True)
+      scatterer.flags.set_grad_occupancy(False)
+      scatterer.flags.set_grad_fp(False)
+      scatterer.flags.set_grad_fdp(False)
+      scatterer.flags.set_tan_u_iso(False)
+      scatterer.flags.param= 0
     structure_factor_gradients = cctbx.xray.structure_factors.gradients(
                                          miller_set    = self.f_obs_w(),
                                          cos_sin_table = self.sf_cos_sin_table)
@@ -555,8 +575,7 @@ class manager(object):
     result = structure_factor_gradients(
          mean_displacements = None,
          d_target_d_f_calc  = xrtfr.derivatives(),
-         xray_structure     = self.xray_structure,
-         gradient_flags     = xray_gradient_flags,
+         xray_structure     = xrs_,
          n_parameters       = 0,
          miller_set         = self.f_obs_w(),
          algorithm          = self.sf_algorithm)
@@ -565,11 +584,20 @@ class manager(object):
 
 
   def gradient_wrt_xyz(self, selection = None):
+    #XXX consolidate with other similar functions
     structure_factor_gradients = cctbx.xray.structure_factors.gradients(
                                                 miller_set    = self.f_obs_w(),
                                                 cos_sin_table = True)
     gradient_flags = cctbx.xray.structure_factors.gradient_flags(site  = True,
                                                                  u_iso = False)
+    xrs_ = self.xray_structure.deep_copy_scatterers()
+    for scatterer in xrs_.scatterers():
+      scatterer.flags.set_grad_site(gradient_flags.site)
+      scatterer.flags.set_grad_u_iso(gradient_flags.u_iso)
+      scatterer.flags.set_grad_u_aniso(gradient_flags.u_aniso)
+      scatterer.flags.set_grad_occupancy(gradient_flags.occupancy)
+      scatterer.flags.set_grad_fp(gradient_flags.fp)
+      scatterer.flags.set_grad_fdp(gradient_flags.fdp)
 
     if(self.target_name.count("ls") == 0):
        alpha_w, beta_w = self.alpha_beta_w()
@@ -581,15 +609,14 @@ class manager(object):
                                               scale_ml          = None,
                                               flag              = "work")
     if(selection is None):
-       xrs = self.xray_structure
+       xrs = xrs_
     else:
-       xrs = self.xray_structure.select(selection)
+       xrs = xrs_.select(selection)
     sf = structure_factor_gradients(
          mean_displacements = None,
          d_target_d_f_calc  = xrtfr.derivatives(),
-         xray_structure     = xrs,
-         gradient_flags     = gradient_flags,
-         n_parameters       = xrs.n_parameters(gradient_flags),
+         xray_structure     = xrs_,
+         n_parameters       = xrs.n_parameters(),
          miller_set         = self.f_obs_w(),
          algorithm          = self.sf_algorithm)
     grad_xray = flex.vec3_double(sf.packed())
@@ -632,7 +659,7 @@ class manager(object):
          d_target_d_f_calc  = xrtfr.derivatives(),
          xray_structure     = self.xray_structure,
          gradient_flags     = gradient_flags,
-         n_parameters       = self.xray_structure.n_parameters(gradient_flags),
+         n_parameters       = self.xray_structure.n_parameters(),
          miller_set         = self.f_obs_w(),
          algorithm          = self.sf_algorithm)
     grad_xray = sf.packed()

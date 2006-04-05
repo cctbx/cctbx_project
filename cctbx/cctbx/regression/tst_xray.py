@@ -105,8 +105,15 @@ def exercise_structure():
   assert approx_equal(ys.scatterers()[1].weight(),0.25)
   ys.scatterers()[1].occupancy -= 0.1
   assert approx_equal(ys.scatterers()[1].weight(),0.2)
-  assert xs.n_parameters(xray.structure_factors.gradient_flags(default=True)) \
-         == 14
+  gradient_flags = xray.structure_factors.gradient_flags(default=True)
+  for scatterer in xs.scatterers():
+      scatterer.flags.set_grad_site(gradient_flags.site)
+      scatterer.flags.set_grad_u_iso(gradient_flags.u_iso)
+      scatterer.flags.set_grad_u_aniso(gradient_flags.u_aniso)
+      scatterer.flags.set_grad_occupancy(gradient_flags.occupancy)
+      scatterer.flags.set_grad_fp(gradient_flags.fp)
+      scatterer.flags.set_grad_fdp(gradient_flags.fdp)
+  assert xs.n_parameters() == 14
   g = flex.vec3_double(((0.1,0.2,0.3),(0.2,0.3,0.4)))
   xs.apply_special_position_ops_d_target_d_site(g)
   assert approx_equal(g[0], (0,0,0))

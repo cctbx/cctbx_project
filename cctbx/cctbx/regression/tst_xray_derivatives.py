@@ -5,6 +5,7 @@ from cctbx.array_family import flex
 import random
 import math
 import sys
+from cctbx import adptbx
 
 def finite_differences_site(cartesian_flag, target_ftor, structure,
                             delta=0.00001):
@@ -70,9 +71,10 @@ def finite_differences_scalar(parameter_name, target_ftor, structure,
       ms = modified_structure.scatterers()[i_scatterer]
       if   (parameter_name == "u_iso"):
         ms.u_iso += d_sign * delta
-      elif (parameter_name == "sqrt_u_iso"):
+      elif (parameter_name == "tan_u_iso"):
         assert ms.u_iso >= 0
-        ms.u_iso = (math.sqrt(ms.u_iso) + d_sign * delta)**2
+        x = math.tan(ms.u_iso*math.pi/adptbx.b_as_u(ms.flags.param)-math.pi/2) + d_sign * delta
+        ms.u_iso = adptbx.b_as_u(ms.flags.param)/math.pi*(math.atan(x)+math.pi/2)
       elif (parameter_name == "occupancy"):
         ms.occupancy += d_sign * delta
       elif (parameter_name == "fp"):
@@ -165,20 +167,27 @@ def exercise(target_functor, parameter_name, space_group_info,
     try: print "correlation = %.6g" % (target_result.correlation(),)
     except: pass
     print "target = %.6g" % (target_result.target(),)
+
   gradient_flags=xray.structure_factors.gradient_flags(
-    site=(parameter_name=="site" or random.choice((0,1))),
-    u_iso=(parameter_name=="u_iso" or random.choice((0,1))),
-    u_aniso=(parameter_name=="u_star" or random.choice((0,1))),
-    occupancy=(parameter_name=="occupancy" or random.choice((0,1))),
-    fp=(parameter_name=="fp" or random.choice((0,1))),
-    fdp=(parameter_name=="fdp"
-         or (anomalous_flag and random.choice((0,1)))))
+     site=(parameter_name=="site" or random.choice((0,1))),
+     u_iso=(parameter_name=="u_iso" or random.choice((0,1))),
+     u_aniso=(parameter_name=="u_star" or random.choice((0,1))),
+     occupancy=(parameter_name=="occupancy" or random.choice((0,1))),
+     fp=(parameter_name=="fp" or random.choice((0,1))),
+     fdp=(parameter_name=="fdp" or (anomalous_flag and random.choice((0,1)))))
+  for scatterer in structure.scatterers():
+      scatterer.flags.set_grad_site(gradient_flags.site)
+      scatterer.flags.set_grad_u_iso(gradient_flags.u_iso)
+      scatterer.flags.set_grad_u_aniso(gradient_flags.u_aniso)
+      scatterer.flags.set_grad_occupancy(gradient_flags.occupancy)
+      scatterer.flags.set_grad_fp(gradient_flags.fp)
+      scatterer.flags.set_grad_fdp(gradient_flags.fdp)
+
   sf = xray.structure_factors.gradients_direct(
     xray_structure=structure,
     mean_displacements=None,
     miller_set=f_obs,
     d_target_d_f_calc=target_result.derivatives(),
-    gradient_flags=gradient_flags,
     n_parameters=0)
   if (parameter_name == "site"):
     d_analytical = sf.d_target_d_site_frac()
@@ -209,17 +218,25 @@ def exercise(target_functor, parameter_name, space_group_info,
   linear_regression_test(d_analytical, d_numerical, test_hard,
                          verbose=verbose)
   if (parameter_name == "u_iso"):
-    gradient_flags.sqrt_u_iso = True
+    u_iso_refinable_params = flex.double()
+    for scatterer in structure.scatterers():
+        # XXX this must go away after allowing a mixture of atoms with iso/aniso
+        assert scatterer.anisotropic_flag is False
+        assert scatterer.flags.use_u_aniso() == False
+        scatterer.flags.set_tan_u_iso(True)
+        scatterer.flags.set_grad_u_iso(gradient_flags.u_iso)
+        param = random.randint(90,120)
+        scatterer.flags.param= param
+        value = math.tan(scatterer.u_iso*math.pi/adptbx.b_as_u(param)-math.pi/2)
+        u_iso_refinable_params.append(value)
     sf = xray.structure_factors.gradients_direct(
       xray_structure=structure,
-      mean_displacements=flex.sqrt(structure.scatterers().extract_u_iso()),
+      mean_displacements = u_iso_refinable_params,
       miller_set=f_obs,
       d_target_d_f_calc=target_result.derivatives(),
-      gradient_flags=gradient_flags,
       n_parameters=0)
     d_analytical = sf.d_target_d_u_iso()
-    d_numerical = finite_differences_scalar(
-      "sqrt_u_iso", target_ftor, structure)
+    d_numerical = finite_differences_scalar("tan_u_iso",target_ftor, structure)
     linear_regression_test(d_analytical, d_numerical, test_hard,
                            verbose=verbose)
 

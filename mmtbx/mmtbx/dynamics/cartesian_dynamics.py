@@ -40,6 +40,15 @@ class cartesian_dynamics(object):
     assert self.temperature >= 0.0
     assert self.n_steps >= 0
     assert self.time_step >= 0.0
+    for scatterer in self.structure.scatterers():
+        scatterer.flags.set_grad_site(True)
+        scatterer.flags.set_grad_u_iso(False)
+        scatterer.flags.set_grad_u_aniso(False)
+        scatterer.flags.set_grad_occupancy(False)
+        scatterer.flags.set_grad_fp(False)
+        scatterer.flags.set_grad_fdp(False)
+        scatterer.flags.set_tan_u_iso(False)
+        scatterer.flags.param = 0
     self.structure_start = self.structure.deep_copy_scatterers()
     self.k_boltz = 1.380662e-03
     self.current_temperature = 0.0
@@ -171,14 +180,12 @@ class cartesian_dynamics(object):
     structure_factor_gradients = cctbx.xray.structure_factors.gradients(
                                   miller_set    = self.fmodel_copy.f_obs_w(),
                                   cos_sin_table = True)
-    xray_gradient_flags = xray.structure_factors.gradient_flags(site = True)
-    n = self.structure.n_parameters(xray_gradient_flags)
+    n = self.structure.n_parameters()
     sf = structure_factor_gradients(
                         xray_structure    = self.structure,
                         mean_displacements= None,
                         miller_set        = self.fmodel_copy.f_obs_w(),
                         d_target_d_f_calc = xray_target_result.derivatives(),
-                        gradient_flags    = xray_gradient_flags,
                         n_parameters      = 0,
                         algorithm         = "fft")
     xray_grads = sf.d_target_d_site_cart()

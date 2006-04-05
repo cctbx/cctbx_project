@@ -16,7 +16,7 @@ namespace {
 
     to_string()
     {
-      unsigned version = 1;
+      unsigned version = 2;
       *this << version;
     }
 
@@ -33,8 +33,8 @@ namespace {
       *this << val.u_star.const_ref()
             << val.multiplicity()
             << val.weight_without_occupancy();
-      *this << val.refinement_flags.bits
-            << val.refinement_flags.param;
+      *this << val.flags.bits
+            << val.flags.param;
       return *this;
     }
   };
@@ -45,7 +45,7 @@ namespace {
     : pickle_double_buffered::from_string(str_obj)
     {
       *this >> version;
-      CCTBX_ASSERT(version == 1);
+      CCTBX_ASSERT(version == 2);
     }
 
     using pickle_double_buffered::from_string::operator>>;
@@ -65,8 +65,8 @@ namespace {
       *this >> val.u_star.ref()
             >> multiplicity
             >> weight_without_occupancy;
-      *this >> val.refinement_flags.bits
-            >> val.refinement_flags.param;
+      *this >> val.flags.bits
+            >> val.flags.param;
       val.setstate(multiplicity, weight_without_occupancy);
       return *this;
     }
