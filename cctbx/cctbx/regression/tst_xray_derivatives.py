@@ -221,8 +221,8 @@ def exercise(target_functor, parameter_name, space_group_info,
     u_iso_refinable_params = flex.double()
     for scatterer in structure.scatterers():
         # XXX this must go away after allowing a mixture of atoms with iso/aniso
-        assert scatterer.anisotropic_flag is False
-        assert scatterer.flags.use_u_aniso() == False
+        assert not scatterer.anisotropic_flag
+        assert not scatterer.flags.use_u_aniso()
         scatterer.flags.set_tan_u_iso(True)
         scatterer.flags.set_grad_u_iso(gradient_flags.u_iso)
         param = random.randint(90,120)
