@@ -365,10 +365,29 @@ def exercise(args):
   if (ncs_dir is None):
     print "Skipping exercise(): input files not available"
   else:
+    for file_name in ["simple.pdb", "ambiguous_alignment.pdb"]:
+      processed_pdb = monomer_library.pdb_interpretation.process(
+        mon_lib_srv=mon_lib_srv,
+        ener_lib=ener_lib,
+        file_name=os.path.join(ncs_dir, file_name),
+        log=log)
+      group = ncs.restraints.group(
+        processed_pdb=processed_pdb,
+        reference_selection_string=None,
+        selection_strings=["chain A", "chain B"],
+        coordinate_sigma=None,
+        b_factor_weight=None)
+      assert len(group.selection_pairs) == 1
+      assert list(group.selection_pairs[0][0]) == [0,1,2,3]
+      if (file_name == "simple.pdb"):
+        assert list(group.selection_pairs[0][1]) == [4,5,6,7]
+      else:
+        assert list(group.selection_pairs[0][1]) == [4,6,7,8]
+    #
     processed_pdb = monomer_library.pdb_interpretation.process(
       mon_lib_srv=mon_lib_srv,
       ener_lib=ener_lib,
-      file_name=os.path.join(ncs_dir, "ambiguous_alignment.pdb"),
+      file_name=os.path.join(ncs_dir, "no_match.pdb"),
       log=log)
     try:
       ncs.restraints.group(
@@ -378,27 +397,24 @@ def exercise(args):
         coordinate_sigma=None,
         b_factor_weight=None)
     except Sorry, e:
-      assert not show_diff(str(e), """\
-Ambiguous alignment of NCS restraints selections:
+      assert not show_diff(str(e), '''\
+NCS restraints selections do not produce any pairs of matching atoms:
   Reference selection: "chain A"
-      Other selection: "chain B"
-    Number of possible alginments: 2
-    Alignment 1:
-      ---  GLU
-      GLU  GLU
-      ALA  ALA
-      SER  SER
-      SER  SER
-      ---  THR
-    Alignment 2:
-      GLU  GLU
-      ---  GLU
-      ALA  ALA
-      SER  SER
-      SER  SER
-      ---  THR""")
-    else:
-      raise RuntimeError("Exception expected.")
+      Other selection: "chain B"''')
+    else: raise RuntimeError("Exception expected.")
+    try:
+      ncs.restraints.group(
+        processed_pdb=processed_pdb,
+        reference_selection_string=None,
+        selection_strings=["chain A", "chain C"],
+        coordinate_sigma=None,
+        b_factor_weight=None)
+    except Sorry, e:
+      assert not show_diff(str(e), '''\
+NCS restraints selections produce only one pair of matching atoms:
+  Reference selection: "chain A"
+      Other selection: "chain C"''')
+    else: raise RuntimeError("Exception expected.")
     #
     processed_pdb = monomer_library.pdb_interpretation.process(
       mon_lib_srv=mon_lib_srv,
