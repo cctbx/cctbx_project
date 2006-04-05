@@ -16,7 +16,7 @@ if (__builtins__.get("bool", None) is None):
     return False
   __builtins__["bool"] = bool
 
-if (__builtins__.get("_enumerate", None) is None):
+if (__builtins__.get("enumerate", None) is None):
   def enumerate(iterable):
     """enumerate(iterable) -> iterator for index, value of iterable
 
