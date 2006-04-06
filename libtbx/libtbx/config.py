@@ -801,6 +801,9 @@ class environment:
       print >> s, """  alias libtbx.%s='. "%s/%s.sh"'""" % (
        command, self.build_path, command)
     print >> u, '  unalias libtbx.unsetpaths > /dev/null 2>&1'
+    if (self.is_development_environment()):
+      print >> s, """  alias cdlibtbxbuild='cd "%s"'""" % self.build_path
+      print >> u, '  unalias cdlibtbxbuild > /dev/null 2>&1'
     setpaths.all_and_debug()
     for f in s, u:
       print >> f, 'fi'
@@ -827,6 +830,9 @@ class environment:
       print >> s, """  alias libtbx.%s 'source "%s/%s.csh"'""" % (
        command, self.build_path, command)
     print >> u, '  unalias libtbx.unsetpaths'
+    if (self.is_development_environment()):
+      print >> s, """  alias cdlibtbxbuild 'cd "%s"'""" % self.build_path
+      print >> u, '  unalias cdlibtbxbuild'
     setpaths.all_and_debug()
     for f in s, u:
       print >> f, 'endif'
@@ -849,9 +855,12 @@ class environment:
       print >> f, '  set PYTHONHOME='
     setpaths.update_path("PATH", [self.bin_path])
     for command in ["setpaths_all", "unsetpaths"]:
-      print >> s, '  doskey libtbx.%s=%s\\%s.bat $*' % (
+      print >> s, '  doskey libtbx.%s="%s\\%s.bat"' % (
         command, self.build_path, command)
     print >> u, '  doskey libtbx.unsetpaths='
+    if (self.is_development_environment()):
+      print >> s, '  doskey cdlibtbxbuild=cd "%s"' % self.build_path
+      print >> u, '  doskey cdlibtbxbuild='
     setpaths.all_and_debug()
     if (suffix == "_debug"):
       print >> s, '  set PYTHONCASEOK=1' # no unset
@@ -990,7 +999,7 @@ class environment:
       hash[path_normcase] = None
       self.pythonpath.append(path)
 
-  def want_python_dispatcher(self):
+  def is_development_environment(self):
     libtbx_cvs_root = self.under_dist("libtbx", "CVS/Root")
     if (os.path.isfile(libtbx_cvs_root)):
       try: libtbx_cvs_root = open(libtbx_cvs_root).read()
@@ -1014,7 +1023,7 @@ class environment:
     if (not os.path.isdir(self.bin_path)):
       os.makedirs(self.bin_path)
     python_dispatchers = ["libtbx.python"]
-    if (self.want_python_dispatcher()):
+    if (self.is_development_environment()):
       python_dispatchers.append("python")
     for file_name in python_dispatchers:
       self.write_dispatcher_in_bin(
