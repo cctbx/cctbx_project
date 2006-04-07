@@ -175,14 +175,13 @@ def exercise(target_functor, parameter_name, space_group_info,
      occupancy=(parameter_name=="occupancy" or random.choice((0,1))),
      fp=(parameter_name=="fp" or random.choice((0,1))),
      fdp=(parameter_name=="fdp" or (anomalous_flag and random.choice((0,1)))))
-  for scatterer in structure.scatterers():
-      scatterer.flags.set_grad_site(gradient_flags.site)
-      scatterer.flags.set_grad_u_iso(gradient_flags.u_iso)
-      scatterer.flags.set_grad_u_aniso(gradient_flags.u_aniso)
-      scatterer.flags.set_grad_occupancy(gradient_flags.occupancy)
-      scatterer.flags.set_grad_fp(gradient_flags.fp)
-      scatterer.flags.set_grad_fdp(gradient_flags.fdp)
-
+  xray.set_scatterer_grad_flags(scatterers = structure.scatterers(),
+                                site       = gradient_flags.site,
+                                u_iso      = gradient_flags.u_iso,
+                                u_aniso    = gradient_flags.u_aniso,
+                                occupancy  = gradient_flags.occupancy,
+                                fp         = gradient_flags.fp,
+                                fdp        = gradient_flags.fdp)
   sf = xray.structure_factors.gradients_direct(
     xray_structure=structure,
     mean_displacements=None,

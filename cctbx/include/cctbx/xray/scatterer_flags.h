@@ -206,6 +206,32 @@ namespace cctbx { namespace xray {
       all_zero() const { return site+u_iso+u_aniso+occupancy+fp+fdp; }
   };
 
+  template <typename ScattererType>
+  void
+  set_scatterer_grad_flags(
+                    scitbx::af::ref<ScattererType> const& scatterers,
+                    bool site      = false,
+                    bool u_iso     = false,
+                    bool u_aniso   = false,
+                    bool occupancy = false,
+                    bool fp        = false,
+                    bool fdp       = false,
+                    bool tan_u_iso = false,
+                    int  param     = 0)
+  {
+    for(std::size_t i=0;i<scatterers.size();i++) {
+        ScattererType& sc = scatterers[i];
+        sc.flags.set_grad_site(site);
+        sc.flags.set_grad_u_iso(u_iso);
+        sc.flags.set_grad_u_aniso(u_aniso);
+        sc.flags.set_grad_occupancy(occupancy);
+        sc.flags.set_grad_fp(fp);
+        sc.flags.set_grad_fdp(fdp);
+        sc.flags.set_tan_u_iso(tan_u_iso);
+        sc.flags.param = param;
+    }
+  };
+
 }} // namespace cctbx::xray
 
 #endif // CCTBX_XRAY_SCATTERER_FLAGS_H

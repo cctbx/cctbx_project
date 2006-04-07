@@ -232,13 +232,13 @@ def site(structure_ideal, d_min, f_obs, verbose=0):
   gradient_flags = randomize_gradient_flags(
     xray.structure_factors.gradient_flags(site=True),
     f_obs.anomalous_flag())
-  for scatterer in sh.structure_shifted.scatterers():
-      scatterer.flags.set_grad_site(gradient_flags.site)
-      scatterer.flags.set_grad_u_iso(gradient_flags.u_iso)
-      scatterer.flags.set_grad_u_aniso(gradient_flags.u_aniso)
-      scatterer.flags.set_grad_occupancy(gradient_flags.occupancy)
-      scatterer.flags.set_grad_fp(gradient_flags.fp)
-      scatterer.flags.set_grad_fdp(gradient_flags.fdp)
+  xray.set_scatterer_grad_flags(scatterers = sh.structure_shifted.scatterers(),
+                                site       = gradient_flags.site,
+                                u_iso      = gradient_flags.u_iso,
+                                u_aniso    = gradient_flags.u_aniso,
+                                occupancy  = gradient_flags.occupancy,
+                                fp         = gradient_flags.fp,
+                                fdp        = gradient_flags.fdp)
   sfd = xray.structure_factors.gradients_direct(
     xray_structure=sh.structure_shifted,
     mean_displacements=None,
@@ -349,13 +349,13 @@ def u_star(structure_ideal, d_min, f_obs, verbose=0):
   gradient_flags = randomize_gradient_flags(
     xray.structure_factors.gradient_flags(u_aniso=True),
     f_obs.anomalous_flag())
-  for scatterer in sh.structure_shifted.scatterers():
-      scatterer.flags.set_grad_site(gradient_flags.site)
-      scatterer.flags.set_grad_u_iso(gradient_flags.u_iso)
-      scatterer.flags.set_grad_u_aniso(gradient_flags.u_aniso)
-      scatterer.flags.set_grad_occupancy(gradient_flags.occupancy)
-      scatterer.flags.set_grad_fp(gradient_flags.fp)
-      scatterer.flags.set_grad_fdp(gradient_flags.fdp)
+  xray.set_scatterer_grad_flags(scatterers = sh.structure_shifted.scatterers(),
+                                site       = gradient_flags.site,
+                                u_iso      = gradient_flags.u_iso,
+                                u_aniso    = gradient_flags.u_aniso,
+                                occupancy  = gradient_flags.occupancy,
+                                fp         = gradient_flags.fp,
+                                fdp        = gradient_flags.fdp)
   sfd = xray.structure_factors.gradients_direct(
     xray_structure=sh.structure_shifted,
     mean_displacements=None,
@@ -411,13 +411,13 @@ def occupancy(structure_ideal, d_min, f_obs, verbose=0):
   gradient_flags = randomize_gradient_flags(
     xray.structure_factors.gradient_flags(occupancy=True),
     f_obs.anomalous_flag())
-  for scatterer in sh.structure_shifted.scatterers():
-      scatterer.flags.set_grad_site(gradient_flags.site)
-      scatterer.flags.set_grad_u_iso(gradient_flags.u_iso)
-      scatterer.flags.set_grad_u_aniso(gradient_flags.u_aniso)
-      scatterer.flags.set_grad_occupancy(gradient_flags.occupancy)
-      scatterer.flags.set_grad_fp(gradient_flags.fp)
-      scatterer.flags.set_grad_fdp(gradient_flags.fdp)
+  xray.set_scatterer_grad_flags(scatterers = sh.structure_shifted.scatterers(),
+                                site       = gradient_flags.site,
+                                u_iso      = gradient_flags.u_iso,
+                                u_aniso    = gradient_flags.u_aniso,
+                                occupancy  = gradient_flags.occupancy,
+                                fp         = gradient_flags.fp,
+                                fdp        = gradient_flags.fdp)
   sfd = xray.structure_factors.gradients_direct(
     xray_structure=sh.structure_shifted,
     mean_displacements=None,
@@ -464,13 +464,13 @@ def fp(structure_ideal, d_min, f_obs, verbose=0):
   gradient_flags = randomize_gradient_flags(
     xray.structure_factors.gradient_flags(fp=True),
     f_obs.anomalous_flag())
-  for scatterer in sh.structure_shifted.scatterers():
-      scatterer.flags.set_grad_site(gradient_flags.site)
-      scatterer.flags.set_grad_u_iso(gradient_flags.u_iso)
-      scatterer.flags.set_grad_u_aniso(gradient_flags.u_aniso)
-      scatterer.flags.set_grad_occupancy(gradient_flags.occupancy)
-      scatterer.flags.set_grad_fp(gradient_flags.fp)
-      scatterer.flags.set_grad_fdp(gradient_flags.fdp)
+  xray.set_scatterer_grad_flags(scatterers = sh.structure_shifted.scatterers(),
+                                site       = gradient_flags.site,
+                                u_iso      = gradient_flags.u_iso,
+                                u_aniso    = gradient_flags.u_aniso,
+                                occupancy  = gradient_flags.occupancy,
+                                fp         = gradient_flags.fp,
+                                fdp        = gradient_flags.fdp)
   sfd = xray.structure_factors.gradients_direct(
     xray_structure=sh.structure_shifted,
     mean_displacements=None,
@@ -517,13 +517,13 @@ def fdp(structure_ideal, d_min, f_obs, verbose=0):
   gradient_flags = randomize_gradient_flags(
     xray.structure_factors.gradient_flags(fdp=True),
     f_obs.anomalous_flag())
-  for scatterer in sh.structure_shifted.scatterers():
-      scatterer.flags.set_grad_site(gradient_flags.site)
-      scatterer.flags.set_grad_u_iso(gradient_flags.u_iso)
-      scatterer.flags.set_grad_u_aniso(gradient_flags.u_aniso)
-      scatterer.flags.set_grad_occupancy(gradient_flags.occupancy)
-      scatterer.flags.set_grad_fp(gradient_flags.fp)
-      scatterer.flags.set_grad_fdp(gradient_flags.fdp)
+  xray.set_scatterer_grad_flags(scatterers = sh.structure_shifted.scatterers(),
+                                site       = gradient_flags.site,
+                                u_iso      = gradient_flags.u_iso,
+                                u_aniso    = gradient_flags.u_aniso,
+                                occupancy  = gradient_flags.occupancy,
+                                fp         = gradient_flags.fp,
+                                fdp        = gradient_flags.fdp)
   sfd = xray.structure_factors.gradients_direct(
     xray_structure=sh.structure_shifted,
     mean_displacements=None,
@@ -575,16 +575,16 @@ def exercise_packed(structure_ideal, f_obs,
     thresholds=(1/2.,0))
   if (anisotropic_flag):
     u_iso_refinable_params = None
-    for scatterer in sh.structure_shifted.scatterers():
-      scatterer.flags.set_grad_site(gradient_flags.site)
-      scatterer.flags.set_grad_u_iso(gradient_flags.u_iso)
-      scatterer.flags.set_grad_u_aniso(gradient_flags.u_aniso)
-      scatterer.flags.set_grad_occupancy(gradient_flags.occupancy)
-      scatterer.flags.set_grad_fp(gradient_flags.fp)
-      scatterer.flags.set_grad_fdp(gradient_flags.fdp)
+    xray.set_scatterer_grad_flags(
+                                scatterers = sh.structure_shifted.scatterers(),
+                                site       = gradient_flags.site,
+                                u_iso      = gradient_flags.u_iso,
+                                u_aniso    = gradient_flags.u_aniso,
+                                occupancy  = gradient_flags.occupancy,
+                                fp         = gradient_flags.fp,
+                                fdp        = gradient_flags.fdp)
   else:
     u_iso_refinable_params = flex.double()
-    #XXX tan_u_iso forgotten ?
     for scatterer in sh.structure_shifted.scatterers():
         scatterer.flags.set_grad_site(gradient_flags.site)
         scatterer.flags.set_grad_u_iso(gradient_flags.u_iso)
@@ -592,12 +592,11 @@ def exercise_packed(structure_ideal, f_obs,
         scatterer.flags.set_grad_occupancy(gradient_flags.occupancy)
         scatterer.flags.set_grad_fp(gradient_flags.fp)
         scatterer.flags.set_grad_fdp(gradient_flags.fdp)
+        scatterer.flags.set_tan_u_iso(True)
         param = random.randint(90,120)
         scatterer.flags.param= param
         value = math.tan(scatterer.u_iso*math.pi/adptbx.b_as_u(param)-math.pi/2)
         u_iso_refinable_params.append(value)
-  #if (gradient_flags.u_iso and not anisotropic_flag):
-  #  gradient_flags.sqrt_u_iso = (random.random() > 0.5)
   n_parameters = sh.structure_shifted.n_parameters()
   assert n_parameters > 0
   sfd = xray.structure_factors.gradients_direct(
@@ -628,13 +627,13 @@ def exercise_gradient_manager(structure_ideal, f_obs,
     quality_factor=100000,
     wing_cutoff=1.e-10)
   gradient_flags=xray.structure_factors.gradient_flags(default=True)
-  for scatterer in sh.structure_shifted.scatterers():
-      scatterer.flags.set_grad_site(gradient_flags.site)
-      scatterer.flags.set_grad_u_iso(gradient_flags.u_iso)
-      scatterer.flags.set_grad_u_aniso(gradient_flags.u_aniso)
-      scatterer.flags.set_grad_occupancy(gradient_flags.occupancy)
-      scatterer.flags.set_grad_fp(gradient_flags.fp)
-      scatterer.flags.set_grad_fdp(gradient_flags.fdp)
+  xray.set_scatterer_grad_flags(scatterers = sh.structure_shifted.scatterers(),
+                                site       = gradient_flags.site,
+                                u_iso      = gradient_flags.u_iso,
+                                u_aniso    = gradient_flags.u_aniso,
+                                occupancy  = gradient_flags.occupancy,
+                                fp         = gradient_flags.fp,
+                                fdp        = gradient_flags.fdp)
   if (random.random() > 0.5):
     n_parameters = 0
   else:

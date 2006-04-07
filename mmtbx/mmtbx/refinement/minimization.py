@@ -24,15 +24,8 @@ class lbfgs(object):
                      beta_w=None):
     adopt_init_args(self, locals())
     self.xray_structure = self.fmodel.xray_structure
-    for scatterer in self.xray_structure.scatterers():
-        scatterer.flags.set_grad_site(True)
-        scatterer.flags.set_grad_u_iso(False)
-        scatterer.flags.set_grad_u_aniso(False)
-        scatterer.flags.set_grad_occupancy(False)
-        scatterer.flags.set_grad_fp(False)
-        scatterer.flags.set_grad_fdp(False)
-        scatterer.flags.set_tan_u_iso(False)
-        scatterer.flags.param = 0
+    xray.set_scatterer_grad_flags(scatterers = self.xray_structure.scatterers(),
+                                  site       = True)
     self.echem_start = None
     self.exray_start = None
     self.echem_final = None

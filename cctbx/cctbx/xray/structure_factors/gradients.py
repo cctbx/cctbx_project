@@ -11,7 +11,6 @@ class gradients(manager):
                      mean_displacements,
                      miller_set,
                      d_target_d_f_calc,
-                     #gradient_flags,
                      n_parameters,
                      algorithm=None):
     assert algorithm in ("direct", "fft", None)
@@ -19,7 +18,6 @@ class gradients(manager):
       n_scatterers = xray_structure.scatterers().size()
       n_miller_indices = miller_set.indices().size()
       if (not self.have_good_timing_estimates()):
-        # rough estimate
         if (  4*n_scatterers*self.space_group().order_p()*n_miller_indices
             < self.crystal_gridding().n_grid_points()):
           algorithm = "direct"
@@ -35,5 +33,4 @@ class gradients(manager):
       mean_displacements=mean_displacements,
       miller_set=miller_set,
       d_target_d_f_calc=d_target_d_f_calc,
-      #gradient_flags=gradient_flags,
       n_parameters=n_parameters)

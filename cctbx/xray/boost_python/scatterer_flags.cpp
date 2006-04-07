@@ -1,8 +1,9 @@
 #include <boost/python/class.hpp>
+#include <boost/python/def.hpp>
 #include <boost/python/args.hpp>
-#include <cctbx/xray/scatterer.h>
+#include <boost/python/overloads.hpp>
 #include <boost/python/return_arg.hpp>
-#include <cctbx/xray/scatterer_flags.h> // XXX remove later
+#include <cctbx/xray/scatterer.h>
 
 namespace cctbx { namespace xray { namespace boost_python {
 
@@ -109,12 +110,35 @@ namespace {
     }
   };
 
+  BOOST_PYTHON_FUNCTION_OVERLOADS(set_scatterer_grad_flags_overloads,
+    set_scatterer_grad_flags,1,9)
+
 } // namespace <anoymous>
 
   void wrap_scatterer_flags()
   {
+    using namespace boost::python;
     scatterer_flags_wrappers::wrap();
     scatterer_grad_flags_counts_wrappers::wrap();
+    def("set_scatterer_grad_flags",(void
+      (*)(scitbx::af::ref<scatterer<> > const&,
+                           bool,
+                           bool,
+                           bool,
+                           bool,
+                           bool,
+                           bool,
+                           bool,
+                           int)) set_scatterer_grad_flags<scatterer<> >,
+         (arg_("scatterers"),
+          arg_("site")=false,
+          arg_("u_iso")=false,
+          arg_("u_aniso")=false,
+          arg_("occupancy")=false,
+          arg_("fp")=false,
+          arg_("fdp")=false,
+          arg_("tan_u_iso")=false,
+          arg_("param")=0));
   }
 
 }}} // namespace cctbx::xray::boost_python
