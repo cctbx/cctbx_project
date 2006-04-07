@@ -28,7 +28,14 @@ def LATT_SYMM(s, space_group):
   for i in xrange(1, space_group.n_smx()):
     print >> s, "SYMM", space_group(i).as_xyz(0, 0, "XYZ", ",")
 
-def shelxd(s, title, crystal_symmetry, n_sites, scattering_type, d_min):
+def shelxd(s,
+      title,
+      crystal_symmetry,
+      n_sites,
+      scattering_type,
+      d_min,
+      mind_mdis=-3.5,
+      mind_mdeq=None):
   print >> s, "TITL", title
   print >> s, "CELL 1.0 %.6g %.6g %.6g %.6g %.6g %.6g" \
                 % crystal_symmetry.unit_cell().parameters()
@@ -39,7 +46,10 @@ def shelxd(s, title, crystal_symmetry, n_sites, scattering_type, d_min):
   print >> s, "PSMF  pres -%.2f" % d_min
   print >> s, "PATS  np  100   npt     99999   nf     5"
   print >> s, "FIND", n_sites
-  print >> s, "MIND -3.5"
+  print >> s, "MIND", mind_mdis,
+  if (mind_mdeq is not None):
+    print >> s, mind_mdeq,
+  print >> s
   if (n_sites >= 10): # following advice in shelx-de.pdf manual
     print >> s, "WEED 0.3"
     print >> s, "SKIP 0.5"
