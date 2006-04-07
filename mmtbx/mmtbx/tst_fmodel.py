@@ -4,6 +4,7 @@ from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from cctbx import sgtbx
 from libtbx.test_utils import approx_equal
+from libtbx.utils import format_cpu_times
 import random
 import sys, math
 
@@ -43,8 +44,8 @@ def test_1(xray_structure):
                       assert fmodel.f_obs.data().all_eq(f_obs.data())
                       assert abs(fmodel.f_calc).data().all_eq(f_obs.data())
                       assert abs(fmodel.f_model()).data().all_eq(f_obs.data())
-                      assert fmodel.r_work() == 0.0
-                      assert fmodel.r_free() == 0.0
+                      assert approx_equal(fmodel.r_work(), 0, 1.e-9)
+                      assert approx_equal(fmodel.r_free(), 0, 1.e-9)
                       assert fmodel.fu_aniso().all_eq(1.0)
                       assert fmodel.fu_aniso_w().all_eq(1.0)
                       assert fmodel.fu_aniso_t().all_eq(1.0)
@@ -108,8 +109,8 @@ def test_1(xray_structure):
                       assert fmodel.f_obs.data().all_eq(f_obs.data())
                       assert abs(fmodel.f_calc).data().all_eq(f_obs.data())
                       assert abs(fmodel.f_model()).data().all_eq(f_obs.data())
-                      assert fmodel.r_work() == 0.0
-                      assert fmodel.r_free() == 0.0
+                      assert approx_equal(fmodel.r_work(), 0, 1.e-9)
+                      assert approx_equal(fmodel.r_free(), 0, 1.e-9)
                       assert fmodel.fu_aniso().all_eq(1.0)
                       assert fmodel.fu_aniso_w().all_eq(1.0)
                       assert fmodel.fu_aniso_t().all_eq(1.0)
@@ -174,8 +175,8 @@ def test_1(xray_structure):
                       assert fmodel.f_obs.data().all_eq(f_obs.data())
                       assert abs(fmodel.f_calc).data().all_eq(f_obs.data())
                       assert abs(fmodel.f_model()).data().all_eq(f_obs.data())
-                      assert fmodel.r_work() == 0.0
-                      assert fmodel.r_free() == 0.0
+                      assert approx_equal(fmodel.r_work(), 0, 1.e-9)
+                      assert approx_equal(fmodel.r_free(), 0, 1.e-9)
                       assert fmodel.fu_aniso().all_eq(1.0)
                       assert fmodel.fu_aniso_w().all_eq(1.0)
                       assert fmodel.fu_aniso_t().all_eq(1.0)
@@ -314,11 +315,7 @@ def run():
 
 if (__name__ == "__main__"):
   run()
-  print "OK"
-
-
-
-
+  print format_cpu_times()
 
 #def run_one(space_group_info):
 #  n_elements = 70
