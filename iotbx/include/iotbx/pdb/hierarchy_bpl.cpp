@@ -28,8 +28,9 @@ namespace {
         char buf[128]; \
         std::sprintf(buf, \
           "string is too long for " #attr " attribute" \
-          " (maximum length is %d characters, %d given).", \
-            self.data->attr.capacity(), std::strlen(value)); \
+          " (maximum length is %u characters, %lu given).", \
+            self.data->attr.capacity(), \
+            static_cast<unsigned long>(std::strlen(value))); \
         PyErr_SetString(PyExc_ValueError, buf); \
         boost::python::throw_error_already_set(); \
       } \
