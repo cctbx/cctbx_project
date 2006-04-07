@@ -147,7 +147,6 @@ class resampling(crystal.symmetry):
   def __call__(self, xray_structure,
                      mean_displacements,
                      dp,
-                     #gradient_flags,
                      n_parameters,
                      verbose=0):
     result = xray.fast_gradients(
@@ -168,7 +167,6 @@ class resampling(crystal.symmetry):
       gradient_map = gradient_map.complex_map()
       assert not gradient_map.is_padded()
       if (0 or verbose):
-        #gradient_flags.show_summary()
         print "grid:", gradient_map.focus()
         print "ft_dt_map real: %.4g %.4g" % (
           flex.min(flex.real(gradient_map)),
@@ -183,7 +181,6 @@ class resampling(crystal.symmetry):
       scattering_type_registry=xray_structure.scattering_type_registry(),
       site_symmetry_table=xray_structure.site_symmetry_table(),
       ft_d_target_d_f_calc=gradient_map,
-      #grad_flags=gradient_flags,
       n_parameters=n_parameters,
       sampled_density_must_be_positive=False)
     if (0 or verbose):

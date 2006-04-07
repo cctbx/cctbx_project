@@ -491,11 +491,9 @@ class target_and_grads(object):
     self.grads_wrt_r = []
     self.grads_wrt_t = []
     target_grads_wrt_xyz = fmodel.gradient_wrt_atomic_parameters(
-                                                             sites = True,
-                                                             u_iso = False,
+                                                             site  = True,
                                                              alpha = alpha,
-                                                             beta  = beta,
-                                                             tan_b_iso_max = 0)
+                                                             beta  = beta)
     target_grads_wrt_xyz = flex.vec3_double(target_grads_wrt_xyz.packed())
     self.f = fmodel.target_w(alpha = alpha, beta = beta)
     for sel,rot_obj in zip(selections, rot_objs):

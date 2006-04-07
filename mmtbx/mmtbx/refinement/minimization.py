@@ -92,7 +92,6 @@ class lbfgs(object):
     self.f = self.exray_final * self.wx
     if(compute_gradients):
        sf = self.fmodel.gradient_wrt_atomic_parameters(
-                                                  sites = True,
                                                   alpha = self.alpha_w,
                                                   beta  = self.beta_w).packed()
        self.g = sf * self.wx

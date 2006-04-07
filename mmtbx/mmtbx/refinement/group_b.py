@@ -223,7 +223,6 @@ class target_and_grads(object):
                      tan_b_iso_max):
     self.grads_wrt_u = []
     target_grads_wrt_adp = fmodel.gradient_wrt_atomic_parameters(
-                                                 sites         = False,
                                                  u_iso         = True,
                                                  alpha         = alpha,
                                                  beta          = beta,

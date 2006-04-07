@@ -503,43 +503,42 @@ class manager(object):
                                            flag              = "test").target()
 
   def gradient_wrt_atomic_parameters(self, selection     = None,
-                                           sites         = None,
-                                           u_iso         = None,
+                                           site          = False,
+                                           u_iso         = False,
+                                           u_aniso       = False,
                                            alpha         = None,
                                            beta          = None,
                                            tan_b_iso_max = None,
                                            mean_displacements = None):
-    # XXX remove sqrt_u_iso : obsolete, never used
-    if(tan_b_iso_max is None): tan_b_iso_max = 0.0
-    xray_gradient_flags = xray.structure_factors.gradient_flags(
-                                                 site          = sites,
-                                                 u_iso         = u_iso,
-                                                 sqrt_u_iso    = False,
-                                                 tan_b_iso_max = tan_b_iso_max)
-    xrs_ = self.xray_structure.deep_copy_scatterers()
-    for scatterer in xrs_.scatterers():
-      scatterer.flags.set_grad_site(xray_gradient_flags.site)
-      scatterer.flags.set_grad_u_iso(xray_gradient_flags.u_iso)
-      scatterer.flags.set_grad_u_aniso(xray_gradient_flags.u_aniso)
-      scatterer.flags.set_grad_occupancy(xray_gradient_flags.occupancy)
-      scatterer.flags.set_grad_fp(xray_gradient_flags.fp)
-      scatterer.flags.set_grad_fdp(xray_gradient_flags.fdp)
-      if(tan_b_iso_max > 0.0 and tan_b_iso_max is not None):
-         scatterer.flags.set_tan_u_iso(True)
-         scatterer.flags.param= int(xray_gradient_flags.tan_b_iso_max)
-
+    xrs = self.xray_structure
+    if([site, u_iso, u_aniso].count(True) > 0):
+       tan_u_iso = False
+       param = 0
+       if(u_iso):
+          assert tan_b_iso_max is not None
+          if(tan_b_iso_max > 0.0):
+             tan_u_iso = True
+             param = int(tan_b_iso_max)
+       assert [site, u_iso, u_aniso].count(None) == 0
+       xrs = self.xray_structure.deep_copy_scatterers()
+       xray.set_scatterer_grad_flags(scatterers = xrs.scatterers(),
+                                     site       = site,
+                                     u_iso      = u_iso,
+                                     u_aniso    = u_aniso,
+                                     tan_u_iso  = tan_u_iso,
+                                     param      = param)
     structure_factor_gradients = cctbx.xray.structure_factors.gradients(
                                          miller_set    = self.f_obs_w(),
                                          cos_sin_table = self.sf_cos_sin_table)
+    #XXX clear with target names
     if(self.target_name.count("ml") > 0 or self.target_name.count("lsm") > 0):
        if([alpha, beta].count(None) == 2):
           alpha, beta = self.alpha_beta_w()
     if(self.target_name.count("ml") ==0 and self.target_name.count("lsm") ==0):
        assert [alpha, beta].count(None) == 2
-    if(selection is None):
-       xrs = xrs_
-    else:
-       xrs = xrs_.select(selection)
+    if(selection is not None):
+       xrs = xrs.select(selection)
+    #XXX make it general
     xrtfr = self.xray_target_functor_result(compute_gradients = True,
                                             alpha             = alpha,
                                             beta              = beta,
@@ -552,135 +551,24 @@ class manager(object):
           mean_displacements = flex.tan(math.pi*
             (self.xray_structure.scatterers().extract_u_iso()/u_iso_max-1./2.))
        if(tan_b_iso_max == 0):
-          mean_displacements = flex.sqrt(
-                              self.xray_structure.scatterers().extract_u_iso())
-    result = structure_factor_gradients(
-         mean_displacements = mean_displacements,
-         d_target_d_f_calc  = xrtfr.derivatives(),
-         xray_structure     = xrs,
-         n_parameters       = xrs.n_parameters(),
-         miller_set         = self.f_obs_w(),
-         algorithm          = self.sf_algorithm)
-    return result
-
-  def gradient_wrt_u_aniso(self, u_aniso = True,
-                                 alpha   = None,
-                                 beta    = None):
-    xrs_ = self.xray_structure.deep_copy_scatterers()
-    for scatterer in xrs_.scatterers():
-      scatterer.flags.set_grad_site(False)
-      scatterer.flags.set_grad_u_iso(False)
-      scatterer.flags.set_grad_u_aniso(True)
-      scatterer.flags.set_grad_occupancy(False)
-      scatterer.flags.set_grad_fp(False)
-      scatterer.flags.set_grad_fdp(False)
-      scatterer.flags.set_tan_u_iso(False)
-      scatterer.flags.param= 0
-    structure_factor_gradients = cctbx.xray.structure_factors.gradients(
-                                         miller_set    = self.f_obs_w(),
-                                         cos_sin_table = self.sf_cos_sin_table)
-    if(self.target_name.count("ml") > 0 or self.target_name.count("lsm") > 0):
-       if([alpha, beta].count(None) == 2):
-          alpha, beta = self.alpha_beta_w()
-    if(self.target_name.count("ml") ==0 and self.target_name.count("lsm") ==0):
-       assert [alpha, beta].count(None) == 2
-    xrtfr = self.xray_target_functor_result(compute_gradients = True,
-                                            alpha             = alpha,
-                                            beta              = beta,
-                                            scale_ml          = None,
-                                            flag              = "work")
-    result = structure_factor_gradients(
-         mean_displacements = None,
-         d_target_d_f_calc  = xrtfr.derivatives(),
-         xray_structure     = xrs_,
-         n_parameters       = 0,
-         miller_set         = self.f_obs_w(),
-         algorithm          = self.sf_algorithm)
-    return result.d_target_d_u_cart()
-
-
-
-  def gradient_wrt_xyz(self, selection = None):
-    #XXX consolidate with other similar functions
-    structure_factor_gradients = cctbx.xray.structure_factors.gradients(
-                                                miller_set    = self.f_obs_w(),
-                                                cos_sin_table = True)
-    gradient_flags = cctbx.xray.structure_factors.gradient_flags(site  = True,
-                                                                 u_iso = False)
-    xrs_ = self.xray_structure.deep_copy_scatterers()
-    for scatterer in xrs_.scatterers():
-      scatterer.flags.set_grad_site(gradient_flags.site)
-      scatterer.flags.set_grad_u_iso(gradient_flags.u_iso)
-      scatterer.flags.set_grad_u_aniso(gradient_flags.u_aniso)
-      scatterer.flags.set_grad_occupancy(gradient_flags.occupancy)
-      scatterer.flags.set_grad_fp(gradient_flags.fp)
-      scatterer.flags.set_grad_fdp(gradient_flags.fdp)
-
-    if(self.target_name.count("ls") == 0):
-       alpha_w, beta_w = self.alpha_beta_w()
+          mean_displacements = None#flex.sqrt(
+                              #self.xray_structure.scatterers().extract_u_iso())
+    if(u_aniso):
+       return structure_factor_gradients(
+                    mean_displacements = None,
+                    d_target_d_f_calc  = xrtfr.derivatives(),
+                    xray_structure     = xrs,
+                    n_parameters       = 0,
+                    miller_set         = self.f_obs_w(),
+                    algorithm          = self.sf_algorithm).d_target_d_u_cart()
     else:
-       alpha_w, beta_w = None, None
-    xrtfr = self.xray_target_functor_result(compute_gradients = True,
-                                              alpha             = alpha_w,
-                                              beta              = beta_w,
-                                              scale_ml          = None,
-                                              flag              = "work")
-    if(selection is None):
-       xrs = xrs_
-    else:
-       xrs = xrs_.select(selection)
-    sf = structure_factor_gradients(
-         mean_displacements = None,
-         d_target_d_f_calc  = xrtfr.derivatives(),
-         xray_structure     = xrs_,
-         n_parameters       = xrs.n_parameters(),
-         miller_set         = self.f_obs_w(),
-         algorithm          = self.sf_algorithm)
-    grad_xray = flex.vec3_double(sf.packed())
-    return grad_xray
-
-  def gradient_wrt_uiso(self, sqrt_u_iso=None,
-                              tan_b_iso_max=None,
-                              alpha_w = None,
-                              beta_w = None,
-                              mean_displacements=None):
-    structure_factor_gradients = cctbx.xray.structure_factors.gradients(
-                                                miller_set    = self.f_obs_w(),
-                                                cos_sin_table = True)
-    gradient_flags = cctbx.xray.structure_factors.gradient_flags(site  = False,
-                                                                 u_iso = True,
-                                                                 tan_b_iso_max = tan_b_iso_max)
-    if(mean_displacements is None):
-       if(gradient_flags.u_iso):
-          if(sqrt_u_iso is not None):
-             gradient_flags.sqrt_u_iso = sqrt_u_iso
-          if(tan_b_iso_max is not None):
-             gradient_flags.tan_b_iso_max = tan_b_iso_max
-          if(gradient_flags.sqrt_u_iso or gradient_flags.tan_b_iso_max != 0):
-             mean_displacements = self.xray_structure.scatterers().extract_u_iso()
-             if(not mean_displacements.all_ge(0)):
-                raise RuntimeError(
-                  "Handling of anisotropic scatterers not implemented.")
-             mean_displacements = flex.sqrt(mean_displacements)
-
-    if([alpha_w, beta_w].count(None) == 2):
-       alpha_w, beta_w = self.alpha_beta_w()
-    xrtfr = self.xray_target_functor_result(compute_gradients = True,
-                                              alpha             = alpha_w,
-                                              beta              = beta_w,
-                                              scale_ml          = None,
-                                              flag              = "work")
-    u_iso_max = adptbx.b_as_u(tan_b_iso_max)
-    sf = structure_factor_gradients(
-         mean_displacements = flex.tan(math.pi*(self.xray_structure.scatterers().extract_u_iso()/u_iso_max-1./2.)),#mean_displacements,
-         d_target_d_f_calc  = xrtfr.derivatives(),
-         xray_structure     = self.xray_structure,
-         gradient_flags     = gradient_flags,
-         n_parameters       = self.xray_structure.n_parameters(),
-         miller_set         = self.f_obs_w(),
-         algorithm          = self.sf_algorithm)
-    grad_xray = sf.packed()
-    return grad_xray
+       return structure_factor_gradients(
+                                      mean_displacements = mean_displacements,
+                                      d_target_d_f_calc  = xrtfr.derivatives(),
+                                      xray_structure     = xrs,
+                                      n_parameters       = xrs.n_parameters(),
+                                      miller_set         = self.f_obs_w(),
+                                      algorithm          = self.sf_algorithm)
 
   def update(self, f_calc              = None,
                    f_obs               = None,

@@ -26,18 +26,15 @@ class lbfgs(object):
                      beta_w=None):
     adopt_init_args(self, locals())
     self.xray_structure = self.fmodel.xray_structure
-#XXX
-    for scatterer in self.xray_structure.scatterers():
-        scatterer.flags.set_grad_site(False)
-        scatterer.flags.set_grad_u_iso(True)
-        scatterer.flags.set_grad_u_aniso(False)
-        scatterer.flags.set_grad_occupancy(False)
-        scatterer.flags.set_grad_fp(False)
-        scatterer.flags.set_grad_fdp(False)
-        if(self.tan_b_iso_max > 0.0):
-           scatterer.flags.set_tan_u_iso(True)
-           scatterer.flags.param= int(self.tan_b_iso_max)
-
+    tan_u_iso = False
+    param = 0
+    if(self.tan_b_iso_max > 0.0):
+       tan_u_iso = True
+       param = int(self.tan_b_iso_max)
+    xray.set_scatterer_grad_flags(scatterers = self.xray_structure.scatterers(),
+                                  u_iso      = True,
+                                  tan_u_iso  = tan_u_iso,
+                                  param      = param)
     self.exray_start = None
     self.eadp_start  = None
     self.exray_final = None
@@ -96,11 +93,8 @@ class lbfgs(object):
     self.f = self.exray_final * self.wx
     if(compute_gradients):
        sf = self.fmodel.gradient_wrt_atomic_parameters(
-                   sites              = False,
-                   u_iso              = True,
                    alpha              = self.alpha_w,
                    beta               = self.beta_w,
-                   tan_b_iso_max      = self.tan_b_iso_max,
                    mean_displacements = mean_displacements).packed()
        self.g = sf * self.wx
     if(self.restraints_manager.geometry is not None
