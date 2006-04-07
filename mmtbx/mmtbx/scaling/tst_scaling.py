@@ -956,7 +956,10 @@ def test_twin_r_value(twin_operator):
     assert approx_equal(twin_r.r_sq_value(), expected_r_sq, 0.08)
 
 
-
+def test_constant():
+  # this is to make sure that the tmp_const in the class  symmetry_issues
+  # does not result in any overflow problems
+  math.log(1e-250)
 
 
 def test_kernel_based_normalisation():
@@ -989,5 +992,5 @@ if (__name__ == "__main__"):
   test_scattering_info()
   test_kernel_based_normalisation()
   test_twin_r_value('h+k,-k,-l')
-
+  test_constant()
   print "OK"

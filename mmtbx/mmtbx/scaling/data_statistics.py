@@ -32,7 +32,7 @@ class i_sigi_completeness_stats(object):
                n_bins=15,
                isigi_cut=3.0,
                completeness_cut=0.85,
-               resolution_at_least=4.0):
+               resolution_at_least=3.5):
     self.miller = miller.deep_copy().set_observation_type(miller)
     #check to see if we have intensities
     if self.miller.is_real_array():
