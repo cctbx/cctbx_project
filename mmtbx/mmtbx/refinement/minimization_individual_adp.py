@@ -26,7 +26,7 @@ class lbfgs(object):
                      beta_w=None):
     adopt_init_args(self, locals())
     self.xray_structure = self.fmodel.xray_structure
-
+#XXX
     for scatterer in self.xray_structure.scatterers():
         scatterer.flags.set_grad_site(False)
         scatterer.flags.set_grad_u_iso(True)

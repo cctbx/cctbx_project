@@ -164,6 +164,7 @@ class lbfgs(object):
     adopt_init_args(self, locals())
     self.grad_flags_counts = \
               ext.scatterer_grad_flags_counts(self.xray_structure.scatterers())
+    #XXX
     #if (self.u_penalty is not None
     #    and self.gradient_flags.u_iso
     #    and xray_structure.scatterers().count_anisotropic() > 0):

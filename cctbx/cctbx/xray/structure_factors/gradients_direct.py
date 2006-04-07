@@ -11,7 +11,6 @@ class gradients_direct(gradients_base):
                      mean_displacements,
                      miller_set,
                      d_target_d_f_calc,
-                     #gradient_flags,
                      n_parameters,
                      manager=None,
                      cos_sin_table=False):
@@ -35,7 +34,6 @@ class gradients_direct(gradients_base):
         self._xray_structure.scattering_type_registry(),
         self._xray_structure.site_symmetry_table(),
         d_target_d_f_calc,
-        #gradient_flags,
         n_parameters)
     else:
       self._results = ext.structure_factors_gradients_direct(
@@ -48,7 +46,6 @@ class gradients_direct(gradients_base):
         self._xray_structure.scattering_type_registry(),
         self._xray_structure.site_symmetry_table(),
         d_target_d_f_calc,
-        #gradient_flags,
         n_parameters)
     if (manager is not None):
       manager.estimate_time_direct.register(

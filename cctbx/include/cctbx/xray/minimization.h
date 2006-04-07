@@ -1,7 +1,6 @@
 #ifndef CCTBX_XRAY_MINIMIZATION_H
 #define CCTBX_XRAY_MINIMIZATION_H
 
-//#include <cctbx/xray/gradient_flags.h>
 #include <cctbx/xray/packing_order.h>
 #include <scitbx/array_family/block_iterator.h>
 
@@ -12,7 +11,6 @@ namespace cctbx { namespace xray { namespace minimization {
   af::shared<FloatType>
   shift_scales(
     af::const_ref<XrayScattererType> const& scatterers,
-    //xray::gradient_flags const& gradient_flags,
     std::size_t n_parameters,
     FloatType const& site_cart,
     FloatType const& u_iso,
@@ -66,7 +64,6 @@ namespace cctbx { namespace xray { namespace minimization {
     apply_shifts(
       uctbx::unit_cell const& unit_cell,
       af::const_ref<XrayScattererType> const& scatterers,
-      //xray::gradient_flags const& gradient_flags,
       af::const_ref<FloatType> const& shifts)
     {
       BOOST_STATIC_ASSERT(packing_order_convention == 2);
@@ -134,7 +131,6 @@ namespace cctbx { namespace xray { namespace minimization {
   void
   add_gradients(
     af::const_ref<XrayScattererType> const& scatterers,
-    //xray::gradient_flags const& gradient_flags,
     af::ref<FloatType> const& xray_gradients,
     af::const_ref<scitbx::vec3<FloatType> > const& site_gradients,
     af::const_ref<FloatType> const& u_iso_gradients,
@@ -194,7 +190,6 @@ namespace cctbx { namespace xray { namespace minimization {
   af::shared<scitbx::vec3<FloatType> >
   extract_site_gradients(
     af::const_ref<XrayScattererType> const& scatterers,
-    //xray::gradient_flags const& gradient_flags,
     af::const_ref<FloatType> const& xray_gradients)
   {
     cctbx::xray::scatterer_grad_flags_counts grad_flags_counts(scatterers);

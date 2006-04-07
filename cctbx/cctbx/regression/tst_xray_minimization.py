@@ -15,14 +15,13 @@ def exercise(target_functor, space_group_info, anomalous_flag,
     random_u_iso=True,
     random_u_iso_min=0.05,
     random_occupancy=True)
-  for scatterer in structure_ideal.scatterers():
-      scatterer.flags.set_grad_site(gradient_flags.site)
-      scatterer.flags.set_grad_u_iso(gradient_flags.u_iso)
-      scatterer.flags.set_grad_u_aniso(gradient_flags.u_aniso)
-      scatterer.flags.set_grad_occupancy(gradient_flags.occupancy)
-      scatterer.flags.set_grad_fp(gradient_flags.fp)
-      scatterer.flags.set_grad_fdp(gradient_flags.fdp)
-
+  xray.set_scatterer_grad_flags(scatterers = structure_ideal.scatterers(),
+                                site       = gradient_flags.site,
+                                u_iso      = gradient_flags.u_iso,
+                                u_aniso    = gradient_flags.u_aniso,
+                                occupancy  = gradient_flags.occupancy,
+                                fp         = gradient_flags.fp,
+                                fdp        = gradient_flags.fdp)
   f_obs = abs(structure_ideal.structure_factors(
     anomalous_flag=anomalous_flag,
     d_min=d_min,
