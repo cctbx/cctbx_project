@@ -2,7 +2,6 @@
 #define CCTBX_XRAY_FAST_GRADIENTS_H
 
 #include <cctbx/xray/sampling_base.h>
-//#include <cctbx/xray/gradient_flags.h>
 #include <cctbx/xray/packing_order.h>
 #include <cctbx/sgtbx/site_symmetry_table.h>
 
@@ -34,7 +33,8 @@ namespace cctbx { namespace xray {
           base_t(exp_table, gaussian, fp, fdp, w, u_iso, u_extra),
           i_const_term(gaussian.n_terms())
         {
-          if (scf.grad_u_iso() || scf.grad_occupancy() || scf.grad_fp() || scf.grad_fdp()) {
+          if (scf.grad_u_iso() || scf.grad_occupancy() ||
+                                             scf.grad_fp() || scf.grad_fdp()) {
             FloatType b_incl_extra = adptbx::u_as_b(u_iso + u_extra);
             if (scf.grad_u_iso())
             {
@@ -363,7 +363,6 @@ namespace cctbx { namespace xray {
         sgtbx::site_symmetry_table const& site_symmetry_table,
         af::const_ref<FloatType, accessor_type> const&
           ft_d_target_d_f_calc,
-        //gradient_flags const& grad_flags,
         std::size_t n_parameters=0,
         bool sampled_density_must_be_positive=false)
       {
@@ -373,7 +372,6 @@ namespace cctbx { namespace xray {
           scattering_type_registry, site_symmetry_table,
           ft_d_target_d_f_calc.begin(), 0,
           n_parameters, sampled_density_must_be_positive);
-          //grad_flags, n_parameters, sampled_density_must_be_positive);
       }
 
       void
@@ -384,7 +382,6 @@ namespace cctbx { namespace xray {
         sgtbx::site_symmetry_table const& site_symmetry_table,
         af::const_ref<std::complex<FloatType>, accessor_type> const&
           ft_d_target_d_f_calc,
-        //gradient_flags const& grad_flags,
         std::size_t n_parameters=0,
         bool sampled_density_must_be_positive=false)
       {
@@ -394,7 +391,6 @@ namespace cctbx { namespace xray {
           scattering_type_registry, site_symmetry_table,
           0, ft_d_target_d_f_calc.begin(),
           n_parameters, sampled_density_must_be_positive);
-          //grad_flags, n_parameters, sampled_density_must_be_positive);
       }
 
       af::shared<FloatType>
@@ -456,7 +452,6 @@ namespace cctbx { namespace xray {
         sgtbx::site_symmetry_table const& site_symmetry_table,
         const FloatType* ft_d_target_d_f_calc_real,
         const std::complex<FloatType>* ft_d_target_d_f_calc_complex,
-        //gradient_flags const& grad_flags,
         std::size_t n_parameters,
         bool sampled_density_must_be_positive);
   };
@@ -472,7 +467,6 @@ namespace cctbx { namespace xray {
     sgtbx::site_symmetry_table const& site_symmetry_table,
     const FloatType* ft_d_target_d_f_calc_real,
     const std::complex<FloatType>* ft_d_target_d_f_calc_complex,
-    //gradient_flags const& grad_flags,
     std::size_t n_parameters,
     bool sampled_density_must_be_positive)
   {

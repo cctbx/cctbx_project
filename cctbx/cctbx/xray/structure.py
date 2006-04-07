@@ -614,7 +614,7 @@ class structure(crystal.special_position_settings):
     return self.sites_cart().mean_weighted(weights=atomic_weights)
 
   def n_parameters(self):
-    #XXX move to C++
+    #XXX move to C++ (after anisotropic_flag is gone)
     result_ = 0
     for sc in self.scatterers():
         if(sc.flags.grad_site()     ): result_ +=3

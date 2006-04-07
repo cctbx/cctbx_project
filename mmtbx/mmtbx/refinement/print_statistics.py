@@ -208,7 +208,8 @@ class refinement_monitor(object):
     self.r_frees         .append(fmodel.r_free()                  )
     self.targets_w       .append(fmodel.target_w()                )
     self.targets_t       .append(fmodel.target_t()                )
-    self.gs_wrt_xyz_norm .append(fmodel.gradient_wrt_xyz().norm() )
+    self.gs_wrt_xyz_norm .append(fmodel.gradient_wrt_atomic_parameters(
+                                                   site=True).packed().norm() )
     self.k_sols          .append(fmodel.k_sol_b_sol()[0]          )
     self.b_sols          .append(fmodel.k_sol_b_sol()[1]          )
     self.b_anisos        .append(fmodel.u_aniso                   )

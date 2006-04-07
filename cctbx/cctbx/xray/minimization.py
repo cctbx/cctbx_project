@@ -162,6 +162,8 @@ class lbfgs(object):
                      structure_factor_algorithm=None,
                      verbose=0):
     adopt_init_args(self, locals())
+    self.scatterer_grad_flags_counts = ext.scatterer_grad_flags_counts(
+                                              self.xray_structure.scatterers())
     self.grad_flags_counts = \
               ext.scatterer_grad_flags_counts(self.xray_structure.scatterers())
     #XXX
@@ -224,10 +226,10 @@ class lbfgs(object):
     self.f = self.target_result.target()
     if (self.first_target_value is None):
       self.first_target_value = self.f
-    #if (self.u_penalty is not None and self.gradient_flags.u_iso):
-    #  u_isos = self.xray_structure.scatterers().extract_u_iso()
-    #  for u_iso in u_isos:
-    #    self.f += self.u_penalty.functional(u=u_iso)
+    if (self.u_penalty is not None and self.scatterer_grad_flags_counts.u_iso > 0):
+      u_isos = self.xray_structure.scatterers().extract_u_iso()
+      for u_iso in u_isos:
+        self.f += self.u_penalty.functional(u=u_iso)
     if (self.occupancy_penalty is not None
         and self.grad_flags_counts != 0):
       occupancies = self.xray_structure.scatterers().extract_occupancies()
@@ -240,22 +242,22 @@ class lbfgs(object):
       d_target_d_f_calc=self.target_result.derivatives(),
       n_parameters=self.x.size(),
       algorithm=self.structure_factor_algorithm).packed()
-    #if (self.u_penalty is not None and self.gradient_flags.u_iso):
-    #  g = flex.double()
-    #  if (self.gradient_flags.sqrt_u_iso):
-    #    for mean_displacement in mean_displacements:
-    #      g.append(2*mean_displacement
-    #              *self.u_penalty.gradient(u=mean_displacement**2))
-    #  else:
-    #    for u_iso in u_isos:
-    #      g.append(self.u_penalty.gradient(u=u_iso))
-    #  del u_isos
-    #  add_gradients(
-    #    scatterers=self.xray_structure.scatterers(),
-    #    gradient_flags=self.gradient_flags,
-    #    xray_gradients=self.g,
-    #    u_iso_gradients=g)
-    #  del g
+    if (self.u_penalty is not None and self.scatterer_grad_flags_counts.u_iso > 0):
+      g = flex.double()
+      #XXX replace with tan reparametrization
+      if 0: #(self.gradient_flags.sqrt_u_iso):
+        for mean_displacement in mean_displacements:
+          g.append(2*mean_displacement
+                  *self.u_penalty.gradient(u=mean_displacement**2))
+      else:
+        for u_iso in u_isos:
+          g.append(self.u_penalty.gradient(u=u_iso))
+      del u_isos
+      add_gradients(
+        scatterers=self.xray_structure.scatterers(),
+        xray_gradients=self.g,
+        u_iso_gradients=g)
+      del g
     if (self.occupancy_penalty is not None
         and self.grad_flags_counts != 0):
       g = flex.double()

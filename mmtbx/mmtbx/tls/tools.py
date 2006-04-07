@@ -369,8 +369,9 @@ class tls_xray_grads(object):
      self.grad_T = []
      self.grad_L = []
      self.grad_S = []
-     d_target_d_uaniso = fmodel.gradient_wrt_u_aniso(alpha = alpha,
-                                                     beta  = beta)
+     d_target_d_uaniso = fmodel.gradient_wrt_atomic_parameters(u_aniso = True,
+                                                               alpha   = alpha,
+                                                               beta    = beta)
      for sel, tlso in zip(selections, tlsos):
          d_target_d_tls_manager = d_target_d_tls(
             sites             = fmodel.xray_structure.sites_cart().select(sel),
