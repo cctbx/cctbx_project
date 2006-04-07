@@ -59,11 +59,9 @@ scaling.input {
      .type=float
      high_resolution_for_twin_tests=None
      .type=float
-     isigi_cut=0.0
+     isigi_cut=3.0
      .type=float
-     minimum_bin_completenesss_enforcement=0.75
-     .type=float
-     isigi_level_enforcement=3.0
+     completeness_cut=0.85
      .type=float
    }
 
@@ -100,7 +98,7 @@ def print_banner(out=None):
 
 def print_help():
   print """
-------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------------
 Usage: mmtbx.xtriage file_name=myfile.sca <options>
 
 mmtbx.xtriage performs a variety of twinning and related test on the given
@@ -109,24 +107,27 @@ x-ray data set. See CCP4 newletter number 42, July 2005 for more information.
 
 
 The program options are defined in the following table.
-A possible short form of the full parameter name is listed as well
 
-  ----------------------------------------------------------------------------
-  | full parameter name      | short | meaning                               |
-  ----------------------------------------------------------------------------
-  | basic.n_residues         | resi  | Number of residues per monomer        |
-  | basic.n_copies_per_asu   | copi  | Number of copies in the ASU           |
-  | basic.n_terms            | term  | Number of terms in chebyshev polynome |
-  | analyses.verbose         | verb  | Verbosity level                       |
-  | analyses.log             | log   | Log file with CCP4i style plots       |
-  | xray_data.file_name      | file  | File containing xray data             |
-  | xray_data.obs_labels     | obs   | Labels for experimental data          |
-  | xray_data.calc_labels    | calc  | Labels for calculated data            |
-  | xray_data.unit_cell      | cell  | Unit cell constants                   |
-  | xray_data.space_group    | space | Space group                           |
-  | xray_data.high_resolution| high  | high resolution limit                 |
-  | xray_data.low_resolution | low   | low resolution limit                  |
-  ----------------------------------------------------------------------------
+  -------------------------------------------------------------------------------------
+  | full parameter name                      |  meaning                               |
+  -------------------------------------------------------------------------------------
+  | basic.n_residues                         | Number of residues per monomer         |
+  | basic.n_copies_per_asu                   | Number of copies in the ASU            |
+  | basic.n_terms                            | Number of terms in chebyshev polynome  |
+  | analyses.verbose                         | Verbosity level                        |
+  | analyses.log                             | Log file with CCP4i style plots        |
+  | xray_data.file_name                      | File containing xray data              |
+  | xray_data.obs_labels                     | Labels for experimental data           |
+  | xray_data.calc_labels                    | Labels for calculated data             |
+  | xray_data.unit_cell                      | Unit cell constants                    |
+  | xray_data.space_group                    | Space group                            |
+  | xray_data.high_resolution                | high resolution limit in wilson scaling|
+  | xray_data.low_resolution                 | low resolution limit in wilson scaling |
+  | xray_data.high_resolution_for_twin_tests | high resolution limit in int. stats.   |
+  | xray_data.low_resolution_for_twin_tests  | low resolution limit in int. stats.    |
+  | xray_data.isigi_cut                      | I/sig(I) cut in int. stats.            |
+  | xray_data.completenesss_cut              | completeness cut int. stats.           |
+  -------------------------------------------------------------------------------------
 
 
 Detailed description:
@@ -168,7 +169,8 @@ xray_data.obs_labels: a substring of a label indentifying the experimental data 
                       to avoid confusion.
 
 xray_data.calc_labels: A substring of a label idenitifying calculated data.
-                       (Used for R vs R statistic.)
+                       (Used for R vs R statistic.).
+                       Calculated data needs to be in the same file as in the observed data!
 
 xray_data.unit_cell: By default, the values in the reflection file are used.
                      These keywords must be specified for CNS or SHELX files
@@ -177,12 +179,24 @@ xray_data.unit_cell: By default, the values in the reflection file are used.
 
 xray_data.space_group: See xray_data.unit_cell.
 
-xray_data.high_resolution: High Resolution limit where the data is cut for the twin analyses.
+xray_data.high_resolution: High Resolution limit where the data is cut.
                            The default is the highest resolution limit
                            available.
 
-xray_data.low_resolution: Low resolution limit where the data is cut for the twin analyses.
-                          The default is 10 A.
+xray_data.low_resolution: Low resolution limit where the data is cut.
+
+
+xray_data.high_resolution_for_twin_tests: High Resolution limit where the data is cut for the twin analyses.
+                                          if None is specified, the xtriage will dtermin this limit
+                                          on the basis of the parameters isigi_cut and completeness_cut
+
+xray_data.low_resolution_for_twin_test: Low resolution limit where the data is cut for the twin analyses.
+                                         The default is 10 A.
+
+xray_data.isigi_cut and xray_data.completenesss_cut: Intensities for which I/sigI<isigi_cut are removed from the dataset.
+                                                     The resolution limit for which the completeness is largern than
+                                                     xray_data.completenesss_cut, is used as the high resolution limit
+                                                     in the intensity statistics and twin analyses.
 
 
 Example usage:
@@ -200,7 +214,7 @@ Example usage:
   for twinning analyses is set at 2.0 A, the logfile with plot will be written
   to log.log.
 
-----------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------------
 
 """
 

@@ -57,7 +57,10 @@ class basic_analyses(object):
     # first report on I over sigma
     miller_array_new = miller_array
     if miller_array.sigmas() is not None:
-      data_strength=data_statistics.i_sigi_completeness_stats(miller_array)
+      data_strength=data_statistics.i_sigi_completeness_stats(
+        miller_array,
+        isigi_cut = phil_object.scaling.input.xray_data.isigi_cut,
+        completeness_cut = phil_object.scaling.input.xray_data.completeness_cut)
       data_strength.show(out)
       if phil_object.scaling.input.xray_data.high_resolution_for_twin_tests is None:
         phil_object.scaling.input.xray_data.high_resolution_for_twin_tests=data_strength.resolution_cut
