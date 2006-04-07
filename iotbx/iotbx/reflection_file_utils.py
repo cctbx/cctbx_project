@@ -335,13 +335,14 @@ class reflection_file_server(object):
         file_name,
         labels,
         ignore_all_zeros,
-        parameter_scope):
+        parameter_scope,
+        parameter_name="labels"):
     miller_arrays = self.get_miller_arrays(file_name=file_name)
     data_scores = get_xray_data_scores(
       miller_arrays=miller_arrays,
       ignore_all_zeros=ignore_all_zeros)
     i = select_array(
-      parameter_name=parameter_scope+".labels",
+      parameter_name=parameter_scope+"."+parameter_name,
       labels=labels,
       miller_arrays=miller_arrays,
       data_scores=data_scores,
@@ -407,13 +408,14 @@ class reflection_file_server(object):
         file_name,
         labels,
         ignore_all_zeros,
-        parameter_scope):
+        parameter_scope,
+        parameter_name="labels"):
     miller_arrays = self.get_miller_arrays(file_name=file_name)
     data_scores = get_experimental_phases_scores(
       miller_arrays=miller_arrays,
       ignore_all_zeros=ignore_all_zeros)
     i = select_array(
-      parameter_name=parameter_scope+".labels",
+      parameter_name=parameter_scope+"."+parameter_name,
       labels=labels,
       miller_arrays=miller_arrays,
       data_scores=data_scores,
