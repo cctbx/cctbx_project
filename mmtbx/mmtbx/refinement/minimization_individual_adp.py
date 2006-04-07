@@ -70,7 +70,7 @@ class lbfgs(object):
                          ignore_line_search_failed_step_at_lower_bound = True))
     self.apply_shifts()
     del self._scatterers_start
-    self.compute_target(compute_gradients = False, mean_displacements = None)
+    self.compute_target(compute_gradients = False, u_iso_reinable_params = None)
     self.final_target_value = self.f
 
 
@@ -81,9 +81,9 @@ class lbfgs(object):
                               shifts         = self.x)
     scatterers_shifted = apply_shifts_result.shifted_scatterers
     self.xray_structure.replace_scatterers(scatterers = scatterers_shifted)
-    return apply_shifts_result.mean_displacements
+    return apply_shifts_result.u_iso_reinable_params
 
-  def compute_target(self, compute_gradients, mean_displacements):
+  def compute_target(self, compute_gradients, u_iso_reinable_params):
     self.fmodel.update_xray_structure(xray_structure = self.xray_structure,
                                       update_f_calc  = True)
     self.exray_final = self.fmodel.target_w(alpha    = self.alpha_w,
@@ -95,7 +95,7 @@ class lbfgs(object):
        sf = self.fmodel.gradient_wrt_atomic_parameters(
                    alpha              = self.alpha_w,
                    beta               = self.beta_w,
-                   mean_displacements = mean_displacements).packed()
+                   u_iso_reinable_params = u_iso_reinable_params).packed()
        self.g = sf * self.wx
     if(self.restraints_manager.geometry is not None
           and self.wu > 0.0
@@ -117,9 +117,9 @@ class lbfgs(object):
                             u_iso_gradients = u_iso_gradients * self.wu)
 
   def compute_functional_and_gradients(self):
-    mean_displacements = self.apply_shifts()
+    u_iso_reinable_params = self.apply_shifts()
     self.compute_target(compute_gradients  = True,
-                        mean_displacements = mean_displacements)
+                        u_iso_reinable_params = u_iso_reinable_params)
     if(self.first_target_value is None):
        self.first_target_value = self.f
     if(self.verbose > 1):

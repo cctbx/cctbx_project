@@ -58,7 +58,7 @@ class manager(object):
         wilson_b=None,
         compute_gradients=False,
         tan_b_iso_max=None,
-        mean_displacements=None,
+        u_iso_reinable_params=None,
         gradients=None):
     result = scitbx.restraints.energies(
       compute_gradients=compute_gradients,
@@ -88,18 +88,15 @@ class manager(object):
       result += result.ncs_groups
     result.finalize_target_and_gradients()
     if(compute_gradients):
+       #XXX highly inefficient code: do something asap by adopting new scatters flags
        if(tan_b_iso_max is not None and tan_b_iso_max != 0):
           u_iso_max = adptbx.b_as_u(tan_b_iso_max)
-          if(mean_displacements is not None):
-             scale = u_iso_max / math.pi / (flex.pow2(mean_displacements)+1.0)
+          if(u_iso_reinable_params is not None):
+             chain_rule_scale = u_iso_max / math.pi / (flex.pow2(u_iso_reinable_params)+1.0)
           else:
-             mean_displacements = flex.tan(math.pi*(xray_structure.scatterers().extract_u_iso()/u_iso_max-1./2.))
-             scale = u_iso_max / math.pi / (flex.pow2(mean_displacements)+1.0)
-
-          #a =u_iso_max / math.pi / (flex.pow2(mean_displacements)+1.0)
-          #b = u_iso_max / math.pi / (flex.pow2(flex.tan(math.pi*(xray_structure.scatterers().extract_u_iso()/u_iso_max-1./2.)))+1.0)
-          #print a[0],b[0]
+             u_iso_reinable_params = flex.tan(math.pi*(xray_structure.scatterers().extract_u_iso()/u_iso_max-1./2.))
+             chain_rule_scale = u_iso_max / math.pi / (flex.pow2(u_iso_reinable_params)+1.0)
        else:
-          scale = 1.0
-       result.gradients = result.gradients * scale
+          chain_rule_scale = 1.0
+       result.gradients = result.gradients * chain_rule_scale
     return result

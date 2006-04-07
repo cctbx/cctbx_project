@@ -7,7 +7,7 @@ import sys
 def exercise(target_functor, space_group_info, anomalous_flag,
              gradient_flags, u_penalty, occupancy_penalty,
              n_elements=3, d_min=3., shake_sigma=0.1,
-             verbose=0):
+             verbose=0,tan_u_iso=False, param = 0):
   structure_ideal = random_structure.xray_structure(
     space_group_info,
     elements=("Se",)*n_elements,
@@ -21,7 +21,9 @@ def exercise(target_functor, space_group_info, anomalous_flag,
                                 u_aniso    = gradient_flags.u_aniso,
                                 occupancy  = gradient_flags.occupancy,
                                 fp         = gradient_flags.fp,
-                                fdp        = gradient_flags.fdp)
+                                fdp        = gradient_flags.fdp,
+                                tan_u_iso  = tan_u_iso,
+                                param      = param)
   f_obs = abs(structure_ideal.structure_factors(
     anomalous_flag=anomalous_flag,
     d_min=d_min,
@@ -91,25 +93,30 @@ def run_call_back(flags, space_group_info):
         occupancy=(i_options/4 % 2))
       for anomalous_flag in (False, True)[:]: #SWITCH
         u_penalty_types = [None]
-        sqrt_u_isos = [False]
+        tan_u_isos = [False]
         if (gradient_flags.u_iso):
           u_penalty_types.extend([
             xray.minimization.u_penalty_exp(),
             xray.minimization.u_penalty_singular_at_zero()])
-          sqrt_u_isos.append(True)
+          tan_u_isos.append(True)
         occupancy_penalty_types = [None]
         if (gradient_flags.occupancy):
           occupancy_penalty_types.append(
             xray.minimization.occupancy_penalty_exp())
-        for sqrt_u_iso in sqrt_u_isos:
+        for tan_u_iso in tan_u_isos:
           for u_penalty in u_penalty_types:
-            gradient_flags.sqrt_u_iso = sqrt_u_iso
+            if(tan_u_iso):
+               param = 100
+            else:
+               param = 0
             for occupancy_penalty in occupancy_penalty_types:
               exercise(target_functor, space_group_info, anomalous_flag,
                        gradient_flags,
                        u_penalty=u_penalty,
                        occupancy_penalty=occupancy_penalty,
-                       verbose=flags.Verbose)
+                       verbose=flags.Verbose,
+                       tan_u_iso=tan_u_iso,
+                       param = param)
 
 def run():
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)

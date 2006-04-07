@@ -59,7 +59,7 @@ namespace cctbx { namespace xray { namespace minimization {
   struct apply_shifts
   {
     af::shared<XrayScattererType> shifted_scatterers;
-    af::shared<FloatType> mean_displacements;
+    af::shared<FloatType> u_iso_reinable_params;
 
     apply_shifts(
       uctbx::unit_cell const& unit_cell,
@@ -72,10 +72,10 @@ namespace cctbx { namespace xray { namespace minimization {
       cctbx::xray::scatterer_grad_flags_counts grad_flags_counts(scatterers);
       if (grad_flags_counts.tan_u_iso != 0) {
         CCTBX_ASSERT(grad_flags_counts.u_iso != 0);
-        mean_displacements.resize(scatterers.size(), 0);
+        u_iso_reinable_params.resize(scatterers.size(), 0);
       }
 
-      FloatType* mean_displacements_ptr = mean_displacements.begin();
+      FloatType* u_iso_reinable_params_ptr = u_iso_reinable_params.begin();
       scitbx::af::const_block_iterator<FloatType> next_shifts(
         shifts, "Array of shifts is too small.");
       for(std::size_t i_sc=0;i_sc<scatterers.size();i_sc++) {
@@ -91,10 +91,10 @@ namespace cctbx { namespace xray { namespace minimization {
               }
               FloatType pi = scitbx::constants::pi;
               FloatType u_iso_max=adptbx::b_as_u(sc.flags.param);
-              FloatType mean_displacement = std::tan(pi*(sc.u_iso/u_iso_max-
+              FloatType u_iso_reinable_param = std::tan(pi*(sc.u_iso/u_iso_max-
                                             1./2.))+next_shifts();
-              sc.u_iso = u_iso_max*(std::atan(mean_displacement)+pi/2.)/pi;
-              mean_displacements_ptr[i_sc] = mean_displacement;
+              sc.u_iso = u_iso_max*(std::atan(u_iso_reinable_param)+pi/2.)/pi;
+              u_iso_reinable_params_ptr[i_sc] = u_iso_reinable_param;
             }
             else {
               sc.u_iso += next_shifts();
