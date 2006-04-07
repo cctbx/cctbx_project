@@ -392,7 +392,8 @@ Use keyword 'unit_cell' to specify unit_cell
       file_name = params.scaling.input.xray_data.file_name,
       labels = params.scaling.input.xray_data.obs_labels,
       ignore_all_zeros = True,
-      parameter_scope = 'scaling.input.xray_data'
+      parameter_scope = 'scaling.input.xray_data',
+      parameter_name = 'obs_labels'
     )
 
     info = miller_array.info()
@@ -424,7 +425,8 @@ Use keyword 'unit_cell' to specify unit_cell
         file_name = params.scaling.input.xray_data.file_name,
         labels = params.scaling.input.xray_data.calc_labels,
         ignore_all_zeros = True,
-        parameter_scope = 'scaling.input.xray_data'
+        parameter_scope = 'scaling.input.xray_data',
+        parameter_name = 'calc_labels'
       )
 
 
