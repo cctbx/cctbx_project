@@ -7,6 +7,7 @@ import scitbx.lbfgs
 import scitbx.math
 from libtbx import adopt_init_args
 from stdlib import math
+from cctbx import adptbx
 
 def add_gradients(
       scatterers,
@@ -209,7 +210,7 @@ class lbfgs(object):
         site_frac=shifted_scatterers[i_seq].site,
         tolerance=self.correct_special_position_tolerance)
     self.xray_structure.replace_scatterers(scatterers=shifted_scatterers)
-    return apply_shifts_result.mean_displacements
+    return apply_shifts_result.u_iso_reinable_params
 
   def compute_target(self, compute_gradients):
     self.f_calc = self.structure_factors_from_scatterers(
@@ -221,7 +222,7 @@ class lbfgs(object):
       compute_gradients)
 
   def compute_functional_and_gradients(self):
-    mean_displacements = self.apply_shifts()
+    u_iso_reinable_params = self.apply_shifts()
     self.compute_target(compute_gradients=True)
     self.f = self.target_result.target()
     if (self.first_target_value is None):
@@ -237,18 +238,21 @@ class lbfgs(object):
         self.f += self.occupancy_penalty.functional(occupancy=occupancy)
     self.g = self.structure_factor_gradients(
       xray_structure=self.xray_structure,
-      mean_displacements=mean_displacements,
+      u_iso_reinable_params=u_iso_reinable_params,
       miller_set=self.target_functor.f_obs(),
       d_target_d_f_calc=self.target_result.derivatives(),
       n_parameters=self.x.size(),
       algorithm=self.structure_factor_algorithm).packed()
     if (self.u_penalty is not None and self.scatterer_grad_flags_counts.u_iso > 0):
       g = flex.double()
-      #XXX replace with tan reparametrization
-      if 0: #(self.gradient_flags.sqrt_u_iso):
-        for mean_displacement in mean_displacements:
-          g.append(2*mean_displacement
-                  *self.u_penalty.gradient(u=mean_displacement**2))
+      if (self.scatterer_grad_flags_counts.tan_u_iso):
+        for u_iso_reinable_param, scatterer in zip(u_iso_reinable_params,self.xray_structure.scatterers()):
+            if(scatterer.flags.param > 0 and scatterer.flags.tan_u_iso()):
+               u_iso_max = adptbx.b_as_u(scatterer.flags.param)
+               chain_rule_scale = u_iso_max / math.pi / (u_iso_reinable_param*u_iso_reinable_param+1.0)
+               g.append(chain_rule_scale*self.u_penalty.gradient(u=scatterer.u_iso))
+            else:
+               g.append(self.u_penalty.gradient(u=scatterer.u_iso))
       else:
         for u_iso in u_isos:
           g.append(self.u_penalty.gradient(u=u_iso))

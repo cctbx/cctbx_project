@@ -244,7 +244,7 @@ def exercise_negative_parameters(verbose=0):
     for algorithm in ["direct", "fft"]:
       grads = structure_factor_gradients(
         xray_structure=structure,
-        mean_displacements=None,
+        u_iso_reinable_params=None,
         miller_set=f_direct,
         d_target_d_f_calc=target_result.derivatives(),
         n_parameters=structure.n_parameters(),

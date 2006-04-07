@@ -509,7 +509,7 @@ class manager(object):
                                            alpha         = None,
                                            beta          = None,
                                            tan_b_iso_max = None,
-                                           mean_displacements = None):
+                                           u_iso_reinable_params = None):
     xrs = self.xray_structure
     if([site, u_iso, u_aniso].count(True) > 0):
        tan_u_iso = False
@@ -544,18 +544,18 @@ class manager(object):
                                             beta              = beta,
                                             scale_ml          = None,
                                             flag              = "work")
-    if(u_iso and mean_displacements is None):
+    if(u_iso and u_iso_reinable_params is None):
        # XXX here is not clean too
        if(tan_b_iso_max != 0):
           u_iso_max = adptbx.b_as_u(tan_b_iso_max)
-          mean_displacements = flex.tan(math.pi*
+          u_iso_reinable_params = flex.tan(math.pi*
             (self.xray_structure.scatterers().extract_u_iso()/u_iso_max-1./2.))
        if(tan_b_iso_max == 0):
-          mean_displacements = None#flex.sqrt(
+          u_iso_reinable_params = None#flex.sqrt(
                               #self.xray_structure.scatterers().extract_u_iso())
     if(u_aniso):
        return structure_factor_gradients(
-                    mean_displacements = None,
+                    u_iso_reinable_params = None,
                     d_target_d_f_calc  = xrtfr.derivatives(),
                     xray_structure     = xrs,
                     n_parameters       = 0,
@@ -563,7 +563,7 @@ class manager(object):
                     algorithm          = self.sf_algorithm).d_target_d_u_cart()
     else:
        return structure_factor_gradients(
-                                      mean_displacements = mean_displacements,
+                                      u_iso_reinable_params = u_iso_reinable_params,
                                       d_target_d_f_calc  = xrtfr.derivatives(),
                                       xray_structure     = xrs,
                                       n_parameters       = xrs.n_parameters(),

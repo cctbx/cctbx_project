@@ -176,7 +176,7 @@ class cartesian_dynamics(object):
     n = self.structure.n_parameters()
     sf = structure_factor_gradients(
                         xray_structure    = self.structure,
-                        mean_displacements= None,
+                        u_iso_reinable_params= None,
                         miller_set        = self.fmodel_copy.f_obs_w(),
                         d_target_d_f_calc = xray_target_result.derivatives(),
                         n_parameters      = 0,

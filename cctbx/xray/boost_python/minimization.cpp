@@ -28,8 +28,8 @@ namespace cctbx { namespace xray { namespace boost_python {
             arg_("shifts"))))
         .add_property("shifted_scatterers",
           make_getter(&w_t::shifted_scatterers, rbv()))
-        .add_property("mean_displacements",
-          make_getter(&w_t::mean_displacements, rbv()))
+        .add_property("u_iso_reinable_params",
+          make_getter(&w_t::u_iso_reinable_params, rbv()))
       ;
     }
   };

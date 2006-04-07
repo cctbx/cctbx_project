@@ -184,7 +184,7 @@ def exercise(target_functor, parameter_name, space_group_info,
                                 fdp        = gradient_flags.fdp)
   sf = xray.structure_factors.gradients_direct(
     xray_structure=structure,
-    mean_displacements=None,
+    u_iso_reinable_params=None,
     miller_set=f_obs,
     d_target_d_f_calc=target_result.derivatives(),
     n_parameters=0)
@@ -230,7 +230,7 @@ def exercise(target_functor, parameter_name, space_group_info,
         u_iso_refinable_params.append(value)
     sf = xray.structure_factors.gradients_direct(
       xray_structure=structure,
-      mean_displacements = u_iso_refinable_params,
+      u_iso_reinable_params = u_iso_refinable_params,
       miller_set=f_obs,
       d_target_d_f_calc=target_result.derivatives(),
       n_parameters=0)

@@ -246,6 +246,7 @@ class manager(object):
     sites_cart  = self.xray_structure.sites_cart()
     occupancies = self.xray_structure.scatterers().extract_occupancies()
     u_isos      = self.xray_structure.extract_u_iso_or_u_equiv()
+    scat_types = self.xray_structure.scatterers().extract_scattering_types()
     if(selection is None):
        for i_seq,atom in enumerate(self.atom_attributes_list):
            if(atom.name is None): name = "    "
@@ -277,7 +278,7 @@ class manager(object):
                                        occupancy   = occupancies[i_seq],
                                        tempFactor  = adptbx.u_as_b(u_isos[i_seq]),
                                        segID       = segID,
-                                       element     = element,
+                                       element     = scat_types[i_seq],#element,
                                        charge      = charge)
        print >> out, "END"
     else:
@@ -312,7 +313,7 @@ class manager(object):
                                           occupancy   = occupancies[i_seq],
                                           tempFactor  = adptbx.u_as_b(u_isos[i_seq]),
                                           segID       = segID,
-                                          element     = element,
+                                          element     = scat_types[i_seq],#element,
                                           charge      = charge)
        print >> out, "END"
 
