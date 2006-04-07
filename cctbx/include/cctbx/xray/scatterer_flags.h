@@ -230,7 +230,7 @@ namespace cctbx { namespace xray {
         sc.flags.set_tan_u_iso(tan_u_iso);
         sc.flags.param = param;
     }
-  };
+  }
 
 }} // namespace cctbx::xray
 
