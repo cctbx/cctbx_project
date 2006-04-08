@@ -19,21 +19,21 @@ def ehms( args ):
             dest = "max_delta",
             help = "Maximum delta for modified Le-Page algorithm",
             metavar="FLOAT")
-    .option(None, "--niggli",
+    .option(None, "--start_from_p1",
             action="store_true",
             dest="niggli",
             default=False,
-            help="Reduce to niggli cell and assume P1")
+            help="Reduce to niggli cell, and forgot the spacegroup before higher metric symmetry is sought.")
     .option(None, "--graph",
             action="store",
             dest="graph",
             default=None,
-            help="A graphical representation of the graph will be written out")
+            help="A graphical representation of the graph will be written out. Requiers Graphviz to be installed and in path.")
     .option(None, "--but_not",
             action="store",
             dest="but_not",
             default=None,
-            help="Remove this particular point group from the graph and find out the consequences")
+            help="Remove this particular point group from the graph and find out the consequences.")
 
     ).process(args=args)
 
