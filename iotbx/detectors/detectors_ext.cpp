@@ -48,7 +48,7 @@ af::flex_int ReadADSC(const std::string& filename,
 void WriteADSC(const std::string& filename,
                       af::flex_int data, const long& size1,
                       const long& size2,const int& big_endian ) {
-  std::ofstream c_out(filename.c_str(),std::ios::out|std::ios::app);
+  std::ofstream c_out(filename.c_str(),std::ios::out|std::ios::app|std::ios::binary);
 
   std::vector<unsigned char> uchardata;
   std::size_t sz = data.size();
