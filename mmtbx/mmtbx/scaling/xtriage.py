@@ -31,6 +31,7 @@ scaling.input {
      n_copies_per_asu=None
      .type=float
      n_terms = None
+     .expert_level=10
      .type=int
    }
    analyses{
@@ -80,7 +81,9 @@ scaling.input {
      }
 
    }
-
+   expert_level=1
+   .type=int
+   .expert_level=10
 }
 """)
 
@@ -112,8 +115,8 @@ The program options are defined in the following table.
   | full parameter name                      |  meaning                               |
   -------------------------------------------------------------------------------------
   | basic.n_residues                         | Number of residues per monomer         |
+  | basic.n_bases                            | Number of base pairs per monomer       |
   | basic.n_copies_per_asu                   | Number of copies in the ASU            |
-  | basic.n_terms                            | Number of terms in chebyshev polynome  |
   | analyses.verbose                         | Verbosity level                        |
   | analyses.log                             | Log file with CCP4i style plots        |
   | xray_data.file_name                      | File containing xray data              |
@@ -136,14 +139,11 @@ Detailed description:
 basic.n_residues: Number of residues in monomer. If none, value is estimated
                   assuming 50% solvent content.
 
+basic.n_bases: Number of bases in monomer. Can be used with basic.n_residues
+
 basic.n_copies_per_asu : Number of copies in the ASU. if None, value is estimated
                          and used. If specified, value is estimated and estimate
                          is reported for your information only.
-
-basic.n_terms : The number of terms used in the chebyshev polynome modelling
-                the average intensity as a function of resolution.
-                Leave unspecified for resonable defaults.
-
 
 analyses.verbose : verbosity level of the output;  0 -> very brief/silent
                                                    1 -> normal
@@ -384,7 +384,7 @@ Use keyword 'unit_cell' to specify unit_cell
       print >> log
       print >> log
       print >> log, "Effective parameters: "
-      new_params.show(out=log)
+      new_params.show(out=log,expert_level=params.scaling.input.expert_level)
 
     crystal_symmetry = crystal.symmetry(
       unit_cell = params.scaling.input.xray_data.unit_cell,
