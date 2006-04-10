@@ -16,4 +16,5 @@ env.SharedLibrary(target="#lib/cctbx_xray_ext", source=[
   "structure_factors_direct.cpp",
   "structure_factors_simple.cpp",
   "targets.cpp",
+  "f_model_bpl.cpp",
 ])
