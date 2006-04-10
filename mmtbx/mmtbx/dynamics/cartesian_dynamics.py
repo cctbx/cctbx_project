@@ -151,39 +151,18 @@ class cartesian_dynamics(object):
     return gradient * obj.number_of_restraints # XXX BIGGEST MYSTERY !!!
 
   def xray_grads(self):
-    self.fmodel_copy.update_xray_structure(self.structure,
+    if(self.target.count("ls") == 1):
+      alpha_w, beta_w = None, None
+    elif(self.target == "ml" or self.target == "mlhl"):
+      alpha_w, beta_w = self.fmodel.alpha_beta_w()
+    self.fmodel_copy.update_xray_structure(xray_structure = self.structure,
                                            update_f_calc            = True,
                                            update_f_mask            = False,
                                            update_f_ordered_solvent = False)
-    #f_calc = self.fmodel_copy.f_obs.structure_factors_from_scatterers(
-    #                                         xray_structure = self.structure,
-    #                                         algorithm      = "fft").f_calc()
-    #self.fmodel_copy.update(f_calc = f_calc)
-    if(self.target.count("ls") == 1):
-      xray_target_result = self.xray_target_functor(
-                                          self.fmodel_copy.f_model_w(), True)
-    elif(self.target == "ml" or self.target == "mlhl"):
-      alpha_w, beta_w = self.fmodel.alpha_beta_w()
-      xray_target_result = self.xray_target_functor(
-                                                self.fmodel_copy.f_model_w(),
-                                                alpha_w.data(),
-                                                beta_w.data(),
-                                                1.0,
-                                                True)
-    structure_factor_gradients = cctbx.xray.structure_factors.gradients(
-                                  miller_set    = self.fmodel_copy.f_obs_w(),
-                                  cos_sin_table = True)
-    n = self.structure.n_parameters()
-    sf = structure_factor_gradients(
-                        xray_structure    = self.structure,
-                        u_iso_reinable_params= None,
-                        miller_set        = self.fmodel_copy.f_obs_w(),
-                        d_target_d_f_calc = xray_target_result.derivatives(),
-                        n_parameters      = 0,
-                        algorithm         = "fft")
-    xray_grads = sf.d_target_d_site_cart()
-    return xray_grads
-
+    sf = self.fmodel_copy.gradient_wrt_atomic_parameters(site  = True,
+                                                         alpha = alpha_w,
+                                                         beta  = beta_w)
+    return flex.vec3_double(sf.packed())
 
   def center_mass_info(self, verbose = -1):
     self.rcm = self.structure.center_of_mass()
