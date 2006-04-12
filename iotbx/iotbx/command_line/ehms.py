@@ -1,3 +1,4 @@
+from cctbx import sgtbx
 from cctbx.sgtbx import pointgroup_tools as pgt
 from cctbx import crystal
 from iotbx.option_parser import iotbx_option_parser
@@ -23,7 +24,7 @@ def ehms( args ):
             action="store_true",
             dest="niggli",
             default=False,
-            help="Reduce to niggli cell and forget the input spacegroup before higher metric symmetry is sought.")
+            help="Reduce to Niggli cell and forget the input spacegroup before higher metric symmetry is sought.")
     .option(None, "--graph",
             action="store",
             dest="graph",
@@ -45,14 +46,14 @@ def ehms( args ):
     command_line.parser.show_help()
     return
 
-  if ( command_line.options.unit_cell == None ):
+  if ( command_line.symmetry.unit_cell() == None ):
     print >> log
     print >> log, "Sorry: Unit cell not specified."
     print >> log
     command_line.parser.show_help()
     return
 
-  if ( command_line.options.space_group == None ):
+  if ( command_line.symmetry.space_group_info() == None ):
     print>> log
     print>> log,  "Sorry: space group not specified."
     print>> log
@@ -71,8 +72,6 @@ def ehms( args ):
     xs = crystal.symmetry( uc, "P 1" )
     command_line.symmetry = xs
 
-  print >> log
-  print >> log
   sg_explorer = pgt.space_group_graph_from_cell_and_sg(
       command_line.symmetry.unit_cell(),
       command_line.symmetry.space_group(),
@@ -95,6 +94,25 @@ def ehms( args ):
   print >> log, "Space group: ", command_line.symmetry.space_group_info()
   print >> log
   print >> log
+  print >> log, "--------------------------"
+  print >> log, "Lattice symmetry deduction"
+  print >> log, "--------------------------"
+  print >> log, "Niggli cell: ", sg_explorer.xs_prim_set.unit_cell().parameters()
+  print >> log, "Niggli cell volume: ", sg_explorer.xs_prim_set.unit_cell().volume()
+  print >> log, "Niggli transformed input symmetry: ", sg_explorer.xs_prim_set.space_group_info() 
+  print >> log, "Symmetry of Niggli cell: ", sgtbx.space_group_info( group = sg_explorer.pg_high )
+  print >> log
+  print >> log
+  print >> log, "All pointgroups that are both a subgroup of the lattice symmetry and" 
+  print >> log, "a supergroup of the Niggli transformed input symmetry wil now be listed,"
+  print >> log, "as well as their minimal supergroups/maximal subgroups and symmetry" 
+  print >> log, "operators that generate them."
+  print >> log, "For each pointgroup, a list of compatible spacegroups will be listed."
+  print >> log, "Care is takebn that there are no sysmetatic absence violation with the " 
+  print >> log, "provided input spacegroup."
+  print >> log
+
+
 
   sg_explorer.show(out=log)
 
