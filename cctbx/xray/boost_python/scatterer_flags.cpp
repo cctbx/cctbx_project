@@ -82,6 +82,8 @@ namespace {
         .def("set_curv_fp_fdp", &w_t::set_curv_fp_fdp, (arg_("state")), return_self<>())
         .def("set_curv_fdp_fdp", &w_t::set_curv_fdp_fdp, (arg_("state")), return_self<>())
         .def("set_tan_u_iso", &w_t::set_tan_u_iso, (arg_("state")), return_self<>())
+        .def("set_use_u", (void(w_t::*)(bool, bool)) &w_t::set_use_u, (arg_("iso"),arg_("aniso")))
+        .def("set_use_u", (void(w_t::*)(bool)) &w_t::set_use_u, (arg_("iso")))
         .def_readonly("bits", &w_t::bits)
         .def_readwrite("param", &w_t::param)
       ;

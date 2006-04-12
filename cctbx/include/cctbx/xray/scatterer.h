@@ -57,6 +57,7 @@ namespace xray {
         anisotropic_flag(false),
         u_iso(u_iso_),
         u_star(-1,-1,-1,-1,-1,-1),
+        flags(scatterer_flags::use_bit|scatterer_flags::use_u_iso_bit),
         multiplicity_(0),
         weight_without_occupancy_(0)
       {}
@@ -79,6 +80,7 @@ namespace xray {
         anisotropic_flag(true),
         u_iso(-1),
         u_star(u_star_),
+        flags(scatterer_flags::use_bit|scatterer_flags::use_u_aniso_bit),
         multiplicity_(0),
         weight_without_occupancy_(0)
       {}
@@ -136,6 +138,22 @@ namespace xray {
       //! Support for refinement.
       scatterer_flags flags;
 
+      void set_use_u(bool iso, bool aniso)
+      {
+        flags.set_use_u_iso(iso);
+        flags.set_use_u_aniso(aniso);
+        if(!iso) u_iso = -1;
+        if(!aniso) u_star.fill(-1);
+      }
+
+      void set_use_u(bool state)
+      {
+        flags.set_use_u_iso(state);
+        flags.set_use_u_aniso(!state);
+        if(!state) u_iso = -1;
+        if(state) u_star.fill(-1);
+      }
+
       //! Converts u_star to the equivalent u_iso in place.
       /*! The u_star values are reset to -1 and the anisotropic_flag
           is reset to false.
@@ -146,9 +164,12 @@ namespace xray {
       convert_to_isotropic(
         uctbx::unit_cell const& unit_cell)
       {
-        if (anisotropic_flag) {
-          u_iso = adptbx::u_star_as_u_iso(unit_cell, u_star);
+        if (flags.use_u_aniso()) {
+          if (!flags.use_u_iso()) u_iso = 0;
+          u_iso += adptbx::u_star_as_u_iso(unit_cell, u_star);
           anisotropic_flag = false;
+          flags.set_use_u_aniso(false);
+          flags.set_use_u_iso(true);
           u_star.fill(-1);
         }
       }
@@ -163,8 +184,15 @@ namespace xray {
       convert_to_anisotropic(
         uctbx::unit_cell const& unit_cell)
       {
-        if (!anisotropic_flag) {
-          u_star = adptbx::u_iso_as_u_star(unit_cell, u_iso);
+        if (flags.use_u_iso()) {
+          if (!flags.use_u_aniso()) {
+            u_star = adptbx::u_iso_as_u_star(unit_cell, u_iso);
+          }
+          else {
+            u_star += adptbx::u_iso_as_u_star(unit_cell, u_iso);
+          }
+          flags.set_use_u_aniso(true);
+          flags.set_use_u_iso(false);
           anisotropic_flag = true;
           u_iso = -1;
         }
@@ -175,11 +203,20 @@ namespace xray {
       is_positive_definite_u(
         uctbx::unit_cell const& unit_cell) const
       {
-        if (anisotropic_flag) {
-          return adptbx::is_positive_definite(
-            adptbx::u_star_as_u_cart(unit_cell, u_star));
+        if (flags.use_u_aniso()) {
+          scitbx::sym_mat3<FloatType>
+            u_cart = adptbx::u_star_as_u_cart(unit_cell, u_star);
+          if (flags.use_u_iso()) {
+            u_cart[0] += u_iso;
+            u_cart[1] += u_iso;
+            u_cart[2] += u_iso;
+          }
+          return adptbx::is_positive_definite(u_cart);
         }
-        return u_iso > 0;
+        else if (flags.use_u_iso()) {
+          return u_iso > 0;
+        }
+        return true;
       }
 
       /*! Tests u_iso >= u_cart_tolerance or
@@ -190,11 +227,20 @@ namespace xray {
         uctbx::unit_cell const& unit_cell,
         FloatType const& u_cart_tolerance) const
       {
-        if (anisotropic_flag) {
-          return adptbx::is_positive_definite(
-            adptbx::u_star_as_u_cart(unit_cell, u_star), u_cart_tolerance);
+        if (flags.use_u_aniso()) {
+          scitbx::sym_mat3<FloatType>
+            u_cart = adptbx::u_star_as_u_cart(unit_cell, u_star);
+          if (flags.use_u_iso()) {
+            u_cart[0] += u_iso;
+            u_cart[1] += u_iso;
+            u_cart[2] += u_iso;
+          }
+          return adptbx::is_positive_definite(u_cart, u_cart_tolerance);
         }
-        return u_iso >= -u_cart_tolerance;
+        else if (flags.use_u_iso()) {
+          return u_iso >= -u_cart_tolerance;
+        }
+        return true;
       }
 
       //! Changes u_iso or u_star in place such that u_iso >= u_min.
@@ -207,16 +253,24 @@ namespace xray {
         sgtbx::site_symmetry_ops const& site_symmetry_ops,
         FloatType const& u_min)
       {
-        if (!anisotropic_flag) {
-          if (u_iso < u_min) u_iso = u_min;
-        }
-        else {
+        if (flags.use_u_aniso()) {
+          scitbx::sym_mat3<FloatType> u_iso_star;
+          if (flags.use_u_iso()) {
+            u_iso_star = adptbx::u_iso_as_u_star(unit_cell, u_iso);
+            u_star += u_iso_star;
+          }
           u_star = site_symmetry_ops.average_u_star(u_star);
           scitbx::sym_mat3<FloatType>
             u_cart = adptbx::u_star_as_u_cart(unit_cell, u_star);
           u_cart = adptbx::eigenvalue_filtering(u_cart, u_min);
           u_star = adptbx::u_cart_as_u_star(unit_cell, u_cart);
           u_star = site_symmetry_ops.average_u_star(u_star);
+          if (flags.use_u_iso()) {
+            u_star -= u_iso_star;
+          }
+        }
+        else if (flags.use_u_iso()) {
+          if (u_iso < u_min) u_iso = u_min;
         }
       }
 
@@ -229,11 +283,11 @@ namespace xray {
         uctbx::unit_cell const& unit_cell,
         FloatType const& u_shift)
       {
-        if (!anisotropic_flag) {
-          u_iso += u_shift;
-        }
-        else {
+        if (flags.use_u_aniso()) {
           u_star += adptbx::u_iso_as_u_star(unit_cell, u_shift);
+        }
+        else if (flags.use_u_iso()) {
+          u_iso += u_shift;
         }
       }
 
@@ -363,13 +417,13 @@ namespace xray {
         cctbx::cartesian<FloatType> cart = unit_cell.orthogonalize(site);
         std::sprintf(buf, "%scartesian coordinates: %.6f %.6f %.6f\n",
           prefix, cart[0], cart[1], cart[2]); result += buf;
-        if (!anisotropic_flag) {
+        if (flags.use_u_iso()) {
           std::sprintf(buf, "%su_iso: %.6g\n",
             prefix, u_iso); result += buf;
           std::sprintf(buf, "%sb_iso: %.6g\n",
             prefix, adptbx::u_as_b(u_iso)); result += buf;
         }
-        else {
+        if (flags.use_u_aniso()) {
           scitbx::sym_mat3<FloatType> u = u_star;
           std::sprintf(buf, "%su_star: %.6g %.6g %.6g %.6g %.6g %.6g\n",
             prefix, u[0], u[1], u[2], u[3], u[4], u[5]); result += buf;
@@ -445,7 +499,7 @@ namespace xray {
     sgtbx::site_symmetry_ops const& site_symmetry_ops,
     FloatType const& u_star_tolerance)
   {
-    if (anisotropic_flag && !site_symmetry_ops.is_point_group_1()) {
+    if (flags.use_u_aniso() && !site_symmetry_ops.is_point_group_1()) {
       if (u_star_tolerance > 0.) {
         CCTBX_ASSERT(
           site_symmetry_ops.is_compatible_u_star(u_star, u_star_tolerance));

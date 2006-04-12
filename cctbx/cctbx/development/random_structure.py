@@ -229,6 +229,7 @@ class xray_structure(xray.structure):
       scatterer.fdp = fdp
       if (not self.anisotropic_flag):
         scatterer.anisotropic_flag = False
+        scatterer.flags.set_use_u(iso=True)
         u_iso = self.u_iso
         if (not u_iso and self.random_u_iso):
           u_iso = random.random() * self.random_u_iso_scale \
@@ -236,6 +237,7 @@ class xray_structure(xray.structure):
         scatterer.u_iso = u_iso
       else:
         scatterer.anisotropic_flag = True
+        scatterer.flags.set_use_u(iso=False)
         run_away_counter = 0
         while 1:
           run_away_counter += 1

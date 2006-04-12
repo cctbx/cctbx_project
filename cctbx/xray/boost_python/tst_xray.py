@@ -182,6 +182,45 @@ def exercise_set_scatterer_grad_flags():
       assert scatterer.flags.grad_fdp()       == False
       assert scatterer.flags.tan_u_iso()      == False
       assert scatterer.flags.param            == -1
+  sc0 = scatterers[0]
+  for iso in [False, True]:
+      for aniso in [True, False]:
+          sc0.flags.set_use_u_iso(iso)
+          sc0.flags.set_use_u_aniso(aniso)
+          assert sc0.flags.use_u_iso() == iso
+          assert sc0.flags.use_u_aniso() == aniso
+          sc0.flags.set_use_u(iso = aniso, aniso = iso)
+          assert sc0.flags.use_u_iso() == aniso
+          assert sc0.flags.use_u_aniso() == iso
+          sc0.flags.set_use_u(iso = iso)
+          assert sc0.flags.use_u_iso() == iso
+          assert sc0.flags.use_u_aniso() != iso
+  for iso in [False, True]:
+      for aniso in [True, False]:
+          sc0.flags.set_use_u_iso(iso)
+          sc0.flags.set_use_u_aniso(aniso)
+          assert sc0.flags.use_u_iso() == iso
+          assert sc0.flags.use_u_aniso() == aniso
+          sc0.u_iso = 0.5
+          sc0.u_star = [0.5,0.5,0.5,0.5,0.5,0.5]
+          sc0.set_use_u(iso = aniso, aniso = iso)
+          assert sc0.flags.use_u_iso() == aniso
+          assert sc0.flags.use_u_aniso() == iso
+          if(aniso == False): assert sc0.u_iso == -1.0
+          if(iso == False): assert sc0.u_star == (-1.0,-1.0,-1.0,-1.0,-1.0,-1.0)
+          if(aniso): assert sc0.u_iso == 0.5
+          if(iso): assert sc0.u_star == (0.5,0.5,0.5,0.5,0.5,0.5)
+          sc0.u_iso = 0.5
+          sc0.u_star = [0.5,0.5,0.5,0.5,0.5,0.5]
+          sc0.set_use_u(iso = iso)
+          assert sc0.flags.use_u_iso() == iso
+          assert sc0.flags.use_u_aniso() != iso
+          if(iso):
+             assert sc0.u_iso == 0.5
+             assert sc0.u_star == (-1.0,-1.0,-1.0,-1.0,-1.0,-1.0)
+          else:
+             assert sc0.u_iso == -1.0
+             assert sc0.u_star == (0.5,0.5,0.5,0.5,0.5,0.5)
 
 def exercise_scatterer_flags_counts():
   x = xray.scatterer("c", site=(0.1,0.2,0.3), occupancy=0.0, u=(0,0,0,0,0,0))
