@@ -226,6 +226,8 @@ def run(command_name, args):
     print_help()
   elif ( "--h" in args ):
     print_help()
+  elif ("-h" in args ):
+    print_help()
   else:
     log = multi_out()
     if (not "--quiet" in args):
