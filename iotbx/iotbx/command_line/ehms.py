@@ -17,13 +17,13 @@ def ehms( args ):
             type="float",
             default=5.0,
             dest = "max_delta",
-            help = "Maximum delta for modified Le-Page algorithm",
+            help = "Maximum delta/obliquity used in determining the lattice symmetry, using a modified Le-Page algorithm. Default is 5.0 degrees",
             metavar="FLOAT")
     .option(None, "--start_from_p1",
             action="store_true",
             dest="niggli",
             default=False,
-            help="Reduce to niggli cell, and forgot the spacegroup before higher metric symmetry is sought.")
+            help="Reduce to niggli cell and forget the input spacegroup before higher metric symmetry is sought.")
     .option(None, "--graph",
             action="store",
             dest="graph",
@@ -43,14 +43,19 @@ def ehms( args ):
 
   if len(args)==0:
     command_line.parser.show_help()
+    return
 
-  if ( command_line.symmetry.unit_cell() == None ):
+  if ( command_line.options.unit_cell == None ):
+    print >> log
     print >> log, "Sorry: Unit cell not specified."
+    print >> log
     command_line.parser.show_help()
     return
 
-  if ( command_line.symmetry.space_group() == None ):
+  if ( command_line.options.space_group == None ):
+    print>> log
     print>> log,  "Sorry: space group not specified."
+    print>> log
     command_line.parser.show_help()
     return
 
