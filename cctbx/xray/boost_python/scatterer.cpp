@@ -83,6 +83,8 @@ namespace {
         .add_property("u_star", make_getter(&w_t::u_star, rbv()),
                                 make_setter(&w_t::u_star, dcp()))
         .def_readwrite("flags", &w_t::flags)
+        .def("set_use_u", (void(w_t::*)(bool, bool)) &w_t::set_use_u, (arg_("iso"),arg_("aniso")))
+        .def("set_use_u", (void(w_t::*)(bool)) &w_t::set_use_u, (arg_("iso")))
         .def("convert_to_isotropic", &w_t::convert_to_isotropic, (
           arg_("unit_cell")))
         .def("convert_to_anisotropic", &w_t::convert_to_anisotropic, (

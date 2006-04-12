@@ -164,6 +164,18 @@ namespace cctbx { namespace xray {
     CCTBX_XRAY_SCATTERER_FLAGS_GET_SET(curv_fdp_fdp)
     CCTBX_XRAY_SCATTERER_FLAGS_GET_SET(tan_u_iso)
 
+    void set_use_u(bool iso, bool aniso)
+    {
+      set_use_u_iso(iso);
+      set_use_u_aniso(aniso);
+    };
+
+    void set_use_u(bool state)
+    {
+      set_use_u_iso(state);
+      set_use_u_aniso(!state);
+    };
+
   };
 
   class scatterer_grad_flags_counts {
