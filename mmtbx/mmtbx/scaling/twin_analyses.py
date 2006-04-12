@@ -1559,7 +1559,7 @@ class symmetry_issues(object):
     print >> out
     print >> out, "Exploring higher metric symmetry"
     print >> out
-    print >> out, "Point group of data as discted by the space group is", self.pg_input_name
+    print >> out, "The point group of data as dictated by the space group is", self.pg_input_name
     print >> out, "  the point group in the niggli setting is", sgtbx.space_group_info( group=self.pg_low_prim_set )
     print >> out, "The point group of the lattice is", self.pg_lattice_name
     print >> out, "A summary of R values for various possible point groups follow."
