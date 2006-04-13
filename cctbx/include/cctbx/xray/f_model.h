@@ -203,7 +203,6 @@ namespace cctbx { namespace xray { namespace f_model {
        wb=f_part_[ii].imag();
        g1=k_sol_*bulk_scale_[ii];
        g2=k_part_*part_scale_[ii];
-       g0=k_overall_*aniso_scale_[ii];
        fa=(ua+g1*va+g2*wa);
        fb=(ub+g1*vb+g2*wb);
 
