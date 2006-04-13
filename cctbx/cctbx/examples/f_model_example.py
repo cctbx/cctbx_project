@@ -129,6 +129,10 @@ def f_model_example():
 
 
 
+  #if desired, a selection can be made on the f_model object.
+  #currently, only an integer selection is supported
+  new_f_model_object = f_model_structure_factors.select( flex.int([1,2,3]) )
+  print new_f_model_object.f_model().size()
 
 
 
