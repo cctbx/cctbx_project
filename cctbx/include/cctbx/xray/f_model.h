@@ -495,35 +495,43 @@ namespace cctbx { namespace xray { namespace f_model {
      }
 
 
-
+     //--------------------------------
+     // d_f_model_d_f_atoms
+     scitbx::af::shared<FloatType> d_f_model_d_f_atoms()
+     {
+       return( overall_scale() );
+     }
 
 
 
      // selection methods, takes in an iselection
-     f_model<FloatType> select( scitbx::af::const_ref<std::size_t> const& iselection)
+     f_model<FloatType> select( scitbx::af::const_ref<int> const& iselection) const
      {
        scitbx::af::shared<std::complex<FloatType> > new_f_atoms;
        scitbx::af::shared<std::complex<FloatType> > new_f_mask;
        scitbx::af::shared<std::complex<FloatType> > new_f_part;
        scitbx::af::shared< cctbx::miller::index<> > new_hkl;
+       scitbx::af::shared< FloatType > new_d_star_sq;
 
 
        CCTBX_ASSERT( iselection.size() <= hkl_.size() );
        for (std::size_t ii=0;ii<iselection.size();ii++){
          CCTBX_ASSERT( iselection[ii]<hkl_.size() );
+         CCTBX_ASSERT( iselection[ii]>=0 );
          new_hkl.push_back( hkl_[iselection[ii]] );
          new_f_atoms.push_back( f_atoms_[iselection[ii]] );
          new_f_mask.push_back( f_mask_[iselection[ii]] );
          new_f_part.push_back( f_part_[iselection[ii]] );
+         new_d_star_sq.push_back( d_star_sq_[iselection[ii]] );
        }
 
        f_model<FloatType> new_f_model( new_hkl.const_ref(),
                                        new_f_atoms.const_ref(),
                                        new_f_mask.const_ref(),
-                                       d_star_sq_.const_ref(), // pass in a d_star_sq in stead of unit_cell
+                                       new_d_star_sq.const_ref(), // pass in a d_star_sq in stead of unit_cell
                                        k_overall_, u_star_,
                                        k_sol_, u_sol_,
-                                       f_part_.const_ref(), k_part_, u_part_);
+                                       new_f_part.const_ref(), k_part_, u_part_);
        return (new_f_model);
      }
 
