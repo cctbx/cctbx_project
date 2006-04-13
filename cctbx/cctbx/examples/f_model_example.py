@@ -36,10 +36,10 @@ def f_model_example():
                                              k_overall=1.0,
                                              u_star=(0,0,0,0,0,0),
                                              k_sol=1.0,
-                                             b_sol=1.0,
+                                             u_sol=1.0,
                                              f_part=None,
                                              k_part=0,
-                                             b_part=0 )
+                                             u_part=0 )
 
   #Resetting model parameters
   #
@@ -56,9 +56,9 @@ def f_model_example():
   # computations. If this is not done, the subsequent gradients will not
   # be correct!
   f_model_structure_factors.ksol( 1.0 )
-  f_model_structure_factors.bsol( 3.0 )
+  f_model_structure_factors.usol( 3.0 )
   f_model_structure_factors.kpart( 1.0 )
-  f_model_structure_factors.bpart( 3.0 )
+  f_model_structure_factors.upart( 3.0 )
   f_model_structure_factors.koverall( 1.0 )
   f_model_structure_factors.ustar( (0,0,0,0,0,0) )
   # this is the refresh command
@@ -66,9 +66,9 @@ def f_model_example():
 
   # Obtaining the current parameters
   ksol = f_model_structure_factors.ksol()
-  bsol = f_model_structure_factors.bsol()
+  bsol = f_model_structure_factors.usol()
   kpart = f_model_structure_factors.kpart()
-  bpart = f_model_structure_factors.bpart()
+  bpart = f_model_structure_factors.upart()
   koverall = f_model_structure_factors.koverall()
   ustar = f_model_structure_factors.ustar()
 
@@ -115,17 +115,17 @@ def f_model_example():
   tmp = dtdsingle.koverall()
   tmp = dtdsingle.ustar()
   tmp = dtdsingle.ksol()
-  tmp = dtdsingle.bsol()
+  tmp = dtdsingle.usol()
   tmp = dtdsingle.kpart()
-  tmp = dtdsingle.bpart()
+  tmp = dtdsingle.upart()
   #
   # if desired, you can set values as well
   dtdsingle.koverall(1)
   dtdsingle.ustar(  (1,1,1,1,1,1)  )
   dtdsingle.ksol(1)
-  dtdsingle.bsol(1)
+  dtdsingle.usol(1)
   dtdsingle.kpart(1)
-  dtdsingle.bpart(1)
+  dtdsingle.upart(1)
 
 
 

@@ -21,9 +21,9 @@ flex.set_random_seed(0)
 
 def compare_all(tmp1,tmp2):
   assert approx_equal( tmp1.ksol(),tmp2.ksol() )
-  assert approx_equal( tmp1.bsol(),tmp2.bsol() )
+  assert approx_equal( tmp1.usol(),tmp2.usol() )
   assert approx_equal( tmp1.kpart(),tmp2.kpart() )
-  assert approx_equal( tmp1.bpart(),tmp2.bpart() )
+  assert approx_equal( tmp1.upart(),tmp2.upart() )
   assert approx_equal( tmp1.koverall(),tmp2.koverall() )
   assert approx_equal( tmp1.ustar(), tmp2.ustar() )
 
@@ -31,17 +31,17 @@ def tst_f_model_derivative_holder():
   dinfo = xray.f_model_derivative_holder()
 
   dinfo.ksol(1)
-  dinfo.bsol(1)
+  dinfo.usol(1)
   dinfo.kpart(1)
-  dinfo.bpart(1)
+  dinfo.upart(1)
   dinfo.koverall(1)
   dinfo.ustar( [1,1,1,1,1,1] )
 
   dinfo.accumulate( dinfo )
   assert( dinfo.ksol()==2 )
-  assert( dinfo.bsol()==2 )
+  assert( dinfo.usol()==2 )
   assert( dinfo.kpart()==2 )
-  assert( dinfo.bpart()==2 )
+  assert( dinfo.upart()==2 )
   assert( dinfo.koverall()==2 )
   assert( dinfo.ustar()==(2,2,2,2,2,2) )
 
@@ -60,10 +60,10 @@ def tst_f_model():
                         k_overall=1.0,
                         u_star=(0,0,0,0,0,0),
                         k_sol=1.0,
-                        b_sol=1.0,
+                        u_sol=0.1,
                         f_part=sfs.data(),
                         k_part=1.0,
-                        b_part=1.0 )
+                        u_part=0.1 )
   f_mod.refresh()
 
   data1 = sfs.data()[123]
@@ -112,10 +112,10 @@ def tst_f_model():
                         k_overall=1.0,
                         u_star=(0,0,0,0,0,0),
                         k_sol=0.0,
-                        b_sol=0.0,
+                        u_sol=0.0,
                         f_part=sfs.data()*0.0,
                         k_part=0.0,
-                        b_part=0.0 )
+                        u_part=0.0 )
   f_mod.refresh()
   grad_123 = f_mod.d_target_d_all(0,1,123, gradient_flags)
   assert approx_equal( grad_123.koverall(),
@@ -172,10 +172,10 @@ def tst_f_model():
                         k_overall=1.0,
                         u_star=(0,0,0,0,0,0),
                         k_sol=1.0,
-                        b_sol=1.0,
+                        u_sol=0.1,
                         f_part=sfs.data()*1.0,
                         k_part=1.0,
-                        b_part=1.0 )
+                        u_part=0.1 )
   h=0.0001
 
 
@@ -186,10 +186,10 @@ def tst_f_model():
                         k_overall=1.0,
                         u_star=(0,0,0,0,0,0),
                         k_sol=1.0,
-                        b_sol=1.0,
+                        u_sol=0.1,
                         f_part=sfs.data()*1.0,
                         k_part=1.0,
-                        b_part=1.0 )
+                        u_part=0.1 )
 
 
   newfm.renew_overall_scale_parameters(1.0+h, (0,0,0,0,0,0))
@@ -201,54 +201,55 @@ def tst_f_model():
   newfm.renew_overall_scale_parameters(1, (0,0,0,0,0,0))
 
 
-  newfm.renew_bulk_solvent_scale_parameters(1+h,1.0)
+  newfm.renew_bulk_solvent_scale_parameters(1+h,0.1)
   tmp = oldfm.d_target_d_all(1,0,123,gradient_flags).ksol()
   tmp_d = ((oldfm.f_model()[123]-newfm.f_model()[123])/(-h)).real
-  assert approx_equal( tmp,tmp_d,eps=1e-4 )
-  newfm.renew_bulk_solvent_scale_parameters(1,1.0)
+  assert approx_equal( tmp,tmp_d,eps=1e-2 )
+  newfm.renew_bulk_solvent_scale_parameters(1,0.1)
 
-  newfm.renew_bulk_solvent_scale_parameters(1.0,1.0+h)
-  tmp = oldfm.d_target_d_all(1,0,123,gradient_flags).bsol()
+  newfm.renew_bulk_solvent_scale_parameters(1.0,0.1+h)
+  tmp = oldfm.d_target_d_all(1,0,123,gradient_flags).usol()
   tmp_d = ((oldfm.f_model()[123]-newfm.f_model()[123])/(-h)).real
-  assert approx_equal( tmp,tmp_d,eps=1e-4 )
-  newfm.renew_bulk_solvent_scale_parameters(1.0,1.0)
+  assert approx_equal( tmp,tmp_d,eps=1e-2 )
+  newfm.renew_bulk_solvent_scale_parameters(1.0,0.1)
 
-  newfm.renew_bulk_solvent_scale_parameters(1+h,1.0)
+  newfm.renew_bulk_solvent_scale_parameters(1+h,0.1)
   tmp = oldfm.d_target_d_all(0,1,123,gradient_flags).ksol()
   tmp_d = ((oldfm.f_model()[123]-newfm.f_model()[123])/(-h)).imag
-  assert approx_equal( tmp,tmp_d,eps=1e-4 )
-  newfm.renew_bulk_solvent_scale_parameters(1,1.0)
+  assert approx_equal( tmp,tmp_d,eps=1e-2 )
+  newfm.renew_bulk_solvent_scale_parameters(1,0.1)
 
-  newfm.renew_bulk_solvent_scale_parameters(1.0,1.0+h)
-  tmp = oldfm.d_target_d_all(0,1,123,gradient_flags).bsol()
+  newfm.renew_bulk_solvent_scale_parameters(1.0,0.1+h)
+  tmp = oldfm.d_target_d_all(0,1,123,gradient_flags).usol()
   tmp_d = ((oldfm.f_model()[123]-newfm.f_model()[123])/(-h)).imag
-  assert approx_equal( tmp,tmp_d,eps=1e-4 )
-  newfm.renew_bulk_solvent_scale_parameters(1.0,1.0)
+  assert approx_equal( tmp,tmp_d,eps=1e-2 )
+  newfm.renew_bulk_solvent_scale_parameters(1.0,0.1)
 
 
-  newfm.renew_partial_structure_scale_parameters(1+h,1.0)
+  newfm.renew_partial_structure_scale_parameters(1+h,0.1)
   tmp = oldfm.d_target_d_all(1,0,123,gradient_flags).kpart()
   tmp_d = ((oldfm.f_model()[123]-newfm.f_model()[123])/(-h)).real
-  assert approx_equal( tmp,tmp_d,eps=1e-4 )
-  newfm.renew_bulk_solvent_scale_parameters(1,1.0)
+  assert approx_equal( tmp,tmp_d,eps=1e-2 )
+  newfm.renew_bulk_solvent_scale_parameters(1,0.1)
 
-  newfm.renew_partial_structure_scale_parameters(1.0,1.0+h)
-  tmp = oldfm.d_target_d_all(1,0,123,gradient_flags).bpart()
+  newfm.renew_partial_structure_scale_parameters(1.0,0.1+h)
+  tmp = oldfm.d_target_d_all(1,0,123,gradient_flags).upart()
   tmp_d = ((oldfm.f_model()[123]-newfm.f_model()[123])/(-h)).real
-  assert approx_equal( tmp,tmp_d,eps=1e-4 )
-  newfm.renew_bulk_solvent_scale_parameters(1.0,1.0)
+  assert approx_equal( tmp,tmp_d,eps=1e-2 )
+  newfm.renew_bulk_solvent_scale_parameters(1.0,0.1)
 
-  newfm.renew_partial_structure_scale_parameters(1+h,1.0)
+  newfm.renew_partial_structure_scale_parameters(1+h,0.1)
   tmp = oldfm.d_target_d_all(0,1,123,gradient_flags).kpart()
   tmp_d = ((oldfm.f_model()[123]-newfm.f_model()[123])/(-h)).imag
-  assert approx_equal( tmp,tmp_d,eps=1e-4 )
-  newfm.renew_bulk_solvent_scale_parameters(1,1.0)
+  assert approx_equal( tmp,tmp_d,eps=1e-2 )
+  newfm.renew_bulk_solvent_scale_parameters(1,0.1)
 
-  newfm.renew_partial_structure_scale_parameters(1.0,1.0+h)
-  tmp = oldfm.d_target_d_all(0,1,123,gradient_flags).bpart()
+  newfm.renew_partial_structure_scale_parameters(1.0,0.1+h)
+  tmp = oldfm.d_target_d_all(0,1,123,gradient_flags).upart()
   tmp_d = ((oldfm.f_model()[123]-newfm.f_model()[123])/(-h)).imag
-  assert approx_equal( tmp,tmp_d,eps=1e-4 )
-  newfm.renew_bulk_solvent_scale_parameters(1.0,1.0)
+  assert approx_equal( tmp,tmp_d,eps=1e-2 )
+  newfm.renew_bulk_solvent_scale_parameters(1.0,0.1)
+
 
 
 def run():
