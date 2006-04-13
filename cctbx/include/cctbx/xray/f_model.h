@@ -194,7 +194,7 @@ namespace cctbx { namespace xray { namespace f_model {
        CCTBX_ASSERT( gradient_flags.size() == 6 );
 
        f_model_derivative_holder<FloatType> tmp_derivs;
-       FloatType result,va,vb,ua,ub,wa,wb,g0,g1,g2,fa,fb;
+       FloatType va,vb,ua,ub,wa,wb,g1,g2,fa,fb;
        ua=f_atoms_[ii].real();
        ub=f_atoms_[ii].imag();
        va=f_mask_[ii].real();
