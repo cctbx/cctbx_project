@@ -1287,12 +1287,13 @@ class pre_process_args:
         callback=self.option_repository,
         help="path to source code repository",
         metavar="DIRECTORY")
-      parser.option(None, "--current_working_directory",
-        action="store",
-        type="string",
-        default=None,
-        help="preferred spelling of current working directory",
-        metavar="DIRECTORY")
+      if (hasattr(os.path, "samefile")):
+        parser.option(None, "--current_working_directory",
+          action="store",
+          type="string",
+          default=None,
+          help="preferred spelling of current working directory",
+          metavar="DIRECTORY")
       parser.option(None, "--build",
         choices=("release", "quick", "debug", "debug_optimized"),
         default="release",
@@ -1328,6 +1329,8 @@ class pre_process_args:
         help="version suffix for commands in bin directory",
         metavar="STRING")
     self.command_line = parser.process(args=args)
+    if (not hasattr(os.path, "samefile")):
+      self.command_line.options.current_working_directory = None
     if (default_repository is not None):
       self.repository_paths.append(default_repository)
 
@@ -1337,6 +1340,7 @@ class pre_process_args:
     self.repository_paths.append(value)
 
 def set_preferred_sys_prefix_and_sys_executable(build_path):
+  if (not hasattr(os.path, "samefile")): return
   dirname, basename = os.path.split(sys.prefix)
   if (os.path.samefile(build_path, dirname)):
     new_prefix = os.path.join(build_path, basename)
