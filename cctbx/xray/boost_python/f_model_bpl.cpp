@@ -20,14 +20,14 @@ namespace cctbx { namespace xray { namespace f_model { namespace boost_python {
           .def("ksol",(double(w_t::*)())  &w_t::ksol )
           .def("ksol",(void (w_t::*)(double))  &w_t::ksol )
 
-          .def("bsol",(double(w_t::*)())  &w_t::bsol )
-          .def("bsol",(void(w_t::*)(double))  &w_t::bsol )
+          .def("usol",(double(w_t::*)())  &w_t::usol )
+          .def("usol",(void(w_t::*)(double))  &w_t::usol )
 
           .def("kpart",(double(w_t::*)()) &w_t::kpart )
           .def("kpart",(void(w_t::*)(double)) &w_t::kpart )
 
-          .def("bpart",(double(w_t::*)()) &w_t::bpart )
-          .def("bpart",(void(w_t::*)(double)) &w_t::bpart )
+          .def("upart",(double(w_t::*)()) &w_t::upart )
+          .def("upart",(void(w_t::*)(double)) &w_t::upart )
 
           .def("koverall", (double(w_t::*)()) &w_t::koverall )
           .def("koverall", (void(w_t::*)(double)) &w_t::koverall )
@@ -63,10 +63,10 @@ namespace cctbx { namespace xray { namespace f_model { namespace boost_python {
                double const&,                                           // 7 overall scale
                scitbx::sym_mat3< double > const&,                       // 8 u star
                double const&,                                           // 9 bs scale
-               double const&,                                           // 0 bs b
+               double const&,                                           // 0 bs u
                scitbx::af::const_ref< std::complex< double > > const&,  // 1 f_mask
                double const&,                                           // 2 bs scale
-               double const&                                            // 3 bs b
+               double const&                                            // 3 bs u
                >
                ((arg_("hkl"),
                  arg_("f_atoms"),
@@ -75,10 +75,10 @@ namespace cctbx { namespace xray { namespace f_model { namespace boost_python {
                  arg_("k_overall"),
                  arg_("u_star"),
                  arg_("k_sol"),
-                 arg_("b_sol"),
+                 arg_("u_sol"),
                  arg_("f_part"),
                  arg_("k_part"),
-                 arg_("b_part") )))
+                 arg_("u_part") )))
 
           .def(init<
                scitbx::af::const_ref< cctbx::miller::index<> > const&,  // 1 indices
@@ -100,10 +100,10 @@ namespace cctbx { namespace xray { namespace f_model { namespace boost_python {
                  arg_("k_overall"),
                  arg_("u_star"),
                  arg_("k_sol"),
-                 arg_("b_sol"),
+                 arg_("u_sol"),
                  arg_("f_part"),
                  arg_("k_part"),
-                 arg_("b_part") )))
+                 arg_("u_part") )))
 
           // derivatives using gradientflags
           .def("d_target_d_all",
@@ -119,18 +119,18 @@ namespace cctbx { namespace xray { namespace f_model { namespace boost_python {
                   scitbx::af::const_ref<double> const&,
                   scitbx::af::const_ref<bool> const&)
                ) &w_t::d_target_d_all)
-
+          /*
           .def("d_target_d_all",
                ( f_model_derivative_holder<double>(w_t::*)
                  (scitbx::af::const_ref<std::complex<double> > const&,
                   scitbx::af::const_ref<bool> const&)
                ) &w_t::d_target_d_all)
-
+          */
           .def("d_target_d_all",
                ( f_model_derivative_holder<double>(w_t::*)
                  (scitbx::af::const_ref<double> const&,
                   scitbx::af::const_ref<bool> const&)
-               ) &w_t::d_target_d_all)
+                 ) &w_t::d_target_d_all)
 
 
           // updating variables
@@ -157,15 +157,15 @@ namespace cctbx { namespace xray { namespace f_model { namespace boost_python {
           .def("koverall",(double(w_t::*)()) &w_t::koverall)
           .def("ksol", (double(w_t::*)()) &w_t::ksol)
           .def("kpart",(double(w_t::*)()) &w_t::kpart)
-          .def("bsol", (double(w_t::*)()) &w_t::bsol)
-          .def("bpart",(double(w_t::*)()) &w_t::bpart)
+          .def("usol", (double(w_t::*)()) &w_t::usol)
+          .def("upart",(double(w_t::*)()) &w_t::upart)
 
           .def("ustar", (void(w_t::*)(scitbx::sym_mat3<double>)) &w_t::ustar)
           .def("koverall",(void(w_t::*)(double)) &w_t::koverall)
           .def("ksol", (void(w_t::*)(double)) &w_t::ksol)
           .def("kpart",(void(w_t::*)(double)) &w_t::kpart)
-          .def("bsol", (void(w_t::*)(double)) &w_t::bsol)
-          .def("bpart",(void(w_t::*)(double)) &w_t::bpart)
+          .def("usol", (void(w_t::*)(double)) &w_t::usol)
+          .def("upart",(void(w_t::*)(double)) &w_t::upart)
 
           .def("d_star_sq", &w_t::d_star_sq)
           // selection method
