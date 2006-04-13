@@ -19,32 +19,32 @@ namespace cctbx { namespace xray { namespace f_model {
    f_model_derivative_holder():
    koverall_(0),
    ksol_(0),
-   bsol_(0),
+   usol_(0),
    kpart_(0),
-   bpart_(0),
+   upart_(0),
    ustar_( 0,0,0,0,0,0 )
    {}
 
    FloatType ksol(){ return (ksol_); }
-   FloatType bsol(){ return (bsol_); }
+   FloatType usol(){ return (usol_); }
    FloatType kpart(){ return (kpart_); }
-   FloatType bpart(){ return (bpart_); }
+   FloatType upart(){ return (upart_); }
    FloatType koverall(){ return (koverall_); }
    scitbx::sym_mat3<FloatType> ustar(){ return (ustar_); }
 
    void ksol(FloatType tmp ){ ksol_=tmp;}
-   void bsol(FloatType tmp ){ bsol_=tmp; }
+   void usol(FloatType tmp ){ usol_=tmp; }
    void kpart(FloatType tmp ){ kpart_=tmp; }
-   void bpart(FloatType tmp ){ bpart_=tmp; }
+   void upart(FloatType tmp ){ upart_=tmp; }
    void koverall(FloatType tmp ){ koverall_=tmp; }
    void ustar( scitbx::sym_mat3<FloatType> tmp ){ ustar_=tmp; }
    void accumulate( f_model_derivative_holder<FloatType> other )
    {
      koverall_ += other.koverall();
      ksol_  += other.ksol();
-     bsol_  += other.bsol();
+     usol_  += other.usol();
      kpart_ += other.kpart();
-     bpart_ += other.bpart();
+     upart_ += other.upart();
      ustar_ += other.ustar();
    }
 
@@ -52,9 +52,9 @@ namespace cctbx { namespace xray { namespace f_model {
    FloatType koverall_;
    scitbx::sym_mat3<FloatType> ustar_;
    FloatType ksol_;
-   FloatType bsol_;
+   FloatType usol_;
    FloatType kpart_;
-   FloatType bpart_;
+   FloatType upart_;
  };
 
 
@@ -70,17 +70,17 @@ namespace cctbx { namespace xray { namespace f_model {
       FloatType                                       const& k_overall,     //7 overall scale factor
       scitbx::sym_mat3<FloatType>                     const& u_star,        //8 overall aniso scale
       FloatType                                       const& k_sol,         //9 bulk solvent scale
-      FloatType                                       const& b_sol,         //0 bulk solvent B
+      FloatType                                       const& u_sol,         //0 bulk solvent B
       scitbx::af::const_ref<std::complex<FloatType> > const& f_part,        //1 f partial structure
       FloatType                                       const& k_part,        //2 partial structure scale
-      FloatType                                       const& b_part         //3 partial structure B
+      FloatType                                       const& u_part         //3 partial structure B
       ):
      k_overall_(k_overall),
      u_star_(u_star),
      k_sol_(k_sol),
-     b_sol_(b_sol),
+     u_sol_(u_sol),
      k_part_(k_part),
-     b_part_(b_part)
+     u_part_(u_part)
      {
        CCTBX_ASSERT( hkl.size() > 0 );
        CCTBX_ASSERT( hkl.size() == f_atoms.size() );
@@ -89,8 +89,8 @@ namespace cctbx { namespace xray { namespace f_model {
        CCTBX_ASSERT( k_overall > 0 );
        CCTBX_ASSERT( k_sol  >=0 );
        CCTBX_ASSERT( k_part >=0 );
-       CCTBX_ASSERT( b_sol >= 0);
-       CCTBX_ASSERT( b_part >= 0 );
+       CCTBX_ASSERT( u_sol >= 0);
+       CCTBX_ASSERT( u_part >= 0 );
 
        for (std::size_t ii=0; ii< hkl.size(); ii++){
          hkl_.push_back( hkl[ii] );
@@ -128,17 +128,17 @@ namespace cctbx { namespace xray { namespace f_model {
       FloatType                                       const& k_overall,     //7 overall scale factor
       scitbx::sym_mat3<FloatType>                     const& u_star,        //8 overall aniso scale
       FloatType                                       const& k_sol,         //9 bulk solvent scale
-      FloatType                                       const& b_sol,         //0 bulk solvent B
+      FloatType                                       const& u_sol,         //0 bulk solvent B
       scitbx::af::const_ref<std::complex<FloatType> > const& f_part,        //1 f partial structure
       FloatType                                       const& k_part,        //2 partial structure scale
-      FloatType                                       const& b_part         //3 partial structure B
+      FloatType                                       const& u_part         //3 partial structure B
       ):
      k_overall_(k_overall),
      u_star_(u_star),
      k_sol_(k_sol),
-     b_sol_(b_sol),
+     u_sol_(u_sol),
      k_part_(k_part),
-     b_part_(b_part)
+     u_part_(u_part)
      {
        CCTBX_ASSERT( hkl.size() > 0 );
        CCTBX_ASSERT( hkl.size() == f_atoms.size() );
@@ -148,8 +148,8 @@ namespace cctbx { namespace xray { namespace f_model {
        CCTBX_ASSERT( k_overall > 0 );
        CCTBX_ASSERT( k_sol  >=0 );
        CCTBX_ASSERT( k_part >=0 );
-       CCTBX_ASSERT( b_sol >= 0);
-       CCTBX_ASSERT( b_part >= 0 );
+       CCTBX_ASSERT( u_sol >= 0);
+       CCTBX_ASSERT( u_part >= 0 );
 
        for (std::size_t ii=0; ii< hkl.size(); ii++){
          hkl_.push_back( hkl[ii] );
@@ -215,9 +215,9 @@ namespace cctbx { namespace xray { namespace f_model {
          tmp_derivs.koverall( tmp_a*d_target_d_a + tmp_b*d_target_d_b );
        }
        // u_star
+       FloatType tps=scitbx::constants::pi;
+       tps=tps*tps*2.0;
        if (gradient_flags[1]){
-          FloatType tps=scitbx::constants::pi;
-          tps=tps*tps*2.0;
           tmp_a = fa*aniso_scale_[ii]*k_overall_;
           tmp_b = fb*aniso_scale_[ii]*k_overall_;
           scitbx::sym_mat3<FloatType> tmp_ustar(
@@ -244,15 +244,15 @@ namespace cctbx { namespace xray { namespace f_model {
        }
        // b_sol
        if (gradient_flags[4]){
-         tmp_a =  -k_overall_*aniso_scale_[ii]*bulk_scale_[ii]*k_sol_*va*d_star_sq_[ii]/4.0;
-         tmp_b =  -k_overall_*aniso_scale_[ii]*bulk_scale_[ii]*k_sol_*vb*d_star_sq_[ii]/4.0;
-         tmp_derivs.bsol( tmp_a*d_target_d_a + tmp_b*d_target_d_b );
+         tmp_a =  -k_overall_*aniso_scale_[ii]*bulk_scale_[ii]*k_sol_*va*d_star_sq_[ii]*tps;
+         tmp_b =  -k_overall_*aniso_scale_[ii]*bulk_scale_[ii]*k_sol_*vb*d_star_sq_[ii]*tps;
+         tmp_derivs.usol( tmp_a*d_target_d_a + tmp_b*d_target_d_b );
        }
        // b_part
        if (gradient_flags[5]){
-         tmp_a =  -k_overall_*aniso_scale_[ii]*part_scale_[ii]*k_part_*wa*d_star_sq_[ii]/4.0;
-         tmp_b =  -k_overall_*aniso_scale_[ii]*part_scale_[ii]*k_part_*wb*d_star_sq_[ii]/4.0;
-         tmp_derivs.bpart( tmp_a*d_target_d_a + tmp_b*d_target_d_b );
+         tmp_a =  -k_overall_*aniso_scale_[ii]*part_scale_[ii]*k_part_*wa*d_star_sq_[ii]*tps;
+         tmp_b =  -k_overall_*aniso_scale_[ii]*part_scale_[ii]*k_part_*wb*d_star_sq_[ii]*tps;
+         tmp_derivs.upart( tmp_a*d_target_d_a + tmp_b*d_target_d_b );
        }
        return ( tmp_derivs );
      }
@@ -362,23 +362,23 @@ namespace cctbx { namespace xray { namespace f_model {
      }
 
      void renew_bulk_solvent_scale_parameters(  FloatType const& new_k_sol,
-                                                FloatType const& new_b_sol )
+                                                FloatType const& new_u_sol )
      {
-       CCTBX_ASSERT( new_b_sol>=0 );
+       CCTBX_ASSERT( new_u_sol>=0 );
        CCTBX_ASSERT( new_k_sol>=0 );
        k_sol_=new_k_sol;
-       b_sol_=new_b_sol;
+       u_sol_=new_u_sol;
        refresh();
 
      }
 
      void renew_partial_structure_scale_parameters(  FloatType const& new_k_part,
-                                                     FloatType const& new_b_part )
+                                                     FloatType const& new_u_part )
      {
-       CCTBX_ASSERT( new_b_part>=0 );
+       CCTBX_ASSERT( new_u_part>=0 );
        CCTBX_ASSERT( new_k_part>=0 );
        k_part_=new_k_part;
-       b_part_=new_b_part;
+       u_part_=new_u_part;
        refresh();
      }
 
@@ -453,13 +453,13 @@ namespace cctbx { namespace xray { namespace f_model {
      {
        return( k_part_ );
      }
-     FloatType bsol()
+     FloatType usol()
      {
-       return b_sol_;
+       return u_sol_;
      }
-     FloatType bpart()
+     FloatType upart()
      {
-       return (b_part_ );
+       return (u_part_ );
      }
      scitbx::sym_mat3<FloatType> ustar()
      {
@@ -481,13 +481,13 @@ namespace cctbx { namespace xray { namespace f_model {
      {
        k_part_=new_kpart;
      }
-     void bsol(FloatType new_bsol)
+     void usol(FloatType new_usol)
      {
-       b_sol_=new_bsol;
+       u_sol_=new_usol;
      }
-     void bpart(FloatType new_bpart)
+     void upart(FloatType new_upart)
      {
-       b_part_=new_bpart;
+       u_part_=new_upart;
      }
      void ustar( scitbx::sym_mat3<FloatType> new_ustar)
      {
@@ -522,8 +522,8 @@ namespace cctbx { namespace xray { namespace f_model {
                                        new_f_mask.const_ref(),
                                        d_star_sq_.const_ref(), // pass in a d_star_sq in stead of unit_cell
                                        k_overall_, u_star_,
-                                       k_sol_, b_sol_,
-                                       f_part_.const_ref(), k_part_, b_part_);
+                                       k_sol_, u_sol_,
+                                       f_part_.const_ref(), k_part_, u_part_);
        return (new_f_model);
      }
 
@@ -551,14 +551,14 @@ namespace cctbx { namespace xray { namespace f_model {
     void compute_bulk_scale( std::size_t ii)
     {
       FloatType result = 0;
-      result = std::exp( - b_sol_*d_star_sq_[ii]/4.0 );
+      result = std::exp( - u_sol_*2.0*scitbx::constants::pi*scitbx::constants::pi*d_star_sq_[ii] );
       bulk_scale_[ii]=result;
     }
 
     void compute_part_scale( std::size_t ii )
     {
       FloatType result=0;
-      result =  std::exp( - b_part_*d_star_sq_[ii]/4.0 );
+      result =  std::exp( - u_part_*2.0*scitbx::constants::pi*scitbx::constants::pi*d_star_sq_[ii] );
       part_scale_[ii]=result;
     }
 
@@ -573,9 +573,9 @@ namespace cctbx { namespace xray { namespace f_model {
       result= std::exp(result);
       aniso_scale_[ii]=result;
       // bulk scale
-      bulk_scale_[ii] = std::exp(-b_sol_*d_star_sq_[ii]/4.0);
+      bulk_scale_[ii] = std::exp(-u_sol_*d_star_sq_[ii]*2.0*scitbx::constants::pi*scitbx::constants::pi);
       // partial scale
-      part_scale_[ii] = std::exp(-b_part_*d_star_sq_[ii]/4.0);
+      part_scale_[ii] = std::exp(-u_part_*d_star_sq_[ii]*2.0*scitbx::constants::pi*scitbx::constants::pi);
     }
 
     //-----------------
@@ -613,9 +613,9 @@ namespace cctbx { namespace xray { namespace f_model {
     FloatType k_overall_;
     scitbx::sym_mat3<FloatType> u_star_;
     FloatType k_sol_;
-    FloatType b_sol_;
+    FloatType u_sol_;
     FloatType k_part_;
-    FloatType b_part_;
+    FloatType u_part_;
 
 
 };
