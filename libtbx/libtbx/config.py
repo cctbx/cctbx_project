@@ -488,64 +488,10 @@ class environment:
     else:
       self.repository_paths.append(path)
 
-  def process_args(self, args, default_repository=None):
-    cold_start = default_repository is not None
-    if (len(args) == 0): args = ["--help"]
-    if (default_repository is None):
-      command_name = "libtbx.configure"
-    else:
-      command_name = "libtbx/configure.py"
-    parser = option_parser(
-      usage="%s [options] module_name[=redirection_path] ..." % command_name)
-    if (not cold_start):
-      parser.option(None, "--only",
-        action="store_true",
-        default=False,
-        help="disable previously configured modules")
-    else:
-      parser.option("-r", "--repository",
-        action="callback",
-        type="string",
-        callback=self.option_repository,
-        help="path to source code repository",
-        metavar="DIRECTORY")
-      parser.option(None, "--build",
-        choices=("release", "quick", "debug", "debug_optimized"),
-        default="release",
-        help="build mode",
-        metavar="release|quick|debug|debug_optimized")
-      parser.option(None, "--compiler",
-        action="store",
-        type="string",
-        default="default",
-        help="select non-standard compiler",
-        metavar="STRING")
-      parser.option(None, "--warning_level",
-        action="store",
-        type="int",
-        default=0,
-        help="manipulate warning options (platform dependent)")
-      parser.option(None, "--static_libraries",
-        action="store_true",
-        default=False,
-        help="build all libraries statically")
-      parser.option(None, "--static_exe",
-        action="store_true",
-        default=False,
-        help="link all executables statically (implies --static_libraries)")
-      parser.option(None, "--scan_boost",
-        action="store_true",
-        default=False,
-        help="enable implicit dependency scan")
-      parser.option(None, "--command_version_suffix",
-        action="store",
-        type="string",
-        default=None,
-        help="version suffix for commands in bin directory",
-        metavar="STRING")
-    command_line = parser.process(args=args)
-    if (default_repository is not None):
-      self.add_repository(default_repository)
+  def process_args(self, pre_processed_args):
+    command_line = pre_processed_args.command_line
+    for path in pre_processed_args.repository_paths:
+      self.add_repository(path=path)
     module_names = []
     for module_name in command_line.args:
       if (module_name in self.command_line_redirections):
@@ -563,7 +509,7 @@ class environment:
               module_name, redirection, dist_path))
         self.command_line_redirections[module_name] = dist_path
       module_names.append(module_name)
-    if (not cold_start):
+    if (pre_processed_args.warm_start):
       if (not command_line.options.only):
         for module in self.module_list:
           module_names.append(module.name)
@@ -589,11 +535,6 @@ class environment:
     self.path_utility = self.under_dist(
       "libtbx", "libtbx/command_line/path_utility.py")
     assert os.path.isfile(self.path_utility)
-
-  def option_repository(self, option, opt, value, parser):
-    if (not os.path.isdir(value)):
-      raise Sorry('Not a directory: --repository "%s"' % value)
-    self.add_repository(value)
 
   def dispatcher_precall_commands(self):
     if (self._dispatcher_precall_commands is None):
@@ -1321,15 +1262,124 @@ class include_registry:
         env.Prepend(CXXFLAGS=[ipath])
         env.Prepend(SHCXXFLAGS=[ipath])
 
+class pre_process_args:
+
+  def __init__(self, args, default_repository=None):
+    self.repository_paths = []
+    if (len(args) == 0): args = ["--help"]
+    if (default_repository is None):
+      command_name = "libtbx.configure"
+      self.warm_start = True
+    else:
+      command_name = "libtbx/configure.py"
+      self.warm_start = False
+    parser = option_parser(
+      usage="%s [options] module_name[=redirection_path] ..." % command_name)
+    if (self.warm_start):
+      parser.option(None, "--only",
+        action="store_true",
+        default=False,
+        help="disable previously configured modules")
+    else:
+      parser.option("-r", "--repository",
+        action="callback",
+        type="string",
+        callback=self.option_repository,
+        help="path to source code repository",
+        metavar="DIRECTORY")
+      parser.option(None, "--current_working_directory",
+        action="store",
+        type="string",
+        default=None,
+        help="preferred spelling of current working directory",
+        metavar="DIRECTORY")
+      parser.option(None, "--build",
+        choices=("release", "quick", "debug", "debug_optimized"),
+        default="release",
+        help="build mode",
+        metavar="release|quick|debug|debug_optimized")
+      parser.option(None, "--compiler",
+        action="store",
+        type="string",
+        default="default",
+        help="select non-standard compiler",
+        metavar="STRING")
+      parser.option(None, "--warning_level",
+        action="store",
+        type="int",
+        default=0,
+        help="manipulate warning options (platform dependent)")
+      parser.option(None, "--static_libraries",
+        action="store_true",
+        default=False,
+        help="build all libraries statically")
+      parser.option(None, "--static_exe",
+        action="store_true",
+        default=False,
+        help="link all executables statically (implies --static_libraries)")
+      parser.option(None, "--scan_boost",
+        action="store_true",
+        default=False,
+        help="enable implicit dependency scan")
+      parser.option(None, "--command_version_suffix",
+        action="store",
+        type="string",
+        default=None,
+        help="version suffix for commands in bin directory",
+        metavar="STRING")
+    self.command_line = parser.process(args=args)
+    if (default_repository is not None):
+      self.repository_paths.append(default_repository)
+
+  def option_repository(self, option, opt, value, parser):
+    if (not os.path.isdir(value)):
+      raise Sorry("Not a directory: --repository %s" % show_string(value))
+    self.repository_paths.append(value)
+
+def set_preferred_sys_prefix_and_sys_executable(build_path):
+  dirname, basename = os.path.split(sys.prefix)
+  if (os.path.samefile(build_path, dirname)):
+    new_prefix = os.path.join(build_path, basename)
+    if (os.path.samefile(new_prefix, sys.prefix)):
+      p = os.path.normpath(os.path.normcase(sys.prefix))
+      if (sys.prefix != new_prefix):
+        sys.prefix = new_prefix
+      e = os.path.normpath(os.path.normcase(sys.executable))
+      if (e.startswith(p)):
+        new_executable = sys.prefix + e[len(p):]
+        if (os.path.samefile(new_executable, sys.executable)):
+          if (sys.executable != new_executable):
+            sys.executable = new_executable
+
 def cold_start(args):
-  env = environment(build_path=os.getcwd())
-  env.process_args(
+  pre_processed_args = pre_process_args(
     args=args[1:],
     default_repository=os.path.dirname(os.path.dirname(args[0])))
+  build_path=pre_processed_args.command_line.options.current_working_directory
+  if (build_path is None):
+    build_path = os.getcwd()
+  else:
+    if (not os.path.isabs(build_path)):
+      raise Sorry("Not an absolute path name:"
+        " --current_working_directory %s" % show_string(build_path))
+    if (not os.path.isdir(build_path)):
+      raise Sorry("Not a directory:"
+        " --current_working_directory %s" % show_string(build_path))
+    if (not os.path.samefile(build_path, os.getcwd())):
+      raise Sorry("Not equivalent to the current working directory:"
+        " --current_working_directory %s" % show_string(build_path))
+    n = len(os.sep)
+    while (len(build_path) > n and build_path.endswith(os.sep)):
+      build_path = build_path[:-n]
+  set_preferred_sys_prefix_and_sys_executable(build_path=build_path)
+  env = environment(build_path=build_path)
+  env.process_args(pre_processed_args=pre_processed_args)
   env.refresh()
 
 def unpickle():
-  libtbx_env = open(os.path.expandvars("$LIBTBX_BUILD/libtbx_env"), "rb")
+  build_path = os.environ["LIBTBX_BUILD"]
+  set_preferred_sys_prefix_and_sys_executable(build_path=build_path)
+  libtbx_env = open(os.path.join(build_path, "libtbx_env"), "rb")
   env = pickle.load(libtbx_env)
   if (env.python_version_major_minor != sys.version_info[:2]):
     raise Sorry("Python version incompatible with this build.\n"
@@ -1338,6 +1388,7 @@ def unpickle():
   return env
 
 def warm_start(args):
+  pre_processed_args = pre_process_args(args=args[1:])
   env = unpickle()
-  env.process_args(args=args[1:])
+  env.process_args(pre_processed_args=pre_processed_args)
   env.refresh()
