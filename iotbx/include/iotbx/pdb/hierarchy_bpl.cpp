@@ -12,7 +12,7 @@
 namespace iotbx { namespace pdb {
 namespace {
 
-#define IOTBX_PDB_DATA_WRAPPERS_SMALL_STR_GET_SET(attr) \
+#define IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET_SET(attr) \
     static \
     boost::python::str \
     get_##attr(w_t const& self) \
@@ -39,10 +39,10 @@ namespace {
   {
     typedef atom w_t;
 
-    IOTBX_PDB_DATA_WRAPPERS_SMALL_STR_GET_SET(name)
-    IOTBX_PDB_DATA_WRAPPERS_SMALL_STR_GET_SET(segid)
-    IOTBX_PDB_DATA_WRAPPERS_SMALL_STR_GET_SET(element)
-    IOTBX_PDB_DATA_WRAPPERS_SMALL_STR_GET_SET(charge)
+    IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET_SET(name)
+    IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET_SET(segid)
+    IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET_SET(element)
+    IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET_SET(charge)
 
     static vec3
     get_xyz(w_t const& self) { return self.data->xyz; }
@@ -205,7 +205,7 @@ namespace {
     }
   };
 
-#define IOTBX_PDB_GET_CHILDREN(parent_t, child_t, method) \
+#define IOTBX_PDB_HIERARCHY_GET_CHILDREN(parent_t, child_t, method) \
   static \
   boost::python::list \
   get_##method(parent_t const& parent) \
@@ -221,7 +221,7 @@ namespace {
   {
     typedef residue w_t;
 
-    IOTBX_PDB_DATA_WRAPPERS_SMALL_STR_GET_SET(name)
+    IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET_SET(name)
 
     static int
     get_seq(w_t const& self) { return self.data->seq; }
@@ -232,12 +232,12 @@ namespace {
       self.data->seq = new_seq;
     }
 
-    IOTBX_PDB_DATA_WRAPPERS_SMALL_STR_GET_SET(icode)
+    IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET_SET(icode)
 
     static std::string
     id(w_t const& self) { return self.data->id(); }
 
-    IOTBX_PDB_GET_CHILDREN(residue, atom, atoms)
+    IOTBX_PDB_HIERARCHY_GET_CHILDREN(residue, atom, atoms)
 
     static void
     wrap()
@@ -247,7 +247,7 @@ namespace {
         .def(init<
           conformer const&,
             optional<const char*, int32_t, const char*> >((
-              arg_("parent_conformer"),
+              arg_("parent"),
               arg_("name")="", arg_("seq")=0, arg_("icode")="")))
         .def(init<
           optional<const char*, int32_t, const char*> >((
@@ -285,7 +285,7 @@ namespace {
       self.data->id = new_id;
     }
 
-    IOTBX_PDB_GET_CHILDREN(conformer, residue, residues)
+    IOTBX_PDB_HIERARCHY_GET_CHILDREN(conformer, residue, residues)
 
     static void
     wrap()
@@ -293,7 +293,7 @@ namespace {
       using namespace boost::python;
       class_<w_t>("conformer", no_init)
         .def(init<chain const&, optional<std::string const&> >((
-          arg_("parent_chain"), arg_("id")="")))
+          arg_("parent"), arg_("id")="")))
         .def(init<std::string const&>((
           arg_("id")="")))
         .add_property("id", make_function(get_id), make_function(set_id))
@@ -324,7 +324,7 @@ namespace {
       self.data->id = new_id;
     }
 
-    IOTBX_PDB_GET_CHILDREN(chain, conformer, conformers)
+    IOTBX_PDB_HIERARCHY_GET_CHILDREN(chain, conformer, conformers)
 
     static void
     wrap()
@@ -332,7 +332,7 @@ namespace {
       using namespace boost::python;
       class_<w_t>("chain", no_init)
         .def(init<model const&, optional<std::string const&> >((
-          arg_("parent_model"), arg_("id")="")))
+          arg_("parent"), arg_("id")="")))
         .def(init<std::string const&>((
           arg_("id")="")))
         .add_property("id", make_function(get_id), make_function(set_id))
@@ -358,7 +358,7 @@ namespace {
     static void
     set_id(w_t const& self, int new_id) { self.data->id = new_id; }
 
-    IOTBX_PDB_GET_CHILDREN(model, chain, chains)
+    IOTBX_PDB_HIERARCHY_GET_CHILDREN(model, chain, chains)
 
     static void
     wrap()
@@ -366,7 +366,7 @@ namespace {
       using namespace boost::python;
       class_<w_t>("model", no_init)
         .def(init<hierarchy const&, optional<int> >((
-          arg_("parent_hierarchy"), arg_("id")=0)))
+          arg_("parent"), arg_("id")=0)))
         .def(init<int>((arg_("id")=0)))
         .add_property("id", make_function(get_id), make_function(set_id))
         .def("memory_id", &w_t::memory_id)
@@ -396,7 +396,7 @@ namespace {
       self.data->info = new_info;
     }
 
-    IOTBX_PDB_GET_CHILDREN(hierarchy, model, models)
+    IOTBX_PDB_HIERARCHY_GET_CHILDREN(hierarchy, model, models)
 
     static void
     wrap()

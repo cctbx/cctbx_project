@@ -373,7 +373,7 @@ namespace pdb {
 
       inline
       residue(
-        conformer const& parent_conformer,
+        conformer const& parent,
         const char* name="",
         int32_t seq=0,
         const char* icode="");
@@ -446,7 +446,7 @@ namespace pdb {
 
       inline
       conformer(
-        chain const& parent_chain,
+        chain const& parent,
         std::string const& id="");
 
       inline
@@ -517,7 +517,7 @@ namespace pdb {
 
       inline
       chain(
-        model const& parent_model,
+        model const& parent,
         std::string const& id="");
 
       chain(
@@ -585,7 +585,7 @@ namespace pdb {
 
       inline
       model(
-        hierarchy const& parent_hierarchy,
+        hierarchy const& parent,
         int id=0);
 
       model(int id=0) : data(new model_data(id)) {}
@@ -714,10 +714,10 @@ namespace pdb {
 
   inline
   model::model(
-    hierarchy const& parent_hierarchy,
+    hierarchy const& parent,
     int id)
   :
-    data(new model_data(parent_hierarchy.data, id))
+    data(new model_data(parent.data, id))
   {}
 
   inline
@@ -755,10 +755,10 @@ namespace pdb {
 
   inline
   chain::chain(
-    model const& parent_model,
+    model const& parent,
     std::string const& id)
   :
-    data(new chain_data(parent_model.data, id))
+    data(new chain_data(parent.data, id))
   {}
 
   inline
@@ -796,10 +796,10 @@ namespace pdb {
 
   inline
   conformer::conformer(
-    chain const& parent_chain,
+    chain const& parent,
     std::string const& id)
   :
-    data(new conformer_data(parent_chain.data, id))
+    data(new conformer_data(parent.data, id))
   {}
 
   inline
@@ -845,12 +845,12 @@ namespace pdb {
 
   inline
   residue::residue(
-    conformer const& parent_conformer,
+    conformer const& parent,
     const char* name,
     int32_t seq,
     const char* icode)
   :
-    data(new residue_data(parent_conformer.data, name, seq, icode))
+    data(new residue_data(parent.data, name, seq, icode))
   {}
 
   inline

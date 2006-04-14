@@ -125,6 +125,8 @@ def exercise_residue():
   c1 = pdb.conformer(id="a")
   c2 = pdb.conformer(id="b")
   assert c1.memory_id() != c2.memory_id()
+  r = pdb.residue(parent=c1)
+  assert r.parent().memory_id() == c1.memory_id()
   r = pdb.residue()
   assert r.parent() is None
   r.set_parent(new_parent=c1)
@@ -163,6 +165,8 @@ def exercise_conformer():
   c1 = pdb.chain(id="a")
   c2 = pdb.chain(id="b")
   assert c1.memory_id() != c2.memory_id()
+  f = pdb.conformer(parent=c1)
+  assert f.parent().memory_id() == c1.memory_id()
   f = pdb.conformer()
   assert f.parent() is None
   f.set_parent(new_parent=c1)
@@ -191,6 +195,8 @@ def exercise_chain():
   m1 = pdb.model(id=1)
   m2 = pdb.model(id=2)
   assert m1.memory_id() != m2.memory_id()
+  c = pdb.chain(parent=m1)
+  assert c.parent().memory_id() == m1.memory_id()
   c = pdb.chain()
   assert c.parent() is None
   c.set_parent(new_parent=m1)
@@ -240,10 +246,10 @@ def exercise_hierarchy():
   m = pdb.model()
   m.set_parent(new_parent=h)
   assert m.parent().memory_id() == h.memory_id()
-  m = pdb.model(parent_hierarchy=h)
+  m = pdb.model(parent=h)
   assert m.parent().memory_id() == h.memory_id()
   assert m.id == 0
-  m = pdb.model(parent_hierarchy=h, id=2)
+  m = pdb.model(parent=h, id=2)
   assert m.parent().memory_id() == h.memory_id()
   assert m.id == 2
   del h
