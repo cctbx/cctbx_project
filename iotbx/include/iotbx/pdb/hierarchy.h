@@ -26,6 +26,8 @@ namespace pdb {
   using boost::shared_ptr;
   using boost::weak_ptr;
 
+  class hierarchy_data;
+  class hierarchy;
   class model_data;
   class model;
   class chain_data;
@@ -36,18 +38,36 @@ namespace pdb {
   class residue;
   class atom;
 
+  //! Holder for hierarchy attributes (to be held by a shared_ptr).
+  class hierarchy_data : boost::noncopyable
+  {
+    protected:
+      friend class hierarchy;
+    public:
+      af::shared<std::string> info;
+    protected:
+      std::vector<model> models;
+  };
+
   //! Holder for model attributes (to be held by a shared_ptr).
   class model_data : boost::noncopyable
   {
     protected:
       friend class model;
+      weak_ptr<hierarchy_data> parent;
     public:
       int id;
     protected:
       std::vector<chain> chains;
 
       inline
-      model_data(int id);
+      model_data(
+        weak_ptr<hierarchy_data> const& parent,
+        int id);
+
+      inline
+      model_data(
+        int id);
   };
 
   //! Holder for chain attributes (to be held by a shared_ptr).
@@ -64,11 +84,11 @@ namespace pdb {
       inline
       chain_data(
         weak_ptr<model_data> const& parent,
-        std::string id);
+        std::string const& id);
 
       inline
       chain_data(
-        std::string id);
+        std::string const& id);
   };
 
   //! Holder for conformer attributes (to be held by a shared_ptr).
@@ -85,11 +105,11 @@ namespace pdb {
       inline
       conformer_data(
         weak_ptr<chain_data> const& parent,
-        std::string id);
+        std::string const& id);
 
       inline
       conformer_data(
-        std::string id);
+        std::string const& id);
   };
 
   //! Holder for residue attributes (to be held by a shared_ptr).
@@ -427,11 +447,11 @@ namespace pdb {
       inline
       conformer(
         chain const& parent_chain,
-        std::string id="");
+        std::string const& id="");
 
       inline
       conformer(
-        std::string id="")
+        std::string const& id="")
       :
         data(new conformer_data(id))
       {}
@@ -498,10 +518,10 @@ namespace pdb {
       inline
       chain(
         model const& parent_model,
-        std::string id="");
+        std::string const& id="");
 
       chain(
-        std::string id="")
+        std::string const& id="")
       :
         data(new chain_data(id))
       {}
@@ -563,10 +583,23 @@ namespace pdb {
         SCITBX_ASSERT(data.get() != 0);
       }
 
+      inline
+      model(
+        hierarchy const& parent_hierarchy,
+        int id=0);
+
       model(int id=0) : data(new model_data(id)) {}
 
       std::size_t
       memory_id() const { return reinterpret_cast<std::size_t>(data.get()); }
+
+      inline
+      boost::optional<hierarchy>
+      parent() const;
+
+      inline
+      void
+      set_parent(hierarchy const& new_parent);
 
       void
       pre_allocate_chains(unsigned number_of_additional_chains)
@@ -609,13 +642,105 @@ namespace pdb {
       }
   };
 
+  //! Hierarchy attributes.
+  class hierarchy
+  {
+    public:
+      shared_ptr<hierarchy_data> data;
+
+    protected:
+      friend class model;
+      hierarchy(shared_ptr<hierarchy_data> const& data_, bool) : data(data_) {}
+
+    public:
+      hierarchy(
+        shared_ptr<hierarchy_data> const& data_)
+      :
+        data(data_)
+      {
+        SCITBX_ASSERT(data.get() != 0);
+      }
+
+      hierarchy() : data(new hierarchy_data) {}
+
+      std::size_t
+      memory_id() const { return reinterpret_cast<std::size_t>(data.get()); }
+
+      void
+      pre_allocate_models(unsigned number_of_additional_models)
+      {
+        data->models.reserve(
+          data->models.size()+number_of_additional_models);
+      }
+
+      void
+      new_models(unsigned number_of_additional_models)
+      {
+        pre_allocate_models(number_of_additional_models);
+        for(unsigned i=0;i<number_of_additional_models;i++) {
+          data->models.push_back(model(*this));
+        }
+      }
+
+      std::vector<model> const&
+      models() const { return data->models; }
+
+      model
+      new_model(int model_id)
+      {
+        data->models.push_back(model(*this, model_id));
+        return data->models.back();
+      }
+
+      void
+      adopt_model(model& new_model)
+      {
+        new_model.set_parent(*this);
+        data->models.push_back(new_model);
+      }
+  };
+
+  inline
+  model_data::model_data(
+    weak_ptr<hierarchy_data> const& parent_,
+    int id_)
+  :
+    parent(parent_),
+    id(id_)
+  {}
+
   inline
   model_data::model_data(int id_) : id(id_) {}
 
   inline
+  model::model(
+    hierarchy const& parent_hierarchy,
+    int id)
+  :
+    data(new model_data(parent_hierarchy.data, id))
+  {}
+
+  inline
+  boost::optional<hierarchy>
+  model::parent() const
+  {
+    shared_ptr<hierarchy_data> parent = data->parent.lock();
+    if (parent.get() == 0) return boost::optional<hierarchy>();
+    return boost::optional<hierarchy>(hierarchy(parent, true));
+  }
+
+  inline
+  void
+  model::set_parent(
+    hierarchy const& new_parent)
+  {
+    data->parent = new_parent.data;
+  }
+
+  inline
   chain_data::chain_data(
     weak_ptr<model_data> const& parent_,
-    std::string id_)
+    std::string const& id_)
   :
     parent(parent_),
     id(id_)
@@ -623,7 +748,7 @@ namespace pdb {
 
   inline
   chain_data::chain_data(
-    std::string id_)
+    std::string const& id_)
   :
     id(id_)
   {}
@@ -631,7 +756,7 @@ namespace pdb {
   inline
   chain::chain(
     model const& parent_model,
-    std::string id)
+    std::string const& id)
   :
     data(new chain_data(parent_model.data, id))
   {}
@@ -656,7 +781,7 @@ namespace pdb {
   inline
   conformer_data::conformer_data(
     weak_ptr<chain_data> const& parent_,
-    std::string id_)
+    std::string const& id_)
   :
     parent(parent_),
     id(id_)
@@ -664,7 +789,7 @@ namespace pdb {
 
   inline
   conformer_data::conformer_data(
-    std::string id_)
+    std::string const& id_)
   :
     id(id_)
   {}
@@ -672,7 +797,7 @@ namespace pdb {
   inline
   conformer::conformer(
     chain const& parent_chain,
-    std::string id)
+    std::string const& id)
   :
     data(new conformer_data(parent_chain.data, id))
   {}
