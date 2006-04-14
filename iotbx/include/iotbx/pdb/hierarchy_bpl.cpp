@@ -7,7 +7,6 @@
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/return_by_value.hpp>
 #include <boost/python/return_arg.hpp>
-#include <scitbx/boost_python/container_conversions.h>
 #include <iotbx/pdb/hierarchy.h>
 
 namespace iotbx { namespace pdb {
@@ -366,9 +365,13 @@ namespace {
     {
       using namespace boost::python;
       class_<w_t>("model", no_init)
+        .def(init<hierarchy const&, optional<int> >((
+          arg_("parent_hierarchy"), arg_("id")=0)))
         .def(init<int>((arg_("id")=0)))
         .add_property("id", make_function(get_id), make_function(set_id))
         .def("memory_id", &w_t::memory_id)
+        .def("parent", get_parent<model, hierarchy>::wrapper)
+        .def("set_parent", &w_t::set_parent, (arg_("new_parent")))
         .def("pre_allocate_chains", &w_t::pre_allocate_chains,
           (arg_("number_of_additional_chains")))
         .def("new_chains", &w_t::new_chains,
@@ -377,8 +380,40 @@ namespace {
         .def("new_chain", &w_t::new_chain, (arg_("chain_id")))
         .def("adopt_chain", &w_t::adopt_chain, (arg_("new_chain")))
       ;
-      scitbx::boost_python::container_conversions
-        ::tuple_mapping_variable_capacity<af::shared<model> >();
+    }
+  };
+
+  struct hierarchy_wrappers
+  {
+    typedef hierarchy w_t;
+
+    static af::shared<std::string>
+    get_info(w_t const& self) { return self.data->info; }
+
+    static void
+    set_info(w_t const& self, af::shared<std::string> const& new_info)
+    {
+      self.data->info = new_info;
+    }
+
+    IOTBX_PDB_GET_CHILDREN(hierarchy, model, models)
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      class_<w_t>("hierarchy", no_init)
+        .def(init<>())
+        .add_property("info", make_function(get_info), make_function(set_info))
+        .def("memory_id", &w_t::memory_id)
+        .def("pre_allocate_models", &w_t::pre_allocate_models,
+          (arg_("number_of_additional_models")))
+        .def("new_models", &w_t::new_models,
+          (arg_("number_of_additional_models")))
+        .def("models", get_models)
+        .def("new_model", &w_t::new_model, (arg_("model_id")))
+        .def("adopt_model", &w_t::adopt_model, (arg_("new_model")))
+      ;
     }
   };
 
@@ -391,6 +426,7 @@ namespace {
     conformer_wrappers::wrap();
     chain_wrappers::wrap();
     model_wrappers::wrap();
+    hierarchy_wrappers::wrap();
   }
 
 } // namespace <anonymous>

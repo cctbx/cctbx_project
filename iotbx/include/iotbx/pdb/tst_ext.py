@@ -217,6 +217,7 @@ def exercise_model():
   assert m.id == -23
   #
   m = pdb.model(id=1)
+  assert m.parent() is None
   m.pre_allocate_chains(number_of_additional_chains=2)
   assert len(m.chains()) == 0
   ch_a = m.new_chain(chain_id="a")
@@ -233,6 +234,43 @@ def exercise_model():
   assert len(m.chains()) == 5
   for chain in m.chains():
     assert chain.parent().memory_id() == m.memory_id()
+
+def exercise_hierarchy():
+  h = pdb.hierarchy()
+  m = pdb.model()
+  m.set_parent(new_parent=h)
+  assert m.parent().memory_id() == h.memory_id()
+  m = pdb.model(parent_hierarchy=h)
+  assert m.parent().memory_id() == h.memory_id()
+  assert m.id == 0
+  m = pdb.model(parent_hierarchy=h, id=2)
+  assert m.parent().memory_id() == h.memory_id()
+  assert m.id == 2
+  del h
+  assert m.parent() is None
+  #
+  h = pdb.hierarchy()
+  assert h.info.size() == 0
+  h.info.append("abc")
+  assert h.info.size() == 1
+  h.info = flex.std_string(["a", "b"])
+  assert h.info.size() == 2
+  h.pre_allocate_models(number_of_additional_models=2)
+  assert len(h.models()) == 0
+  m_a = h.new_model(model_id=3)
+  assert m_a.parent().memory_id() == h.memory_id()
+  assert len(h.models()) == 1
+  m_b = pdb.model(id=5)
+  assert m_b.parent() is None
+  h.adopt_model(new_model=m_b)
+  models = h.models()
+  assert len(models) == 2
+  assert models[0].memory_id() == m_a.memory_id()
+  assert models[1].memory_id() == m_b.memory_id()
+  h.new_models(number_of_additional_models=3)
+  assert len(h.models()) == 5
+  for model in h.models():
+    assert model.parent().memory_id() == h.memory_id()
 
 def check_hierarchy(hierarchy, expected_formatted=None):
   out = StringIO()
@@ -1431,6 +1469,7 @@ def exercise(args):
     exercise_chain()
     exercise_conformer()
     exercise_model()
+    exercise_hierarchy()
     exercise_columns_73_76_evaluator()
     exercise_line_info_exceptions()
     exercise_pdb_input()

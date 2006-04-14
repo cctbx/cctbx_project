@@ -1716,7 +1716,7 @@ namespace iotbx { namespace pdb {
       }
 
       //! not const because atom parents are modified.
-      af::shared<model>
+      hierarchy
       construct_hierarchy()
       {
         af::const_ref<int>
@@ -1724,15 +1724,16 @@ namespace iotbx { namespace pdb {
         af::const_ref<std::vector<unsigned> >
           chain_indices = chain_indices_.const_ref();
         SCITBX_ASSERT(chain_indices.size() == model_numbers.size());
-        af::shared<model> result(af::reserve(model_numbers.size()));
+        hierarchy result;
+        result.new_models(model_numbers.size());
         std::vector<unsigned> residue_indices;            // outside loop to
         residue_indices.reserve(max_resseq-min_resseq+1); // allocate only once
         const input_atom_labels* iall = input_atom_labels_list_.begin();
         atom* atoms = atoms_.begin();
         unsigned next_chain_range_begin = 0;
         for(unsigned i_model=0;i_model<model_numbers.size();i_model++) {
-          pdb::model model(model_numbers[i_model]);
-          result.push_back(model);
+          pdb::model model = result.models()[i_model];
+          model.data->id = model_numbers[i_model];
           model.new_chains(chain_indices[i_model].size());
           range_loop<unsigned> ch_r(
             chain_indices[i_model], next_chain_range_begin);
