@@ -698,6 +698,31 @@ namespace pdb {
         new_model.set_parent(*this);
         data->models.push_back(new_model);
       }
+
+      std::map<std::string, unsigned>
+      residue_name_counts() const
+      {
+        std::map<std::string, unsigned> result;
+        std::map<str4, unsigned> result_str4;
+        for(unsigned jm=0;jm<models().size();jm++) {
+          model const& m = models()[jm];
+          for(unsigned jc=0;jc<m.chains().size();jc++) {
+            chain const& c = m.chains()[jc];
+            for(unsigned jf=0;jf<c.conformers().size();jf++) {
+              conformer const& f = c.conformers()[jf];
+              for(unsigned jr=0;jr<f.residues().size();jr++) {
+                residue const& r = f.residues()[jr];
+                result_str4[r.data->name]++;
+              }
+            }
+          }
+        }
+        for(std::map<str4, unsigned>::const_iterator
+              i=result_str4.begin();i!=result_str4.end();i++) {
+          result[i->first.elems] = i->second;
+        }
+        return result;
+      }
   };
 
   inline

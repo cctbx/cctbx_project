@@ -7,6 +7,7 @@
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/return_by_value.hpp>
 #include <boost/python/return_arg.hpp>
+#include <scitbx/boost_python/stl_map_as_dict.h>
 #include <iotbx/pdb/hierarchy.h>
 
 namespace iotbx { namespace pdb {
@@ -398,6 +399,12 @@ namespace {
 
     IOTBX_PDB_HIERARCHY_GET_CHILDREN(hierarchy, model, models)
 
+    static boost::python::dict
+    residue_name_counts_as_dict(w_t const& self)
+    {
+      return scitbx::boost_python::stl_map_as_dict(self.residue_name_counts());
+    }
+
     static void
     wrap()
     {
@@ -413,6 +420,7 @@ namespace {
         .def("models", get_models)
         .def("new_model", &w_t::new_model, (arg_("model_id")))
         .def("adopt_model", &w_t::adopt_model, (arg_("new_model")))
+        .def("residue_name_counts", residue_name_counts_as_dict)
       ;
     }
   };
