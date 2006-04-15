@@ -278,7 +278,10 @@ def exercise_hierarchy():
   for model in h.models():
     assert model.parent().memory_id() == h.memory_id()
 
-def check_hierarchy(hierarchy, expected_formatted=None):
+def check_hierarchy(
+      hierarchy,
+      expected_formatted=None,
+      expected_residue_name_counts=None):
   out = StringIO()
   pdb.show_hierarchy(hierarchy=hierarchy, out=out)
   if (expected_formatted is None or expected_formatted == "None\n"):
@@ -286,6 +289,8 @@ def check_hierarchy(hierarchy, expected_formatted=None):
     print "#"*79
   else:
     assert not show_diff(out.getvalue(), expected_formatted)
+  if (expected_residue_name_counts is not None):
+    assert hierarchy.residue_name_counts() == expected_residue_name_counts
 
 def exercise_columns_73_76_evaluator():
   pdb_dir = libtbx.env.find_in_repositories("regression/pdb")
@@ -616,7 +621,8 @@ model id=3 #chains=2
     conformer id=" " #residues=1
       residue name="CYS " seq=   6 icode=" " #atoms=1
          " N  "
-""")
+""",
+     expected_residue_name_counts={"MPR ": 1, "MET ": 1, "CYS ": 1})
   #
   pdb_inp = pdb.input(
     source_info=None,
@@ -822,7 +828,8 @@ model id=0 #chains=1
   check_hierarchy(
     hierarchy=pdb_inp.construct_hierarchy(),
     expected_formatted="""\
-""")
+""",
+    expected_residue_name_counts={})
   pdb_inp = pdb.input(
     source_info=None,
     lines=flex.split_lines("""\
@@ -1041,7 +1048,8 @@ model id=3 #chains=3
       residue name="    " seq=   0 icode=" " #atoms=2
          "    "
          "    "
-""")
+""",
+    expected_residue_name_counts={"    ": 9})
   #
   pdb_inp = pdb.input(
     source_info=None,
@@ -1385,7 +1393,10 @@ model id=0 #chains=1
          " CA "
       residue name="CYS " seq=  17 icode=" " #atoms=1
        * " CA "
-""")
+""",
+    expected_residue_name_counts={
+      "ALA ": 1, "LEU ": 2, "TRP ": 1, "CYS ": 4, "THR ": 2, "GLY ": 4,
+      "SER ": 1, "ARG ": 1, "PRO ": 2})
   pdb_inp = pdb.input(
     source_info=None,
     lines=flex.split_lines("""\

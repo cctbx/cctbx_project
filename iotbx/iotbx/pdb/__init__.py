@@ -10,7 +10,7 @@ import sys
 
 def show_hierarchy(hierarchy, out=None):
   if (out is None): out = sys.stdout
-  for model in hierarchy:
+  for model in hierarchy.models():
     chains = model.chains()
     print >> out, "model id=%d" % model.id, \
       "#chains=%d" % len(chains)
