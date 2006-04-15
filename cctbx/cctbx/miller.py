@@ -439,7 +439,9 @@ class set(crystal.symmetry):
   def auto_anomalous(self, min_n_bijvoet_pairs=None,
                            min_fraction_bijvoet_pairs=None):
     assert [min_n_bijvoet_pairs, min_fraction_bijvoet_pairs].count(None) > 0
-    if (min_fraction_bijvoet_pairs is not None):
+    if (self.indices().size() == 0):
+      anomalous_flag = False
+    elif (min_fraction_bijvoet_pairs is not None):
       anomalous_flag = (2*self.n_bijvoet_pairs()/self.indices().size()
                         >= min_fraction_bijvoet_pairs)
     elif (min_n_bijvoet_pairs is not None):
