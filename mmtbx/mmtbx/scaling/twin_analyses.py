@@ -692,8 +692,6 @@ class n_z_test(object):
     print >> out,"-----------------------------------------------"
 
 
-
-
 class britton_test(object):
   def __init__(self,
                twin_law,
@@ -1048,11 +1046,19 @@ class twin_results_interpretation(object):
 
 
   def compute_maha_l(self):
-    maha_l = 117820.0
-    maha_l2 = 106570
-    maha_ll2= -212319
-    maha_mean_l = 0.487758242
-    mama_mean_l2 = 0.322836996
+    # Mean vector: 0.48513455414 0.316418789809
+    # Variancxe /covriance: 0.000143317086266 0.000192434487707 0.000165215146913
+    # Its inverse {{679728., -583582.}, {-583582., 506232.}}
+    # These numbers have been obtained from roughly 1200 datasets
+    # They were selected using
+    # strong high resolution limit (over 85% complete, for i/sigi>3.0) is smaller than 2.0
+    # no detected pseudo translation
+    # <|L|> > 0.45 (limit decided based on histogram, mainly  for removing some outliers)
+    maha_l   = 679728.0 #old value 117820.0
+    maha_l2  = 506232.0 #old value 106570
+    maha_ll2 = 2.0*-583582.0 #old value -212319
+    maha_mean_l = 0.48513455414  #old value: 0.487758242
+    mama_mean_l2 = 0.316418789809 #old value: 0.322836996
     tmp_l = self.twin_results.l_mean - maha_mean_l
     tmp_l2 = self.twin_results.l_sq_mean - mama_mean_l2
     maha_distance_l = tmp_l*tmp_l*maha_l +\
@@ -1719,6 +1725,7 @@ class r_values(object):
     self.guess=guess
     if guess is not None:
       self.rvsr_interpretation[ guess ][4]="<---"
+
 
   def show(self):
     print >> self.out
