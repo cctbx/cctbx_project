@@ -138,7 +138,7 @@ namespace cctbx { namespace xray {
           throw error("Negative electron density at sampling point.");
         }
       }
-      if (scatterer.anisotropic_flag) {
+      if (scatterer.flags.use_u_aniso()) {
         gaussian_ft = detail::gaussian_fourier_transformed<FloatType>(
           exp_table,
           gaussian, scatterer.fp, scatterer.fdp, scatterer.weight(),
@@ -147,7 +147,7 @@ namespace cctbx { namespace xray {
       std::size_t exp_tab_size = exp_table.table_.size();
 #     include <cctbx/xray/sampling_loop.h>
         if (this->anomalous_flag_) i_map *= 2;
-        if (!scatterer.anisotropic_flag) {
+        if (!scatterer.flags.use_u_aniso()) {
 #ifdef CCTBX_READABLE_CODE
           map_begin[i_map] += gaussian_ft.rho_real(d_sq);
 #else

@@ -187,6 +187,8 @@ namespace cctbx { namespace xray {
       unsigned fp;
       unsigned fdp;
       unsigned tan_u_iso;
+      unsigned use_u_iso;
+      unsigned use_u_aniso;
 
       scatterer_grad_flags_counts() {}
 
@@ -200,22 +202,29 @@ namespace cctbx { namespace xray {
         occupancy(0),
         fp(0),
         fdp(0),
-        tan_u_iso(0)
+        tan_u_iso(0),
+        use_u_iso(0),
+        use_u_aniso(0)
       {
         for(std::size_t i=0;i<scatterers.size();i++) {
             ScattererType const& sc = scatterers[i];
-            if (sc.flags.grad_site()) site++;
-            if (sc.flags.grad_u_iso()) u_iso++;
-            if (sc.flags.grad_u_aniso()) u_aniso++;
-            if (sc.flags.grad_occupancy()) occupancy++;
-            if (sc.flags.grad_fp()) fp++;
-            if (sc.flags.grad_fdp()) fdp++;
-            if (sc.flags.tan_u_iso()) tan_u_iso++;
+            if(sc.flags.use()) {
+              if (sc.flags.grad_site()) site = site + 3;
+              if (sc.flags.grad_u_iso() && sc.flags.use_u_iso()) u_iso++;
+              if (sc.flags.grad_u_aniso() &&
+                  sc.flags.use_u_aniso()) u_aniso = u_aniso+6;
+              if (sc.flags.grad_occupancy()) occupancy++;
+              if (sc.flags.grad_fp()) fp++;
+              if (sc.flags.grad_fdp()) fdp++;
+              if (sc.flags.tan_u_iso()) tan_u_iso++;
+              if(sc.flags.use_u_iso()) use_u_iso++;
+              if(sc.flags.use_u_aniso()) use_u_aniso++;
+            }
         }
       }
 
       unsigned
-      all_zero() const { return site+u_iso+u_aniso+occupancy+fp+fdp; }
+      n_parameters() const { return site+u_iso+u_aniso+occupancy+fp+fdp; }
   };
 
   template <typename ScattererType>
@@ -233,14 +242,16 @@ namespace cctbx { namespace xray {
   {
     for(std::size_t i=0;i<scatterers.size();i++) {
         ScattererType& sc = scatterers[i];
-        sc.flags.set_grad_site(site);
-        sc.flags.set_grad_u_iso(u_iso);
-        sc.flags.set_grad_u_aniso(u_aniso);
-        sc.flags.set_grad_occupancy(occupancy);
-        sc.flags.set_grad_fp(fp);
-        sc.flags.set_grad_fdp(fdp);
-        sc.flags.set_tan_u_iso(tan_u_iso);
-        sc.flags.param = param;
+        if(sc.flags.use()) {
+          sc.flags.set_grad_site(site);
+          if (sc.flags.use_u_iso()) sc.flags.set_grad_u_iso(u_iso);
+          if (sc.flags.use_u_aniso()) sc.flags.set_grad_u_aniso(u_aniso);
+          sc.flags.set_grad_occupancy(occupancy);
+          sc.flags.set_grad_fp(fp);
+          sc.flags.set_grad_fdp(fdp);
+          if (sc.flags.use_u_iso()) sc.flags.set_tan_u_iso(tan_u_iso);
+          sc.flags.param = param;
+        }
     }
   }
 

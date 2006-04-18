@@ -367,7 +367,8 @@ def exercise_from_scatterers_direct(space_group_info,
                                     volume_per_atom=1000,
                                     d_min=3,
                                     anomalous_flag=0,
-                                    anisotropic_flag=0,
+                                    use_u_iso =0,
+                                    use_u_aniso =0,
                                     verbose=0):
   structure = random_structure.xray_structure(
     space_group_info,
@@ -378,11 +379,44 @@ def exercise_from_scatterers_direct(space_group_info,
     random_f_prime_d_min=d_min-1,
     random_f_prime_scale=0.6,
     random_f_double_prime=anomalous_flag,
-    anisotropic_flag=anisotropic_flag,
-    random_u_iso=True,
+    anisotropic_flag = True,#use_u_aniso,
+    random_u_iso = True,
     random_u_iso_scale=.3,
     random_u_cart_scale=.3,
     random_occupancy=True)
+  #XXX do it smarter
+  dummy = random_structure.xray_structure(
+    space_group_info,
+    elements=[element_type]*n_elements,
+    volume_per_atom=volume_per_atom,
+    min_distance=5,
+    general_positions_only=True,
+    random_f_prime_d_min=d_min-1,
+    random_f_prime_scale=0.6,
+    random_f_double_prime=anomalous_flag,
+    anisotropic_flag = False,
+    random_u_iso = True,#use_u_iso,
+    random_u_iso_scale=.3,
+    random_u_cart_scale=.3,
+    random_occupancy=True)
+  for sc,du in zip(structure.scatterers(),dummy.scatterers()):
+    sc.flags.set_use_u_iso(use_u_iso)
+    sc.flags.set_use_u_aniso(use_u_aniso)
+    sc.u_iso = du.u_iso
+  #XXX this assignement does not work for False False case
+  #structure.set_u_iso(values = u_isos, allow_mixed = True)
+  #print use_u_iso, use_u_aniso, structure.scatterers()[0].u_iso, structure.scatterers()[0].u_star
+  #XXX implement vector version instead of Python loop
+  for sc in structure.scatterers():
+    if(sc.flags.use_u_iso() and sc.flags.use_u_aniso()):
+       assert sc.u_iso > 0 and sc.u_star != (-1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+    #if(sc.flags.use_u_iso() and not sc.flags.use_u_aniso()):
+    #   assert sc.u_iso > 0 and sc.u_star == (-1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+    #if(not sc.flags.use_u_iso() and sc.flags.use_u_aniso()):
+    #   assert sc.u_iso == 0 and sc.u_star != (-1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+    #if(not sc.flags.use_u_iso() and not sc.flags.use_u_aniso()):
+    #   assert sc.u_iso == 0 and sc.u_star == (-1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+
   if (0 or verbose):
     structure.show_summary().show_scatterers()
   f_obs_exact = structure.structure_factors(
@@ -506,7 +540,8 @@ def run_call_back(flags, space_group_info):
   if (1):
     for element_type in ("Se", "const"):
       for anomalous_flag in [0,1]:
-        for anisotropic_flag in [0,1]:
+        for (use_u_iso,use_u_aniso) in [(True,True),(False,True),
+                                        (True,False),(False,False)]:
           for with_shift in [0,1]:
             if (with_shift):
               sgi = debug_utils.random_origin_shift(space_group_info)
@@ -516,7 +551,8 @@ def run_call_back(flags, space_group_info):
               space_group_info=sgi,
               element_type=element_type,
               anomalous_flag=anomalous_flag,
-              anisotropic_flag=anisotropic_flag,
+              use_u_iso = use_u_iso,
+              use_u_aniso = use_u_aniso,
               verbose=flags.Verbose)
   if (1):
     exercise_n_gaussian(

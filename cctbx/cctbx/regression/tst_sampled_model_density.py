@@ -39,7 +39,10 @@ def assign_custom_gaussians(structure, negative_a=False):
   assert reg.gaussian("N").n_terms() == 2
 
 def exercise(space_group_info, const_gaussian, negative_gaussian,
-             anomalous_flag, anisotropic_flag,
+             anomalous_flag,
+             #anisotropic_flag,
+             use_u_iso,
+             use_u_aniso,
              d_min=1., resolution_factor=1./3, max_prime=5,
              quality_factor=100, wing_cutoff=1.e-6,
              exp_table_one_over_step_size=-100,
@@ -61,9 +64,22 @@ def exercise(space_group_info, const_gaussian, negative_gaussian,
     random_f_prime_d_min=1,
     random_f_prime_scale=random_f_prime_scale,
     random_f_double_prime=anomalous_flag,
-    anisotropic_flag=anisotropic_flag,
+    anisotropic_flag= True,#anisotropic_flag,
+    random_u_cart_scale=0.7,
     random_u_iso=True,
     random_occupancy=True)
+  #XXX set u_iso flags and generate u_iso:
+  random_u_iso_scale = 0.3
+  random_u_iso_min = 0.0
+  for sc in structure.scatterers():
+    sc.flags.set_use_u_iso(use_u_iso)
+    sc.flags.set_use_u_aniso(use_u_aniso)
+    u_iso = random.random() * random_u_iso_scale + random_u_iso_min
+    sc.u_iso = u_iso
+    assert sc.u_iso > 0 and sc.u_star != (-1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
+
+  #print use_u_iso, use_u_aniso, "%5.3f"%structure.scatterers()[0].u_iso, \
+  #      ["%5.3f"%i for i in structure.scatterers()[0].u_star]
   sampled_density_must_be_positive = True
   if (negative_gaussian):
     reg = structure.scattering_type_registry(
@@ -197,7 +213,9 @@ def exercise_negative_parameters(verbose=0):
       assert max(adptbx.eigenvalues(u_cart)) < 0
       u_star = adptbx.u_cart_as_u_star(structure.unit_cell(), u_cart)
       scatterer.u_star = u_star
+      #XXX remove duplication later
       scatterer.anisotropic_flag = True
+      scatterer.flags.set_use_u(iso=False)
     elif (i_trial == 5):
       scatterer.fp = -10
     elif (i_trial == 6):
@@ -252,14 +270,21 @@ def exercise_negative_parameters(verbose=0):
 
 def run_call_back(flags, space_group_info):
   for anomalous_flag in (False, True)[:]: #SWITCH
-    for anisotropic_flag in (False, True)[:]: #SWITCH
+    #for anisotropic_flag in (False, True)[:]: #SWITCH
+    for (use_u_iso,use_u_aniso) in [(True,True),
+                                    (False,True),
+                                    (True,False),
+                                    (False,False)
+                                    ]:
       r = random.random()
       exercise(
         space_group_info,
         const_gaussian=r<1/3.,
         negative_gaussian=r>2/3.,
         anomalous_flag=anomalous_flag,
-        anisotropic_flag=anisotropic_flag,
+        use_u_iso = use_u_iso,
+        use_u_aniso = use_u_aniso,
+        #anisotropic_flag=anisotropic_flag,
         verbose=flags.Verbose)
 
 def run():

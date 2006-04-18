@@ -81,7 +81,8 @@ namespace cctbx { namespace xray {
           base_t(exp_table, gaussian, fp, fdp, w, u_cart, u_extra),
           i_const_term(gaussian.n_terms())
         {
-          if (scf.grad_u_aniso()) {
+         //XXX
+          if (scf.grad_u_aniso() || scf.use_u_aniso()) {
             for(std::size_t i=0;i<gaussian.n_terms();i++) {
               scitbx::sym_mat3<FloatType>
                 b_all = compose_anisotropic_b_all(
@@ -90,11 +91,11 @@ namespace cctbx { namespace xray {
               bcfmt_[i] = b_all.co_factor_matrix_transposed();
             }
           }
-          if (scf.grad_u_aniso() || scf.grad_fp() || scf.grad_fdp()) {
+          if (scf.grad_u_aniso() || scf.use_u_aniso() || scf.grad_fp() || scf.grad_fdp()) {
             scitbx::sym_mat3<FloatType>
               b_all = compose_anisotropic_b_all(0, u_extra, u_cart);
             FloatType d = b_all.determinant();
-            if (scf.grad_u_aniso()) {
+            if (scf.grad_u_aniso() || scf.use_u_aniso()) {
               detb_[i_const_term] = d;
               bcfmt_[i_const_term] = b_all.co_factor_matrix_transposed();
             }
@@ -522,6 +523,9 @@ namespace cctbx { namespace xray {
       FloatType gr_occupancy(0);
       FloatType gr_fp(0);
       FloatType gr_fdp(0);
+      bool need_iso = scatterer.flags.use_u_aniso()
+                   && scatterer.flags.use_u_iso()
+                   && scatterer.flags.grad_u_iso();
       if (scatterer.weight() != 0) {
         eltbx::xray_scattering::gaussian const&
           gaussian = scattering_type_registry.gaussian_not_optional(
@@ -550,7 +554,7 @@ namespace cctbx { namespace xray {
             throw error("Negative electron density at sampling point.");
           }
         }
-        if (scatterer.anisotropic_flag) {
+        if (scatterer.flags.use_u_aniso()) {
           gaussian_ft = detail::d_gaussian_fourier_transformed<FloatType>(
             scatterer.flags,
             exp_table,
@@ -571,7 +575,7 @@ namespace cctbx { namespace xray {
             f_imag = -ft_dt_dfc_gp.imag();
           }
           if (scatterer.flags.grad_site()) {
-            if (!scatterer.anisotropic_flag) {
+            if (!scatterer.flags.use_u_aniso()) {
               gaussian_ft.d_rho_real_d_site(gr_site, f_real, d, d_sq);
               if (fdp && ft_d_target_d_f_calc_real == 0) {
                 gaussian_ft.d_rho_imag_d_site(gr_site, f_imag, d, d_sq);
@@ -584,8 +588,8 @@ namespace cctbx { namespace xray {
               }
             }
           }
-          if (!scatterer.anisotropic_flag) {
-            if (scatterer.flags.grad_u_iso()) {
+          if (!scatterer.flags.use_u_aniso()) {
+            if (scatterer.flags.grad_u_iso() && scatterer.flags.use_u_iso()) {
               gr_b_iso += f_real * gaussian_ft.d_rho_real_d_b_iso(d_sq);
               if (fdp && ft_d_target_d_f_calc_real == 0) {
                 gr_b_iso += f_imag * gaussian_ft.d_rho_imag_d_b_iso(d_sq);
@@ -593,7 +597,7 @@ namespace cctbx { namespace xray {
             }
           }
           else {
-            if (scatterer.flags.grad_u_aniso()) {
+            if (scatterer.flags.grad_u_aniso() || need_iso) {
               gaussian_ft.d_rho_real_d_b_cart(gr_b_cart, f_real, d);
               if (fdp && ft_d_target_d_f_calc_real == 0) {
                 gaussian_ft.d_rho_imag_d_b_cart(gr_b_cart, f_imag, d);
@@ -601,7 +605,7 @@ namespace cctbx { namespace xray {
             }
           }
           if (scatterer.flags.grad_occupancy()) {
-            if (!scatterer.anisotropic_flag) {
+            if (!scatterer.flags.use_u_aniso()) {
               gr_occupancy += f_real
                             * gaussian_ft.d_rho_real_d_occupancy(d_sq);
               if (fdp && ft_d_target_d_f_calc_real == 0) {
@@ -619,7 +623,7 @@ namespace cctbx { namespace xray {
             }
           }
           if (scatterer.flags.grad_fp()) {
-            if (!scatterer.anisotropic_flag) {
+            if (!scatterer.flags.use_u_aniso()) {
               gr_fp += f_real * gaussian_ft.d_rho_real_d_fp(d_sq);
             }
             else {
@@ -627,7 +631,7 @@ namespace cctbx { namespace xray {
             }
           }
           if (scatterer.flags.grad_fdp() && ft_d_target_d_f_calc_real == 0) {
-            if (!scatterer.anisotropic_flag) {
+            if (!scatterer.flags.use_u_aniso()) {
               gr_fdp += f_imag * gaussian_ft.d_rho_imag_d_fdp(d_sq);
             }
             else {
@@ -635,6 +639,7 @@ namespace cctbx { namespace xray {
             }
           }
         CCTBX_XRAY_SAMPLING_LOOP_END
+        if(need_iso) gr_b_iso = gr_b_cart[0]+gr_b_cart[1]+gr_b_cart[2];
       }
       if (scatterer.flags.grad_site()) {
         average_special_position_site_gradient(
@@ -647,8 +652,8 @@ namespace cctbx { namespace xray {
             packed_.push_back(gr_site[i]);
           }
         }
-        if (!scatterer.anisotropic_flag) {
-          if (scatterer.flags.grad_u_iso()) {
+        if (!scatterer.flags.use_u_aniso()) {
+          if (scatterer.flags.grad_u_iso() && scatterer.flags.use_u_iso()) {
             if (scatterer.flags.tan_u_iso() && scatterer.flags.param > 0) {
               FloatType pi = scitbx::constants::pi;
               FloatType u_iso_max = adptbx::b_as_u(scatterer.flags.param);
@@ -661,10 +666,13 @@ namespace cctbx { namespace xray {
           }
         }
         else {
-          if (scatterer.flags.grad_u_aniso()) {
+          if (scatterer.flags.grad_u_aniso() && !need_iso) {
             for(std::size_t i=0;i<6;i++) {
               packed_.push_back(adptbx::u_as_b(gr_b_cart[i]));
             }
+          }
+          if (need_iso) {
+            packed_.push_back(adptbx::u_as_b(gr_b_iso));
           }
         }
         if (scatterer.flags.grad_occupancy()) {
@@ -681,7 +689,10 @@ namespace cctbx { namespace xray {
         if (scatterer.flags.grad_site()) {
           d_target_d_site_cart_.push_back(gr_site);
         }
-        if (scatterer.flags.grad_u_iso()) {
+        else {
+          d_target_d_site_cart_.push_back(scitbx::vec3<FloatType>(0,0,0));
+        }
+        if (scatterer.flags.grad_u_iso() && scatterer.flags.use_u_iso() || need_iso) {
           if (scatterer.flags.tan_u_iso() && scatterer.flags.param > 0) {
             FloatType pi = scitbx::constants::pi;
             FloatType u_iso_max = adptbx::b_as_u(scatterer.flags.param);
@@ -693,17 +704,33 @@ namespace cctbx { namespace xray {
             d_target_d_u_iso_.push_back(adptbx::u_as_b(gr_b_iso));
           }
         }
+        else {
+          d_target_d_u_iso_.push_back(0);
+        }
         if (scatterer.flags.grad_u_aniso()) {
           d_target_d_u_cart_.push_back(adptbx::u_as_b(gr_b_cart));
+        }
+        else {
+          d_target_d_u_cart_.push_back(
+                                     scitbx::sym_mat3<FloatType>(0,0,0,0,0,0));
         }
         if (scatterer.flags.grad_occupancy()) {
           d_target_d_occupancy_.push_back(gr_occupancy);
         }
+        else {
+          d_target_d_occupancy_.push_back(0);
+        }
         if (scatterer.flags.grad_fp()) {
           d_target_d_fp_.push_back(gr_fp);
         }
+        else {
+          d_target_d_fp_.push_back(0);
+        }
         if (scatterer.flags.grad_fdp()) {
           d_target_d_fdp_.push_back(gr_fdp);
+        }
+        else {
+          d_target_d_fdp_.push_back(0);
         }
       }
     }
