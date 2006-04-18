@@ -107,7 +107,9 @@ namespace {
         .def_readonly("fp", &w_t::fp)
         .def_readonly("fdp", &w_t::fdp)
         .def_readonly("tan_u_iso", &w_t::tan_u_iso)
-        .def("all_zero", &w_t::all_zero)
+        .def_readonly("use_u_iso", &w_t::use_u_iso)
+        .def_readonly("use_u_aniso", &w_t::use_u_aniso)
+        .def("n_parameters", &w_t::n_parameters)
       ;
     }
   };

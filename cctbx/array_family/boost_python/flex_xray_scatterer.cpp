@@ -182,7 +182,9 @@ namespace cctbx { namespace xray { namespace {
   {
     CCTBX_ASSERT(self.size() == u_iso.size());
     for(std::size_t i=0;i<self.size();i++) {
-      if (!self[i].anisotropic_flag) {
+     //XXX
+      //if (!self[i].anisotropic_flag) {
+      if (self[i].flags.use_u_iso()) {
         self[i].u_iso = u_iso[i];
       }
     }

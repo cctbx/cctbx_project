@@ -696,22 +696,49 @@ namespace cctbx { namespace xray {
       }
       sum_w += w;
       sum_w_gaussian_a += w * gaussian_a;
-      FloatType u_min;
-      if (!scatterer.anisotropic_flag) {
-        u_radius_cache_.push_back(scatterer.u_iso);
-        u_min = scatterer.u_iso;
-        sum_w_u_equiv += w * std::max(static_cast<FloatType>(0),
-          scatterer.u_iso);
-      }
-      else {
-        u_cart_cache_.push_back(adptbx::u_star_as_u_cart(unit_cell_,
-          scatterer.u_star));
+      //FloatType u_min;
+      //if (!scatterer.anisotropic_flag) {
+      //  u_radius_cache_.push_back(scatterer.u_iso);
+      //  u_min = scatterer.u_iso;
+      //  sum_w_u_equiv += w * std::max(static_cast<FloatType>(0),
+      //    scatterer.u_iso);
+      //}
+      //else {
+      //  u_cart_cache_.push_back(adptbx::u_star_as_u_cart(unit_cell_,
+      //    scatterer.u_star));
+      //  scitbx::vec3<FloatType>
+      //    u_cart_eigenvalues = adptbx::eigenvalues(u_cart_cache_.back());
+      //  u_radius_cache_.push_back(af::max(u_cart_eigenvalues));
+      //  u_min = af::min(u_cart_eigenvalues);
+      //  sum_w_u_equiv += w * std::max(static_cast<FloatType>(0),
+      //    adptbx::u_cart_as_u_iso(u_cart_cache_.back()));
+      //}
+      FloatType u_min=0.;
+      if (scatterer.flags.use_u_aniso()) {
+        scitbx::sym_mat3<FloatType>
+            u_cart = adptbx::u_star_as_u_cart(unit_cell_, scatterer.u_star);
+        if (scatterer.flags.use_u_iso()) {
+          u_cart[0] += scatterer.u_iso;
+          u_cart[1] += scatterer.u_iso;
+          u_cart[2] += scatterer.u_iso;
+        }
+        u_cart_cache_.push_back(u_cart);
         scitbx::vec3<FloatType>
           u_cart_eigenvalues = adptbx::eigenvalues(u_cart_cache_.back());
         u_radius_cache_.push_back(af::max(u_cart_eigenvalues));
         u_min = af::min(u_cart_eigenvalues);
         sum_w_u_equiv += w * std::max(static_cast<FloatType>(0),
           adptbx::u_cart_as_u_iso(u_cart_cache_.back()));
+      }
+      else if (scatterer.flags.use_u_iso()) {
+        u_radius_cache_.push_back(scatterer.u_iso);
+        u_min = scatterer.u_iso;
+        sum_w_u_equiv += w * std::max(static_cast<FloatType>(0),
+          scatterer.u_iso);
+      }
+      else {
+        u_radius_cache_.push_back(0);
+        u_min = 0;
       }
       if (!have_u_min) {
         u_min_ = u_min;

@@ -26,13 +26,13 @@ namespace cctbx { namespace xray { namespace structure_factors {
         hr_ht_group<f_t> const& g = hr_ht.groups[i];
         f_t hrx = g.hr * scatterer.site;
         c_t term = cos_sin.get(hrx + g.ht);
-        if (scatterer.anisotropic_flag) {
+        if (scatterer.flags.use_u_aniso()) {
           f_t dw = adptbx::debye_waller_factor_u_star(g.hr, scatterer.u_star);
           term *= dw;
         }
         f_calc += term;
       }
-      if (!scatterer.anisotropic_flag && scatterer.u_iso != 0) {
+      if (scatterer.flags.use_u_iso() && scatterer.u_iso != 0) {
         f_t dw=adptbx::debye_waller_factor_u_iso(d_star_sq/4, scatterer.u_iso);
         f_calc *= dw;
       }

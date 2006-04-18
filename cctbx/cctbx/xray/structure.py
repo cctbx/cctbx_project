@@ -625,6 +625,18 @@ class structure(crystal.special_position_settings):
         if(sc.flags.grad_fdp()      ): result_ +=1
     return result_
 
+  def n_parameters_XXX(self):
+    #XXX move to C++ (after anisotropic_flag is gone)
+    result_ = 0
+    for sc in self.scatterers():
+        if(sc.flags.grad_site()): result_ +=3
+        if(sc.flags.grad_u_iso() and sc.flags.use_u_iso()): result_ +=1
+        if(sc.flags.grad_u_aniso() and sc.flags.use_u_aniso()): result_ +=6
+        if(sc.flags.grad_occupancy()): result_ +=1
+        if(sc.flags.grad_fp()       ): result_ +=1
+        if(sc.flags.grad_fdp()      ): result_ +=1
+    return result_
+
   def asu_mappings(self, buffer_thickness, is_inside_epsilon=None):
     result = crystal.symmetry.asu_mappings(self,
       buffer_thickness=buffer_thickness,
