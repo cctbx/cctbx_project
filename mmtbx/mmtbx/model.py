@@ -37,11 +37,11 @@ class manager(object):
     self.rigid_body_selections = rigid_body_selections
     self.group_b_selections = group_b_selections
     self.tls_selections = tls_selections
-    if(self.rigid_body_selections is not None):
-    #XXX BUG
-       dim = self.xray_structure.scatterers().size()
-       for sel in self.rigid_body_selections:
-           assert sel.size() == dim
+    #if(self.rigid_body_selections is not None):
+    ##XXX BUG
+    #   dim = self.xray_structure.scatterers().size()
+    #   for sel in self.rigid_body_selections:
+    #       assert sel.size() == dim
 
   def setup_restraints_manager(self,
                                plain_pairs_radius = 5.0,
@@ -177,7 +177,6 @@ class manager(object):
     b_isos = self.xray_structure.extract_u_iso_or_u_equiv() * math.pi**2*8
     n_atoms = 0
     for i_seq, selection in enumerate(selections):
-        #n_atoms += selection.count(True)
         try:
           i_selection = selection.iselection()
           n_atoms += i_selection.size()
@@ -191,16 +190,17 @@ class manager(object):
         print >> out, next % (i_seq+1, sites[start][0], b_isos[start],
           first.name, first.resName, first.resSeq, sites[final][0],
           b_isos[final], last.name, last.resName, last.resSeq)
-    if(n_atoms != natoms_total):
-       print >> out, "|                                                                             |"
-       print >> out, "|                 *** Error in rigid groups definition ***                    |"
-       print >> out, "|                                                                             |"
-       print >> out, "| Total number of atoms in specified rigid groups does not equal to the total |"
-       print >> out, "| number of atoms in the model:                                               |"
-       print >> out, "| Atoms in model        = %-7d                                             |"%natoms_total
-       print >> out, "| Atoms in rigid groups = %-7d                                             |"%n_atoms
-       print >> out, "|"+"-"*77+"|"
-       raise Sorry("Error in rigid groups definition")
+#XXX
+    #if(n_atoms != natoms_total):
+    #   print >> out, "|                                                                             |"
+    #   print >> out, "|                 *** Error in rigid groups definition ***                    |"
+    #   print >> out, "|                                                                             |"
+    #   print >> out, "| Total number of atoms in specified rigid groups does not equal to the total |"
+    #   print >> out, "| number of atoms in the model:                                               |"
+    #   print >> out, "| Atoms in model        = %-7d                                             |"%natoms_total
+    #   print >> out, "| Atoms in rigid groups = %-7d                                             |"%n_atoms
+    #   print >> out, "|"+"-"*77+"|"
+    #   raise Sorry("Error in rigid groups definition")
     print >> out, "|"+"-"*77+"|"
     print >> out
     out.flush()
