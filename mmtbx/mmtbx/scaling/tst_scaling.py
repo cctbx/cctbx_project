@@ -916,12 +916,13 @@ def twin_the_data_and_analyse(twin_operator,twin_fraction=0.2):
       twin_anal_object.twin_law_dependent_analyses[index].h_test.mean_h,
       0.00,eps=0.1)
   ## Just make sure we actually detect significant twinning
-  if twin_fraction > 0.06:
+  if twin_fraction > 0.10:
     assert (twin_anal_object.twin_summary.twin_results.maha_l > 3.0)
   ## The patterson origin peak should be smallish ...
   assert (twin_anal_object.twin_summary.twin_results.patterson_p_value > 0.01)
+  # and the brief test should be passed as well
   answer = t_a.twin_analyses_brief( twinned_miller,out=out_string,verbose=-100 )
-  if twin_fraction > 0.06:
+  if twin_fraction > 0.10:
     assert answer is True
 
 
@@ -985,7 +986,8 @@ if (__name__ == "__main__"):
   test_scaling_on_random_data(70)
   test_scaling_on_random_data(80)
   scaling_tester()
-  twin_the_data_and_analyse('h+k,-k,-l',0)
+  twin_the_data_and_analyse('h+k,-k,-l',0.00)
+  twin_the_data_and_analyse('h+k,-k,-l',0.10)
   twin_the_data_and_analyse('h+k,-k,-l',0.10)
   twin_the_data_and_analyse('h+k,-k,-l',0.30)
   twin_the_data_and_analyse('h+k,-k,-l',0.50)
