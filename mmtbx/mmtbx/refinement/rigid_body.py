@@ -146,6 +146,7 @@ class manager(object):
                      convergence_test        = True,
                      convergence_delta       = 0.00001,
                      use_only_low_resolution = False,
+                     bulk_solvent_and_scale  = True,
                      bss                     = None,
                      log                     = None):
     if(log is None): log = sys.stdout
@@ -154,6 +155,14 @@ class manager(object):
        selections.append(flex.bool(fmodel.xray_structure.scatterers().size(),
                                                                          True))
     else: assert len(selections) > 0
+    fixed_selection = flex.bool(fmodel.xray_structure.scatterers().size(),
+                                     True)
+    sel = selections[0].deep_copy()
+    for s_i in selections:
+        sel = sel.set_selected(s_i, True)
+    fixed_selection = fixed_selection.set_selected(sel, False)
+    if(fixed_selection.count(False) == fixed_selection.size()):
+       fixed_selection=None
     self.total_rotation = []
     self.total_translation = []
     for item in selections:
@@ -183,7 +192,8 @@ class manager(object):
                                           update_f_calc  = True)
         rworks = flex.double()
         for macro_cycle in range(1, min(int(res),4)+1):
-            if((macro_cycle == 1 or macro_cycle == 3) and bss is not None):
+            if((macro_cycle == 1 or macro_cycle == 3) and bss is not None and
+               bulk_solvent_and_scale):
                print_statistics.make_sub_header(
                    "Bulk solvent correction (and anisotropic scaling)",out=log)
                if(fmodel_copy.f_obs.d_min() > 3.0):
@@ -194,6 +204,7 @@ class manager(object):
                   bss.anisotropic_scaling=save_bss_anisotropic_scaling
             minimized = rigid_body_minimizer(fmodel         = fmodel_copy,
                                              selections     = selections,
+                                             fixed_selection= fixed_selection,
                                              r_initial      = r_initial,
                                              t_initial      = t_initial,
                                              refine_r       = refine_r,
@@ -213,7 +224,8 @@ class manager(object):
                          xray_structure      = minimized.fmodel.xray_structure,
                          rotation_matrices   = rotation_matrices,
                          translation_vectors = translation_vectors,
-                         selections          = selections)
+                         selections          = selections,
+                         fixed_selection     = fixed_selection)
             fmodel_copy.update_xray_structure(xray_structure = new_xrs,
                                               update_f_calc  = True,
                                               update_f_mask  = True,
@@ -286,7 +298,8 @@ class manager(object):
                                     xray_structure      = xray_structure_start,
                                     rotation_matrices   = rotation_matrices,
                                     translation_vectors = translation_vectors,
-                                    selections          = selections)
+                                    selections          = selections,
+                                    fixed_selection     = fixed_selection)
                   fmodel_copy.update_xray_structure(xray_structure = new_xrs,
                                                     update_f_calc  = True,
                                                     update_f_mask  = True)
@@ -363,6 +376,7 @@ class rigid_body_minimizer(object):
   def __init__(self,
                fmodel,
                selections,
+               fixed_selection,
                r_initial,
                t_initial,
                refine_r,
@@ -455,7 +469,8 @@ class rigid_body_minimizer(object):
     new_xrs = apply_transformation(xray_structure = self.fmodel.xray_structure,
                                    rotation_matrices   = rotation_matrices,
                                    translation_vectors = translation_vectors,
-                                   selections          = self.selections)
+                                   selections          = self.selections,
+                                   fixed_selection     = self.fixed_selection)
     self.fmodel_copy.update_xray_structure(xray_structure = new_xrs,
                                            update_f_calc  = True)
     tg_obj = target_and_grads(fmodel     = self.fmodel_copy,
@@ -470,16 +485,21 @@ class rigid_body_minimizer(object):
 def apply_transformation(xray_structure,
                          rotation_matrices,
                          translation_vectors,
-                         selections):
+                         selections,
+                         fixed_selection=None):
   assert len(selections) == len(rotation_matrices)
   assert len(selections) == len(translation_vectors)
-  new_sites = flex.vec3_double()
+  new_sites = flex.vec3_double(xray_structure.scatterers().size())
   for sel,rot,trans in zip(selections,rotation_matrices,translation_vectors):
       xrs = xray_structure.select(sel)
       cm_cart = xrs.center_of_mass()
       sites_cart = xrs.sites_cart()
       sites_cart_cm = sites_cart - cm_cart
-      new_sites.extend(list(rot) * sites_cart_cm + trans + cm_cart)
+      tmp = list(rot) * sites_cart_cm + trans + cm_cart
+      new_sites.set_selected(sel, tmp)
+  if(fixed_selection is not None):
+    sites_fixed = xray_structure.sites_cart().select(fixed_selection)
+    new_sites.set_selected(fixed_selection, sites_fixed)
   return xray_structure.replace_sites_cart(new_sites = new_sites)
 
 class target_and_grads(object):
