@@ -1722,7 +1722,7 @@ namespace iotbx { namespace pdb {
       hierarchy
       construct_hierarchy()
       {
-        CCTBX_ASSERT(!construct_hierarchy_was_called_before);
+        SCITBX_ASSERT(!construct_hierarchy_was_called_before);
         construct_hierarchy_was_called_before = true;
         af::const_ref<int>
           model_numbers = model_numbers_.const_ref();
