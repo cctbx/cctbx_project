@@ -8,43 +8,46 @@ from iotbx.pdb.xray_structure import from_pdb as as_xray_structure
 from scitbx.python_utils.math_utils import iround
 import sys
 
-def show_hierarchy(hierarchy, out=None):
-  if (out is None): out = sys.stdout
-  for model in hierarchy.models():
-    chains = model.chains()
-    print >> out, "model id=%d" % model.id, \
-      "#chains=%d" % len(chains)
-    for chain in chains:
-      conformers = chain.conformers()
-      print >> out, '  chain id="%s"' % chain.id, \
-        "#conformers=%d" % len(conformers)
-      assert chain.parent().memory_id() == model.memory_id()
-      for conformer in conformers:
-        residues = conformer.residues()
-        print >> out, '    conformer id="%s"' % conformer.id, \
-          "#residues=%d" % len(residues)
-        assert conformer.parent().memory_id() == chain.memory_id()
-        suppress_chain_break = True
-        for residue in residues:
-          if (not residue.link_to_previous and not suppress_chain_break):
-            print >> out, "      ### chain break ###"
-          suppress_chain_break = False
-          atoms = residue.atoms()
-          print >> out, '      residue name="%s"' % residue.name, \
-            "seq=%4d" % residue.seq, 'icode="%s"' % residue.icode, \
-            "#atoms=%d" % len(atoms)
-          assert residue.parent().memory_id() == conformer.memory_id()
-          for atom in atoms:
-            if (atom.parents_size() > 1):
-              mark = "*"
-            else:
-              mark = " "
-            print >> out, '       %s "%s"' % (mark, atom.name)
-            for parent in atom.parents():
-              if (parent.memory_id() == residue.memory_id()):
-                break
-            else:
-              raise RuntimeError("parent residue not in list of atom parents")
+class _hierarchy(boost.python.injector, ext.hierarchy):
+
+  def show(self, out=None):
+    if (out is None): out = sys.stdout
+    for model in self.models():
+      chains = model.chains()
+      print >> out, "model id=%d" % model.id, \
+        "#chains=%d" % len(chains)
+      for chain in chains:
+        conformers = chain.conformers()
+        print >> out, '  chain id="%s"' % chain.id, \
+          "#conformers=%d" % len(conformers)
+        assert chain.parent().memory_id() == model.memory_id()
+        for conformer in conformers:
+          residues = conformer.residues()
+          print >> out, '    conformer id="%s"' % conformer.id, \
+            "#residues=%d" % len(residues)
+          assert conformer.parent().memory_id() == chain.memory_id()
+          suppress_chain_break = True
+          for residue in residues:
+            if (not residue.link_to_previous and not suppress_chain_break):
+              print >> out, "      ### chain break ###"
+            suppress_chain_break = False
+            atoms = residue.atoms()
+            print >> out, '      residue name="%s"' % residue.name, \
+              "seq=%4d" % residue.seq, 'icode="%s"' % residue.icode, \
+              "#atoms=%d" % len(atoms)
+            assert residue.parent().memory_id() == conformer.memory_id()
+            for atom in atoms:
+              if (atom.parents_size() > 1):
+                mark = "*"
+              else:
+                mark = " "
+              print >> out, '       %s "%s"' % (mark, atom.name)
+              for parent in atom.parents():
+                if (parent.memory_id() == residue.memory_id()):
+                  break
+              else:
+                raise RuntimeError(
+                  "parent residue not in list of atom parents")
 
 def format_cryst1_record(crystal_symmetry, z=None):
   # CRYST1
