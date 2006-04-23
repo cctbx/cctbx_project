@@ -24,7 +24,11 @@ def show_hierarchy(hierarchy, out=None):
         print >> out, '    conformer id="%s"' % conformer.id, \
           "#residues=%d" % len(residues)
         assert conformer.parent().memory_id() == chain.memory_id()
+        suppress_chain_break = True
         for residue in residues:
+          if (not residue.link_to_previous and not suppress_chain_break):
+            print >> out, "      ### chain break ###"
+          suppress_chain_break = False
           atoms = residue.atoms()
           print >> out, '      residue name="%s"' % residue.name, \
             "seq=%4d" % residue.seq, 'icode="%s"' % residue.icode, \

@@ -122,21 +122,24 @@ namespace pdb {
       str4 name;
       int32_t seq;
       str4 icode;
+      bool link_to_previous;
     protected:
       std::vector<atom> atoms;
 
       inline
       residue_data(
-        weak_ptr<conformer_data> const& parent,
-        const char* name,
-        int32_t seq,
-        const char* const& icode);
+        weak_ptr<conformer_data> const& parent_,
+        const char* name_,
+        int32_t seq_,
+        const char* const& icode_,
+        bool link_to_previous_);
 
       inline
       residue_data(
         const char* name_,
         int32_t seq_,
-        const char* icode_);
+        const char* icode_,
+        bool link_to_previous_);
 
     public:
       std::string
@@ -376,14 +379,16 @@ namespace pdb {
         conformer const& parent,
         const char* name="",
         int32_t seq=0,
-        const char* icode="");
+        const char* icode="",
+        bool link_to_previous=true);
 
       residue(
         const char* name="",
         int32_t seq=0,
-        const char* icode="")
+        const char* icode="",
+        bool link_to_previous=true)
       :
-        data(new residue_data(name, seq, icode))
+        data(new residue_data(name, seq, icode, link_to_previous))
       {}
 
       std::size_t
@@ -487,9 +492,11 @@ namespace pdb {
       new_residue(
         const char* name="",
         int32_t seq=0,
-        const char* icode="")
+        const char* icode="",
+        bool link_to_previous=true)
       {
-        data->residues.push_back(residue(*this, name, seq, icode));
+        data->residues.push_back(
+          residue(*this, name, seq, icode, link_to_previous));
         return data->residues.back();
       }
 
@@ -849,23 +856,27 @@ namespace pdb {
     weak_ptr<conformer_data> const& parent_,
     const char* name_,
     int32_t seq_,
-    const char* const& icode_)
+    const char* const& icode_,
+    bool link_to_previous_)
   :
     parent(parent_),
     name(name_),
     seq(seq_),
-    icode(icode_)
+    icode(icode_),
+    link_to_previous(link_to_previous_)
   {}
 
   inline
   residue_data::residue_data(
     const char* name_,
     int32_t seq_,
-    const char* icode_)
+    const char* icode_,
+    bool link_to_previous_)
   :
     name(name_),
     seq(seq_),
-    icode(icode_)
+    icode(icode_),
+    link_to_previous(link_to_previous_)
   {}
 
   inline
@@ -873,9 +884,10 @@ namespace pdb {
     conformer const& parent,
     const char* name,
     int32_t seq,
-    const char* icode)
+    const char* icode,
+    bool link_to_previous)
   :
-    data(new residue_data(parent.data, name, seq, icode))
+    data(new residue_data(parent.data, name, seq, icode, link_to_previous))
   {}
 
   inline

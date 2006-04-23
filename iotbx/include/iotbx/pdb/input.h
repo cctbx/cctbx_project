@@ -5,6 +5,7 @@
 #include <scitbx/array_family/shared.h>
 #include <scitbx/array_family/tiny.h>
 #include <scitbx/misc/file_utils.h>
+#include <scitbx/misc/fill_ranges.h>
 #include <scitbx/auto_array.h>
 #include <boost/scoped_array.hpp>
 #include <map>
@@ -1462,6 +1463,7 @@ namespace iotbx { namespace pdb {
             }
             else if (record_type_info.id == record_type::break_) {
               break_indices_.push_back(input_atom_labels_list_.size());
+              break_record_line_numbers.push_back(line_info.line_number);
             }
             else if (record_type_info.id == record_type::model_) {
               if (model_record_oversight.model_is_allowed_here()) {
@@ -1542,6 +1544,7 @@ namespace iotbx { namespace pdb {
         if (sigatm_counts != 0) record_type_counts_["SIGATM"] += sigatm_counts;
         if (anisou_counts != 0) record_type_counts_["ANISOU"] += anisou_counts;
         if (siguij_counts != 0) record_type_counts_["SIGUIJ"] += siguij_counts;
+        construct_hierarchy_was_called_before = false;
       }
 
     public:
@@ -1719,6 +1722,8 @@ namespace iotbx { namespace pdb {
       hierarchy
       construct_hierarchy()
       {
+        CCTBX_ASSERT(!construct_hierarchy_was_called_before);
+        construct_hierarchy_was_called_before = true;
         af::const_ref<int>
           model_numbers = model_numbers_.const_ref();
         af::const_ref<std::vector<unsigned> >
@@ -1740,6 +1745,13 @@ namespace iotbx { namespace pdb {
           for(unsigned i_chain=0;ch_r.next();i_chain++) {
             pdb::chain chain = model.get_chain(i_chain);
             chain.data->id = iall[ch_r.begin].chain();
+            // convert break_indices to break_range_ids
+            boost::scoped_array<unsigned>
+              break_range_ids(new unsigned[ch_r.size]);
+            scitbx::misc::fill_ranges(
+              ch_r.begin, ch_r.end,
+              break_indices_.begin(), break_indices_.end(),
+              break_range_ids.get());
             // separate conformers
             std::vector<unsigned> common_sel;
             common_sel.reserve(ch_r.size);
@@ -1876,18 +1888,35 @@ namespace iotbx { namespace pdb {
                 // pre-allocate to avoid repeated re-allocation
                 conformer.pre_allocate_residues(residue_indices.size());
                 // copy atoms to residues
+                unsigned prev_break_range_id = ch_r.size;
                 range_loop<unsigned> res_r(af::const_ref<unsigned>(
                   &*residue_indices.begin(), residue_indices.size()));
                 cfs_i = cfs_i0;
                 for(unsigned i_res=0;res_r.next();i_res++) {
                   const input_atom_labels* ial = &iall[*cfs_i];
+                  unsigned curr_break_range_id \
+                    = break_range_ids[(*cfs_i)-ch_r.begin];
                   pdb::residue residue = conformer.new_residue(
                     ial->resname_small().elems,
                     ial->resseq,
-                    ial->icode_small().elems);
+                    ial->icode_small().elems,
+                    prev_break_range_id==curr_break_range_id);
+                  prev_break_range_id = curr_break_range_id;
                   residue.pre_allocate_atoms(res_r.size);
-                  for(unsigned i=0;i<res_r.size;i++) {
-                    residue.add_atom(atoms[*cfs_i++]);
+                  residue.add_atom(atoms[*cfs_i]);
+                  for(unsigned i=1;i<res_r.size;i++) {
+                    residue.add_atom(atoms[*(++cfs_i)]);
+                  }
+                  if (break_range_ids[(*cfs_i++)-ch_r.begin]
+                      != prev_break_range_id) {
+                    char buf[64];
+                    std::sprintf(buf,
+                      "Misplaced BREAK record (%s line %u).",
+                      source_info_.size()
+                        ? (source_info_ + ",").c_str()
+                        : "input",
+                      break_record_line_numbers[prev_break_range_id]);
+                    throw std::runtime_error(buf);
                   }
                 }
                 SCITBX_ASSERT(conformer.residues().size()
@@ -1919,8 +1948,10 @@ namespace iotbx { namespace pdb {
       af::shared<std::size_t> ter_indices_;
       af::shared<std::vector<unsigned> > chain_indices_;
       af::shared<std::size_t> break_indices_;
+      af::shared<unsigned>    break_record_line_numbers;
       af::shared<std::string> connectivity_section_;
       af::shared<std::string> bookkeeping_section_;
+      bool construct_hierarchy_was_called_before;
       //
       mutable bool            name_selection_cache_is_up_to_date_;
       mutable str_sel_cache_t name_selection_cache_;
