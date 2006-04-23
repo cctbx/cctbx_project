@@ -1197,6 +1197,40 @@ def exercise_linear_interpolation():
         [4, -1, -6+1/4.*14, -6+2/4.*14, 8, 8-18*3./8, 8-18*4./8, -10],
       eps=1.e-4)
 
+def exercise_fill_ranges():
+  for b in range(3):
+    assert list(flex.fill_ranges(b, b, flex.size_t())) == []
+    assert list(flex.fill_ranges(b, b+1, flex.size_t())) == [0]
+    for n in xrange(3):
+      assert list(flex.fill_ranges(b, b, flex.size_t(range(n)))) == []
+      assert list(flex.fill_ranges(b, b, flex.size_t(range(1,n+1)))) == []
+    assert list(flex.fill_ranges(b, b+1, flex.size_t([0,1]))) == [min(b+1,2)]
+    assert list(flex.fill_ranges(b, b+2, flex.size_t([0,1]))) == [min(b+1,2),2]
+  assert list(flex.fill_ranges(0, 3, flex.size_t([0,1]))) == [1,2,2]
+  assert list(flex.fill_ranges(1, 4, flex.size_t([0,1]))) == [2,2,2]
+  assert list(flex.fill_ranges(2, 5, flex.size_t([0,1]))) == [2,2,2]
+  assert list(flex.fill_ranges(0, 3, flex.size_t([1,2]))) == [0,1,2]
+  assert list(flex.fill_ranges(1, 4, flex.size_t([1,2]))) == [1,2,2]
+  assert list(flex.fill_ranges(2, 5, flex.size_t([1,2]))) == [2,2,2]
+  assert list(flex.fill_ranges(0, 3, flex.size_t([0,2]))) == [1,1,2]
+  assert list(flex.fill_ranges(1, 4, flex.size_t([0,2]))) == [1,2,2]
+  assert list(flex.fill_ranges(2, 5, flex.size_t([0,2]))) == [2,2,2]
+  assert list(flex.fill_ranges(0, 3, flex.size_t([1,3]))) == [0,1,1]
+  assert list(flex.fill_ranges(1, 3, flex.size_t([1,3]))) == [1,1]
+  assert list(flex.fill_ranges(2, 3, flex.size_t([1,3]))) == [1]
+  assert list(flex.fill_ranges(1, 4, flex.size_t([1,3]))) == [1,1,2]
+  assert list(flex.fill_ranges(2, 4, flex.size_t([1,3]))) == [1,2]
+  assert list(flex.fill_ranges(3, 4, flex.size_t([1,3]))) == [2]
+  assert list(flex.fill_ranges(2, 5, flex.size_t([1,3]))) == [1,2,2]
+  assert list(flex.fill_ranges(3, 6, flex.size_t([1,3]))) == [2,2,2]
+  assert list(flex.fill_ranges(0, 3, flex.size_t([1,4]))) == [0,1,1]
+  assert list(flex.fill_ranges(1, 4, flex.size_t([1,4]))) == [1,1,1]
+  assert list(flex.fill_ranges(2, 5, flex.size_t([1,4]))) == [1,1,2]
+  assert list(flex.fill_ranges(3, 6, flex.size_t([1,4]))) == [1,2,2]
+  assert list(flex.fill_ranges(3, 5, flex.size_t([1,4]))) == [1,2]
+  assert list(flex.fill_ranges(3, 4, flex.size_t([1,4]))) == [1]
+  assert list(flex.fill_ranges(4, 5, flex.size_t([1,4]))) == [2]
+
 def exercise_loops():
   points = []
   loop = flex.nested_loop(end=(2,3))
@@ -2138,6 +2172,7 @@ def run(iterations):
     exercise_linear_correlation()
     exercise_mean_and_variance()
     exercise_linear_interpolation()
+    exercise_fill_ranges()
     exercise_loops()
     exercise_extract_attributes()
     exercise_exceptions()
