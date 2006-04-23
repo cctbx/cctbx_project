@@ -287,7 +287,7 @@ def check_hierarchy(
       expected_formatted=None,
       expected_residue_name_counts=None):
   out = StringIO()
-  pdb.show_hierarchy(hierarchy=hierarchy, out=out)
+  hierarchy.show(out=out)
   if (expected_formatted is None or expected_formatted == "None\n"):
     sys.stdout.write(out.getvalue())
     print "#"*79
