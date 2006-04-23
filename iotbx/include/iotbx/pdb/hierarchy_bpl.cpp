@@ -2,6 +2,7 @@
 
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
+#include <boost/python/overloads.hpp>
 #include <boost/python/list.hpp>
 #include <boost/python/str.hpp>
 #include <boost/python/return_value_policy.hpp>
@@ -235,6 +236,18 @@ namespace {
 
     IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET_SET(icode)
 
+    static bool
+    get_link_to_previous(w_t const& self)
+    {
+      return self.data->link_to_previous;
+    }
+
+    static void
+    set_link_to_previous(w_t const& self, bool new_link_to_previous)
+    {
+      self.data->link_to_previous = new_link_to_previous;
+    }
+
     static std::string
     id(w_t const& self) { return self.data->id(); }
 
@@ -247,18 +260,23 @@ namespace {
       class_<w_t>("residue", no_init)
         .def(init<
           conformer const&,
-            optional<const char*, int32_t, const char*> >((
+            optional<const char*, int32_t, const char*, bool> >((
               arg_("parent"),
-              arg_("name")="", arg_("seq")=0, arg_("icode")="")))
+              arg_("name")="", arg_("seq")=0, arg_("icode")="",
+              arg_("link_to_previous")=true)))
         .def(init<
-          optional<const char*, int32_t, const char*> >((
-            arg_("name")="", arg_("seq")=0, arg_("icode")="")))
+          optional<const char*, int32_t, const char*, bool> >((
+            arg_("name")="", arg_("seq")=0, arg_("icode")="",
+            arg_("link_to_previous")=true)))
         .add_property("name",
           make_function(get_name), make_function(set_name))
         .add_property("seq",
           make_function(get_seq), make_function(set_seq))
         .add_property("icode",
           make_function(get_icode), make_function(set_icode))
+        .add_property("link_to_previous",
+          make_function(get_link_to_previous),
+          make_function(set_link_to_previous))
         .def("id", id)
         .def("memory_id", &w_t::memory_id)
         .def("parent", get_parent<residue, conformer>::wrapper)
@@ -288,6 +306,9 @@ namespace {
 
     IOTBX_PDB_HIERARCHY_GET_CHILDREN(conformer, residue, residues)
 
+    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
+      new_residue_overloads, new_residue, 0, 4)
+
     static void
     wrap()
     {
@@ -305,8 +326,9 @@ namespace {
           arg_("number_of_additional_residues")))
         .def("new_residues", &w_t::new_residues, (
           arg_("number_of_additional_residues")))
-        .def("new_residue", &w_t::new_residue, (
-          arg_("name")="", arg_("seq")=0, arg_("icode")=""))
+        .def("new_residue", &w_t::new_residue, new_residue_overloads((
+          arg_("name")="", arg_("seq")=0, arg_("icode")="",
+          arg_("link_to_previous")=true)))
         .def("residues", get_residues)
       ;
     }

@@ -112,11 +112,15 @@ def exercise_residue():
   assert r.seq == 0
   assert r.icode == ""
   assert r.id() == "       0"
-  r = pdb.residue(name="xyzw", seq=123, icode="ijkl")
+  assert r.link_to_previous
+  r = pdb.residue(name="xyzw", seq=123, icode="ijkl", link_to_previous=False)
   assert r.name == "xyzw"
   assert r.seq == 123
   assert r.icode == "ijkl"
   assert r.id() == "xyzw 123ijkl"
+  assert not r.link_to_previous
+  r.link_to_previous = True
+  assert r.link_to_previous
   r.name = "foo"
   r.seq = -3
   r.icode = "bar"
@@ -137,7 +141,7 @@ def exercise_residue():
   assert r.parent() is None
   #
   c1 = pdb.conformer(id="a")
-  r = c1.new_residue(name="a", seq=1, icode="i")
+  r = c1.new_residue(name="a", seq=1, icode="i", link_to_previous=False)
   assert r.parent().memory_id() == c1.memory_id()
   del c1
   assert r.parent() is None
@@ -474,8 +478,8 @@ MODEL        1
 ATOM      1  N   MET A   1       6.215  22.789  24.067  1.00  0.00           N
 ATOM      2  CA  MET A   1       6.963  22.789  22.822  1.00  0.00           C
 BREAK
-HETATM    3  C   MET A   1       7.478  21.387  22.491  1.00  0.00           C
-ATOM      4  O   MET A   1       8.406  20.895  23.132  1.00  0.00           O
+HETATM    3  C   MET A   2       7.478  21.387  22.491  1.00  0.00           C
+ATOM      4  O   MET A   2       8.406  20.895  23.132  1.00  0.00           O
 ENDMDL
 MODEL 3
 HETATM    9 2H3  MPR B   5      16.388   0.289   6.613  1.00  0.08
@@ -587,10 +591,10 @@ END""")
     assert pdb_inp.chain_selection_cache().keys() == ["A", "B", "C"]
     assert [list(v) for v in pdb_inp.chain_selection_cache().values()] \
         == [[0,1,2,3], [4], [5]]
-    for resseq,i_seqs in [(1,[0,1,2,3]),(5,[4]),(6,[5])]:
+    for resseq,i_seqs in [(1,[0,1]),(2,[2,3]),(5,[4]),(6,[5])]:
       assert list(pdb_inp.resseq_selection_cache()[resseq+999]) == i_seqs
     for i,i_seqs in enumerate(pdb_inp.resseq_selection_cache()):
-      if (i not in [j+999 for j in [1,5,6]]):
+      if (i not in [j+999 for j in [1,2,5,6]]):
         assert i_seqs.size() == 0
     assert pdb_inp.icode_selection_cache().keys() == [" "]
     assert [list(v) for v in pdb_inp.icode_selection_cache().values()] \
@@ -606,10 +610,12 @@ END""")
       expected_formatted="""\
 model id=1 #chains=1
   chain id="A" #conformers=1
-    conformer id=" " #residues=1
-      residue name="MET " seq=   1 icode=" " #atoms=4
+    conformer id=" " #residues=2
+      residue name="MET " seq=   1 icode=" " #atoms=2
          " N  "
          " CA "
+      ### chain break ###
+      residue name="MET " seq=   2 icode=" " #atoms=2
          " C  "
          " O  "
 model id=3 #chains=2
@@ -622,7 +628,7 @@ model id=3 #chains=2
       residue name="CYS " seq=   6 icode=" " #atoms=1
          " N  "
 """,
-     expected_residue_name_counts={"MPR ": 1, "MET ": 1, "CYS ": 1})
+     expected_residue_name_counts={"MPR ": 1, "MET ": 2, "CYS ": 1})
   #
   pdb_inp = pdb.input(
     source_info=None,
@@ -683,12 +689,14 @@ ATOM      2  N   MET A   2       2.615  27.289  20.467  1.00  0.00           O
 ATOM      3  N   MET A   1       2.615  27.289  20.467  1.00  0.00           O
 ATOM      4  N   MET A   1       2.615  27.289  20.467  1.00  0.00           O
 ATOM      5  C   MET A   1       6.215  22.789  24.067  1.00  0.00           N
+BREAK
 ATOM      6  C   MET A   2       2.615  27.289  20.467  1.00  0.00           O
 ATOM      7  C   MET A   1       2.615  27.289  20.467  1.00  0.00           O
 ATOM      8  C   MET A   1       2.615  27.289  20.467  1.00  0.00           O
 """))
+  hierarchy = pdb_inp.construct_hierarchy()
   check_hierarchy(
-    hierarchy=pdb_inp.construct_hierarchy(),
+    hierarchy=hierarchy,
     expected_formatted="""\
 model id=0 #chains=1
   chain id="A" #conformers=1
@@ -701,12 +709,21 @@ model id=0 #chains=1
          " N  "
          " N  "
          " C  "
+      ### chain break ###
       residue name="MET " seq=   2 icode=" " #atoms=1
          " C  "
       residue name="MET " seq=   1 icode=" " #atoms=2
          " C  "
          " C  "
 """)
+  for i,r in enumerate(hierarchy.models()[0]
+                                .chains()[0]
+                                .conformers()[0]
+                                .residues()):
+    if (i in [0, 3]):
+      assert not r.link_to_previous
+    else:
+      assert r.link_to_previous
   dup = pdb_inp.find_duplicate_atom_labels()
   assert dup.size() == 2
   assert list(dup[0]) == [0,2,3]
@@ -1409,6 +1426,7 @@ ATOM    248  OG BSER    35
 ATOM    246  CB BSER    35
 ATOM    245  O   SER    35
 ATOM    246  CB  SER    35
+BREAK
 ATOM    250  N  BASN    36
 ATOM    252  CA BASN    36
 ATOM    253  C   ASN    36
@@ -1419,8 +1437,9 @@ ATOM    257  CB  ASN    36
 ATOM    255  O   ASN    36
 ATOM    258  CB BASN    36
 """))
+  hierarchy = pdb_inp.construct_hierarchy()
   check_hierarchy(
-    hierarchy=pdb_inp.construct_hierarchy(),
+    hierarchy=hierarchy,
     expected_formatted="""\
 model id=0 #chains=1
   chain id=" " #conformers=2
@@ -1432,6 +1451,7 @@ model id=0 #chains=1
        * " CA "
        * " O  "
          " CB "
+      ### chain break ###
       residue name="ASN " seq=  36 icode=" " #atoms=5
        * " C  "
          " CA "
@@ -1446,6 +1466,7 @@ model id=0 #chains=1
          " OG "
          " CB "
        * " O  "
+      ### chain break ###
       residue name="ASN " seq=  36 icode=" " #atoms=5
          " N  "
          " CA "
@@ -1453,6 +1474,37 @@ model id=0 #chains=1
          " O  "
          " CB "
 """)
+  try: pdb_inp.construct_hierarchy()
+  except RuntimeError, e:
+    assert str(e).endswith(
+      "): CCTBX_ASSERT(!construct_hierarchy_was_called_before) failure.")
+  else: raise RuntimeError("Exception expected.")
+  #
+  try: pdb.input(
+    source_info=None,
+    lines=flex.split_lines("""\
+REMARK
+ATOM      1  CB  LYS   109
+BREAK
+ATOM      2  CG  LYS   109
+""")).construct_hierarchy()
+  except RuntimeError, e:
+    assert not show_diff(str(e), "Misplaced BREAK record (input line 3).")
+  else: raise RuntimeError("Exception expected.")
+  try: pdb.input(
+    source_info="file abc",
+    lines=flex.split_lines("""\
+REMARK
+ATOM      1  CA  LYS   109
+ATOM      2  CB  LYS   109
+BREAK
+ATOM      3  CA  LYS   110
+BREAK
+ATOM      4  CB  LYS   110
+""")).construct_hierarchy()
+  except RuntimeError, e:
+    assert not show_diff(str(e), "Misplaced BREAK record (file abc, line 6).")
+  else: raise RuntimeError("Exception expected.")
   #
   open("tmp.pdb", "w")
   pdb_inp = pdb.input(file_name="tmp.pdb")
