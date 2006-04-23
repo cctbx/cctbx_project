@@ -99,16 +99,16 @@ def ehms( args ):
   print >> log, "--------------------------"
   print >> log, "Niggli cell: ", sg_explorer.xs_prim_set.unit_cell().parameters()
   print >> log, "Niggli cell volume: ", sg_explorer.xs_prim_set.unit_cell().volume()
-  print >> log, "Niggli transformed input symmetry: ", sg_explorer.xs_prim_set.space_group_info() 
+  print >> log, "Niggli transformed input symmetry: ", sg_explorer.xs_prim_set.space_group_info()
   print >> log, "Symmetry of Niggli cell: ", sgtbx.space_group_info( group = sg_explorer.pg_high )
   print >> log
   print >> log
-  print >> log, "All pointgroups that are both a subgroup of the lattice symmetry and" 
+  print >> log, "All pointgroups that are both a subgroup of the lattice symmetry and"
   print >> log, "a supergroup of the Niggli transformed input symmetry wil now be listed,"
-  print >> log, "as well as their minimal supergroups/maximal subgroups and symmetry" 
+  print >> log, "as well as their minimal supergroups/maximal subgroups and symmetry"
   print >> log, "operators that generate them."
   print >> log, "For each pointgroup, a list of compatible spacegroups will be listed."
-  print >> log, "Care is takebn that there are no sysmetatic absence violation with the " 
+  print >> log, "Care is takebn that there are no sysmetatic absence violation with the "
   print >> log, "provided input spacegroup."
   print >> log
 
