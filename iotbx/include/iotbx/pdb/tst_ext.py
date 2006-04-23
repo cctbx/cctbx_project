@@ -1477,7 +1477,7 @@ model id=0 #chains=1
   try: pdb_inp.construct_hierarchy()
   except RuntimeError, e:
     assert str(e).endswith(
-      "): CCTBX_ASSERT(!construct_hierarchy_was_called_before) failure.")
+      "): SCITBX_ASSERT(!construct_hierarchy_was_called_before) failure.")
   else: raise RuntimeError("Exception expected.")
   #
   try: pdb.input(
