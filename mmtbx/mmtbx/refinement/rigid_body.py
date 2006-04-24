@@ -7,6 +7,89 @@ from scitbx import lbfgs
 from mmtbx.refinement import print_statistics
 import copy
 
+class rb_mat_euler(object):
+
+   def __init__(self, phi, psi, the):
+     phi = phi * math.pi/180
+     psi = psi * math.pi/180
+     the = the * math.pi/180
+     self.c_psi = math.cos(psi)
+     self.c_phi = math.cos(phi)
+     self.c_the = math.cos(the)
+     self.s_psi = math.sin(psi)
+     self.s_phi = math.sin(phi)
+     self.s_the = math.sin(the)
+
+   def rot_mat(self):
+     r11 =  self.c_phi*self.c_psi*self.c_the - self.s_phi*self.s_the
+     r12 = -self.c_phi*self.c_psi*self.s_the - self.s_phi*self.c_the
+     r13 =  self.c_phi*self.s_psi
+     r21 =  self.s_phi*self.c_psi*self.c_the + self.c_phi*self.s_the
+     r22 = -self.s_phi*self.c_psi*self.s_the + self.c_phi*self.c_the
+     r23 =  self.s_phi*self.s_psi
+     r31 =  self.s_psi*self.c_the
+     r32 =  self.s_psi*self.s_the
+     r33 =  self.c_psi
+     rm = matrix.sqr((r11,r12,r13, r21,r22,r23, r31,r32,r33))
+     return rm
+
+   def r_phi(self):
+     c_psi = self.c_psi
+     c_phi = self.c_phi
+     c_the = self.c_the
+     s_psi = self.s_psi
+     s_phi = self.s_phi
+     s_the = self.s_the
+     r11 = -s_phi*c_psi*c_the - c_phi*s_the
+     r12 =  s_phi*c_psi*s_the - c_phi*c_the
+     r13 = -s_phi*s_psi
+     r21 =  c_phi*c_psi*c_the - s_phi*s_the
+     r22 = -c_phi*c_psi*s_the - s_phi*c_the
+     r23 =  c_phi*s_psi
+     r31 = 0.0
+     r32 = 0.0
+     r33 = 0.0
+     rm = matrix.sqr((r11,r12,r13, r21,r22,r23, r31,r32,r33))
+     return rm
+
+   def r_psi(self):
+     c_psi = self.c_psi
+     c_phi = self.c_phi
+     c_the = self.c_the
+     s_psi = self.s_psi
+     s_phi = self.s_phi
+     s_the = self.s_the
+     r11 = -c_phi*s_psi*c_the
+     r12 =  c_phi*s_psi*s_the
+     r13 =  c_phi*c_psi
+     r21 = -s_phi*s_psi*c_the
+     r22 =  s_phi*s_psi*s_the
+     r23 =  s_phi*c_psi
+     r31 = -c_psi*c_the
+     r32 =  c_psi*s_the
+     r33 = -s_psi
+     rm = matrix.sqr((r11,r12,r13, r21,r22,r23, r31,r32,r33))
+     return rm
+
+   def r_the(self):
+     c_psi = self.c_psi
+     c_phi = self.c_phi
+     c_the = self.c_the
+     s_psi = self.s_psi
+     s_phi = self.s_phi
+     s_the = self.s_the
+     r11 = -c_phi*c_psi*s_the - s_phi*c_the
+     r12 = -c_phi*c_psi*c_the + s_phi*s_the
+     r13 =  0.0
+     r21 = -s_phi*c_psi*s_the + c_phi*c_the
+     r22 = -s_phi*c_psi*c_the - c_phi*s_the
+     r23 =  0.0
+     r31 =  s_psi*s_the
+     r32 =  s_psi*c_the
+     r33 =  0.0
+     rm = matrix.sqr((r11,r12,r13, r21,r22,r23, r31,r32,r33))
+     return rm
+
 class rigid_body_shift_accamulator(object):
 
    def __init__(self):
@@ -148,7 +231,9 @@ class manager(object):
                      use_only_low_resolution = False,
                      bulk_solvent_and_scale  = True,
                      bss                     = None,
+                     euler_angles            = False,
                      log                     = None):
+    self.euler_angles = euler_angles
     if(log is None): log = sys.stdout
     if(selections is None):
        selections = []
@@ -172,6 +257,8 @@ class manager(object):
        r_initial = []
        for item in selections:
            r_initial.append(flex.double(3,0))
+       #r_initial.append(flex.double([0,90,0]))
+
     if(t_initial is None):
        t_initial = []
        for item in selections:
@@ -184,7 +271,14 @@ class manager(object):
        if(len(d_mins) > 1): d_mins = d_mins[:-1]
     print >> log, "High resolution cutoffs for mz-protocol: ", \
                   [str("%.3f"%i) for i in d_mins]
+    step_counter = 0
     for res in d_mins:
+        #if(step_counter > 0):
+        #   for item in selections:
+        #       r_initial = []
+        #       t_initial = []
+        #       r_initial.append(flex.double(3,0))
+        #       t_initial.append(flex.double(3,0))
         print >> log
         xrs = fmodel_copy.xray_structure.deep_copy_scatterers()
         fmodel_copy = fmodel.resolution_filter(d_min = res)
@@ -192,6 +286,14 @@ class manager(object):
                                           update_f_calc  = True)
         rworks = flex.double()
         for macro_cycle in range(1, min(int(res),4)+1):
+
+            #if(macro_cycle > 1):
+            #   for item in selections:
+            #       r_initial = []
+            #       t_initial = []
+            #       r_initial.append(flex.double(3,0))
+            #       t_initial.append(flex.double(3,0))
+
             if((macro_cycle == 1 or macro_cycle == 3) and bss is not None and
                bulk_solvent_and_scale):
                print_statistics.make_sub_header(
@@ -209,15 +311,21 @@ class manager(object):
                                              t_initial      = t_initial,
                                              refine_r       = refine_r,
                                              refine_t       = refine_t,
-                                             max_iterations = max_iterations)
+                                             max_iterations = max_iterations,
+                                             euler_angles   = self.euler_angles)
             rotation_matrices = []
             translation_vectors = []
             for i in xrange(len(selections)):
                 self.total_rotation[i] += flex.double(minimized.r_min[i])
                 self.total_translation[i] += flex.double(minimized.t_min[i])
-                rot_obj = rb_mat(phi = minimized.r_min[i][0],
-                                 psi = minimized.r_min[i][1],
-                                 the = minimized.r_min[i][2])
+                if(self.euler_angles):
+                   rot_obj = rb_mat_euler(phi = minimized.r_min[i][0],
+                                          psi = minimized.r_min[i][1],
+                                          the = minimized.r_min[i][2])
+                else:
+                   rot_obj = rb_mat(phi = minimized.r_min[i][0],
+                                    psi = minimized.r_min[i][1],
+                                    the = minimized.r_min[i][2])
                 rotation_matrices.append(rot_obj.rot_mat())
                 translation_vectors.append(minimized.t_min[i])
             new_xrs = apply_transformation(
@@ -249,6 +357,7 @@ class manager(object):
                   size = rworks.size() - 1
                   if(abs(rworks[size]-rworks[size-1])<convergence_delta):
                      break
+        step_counter += 1
     fmodel.update_xray_structure(xray_structure = fmodel_copy.xray_structure,
                                  update_f_calc  = True)
     self.fmodel = fmodel
@@ -288,9 +397,14 @@ class manager(object):
                   translation_vectors = []
                   rot_objs = []
                   for i in xrange(len(selections)):
-                      rot_obj = rb_mat(phi = phi,
-                                       psi = psi,
-                                       the = the)
+                      if(self.euler_angles):
+                         rot_obj = rb_mat_euler(phi = phi,
+                                                psi = psi,
+                                                the = the)
+                      else:
+                         rot_obj = rb_mat(phi = phi,
+                                          psi = psi,
+                                          the = the)
                       rotation_matrices.append(rot_obj.rot_mat())
                       translation_vectors.append([x,y,z])
                       rot_objs.append(rot_obj)
@@ -335,7 +449,10 @@ class manager(object):
     nref = f.data().size()
     mc = str(mc)
     it = str(it)
-    part1 = "|-rigid body refinement (macro cycle = "
+    if(self.euler_angles):
+       part1 = "|-rigid body refinement: Euler angles used (macro cycle = "
+    else:
+       part1 = "|-rigid body refinement (macro cycle = "
     part2 = "; iterations = "
     n = 77 - len(part1 + part2 + mc + it)
     part3 = ")"+"-"*n+"|"
@@ -381,7 +498,8 @@ class rigid_body_minimizer(object):
                t_initial,
                refine_r,
                refine_t,
-               max_iterations):
+               max_iterations,
+               euler_angles = False):
     adopt_init_args(self, locals())
     if(self.fmodel.target_name in ["ml","lsm"]):
        self.alpha, self.beta = self.fmodel.alpha_beta_w()
@@ -460,9 +578,14 @@ class rigid_body_minimizer(object):
     translation_vectors = []
     rot_objs = []
     for i in xrange(self.n_groups):
-        rot_obj = rb_mat(phi = self.r_min[i][0],
-                         psi = self.r_min[i][1],
-                         the = self.r_min[i][2])
+        if(self.euler_angles):
+           rot_obj = rb_mat_euler(phi = self.r_min[i][0],
+                                  psi = self.r_min[i][1],
+                                  the = self.r_min[i][2])
+        else:
+           rot_obj = rb_mat(phi = self.r_min[i][0],
+                            psi = self.r_min[i][1],
+                            the = self.r_min[i][2])
         rotation_matrices.append(rot_obj.rot_mat())
         translation_vectors.append(self.t_min[i])
         rot_objs.append(rot_obj)
