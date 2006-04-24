@@ -466,9 +466,10 @@ class ml_iso_absolute_scaling(object):
         ## Optimisation stuff
         self.x = flex.double(2,0.0)
         self.x[0]=0.0
-        self.x[1]=0.0
+        self.x[1]=50.0
         self.f=0
-        self.minimizer = scitbx.lbfgs.run(target_evaluator=self)
+        term_parameters = scitbx.lbfgs.termination_parameters( max_iterations = 1e6 ) # just for safety
+        self.minimizer = scitbx.lbfgs.run(target_evaluator=self, termination_params=term_parameters)
         self.p_scale = self.x[0]
         self.b_wilson = self.x[1]
         ## this we do not need anymore
@@ -592,7 +593,10 @@ class ml_aniso_absolute_scaling(object):
         assert self.dim_u()<=6
         ## Optimisation stuff
         self.x = flex.double(self.dim_u()+1, 0.0) ## B-values and scale factor!
-        self.minimizer = scitbx.lbfgs.run(target_evaluator=self)
+        term_parameters = scitbx.lbfgs.termination_parameters( max_iterations = 1000 )
+
+
+        self.minimizer = scitbx.lbfgs.run(target_evaluator=self, termination_params=term_parameters )
 
         ## Done refining
         Vrwgk = math.pow(self.unit_cell.volume(),2.0/3.0)
