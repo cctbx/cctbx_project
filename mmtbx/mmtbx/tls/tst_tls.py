@@ -45,7 +45,7 @@ def uaniso_from_tls_and_back():
                         selections = selections,
                         tlsos      = tls_params)
 
-  #i = 0
+  i = 0
   for utls,atom in zip(uanisos_from_tls, stage_1.atom_attributes_list):
     updb = atom.Ucart
     #i += 1
@@ -54,7 +54,7 @@ def uaniso_from_tls_and_back():
     #                         (utls[0],utls[1],utls[2],utls[3],utls[4],utls[5])
     #print "%6.4f %6.4f %6.4f %6.4f %6.4f %6.4f "% \
     #                         (updb[0],updb[1],updb[2],updb[3],updb[4],updb[5])
-    assert approx_equal(utls,updb, 1.e-4)
+  assert approx_equal(utls,updb, 1.e-4)
 
   tlsos_initial = []
   for input_tls_data_ in input_tls_data:

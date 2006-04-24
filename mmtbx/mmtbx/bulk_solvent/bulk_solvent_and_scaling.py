@@ -26,11 +26,11 @@ master_params = iotbx.phil.parse("""\
     .type = bool
   minimization_k_sol_b_sol = True
     .type = bool
-  minimization_u_aniso = True
+  minimization_b_cart = True
     .type = bool
   target = ls_wunit_k1 *ml
     .type = choice
-  symmetry_constraints_on_u_aniso = True
+  symmetry_constraints_on_b_cart = True
     .type = bool
   k_sol_max = 0.6
     .type = float
@@ -54,7 +54,7 @@ master_params = iotbx.phil.parse("""\
     .type = float
   fix_b_sol = None
     .type = float
-  fix_u_aniso {
+  fix_b_cart {
     u11 = None
       .type = float
     u22 = None
@@ -68,13 +68,13 @@ master_params = iotbx.phil.parse("""\
     u23 = None
       .type = float
   }
-  apply_back_trace_of_u_aniso = True
+  apply_back_trace_of_b_cart = True
     .type = bool
   start_minimization_from_k_sol = 0.35
     .type = float
   start_minimization_from_b_sol = 46.0
     .type = float
-  start_minimization_from_u_aniso {
+  start_minimization_from_b_cart {
     u11 = 0.0
       .type = float
     u22 = 0.0
@@ -104,14 +104,14 @@ class solvent_and_scale_params(object):
     else: o=params
     o=params
     self.__dict__.update(params.__dict__)
-    if(self.fix_u_aniso is not None):
-       try: self.fix_u_aniso = [self.fix_u_aniso.u11,
-                                self.fix_u_aniso.u22,
-                                self.fix_u_aniso.u33,
-                                self.fix_u_aniso.u12,
-                                self.fix_u_aniso.u13,
-                                self.fix_u_aniso.u23]
-       except: self.fix_u_aniso = self.fix_u_aniso
+    if(self.fix_b_cart is not None):
+       try: self.fix_b_cart = [self.fix_b_cart.u11,
+                                self.fix_b_cart.u22,
+                                self.fix_b_cart.u33,
+                                self.fix_b_cart.u12,
+                                self.fix_b_cart.u13,
+                                self.fix_b_cart.u23]
+       except: self.fix_b_cart = self.fix_b_cart
     prefix = "solvent_and_scale_params: "
     if(1):#(self.overwrite is not None):
        #o = self.overwrite
@@ -120,9 +120,9 @@ class solvent_and_scale_params(object):
        self.statistical_solvent       = o.statistical_solvent
        self.k_sol_b_sol_grid_search         = o.k_sol_b_sol_grid_search
        self.minimization_k_sol_b_sol        = o.minimization_k_sol_b_sol
-       self.minimization_u_aniso            = o.minimization_u_aniso
+       self.minimization_b_cart            = o.minimization_b_cart
        self.target                          = o.target
-       self.symmetry_constraints_on_u_aniso = o.symmetry_constraints_on_u_aniso
+       self.symmetry_constraints_on_b_cart = o.symmetry_constraints_on_b_cart
        self.k_sol_max                       = o.k_sol_max
        self.k_sol_min                       = o.k_sol_min
        self.b_sol_max                       = o.b_sol_max
@@ -136,29 +136,29 @@ class solvent_and_scale_params(object):
                                      o.number_of_cycles_for_anisotropic_scaling
        self.fix_k_sol                         = o.fix_k_sol
        self.fix_b_sol                         = o.fix_b_sol
-       self.apply_back_trace_of_u_aniso       = o.apply_back_trace_of_u_aniso
+       self.apply_back_trace_of_b_cart       = o.apply_back_trace_of_b_cart
        self.start_minimization_from_k_sol     = o.start_minimization_from_k_sol
        self.start_minimization_from_b_sol     = o.start_minimization_from_b_sol
        self.verbose                           = o.verbose
        self.nu_fix_n_atoms                    = o.nu_fix_n_atoms
        self.nu_fix_b_atoms                    = o.nu_fix_b_atoms
-       uasc = o.fix_u_aniso
+       uasc = o.fix_b_cart
        if(uasc is not None):
           try:
               if([uasc.u11, uasc.u22, uasc.u33, uasc.u12, uasc.u13,
                                                     uasc.u23].count(None) > 0):
-                 self.fix_u_aniso = None
+                 self.fix_b_cart = None
               else:
-                 self.fix_u_aniso = [uasc.u11, uasc.u22, uasc.u33, uasc.u12,
+                 self.fix_b_cart = [uasc.u11, uasc.u22, uasc.u33, uasc.u12,
                                                             uasc.u13, uasc.u23]
           except:
-              self.fix_u_aniso = uasc
+              self.fix_b_cart = uasc
        else:
-          self.fix_u_aniso = None
-       uasc = o.start_minimization_from_u_aniso
-       try: self.start_minimization_from_u_aniso = \
+          self.fix_b_cart = None
+       uasc = o.start_minimization_from_b_cart
+       try: self.start_minimization_from_b_cart = \
                    [uasc.u11, uasc.u22, uasc.u33, uasc.u12, uasc.u13, uasc.u23]
-       except: self.start_minimization_from_u_aniso = uasc
+       except: self.start_minimization_from_b_cart = uasc
 
     if(self.target not in ("ls_wunit_k1","ml")):
        raise RuntimeError(prefix+"target name unavailable: "+self.target)
@@ -206,36 +206,36 @@ class solvent_and_scale_params(object):
        self.start_minimization_from_k_sol            = None
        self.start_minimization_from_b_sol            = None
     if(self.anisotropic_scaling == False):
-       self.minimization_u_aniso                     = False
-       self.symmetry_constraints_on_u_aniso          = False
+       self.minimization_b_cart                     = False
+       self.symmetry_constraints_on_b_cart          = False
        self.number_of_cycles_for_anisotropic_scaling = None
-       self.fix_u_aniso                              = None
-       self.apply_back_trace_of_u_aniso              = None
-       self.start_minimization_from_u_aniso          = None
+       self.fix_b_cart                              = None
+       self.apply_back_trace_of_b_cart              = None
+       self.start_minimization_from_b_cart          = None
     if(self.anisotropic_scaling == True):
-       if(self.minimization_u_aniso == True):
-          self.fix_u_aniso = None
+       if(self.minimization_b_cart == True):
+          self.fix_b_cart = None
           if(self.number_of_cycles_for_anisotropic_scaling < 1):
              raise RuntimeError(prefix+\
                                 "number_of_cycles_for_anisotropic_scaling < 1")
           if(self.number_of_minimization_macro_cycles > 0):
              if(self.minimization_k_sol_b_sol == False):
                 self.number_of_minimization_macro_cycles = 0
-          if(self.fix_u_aniso is not None):
+          if(self.fix_b_cart is not None):
              raise RuntimeError(prefix+"ambiguous parameter combination")
        else:
-          if(self.fix_u_aniso is None):
+          if(self.fix_b_cart is None):
              raise RuntimeError(prefix+"no option for anisotropic scaling")
-          try: dim = len(self.fix_u_aniso)
+          try: dim = len(self.fix_b_cart)
           except:
-               try: dim = self.fix_u_aniso.size()
+               try: dim = self.fix_b_cart.size()
                except:
                     dim = 0
-          if(dim != 6): raise RuntimeError(prefix+"wrong fix_u_aniso size")
+          if(dim != 6): raise RuntimeError(prefix+"wrong fix_b_cart size")
           self.number_of_cycles_for_anisotropic_scaling = None
-          self.start_minimization_from_u_aniso = None
-          self.apply_back_trace_of_u_aniso = None
-          self.symmetry_constraints_on_u_aniso = None
+          self.start_minimization_from_b_cart = None
+          self.apply_back_trace_of_b_cart = None
+          self.symmetry_constraints_on_b_cart = None
     if(self.statistical_solvent):
        fix_flag = [self.nu_fix_n_atoms,self.nu_fix_b_atoms].count(None)
        assert fix_flag == 2 or fix_flag == 0
@@ -262,7 +262,7 @@ def aniso_scale_minimizer(fmodel, symm_constr, alpha=None, beta=None):
          fm            = fmodel.f_mask_w(),
          k_initial     = fmodel.k_sol_b_sol()[0],
          b_initial     = fmodel.k_sol_b_sol()[1],
-         u_initial     = fmodel.u_aniso,
+         u_initial     = fmodel.b_cart,
          scale_initial = 1.0,
          refine_k      = False,
          refine_b      = False,
@@ -274,7 +274,7 @@ def aniso_scale_minimizer(fmodel, symm_constr, alpha=None, beta=None):
                          ignore_line_search_failed_step_at_lower_bound = False,
                          ignore_line_search_failed_step_at_upper_bound = False,
                          ignore_line_search_failed_maxfev              = False),
-         symmetry_constraints_on_u_aniso = symm_constr).u_min
+         symmetry_constraints_on_b_cart = symm_constr).u_min
 
 
 def k_sol_b_sol_minimizer(fmodel):
@@ -295,7 +295,7 @@ def k_sol_b_sol_minimizer(fmodel):
          fm            = fmodel.f_mask_w(),
          k_initial     = fmodel.k_sol_b_sol()[0],
          b_initial     = fmodel.k_sol_b_sol()[1],
-         u_initial     = fmodel.u_aniso,
+         u_initial     = fmodel.b_cart,
          scale_initial = 1.0,
          refine_k      = True,
          refine_b      = True,
@@ -305,7 +305,7 @@ def k_sol_b_sol_minimizer(fmodel):
          beta          = beta_data,
          lbfgs_exception_handling_params = lbfgs.exception_handling_parameters(
                          ignore_line_search_failed_step_at_lower_bound = True),
-         symmetry_constraints_on_u_aniso = False)
+         symmetry_constraints_on_b_cart = False)
   return manager.k_min, manager.b_min
 
 
@@ -327,7 +327,7 @@ class uaniso_ksol_bsol_scaling_minimizer(object):
                min_iterations=50,
                max_iterations=50,
                lbfgs_exception_handling_params = None,
-               symmetry_constraints_on_u_aniso = False):
+               symmetry_constraints_on_b_cart = False):
     adopt_init_args(self, locals())
     assert self.fc.indices().all_eq(self.fm.indices()) == 1
     assert self.fc.indices().all_eq(self.fo.indices()) == 1
@@ -347,7 +347,7 @@ class uaniso_ksol_bsol_scaling_minimizer(object):
       self.eps = fc.epsilons().data()
       self.cs  = fc.centric_flags().data()
     ################################
-    if(self.symmetry_constraints_on_u_aniso == True):
+    if(self.symmetry_constraints_on_b_cart == True):
        self.adp_constraints = self.sg.adp_constraints()
        u_star = adptbx.u_cart_as_u_star(
          self.uc, self.sg.average_u_star(u_star= self.u_min))
@@ -394,7 +394,7 @@ class uaniso_ksol_bsol_scaling_minimizer(object):
   def unpack_x(self):
     i = 0
     if (self.refine_u):
-      if(self.symmetry_constraints_on_u_aniso == True):
+      if(self.symmetry_constraints_on_b_cart == True):
          self.u_min = adptbx.u_star_as_u_cart(self.uc,
            list(self.adp_constraints.all_params(
              iter(self.x[i:self.dim_u]/self.u_factor))))
@@ -426,8 +426,7 @@ class uaniso_ksol_bsol_scaling_minimizer(object):
                flex.bool(self.gradient_flags),
                self.alpha,
                self.beta,
-               self.scale_min,
-               False)
+               self.scale_min)
     else:
       manager = bulk_solvent.target_gradients_aniso(
                                        self.fo,
@@ -440,16 +439,15 @@ class uaniso_ksol_bsol_scaling_minimizer(object):
                                        self.uc,
                                        self.refine_u,
                                        self.refine_k,
-                                       self.refine_b,
-                                       False)
+                                       self.refine_b)
     self.f = manager.target()
     gk = manager.grad_ksol()
     gb = manager.grad_bsol()
     try: gscale = manager.grad_k()
     except KeyboardInterrupt: pass
     except: gscale = 0.0
-    if(self.symmetry_constraints_on_u_aniso == True):
-       gu = adptbx.grad_u_cart_as_u_star(self.uc, list(manager.grad_u_aniso()))
+    if(self.symmetry_constraints_on_b_cart == True):
+       gu = adptbx.grad_u_cart_as_u_star(self.uc, list(manager.grad_b_cart()))
        independent_params = flex.double(
          self.adp_constraints.independent_gradients(all_gradients=gu))
        self.g = self.pack(
@@ -459,7 +457,7 @@ class uaniso_ksol_bsol_scaling_minimizer(object):
          scale=gscale,
          u_factor=1/self.u_factor)
     else:
-       gu = manager.grad_u_aniso()
+       gu = manager.grad_b_cart()
        self.g = self.pack(u=gu, k=gk, b=gb, scale=gscale, u_factor=1.0)
     return self.f, self.g
 
@@ -491,12 +489,12 @@ class bulk_solvent_and_scales(object):
           k_sols =kb_range(params.k_sol_max,params.k_sol_min,params.k_sol_step)
           b_sols =kb_range(params.b_sol_max,params.b_sol_min,params.b_sol_step)
        if(params.verbose > 0):
-          fmodel.show_k_sol_b_sol_u_aniso_target(header = m + str(0)+\
+          fmodel.show_k_sol_b_sol_b_cart_target(header = m + str(0)+\
                              " (start) target= "+fmodel.target_name, out = log)
        if(params.fix_k_sol is not None):
           fmodel.update(k_sol = params.fix_k_sol, b_sol = params.fix_b_sol)
-       if(params.fix_u_aniso is not None):
-          fmodel.update(u_aniso = params.fix_u_aniso)
+       if(params.fix_b_cart is not None):
+          fmodel.update(b_cart = params.fix_b_cart)
        if(to_do.count(False) == 2): macro_cycles = range(1,2)
        target = fmodel.target_w()
        ksol   = fmodel.k_sol
@@ -515,22 +513,22 @@ class bulk_solvent_and_scales(object):
               fmodel.update(k_sol = ksol, b_sol = bsol)
               if(outf):
                  h=m+str(mc)+": k & b: grid search; T= "+fmodel.target_name
-                 fmodel.show_k_sol_b_sol_u_aniso_target(header = h, out = log)
+                 fmodel.show_k_sol_b_sol_b_cart_target(header = h, out = log)
            if((params.k_sol_b_sol_grid_search,params.minimization_k_sol_b_sol)\
                                                               == (False,True)):
               fmodel.update(k_sol   = params.start_minimization_from_k_sol,
                             b_sol   = params.start_minimization_from_b_sol,
-                            u_aniso = params.start_minimization_from_u_aniso)
+                            b_cart = params.start_minimization_from_b_cart)
               ksol, bsol = k_sol_b_sol_minimizer(fmodel = fmodel)
               fmodel.update(k_sol = ksol, b_sol = bsol)
               if(outf):
                  h=m+str(mc)+": k & b: minimization; T= "+fmodel.target_name
-                 fmodel.show_k_sol_b_sol_u_aniso_target(header = h, out = log)
-           if(params.minimization_u_aniso):
-              self._u_aniso_minimizer_helper(params, fmodel)
+                 fmodel.show_k_sol_b_sol_b_cart_target(header = h, out = log)
+           if(params.minimization_b_cart):
+              self._b_cart_minimizer_helper(params, fmodel)
               if(outf):
                  h=m+str(mc)+": anisotropic scale; T= "+fmodel.target_name
-                 fmodel.show_k_sol_b_sol_u_aniso_target(header = h, out = log)
+                 fmodel.show_k_sol_b_sol_b_cart_target(header = h, out = log)
            if(params.statistical_solvent):
               pass
               #self._set_f_ordered_solvent(params = params)
@@ -540,9 +538,9 @@ class bulk_solvent_and_scales(object):
               #target_start = target
               #if(params.verbose > 0):
               #   h=m+str(mc)+": (ordered solvent) T= "+self.target_name
-              #   self.show_k_sol_b_sol_u_aniso_target(header = h, out = log)
+              #   self.show_k_sol_b_sol_b_cart_target(header = h, out = log)
        if([params.minimization_k_sol_b_sol,
-                                 params.minimization_u_aniso].count(True) > 0):
+                                 params.minimization_b_cart].count(True) > 0):
           for mc in minimization_macro_cycles:
               outf = params.verbose > 0 and \
                 mc==minimization_macro_cycles[len(minimization_macro_cycles)-1]
@@ -550,12 +548,12 @@ class bulk_solvent_and_scales(object):
                  self._k_sol_b_sol_minimization_helper(params, fmodel)
                  if(outf):
                     h=m+str(mc)+": k_sol & b_sol min.; T= "+fmodel.target_name
-                    fmodel.show_k_sol_b_sol_u_aniso_target(header=h, out = log)
-              if(params.minimization_u_aniso):
-                 self._u_aniso_minimizer_helper(params, fmodel)
+                    fmodel.show_k_sol_b_sol_b_cart_target(header=h, out = log)
+              if(params.minimization_b_cart):
+                 self._b_cart_minimizer_helper(params, fmodel)
                  if(outf):
                     h=m+str(mc)+": anisotropic scale; T= "+fmodel.target_name
-                    fmodel.show_k_sol_b_sol_u_aniso_target(header=h, out = log)
+                    fmodel.show_k_sol_b_sol_b_cart_target(header=h, out = log)
        ### start ml optimization
        if(abs(fmodel.k_sol) < 0.01 or abs(fmodel.b_sol) < 1.0):
           fmodel.update(k_sol = 0, b_sol = 0)
@@ -569,15 +567,15 @@ class bulk_solvent_and_scales(object):
                  self._k_sol_b_sol_minimization_helper(params, fmodel)
                  if(outf):
                     h=m+str(mc)+": k_sol & b_sol min.; T= "+fmodel.target_name
-                    fmodel.show_k_sol_b_sol_u_aniso_target(header=h, out = log)
+                    fmodel.show_k_sol_b_sol_b_cart_target(header=h, out = log)
           fmodel.update(target_name = fmodel_target)
           if(fmodel.alpha_beta_params is not None):
              fmodel.alpha_beta_params.interpolation = save_interpolation_flag
-       if(params.apply_back_trace_of_u_aniso and abs(fmodel.u_iso()) > 0.0):
+       if(params.apply_back_trace_of_b_cart and abs(fmodel.u_iso()) > 0.0):
           fmodel.apply_back_b_iso()
           if(params.verbose > 0):
-             h=m+str(mc)+": apply back trace(u_aniso): T= "+fmodel.target_name
-             fmodel.show_k_sol_b_sol_u_aniso_target(header = h, out = log)
+             h=m+str(mc)+": apply back trace(b_cart): T= "+fmodel.target_name
+             fmodel.show_k_sol_b_sol_b_cart_target(header = h, out = log)
        fmodel.update(target_name = fmodel_target)
        if(abs(fmodel.k_sol) < 0.01 or abs(fmodel.b_sol) < 1.0):
           fmodel.update(k_sol = 0, b_sol = 0)
@@ -585,23 +583,23 @@ class bulk_solvent_and_scales(object):
   def _set_f_ordered_solvent(self):
     pass
 
-  def _u_aniso_minimizer_helper(self, params, fmodel):
-    symm_constr = params.symmetry_constraints_on_u_aniso
+  def _b_cart_minimizer_helper(self, params, fmodel):
+    symm_constr = params.symmetry_constraints_on_b_cart
     u_cycles = range(1, params.number_of_cycles_for_anisotropic_scaling+1)
     r_start = fmodel.r_work()
-    u_start = fmodel.u_aniso
+    u_start = fmodel.b_cart
     for u_cycle in u_cycles:
-        u_aniso = aniso_scale_minimizer(fmodel      = fmodel,
+        b_cart = aniso_scale_minimizer(fmodel      = fmodel,
                                         symm_constr = symm_constr)
-        fmodel.update(u_aniso = u_aniso)
+        fmodel.update(b_cart = b_cart)
     r_final = fmodel.r_work()
     if(r_final - r_start > 0.005):
        print "Warning: r went up after anisotropic scaling:"
        print "   r_start = ", r_start
        print "   r_final = ", r_final
        print "   u_start = ", ["%9.3f"%u for u in u_start]
-       print "   u_final = ", ["%9.3f"%u for u in fmodel.u_aniso]
-       fmodel.update(u_aniso = u_start)
+       print "   u_final = ", ["%9.3f"%u for u in fmodel.b_cart]
+       fmodel.update(b_cart = u_start)
 
   def _k_sol_b_sol_minimization_helper(self, params, fmodel):
     ksol_orig, bsol_orig = fmodel.k_sol_b_sol()

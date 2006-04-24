@@ -18,7 +18,7 @@ vec3<double> ksol_bsol_grid_search(
                              af::const_ref<double> const& fo,
                              af::const_ref< std::complex<double> > const& fc,
                              af::const_ref< std::complex<double> > const& fm,
-                             sym_mat3<double> const& u,
+                             sym_mat3<double> const& b_cart,
                              af::const_ref<double> const& ksol_range,
                              af::const_ref<double> const& bsol_range,
                              double const& r_ref,
@@ -32,7 +32,7 @@ vec3<double> ksol_bsol_grid_search(
  double r_best = r_ref;
  for(std::size_t i=0; i < ksol_range.size(); i++) {
    for(std::size_t j=0; j < bsol_range.size(); j++) {
-     double r = r_factor_aniso_fast(fo,fc,fm,u,ksol_range[i],bsol_range[j],hkl,uc);
+     double r = r_factor_aniso_fast(fo,fc,fm,b_cart,ksol_range[i],bsol_range[j],hkl,uc);
      if(r < r_best) {
        k_best = ksol_range[i];
        b_best = bsol_range[j];
@@ -43,29 +43,68 @@ vec3<double> ksol_bsol_grid_search(
  return vec3<double> (k_best,b_best,r_best);
 }
 
-double fu_star(sym_mat3<double> const& u,
-               cctbx::miller::index<> const& mi)
+
+double fu_star_(sym_mat3<double> const& b,
+               cctbx::miller::index<> const& mi,
+               mat3<double> a)
 {
-    double arg = -0.25 * (u[0]*mi[0]*mi[0] +
-                          u[1]*mi[1]*mi[1] +
-                          u[2]*mi[2]*mi[2] +
-                          u[3]*mi[0]*mi[1] +
-                          u[4]*mi[0]*mi[2] +
-                          u[5]*mi[1]*mi[2]);
+// Matamatica proven equivalent of fu_star()
+    int h = mi[0];
+    int k = mi[1];
+    int l = mi[2];
+    double qq =   a[0]*a[0]*b[0]*h*h +
+  a[1]*a[1]*b[1]*h*h +
+  a[2]*a[2]*b[2]*h*h +
+2*a[2]*a[5]*b[2]*h*k +
+2*a[2]*a[3]*b[4]*h*k +
+2*a[2]*a[4]*b[5]*h*k +
+  a[3]*a[3]*b[0]*k*k +
+  a[4]*a[4]*b[1]*k*k +
+  a[5]*a[5]*b[2]*k*k +
+2*a[3]*a[4]*b[3]*k*k +
+2*a[3]*a[5]*b[4]*k*k +
+2*a[4]*a[5]*b[5]*k*k +
+2*(a[2]*(a[8]*b[2] + a[6]*b[4] + a[7]*b[5])*h +
+(a[3]*a[6]*b[0] + a[4]*a[7]*b[1] + a[5]*a[8]*b[2] +
+ a[4]*a[6]*b[3] + a[3]*a[7]*b[3] + a[5]*a[6]*b[4] +
+ a[3]*a[8]*b[4] + a[5]*a[7]*b[5] + a[4]*a[8]*b[5])*k)*l +
+(a[7]*a[7]*b[1] + a[8]*a[8]*b[2] + a[6]*(a[6]*b[0] + 2*a[7]*b[3] + 2*a[8]*b[4]) + 2*a[7]*a[8]*b[5])*l*l +
+2*a[0]*h*(a[1]*b[3]*h + a[2]*b[4]*h + a[3]*b[0]*k +
+        a[4]*b[3]*k + a[5]*b[4]*k + a[6]*b[0]*l + a[7]*b[3]*l + a[8]*b[4]*l) +
+2*a[1]*h*(a[2]*b[5]*h + a[4]*b[1]*k + a[3]*b[3]*k + a[5]*b[5]*k + a[7]*b[1]*l +
+        a[6]*b[3]*l + a[8]*b[5]*l);
+    double arg = -0.25 * (qq);
     if(arg > std::log(5.0)) return 1.0;
     return std::exp(arg);
 }
 
-af::shared<double> fu_aniso(sym_mat3<double> const& u,
+
+double fu_star(sym_mat3<double> const& u_star,
+               cctbx::miller::index<> const& mi)
+{
+    double arg = -0.25 * (u_star[0]*mi[0]*mi[0] +
+                          u_star[1]*mi[1]*mi[1] +
+                          u_star[2]*mi[2]*mi[2] +
+                       2.*u_star[3]*mi[0]*mi[1] +
+                       2.*u_star[4]*mi[0]*mi[2] +
+                       2.*u_star[5]*mi[1]*mi[2]);
+    if(arg > std::log(5.0)) return 1.0;
+    return std::exp(arg);
+}
+
+af::shared<double> fb_cart(sym_mat3<double> const& b_cart,
                             af::const_ref<cctbx::miller::index<> > const& hkl,
                             cctbx::uctbx::unit_cell const& uc)
 {
     mat3<double> a = uc.fractionalization_matrix();
-    sym_mat3<double> u_star = sym_mat3<double> (u).tensor_transform(a);
+    sym_mat3<double> u_star = sym_mat3<double> (b_cart).tensor_transform(a);
     af::shared<double> fu_mem(hkl.size(), af::init_functor_null<double>());
     double* fu = fu_mem.begin();
     for(std::size_t i=0; i < hkl.size(); i++) {
+      double zz = fu_star_(b_cart, hkl[i], a);
       fu[i] = fu_star(u_star, hkl[i]);
+      // Make sure both functions are equal.
+      //std::cout<<zz<<" "<< fu[i]<<std::endl;
     }
     return fu_mem;
 }
@@ -74,24 +113,24 @@ target_gradients_aniso::target_gradients_aniso(
                                af::const_ref<double> const& fo,
                                af::const_ref< std::complex<double> > const& fc,
                                af::const_ref< std::complex<double> > const& fm,
-                               sym_mat3<double> const& u,
+                               sym_mat3<double> const& b_cart,
                                double const& ksol,
                                double const& bsol,
                                af::const_ref<cctbx::miller::index<> > const& hkl,
                                cctbx::uctbx::unit_cell const& uc,
                                bool const& calc_grad_u,
                                bool const& calc_grad_ksol,
-                               bool const& calc_grad_bsol,
-                               bool const& trace_zero)
+                               bool const& calc_grad_bsol)
 {
     af::shared<double> s_mem = uc.stol_sq(hkl);
     af::const_ref<double> s = s_mem.const_ref();
     mat3<double> a = uc.fractionalization_matrix();
-    sym_mat3<double> u_star = u.tensor_transform(a);
+    sym_mat3<double> u_star = b_cart.tensor_transform(a);
     MMTBX_ASSERT(hkl.size()==fo.size());
     MMTBX_ASSERT(fo.size()==fc.size()&&fc.size()==fm.size());
     std::vector<double> f_b(fo.size());
     std::vector<double> fmodel_complex_abs(fo.size());
+    af::shared<std::complex<double> > fmodel_complex(fo.size());
     double num=0.0;
     double denum=0.0;
     for(std::size_t i=0; i < fo.size(); i++) {
@@ -99,9 +138,22 @@ target_gradients_aniso::target_gradients_aniso(
       f_b[i]=std::exp(-bsol * s[i]);
       double fmodel_abs = std::abs((fc[i] + f_b[i]*ksol * fm[i]) * fu);
       fmodel_complex_abs[i]=fmodel_abs;
+      fmodel_complex[i]=(fc[i] + f_b[i]*ksol * fm[i]) * fu;
       num += fo[i] * fmodel_abs;
       denum += fmodel_abs*fmodel_abs;
     }
+    //af::const_ref<std::complex<double> > fmodel_complex_ = fmodel_complex.const_ref();
+    //af::shared<double> weights(fo.size(), 1.0);
+    //af::const_ref<double> weights_ = weights.const_ref();
+    //cctbx::xray::targets::ls_target_with_scale_k1 tgx_manager(
+    //                       fo,
+    //                       weights_,
+    //                       fmodel_complex_,
+    //                       true,
+    //                       false,
+    //                       0.0);
+    //af::shared<std::complex<double> > d_target_d_fmodel = tgx_manager.derivatives();
+
     MMTBX_ASSERT(denum > 0.0);
     double sc = num/denum;
     tgx = 0.0;
@@ -123,6 +175,33 @@ target_gradients_aniso::target_gradients_aniso(
         double t1 = a[0]*mi[0] + a[3]*mi[1] + a[6]*mi[2];
         double t2 = a[1]*mi[0] + a[4]*mi[1] + a[7]*mi[2];
         double t3 = a[2]*mi[0] + a[5]*mi[1] + a[8]*mi[2];
+// Matamatica proven equivalent of gxu
+        //int h = mi[0];
+        //int k = mi[1];
+        //int l = mi[2];
+        //
+        //double p0 = a[0]*a[0]*h*h +   a[3]*a[3]*k*k + 2*a[3]*a[6]*k*l + a[6]*a[6]*l*l + 2*a[0]*h*(a[3]*k + a[6]*l);
+        //double p1 = a[1]*a[1]*h*h +   a[4]*a[4]*k*k + 2*a[4]*a[7]*k*l + a[7]*a[7]*l*l + 2*a[1]*h*(a[4]*k + a[7]*l);
+        //double p2 = a[2]*a[2]*h*h +    2*a[2]*a[5]*h*k + a[5]*a[5]*k*k + 2*(a[2]*a[8]*h + a[5]*a[8]*k)*l + a[8]*a[8]*l*l;
+        //double p3 = 2*a[3]*a[4]*k*k + 2*(a[4]*a[6] + a[3]*a[7])*k*l + 2*a[6]*a[7]*l*l + 2*a[1]*h*(a[3]*k + a[6]*l) + 2*a[0]*h*(a[1]*h + a[4]*k + a[7]*l);
+        //double p4 = 2*a[2]*a[3]*h*k + 2*a[3]*a[5]*k*k + 2*(a[2]*a[6]*h + (a[5]*a[6] + a[3]*a[8])*k)*l + 2*a[6]*a[8]*l*l + 2*a[0]*h*(a[2]*h + a[5]*k + a[8]*l);
+        //double p5 = 2*a[2]*a[4]*h*k + 2*a[4]*a[5]*k*k + 2*(a[2]*a[7]*h + (a[5]*a[7] + a[4]*a[8])*k)*l + 2*a[7]*a[8]*l*l + 2*a[1]*h*(a[2]*h + a[5]*k + a[8]*l);
+
+        //std::cout<< " " <<std::endl;
+        //std::cout<< p0<<" =0= "<<t1*t1     <<std::endl;
+        //std::cout<< p1<<" =1= "<<t2*t2     <<std::endl;
+        //std::cout<< p2<<" =2= "<<t3*t3     <<std::endl;
+        //std::cout<< p3<<" =3= "<<2.*t1*t2 <<std::endl;
+        //std::cout<< p4<<" =4= "<<2.*t1*t3 <<std::endl;
+        //std::cout<< p5<<" =5= "<<2.*t2*t3 <<std::endl;
+
+        //gxu[0] += coeff * p0;
+        //gxu[1] += coeff * p1;
+        //gxu[2] += coeff * p2;
+        //gxu[3] += coeff * p3;
+        //gxu[4] += coeff * p4;
+        //gxu[5] += coeff * p5;
+
         gxu[0] += coeff * t1*t1;
         gxu[1] += coeff * t2*t2;
         gxu[2] += coeff * t3*t3;
@@ -139,81 +218,21 @@ target_gradients_aniso::target_gradients_aniso(
       }
    }
    tgx /= scale_tgx;
+   //tgx = tgx_manager.target();
+   //std::cout<<tgx_manager.target()<<" "<< tgx<<std::endl;
    gtgx_ksol /= scale_tgx;
    gtgx_bsol /= scale_tgx;
    for(std::size_t j=0; j < 6; j++) {
      gxu[j] /= scale_tgx;
    }
-   if(trace_zero) {
-      double trace_zero_tg  = (u[0]+u[1]+u[2]) * (u[0]+u[1]+u[2]);
-      double trace_zero_gtg = (u[0]+u[1]+u[2]) * 2.0;
-      tgx += trace_zero_tg;
-      gxu[0] += trace_zero_gtg;
-      gxu[1] += trace_zero_gtg;
-      gxu[2] += trace_zero_gtg;
-   }
 }
 
-double scale_factor_aniso(af::const_ref<double> const& fo,
-                          af::const_ref< std::complex<double> > const& fc,
-                          af::const_ref< std::complex<double> > const& fm,
-                          sym_mat3<double> const& u,
-                          double const& ksol,
-                          double const& bsol,
-                          af::const_ref<cctbx::miller::index<> > const& hkl,
-                          cctbx::uctbx::unit_cell const& uc,
-                          af::const_ref<double> const& s)
-{
-    MMTBX_ASSERT(fo.size()==fc.size()&&fc.size()==fm.size());
-    MMTBX_ASSERT(hkl.size()==fo.size());
-    mat3<double> a = uc.fractionalization_matrix();
-    sym_mat3<double> u_star = sym_mat3<double> (u).tensor_transform(a);
-    double num =0.0;
-    double denum=0.0;
-    for(std::size_t i=0; i < fo.size(); i++) {
-      double f_u = fu_star(u_star, hkl[i]);
-      double func_k_b = ksol * std::exp(-bsol * s[i]);
-      double fmodel = std::abs(fc[i] + func_k_b * fm[i]) * f_u;
-      num += fo[i] * fmodel;
-      denum += fmodel*fmodel;
-    }
-    MMTBX_ASSERT(denum > 0.0);
-    return num/denum;
-}
 
-double r_factor_aniso(af::const_ref<double> const& fo,
-                      af::const_ref< std::complex<double> > const& fc,
-                      af::const_ref< std::complex<double> > const& fm,
-                      sym_mat3<double> const& u,
-                      double const& ksol,
-                      double const& bsol,
-                      af::const_ref<cctbx::miller::index<> > const& hkl,
-                      cctbx::uctbx::unit_cell const& uc,
-                      double const& sc,
-                      af::const_ref<double> const& s)
-{
-    MMTBX_ASSERT(hkl.size()==fo.size());
-    MMTBX_ASSERT(fo.size()==fc.size()&&fc.size()==fm.size());
-    MMTBX_ASSERT(u.size()==6);
-    mat3<double> a = uc.fractionalization_matrix();
-    sym_mat3<double> u_star = sym_mat3<double> (u).tensor_transform(a);
-    double num =0.0;
-    double denum=0.0;
-    for(std::size_t i=0; i < fo.size(); i++) {
-      double f_u = fu_star(u_star, hkl[i]);
-      double func_k_b = ksol * std::exp(-bsol * s[i]);
-      double fmodel = std::abs(fc[i] + func_k_b * fm[i]) * f_u;
-      num += std::abs(fo[i] - fmodel * sc);
-      denum += fo[i];
-    }
-    MMTBX_ASSERT(denum > 0.0);
-    return num/denum;
-}
 
 double r_factor_aniso_fast(af::const_ref<double> const& fo,
                            af::const_ref< std::complex<double> > const& fc,
                            af::const_ref< std::complex<double> > const& fm,
-                           sym_mat3<double> const& u,
+                           sym_mat3<double> const& b_cart,
                            double const& ksol,
                            double const& bsol,
                            af::const_ref<cctbx::miller::index<> > const& hkl,
@@ -224,7 +243,7 @@ double r_factor_aniso_fast(af::const_ref<double> const& fo,
     MMTBX_ASSERT(hkl.size()==fo.size());
     MMTBX_ASSERT(fo.size()==fc.size()&&fc.size()==fm.size());
     mat3<double> a = uc.fractionalization_matrix();
-    sym_mat3<double> u_star = sym_mat3<double> (u).tensor_transform(a);
+    sym_mat3<double> u_star = sym_mat3<double> (b_cart).tensor_transform(a);
     std::vector<double> fmodel_abs(fo.size());
     double num=0.0;
     double denum=0.0;
@@ -293,7 +312,7 @@ target_gradients_aniso_ml::target_gradients_aniso_ml(
                                af::const_ref<double> const& fo,
                                af::const_ref< std::complex<double> > const& fc,
                                af::const_ref< std::complex<double> > const& fm,
-                               sym_mat3<double> const& u,
+                               sym_mat3<double> const& b_cart,
                                double const& ksol,
                                double const& bsol,
                                af::const_ref<cctbx::miller::index<> > const& hkl,
@@ -302,8 +321,7 @@ target_gradients_aniso_ml::target_gradients_aniso_ml(
                                af::const_ref<bool> const& gradient_flags,
                                af::const_ref<double> const& alpha,
                                af::const_ref<double> const& beta,
-                               double k,
-                               bool const& trace_zero)
+                               double k)
 {
     af::shared<double> s_mem = uc.stol_sq(hkl);
     af::const_ref<double> s = s_mem.const_ref();
@@ -317,7 +335,7 @@ target_gradients_aniso_ml::target_gradients_aniso_ml(
     bool compute_uaniso_grad = gradient_flags[2];
     MMTBX_ASSERT(fo.size()==fc.size()&&fc.size()==fm.size());
     mat3<double> a = uc.fractionalization_matrix();
-    sym_mat3<double> u_star = sym_mat3<double> (u).tensor_transform(a);
+    sym_mat3<double> u_star = sym_mat3<double> (b_cart).tensor_transform(a);
     std::vector<double> fu(fo.size());
     std::vector<double> f_b(fo.size());
     std::vector<double> f_b_k(fo.size());
@@ -377,14 +395,6 @@ target_gradients_aniso_ml::target_gradients_aniso_ml(
         gtgx_k += cctbx::xray::targets::d_maximum_likelihood_target_one_h_over_k(
                                     fo[i],fmodel,alpha[i],beta[i],k,eps[i],cs);
       }
-   }
-   if(trace_zero) {
-      double trace_zero_tg  = (u[0]+u[1]+u[2]) * (u[0]+u[1]+u[2]);
-      double trace_zero_gtg = (u[0]+u[1]+u[2]) * 2.0;
-      tgx += trace_zero_tg;
-      gxu[0] += trace_zero_gtg;
-      gxu[1] += trace_zero_gtg;
-      gxu[2] += trace_zero_gtg;
    }
 }
 

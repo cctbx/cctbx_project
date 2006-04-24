@@ -42,50 +42,28 @@ vec3<double> ksol_bsol_grid_search(
                              af::const_ref<double> const& fo,
                              af::const_ref< std::complex<double> > const& fc,
                              af::const_ref< std::complex<double> > const& fm,
-                             sym_mat3<double> const& u,
+                             sym_mat3<double> const& b_cart,
                              af::const_ref<double> const& ksol_range,
                              af::const_ref<double> const& bsol_range,
                              double const& r_ref,
                              af::const_ref<cctbx::miller::index<> > const& hkl,
                              cctbx::uctbx::unit_cell const& uc);
 
-double scale_factor_aniso(af::const_ref<double> const& fo,
-                          af::const_ref< std::complex<double> > const& fc,
-                          af::const_ref< std::complex<double> > const& fm,
-                          sym_mat3<double> const& u,
-                          double const& ksol,
-                          double const& bsol,
-                          af::const_ref<cctbx::miller::index<> > const& hkl,
-                          cctbx::uctbx::unit_cell const& uc,
-                          af::const_ref<double> const& s);
-
-double r_factor_aniso(af::const_ref<double> const& fo,
-                      af::const_ref< std::complex<double> > const& fc,
-                      af::const_ref< std::complex<double> > const& fm,
-                      sym_mat3<double> const& u,
-                      double const& ksol,
-                      double const& bsol,
-                      af::const_ref<cctbx::miller::index<> > const& hkl,
-                      cctbx::uctbx::unit_cell const& uc,
-                      double const& sc,
-                      af::const_ref<double> const& s);
-
 class target_gradients_aniso {
 public:
    target_gradients_aniso(af::const_ref<double> const& fo,
                           af::const_ref< std::complex<double> > const& fc,
                           af::const_ref< std::complex<double> > const& fm,
-                          sym_mat3<double> const& u,
+                          sym_mat3<double> const& b_cart,
                           double const& ksol,
                           double const& bsol,
                           af::const_ref<cctbx::miller::index<> > const& hkl,
                           cctbx::uctbx::unit_cell const& uc,
                           bool const& calc_grad_u,
                           bool const& calc_grad_ksol,
-                          bool const& calc_grad_bsol,
-                          bool const& trace_zero);
+                          bool const& calc_grad_bsol);
    double target() const { return tgx; }
-   af::shared<double> grad_u_aniso() { return gtgx_u; }
+   af::shared<double> grad_b_cart() { return gtgx_u; }
    double grad_ksol() const { return gtgx_ksol; }
    double grad_bsol() const { return gtgx_bsol; }
    double scale_target() const { return scale_tgx; }
@@ -94,7 +72,7 @@ private:
    af::shared<double> gtgx_u;
 };
 
-af::shared<double> fu_aniso(sym_mat3<double> const& u,
+af::shared<double> fb_cart(sym_mat3<double> const& b_cart,
                             af::const_ref<cctbx::miller::index<> > const& hkl,
                             cctbx::uctbx::unit_cell const& uc);
 
@@ -107,7 +85,7 @@ double r_factor(af::const_ref<double> const& fo,
 double r_factor_aniso_fast(af::const_ref<double> const& fo,
                            af::const_ref< std::complex<double> > const& fc,
                            af::const_ref< std::complex<double> > const& fm,
-                           sym_mat3<double> const& u,
+                           sym_mat3<double> const& b_cart,
                            double const& ksol,
                            double const& bsol,
                            af::const_ref<cctbx::miller::index<> > const& hkl,
@@ -119,7 +97,7 @@ public:
    target_gradients_aniso_ml(af::const_ref<double> const& fo,
                             af::const_ref< std::complex<double> > const& fc,
                             af::const_ref< std::complex<double> > const& fm,
-                            sym_mat3<double> const& u,
+                            sym_mat3<double> const& b_cart,
                             double const& ksol,
                             double const& bsol,
                             af::const_ref<cctbx::miller::index<> > const& hkl,
@@ -128,10 +106,9 @@ public:
                             af::const_ref<bool> const& gradient_flags,
                             af::const_ref<double> const& alpha,
                             af::const_ref<double> const& beta,
-                            double k,
-                            bool const& trace_zero);
+                            double k);
    double target() const { return tgx; }
-   af::shared<double> grad_u_aniso() { return gtgx_u; }
+   af::shared<double> grad_b_cart() { return gtgx_u; }
    double grad_ksol() const { return gtgx_ksol; }
    double grad_bsol() const { return gtgx_bsol; }
    double grad_k() const { return gtgx_k; }

@@ -24,10 +24,9 @@ namespace {
                                cctbx::uctbx::unit_cell const&,
                                bool const&,
                                bool const&,
-                               bool const&,
                                bool const&>())
       .def("target", &target_gradients_aniso::target)
-      .def("grad_u_aniso", &target_gradients_aniso::grad_u_aniso)
+      .def("grad_b_cart", &target_gradients_aniso::grad_b_cart)
       .def("scale_target", &target_gradients_aniso::scale_target)
       .def("grad_ksol", &target_gradients_aniso::grad_ksol)
       .def("grad_bsol", &target_gradients_aniso::grad_bsol)
@@ -45,23 +44,18 @@ namespace {
                                   af::const_ref<bool> const&,
                                   af::const_ref<double> const&,
                                   af::const_ref<double> const&,
-                                  double const&,
-                                  bool const& >())
+                                  double const&>())
       .def("target", &target_gradients_aniso_ml::target)
-      .def("grad_u_aniso", &target_gradients_aniso_ml::grad_u_aniso)
+      .def("grad_b_cart", &target_gradients_aniso_ml::grad_b_cart)
       .def("grad_ksol", &target_gradients_aniso_ml::grad_ksol)
       .def("grad_bsol", &target_gradients_aniso_ml::grad_bsol)
       .def("grad_k", &target_gradients_aniso_ml::grad_k)
     ;
-    def("scale_factor_aniso",scale_factor_aniso)
-   ;
-    def("r_factor_aniso",r_factor_aniso)
-   ;
     def("r_factor",r_factor)
    ;
     def("scale",scale)
    ;
-    def("fu_aniso",fu_aniso)
+    def("fb_cart",fb_cart)
    ;
     def("r_factor_aniso_fast",r_factor_aniso_fast)
    ;
