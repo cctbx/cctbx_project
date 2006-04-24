@@ -163,6 +163,12 @@ namespace scitbx {
       sym_mat3
       tensor_transform(mat3<NumType> const& c) const;
 
+      //! Antisymmetric tensor transform: A * (*this) * A.transpose(),
+      /*! A is an antisymmetric matrix built on the vector v
+       */
+      sym_mat3
+      antisymmetric_tensor_transform(vec3<NumType> const& v) const;
+
       //! Tensor transform: c.transpose() * (*this) * c
       sym_mat3
       tensor_transpose_transform(mat3<NumType> const& c) const;
@@ -219,6 +225,32 @@ namespace scitbx {
       m[0]*m[1]+m[3]*m[4]+m[6]*m[7],
       m[0]*m[2]+m[3]*m[5]+m[6]*m[8],
       m[1]*m[2]+m[4]*m[5]+m[7]*m[8]);
+  }
+
+  // non-inline member function
+  template <typename NumType>
+  sym_mat3<NumType>
+  sym_mat3<NumType>
+  ::antisymmetric_tensor_transform(vec3<NumType> const& v) const
+  {
+    sym_mat3<NumType> const& t = *this;
+    NumType x = v[0];
+    NumType y = v[1];
+    NumType z = v[2];
+    NumType xx = x * x;
+    NumType yy = y * y;
+    NumType zz = z * z;
+    NumType xy = x * y;
+    NumType xz = x * z;
+    NumType yz = y * z;
+    // The result is guaranteed to be a symmetric matrix.
+    return sym_mat3<NumType>(
+      t[2]*yy - 2*t[5]*yz + t[1]*zz,
+      t[2]*xx - 2*t[4]*xz + t[0]*zz,
+      t[1]*xx - 2*t[3]*xy + t[0]*yy,
+      t[5]*xz + t[4]*yz - t[3]*zz - t[2]*xy,
+      t[5]*xy - t[4]*yy - t[1]*xz + t[3]*yz,
+      t[4]*xy + t[3]*xz - t[0]*yz - t[5]*xx);
   }
 
   // non-inline member function
