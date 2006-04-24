@@ -46,13 +46,13 @@ def test_1(xray_structure):
                       assert abs(fmodel.f_model()).data().all_eq(f_obs.data())
                       assert approx_equal(fmodel.r_work(), 0, 1.e-9)
                       assert approx_equal(fmodel.r_free(), 0, 1.e-9)
-                      assert fmodel.fu_aniso().all_eq(1.0)
-                      assert fmodel.fu_aniso_w().all_eq(1.0)
-                      assert fmodel.fu_aniso_t().all_eq(1.0)
+                      assert fmodel.fb_cart().all_eq(1.0)
+                      assert fmodel.fb_cart_w().all_eq(1.0)
+                      assert fmodel.fb_cart_t().all_eq(1.0)
                       assert abs(fmodel.target_w()) < 1.e-9
                       assert abs(fmodel.target_t()) < 1.e-9
                       assert fmodel.k_sol_b_sol() == (0.0,0.0)
-                      assert fmodel.u_aniso == [0,0,0,0,0,0]
+                      assert fmodel.b_cart == [0,0,0,0,0,0]
                       assert fmodel.u_iso() == 0.0
                       assert fmodel.f_obs_w().data().all_eq(
                                                 f_obs.select(~flags.data()).data())
@@ -111,13 +111,13 @@ def test_1(xray_structure):
                       assert abs(fmodel.f_model()).data().all_eq(f_obs.data())
                       assert approx_equal(fmodel.r_work(), 0, 1.e-9)
                       assert approx_equal(fmodel.r_free(), 0, 1.e-9)
-                      assert fmodel.fu_aniso().all_eq(1.0)
-                      assert fmodel.fu_aniso_w().all_eq(1.0)
-                      assert fmodel.fu_aniso_t().all_eq(1.0)
+                      assert fmodel.fb_cart().all_eq(1.0)
+                      assert fmodel.fb_cart_w().all_eq(1.0)
+                      assert fmodel.fb_cart_t().all_eq(1.0)
                       assert abs(fmodel.target_w()) < 1.e-9
                       assert abs(fmodel.target_t()) < 1.e-9
                       assert fmodel.k_sol_b_sol() == (0.5,35.0)
-                      assert fmodel.u_aniso == [0,0,0,0,0,0]
+                      assert fmodel.b_cart == [0,0,0,0,0,0]
                       assert fmodel.u_iso() == 0.0
                       assert fmodel.f_obs_w().data().all_eq(
                                                 f_obs.select(~flags.data()).data())
@@ -177,13 +177,13 @@ def test_1(xray_structure):
                       assert abs(fmodel.f_model()).data().all_eq(f_obs.data())
                       assert approx_equal(fmodel.r_work(), 0, 1.e-9)
                       assert approx_equal(fmodel.r_free(), 0, 1.e-9)
-                      assert fmodel.fu_aniso().all_eq(1.0)
-                      assert fmodel.fu_aniso_w().all_eq(1.0)
-                      assert fmodel.fu_aniso_t().all_eq(1.0)
+                      assert fmodel.fb_cart().all_eq(1.0)
+                      assert fmodel.fb_cart_w().all_eq(1.0)
+                      assert fmodel.fb_cart_t().all_eq(1.0)
                       assert abs(fmodel.target_w()) < 1.e-9
                       assert abs(fmodel.target_t()) < 1.e-9
                       assert fmodel.k_sol_b_sol() == (0.0,0.0)
-                      assert fmodel.u_aniso == [0,0,0,0,0,0]
+                      assert fmodel.b_cart == [0,0,0,0,0,0]
                       assert fmodel.u_iso() == 0.0
                       assert fmodel.f_obs_w().data().all_eq(
                                                 f_obs.select(~flags.data()).data())
@@ -256,9 +256,9 @@ def test_1(xray_structure):
                       assert fmodel_1.r_free_flags.data().all_eq(fmodel_2.r_free_flags.data())
                       assert abs(fmodel_1.f_calc).data().all_eq(abs(fmodel_2.f_calc).data())
                       assert abs(fmodel_1.f_model()).data().all_eq(abs(fmodel_2.f_model()).data())
-                      assert fmodel_1.fu_aniso().all_eq(fmodel_2.fu_aniso())
-                      assert fmodel_1.fu_aniso_w().all_eq(fmodel_2.fu_aniso_w())
-                      assert fmodel_1.fu_aniso_t().all_eq(fmodel_2.fu_aniso_t())
+                      assert fmodel_1.fb_cart().all_eq(fmodel_2.fb_cart())
+                      assert fmodel_1.fb_cart_w().all_eq(fmodel_2.fb_cart_w())
+                      assert fmodel_1.fb_cart_t().all_eq(fmodel_2.fb_cart_t())
                       assert fmodel_1.f_obs_w().data().all_eq(
                                                      fmodel_2.f_obs_w().data())
                       assert fmodel_1.f_obs_t().data().all_eq(

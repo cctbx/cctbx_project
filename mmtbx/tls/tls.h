@@ -126,19 +126,27 @@ public:
    x = r[0];
    y = r[1];
    z = r[2];
-   xx = x*x;
-   yy = y*y;
-   zz = z*z;
-   xy = x*y;
-   yz = y*z;
-   xz = x*z;
-   double u11=T[0]+zz*L[1]+yy*L[2]-2.*(yz*L[5]+y*S[6]-z*S[3]);
-   double u12=T[3]-xy*L[2]+xz*L[5]+yz*L[4]-zz*L[3]-z*(S[0]-S[4])+x*S[6]-y*S[7];
-   double u13=T[4]-S[3]*x+y*(S[0]-S[8])+S[5]*z+L[5]*xy-L[1]*xz-L[4]*yy+L[3]*yz;
-   double u22=T[1]+2.*(S[7]*x-S[1]*z-L[4]*xz)+L[0]*zz+L[2]*xx;
-   double u23=T[5]-x*(S[4]-S[8])+S[1]*y-S[2]*z+L[4]*xy-L[0]*yz-L[5]*xx+L[3]*xz;
-   double u33=T[2]-2.*(S[5]*x-S[2]*y)-L[3]*xy+L[0]*yy+L[1]*xx-L[3]*xy;
-   uaniso = sym_mat3<double>(u11,u22,u33,u12,u13,u23);
+   //xx = x*x;
+   //yy = y*y;
+   //zz = z*z;
+   //xy = x*y;
+   //yz = y*z;
+   //xz = x*z;
+   sym_mat3<double> ALA = L.antisymmetric_tensor_transform(r);
+   sym_mat3<double> ASSA = sym_mat3<double>(2.*S[3]*z - 2.*S[6]*y,
+                                            2.*S[7]*x - 2.*S[1]*z,
+                                            2.*S[2]*y - 2.*S[5]*x,
+                                            S[6]*x - S[7]*y + (S[4] - S[0])*z,
+                                            S[5]*z - S[3]*x + (S[0] - S[8])*y,
+                                            S[1]*y - S[2]*z + (S[8] - S[4])*x);
+   uaniso = sym_mat3<double>(T + ALA + ASSA);
+   //double u11=T[0]+zz*L[1]+yy*L[2]-2.*(yz*L[5]+y*S[6]-z*S[3]);
+   //double u12=T[3]-xy*L[2]+xz*L[5]+yz*L[4]-zz*L[3]-z*(S[0]-S[4])+x*S[6]-y*S[7];
+   //double u13=T[4]-S[3]*x+y*(S[0]-S[8])+S[5]*z+L[5]*xy-L[1]*xz-L[4]*yy+L[3]*yz;
+   //double u22=T[1]+2.*(S[7]*x-S[1]*z-L[4]*xz)+L[0]*zz+L[2]*xx;
+   //double u23=T[5]-x*(S[4]-S[8])+S[1]*y-S[2]*z+L[4]*xy-L[0]*yz-L[5]*xx+L[3]*xz;
+   //double u33=T[2]-2.*(S[5]*x-S[2]*y)-L[3]*xy+L[0]*yy+L[1]*xx-L[3]*xy;
+   //uaniso = sym_mat3<double>(u11,u22,u33,u12,u13,u23);
   }
   double x,y,z,xx,yy,zz,xy,yz,xz;
   sym_mat3<double> u() { return uaniso; }

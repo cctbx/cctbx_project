@@ -23,21 +23,10 @@ from stdlib import math
 from cctbx import xray
 from cctbx import adptbx
 
-class core_arrays(object):
-  def __init__(self, f_obs               = None,
-                     f_calc              = None,
-                     abcd                = None,
-                     f_mask              = None,
-                     alpha               = None,
-                     beta                = None,
-                     flags               = None):
-    adopt_init_args(self, locals())
-
-
 class manager(object):
   def __init__(self, f_obs               = None,
                      r_free_flags        = None,
-                     u_aniso             = [0.,0.,0.,0.,0.,0.],
+                     b_cart              = [0.,0.,0.,0.,0.,0.],
                      k_sol               = 0.0,
                      b_sol               = 0.0,
                      sf_algorithm        = "fft",
@@ -66,7 +55,7 @@ class manager(object):
        self.update_xray_structure(xray_structure = self.xray_structure,
                                   update_f_calc  = True,
                                   update_f_mask  = False)
-    assert len(self.u_aniso) == 6
+    assert len(self.b_cart) == 6
     if(self.r_free_flags is not None):
        assert self.r_free_flags.indices().all_eq(self.f_obs.indices())
     if(self.abcd is not None):
@@ -103,7 +92,7 @@ class manager(object):
        fc_dc = self.f_calc.deep_copy()
     new=manager(f_obs             = self.f_obs.deep_copy(),
                 r_free_flags      = self.r_free_flags.deep_copy(),
-                u_aniso           = self.u_aniso,
+                b_cart            = self.b_cart,
                 k_sol             = self.k_sol,
                 b_sol             = self.b_sol,
                 sf_algorithm      = self.sf_algorithm,
@@ -136,7 +125,7 @@ class manager(object):
        fc_dc = dc.f_calc.deep_copy().resolution_filter(d_max, d_min)
     new  = manager(f_obs             = dc.f_obs.resolution_filter(d_max, d_min),
                    r_free_flags      = dc.r_free_flags.resolution_filter(d_max, d_min),
-                   u_aniso           = dc.u_aniso,
+                   b_cart           = dc.b_cart,
                    k_sol             = dc.k_sol,
                    b_sol             = dc.b_sol,
                    sf_algorithm      = dc.sf_algorithm       ,
@@ -157,10 +146,10 @@ class manager(object):
 
   def apply_back_b_iso(self):
     b_iso = self.u_iso()
-    u_aniso = self.u_aniso
-    u_aniso_new = [u_aniso[0]-b_iso,u_aniso[1]-b_iso,u_aniso[2]-b_iso,
-                   u_aniso[3],      u_aniso[4],      u_aniso[5]]
-    self.u_aniso = u_aniso_new
+    b_cart = self.b_cart
+    b_cart_new = [b_cart[0]-b_iso,b_cart[1]-b_iso,b_cart[2]-b_iso,
+                   b_cart[3],      b_cart[4],      b_cart[5]]
+    self.b_cart = b_cart_new
     b_sol = self.k_sol_b_sol()[1] + b_iso
     #if(b_sol > 80.0): b_sol = 80.0
     #if(b_sol < 10.0): b_sol = 10.0
@@ -452,7 +441,9 @@ class manager(object):
                    scale_ml = 1.0
              else:
                 scale_ml = 1.0
+                #XXX
           return self.target_functor_w(f_model,
+                                       #self.f_calc_fb_cart_w(),
                                        alpha.data(),
                                        beta.data(),
                                        scale_ml,
@@ -479,7 +470,9 @@ class manager(object):
                    scale_ml = 1.0
              else:
                 scale_ml = 1.0
+                #XXX
           return self.target_functor_t(f_model,
+                                       #self.f_calc_fb_cart_w(),
                                        alpha.data(),
                                        beta.data(),
                                        scale_ml,
@@ -575,7 +568,7 @@ class manager(object):
                    f_mask              = None,
                    f_ordered_solvent   = None,
                    r_free_flags        = None,
-                   u_aniso             = None,
+                   b_cart             = None,
                    k_sol               = None,
                    b_sol               = None,
                    sf_algorithm        = None,
@@ -605,10 +598,10 @@ class manager(object):
     if(r_free_flags is not None):
       assert r_free_flags.indices().size() == self.f_obs.indices().size()
       self.r_free_flags = r_free_flags
-    if(u_aniso is not None):
-      try: assert u_aniso.size() == 6
-      except: assert len(u_aniso) == 6
-      self.u_aniso = u_aniso
+    if(b_cart is not None):
+      try: assert b_cart.size() == 6
+      except: assert len(b_cart) == 6
+      self.b_cart = b_cart
     if(k_sol is not None):       self.k_sol = k_sol
     if(b_sol is not None):       self.b_sol = b_sol
     if(sf_algorithm is not None):
@@ -657,42 +650,79 @@ class manager(object):
     else:
       return self.f_bulk()
 
-  def fu_aniso(self):
-    return bulk_solvent.fu_aniso(self.u_aniso,
-                                 self.f_calc.indices(),
-                                 self.f_calc.unit_cell())
+  #def f_calc_fb_cart(self):
+  #  #return self.f_calc.array(data = self.f_model().data() * self.fb_cart())
+  #  return self.f_calc.array(data = self.f_model().data() )
+  #
+  #def f_calc_fb_cart_w(self):
+  #  assert self.r_free_flags is not None
+  #  if(self.r_free_flags.data().count(True) > 0):
+  #    return self.f_calc_fb_cart().select(~self.r_free_flags.data())
+  #  else:
+  #    return self.f_calc_fb_cart()
+  #
+  #def f_calc_fb_cart_t(self):
+  #  assert self.r_free_flags is not None
+  #  if(self.r_free_flags.data().count(True) > 0):
+  #    return self.f_calc_fb_cart().select(self.r_free_flags.data())
+  #  else:
+  #    return self.f_calc_fb_cart()
 
-  def fu_aniso_w(self):
+  def fb_cart(self):
+    #f_mod = xray.f_model(hkl       = self.f_calc.indices(),
+    #                     f_atoms   = self.f_calc.data(),
+    #                     f_mask    = self.f_mask.data(),
+    #                     unit_cell = self.f_calc.unit_cell(),
+    #                     k_overall = 2.0,
+    #                     u_star    = adptbx.u_cart_as_u_star(self.f_calc.unit_cell(),
+    #                                                         adptbx.b_as_u(self.b_cart)),
+    #                     k_sol     = self.k_sol,
+    #                     u_sol     = self.b_sol,
+    #                     f_part    = self.f_calc.data()*0.0,
+    #                     k_part    = 0.0,
+    #                     u_part    = 0.0)
+    #print dir(f_mod)
+    #assert 0
+    #result_ = f_mod.fb_cart()
+    result = bulk_solvent.fb_cart(self.b_cart,
+                                   self.f_calc.indices(),
+                                   self.f_calc.unit_cell())
+    #print flex.max(result),flex.min(result), flex.mean(result)
+    #print flex.max(result_),flex.min(result_), flex.mean(result_)
+    #print
+    return result
+
+  def fb_cart_w(self):
     assert self.r_free_flags is not None
     if(self.r_free_flags.data().count(True) > 0):
-      return self.fu_aniso().select(~self.r_free_flags.data())
+      return self.fb_cart().select(~self.r_free_flags.data())
     else:
-      return self.fu_aniso()
+      return self.fb_cart()
 
-  def fu_aniso_t(self):
+  def fb_cart_t(self):
     assert self.r_free_flags is not None
     if(self.r_free_flags.data().count(True) > 0):
-      return self.fu_aniso().select(self.r_free_flags.data())
+      return self.fb_cart().select(self.r_free_flags.data())
     else:
-      return self.fu_aniso()
+      return self.fb_cart()
 
   def f_model(self):
     if(self.target_name in ["ml", "mlhl"]):
        #eps = self.f_obs_t().epsilons().data().as_double()
        #mul = self.f_obs_t().multiplicities().data().as_double()
-       fu_aniso = self.fu_aniso_w()
+       fb_cart = self.fb_cart_w()
        fo = self.f_obs_w().data()
-       fc = flex.abs(fu_aniso * (self.f_calc_w().data() + self.f_bulk_w().data()))
+       fc = flex.abs(fb_cart * (self.f_calc_w().data() + self.f_bulk_w().data()))
        #sc = math.sqrt(flex.sum(fo * fo * mul / eps) / \
        #               flex.sum(fc * fc * mul / eps) )
        sc = flex.sum(fo*fc) / flex.sum(fc*fc)
        if(abs(sc-1.0) < 0.3): sc = 1.0
     else: sc = 1.0
-    fu_aniso = self.fu_aniso()
+    fb_cart = self.fb_cart()
     if(self.f_ordered_solvent is None):
-       data = fu_aniso * (self.f_calc.data() + self.f_bulk().data())
+       data = fb_cart * (self.f_calc.data() + self.f_bulk().data())
     else:
-       data = fu_aniso * (self.f_calc.data() + self.f_bulk().data() + \
+       data = fb_cart * (self.f_calc.data() + self.f_bulk().data() + \
                           self.f_ordered_solvent.data())
     return miller.array(miller_set = self.f_calc, data = data*sc)
 
@@ -761,9 +791,9 @@ class manager(object):
        return f_star, w_star
 
   def u_iso(self):
-    return (self.u_aniso[0]+self.u_aniso[1]+self.u_aniso[2])/3.0
+    return (self.b_cart[0]+self.b_cart[1]+self.b_cart[2])/3.0
 
-  def u_iso_as_u_aniso(self):
+  def u_iso_as_b_cart(self):
     ui = self.u_iso()
     return [ui,ui,ui,0.0,0.0,0.0]
 
@@ -1164,14 +1194,14 @@ class manager(object):
     print >> out, "f_obs           = ", self.f_obs
     print >> out, "f_mask          = ", self.f_mask
     print >> out, "r_free_flags    = ", self.r_free_flags
-    print >> out, "u_aniso         = ", self.u_aniso
+    print >> out, "b_cart         = ", self.b_cart
     print >> out, "k_sol           = ", self.k_sol
     print >> out, "b_sol           = ", self.b_sol
     print >> out, "sf_algorithm    = ", self.sf_algorithm
     print >> out, "target_name     = ", self.target_name
     out.flush()
 
-  def show_k_sol_b_sol_u_aniso_target(self, header=None,target=None,out=None):
+  def show_k_sol_b_sol_b_cart_target(self, header=None,target=None,out=None):
     if(out is None): out = sys.stdout
     p = " "
     if(header is None): header = ""
@@ -1180,7 +1210,7 @@ class manager(object):
     print >> out, "|-"+header+"-"*(fill_len)+"|"
     k_sol = self.k_sol
     b_sol = self.b_sol
-    u0,u1,u2,u3,u4,u5 = self.u_aniso
+    u0,u1,u2,u3,u4,u5 = self.b_cart
     if(target is None):
        target_w = self.target_w()
     else:
@@ -1219,7 +1249,7 @@ class manager(object):
     scale_test = self.scale_k1_t()
     k_sol = self.k_sol
     b_sol = self.b_sol
-    u0,u1,u2,u3,u4,u5 = self.u_aniso
+    u0,u1,u2,u3,u4,u5 = self.b_cart
     u_iso = self.u_iso()
     try:    target_work = "%13.6E" % self.target_w()
     except: target_work = str(None)
@@ -1239,11 +1269,11 @@ class manager(object):
           target_test+" |"
     print >> out, "| (B11+B22+B33)/3 = %8.3f"%u_iso+18*p+"|"+31*p+"|"
     print >> out, "|"+"-"*77+"|"
-    #if (not_approx_equal(self.u_aniso,
-    #                     self.f_obs.average_b_cart(self.u_aniso))):
+    #if (not_approx_equal(self.b_cart,
+    #                     self.f_obs.average_b_cart(self.b_cart))):
     #  raise RuntimeError(
     #    "Internal error: Corrupt anisotropic scale matrix:\n  %s\n  %s" %
-    #      (str(self.u_aniso), str(b_cart_ave)))
+    #      (str(self.b_cart), str(b_cart_ave)))
     out.flush()
 
   def show_comprehensive(self, header = "",
@@ -1304,6 +1334,8 @@ def statistics_in_resolution_bins(fmodel,
   fc_t = fmodel.f_model_t()
   fo_w = fmodel.f_obs_w()
   fc_w = fmodel.f_model_w()
+  #f_calc_fb_cart_w = fmodel.f_calc_fb_cart_w()
+  #f_calc_fb_cart_t = fmodel.f_calc_fb_cart_t()
   alpha_w, beta_w = fmodel.alpha_beta_w()
   alpha_t, beta_t = fmodel.alpha_beta_t()
   if(fo_t.data().size() > reflections_per_bin):
@@ -1322,6 +1354,8 @@ def statistics_in_resolution_bins(fmodel,
   alpha_t.use_binning_of(fo_t)
   beta_w.use_binning_of(fo_t)
   beta_t.use_binning_of(fo_t)
+  #f_calc_fb_cart_w.use_binning_of(fo_t)
+  #f_calc_fb_cart_t.use_binning_of(fo_t)
   print >> out, "|"+"-"*77+"|"
   print >> out, "| Bin     Resolution   Compl.  No. Refl.    R-factors          Targets        |"
   print >> out, "|number     range              work test   work   test        work        test|"
@@ -1332,6 +1366,8 @@ def statistics_in_resolution_bins(fmodel,
     sel_fc_t = fc_t.select(sel_t)
     sel_fo_w = fo_w.select(sel_w)
     sel_fc_w = fc_w.select(sel_w)
+    #sel_f_calc_fb_cart_w=f_calc_fb_cart_w.select(sel_w)
+    #sel_f_calc_fb_cart_t=f_calc_fb_cart_t.select(sel_t)
     sel_alpha_t = alpha_t.select(sel_t)
     sel_beta_t  = beta_t.select(sel_t)
     sel_alpha_w = alpha_w.select(sel_w)
@@ -1345,11 +1381,13 @@ def statistics_in_resolution_bins(fmodel,
       target_t = xray_target_functor_t(sel_fc_t, False).target()
     elif(fmodel.target_name == "ml" or fmodel.target_name == "mlhl"):
       target_w = xray_target_functor_w(sel_fc_w,
+                                       #sel_f_calc_fb_cart_w,
                                        sel_alpha_w.data(),
                                        sel_beta_w.data(),
                                        1.0,
                                        False).target()
       target_t = xray_target_functor_t(sel_fc_t,
+                                       #sel_f_calc_fb_cart_t,
                                        sel_alpha_t.data(),
                                        sel_beta_t.data(),
                                        1.0,

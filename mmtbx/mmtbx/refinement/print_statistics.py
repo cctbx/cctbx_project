@@ -212,7 +212,7 @@ class refinement_monitor(object):
                                                    site=True).packed().norm() )
     self.k_sols          .append(fmodel.k_sol_b_sol()[0]          )
     self.b_sols          .append(fmodel.k_sol_b_sol()[1]          )
-    self.b_anisos        .append(fmodel.u_aniso                   )
+    self.b_anisos        .append(fmodel.b_cart                   )
     if(target_weights is not None):
        self.wxcs            .append(target_weights.wx_xyz()          )
        self.wxus            .append(target_weights.wx_adp()          )
