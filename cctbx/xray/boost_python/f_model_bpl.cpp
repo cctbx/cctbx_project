@@ -152,6 +152,7 @@ namespace cctbx { namespace xray { namespace f_model { namespace boost_python {
           .def("part_scale", &w_t::part_scale)
           .def("f_model", &w_t::get_f_model)
           .def("overall_scale", &w_t::overall_scale)
+          .def("fb_cart", &w_t::fb_cart)
           .def("d_f_model_d_f_atoms", &w_t::d_f_model_d_f_atoms)
 
           .def("ustar", (scitbx::sym_mat3<double>(w_t::*)()) &w_t::ustar)

@@ -434,6 +434,16 @@ namespace cctbx { namespace xray { namespace f_model {
        return ( result );
      }
 
+     scitbx::af::shared< FloatType > fb_cart()
+     {
+       scitbx::af::shared< FloatType > result;
+       for (std::size_t ii=0;ii<hkl_.size();ii++){
+         result.push_back( aniso_scale_[ii] );
+       }
+       return ( result );
+     }
+
+
      scitbx::af::shared<std::complex<FloatType> > f_atoms()
      {
        return ( f_atoms_ ) ;
