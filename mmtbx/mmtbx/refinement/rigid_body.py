@@ -6,46 +6,61 @@ from scitbx import matrix
 from scitbx import lbfgs
 from mmtbx.refinement import print_statistics
 import copy
+from libtbx.utils import Sorry
+
+def euler(phi, psi, the, convention):
+  if(convention == "zyz"):
+     return rb_mat_euler(the=the, psi=psi, phi=phi)
+  elif(convention == "zyx"):
+     return rb_mat(the=the, psi=psi, phi=phi)
+  else:
+     raise Sorry("\nWrong rotation convention\n")
 
 class rb_mat_euler(object):
 
-   def __init__(self, phi, psi, the):
-     phi = phi * math.pi/180
-     psi = psi * math.pi/180
+   def __init__(self, the, psi, phi):
      the = the * math.pi/180
+     psi = psi * math.pi/180
+     phi = phi * math.pi/180
      self.c_psi = math.cos(psi)
-     self.c_phi = math.cos(phi)
      self.c_the = math.cos(the)
+     self.c_phi = math.cos(phi)
      self.s_psi = math.sin(psi)
-     self.s_phi = math.sin(phi)
      self.s_the = math.sin(the)
+     self.s_phi = math.sin(phi)
 
    def rot_mat(self):
-     r11 =  self.c_phi*self.c_psi*self.c_the - self.s_phi*self.s_the
-     r12 = -self.c_phi*self.c_psi*self.s_the - self.s_phi*self.c_the
-     r13 =  self.c_phi*self.s_psi
-     r21 =  self.s_phi*self.c_psi*self.c_the + self.c_phi*self.s_the
-     r22 = -self.s_phi*self.c_psi*self.s_the + self.c_phi*self.c_the
-     r23 =  self.s_phi*self.s_psi
-     r31 =  self.s_psi*self.c_the
-     r32 =  self.s_psi*self.s_the
-     r33 =  self.c_psi
+     c_psi = self.c_psi
+     c_the = self.c_the
+     c_phi = self.c_phi
+     s_psi = self.s_psi
+     s_the = self.s_the
+     s_phi = self.s_phi
+     r11 =  c_the*c_psi*c_phi - s_the*s_phi
+     r12 = -c_the*c_psi*s_phi - s_the*c_phi
+     r13 =  c_the*s_psi
+     r21 =  s_the*c_psi*c_phi + c_the*s_phi
+     r22 = -s_the*c_psi*s_phi + c_the*c_phi
+     r23 =  s_the*s_psi
+     r31 = -s_psi*c_phi
+     r32 =  s_psi*s_phi
+     r33 =  c_psi
      rm = matrix.sqr((r11,r12,r13, r21,r22,r23, r31,r32,r33))
      return rm
 
-   def r_phi(self):
+   def r_the(self):
      c_psi = self.c_psi
-     c_phi = self.c_phi
      c_the = self.c_the
+     c_phi = self.c_phi
      s_psi = self.s_psi
-     s_phi = self.s_phi
      s_the = self.s_the
-     r11 = -s_phi*c_psi*c_the - c_phi*s_the
-     r12 =  s_phi*c_psi*s_the - c_phi*c_the
-     r13 = -s_phi*s_psi
-     r21 =  c_phi*c_psi*c_the - s_phi*s_the
-     r22 = -c_phi*c_psi*s_the - s_phi*c_the
-     r23 =  c_phi*s_psi
+     s_phi = self.s_phi
+     r11 = -s_the*c_psi*c_phi - c_the*s_phi
+     r12 =  s_the*c_psi*s_phi - c_the*c_phi
+     r13 = -s_the*s_psi
+     r21 =  c_the*c_psi*c_phi - s_the*s_phi
+     r22 = -c_the*c_psi*s_phi - s_the*c_phi
+     r23 =  c_the*s_psi
      r31 = 0.0
      r32 = 0.0
      r33 = 0.0
@@ -54,38 +69,38 @@ class rb_mat_euler(object):
 
    def r_psi(self):
      c_psi = self.c_psi
-     c_phi = self.c_phi
      c_the = self.c_the
+     c_phi = self.c_phi
      s_psi = self.s_psi
-     s_phi = self.s_phi
      s_the = self.s_the
-     r11 = -c_phi*s_psi*c_the
-     r12 =  c_phi*s_psi*s_the
-     r13 =  c_phi*c_psi
-     r21 = -s_phi*s_psi*c_the
-     r22 =  s_phi*s_psi*s_the
-     r23 =  s_phi*c_psi
-     r31 = -c_psi*c_the
-     r32 =  c_psi*s_the
+     s_phi = self.s_phi
+     r11 = -c_the*s_psi*c_phi
+     r12 =  c_the*s_psi*s_phi
+     r13 =  c_the*c_psi
+     r21 = -s_the*s_psi*c_phi
+     r22 =  s_the*s_psi*s_phi
+     r23 =  s_the*c_psi
+     r31 = -c_psi*c_phi
+     r32 =  c_psi*s_phi
      r33 = -s_psi
      rm = matrix.sqr((r11,r12,r13, r21,r22,r23, r31,r32,r33))
      return rm
 
-   def r_the(self):
+   def r_phi(self):
      c_psi = self.c_psi
-     c_phi = self.c_phi
      c_the = self.c_the
+     c_phi = self.c_phi
      s_psi = self.s_psi
-     s_phi = self.s_phi
      s_the = self.s_the
-     r11 = -c_phi*c_psi*s_the - s_phi*c_the
-     r12 = -c_phi*c_psi*c_the + s_phi*s_the
+     s_phi = self.s_phi
+     r11 = -c_the*c_psi*s_phi - s_the*c_phi
+     r12 = -c_the*c_psi*c_phi + s_the*s_phi
      r13 =  0.0
-     r21 = -s_phi*c_psi*s_the + c_phi*c_the
-     r22 = -s_phi*c_psi*c_the - c_phi*s_the
+     r21 = -s_the*c_psi*s_phi + c_the*c_phi
+     r22 = -s_the*c_psi*c_phi - c_the*s_phi
      r23 =  0.0
-     r31 =  s_psi*s_the
-     r32 =  s_psi*c_the
+     r31 =  s_psi*s_phi
+     r32 =  s_psi*c_phi
      r33 =  0.0
      rm = matrix.sqr((r11,r12,r13, r21,r22,r23, r31,r32,r33))
      return rm
@@ -146,54 +161,78 @@ class rb_mat(object):
      self.s_the = math.sin(the)
 
    def rot_mat(self):
-     r11 =  self.c_psi*self.c_phi
-     r12 = -self.c_psi*self.s_phi
-     r13 =  self.s_psi
-     r21 =  self.c_the*self.s_phi + self.s_the*self.s_psi*self.c_phi
-     r22 =  self.c_the*self.c_phi - self.s_the*self.s_psi*self.s_phi
-     r23 = -self.s_the*self.c_psi
-     r31 =  self.s_the*self.s_phi - self.c_the*self.s_psi*self.c_phi
-     r32 =  self.s_the*self.c_phi + self.c_the*self.s_psi*self.s_phi
-     r33 =  self.c_the*self.c_psi
+     c_psi = self.c_psi
+     c_the = self.c_the
+     c_phi = self.c_phi
+     s_psi = self.s_psi
+     s_the = self.s_the
+     s_phi = self.s_phi
+     r11 =  c_psi*c_phi
+     r12 = -c_psi*s_phi
+     r13 =  s_psi
+     r21 =  c_the*s_phi + s_the*s_psi*c_phi
+     r22 =  c_the*c_phi - s_the*s_psi*s_phi
+     r23 = -s_the*c_psi
+     r31 =  s_the*s_phi - c_the*s_psi*c_phi
+     r32 =  s_the*c_phi + c_the*s_psi*s_phi
+     r33 =  c_the*c_psi
      rm = matrix.sqr((r11,r12,r13, r21,r22,r23, r31,r32,r33))
      return rm
 
    def r_phi(self):
-     r11 = -self.c_psi*self.s_phi
-     r12 = -self.c_psi*self.c_phi
+     c_psi = self.c_psi
+     c_the = self.c_the
+     c_phi = self.c_phi
+     s_psi = self.s_psi
+     s_the = self.s_the
+     s_phi = self.s_phi
+     r11 = -c_psi*s_phi
+     r12 = -c_psi*c_phi
      r13 =  0.0
-     r21 =  self.c_the*self.c_phi - self.s_the*self.s_psi*self.s_phi
-     r22 = -self.c_the*self.s_phi - self.s_the*self.s_psi*self.c_phi
+     r21 =  c_the*c_phi - s_the*s_psi*s_phi
+     r22 = -c_the*s_phi - s_the*s_psi*c_phi
      r23 =  0.0
-     r31 =  self.s_the*self.c_phi + self.c_the*self.s_psi*self.s_phi
-     r32 = -self.s_the*self.s_phi + self.c_the*self.s_psi*self.c_phi
+     r31 =  s_the*c_phi + c_the*s_psi*s_phi
+     r32 = -s_the*s_phi + c_the*s_psi*c_phi
      r33 =  0.0
      rm = matrix.sqr((r11,r12,r13, r21,r22,r23, r31,r32,r33))
      return rm
 
    def r_psi(self):
-     r11 = -self.s_psi*self.c_phi
-     r12 =  self.s_psi*self.s_phi
-     r13 =  self.c_psi
-     r21 =  self.s_the*self.c_psi*self.c_phi
-     r22 = -self.s_the*self.c_psi*self.s_phi
-     r23 =  self.s_the*self.s_psi
-     r31 = -self.c_the*self.c_psi*self.c_phi
-     r32 =  self.c_the*self.c_psi*self.s_phi
-     r33 = -self.c_the*self.s_psi
+     c_psi = self.c_psi
+     c_the = self.c_the
+     c_phi = self.c_phi
+     s_psi = self.s_psi
+     s_the = self.s_the
+     s_phi = self.s_phi
+     r11 = -s_psi*c_phi
+     r12 =  s_psi*s_phi
+     r13 =  c_psi
+     r21 =  s_the*c_psi*c_phi
+     r22 = -s_the*c_psi*s_phi
+     r23 =  s_the*s_psi
+     r31 = -c_the*c_psi*c_phi
+     r32 =  c_the*c_psi*s_phi
+     r33 = -c_the*s_psi
      rm = matrix.sqr((r11,r12,r13, r21,r22,r23, r31,r32,r33))
      return rm
 
    def r_the(self):
+     c_psi = self.c_psi
+     c_the = self.c_the
+     c_phi = self.c_phi
+     s_psi = self.s_psi
+     s_the = self.s_the
+     s_phi = self.s_phi
      r11 =  0.0
      r12 =  0.0
      r13 =  0.0
-     r21 = -self.s_the*self.s_phi+self.c_the*self.s_psi*self.c_phi
-     r22 = -self.s_the*self.c_phi-self.c_the*self.s_psi*self.s_phi
-     r23 = -self.c_the*self.c_psi
-     r31 =  self.c_the*self.s_phi+self.s_the*self.s_psi*self.c_phi
-     r32 =  self.c_the*self.c_phi-self.s_the*self.s_psi*self.s_phi
-     r33 = -self.s_the*self.c_psi
+     r21 = -s_the*s_phi+c_the*s_psi*c_phi
+     r22 = -s_the*c_phi-c_the*s_psi*s_phi
+     r23 = -c_the*c_psi
+     r31 =  c_the*s_phi+s_the*s_psi*c_phi
+     r32 =  c_the*c_phi-s_the*s_psi*s_phi
+     r33 = -s_the*c_psi
      rm = matrix.sqr((r11,r12,r13, r21,r22,r23, r31,r32,r33))
      return rm
 
@@ -257,7 +296,7 @@ class manager(object):
        r_initial = []
        for item in selections:
            r_initial.append(flex.double(3,0))
-       #r_initial.append(flex.double([0,90,0]))
+           #r_initial.append(flex.double([0,90,0]))
 
     if(t_initial is None):
        t_initial = []
@@ -293,7 +332,7 @@ class manager(object):
             #       t_initial = []
             #       r_initial.append(flex.double(3,0))
             #       t_initial.append(flex.double(3,0))
-
+            #
             if((macro_cycle == 1 or macro_cycle == 3) and bss is not None and
                bulk_solvent_and_scale):
                print_statistics.make_sub_header(

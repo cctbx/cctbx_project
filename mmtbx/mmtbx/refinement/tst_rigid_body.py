@@ -13,6 +13,10 @@ import mmtbx.refinement.rigid_body
 import mmtbx.model
 from libtbx.test_utils import approx_equal
 from libtbx.utils import format_cpu_times
+import random, math
+
+random.seed(0)
+flex.set_random_seed(0)
 
 def test_matrices():
   rot_obj = mmtbx.refinement.rigid_body.rb_mat(phi = 10,
@@ -227,16 +231,13 @@ def run_tests(sf_algorithm = "fft"):
   f_obs = abs(dummy.structure_factors_from_scatterers(
                                          xray_structure = model.xray_structure,
                                          algorithm      = sf_algorithm,
-                                         cos_sin_table  = True).f_calc())
+                                         cos_sin_table  = False).f_calc())
   flags =f_obs.array(data=flex.size_t(xrange(1,f_obs.data().size()+1))%10 == 0)
-  #fout = open("test.hkl","w")
-  #for i,d,fl in zip(f_obs.indices(),f_obs.data(), flags.data()):
-  #  print >> fout, (" INDE %5d%5d%5d FOBS=%10.4f SIGMA=%10.1f TEST=%10d") %\
-  #           (i[0],i[1],i[2],d,1.0, fl)
   fmodel = mmtbx.f_model.manager(xray_structure    = model.xray_structure,
                                  f_obs             = f_obs,
                                  r_free_flags      = flags,
                                  target_name       = "ls_wunit_k1",
+                                 sf_cos_sin_table  = False,
                                  #target_name       = "ml",
                                  sf_algorithm      = sf_algorithm)
   fmodel.show_comprehensive(reflections_per_bin = 250,
@@ -255,75 +256,125 @@ def run_tests(sf_algorithm = "fft"):
   test_5(fmodel = fmodel.deep_copy(), model  = model.deep_copy())
   print "test 6: "
   test_6(fmodel = fmodel.deep_copy(), model  = model.deep_copy())
-  ##############################################################################
-  #rot_obj = mmtbx.refinement.rigid_body.rb_mat(phi = 0.0,
-  #                                             psi = 0.0,
-  #                                             the = 0.0)
-  #dim = fmodel.xray_structure.scatterers().size()
-  #selections = [flex.bool(dim, True)]
-  #new_xray_structure = mmtbx.refinement.rigid_body.apply_transformation(
-  #                       xray_structure      = model.xray_structure,
-  #                       rotation_matrices   = [rot_obj.rot_mat()],
-  #                       translation_vectors = [(0.001,0.001,0.001)],
-  #                       selections          = selections)
-  #fmodel_copy = fmodel.deep_copy()
-  #fmodel_copy.update_xray_structure(xray_structure = new_xray_structure,
-  #                                  update_f_calc  = True)
-  #tg_obj = mmtbx.refinement.rigid_body.target_and_grads(
-  #                                         fmodel     = fmodel_copy,
-  #                                         alpha      = None,
-  #                                         beta       = None,
-  #                                         rot_objs   = [rot_obj],
-  #                                         selections = selections)
-  #g1, g2 = tg_obj.gradients_wrt_r(), tg_obj.gradients_wrt_t()
-  #qq = fd(fmodel_copy, e = 0.001)
-  #print list(g2[0]), qq, tg_obj.target(),fmodel_copy.target_w()
-  #assert 0
-  ##############################################################################
 
 
-def fd(fmodel, e):
-  xrs1 = fmodel.xray_structure.deep_copy_scatterers()
-  xrs2 = fmodel.xray_structure.deep_copy_scatterers()
-  fm = fmodel.deep_copy()
-  xrs_g1_1 = xrs1.translate(x = e)
-  xrs_g1_2 = xrs2.translate(x =-e)
-  fm.update_xray_structure(xray_structure = xrs_g1_1,
-                           update_f_calc  = True)
-  t1 = fm.target_w()
-  fm.update_xray_structure(xray_structure = xrs_g1_2,
-                           update_f_calc  = True)
-  t2 = fm.target_w()
-  gtx = (t1-t2)/(2*e)
+def finite_differences_test(sf_algorithm = "direct"):
+  print "finite_differences_test: "
+  pdb_file = libtbx.env.find_in_repositories(
+        relative_path="regression/pdb/enk_rbr.pdb", test=os.path.isfile)
+  processed_pdb_file = monomer_library.pdb_interpretation.process(
+                            mon_lib_srv    = monomer_library.server.server(),
+                            ener_lib       = monomer_library.server.ener_lib(),
+                            file_name      = pdb_file,
+                            raw_records    = None,
+                            force_symmetry = True)
+  model = mmtbx.model.manager(processed_pdb_file = processed_pdb_file)
+  model.xray_structure.scattering_type_registry(table = "wk1995")
+  model.setup_restraints_manager()
+  dummy = model.xray_structure.structure_factors(algorithm = sf_algorithm,
+                                                 d_min     = 1.0).f_calc()
+  f_obs = abs(dummy.structure_factors_from_scatterers(
+                                         xray_structure = model.xray_structure,
+                                         algorithm      = sf_algorithm,
+                                         cos_sin_table  = False).f_calc())
+  flags = f_obs.array(data = flex.bool(f_obs.data().size(), False))
+  model.xray_structure = model.xray_structure.shake_sites(mean_error = 0.1)
+  fmodel = mmtbx.f_model.manager(xray_structure    = model.xray_structure,
+                                 f_obs             = f_obs,
+                                 r_free_flags      = flags,
+                                 target_name       = "ls_wunit_k1",
+                                 sf_cos_sin_table  = False,
+                                 sf_algorithm      = sf_algorithm)
+  fmodel.show_essential()
 
-  xrs = fmodel.xray_structure.deep_copy_scatterers()
-  fm = fmodel.deep_copy()
-  xrs_g1_1 = xrs.translate(y = e)
-  xrs_g1_2 = xrs.translate(y =-e)
-  fm.update_xray_structure(xray_structure = xrs_g1_1,
-                           update_f_calc  = True)
-  t1 = fm.target_w()
-  fm.update_xray_structure(xray_structure = xrs_g1_2,
-                           update_f_calc  = True)
-  t2 = fm.target_w()
-  gty = (t1-t2)/(2*e)
+  for convention in ["zyz","zyx"]:
+      rot_obj = mmtbx.refinement.rigid_body.euler(
+                            phi = 0, psi = 0, the = 0, convention = convention)
+      dim = fmodel.xray_structure.scatterers().size()
+      selections = [flex.bool(dim, True)]
+      new_xray_structure = mmtbx.refinement.rigid_body.apply_transformation(
+                             xray_structure      = model.xray_structure,
+                             rotation_matrices   = [rot_obj.rot_mat()],
+                             translation_vectors = [(1.0,2.0,3.0)],
+                             selections          = selections)
+      fmodel_copy = fmodel.deep_copy()
+      fmodel_copy.update_xray_structure(xray_structure = new_xray_structure,
+                                        update_f_calc  = True)
+      tg_obj = mmtbx.refinement.rigid_body.target_and_grads(
+                                               fmodel     = fmodel_copy,
+                                               alpha      = None,
+                                               beta       = None,
+                                               rot_objs   = [rot_obj],
+                                               selections = selections)
+      assert approx_equal(tg_obj.target(),fmodel_copy.target_w())
+      g_rot, g_transl = tg_obj.gradients_wrt_r(), tg_obj.gradients_wrt_t()
+      fd_transl = fd_translation(fmodel_copy, e = 0.00001)
+      assert approx_equal(list(g_transl[0]), fd_transl)
+      fd_rot = fd_rotation(fmodel     = fmodel_copy,
+                           e          = 0.00001,
+                           convention = convention)
+      assert approx_equal(list(g_rot[0]), fd_rot)
 
-  xrs = fmodel.xray_structure.deep_copy_scatterers()
-  fm = fmodel.deep_copy()
-  xrs_g1_1 = xrs.translate(z = e)
-  xrs_g1_2 = xrs.translate(z =-e)
-  fm.update_xray_structure(xray_structure = xrs_g1_1,
-                           update_f_calc  = True)
-  t1 = fm.target_w()
-  fm.update_xray_structure(xray_structure = xrs_g1_2,
-                           update_f_calc  = True)
-  t2 = fm.target_w()
-  gtz = (t1-t2)/(2*e)
-  return gtx,gty,gtz
+
+def fd_translation(fmodel, e):
+  grads = []
+  for shift in [[e,0,0],[0,e,0],[0,0,e]]:
+      xrs1 = fmodel.xray_structure.deep_copy_scatterers()
+      xrs2 = fmodel.xray_structure.deep_copy_scatterers()
+      fm = fmodel.deep_copy()
+      xrs_g1_1 = xrs1.translate(x = shift[0], y = shift[1], z = shift[2])
+      xrs_g1_2 = xrs2.translate(x =-shift[0], y =-shift[1], z =-shift[2])
+      fm.update_xray_structure(xray_structure = xrs_g1_1,
+                               update_f_calc  = True)
+      t1 = fm.target_w()
+      fm.update_xray_structure(xray_structure = xrs_g1_2,
+                               update_f_calc  = True)
+      t2 = fm.target_w()
+      grads.append( (t1-t2)/(2*e) )
+  return grads
+
+def fd_rotation(fmodel, e, convention):
+  grads = []
+  for shift in [[e,0,0],[0,e,0],[0,0,e]]:
+      xrs1 = fmodel.xray_structure.deep_copy_scatterers()
+      xrs2 = fmodel.xray_structure.deep_copy_scatterers()
+      fm = fmodel.deep_copy()
+      #
+      rot_obj = mmtbx.refinement.rigid_body.euler(phi = shift[0],
+                                                  psi = shift[1],
+                                                  the = shift[2],
+                                                  convention = convention)
+      selections = [flex.bool(xrs1.scatterers().size(), True)]
+      xrs_g1_1 = mmtbx.refinement.rigid_body.apply_transformation(
+                         xray_structure      = xrs1,
+                         rotation_matrices   = [rot_obj.rot_mat()],
+                         translation_vectors = [(0.0,0.0,0.0)],
+                         selections          = selections)
+      #
+      rot_obj = mmtbx.refinement.rigid_body.euler(phi = -shift[0],
+                                                  psi = -shift[1],
+                                                  the = -shift[2],
+                                                  convention = convention)
+      selections = [flex.bool(xrs1.scatterers().size(), True)]
+      xrs_g1_2 = mmtbx.refinement.rigid_body.apply_transformation(
+                         xray_structure      = xrs2,
+                         rotation_matrices   = [rot_obj.rot_mat()],
+                         translation_vectors = [(0.0,0.0,0.0)],
+                         selections          = selections)
+      fm.update_xray_structure(xray_structure = xrs_g1_1,
+                               update_f_calc  = True)
+      t1 = fm.target_w()
+      fm.update_xray_structure(xray_structure = xrs_g1_2,
+                               update_f_calc  = True)
+      t2 = fm.target_w()
+      grads.append( (t1-t2)/(2*e*math.pi/180)  )
+  return grads
+
 
 def exercise():
   test_matrices()
   run_tests()
+  finite_differences_test()
   print format_cpu_times()
 
 if (__name__ == "__main__"):

@@ -556,12 +556,12 @@ class manager(object):
                     algorithm          = self.sf_algorithm).d_target_d_u_cart()
     else:
        return structure_factor_gradients(
-                                      u_iso_reinable_params = u_iso_reinable_params,
-                                      d_target_d_f_calc  = xrtfr.derivatives(),
-                                      xray_structure     = xrs,
-                                      n_parameters       = xrs.n_parameters(),
-                                      miller_set         = self.f_obs_w(),
-                                      algorithm          = self.sf_algorithm)
+                         u_iso_reinable_params = u_iso_reinable_params,
+                         d_target_d_f_calc  = xrtfr.derivatives() * self.fb_cart_w(),
+                         xray_structure     = xrs,
+                         n_parameters       = xrs.n_parameters(),
+                         miller_set         = self.f_obs_w(),
+                         algorithm          = self.sf_algorithm)
 
   def update(self, f_calc              = None,
                    f_obs               = None,
