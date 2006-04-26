@@ -115,47 +115,40 @@ public:
                   sym_mat3<double> const& L_deg,
                   mat3<double> const& S_deg,
                   vec3<double> const& origin,
-                  vec3<double> const& site)
+                  vec3<double> const& site_cart)
   {
    double deg2rad = scitbx::deg_as_rad(1.0);
    double deg2radsq = deg2rad * deg2rad;
    L = L_deg * deg2radsq;
    S = S_deg * deg2rad;
    S[8] = -(S[0]+S[4]); // condition on trace(S) = 0.0
-   vec3<double> r = site - origin;
-   x = r[0];
-   y = r[1];
-   z = r[2];
-   //xx = x*x;
-   //yy = y*y;
-   //zz = z*z;
-   //xy = x*y;
-   //yz = y*z;
-   //xz = x*z;
-   sym_mat3<double> ALA = L.antisymmetric_tensor_transform(z,-y,x);
-   sym_mat3<double> ASSA = sym_mat3<double>(2.*S[3]*z - 2.*S[6]*y,
-                                            2.*S[7]*x - 2.*S[1]*z,
-                                            2.*S[2]*y - 2.*S[5]*x,
-                                            S[6]*x - S[7]*y + (S[4] - S[0])*z,
-                                            S[5]*z - S[3]*x + (S[0] - S[8])*y,
-                                            S[1]*y - S[2]*z + (S[8] - S[4])*x);
-   uaniso = sym_mat3<double>(T + ALA + ASSA);
-   //double u11=T[0]+zz*L[1]+yy*L[2]-2.*(yz*L[5]+y*S[6]-z*S[3]);
-   //double u12=T[3]-xy*L[2]+xz*L[5]+yz*L[4]-zz*L[3]-z*(S[0]-S[4])+x*S[6]-y*S[7];
-   //double u13=T[4]-S[3]*x+y*(S[0]-S[8])+S[5]*z+L[5]*xy-L[1]*xz-L[4]*yy+L[3]*yz;
-   //double u22=T[1]+2.*(S[7]*x-S[1]*z-L[4]*xz)+L[0]*zz+L[2]*xx;
-   //double u23=T[5]-x*(S[4]-S[8])+S[1]*y-S[2]*z+L[4]*xy-L[0]*yz-L[5]*xx+L[3]*xz;
-   //double u33=T[2]-2.*(S[5]*x-S[2]*y)-L[3]*xy+L[0]*yy+L[1]*xx-L[3]*xy;
-   //uaniso = sym_mat3<double>(u11,u22,u33,u12,u13,u23);
+   r_ = site_cart - origin;
+   x = r_[0];
+   y = r_[1];
+   z = r_[2];
+   ALA_ = L.antisymmetric_tensor_transform(z,-y,x);
+   ASSA_ = sym_mat3<double>(2.*S[3]*z - 2.*S[6]*y,
+                            2.*S[7]*x - 2.*S[1]*z,
+                            2.*S[2]*y - 2.*S[5]*x,
+                            S[6]*x - S[7]*y + (S[4] - S[0])*z,
+                            S[5]*z - S[3]*x + (S[0] - S[8])*y,
+                            S[1]*y - S[2]*z + (S[8] - S[4])*x);
+   uaniso = sym_mat3<double>(T + ALA_ + ASSA_);
   }
-  double x,y,z,xx,yy,zz,xy,yz,xz;
+  double x,y,z;
   sym_mat3<double> u() { return uaniso; }
   sym_mat3<double> Lrad() { return L; }
   mat3<double> Srad() { return S; }
+  vec3<double> r() { return r_; }
+  sym_mat3<double> ALA() { return ALA_; }
+  sym_mat3<double> ASSA() { return ASSA_; }
 private:
   sym_mat3<double> uaniso;
   sym_mat3<double> L;
   mat3<double> S;
+  vec3<double> r_;
+  sym_mat3<double> ALA_;
+  sym_mat3<double> ASSA_;
 };
 
 //
@@ -265,6 +258,68 @@ class tlso
     {}
 };
 
+class tls_parts_one_group {
+public:
+  tls_parts_one_group(tlso<double> tls_params,
+                      af::shared<vec3<double> > const& sites_cart)
+  {
+   for (std::size_t i=0; i < sites_cart.size(); i++) {
+        vec3<double> const& site = sites_cart[i];
+        uaniso_from_tls manager(tls_params.t,
+                                tls_params.l,
+                                tls_params.s,
+                                tls_params.origin,
+                                site);
+        ala_.push_back(manager.ALA());
+        assa_.push_back(manager.ASSA());
+        u_cart_.push_back(manager.u());
+        r_.push_back(manager.r());
+        t_.push_back(tls_params.t);
+
+   }
+ }
+  af::shared<sym_mat3<double> > ala() { return ala_; }
+  af::shared<sym_mat3<double> > t() { return t_; }
+  af::shared<sym_mat3<double> > assa() { return assa_; }
+  af::shared<sym_mat3<double> > u_cart() { return u_cart_; }
+  af::shared<vec3<double> > r() { return r_; }
+protected:
+  af::shared<sym_mat3<double> > ala_;
+  af::shared<sym_mat3<double> > t_;
+  af::shared<sym_mat3<double> > assa_;
+  af::shared<sym_mat3<double> > u_cart_;
+  af::shared<vec3<double> > r_;
+};
+
+class tls_parts_one_group_as_b_iso {
+public:
+  tls_parts_one_group_as_b_iso(tlso<double> tls_params,
+                               af::shared<vec3<double> > const& sites_cart)
+  {
+   for (std::size_t i=0; i < sites_cart.size(); i++) {
+        vec3<double> const& site = sites_cart[i];
+        uaniso_from_tls manager(tls_params.t,
+                                tls_params.l,
+                                tls_params.s,
+                                tls_params.origin,
+                                site);
+        ala_.push_back(   cctbx::adptbx::u_as_b(cctbx::adptbx::u_cart_as_u_iso(manager.ALA())));
+        assa_.push_back(  cctbx::adptbx::u_as_b(cctbx::adptbx::u_cart_as_u_iso(manager.ASSA())));
+        b_iso_.push_back(cctbx::adptbx::u_as_b(cctbx::adptbx::u_cart_as_u_iso(manager.u())));
+        t_.push_back(     cctbx::adptbx::u_as_b(cctbx::adptbx::u_cart_as_u_iso(tls_params.t)));
+   }
+ }
+  af::shared<double> ala() { return ala_; }
+  af::shared<double> t() { return t_; }
+  af::shared<double> assa() { return assa_; }
+  af::shared<double> b_iso() { return b_iso_; }
+protected:
+  af::shared<double> ala_;
+  af::shared<double> t_;
+  af::shared<double> assa_;
+  af::shared<double> b_iso_;
+};
+
 
 af::shared<sym_mat3<double> > uaniso_from_tls_one_group(
                                    tlso<double> tls_params,
@@ -282,8 +337,6 @@ af::shared<sym_mat3<double> > uaniso_from_tls_one_group(
     }
     return uanisos;
 }
-
-
 
 }} // namespace mmtbx::tls
 

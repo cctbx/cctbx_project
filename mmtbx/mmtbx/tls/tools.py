@@ -64,11 +64,6 @@ class show_tls_one_group(object):
      print >> out, "|" +"-"*77+"|"
 
 def uanisos_from_tls(sites_cart, selections, tlsos):
-  #uanisos = flex.sym_mat3_double()
-  #for selection, tlso in zip(selections, tlsos):
-  #    uanisos.extend(
-  #        uaniso_from_tls_one_group(tlso = tlso,
-  #                                  sites_cart = sites_cart.select(selection)))
   uanisos = flex.sym_mat3_double(sites_cart.size(), [0,0,0,0,0,0])
   for selection, tlso in zip(selections, tlsos):
       u = uaniso_from_tls_one_group(tlso       = tlso,

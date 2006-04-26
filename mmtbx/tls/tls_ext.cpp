@@ -48,7 +48,6 @@ namespace {
       .def("grad_S", &d_target_d_tls::grad_S)
     ;
 
-
     class_<tls_from_uaniso_target_and_grads>("tls_from_uaniso_target_and_grads",
                              init<sym_mat3<double> const&,
                                   sym_mat3<double> const&,
@@ -82,6 +81,23 @@ namespace {
                                                           (arg_("tlso"),
                                                            arg_("sites_cart")))
    ;
+   class_<tls_parts_one_group>("tls_parts_one_group",
+                             init<tlso<double>,
+                                  af::shared<vec3<double> > const&>())
+      .def("ala",    &tls_parts_one_group::ala)
+      .def("assa",   &tls_parts_one_group::assa)
+      .def("u_cart", &tls_parts_one_group::u_cart)
+      .def("t",      &tls_parts_one_group::t)
+      .def("r",      &tls_parts_one_group::r)
+    ;
+   class_<tls_parts_one_group_as_b_iso>("tls_parts_one_group_as_b_iso",
+                             init<tlso<double>,
+                                  af::shared<vec3<double> > const&>())
+      .def("ala",    &tls_parts_one_group_as_b_iso::ala)
+      .def("assa",   &tls_parts_one_group_as_b_iso::assa)
+      .def("b_iso", &tls_parts_one_group_as_b_iso::b_iso)
+      .def("t",      &tls_parts_one_group_as_b_iso::t)
+    ;
   }
 
 } // namespace <anonymous>
