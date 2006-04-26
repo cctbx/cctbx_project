@@ -231,9 +231,9 @@ class manager(object):
                      use_only_low_resolution = False,
                      bulk_solvent_and_scale  = True,
                      bss                     = None,
-                     euler_angles            = False,
+                     euler_angle_convention  = "xyz",
                      log                     = None):
-    self.euler_angles = euler_angles
+    self.euler_angle_convention = euler_angle_convention
     if(log is None): log = sys.stdout
     if(selections is None):
        selections = []
@@ -304,21 +304,22 @@ class manager(object):
                fmodel_copy.update_solvent_and_scale(params = bss, out = log)
                if(fmodel_copy.f_obs.d_min() > 3.0):
                   bss.anisotropic_scaling=save_bss_anisotropic_scaling
-            minimized = rigid_body_minimizer(fmodel         = fmodel_copy,
-                                             selections     = selections,
-                                             fixed_selection= fixed_selection,
-                                             r_initial      = r_initial,
-                                             t_initial      = t_initial,
-                                             refine_r       = refine_r,
-                                             refine_t       = refine_t,
-                                             max_iterations = max_iterations,
-                                             euler_angles   = self.euler_angles)
+            minimized = rigid_body_minimizer(
+              fmodel         = fmodel_copy,
+              selections     = selections,
+              fixed_selection= fixed_selection,
+              r_initial      = r_initial,
+              t_initial      = t_initial,
+              refine_r       = refine_r,
+              refine_t       = refine_t,
+              max_iterations = max_iterations,
+              euler_angle_convention = self.euler_angle_convention)
             rotation_matrices = []
             translation_vectors = []
             for i in xrange(len(selections)):
                 self.total_rotation[i] += flex.double(minimized.r_min[i])
                 self.total_translation[i] += flex.double(minimized.t_min[i])
-                if(self.euler_angles):
+                if(self.euler_angle_convention == "zyz"):
                    rot_obj = rb_mat_euler(phi = minimized.r_min[i][0],
                                           psi = minimized.r_min[i][1],
                                           the = minimized.r_min[i][2])
@@ -397,7 +398,7 @@ class manager(object):
                   translation_vectors = []
                   rot_objs = []
                   for i in xrange(len(selections)):
-                      if(self.euler_angles):
+                      if(self.euler_angle_convention == "zyz"):
                          rot_obj = rb_mat_euler(phi = phi,
                                                 psi = psi,
                                                 the = the)
@@ -449,10 +450,10 @@ class manager(object):
     nref = f.data().size()
     mc = str(mc)
     it = str(it)
-    if(self.euler_angles):
-       part1 = "|-rigid body refinement: Euler angles used (macro cycle = "
+    if(self.euler_angle_convention == "zyz"):
+       part1 = "|-rigid body refinement: Euler angles zyz (macro cycle = "
     else:
-       part1 = "|-rigid body refinement (macro cycle = "
+       part1 = "|-rigid body refinement: Euler angles xyz (macro cycle = "
     part2 = "; iterations = "
     n = 77 - len(part1 + part2 + mc + it)
     part3 = ")"+"-"*n+"|"
@@ -499,7 +500,7 @@ class rigid_body_minimizer(object):
                refine_r,
                refine_t,
                max_iterations,
-               euler_angles = False):
+               euler_angle_convention = "xyz"):
     adopt_init_args(self, locals())
     if(self.fmodel.target_name in ["ml","lsm"]):
        self.alpha, self.beta = self.fmodel.alpha_beta_w()
@@ -578,7 +579,7 @@ class rigid_body_minimizer(object):
     translation_vectors = []
     rot_objs = []
     for i in xrange(self.n_groups):
-        if(self.euler_angles):
+        if(self.euler_angle_convention == "zyz"):
            rot_obj = rb_mat_euler(phi = self.r_min[i][0],
                                   psi = self.r_min[i][1],
                                   the = self.r_min[i][2])
