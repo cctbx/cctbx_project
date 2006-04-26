@@ -149,8 +149,13 @@ int main(int /*argc*/, char* /*argv*/[])
                      sym_mat3<int>(198,18,1020,116,447,269));
     verify(__LINE__, a.tensor_transpose_transform(c),
                      sym_mat3<int>(371,9,967,148,597,238));
-    vec3<int> v(1,2,3);
+    vec3<int> v(3,-2,1);
+    mat3<int> vc( 0, 3,-2,
+                 -3, 0, 1,
+                  2,-1, 0);
     verify(__LINE__, a.antisymmetric_tensor_transform(v),
+                     sym_mat3<int>(-12,30,8,-9,10,-17));
+    verify(__LINE__, a.tensor_transform(vc),
                      sym_mat3<int>(-12,30,8,-9,10,-17));
   }
   {
