@@ -12,5 +12,4 @@ env_bpl.SharedLibrary(
     "angle_bpl.cpp",
     "dihedral_bpl.cpp",
     "chirality_bpl.cpp",
-    "planarity_bpl.cpp",
-    "motif_bpl.cpp"])
+    "planarity_bpl.cpp"])
