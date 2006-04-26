@@ -163,11 +163,29 @@ namespace scitbx {
       sym_mat3
       tensor_transform(mat3<NumType> const& c) const;
 
-      //! Antisymmetric tensor transform: A * (*this) * A.transpose(),
-      /*! A is an antisymmetric matrix built on the vector v
+      //! Antisymmetric tensor transform: c * (*this) * c.transpose()
+      /*! c is the antisymmetric matrix
+            {{  0,  v0,  v1},
+             {-v0,   0,  v2}
+             {-v1, -v2,   0}}
        */
       sym_mat3
-      antisymmetric_tensor_transform(vec3<NumType> const& v) const;
+      antisymmetric_tensor_transform(
+        NumType const& v0,
+        NumType const& v1,
+        NumType const& v2) const;
+
+      //! Antisymmetric tensor transform: c * (*this) * c.transpose()
+      /*! c is the antisymmetric matrix
+            {{  0,    v[0],  v[1]},
+             {-v[0],   0,    v[2]}
+             {-v[1], -v[2],   0  }}
+       */
+      sym_mat3
+      antisymmetric_tensor_transform(vec3<NumType> const& v) const
+      {
+        return antisymmetric_tensor_transform(v[0], v[1], v[2]);
+      }
 
       //! Tensor transform: c.transpose() * (*this) * c
       sym_mat3
@@ -231,26 +249,26 @@ namespace scitbx {
   template <typename NumType>
   sym_mat3<NumType>
   sym_mat3<NumType>
-  ::antisymmetric_tensor_transform(vec3<NumType> const& v) const
+  ::antisymmetric_tensor_transform(
+    NumType const& v0,
+    NumType const& v1,
+    NumType const& v2) const
   {
     sym_mat3<NumType> const& t = *this;
-    NumType x = v[0];
-    NumType y = v[1];
-    NumType z = v[2];
-    NumType xx = x * x;
-    NumType yy = y * y;
-    NumType zz = z * z;
-    NumType xy = x * y;
-    NumType xz = x * z;
-    NumType yz = y * z;
+    NumType v00 = v0 * v0;
+    NumType v11 = v1 * v1;
+    NumType v22 = v2 * v2;
+    NumType v01 = v0 * v1;
+    NumType v02 = v0 * v2;
+    NumType v12 = v1 * v2;
     // The result is guaranteed to be a symmetric matrix.
     return sym_mat3<NumType>(
-      t[2]*yy - 2*t[5]*yz + t[1]*zz,
-      t[2]*xx - 2*t[4]*xz + t[0]*zz,
-      t[1]*xx - 2*t[3]*xy + t[0]*yy,
-      t[5]*xz + t[4]*yz - t[3]*zz - t[2]*xy,
-      t[5]*xy - t[4]*yy - t[1]*xz + t[3]*yz,
-      t[4]*xy + t[3]*xz - t[0]*yz - t[5]*xx);
+       t[2]*v11 + 2*t[5]*v01 + t[1]*v00,
+       t[2]*v22 - 2*t[4]*v02 + t[0]*v00,
+       t[1]*v22 + 2*t[3]*v12 + t[0]*v11,
+       t[2]*v12 + t[5]*v02 - t[4]*v01 - t[3]*v00,
+      -t[5]*v12 - t[1]*v02 - t[4]*v11 - t[3]*v01,
+      -t[5]*v22 - t[4]*v12 + t[3]*v02 + t[0]*v01);
   }
 
   // non-inline member function

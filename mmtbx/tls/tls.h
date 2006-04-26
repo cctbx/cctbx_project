@@ -132,7 +132,7 @@ public:
    //xy = x*y;
    //yz = y*z;
    //xz = x*z;
-   sym_mat3<double> ALA = L.antisymmetric_tensor_transform(r);
+   sym_mat3<double> ALA = L.antisymmetric_tensor_transform(z,-y,x);
    sym_mat3<double> ASSA = sym_mat3<double>(2.*S[3]*z - 2.*S[6]*y,
                                             2.*S[7]*x - 2.*S[1]*z,
                                             2.*S[2]*y - 2.*S[5]*x,
