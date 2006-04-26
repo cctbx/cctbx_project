@@ -79,6 +79,32 @@ namespace cctbx { namespace maptbx {
     return result;
   }
 
+  template <typename ElementType>
+  void
+  unpad_in_place(
+    af::versa<ElementType, af::flex_grid<> >& map)
+  {
+    CCTBX_ASSERT(map.accessor().nd() == 3);
+    CCTBX_ASSERT(map.accessor().is_0_based());
+    CCTBX_ASSERT(map.accessor().focus()[0] == map.accessor().all()[0]);
+    CCTBX_ASSERT(map.accessor().focus()[1] == map.accessor().all()[1]);
+    CCTBX_ASSERT(map.accessor().focus()[2] <= map.accessor().all()[2]);
+    typedef typename af::flex_grid<>::index_value_type i_v_t;
+    const i_v_t n0 = map.accessor().focus()[0];
+    const i_v_t n1 = map.accessor().focus()[1];
+    const i_v_t n2 = map.accessor().focus()[2];
+    const i_v_t d2 = map.accessor().all()[2] - n2;
+    if (d2 == 0) return;
+    ElementType* target = map.begin() + n2;
+    const ElementType* source = target + d2;
+    for(i_v_t i01=1;i01<n0*n1;i01++) {
+      for(i_v_t i2=0;i2<n2;i2++) *target++ = *source++;
+      source += d2;
+    }
+    map = af::versa<ElementType, af::flex_grid<> >(
+      map, af::flex_grid<>(n0,n1,n2));
+  }
+
 }} // namespace cctbx::maptbx
 
 #endif // CCTBX_MAPTBX_COPY_H

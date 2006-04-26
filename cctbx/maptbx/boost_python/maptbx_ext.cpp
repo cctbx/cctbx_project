@@ -73,6 +73,12 @@ namespace {
       arg_("map_unit_cell"),
       arg_("first"),
       arg_("last")));
+    def("unpad_in_place",
+      (void(*)(af::versa<float, af::flex_grid<> >&))
+        maptbx::unpad_in_place, (arg_("map")));
+    def("unpad_in_place",
+      (void(*)(af::versa<double, af::flex_grid<> >&))
+        maptbx::unpad_in_place, (arg_("map")));
 
     def("box_map_averaging",box_map_averaging);
     def("average_densities",

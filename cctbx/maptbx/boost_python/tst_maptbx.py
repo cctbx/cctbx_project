@@ -53,6 +53,36 @@ def exercise_copy():
     c = maptbx.copy(map_unit_cell=m, first=(-1,1,-2), last=(1,2,0))
     assert list(c) == [112, 113, 110, 122, 123, 120,  12,  13,  10,
                         22,  23,  20, 112, 113, 110, 122, 123, 120]
+    #
+    for n0 in xrange(4):
+      for n1 in xrange(4):
+        for n2 in xrange(4):
+          for d2 in xrange(3):
+            g = flex.grid((n0,n1,n2+d2)).set_focus((n0,n1,n2))
+            map1 = flex_type(range(1,1+g.size_1d()))
+            map1.resize(g)
+            map2 = map1.deep_copy()
+            maptbx.unpad_in_place(map=map2)
+            assert map2.all() == (n0,n1,n2)
+            assert not map2.is_padded()
+            if (n0*n1*n2 != 0):
+              for i in flex.nested_loop((n0,n1,n2)):
+                assert map2[i] == map1[i]
+    n0,n1,n2,d2 = 2,3,4,1
+    g = flex.grid((n0,n1,n2+d2)).set_focus((n0,n1,n2))
+    map1 = flex_type(range(1,1+g.size_1d()))
+    map1.resize(g)
+    map2 = map1.deep_copy()
+    maptbx.unpad_in_place(map=map2)
+    assert map2.all() == (n0,n1,n2)
+    assert not map2.is_padded()
+    assert list(map2) == [
+       1, 2, 3, 4,
+       6, 7, 8, 9,
+      11,12,13,14,
+      16,17,18,19,
+      21,22,23,24,
+      26,27,28,29]
 
 def exercise_statistics():
   for flex_type in flex_types():
