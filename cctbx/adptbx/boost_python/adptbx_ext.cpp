@@ -47,7 +47,7 @@ namespace {
   };
 
   BOOST_PYTHON_FUNCTION_OVERLOADS(
-    eigenvalue_filtering_overloads, eigenvalue_filtering, 1, 2)
+    eigenvalue_filtering_overloads, eigenvalue_filtering, 1, 3)
 
   void init_module()
   {
@@ -194,10 +194,12 @@ namespace {
       (bool(*)(sym_mat3<double> const&, double const&)) is_positive_definite);
     def("eigenvalue_filtering",
       (sym_mat3<double>(*)(
-        sym_mat3<double> const&, double const&)) eigenvalue_filtering,
-        eigenvalue_filtering_overloads((
-      arg_("u_cart"),
-      arg_("u_min"))));
+        sym_mat3<double> const&, double const&, double const&))
+          eigenvalue_filtering,
+          eigenvalue_filtering_overloads((
+            arg_("u_cart"),
+            arg_("u_min")=0,
+            arg_("u_max")=0)));
 
     eigensystem_wrappers::wrap();
 

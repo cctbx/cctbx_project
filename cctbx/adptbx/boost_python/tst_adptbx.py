@@ -104,10 +104,14 @@ def exercise_interface():
   uf = adptbx.eigenvalue_filtering(u_cart=u, u_min=0)
   assert approx_equal(uf, (3.0810418, 4.7950710, 9.3400030,
                            1.7461615, 1.1659954, 6.4800706))
+  uf = adptbx.eigenvalue_filtering(u_cart=u, u_min=0, u_max=3)
+  assert approx_equal(uf, (2.7430890, 1.0378360, 2.1559895,
+                           0.6193215, -0.3921632, 1.2846854))
+  uf = adptbx.eigenvalue_filtering(u_cart=u, u_min=0, u_max=3)
   assert approx_equal(scitbx.math.eigensystem.real_symmetric(u).values(),
                       (14.2792015, 2.9369144, -1.2161159))
   assert approx_equal(scitbx.math.eigensystem.real_symmetric(uf).values(),
-                      (14.2792015, 2.9369144, 0))
+                      (3, 2.9369144, 0))
   uf = adptbx.eigenvalue_filtering(up)
   assert approx_equal(uf, up)
 
