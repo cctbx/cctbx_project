@@ -471,6 +471,14 @@ def exercise_select():
   assert list(a.set_selected(flex.bool([False, True, False]), d)) == [11,22,13]
   assert list(a.set_selected(flex.bool([True, False, False]), d)) == [21,22,13]
   #
+  a = flex.double([1,2,3])
+  d = flex.double([11,12,13])
+  s = flex.size_t([0,2])
+  assert list(a.copy_selected(s, d)) == [11,2,13]
+  a = flex.double([1,2,3])
+  s = stl.vector.unsigned([1,2])
+  assert list(a.copy_selected(s, d)) == [1,12,13]
+  #
   a = flex.double([1,-2,3])
   i = flex.size_t([0,2])
   v = flex.double([6,-4])
