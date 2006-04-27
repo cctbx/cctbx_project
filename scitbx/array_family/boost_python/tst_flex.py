@@ -464,6 +464,13 @@ def exercise_select():
     b[i] *= 10
     assert list(a.set_selected(a==v, v*10)) == list(b)
   #
+  a = flex.double([1,2,3])
+  d = flex.double([11,12,13])
+  assert list(a.set_selected(flex.bool([True, True, True]), d)) == [11,12,13]
+  d = flex.double([21,22,23])
+  assert list(a.set_selected(flex.bool([False, True, False]), d)) == [11,22,13]
+  assert list(a.set_selected(flex.bool([True, False, False]), d)) == [21,22,13]
+  #
   a = flex.double([1,-2,3])
   i = flex.size_t([0,2])
   v = flex.double([6,-4])

@@ -426,15 +426,28 @@ namespace scitbx { namespace af { namespace boost_python {
       boost::python::extract<af::ref<e_t> > a_proxy(flex_object);
       af::ref<e_t> a = a_proxy();
       SCITBX_ASSERT(a.size() == flags.size());
-      std::size_t i_new_value = 0;
-      for(std::size_t i=0;i<flags.size();i++) {
-        if (flags[i]) {
-          SCITBX_ASSERT(i_new_value < new_values.size());
-          a[i] = new_values[i_new_value];
-          i_new_value++;
+      if (new_values.size() == flags.size()) {
+        e_t* ai = a.begin();
+        const bool* fi = flags.begin();
+        const e_t* ni = new_values.begin();
+        const e_t* ne = new_values.end();
+        while (ni != ne) {
+          if (*fi++) *ai = *ni;
+          ai++;
+          ni++;
         }
       }
-      SCITBX_ASSERT(i_new_value == new_values.size());
+      else {
+        std::size_t i_new_value = 0;
+        for(std::size_t i=0;i<flags.size();i++) {
+          if (flags[i]) {
+            SCITBX_ASSERT(i_new_value < new_values.size());
+            a[i] = new_values[i_new_value];
+            i_new_value++;
+          }
+        }
+        SCITBX_ASSERT(i_new_value == new_values.size());
+      }
       return flex_object;
     }
 
