@@ -499,6 +499,25 @@ namespace scitbx { namespace af { namespace boost_python {
       return flex_object;
     }
 
+    template <typename UnsignedType>
+    static boost::python::object
+    copy_selected_unsigned_a(
+      boost::python::object const& flex_object,
+      af::const_ref<UnsignedType> const& indices,
+      af::const_ref<e_t> const& new_values)
+    {
+      boost::python::extract<af::ref<e_t> > a_proxy(flex_object);
+      af::ref<e_t> a = a_proxy();
+      SCITBX_ASSERT(a.size() == new_values.size());
+      for(std::size_t i=0;i<indices.size();i++) {
+        SCITBX_ASSERT(indices[i] < a.size());
+        UnsignedType ii = indices[i];
+        a[ii] = new_values[ii];
+      }
+      return flex_object;
+    }
+
+
     static flex_bool
     invert_a(flex_bool const& a) { return !a; }
 
@@ -781,6 +800,11 @@ namespace scitbx { namespace af { namespace boost_python {
             object const&,
             af::const_ref<std::size_t> const&,
             e_t const&)) set_selected_unsigned_s)
+        .def("copy_selected",
+          (object(*)(
+            object const&,
+            af::const_ref<std::size_t> const&,
+            af::const_ref<e_t> const&)) copy_selected_unsigned_a)
       ;
       if (   boost::python::type_id<af::const_ref<std::size_t> >()
           != boost::python::type_id<af::const_ref<unsigned> >()) {
@@ -795,6 +819,11 @@ namespace scitbx { namespace af { namespace boost_python {
               object const&,
               af::const_ref<unsigned> const&,
               e_t const&)) set_selected_unsigned_s)
+          .def("copy_selected",
+            (object(*)(
+              object const&,
+              af::const_ref<unsigned> const&,
+              af::const_ref<e_t> const&)) copy_selected_unsigned_a)
         ;
       }
       return result;
