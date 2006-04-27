@@ -11,7 +11,7 @@ from libtbx.utils import Sorry
 def euler(phi, psi, the, convention):
   if(convention == "zyz"):
      return rb_mat_euler(the=the, psi=psi, phi=phi)
-  elif(convention == "zyx"):
+  elif(convention == "xyz"):
      return rb_mat(the=the, psi=psi, phi=phi)
   else:
      raise Sorry("\nWrong rotation convention\n")
@@ -296,8 +296,6 @@ class manager(object):
        r_initial = []
        for item in selections:
            r_initial.append(flex.double(3,0))
-           #r_initial.append(flex.double([0,90,0]))
-
     if(t_initial is None):
        t_initial = []
        for item in selections:
@@ -312,12 +310,6 @@ class manager(object):
                   [str("%.3f"%i) for i in d_mins]
     step_counter = 0
     for res in d_mins:
-        #if(step_counter > 0):
-        #   for item in selections:
-        #       r_initial = []
-        #       t_initial = []
-        #       r_initial.append(flex.double(3,0))
-        #       t_initial.append(flex.double(3,0))
         print >> log
         xrs = fmodel_copy.xray_structure.deep_copy_scatterers()
         fmodel_copy = fmodel.resolution_filter(d_min = res)
@@ -325,14 +317,6 @@ class manager(object):
                                           update_f_calc  = True)
         rworks = flex.double()
         for macro_cycle in range(1, min(int(res),4)+1):
-
-            #if(macro_cycle > 1):
-            #   for item in selections:
-            #       r_initial = []
-            #       t_initial = []
-            #       r_initial.append(flex.double(3,0))
-            #       t_initial.append(flex.double(3,0))
-            #
             if((macro_cycle == 1 or macro_cycle == 3) and bss is not None and
                bulk_solvent_and_scale):
                print_statistics.make_sub_header(
@@ -358,14 +342,10 @@ class manager(object):
             for i in xrange(len(selections)):
                 self.total_rotation[i] += flex.double(minimized.r_min[i])
                 self.total_translation[i] += flex.double(minimized.t_min[i])
-                if(self.euler_angle_convention == "zyz"):
-                   rot_obj = rb_mat_euler(phi = minimized.r_min[i][0],
-                                          psi = minimized.r_min[i][1],
-                                          the = minimized.r_min[i][2])
-                else:
-                   rot_obj = rb_mat(phi = minimized.r_min[i][0],
-                                    psi = minimized.r_min[i][1],
-                                    the = minimized.r_min[i][2])
+                rot_obj = euler(phi        = minimized.r_min[i][0],
+                                psi        = minimized.r_min[i][1],
+                                the        = minimized.r_min[i][2],
+                                convention = self.euler_angle_convention)
                 rotation_matrices.append(rot_obj.rot_mat())
                 translation_vectors.append(minimized.t_min[i])
             new_xrs = apply_transformation(
@@ -608,8 +588,6 @@ class rigid_body_minimizer(object):
     self.r_min = rn
     self.t_min = tn
 
-
-
   def compute_functional_and_gradients(self):
     self.unpack_x()
     #self.dump()
@@ -618,14 +596,10 @@ class rigid_body_minimizer(object):
     translation_vectors = []
     rot_objs = []
     for i in xrange(self.n_groups):
-        if(self.euler_angle_convention == "zyz"):
-           rot_obj = rb_mat_euler(phi = self.r_min[i][0],
-                                  psi = self.r_min[i][1],
-                                  the = self.r_min[i][2])
-        else:
-           rot_obj = rb_mat(phi = self.r_min[i][0],
-                            psi = self.r_min[i][1],
-                            the = self.r_min[i][2])
+        rot_obj = euler(phi        = self.r_min[i][0],
+                        psi        = self.r_min[i][1],
+                        the        = self.r_min[i][2],
+                        convention = self.euler_angle_convention)
         rotation_matrices.append(rot_obj.rot_mat())
         translation_vectors.append(self.t_min[i])
         rot_objs.append(rot_obj)
