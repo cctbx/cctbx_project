@@ -287,7 +287,7 @@ def finite_differences_test(sf_algorithm = "direct"):
                                  sf_algorithm      = sf_algorithm)
   fmodel.show_essential()
 
-  for convention in ["zyz","zyx"]:
+  for convention in ["zyz","xyz"]:
       rot_obj = mmtbx.refinement.rigid_body.euler(
                             phi = 0, psi = 0, the = 0, convention = convention)
       dim = fmodel.xray_structure.scatterers().size()

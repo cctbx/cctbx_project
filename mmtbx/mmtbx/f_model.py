@@ -23,6 +23,15 @@ from stdlib import math
 from cctbx import xray
 from cctbx import adptbx
 
+target_names = (
+      "ls_wunit_k1","ls_wunit_k2","ls_wunit_kunit","ls_wunit_k1_fixed",
+      "ls_wunit_k1ask3_fixed",
+      "ls_wexp_k1" ,"ls_wexp_k2" ,"ls_wexp_kunit",
+      "ls_wff_k1"  ,"ls_wff_k2"  ,"ls_wff_kunit","ls_wff_k1_fixed",
+      "ls_wff_k1ask3_fixed",
+      "lsm_k1"     ,"lsm_k2"    ,"lsm_kunit","lsm_k1_fixed","lsm_k1ask3_fixed",
+      "ml","mlhl")
+
 class manager(object):
   def __init__(self, f_obs               = None,
                      r_free_flags        = None,
@@ -61,23 +70,25 @@ class manager(object):
     if(self.abcd is not None):
        assert self.abcd.indices().all_eq(self.f_obs.indices()) == 1
     assert self.sf_algorithm in ("fft", "direct")
-    self.target_names = (
-      "ls_wunit_k1","ls_wunit_k2","ls_wunit_kunit","ls_wunit_k1_fixed",
-      "ls_wunit_k1ask3_fixed",
-      "ls_wexp_k1" ,"ls_wexp_k2" ,"ls_wexp_kunit",
-      "ls_wff_k1"  ,"ls_wff_k2"  ,"ls_wff_kunit","ls_wff_k1_fixed",
-      "ls_wff_k1ask3_fixed",
-      "lsm_k1"     ,"lsm_k2"    ,"lsm_kunit","lsm_k1_fixed","lsm_k1ask3_fixed",
-      "ml","mlhl")
-    if(self.target_name is not None):
-       assert self.target_name in self.target_names
-       self.setup_target_functors()
-    if(self.f_mask is None):
-       self.f_mask = self.f_obs.array(data = zero)
     self.f_ordered_solvent = self.f_obs.array(data = zero)
     self.f_ordered_solvent_dist = self.f_obs.array(data = zero)
     self.n_ordered_water = 0.0
     self.b_ordered_water = 0.0
+    if(self.f_mask is None):
+       self.f_mask = self.f_obs.array(data = zero)
+    self.target_names = target_names
+    #self.target_names = (
+    #  "ls_wunit_k1","ls_wunit_k2","ls_wunit_kunit","ls_wunit_k1_fixed",
+    #  "ls_wunit_k1ask3_fixed",
+    #  "ls_wexp_k1" ,"ls_wexp_k2" ,"ls_wexp_kunit",
+    #  "ls_wff_k1"  ,"ls_wff_k2"  ,"ls_wff_kunit","ls_wff_k1_fixed",
+    #  "ls_wff_k1ask3_fixed",
+    #  "lsm_k1"     ,"lsm_k2"    ,"lsm_kunit","lsm_k1_fixed","lsm_k1ask3_fixed",
+    #  "ml","mlhl")
+    if(self.target_name is not None):
+       assert self.target_name in self.target_names
+       self.setup_target_functors()
+
 
   def deep_copy(self):
     if(self.abcd is not None):
@@ -1259,15 +1270,14 @@ class manager(object):
           "  ksol= %5.2f  bsol= %6.2f |" % (r_work, scale_work, k_sol,b_sol)
     print >> out, "| r-factor (free) = %6.4f  scale (free) = %7.4f" % (
             r_test, scale_test) +p*28+"|"
-    print >> out, "| anisotropic scale matrix (Cartesian basis): " \
-        + "| xray targets:"+17*p+"|"
-    print >> out, "|  B11= %8.3f B12= %8.3f B13= %8.3f  |" % \
-      (u0,u3,u4), "target name = %11s"%self.target_name+5*p+"|"
-    print >> out, "|"+16*p+"B22= %8.3f B23= %8.3f  | " % (u1,u5) \
-        + "target (work) = %13s"%target_work+" |"
-    print >> out, "|"+30*p+"B33= %8.3f  | "% (u2)+"target (free) = %13s"% \
-          target_test+" |"
-    print >> out, "| (B11+B22+B33)/3 = %8.3f"%u_iso+18*p+"|"+31*p+"|"
+    print >> out, "| anisotropic scale matrix (Cartesian basis):" \
+        + "|xray targets:"+19*p+"|"
+    print >> out, "|  B11= %8.3f B12= %8.3f B13= %8.3f |target name=%19s"%(u0,u3,u4,self.target_name),"|"
+    print >> out, "|"+16*p+"B22= %8.3f B23= %8.3f |" % (u1,u5) \
+        + "target (work) = %13s"%target_work+"   |"
+    print >> out, "|"+30*p+"B33= %8.3f |"% (u2)+"target (free) = %13s"% \
+          target_test+"   |"
+    print >> out, "| (B11+B22+B33)/3 = %8.3f"%u_iso+17*p+"|"+32*p+"|"
     print >> out, "|"+"-"*77+"|"
     #if (not_approx_equal(self.b_cart,
     #                     self.f_obs.average_b_cart(self.b_cart))):
