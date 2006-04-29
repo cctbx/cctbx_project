@@ -39,14 +39,14 @@ namespace scitbx { namespace af { namespace boost_python {
       inp >> a_capacity;
       shared_plain<ElementType> b = a.as_base_array();
       b.reserve(a_capacity);
-      ElementType val;
+      ElementType val(flex_default_element<ElementType>::get());
       for(std::size_t i=0;i<a_capacity;i++) {
         inp >> val;
         b.push_back(val);
       }
       inp.assert_end();
       SCITBX_ASSERT(b.size() == a_accessor.size_1d());
-      a.resize(a_accessor);
+      a.resize(a_accessor, flex_default_element<ElementType>::get());
     }
   };
 
