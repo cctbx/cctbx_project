@@ -48,7 +48,7 @@ namespace scitbx { namespace af { namespace boost_python {
     {}
 
     flex_wrapper(PyObject*)
-      : f_t(flex_grid<>(0))
+      : f_t(flex_grid<>(0), flex_default_element<ElementType>::get())
     {}
 
     flex_wrapper(PyObject*, flex_grid<> const& fg)
@@ -234,7 +234,8 @@ namespace scitbx { namespace af { namespace boost_python {
     {
       base_array_type b = flex_as_base_array(a);
       b.assign(sz, x);
-      a.resize(flex_grid<>(b.size()));
+      a.resize(
+        flex_grid<>(b.size()), flex_default_element<ElementType>::get());
     }
 
     static void
@@ -242,7 +243,8 @@ namespace scitbx { namespace af { namespace boost_python {
     {
       base_array_type b = flex_as_base_array(a);
       b.push_back(x);
-      a.resize(flex_grid<>(b.size()));
+      a.resize(
+        flex_grid<>(b.size()), flex_default_element<ElementType>::get());
     }
 
     static void
@@ -251,7 +253,8 @@ namespace scitbx { namespace af { namespace boost_python {
       base_array_type b = flex_as_base_array(a);
       if (b.size() == 0) scitbx::boost_python::raise_index_error();
       b.pop_back();
-      a.resize(flex_grid<>(b.size()));
+      a.resize(
+        flex_grid<>(b.size()), flex_default_element<ElementType>::get());
     }
 
     static void
@@ -260,7 +263,8 @@ namespace scitbx { namespace af { namespace boost_python {
       base_array_type b = flex_as_base_array(a);
       if (i >= b.size()) scitbx::boost_python::raise_index_error();
       b.insert(&b[i], x);
-      a.resize(flex_grid<>(b.size()));
+      a.resize(
+        flex_grid<>(b.size()), flex_default_element<ElementType>::get());
     }
 
     static void
@@ -269,7 +273,8 @@ namespace scitbx { namespace af { namespace boost_python {
       base_array_type b = flex_as_base_array(a);
       if (i >= b.size()) scitbx::boost_python::raise_index_error();
       b.insert(&b[i], n, x);
-      a.resize(flex_grid<>(b.size()));
+      a.resize(
+        flex_grid<>(b.size()), flex_default_element<ElementType>::get());
     }
 
     static void
@@ -278,7 +283,8 @@ namespace scitbx { namespace af { namespace boost_python {
       base_array_type b = flex_as_base_array(a);
       if (i >= b.size()) scitbx::boost_python::raise_index_error();
       b.erase(&b[i]);
-      a.resize(flex_grid<>(b.size()));
+      a.resize(
+        flex_grid<>(b.size()), flex_default_element<ElementType>::get());
     }
 
     static void
@@ -288,15 +294,17 @@ namespace scitbx { namespace af { namespace boost_python {
       if (i >= b.size()) scitbx::boost_python::raise_index_error();
       if (j >= b.size()) scitbx::boost_python::raise_index_error();
       b.erase(&b[i], &b[j]);
-      a.resize(flex_grid<>(b.size()));
+      a.resize(
+        flex_grid<>(b.size()), flex_default_element<ElementType>::get());
     }
 
     static void
     resize_1d_1(f_t& a, std::size_t sz)
     {
       base_array_type b = flex_as_base_array(a);
-      b.resize(sz);
-      a.resize(flex_grid<>(b.size()));
+      b.resize(sz, flex_default_element<ElementType>::get());
+      a.resize(
+        flex_grid<>(b.size()), flex_default_element<ElementType>::get());
     }
 
     static void
@@ -304,13 +312,14 @@ namespace scitbx { namespace af { namespace boost_python {
     {
       base_array_type b = flex_as_base_array(a);
       b.resize(sz, x);
-      a.resize(flex_grid<>(b.size()));
+      a.resize(
+        flex_grid<>(b.size()), flex_default_element<ElementType>::get());
     }
 
     static void
     resize_flex_grid_1(f_t& a, flex_grid<> const& grid)
     {
-      a.resize(grid);
+      a.resize(grid, flex_default_element<ElementType>::get());
     }
 
     static void
@@ -323,7 +332,7 @@ namespace scitbx { namespace af { namespace boost_python {
     reshape(f_t& a, flex_grid<> const& grid)
     {
       SCITBX_ASSERT(grid.size_1d() == a.size());
-      a.resize(grid);
+      a.resize(grid, flex_default_element<ElementType>::get());
     }
 
     static void
@@ -331,7 +340,8 @@ namespace scitbx { namespace af { namespace boost_python {
     {
       base_array_type b = flex_as_base_array(a);
       b.clear();
-      a.resize(flex_grid<>(b.size()));
+      a.resize(
+        flex_grid<>(b.size()), flex_default_element<ElementType>::get());
     }
 
     static void
@@ -340,7 +350,8 @@ namespace scitbx { namespace af { namespace boost_python {
       base_array_type b = flex_as_base_array(a);
       assert_0_based_1d(other.accessor());
       b.insert(b.end(), other.begin(), other.end());
-      a.resize(flex_grid<>(b.size()));
+      a.resize(
+        flex_grid<>(b.size()), flex_default_element<ElementType>::get());
     }
 
     static shared<e_t>
