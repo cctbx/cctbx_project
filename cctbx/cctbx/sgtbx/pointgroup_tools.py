@@ -213,15 +213,15 @@ class sub_super_point_group_relations(object):
       print >> out,   "             Used symops:"
       for symop in set:
         print >> out, "             (%s)  "%( symop.r().as_hkl() )
-      print
+      print >> out
       print >> out,   "             Left over symops:"
       for symop in leftover:
         if symop is not None:
           print >> out, "             (%s)  "%( symop.r().as_hkl() )
         else:
           print >> out, "             None"
-      print
-      print
+      print >> out
+      print >> out
 
 
 
