@@ -293,6 +293,17 @@ namespace cctbx { namespace xray { namespace {
 
 namespace scitbx { namespace af { namespace boost_python {
 
+  template <>
+  struct flex_default_element<cctbx::xray::scatterer<> >
+  {
+    static cctbx::xray::scatterer<>
+    get()
+    {
+      return cctbx::xray::scatterer<>(
+        "", cctbx::fractional<>(0,0,0), 0, 0, "", 0, 0);
+    }
+  };
+
   void wrap_flex_xray_scatterer()
   {
     using namespace cctbx;
