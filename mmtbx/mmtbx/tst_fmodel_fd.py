@@ -78,7 +78,7 @@ def exercise(space_group_info,
       xray_structure = xray_structure.shake_sites(mean_error = 0.1)
       for target in mmtbx.f_model.target_names:
           #XXX Must find out why ml-tolerance is so BIG.
-          if(target == "ml"): tolerance = 0.9
+          if(target == "ml"): tolerance = 1.5
           else: tolerance = 1.e-9
           if(target != "mlhl"):
              print "  ",target
