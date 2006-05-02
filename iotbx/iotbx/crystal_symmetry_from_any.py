@@ -48,7 +48,10 @@ def extract_from(file_name):
      symmetry-containing file-types and extract the symmetry information.
      If all of these fail, it attempts to interpret the input string
      according to the function cyrstal_symmetry_from_any.from_string.
+     If given a crystal.symmetry it returns the crystal.symmetry.
   '''
+  if type(file_name) == type(crystal.symmetry()):
+    return file_name
   for fmt in (from_scalepack_hkl,
               from_xds_hkl,
               from_dtrek_ref,
