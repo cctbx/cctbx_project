@@ -109,7 +109,7 @@ def compare_analytical_and_finite(
   print >> out, "curvs_ana:", list(curvs_ana)
   compare_derivatives(curvs_ana, curvs_fin, eps)
   print >> out
-  if (not gradients_should_be_zero):
+  if (gradients_should_be_zero):
     return flex.max(flex.abs(grads_fin))
 
 def exercise(
