@@ -70,7 +70,7 @@ def run():
 
   #
   # initialization of site symmetry constraints
-  # (for sites in special positions)
+  # (for sites on special positions)
   #
   unit_cell = uctbx.unit_cell((12,12,15,90,90,120))
   space_group = sgtbx.space_group_info("P 6").group()

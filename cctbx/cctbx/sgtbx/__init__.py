@@ -273,7 +273,7 @@ class _site_symmetry_table(boost.python.injector, ext.site_symmetry_table):
     assert [sites_frac_original, sites_cart_original].count(None) == 1
     assert [sites_frac_exact, sites_cart_exact].count(None) == 1
     if (out is None): out = sys.stdout
-    print >> out, prefix + "Number of sites in special positions:", \
+    print >> out, prefix + "Number of sites at special positions:", \
       self.special_position_indices().size()
     if (self.special_position_indices().size() > 0):
       label_len = 5

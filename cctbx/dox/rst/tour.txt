@@ -36,7 +36,7 @@ for sand. As an example here is the cctbx way of playing in the sandbox::
 Running this script with Python_ produces the output::
 
   Number of scatterers: 2
-  At special positions: 2
+  It special positions: 2
   Unit cell: (5.01, 5.01, 5.47, 90, 90, 120)
   Space group: P 62 2 2 (No. 180)
   Label  M  Coordinates            Occ  Uiso or Ustar

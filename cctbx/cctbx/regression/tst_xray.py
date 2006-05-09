@@ -38,7 +38,7 @@ def exercise_structure():
     out=s,
     prefix="%^")
   assert s.getvalue() == """\
-%^Number of sites in special positions: 2
+%^Number of sites at special positions: 2
 %^  Minimum distance between symmetrically equivalent sites: 0.5
 %^  Label   Mult   Shift    Fractional coordinates
 %^  Si1       3    0.182 (  0.5000   0.5000   0.3000) original
