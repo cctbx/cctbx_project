@@ -101,11 +101,11 @@ namespace cctbx { namespace sgtbx {
         return table_const_ref_[indices_const_ref_[i_seq]];
       }
 
-      //! Number of sites in special positions.
+      //! Number of sites on special positions.
       std::size_t
       n_special_positions() const { return special_position_indices_.size(); }
 
-      //! Indices of sites in special positions.
+      //! Indices of sites on special positions.
       /*! The indices refer to the order in which the site symmetries
           were passed to process().
        */

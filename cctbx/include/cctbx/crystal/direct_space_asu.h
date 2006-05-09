@@ -767,7 +767,7 @@ namespace direct_space_asu {
       /*! \brief True if the interaction is between sites in general
           positions as passed to process().
        */
-      /*! For sites in special positions the return value is always false.
+      /*! For sites on special positions the return value is always false.
        */
       bool
       is_simple_interaction(asu_mapping_index_pair const& pair) const
