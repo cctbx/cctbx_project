@@ -224,6 +224,8 @@ def collect_arrays(
           miller_array.show_comprehensive_summary(f=report_out)
         else:
           miller_array.show_summary(f=report_out)
+        if (verbose > 2):
+          miller_array.show_array(f=report_out)
         print >> report_out
     if (not discard_arrays):
       result.extend(miller_arrays)
@@ -239,6 +241,11 @@ def run(args):
       default=False,
       dest="weak_symmetry",
       help="symmetry on command line is weaker than symmetry found in files")
+    .option(None, "--show_data",
+      action="store_true",
+      default=False,
+      dest="show_data",
+      help="show Miller indices and data of all arrays")
     .option(None, "--pickle",
       action="store",
       type="string",
@@ -249,12 +256,16 @@ def run(args):
   if (len(command_line.args) == 0):
     command_line.parser.show_help()
     return
+  if (command_line.options.show_data):
+    verbose = 3
+  else:
+    verbose = 2
   all_miller_arrays = collect_arrays(
     file_names=command_line.args,
     crystal_symmetry=command_line.symmetry,
     force_symmetry=not command_line.options.weak_symmetry,
     discard_arrays=command_line.options.pickle is None,
-    verbose=2,
+    verbose=verbose,
     report_out=sys.stdout)
   if (all_miller_arrays is not None and len(all_miller_arrays) > 0):
     if (len(all_miller_arrays) == 1):
