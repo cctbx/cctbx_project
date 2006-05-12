@@ -9,6 +9,7 @@ from mmtbx import scaling
 from libtbx.test_utils import approx_equal
 from mmtbx.scaling import absolute_scaling
 from mmtbx.scaling import twin_analyses as t_a
+import mmtbx.scaling
 
 from scitbx.python_utils import random_transform
 import random
@@ -18,6 +19,20 @@ from cStringIO import StringIO
 
 random.seed(0)
 flex.set_random_seed(0)
+
+import scitbx.math as sm
+
+
+##testing quick erf and quick eio
+def test_luts():
+  qerf = mmtbx.scaling.very_quick_erf(0.001)
+  qeio = mmtbx.scaling.quick_ei0(5000)
+  for i in xrange(-1000,1000):
+    x=i/100.0
+    assert approx_equal( qerf.erf(x), sm.erf(x), eps=1e-5 )
+    if (x>=0):
+      assert approx_equal( qeio.ei0(x), math.exp(-x)*sm.bessel_i0(x) , eps=1e-5 )
+
 
 
 ## Testing Wilson parameters
@@ -893,6 +908,9 @@ def twin_the_data_and_analyse(twin_operator,twin_fraction=0.2):
     twin_anal_object.twin_summary.twin_results.britton_alpha[index],
     twin_fraction,eps=0.1)
 
+  assert approx_equal(twin_anal_object.twin_law_dependent_analyses[index].ml_murray_rust.estimated_alpha,
+                      twin_fraction, eps=0.1)
+
   ## Untwinned data standards
   if twin_fraction==0:
     ## L-test
@@ -972,8 +990,27 @@ def test_kernel_based_normalisation():
   z_values = flex.mean(z_values)
   assert approx_equal(1.0,z_values,eps=0.05)
 
+def test_ml_murray_rust():
+  miller_array = random_data(35.0, d_min=4.5 )
+  ml_mr_object = scaling.ml_murray_rust(
+    miller_array.data(),
+    miller_array.data(),
+    miller_array.indices(),
+    miller_array.space_group(),
+    miller_array.anomalous_flag(),
+    (1,0,0,0,1,0,0,0,1),
+    6 )
+
+  for ii in xrange(5,30):
+    for jj in xrange(5,30):
+       p1 = ml_mr_object.p_raw(ii/3.0, jj/3.0, 0.25)
+       p2 = ml_mr_object.num_int(ii/3.0, 1e-13, jj/3.0, 1e-13, -5, 5,0.25, 20)
+       assert approx_equal( p1, p2, eps=0.01)
+
 
 if (__name__ == "__main__"):
+  test_luts()
+  test_ml_murray_rust()
   test_likelihood_iso()
   test_gradients_iso()
   test_gamma_prot()
@@ -988,7 +1025,7 @@ if (__name__ == "__main__"):
   scaling_tester()
   twin_the_data_and_analyse('h+k,-k,-l',0.00)
   twin_the_data_and_analyse('h+k,-k,-l',0.10)
-  twin_the_data_and_analyse('h+k,-k,-l',0.10)
+  twin_the_data_and_analyse('h+k,-k,-l',0.20)
   twin_the_data_and_analyse('h+k,-k,-l',0.30)
   twin_the_data_and_analyse('h+k,-k,-l',0.50)
   test_scattering_info()
