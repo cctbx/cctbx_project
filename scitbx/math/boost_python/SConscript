@@ -18,6 +18,7 @@ env.SharedLibrary(
     "slatec.cpp",
     "line_search.cpp",
     "r3_rotation.cpp",
-    "resample.cpp"
+    "resample.cpp",
+    "quadrature.cpp"
     ]
 )
