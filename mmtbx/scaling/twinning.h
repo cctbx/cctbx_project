@@ -12,12 +12,169 @@
 #include <cctbx/sgtbx/space_group_type.h>
 #include <scitbx/array_family/sort.h>
 #include <scitbx/random.h>
+#include <scitbx/math/erf.h>
+#include <scitbx/math/bessel.h>
+#include <scitbx/math/quadrature.h>
 #include <map>
 #include <vector>
 
 
 namespace mmtbx { namespace scaling {
 namespace twinning {
+
+
+  // These two lookup tables might be moved to the scitbx actually ...
+  template<typename FloatType>
+  class very_quick_erf{  // This lookup table might be less accurate, but is 40 times faster than the one in scitbx::math
+  public:
+    very_quick_erf(FloatType const& step_size)
+    {
+      FloatType x;
+      high_lim_=5.0; // hard wired high limit
+      x_step_ = step_size;
+      one_over_x_step_ = 1.0/step_size;
+      x=0;
+      n_=0;
+      while (x<high_lim_){
+        erf_table_.push_back( scitbx::math::erf(x) );
+        x = x+step_size;
+        n_++;
+      }
+    }
+
+    FloatType erf( FloatType const& x )
+    {
+      FloatType ax,sign=1.0;
+      if (x<0){
+        sign=-1.0;
+        ax = sign*x;
+      } else{
+        ax = x;
+      }
+      if (ax < high_lim_){
+        int x_bin;
+        x_bin = std::floor(ax*one_over_x_step_+0.5);
+        return( sign*erf_table_[x_bin] );
+      } else {
+        return( sign );
+      }
+    }
+
+    void tst(long const &n)
+    {
+      FloatType x;
+      std::cout << "Normal" << std::endl;
+      std::cout << std::time(0) << std::endl;
+      for (int i=0;i<n;i++){
+        x = i/double(n/10.0);
+        scitbx::math::erf(x);
+      }
+      std::cout << std::time(0) << std::endl;
+      for (int i=0;i<n;i++){
+        x = i/double(n/10.0);
+        erf(x);
+      }
+      std::cout << std::time(0) << std::endl;
+    }
+
+  protected:
+    scitbx::af::shared<FloatType> erf_table_;
+    int n_;
+    FloatType x_step_;
+    FloatType one_over_x_step_;
+    FloatType high_lim_;
+
+  };
+
+
+  template<typename FloatType>
+  class quick_ei0{
+  public:
+    quick_ei0(int const& n_points)
+    {
+      SCITBX_ASSERT( n_points> 50 ); // we need at least 50 points i think, although 5000 is more realistic.
+      n_ = n_points;                 // a factor 5 in timings is gained over the full computation
+      FloatType t;
+      t_step_ = 1.0/FloatType(n_);
+      for (int ii=0;ii<n_-1;ii++){
+        t = ii*t_step_;
+        t_table_.push_back( t );
+        ei0_table_.push_back( std::exp(-t/(1-t) )*
+                              scitbx::math::bessel::i0( t/(1-t) )  );
+      }
+      t_table_.push_back(1.0);
+      ei0_table_.push_back(0.0);
+    }
+
+    FloatType ei0( FloatType const& x )
+    {
+      FloatType t,f0,f1,t0,t1,sign=1.0;
+      t = std::fabs(x)/( 1.0+std::fabs(x) );
+      int t_bin_low, t_bin_high;
+      t_bin_low = int( std::floor( t*n_ ) );
+      t_bin_high = t_bin_low+1;
+      SCITBX_ASSERT( t_bin_low>= 0);
+      f0 = ei0_table_[ t_bin_low ];
+      f1 = ei0_table_[ t_bin_high ];
+      t0 = t_table_[t_bin_low];
+      t1 = t_table_[t_bin_high];
+      // linear interpolation
+      FloatType alpha = (t-t0)*n_;///(t1-t0);
+      FloatType result = f0*(1-alpha)+alpha*f1;
+      return( result );
+    }
+
+    void tst(long const &n)
+    {
+      FloatType x;
+      std::cout << "Normal" << std::endl;
+      std::cout << std::time(0) << std::endl;
+      for (int i=0;i<n;i++){
+        x = i/double(n/10.0);
+        std::exp(-x)*scitbx::math::bessel::i0(x);
+      }
+      std::cout << std::time(0) << std::endl;
+      for (int i=0;i<n;i++){
+        x = i/double(n/10.0);
+        ei0(x);
+      }
+      std::cout << std::time(0) << std::endl;
+    }
+
+  protected:
+    scitbx::af::shared<FloatType> t_table_;
+    scitbx::af::shared<FloatType> ei0_table_;
+    int n_;
+    FloatType t_step_;
+    FloatType one_over_t_step;
+
+  };
+
+
+
+
+
+
+  template<typename FloatType>
+  inline cctbx::miller::index<> twin_mate( cctbx::miller::index<> hkl,
+                                           scitbx::mat3<FloatType> twin_law )
+  {
+          int ht,kt,lt;
+          ht = scitbx::math::iround(twin_law[0]*hkl[0] +
+                                    twin_law[3]*hkl[1] +
+                                    twin_law[6]*hkl[2]);
+
+          kt = scitbx::math::iround(twin_law[1]*hkl[0] +
+                                    twin_law[4]*hkl[1] +
+                                    twin_law[7]*hkl[2]);
+
+          lt = scitbx::math::iround(twin_law[2]*hkl[0] +
+                                    twin_law[5]*hkl[1] +
+                                    twin_law[8]*hkl[2]);
+
+          cctbx::miller::index<> hkl_twin(ht,kt,lt);
+          return( hkl_twin );
+  }
 
 
   template <typename FloatType=double>
@@ -734,14 +891,430 @@ namespace twinning {
     FloatType fitted_alpha_;
     FloatType mean_h_;
     FloatType mean_h2_;
+  };
+
+
+
+
+  /* This is an implementation using Results from Randy Rewads Notes.
+   * This provides basic routines needed to compute a likelihood for a twin fraction
+   * A numerical integration is accried out. In limited tests, aboput 16 points gave resonable results
+   * Note that th jhumber of points used is always twice what one specifies.
+   */
+  template < typename FloatType >
+  class ml_murray_rust
+  {
+  public:
+    // input normalized structure factors.
+    ml_murray_rust( scitbx::af::const_ref<FloatType> const& z,
+                    scitbx::af::const_ref<FloatType> const& sig_z,
+                    scitbx::af::const_ref< cctbx::miller::index<> > const& hkl,
+                    cctbx::sgtbx::space_group const& space_group,
+                    bool const& anomalous_flag,
+                    scitbx::mat3<FloatType> const& twin_law,
+                    long const& n_hermite):
+    qerf_(0.001), // an erf LUT
+    n_hermite_(n_hermite) // gauss hermite related stuff
+    {
+      SCITBX_ASSERT( z.size() == sig_z.size() );
+      SCITBX_ASSERT( z.size() == hkl.size() );
+      cctbx::miller::index<> tmp_index;
+      cctbx::miller::lookup_utils::lookup_tensor<FloatType>
+        tmp_lut(hkl, space_group, anomalous_flag);
+
+      for (std::size_t ii=0;ii<z.size();ii++){
+        tmp_index = twin_mate( hkl[ii], twin_law );
+        twin_mate_index_.push_back( tmp_lut.find_hkl( tmp_index ) );
+        z_.push_back( z[ii] );
+        sig_z_.push_back( sig_z[ii] );
+      }
+
+      // settting up the gauss hermite quadrature
+      scitbx::math::quadrature::gauss_hermite_engine<FloatType> tmp_ghe(n_hermite_);
+      x_ = tmp_ghe.x();
+      wexs_ = tmp_ghe.w_exp_x_squared();
+
+    }
+
+    inline
+    FloatType part_1( FloatType const& ito1, FloatType const& sito1,
+                      FloatType const& ito2, FloatType const& sito2,
+                      FloatType const& it2,  FloatType const& t)
+    {
+      FloatType tmp_a,tmp_b,tmp_c,tot=0;
+
+      if (it2>=0){
+        tmp_a = -(it2-ito2)*(it2-ito2)/(sito2*sito2)
+                +(sito1*sito1)/(1.0*1.0)
+                -(2.0*(it2+ito1) )/(1.0);
+        tmp_a = std::exp(0.5*tmp_a);
+
+        tmp_b =  it2*1.0*(t-1.0)
+                -sito1*sito1*t
+                +ito1*1.0*t;
+        tmp_b = tmp_b / ( std::sqrt(2.0)*sito1*1.0*t  );
+        tmp_b = qerf_.erf( tmp_b );
+
+        tmp_c = -ito1 + sito1*sito1/1.0 +it2*t/(1-t) ;
+        tmp_c = tmp_c/( std::sqrt(2.0) * sito1 );
+        tmp_c = qerf_.erf( tmp_c );
+
+        tot = tmp_a*(tmp_b+tmp_c);
+        tot/=(2.0*std::sqrt(2.0*scitbx::constants::pi)*sito2*1.0*1.0*(2.0*t-1.0));
+      }
+      return(tot);
+    }
+
+
+    FloatType num_int( FloatType const& ito1,    FloatType const& sito1,
+                       FloatType const& ito2,    FloatType const& sito2,
+                       FloatType const& low_sig, FloatType const& high_sig,
+                       FloatType const& t,
+                       int const& n)
+    {
+      // carry out numerical integration using extended Simpson rule
+      FloatType tmp_a=0, tmp_b=0, h, start, tmp_it2;
+      h = (high_sig - low_sig)*sito2/( 2.0*n + 1 );
+      start = low_sig*sito2 + ito2;
+      for (int ii=1 ; ii<n; ii++){
+        tmp_it2 = start + ii*2.0*h ;
+        tmp_a += part_1(ito1,sito1,ito2,sito2,tmp_it2,t);
+        tmp_it2 = start + (ii*2.0+1.0)*h ;
+        tmp_b += part_1(ito1,sito1,ito2,sito2,tmp_it2,t);
+      }
+      FloatType result=0;
+      result = 4.0*tmp_b + 2.0*tmp_a;
+      tmp_a = part_1(ito1,sito1,ito2,sito2,start,t);
+      tmp_b = part_1(ito1,sito1,ito2,sito2,start+h*(2.0*n+2.0),t);
+      result = result + tmp_a+tmp_b;
+      result = h*(result)/3.0;
+      return ( result );
+    }
+
+
+    FloatType num_int_hermite( FloatType const& ito1,    FloatType const& sito1,
+                               FloatType const& ito2,    FloatType const& sito2,
+                               FloatType const& t)
+    {
+      FloatType result=0, tmp_it2, p, s2=std::sqrt(2.0);
+
+      for (int ii=0 ; ii<4; ii++){
+        tmp_it2 = x_[ii]*sito2*s2+ito2;
+        p=0.0;
+        if (tmp_it2>=0){
+          p = part_1(ito1,sito1,ito2,sito2,tmp_it2,t);
+        }
+        p*=wexs_[ii];
+        result+=p;
+      }
+      return ( result*sito2*s2 );
+    }
+
+
+
+    FloatType p_raw(FloatType const& it1, FloatType const& it2, FloatType const& t)
+    {
+       FloatType result=0;
+       if (it2 <= (1-t)/t*it1){
+         if (it2 >= t/(1-t)*it1){
+           result = std::exp( -it2-it1 )/(1-2*t);
+         }
+       }
+       return (result);
+    }
+
+
+    FloatType log_p_given_t(FloatType const& t, int const& n)
+    {
+       FloatType result=0, tmp_result, ito1,sito1,ito2,sito2;
+       long tmp_index;
+       for (long ii=0;ii<z_.size();ii++){
+         tmp_index = twin_mate_index_[ii];
+         if (tmp_index>=0){ // this means twin mate is available
+           ito1 = z_[ii];
+           sito1 = sig_z_[ii];
+           ito2 = z_[tmp_index];
+           sito2 = sig_z_[tmp_index];
+           tmp_result = num_int(ito1,sito1,ito2,sito2,-5,5,t,n);
+           if (tmp_result > 0){
+             result += std::log( tmp_result );
+           }
+           else{
+             result += std::log( 1e-36 );
+           }
+
+         }
+
+       }
+       return(result);
+    }
+
+    FloatType fast_log_p_given_t(FloatType const& t)
+    {
+       FloatType result=0, tmp_result, ito1,sito1,ito2,sito2;
+       long tmp_index;
+       for (long ii=0;ii<z_.size();ii++){
+         tmp_index = twin_mate_index_[ii];
+         if (tmp_index>=0){ // this means twin mate is available
+           ito1 = z_[ii];
+           sito1 = sig_z_[ii];
+           ito2 = z_[tmp_index];
+           sito2 = sig_z_[tmp_index];
+           tmp_result = num_int_hermite(ito1,sito1,ito2,sito2,t);
+           if (tmp_result > 0){
+             result += std::log( tmp_result );
+           }
+           else{
+             result += std::log( 1e-36 );
+           }
+
+         }
+
+       }
+       return(result);
+    }
+
+
+  protected:
+    scitbx::af::shared< FloatType > z_;
+    scitbx::af::shared< FloatType > sig_z_;
+    scitbx::af::shared< long > twin_mate_index_;
+    very_quick_erf<FloatType> qerf_;
+    long n_hermite_;
+    scitbx::af::shared< FloatType > x_;
+    scitbx::af::shared< FloatType > wexs_;
 
   };
 
 
 
 
+  template <typename FloatType>
+  class ml_twin_with_ncs
+  {
+  public:
+    // input normalized structure factors.
+    ml_twin_with_ncs( scitbx::af::const_ref<FloatType> const& z,
+                      scitbx::af::const_ref<FloatType> const& sig_z,
+                      scitbx::af::const_ref< cctbx::miller::index<> > const& hkl,
+                      cctbx::sgtbx::space_group const& space_group,
+                      bool const& anomalous_flag,
+                      scitbx::mat3<FloatType> const& twin_law,
+                      cctbx::uctbx::unit_cell const& unit_cell,
+                      long const& n_hermite):
+    qei0_(5000),
+    n_hermite_(n_hermite)
+    {
+      SCITBX_ASSERT( z.size() == sig_z.size() );
+      SCITBX_ASSERT( z.size() == hkl.size() );
+      cctbx::miller::index<> tmp_index;
+      cctbx::miller::lookup_utils::lookup_tensor<FloatType>
+        tmp_lut(hkl, space_group, anomalous_flag);
+
+      for (std::size_t ii=0;ii<z.size();ii++){
+        tmp_index = twin_mate( hkl[ii], twin_law );
+        twin_mate_index_.push_back( tmp_lut.find_hkl( tmp_index ) );
+        z_.push_back( z[ii] );
+        sig_z_.push_back( sig_z[ii] );
+        d_star_sq_.push_back( unit_cell.d_star_sq( hkl[ii] ) );
+      }
+
+      // settting up the gauss hermite quadrature
+      scitbx::math::quadrature::gauss_hermite_engine<FloatType> tmp_ghe(n_hermite_);
+      x_ = tmp_ghe.x();
+      w_ = tmp_ghe.w();
+
+    }
 
 
+    FloatType p_raw(FloatType const& z1, FloatType const& z2,
+                    FloatType const& D_ncs, FloatType const& t)
+    {
+      FloatType part_1, part_2, x, result=0;
+      if (z2 <= (1-t)/t*z1){
+         if (z2 >= t/(1-t)*z1){
+           part_1 = std::exp( -(z1+z2)/(1-D_ncs*D_ncs) )/( (1-D_ncs*D_ncs)*(1-2.0*t) );
+           x = std::sqrt( ((z1*(1-t) -t*z2)/(1-2*t))*
+                          ((z2*(1-t) -t*z1)/(1-2*t))
+                          )*2.0*D_ncs/(1.0 - D_ncs*D_ncs );
+           part_2 = qei0_.ei0(x)*std::exp(x);
+           //part_2 = scitbx::math::bessel::i0(x);
+           result = part_1*part_2;
+         }
+      }
+      return( result );
+    }
+
+    FloatType num_int_base(FloatType const& zo1, FloatType const& so1,
+                           FloatType const& zo2, FloatType const& so2,
+                           FloatType const& t,   FloatType const& D_ncs,
+                           FloatType const& z1,  FloatType const& z2 )
+    {
+      FloatType p1,p2,p3;
+      FloatType tps = 2.0*scitbx::constants::pi;
+      p1 = std::exp( -(z1-zo1)*(z1-zo1)/(2.0*so1*so1) )/(so1);
+      p2 = std::exp( -(z2-zo2)*(z2-zo2)/(2.0*so2*so2) )/(so2);
+      p3 = p_raw( z1, z2, D_ncs, t );
+      FloatType result;
+      result = p3*p1*p2/(tps);
+      return(result);
+    }
+
+
+    FloatType num_int_z1(FloatType const& zo1, FloatType const& so1,
+                         FloatType const& zo2, FloatType const& so2,
+                         FloatType const& t,   FloatType const& D_ncs,
+                         FloatType const& z2)
+    {
+      FloatType z1,result=0,s2=std::sqrt(2.0);
+      for (int ii=0;ii<n_hermite_;ii++){
+        z1 = x_[ii]*so1*s2+zo1;
+        result+=p_raw(z1,z2,D_ncs, t)*w_[ii];
+      }
+      result = result*so1*s2;
+      return(result);
+    }
+
+
+    FloatType num_int(FloatType const& zo1, FloatType const& so1,
+                      FloatType const& zo2, FloatType const& so2,
+                      FloatType const& t,   FloatType const& D_ncs)
+    {
+      FloatType s2=std::sqrt(2.0), result=0.0, z2;
+      for (int ii=0;ii<n_hermite_;ii++){
+
+        z2 = x_[ii]*so2*s2+zo2;
+        result += num_int_z1(zo1,so1,
+                             zo2,so2,
+                             t,D_ncs,
+                             z2);
+
+      }
+
+      if (result<1e-36){
+        result=1e-36;
+      }
+      return( result*so2*s2 );
+    }
+
+    /*
+    FloatType num_int_z1(FloatType const& zo1, FloatType const& so1,
+                         FloatType const& zo2, FloatType const& so2,
+                         FloatType const& t,   FloatType const& D_ncs,
+                         FloatType const& z2,
+                         FloatType const& low_limit,  FloatType const& high_limit,
+                         int const& n_points)
+    {
+
+      FloatType start, end, step;
+      step = (high_limit-low_limit)/FloatType(n_points-1);
+      step = step*so1;
+      start = low_limit*so1 + zo1;
+      end = high_limit*so1 + zo1;
+      FloatType z1,result=0;
+      for (int ii=1;ii<n_points-1;ii++){
+        z1 = start + ii*step;
+        result += num_int_base(zo1,so1,
+                               zo2,so2,
+                               t,D_ncs,
+                               z1,z2);
+      }
+
+      result += num_int_base(zo1,so1,
+                             zo2,so2,
+                             t,D_ncs,
+                             start,z2)/2.0;
+      result += num_int_base(zo1,so1,
+                             zo2,so2,
+                             t,D_ncs,
+                             end,z2)/2.0;
+      result = result*step;
+      return(result);
+    }
+
+    FloatType num_int(FloatType const& zo1, FloatType const& so1,
+                      FloatType const& zo2, FloatType const& so2,
+                      FloatType const& t,   FloatType const& D_ncs,
+                      FloatType const& low_limit,  FloatType const& high_limit,
+                      int const& n_points)
+    {
+      FloatType start, end, step,z2, result=0;
+      step = (high_limit-low_limit)/FloatType(n_points-1);
+      step = step*so2;
+      start = low_limit*so2 + zo2;
+      end = high_limit*so2 + zo2;
+      for (int ii=1;ii<n_points-1;ii++){
+        z2 = start + ii*step;
+        result += num_int_z1(zo1,so1,
+                             zo2,so2,
+                             t,D_ncs,
+                             z2,
+                             low_limit, high_limit,
+                             n_points);
+      }
+
+      result += num_int_z1(zo1,so1,
+                           zo2,so2,
+                           t,D_ncs,
+                           start,
+                           low_limit, high_limit,
+                           n_points)/2.0;
+
+      result += num_int_z1(zo1,so1,
+                           zo2,so2,
+                           t,D_ncs,
+                           end,
+                           low_limit, high_limit,
+                           n_points)/2.0;
+
+      result = result*step;
+      if (result<1e-36){
+        result=1e-36;
+      }
+      return( result );
+    }
+    */
+
+    FloatType p_tot_given_t_and_coeff( FloatType const& coeff,
+                                       FloatType const& twin_fraction,
+                                       int const& n_points )
+    {
+      // we use D_ncs = exp( -(coeff*coeff + 0.01) )
+      FloatType result=0,z1,z2,s1,s2,D_ncs;
+      long tmp_index;
+      for (long ii=0;ii<z_.size();ii++){
+        tmp_index = twin_mate_index_[ii];
+        if ( tmp_index >=0 ){
+          z1=z_[ii];
+          s1=sig_z_[ii];
+          z2=z_[tmp_index];
+          s2=sig_z_[tmp_index];
+          D_ncs = std::exp(-(coeff*coeff+0.01)*d_star_sq_[ii] );
+          result += std::log( num_int(z1,s1,
+                                      z2,s2,
+                                      twin_fraction, D_ncs)
+                            );
+        }
+      }
+
+      return(result);
+    }
+
+
+
+
+  protected:
+    scitbx::af::shared< FloatType > z_;
+    scitbx::af::shared< FloatType > sig_z_;
+    scitbx::af::shared< FloatType > d_star_sq_;
+    scitbx::af::shared< long > twin_mate_index_;
+    quick_ei0<FloatType> qei0_;
+    long n_hermite_;
+    scitbx::af::shared< FloatType > x_;
+    scitbx::af::shared< FloatType > w_;
+
+
+  };
 
 
 

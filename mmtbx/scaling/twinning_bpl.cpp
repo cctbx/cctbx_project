@@ -161,6 +161,134 @@ namespace{
   };
 
 
+  struct ml_murray_rust_wrapper
+  {
+    typedef twinning::ml_murray_rust<double> w_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      class_<w_t>("ml_murray_rust", no_init)
+        .def(init<
+             scitbx::af::const_ref<double> const&,
+             scitbx::af::const_ref<double> const&,
+             scitbx::af::const_ref< cctbx::miller::index<> > const&,
+             cctbx::sgtbx::space_group const&,
+             bool const&,
+             scitbx::mat3<double> const&,
+             long const&
+             > (( arg_("z"),
+                  arg_("sig_z"),
+                  arg_("indices"),
+                  arg_("space_group"),
+                  arg_("anomalous_flag"),
+                  arg_("twin_law"),
+                  arg_("n_hermite"))
+                ))
+        .def("num_int", &w_t::num_int,
+             (( arg_("ito1"),
+                arg_("sito1"),
+                arg_("ito2"),
+                arg_("sito2"),
+                arg_("low_sig"),
+                arg_("high_sig"),
+                arg_("twin_fraction"),
+                arg_("n")
+                ))
+            )
+        .def("p_raw", &w_t::p_raw)
+        .def("log_p_given_t", &w_t::log_p_given_t)
+        .def("fast_log_p_given_t", &w_t::fast_log_p_given_t)
+
+        ;
+
+    }
+
+
+  };
+
+
+  struct ml_twin_with_ncs
+  {
+    typedef twinning::ml_twin_with_ncs<double> w_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      class_<w_t>("ml_twin_with_ncs", no_init)
+        .def(init<
+             scitbx::af::const_ref<double> const&,
+             scitbx::af::const_ref<double> const&,
+             scitbx::af::const_ref< cctbx::miller::index<> > const&,
+             cctbx::sgtbx::space_group const&,
+             bool const&,
+             scitbx::mat3<double> const&,
+             cctbx::uctbx::unit_cell const&,
+             long const&
+             > (( arg_("z"),
+                  arg_("sig_z"),
+                  arg_("indices"),
+                  arg_("space_group"),
+                  arg_("anomalous_flag"),
+                  arg_("twin_law"),
+                  arg_("unit_cell"),
+                  arg_("n_hermite"))
+                ))
+        .def("p_raw", &w_t::p_raw)
+        .def("num_int", &w_t::num_int )
+        .def("p_tot_given_t_and_coeff", &w_t::p_tot_given_t_and_coeff)
+        ;
+
+    }
+
+
+  };
+
+
+
+  struct very_quick_erf_wrapper
+  {
+    typedef twinning::very_quick_erf<double> w_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      class_<w_t>("very_quick_erf", no_init)
+        .def(init<double const& > ((arg_("step_size"))))
+        .def("erf", &w_t::erf)
+        .def("tst", &w_t::tst)
+        ;
+    }
+
+
+  };
+
+
+
+  struct quick_ei0_wrapper
+  {
+    typedef twinning::quick_ei0<double> w_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      class_<w_t>("quick_ei0", no_init)
+        .def(init<int const& > ((arg_("n_points"))))
+        .def("ei0", &w_t::ei0)
+        .def("tst", &w_t::tst)
+        ;
+    }
+
+
+  };
+
+
+
+
 
 
 
@@ -189,6 +317,29 @@ namespace boost_python {
   void wrap_h_test()
   {
     h_test_wrapper::wrap();
+  }
+
+  void wrap_ml_murray_rust()
+  {
+    ml_murray_rust_wrapper::wrap();
+  }
+
+  void wrap_ml_twin_with_ncs()
+  {
+    ml_twin_with_ncs::wrap();
+  }
+
+
+
+  void wrap_very_quick_erf()
+  {
+    very_quick_erf_wrapper::wrap();
+  }
+
+
+  void wrap_quick_ei0()
+  {
+    quick_ei0_wrapper::wrap();
   }
 
 
