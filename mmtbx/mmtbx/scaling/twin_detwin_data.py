@@ -25,7 +25,8 @@ class detwin_data(object):
   def __init__(self,
                miller_array,
                phil_block,
-               out=None
+               out=None,
+               b_wilson=30.0
                ):
     if out is None:
       out=sys.stdout
@@ -35,8 +36,9 @@ class detwin_data(object):
     print >> out, "  - twin fraction: %3.2f"%(phil_block.scaling.input.optional.twinning.fraction)
     print >> out
     print >> out, "BE WARNED! DETWINNING OF DATA DOES NOT SOLVE YOUR TWINNING PROBLEM!"
-    print >> out, "REFINEMENT SHOULD BE CARRIED OUT AGAINST ORIGINAL DATA ONLY USING A"
-    print >> out, "TWIN SPECIFIC TARGET FUNCTION!"
+    print >> out, "PREFERABLY, REFINEMENT SHOULD BE CARRIED OUT AGAINST ORIGINAL DATA "
+    print >> out, "ONLY USING A TWIN SPECIFIC TARGET FUNCTION!"
+    print >> out
 
     self.miller_array = miller_array.deep_copy().set_observation_type(
       miller_array )
@@ -61,6 +63,13 @@ class detwin_data(object):
         self.miller_array = self.miller_array.f_as_f_sq()
     assert self.miller_array.is_xray_intensity_array()
 
+    # add b value
+    factor = flex.exp( -b_wilson*self.miller_array.d_star_sq().data()/2.0 ) 
+    self.miller_array = self.miller_array.customized_copy( 
+                          data = self.miller_array.data()*factor,
+                          sigmas = self.miller_array.sigmas()*factor
+                        ).set_observation_type( self.miller_array )
+
     detwin_object = mmtbx.scaling.detwin(self.miller_array.indices(),
                                          self.miller_array.data(),
                                          self.miller_array.sigmas(),
@@ -73,6 +82,7 @@ class detwin_data(object):
     new_intensities = detwin_object.detwinned_i()
     new_sigmas = detwin_object.detwinned_sigi()
     new_hkl = detwin_object.detwinned_hkl()
+
 
     self.miller_array =  self.miller_array.customized_copy(
       indices = new_hkl,
