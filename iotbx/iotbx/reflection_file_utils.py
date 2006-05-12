@@ -143,16 +143,16 @@ class get_r_free_flags_score(object):
     if (min(1000,n*0.01) < n_free < n*0.35):
       if (   looks_like_r_free_flags_info(miller_array_info)
           or min(2000,n*0.04) < n_free < n*0.20):
-        self.flag_score = 2
+        self.flag_score = 3
       else:
-        self.flag_score = 1
+        self.flag_score = 2
 
 class get_r_free_flags_scores(object):
 
   def __init__(self, miller_arrays, test_flag_value):
     self.scores = []
     self.test_flag_values = []
-    for i_array,miller_array in enumerate(miller_arrays):
+    for miller_array in miller_arrays:
       flag_score = 0
       effective_test_flag_value = None
       data = miller_array.data()
@@ -201,9 +201,12 @@ class get_r_free_flags_scores(object):
               if (c_keys == range(min(c_keys), max(c_keys)+1)):
                 if (min(c_values) > max(c_values)*0.55):
                   if (looks_like_r_free_flags_info(miller_array.info())):
-                    flag_score = 2
+                    flag_score = 3
                   else:
-                    flag_score = 1
+                    flag_score = 2
+                elif (looks_like_r_free_flags_info(miller_array.info())):
+                  flag_score = 1
+                if (flag_score != 0):
                   if (test_flag_value is None):
                     effective_test_flag_value = min(c_keys)
                   else:
