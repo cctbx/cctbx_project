@@ -64,8 +64,8 @@ class detwin_data(object):
     assert self.miller_array.is_xray_intensity_array()
 
     # add b value
-    factor = flex.exp( -b_wilson*self.miller_array.d_star_sq().data()/2.0 ) 
-    self.miller_array = self.miller_array.customized_copy( 
+    factor = flex.exp( -b_wilson*self.miller_array.d_star_sq().data()/2.0 )
+    self.miller_array = self.miller_array.customized_copy(
                           data = self.miller_array.data()*factor,
                           sigmas = self.miller_array.sigmas()*factor
                         ).set_observation_type( self.miller_array )
