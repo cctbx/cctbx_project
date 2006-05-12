@@ -139,7 +139,8 @@ class settings(object):
         unquoted_single_character_words="",
         contiguous_word_characters=None,
         enable_unquoted_embedded_quotes=True,
-        comment_characters=""):
+        comment_characters="",
+        meta_comment=None):
     self.unquoted_single_character_words = unquoted_single_character_words
     if (contiguous_word_characters is None):
       self.contiguous_word_characters = default_contiguous_word_characters
@@ -147,6 +148,7 @@ class settings(object):
       self.contiguous_word_characters = contiguous_word_characters
     self.enable_unquoted_embedded_quotes = enable_unquoted_embedded_quotes
     self.comment_characters = comment_characters
+    self.meta_comment = meta_comment
 
 class word_iterator(object):
 
@@ -178,7 +180,9 @@ class word_iterator(object):
       if (c is None): break
       if (c.isspace()): continue
       if (c in settings.comment_characters
-          and char_iter.look_ahead_1().isspace()):
+          and (settings.meta_comment is None
+               or char_iter.look_ahead(n=len(settings.meta_comment))
+                  != settings.meta_comment)):
         while True:
           c = char_iter.next()
           if (c is None or c == "\n"): break

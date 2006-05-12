@@ -41,7 +41,7 @@ class recycle(object):
         raise RuntimeError("out_out != self.out")
 
 def exercise_parse_and_show():
-  for input_string in ["", "\n", "   \n", "   \t \n \t "]:
+  for input_string in ["", "\n", "   \n", "   \t \n \t ", "#", "\t#"]:
     recycle(input_string=input_string, expected_out="")
   recycle(
     input_string="   name\t=value\n\n",
@@ -151,31 +151,31 @@ name {
 """)
   recycle(
     input_string="""\
-#name # 1 2 3
-  #.help="a"
+!name # 1 2 3
+  !.help="a"
         "b"
         "c"
       # 1 2 3
   .expert_level=1 # x
         # 1 2 3
 {
-  #a=b
+  !a=b
     .type="int" # y
   c=d # e
-    #.help="d"
+    !.help="d"
           "e"
           "f"
     .expert_level=2
 }
-d=a b c # 1 2 3 \\
-4 5 6
+d=a b c # 1 {2} 3 \\
+4 {5 6}}
 """,
     attributes_level=2,
     expected_out="""\
-#name
+!name
   .expert_level = 1
 {
-  #a = b
+  !a = b
     .type = int
   c = d
     .expert_level = 2
@@ -234,6 +234,28 @@ u {
   a = z
 }
 """
+  #
+  recycle(
+    input_string="s{a=1}t{b=2}", expected_out="""\
+s {
+  a = 1
+}
+t {
+  b = 2
+}
+""")
+  recycle(
+    input_string="s{a=1;b=2  b ;c=3}t{x=4;y=5;}", expected_out="""\
+s {
+  a = 1
+  b = 2 b
+  c = 3
+}
+t {
+  x = 4
+  y = 5
+}
+""")
 
 improper_phil_converters = None
 
@@ -366,12 +388,26 @@ def exercise_syntax_errors():
     'Unexpected end of input.')
   test_exception("a=\nb",
     'Missing value for a (input line 1)')
+  test_exception("x=;",
+    'Missing value for x (input line 1)')
+  test_exception("s{z=}",
+    'Missing value for z (input line 1)')
+  test_exception("s{y={",
+    'Missing value for y (input line 1)')
+  test_exception("s{y=1{",
+    'Syntax error: unexpected "{" (input line 1)')
+  test_exception("s{y=#",
+    'Missing value for y (input line 1)')
   test_exception("a b",
     'Syntax error: expected "=", found "b" (input line 1)')
   test_exception("{}",
     'Syntax error: unexpected "{" (input line 1)')
   test_exception("a {",
     'Syntax error: no matching "}" for "{" at input line 1')
+  test_exception(";{}",
+    'Syntax error: unexpected ";" (input line 1)')
+  test_exception("s{;}",
+    'Syntax error: unexpected ";" (input line 1)')
   test_exception("a=b\n.foo none",
     'Unexpected definition attribute: .foo (input line 2)')
   test_exception('a=b\nc "abc',
@@ -512,7 +548,7 @@ a0 {
     }
   }
   d2=e f 0g
-  #d3=x
+  !d3=x
 }
 """,
     expected_out="""\
@@ -530,7 +566,7 @@ a0 {
     }
   }
   d2 = e f 0g
-  #d3 = x
+  !d3 = x
 }
 """).parameters
   check_get(parameters, path="a0.d1", expected_out="d1 = a b c\n")
@@ -712,7 +748,7 @@ a=1
 b=$a
 c=$b
 d=2
-e=${.d} $c
+e=$(.d) $c
 s {
   i=10
   j=$i
@@ -727,23 +763,23 @@ s {
     n=$a $j $y
   }
   d=9
-  e=${d}
-  f=${.d}
-  g=${.s.t.x}
+  e=$(d)
+  f=$(.d)
+  g=$(.s.t.x)
 }
 d=x
-f=${s.i}
-g=${s.a}
+f=$(s.i)
+g=$(s.a)
 s {
   t {
     x=30
     a=40
   }
 }
-h=${s.t.x}
-i=${s.t.a}
-j=${s.t.n}
-k=${.s.t.x}
+h=$(s.t.x)
+i=$(s.t.a)
+j=$(s.t.n)
+k=$(.s.t.x)
 l=$s
 """)
   check_resolve_variables(parameters, "a", "a = 1\n")
@@ -839,13 +875,13 @@ c=$a $b.d
 d=$a \$b
 answer=yes no
 e="$a"
-f=${a}
-g=abc${answer}bc
-h=abc${answer}bc 12$answer${a}56
+f=$(a)
+g=abc$(answer)bc
+h=abc$(answer)bc 12$answer$(a)56
 i=$
-j=${abc
-k=${1bc}
-l=${}
+j=$(abc
+k=$(1bc)
+l=$()
 m=$@
 n='$a'
 """)
@@ -866,16 +902,16 @@ n='$a'
   else: raise RuntimeError("Exception expected.")
   try: parameters.get(path="j")
   except RuntimeError, e:
-    assert str(e) == 'Syntax error: missing "}": "${abc" (input line 11)'
+    assert str(e) == 'Syntax error: missing ")": "$(abc" (input line 11)'
   else: raise RuntimeError("Exception expected.")
   try: parameters.get(path="k")
   except RuntimeError, e:
-    assert str(e) == 'Syntax error: improper variable name "${1bc}"' \
+    assert str(e) == 'Syntax error: improper variable name "$(1bc)"' \
                    + ' (input line 12)'
   else: raise RuntimeError("Exception expected.")
   try: parameters.get(path="l")
   except RuntimeError, e:
-    assert str(e)=='Syntax error: improper variable name "${}" (input line 13)'
+    assert str(e)=='Syntax error: improper variable name "$()" (input line 13)'
   else: raise RuntimeError("Exception expected.")
   try: parameters.get(path="m")
   except RuntimeError, e:
@@ -890,9 +926,9 @@ s {
   a=$v
   s {
     a=$w
-    b=${s.a}
-    c=${s.s.a}
-    d=${.s.a}
+    b=$(s.a)
+    c=$(s.s.a)
+    d=$(.s.a)
   }
 }
 """)
@@ -910,7 +946,7 @@ s {
   #
   parameters = phil.parse(input_string="""\
 a=$b
-#b=y
+!b=y
 """)
   try: parameters.get(path="a")
   except RuntimeError, e:
@@ -939,7 +975,7 @@ a0 {
 
 def exercise_include():
   print >> open("tmp1.params", "w"), """\
-#include none
+!include none
 a=x
 """
   print >> open("tmp2.params", "w"), """\
@@ -964,7 +1000,7 @@ s=1
   parameters.show(out=out)
   assert out.getvalue() == """\
 tmp2 = tmp2.params
-#include none
+!include none
 a = x
 b = y
 r = 0
@@ -1304,7 +1340,7 @@ a = 2
 """
   source = phil.parse(input_string="""\
 a=1
-#a=2
+!a=2
 """)
   out = StringIO()
   master.fetch(source).show(out=out, attributes_level=2)
@@ -1409,7 +1445,7 @@ s
   source = phil.parse(input_string="""\
 s {
   a=1
-  #a=2
+  !a=2
 }
 """)
   out = StringIO()
@@ -1455,7 +1491,7 @@ s {
   a=1
 }
 s {
-  #a=2
+  !a=2
 }
 """)
   for master in [master_plain, master_optional]:
@@ -1475,11 +1511,11 @@ s {
 }
 """
   source = phil.parse(input_string="""\
-#s {
+!s {
   a=1
 }
 s {
-  #a=2
+  !a=2
 }
 """)
   for master in [master_plain, master_optional, master_multiple]:
@@ -1493,7 +1529,7 @@ s {
   out = StringIO()
   master_optional_multiple.fetch(source).show(out=out)
   assert out.getvalue() == """\
-#s {
+!s {
   a = None
 }
 """
@@ -1501,7 +1537,7 @@ s {
   out = StringIO()
   master_optional_multiple.fetch(source).show(out=out)
   assert out.getvalue() == """\
-#s {
+!s {
   a = None
 }
 """
@@ -1586,11 +1622,11 @@ v
 }
 c
 {
-  a=${v.x}
+  a=$(v.x)
   b=1
   c
   {
-    y=${v.y}
+    y=$(v.y)
     t
     {
       r=x
@@ -1691,13 +1727,13 @@ v {
   x=y
 }
 c {
-  a=${v.x}
+  a=$(v.x)
 }
 v {
   x=z
 }
 c {
-  a=${v.x}
+  a=$(v.x)
 }
 """)
   out = StringIO()
@@ -1718,7 +1754,7 @@ c {
 """
   parameters = phil.parse(input_string="""\
 c {
-  a=${v.x}
+  a=$(v.x)
 }
 v {
   x=y
@@ -1794,7 +1830,7 @@ s.t.u {
 v.w {
   p.q=z
 }
-s.t.u.a.b.c=${v.w.p.q}
+s.t.u.a.b.c=$(v.w.p.q)
 """)
   out = StringIO()
   master.fetch(source=source).show(out=out)
@@ -1840,7 +1876,7 @@ s.t.a{b=e
       b=f
 }
 s.t.a{b=e
-      #b=f
+      !b=f
 }
 """)
   out = StringIO()
@@ -2606,7 +2642,7 @@ a=2
   assert out.getvalue() == "a = 2\n"
   custom = phil.parse(input_string="""\
 a=1
-#a=2
+!a=2
 """)
   extracted = master.fetch(custom).extract()
   assert extracted.a == 1
@@ -2640,7 +2676,7 @@ a = 2
 """
   custom = phil.parse(input_string="""\
 a=1
-#a=2
+!a=2
 """)
   extracted = master.fetch(custom).extract()
   assert extracted.a == [1]
@@ -2679,7 +2715,7 @@ a = 2
 """
   custom = phil.parse(input_string="""\
 a=1
-#a=2
+!a=2
 """)
   extracted = master.fetch(custom).extract()
   assert extracted.a == [1]
