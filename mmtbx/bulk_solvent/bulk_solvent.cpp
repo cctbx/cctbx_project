@@ -154,8 +154,7 @@ target_gradients_aniso::target_gradients_aniso(
     //                       0.0);
     //af::shared<std::complex<double> > d_target_d_fmodel = tgx_manager.derivatives();
 
-    MMTBX_ASSERT(denum > 0.0);
-    double sc = num/denum;
+    double sc = (denum == 0 ? 0 : num/denum);
     tgx = 0.0;
     gtgx_ksol = 0.0;
     gtgx_bsol = 0.0;
@@ -255,8 +254,7 @@ double r_factor_aniso_fast(af::const_ref<double> const& fo,
       num += fo[i] * fmodel_abs_;
       denum += fmodel_abs_*fmodel_abs_;
     }
-    MMTBX_ASSERT(denum > 0.0);
-    double sc = num/denum;
+    double sc = (denum == 0 ? 0 : num/denum);
     num =0.0;
     denum=0.0;
     for(std::size_t i=0; i < fo.size(); i++) {
@@ -279,8 +277,7 @@ double r_factor(af::const_ref<double> const& fo,
       num += fo[i] * fc_abs[i];
       denum += fc_abs[i]*fc_abs[i];
     }
-    MMTBX_ASSERT(denum > 0.0);
-    double sc = num/denum;
+    double sc = (denum == 0 ? 0 : num/denum);
     num =0.0;
     denum=0.0;
     for(std::size_t i=0; i < fo.size(); i++) {
@@ -298,14 +295,12 @@ double scale(af::const_ref<double> const& fo,
     std::vector<double> fmodel_abs;
     double num=0.0;
     double denum=0.0;
-    std::vector<double> fc_abs;
     for(std::size_t i=0; i < fo.size(); i++) {
       double fc_abs_ = std::abs(fc[i]);
       num += fo[i] * fc_abs_;
       denum += fc_abs_*fc_abs_;
     }
-    MMTBX_ASSERT(denum > 0.0);
-    return num/denum;
+    return (denum == 0 ? 0 : num/denum);
 }
 
 target_gradients_aniso_ml::target_gradients_aniso_ml(
