@@ -718,7 +718,6 @@ class britton_test(object):
                                    miller_array.space_group(),
                                    miller_array.anomalous_flag(),
                                    twin_law)
-
     for ii in range(50):
       alpha = (ii)/101.0
       negative_fraction = detwin_object.detwin_with_alpha(alpha)
@@ -925,7 +924,66 @@ class l_test(object):
     print >> out
 
 
+class ml_murray_rust(object):
+  def __init__(self,
+               miller_array,
+               twin_law,
+               out,
+               n_points = 4):
+    if out == None:
+      out = sys.stdout
 
+    assert miller_array.is_xray_intensity_array()
+    assert miller_array.sigmas() is not None
+
+    ml_murray_rust_object = scaling.ml_murray_rust( miller_array.data(),
+                                                    miller_array.sigmas(),
+                                                    miller_array.indices(),
+                                                    miller_array.space_group(),
+                                                    miller_array.anomalous_flag(),
+                                                    twin_law,n_points)
+    self.twin_fraction = []
+    self.nll = []
+    print >> out 
+    print >> out, "Maximum Likelihood twin fraction determination"
+    print >> out, "   (thinking ... , not crashing .... ) "
+    for ii in xrange(1,23):      
+      t=ii/46.0
+      self.twin_fraction.append( t )
+      self.nll.append( - ml_murray_rust_object.fast_log_p_given_t( t )  )
+    print >> out
+
+    i_t_max = flex.min_index( flex.double( self.nll ) )
+    self.estimated_alpha = None
+    if (i_t_max >= 1) and (i_t_max < len(self.nll)-1 ) :
+      tmp_t = [0,0,0]
+      tmp_nll = [0,0,0]      
+      tmp_t[0] = self.twin_fraction[ i_t_max - 1 ]
+      tmp_t[1] = self.twin_fraction[ i_t_max     ]
+      tmp_t[2] = self.twin_fraction[ i_t_max + 1 ]
+      tmp_nll[0] = self.nll[ i_t_max - 1 ]
+      tmp_nll[1] = self.nll[ i_t_max ]
+      tmp_nll[2] = self.nll[ i_t_max + 1 ]
+
+      tmp_top = (tmp_t[2]**2.0)*(tmp_nll[0] - tmp_nll[1]) + \
+                (tmp_t[1]**2.0)*(tmp_nll[1] - tmp_nll[2]) + \
+                (tmp_t[0]**2.0)*(tmp_nll[2] - tmp_nll[0])
+      
+      tmp_bottom = (tmp_t[2])*(tmp_nll[0] - tmp_nll[1]) + \
+                   (tmp_t[1])*(tmp_nll[1] - tmp_nll[2]) + \
+                   (tmp_t[0])*(tmp_nll[2] - tmp_nll[0]) 
+      
+      self.estimated_alpha= tmp_top/(2.0*tmp_bottom)
+      
+      if (self.estimated_alpha < tmp_t[0]) or ( self.estimated_alpha > tmp_t[2]):
+        self.estimated_alpha = self.twin_fraction[ i_t_max ]
+       
+    else:
+      self.estimated_alpha = self.twin_fraction[ i_t_max ]
+      
+    print >> out
+    print >> out, "   The estimated twin fraction is equal to %4.3f"%(self.estimated_alpha)
+    print >> out
 
 class twin_law_dependend_twin_tests(object):
   """Twin law dependent test results"""
@@ -934,27 +992,49 @@ class twin_law_dependend_twin_tests(object):
                miller_array,
                out=None,
                verbose=0,
-               miller_calc=None):
+               miller_calc=None,
+               normalized_intensities=None):
 
     acentric_data = miller_array.select_acentric().set_observation_type(
       miller_array)
 
     self.twin_law = twin_law
 
-    self.h_test = h_test(twin_law.operator.as_double_array()[0:9],
-                         miller_array = acentric_data,
-                         out=out,
-                         verbose=verbose)
+    tmp_detwin_object = scaling.detwin(acentric_data.indices(),
+                                       acentric_data.data(),
+                                       acentric_data.sigmas(),
+                                       acentric_data.space_group(),
+                                       acentric_data.anomalous_flag(),
+                                       twin_law.operator.as_double_array()[0:9] )
+    self.twin_completeness = tmp_detwin_object.completeness()
+    self.results_available = False
+    if self.twin_completeness>0:
+      self.results_available = True
 
-    self.britton_test = britton_test(twin_law.operator.as_double_array()[0:9],
-                                     acentric_data,
-                                     out=out,
-                                     verbose=verbose)
+      self.h_test = h_test(twin_law.operator.as_double_array()[0:9],
+                           miller_array = acentric_data,
+                           out=out,
+                           verbose=verbose)
 
-    self.r_values = r_values(miller_array,
-                             twin_law.operator.as_double_array()[0:9],
-                             miller_calc,
-                             out)
+      self.britton_test = britton_test(twin_law.operator.as_double_array()[0:9],
+                                       acentric_data,
+                                       out=out,
+                                       verbose=verbose)
+
+      self.r_values = r_values(miller_array,
+                               twin_law.operator.as_double_array()[0:9],
+                               miller_calc,
+                               out)
+
+      self.ml_murray_rust = ml_murray_rust( normalized_intensities,
+                                            twin_law.operator.as_double_array()[0:9],
+                                            out ) 
+    else:
+      print >> out, "The twin completeness is %3.2f. Twin law dependent test not performed."%(self.twin_completeness) 
+      print >> out
+      
+
+
 
 
 
@@ -998,23 +1078,43 @@ class twin_results_interpretation(object):
     for twin_item in twin_law_related_test:
       self.twin_results.twin_laws.append(
         twin_item.twin_law.operator.r().as_hkl() )
-      print twin_item.twin_law.twin_type[0]
       self.twin_results.twin_law_type.append(
         str(twin_item.twin_law.twin_type) )
 
-      self.twin_results.r_obs.append(
-        twin_item.r_values.r_abs_obs)
-      self.twin_results.r_calc.append(
-        twin_item.r_values.r_abs_calc)
+      if twin_item.results_available:
+        self.twin_results.r_obs.append(
+          twin_item.r_values.r_abs_obs)
+        self.twin_results.r_calc.append(
+          twin_item.r_values.r_abs_calc)
 
-      self.twin_results.britton_alpha.append(
-        twin_item.britton_test.estimated_alpha)
-      self.twin_results.h_alpha.append(
-        twin_item.h_test.estimated_alpha)
+        self.twin_results.britton_alpha.append(
+          twin_item.britton_test.estimated_alpha)
+        self.twin_results.h_alpha.append(
+          twin_item.h_test.estimated_alpha)
+        self.twin_results.murray_rust_alpha.append(
+          twin_item.ml_murray_rust.estimated_alpha)
+
+      else:
+        self.twin_results.r_obs.append(None)
+        self.twin_results.r_calc.append(None)
+        self.twin_results.britton_alpha.append(None)
+        self.twin_results.h_alpha.append(None)
+        self.twin_results.murray_rust_alpha.append(None)
 
     if self.twin_results.n_twin_laws > 0 :
-      self.twin_results.most_worrysome_twin_law = flex.max_index(
-        flex.double(self.twin_results.britton_alpha) )
+      if twin_item.results_available:
+        self.twin_results.most_worrysome_twin_law = flex.max_index(
+          flex.double(self.twin_results.britton_alpha) )
+      else:
+        tmp_tf = []
+        for tf in self.twin_results.britton_alpha:
+          if tf is None:
+            tmp_tf.append( -100 )
+          else:
+            tmp_tf.append( tf )
+        self.twin_results.most_worrysome_twin_law = flex.max_index(
+          flex.double(tmp_tf) )
+
       self.twin_results.suspected_point_group = symmetry_issues.pg_choice
       self.twin_results.possible_sgs = symmetry_issues.sg_possibilities
       self.twin_results.input_point_group = symmetry_issues.pg_low_prim_set_name
@@ -1187,14 +1287,6 @@ class twin_results_interpretation(object):
             " "
 
 
-
-
-
-
-
-
-
-
 class twin_results_summary(object):
   def __init__(self):
     self.patterson_p_value=None
@@ -1214,6 +1306,7 @@ class twin_results_summary(object):
     self.r_calc=[]
     self.britton_alpha=[]
     self.h_alpha=[]
+    self.murray_rust_alpha=[]
 
     self.most_worrysome_twin_law = None
 
@@ -1226,21 +1319,29 @@ class twin_results_summary(object):
     self.verdict=None
     self.in_short=None
 
+  def string_it(self, x ):
+     if x is None:
+       return("None")
+     else:
+       return( str("%4.3f"%(x)) )
+
   def make_sym_op_table(self):
     if self.r_calc[0]==None:
       legend = ('Operator',
                 'type',
                 'R obs.',
                 'Britton alpha',
-                'H alpha')
+                'H alpha',
+                'ML alpha')
 
       table_data = []
       for item in range( len(self.twin_laws) ):
         tmp = [ self.twin_laws[item],
                 self.twin_law_type[item],
-                str("%4.3f"%(self.r_obs[item])),
-                str("%4.3f"%(self.britton_alpha[item])),
-                str("%4.3f"%(self.h_alpha[item])) ]
+                self.string_it( self.r_obs[item]),
+                self.string_it( self.britton_alpha[item]),
+                self.string_it( self.h_alpha[item]),
+                self.string_it( self.murray_rust_alpha[item]) ]
         table_data.append( tmp )
 
 
@@ -1250,7 +1351,8 @@ class twin_results_summary(object):
                  'R_abs obs.',
                  'R_abs calc.',
                  'Britton alpha',
-                 'H alpha')
+                 'H alpha',
+                 'ML alpha')
 
       table_data = []
       for item in range( len(self.twin_laws) ):
@@ -1259,7 +1361,8 @@ class twin_results_summary(object):
                 str("%4.3f"%(self.r_obs[item])),
                 str("%4.3f"%(self.r_calc[item])),
                 str("%4.3f"%(self.britton_alpha[item])),
-                str("%4.3f"%(self.h_alpha[item])) ]
+                str("%4.3f"%(self.h_alpha[item])),
+                str("%4.3f"%(self.murray_rust_alpha[item])) ]
         table_data.append( tmp )
 
 
@@ -1918,47 +2021,50 @@ class twin_analyses(object):
         miller_array,
         out=out,
         verbose=verbose,
-        miller_calc=miller_calc)
+        miller_calc=miller_calc,
+        normalized_intensities=self.normalised_intensities.acentric)
 
       self.twin_law_dependent_analyses.append( tmp_twin_law_stuff )
 
-      ## Plotting section
-      ##    Britton plot
-      britton_plot = data_plots.plot_data(
-        plot_title = 'Britton plot for twin law '\
-        + possible_twin_laws.operators[ii].operator.r().as_hkl(),
-        x_label = 'alpha',
-        y_label = 'percentage negatives',
-        x_data = tmp_twin_law_stuff.britton_test.britton_alpha,
-        y_data = tmp_twin_law_stuff.britton_test.britton_obs,
-        y_legend = 'percentage negatives',
-        comments = 'percentage negatives')
-      britton_plot.add_data(tmp_twin_law_stuff.britton_test.britton_fit,
+      if tmp_twin_law_stuff.results_available: # emight phase in a availability test in here
+
+        ## Plotting section
+        ##    Britton plot
+        britton_plot = data_plots.plot_data(
+          plot_title = 'Britton plot for twin law '\
+          + possible_twin_laws.operators[ii].operator.r().as_hkl(),
+          x_label = 'alpha',
+          y_label = 'percentage negatives',
+          x_data = tmp_twin_law_stuff.britton_test.britton_alpha,
+          y_data = tmp_twin_law_stuff.britton_test.britton_obs,
+          y_legend = 'percentage negatives',
+          comments = 'percentage negatives')
+        britton_plot.add_data(tmp_twin_law_stuff.britton_test.britton_fit,
                             'fit')
-      if out_plots is not None:
-        data_plots.plot_data_loggraph(britton_plot,out_plots)
-      ##    H test
-      h_plot = data_plots.plot_data(
-        plot_title = 'H test for possible twin law '\
-        +possible_twin_laws.operators[ii].operator.r().as_hkl(),
-        x_label = 'H',
-        y_label = 'S(H)',
-        x_data = tmp_twin_law_stuff.h_test.h_array,
-        y_data = tmp_twin_law_stuff.h_test.cumul_obs,
-        y_legend = 'Observed S(H)',
-        comments = 'H test for Acentric data')
-      h_plot.add_data(tmp_twin_law_stuff.h_test.cumul_fit, 'Fitted S(H)')
-      if out_plots is not None:
-        data_plots.plot_data_loggraph(h_plot,out_plots)
+        if out_plots is not None:
+          data_plots.plot_data_loggraph(britton_plot,out_plots)
+        ##    H test
+        h_plot = data_plots.plot_data(
+          plot_title = 'H test for possible twin law '\
+          +possible_twin_laws.operators[ii].operator.r().as_hkl(),
+          x_label = 'H',
+          y_label = 'S(H)',
+          x_data = tmp_twin_law_stuff.h_test.h_array,
+          y_data = tmp_twin_law_stuff.h_test.cumul_obs,
+          y_legend = 'Observed S(H)',
+          comments = 'H test for Acentric data')
+        h_plot.add_data(tmp_twin_law_stuff.h_test.cumul_fit, 'Fitted S(H)')
+        if out_plots is not None:
+          data_plots.plot_data_loggraph(h_plot,out_plots)
 
 
-      # now we can check for space group related issues
-    self.check_sg = None
-    if self.n_twin_laws > 0:
-      self.check_sg = symmetry_issues(
-        miller_array,
-        3.0,
-        out=out)
+        # now we can check for space group related issues
+      self.check_sg = None
+      if self.n_twin_laws > 0:
+        self.check_sg = symmetry_issues(
+          miller_array,
+          3.0,
+          out=out)
 
     ##--------------------------
     self.twin_summary = twin_results_interpretation(
