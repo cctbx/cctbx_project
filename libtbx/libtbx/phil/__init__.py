@@ -532,7 +532,7 @@ class definition: # FUTURE definition(object)
         and self.expert_level > expert_level): return
     if (out is None): out = sys.stdout
     if (print_width is None): print_width = default_print_width
-    if (self.is_disabled): hash = "#"
+    if (self.is_disabled): hash = "!"
     else:                  hash = ""
     line = prefix + hash + ".".join(merged_names + [self.name])
     if (self.name != "include"): line += " ="
@@ -961,7 +961,7 @@ class scope: # FUTURE scope(object)
       merged_names = merged_names + [self.name]
     else:
       is_proper_scope = True
-      if (self.is_disabled): hash = "#"
+      if (self.is_disabled): hash = "!"
       else:                  hash = ""
       out_attributes = StringIO()
       show_attributes(
@@ -1353,12 +1353,12 @@ class variable_substitution_proxy(object):
         c = char_iter.next()
         if (c is None):
           word.raise_syntax_error("$ must be followed by an identifier: ")
-        if (c == "{"):
+        if (c == "("):
           while True:
             c = char_iter.next()
             if (c is None):
-              word.raise_syntax_error('missing "}": ')
-            if (c == "}"):
+              word.raise_syntax_error('missing ")": ')
+            if (c == ")"):
               c = char_iter.next()
               break
             fragment_value += c
@@ -1422,9 +1422,10 @@ def parse(
         tokenizer.settings(
           unquoted_single_character_words="{}=",
           contiguous_word_characters="",
-          comment_characters="#"),
+          comment_characters="#",
+          meta_comment="phil"),
         tokenizer.settings(
-          unquoted_single_character_words="",
+          unquoted_single_character_words="{};",
           contiguous_word_characters="")]),
     converter_registry=converter_registry,
     primary_id_generator=count(1),

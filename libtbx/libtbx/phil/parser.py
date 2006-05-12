@@ -1,22 +1,29 @@
 import libtbx.phil
 
 def collect_assigned_words(word_iterator, lead_word):
-  is_disabled = False
+  have_comment = False
   last_word = lead_word
   result = []
   while True:
     word = word_iterator.try_pop(settings_index=1)
     if (word is None): break
-    if (word.quote_token is None and word.value == "#"):
-      is_disabled = True
+    if (not have_comment
+        and word.quote_token is None
+        and word.value in ["{", "}", ";", "#"]):
+      if (word.value == ";"):
+        break
+      if (word.value != "#"):
+        word_iterator.backup()
+        break
+      have_comment = True
     elif (word.quote_token is not None
         or (last_word.quote_token is None and last_word.value == "\\")):
-      if (not is_disabled): result.append(word)
+      if (not have_comment): result.append(word)
     elif (word.line_number != last_word.line_number):
       word_iterator.backup()
       break
     elif (word.value != "\\" or word.quote_token is not None):
-      if (not is_disabled): result.append(word)
+      if (not have_comment): result.append(word)
     last_word = word
   if (len(result) == 0):
     raise RuntimeError("Missing value for %s%s" % (
@@ -58,7 +65,7 @@ def collect_objects(
     if (lead_word.value == "{"):
       raise RuntimeError(
         'Syntax error: unexpected "{"%s' % lead_word.where_str())
-    if (lead_word.value[:1] == "#"):
+    if (lead_word.value[:1] == "!"):
       lead_word.value = lead_word.value[1:]
       is_disabled = True
     else:
@@ -68,9 +75,12 @@ def collect_objects(
     if (word.quote_token is None
         and (word.value == "{"
           or (word.line_number != lead_word.line_number
-              and (word.value[:1] == "." or word.value[:2] == "#.")))):
+              and (word.value[:1] == "." or word.value[:2] == "!.")))):
       if (not libtbx.phil.is_standard_identifier(lead_word.value)):
-        lead_word.raise_syntax_error("improper scope name ")
+        if (lead_word.value == ";"):
+          lead_word.raise_syntax_error("unexpected ")
+        else:
+          lead_word.raise_syntax_error("improper scope name ")
       active_definition = None
       scope = libtbx.phil.scope(
         name=lead_word.value,
@@ -80,7 +90,7 @@ def collect_objects(
       while True:
         if (word.value == "{"):
           break
-        if (word.value[:1] == "#"):
+        if (word.value[:1] == "!"):
           word.value = word.value[1:]
           is_disabled = True
         else:
@@ -112,7 +122,10 @@ def collect_objects(
       word_iterator.backup()
       if (lead_word.value[:1] != "."):
         if (not libtbx.phil.is_standard_identifier(lead_word.value)):
-          lead_word.raise_syntax_error("improper definition name ")
+          if (lead_word.value == ";"):
+            lead_word.raise_syntax_error("unexpected ")
+          else:
+            lead_word.raise_syntax_error("improper definition name ")
         if (lead_word.value != "include"):
           word_iterator.pop_unquoted().assert_expected("=")
         active_definition = libtbx.phil.definition(
