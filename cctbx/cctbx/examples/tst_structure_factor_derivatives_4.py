@@ -28,7 +28,7 @@ def d_target_d_params_finite(d_order, f_obs, xray_structure, eps=1.e-8):
   for i_scatterer,scatterer in enumerate(scatterers):
     if (not site_symmetry_table.is_special_position(i_scatterer)):
       site_symmetry_ops = None
-      if (not scatterer.anisotropic_flag):
+      if (not scatterer.flags.use_u_aniso()):
         ips = range(7)
       else:
         ips = range(12)
@@ -36,7 +36,7 @@ def d_target_d_params_finite(d_order, f_obs, xray_structure, eps=1.e-8):
       site_symmetry_ops = site_symmetry_table.get(i_scatterer)
       site_constraints = site_symmetry_ops.site_constraints()
       ips = list(site_constraints.independent_indices)
-      if (not scatterer.anisotropic_flag):
+      if (not scatterer.flags.use_u_aniso()):
         ips.extend(range(3,7))
       else:
         adp_constraints = site_symmetry_ops.adp_constraints()
@@ -54,7 +54,7 @@ def d_target_d_params_finite(d_order, f_obs, xray_structure, eps=1.e-8):
               independent_params=site_constraints.independent_params(
               all_params=si_eps[:3]))
             si_eps = list(all_params) + si_eps[3:]
-          elif (scatterer.anisotropic_flag and ip < 9):
+          elif (scatterer.flags.use_u_aniso() and ip < 9):
             all_params = adp_constraints.all_params(
               independent_params=adp_constraints.independent_params(
                 all_params=si_eps[3:9]))
@@ -190,14 +190,14 @@ def run_call_back(flags,
         strudat_entries = [strudat_contents.get(tag=flags.tag)]
         assert strudat_entries[0] is not None
   if (flags.isotropic):
-    anisotropic_flags = [False]
+    use_u_aniso_flags = [False]
   elif (flags.anisotropic):
-    anisotropic_flags = [True]
+    use_u_aniso_flags = [True]
   else:
-    anisotropic_flags = [False, True]
+    use_u_aniso_flags = [False, True]
   if (not flags.tag):
     for n_scatterers in xrange(2,3+1):
-      for anisotropic_flag in anisotropic_flags:
+      for use_u_aniso in use_u_aniso_flags:
         xray_structure = random_structure.xray_structure(
           space_group_info=space_group_info,
           n_scatterers=n_scatterers,
@@ -206,7 +206,8 @@ def run_call_back(flags,
           general_positions_only=False,
           random_f_prime_d_min=1,
           random_f_double_prime=anomalous_flag,
-          anisotropic_flag=anisotropic_flag,
+          use_u_aniso = use_u_aniso,
+          use_u_iso = not(use_u_aniso),
           random_u_iso=True,
           random_u_iso_scale=0.3,
           random_occupancy=True)
@@ -224,7 +225,7 @@ def run_call_back(flags,
       sys.stderr.flush()
       print >> out, "strudat tag:", entry.tag
       out.flush()
-      for anisotropic_flag in anisotropic_flags:
+      for use_u_aniso in use_u_aniso_flags:
         xray_structure = entry.as_xray_structure()
         xray_structure = random_structure.xray_structure(
           space_group_info=xray_structure.space_group_info(),
@@ -233,7 +234,8 @@ def run_call_back(flags,
           elements="random",
           random_f_prime_d_min=1,
           random_f_double_prime=anomalous_flag,
-          anisotropic_flag=anisotropic_flag,
+          use_u_aniso = use_u_aniso,
+          use_u_iso = not(use_u_aniso),
           random_u_iso=True,
           random_u_iso_scale=0.3,
           random_occupancy=True)

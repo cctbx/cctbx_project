@@ -633,7 +633,6 @@ def exercise_12(fmodel):
                                        space_group_info  = space_group_info,
                                        elements          = ["N"]*20,
                                        volume_per_atom   = 50.0,
-                                       anisotropic_flag  = False,
                                        random_u_iso      = False,
                                        u_iso             = adptbx.b_as_u(20.0))
       sg = random_xray_structure.space_group()

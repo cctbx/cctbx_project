@@ -69,7 +69,7 @@ def exercise_shannon_sampled(space_group_info, anomalous_flag, conjugate_flag,
     elements=("N", "C", "C", "O"),
     random_f_prime_d_min=1,
     random_f_double_prime=anomalous_flag,
-    anisotropic_flag=True,
+    use_u_aniso=True,
     random_u_iso=True,
     random_occupancy=True)
   f_calc = structure.structure_factors(
@@ -169,7 +169,7 @@ def exercise_under_sampled(space_group_info, anomalous_flag, conjugate_flag,
     elements=("N", "C", "C", "O"),
     random_f_prime_d_min=1,
     random_f_double_prime=anomalous_flag,
-    anisotropic_flag=True,
+    use_u_aniso=True,
     random_u_iso=True,
     random_occupancy=True
     ).structure_factors(

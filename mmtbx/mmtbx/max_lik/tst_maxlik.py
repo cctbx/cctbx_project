@@ -186,7 +186,6 @@ def test_2():
                                  space_group_info  = space_group_info,
                                  elements          = ["N"]*(n_sites),
                                  volume_per_atom   = volume_per_atom,
-                                 anisotropic_flag  = False,
                                  random_u_iso      = False)
   structure.scattering_type_registry(table="wk1995")
   f_calc = structure.structure_factors(d_min          = d_min,

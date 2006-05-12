@@ -148,7 +148,7 @@ namespace cctbx { namespace xray { namespace {
   {
     af::shared<double> result(af::reserve(self.size()));
     for(std::size_t i=0;i<self.size();i++) {
-      if (self[i].anisotropic_flag) {
+      if (!self[i].flags.use_u_iso()) {
         result.push_back(-1);
       }
       else {
@@ -165,12 +165,17 @@ namespace cctbx { namespace xray { namespace {
   {
     af::shared<double> result(af::reserve(self.size()));
     for(std::size_t i=0;i<self.size();i++) {
-      if (self[i].anisotropic_flag) {
-        result.push_back(adptbx::u_star_as_u_iso(unit_cell, self[i].u_star));
+      double u_iso_= 0.0;
+      if (self[i].flags.use_u_aniso()) {
+        u_iso_ += adptbx::u_star_as_u_iso(unit_cell, self[i].u_star);
+      }
+      else if (self[i].flags.use_u_iso()) {
+        u_iso_ += self[i].u_iso;
       }
       else {
-        result.push_back(self[i].u_iso);
+       u_iso_ = -1.0;
       }
+      result.push_back(u_iso_);
     }
     return result;
   }
@@ -182,8 +187,6 @@ namespace cctbx { namespace xray { namespace {
   {
     CCTBX_ASSERT(self.size() == u_iso.size());
     for(std::size_t i=0;i<self.size();i++) {
-     //XXX
-      //if (!self[i].anisotropic_flag) {
       if (self[i].flags.use_u_iso()) {
         self[i].u_iso = u_iso[i];
       }
@@ -195,7 +198,7 @@ namespace cctbx { namespace xray { namespace {
   {
     af::shared<scitbx::sym_mat3<double> > result(af::reserve(self.size()));
     for(std::size_t i=0;i<self.size();i++) {
-      if (self[i].anisotropic_flag) {
+      if (self[i].flags.use_u_aniso()) {
         result.push_back(self[i].u_star);
       }
       else {
@@ -212,7 +215,7 @@ namespace cctbx { namespace xray { namespace {
   {
     CCTBX_ASSERT(self.size() == u_star.size());
     for(std::size_t i=0;i<self.size();i++) {
-      if (self[i].anisotropic_flag) {
+      if (self[i].flags.use_u_aniso()) {
         self[i].u_star = u_star[i];
       }
     }
@@ -225,7 +228,7 @@ namespace cctbx { namespace xray { namespace {
   {
     af::shared<scitbx::sym_mat3<double> > result(af::reserve(self.size()));
     for(std::size_t i=0;i<self.size();i++) {
-      if (self[i].anisotropic_flag) {
+      if (self[i].flags.use_u_aniso()) {
         result.push_back(adptbx::u_star_as_u_cart(unit_cell, self[i].u_star));
       }
       else {
@@ -243,7 +246,7 @@ namespace cctbx { namespace xray { namespace {
   {
     CCTBX_ASSERT(self.size() == u_cart.size());
     for(std::size_t i=0;i<self.size();i++) {
-      if (self[i].anisotropic_flag) {
+      if (self[i].flags.use_u_aniso()) {
         self[i].u_star = adptbx::u_cart_as_u_star(unit_cell, u_cart[i]);
       }
     }
@@ -274,7 +277,7 @@ namespace cctbx { namespace xray { namespace {
   {
     std::size_t result = 0;
     for(std::size_t i=0;i<self.size();i++) {
-      if (self[i].anisotropic_flag) result++;
+      if (self[i].flags.use_u_aniso()) result++;
     }
     return result;
   }

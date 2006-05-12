@@ -244,8 +244,14 @@ namespace cctbx { namespace xray {
         ScattererType& sc = scatterers[i];
         if(sc.flags.use()) {
           sc.flags.set_grad_site(site);
-          if (sc.flags.use_u_iso()) sc.flags.set_grad_u_iso(u_iso);
-          if (sc.flags.use_u_aniso()) sc.flags.set_grad_u_aniso(u_aniso);
+          if (sc.flags.use_u_iso())
+            sc.flags.set_grad_u_iso(u_iso);
+          else
+            sc.flags.set_grad_u_iso(false);
+          if (sc.flags.use_u_aniso())
+            sc.flags.set_grad_u_aniso(u_aniso);
+          else
+            sc.flags.set_grad_u_aniso(false);
           sc.flags.set_grad_occupancy(occupancy);
           sc.flags.set_grad_fp(fp);
           sc.flags.set_grad_fdp(fdp);

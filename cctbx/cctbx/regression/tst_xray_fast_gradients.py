@@ -192,7 +192,8 @@ class resampling(crystal.symmetry):
 class judge(object):
 
   def __init__(self, scatterer, label, reference, other, top):
-    label += [" iso", " aniso"][int(scatterer.anisotropic_flag)]
+    if(scatterer.flags.use_u_iso()):   label += " iso "
+    if(scatterer.flags.use_u_aniso()): label += " aniso "
     s = ""
     r = (reference-other)/max(abs(top), min(abs(reference), abs(other)))
     s += " %.5f " % r + label
@@ -268,10 +269,11 @@ class shifted_u_iso(object):
 
   def __init__(self, f_obs, structure, i_scatterer, shift):
     self.structure_shifted = structure.deep_copy_scatterers()
-    self.structure_shifted.scatterers()[i_scatterer].u_iso += shift
-    if (f_obs is not None):
-      self.f_calc = f_obs.structure_factors_from_scatterers(
-        xray_structure=self.structure_shifted).f_calc()
+    if (self.structure_shifted.scatterers()[i_scatterer].flags.use_u_iso()):
+      self.structure_shifted.scatterers()[i_scatterer].u_iso += shift
+      if (f_obs is not None):
+        self.f_calc = f_obs.structure_factors_from_scatterers(
+          xray_structure=self.structure_shifted).f_calc()
 
 def u_iso(structure_ideal, d_min, f_obs, tan_u_iso, verbose=0):
   sh = shifted_u_iso(f_obs, structure_ideal, 0, 0.05)
@@ -288,14 +290,6 @@ def u_iso(structure_ideal, d_min, f_obs, tan_u_iso, verbose=0):
      u_iso_refinable_params = flex.double()
   else:
      u_iso_refinable_params = None
-  print
-  print "gradient_flags.site      ", gradient_flags.site
-  print "gradient_flags.u_iso     ", gradient_flags.u_iso
-  print "gradient_flags.u_aniso   ", gradient_flags.u_aniso
-  print "gradient_flags.occupancy ", gradient_flags.occupancy
-  print "gradient_flags.fp        ", gradient_flags.fp
-  print "gradient_flags.fdp       ", gradient_flags.fdp
-
   for scatterer in sh.structure_shifted.scatterers():
       scatterer.flags.set_grad_site(gradient_flags.site)
       scatterer.flags.set_grad_u_iso(gradient_flags.u_iso)
@@ -307,46 +301,149 @@ def u_iso(structure_ideal, d_min, f_obs, tan_u_iso, verbose=0):
          scatterer.flags.set_tan_u_iso(True)
          param = random.randint(90,120)
          scatterer.flags.param= param
-         value = math.tan(scatterer.u_iso*math.pi/adptbx.b_as_u(param)-math.pi/2)
+         value=math.tan(scatterer.u_iso*math.pi/adptbx.b_as_u(param)-math.pi/2)
          u_iso_refinable_params.append(value)
-  sfd = xray.structure_factors.gradients_direct(
-    xray_structure=sh.structure_shifted,
-    u_iso_reinable_params=u_iso_refinable_params,
-    miller_set=f_obs,
-    d_target_d_f_calc=ls.derivatives(),
-    n_parameters=0)
-  re = resampling(miller_set=f_obs)
-  map0 = re(
-    xray_structure=sh.structure_shifted,
-    u_iso_reinable_params=u_iso_refinable_params,
-    dp=miller.array(miller_set=f_obs, data=ls.derivatives()),
-    n_parameters=0,
-    verbose=verbose)
-  top_gradient = None
-  for i_scatterer,scatterer in enumerate(sh.structure_shifted.scatterers()):
-    direct_summ = sfd.d_target_d_u_iso()[i_scatterer]
-    if (top_gradient is None): top_gradient = direct_summ
-    fast_gradie = map0.d_target_d_u_iso()[i_scatterer]
-    sys.stdout.flush()
-    match = judge(scatterer, "u_iso", direct_summ, fast_gradie, top_gradient)
-    if (0 or verbose):
-      print "direct summ[%d]: " % i_scatterer, direct_summ
-      print "fast gradie[%d]: " % i_scatterer, fast_gradie, match
-      print
-    assert not match.is_bad
-  sys.stdout.flush()
+  if (0):
+    print "u_iso"
+    print "gradient_flags.site      ", gradient_flags.site
+    print "gradient_flags.u_iso     ", gradient_flags.u_iso
+    print "gradient_flags.u_aniso   ", gradient_flags.u_aniso
+    print "gradient_flags.occupancy ", gradient_flags.occupancy
+    print "gradient_flags.fp        ", gradient_flags.fp
+    print "gradient_flags.fdp       ", gradient_flags.fdp
+    cntr_use_u_iso = 0
+    cntr_use_u_aniso = 0
+    cntr_grad_u_iso = 0
+    cntr_grad_u_aniso = 0
+    for scatterer in sh.structure_shifted.scatterers():
+      if (scatterer.flags.use_u_iso()):  cntr_use_u_iso += 1
+      if (scatterer.flags.use_u_aniso()):  cntr_use_u_aniso += 1
+      if (scatterer.flags.grad_u_iso()):  cntr_grad_u_iso += 1
+      if (scatterer.flags.grad_u_aniso()):  cntr_grad_u_aniso += 1
+    print "use_u_iso                ", cntr_use_u_iso,cntr_grad_u_iso
+    print "use_u_aniso              ", cntr_use_u_aniso,cntr_grad_u_aniso
+  grad_flags_counts = \
+            xray.scatterer_grad_flags_counts(sh.structure_shifted.scatterers())
+  if(grad_flags_counts.n_parameters() > 0):
+     sfd = xray.structure_factors.gradients_direct(
+       xray_structure=sh.structure_shifted,
+       u_iso_reinable_params=u_iso_refinable_params,
+       miller_set=f_obs,
+       d_target_d_f_calc=ls.derivatives(),
+       n_parameters=0)
+     re = resampling(miller_set=f_obs)
+     map0 = re(
+       xray_structure=sh.structure_shifted,
+       u_iso_reinable_params=u_iso_refinable_params,
+       dp=miller.array(miller_set=f_obs, data=ls.derivatives()),
+       n_parameters=0,
+       verbose=verbose)
+     if(grad_flags_counts.u_aniso > 0):
+        sfd_d_target_d_u_cart = sfd.d_target_d_u_cart()
+        map0_d_target_d_u_cart = map0.d_target_d_u_cart()
+     top_gradient = None
+     gradients_1 = []
+     for i_scatterer,scatterer in enumerate(sh.structure_shifted.scatterers()):
+       if(0):
+         print "i_scatterer= ", i_scatterer,scatterer.flags.use_u_iso(),\
+           scatterer.flags.grad_u_iso(), scatterer.flags.use_u_aniso(),\
+           scatterer.flags.grad_u_aniso(), scatterer.u_iso, scatterer.u_star
+       if(scatterer.flags.use_u_iso()): parameter_name = "u_iso"
+       if(scatterer.flags.use_u_aniso()): parameter_name = "u_star"
+       if(parameter_name == "u_iso" and scatterer.flags.grad_u_iso() and
+                                                  scatterer.flags.use_u_iso()):
+          direct_summ = sfd.d_target_d_u_iso()[i_scatterer]
+          if (top_gradient is None): top_gradient = direct_summ
+          fast_gradie = map0.d_target_d_u_iso()[i_scatterer]
+          sys.stdout.flush()
+          gradients_1.append([direct_summ, fast_gradie])
+          match = judge(scatterer, parameter_name, direct_summ, fast_gradie,
+                                                                  top_gradient)
+          if (0 or verbose):
+            print "direct summ[%d]: " % i_scatterer, direct_summ
+            print "fast gradie[%d]: " % i_scatterer, fast_gradie, match
+            print
+          assert not match.is_bad
+       if(parameter_name == "u_star" and scatterer.flags.grad_u_aniso() and
+                                                scatterer.flags.use_u_aniso()):
+        sfd_star = sfd.d_target_d_u_star()[i_scatterer]
+        sfd_cart = adptbx.grad_u_star_as_u_cart(
+          structure_ideal.unit_cell(), sfd_star)
+        assert approx_equal(
+          sfd_star,
+          adptbx.grad_u_cart_as_u_star(structure_ideal.unit_cell(), sfd_cart))
+        for ij in xrange(6):
+          direct_summ = sfd_d_target_d_u_cart[i_scatterer][ij]
+          if (top_gradient is None): top_gradient = direct_summ
+          fast_gradie = map0_d_target_d_u_cart[i_scatterer][ij]
+          gradients_1.append([direct_summ, fast_gradie])
+          match =judge(scatterer,"u_star",direct_summ,fast_gradie,top_gradient)
+          if (0 or verbose or match.is_bad):
+            print "direct summ[%d][%d]: " % (i_scatterer, ij), direct_summ
+            print "fast gradie[%d][%d]: " % (i_scatterer, ij),fast_gradie,match
+            print
+          assert not match.is_bad
+     # Making sure that gradients_1 = gradients_2
+     for i_scatterer,scatterer in enumerate(sh.structure_shifted.scatterers()):
+         if(not scatterer.flags.use_u_iso()):
+            scatterer.u_iso = -12345.0
+         if(not scatterer.flags.use_u_aniso()):
+            scatterer.u_star =(-999.,-999.,-999.,-999.,-999.,-999.)
+     sfd = xray.structure_factors.gradients_direct(
+       xray_structure=sh.structure_shifted,
+       u_iso_reinable_params=u_iso_refinable_params,
+       miller_set=f_obs,
+       d_target_d_f_calc=ls.derivatives(),
+       n_parameters=0)
+     re = resampling(miller_set=f_obs)
+     map0 = re(
+       xray_structure=sh.structure_shifted,
+       u_iso_reinable_params=u_iso_refinable_params,
+       dp=miller.array(miller_set=f_obs, data=ls.derivatives()),
+       n_parameters=0,
+       verbose=verbose)
+     grad_flags_counts = \
+            xray.scatterer_grad_flags_counts(sh.structure_shifted.scatterers())
+     if(grad_flags_counts.u_aniso):
+        sfd_d_target_d_u_cart = sfd.d_target_d_u_cart()
+        map0_d_target_d_u_cart = map0.d_target_d_u_cart()
+     gradients_2 = []
+     for i_scatterer,scatterer in enumerate(sh.structure_shifted.scatterers()):
+       if(scatterer.flags.use_u_iso()):   parameter_name = "u_iso"
+       if(scatterer.flags.use_u_aniso()): parameter_name = "u_star"
+       if(parameter_name == "u_iso" and scatterer.flags.grad_u_iso() and
+                                                  scatterer.flags.use_u_iso()):
+          direct_summ = sfd.d_target_d_u_iso()[i_scatterer]
+          fast_gradie = map0.d_target_d_u_iso()[i_scatterer]
+          gradients_2.append([direct_summ, fast_gradie])
+       if(parameter_name == "u_star" and scatterer.flags.grad_u_aniso() and
+                                                scatterer.flags.use_u_aniso()):
+        sfd_star = sfd.d_target_d_u_star()[i_scatterer]
+        sfd_cart = adptbx.grad_u_star_as_u_cart(structure_ideal.unit_cell(),
+                                                                      sfd_star)
+        assert approx_equal(
+          sfd_star,
+          adptbx.grad_u_cart_as_u_star(structure_ideal.unit_cell(), sfd_cart))
+        for ij in xrange(6):
+          direct_summ = sfd_d_target_d_u_cart[i_scatterer][ij]
+          fast_gradie = map0_d_target_d_u_cart[i_scatterer][ij]
+          gradients_2.append([direct_summ, fast_gradie])
+     for g1,g2 in zip(gradients_1, gradients_2):
+       assert approx_equal(g1, g2)
+     sys.stdout.flush()
 
 class shifted_u_star(object):
 
   def __init__(self, f_obs, structure, i_scatterer, ij, shift):
     self.structure_shifted = structure.deep_copy_scatterers()
-    scatterer = self.structure_shifted.scatterers()[i_scatterer]
-    u_star = list(scatterer.u_star)
-    u_star[ij] += shift
-    scatterer.u_star = u_star
-    if (f_obs is not None):
-      self.f_calc = f_obs.structure_factors_from_scatterers(
-        xray_structure=self.structure_shifted).f_calc()
+    if (self.structure_shifted.scatterers()[i_scatterer].flags.use_u_aniso()):
+      scatterer = self.structure_shifted.scatterers()[i_scatterer]
+      u_star = list(scatterer.u_star)
+      u_star[ij] += shift
+      scatterer.u_star = u_star
+      if (f_obs is not None):
+        self.f_calc = f_obs.structure_factors_from_scatterers(
+          xray_structure=self.structure_shifted).f_calc()
 
 def u_star(structure_ideal, d_min, f_obs, verbose=0):
   sh = shifted_u_star(f_obs, structure_ideal, 0, 0, 0.0001)
@@ -367,40 +464,129 @@ def u_star(structure_ideal, d_min, f_obs, verbose=0):
                                 fp         = gradient_flags.fp,
                                 fdp        = gradient_flags.fdp)
   grad_flags_counts = xray.scatterer_grad_flags_counts(sh.structure_shifted.scatterers())
-  sfd = xray.structure_factors.gradients_direct(
-    xray_structure=sh.structure_shifted,
-    u_iso_reinable_params=None,
-    miller_set=f_obs,
-    d_target_d_f_calc=ls.derivatives(),
-    n_parameters=0)
-  re = resampling(miller_set=f_obs)
-  map0 = re(
-    xray_structure=sh.structure_shifted,
-    u_iso_reinable_params=None,
-    dp=miller.array(miller_set=f_obs, data=ls.derivatives()),
-    n_parameters=0,
-    verbose=verbose)
-  sfd_d_target_d_u_cart = sfd.d_target_d_u_cart()
-  map0_d_target_d_u_cart = map0.d_target_d_u_cart()
-  top_gradient = None
-  for i_scatterer,scatterer in enumerate(sh.structure_shifted.scatterers()):
-    sfd_star = sfd.d_target_d_u_star()[i_scatterer]
-    sfd_cart = adptbx.grad_u_star_as_u_cart(
-      structure_ideal.unit_cell(), sfd_star)
-    assert approx_equal(
-      sfd_star,
-      adptbx.grad_u_cart_as_u_star(structure_ideal.unit_cell(), sfd_cart))
-    for ij in xrange(6):
-      direct_summ = sfd_d_target_d_u_cart[i_scatterer][ij]
-      if (top_gradient is None): top_gradient = direct_summ
-      fast_gradie = map0_d_target_d_u_cart[i_scatterer][ij]
-      match = judge(scatterer, "u_cart", direct_summ,fast_gradie,top_gradient)
-      if (0 or verbose or match.is_bad):
-        print "direct summ[%d][%d]: " % (i_scatterer, ij), direct_summ
-        print "fast gradie[%d][%d]: " % (i_scatterer, ij), fast_gradie, match
-        print
-      assert not match.is_bad
-  sys.stdout.flush()
+  if(grad_flags_counts.n_parameters() > 0):
+     if (0):
+       print "u_aniso"
+       print "gradient_flags.site      ", gradient_flags.site
+       print "gradient_flags.u_iso     ", gradient_flags.u_iso
+       print "gradient_flags.u_aniso   ", gradient_flags.u_aniso
+       print "gradient_flags.occupancy ", gradient_flags.occupancy
+       print "gradient_flags.fp        ", gradient_flags.fp
+       print "gradient_flags.fdp       ", gradient_flags.fdp
+       cntr_use_u_iso = 0
+       cntr_use_u_aniso = 0
+       cntr_grad_u_iso = 0
+       cntr_grad_u_aniso = 0
+       for scatterer in sh.structure_shifted.scatterers():
+         if (scatterer.flags.use_u_iso()):  cntr_use_u_iso += 1
+         if (scatterer.flags.use_u_aniso()):  cntr_use_u_aniso += 1
+         if (scatterer.flags.grad_u_iso()):  cntr_grad_u_iso += 1
+         if (scatterer.flags.grad_u_aniso()):  cntr_grad_u_aniso += 1
+       print "use_u_iso                ", cntr_use_u_iso,cntr_grad_u_iso
+       print "use_u_aniso              ", cntr_use_u_aniso,cntr_grad_u_aniso
+     sfd = xray.structure_factors.gradients_direct(
+       xray_structure=sh.structure_shifted,
+       u_iso_reinable_params=None,
+       miller_set=f_obs,
+       d_target_d_f_calc=ls.derivatives(),
+       n_parameters= 0
+       )
+     re = resampling(miller_set=f_obs)
+     map0 = re(
+       xray_structure=sh.structure_shifted,
+       u_iso_reinable_params=None,
+       dp=miller.array(miller_set=f_obs, data=ls.derivatives()),
+       n_parameters= 0,
+       verbose=verbose)
+
+     grad_flags_counts = xray.scatterer_grad_flags_counts(sh.structure_shifted.scatterers())
+     if(grad_flags_counts.u_aniso):
+        sfd_d_target_d_u_cart = sfd.d_target_d_u_cart()
+        map0_d_target_d_u_cart = map0.d_target_d_u_cart()
+     top_gradient = None
+     gradients_1 = []
+     for i_scatterer,scatterer in enumerate(sh.structure_shifted.scatterers()):
+       if(scatterer.flags.use_u_iso()):   parameter_name = "u_iso"
+       if(scatterer.flags.use_u_aniso()): parameter_name = "u_star"
+       if(parameter_name == "u_iso" and scatterer.flags.grad_u_iso()):
+          direct_summ = sfd.d_target_d_u_iso()[i_scatterer]
+          if (top_gradient is None): top_gradient = direct_summ
+          fast_gradie = map0.d_target_d_u_iso()[i_scatterer]
+          sys.stdout.flush()
+          gradients_1.append([direct_summ, fast_gradie])
+          match = judge(scatterer, parameter_name, direct_summ, fast_gradie,
+                                                                  top_gradient)
+          if (0 or verbose):
+            print "direct summ[%d]: " % i_scatterer, direct_summ
+            print "fast gradie[%d]: " % i_scatterer, fast_gradie, match
+            print
+          assert not match.is_bad
+       if parameter_name == "u_star" and scatterer.flags.grad_u_aniso():
+        sfd_star = sfd.d_target_d_u_star()[i_scatterer]
+        sfd_cart = adptbx.grad_u_star_as_u_cart(
+          structure_ideal.unit_cell(), sfd_star)
+        assert approx_equal(
+          sfd_star,
+          adptbx.grad_u_cart_as_u_star(structure_ideal.unit_cell(), sfd_cart))
+        for ij in xrange(6):
+          direct_summ = sfd_d_target_d_u_cart[i_scatterer][ij]
+          if (top_gradient is None): top_gradient = direct_summ
+          fast_gradie = map0_d_target_d_u_cart[i_scatterer][ij]
+          gradients_1.append([direct_summ, fast_gradie])
+          match =judge(scatterer,"u_star",direct_summ,fast_gradie,top_gradient)
+          if (0 or verbose or match.is_bad):
+            print "direct summ[%d][%d]: " % (i_scatterer, ij), direct_summ
+            print "fast gradie[%d][%d]: " % (i_scatterer, ij),fast_gradie,match
+            print
+          assert not match.is_bad
+     # Making sure that gradients_1 = gradients_2
+     for i_scatterer,scatterer in enumerate(sh.structure_shifted.scatterers()):
+         if(not scatterer.flags.use_u_iso()):
+            scatterer.u_iso = -12345.0
+         if(not scatterer.flags.use_u_aniso()):
+            scatterer.u_star =(-999.,-999.,-999.,-999.,-999.,-999.)
+     sfd = xray.structure_factors.gradients_direct(
+       xray_structure=sh.structure_shifted,
+       u_iso_reinable_params=None,
+       miller_set=f_obs,
+       d_target_d_f_calc=ls.derivatives(),
+       n_parameters= 0
+       )
+     re = resampling(miller_set=f_obs)
+     map0 = re(
+       xray_structure=sh.structure_shifted,
+       u_iso_reinable_params=None,
+       dp=miller.array(miller_set=f_obs, data=ls.derivatives()),
+       n_parameters= 0,
+       verbose=verbose)
+
+     grad_flags_counts = \
+            xray.scatterer_grad_flags_counts(sh.structure_shifted.scatterers())
+     if(grad_flags_counts.u_aniso):
+        sfd_d_target_d_u_cart = sfd.d_target_d_u_cart()
+        map0_d_target_d_u_cart = map0.d_target_d_u_cart()
+     gradients_2 = []
+     for i_scatterer,scatterer in enumerate(sh.structure_shifted.scatterers()):
+       if(scatterer.flags.use_u_iso()):   parameter_name = "u_iso"
+       if(scatterer.flags.use_u_aniso()): parameter_name = "u_star"
+       if(parameter_name == "u_iso" and scatterer.flags.grad_u_iso()):
+          direct_summ = sfd.d_target_d_u_iso()[i_scatterer]
+          fast_gradie = map0.d_target_d_u_iso()[i_scatterer]
+          gradients_2.append([direct_summ, fast_gradie])
+       if parameter_name == "u_star" and scatterer.flags.grad_u_aniso():
+        sfd_star = sfd.d_target_d_u_star()[i_scatterer]
+        sfd_cart = adptbx.grad_u_star_as_u_cart(
+          structure_ideal.unit_cell(), sfd_star)
+        assert approx_equal(
+          sfd_star,
+          adptbx.grad_u_cart_as_u_star(structure_ideal.unit_cell(), sfd_cart))
+        for ij in xrange(6):
+          direct_summ = sfd_d_target_d_u_cart[i_scatterer][ij]
+          fast_gradie = map0_d_target_d_u_cart[i_scatterer][ij]
+          gradients_2.append([direct_summ, fast_gradie])
+     for g1,g2 in zip(gradients_1, gradients_2):
+       assert approx_equal(g1, g2)
+     sys.stdout.flush()
 
 class shifted_occupancy(object):
 
@@ -561,12 +747,10 @@ def fdp(structure_ideal, d_min, f_obs, verbose=0):
     assert not match.is_bad
   sys.stdout.flush()
 
-def shift_all(structure_ideal, f_obs, anomalous_flag, use_u_aniso):
+def shift_all(structure_ideal, f_obs, anomalous_flag):
   sh = shifted_site(None, structure_ideal, 0, 0, 0.01)
-  if (not use_u_aniso):
-    sh = shifted_u_iso(None, sh.structure_shifted, 0, 0.05)
-  else:
-    sh = shifted_u_star(None, sh.structure_shifted, 0, 0, 0.0001)
+  sh = shifted_u_iso(None, sh.structure_shifted, 0, 0.05)
+  sh = shifted_u_star(None, sh.structure_shifted, 0, 0, 0.0001)
   sh = shifted_occupancy(None, sh.structure_shifted, 0, 0.2)
   if (anomalous_flag):
     sh = shifted_fdp(None, sh.structure_shifted, 0, 2)
@@ -576,53 +760,30 @@ def shift_all(structure_ideal, f_obs, anomalous_flag, use_u_aniso):
   return sh, ls
 
 def exercise_packed(structure_ideal, f_obs,
-                    anomalous_flag, use_u_aniso,
+                    anomalous_flag,
                     verbose=0):
-  sh, ls = shift_all(structure_ideal, f_obs, anomalous_flag, use_u_aniso)
+  sh, ls = shift_all(structure_ideal, f_obs, anomalous_flag)
   flag = (random.random() > 0.5)
   gradient_flags = randomize_gradient_flags(
     xray.structure_factors.gradient_flags(site=flag, u=not flag),
     f_obs.anomalous_flag(),
     thresholds=(1/2.,0))
-  if (use_u_aniso):
-    u_iso_refinable_params = None
-#XXX for the moment, don't want to test u_iso
-    #xray.set_scatterer_grad_flags(
-    #                            scatterers = sh.structure_shifted.scatterers(),
-    #                            site       = gradient_flags.site,
-    #                            u_iso      = gradient_flags.u_iso,
-    #                            u_aniso    = gradient_flags.u_aniso,
-    #                            occupancy  = gradient_flags.occupancy,
-    #                            fp         = gradient_flags.fp,
-    #                            fdp        = gradient_flags.fdp)
-    xray.set_scatterer_grad_flags(
-                                scatterers = sh.structure_shifted.scatterers(),
-                                site       = gradient_flags.site,
-                                u_aniso    = gradient_flags.u_aniso,
-                                occupancy  = gradient_flags.occupancy,
-                                fp         = gradient_flags.fp,
-                                fdp        = gradient_flags.fdp)
-  else:
-#XXX for the moment, don't want to test u_iso
-    pass
-    #u_iso_refinable_params = flex.double()
-    #for scatterer in sh.structure_shifted.scatterers():
-    #    scatterer.flags.set_grad_site(gradient_flags.site)
-    #    scatterer.flags.set_grad_u_iso(gradient_flags.u_iso)
-    #    scatterer.flags.set_grad_u_aniso(gradient_flags.u_aniso)
-    #    scatterer.flags.set_grad_occupancy(gradient_flags.occupancy)
-    #    scatterer.flags.set_grad_fp(gradient_flags.fp)
-    #    scatterer.flags.set_grad_fdp(gradient_flags.fdp)
-    #    scatterer.flags.set_tan_u_iso(True)
-    #    param = random.randint(90,120)
-    #    scatterer.flags.param= param
-    #    value = math.tan(scatterer.u_iso*math.pi/adptbx.b_as_u(param)-math.pi/2)
-    #    u_iso_refinable_params.append(value)
+  u_iso_refinable_params = flex.double()
+  for scatterer in sh.structure_shifted.scatterers():
+      scatterer.flags.set_grad_site(gradient_flags.site)
+      scatterer.flags.set_grad_u_iso(gradient_flags.u_iso)
+      scatterer.flags.set_grad_u_aniso(gradient_flags.u_aniso)
+      scatterer.flags.set_grad_occupancy(gradient_flags.occupancy)
+      scatterer.flags.set_grad_fp(gradient_flags.fp)
+      scatterer.flags.set_grad_fdp(gradient_flags.fdp)
+      scatterer.flags.set_tan_u_iso(True)
+      param = random.randint(90,120)
+      scatterer.flags.param= param
+      value = math.tan(scatterer.u_iso*math.pi/adptbx.b_as_u(param)-math.pi/2)
+      u_iso_refinable_params.append(value)
   n_parameters = xray.scatterer_grad_flags_counts(
                               sh.structure_shifted.scatterers()).n_parameters()
-  #XXX for the moment, don't want to test u_iso
-  #assert n_parameters > 0
-  #XXX remove if statement below:
+  assert n_parameters == sh.structure_shifted.n_parameters_XXX()
   if (n_parameters > 0):
     sfd = xray.structure_factors.gradients_direct(
       xray_structure=sh.structure_shifted,
@@ -644,33 +805,46 @@ def exercise_packed(structure_ideal, f_obs,
     assert correlation.coefficient() > 0.999
 
 def exercise_gradient_manager(structure_ideal, f_obs,
-                              anomalous_flag, use_u_aniso,
+                              anomalous_flag,
                               verbose=0):
-  sh, ls = shift_all(structure_ideal, f_obs, anomalous_flag, use_u_aniso)
+  sh, ls = shift_all(structure_ideal, f_obs, anomalous_flag)
   grad_manager = xray.structure_factors.gradients(
     miller_set=f_obs,
     quality_factor=100000,
     wing_cutoff=1.e-10)
   gradient_flags=xray.structure_factors.gradient_flags(default=True)
-#XXX for the moment, don't want to test u_iso
-  #xray.set_scatterer_grad_flags(scatterers = sh.structure_shifted.scatterers(),
-  #                              site       = gradient_flags.site,
-  #                              u_iso      = gradient_flags.u_iso,
-  #                              u_aniso    = gradient_flags.u_aniso,
-  #                              occupancy  = gradient_flags.occupancy,
-  #                              fp         = gradient_flags.fp,
-  #                              fdp        = gradient_flags.fdp)
   xray.set_scatterer_grad_flags(scatterers = sh.structure_shifted.scatterers(),
                                 site       = gradient_flags.site,
+                                u_iso      = gradient_flags.u_iso,
                                 u_aniso    = gradient_flags.u_aniso,
                                 occupancy  = gradient_flags.occupancy,
                                 fp         = gradient_flags.fp,
                                 fdp        = gradient_flags.fdp)
+  if (0):
+    print "exercise_gradient_manager"
+    print "gradient_flags.site      ", gradient_flags.site
+    print "gradient_flags.u_iso     ", gradient_flags.u_iso
+    print "gradient_flags.u_aniso   ", gradient_flags.u_aniso
+    print "gradient_flags.occupancy ", gradient_flags.occupancy
+    print "gradient_flags.fp        ", gradient_flags.fp
+    print "gradient_flags.fdp       ", gradient_flags.fdp
+    cntr_use_u_iso = 0
+    cntr_use_u_aniso = 0
+    cntr_grad_u_iso = 0
+    cntr_grad_u_aniso = 0
+    for scatterer in sh.structure_shifted.scatterers():
+      if (scatterer.flags.use_u_iso()):  cntr_use_u_iso += 1
+      if (scatterer.flags.use_u_aniso()):  cntr_use_u_aniso += 1
+      if (scatterer.flags.grad_u_iso()):  cntr_grad_u_iso += 1
+      if (scatterer.flags.grad_u_aniso()):  cntr_grad_u_aniso += 1
+    print "use_u_iso                ", cntr_use_u_iso,cntr_grad_u_iso
+    print "use_u_aniso              ", cntr_use_u_aniso,cntr_grad_u_aniso
   if (random.random() > 0.5):
     n_parameters = 0
   else:
     n_parameters = xray.scatterer_grad_flags_counts(
                               sh.structure_shifted.scatterers()).n_parameters()
+    assert n_parameters == sh.structure_shifted.n_parameters_XXX()
   gd = grad_manager(
     xray_structure=sh.structure_shifted,
     u_iso_reinable_params=None,
@@ -685,6 +859,8 @@ def exercise_gradient_manager(structure_ideal, f_obs,
     d_target_d_f_calc=ls.derivatives(),
     n_parameters=n_parameters,
     algorithm="fft")
+  grad_flags_counts = \
+            xray.scatterer_grad_flags_counts(sh.structure_shifted.scatterers())
   if (n_parameters == 0):
     d = gd.d_target_d_site_frac()
     f = gf.d_target_d_site_frac()
@@ -692,14 +868,15 @@ def exercise_gradient_manager(structure_ideal, f_obs,
     d = gd.d_target_d_site_cart()
     f = gf.d_target_d_site_cart()
     linear_regression_test(d, f, slope_tolerance=1.e-2, verbose=verbose)
-#XXX for the moment, don't want to test u_iso
-    #d = gd.d_target_d_u_iso()
-    #f = gf.d_target_d_u_iso()
-    if(use_u_aniso):
+    if(grad_flags_counts.u_iso > 0):
+       d = gd.d_target_d_u_iso()
+       f = gf.d_target_d_u_iso()
+       linear_regression_test(d, f, slope_tolerance=1.e-2, verbose=verbose)
+    if(grad_flags_counts.u_aniso > 0):
        linear_regression_test(d, f, slope_tolerance=1.e-2, verbose=verbose)
        d = gd.d_target_d_u_cart()
        f = gf.d_target_d_u_cart()
-    linear_regression_test(d, f, slope_tolerance=1.e-2, verbose=verbose)
+       linear_regression_test(d, f, slope_tolerance=1.e-2, verbose=verbose)
     d = gd.d_target_d_occupancy()
     f = gf.d_target_d_occupancy()
     linear_regression_test(d, f, slope_tolerance=1.e-2, verbose=verbose)
@@ -715,10 +892,8 @@ def exercise_gradient_manager(structure_ideal, f_obs,
     assert correlation.is_well_defined()
     assert correlation.coefficient() > 0.995, correlation.coefficient()
 
-def run_one(space_group_info, n_elements=4, volume_per_atom=1000, d_min=2,
+def run_one(space_group_info, n_elements= 9, volume_per_atom=1000, d_min = 2.0,
             anomalous_flag=0,
-            use_u_iso =0,
-            use_u_aniso =0,
             verbose=0):
   if (random.random() < 0.5):
     random_f_prime_scale=0.6
@@ -726,49 +901,34 @@ def run_one(space_group_info, n_elements=4, volume_per_atom=1000, d_min=2,
     random_f_prime_scale=0
   structure_ideal = random_structure.xray_structure(
     space_group_info,
-    elements=(("O","N","C")*(n_elements/3+1))[:n_elements],
+    elements=(("O","N","C")*(n_elements))[:n_elements],#(("O","N","C")*(n_elements/3+1))[:n_elements],
     volume_per_atom=volume_per_atom,
     min_distance=5,
     general_positions_only=True,
     random_f_prime_d_min=d_min-1,
     random_f_prime_scale=random_f_prime_scale,
     random_f_double_prime=anomalous_flag,
-    anisotropic_flag= True,
+    use_u_aniso = True,
+    use_u_iso = False,
     random_u_iso=True,
-    random_u_iso_scale=.3,
     random_u_cart_scale=.3,
     random_occupancy=True)
-  #XXX set u_iso flags and generate u_iso:
-  random_u_iso_scale = 0.3
-  random_u_iso_min = 0.0
-  for sc in structure_ideal.scatterers():
-    sc.flags.set_use_u_iso(use_u_iso)
-    sc.flags.set_use_u_aniso(use_u_aniso)
-    u_iso_ = random.random() * random_u_iso_scale + random_u_iso_min
-    sc.u_iso = u_iso_
-  print use_u_iso, use_u_aniso, "%5.3f"%structure_ideal.scatterers()[0].u_iso,\
-        ["%5.3f"%i for i in structure_ideal.scatterers()[0].u_star]
-
+  random_structure.random_modify_adp_and_adp_flags(
+                             scatterers         = structure_ideal.scatterers(),
+                             random_u_iso_scale = 0.3,
+                             random_u_iso_min   = 0.0)
   if (random.random() < 0.5):
     assign_custom_gaussians(structure_ideal, negative_a=random.random()<0.5)
   if (0 or verbose):
     structure_ideal.show_summary().show_scatterers()
-    if (use_u_aniso): #(anisotropic_flag): #XXX
-      uc = structure_ideal.unit_cell()
-      for scatterer in structure_ideal.scatterers():
-        print "u_iso:", adptbx.u_star_as_u_iso(uc, scatterer.u_star)
-    print
   f_obs = abs(structure_ideal.structure_factors(
     d_min=d_min, anomalous_flag=anomalous_flag, algorithm="direct").f_calc())
   if (1):
     site(structure_ideal, d_min, f_obs, verbose=verbose)
   if (1):
-    #XXX
-    if (use_u_iso):#(not anisotropic_flag):
-      u_iso(structure_ideal, d_min, f_obs, tan_u_iso=False, verbose=verbose)
-      u_iso(structure_ideal, d_min, f_obs, tan_u_iso=True, verbose=verbose)
-    if(use_u_aniso):#else:
-      u_star(structure_ideal, d_min, f_obs, verbose=verbose)
+    u_iso(structure_ideal,  d_min, f_obs, tan_u_iso=False, verbose=verbose)
+    u_iso(structure_ideal,  d_min, f_obs, tan_u_iso=True, verbose=verbose)
+    u_star(structure_ideal, d_min, f_obs, verbose=verbose)
   if (1):
     occupancy(structure_ideal, d_min, f_obs, verbose=verbose)
   if (1):
@@ -776,25 +936,15 @@ def run_one(space_group_info, n_elements=4, volume_per_atom=1000, d_min=2,
   if (1 and anomalous_flag):
     fdp(structure_ideal, d_min, f_obs, verbose=verbose)
   if (1):
-    exercise_gradient_manager(
-      structure_ideal, f_obs, anomalous_flag, use_u_aniso)
+    exercise_gradient_manager(structure_ideal, f_obs, anomalous_flag)
   if (1):
-    exercise_packed(
-      structure_ideal, f_obs, anomalous_flag, use_u_aniso)
+    exercise_packed(structure_ideal, f_obs, anomalous_flag)
 
 def run_call_back(flags, space_group_info):
   for anomalous_flag in [0,1]:
-    for (use_u_iso,use_u_aniso) in [(True,True),
-                                    (False,True),
-                                    (True,False),
-                                    (False,False)
-                                    ]:
-      run_one(
-        space_group_info=space_group_info,
-        anomalous_flag=anomalous_flag,
-        use_u_iso = use_u_iso,
-        use_u_aniso = use_u_aniso,
-        verbose=flags.Verbose)
+      run_one(space_group_info=space_group_info,
+              anomalous_flag=anomalous_flag,
+              verbose=flags.Verbose)
 
 def run():
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)

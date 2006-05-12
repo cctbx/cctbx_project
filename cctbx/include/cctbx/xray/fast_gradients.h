@@ -21,6 +21,7 @@ namespace cctbx { namespace xray {
 
         d_gaussian_fourier_transformed(
           scatterer_flags const& scf,
+          bool need_iso,
           exponent_table<FloatType>& exp_table,
           eltbx::xray_scattering::gaussian const& gaussian,
           FloatType const& fp,
@@ -33,10 +34,13 @@ namespace cctbx { namespace xray {
           base_t(exp_table, gaussian, fp, fdp, w, u_iso, u_extra),
           i_const_term(gaussian.n_terms())
         {
-          if (scf.grad_u_iso() || scf.grad_occupancy() ||
-                                             scf.grad_fp() || scf.grad_fdp()) {
+          //if (scf.grad_u_iso() || scf.grad_occupancy() || scf.grad_fp() || scf.grad_fdp()) {
+          if (scf.use_u_iso() || scf.grad_occupancy() || scf.grad_fp() || scf.grad_fdp()) {
+          //if (scf.grad_u_iso() || scf.use_u_iso() || scf.grad_occupancy() || scf.grad_fp() || scf.grad_fdp()) {
             FloatType b_incl_extra = adptbx::u_as_b(u_iso + u_extra);
-            if (scf.grad_u_iso())
+            //if (scf.grad_u_iso())
+            //if (scf.grad_u_iso() || scf.use_u_iso())
+            if (scf.use_u_iso())
             {
               std::size_t i = 0;
               for(;i<gaussian.n_terms();i++) {
@@ -69,6 +73,7 @@ namespace cctbx { namespace xray {
 
         d_gaussian_fourier_transformed(
           scatterer_flags const& scf,
+          bool need_iso,
           exponent_table<FloatType>& exp_table,
           eltbx::xray_scattering::gaussian const& gaussian,
           FloatType const& fp,
@@ -81,8 +86,10 @@ namespace cctbx { namespace xray {
           base_t(exp_table, gaussian, fp, fdp, w, u_cart, u_extra),
           i_const_term(gaussian.n_terms())
         {
-         //XXX
-          if (scf.grad_u_aniso() || scf.use_u_aniso()) {
+         //XXX re-think this (I mean "use_u_" usage) ?
+          //if (scf.grad_u_aniso() || scf.use_u_aniso()) {
+          if (scf.use_u_aniso()) {
+          //if (scf.grad_u_aniso() || need_iso) {
             for(std::size_t i=0;i<gaussian.n_terms();i++) {
               scitbx::sym_mat3<FloatType>
                 b_all = compose_anisotropic_b_all(
@@ -91,11 +98,15 @@ namespace cctbx { namespace xray {
               bcfmt_[i] = b_all.co_factor_matrix_transposed();
             }
           }
-          if (scf.grad_u_aniso() || scf.use_u_aniso() || scf.grad_fp() || scf.grad_fdp()) {
+          //if (scf.grad_u_aniso() || need_iso || scf.grad_fp() || scf.grad_fdp()) {
+          if (scf.use_u_aniso() || scf.grad_fp() || scf.grad_fdp()) {
+          //if (scf.grad_u_aniso() || scf.use_u_aniso() || scf.grad_fp() || scf.grad_fdp()) {
             scitbx::sym_mat3<FloatType>
               b_all = compose_anisotropic_b_all(0, u_extra, u_cart);
             FloatType d = b_all.determinant();
-            if (scf.grad_u_aniso() || scf.use_u_aniso()) {
+            //if (scf.grad_u_aniso() || need_iso) {
+            if (scf.use_u_aniso()) {
+            //if (scf.grad_u_aniso() || scf.use_u_aniso()) {
               detb_[i_const_term] = d;
               bcfmt_[i_const_term] = b_all.co_factor_matrix_transposed();
             }
@@ -534,6 +545,7 @@ namespace cctbx { namespace xray {
         fractional<FloatType> coor_frac = scatterer.site;
         detail::d_gaussian_fourier_transformed<FloatType> gaussian_ft(
           scatterer.flags,
+          need_iso,
           exp_table,
           gaussian, scatterer.fp, scatterer.fdp,
           scatterer.weight_without_occupancy(), scatterer.weight(),
@@ -557,6 +569,7 @@ namespace cctbx { namespace xray {
         if (scatterer.flags.use_u_aniso()) {
           gaussian_ft = detail::d_gaussian_fourier_transformed<FloatType>(
             scatterer.flags,
+            need_iso,
             exp_table,
             gaussian, scatterer.fp, scatterer.fdp,
             scatterer.weight_without_occupancy(), scatterer.weight(),
@@ -652,8 +665,7 @@ namespace cctbx { namespace xray {
             packed_.push_back(gr_site[i]);
           }
         }
-        if (!scatterer.flags.use_u_aniso()) {
-          if (scatterer.flags.grad_u_iso() && scatterer.flags.use_u_iso()) {
+        if (scatterer.flags.grad_u_iso() && scatterer.flags.use_u_iso() || need_iso) {
             if (scatterer.flags.tan_u_iso() && scatterer.flags.param > 0) {
               FloatType pi = scitbx::constants::pi;
               FloatType u_iso_max = adptbx::b_as_u(scatterer.flags.param);
@@ -663,16 +675,10 @@ namespace cctbx { namespace xray {
             else {
               packed_.push_back(adptbx::u_as_b(gr_b_iso));
             }
-          }
         }
-        else {
-          if (scatterer.flags.grad_u_aniso() && !need_iso) {
-            for(std::size_t i=0;i<6;i++) {
-              packed_.push_back(adptbx::u_as_b(gr_b_cart[i]));
-            }
-          }
-          if (need_iso) {
-            packed_.push_back(adptbx::u_as_b(gr_b_iso));
+        if (scatterer.flags.grad_u_aniso() && scatterer.flags.use_u_aniso()) {
+          for(std::size_t i=0;i<6;i++) {
+            packed_.push_back(adptbx::u_as_b(gr_b_cart[i]));
           }
         }
         if (scatterer.flags.grad_occupancy()) {
@@ -707,7 +713,7 @@ namespace cctbx { namespace xray {
         else {
           d_target_d_u_iso_.push_back(0);
         }
-        if (scatterer.flags.grad_u_aniso()) {
+        if (scatterer.flags.grad_u_aniso() && scatterer.flags.use_u_aniso()) {
           d_target_d_u_cart_.push_back(adptbx::u_as_b(gr_b_cart));
         }
         else {

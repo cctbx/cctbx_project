@@ -9,7 +9,7 @@ def exercise(
       space_group_info,
       use_primitive_setting,
       anomalous_flag,
-      anisotropic_flag,
+      use_u_aniso,
       n_elements=3,
       d_min=3.,
       verbose=0):
@@ -22,7 +22,7 @@ def exercise(
     random_f_prime_d_min=1.0,
     random_f_double_prime=anomalous_flag,
     random_u_iso=True,
-    anisotropic_flag=anisotropic_flag,
+    use_u_aniso=use_u_aniso,
     random_occupancy=True)
   if (0 or verbose):
     structure.show_summary().show_scatterers()
@@ -79,12 +79,12 @@ def run_call_back(flags, space_group_info):
     use_primitive_setting_flags.append(True)
   for use_primitive_setting in use_primitive_setting_flags:
     for anomalous_flag in (False, True)[:]: #SWITCH
-      for anisotropic_flag in (False, True)[:]: #SWITCH
+      for use_u_aniso in (False, True)[:]: #SWITCH
         exercise(
           space_group_info=space_group_info,
           use_primitive_setting=use_primitive_setting,
           anomalous_flag=anomalous_flag,
-          anisotropic_flag=anisotropic_flag,
+          use_u_aniso=use_u_aniso,
           verbose=flags.Verbose)
 
 def run():

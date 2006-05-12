@@ -57,7 +57,6 @@ def exercise(space_group_info,
          volume_per_atom        = 100,
          min_distance           = 1.5,
          general_positions_only = True,
-         anisotropic_flag       = False,
          random_u_iso           = False,
          random_occupancy       = False)
   xray_structure.scattering_type_registry(table = table)

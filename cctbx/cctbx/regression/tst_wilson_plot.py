@@ -17,7 +17,7 @@ def exercise(space_group_info, anomalous_flag,
     volume_per_atom=50.,
     min_distance=1.5,
     general_positions_only=True,
-    anisotropic_flag=False,
+    use_u_aniso=False,
     u_iso=adptbx.b_as_u(10)
     ).structure_factors(
         anomalous_flag=anomalous_flag, d_min=d_min, algorithm="direct")

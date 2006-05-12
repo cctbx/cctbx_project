@@ -560,7 +560,7 @@ class manager(object):
     if(u_aniso):
        return structure_factor_gradients(
                     u_iso_reinable_params = None,
-                    d_target_d_f_calc  = xrtfr.derivatives(),
+                    d_target_d_f_calc  = xrtfr.derivatives() * self.fb_cart_w(),
                     xray_structure     = xrs,
                     n_parameters       = 0,
                     miller_set         = self.f_obs_w(),

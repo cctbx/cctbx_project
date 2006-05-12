@@ -22,113 +22,6 @@ def add_gradients(
     u_iso_gradients=u_iso_gradients,
     occupancy_gradients=occupancy_gradients)
 
-class u_penalty_singular_at_zero(object):
-
-  def __init__(self,
-        penalty_factor=1,
-        penalty_scale=8*math.pi**2,
-        u_min=1.e-6,
-        min_functional=1.e-10):
-    adopt_init_args(self, locals())
-    self.u_max = scitbx.math.lambertw(penalty_factor/min_functional) \
-               / (penalty_factor * penalty_scale)
-
-  def functional(self, u):
-    if (u > self.u_max): return 0
-    u = max(u, self.u_min)
-    s = self.penalty_scale
-    return 1/(s*u)*math.exp(-(s*u)*self.penalty_factor)
-
-  def gradient(self, u):
-    if (u > self.u_max): return 0
-    u = max(u, self.u_min)
-    s = self.penalty_scale
-    return -1/(math.exp(s*self.penalty_factor*u)*s*u**2) \
-           - self.penalty_factor/(math.exp(s*self.penalty_factor*u)*u)
-
-class u_penalty_exp(object):
-
-  def __init__(self,
-        penalty_factor=1,
-        penalty_scale=10*8*math.pi**2,
-        min_functional=1.e-10):
-    adopt_init_args(self, locals())
-    self.u_max = -math.log(min_functional) / (penalty_factor * penalty_scale)
-
-  def functional(self, u):
-    if (u > self.u_max): return 0
-    s = self.penalty_scale
-    return math.exp(-s*u*self.penalty_factor)
-
-  def gradient(self, u):
-    if (u > self.u_max): return 0
-    s = self.penalty_scale
-    return -s*self.penalty_factor*math.exp(-s*u*self.penalty_factor)
-
-class u_penalty_well:
-
-  def __init__(self, u_min,
-                     u_max,
-                     left_term_weight,
-                     right_term_weight,
-                     shape_factor_left,
-                     shape_factor_right):
-    adopt_init_args(self, locals())
-    assert self.u_min < self.u_max
-    eps = 8*math.pi**2
-    self.left_limit  = self.u_min + 0.1 / eps
-    self.right_limit = self.u_max - 0.1 / eps
-    self.overflow_limit = 700.0
-
-  def functional(self, u_isos):
-    assert u_isos.size() > 0
-    result = 0.0
-    for u in u_isos:
-        arg1 = self.shape_factor_left  * (self.u_min - u)
-        arg2 = self.shape_factor_right * (self.u_max - u)
-        if(u > self.right_limit or u < self.left_limit):
-           if(arg1 > self.overflow_limit): term1 = math.exp(700)
-           else:                           term1 = math.exp(arg1)
-           if(arg2 > self.overflow_limit):    term2 = math.exp(700)
-           elif(arg2 < -self.overflow_limit): term2 = math.exp(-700)
-           else:                              term2 = math.exp(arg2)
-           try: tmp = 1. / term2
-           except:
-              print "*"*79
-              print math.exp(arg2), arg2, u, self.u_max
-              print "*"*79
-              tmp = 0.0
-              assert 0
-           result += self.left_term_weight  * term1 + \
-                     self.right_term_weight * tmp
-    return result / u_isos.size()
-
-  def gradient(self, u_isos):
-    assert u_isos.size() > 0
-    result = flex.double()
-    for u in u_isos:
-        arg1 = self.shape_factor_left  * (self.u_min - u)
-        arg2 = self.shape_factor_right * (self.u_max - u)
-        if(u > self.right_limit or u < self.left_limit):
-           if(arg1 > self.overflow_limit): term1 = math.exp(700)
-           else:                           term1 = math.exp(arg1)
-           if(arg2 > self.overflow_limit):    term2 = math.exp(700)
-           elif(arg2 < -self.overflow_limit): term2 = math.exp(-700)
-           else:                              term2 = math.exp(arg2)
-           try: tmp = 1. / term2
-           except:
-              print "*"*79
-              print math.exp(arg2), arg2, u, self.u_max
-              print "*"*79
-              tmp = 0.0
-              assert 0
-           result.append(
-              -self.left_term_weight  * self.shape_factor_left  * term1 + \
-               self.right_term_weight * self.shape_factor_right * tmp)
-        else:
-           result.append(0.0)
-    return result / u_isos.size()
-
 class occupancy_penalty_exp(object):
 
   def __init__(self,
@@ -154,7 +47,6 @@ class occupancy_penalty_exp(object):
 class lbfgs(object):
 
   def __init__(self, target_functor, xray_structure,
-                     u_penalty=None,
                      occupancy_penalty=None,
                      lbfgs_termination_params=None,
                      lbfgs_core_params=None,
@@ -167,12 +59,6 @@ class lbfgs(object):
                                               self.xray_structure.scatterers())
     self.grad_flags_counts = \
               ext.scatterer_grad_flags_counts(self.xray_structure.scatterers())
-    #XXX
-    #if (self.u_penalty is not None
-    #    and self.gradient_flags.u_iso
-    #    and xray_structure.scatterers().count_anisotropic() > 0):
-    #  raise RuntimeError(
-    #    "Refinement of anisotropic scatterers not currently supported.")
     self.structure_factors_from_scatterers = \
       cctbx.xray.structure_factors.from_scatterers(
         miller_set=self.target_functor.f_obs(),
@@ -181,7 +67,7 @@ class lbfgs(object):
       cctbx.xray.structure_factors.gradients(
         miller_set=self.target_functor.f_obs(),
         cos_sin_table=cos_sin_table)
-    self.x = flex.double(xray_structure.n_parameters(), 0)
+    self.x = flex.double(xray_structure.n_parameters_XXX(), 0)
     xray_structure.tidy_us(u_min=1.e-6)
     self._scatterers_start = xray_structure.scatterers()
     self._d_min = self.target_functor.f_obs().d_min()
@@ -227,10 +113,6 @@ class lbfgs(object):
     self.f = self.target_result.target()
     if (self.first_target_value is None):
       self.first_target_value = self.f
-    if (self.u_penalty is not None and self.scatterer_grad_flags_counts.u_iso > 0):
-      u_isos = self.xray_structure.scatterers().extract_u_iso()
-      for u_iso in u_isos:
-        self.f += self.u_penalty.functional(u=u_iso)
     if (self.occupancy_penalty is not None
         and self.grad_flags_counts != 0):
       occupancies = self.xray_structure.scatterers().extract_occupancies()
@@ -243,25 +125,6 @@ class lbfgs(object):
       d_target_d_f_calc=self.target_result.derivatives(),
       n_parameters=self.x.size(),
       algorithm=self.structure_factor_algorithm).packed()
-    if (self.u_penalty is not None and self.scatterer_grad_flags_counts.u_iso > 0):
-      g = flex.double()
-      if (self.scatterer_grad_flags_counts.tan_u_iso):
-        for u_iso_reinable_param, scatterer in zip(u_iso_reinable_params,self.xray_structure.scatterers()):
-            if(scatterer.flags.param > 0 and scatterer.flags.tan_u_iso()):
-               u_iso_max = adptbx.b_as_u(scatterer.flags.param)
-               chain_rule_scale = u_iso_max / math.pi / (u_iso_reinable_param*u_iso_reinable_param+1.0)
-               g.append(chain_rule_scale*self.u_penalty.gradient(u=scatterer.u_iso))
-            else:
-               g.append(self.u_penalty.gradient(u=scatterer.u_iso))
-      else:
-        for u_iso in u_isos:
-          g.append(self.u_penalty.gradient(u=u_iso))
-      del u_isos
-      add_gradients(
-        scatterers=self.xray_structure.scatterers(),
-        xray_gradients=self.g,
-        u_iso_gradients=g)
-      del g
     if (self.occupancy_penalty is not None
         and self.grad_flags_counts != 0):
       g = flex.double()

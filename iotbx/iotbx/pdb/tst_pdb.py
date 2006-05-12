@@ -480,7 +480,7 @@ LINK         NZ  LYS A 680        1.260    C4A PLP D   1                LYS-PLP
     assert [list(sel) for sel in sel_cache.link_iselections(link_record)] \
         == expected
 
-def exercise_xray_structure(anisotropic_flag, verbose=0):
+def exercise_xray_structure(use_u_aniso, verbose=0):
   structure = random_structure.xray_structure(
     space_group_info=sgtbx.space_group_info("P 31"),
     elements=["N","C","C","O","Si"]*2,
@@ -488,7 +488,7 @@ def exercise_xray_structure(anisotropic_flag, verbose=0):
     min_distance=2.,
     general_positions_only=False,
     random_u_iso=True,
-    anisotropic_flag=anisotropic_flag)
+    use_u_aniso=use_u_aniso)
   f_abs = abs(structure.structure_factors(
     anomalous_flag=False, d_min=2, algorithm="direct").f_calc())
   for res_name in (None, "res"):
@@ -531,8 +531,8 @@ def run():
   exercise_interpretation(verbose=verbose)
   exercise_scalen()
   exercise_selection()
-  for anisotropic_flag in (False, True):
-    exercise_xray_structure(anisotropic_flag, verbose=verbose)
+  for use_u_aniso in (False, True):
+    exercise_xray_structure(use_u_aniso, verbose=verbose)
   write_icosahedron()
   print "OK"
 

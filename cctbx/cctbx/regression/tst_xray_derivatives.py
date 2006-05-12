@@ -43,22 +43,25 @@ def finite_differences_u_star(target_ftor, structure,
   derivatives = flex.sym_mat3_double()
   for i_scatterer in xrange(structure.scatterers().size()):
     d_target_d_u_star = [0,0,0,0,0,0]
-    for iu in xrange(6):
-      target_values = []
-      for d_sign in (-1, 1):
-        modified_structure = structure.deep_copy_scatterers()
-        ms = modified_structure.scatterers()[i_scatterer]
-        u_star = list(ms.u_star)
-        u_star[iu] += d_sign * delta
-        ms.u_star = u_star
-        f_calc = target_ftor.f_obs().structure_factors_from_scatterers(
-          xray_structure=modified_structure,
-          algorithm="direct").f_calc()
-        target_result = target_ftor(f_calc, compute_derivatives=False)
-        target_values.append(target_result.target())
-      derivative = (target_values[1] - target_values[0]) / (2 * delta)
-      d_target_d_u_star[iu] = derivative
-    derivatives.append(d_target_d_u_star)
+    if(structure.scatterers()[i_scatterer].flags.use_u_aniso()):
+       for iu in xrange(6):
+         target_values = []
+         for d_sign in (-1, 1):
+           modified_structure = structure.deep_copy_scatterers()
+           ms = modified_structure.scatterers()[i_scatterer]
+           u_star = list(ms.u_star)
+           u_star[iu] += d_sign * delta
+           ms.u_star = u_star
+           f_calc = target_ftor.f_obs().structure_factors_from_scatterers(
+             xray_structure=modified_structure,
+             algorithm="direct").f_calc()
+           target_result = target_ftor(f_calc, compute_derivatives=False)
+           target_values.append(target_result.target())
+         derivative = (target_values[1] - target_values[0]) / (2 * delta)
+         d_target_d_u_star[iu] = derivative
+       derivatives.append(d_target_d_u_star)
+    else:
+       derivatives.append(d_target_d_u_star)
   return derivatives
 
 def finite_differences_scalar(parameter_name, target_ftor, structure,
@@ -69,9 +72,9 @@ def finite_differences_scalar(parameter_name, target_ftor, structure,
     for d_sign in (-1, 1):
       modified_structure = structure.deep_copy_scatterers()
       ms = modified_structure.scatterers()[i_scatterer]
-      if   (parameter_name == "u_iso"):
+      if   (parameter_name == "u_iso" and ms.flags.use_u_iso()):
         ms.u_iso += d_sign * delta
-      elif (parameter_name == "tan_u_iso"):
+      elif (parameter_name == "tan_u_iso" and ms.flags.use_u_iso()):
         assert ms.u_iso >= 0
         x = math.tan(ms.u_iso*math.pi/adptbx.b_as_u(ms.flags.param)-math.pi/2) + d_sign * delta
         ms.u_iso = adptbx.b_as_u(ms.flags.param)/math.pi*(math.atan(x)+math.pi/2)
@@ -125,156 +128,36 @@ def linear_regression_test(d_analytical, d_numerical, test_hard=True,
     assert not test_hard
 
 def exercise(target_functor, parameter_name, space_group_info,
-             anomalous_flag, cartesian_flag,
-             n_elements=4, d_min=3., shake_sigma=0.25,
-             test_hard=True, verbose=0):
-  if (parameter_name != "site" and cartesian_flag == True): return
-  if (parameter_name == "fdp" and not anomalous_flag): return
-  structure_ideal = random_structure.xray_structure(
-    space_group_info,
-    elements=(("N","C","O")*(n_elements/3+1))[:n_elements],
-    volume_per_atom=100,
-    random_f_prime_d_min=d_min,
-    random_f_double_prime=anomalous_flag,
-    anisotropic_flag=(parameter_name == "u_star"),
-    random_u_iso=True,
-    random_occupancy=True)
-  #print (parameter_name == "u_star"), "%5.3f"%structure_ideal.scatterers()[0].u_iso, \
-  #      ["%5.3f"%i for i in structure_ideal.scatterers()[0].u_star], parameter_name
-  f_obs = abs(structure_ideal.structure_factors(
-    anomalous_flag=anomalous_flag, d_min=d_min, algorithm="direct").f_calc())
-  if (0 or verbose):
-    structure_ideal.show_summary().show_scatterers()
-    print "n_special_positions:", \
-          structure_ideal.special_position_indices().size()
-  if (0 or verbose):
-    f_obs.show_summary()
-  structure_shake = structure_ideal.random_modify_parameters(
-    parameter_name, shake_sigma, vary_z_only=False)
-  assert tuple(structure_ideal.special_position_indices()) \
-      == tuple(structure_shake.special_position_indices())
-  if (0 or verbose):
-    structure_shake.show_summary().show_scatterers()
-  target_ftor = target_functor(f_obs)
-  for structure in (structure_ideal, structure_shake)[:]: #SWITCH
-    f_calc = f_obs.structure_factors_from_scatterers(
-      xray_structure=structure,
-      algorithm="direct").f_calc()
-    target_result = target_ftor(f_calc, compute_derivatives=True)
-    if (structure == structure_ideal):
-      assert abs(target_result.target()) < 1.e-5
-  if (0 or verbose):
-    try: print "scale factor = %.6g" % (target_result.scale_factor(),)
-    except: pass
-    try: print "correlation = %.6g" % (target_result.correlation(),)
-    except: pass
-    print "target = %.6g" % (target_result.target(),)
-
-  gradient_flags=xray.structure_factors.gradient_flags(
-     site=(parameter_name=="site" or random.choice((0,1))),
-     u_iso=(parameter_name=="u_iso" or random.choice((0,1))),
-     u_aniso=(parameter_name=="u_star" or random.choice((0,1))),
-     occupancy=(parameter_name=="occupancy" or random.choice((0,1))),
-     fp=(parameter_name=="fp" or random.choice((0,1))),
-     fdp=(parameter_name=="fdp" or (anomalous_flag and random.choice((0,1)))))
-  xray.set_scatterer_grad_flags(scatterers = structure.scatterers(),
-                                site       = gradient_flags.site,
-                                u_iso      = gradient_flags.u_iso,
-                                u_aniso    = gradient_flags.u_aniso,
-                                occupancy  = gradient_flags.occupancy,
-                                fp         = gradient_flags.fp,
-                                fdp        = gradient_flags.fdp)
-  sf = xray.structure_factors.gradients_direct(
-    xray_structure=structure,
-    u_iso_reinable_params=None,
-    miller_set=f_obs,
-    d_target_d_f_calc=target_result.derivatives(),
-    n_parameters=0)
-  if (parameter_name == "site"):
-    d_analytical = sf.d_target_d_site_frac()
-    if (cartesian_flag): # average d_analytical or d_numerical, but not both
-      structure_ideal.apply_special_position_ops_d_target_d_site(d_analytical)
-    if (cartesian_flag):
-      d_analytical = sf.d_target_d_site_cart()
-    d_numerical = finite_differences_site(
-      cartesian_flag, target_ftor, structure)
-    if (not cartesian_flag): # aver. d_analytical or d_numerical, but not both
-      structure_ideal.apply_special_position_ops_d_target_d_site(d_numerical)
-  elif (parameter_name == "u_star"):
-    d_analytical = sf.d_target_d_u_star()
-    d_numerical = finite_differences_u_star(target_ftor, structure)
-  else:
-    if (parameter_name == "occupancy"):
-      d_analytical = sf.d_target_d_occupancy()
-    elif (parameter_name == "u_iso"):
-      d_analytical = sf.d_target_d_u_iso()
-    elif (parameter_name == "fp"):
-      d_analytical = sf.d_target_d_fp()
-    elif (parameter_name == "fdp"):
-      d_analytical = sf.d_target_d_fdp()
-    else:
-      raise RuntimeError
-    d_numerical = finite_differences_scalar(
-      parameter_name, target_ftor, structure)
-  linear_regression_test(d_analytical, d_numerical, test_hard,
-                         verbose=verbose)
-  if (parameter_name == "u_iso"):
-    u_iso_refinable_params = flex.double()
-    for scatterer in structure.scatterers():
-        # XXX this must go away after allowing a mixture of atoms with iso/aniso
-        assert not scatterer.anisotropic_flag
-        assert not scatterer.flags.use_u_aniso()
-        scatterer.flags.set_tan_u_iso(True)
-        scatterer.flags.set_grad_u_iso(gradient_flags.u_iso)
-        param = random.randint(90,120)
-        scatterer.flags.param= param
-        value = math.tan(scatterer.u_iso*math.pi/adptbx.b_as_u(param)-math.pi/2)
-        u_iso_refinable_params.append(value)
-    sf = xray.structure_factors.gradients_direct(
-      xray_structure=structure,
-      u_iso_reinable_params = u_iso_refinable_params,
-      miller_set=f_obs,
-      d_target_d_f_calc=target_result.derivatives(),
-      n_parameters=0)
-    d_analytical = sf.d_target_d_u_iso()
-    d_numerical = finite_differences_scalar("tan_u_iso",target_ftor, structure)
-    linear_regression_test(d_analytical, d_numerical, test_hard,
-                           verbose=verbose)
-
-def exercise_1(target_functor, parameter_name, space_group_info,
              anomalous_flag,
-             use_u_iso,
-             use_u_aniso,
              cartesian_flag,
-             n_elements=4, d_min=3., shake_sigma=0.25,
+             n_elements=9,
+             d_min=2.5,
+             shake_sigma=0.25,
              test_hard=True, verbose=0):
   if (parameter_name != "site" and cartesian_flag == True): return
   if (parameter_name == "fdp" and not anomalous_flag): return
   structure_ideal = random_structure.xray_structure(
     space_group_info,
-    elements=(("N","C","O")*(n_elements/3+1))[:n_elements],
+    elements=(("O","N","C")*(n_elements))[:n_elements],
     volume_per_atom=100,
     random_f_prime_d_min=d_min,
     random_f_double_prime=anomalous_flag,
-    anisotropic_flag = True,
-    random_u_cart_scale=2.,
-    random_u_iso = True,
+    use_u_aniso = True,
+    use_u_iso = False,
+    random_u_cart_scale = 0.3,
+    random_u_iso = False,
     random_occupancy=True)
-  #XXX set u_iso flags and generate u_iso:
-  random_u_iso_scale = 0.3
-  random_u_iso_min = 0.0
-  for sc in structure_ideal.scatterers():
-    sc.flags.set_use_u_iso(use_u_iso)
-    sc.flags.set_use_u_aniso(use_u_aniso)
-    u_iso = random.random() * random_u_iso_scale + random_u_iso_min
-    sc.u_iso = u_iso
-    assert sc.u_iso > 0 and sc.u_star != (-1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
-  #print use_u_iso, use_u_aniso, "%5.3f"%structure_ideal.scatterers()[0].u_iso, \
-  #      ["%5.3f"%i for i in structure_ideal.scatterers()[0].u_star], parameter_name
+  if(parameter_name in ["u_star", "u_iso"]): shake_sigma = shake_sigma / 2.
+  random_structure.random_modify_adp_and_adp_flags(
+                             scatterers         = structure_ideal.scatterers(),
+                             random_u_iso_scale = 0.3,
+                             random_u_iso_min   = 0.0,
+                             parameter_name     = parameter_name)
   f_obs = abs(structure_ideal.structure_factors(
     anomalous_flag=anomalous_flag, d_min=d_min, algorithm="direct").f_calc())
+
   structure_shake = structure_ideal.random_modify_parameters(
-    parameter_name, shake_sigma, vary_z_only=False)
+        parameter_name, shake_sigma, vary_z_only=False)
   assert tuple(structure_ideal.special_position_indices()) \
       == tuple(structure_shake.special_position_indices())
   target_ftor = target_functor(f_obs)
@@ -361,33 +244,17 @@ def run_call_back(flags, space_group_info):
   if (flags.Cart): coordinate_systems.append(True)
   if (len(coordinate_systems) == 0):
     coordinate_systems = [False, True]
-  for target_functor in xray.target_functors.registry().values():
-    for parameter_name in ("site", "u_iso", "u_star", "occupancy",
-                           "fp", "fdp")[:]: #SWITCH
-      for anomalous_flag in (False, True)[:]: #SWITCH
-        for cartesian_flag in coordinate_systems:
-            exercise(target_functor, parameter_name, space_group_info,
-                     anomalous_flag, cartesian_flag,
-                     verbose=flags.Verbose)
-
-  coordinate_systems = []
-  if (flags.Frac): coordinate_systems.append(False)
-  if (flags.Cart): coordinate_systems.append(True)
-  if (len(coordinate_systems) == 0):
-    coordinate_systems = [False, True]
   for parameter_name in ("site", "u_iso", "u_star", "occupancy",
                          "fp", "fdp")[:]: #SWITCH
     for anomalous_flag in (False, True)[:]: #SWITCH
-      for (use_u_iso,use_u_aniso) in [(True,True),(False,True),
-                                      (True,False),(False,False)]:
        for cartesian_flag in coordinate_systems:
          for target_functor in xray.target_functors.registry().values():
            if(parameter_name == "u_iso"):  use_u_iso = True
            if(parameter_name == "u_star"): use_u_aniso = True
-           exercise_1(target_functor, parameter_name, space_group_info,
+           exercise(target_functor,
+                    parameter_name,
+                    space_group_info,
                     anomalous_flag,
-                    use_u_iso,
-                    use_u_aniso,
                     cartesian_flag,
                     verbose=flags.Verbose)
 

@@ -79,7 +79,7 @@ def atoms(xray_structure, short_sfac):
     for x in scatterer.site: coor.append(NOFIX(x))
     coor = dot5fdot_list(coor)
     sof = NOFIX(scatterer.weight())
-    if (not scatterer.anisotropic_flag):
+    if (not scatterer.flags.use_u_aniso()):
       l("%-4s %d %s %s %s" % (lbl, sfac, coor, dot6gdot(sof),
         dot6gdot(NOFIX(scatterer.u_iso))))
     else:
@@ -148,7 +148,7 @@ def check_anisou(shelx_titl, xray_structure, shelx_pdb, verbose):
       TotalANISOU += 1
       lbl = l[11:16].strip()
       i = lbl_dict[lbl]
-      assert xray_structure.scatterers()[i].anisotropic_flag
+      assert xray_structure.scatterers()[i].flags.use_u_aniso()
       u = l[28:70]
       u_cart = adptbx.u_star_as_u_cart(
         xray_structure.unit_cell(), xray_structure.scatterers()[i].u_star)
@@ -221,13 +221,14 @@ def run_shelx(shelx_titl, structure_factors, short_sfac=False, verbose=0):
 
 def exercise(space_group_info,
              anomalous_flag=False,
-             anisotropic_flag=False,
+             use_u_aniso=False,
              d_min=2.,
              verbose=0):
   structure_factors = random_structure.xray_structure(
     space_group_info,
     elements=("N", "C", "C", "O"),
-    anisotropic_flag=anisotropic_flag,
+    use_u_aniso=use_u_aniso,
+    use_u_iso = (not use_u_aniso),
     random_f_prime_d_min=1.0,
     random_f_double_prime=anomalous_flag,
     random_u_iso=True,
@@ -238,7 +239,7 @@ def exercise(space_group_info,
     structure_factors.xray_structure().show_summary()
   shelx_titl = str(space_group_info) \
              + ", anomalous=" + str(anomalous_flag) \
-             + ", anisotropic_flag=" + str(anisotropic_flag)
+             + ", use_u_aniso=" + str(use_u_aniso)
   run_shelx(shelx_titl, structure_factors, verbose=verbose)
 
 def run_call_back(flags, space_group_info):
@@ -247,8 +248,8 @@ def run_call_back(flags, space_group_info):
     print "Skipping space group: centre of inversion is not at origin."
     return
   for anomalous_flag in (False, True):
-    for anisotropic_flag in (False, True):
-      exercise(space_group_info, anomalous_flag, anisotropic_flag,
+    for use_u_aniso in (False, True):
+      exercise(space_group_info, anomalous_flag, use_u_aniso,
                verbose=flags.Verbose)
 
 def run():

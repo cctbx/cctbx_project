@@ -109,7 +109,7 @@ def exercise_flex_xray_scatterer():
     assert approx_equal(ai.fp, bi.fp)
     assert approx_equal(ai.fdp, bi.fdp)
     assert approx_equal(ai.site, bi.site)
-    assert ai.anisotropic_flag == bi.anisotropic_flag
+    assert ai.flags.use_u_aniso() == bi.flags.use_u_aniso()
     assert ai.u_iso == bi.u_iso
     assert ai.u_star == bi.u_star
     assert ai.multiplicity() == bi.multiplicity()
