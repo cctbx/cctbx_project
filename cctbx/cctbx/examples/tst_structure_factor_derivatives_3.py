@@ -21,7 +21,7 @@ def d_target_d_params_finite(f_obs, xray_structure, eps=1.e-8):
   xray_structure_eps = xray_structure.deep_copy_scatterers()
   scatterers_eps = xray_structure_eps.scatterers()
   for i_scatterer in xrange(len(scatterers)):
-    if (not scatterers[i_scatterer].anisotropic_flag):
+    if (not scatterers[i_scatterer].flags.use_u_aniso()):
       np = 7
     else:
       np = 12
@@ -49,7 +49,7 @@ def d2_target_d_params_finite(f_obs, xray_structure, eps=1.e-8):
   xray_structure_eps = xray_structure.deep_copy_scatterers()
   scatterers_eps = xray_structure_eps.scatterers()
   for i_scatterer in xrange(len(scatterers)):
-    if (not scatterers[i_scatterer].anisotropic_flag):
+    if (not scatterers[i_scatterer].flags.use_u_aniso()):
       np = 7
     else:
       np = 12
@@ -91,7 +91,7 @@ def compare_analytical_and_finite(f_obs, xray_structure, out):
 
 def exercise(
       space_group_info,
-      anisotropic_flag,
+      use_u_aniso,
       anomalous_flag,
       max_n_indices=5,
       verbose=0):
@@ -108,7 +108,8 @@ def exercise(
         general_positions_only=True,
         random_f_prime_d_min=1,
         random_f_double_prime=anomalous_flag,
-        anisotropic_flag=anisotropic_flag,
+        use_u_aniso = use_u_aniso,
+        use_u_iso = (not use_u_aniso),
         random_u_iso=True,
         random_u_iso_scale=0.3,
         random_occupancy=True)
@@ -143,15 +144,15 @@ def exercise(
 
 def run_call_back(flags, space_group_info):
   if (flags.isotropic):
-    anisotropic_flags = [False]
+    use_u_aniso = [False]
   elif (flags.anisotropic):
-    anisotropic_flags = [True]
+    use_u_aniso = [True]
   else:
-    anisotropic_flags = [False, True]
-  for anisotropic_flag in anisotropic_flags:
+    use_u_aniso_flags = [False, True]
+  for use_u_aniso in use_u_aniso_flags:
     exercise(
       space_group_info=space_group_info,
-      anisotropic_flag=anisotropic_flag,
+      use_u_aniso=use_u_aniso,
       anomalous_flag=True,
       verbose=flags.Verbose)
 

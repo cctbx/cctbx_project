@@ -35,7 +35,6 @@ def test_less_one(space_group_info,
                space_group_info=space_group_info,
                elements=[element]*n_atoms,
                volume_per_atom=volume_per_atom,
-               anisotropic_flag=False,
                random_u_iso=False)
 
         fc = structure.structure_factors(d_min          = d_min,
@@ -66,7 +65,6 @@ def test_grid_step(n_sites = 50,
     structure = random_structure.xray_structure(space_group_info = symmetry.space_group_info(),
                                                 elements=["C"]*n_sites,
                                                 volume_per_atom=volume_per_atom,
-                                                anisotropic_flag=False,
                                                 random_u_iso=False)
     fc = structure.structure_factors(d_min = d_min,
                                      anomalous_flag=False,

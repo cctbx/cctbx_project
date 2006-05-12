@@ -63,16 +63,16 @@ def exercise_1(pdb_file):
   print pdb,hkl
   output_file_prefix = pdb_file[:-4]
   opt1= "output.prefix="+output_file_prefix+" main.max_number_of_iterations=25 scattering_table=wk1995"
-  opt2= "main.number_of_macro_cycles=3 main.ordered_solvent=True main.rigid_body=False"
-  opt3 = "--overwrite target_weights.wxc_scale=3.0 target_weights.wxu_scale=3.0 "
+  opt2= "main.number_of_macro_cycles=3 main.ordered_solvent=True main.rigid_body=False "
+  opt3 = "--overwrite target_weights.wxc_scale=3.0 target_weights.wxu_scale=3.0 target_weights.shake_sites=false "
   cmd = " ".join(["phenix.refine", pdb, hkl, opt1, opt2, opt3])
   print cmd
   print
   os.system(cmd)
   evaluate(pdb_file = output_file_prefix+"_001.pdb",
            cycle    = 3,
-           rw_tol   = 0.005,
-           rf_tol   = 0.008,
+           rw_tol   = 0.007,
+           rf_tol   = 0.0095,
            ksol     = 0.0,
            ksol_tol = 0.000,
            bsol     = 0.0,

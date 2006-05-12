@@ -323,17 +323,29 @@ def exercise_xray_scatterer():
   assert approx_equal(x.occupancy, 0.9)
   x.occupancy = 0.3
   assert approx_equal(x.occupancy, 0.3)
-  assert not x.anisotropic_flag
+  for flag0 in [True, False]:
+    x.flags.set_use(flag0)
+    for flag1 in [True, False]:
+      x.flags.set_use_u_iso(flag1)
+      for flag2 in [True, False]:
+        x.flags.set_use_u_aniso(flag2)
+        for flag3 in [True, False]:
+          x.flags.set_grad_u_iso(flag3)
+          for flag4 in [True, False]:
+            x.flags.set_grad_u_aniso(flag4)
+            assert x.flags.use()          == flag0
+            assert x.flags.use_u_iso()    == flag1
+            assert x.flags.use_u_aniso()  == flag2
+            assert x.flags.grad_u_iso()   == flag3
+            assert x.flags.grad_u_aniso() == flag4
   assert approx_equal(x.u_iso, 0.25)
   x.u_iso = 0.52
   assert approx_equal(x.u_iso, 0.52)
   x = xray.scatterer("a", (0.1,0.2,0.3), (1,2,3,4,5,6), 0.9, "const", 0, 0)
-  assert x.anisotropic_flag
+  assert x.flags.use_u_aniso()
   assert approx_equal(x.u_star, (1,2,3,4,5,6))
   x.u_star = (3,2,1,6,5,4)
   assert approx_equal(x.u_star, (3,2,1,6,5,4))
-  x.anisotropic_flag = 0
-  assert not x.anisotropic_flag
   assert x.flags.use() == True
   x.flags.set_grad_site(state=True)
   assert x.flags.grad_site()
@@ -353,7 +365,7 @@ def exercise_xray_scatterer():
   assert approx_equal(x.weight(), 0.8/4.)
   u_cart = (0.3354, 0.3771, 0.4874, -0.05161, 0.026763, -0.02116)
   x.u_star = adptbx.u_cart_as_u_star(uc, u_cart)
-  x.anisotropic_flag = 1
+  x.flags.set_use_u_aniso(True)
   try:
     x.apply_symmetry(uc, sg.group(), u_star_tolerance=0.1)
   except RuntimeError, e:
@@ -383,13 +395,13 @@ def exercise_xray_scatterer():
   x.site = (0.2,0.5,0.4)
   ss = x.apply_symmetry(uc, sg.group(), 1.e-10, 0)
   assert ss.is_point_group_1()
-  assert x.anisotropic_flag
+  assert x.flags.use_u_aniso()
   x.convert_to_isotropic(unit_cell=uc)
-  assert not x.anisotropic_flag
+  assert not x.flags.use_u_aniso()
   assert approx_equal(x.u_iso, 269)
   assert approx_equal(x.u_star, (-1,-1,-1,-1,-1,-1))
   x.convert_to_anisotropic(unit_cell=uc)
-  assert x.anisotropic_flag
+  assert x.flags.use_u_aniso()
   assert approx_equal(x.u_iso, -1)
   assert approx_equal(x.u_star, (2.69, 2.69, 1.59171598, 0, 0, 0))
   x.u_star = (1,2,3,4,5,6)
@@ -406,7 +418,7 @@ def exercise_xray_scatterer():
      3.9006326295505751, 3.8598099147456764, 4.5133641373560351))
   assert x.is_positive_definite_u(unit_cell=uc)
   y = x.customized_copy(u=-1)
-  assert not y.anisotropic_flag
+  assert not y.flags.use_u_aniso()
   assert approx_equal(y.u_iso, -1)
   assert not y.is_positive_definite_u(unit_cell=uc)
   assert not y.is_positive_definite_u(unit_cell=uc, u_cart_tolerance=0.5)
@@ -867,7 +879,7 @@ def exercise_minimization_apply_shifts():
   for a,b in zip(scatterers, shifted_scatterers):
     assert a.scattering_type == b.scattering_type
     assert a.site != b.site
-    if (not a.anisotropic_flag):
+    if (not a.flags.use_u_aniso()):
       assert a.u_iso != b.u_iso
       assert approx_equal(a.u_star, b.u_star)
     else:

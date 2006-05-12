@@ -9,6 +9,87 @@ from cctbx.array_family import flex
 from libtbx import adopt_init_args
 import random
 
+def random_modify_adp_and_adp_flags(scatterers,
+                                    random_u_iso_scale = 0.3,
+                                    random_u_iso_min = 0.0,
+                                    parameter_name = None):
+  u_isos = []
+  for scatterer in scatterers:
+    u_iso = random.random() * random_u_iso_scale + random_u_iso_min
+    u_isos.append( u_iso )
+    assert u_iso > 0.0 and scatterer.u_star != (-1.,-1.,-1.,-1.,-1.,-1.)
+  sc = scatterers
+  us6 = sc[6].u_star
+  us7 = sc[7].u_star
+  us8 = sc[8].u_star
+  nv = (-1.,-1.,-1.,-1.,-1.,-1.)
+  sc[0].u_iso = u_isos[0] ; sc[0].flags.set_use_u_iso(True ) ; sc[0].flags.set_use_u_aniso(True )
+  sc[1].u_iso = u_isos[1] ; sc[1].flags.set_use_u_iso(False) ; sc[1].flags.set_use_u_aniso(False)
+  sc[2].u_iso = u_isos[2] ; sc[2].flags.set_use_u_iso(True ) ; sc[2].flags.set_use_u_aniso(False)
+  sc[3].u_iso = u_isos[3] ; sc[3].flags.set_use_u_iso(False) ; sc[3].flags.set_use_u_aniso(True )
+  sc[4].u_iso =  -9999.99 ; sc[4].flags.set_use_u_iso(False) ; sc[4].flags.set_use_u_aniso(False)
+  sc[5].u_iso =  -9999.99 ; sc[5].flags.set_use_u_iso(False) ; sc[5].flags.set_use_u_aniso(True )
+  sc[6].u_iso = u_isos[6] ; sc[6].u_star = nv ; sc[6].flags.set_use_u_iso(False) ; sc[6].flags.set_use_u_aniso(False)
+  sc[7].u_iso = u_isos[7] ; sc[7].u_star = nv ; sc[7].flags.set_use_u_iso(True ) ; sc[7].flags.set_use_u_aniso(False)
+  sc[8].u_iso =  -9999.99 ; sc[8].u_star = nv ; sc[8].flags.set_use_u_iso(False) ; sc[8].flags.set_use_u_aniso(False)
+  if(parameter_name == "u_iso"):
+     sc[1].u_iso = u_isos[1] ; sc[1].flags.set_use_u_iso(True) ; sc[1].flags.set_use_u_aniso(False)
+     sc[3].u_iso = u_isos[3] ; sc[3].flags.set_use_u_iso(True) ; sc[3].flags.set_use_u_aniso(True )
+     sc[4].u_iso = u_isos[4] ; sc[4].flags.set_use_u_iso(True) ; sc[4].flags.set_use_u_aniso(False)
+     sc[5].u_iso = u_isos[5] ; sc[5].flags.set_use_u_iso(True) ; sc[5].flags.set_use_u_aniso(True )
+     sc[6].u_iso = u_isos[6] ; sc[6].u_star = nv ; sc[6].flags.set_use_u_iso(True) ; sc[6].flags.set_use_u_aniso(False)
+     sc[8].u_iso = u_isos[8] ; sc[8].u_star = nv ; sc[8].flags.set_use_u_iso(True) ; sc[8].flags.set_use_u_aniso(False)
+  if(parameter_name == "u_star"):
+     sc[1].u_iso = u_isos[1] ; sc[1].flags.set_use_u_iso(False) ; sc[1].flags.set_use_u_aniso(True)
+     sc[2].u_iso = u_isos[2] ; sc[2].flags.set_use_u_iso(True ) ; sc[2].flags.set_use_u_aniso(True)
+     sc[4].u_iso =  -9999.99 ; sc[4].flags.set_use_u_iso(False) ; sc[4].flags.set_use_u_aniso(True)
+     sc[6].u_iso = u_isos[6] ; sc[6].u_star = us6 ; sc[6].flags.set_use_u_iso(False) ; sc[6].flags.set_use_u_aniso(True)
+     sc[7].u_iso = u_isos[7] ; sc[7].u_star = us7 ; sc[7].flags.set_use_u_iso(True ) ; sc[7].flags.set_use_u_aniso(True)
+     sc[8].u_iso =  -9999.99 ; sc[8].u_star = us8 ; sc[8].flags.set_use_u_iso(False) ; sc[8].flags.set_use_u_aniso(True)
+
+
+def random_modify_adp_and_adp_flags_2(
+                                    scatterers,
+                                    use_u_iso,
+                                    use_u_aniso,
+                                    allow_mix,
+                                    random_u_iso_scale = 0.3,
+                                    random_u_iso_min = 0.0,
+                                    parameter_name=None):
+  for sc in scatterers:
+    u_iso = random.random() * random_u_iso_scale + random_u_iso_min
+    sc.u_iso = u_iso
+    assert sc.u_iso > 0.0 and sc.u_star != (-1.,-1.,-1.,-1.,-1.,-1.)
+    if(allow_mix):
+       choice = random.random()
+       if(choice < 0.5):
+          sc.flags.set_use_u_iso(True)
+          if(parameter_name != "u_star"):
+             sc.flags.set_use_u_aniso(False)
+          else:
+             sc.flags.set_use_u_aniso(use_u_aniso)
+       else:
+          if(parameter_name != "u_iso"):
+             sc.flags.set_use_u_iso(False)
+          else:
+             sc.flags.set_use_u_iso(use_u_iso)
+          sc.flags.set_use_u_aniso(True)
+    else:
+       sc.flags.set_use_u_iso(use_u_iso)
+       sc.flags.set_use_u_aniso(use_u_aniso)
+    if(not sc.flags.use_u_aniso()):
+       choice = random.random()
+       if(choice < 0.5): sc.u_star = (-10.0,-10.0,-10.0,-10.0,-10.0,-10.0)
+    if(not sc.flags.use_u_iso()):
+       choice = random.random()
+       if(choice < 0.5): sc.u_iso = -10.0
+    if(not sc.flags.use_u_iso() and not sc.flags.use_u_aniso()):
+       choice = random.random()
+       if(choice < 0.5):
+          sc.u_iso = -10.0
+          sc.u_star = (-10.0,-10.0,-10.0,-10.0,-10.0,-10.0)
+
+
 def have_suitable_hetero_distance(existing_sites,
                                   sym_equiv_sites_of_other_site,
                                   min_hetero_distance):
@@ -137,7 +218,8 @@ class xray_structure(xray.structure):
                random_u_iso_min=0,
                random_u_iso_scale=0.3,
                u_iso=0,
-               anisotropic_flag=False,
+               use_u_iso = True,
+               use_u_aniso = False,
                random_u_cart_scale=0.3,
                random_occupancy=False,
                random_occupancy_min=0.1):
@@ -227,7 +309,8 @@ class xray_structure(xray.structure):
         fdp = f0 * random.random() * self.random_f_double_prime_scale
       scatterer.fp = fp
       scatterer.fdp = fdp
-      if (not self.anisotropic_flag):
+      if (self.use_u_iso):
+        #scatterer.flags.set_use_u_iso(True) # XXX this will come to replace two lines below
         scatterer.anisotropic_flag = False
         scatterer.flags.set_use_u(iso=True)
         u_iso = self.u_iso
@@ -235,7 +318,8 @@ class xray_structure(xray.structure):
           u_iso = random.random() * self.random_u_iso_scale \
                 + self.random_u_iso_min
         scatterer.u_iso = u_iso
-      else:
+      if (self.use_u_aniso):
+        #scatterer.flags.set_use_u_aniso(True) # XXX this will come to replace two lines below
         scatterer.anisotropic_flag = True
         scatterer.flags.set_use_u(iso=False)
         run_away_counter = 0
@@ -304,10 +388,10 @@ class xray_structure(xray.structure):
         scatterer.site = \
           self.random_modify_site(scatterer.site, gauss_sigma,
                                   vary_z_only=vary_z_only)
-      elif (parameter_name == "u_iso"):
+      elif (parameter_name == "u_iso" and scatterer.flags.use_u_iso()):
         scatterer.u_iso = \
           self.random_modify_u_iso(scatterer.u_iso, gauss_sigma)
-      elif (parameter_name == "u_star"):
+      elif (parameter_name == "u_star" and scatterer.flags.use_u_aniso()):
         scatterer.u_star = \
           self.random_modify_u_star(scatterer.u_star, gauss_sigma)
       elif (parameter_name == "occupancy"):

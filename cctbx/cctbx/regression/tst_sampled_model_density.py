@@ -40,7 +40,7 @@ def assign_custom_gaussians(structure, negative_a=False):
 
 def exercise(space_group_info, const_gaussian, negative_gaussian,
              anomalous_flag,
-             #anisotropic_flag,
+             allow_mix,
              use_u_iso,
              use_u_aniso,
              d_min=1., resolution_factor=1./3, max_prime=5,
@@ -64,22 +64,18 @@ def exercise(space_group_info, const_gaussian, negative_gaussian,
     random_f_prime_d_min=1,
     random_f_prime_scale=random_f_prime_scale,
     random_f_double_prime=anomalous_flag,
-    anisotropic_flag= True,#anisotropic_flag,
-    random_u_cart_scale=0.7,
+    use_u_aniso= True,
+    use_u_iso= False,
+    random_u_cart_scale=0.3,
     random_u_iso=True,
     random_occupancy=True)
-  #XXX set u_iso flags and generate u_iso:
-  random_u_iso_scale = 0.3
-  random_u_iso_min = 0.0
-  for sc in structure.scatterers():
-    sc.flags.set_use_u_iso(use_u_iso)
-    sc.flags.set_use_u_aniso(use_u_aniso)
-    u_iso = random.random() * random_u_iso_scale + random_u_iso_min
-    sc.u_iso = u_iso
-    assert sc.u_iso > 0 and sc.u_star != (-1.0, -1.0, -1.0, -1.0, -1.0, -1.0)
-
-  #print use_u_iso, use_u_aniso, "%5.3f"%structure.scatterers()[0].u_iso, \
-  #      ["%5.3f"%i for i in structure.scatterers()[0].u_star]
+  random_structure.random_modify_adp_and_adp_flags_2(
+                                 scatterers         = structure.scatterers(),
+                                 use_u_iso          = use_u_iso,
+                                 use_u_aniso        = use_u_aniso,
+                                 allow_mix          = allow_mix,
+                                 random_u_iso_scale = 0.3,
+                                 random_u_iso_min   = 0.0)
   sampled_density_must_be_positive = True
   if (negative_gaussian):
     reg = structure.scattering_type_registry(
@@ -213,8 +209,6 @@ def exercise_negative_parameters(verbose=0):
       assert max(adptbx.eigenvalues(u_cart)) < 0
       u_star = adptbx.u_cart_as_u_star(structure.unit_cell(), u_cart)
       scatterer.u_star = u_star
-      #XXX remove duplication later
-      scatterer.anisotropic_flag = True
       scatterer.flags.set_use_u(iso=False)
     elif (i_trial == 5):
       scatterer.fp = -10
@@ -251,41 +245,39 @@ def exercise_negative_parameters(verbose=0):
     target_functor = xray.target_functors.intensity_correlation(
       f_obs=abs(f_direct))
     target_result = target_functor(f_fft, True)
-    gradient_flags = xray.structure_factors.gradient_flags(default=True)
     xray.set_scatterer_grad_flags(scatterers = structure.scatterers(),
-                                  site       = gradient_flags.site,
-                                  u_iso      = gradient_flags.u_iso,
-                                  u_aniso    = gradient_flags.u_aniso,
-                                  occupancy  = gradient_flags.occupancy,
-                                  fp         = gradient_flags.fp,
-                                  fdp        = gradient_flags.fdp)
+                                  site       = True,
+                                  u_iso      = True,
+                                  u_aniso    = True,
+                                  occupancy  = True,
+                                  fp         = True,
+                                  fdp        = True)
     for algorithm in ["direct", "fft"]:
       grads = structure_factor_gradients(
         xray_structure=structure,
         u_iso_reinable_params=None,
         miller_set=f_direct,
         d_target_d_f_calc=target_result.derivatives(),
-        n_parameters=structure.n_parameters(),
+        n_parameters = structure.n_parameters_XXX(),
         algorithm=algorithm).packed()
 
 def run_call_back(flags, space_group_info):
   for anomalous_flag in (False, True)[:]: #SWITCH
-    #for anisotropic_flag in (False, True)[:]: #SWITCH
     for (use_u_iso,use_u_aniso) in [(True,True),
                                     (False,True),
                                     (True,False),
-                                    (False,False)
-                                    ]:
-      r = random.random()
-      exercise(
-        space_group_info,
-        const_gaussian=r<1/3.,
-        negative_gaussian=r>2/3.,
-        anomalous_flag=anomalous_flag,
-        use_u_iso = use_u_iso,
-        use_u_aniso = use_u_aniso,
-        #anisotropic_flag=anisotropic_flag,
-        verbose=flags.Verbose)
+                                    (False,False)]:
+      for allow_mix in [False, True]:
+        r = random.random()
+        exercise(
+          space_group_info,
+          const_gaussian=r<1/3.,
+          negative_gaussian=r>2/3.,
+          anomalous_flag=anomalous_flag,
+          use_u_iso = use_u_iso,
+          use_u_aniso = use_u_aniso,
+          verbose=flags.Verbose,
+          allow_mix=allow_mix)
 
 def run():
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)

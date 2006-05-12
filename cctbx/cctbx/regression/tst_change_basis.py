@@ -30,7 +30,7 @@ def check_site_symmetry_table(structure_a, cb_op, structure_b):
 def exercise(
       space_group_info,
       anomalous_flag,
-      anisotropic_flag,
+      use_u_aniso,
       n_elements=3,
       d_min=3.,
       verbose=0):
@@ -41,7 +41,7 @@ def exercise(
     random_f_prime_d_min=1.0,
     random_f_double_prime=anomalous_flag,
     random_u_iso=True,
-    anisotropic_flag=anisotropic_flag,
+    use_u_aniso=use_u_aniso,
     random_occupancy=True)
   check_weight_without_occupancy(structure_z)
   f_z = structure_z.structure_factors(
@@ -136,11 +136,11 @@ def exercise(
 
 def run_call_back(flags, space_group_info):
   for anomalous_flag in (False, True)[:]: #SWITCH
-    for anisotropic_flag in (False, True)[:]: #SWITCH
+    for use_u_aniso in (False, True)[:]: #SWITCH
       exercise(
         space_group_info=space_group_info,
         anomalous_flag=anomalous_flag,
-        anisotropic_flag=anisotropic_flag,
+        use_u_aniso=use_u_aniso,
         verbose=flags.Verbose)
 
 def run():

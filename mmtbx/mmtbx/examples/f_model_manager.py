@@ -11,7 +11,6 @@ def run():
     space_group_info = space_group_info,
     elements         = ["N"]*(n_sites),
     volume_per_atom  = 50,
-    anisotropic_flag = False,
     random_u_iso     = True)
 
   f_obs = abs(structure.structure_factors(

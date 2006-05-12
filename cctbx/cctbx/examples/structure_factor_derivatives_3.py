@@ -63,7 +63,7 @@ class structure_factor:
     for scatterer in self.scatterers:
       assert scatterer.scattering_type == "const"
       w = scatterer.occupancy
-      if (not scatterer.anisotropic_flag):
+      if (not scatterer.flags.use_u_aniso()):
         huh = scatterer.u_iso * self.d_star_sq
         dw = math.exp(mtps * huh)
       ffp = 1 + scatterer.fp
@@ -72,7 +72,7 @@ class structure_factor:
       for s in self.space_group:
         s_site = s * scatterer.site
         alpha = matrix.col(s_site).dot(tphkl)
-        if (scatterer.anisotropic_flag):
+        if (scatterer.flags.use_u_aniso()):
           r = s.r().as_rational().as_float()
           s_u_star_s = r*matrix.sym(sym_mat3=scatterer.u_star)*r.transpose()
           huh = (matrix.row(self.hkl) * s_u_star_s).dot(matrix.col(self.hkl))
@@ -89,14 +89,14 @@ class structure_factor:
     for scatterer in self.scatterers:
       assert scatterer.scattering_type == "const"
       w = scatterer.occupancy
-      if (not scatterer.anisotropic_flag):
+      if (not scatterer.flags.use_u_aniso()):
         huh = scatterer.u_iso * self.d_star_sq
         dw = math.exp(mtps * huh)
       ffp = 1 + scatterer.fp
       fdp = scatterer.fdp
       ff = ffp + 1j * fdp
       d_site = matrix.col([0,0,0])
-      if (not scatterer.anisotropic_flag):
+      if (not scatterer.flags.use_u_aniso()):
         d_u_iso = 0
         d_u_star = None
       else:
@@ -109,7 +109,7 @@ class structure_factor:
         r = s.r().as_rational().as_float()
         s_site = s * scatterer.site
         alpha = matrix.col(s_site).dot(tphkl)
-        if (scatterer.anisotropic_flag):
+        if (scatterer.flags.use_u_aniso()):
           s_u_star_s = r*matrix.sym(sym_mat3=scatterer.u_star)*r.transpose()
           huh = (matrix.row(self.hkl) * s_u_star_s).dot(matrix.col(self.hkl))
           dw = math.exp(mtps * huh)
@@ -117,7 +117,7 @@ class structure_factor:
         site_gtmx = r.transpose()
         d_site += site_gtmx * (
           w * dw * ff * e * 1j * tphkl)
-        if (not scatterer.anisotropic_flag):
+        if (not scatterer.flags.use_u_aniso()):
           d_u_iso += w * dw * ff * e * mtps * self.d_star_sq
         else:
           u_star_gtmx = matrix.sqr(tensor_rank_2_gradient_transform_matrix(r))
@@ -144,14 +144,14 @@ class structure_factor:
     for scatterer in self.scatterers:
       assert scatterer.scattering_type == "const"
       w = scatterer.occupancy
-      if (not scatterer.anisotropic_flag):
+      if (not scatterer.flags.use_u_aniso()):
         huh = scatterer.u_iso * self.d_star_sq
         dw = math.exp(mtps * huh)
       ffp = 1 + scatterer.fp
       fdp = scatterer.fdp
       ff = (ffp + 1j * fdp)
       d2_site_site = flex.complex_double(flex.grid(3,3), 0j)
-      if (not scatterer.anisotropic_flag):
+      if (not scatterer.flags.use_u_aniso()):
         d2_site_u_iso = flex.complex_double(flex.grid(3,1), 0j)
         d2_site_u_star = None
       else:
@@ -160,7 +160,7 @@ class structure_factor:
       d2_site_occ = flex.complex_double(flex.grid(3,1), 0j)
       d2_site_fp = flex.complex_double(flex.grid(3,1), 0j)
       d2_site_fdp = flex.complex_double(flex.grid(3,1), 0j)
-      if (not scatterer.anisotropic_flag):
+      if (not scatterer.flags.use_u_aniso()):
         d2_u_iso_u_iso = 0j
         d2_u_iso_occ = 0j
         d2_u_iso_fp = 0j
@@ -176,7 +176,7 @@ class structure_factor:
         r = s.r().as_rational().as_float()
         s_site = s * scatterer.site
         alpha = matrix.col(s_site).dot(tphkl)
-        if (scatterer.anisotropic_flag):
+        if (scatterer.flags.use_u_aniso()):
           s_u_star_s = r*matrix.sym(sym_mat3=scatterer.u_star)*r.transpose()
           huh = (matrix.row(self.hkl) * s_u_star_s).dot(matrix.col(self.hkl))
           dw = math.exp(mtps * huh)
@@ -186,7 +186,7 @@ class structure_factor:
           site_gtmx *
             (w * dw * ff * e * (-1) * tphkl_outer)
                * site_gtmx.transpose())
-        if (not scatterer.anisotropic_flag):
+        if (not scatterer.flags.use_u_aniso()):
           d2_site_u_iso += flex.complex_double(site_gtmx * (
             w * dw * ff * e * 1j * mtps * self.d_star_sq * tphkl))
         else:
@@ -202,7 +202,7 @@ class structure_factor:
           w * dw * e * 1j * tphkl))
         d2_site_fdp += flex.complex_double(site_gtmx * (
           w * dw * e * (-1) * tphkl))
-        if (not scatterer.anisotropic_flag):
+        if (not scatterer.flags.use_u_aniso()):
           d2_u_iso_u_iso += w * dw * ff * e * (mtps * self.d_star_sq)**2
           d2_u_iso_occ += dw * ff * e * mtps * self.d_star_sq
           d2_u_iso_fp += w * dw * e * mtps * self.d_star_sq
@@ -220,14 +220,14 @@ class structure_factor:
             w * dw * 1j * e * mtps * d_exp_huh_d_u_star))
         d2_occ_fp += dw * e
         d2_occ_fdp += dw * e * 1j
-      if (not scatterer.anisotropic_flag):
+      if (not scatterer.flags.use_u_aniso()):
         i_occ, i_fp, i_fdp, np = 4, 5, 6, 7
       else:
         i_occ, i_fp, i_fdp, np = 9, 10, 11, 12
       dp = flex.complex_double(flex.grid(np,np), 0j)
       paste = dp.matrix_paste_block_in_place
       paste(d2_site_site, 0,0)
-      if (not scatterer.anisotropic_flag):
+      if (not scatterer.flags.use_u_aniso()):
         paste(d2_site_u_iso, 0,3)
         paste(d2_site_u_iso.matrix_transpose(), 3,0)
       else:
@@ -239,7 +239,7 @@ class structure_factor:
       paste(d2_site_fp.matrix_transpose(), i_fp,0)
       paste(d2_site_fdp, 0,i_fdp)
       paste(d2_site_fdp.matrix_transpose(), i_fdp,0)
-      if (not scatterer.anisotropic_flag):
+      if (not scatterer.flags.use_u_aniso()):
         dp[3*7+3] = d2_u_iso_u_iso
         dp[3*7+4] = d2_u_iso_occ
         dp[4*7+3] = d2_u_iso_occ
@@ -297,7 +297,7 @@ class structure_factors:
     self.miller_indices = miller_set.indices()
     np = 0
     for scatterer in xray_structure.scatterers():
-      if (not scatterer.anisotropic_flag):
+      if (not scatterer.flags.use_u_aniso()):
         np += 7
       else:
         np += 12

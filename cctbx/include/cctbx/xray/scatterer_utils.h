@@ -67,10 +67,10 @@ namespace cctbx { namespace xray {
       u_star_shift = adptbx::u_iso_as_u_star(unit_cell, u_shift);
     for(std::size_t i_seq=0;i_seq<scatterers.size();i_seq++) {
       ScattererType& sc = scatterers[i_seq];
-      if (!sc.anisotropic_flag) {
+      if (sc.flags.use_u_iso()) {
         sc.u_iso += u_shift;
       }
-      else{
+      else if (sc.flags.use_u_aniso()) {
         sc.u_star += u_star_shift;
       }
     }
@@ -167,7 +167,7 @@ namespace cctbx { namespace xray {
     for(std::size_t i_seq=0;i_seq<new_scatterers_ref.size();i_seq++) {
       ScattererType& new_scatterer = new_scatterers_ref[i_seq];
       new_scatterer.site = cb_op(new_scatterer.site);
-      if (new_scatterer.anisotropic_flag) {
+      if (new_scatterer.flags.use_u_aniso()) {
         new_scatterer.u_star = new_scatterer.u_star.tensor_transform(c);
       }
     }
@@ -208,7 +208,7 @@ namespace cctbx { namespace xray {
           new_scatterer.label = scatterer.label + buf;
         }
         new_scatterer.site = coordinates[i_coor];
-        if (new_scatterer.anisotropic_flag) {
+        if (new_scatterer.flags.use_u_aniso()) {
           scitbx::mat3<double> c = equiv_sites.sym_op(i_coor).r().as_double();
           new_scatterer.u_star = scatterer.u_star.tensor_transform(c);
         }
@@ -255,7 +255,7 @@ namespace cctbx { namespace xray {
     af::shared<ScattererType>
       rot_scatterers(af::reserve(scatterers.size()));
     for(std::size_t i=0;i<scatterers.size();i++) {
-      CCTBX_ASSERT(!scatterers[i].anisotropic_flag);
+      CCTBX_ASSERT(!scatterers[i].flags.use_u_aniso());
       cartesian<> c = unit_cell.orthogonalize(scatterers[i].site);
       cartesian<> rc = rotation_matrix * c;
       rot_scatterers.push_back(scatterers[i]);

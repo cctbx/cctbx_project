@@ -30,7 +30,6 @@ def skewness_calculation(space_group_info, n_test_points=10,
     space_group_info=space_group_info,
     elements=["Se"]*n_sites,
     volume_per_atom=volume_per_atom,
-    anisotropic_flag=False,
     random_u_iso=True)
   structure.show_summary()
   print

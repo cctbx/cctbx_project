@@ -27,8 +27,7 @@ class manager(object):
     self.xray_structure = \
                      processed_pdb_file.xray_structure().deep_copy_scatterers()
     self.xray_structure_ini = self.xray_structure.deep_copy_scatterers()
-    self.crystal_symmetry = \
-                  processed_pdb_file.all_chain_proxies.stage_1.crystal_symmetry
+    self.crystal_symmetry = self.xray_structure.crystal_symmetry()
     self.atom_attributes_list = \
            processed_pdb_file.all_chain_proxies.stage_1.atom_attributes_list[:]
     self.solvent_selection = self._solvent_selection()

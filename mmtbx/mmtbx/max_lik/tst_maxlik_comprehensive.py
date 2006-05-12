@@ -25,7 +25,6 @@ def exercise(space_group_info,
       space_group_info=space_group_info,
       elements=["C"]*n_sites,
       volume_per_atom=volume_per_atom,
-      anisotropic_flag=False,
       random_u_iso=True)
    f_calc = structure.structure_factors(d_min=d_min,
                                 anomalous_flag=False).f_calc()

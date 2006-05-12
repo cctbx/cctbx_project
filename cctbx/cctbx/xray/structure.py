@@ -45,6 +45,11 @@ class structure(crystal.special_position_settings):
     self._scattering_type_registry_is_out_of_date \
       = other._scattering_type_registry_is_out_of_date
 
+  def crystal_symmetry(self):
+    return crystal.symmetry(
+      unit_cell = self.unit_cell(),
+      space_group_info = self.space_group_info())
+
   def erase_scatterers(self):
     self._scatterers = flex.xray_scatterer()
     self._site_symmetry_table = sgtbx.site_symmetry_table()
