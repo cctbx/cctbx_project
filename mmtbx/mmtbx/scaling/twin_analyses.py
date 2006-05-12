@@ -944,10 +944,10 @@ class ml_murray_rust(object):
                                                     twin_law,n_points)
     self.twin_fraction = []
     self.nll = []
-    print >> out 
+    print >> out
     print >> out, "Maximum Likelihood twin fraction determination"
     print >> out, "   (thinking ... , not crashing .... ) "
-    for ii in xrange(1,23):      
+    for ii in xrange(1,23):
       t=ii/46.0
       self.twin_fraction.append( t )
       self.nll.append( - ml_murray_rust_object.fast_log_p_given_t( t )  )
@@ -957,7 +957,7 @@ class ml_murray_rust(object):
     self.estimated_alpha = None
     if (i_t_max >= 1) and (i_t_max < len(self.nll)-1 ) :
       tmp_t = [0,0,0]
-      tmp_nll = [0,0,0]      
+      tmp_nll = [0,0,0]
       tmp_t[0] = self.twin_fraction[ i_t_max - 1 ]
       tmp_t[1] = self.twin_fraction[ i_t_max     ]
       tmp_t[2] = self.twin_fraction[ i_t_max + 1 ]
@@ -968,19 +968,19 @@ class ml_murray_rust(object):
       tmp_top = (tmp_t[2]**2.0)*(tmp_nll[0] - tmp_nll[1]) + \
                 (tmp_t[1]**2.0)*(tmp_nll[1] - tmp_nll[2]) + \
                 (tmp_t[0]**2.0)*(tmp_nll[2] - tmp_nll[0])
-      
+
       tmp_bottom = (tmp_t[2])*(tmp_nll[0] - tmp_nll[1]) + \
                    (tmp_t[1])*(tmp_nll[1] - tmp_nll[2]) + \
-                   (tmp_t[0])*(tmp_nll[2] - tmp_nll[0]) 
-      
+                   (tmp_t[0])*(tmp_nll[2] - tmp_nll[0])
+
       self.estimated_alpha= tmp_top/(2.0*tmp_bottom)
-      
+
       if (self.estimated_alpha < tmp_t[0]) or ( self.estimated_alpha > tmp_t[2]):
         self.estimated_alpha = self.twin_fraction[ i_t_max ]
-       
+
     else:
       self.estimated_alpha = self.twin_fraction[ i_t_max ]
-      
+
     print >> out
     print >> out, "   The estimated twin fraction is equal to %4.3f"%(self.estimated_alpha)
     print >> out
@@ -1028,11 +1028,11 @@ class twin_law_dependend_twin_tests(object):
 
       self.ml_murray_rust = ml_murray_rust( normalized_intensities,
                                             twin_law.operator.as_double_array()[0:9],
-                                            out ) 
+                                            out )
     else:
-      print >> out, "The twin completeness is %3.2f. Twin law dependent test not performed."%(self.twin_completeness) 
+      print >> out, "The twin completeness is %3.2f. Twin law dependent test not performed."%(self.twin_completeness)
       print >> out
-      
+
 
 
 
@@ -2059,12 +2059,12 @@ class twin_analyses(object):
 
 
         # now we can check for space group related issues
-      self.check_sg = None
-      if self.n_twin_laws > 0:
-        self.check_sg = symmetry_issues(
-          miller_array,
-          3.0,
-          out=out)
+    self.check_sg = None
+    if self.n_twin_laws > 0:
+      self.check_sg = symmetry_issues(
+        miller_array,
+        3.0,
+        out=out)
 
     ##--------------------------
     self.twin_summary = twin_results_interpretation(
