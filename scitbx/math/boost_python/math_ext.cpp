@@ -33,9 +33,7 @@ namespace boost_python {
   void wrap_slatec();
   void wrap_line_search();
   void wrap_r3_rotation();
-  void wrap_non_parametric_bootstrap();
-  void wrap_non_parametric_bootstrap_as_int();
-  void wrap_smooth_bootstrap();
+  void wrap_resample();
   void wrap_quadrature();
 
 namespace {
@@ -159,10 +157,7 @@ namespace {
     wrap_slatec();
     wrap_line_search();
     wrap_r3_rotation();
-    // resampling
-    wrap_non_parametric_bootstrap();
-    wrap_non_parametric_bootstrap_as_int();
-    wrap_smooth_bootstrap();
+    wrap_resample();
     wrap_quadrature();
 
     def("time_eigensystem_real_symmetric", time_eigensystem_real_symmetric);

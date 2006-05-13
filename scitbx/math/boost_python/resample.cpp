@@ -86,27 +86,15 @@ namespace {
 
   };
 
-
-
 } // namespace <anonymous>
 
 namespace boost_python {
 
-
-  void wrap_non_parametric_bootstrap()
+  void wrap_resample()
   {
     non_parametric_bootstrap_wrappers::wrap();
-  }
-
-  void wrap_non_parametric_bootstrap_as_int()
-  {
     non_parametric_bootstrap_as_int_wrappers::wrap();
-  }
-
-  void wrap_smooth_bootstrap()
-  {
     smooth_bootstrap_wrappers::wrap();
   }
-
 
 }}} // namespace scitbx::math::boost_python
