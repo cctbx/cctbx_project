@@ -31,7 +31,7 @@ namespace {
 
 namespace boost_python {
 
-  void wrap_gh()
+  void wrap_quadrature()
   {
     gauss_hermite_engine_wrappers::wrap();
   }
