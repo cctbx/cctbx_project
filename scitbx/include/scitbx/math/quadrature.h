@@ -40,7 +40,7 @@ namespace quadrature{
         w = f(0.0)[1];
         w_.push_back(2.0/(w*w));
         // for odd n, the first root (besides the origin) can be guessed by
-        step = 2.0/std::sqrt(n_);
+        step = 2.0/std::sqrt(static_cast<double>(n_));
         step  = refine( step );
         x_.push_back( step );
         w = f(step)[1];
@@ -59,7 +59,7 @@ namespace quadrature{
       }
 
       if (!odd){
-        step = 1.0/std::sqrt(n);
+        step = 1.0/std::sqrt(static_cast<double>(n));
         step  = refine( step );
         w = f(step)[1];
         x_.push_back(step);
