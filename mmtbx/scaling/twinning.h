@@ -106,16 +106,15 @@ namespace twinning {
 
     FloatType ei0( FloatType const& x )
     {
-      FloatType t,f0,f1,t0,t1,sign=1.0;
-      t = std::fabs(x)/( 1.0+std::fabs(x) );
+      FloatType t = std::fabs(x)/( 1.0+std::fabs(x) );
       int t_bin_low, t_bin_high;
       t_bin_low = int( std::floor( t*n_ ) );
       t_bin_high = t_bin_low+1;
       SCITBX_ASSERT( t_bin_low>= 0);
-      f0 = ei0_table_[ t_bin_low ];
-      f1 = ei0_table_[ t_bin_high ];
-      t0 = t_table_[t_bin_low];
-      t1 = t_table_[t_bin_high];
+      FloatType f0 = ei0_table_[ t_bin_low ];
+      FloatType f1 = ei0_table_[ t_bin_high ];
+      FloatType t0 = t_table_[t_bin_low];
+      //FloatType t1 = t_table_[t_bin_high];
       // linear interpolation
       FloatType alpha = (t-t0)*n_;///(t1-t0);
       FloatType result = f0*(1-alpha)+alpha*f1;
