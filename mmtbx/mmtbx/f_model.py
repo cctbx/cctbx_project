@@ -1237,7 +1237,7 @@ class manager(object):
                   (k_sol, b_sol, target_w, r_work) + 5*p+"|"
     print >> out, "| B(11,22,33,12,13,23)=%9.4f%9.4f%9.4f%9.4f%9.4f%9.4f |" % \
                   (u0,u1,u2,u3,u4,u5)
-    print >> out, "| trace(B) = (B11 + B22 + b33)/3 = %-10.3f                                 |"%self.u_iso()
+    print >> out, "| trace(B) = (B11 + B22 + B33)/3 = %-10.3f                                 |"%self.u_iso()
     if(flex.mean(flex.abs(self.f_ordered_solvent.data())) > 1.e-6):
        print >> out, "| n_ordered_solv=%6d b_ordered_solv=%7.2f b_mean=%7.2f " \
                   "n_atoms=%7d |" % (self.n_ordered_water,\
