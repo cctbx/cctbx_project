@@ -259,11 +259,10 @@ namespace{
       class_<w_t>("very_quick_erf", no_init)
         .def(init<double const& > ((arg_("step_size"))))
         .def("erf", &w_t::erf)
-        .def("tst", &w_t::tst)
+        .def("loop_for_timings", &w_t::loop_for_timings, (
+          arg_("number_of_iterations"), arg_("optimized")))
         ;
     }
-
-
   };
 
 
@@ -279,68 +278,26 @@ namespace{
       class_<w_t>("quick_ei0", no_init)
         .def(init<int const& > ((arg_("n_points"))))
         .def("ei0", &w_t::ei0)
-        .def("tst", &w_t::tst)
+        .def("loop_for_timings", &w_t::loop_for_timings, (
+          arg_("number_of_iterations"), arg_("optimized")))
         ;
     }
-
-
   };
-
-
-
-
-
-
-
-
 
 }  // namespace <anonymous>
 
 namespace boost_python {
 
-  void wrap_twin_r()
+  void wrap_twinning()
   {
     twin_r_wrapper::wrap();
-  }
-
-  void wrap_l_test()
-  {
     l_test_wrapper::wrap();
-  }
-
-  void wrap_detwin()
-  {
     detwin_wrapper::wrap();
-  }
-
-
-  void wrap_h_test()
-  {
     h_test_wrapper::wrap();
-  }
-
-  void wrap_ml_murray_rust()
-  {
     ml_murray_rust_wrapper::wrap();
-  }
-
-  void wrap_ml_twin_with_ncs()
-  {
     ml_twin_with_ncs::wrap();
-  }
-
-
-
-  void wrap_very_quick_erf()
-  {
     very_quick_erf_wrapper::wrap();
-  }
-
-
-  void wrap_quick_ei0()
-  {
     quick_ei0_wrapper::wrap();
   }
-
 
 }}}
