@@ -2,8 +2,6 @@
 #ifndef MMTBX_SCALING_TWINNING_H
 #define MMTBX_SCALING_TWINNING_H
 
-#include <cstdio>
-#include <iostream>
 #include <cctbx/miller/sym_equiv.h>
 #include <cctbx/miller/match_indices.h>
 #include <cctbx/miller/asu.h>
@@ -15,8 +13,7 @@
 #include <scitbx/math/erf.h>
 #include <scitbx/math/bessel.h>
 #include <scitbx/math/quadrature.h>
-#include <map>
-#include <vector>
+#include <cstdio>
 
 
 namespace mmtbx { namespace scaling {
@@ -25,62 +22,57 @@ namespace twinning {
 
   // These two lookup tables might be moved to the scitbx actually ...
   template<typename FloatType>
-  class very_quick_erf{  // This lookup table might be less accurate, but is 40 times faster than the one in scitbx::math
+  class very_quick_erf
+  {  // This lookup table might be less accurate, but is 40 times faster than the one in scitbx::math
   public:
     very_quick_erf(FloatType const& step_size)
     {
-      FloatType x;
+      SCITBX_ASSERT(step_size > 0);
       high_lim_=5.0; // hard wired high limit
-      x_step_ = step_size;
       one_over_x_step_ = 1.0/step_size;
-      x=0;
-      n_=0;
-      while (x<high_lim_){
-        erf_table_.push_back( scitbx::math::erf(x) );
-        x = x+step_size;
-        n_++;
+      unsigned n = static_cast<unsigned>(high_lim_*one_over_x_step_+0.5)+1;
+      erf_table_.reserve(n);
+      for(unsigned i=0;i<n;i++) {
+        erf_table_.push_back( scitbx::math::erf(step_size * i) );
       }
     }
 
     FloatType erf( FloatType const& x )
     {
-      FloatType ax,sign=1.0;
+      FloatType ax,sign;
       if (x<0){
         sign=-1.0;
-        ax = sign*x;
+        ax = -x;
       } else{
+        sign=1.0;
         ax = x;
       }
       if (ax < high_lim_){
-        int x_bin;
-        x_bin = std::floor(ax*one_over_x_step_+0.5);
+        unsigned x_bin = static_cast<unsigned>(ax*one_over_x_step_+0.5);
         return( sign*erf_table_[x_bin] );
       } else {
         return( sign );
       }
     }
 
-    void tst(long const &n)
+    void
+    loop_for_timings(std::size_t number_of_iterations, bool optimized)
     {
-      FloatType x;
-      std::cout << "Normal" << std::endl;
-      std::cout << std::time(0) << std::endl;
-      for (int i=0;i<n;i++){
-        x = i/double(n/10.0);
-        scitbx::math::erf(x);
+      FloatType denom = static_cast<FloatType>(number_of_iterations / 10);
+      if (optimized) {
+        for (std::size_t i=0;i<number_of_iterations;i++) {
+          erf(static_cast<FloatType>(i) / denom);
+        }
       }
-      std::cout << std::time(0) << std::endl;
-      for (int i=0;i<n;i++){
-        x = i/double(n/10.0);
-        erf(x);
+      else {
+        for (std::size_t i=0;i<number_of_iterations;i++) {
+          scitbx::math::erf(static_cast<FloatType>(i) / denom);
+        }
       }
-      std::cout << std::time(0) << std::endl;
     }
 
   protected:
     scitbx::af::shared<FloatType> erf_table_;
-    int n_;
-    FloatType x_step_;
     FloatType one_over_x_step_;
     FloatType high_lim_;
 
@@ -96,6 +88,8 @@ namespace twinning {
       n_ = n_points;                 // a factor 5 in timings is gained over the full computation
       FloatType t;
       t_step_ = 1.0/FloatType(n_);
+      t_table_.reserve(n_);
+      ei0_table_.reserve(n_);
       for (int ii=0;ii<n_-1;ii++){
         t = ii*t_step_;
         t_table_.push_back( t );
@@ -124,21 +118,22 @@ namespace twinning {
       return( result );
     }
 
-    void tst(long const &n)
+    void
+    loop_for_timings(std::size_t number_of_iterations, bool optimized)
     {
-      FloatType x;
-      std::cout << "Normal" << std::endl;
-      std::cout << std::time(0) << std::endl;
-      for (int i=0;i<n;i++){
-        x = i/double(n/10.0);
-        std::exp(-x)*scitbx::math::bessel::i0(x);
+      FloatType denom = static_cast<FloatType>(number_of_iterations / 10);
+      if (optimized) {
+        for (std::size_t i=0;i<number_of_iterations;i++) {
+          FloatType x = static_cast<FloatType>(i) / denom;
+          ei0(x);
+        }
       }
-      std::cout << std::time(0) << std::endl;
-      for (int i=0;i<n;i++){
-        x = i/double(n/10.0);
-        ei0(x);
+      else {
+        for (std::size_t i=0;i<number_of_iterations;i++) {
+          FloatType x = static_cast<FloatType>(i) / denom;
+          std::exp(-x)*scitbx::math::bessel::i0(x);
+        }
       }
-      std::cout << std::time(0) << std::endl;
     }
 
   protected:

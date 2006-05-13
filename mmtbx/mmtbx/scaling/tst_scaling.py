@@ -14,6 +14,7 @@ import mmtbx.scaling
 from scitbx.python_utils import random_transform
 import random
 import math
+import time
 import sys
 from cStringIO import StringIO
 
@@ -32,8 +33,18 @@ def test_luts():
     assert approx_equal( qerf.erf(x), sm.erf(x), eps=1e-5 )
     if (x>=0):
       assert approx_equal( qeio.ei0(x), math.exp(-x)*sm.bessel_i0(x) , eps=1e-5 )
-
-
+  number_of_iterations = 30000000
+  for optimized in [False, True]:
+    t0 = time.time()
+    qerf.loop_for_timings(number_of_iterations, optimized=optimized)
+    print "very_quick_erf*%d optimized=%s: %.2f s" % (
+      number_of_iterations, str(optimized), time.time()-t0)
+  number_of_iterations = 10000000
+  for optimized in [False, True]:
+    t0 = time.time()
+    qeio.loop_for_timings(number_of_iterations, optimized=optimized)
+    print "quick_ei0*%d optimized=%s: %.2f s" % (
+      number_of_iterations, str(optimized), time.time()-t0)
 
 ## Testing Wilson parameters
 def test_gamma_prot():
