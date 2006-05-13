@@ -55,20 +55,24 @@ namespace twinning {
       }
     }
 
-    void
+    FloatType
     loop_for_timings(std::size_t number_of_iterations, bool optimized)
     {
+      FloatType result = 0;
       FloatType denom = static_cast<FloatType>(number_of_iterations / 10);
       if (optimized) {
         for (std::size_t i=0;i<number_of_iterations;i++) {
-          erf(static_cast<FloatType>(i) / denom);
+          result += erf(static_cast<FloatType>(i) / denom);
+          result -= erf(static_cast<FloatType>(i) / denom);
         }
       }
       else {
         for (std::size_t i=0;i<number_of_iterations;i++) {
-          scitbx::math::erf(static_cast<FloatType>(i) / denom);
+          result += scitbx::math::erf(static_cast<FloatType>(i) / denom);
+          result -= scitbx::math::erf(static_cast<FloatType>(i) / denom);
         }
       }
+      return result;
     }
 
   protected:
@@ -118,22 +122,26 @@ namespace twinning {
       return( result );
     }
 
-    void
+    FloatType
     loop_for_timings(std::size_t number_of_iterations, bool optimized)
     {
+      FloatType result = 0;
       FloatType denom = static_cast<FloatType>(number_of_iterations / 10);
       if (optimized) {
         for (std::size_t i=0;i<number_of_iterations;i++) {
           FloatType x = static_cast<FloatType>(i) / denom;
-          ei0(x);
+          result += ei0(x);
+          result -= ei0(x);
         }
       }
       else {
         for (std::size_t i=0;i<number_of_iterations;i++) {
           FloatType x = static_cast<FloatType>(i) / denom;
-          std::exp(-x)*scitbx::math::bessel::i0(x);
+          result += std::exp(-x)*scitbx::math::bessel::i0(x);
+          result -= std::exp(-x)*scitbx::math::bessel::i0(x);
         }
       }
+      return result;
     }
 
   protected:
