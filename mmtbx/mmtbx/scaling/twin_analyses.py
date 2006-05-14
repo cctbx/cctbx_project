@@ -2057,7 +2057,18 @@ class twin_analyses(object):
         if out_plots is not None:
           data_plots.plot_data_loggraph(h_plot,out_plots)
 
-
+        # plot the likelihood profile fro the ML rees test please
+        ml_murray_rust_plot = data_plots.plot_data(
+          plot_title = 'Likelihood based twin fraction estimation for possible twin law '\
+                        +possible_twin_laws.operators[ii].operator.r().as_hkl(),
+          x_label = 'alpha',
+          y_label = '-Log[Likelihood]',
+          x_data = tmp_twin_law_stuff.ml_murray_rust.twin_fraction,
+          y_data = tmp_twin_law_stuff.ml_murray_rust.nll,
+          y_legend = 'NLL (acentric data)',
+          comments = 'Likelihood based twin fraction estimate')
+        if out_plots is not None:
+          data_plots.plot_data_loggraph(ml_murray_rust_plot,out_plots)
         # now we can check for space group related issues
     self.check_sg = None
     if self.n_twin_laws > 0:
