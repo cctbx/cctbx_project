@@ -89,16 +89,17 @@ namespace twinning {
     quick_ei0(int const& n_points)
     {
       SCITBX_ASSERT( n_points> 50 ); // we need at least 50 points i think, although 5000 is more realistic.
+      SCITBX_ASSERT( n_points< 50000); // no problems belwo 50000, did not check for larger values. most likely not needed
       n_ = n_points;                 // a factor 5 in timings is gained over the full computation
       FloatType t;
-      t_step_ = 1.0/FloatType(n_);
+      t_step_ = 1.0/static_cast<FloatType>(n_);
       t_table_.reserve(n_);
       ei0_table_.reserve(n_);
       for (int ii=0;ii<n_-1;ii++){
         t = ii*t_step_;
         t_table_.push_back( t );
-        ei0_table_.push_back( std::exp(-t/(1-t) )*
-                              scitbx::math::bessel::i0( t/(1-t) )  );
+        t = -t/(1-t) + scitbx::math::bessel::ln_of_i0( t/(1-t) );
+        ei0_table_.push_back( std::exp(t) );
       }
       t_table_.push_back(1.0);
       ei0_table_.push_back(0.0);
