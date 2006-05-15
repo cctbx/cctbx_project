@@ -627,12 +627,20 @@ class environment:
     for n,v in essentials:
       if (len(v) == 0): continue
       v = ":".join(v)
-      print >> f, 'if [ ! -n "$%s" ]; then' % n
-      print >> f, '  %s="%s"' % (n, v)
-      print >> f, 'else'
+      if (sys.platform == "irix6" and n == "LD_LIBRARY_PATH"):
+        n32 = "LD_LIBRARYN32_PATH"
+        print >> f, 'if [ -n "$%s" ]; then' % n32
+        print >> f, '  %s="%s:$%s"' % (n32, v, n32)
+        print >> f, '  export %s' % n32
+        print >> f, 'elif [ -n "$%s" ]; then' % n
+      else:
+        print >> f, 'if [ -n "$%s" ]; then' % n
       print >> f, '  %s="%s:$%s"' % (n, v, n)
+      print >> f, '  export %s' % n
+      print >> f, 'else'
+      print >> f, '  %s="%s"' % (n, v)
+      print >> f, '  export %s' % n
       print >> f, 'fi'
-      print >> f, 'export %s' % n
     precall_commands = self.dispatcher_precall_commands()
     if (precall_commands is not None):
       for line in precall_commands:
