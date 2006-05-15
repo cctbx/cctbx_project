@@ -572,6 +572,27 @@ namespace scitbx { namespace af { namespace boost_python {
       return a1;
     }
 
+    static bool
+    exclusive_or(bool lhs, bool rhs)
+    {
+      return lhs ? !rhs : rhs;
+    }
+
+    static flex_bool
+    exclusive_or_a_a(flex_bool const& a1, flex_bool const& a2)
+    {
+      SCITBX_ASSERT(a2.size() == a1.size());
+      flex_bool result(a1.accessor(), af::init_functor_null<bool>());
+      bool* res = result.begin();
+      bool* res_end = result.end();
+      const bool* lhs = a1.begin();
+      const bool* rhs = a2.begin();
+      while (res != res_end) {
+        *res++ = exclusive_or(*lhs++, *rhs++);
+      }
+      return result;
+    }
+
     static std::size_t
     count(f_t const& a1, e_t const& a2)
     {
@@ -872,6 +893,7 @@ namespace scitbx { namespace af { namespace boost_python {
         .def("__ior__", ior_a_a)
         .def("__iand__", iand_a_s)
         .def("__ior__", ior_a_s)
+        .def("exclusive_or", exclusive_or_a_a)
         .def("count", count)
       ;
     }
