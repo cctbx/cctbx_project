@@ -314,6 +314,10 @@ def exercise_misc():
   except RuntimeError, e:
     assert str(e).find("SCITBX_ASSERT(grid.size_1d() == a.size())") > 0
   else: raise RuntimeError("Exception expected.")
+  #
+  a = flex.bool([False, False, True, True])
+  b = flex.bool([False, True, False, True])
+  assert list(a.exclusive_or(b)) == [False, True, True, False]
 
 def exercise_1d_slicing_core(a):
   assert tuple(a[:]) == (1,2,3,4,5)
