@@ -9,6 +9,7 @@ import iotbx.pdb.interpretation
 from cctbx.array_family import flex
 
 def remove_refinement_files():
+  sys.stdout.flush()
   os.system("rm -rf *_refine_data.mtz *.map  *.eff *.def *.geo *_coeffs.mtz")
 
 def evaluate(pdb_file,
@@ -68,6 +69,7 @@ def exercise_1(pdb_file):
   cmd = " ".join(["phenix.refine", pdb, hkl, opt1, opt2, opt3])
   print cmd
   print
+  sys.stdout.flush()
   os.system(cmd)
   evaluate(pdb_file = output_file_prefix+"_001.pdb",
            cycle    = 3,
