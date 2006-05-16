@@ -376,6 +376,7 @@ class _bond_sorted_asu_proxies(boost.python.injector, bond_sorted_asu_proxies):
       asu_mappings = None
     else:
       asu_mappings = self.asu_mappings()
+    smallest_distance_model = None
     n_simple = self.simple.size()
     show_legend = True
     for i_proxy in i_proxies_sorted:
@@ -403,12 +404,16 @@ class _bond_sorted_asu_proxies(boost.python.injector, bond_sorted_asu_proxies):
         prefix, plf.label_label(i_seq, j_seq),
         restraint.distance_ideal, restraint.distance_model, restraint.delta,
         restraint.weight, restraint.residual()),
+      if (smallest_distance_model is None
+          or smallest_distance_model > restraint.distance_model):
+        smallest_distance_model = restraint.distance_model
       if (rt_mx is not None):
         print >> f, rt_mx,
       print >> f
     n_not_shown = residuals.size() - i_proxies_sorted.size()
     if (n_not_shown != 0):
       print >> f, prefix + "... (remaining %d not shown)" % n_not_shown
+    return smallest_distance_model
 
 class _nonbonded_sorted_asu_proxies(boost.python.injector,
         nonbonded_sorted_asu_proxies):
