@@ -89,6 +89,7 @@ def read_cif(file_name):
   return cif_object
 
 def convert_list_block(
+      source_info,
       cif_object,
       list_name,
       list_item_name,
@@ -116,7 +117,7 @@ def convert_list_block(
         rows = cif_data.get(loop_block)
         if (rows is None): continue
         if (obj_outer is None):
-          obj_outer = cif_type_outer(obj_inner)
+          obj_outer = cif_type_outer(source_info, obj_inner)
         lst = getattr(obj_outer, lst_name)
         typ = getattr(cif_types, loop_block)
         for row in rows:
@@ -132,7 +133,11 @@ def get_rows(cif_object, data_name, table_name):
 class process_cif_mixin(object):
 
   def process_cif_object(self, cif_object, file_name=None):
-    try: self.convert_all(cif_object=cif_object)
+    if (file_name is None):
+      source_info = None
+    else:
+      source_info = "file: "+file_name
+    try: self.convert_all(source_info=source_info, cif_object=cif_object)
     except KeyboardInterrupt: raise
     except:
       if (file_name is None): file_name = "(file name not available)"
@@ -165,17 +170,22 @@ class server(process_cif_mixin):
     self.link_link_id_dict = {}
     self.mod_mod_id_list = []
     self.mod_mod_id_dict = {}
-    self.convert_all(cif_object=list_cif.cif, skip_comp_list=True)
+    self.convert_all(
+      source_info="file: "+list_cif.path,
+      cif_object=list_cif.cif, skip_comp_list=True)
     self._create_rna_dna_placeholders()
 
-  def convert_all(self, cif_object, skip_comp_list=False):
+  def convert_all(self, source_info, cif_object, skip_comp_list=False):
     self.convert_deriv_list_dict(cif_object=cif_object)
     self.convert_comp_synonym_list(cif_object=cif_object)
     self.convert_comp_synonym_atom_list(cif_object=cif_object)
     if (not skip_comp_list):
-      self.convert_comp_list(cif_object=cif_object)
-    self.convert_link_list(cif_object=cif_object)
-    self.convert_mod_list(cif_object=cif_object)
+      self.convert_comp_list(
+        source_info=source_info, cif_object=cif_object)
+    self.convert_link_list(
+      source_info=source_info, cif_object=cif_object)
+    self.convert_mod_list(
+      source_info=source_info, cif_object=cif_object)
 
   def convert_deriv_list_dict(self, cif_object):
     for row in get_rows(cif_object,
@@ -198,8 +208,9 @@ class server(process_cif_mixin):
         d = self.comp_synonym_atom_list_dict[synonym.comp_alternative_id]
         d[synonym.atom_alternative_id] = synonym.atom_id
 
-  def convert_comp_list(self, cif_object):
+  def convert_comp_list(self, source_info, cif_object):
     for comp_comp_id in convert_list_block(
+                          source_info=source_info,
                           cif_object=cif_object,
                           list_name="comp_list",
                           list_item_name="chem_comp",
@@ -222,8 +233,9 @@ class server(process_cif_mixin):
         if (1 <= len(tlc) <= 3):
           self.comp_comp_id_dict[tlc.upper()] = comp_comp_id
 
-  def convert_link_list(self, cif_object):
+  def convert_link_list(self, source_info, cif_object):
     for link_link_id in convert_list_block(
+                          source_info=source_info,
                           cif_object=cif_object,
                           list_name="link_list",
                           list_item_name="chem_link",
@@ -239,8 +251,9 @@ class server(process_cif_mixin):
       self.link_link_id_list.append(link_link_id)
       self.link_link_id_dict[link_link_id.chem_link.id] = link_link_id
 
-  def convert_mod_list(self, cif_object):
+  def convert_mod_list(self, source_info, cif_object):
     for mod_mod_id in convert_list_block(
+                        source_info=source_info,
                         cif_object=cif_object,
                         list_name="mod_list",
                         list_item_name="chem_mod",
@@ -318,7 +331,8 @@ class server(process_cif_mixin):
         number_atoms_all=None,
         number_atoms_nh=None,
         desc_level=None)
-      comp_comp_id = cif_types.comp_comp_id(chem_comp=chem_comp)
+      comp_comp_id = cif_types.comp_comp_id(
+        source_info=None, chem_comp=chem_comp)
       for atom in rna.atom_list:
         comp_comp_id.atom_list.append(copy.copy(atom))
       rna_atom_dict = rna.atom_dict()
@@ -330,15 +344,18 @@ class server(process_cif_mixin):
 
 class ener_lib(process_cif_mixin):
 
-  def __init__(self, ener_lib_cif=None):
+  def __init__(self, ener_lib_cif=None, source_info=None):
     if (ener_lib_cif is None):
       ener_lib_cif = mon_lib_ener_lib_cif()
     self.lib_synonym = {}
     self.lib_atom = {}
     self.lib_vdw = []
-    self.convert_all(cif_object=ener_lib_cif.cif)
+    self.convert_all(source_info=source_info, cif_object=ener_lib_cif.cif)
+    self.source_infos = []
 
-  def convert_all(self, cif_object):
+  def convert_all(self, source_info, cif_object):
+    if (source_info is not None):
+      self.source_infos.append(source_info)
     self.convert_lib_synonym(cif_object=cif_object)
     self.convert_lib_atom(cif_object=cif_object)
     self.convert_lib_vdw(cif_object=cif_object)

@@ -12,6 +12,7 @@ def run():
   "$D/mmtbx/regression/tst_adp_restraints.py",
   "$D/mmtbx/scaling/tst_scaling.py",
   "$D/mmtbx/monomer_library/tst_cif_types.py",
+  "$D/mmtbx/monomer_library/tst_motif.py",
   "$D/mmtbx/monomer_library/tst_selection.py",
   "$D/mmtbx/monomer_library/tst_tyr_from_gly_and_bnz.py",
   "$D/mmtbx/hydrogens/build_hydrogens.py",
