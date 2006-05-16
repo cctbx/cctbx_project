@@ -68,7 +68,7 @@ namespace quadrature{
         return( x_ );
       }
 
-      scitbx::af::tiny<FloatType,2> coord(int const ii)
+      scitbx::af::tiny<FloatType,2> coord(int const& ii)
       {
         SCITBX_ASSERT( ii<21 );
         return( x_[ii] );
@@ -175,7 +175,7 @@ namespace quadrature{
         return( x_ );
       }
 
-      scitbx::af::tiny<FloatType,2> coord(int const ii)
+      scitbx::af::tiny<FloatType,2> coord(int const& ii)
       {
         SCITBX_ASSERT( ii <= 8 );
         return( x_[ii] );
@@ -280,7 +280,7 @@ namespace quadrature{
         return( x_ );
       }
 
-      scitbx::af::tiny<FloatType,2> coord(int const ii)
+      scitbx::af::tiny<FloatType,2> coord(int const& ii)
       {
         SCITBX_ASSERT( ii <= 8 );
         return( x_[ii] );
@@ -390,7 +390,7 @@ namespace quadrature{
         return( x_ );
       }
 
-      scitbx::af::tiny<FloatType,2> coord(int const ii)
+      scitbx::af::tiny<FloatType,2> coord(int const& ii)
       {
         SCITBX_ASSERT( ii <= 11 );
         return( x_[ii] );
