@@ -69,6 +69,12 @@ def run(args, simply_return_all_miller_arrays=False):
       dest="write_mtz_intensities",
       help="Converts amplitudes to intensities before writing MTZ format;"
            " requires --mtz_root_label")
+    .option(None,"--remove_negatives",
+      action="store_true",
+      default=False,
+      dest="remove_negatives",
+      help="Remove negative intensities or amplitudes from the data set" )
+
     .option(None, "--scale_max",
       action="store",
       type="float",
@@ -297,6 +303,14 @@ def run(args, simply_return_all_miller_arrays=False):
     processed_array = processed_array.apply_scaling(
       factor=command_line.options.scale_factor)
     print
+
+  if (command_line.options.remove_negatives):
+    if processed_array.is_real_array():
+      print "Removing negatives items"
+      processed_array = processed_array.select( processed_array.data() > 0 )
+    else:
+      print "The data is not real, but complex! --remove_negatives is ignored"
+
   n_output_files = 0
   if (command_line.options.sca is not None):
     file_name = reflection_file_utils.construct_output_file_name(
