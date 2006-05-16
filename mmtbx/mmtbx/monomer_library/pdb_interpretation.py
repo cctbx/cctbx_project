@@ -1958,7 +1958,8 @@ class process(object):
 
   def geometry_restraints_manager(self,
         plain_pairs_radius=None,
-        show_energies=True):
+        show_energies=True,
+        hard_minimum_bond_distance_model=0.001):
     if (    self.all_chain_proxies.sites_cart is not None
         and self.all_chain_proxies.special_position_settings is not None
         and self._geometry_restraints_manager is None):
@@ -1981,12 +1982,19 @@ class process(object):
           sites_cart=self.all_chain_proxies.sites_cart_exact(),
           f=self.log,
           prefix="  ")
-        pair_proxies.bond_proxies.show_sorted_by_residual(
-          sites_cart=self.all_chain_proxies.sites_cart_exact(),
-          labels=labels,
-          f=self.log,
-          prefix="  ",
-          max_lines=5)
+        smallest_distance_model = \
+          pair_proxies.bond_proxies.show_sorted_by_residual(
+            sites_cart=self.all_chain_proxies.sites_cart_exact(),
+            labels=labels,
+            f=self.log,
+            prefix="  ",
+            max_lines=5)
+        if (    smallest_distance_model is not None
+            and hard_minimum_bond_distance_model is not None
+            and smallest_distance_model < hard_minimum_bond_distance_model):
+          raise Sorry("""Bond restraint model distance < %.6g:
+  Please inspect the output above and correct the input PDB file.""" % (
+            hard_minimum_bond_distance_model))
         pair_proxies.nonbonded_proxies.show_histogram_of_model_distances(
           sites_cart=self.all_chain_proxies.sites_cart_exact(),
           f=self.log,
@@ -2022,7 +2030,7 @@ class process(object):
           flush_log(self.log)
     return self._geometry_restraints_manager
 
-  def clash_guard(self):
+  def clash_guard(self, hard_minimum_nonbonded_distance=0.001):
     params = self.all_chain_proxies.params.clash_guard
     if (params.nonbonded_distance_threshold is None): return
     geo = self._geometry_restraints_manager
@@ -2050,6 +2058,15 @@ class process(object):
       %s.nonbonded_distance_threshold=None""" %
         (phil_path, params.nonbonded_distance_threshold,
          n_below_threshold, phil_path))
+    #
+    n_below_hard_minimum_nonbonded_distance = (
+      geo.nonbonded_model_distances() < hard_minimum_nonbonded_distance) \
+        .count(True)
+    if (n_below_hard_minimum_nonbonded_distance != 0):
+      raise Sorry("""Number of nonbonded interaction distances < %.6g: %d
+  Please inspect the output above and correct the input PDB file.""" % (
+        hard_minimum_nonbonded_distance,
+        n_below_hard_minimum_nonbonded_distance))
 
   def xray_structure(self):
     if (    self.all_chain_proxies.sites_cart is not None
