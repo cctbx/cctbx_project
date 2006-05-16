@@ -42,6 +42,10 @@ class Sorry(Exception):
       else:
         sys.tracebacklimit = self.previous_tracebacklimit
 
+def if_none(value, default):
+  if (value is None): return default
+  return value
+
 def format_exception():
   type_, value = [str(obj) for obj in sys.exc_info()[:2]]
   if (type_.startswith("exceptions.")): type_ = type_[11:]
