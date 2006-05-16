@@ -1,4 +1,7 @@
+from cctbx import geometry_restraints
 from cctbx import uctbx
+from cctbx.array_family import flex
+from libtbx.utils import if_none
 import copy
 import sys
 
@@ -139,9 +142,15 @@ def group_planes(plane_atom_list):
     plane.plane_atoms.append(plane_atom)
   return result
 
+def esd_as_weight(esd):
+  if (esd is None): return 0
+  if (esd == 0): return 0
+  return 1./(esd*esd)
+
 class comp_comp_id(object):
 
-  def __init__(self, chem_comp):
+  def __init__(self, source_info, chem_comp):
+    self.source_info = source_info
     self.chem_comp = chem_comp
     self.atom_list = []
     self.tree_list = []
@@ -153,7 +162,7 @@ class comp_comp_id(object):
     self.classification = None
 
   def __copy__(self):
-    result = comp_comp_id(chem_comp=self.chem_comp)
+    result = comp_comp_id(source_info=None, chem_comp=self.chem_comp)
     result.atom_list = [copy.copy(e) for e in self.atom_list]
     result.tree_list = [copy.copy(e) for e in self.tree_list]
     result.bond_list = [copy.copy(e) for e in self.bond_list]
@@ -445,6 +454,73 @@ class comp_comp_id(object):
     show_loop(data_list=self.plane_atom_list, f=f)
     return self
 
+  def as_geometry_restraints_motif(self):
+    result = geometry_restraints.motif()
+    result.id = if_none(self.chem_comp.id, "")
+    result.description = if_none(self.chem_comp.name, "").strip()
+    if (self.source_info is not None):
+      result.info.append(self.source_info)
+    result.set_atoms([
+      geometry_restraints.motif_atom(
+        name=if_none(atom.atom_id, ""),
+        scattering_type=if_none(atom.type_symbol, ""),
+        nonbonded_type=if_none(atom.type_energy, ""),
+        partial_charge=if_none(atom.partial_charge, 0))
+          for atom in self.atom_list])
+    result.set_bonds([
+      geometry_restraints.motif_bond(
+        atom_names=[
+          if_none(bond.atom_id_1, ""),
+          if_none(bond.atom_id_2, "")],
+        type=if_none(bond.type, ""),
+        distance_ideal=if_none(bond.value_dist, 0),
+        weight=esd_as_weight(bond.value_dist_esd))
+          for bond in self.bond_list])
+    result.set_angles([
+      geometry_restraints.motif_angle(
+        atom_names=[
+          if_none(angle.atom_id_1, ""),
+          if_none(angle.atom_id_2, ""),
+          if_none(angle.atom_id_3, "")],
+        angle_ideal=if_none(angle.value_angle, 0),
+        weight=esd_as_weight(angle.value_angle_esd))
+          for angle in self.angle_list])
+    result.set_dihedrals([
+      geometry_restraints.motif_dihedral(
+        atom_names=[
+          if_none(tor.atom_id_1, ""),
+          if_none(tor.atom_id_2, ""),
+          if_none(tor.atom_id_3, ""),
+          if_none(tor.atom_id_4, "")],
+        angle_ideal=if_none(tor.value_angle, 0),
+        weight=esd_as_weight(tor.value_angle_esd),
+        periodicity=if_none(tor.period, 0),
+        id=tor.id)
+          for tor in self.tor_list])
+    result.set_chiralities([
+      geometry_restraints.motif_chirality(
+        atom_names=[
+          if_none(chir.atom_id_centre, ""),
+          if_none(chir.atom_id_1, ""),
+          if_none(chir.atom_id_2, ""),
+          if_none(chir.atom_id_3, "")],
+        volume_sign=chir.volume_sign,
+        id=chir.id)
+          for chir in self.chir_list])
+    planarities = []
+    for plane in self.get_planes():
+      atom_names = flex.std_string([if_none(plane_atom.atom_id, "")
+        for plane_atom in plane.plane_atoms])
+      weights = flex.double([esd_as_weight(plane_atom.dist_esd)
+        for plane_atom in plane.plane_atoms])
+      planarities.append(
+        geometry_restraints.motif_planarity(
+          atom_names=atom_names,
+          weights=weights,
+          id=plane.plane_id))
+    result.set_planarities(planarities)
+    return result
+
 class chem_comp(looped_data):
   """
 _chem_comp.id
@@ -545,7 +621,8 @@ _chem_comp_synonym_atom.atom_alternative_id
 
 class link_link_id:
 
-  def __init__(self, chem_link):
+  def __init__(self, source_info, chem_link):
+    self.source_info = source_info
     self.chem_link = chem_link
     self.bond_list = []
     self.angle_list = []
@@ -632,6 +709,87 @@ class link_link_id:
   def get_planes(self):
     return group_planes(self.plane_list)
 
+  def as_geometry_restraints_motif_manipulation(self):
+    result = geometry_restraints.motif_manipulation()
+    result.id = if_none(self.chem_link.id, "")
+    result.description = if_none(self.chem_link.name, "")
+    if (self.source_info is not None):
+      result.info.append(self.source_info)
+    alts = []
+    for bond in self.bond_list:
+      a = geometry_restraints.motif_alteration(
+        action="add", operand="bond")
+      a.motif_ids.append(str(if_none(bond.atom_1_comp_id, "")))
+      a.motif_ids.append(str(if_none(bond.atom_2_comp_id, "")))
+      a.bond.atom_names = [
+        if_none(bond.atom_id_1, ""),
+        if_none(bond.atom_id_2, "")]
+      a.bond.type = if_none(bond.type, "")
+      a.bond.distance_ideal = if_none(bond.value_dist, 0)
+      a.bond.weight = esd_as_weight(bond.value_dist_esd)
+      alts.append(a)
+    for angle in self.angle_list:
+      a = geometry_restraints.motif_alteration(
+        action="add", operand="angle")
+      a.motif_ids.append(str(if_none(angle.atom_1_comp_id, "")))
+      a.motif_ids.append(str(if_none(angle.atom_2_comp_id, "")))
+      a.motif_ids.append(str(if_none(angle.atom_3_comp_id, "")))
+      a.angle.atom_names = [
+        if_none(angle.atom_id_1, ""),
+        if_none(angle.atom_id_2, ""),
+        if_none(angle.atom_id_3, "")]
+      a.angle.angle_ideal = if_none(angle.value_angle, 0)
+      a.angle.weight = esd_as_weight(angle.value_angle_esd)
+      alts.append(a)
+    for tor in self.tor_list:
+      a = geometry_restraints.motif_alteration(
+        action="add", operand="dihedral")
+      a.motif_ids.append(str(if_none(tor.atom_1_comp_id, "")))
+      a.motif_ids.append(str(if_none(tor.atom_2_comp_id, "")))
+      a.motif_ids.append(str(if_none(tor.atom_3_comp_id, "")))
+      a.motif_ids.append(str(if_none(tor.atom_4_comp_id, "")))
+      a.dihedral.atom_names = [
+        if_none(tor.atom_id_1, ""),
+        if_none(tor.atom_id_2, ""),
+        if_none(tor.atom_id_3, ""),
+        if_none(tor.atom_id_4, "")]
+      a.dihedral.angle_ideal = if_none(tor.value_angle, 0)
+      a.dihedral.weight = esd_as_weight(tor.value_angle_esd)
+      a.dihedral.periodicity = if_none(tor.period, 0)
+      a.dihedral.id = if_none(tor.id, "")
+      alts.append(a)
+    for chir in self.chir_list:
+      a = geometry_restraints.motif_alteration(
+        action="add", operand="chirality")
+      a.motif_ids.append(str(if_none(chir.atom_centre_comp_id, "")))
+      a.motif_ids.append(str(if_none(chir.atom_1_comp_id, "")))
+      a.motif_ids.append(str(if_none(chir.atom_2_comp_id, "")))
+      a.motif_ids.append(str(if_none(chir.atom_3_comp_id, "")))
+      a.chirality.atom_names = [
+        if_none(chir.atom_id_centre, ""),
+        if_none(chir.atom_id_1, ""),
+        if_none(chir.atom_id_2, ""),
+        if_none(chir.atom_id_3, "")]
+      a.chirality.volume_sign = if_none(chir.volume_sign, 0)
+      a.chirality.id = if_none(chir.id, "")
+      alts.append(a)
+    for plane in self.get_planes():
+      a = geometry_restraints.motif_alteration(
+        action="add", operand="planarity")
+      for plane_atom in plane.plane_atoms:
+        if (plane_atom.atom_comp_id is None):
+          a.motif_ids.append("")
+        else:
+          a.motif_ids.append(str(plane_atom.atom_comp_id))
+      a.planarity.atom_names = flex.std_string([if_none(plane_atom.atom_id, "")
+        for plane_atom in plane.plane_atoms])
+      a.planarity.weights = flex.double([esd_as_weight(plane_atom.dist_esd)
+        for plane_atom in plane.plane_atoms])
+      a.planarity.id = plane.plane_id
+      alts.append(a)
+    result.set_alterations(alts)
+    return result
+
 class chem_link(looped_data):
   """
 _chem_link.id
@@ -685,6 +843,7 @@ _chem_link_tor.period:int
 
 class chem_link_chir(looped_data):
   """
+_chem_link_chir.id
 _chem_link_chir.atom_centre_comp_id:int
 _chem_link_chir.atom_id_centre
 _chem_link_chir.atom_1_comp_id:int
@@ -706,7 +865,8 @@ _chem_link_plane.dist_esd:float
 
 class mod_mod_id:
 
-  def __init__(self, chem_mod):
+  def __init__(self, source_info, chem_mod):
+    self.source_info = source_info
     self.chem_mod = chem_mod
     self.atom_list = []
     self.tree_list = []
@@ -716,10 +876,115 @@ class mod_mod_id:
     self.chir_list = []
     self.plane_atom_list = []
 
+  def get_planes(self):
+    return group_planes(self.plane_atom_list)
+
   def show(self, f=None):
     if (f is None): f = sys.stdout
     show_loop(data_list=self.atom_list, f=f)
     show_loop(data_list=self.bond_list, f=f)
+
+  def as_geometry_restraints_motif_manipulation(self):
+    result = geometry_restraints.motif_manipulation()
+    result.id = if_none(self.chem_mod.id, "")
+    result.description = if_none(self.chem_mod.name, "")
+    if (self.source_info is not None):
+      result.info.append(self.source_info)
+    alts = []
+    for atom in self.atom_list:
+      a = geometry_restraints.motif_alteration(
+        action=if_none(atom.function, ""), operand="atom")
+      a.motif_ids.append("")
+      if (a.action != "add"):
+        a.motif_atom_name = if_none(atom.atom_id, "")
+      a.atom.name = if_none(atom.new_atom_id, "")
+      a.atom.scattering_type = if_none(atom.new_type_symbol, "")
+      a.atom.nonbonded_type = if_none(atom.new_type_energy, "")
+      a.atom.partial_charge = if_none(atom.new_partial_charge, 0)
+      if (a.action == "change"):
+        a.set_change_partial_charge(state=atom.new_partial_charge is not None)
+      alts.append(a)
+    for bond in self.bond_list:
+      a = geometry_restraints.motif_alteration(
+        action=if_none(bond.function, ""), operand="bond")
+      a.motif_ids.append("")
+      a.motif_ids.append("")
+      a.bond.atom_names = [
+        if_none(bond.atom_id_1, ""),
+        if_none(bond.atom_id_2, "")]
+      a.bond.type = if_none(bond.new_type, "")
+      a.bond.distance_ideal = if_none(bond.new_value_dist, 0)
+      a.bond.weight = esd_as_weight(bond.new_value_dist_esd)
+      if (a.action == "change"):
+        a.set_change_distance_ideal(state=bond.new_value_dist is not None)
+        a.set_change_weight(state=bond.new_value_dist_esd is not None)
+      alts.append(a)
+    for angle in self.angle_list:
+      a = geometry_restraints.motif_alteration(
+        action=if_none(bond.function, ""), operand="angle")
+      a.motif_ids.append("")
+      a.motif_ids.append("")
+      a.motif_ids.append("")
+      a.angle.atom_names = [
+        if_none(angle.atom_id_1, ""),
+        if_none(angle.atom_id_2, ""),
+        if_none(angle.atom_id_3, "")]
+      a.angle.angle_ideal = if_none(angle.new_value_angle, 0)
+      a.angle.weight = esd_as_weight(angle.new_value_angle_esd)
+      if (a.action == "change"):
+        a.set_change_angle_ideal(state=angle.new_value_angle is not None)
+        a.set_change_weight(state=angle.new_value_angle_esd is not None)
+      alts.append(a)
+    for tor in self.tor_list:
+      a = geometry_restraints.motif_alteration(
+        action=if_none(tor.function, ""), operand="dihedral")
+      a.motif_ids.append("")
+      a.motif_ids.append("")
+      a.motif_ids.append("")
+      a.motif_ids.append("")
+      a.dihedral.atom_names = [
+        if_none(tor.atom_id_1, ""),
+        if_none(tor.atom_id_2, ""),
+        if_none(tor.atom_id_3, ""),
+        if_none(tor.atom_id_4, "")]
+      a.dihedral.angle_ideal = if_none(tor.new_value_angle, 0)
+      a.dihedral.weight = esd_as_weight(tor.new_value_angle_esd)
+      a.dihedral.periodicity = if_none(tor.new_period, 0)
+      a.dihedral.id = if_none(tor.id, "")
+      if (a.action == "change"):
+        a.set_change_angle_ideal(state=tor.new_value_angle is not None)
+        a.set_change_weight(state=tor.new_value_angle_esd is not None)
+        a.set_change_periodicity(state=tor.new_period is not None)
+      alts.append(a)
+    for chir in self.chir_list:
+      a = geometry_restraints.motif_alteration(
+        action=if_none(chir.function, ""), operand="chirality")
+      a.motif_ids.append("")
+      a.motif_ids.append("")
+      a.motif_ids.append("")
+      a.motif_ids.append("")
+      a.chirality.atom_names = [
+        if_none(chir.atom_id_centre, ""),
+        if_none(chir.atom_id_1, ""),
+        if_none(chir.atom_id_2, ""),
+        if_none(chir.atom_id_3, "")]
+      a.chirality.volume_sign = if_none(chir.new_volume_sign, 0)
+      a.chirality.id = if_none(chir.id, "")
+      alts.append(a)
+    for plane in self.get_planes():
+      a = geometry_restraints.motif_alteration(
+        action="change", operand="planarity")
+      a.motif_ids.resize(len(plane.plane_atoms))
+      a.set_planarity_atom_actions([if_none(plane_atom.function, "")
+        for plane_atom in plane.plane_atoms])
+      a.planarity.atom_names = flex.std_string([if_none(plane_atom.atom_id, "")
+        for plane_atom in plane.plane_atoms])
+      a.planarity.weights = flex.double([esd_as_weight(plane_atom.new_dist_esd)
+        for plane_atom in plane.plane_atoms])
+      a.planarity.id = plane.plane_id
+      alts.append(a)
+    result.set_alterations(alts)
+    return result
 
 class chem_mod(looped_data):
   """
@@ -881,6 +1146,7 @@ _chem_mod_tor.new_period:int
 class chem_mod_chir(looped_data):
   """
 _chem_mod_chir.function
+_chem_mod_chir.id
 _chem_mod_chir.atom_id_centre
 _chem_mod_chir.atom_id_1
 _chem_mod_chir.atom_id_2

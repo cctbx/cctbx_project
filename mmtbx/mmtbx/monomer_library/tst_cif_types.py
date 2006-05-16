@@ -10,7 +10,7 @@ def exercise():
     number_atoms_all=22,
     number_atoms_nh=11,
     desc_level="")
-  comp_comp_id = cif_types.comp_comp_id(chem_comp=chem_comp)
+  comp_comp_id = cif_types.comp_comp_id(source_info=None, chem_comp=chem_comp)
   for i,a in enumerate("ABC"):
     comp_comp_id.atom_list.append(cif_types.chem_comp_atom(
       atom_id="I"+a,
@@ -56,7 +56,7 @@ IB IC double 3.0 4.0
     name="Name",
     comp_id="Comp Id",
     group_id="Group Id")
-  mod_mod_id = cif_types.mod_mod_id(chem_mod=chem_mod)
+  mod_mod_id = cif_types.mod_mod_id(source_info=None, chem_mod=chem_mod)
   mod_mod_id.atom_list.append(cif_types.chem_mod_atom(
     function="add",
     atom_id="",
