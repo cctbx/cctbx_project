@@ -308,6 +308,8 @@ def run(args, simply_return_all_miller_arrays=False):
     if processed_array.is_real_array():
       print "Removing negatives items"
       processed_array = processed_array.select( processed_array.data() > 0 )
+      if processed_array.sigmas() is not None:
+        processed_array = processed_array.select( processed_array.sigmas() > 0 )
     else:
       print "The data is not real, but complex! --remove_negatives is ignored"
 
