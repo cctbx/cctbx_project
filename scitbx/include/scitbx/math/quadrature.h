@@ -7,7 +7,473 @@ namespace scitbx{
 namespace math{
 namespace quadrature{
 
-  // here we quickly determine the roots of a hermite polynome
+  /*  This file deal with approximation the following integral:
+   *  Q = \int_{-\infty}^{\infty} exp(-x^2) f(x)
+   *  The approximation is carried out using a quadrature (1D)
+   *  or cubature (2D).
+   *  The integral is effectively approximated by
+   *  Q \approx \sum_{i=1}^{N} w_i f(x_i)
+   *  the elements w_i are the weights and x_i are the coordinates
+   *  on which the function has to be evaluated.
+   *  The weights and coordinates are givfen by the implemented classes
+   *
+   *  Note the following rule when changing variables:
+   *  \int exp(-x^2)f(x) dx = \int J*exp(-(z-z0)/(2s^2))f(z) dz
+   *  with
+   *  J = dx/dz; ( in this case, J = Sqrt[2] s)
+   *
+   */
+
+
+
+  // This class generates cubature point sets
+  // see http://www.cs.kuleuven.be/~nines/research/ecf/
+  //
+  // the names of the classes are as follows:
+  // order_numberofpoints_rule
+  // This is in lnie with the tables given on the above website.
+  // only a selected number (4) of cubatures have been implemented.
+  // using 21, 12,9 and 9 points.
+  // initial testing showed that the 9 point cubature did not show a large accuracy
+  // improvement over using a standard multiplicative Gauss Hermite quadrature
+  //
+  // the functions coord() and weight() are for python tests only.
+  //
+
+  template <typename FloatType>
+  class nine_twentyone_1012{
+    public:
+      nine_twentyone_1012()
+      {
+        scitbx::af::tiny<FloatType,2> tmp_1( 0,0 );
+        FloatType w1=1.0471975511965977;
+        x_.push_back(tmp_1);
+        w_.push_back(w1);
+
+        scitbx::af::tiny<FloatType,2> tmp_2(1.5381890013208515,1.5381890013208515);
+        FloatType w2=0.012238016879947463;
+        expand(tmp_2,w2,false,false);
+
+        scitbx::af::tiny<FloatType,2> tmp_3(0.43091398228826897,1.0403183802565386);
+        FloatType w3=0.24426215416421333;
+        expand(tmp_3,w3,false,true);
+
+        scitbx::af::tiny<FloatType,2> tmp_4(0.54093734825794375,2.1069972930282899);
+        FloatType w4=0.011418225194962370;
+        expand(tmp_4,w4,false,true);
+      }
+
+      scitbx::af::shared< scitbx::af::tiny<FloatType,2> > coords()
+      {
+        return( x_ );
+      }
+
+      scitbx::af::tiny<FloatType,2> coord(int const ii)
+      {
+        SCITBX_ASSERT( ii<21 );
+        return( x_[ii] );
+      }
+
+
+      scitbx::af::shared< FloatType > weights()
+      {
+        return( w_ );
+      }
+
+      FloatType weight( int const& ii )
+      {
+        SCITBX_ASSERT( ii<21 );
+        return( w_[ii] );
+      }
+
+    protected:
+
+      scitbx::af::shared< scitbx::af::tiny<FloatType,2> > plus_minus( scitbx::af::tiny<FloatType,2> const& gen,
+                                                                      bool const& last_is_zero )
+      {
+        scitbx::af::shared<  scitbx::af::tiny<FloatType,2> > result;
+
+        scitbx::af::tiny<FloatType,2> s1(gen[0], gen[1]);
+        scitbx::af::tiny<FloatType,2> s2(-gen[0], gen[1]);
+        result.push_back( s1 );
+        result.push_back( s2 );
+
+        if (!last_is_zero){
+          scitbx::af::tiny<FloatType,2> s3(gen[0], -gen[1]);
+          scitbx::af::tiny<FloatType,2> s4(-gen[0], -gen[1]);
+          result.push_back( s3 );
+          result.push_back( s4 );
+        }
+
+        return(result);
+      }
+
+      scitbx::af::shared< scitbx::af::tiny<FloatType,2> > swap_expand(
+         scitbx::af::shared< scitbx::af::tiny<FloatType,2> > const& gen)
+      {
+        scitbx::af::shared< scitbx::af::tiny<FloatType,2> > result;
+        int size = gen.size();
+        for (int ii=0;ii<size;ii++){
+          scitbx::af::tiny<FloatType,2> s1(gen[ii][1],gen[ii][0]);
+          result.push_back( s1 );
+          result.push_back( gen[ii] );
+        }
+        return( result );
+      }
+
+      void expand( scitbx::af::tiny<FloatType,2> const& gen,
+                   FloatType const& w,
+                   bool const& last_one_is_zero,
+                   bool const& swapit )
+      {
+        // first, get the sign thing going
+        scitbx::af::shared< scitbx::af::tiny<FloatType,2> > tmp;
+        tmp = plus_minus( gen, last_one_is_zero );
+        if (swapit){
+          // now do the swap expand
+          tmp = swap_expand( tmp );
+        }
+        // now push back the whole lot
+        for (int ii=0;ii<tmp.size();ii++){
+          x_.push_back( tmp[ii] );
+          w_.push_back( w );
+        }
+
+      }
+
+
+      scitbx::af::shared< scitbx::af::tiny<FloatType,2> >  x_;
+      scitbx::af::shared< FloatType > w_;
+
+
+  };
+
+
+
+
+  template <typename FloatType>
+  class five_nine_1110{
+    public:
+      five_nine_1110()
+      {
+        scitbx::af::tiny<FloatType,2> tmp_1(0,0);
+        FloatType w1=1.5707963267948966;
+        x_.push_back( tmp_1 );
+        w_.push_back( w1 );
+
+        scitbx::af::tiny<FloatType,2> tmp_2(1,1);
+        FloatType w2=0.19634954084936207;
+        expand( tmp_2,w2,false,false);
+
+        scitbx::af::tiny<FloatType,2> tmp_3(1.4142135623730950, 0 );
+        FloatType w3=0.19634954084936207;
+        expand( tmp_3,w3,true,true);
+      }
+
+      scitbx::af::shared< scitbx::af::tiny<FloatType,2> > coords()
+      {
+        return( x_ );
+      }
+
+      scitbx::af::tiny<FloatType,2> coord(int const ii)
+      {
+        SCITBX_ASSERT( ii <= 8 );
+        return( x_[ii] );
+      }
+
+
+      scitbx::af::shared< FloatType > weights()
+      {
+        return( w_ );
+      }
+
+      FloatType weight( int const& ii )
+      {
+        SCITBX_ASSERT( ii <= 8 );
+        return( w_[ii] );
+      }
+
+    protected:
+
+      scitbx::af::shared< scitbx::af::tiny<FloatType,2> > plus_minus( scitbx::af::tiny<FloatType,2> const& gen,
+                                                                      bool const& last_is_zero )
+      {
+        scitbx::af::shared<  scitbx::af::tiny<FloatType,2> > result;
+
+        scitbx::af::tiny<FloatType,2> s1(gen[0], gen[1]);
+        scitbx::af::tiny<FloatType,2> s2(-gen[0], gen[1]);
+        result.push_back( s1 );
+        result.push_back( s2 );
+
+        if (!last_is_zero){
+          scitbx::af::tiny<FloatType,2> s3(gen[0], -gen[1]);
+          scitbx::af::tiny<FloatType,2> s4(-gen[0], -gen[1]);
+          result.push_back( s3 );
+          result.push_back( s4 );
+        }
+
+        return(result);
+      }
+
+      scitbx::af::shared< scitbx::af::tiny<FloatType,2> > swap_expand(
+         scitbx::af::shared< scitbx::af::tiny<FloatType,2> > const& gen)
+      {
+        scitbx::af::shared< scitbx::af::tiny<FloatType,2> > result;
+        int size = gen.size();
+        for (int ii=0;ii<size;ii++){
+          scitbx::af::tiny<FloatType,2> s1(gen[ii][1],gen[ii][0]);
+          result.push_back( s1 );
+          result.push_back( gen[ii] );
+        }
+        return( result );
+      }
+
+      void expand( scitbx::af::tiny<FloatType,2> const& gen,
+                   FloatType const& w,
+                   bool const& last_one_is_zero,
+                   bool const& swapit )
+      {
+        // first, get the sign thing going
+        scitbx::af::shared< scitbx::af::tiny<FloatType,2> > tmp;
+        tmp = plus_minus( gen, last_one_is_zero );
+        if (swapit){
+          // now do the swap expand
+          tmp = swap_expand( tmp );
+        }
+        // now push back the whole lot
+        for (int ii=0;ii<tmp.size();ii++){
+          x_.push_back( tmp[ii] );
+          w_.push_back( w );
+        }
+
+      }
+
+
+      scitbx::af::shared< scitbx::af::tiny<FloatType,2> >  x_;
+      scitbx::af::shared< FloatType > w_;
+
+
+  };
+
+
+
+  template <typename FloatType>
+  class five_nine_1001{
+    public:
+      five_nine_1001()
+      {
+        // These values have been taken from the mentioned webpage
+        // a ful reference is :  A.H. Stroud, Approximate calculation
+        // of multiple integrals, Prentice-Hall, Englewood Cliffs, N.J., 1971.
+        scitbx::af::tiny<FloatType,2> tmp_1(0,0);
+        FloatType w1=1.5707963267948966;
+        x_.push_back( tmp_1 );
+        w_.push_back( w1 );
+
+        scitbx::af::tiny<FloatType,2> tmp_2(1.3065629648763765,0.54119610014619698 );
+        FloatType w2=0.19634954084936207;
+        expand( tmp_2,w2,false,true);
+      }
+
+      scitbx::af::shared< scitbx::af::tiny<FloatType,2> > coords()
+      {
+        return( x_ );
+      }
+
+      scitbx::af::tiny<FloatType,2> coord(int const ii)
+      {
+        SCITBX_ASSERT( ii <= 8 );
+        return( x_[ii] );
+      }
+
+
+      scitbx::af::shared< FloatType > weights()
+      {
+        return( w_ );
+      }
+
+      FloatType weight( int const& ii )
+      {
+        SCITBX_ASSERT( ii <= 8 );
+        return( w_[ii] );
+      }
+
+    protected:
+
+      scitbx::af::shared< scitbx::af::tiny<FloatType,2> > plus_minus( scitbx::af::tiny<FloatType,2> const& gen,
+                                                                      bool const& last_is_zero )
+      {
+        scitbx::af::shared<  scitbx::af::tiny<FloatType,2> > result;
+
+        scitbx::af::tiny<FloatType,2> s1(gen[0], gen[1]);
+        scitbx::af::tiny<FloatType,2> s2(-gen[0], gen[1]);
+        result.push_back( s1 );
+        result.push_back( s2 );
+
+        if (!last_is_zero){
+          scitbx::af::tiny<FloatType,2> s3(gen[0], -gen[1]);
+          scitbx::af::tiny<FloatType,2> s4(-gen[0], -gen[1]);
+          result.push_back( s3 );
+          result.push_back( s4 );
+        }
+
+        return(result);
+      }
+
+      scitbx::af::shared< scitbx::af::tiny<FloatType,2> > swap_expand(
+         scitbx::af::shared< scitbx::af::tiny<FloatType,2> > const& gen)
+      {
+        scitbx::af::shared< scitbx::af::tiny<FloatType,2> > result;
+        int size = gen.size();
+        for (int ii=0;ii<size;ii++){
+          scitbx::af::tiny<FloatType,2> s1(gen[ii][1],gen[ii][0]);
+          result.push_back( s1 );
+          result.push_back( gen[ii] );
+        }
+        return( result );
+      }
+
+      void expand( scitbx::af::tiny<FloatType,2> const& gen,
+                   FloatType const& w,
+                   bool const& last_one_is_zero,
+                   bool const& swapit )
+      {
+        // first, get the sign thing going
+        scitbx::af::shared< scitbx::af::tiny<FloatType,2> > tmp;
+        tmp = plus_minus( gen, last_one_is_zero );
+        if (swapit){
+          // now do the swap expand
+          tmp = swap_expand( tmp );
+        }
+        // now push back the whole lot
+        for (int ii=0;ii<tmp.size();ii++){
+          x_.push_back( tmp[ii] );
+          w_.push_back( w );
+        }
+
+      }
+
+
+      scitbx::af::shared< scitbx::af::tiny<FloatType,2> >  x_;
+      scitbx::af::shared< FloatType > w_;
+
+
+  };
+
+
+
+
+
+  template <typename FloatType>
+  class seven_twelve_0120{
+    public:
+      seven_twelve_0120()
+      {
+        // These values have been taken from the mentioned webpage
+        // a ful reference is :  A.H. Stroud, Approximate calculation
+        // of multiple integrals, Prentice-Hall, Englewood Cliffs, N.J., 1971.
+        scitbx::af::tiny<FloatType,2> tmp_1(1.7320508075688772, 0);
+        FloatType w1=0.087266462599716478;
+        expand( tmp_1,w1,true,true);
+
+        scitbx::af::tiny<FloatType,2> tmp_2(0.53523313465963489, 0.53523313465963489);
+        FloatType w2=0.66127983844512042;
+        expand( tmp_2,w2,false,false);
+
+        scitbx::af::tiny<FloatType,2> tmp_3(1.4012585384440735, 1.4012585384440735);
+        FloatType w3=0.036851862352611409;
+        expand( tmp_3,w3,false,false);
+      }
+
+      scitbx::af::shared< scitbx::af::tiny<FloatType,2> > coords()
+      {
+        return( x_ );
+      }
+
+      scitbx::af::tiny<FloatType,2> coord(int const ii)
+      {
+        SCITBX_ASSERT( ii <= 11 );
+        return( x_[ii] );
+      }
+
+
+      scitbx::af::shared< FloatType > weights()
+      {
+        return( w_ );
+      }
+
+      FloatType weight( int const& ii )
+      {
+        SCITBX_ASSERT( ii <= 11 );
+        return( w_[ii] );
+      }
+
+    protected:
+
+      scitbx::af::shared< scitbx::af::tiny<FloatType,2> > plus_minus( scitbx::af::tiny<FloatType,2> const& gen,
+                                                                      bool const& last_is_zero )
+      {
+        scitbx::af::shared<  scitbx::af::tiny<FloatType,2> > result;
+
+        scitbx::af::tiny<FloatType,2> s1(gen[0], gen[1]);
+        scitbx::af::tiny<FloatType,2> s2(-gen[0], gen[1]);
+        result.push_back( s1 );
+        result.push_back( s2 );
+
+        if (!last_is_zero){
+          scitbx::af::tiny<FloatType,2> s3(gen[0], -gen[1]);
+          scitbx::af::tiny<FloatType,2> s4(-gen[0], -gen[1]);
+          result.push_back( s3 );
+          result.push_back( s4 );
+        }
+
+        return(result);
+      }
+
+      scitbx::af::shared< scitbx::af::tiny<FloatType,2> > swap_expand(
+         scitbx::af::shared< scitbx::af::tiny<FloatType,2> > const& gen)
+      {
+        scitbx::af::shared< scitbx::af::tiny<FloatType,2> > result;
+        int size = gen.size();
+        for (int ii=0;ii<size;ii++){
+          scitbx::af::tiny<FloatType,2> s1(gen[ii][1],gen[ii][0]);
+          result.push_back( s1 );
+          result.push_back( gen[ii] );
+        }
+        return( result );
+      }
+
+      void expand( scitbx::af::tiny<FloatType,2> const& gen,
+                   FloatType const& w,
+                   bool const& last_one_is_zero,
+                   bool const& swapit )
+      {
+        // first, get the sign thing going
+        scitbx::af::shared< scitbx::af::tiny<FloatType,2> > tmp;
+        tmp = plus_minus( gen, last_one_is_zero );
+        if (swapit){
+          // now do the swap expand
+          tmp = swap_expand( tmp );
+        }
+        // now push back the whole lot
+        for (int ii=0;ii<tmp.size();ii++){
+          x_.push_back( tmp[ii] );
+          w_.push_back( w );
+        }
+
+      }
+
+
+      scitbx::af::shared< scitbx::af::tiny<FloatType,2> >  x_;
+      scitbx::af::shared< FloatType > w_;
+
+
+  };
+
+
+
+
+  // here we quickly determine the roots of a hermite polynome needed for 1d integration.
   template <typename FloatType>
   class gauss_hermite_engine{
   public:
