@@ -3,6 +3,40 @@ from libtbx.test_utils import approx_equal
 import scitbx.math as sm
 import math
 
+
+def integrator( cub, n_points ):
+  result = 0
+  x = flex.double()
+  y = flex.double()
+  w = flex.double()
+  for ii in xrange(n_points):
+    x.append( cub.coord(ii)[0] )
+    y.append( cub.coord(ii)[1] )
+    w.append( cub.weight(ii) )
+  tot = flex.exp( -x -y)*w
+  tot = flex.sum( tot )
+  return tot
+
+
+def tst_cubature():
+  # cubature integration of exp(-x-y)exp(-x^2-y^2)
+  # 4 different cubatures are used.
+  fna=sm.five_nine_1001()
+  fnb=sm.five_nine_1110()
+  ft=sm.seven_twelve_0120()
+  nto=sm.nine_twentyone_1012()
+
+  theory=(math.pi)*math.exp(0.5)
+  r_fna=integrator(fna,9)
+  r_fnb=integrator(fnb,9)
+  r_ft=integrator(ft,12)
+  r_nto=integrator(nto,21)
+  assert approx_equal(r_fna, theory, eps=0.05)
+  assert approx_equal(r_fnb, theory, eps=0.05)
+  assert approx_equal(r_ft, theory, eps=0.01)
+  assert approx_equal(r_nto,theory, eps=0.01)
+
+
 def tst_gauss_hermite_engine():
   # test with known values
   ghe = sm.gauss_hermite_engine(4)
@@ -46,6 +80,7 @@ def examples():
 def run():
   tst_gauss_hermite_engine()
   examples()
+  tst_cubature()
   print "OK"
 
 if (__name__ == "__main__"):
