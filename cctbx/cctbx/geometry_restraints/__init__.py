@@ -2,6 +2,7 @@ import cctbx.crystal.direct_space_asu
 from cctbx.array_family import flex
 import scitbx.array_family.shared
 from libtbx.test_utils import approx_equal
+from libtbx.str_utils import show_string
 
 import boost.python
 ext = boost.python.import_ext("cctbx_geometry_restraints_ext")
@@ -593,3 +594,341 @@ class pair_proxies(object):
         nonbonded_distance_cutoff_plus_buffer=\
           nonbonded_distance_cutoff_plus_buffer,
         shell_asu_tables=shell_asu_tables)
+
+class _motif(boost.python.injector, ext.motif):
+
+  def show(self, out=None, prefix=""):
+    if (out is None): out = sys.stdout
+    print >> out, prefix+"geometry_restraints.motif {"
+    print >> out, prefix+"  id = %s" % show_string(self.id)
+    print >> out, prefix+"  description = %s" % show_string(self.description)
+    for info in self.info:
+      print >> out, prefix+"  info = %s" % show_string(info)
+    for manipulation_id in self.manipulation_ids:
+      print >> out, prefix+"  manipulation_id = %s" % (
+        show_string(manipulation_id))
+    self.show_atoms(out=out, prefix=prefix+"  ")
+    self.show_bonds(out=out, prefix=prefix+"  ")
+    self.show_angles(out=out, prefix=prefix+"  ")
+    self.show_dihedrals(out=out, prefix=prefix+"  ")
+    self.show_chiralities(out=out, prefix=prefix+"  ")
+    self.show_planarities(out=out, prefix=prefix+"  ")
+    print >> out, prefix+"}"
+
+  def show_atoms(self, out=None, prefix=""):
+    atoms = self.atoms_as_list()
+    if (len(atoms) > 0):
+      print >> out, prefix+"atom = " \
+        "[name scattering_type nonbonded_type partial_charge]"
+      for atom in atoms:
+        print >> out, prefix+"atom = %s %s %s %.6g" % (
+          show_string(atom.name),
+          show_string(atom.scattering_type),
+          show_string(atom.nonbonded_type),
+          atom.partial_charge)
+
+  def show_bonds(self, out=None, prefix=""):
+    bonds = self.bonds_as_list()
+    if (len(bonds) > 0):
+      print >> out, prefix+"bond = " \
+        "[atom_name*2 type distance_ideal weight id]"
+      for bond in bonds:
+        atom_names = bond.atom_names
+        print >> out, prefix+"bond = %s %s %s %.6g %.6g %s" % (
+          show_string(atom_names[0]),
+          show_string(atom_names[1]),
+          show_string(bond.type),
+          bond.distance_ideal,
+          bond.weight,
+          show_string(bond.id))
+
+  def show_angles(self, out=None, prefix=""):
+    angles = self.angles_as_list()
+    if (len(angles) > 0):
+      print >> out, prefix+"angle = " \
+        "[atom_name*3 angle_ideal weight id]"
+      for angle in angles:
+        atom_names = angle.atom_names
+        print >> out, prefix+"angle = %s %s %s %.6g %.6g %s" % (
+          show_string(atom_names[0]),
+          show_string(atom_names[1]),
+          show_string(atom_names[2]),
+          angle.angle_ideal,
+          angle.weight,
+          show_string(angle.id))
+
+  def show_dihedrals(self, out=None, prefix=""):
+    dihedrals = self.dihedrals_as_list()
+    if (len(dihedrals) > 0):
+      print >> out, prefix+"dihedral = " \
+        "[atom_name*4 angle_ideal weight periodicity id]"
+      for dihedral in dihedrals:
+        atom_names = dihedral.atom_names
+        print >> out, prefix+"dihedral = %s %s %s %s %.6g %.6g %d %s" % (
+          show_string(atom_names[0]),
+          show_string(atom_names[1]),
+          show_string(atom_names[2]),
+          show_string(atom_names[3]),
+          dihedral.angle_ideal,
+          dihedral.weight,
+          dihedral.periodicity,
+          show_string(dihedral.id))
+
+  def show_chiralities(self, out=None, prefix=""):
+    chiralities = self.chiralities_as_list()
+    if (len(chiralities) > 0):
+      print >> out, prefix+"chirality = " \
+        "[atom_name*4 volume_sign both_signs volume_ideal weight id]"
+      for chirality in chiralities:
+        atom_names = chirality.atom_names
+        if (chirality.both_signs): both_signs = "True"
+        else:                      both_signs = "False"
+        print >> out, prefix+"chirality = %s %s %s %s %s %s %.6g %.6g %s" % (
+          show_string(atom_names[0]),
+          show_string(atom_names[1]),
+          show_string(atom_names[2]),
+          show_string(atom_names[3]),
+          show_string(chirality.volume_sign),
+          both_signs,
+          chirality.volume_ideal,
+          chirality.weight,
+          show_string(chirality.id))
+
+  def show_planarities(self, out=None, prefix=""):
+    planarities = self.planarities_as_list()
+    if (len(planarities) > 0):
+      for planarity in planarities:
+        print >> out, prefix+"planarity {"
+        print >> out, prefix+"  id = %s" % show_string(planarity.id)
+        assert planarity.weights.size() == planarity.atom_names.size()
+        print >> out, prefix+"  atom = [name weight]"
+        for an,w in zip(planarity.atom_names, planarity.weights):
+          print >> out, prefix+"  atom = %s %.6g" % (show_string(an), w)
+        print >> out, prefix+"}"
+
+class _motif_alteration(boost.python.injector, ext.motif_alteration):
+
+  def show(self, out=None, prefix="", previous_help=None):
+    if (out is None): out = sys.stdout
+    action = self.action
+    operand = self.operand
+    if (operand == "atom"):
+      assert len(self.motif_ids) == 1
+      atom = self.atom
+      attr = "name scattering_type nonbonded_type partial_charge"
+      if (action == "add"):
+        help = prefix+"atom = add [motif_id %s]" % attr
+        if (help != previous_help): print >> out, help
+        print >> out, prefix+"atom = add %s %s %s %s %s" % (
+          show_string(self.motif_ids[0]),
+          show_string(atom.name),
+          show_string(atom.scattering_type),
+          show_string(atom.nonbonded_type),
+          atom.partial_charge)
+      elif (action == "change"):
+        help = prefix+"atom = change [motif_id motif_atom_name \\\n" \
+                    + prefix+"               %s]" % attr
+        if (help != previous_help): print >> out, help
+        print >> out, prefix+"atom = change %s %s \\" % (
+          show_string(self.motif_ids[0]),
+          show_string(self.motif_atom_name))
+        if (not self.change_partial_charge()):
+          partial_charge = "None"
+        else:
+          partial_charge = "%.6g" % atom.partial_charge
+        print >> out, prefix+"              %s %s %s %s" % (
+          show_string(atom.name),
+          show_string(atom.scattering_type),
+          show_string(atom.nonbonded_type),
+          partial_charge)
+      else:
+        assert action == "delete"
+        help = prefix+"atom = delete [motif_id motif_atom_name]"
+        if (help != previous_help): print >> out, help
+        print >> out, prefix+"atom = delete %s %s" % (
+          show_string(self.motif_ids[0]),
+          show_string(self.motif_atom_name))
+    elif (operand == "bond"):
+      assert len(self.motif_ids) == 2
+      bond = self.bond
+      help_lead = "bond = %s [(motif_id atom_name)*2" % action
+      data_lead = "bond = %s %s %s %s %s" % (
+        action,
+        show_string(self.motif_ids[0]),
+        show_string(bond.atom_names[0]),
+        show_string(self.motif_ids[1]),
+        show_string(bond.atom_names[1]))
+      if (action == "delete"):
+        help = prefix+"%s]" % help_lead
+        if (help != previous_help): print >> out, help
+        print >> out, prefix+"%s" % data_lead
+      else:
+        if (action == "change" and not self.change_distance_ideal()):
+          distance_ideal = "None"
+        else:
+          distance_ideal = "%.6g" % bond.distance_ideal
+        if (action == "change" and not self.change_weight()):
+          weight = "None"
+        else:
+          weight = "%.6g" % bond.weight
+        help = prefix+"%s type distance_ideal weight id]" % help_lead
+        if (help != previous_help): print >> out, help
+        print >> out, prefix+"%s %s %s %s" % (
+          data_lead, distance_ideal, weight, show_string(bond.id))
+    elif (operand == "angle"):
+      assert len(self.motif_ids) == 3
+      angle = self.angle
+      help_lead = "angle = %s [(motif_id atom_name)*3" % action
+      data_lead = "angle = %s %s %s %s %s %s %s" % (
+        action,
+        show_string(self.motif_ids[0]),
+        show_string(angle.atom_names[0]),
+        show_string(self.motif_ids[1]),
+        show_string(angle.atom_names[1]),
+        show_string(self.motif_ids[2]),
+        show_string(angle.atom_names[2]))
+      if (action == "delete"):
+        help = prefix+"%s]" % help_lead
+        if (help != previous_help): print >> out, help
+        print >> out, prefix+"%s" % data_lead
+      else:
+        if (action == "change" and not self.change_angle_ideal()):
+          angle_ideal = "None"
+        else:
+          angle_ideal = "%.6g" % angle.angle_ideal
+        if (action == "change" and not self.change_weight()):
+          weight = "None"
+        else:
+          weight = "%.6g" % angle.weight
+        help = prefix+"%s type angle_ideal weight id]" % help_lead
+        if (help != previous_help): print >> out, help
+        print >> out, prefix+"%s %s %s %s" % (
+          data_lead, angle_ideal, weight, show_string(angle.id))
+    elif (operand == "dihedral"):
+      assert len(self.motif_ids) == 4
+      dihedral = self.dihedral
+      help_lead = "dihedral = %s [(motif_id atom_name)*4" % action
+      data_lead = "dihedral = %s %s %s %s %s %s %s %s %s" % (
+        action,
+        show_string(self.motif_ids[0]),
+        show_string(dihedral.atom_names[0]),
+        show_string(self.motif_ids[1]),
+        show_string(dihedral.atom_names[1]),
+        show_string(self.motif_ids[2]),
+        show_string(dihedral.atom_names[2]),
+        show_string(self.motif_ids[3]),
+        show_string(dihedral.atom_names[3]))
+      if (action == "delete"):
+        help = prefix+"%s]" % help_lead
+        if (help != previous_help): print >> out, help
+        print >> out, prefix+"%s" % data_lead
+      else:
+        if (action == "change" and not self.change_angle_ideal()):
+          angle_ideal = "None"
+        else:
+          angle_ideal = "%.6g" % dihedral.angle_ideal
+        if (action == "change" and not self.change_weight()):
+          weight = "None"
+        else:
+          weight = "%.6g" % dihedral.weight
+        if (action == "change" and not self.change_periodicity()):
+          periodicity = "None"
+        else:
+          periodicity = "%d" % dihedral.periodicity
+        help = prefix+"%s angle_ideal weight periodicity id]" % help_lead
+        if (help != previous_help): print >> out, help
+        print >> out, prefix+"%s %s %s %s %s" % (
+          data_lead, angle_ideal, weight, periodicity,
+          show_string(dihedral.id))
+    elif (operand == "chirality"):
+      assert len(self.motif_ids) == 4
+      chirality = self.chirality
+      help_lead = "chirality = %s [(motif_id atom_name)*4" % action
+      data_lead = "chirality = %s %s %s %s %s %s %s %s %s" % (
+        action,
+        show_string(self.motif_ids[0]),
+        show_string(chirality.atom_names[0]),
+        show_string(self.motif_ids[1]),
+        show_string(chirality.atom_names[1]),
+        show_string(self.motif_ids[2]),
+        show_string(chirality.atom_names[2]),
+        show_string(self.motif_ids[3]),
+        show_string(chirality.atom_names[3]))
+      if (action == "delete"):
+        help = prefix+"%s]" % help_lead
+        if (help != previous_help): print >> out, help
+        print >> out, prefix+"%s" % data_lead
+      else:
+        if (action == "change" and not self.change_volume_ideal()):
+          volume_ideal = "None"
+        else:
+          volume_ideal = "%.6g" % chirality.volume_ideal
+        if (action == "change" and not self.change_weight()):
+          weight = "None"
+        else:
+          weight = "%.6g" % chirality.weight
+        help = prefix+"%s \\\n" % help_lead \
+             + prefix+" "*(14+len(action)) \
+             + "volume_sign volume_ideal weight id]"
+        if (help != previous_help): print >> out, help
+        print >> out, prefix+"%s \\\n%s%s%s %s %s %s" % (
+          data_lead, prefix, " "*(13+len(action)),
+          show_string(chirality.volume_sign),
+          volume_ideal, weight, show_string(chirality.id))
+    elif (operand == "planarity"):
+      planarity = self.planarity
+      print >> out, prefix+"planarity {"
+      print >> out, prefix+"  action = %s" % action
+      print >> out, prefix+"  motif_id = %s" % show_string(
+        self.planarity_motif_id)
+      print >> out, prefix+"  id = %s" % show_string(planarity.id)
+      if (action == "add"):
+        print >> out, prefix+"  atom = [motif_id name weight]"
+        assert planarity.weights.size() == planarity.atom_names.size()
+        assert self.motif_ids.size() == planarity.atom_names.size()
+        for mi,an,w in zip(self.motif_ids,
+                           planarity.atom_names,
+                           planarity.weights):
+          print >> out, prefix+"  atom = %s %s %.6g" % (
+            show_string(mi), show_string(an), w)
+      elif (action == "change"):
+        assert planarity.weights.size() == planarity.atom_names.size()
+        assert self.motif_ids.size() == planarity.atom_names.size()
+        actions = self.planarity_atom_actions_as_list()
+        assert len(actions) == planarity.atom_names.size()
+        previous_help = None
+        for ac,mi,an,w in zip(actions,
+                              self.motif_ids,
+                              planarity.atom_names,
+                              planarity.weights):
+          if (ac != "delete"):
+            help = prefix+"  atom = %s [motif_id name weight]" % ac
+            if (help != previous_help): print >> out, help
+            print >> out, prefix+"  atom = %s %s %s %.6g" % (
+              ac, show_string(mi), show_string(an), w)
+          else:
+            help = prefix+"  atom = delete [motif_id name]"
+            if (help != previous_help): print >> out, help
+            print >> out, prefix+"  atom = %s %s %s" % (
+              ac, show_string(mi), show_string(an))
+          previous_help = help
+      print >> out, prefix+"}"
+      help = None
+    else:
+      raise RuntimeError("Internal Error: unknown operand: %s" % operand)
+    return help
+
+class _motif_manipulation(boost.python.injector, ext.motif_manipulation):
+
+  def show(self, out=None, prefix=""):
+    if (out is None): out = sys.stdout
+    print >> out, prefix+"geometry_restraints.motif_manipulation {"
+    print >> out, prefix+"  id = %s" % show_string(self.id)
+    print >> out, prefix+"  description = %s" % show_string(self.description)
+    for info in self.info:
+      print >> out, prefix+"  info = %s" % show_string(info)
+    previous_help = None
+    for alteration in self.alterations_as_list():
+      previous_help = alteration.show(
+        out=out, prefix=prefix+"  ", previous_help=previous_help)
+    print >> out, prefix+"}"
