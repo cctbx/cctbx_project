@@ -1,6 +1,7 @@
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
 #include <boost/python/overloads.hpp>
+#include <boost/python/tuple.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
 #include <boost/python/return_internal_reference.hpp>
@@ -13,6 +14,17 @@ namespace {
   struct search_symmetry_flags_wrappers
   {
     typedef search_symmetry_flags w_t;
+
+    static boost::python::tuple
+    getinitargs(w_t const& self)
+    {
+      return boost::python::make_tuple(
+        self.use_space_group_symmetry(),
+        self.use_space_group_ltr(),
+        self.use_seminvariants(),
+        self.use_normalizer_k2l(),
+        self.use_normalizer_l2n());
+    }
 
     static void
     wrap()
@@ -32,6 +44,8 @@ namespace {
         .def("use_normalizer_l2n", &w_t::use_normalizer_l2n)
         .def("__eq__", &w_t::operator==)
         .def("__ne__", &w_t::operator!=)
+        .enable_pickling()
+        .def("__getinitargs__", getinitargs)
       ;
     }
   };

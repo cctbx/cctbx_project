@@ -9,7 +9,9 @@ from cctbx.development import debug_utils
 from cctbx.development import structure_factor_utils
 from cctbx.array_family import flex
 from scitbx import fftpack
-from libtbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal, show_diff
+import pickle
+from cStringIO import StringIO
 import random
 import sys
 
@@ -49,6 +51,13 @@ def run_test(space_group_info, n_elements=5, d_min=1.5,
   fft_map = f_obs.fft_map(
     resolution_factor=grid_resolution_factor,
     symmetry_flags=maptbx.use_space_group_symmetry)
+  p = pickle.dumps(fft_map)
+  l = pickle.loads(p)
+  s1 = StringIO()
+  fft_map.statistics().show_summary(f=s1)
+  s2 = StringIO()
+  l.statistics().show_summary(f=s2)
+  assert not show_diff(s2.getvalue(), s1.getvalue())
   fft_map.apply_sigma_scaling()
   real_map = maptbx.copy(
     fft_map.real_map(),

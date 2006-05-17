@@ -1563,6 +1563,20 @@ def exercise_search_symmetry():
   assert not f != sgtbx.search_symmetry_flags(False, 1, False, True, False)
   assert f != sgtbx.search_symmetry_flags(True, 0, True, False, True)
   assert not f == sgtbx.search_symmetry_flags(False, 0, True, False, True)
+  for use_space_group_symmetry in [False, True]:
+    for use_space_group_ltr in [-1,0,1]:
+      for use_seminvariants in [False, True]:
+        for use_normalizer_k2l in [False, True]:
+          for use_normalizer_l2n in [False, True]:
+            f = sgtbx.search_symmetry_flags(
+              use_space_group_symmetry,
+              use_space_group_ltr,
+              use_seminvariants,
+              use_normalizer_k2l,
+              use_normalizer_l2n)
+            p = pickle.dumps(f)
+            l = pickle.loads(p)
+            assert l == f
   sg143 = sgtbx.space_group_info("P 3")
   ss143 = sg143.structure_seminvariants()
   sg146 = sgtbx.space_group_info("R 3 h")
