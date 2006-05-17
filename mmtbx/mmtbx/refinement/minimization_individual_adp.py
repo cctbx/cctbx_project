@@ -26,15 +26,6 @@ class lbfgs(object):
                      beta_w=None):
     adopt_init_args(self, locals())
     self.xray_structure = self.fmodel.xray_structure
-    tan_u_iso = False
-    param = 0
-    if(self.tan_b_iso_max > 0.0):
-       tan_u_iso = True
-       param = int(self.tan_b_iso_max)
-    xray.set_scatterer_grad_flags(scatterers = self.xray_structure.scatterers(),
-                                  u_iso      = True,
-                                  tan_u_iso  = tan_u_iso,
-                                  param      = param)
     self.exray_start = None
     self.eadp_start  = None
     self.exray_final = None
@@ -59,7 +50,7 @@ class lbfgs(object):
           assert self.alpha_w.data().size() == self.f_obs_w.data().size()
           assert self.beta_w.data().size() == self.f_obs_w.data().size()
     self.x = \
-     flex.double(self.xray_structure.n_parameters(), 0)
+     flex.double(self.xray_structure.n_parameters_XXX(), 0)
     self._scatterers_start = self.xray_structure.scatterers()
     self.first_target_value = None
     self.minimizer = scitbx.lbfgs.run(

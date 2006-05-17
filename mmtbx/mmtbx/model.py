@@ -20,6 +20,7 @@ class manager(object):
                      rigid_body_selections = None,
                      group_b_selections    = None,
                      tls_selections        = None,
+                     anisotropic_flags     = None,
                      log = None):
     self.log = log
     self.restraints_manager = None
@@ -36,6 +37,7 @@ class manager(object):
     self.rigid_body_selections = rigid_body_selections
     self.group_b_selections = group_b_selections
     self.tls_selections = tls_selections
+    self.anisotropic_flags = anisotropic_flags
     #if(self.rigid_body_selections is not None):
     ##XXX BUG
     #   dim = self.xray_structure.scatterers().size()
@@ -64,6 +66,7 @@ class manager(object):
                   rigid_body_selections = None,
                   group_b_selections    = None,
                   tls_selections        = None,
+                  anisotropic_flags     = None,
                   log                   = self.log)
     selection = flex.bool(self.xray_structure.scatterers().size(), True)
     # XXX not a deep copy
@@ -92,6 +95,8 @@ class manager(object):
        new.tls_selections = []
        for item in self.tls_selections:
            new.tls_selections.append(item.deep_copy())
+    if(self.anisotropic_flags is not None):
+       new.anisotropic_flags = self.anisotropic_flags.deep_copy()
     return new
 
   def _solvent_selection(self):
@@ -115,11 +120,15 @@ class manager(object):
     return self.xray_structure.select(~self.solvent_selection)
 
   def update(self, selection):
+    print "#"*100
+    print self.anisotropic_flags.size() , selection.size()
+
     self.xray_structure.select_inplace(selection)
     new_atom_attributes_list = []
     rigid_body_selections = []
     group_b_selections    = []
     tls_selections = []
+    anisotropic_flags = None
     new_solvent_selection = flex.bool()
     for attr, solsel, sel in zip(self.atom_attributes_list,
                                  self.solvent_selection,
@@ -138,6 +147,9 @@ class manager(object):
        for s in self.tls_selections:
            tls_selections.append(s.select(selection))
     self.tls_selections = tls_selections
+    if(self.anisotropic_flags is not None):
+       anisotropic_flags = self.anisotropic_flags.select(selection)
+    self.anisotropic_flags = anisotropic_flags
     if(self.group_b_selections is not None):
        for s in self.group_b_selections:
            group_b_selections.append(s.select(selection))
@@ -243,9 +255,12 @@ class manager(object):
        print >> out, pdb.format_scale_records(
                                     unit_cell = crystal_symmetry.unit_cell())
     sites_cart  = self.xray_structure.sites_cart()
-    occupancies = self.xray_structure.scatterers().extract_occupancies()
+    scatterers  = self.xray_structure.scatterers()
+    occupancies = scatterers.extract_occupancies()
+    u_carts     = scatterers.extract_u_cart(self.xray_structure.unit_cell())
     u_isos      = self.xray_structure.extract_u_iso_or_u_equiv()
-    scat_types = self.xray_structure.scatterers().extract_scattering_types()
+    scat_types  = scatterers.extract_scattering_types()
+    #XXX high duplication
     if(selection is None):
        for i_seq,atom in enumerate(self.atom_attributes_list):
            if(atom.name is None): name = "    "
@@ -265,20 +280,33 @@ class manager(object):
            if(atom.charge is None): charge = "  "
            else: charge = atom.charge
            print >> out, pdb.format_atom_record(
-                                       record_name = atom.record_name(),
-                                       serial      = i_seq,
-                                       name        = name,
-                                       altLoc      = altLoc,
-                                       resName     = atom.resName,
-                                       chainID     = chainID,
-                                       resSeq      = resSeq,
-                                       iCode       = iCode,
-                                       site        = sites_cart[i_seq],
-                                       occupancy   = occupancies[i_seq],
-                                       tempFactor  = adptbx.u_as_b(u_isos[i_seq]),
-                                       segID       = segID,
-                                       element     = scat_types[i_seq],#element,
-                                       charge      = charge)
+                                    record_name = atom.record_name(),
+                                    serial      = i_seq,
+                                    name        = name,
+                                    altLoc      = altLoc,
+                                    resName     = atom.resName,
+                                    chainID     = chainID,
+                                    resSeq      = resSeq,
+                                    iCode       = iCode,
+                                    site        = sites_cart[i_seq],
+                                    occupancy   = occupancies[i_seq],
+                                    tempFactor  = adptbx.u_as_b(u_isos[i_seq]),
+                                    segID       = segID,
+                                    element     = scat_types[i_seq],#element,
+                                    charge      = charge)
+           if(scatterers[i_seq].flags.use_u_aniso()):
+              print >> out, pdb.format_anisou_record(
+                                    serial      = i_seq,
+                                    name        = name,
+                                    altLoc      = altLoc,
+                                    resName     = atom.resName,
+                                    chainID     = chainID,
+                                    resSeq      = resSeq,
+                                    iCode       = iCode,
+                                    u_cart      = u_carts[i_seq],
+                                    segID       = segID,
+                                    element     = scat_types[i_seq],#element,
+                                    charge      = charge)
        print >> out, "END"
     else:
        for i_seq,atom in enumerate(self.atom_attributes_list):
@@ -300,20 +328,33 @@ class manager(object):
               if(atom.charge is None): charge = "  "
               else: charge = atom.charge
               print >> out, pdb.format_atom_record(
-                                          record_name = atom.record_name(),
-                                          serial      = i_seq,
-                                          name        = name,
-                                          altLoc      = altLoc,
-                                          resName     = atom.resName,
-                                          chainID     = chainID,
-                                          resSeq      = resSeq,
-                                          iCode       = iCode,
-                                          site        = sites_cart[i_seq],
-                                          occupancy   = occupancies[i_seq],
-                                          tempFactor  = adptbx.u_as_b(u_isos[i_seq]),
-                                          segID       = segID,
-                                          element     = scat_types[i_seq],#element,
-                                          charge      = charge)
+                                    record_name = atom.record_name(),
+                                    serial      = i_seq,
+                                    name        = name,
+                                    altLoc      = altLoc,
+                                    resName     = atom.resName,
+                                    chainID     = chainID,
+                                    resSeq      = resSeq,
+                                    iCode       = iCode,
+                                    site        = sites_cart[i_seq],
+                                    occupancy   = occupancies[i_seq],
+                                    tempFactor  = adptbx.u_as_b(u_isos[i_seq]),
+                                    segID       = segID,
+                                    element     = scat_types[i_seq],#element,
+                                    charge      = charge)
+              if(scatterers[i_seq].flags.use_u_aniso()):
+                 print >> out, pdb.format_anisou_record(
+                                    serial      = i_seq,
+                                    name        = name,
+                                    altLoc      = altLoc,
+                                    resName     = atom.resName,
+                                    chainID     = chainID,
+                                    resSeq      = resSeq,
+                                    iCode       = iCode,
+                                    u_cart      = u_carts[i_seq],
+                                    segID       = segID,
+                                    element     = scat_types[i_seq],#element,
+                                    charge      = charge)
        print >> out, "END"
 
 
@@ -355,7 +396,21 @@ class manager(object):
     atom_atom_distances = \
               flex.sqrt(mac.difference_vectors_cart(self.xray_structure).dot())
     assert approx_equal(flex.mean_default(atom_atom_distances,0), 0)
+
+    print self.xray_structure.scatterers().size()
+
     self.xray_structure = self.xray_structure.concatenate(sol)
+
+    print "."*100
+    print self.anisotropic_flags.size() , solvent_selection.size(), \
+          self.xray_structure.scatterers().size()
+
+    self.anisotropic_flags.extend(flex.bool(sol.scatterers().size(), False))
+
+    print self.anisotropic_flags.size() , solvent_selection.size(), \
+          self.xray_structure.scatterers().size()
+
+
     # XXX TODO NCS restraints
     # XXX RALF: throw exception if self.reduced_solvent_selection affects NCS
     geometry = self.restraints_manager.geometry
@@ -472,21 +527,23 @@ class manager(object):
     if(other is not None):
        adp_statistics_obj = adp_statistics(
                              xray_structure         = self.xray_structure,
+                             anisotropic_flags      = self.anisotropic_flags,
                              xray_structure_ref     = other.xray_structure,
                              restraints_manager     = self.restraints_manager,
                              restraints_manager_ref = other.restraints_manager,
                              iso_restraints         = iso_restraints,
                              wilson_b               = wilson_b,
-                             tan_b_iso_max              = tan_b_iso_max,
+                             tan_b_iso_max          = tan_b_iso_max,
                              text                   = text)
     else:
        adp_statistics_obj = adp_statistics(
                           xray_structure         = self.xray_structure,
+                          anisotropic_flags      = self.anisotropic_flags,
                           xray_structure_ref     = self.xray_structure_ini,
                           restraints_manager     = self.restraints_manager,
                           restraints_manager_ref = self.restraints_manager_ini,
                           iso_restraints         = iso_restraints,
-                          tan_b_iso_max              = tan_b_iso_max,
+                          tan_b_iso_max          = tan_b_iso_max,
                           wilson_b               = wilson_b,
                           text                   = "")
     if(show): adp_statistics_obj.show(out = self.log)
@@ -498,6 +555,7 @@ class adp_statistics(object):
   def __init__(self,
                xray_structure,
                xray_structure_ref,
+               anisotropic_flags,
                restraints_manager,
                restraints_manager_ref,
                iso_restraints,
@@ -585,6 +643,12 @@ class adp_statistics(object):
              (low_cutoff_1,high_cutoff_1,n_1,low_cutoff_2,high_cutoff_2,n_2)
       low_cutoff_1 = high_cutoff_1
       low_cutoff_2 = high_cutoff_2
+    print >> out, "| "+"- "*38+"|"
+    p0 = "| Number of anisotropically refinable ADP = "
+    p1 = str("%d"%self.anisotropic_flags.count(True))
+    p2 = " out of "+str("%d"%self.anisotropic_flags.size())+" total"
+    n = 79 - len(p0+p1+p2+"|")
+    print >> out, p0+p1+p2+" "*n+"|"
     print >> out, "|"+"-"*77+"|"
     print >> out
     out.flush()

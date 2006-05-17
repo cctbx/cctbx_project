@@ -35,6 +35,7 @@ class structure(crystal.special_position_settings):
       self.add_scatterers(
         scatterers=scatterers,
         site_symmetry_table=site_symmetry_table)
+    self.u_cart_group = None
 
   def _copy_constructor(self, other):
     crystal.special_position_settings._copy_constructor(
@@ -211,6 +212,27 @@ class structure(crystal.special_position_settings):
     if(s1.size() != s2.size()):
        raise RuntimeError("models must be exactly aligned and of equal size.")
     return flex.min(flex.sqrt((s1 - s2).dot()))
+
+  def randomize_adp(self, random_u_iso_scale=1.0, random_u_cart_scale=1.0):
+    for sc in self._scatterers:
+        if(sc.flags.use()):
+           if(sc.flags.use_u_iso()):
+              u_iso = random.random() * random_u_iso_scale
+              sc.u_iso = u_iso
+           if(sc.flags.use_u_aniso()):
+              site_symmetry = sc.apply_symmetry(self.unit_cell(),
+                                                self.space_group(),
+                                                self.min_distance_sym_equiv())
+              run_away_counter = 0
+              while 1:
+                 run_away_counter += 1
+                 assert run_away_counter < 100
+                 u_cart = adptbx.random_u_cart(u_scale = random_u_cart_scale)
+                 sc.u_star = site_symmetry.average_u_star(
+                             adptbx.u_cart_as_u_star(self.unit_cell(), u_cart))
+                 u_cart = adptbx.u_star_as_u_cart(self.unit_cell(), sc.u_star)
+                 eigenvalues = adptbx.eigenvalues(u_cart)
+                 if(min(eigenvalues) > 0.001): break
 
   def set_b_iso_random(self, allow_mixed=False):
     s = self._scatterers
@@ -617,6 +639,7 @@ class structure(crystal.special_position_settings):
     if (atomic_weights is None):
       atomic_weights = self.atomic_weights()
     return self.sites_cart().mean_weighted(weights=atomic_weights)
+
 
   def n_parameters(self):
     #XXX move to C++ (after anisotropic_flag is gone)

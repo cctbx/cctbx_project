@@ -49,7 +49,7 @@ class lbfgs(object):
        else:
           assert self.alpha_w.data().size() == self.f_obs_w.data().size()
           assert self.beta_w.data().size() == self.f_obs_w.data().size()
-    self.x = flex.double(self.xray_structure.n_parameters(), 0)
+    self.x = flex.double(self.xray_structure.n_parameters_XXX(), 0)
     self._scatterers_start = self.xray_structure.scatterers()
     self.first_target_value = None
     self._lock_for_line_search = False
