@@ -570,7 +570,7 @@ class manager(object):
                          u_iso_reinable_params = u_iso_reinable_params,
                          d_target_d_f_calc  = xrtfr.derivatives() * self.fb_cart_w(),
                          xray_structure     = xrs,
-                         n_parameters       = xrs.n_parameters(),
+                         n_parameters       = xrs.n_parameters_XXX(),
                          miller_set         = self.f_obs_w(),
                          algorithm          = self.sf_algorithm)
 
