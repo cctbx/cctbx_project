@@ -472,6 +472,102 @@ namespace quadrature{
 
 
 
+  // here we determine roots of lagueree polynomes needed for 1d integration over the interval [-1,1]
+  template<typename FloatType>
+  class gauss_legendre_engine{
+  public:
+    gauss_legendre_engine(int const& n)
+    {
+       SCITBX_ASSERT( n < 96 );
+       SCITBX_ASSERT( n > 1 );
+       n_ = n;
+       conv_limit_ = 1e-13;
+       max_count_ = 1000; // 1000 iterations should really be enough
+
+       FloatType start_guess=1.0-1e-5;
+       FloatType x;
+       for (int ii=0;ii<int( (n+1)/2 ) ;ii++){
+         x = refine( start_guess );
+           x_.push_back( x );
+           w_.push_back( f(x)[2] );
+         if ( std::fabs(x) > conv_limit_ ){
+           x_.push_back( -x );
+           w_.push_back( f(x)[2] );
+         }
+       }
+    }
+
+    // using the Newton algorithm with implicit deflating
+    // a.k.a. The Durant Kerner Formula. See:
+    // http://digilander.libero.it/foxes/poly/Zeros_orthogonal_polynomials.htm
+    //
+    FloatType refine( FloatType const& z )
+    {
+      FloatType delta=100,zn,zold,inflator,ratio;
+      std::vector<FloatType> fdf;
+      zn=z;
+      int count=0;
+      while ( delta > conv_limit_ ){
+        zold = zn;
+        inflator=0;
+        for (int ii=0;ii<x_.size();ii++){
+          inflator += 1.0/(zn-x_[ii]);
+        }
+        fdf = f(zn);
+        ratio = fdf[0]/(fdf[1]-fdf[0]*inflator);
+        zn = zn-ratio;
+        delta = std::fabs( zn - zold );
+        count++;
+        if (count>= max_count_){
+          delta = 0;
+        }
+      }
+
+      return( zn );
+    }
+
+
+    std::vector<FloatType> f(FloatType const& z)
+    {
+      FloatType p1, p2, p3;
+      p1=1.0;
+      p2=0.0;
+      p3=0.0;
+      for (int jj=0;jj<n_;jj++){
+        p3=p2;
+        p2=p1;
+        p1=((2.0*(jj+1)-1.0)*z*p2-((jj+1)-1.0)*p3)/(jj+1.0);
+      }
+      std::vector<FloatType> result;
+      result.push_back( p1 );
+      result.push_back( n_*(z*p1-p2)/(z*z-1.0) );
+      result.push_back( 2.0/( (1.0-z*z)*result[1]*result[1] ) );
+      return (result);
+    }
+
+    scitbx::af::shared<FloatType> x()
+    {
+      return( x_ );
+    }
+
+    scitbx::af::shared<FloatType> w()
+    {
+      return( w_ );
+    }
+
+
+
+  protected:
+    int n_;
+    int max_count_;
+    FloatType conv_limit_;
+    scitbx::af::shared<FloatType> x_;
+    scitbx::af::shared<FloatType> w_;
+
+  };
+
+
+
 
   // here we quickly determine the roots of a hermite polynome needed for 1d integration.
   template <typename FloatType>
@@ -479,6 +575,7 @@ namespace quadrature{
   public:
     gauss_hermite_engine(int const& n)
     {
+      SCITBX_ASSERT(n > 1 );
       SCITBX_ASSERT( n < 30 ); // only stable/correct nodes are found for polynomes under 30
       p_const_ = 0.7511255444649425;
       conv_limit_ = 1.0e-13;
