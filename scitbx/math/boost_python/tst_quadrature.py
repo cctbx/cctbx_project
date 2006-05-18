@@ -4,7 +4,7 @@ import scitbx.math as sm
 import math
 
 
-def integrator( cub, n_points ):
+def twod_integrator( cub, n_points ):
   result = 0
   x = flex.double()
   y = flex.double()
@@ -27,10 +27,10 @@ def tst_cubature():
   nto=sm.nine_twentyone_1012()
 
   theory=(math.pi)*math.exp(0.5)
-  r_fna=integrator(fna,9)
-  r_fnb=integrator(fnb,9)
-  r_ft=integrator(ft,12)
-  r_nto=integrator(nto,21)
+  r_fna=twod_integrator(fna,9)
+  r_fnb=twod_integrator(fnb,9)
+  r_ft=twod_integrator(ft,12)
+  r_nto=twod_integrator(nto,21)
   assert approx_equal(r_fna, theory, eps=0.05)
   assert approx_equal(r_fnb, theory, eps=0.05)
   assert approx_equal(r_ft, theory, eps=0.01)
@@ -63,6 +63,23 @@ def tst_gauss_hermite_engine():
         if jj != ix:
           assert ( math.fabs(x_this[ix]-x_this[jj]) >= step )
 
+
+def tst_gauss_legendre_engine():
+
+  for n in range(2,95):
+    gle = sm.gauss_legendre_engine(n)
+    x_this = gle.x()
+    step=1e-5 # check AMS pg 919. nodes for n=96 are allways more then stpe away from each other
+    for ix in range( x_this.size() ):
+      f = gle.f( x_this[ix] )[0]
+      assert approx_equal(f,0,eps=1e-5)
+      # check the uniqueness of each point
+      for jj in  range( x_this.size() ):
+        if jj != ix:
+          assert ( math.fabs(x_this[ix]-x_this[jj]) >= step )
+
+
+
 def examples():
   # an illustration of Hermite Gauss quadrature
   # we will try to integrate
@@ -77,7 +94,23 @@ def examples():
     f = flex.sum( (flex.exp( -x ))*w )
     assert approx_equal(f,f_theory, eps=1e-5)
 
+  # an example of Gauss-Legendre integration
+  # we integrate exp(-x) between -1 and 1
+  f_theory = math.exp(1) - math.exp(-1)
+  for ii in xrange(5,90):
+    glq = sm.gauss_legendre_engine(ii)
+    w = glq.w()
+    x = glq.x()
+    f = flex.sum( (flex.exp( -x ))*w )
+    #assert approx_equal(f,f_theory, eps=1e-5)
+
+
+
+
+
+
 def run():
+  tst_gauss_legendre_engine()
   tst_gauss_hermite_engine()
   examples()
   tst_cubature()

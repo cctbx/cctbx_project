@@ -8,6 +8,26 @@ namespace scitbx { namespace math {
 
 namespace {
 
+
+  struct gauss_legendre_engine_wrappers
+  {
+    typedef scitbx::math::quadrature::gauss_legendre_engine<double> w_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      class_<w_t>("gauss_legendre_engine",no_init)
+        .def(init<int const& > ((arg_("n_points"))))
+        .def("f", &w_t::f)
+        .def("refine", &w_t::refine)
+        .def("x", &w_t::x)
+        .def("w", &w_t::w)
+        ;
+    }
+  };
+
+
   struct gauss_hermite_engine_wrappers
   {
     typedef scitbx::math::quadrature::gauss_hermite_engine<double> w_t;
@@ -97,15 +117,13 @@ namespace {
 
 
 
-
-
-
 } // namespace <anonymous>
 
 namespace boost_python {
 
   void wrap_quadrature()
   {
+    gauss_legendre_engine_wrappers::wrap();
     gauss_hermite_engine_wrappers::wrap();
     seven_twelve_0120_wrappers::wrap();
     five_nine_1001_wrappers::wrap();
