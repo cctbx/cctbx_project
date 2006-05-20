@@ -319,7 +319,7 @@ def exercise_misc():
   b = flex.bool([False, True, False, True])
   assert list(a.exclusive_or(b)) == [False, True, True, False]
 
-def exercise_1d_slicing_core(a):
+def exercise_1d_slicing_core(a, numeric_version=""):
   assert tuple(a[:]) == (1,2,3,4,5)
   assert tuple(a[::]) == (1,2,3,4,5)
   assert tuple(a[0:]) == (1,2,3,4,5)
@@ -354,7 +354,8 @@ def exercise_1d_slicing_core(a):
   assert tuple(a[-1::-2]) == (5,3,1)
   assert tuple(a[-1:1:-2]) == (5,3)
   assert tuple(a[-1:2:-2]) == (5,)
-  assert tuple(a[3:3:0]) == ()
+  if (not numeric_version.startswith("24.")):
+    assert tuple(a[3:3:0]) == ()
 
 def exercise_1d_slicing():
   exercise_1d_slicing_core(flex.int((1,2,3,4,5)))
@@ -364,7 +365,7 @@ def exercise_1d_slicing():
     pass
   else:
     print "Testing compatibility with Numeric slicing...",
-    exercise_1d_slicing_core(Numeric.array((1,2,3,4,5)))
+    exercise_1d_slicing_core(Numeric.array((1,2,3,4,5)), Numeric.__version__)
     print "OK"
   assert list(flex.slice_indices(5, slice(10))) == [0,1,2,3,4]
   assert list(flex.slice_indices(5, slice(0))) == []
