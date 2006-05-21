@@ -11,6 +11,8 @@
 #include <scitbx/boost_python/stl_map_as_dict.h>
 #include <iotbx/pdb/hierarchy.h>
 
+namespace boost_python_meta_ext { struct holder {}; }
+
 namespace iotbx { namespace pdb {
 namespace {
 
@@ -127,6 +129,12 @@ namespace {
       self.data->hetero = new_hetero;
     }
 
+    static int
+    get_tmp(w_t const& self) { return self.data->tmp; }
+
+    static void
+    set_tmp(w_t const& self, int new_tmp) { self.data->tmp = new_tmp; }
+
     static
     boost::python::list
     parents(w_t const& self)
@@ -184,12 +192,15 @@ namespace {
           make_function(get_siguij), make_function(set_siguij))
         .add_property("hetero",
           make_function(get_hetero), make_function(set_hetero))
+        .add_property("tmp",
+          make_function(get_tmp), make_function(set_tmp))
         .def("memory_id", &w_t::memory_id)
         .def("pre_allocate_parents", &w_t::pre_allocate_parents, (
           arg_("number_of_additional_parents")))
         .def("parents_size", &w_t::parents_size)
         .def("parents", parents)
         .def("add_parent", &w_t::add_parent, (arg_("new_parent")))
+        .def("is_alternative", &w_t::is_alternative)
       ;
     }
   };
@@ -253,6 +264,9 @@ namespace {
 
     IOTBX_PDB_HIERARCHY_GET_CHILDREN(residue, atom, atoms)
 
+    static std::size_t
+    atoms_size(w_t const& self) { return self.atoms().size(); }
+
     static void
     wrap()
     {
@@ -281,12 +295,17 @@ namespace {
         .def("memory_id", &w_t::memory_id)
         .def("parent", get_parent<residue, conformer>::wrapper)
         .def("set_parent", &w_t::set_parent, (arg_("new_parent")))
+        .def("parent_chain_has_multiple_conformers",
+          &w_t::parent_chain_has_multiple_conformers)
         .def("pre_allocate_atoms", &w_t::pre_allocate_atoms,
           (arg_("number_of_additional_atoms")))
         .def("new_atoms", &w_t::new_atoms,
           (arg_("number_of_additional_atoms")))
         .def("add_atom", &w_t::add_atom, (arg_("new_atom")))
         .def("atoms", get_atoms)
+        .def("atoms_size", atoms_size)
+        .def("number_of_alternative_atoms", &w_t::number_of_alternative_atoms)
+        .def("reset_atom_tmp", &w_t::reset_atom_tmp, (arg_("new_value")))
       ;
     }
   };
@@ -322,6 +341,8 @@ namespace {
         .def("memory_id", &w_t::memory_id)
         .def("parent", get_parent<conformer, chain>::wrapper)
         .def("set_parent", &w_t::set_parent, (arg_("new_parent")))
+        .def("parent_chain_has_multiple_conformers",
+          &w_t::parent_chain_has_multiple_conformers)
         .def("pre_allocate_residues", &w_t::pre_allocate_residues, (
           arg_("number_of_additional_residues")))
         .def("new_residues", &w_t::new_residues, (
@@ -330,6 +351,9 @@ namespace {
           arg_("name")="", arg_("seq")=0, arg_("icode")="",
           arg_("link_to_previous")=true)))
         .def("residues", get_residues)
+        .def("number_of_atoms", &w_t::number_of_atoms)
+        .def("number_of_alternative_atoms", &w_t::number_of_alternative_atoms)
+        .def("reset_atom_tmp", &w_t::reset_atom_tmp, (arg_("new_value")))
       ;
     }
   };
@@ -367,6 +391,8 @@ namespace {
         .def("new_conformers", &w_t::new_conformers, (
           arg_("number_of_additional_conformers")))
         .def("conformers", get_conformers)
+        .def("has_multiple_conformers", &w_t::has_multiple_conformers)
+        .def("reset_atom_tmp", &w_t::reset_atom_tmp, (arg_("new_value")))
       ;
     }
   };
@@ -402,6 +428,7 @@ namespace {
         .def("chains", get_chains)
         .def("new_chain", &w_t::new_chain, (arg_("chain_id")))
         .def("adopt_chain", &w_t::adopt_chain, (arg_("new_chain")))
+        .def("reset_atom_tmp", &w_t::reset_atom_tmp, (arg_("new_value")))
       ;
     }
   };
@@ -421,10 +448,24 @@ namespace {
 
     IOTBX_PDB_HIERARCHY_GET_CHILDREN(hierarchy, model, models)
 
-    static boost::python::dict
-    residue_name_counts_as_dict(w_t const& self)
+    static boost::python::object
+    overall_counts(w_t const& self)
     {
-      return scitbx::boost_python::stl_map_as_dict(self.residue_name_counts());
+      static boost::python::object result((boost_python_meta_ext::holder()));
+      boost::shared_ptr<hierarchy::overall_counts_holder>
+        counts = self.overall_counts();
+      result.attr("n_models") = counts->n_models;
+      result.attr("n_chains") = counts->n_chains;
+      result.attr("chain_ids")
+        = scitbx::boost_python::stl_map_as_dict(counts->chain_ids);
+      result.attr("n_conformers") = counts->n_conformers;
+      result.attr("conformer_ids")
+        = scitbx::boost_python::stl_map_as_dict(counts->conformer_ids);
+      result.attr("n_residues") = counts->n_residues;
+      result.attr("residue_names")
+        = scitbx::boost_python::stl_map_as_dict(counts->residue_names);
+      result.attr("n_atoms") = counts->n_atoms;
+      return result;
     }
 
     static void
@@ -442,7 +483,8 @@ namespace {
         .def("models", get_models)
         .def("new_model", &w_t::new_model, (arg_("model_id")))
         .def("adopt_model", &w_t::adopt_model, (arg_("new_model")))
-        .def("residue_name_counts", residue_name_counts_as_dict)
+        .def("reset_atom_tmp", &w_t::reset_atom_tmp, (arg_("new_value")))
+        .def("overall_counts", overall_counts)
       ;
     }
   };

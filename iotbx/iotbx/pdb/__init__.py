@@ -6,42 +6,131 @@ from iotbx_pdb_ext import *
 
 from iotbx.pdb.xray_structure import from_pdb as as_xray_structure
 from scitbx.python_utils.math_utils import iround
+from libtbx.str_utils import show_string, show_sorted_by_counts
 import sys
+
+def show_summary(
+      file_name=None,
+      source_info=None,
+      lines=None,
+      level_id=None,
+      level_id_exception=ValueError,
+      out=None,
+      prefix=""):
+  if (file_name is not None):
+    assert source_info is None and lines is None
+    pdb_inp = input(file_name=file_name)
+  else:
+    assert file_name is None
+    pdb_inp = input(source_info=source_info, lines=lines)
+  print >> out, prefix+"source info:", pdb_inp.source_info()
+  hierarchy = pdb_inp.construct_hierarchy()
+  overall_counts = hierarchy.overall_counts()
+  assert overall_counts.n_atoms == pdb_inp.input_atom_labels_list().size()
+  fmt = "%%%dd" % len(str(overall_counts.n_atoms))
+  print >> out, prefix+"  total number of:"
+  print >> out, prefix+"    models:    ", fmt % overall_counts.n_models
+  print >> out, prefix+"    chains:    ", fmt % overall_counts.n_chains
+  print >> out, prefix+"    alt. conf.:", fmt % (
+    overall_counts.n_conformers - overall_counts.n_chains)
+  print >> out, prefix+"    residues:  ", fmt % overall_counts.n_residues
+  print >> out, prefix+"    atoms:     ", fmt % overall_counts.n_atoms
+  #
+  c = overall_counts.chain_ids
+  print >> out, prefix+"  number of chain ids: %d"% len(c)
+  print >> out, prefix+"  histogram of chain id frequency:"
+  show_sorted_by_counts(c.items(), out=out, prefix=prefix+"    ")
+  #
+  c = overall_counts.conformer_ids
+  print >> out, prefix+"  number of conformer ids: %d"%len(c)
+  print >> out, prefix+"  histogram of conformer id frequency:"
+  show_sorted_by_counts(c.items(), out=out, prefix=prefix+"    ")
+  #
+  c = overall_counts.residue_names
+  print >> out, prefix+"  number of residue names: %d"%len(c)
+  print >> out, prefix+"  histogram of residue name frequency:"
+  show_sorted_by_counts(c.items(), out=out, prefix=prefix+"    ")
+  #
+  dup = pdb_inp.find_duplicate_atom_labels()
+  if (dup.size() > 0):
+    print >> out, prefix+"  number of groups of duplicate atom lables:  %3d" \
+      % dup.size()
+    print >> out, prefix+"    total number of affected atoms:           %3d" \
+      % sum([i_seqs.size() for i_seqs in dup])
+    iall = pdb_inp.input_atom_labels_list()
+    for i_seqs in dup[:10]:
+      prfx = "    group"
+      for i_seq in i_seqs:
+        print >> out, prefix+prfx, iall[i_seq].pdb_format()
+        prfx = "         "
+    if (dup.size() > 10):
+      print >> out, prefix+"    ... remaining %d groups not shown" % (
+        dup.size()-10)
+  #
+  if (level_id is not None):
+    print >> out, prefix+"  hierarchy level of detail = %s" % level_id
+    hierarchy.show(
+      out=out,
+      prefix=prefix+"    ",
+      level_id=level_id,
+      level_id_exception=level_id_exception)
+  #
+  return pdb_inp, hierarchy
+
+hierarchy_level_ids = ["model", "chain", "conformer", "residue", "atom"]
 
 class _hierarchy(boost.python.injector, ext.hierarchy):
 
-  def show(self, out=None):
+  def show(self,
+        out=None,
+        prefix="",
+        level_id=None,
+        level_id_exception=ValueError):
+    if (level_id == None): level_id = "atom"
+    try: level_no = hierarchy_level_ids.index(level_id)
+    except ValueError:
+      raise level_id_exception('Unknown level_id="%s"' % level_id)
     if (out is None): out = sys.stdout
     for model in self.models():
       chains = model.chains()
-      print >> out, "model id=%d" % model.id, \
+      print >> out, prefix+"model id=%d" % model.id, \
         "#chains=%d" % len(chains)
+      if (level_no == 0): continue
+      assert model.parent().memory_id() == self.memory_id()
       for chain in chains:
         conformers = chain.conformers()
-        print >> out, '  chain id="%s"' % chain.id, \
+        print >> out, prefix+'  chain id="%s"' % chain.id, \
           "#conformers=%d" % len(conformers)
+        if (level_no == 1): continue
         assert chain.parent().memory_id() == model.memory_id()
         for conformer in conformers:
           residues = conformer.residues()
-          print >> out, '    conformer id="%s"' % conformer.id, \
-            "#residues=%d" % len(residues)
+          print >> out, prefix+'    conformer id="%s"' % conformer.id, \
+            "#residues=%d" % len(residues), \
+            "#atoms=%d" % conformer.number_of_atoms(),
+          n_alt = conformer.number_of_alternative_atoms()
+          if (n_alt != 0):
+            print >> out, "#alt. atoms=%d" % n_alt,
+          print >> out
+          if (level_no == 2): continue
           assert conformer.parent().memory_id() == chain.memory_id()
           suppress_chain_break = True
           for residue in residues:
             if (not residue.link_to_previous and not suppress_chain_break):
-              print >> out, "      ### chain break ###"
+              print >> out, prefix+"      ### chain break ###"
             suppress_chain_break = False
             atoms = residue.atoms()
-            print >> out, '      residue name="%s"' % residue.name, \
+            print >> out, prefix+'      residue name="%s"' % residue.name, \
               "seq=%4d" % residue.seq, 'icode="%s"' % residue.icode, \
               "#atoms=%d" % len(atoms)
+            if (level_no == 3): continue
             assert residue.parent().memory_id() == conformer.memory_id()
             for atom in atoms:
-              if (atom.parents_size() > 1):
-                mark = "*"
+              if (atom.is_alternative()):
+                mark = "&"
               else:
                 mark = " "
-              print >> out, '       %s "%s"' % (mark, atom.name)
+              print >> out, prefix+'       %s "%s"' % (mark, atom.name)
               for parent in atom.parents():
                 if (parent.memory_id() == residue.memory_id()):
                   break
