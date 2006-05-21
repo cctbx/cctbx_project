@@ -198,11 +198,11 @@ namespace {
 
 } // namespace anonymous
 
-namespace { struct empty {}; }
+namespace boost_python_meta_ext { struct holder {}; }
 
 BOOST_PYTHON_MODULE(boost_python_meta_ext)
 {
   using namespace boost::python;
   def("platform_info", platform_info);
-  class_<empty>("empty", no_init);
+  class_<boost_python_meta_ext::holder>("holder");
 }
