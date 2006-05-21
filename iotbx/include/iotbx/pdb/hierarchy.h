@@ -89,6 +89,10 @@ namespace pdb {
       inline
       chain_data(
         std::string const& id);
+
+    public:
+      bool
+      has_multiple_conformers() const { return (conformers.size() > 1); }
   };
 
   //! Holder for conformer attributes (to be held by a shared_ptr).
@@ -110,6 +114,15 @@ namespace pdb {
       inline
       conformer_data(
         std::string const& id);
+
+    public:
+      bool
+      parent_chain_has_multiple_conformers() const
+      {
+        shared_ptr<chain_data> p = parent.lock();
+        if (p.get() == 0) return false;
+        return p->has_multiple_conformers();
+      }
   };
 
   //! Holder for residue attributes (to be held by a shared_ptr).
@@ -149,6 +162,14 @@ namespace pdb {
         std::sprintf(buf, "%-4s%4d%s", name.elems, seq, icode.elems);
         return std::string(buf);
       }
+
+      bool
+      parent_chain_has_multiple_conformers() const
+      {
+        shared_ptr<conformer_data> p = parent.lock();
+        if (p.get() == 0) return false;
+        return p->parent_chain_has_multiple_conformers();
+      }
   };
 
   //! Holder for atom attributes (to be held by a shared_ptr).
@@ -171,6 +192,7 @@ namespace pdb {
       sym_mat3 uij;
       sym_mat3 siguij;
       bool hetero;
+      mutable int tmp;
 
     protected:
       atom_data(
@@ -186,8 +208,18 @@ namespace pdb {
         occ(occ_), sigocc(sigocc_),
         b(b_), sigb(sigb_),
         uij(uij_), siguij(siguij_),
-        hetero(hetero_)
+        hetero(hetero_),
+        tmp(0)
       {}
+
+      bool
+      is_alternative() const
+      {
+        if (parents.size() != 1) return false;
+        shared_ptr<residue_data> p0 = parents[0].lock();
+        if (p0.get() == 0) return false;
+        return p0->parent_chain_has_multiple_conformers();
+      }
   };
 
   //! Atom attributes.
@@ -354,6 +386,9 @@ namespace pdb {
       inline
       void
       add_parent(residue const& new_parent);
+
+      bool
+      is_alternative() const { return data->is_alternative(); }
   };
 
   //! Residue attributes.
@@ -402,6 +437,12 @@ namespace pdb {
       void
       set_parent(conformer const& new_parent);
 
+      bool
+      parent_chain_has_multiple_conformers() const
+      {
+        return data->parent_chain_has_multiple_conformers();
+      }
+
       void
       pre_allocate_atoms(unsigned number_of_additional_atoms)
       {
@@ -429,6 +470,30 @@ namespace pdb {
 
       std::vector<atom> const&
       atoms() const { return data->atoms; }
+
+      unsigned
+      number_of_alternative_atoms() const
+      {
+        unsigned n = static_cast<unsigned>(data->atoms.size());
+        if (n == 0) return 0;
+        unsigned result = 0;
+        const atom* a = &*data->atoms.begin();
+        for(unsigned i=0;i<n;i++) {
+          if ((a++)->is_alternative()) result++;
+        }
+        return result;
+      }
+
+      void
+      reset_atom_tmp(int new_value) const
+      {
+        unsigned n = static_cast<unsigned>(data->atoms.size());
+        if (n == 0) return;
+        const atom* a = &*data->atoms.begin();
+        for(unsigned i=0;i<n;i++) {
+          (a++)->data->tmp = new_value;
+        }
+      }
   };
 
   //! Conformer attributes.
@@ -472,6 +537,12 @@ namespace pdb {
       void
       set_parent(chain const& new_parent);
 
+      bool
+      parent_chain_has_multiple_conformers() const
+      {
+        return data->parent_chain_has_multiple_conformers();
+      }
+
       void
       pre_allocate_residues(unsigned number_of_additional_residues)
       {
@@ -502,6 +573,43 @@ namespace pdb {
 
       std::vector<residue> const&
       residues() const { return data->residues; }
+
+      unsigned
+      number_of_atoms() const
+      {
+        unsigned n = static_cast<unsigned>(data->residues.size());
+        if (n == 0) return 0;
+        unsigned result = 0;
+        const residue* r = &*data->residues.begin();
+        for(unsigned i=0;i<n;i++) {
+          result += (r++)->atoms().size();
+        }
+        return result;
+      }
+
+      unsigned
+      number_of_alternative_atoms() const
+      {
+        unsigned n = static_cast<unsigned>(data->residues.size());
+        if (n == 0) return 0;
+        unsigned result = 0;
+        const residue* r = &*data->residues.begin();
+        for(unsigned i=0;i<n;i++) {
+          result += (r++)->number_of_alternative_atoms();
+        }
+        return result;
+      }
+
+      void
+      reset_atom_tmp(int new_value) const
+      {
+        unsigned n = static_cast<unsigned>(data->residues.size());
+        if (n == 0) return;
+        const residue* r = &*data->residues.begin();
+        for(unsigned i=0;i<n;i++) {
+          (r++)->reset_atom_tmp(new_value);
+        }
+      }
   };
 
   //! Chain attributes.
@@ -568,6 +676,23 @@ namespace pdb {
       get_conformer(unsigned i_conformer) const
       {
         return data->conformers[i_conformer];
+      }
+
+      bool
+      has_multiple_conformers() const
+      {
+        return data->has_multiple_conformers();
+      }
+
+      void
+      reset_atom_tmp(int new_value) const
+      {
+        unsigned n = static_cast<unsigned>(data->conformers.size());
+        if (n == 0) return;
+        const conformer* f = &*data->conformers.begin();
+        for(unsigned i=0;i<n;i++) {
+          (f++)->reset_atom_tmp(new_value);
+        }
       }
   };
 
@@ -647,6 +772,17 @@ namespace pdb {
         new_chain.set_parent(*this);
         data->chains.push_back(new_chain);
       }
+
+      void
+      reset_atom_tmp(int new_value) const
+      {
+        unsigned n = static_cast<unsigned>(data->chains.size());
+        if (n == 0) return;
+        const chain* c = &*data->chains.begin();
+        for(unsigned i=0;i<n;i++) {
+          (c++)->reset_atom_tmp(new_value);
+        }
+      }
   };
 
   //! Hierarchy attributes.
@@ -706,27 +842,82 @@ namespace pdb {
         data->models.push_back(new_model);
       }
 
-      std::map<std::string, unsigned>
-      residue_name_counts() const
+      void
+      reset_atom_tmp(int new_value) const
       {
-        std::map<std::string, unsigned> result;
-        std::map<str4, unsigned> result_str4;
-        for(unsigned jm=0;jm<models().size();jm++) {
+        unsigned n = static_cast<unsigned>(data->models.size());
+        if (n == 0) return;
+        const model* m = &*data->models.begin();
+        for(unsigned i=0;i<n;i++) {
+          (m++)->reset_atom_tmp(new_value);
+        }
+      }
+
+      struct overall_counts_holder
+      {
+        unsigned n_models;
+        unsigned n_chains;
+        std::map<std::string, unsigned> chain_ids;
+        unsigned n_conformers;
+        std::map<std::string, unsigned> conformer_ids;
+        unsigned n_residues;
+        std::map<std::string, unsigned> residue_names;
+        unsigned n_atoms;
+
+        overall_counts_holder()
+        :
+          n_models(0),
+          n_chains(0),
+          n_conformers(0),
+          n_residues(0),
+          n_atoms(0)
+        {}
+      };
+
+      boost::shared_ptr<overall_counts_holder>
+      overall_counts() const
+      {
+        reset_atom_tmp(0);
+        boost::shared_ptr<overall_counts_holder>
+          result(new overall_counts_holder);
+        std::map<str4, unsigned> residue_name_counts_str4;
+        unsigned ms_sz = static_cast<unsigned>(models().size());
+        result->n_models = ms_sz;
+        for(unsigned jm=0;jm<ms_sz;jm++) {
           model const& m = models()[jm];
-          for(unsigned jc=0;jc<m.chains().size();jc++) {
+          unsigned cs_sz = static_cast<unsigned>(m.chains().size());
+          result->n_chains += cs_sz;
+          for(unsigned jc=0;jc<cs_sz;jc++) {
             chain const& c = m.chains()[jc];
-            for(unsigned jf=0;jf<c.conformers().size();jf++) {
+            result->chain_ids[c.data->id]++;
+            unsigned fs_sz = static_cast<unsigned>(c.conformers().size());
+            result->n_conformers += fs_sz;
+            for(unsigned jf=0;jf<fs_sz;jf++) {
               conformer const& f = c.conformers()[jf];
+              result->conformer_ids[f.data->id]++;
               for(unsigned jr=0;jr<f.residues().size();jr++) {
                 residue const& r = f.residues()[jr];
-                result_str4[r.data->name]++;
+                unsigned n_atoms = 0;
+                for(unsigned ja=0;ja<r.atoms().size();ja++) {
+                  atom_data const& a = *r.atoms()[ja].data;
+                  if (a.tmp == 0) {
+                    a.tmp = 1;
+                    n_atoms++;
+                  }
+                }
+                if (n_atoms != 0) {
+                  result->n_atoms += n_atoms;
+                  residue_name_counts_str4[r.data->name]++;
+                }
               }
             }
           }
         }
         for(std::map<str4, unsigned>::const_iterator
-              i=result_str4.begin();i!=result_str4.end();i++) {
-          result[i->first.elems] = i->second;
+              i=residue_name_counts_str4.begin();
+              i!=residue_name_counts_str4.end();i++) {
+          result->n_residues += i->second;
+          result->residue_names[i->first.elems] = i->second;
         }
         return result;
       }

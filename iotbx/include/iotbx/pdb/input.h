@@ -1756,7 +1756,7 @@ namespace iotbx { namespace pdb {
             std::vector<unsigned> common_sel;
             common_sel.reserve(ch_r.size);
             typedef std::map<char, std::vector<unsigned> > alt_t;
-            alt_t alternates;
+            alt_t alternatives;
             scitbx::auto_array<i_seq_input_atom_labels>
               sorted_input_atom_labels(
                 sort_input_atom_labels(iall, ch_r.begin, ch_r.end));
@@ -1764,7 +1764,7 @@ namespace iotbx { namespace pdb {
             if (ch_r.size == 1) {
               char ai = si->altloc();
               if (ai != blank_altloc_char) {
-                alternates[ai].push_back(si->i_seq);
+                alternatives[ai].push_back(si->i_seq);
               }
               else {
                 common_sel.push_back(si->i_seq);
@@ -1774,7 +1774,7 @@ namespace iotbx { namespace pdb {
               char ai = si->altloc();
               bool prev_altloc_is_blank;
               if (ai != blank_altloc_char) {
-                alternates[ai].push_back((si++)->i_seq);
+                alternatives[ai].push_back((si++)->i_seq);
                 ai = si->altloc();
                 prev_altloc_is_blank = false;
               }
@@ -1782,7 +1782,7 @@ namespace iotbx { namespace pdb {
                 ai = si[1].altloc();
                 if (   ai != blank_altloc_char
                     && si->labels.equal_ignoring_altloc(si[1].labels)) {
-                  alternates[blank_altloc_char].push_back((si++)->i_seq);
+                  alternatives[blank_altloc_char].push_back((si++)->i_seq);
                 }
                 else {
                   common_sel.push_back((si++)->i_seq);
@@ -1791,21 +1791,21 @@ namespace iotbx { namespace pdb {
               }
               for(unsigned j=2;j<ch_r.size;j++) {
                 if (ai != blank_altloc_char) {
-                  alternates[ai].push_back((si++)->i_seq);
+                  alternatives[ai].push_back((si++)->i_seq);
                   ai = si->altloc();
                   prev_altloc_is_blank = false;
                 }
                 else {
                   if (   !prev_altloc_is_blank
                       && si->labels.equal_ignoring_altloc(si[-1].labels)) {
-                    alternates[blank_altloc_char].push_back((si++)->i_seq);
+                    alternatives[blank_altloc_char].push_back((si++)->i_seq);
                     ai = si->altloc();
                   }
                   else {
                     ai = si[1].altloc();
                     if (   ai != blank_altloc_char
                         && si->labels.equal_ignoring_altloc(si[1].labels)) {
-                      alternates[blank_altloc_char].push_back((si++)->i_seq);
+                      alternatives[blank_altloc_char].push_back((si++)->i_seq);
                     }
                     else {
                       common_sel.push_back((si++)->i_seq);
@@ -1817,7 +1817,7 @@ namespace iotbx { namespace pdb {
               if (ai != blank_altloc_char
                   || (   !prev_altloc_is_blank
                       && si->labels.equal_ignoring_altloc(si[-1].labels))) {
-                alternates[ai].push_back(si->i_seq);
+                alternatives[ai].push_back(si->i_seq);
               }
               else {
                 common_sel.push_back(si->i_seq);
@@ -1825,26 +1825,26 @@ namespace iotbx { namespace pdb {
             }
             std::sort(common_sel.begin(), common_sel.end());
             // trick to simplify this algorithm
-            std::size_t alternates_size = alternates.size();
-            if (alternates_size == 0) {
-              alternates[blank_altloc_char] = std::vector<unsigned>();
-              alternates_size++;
+            std::size_t alternatives_size = alternatives.size();
+            if (alternatives_size == 0) {
+              alternatives[blank_altloc_char] = std::vector<unsigned>();
+              alternatives_size++;
             }
             // pre-allocate to avoid repeated re-allocation
             unsigned n_cs = common_sel.size();
             if (n_cs != 0) {
               const unsigned* cs_i = &*common_sel.begin();
-              atoms[*cs_i].pre_allocate_parents(alternates_size);
+              atoms[*cs_i].pre_allocate_parents(alternatives_size);
               for(unsigned i_cs=1;i_cs<n_cs;i_cs++) {
-                atoms[*(++cs_i)].pre_allocate_parents(alternates_size);
+                atoms[*(++cs_i)].pre_allocate_parents(alternatives_size);
               }
             }
             // loop over conformers
-            chain.new_conformers(alternates_size);
-            alt_t::iterator a_end = alternates.end();
+            chain.new_conformers(alternatives_size);
+            alt_t::iterator a_end = alternatives.end();
             unsigned i_conformer = 0;
             for(alt_t::iterator
-                  alt=alternates.begin();alt!=a_end;alt++,i_conformer++) {
+                  alt=alternatives.begin();alt!=a_end;alt++,i_conformer++) {
               std::vector<unsigned>& alt_sel = alt->second;
               std::sort(alt_sel.begin(), alt_sel.end());
               unsigned n_as = alt_sel.size();
