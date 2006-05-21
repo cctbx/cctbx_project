@@ -8,6 +8,78 @@
 
 namespace cctbx { namespace crystal { namespace neighbors {
 
+  template <typename CubicleContentType, typename FloatType=double>
+  struct cubicles
+  {
+    typedef scitbx::math::float_int_conversions<FloatType, int> fic;
+
+    //! Default constructor. Some data members are not initialized!
+    cubicles() {}
+
+    cubicles(
+      scitbx::vec3<FloatType> const& space_min_,
+      scitbx::vec3<FloatType> const& space_span,
+      FloatType const& cubicle_edge_)
+    :
+      space_min(space_min_),
+      cubicle_edge(cubicle_edge_)
+    {
+      CCTBX_ASSERT(cubicle_edge > 0);
+      af::c_grid<3, unsigned> n_cubicles;
+      for(std::size_t i=0;i<3;i++) {
+        n_cubicles[i] = static_cast<unsigned>(
+          std::max(1, fic::iceil(space_span[i] / cubicle_edge)));
+      }
+      try {
+        memory.resize(n_cubicles);
+      }
+      catch(const std::bad_alloc&) {
+        char buf[512];
+        std::sprintf(buf,
+          "Not enough memory for cubicles.\n"
+          "  This may be due to unreasonable parameters:\n"
+          "    cubicle_edge=%.6g\n"
+          "    space_span=(%.6g,%.6g,%.6g)\n"
+          "    n_cubicles=(%u,%u,%u)",
+          cubicle_edge,
+          space_span[0], space_span[1], space_span[2],
+          n_cubicles[0], n_cubicles[1], n_cubicles[2]);
+        throw error(buf);
+      }
+      ref = memory.ref();
+    }
+
+    scitbx::vec3<unsigned>
+    i_cubicle(scitbx::vec3<FloatType> const& site) const
+    {
+      scitbx::vec3<FloatType> delta = site - space_min;
+      scitbx::vec3<unsigned> result;
+      for(std::size_t i=0;i<3;i++) {
+        result[i] = static_cast<unsigned>(
+          fic::ifloor(delta[i] / cubicle_edge));
+        CCTBX_ASSERT(result[i] < ref.accessor()[i]);
+      }
+      return result;
+    }
+
+    CubicleContentType const&
+    cubicle(scitbx::vec3<FloatType> const& site) const
+    {
+      return ref(i_cubicle(site));
+    }
+
+    CubicleContentType&
+    cubicle(scitbx::vec3<FloatType> const& site)
+    {
+      return ref(i_cubicle(site));
+    }
+
+    scitbx::vec3<FloatType> space_min;
+    FloatType cubicle_edge;
+    af::versa<CubicleContentType, af::c_grid<3, unsigned> > memory;
+    af::ref<CubicleContentType, af::c_grid<3, unsigned> > ref;
+  };
+
   //! Fast algorithm for generating pairs of next neighbors.
   template <typename FloatType=double, typename IntShiftType=int>
   class fast_pair_generator
@@ -52,7 +124,12 @@ namespace cctbx { namespace crystal { namespace neighbors {
         bool minimal=false,
         FloatType const& epsilon=1.e-6)
       :
-        epsilon_(epsilon)
+        epsilon_(epsilon),
+        cubicles_(
+          asu_mappings.get()->mapped_sites_min(),
+          asu_mappings.get()->mapped_sites_span(),
+          distance_cutoff * (1 + epsilon)),
+        n_boxes_(cubicles_.ref.accessor())
       {
         CCTBX_ASSERT(distance_cutoff > 0);
         CCTBX_ASSERT(epsilon > 0);
@@ -62,7 +139,15 @@ namespace cctbx { namespace crystal { namespace neighbors {
         this->asu_mappings_ = asu_mappings.get();
         this->distance_cutoff_sq_ = distance_cutoff*distance_cutoff;
         this->minimal_ = minimal;
-        create_boxes(distance_cutoff * (1 + epsilon));
+        af::const_ref<typename asu_mappings_t::array_of_mappings_for_one_site>
+          const& mappings = this->asu_mappings_->mappings_const_ref();
+        direct_space_asu::asu_mapping_index mi;
+        for(mi.i_seq=0;mi.i_seq<mappings.size();mi.i_seq++) {
+          for(mi.i_sym=0; mi.i_sym<mappings[mi.i_seq].size(); mi.i_sym++) {
+            cubicles_.cubicle(
+              mappings[mi.i_seq][mi.i_sym].mapped_site()).push_back(mi);
+          }
+        }
         restart();
       }
 
@@ -152,8 +237,7 @@ namespace cctbx { namespace crystal { namespace neighbors {
     protected:
       FloatType epsilon_;
       typedef std::vector<direct_space_asu::asu_mapping_index> box_content_t;
-      af::versa<box_content_t, af::c_grid<3, unsigned> > boxes_;
-      af::const_ref<box_content_t, af::c_grid<3, unsigned> > boxes_const_ref_;
+      cubicles<box_content_t, FloatType> cubicles_;
       // loop state
       scitbx::vec3<unsigned> n_boxes_;
       scitbx::vec3<unsigned> i_box_;
@@ -164,9 +248,6 @@ namespace cctbx { namespace crystal { namespace neighbors {
       scitbx::vec3<unsigned> j_box_;
       const box_content_t* boxes_j_;
       typename box_content_t::const_iterator boxes_ji_;
-
-      void
-      create_boxes(FloatType const& box_edge);
 
       void
       incr(bool start);
@@ -183,51 +264,6 @@ namespace cctbx { namespace crystal { namespace neighbors {
   template <typename FloatType, typename IntShiftType>
   void
   fast_pair_generator<FloatType, IntShiftType>::
-  create_boxes(FloatType const& box_edge)
-  {
-    typedef scitbx::math::float_int_conversions<FloatType, int> fic;
-    cartesian<FloatType> const&
-      box_min = this->asu_mappings_->mapped_sites_min();
-    cartesian<FloatType> delta = this->asu_mappings_->mapped_sites_span();
-    for(std::size_t i=0;i<3;i++) {
-      n_boxes_[i] = static_cast<unsigned>(
-        std::max(1, fic::iceil(delta[i] / box_edge)));
-    }
-    try {
-      boxes_.resize(af::c_grid<3, unsigned>(n_boxes_));
-    }
-    catch(const std::bad_alloc&) {
-      char buf[512];
-      std::sprintf(buf,
-        "Not enough memory for fast neighbor generation.\n"
-        "  This may be due to unreasonable coordinates:\n"
-        "    box_edge=%.6g\n"
-        "    range of coordinates=(%.6g,%.6g,%.6g)\n"
-        "    n_boxes=(%u,%u,%u)",
-        box_edge,
-        delta[0], delta[1], delta[2],
-        n_boxes_[0], n_boxes_[1], n_boxes_[2]);
-      throw error(buf);
-    }
-    af::const_ref<typename asu_mappings_t::array_of_mappings_for_one_site>
-      const& mappings = this->asu_mappings_->mappings_const_ref();
-    direct_space_asu::asu_mapping_index mi;
-    for(mi.i_seq=0;mi.i_seq<mappings.size();mi.i_seq++) {
-      for(mi.i_sym=0; mi.i_sym<mappings[mi.i_seq].size(); mi.i_sym++) {
-        delta = mappings[mi.i_seq][mi.i_sym].mapped_site() - box_min;
-        for(std::size_t i=0;i<3;i++) {
-          i_box_[i] = static_cast<unsigned>(fic::ifloor(delta[i] / box_edge));
-          CCTBX_ASSERT(i_box_[i] < n_boxes_[i]);
-        }
-        boxes_(i_box_).push_back(mi);
-      }
-    }
-    boxes_const_ref_ = boxes_.const_ref();
-  }
-
-  template <typename FloatType, typename IntShiftType>
-  void
-  fast_pair_generator<FloatType, IntShiftType>::
   incr(bool start)
   {
     af::const_ref<typename asu_mappings_t::array_of_mappings_for_one_site>
@@ -235,7 +271,7 @@ namespace cctbx { namespace crystal { namespace neighbors {
     if (!start) goto continue_after_return;
     this->pair_.dist_sq  = -1;
     this->pair_.diff_vec = cartesian<FloatType>(0,0,0);
-    boxes_i_ = boxes_const_ref_.begin();
+    boxes_i_ = cubicles_.ref.begin();
     for(i_box_[0]=0;i_box_[0]<n_boxes_[0];i_box_[0]++) {
       j_box_min_[0] = (i_box_[0] == 0 ? 0 : i_box_[0]-1);
       j_box_max_[0] = (i_box_[0] == n_boxes_[0]-1 ? i_box_[0] : i_box_[0]+1);
@@ -252,7 +288,7 @@ namespace cctbx { namespace crystal { namespace neighbors {
         for(j_box_[0]=j_box_min_[0];j_box_[0]<=j_box_max_[0];j_box_[0]++) {
         for(j_box_[1]=j_box_min_[1];j_box_[1]<=j_box_max_[1];j_box_[1]++) {
         for(j_box_[2]=j_box_min_[2];j_box_[2]<=j_box_max_[2];j_box_[2]++) {
-          boxes_j_ = &boxes_const_ref_(j_box_);
+          boxes_j_ = &cubicles_.ref(j_box_);
           for(boxes_ji_=boxes_j_->begin();
               boxes_ji_!=boxes_j_->end();
               boxes_ji_++) {
