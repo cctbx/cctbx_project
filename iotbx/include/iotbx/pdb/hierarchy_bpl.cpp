@@ -501,7 +501,7 @@ namespace {
   };
 
   void
-  wrap_all()
+  wrap_hierarchy_impl()
   {
     using namespace boost::python;
     atom_wrappers::wrap();
@@ -517,6 +517,6 @@ namespace {
 namespace boost_python {
 
   void
-  wrap_hierarchy() { wrap_all(); }
+  wrap_hierarchy() { wrap_hierarchy_impl(); }
 
 }}} // namespace iotbx::pdb::boost_python
