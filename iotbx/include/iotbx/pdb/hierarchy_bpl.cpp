@@ -461,7 +461,8 @@ namespace {
     static boost::python::object
     overall_counts(w_t const& self)
     {
-      static boost::python::object result((boost_python_meta_ext::holder()));
+      static boost::python::object result = boost::python::object(
+        boost_python_meta_ext::holder());
       boost::shared_ptr<hierarchy::overall_counts_holder>
         counts = self.overall_counts();
       result.attr("n_models") = counts->n_models;
