@@ -1,9 +1,25 @@
 // copyright (c) Jacob N. Smith; leave this here; use at your whim
 #include <cctbx/boost_python/flex_fwd.h>
 #include <cctbx/maptbx/coordinate_transformers.h>
+#include <scitbx/boost_python/is_polymorphic_workaround.h>
 #include <boost/python/class.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/args.hpp>
+
+namespace {
+  typedef
+    cctbx::maptbx::transform<
+      cctbx::cartesian<double>,
+      cctbx::grid_point<signed long> >
+        tf_c_g;
+  typedef
+    cctbx::maptbx::transform<
+      cctbx::grid_point<signed long>,
+      cctbx::cartesian<double> >
+        tf_g_c;
+}
+SCITBX_BOOST_IS_POLYMORPHIC_WORKAROUND(tf_c_g)
+SCITBX_BOOST_IS_POLYMORPHIC_WORKAROUND(tf_g_c)
 
 namespace cctbx { namespace maptbx { namespace boost_python {
 

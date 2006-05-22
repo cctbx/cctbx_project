@@ -9,8 +9,11 @@
 #include <boost/python/return_internal_reference.hpp>
 #include <boost/python/return_by_value.hpp>
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
+#include <scitbx/boost_python/is_polymorphic_workaround.h>
 #include <cctbx/geometry_restraints/chirality.h>
 #include <cctbx/geometry_restraints/proxy_select.h>
+
+SCITBX_BOOST_IS_POLYMORPHIC_WORKAROUND(cctbx::geometry_restraints::chirality)
 
 namespace cctbx { namespace geometry_restraints {
 namespace {

@@ -6,6 +6,9 @@
 #include <boost/python/return_internal_reference.hpp>
 #include <boost/python/with_custodian_and_ward.hpp>
 #include <cctbx/sgtbx/wyckoff.h>
+#include <scitbx/boost_python/is_polymorphic_workaround.h>
+
+SCITBX_BOOST_IS_POLYMORPHIC_WORKAROUND(cctbx::sgtbx::wyckoff::mapping)
 
 namespace cctbx { namespace sgtbx { namespace boost_python {
 

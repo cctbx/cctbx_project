@@ -3,6 +3,12 @@
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
 #include <scitbx/math/minimum_covering_sphere.h>
+#include <scitbx/boost_python/is_polymorphic_workaround.h>
+
+SCITBX_BOOST_IS_POLYMORPHIC_WORKAROUND(
+  scitbx::math::sphere_3d<>)
+SCITBX_BOOST_IS_POLYMORPHIC_WORKAROUND(
+  scitbx::math::minimum_covering_sphere_3d<>)
 
 namespace scitbx { namespace math {
 namespace {

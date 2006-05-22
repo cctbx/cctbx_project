@@ -1,18 +1,8 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Oct: Modified fragment of cctbx/arraytbx/flex_utilsmodule.cpp (rwgk)
- */
-
 #include <cctbx/boost_python/flex_fwd.h>
 
 #include <cctbx/maptbx/accessors/c_grid_padded_p1.h>
 #include <cctbx/maptbx/statistics.h>
 #include <boost/python/def.hpp>
-#include <boost/python/class.hpp> // work around gcc-3.3-darwin bug
 
 namespace cctbx { namespace maptbx { namespace boost_python {
 
@@ -70,17 +60,11 @@ namespace {
     }
   };
 
-  struct dummy {}; // work around gcc-3.3-darwin bug
-
 } // namespace <anoymous>
 
   void wrap_pymol_interface()
   {
     using namespace boost::python;
-#if defined(__APPLE__) && defined(__MACH__) \
- && defined(__GNUC__) && __GNUC__ == 3 && __GNUC_MINOR__ == 3
-    class_<dummy>("_dummy", no_init);
-#endif
     def("as_CObjectZYX", as_CObjectZYX<float, float>::convert);
     def("as_CObjectZYX", as_CObjectZYX<double, float>::convert);
   }
