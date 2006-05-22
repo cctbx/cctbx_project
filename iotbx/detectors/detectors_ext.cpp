@@ -299,8 +299,6 @@ af::flex_int Bin2_by_2(const af::flex_int& olddata) {
   return newdata;
 }
 
-struct dummy {}; // work around gcc-3.3-darwin bug
-
 } // namespace <anonymous>
 
 #include <boost/python.hpp>
@@ -309,10 +307,6 @@ using namespace boost::python;
 
 BOOST_PYTHON_MODULE(iotbx_detectors_ext)
 {
-#if defined(__APPLE__) && defined(__MACH__) \
- && defined(__GNUC__) && __GNUC__ == 3 && __GNUC_MINOR__ == 3
-   class_<dummy>("_dummy", no_init);
-#endif
    def("ReadADSC", ReadADSC);
    def("WriteADSC", WriteADSC);
    def("ReadMAR", ReadMAR);

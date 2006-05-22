@@ -149,10 +149,6 @@ namespace cctbx { namespace geometry_restraints {
         }
       }
 
-#if defined(__APPLE__) && defined(__MACH__) \
- && defined(__GNUC__) && __GNUC__ == 3 && __GNUC_MINOR__ == 3
-      bool dummy_;
-#endif
       //! Cartesian coordinates of sites forming the angle.
       af::tiny<scitbx::vec3<double>, 3> sites;
       //! Parameter (usually as passed to the constructor).

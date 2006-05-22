@@ -1,18 +1,12 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Oct: Created (rwgk)
- */
-
 #include <cctbx/boost_python/flex_fwd.h>
 
 #include <cctbx/miller/index_generator.h>
 #include <scitbx/boost_python/iterator_wrappers.h>
+#include <scitbx/boost_python/is_polymorphic_workaround.h>
 #include <boost/python/class.hpp>
 #include <boost/python/return_internal_reference.hpp>
+
+SCITBX_BOOST_IS_POLYMORPHIC_WORKAROUND(cctbx::miller::index_generator)
 
 namespace cctbx { namespace miller { namespace boost_python {
 

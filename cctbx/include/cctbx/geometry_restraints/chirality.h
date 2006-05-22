@@ -142,10 +142,6 @@ namespace cctbx { namespace geometry_restraints {
         }
       }
 
-#if defined(__APPLE__) && defined(__MACH__) \
- && defined(__GNUC__) && __GNUC__ == 3 && __GNUC_MINOR__ == 3
-      bool dummy_;
-#endif
       //! Cartesian coordinates of the sites defining the chiral center.
       af::tiny<scitbx::vec3<double>, 4> sites;
       //! Parameter (usually as passed to the constructor).

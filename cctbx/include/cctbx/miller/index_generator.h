@@ -1,12 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Jul: Created from fragments of cctbx/sgtbx/miller_asu.h (rwgk)
- */
-
 #ifndef CCTBX_MILLER_INDEX_GENERATOR_H
 #define CCTBX_MILLER_INDEX_GENERATOR_H
 
@@ -101,9 +92,6 @@ namespace cctbx { namespace miller {
       to_array();
 
     private:
-#if defined(__MACH__) && defined(__APPLE_CC__) && __APPLE_CC__ <= 1495
-      bool dummy_;
-#endif
       uctbx::unit_cell unit_cell_;
       sgtbx::space_group_type sg_type_;
       bool anomalous_flag_;

@@ -134,12 +134,6 @@ struct transform<fractional<FloatType>,cartesian<FloatType> > {
 // cartesian to grid
 template < typename FloatType, typename IntType >
 struct transform<cartesian<FloatType>,grid_point<IntType> > {
-  // before defining any member data
-  // behold! a bug is squashed! this is an apple bug!
-#if defined(__APPLE__) && defined(__MACH__) \
- && defined(__GNUC__)  && __GNUC__ == 3 && __GNUC_MINOR__ == 3
-  bool dummy_;
-#endif
   typedef cartesian<FloatType> from_type;
   typedef grid_point<IntType> to_type;
 
@@ -191,12 +185,6 @@ struct transform<cartesian<FloatType>,fractional<FloatType> > {
 // grid to cartesian
 template < typename FloatType, typename IntType >
 struct transform<grid_point<IntType>,cartesian<FloatType> > {
-        // before defining any member data
-        // behold! a bug is squashed! this is an apple bug!
-#if defined(__APPLE__) && defined(__MACH__) \
- && defined(__GNUC__)  && __GNUC__ == 3 && __GNUC_MINOR__ == 3
-  bool dummy_;
-#endif
   typedef grid_point<IntType> from_type;
   typedef cartesian<FloatType> to_type;
 

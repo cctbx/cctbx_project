@@ -179,10 +179,6 @@ namespace wyckoff {
       }
 
     private:
-#if defined(__APPLE__) && defined(__MACH__) \
- && defined(__GNUC__) && __GNUC__ == 3 && __GNUC_MINOR__ == 3
-      bool dummy_;
-#endif
       uctbx::unit_cell unit_cell_;
       fractional<> original_site_;
       const wyckoff::position* position_;

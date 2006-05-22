@@ -1,9 +1,13 @@
 #include <scitbx/array_family/boost_python/flex_fwd.h>
 
 #include <scitbx/histogram.h>
+#include <scitbx/boost_python/is_polymorphic_workaround.h>
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
 #include <boost/python/overloads.hpp>
+
+SCITBX_BOOST_IS_POLYMORPHIC_WORKAROUND(
+  scitbx::histogram<>)
 
 namespace scitbx { namespace af { namespace boost_python { namespace {
 

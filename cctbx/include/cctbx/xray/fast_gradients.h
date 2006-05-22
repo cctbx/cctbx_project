@@ -435,10 +435,6 @@ namespace cctbx { namespace xray {
       af::shared<FloatType> d_target_d_occupancy_;
       af::shared<FloatType> d_target_d_fp_;
       af::shared<FloatType> d_target_d_fdp_;
-#if defined(__APPLE__) && defined(__MACH__) \
- && defined(__GNUC__) && __GNUC__ == 3 && __GNUC_MINOR__ == 3
-      bool dummy_;
-#endif
 
       // compensates for rounding errors
       void

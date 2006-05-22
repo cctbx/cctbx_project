@@ -6,7 +6,11 @@
 #include <boost/python/copy_const_reference.hpp>
 #include <boost/python/with_custodian_and_ward.hpp>
 #include <scitbx/boost_python/iterator_wrappers.h>
+#include <scitbx/boost_python/is_polymorphic_workaround.h>
 #include <cctbx/crystal/neighbors_fast.h>
+
+SCITBX_BOOST_IS_POLYMORPHIC_WORKAROUND(
+  cctbx::crystal::neighbors::fast_pair_generator<>)
 
 namespace cctbx { namespace crystal { namespace neighbors {
 

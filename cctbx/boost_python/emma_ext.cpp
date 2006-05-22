@@ -1,6 +1,7 @@
 #include <cctbx/boost_python/flex_fwd.h>
 
 #include <cctbx/sgtbx/sym_equiv_sites.h>
+#include <scitbx/boost_python/is_polymorphic_workaround.h>
 #include <vector>
 
 #include <boost/python/module.hpp>
@@ -9,15 +10,10 @@
 #include <boost/python/return_internal_reference.hpp>
 
 namespace cctbx { namespace boost_python {
-
 namespace {
 
   struct add_pair
   {
-#if defined(__APPLE__) && defined(__MACH__) \
- && defined(__GNUC__) && __GNUC__ == 3 && __GNUC_MINOR__ == 3
-      bool dummy_;
-#endif
     double tolerance_;
     af::shared<scitbx::vec3<double> > ref_model2_sites_;
     af::versa<bool, af::c_grid<2> > pair_flags_;
@@ -128,6 +124,13 @@ namespace {
     int
     new_pair_2() const { return new_pair_2_; }
   };
+
+}}} // namespace cctbx::boost_python::<anonymous>
+
+SCITBX_BOOST_IS_POLYMORPHIC_WORKAROUND(cctbx::boost_python::add_pair)
+
+namespace cctbx { namespace boost_python {
+namespace {
 
   void init_module()
   {

@@ -1,8 +1,11 @@
 #include <cctbx/boost_python/flex_fwd.h>
 
 #include <cctbx/xray/fast_gradients.h>
+#include <scitbx/boost_python/is_polymorphic_workaround.h>
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
+
+SCITBX_BOOST_IS_POLYMORPHIC_WORKAROUND(cctbx::xray::fast_gradients<>)
 
 namespace cctbx { namespace xray { namespace boost_python {
 

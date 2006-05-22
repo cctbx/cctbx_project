@@ -9,7 +9,11 @@
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
 #include <scitbx/array_family/selections.h>
 #include <scitbx/stl/map_wrapper.h>
+#include <scitbx/boost_python/is_polymorphic_workaround.h>
 #include <cctbx/geometry_restraints/bond.h>
+
+SCITBX_BOOST_IS_POLYMORPHIC_WORKAROUND(
+  cctbx::geometry_restraints::bond_asu_proxy)
 
 namespace cctbx { namespace geometry_restraints {
 namespace {
