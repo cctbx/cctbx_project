@@ -170,9 +170,10 @@ def exercise_residue():
   assert r.number_of_alternative_atoms() == 0
   for atom in r.atoms():
     assert atom.tmp == 0
-  r.reset_atom_tmp(new_value=7)
+  assert r.reset_atom_tmp(new_value=7) == 5
   for atom in r.atoms():
     assert atom.tmp == 7
+  assert r.center_of_geometry() == (0,0,0)
 
 def exercise_conformer():
   c = pdb.conformer()
@@ -206,7 +207,8 @@ def exercise_conformer():
     assert residue.parent().memory_id() == c1.memory_id()
   assert c1.number_of_atoms() == 0
   assert c1.number_of_alternative_atoms() == 0
-  c1.reset_atom_tmp(new_value=8)
+  assert c1.reset_atom_tmp(new_value=8) == 0
+  assert list(c1.residue_centers_of_geometry()) == [(0,0,0), (0,0,0)]
 
 def exercise_chain():
   c = pdb.chain()
@@ -238,7 +240,8 @@ def exercise_chain():
   assert len(c.conformers()) == 2
   for conformer in c.conformers():
     assert conformer.parent().memory_id() == c.memory_id()
-  c.reset_atom_tmp(new_value=9)
+  assert c.reset_atom_tmp(new_value=9) == 0
+  assert c.extract_sites_cart().size() == 0
 
 def exercise_model():
   m = pdb.model()
@@ -266,7 +269,7 @@ def exercise_model():
   assert len(m.chains()) == 5
   for chain in m.chains():
     assert chain.parent().memory_id() == m.memory_id()
-  m.reset_atom_tmp(new_value=2)
+  assert m.reset_atom_tmp(new_value=2) == 0
 
 def exercise_hierarchy():
   h = pdb.hierarchy()
@@ -304,7 +307,7 @@ def exercise_hierarchy():
   assert len(h.models()) == 5
   for model in h.models():
     assert model.parent().memory_id() == h.memory_id()
-  h.reset_atom_tmp(new_value=1)
+  h.reset_atom_tmp(new_value=1) == 0
 
 def check_hierarchy(
       hierarchy,
@@ -753,10 +756,15 @@ model id=0 #chains=1
          " C  "
          " C  "
 """)
-  for i,r in enumerate(hierarchy.models()[0]
-                                .chains()[0]
-                                .conformers()[0]
-                                .residues()):
+  c = hierarchy.models()[0].chains()[0]
+  sites_cart = c.extract_sites_cart()
+  assert sites_cart.size() == 8
+  assert approx_equal(sites_cart.mean(), [3.515, 26.164, 21.3669999])
+  f = c.conformers()[0]
+  for r,g in zip(f.residues(), f.residue_centers_of_geometry()):
+    assert approx_equal(r.center_of_geometry(), g)
+  assert approx_equal(f.residue_centers_of_geometry()[2],(3.815,25.789,21.667))
+  for i,r in enumerate(f.residues()):
     if (i in [0, 3]):
       assert not r.link_to_previous
     else:
@@ -1520,10 +1528,13 @@ model id=0 #chains=1
        & " O  "
        & " CB "
 """)
-  for f in hierarchy.models()[0].chains()[0].conformers():
+  c = hierarchy.models()[0].chains()[0]
+  for f in c.conformers():
     assert [r.number_of_alternative_atoms() for r in f.residues()] == [2,4]
     assert f.number_of_atoms() == 11
     assert f.number_of_alternative_atoms() == 6
+  c.reset_atom_tmp(new_value=1)
+  assert c.reset_atom_tmp(new_value=0) == 17
   try: pdb_inp.construct_hierarchy()
   except RuntimeError, e:
     assert str(e).endswith(
@@ -1634,6 +1645,88 @@ ENDMDL
 %#        conformer id="B" #residues=1 #atoms=1 #alt. atoms=1
 %#          residue name="MET " seq=   1 icode=" " #atoms=1
 %#           & " N  "
+""")
+  #
+  lines = flex.split_lines("""\
+ATOM         CA  ASN     1
+ATOM         C   ASN     1
+ATOM         O   HOH     2
+ATOM         H1  HOH     2
+ATOM         H2  HOH     2
+ATOM         CA  GLU     3
+ATOM         C   GLU     3
+ATOM         O   H2O     4
+ATOM         O   OH2     5
+ATOM         O   DOD     6
+ATOM         CA  TYR     7
+ATOM         O   D2O     8
+ATOM         O   OD2     9
+ATOM         CA  ALA    10
+ATOM         C   ALA    10
+ATOM         O   TIP    11
+ATOM         O   TIP3   12
+""")
+  hierarchy = pdb.input(source_info=None, lines=lines).construct_hierarchy()
+  f = hierarchy.models()[0].chains()[0].conformers()[0]
+  assert list(f.water_selection()) == [1,3,4,5,7,8,10,11]
+  assert f.water_selection(negate=False).all_eq(f.water_selection())
+  assert list(f.water_selection(negate=True)) == [0,2,6,9]
+  for i in [0,1]:
+    f.select_in_place(selection=f.water_selection())
+    out = StringIO()
+    hierarchy.show(out=out)
+    assert not show_diff(out.getvalue(), """\
+model id=0 #chains=1
+  chain id=" " #conformers=1
+    conformer id=" " #residues=8 #atoms=10
+      residue name="HOH " seq=   2 icode=" " #atoms=3
+         " O  "
+         " H1 "
+         " H2 "
+      residue name="H2O " seq=   4 icode=" " #atoms=1
+         " O  "
+      residue name="OH2 " seq=   5 icode=" " #atoms=1
+         " O  "
+      residue name="DOD " seq=   6 icode=" " #atoms=1
+         " O  "
+      residue name="D2O " seq=   8 icode=" " #atoms=1
+         " O  "
+      residue name="OD2 " seq=   9 icode=" " #atoms=1
+         " O  "
+      residue name="TIP " seq=  11 icode=" " #atoms=1
+         " O  "
+      residue name="TIP3" seq=  12 icode=" " #atoms=1
+         " O  "
+""")
+  f.select_in_place(selection=f.water_selection(negate=True))
+  out = StringIO()
+  hierarchy.show(out=out)
+  assert not show_diff(out.getvalue(), """\
+model id=0 #chains=1
+  chain id=" " #conformers=1
+    conformer id=" " #residues=0 #atoms=0
+""")
+  hierarchy = pdb.input(source_info=None, lines=lines).construct_hierarchy()
+  f = hierarchy.models()[0].chains()[0].conformers()[0]
+  for i in [0,1]:
+    f.eliminate_water_in_place()
+    out = StringIO()
+    hierarchy.show(out=out)
+    assert not show_diff(out.getvalue(), """\
+model id=0 #chains=1
+  chain id=" " #conformers=1
+    conformer id=" " #residues=4 #atoms=7
+      residue name="ASN " seq=   1 icode=" " #atoms=2
+         " CA "
+         " C  "
+      residue name="GLU " seq=   3 icode=" " #atoms=2
+         " CA "
+         " C  "
+      residue name="TYR " seq=   7 icode=" " #atoms=1
+         " CA "
+      residue name="ALA " seq=  10 icode=" " #atoms=2
+         " CA "
+         " C  "
 """)
 
 def exercise(args):

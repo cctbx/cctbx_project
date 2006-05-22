@@ -306,6 +306,7 @@ namespace {
         .def("atoms_size", atoms_size)
         .def("number_of_alternative_atoms", &w_t::number_of_alternative_atoms)
         .def("reset_atom_tmp", &w_t::reset_atom_tmp, (arg_("new_value")))
+        .def("center_of_geometry", &w_t::center_of_geometry)
       ;
     }
   };
@@ -327,6 +328,9 @@ namespace {
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
       new_residue_overloads, new_residue, 0, 4)
+
+    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
+      water_selection_overloads, water_selection, 0, 1)
 
     static void
     wrap()
@@ -354,6 +358,11 @@ namespace {
         .def("number_of_atoms", &w_t::number_of_atoms)
         .def("number_of_alternative_atoms", &w_t::number_of_alternative_atoms)
         .def("reset_atom_tmp", &w_t::reset_atom_tmp, (arg_("new_value")))
+        .def("residue_centers_of_geometry", &w_t::residue_centers_of_geometry)
+        .def("select_in_place", &w_t::select_in_place, (arg_("selection")))
+        .def("water_selection", &w_t::water_selection,
+          water_selection_overloads((arg_("negate")=false)))
+        .def("eliminate_water_in_place", &w_t::eliminate_water_in_place)
       ;
     }
   };
@@ -393,6 +402,7 @@ namespace {
         .def("conformers", get_conformers)
         .def("has_multiple_conformers", &w_t::has_multiple_conformers)
         .def("reset_atom_tmp", &w_t::reset_atom_tmp, (arg_("new_value")))
+        .def("extract_sites_cart", &w_t::extract_sites_cart)
       ;
     }
   };

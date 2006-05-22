@@ -1,7 +1,7 @@
 #ifndef IOTBX_PDB_HIERARCHY_H
 #define IOTBX_PDB_HIERARCHY_H
 
-#include <iotbx/pdb/small_str.h>
+#include <iotbx/pdb/common_residue_names.h>
 #include <scitbx/array_family/shared.h>
 #include <scitbx/sym_mat3.h>
 #include <boost/shared_ptr.hpp>
@@ -91,8 +91,9 @@ namespace pdb {
         std::string const& id);
 
     public:
+      inline
       bool
-      has_multiple_conformers() const { return (conformers.size() > 1); }
+      has_multiple_conformers() const;
   };
 
   //! Holder for conformer attributes (to be held by a shared_ptr).
@@ -437,6 +438,7 @@ namespace pdb {
       void
       set_parent(conformer const& new_parent);
 
+      inline
       bool
       parent_chain_has_multiple_conformers() const
       {
@@ -484,15 +486,33 @@ namespace pdb {
         return result;
       }
 
-      void
+      unsigned
       reset_atom_tmp(int new_value) const
       {
         unsigned n = static_cast<unsigned>(data->atoms.size());
-        if (n == 0) return;
+        if (n == 0) return 0;
+        unsigned result = 0;
         const atom* a = &*data->atoms.begin();
-        for(unsigned i=0;i<n;i++) {
-          (a++)->data->tmp = new_value;
+        for(unsigned i=0;i<n;i++,a++) {
+          if (a->data->tmp != new_value) {
+            a->data->tmp = new_value;
+            result++;
+          }
         }
+        return result;
+      }
+
+      vec3
+      center_of_geometry() const
+      {
+        vec3 result(0,0,0);
+        unsigned as_sz = static_cast<unsigned>(atoms().size());
+        for(unsigned ja=0;ja<as_sz;ja++) {
+          atom_data const& a = *atoms()[ja].data;
+          result += a.xyz;
+        }
+        if (as_sz != 0) result /= static_cast<double>(as_sz);
+        return result;
       }
   };
 
@@ -600,14 +620,80 @@ namespace pdb {
         return result;
       }
 
-      void
+      unsigned
       reset_atom_tmp(int new_value) const
       {
         unsigned n = static_cast<unsigned>(data->residues.size());
-        if (n == 0) return;
+        if (n == 0) return 0;
+        unsigned result = 0;
         const residue* r = &*data->residues.begin();
         for(unsigned i=0;i<n;i++) {
-          (r++)->reset_atom_tmp(new_value);
+          result += (r++)->reset_atom_tmp(new_value);
+        }
+        return result;
+      }
+
+      af::shared<vec3>
+      residue_centers_of_geometry() const
+      {
+        af::shared<vec3> result((af::reserve(residues().size())));
+        unsigned n = static_cast<unsigned>(data->residues.size());
+        const residue* r = &*data->residues.begin();
+        for(unsigned i=0;i<n;i++) {
+          result.push_back((r++)->center_of_geometry());
+        }
+        return result;
+      }
+
+      void
+      select_in_place(af::const_ref<std::size_t> const& selection)
+      {
+        unsigned ns = static_cast<unsigned>(selection.size());
+        unsigned nr = static_cast<unsigned>(data->residues.size());
+        std::vector<residue> remaining_residues;
+        remaining_residues.reserve(ns);
+        const residue* r = &*data->residues.begin();
+        for(unsigned i=0;i<ns;i++) {
+          std::size_t j = selection[i];
+          if (j >= nr) {
+            throw std::runtime_error("selection index out of range.");
+          }
+          remaining_residues.push_back(r[j]);
+        }
+        data->residues.swap(remaining_residues);
+      }
+
+      af::shared<std::size_t>
+      water_selection(bool negate=false) const
+      {
+        unsigned n = static_cast<unsigned>(data->residues.size());
+        af::shared<std::size_t> result((af::reserve(n)));
+        std::set<str4> const& water_set = common_residue_names::water_set();
+        std::set<str4>::const_iterator water_set_end = water_set.end();
+        const residue* r = &*data->residues.begin();
+        if (!negate) {
+          for(unsigned i=0;i<n;i++) {
+            if (water_set.find((r++)->data->name) != water_set_end) {
+              result.push_back(i);
+            }
+          }
+        }
+        else {
+          for(unsigned i=0;i<n;i++) {
+            if (water_set.find((r++)->data->name) == water_set_end) {
+              result.push_back(i);
+            }
+          }
+        }
+        return result;
+      }
+
+      void
+      eliminate_water_in_place()
+      {
+        af::shared<std::size_t> not_water = water_selection(/*negate*/ true);
+        if (not_water.size() != residues().size()) {
+          select_in_place(not_water.const_ref());
         }
       }
   };
@@ -684,15 +770,40 @@ namespace pdb {
         return data->has_multiple_conformers();
       }
 
-      void
+      unsigned
       reset_atom_tmp(int new_value) const
       {
         unsigned n = static_cast<unsigned>(data->conformers.size());
-        if (n == 0) return;
+        if (n == 0) return 0;
+        unsigned result = 0;
         const conformer* f = &*data->conformers.begin();
         for(unsigned i=0;i<n;i++) {
-          (f++)->reset_atom_tmp(new_value);
+          result += (f++)->reset_atom_tmp(new_value);
         }
+        return result;
+      }
+
+      af::shared<vec3>
+      extract_sites_cart() const
+      {
+        reset_atom_tmp(1);
+        af::shared<vec3> result((af::reserve(reset_atom_tmp(0))));
+        unsigned fs_sz = static_cast<unsigned>(data->conformers.size());
+        for(unsigned jf=0;jf<fs_sz;jf++) {
+          conformer const& f = data->conformers[jf];
+          for(unsigned jr=0;jr<f.residues().size();jr++) {
+            residue const& r = f.residues()[jr];
+            unsigned as_sz = static_cast<unsigned>(r.atoms().size());
+            for(unsigned ja=0;ja<as_sz;ja++) {
+              atom_data const& a = *r.atoms()[ja].data;
+              if (a.tmp == 0) {
+                a.tmp = 1;
+                result.push_back(a.xyz);
+              }
+            }
+          }
+        }
+        return result;
       }
   };
 
@@ -773,15 +884,17 @@ namespace pdb {
         data->chains.push_back(new_chain);
       }
 
-      void
+      unsigned
       reset_atom_tmp(int new_value) const
       {
         unsigned n = static_cast<unsigned>(data->chains.size());
-        if (n == 0) return;
+        if (n == 0) return 0;
+        unsigned result = 0;
         const chain* c = &*data->chains.begin();
         for(unsigned i=0;i<n;i++) {
-          (c++)->reset_atom_tmp(new_value);
+          result += (c++)->reset_atom_tmp(new_value);
         }
+        return result;
       }
   };
 
@@ -842,15 +955,17 @@ namespace pdb {
         data->models.push_back(new_model);
       }
 
-      void
+      unsigned
       reset_atom_tmp(int new_value) const
       {
         unsigned n = static_cast<unsigned>(data->models.size());
-        if (n == 0) return;
+        if (n == 0) return 0;
+        unsigned result = 0;
         const model* m = &*data->models.begin();
         for(unsigned i=0;i<n;i++) {
-          (m++)->reset_atom_tmp(new_value);
+          result += (m++)->reset_atom_tmp(new_value);
         }
+        return result;
       }
 
       struct overall_counts_holder
@@ -898,7 +1013,8 @@ namespace pdb {
               for(unsigned jr=0;jr<f.residues().size();jr++) {
                 residue const& r = f.residues()[jr];
                 unsigned n_atoms = 0;
-                for(unsigned ja=0;ja<r.atoms().size();ja++) {
+                unsigned as_sz = static_cast<unsigned>(r.atoms().size());
+                for(unsigned ja=0;ja<as_sz;ja++) {
                   atom_data const& a = *r.atoms()[ja].data;
                   if (a.tmp == 0) {
                     a.tmp = 1;
@@ -975,6 +1091,12 @@ namespace pdb {
   :
     id(id_)
   {}
+
+  bool
+  chain_data::has_multiple_conformers() const
+  {
+    return (conformers.size() > 1);
+  }
 
   inline
   chain::chain(
