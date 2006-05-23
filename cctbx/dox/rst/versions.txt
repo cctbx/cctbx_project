@@ -62,7 +62,7 @@ cctbx links
 
   - `mmtbx <current_cvs/python/mmtbx.html>`_
 
-- `CVS repository <http://cvs.sourceforge.net/viewcvs.py/cctbx/>`_
+- `CVS repository <http://cctbx.cvs.sourceforge.net/cctbx/>`_
 
 - `Project page at SourceForge <http://sourceforge.net/projects/cctbx/>`_
 
@@ -72,7 +72,7 @@ Please direct questions to cctbx@cci.lbl.gov or cctbxbb@phenix-online.org .
 
 -----------------------------------------------------------------------------
 
-The cctbx `Open Source License <http://cvs.sourceforge.net/viewcvs.py/cctbx/cctbx/LICENSE.txt?view=markup>`_ is inspired by this
+The cctbx `Open Source License <http://cctbx.cvs.sourceforge.net/cctbx/cctbx/LICENSE.txt?view=markup>`_ is inspired by this
 
 Historical Note
 ---------------

@@ -126,7 +126,7 @@ Links
 
 .. _`cctbx - Automatic multi-platform builds`: http://cci.lbl.gov/cctbx_build/
 
-.. _`cctbx - Public CVS repository`: http://cvs.sourceforge.net/cgi-bin/viewcvs.cgi/cctbx/
+.. _`cctbx - Public CVS repository`: http://cctbx.cvs.sourceforge.net/cctbx/
 
 .. _`cctbx - Project page at SourceForge`: http://sourceforge.net/projects/cctbx/
 
