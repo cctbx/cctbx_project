@@ -104,6 +104,18 @@
    fun:PyObject_Realloc
 }
 
+{
+   ADDRESS_IN_RANGE/Conditional jump or move depends on uninitialised value
+   Memcheck:Cond
+   fun:PyInt_Fini
+}
+
+{
+   ADDRESS_IN_RANGE/Conditional jump or move depends on uninitialised value
+   Memcheck:Cond
+   fun:PyFloat_Fini
+}
+
 ###
 ### All the suppressions below are for errors that occur within libraries
 ### that Python uses.  The problems to not appear to be related to Python's
