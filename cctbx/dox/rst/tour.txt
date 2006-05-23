@@ -228,7 +228,7 @@ prevents chaining. So eventually we started the major effort of
 implementing a family of small and large array types that address all
 our requirements and are as uniform as possible: the scitbx array family.
 
-.. _PSYCO: http://http://psyco.sourceforge.net/
+.. _PSYCO: http://psyco.sourceforge.net/
 .. _`Beevers-Lipson strips`:
    http://bca.cryst.bbk.ac.uk/bca/CNews/1998/Dec98/strips.html
 .. _`Blitz++`: http://www.oonumerics.org/blitz/
@@ -277,7 +277,7 @@ surface. However, there are two very important differences:
   would be extremely difficult to do with Numeric, and is virtually
   impossible if the user-defined types are implemented in C++.
 
-.. _Numeric: http://www.pfdubois.com/numpy/
+.. _Numeric: http://numeric.scipy.org/
 
 ==============================
  ``cctbx.array_family.flex``

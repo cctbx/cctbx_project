@@ -108,7 +108,8 @@ for problems.
 Manually building from sources under Windows 2000 or higher
 -----------------------------------------------------------
 
-The cctbx installation requires Visual C++ 7.1 (Visual Studio .NET 2003).
+The cctbx installation requires Visual C++ 7.1 (Visual Studio .NET 2003)
+or Visual C++ 8.0 (Visual Studio .NET 2005).
 
 To install Python under Windows 2000 it is best to use a binary
 installer from the `Python download page <http://www.python.org/download/>`_.
@@ -164,7 +165,7 @@ access to the most recent changes it may be useful to checkout some
 modules directly from the CVS databases maintained at Sourceforge_.
 To initialize access via anonymous cvs issue the command::
 
-  cvs -d:pserver:anonymous@cvs.cctbx.sourceforge.net:/cvsroot/cctbx login
+  cvs -d:pserver:anonymous@cctbx.cvs.sourceforge.net:/cvsroot/cctbx login
 
 At the prompt simply press the Enter key.
 
@@ -172,7 +173,7 @@ To replace the modules extracted from a source code bundle::
 
   cd cctbx_sources
   rm -rf libtbx boost_adaptbx chiltbx scitbx cctbx iotbx mmtbx
-  cvs -z3 -d:pserver:anonymous@cvs.cctbx.sourceforge.net:/cvsroot/cctbx co libtbx boost_adaptbx chiltbx scitbx cctbx iotbx mmtbx
+  cvs -z3 -d:pserver:anonymous@cctbx.cvs.sourceforge.net:/cvsroot/cctbx co libtbx boost_adaptbx chiltbx scitbx cctbx iotbx mmtbx
 
 To recompile run the ``libtbx.scons`` command again (``source setpaths.csh``
 or run ``setpaths.bat`` first if necessary). This command is similar to the
@@ -189,11 +190,9 @@ platform or another. Therefore we believe that most users are best
 served by the stable boost libraries included in the cctbx source code
 bundles.
 
-The source code in the ``ccp4io`` module is kindly provided by CCP4_.
-We feel that it is not appropriate to keep this code in a CVS tree on
-Sourceforge because it is developed and maintained by CCP4. The version
-included in the cctbx bundles is updated quite regularly from the
-master version provided by CCP4.
+The source code in the ``ccp4io_502_cci`` module is kindly provided by
+CCP4_. We feel that it is not appropriate to keep this code in a CVS
+tree on Sourceforge.
 
 Back_
 
@@ -202,6 +201,6 @@ Back_
 .. _SCons: http://www.scons.org/
 .. _`SCons documentation`: http://www.scons.org/doc/HTML/scons-man.html
 .. _Boost: http://www.boost.org/
-.. _`boost CVS tree`: http://cvs.sourceforge.net/cgi-bin/viewcvs.cgi/boost/boost/
+.. _`boost CVS tree`: http://boost.cvs.sourceforge.net/boost/
 .. _CCP4: http://www.ccp4.ac.uk/
 .. _SourceForge: http://sourceforge.net/

@@ -25,9 +25,6 @@ toolbox.
 
 Algorithms that are implemented in sginfo2 but not in the sgtbx:
 
-- Handling of tabulated inequalities for asymmetric units in real
-  space.
-
 - Handling of the 17 conventional plane group symbols.
 
 - Determination of the plane group of a Harker section.

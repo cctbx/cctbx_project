@@ -22,8 +22,8 @@ All new development will be focussed on the sgtbx.
 SgLite and SgInfo are not being developed anymore.
 More information: `sgtbx development history details <history_sgtbx.html>`_
 
-.. _SgLite: http://cvs.sourceforge.net/cgi-bin/viewcvs.cgi/pymol/pymol/contrib/sglite/
-.. _`SgInfo 1.01`: http://www.kristall.ethz.ch/LFK/software/sginfo/
+.. _SgLite: http://svn.sourceforge.net/viewcvs.cgi/pymol/trunk/pymol/contrib/sglite/
+.. _`SgInfo 1.01`: http://cci.lbl.gov/sginfo/
 
 The other toolboxes are developed by the
 `Computational Crystallography Initiative`_ (CCI).
