@@ -10,6 +10,7 @@ env_etc.include_registry.append(
   env=env,
   paths=["."] + env_etc.cctbx_common_includes)
 for source in ["getting_started",
+               "sym_equiv_sites",
                "convert_ccp4_symop_lib",
                "lattice_symmetry"]:
   target = "cctbx." + source
