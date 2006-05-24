@@ -113,7 +113,7 @@ gltbx source code
 
 The gltbx source code is available via CVS or as complete bundles:
 
-  - CVS: http://cvs.sourceforge.net/viewcvs.py/cctbx/gltbx/
+  - CVS: http://cctbx.cvs.sourceforge.net/cctbx/gltbx/
 
   - Bundles: http://cci.lbl.gov/gltbx/
 
