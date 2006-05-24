@@ -153,6 +153,8 @@ namespace {
       using namespace boost::python;
       class_<w_t>("atom", no_init)
         .def(init<>())
+        .def(init<residue const&, atom const&>((
+          arg_("parent"), arg_("other"))))
         .def("set_name", set_name, (arg_("new_name")), return_self<>())
         .def("set_segid", set_segid, (arg_("new_segid")), return_self<>())
         .def("set_element", set_element, (arg_("new_element")), return_self<>())
@@ -264,9 +266,6 @@ namespace {
 
     IOTBX_PDB_HIERARCHY_GET_CHILDREN(residue, atom, atoms)
 
-    static std::size_t
-    atoms_size(w_t const& self) { return self.atoms().size(); }
-
     static void
     wrap()
     {
@@ -282,6 +281,8 @@ namespace {
           optional<const char*, int32_t, const char*, bool> >((
             arg_("name")="", arg_("seq")=0, arg_("icode")="",
             arg_("link_to_previous")=true)))
+        .def(init<conformer const&, residue const&>((
+          arg_("parent"), arg_("other"))))
         .add_property("name",
           make_function(get_name), make_function(set_name))
         .add_property("seq",
@@ -303,7 +304,7 @@ namespace {
           (arg_("number_of_additional_atoms")))
         .def("add_atom", &w_t::add_atom, (arg_("new_atom")))
         .def("atoms", get_atoms)
-        .def("atoms_size", atoms_size)
+        .def("atoms_size", &w_t::atoms_size)
         .def("number_of_alternative_atoms", &w_t::number_of_alternative_atoms)
         .def("reset_atom_tmp", &w_t::reset_atom_tmp, (arg_("new_value")))
         .def("center_of_geometry", &w_t::center_of_geometry)
@@ -330,7 +331,12 @@ namespace {
       new_residue_overloads, new_residue, 0, 4)
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      water_selection_overloads, water_selection, 0, 1)
+      residue_class_selection_overloads,
+      residue_class_selection, 1, 2)
+
+    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
+      select_residue_class_in_place_overloads,
+      select_residue_class_in_place, 1, 2)
 
     static void
     wrap()
@@ -354,15 +360,39 @@ namespace {
         .def("new_residue", &w_t::new_residue, new_residue_overloads((
           arg_("name")="", arg_("seq")=0, arg_("icode")="",
           arg_("link_to_previous")=true)))
+        .def("residues_size", &w_t::residues_size)
         .def("residues", get_residues)
         .def("number_of_atoms", &w_t::number_of_atoms)
         .def("number_of_alternative_atoms", &w_t::number_of_alternative_atoms)
         .def("reset_atom_tmp", &w_t::reset_atom_tmp, (arg_("new_value")))
         .def("residue_centers_of_geometry", &w_t::residue_centers_of_geometry)
-        .def("select_in_place", &w_t::select_in_place, (arg_("selection")))
-        .def("water_selection", &w_t::water_selection,
-          water_selection_overloads((arg_("negate")=false)))
-        .def("eliminate_water_in_place", &w_t::eliminate_water_in_place)
+        .def("select_residues_in_place", &w_t::select_residues_in_place,
+          (arg_("selection")))
+        .def("select_residues", &w_t::select_residues, (arg_("selection")))
+        .def("residue_class_selection",
+          (af::shared<std::size_t>(w_t::*)(
+            std::string const&, bool) const)
+              &w_t::residue_class_selection,
+                residue_class_selection_overloads((
+                  arg_("class_name"), arg_("negate")=false)))
+        .def("residue_class_selection",
+          (af::shared<std::size_t>(w_t::*)(
+            af::const_ref<std::string> const&, bool) const)
+              &w_t::residue_class_selection,
+                residue_class_selection_overloads((
+                  arg_("residue_names"), arg_("negate")=false)))
+        .def("select_residue_class_in_place",
+          (void(w_t::*)(
+            std::string const&, bool))
+              &w_t::select_residue_class_in_place,
+                select_residue_class_in_place_overloads((
+                  arg_("class_name"), arg_("negate")=false)))
+        .def("select_residue_class_in_place",
+          (void(w_t::*)(
+            af::const_ref<std::string> const&, bool))
+              &w_t::select_residue_class_in_place,
+                select_residue_class_in_place_overloads((
+                  arg_("residue_names"), arg_("negate")=false)))
       ;
     }
   };
@@ -399,6 +429,7 @@ namespace {
           arg_("number_of_additional_conformers")))
         .def("new_conformers", &w_t::new_conformers, (
           arg_("number_of_additional_conformers")))
+        .def("conformers_size", &w_t::conformers_size)
         .def("conformers", get_conformers)
         .def("has_multiple_conformers", &w_t::has_multiple_conformers)
         .def("reset_atom_tmp", &w_t::reset_atom_tmp, (arg_("new_value")))
@@ -435,6 +466,7 @@ namespace {
           (arg_("number_of_additional_chains")))
         .def("new_chains", &w_t::new_chains,
           (arg_("number_of_additional_chains")))
+        .def("chains_size", &w_t::chains_size)
         .def("chains", get_chains)
         .def("new_chain", &w_t::new_chain, (arg_("chain_id")))
         .def("adopt_chain", &w_t::adopt_chain, (arg_("new_chain")))
@@ -491,6 +523,7 @@ namespace {
           (arg_("number_of_additional_models")))
         .def("new_models", &w_t::new_models,
           (arg_("number_of_additional_models")))
+        .def("models_size", &w_t::models_size)
         .def("models", get_models)
         .def("new_model", &w_t::new_model, (arg_("model_id")))
         .def("adopt_model", &w_t::adopt_model, (arg_("new_model")))

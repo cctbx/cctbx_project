@@ -87,6 +87,28 @@ def exercise_atom():
   assert a.hetero
   assert not a.is_alternative()
   #
+  r = pdb.residue()
+  ac = pdb.atom(parent=r, other=a)
+  assert ac.memory_id() != a.memory_id()
+  assert a.parents_size() == 0
+  assert ac.parents_size() == 1
+  assert ac.parents()[0].memory_id() == r.memory_id()
+  assert ac.name == a.name
+  assert ac.segid == a.segid
+  assert ac.element == a.element
+  assert ac.charge == a.charge
+  assert ac.xyz == a.xyz
+  assert ac.sigxyz == a.sigxyz
+  assert ac.occ == a.occ
+  assert ac.sigocc == a.sigocc
+  assert ac.b == a.b
+  assert ac.sigb == a.sigb
+  assert ac.uij == a.uij
+  assert ac.siguij == a.siguij
+  assert ac.hetero == a.hetero
+  assert ac.is_alternative() == a.is_alternative()
+  assert a.tmp == 0
+  #
   r1 = pdb.residue(name="abcd", seq=123, icode="mark")
   r2 = pdb.residue(name="efgh", seq=234, icode="bare")
   assert r1.memory_id() != r2.memory_id()
@@ -95,21 +117,25 @@ def exercise_atom():
   a.add_parent(r1)
   p = a.parents()
   assert len(p) == 1
+  assert a.parents_size() == 1
   assert p[0].memory_id() == r1.memory_id()
   a.add_parent(r2)
   p = a.parents()
   assert len(p) == 2
+  assert a.parents_size() == 2
   assert p[0].memory_id() == r1.memory_id()
   assert p[1].memory_id() == r2.memory_id()
   del r1
   del p
   p = a.parents()
   assert len(p) == 1
+  assert a.parents_size() == 1
   assert p[0].memory_id() == r2.memory_id()
   del r2
   del p
   p = a.parents()
   assert len(p) == 0
+  assert a.parents_size() == 0
 
 def exercise_residue():
   r = pdb.residue()
@@ -130,6 +156,21 @@ def exercise_residue():
   r.seq = -3
   r.icode = "bar"
   assert r.id() == "foo   -3bar"
+  #
+  f = pdb.conformer(id="a")
+  r.add_atom(new_atom=pdb.atom().set_name(new_name="n"))
+  rc = pdb.residue(parent=f, other=r)
+  assert rc.memory_id() != r.memory_id()
+  assert r.parent() is None
+  assert rc.parent().memory_id() == f.memory_id()
+  assert rc.id() == r.id()
+  assert rc.link_to_previous
+  assert rc.atoms_size() == 1
+  assert rc.atoms()[0].memory_id() != r.atoms()[0].memory_id()
+  assert rc.atoms()[0].name == "n"
+  r.add_atom(new_atom=pdb.atom().set_name(new_name="o"))
+  assert rc.atoms_size() == 1
+  assert r.atoms_size() == 2
   #
   c1 = pdb.conformer(id="a")
   c2 = pdb.conformer(id="b")
@@ -153,18 +194,18 @@ def exercise_residue():
   assert r.parent() is None
   #
   r.pre_allocate_atoms(number_of_additional_atoms=2)
-  assert len(r.atoms()) == 0
   assert r.atoms_size() == 0
+  assert len(r.atoms()) == 0
   r.add_atom(new_atom=pdb.atom().set_name(new_name="ca"))
-  assert len(r.atoms()) == 1
   assert r.atoms_size() == 1
+  assert len(r.atoms()) == 1
   r.add_atom(new_atom=pdb.atom().set_name(new_name="n"))
-  assert len(r.atoms()) == 2
   assert r.atoms_size() == 2
+  assert len(r.atoms()) == 2
   assert [atom.name for atom in r.atoms()] == ["ca", "n"]
   r.new_atoms(number_of_additional_atoms=3)
-  assert len(r.atoms()) == 5
   assert r.atoms_size() == 5
+  assert len(r.atoms()) == 5
   for atom in r.atoms():
     assert atom.parents()[0].memory_id() == r.memory_id()
   assert r.number_of_alternative_atoms() == 0
@@ -200,8 +241,10 @@ def exercise_conformer():
   #
   c1 = pdb.conformer(id="a")
   c1.pre_allocate_residues(number_of_additional_residues=2)
+  assert c1.residues_size() == 0
   assert len(c1.residues()) == 0
   c1.new_residues(number_of_additional_residues=2)
+  assert c1.residues_size() == 2
   assert len(c1.residues()) == 2
   for residue in c1.residues():
     assert residue.parent().memory_id() == c1.memory_id()
@@ -235,8 +278,10 @@ def exercise_chain():
   #
   c = pdb.chain()
   c.pre_allocate_conformers(number_of_additional_conformers=2)
+  assert c.conformers_size() == 0
   assert len(c.conformers()) == 0
   c.new_conformers(number_of_additional_conformers=2)
+  assert c.conformers_size() == 2
   assert len(c.conformers()) == 2
   for conformer in c.conformers():
     assert conformer.parent().memory_id() == c.memory_id()
@@ -254,18 +299,22 @@ def exercise_model():
   m = pdb.model(id=1)
   assert m.parent() is None
   m.pre_allocate_chains(number_of_additional_chains=2)
+  assert m.chains_size() == 0
   assert len(m.chains()) == 0
   ch_a = m.new_chain(chain_id="a")
   assert ch_a.parent().memory_id() == m.memory_id()
+  assert m.chains_size() == 1
   assert len(m.chains()) == 1
   ch_b = pdb.chain(id="b")
   assert ch_b.parent() is None
   m.adopt_chain(new_chain=ch_b)
+  assert m.chains_size() == 2
   chains = m.chains()
   assert len(chains) == 2
   assert chains[0].memory_id() == ch_a.memory_id()
   assert chains[1].memory_id() == ch_b.memory_id()
   m.new_chains(number_of_additional_chains=3)
+  assert m.chains_size() == 5
   assert len(m.chains()) == 5
   for chain in m.chains():
     assert chain.parent().memory_id() == m.memory_id()
@@ -292,18 +341,22 @@ def exercise_hierarchy():
   h.info = flex.std_string(["a", "b"])
   assert h.info.size() == 2
   h.pre_allocate_models(number_of_additional_models=2)
+  assert h.models_size() == 0
   assert len(h.models()) == 0
   m_a = h.new_model(model_id=3)
   assert m_a.parent().memory_id() == h.memory_id()
+  assert h.models_size() == 1
   assert len(h.models()) == 1
   m_b = pdb.model(id=5)
   assert m_b.parent() is None
   h.adopt_model(new_model=m_b)
+  assert h.models_size() == 2
   models = h.models()
   assert len(models) == 2
   assert models[0].memory_id() == m_a.memory_id()
   assert models[1].memory_id() == m_b.memory_id()
   h.new_models(number_of_additional_models=3)
+  assert h.models_size() == 5
   assert len(h.models()) == 5
   for model in h.models():
     assert model.parent().memory_id() == h.memory_id()
@@ -1658,7 +1711,7 @@ ATOM         C   GLU     3
 ATOM         O   H2O     4
 ATOM         O   OH2     5
 ATOM         O   DOD     6
-ATOM         CA  TYR     7
+ATOM         P   U       7
 ATOM         O   D2O     8
 ATOM         O   OD2     9
 ATOM         CA  ALA    10
@@ -1668,11 +1721,42 @@ ATOM         O   TIP3   12
 """)
   hierarchy = pdb.input(source_info=None, lines=lines).construct_hierarchy()
   f = hierarchy.models()[0].chains()[0].conformers()[0]
-  assert list(f.water_selection()) == [1,3,4,5,7,8,10,11]
-  assert f.water_selection(negate=False).all_eq(f.water_selection())
-  assert list(f.water_selection(negate=True)) == [0,2,6,9]
+  assert list(f.residue_class_selection(class_name="common_amino_acid")) == [0,2,9]
+  assert list(f.residue_class_selection(class_name="common_rna_dna")) == [6]
+  assert list(f.residue_class_selection(class_name="common_water")) \
+      == [1,3,4,5,7,8,10,11]
+  assert f.residue_class_selection(
+    class_name="common_water", negate=False).all_eq(
+      f.residue_class_selection(class_name="common_water"))
+  assert list(f.residue_class_selection(
+    class_name="common_water", negate=True)) == [0,2,6,9]
+  assert list(f.residue_class_selection(residue_names=flex.std_string([]))) \
+      == []
+  assert list(f.residue_class_selection(residue_names=flex.std_string(["V"])))\
+      == []
+  assert list(f.residue_class_selection(
+           residue_names=flex.std_string(["U", "OD2"]))) == [6,8]
+  assert list(f.residue_class_selection(
+                residue_names=flex.std_string(["U", "OD2"]), negate=True)) \
+      == [0,1,2,3,4,5,7,9,10,11]
+  #
+  fw = f.select_residues(
+    selection=f.residue_class_selection(class_name="common_water"))
+  assert fw.residues_size() == 8
+  atom_names = []
+  for r in fw.residues():
+    assert r.parent().memory_id() == fw.memory_id()
+    assert r.atoms_size() > 0
+    for a in r.atoms():
+      assert a.parents_size() == 1
+      assert a.parents()[0].memory_id() == r.memory_id()
+      atom_names.append(a.name)
+  assert ",".join(atom_names) \
+      == " O  , H1 , H2 , O  , O  , O  , O  , O  , O  , O  "
+  #
   for i in [0,1]:
-    f.select_in_place(selection=f.water_selection())
+    f.select_residues_in_place(
+      selection=f.residue_class_selection(class_name="common_water"))
     out = StringIO()
     hierarchy.show(out=out)
     assert not show_diff(out.getvalue(), """\
@@ -1698,7 +1782,8 @@ model id=0 #chains=1
       residue name="TIP3" seq=  12 icode=" " #atoms=1
          " O  "
 """)
-  f.select_in_place(selection=f.water_selection(negate=True))
+  f.select_residues_in_place(selection=f.residue_class_selection(
+    class_name="common_water", negate=True))
   out = StringIO()
   hierarchy.show(out=out)
   assert not show_diff(out.getvalue(), """\
@@ -1709,7 +1794,7 @@ model id=0 #chains=1
   hierarchy = pdb.input(source_info=None, lines=lines).construct_hierarchy()
   f = hierarchy.models()[0].chains()[0].conformers()[0]
   for i in [0,1]:
-    f.eliminate_water_in_place()
+    f.select_residue_class_in_place(class_name="common_water", negate=True)
     out = StringIO()
     hierarchy.show(out=out)
     assert not show_diff(out.getvalue(), """\
@@ -1722,12 +1807,56 @@ model id=0 #chains=1
       residue name="GLU " seq=   3 icode=" " #atoms=2
          " CA "
          " C  "
-      residue name="TYR " seq=   7 icode=" " #atoms=1
-         " CA "
+      residue name="U   " seq=   7 icode=" " #atoms=1
+         " P  "
       residue name="ALA " seq=  10 icode=" " #atoms=2
          " CA "
          " C  "
 """)
+  for i in [0,1]:
+    f.select_residue_class_in_place(
+      residue_names=flex.std_string(["GLU", "ALA"]), negate=False)
+    out = StringIO()
+    hierarchy.show(out=out)
+    assert not show_diff(out.getvalue(), """\
+model id=0 #chains=1
+  chain id=" " #conformers=1
+    conformer id=" " #residues=2 #atoms=4
+      residue name="GLU " seq=   3 icode=" " #atoms=2
+         " CA "
+         " C  "
+      residue name="ALA " seq=  10 icode=" " #atoms=2
+         " CA "
+         " C  "
+""")
+  for i in [0,1]:
+    f.select_residue_class_in_place(
+      residue_names=flex.std_string(["ALA"]), negate=True)
+    out = StringIO()
+    hierarchy.show(out=out)
+    assert not show_diff(out.getvalue(), """\
+model id=0 #chains=1
+  chain id=" " #conformers=1
+    conformer id=" " #residues=1 #atoms=2
+      residue name="GLU " seq=   3 icode=" " #atoms=2
+         " CA "
+         " C  "
+""")
+  try: f.select_residue_class_in_place(class_name="xyz")
+  except RuntimeError, e:
+    assert not show_diff(str(e), 'unknown class_name="xyz"')
+  else: raise RuntimeError("Exception expected.")
+  try:
+    f.select_residue_class_in_place(residue_names=flex.std_string(["vwxyz"]))
+  except RuntimeError, e:
+    assert not show_diff(str(e),
+      'residue name with more than 4 characters: "vwxyz"')
+  else: raise RuntimeError("Exception expected.")
+  for s in [f.select_residues_in_place, f.select_residues]:
+    try: s(flex.size_t([100]))
+    except RuntimeError, e:
+      assert not show_diff(str(e), "selection index out of range.")
+    else: raise RuntimeError("Exception expected.")
 
 def exercise(args):
   forever = "--forever" in args
