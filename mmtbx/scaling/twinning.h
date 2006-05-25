@@ -19,6 +19,48 @@
 namespace mmtbx { namespace scaling {
 namespace twinning {
 
+  template<typename FloatType>
+  inline FloatType fabs_value(FloatType const& x)
+  {
+    FloatType eps=1e-13;
+    if ( x>eps ){
+      return(x);
+    }
+    if(x<-eps){
+      return(-x);
+    }
+    return(+0);
+  }
+
+  template<typename FloatType>
+  inline FloatType max_value(FloatType const& x, FloatType const& y )
+  {
+    if (x>y){
+      return(x);
+    }
+    if (y>x){
+      return(y);
+    }
+  }
+
+  template<typename FloatType>
+  inline FloatType substitute_when_zero(FloatType const& x, FloatType const& y )
+  {
+    FloatType eps=1e-13;
+    if ( x<0 ){
+      if (x>-eps){
+        return(-y);
+      }
+    }
+    if ( x>0 ){
+      if (x<eps){
+        return(y);
+      }
+    }
+  }
+
+
+
 
   // These two lookup tables might be moved to the scitbx actually ...
   template<typename FloatType>
@@ -88,9 +130,9 @@ namespace twinning {
   public:
     quick_ei0(int const& n_points)
     {
-      SCITBX_ASSERT( n_points> 50 ); // we need at least 50 points i think, although 5000 is more realistic.
+      SCITBX_ASSERT( n_points> 50 );   // we need at least 50 points i think, although 5000 is more realistic.
       SCITBX_ASSERT( n_points< 50000); // no problems belwo 50000, did not check for larger values. most likely not needed
-      n_ = n_points;                 // a factor 5 in timings is gained over the full computation
+      n_ = n_points;                   // a factor 5 in timings is gained over the full computation
       FloatType t;
       t_step_ = 1.0/static_cast<FloatType>(n_);
       t_table_.reserve(n_);
@@ -102,15 +144,23 @@ namespace twinning {
         ei0_table_.push_back( std::exp(t) );
       }
       t_table_.push_back(1.0);
-      ei0_table_.push_back(0.0);
+      ei0_table_.push_back( ei0_table_[ n_-2 ]/2.0 ); // i don't want a zero here
     }
 
     FloatType ei0( FloatType const& x )
     {
-      FloatType t = std::fabs(x)/( 1.0+std::fabs(x) );
+
+      FloatType t,xx;
+      xx = std::fabs(x);
+      t = xx/(1.0+xx);
+      if (t<0){
+        t=1e-13;
+      }
       int t_bin_low, t_bin_high;
       t_bin_low = int( std::floor( t*n_ ) );
       t_bin_high = t_bin_low+1;
+
+      SCITBX_ASSERT( t >= 0);
       SCITBX_ASSERT( t_bin_low>= 0);
       FloatType f0 = ei0_table_[ t_bin_low ];
       FloatType f1 = ei0_table_[ t_bin_high ];
@@ -152,9 +202,6 @@ namespace twinning {
     FloatType one_over_t_step;
 
   };
-
-
-
 
 
 
@@ -1100,191 +1147,205 @@ namespace twinning {
     ml_twin_with_ncs( scitbx::af::const_ref<FloatType> const& z,
                       scitbx::af::const_ref<FloatType> const& sig_z,
                       scitbx::af::const_ref< cctbx::miller::index<> > const& hkl,
+                      scitbx::af::const_ref< std::size_t > const& bins,
                       cctbx::sgtbx::space_group const& space_group,
                       bool const& anomalous_flag,
                       scitbx::mat3<FloatType> const& twin_law,
                       cctbx::uctbx::unit_cell const& unit_cell,
                       long const& n_hermite):
-    qei0_(5000),
-    n_hermite_(n_hermite)
+      qei0_(5000),
+      n_hermite_(n_hermite),
+      sig_lim_( 3.5 )
     {
       SCITBX_ASSERT( z.size() == sig_z.size() );
       SCITBX_ASSERT( z.size() == hkl.size() );
+      SCITBX_ASSERT( z.size() == bins.size() );
+
       cctbx::miller::index<> tmp_index;
       cctbx::miller::lookup_utils::lookup_tensor<FloatType>
         tmp_lut(hkl, space_group, anomalous_flag);
 
+      long tmp_bin;
       for (std::size_t ii=0;ii<z.size();ii++){
         tmp_index = twin_mate( hkl[ii], twin_law );
         twin_mate_index_.push_back( tmp_lut.find_hkl( tmp_index ) );
         z_.push_back( z[ii] );
+        tmp_bin = bins[ii];
+        if (tmp_bin>0){
+          tmp_bin-=1;
+        }
+        bins_.push_back( tmp_bin );
         sig_z_.push_back( sig_z[ii] );
         d_star_sq_.push_back( unit_cell.d_star_sq( hkl[ii] ) );
       }
 
       // settting up the gauss hermite quadrature
       scitbx::math::quadrature::gauss_hermite_engine<FloatType> tmp_ghe(n_hermite_);
-      x_ = tmp_ghe.x();
-      w_ = tmp_ghe.w();
+      xh_ = tmp_ghe.x();
+      wh_ = tmp_ghe.w();
 
+      // settting up the gauss hermite quadrature
+      scitbx::math::quadrature::gauss_legendre_engine<FloatType> tmp_gle(n_hermite_);
+      xl_ = tmp_gle.x();
+      wl_ = tmp_gle.w();
+
+      sqrt2_ = std::sqrt(2.0);
     }
 
 
     FloatType p_raw(FloatType const& z1, FloatType const& z2,
                     FloatType const& D_ncs, FloatType const& t)
     {
-      FloatType part_1, part_2, x, result=0;
+      //std::cout << "INHERE " << std::endl;
+      FloatType part_1, part_2, x, divide_by, result=0;
       if (z2 <= (1-t)/t*z1){
          if (z2 >= t/(1-t)*z1){
            part_1 = std::exp( -(z1+z2)/(1-D_ncs*D_ncs) )/( (1-D_ncs*D_ncs)*(1-2.0*t) );
-           x = std::sqrt( ((z1*(1-t) -t*z2)/(1-2*t))*
-                          ((z2*(1-t) -t*z1)/(1-2*t))
-                          )*2.0*D_ncs/(1.0 - D_ncs*D_ncs );
+
+           divide_by = (1-2*t)*(1.0 - D_ncs*D_ncs );
+
+           x = std::sqrt( ( (z1*(1-t) -t*z2) )*
+                          ( (z2*(1-t) -t*z1) )
+                          )*2.0*D_ncs/( divide_by );
            part_2 = qei0_.ei0(x)*std::exp(x);
-           //part_2 = scitbx::math::bessel::i0(x);
            result = part_1*part_2;
          }
       }
       return( result );
     }
 
-    FloatType num_int_base(FloatType const& zo1, FloatType const& so1,
-                           FloatType const& zo2, FloatType const& so2,
-                           FloatType const& t,   FloatType const& D_ncs,
-                           FloatType const& z1,  FloatType const& z2 )
-    {
-      FloatType p1,p2,p3;
-      FloatType tps = 2.0*scitbx::constants::pi;
-      p1 = std::exp( -(z1-zo1)*(z1-zo1)/(2.0*so1*so1) )/(so1);
-      p2 = std::exp( -(z2-zo2)*(z2-zo2)/(2.0*so2*so2) )/(so2);
-      p3 = p_raw( z1, z2, D_ncs, t );
-      FloatType result;
-      result = p3*p1*p2/(tps);
-      return(result);
-    }
 
-
-    FloatType num_int_z1(FloatType const& zo1, FloatType const& so1,
-                         FloatType const& zo2, FloatType const& so2,
-                         FloatType const& t,   FloatType const& D_ncs,
-                         FloatType const& z2)
+    FloatType num_int_z2( FloatType const& zo1, FloatType const& so1,
+                          FloatType const& zo2, FloatType const& so2,
+                          FloatType const& t,   FloatType const& D_ncs,
+                          FloatType const& z1)
     {
-      FloatType z1,result=0,s2=std::sqrt(2.0);
-      for (int ii=0;ii<n_hermite_;ii++){
-        z1 = x_[ii]*so1*s2+zo1;
-        result+=p_raw(z1,z2,D_ncs, t)*w_[ii];
+      // please set up the limits of z2 for a given value of z1
+      FloatType z2_low, z2_high, o_low, o_high;
+      z2_low = t/(1-t)*z1;
+      z2_high = (1-t)/t*z1;
+
+      o_low = zo2 - sig_lim_*so2;
+      o_high = zo2 + sig_lim_*so2;
+      // now we have to modify the integration domain
+      bool hermite=true; // swith maybe to gauss hermite quadrature?
+
+      // modify upper and lower limits if it goes beyond the limits
+      if ( o_low < z2_low ){
+        hermite=false;
+        o_low = z2_low;
+        if (o_high < z2_low){// the intersting limit lies completely ouitside the domain of interest
+          return( 0 );  // return 0
+        }
       }
-      result = result*so1*s2;
-      return(result);
-    }
-
-
-    FloatType num_int(FloatType const& zo1, FloatType const& so1,
-                      FloatType const& zo2, FloatType const& so2,
-                      FloatType const& t,   FloatType const& D_ncs)
-    {
-      FloatType s2=std::sqrt(2.0), result=0.0, z2;
-      for (int ii=0;ii<n_hermite_;ii++){
-
-        z2 = x_[ii]*so2*s2+zo2;
-        result += num_int_z1(zo1,so1,
-                             zo2,so2,
-                             t,D_ncs,
-                             z2);
-
+      if ( o_high > z2_high ){
+        hermite=false;
+        o_high = z2_high;
+        if ( o_low > z2_high ){ // the intersting limit lies completely ouitside the domain of interest
+          return(0); // return 0
+        }
       }
 
-      if (result<1e-36){
-        result=1e-36;
-      }
-      return( result*so2*s2 );
-    }
+      // the [o_low o_high] range lies completely in the domain [z2_low z2_high]
+      // use guass hermite quadrature rule please
 
-    /*
-    FloatType num_int_z1(FloatType const& zo1, FloatType const& so1,
-                         FloatType const& zo2, FloatType const& so2,
-                         FloatType const& t,   FloatType const& D_ncs,
-                         FloatType const& z2,
-                         FloatType const& low_limit,  FloatType const& high_limit,
-                         int const& n_points)
-    {
+      FloatType result=0, z2;
+      FloatType mid_point=(o_high+o_low)/2.0;
+      FloatType span = (o_high-o_low)/2.0;
 
-      FloatType start, end, step;
-      step = (high_limit-low_limit)/FloatType(n_points-1);
-      step = step*so1;
-      start = low_limit*so1 + zo1;
-      end = high_limit*so1 + zo1;
-      FloatType z1,result=0;
-      for (int ii=1;ii<n_points-1;ii++){
-        z1 = start + ii*step;
-        result += num_int_base(zo1,so1,
-                               zo2,so2,
-                               t,D_ncs,
-                               z1,z2);
+      if (hermite){
+        for (int ii=0;ii<xh_.size();ii++){
+          z2 = xh_[ii]*so2*sqrt2_+zo2;
+          result+=p_raw(z1,z2,D_ncs,t)*wh_[ii];
+        }
+        result *= sqrt2_*so2;
+        return(result);
       }
 
-      result += num_int_base(zo1,so1,
-                             zo2,so2,
-                             t,D_ncs,
-                             start,z2)/2.0;
-      result += num_int_base(zo1,so1,
-                             zo2,so2,
-                             t,D_ncs,
-                             end,z2)/2.0;
-      result = result*step;
-      return(result);
+      if (!hermite){
+        for (int ii=0;ii<xl_.size();ii++){
+          z2=xl_[ii]*span + mid_point;
+          result+= std::exp( -(z2-zo2)*(z2-zo2) /(2.0*so2*so2) )*p_raw(z1,z2,D_ncs,t)*wl_[ii];
+        }
+        result*=span;
+        return(result);
+      }
+
+      return(0); // this should never happen!
     }
 
     FloatType num_int(FloatType const& zo1, FloatType const& so1,
                       FloatType const& zo2, FloatType const& so2,
-                      FloatType const& t,   FloatType const& D_ncs,
-                      FloatType const& low_limit,  FloatType const& high_limit,
-                      int const& n_points)
+                      FloatType const& t,   FloatType const& D_ncs
+                     )
     {
-      FloatType start, end, step,z2, result=0;
-      step = (high_limit-low_limit)/FloatType(n_points-1);
-      step = step*so2;
-      start = low_limit*so2 + zo2;
-      end = high_limit*so2 + zo2;
-      for (int ii=1;ii<n_points-1;ii++){
-        z2 = start + ii*step;
-        result += num_int_z1(zo1,so1,
-                             zo2,so2,
-                             t,D_ncs,
-                             z2,
-                             low_limit, high_limit,
-                             n_points);
+      FloatType result = 0;
+       // we have to figure out what we want to do
+      FloatType z1_low, o_low, o_high;
+      z1_low = 0;
+      o_low = zo1 - sig_lim_*so1;
+      o_high = zo1 + sig_lim_*so1;
+
+      bool hermite=true;
+
+
+      if ( o_high < z1_low ){
+        return( 1e-32 );
+      }
+      if (o_low < z1_low ){
+        o_low = z1_low;
+        hermite=false;
       }
 
-      result += num_int_z1(zo1,so1,
-                           zo2,so2,
-                           t,D_ncs,
-                           start,
-                           low_limit, high_limit,
-                           n_points)/2.0;
 
-      result += num_int_z1(zo1,so1,
-                           zo2,so2,
-                           t,D_ncs,
-                           end,
-                           low_limit, high_limit,
-                           n_points)/2.0;
+      FloatType mid_point=(o_high+o_low)/2.0;
+      FloatType span = (o_high-o_low)/2.0;
+      FloatType z1;
 
-      result = result*step;
-      if (result<1e-36){
-        result=1e-36;
+      if (hermite){ // use gauss-hermite integration
+        for (int ii=0;ii<xh_.size();ii++){
+          z1 = xh_[ii]*so1*sqrt2_+zo1;
+          result+=num_int_z2(zo1,so1,zo2,so2,t,D_ncs,z1)*wh_[ii];
+        }
+        result*=so1*sqrt2_;
       }
-      return( result );
+
+      if(!hermite){
+        for (int ii=0;ii<xl_.size();ii++){
+          z1=xl_[ii]*span + mid_point;
+          result+= std::exp( -(z1-zo1)*(z1-zo1)/(2.0*so1*so1) )*num_int_z2(zo1,so1,zo2,so2,t,D_ncs,z1)*wl_[ii];
+        }
+        result*=span;
+      }
+      if (result < 1e-32 ){
+        result = 1e-32;
+      }
+      return (result);
     }
-    */
 
-    FloatType p_tot_given_t_and_coeff( FloatType const& coeff,
-                                       FloatType const& twin_fraction,
-                                       int const& n_points )
+    scitbx::af::shared<FloatType> p_tot_given_t_and_coeff( FloatType const& t_coeff,
+                                                           scitbx::af::const_ref<FloatType> d_coeffs )
     {
       // we use D_ncs = exp( -(coeff*coeff + 0.01) )
-      FloatType result=0,z1,z2,s1,s2,D_ncs;
+      FloatType result=0,tmp_result, z1,z2,s1,s2,D_ncs;
+      FloatType twin_fraction,twin_fraction_tmp;
+      FloatType d_t, td_t=0, tmp1;
+
+      // setting up arrays for fd
+      scitbx::af::shared<FloatType> score_coeffs;
+      scitbx::af::shared<FloatType> score_coeffs_fd;
+      for (int ii=0; ii<d_coeffs.size();ii++){
+        score_coeffs.push_back( 0.0 );
+        score_coeffs_fd.push_back( 0.0 );
+      }
+
+
       long tmp_index;
+      FloatType h=0.0001, h_tot=0;
+
+      twin_fraction = 0.5/(1.0+std::exp(-t_coeff));
+      twin_fraction_tmp = 0.5/(1.0+std::exp( -(t_coeff+h) ));
+
       for (long ii=0;ii<z_.size();ii++){
         tmp_index = twin_mate_index_[ii];
         if ( tmp_index >=0 ){
@@ -1292,16 +1353,49 @@ namespace twinning {
           s1=sig_z_[ii];
           z2=z_[tmp_index];
           s2=sig_z_[tmp_index];
-          D_ncs = std::exp(-(coeff*coeff+0.01)*d_star_sq_[ii] );
-          result += std::log( num_int(z1,s1,
-                                      z2,s2,
-                                      twin_fraction, D_ncs)
-                            );
+
+          D_ncs = 1.0/(1.0+std::exp(-d_coeffs[ bins_[ii] ]) );
+          tmp_result = std::log( num_int(z1,s1,
+                                         z2,s2,
+                                         twin_fraction, D_ncs)
+                                 );
+
+          // fin diffs for twin fraction parameter
+          d_t = std::log( num_int(z1,s1,
+                                  z2,s2,
+                                  twin_fraction_tmp, D_ncs)
+                          );
+
+          // fin difss for d_coeffs
+          score_coeffs[ bins_[ii]  ]+=tmp_result;
+
+          D_ncs = 1.0/(1.0+std::exp(-(d_coeffs[ bins_[ii] ] + h ) ) );
+          tmp1 = std::log( num_int(z1,s1,
+                                   z2,s2,
+                                   twin_fraction, D_ncs)
+                           );
+          score_coeffs_fd[ bins_[ii]  ]+=tmp1;
+          td_t += d_t ;
+          result+= tmp_result;
         }
       }
 
-      return(result);
+
+      // get the gradients
+      scitbx::af::shared<FloatType> result_vector;
+      scitbx::af::shared<FloatType> gradient_vector;
+      // compute fd's
+      gradient_vector.push_back( ( result-td_t  )/h ); // multiplied with -1 as we work with NLL
+      result_vector.push_back( -result );
+      result_vector.push_back(( result-td_t  )/h );
+      for (int ii=0;ii<d_coeffs.size();ii++){
+        gradient_vector.push_back(  -(score_coeffs_fd[ii]-score_coeffs[ii])/h  ); // multiplied with -1 as we work with NLL
+        result_vector.push_back( -(score_coeffs_fd[ii]-score_coeffs[ii])/h  );
+      }
+
+      return (result_vector);
     }
+
 
 
 
@@ -1310,12 +1404,20 @@ namespace twinning {
     scitbx::af::shared< FloatType > z_;
     scitbx::af::shared< FloatType > sig_z_;
     scitbx::af::shared< FloatType > d_star_sq_;
+    scitbx::af::shared< long > bins_;
     scitbx::af::shared< long > twin_mate_index_;
-    quick_ei0<FloatType> qei0_;
-    long n_hermite_;
-    scitbx::af::shared< FloatType > x_;
-    scitbx::af::shared< FloatType > w_;
 
+    quick_ei0<FloatType> qei0_;
+
+    long n_hermite_;
+    scitbx::af::shared< FloatType > xh_;
+    scitbx::af::shared< FloatType > wh_;
+
+    scitbx::af::shared< FloatType > xl_;
+    scitbx::af::shared< FloatType > wl_;
+
+    FloatType sqrt2_;
+    FloatType sig_lim_;
 
   };
 
