@@ -29,7 +29,9 @@ def show_sorted_by_counts(
       label_count_pairs,
       reverse=True,
       out=None,
-      prefix=""):
+      prefix="",
+      annotations=None):
+  assert annotations is None or len(annotations) == len(label_count_pairs)
   if (out is None): out = sys.stdout
   if (len(label_count_pairs) == 0): return False
   def sort_function(a, b):
@@ -40,13 +42,18 @@ def show_sorted_by_counts(
       if (a[1] > b[1]): return -1
       if (a[1] < b[1]): return  1
     return cmp(a[0], b[0])
-  label_count_pairs = [(show_string(l), c) for l,c in label_count_pairs]
-  label_count_pairs.sort(sort_function)
+  if (annotations is None):
+    annotations = [None]*len(label_count_pairs)
+  lca = [(show_string(l), c, a)
+    for (l,c),a in zip(label_count_pairs, annotations)]
+  lca.sort(sort_function)
   fmt = "%%-%ds %%%dd" % (
-    max([len(l) for l,c in label_count_pairs]),
-    max([len(str(label_count_pairs[i][1])) for i in [0,-1]]))
-  for l,c in label_count_pairs:
-    print >> out, prefix+fmt % (l, c)
+    max([len(l) for l,c,a in lca]),
+    max([len(str(lca[i][1])) for i in [0,-1]]))
+  for l,c,a in lca:
+    print >> out, prefix+fmt % (l,c),
+    if (a is not None and len(a) > 0): print >> out, a,
+    print >> out
   return True
 
 def overwrite_at(s, offset, replacement):
@@ -102,9 +109,9 @@ def exercise():
   out = StringIO()
   assert show_sorted_by_counts(
     label_count_pairs=[("b", -3), ("a", -3), ("c", 2)], reverse=False,
-     out=out, prefix="%")
+     out=out, prefix="%", annotations=[None, "", "x"])
   assert not show_diff(out.getvalue(), """\
-%"c"  2
+%"c"  2 x
 %"a" -3
 %"b" -3
 """)
