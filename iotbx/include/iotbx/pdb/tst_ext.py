@@ -1875,13 +1875,15 @@ ATOM         CA  ASN     1
 ATOM         P   +U      2
 ATOM         O   HOH     3
 ATOM        CD   CD      4
+ATOM        S    SO4     5
+ATOM         N   ABC     6
 """))
   check_hierarchy(
     hierarchy=pdb_inp.construct_hierarchy(),
     expected_formatted="""\
 model id=0 #chains=1
   chain id=" " #conformers=1
-    conformer id=" " #residues=4 #atoms=4
+    conformer id=" " #residues=6 #atoms=6
       residue name="ASN " seq=   1 icode=" " #atoms=1
          " CA "
       residue name="+U  " seq=   2 icode=" " #atoms=1
@@ -1890,16 +1892,31 @@ model id=0 #chains=1
          " O  "
       residue name="CD  " seq=   4 icode=" " #atoms=1
          "CD  "
+      residue name="SO4 " seq=   5 icode=" " #atoms=1
+         "S   "
+      residue name="ABC " seq=   6 icode=" " #atoms=1
+         " N  "
 """,
     expected_overall_counts=dicts.easy(
       chain_ids={" ": 1},
       conformer_ids={" ": 1},
-      residue_names={"ASN ": 1, "+U  ": 1, "HOH ": 1, "CD  ": 1},
+      residue_names={"ASN ": 1, "+U  ": 1, "HOH ": 1, "CD  ": 1,
+                     "SO4 ": 1, "ABC ": 1},
       residue_name_classes={
         "common_water": 1,
-        "other": 1,
+        "common_element": 1,
         "common_rna_dna": 1,
-        "common_amino_acid": 1}))
+        "common_amino_acid": 1,
+        "common_small_molecule": 1,
+        "other": 1}))
+  #
+  get_class = pdb.common_residue_names_get_class
+  assert get_class(name="ALA") == "common_amino_acid"
+  assert get_class(name="  U") == "common_rna_dna"
+  assert get_class(name="HOH") == "common_water"
+  assert get_class(name="SO4") == "common_small_molecule"
+  assert get_class(name="CL ") == "common_element"
+  assert get_class(name="ABC") == "other"
 
 def exercise(args):
   forever = "--forever" in args

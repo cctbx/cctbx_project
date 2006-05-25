@@ -1,6 +1,7 @@
 #include <cctbx/boost_python/flex_fwd.h>
 
 #include <boost/python/class.hpp>
+#include <boost/python/def.hpp>
 #include <boost/python/args.hpp>
 #include <boost/python/overloads.hpp>
 #include <boost/python/list.hpp>
@@ -8,6 +9,7 @@
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/return_by_value.hpp>
 #include <boost/python/return_arg.hpp>
+#include <boost/python/copy_const_reference.hpp>
 #include <scitbx/boost_python/stl_map_as_dict.h>
 #include <iotbx/pdb/hierarchy.h>
 
@@ -539,12 +541,18 @@ namespace {
   wrap_hierarchy_impl()
   {
     using namespace boost::python;
+
     atom_wrappers::wrap();
     residue_wrappers::wrap();
     conformer_wrappers::wrap();
     chain_wrappers::wrap();
     model_wrappers::wrap();
     hierarchy_wrappers::wrap();
+
+    typedef return_value_policy<copy_const_reference> ccr;
+    def("common_residue_names_get_class",
+      (std::string const& (*)(std::string const& name))
+        common_residue_names::get_class, (arg_("name")), ccr());
   }
 
 } // namespace <anonymous>

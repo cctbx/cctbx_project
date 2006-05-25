@@ -53,7 +53,18 @@ def show_summary(
   c = overall_counts.residue_names
   print >> out, prefix+"  number of residue names: %d"%len(c)
   print >> out, prefix+"  histogram of residue name frequency:"
-  show_sorted_by_counts(c.items(), out=out, prefix=prefix+"    ")
+  annotation_appearance = {
+    "common_amino_acid": None,
+    "common_rna_dna": None,
+    "common_water": "   common water",
+    "common_small_molecule": "   common small molecule",
+    "common_element": "   common element",
+    "other": "   other"
+  }
+  show_sorted_by_counts(c.items(), out=out, prefix=prefix+"    ",
+    annotations=[
+      annotation_appearance[common_residue_names_get_class(name=name)]
+        for name in c.keys()])
   #
   dup = pdb_inp.find_duplicate_atom_labels()
   if (dup.size() > 0):
