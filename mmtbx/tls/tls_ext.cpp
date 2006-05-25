@@ -81,6 +81,7 @@ namespace {
                                                           (arg_("tlso"),
                                                            arg_("sites_cart")))
    ;
+
    class_<tls_parts_one_group>("tls_parts_one_group",
                              init<tlso<double>,
                                   af::shared<vec3<double> > const&>())
@@ -98,6 +99,25 @@ namespace {
       .def("b_iso", &tls_parts_one_group_as_b_iso::b_iso)
       .def("t",      &tls_parts_one_group_as_b_iso::t)
     ;
+
+   class_<common>("common",init<sym_mat3<double> const&,
+                                sym_mat3<double> const&,
+                                optional<double> >())
+      .def("t", &common::t)
+      .def("branch_0"  , &common::get_branch_0)
+      .def("branch_1"  , &common::get_branch_1)
+      .def("branch_2"  , &common::get_branch_2)
+      .def("branch_3"  , &common::get_branch_3)
+      .def("branch_1_1", &common::get_branch_1_1)
+      .def("branch_1_2", &common::get_branch_1_2)
+      .def("branch_3_1", &common::get_branch_3_1)
+      .def("branch_3_2", &common::get_branch_3_2)
+      .def("branch_3_3_1", &common::get_branch_3_3_1)
+      .def("branch_3_3_2", &common::get_branch_3_3_2)
+      .def("branch_2_1", &common::get_branch_2_1)
+      .def("branch_2_2", &common::get_branch_2_2)
+   ;
+
   }
 
 } // namespace <anonymous>
