@@ -130,6 +130,29 @@ namespace iotbx { namespace pdb { namespace common_residue_names {
     return result;
   }
 
+  inline
+  std::string const&
+  get_class(str4 const& name)
+  {
+    static const std::set<str4>& aa_set = amino_acid_set();
+    static const std::set<str4>& na_set = rna_dna_set();
+    static const std::set<str4>& w_set = water_set();
+    static const std::string common_amino_acid("common_amino_acid");
+    static const std::string common_rna_dna("common_rna_dna");
+    static const std::string common_water("common_water");
+    static const std::string other("other");
+    if (aa_set.find(name) != aa_set.end()) {
+      return common_amino_acid;
+    }
+    if (na_set.find(name) != na_set.end()) {
+      return common_rna_dna;
+    }
+    if (w_set.find(name) != w_set.end()) {
+      return common_water;
+    }
+    return other;
+  }
+
 }}} // namespace iotbx::pdb::common_residue_names
 
 #endif // IOTBX_PDB_COMMON_RESIDUE_NAMES_H

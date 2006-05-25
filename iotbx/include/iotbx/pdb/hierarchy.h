@@ -1096,6 +1096,7 @@ namespace pdb {
         unsigned n_residues;
         std::map<std::string, unsigned> residue_names;
         unsigned n_atoms;
+        std::map<std::string, unsigned> residue_name_classes;
 
         overall_counts_holder()
         :
@@ -1152,6 +1153,8 @@ namespace pdb {
               i!=residue_name_counts_str4.end();i++) {
           result->n_residues += i->second;
           result->residue_names[i->first.elems] = i->second;
+          result->residue_name_classes[
+            common_residue_names::get_class(i->first)] += i->second;
         }
         return result;
       }

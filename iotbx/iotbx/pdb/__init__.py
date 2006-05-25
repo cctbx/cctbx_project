@@ -36,6 +36,10 @@ def show_summary(
   print >> out, prefix+"    residues:  ", fmt % overall_counts.n_residues
   print >> out, prefix+"    atoms:     ", fmt % overall_counts.n_atoms
   #
+  c = overall_counts.residue_name_classes
+  print >> out, prefix+"  residue name classes:"
+  show_sorted_by_counts(c.items(), out=out, prefix=prefix+"    ")
+  #
   c = overall_counts.chain_ids
   print >> out, prefix+"  number of chain ids: %d"% len(c)
   print >> out, prefix+"  histogram of chain id frequency:"

@@ -508,6 +508,8 @@ namespace {
       result.attr("residue_names")
         = scitbx::boost_python::stl_map_as_dict(counts->residue_names);
       result.attr("n_atoms") = counts->n_atoms;
+      result.attr("residue_name_classes")
+        = scitbx::boost_python::stl_map_as_dict(counts->residue_name_classes);
       return result;
     }
 

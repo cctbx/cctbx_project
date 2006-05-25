@@ -378,6 +378,8 @@ def check_hierarchy(
     assert overall_counts.chain_ids == expected_overall_counts.chain_ids
     assert overall_counts.conformer_ids ==expected_overall_counts.conformer_ids
     assert overall_counts.residue_names ==expected_overall_counts.residue_names
+    assert overall_counts.residue_name_classes \
+        == expected_overall_counts.residue_name_classes
   assert overall_counts.n_chains \
       == sum(overall_counts.chain_ids.values())
   assert overall_counts.n_conformers \
@@ -385,6 +387,8 @@ def check_hierarchy(
   if (overall_counts.n_conformers == overall_counts.n_chains):
     assert overall_counts.n_residues \
         == sum(overall_counts.residue_names.values())
+  assert sum(overall_counts.residue_name_classes.values()) \
+    == sum(overall_counts.residue_names.values())
 
 def exercise_columns_73_76_evaluator():
   pdb_dir = libtbx.env.find_in_repositories("regression/pdb")
@@ -721,7 +725,8 @@ model id=3 #chains=2
       expected_overall_counts=dicts.easy(
         chain_ids={"A": 1, "B": 1, "C": 1},
         conformer_ids={" ": 3},
-        residue_names={"MPR ": 1, "MET ": 2, "CYS ": 1}))
+        residue_names={"MPR ": 1, "MET ": 2, "CYS ": 1},
+        residue_name_classes={"other": 1, "common_amino_acid": 3}))
   #
   pdb_inp = pdb.input(
     source_info=None,
@@ -947,7 +952,8 @@ model id=0 #chains=1
     expected_overall_counts=dicts.easy(
       chain_ids={},
       conformer_ids={},
-      residue_names={}))
+      residue_names={},
+      residue_name_classes={}))
   pdb_inp = pdb.input(
     source_info=None,
     lines=flex.split_lines("""\
@@ -1170,7 +1176,8 @@ model id=3 #chains=3
     expected_overall_counts=dicts.easy(
       chain_ids={"C": 2, "D": 2, "E": 3, " ": 2},
       conformer_ids={" ": 9},
-      residue_names={"    ": 9}))
+      residue_names={"    ": 9},
+      residue_name_classes={"other": 9}))
   #
   pdb_inp = pdb.input(
     source_info=None,
@@ -1520,7 +1527,8 @@ model id=0 #chains=1
       conformer_ids={"A": 1, "B": 1},
       residue_names={
         "ALA ": 1, "LEU ": 1, "TRP ": 1, "CYS ": 2, "THR ": 1, "GLY ": 3,
-        "SER ": 1, "ARG ": 1, "PRO ": 1}))
+        "SER ": 1, "ARG ": 1, "PRO ": 1},
+      residue_name_classes={"common_amino_acid": 12}))
   pdb_inp = pdb.input(
     source_info=None,
     lines=flex.split_lines("""\
@@ -1668,6 +1676,8 @@ ENDMDL
 %#    alt. conf.: 1
 %#    residues:   3
 %#    atoms:      4
+%#  residue name classes:
+%#    "common_amino_acid" 3
 %#  number of chain ids: 1
 %#  histogram of chain id frequency:
 %#    "A" 2
@@ -1857,6 +1867,39 @@ model id=0 #chains=1
     except RuntimeError, e:
       assert not show_diff(str(e), "selection index out of range.")
     else: raise RuntimeError("Exception expected.")
+  #
+  pdb_inp = pdb.input(
+    source_info=None,
+    lines=flex.split_lines("""\
+ATOM         CA  ASN     1
+ATOM         P   +U      2
+ATOM         O   HOH     3
+ATOM        CD   CD      4
+"""))
+  check_hierarchy(
+    hierarchy=pdb_inp.construct_hierarchy(),
+    expected_formatted="""\
+model id=0 #chains=1
+  chain id=" " #conformers=1
+    conformer id=" " #residues=4 #atoms=4
+      residue name="ASN " seq=   1 icode=" " #atoms=1
+         " CA "
+      residue name="+U  " seq=   2 icode=" " #atoms=1
+         " P  "
+      residue name="HOH " seq=   3 icode=" " #atoms=1
+         " O  "
+      residue name="CD  " seq=   4 icode=" " #atoms=1
+         "CD  "
+""",
+    expected_overall_counts=dicts.easy(
+      chain_ids={" ": 1},
+      conformer_ids={" ": 1},
+      residue_names={"ASN ": 1, "+U  ": 1, "HOH ": 1, "CD  ": 1},
+      residue_name_classes={
+        "common_water": 1,
+        "other": 1,
+        "common_rna_dna": 1,
+        "common_amino_acid": 1}))
 
 def exercise(args):
   forever = "--forever" in args
