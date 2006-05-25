@@ -759,6 +759,12 @@ namespace pdb {
         if (class_name == "common_water")
           return residue_class_selection(
             common_residue_names::water_set(), negate);
+        if (class_name == "common_small_molecule")
+          return residue_class_selection(
+            common_residue_names::small_molecule_set(), negate);
+        if (class_name == "common_element")
+          return residue_class_selection(
+            common_residue_names::element_set(), negate);
         throw std::runtime_error("unknown class_name=\""+class_name+"\"");
       }
 
