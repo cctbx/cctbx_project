@@ -36,8 +36,11 @@ namespace {
         check_true(__LINE__, r[2] == std::pow(c[2], i[2])); }
       { af::shared<std::complex<ElementType> > r = af::pow(c, i[0]);
         check_true(__LINE__, r[2] == std::pow(c[2], i[0])); }
+#if !(defined(__GNUC__) \
+      && __GNUC__ == 4 && __GNUC_MINOR__ == 1 && __GNUC_PATCHLEVEL__ == 0)
       { af::shared<std::complex<ElementType> > r = af::pow(c[0], i);
         check_true(__LINE__, std::norm(r[2]-std::pow(c[0], i[2])) < 1.e-15); }
+#endif
       { af::shared<std::complex<ElementType> > r = af::pow(c, e);
         check_true(__LINE__, r[2] == std::pow(c[2], e[2])); }
       { af::shared<std::complex<ElementType> > r = af::pow(c, e[0]);

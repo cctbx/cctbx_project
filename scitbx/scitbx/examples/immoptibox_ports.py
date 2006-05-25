@@ -8,6 +8,7 @@ from scitbx import matrix
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
 from libtbx.utils import format_cpu_times
+import boost.python
 import math
 import sys, os
 
@@ -363,6 +364,14 @@ class lbfgsb_adaptor:
 def skip_meyer_function():
   if (sys.platform == "irix6"): return True
   if (sys.platform != "linux2"): return False
+  if (    boost.python.platform_info.find("""\
+__GNUC__ = 4
+__GNUC_MINOR__ = 1
+__GNUC_PATCHLEVEL__ = 0
+""") >= 0
+      and boost.python.platform_info.find("""\
+__x86_64__
+""") >= 0): return True
   if (not os.path.isfile("/etc/redhat-release")): return False
   try: rh_release = open("/etc/redhat-release").read()
   except IOError: return False
