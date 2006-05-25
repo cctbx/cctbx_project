@@ -40,11 +40,13 @@ def show_sorted_by_counts(
       if (a[1] > b[1]): return -1
       if (a[1] < b[1]): return  1
     return cmp(a[0], b[0])
-  label_count_pairs = list(label_count_pairs)
+  label_count_pairs = [(show_string(l), c) for l,c in label_count_pairs]
   label_count_pairs.sort(sort_function)
-  fmt = "%%s %%%dd" % max([len(str(label_count_pairs[i][1])) for i in [0,-1]])
+  fmt = "%%-%ds %%%dd" % (
+    max([len(l) for l,c in label_count_pairs]),
+    max([len(str(label_count_pairs[i][1])) for i in [0,-1]]))
   for l,c in label_count_pairs:
-    print >> out, prefix+fmt % (show_string(l), c)
+    print >> out, prefix+fmt % (l, c)
   return True
 
 def overwrite_at(s, offset, replacement):
