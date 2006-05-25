@@ -222,6 +222,7 @@ namespace{
              scitbx::af::const_ref<double> const&,
              scitbx::af::const_ref<double> const&,
              scitbx::af::const_ref< cctbx::miller::index<> > const&,
+             scitbx::af::const_ref< std::size_t > const&,
              cctbx::sgtbx::space_group const&,
              bool const&,
              scitbx::mat3<double> const&,
@@ -230,11 +231,12 @@ namespace{
              > (( arg_("z"),
                   arg_("sig_z"),
                   arg_("indices"),
+                  arg_("bins"),
                   arg_("space_group"),
                   arg_("anomalous_flag"),
                   arg_("twin_law"),
                   arg_("unit_cell"),
-                  arg_("n_hermite"))
+                  arg_("n_quadrature"))
                 ))
         .def("p_raw", &w_t::p_raw)
         .def("num_int", &w_t::num_int )
