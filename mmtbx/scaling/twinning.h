@@ -1341,7 +1341,7 @@ namespace twinning {
 
 
       long tmp_index;
-      FloatType h=0.0001, h_tot=0;
+      FloatType h=0.0001;
 
       twin_fraction = 0.5/(1.0+std::exp(-t_coeff));
       twin_fraction_tmp = 0.5/(1.0+std::exp( -(t_coeff+h) ));
