@@ -10,14 +10,14 @@ def run(args):
     usage="iotbx.pdb.hierarchy file...")
     .option(None, "--details",
       action="store",
-      type="str",
+      type="string",
       default=None,
       dest="details",
       help="level of detail",
       metavar="|".join(pdb.hierarchy_level_ids))
     .option(None, "--prefix",
       action="store",
-      type="str",
+      type="string",
       default="",
       dest="prefix",
       help="prefix for all output lines",
