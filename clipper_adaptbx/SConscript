@@ -59,13 +59,17 @@ env_exe = env.Copy(
 )
 env_exe.Prepend(LIBS=["clipper"])
 
-exe = env_exe.Program(target='#exe_dev/clipper.symtest',
+exe = env_exe.Program(
+  target='#exe_dev/'+env["PROGPREFIX"]+'clipper.symtest'
+                    +env["PROGSUFFIX"],
   source = ["../clipper/examples/symtest.cpp",
            ])
 libtbx.env.write_dispatcher_in_bin(
   source_file=exe[0].get_abspath(),
   target_file="clipper.symtest")
-exe = env_exe.Program(target='#exe_dev/clipper.sanity_check',
+exe = env_exe.Program(
+  target='#exe_dev/'+env["PROGPREFIX"]+'clipper.sanity_check'
+                    +env["PROGSUFFIX"],
   source = ["sanity_check.cpp",
            ])
 libtbx.env.write_dispatcher_in_bin(
