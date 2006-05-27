@@ -14,7 +14,9 @@ for source in ["getting_started",
                "convert_ccp4_symop_lib",
                "lattice_symmetry"]:
   target = "cctbx." + source
-  exe = env.Program(target="#exe_dev/"+target, source=source+".cpp")
+  exe = env.Program(
+    target="#exe_dev/"+env["PROGPREFIX"]+target+env["PROGSUFFIX"],
+    source=source+".cpp")
   libtbx.env.write_dispatcher_in_bin(
     source_file=exe[0].get_abspath(),
     target_file=target)
