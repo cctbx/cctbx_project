@@ -340,23 +340,24 @@ class tls_xray_target_minimizer(object):
                                                  delta      = 0.00001)
        format   = "%10.6f %10.6f %10.6f %10.6f %10.6f %10.6f"
        formats="%10.6f %10.6f %10.6f %10.6f %10.6f %10.6f %10.6f %10.6f %10.6f"
+       fd_eps = 1.e-2 # XXX fairly large
        for m1,m2 in zip(grad_manager.grad_T, GT):
            if(0):
               print "T1=" + format % (m1[0],m1[1],m1[2],m1[3],m1[4],m1[5])
               print "T2=" + format % (m2[0],m2[1],m2[2],m2[3],m2[4],m2[5])
-           assert approx_equal(m1,m2)
+           assert approx_equal(m1,m2,eps=fd_eps)
        for m1,m2 in zip(grad_manager.grad_L, GL):
            if(0):
               print "L1=" + format % (m1[0],m1[1],m1[2],m1[3],m1[4],m1[5])
               print "L2=" + format % (m2[0],m2[1],m2[2],m2[3],m2[4],m2[5])
-           assert approx_equal(m1,m2)
+           assert approx_equal(m1,m2,eps=fd_eps)
        for m1,m2 in zip(grad_manager.grad_S, GS):
            if(0):
               print "S1=" + formats %\
                         (m1[0],m1[1],m1[2],m1[3],m1[4],m1[5],m1[6],m1[7],m1[8])
               print "S2=" + formats %\
                         (m2[0],m2[1],m2[2],m2[3],m2[4],m2[5],m2[6],m2[7],m2[8])
-           assert approx_equal(m1,m2)
+           assert approx_equal(m1,m2,eps=fd_eps)
     return self.f, self.g
 
 class tls_xray_grads(object):
