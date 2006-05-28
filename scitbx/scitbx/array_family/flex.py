@@ -45,7 +45,10 @@ def export_to(target_module_name):
     "random_double",
     "random_permutation",
     "py_object",
-    "linear_regression"]
+    "linear_regression",
+    "linear_correlation",
+    "histogram",
+    "permutation_generator"]
   target_module = sys.modules[target_module_name]
   g = globals()
   for attr in export_list:
@@ -165,6 +168,11 @@ class _histogram(boost.python.injector, ext.histogram):
     fmt = "%s" + format_cutoffs + " - " + format_cutoffs + ": %d"
     for info in self.slot_infos():
       print >> f, fmt % (prefix, info.low_cutoff, info.high_cutoff, info.n)
+
+def permutation_generator(size):
+  result = size_t(xrange(size))
+  yield result
+  while (result.next_permutation()): yield result
 
 def exercise_triple(flex_triple, flex_order=None, as_double=False):
   from libtbx.test_utils import approx_equal
