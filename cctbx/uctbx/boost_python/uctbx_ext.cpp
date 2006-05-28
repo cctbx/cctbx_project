@@ -199,6 +199,22 @@ namespace {
     }
   };
 
+  inline
+  scitbx::vec3<int>
+  fractional_unit_shifts_d(fractional<> const& distance_frac)
+  {
+    return distance_frac.unit_shifts();
+  }
+
+  inline
+  scitbx::vec3<int>
+  fractional_unit_shifts_s_s(
+    fractional<> const& site_frac_1,
+    fractional<> const& site_frac_2)
+  {
+    return fractional<>(site_frac_1-site_frac_2).unit_shifts();
+  }
+
   void init_module()
   {
     using namespace boost::python;
@@ -212,6 +228,11 @@ namespace {
 
     unit_cell_wrappers::wrap();
     wrap_fast_minimum_reduction();
+
+    def("fractional_unit_shifts", fractional_unit_shifts_d, (
+      arg_("distance_frac")));
+    def("fractional_unit_shifts", fractional_unit_shifts_s_s, (
+      arg_("site_frac_1"), arg_("site_frac_2")));
   }
 
 } // namespace <anonymous>
