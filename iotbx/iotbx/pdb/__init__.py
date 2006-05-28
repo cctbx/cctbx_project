@@ -225,7 +225,7 @@ def format_atom_record(record_name="ATOM",
   # 77 - 78  LString(2)    element       Element symbol, right-justified.
   # 79 - 80  LString(2)    charge        Charge on the atom.
   return ((
-    "%-6.6s%5d %-4.4s%1.1s%-3.3s %1.1s%4d%1.1s"
+    "%-6.6s%5d %-4.4s%1.1s%-4.4s%1.1s%4d%1.1s"
     "   %8.3f%8.3f%8.3f%6.2f%6.2f    "
     "  %-4.4s%2.2s%2.2s") % (
       record_name,
