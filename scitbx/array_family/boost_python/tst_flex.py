@@ -507,6 +507,9 @@ def exercise_select():
                      [3, 2, 1]):
       assert list(a) == expected
       assert a.next_permutation() == (expected != [3, 2, 1])
+  assert [list(a) for a in flex.permutation_generator(size=0)] == [[]]
+  assert [list(a) for a in flex.permutation_generator(size=1)] == [[0]]
+  assert [list(a) for a in flex.permutation_generator(size=2)] == [[0,1],[1,0]]
   a = flex.bool((0,1,0,1,1))
   assert tuple(a.as_int()) == (0,1,0,1,1)
   assert tuple(a.as_double()) == (0,1,0,1,1)
