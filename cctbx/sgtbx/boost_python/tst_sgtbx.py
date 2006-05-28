@@ -486,6 +486,18 @@ def exercise_rt_mx():
   try: rt_mx("h,x,z")
   except RuntimeError, e: assert str(e) == "cctbx Error: Parse error."
   else: raise RuntimeError("Exception expected.")
+  #
+  s = rt_mx("y-13/2,y-x+8/3,z+1/4")
+  site_frac_1 = (4.2, -5.2, 8.9)
+  site_frac_2 = (-2.1, -7.2, 12.9)
+  assert s.unit_shifts_minimum_distance(
+    site_frac_1=site_frac_1,
+    site_frac_2=site_frac_2) == (18, -3, -4)
+  su = s.add_unit_shifts_minimum_distance(
+    site_frac_1=site_frac_1,
+    site_frac_2=site_frac_2)
+  assert str(su) == "y+23/2,-x+y-1/3,z-15/4"
+  assert approx_equal(su*site_frac_2, (4.3, -5.4333333, 9.15))
 
 def exercise_change_of_basis_op():
   rt_mx = sgtbx.rt_mx

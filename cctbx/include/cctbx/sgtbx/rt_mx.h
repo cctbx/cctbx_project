@@ -3,6 +3,7 @@
 
 #include <cctbx/sgtbx/rot_mx.h>
 #include <cctbx/sgtbx/parse_string.h>
+#include <cctbx/coordinates.h>
 #include <scitbx/sym_mat3.h>
 #include <scitbx/array_family/tiny_types.h>
 #include <cctbx/import_scitbx_af.h>
@@ -434,6 +435,37 @@ namespace cctbx { namespace sgtbx {
       rt_mx
       multiply(rt_mx const& rhs) const;
 
+      template <typename FloatType>
+      scitbx::vec3<FloatType>
+      operator*(af::tiny_plain<FloatType, 3> const& rhs) const;
+
+      /*! \brief Determines unit shifts u such that
+          (r,t+u)*site_frac_2 is closest to site_frac_1.
+       */
+      template <typename FloatType>
+      scitbx::vec3<int>
+      unit_shifts_minimum_distance(
+        fractional<FloatType> const& site_frac_1,
+        fractional<FloatType> const& site_frac_2) const
+      {
+        return fractional<FloatType>(
+          site_frac_1 - (*this) * site_frac_2).unit_shifts();
+      }
+
+      /*! \brief Adds unit shifts u such that
+          (r,t+u)*site_frac_2 is closest to site_frac_1.
+       */
+      template <typename FloatType>
+      rt_mx
+      add_unit_shifts_minimum_distance(
+        fractional<FloatType> const& site_frac_1,
+        fractional<FloatType> const& site_frac_2) const
+      {
+        return rt_mx(r_,
+          t_ + tr_vec(unit_shifts_minimum_distance(
+            site_frac_1, site_frac_2) * t_.den(), t_.den()));
+      }
+
     private:
       rot_mx r_;
       tr_vec t_;
@@ -479,19 +511,17 @@ namespace cctbx { namespace sgtbx {
   //! Multiplication of rt_mx with a vector of double.
   /*! Python: __mul__
    */
-  inline
-  scitbx::vec3<double>
-  operator*(rt_mx const& lhs, af::tiny_plain<double, 3> const& rhs)
+  template <typename FloatType>
+  scitbx::vec3<FloatType>
+  rt_mx::operator*(af::tiny_plain<FloatType, 3> const& rhs) const
   {
-    rot_mx const& r = lhs.r();
-    tr_vec const& t = lhs.t();
-    double rd = r.den();
-    double td = t.den();
-    scitbx::vec3<double> result;
+    scitbx::vec3<FloatType> result;
+    FloatType rd = r_.den();
+    FloatType td = t_.den();
     for(std::size_t i=0;i<3;i++) {
-      result[i] = (  r(i,0) * rhs[0]
-                   + r(i,1) * rhs[1]
-                   + r(i,2) * rhs[2]) / rd + t[i] / td;
+      result[i] = (  r_(i,0) * rhs[0]
+                   + r_(i,1) * rhs[1]
+                   + r_(i,2) * rhs[2]) / rd + t_[i] / td;
     }
     return result;
   }

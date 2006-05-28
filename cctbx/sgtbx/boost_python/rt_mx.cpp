@@ -113,6 +113,18 @@ namespace {
         .def("__mul__", mul)
         .def("__add__", (rt_mx(w_t::*)(sg_vec3 const&) const)&w_t::operator+)
         .def("__add__", (rt_mx(w_t::*)(tr_vec const&) const)&w_t::operator+)
+        .def("unit_shifts_minimum_distance", (
+          scitbx::vec3<int>(w_t::*)(
+            fractional<double> const&,
+            fractional<double> const&) const)
+              &w_t::unit_shifts_minimum_distance, (
+                arg_("site_frac_1"), arg_("site_frac_2")))
+        .def("add_unit_shifts_minimum_distance", (
+          rt_mx(w_t::*)(
+            fractional<double> const&,
+            fractional<double> const&) const)
+              &w_t::add_unit_shifts_minimum_distance, (
+                arg_("site_frac_1"), arg_("site_frac_2")))
       ;
 
       scitbx::stl::boost_python::vector_wrapper<rt_mx>::wrap(
