@@ -188,18 +188,18 @@ class manager(object):
 
   def find_peaks(self):
     out = self.log
-    self.peak_search_parameters = maptbx.peak_search_parameters(
-                          peak_search_level      = self.peak_search_level,
-                          max_peaks              = self.max_peaks,
-                          peak_cutoff            = self.primary_map_cutoff,
-                          interpolate            = self.interpolate,
-                          min_distance_sym_equiv = self.min_distance_sym_equiv,
-                          general_positions_only = self.general_positions_only,
-                          min_cross_distance     = self.min_cross_distance)
     self.sites, self.heights = self.find_peaks_helper(
-                                              map_type = self.primary_map_type,
-                                              k        = self.primary_map_k,
-                                              n        = self.primary_map_n)
+      map_type = self.primary_map_type,
+      k        = self.primary_map_k,
+      n        = self.primary_map_n,
+      peak_search_parameters = maptbx.peak_search_parameters(
+        peak_search_level      = self.peak_search_level,
+        max_peaks              = self.max_peaks,
+        peak_cutoff            = self.primary_map_cutoff,
+        interpolate            = self.interpolate,
+        min_distance_sym_equiv = self.min_distance_sym_equiv,
+        general_positions_only = self.general_positions_only,
+        min_cross_distance     = self.min_cross_distance))
     if(self.verbose > 0):
        print >> out, "Peak search:"
        print >> out, "   maximum allowed number of peaks:          ", \
@@ -207,18 +207,18 @@ class manager(object):
        print >> out, "   number of peaks from "+self.primary_map_type+\
                                                      " map: ",self.sites.size()
     if(self.secondary_map_type is not None):
-       self.peak_search_parameters = maptbx.peak_search_parameters(
-                          peak_search_level      = self.peak_search_level,
-                          max_peaks              = self.max_peaks,
-                          peak_cutoff            = self.secondary_map_cutoff,
-                          interpolate            = self.interpolate,
-                          min_distance_sym_equiv = self.min_distance_sym_equiv,
-                          general_positions_only = self.general_positions_only,
-                          min_cross_distance     = self.min_cross_distance)
        sites_2nd, heights_2nd = self.find_peaks_helper(
-                                            map_type = self.secondary_map_type,
-                                            k        = self.secondary_map_k,
-                                            n        = self.secondary_map_n)
+         map_type = self.secondary_map_type,
+         k        = self.secondary_map_k,
+         n        = self.secondary_map_n,
+         peak_search_parameters = maptbx.peak_search_parameters(
+           peak_search_level      = self.peak_search_level,
+           max_peaks              = self.max_peaks,
+           peak_cutoff            = self.secondary_map_cutoff,
+           interpolate            = self.interpolate,
+           min_distance_sym_equiv = self.min_distance_sym_equiv,
+           general_positions_only = self.general_positions_only,
+           min_cross_distance     = self.min_cross_distance))
        if(self.verbose > 0):
           print >> out, "   number of peaks from "+self.secondary_map_type+\
                                                       " map:", sites_2nd.size()
@@ -235,7 +235,7 @@ class manager(object):
           print >> out, "   number of peaks after clustering:         ", \
                                                               self.sites.size()
 
-  def find_peaks_helper(self, map_type, k, n):
+  def find_peaks_helper(self, map_type, k, n, peak_search_parameters):
     fft_map = self.fmodel.electron_density_map(
                            map_type          = map_type,
                            k                 = k,
@@ -248,7 +248,7 @@ class manager(object):
     crystal_gridding_tags = fft_map.tags()
     self.tags = crystal_gridding_tags.tags()
     cluster_analysis = crystal_gridding_tags.peak_search(
-        parameters = self.peak_search_parameters,
+        parameters = peak_search_parameters,
         map        = fft_map_data).all(max_clusters = self.max_number_of_peaks)
     sites = cluster_analysis.sites()
     heights = cluster_analysis.heights()
