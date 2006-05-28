@@ -27,6 +27,16 @@ def exercise_functions():
   assert approx_equal(
     uctbx.d_star_sq_as_two_theta(d_star_sq, 1.5)*180/pi,
     uctbx.d_star_sq_as_two_theta(d_star_sq, 1.5, 1))
+  #
+  assert uctbx.fractional_unit_shifts(distance_frac=[0,0,0]) == (0,0,0)
+  assert uctbx.fractional_unit_shifts([0.6,7.4,-0.4]) == (1,7,0)
+  assert uctbx.fractional_unit_shifts([-6,3,-0.6]) == (-6,3,-1)
+  site_frac_1 = [0.3,-8.6,2.1]
+  for eps,expected_u2 in [(-1.e-5, 1), (1.e-5, 2)]:
+    site_frac_2 = [-3,5.6,0.6-eps]
+    assert uctbx.fractional_unit_shifts(
+      site_frac_1=site_frac_1,
+      site_frac_2=site_frac_2) == (3, -14, expected_u2)
 
 def exercise_basic():
   d = (1,1,1,90,90,90)
