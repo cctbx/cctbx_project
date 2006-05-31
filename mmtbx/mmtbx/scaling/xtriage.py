@@ -23,16 +23,39 @@ import sys, os
 
 master_params = iotbx.phil.parse("""\
 scaling.input {
-   basic{
-     n_residues=None
-     .type=float
-     n_bases=None
-     .type=float
-     n_copies_per_asu=None
-     .type=float
-     n_terms = None
-     .expert_level=10
-     .type=int
+   parameters
+   {
+     asu_contents
+     {
+       n_residues=None
+       .type=float
+       n_bases=None
+       .type=float
+       n_copies_per_asu=None
+       .type=float
+     }
+
+     misc_twin_parameters
+     .expert_level=1
+     {
+       missing_symmetry
+       {
+         tanh_location = 0.08
+         .type=float
+         tanh_slope = 50
+         .type=float
+       }
+
+       twinning_with_ncs
+       {
+         perform_analyses = False
+         .type = bool
+         n_bins = 7
+         .type = int
+       }
+
+     }
+
    }
    analyses{
      verbose = 1
@@ -314,7 +337,7 @@ def run(command_name, args):
     reset_space_group = False
     reset_unit_cell = False
 
-    if params.scaling.input.basic.n_residues is None:
+    if params.scaling.input.parameters.asu_contents.n_residues is None:
       print >> log, "##-------------------------------------------##"
       print >> log, "## WARNING:                                  ##"
       print >> log, "## Number of residues unspecified            ##"
@@ -444,8 +467,9 @@ Use keyword 'unit_cell' to specify unit_cell
         parameter_scope = 'scaling.input.xray_data',
         parameter_name = 'calc_labels'
       )
-
-
+      if not f_calc_miller.is_real_array():
+        f_calc_miller = f_calc_miller.customized_copy(
+          data = flex.abs( f_calc_miller.data() ) ).set_observation_type(f_calc_miller  )
 
     twin_results = None
 
@@ -515,7 +539,8 @@ Use keyword 'unit_cell' to specify unit_cell
             out=log,
             out_plots=string_buffer_plots,
             verbose=verbose,
-            miller_calc=f_calc_miller)
+            miller_calc=f_calc_miller,
+            additional_parameters=params.scaling.input.parameters.misc_twin_parameters)
         #except: pass
 
     if params.scaling.input.optional.hklout is not None:
