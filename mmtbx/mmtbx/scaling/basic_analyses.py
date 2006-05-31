@@ -38,20 +38,20 @@ class basic_analyses(object):
     n_copies_solc = 1.0
     matthews_results =matthews.matthews_rupp(
       miller_array = miller_array,
-      n_residues = phil_object.scaling.input.basic.n_residues,
-      n_bases = phil_object.scaling.input.basic.n_bases,
+      n_residues = phil_object.scaling.input.parameters.asu_contents.n_residues,
+      n_bases = phil_object.scaling.input.parameters.asu_contents.n_bases,
       out=out,verbose=1)
-    phil_object.scaling.input.basic.n_residues = matthews_results[0]
-    phil_object.scaling.input.basic.n_bases = matthews_results[1]
+    phil_object.scaling.input.parameters.asu_contents.n_residues = matthews_results[0]
+    phil_object.scaling.input.parameters.asu_contents.n_bases = matthews_results[1]
     n_copies_solc = matthews_results[2]
 
-    if phil_object.scaling.input.basic.n_copies_per_asu is not None:
-      n_copies_solc = phil_object.scaling.input.basic.n_copies_per_asu
+    if phil_object.scaling.input.parameters.asu_contents.n_copies_per_asu is not None:
+      n_copies_solc = phil_object.scaling.input.parameters.asu_contents.n_copies_per_asu
       if verbose>0:
         print >> out,"Number of copies per asyymetric unit provided"
         print >> out," Will use user specified value of ", n_copies_solc
     else:
-      phil_object.scaling.input.basic.n_copies_per_asu = n_copies_solc
+      phil_object.scaling.input.parameters.asu_contents.n_copies_per_asu = n_copies_solc
 
 
     # first report on I over sigma
@@ -72,8 +72,8 @@ class basic_analyses(object):
       print >> out
       print >> out, "Maximum likelihood isotropic Wilson scaling "
 
-    n_residues =  phil_object.scaling.input.basic.n_residues
-    n_bases = phil_object.scaling.input.basic.n_bases
+    n_residues =  phil_object.scaling.input.parameters.asu_contents.n_residues
+    n_bases = phil_object.scaling.input.parameters.asu_contents.n_bases
     if n_residues is None:
       n_residues = 0
     if n_bases is None:
