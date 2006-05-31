@@ -5,6 +5,10 @@
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/return_by_value.hpp>
 #include <boost/python/copy_const_reference.hpp>
+#include <boost/python/module.hpp>
+#include <boost/python/def.hpp>
+#include <boost/python/overloads.hpp>
+
 
 #include <mmtbx/scaling/twinning.h>
 
@@ -40,6 +44,7 @@ namespace{
         .def("r_sq_value", &w_t::r_sq_value)
         .def("r_abs_pair", &w_t::r_abs_pair)
         .def("r_sq_pair", &w_t::r_abs_pair)
+        .def("correlation", &w_t::correlation)
         ;
     }
 
@@ -285,6 +290,8 @@ namespace{
         ;
     }
   };
+
+
 
 }  // namespace <anonymous>
 

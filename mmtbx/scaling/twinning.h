@@ -206,8 +206,8 @@ namespace twinning {
 
 
   template<typename FloatType>
-  inline cctbx::miller::index<> twin_mate( cctbx::miller::index<> hkl,
-                                           scitbx::mat3<FloatType> twin_law )
+  inline cctbx::miller::index<> twin_mate( cctbx::miller::index<> const& hkl,
+                                           scitbx::mat3<FloatType> const& twin_law )
   {
           int ht,kt,lt;
           ht = scitbx::math::iround(twin_law[0]*hkl[0] +
@@ -225,6 +225,54 @@ namespace twinning {
           cctbx::miller::index<> hkl_twin(ht,kt,lt);
           return( hkl_twin );
   }
+
+
+
+
+  template<typename FloatType>
+  FloatType twin_correlation( cctbx::miller::index<> const& hkl,
+                              scitbx::af::const_ref<FloatType> const& data,
+                              cctbx::sgtbx::space_group const& space_group,
+                              bool const& anomalous_flag,
+                              scitbx::mat3<FloatType> const& twin_law )
+  {
+    SCITBX_ASSERT( hkl.size() == data.size() );
+    int twin_index;
+    // make a lookup table please
+    cctbx::miller::lookup_utils::lookup_tensor<FloatType> hkl_lookup(hkl,space_group,anomalous_flag);
+    FloatType mean1=0,mean2=0,sig1=0,sig2=0,cov=0,x,y,n=0;
+    for (int ii=0;ii<hkl.size();ii++){
+      twin_index = hkl_lookup.find_hkl( twin_mate(hkl[ii],twin_law) );
+      if (twin_index>=0){
+        x =  data[twin_index];
+        y = data[ii];
+        mean1+=x;
+        mean2+=y;
+        cov+=x*y;
+        sig1+=x*x;
+        sig2+=y*y;
+        n++;
+      }
+    }
+    mean1/=n;
+    mean2/=n;
+    sig1/=n;
+    sig2/=n;
+    sig1=sig1-mean1*mean1;
+    sig2=sig2-mean2*mean2;
+    cov/=n;
+    cov=cov-mean1*mean2;
+    sig1=std::sqrt(sig1*sig2);
+    if(sig1<=0){
+      return(1.0);
+    }
+    return( cov/sig1 );
+
+  }
+
+
+
+
 
 
   template <typename FloatType=double>
@@ -248,6 +296,7 @@ namespace twinning {
     r_sq_bottom_(0),
     r_abs_top_(0),
     r_abs_bottom_(0),
+    cc_(0),
     twin_law_(twin_law),
     space_group_(space_group),
     hkl_lookup_(hkl, space_group, anomalous_flag)
@@ -284,9 +333,47 @@ namespace twinning {
 
         compute_r_abs_value();
         compute_r_sq_value();
-
+      compute_correlation();
     }
 
+
+    void compute_correlation()
+    {
+      FloatType mean1=0,mean2=0,sig1=0,sig2=0,cov=0,x,y,n=0;
+
+      int tmp_loc;
+      for (unsigned ii=0;ii<hkl_.size();ii++){
+        tmp_loc =  location_[ ii ];
+        if (tmp_loc >= 0){
+          if (tmp_loc != ii ){
+            x = intensity_[ ii ];
+            y = intensity_[ tmp_loc ];
+            mean1+=x;
+            mean2+=y;
+            cov+=x*y;
+            sig1+=x*x;
+            sig2+=y*y;
+            n+=1.0;
+          }
+        }
+      }
+
+      mean1/=n;
+      mean2/=n;
+      sig1/=n;
+      sig2/=n;
+      sig1=sig1-mean1*mean1;
+      sig2=sig2-mean2*mean2;
+      cov/=n;
+      cov=cov-mean1*mean2;
+      sig1=std::sqrt(sig1*sig2);
+
+      if (sig1<=0){
+        cc_=1.0;
+      } else{
+        cc_=cov/sig1;
+      }
+    }
 
 
 
@@ -361,6 +448,8 @@ namespace twinning {
       return (result);
     }
 
+    FloatType correlation(){ return(cc_); }
+
     scitbx::af::tiny<FloatType,2> r_abs_pair()
     {
       scitbx::af::tiny<FloatType, 2> result;
@@ -380,12 +469,14 @@ namespace twinning {
 
 
 
+
     protected:
 
     FloatType r_abs_top_;
     FloatType r_abs_bottom_;
     FloatType r_sq_top_;
     FloatType r_sq_bottom_;
+    FloatType cc_;
 
     scitbx::af::shared< cctbx::miller::index<> > hkl_;
     scitbx::af::shared< cctbx::miller::index<> > hkl_twin_;
@@ -1343,8 +1434,11 @@ namespace twinning {
       long tmp_index;
       FloatType h=0.0001;
 
-      twin_fraction = 0.5/(1.0+std::exp(-t_coeff));
-      twin_fraction_tmp = 0.5/(1.0+std::exp( -(t_coeff+h) ));
+      FloatType twin_fraction_cap=0.48;
+      twin_fraction = twin_fraction_cap/(1.0+std::exp(-t_coeff));
+      twin_fraction_tmp = twin_fraction_cap/(1.0+std::exp( -(t_coeff+h) ));
+
+      FloatType d_ncs_cap=0.95;
 
       for (long ii=0;ii<z_.size();ii++){
         tmp_index = twin_mate_index_[ii];
@@ -1354,7 +1448,7 @@ namespace twinning {
           z2=z_[tmp_index];
           s2=sig_z_[tmp_index];
 
-          D_ncs = 1.0/(1.0+std::exp(-d_coeffs[ bins_[ii] ]) );
+          D_ncs = d_ncs_cap/(1.0+std::exp(-d_coeffs[ bins_[ii] ]) );
           tmp_result = std::log( num_int(z1,s1,
                                          z2,s2,
                                          twin_fraction, D_ncs)
@@ -1369,7 +1463,7 @@ namespace twinning {
           // fin difss for d_coeffs
           score_coeffs[ bins_[ii]  ]+=tmp_result;
 
-          D_ncs = 1.0/(1.0+std::exp(-(d_coeffs[ bins_[ii] ] + h ) ) );
+          D_ncs = d_ncs_cap/(1.0+std::exp(-(d_coeffs[ bins_[ii] ] + h ) ) );
           tmp1 = std::log( num_int(z1,s1,
                                    z2,s2,
                                    twin_fraction, D_ncs)
@@ -1383,13 +1477,12 @@ namespace twinning {
 
       // get the gradients
       scitbx::af::shared<FloatType> result_vector;
-      scitbx::af::shared<FloatType> gradient_vector;
+
       // compute fd's
-      gradient_vector.push_back( ( result-td_t  )/h ); // multiplied with -1 as we work with NLL
       result_vector.push_back( -result );
       result_vector.push_back(( result-td_t  )/h );
+
       for (int ii=0;ii<d_coeffs.size();ii++){
-        gradient_vector.push_back(  -(score_coeffs_fd[ii]-score_coeffs[ii])/h  ); // multiplied with -1 as we work with NLL
         result_vector.push_back( -(score_coeffs_fd[ii]-score_coeffs[ii])/h  );
       }
 
