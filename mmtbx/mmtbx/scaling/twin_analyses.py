@@ -923,6 +923,147 @@ class l_test(object):
     print >> out
     print >> out
 
+class ml_murray_rust_with_ncs(object):
+  def __init__(self,
+               miller_array,
+               twin_law,
+               out,
+               n_bins=10,
+               calc_data=None):
+    if out == None:
+      out = sys.stdout
+
+    self.twin_law = twin_law
+
+    self.twin_cap = 0.45
+    self.d_cap = 0.95
+
+    assert miller_array.is_xray_intensity_array()
+    assert miller_array.sigmas() is not None
+
+    tmp_miller_array = miller_array.deep_copy().set_observation_type( miller_array )
+    # make a binner
+    self.binner = tmp_miller_array.setup_binner( n_bins=n_bins )
+    self.out = out
+    self.f = None
+    self.cycle = 0
+    self.ml_object = scaling.ml_twin_with_ncs( tmp_miller_array.data(),
+                                               tmp_miller_array.sigmas(),
+                                               tmp_miller_array.indices(),
+                                               self.binner.bin_indices(),
+                                               tmp_miller_array.space_group(),
+                                               tmp_miller_array.anomalous_flag(),
+                                               twin_law,
+                                               tmp_miller_array.unit_cell(),
+                                               4 )
+    self.n = 1+n_bins
+    self.x = flex.double([0])
+    for ii in xrange(n_bins):
+      self.x.append( 2.0 - ii/20.0 )
+
+    self.message()
+    scitbx.lbfgs.run(target_evaluator=self)
+    self.print_it()
+
+    if calc_data is not None:
+      self.calc_correlation(  tmp_miller_array, calc_data )
+
+  def string_it(self,x):
+    return str("%4.3f"%(x))
+
+  def calc_correlation(self,obs,calc):
+    if calc.is_xray_amplitude_array():
+      calc = calc.f_as_f_sq()
+
+    calc = calc.common_set( other=obs )
+    calc.use_binning_of( obs  )
+
+    print >> self.out , " The correlation of the calculated F^2 should be similar to "
+    print >> self.out , " the estimated values. "
+    print >> self.out
+    print >> self.out , " Observed correlation between twin related, untwinned calculated F^2"
+    print >> self.out , " in resolutiuon ranges, as well as ewstimates D_ncs^2 values:"
+    # now loop over all resolution bins, get twin related intensities and get twin related intensities please
+    print >> self.out, " Bin    d_max     d_min     CC_obs   D_ncs^2 "
+    for i_bin in calc.binner().range_used():
+      tmp_array = calc.select( calc.binner().bin_indices() == i_bin )
+      tmp_r_class = scaling.twin_r( tmp_array.indices(),
+                                    tmp_array.data(),
+                                    tmp_array.space_group(),
+                                    tmp_array.anomalous_flag(),
+                                    self.twin_law )
+      low = self.binner.bin_d_range(i_bin)[0]
+      high = self.binner.bin_d_range(i_bin)[1]
+      d_theory_sq = tmp_r_class.correlation()
+      d_ncs_sq = self.x[i_bin]
+      d_ncs_sq = self.d_cap/( 1.0+math.exp(-d_ncs_sq) )
+      d_ncs_sq = d_ncs_sq*d_ncs_sq
+
+      print >> self.out, "%3i)    %5.4f -- %5.4f :: %6s   %6s"%(i_bin,low, high,
+                                                              self.string_it(d_theory_sq),
+                                                              self.string_it(d_ncs_sq) )
+
+
+
+
+  def compute_functional_and_gradients(self):
+    tmp = self.ml_object.p_tot_given_t_and_coeff( self.x[0],
+                                                  self.x[1:] )
+    f = tmp[0]
+    g = tmp[1:]
+
+    self.f=f
+    self.cycle+=1
+    if self.cycle%5==0:
+      print >> self.out, "%3i "%(self.cycle),
+      #self.print_it()
+    else:
+      print >>self.out, ".",
+    if self.cycle%30==0:
+      print >>self.out
+    self.out.flush()
+    return f,flex.double(g)
+
+  def message(self):
+    print >> self.out
+    print >> self.out, "Estimation of twin fraction, while taking into account the"
+    print >> self.out, "effects of possible NCS parallel to the twin axis."
+    print >> self.out, "    Zwart, Read, Grosse-Kusntleve & Adams, to be published."
+    print >> self.out
+    print >> self.out, "  A parameters D_ncs will be estimated as a function of resolution,"
+    print >> self.out, "  together with a global twin fraction."
+    print >> self.out, "  D_ncs is an estimate of the correlation coefficient between"
+    print >> self.out, "  untwinned, error-free, twin related, normalized intensities."
+    print >> self.out, "  Large values (0.95) could indicate an incorrect point group."
+    print >> self.out, "  Value of D_ncs larger than say, 0.5, could indicate the presence"
+    print >> self.out, "  of NCS. The twin fraction should be smaller or similar to other"
+    print >> self.out, "  estimates given elsewhere."
+    print >> self.out
+    print >> self.out, "  The refinement can take some time. "
+    print >> self.out, "  For numerical stability issues, D_ncs is limited between 0 and 0.95."
+    print >> self.out, "  The twin fraction is allowed to veary between 0 and 0.45."
+    print >> self.out, "  Refinement cycle number are printed out to keep you entertained."
+    print >> self.out
+
+
+  def print_it(self):
+    print >> self.out
+    print >> self.out
+    print >> self.out, "  Cycle : %3i"%(self.cycle)
+    print >> self.out, "  -----------"
+    print >> self.out, "  Log[likelihood]: %15.3f"%(self.f)
+    tf=self.x[0]
+    tf=self.twin_cap/(1+math.exp(-tf))
+    print >> self.out, "  twin fraction: %4.3f"%( tf )
+    print >> self.out, "  D_ncs in resolution ranges: "
+    for ii in xrange(self.x.size()-1):
+      d_ncs = self.x[ii+1]
+      d_ncs = self.d_cap/( 1.0+math.exp(-d_ncs) )
+      low = self.binner.bin_d_range(ii+1)[0]
+      high = self.binner.bin_d_range(ii+1)[1]
+      print >> self.out, "     %5.4f -- %5.4f :: %4.3f"%(low, high, d_ncs)
+    print >> self.out
+
 
 class ml_murray_rust(object):
   def __init__(self,
@@ -946,7 +1087,7 @@ class ml_murray_rust(object):
     self.nll = []
     print >> out
     print >> out, "Maximum Likelihood twin fraction determination"
-    print >> out, "   (thinking ... , not crashing .... ) "
+    print >> out, "    Zwart, Read, Grosse-Kunstleve & Adams, to be published."
     for ii in xrange(1,23):
       t=ii/46.0
       self.twin_fraction.append( t )
@@ -993,7 +1134,12 @@ class twin_law_dependend_twin_tests(object):
                out=None,
                verbose=0,
                miller_calc=None,
-               normalized_intensities=None):
+               normalized_intensities=None,
+               ncs_test=None,
+               n_ncs_bins=None):
+
+    if n_ncs_bins is None:
+      n_ncs_bins = 7
 
     acentric_data = miller_array.select_acentric().set_observation_type(
       miller_array)
@@ -1006,6 +1152,7 @@ class twin_law_dependend_twin_tests(object):
                                        acentric_data.space_group(),
                                        acentric_data.anomalous_flag(),
                                        twin_law.operator.as_double_array()[0:9] )
+
     self.twin_completeness = tmp_detwin_object.completeness()
     self.results_available = False
     if self.twin_completeness>0:
@@ -1029,6 +1176,16 @@ class twin_law_dependend_twin_tests(object):
       self.ml_murray_rust = ml_murray_rust( normalized_intensities,
                                             twin_law.operator.as_double_array()[0:9],
                                             out )
+
+      if ncs_test:
+        self.ml_murry_rust_with_ncs = ml_murray_rust_with_ncs( normalized_intensities,
+                                                               twin_law.operator.as_double_array()[0:9],
+                                                               out,
+                                                               n_ncs_bins,
+                                                               miller_calc)
+
+
+
     else:
       print >> out, "The twin completeness is %3.2f. Twin law dependent test not performed."%(self.twin_completeness)
       print >> out
@@ -1434,8 +1591,11 @@ class symmetry_issues(object):
     if self.out == None:
       self.out = sys.stdout
 
+    self.scoring_function = scoring_function
+
     if scoring_function == None:
       self.scoring_function=[ 0.08, 75.0, 0.08, 75.0 ]
+
 
     self.miller_array = miller_array
     self.xs_input = crystal.symmetry(miller_array.unit_cell(),
@@ -1846,6 +2006,7 @@ class r_values(object):
     if self.r_abs_calc is not None:
       print >> self.out , "   R_sq_twin calculated data  : %4.3f"%(self.r_sq_calc)
       print >> self.out
+      """
       print >> self.out , "  The following table can be used in a simple classification scheme"
       print >> self.out,  "  to determine the presence of twinning and or presence of pseudo symmetry."
       print >> self.out
@@ -1859,6 +2020,7 @@ class r_values(object):
                                        postfix=' |')
       print >> self.out, self.table
       print >> self.out
+      """
 
     else:
       print >> self.out , "  No calculated data available."
@@ -1880,7 +2042,20 @@ class twin_analyses(object):
                out=None,
                out_plots = None,
                verbose = 1,
-               miller_calc=None):
+               miller_calc=None,
+               additional_parameters=None):
+
+    symm_issue_table = [0.08, 75, 0.08, 75]
+    perform_ncs_analyses=False
+    n_ncs_bins=7
+
+    if additional_parameters is not None:
+      symm_issue_table = [additional_parameters.missing_symmetry.tanh_location,
+                          additional_parameters.missing_symmetry.tanh_slope,
+                          additional_parameters.missing_symmetry.tanh_location,
+                          additional_parameters.missing_symmetry.tanh_slope ]
+      perform_ncs_analyses = additional_parameters.twinning_with_ncs.perform_analyses
+      n_ncs_bins = additional_parameters.twinning_with_ncs.n_bins
 
     ## If resolution limits are not specified
     ## use full resolution limit
@@ -2022,7 +2197,9 @@ class twin_analyses(object):
         out=out,
         verbose=verbose,
         miller_calc=miller_calc,
-        normalized_intensities=self.normalised_intensities.acentric)
+        normalized_intensities=self.normalised_intensities.acentric,
+        ncs_test=perform_ncs_analyses,
+        n_ncs_bins=n_ncs_bins)
 
       self.twin_law_dependent_analyses.append( tmp_twin_law_stuff )
 
@@ -2075,7 +2252,8 @@ class twin_analyses(object):
       self.check_sg = symmetry_issues(
         miller_array,
         3.0,
-        out=out)
+        out=out,
+        scoring_function=symm_issue_table)
 
     ##--------------------------
     self.twin_summary = twin_results_interpretation(
