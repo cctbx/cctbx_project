@@ -962,6 +962,11 @@ class ml_murray_rust_with_ncs(object):
       self.x.append( 2.0 - ii/20.0 )
 
     self.message()
+
+    term_parameters = scitbx.lbfgs.termination_parameters( max_iterations = 1000 )
+    self.minimizer = scitbx.lbfgs.run(target_evaluator=self, termination_params=term_parameters )
+
+
     scitbx.lbfgs.run(target_evaluator=self)
     self.print_it()
 
