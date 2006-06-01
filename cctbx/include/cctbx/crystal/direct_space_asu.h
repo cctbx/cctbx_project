@@ -236,7 +236,7 @@ namespace direct_space_asu {
 
       /*! box_max() - box_min(). Not available in Python.
        */
-      scitbx::vec3<FloatType> const&
+      scitbx::vec3<FloatType>
       box_span(bool cartesian=false) const
       {
         if (!have_box_) compute_box();
