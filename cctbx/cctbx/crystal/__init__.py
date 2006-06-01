@@ -214,12 +214,12 @@ class symmetry(object):
       max_prime=max_prime,
       assert_shannon_sampling=assert_shannon_sampling)
 
-  def asu_mappings(self, buffer_thickness, is_inside_epsilon=None):
+  def asu_mappings(self, buffer_thickness, asu_is_inside_epsilon=None):
     import cctbx.crystal.direct_space_asu
     return direct_space_asu.asu_mappings(
       space_group=self.space_group(),
       asu=self.direct_space_asu().as_float_asu(
-        is_inside_epsilon=is_inside_epsilon),
+        is_inside_epsilon=asu_is_inside_epsilon),
       buffer_thickness=buffer_thickness)
 
   def average_u_cart(self, u_cart):
@@ -282,6 +282,13 @@ class special_position_settings(symmetry):
   def assert_min_distance_sym_equiv(self):
     return self._assert_min_distance_sym_equiv
 
+  def change_basis(self, cb_op):
+    return special_position_settings(
+      crystal_symmetry=symmetry.change_basis(self, cb_op),
+      min_distance_sym_equiv=self.min_distance_sym_equiv(),
+      u_star_tolerance=self.u_star_tolerance(),
+      assert_min_distance_sym_equiv=self.assert_min_distance_sym_equiv())
+
   def site_symmetry(self, site):
     return sgtbx.site_symmetry(
       self.unit_cell(),
@@ -311,11 +318,12 @@ class special_position_settings(symmetry):
         sites_frac=None,
         sites_cart=None,
         site_symmetry_table=None,
-        is_inside_epsilon=None):
+        asu_is_inside_epsilon=None):
     asu_mappings = symmetry.asu_mappings(self,
       buffer_thickness=buffer_thickness,
-      is_inside_epsilon=is_inside_epsilon)
+      asu_is_inside_epsilon=asu_is_inside_epsilon)
     if (sites_frac is not None or sites_cart is not None):
+      assert sites_frac is None or sites_cart is None
       if (sites_frac is None):
         sites_frac = self.unit_cell().fractionalization_matrix() * sites_cart
         del sites_cart
@@ -326,12 +334,64 @@ class special_position_settings(symmetry):
         site_symmetry_table=site_symmetry_table)
     return asu_mappings
 
-  def change_basis(self, cb_op):
-    return special_position_settings(
-      crystal_symmetry=symmetry.change_basis(self, cb_op),
-      min_distance_sym_equiv=self.min_distance_sym_equiv(),
-      u_star_tolerance=self.u_star_tolerance(),
-      assert_min_distance_sym_equiv=self.assert_min_distance_sym_equiv())
+  def pair_asu_table(self,
+        distance_cutoff,
+        sites_frac=None,
+        sites_cart=None,
+        site_symmetry_table=None,
+        asu_mappings_buffer_thickness=None,
+        asu_is_inside_epsilon=None,
+        distance_cutoff_epsilon=None):
+    assert sites_frac is not None or sites_cart is not None
+    if (asu_mappings_buffer_thickness is None):
+        asu_mappings_buffer_thickness = distance_cutoff
+    asu_mappings = self.asu_mappings(
+      buffer_thickness=asu_mappings_buffer_thickness,
+      sites_frac=sites_frac,
+      sites_cart=sites_cart,
+      site_symmetry_table=site_symmetry_table,
+      asu_is_inside_epsilon=asu_is_inside_epsilon)
+    result = pair_asu_table(asu_mappings=asu_mappings)
+    if (distance_cutoff_epsilon is None):
+        distance_cutoff_epsilon = asu_mappings.asu().is_inside_epsilon()
+    result.add_all_pairs(
+      distance_cutoff=distance_cutoff,
+      epsilon=distance_cutoff_epsilon)
+    return result
+
+  def incremental_pairs(self,
+        distance_cutoff,
+        asu_is_inside_epsilon=None,
+        asu_mappings_buffer_thickness=-1,
+        cubicle_epsilon=-1):
+    result = incremental_pairs(
+      space_group=self.space_group(),
+      asu=self.direct_space_asu().as_float_asu(
+        is_inside_epsilon=asu_is_inside_epsilon),
+      distance_cutoff=distance_cutoff,
+      asu_mappings_buffer_thickness=asu_mappings_buffer_thickness,
+      cubicle_epsilon=cubicle_epsilon)
+    result.min_distance_sym_equiv = self._min_distance_sym_equiv
+    result.assert_min_distance_sym_equiv = self._assert_min_distance_sym_equiv
+    return result
+
+  def site_cluster_analysis(self,
+        distance_cutoff,
+        estimated_reduction_factor=4,
+        asu_is_inside_epsilon=None,
+        asu_mappings_buffer_thickness=-1,
+        cubicle_epsilon=-1):
+    result = site_cluster_analysis(
+      space_group=self.space_group(),
+      asu=self.direct_space_asu().as_float_asu(
+        is_inside_epsilon=asu_is_inside_epsilon),
+      distance_cutoff=distance_cutoff,
+      estimated_reduction_factor=estimated_reduction_factor,
+      asu_mappings_buffer_thickness=asu_mappings_buffer_thickness,
+      cubicle_epsilon=cubicle_epsilon)
+    result.min_distance_sym_equiv = self._min_distance_sym_equiv
+    result.assert_min_distance_sym_equiv = self._assert_min_distance_sym_equiv
+    return result
 
 def correct_special_position(
       crystal_symmetry,

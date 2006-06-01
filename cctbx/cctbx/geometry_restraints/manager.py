@@ -272,7 +272,7 @@ class manager(object):
               buffer_thickness=max(
                 bonded_distance_cutoff,
                 current_nonbonded_distance_cutoff_plus_buffer),
-              is_inside_epsilon=asu_is_inside_epsilon)
+              asu_is_inside_epsilon=asu_is_inside_epsilon)
             asu_mappings.process_sites_frac(
               original_sites=sites_frac,
               site_symmetry_table=self.site_symmetry_table)

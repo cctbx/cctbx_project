@@ -223,7 +223,7 @@ namespace direct_space_asu {
         return box_min_frac_;
       }
 
-      /*! Coordinates of upper-right corner of
+      /*! \brief Coordinates of upper-right corner of
           box covering the asymmetric unit.
        */
       scitbx::vec3<FloatType> const&
@@ -232,6 +232,16 @@ namespace direct_space_asu {
         if (!have_box_) compute_box();
         if (cartesian) return box_max_cart_;
         return box_max_frac_;
+      }
+
+      /*! box_max() - box_min(). Not available in Python.
+       */
+      scitbx::vec3<FloatType> const&
+      box_span(bool cartesian=false) const
+      {
+        if (!have_box_) compute_box();
+        if (cartesian) return box_max_cart_ - box_min_cart_;
+        return box_max_frac_ - box_min_frac_;
       }
 
     protected:
@@ -408,8 +418,7 @@ namespace direct_space_asu {
         mappings_const_ref_(mappings_.const_ref()),
         n_sites_in_asu_and_buffer_(0),
         mapped_sites_min_(0,0,0),
-        mapped_sites_max_(0,0,0),
-        is_locked_(false)
+        mapped_sites_max_(0,0,0)
       {}
 
       //! Pre-allocates memory for mappings(); for efficiency.
@@ -418,6 +427,17 @@ namespace direct_space_asu {
       {
         site_symmetry_table_.reserve(n_sites_final);
         mappings_.reserve(n_sites_final);
+        mappings_const_ref_ = mappings_.const_ref();
+      }
+
+      //! Support for site_cluster_analysis.
+      /*! Not available in Python.
+       */
+      void
+      discard_last()
+      {
+        site_symmetry_table_.discard_last();
+        mappings_.pop_back();
         mappings_const_ref_ = mappings_.const_ref();
       }
 
@@ -458,13 +478,14 @@ namespace direct_space_asu {
         fractional<FloatType> const& original_site,
         FloatType const& min_distance_sym_equiv=0.5)
       {
-        sgtbx::site_symmetry site_symmetry(
-          asu_.unit_cell(),
-          space_group_,
+        return process(
           original_site,
-          min_distance_sym_equiv,
-          true);
-        return process(original_site, site_symmetry);
+          sgtbx::site_symmetry(
+            asu_.unit_cell(),
+            space_group_,
+            original_site,
+            min_distance_sym_equiv,
+            /*assert_min_distance_sym_equiv*/ true));
       }
 
       //! Processes one site and appends the results to mappings().
@@ -473,7 +494,6 @@ namespace direct_space_asu {
         fractional<FloatType> const& original_site,
         sgtbx::site_symmetry_ops const& site_symmetry_ops)
       {
-        CCTBX_ASSERT(!is_locked_);
         CCTBX_ASSERT(mappings_.begin()
                   == mappings_const_ref_.begin());
         mappings_.push_back(array_of_mappings_for_one_site());
@@ -601,16 +621,6 @@ namespace direct_space_asu {
        */
       std::size_t
       n_sites_in_asu_and_buffer() const { return n_sites_in_asu_and_buffer_; }
-
-      //! Locks the array of mappings().
-      /*! An exception is raised if process() is called subsequently.
-       */
-      void
-      lock() { is_locked_ = true; }
-
-      //! True after lock() was called.
-      bool
-      is_locked() const { return is_locked_; }
 
       //! Accumulated mappings due to repeated calls of process().
       array_of_array_of_mappings_for_one_site const&
@@ -874,7 +884,6 @@ namespace direct_space_asu {
       std::size_t n_sites_in_asu_and_buffer_;
       cartesian<FloatType> mapped_sites_min_;
       cartesian<FloatType> mapped_sites_max_;
-      bool is_locked_;
       mutable std::vector<scitbx::mat3<FloatType> > r_cart_;
       mutable std::vector<scitbx::vec3<FloatType> > t_cart_;
       mutable std::vector<scitbx::mat3<FloatType> > r_inv_cart_;

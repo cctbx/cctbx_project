@@ -2,83 +2,9 @@
 #define CCTBX_CRYSTAL_NEIGHBORS_FAST_H
 
 #include <cctbx/crystal/neighbors_simple.h>
-#include <scitbx/array_family/versa.h>
-#include <scitbx/array_family/accessors/c_grid.h>
-#include <cstdio>
+#include <cctbx/crystal/cubicles.h>
 
 namespace cctbx { namespace crystal { namespace neighbors {
-
-  template <typename CubicleContentType, typename FloatType=double>
-  struct cubicles
-  {
-    typedef scitbx::math::float_int_conversions<FloatType, int> fic;
-
-    //! Default constructor. Some data members are not initialized!
-    cubicles() {}
-
-    cubicles(
-      scitbx::vec3<FloatType> const& space_min_,
-      scitbx::vec3<FloatType> const& space_span,
-      FloatType const& cubicle_edge_)
-    :
-      space_min(space_min_),
-      cubicle_edge(cubicle_edge_)
-    {
-      CCTBX_ASSERT(cubicle_edge > 0);
-      af::c_grid<3, unsigned> n_cubicles;
-      for(std::size_t i=0;i<3;i++) {
-        n_cubicles[i] = static_cast<unsigned>(
-          std::max(1, fic::iceil(space_span[i] / cubicle_edge)));
-      }
-      try {
-        memory.resize(n_cubicles);
-      }
-      catch(const std::bad_alloc&) {
-        char buf[512];
-        std::sprintf(buf,
-          "Not enough memory for cubicles.\n"
-          "  This may be due to unreasonable parameters:\n"
-          "    cubicle_edge=%.6g\n"
-          "    space_span=(%.6g,%.6g,%.6g)\n"
-          "    n_cubicles=(%u,%u,%u)",
-          cubicle_edge,
-          space_span[0], space_span[1], space_span[2],
-          n_cubicles[0], n_cubicles[1], n_cubicles[2]);
-        throw error(buf);
-      }
-      ref = memory.ref();
-    }
-
-    scitbx::vec3<unsigned>
-    i_cubicle(scitbx::vec3<FloatType> const& site) const
-    {
-      scitbx::vec3<FloatType> delta = site - space_min;
-      scitbx::vec3<unsigned> result;
-      for(std::size_t i=0;i<3;i++) {
-        result[i] = static_cast<unsigned>(
-          fic::ifloor(delta[i] / cubicle_edge));
-        CCTBX_ASSERT(result[i] < ref.accessor()[i]);
-      }
-      return result;
-    }
-
-    CubicleContentType const&
-    cubicle(scitbx::vec3<FloatType> const& site) const
-    {
-      return ref(i_cubicle(site));
-    }
-
-    CubicleContentType&
-    cubicle(scitbx::vec3<FloatType> const& site)
-    {
-      return ref(i_cubicle(site));
-    }
-
-    scitbx::vec3<FloatType> space_min;
-    FloatType cubicle_edge;
-    af::versa<CubicleContentType, af::c_grid<3, unsigned> > memory;
-    af::ref<CubicleContentType, af::c_grid<3, unsigned> > ref;
-  };
 
   //! Fast algorithm for generating pairs of next neighbors.
   template <typename FloatType=double, typename IntShiftType=int>
@@ -128,13 +54,13 @@ namespace cctbx { namespace crystal { namespace neighbors {
         cubicles_(
           asu_mappings.get()->mapped_sites_min(),
           asu_mappings.get()->mapped_sites_span(),
-          distance_cutoff * (1 + epsilon)),
+          distance_cutoff,
+          epsilon),
         n_boxes_(cubicles_.ref.accessor())
       {
         CCTBX_ASSERT(distance_cutoff > 0);
         CCTBX_ASSERT(epsilon > 0);
         CCTBX_ASSERT(epsilon < 0.01);
-        asu_mappings->lock();
         this->asu_mappings_owner_ = asu_mappings;
         this->asu_mappings_ = asu_mappings.get();
         this->distance_cutoff_sq_ = distance_cutoff*distance_cutoff;
@@ -144,8 +70,9 @@ namespace cctbx { namespace crystal { namespace neighbors {
         direct_space_asu::asu_mapping_index mi;
         for(mi.i_seq=0;mi.i_seq<mappings.size();mi.i_seq++) {
           for(mi.i_sym=0; mi.i_sym<mappings[mi.i_seq].size(); mi.i_sym++) {
-            cubicles_.cubicle(
-              mappings[mi.i_seq][mi.i_sym].mapped_site()).push_back(mi);
+            std::size_t i1d_cub = cubicles_.ref.accessor()(
+              cubicles_.i_cubicle(mappings[mi.i_seq][mi.i_sym].mapped_site()));
+            cubicles_.ref[i1d_cub].push_back(mi);
           }
         }
         restart();
@@ -252,12 +179,14 @@ namespace cctbx { namespace crystal { namespace neighbors {
       void
       incr(bool start);
 
-      void
-      assign_pair()
+      bool
+      is_active_pair(
+        unsigned i_seq,
+        direct_space_asu::asu_mapping_index const& other) const
       {
-        this->pair_.i_seq = boxes_ii_->i_seq;
-        this->pair_.j_seq = boxes_ji_->i_seq;
-        this->pair_.j_sym = boxes_ji_->i_sym;
+        if (other.i_seq >  i_seq) return true;
+        if (other.i_seq == i_seq) return (other.i_sym != 0);
+        return (!this->minimal_ && other.i_sym != 0);
       }
   };
 
@@ -292,17 +221,10 @@ namespace cctbx { namespace crystal { namespace neighbors {
           for(boxes_ji_=boxes_j_->begin();
               boxes_ji_!=boxes_j_->end();
               boxes_ji_++) {
-            if (boxes_ji_->i_seq == boxes_ii_->i_seq) {
-              if (boxes_ji_->i_sym == 0) continue;
-              assign_pair();
-            }
-            else if (!this->minimal_ && boxes_ji_->i_sym != 0) {
-              assign_pair();
-            }
-            else {
-              if (boxes_ji_->i_seq < boxes_ii_->i_seq) continue;
-              assign_pair();
-            }
+            if (!is_active_pair(boxes_ii_->i_seq, *boxes_ji_)) continue;
+            this->pair_.i_seq = boxes_ii_->i_seq;
+            this->pair_.j_seq = boxes_ji_->i_seq;
+            this->pair_.j_sym = boxes_ji_->i_sym;
             this->pair_.diff_vec =
                mappings[this->pair_.j_seq][this->pair_.j_sym].mapped_site()
              - mappings[this->pair_.i_seq][0].mapped_site();

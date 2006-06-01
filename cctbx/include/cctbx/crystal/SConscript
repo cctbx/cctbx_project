@@ -7,7 +7,9 @@ env.SharedLibrary(target="#lib/cctbx_crystal_ext", source=[
   "close_packing_bpl.cpp",
   "coordination_sequences_bpl.cpp",
   "direct_space_asu_bpl.cpp",
+  "incremental_pairs_bpl.cpp",
   "neighbors_bpl.cpp",
   "pair_tables_bpl.cpp",
+  "site_cluster_analysis_bpl.cpp",
   "symmetry_bpl.cpp",
 ])

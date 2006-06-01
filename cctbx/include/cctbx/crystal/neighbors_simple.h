@@ -22,11 +22,7 @@ namespace neighbors {
       simple_pair_generator() {}
 
       //! Initialization of the generator loop.
-      /*! asu_mappings must exist and must not be changed during
-          the lifetime of this instance (asu_mappings->lock()
-          is called).
-
-          distance_cutoff must be >= 0. If 0 all pairs of sites
+      /*! distance_cutoff must be >= 0. If 0 all pairs of sites
           in the asymmetric unit and the surrounding buffer
           region are generated.
 
@@ -48,7 +44,6 @@ namespace neighbors {
         minimal_(minimal)
       {
         CCTBX_ASSERT(distance_cutoff >= 0);
-        asu_mappings->lock();
         restart();
       }
 
@@ -156,7 +151,8 @@ namespace neighbors {
 
     protected:
       boost::shared_ptr<asu_mappings_t> asu_mappings_owner_;
-      const direct_space_asu::asu_mappings<FloatType>* asu_mappings_;
+      const asu_mappings_t* asu_mappings_;
+      unsigned mappings_size_;
       FloatType distance_cutoff_sq_;
       bool minimal_;
       bool at_end_;
@@ -178,13 +174,14 @@ namespace neighbors {
       if (!is_swapped_) goto continue_after_return;
       goto continue_after_return_swapped;
     }
+    mappings_size_ = static_cast<unsigned>(mappings.size());
     pair_.dist_sq  = -1;
     pair_.diff_vec = cartesian<FloatType>(0,0,0);
     for(pair_.i_seq=0;
-        pair_.i_seq<mappings.size();
+        pair_.i_seq<mappings_size_;
         pair_.i_seq++) {
       for(pair_.j_seq=pair_.i_seq;
-          pair_.j_seq<mappings.size();
+          pair_.j_seq<mappings_size_;
           pair_.j_seq++) {
         for(pair_.j_sym=(pair_.i_seq == pair_.j_seq ? 1 : 0);
             pair_.j_sym<mappings[pair_.j_seq].size();

@@ -1,0 +1,82 @@
+#include <cctbx/boost_python/flex_fwd.h>
+
+#include <boost/python/class.hpp>
+#include <cctbx/crystal/incremental_pairs.h>
+
+namespace cctbx { namespace crystal {
+namespace {
+
+  struct incremental_pairs_wrappers
+  {
+    typedef incremental_pairs<> w_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      class_<w_t>("incremental_pairs", no_init)
+        .def(init<
+          sgtbx::space_group const&,
+          direct_space_asu::float_asu<> const&,
+          double const&,
+          optional<
+            double const&,
+            double const&> >((
+              arg_("space_group"),
+              arg_("asu"),
+              arg_("distance_cutoff"),
+              arg_("asu_mappings_buffer_thickness")=-1,
+              arg_("cubicle_epsilon")=-1)))
+        .def_readwrite("min_distance_sym_equiv",
+                  &w_t::min_distance_sym_equiv)
+        .def_readwrite("assert_min_distance_sym_equiv",
+                  &w_t::assert_min_distance_sym_equiv)
+        .def("asu_mappings", &w_t::asu_mappings)
+        .def("pair_asu_table", &w_t::pair_asu_table)
+        .def("process_site_frac",
+          (void(w_t::*)(fractional<> const&, sgtbx::site_symmetry_ops const&))
+            &w_t::process_site_frac, (
+              arg_("original_site"), arg_("site_symmetry_ops")))
+        .def("process_site_frac",
+          (void(w_t::*)(fractional<> const&))
+            &w_t::process_site_frac, (
+              arg_("original_site")))
+        .def("process_sites_frac",
+          (void(w_t::*)(
+            af::const_ref<scitbx::vec3<double> > const&,
+            sgtbx::site_symmetry_table const&))
+              &w_t::process_sites_frac, (
+                arg_("original_sites"), arg_("site_symmetry_table")))
+        .def("process_sites_frac",
+          (void(w_t::*)(af::const_ref<scitbx::vec3<double> > const&))
+            &w_t::process_sites_frac, (
+              arg_("original_sites")))
+        .def("process_sites_cart",
+          (void(w_t::*)(
+            af::const_ref<scitbx::vec3<double> > const&,
+            sgtbx::site_symmetry_table const&))
+              &w_t::process_sites_cart, (
+                arg_("original_sites"), arg_("site_symmetry_table")))
+        .def("process_sites_cart",
+          (void(w_t::*)(af::const_ref<scitbx::vec3<double> > const&))
+            &w_t::process_sites_cart, (
+              arg_("original_sites")))
+        .def("cubicle_size_counts", &w_t::cubicle_size_counts)
+      ;
+    }
+  };
+
+  void
+  wrap_all()
+  {
+    incremental_pairs_wrappers::wrap();
+  }
+
+} // namespace <anonymous>
+
+namespace boost_python {
+
+  void
+  wrap_incremental_pairs() { wrap_all(); }
+
+}}} // namespace cctbx::crystal::boost_python

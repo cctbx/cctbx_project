@@ -665,10 +665,10 @@ class structure(crystal.special_position_settings):
         if(sc.flags.grad_fdp()      ): result_ +=1
     return result_
 
-  def asu_mappings(self, buffer_thickness, is_inside_epsilon=None):
+  def asu_mappings(self, buffer_thickness, asu_is_inside_epsilon=None):
     result = crystal.symmetry.asu_mappings(self,
       buffer_thickness=buffer_thickness,
-      is_inside_epsilon=is_inside_epsilon)
+      asu_is_inside_epsilon=asu_is_inside_epsilon)
     ext.asu_mappings_process(
       asu_mappings=result,
       scatterers=self._scatterers,
@@ -678,12 +678,13 @@ class structure(crystal.special_position_settings):
   def pair_asu_table(self,
         distance_cutoff=None,
         asu_mappings_buffer_thickness=None,
-        asu_mappings_is_inside_epsilon=None):
+        asu_is_inside_epsilon=None):
     assert distance_cutoff is not None or asu_mappings_buffer_thickness is not None
     if (asu_mappings_buffer_thickness is None):
       asu_mappings_buffer_thickness = distance_cutoff
     asu_mappings = self.asu_mappings(
-      buffer_thickness=asu_mappings_buffer_thickness)
+      buffer_thickness=asu_mappings_buffer_thickness,
+      asu_is_inside_epsilon=asu_is_inside_epsilon)
     pair_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
     if (distance_cutoff is not None):
       pair_asu_table.add_all_pairs(distance_cutoff=distance_cutoff)
@@ -692,7 +693,7 @@ class structure(crystal.special_position_settings):
   def show_distances(self,
         distance_cutoff=None,
         asu_mappings_buffer_thickness=None,
-        asu_mappings_is_inside_epsilon=None,
+        asu_is_inside_epsilon=None,
         pair_asu_table=None,
         show_cartesian=False,
         keep_pair_asu_table=False,
@@ -702,7 +703,7 @@ class structure(crystal.special_position_settings):
       pair_asu_table = self.pair_asu_table(
         distance_cutoff=distance_cutoff,
         asu_mappings_buffer_thickness=asu_mappings_buffer_thickness,
-        asu_mappings_is_inside_epsilon=asu_mappings_is_inside_epsilon)
+        asu_is_inside_epsilon=asu_is_inside_epsilon)
     return pair_asu_table.show_distances(
       site_labels=self.scatterers().extract_labels(),
       sites_frac=self.sites_frac(),

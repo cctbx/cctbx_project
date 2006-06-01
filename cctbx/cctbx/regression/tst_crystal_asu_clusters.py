@@ -58,11 +58,10 @@ def exercise_crystallographic():
     (0.1, 0.1, 0.0),
     (0.9, 0.1, 0.0)])
   for distance_cutoff in [1,2]:
-    asu_mappings = crystal_symmetry.asu_mappings(
-      buffer_thickness=distance_cutoff).process_sites_frac(
-        original_sites=sites_frac)
-    pair_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
-    pair_asu_table.add_all_pairs(distance_cutoff=distance_cutoff)
+    pair_asu_table = \
+      crystal_symmetry.special_position_settings().pair_asu_table(
+        distance_cutoff=distance_cutoff,
+        sites_frac=sites_frac)
     for strictly_in_asu in [True, False]:
       cluster = crystal.asu_clusters(
         pair_asu_table=pair_asu_table,

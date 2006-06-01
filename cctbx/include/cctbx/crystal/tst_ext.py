@@ -5,7 +5,7 @@ import cctbx.crystal.direct_space_asu
 from cctbx import uctbx
 from cctbx.array_family import flex
 from scitbx import matrix
-from libtbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal, show_diff
 from libtbx.itertbx import count
 from libtbx import adopt_init_args
 from cStringIO import StringIO
@@ -122,12 +122,6 @@ def exercise_direct_space_asu():
     sites_cart=asu_mappings.asu().unit_cell().orthogonalization_matrix()
               *sites_frac)) == [False, True]
   assert asu_mappings.n_sites_in_asu_and_buffer() == 11
-  assert not asu_mappings.is_locked()
-  asu_mappings.lock()
-  assert asu_mappings.is_locked()
-  try: asu_mappings.process(original_site=[0,0,0])
-  except RuntimeError, e: assert str(e).find("is_locked") > 0
-  else: raise RuntimeError("Exception expected.")
   mappings = asu_mappings.mappings()[0]
   assert len(mappings) == 5
   am = mappings[0]
@@ -222,14 +216,12 @@ def exercise_direct_space_asu():
       asu_mappings=asu_mappings,
       distance_cutoff=100,
       minimal=False)
-    assert simple_pair_generator.asu_mappings().is_locked()
     assert approx_equal(simple_pair_generator.distance_cutoff_sq(), 100*100)
     fast_pair_generator = crystal.neighbors_fast_pair_generator(
       asu_mappings=asu_mappings,
       distance_cutoff=100,
       minimal=False,
       epsilon=1.e-6)
-    assert fast_pair_generator.asu_mappings().is_locked()
     assert approx_equal(fast_pair_generator.distance_cutoff_sq(), 100*100)
     assert approx_equal(fast_pair_generator.epsilon()/1.e-6, 1)
     assert fast_pair_generator.n_boxes() == (1,1,1)
@@ -428,10 +420,10 @@ def exercise_pair_tables():
   structure = trial_structure()
   asu_mappings = structure.asu_mappings(buffer_thickness=3.5)
   asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
-  assert asu_table.asu_mappings().is_locked()
   assert asu_table.table().size() == 3
   assert not asu_table.contains(i_seq=0, j_seq=1, j_sym=2)
   assert asu_table.pair_counts().all_eq(0)
+  assert list(asu_table.cluster_pivot_selection()) == [0,1,2]
   assert asu_table.add_all_pairs(distance_cutoff=3.5) is asu_table
   assert [d.size() for d in asu_table.table()] == [2,3,2]
   assert asu_table.add_all_pairs(3.5, epsilon=1.e-6) is asu_table
@@ -450,6 +442,7 @@ def exercise_pair_tables():
     for pair in pair_generator:
       asu_table.add_pair(pair=pair)
     asu_table.pair_counts().all_eq(4)
+    assert asu_table.cluster_pivot_selection().size() == 0
     check_pair_asu_table(asu_table, expected_asu_pairs)
   for p in expected_asu_pairs:
     assert asu_table.contains(i_seq=p[0], j_seq=p[1], j_sym=p[2])
@@ -927,12 +920,131 @@ def exercise_symmetry():
   assert str(sgtbx.space_group_info(
     group=symmetry_cb.space_group())) == "P 2 1 1"
 
+def exercise_incremental_pairs_and_site_cluster_analysis():
+  sps = crystal.symmetry(
+    unit_cell=(10, 10, 10, 90, 90, 90),
+    space_group_symbol="P 1 1 2").special_position_settings()
+  sites_frac = flex.vec3_double([
+    (0.01, 0.49, 0.0),
+    (0.1, 0.6, 0.0)])
+  #
+  incremental_pairs = sps.incremental_pairs(distance_cutoff=2)
+  assert approx_equal(incremental_pairs.min_distance_sym_equiv, 0.5)
+  assert incremental_pairs.assert_min_distance_sym_equiv
+  assert approx_equal(incremental_pairs.asu_mappings().buffer_thickness(), 2)
+  assert incremental_pairs.asu_mappings().mappings().size() == 0
+  assert incremental_pairs.pair_asu_table().table().size() == 0
+  #
+  incremental_pairs.process_site_frac(original_site=sites_frac[0])
+  assert incremental_pairs.asu_mappings().mappings().size() == 1
+  assert str(incremental_pairs.asu_mappings().special_op(i_seq=0)) == "0,1/2,z"
+  assert incremental_pairs.pair_asu_table().table().size() == 1
+  out = StringIO()
+  incremental_pairs.pair_asu_table().show(f=out)
+  assert not show_diff(out.getvalue(), """\
+i_seq: 0
+""")
+  #
+  incremental_pairs.process_site_frac(
+    original_site=sites_frac[1],
+    site_symmetry_ops=sps.site_symmetry(site=sites_frac[1]))
+  am = incremental_pairs.asu_mappings()
+  assert am.mappings().size() == 2
+  assert am.site_symmetry_table().indices().size() == 2
+  assert str(incremental_pairs.asu_mappings().special_op(i_seq=1)) == "x,y,z"
+  assert incremental_pairs.pair_asu_table().table().size() == 2
+  out = StringIO()
+  incremental_pairs.pair_asu_table().show(f=out)
+  expected_out = """\
+i_seq: 0
+  j_seq: 1
+    j_syms: [0, 2]
+i_seq: 1
+  j_seq: 0
+    j_syms: [0]
+"""
+  assert not show_diff(out.getvalue(), expected_out)
+  assert incremental_pairs.cubicle_size_counts().items() == [(0,239), (1,6)]
+  site_symmetry_table = incremental_pairs.asu_mappings().site_symmetry_table()
+  sites_cart = sps.unit_cell().orthogonalization_matrix() * sites_frac
+  for i_pass in xrange(4):
+    ipv = sps.incremental_pairs(distance_cutoff=2)
+    if   (i_pass == 0):
+      ipv.process_sites_frac(original_sites=sites_frac)
+    elif (i_pass == 1):
+      ipv.process_sites_frac(
+        original_sites=sites_frac,
+        site_symmetry_table=site_symmetry_table)
+    elif (i_pass == 2):
+      ipv.process_sites_cart(original_sites=sites_cart)
+    elif (i_pass == 3):
+      ipv.process_sites_cart(
+        original_sites=sites_cart,
+        site_symmetry_table=site_symmetry_table)
+    out = StringIO()
+    ipv.pair_asu_table().show(f=out)
+    assert not show_diff(out.getvalue(), expected_out)
+  #
+  site_cluster_analysis = sps.site_cluster_analysis(distance_cutoff=2)
+  assert site_cluster_analysis.estimated_reduction_factor == 4
+  assert approx_equal(site_cluster_analysis.min_distance_sym_equiv, 0.5)
+  assert site_cluster_analysis.assert_min_distance_sym_equiv
+  assert approx_equal(
+    site_cluster_analysis.asu_mappings().buffer_thickness(), 2)
+  assert site_cluster_analysis.asu_mappings().mappings().size() == 0
+  assert site_cluster_analysis.process_site_frac(original_site=sites_frac[0])
+  assert site_cluster_analysis.asu_mappings().mappings().size() == 1
+  assert not site_cluster_analysis.process_site_frac(
+    original_site=sites_frac[1],
+    site_symmetry_ops=sps.site_symmetry(site=sites_frac[1]))
+  am = site_cluster_analysis.asu_mappings()
+  assert am.mappings().size() == 1
+  assert am.site_symmetry_table().indices().size() == 1
+  #
+  for method,sites_array in [("process_sites_frac", sites_frac),
+                             ("process_sites_cart", sites_cart)]:
+    for max_clusters in [0,1]:
+      site_cluster_analysis = sps.site_cluster_analysis(distance_cutoff=2)
+      selection = getattr(site_cluster_analysis, method)(
+        original_sites=sites_array,
+        site_symmetry_table=site_symmetry_table,
+        max_clusters=max_clusters)
+      assert list(selection) == [0]
+    site_cluster_analysis = sps.site_cluster_analysis(distance_cutoff=1)
+    selection = getattr(site_cluster_analysis, method)(
+      original_sites=sites_array,
+      site_symmetry_table=site_symmetry_table)
+    assert list(selection) == [0,1]
+    site_cluster_analysis = sps.site_cluster_analysis(distance_cutoff=1)
+    selection = getattr(site_cluster_analysis, method)(
+      original_sites=sites_array,
+      site_symmetry_table=site_symmetry_table,
+      max_clusters=1)
+    assert list(selection) == [0]
+    #
+    for max_clusters in [0,1]:
+      site_cluster_analysis = sps.site_cluster_analysis(distance_cutoff=2)
+      selection = getattr(site_cluster_analysis, method)(
+        original_sites=sites_array,
+        max_clusters=max_clusters)
+      assert list(selection) == [0]
+    site_cluster_analysis = sps.site_cluster_analysis(distance_cutoff=1)
+    selection = getattr(site_cluster_analysis, method)(
+      original_sites=sites_array)
+    assert list(selection) == [0,1]
+    site_cluster_analysis = sps.site_cluster_analysis(distance_cutoff=1)
+    selection = getattr(site_cluster_analysis, method)(
+      original_sites=sites_array,
+      max_clusters=1)
+    assert list(selection) == [0]
+
 def run():
   exercise_direct_space_asu()
   exercise_pair_tables()
   exercise_coordination_sequences_simple()
   exercise_coordination_sequences_shell_asu_tables()
   exercise_symmetry()
+  exercise_incremental_pairs_and_site_cluster_analysis()
   print "OK"
 
 if (__name__ == "__main__"):
