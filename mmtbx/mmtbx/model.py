@@ -120,9 +120,6 @@ class manager(object):
     return self.xray_structure.select(~self.solvent_selection)
 
   def update(self, selection):
-    print "#"*100
-    print self.anisotropic_flags.size() , selection.size()
-
     self.xray_structure.select_inplace(selection)
     new_atom_attributes_list = []
     rigid_body_selections = []
@@ -397,19 +394,9 @@ class manager(object):
               flex.sqrt(mac.difference_vectors_cart(self.xray_structure).dot())
     assert approx_equal(flex.mean_default(atom_atom_distances,0), 0)
 
-    print self.xray_structure.scatterers().size()
-
     self.xray_structure = self.xray_structure.concatenate(sol)
 
-    print "."*100
-    print self.anisotropic_flags.size() , solvent_selection.size(), \
-          self.xray_structure.scatterers().size()
-
     self.anisotropic_flags.extend(flex.bool(sol.scatterers().size(), False))
-
-    print self.anisotropic_flags.size() , solvent_selection.size(), \
-          self.xray_structure.scatterers().size()
-
 
     # XXX TODO NCS restraints
     # XXX RALF: throw exception if self.reduced_solvent_selection affects NCS
