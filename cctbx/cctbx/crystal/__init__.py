@@ -377,6 +377,7 @@ class special_position_settings(symmetry):
 
   def site_cluster_analysis(self,
         distance_cutoff,
+        general_positions_only=False,
         estimated_reduction_factor=4,
         asu_is_inside_epsilon=None,
         asu_mappings_buffer_thickness=-1,
@@ -386,6 +387,7 @@ class special_position_settings(symmetry):
       asu=self.direct_space_asu().as_float_asu(
         is_inside_epsilon=asu_is_inside_epsilon),
       distance_cutoff=distance_cutoff,
+      general_positions_only=general_positions_only,
       estimated_reduction_factor=estimated_reduction_factor,
       asu_mappings_buffer_thickness=asu_mappings_buffer_thickness,
       cubicle_epsilon=cubicle_epsilon)

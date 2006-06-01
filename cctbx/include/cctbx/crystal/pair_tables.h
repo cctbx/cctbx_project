@@ -311,12 +311,31 @@ namespace cctbx { namespace crystal {
           (e.g. peak height), most significant first.
        */
       af::shared<std::size_t>
-      cluster_pivot_selection() const
+      cluster_pivot_selection(
+        bool general_positions_only=false,
+        std::size_t max_clusters=0,
+        unsigned estimated_reduction_factor=4) const
       {
         af::const_ref<pair_asu_dict> tab = table_.const_ref();
-        af::shared<std::size_t> result((af::reserve((tab.size()+3)/4)));
+        af::shared<std::size_t> result;
+        if (max_clusters > 0) {
+          result.reserve(max_clusters);
+        }
+        else if (estimated_reduction_factor > 1) {
+          result.reserve(  (tab.size()+estimated_reduction_factor-1)
+                         / estimated_reduction_factor);
+        }
+        else {
+          result.reserve(tab.size());
+        }
         boost::scoped_array<bool> keep_flags(new bool[tab.size()]);
         for(unsigned i_seq=0;i_seq<tab.size();i_seq++) {
+          if (general_positions_only
+              && asu_mappings_->site_symmetry_table()
+                   .is_special_position(i_seq)) {
+            keep_flags[i_seq] = false;
+            continue;
+          }
           bool keep = true;
           pair_asu_dict const& dict = tab[i_seq];
           for(pair_asu_dict::const_iterator
@@ -330,7 +349,10 @@ namespace cctbx { namespace crystal {
             }
           }
           keep_flags[i_seq] = keep;
-          if (keep) result.push_back(i_seq);
+          if (keep) {
+            result.push_back(i_seq);
+            if (result.size() == max_clusters) break;
+          }
         }
         return result;
       }

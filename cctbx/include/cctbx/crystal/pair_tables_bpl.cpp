@@ -55,6 +55,9 @@ namespace {
     typedef pair_asu_table<> w_t;
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
+      cluster_pivot_selection_overloads, cluster_pivot_selection, 0, 3)
+
+    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
       add_all_pairs_overloads, add_all_pairs, 1, 2)
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
@@ -84,7 +87,11 @@ namespace {
         .def("__eq__", &w_t::operator==)
         .def("__ne__", &w_t::operator!=)
         .def("pair_counts", &w_t::pair_counts)
-        .def("cluster_pivot_selection", &w_t::cluster_pivot_selection)
+        .def("cluster_pivot_selection", &w_t::cluster_pivot_selection,
+          cluster_pivot_selection_overloads((
+            arg_("general_positions_only")=false,
+            arg_("max_clusters")=0,
+            arg_("estimated_reduction_factor")=4)))
         .def("add_all_pairs", &w_t::add_all_pairs,
           add_all_pairs_overloads((
             arg_("distance_cutoff"), arg_("epsilon")=1.e-6))[return_self<>()])
