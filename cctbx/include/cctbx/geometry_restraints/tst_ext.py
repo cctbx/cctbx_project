@@ -209,7 +209,6 @@ def exercise_bond():
   #
   sorted_asu_proxies = geometry_restraints.bond_sorted_asu_proxies(
     asu_mappings=asu_mappings)
-  assert sorted_asu_proxies.asu_mappings().is_locked()
   sorted_asu_proxies.push_back(proxy=sym_proxies[0])
   assert sorted_asu_proxies.simple.size() == 0
   assert sorted_asu_proxies.asu.size() == 1
@@ -461,7 +460,6 @@ def exercise_nonbonded():
   #
   sorted_asu_proxies = geometry_restraints.nonbonded_sorted_asu_proxies(
     asu_mappings=asu_mappings)
-  assert sorted_asu_proxies.asu_mappings().is_locked()
   assert not sorted_asu_proxies.process(proxy=proxies[0])
   assert not sorted_asu_proxies.process(proxy=sym_proxies[0])
   assert sorted_asu_proxies.simple.size() == 2

@@ -149,6 +149,19 @@ namespace cctbx { namespace sgtbx {
         indices_const_ref_ = indices_.const_ref();
       }
 
+      //! Support for asu_mappings::discard_last().
+      /*! Not available in Python.
+       */
+      void
+      discard_last()
+      {
+        if (indices_const_ref_.back() != 0) {
+          special_position_indices_.pop_back();
+        }
+        indices_.pop_back();
+        indices_const_ref_ = indices_.const_ref();
+      }
+
       //! Creates independent copy.
       site_symmetry_table
       deep_copy() const

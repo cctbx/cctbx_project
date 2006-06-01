@@ -2,6 +2,7 @@
 #define CCTBX_CRYSTAL_PAIR_TABLES_H
 
 #include <cctbx/crystal/neighbors_fast.h>
+#include <boost/scoped_array.hpp>
 #include <map>
 
 namespace cctbx { namespace crystal {
@@ -189,12 +190,22 @@ namespace cctbx { namespace crystal {
         asu_mappings_owner_(asu_mappings),
         asu_mappings_(asu_mappings.get()),
         table_(asu_mappings->mappings_const_ref().size())
+      {}
+
+      //! Support for incremental_pairs. Not available from Python.
+      void
+      reserve(std::size_t n_sites_final) { table_.reserve(n_sites_final); }
+
+      //! Support for incremental_pairs. Not available from Python.
+      void
+      grow(std::size_t number_of_additional_entries)
       {
-        asu_mappings->lock();
+        table_.resize(table_.size()+number_of_additional_entries);
       }
 
       //! Instance as passed to the constructor.
-      boost::shared_ptr<direct_space_asu::asu_mappings<> >
+      boost::shared_ptr<
+        direct_space_asu::asu_mappings<FloatType, IntShiftType> >
       asu_mappings() const { return asu_mappings_owner_; }
 
       //! Access to raw table.
@@ -295,6 +306,35 @@ namespace cctbx { namespace crystal {
         return result;
       }
 
+      //! Returns selection for cluster pivots.
+      /*! The list of sites is assumed to be ordered by significance
+          (e.g. peak height), most significant first.
+       */
+      af::shared<std::size_t>
+      cluster_pivot_selection() const
+      {
+        af::const_ref<pair_asu_dict> tab = table_.const_ref();
+        af::shared<std::size_t> result((af::reserve((tab.size()+3)/4)));
+        boost::scoped_array<bool> keep_flags(new bool[tab.size()]);
+        for(unsigned i_seq=0;i_seq<tab.size();i_seq++) {
+          bool keep = true;
+          pair_asu_dict const& dict = tab[i_seq];
+          for(pair_asu_dict::const_iterator
+                dict_i=dict.begin();
+                dict_i!=dict.end();
+                dict_i++) {
+            unsigned j_seq = dict_i->first;
+            if (j_seq == i_seq || (j_seq < i_seq && keep_flags[j_seq])) {
+              keep = false;
+              break;
+            }
+          }
+          keep_flags[i_seq] = keep;
+          if (keep) result.push_back(i_seq);
+        }
+        return result;
+      }
+
       /*! \brief Uses neighbors::fast_pair_generator to add all pairs with
           distances <= distance_cutoff*(1+epsilon).
        */
@@ -305,11 +345,10 @@ namespace cctbx { namespace crystal {
         FloatType const& distance_cutoff,
         FloatType const& epsilon=1.e-6)
       {
-        bool minimal = true;
         neighbors::fast_pair_generator<FloatType, IntShiftType> pair_generator(
           asu_mappings_owner_,
           distance_cutoff*(1+epsilon),
-          minimal);
+          /*minimal*/ true);
         while (!pair_generator.at_end()) {
           add_pair(pair_generator.next());
         }
@@ -493,8 +532,11 @@ namespace cctbx { namespace crystal {
       };
 
     protected:
-      boost::shared_ptr<direct_space_asu::asu_mappings<> > asu_mappings_owner_;
-      const direct_space_asu::asu_mappings<>* asu_mappings_;
+      boost::shared_ptr<
+        direct_space_asu::asu_mappings<FloatType, IntShiftType> >
+          asu_mappings_owner_;
+      const direct_space_asu::asu_mappings<FloatType, IntShiftType>*
+        asu_mappings_;
       pair_asu_table_table table_;
   };
 

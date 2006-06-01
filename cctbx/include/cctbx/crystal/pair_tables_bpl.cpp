@@ -2,10 +2,11 @@
 
 #include <boost/python/class.hpp>
 #include <boost/python/def.hpp>
+#include <boost/python/overloads.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
 #include <boost/python/return_arg.hpp>
-#include <boost/python/overloads.hpp>
+#include <boost/python/return_internal_reference.hpp>
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
 #include <scitbx/array_family/selections.h>
 #include <scitbx/stl/map_wrapper.h>
@@ -65,7 +66,8 @@ namespace {
       using namespace boost::python;
       typedef return_value_policy<copy_const_reference> ccr;
       typedef return_internal_reference<> rir;
-      class_<w_t>("pair_asu_table", no_init)
+      class_<w_t, boost::shared_ptr<pair_asu_table<> > >(
+          "pair_asu_table", no_init)
         .def(init<
           boost::shared_ptr<direct_space_asu::asu_mappings<> > >(
             (arg_("asu_mappings"))))
@@ -82,6 +84,7 @@ namespace {
         .def("__eq__", &w_t::operator==)
         .def("__ne__", &w_t::operator!=)
         .def("pair_counts", &w_t::pair_counts)
+        .def("cluster_pivot_selection", &w_t::cluster_pivot_selection)
         .def("add_all_pairs", &w_t::add_all_pairs,
           add_all_pairs_overloads((
             arg_("distance_cutoff"), arg_("epsilon")=1.e-6))[return_self<>()])

@@ -219,8 +219,6 @@ namespace {
           return_self<>())
         .def("n_sites_in_asu_and_buffer", &w_t::n_sites_in_asu_and_buffer)
         .def("n_sites_in_asu_and_buffer", &w_t::n_sites_in_asu_and_buffer)
-        .def("lock", &w_t::lock)
-        .def("is_locked", &w_t::is_locked)
         .def("mappings", &w_t::mappings, ccr())
         .def("mapped_sites_min", &w_t::mapped_sites_min, ccr())
         .def("mapped_sites_max", &w_t::mapped_sites_max, ccr())

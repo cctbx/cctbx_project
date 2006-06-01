@@ -4,6 +4,7 @@ from cctbx import crystal
 from cctbx.array_family import flex
 import scitbx.math
 from libtbx.test_utils import approx_equal
+from libtbx.utils import format_cpu_times
 import libtbx.load_env
 from cStringIO import StringIO
 import math
@@ -119,6 +120,94 @@ def check_connectivities(bond_asu_table, connectivities, verbose=0):
       print "n, connectivity:", n, connectivity
     assert n == connectivity
 
+def exercise_incremental_pairs(
+      structure,
+      distance_cutoff,
+      reference_pair_asu_table):
+  ip = structure.incremental_pairs(distance_cutoff=distance_cutoff)
+  for site_frac in structure.sites_frac():
+    ip.process_site_frac(original_site=site_frac)
+  assert ip.pair_asu_table().pair_counts().all_eq(
+    reference_pair_asu_table.pair_counts())
+  assert ip.pair_asu_table() == reference_pair_asu_table
+
+def exercise_site_cluster_analysis(
+      structure,
+      distance_cutoff,
+      reference_pair_asu_table):
+  pat_selection = flex.size_t()
+  pat_keep = []
+  for i_seq,pair_asu_dict in enumerate(reference_pair_asu_table.table()):
+    for j_seq,pair_asu_j_sym_groups in pair_asu_dict.items():
+      if (j_seq == i_seq):
+        for j_sym_group in pair_asu_j_sym_groups:
+          assert 0 not in j_sym_group
+        pat_keep.append(False)
+        break
+      if (j_seq < i_seq and pat_keep[j_seq]):
+        pat_keep.append(False)
+        break
+    else:
+      pat_keep.append(True)
+      pat_selection.append(i_seq)
+  assert reference_pair_asu_table.cluster_pivot_selection().all_eq(
+    pat_selection)
+  #
+  sca = structure.site_cluster_analysis(distance_cutoff=distance_cutoff)
+  sca_selection = flex.size_t()
+  for i_seq,site_frac in enumerate(structure.sites_frac()):
+    if (sca.process_site_frac(original_site=site_frac)):
+      sca_selection.append(i_seq)
+  assert sca_selection.all_eq(pat_selection)
+  #
+  sca = structure.site_cluster_analysis(distance_cutoff=distance_cutoff)
+  sca_selection = sca.process_sites_frac(
+    original_sites=structure.sites_frac(),
+    site_symmetry_table=structure.site_symmetry_table())
+  assert sca_selection.all_eq(pat_selection)
+  #
+  sca = structure.site_cluster_analysis(distance_cutoff=distance_cutoff)
+  sca_selection = sca.process_sites_frac(
+    original_sites=structure.sites_frac(),
+    site_symmetry_table=structure.site_symmetry_table(),
+    max_clusters=3)
+  assert sca_selection.all_eq(pat_selection[:3])
+  #
+  sca = structure.site_cluster_analysis(distance_cutoff=distance_cutoff)
+  sca_selection = sca.process_sites_frac(
+    original_sites=structure.sites_frac())
+  assert sca_selection.all_eq(pat_selection)
+  #
+  sca = structure.site_cluster_analysis(distance_cutoff=distance_cutoff)
+  sca_selection = sca.process_sites_frac(
+    original_sites=structure.sites_frac(),
+    max_clusters=3)
+  assert sca_selection.all_eq(pat_selection[:3])
+  #
+  sca = structure.site_cluster_analysis(distance_cutoff=distance_cutoff)
+  sca_selection = sca.process_sites_cart(
+    original_sites=structure.sites_cart(),
+    site_symmetry_table=structure.site_symmetry_table())
+  assert sca_selection.all_eq(pat_selection)
+  #
+  sca = structure.site_cluster_analysis(distance_cutoff=distance_cutoff)
+  sca_selection = sca.process_sites_cart(
+    original_sites=structure.sites_cart(),
+    site_symmetry_table=structure.site_symmetry_table(),
+    max_clusters=3)
+  assert sca_selection.all_eq(pat_selection[:3])
+  #
+  sca = structure.site_cluster_analysis(distance_cutoff=distance_cutoff)
+  sca_selection = sca.process_sites_cart(
+    original_sites=structure.sites_cart())
+  assert sca_selection.all_eq(pat_selection)
+  #
+  sca = structure.site_cluster_analysis(distance_cutoff=distance_cutoff)
+  sca_selection = sca.process_sites_cart(
+    original_sites=structure.sites_cart(),
+    max_clusters=3)
+  assert sca_selection.all_eq(pat_selection[:3])
+
 def exercise(
       structure,
       distance_cutoff,
@@ -133,6 +222,14 @@ def exercise(
       bond_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
       bond_asu_table.add_all_pairs(
         distance_cutoff=distance_cutoff)
+      exercise_incremental_pairs(
+        structure=structure,
+        distance_cutoff=distance_cutoff,
+        reference_pair_asu_table=bond_asu_table)
+      exercise_site_cluster_analysis(
+        structure=structure,
+        distance_cutoff=distance_cutoff,
+        reference_pair_asu_table=bond_asu_table)
     else:
       bond_sym_table = bond_asu_table.extract_pair_sym_table()
       bond_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
@@ -243,7 +340,7 @@ def exercise_all():
 
 def run():
   exercise_all()
-  print "OK"
+  print format_cpu_times()
 
 if (__name__ == "__main__"):
   run()
