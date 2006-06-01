@@ -30,6 +30,7 @@ namespace cctbx { namespace crystal {
         sgtbx::space_group const& space_group,
         direct_space_asu::float_asu<FloatType> const& asu,
         FloatType const& distance_cutoff,
+        bool general_positions_only_=false,
         unsigned estimated_reduction_factor_=4,
         FloatType const& asu_mappings_buffer_thickness=-1,
         FloatType const& cubicle_epsilon=-1)
@@ -51,6 +52,7 @@ namespace cctbx { namespace crystal {
           asu_mappings_->asu_buffer().box_span(/*cartesian*/ true),
           distance_cutoff_,
           cubicle_epsilon_),
+        general_positions_only(general_positions_only_),
         estimated_reduction_factor(estimated_reduction_factor_),
         min_distance_sym_equiv(0.5),
         assert_min_distance_sym_equiv(true)
@@ -63,6 +65,7 @@ namespace cctbx { namespace crystal {
         direct_space_asu::asu_mappings<FloatType, IntShiftType> >
       asu_mappings() const { return asu_mappings_owner_; }
 
+      bool general_positions_only;
       unsigned estimated_reduction_factor;
       FloatType min_distance_sym_equiv;
       bool assert_min_distance_sym_equiv;
@@ -83,6 +86,8 @@ namespace cctbx { namespace crystal {
         fractional<FloatType> const& original_site,
         sgtbx::site_symmetry_ops const& site_symmetry_ops)
       {
+        if (general_positions_only
+            && !site_symmetry_ops.is_point_group_1()) return false;
         direct_space_asu::asu_mapping_index mi;
         mi.i_seq = asu_mappings_->mappings().size();
         asu_mappings_->process(original_site, site_symmetry_ops);

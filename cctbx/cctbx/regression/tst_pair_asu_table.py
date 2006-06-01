@@ -152,6 +152,8 @@ def exercise_site_cluster_analysis(
       pat_selection.append(i_seq)
   assert reference_pair_asu_table.cluster_pivot_selection().all_eq(
     pat_selection)
+  assert reference_pair_asu_table.cluster_pivot_selection(
+    max_clusters=3).all_eq(pat_selection[:3])
   #
   sca = structure.site_cluster_analysis(distance_cutoff=distance_cutoff)
   sca_selection = flex.size_t()
@@ -207,6 +209,16 @@ def exercise_site_cluster_analysis(
     original_sites=structure.sites_cart(),
     max_clusters=3)
   assert sca_selection.all_eq(pat_selection[:3])
+  #
+  sca = structure.site_cluster_analysis(
+    distance_cutoff=distance_cutoff,
+    general_positions_only=True)
+  sca_selection = sca.process_sites_frac(
+    original_sites=structure.sites_frac(),
+    site_symmetry_table=structure.site_symmetry_table())
+  pat_selection = reference_pair_asu_table.cluster_pivot_selection(
+    general_positions_only=True)
+  assert sca_selection.all_eq(pat_selection)
 
 def exercise(
       structure,

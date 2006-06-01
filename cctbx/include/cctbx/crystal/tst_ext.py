@@ -424,6 +424,9 @@ def exercise_pair_tables():
   assert not asu_table.contains(i_seq=0, j_seq=1, j_sym=2)
   assert asu_table.pair_counts().all_eq(0)
   assert list(asu_table.cluster_pivot_selection()) == [0,1,2]
+  assert list(asu_table.cluster_pivot_selection(general_positions_only=True)) \
+      == [1]
+  assert list(asu_table.cluster_pivot_selection(max_clusters=2)) == [0,1]
   assert asu_table.add_all_pairs(distance_cutoff=3.5) is asu_table
   assert [d.size() for d in asu_table.table()] == [2,3,2]
   assert asu_table.add_all_pairs(3.5, epsilon=1.e-6) is asu_table
@@ -986,6 +989,7 @@ i_seq: 1
     assert not show_diff(out.getvalue(), expected_out)
   #
   site_cluster_analysis = sps.site_cluster_analysis(distance_cutoff=2)
+  assert not site_cluster_analysis.general_positions_only
   assert site_cluster_analysis.estimated_reduction_factor == 4
   assert approx_equal(site_cluster_analysis.min_distance_sym_equiv, 0.5)
   assert site_cluster_analysis.assert_min_distance_sym_equiv
@@ -1015,6 +1019,14 @@ i_seq: 1
       original_sites=sites_array,
       site_symmetry_table=site_symmetry_table)
     assert list(selection) == [0,1]
+    site_cluster_analysis = sps.site_cluster_analysis(
+      distance_cutoff=1,
+      general_positions_only=True)
+    assert site_cluster_analysis.general_positions_only
+    selection = getattr(site_cluster_analysis, method)(
+      original_sites=sites_array,
+      site_symmetry_table=site_symmetry_table)
+    assert list(selection) == [1]
     site_cluster_analysis = sps.site_cluster_analysis(distance_cutoff=1)
     selection = getattr(site_cluster_analysis, method)(
       original_sites=sites_array,

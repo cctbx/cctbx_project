@@ -30,15 +30,19 @@ namespace {
           direct_space_asu::float_asu<> const&,
           double const&,
           optional<
+            bool,
             unsigned,
             double const&,
             double const&> >((
               arg_("space_group"),
               arg_("asu"),
               arg_("distance_cutoff"),
+              arg_("general_positions_only"),
               arg_("estimated_reduction_factor")=4,
               arg_("asu_mappings_buffer_thickness")=-1,
               arg_("cubicle_epsilon")=-1)))
+        .def_readwrite("general_positions_only",
+                  &w_t::general_positions_only)
         .def_readwrite("estimated_reduction_factor",
                   &w_t::estimated_reduction_factor)
         .def_readwrite("min_distance_sym_equiv",
