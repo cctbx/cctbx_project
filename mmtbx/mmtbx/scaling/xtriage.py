@@ -36,7 +36,6 @@ scaling.input {
      }
 
      misc_twin_parameters
-     .expert_level=0
      {
        missing_symmetry
        {
@@ -141,110 +140,101 @@ x-ray data set. See CCP4 newletter number 42, July 2005 for more information.
 (http://www.ccp4.ac.uk/newsletters/newsletter42/newsletter42.pdf)
 
 
-The program options are defined in the following table.
+The program options are summarized below
 
-  -------------------------------------------------------------------------------------
-  | full parameter name                      |  meaning                               |
-  -------------------------------------------------------------------------------------
-  | basic.n_residues                         | Number of residues per monomer         |
-  | basic.n_bases                            | Number of base pairs per monomer       |
-  | basic.n_copies_per_asu                   | Number of copies in the ASU            |
-  | analyses.verbose                         | Verbosity level                        |
-  | analyses.log                             | Log file with CCP4i style plots        |
-  | xray_data.file_name                      | File containing xray data              |
-  | xray_data.obs_labels                     | Labels for experimental data           |
-  | xray_data.calc_labels                    | Labels for calculated data             |
-  | xray_data.unit_cell                      | Unit cell constants                    |
-  | xray_data.space_group                    | Space group                            |
-  | xray_data.high_resolution                | high resolution limit in wilson scaling|
-  | xray_data.low_resolution                 | low resolution limit in wilson scaling |
-  | xray_data.high_resolution_for_twin_tests | high resolution limit in int. stats.   |
-  | xray_data.low_resolution_for_twin_tests  | low resolution limit in int. stats.    |
-  | xray_data.isigi_cut                      | I/sig(I) cut in int. stats.            |
-  | xray_data.completenesss_cut              | completeness cut int. stats.           |
-  -------------------------------------------------------------------------------------
+1. scope: parameters.asu_contents
+   keys: * n_residues :: Number of residues per monomer/unit
+         * n_bases :: Number of nucleotides per monomer/unit
+         * n_copies_per_asu :: Number of copies in the ASU.
+
+   These keywords control the determination of the absolute scale.
+   If the number of residues/bases is not specified, a solvent content of 50% is assumed.
 
 
-Detailed description:
+2. scope: parameters.misc_twin_parameters.missing_symmetry
+   keys: * tanh_location :: tanh decision rule parameter
+         * tanh_slope :: tanh decision rule parameter
+
+   The tanh_location and tanh_slope parameter control what R-value is considered to be
+   low enough to be considered a 'proper' symmetry operator. the tanh_location parameter
+   corresponds to the inflection point of the approximate step function. Increasing
+   tanh_location will result in large R-value thresholds.
+   tanh_slope is set to 50 and should be okai.
 
 
-basic.n_residues: Number of residues in monomer. If none, value is estimated
-                  assuming 50% solvent content.
+3. scope: parameters.misc_twin_parameters.twinning_with_ncs
+   keys: * perform_test :: can be set to True or False
+         * n_bins :: Number of bins in determination of D_ncs
 
-basic.n_bases: Number of bases in monomer. Can be used with basic.n_residues
-
-basic.n_copies_per_asu : Number of copies in the ASU. if None, value is estimated
-                         and used. If specified, value is estimated and estimate
-                         is reported for your information only.
-
-analyses.verbose : verbosity level of the output;  0 -> very brief/silent
-                                                   1 -> normal
-
-analyses.log: The name of the output log file containing CCP4I
-              style loggraph plots and the same info that is dumped to the
-              screen
-
-xray_data.file_name: file containing reflection information.
-                     Note that if file is in MTZ or CNS format,
-                     the 'IP' or 'FP' column SHOULD be next to the
-                     'SIGIP' or 'SIGFP' column.
-                     For shelx files, one must specify if intensities or
-                     amplitudes are in the file. See appropriate error message
-                     / warning when this happens.
-
-xray_data.obs_labels: a substring of a label indentifying the experimental data of interest.
-                      For instance, if the colum labels present in the file are
-                      F_CRYSTAL1,SIGF_CRYSTAL1,F_CRYSTAL2,SIGF_CRYSTAL2
-                      the label variable can be set to L1 to select
-                      F_CRYSTAL1,SIGF_CRYSTAL1
-                      If the label name contains parenthesis, uses quotes around the (sub)string
-                      to avoid confusion.
-
-xray_data.calc_labels: A substring of a label idenitifying calculated data.
-                       (Used for R vs R statistic.).
-                       Calculated data needs to be in the same file as in the observed data!
-
-xray_data.unit_cell: By default, the values in the reflection file are used.
-                     These keywords must be specified for CNS or SHELX files
-                     that (unfortunately) do not have this information
-                     in the file.
-
-xray_data.space_group: See xray_data.unit_cell.
-
-xray_data.high_resolution: High Resolution limit where the data is cut.
-                           The default is the highest resolution limit
-                           available.
-
-xray_data.low_resolution: Low resolution limit where the data is cut.
+   The perform_test is by default set to False. Setting it to True triggers the
+   determination of the twin fraction while taking into account NCS parallel to
+   the twin axis.
 
 
-xray_data.high_resolution_for_twin_tests: High Resolution limit where the data is cut for the twin analyses.
-                                          if None is specified, the xtriage will dtermin this limit
-                                          on the basis of the parameters isigi_cut and completeness_cut
+4. scope: parameters.misc_twin_parameters.twin_test_cuts
+   keys: * high_resolution : high resolution for twin tests
+         * low_resolution: low resolution for twin tests
+         * isigi_cut: I/sig(I) threshold in automatic determination
+                      of high resolutiuon limit
+         * completeness_cut: completeness threshold in automatic
+                             determination of high resolutiuon limit
 
-xray_data.low_resolution_for_twin_test: Low resolution limit where the data is cut for the twin analyses.
-                                         The default is 10 A.
+   The automatic determination of the resolution limit for the twinning test
+   is determined on the basis of the completeness after removing intensities for
+   which I/sigI<isigi_cut. The lowest limit obtain in this way is 3.5A.
+   The value determined by the automatic procedure can be overruled by specification
+   of the high_resolution keyword. The low resolution is set to 10A by default.
 
-xray_data.isigi_cut and xray_data.completenesss_cut: Intensities for which I/sigI<isigi_cut are removed from the dataset.
-                                                     The resolution limit for which the completeness is largern than
-                                                     xray_data.completenesss_cut, is used as the high resolution limit
-                                                     in the intensity statistics and twin analyses.
+
+5. scope: parameters.reporting
+   keys: * verbose :: verbosity level.
+         * log :: log file name
+         * ccp4_style_graphs :: Either True or False. Determines whether or not
+                                ccp4 style logfgra plots are written to the log file
+
+
+6. scope: xray_data
+   keys: * file_name :: file name with xray data.
+         * obs_labels :: labels for observed data is format is mtz of XPLOR/CNS
+         * calc_labels :: optional; labels for calculated data
+         * unit_cell :: overrides unit cell in reflection file (if present)
+         * space_group :: overrides space group in reflection file (if prersent)
+         * high_resolution :: High resolution limit of the data
+         * low_resolution :: Low resolution limit of the data
+
+   Note that the matching of specified and present labels involves a sub-string matching
+   algorithm. See 'Example usage'.
+
+
+7. scope: optional
+   keys: * hklout :: output mtz file
+         * twinning.action :: Whether to detwin the data
+         * twinning.twin_law :: using this twin law (h,k,l or x,y,z notation)
+         * twinning.fraction :: The detwinning fraction.
+         * b_value :: the resulting Wilson B value
+
+   The output mtz file contains an anisotropy corrected mtz file, with suspected outliers removed.
+   The data is put scaled and has the specified Wilson B value.
+   These options have an associated expert level of 10, and are not shown by default. Specification
+   of the expert level on the command line as 'level=100' will show all available options.
+
 
 
 Example usage:
 
   The commands
-    mmtbx.xtriage xray_data.file_name=the_ribozyme.sca
-    mmtbx.xtriage file_name=the_ribozyme.sca
-    mmtbx.xtriage file=the_ribozyme.sca
-    mmtbx.xtriage the_ribozyme.sca
+    mmtbx.xtriage xray_data.file_name=my_refl.mtz
+    mmtbx.xtriage file_name=my_refl.mtz
+    mmtbx.xtriage file=my_refl.mtz
+    mmtbx.xtriage my_refl.mtz
   are equivalent.
 
-  The command
-    mmtbx.xtriage the_ribozyme.mtz labels=F_HG,SIGF_HG reso=2.0 log=log.log
-  will use the columns F_HG and SIGF_HG in the analyses. The resolution cut
-  for twinning analyses is set at 2.0 A, the logfile with plot will be written
-  to log.log.
+  The commands
+    mmtbx.xtriage my_refl.mtz obs=F_HG,SIGF_HG data.high=2.0 log=log.log perform=True
+    mmtbx.xtriage my_refl.mtz obs=HG data.high=2.0 log=log.log perform=True
+  are equivalent if the substring 'HG' is unique in the mtz file. If the labels contain character such as
+  '(', use quoation marks: obs='F_HG(+)'.
+
 
 -----------------------------------------------------------------------------------------------------------------------------
 
