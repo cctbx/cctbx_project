@@ -424,7 +424,7 @@ else:
         "-woff", "1001,1183,1188,1234,1311,1682,3439"]
     else:
       env_etc.cxxflags_base = [
-        "-woff", "1001,1174,1183,1188,1234,1311,1682,3439,3506"]
+        "-woff", "1001,1174,1183,1188,1234,1311,1682,3321,3439,3506,3896,3970"]
     if (mipspro_version == "73" and libtbx.env.module_dict.has_key("boost")):
       env_etc.cxxflags_base.insert(0,
         "-I%s/boost/compatibility/cpp_c_headers"
