@@ -1033,7 +1033,7 @@ class ml_murray_rust_with_ncs(object):
     print >> self.out
     print >> self.out, "Estimation of twin fraction, while taking into account the"
     print >> self.out, "effects of possible NCS parallel to the twin axis."
-    print >> self.out, "    Zwart, Read, Grosse-Kusntleve & Adams, to be published."
+    print >> self.out, "    Zwart, Read, Grosse-Kunstleve & Adams, to be published."
     print >> self.out
     print >> self.out, "  A parameters D_ncs will be estimated as a function of resolution,"
     print >> self.out, "  together with a global twin fraction."
@@ -1046,8 +1046,8 @@ class ml_murray_rust_with_ncs(object):
     print >> self.out
     print >> self.out, "  The refinement can take some time. "
     print >> self.out, "  For numerical stability issues, D_ncs is limited between 0 and 0.95."
-    print >> self.out, "  The twin fraction is allowed to veary between 0 and 0.45."
-    print >> self.out, "  Refinement cycle number are printed out to keep you entertained."
+    print >> self.out, "  The twin fraction is allowed to vary between 0 and 0.45."
+    print >> self.out, "  Refinement cycle numbers are printed out to keep you entertained."
     print >> self.out
 
 
