@@ -5,6 +5,7 @@
 #include <boost/python/return_by_value.hpp>
 #include <boost/python/return_arg.hpp>
 #include <cctbx/crystal/asu_clusters.h>
+#include <cctbx/crystal/workarounds_bpl.h>
 
 namespace cctbx { namespace crystal {
 namespace {

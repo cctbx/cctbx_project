@@ -3,6 +3,7 @@
 #include <boost/python/class.hpp>
 #include <boost/python/overloads.hpp>
 #include <cctbx/crystal/site_cluster_analysis.h>
+#include <cctbx/crystal/workarounds_bpl.h>
 
 namespace cctbx { namespace crystal {
 namespace {

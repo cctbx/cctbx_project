@@ -4,6 +4,7 @@
 #include <boost/python/args.hpp>
 #include <scitbx/boost_python/container_conversions.h>
 #include <cctbx/crystal/coordination_sequences.h>
+#include <cctbx/crystal/workarounds_bpl.h>
 
 namespace cctbx { namespace crystal { namespace coordination_sequences {
 namespace {
