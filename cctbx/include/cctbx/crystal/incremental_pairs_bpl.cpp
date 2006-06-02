@@ -1,7 +1,11 @@
 #include <cctbx/boost_python/flex_fwd.h>
 
 #include <boost/python/class.hpp>
+#include <scitbx/boost_python/is_polymorphic_workaround.h>
 #include <cctbx/crystal/incremental_pairs.h>
+
+SCITBX_BOOST_IS_POLYMORPHIC_WORKAROUND(
+  cctbx::crystal::incremental_pairs<>)
 
 namespace cctbx { namespace crystal {
 namespace {
