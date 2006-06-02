@@ -1,11 +1,7 @@
 #ifndef SCITBX_ARRAY_FAMILY_BOOST_PYTHON_FLEX_FWD_H
 #define SCITBX_ARRAY_FAMILY_BOOST_PYTHON_FLEX_FWD_H
 
-#if defined(_SGI_COMPILER_VERSION) && _SGI_COMPILER_VERSION == 741
-# include <complex>
-#endif
-#include <pyconfig.h>
-
+#include <boost/python/detail/prefix.hpp>
 #include <complex>
 #include <vector>
 #include <set>

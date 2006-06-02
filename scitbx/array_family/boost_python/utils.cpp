@@ -1,6 +1,3 @@
-#if defined(_SGI_COMPILER_VERSION) && _SGI_COMPILER_VERSION == 741
-# include <complex>
-#endif
 #include <scitbx/array_family/boost_python/utils.h>
 #include <boost/python/errors.hpp>
 
