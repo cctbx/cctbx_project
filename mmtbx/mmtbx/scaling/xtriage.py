@@ -56,13 +56,18 @@ scaling.input {
 
      }
 
+     reporting
+     {
+       verbose=1
+       .type=int
+       log=logfile.log
+       .type=str
+       ccp4_style_graphs=True
+       .type=bool
+     }
+
    }
-   analyses{
-     verbose = 1
-     .type=int
-     log = logfile.log
-     .type = str
-   }
+
    xray_data
    {
      file_name=None
@@ -328,7 +333,7 @@ def run(command_name, args):
     params = effective_params.extract()
     if reflection_file is not None:
       params.scaling.input.xray_data.file_name=reflection_file
-    verbose = params.scaling.input.analyses.verbose
+    verbose = params.scaling.input.parameters.reporting.verbose
 
 
 
@@ -405,7 +410,7 @@ Use keyword 'unit_cell' to specify unit_cell
 
     effective_params = master_params.fetch(sources=phil_objects)
     new_params = master_params.format(python_object=params)
-    if (params.scaling.input.analyses.verbose>0):
+    if (params.scaling.input.parameters.reporting.verbose>0):
       print >> log
       print >> log
       print >> log, "Effective parameters: "
@@ -549,9 +554,11 @@ Use keyword 'unit_cell' to specify unit_cell
                                      params,
                                      log)
 
-    ## Append the CCP4i plots to the log StringIO object.
-    print >> string_buffer, string_buffer_plots.getvalue()
-    output_file = open( params.scaling.input.analyses.log  ,'w')
+    ## Append the CCP4i plots to the log StringIO object if desired
+    if params.scaling.input.parameters.reporting.ccp4_style_graphs:
+      print >> string_buffer, string_buffer_plots.getvalue()
+
+    output_file = open( params.scaling.input.parameters.reporting.log  ,'w')
     output_file.write(string_buffer.getvalue())
 
 
