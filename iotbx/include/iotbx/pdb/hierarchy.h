@@ -538,7 +538,7 @@ namespace pdb {
       {
         vec3 result(0,0,0);
         unsigned n = atoms_size();
-        const atom* a = &*data->atoms.begin();
+        const atom* a = (n == 0 ? 0 : &*data->atoms.begin());
         for(unsigned i=0;i<n;i++) {
           result += (a++)->data->xyz;
         }
@@ -675,7 +675,7 @@ namespace pdb {
       {
         unsigned n = residues_size();
         af::shared<vec3> result((af::reserve(n)));
-        const residue* r = &*data->residues.begin();
+        const residue* r = (n == 0 ? 0 : &*data->residues.begin());
         for(unsigned i=0;i<n;i++) {
           result.push_back((r++)->center_of_geometry());
         }
@@ -689,7 +689,7 @@ namespace pdb {
         unsigned nr = residues_size();
         std::vector<residue> remaining_residues;
         remaining_residues.reserve(ns);
-        const residue* r = &*data->residues.begin();
+        const residue* r = (nr == 0 ? 0 : &*data->residues.begin());
         for(unsigned i=0;i<ns;i++) {
           std::size_t j = selection[i];
           if (j >= nr) {
@@ -707,7 +707,7 @@ namespace pdb {
         unsigned nr = residues_size();
         conformer result(data->id);
         result.data->residues.reserve(ns);
-        const residue* r = &*data->residues.begin();
+        const residue* r = (nr == 0 ? 0 : &*data->residues.begin());
         for(unsigned i=0;i<ns;i++) {
           std::size_t j = selection[i];
           if (j >= nr) {
@@ -727,7 +727,7 @@ namespace pdb {
         unsigned n = residues_size();
         af::shared<std::size_t> result((af::reserve(n)));
         std::set<str4>::const_iterator class_set_end = class_set.end();
-        const residue* r = &*data->residues.begin();
+        const residue* r = (n == 0 ? 0 : &*data->residues.begin());
         if (!negate) {
           for(unsigned i=0;i<n;i++) {
             if (class_set.find((r++)->data->name) != class_set_end) {
@@ -906,7 +906,7 @@ namespace pdb {
           for(unsigned jr=0;jr<rs_sz;jr++) {
             residue const& r = f.residues()[jr];
             unsigned as_sz = r.atoms_size();
-            const atom* a = &*r.atoms().begin();
+            const atom* a = (as_sz == 0 ? 0 : &*r.atoms().begin());
             for(unsigned ja=0;ja<as_sz;ja++,a++) {
               if (a->data->tmp == 0) {
                 a->data->tmp = 1;
@@ -1139,7 +1139,7 @@ namespace pdb {
                 residue const& r = f.residues()[jr];
                 unsigned n_atoms = 0;
                 unsigned as_sz = r.atoms_size();
-                const atom* a = &*r.atoms().begin();
+                const atom* a = (as_sz == 0 ? 0 : &*r.atoms().begin());
                 for(unsigned ja=0;ja<as_sz;ja++,a++) {
                   if (a->data->tmp == 0) {
                     a->data->tmp = 1;
@@ -1352,7 +1352,7 @@ namespace pdb {
     std::vector<atom> const& other_atoms = other.data->atoms;
     unsigned n = other.atoms_size();
     data->atoms.reserve(n);
-    const atom* oa = &*other.atoms().begin();
+    const atom* oa = (n == 0 ? 0 : &*other.atoms().begin());
     for(unsigned i=0;i<n;i++) {
       data->atoms.push_back(atom(*this, *oa++));
     }
