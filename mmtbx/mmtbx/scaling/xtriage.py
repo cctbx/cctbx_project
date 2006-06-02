@@ -36,7 +36,7 @@ scaling.input {
      }
 
      misc_twin_parameters
-     .expert_level=1
+     .expert_level=0
      {
        missing_symmetry
        {
@@ -52,6 +52,18 @@ scaling.input {
          .type = bool
          n_bins = 7
          .type = int
+       }
+
+       twin_test_cuts
+       {
+         low_resolution=10.0
+         .type=float
+         high_resolution=None
+         .type=float
+         isigi_cut=3.0
+         .type=float
+         completeness_cut=0.85
+         .type=float
        }
 
      }
@@ -83,14 +95,6 @@ scaling.input {
      high_resolution=None
      .type=float
      low_resolution=None
-     .type=float
-     low_resolution_for_twin_tests=10.0
-     .type=float
-     high_resolution_for_twin_tests=None
-     .type=float
-     isigi_cut=3.0
-     .type=float
-     completeness_cut=0.85
      .type=float
    }
 
@@ -517,12 +521,12 @@ Use keyword 'unit_cell' to specify unit_cell
         print >> log
       ## resolution check
         if (flex.min(miller_array.d_spacings().data())
-            > params.scaling.input.xray_data.high_resolution_for_twin_tests):
+            > params.scaling.input.parameters.misc_twin_parameters.twin_test_cuts.high_resolution):
           params.scaling.input.xray_data.resolution = \
              flex.min(miller_array.d_spacings().data())
 
         default_high_reso_limit_wilson_ratio = \
-           params.scaling.input.xray_data.high_resolution
+           params.scaling.input.parameters.misc_twin_parameters.twin_test_cuts.high_resolution
         if default_high_reso_limit_wilson_ratio is None:
           default_high_reso_limit_wilson_ratio = 0.0
 
@@ -530,7 +534,7 @@ Use keyword 'unit_cell' to specify unit_cell
         d_star_sq_high_limit = 1.0/((d_star_sq_high_limit+1e-6)**2.0)
 
         default_low_reso_limit_wilson_ratio = \
-          params.scaling.input.xray_data.low_resolution_for_twin_tests
+          params.scaling.input.parameters.misc_twin_parameters.twin_test_cuts.low_resolution
 
 
         d_star_sq_low_limit = default_low_reso_limit_wilson_ratio
