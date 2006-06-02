@@ -35,12 +35,28 @@ def ehms( args ):
             dest="but_not",
             default=None,
             help="Remove this particular point group from the graph and find out the consequences.")
-
+    .option(None, "--lattice_type",
+            action="store",
+            type=str,
+            dest="lattice_type",
+            help="Lattice type, choose from P,A,B,C,I,R,F")
     ).process(args=args)
 
   log = multi_out()
   log.register(label="stdout", file_object=sys.stdout)
 
+  allowed_lattice_types={"P":"Primitive",
+                         "A":"A centered",
+                         "B":"B centered",
+                         "C":"C centered",
+                         "I":"Body centered",
+                         "R":"Rombohedral",
+                         "F":"Face centered"}
+  if command_line.options.lattice_type is not None:
+    if not allowed_lattice_types.has_key( command_line.options.lattice_type ):
+      print >> log, "Sorry, the lattice type %s is not known."%(command_line.options.lattice_type)
+      print >> log, "Choose from P,A,B,C,I,R,F "
+      return
 
   if len(args)==0:
     command_line.parser.show_help()
@@ -53,17 +69,24 @@ def ehms( args ):
     command_line.parser.show_help()
     return
 
-  if ( command_line.symmetry.space_group_info() == None ):
-    print>> log
-    print>> log,  "Sorry: space group not specified."
-    print>> log
-    command_line.parser.show_help()
-    return
+  if command_line.options.lattice_type is None:
+    if ( command_line.symmetry.space_group_info() == None ):
+      print>> log
+      print>> log,  "Sorry: lattice type or space group not specified."
+      print>> log
+      command_line.parser.show_help()
+      return
+  if command_line.symmetry.space_group_info()  is not None:
+    if not ( command_line.symmetry.space_group().is_chiral() ):
+      print >> log, "Sorry, Non chiral space groups not yet supported."
+      return
 
-  if not ( command_line.symmetry.space_group().is_chiral() ):
-    print >> log, "Sorry, Non chiral space groups not yet supported."
-    return
-
+  if command_line.options.lattice_type is not None:
+    xs  = crystal.symmetry(
+      unit_cell=command_line.symmetry.unit_cell(),
+      space_group_symbol="Hall: %s 1" %( command_line.options.lattice_type )
+      )
+    command_line.symmetry = xs
 
   if command_line.options.niggli:
     print >> log, "*Unit cell will be niggli reduced and P1 will be assumed*"
