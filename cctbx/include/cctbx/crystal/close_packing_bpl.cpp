@@ -7,6 +7,7 @@
 #include <boost/python/return_internal_reference.hpp>
 #include <scitbx/boost_python/iterator_wrappers.h>
 #include <cctbx/crystal/close_packing.h>
+#include <cctbx/crystal/workarounds_bpl.h>
 
 namespace cctbx { namespace crystal { namespace close_packing {
 

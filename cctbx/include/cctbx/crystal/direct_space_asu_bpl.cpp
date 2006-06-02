@@ -11,6 +11,7 @@
 #include <scitbx/boost_python/container_conversions.h>
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
 #include <cctbx/crystal/direct_space_asu.h>
+#include <cctbx/crystal/workarounds_bpl.h>
 
 namespace cctbx { namespace crystal { namespace direct_space_asu {
 
@@ -164,7 +165,7 @@ namespace {
       using namespace boost::python;
       typedef return_value_policy<copy_const_reference> ccr;
       typedef return_internal_reference<> rir;
-      class_<w_t, boost::shared_ptr<asu_mappings<> > >(
+      class_<w_t, boost::shared_ptr<w_t> >(
           "direct_space_asu_asu_mappings", no_init)
         .def(init<sgtbx::space_group const&,
                   float_asu<> const&,

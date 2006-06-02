@@ -8,6 +8,7 @@
 #include <scitbx/boost_python/iterator_wrappers.h>
 #include <scitbx/boost_python/is_polymorphic_workaround.h>
 #include <cctbx/crystal/neighbors_fast.h>
+#include <cctbx/crystal/workarounds_bpl.h>
 
 SCITBX_BOOST_IS_POLYMORPHIC_WORKAROUND(
   cctbx::crystal::neighbors::fast_pair_generator<>)

@@ -12,6 +12,7 @@
 #include <scitbx/stl/map_wrapper.h>
 #include <scitbx/stl/vector_wrapper.h>
 #include <cctbx/crystal/pair_tables.h>
+#include <cctbx/crystal/workarounds_bpl.h>
 
 namespace cctbx { namespace crystal {
 namespace {
@@ -69,8 +70,7 @@ namespace {
       using namespace boost::python;
       typedef return_value_policy<copy_const_reference> ccr;
       typedef return_internal_reference<> rir;
-      class_<w_t, boost::shared_ptr<pair_asu_table<> > >(
-          "pair_asu_table", no_init)
+      class_<w_t, boost::shared_ptr<w_t> >("pair_asu_table", no_init)
         .def(init<
           boost::shared_ptr<direct_space_asu::asu_mappings<> > >(
             (arg_("asu_mappings"))))
