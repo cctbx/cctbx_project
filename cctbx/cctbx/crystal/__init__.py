@@ -376,17 +376,25 @@ class special_position_settings(symmetry):
     return result
 
   def site_cluster_analysis(self,
-        distance_cutoff,
+        min_distance=None,
+        min_cross_distance=None,
+        min_self_distance=None,
         general_positions_only=False,
         estimated_reduction_factor=4,
         asu_is_inside_epsilon=None,
         asu_mappings_buffer_thickness=-1,
         cubicle_epsilon=-1):
+    if (min_cross_distance is None): min_cross_distance = min_distance
+    if (min_self_distance is None): min_self_distance = min_distance
+    if (min_self_distance is None): min_self_distance = min_cross_distance
+    assert min_cross_distance is not None
+    assert min_self_distance is not None
     result = site_cluster_analysis(
       space_group=self.space_group(),
       asu=self.direct_space_asu().as_float_asu(
         is_inside_epsilon=asu_is_inside_epsilon),
-      distance_cutoff=distance_cutoff,
+      min_cross_distance=min_cross_distance,
+      min_self_distance=min_self_distance,
       general_positions_only=general_positions_only,
       estimated_reduction_factor=estimated_reduction_factor,
       asu_mappings_buffer_thickness=asu_mappings_buffer_thickness,

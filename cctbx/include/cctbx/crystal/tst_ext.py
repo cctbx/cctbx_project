@@ -988,11 +988,13 @@ i_seq: 1
     ipv.pair_asu_table().show(f=out)
     assert not show_diff(out.getvalue(), expected_out)
   #
-  site_cluster_analysis = sps.site_cluster_analysis(distance_cutoff=2)
+  site_cluster_analysis = sps.site_cluster_analysis(min_distance=2)
+  assert approx_equal(site_cluster_analysis.min_cross_distance, 2)
+  assert approx_equal(site_cluster_analysis.min_self_distance, 2)
   assert not site_cluster_analysis.general_positions_only
-  assert site_cluster_analysis.estimated_reduction_factor == 4
   assert approx_equal(site_cluster_analysis.min_distance_sym_equiv, 0.5)
   assert site_cluster_analysis.assert_min_distance_sym_equiv
+  assert site_cluster_analysis.estimated_reduction_factor == 4
   assert approx_equal(
     site_cluster_analysis.asu_mappings().buffer_thickness(), 2)
   assert site_cluster_analysis.asu_mappings().mappings().size() == 0
@@ -1005,29 +1007,55 @@ i_seq: 1
   assert am.mappings().size() == 1
   assert am.site_symmetry_table().indices().size() == 1
   #
+  site = (0.7,0.3,0.1)
+  for i_trial in xrange(10):
+    assert site_cluster_analysis.process_site_frac(original_site=site)
+    assert am.mappings().size() == 2
+    assert am.site_symmetry_table().indices().size() == 2
+    site_cluster_analysis.discard_last()
+    assert am.mappings().size() == 1
+    assert am.site_symmetry_table().indices().size() == 1
+  try: site_cluster_analysis.discard_last()
+  except RuntimeError, e:
+    assert str(e) == """\
+site_cluster_analysis::discard_last() failure. Potential problems are:
+  - discard_last() called twice
+  - insert_fixed_site_frac() called previously
+  - the previous process_*() call returned false"""
+  else: raise RuntimeError("Exception expected.")
+  site_cluster_analysis.insert_fixed_site_frac(original_site=site)
+  assert not site_cluster_analysis.process_site_frac(original_site=site)
+  site = (0.3,0.1,0.3)
+  assert site_cluster_analysis.process_site_frac(original_site=site)
+  site_cluster_analysis.discard_last()
+  site_cluster_analysis.insert_fixed_site_frac(
+    original_site=site,
+    site_symmetry_ops=sps.site_symmetry(site=site))
+  assert not site_cluster_analysis.process_site_frac(original_site=site)
+  #
   for method,sites_array in [("process_sites_frac", sites_frac),
                              ("process_sites_cart", sites_cart)]:
     for max_clusters in [0,1]:
-      site_cluster_analysis = sps.site_cluster_analysis(distance_cutoff=2)
+      site_cluster_analysis = sps.site_cluster_analysis(min_distance=2)
       selection = getattr(site_cluster_analysis, method)(
         original_sites=sites_array,
         site_symmetry_table=site_symmetry_table,
         max_clusters=max_clusters)
       assert list(selection) == [0]
-    site_cluster_analysis = sps.site_cluster_analysis(distance_cutoff=1)
+    site_cluster_analysis = sps.site_cluster_analysis(min_distance=1)
     selection = getattr(site_cluster_analysis, method)(
       original_sites=sites_array,
       site_symmetry_table=site_symmetry_table)
     assert list(selection) == [0,1]
     site_cluster_analysis = sps.site_cluster_analysis(
-      distance_cutoff=1,
+      min_distance=1,
       general_positions_only=True)
     assert site_cluster_analysis.general_positions_only
     selection = getattr(site_cluster_analysis, method)(
       original_sites=sites_array,
       site_symmetry_table=site_symmetry_table)
     assert list(selection) == [1]
-    site_cluster_analysis = sps.site_cluster_analysis(distance_cutoff=1)
+    site_cluster_analysis = sps.site_cluster_analysis(min_distance=1)
     selection = getattr(site_cluster_analysis, method)(
       original_sites=sites_array,
       site_symmetry_table=site_symmetry_table,
@@ -1035,16 +1063,16 @@ i_seq: 1
     assert list(selection) == [0]
     #
     for max_clusters in [0,1]:
-      site_cluster_analysis = sps.site_cluster_analysis(distance_cutoff=2)
+      site_cluster_analysis = sps.site_cluster_analysis(min_distance=2)
       selection = getattr(site_cluster_analysis, method)(
         original_sites=sites_array,
         max_clusters=max_clusters)
       assert list(selection) == [0]
-    site_cluster_analysis = sps.site_cluster_analysis(distance_cutoff=1)
+    site_cluster_analysis = sps.site_cluster_analysis(min_distance=1)
     selection = getattr(site_cluster_analysis, method)(
       original_sites=sites_array)
     assert list(selection) == [0,1]
-    site_cluster_analysis = sps.site_cluster_analysis(distance_cutoff=1)
+    site_cluster_analysis = sps.site_cluster_analysis(min_distance=1)
     selection = getattr(site_cluster_analysis, method)(
       original_sites=sites_array,
       max_clusters=1)

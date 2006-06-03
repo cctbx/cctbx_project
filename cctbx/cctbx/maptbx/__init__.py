@@ -10,7 +10,10 @@ from cctbx.array_family import flex
 from scitbx import matrix
 from scitbx.python_utils import dicts
 from libtbx import adopt_init_args
-import sys
+import sys, os
+
+debug_peak_cluster_analysis = os.environ.get(
+  "CCTBX_MAPTBX_DEBUG_PEAK_CLUSTER_ANALYSIS", "")
 
 def value_at_closest_grid_point(map, x_frac):
   return map[closest_grid_point(map.accessor(), x_frac)]
@@ -278,6 +281,20 @@ class peak_cluster_analysis(object):
       self._is_processed = flex.bool(peak_list.size(), False)
     else:
       self._is_processed = None
+    if (   effective_resolution is not None
+        or debug_peak_cluster_analysis == "use_old"):
+      self._site_cluster_analysis = None
+      self.next = self.next_with_effective_resolution
+      self.all = self.all_with_effective_resolution
+    else:
+      self._site_cluster_analysis = \
+        self._special_position_settings.site_cluster_analysis(
+          min_cross_distance=self._min_cross_distance,
+          min_self_distance
+            =self._special_position_settings.min_distance_sym_equiv(),
+          general_positions_only=self._general_positions_only)
+      self.next = self.next_site_cluster_analysis
+      self.all = self.all_site_cluster_analysis
     self._peak_list_indices = flex.size_t()
     self._peak_list_index = 0
     self._sites = flex.vec3_double()
@@ -308,6 +325,9 @@ class peak_cluster_analysis(object):
   def max_clusters(self):
     return self._max_clusters
 
+  def site_cluster_analysis(self):
+    return self._site_cluster_analysis
+
   def peak_list_indices(self):
     return self._peak_list_indices
 
@@ -326,12 +346,53 @@ class peak_cluster_analysis(object):
     return self._peak_list.heights()[0]
 
   def append_fixed_site(self, site, height=0):
+    if (self._site_cluster_analysis is not None):
+      self._site_cluster_analysis.insert_fixed_site_frac(original_site=site)
     self._fixed_site_indices.append(self._sites.size())
     self._sites.append(site)
     self._heights.append(height)
     self._peak_list_indices.append(self._peak_list.size())
 
-  def next(self):
+  def discard_last(self):
+    assert self._peak_list_indices.size() > 0
+    if (self._site_cluster_analysis is not None):
+      self._site_cluster_analysis.discard_last()
+    self._peak_list_indices.pop_back()
+    self._sites.pop_back()
+    self._heights.pop_back()
+
+  def next_site_cluster_analysis(self):
+    while 1:
+      peak_list_index = self._peak_list_index
+      if (peak_list_index >= self._peak_list.size()): return None
+      self._peak_list_index += 1
+      site_symmetry = self._special_position_settings.site_symmetry(
+        site=self._peak_list.sites()[peak_list_index])
+      site = site_symmetry.exact_site()
+      if (not self._site_cluster_analysis.process_site_frac(
+                original_site=site,
+                site_symmetry_ops=site_symmetry)): continue
+      height = self._peak_list.heights()[peak_list_index]
+      self._peak_list_indices.append(peak_list_index)
+      self._sites.append(site)
+      self._heights.append(height)
+      return cluster_site_info(
+        peak_list_index=peak_list_index,
+        grid_index=self._peak_list.grid_indices(peak_list_index),
+        grid_height=self._peak_list.grid_heights()[peak_list_index],
+        site=site,
+        height=height)
+
+  def all_site_cluster_analysis(self, max_clusters=None):
+    if (max_clusters is None):
+      max_clusters = self._max_clusters
+    assert max_clusters is not None
+    while 1:
+      if (self._sites.size() >= max_clusters): break
+      if (self.next_site_cluster_analysis() is None): break
+    return self
+
+  def next_with_effective_resolution(self):
     while 1:
       peak_list_index = self._peak_list_index
       if (peak_list_index >= self._peak_list.size()): return None
@@ -350,6 +411,12 @@ class peak_cluster_analysis(object):
       site = site_symmetry.exact_site()
       equiv_sites = sgtbx.sym_equiv_sites(site_symmetry)
       keep = True
+      if (self._sites.size() > 50):
+        import warnings
+        warnings.warn(
+          message="This function should not be used for"
+                  " processing a large number of peaks.",
+          category=RuntimeWarning)
       for s in self._sites:
         dist = sgtbx.min_sym_equiv_distance_info(equiv_sites, s).dist()
         if (dist < self._min_cross_distance):
@@ -401,17 +468,11 @@ class peak_cluster_analysis(object):
         sum_w += other_height
     return frac(sum_w_sites / sum_w), height
 
-  def all(self, max_clusters=None):
+  def all_with_effective_resolution(self, max_clusters=None):
     if (max_clusters is None):
       max_clusters = self._max_clusters
     assert max_clusters is not None
     while 1:
       if (self._sites.size() >= max_clusters): break
-      if (self.next() is None): break
+      if (self.next_with_effective_resolution() is None): break
     return self
-
-  def discard_last(self):
-    assert self._peak_list_indices.size() > 0
-    self._peak_list_indices.pop_back()
-    self._sites.pop_back()
-    self._heights.pop_back()
