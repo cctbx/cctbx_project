@@ -155,63 +155,63 @@ def exercise_site_cluster_analysis(
   assert reference_pair_asu_table.cluster_pivot_selection(
     max_clusters=3).all_eq(pat_selection[:3])
   #
-  sca = structure.site_cluster_analysis(distance_cutoff=distance_cutoff)
+  sca = structure.site_cluster_analysis(min_distance=distance_cutoff)
   sca_selection = flex.size_t()
   for i_seq,site_frac in enumerate(structure.sites_frac()):
     if (sca.process_site_frac(original_site=site_frac)):
       sca_selection.append(i_seq)
   assert sca_selection.all_eq(pat_selection)
   #
-  sca = structure.site_cluster_analysis(distance_cutoff=distance_cutoff)
+  sca = structure.site_cluster_analysis(min_distance=distance_cutoff)
   sca_selection = sca.process_sites_frac(
     original_sites=structure.sites_frac(),
     site_symmetry_table=structure.site_symmetry_table())
   assert sca_selection.all_eq(pat_selection)
   #
-  sca = structure.site_cluster_analysis(distance_cutoff=distance_cutoff)
+  sca = structure.site_cluster_analysis(min_distance=distance_cutoff)
   sca_selection = sca.process_sites_frac(
     original_sites=structure.sites_frac(),
     site_symmetry_table=structure.site_symmetry_table(),
     max_clusters=3)
   assert sca_selection.all_eq(pat_selection[:3])
   #
-  sca = structure.site_cluster_analysis(distance_cutoff=distance_cutoff)
+  sca = structure.site_cluster_analysis(min_distance=distance_cutoff)
   sca_selection = sca.process_sites_frac(
     original_sites=structure.sites_frac())
   assert sca_selection.all_eq(pat_selection)
   #
-  sca = structure.site_cluster_analysis(distance_cutoff=distance_cutoff)
+  sca = structure.site_cluster_analysis(min_distance=distance_cutoff)
   sca_selection = sca.process_sites_frac(
     original_sites=structure.sites_frac(),
     max_clusters=3)
   assert sca_selection.all_eq(pat_selection[:3])
   #
-  sca = structure.site_cluster_analysis(distance_cutoff=distance_cutoff)
+  sca = structure.site_cluster_analysis(min_distance=distance_cutoff)
   sca_selection = sca.process_sites_cart(
     original_sites=structure.sites_cart(),
     site_symmetry_table=structure.site_symmetry_table())
   assert sca_selection.all_eq(pat_selection)
   #
-  sca = structure.site_cluster_analysis(distance_cutoff=distance_cutoff)
+  sca = structure.site_cluster_analysis(min_distance=distance_cutoff)
   sca_selection = sca.process_sites_cart(
     original_sites=structure.sites_cart(),
     site_symmetry_table=structure.site_symmetry_table(),
     max_clusters=3)
   assert sca_selection.all_eq(pat_selection[:3])
   #
-  sca = structure.site_cluster_analysis(distance_cutoff=distance_cutoff)
+  sca = structure.site_cluster_analysis(min_distance=distance_cutoff)
   sca_selection = sca.process_sites_cart(
     original_sites=structure.sites_cart())
   assert sca_selection.all_eq(pat_selection)
   #
-  sca = structure.site_cluster_analysis(distance_cutoff=distance_cutoff)
+  sca = structure.site_cluster_analysis(min_distance=distance_cutoff)
   sca_selection = sca.process_sites_cart(
     original_sites=structure.sites_cart(),
     max_clusters=3)
   assert sca_selection.all_eq(pat_selection[:3])
   #
   sca = structure.site_cluster_analysis(
-    distance_cutoff=distance_cutoff,
+    min_distance=distance_cutoff,
     general_positions_only=True)
   sca_selection = sca.process_sites_frac(
     original_sites=structure.sites_frac(),
