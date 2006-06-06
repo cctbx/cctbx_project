@@ -33,7 +33,6 @@ def exercise_2(eps = 1.e-6):
                                        force_symmetry            = True)
   xray_structure = processed_pdb_file.xray_structure()
   xray_structure.scattering_type_registry(table = "wk1995")
-
   xray_structure.convert_to_isotropic()
   u_iso_start = xray_structure.extract_u_iso_or_u_equiv()
   xray_structure.convert_to_anisotropic()
@@ -86,6 +85,7 @@ def exercise_2(eps = 1.e-6):
   assert approx_equal(u_cart_answer,
         xray_structure.scatterers().extract_u_cart(xray_structure.unit_cell()))
 
+
   tools.show_tls(tlsos = tlsos, text = "ANSWER")
 
 ###> Set up fmodel
@@ -123,6 +123,10 @@ def exercise_2(eps = 1.e-6):
   for start_tls_value in [0.0, tlsosA, None]:
       print " \n "+str(start_tls_value) + " \n "
       fmodel_cp = fmodel.deep_copy()
+      #for sc in fmodel_cp.xray_structure.scatterers():
+      #  sc.flags.set_use_u_aniso(True)
+      fmodel_cp.xray_structure.convert_to_anisotropic()
+
       if(start_tls_value is None):
          run_finite_differences_test = True
       else: run_finite_differences_test = False
@@ -135,7 +139,7 @@ def exercise_2(eps = 1.e-6):
                      number_of_macro_cycles      = number_of_macro_cycles,
                      max_number_of_iterations    = max_number_of_iterations,
                      start_tls_value             = start_tls_value,
-                     run_finite_differences_test = True,
+                     run_finite_differences_test = run_finite_differences_test,
                      eps                         = eps)
       u_cart = tls_refinement_manager.fmodel.xray_structure.scatterers().extract_u_cart(
                                                         xray_structure.unit_cell())

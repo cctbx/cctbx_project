@@ -185,6 +185,7 @@ namespace xray {
         uctbx::unit_cell const& unit_cell)
       {
         if (flags.use_u_iso()) {
+          CCTBX_ASSERT(u_iso >= 0.0);
           if (!flags.use_u_aniso()) {
             u_star = adptbx::u_iso_as_u_star(unit_cell, u_iso);
           }

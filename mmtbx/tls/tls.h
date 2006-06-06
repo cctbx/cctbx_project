@@ -324,8 +324,8 @@ class common {
   public:
     sym_mat3<double> t_;
     common() {}
-    common(sym_mat3<double> const& m,
-           sym_mat3<double> const& n,
+    common(sym_mat3<double> const& m_,
+           sym_mat3<double> const& n_,
            double small = 1.e-9)
     :
       t_(-1,-1,-1,-1,-1,-1),
@@ -338,13 +338,13 @@ class common {
       g1(-1,-1,-1), g2(-1,-1,-1), g3(-1,-1,-1),
       myu(0,0,0),
       nyu(0,0,0),
-      m(m),m_cp(m),
-      n(n),n_cp(n),
+      m(m_),m_cp(m_),
+      n(n_),n_cp(n_),
       small(small),small6(1.e-6),
       branch_0(false),branch_1(false),branch_2(false),branch_3(false),
       branch_1_1(false),branch_1_2(false),branch_3_1(false),branch_3_2(false),
       branch_3_3_1(false),branch_3_3_2(false),branch_2_1(false),
-      branch_2_2(false)
+      branch_2_2(false),branch_2_3(false),branch_3_3_3(false)
     {
       check_and_flip();
       if(!(myu[2] < nyu[0])) {
@@ -384,6 +384,13 @@ jump:
             }
          }
       }
+      bool zz1 = cctbx::adptbx::is_positive_definite(t_,      small6*10.);
+      bool zz2 = cctbx::adptbx::is_positive_definite(m_cp-t_, small6*10.);
+      bool zz3 = cctbx::adptbx::is_positive_definite(n_cp-t_, small6*10.);
+      if(!zz1 || !zz2 || !zz3) show_all();
+      MMTBX_ASSERT( cctbx::adptbx::is_positive_definite(t_,      small6*10.));//XXX
+      MMTBX_ASSERT( cctbx::adptbx::is_positive_definite(m_cp-t_, small6*10.));//XXX
+      MMTBX_ASSERT( cctbx::adptbx::is_positive_definite(n_cp-t_, small6*10.));//XXX
     }
 
     void check_and_flip()
@@ -392,8 +399,8 @@ jump:
        cctbx::adptbx::eigensystem<double> n_eigensystem(n);
        myu = m_eigensystem.values();
        nyu = n_eigensystem.values();
-       MMTBX_ASSERT( cctbx::adptbx::is_positive_definite(myu) );
-       MMTBX_ASSERT( cctbx::adptbx::is_positive_definite(nyu) );
+       MMTBX_ASSERT( cctbx::adptbx::is_positive_definite(myu, small6) );
+       MMTBX_ASSERT( cctbx::adptbx::is_positive_definite(nyu, small6) );
        MMTBX_ASSERT( myu[0]>=myu[1] && myu[1]>=myu[2] && myu[2]>0. );
        MMTBX_ASSERT( nyu[0]>=nyu[1] && nyu[1]>=nyu[2] && nyu[2]>0. );
        if((myu[2]<nyu[2])||(std::abs(myu[2]-nyu[2])<small && myu[1]<nyu[1])||
@@ -410,7 +417,6 @@ jump:
 
      void func_2()
       {
-//show_all();
         t3 = sym_mat3<double>(nyu[2],nyu[2],nyu[2],0,0,0);
         m = m - t3;
         n = n - t3;
@@ -422,7 +428,6 @@ jump:
         g1 = n_eigensystem.vectors(0);
         g2 = n_eigensystem.vectors(1);
         g3 = n_eigensystem.vectors(2);
-//show_all();
       }
 
      void branch_123()
@@ -475,14 +480,14 @@ jump:
       {
         MMTBX_ASSERT(myu[0]>=myu[1]&&myu[1]>=myu[2]&&
                     (std::abs(myu[2])<small || myu[2] > 0.0));
-        MMTBX_ASSERT(nyu[0]>nyu[1]&&std::abs(nyu[1]-nyu[2])<small&&
+        MMTBX_ASSERT(nyu[0]>=nyu[1]&&std::abs(nyu[1]-nyu[2])<small&&
                      std::abs(nyu[2])<small);
         double det_m = m.determinant();
         double det_m11 = m[1]*m[2] - m[5]*m[5];
         double det_m22 = m[0]*m[2] - m[4]*m[4];
         double det_m33 = m[0]*m[1] - m[3]*m[3];
         double beta_1 = get_beta_1(det_m, det_m11, det_m22, det_m33, m[0],
-                                                            m[1], m[2], small);
+                                                         m[1], m[2], small);
         double beta = std::min(beta_1, nyu[0]);
         t1 = sym_mat3<double>(beta,0,0,0,0,0);
         t_ = t3 + sym_mat3<double>(qg * (t2 + t1) * qg.inverse(), small);
@@ -493,19 +498,14 @@ jump:
 
      void func_2_1()
       {
-//show_all();
         if(branch_2) {
            MMTBX_ASSERT(myu[0]>=myu[1]&&myu[1]>=myu[2]&&std::abs(myu[2])<small);
            MMTBX_ASSERT(nyu[0]>=nyu[1]&&nyu[1]>=nyu[2]&&std::abs(nyu[2])<small);
-           myu[2] = 0;
-           nyu[2] = 0;
         }
         else {
            MMTBX_ASSERT(myu[0]>=myu[1]&&myu[1]>=myu[2]&&std::abs(myu[2])<small);
            MMTBX_ASSERT(nyu[0]>=nyu[1]&&nyu[1]>=nyu[2]&&
                         std::abs(nyu[1])>small&&std::abs(nyu[2])<small);
-           myu[2] = 0;
-           nyu[2] = 0;
         }
         cctbx::adptbx::eigensystem<double> n_eigensystem(n);
         cctbx::adptbx::eigensystem<double> m_eigensystem(m);
@@ -514,13 +514,10 @@ jump:
         vec3<double> e1 = m_eigensystem.vectors(0);
         vec3<double> e2 = m_eigensystem.vectors(1);
         vec3<double> e3 = m_eigensystem.vectors(2);
-
-
         g1 = n_eigensystem.vectors(0);
         g2 = n_eigensystem.vectors(1);
         g3 = n_eigensystem.vectors(2);
-
-        MMTBX_ASSERT((e3-g3).length() > small);
+        MMTBX_ASSERT((e3-g3).length() > small6);
         double lambda = - (e3 * g3);
         vec3<double> p2 = e3 + g3*lambda;
         vec3<double> p3 = g3;
@@ -531,18 +528,23 @@ jump:
         qp = mat3<double>(p1[0],p2[0],p3[0],
                           p1[1],p2[1],p3[1],
                           p1[2],p2[2],p3[2]);
+        //qp = zero_mat(qp);
         m = sym_mat3<double>(qp.inverse() * m * qp, small);
         n = sym_mat3<double>(qp.inverse() * n * qp, small);
-//std::cout<<"Qp= "<<qp[0]<<" "<<qp[1]<<" "<<qp[2]<<" "<<qp[3]<<" "<<qp[4]<<" "<<qp[5]<<" "<<qp[6]<<" "<<qp[7]<<" "<<qp[8]<<std::endl;
-//show_all();
+        //zero_all();
       }
 
      void func_2_2()
       {
-//show_all();
-       if(branch_2) n = sym_mat3<double>(n[0],n[1],0,n[3],0,0);
-       cctbx::adptbx::eigensystem<double> n_eigensystem(n);
-       nyu = n_eigensystem.values();
+        if(branch_2) {
+           MMTBX_ASSERT(std::abs(n[2])<small6 && std::abs(n[4])<small6 &&
+                        std::abs(n[5])<small6);
+           MMTBX_ASSERT(!branch_1_2 && !branch_1_1 && !branch_1);
+           n = sym_mat3<double>(n[0],n[1],0,n[3],0,0);
+        }
+        cctbx::adptbx::eigensystem<double> n_eigensystem(n);
+        nyu = n_eigensystem.values();
+        //zero_all();
         double det_m   = m.determinant();
         double det_m11 = m[1]*m[2] - m[5]*m[5];
         double det_m22 = m[0]*m[2] - m[4]*m[4];
@@ -550,39 +552,36 @@ jump:
         double beta_1 = get_beta_1(det_m, det_m11, det_m22, det_m33, m[0],
                                                             m[1], m[2], small);
         double gamma_2 = 999999.0;
-        if(std::abs(nyu[1])<small) {
+        double det_n33 = n[0]*n[1] - n[3]*n[3];
+        if(det_n33 > small) {
            branch_2_1 = true;
-           //gamma_2 = nyu[0];
-           gamma_2 = n[0];
+           gamma_2 = det_n33 / n[1];
         }
         else {
-           branch_2_2 = true;
-           double det_n33 = n[0]*n[1] - n[3]*n[3];
-           gamma_2 = det_n33/n[1];
+           MMTBX_ASSERT(std::abs(det_n33) < small);
+           if(n[1] > small) {
+              branch_2_2 = true;
+              gamma_2 = 0.0;
+           }
+           else {
+              branch_2_3 = true;
+              MMTBX_ASSERT(std::abs(n[1]) < small);
+              gamma_2 = n[0];
+           }
         }
         MMTBX_ASSERT(gamma_2 != 999999.0);
         double tau = std::min(beta_1, gamma_2);
         t1 = sym_mat3<double>(tau,0,0,0,0,0);
         if(branch_2) {
-           MMTBX_ASSERT(std::abs(n[2])<small && std::abs(n[4])<small &&
-                        std::abs(n[5])<small);
-           MMTBX_ASSERT(!branch_1_2 && !branch_1_1 && !branch_1);
+           //zero_all();
            t_ = t3 + sym_mat3<double>(qp * t1 * qp.inverse(), small);
-//show_all();
-//std::cout<<"beta_1,gamma_2,tau= "<<beta_1<<" "<<gamma_2<<" "<<tau<<std::endl;
-//std::cout<<qp[0]<<" "<<qp[1]<<" "<<qp[2]<<" "<<qp[3]<<" "<<qp[4]<<" "<<qp[5]<<" "<<qp[6]<<" "<<qp[7]<<" "<<qp[8]<<std::endl;
-//std::cout<<"branch_2_1 "<<branch_2_1<<" branch_2_2 "<<branch_2_2<<std::endl;
-//cctbx::adptbx::eigensystem<double> x_eigensystem(m_cp-t_);
-//vec3<double> xv = x_eigensystem.values();
-//std::cout<<xv[0]<<" "<<xv[1]<<" "<<xv[2]<<std::endl;
-
-
            MMTBX_ASSERT(cctbx::adptbx::is_positive_definite(t_,      small6));
-           MMTBX_ASSERT(cctbx::adptbx::is_positive_definite(m_cp-t_, small6));
+           MMTBX_ASSERT(cctbx::adptbx::is_positive_definite(m_cp-t_, 1.e-4));
            MMTBX_ASSERT(cctbx::adptbx::is_positive_definite(n_cp-t_, small6));
         }
         else {
            MMTBX_ASSERT(branch_1_2);
+           //zero_all();
            t_ = t3 + sym_mat3<double>(qg * (t2 + sym_mat3<double>(
                           qp * t1 * qp.inverse(),small)) * qg.inverse(),small);
            MMTBX_ASSERT(cctbx::adptbx::is_positive_definite(t_,      small6));
@@ -601,6 +600,9 @@ jump:
         vec3<double> e3 = n_eigensystem.vectors(2);
         MMTBX_ASSERT(g3.const_ref().all_approx_equal(
                      e3.const_ref(),small));
+        MMTBX_ASSERT(nyu.const_ref().all_approx_equal(
+                     n_eigensystem.values().const_ref(),small));
+        //zero_all();
         n = sym_mat3<double>(nyu[0],nyu[1],0,0,0,0);
         double e1_n = e1.length();
         double e2_n = e2.length();
@@ -608,6 +610,7 @@ jump:
         q = mat3<double>(e1[0]/e1_n,e2[0]/e2_n,e3[0]/e3_n,
                          e1[1]/e1_n,e2[1]/e2_n,e3[1]/e3_n,
                          e1[2]/e1_n,e2[2]/e2_n,e3[2]/e3_n);
+        //q = zero_mat(q);
         m = sym_mat3<double>(q.inverse() * m * q, small);
         MMTBX_ASSERT(std::abs(m[4])<1.e-4 && std::abs(m[4])<1.e-4 &&
                      std::abs(m[5])<1.e-4);
@@ -616,7 +619,11 @@ jump:
 
      void func_3_2()
       {
-        MMTBX_ASSERT(nyu[0]>=nyu[1]&&std::abs(nyu[1])>small&&myu[1]>=nyu[1]);
+        //MMTBX_ASSERT(nyu[0]>=nyu[1]&&std::abs(nyu[1])>small&&myu[1]>=nyu[1]);
+        MMTBX_ASSERT(nyu[0]>=nyu[1]);
+        MMTBX_ASSERT(std::abs(nyu[1])>small);
+        //MMTBX_ASSERT(myu[1]>=nyu[1]); //XXX
+        MMTBX_ASSERT((std::abs(myu[1]-nyu[1]) < small6) || (myu[1]>=nyu[1]));
         cctbx::adptbx::eigensystem<double> m_eigensystem(m);
         myu = m_eigensystem.values();
         t2 = sym_mat3<double>(nyu[1],nyu[1],0,0,0,0);
@@ -629,29 +636,50 @@ jump:
      void func_3_3()
       {
         double gamma_2 = 0.0;
-        if(std::abs(myu[1]) < small) {
+        double det_m33 = m[0]*m[1] - m[3]*m[3];
+        if(det_m33 > small) {
            branch_3_3_1 = true;
-           MMTBX_ASSERT(myu[0]>=myu[1]&&std::abs(myu[1])<small);
-           gamma_2 = m[0];
-        }
-        else {
-           branch_3_3_2 = true;
-           MMTBX_ASSERT(myu[0]>=myu[1]&&std::abs(myu[1])>small);
-           //gamma_2 = m.determinant() / m[1];
-           double det_m33 = m[0]*m[1] - m[3]*m[3];
            gamma_2 = det_m33 / m[1];
         }
+        else {
+           MMTBX_ASSERT(std::abs(det_m33) < small);
+           if(m[1] > small) {
+              branch_3_3_2 = true;
+              gamma_2 = 0.0;
+           }
+           else {
+              branch_3_3_3 = true;
+              MMTBX_ASSERT(std::abs(m[1]) < small);
+              gamma_2 = m[0];
+           }
+        }
+
+
+        //if(std::abs(myu[1]) < small) {
+        //   branch_3_3_1 = true;
+        //   MMTBX_ASSERT(myu[0]>=myu[1]&&std::abs(myu[1])<small);
+        //   gamma_2 = m[0];
+        //}
+        //else {
+        //   branch_3_3_2 = true;
+        //   MMTBX_ASSERT(myu[0]>=myu[1]&&std::abs(myu[1])>small);
+        //   double det_m33 = m[0]*m[1] - m[3]*m[3];
+        //   gamma_2 = det_m33 / m[1];
+        //}
+
+
         MMTBX_ASSERT(nyu[0]>=nyu[1]&&std::abs(nyu[1])<small);
         double gamma = std::min(gamma_2, nyu[0]);
         t1 = sym_mat3<double>(gamma,0,0,0,0,0);
+        //zero_all();
         if(branch_3_1) {
            MMTBX_ASSERT(t2 == sym_mat3<double>(-1,-1,-1,-1,-1,-1));
            t2 = sym_mat3<double>(0,0,0,0,0,0);
         }
         t_ = t3 + sym_mat3<double>(q * (t2 + t1) * q.inverse(), small);
         MMTBX_ASSERT(cctbx::adptbx::is_positive_definite(t_,      small6));
-        MMTBX_ASSERT(cctbx::adptbx::is_positive_definite(m_cp-t_, small6));
-        MMTBX_ASSERT(cctbx::adptbx::is_positive_definite(n_cp-t_, small6));
+        MMTBX_ASSERT(cctbx::adptbx::is_positive_definite(m_cp-t_, 1.e-4)); //XXX
+        MMTBX_ASSERT(cctbx::adptbx::is_positive_definite(n_cp-t_, 1.e-4)); //XXX
       }
 
      double get_beta_1(double det_m,
@@ -683,28 +711,90 @@ jump:
        return result;
      }
 
-     void show(sym_mat3<double> x) {
-       std::cout<<x[0]<<" "<<x[1]<<" "<<x[2]<<" "<<x[3]<<" "<<x[4]<<" "<<x[5]<<std::endl;
-     }
-
      void show_all() {
        std::cout<<"***"<<std::endl;
        std::cout<<" "<<std::endl;
-       std::cout<<"T1= "<<t1[0]<<" "<<t1[1]<<" "<<t1[2]<<" "<<t1[3]<<" "<<t1[4]<<" "<<t1[5]<<std::endl;
-       std::cout<<"T2= "<<t2[0]<<" "<<t2[1]<<" "<<t2[2]<<" "<<t2[3]<<" "<<t2[4]<<" "<<t2[5]<<std::endl;
-       std::cout<<"T3= "<<t3[0]<<" "<<t3[1]<<" "<<t3[2]<<" "<<t3[3]<<" "<<t3[4]<<" "<<t3[5]<<std::endl;
-       std::cout<<"T=  "<<t_[0]<<" "<<t_[1]<<" "<<t_[2]<<" "<<t_[3]<<" "<<t_[4]<<" "<<t_[5]<<std::endl;
-       std::cout<<"M(current)= "<<m[0]<<" "<<m[1]<<" "<<m[2]<<" "<<m[3]<<" "<<m[4]<<" "<<m[5]<<std::endl;
-       std::cout<<"N(current)= "<<n[0]<<" "<<n[1]<<" "<<n[2]<<" "<<n[3]<<" "<<n[4]<<" "<<n[5]<<std::endl;
+       std::cout<<"M(start)= "<<m_cp[0]<<" "<<m_cp[1]<<" "<<m_cp[2]<<" "<<
+                                m_cp[3]<<" "<<m_cp[4]<<" "<<m_cp[5]<<std::endl;
+       std::cout<<"N(start)= "<<n_cp[0]<<" "<<n_cp[1]<<" "<<n_cp[2]<<" "<<
+                                n_cp[3]<<" "<<n_cp[4]<<" "<<n_cp[5]<<std::endl;
+       cctbx::adptbx::eigensystem<double> m_eigensystem_s(m_cp);
+       cctbx::adptbx::eigensystem<double> n_eigensystem_s(n_cp);
+       vec3<double> nvs = n_eigensystem_s.values();
+       vec3<double> mvs = m_eigensystem_s.values();
+       std::cout<<"myu_start= "<<mvs[0]<<" "<<mvs[1]<<" "<<mvs[2]<<std::endl;
+       std::cout<<"nyu_start= "<<nvs[0]<<" "<<nvs[1]<<" "<<nvs[2]<<std::endl;
+       std::cout<<"T1= "<<t1[0]<<" "<<t1[1]<<" "<<t1[2]<<" "<<t1[3]<<" "<<
+                          t1[4]<<" "<<t1[5]<<std::endl;
+       std::cout<<"T2= "<<t2[0]<<" "<<t2[1]<<" "<<t2[2]<<" "<<t2[3]<<" "<<
+                          t2[4]<<" "<<t2[5]<<std::endl;
+       std::cout<<"T3= "<<t3[0]<<" "<<t3[1]<<" "<<t3[2]<<" "<<t3[3]<<" "<<
+                          t3[4]<<" "<<t3[5]<<std::endl;
+       std::cout<<"T=  "<<t_[0]<<" "<<t_[1]<<" "<<t_[2]<<" "<<t_[3]<<" "<<
+                          t_[4]<<" "<<t_[5]<<std::endl;
+       std::cout<<"M(current)= "<<m[0]<<" "<<m[1]<<" "<<m[2]<<" "<<m[3]<<" "<<
+                                  m[4]<<" "<<m[5]<<std::endl;
+       std::cout<<"N(current)= "<<n[0]<<" "<<n[1]<<" "<<n[2]<<" "<<n[3]<<" "<<
+                                  n[4]<<" "<<n[5]<<std::endl;
        std::cout<<"myu= "<<myu[0]<<" "<<myu[1]<<" "<<myu[2]<<std::endl;
        std::cout<<"nyu= "<<nyu[0]<<" "<<nyu[1]<<" "<<nyu[2]<<std::endl;
+       std::cout<<"branch_0     = "<<branch_0     <<std::endl;
+       std::cout<<"branch_1     = "<<branch_1     <<std::endl;
+       std::cout<<"branch_2     = "<<branch_2     <<std::endl;
+       std::cout<<"branch_3     = "<<branch_3     <<std::endl;
+       std::cout<<"branch_1_1   = "<<branch_1_1   <<std::endl;
+       std::cout<<"branch_1_2   = "<<branch_1_2   <<std::endl;
+       std::cout<<"branch_3_1   = "<<branch_3_1   <<std::endl;
+       std::cout<<"branch_3_2   = "<<branch_3_2   <<std::endl;
+       std::cout<<"branch_3_3_1 = "<<branch_3_3_1 <<std::endl;
+       std::cout<<"branch_3_3_2 = "<<branch_3_3_2 <<std::endl;
+       std::cout<<"branch_3_3_3 = "<<branch_3_3_3 <<std::endl;
+       std::cout<<"branch_2_1   = "<<branch_2_1   <<std::endl;
+       std::cout<<"branch_2_2   = "<<branch_2_2   <<std::endl;
+       std::cout<<"branch_2_3   = "<<branch_2_3   <<std::endl;
+       cctbx::adptbx::eigensystem<double> m_eigensystem(m_cp-t_);
+       cctbx::adptbx::eigensystem<double> n_eigensystem(n_cp-t_);
+       vec3<double> nv = n_eigensystem.values();
+       vec3<double> mv = m_eigensystem.values();
+       std::cout<<"myu-t= "<<mv[0]<<" "<<mv[1]<<" "<<mv[2]<<std::endl;
+       std::cout<<"nyu-t= "<<nv[0]<<" "<<nv[1]<<" "<<nv[2]<<std::endl;
        std::cout<<"***"<<std::endl;
+     }
+
+     bool all_zero_m3(sym_mat3<double> x)
+     {
+       return std::abs(x[0])<small&&std::abs(x[1])<small&&
+              std::abs(x[2])<small&&std::abs(x[3])<small&&
+              std::abs(x[4])<small&&std::abs(x[5])<small;
+     }
+
+     mat3<double> zero_mat(mat3<double> x)
+     {
+       for(int i=0; i<9; i++) {
+           if(std::abs(x[i]) < small) x[i] = 0.0;
+       }
+       return x;
+     }
+
+     void zero_all()
+     {
+       for(int i=0; i<3; i++) {
+           if(std::abs(myu[i]) < small) myu[i] = 0.0;
+           if(std::abs(nyu[i]) < small) nyu[i] = 0.0;
+       }
+       for(int i=0; i<6; i++) {
+           if(std::abs(m[i]) < small) m[i] = 0.0;
+           if(std::abs(n[i]) < small) n[i] = 0.0;
+           if(std::abs(t1[i]) < small) t1[i] = 0.0;
+           if(std::abs(t2[i]) < small) t2[i] = 0.0;
+           if(std::abs(t3[i]) < small) t3[i] = 0.0;
+       }
      }
 
     sym_mat3<double> t() const { return t_; }
     bool branch_0,branch_1,branch_2,branch_3,branch_1_1,branch_1_2;
-    bool branch_3_1,branch_3_2,branch_3_3_1,branch_3_3_2;
-    bool branch_2_1,branch_2_2;
+    bool branch_3_1,branch_3_2,branch_3_3_1,branch_3_3_2,branch_3_3_3;
+    bool branch_2_1,branch_2_2,branch_2_3;
     bool get_branch_0()   const {return branch_0  ; }
     bool get_branch_1()   const {return branch_1  ; }
     bool get_branch_2()   const {return branch_2  ; }
@@ -715,8 +805,10 @@ jump:
     bool get_branch_3_2() const {return branch_3_2; }
     bool get_branch_3_3_1() const {return branch_3_3_1; }
     bool get_branch_3_3_2() const {return branch_3_3_2; }
+    bool get_branch_3_3_3() const {return branch_3_3_3; }
     bool get_branch_2_1() const {return branch_2_1; }
     bool get_branch_2_2() const {return branch_2_2; }
+    bool get_branch_2_3() const {return branch_2_3; }
   protected:
     sym_mat3<double> t1,t2,t3,m,n,m_cp,n_cp;
     mat3<double> qg,qp,q;
@@ -740,6 +832,91 @@ af::shared<sym_mat3<double> > uaniso_from_tls_one_group(
          uanisos[i] = manager.u();
     }
     return uanisos;
+}
+
+sym_mat3<double> t_from_u_cart(af::shared<sym_mat3<double> > const& u_cart,
+                               double small)
+{
+    MMTBX_ASSERT(u_cart.size() >= 2);
+    int i_seq = -1;
+    double ev_min = 1.e+20;
+    for(std::size_t i=0; i < u_cart.size(); i++) {
+        MMTBX_ASSERT(cctbx::adptbx::is_positive_definite(u_cart[i], 1.e-6));
+        cctbx::adptbx::eigensystem<double> eigensystem(u_cart[i]);
+        double try_ev = eigensystem.values().min();
+        if(try_ev < ev_min) {
+           ev_min = try_ev;
+           i_seq = i;
+        }
+    }
+    cctbx::adptbx::eigensystem<double> eigensystem_(u_cart[i_seq]);
+    MMTBX_ASSERT( eigensystem_.values().min() == ev_min );
+
+    sym_mat3<double> t = common(u_cart[0], u_cart[i_seq]).t();
+    if(u_cart.size() > 2) {
+       for (std::size_t i=0; i < u_cart.size(); i++) {
+         MMTBX_ASSERT(cctbx::adptbx::is_positive_definite(t,         small));
+         MMTBX_ASSERT(cctbx::adptbx::is_positive_definite(u_cart[i], small));
+         t = common(t, u_cart[i], small).t();
+         MMTBX_ASSERT(cctbx::adptbx::is_positive_definite(t,          small));
+         MMTBX_ASSERT(cctbx::adptbx::is_positive_definite(u_cart[i]-t,small));
+         MMTBX_ASSERT(cctbx::adptbx::is_positive_definite(u_cart[i],  small));
+         //for (std::size_t j=0; j < u_cart.size(); j++) {
+         //  t = common(t, u_cart[j], small).t();
+         //  MMTBX_ASSERT(cctbx::adptbx::is_positive_definite(u_cart[j]-t, small));
+         //}
+       }
+       for (std::size_t i=0; i < u_cart.size(); i++) {
+         MMTBX_ASSERT(cctbx::adptbx::is_positive_definite(u_cart[i]-t, small));
+       }
+    }
+
+    return t;
+}
+
+sym_mat3<double> t_from_u_cart(af::shared<double> const& u_iso,
+                               double small)
+{
+    af::shared<sym_mat3<double> > u_cart(u_iso.size());
+    for(std::size_t i=0; i < u_cart.size(); i++) {
+      u_cart[i] = sym_mat3<double>(u_iso[i], u_iso[i], u_iso[i], 0, 0, 0);
+    }
+
+    MMTBX_ASSERT(u_cart.size() >= 2);
+    int i_seq = -1;
+    double ev_min = 1.e+20;
+    for(std::size_t i=0; i < u_cart.size(); i++) {
+        MMTBX_ASSERT(cctbx::adptbx::is_positive_definite(u_cart[i], small));
+        cctbx::adptbx::eigensystem<double> eigensystem(u_cart[i]);
+        double try_ev = eigensystem.values().min();
+        if(try_ev < ev_min) {
+           ev_min = try_ev;
+           i_seq = i;
+        }
+    }
+    cctbx::adptbx::eigensystem<double> eigensystem_(u_cart[i_seq]);
+    MMTBX_ASSERT( eigensystem_.values().min() == ev_min );
+
+    sym_mat3<double> t = common(u_cart[0], u_cart[i_seq]).t();
+    if(u_cart.size() > 2) {
+       for (std::size_t i=0; i < u_cart.size(); i++) {
+         MMTBX_ASSERT(cctbx::adptbx::is_positive_definite(t,         small));
+         MMTBX_ASSERT(cctbx::adptbx::is_positive_definite(u_cart[i], small));
+         t = common(t, u_cart[i], small).t();
+         MMTBX_ASSERT(cctbx::adptbx::is_positive_definite(t,          small));
+         MMTBX_ASSERT(cctbx::adptbx::is_positive_definite(u_cart[i]-t,small));
+         MMTBX_ASSERT(cctbx::adptbx::is_positive_definite(u_cart[i],  small));
+         //for (std::size_t j=0; j < u_cart.size(); j++) {
+         //  t = common(t, u_cart[j], small).t();
+         //  MMTBX_ASSERT(cctbx::adptbx::is_positive_definite(u_cart[j]-t, small));
+         //}
+       }
+       for (std::size_t i=0; i < u_cart.size(); i++) {
+         MMTBX_ASSERT(cctbx::adptbx::is_positive_definite(u_cart[i]-t, small));
+       }
+    }
+
+    return t;
 }
 
 }} // namespace mmtbx::tls

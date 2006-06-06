@@ -75,6 +75,13 @@ class lbfgs(object):
     return apply_shifts_result.u_iso_reinable_params
 
   def compute_target(self, compute_gradients, u_iso_reinable_params):
+    #XXX
+    u_isos = self.xray_structure.scatterers().extract_u_iso()
+    sel = (u_isos < 0.0)
+    u_isos.set_selected(sel, 0.0)
+    self.xray_structure.scatterers().set_u_iso(u_isos)
+    #print dir(sc)
+
     self.fmodel.update_xray_structure(xray_structure = self.xray_structure,
                                       update_f_calc  = True)
     self.exray_final = self.fmodel.target_w(alpha    = self.alpha_w,
@@ -96,6 +103,7 @@ class lbfgs(object):
                     parameters        = self.iso_restraints,
                     wilson_b          = self.wilson_b,
                     tan_b_iso_max     = self.tan_b_iso_max,
+                    use_u_local_only  = self.iso_restraints.use_u_local_only,
                     compute_gradients = compute_gradients)
        self.eadp_final = energies_adp_iso.target
        if(self.eadp_start is None): self.eadp_start = self.eadp_final

@@ -26,6 +26,7 @@ def run():
   energies_adp = cctbx.adp_restraints.energies_iso(
     geometry_restraints_manager=grm,
     xray_structure=xray_structure,
+    use_u_local_only = False,
     parameters=parameters)
   u_iso_restraints = grm.harmonic_restraints(
                       variables    = xray_structure.extract_u_iso_or_u_equiv(),

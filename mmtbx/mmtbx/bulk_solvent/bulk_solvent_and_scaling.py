@@ -68,7 +68,7 @@ master_params = iotbx.phil.parse("""\
     u23 = None
       .type = float
   }
-  apply_back_trace_of_b_cart = True
+  apply_back_trace_of_b_cart = False
     .type = bool
   start_minimization_from_k_sol = 0.35
     .type = float

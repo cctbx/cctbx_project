@@ -114,8 +114,17 @@ namespace {
       .def("branch_3_2", &common::get_branch_3_2)
       .def("branch_3_3_1", &common::get_branch_3_3_1)
       .def("branch_3_3_2", &common::get_branch_3_3_2)
+      .def("branch_3_3_3", &common::get_branch_3_3_3)
       .def("branch_2_1", &common::get_branch_2_1)
       .def("branch_2_2", &common::get_branch_2_2)
+      .def("branch_2_3", &common::get_branch_2_3)
+   ;
+   //def("t_from_u_cart",t_from_u_cart)
+   //;
+
+   def("t_from_u_cart", (sym_mat3<double>(*)(af::shared<sym_mat3<double> > const&, double)) t_from_u_cart, (arg_("u_cart"),arg_("small")))
+   ;
+   def("t_from_u_cart", (sym_mat3<double>(*)(af::shared<double> const&, double))            t_from_u_cart, (arg_("u_iso"),arg_("small")))
    ;
 
   }
