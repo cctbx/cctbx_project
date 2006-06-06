@@ -13,6 +13,7 @@ from stdlib import math
 import types
 import sys
 import random
+from libtbx.test_utils import approx_equal
 
 class structure(crystal.special_position_settings):
 
@@ -75,6 +76,9 @@ class structure(crystal.special_position_settings):
     u_iso_1 = self.scatterers().extract_u_iso()
     u_iso_2 = other.scatterers().extract_u_iso()
     assert flex.mean(flex.abs(u_iso_1-u_iso_2)) < 1.e-6
+    u_cart_1 = self.scatterers().extract_u_cart(self.unit_cell())
+    u_cart_2 = other.scatterers().extract_u_cart(self.unit_cell())
+    assert approx_equal(u_cart_1, u_cart_2)
 
   def set_u_iso(self, value=None, values=None, allow_mixed=False):
     assert [value, values].count(None) == 1
@@ -285,29 +289,54 @@ class structure(crystal.special_position_settings):
   def convert_to_isotropic(self):
     self._scatterers.convert_to_isotropic(unit_cell=self.unit_cell())
 
-  def convert_to_anisotropic(self):
-    self._scatterers.convert_to_anisotropic(unit_cell=self.unit_cell())
+  def convert_to_anisotropic(self, selection=None):
+    if(selection is None):
+      self._scatterers.convert_to_anisotropic(unit_cell=self.unit_cell())
+    else:
+      self._scatterers.convert_to_anisotropic(unit_cell=self.unit_cell(),
+                                              selection=selection)
 
   def show_u_statistics(self, text="", out=None):
     if(out is None): out = sys.stdout
     size = self._scatterers.size()
+    epis = 8*math.pi**2
     n_anisotropic = self._scatterers.count_anisotropic()
     n_isotropic = size - n_anisotropic
     ipd = self.is_positive_definite_u()
     npd = ipd.count(True)
     nnpd = ipd.count(False)
-    bisos = self.extract_u_iso_or_u_equiv() * 8*math.pi**2
+    beq = self.extract_u_iso_or_u_equiv() * epis
+    bisos = self.scatterers().extract_u_iso() * epis
     part1 = "|-"+text
     part2 = "-|"
     n = 79 - len(part1+part2)
     print >> out, part1 + "-"*n + part2
-    part1 = "| Total number of ADPs = %-d%-s"%(size,":")
     n = 79 - len(part1 + "|")
-    print >> out, part1+" "*n+"|"
-    print >> out, "|   iso = %-5d   aniso = %-5d   pos. def. = %-5d   "\
-                "non-pos. def. = %-5d   |"%(n_isotropic,n_anisotropic,npd,nnpd)
-    print >> out, "| Equivalent B: min = %-6.2f   max = %-6.2f   mean ="\
-        " %-6.2f"%(flex.min(bisos),flex.max(bisos),flex.mean(bisos))+" "*19+"|"
+    print >> out, "| iso = %-5d   aniso = %-5d   pos. def. = %-5d   "\
+          "non-pos. def. = %-5d     |"%(n_isotropic,n_anisotropic,npd,nnpd)
+    print >> out, "| Total B(isotropic equivalent): min = %-6.2f   "\
+                  "max = %-6.2f   mean = %-6.2f"%(flex.min(beq),flex.max(beq),
+                  flex.mean(beq))+" "*2+"|"
+    print >> out, "| Isotropic B only:              min = %-6.2f   "\
+                  "max = %-6.2f   mean = %-6.2f"%(flex.min(bisos),
+                  flex.max(bisos),flex.mean(bisos))+" "*2+"|"
+    print >> out, "| "+"- "*38+"|"
+    print >> out, "|                     Distribution of isotropic B-factors:"\
+                  "                    |"
+    print >> out, "|            Isotropic                |             Total "\
+                  "                    |"
+    histogram_1 = flex.histogram(data = bisos, n_slots = 10)
+    low_cutoff_1 = histogram_1.data_min()
+    histogram_2 = flex.histogram(data = beq, n_slots = 10)
+    low_cutoff_2 = histogram_2.data_min()
+    for (i_1,n_1),(i_2,n_2) in zip(enumerate(histogram_1.slots()),
+                                   enumerate(histogram_2.slots())):
+      high_cutoff_1 = histogram_1.data_min() + histogram_1.slot_width()*(i_1+1)
+      high_cutoff_2 = histogram_2.data_min() + histogram_2.slot_width()*(i_2+1)
+      print >> out, "|  %9.3f -%9.3f:%8d      |    %9.3f -%9.3f:%8d      |" % \
+             (low_cutoff_1,high_cutoff_1,n_1,low_cutoff_2,high_cutoff_2,n_2)
+      low_cutoff_1 = high_cutoff_1
+      low_cutoff_2 = high_cutoff_2
     print >> out, "|" +"-"*77+"|"
 
   def site_symmetry_table(self):

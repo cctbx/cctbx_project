@@ -1192,11 +1192,10 @@ class manager(object):
     part2 = "-|"
     n = 79 - len(part1+part2)
     print >> out, part1 + "-"*n + part2
-    part3 = "| target(%s"%self.target_name,")_work = %.6e  r_work = %6.4f  r_free = %6.4f"%\
+    part3 = "| target_work(%s"%self.target_name+") = %.6e  r_work = %6.4f  r_free = %6.4f"%\
                                 (self.target_w(), self.r_work(), self.r_free())
-    n = 79 - len(str(part3)+"|")
-    print >> out, "| target(%s"%self.target_name,")_work = %.6e  r_work = %6.4f  r_free = %6.4f"%\
-                                (self.target_w(), self.r_work(), self.r_free()) + " "*n +"|"
+    n = 78 - len(str(part3)+"|")
+    print >> out, part3, " "*n +"|"
     print >> out, "|" +"-"*77+"|"
 
   def show(self, out=None):

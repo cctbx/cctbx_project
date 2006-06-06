@@ -555,12 +555,14 @@ class adp_statistics(object):
                                             xray_structure    = xray_structure,
                                             parameters        = iso_restraints,
                                             wilson_b          = wilson_b,
+                                            use_u_local_only  = iso_restraints.use_u_local_only,
                                             tan_b_iso_max     = tan_b_iso_max,
                                             compute_gradients = True)
     energies_adp_iso_ref = restraints_manager_ref.energies_adp_iso(
                                         xray_structure    = xray_structure_ref,
                                         parameters        = iso_restraints,
                                         wilson_b          = wilson_b,
+                                        use_u_local_only  = iso_restraints.use_u_local_only,
                                         tan_b_iso_max     = tan_b_iso_max,
                                         compute_gradients = True)
     eps = math.pi**2*8

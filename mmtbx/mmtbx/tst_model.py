@@ -60,6 +60,7 @@ def exercise():
   iso.wilson_b_weight = None
   iso.plain_pairs_radius = 5.0
   iso.refine_ap_and_dp = False
+  iso.use_u_local_only = False
 #####
 
   mol.adp_statistics(iso_restraints = iso, show = True, other = None, wilson_b = None)
