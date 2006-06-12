@@ -1178,16 +1178,18 @@ class twin_law_dependend_twin_tests(object):
                                miller_calc,
                                out)
 
-      self.ml_murray_rust = ml_murray_rust( normalized_intensities,
-                                            twin_law.operator.as_double_array()[0:9],
-                                            out )
+      self.ml_murray_rust=None
+      if normalized_intensities.sigmas() is not None:
+        self.ml_murray_rust = ml_murray_rust( normalized_intensities,
+                                              twin_law.operator.as_double_array()[0:9],
+                                              out )
 
-      if ncs_test:
-        self.ml_murry_rust_with_ncs = ml_murray_rust_with_ncs( normalized_intensities,
-                                                               twin_law.operator.as_double_array()[0:9],
-                                                               out,
-                                                               n_ncs_bins,
-                                                               miller_calc)
+        if ncs_test:
+          self.ml_murry_rust_with_ncs = ml_murray_rust_with_ncs( normalized_intensities,
+                                                                 twin_law.operator.as_double_array()[0:9],
+                                                                 out,
+                                                                 n_ncs_bins,
+                                                                 miller_calc)
 
 
 
@@ -1253,8 +1255,12 @@ class twin_results_interpretation(object):
           twin_item.britton_test.estimated_alpha)
         self.twin_results.h_alpha.append(
           twin_item.h_test.estimated_alpha)
-        self.twin_results.murray_rust_alpha.append(
-          twin_item.ml_murray_rust.estimated_alpha)
+
+        if twin_item.ml_murray_rust is not None:
+          self.twin_results.murray_rust_alpha.append(
+            twin_item.ml_murray_rust.estimated_alpha)
+        else:
+          self.twin_results.murray_rust_alpha.append(None)
 
       else:
         self.twin_results.r_obs.append(None)
@@ -2240,17 +2246,18 @@ class twin_analyses(object):
           data_plots.plot_data_loggraph(h_plot,out_plots)
 
         # plot the likelihood profile fro the ML rees test please
-        ml_murray_rust_plot = data_plots.plot_data(
-          plot_title = 'Likelihood based twin fraction estimation for possible twin law '\
-                        +possible_twin_laws.operators[ii].operator.r().as_hkl(),
-          x_label = 'alpha',
-          y_label = '-Log[Likelihood]',
-          x_data = tmp_twin_law_stuff.ml_murray_rust.twin_fraction,
-          y_data = tmp_twin_law_stuff.ml_murray_rust.nll,
-          y_legend = 'NLL (acentric data)',
-          comments = 'Likelihood based twin fraction estimate')
-        if out_plots is not None:
-          data_plots.plot_data_loggraph(ml_murray_rust_plot,out_plots)
+        if tmp_twin_law_stuff.ml_murray_rust is not None:
+          ml_murray_rust_plot = data_plots.plot_data(
+            plot_title = 'Likelihood based twin fraction estimation for possible twin law '\
+                          +possible_twin_laws.operators[ii].operator.r().as_hkl(),
+            x_label = 'alpha',
+            y_label = '-Log[Likelihood]',
+            x_data = tmp_twin_law_stuff.ml_murray_rust.twin_fraction,
+            y_data = tmp_twin_law_stuff.ml_murray_rust.nll,
+            y_legend = 'NLL (acentric data)',
+            comments = 'Likelihood based twin fraction estimate')
+          if out_plots is not None:
+            data_plots.plot_data_loggraph(ml_murray_rust_plot,out_plots)
         # now we can check for space group related issues
     self.check_sg = None
     if self.n_twin_laws > 0:
