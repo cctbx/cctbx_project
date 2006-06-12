@@ -1,5 +1,6 @@
 from cctbx import miller
 from cctbx.array_family import flex
+from libtbx.str_utils import show_string
 
 def miller_array_export_as_cns_hkl(self,
       file_object,
@@ -10,6 +11,12 @@ def miller_array_export_as_cns_hkl(self,
   if (file_name): print >> out, "{ file:", file_name, "}"
   if (self.info() is not None):
     print >> out, "{", self.info(), "}"
+  if (self.unit_cell() is not None):
+    print >> out, "{ Unit cell: %s }" % " ".join(["%.6g" % p
+      for p in self.unit_cell().parameters()])
+  if (self.space_group_info() is not None):
+    print >> out, "{ Space group: %s }" % show_string(
+      str(self.space_group_info()))
   for line in info: print >> out, "{", line, "}"
   print >> out, "NREFlections=%d" % self.indices().size()
   if (self.anomalous_flag()):
