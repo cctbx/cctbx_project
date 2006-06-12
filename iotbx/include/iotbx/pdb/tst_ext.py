@@ -512,6 +512,12 @@ def exercise_pdb_input():
     assert pdb_inp.model_numbers_are_unique()
     assert pdb_inp.model_atom_counts().size() == 0
     assert len(pdb_inp.find_duplicate_atom_labels()) == 0
+    out = StringIO()
+    pdb_inp.construct_hierarchy().show(out=out)
+    assert len(out.getvalue()) == 0
+    assert pdb_inp.number_of_chains_with_altloc_mix() == 0
+    assert pdb_inp.i_seqs_alternative_group_with_blank_altloc().size() == 0
+    assert pdb_inp.i_seqs_alternative_group_without_blank_altloc().size() == 0
     pdb_inp = pdb.input(
       source_info="file/name",
       lines=flex.split_lines("""\
@@ -1382,15 +1388,15 @@ ATOM     56  CA BGLY A   9
     expected_formatted="""\
 model id=0 #chains=1
   chain id="A" #conformers=2
-    conformer id=" " #residues=1 #atoms=2 #alt. atoms=1
+    conformer id=" " #residues=1 #atoms=2 #alt. atoms=2
       residue name="GLY " seq=   9 icode=" " #atoms=2
-         " CA "
        & " CA "
-    conformer id="B" #residues=1 #atoms=2 #alt. atoms=1
-      residue name="GLY " seq=   9 icode=" " #atoms=2
-         " CA "
+       & " CA "
+    conformer id="B" #residues=1 #atoms=1 #alt. atoms=1
+      residue name="GLY " seq=   9 icode=" " #atoms=1
        & " CA "
 """)
+  assert pdb_inp.number_of_chains_with_altloc_mix() == 0
   pdb_inp = pdb.input(
     source_info=None,
     lines=flex.split_lines("""\
@@ -1404,13 +1410,12 @@ ATOM     56  CA  GLY A   9
     expected_formatted="""\
 model id=0 #chains=1
   chain id="A" #conformers=2
-    conformer id=" " #residues=1 #atoms=2 #alt. atoms=1
+    conformer id=" " #residues=1 #atoms=2 #alt. atoms=2
       residue name="GLY " seq=   9 icode=" " #atoms=2
-         " CA "
        & " CA "
-    conformer id="B" #residues=1 #atoms=2 #alt. atoms=1
-      residue name="GLY " seq=   9 icode=" " #atoms=2
-         " CA "
+       & " CA "
+    conformer id="B" #residues=1 #atoms=1 #alt. atoms=1
+      residue name="GLY " seq=   9 icode=" " #atoms=1
        & " CA "
 """)
   pdb_inp = pdb.input(
@@ -1426,14 +1431,13 @@ ATOM     56  CA  GLY A   9
     expected_formatted="""\
 model id=0 #chains=1
   chain id="A" #conformers=2
-    conformer id=" " #residues=1 #atoms=2 #alt. atoms=1
-      residue name="GLY " seq=   9 icode=" " #atoms=2
-         " CA "
-       & " CA "
-    conformer id="B" #residues=1 #atoms=2 #alt. atoms=1
+    conformer id=" " #residues=1 #atoms=2 #alt. atoms=2
       residue name="GLY " seq=   9 icode=" " #atoms=2
        & " CA "
-         " CA "
+       & " CA "
+    conformer id="B" #residues=1 #atoms=1 #alt. atoms=1
+      residue name="GLY " seq=   9 icode=" " #atoms=1
+       & " CA "
 """)
   perm = flex.size_t((0,1,2))
   for i_trial in xrange(6):
@@ -1529,6 +1533,7 @@ model id=0 #chains=1
         "ALA ": 1, "LEU ": 1, "TRP ": 1, "CYS ": 2, "THR ": 1, "GLY ": 3,
         "SER ": 1, "ARG ": 1, "PRO ": 1},
       residue_name_classes={"common_amino_acid": 12}))
+  assert pdb_inp.number_of_chains_with_altloc_mix() == 0
   pdb_inp = pdb.input(
     source_info=None,
     lines=flex.split_lines("""\
@@ -1589,6 +1594,7 @@ model id=0 #chains=1
        & " O  "
        & " CB "
 """)
+  assert pdb_inp.number_of_chains_with_altloc_mix() == 0
   c = hierarchy.models()[0].chains()[0]
   for f in c.conformers():
     assert [r.number_of_alternative_atoms() for r in f.residues()] == [2,4]
@@ -1600,6 +1606,46 @@ model id=0 #chains=1
   except RuntimeError, e:
     assert str(e).endswith(
       "): SCITBX_ASSERT(!construct_hierarchy_was_called_before) failure.")
+  else: raise RuntimeError("Exception expected.")
+  #
+  pdb_inp = pdb.input(
+    source_info=None,
+    lines=flex.split_lines("""\
+HEADER    OXIDOREDUCTASE                          25-NOV-00   1HEU
+ATOM      2  CA ASER A   1
+ATOM      5  CB ASER A   1
+ATOM      8  CA BSER A   1
+ATOM     11  CB BSER A   1
+ATOM   2092  CA  GLU A 256
+ATOM   2095  CB  GLU A 256
+ATOM   2100  CB AGLU A 256
+ATOM   2105  CB BGLU A 256
+END
+"""))
+  pdb_inp.construct_hierarchy()
+  assert pdb_inp.number_of_chains_with_altloc_mix() == 1
+  assert list(pdb_inp.i_seqs_alternative_group_with_blank_altloc()) == [5,6,7]
+  assert list(pdb_inp.i_seqs_alternative_group_without_blank_altloc()) == [0,2]
+  assert not show_diff(pdb_inp.have_altloc_mix_message(prefix="="), '''\
+=mix of alternative groups with and without blank altlocs:
+=  alternative group with blank altloc:
+=    " CB  GLU A 256 "
+=    " CB AGLU A 256 "
+=    " CB BGLU A 256 "
+=  alternative group without blank altloc:
+=    " CA ASER A   1 "
+=    " CA BSER A   1 "''')
+  try: pdb_inp.raise_altloc_mix_if_necessary()
+  except RuntimeError, e:
+    assert not show_diff(str(e), '''\
+mix of alternative groups with and without blank altlocs:
+  alternative group with blank altloc:
+    " CB  GLU A 256 "
+    " CB AGLU A 256 "
+    " CB BGLU A 256 "
+  alternative group without blank altloc:
+    " CA ASER A   1 "
+    " CA BSER A   1 "''')
   else: raise RuntimeError("Exception expected.")
   #
   try: pdb.input(

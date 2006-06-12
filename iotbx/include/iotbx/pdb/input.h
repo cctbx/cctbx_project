@@ -1545,6 +1545,7 @@ namespace iotbx { namespace pdb {
         if (anisou_counts != 0) record_type_counts_["ANISOU"] += anisou_counts;
         if (siguij_counts != 0) record_type_counts_["SIGUIJ"] += siguij_counts;
         construct_hierarchy_was_called_before = false;
+        number_of_chains_with_altloc_mix_ = 0;
       }
 
     public:
@@ -1694,10 +1695,9 @@ namespace iotbx { namespace pdb {
         while (mr.next()) {
           if (mr.size < 2) continue;
           std::map<unsigned, std::vector<unsigned> > dup_map;
-          scitbx::auto_array<i_seq_input_atom_labels>
-            sorted_input_atom_labels = sort_input_atom_labels(
-              iall, mr.begin, mr.end);
-          const i_seq_input_atom_labels* sj = sorted_input_atom_labels.get();
+          scitbx::auto_array<i_seq_input_atom_labels> sorted_ials(
+            sort_input_atom_labels(iall, mr.begin, mr.end));
+          const i_seq_input_atom_labels* sj = sorted_ials.get();
           const i_seq_input_atom_labels* si = sj++;
           for(unsigned js=1;js<mr.size;js++) {
             if (sj->labels != si->labels) {
@@ -1757,70 +1757,83 @@ namespace iotbx { namespace pdb {
             common_sel.reserve(ch_r.size);
             typedef std::map<char, std::vector<unsigned> > alt_t;
             alt_t alternatives;
-            scitbx::auto_array<i_seq_input_atom_labels>
-              sorted_input_atom_labels(
+            {
+              unsigned n_alternative_groups_with_blank_altloc = 0;
+              unsigned n_alternative_groups_without_blank_altloc = 0;
+              scitbx::auto_array<i_seq_input_atom_labels> sorted_ials(
                 sort_input_atom_labels(iall, ch_r.begin, ch_r.end));
-            const i_seq_input_atom_labels* si = sorted_input_atom_labels.get();
-            if (ch_r.size == 1) {
-              char ai = si->altloc();
-              if (ai != blank_altloc_char) {
-                alternatives[ai].push_back(si->i_seq);
-              }
-              else {
-                common_sel.push_back(si->i_seq);
-              }
-            }
-            else if (ch_r.size != 0) {
-              char ai = si->altloc();
-              bool prev_altloc_is_blank;
-              if (ai != blank_altloc_char) {
-                alternatives[ai].push_back((si++)->i_seq);
-                ai = si->altloc();
-                prev_altloc_is_blank = false;
-              }
-              else {
-                ai = si[1].altloc();
-                if (   ai != blank_altloc_char
-                    && si->labels.equal_ignoring_altloc(si[1].labels)) {
-                  alternatives[blank_altloc_char].push_back((si++)->i_seq);
+              const i_seq_input_atom_labels* si = sorted_ials.get();
+              const i_seq_input_atom_labels* se = si + ch_r.size;
+              const i_seq_input_atom_labels* sj = si;
+              while (sj != se) {
+                if (sj->altloc() == blank_altloc_char) {
+                  // skip over all blank altlocs
+                  sj++;
                 }
                 else {
-                  common_sel.push_back((si++)->i_seq);
-                }
-                prev_altloc_is_blank = true;
-              }
-              for(unsigned j=2;j<ch_r.size;j++) {
-                if (ai != blank_altloc_char) {
-                  alternatives[ai].push_back((si++)->i_seq);
-                  ai = si->altloc();
-                  prev_altloc_is_blank = false;
-                }
-                else {
-                  if (   !prev_altloc_is_blank
-                      && si->labels.equal_ignoring_altloc(si[-1].labels)) {
-                    alternatives[blank_altloc_char].push_back((si++)->i_seq);
-                    ai = si->altloc();
+                  bool this_group_has_blank_altloc = false;
+                  alternatives[sj->altloc()].push_back(sj->i_seq);
+                  const i_seq_input_atom_labels* sb = sj;
+                  while (sb != si) {
+                    // scan backwards to find beginning of group
+                    if (!sj->labels.equal_ignoring_altloc((--sb)->labels)) {
+                      sb++;
+                      break;
+                    }
+                    alternatives[blank_altloc_char].push_back(sb->i_seq);
+                    this_group_has_blank_altloc = true;
+                  }
+                  // process all preceeding with blank altlocs
+                  while (si != sb) common_sel.push_back((si++)->i_seq);
+                  si = sj;
+                  while (++si != se) {
+                    // scan forward to find end of group
+                    if (!sj->labels.equal_ignoring_altloc(si->labels)) {
+                      break;
+                    }
+                    alternatives[si->altloc()].push_back(si->i_seq);
+                    if (si->altloc() == blank_altloc_char) {
+                      this_group_has_blank_altloc = true;
+                    }
+                  }
+                  sj = si;
+                  if (this_group_has_blank_altloc) {
+                    n_alternative_groups_with_blank_altloc++;
+                    // keep track of i_seqs, for comprehensive error reporting
+                    if (i_seqs_alternative_group_with_blank_altloc_.size()
+                          == 0) {
+                      i_seqs_alternative_group_with_blank_altloc_.reserve(
+                        static_cast<std::size_t>(si - sb));
+                      while (sb != si) {
+                        i_seqs_alternative_group_with_blank_altloc_
+                          .push_back((sb++)->i_seq);
+                      }
+                    }
                   }
                   else {
-                    ai = si[1].altloc();
-                    if (   ai != blank_altloc_char
-                        && si->labels.equal_ignoring_altloc(si[1].labels)) {
-                      alternatives[blank_altloc_char].push_back((si++)->i_seq);
-                    }
-                    else {
-                      common_sel.push_back((si++)->i_seq);
+                    n_alternative_groups_without_blank_altloc++;
+                    // keep track of i_seqs, for comprehensive error reporting
+                    if (i_seqs_alternative_group_without_blank_altloc_.size()
+                          == 0) {
+                      i_seqs_alternative_group_without_blank_altloc_.reserve(
+                        static_cast<std::size_t>(si - sb));
+                      while (sb != si) {
+                        i_seqs_alternative_group_without_blank_altloc_
+                          .push_back((sb++)->i_seq);
+                      }
                     }
                   }
-                  prev_altloc_is_blank = true;
                 }
               }
-              if (ai != blank_altloc_char
-                  || (   !prev_altloc_is_blank
-                      && si->labels.equal_ignoring_altloc(si[-1].labels))) {
-                alternatives[ai].push_back(si->i_seq);
+              // process all remaining with blank altlocs
+              while (si != se) common_sel.push_back((si++)->i_seq);
+              if (   n_alternative_groups_with_blank_altloc != 0
+                  && n_alternative_groups_without_blank_altloc != 0) {
+                number_of_chains_with_altloc_mix_++;
               }
-              else {
-                common_sel.push_back(si->i_seq);
+              if (number_of_chains_with_altloc_mix_ == 0) {
+                i_seqs_alternative_group_with_blank_altloc_.clear();
+                i_seqs_alternative_group_without_blank_altloc_.clear();
               }
             }
             std::sort(common_sel.begin(), common_sel.end());
@@ -1926,7 +1939,39 @@ namespace iotbx { namespace pdb {
           }
           next_chain_range_begin = ch_r.end;
         }
+        if (number_of_chains_with_altloc_mix_ == 0) {
+          // free memory
+          {
+            af::shared<std::size_t> empty;
+            i_seqs_alternative_group_with_blank_altloc_.swap(empty);
+          }
+          {
+            af::shared<std::size_t> empty;
+            i_seqs_alternative_group_without_blank_altloc_.swap(empty);
+          }
+        }
         return result;
+      }
+
+      unsigned
+      number_of_chains_with_altloc_mix() const
+      {
+        SCITBX_ASSERT(construct_hierarchy_was_called_before);
+        return number_of_chains_with_altloc_mix_;
+      }
+
+      af::shared<std::size_t> const&
+      i_seqs_alternative_group_with_blank_altloc() const
+      {
+        SCITBX_ASSERT(construct_hierarchy_was_called_before);
+        return i_seqs_alternative_group_with_blank_altloc_;
+      }
+
+      af::shared<std::size_t> const&
+      i_seqs_alternative_group_without_blank_altloc() const
+      {
+        SCITBX_ASSERT(construct_hierarchy_was_called_before);
+        return i_seqs_alternative_group_without_blank_altloc_;
       }
 
     protected:
@@ -1952,6 +1997,9 @@ namespace iotbx { namespace pdb {
       af::shared<std::string> connectivity_section_;
       af::shared<std::string> bookkeeping_section_;
       bool construct_hierarchy_was_called_before;
+      unsigned number_of_chains_with_altloc_mix_;
+      af::shared<std::size_t> i_seqs_alternative_group_with_blank_altloc_;
+      af::shared<std::size_t> i_seqs_alternative_group_without_blank_altloc_;
       //
       mutable bool            name_selection_cache_is_up_to_date_;
       mutable str_sel_cache_t name_selection_cache_;

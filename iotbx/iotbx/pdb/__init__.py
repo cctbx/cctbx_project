@@ -82,6 +82,9 @@ def show_summary(
       print >> out, prefix+"    ... remaining %d groups not shown" % (
         dup.size()-10)
   #
+  msg = pdb_inp.have_altloc_mix_message(prefix=prefix+"  ")
+  if (msg is not None): print >> out, msg
+  #
   if (level_id is not None):
     print >> out, prefix+"  hierarchy level of detail = %s" % level_id
     hierarchy.show(
@@ -152,6 +155,26 @@ class _hierarchy(boost.python.injector, ext.hierarchy):
               else:
                 raise RuntimeError(
                   "parent residue not in list of atom parents")
+
+class _input(boost.python.injector, ext.input):
+
+  def have_altloc_mix_message(self, prefix=""):
+    if (self.number_of_chains_with_altloc_mix() == 0):
+      return None
+    iall = self.input_atom_labels_list()
+    result = [
+      prefix + "mix of alternative groups with and without blank altlocs:"]
+    result.append(prefix + "  alternative group with blank altloc:")
+    for i_seq in self.i_seqs_alternative_group_with_blank_altloc():
+      result.append(prefix + "    " + iall[i_seq].pdb_format())
+    result.append(prefix + "  alternative group without blank altloc:")
+    for i_seq in self.i_seqs_alternative_group_without_blank_altloc():
+      result.append(prefix + "    " + iall[i_seq].pdb_format())
+    return "\n".join(result)
+
+  def raise_altloc_mix_if_necessary(self):
+    msg = self.have_altloc_mix_message()
+    if (msg is not None): raise RuntimeError(msg)
 
 def format_cryst1_record(crystal_symmetry, z=None):
   # CRYST1
