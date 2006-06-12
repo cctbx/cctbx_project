@@ -348,8 +348,15 @@ namespace iotbx { namespace pdb {
       columns_73_76_dict_t atom_columns_73_76_dict;
       columns_73_76_dict_t other_columns_73_76_dict;
       for(const std::string* line=lines.begin();line!=lines.end();line++) {
-        if (line->size() < 80) continue;
+        if (line->size() < 6) continue;
         const char* line_data = line->data();
+        bool is_atom_or_hetatm_record = (
+             is_record_type("ATOM  ", line_data)
+          || is_record_type("HETATM", line_data));
+        if (is_atom_or_hetatm_record) {
+          number_of_atom_and_hetatm_lines++;
+        }
+        if (line->size() < 80) continue;
         if (line_data[79] == ' ') continue;
         af::tiny<char, 4> columns_73_76;
         {
@@ -362,10 +369,8 @@ namespace iotbx { namespace pdb {
           }
           if (!have_non_blank) continue;
         }
-        if (   is_record_type("ATOM  ", line_data)
-            || is_record_type("HETATM", line_data)) {
+        if (is_atom_or_hetatm_record) {
           atom_columns_73_76_dict[columns_73_76]++;
-          number_of_atom_and_hetatm_lines++;
         }
         else if (!(   is_record_type("SIGATM", line_data)
                    || is_record_type("ANISOU", line_data)
@@ -1229,8 +1234,29 @@ namespace iotbx { namespace pdb {
     protected:
       af::shared<std::vector<unsigned> > chain_indices;
       std::vector<unsigned>* current_chain_indices;
+      std::vector<unsigned> current_chain_indices_ignoring_segid;
       unsigned n_atoms;
       char previous_chain_and_segid[1+4];
+      std::vector<str4> unique_segids;
+
+      void
+      evaluate_unique_segids()
+      {
+        // if unique_segids contains duplicates ignore segid
+        std::set<str4> segid_set;
+        std::vector<str4>::const_iterator us_end = unique_segids.end();
+        for(std::vector<str4>::const_iterator
+              us=unique_segids.begin();us!=us_end;us++) {
+          if (!segid_set.insert(*us).second) {
+            // we have a duplicate
+            current_chain_indices->swap(current_chain_indices_ignoring_segid);
+            break;
+          }
+        }
+        current_chain_indices = 0;
+        current_chain_indices_ignoring_segid.clear();
+        unique_segids.clear();
+      }
 
     public:
       chain_tracker()
@@ -1257,6 +1283,7 @@ namespace iotbx { namespace pdb {
           //   - if common chainid is blank: change in segid
           if (*p != *current_labels.chain_begin()) {
             current_chain_indices->push_back(n_atoms);
+            current_chain_indices_ignoring_segid.push_back(n_atoms);
           }
           else if (*p == ' ') {
             const char* c = current_labels.segid_begin();
@@ -1276,6 +1303,20 @@ namespace iotbx { namespace pdb {
         *p++ = *c++;
         *p++ = *c++;
         *p   = *c;
+        // keep track of unique segids
+        if (unique_segids.size() == 0) {
+          unique_segids.push_back(current_labels.segid_small());
+        }
+        else {
+          c = current_labels.segid_begin();
+          p = unique_segids.back().elems;
+          if (   *p++ != *c++
+              || *p++ != *c++
+              || *p++ != *c++
+              || *p   != *c) {
+            unique_segids.push_back(current_labels.segid_small());
+          }
+        }
         n_atoms++;
       }
 
@@ -1285,6 +1326,7 @@ namespace iotbx { namespace pdb {
         if (*previous_chain_and_segid != '\n') {
           if (current_chain_indices != 0) {
             current_chain_indices->push_back(n_atoms);
+            current_chain_indices_ignoring_segid.push_back(n_atoms);
           }
           *previous_chain_and_segid = '\n';
         }
@@ -1298,7 +1340,7 @@ namespace iotbx { namespace pdb {
           chain_indices.push_back(std::vector<unsigned>());
         }
         else {
-          current_chain_indices = 0;
+          evaluate_unique_segids();
         }
       }
 
@@ -1306,7 +1348,9 @@ namespace iotbx { namespace pdb {
       finish()
       {
         transition();
-        current_chain_indices = 0;
+        if (current_chain_indices != 0) {
+          evaluate_unique_segids();
+        }
         return chain_indices;
       }
   };

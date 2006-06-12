@@ -1126,10 +1126,17 @@ ATOM                                                                    D
 ATOM                 E                                                  X
 ATOM                 E
 ENDMDL
+MODEL        4
+ATOM                                                                    C
+ATOM                                                                    D
+ATOM                                                                    C
+ATOM                 E                                                  X
+ATOM                 E
+ENDMDL
 """))
-  assert list(pdb_inp.model_indices()) == [5,10,15]
+  assert list(pdb_inp.model_indices()) == [5,10,15,20]
   assert [list(v) for v in pdb_inp.chain_indices()] \
-      == [[2,3,5],[7,9,10],[11,13,15]]
+      == [[2,3,5],[7,9,10],[11,13,15], [18,20]]
   check_hierarchy(
     hierarchy=pdb_inp.construct_hierarchy(),
     expected_formatted="""\
@@ -1178,12 +1185,24 @@ model id=3 #chains=3
       residue name="    " seq=   0 icode=" " #atoms=2
          "    "
          "    "
+model id=4 #chains=2
+  chain id=" " #conformers=1
+    conformer id=" " #residues=1 #atoms=3
+      residue name="    " seq=   0 icode=" " #atoms=3
+         "    "
+         "    "
+         "    "
+  chain id="E" #conformers=1
+    conformer id=" " #residues=1 #atoms=2
+      residue name="    " seq=   0 icode=" " #atoms=2
+         "    "
+         "    "
 """,
     expected_overall_counts=dicts.easy(
-      chain_ids={"C": 2, "D": 2, "E": 3, " ": 2},
-      conformer_ids={" ": 9},
-      residue_names={"    ": 9},
-      residue_name_classes={"other": 9}))
+      chain_ids={"C": 2, "D": 2, "E": 4, " ": 3},
+      conformer_ids={" ": 11},
+      residue_names={"    ": 11},
+      residue_name_classes={"other": 11}))
   #
   pdb_inp = pdb.input(
     source_info=None,
