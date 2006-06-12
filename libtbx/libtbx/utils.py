@@ -7,6 +7,11 @@ windows_device_names = """\
 CON PRN AUX NUL COM1 COM2 COM3 COM4 COM5 COM6 COM7 COM8 COM9
 LPT1 LPT2 LPT3 LPT4 LPT5 LPT6 LPT7 LPT8 LPT9""".split()
 
+class group_args(object):
+
+  def __init__(self, **keyword_arguments):
+    self.__dict__.update(keyword_arguments)
+
 def flat_list(nested_list):
   result = []
   if (hasattr(nested_list, "__len__")):
@@ -19,7 +24,6 @@ def flat_list(nested_list):
 class Keep: pass
 
 class Sorry(Exception):
-
   # trick to get just "Sorry" instead of "libtbx.utils.Sorry"
   __module__ = "exceptions"
 
@@ -41,6 +45,10 @@ class Sorry(Exception):
         del sys.tracebacklimit
       else:
         sys.tracebacklimit = self.previous_tracebacklimit
+
+class Usage(Sorry):
+  # trick to get just "Sorry" instead of "libtbx.utils.Sorry"
+  __module__ = "exceptions"
 
 def if_none(value, default):
   if (value is None): return default
