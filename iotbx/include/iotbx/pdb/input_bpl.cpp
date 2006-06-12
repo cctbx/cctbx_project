@@ -131,6 +131,12 @@ namespace {
         .def("model_atom_counts", &w_t::model_atom_counts)
         .def("find_duplicate_atom_labels", &w_t::find_duplicate_atom_labels)
         .def("construct_hierarchy", &w_t::construct_hierarchy)
+        .def("number_of_chains_with_altloc_mix",
+          &w_t::number_of_chains_with_altloc_mix)
+        .def("i_seqs_alternative_group_with_blank_altloc",
+          &w_t::i_seqs_alternative_group_with_blank_altloc, rbv())
+        .def("i_seqs_alternative_group_without_blank_altloc",
+          &w_t::i_seqs_alternative_group_without_blank_altloc, rbv())
       ;
     }
   };
