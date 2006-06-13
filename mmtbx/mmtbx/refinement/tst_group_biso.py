@@ -38,7 +38,8 @@ def exercise_1(hkl = "enk_gbr.mtz"):
                               relative_path="regression/pdb/enk_gbr_e.pdb", test=os.path.isfile)
   opt0= "main.number_of_macro_cycles=3 main.refine_site=false"
   opt1= "main.target=ls main.refine_adp_individual=false"
-  opt2= "output.write_map_file=false output.write_geo_file=true output.write_def_file=false"
+  opt2= "output.write_maps=false output.write_map_coefficients=false" \
+        " output.write_geo_file=true output.write_def_file=false"
   opt3= "output.write_eff_file=false output.write_refined_mtz_file=false"
   opt4= "main.refine_adp_group=true group_b_iso.one_residue_one_group=true"
   opt5= "main.sf_algorithm=direct scattering_table=wk1995 --overwrite"
@@ -51,7 +52,8 @@ def exercise_2(pdb = "enk_gbr_e.pdb", hkl = "enk_gbr.mtz"):
                               relative_path="regression/pdb/enk_gbr_e.pdb", test=os.path.isfile)
   opt0= "main.number_of_macro_cycles=3 main.refine_site=false"
   opt1= "main.target=ls main.refine_adp_individual=false"
-  opt2= "output.write_map_file=false output.write_geo_file=true output.write_def_file=false"
+  opt2= "output.write_maps=false output.write_map_coefficients=false" \
+        " output.write_geo_file=true output.write_def_file=false"
   opt3= "output.write_eff_file=false output.write_refined_mtz_file=false"
   opt4= "main.refine_adp_group=true group_b_iso.one_residue_one_group=false"
   opt5= "main.sf_algorithm=direct scattering_table=wk1995 --overwrite"
