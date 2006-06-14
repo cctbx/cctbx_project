@@ -13,6 +13,14 @@ try: import sets
 except ImportError: pass # XXX Python 2.2 compatibility
 else: windows_device_names = sets.Set(windows_device_names)
 
+cns_dna_rna_residue_names = {
+  "ADE": "A",
+  "CYT": "C",
+  "GUA": "G",
+  "THY": "T",
+  "URI": "U"
+}
+
 class MonomerLibraryServerError(RuntimeError): pass
 
 mon_lib_env_vars = ["MMTBX_CCP4_MONOMER_LIB", "CLIBD_MON"]
@@ -158,9 +166,11 @@ class process_cif_mixin(object):
 
 class server(process_cif_mixin):
 
-  def __init__(self, list_cif=None):
+  def __init__(self, list_cif=None, translate_cns_dna_rna_residue_names=True):
     if (list_cif is None):
       list_cif = mon_lib_list_cif()
+    self.translate_cns_dna_rna_residue_names \
+       = translate_cns_dna_rna_residue_names
     self.root_path = os.path.dirname(os.path.dirname(list_cif.path))
     self.deriv_list_dict = {}
     self.comp_synonym_list_dict = {}
@@ -274,6 +284,8 @@ class server(process_cif_mixin):
   def get_comp_comp_id(self, comp_id):
     comp_id = comp_id.strip().upper()
     if (len(comp_id) == 0): return None
+    if (self.translate_cns_dna_rna_residue_names):
+      comp_id = cns_dna_rna_residue_names.get(comp_id, comp_id)
     try: return self.comp_comp_id_dict[comp_id]
     except KeyError: pass
     std_comp_id = self.comp_synonym_list_dict.get(comp_id, "").strip().upper()

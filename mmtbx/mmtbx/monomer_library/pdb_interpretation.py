@@ -39,6 +39,9 @@ master_params = iotbx.phil.parse("""\
   vdw_1_4_factor = 2/3
     .type=float
     .optional=False
+  translate_cns_dna_rna_residue_names = True
+    .type=bool
+    .optional=False
   clash_guard
     .expert_level=2
   {
@@ -2092,7 +2095,13 @@ def run(
       max_atoms=None,
       log=None):
   if (log is None): log = sys.stdout
-  mon_lib_srv = server.server()
+  if (params is None):
+    translate_cns_dna_rna_residue_names = True
+  else:
+    translate_cns_dna_rna_residue_names \
+      = params.translate_cns_dna_rna_residue_names
+  mon_lib_srv = server.server(
+    translate_cns_dna_rna_residue_names=translate_cns_dna_rna_residue_names)
   ener_lib = server.ener_lib()
   for file_name in args:
     processed_pdb_file = process(
