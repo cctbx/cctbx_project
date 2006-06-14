@@ -50,10 +50,10 @@ def do_pointgroup_tricks(input_uc,
   print >> out, "provided input spacegroup."
   print >> out
   out.flush()
-    
+
   sg_explorer.show(out=out)
-  
-  # return the object 
+
+  # return the object
   return sg_explorer
 
 
@@ -64,7 +64,7 @@ def make_graph_of_graph(pg_object,
                         out=None):
   if out is None:
     out = sys.stdout
- 
+
   graphviz = os.popen3("""
 dot<< EOF
 EOF""", "r"
@@ -85,7 +85,7 @@ EOF
   print >> out, "A file named" ,  file_name, " contains a graphical representation "
   print >> out, "of the point group relations."
 
- 
+
 
 
 
@@ -127,13 +127,13 @@ def ehms( args ):
             type="str",
             dest="centring_type",
             help="Centring type, choose from P,A,B,C,I,R,F")
-    
+
     .option(None, "--other_unit_cell",
             action="store",
             type="str",
             dest="other_unit_cell",
             help="Other unit cell, for unit cell comparison",
-            metavar="10,20,30,90,103.7,90")    
+            metavar="10,20,30,90,103.7,90")
 
     .option(None, "--other_space_group",
             action="store",
@@ -146,7 +146,7 @@ def ehms( args ):
             type="str",
             dest="other_centring_type",
             help="Centring type, choose from P,A,B,C,I,R,F")
-  
+
     .option(None, "--no_point_group_graph",
             action="store_true",
             dest="pg_graph",
@@ -168,7 +168,7 @@ def ehms( args ):
             default=10.0,
             metavar="FLOAT",
             help="Angular tolerance in unit cell comparison")
-  
+
     ).process(args=args)
 
   log = multi_out()
@@ -257,7 +257,7 @@ def ehms( args ):
   #  Check if other cell has been defined #
   #########################################
 
-  if command_line.options.other_unit_cell is not None:    
+  if command_line.options.other_unit_cell is not None:
     print >> log, "A second unit cell has been specified. "
     other_xs = None
 
@@ -295,7 +295,7 @@ def ehms( args ):
                                      out=log,
                                      relative_length_tolerance=command_line.options.rel_length_tol,
                                      absolute_angle_tolerance=command_line.options.abs_angle_tol)
-    
+
 
 
 
