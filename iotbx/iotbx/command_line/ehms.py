@@ -157,7 +157,7 @@ def ehms( args ):
             action="store",
             type="float",
             help="Tolerance for unit cell lengths to be considered equal-ish.",
-            default=0.05,
+            default=0.10,
             metavar="FLOAT",
             dest="rel_length_tol")
 
