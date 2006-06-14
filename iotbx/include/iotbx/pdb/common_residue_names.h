@@ -59,7 +59,6 @@ namespace iotbx { namespace pdb { namespace common_residue_names {
     "GUA ", // CNS dna-rna.top
     "THY ", // CNS dna-rna.top
     "URI ", // CNS dna-rna.top
-    "CMP ", // CNS dna-rna.top
     0
   };
 
