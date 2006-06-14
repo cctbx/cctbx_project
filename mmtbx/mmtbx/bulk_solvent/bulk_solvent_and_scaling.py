@@ -327,7 +327,11 @@ class uaniso_ksol_bsol_scaling_minimizer(object):
                min_iterations=50,
                max_iterations=50,
                lbfgs_exception_handling_params = None,
-               symmetry_constraints_on_b_cart = False):
+               symmetry_constraints_on_b_cart = False,
+               k_sol_max = 10.,
+               k_sol_min =-10.,
+               b_sol_max = 500.,
+               b_sol_min =-500.):
     adopt_init_args(self, locals())
     assert self.fc.indices().all_eq(self.fm.indices()) == 1
     assert self.fc.indices().all_eq(self.fo.indices()) == 1
@@ -412,6 +416,10 @@ class uaniso_ksol_bsol_scaling_minimizer(object):
 
   def compute_functional_and_gradients(self):
     self.unpack_x()
+    if(self.b_min > self.b_sol_max): self.b_min = self.b_sol_max
+    if(self.b_min < self.b_sol_min): self.b_min = self.b_sol_min
+    if(self.k_min > self.k_sol_max): self.b_min = self.k_sol_max
+    if(self.k_min < self.k_sol_min): self.b_min = self.k_sol_min
     if(self.flag):
       manager = bulk_solvent.target_gradients_aniso_ml(
                self.fo,
