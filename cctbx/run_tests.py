@@ -68,7 +68,8 @@ def run():
   ["$D/cctbx/development/tst_cns_hl.py", "P31"],
   ["$D/cctbx/development/run_shelx.py", "P31"],
    "$D/cctbx/regression/tst_pointgroup_tools.py",
-   "$D/cctbx/regression/tst_find_best_cell.py"
+   "$D/cctbx/sgtbx/sub_lattice_tools.py",
+   "$D/cctbx/regression/tst_find_best_cell.py",
   )
 
   build_dir = libtbx.env.under_build("cctbx")
