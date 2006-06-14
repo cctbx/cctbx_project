@@ -279,7 +279,7 @@ class compare_lattice(object):
     print >> self.out
     print >> self.out, " Listing all possible solutions"
     count=0
-    if len(self.possible_solutions):
+    if len(self.possible_solutions)==0:
       print >> out
       print >> out, "No relations found."
       print >> out, " (which does not neccesarily mean there are none) "
