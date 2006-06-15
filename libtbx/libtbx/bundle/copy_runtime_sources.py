@@ -20,6 +20,7 @@ def copy_dist_files(dist_copy, dirname, names):
         or name.startswith("license")
         or name == "academic_software_licence.pdf"
         or name == "symop.lib"
+        or name == "case_library"
         or name.endswith(".py")
         or name.endswith(".params")
         or name.endswith(".pdb")
