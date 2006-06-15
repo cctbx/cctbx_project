@@ -63,6 +63,12 @@ class lbfgs(object):
     del self._scatterers_start
     self.compute_target(compute_gradients = False, u_iso_reinable_params = None)
     self.final_target_value = self.f
+    #XXX
+    u_isos = self.xray_structure.scatterers().extract_u_iso()
+    sel = (u_isos < 0.0)
+    u_isos.set_selected(sel, 0.0)
+    self.xray_structure.scatterers().set_u_iso(u_isos)
+    #print dir(sc)
 
 
   def apply_shifts(self):
