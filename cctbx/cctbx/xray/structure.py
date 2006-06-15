@@ -238,11 +238,20 @@ class structure(crystal.special_position_settings):
                  eigenvalues = adptbx.eigenvalues(u_cart)
                  if(min(eigenvalues) > 0.001): break
 
+  #def set_b_iso_random(self, allow_mixed=False):
+  #  s = self._scatterers
+  #  if (not allow_mixed and s.count_anisotropic() > 0):
+  #    raise RuntimeError("set_b_iso_random: all scatterers must be isotropic.")
+  #  b_iso_new = flex.random_double(s.size())*100.
+  #  self.set_b_iso(values = b_iso_new)
+
   def set_b_iso_random(self, allow_mixed=False):
     s = self._scatterers
     if (not allow_mixed and s.count_anisotropic() > 0):
       raise RuntimeError("set_b_iso_random: all scatterers must be isotropic.")
-    b_iso_new = flex.random_double(s.size())*100.
+    b_iso_new = flex.double()
+    for si in s:
+      b_iso_new.append(random.randrange(10,35,1))
     self.set_b_iso(values = b_iso_new)
 
   def shake_b_iso(self, deviation, allow_mixed=False):
@@ -669,6 +678,38 @@ class structure(crystal.special_position_settings):
       atomic_weights = self.atomic_weights()
     return self.sites_cart().mean_weighted(weights=atomic_weights)
 
+
+  def show_scatterer_flags_summary(self):
+    #XXX move to C++ (after anisotropic_flag is gone)
+    n_use            = 0
+    n_use_u_iso      = 0
+    n_use_u_aniso    = 0
+    n_grad_site      = 0
+    n_grad_u_iso     = 0
+    n_grad_u_aniso   = 0
+    n_grad_occupancy = 0
+    n_grad_fp        = 0
+    n_grad_fdp       = 0
+    for sc in self.scatterers():
+        if(sc.flags.use()           ): n_use            += 1
+        if(sc.flags.use_u_iso()     ): n_use_u_iso      += 1
+        if(sc.flags.use_u_aniso()   ): n_use_u_aniso    += 1
+        if(sc.flags.grad_site()     ): n_grad_site      += 1
+        if(sc.flags.grad_u_iso()    ): n_grad_u_iso     += 1
+        if(sc.flags.grad_u_aniso()  ): n_grad_u_aniso   += 1
+        if(sc.flags.grad_occupancy()): n_grad_occupancy += 1
+        if(sc.flags.grad_fp()       ): n_grad_fp        += 1
+        if(sc.flags.grad_fdp()      ): n_grad_fdp       += 1
+    print "n_use            = ", n_use
+    print "n_use_u_iso      = ", n_use_u_iso
+    print "n_use_u_aniso    = ", n_use_u_aniso
+    print "n_grad_site      = ", n_grad_site
+    print "n_grad_u_iso     = ", n_grad_u_iso
+    print "n_grad_u_aniso   = ", n_grad_u_aniso
+    print "n_grad_occupancy = ", n_grad_occupancy
+    print "n_grad_fp        = ", n_grad_fp
+    print "n_grad_fdp       = ", n_grad_fdp
+    print "total number of scatterers = ", self.scatterers().size()
 
   def n_parameters(self):
     #XXX move to C++ (after anisotropic_flag is gone)

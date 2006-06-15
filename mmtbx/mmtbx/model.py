@@ -12,6 +12,7 @@ from cctbx import geometry_restraints
 from cctbx.geometry_restraints.lbfgs import lbfgs as cctbx_geometry_restraints_lbfgs
 import scitbx.lbfgs
 from libtbx.utils import Sorry
+from mmtbx.tls import tools
 
 
 
@@ -37,6 +38,10 @@ class manager(object):
     self.rigid_body_selections = rigid_body_selections
     self.group_b_selections = group_b_selections
     self.tls_selections = tls_selections
+    if(self.tls_selections is not None):
+       self.tlsos = tools.generate_tlsos(selections     = self.tls_selections,
+                                         xray_structure = self.xray_structure,
+                                         value          = 0.0)
     self.anisotropic_flags = anisotropic_flags
     #if(self.rigid_body_selections is not None):
     ##XXX BUG

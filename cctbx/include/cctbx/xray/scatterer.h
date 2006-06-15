@@ -256,19 +256,21 @@ namespace xray {
       {
         if (flags.use_u_aniso()) {
           scitbx::sym_mat3<FloatType> u_iso_star;
-          if (flags.use_u_iso()) {
-            u_iso_star = adptbx::u_iso_as_u_star(unit_cell, u_iso);
-            u_star += u_iso_star;
-          }
+          // XXX test
+          //if (flags.use_u_iso()) {
+          //  u_iso_star = adptbx::u_iso_as_u_star(unit_cell, u_iso);
+          //  u_star += u_iso_star;
+          //}
           u_star = site_symmetry_ops.average_u_star(u_star);
           scitbx::sym_mat3<FloatType>
             u_cart = adptbx::u_star_as_u_cart(unit_cell, u_star);
           u_cart = adptbx::eigenvalue_filtering(u_cart, u_min);
           u_star = adptbx::u_cart_as_u_star(unit_cell, u_cart);
           u_star = site_symmetry_ops.average_u_star(u_star);
-          if (flags.use_u_iso()) {
-            u_star -= u_iso_star;
-          }
+          // XXX test
+          //if (flags.use_u_iso()) {
+          //  u_star -= u_iso_star;
+          //}
         }
         else if (flags.use_u_iso()) {
           if (u_iso < u_min) u_iso = u_min;

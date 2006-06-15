@@ -41,6 +41,9 @@ def exercise_2(eps = 1.e-6):
   for string in ["chain A", "chain B", "chain C"]:
       selections.append(processed_pdb_file.all_chain_proxies.selection(
                                                               string = string))
+  model = mmtbx.model.manager(
+                  tls_selections        = selections,
+                  processed_pdb_file    = processed_pdb_file)
 ###> Get TLS <-> Ucart
   T_initial = []
   L_initial = []
@@ -120,7 +123,8 @@ def exercise_2(eps = 1.e-6):
           number_of_macro_cycles   = 100
           max_number_of_iterations = 50
 
-  for start_tls_value in [0.0, tlsosA, None]:
+  #for start_tls_value in [0.0, tlsosA, None]:
+  for start_tls_value in [None]:
       print " \n "+str(start_tls_value) + " \n "
       fmodel_cp = fmodel.deep_copy()
       #for sc in fmodel_cp.xray_structure.scatterers():
@@ -130,8 +134,10 @@ def exercise_2(eps = 1.e-6):
       if(start_tls_value is None):
          run_finite_differences_test = True
       else: run_finite_differences_test = False
+      model.xray_structure = fmodel_cp.xray_structure
       tls_refinement_manager = tools.tls_refinement(
                      fmodel                      = fmodel_cp,
+                     model                       = model,
                      selections                  = selections,
                      refine_T                    = 1,
                      refine_L                    = 1,

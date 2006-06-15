@@ -612,8 +612,12 @@ jump:
                          e1[2]/e1_n,e2[2]/e2_n,e3[2]/e3_n);
         //q = zero_mat(q);
         m = sym_mat3<double>(q.inverse() * m * q, small);
-        MMTBX_ASSERT(std::abs(m[4])<1.e-4 && std::abs(m[4])<1.e-4 &&
-                     std::abs(m[5])<1.e-4);
+        if(!(std::abs(m[4])<1.e-4 && std::abs(m[4])<1.e-4 &&
+                                                       std::abs(m[5])<1.e-4)) {
+           show_all();
+        }
+        //MMTBX_ASSERT(std::abs(m[4])<1.e-4 && std::abs(m[4])<1.e-4 &&
+        //             std::abs(m[5])<1.e-4);
         m = sym_mat3<double>(m[0],m[1],0,m[3],0,0);
       }
 

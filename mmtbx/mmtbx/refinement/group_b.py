@@ -35,13 +35,13 @@ class manager(object):
     minimized = None
     for macro_cycle in xrange(1,number_of_macro_cycles+1,1):
         if(minimized is not None):
-           u = flex.double(minimized.u_min)
-           un_sel = u <= 0.0
-           up_sel = u >  0.0
-           up = u.select(up_sel)
-           u.set_selected(un_sel, flex.mean(up))
-           assert (u <= 0).count(True) == 0
-           u_initial = list(u)
+          u = flex.double(minimized.u_min)
+          un_sel = u <= 0.0
+          up_sel = u >  0.0
+          up = u.select(up_sel)
+          u.set_selected(un_sel, flex.mean(up))
+          assert (u <= 0).count(True) == 0
+          u_initial = list(u)
         minimized = group_u_iso_minimizer(
                            fmodel                   = fmodel_copy,
                            selections               = selections,
@@ -205,14 +205,14 @@ class group_u_iso_minimizer(object):
     self.g = flex.double(tuple(grads))
     return self.f, self.g
 
+
 def apply_transformation(xray_structure,
                          u,
                          selections):
   assert len(selections) == len(u)
-  new_us = flex.double()
+  new_us = xray_structure.scatterers().extract_u_iso()
   for sel, ui in zip(selections, u):
-      xrs = xray_structure.select(sel)
-      new_us.extend( flex.double(xrs.scatterers().size(), ui) )
+      new_us.set_selected( sel, ui )
   return xray_structure.set_u_iso(values = new_us)
 
 class target_and_grads(object):
