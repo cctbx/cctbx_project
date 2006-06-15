@@ -269,6 +269,7 @@ class manager(object):
                      convergence_delta       = 0.00001,
                      use_only_low_resolution = False,
                      bulk_solvent_and_scale  = True,
+                     max_shift_for_bss_update= 0.0,
                      bss                     = None,
                      euler_angle_convention  = "xyz",
                      log                     = None):
@@ -310,33 +311,48 @@ class manager(object):
                   [str("%.3f"%i) for i in d_mins]
     step_counter = 0
     for res in d_mins:
-        print >> log
         xrs = fmodel_copy.xray_structure.deep_copy_scatterers()
         fmodel_copy = fmodel.resolution_filter(d_min = res)
+        d_max_min = fmodel_copy.f_obs_w().d_max_min()
+        line = "Refinement at resolution: "+str("%7.1f"%d_max_min[0]).strip()+\
+               " - "+str("%6.1f"%d_max_min[1]).strip()
+        print_statistics.make_sub_header(line, out=log)
         fmodel_copy.update_xray_structure(xray_structure = xrs,
                                           update_f_calc  = True)
         rworks = flex.double()
+        xrs_1 = None
+        xrs_2 = None
         for macro_cycle in range(1, min(int(res),4)+1):
-            if((macro_cycle == 1 or macro_cycle == 3) and bss is not None and
+            if(macro_cycle != 1): print >> log
+            max_shift = 0.0
+            if([xrs_1, xrs_2].count(None) == 0):
+               array_of_distances_between_each_atom = \
+                          flex.sqrt(xrs_1.difference_vectors_cart(xrs_2).dot())
+               max_shift = flex.max(array_of_distances_between_each_atom)
+            if(max_shift > max_shift_for_bss_update and bss is not None and
                bulk_solvent_and_scale):
-               print_statistics.make_sub_header(
-                   "Bulk solvent correction (and anisotropic scaling)",out=log)
                if(fmodel_copy.f_obs.d_min() > 3.0):
                   save_bss_anisotropic_scaling = bss.anisotropic_scaling
                   bss.anisotropic_scaling=False
-               fmodel_copy.update_solvent_and_scale(params = bss, out = log)
+               fmodel_copy.update_solvent_and_scale(params  = bss,
+                                                    out     = log,
+                                                    verbose = -1)
+               line = "bulk solvent correction (and anisotropic scaling); " + \
+                      str("macro-cycle = %-3d"%macro_cycle).strip()
+               fmodel_copy.show_essential(header = line, out = log)
                if(fmodel_copy.f_obs.d_min() > 3.0):
                   bss.anisotropic_scaling=save_bss_anisotropic_scaling
+            xrs_1 = fmodel_copy.xray_structure.deep_copy_scatterers()
             minimized = rigid_body_minimizer(
-              fmodel         = fmodel_copy,
-              selections     = selections,
-              fixed_selection= fixed_selection,
-              r_initial      = r_initial,
-              t_initial      = t_initial,
-              refine_r       = refine_r,
-              refine_t       = refine_t,
-              max_iterations = max_iterations,
-              euler_angle_convention = self.euler_angle_convention)
+                          fmodel                 = fmodel_copy,
+                          selections             = selections,
+                          fixed_selection        = fixed_selection,
+                          r_initial              = r_initial,
+                          t_initial              = t_initial,
+                          refine_r               = refine_r,
+                          refine_t               = refine_t,
+                          max_iterations         = max_iterations,
+                          euler_angle_convention = self.euler_angle_convention)
             rotation_matrices = []
             translation_vectors = []
             for i in xrange(len(selections)):
@@ -358,6 +374,7 @@ class manager(object):
                                               update_f_calc  = True,
                                               update_f_mask  = True,
                                               out            = log)
+            xrs_2 = fmodel_copy.xray_structure.deep_copy_scatterers()
             rwork = minimized.fmodel.r_work()
             rfree = minimized.fmodel.r_free()
             assert approx_equal(rwork, fmodel_copy.r_work())
@@ -381,72 +398,6 @@ class manager(object):
     fmodel.update_xray_structure(xray_structure = fmodel_copy.xray_structure,
                                  update_f_calc  = True)
     self.fmodel = fmodel
-
-  def scan(self, high_resolution_limit, selections, fmodel, log):
-    # XXX obsolete in the form it's done right now; never used
-    fmodel_copy = fmodel.deep_copy()
-    xray_structure_start = fmodel_copy.xray_structure.deep_copy_scatterers()
-    xray_structure_final = None
-    if(fmodel_copy.mask_params is not None):
-       fmodel_copy.mask_params.verbose = -1
-    fmodel_copy = fmodel_copy.resolution_filter(d_max = 999.9,
-                                                d_min = high_resolution_limit)
-    print >> log, "Scan started..."
-    phis = [-5.0, 0., 5.0]
-    psis = [-5.0, 0., 5.0]
-    thes = [-5.0, 0., 5.0]
-    xs   = [-2.5, 0., 2.5]
-    ys   = [-2.5, 0., 2.5]
-    zs   = [-2.5, 0., 2.5]
-    print >> log, "   high resolution limit = %10.3f" % high_resolution_limit
-    print >> log, "   rotation search range     = ", phis
-    print >> log, "   translation seaarch range = ", xs
-    counter = 0
-    dim = len(phis)*len(psis)*len(thes)*len(xs)*len(ys)*len(zs)
-    r_work = fmodel_copy.r_work()
-    for phi in phis:
-      for psi in psis:
-        for the in thes:
-          for x in xs:
-            for y in ys:
-              for z in zs:
-                  counter += 1
-                  if(counter % 100 == 0):
-                     print >> log, "   done %-4d from %d"%(counter, dim)
-                  rotation_matrices   = []
-                  translation_vectors = []
-                  rot_objs = []
-                  for i in xrange(len(selections)):
-                      if(self.euler_angle_convention == "zyz"):
-                         rot_obj = rb_mat_euler(phi = phi,
-                                                psi = psi,
-                                                the = the)
-                      else:
-                         rot_obj = rb_mat(phi = phi,
-                                          psi = psi,
-                                          the = the)
-                      rotation_matrices.append(rot_obj.rot_mat())
-                      translation_vectors.append([x,y,z])
-                      rot_objs.append(rot_obj)
-                  new_xrs = apply_transformation(
-                                    xray_structure      = xray_structure_start,
-                                    rotation_matrices   = rotation_matrices,
-                                    translation_vectors = translation_vectors,
-                                    selections          = selections,
-                                    fixed_selection     = fixed_selection)
-                  fmodel_copy.update_xray_structure(xray_structure = new_xrs,
-                                                    update_f_calc  = True,
-                                                    update_f_mask  = True)
-                  r_work_ = fmodel_copy.r_work()
-                  if(r_work_ < r_work):
-                     r_work = r_work_
-                     xray_structure_final = new_xrs.deep_copy_scatterers()
-                     print >> log, "   phi=%8.1f psi=%8.1f the=%8.1f x=%8.1f y=%8.1f z=%8.1f r_work=%7.4f" % \
-                           (phi,psi,the,x,y,z,r_work)
-    if(xray_structure_final is None):
-       return xray_structure_start
-    else:
-       return xray_structure_final
 
   def rotation(self):
     return self.total_rotation
@@ -590,7 +541,6 @@ class rigid_body_minimizer(object):
 
   def compute_functional_and_gradients(self):
     self.unpack_x()
-    #self.dump()
     self.counter += 1
     rotation_matrices   = []
     translation_vectors = []
@@ -647,10 +597,9 @@ class target_and_grads(object):
                      selections):
     self.grads_wrt_r = []
     self.grads_wrt_t = []
-    target_grads_wrt_xyz = fmodel.gradient_wrt_atomic_parameters(
-                                                             site  = True,
-                                                             alpha = alpha,
-                                                             beta  = beta)
+    target_grads_wrt_xyz = fmodel.gradient_wrt_atomic_parameters(site  = True,
+                                                                 alpha = alpha,
+                                                                 beta  = beta)
     target_grads_wrt_xyz = flex.vec3_double(target_grads_wrt_xyz.packed())
     self.f = fmodel.target_w(alpha = alpha, beta = beta)
     for sel,rot_obj in zip(selections, rot_objs):
