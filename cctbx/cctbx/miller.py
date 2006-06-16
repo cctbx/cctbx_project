@@ -1138,6 +1138,18 @@ class array(set):
     set.show_summary(self, f=f, prefix=prefix)
     return self
 
+  def are_sigmas_sensible(self, critical_ratio=0.75, epsilon=1e-6):
+    result=None
+    if self.sigmas() is not None:
+      result=True
+      suspected = ( self.sigmas() <= epsilon ).count(True)
+      all = self.sigmas().size()
+      ratio = float(suspected)/float(all)
+      print suspected, all, ratio
+      if ratio>critical_ratio:
+        result = False
+    return result
+
   def f_sq_as_f(self, tolerance=1.e-6):
     from cctbx import xray
     assert self.observation_type() is None or self.is_xray_intensity_array()
