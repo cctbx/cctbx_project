@@ -2297,8 +2297,8 @@ def twin_analyses_brief(miller_array,
   """
 
   # first we need to know wheter or not that sigmas make any sense at all
-  if (miller_array.are_sigmas_sensible()==False):
-    #clearly there is somethinmg wrong with the sigmas
+  if (not miller_array.sigmas_are_sensible()):
+    #clearly there is something wrong with the sigmas
     #forget about them I would say
     miller_array = miller_array.customized_copy( indices=miller_array.indices(),
                                                  data=miller_array.data(),

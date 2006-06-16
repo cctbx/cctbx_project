@@ -456,8 +456,8 @@ Use keyword 'unit_cell' to specify unit_cell
       miller_array = miller_array.resolution_filter(d_min=params.scaling.input.xray_data.high_resolution)
 
     # make sure sigmas are okai, otherwise, cut them
-    if (miller_array.are_sigmas_sensible()==False):
-      #clearly there is somethinmg wromg with the sigmas
+    if (not miller_array.sigmas_are_sensible()):
+      #clearly there is something wrong with the sigmas
       #forget about them I would say
       miller_array = miller_array.customized_copy( indices=miller_array.indices(),
                                                    data=miller_array.data(),
