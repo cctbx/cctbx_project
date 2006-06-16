@@ -455,6 +455,16 @@ Use keyword 'unit_cell' to specify unit_cell
     if params.scaling.input.xray_data.high_resolution is not None:
       miller_array = miller_array.resolution_filter(d_min=params.scaling.input.xray_data.high_resolution)
 
+    # make sure sigmas are okai, otherwise, cut them
+    if (miller_array.are_sigmas_sensible()==False):
+      #clearly there is somethinmg wromg with the sigmas
+      #forget about them I would say
+      miller_array = miller_array.customized_copy( indices=miller_array.indices(),
+                                                   data=miller_array.data(),
+                                                   sigmas=None ).set_observation_type( miller_array )
+
+    print miller_array.sigmas()
+
 
     ## Check if Fcalc label is available
     f_calc_miller = None
@@ -471,6 +481,8 @@ Use keyword 'unit_cell' to specify unit_cell
           data = flex.abs( f_calc_miller.data() ) ).set_observation_type(f_calc_miller  )
 
     twin_results = None
+
+
 
 
     if (miller_array.is_real_array()):
