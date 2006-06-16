@@ -85,6 +85,7 @@ class manager(object):
       "lsm_k1"     ,"lsm_k2"    ,"lsm_kunit","lsm_k1_fixed","lsm_k1ask3_fixed",
       "ml","mlhl")
     if(self.target_name is not None):
+       if(self.target_name == "ls".strip()): self.target_name = "ls_wunit_k1"
        assert self.target_name in self.target_names
        self.setup_target_functors()
 
