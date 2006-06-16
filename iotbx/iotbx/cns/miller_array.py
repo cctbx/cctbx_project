@@ -6,7 +6,8 @@ def miller_array_export_as_cns_hkl(self,
       file_object,
       file_name=None,
       info=[],
-      array_names=None):
+      array_names=None,
+      r_free_flags=None):
   out = file_object
   if (file_name): print >> out, "{ file:", file_name, "}"
   if (self.info() is not None):
@@ -35,11 +36,20 @@ def miller_array_export_as_cns_hkl(self,
     nf, ns = array_names
     print >> out, "DECLare NAME=%s DOMAin=RECIprocal TYPE=REAL END" % nf
     print >> out, "DECLare NAME=%s DOMAin=RECIprocal TYPE=REAL END" % ns
-    for h,f,s in zip(f_obs.indices(),f_obs.data(),f_obs.sigmas()):
-      print >> out, "INDEx %d %d %d" % h, "%s= %.6g %s= %.6g" % (nf,f,ns,s)
+    if (r_free_flags is None):
+      for h,f,s in zip(f_obs.indices(),f_obs.data(),f_obs.sigmas()):
+        print >> out, "INDEx %d %d %d" % h, "%s= %.6g %s= %.6g" % (nf,f,ns,s)
+    else:
+      assert r_free_flags.indices().all_eq(f_obs.indices())
+      print >> out, "DECLare NAME=TEST DOMAin=RECIprocal TYPE=INTE END"
+      for h,f,s,t in zip(f_obs.indices(),f_obs.data(),f_obs.sigmas(),
+                         r_free_flags.data()):
+        print >> out, "INDEx %d %d %d" % h, "%s= %.6g %s= %.6g" % (nf,f,ns,s),\
+          "TEST= %d" % int(t)
   elif (self.is_complex_array()):
     if (array_names is None): array_names = ["F"]
     else: assert len(array_names) == 1
+    assert r_free_flags is None
     n = array_names[0]
     print >> out, "DECLare NAME=%s  DOMAin=RECIprocal TYPE=COMPLEX END" % n
     for h,a,p in zip(self.indices(),
@@ -49,6 +59,7 @@ def miller_array_export_as_cns_hkl(self,
   else:
     if (array_names is None): array_names = ["DATA"]
     else: assert len(array_names) == 1
+    assert r_free_flags is None
     if (isinstance(self.data(), flex.double)):
       print >> out, \
         "DECLare NAME=%s  DOMAin=RECIprocal TYPE=REAL END" % array_names[0]
