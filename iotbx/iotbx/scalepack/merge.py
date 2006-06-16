@@ -88,6 +88,13 @@ class reader(object):
             self.i_obs.append(i_obs)
             self.sigmas.append(sigma)
 
+  def show_summary(self, out=None, prefix=""):
+    if (out is None): out = sys.stdout
+    self.unit_cell.show_parameters(f=out, prefix=prefix+"Unit cell: ")
+    print >> out, prefix + "Space group symbol:", self.space_group_symbol
+    print >> out, prefix + "Anomalous flag:", self.anomalous
+    print >> out, prefix + "Number of reflections:", self.miller_indices.size()
+
   def as_miller_array(self,
         crystal_symmetry=None,
         force_symmetry=False,

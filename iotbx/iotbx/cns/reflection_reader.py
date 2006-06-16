@@ -93,9 +93,9 @@ class cns_reciprocal_space_object(object):
     else:
       raise RuntimeError("Internal Error.")
 
-  def show_summary(self, f=None):
+  def show_summary(self, f=None, prefix=""):
     if (f is None): f = sys.stdout
-    print >> f, "name=%s type=%s len(data)=%d" % (
+    print >> f, prefix + "name=%s type=%s len(data)=%d" % (
       self.name, self.type, self.data.size())
 
   def append(self, h, value):
@@ -300,14 +300,14 @@ class cns_reflection_file(object):
     reader.load(self)
     self.optimize()
 
-  def show_summary(self, f=None):
+  def show_summary(self, f=None, prefix=""):
     if (f is None): f = sys.stdout
-    print >> f, "nreflections=%d" % (self.nreflections,)
-    print >> f, "anomalous=%d" % (self.anomalous,)
+    print >> f, prefix + "nreflections=%d" % self.nreflections
+    print >> f, prefix + "anomalous=" + str(self.anomalous)
     for rso in self.reciprocal_space_objects.values():
-      rso.show_summary(f)
+      rso.show_summary(f=f, prefix=prefix)
     for g in self.groups:
-      print >> f, "group: " + str(g)
+      print >> f, prefix + "group: " + str(g)
 
   def optimize(self):
     rsos = self.reciprocal_space_objects.values()
