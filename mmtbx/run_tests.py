@@ -6,7 +6,7 @@ def run():
   "$D/mmtbx/refinement/tst_rigid_body.py",
   "$D/mmtbx/tst_model.py",
   "$D/mmtbx/tst_fmodel.py",
-  "$D/mmtbx/tst_fmodel_fd.py",
+  ["$D/mmtbx/tst_fmodel_fd.py", "P31"],
   "$D/ncs/tst_restraints.py",
   "$D/mmtbx/ncs/tst_restraints.py",
   "$D/mmtbx/regression/tst_adp_restraints.py",
