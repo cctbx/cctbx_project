@@ -127,6 +127,8 @@ class any_reflection_file(object):
                 self._file_content = miller_arrays
           if (self._file_content is not None):
             self._file_type = "cctbx.miller.array"
+      if (self._file_type is None):
+        self._file_content = None
 
   def file_name(self):
     return self._file_name
