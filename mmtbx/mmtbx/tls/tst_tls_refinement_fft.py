@@ -12,11 +12,11 @@ import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
 import mmtbx.f_model
 import mmtbx.model
-
+import random
+import sys
 
 from mmtbx.tls import tools
 from mmtbx_tls_ext import *
-
 
 def exercise_2(eps = 1.e-6):
 ###> Get started from PDB
@@ -161,8 +161,24 @@ def exercise_2(eps = 1.e-6):
                 print "2=" + format % (m2[0],m2[1],m2[2],m2[3],m2[4],m2[5])
              assert approx_equal(m1,m2, tolerance)
 
-
+def exercise(args):
+  forever = False
+  random_seed = None
+  for arg in args:
+    if (arg == "--forever"):
+      forever = True
+    elif (arg.startswith("--random_seed=")):
+      random_seed = int(arg.split("=", 1)[1])
+  if (random_seed is None):
+    random_seed = flex.get_random_seed()
+  while True:
+    print "random_seed:", random_seed
+    random.seed(random_seed)
+    flex.set_random_seed(value=random_seed)
+    exercise_2()
+    if (not forever): break
+    random_seed += 1
 
 if (__name__ == "__main__"):
-  exercise_2()
+  exercise(sys.argv[1:])
   print format_cpu_times()
