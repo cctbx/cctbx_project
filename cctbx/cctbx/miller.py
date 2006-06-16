@@ -1138,9 +1138,9 @@ class array(set):
     set.show_summary(self, f=f, prefix=prefix)
     return self
 
-  def are_sigmas_sensible(self, critical_ratio=0.75, epsilon=1e-6):
+  def sigmas_are_sensible(self, critical_ratio=0.75, epsilon=1e-6):
     result=None
-    if self.sigmas() is not None:
+    if self.sigmas() is not None and self.sigmas().size() != 0:
       result=True
       suspected = ( self.sigmas() <= epsilon ).count(True)
       all = self.sigmas().size()
