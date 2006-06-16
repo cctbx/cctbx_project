@@ -41,7 +41,9 @@ class reader(object):
       t = sgtbx.tr_vec([int(line[j*3:(j+1)*3]) for j in xrange(3)], 12)
       self.space_group_from_ops.expand_smx(sgtbx.rt_mx(r, t))
     f.close()
-    if (header_only): return
+    if (header_only):
+      self.original_indices = None
+      return
     all_arrays = scalepack_ext.no_merge_original_index_arrays(
       file_name, n_sym_ops_from_file*2+1)
     self.original_indices = all_arrays.original_indices()
@@ -57,6 +59,21 @@ class reader(object):
     return combine_symops_and_symbol(
       space_group_from_ops=self.space_group_from_ops,
       space_group_symbol=self.space_group_symbol)
+
+  def show_summary(self, out=None, prefix=""):
+    if (out is None): out = sys.stdout
+    print >> out, prefix + "File name:", show_string(self.file_name)
+    print >> out, prefix + "Space group symbol:", \
+      show_string(self.space_group_symbol)
+    try: space_group_info = self.space_group_info()
+    except KeyboardInterrupt: raise
+    except: pass
+    else:
+      space_group_info.show_summary(
+        f=out, prefix=prefix+"Space group from operations: ")
+    if (self.original_indices is not None):
+      print >> out, prefix + "Number of original indices:", \
+        self.original_indices.size()
 
   def unmerged_miller_set(self, crystal_symmetry=None, force_symmetry=False):
     if (not force_symmetry
@@ -179,6 +196,7 @@ def quick_test(file_name):
   t = user_plus_sys_time()
   s = reader(file_name)
   print "Time read:", t.delta()
+  s.show_summary()
   print tuple(s.original_indices[:3])
   print tuple(s.unique_indices[:3])
   print tuple(s.batch_numbers[:3])
