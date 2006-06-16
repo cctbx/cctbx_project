@@ -1,4 +1,5 @@
-from iotbx.cns import space_group_symbols
+from iotbx import cns
+import iotbx.cns.space_group_symbols
 from iotbx.misc import detect_binary_file
 from iotbx import crystal_symmetry_from_any
 from scitbx.python_utils.misc import plural_s
@@ -23,7 +24,7 @@ iotbx.cns.transfer_crystal_symmetry any_symmetry_source_file cns_input_file
     raise Sorry(
       "Unknown file format or unit cell and/or space group"
       " missing from file: " + show_string(source))
-  cns_space_group_symbol = space_group_symbols.cns_format(
+  cns_space_group_symbol = cns.space_group_symbols.cns_format(
     space_group_info=crystal_symmetry.space_group_info())
   if (cns_space_group_symbol is None):
     raise Sorry("Space group not available in CNS: %s" %
