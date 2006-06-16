@@ -176,6 +176,12 @@ class _input(boost.python.injector, ext.input):
     msg = self.have_altloc_mix_message()
     if (msg is not None): raise RuntimeError(msg)
 
+  def crystal_symmetry_from_cryst1(self):
+    from iotbx.pdb import cryst1_interpretation
+    for line in self.crystallographic_section():
+      if (line.startswith("CRYST1")):
+        return cryst1_interpretation.crystal_symmetry(cryst1_record=line)
+
 def format_cryst1_record(crystal_symmetry, z=None):
   # CRYST1
   #  7 - 15       Real(9.3)      a             a (Angstroms).
