@@ -211,36 +211,37 @@ class _object(boost.python.injector, ext.object):
   def column_types(self):
     return [column.type() for column in self.columns()]
 
-  def show_summary(self, out=None):
+  def show_summary(self, out=None, prefix=""):
     if (out is None): out = sys.stdout
-    print >> out, "Title:", self.title()
-    print >> out, "Space group symbol from file:", self.space_group_name()
-    print >> out, "Space group number from file:", self.space_group_number()
+    p = prefix
+    print >> out, p+"Title:", self.title()
+    print >> out, p+"Space group symbol from file:", self.space_group_name()
+    print >> out, p+"Space group number from file:", self.space_group_number()
     self.space_group_info().show_summary(
-      f=out, prefix="Space group from matrices: ")
-    print >> out, "Point group symbol from file:", self.point_group_name()
+      f=out, prefix=p+"Space group from matrices: ")
+    print >> out, p+"Point group symbol from file:", self.point_group_name()
     if (self.n_batches() > 0):
-      print >> out, "Number of batches:", self.n_batches()
-    print >> out, "Number of crystals:", self.n_crystals()
-    print >> out, "Number of Miller indices:", self.n_reflections()
+      print >> out, p+"Number of batches:", self.n_batches()
+    print >> out, p+"Number of crystals:", self.n_crystals()
+    print >> out, p+"Number of Miller indices:", self.n_reflections()
     if (self.n_crystals() > 0 and self.n_reflections() > 0):
-      print >> out, "Resolution range: %.6g %.6g" % self.max_min_resolution()
-    print >> out, "History:"
+      print >> out, p+"Resolution range: %.6g %.6g" % self.max_min_resolution()
+    print >> out, p+"History:"
     for line in self.history():
-      print >> out, " ", line.rstrip()
+      print >> out, p+" ", line.rstrip()
     for i_crystal,crystal in enumerate(self.crystals()):
-      print >> out, "Crystal %d:" % (i_crystal+1)
-      print >> out, "  Name:", crystal.name()
-      print >> out, "  Project:", crystal.project_name()
-      print >> out, "  Id:", crystal.id()
-      crystal.unit_cell().show_parameters(f=out, prefix="  Unit cell: ")
-      print >> out, "  Number of datasets:", crystal.n_datasets()
+      print >> out, p+"Crystal %d:" % (i_crystal+1)
+      print >> out, p+"  Name:", crystal.name()
+      print >> out, p+"  Project:", crystal.project_name()
+      print >> out, p+"  Id:", crystal.id()
+      crystal.unit_cell().show_parameters(f=out, prefix=p+"  Unit cell: ")
+      print >> out, p+"  Number of datasets:", crystal.n_datasets()
       for i_dataset,dataset in enumerate(crystal.datasets()):
-        print >> out, "  Dataset %d:" % (i_dataset+1)
-        print >> out, "    Name:", dataset.name()
-        print >> out, "    Id:", dataset.id()
-        print >> out, "    Wavelength: %.6g" % dataset.wavelength()
-        print >> out, "    Number of columns:", dataset.n_columns()
+        print >> out, p+"  Dataset %d:" % (i_dataset+1)
+        print >> out, p+"    Name:", dataset.name()
+        print >> out, p+"    Id:", dataset.id()
+        print >> out, p+"    Wavelength: %.6g" % dataset.wavelength()
+        print >> out, p+"    Number of columns:", dataset.n_columns()
         if (dataset.n_columns() > 0):
           fields_list = [[
             "label", "#valid", "%valid", "min", "max", "type", ""]]
@@ -263,7 +264,7 @@ class _object(boost.python.injector, ext.object):
           format = "    %%-%ds %%%ds %%%ds %%%ds %%%ds %%%ds %%s" % tuple(
             max_field_lengths[:6])
           for fields in fields_list:
-            print >> out, (format % tuple(fields)).rstrip()
+            print >> out, p+(format % tuple(fields)).rstrip()
     return self
 
   def show_column_data(self, out=None):
