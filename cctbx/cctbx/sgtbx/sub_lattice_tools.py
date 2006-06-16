@@ -222,6 +222,20 @@ class compare_lattice(object):
 
 
     self.basis_a = matrix.sqr( self.xs_a_n.unit_cell().orthogonalization_matrix() )
+    print >> self.out, "Cartesian basis (column) vectors of lego cell:"
+    tmp_bas = self.basis_a.as_list_of_lists()
+    print >> self.out, "  / %5.1f %5.1f %5.1f \  " %(tmp_bas[0][0], tmp_bas[0][1], tmp_bas[0][2])
+    print >> self.out, "  | %5.1f %5.1f %5.1f |  " %(tmp_bas[1][0], tmp_bas[1][1], tmp_bas[1][2])
+    print >> self.out, "  \ %5.1f %5.1f %5.1f /  " %(tmp_bas[2][0], tmp_bas[2][1], tmp_bas[2][2])
+    print >> self.out
+    self.basis_b = matrix.sqr( self.xs_b_n.unit_cell().orthogonalization_matrix() )
+    print >> self.out, "Cartesian basis (column) vectors of target cell:"
+    tmp_bas = self.basis_b.as_list_of_lists()
+    print >> self.out, "  / %5.1f %5.1f %5.1f \  " %(tmp_bas[0][0], tmp_bas[0][1], tmp_bas[0][2])
+    print >> self.out, "  | %5.1f %5.1f %5.1f |  " %(tmp_bas[1][0], tmp_bas[1][1], tmp_bas[1][2])
+    print >> self.out, "  \ %5.1f %5.1f %5.1f /  " %(tmp_bas[2][0], tmp_bas[2][1], tmp_bas[2][2])
+    print >> self.out
+
     self.lattice_symm_a = sgtbx.lattice_symmetry.group( self.xs_a_n.unit_cell(),self.max_delta )
     self.lattice_symm_b = sgtbx.lattice_symmetry.group( self.xs_b_n.unit_cell(),self.max_delta  )
 
@@ -254,12 +268,12 @@ class compare_lattice(object):
         tmp_xs[0],
         self.relative_length_tolerance,
         self.absolute_angle_tolerance,
-        self.order+1)
+        self.order)
 
       if tmp_gen.size()>0:
         found_it = True
         cb_op = sgtbx.change_of_basis_op(sgtbx.rt_mx( sgtbx.rot_mx(tmp_gen[0])))
-        tmp_sol = (mat,cb_op,tmp_xs[2]) # matrix, corresponding cb_op, cell + lattice sym
+        tmp_sol = (mat,cb_op,tmp_xs[2].change_basis( cb_op ) , tmp_xs[3]) # matrix, corresponding cb_op, cell + lattice sym
         self.possible_solutions.append( tmp_sol )
         #self.show_solution(tmp_sol)
       if found_it:
@@ -335,11 +349,11 @@ class compare_lattice(object):
                                                                             self.xs_a_n.unit_cell().parameters()[5])
     print >> self.out
     print >> self.out, "               /%4i %4i %4i  \  "%(mat[0][0],mat[0][1],mat[0][2])
-    print >> self.out, "matrix :       |%4i %4i %4i  |  "%(mat[1][0],mat[1][1],mat[1][2])
+    print >> self.out, "matrix :  M =  |%4i %4i %4i  |  "%(mat[1][0],mat[1][1],mat[1][2])
     print >> self.out, "               \%4i %4i %4i  /  "%(mat[2][0],mat[2][1],mat[2][2])
     print >> self.out
-    print >> self.out, "Additional affine transform: ", sol_entry[1].as_xyz()
-    print >> self.out
+    print >> self.out, "Additional Niggli transform:     ", sol_entry[3].as_xyz()
+    print >> self.out, "Additional similarity transform: ", sol_entry[1].as_xyz()
     print >> self.out, "Resulting unit cell :  %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f"%(
       sol_entry[2].unit_cell().parameters()[0],
       sol_entry[2].unit_cell().parameters()[1],
@@ -356,6 +370,8 @@ class compare_lattice(object):
       (self.xs_b_n.unit_cell().parameters()[5]-sol_entry[2].unit_cell().parameters()[5])  )
     print >> self.out, "Deviations for unit cell lengths are listed in %."
     print >> self.out, "Angular deviations are listed in degrees."
+    print >> self.out
+    print >> self.out, " "
     print >> self.out, "--------------------------------------------------------------"
 
   def make_new_cell_and_symmetry(self,
@@ -363,6 +379,13 @@ class compare_lattice(object):
     # make new lattice
     new_basis = self.basis_a*mat.as_float()
     new_uc = uctbx.unit_cell( orthogonalization_matrix = new_basis )
+
+    tmp_xs = crystal.symmetry( unit_cell=new_uc,
+                               space_group=sgtbx.lattice_symmetry.group(new_uc,self.max_delta),
+                               assert_is_compatible_unit_cell=False
+                             )
+    extra_cb_op = tmp_xs.change_of_basis_op_to_niggli_cell()
+
     # get the niggli cell please
     new_uc = new_uc.niggli_cell()
     # get the lattice symmetry please
@@ -371,7 +394,7 @@ class compare_lattice(object):
                                space_group=lattice_group,
                                assert_is_compatible_unit_cell=False
                                )
-    return( (new_uc,lattice_group,xs_new) )
+    return( (new_uc,lattice_group,xs_new,extra_cb_op) )
 
 
 
