@@ -3,6 +3,7 @@ from cctbx import crystal
 from cctbx import sgtbx
 from cctbx import uctbx
 from cctbx.array_family import flex
+import sys
 
 import boost.python
 dtrek_ext = boost.python.import_ext("iotbx_dtrek_ext")
@@ -76,6 +77,8 @@ class reflnlist(object):
         offset += self.NumFloats
         for i in xrange(offset, num_columns):
           column_list[i].append(data_values[i])
+    del self.file
+    del self.line_no
 
   def next_line(self):
     line = self.file.readline()
@@ -103,6 +106,12 @@ class reflnlist(object):
     return crystal.symmetry(
       unit_cell=self.unit_cell(),
       space_group_info=self.space_group_info())
+
+  def show_summary(self, out=None, prefix=""):
+    if (out is None): out = sys.stdout
+    self.crystal_symmetry().show_summary(f=out, prefix=prefix)
+    print >> out, prefix + "Column names:", " ".join(self.column_names[3:])
+    print >> out, prefix + "Number of reflections:", self.miller_indices.size()
 
   def as_miller_arrays(self,
         crystal_symmetry=None,
