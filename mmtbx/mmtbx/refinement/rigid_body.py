@@ -320,15 +320,13 @@ class manager(object):
         fmodel_copy.update_xray_structure(xray_structure = xrs,
                                           update_f_calc  = True)
         rworks = flex.double()
-        xrs_1 = None
-        xrs_2 = None
+        sites_cart_1 = None
+        sites_cart_2 = None
         for macro_cycle in range(1, min(int(res),4)+1):
             if(macro_cycle != 1): print >> log
             max_shift = 0.0
-            if([xrs_1, xrs_2].count(None) == 0):
-               array_of_distances_between_each_atom = \
-                          flex.sqrt(xrs_1.difference_vectors_cart(xrs_2).dot())
-               max_shift = flex.max(array_of_distances_between_each_atom)
+            if([sites_cart_1, sites_cart_2].count(None) == 0):
+               max_shift = sites_cart_1.max_distance(sites_cart_2)
             if(max_shift > max_shift_for_bss_update and bss is not None and
                bulk_solvent_and_scale):
                if(fmodel_copy.f_obs.d_min() > 3.0):
@@ -342,7 +340,7 @@ class manager(object):
                fmodel_copy.show_essential(header = line, out = log)
                if(fmodel_copy.f_obs.d_min() > 3.0):
                   bss.anisotropic_scaling=save_bss_anisotropic_scaling
-            xrs_1 = fmodel_copy.xray_structure.deep_copy_scatterers()
+            sites_cart_1 = fmodel_copy.xray_structure.sites_cart()
             minimized = rigid_body_minimizer(
                           fmodel                 = fmodel_copy,
                           selections             = selections,
@@ -374,7 +372,7 @@ class manager(object):
                                               update_f_calc  = True,
                                               update_f_mask  = True,
                                               out            = log)
-            xrs_2 = fmodel_copy.xray_structure.deep_copy_scatterers()
+            sites_cart_2 = fmodel_copy.xray_structure.sites_cart()
             rwork = minimized.fmodel.r_work()
             rfree = minimized.fmodel.r_free()
             assert approx_equal(rwork, fmodel_copy.r_work())
