@@ -119,7 +119,7 @@ Completeness with d_max=infinity: 1
     p = s.random_phases_compatible_with_phase_restrictions(deg=deg).data()
     assert s.space_group().is_valid_phase((0,0,1), p[1], deg)
 
-def exercise_generate_r_free_flags():
+def exercise_generate_r_free_flags(verbose=0):
   for anomalous_flag in [False, True]:
     miller_set = miller.build_set(
       crystal_symmetry=crystal.symmetry(
@@ -137,6 +137,14 @@ def exercise_generate_r_free_flags():
           trial_set = trial_set.select(
             flex.random_double(size=miller_set.indices().size()) < 0.8)
       flags = trial_set.generate_r_free_flags()
+      if (i_trial == 0):
+        out = StringIO()
+        flags.show_r_free_flags_info(out=out, prefix="$#")
+        if (verbose): sys.stdout.write(out.getvalue())
+        lines = out.getvalue().splitlines()
+        assert len(lines) == 13
+        for line in lines:
+          assert line.startswith("$#")
       if (not anomalous_flag):
         if (i_trial < 5):
           assert flags.indices().size() == 145
@@ -1110,16 +1118,16 @@ def run_call_back(flags, space_group_info):
   exercise_as_hendrickson_lattman(space_group_info)
   exercise_phase_integrals(space_group_info)
 
-def run():
+def run(args):
   exercise_set()
-  exercise_generate_r_free_flags()
+  exercise_generate_r_free_flags(verbose="--verbose" in args)
   exercise_binner()
   exercise_array()
   exercise_crystal_gridding()
   exercise_fft_map()
   exercise_map_correlation()
-  debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
+  debug_utils.parse_options_loop_space_groups(args, run_call_back)
   print "OK"
 
 if (__name__ == "__main__"):
-  run()
+  run(args=sys.argv[1:])
