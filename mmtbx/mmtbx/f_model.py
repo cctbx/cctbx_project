@@ -23,15 +23,6 @@ from stdlib import math
 from cctbx import xray
 from cctbx import adptbx
 
-target_names = (
-      "ls_wunit_k1","ls_wunit_k2","ls_wunit_kunit","ls_wunit_k1_fixed",
-      "ls_wunit_k1ask3_fixed",
-      "ls_wexp_k1" ,"ls_wexp_k2" ,"ls_wexp_kunit",
-      "ls_wff_k1"  ,"ls_wff_k2"  ,"ls_wff_kunit","ls_wff_k1_fixed",
-      "ls_wff_k1ask3_fixed",
-      "lsm_k1"     ,"lsm_k2"    ,"lsm_kunit","lsm_k1_fixed","lsm_k1ask3_fixed",
-      "ml","mlhl")
-
 class manager(object):
   def __init__(self, f_obs               = None,
                      r_free_flags        = None,
@@ -76,15 +67,14 @@ class manager(object):
     self.b_ordered_water = 0.0
     if(self.f_mask is None):
        self.f_mask = self.f_obs.array(data = zero)
-    self.target_names = target_names
-    #self.target_names = (
-    #  "ls_wunit_k1","ls_wunit_k2","ls_wunit_kunit","ls_wunit_k1_fixed",
-    #  "ls_wunit_k1ask3_fixed",
-    #  "ls_wexp_k1" ,"ls_wexp_k2" ,"ls_wexp_kunit",
-    #  "ls_wff_k1"  ,"ls_wff_k2"  ,"ls_wff_kunit","ls_wff_k1_fixed",
-    #  "ls_wff_k1ask3_fixed",
-    #  "lsm_k1"     ,"lsm_k2"    ,"lsm_kunit","lsm_k1_fixed","lsm_k1ask3_fixed",
-    #  "ml","mlhl")
+    self.target_names = (
+      "ls_wunit_k1","ls_wunit_k2","ls_wunit_kunit","ls_wunit_k1_fixed",
+      "ls_wunit_k1ask3_fixed",
+      "ls_wexp_k1" ,"ls_wexp_k2" ,"ls_wexp_kunit",
+      "ls_wff_k1"  ,"ls_wff_k2"  ,"ls_wff_kunit","ls_wff_k1_fixed",
+      "ls_wff_k1ask3_fixed",
+      "lsm_k1"     ,"lsm_k2"    ,"lsm_kunit","lsm_k1_fixed","lsm_k1ask3_fixed",
+      "ml","mlhl")
     if(self.target_name is not None):
        assert self.target_name in self.target_names
        self.setup_target_functors()
@@ -279,12 +269,13 @@ class manager(object):
                                    grid_step      = step)
     return result
 
-  def update_solvent_and_scale(self, params = None, out = None):
+  def update_solvent_and_scale(self, params = None, out = None, verbose=None):
     if(out is None): out = sys.stdout
     if(params is None):
        params = bss.solvent_and_scale_params()
     else:
        params = bss.solvent_and_scale_params(params = params)
+    if(verbose is not None): params.verbose=verbose
     bss.bulk_solvent_and_scales(fmodel = self, params = params, log = out)
 
   def setup_target_functors(self):
