@@ -346,6 +346,11 @@ def exercise_array():
   assert approx_equal(ai.data(), ac.data())
   assert ai.as_intensity_array() is ai
   assert aa.eliminate_sys_absent() is aa
+  assert ma.sigmas_are_sensible()
+  assert ma.sigmas_are_sensible(epsilon=0.15)
+  assert ma.sigmas_are_sensible(epsilon=0.15, critical_ratio=0.51)
+  assert not ma.sigmas_are_sensible(epsilon=0.15, critical_ratio=0.49)
+  assert not ma.sigmas_are_sensible(epsilon=0.25)
   aa = miller.array(
     miller_set=miller.set(
       crystal_symmetry=crystal.symmetry(
