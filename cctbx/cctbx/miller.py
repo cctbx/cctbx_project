@@ -1145,7 +1145,6 @@ class array(set):
       suspected = ( self.sigmas() <= epsilon ).count(True)
       all = self.sigmas().size()
       ratio = float(suspected)/float(all)
-      print suspected, all, ratio
       if ratio>critical_ratio:
         result = False
     return result
