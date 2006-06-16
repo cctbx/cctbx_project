@@ -222,7 +222,6 @@ class manager(object):
                             update_f_mask = False,
                             update_f_ordered_solvent = False,
                             out = None):
-    if(out is None): out = sys.stdout
     self.xray_structure = xray_structure
     if(self.mask_params is not None):
        step = self.f_obs.d_min()/self.mask_params.grid_step_factor
@@ -258,8 +257,10 @@ class manager(object):
        if (nu_map is not None):
          bulk_solvent_mask_obj.subtract_non_uniform_solvent_region_in_place(
                                                      non_uniform_mask = nu_map)
-       if(self.mask_params is not None and self.mask_params.verbose > 0):
-          bulk_solvent_mask_obj.show_summary(out = out)
+       if (out is not None
+           and self.mask_params is not None
+           and self.mask_params.verbose > 0):
+         bulk_solvent_mask_obj.show_summary(out = out)
        self.f_mask = \
                  bulk_solvent_mask_obj.structure_factors(miller_set=self.f_obs)
 
