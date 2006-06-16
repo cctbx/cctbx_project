@@ -675,6 +675,33 @@ class set(crystal.symmetry):
     del sel_sm
     return self.array(data=result_full)
 
+  def show_r_free_flags_info(self, n_bins=10, out=None, prefix=""):
+    assert self.is_bool_array()
+    print >> out, prefix + "Number of work/free reflections by resolution:"
+    if (n_bins is not None):
+      self.setup_binner(n_bins=n_bins)
+    else:
+      assert self.binner() is not None
+    for i_bin in self.binner().range_used():
+      sel = self.binner().selection(i_bin)
+      flags = self.data().select(sel)
+      n_free = flags.count(True)
+      n_work = flags.size() - n_free
+      legend = self.binner().bin_legend(i_bin)
+      if (i_bin == 1):
+        width = max(4, len(str(self.indices().size())))
+        fmt = "%%%ds" % width
+        print >> out, prefix + " ", " "*len(legend), \
+          fmt%"work", fmt%"free", " %free"
+        fmt = "%%%dd" % width
+      print >> out, prefix + " ", legend, fmt%n_work, fmt%n_free, \
+        "%5.1f%%" % (100.*n_free/max(1,n_work+n_free))
+    n_free = self.data().count(True)
+    n_work = self.data().size() - n_free
+    print >> out, prefix + " ", (
+      "%%%ds"%len(legend))%"overall", fmt%n_work, fmt%n_free, \
+      "%5.1f%%" % (100.*n_free/max(1,n_work+n_free))
+
   def random_phases_compatible_with_phase_restrictions(self, deg=False):
     random_phases = flex.random_double(size=self.size())-0.5
     if (deg): random_phases *= 360
