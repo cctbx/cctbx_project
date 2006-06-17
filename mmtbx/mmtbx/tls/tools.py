@@ -508,12 +508,9 @@ def tls_from_u_cart(xray_structure,
       if tlso.l[5]<0: l6 = -l6
       l.append( [l1,l2,l3,l4,l5,l6] )
       for item in [l1,l2,l3,l4,l5,l6]:
-        print item
         if abs(item) == lim_l: refine_T = True
       #s.append( [0,0,0,0,0,0,0,0,0] )
       s.append( tlso.s )
-  print refine_T
-  print "*"*50
   tlsos = generate_tlsos(selections     = tls_selections,
                          xray_structure = xray_structure,
                          T = t, L = l, S = s)
@@ -665,12 +662,12 @@ class tls_refinement(object):
      model.tlsos = tlsos
      self.fmodel = fmodel
 
-     uc = fmodel.xray_structure.unit_cell()
-     u_cart = fmodel.xray_structure.scatterers().extract_u_cart(uc)
-     for tls_selection, tlso in zip(selections, tlsos):
-         print "."*50
-         print tlso.t
-         print t_from_u_cart(u_cart.select(tls_selection), 1.e-6)
+     #uc = fmodel.xray_structure.unit_cell()
+     #u_cart = fmodel.xray_structure.scatterers().extract_u_cart(uc)
+     #for tls_selection, tlso in zip(selections, tlsos):
+     #    print "."*50
+     #    print tlso.t
+     #    print t_from_u_cart(u_cart.select(tls_selection), 1.e-6)
 
 
 def make_tlso_compatible_with_u_positive_definite(
