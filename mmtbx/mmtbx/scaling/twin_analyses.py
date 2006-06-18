@@ -702,7 +702,7 @@ class britton_test(object):
     if out is None:
       out = sys.stdout
 
-
+    self.max_iter=1000
     result = [0.5,1.0,0,0]
     miller_array = miller_array.select(
     miller_array.data()>0).set_observation_type(miller_array)
@@ -732,8 +732,9 @@ class britton_test(object):
     else:
       estimated_alpha = 0.0
       not_done=True
-
+    icount=0
     while not_done:
+      icount+=1
       for ii in range(48):
         alpha = ii/101.0
         britton_range = (flex.double(range(ii,50)))/101.0
@@ -743,8 +744,10 @@ class britton_test(object):
           estimated_alpha = result[0]
           not_done=False
           break
-      cc_cut_off-=0.005
 
+      cc_cut_off-=0.005
+      if icount > self.max_iter: # a nasty fail safe
+        break
     ## reset the cc_cut_off one step back
     cc_cut_off+=0.005
 
@@ -2295,7 +2298,6 @@ def twin_analyses_brief(miller_array,
            due to twinning.
            Also gives none when something messes up.
   """
-
   # first we need to know wheter or not that sigmas make any sense at all
   if (not miller_array.sigmas_are_sensible()):
     #clearly there is something wrong with the sigmas
@@ -2316,7 +2318,6 @@ def twin_analyses_brief(miller_array,
                                  out_plots = out_tmp_plot,
                                  verbose=verbose)
   except Sorry, RuntimeError: pass
-
 
   if out is None:
     out = sys.stdout
