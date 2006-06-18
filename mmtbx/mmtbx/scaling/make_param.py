@@ -119,8 +119,8 @@ outlier_level_wilson=1e-6
     self.fa_estimation="""fa_estimation
 .expert_level=__EXPERT_LEVEL__
 {
-   protocol = *algebraic cns mum_o_dad
-   type = choice
+   protocol = *algebraic cns combine_ano
+   .type = choice
    number_of_terms_in_normalisation_curve=23
    .type=int
 }

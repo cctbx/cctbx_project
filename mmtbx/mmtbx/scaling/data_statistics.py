@@ -42,7 +42,8 @@ class i_sigi_completeness_stats(object):
     #make sure we have sigmas
     assert self.miller.sigmas() is not None
     # select things with sigma larger then zero
-    self.miller = self.miller.select( self.miller.sigmas() > 0 )
+    #self.miller = self.miller.select( self.miller.sigmas() > 0 )
+    print self.miller.indices().size()
     self.miller.setup_binner(n_bins=n_bins)
 
     self.resolution_bins = list(self.miller.binner().limits())
