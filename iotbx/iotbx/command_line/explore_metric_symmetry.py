@@ -316,7 +316,7 @@ def ehms( args ):
       lego_block = None
       if ( tmp_a.unit_cell().volume() > tmp_b.unit_cell().volume() ):
         modified_xs = slt.make_list_of_target_xs_up_to_order( xs, order )
-        ilego_block = other_xs
+        lego_block = other_xs
       else:
         modified_xs = slt.make_list_of_target_xs_up_to_order( other_xs, order )
         lego_block = xs
