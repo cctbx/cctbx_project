@@ -97,8 +97,8 @@ EOF
 def ehms( args ):
   command_line = (
     iotbx_option_parser(
-    usage="iotbx.ehms [options]",
-    description="Explore Higher Metric Symmetry. A list of possible unit cells and spacegroups is given for the given specified unit cell and spacegroup combination.")
+    usage="iotbx.explore_metric_symmetry [options]",
+    description="Explore Metric Symmetry. A list of possible unit cells and spacegroups is given for the given specified unit cell and spacegroup combination. If a second unit cell is given, linear combinations of the basis vector of one unit cell are sought that match the other.")
 
     .enable_symmetry_comprehensive()
 
