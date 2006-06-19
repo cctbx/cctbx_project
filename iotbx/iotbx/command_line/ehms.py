@@ -169,6 +169,13 @@ def ehms( args ):
             metavar="FLOAT",
             help="Angular tolerance in unit cell comparison")
 
+     .option(None, "--max_order",
+             action="store",
+             dest="max_order",
+             type="int",
+             default=1,
+             metavar="INT",
+             help="Maximum volume change for target cell" )
     ).process(args=args)
 
   log = multi_out()
@@ -289,12 +296,63 @@ def ehms( args ):
     print >> log, "will be used as a (semi-flexible) lego-block to see if it"
     print >> log, "can construct the larger Niggli cell."
     print >> log
-    sl_object =  slt.compare_lattice(xs_a=xs,
-                                     xs_b=other_xs,
-                                     max_delta=command_line.options.max_delta,
-                                     out=log,
-                                     relative_length_tolerance=command_line.options.rel_length_tol,
-                                     absolute_angle_tolerance=command_line.options.abs_angle_tol)
+    print >> log
+
+    order = command_line.options.max_order
+
+    if order==1:
+      sl_object =  slt.compare_lattice(xs_a=xs,
+                                       xs_b=other_xs,
+                                       max_delta=command_line.options.max_delta,
+                                       out=log,
+                                       relative_length_tolerance=command_line.options.rel_length_tol,
+                                       absolute_angle_tolerance=command_line.options.abs_angle_tol)
+    else:
+
+      tmp_a = xs.change_basis( xs.change_of_basis_op_to_niggli_cell() )
+      tmp_b = other_xs.change_basis( other_xs.change_of_basis_op_to_niggli_cell() )
+      modified_xs = None
+      order = command_line.options.max_order
+      lego_block = None
+      if ( tmp_a.unit_cell().volume() > tmp_b.unit_cell().volume() ):
+        modified_xs = slt.make_list_of_target_xs_up_to_order( xs, order )
+        ilego_block = other_xs
+      else:
+        modified_xs = slt.make_list_of_target_xs_up_to_order( other_xs, order )
+        lego_block = xs
+
+      print >> log
+      print >> log, "Volume change of largest niggli cell requested via keyword --max_order"
+      print >> log
+      print >> log, "Input crystal symmetry is tranformed to niggli setting using the operator:"
+      print >> log,  modified_xs.basic_to_niggli_cb_op.as_xyz()
+      print >> log
+      print >> log, "Comparisons for various sublattices of the target cell are listed"
+      print >> log
+
+      for tmp_xs,cb_op,mat in zip(modified_xs.xs_list,
+                                  modified_xs.extra_cb_op,
+                                  modified_xs.matrices ):
+        mat=mat.as_list_of_lists()
+        print >> log, "==================================================================="
+        print >> log, "Niggli cell is expanded using matrix:"
+        print >> log
+        print >> log, "               /%4i %4i %4i  \  "%(mat[0][0],mat[0][1],mat[0][2])
+        print >> log, "          M =  |%4i %4i %4i  |  "%(mat[1][0],mat[1][1],mat[1][2])
+        print >> log, "               \%4i %4i %4i  /  "%(mat[2][0],mat[2][1],mat[2][2])
+        print >> log
+        print >> log, "Change of basis operator to reference setting:"
+        print >> log, "    ", cb_op.as_xyz()
+        print >> log, "resulting crystal symmetry:"
+        tmp_xs.show_summary(f=log,prefix="   ")
+        print >> log
+        print >> log
+        sl_object =  slt.compare_lattice(xs_a=tmp_xs,
+                                         xs_b=lego_block,
+                                         max_delta=command_line.options.max_delta,
+                                         out=log,
+                                         relative_length_tolerance=command_line.options.rel_length_tol,
+                                         absolute_angle_tolerance=command_line.options.abs_angle_tol)
 
 
 
