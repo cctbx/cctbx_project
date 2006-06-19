@@ -43,7 +43,6 @@ class i_sigi_completeness_stats(object):
     assert self.miller.sigmas() is not None
     # select things with sigma larger then zero
     #self.miller = self.miller.select( self.miller.sigmas() > 0 )
-    print self.miller.indices().size()
     self.miller.setup_binner(n_bins=n_bins)
 
     self.resolution_bins = list(self.miller.binner().limits())
@@ -736,25 +735,26 @@ class basic_intensity_statistics:
     self.meas_data=None
     ## Get measurability if data is anomalous
     if tmp_miller.anomalous_flag():
-      measurability = tmp_miller.measurability(use_binning=True,return_fail=0)
-      self.meas_data = flex.double( measurability.data[1:len(
-        measurability.data)-1])
-      ## make a smooth approximation to the measurability please
-      smooth_meas_approx = chebyshev_lsq_fit.chebyshev_lsq_fit(
-        int(self.d_star_sq_ori.size()/10) +3,
-        self.d_star_sq_ori,
-        self.meas_data )
-      smooth_meas_approx = chebyshev_polynome(
-        int(self.d_star_sq_ori.size()/10) +3,
-        flex.min(self.d_star_sq_ori),
-        flex.max(self.d_star_sq_ori),
-        smooth_meas_approx.coefs)
-      self.meas_smooth = smooth_meas_approx.f(self.d_star_sq_ori)
+      if tmp_miller.sigmas() is not None:
+        measurability = tmp_miller.measurability(use_binning=True,return_fail=0)
+        self.meas_data = flex.double( measurability.data[1:len(
+          measurability.data)-1])
+        ## make a smooth approximation to the measurability please
+        smooth_meas_approx = chebyshev_lsq_fit.chebyshev_lsq_fit(
+          int(self.d_star_sq_ori.size()/10) +3,
+          self.d_star_sq_ori,
+          self.meas_data )
+        smooth_meas_approx = chebyshev_polynome(
+          int(self.d_star_sq_ori.size()/10) +3,
+          flex.min(self.d_star_sq_ori),
+          flex.max(self.d_star_sq_ori),
+          smooth_meas_approx.coefs)
+        self.meas_smooth = smooth_meas_approx.f(self.d_star_sq_ori)
 
-      self.meas_anal =analyze_measurability(
-        self.d_star_sq_ori,
-        self.meas_smooth,
-        tmp_miller)
+        self.meas_anal =analyze_measurability(
+          self.d_star_sq_ori,
+          self.meas_smooth,
+          tmp_miller)
 
 
     ## Set up some arrays for plotting and analyses purposes
