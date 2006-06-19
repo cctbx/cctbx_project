@@ -212,6 +212,7 @@ class manager(object):
                                 xray_structure = self.minimized.xray_structure,
                                 update_f_calc  = True,
                                 out            = log)
+       model.xray_structure = fmodel.xray_structure
        fmodel.xray_structure.approx_equal(other = model.xray_structure)
        model.adp_statistics(iso_restraints = adp_restraints_params.iso,
                             wilson_b       = wilson_b,

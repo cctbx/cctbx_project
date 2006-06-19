@@ -197,9 +197,10 @@ class refinement_monitor(object):
                     target_weights = None,
                     rigid_body_shift_accamulator = None):
     fmodel.xray_structure.approx_equal(other = model.xray_structure)
-    if(target_weights is not None):
-       target_weights.fmodel.xray_structure.approx_equal(other =
-                                                         fmodel.xray_structure)
+    #XXX doesn't work when automatic adjustment was performed.
+    #if(target_weights is not None):
+    #   target_weights.fmodel.xray_structure.approx_equal(other =
+    #                                                     fmodel.xray_structure)
     if(self.model_ini is None): self.model_ini = model.deep_copy()
     if(wilson_b is not None): self.wilson_b = wilson_b
     self.steps.append(step)
