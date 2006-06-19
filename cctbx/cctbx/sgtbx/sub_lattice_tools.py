@@ -173,7 +173,6 @@ def generate_matrix_up_to_order( end_order,start_order=1 ):
     all_matrices += generate_matrix( n )
   return all_matrices
 
-
 def rt_mx_as_rational(rot_mat):
   # make sure one provides an integer matrix!
   tmp_mat = rot_mat.r().as_double()
@@ -181,6 +180,54 @@ def rt_mx_as_rational(rot_mat):
   for ij in tmp_mat:
     rational_list.append( rational.int( ifloor(ij) ) )
   return matrix.sqr( rational_list )
+
+def generate_inverse_matrix_up_to_order( end_order,start_order=1 ):
+  mat_list = generate_matrix_up_to_order( end_order, start_order )
+  inv_mat_list = []
+  for mat in mat_list:
+    inv_mat  = mat.inverse()
+    inv_mat_list.append( inv_mat )
+  return( inv_mat_list )
+
+class make_list_of_target_xs_up_to_order(object):
+  def __init__(self,
+               basic_xs,
+               order=1,
+               max_delta=2):
+
+    self.basic_xs = basic_xs
+    self.basic_xs_n = self.basic_xs.change_basis( self.basic_xs.change_of_basis_op_to_niggli_cell() )
+    self.basic_to_niggli_cb_op = self.basic_xs.change_of_basis_op_to_niggli_cell()
+
+    self.basis = matrix.sqr( self.basic_xs_n.unit_cell().orthogonalization_matrix() )
+    self.order = order
+    self.max_delta = max_delta
+
+    self.matrices = generate_matrix_up_to_order( self.order )
+
+    self.xs_list = []
+    self.extra_cb_op = []
+    for mat in self.matrices:
+      self.make_new_xs( mat )
+
+  def make_new_xs(self,
+                  mat):
+    # make new lattice
+    new_basis = self.basis*mat.as_float()
+    new_uc = uctbx.unit_cell( orthogonalization_matrix = new_basis )
+
+    tmp_xs = crystal.symmetry( unit_cell=new_uc,
+                               space_group=sgtbx.lattice_symmetry.group(new_uc,self.max_delta),
+                               assert_is_compatible_unit_cell=False
+                             )
+
+    extra_cb_op = tmp_xs.change_of_basis_op_to_reference_setting()
+    self.extra_cb_op.append( extra_cb_op )
+    #
+    tmp_xs = tmp_xs.change_basis( extra_cb_op )
+    self.xs_list.append( tmp_xs )
+
+
 
 class compare_lattice(object):
   def __init__(self,
@@ -237,7 +284,7 @@ class compare_lattice(object):
     print >> self.out
 
     self.lattice_symm_a = sgtbx.lattice_symmetry.group( self.xs_a_n.unit_cell(),self.max_delta )
-    self.lattice_symm_b = sgtbx.lattice_symmetry.group( self.xs_b_n.unit_cell(),self.max_delta  )
+    self.lattice_symm_b = sgtbx.lattice_symmetry.group( self.xs_b_n.unit_cell(),self.max_delta )
 
     self.xs_ref = crystal.symmetry( unit_cell=self.xs_b_n.unit_cell(),
                                     space_group=self.lattice_symm_b,
@@ -272,7 +319,7 @@ class compare_lattice(object):
 
       if tmp_gen.size()>0:
         found_it = True
-        cb_op = sgtbx.change_of_basis_op(sgtbx.rt_mx( sgtbx.rot_mx(tmp_gen[0])))
+        cb_op = sgtbx.change_of_basis_op(sgtbx.rt_mx( sgtbx.rot_mx(tmp_gen[0]))).inverse()
         tmp_sol = (mat,cb_op,tmp_xs[2].change_basis( cb_op ) , tmp_xs[3]) # matrix, corresponding cb_op, cell + lattice sym
         self.possible_solutions.append( tmp_sol )
         #self.show_solution(tmp_sol)
@@ -296,8 +343,8 @@ class compare_lattice(object):
     count=0
     if len(self.possible_solutions)==0:
       print >> out
-      print >> out, "No relations found."
-      print >> out, " (which does not neccesarily mean there are none) "
+      print >> out, "No relations found for this particular sublattice of the specified target cell."
+      print >> out, "   "
       print >> out
 
     for tmp_sol in self.possible_solutions:
@@ -389,17 +436,9 @@ class compare_lattice(object):
     # get the niggli cell please
     new_uc = new_uc.niggli_cell()
     # get the lattice symmetry please
-    lattice_group =  sgtbx.lattice_symmetry.group(new_uc,self.max_delta)
-    xs_new = crystal.symmetry( unit_cell=new_uc,
-                               space_group=lattice_group,
-                               assert_is_compatible_unit_cell=False
-                               )
-    return( (new_uc,lattice_group,xs_new,extra_cb_op) )
-
-
-
-
-
+    tmp_xs = tmp_xs.change_basis( extra_cb_op )
+    lattice_group = tmp_xs.space_group_info()
+    return( (new_uc,lattice_group,tmp_xs,extra_cb_op) )
 
 def tst_compare():
   uc1=uctbx.unit_cell( '61.28,95.92,145.02,90,90,90' )
@@ -410,18 +449,31 @@ def tst_compare():
   compare_object= compare_lattice(xs1,xs2,order=1,out=out)
   assert len( compare_object.possible_solutions )==1
 
-
 def tst_sublattice():
-  # compare results to table 2, Acta Cryst A36, 242-248, (1980) Billet, Rolley Le-Coz
+  # compare results to table 2, Acta Cryst A36, 242-248, (1980) Billiet, Rolley Le-Coz
   i = [2, 3,  4,  5,  6,  7,  8,   9,   10 ]
   N = [7, 13, 35, 31, 91, 57, 155, 130, 217]
   for ii, iN in zip(i,N) :
     tmp = generate_matrix( ii )
     assert ( len(tmp) == iN )
 
+def tst_make_bigger_cell():
+  uc1=uctbx.unit_cell( '61.28,95.92,145.02,90,90,90' )
+  xs1 = crystal.symmetry(uc1, "P212121")
+  tmp  = make_list_of_target_xs_up_to_order(xs1,order=5)
+  for xs,mat,cb_op in zip(tmp.xs_list,
+                          tmp.matrices,
+                          tmp.extra_cb_op):
+    ratio = xs.unit_cell().volume()/xs1.unit_cell().volume()
+    det = float(mat.determinant())
+    det_ref= float(cb_op.c().r().determinant())
+    assert approx_equal( ratio/(det/det_ref),1.0, eps=0.001 )
+
+
 def exercise():
   tst_sublattice()
   tst_compare()
+  tst_make_bigger_cell()
   print format_cpu_times()
 
 if (__name__ == "__main__"):
