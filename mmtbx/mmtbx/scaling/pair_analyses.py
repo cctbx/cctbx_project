@@ -206,6 +206,8 @@ class reindexing(object):
 
     print >> self.out, self.table
     ##  change things in primitive setting
+    print location
+    print self.matrices[ location ].as_hkl()
     transform_b = self.set_b.change_basis( self.matrices[ location ] ).map_to_asu()
     ##  go back to standard setting
     transform_b = transform_b.change_basis(
@@ -467,7 +469,6 @@ class f_double_prime_ratio(object):
     self.x=flex.double([1.0])
     scitbx.lbfgs.run(target_evaluator=self)
     self.ratio=self.x[0]
-    #self.show()
 
   def compute_functional_and_gradients(self):
     f = self.compute_functional()
@@ -504,9 +505,8 @@ class f_double_prime_ratio(object):
   def show(self,out=None):
     if out is None:
       out = sys.stdout
-    print >> out, "Inspired by: Kingston. Acta Cryst. (2001). D57, 101-107"
     print >> out
-    print >> out, "Estimated ratio f\"(w1)/f\"(w2): %3.2f"%(self.x[0])
+    print >> out, "Estimated ratio of fdp(w1)/fwp(w2): %3.2f"%(self.x[0])
     print >> out
 
 
@@ -515,12 +515,7 @@ class delta_f_prime_f_double_prime_ratio(object):
   def __init__(self,
                lambda1,
                lambda2,
-               out=None,
                level=1.0):
-    self.out = out
-    if self.out == None:
-      self.out = sys.stdout
-    
     self.tmp_l1 = lambda1.deep_copy()
     self.tmp_l2 = lambda2.deep_copy()
 
@@ -581,26 +576,155 @@ class delta_f_prime_f_double_prime_ratio(object):
               delta_iso_sq = math.sqrt( tmpiso  )
               delta_ano_sq = math.sqrt( tmpano  )
               tmp=2.0*delta_iso_sq/delta_ano_sq
+              print bin, tmp
               estimates.append( tmp )
               count+=1.0
 
     ## compute the trimean please
     self.ratio = None
     self.number = count
-    self.total = len(self.tmp_l1.binner().range_all())
     if (self.number>0):
       self.ratio=robust_statistics.trimean( estimates )
 
-    #self.show()
 
-  def show(self):
-    if self.number > 0:
-      print >> self.out
-      print >> self.out, "Estimated ratio (|f'(w1)-f'(w2)|)/f\"(w2): %3.2f"\
-            %(self.ratio)
-      print >> self.out, "Number of resolution bins used : %3i" %( self.number )
-      print >> self.out, "                                 (out of %3i)"\
-            %(self.total)
-    else:
-      print >> self.out, "Unable to estimate the ratio (|f'(w1)-f'(w2)|)/f\"(w2)"
 
+class singh_ramasheshan_fa_estimate(object):
+  def __init__(self,
+               w1,
+               w2,
+               k1,
+               k2):
+    self.w1=w1.deep_copy()
+    self.w2=w2.deep_copy()
+
+    if self.w1.is_xray_amplitude_array():
+      self.w1 = self.w1.f_as_f_sq()
+    if self.w2.is_xray_amplitude_array():
+      self.w2 = self.w2.f_as_f_sq()
+
+    ## common sets please
+    self.w1,self.w2 = self.w1.common_sets( self.w2 )
+
+    ## get differences and sums please
+    self.p1, self.n1 = self.w1.hemispheres_acentrics()
+    self.p2, self.n2 = self.w2.hemispheres_acentrics()
+
+    self.diff1 = self.p1.data() - self.n1.data()
+    self.diff2 = self.p2.data() - self.n2.data()
+
+    self.s1 =   self.p1.sigmas()*self.p1.sigmas()\
+              + self.n1.sigmas()*self.n1.sigmas()
+    self.s1 =  flex.sqrt( self.s1 )
+
+    self.s2 =   self.p2.sigmas()*self.p2.sigmas()\
+              + self.n2.sigmas()*self.n2.sigmas()
+    self.s2 =  flex.sqrt( self.s2 )
+
+    self.sum1 = self.p1.data() + self.n1.data()
+    self.sum2 = self.p2.data() + self.n2.data()
+
+    self.k1_sq = k1*k1
+    self.k2_sq = k2*k2
+
+    self.determinant=None
+    self.fa=None
+    self.sigfa=None
+
+
+    self.selector=None
+    self.iselector=None
+
+    self.a=None
+    self.b=None
+    self.c=None
+
+    self.compute_fa_values()
+
+    self.fa = self.p1.customized_copy(
+      data = self.fa,
+      sigmas = self.sigfa).set_observation_type( self.p1 )
+
+  def set_sigma_ratio(self):
+    tmp = self.s2/flex.abs( self.diff2 +1e-6 ) +\
+          self.s1/flex.abs( self.diff1 +1e-6 )
+    tmp = tmp/2.0
+    self.sigfa = tmp
+
+  def compute_coefs(self):
+    self.a = ( self.k2_sq*self.k2_sq
+               + self.k2_sq*(1 + self.k1_sq)
+               + (self.k1_sq-1)*(self.k1_sq-1)
+             )
+    self.b = -self.k2_sq*(self.sum1 + self.sum2) \
+             -(self.k1_sq-1)*(self.sum1 - self.sum2)
+    self.c = 0.25*(self.sum1 - self.sum2)*(self.sum1 - self.sum2)\
+            +(1.0/8.0)*self.k2_sq*(  self.diff2*self.diff2
+                                   + self.diff1*self.diff1/self.k1_sq)
+
+  def compute_determinant(self):
+    self.determinant = self.b*self.b - 4.0*self.a*self.c
+    self.selector = (self.determinant>0)
+    self.iselector = self.selector.iselection()
+
+  def compute_fa_values(self):
+    self.compute_coefs()
+    self.compute_determinant()
+    reset_selector = (~self.selector).iselection()
+    self.determinant = self.determinant.set_selected(  reset_selector, 0 )
+
+    choice1 = -self.b + flex.sqrt( self.determinant )
+    choice1 /= 2*self.a
+    choice2 = -self.b - flex.sqrt( self.determinant )
+    choice2 /= 2*self.a
+
+    select1 = choice1 > choice2
+    select2 = ~select1
+
+    choice1 = choice1.set_selected( select1.iselection(), 0 )
+    choice2 = choice2.set_selected( select2.iselection(), 0 )
+
+    choice1 = choice1+choice2
+    select1 = (choice1<0).iselection()
+    choice1 = choice1.set_selected( select1 , 0 )
+    self.fa =  choice1 + choice2
+
+    self.set_sigma_ratio()
+
+    self.sigfa = self.sigfa*self.fa
+
+
+class mum_dad(object):
+  def __init__(self,
+               lambda1,
+               lambda2,
+               k1=1.0):
+    ## assumed is of course that the data are scaled.
+    ## lambda1 is the 'reference'
+    self.w1=lambda1.deep_copy()
+    self.w2=lambda2.deep_copy()
+
+    if not self.w1.is_xray_amplitude_array():
+      self.w1 = self.w1.f_sq_as_f()
+    if not self.w2.is_xray_amplitude_array():
+      self.w2 = self.w2.f_sq_as_f()
+
+    self.w1, self.w2 = self.w1.common_sets( self.w2 )
+
+    l1p, l1n = self.w1.hemispheres_acentrics()
+    self.mean1 = l1p.data()+l1n.data()
+    self.diff1 = l1p.data()-l1n.data()
+    self.v1 = ( l1p.sigmas()*l1p.sigmas() +
+                l1n.sigmas()*l1n.sigmas() )
+
+    l2p, l2n = self.w2.hemispheres_acentrics()
+    self.mean2 = l2p.data()+l2n.data()
+    self.diff2 = l2p.data()-l2n.data()
+    self.v2 = ( l2p.sigmas()*l2p.sigmas() +
+                l2n.sigmas()*l2n.sigmas() )
+
+    self.new_diff = flex.abs( (self.diff1 + k1*self.diff2)/2.0 )
+    self.new_sigma_mean = flex.sqrt( (self.v1+k1*k1*self.v2)/2.0 )
+
+    self.dad = l1p.customized_copy(
+      data = self.new_diff,
+      sigmas = self.new_sigma_mean ).set_observation_type( self.w1 )
