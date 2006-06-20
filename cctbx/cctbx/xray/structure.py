@@ -138,6 +138,18 @@ class structure(crystal.special_position_settings):
       cp.scatterer_pdb_records = self.scatterer_pdb_records
     return cp
 
+  def adjust_u_iso(self):
+    u_isos = self._scatterers.extract_u_iso()
+    sel = (u_isos <= 0.0)
+    u_isos.set_selected(sel, 0.0)
+    u_min = max(adptbx.b_as_u(0.5), flex.mean(u_isos) / 5.0)
+    sel = (u_isos < u_min)
+    u_isos.set_selected(sel, u_min)
+    u_max = min(adptbx.b_as_u(500.0), flex.mean(u_isos) * 3.0)
+    sel = (u_isos > u_max)
+    u_isos.set_selected(sel, u_max)
+    self._scatterers.set_u_iso(u_isos)
+
   def translate(self, x=0, y=0, z=0):
     sites_cart = self.sites_cart()
     sites_cart_size = sites_cart.size()
