@@ -63,13 +63,7 @@ class lbfgs(object):
     del self._scatterers_start
     self.compute_target(compute_gradients = False, u_iso_reinable_params = None)
     self.final_target_value = self.f
-    #XXX
-    u_isos = self.xray_structure.scatterers().extract_u_iso()
-    sel = (u_isos < 0.0)
-    u_isos.set_selected(sel, 0.0)
-    self.xray_structure.scatterers().set_u_iso(u_isos)
-    #print dir(sc)
-
+    self.xray_structure.adjust_u_iso()
 
   def apply_shifts(self):
     apply_shifts_result = xray.ext.minimization_apply_shifts(
@@ -81,13 +75,7 @@ class lbfgs(object):
     return apply_shifts_result.u_iso_reinable_params
 
   def compute_target(self, compute_gradients, u_iso_reinable_params):
-    #XXX
-    u_isos = self.xray_structure.scatterers().extract_u_iso()
-    sel = (u_isos < 0.0)
-    u_isos.set_selected(sel, 0.0)
-    self.xray_structure.scatterers().set_u_iso(u_isos)
-    #print dir(sc)
-
+    self.xray_structure.adjust_u_iso()
     self.fmodel.update_xray_structure(xray_structure = self.xray_structure,
                                       update_f_calc  = True)
     self.exray_final = self.fmodel.target_w(alpha    = self.alpha_w,
