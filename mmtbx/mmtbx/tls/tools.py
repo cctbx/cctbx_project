@@ -431,15 +431,14 @@ def update_xray_structure_with_tls(xray_structure,
 def split_u(xray_structure, tls_selections, offset):
   uc = xray_structure.unit_cell()
   u_iso = xray_structure.scatterers().extract_u_iso()
+  #b_min = adptbx.u_as_b(flex.min(u_iso))
+  #b_max = adptbx.u_as_b(flex.max(u_iso))
+  #print offset, b_min, b_max
   for tls_selection in tls_selections:
       u_iso_sel = u_iso.select(tls_selection)
       u_iso_min = flex.min(u_iso_sel)
-      #print "1= ", offset, int(offset)-5, int(offset)+5
       if(offset):
-         #offset_ = adptbx.b_as_u(random.randrange(int(offset)-5,int(offset)+5,1))
-         #offset_ = adptbx.b_as_u(random.randrange(int(offset),int(offset)+3,1))
          offset_ = adptbx.b_as_u(5.0)
-         #print "2= ", offset, int(offset)-5, int(offset)+5
       else: offset_ = 0.0
       if u_iso_min >= offset_:
         u_iso_min = u_iso_min - offset_
@@ -448,7 +447,6 @@ def split_u(xray_structure, tls_selections, offset):
           if(tls_selection[i_seq]):
              assert sc.u_iso == u_iso[i_seq]
              u_iso_new = sc.u_iso - u_iso_min
-             #if (u_iso_new < 0.0): print "3= ",  u_iso_new, sc.u_iso , u_iso_min, offset_
              assert u_iso_new >= 0.0
              sc.u_iso = u_iso_new
              if(sc.u_star == (-1.0,-1.0,-1.0,-1.0,-1.0,-1.0)):
@@ -460,6 +458,9 @@ def split_u(xray_structure, tls_selections, offset):
                 sc.u_star = z
   u_iso = xray_structure.scatterers().extract_u_iso()
   assert (u_iso < 0.0).count(True) == 0
+  #b_min = adptbx.u_as_b(flex.min(u_iso))
+  #b_max = adptbx.u_as_b(flex.max(u_iso))
+  #print offset, b_min, b_max
 
 
 def tls_from_u_cart(xray_structure,
