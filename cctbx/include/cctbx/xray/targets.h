@@ -695,7 +695,9 @@ mlhl_d_target_dfcalc_one_h(
   else {
     double var = beta*epsilon;
     double arg = hl_a*cos_pc + hl_b*sin_pc + fo*alpha*fc/var;
-    double exp_2_arg = std::exp(-2*arg);
+    double mtwo_arg = -2*arg;
+    if(mtwo_arg > 30.) mtwo_arg = 30.0;
+    double exp_2_arg = std::exp(mtwo_arg);
     double tmp_tanh = (1-exp_2_arg) / (1+exp_2_arg);
     derfc = alpha*alpha*fc/var - tmp_tanh*fo*alpha/var;
     derpc = 2*tmp_tanh*(hl_a*sin_pc - hl_b*cos_pc);
