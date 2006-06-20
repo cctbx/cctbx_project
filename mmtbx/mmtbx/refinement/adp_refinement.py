@@ -133,18 +133,18 @@ class manager(object):
        print_statistics.make_sub_header(text = "TLS refinement",
                                         out  = log)
        if(macro_cycle == 1):
-          fmodel.xray_structure.convert_to_isotropic()
-          for sc in fmodel.xray_structure.scatterers():
-            sc.flags.set_tan_u_iso(True)
-            sc.flags.param = 100
-          group_b_manager = mmtbx.refinement.group_b.manager(
-             fmodel                   = fmodel,
-             selections               = tls_selections,
-             convergence_test         = group_adp_params.convergence_test,
-             max_number_of_iterations = group_adp_params.max_number_of_iterations,
-             number_of_macro_cycles   = group_adp_params.number_of_macro_cycles,
-             log                      = log,
-             tan_b_iso_max            = 100.)
+          #fmodel.xray_structure.convert_to_isotropic()
+          #for sc in fmodel.xray_structure.scatterers():
+          #  sc.flags.set_tan_u_iso(True)
+          #  sc.flags.param = 100
+          #group_b_manager = mmtbx.refinement.group_b.manager(
+          #   fmodel                   = fmodel,
+          #   selections               = tls_selections,
+          #   convergence_test         = group_adp_params.convergence_test,
+          #   max_number_of_iterations = group_adp_params.max_number_of_iterations,
+          #   number_of_macro_cycles   = group_adp_params.number_of_macro_cycles,
+          #   log                      = log,
+          #   tan_b_iso_max            = 100.)
           set_flags(xray_structure        = fmodel.xray_structure,
                     anisotropic_flags     = anisotropic_flags,
                     refine_adp_individual = refine_adp_individual,
