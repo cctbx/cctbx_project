@@ -312,14 +312,14 @@ class compare_lattice(object):
       self.uc_and_symm_list.append( tmp_xs )
 
       tmp_gen = self.xs_b_n.unit_cell().similarity_transformations(
-        tmp_xs[0],
+        tmp_xs[2].unit_cell(),
         self.relative_length_tolerance,
         self.absolute_angle_tolerance,
         self.order)
 
       if tmp_gen.size()>0:
         found_it = True
-        cb_op = sgtbx.change_of_basis_op(sgtbx.rt_mx( sgtbx.rot_mx(tmp_gen[0]))).inverse()
+        cb_op = sgtbx.change_of_basis_op(sgtbx.rt_mx( sgtbx.rot_mx(tmp_gen[0]))) #.inverse()
         tmp_sol = (mat,cb_op,tmp_xs[2].change_basis( cb_op ) , tmp_xs[3]) # matrix, corresponding cb_op, cell + lattice sym
         self.possible_solutions.append( tmp_sol )
         #self.show_solution(tmp_sol)
@@ -438,7 +438,10 @@ class compare_lattice(object):
     # get the lattice symmetry please
     tmp_xs = tmp_xs.change_basis( extra_cb_op )
     lattice_group = tmp_xs.space_group_info()
-    return( (new_uc,lattice_group,tmp_xs,extra_cb_op) )
+    return( (new_uc,
+             lattice_group,
+             tmp_xs,
+             extra_cb_op) )
 
 def tst_compare():
   uc1=uctbx.unit_cell( '61.28,95.92,145.02,90,90,90' )
