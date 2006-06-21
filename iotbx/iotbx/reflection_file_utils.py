@@ -104,23 +104,28 @@ def get_xray_data_scores(miller_arrays, ignore_all_zeros):
     if (not miller_array.is_real_array()):
       result.append(0)
     else:
+      score = None
       if (miller_array.data().all_eq(0)):
         if (ignore_all_zeros):
-          result.append(0)
+          score = 0
         else:
-          result.append(1)
+          score = 1
       elif (miller_array.is_xray_intensity_array()):
-        result.append(5)
+        score = 8
       elif (miller_array.is_xray_amplitude_array()):
         if (miller_array.is_xray_reconstructed_amplitude_array()):
-          result.append(3)
+          score = 4
         else:
-          result.append(4)
-      elif (    isinstance(miller_array.data(), flex.double)
-            and isinstance(miller_array.sigmas(), flex.double)):
-        result.append(2)
+          score = 6
       else:
-        result.append(1)
+        score = 2
+      assert score is not None
+      if (    miller_array.sigmas() is not None
+          and isinstance(miller_array.sigmas(), flex.double)
+          and miller_array.sigmas_are_sensible()
+          and score != 0):
+        score += 1
+      result.append(score)
   return result
 
 def looks_like_r_free_flags_info(array_info):
