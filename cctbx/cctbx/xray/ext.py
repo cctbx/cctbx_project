@@ -83,3 +83,10 @@ class _scattering_type_registry(
     for t,i in self.sorted_type_index_pairs():
       result[t] = unique_counts[i]
     return result
+
+  def as_type_gaussian_dict(self):
+    result = {}
+    ugs = self.unique_gaussians_as_list()
+    for t,i in self.type_index_pairs_as_dict().items():
+      result[t] = ugs[i]
+    return result
