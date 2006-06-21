@@ -427,11 +427,9 @@ class compare_lattice(object):
     new_basis = self.basis_a*mat.as_float()
     new_uc = uctbx.unit_cell( orthogonalization_matrix = new_basis )
 
-    tmp_xs = crystal.symmetry( unit_cell=new_uc,
-                               space_group=sgtbx.lattice_symmetry.group(new_uc,self.max_delta),
-                               assert_is_compatible_unit_cell=False
-                             )
-    extra_cb_op = tmp_xs.change_of_basis_op_to_niggli_cell()
+    tmp_xs = crystal.symmetry( new_uc, "P1" ) # if latice symm is supplied, we loose track of cb op sequence!
+
+    extra_cb_op = sgtbx.change_of_basis_op( tmp_xs.change_of_basis_op_to_niggli_cell().as_xyz() )
 
     # get the niggli cell please
     new_uc = new_uc.niggli_cell()
