@@ -165,8 +165,12 @@ Number of scattering types: 2
 """
   wd = reg.wilson_dict()
   assert len(wd) == 2
-  assert wd['O'] == 1
-  assert wd['Si'] == 1
+  assert wd["O"] == 1
+  assert wd["Si"] == 1
+  tgd = reg.as_type_gaussian_dict()
+  assert len(tgd) == 2
+  assert tgd["O"].n_terms() == 4
+  assert tgd["Si"].n_terms() == 0
   #
   reg = ys.scattering_type_registry()
   assert reg.type_index_pairs_as_dict() == {"Si": 0, "O": 1}
