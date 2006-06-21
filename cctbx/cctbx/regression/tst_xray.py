@@ -7,7 +7,7 @@ from cctbx import adptbx
 import cctbx.eltbx.xray_scattering
 from cctbx import eltbx
 from cctbx.array_family import flex
-from libtbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal, show_diff
 import random
 import pickle
 from cStringIO import StringIO
@@ -472,7 +472,7 @@ def exercise_n_gaussian(space_group_info, verbose=0):
     space_group_info,
     elements=["H", "C", "N", "O", "S"]*3)
   if (0 or verbose):
-    structure_five.show_summary().show_scatterers()
+    structure_5g.show_summary().show_scatterers()
   structure_4g = structure_5g.deep_copy_scatterers()
   structure_2g = structure_5g.deep_copy_scatterers()
   structure_5g.scattering_type_registry(table="wk1995")
@@ -510,6 +510,43 @@ def exercise_n_gaussian(space_group_info, verbose=0):
       assert ls.target() < 0.002
     else:
       assert ls.target() < 0.0002
+  #
+  for element in ["H", "D"]:
+    structure = random_structure.xray_structure(
+      space_group_info, elements=["D"])
+    ugs = structure.scattering_type_registry(table="n_gaussian") \
+      .unique_gaussians_as_list()
+    assert len(ugs) == 1
+    assert ugs[0].n_terms() == 6
+    s = StringIO()
+    ugs[0].show(f=s)
+    assert not show_diff(s.getvalue(), """\
+a: 0.27221656 0.25271838 0.24971456 0.18667197 0.036800021 0.0018616359
+b: 19.557704 7.1039496 21.423627 51.052183 1.8864593 0.31198465
+c: 0
+""")
+    ugs = structure.scattering_type_registry(table="it1992") \
+      .unique_gaussians_as_list()
+    assert len(ugs) == 1
+    assert ugs[0].n_terms() == 4
+    s = StringIO()
+    ugs[0].show(f=s)
+    assert not show_diff(s.getvalue(), """\
+a: 0.48991799 0.262003 0.196767 0.049879
+b: 20.6593 7.7403898 49.551899 2.2015901
+c: 0.001305
+""")
+    ugs = structure.scattering_type_registry(table="wk1995") \
+      .unique_gaussians_as_list()
+    assert len(ugs) == 1
+    assert ugs[0].n_terms() == 5
+    s = StringIO()
+    ugs[0].show(f=s)
+    assert not show_diff(s.getvalue(), """\
+a: 0.413048 0.29495299 0.187491 0.080701001 0.023736
+b: 15.569946 32.398468 5.7114038 61.889874 1.334118
+c: 4.8999998e-05
+""")
 
 def run_call_back(flags, space_group_info):
   if (1):
