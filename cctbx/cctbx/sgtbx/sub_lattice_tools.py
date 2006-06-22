@@ -218,7 +218,7 @@ class make_list_of_target_xs_up_to_order(object):
 
     tmp_xs = crystal.symmetry( unit_cell=new_uc,
                                space_group=sgtbx.lattice_symmetry.group(new_uc,self.max_delta),
-                               assert_is_compatible_unit_cell=False
+                               assert_is_compatible_unit_cell=False,
                              )
 
     extra_cb_op = tmp_xs.change_of_basis_op_to_reference_setting()
@@ -319,7 +319,7 @@ class compare_lattice(object):
 
       if tmp_gen.size()>0:
         found_it = True
-        cb_op = sgtbx.change_of_basis_op(sgtbx.rt_mx( sgtbx.rot_mx(tmp_gen[0]))) #.inverse()
+        cb_op = sgtbx.change_of_basis_op(sgtbx.rt_mx( sgtbx.rot_mx(tmp_gen[0]))).inverse()
         tmp_sol = (mat,cb_op,tmp_xs[2].change_basis( cb_op ) , tmp_xs[3]) # matrix, corresponding cb_op, cell + lattice sym
         self.possible_solutions.append( tmp_sol )
         #self.show_solution(tmp_sol)
