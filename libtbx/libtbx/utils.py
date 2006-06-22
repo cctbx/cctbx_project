@@ -55,9 +55,12 @@ def if_none(value, default):
   return value
 
 def format_exception():
-  type_, value = [str(obj) for obj in sys.exc_info()[:2]]
-  if (type_.startswith("exceptions.")): type_ = type_[11:]
-  if (value == ""):
+  ei = sys.exc_info()
+  type_ = ei[0].__name__
+  value = str(ei[1])
+  if (value != ""):
+    value = value.replace(" (<string>, line ", " (line ")
+  else:
     file_name, line = traceback.extract_tb(sys.exc_info()[2], 1)[0][:2]
     if (file_name is not None):
       value = file_name+" "
