@@ -314,10 +314,6 @@ def exercise_misc():
   except RuntimeError, e:
     assert str(e).find("SCITBX_ASSERT(grid.size_1d() == a.size())") > 0
   else: raise RuntimeError("Exception expected.")
-  #
-  a = flex.bool([False, False, True, True])
-  b = flex.bool([False, True, False, True])
-  assert list(a.exclusive_or(b)) == [False, True, True, False]
 
 def exercise_1d_slicing_core(a, numeric_version=""):
   assert tuple(a[:]) == (1,2,3,4,5)
@@ -540,10 +536,6 @@ def exercise_select():
   assert list(flex.intersection(size=5,iselections=[isel,isel2]).iselection())\
       == [4]
   #
-  a = flex.bool([True,False,False,True,True])
-  b = flex.size_t([0,1,2,3])
-  assert list(a.filter_indices(b)) == [0,3]
-  #
   def iselection_intersection(a, b):
     return list(flex.size_t(a).intersection(other=flex.size_t(b)))
   assert iselection_intersection([], []) == []
@@ -572,11 +564,6 @@ def exercise_from_stl_vector():
   assert list(flex.double(stl.vector.double([3,-6,10]))) == [3,-6,10]
 
 def exercise_operators():
-  a = flex.bool((0, 1, 0, 1))
-  b = flex.bool((0, 1, 1, 0))
-  assert tuple(~a) == (1, 0, 1, 0)
-  assert tuple(a & b) == (0, 1, 0, 0)
-  assert tuple(a | b) == (0, 1, 1, 1)
   a = flex.int((4, 9))
   b = flex.int((2, 3))
   assert tuple(-a) == (-4, -9)
@@ -633,23 +620,81 @@ def exercise_operators():
   assert approx_equal(a*3, [3,6,9])
   assert approx_equal(4*a, [4,8,12])
 
-def exercise_bool_inplace_operators():
-  a = flex.bool((0, 1, 0, 1))
-  b = flex.bool((0, 1, 1, 0))
+def exercise_bool():
+  a = flex.bool((False, True, False, True))
+  b = flex.bool((False, True, True, False))
+  f = flex.bool((False, False))
+  t = flex.bool((True, True))
+  assert tuple(a == b) == (True, True, False, False)
+  assert tuple(a != b) == (False, False, True, True)
+  assert tuple(a == True) == (False, True, False, True)
+  assert tuple(a == False) == (True, False, True, False)
+  assert not a == None
+  assert type(a == None) == type(False)
+  try: a == flex.int()
+  except TypeError, e:
+    assert str(e) \
+        == "Type of argument must be a Python bool, flex.bool, or None."
+  else: raise RuntimeError("Exception expected.")
+  assert tuple(a != True) == (True, False, True, False)
+  assert tuple(a != False) == (False, True, False, True)
+  assert a != None
+  assert type(a != None) == type(False)
+  try: a != flex.int()
+  except TypeError, e:
+    assert str(e) \
+        == "Type of argument must be a Python bool, flex.bool, or None."
+  else: raise RuntimeError("Exception expected.")
+  assert [a, a].count(None) == 0
+  assert [a, None].count(None) == 1
+  assert a.all_eq(a)
+  assert type(a.all_eq(a)) == type(False)
+  assert a.all_eq(a.deep_copy())
+  assert not a.all_ne(a)
+  assert a.all_ne(~a)
+  assert not a.all_ne(b)
+  assert f.all_eq(False)
+  assert f.all_ne(True)
+  assert t.all_eq(True)
+  assert t.all_ne(False)
+  assert type(f.all_eq(f)) == type(False)
+  assert type(f.all_ne(f)) == type(False)
+  assert type(f.all_eq(False)) == type(False)
+  assert type(f.all_ne(False)) == type(False)
+  for mf in [t.all_eq, t.all_ne]:
+    try: mf(None)
+    except TypeError, e:
+      assert str(e) == "Type of argument must be a Python bool or flex.bool."
+    else: raise RuntimeError("Exception expected.")
+  assert tuple(~a) == (True, False, True, False)
+  assert tuple(a & b) == (False, True, False, False)
+  assert tuple(a | b) == (False, True, True, True)
   a &= b
-  assert tuple(a) == (0, 1, 0, 0)
-  a |= flex.bool((1, 0, 1, 0))
-  assert tuple(a) == (1, 1, 1, 0)
-  assert a.count(0) == 1
-  assert a.count(1) == 3
-  a &= 1
-  assert tuple(a) == (1, 1, 1, 0)
-  a &= 0
-  assert tuple(a) == (0, 0, 0, 0)
-  a |= 1
-  assert tuple(a) == (1, 1, 1, 1)
-  a |= 0
-  assert tuple(a) == (1, 1, 1, 1)
+  assert tuple(a) == (False, True, False, False)
+  a |= flex.bool((True, False, True, False))
+  assert tuple(a) == (True, True, True, False)
+  assert a.count(False) == 1
+  assert a.count(True) == 3
+  a &= True
+  assert tuple(a) == (True, True, True, False)
+  a &= False
+  assert tuple(a) == (False, False, False, False)
+  a |= True
+  assert tuple(a) == (True, True, True, True)
+  a |= False
+  assert tuple(a) == (True, True, True, True)
+  #
+  assert flex.order(a,a) == False
+  assert flex.order(a,b) == 1
+  assert flex.order(b,a) == -1
+  #
+  a = flex.bool([False, False, True, True])
+  b = flex.bool([False, True, False, True])
+  assert list(a.exclusive_or(b)) == [False, True, True, False]
+  #
+  a = flex.bool([True,False,False,True,True])
+  b = flex.size_t([0,1,2,3])
+  assert list(a.filter_indices(b)) == [0,3]
 
 def exercise_arith_inplace_operators():
   a = flex.int((4, 9))
@@ -2183,7 +2228,7 @@ def run(iterations):
     exercise_select()
     exercise_from_stl_vector()
     exercise_operators()
-    exercise_bool_inplace_operators()
+    exercise_bool()
     exercise_arith_inplace_operators()
     exercise_functions()
     exercise_complex_functions()
