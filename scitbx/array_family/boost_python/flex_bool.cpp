@@ -26,6 +26,161 @@ namespace {
     }
   };
 
+  static const char* type_error_message_2
+    = "Type of argument must be a Python bool or flex.bool.";
+  static const char* type_error_message_3
+    = "Type of argument must be a Python bool, flex.bool, or None.";
+
+  boost::python::object
+  eq(flex_bool const& a, boost::python::object const& b)
+  {
+    if (b.ptr() == boost::python::object().ptr()) { // if b is None
+      return boost::python::object(false);
+    }
+    {
+      boost::python::extract<flex_bool> b_proxy(b);
+      if (b_proxy.check()) {
+        return boost::python::object(a == b_proxy());
+      }
+    }
+    {
+      boost::python::extract<bool> b_proxy(b);
+      if (b_proxy.check()) {
+        return boost::python::object(a == b_proxy());
+      }
+    }
+    PyErr_SetString(PyExc_TypeError, type_error_message_3);
+    boost::python::throw_error_already_set();
+  }
+
+  boost::python::object
+  ne(flex_bool const& a, boost::python::object const& b)
+  {
+    if (b.ptr() == boost::python::object().ptr()) { // if b is None
+      return boost::python::object(true);
+    }
+    {
+      boost::python::extract<flex_bool> b_proxy(b);
+      if (b_proxy.check()) {
+        return boost::python::object(a != b_proxy());
+      }
+    }
+    {
+      boost::python::extract<bool> b_proxy(b);
+      if (b_proxy.check()) {
+        return boost::python::object(a != b_proxy());
+      }
+    }
+    PyErr_SetString(PyExc_TypeError, type_error_message_3);
+    boost::python::throw_error_already_set();
+  }
+
+  boost::python::object
+  all_eq(flex_bool const& a, boost::python::object const& b)
+  {
+    if (b.ptr() != boost::python::object().ptr()) { // if b is not None
+      {
+        boost::python::extract<flex_bool> b_proxy(b);
+        if (b_proxy.check()) {
+          return boost::python::object(a.all_eq(b_proxy()));
+        }
+      }
+      {
+        boost::python::extract<bool> b_proxy(b);
+        if (b_proxy.check()) {
+          return boost::python::object(a.all_eq(b_proxy()));
+        }
+      }
+    }
+    PyErr_SetString(PyExc_TypeError, type_error_message_2);
+    boost::python::throw_error_already_set();
+  }
+
+  boost::python::object
+  all_ne(flex_bool const& a, boost::python::object const& b)
+  {
+    if (b.ptr() != boost::python::object().ptr()) { // if b is not None
+      {
+        boost::python::extract<flex_bool> b_proxy(b);
+        if (b_proxy.check()) {
+          return boost::python::object(a.all_ne(b_proxy()));
+        }
+      }
+      {
+        boost::python::extract<bool> b_proxy(b);
+        if (b_proxy.check()) {
+          return boost::python::object(a.all_ne(b_proxy()));
+        }
+      }
+    }
+    PyErr_SetString(PyExc_TypeError, type_error_message_2);
+    boost::python::throw_error_already_set();
+  }
+
+  flex_bool
+  invert_a(flex_bool const& a) { return !a; }
+
+  flex_bool
+  and_a_a(flex_bool const& a1, flex_bool const& a2) { return a1 && a2; }
+
+  flex_bool
+  or_a_a(flex_bool const& a1, flex_bool const& a2) { return a1 || a2; }
+
+  flex_bool
+  iand_a_a(flex_bool a1, flex_bool const& a2)
+  {
+    if (a1.accessor() != a2.accessor()) {
+      raise_incompatible_arrays();
+    }
+    for(std::size_t i=0;i<a1.size();i++) if(!a2[i]) a1[i] = false;
+    return a1;
+  }
+
+  flex_bool
+  ior_a_a(flex_bool a1, flex_bool const& a2)
+  {
+    if (a1.accessor() != a2.accessor()) {
+      raise_incompatible_arrays();
+    }
+    for(std::size_t i=0;i<a1.size();i++) if(a2[i]) a1[i] = true;
+    return a1;
+  }
+
+  flex_bool
+  iand_a_s(flex_bool a1, bool a2)
+  {
+    if (!a2) std::fill(a1.begin(), a1.end(), false);
+    return a1;
+  }
+
+  flex_bool
+  ior_a_s(flex_bool a1, bool a2)
+  {
+    if (a2) std::fill(a1.begin(), a1.end(), true);
+    return a1;
+  }
+
+  bool
+  exclusive_or(bool lhs, bool rhs)
+  {
+    return lhs ? !rhs : rhs;
+  }
+
+  static flex_bool
+  exclusive_or_a_a(flex_bool const& a1, flex_bool const& a2)
+  {
+    SCITBX_ASSERT(a2.size() == a1.size());
+    flex_bool result(a1.accessor(), af::init_functor_null<bool>());
+    bool* res = result.begin();
+    bool* res_end = result.end();
+    const bool* lhs = a1.begin();
+    const bool* rhs = a2.begin();
+    while (res != res_end) {
+      *res++ = exclusive_or(*lhs++, *rhs++);
+    }
+    return result;
+  }
+
   af::shared<int>
   as_int(af::const_ref<bool> const& self)
   {
@@ -177,7 +332,9 @@ namespace {
   void wrap_flex_bool()
   {
     using namespace boost::python;
-    flex_wrapper<bool>::logical("bool", scope())
+
+    typedef flex_wrapper<bool> f_w;
+    f_w::plain("bool")
       .def_pickle(flex_pickle_single_buffered<bool>())
       .def("__init__", make_constructor(
         &from_iselection<unsigned>::get,
@@ -187,6 +344,23 @@ namespace {
         &from_iselection<std::size_t>::get,
         default_call_policies(),
         (arg_("size"), arg_("iselection"))))
+      .def("__eq__", eq)
+      .def("__ne__", ne)
+      .def("__eq__", eq)
+      .def("__ne__", ne)
+      .def("all_eq", all_eq)
+      .def("all_ne", all_ne)
+      .def("all_eq", all_eq)
+      .def("all_ne", all_ne)
+      .def("__invert__", invert_a)
+      .def("__and__", and_a_a)
+      .def("__or__", or_a_a)
+      .def("__iand__", iand_a_a)
+      .def("__ior__", ior_a_a)
+      .def("__iand__", iand_a_s)
+      .def("__ior__", ior_a_s)
+      .def("exclusive_or", exclusive_or_a_a)
+      .def("count", f_w::count)
       .def("as_int", as_int)
       .def("as_double", as_double)
       .def("iselection", iselection,
@@ -197,6 +371,7 @@ namespace {
            af::const_ref<std::size_t> const&)) filter_indices,
         (arg_("self"), arg_("indices")))
     ;
+    def("order", f_w::order_a_a);
     def("union", union_, (arg_("size"), arg_("iselections")));
     def("intersection", intersection, (arg_("size"), arg_("iselections")));
   }
