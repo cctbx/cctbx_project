@@ -51,6 +51,7 @@ namespace {
     }
     PyErr_SetString(PyExc_TypeError, type_error_message_3);
     boost::python::throw_error_already_set();
+    return boost::python::object(); // never reached, avoids warning
   }
 
   boost::python::object
@@ -73,6 +74,7 @@ namespace {
     }
     PyErr_SetString(PyExc_TypeError, type_error_message_3);
     boost::python::throw_error_already_set();
+    return boost::python::object(); // never reached, avoids warning
   }
 
   boost::python::object
@@ -94,6 +96,7 @@ namespace {
     }
     PyErr_SetString(PyExc_TypeError, type_error_message_2);
     boost::python::throw_error_already_set();
+    return boost::python::object(); // never reached, avoids warning
   }
 
   boost::python::object
@@ -115,6 +118,7 @@ namespace {
     }
     PyErr_SetString(PyExc_TypeError, type_error_message_2);
     boost::python::throw_error_already_set();
+    return boost::python::object(); // never reached, avoids warning
   }
 
   flex_bool
