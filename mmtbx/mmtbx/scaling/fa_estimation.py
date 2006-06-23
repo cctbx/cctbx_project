@@ -49,7 +49,6 @@ class combined_scaling(object):
     self.lsq_options = options.least_squares_options
     self.loc_options = options.local_scaling_options
     self.out_options = options.outlier_rejection_options
-
     self.overall_protocol = options.target
     self.cut_level_rms = None
     ## cycling options
@@ -288,8 +287,6 @@ class naive_fa_estimation(object):
 
     ## get stuff
     self.options = options
-    n_terms = self.options.number_of_temrs_in_normalisation_curve
-
     self.iso = iso.deep_copy().map_to_asu()
     self.ano = ano.deep_copy().map_to_asu()
     ## get common sets
@@ -297,9 +294,9 @@ class naive_fa_estimation(object):
 
     ## perform normalisation
     normalizer_iso = absolute_scaling.kernel_normalisation(
-      self.iso, auto_kernel=True, n_term=n_terms)
+      self.iso, auto_kernel=True, n_term=options.n_terms)
     normalizer_ano = absolute_scaling.kernel_normalisation(
-      self.ano, auto_kernel=True, n_term=n_terms)
+      self.ano, auto_kernel=True, n_term=options.n_terms)
 
     self.fa = self.iso.customized_copy(
       data = flex.sqrt( self.iso.data()*self.iso.data()\
@@ -317,3 +314,298 @@ class naive_fa_estimation(object):
                /(normalizer_ano.normalizer_for_miller_array
                  *normalizer_ano.normalizer_for_miller_array)
               ))
+
+
+
+
+
+class cns_fa_driver(object):
+  def __init__(self,
+               lambdas):
+    ## first generate all anomalous differences
+    self.ano_and_iso = []
+    self.na_ano=0
+
+    for set in lambdas:
+      assert set.is_xray_amplitude_array()
+      if set.anomalous_flag():
+        self.na_ano+=1
+        plus, minus = set.hemispheres_acentrics()
+        d_ano = plus.customized_copy(
+          data = flex.abs( plus.data() - minus.data() ),
+          sigmas = flex.sqrt( plus.sigmas()*plus.sigmas() +
+                              minus.sigmas()*minus.sigmas() )
+          ).set_observation_type( set )
+        self.ano_and_iso.append( d_ano )
+    #now generate all isomorphous differences
+    self.n_iso=0
+    for set1 in range(len(lambdas)):
+      for set2 in range(set1+1,len(lambdas)):
+        self.n_iso+=1
+        t1 = lambdas[set1].average_bijvoet_mates().set_observation_type(
+          lambdas[set1] )
+        t2 = lambdas[set2].average_bijvoet_mates().set_observation_type(
+          lambdas[set2] )
+        tmp1,tmp2 = t1.common_sets(t2)
+        tmp1 = tmp1.customized_copy(
+          data = flex.abs( tmp1.data() - tmp2.data() ),
+          sigmas = flex.sqrt( tmp1.sigmas()*tmp1.sigmas() +
+                              tmp2.sigmas()*tmp2.sigmas() )
+        ).set_observation_type( tmp1 )
+        self.ano_and_iso.append( tmp1 )
+
+
+    self.normalise_all()
+    self.average_all()
+
+  def normalise_all(self):
+    ## normalise all difference data please
+    for set in self.ano_and_iso:
+      tmp_norm = absolute_scaling.kernel_normalisation(
+        set,
+        auto_kernel=True)
+      set = tmp_norm.normalised_miller.deep_copy().set_observation_type(
+        tmp_norm.normalised_miller)
+
+
+  def average_all(self):
+    ## get started quickly please
+    mean_index = self.ano_and_iso[0].indices()
+    mean_data = self.ano_and_iso[0].data()
+    mean_sigmas = self.ano_and_iso[0].sigmas()
+
+    ## loop over the remaining arrays
+    for set_no in range( 1,len(self.ano_and_iso) ):
+      mean_index = mean_index.concatenate(
+        self.ano_and_iso[ set_no ].indices() )
+
+      mean_data= mean_data.concatenate(
+        self.ano_and_iso[ set_no ].data() )
+
+      mean_sigmas = mean_sigmas.concatenate(
+        self.ano_and_iso[ set_no ].sigmas() )
+
+    final_miller = self.ano_and_iso[0].customized_copy(
+      indices= mean_index,
+      data = mean_data,
+      sigmas = mean_sigmas).set_observation_type( self.ano_and_iso[0] )
+
+    final_miller = final_miller.f_as_f_sq()
+
+    merged = final_miller.merge_equivalents()
+    merged.show_summary()
+    self.fa = merged.array().set_observation_type(final_miller).f_sq_as_f()
+
+
+
+class mum_dad(object):
+  def __init__(self,
+               lambda1,
+               lambda2,
+               k1=1.0):
+    ## assumed is of course that the data are scaled.
+    ## lambda1 is the 'reference'
+    self.w1=lambda1.deep_copy()
+    self.w2=lambda2.deep_copy()
+
+    if not self.w1.is_xray_amplitude_array():
+      self.w1 = self.w1.f_sq_as_f()
+    if not self.w2.is_xray_amplitude_array():
+      self.w2 = self.w2.f_sq_as_f()
+
+    self.w1, self.w2 = self.w1.common_sets( self.w2 )
+
+    l1p, l1n = self.w1.hemispheres_acentrics()
+    self.mean1 = l1p.data()+l1n.data()
+    self.diff1 = l1p.data()-l1n.data()
+    self.v1 = ( l1p.sigmas()*l1p.sigmas() +
+                l1n.sigmas()*l1n.sigmas() )
+
+    l2p, l2n = self.w2.hemispheres_acentrics()
+    self.mean2 = l2p.data()+l2n.data()
+    self.diff2 = l2p.data()-l2n.data()
+    self.v2 = ( l2p.sigmas()*l2p.sigmas() +
+                l2n.sigmas()*l2n.sigmas() )
+
+    self.new_diff = flex.abs( (self.diff1 + k1*self.diff2)/2.0 )
+    self.new_sigma_mean = flex.sqrt( (self.v1+k1*k1*self.v2)/2.0 )
+
+    self.dad = l1p.customized_copy(
+      data = self.new_diff,
+      sigmas = self.new_sigma_mean ).set_observation_type( self.w1 )
+
+
+class singh_ramasheshan_fa_estimate(object):
+  def __init__(self,
+               w1,
+               w2,
+               k1,
+               k2):
+    self.w1=w1.deep_copy()
+    self.w2=w2.deep_copy()
+
+    if self.w1.is_xray_amplitude_array():
+      self.w1 = self.w1.f_as_f_sq()
+    if self.w2.is_xray_amplitude_array():
+      self.w2 = self.w2.f_as_f_sq()
+
+    ## common sets please
+    self.w1,self.w2 = self.w1.common_sets( self.w2 )
+
+    ## get differences and sums please
+    self.p1, self.n1 = self.w1.hemispheres_acentrics()
+    self.p2, self.n2 = self.w2.hemispheres_acentrics()
+
+    self.diff1 = self.p1.data() - self.n1.data()
+    self.diff2 = self.p2.data() - self.n2.data()
+
+    self.s1 =   self.p1.sigmas()*self.p1.sigmas()\
+              + self.n1.sigmas()*self.n1.sigmas()
+    self.s1 =  flex.sqrt( self.s1 )
+
+    self.s2 =   self.p2.sigmas()*self.p2.sigmas()\
+              + self.n2.sigmas()*self.n2.sigmas()
+    self.s2 =  flex.sqrt( self.s2 )
+
+    self.sum1 = self.p1.data() + self.n1.data()
+    self.sum2 = self.p2.data() + self.n2.data()
+
+    self.k1_sq = k1*k1
+    self.k2_sq = k2*k2
+
+    self.determinant=None
+    self.fa=None
+    self.sigfa=None
+
+
+    self.selector=None
+    self.iselector=None
+
+    self.a=None
+    self.b=None
+    self.c=None
+
+    self.compute_fa_values()
+
+    self.fa = self.p1.customized_copy(
+      data = self.fa,
+      sigmas = self.sigfa).set_observation_type( self.p1 )
+
+  def set_sigma_ratio(self):
+    tmp = self.s2/flex.abs( self.diff2 +1e-6 ) +\
+          self.s1/flex.abs( self.diff1 +1e-6 )
+    tmp = tmp/2.0
+    self.sigfa = tmp
+
+  def compute_coefs(self):
+    self.a = ( self.k2_sq*self.k2_sq
+               + self.k2_sq*(1 + self.k1_sq)
+               + (self.k1_sq-1)*(self.k1_sq-1)
+             )
+    self.b = -self.k2_sq*(self.sum1 + self.sum2) \
+             -(self.k1_sq-1)*(self.sum1 - self.sum2)
+    self.c = 0.25*(self.sum1 - self.sum2)*(self.sum1 - self.sum2)\
+            +(1.0/8.0)*self.k2_sq*(  self.diff2*self.diff2
+                                   + self.diff1*self.diff1/self.k1_sq)
+
+  def compute_determinant(self):
+    self.determinant = self.b*self.b - 4.0*self.a*self.c
+    self.selector = (self.determinant>0)
+    self.iselector = self.selector.iselection()
+
+  def compute_fa_values(self):
+    self.compute_coefs()
+    self.compute_determinant()
+    reset_selector = (~self.selector).iselection()
+    self.determinant = self.determinant.set_selected(  reset_selector, 0 )
+
+    choice1 = -self.b + flex.sqrt( self.determinant )
+    choice1 /= 2*self.a
+    choice2 = -self.b - flex.sqrt( self.determinant )
+    choice2 /= 2*self.a
+
+    select1 = choice1 > choice2
+    select2 = ~select1
+
+    choice1 = choice1.set_selected( select1.iselection(), 0 )
+    choice2 = choice2.set_selected( select2.iselection(), 0 )
+
+    choice1 = choice1+choice2
+    select1 = (choice1<0).iselection()
+    choice1 = choice1.set_selected( select1 , 0 )
+    self.fa =  choice1 + choice2
+
+    self.set_sigma_ratio()
+
+    self.sigfa = self.sigfa*self.fa
+
+
+
+class twmad_fa_driver(object):
+  def __init__(self,
+               lambda1,
+               lambda2,
+               k1,
+               k2,
+               options,
+               out=None):
+    self.out=out
+    if self.out==None:
+      self.out=sys.stdout
+
+
+    print >> self.out, "FA estimation"
+    print >> self.out, "============="
+
+    if k1 is None:
+      raise Sorry("f\"(w1)/f\"(w2) ratio is not defined. Please provide f\" values upon input")
+
+    if k2 is None:
+      if self.options.protocol=='algebraic':
+        raise Sorry("""
+delta f' f\" ratio is not defined.
+Either provide f' and f\" values upon input,
+or chose different Fa estimation protocol.
+               """)
+
+    self.options = options
+
+    protocol = {'algebraic': False,
+                'cns': False,
+                'combine_ano': False}
+    protocol[ self.options.protocol ] = True
+
+    self.fa_values = None
+
+    if protocol['algebraic']:
+      print >> self.out, " Using algebraic approach to estimate FA values "
+      print >> self.out
+      tmp = singh_ramasheshan_fa_estimate(
+        lambda1,
+        lambda2,
+        k1,
+        k2)
+      self.fa_values = tmp.fa.f_sq_as_f()
+
+    if protocol['cns']:
+      print >> self.out, " Using CNS approach to estimate FA values "
+      print >> self.out
+
+      tmp = cns_fa_driver( [lambda1, lambda2] )
+      self.fa_values = tmp.fa
+
+    if protocol['combine_ano']:
+      print >> self.out, " Combining anomalous data only"
+      print >> self.out
+
+      tmp = mum_dad(
+        lambda1,
+        lambda2,
+        k1)
+      self.fa_values = tmp.dad
+
+    norma = absolute_scaling.kernel_normalisation(
+      self.fa_values,
+      auto_kernel=True)
+
+    self.fa_values = norma.normalised_miller.f_sq_as_f()
