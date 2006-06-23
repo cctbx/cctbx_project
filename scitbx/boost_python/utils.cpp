@@ -1,4 +1,5 @@
 #include <scitbx/boost_python/utils.h>
+#include <scitbx/error.h>
 
 namespace scitbx { namespace boost_python {
 
@@ -26,8 +27,16 @@ namespace scitbx { namespace boost_python {
   boost::python::object
   range(long start, long len, long step)
   {
+    SCITBX_ASSERT(step != 0);
+    SCITBX_ASSERT(len >= 0);
     return boost::python::object(boost::python::handle<>(
-      PyRange_New(start, len, step, 1)));
+#if PY_VERSION_HEX >= 0x02030000
+        PyObject_CallFunction(
+          (PyObject*) &PyRange_Type, "lll", start, start+len*step, step)
+#else
+        PyRange_New(start, len, step, 1)
+#endif
+      ));
   }
 
   boost::python::object
