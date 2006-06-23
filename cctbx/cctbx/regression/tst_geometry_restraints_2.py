@@ -348,7 +348,7 @@ planarity: (0, 8, 10, 15)
   delta: -0.00016, weight: 2500
   delta: -0.00014, weight: 2500
 ...
-nonbonded asu: (36, 47) -x+1,y+1/2,-z+1/2
+nonbonded asu: (36, 46) -x+1,y+1/2,-z+1/2
   distance_model: 4.89425
   vdw_distance: 2.9
 nonbonded simple: (0, 23)
@@ -405,7 +405,7 @@ planarity: (0, 8, 10, 15)
   " O   TYR A   1 " delta: -0.00016, weight: 2500
   " N   GLY A   2 " delta: -0.00014, weight: 2500
 ...
-nonbonded asu: (36, 47)
+nonbonded asu: (36, 46)
   " C   LEU A   5 "
   " H1  HOH B   3 " -x+1,y+1/2,-z+1/2
   distance_model: 4.89425
@@ -451,7 +451,7 @@ planarity: (0, 8, 10, 15)
   weight: 2500
   weight: 2500
 ...
-nonbonded simple: (5, 40)
+nonbonded simple: (5, 39)
   vdw_distance: 3.22
 ...
 nonbonded asu: (7, 29) x+1,y,z
@@ -502,7 +502,7 @@ planarity: (0, 8, 10, 15)
   " O   TYR A   1 " weight: 2500
   " N   GLY A   2 " weight: 2500
 ...
-nonbonded simple: (5, 40)
+nonbonded simple: (5, 39)
   " CZ  TYR A   1 "
   " O   HOH B   1 "
   vdw_distance: 3.22
