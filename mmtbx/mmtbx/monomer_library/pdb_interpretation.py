@@ -18,6 +18,12 @@ from cStringIO import StringIO
 import string
 import sys
 
+# see iotbx/pdb/common_residue_names.h
+ad_hoc_single_atom_residue_element_types = """\
+ZN CA MG CL NA MN K FE CU CD HG NI CO BR XE SR CS PT BA TL PB SM AU RB YB LI
+KR MO LU CR OS GD TB LA F AR AG HO GA CE W SE RU RE PR IR EU AL V TE SB PD
+""".split()
+
 master_params = iotbx.phil.parse("""\
   link_distance_cutoff = 3
     .type=float
@@ -144,6 +150,9 @@ class type_symbol_registry_base(object):
     self.source_labels = None
     self.source_n_expected_atoms = None
 
+  def assign_directly(self, i_seq, symbol):
+    self.symbols[i_seq] = symbol
+
   def assign_from_monomer_mapping(self, conformer_label, mm):
     atom_dict = mm.monomer_atom_dict
     for atom_id,i_seq in mm.expected_atom_i_seqs.items():
@@ -206,11 +215,14 @@ class type_symbol_registry_base(object):
   def n_unknown_type_symbols(self):
     return self.symbols.count("")
 
+  def report_unknown_message(self):
+    return "Number of atoms with unknown %s type symbols" % self.type_label
+
   def report(self, stage_1, log, prefix, max_lines=10):
     n_unknown = self.n_unknown_type_symbols()
     if (n_unknown > 0):
-      print >> log, "%sNumber of atoms with unknown %s type symbols: %d" % (
-        prefix, self.type_label, n_unknown)
+      print >> log, "%s%s: %d" % (
+        prefix, self.report_unknown_message(), n_unknown)
       i_seqs = (self.symbols == "").iselection()
       stage_1.show_atom_labels(
         i_seqs=i_seqs, f=log, prefix=prefix+"  ", max_lines=max_lines)
@@ -1081,6 +1093,7 @@ class build_chain_proxies(object):
 
   def __init__(self,
         mon_lib_srv,
+        ener_lib,
         link_distance_cutoff,
         stage_1,
         sites_cart,
@@ -1106,6 +1119,7 @@ class build_chain_proxies(object):
       segID=chain.segID,
       keep_monomer_mappings=keep_monomer_mappings)
     unknown_residues = dicts.with_default_value(0)
+    ad_hoc_single_atom_residues = dicts.with_default_value(0)
     unusual_residues = dicts.with_default_value(0)
     inner_chain_residues_flagged_as_termini = []
     n_expected_atoms = 0
@@ -1147,7 +1161,23 @@ class build_chain_proxies(object):
         conformer_label=conformer.altLoc,
         pdb_residue=residue)
       if (mm.monomer is None):
-        unknown_residues[mm.residue_name] += 1
+        def use_scattering_type_if_available_to_define_nonbonded_type():
+          if (residue.iselection.size() != 1): return False
+          i_seq = residue.iselection[0]
+          atom = stage_1.atom_attributes_list[i_seq]
+          key = atom.element.strip().upper()
+          if (key not in ad_hoc_single_atom_residue_element_types):
+            return False
+          entry = ener_lib.lib_atom.get(key, None)
+          if (entry is None): return False
+          scattering_type_registry.assign_directly(
+            i_seq=i_seq, symbol=key)
+          nonbonded_energy_type_registry.assign_directly(
+            i_seq=i_seq, symbol=key)
+          ad_hoc_single_atom_residues[mm.residue_name] += 1
+          return True
+        if (not use_scattering_type_if_available_to_define_nonbonded_type()):
+          unknown_residues[mm.residue_name] += 1
         n_chain_breaks += 1
       elif (break_block_identifier != prev_break_block_identifier
             and prev_break_block_identifier is not None):
@@ -1319,6 +1349,9 @@ class build_chain_proxies(object):
         n_expected_atoms + flex.sum(flex.long(unexpected_atoms.values())))
       if (len(unknown_residues) > 0):
         print >> log, "          Unknown residues:", unknown_residues
+      if (len(ad_hoc_single_atom_residues) > 0):
+        print >> log, "          Ad-hoc single atom residues:", \
+          ad_hoc_single_atom_residues
       if (len(unusual_residues) > 0):
         print >> log, "          Unusual residues:", unusual_residues
       if (len(inner_chain_residues_flagged_as_termini) > 0):
@@ -1410,6 +1443,7 @@ class build_chain_proxies(object):
         print >> log, \
           "          bond proxies already assigned to first conformer:", \
           n_bond_proxies_already_assigned_to_first_conformer
+    self.n_duplicate_atoms = len(duplicate_atoms)
 
 class geometry_restraints_proxy_registries(object):
 
@@ -1533,6 +1567,7 @@ class build_all_chain_proxies(object):
     self.cystein_sulphur_i_seqs = flex.size_t()
     self.cystein_monomer_mappings = []
     self.processed_models = []
+    self.n_duplicate_atoms = 0
     n_unique_models = 0
     for i_model,model in enumerate(models):
       if (log is not None):
@@ -1570,6 +1605,7 @@ class build_all_chain_proxies(object):
         for chain in chains:
           chain_proxies = build_chain_proxies(
             mon_lib_srv=mon_lib_srv,
+            ener_lib=ener_lib,
             link_distance_cutoff=self.params.link_distance_cutoff,
             stage_1=self.stage_1,
             sites_cart=self.sites_cart,
@@ -1587,6 +1623,7 @@ class build_all_chain_proxies(object):
             chain=chain,
             log=log)
           processed_conformer_.add_chain(chain_proxies.processed)
+          self.n_duplicate_atoms += chain_proxies.n_duplicate_atoms
           del chain_proxies
           flush_log(log)
     self.geometry_proxy_registries.discard_tables()
@@ -1601,6 +1638,19 @@ class build_all_chain_proxies(object):
       self.nonbonded_energy_type_registry.report(
         stage_1=self.stage_1, log=log, prefix="  ")
     self.time_building_chain_proxies = timer.elapsed()
+
+  def fatal_problems_message(self):
+    result = ["Fatal problems interpreting PDB file:"]
+    if (self.n_duplicate_atoms):
+      result.append(
+        "  Number of duplicate atoms: %d" % self.n_duplicate_atoms)
+    for reg in [self.scattering_type_registry,
+                self.nonbonded_energy_type_registry]:
+      n_unknown = reg.n_unknown_type_symbols()
+      if (n_unknown != 0):
+        result.append("  %s: %d" % (reg.report_unknown_message(), n_unknown))
+    if (len(result) == 1): return None
+    return "\n".join(result)
 
   def monomer_mappings(self):
     for model in self.processed_models:
