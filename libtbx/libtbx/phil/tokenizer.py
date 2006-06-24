@@ -39,9 +39,11 @@ class character_iterator(object):
       if (self.input_string[self.i_char] != "\n"):
         self.i_char += 1
       else:
-        self.line_number += 1
-        self.i_char += 1
-        if (self.i_char == len(self.input_string)): return 0
+        while True:
+          self.line_number += 1
+          self.i_char += 1
+          if (self.i_char == len(self.input_string)): return 0
+          if (self.input_string[self.i_char] != "\n"): break
         if (self.input_string.find(
               intro, self.i_char, self.i_char+len(intro)) != self.i_char):
           self.i_char += 1
