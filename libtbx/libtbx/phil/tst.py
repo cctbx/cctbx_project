@@ -449,6 +449,7 @@ a=1
 c a b
  #phil __ON__
 b=2
+
 #phil __ON__
 c=3
 # phil __OFF__
@@ -458,14 +459,14 @@ e=5
 #phil __OFF__
 f=6
 """)
-  assert params.as_str() == """\
+  assert not show_diff(params.as_str(), """\
 a = 1
 c = 3
 d = 4
-"""
+""")
   assert params.get(path="a").objects[0].words[0].line_number == 5
-  assert params.get(path="c").objects[0].words[0].line_number == 11
-  assert params.get(path="d").objects[0].words[0].line_number == 13
+  assert params.get(path="c").objects[0].words[0].line_number == 12
+  assert params.get(path="d").objects[0].words[0].line_number == 14
   try: phil.parse(input_string="#phil __Off__\n")
   except RuntimeError, e:
     assert str(e) == "Unknown: #phil __Off__ (input line 1)"
