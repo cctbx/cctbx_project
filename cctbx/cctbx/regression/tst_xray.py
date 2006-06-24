@@ -546,7 +546,7 @@ c: 0.001305
     assert ugs[0].n_terms() == 5
     s = StringIO()
     ugs[0].show(f=s)
-    assert not show_diff(s.getvalue(), """\
+    assert not show_diff(s.getvalue().replace("e-005","e-05"), """\
 a: 0.413048 0.29495299 0.187491 0.080701001 0.023736
 b: 15.569946 32.398468 5.7114038 61.889874 1.334118
 c: 4.8999998e-05
