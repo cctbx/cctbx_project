@@ -279,7 +279,8 @@ class tls_xray_target_minimizer(object):
     self.T_min = self.T_initial
     self.L_min = self.L_initial
     self.S_min = self.S_initial
-    self.x = self.pack(self.T_min, self.L_min, self.S_min)
+    self.factor = 1.0#1.e-2
+    self.x = self.pack(self.T_min, self.L_min, self.S_min, factor = self.factor)
     self.minimizer = lbfgs.run(
          target_evaluator = self,
          termination_params = lbfgs.termination_parameters(
@@ -294,9 +295,10 @@ class tls_xray_target_minimizer(object):
                                    L              = self.L_min,
                                    S              = self.S_min)
 
-  def pack(self, T, L, S):
+  def pack(self, T, L, S, factor):
     v = []
     for Ti,Li,Si in zip(T,L,S):
+      Li = flex.double(Li)*factor
       if (self.refine_T): v += list(Ti)
       if (self.refine_L): v += list(Li)
       if (self.refine_S): v += list(Si)
@@ -312,7 +314,10 @@ class tls_xray_target_minimizer(object):
         self.T_min[j] = tuple(self.x)[i:i+self.dim_T]
         i += self.dim_T
       if (self.refine_L):
-        self.L_min[j] = tuple(self.x)[i:i+self.dim_L]
+        qq = tuple(self.x)[i:i+self.dim_L]
+        qq = flex.double(qq)/self.factor
+        qq = tuple(qq)
+        self.L_min[j] = qq#tuple(self.x)[i:i+self.dim_L]
         i += self.dim_L
       if (self.refine_S):
         self.S_min[j] = tuple(self.x)[i:i+self.dim_S]
@@ -358,10 +363,14 @@ class tls_xray_target_minimizer(object):
     #print "%10.2f %10.2f %10.2f %5d %5d" % (flex.max(qqq), flex.min(qqq), flex.mean(qqq), \
     #      ipd.count(True), ipd.count(False)),self.f, self.counter
 
-
+    #print
+    #print grad_manager.grad_T
+    #print grad_manager.grad_L
+    #print grad_manager.grad_S
+    #print
     self.g = self.pack(grad_manager.grad_T,
                        grad_manager.grad_L,
-                       grad_manager.grad_S)
+                       grad_manager.grad_S, 1/self.factor)
     if(self.run_finite_differences_test and
        self.run_finite_differences_test_counter < 2):
        tolerance = 1.e-3

@@ -492,7 +492,10 @@ class manager(object):
     sso_end.show(out = self.log)
 
 
-  def geometry_statistics(self, other = None, show = False, text = ""):
+  def geometry_statistics(self, other = None,
+                                show = False,
+                                text = "",
+                                short = True):
     if(other is not None):
        stereochemistry_statistics_obj = stereochemistry_statistics(
                              xray_structure         = self.xray_structure,
@@ -507,7 +510,7 @@ class manager(object):
                           restraints_manager     = self.restraints_manager,
                           restraints_manager_ref = self.restraints_manager_ini,
                           text                   = text)
-    if(show): stereochemistry_statistics_obj.show(out = self.log)
+    if(show): stereochemistry_statistics_obj.show(out = self.log,short = short)
     return stereochemistry_statistics_obj
 
   def adp_statistics(self, iso_restraints,
@@ -537,8 +540,9 @@ class manager(object):
                           iso_restraints         = iso_restraints,
                           tan_b_iso_max          = tan_b_iso_max,
                           wilson_b               = wilson_b,
-                          text                   = "")
-    if(show): adp_statistics_obj.show(out = self.log)
+                          text                   = text)
+    if(show == 1): adp_statistics_obj.show_short(out = self.log)
+    if(show == 2): adp_statistics_obj.show(out = self.log)
     return adp_statistics_obj
 
 
@@ -553,9 +557,8 @@ class adp_statistics(object):
                iso_restraints,
                wilson_b = None,
                tan_b_iso_max = None,
-               text=""):
+               text = ""):
     adopt_init_args(self, locals())
-    self.text = self.text + "ADP statistics"
     energies_adp_iso = restraints_manager.energies_adp_iso(
                                             xray_structure    = xray_structure,
                                             parameters        = iso_restraints,
@@ -587,8 +590,10 @@ class adp_statistics(object):
     self.grad_adp_iso_ref = energies_adp_iso_ref.gradients
     self.norm_of_grad_adp_iso = self.grad_adp_iso.norm()
     self.norm_of_grad_adp_iso_ref = self.grad_adp_iso_ref.norm()
-    self.n_zero = (self.b_isos < 0.5).count(True)
-    self.n_zero_ref = (self.b_isos_ref < 0.5).count(True)
+    self.n_zero = (self.b_isos < 1.0).count(True)
+    self.n_zero_ref = (self.b_isos_ref < 1.0).count(True)
+    self.n_100 = (self.b_isos > 100.0).count(True)
+    self.n_100_ref = (self.b_isos_ref > 100.0).count(True)
 
   def show(self, out=None):
     if (out is None): out = sys.stdout
@@ -638,6 +643,50 @@ class adp_statistics(object):
       low_cutoff_1 = high_cutoff_1
       low_cutoff_2 = high_cutoff_2
     print >> out, "| "+"- "*38+"|"
+    p0 = "| Number of anisotropically refinable ADP = "
+    p1 = str("%d"%self.anisotropic_flags.count(True))
+    p2 = " out of "+str("%d"%self.anisotropic_flags.size())+" total"
+    n = 79 - len(p0+p1+p2+"|")
+    print >> out, p0+p1+p2+" "*n+"|"
+    print >> out, "|"+"-"*77+"|"
+    print >> out
+    out.flush()
+
+  def show_short(self, out = None):
+    if (out is None): out = sys.stdout
+    line_len = len("| "+self.text+"|")
+    fill_len = 80 - line_len-1
+    ends1 = " "*36 + "|"
+    ends2 = " "*32 + "|"
+    p = " "
+    v = "|"
+    print >> out
+    print >> out, "|-"+self.text+"-"*(fill_len)+"|"
+    if(self.wilson_b is not None):
+       line = "|                             Wilson B = "+\
+              str("%6.2f"%self.wilson_b).strip()
+       np = 79 - (len(line) + 1)
+       line = line + " "*np + "|"
+       print >> out, line
+    else:
+       line = "|                             Wilson B = "+str("None").strip()
+       np = 79 - (len(line) + 1)
+       line = line + " "*np + "|"
+       print >> out, line
+    print >> out, "| "+"  "*38+"|"
+    print >> out, "| Reference model:                    | Current model:   "\
+                  "                     |"
+    print >> out, "|     min      max      mean          |     min      max "\
+                  "     mean            |"
+    print >> out, "| %7.3f  %7.3f   %7.3f   "%\
+                  (self.b_iso_min_ref,self.b_iso_max_ref,self.b_iso_mean_ref),\
+                  "      | %7.3f  %7.3f   %7.3f            |"%\
+                  (self.b_iso_min,self.b_iso_max,self.b_iso_mean)
+    print >> out, "| number of B <   1.0: %-6d"%self.n_zero_ref,"        | ",\
+                  "number of B <   1.0: %-6d          |"%self.n_zero
+    print >> out, "| number of B < 100.0: %-6d"%self.n_100_ref,"        | ",\
+                  "number of B < 100.0: %-6d          |"%self.n_100
+    print >> out, "| "+"  "*38+"|"
     p0 = "| Number of anisotropically refinable ADP = "
     p1 = str("%d"%self.anisotropic_flags.count(True))
     p2 = " out of "+str("%d"%self.anisotropic_flags.size())+" total"
@@ -752,12 +801,12 @@ class stereochemistry_statistics(object):
     print >> out, "|"+"-"*77+"|"
     out.flush()
 
-  def show(self, out=None):
+  def show(self, out=None, short=True):
     if (out is None): out = sys.stdout
-    line_len = len("| "+self.text+"|")
+    line_len = len("|"+self.text+"|")
     fill_len = 80 - line_len-1
     print >> out
-    print >> out, "| "+self.text+"-"*(fill_len)+"|"
+    print >> out, "|"+self.text+"-"*(fill_len)+"|"
     print >> out, "|Type| Deviation from ideal |   Targets  ||Target (sum)|| Deviation of start  |"
     print >> out, "|    |  mean     max    min |            ||            || model from current  |"
     print >> out, "|bond|%7.3f%8.3f%7.3f|%12.3f||            ||  mean   max    min  |"%\
@@ -787,7 +836,8 @@ class stereochemistry_statistics(object):
           "|   NCS group %2d: min = %9.6f max = %9.6f mean = %9.6f %s|" % (
             i_group+1, flex.min(rms), flex.max(rms), flex.mean(rms), " "*11)
       print >> out, "|"+"-"*77+"|"
-    self.show_bond_angle_histogram(out=out)
+    if(not short):
+       self.show_bond_angle_histogram(out=out)
     out.flush()
 
 def show_histogram(data,

@@ -52,13 +52,14 @@ def macro_cycle_header(macro_cycle, number_of_macro_cycles, out=None):
   number_of_macro_cycles = str(number_of_macro_cycles)
   macro_cycle_str = len(macro_cycle)
   number_of_macro_cycles_str = len(number_of_macro_cycles)
-  line_len = len(" MACRO_CYCLE "+macro_cycle+" OF "+number_of_macro_cycles)+1
+  line_len = len(" REFINEMENT MACRO_CYCLE "+macro_cycle+" OF "+\
+             number_of_macro_cycles)+1
   fill_len = header_len - line_len
   fill_rl = fill_len/2
   fill_r = fill_rl
   fill_l = fill_rl
   if (fill_rl*2 != fill_len): fill_r +=1
-  str1 = "\n"+"*"*(fill_l-1)+" MACRO_CYCLE "+macro_cycle+" OF "
+  str1 = "\n"+"*"*(fill_l-1)+" REFINEMENT MACRO_CYCLE "+macro_cycle+" OF "
   str2 = number_of_macro_cycles+" "+"*"*(fill_r)+"\n"
   out_string = str1+str2
   print >> out, out_string
