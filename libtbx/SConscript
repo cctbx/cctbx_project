@@ -124,28 +124,24 @@ if (sys.platform == "win32"):
       SHCXX="cl",
       SHLINK="link",
     )
-    env_etc.cxxflags_base = Split("""
-        /nologo
-        /D_CRT_SECURE_NO_DEPRECATE
-        /wd4996
-        /Zm800
-        /MD
-        /GR /EHsc
-        /DBOOST_DISABLE_THREADS
-    """)
-    env_etc.ccflags_base = Split("""
-        /nologo
-        /D_CRT_SECURE_NO_DEPRECATE
-        /wd4996
-        /Zm800
-        /MD
-    """)
+    env_etc.ccflags_base = """
+      /nologo
+      /D_SECURE_SCL=0
+      /D_CRT_SECURE_NO_DEPRECATE
+      /wd4996
+      /Zm800
+      /MD
+    """.split()
+    env_etc.cxxflags_base = env_etc.ccflags_base + """
+      /GR
+      /EHsc
+      /DBOOST_DISABLE_THREADS
+    """.split()
     if (libtbx.env.build_options.optimization):
       opts = ["/DNDEBUG", "/Ox"]
     else:
       opts = ["/Od"]
     if (libtbx.env.build_options.debug_symbols):
-      sys.tracebacklimit = 0
       raise RuntimeError("Debug build not supported.")
     env_etc.cxxflags_base.extend(opts)
     env_etc.ccflags_base.extend(opts)
