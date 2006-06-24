@@ -297,9 +297,9 @@ else:
     if (libtbx.env.build_options.warning_level == 0):
       warn_options = "-w"
     elif (libtbx.env.build_options.warning_level == 1):
-      warn_options = "-Wall -W -Wno-sign-compare"
+      warn_options = "-Wall -Wno-sign-compare"
     else:
-      warn_options = "-Wall -W -Wno-sign-compare -Werror"
+      warn_options = "-Wall -Wno-sign-compare -Werror"
     env_etc.cxxflags_base = Split("""
       -fPIC
       -ftemplate-depth-120
