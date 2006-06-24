@@ -48,6 +48,8 @@ tls_master_params = iotbx.phil.parse("""\
 """)
 
 individual_adp_master_params = iotbx.phil.parse("""\
+  convert_to_isotropic = True
+    .type = bool
   iso {
     max_number_of_iterations = 25
       .type = int
@@ -116,7 +118,11 @@ class manager(object):
             wu_individual             = None,
             wx                        = None,
             macro_cycle               = None,
-            log                       = None):
+            log                       = None,
+            fmodel_neutron            = None,
+            wx_individual_neutron     = None,
+            neutron_scattering_dict   = None,
+            xray_scattering_dict      = None):
     if(log is None): log = sys.stdout
     tan_u_iso = False
     param = 0
@@ -193,10 +199,6 @@ class manager(object):
        lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
            max_iterations = individual_adp_params.iso.max_number_of_iterations)
        fmodel.xray_structure.approx_equal(other = model.xray_structure)
-       model.adp_statistics(iso_restraints = adp_restraints_params.iso,
-                            wilson_b       = wilson_b,
-                            tan_b_iso_max  = tan_u_iso,
-                            show           = 1)
        self.minimized = minimization_individual_adp.lbfgs(
                           restraints_manager       = restraints_manager,
                           fmodel                   = fmodel,
@@ -206,7 +208,11 @@ class manager(object):
                           wilson_b                 = wilson_b,
                           tan_b_iso_max            = tan_b_iso_max,
                           iso_restraints           = adp_restraints_params.iso,
-                          verbose                  = 0)
+                          verbose                  = 0,
+                          fmodel_neutron           = fmodel_neutron,
+                          wx_individual_neutron    = wx_individual_neutron,
+                          neutron_scattering_dict  = neutron_scattering_dict,
+                          xray_scattering_dict     = xray_scattering_dict)
        self.minimized.show(text = "LBFGS minimization", out  = log)
        fmodel.update_xray_structure(
                                 xray_structure = self.minimized.xray_structure,
@@ -214,11 +220,6 @@ class manager(object):
                                 out            = log)
        model.xray_structure = fmodel.xray_structure
        fmodel.xray_structure.approx_equal(other = model.xray_structure)
-       model.adp_statistics(iso_restraints = adp_restraints_params.iso,
-                            wilson_b       = wilson_b,
-                            tan_b_iso_max  = tan_u_iso,
-                            show           = 1)
-
     if(refine_adp_group):
        print_statistics.make_sub_header(text= "group isotropic ADP refinement",
                                         out = log)

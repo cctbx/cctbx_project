@@ -1250,41 +1250,79 @@ class manager(object):
 
   def show_essential(self, header = None, out=None):
     if(out is None): out = sys.stdout
+    out.flush()
     p = " "
     if(header is None): header = ""
     line_len = len("|-"+"|"+header)
     fill_len = 80-line_len-1
     print >> out, "|-"+header+"-"*(fill_len)+"|"
-    r_work = self.r_work()
-    r_test = self.r_free()
-    scale_work = self.scale_k1_w()
-    scale_test = self.scale_k1_t()
-    k_sol = self.k_sol
-    b_sol = self.b_sol
-    u0,u1,u2,u3,u4,u5 = self.b_cart
-    u_iso = self.u_iso()
-    try:    target_work = "%13.6E" % self.target_w()
+    print >> out, "| "+"  "*38+"|"
+    r_work     = n_as_s("%6.4f",self.r_work()    )
+    r_test     = n_as_s("%6.4f",self.r_free()    )
+    scale_work = n_as_s("%7.4f",self.scale_k1_w())
+    scale_test = n_as_s("%7.4f",self.scale_k1_t())
+    fmodel_l = self.resolution_filter(d_min = 6.0, d_max = 999.9)
+    fmodel_h = self.resolution_filter(d_min = 0.0, d_max = 6.0)
+    r_work_l = n_as_s("%6.4f",fmodel_l.r_work())
+    r_test_l = n_as_s("%6.4f",fmodel_l.r_free())
+    r_work_h = n_as_s("%6.4f",fmodel_h.r_work())
+    r_test_h = n_as_s("%6.4f",fmodel_h.r_free())
+    k_sol = n_as_s("%6.2f",self.k_sol)
+    b_sol = n_as_s("%7.2f",self.b_sol)
+    b0,b1,b2,b3,b4,b5 = n_as_s("%7.2f",self.b_cart)
+    b_iso = n_as_s("%7.2f",self.u_iso())
+    try:    target_work = n_as_s("%13.6E",self.target_w())
     except: target_work = str(None)
-    try:    target_test = "%13.6E" % self.target_t()
+    try:    target_test = n_as_s("%13.6E",self.target_t())
     except: target_test = str(None)
-    print >> out, "| r-factor (work) = %6.4f  scale (work) = %7.4f" \
-          "  ksol= %5.2f  bsol= %6.2f |" % (r_work, scale_work, k_sol,b_sol)
-    print >> out, "| r-factor (free) = %6.4f  scale (free) = %7.4f" % (
-            r_test, scale_test) +p*28+"|"
-    print >> out, "| anisotropic scale matrix (Cartesian basis):" \
-        + "|xray targets:"+19*p+"|"
-    print >> out, "|  B11= %8.3f B12= %8.3f B13= %8.3f |target name=%19s"%(u0,u3,u4,self.target_name),"|"
-    print >> out, "|"+16*p+"B22= %8.3f B23= %8.3f |" % (u1,u5) \
-        + "target (work) = %13s"%target_work+"   |"
-    print >> out, "|"+30*p+"B33= %8.3f |"% (u2)+"target (free) = %13s"% \
-          target_test+"   |"
-    print >> out, "| (B11+B22+B33)/3 = %8.3f"%u_iso+17*p+"|"+32*p+"|"
+    rr = self.f_obs.resolution_range()
+    all_data = \
+       "| all data "+"["+n_as_s("%5.1f",rr[0])+"-"+n_as_s("%5.2f",rr[1])+"]"
+    high_resolution = \
+       "high resolution "+"["+n_as_s("%5.1f",6.0)+"-"+n_as_s("%5.2f",rr[1])+"]"
+    low_resolution = \
+       "low resolution "+"["+n_as_s("%5.1f",rr[0])+"-"+n_as_s("%5.2f",6.0)+"]"
+    line = all_data+" "+high_resolution+" "+low_resolution
+    np = 79 - (len(line) + 1)
+    line1 = line + " "*np + "|"
+    print >> out, line1
+    line2s1 = "| r_work = "+r_work
+    line2s2 = line2s1+" "*(line1.index("h")-len(line2s1))+"r_work = "+r_work_h
+    line2 = line2s2+" "*(line1.index("low")-len(line2s2))+"r_work = "+r_work_l
+    np = 79 - (len(line2) + 1)
+    line2 = line2 + " "*np + "|"
+    print >> out, line2
+    line2s1 = "| r_free = "+r_test
+    line2s2 = line2s1+" "*(line1.index("h")-len(line2s1))+"r_free = "+r_test_h
+    line2 = line2s2+" "*(line1.index("low")-len(line2s2))+"r_free = "+r_test_l
+    np = 79 - (len(line2) + 1)
+    line2 = line2 + " "*np + "|"
+    print >> out, line2
+    print >> out, "| "+"  "*38+"|"
+    line3 = "| scale (work) = "+scale_work+"  scale (free) = "+scale_test+\
+            "  ksol = "+k_sol+"  Bsol = "+b_sol
+    np = 79 - (len(line3) + 1)
+    line3 = line3 + " "*np + "|"
+    print >> out, line3
+    print >> out, "| "+"  "*38+"|"
+    print >> out, "| overall anisotropic scale matrix (Cartesian basis):    "\
+                  "                     |"
+    c = ","
+    line4 = "| (B11,B22,B33,B12,B13,B23)= ("+b0+c+b1+c+b2+c+b3+c+b4+c+b5+")"
+    np = 79 - (len(line4) + 1)
+    line4 = line4 + " "*np + "|"
+    print >> out, line4
+    line5 = "| (B11+B22+B33)/3 = "+b_iso
+    np = 79 - (len(line5) + 1)
+    line5 = line5 + " "*np + "|"
+    print >> out, line5
+    print >> out, "| "+"  "*38+"|"
+    line6 = "| Target "+self.target_name+":  work = "+target_work+"  free = "+\
+            target_test
+    np = 79 - (len(line6) + 1)
+    line6 = line6 + " "*np + "|"
+    print >> out, line6
     print >> out, "|"+"-"*77+"|"
-    #if (not_approx_equal(self.b_cart,
-    #                     self.f_obs.average_b_cart(self.b_cart))):
-    #  raise RuntimeError(
-    #    "Internal error: Corrupt anisotropic scale matrix:\n  %s\n  %s" %
-    #      (str(self.b_cart), str(b_cart_ave)))
     out.flush()
 
   def show_comprehensive(self, header = "",
@@ -1589,3 +1627,13 @@ def kb_range(x_max, x_min, step):
     x_range.append(x)
     x += step
   return x_range
+
+def n_as_s(format, value):
+  vt = type(value).__name__
+  if(vt in ["int","float"]):
+     return str(format%value).strip()
+  else:
+     new = []
+     for item in value:
+       new.append( str(format%item).strip() )
+     return new

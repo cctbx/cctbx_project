@@ -79,6 +79,17 @@ class structure(crystal.special_position_settings):
     u_cart_1 = self.scatterers().extract_u_cart(self.unit_cell())
     u_cart_2 = other.scatterers().extract_u_cart(self.unit_cell())
     assert approx_equal(u_cart_1, u_cart_2)
+    d1 = self.scattering_type_registry().as_type_gaussian_dict()
+    d2 = other.scattering_type_registry().as_type_gaussian_dict()
+    for key1,item1,key2,item2 in zip(d1.keys(),d1.items(),d2.keys(),d2.items()):
+      assert (key1 == key2) and (key1 == item1[0]) and (item1[0] == item2[0])
+      i1 = item1[1]
+      i2 = item2[1]
+      for a1, a2 in zip(i1.array_of_a(), i2.array_of_a()):
+        assert approx_equal(a1, a2)
+      for b1, b2 in zip(i1.array_of_b(), i2.array_of_b()):
+        assert approx_equal(b1, b2)
+      assert approx_equal(i1.c(), i2.c())
 
   def set_u_iso(self, value=None, values=None, allow_mixed=False):
     assert [value, values].count(None) == 1
@@ -703,6 +714,7 @@ class structure(crystal.special_position_settings):
     n_grad_occupancy = 0
     n_grad_fp        = 0
     n_grad_fdp       = 0
+    n_anisotropic_flag = 0
     for sc in self.scatterers():
         if(sc.flags.use()           ): n_use            += 1
         if(sc.flags.use_u_iso()     ): n_use_u_iso      += 1
@@ -713,6 +725,7 @@ class structure(crystal.special_position_settings):
         if(sc.flags.grad_occupancy()): n_grad_occupancy += 1
         if(sc.flags.grad_fp()       ): n_grad_fp        += 1
         if(sc.flags.grad_fdp()      ): n_grad_fdp       += 1
+        if(sc.anisotropic_flag      ): n_anisotropic_flag += 1
     print "n_use            = ", n_use
     print "n_use_u_iso      = ", n_use_u_iso
     print "n_use_u_aniso    = ", n_use_u_aniso
@@ -722,6 +735,7 @@ class structure(crystal.special_position_settings):
     print "n_grad_occupancy = ", n_grad_occupancy
     print "n_grad_fp        = ", n_grad_fp
     print "n_grad_fdp       = ", n_grad_fdp
+    print "n_anisotropic_flag = ", n_anisotropic_flag
     print "total number of scatterers = ", self.scatterers().size()
 
   def n_parameters(self):

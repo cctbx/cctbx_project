@@ -565,7 +565,8 @@ class bulk_solvent_and_scales(object):
        ### start ml optimization
        if(abs(fmodel.k_sol) < 0.01 or abs(fmodel.b_sol) < 1.0):
           fmodel.update(k_sol = 0, b_sol = 0)
-       if(params_target == "ml"):
+       if(params_target == "ml"): #XXX temporary OFF; use ls for the moment
+       #if(params_target == "ls_wunit_k1"):
           params.target = params_target
           fmodel.update(target_name = params_target)
           if(params.minimization_k_sol_b_sol):
