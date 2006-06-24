@@ -32,7 +32,8 @@ namespace scitbx { namespace boost_python {
     return boost::python::object(boost::python::handle<>(
 #if PY_VERSION_HEX >= 0x02030000
         PyObject_CallFunction(
-          (PyObject*) &PyRange_Type, "lll", start, start+len*step, step)
+          (PyObject*) (void*) &PyRange_Type,
+          "lll", start, start+len*step, step)
 #else
         PyRange_New(start, len, step, 1)
 #endif
