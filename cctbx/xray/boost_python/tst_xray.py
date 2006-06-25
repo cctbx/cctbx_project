@@ -567,10 +567,10 @@ def exercise_scattering_type_registry():
       assert not show_diff(s.getvalue(),
         "=-Al:0+c*2 Si:5+c*2 const:0+c*1 O:5+c*3 custom:None*1\n")
     s = StringIO()
-    for show_weights in [False, True]:
+    for show_sf0 in [False, True]:
       for show_gaussians in [False, True]:
         reg.show(
-          show_weights=show_weights,
+          show_sf0=show_sf0,
           show_gaussians=show_gaussians,
           out=s,
           prefix=":#")
@@ -590,19 +590,21 @@ def exercise_scattering_type_registry():
 :#   O          3        %(n_terms)d+c
 :#   custom     1       None
 :#Number of scattering types: 5
-:#  Type    Number   Weight
+:#  Type    Number    sf(0)
 :#   Al         2     20.00
 :#   Si         2     14.00
 :#   const      1     10.00
 :#   O          3      8.00
 :#   custom     1      None
+:#  sf(0) = scattering factor at diffraction angle 0.
 :#Number of scattering types: 5
-:#  Type    Number   Weight   Gaussians
+:#  Type    Number    sf(0)   Gaussians
 :#   Al         2     20.00       0+c
 :#   Si         2     14.00       %(n_terms)d+c
 :#   const      1     10.00       0+c
 :#   O          3      8.00       %(n_terms)d+c
 :#   custom     1      None      None
+:#  sf(0) = scattering factor at diffraction angle 0.
 """ % vars())
     assert reg.wilson_dict() \
         == {'Si': 2, 'const': 1, 'Al': 2, 'O': 3, 'custom': 1}
