@@ -89,6 +89,34 @@ def format_cpu_times(show_micro_seconds_per_tick=True):
       result += " micro-seconds/tick: %.3f" % ((t[0]+t[1])/python_ticker*1.e6)
   return result
 
+class host_and_user:
+
+  def __init__(self):
+    self.host = os.environ.get("HOST")
+    self.hostname = os.environ.get("HOSTNAME")
+    self.computername = os.environ.get("COMPUTERNAME")
+    self.hosttype = os.environ.get("HOSTTYPE")
+    self.user = os.environ.get("USER")
+    self.username = os.environ.get("USERNAME")
+
+  def show(self, out=None, prefix=""):
+    if (out is None): out = sys.stdout
+    if (self.host is not None):
+      print >> out, prefix + "HOST =", self.host
+    if (    self.hostname is not None
+        and self.hostname != self.host):
+      print >> out, prefix + "HOSTNAME =", self.hostname
+    if (    self.computername is not None
+        and self.computername != self.host):
+      print >> out, prefix + "COMPUTERNAME =", self.host
+    if (self.hosttype is not None):
+      print >> out, prefix + "HOSTTYPE =", self.hosttype
+    if (self.user is not None):
+      print >> out, prefix + "USER =", self.user
+    if (    self.username is not None
+        and self.username != self.user):
+      print >> out, prefix + "USERNAME =", self.username
+
 def _indentor_write_loop(write_method, indent, incomplete_line, lines):
   for line in lines:
     if (len(line) == 0):
