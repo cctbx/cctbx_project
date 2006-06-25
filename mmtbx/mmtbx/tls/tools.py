@@ -279,7 +279,11 @@ class tls_xray_target_minimizer(object):
     self.T_min = self.T_initial
     self.L_min = self.L_initial
     self.S_min = self.S_initial
-    self.factor = 1.0#1.e-2
+    #self.factor = 1.0#1.e-2
+    #self.factor = 1.e-3
+    self.factor = 1.
+    #self.scale()
+    #print "START FACTOR = ", self.factor
     self.x = self.pack(self.T_min, self.L_min, self.S_min, factor = self.factor)
     self.minimizer = lbfgs.run(
          target_evaluator = self,
@@ -323,10 +327,33 @@ class tls_xray_target_minimizer(object):
         self.S_min[j] = tuple(self.x)[i:i+self.dim_S]
         i += self.dim_S
 
+  def scale(self):
+    tlsos = generate_tlsos(selections     = self.selections,
+                           xray_structure = self.fmodel_copy.xray_structure,
+                           T              = self.T_min,
+                           L              = self.L_min,
+                           S              = self.S_min)
+    grad_manager = tls_xray_grads(fmodel     = self.fmodel_copy,
+                                  selections = self.selections,
+                                  tlsos      = tlsos,
+                                  alpha      = self.alpha,
+                                  beta       = self.beta)
+    gt = grad_manager.grad_T
+    gl = grad_manager.grad_L
+    for gti, gli in zip(gt, gl):
+        self.factor = 0.0
+        for gtj, glj in zip(gti, gli):
+          if(abs(gtj) < 1.e-15): self.factor = 1.0
+          else:
+             self.factor += abs(glj/gtj)
+        #print scale/6.0
+    #self.factor /= 10.
+    self.factor = 1.0
 
   def compute_functional_and_gradients(self):
     self.counter += 1
     self.unpack_x()
+    #self.scale()
 
     S_new = []
     for item_1 in self.S_min:
@@ -535,6 +562,20 @@ def tls_from_u_cart(xray_structure,
                            refine_S               = True,
                            verbose                = -1,
                            out                    = None)
+  #XXX experimet:
+
+  tlsos_ = tls_from_uanisos(xray_structure        = xray_structure,
+                           selections             = tls_selections,
+                           tlsos_initial          = tlsos_,
+                           number_of_macro_cycles = number_of_macro_cycles,
+                           max_iterations         = max_iterations,
+                           refine_T               = True,
+                           refine_L               = False,
+                           refine_S               = False,
+                           verbose                = -1,
+                           out                    = None)
+
+  ###############
 
   for tlso in tlsos_:
       for item in tlso.l:

@@ -320,6 +320,7 @@ class refinement_monitor(object):
     self.natoms              = xrs.scatterers().size()
     self.volume              = xrs.unit_cell().volume()
     self.sg                  = xrs.space_group().type().number()
+    self.sg_symbol           = xrs.space_group().type().lookup_symbol()
     self.nsym                = xrs.space_group().n_smx()
     self.target_name         = fmodel.target_name
     self.number_of_restraints= geom.number_of_restraints
@@ -337,7 +338,7 @@ class refinement_monitor(object):
     print >> out, remark + "Number of atoms              : %7d"   % self.natoms
     print >> out, remark + "Number of geometry restraints: %7d"   % self.number_of_restraints
     print >> out, remark + "Unit cell volume             : %15.3f"% self.volume
-    print >> out, remark + "Space group number           : %4d"   % self.sg
+    print >> out, remark + "Space group                  : %4d (%s)"% (self.sg,self.sg_symbol)
     print >> out, remark + "Number of symmetries         : %4d"   % self.nsym
     print >> out, remark + "Wilson B-factor              : %10.3f"% self.wilson_b
     print >> out, remark + "Isotropic ADP: distance_power: %5.2f" % self.params.adp_restraints.iso.distance_power
