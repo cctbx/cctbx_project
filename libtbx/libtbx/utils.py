@@ -96,6 +96,7 @@ class host_and_user:
     self.hostname = os.environ.get("HOSTNAME")
     self.computername = os.environ.get("COMPUTERNAME")
     self.hosttype = os.environ.get("HOSTTYPE")
+    self.processor_architecture = os.environ.get("PROCESSOR_ARCHITECTURE")
     self.user = os.environ.get("USER")
     self.username = os.environ.get("USERNAME")
 
@@ -108,9 +109,12 @@ class host_and_user:
       print >> out, prefix + "HOSTNAME =", self.hostname
     if (    self.computername is not None
         and self.computername != self.host):
-      print >> out, prefix + "COMPUTERNAME =", self.host
+      print >> out, prefix + "COMPUTERNAME =", self.computername
     if (self.hosttype is not None):
       print >> out, prefix + "HOSTTYPE =", self.hosttype
+    if (self.processor_architecture is not None):
+      print >> out, prefix + "PROCESSOR_ARCHITECTURE =", \
+        self.processor_architecture
     if (self.user is not None):
       print >> out, prefix + "USER =", self.user
     if (    self.username is not None
