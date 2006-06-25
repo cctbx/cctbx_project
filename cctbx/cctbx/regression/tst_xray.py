@@ -133,14 +133,15 @@ def exercise_structure():
   assert s.getvalue().strip() == "O:4+c*1 Si:0+c*1"
   s = StringIO()
   reg.show(out=s)
-  assert s.getvalue() == """\
+  assert not show_diff(s.getvalue(), """\
 Number of scattering types: 2
-  Type Number   Weight   Gaussians
+  Type Number    sf(0)   Gaussians
    O       1      8.00       4+c
    Si      1      1.00       0+c
-"""
+  sf(0) = scattering factor at diffraction angle 0.
+""")
   s = StringIO()
-  reg.show(out=s, show_weights=False)
+  reg.show(out=s, show_sf0=False)
   assert s.getvalue() == """\
 Number of scattering types: 2
   Type Number   Gaussians
@@ -151,12 +152,13 @@ Number of scattering types: 2
   reg.show(out=s, show_gaussians=False)
   assert s.getvalue() == """\
 Number of scattering types: 2
-  Type Number   Weight
+  Type Number    sf(0)
    O       1      8.00
    Si      1      1.00
+  sf(0) = scattering factor at diffraction angle 0.
 """
   s = StringIO()
-  reg.show(out=s, show_weights=False, show_gaussians=False)
+  reg.show(out=s, show_sf0=False, show_gaussians=False)
   assert s.getvalue() == """\
 Number of scattering types: 2
   Type Number

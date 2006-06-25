@@ -11,15 +11,15 @@ class _scattering_type_registry(
   def sorted_type_index_pairs(self, heaviest_first=True):
     ugs = self.unique_gaussians_as_list()
     pairs = []
-    weights = flex.double()
+    sf0s = flex.double()
     for t,i in self.type_index_pairs_as_dict().items():
       pairs.append((t,i))
       gaussian = ugs[i]
       if (gaussian is None):
-        weights.append(0)
+        sf0s.append(0)
       else:
-        weights.append(gaussian.at_stol(0))
-    perm = flex.sort_permutation(weights, reverse=heaviest_first)
+        sf0s.append(gaussian.at_stol(0))
+    perm = flex.sort_permutation(sf0s, reverse=heaviest_first)
     return flex.select(pairs, permutation=perm)
 
   def show_summary(self, out=None, prefix=""):
@@ -40,7 +40,7 @@ class _scattering_type_registry(
 
   def show(self,
         header="Number of scattering types:",
-        show_weights=True,
+        show_sf0=True,
         show_gaussians=True,
         out=None,
         prefix=""):
@@ -56,7 +56,7 @@ class _scattering_type_registry(
     nc_fmt = "%%%dd" % nc
     if (len(tips) > 0):
       line = prefix + "  Type%s %sNumber" % (" "*(nt-3), " "*(nc-5))
-      if (show_weights): line += "   Weight"
+      if (show_sf0): line += "    sf(0)"
       if (show_gaussians): line += "   Gaussians"
       print >> out, line
       for t,i in tips:
@@ -64,7 +64,7 @@ class _scattering_type_registry(
              + nt_fmt%t \
              + nc_fmt%unique_counts[i] + " "
         gaussian = unique_gaussians[i]
-        if (show_weights):
+        if (show_sf0):
           if (gaussian is None):
             line += "     None"
           else:
@@ -76,6 +76,9 @@ class _scattering_type_registry(
             line += " %7s" % str(gaussian.n_terms())
             if (gaussian.c() != 0): line += "+c"
         print >> out, line.rstrip()
+      if (show_sf0):
+        print >> out, prefix \
+          + "  sf(0) = scattering factor at diffraction angle 0."
 
   def wilson_dict(self):
     result = {}
