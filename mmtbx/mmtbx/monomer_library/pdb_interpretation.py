@@ -1963,6 +1963,7 @@ class build_all_chain_proxies(object):
     assert self.special_position_settings is not None
     return self.stage_1.extract_xray_structure(
       special_position_settings=self.special_position_settings,
+      force_symmetry=True,
       sites_cart=self.sites_cart_exact(),
       site_symmetry_table=self.site_symmetry_table(),
       scattering_types=self.scattering_type_registry.symbols,
