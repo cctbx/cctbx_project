@@ -2059,6 +2059,7 @@ class twin_analyses(object):
                miller_calc=None,
                additional_parameters=None):
 
+
     symm_issue_table = [0.08, 75, 0.08, 75]
     perform_ncs_analyses=False
     n_ncs_bins=7
@@ -2104,6 +2105,11 @@ class twin_analyses(object):
     miller_array = miller_array.resolution_filter(
       math.sqrt(1.0/d_star_sq_low_limit),
       math.sqrt(1.0/d_star_sq_high_limit))
+
+    ## Make sure that we actually have some data
+    if miller_array.indices().size()==0:
+      raise Sorry("No suitable data available after resolution cuts")
+
     ## Determine possible twin laws
     print >> out, "Determining possible twin laws."
     possible_twin_laws = twin_laws(miller_array)
