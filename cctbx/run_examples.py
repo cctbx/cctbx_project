@@ -26,6 +26,7 @@ def run():
   "$D/cctbx/examples/adp_symmetry_constraints.py",
   "$D/cctbx/examples/unit_cell_refinement.py",
   "$D/cctbx/examples/miller_common_sets.py",
+  "$D/cctbx/examples/change_hand_p31.py",
   "$D/cctbx/examples/steve_collins.py",
   "$D/cctbx/examples/cr2o3_primitive_cell.py",
   "$D/cctbx/examples/cr2o3_consistency_checks.py",

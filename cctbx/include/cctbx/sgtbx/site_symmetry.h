@@ -136,7 +136,8 @@ namespace cctbx { namespace sgtbx {
         boost::rational<int>
           new_multiplicity = cb_op.c_inv().r().determinant() * multiplicity_;
         CCTBX_ASSERT(new_multiplicity.denominator() == 1);
-        result.multiplicity_ = new_multiplicity.numerator();
+        result.multiplicity_ = scitbx::fn::absolute(
+          new_multiplicity.numerator());
         result.special_op_ = cb_op.apply(special_op_);
         af::const_ref<rt_mx> m = matrices_.const_ref();
         result.matrices_.reserve(m.size());
