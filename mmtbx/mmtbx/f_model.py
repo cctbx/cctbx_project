@@ -23,6 +23,43 @@ from stdlib import math
 from cctbx import xray
 from cctbx import adptbx
 
+class time_manager(object):
+  def __init__(self):
+    self.time_bulk_solvent_and_scale         = 0.0
+    self.time_mask                           = 0.0
+    self.time_f_calc_atoms                   = 0.0
+    self.time_alpha_beta                     = 0.0
+    self.time_target                         = 0.0
+    self.time_gradient_wrt_atomic_parameters = 0.0
+    self.time_fmodel                         = 0.0
+    self.time_r_factors                      = 0.0
+    self.time_phase_errors                   = 0.0
+    self.time_foms                           = 0.0
+
+  def show_times(self, out = None):
+    if(out is None): out = sys.stdout
+    total = self.time_bulk_solvent_and_scale         +\
+            self.time_mask                           +\
+            self.time_f_calc_atoms                   +\
+            self.time_alpha_beta                     +\
+            self.time_target                         +\
+            self.time_gradient_wrt_atomic_parameters +\
+            self.time_fmodel                         +\
+            self.time_r_factors                      +\
+            self.time_phase_errors                   +\
+            self.time_foms
+    print >> out, "Timing for general calculations:"
+    print >> out, "  bulk_solvent_and_scale         = %-7.2f" % self.time_bulk_solvent_and_scale
+    print >> out, "  mask                           = %-7.2f" % self.time_mask
+    print >> out, "  f_calc_atoms                   = %-7.2f" % self.time_f_calc_atoms
+    print >> out, "  alpha_beta                     = %-7.2f" % self.time_alpha_beta
+    print >> out, "  target                         = %-7.2f" % self.time_target
+    print >> out, "  gradient_wrt_atomic_parameters = %-7.2f" % self.time_gradient_wrt_atomic_parameters
+    print >> out, "  fmodel                         = %-7.2f" % self.time_fmodel
+    print >> out, "  r_factors                      = %-7.2f" % self.time_r_factors
+    print >> out, "  phase_errors                   = %-7.2f" % self.time_phase_errors
+    print >> out, "  foms                           = %-7.2f" % self.time_foms
+
 target_names = (
       "ls_wunit_k1","ls_wunit_k2","ls_wunit_kunit","ls_wunit_k1_fixed",
       "ls_wunit_k1ask3_fixed",
@@ -48,9 +85,11 @@ class manager(object):
                      f_calc              = None,
                      mask_params         = None):
     adopt_init_args(self, locals())
+    self.time_manager = time_manager()
     zero = flex.complex_double(self.f_obs.data().size(), 0.0)
     assert self.f_obs is not None
     assert self.f_obs.is_real_array()
+    self.ss = 1./flex.pow2(self.f_obs.d_spacings().data()) / 4.
     if(self.xray_structure is None):
        if(self.f_mask is None):
           self.f_mask = self.f_obs.array(data = zero)
@@ -136,7 +175,7 @@ class manager(object):
        fc_dc = dc.f_calc.deep_copy().resolution_filter(d_max, d_min)
     new  = manager(f_obs             = dc.f_obs.resolution_filter(d_max, d_min),
                    r_free_flags      = dc.r_free_flags.resolution_filter(d_max, d_min),
-                   b_cart           = dc.b_cart,
+                   b_cart            = dc.b_cart,
                    k_sol             = dc.k_sol,
                    b_sol             = dc.b_sol,
                    sf_algorithm      = dc.sf_algorithm       ,
@@ -231,11 +270,14 @@ class manager(object):
     step = min(0.8, step)
     if(update_f_ordered_solvent): step = 0.3
     if(update_f_calc):
+       t1 = time.time()
        assert self.xray_structure is not None
        self.f_calc = self.f_obs.structure_factors_from_scatterers(
-         xray_structure = self.xray_structure,
-         algorithm      = self.sf_algorithm,
-         cos_sin_table  = self.sf_cos_sin_table).f_calc()
+                               xray_structure = self.xray_structure,
+                               algorithm      = self.sf_algorithm,
+                               cos_sin_table  = self.sf_cos_sin_table).f_calc()
+       t2 = time.time()
+       self.time_manager.time_f_calc_atoms += (t2 - t1)
     if(update_f_ordered_solvent):
        nu_manager = max_like_non_uniform.ordered_solvent_distribution(
                                                structure = self.xray_structure,
@@ -252,6 +294,7 @@ class manager(object):
        #self.f_ordered_solvent_dist.array(data = data)
        ########################################################################
     if(update_f_mask):
+       t1 = time.time()
        if(update_f_ordered_solvent == False): nu_map = None
        bulk_solvent_mask_obj = self.bulk_solvent_mask()
        if (nu_map is not None):
@@ -263,6 +306,8 @@ class manager(object):
          bulk_solvent_mask_obj.show_summary(out = out)
        self.f_mask = \
                  bulk_solvent_mask_obj.structure_factors(miller_set=self.f_obs)
+       t2 = time.time()
+       self.time_manager.time_mask += (t2 - t1)
 
   def bulk_solvent_mask(self):
     if(self.mask_params is not None):
@@ -281,6 +326,7 @@ class manager(object):
     return result
 
   def update_solvent_and_scale(self, params = None, out = None, verbose=None):
+    t1 = time.time()
     if(out is None): out = sys.stdout
     if(params is None):
        params = bss.solvent_and_scale_params()
@@ -288,6 +334,8 @@ class manager(object):
        params = bss.solvent_and_scale_params(params = params)
     if(verbose is not None): params.verbose=verbose
     bss.bulk_solvent_and_scales(fmodel = self, params = params, log = out)
+    t2 = time.time()
+    self.time_manager.time_bulk_solvent_and_scale += (t2 - t1)
 
   def setup_target_functors(self):
     if(self.target_name == "ml"):
@@ -495,18 +543,26 @@ class manager(object):
           return self.target_functor_t(f_model, compute_gradients)
 
   def target_w(self, alpha=None, beta=None, scale_ml=None):
-    return self.xray_target_functor_result(compute_gradients = False,
+    t1 = time.time()
+    result = self.xray_target_functor_result(compute_gradients = False,
                                            alpha             = alpha,
                                            beta              = beta,
                                            scale_ml          = scale_ml,
                                            flag              = "work").target()
+    t2 = time.time()
+    self.time_manager.time_target += (t2 - t1)
+    return result
 
   def target_t(self, alpha=None, beta=None, scale_ml=None):
-    return self.xray_target_functor_result(compute_gradients = False,
+    t1 = time.time()
+    result = self.xray_target_functor_result(compute_gradients = False,
                                            alpha             = alpha,
                                            beta              = beta,
                                            scale_ml          = scale_ml,
                                            flag              = "test").target()
+    t2 = time.time()
+    self.time_manager.time_target += (t2 - t1)
+    return result
 
   def gradient_wrt_atomic_parameters(self, selection     = None,
                                            site          = False,
@@ -516,6 +572,7 @@ class manager(object):
                                            beta          = None,
                                            tan_b_iso_max = None,
                                            u_iso_reinable_params = None):
+    t1 = time.time()
     xrs = self.xray_structure
     if([site, u_iso, u_aniso].count(True) > 0):
        tan_u_iso = False
@@ -559,8 +616,9 @@ class manager(object):
        if(tan_b_iso_max == 0):
           u_iso_reinable_params = None#flex.sqrt(
                               #self.xray_structure.scatterers().extract_u_iso())
+    result = None
     if(u_aniso):
-       return structure_factor_gradients(
+       result = structure_factor_gradients(
                     u_iso_reinable_params = None,
                     d_target_d_f_calc  = xrtfr.derivatives() * self.fb_cart_w(),
                     xray_structure     = xrs,
@@ -568,13 +626,16 @@ class manager(object):
                     miller_set         = self.f_obs_w(),
                     algorithm          = self.sf_algorithm).d_target_d_u_cart()
     else:
-       return structure_factor_gradients(
+       result = structure_factor_gradients(
                          u_iso_reinable_params = u_iso_reinable_params,
                          d_target_d_f_calc  = xrtfr.derivatives() * self.fb_cart_w(),
                          xray_structure     = xrs,
                          n_parameters       = xrs.n_parameters_XXX(),
                          miller_set         = self.f_obs_w(),
                          algorithm          = self.sf_algorithm)
+    t2 = time.time()
+    self.time_manager.time_gradient_wrt_atomic_parameters += (t2 - t1)
+    return result
 
   def update(self, f_calc              = None,
                    f_obs               = None,
@@ -645,8 +706,7 @@ class manager(object):
       return self.f_ordered_solvent
 
   def f_bulk(self):
-    ss = 1./flex.pow2(self.f_calc.d_spacings().data()) / 4.
-    data = self.f_mask.data() * flex.exp(-ss * self.b_sol) * self.k_sol
+    data = self.f_mask.data() * flex.exp(-self.ss * self.b_sol) * self.k_sol
     return miller.array(miller_set = self.f_calc, data = data)
 
   def f_bulk_w(self):
@@ -720,6 +780,7 @@ class manager(object):
       return self.fb_cart()
 
   def f_model(self):
+    t1 = time.time()
     if(self.target_name in ["ml", "mlhl"]):
        #eps = self.f_obs_t().epsilons().data().as_double()
        #mul = self.f_obs_t().multiplicities().data().as_double()
@@ -737,6 +798,8 @@ class manager(object):
     else:
        data = fb_cart * (self.f_calc.data() + self.f_bulk().data() + \
                           self.f_ordered_solvent.data())
+    t2 = time.time()
+    self.time_manager.time_fmodel += (t2 - t1)
     return miller.array(miller_set = self.f_calc, data = data*sc)
 
   def f_model_scaled_with_k1(self):
@@ -873,6 +936,7 @@ class manager(object):
     return self.k_sol, self.b_sol
 
   def alpha_beta(self):
+    t1 = time.time()
     alpha, beta = None, None
     ab_params = self.alpha_beta_params
     if(self.alpha_beta_params is not None):
@@ -912,6 +976,8 @@ class manager(object):
                                     test_ref_in_bin = 200,
                                     flags           = self.r_free_flags.data(),
                                     interpolation   = False).alpha_beta()
+    t2 = time.time()
+    self.time_manager.time_alpha_beta += (t2 - t1)
     return alpha, beta
 
   def alpha_beta_w(self):
@@ -986,13 +1052,20 @@ class manager(object):
                                      True).derivatives())
 
   def r_work(self):
+    t1 = time.time()
     fo = self.f_obs_w().data()
     fc = self.f_model_w().data()
+    t2 = time.time()
+    self.time_manager.time_r_factors += (t2 - t1)
     return bulk_solvent.r_factor(fo,fc)
 
   def r_free(self):
-    return bulk_solvent.r_factor(self.f_obs_t().data(),
-                                 self.f_model_t().data())
+    t1 = time.time()
+    result = bulk_solvent.r_factor(self.f_obs_t().data(),
+                                   self.f_model_t().data())
+    t2 = time.time()
+    self.time_manager.time_r_factors += (t2 - t1)
+    return result
 
   def scale_k1(self):
     fo = self.f_obs.data()
@@ -1069,25 +1142,33 @@ class manager(object):
 
   def figures_of_merit(self):
     alpha, beta = self.alpha_beta()
+    t1 = time.time()
     data = abs(self.f_model()).data()
-    return max_lik.fom_and_phase_error(
+    result = max_lik.fom_and_phase_error(
                                    f_obs          = self.f_obs.data(),
                                    f_model        = data,
                                    alpha          = alpha.data(),
                                    beta           = beta.data(),
                                    space_group    = self.f_obs.space_group(),
                                    miller_indices = self.f_obs.indices()).fom()
+    t2 = time.time()
+    self.time_manager.time_foms += (t2 - t1)
+    return result
 
   def phase_errors(self):
     alpha, beta = self.alpha_beta()
+    t1 = time.time()
     data = abs(self.f_model()).data()
-    return max_lik.fom_and_phase_error(
+    result = max_lik.fom_and_phase_error(
                            f_obs          = self.f_obs.data(),
                            f_model        = data,
                            alpha          = alpha.data(),
                            beta           = beta.data(),
                            space_group    = self.f_obs.space_group(),
                            miller_indices = self.f_obs.indices()).phase_error()
+    t2 = time.time()
+    self.time_manager.time_phase_errors += (t2 - t1)
+    return result
 
   def phase_errors_test(self):
     assert self.r_free_flags is not None
@@ -1261,12 +1342,32 @@ class manager(object):
     r_test     = n_as_s("%6.4f",self.r_free()    )
     scale_work = n_as_s("%7.4f",self.scale_k1_w())
     scale_test = n_as_s("%7.4f",self.scale_k1_t())
-    fmodel_l = self.resolution_filter(d_min = 6.0, d_max = 999.9)
-    fmodel_h = self.resolution_filter(d_min = 0.0, d_max = 6.0)
-    r_work_l = n_as_s("%6.4f",fmodel_l.r_work())
-    r_test_l = n_as_s("%6.4f",fmodel_l.r_free())
-    r_work_h = n_as_s("%6.4f",fmodel_h.r_work())
-    r_test_h = n_as_s("%6.4f",fmodel_h.r_free())
+    d_max, d_min = self.f_obs_w().d_max_min()
+    d = 6.0
+    if(d_max < d): d = d_max
+    if(d_min > d): d = d_min
+    if(self.f_obs_w().resolution_filter(d_min = d, d_max = 999.9).data().size() > 0 and
+       self.f_obs_t().resolution_filter(d_min = d, d_max = 999.9).data().size() > 0):
+       fmodel_l = self.resolution_filter(d_min = d, d_max = 999.9)
+    else:
+       fmodel_l = None
+    if(self.f_obs_w().resolution_filter(d_min = 0.0, d_max = d).data().size() > 0 and
+       self.f_obs_t().resolution_filter(d_min = 0.0, d_max = d).data().size() > 0):
+       fmodel_h = self.resolution_filter(d_min = 0.0, d_max = d)
+    else:
+       fmodel_h = None
+    if(fmodel_l is not None):
+       r_work_l = n_as_s("%6.4f",fmodel_l.r_work())
+       r_test_l = n_as_s("%6.4f",fmodel_l.r_free())
+    else:
+       r_work_l = n_as_s("%6.4f",0.0)
+       r_test_l = n_as_s("%6.4f",0.0)
+    if(fmodel_h is not None):
+       r_work_h = n_as_s("%6.4f",fmodel_h.r_work())
+       r_test_h = n_as_s("%6.4f",fmodel_h.r_free())
+    else:
+       r_work_h = n_as_s("%6.4f",0.0)
+       r_test_h = n_as_s("%6.4f",0.0)
     k_sol = n_as_s("%6.2f",self.k_sol)
     b_sol = n_as_s("%7.2f",self.b_sol)
     b0,b1,b2,b3,b4,b5 = n_as_s("%7.2f",self.b_cart)
@@ -1277,12 +1378,12 @@ class manager(object):
     except: target_test = str(None)
     rr = self.f_obs.resolution_range()
     all_data = \
-       "| all data "+"["+n_as_s("%5.1f",rr[0])+"-"+n_as_s("%5.2f",rr[1])+"]"
+       "| all "+"["+n_as_s("%5.1f",rr[0])+"-"+n_as_s("%5.2f",rr[1])+"]"
     high_resolution = \
-       "high resolution "+"["+n_as_s("%5.1f",6.0)+"-"+n_as_s("%5.2f",rr[1])+"]"
+       "high resolution "+"["+n_as_s("%5.1f",d)+"-"+n_as_s("%5.2f",rr[1])+"]"
     low_resolution = \
-       "low resolution "+"["+n_as_s("%5.1f",rr[0])+"-"+n_as_s("%5.2f",6.0)+"]"
-    line = all_data+" "+high_resolution+" "+low_resolution
+       "low resolution "+"["+n_as_s("%5.1f",rr[0])+"-"+n_as_s("%5.2f",d)+"]"
+    line = all_data+"  "+high_resolution+"  "+low_resolution
     np = 79 - (len(line) + 1)
     line1 = line + " "*np + "|"
     print >> out, line1
