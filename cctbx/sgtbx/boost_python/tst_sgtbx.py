@@ -959,6 +959,11 @@ def exercise_site_symmetry():
   assert str(sc.matrices()[0]) == "x,y,z"
   assert str(sc.matrices()[1]) == "x,-y,-z"
   assert str(s.matrices()[1]) == "-x,-y,z"
+  assert sc.multiplicity() == 1
+  cb_op = sgtbx.change_of_basis_op("-x,-y,-z") # negative determinant
+  sc = s.change_basis(cb_op=cb_op)
+  assert str(sc.special_op()) == "0,0,z"
+  assert sc.multiplicity() == 1
   u = uctbx.unit_cell((10,10,15,90,90,120))
   g = sgtbx.space_group("-P 3 2")
   s = site_symmetry(unit_cell=u, space_group=g, original_site=(0,0,0))
