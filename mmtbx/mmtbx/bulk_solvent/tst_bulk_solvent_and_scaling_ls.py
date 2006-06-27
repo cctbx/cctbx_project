@@ -118,7 +118,7 @@ def exercise_0(fmodel,
 
     fmodel.update_solvent_and_scale(params = params)
     assert_result(fmodel, k_sol, b_sol, b_cart, f_obs, r_free_flags,
-                  tk = 1.e-5, tb = 1.e-2, tu = 1.e-3)
+                  tk = 1.e-3, tb = 0.5, tu = 1.e-1)
     print "OK: LS min.&grid s.: ",format_cpu_times()
 
 def exercise_1(fmodel,
@@ -158,7 +158,7 @@ def exercise_1(fmodel,
 
     fmodel.update_solvent_and_scale(params = params)
     assert_result(fmodel, k_sol, b_sol, b_cart, f_obs, r_free_flags,
-                  tk = 1.e-2, tb = 5.0, tu = 1.e-1)
+                  tk = 0.05, tb = 11.0, tu = 1.e-1)
     print "OK: LS minimization: ",format_cpu_times()
 
 def exercise_2(fmodel,
@@ -608,11 +608,11 @@ def exercise_11(fmodel,
         params.k_sol_min                                = 0.1
         params.b_sol_max                                = 80.0
         params.b_sol_min                                = 10.0
-        params.k_sol_step                               = 0.05
-        params.b_sol_step                               = 5.0
-        params.number_of_macro_cycles                   = 2
-        params.number_of_minimization_macro_cycles      = 5
-        params.number_of_cycles_for_anisotropic_scaling = 5
+        params.k_sol_step                               = 0.02
+        params.b_sol_step                               = 1.0
+        params.number_of_macro_cycles                   = 10
+        params.number_of_minimization_macro_cycles      = 10
+        params.number_of_cycles_for_anisotropic_scaling = 10
         params.fix_k_sol                                = None
         params.fix_b_sol                                = None
         params.fix_b_cart                              = None
@@ -623,7 +623,7 @@ def exercise_11(fmodel,
 
         fmodel_copy.update_solvent_and_scale(params = params)
         assert_result(fmodel_copy, k_sol, b_sol, b_cart, f_obs, r_free_flags,
-                      tk = 1.e-2, tb = 2.e-2, tu = 1.e-2)
+                      tk = 1.e-2, tb = 5., tu = 0.5)
     print "OK: closest to real: ",format_cpu_times()
 
 def exercise_12(fmodel):

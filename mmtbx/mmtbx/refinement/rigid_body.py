@@ -5,16 +5,39 @@ from libtbx.test_utils import approx_equal
 from scitbx import matrix
 from scitbx import lbfgs
 from mmtbx.refinement import print_statistics
-import copy
+import copy, time
 from libtbx.utils import Sorry
 
+time_apply_transformation = 0.0
+time_target_and_grads     = 0.0
+time_euler                = 0.0
+
+def show_times(out = None):
+    if(out is None): out = sys.stdout
+    total = time_apply_transformation +\
+            time_target_and_grads     +\
+            time_euler
+    if(total > 0.01):
+       print >> out, "Timing for rigid body refinement:"
+       print >> out, "  apply_transformation              = %-7.2f" % time_apply_transformation
+       print >> out, "  target_and_grads "
+       print >> out, "    (-.gradient_wrt_atomic_parameters()) = %-7.2f" % time_target_and_grads
+       print >> out, "  euler                             = %-7.2f" % time_euler
+
+
 def euler(phi, psi, the, convention):
+  t1 = time.time()
+  global time_euler
   if(convention == "zyz"):
-     return rb_mat_euler(the=the, psi=psi, phi=phi)
+     result = rb_mat_euler(the=the, psi=psi, phi=phi)
   elif(convention == "xyz"):
-     return rb_mat(the=the, psi=psi, phi=phi)
+     result = rb_mat(the=the, psi=psi, phi=phi)
   else:
      raise Sorry("\nWrong rotation convention\n")
+  t2 = time.time()
+  time_euler += (t2 - t1)
+  return result
+
 
 class rb_mat_euler(object):
 
@@ -273,6 +296,8 @@ class manager(object):
                      bss                     = None,
                      euler_angle_convention  = "xyz",
                      log                     = None):
+    global time_initialization
+    t1 = time.time()
     self.euler_angle_convention = euler_angle_convention
     if(log is None): log = sys.stdout
     if(selections is None):
@@ -572,6 +597,8 @@ def apply_transformation(xray_structure,
                          translation_vectors,
                          selections,
                          fixed_selection=None):
+  global time_apply_transformation
+  t1 = time.time()
   assert len(selections) == len(rotation_matrices)
   assert len(selections) == len(translation_vectors)
   new_sites = flex.vec3_double(xray_structure.scatterers().size())
@@ -585,6 +612,8 @@ def apply_transformation(xray_structure,
   if(fixed_selection is not None):
     sites_fixed = xray_structure.sites_cart().select(fixed_selection)
     new_sites.set_selected(fixed_selection, sites_fixed)
+  t2 = time.time()
+  time_apply_transformation += (t2 - t1)
   return xray_structure.replace_sites_cart(new_sites = new_sites)
 
 class target_and_grads(object):
@@ -593,13 +622,15 @@ class target_and_grads(object):
                      beta,
                      rot_objs,
                      selections):
-    self.grads_wrt_r = []
-    self.grads_wrt_t = []
+    global time_target_and_grads
     target_grads_wrt_xyz = fmodel.gradient_wrt_atomic_parameters(site  = True,
                                                                  alpha = alpha,
                                                                  beta  = beta)
-    target_grads_wrt_xyz = flex.vec3_double(target_grads_wrt_xyz.packed())
     self.f = fmodel.target_w(alpha = alpha, beta = beta)
+    t1 = time.time()
+    self.grads_wrt_r = []
+    self.grads_wrt_t = []
+    target_grads_wrt_xyz = flex.vec3_double(target_grads_wrt_xyz.packed())
     for sel,rot_obj in zip(selections, rot_objs):
         xrs = fmodel.xray_structure.select(sel)
         cm_cart = xrs.center_of_mass()
@@ -613,6 +644,8 @@ class target_and_grads(object):
         g_psi = (rot_obj.r_psi() * target_grads_wrt_r).trace()
         g_the = (rot_obj.r_the() * target_grads_wrt_r).trace()
         self.grads_wrt_r.append(flex.double([g_phi, g_psi, g_the]))
+    t2 = time.time()
+    time_target_and_grads += (t2 - t1)
 
   def target(self):
     return self.f

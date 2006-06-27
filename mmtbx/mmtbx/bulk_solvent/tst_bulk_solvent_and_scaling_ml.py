@@ -118,7 +118,7 @@ def exercise_0(fmodel,
     fmodel.update_solvent_and_scale(params = params)
 
     assert_result(fmodel, k_sol, b_sol, b_cart, f_obs, r_free_flags,
-                  tk = 1.e-3, tb = 1.e-1, tu = 1.e-1)
+                  tk = 1.e-3, tb = 0.5, tu = 1.e-1)
     print "OK: ML min.&grid s.: ",format_cpu_times()
 
 def exercise_1(fmodel,
@@ -158,7 +158,7 @@ def exercise_1(fmodel,
     fmodel.update_solvent_and_scale(params = params)
 
     assert_result(fmodel, k_sol, b_sol, b_cart, f_obs, r_free_flags,
-                  tk = 1.e-2, tb = 0.6, tu = 1.e-1)
+                  tk = 1.e-2, tb = 10, tu = 1.e-1)
     print "OK: ML minimization: ",format_cpu_times()
 
 def exercise_2(fmodel,
@@ -623,7 +623,7 @@ def exercise_11(fmodel,
         params.apply_back_trace_of_b_cart              = False
         fmodel_copy.update_solvent_and_scale(params = params)
         assert_result(fmodel_copy, k_sol, b_sol, b_cart, f_obs, r_free_flags,
-                      tk = 1.e-3, tb = 5.e-1, tu = 1.e-1)
+                      tk = 1.e-3, tb = 5.e-1, tu = 0.2)
     print "OK: closest to real: ",format_cpu_times()
 
 

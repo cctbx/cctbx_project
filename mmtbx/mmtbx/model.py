@@ -684,8 +684,8 @@ class adp_statistics(object):
                   (self.b_iso_min,self.b_iso_max,self.b_iso_mean)
     print >> out, "| number of B <   1.0: %-6d"%self.n_zero_ref,"        | ",\
                   "number of B <   1.0: %-6d          |"%self.n_zero
-    print >> out, "| number of B < 100.0: %-6d"%self.n_100_ref,"        | ",\
-                  "number of B < 100.0: %-6d          |"%self.n_100
+    print >> out, "| number of B > 100.0: %-6d"%self.n_100_ref,"        | ",\
+                  "number of B > 100.0: %-6d          |"%self.n_100
     print >> out, "| "+"  "*38+"|"
     p0 = "| Number of anisotropically refinable ADP = "
     p1 = str("%d"%self.anisotropic_flags.count(True))
