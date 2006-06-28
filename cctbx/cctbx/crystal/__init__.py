@@ -174,7 +174,9 @@ class symmetry(object):
 
   def join_symmetry(self, other_symmetry, force=False):
     if (other_symmetry is None):
-      return self
+      return symmetry(
+         unit_cell=self.unit_cell(),
+         space_group_info=self.space_group_info())
     if (force == False):
       strong = self
       weak = other_symmetry
