@@ -2,7 +2,7 @@ from __future__ import division
 from __future__ import generators
 from libtbx.phil import tokenizer
 from libtbx.str_utils import line_breaker
-from libtbx.utils import format_exception, import_python_object
+from libtbx.utils import Sorry, format_exception, import_python_object
 from libtbx.itertbx import count
 from cStringIO import StringIO
 import tokenize as python_tokenize
@@ -266,7 +266,7 @@ class choice_converters(object):
         else:
           flag = False
       if (flag and value not in flags):
-        raise RuntimeError("Not a possible choice for %s: %s%s" % (
+        raise Sorry("Not a possible choice for %s: %s%s" % (
           master.full_path(), str(word), word.where_str()))
       flags[value] = flag
     words = []
