@@ -1707,7 +1707,7 @@ c=a *b c
 c=a *d c
 """)
   try: fetched = master.fetch(source=source)
-  except RuntimeError, e:
+  except Sorry, e:
     assert str(e) == "Not a possible choice for c: *d (input line 1)"
   else: raise RuntimeError("Exception expected.")
   #
