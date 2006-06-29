@@ -118,7 +118,7 @@ def exercise_0(fmodel,
 
     fmodel.update_solvent_and_scale(params = params)
     assert_result(fmodel, k_sol, b_sol, b_cart, f_obs, r_free_flags,
-                  tk = 1.e-3, tb = 0.5, tu = 1.e-1)
+                  tk = 1.e-3, tb = 0.05, tu = 1.e-3)
     print "OK: LS min.&grid s.: ",format_cpu_times()
 
 def exercise_1(fmodel,
@@ -158,7 +158,7 @@ def exercise_1(fmodel,
 
     fmodel.update_solvent_and_scale(params = params)
     assert_result(fmodel, k_sol, b_sol, b_cart, f_obs, r_free_flags,
-                  tk = 0.05, tb = 11.0, tu = 1.e-1)
+                  tk = 0.00001, tb = 0.01, tu = 1.e-3)
     print "OK: LS minimization: ",format_cpu_times()
 
 def exercise_2(fmodel,
@@ -601,29 +601,29 @@ def exercise_11(fmodel,
         params.statistical_solvent_model                = True
         params.k_sol_b_sol_grid_search                  = True
         params.minimization_k_sol_b_sol                 = True
-        params.minimization_b_cart                     = True
+        params.minimization_b_cart                      = True
         params.target                                   = "ls_wunit_k1"
-        params.symmetry_constraints_on_b_cart          = True
+        params.symmetry_constraints_on_b_cart           = True
         params.k_sol_max                                = 0.8
         params.k_sol_min                                = 0.1
         params.b_sol_max                                = 80.0
         params.b_sol_min                                = 10.0
         params.k_sol_step                               = 0.02
-        params.b_sol_step                               = 1.0
+        params.b_sol_step                               = 5.0
         params.number_of_macro_cycles                   = 10
         params.number_of_minimization_macro_cycles      = 10
         params.number_of_cycles_for_anisotropic_scaling = 10
         params.fix_k_sol                                = None
         params.fix_b_sol                                = None
-        params.fix_b_cart                              = None
+        params.fix_b_cart                               = None
         params.start_minimization_from_k_sol            = 0.35
         params.start_minimization_from_b_sol            = 46.0
-        params.start_minimization_from_b_cart          = [0,0,0,0,0,0]
-        params.apply_back_trace_of_b_cart              = False
+        params.start_minimization_from_b_cart           = [0,0,0,0,0,0]
+        params.apply_back_trace_of_b_cart               = False
 
         fmodel_copy.update_solvent_and_scale(params = params)
         assert_result(fmodel_copy, k_sol, b_sol, b_cart, f_obs, r_free_flags,
-                      tk = 1.e-2, tb = 5., tu = 0.5)
+                      tk = 1.e-2, tb = 6., tu = 0.5)
     print "OK: closest to real: ",format_cpu_times()
 
 def exercise_12(fmodel):

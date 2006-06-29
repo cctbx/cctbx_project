@@ -1,13 +1,23 @@
 from cctbx.array_family import flex
 from cctbx import geometry_restraints
 from libtbx import adopt_init_args
-import sys, os
+import sys, os, time
 from libtbx.test_utils import approx_equal
 from cctbx import adptbx
 from stdlib import math
 from cctbx import xray
 from mmtbx import bulk_solvent
 from mmtbx import max_lik
+
+time_collect_and_process = 0.0
+
+def show_times(out = None):
+  if(out is None): out = sys.stdout
+  total = time_collect_and_process
+  if(total > 0.01):
+     print >> out, "Collect and process:"
+     print >> out, "  total                          = %-7.2f" % time_collect_and_process
+  return total
 
 
 def make_header(line, out=None):
@@ -197,6 +207,8 @@ class refinement_monitor(object):
                     wilson_b = None,
                     target_weights = None,
                     rigid_body_shift_accamulator = None):
+    global time_collect_and_process
+    t1 = time.time()
     fmodel.xray_structure.approx_equal(other = model.xray_structure)
     #XXX doesn't work when automatic adjustment was performed.
     #if(target_weights is not None):
@@ -327,8 +339,13 @@ class refinement_monitor(object):
     ###
     if(rigid_body_shift_accamulator is not None):
        self.rba = rigid_body_shift_accamulator
+    ###
+    t2 = time.time()
+    time_collect_and_process += (t2 - t1)
 
   def show(self, out=None, remark=""):
+    global time_collect_and_process
+    t1 = time.time()
     if(out is None): out = self.out
     separator = "-"*72
     print >> out, remark + "*"*72
@@ -619,6 +636,9 @@ class refinement_monitor(object):
            print >> out, format % (a,b)
     print >> out, remark + separator
     out.flush()
+    ###
+    t2 = time.time()
+    time_collect_and_process += (t2 - t1)
 
 class relative_errors(object):
   def __init__(self, model, model_ini, model_ref, compute_optimal_errors):

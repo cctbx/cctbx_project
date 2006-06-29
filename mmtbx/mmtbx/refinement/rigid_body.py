@@ -11,18 +11,23 @@ from libtbx.utils import Sorry
 time_apply_transformation = 0.0
 time_target_and_grads     = 0.0
 time_euler                = 0.0
+time_rigid_body_total     = 0.0
+time_rigid_body_minimization     = 0.0
 
 def show_times(out = None):
-    if(out is None): out = sys.stdout
-    total = time_apply_transformation +\
-            time_target_and_grads     +\
-            time_euler
-    if(total > 0.01):
-       print >> out, "Timing for rigid body refinement:"
-       print >> out, "  apply_transformation              = %-7.2f" % time_apply_transformation
-       print >> out, "  target_and_grads "
-       print >> out, "    (-.gradient_wrt_atomic_parameters()) = %-7.2f" % time_target_and_grads
-       print >> out, "  euler                             = %-7.2f" % time_euler
+  if(out is None): out = sys.stdout
+  total = time_apply_transformation +\
+          time_target_and_grads     +\
+          time_euler
+  if(total > 0.01):
+     print >> out, "Rigid body refinement:"
+     print >> out, "  time_rigid_body_total                  = %-7.2f" % time_rigid_body_total
+     print >> out, "  time_rigid_body_minimization           = %-7.2f" % time_rigid_body_minimization
+     print >> out, "  apply_transformation                   = %-7.2f" % time_apply_transformation
+     print >> out, "  target_and_grads "
+     print >> out, "    (-.gradient_wrt_atomic_parameters()) = %-7.2f" % time_target_and_grads
+     print >> out, "  euler                                  = %-7.2f" % time_euler
+  return total
 
 
 def euler(phi, psi, the, convention):
@@ -296,7 +301,7 @@ class manager(object):
                      bss                     = None,
                      euler_angle_convention  = "xyz",
                      log                     = None):
-    global time_initialization
+    global time_rigid_body_total
     t1 = time.time()
     self.euler_angle_convention = euler_angle_convention
     if(log is None): log = sys.stdout
@@ -421,6 +426,8 @@ class manager(object):
     fmodel.update_xray_structure(xray_structure = fmodel_copy.xray_structure,
                                  update_f_calc  = True)
     self.fmodel = fmodel
+    t2 = time.time()
+    time_rigid_body_total += (t2 - t1)
 
   def rotation(self):
     return self.total_rotation
@@ -494,6 +501,8 @@ class rigid_body_minimizer(object):
                refine_t,
                max_iterations,
                euler_angle_convention = "xyz"):
+    #global time_rigid_body_minimization
+    #t1 = time.time()
     adopt_init_args(self, locals())
     if(self.fmodel.target_name in ["ml","lsm"]):
        self.alpha, self.beta = self.fmodel.alpha_beta_w()
@@ -514,6 +523,8 @@ class rigid_body_minimizer(object):
         self.t_min[i] = tuple(self.t_min[i])
     self.x = self.pack(self.r_min, self.t_min)
     self.n = self.x.size()
+    global time_rigid_body_minimization
+    t1 = time.time()
     self.minimizer = lbfgs.run(
                target_evaluator = self,
                termination_params = lbfgs.termination_parameters(
@@ -521,8 +532,12 @@ class rigid_body_minimizer(object):
                exception_handling_params = lbfgs.exception_handling_parameters(
                     ignore_line_search_failed_step_at_lower_bound = True)
                               )
+    #global time_rigid_body_minimization
+    #t1 = time.time()
     self.compute_functional_and_gradients()
     del self.x
+    t2 = time.time()
+    time_rigid_body_minimization += (t2 - t1)
 
   def pack(self, r, t):
     v = []
@@ -540,27 +555,6 @@ class rigid_body_minimizer(object):
         if(self.refine_t):
            self.t_min[j] = tuple(self.x)[i:i+self.dim_t]
            i += self.dim_t
-
-  def dump(self):
-    rn = []
-    tn = []
-    for r, t in zip(self.r_min, self.t_min):
-        r = list(r)
-        t = list(t)
-        for i, ri in enumerate(r):
-            if ri < 0: sign = -1.0
-            else:      sign =  1.0
-            r[i] = min(abs(ri), 1.0)*sign
-        for i, ti in enumerate(t):
-            if ti < 0: sign = -1.0
-            else:      sign =  1.0
-            t[i] = min(abs(ti), 0.5)*sign
-        r = tuple(r)
-        t = tuple(t)
-        rn.append(r)
-        tn.append(t)
-    self.r_min = rn
-    self.t_min = tn
 
   def compute_functional_and_gradients(self):
     self.unpack_x()
