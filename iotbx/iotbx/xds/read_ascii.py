@@ -89,9 +89,10 @@ class reader(object):
         base_array_info=None):
     if (base_array_info is None):
       base_array_info = miller.array_info(source_type="xds_ascii")
+    crystal_symmetry_from_file = self.crystal_symmetry()
     return (miller.array(
       miller_set=miller.set(
-        crystal_symmetry=self.crystal_symmetry().join_symmetry(
+        crystal_symmetry=crystal_symmetry_from_file.join_symmetry(
           other_symmetry=crystal_symmetry,
           force=force_symmetry),
         indices=self.miller_indices,
@@ -99,7 +100,8 @@ class reader(object):
       data=self.iobs,
       sigmas=self.sigma_iobs)
       .set_info(base_array_info.customized_copy(
-        labels=["iobs", "sigma_iobs"]))
+        labels=["iobs", "sigma_iobs"],
+        crystal_symmetry_from_file=crystal_symmetry_from_file))
       .set_observation_type_xray_intensity())
 
   def as_miller_arrays(self,

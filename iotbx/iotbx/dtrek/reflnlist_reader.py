@@ -118,11 +118,10 @@ class reflnlist(object):
         force_symmetry=False,
         merge_equivalents=True,
         base_array_info=None):
-    crystal_symmetry = crystal.symmetry(
-      unit_cell=self.unit_cell(),
-      space_group_info=self.space_group_info()).join_symmetry(
-        other_symmetry=crystal_symmetry,
-        force=force_symmetry)
+    crystal_symmetry_from_file = self.crystal_symmetry()
+    crystal_symmetry = crystal_symmetry_from_file.join_symmetry(
+      other_symmetry=crystal_symmetry,
+      force=force_symmetry)
     if (base_array_info is None):
       base_array_info = miller.array_info(source_type="dtrek_reflnlist")
     miller_arrays = []
@@ -136,7 +135,8 @@ class reflnlist(object):
       sigmas=sigmas)
       .select(sigmas > 0)
       .set_info(base_array_info.customized_copy(
-        labels=["Intensity", "SigmaI"]))
+        labels=["Intensity", "SigmaI"],
+        crystal_symmetry_from_file=crystal_symmetry_from_file))
       .set_observation_type_xray_intensity())
     if ("fIntensity+" in self.column_dict):
       assert "fSigmaI+" in self.column_dict
@@ -158,7 +158,8 @@ class reflnlist(object):
         data=ac.data(),
         sigmas=ac.sigmas())
         .set_info(base_array_info.customized_copy(
-          labels=["Intensity+-", "SigmaI+-"]))
+          labels=["Intensity+-", "SigmaI+-"],
+          crystal_symmetry_from_file=crystal_symmetry_from_file))
         .set_observation_type_xray_intensity())
     for column_name in self.column_names:
       if (column_name in ("nH", "nK", "nL",
@@ -172,5 +173,7 @@ class reflnlist(object):
           indices=self.miller_indices,
           anomalous_flag=False),
         data=self.column_dict[column_name])
-        .set_info(base_array_info.customized_copy(labels=[column_name[1:]])))
+        .set_info(base_array_info.customized_copy(
+          labels=[column_name[1:]],
+          crystal_symmetry_from_file=crystal_symmetry_from_file)))
     return miller_arrays

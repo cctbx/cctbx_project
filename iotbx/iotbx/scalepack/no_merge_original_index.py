@@ -75,6 +75,11 @@ class reader(object):
       print >> out, prefix + "Number of original indices:", \
         self.original_indices.size()
 
+  def crystal_symmetry(self):
+    return crystal.symmetry(
+      unit_cell=None,
+      space_group_info=self.space_group_info())
+
   def unmerged_miller_set(self, crystal_symmetry=None, force_symmetry=False):
     if (not force_symmetry
         or crystal_symmetry is None
@@ -99,8 +104,14 @@ class reader(object):
     if (base_array_info is None):
       base_array_info = miller.array_info(
         source_type="scalepack_no_merge_original_index")
+    crystal_symmetry_from_file = self.crystal_symmetry()
+    crystal_symmetry = crystal_symmetry_from_file.join_symmetry(
+      other_symmetry=crystal_symmetry,
+      force=force_symmetry)
     result = miller.array(
-      miller_set=self.unmerged_miller_set(crystal_symmetry, force_symmetry),
+      miller_set=self.unmerged_miller_set(
+        crystal_symmetry=crystal_symmetry,
+        force_symmetry=True),
       data=self.i_obs,
       sigmas=self.sigmas)
     if (merge_equivalents):
@@ -108,7 +119,8 @@ class reader(object):
     return (result
       .set_info(base_array_info.customized_copy(
         labels=["i_obs", "sigma"],
-        merged=merge_equivalents))
+        merged=merge_equivalents,
+        crystal_symmetry_from_file=crystal_symmetry_from_file))
       .set_observation_type_xray_intensity())
 
   def as_miller_arrays(self,
