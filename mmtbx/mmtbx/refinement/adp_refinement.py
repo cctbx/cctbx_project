@@ -176,7 +176,8 @@ class manager(object):
           start_tls_value             = tls_params.start_tls_value,
           run_finite_differences_test = tls_params.run_finite_differences_test,
           eps                         = tls_params.eps,
-          out                         = log)
+          out                         = log,
+          macro_cycle = macro_cycle)
        fmodel.update(target_name = current_target_name)
        fmodel.update_xray_structure(
                    xray_structure = self.tls_refinement_manager.fmodel.xray_structure,

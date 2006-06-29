@@ -37,7 +37,7 @@ master_params = iotbx.phil.parse("""\
     .type = float
   k_sol_min = 0.0
     .type = float
-  b_sol_max = 80.0
+  b_sol_max = 100.0
     .type = float
   b_sol_min = 10.0
     .type = float
@@ -508,14 +508,13 @@ class bulk_solvent_and_scales(object):
        target = fmodel.target_w()
        ksol   = fmodel.k_sol
        bsol   = fmodel.b_sol
-       kb_min_done = False
-       b_cart_min_done = False
+       grid_search_done = False
        for mc in macro_cycles:
-           outf = params.verbose > 0 and mc==macro_cycles[len(macro_cycles)-1]
            do_grid_search = (ksol<params.k_sol_min or ksol>params.k_sol_max or
                              bsol<params.b_sol_min or ksol>params.b_sol_max)
-           #print "do_grid_search = ",do_grid_search
-           if(params.k_sol_b_sol_grid_search and do_grid_search):
+           if(params.k_sol_b_sol_grid_search and do_grid_search and
+                                                         not grid_search_done):
+              grid_search_done = True
               for ksol_ in k_sols:
                   for bsol_ in b_sols:
                       fmodel.update(k_sol = ksol_, b_sol = bsol_)
@@ -525,24 +524,17 @@ class bulk_solvent_and_scales(object):
                          ksol = ksol_
                          bsol = bsol_
               fmodel.update(k_sol = ksol, b_sol = bsol)
-              if(outf):
+              if(params.verbose > 0):
                  h=m+str(mc)+": k & b: grid search; T= "+fmodel.target_name
                  fmodel.show_k_sol_b_sol_b_cart_target(header = h, out = log)
-           if((params.k_sol_b_sol_grid_search,params.minimization_k_sol_b_sol)\
-                                           == (False,True) and do_grid_search):
-              fmodel.update(k_sol   = params.start_minimization_from_k_sol,
-                            b_sol   = params.start_minimization_from_b_sol,
-                            b_cart = params.start_minimization_from_b_cart)
-              ksol, bsol = k_sol_b_sol_minimizer(fmodel = fmodel)
-              kb_min_done = True
-              fmodel.update(k_sol = ksol, b_sol = bsol)
-              if(outf):
+           if(params.minimization_k_sol_b_sol):
+              self._k_sol_b_sol_minimization_helper(params, fmodel)
+              if(params.verbose > 0):
                  h=m+str(mc)+": k & b: minimization; T= "+fmodel.target_name
                  fmodel.show_k_sol_b_sol_b_cart_target(header = h, out = log)
-           if(params.minimization_b_cart and do_grid_search):
+           if(params.minimization_b_cart):
               self._b_cart_minimizer_helper(params, fmodel)
-              b_cart_min_done = True
-              if(outf):
+              if(params.verbose > 0):
                  h=m+str(mc)+": anisotropic scale; T= "+fmodel.target_name
                  fmodel.show_k_sol_b_sol_b_cart_target(header = h, out = log)
            if(params.statistical_solvent):
@@ -555,38 +547,23 @@ class bulk_solvent_and_scales(object):
               #if(params.verbose > 0):
               #   h=m+str(mc)+": (ordered solvent) T= "+self.target_name
               #   self.show_k_sol_b_sol_b_cart_target(header = h, out = log)
-       if([params.minimization_k_sol_b_sol,
-                                 params.minimization_b_cart].count(True) > 0 and
-                               [kb_min_done,b_cart_min_done].count(False) > 0):
-          for mc in minimization_macro_cycles:
-              outf = params.verbose > 0 and \
-                mc==minimization_macro_cycles[len(minimization_macro_cycles)-1]
-              if(params.minimization_k_sol_b_sol and not kb_min_done):
-                 self._k_sol_b_sol_minimization_helper(params, fmodel)
-                 if(outf):
-                    h=m+str(mc)+": k_sol & b_sol min.; T= "+fmodel.target_name
-                    fmodel.show_k_sol_b_sol_b_cart_target(header=h, out = log)
-              if(params.minimization_b_cart and not b_cart_min_done):
-                 self._b_cart_minimizer_helper(params, fmodel)
-                 if(outf):
-                    h=m+str(mc)+": anisotropic scale; T= "+fmodel.target_name
-                    fmodel.show_k_sol_b_sol_b_cart_target(header=h, out = log)
        ### start ml optimization
        if(abs(fmodel.k_sol) < 0.01 or abs(fmodel.b_sol) < 1.0):
           fmodel.update(k_sol = 0, b_sol = 0)
-       if(params_target == "ml"): #XXX temporary OFF; use ls for the moment
-       #if(params_target == "ls_wunit_k1"):
+
+       ksol = fmodel.k_sol
+       bsol = fmodel.b_sol
+       bcart= fmodel.b_cart
+       r_work = fmodel.r_work()
+       if(params_target == "ml"):
           params.target = params_target
           fmodel.update(target_name = params_target)
           if(params.minimization_k_sol_b_sol):
              for mc in minimization_macro_cycles:
-                 outf = params.verbose > 0 and  mc == \
-                    minimization_macro_cycles[len(minimization_macro_cycles)-1]
                  self._k_sol_b_sol_minimization_helper(params, fmodel)
-                 if(outf):
+                 if(params.verbose > 0):
                     h=m+str(mc)+": k_sol & b_sol min.; T= "+fmodel.target_name
                     fmodel.show_k_sol_b_sol_b_cart_target(header=h, out = log)
-          fmodel.update(target_name = fmodel_target)
           if(fmodel.alpha_beta_params is not None):
              fmodel.alpha_beta_params.interpolation = save_interpolation_flag
        if(params.apply_back_trace_of_b_cart and abs(fmodel.u_iso()) > 0.0):
@@ -611,7 +588,7 @@ class bulk_solvent_and_scales(object):
                                         symm_constr = symm_constr)
         fmodel.update(b_cart = b_cart)
     r_final = fmodel.r_work()
-    if(r_final - r_start > 0.005):
+    if(r_final - r_start > 0.01):
        print "Warning: r went up after anisotropic scaling:"
        print "   r_start = ", r_start
        print "   r_final = ", r_final
@@ -621,8 +598,8 @@ class bulk_solvent_and_scales(object):
 
   def _k_sol_b_sol_minimization_helper(self, params, fmodel):
     ksol_orig, bsol_orig = fmodel.k_sol_b_sol()
-    ksol, bsol = k_sol_b_sol_minimizer(fmodel = fmodel)
     r_start = fmodel.r_work()
+    ksol, bsol = k_sol_b_sol_minimizer(fmodel = fmodel)
     if(ksol <= params.k_sol_min or ksol >= params.k_sol_max):
        k1 = abs(abs(ksol) - abs(params.k_sol_min))
        k2 = abs(abs(ksol) - abs(params.k_sol_max))
