@@ -95,6 +95,11 @@ class reader(object):
     print >> out, prefix + "Anomalous flag:", self.anomalous
     print >> out, prefix + "Number of reflections:", self.miller_indices.size()
 
+  def crystal_symmetry(self):
+    return crystal.symmetry(
+      unit_cell=self.unit_cell,
+      space_group_info=self.space_group_info)
+
   def as_miller_array(self,
         crystal_symmetry=None,
         force_symmetry=False,
@@ -102,18 +107,19 @@ class reader(object):
         base_array_info=None):
     if (base_array_info is None):
       base_array_info = miller.array_info(source_type="scalepack_merge")
+    crystal_symmetry_from_file = self.crystal_symmetry()
     return (miller.array(
       miller_set=miller.set(
-        crystal_symmetry=crystal.symmetry(
-          unit_cell=self.unit_cell,
-          space_group_info=self.space_group_info).join_symmetry(
-            other_symmetry=crystal_symmetry,
-            force=force_symmetry),
+        crystal_symmetry=crystal_symmetry_from_file.join_symmetry(
+          other_symmetry=crystal_symmetry,
+          force=force_symmetry),
         indices=self.miller_indices,
         anomalous_flag=self.anomalous),
       data=self.i_obs,
       sigmas=self.sigmas)
-      .set_info(base_array_info.customized_copy(labels=["i_obs", "sigma"]))
+      .set_info(base_array_info.customized_copy(
+        labels=["i_obs", "sigma"],
+        crystal_symmetry_from_file=crystal_symmetry_from_file))
       .set_observation_type_xray_intensity())
 
   def as_miller_arrays(self,

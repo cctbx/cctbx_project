@@ -352,13 +352,15 @@ class _object(boost.python.injector, ext.object):
       base_array_info = miller.array_info(source_type="ccp4_mtz")
     result = []
     for crystal in self.crystals():
-      crystal_symmetry = cctbx.crystal.symmetry(
+      crystal_symmetry_from_file = cctbx.crystal.symmetry(
         unit_cell=crystal.unit_cell(),
-        space_group_info=self.space_group_info()).join_symmetry(
-          other_symmetry=other_symmetry,
-          force=force_symmetry)
+        space_group_info=self.space_group_info())
+      crystal_symmetry = crystal_symmetry_from_file.join_symmetry(
+        other_symmetry=other_symmetry,
+        force=force_symmetry)
       for dataset in crystal.datasets():
         column_groups = self.group_columns(
+          crystal_symmetry_from_file=crystal_symmetry_from_file,
           crystal_symmetry=crystal_symmetry,
           base_array_info=base_array_info,
           dataset=dataset)
@@ -376,7 +378,11 @@ class _object(boost.python.injector, ext.object):
           result.append(column_group)
     return result
 
-  def group_columns(self, crystal_symmetry, base_array_info, dataset):
+  def group_columns(self,
+        crystal_symmetry_from_file,
+        crystal_symmetry,
+        base_array_info,
+        dataset):
     known_mtz_column_types = "".join(column_type_legend.keys())
     assert len(known_mtz_column_types) == 16 # safety guard
     all_columns = dataset.columns()
@@ -488,6 +494,7 @@ class _object(boost.python.injector, ext.object):
         labels = [l0]
         group = self.extract_reals(l0)
       groups.append(column_group(
+        crystal_symmetry_from_file=crystal_symmetry_from_file,
         crystal_symmetry=crystal_symmetry,
         base_array_info=base_array_info,
         primary_column_type=t0,
@@ -497,6 +504,7 @@ class _object(boost.python.injector, ext.object):
     return groups
 
 def column_group(
+      crystal_symmetry_from_file,
       crystal_symmetry,
       base_array_info,
       primary_column_type,
@@ -520,7 +528,8 @@ def column_group(
     data=group.data,
     sigmas=sigmas)
     .set_info(base_array_info.customized_copy(
-      labels=labels)))
+      labels=labels,
+      crystal_symmetry_from_file=crystal_symmetry_from_file)))
   if (observation_type is not None):
     result.set_observation_type(observation_type)
   elif (primary_column_type in "FG"):
