@@ -1,5 +1,6 @@
 from __future__ import division
 import time
+import atexit
 import traceback
 import sys, os
 
@@ -200,22 +201,34 @@ class multi_out(object):
   def __init__(self):
     self.labels = []
     self.file_objects = []
+    self.atexit_send_to = []
     self.closed = False
     self.softspace = 0
+    atexit.register(self._atexit)
 
-  def register(self, label, file_object):
+  def _atexit(self):
+    for f,a in zip(self.file_objects, self.atexit_send_to):
+      if (a is not None): a.write(f.getvalue())
+
+  def register(self, label, file_object, atexit_send_to=None):
     assert not self.closed
     self.labels.append(label)
     self.file_objects.append(file_object)
+    self.atexit_send_to.append(atexit_send_to)
     return self
 
-  def replace_stringio(self, old_label, new_label, new_file_object):
+  def replace_stringio(self,
+        old_label,
+        new_label,
+        new_file_object,
+        new_atexit_send_to=None):
     i = self.labels.index(old_label)
     old_file_object = self.file_objects[i]
     new_file_object.write(old_file_object.getvalue())
     old_file_object.close()
     self.labels[i] = new_label
     self.file_objects[i] = new_file_object
+    self.atexit_send_to[i] = new_atexit_send_to
 
   def isatty(self):
     return False
