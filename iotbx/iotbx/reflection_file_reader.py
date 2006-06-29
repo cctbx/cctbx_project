@@ -109,24 +109,19 @@ class any_reflection_file(object):
         else:
           if (isinstance(self._file_content, miller.array)):
             self._file_content = [self._file_content]
+            self._file_type = "cctbx.miller.array"
           else:
-            miller_arrays = []
-            try:
-              for miller_array in self._file_content:
-                if (isinstance(miller_array, miller.array)):
-                  if (hasattr(miller_array.info(), "source")):
-                    miller_array.info().source = os.path.abspath(
-                      self._file_name)
-                  miller_arrays.append(miller_array)
+            try: miller_arrays = list(self._file_content)
             except KeyboardInterrupt: raise
             except: pass
             else:
-              if (len(miller_arrays) == 0):
-                self._file_content = None
+              self._file_content = miller_arrays
+              for miller_array in miller_arrays:
+                if (not isinstance(miller_array, miller.array)):
+                  self._file_content = None
+                  break
               else:
-                self._file_content = miller_arrays
-          if (self._file_content is not None):
-            self._file_type = "cctbx.miller.array"
+                self._file_type = "cctbx.miller.array"
       if (self._file_type is None):
         self._file_content = None
 
@@ -144,17 +139,30 @@ class any_reflection_file(object):
         force_symmetry=False,
         merge_equivalents=True,
         base_array_info=None):
-    if (self.file_type() is None):
+    if (self._file_type is None):
       return []
-    if (self.file_type() == "cctbx.miller.array"):
-      return self.file_content()
+    info_source = self._file_name
+    if (info_source.startswith("./") or info_source.startswith(".\\")):
+      info_source = info_source[2:]
     if (base_array_info is None):
-      source = self.file_name()
-      if (source.startswith("./") or source.startswith(".\\")):
-        source = source[2:]
       base_array_info = miller.array_info(
-        source=source,
-        source_type=self.file_type())
+        source=info_source,
+        source_type=self._file_type)
+    if (self._file_type == "cctbx.miller.array"):
+      result = []
+      for miller_array in self._file_content:
+        info = miller_array.info()
+        if (info is None or not isinstance(info, miller.array_info)):
+          info = base_array_info
+        info.source = info_source
+        info.crystal_symmetry_from_file = crystal.symmetry(
+          unit_cell=miller_array.unit_cell(),
+          space_group_info=miller_array.space_group_info())
+        result.append(miller_array.customized_copy(
+          crystal_symmetry=miller_array.join_symmetry(
+            other_symmetry=crystal_symmetry,
+            force=force_symmetry)).set_info(info))
+      return result
     result = self._file_content.as_miller_arrays(
       crystal_symmetry=crystal_symmetry,
       force_symmetry=force_symmetry,
