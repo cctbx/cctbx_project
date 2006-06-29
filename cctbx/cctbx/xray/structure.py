@@ -150,6 +150,8 @@ class structure(crystal.special_position_settings):
     return cp
 
   def adjust_u_iso(self):
+    #XXX very bad things happen if some atoms have use_u_iso=False, fix this asap
+    #XXX Proper fix: push to C++ loop over scatterers and count only with use_... True
     u_isos = self._scatterers.extract_u_iso()
     sel = (u_isos <= 0.0)
     u_isos.set_selected(sel, 0.0)
@@ -329,6 +331,8 @@ class structure(crystal.special_position_settings):
                                               selection=selection)
 
   def show_u_statistics(self, text="", out=None):
+    #XXX very bad things happen if some atoms have use_u_iso=False, fix this asap
+    #XXX Proper fix: push to C++ loop over scatterers and count only with use_... True
     if(out is None): out = sys.stdout
     size = self._scatterers.size()
     epis = 8*math.pi**2
@@ -339,6 +343,9 @@ class structure(crystal.special_position_settings):
     nnpd = ipd.count(False)
     beq = self.extract_u_iso_or_u_equiv() * epis
     bisos = self.scatterers().extract_u_iso() * epis
+    #XXX temporary fix
+    if( (bisos < 0.0).count(True) > 0 ): bisos = beq
+    ###
     part1 = "|-"+text
     part2 = "-|"
     n = 79 - len(part1+part2)
@@ -740,6 +747,7 @@ class structure(crystal.special_position_settings):
 
   def n_parameters(self):
     #XXX move to C++ (after anisotropic_flag is gone)
+
     result_ = 0
     for sc in self.scatterers():
         if(sc.flags.grad_site()     ): result_ +=3
