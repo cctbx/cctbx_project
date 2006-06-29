@@ -785,6 +785,22 @@ unused:  3.0759 -         [ 0/0 ]
 @#bin  3:  3.5133 -  3.0759    2    2  2.000
 @#unused:  3.0759 -
 """)
+  #
+  ma.set_info(miller.array_info(
+    source="fake",
+    crystal_symmetry_from_file=crystal.symmetry(
+      unit_cell=(10,10,12,90,90,120),
+      space_group="P6")))
+  s = ma.crystal_symmetry_is_compatible_with_symmetry_from_file()
+  assert not s.unit_cell_is_compatible
+  assert not s.space_group_is_compatible
+  assert not show_diff(s.format_error_message(data_description="made up"), """\
+Working crystal symmetry is not compatible with crystal symmetry from reflection file:
+  made up: fake
+  Unit cell from file: (10, 10, 12, 90, 90, 120)
+    Working unit cell: (11, 11, 13, 90, 90, 120)
+  Space group from file: P 6
+    Working space group: P 3 1 m""")
 
 def exercise_array_2(space_group_info):
   xs = crystal.symmetry(
