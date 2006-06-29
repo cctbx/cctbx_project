@@ -913,7 +913,8 @@ class array_info(object):
         history=None,
         labels=None,
         merged=False,
-        systematic_absences_eliminated=False):
+        systematic_absences_eliminated=False,
+        crystal_symmetry_from_file=None):
     adopt_init_args(self, locals())
 
   def customized_copy(self,
@@ -922,7 +923,8 @@ class array_info(object):
         history=Keep,
         labels=Keep,
         merged=Keep,
-        systematic_absences_eliminated=Keep):
+        systematic_absences_eliminated=Keep,
+        crystal_symmetry_from_file=Keep):
     if (source is Keep): source = self.source
     if (source_type is Keep): source_type = self.source_type
     if (history is Keep): history = self.history
@@ -930,13 +932,16 @@ class array_info(object):
     if (merged is Keep): merged = self.merged
     if (systematic_absences_eliminated is Keep):
       systematic_absences_eliminated = self.systematic_absences_eliminated
+    if (crystal_symmetry_from_file is Keep):
+      crystal_symmetry_from_file = self.crystal_symmetry_from_file
     return array_info(
       source=source,
       source_type=source_type,
       history=history,
       labels=labels,
       merged=merged,
-      systematic_absences_eliminated=systematic_absences_eliminated)
+      systematic_absences_eliminated=systematic_absences_eliminated,
+      crystal_symmetry_from_file=crystal_symmetry_from_file)
 
   def as_string_part_2(self):
     part_2 = []
@@ -1137,6 +1142,16 @@ class array(set):
     print >> f, prefix + "Type of sigmas:", raw_array_summary(self.sigmas())
     set.show_summary(self, f=f, prefix=prefix)
     return self
+
+  def crystal_symmetry_is_compatible_with_symmetry_from_file(self,
+        unit_cell_relative_length_tolerance=0.02,
+        unit_cell_absolute_angle_tolerance=3.,
+        working_point_group=None):
+    return crystal_symmetry_is_compatible_with_symmetry_from_file(
+      miller_array=self,
+      unit_cell_relative_length_tolerance=unit_cell_relative_length_tolerance,
+      unit_cell_absolute_angle_tolerance=unit_cell_absolute_angle_tolerance,
+      working_point_group=working_point_group)
 
   def sigmas_are_sensible(self, critical_ratio=0.75, epsilon=1e-6):
     result=None
@@ -2032,6 +2047,60 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
       phases=phases,
       phases_deg=phases_deg,
       figures_of_merit=figures_of_merit)
+
+class crystal_symmetry_is_compatible_with_symmetry_from_file:
+
+  def __init__(self, miller_array,
+         unit_cell_relative_length_tolerance=0.02,
+         unit_cell_absolute_angle_tolerance=3.,
+         working_point_group=None):
+    self.miller_array = miller_array
+    self.unit_cell_is_compatible = True
+    self.space_group_is_compatible = True
+    info = miller_array.info()
+    if (info is None or info.crystal_symmetry_from_file is None): return
+    ucf = info.crystal_symmetry_from_file.unit_cell()
+    if (ucf is not None):
+      uc = miller_array.unit_cell()
+      if (uc is not None
+          and not uc.is_similar_to(
+            other=ucf,
+            relative_length_tolerance=unit_cell_relative_length_tolerance,
+            absolute_angle_tolerance=unit_cell_absolute_angle_tolerance)):
+        self.unit_cell_is_compatible = False
+    sgf = info.crystal_symmetry_from_file.space_group()
+    if (sgf is not None):
+      if (working_point_group is None):
+        sg = miller_array.space_group()
+        if (sg is not None):
+          working_point_group = sg.build_derived_point_group()
+      if (working_point_group is not None):
+        point_group_from_file = sgf.build_derived_point_group()
+        if (point_group_from_file != working_point_group):
+          self.space_group_is_compatible = False
+
+  def format_error_message(self, data_description):
+    ma = self.miller_array
+    what = []
+    msg = ["  %s: %s" % (data_description, str(ma.info()))]
+    if (not self.unit_cell_is_compatible):
+      what.append("unit cell")
+      msg.extend([
+        "  Unit cell from file: " + str(
+          ma.info().crystal_symmetry_from_file.unit_cell()),
+        "    Working unit cell: " + str(ma.unit_cell())])
+    if (not self.space_group_is_compatible):
+      what.append("space group")
+      msg.extend([
+        "  Space group from file: " + str(
+          ma.info().crystal_symmetry_from_file.space_group_info()),
+        "    Working space group: " + str(ma.space_group_info())])
+    if (len(what) != 0):
+      if (len(what) == 2): what = ["crystal symmetry"]
+      return "\n".join([
+        "Working %s is not compatible with %s" % (what[0], what[0])
+        + " from reflection file:"] + msg)
+    return None
 
 class merge_equivalents(object):
 
