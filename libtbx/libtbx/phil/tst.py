@@ -2248,6 +2248,56 @@ s {
   a = x
 }
 """)
+  #
+  master = phil.parse(input_string="""\
+a = 1
+s {
+  b = 2
+    .multiple = True
+  t
+    .multiple = True
+  {
+    c = None
+    x = None
+  }
+}
+""")
+  custom = phil.parse(input_string="""\
+a = 10
+s.b = 20
+c = 30
+d = 40
+s {
+  t {
+    c = 300
+    x = 0
+  }
+  t.c = $c
+  e = 5
+}
+s.t.y = 1
+""")
+  working, unused = master.fetch(source=custom, track_unused_definitions=True)
+  assert not show_diff(working.as_str(), """\
+a = 10
+s {
+  b = 2
+  b = 20
+  t {
+    c = 30
+    x = None
+  }
+  t {
+    c = 300
+    x = 0
+  }
+}
+""")
+  assert not show_diff(
+    "\n".join([str(obj_loc) for obj_loc in unused]), """\
+d (input line 4)
+s.e (input line 11)
+s.t.y (input line 13)""")
 
 def exercise_extract():
   parameters = phil.parse(input_string="""\

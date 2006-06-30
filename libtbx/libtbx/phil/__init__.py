@@ -431,6 +431,9 @@ class object_locator(object):
     self.path = path
     self.object = object
 
+  def __str__(self):
+    return "%s%s" % (self.path, self.object.where_str)
+
 class definition: # FUTURE definition(object)
 
   attribute_names = [
@@ -438,7 +441,8 @@ class definition: # FUTURE definition(object)
     "type", "multiple", "input_size", "expert_level"]
 
   __slots__ = ["name", "words", "primary_id", "primary_parent_scope",
-               "is_disabled", "where_str", "merge_names"] + attribute_names
+               "is_disabled", "where_str", "merge_names", "tmp"] \
+              + attribute_names
 
   def __init__(self,
         name,
@@ -448,6 +452,7 @@ class definition: # FUTURE definition(object)
         is_disabled=False,
         where_str="",
         merge_names=False,
+        tmp=None,
         help=None,
         caption=None,
         short_caption=None,
@@ -467,6 +472,7 @@ class definition: # FUTURE definition(object)
     self.is_disabled = is_disabled
     self.where_str = where_str
     self.merge_names = merge_names
+    self.tmp = tmp
     self.help = help
     self.caption = caption
     self.short_caption = short_caption
@@ -491,10 +497,15 @@ class definition: # FUTURE definition(object)
   def full_path(self):
     return full_path(self)
 
+  def assign_tmp(self, value, active_only=False):
+    if (not active_only or not self.is_disabled):
+      self.tmp = value
+
   def fetch(self, source, disable_empty=True):
     if (not isinstance(source, definition)):
       raise RuntimeError('Incompatible parameter objects "%s"%s and "%s"%s' %
         (self.name, self.where_str, source.name, source.where_str))
+    source.tmp = True
     source = source.resolve_variables()
     type_fetch = getattr(self.type, "fetch", None)
     if (type_fetch is None):
@@ -570,8 +581,14 @@ class definition: # FUTURE definition(object)
     if (self.name == "include"): return False
     return self.extract() is None
 
-  def _all_definitions(self, suppress_multiple, parent, parent_path, result):
+  def _all_definitions(self,
+        suppress_multiple,
+        select_tmp,
+        parent,
+        parent_path,
+        result):
     if (suppress_multiple and self.multiple): return
+    if (select_tmp is not None and not (self.tmp == select_tmp)): return
     if (self.name == "include"): return
     result.append(object_locator(
       parent=parent, path=parent_path+self.name, object=self))
@@ -623,6 +640,7 @@ class definition: # FUTURE definition(object)
             if (not isinstance(substitution_source, definition)):
               raise RuntimeError("Not a definition: $%s%s" % (
                 fragment.value, word.where_str()))
+            substitution_source.tmp = True
             variable_words = substitution_source.resolve_variables().words
         if (variable_words is None):
           env_var = os.environ.get(fragment.value, None)
@@ -878,6 +896,15 @@ class scope: # FUTURE scope(object)
   def full_path(self):
     return full_path(self)
 
+  def assign_tmp(self, value, active_only=False):
+    if (not active_only):
+      for object in self.objects:
+        object.assign_tmp(value=value)
+    else:
+      for object in self.objects:
+        if (self.is_disabled): continue
+        object.assign_tmp(value=value, active_only=True)
+
   def adopt(self, object):
     assert len(object.name) > 0
     primary_parent_scope = self
@@ -1011,22 +1038,29 @@ class scope: # FUTURE scope(object)
         return False
     return True
 
-  def _all_definitions(self, suppress_multiple, parent, parent_path, result):
+  def _all_definitions(self,
+        suppress_multiple,
+        select_tmp,
+        parent,
+        parent_path,
+        result):
     parent_path += self.name+"."
     for object in self.active_objects():
       if (suppress_multiple and object.multiple): continue
       object._all_definitions(
         suppress_multiple=suppress_multiple,
+        select_tmp=select_tmp,
         parent=self,
         parent_path=parent_path,
         result=result)
 
-  def all_definitions(self, suppress_multiple=False):
+  def all_definitions(self, suppress_multiple=False, select_tmp=None):
     result = []
     for object in self.active_objects():
       if (suppress_multiple and object.multiple): continue
       object._all_definitions(
         suppress_multiple=suppress_multiple,
+        select_tmp=select_tmp,
         parent=self,
         parent_path="",
         result=result)
@@ -1122,7 +1156,11 @@ class scope: # FUTURE scope(object)
         .as_str(attributes_level=3),
       converter_registry=converter_registry).extract()
 
-  def fetch(self, source=None, sources=None, disable_empty=True):
+  def fetch(self,
+        source=None,
+        sources=None,
+        disable_empty=True,
+        track_unused_definitions=False):
     assert [source, sources].count(None) == 1
     combined_objects = []
     if (sources is None): sources = [source]
@@ -1134,6 +1172,8 @@ class scope: # FUTURE scope(object)
             (self.name, self.where_str, source.name, source.where_str))
       combined_objects.extend(source.objects)
     source = self.customized_copy(objects=combined_objects)
+    if (track_unused_definitions):
+      source.assign_tmp(value=False, active_only=True)
     result_objects = []
     for master_object in self.master_active_objects():
       if (len(self.name) == 0):
@@ -1187,8 +1227,11 @@ class scope: # FUTURE scope(object)
           result_objects.append(master_object.copy())
         else:
           result_objects.append(result_object)
-    return self.customized_copy(
+    result = self.customized_copy(
       objects=clean_fetched_scope(fetched_objects=result_objects))
+    if (track_unused_definitions):
+      return result, source.all_definitions(select_tmp=False)
+    return result
 
   def tidy_master(self):
     return self.fetch(self, disable_empty=False)
