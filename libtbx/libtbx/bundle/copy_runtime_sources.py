@@ -18,6 +18,7 @@ def copy_dist_files(dist_copy, dirname, names):
         or name.startswith("copying")
         or name.startswith("copyright")
         or name.startswith("license")
+        or name == "cci_diffs"
         or name == "academic_software_licence.pdf"
         or name == "symop.lib"
         or name == "case_library"
