@@ -249,17 +249,14 @@ def run(args):
     .option(None, "--weak_symmetry",
       action="store_true",
       default=False,
-      dest="weak_symmetry",
       help="symmetry on command line is weaker than symmetry found in files")
     .option(None, "--show_data",
       action="store_true",
       default=False,
-      dest="show_data",
       help="show Miller indices and data of all arrays")
     .option(None, "--pickle",
       action="store",
       type="string",
-      dest="pickle",
       help="write all data to FILE ('--pickle .' copies name of input file)",
       metavar="FILE")
   ).process(args=args)

@@ -67,7 +67,7 @@ def main():
   parser = OptionParser(
     usage="usage: python %prog [options] file_name ...")
   parser.add_option("-c", "--cutoff",
-    type="float", dest="cutoff", default=6.05, metavar="FLOAT",
+    type="float", default=6.05, metavar="FLOAT",
     help="maximum sin(theta)/lambda")
   (options, args) = parser.parse_args()
   if (len(args) < 1):

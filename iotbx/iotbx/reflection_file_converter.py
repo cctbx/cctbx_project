@@ -20,56 +20,47 @@ def run(args, simply_return_all_miller_arrays=False):
     .option(None, "--weak_symmetry",
       action="store_true",
       default=False,
-      dest="weak_symmetry",
       help="symmetry on command line is weaker than symmetry found in files")
     .enable_resolutions()
     .option(None, "--label",
       action="store",
       type="string",
-      dest="label",
       help="Substring of reflection data label or number",
       metavar="STRING")
     .option(None, "--non_anomalous",
       action="store_true",
       default=False,
-      dest="non_anomalous",
       help="Averages Bijvoet mates to obtain a non-anomalous array")
     .option(None, "--r_free_label",
       action="store",
       type="string",
-      dest="r_free_label",
       help="Substring of reflection data label or number",
       metavar="STRING")
     .option(None, "--r_free_test_flag_value",
       action="store",
       type="int",
-      dest="r_free_test_flag_value",
       help="Value in R-free array indicating assignment to free set.",
       metavar="FLOAT")
     .option(None, "--generate_r_free_flags",
       action="store_true",
       default=False,
-      dest="generate_r_free_flags",
       help="Generates a new array of random R-free flags"
            " (MTZ and CNS output only).")
     .option(None, "--r_free_flags_fraction",
       action="store",
       default=0.10,
       type="float",
-      dest="r_free_flags_fraction",
       help="Target fraction free/work reflections (default: 0.10).",
       metavar="FLOAT")
     .option(None, "--r_free_flags_max_free",
       action="store",
       default=2000,
       type="int",
-      dest="r_free_flags_max_free",
       help="Maximum number of free reflections (default: 2000).",
       metavar="FLOAT")
     .option(None, "--change_of_basis",
       action="store",
       type="string",
-      dest="change_of_basis",
       help="Change-of-basis operator: h,k,l or x,y,z"
            " or to_reference_setting, to_primitive_setting, to_niggli_cell,"
            " to_inverse_hand",
@@ -77,7 +68,6 @@ def run(args, simply_return_all_miller_arrays=False):
     .option(None, "--expand_to_p1",
       action="store_true",
       default=False,
-      dest="expand_to_p1",
       help="Generates all symmetrically equivalent reflections."
            " The space group symmetry is reset to P1."
            " May be used in combination with --change_to_space_group to"
@@ -85,69 +75,58 @@ def run(args, simply_return_all_miller_arrays=False):
     .option(None, "--change_to_space_group",
       action="store",
       type="string",
-      dest="change_to_space_group",
       help="Changes the space group and merges equivalent reflections"
            " if necessary",
       metavar="SYMBOL|NUMBER")
     .option(None, "--write_mtz_amplitudes",
       action="store_true",
       default=False,
-      dest="write_mtz_amplitudes",
       help="Converts intensities to amplitudes before writing MTZ format;"
            " requires --mtz_root_label")
     .option(None, "--write_mtz_intensities",
       action="store_true",
       default=False,
-      dest="write_mtz_intensities",
       help="Converts amplitudes to intensities before writing MTZ format;"
            " requires --mtz_root_label")
     .option(None,"--remove_negatives",
       action="store_true",
       default=False,
-      dest="remove_negatives",
       help="Remove negative intensities or amplitudes from the data set" )
 
     .option(None, "--scale_max",
       action="store",
       type="float",
-      dest="scale_max",
       help="Scales data such that the maximum is equal to the given value",
       metavar="FLOAT")
     .option(None, "--scale_factor",
       action="store",
       type="float",
-      dest="scale_factor",
       help="Multiplies data with the given factor",
       metavar="FLOAT")
     .option(None, "--sca",
       action="store",
       type="string",
-      dest="sca",
       help=
         "write data to Scalepack FILE ('--sca .' copies name of input file)",
       metavar="FILE")
     .option(None, "--mtz",
       action="store",
       type="string",
-      dest="mtz",
       help="write data to MTZ FILE ('--mtz .' copies name of input file)",
       metavar="FILE")
     .option(None, "--mtz_root_label",
       action="store",
       type="string",
-      dest="mtz_root_label",
       help="Root label for MTZ file (e.g. Fobs)",
       metavar="STRING")
     .option(None, "--cns",
       action="store",
       type="string",
-      dest="cns",
       help="write data to CNS FILE ('--cns .' copies name of input file)",
       metavar="FILE")
     .option(None, "--shelx",
       action="store",
       type="string",
-      dest="shelx",
       help="write data to SHELX FILE ('--shelx .' copies name of input file)",
       metavar="FILE")
   ).process(args=args)

@@ -152,13 +152,11 @@ def run(args):
     .option(None, "--tolerance",
       action="store",
       type="float",
-      dest="tolerance",
       default=3.,
       help="match tolerance",
       metavar="FLOAT")
     .option(None, "--diffraction_index_equivalent",
       action="store_true",
-      dest="diffraction_index_equivalent",
       help="Use only if models are diffraction-index equivalent.")
   ).process(args=args, nargs=2)
   crystal_symmetry = command_line.symmetry

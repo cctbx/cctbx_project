@@ -94,24 +94,20 @@ def run(args, this_command="mmtbx.geometry_minimization"):
     .option(None, "--max_iterations",
       action="store",
       type="int",
-      dest="max_iterations",
       default=500,
       metavar="INT")
     .option(None, "--macro_cycles",
       action="store",
       type="int",
-      dest="macro_cycles",
       default=1,
       metavar="INT")
     .option(None, "--write_pdb_rms_threshold",
       action="store",
       type="float",
-      dest="write_pdb_rms_threshold",
       default=None,
       metavar="FLOAT")
     .option(None, "--show_geometry_restraints",
-      action="store_true",
-      dest="show_geometry_restraints")
+      action="store_true")
   ).process(args=args, min_nargs=1, max_nargs=2)
   input_pdb_file_name = None
   output_pdb_file_name = None

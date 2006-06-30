@@ -118,33 +118,28 @@ def ehms( args ):
 
     .option(None, "--graph",
             action="store",
-            dest="graph",
             default=None,
             help="A graphical representation of the graph will be written out. Requiers Graphviz to be installed and in path.")
 
     .option(None, "--centring_type",
             action="store",
             type="str",
-            dest="centring_type",
             help="Centring type, choose from P,A,B,C,I,R,F")
 
     .option(None, "--other_unit_cell",
             action="store",
             type="str",
-            dest="other_unit_cell",
             help="Other unit cell, for unit cell comparison",
             metavar="10,20,30,90,103.7,90")
 
     .option(None, "--other_space_group",
             action="store",
             type="str",
-            dest="other_space_group",
             help="space group for other_unit_cell, for unit cell comparison")
 
     .option(None, "--other_centring_type",
             action="store",
             type="str",
-            dest="other_centring_type",
             help="Centring type, choose from P,A,B,C,I,R,F")
 
     .option(None, "--no_point_group_graph",
@@ -171,7 +166,6 @@ def ehms( args ):
 
      .option(None, "--max_order",
              action="store",
-             dest="max_order",
              type="int",
              default=1,
              metavar="INT",

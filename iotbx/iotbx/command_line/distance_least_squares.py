@@ -10,13 +10,11 @@ def run(args, distance_cutoff=3.5):
     .option(None, "--tag",
       action="store",
       type="string",
-      dest="tag",
       help="tag as it appears in the strudat file")
     .option(None, "--n_trials",
       action="store",
       type="int",
       default=1,
-      dest="n_trials",
       help="Number of trial per structure",
       metavar="INT")
   ).process(args=args)

@@ -85,7 +85,6 @@ class iotbx_option_parser(option_parser):
       action="store",
       default=default,
       type="float",
-      dest="resolution",
       help="High resolution limit (minimum d-spacing, d_min)",
       metavar="FLOAT"))
     return self
@@ -95,7 +94,6 @@ class iotbx_option_parser(option_parser):
       action="store",
       default=default,
       type="float",
-      dest="low_resolution",
       help="Low resolution limit (maximum d-spacing, d_max)",
       metavar="FLOAT"))
     return self

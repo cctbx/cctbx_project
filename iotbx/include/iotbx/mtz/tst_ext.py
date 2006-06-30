@@ -1234,21 +1234,17 @@ min & max values of detector coords (pixels): [86.0, 87.0, 88.0, 89.0, 90.0, 91.
 def exercise():
   command_line = (iotbx_option_parser()
     .option(None, "--verbose",
-      action="store_true",
-      dest="verbose")
+      action="store_true")
     .option(None, "--forever",
       action="store_true",
-      dest="forever",
       help="Infinite loop, for detection of memory leaks")
     .option(None, "--walk",
       action="store",
       type="string",
-      dest="walk",
       metavar="ROOT_DIR",
       help="Find and process all MTZ files under ROOT_DIR")
     .option(None, "--full",
       action="store_true",
-      dest="full",
       help="Visit all MTZ files")
   ).process(args=sys.argv[1:])
   exercise_read_corrupt()
