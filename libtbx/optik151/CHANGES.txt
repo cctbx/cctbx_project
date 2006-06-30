@@ -1,0 +1,279 @@
+1.5.1 (19 Apr 2006)
+-------------------
+
+  * Fix so the 'merge' script works again (bugs spotted, and mostly
+    fixed, by Andrea 'fwyzard' Bocci).
+
+  * SF bug #1145594: add 'destroy()' method to OptionParser so
+    applications can explicitly break reference cycles, making life
+    easier for Python's garbage collector.
+
+  * SF feature #988126: add 'epilog' attribute to OptionParser
+    (and constructor arg): paragraph of text to print after the
+    main option help.
+
+  * Corrected French translation (po/optik/fr.po) (Laurent Laporte).
+
+  * Beefed up reference guide.
+
+  * Backported to Python 2.0/2.1 (Giovanni Bajo).
+
+1.5 (6 Dec 2004)
+----------------
+
+(All changes first released in Optik 1.5a1 except as noted.)
+
+  * Optik now requires Python 2.2 or later.
+
+  * Add expansion of default values in help text: the string
+    "%default" in an option's help string is expanded to str() of
+    that option's default value, or "none" if no default value.
+
+  * SF bug #955889: option default values that happen to be strings are
+    now processed in the same way as values from the command line; this
+    allows generation of nicer help when using custom types.  Can
+    be disabled with parser.set_process_default_values(False).
+
+  * SF bug #960515: don't crash when generating help for callback
+    options that specify 'type', but not 'dest' or 'metavar'.
+
+  * SF feature #815264: change the default help format for short options
+    that take an argument from e.g. "-oARG" to "-o ARG"; add
+    set_short_opt_delimiter() and set_long_opt_delimiter() methods to
+    HelpFormatter to allow (slight) customization of the formatting.
+
+  * SF patch #736940: internationalize Optik: all built-in user-
+    targeted literal strings are passed through gettext.gettext().  Also
+    added po/ directory for message catalog and translations, so that
+    Optik-based applications have a single place to go for translations
+    of Optik's built-in messags.  Include translations for Danish and
+    German (thanks to Frederik S. Olesen and Martin v. Löwis
+    respectively), and partial translations for French (by me).
+
+  * SF bug #878453 (Python): respect $COLUMNS environment variable for
+    wrapping help output.
+
+  * SF feature #964317: allow type objects to specify option types;
+    allow "str" as an alias for "string".
+
+  * SF feature #988122: expand "%prog" in the 'description' passed
+    to OptionParser, just like in the 'usage' and 'version' strings.
+    (This is *not* done in the 'description' passed to OptionGroup.)
+
+  * Added HTML-formatted docs to the source distribution (in addition
+    to the reStructuredText source files).
+
+  * Added three new examples: custom_source.py, custom_type.py, and
+    no_help.py.
+
+  * Remove the old, broken "ignore" option conflict handler -- was
+    only needed for compatibility with Optik 1.1.
+
+  * Move documentation into docs/ directory, and write a script
+    (mkpydoc) to automatically convert it to LaTeX for the Python
+    standard library manual.  Many documentation improvements.
+    (1.5a2)
+
+  * SF #997100: attempt to avoid triggering a FutureWarning in
+    __repr__() when using id() with "%x" (1.5a2).
+
+  * SF #1048725: fix typo in Values.__eq__() introduced in 1.5a1.
+
+  * Fix test script so it plays nice when being run with other test
+    scripts (as in the Python test suite) (1.5a2).
+
+  * SF patch #870807: allow users to specify integer option arguments
+    in hexadecimal, octal, or binary with leading "0x", "0", or "0b"
+    (1.5 final).
+
+  * SF feature #1050184: add 'append_const' action (patch by
+    Andrea 'fwyzard' Bocci) (1.5 final).
+
+  * Keep going if importing gettext fails (so optparse can be used
+    in the Python build process) (1.5 final).
+
+
+Python 2.3 (29 July 2003)
+-------------------------
+
+(A couple of fixes were made in Optik in time for its inclusion in
+Python 2.3 as optparse, but I never got around to making a corresponding
+bug-fix release of Optik.)
+
+  * Add __all__ to optik package and optparse module (fixes
+    SF bug #728563).
+
+  * Fix so the 'prog' attribute of OptionParser (which was
+    surreptitiously added in 1.4.1, but undocumented, untested,
+    and not working) actually works.
+
+
+1.4.1 (20 Apr 2003)
+-------------------
+
+  * Changed to use the new textwrap module included with Python 2.3.
+    Includes a copy of textwrap.py for use with older Python versions.
+
+  * Set __all__ in each of the optik.* modules, to make life easier for
+    optik/__init__.py.
+
+  * Rewrote the test suite to use PyUnit, and added some new tests
+    that revealed some long-hidden bugs.  Fixed those bugs.
+    (Thanks to Johannes Gijsbers for doing all the work!)
+
+  * For versions of Python with builtin True and False values (ie.
+    Python 2.2.1 and later), make store_true/store_false use them.
+
+  * Add forwards-compatibility 'optparse' module, so scripts can
+    import from 'optparse' and work under base Python 2.3, or
+    under older Pythons with Optik 1.4.1 or later installed.
+
+
+1.4 (12 Oct 2002)
+-----------------
+
+[editorial note: most significant code changes in Optik 1.4 were
+ made by David Goodger; except as noted below, David should be credited
+ with everything in this list!  I just rearranged some of his changes,
+ renamed a few thing, and put out the release.  --Greg]
+
+  * Factored the help-formatting code out of OptionParser into
+    some new classes (HelpFormatter and subclasses) in help.py.  This
+    should make it a lot easier to customize how help is formatted.
+
+  * Added the notion of "option groups": an OptionParser can now
+    contain several option groups, each which contains several options.
+    The main purpose of this is to enable sensibly-grouped help output,
+    but it opens up all sorts of interesting (and largely untested)
+    possibilities for code to throw whole option groups around instead
+    of individual options.  Added two new classes: OptionGroup, and
+    OptionContainer for code common to OptionParser and OptionGroup.
+    (OptionContainer should be invisible to programmers using Optik).
+
+  * Added the 'description' attribute and set_description() method to
+    both OptionParser and OptionGroup (actually OptionContainer, but
+    I just said that class was invisible).  Again, this is to make
+    help output more useful.
+
+  * Made it easier for OptionParser subclasses to decide whether
+    they should have the standard "help" option, by moving the logic
+    from class level to the _populate_option_list() method.
+
+  * Added the "choice" option type, which is just a string type
+    constrained to a fixed set of values.
+
+  * Added method get_default_values() to OptionParser.
+
+  * Rewrote how OptionParser recognizes abbreviated long
+    options; removed a redundant internal instance attribute.
+
+  * Simplify parsing logic in OptionParser a tad by relocating a loop
+    and renaming _process_arg() to _process_args().
+
+
+1.3 (11 Apr 2002)
+-----------------
+
+  * Fixed a couple of lurking bugs found by PyChecker.
+
+  * You can now get away with not supplying an option's type,
+    no matter the action: Optik now assumes a default type of "string".
+
+  * You can now get away with not supplying an option's destination:
+    Optik now derives a default destination from the first long option,
+    or the first short option if no long options were given.  Eg. an
+    option string "--foo-bar" has the default destination 'foo_bar'.
+
+  * Refactored both Option's and OptionParser's constructors to
+    make life easier for people extending Optik.
+
+  * Added the "examples/" subdirectory -- this is a repository of
+    examples of extending and using Optik; the goal is to provide
+    canonical implementations of various features that I don't want to
+    add to Optik proper, but that are occasionally requested.  (Also,
+    this gives me a good place to test Optik's extensibility.)
+
+  * Added support for long and complex option types, mainly for
+    completeness (patch by Matthew Mueller).
+
+  * Added make_option() as an alias for the Option constructor, because
+    someday there might be many Option classes (in which case
+    make_option() will become a factory function).
+
+
+1.2 (18 Dec 2001)
+-----------------
+
+  * Fixed how bare "--" and "-" are handled for consistency with
+    GNU getopt.  Note that this affects how callbacks that consume
+    arguments should be implemented; see callbacks.txt for details.
+    Thanks to Matthew Mueller for the patch.
+
+  * Added 'version' argument to OptionParser constructor; if present,
+    Option automatically adds a --version option to your option
+    parser.  'version' is a string that is expanded in the same
+    way as 'usage', ie. "%prog" is replaced by the program name.
+
+  * Added several methods to OptionParser that let you query/manipulate
+    the list of options: has_option(), get_option(), remove_option().
+
+  * Added detection and handling of option conflicts.  Eg. if you
+    define two options with a "-v" option string, the default is now to
+    raise an exception; the old behaviour was to ignore the conflict.  A
+    third way to handle conflicts is to resolve them in favour of the
+    last option added.
+
+  * Added separate documentation for callback options in callback.txt,
+    and removed most callback documentation from advanced.txt.
+
+  * Split the overgrown test_optik.py script up into
+    test_{basics,bool,count,nargs,misc}.py, and added a shell script
+    (test/runall) that will run all tests in one go.
+
+
+1.1.1 (28 Nov 2001)
+-------------------
+
+  * Various documentation tweaks (thanks to Alan Eldridge
+    <alane@geeksrus.net> for prodding me into those, and
+    for doing most of one).
+
+  * Fixed a bug that prevented users from doing things like -f""
+    or --file="" on the command-line.  Involved rewriting some hairy
+    code in OptionParser, which has the pleasant side-effect that the
+    first argument to an option with multiple arguments can now be
+    jammed up against the option, eg. "-p3 5 1".
+
+
+1.1 (17 Nov 2001)
+-----------------
+
+  * Changed OptionParser.parse_args() method to allow interspersed
+    options and positional arguments by default; can be disabled
+    with disable_interspersed_args() method.  Reorganized the guts of
+    the OptionParser class fairly heavily.
+
+  * Split test_optik.py up into three scripts (test_optik,
+    test_callback, and test_extend), and moved them all into
+    the test/ directory.
+
+  * Added the 'nargs' attribute to Option, which allows options to
+    require more than one argument on the command line.  This
+    enables eg.
+      parser.add_option("-p", "--point",
+                        action="append", nargs=3,
+                        type="float", dest="points")
+    to turn a command-line like this:
+      --point 3.4 -5 95 -p 4 -4 6
+    into this:
+      options.points == [(3.4, -5.0, 95.0), (4.0, -4.0, 6.0)]
+
+  * Fixed so the last default value explicitly specified for a
+    particular option destination takes precedence, even if
+    it's None.
+
+
+1.0 (11 Nov 2001)
+-----------------
+
+  * First public release
