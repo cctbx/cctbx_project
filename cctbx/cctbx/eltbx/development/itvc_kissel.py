@@ -55,10 +55,10 @@ def main():
   parser = OptionParser(
     usage="usage: python %prog [options] itvc_table kissel_files ...")
   parser.add_option("-c", "--cutoff",
-    type="float", dest="cutoff", default=6, metavar="FLOAT",
+    type="float", default=6, metavar="FLOAT",
     help="maximum sin(theta)/lambda")
   parser.add_option("-g", "--high_resolution_only",
-    action="store_true", dest="high_resolution_only", default=0,
+    action="store_true", default=0,
     help="analyze points beyond sin(theta)/lambda=2A-1 only")
   (options, args) = parser.parse_args()
   if (len(args) < 2):

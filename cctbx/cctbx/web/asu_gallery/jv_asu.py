@@ -266,7 +266,6 @@ def run(http_server_name=None, html_subdir="asu_gallery"):
   parser.add_option("-s", "--server",
     action="store",
     type="string",
-    dest="server",
     help="network name of http server",
     metavar="NAME")
   options, args = parser.parse_args()

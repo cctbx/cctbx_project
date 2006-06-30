@@ -129,19 +129,19 @@ def main():
     action="store", dest="table_of_gaussians",
     help="wk1995 or it1992")
   parser.add_option("-q", "--quiet",
-    action="store_true", dest="quiet", default=0,
+    action="store_true", default=0,
     help="do not show values for large errors, only stol")
   parser.add_option("-v", "--verbose",
-    action="store_true", dest="verbose", default=0,
+    action="store_true", default=0,
     help="show comparison table for each element")
   parser.add_option("-l", "--low_resolution_only",
-    action="store_true", dest="low_resolution_only", default=0,
+    action="store_true", default=0,
     help="analyze points up to sin(theta)/lambda=2A-1 only")
   parser.add_option("-g", "--high_resolution_only",
-    action="store_true", dest="high_resolution_only", default=0,
+    action="store_true", default=0,
     help="analyze points beyond sin(theta)/lambda=2A-1 only")
   parser.add_option("-s", "--significant_errors_only",
-    action="store_true", dest="significant_errors_only", default=0,
+    action="store_true", default=0,
     help="show errors greater than 1% only")
   (options, args) = parser.parse_args()
   if (len(args) != 1):

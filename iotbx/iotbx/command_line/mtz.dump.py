@@ -32,18 +32,14 @@ def run():
     .option("-v", "--verbose",
       action="store_true",
       default=False,
-      dest="verbose",
       help="Enable CMTZ library messages.")
     .option(None, "--show_column_data",
-      action="store_true",
-      dest="show_column_data")
+      action="store_true")
     .option(None, "--show_batches",
-      action="store_true",
-      dest="show_batches")
+      action="store_true")
     .option(None, "--walk",
       action="store",
       type="string",
-      dest="walk",
       metavar="ROOT_DIR",
       help="Find and process all MTZ files under ROOT_DIR")
   ).process(args=sys.argv[1:])

@@ -79,16 +79,16 @@ def main():
   parser = OptionParser(
     usage="usage: python %prog file_name [n_chunks,i_chunk] [scatterer...]")
   parser.add_option("-v", "--verbose",
-    action="store_true", dest="verbose", default=0,
+    action="store_true", default=0,
     help="show comparison table for each element")
   parser.add_option("-c", "--cutoff",
-    type="float", dest="cutoff", default=6, metavar="FLOAT",
+    type="float", default=6, metavar="FLOAT",
     help="maximum sin(theta)/lambda")
   parser.add_option("-n", "--max_n_terms",
-    type="int", dest="max_n_terms", default=5, metavar="INT",
+    type="int", default=5, metavar="INT",
     help="maximum number of Gaussian terms")
   parser.add_option("-s", "--six_term",
-    action="store_true", dest="six_term", default=0,
+    action="store_true", default=0,
     help="fit six-term Gaussians using Golay based starts")
   (options, args) = parser.parse_args()
   if (len(args) < 1):

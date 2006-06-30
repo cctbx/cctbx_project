@@ -13,17 +13,14 @@ def run(args):
     .option(None, "--force_symmetry",
       action="store_true",
       default=False,
-      dest="force_symmetry",
       help="symmetry on command line is stronger than symmetry found in files")
     .option("-v", "--verbose",
       action="store_true",
       default=False,
-      dest="verbose",
       help="show scatterers")
     .option(None, "--pickle",
       action="store",
       type="string",
-      dest="pickle",
       help="write all data to FILE ('--pickle .' copies name of input file)",
       metavar="FILE")
   ).process(args=args)

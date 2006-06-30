@@ -21,7 +21,6 @@ def run(args):
       action="store",
       type="float",
       default=3.,
-      dest="delta",
       help="angular tolerance in degrees")
   ).process(args=args, max_nargs=1)
   # Pick up symmetry object

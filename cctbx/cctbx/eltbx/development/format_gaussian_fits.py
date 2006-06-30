@@ -166,13 +166,13 @@ def main():
   parser = OptionParser(
     usage="usage: python %prog [options] file_name ...")
   parser.add_option("-t", "--itvc",
-    action="store", dest="itvc", metavar="FILE",
+    action="store", metavar="FILE",
     help="file name for international tables data")
   parser.add_option("-k", "--kissel",
-    action="store", dest="kissel", metavar="DIRECTORY",
+    action="store", metavar="DIRECTORY",
     help="directory name for Kissel data")
   parser.add_option("-c", "--cross_check",
-    action="store_true", dest="cross", default=0,
+    action="store_true", default=0,
     help="compare two quick_summary.pickle files")
   (options, args) = parser.parse_args()
   if (len(args) < 1):

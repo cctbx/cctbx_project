@@ -341,11 +341,9 @@ def run(args):
     .option(None, "--weak_symmetry",
       action="store_true",
       default=False,
-      dest="weak_symmetry",
       help="symmetry on command line is weaker than symmetry found in files")
     .option(None, "--quick",
       action="store_true",
-      dest="quick",
       help="Do not compute statistics between pairs of data arrays")
     .enable_resolutions()
     .option(None, "--bins",
@@ -373,7 +371,6 @@ def run(args):
       action="store",
       type="float",
       default=3.,
-      dest="lattice_symmetry_max_delta",
       help="angular tolerance in degrees used in the determination"
            " of the lattice symmetry")
   ).process(args=args)

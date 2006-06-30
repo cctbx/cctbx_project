@@ -40,29 +40,24 @@ def run(args):
     .option(None, "--tag",
       action="store",
       type="string",
-      dest="tag",
       help="tag as it appears in the strudat file")
     .option(None, "--distance_cutoff",
       action="store",
       type="float",
       default=5,
-      dest="distance_cutoff",
       help="Maximum distance to be considered",
       metavar="FLOAT")
     .option(None, "--show_cartesian",
       action="store_true",
-      dest="show_cartesian",
       help="Show Cartesian coordinates (instead of fractional)")
     .option(None, "--cs",
       action="store",
       type="int",
-      dest="cs",
       help="Compute N terms of the coordination sequences",
       metavar="N")
     .option(None, "--coseq",
       action="store",
       type="string",
-      dest="coseq",
       help="name of file with known coordination sequences",
       metavar="FILE")
   ).process(args=args)

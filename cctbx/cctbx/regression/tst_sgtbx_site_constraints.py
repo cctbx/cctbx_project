@@ -135,11 +135,9 @@ def process_zeolite_atlas(args):
   command_line = (iotbx_option_parser()
     .option(None, "--tag",
       action="store",
-      type="string",
-      dest="tag")
+      type="string")
     .option(None, "--verbose",
-      action="store_true",
-      dest="verbose")
+      action="store_true")
   ).process(args=args)
   atlas_file = libtbx.env.find_in_repositories(
     relative_path="regression/misc/strudat_zeolite_atlas",
