@@ -248,7 +248,8 @@ class manager(object):
     print >> out, "|"+"-"*77+"|"
     out.flush()
 
-  def write_pdb_file(self, out, crystal_symmetry = None, selection=None):
+  def write_pdb_file(self, out, crystal_symmetry = None, selection=None,
+                     xray_structure = None):
     if(crystal_symmetry is None):
        crystal_symmetry = self.crystal_symmetry
     if(crystal_symmetry is not None):
@@ -256,11 +257,15 @@ class manager(object):
                                          crystal_symmetry = crystal_symmetry)
        print >> out, pdb.format_scale_records(
                                     unit_cell = crystal_symmetry.unit_cell())
-    sites_cart  = self.xray_structure.sites_cart()
-    scatterers  = self.xray_structure.scatterers()
+    if(xray_structure is None):
+       xrs = self.xray_structure
+    else:
+       xrs = xray_structure
+    sites_cart  = xrs.sites_cart()
+    scatterers  = xrs.scatterers()
     occupancies = scatterers.extract_occupancies()
-    u_carts     = scatterers.extract_u_cart(self.xray_structure.unit_cell())
-    u_isos      = self.xray_structure.extract_u_iso_or_u_equiv()
+    u_carts     = scatterers.extract_u_cart(xrs.unit_cell())
+    u_isos      = xrs.extract_u_iso_or_u_equiv()
     scat_types  = scatterers.extract_scattering_types()
     #XXX high duplication
     if(selection is None):

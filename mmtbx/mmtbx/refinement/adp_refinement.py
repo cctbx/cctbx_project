@@ -45,6 +45,12 @@ tls_master_params = iotbx.phil.parse("""\
     .type = bool
   eps                         = 1.e-6
     .type = float
+  write_out_as {
+    tls_and_adp_local = True
+      .type = bool
+    tls_zero_and_adp_total = False
+      .type = bool
+  }
 """)
 
 individual_adp_master_params = iotbx.phil.parse("""\
