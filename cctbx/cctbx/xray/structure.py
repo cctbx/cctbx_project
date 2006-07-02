@@ -270,14 +270,21 @@ class structure(crystal.special_position_settings):
   #  b_iso_new = flex.random_double(s.size())*100.
   #  self.set_b_iso(values = b_iso_new)
 
-  def set_b_iso_random(self, allow_mixed=False):
+  def set_b_iso_random(self, allow_mixed=False, b_min=10., b_max=35.):
     s = self._scatterers
     if (not allow_mixed and s.count_anisotropic() > 0):
       raise RuntimeError("set_b_iso_random: all scatterers must be isotropic.")
     b_iso_new = flex.double()
     for si in s:
-      b_iso_new.append(random.randrange(10,35,1))
+      b_iso_new.append(random.randrange(b_min,b_max,1))
     self.set_b_iso(values = b_iso_new)
+
+  def b_iso_min_max_mean(self):
+    b_isos = self._scatterers.extract_u_iso()/adptbx.b_as_u(1)
+    b_min  = flex.min(b_isos)
+    b_max  = flex.max(b_isos)
+    b_mean = flex.mean(b_isos)
+    return b_min, b_max, b_mean
 
   def shake_b_iso(self, deviation, allow_mixed=False):
     assert deviation >= 0.0 and deviation <= 100.0
