@@ -59,6 +59,8 @@ individual_adp_master_params = iotbx.phil.parse("""\
   iso {
     max_number_of_iterations = 25
       .type = int
+    automatic_randomization_if_all_equal = True
+      .type = bool
     shake_biso               = None
       .type = float
     set_biso                 = None
@@ -140,33 +142,33 @@ class manager(object):
     else:
        offset = False
 
-
     if(refine_tls):
        print_statistics.make_sub_header(text = "TLS refinement",
                                         out  = log)
        if(macro_cycle == 1):
-          #fmodel.xray_structure.convert_to_isotropic()
-          #for sc in fmodel.xray_structure.scatterers():
-          #  sc.flags.set_tan_u_iso(True)
-          #  sc.flags.param = 100
-          #group_b_manager = mmtbx.refinement.group_b.manager(
-          #   fmodel                   = fmodel,
-          #   selections               = tls_selections,
-          #   convergence_test         = group_adp_params.convergence_test,
-          #   max_number_of_iterations = group_adp_params.max_number_of_iterations,
-          #   number_of_macro_cycles   = group_adp_params.number_of_macro_cycles,
-          #   log                      = log,
-          #   tan_b_iso_max            = 100.)
-          set_flags(xray_structure        = fmodel.xray_structure,
-                    anisotropic_flags     = anisotropic_flags,
-                    refine_adp_individual = refine_adp_individual,
-                    refine_adp_group      = refine_adp_group,
-                    tls_selections        = tls_selections,
-                    refine_tls            = refine_tls,
-                    tan_u_iso             = tan_u_iso,
-                    param                 = param,
-                    offset                = offset)
-
+          if((fmodel.r_work() > 0.3 and fmodel.r_free() > 0.3) and
+                                              fmodel.f_obs_w().d_min() > 2.65):
+             fmodel.xray_structure.convert_to_isotropic()
+             for sc in fmodel.xray_structure.scatterers():
+               sc.flags.set_tan_u_iso(True)
+               sc.flags.param = 300
+             group_b_manager = mmtbx.refinement.group_b.manager(
+                fmodel                   = fmodel,
+                selections               = tls_selections,
+                convergence_test         = group_adp_params.convergence_test,
+                max_number_of_iterations = 50,
+                number_of_macro_cycles   = 1,
+                log                      = log,
+                tan_b_iso_max            = 300.)
+       set_flags(xray_structure        = fmodel.xray_structure,
+                 anisotropic_flags     = anisotropic_flags,
+                 refine_adp_individual = refine_adp_individual,
+                 refine_adp_group      = refine_adp_group,
+                 tls_selections        = tls_selections,
+                 refine_tls            = refine_tls,
+                 tan_u_iso             = tan_u_iso,
+                 param                 = param,
+                 offset                = offset)
        model.show_groups(tls = True, out = log)
        current_target_name = fmodel.target_name
        fmodel.update(target_name = "ls_wunit_k1")

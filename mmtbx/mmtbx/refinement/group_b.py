@@ -48,6 +48,14 @@ class manager(object):
                            u_initial                = u_initial,
                            max_number_of_iterations = max_number_of_iterations,
                            tan_b_iso_max            = tan_b_iso_max)
+        if(minimized is not None):
+          u = flex.double(minimized.u_min)
+          un_sel = u <= 0.0
+          up_sel = u >  0.0
+          up = u.select(up_sel)
+          u.set_selected(un_sel, flex.mean(up))
+          assert (u <= 0).count(True) == 0
+          u_initial = list(u)
         new_xrs = apply_transformation(
                          xray_structure = minimized.fmodel_copy.xray_structure,
                          u              = u_initial,
