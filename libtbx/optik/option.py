@@ -10,8 +10,6 @@ import sys
 import types
 from optik.errors import OptionError, OptionValueError, gettext as _
 
-__revision__ = "$Id$"
-
 __all__ = ['Option']
 
 # Do the right thing with boolean values for all known Python versions.
