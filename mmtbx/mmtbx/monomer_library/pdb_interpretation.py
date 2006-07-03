@@ -319,13 +319,26 @@ class monomer_mapping(object):
         continue
       atom_name_given = atom.name.replace(" ","")
       atom_name = atom_name_given
-      if (atom_name[0] in string.digits):
-        atom_name = atom_name[1:] + atom_name[0] # AD HOC manipulation
-      if (is_rna_dna):
-        atom_name = atom_name.replace("'", "*")
       if (not atom_dict.has_key(atom_name)):
-        atom_name = mon_lib_srv.comp_synonym_atom_list_dict.get(
-          self.monomer.chem_comp.id, {}).get(atom_name, atom_name)
+        auto_synomyms = []
+        if (atom_name[0] in string.digits):
+          auto_synomyms.append(atom_name[1:] + atom[0])
+        if (is_rna_dna):
+          atom_name = atom_name.replace("'", "*")
+          if (atom_name != atom_name_given):
+            auto_synomyms.append(atom_name)
+            if (atom_name[0] in string.digits):
+              auto_synomyms.append(atom_name[1:] + atom[0])
+        for atom_name in auto_synomyms:
+          if (atom_dict.has_key(atom_name)): break
+        else:
+          auto_synomyms.insert(0, atom_name_given)
+          for atom_name in auto_synomyms:
+            atom_name = mon_lib_srv.comp_synonym_atom_list_dict.get(
+              self.monomer.chem_comp.id, {}).get(atom_name, None)
+            if (atom_name is not None): break
+          else:
+            atom_name = atom_name_given
       i_seq_prev = processed_atom_names.get(atom_name, None)
       if (i_seq_prev is None):
         processed_atom_names[atom_name] = i_seq
