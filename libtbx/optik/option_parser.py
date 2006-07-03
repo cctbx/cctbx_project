@@ -14,8 +14,6 @@ from optik.errors import gettext as _, \
      OptionConflictError, BadOptionError, OptionValueError, \
      AmbiguousOptionError
 
-__revision__ = "$Id$"
-
 __all__ = ['SUPPRESS_HELP', 'SUPPRESS_USAGE',
            'Values', 'OptionContainer', 'OptionGroup', 'OptionParser']
 

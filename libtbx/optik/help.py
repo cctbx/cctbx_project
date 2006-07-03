@@ -12,8 +12,6 @@ import textwrap
 from optik.option import NO_DEFAULT
 from optik.errors import gettext as _
 
-__revision__ = "$Id$"
-
 __all__ = ['HelpFormatter', 'IndentedHelpFormatter', 'TitledHelpFormatter']
 
 class HelpFormatter:
