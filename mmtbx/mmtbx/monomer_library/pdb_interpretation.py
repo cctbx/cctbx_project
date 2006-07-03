@@ -322,13 +322,13 @@ class monomer_mapping(object):
       if (not atom_dict.has_key(atom_name)):
         auto_synomyms = []
         if (atom_name[0] in string.digits):
-          auto_synomyms.append(atom_name[1:] + atom[0])
+          auto_synomyms.append(atom_name[1:] + atom_name[0])
         if (is_rna_dna):
           atom_name = atom_name.replace("'", "*")
           if (atom_name != atom_name_given):
             auto_synomyms.append(atom_name)
             if (atom_name[0] in string.digits):
-              auto_synomyms.append(atom_name[1:] + atom[0])
+              auto_synomyms.append(atom_name[1:] + atom_name[0])
         for atom_name in auto_synomyms:
           if (atom_dict.has_key(atom_name)): break
         else:
