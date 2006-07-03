@@ -1,0 +1,6 @@
+gunzip -c optik-1.5.1.tar.gz | tar xf -
+mv optik-1.5.1 optik
+cd optik
+mv lib/*.py .
+rm -rf CHANGES.txt README.txt doc examples lib optparse.py po setup.py test
+libtbx.clean_clutter help.py option_parser.py
