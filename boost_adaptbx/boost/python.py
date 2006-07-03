@@ -23,6 +23,7 @@ ext = import_ext("boost_python_meta_ext")
 meta_class = ext.holder.__class__
 platform_info = ext.platform_info()
 assert len(platform_info) > 0 # please disable this assertion and send email to cctbx@cci.lbl.gov
+sizeof_void_ptr = ext.sizeof_void_ptr()
 
 class injector(object):
   "see boost/libs/python/doc/tutorial/doc/quickstart.txt"
