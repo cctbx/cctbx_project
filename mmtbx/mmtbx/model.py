@@ -837,9 +837,16 @@ class stereochemistry_statistics(object):
       print >> out, "| %-75s |" % (
         "RMS differences with respect to the average:")
       for i_group,rms in enumerate(ng.rms_with_respect_to_averages):
-        print >> out, \
-          "|   NCS group %2d: min = %9.6f max = %9.6f mean = %9.6f %s|" % (
-            i_group+1, flex.min(rms), flex.max(rms), flex.mean(rms), " "*11)
+        l = ["|   NCS group %2d:" % (i_group+1)]
+        if (rms is None):
+          l.append("None")
+        else:
+          l.append("size = %2d min = %9.6f max = %9.6f mean = %9.6f" % (
+            rms.size(), flex.min(rms), flex.max(rms), flex.mean(rms)))
+        l = " ".join(l)
+        if   (len(l) <= 77): l += " "*(77-len(l)) + " |"
+        elif (len(l) == 78): l += "|"
+        print >> out, l
       print >> out, "|"+"-"*77+"|"
     if(not short):
        self.show_bond_angle_histogram(out=out)
