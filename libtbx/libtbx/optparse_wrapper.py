@@ -1,7 +1,5 @@
 import sys, os
 
-sys.path.insert(0, os.path.join(
-  os.path.dirname(os.path.dirname(__file__)), "optik151"))
 from optik import *
 make_option = Option
 
