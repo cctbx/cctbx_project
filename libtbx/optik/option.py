@@ -191,6 +191,7 @@ class Option:
         # Have to be set now, in case no option strings are supplied.
         self._short_opts = []
         self._long_opts = []
+        self._long_opts_had_minus = False
         opts = self._check_opt_strings(opts)
         self._set_opt_strings(opts)
 
@@ -233,7 +234,9 @@ class Option:
                         "invalid long option string %r: "
                         "must start with --, followed by non-dash" % opt,
                         self)
-                self._long_opts.append(opt)
+                self._long_opts.append("--" + opt[2:].replace("_", "-"))
+                if (not self._long_opts_had_minus):
+                  self._long_opts_had_minus = (opt[2:].find("-") >= 0)
 
     def _set_attrs(self, attrs):
         for attr in self.ATTRS:
@@ -314,6 +317,11 @@ class Option:
             if self._long_opts:
                 # eg. "--foo-bar" -> "foo_bar"
                 self.dest = self._long_opts[0][2:].replace('-', '_')
+                if (self._long_opts_had_minus):
+                    raise OptionError(
+                        "If dest is not specified explicitly, long options"
+                        " must be given with underscores instead of"
+                        " minus signs.", self)
             else:
                 self.dest = self._short_opts[0][1]
 

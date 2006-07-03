@@ -143,7 +143,7 @@ class OptionContainer:
         # option mappings used by this OptionParser and all
         # OptionGroups that it owns.
         self._short_opt = {}            # single letter -> Option instance
-        self._long_opt = {}             # long option -> Option instance
+        self._long_opt = _long_opt_dict() # long option -> Option instance
         self.defaults = {}              # maps option dest -> default value
 
 
@@ -868,3 +868,24 @@ def _match_abbrev(s, wordmap):
         else:
             # More than one possible completion: ambiguous prefix.
             raise AmbiguousOptionError(s, possibilities)
+
+def _long_opt_no_underscores(s):
+  return s[:2] + s[2:].replace("_", "-")
+
+class _long_opt_dict:
+
+  def __init__(self):
+    self._data = {}
+
+  def __setitem__(self, key, value):
+    assert key[2:].find("_") < 0
+    self._data[key] = value
+
+  def __getitem__(self, key):
+    return self._data[_long_opt_no_underscores(key)]
+
+  def get(self, key, default=None):
+    return self._data.get(_long_opt_no_underscores(key), default)
+
+  def has_key(self, key):
+    return self._data.has_key(_long_opt_no_underscores(key))
