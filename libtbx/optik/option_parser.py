@@ -877,6 +877,9 @@ class _long_opt_dict:
   def __init__(self):
     self._data = {}
 
+  def keys(self):
+    return self._data.keys()
+
   def __setitem__(self, key, value):
     assert key[2:].find("_") < 0
     self._data[key] = value
