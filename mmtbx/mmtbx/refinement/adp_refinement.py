@@ -10,13 +10,13 @@ from libtbx.test_utils import approx_equal
 from libtbx.utils import Sorry
 
 group_adp_master_params = iotbx.phil.parse("""\
-  number_of_macro_cycles   = 5
+  number_of_macro_cycles   = 1
     .type = int
-  max_number_of_iterations = 50
+  max_number_of_iterations = 25
     .type = int
   one_residue_one_group    = True
     .type = bool
-  convergence_test         = True
+  convergence_test         = False
     .type = bool
   selection                = None
     .type=str
@@ -35,9 +35,9 @@ tls_master_params = iotbx.phil.parse("""\
     .type = bool
   refine_S                    = True
     .type = bool
-  number_of_macro_cycles      = 2
+  number_of_macro_cycles      = 1
     .type = int
-  max_number_of_iterations    = 50
+  max_number_of_iterations    = 15
     .type = int
   start_tls_value             = None
     .type = float
