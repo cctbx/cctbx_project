@@ -40,8 +40,7 @@ class from_scatterers_direct(managed_calculation_base):
       manager.estimate_time_direct.register(
         xray_structure.scatterers().size() * miller_set.indices().size(),
         timer.elapsed())
-    global_counters.calls_from_scatterers_direct += 1
-    global_counters.time_from_scatterers_direct += time_all.elapsed()
+    global_counters.from_scatterers_direct.process(time_all.elapsed())
 
   def f_calc(self):
     return miller.array(self._miller_set, self._results.f_calc())
