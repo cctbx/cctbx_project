@@ -55,8 +55,7 @@ class gradients_direct(gradients_base):
         timer.elapsed())
     self.d_target_d_site_cart_was_used = False
     self.d_target_d_u_cart_was_used = False
-    global_counters.calls_gradients_direct += 1
-    global_counters.time_gradients_direct += time_all.elapsed()
+    global_counters.gradients_direct.process(time_all.elapsed())
 
   def d_target_d_site_frac(self):
     return self.check_size(self._results.d_target_d_site_frac())

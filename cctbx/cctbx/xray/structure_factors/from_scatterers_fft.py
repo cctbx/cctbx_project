@@ -58,8 +58,7 @@ class from_scatterers_fft(managed_calculation_base):
       time_fft=time_fft,
       time_from_or_to_map=time_from_map,
       time_apply_u_extra=time_apply_u_extra)
-    global_counters.calls_from_scatterers_fft += 1
-    global_counters.time_from_scatterers_fft += time_all.elapsed()
+    global_counters.from_scatterers_fft.process(time_all.elapsed())
 
   def f_calc(self):
     return miller.array(self.miller_set(), self._f_calc_data)

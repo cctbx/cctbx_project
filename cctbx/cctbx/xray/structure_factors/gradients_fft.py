@@ -62,8 +62,7 @@ class gradients_fft(gradients_base):
       time_apply_u_extra=time_apply_u_extra)
     self.d_target_d_site_frac_was_used = False
     self.d_target_d_u_star_was_used = False
-    global_counters.calls_gradients_fft += 1
-    global_counters.time_gradients_fft += time_all.elapsed()
+    global_counters.gradients_fft.process(time_all.elapsed())
 
   def _gradient_map_coeff(self):
     coeff = self.miller_set().array(data=flex.conj(self.d_target_d_f_calc()))
