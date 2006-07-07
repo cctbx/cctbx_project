@@ -1,5 +1,6 @@
 from cctbx.xray.structure_factors.gradients_base import gradients_base
 from cctbx.xray.structure_factors.misc import expensive_function_call_message
+from cctbx.xray.structure_factors import global_counters
 from cctbx.xray import ext
 from cctbx import miller
 from cctbx import maptbx
@@ -16,6 +17,7 @@ class gradients_fft(gradients_base):
                      miller_set,
                      d_target_d_f_calc,
                      n_parameters):
+    time_all = time_apply_u_extra = user_plus_sys_time()
     gradients_base.__init__(self,
       manager, xray_structure, miller_set, algorithm="fft")
     self._d_target_d_f_calc = d_target_d_f_calc
@@ -60,6 +62,8 @@ class gradients_fft(gradients_base):
       time_apply_u_extra=time_apply_u_extra)
     self.d_target_d_site_frac_was_used = False
     self.d_target_d_u_star_was_used = False
+    global_counters.calls_gradients_fft += 1
+    global_counters.time_gradients_fft += time_all.elapsed()
 
   def _gradient_map_coeff(self):
     coeff = self.miller_set().array(data=flex.conj(self.d_target_d_f_calc()))

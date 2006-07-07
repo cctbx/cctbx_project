@@ -1,4 +1,5 @@
 from cctbx.xray.structure_factors.manager import managed_calculation_base
+from cctbx.xray.structure_factors import global_counters
 from cctbx.xray import ext
 from cctbx import miller
 from cctbx import maptbx
@@ -9,6 +10,7 @@ class from_scatterers_fft(managed_calculation_base):
   def __init__(self, manager,
                      xray_structure,
                      miller_set):
+    time_all = user_plus_sys_time()
     managed_calculation_base.__init__(self,
       manager, xray_structure, miller_set, algorithm="fft")
     assert miller_set.d_min() >= manager.d_min()
@@ -56,6 +58,8 @@ class from_scatterers_fft(managed_calculation_base):
       time_fft=time_fft,
       time_from_or_to_map=time_from_map,
       time_apply_u_extra=time_apply_u_extra)
+    global_counters.calls_from_scatterers_fft += 1
+    global_counters.time_from_scatterers_fft += time_all.elapsed()
 
   def f_calc(self):
     return miller.array(self.miller_set(), self._f_calc_data)

@@ -2,6 +2,7 @@ from cctbx.array_family import flex
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from cctbx import xray
+import cctbx.xray.structure_factors.global_counters
 from cctbx import maptbx
 from cctbx import miller
 from cctbx import crystal
@@ -948,6 +949,7 @@ def run_call_back(flags, space_group_info):
 
 def run():
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
+  xray.structure_factors.global_counters.show()
   print "OK"
 
 if (__name__ == "__main__"):

@@ -1,6 +1,7 @@
 from cctbx.xray.structure_factors.gradients_base import gradients_base
 from cctbx.xray.structure_factors.manager import default_cos_sin_table
 from cctbx.xray.structure_factors.misc import expensive_function_call_message
+from cctbx.xray.structure_factors import global_counters
 from cctbx.xray import ext
 from cctbx import adptbx
 from scitbx.python_utils.misc import user_plus_sys_time
@@ -14,6 +15,7 @@ class gradients_direct(gradients_base):
                      n_parameters,
                      manager=None,
                      cos_sin_table=False):
+    time_all = user_plus_sys_time()
     gradients_base.__init__(self,
       manager, xray_structure, miller_set, algorithm="direct")
     self._d_target_d_f_calc = d_target_d_f_calc
@@ -53,6 +55,8 @@ class gradients_direct(gradients_base):
         timer.elapsed())
     self.d_target_d_site_cart_was_used = False
     self.d_target_d_u_cart_was_used = False
+    global_counters.calls_gradients_direct += 1
+    global_counters.time_gradients_direct += time_all.elapsed()
 
   def d_target_d_site_frac(self):
     return self.check_size(self._results.d_target_d_site_frac())
