@@ -20,7 +20,7 @@ for item in items:
   exec("%s = calls_and_accumulated_time()" % item)
 del item
 
-def show(out=None, prefix=""):
+def show(out=None, prefix="", show_zero_calls=False):
   if (out is None): out = sys.stdout
   g = globals()
   calls = ["%d" % c for c in [g[item].calls for item in items]]
@@ -29,5 +29,6 @@ def show(out=None, prefix=""):
     max([len(s) for s in calls]),
     max([len(s) for s in times]))
   for i,c,t in zip(items, calls, times):
+    if (not show_zero_calls and c == "0"): continue
     print >> out, prefix + (fmt % (i+":", c, t)).replace(
       " 1 calls,", " 1 call, ")
