@@ -75,9 +75,9 @@ def assert_result(fmodel, k_sol, b_sol, b_cart, f_obs, r_free_flags, tk,tb,tu):
                                fmodel.f_model_t().data())
     assert approx_equal(r_work, fmodel.r_work())
     assert approx_equal(r_test, fmodel.r_free())
-    assert fmodel.f_obs_w().data().all_eq(
+    assert fmodel.f_obs_w.data().all_eq(
                                      f_obs.select(~r_free_flags.data()).data())
-    assert fmodel.f_obs_t().data().all_eq(
+    assert fmodel.f_obs_t.data().all_eq(
                                      f_obs.select(r_free_flags.data()).data())
     assert fmodel.f_obs is f_obs
 

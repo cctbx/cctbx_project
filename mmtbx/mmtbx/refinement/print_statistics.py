@@ -15,8 +15,7 @@ def show_times(out = None):
   if(out is None): out = sys.stdout
   total = time_collect_and_process
   if(total > 0.01):
-     print >> out, "Collect and process:"
-     print >> out, "  total                          = %-7.2f" % time_collect_and_process
+     print >> out, "Collect and process                      = %-7.2f" % time_collect_and_process
   return total
 
 
@@ -128,7 +127,8 @@ def write_pdb_header(out,
 class refinement_monitor(object):
   def __init__(self, params,
                      model_ref = None,
-                     out=None):
+                     out=None,
+                     short=False):
     adopt_init_args(self, locals())
     if (self.out is None): self.out = sys.stdout
     self.model_ini = None
@@ -142,7 +142,6 @@ class refinement_monitor(object):
     self.r_frees         = []
     self.targets_w       = []
     self.targets_t       = []
-    self.gs_wrt_xyz_norm = []
     self.k_sols          = []
     self.b_sols          = []
     self.b_anisos        = []
@@ -222,8 +221,6 @@ class refinement_monitor(object):
     self.r_frees         .append(fmodel.r_free()                  )
     self.targets_w       .append(fmodel.target_w()                )
     self.targets_t       .append(fmodel.target_t()                )
-    self.gs_wrt_xyz_norm .append(fmodel.gradient_wrt_atomic_parameters(
-                                                   site=True).packed().norm() )
     self.k_sols          .append(fmodel.k_sol_b_sol()[0]          )
     self.b_sols          .append(fmodel.k_sol_b_sol()[1]          )
     self.b_anisos        .append(fmodel.b_cart                   )
@@ -348,61 +345,68 @@ class refinement_monitor(object):
     t1 = time.time()
     if(out is None): out = self.out
     separator = "-"*72
-    print >> out, remark + "*"*72
-    print >> out, remark + "Refinement target            :  %s"   % self.target_name
-    if(self.params.main.rigid_body):
-       print >> out, remark + "Rigid body refinement target :  %s"   % self.params.rigid_body.target
-    print >> out, remark + "Number of atoms              : %7d"   % self.natoms
-    print >> out, remark + "Number of geometry restraints: %7d"   % self.number_of_restraints
-    print >> out, remark + "Unit cell volume             : %15.3f"% self.volume
-    print >> out, remark + "Space group                  : %4d (%s)"% (self.sg,self.sg_symbol)
-    print >> out, remark + "Number of symmetries         : %4d"   % self.nsym
-    print >> out, remark + "Wilson B-factor              : %10.3f"% self.wilson_b
-    print >> out, remark + "Isotropic ADP: distance_power: %5.2f" % self.params.adp_restraints.iso.distance_power
-    print >> out, remark + "Isotropic ADP: average_power : %5.2f" % self.params.adp_restraints.iso.average_power
+    if(not self.short):
+       print >> out, remark + "*"*72
+       print >> out, remark + "Refinement target            :  %s"   % self.target_name
+       if(self.params.main.rigid_body):
+          print >> out, remark + "Rigid body refinement target :  %s"   % self.params.rigid_body.target
+       print >> out, remark + "Number of atoms              : %7d"   % self.natoms
+       print >> out, remark + "Number of geometry restraints: %7d"   % self.number_of_restraints
+       print >> out, remark + "Unit cell volume             : %15.3f"% self.volume
+       print >> out, remark + "Space group                  : %4d (%s)"% (self.sg,self.sg_symbol)
+       print >> out, remark + "Number of symmetries         : %4d"   % self.nsym
+       if(self.wilson_b is not None):
+          print >> out, remark + "Wilson B-factor              : %10.3f"% self.wilson_b
+       else:
+          print >> out, remark + "Wilson B-factor              : undefined"
+       print >> out, remark + "Isotropic ADP: distance_power: %5.2f" % self.params.adp_restraints.iso.distance_power
+       print >> out, remark + "Isotropic ADP: average_power : %5.2f" % self.params.adp_restraints.iso.average_power
+       #
+       if(self.rba is not None):
+          print >> out, remark + "Information about total rigid body shift of selected groups:"
+          print >> out, remark + "                          rotation (deg.)             "\
+                     "   translation (A)      "
+          i = 1
+          for r,t in zip(self.rba.rotations, self.rba.translations):
+              part1 = "  group"+str("%5d:  "%i)
+              part2 = str("%8.4f"%r[0])+" "+str("%8.4f"%r[1])+" "+str("%8.4f"%r[2])
+              part3 = "     "
+              part4 = str("%8.4f"%t[0])+" "+str("%8.4f"%t[1])+" "+str("%8.4f"%t[2])
+              n = 78 - len(part1 + part2 + part3 + part4)
+              part5 = " "*n+" "
+              print >> out, remark + part1 + part2 + part3 + part4 + part5
+              i += 1
     #
-    if(self.rba is not None):
-       print >> out, remark + "Information about total rigid body shift of selected groups:"
-       print >> out, remark + "                          rotation (deg.)             "\
-                  "   translation (A)      "
-       i = 1
-       for r,t in zip(self.rba.rotations, self.rba.translations):
-           part1 = "  group"+str("%5d:  "%i)
-           part2 = str("%8.4f"%r[0])+" "+str("%8.4f"%r[1])+" "+str("%8.4f"%r[2])
-           part3 = "     "
-           part4 = str("%8.4f"%t[0])+" "+str("%8.4f"%t[1])+" "+str("%8.4f"%t[2])
-           n = 78 - len(part1 + part2 + part3 + part4)
-           part5 = " "*n+" "
-           print >> out, remark + part1 + part2 + part3 + part4 + part5
-           i += 1
     #
-    #
-    print >> out, remark + "****************** REFINEMENT STATISTICS STEP BY STEP ******************"
-    print >> out, remark + "leading digit, like 1_, means number of macro-cycle                     "
-    print >> out, remark + "0    : statistics at the very beginning when nothing is done yet        "
-    print >> out, remark + "1_bss: bulk solvent correction and/or (anisotropic) scaling             "
-    print >> out, remark + "1_xyz: refinement of coordinates                                        "
-    print >> out, remark + "1_adp: refinement of ADPs (Atomic Displacement Parameters)              "
-    print >> out, remark + "1_sar: simulated annealing refinement of x,y,z                          "
-    print >> out, remark + "1_wat: ordered solvent update (add / remove)                            "
-    print >> out, remark + "1_rbr: rigid body refinement                                            "
-    print >> out, remark + "1_gbr: group B-factor refinement                                        "
-    print >> out, remark + separator
+    if(self.short):
+       print >> out
+       print >> out, remark + "*********** REFINEMENT STATISTICS STEP BY STEP: NEUTRON DATA ***********"
+    else:
+       print >> out, remark + "****************** REFINEMENT STATISTICS STEP BY STEP ******************"
+       print >> out, remark + "leading digit, like 1_, means number of macro-cycle                     "
+       print >> out, remark + "0    : statistics at the very beginning when nothing is done yet        "
+       print >> out, remark + "1_bss: bulk solvent correction and/or (anisotropic) scaling             "
+       print >> out, remark + "1_xyz: refinement of coordinates                                        "
+       print >> out, remark + "1_adp: refinement of ADPs (Atomic Displacement Parameters)              "
+       print >> out, remark + "1_sar: simulated annealing refinement of x,y,z                          "
+       print >> out, remark + "1_wat: ordered solvent update (add / remove)                            "
+       print >> out, remark + "1_rbr: rigid body refinement                                            "
+       print >> out, remark + "1_gbr: group B-factor refinement                                        "
+       print >> out, remark + separator
     #
     #
     a,b,c,d,e,f,g,h,i,j = [None,]*10
     print >> out, remark + \
       " R-factors, x-ray target values and norm of gradient of x-ray target"
     print >> out, remark + \
-      " stage     r-work r-free  xray_target_w  xray_target_t         |grad|"
-    format = remark + "%9s  %6.4f %6.4f %14.6e %14.6e %14.6e"
-    for a,b,c,d,e,f in zip(self.steps,
+      " stage     r-work r-free  xray_target_w  xray_target_t"
+    format = remark + "%9s  %6.4f %6.4f %14.6e %14.6e"
+    for a,b,c,d,e in zip(self.steps,
                            self.r_works,
                            self.r_frees,
                            self.targets_w,
-                           self.targets_t,
-                           self.gs_wrt_xyz_norm):
-        print >> out, format % (a,b,c,d,e,f)
+                           self.targets_t):
+        print >> out, format % (a,b,c,d,e)
     print >> out, remark + separator
     #
     #
@@ -448,141 +452,144 @@ class refinement_monitor(object):
     print >> out, remark + separator
     #
     #
-    a,b,c,d,e,f,g,h,i,j = [None,]*10
-    if(len(self.wcs) > 0):
+    if(not self.short):
+       a,b,c,d,e,f,g,h,i,j = [None,]*10
+       if(len(self.wcs) > 0):
+          print >> out, remark + \
+          " stage       angl   bond   chir   dihe   plan   repu  geom_target     wc"
+          format = remark + "%9s %7.3f%7.3f%7.3f%7.3f%7.3f%7.3f %12.4e%7.2f"
+          for a,b,c,d,e,f,g,h,i in zip(self.steps,
+                                       self.as_ave,
+                                       self.bs_ave,
+                                       self.cs_ave,
+                                       self.ds_ave,
+                                       self.ps_ave,
+                                       self.rs_ave,
+                                       self.targets_c,
+                                       self.wcs):
+              print >> out, format % (a,b,c,d,e,f,g,h,i)
+       else:
+          print >> out, remark + \
+          " stage       angl   bond   chir   dihe   plan   repu  geom_target"
+          format = remark + "%9s %7.3f%7.3f%7.3f%7.3f%7.3f%7.3f %12.4e"
+          for a,b,c,d,e,f,g,h in zip(self.steps,
+                                       self.as_ave,
+                                       self.bs_ave,
+                                       self.cs_ave,
+                                       self.ds_ave,
+                                       self.ps_ave,
+                                       self.rs_ave,
+                                       self.targets_c):
+              print >> out, format % (a,b,c,d,e,f,g,h)
+
+       print >> out, remark + separator
+    #
+    #
+    if(not self.short):
+       a,b,c,d,e,f,g,h,i,j = [None,]*10
+       print >> out, remark + "                      Maximal deviations:"
        print >> out, remark + \
-       " stage       angl   bond   chir   dihe   plan   repu  geom_target     wc"
-       format = remark + "%9s %7.3f%7.3f%7.3f%7.3f%7.3f%7.3f %12.4e%7.2f"
-       for a,b,c,d,e,f,g,h,i in zip(self.steps,
-                                    self.as_ave,
-                                    self.bs_ave,
-                                    self.cs_ave,
-                                    self.ds_ave,
-                                    self.ps_ave,
-                                    self.rs_ave,
-                                    self.targets_c,
-                                    self.wcs):
-           print >> out, format % (a,b,c,d,e,f,g,h,i)
-    else:
-       print >> out, remark + \
-       " stage       angl   bond   chir   dihe   plan   repu  geom_target"
+               " stage       angl   bond   chir   dihe   plan   repu       |grad|"
        format = remark + "%9s %7.3f%7.3f%7.3f%7.3f%7.3f%7.3f %12.4e"
        for a,b,c,d,e,f,g,h in zip(self.steps,
-                                    self.as_ave,
-                                    self.bs_ave,
-                                    self.cs_ave,
-                                    self.ds_ave,
-                                    self.ps_ave,
-                                    self.rs_ave,
-                                    self.targets_c):
+                                  self.as_max,
+                                  self.bs_max,
+                                  self.cs_max,
+                                  self.ds_max,
+                                  self.ps_max,
+                                  self.rs_min,
+                                  self.gs_c_norm):
            print >> out, format % (a,b,c,d,e,f,g,h)
-
-    print >> out, remark + separator
+       print >> out, remark + separator
+       #
+       #
+       a,b,c,d,e,f,g,h,i,j = [None,]*10
+       if(len(self.bs_iso_max_s) == 0):
+          print >> out, remark + " stage      b_max   b_min   b_ave"
+       else:
+          print >> out, remark + "           |-----overall-----|---macromolecule----|------solvent-------|"
+          print >> out, remark + "  stage    b_max  b_min  b_ave  b_max  b_min  b_ave  b_max  b_min  b_ave"
+       if(len(self.bs_iso_max_s) > 0):
+          format = remark + "%9s %6.2f %6.2f %6.2f %6.2f %6.2f %6.2f %6.2f %6.2f %6.2f"
+          for a,b,c,d,e,f,g,h,i,j in zip(self.steps,
+                                         self.bs_iso_max_a,
+                                         self.bs_iso_min_a,
+                                         self.bs_iso_ave_a,
+                                         self.bs_iso_max_p,
+                                         self.bs_iso_min_p,
+                                         self.bs_iso_ave_p,
+                                         self.bs_iso_max_s,
+                                         self.bs_iso_min_s,
+                                         self.bs_iso_ave_s):
+              print >> out, format % (a,b,c,d,e,f,g,h,i,j)
+       if(len(self.bs_iso_max_s) == 0):
+          format = remark + "%9s %7.2f %7.2f %7.2f"
+          for a,b,c,d in zip(self.steps,
+                                         self.bs_iso_max_a,
+                                         self.bs_iso_min_a,
+                                         self.bs_iso_ave_a):
+              print >> out, format % (a,b,c,d)
+       print >> out, remark + separator
     #
     #
-    a,b,c,d,e,f,g,h,i,j = [None,]*10
-    print >> out, remark + "                      Maximal deviations:"
-    print >> out, remark + \
-            " stage       angl   bond   chir   dihe   plan   repu       |grad|"
-    format = remark + "%9s %7.3f%7.3f%7.3f%7.3f%7.3f%7.3f %12.4e"
-    for a,b,c,d,e,f,g,h in zip(self.steps,
-                               self.as_max,
-                               self.bs_max,
-                               self.cs_max,
-                               self.ds_max,
-                               self.ps_max,
-                               self.rs_min,
-                               self.gs_c_norm):
-        print >> out, format % (a,b,c,d,e,f,g,h)
-    print >> out, remark + separator
-    #
-    #
-    a,b,c,d,e,f,g,h,i,j = [None,]*10
-    if(len(self.bs_iso_max_s) == 0):
-       print >> out, remark + " stage      b_max   b_min   b_ave"
-    else:
-       print >> out, remark + "           |-----overall-----|---macromolecule----|------solvent-------|"
-       print >> out, remark + "  stage    b_max  b_min  b_ave  b_max  b_min  b_ave  b_max  b_min  b_ave"
-    if(len(self.bs_iso_max_s) > 0):
-       format = remark + "%9s %6.2f %6.2f %6.2f %6.2f %6.2f %6.2f %6.2f %6.2f %6.2f"
-       for a,b,c,d,e,f,g,h,i,j in zip(self.steps,
-                                      self.bs_iso_max_a,
-                                      self.bs_iso_min_a,
-                                      self.bs_iso_ave_a,
-                                      self.bs_iso_max_p,
-                                      self.bs_iso_min_p,
-                                      self.bs_iso_ave_p,
-                                      self.bs_iso_max_s,
-                                      self.bs_iso_min_s,
-                                      self.bs_iso_ave_s):
-           print >> out, format % (a,b,c,d,e,f,g,h,i,j)
-    if(len(self.bs_iso_max_s) == 0):
-       format = remark + "%9s %7.2f %7.2f %7.2f"
-       for a,b,c,d in zip(self.steps,
-                                      self.bs_iso_max_a,
-                                      self.bs_iso_min_a,
-                                      self.bs_iso_ave_a):
-           print >> out, format % (a,b,c,d)
-    print >> out, remark + separator
-    #
-    #
-    a,b,c,d,e,f,g,h,i,j = [None,]*10
-    if(len(self.ds_rc_min) > 0 and len(self.dopts_ic) == 0):
-       if(self.model_ref is not None):
-          print >> out, remark + "Stage        Deviation of refined model from"
-          print >> out, remark + "                     start model        reference model"
-          print >> out, remark + "                  max    min   mean    max    min   mean"
-          format = remark + "%11s   %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f"
-    if(len(self.ds_rc_min) == 0 and len(self.dopts_ic) == 0):
-       print >> out, remark + " stage        Deviation of refined"
-       print >> out, remark + "              model from start model"
-       print >> out, remark + "               max      min     mean"
-       format = remark + "%9s %8.3f %8.3f %8.3f"
-    if(len(self.ds_rc_min) > 0 and len(self.dopts_ic) > 0 and len(self.dopts_rc) > 0):
-       if(self.model_ref is not None):
-          print >> out, remark + "Stage                      Deviation of refined model from"
-          print >> out, remark + "                 Start model                         Reference model"
-          print >> out, remark + "                   max      min     mean      opt      max      min     mean      opt"
-          format = remark + "%11s   %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f"
-    if(len(self.ds_rc_min) == 0 and len(self.dopts_ic) > 0):
-          print >> out, remark + "Stage                Deviation of refined"
-          print >> out, remark + "                     model from start model"
-          print >> out, remark + "                  max      min     mean    opt"
-          format = remark + "%11s %8.3f %8.3f %8.3f %8.3f"
-    if(len(self.ds_rc_min) == 0 and len(self.dopts_ic) == 0):
-       for a,b,c,d in zip(self.steps,
-                          self.ds_ic_max,
-                          self.ds_ic_min,
-                          self.ds_ic_ave):
-           print >> out, format % (a,b,c,d)
-    if(len(self.ds_rc_min) > 0 and len(self.dopts_ic) == 0):
-       for a,b,c,d,e,f,g in zip(self.steps,
-                                self.ds_ic_max,
-                                self.ds_ic_min,
-                                self.ds_ic_ave,
-                                self.ds_rc_max,
-                                self.ds_rc_min,
-                                self.ds_rc_ave):
-           print >> out, format % (a,b,c,d,e,f,g)
-    if(len(self.ds_rc_min) == 0 and len(self.dopts_ic) > 0):
-       for a,b,c,d,e in zip(self.steps,
-                                self.ds_ic_max,
-                                self.ds_ic_min,
-                                self.ds_ic_ave,
-                                self.dopts_ic):
-           print >> out, format % (a,b,c,d,e)
-    if(len(self.ds_rc_min) > 0 and len(self.dopts_ic) > 0 and len(self.dopts_rc) > 0):
-       for a,b,c,d,e,f,g,h,i in zip(self.steps,
-                                    self.ds_ic_max,
-                                    self.ds_ic_min,
-                                    self.ds_ic_ave,
-                                    self.dopts_ic,
-                                    self.ds_rc_max,
-                                    self.ds_rc_min,
-                                    self.ds_rc_ave,
-                                    self.dopts_rc):
-           print >> out, format % (a,b,c,d,e,f,g,h,i)
-    print >> out, remark + separator
+    if(not self.short):
+       a,b,c,d,e,f,g,h,i,j = [None,]*10
+       if(len(self.ds_rc_min) > 0 and len(self.dopts_ic) == 0):
+          if(self.model_ref is not None):
+             print >> out, remark + "Stage        Deviation of refined model from"
+             print >> out, remark + "                     start model        reference model"
+             print >> out, remark + "                  max    min   mean    max    min   mean"
+             format = remark + "%11s   %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f"
+       if(len(self.ds_rc_min) == 0 and len(self.dopts_ic) == 0):
+          print >> out, remark + " stage        Deviation of refined"
+          print >> out, remark + "              model from start model"
+          print >> out, remark + "               max      min     mean"
+          format = remark + "%9s %8.3f %8.3f %8.3f"
+       if(len(self.ds_rc_min) > 0 and len(self.dopts_ic) > 0 and len(self.dopts_rc) > 0):
+          if(self.model_ref is not None):
+             print >> out, remark + "Stage                      Deviation of refined model from"
+             print >> out, remark + "                 Start model                         Reference model"
+             print >> out, remark + "                   max      min     mean      opt      max      min     mean      opt"
+             format = remark + "%11s   %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f"
+       if(len(self.ds_rc_min) == 0 and len(self.dopts_ic) > 0):
+             print >> out, remark + "Stage                Deviation of refined"
+             print >> out, remark + "                     model from start model"
+             print >> out, remark + "                  max      min     mean    opt"
+             format = remark + "%11s %8.3f %8.3f %8.3f %8.3f"
+       if(len(self.ds_rc_min) == 0 and len(self.dopts_ic) == 0):
+          for a,b,c,d in zip(self.steps,
+                             self.ds_ic_max,
+                             self.ds_ic_min,
+                             self.ds_ic_ave):
+              print >> out, format % (a,b,c,d)
+       if(len(self.ds_rc_min) > 0 and len(self.dopts_ic) == 0):
+          for a,b,c,d,e,f,g in zip(self.steps,
+                                   self.ds_ic_max,
+                                   self.ds_ic_min,
+                                   self.ds_ic_ave,
+                                   self.ds_rc_max,
+                                   self.ds_rc_min,
+                                   self.ds_rc_ave):
+              print >> out, format % (a,b,c,d,e,f,g)
+       if(len(self.ds_rc_min) == 0 and len(self.dopts_ic) > 0):
+          for a,b,c,d,e in zip(self.steps,
+                                   self.ds_ic_max,
+                                   self.ds_ic_min,
+                                   self.ds_ic_ave,
+                                   self.dopts_ic):
+              print >> out, format % (a,b,c,d,e)
+       if(len(self.ds_rc_min) > 0 and len(self.dopts_ic) > 0 and len(self.dopts_rc) > 0):
+          for a,b,c,d,e,f,g,h,i in zip(self.steps,
+                                       self.ds_ic_max,
+                                       self.ds_ic_min,
+                                       self.ds_ic_ave,
+                                       self.dopts_ic,
+                                       self.ds_rc_max,
+                                       self.ds_rc_min,
+                                       self.ds_rc_ave,
+                                       self.dopts_rc):
+              print >> out, format % (a,b,c,d,e,f,g,h,i)
+       print >> out, remark + separator
     #
     #
     a,b,c,d,e,f,g,h,i,j = [None,]*10
@@ -608,35 +615,38 @@ class refinement_monitor(object):
     print >> out, remark + separator
     #
     #
-    a,b,c,d,e,f,g,h,i,j = [None,]*10
-    proceed = False
-    n_solv_0 = self.n_solv[0]
-    for n in self.n_solv:
-        if(n != n_solv_0):
-           proceed = True
-           break
-    if(proceed):
-       print >> out, remark + " stage  number of ordered solvent"
-       format = remark + "%11s  %15d"
-       for a,b in zip(self.steps, self.n_solv):
-           print >> out, format % (a,b)
+    if(not self.short):
+       a,b,c,d,e,f,g,h,i,j = [None,]*10
+       proceed = False
+       n_solv_0 = self.n_solv[0]
+       for n in self.n_solv:
+           if(n != n_solv_0):
+              proceed = True
+              break
+       if(proceed):
+          print >> out, remark + " stage  number of ordered solvent"
+          format = remark + "%11s  %15d"
+          for a,b in zip(self.steps, self.n_solv):
+              print >> out, format % (a,b)
+          print >> out, remark + separator
+    #
+    #
+    if(not self.short):
+       a,b,c,d,e,f,g,h,i,j = [None,]*10
+       if(len(self.wus) > 0):
+          print >> out, remark + " stage      adp_target      wu"
+          format = remark + "%9s %12.4e %7.3f"
+          for a,b,c in zip(self.steps,self.tus,self.wus):
+              print >> out, format % (a,b,c)
+       else:
+          print >> out, remark + " stage      adp_target"
+          format = remark + "%9s %12.4e"
+          for a,b in zip(self.steps,self.tus):
+              print >> out, format % (a,b)
        print >> out, remark + separator
-    #
-    #
-    a,b,c,d,e,f,g,h,i,j = [None,]*10
-    if(len(self.wus) > 0):
-       print >> out, remark + " stage      adp_target      wu"
-       format = remark + "%9s %12.4e %7.3f"
-       for a,b,c in zip(self.steps,self.tus,self.wus):
-           print >> out, format % (a,b,c)
-    else:
-       print >> out, remark + " stage      adp_target"
-       format = remark + "%9s %12.4e"
-       for a,b in zip(self.steps,self.tus):
-           print >> out, format % (a,b)
-    print >> out, remark + separator
     out.flush()
-    ###
+    #
+    #
     t2 = time.time()
     time_collect_and_process += (t2 - t1)
 

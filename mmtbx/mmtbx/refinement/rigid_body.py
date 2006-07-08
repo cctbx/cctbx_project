@@ -7,26 +7,34 @@ from scitbx import lbfgs
 from mmtbx.refinement import print_statistics
 import copy, time
 from libtbx.utils import Sorry
+from cctbx import xray
 
-time_apply_transformation = 0.0
-time_target_and_grads     = 0.0
-time_euler                = 0.0
-time_rigid_body_total     = 0.0
-time_rigid_body_minimization     = 0.0
+time_initialization          = 0.0
+time_apply_transformation    = 0.0
+time_target_and_grads        = 0.0
+time_euler                   = 0.0
+time_rigid_body_total        = 0.0
+time_rigid_body_bulk_solvent_and_scale = 0.0
+time_fmodel_update_xray_structure = 0.0
 
 def show_times(out = None):
   if(out is None): out = sys.stdout
-  total = time_apply_transformation +\
+  total = time_initialization       +\
+          time_apply_transformation +\
           time_target_and_grads     +\
-          time_euler
+          time_euler                +\
+          time_rigid_body_bulk_solvent_and_scale +\
+          time_fmodel_update_xray_structure
   if(total > 0.01):
      print >> out, "Rigid body refinement:"
-     print >> out, "  time_rigid_body_total                  = %-7.2f" % time_rigid_body_total
-     print >> out, "  time_rigid_body_minimization           = %-7.2f" % time_rigid_body_minimization
+     print >> out, "  initialization                         = %-7.2f" % time_initialization
+     print >> out, "  rigid_body_bulk_solvent_and_scale      = %-7.2f" % time_rigid_body_bulk_solvent_and_scale
      print >> out, "  apply_transformation                   = %-7.2f" % time_apply_transformation
-     print >> out, "  target_and_grads "
-     print >> out, "    (-.gradient_wrt_atomic_parameters()) = %-7.2f" % time_target_and_grads
+     print >> out, "  target_and_grads                       = %-7.2f" % time_target_and_grads
      print >> out, "  euler                                  = %-7.2f" % time_euler
+     print >> out, "  fmodel_update_xray_structure (f_calc)  = %-7.2f" % time_fmodel_update_xray_structure
+     print >> out, "  sum of partial contributions           = %-7.2f" % total
+     print >> out, "  rigid_body_total                       = %-7.2f" % time_rigid_body_total
   return total
 
 
@@ -302,7 +310,13 @@ class manager(object):
                      euler_angle_convention  = "xyz",
                      log                     = None):
     global time_rigid_body_total
+    global time_initialization
+    global time_rigid_body_bulk_solvent_and_scale
+    global time_fmodel_update_xray_structure
     t1 = time.time()
+    xray.set_scatterer_grad_flags(
+                               scatterers = fmodel.xray_structure.scatterers(),
+                               site       = True)
     self.euler_angle_convention = euler_angle_convention
     if(log is None): log = sys.stdout
     if(selections is None):
@@ -334,26 +348,34 @@ class manager(object):
     fmodel_copy = fmodel.deep_copy()
     if(fmodel_copy.mask_params is not None):
        fmodel_copy.mask_params.verbose = -1
-    d_mins = setup_search_range(f = fmodel_copy.f_obs_w(), nref_min = nref_min)
+    d_mins = setup_search_range(f = fmodel_copy.f_obs_w, nref_min = nref_min)
     if(use_only_low_resolution):
        if(len(d_mins) > 1): d_mins = d_mins[:-1]
     print >> log, "High resolution cutoffs for mz-protocol: ", \
                   [str("%.3f"%i) for i in d_mins]
     step_counter = 0
+    time_initialization += (time.time() - t1)
     for res in d_mins:
         xrs = fmodel_copy.xray_structure.deep_copy_scatterers()
         fmodel_copy = fmodel.resolution_filter(d_min = res)
-        d_max_min = fmodel_copy.f_obs_w().d_max_min()
+        d_max_min = fmodel_copy.f_obs_w.d_max_min()
         line = "Refinement at resolution: "+str("%7.1f"%d_max_min[0]).strip()+\
                " - "+str("%6.1f"%d_max_min[1]).strip()
         print_statistics.make_sub_header(line, out=log)
+        tuxs = time.time()
         fmodel_copy.update_xray_structure(xray_structure = xrs,
                                           update_f_calc  = True)
+        time_fmodel_update_xray_structure += (time.time() - tuxs)
         rworks = flex.double()
         sites_cart_1 = None
         sites_cart_2 = None
-        for macro_cycle in range(1, min(int(res),4)+1):
+        if(len(d_mins) == 1):
+           n_rigid_body_macro_cycles = 2
+        else:
+           n_rigid_body_macro_cycles = min(int(res),4)+1
+        for macro_cycle in range(1, n_rigid_body_macro_cycles):
             if(macro_cycle != 1): print >> log
+            t_rbbss = time.time()
             max_shift = 0.0
             if([sites_cart_1, sites_cart_2].count(None) == 0):
                max_shift = sites_cart_1.max_distance(sites_cart_2)
@@ -370,6 +392,7 @@ class manager(object):
                fmodel_copy.show_essential(header = line, out = log)
                if(fmodel_copy.f_obs.d_min() > 3.0):
                   bss.anisotropic_scaling=save_bss_anisotropic_scaling
+            time_rigid_body_bulk_solvent_and_scale += (time.time() - t_rbbss)
             sites_cart_1 = fmodel_copy.xray_structure.sites_cart()
             minimized = rigid_body_minimizer(
                           fmodel                 = fmodel_copy,
@@ -406,7 +429,7 @@ class manager(object):
             rwork = minimized.fmodel.r_work()
             rfree = minimized.fmodel.r_free()
             assert approx_equal(rwork, fmodel_copy.r_work())
-            self.show(f     = fmodel_copy.f_obs_w(),
+            self.show(f     = fmodel_copy.f_obs_w,
                       r_mat = self.total_rotation,
                       t_vec = self.total_translation,
                       rw    = rwork,
@@ -423,11 +446,12 @@ class manager(object):
                   if(abs(rworks[size]-rworks[size-1])<convergence_delta):
                      break
         step_counter += 1
+    tuxs = time.time()
     fmodel.update_xray_structure(xray_structure = fmodel_copy.xray_structure,
                                  update_f_calc  = True)
+    time_fmodel_update_xray_structure += (time.time() - tuxs)
     self.fmodel = fmodel
-    t2 = time.time()
-    time_rigid_body_total += (t2 - t1)
+    time_rigid_body_total += (time.time() - t1)
 
   def rotation(self):
     return self.total_rotation
@@ -501,8 +525,6 @@ class rigid_body_minimizer(object):
                refine_t,
                max_iterations,
                euler_angle_convention = "xyz"):
-    #global time_rigid_body_minimization
-    #t1 = time.time()
     adopt_init_args(self, locals())
     if(self.fmodel.target_name in ["ml","lsm"]):
        self.alpha, self.beta = self.fmodel.alpha_beta_w()
@@ -523,8 +545,6 @@ class rigid_body_minimizer(object):
         self.t_min[i] = tuple(self.t_min[i])
     self.x = self.pack(self.r_min, self.t_min)
     self.n = self.x.size()
-    global time_rigid_body_minimization
-    t1 = time.time()
     self.minimizer = lbfgs.run(
                target_evaluator = self,
                termination_params = lbfgs.termination_parameters(
@@ -532,12 +552,8 @@ class rigid_body_minimizer(object):
                exception_handling_params = lbfgs.exception_handling_parameters(
                     ignore_line_search_failed_step_at_lower_bound = True)
                               )
-    #global time_rigid_body_minimization
-    #t1 = time.time()
     self.compute_functional_and_gradients()
     del self.x
-    t2 = time.time()
-    time_rigid_body_minimization += (t2 - t1)
 
   def pack(self, r, t):
     v = []
@@ -557,6 +573,7 @@ class rigid_body_minimizer(object):
            i += self.dim_t
 
   def compute_functional_and_gradients(self):
+    global time_fmodel_update_xray_structure
     self.unpack_x()
     self.counter += 1
     rotation_matrices   = []
@@ -575,8 +592,10 @@ class rigid_body_minimizer(object):
                                    translation_vectors = translation_vectors,
                                    selections          = self.selections,
                                    fixed_selection     = self.fixed_selection)
+    tuxs = time.time()
     self.fmodel_copy.update_xray_structure(xray_structure = new_xrs,
                                            update_f_calc  = True)
+    time_fmodel_update_xray_structure += (time.time() - tuxs)
     tg_obj = target_and_grads(fmodel     = self.fmodel_copy,
                               alpha      = self.alpha,
                               beta       = self.beta,
@@ -606,9 +625,10 @@ def apply_transformation(xray_structure,
   if(fixed_selection is not None):
     sites_fixed = xray_structure.sites_cart().select(fixed_selection)
     new_sites.set_selected(fixed_selection, sites_fixed)
+  new_xrs = xray_structure.replace_sites_cart(new_sites = new_sites)
   t2 = time.time()
   time_apply_transformation += (t2 - t1)
-  return xray_structure.replace_sites_cart(new_sites = new_sites)
+  return new_xrs
 
 class target_and_grads(object):
   def __init__(self, fmodel,
@@ -617,11 +637,11 @@ class target_and_grads(object):
                      rot_objs,
                      selections):
     global time_target_and_grads
+    t1 = time.time()
     target_grads_wrt_xyz = fmodel.gradient_wrt_atomic_parameters(site  = True,
                                                                  alpha = alpha,
                                                                  beta  = beta)
     self.f = fmodel.target_w(alpha = alpha, beta = beta)
-    t1 = time.time()
     self.grads_wrt_r = []
     self.grads_wrt_t = []
     target_grads_wrt_xyz = flex.vec3_double(target_grads_wrt_xyz.packed())
@@ -638,8 +658,7 @@ class target_and_grads(object):
         g_psi = (rot_obj.r_psi() * target_grads_wrt_r).trace()
         g_the = (rot_obj.r_the() * target_grads_wrt_r).trace()
         self.grads_wrt_r.append(flex.double([g_phi, g_psi, g_the]))
-    t2 = time.time()
-    time_target_and_grads += (t2 - t1)
+    time_target_and_grads += (time.time() - t1)
 
   def target(self):
     return self.f

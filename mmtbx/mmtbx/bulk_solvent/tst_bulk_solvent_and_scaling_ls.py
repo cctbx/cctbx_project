@@ -74,9 +74,9 @@ def assert_result(fmodel, k_sol, b_sol, b_cart, f_obs, r_free_flags, tk,tb,tu):
                                fmodel.f_model_t().data())
     assert approx_equal(r_work, fmodel.r_work())
     assert approx_equal(r_test, fmodel.r_free())
-    assert fmodel.f_obs_w().data().all_eq(
+    assert fmodel.f_obs_w.data().all_eq(
                                      f_obs.select(~r_free_flags.data()).data())
-    assert fmodel.f_obs_t().data().all_eq(
+    assert fmodel.f_obs_t.data().all_eq(
                                      f_obs.select(r_free_flags.data()).data())
     assert fmodel.f_obs is f_obs
 
@@ -86,19 +86,17 @@ def exercise_0(fmodel,
                ss,
                r_free_flags):
     k_sol, b_sol, b_cart, f_obs = data_prep(f_calc, f_mask, ss)
-
     fmodel.update(alpha_beta_params = alpha_beta_parameters(),
                   f_obs             = f_obs)
-
     params = bss.solvent_and_scale_params()
-    params.bulk_solvent                  = True
+    params.bulk_solvent                             = True
     params.anisotropic_scaling                      = True
     params.statistical_solvent_model                = False
     params.k_sol_b_sol_grid_search                  = True
     params.minimization_k_sol_b_sol                 = True
-    params.minimization_b_cart                     = True
+    params.minimization_b_cart                      = True
     params.target                                   = "ls_wunit_k1"
-    params.symmetry_constraints_on_b_cart          = True
+    params.symmetry_constraints_on_b_cart           = True
     params.k_sol_max                                = 0.6
     params.k_sol_min                                = 0.1
     params.b_sol_max                                = 80.0

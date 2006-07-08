@@ -3,6 +3,7 @@ import mmtbx.f_model
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from cctbx import sgtbx
+from cctbx import adptbx
 from libtbx.test_utils import approx_equal
 from libtbx.utils import format_cpu_times
 import random
@@ -50,7 +51,7 @@ def exercise(space_group_info,
              d_min            = 2.0,
              k_sol            = 0.35,
              b_sol            = 45.0,
-             b_cart           = [1.,2.,3.,4.,5.,6.]):
+             b_cart           = None):
   xray_structure = random_structure.xray_structure(
          space_group_info       = space_group_info,
          elements               =(("O","N","C")*(n_elements/3+1))[:n_elements],
@@ -60,6 +61,11 @@ def exercise(space_group_info,
          random_u_iso           = False,
          random_occupancy       = False)
   xray_structure.scattering_type_registry(table = table)
+  sg = xray_structure.space_group()
+  uc = xray_structure.unit_cell()
+  u_cart_1 = adptbx.random_u_cart(u_scale=5, u_min=5)
+  u_star_1 = adptbx.u_cart_as_u_star(uc, u_cart_1)
+  b_cart   = adptbx.u_star_as_u_cart(uc, sg.average_u_star(u_star = u_star_1))
   for anomalous_flag in [False, True]:
       f_obs = abs(xray_structure.structure_factors(
                                        d_min          = d_min,
@@ -81,6 +87,9 @@ def exercise(space_group_info,
           else: tolerance = 1.e-9
           if(target != "mlhl"):
              print "  ",target
+             xray.set_scatterer_grad_flags(
+                                      scatterers = xray_structure.scatterers(),
+                                      site       = True)
              fmodel = mmtbx.f_model.manager(
                                           xray_structure    = xray_structure,
                                           f_obs             = f_obs,
