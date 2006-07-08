@@ -8,6 +8,7 @@ from libtbx import adopt_init_args
 from libtbx.test_utils import approx_equal
 import copy
 from cctbx import adptbx
+from cctbx import xray
 
 time_uanisos_from_tls                              = 0.0
 time_tls_from_uanisos                              = 0.0
@@ -287,6 +288,8 @@ class tls_xray_target_minimizer(object):
                run_finite_differences_test = False,
                correct_adp = True):
     adopt_init_args(self, locals())
+    xray.set_scatterer_grad_flags(scatterers = fmodel.xray_structure.scatterers(),
+                                  u_aniso     = True)
     if(self.run_finite_differences_test): self.correct_adp = False
     if(self.fmodel.target_name in ["ml","lsm"]):
        # XXX Looks like alpha & beta must be recalcuclated in line search,

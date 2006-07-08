@@ -15,10 +15,17 @@ namespace {
   boost::python::tuple
   getinitargs(core<> const& self)
   {
-    return boost::python::make_tuple(self.f_obs, self.f_calc, self.f_mask,
+    return boost::python::make_tuple(self.f_calc, self.f_mask,
                                      self.b_cart, self.k_sol, self.b_sol,
                                      self.hkl, self.uc, self.f_model,
                                      self.f_bulk, self.fb_cart, self.ss);
+  }
+
+  boost::python::tuple
+  getinitargs_(ls_target_and_kbu_gradients<> const& self)
+  {
+    return boost::python::make_tuple(self.d_target_d_ksol,
+                                     self.d_target_d_bsol, self.target);
   }
 
   void init_module()
@@ -29,7 +36,6 @@ namespace {
     typedef return_value_policy<return_by_value> rbv;
     class_<core<> >("core")
       .def(init<
-           af::shared<double>                     const&,
            af::shared<std::complex<double> >      const&,
            af::shared<std::complex<double> >      const&,
            scitbx::sym_mat3<double>               const&,
@@ -37,8 +43,7 @@ namespace {
            double                                 const&,
            af::const_ref<cctbx::miller::index<> > const&,
            cctbx::uctbx::unit_cell                const&,
-           af::shared<double>                     const& >((arg_("f_obs"),
-                                                            arg_("f_calc"),
+           af::shared<double>                     const& >((arg_("f_calc"),
                                                             arg_("f_mask"),
                                                             arg_("b_cart"),
                                                             arg_("k_sol"),
@@ -46,7 +51,6 @@ namespace {
                                                             arg_("hkl"),
                                                             arg_("uc"),
                                                             arg_("ss"))))
-      .add_property("f_obs",   make_getter(&core<>::f_obs,   rbv()))
       .add_property("f_calc",  make_getter(&core<>::f_calc,  rbv()))
       .add_property("f_mask",  make_getter(&core<>::f_mask,  rbv()))
       .add_property("b_cart",  make_getter(&core<>::b_cart,  rbv()))
@@ -61,6 +65,26 @@ namespace {
       .enable_pickling()
       .def("__getinitargs__", getinitargs)
     ;
+
+    class_<ls_target_and_kbu_gradients<> >("ls_target_and_kbu_gradients")
+      .def(init<
+           core<double, std::complex<double> > const& ,
+           af::shared<double>        const& ,
+           bool const& ,
+           bool const& ,
+           bool const&  >((arg_("core"),
+                                          arg_("f_obs"),
+                                          arg_("calc_grad_u"),
+                                          arg_("calc_grad_ksol"),
+                                          arg_("calc_grad_bsol"))))
+      .add_property("d_target_d_ksol",  make_getter(&ls_target_and_kbu_gradients<>::d_target_d_ksol,  rbv()))
+      .add_property("d_target_d_bsol",  make_getter(&ls_target_and_kbu_gradients<>::d_target_d_bsol,  rbv()))
+      .add_property("target",  make_getter(&ls_target_and_kbu_gradients<>::target,  rbv()))
+      .enable_pickling()
+      .def("__getinitargs__", getinitargs_)
+    ;
+
+
   }
 
 } // namespace <anonymous>

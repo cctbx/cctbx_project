@@ -53,7 +53,7 @@ class lbfgs(object):
           self.scale_ml = self.fmodel.alpha_beta_params.fix_scale_for_calc_option
     if(self.fmodel.alpha_beta_params.method == "est"):
        self.scale_ml = 1.0
-    self.f_obs_w = self.fmodel.f_obs_w()
+    self.f_obs_w = self.fmodel.f_obs_w
     self.xray_structure.tidy_us(u_min = 1.e-6)
     self.target_name = self.fmodel.target_name
     assert self.target_name in ("ml","mlhl") or self.target_name.count("ls") == 1

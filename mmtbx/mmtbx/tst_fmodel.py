@@ -33,9 +33,15 @@ def test_1(xray_structure):
                       ###
                       ### instantiate fmodel only
                       ###
+                      if(xrs is None):
+                         zero = flex.complex_double(f_obs.data().size(), 0.0)
+                         f_mask = f_obs.array(data = zero)
+                      else:
+                         f_mask = None
                       fmodel = mmtbx.f_model.manager(
                                               xray_structure    = xrs,
                                               f_calc            = fc,
+                                              f_mask            = f_mask,
                                               f_obs             = f_obs,
                                               r_free_flags      = flags,
                                               target_name       = "ls_wunit_k1",
@@ -54,9 +60,9 @@ def test_1(xray_structure):
                       assert fmodel.k_sol_b_sol() == (0.0,0.0)
                       assert fmodel.b_cart == [0,0,0,0,0,0]
                       assert fmodel.u_iso() == 0.0
-                      assert fmodel.f_obs_w().data().all_eq(
+                      assert fmodel.f_obs_w.data().all_eq(
                                                 f_obs.select(~flags.data()).data())
-                      assert fmodel.f_obs_t().data().all_eq(
+                      assert fmodel.f_obs_t.data().all_eq(
                                                  f_obs.select(flags.data()).data())
                       assert abs(fmodel.f_calc_w()).data().all_eq(
                                                 f_obs.select(~flags.data()).data())
@@ -68,9 +74,6 @@ def test_1(xray_structure):
                                                  f_obs.select(flags.data()).data())
                       assert abs(fmodel.f_bulk_w()).data().all_eq(0)
                       assert abs(fmodel.f_bulk_t()).data().all_eq(0)
-                      assert abs(fmodel.f_mask_w()).data().all_eq(0)
-                      assert abs(fmodel.f_mask_t()).data().all_eq(0)
-                      assert abs(fmodel.f_mask).data().all_eq(0)
                       assert approx_equal(fmodel.scale_k1()  , 1.0, 1.e-9)
                       assert approx_equal(fmodel.scale_k1_w(), 1.0, 1.e-9)
                       assert approx_equal(fmodel.scale_k1_t(), 1.0, 1.e-9)
@@ -97,10 +100,17 @@ def test_1(xray_structure):
                       ###
                       ### instantiate fmodel only + update ksol & bsol
                       ###
+                      if(xrs is not None):
+                         fc_ = None
+                      else:
+                         fc_ = fc
+                         zero = flex.complex_double(f_obs.data().size(), 0.0)
+                         f_mask = f_obs.array(data = zero)
                       fmodel = mmtbx.f_model.manager(
                                               xray_structure    = xrs,
-                                              f_calc            = fc,
+                                              f_calc            = fc_,
                                               f_obs             = f_obs,
+                                              f_mask            = f_mask,
                                               r_free_flags      = flags,
                                               target_name       = "ls_wunit_k1",
                                               sf_cos_sin_table  = sf_cos_sin_table,
@@ -108,54 +118,20 @@ def test_1(xray_structure):
                       fmodel.update(k_sol = 0.5, b_sol = 35.0)
                       assert fmodel.f_obs.data().all_eq(f_obs.data())
                       assert abs(fmodel.f_calc).data().all_eq(f_obs.data())
-                      assert abs(fmodel.f_model()).data().all_eq(f_obs.data())
-                      assert approx_equal(fmodel.r_work(), 0, 1.e-9)
-                      assert approx_equal(fmodel.r_free(), 0, 1.e-9)
                       assert fmodel.fb_cart().all_eq(1.0)
                       assert fmodel.fb_cart_w().all_eq(1.0)
                       assert fmodel.fb_cart_t().all_eq(1.0)
-                      assert abs(fmodel.target_w()) < 1.e-9
-                      assert abs(fmodel.target_t()) < 1.e-9
                       assert fmodel.k_sol_b_sol() == (0.5,35.0)
                       assert fmodel.b_cart == [0,0,0,0,0,0]
                       assert fmodel.u_iso() == 0.0
-                      assert fmodel.f_obs_w().data().all_eq(
+                      assert fmodel.f_obs_w.data().all_eq(
                                                 f_obs.select(~flags.data()).data())
-                      assert fmodel.f_obs_t().data().all_eq(
+                      assert fmodel.f_obs_t.data().all_eq(
                                                  f_obs.select(flags.data()).data())
                       assert abs(fmodel.f_calc_w()).data().all_eq(
                                                 f_obs.select(~flags.data()).data())
                       assert abs(fmodel.f_calc_t()).data().all_eq(
                                                  f_obs.select(flags.data()).data())
-                      assert abs(fmodel.f_model_w()).data().all_eq(
-                                                f_obs.select(~flags.data()).data())
-                      assert abs(fmodel.f_model_t()).data().all_eq(
-                                                 f_obs.select(flags.data()).data())
-                      assert abs(fmodel.f_bulk_w()).data().all_eq(0)
-                      assert abs(fmodel.f_bulk_t()).data().all_eq(0)
-                      assert abs(fmodel.f_mask_w()).data().all_eq(0)
-                      assert abs(fmodel.f_mask_t()).data().all_eq(0)
-                      assert abs(fmodel.f_mask).data().all_eq(0)
-                      assert approx_equal(fmodel.scale_k1()  , 1.0, 1.e-9)
-                      assert approx_equal(fmodel.scale_k1_w(), 1.0, 1.e-9)
-                      assert approx_equal(fmodel.scale_k1_t(), 1.0, 1.e-9)
-                      assert approx_equal(fmodel.scale_k2_w(), 1.0, 1.e-9)
-                      assert approx_equal(fmodel.scale_k2_t(), 1.0, 1.e-9)
-                      assert approx_equal(fmodel.scale_k3_w(), 1.0, 1.e-9)
-                      assert approx_equal(fmodel.scale_k3_t(), 1.0, 1.e-9)
-                      assert fmodel.figures_of_merit().all_approx_equal(1.0, 1.e-6)
-                      assert fmodel.phase_errors().all_approx_equal(0.0, 1.e-6)
-                      assert fmodel.phase_errors_work().all_approx_equal(0.0, 1.e-6)
-                      assert fmodel.phase_errors_test().all_approx_equal(0.0, 1.e-6)
-                      a,b = fmodel.alpha_beta()
-                      assert a.data().all_approx_equal(1.0, 1.e-9)
-                      assert b.data().all_approx_equal(0.0, 1.e-9)
-                      a,b = fmodel.alpha_beta_w()
-                      assert a.data().all_approx_equal(1.0, 1.e-9)
-                      assert b.data().all_approx_equal(0.0, 1.e-9)
-                      a,b = fmodel.alpha_beta_t()
-                      assert a.data().all_approx_equal(1.0, 1.e-9)
-                      assert b.data().all_approx_equal(0.0, 1.e-9)
                       assert fmodel.f_ordered_solvent.data().all_eq(0)
                       assert fmodel.f_ordered_solvent_w().data().all_eq(0)
                       assert fmodel.f_ordered_solvent_t().data().all_eq(0)
@@ -165,7 +141,8 @@ def test_1(xray_structure):
                       fmodel=None
                       fmodel_ = mmtbx.f_model.manager(
                                               xray_structure    = xrs,
-                                              f_calc            = fc,
+                                              f_calc            = fc_,
+                                              f_mask            = f_mask,
                                               f_obs             = f_obs,
                                               r_free_flags      = flags,
                                               target_name       = "ls_wunit_k1",
@@ -185,9 +162,9 @@ def test_1(xray_structure):
                       assert fmodel.k_sol_b_sol() == (0.0,0.0)
                       assert fmodel.b_cart == [0,0,0,0,0,0]
                       assert fmodel.u_iso() == 0.0
-                      assert fmodel.f_obs_w().data().all_eq(
+                      assert fmodel.f_obs_w.data().all_eq(
                                                 f_obs.select(~flags.data()).data())
-                      assert fmodel.f_obs_t().data().all_eq(
+                      assert fmodel.f_obs_t.data().all_eq(
                                                  f_obs.select(flags.data()).data())
                       assert abs(fmodel.f_calc_w()).data().all_eq(
                                                 f_obs.select(~flags.data()).data())
@@ -199,9 +176,6 @@ def test_1(xray_structure):
                                                  f_obs.select(flags.data()).data())
                       assert abs(fmodel.f_bulk_w()).data().all_eq(0)
                       assert abs(fmodel.f_bulk_t()).data().all_eq(0)
-                      assert abs(fmodel.f_mask_w()).data().all_eq(0)
-                      assert abs(fmodel.f_mask_t()).data().all_eq(0)
-                      assert abs(fmodel.f_mask).data().all_eq(0)
                       assert approx_equal(fmodel.scale_k1()  , 1.0, 1.e-9)
                       assert approx_equal(fmodel.scale_k1_w(), 1.0, 1.e-9)
                       assert approx_equal(fmodel.scale_k1_t(), 1.0, 1.e-9)
@@ -231,9 +205,16 @@ def test_1(xray_structure):
                       fmodel=None
                       d_max_ = 3.0
                       d_min_ = 2.7
+                      if(xrs is not None):
+                         fc_ = None
+                      else:
+                         fc_ = fc
+                         zero = flex.complex_double(f_obs.data().size(), 0.0)
+                         f_mask = f_obs.array(data = zero)
                       fmodel_ = mmtbx.f_model.manager(
                                               xray_structure    = xrs,
-                                              f_calc            = fc,
+                                              f_calc            = fc_,
+                                              f_mask            = f_mask,
                                               f_obs             = f_obs,
                                               r_free_flags      = flags,
                                               target_name       = "ls_wunit_k1",
@@ -242,11 +223,14 @@ def test_1(xray_structure):
                       fmodel_1 = fmodel_.resolution_filter(d_max = d_max_, d_min = d_min_)
                       if(fc is not None):
                          fc_ = fc.resolution_filter(d_max = d_max_, d_min = d_min_)
+                         fm_ = f_mask.resolution_filter(d_max = d_max_, d_min = d_min_)
                       else:
                          fc_ = None
+                         fm_ = None
                       fmodel_2 = mmtbx.f_model.manager(
                                 xray_structure    = xrs,
                                 f_calc            = fc_,
+                                f_mask            = fm_,
                                 f_obs             = f_obs.resolution_filter(d_max = d_max_, d_min = d_min_),
                                 r_free_flags      = flags.resolution_filter(d_max = d_max_, d_min = d_min_),
                                 target_name       = "ls_wunit_k1",
@@ -259,10 +243,10 @@ def test_1(xray_structure):
                       assert fmodel_1.fb_cart().all_eq(fmodel_2.fb_cart())
                       assert fmodel_1.fb_cart_w().all_eq(fmodel_2.fb_cart_w())
                       assert fmodel_1.fb_cart_t().all_eq(fmodel_2.fb_cart_t())
-                      assert fmodel_1.f_obs_w().data().all_eq(
-                                                     fmodel_2.f_obs_w().data())
-                      assert fmodel_1.f_obs_t().data().all_eq(
-                                                     fmodel_2.f_obs_t().data())
+                      assert fmodel_1.f_obs_w.data().all_eq(
+                                                     fmodel_2.f_obs_w.data())
+                      assert fmodel_1.f_obs_t.data().all_eq(
+                                                     fmodel_2.f_obs_t.data())
                       assert abs(fmodel_1.f_calc_w()).data().all_eq(
                                                abs(fmodel_2.f_calc_w()).data())
                       assert abs(fmodel_1.f_calc_t()).data().all_eq(

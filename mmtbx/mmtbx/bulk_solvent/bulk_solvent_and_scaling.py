@@ -259,7 +259,7 @@ def aniso_scale_minimizer(fmodel, symm_constr, alpha=None, beta=None):
   f_calc_new = miller.array(miller_set = fmodel.f_calc_w(), data = f_c_d + f_o_d)
   return uaniso_ksol_bsol_scaling_minimizer(
          fc            = f_calc_new,
-         fo            = fmodel.f_obs_w(),
+         fo            = fmodel.f_obs_w,
          fm            = fmodel.f_mask_w(),
          k_initial     = fmodel.k_sol_b_sol()[0],
          b_initial     = fmodel.k_sol_b_sol()[1],
@@ -292,7 +292,7 @@ def k_sol_b_sol_minimizer(fmodel):
   f_calc_new = miller.array(miller_set = fmodel.f_calc_w(), data = f_c_d + f_o_d)
   manager = uaniso_ksol_bsol_scaling_minimizer(
          fc            = f_calc_new,
-         fo            = fmodel.f_obs_w(),
+         fo            = fmodel.f_obs_w,
          fm            = fmodel.f_mask_w(),
          k_initial     = fmodel.k_sol_b_sol()[0],
          b_initial     = fmodel.k_sol_b_sol()[1],

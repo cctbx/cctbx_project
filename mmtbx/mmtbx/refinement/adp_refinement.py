@@ -147,7 +147,7 @@ class manager(object):
                                         out  = log)
        if(macro_cycle == 1):
           if((fmodel.r_work() > 0.3 and fmodel.r_free() > 0.3) and
-                                              fmodel.f_obs_w().d_min() > 2.65):
+                                              fmodel.f_obs_w.d_min() > 2.65):
              fmodel.xray_structure.convert_to_isotropic()
              for sc in fmodel.xray_structure.scatterers():
                sc.flags.set_tan_u_iso(True)

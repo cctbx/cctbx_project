@@ -673,11 +673,6 @@ class adp_statistics(object):
        np = 79 - (len(line) + 1)
        line = line + " "*np + "|"
        print >> out, line
-    else:
-       line = "|                             Wilson B = "+str("None").strip()
-       np = 79 - (len(line) + 1)
-       line = line + " "*np + "|"
-       print >> out, line
     print >> out, "| "+"  "*38+"|"
     print >> out, "| Reference model:                    | Current model:   "\
                   "                     |"

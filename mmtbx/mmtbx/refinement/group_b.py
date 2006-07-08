@@ -6,6 +6,7 @@ from scitbx import matrix
 from scitbx import lbfgs
 import copy, math
 from cctbx import adptbx
+from cctbx import xray
 
 
 class manager(object):
@@ -19,6 +20,8 @@ class manager(object):
                      convergence_delta        = 0.00001,
                      log                      = None):
     if(log is None): log = sys.stdout
+    xray.set_scatterer_grad_flags(scatterers = fmodel.xray_structure.scatterers(),
+                                  u_iso      = True)
     if(selections is None):
        selections = []
        selections.append(flex.bool(fmodel.xray_structure.scatterers().size(),
@@ -65,7 +68,7 @@ class manager(object):
                                           out            = log)
         rwork = minimized.fmodel_copy.r_work()
         rfree = minimized.fmodel_copy.r_free()
-        self.show(f     = fmodel_copy.f_obs_w(),
+        self.show(f     = fmodel_copy.f_obs_w,
                   rw    = rwork,
                   rf    = rfree,
                   tw    = minimized.fmodel_copy.target_w(),

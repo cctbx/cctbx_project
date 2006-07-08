@@ -14,6 +14,7 @@ import mmtbx.model
 from libtbx.test_utils import approx_equal
 from libtbx.utils import format_cpu_times
 import random, math
+from cctbx import xray
 
 random.seed(0)
 flex.set_random_seed(0)
@@ -286,7 +287,8 @@ def finite_differences_test(sf_algorithm = "direct"):
                                  sf_cos_sin_table  = False,
                                  sf_algorithm      = sf_algorithm)
   fmodel.show_essential()
-
+  xray.set_scatterer_grad_flags(scatterers = fmodel.xray_structure.scatterers(),
+                                site       = True)
   for convention in ["zyz","xyz"]:
       rot_obj = mmtbx.refinement.rigid_body.euler(
                             phi = 0, psi = 0, the = 0, convention = convention)

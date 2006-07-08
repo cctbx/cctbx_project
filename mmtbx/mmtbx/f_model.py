@@ -49,12 +49,14 @@ def show_times(out = None):
           time_phase_errors                   +\
           time_foms
   print >> out, "Timing for general calculations:"
-  print >> out, "  bulk_solvent_and_scale         = %-7.2f" % time_bulk_solvent_and_scale
+  print >> out, "  bulk_solvent_and_scale         = %-7.2f" % \
+                                                    time_bulk_solvent_and_scale
   print >> out, "  mask                           = %-7.2f" % time_mask
   print >> out, "  f_calc_atoms                   = %-7.2f" % time_f_calc_atoms
   print >> out, "  alpha_beta                     = %-7.2f" % time_alpha_beta
   print >> out, "  target                         = %-7.2f" % time_target
-  print >> out, "  gradient_wrt_atomic_parameters = %-7.2f" % time_gradient_wrt_atomic_parameters
+  print >> out, "  gradient_wrt_atomic_parameters = %-7.2f" % \
+                                            time_gradient_wrt_atomic_parameters
   print >> out, "  fmodel                         = %-7.2f" % time_fmodel
   print >> out, "  r_factors                      = %-7.2f" % time_r_factors
   print >> out, "  phase_errors                   = %-7.2f" % time_phase_errors
@@ -69,6 +71,32 @@ target_names = (
       "ls_wff_k1ask3_fixed",
       "lsm_k1"     ,"lsm_k2"    ,"lsm_kunit","lsm_k1_fixed","lsm_k1ask3_fixed",
       "ml","mlhl")
+
+class set_core(object):
+  def __init__(self, f_calc,
+                     f_mask,
+                     b_cart,
+                     k_sol,
+                     b_sol,
+                     hkl,
+                     uc,
+                     ss,
+                     work,
+                     test):
+    adopt_init_args(self, locals())
+    self.core = ext.core(f_calc = self.f_calc.data(),
+                         f_mask = self.f_mask.data(),
+                         b_cart = self.b_cart,
+                         k_sol  = self.k_sol,
+                         b_sol  = self.b_sol,
+                         hkl    = self.hkl,
+                         uc     = self.uc,
+                         ss     = self.ss)
+    self.f_model   = self.core.f_model
+    self.f_model_w = self.core.f_model.select(self.work)
+    self.f_model_t = self.core.f_model.select(self.test)
+    self.fb_cart_w = self.core.fb_cart.select(self.work)
+    self.fb_cart_t = self.core.fb_cart.select(self.test)
 
 class manager(object):
   def __init__(self, f_obs               = None,
@@ -89,11 +117,25 @@ class manager(object):
     zero = flex.complex_double(self.f_obs.data().size(), 0.0)
     assert self.f_obs is not None
     assert self.f_obs.is_real_array()
-    self.ss = 1./flex.pow2(self.f_obs.d_spacings().data()) / 4.
+    if(self.r_free_flags is not None):
+       assert self.r_free_flags.indices().all_eq(self.f_obs.indices())
+    self.work = ~self.r_free_flags.data()
+    self.test =  self.r_free_flags.data()
+    if(self.work.count(True) == 0): self.work = ~self.work
+    if(self.test.count(True) == 0): self.test = ~self.test
+    self.f_obs_w = self.f_obs.select(self.work)
+    self.f_obs_t = self.f_obs.select(self.test)
+    self.structure_factor_gradients_w = cctbx.xray.structure_factors.gradients(
+                                         miller_set    = self.f_obs_w,
+                                         cos_sin_table = self.sf_cos_sin_table)
+    self.hkl = self.f_obs.indices()
+    self.uc = self.f_obs.unit_cell()
+    self.d_spacings = self.f_obs.d_spacings().data()
+    self.d_spacings_w = self.d_spacings.select(self.work)
+    self.d_spacings_t = self.d_spacings.select(self.test)
+    self.ss = 1./flex.pow2(self.d_spacings) / 4.
     if(self.xray_structure is None):
-       if(self.f_mask is None):
-          self.f_mask = self.f_obs.array(data = zero)
-       #assert [self.f_calc, self.f_mask].count(None) == 0
+       assert [self.f_calc, self.f_mask].count(None) == 0
        assert self.f_mask.is_complex_array()
        assert self.f_calc.is_complex_array()
        assert self.f_mask.indices().all_eq(self.f_obs.indices())
@@ -104,41 +146,34 @@ class manager(object):
           self.f_mask = self.f_obs.array(data = zero)
        self.update_xray_structure(xray_structure = self.xray_structure,
                                   update_f_calc  = True,
-                                  update_f_mask  = False)
+                                  update_f_mask  = True)
     assert len(self.b_cart) == 6
-    if(self.r_free_flags is not None):
-       assert self.r_free_flags.indices().all_eq(self.f_obs.indices())
     if(self.abcd is not None):
        assert self.abcd.indices().all_eq(self.f_obs.indices()) == 1
-    assert self.sf_algorithm in ("fft", "direct")
+    if(self.sf_algorithm not in ("fft", "direct")):
+       raise RuntimeError("Unknown s.f. calculation method: %s"%
+                                                             self.sf_algorithm)
     self.f_ordered_solvent = self.f_obs.array(data = zero)
     self.f_ordered_solvent_dist = self.f_obs.array(data = zero)
     self.n_ordered_water = 0.0
     self.b_ordered_water = 0.0
     if(self.f_mask is None):
        self.f_mask = self.f_obs.array(data = zero)
-    self.target_names = (
-      "ls_wunit_k1","ls_wunit_k2","ls_wunit_kunit","ls_wunit_k1_fixed",
-      "ls_wunit_k1ask3_fixed",
-      "ls_wexp_k1" ,"ls_wexp_k2" ,"ls_wexp_kunit",
-      "ls_wff_k1"  ,"ls_wff_k2"  ,"ls_wff_kunit","ls_wff_k1_fixed",
-      "ls_wff_k1ask3_fixed",
-      "lsm_k1"     ,"lsm_k2"    ,"lsm_kunit","lsm_k1_fixed","lsm_k1ask3_fixed",
-      "ml","mlhl")
     if(self.target_name is not None):
        if(self.target_name == "ls".strip()): self.target_name = "ls_wunit_k1"
-       assert self.target_name in self.target_names
+       if(self.target_name not in target_names):
+          raise RuntimeError("Unknown target name: %s"%self.target_name)
        self.setup_target_functors()
-    self.core = ext.core(f_obs  = self.f_obs.data(),
-                         f_calc = self.f_calc.data(),
-                         f_mask = self.f_mask.data(),
-                         b_cart = self.b_cart,
-                         k_sol  = self.k_sol,
-                         b_sol  = self.b_sol,
-                         hkl    = self.f_obs.indices(),
-                         uc     = self.f_obs.unit_cell(),
-                         ss     = self.ss)
-
+    self.core = set_core(f_calc       = self.f_calc,
+                         f_mask       = self.f_mask,
+                         b_cart       = self.b_cart,
+                         k_sol        = self.k_sol,
+                         b_sol        = self.b_sol,
+                         hkl          = self.hkl,
+                         uc           = self.uc,
+                         ss           = self.ss,
+                         work         = self.work,
+                         test         = self.test)
 
   def deep_copy(self):
     if(self.abcd is not None):
@@ -148,12 +183,15 @@ class manager(object):
     if(self.xray_structure is not None):
        xrs_dc = self.xray_structure.deep_copy_scatterers()
        fc_dc = None
+       fm_dc = None
     else:
        xrs_dc = None
        fc_dc = self.f_calc.deep_copy()
+       fm_dc = self.f_mask.deep_copy()
     new=manager(f_obs             = self.f_obs.deep_copy(),
                 r_free_flags      = self.r_free_flags.deep_copy(),
                 b_cart            = self.b_cart,
+                f_mask            = fm_dc,
                 k_sol             = self.k_sol,
                 b_sol             = self.b_sol,
                 sf_algorithm      = self.sf_algorithm,
@@ -164,8 +202,6 @@ class manager(object):
                 xray_structure    = xrs_dc,
                 f_calc            = fc_dc,
                 mask_params       = self.mask_params)
-    new.f_calc                 = self.f_calc.deep_copy()
-    new.f_mask                 = self.f_mask.deep_copy()
     new.f_ordered_solvent      = self.f_ordered_solvent.deep_copy()
     new.f_ordered_solvent_dist = self.f_ordered_solvent_dist.deep_copy()
     new.n_ordered_water        = self.n_ordered_water
@@ -181,48 +217,52 @@ class manager(object):
     if(dc.xray_structure is not None):
        xrs_dc = dc.xray_structure.deep_copy_scatterers()
        fc_dc = None
+       fm_dc = None
     else:
        xrs_dc = None
        fc_dc = dc.f_calc.deep_copy().resolution_filter(d_max, d_min)
-    new  = manager(f_obs             = dc.f_obs.resolution_filter(d_max, d_min),
-                   r_free_flags      = dc.r_free_flags.resolution_filter(d_max, d_min),
-                   b_cart            = dc.b_cart,
-                   k_sol             = dc.k_sol,
-                   b_sol             = dc.b_sol,
-                   sf_algorithm      = dc.sf_algorithm       ,
-                   sf_cos_sin_table  = dc.sf_cos_sin_table,
-                   target_name       = dc.target_name        ,
-                   abcd              = abcd               ,
-                   alpha_beta_params = dc.alpha_beta_params  ,
-                   xray_structure    = xrs_dc     ,
-                   f_calc            = fc_dc,
-                   mask_params       = dc.mask_params)
-    #new.f_calc                 = dc.f_calc.resolution_filter(d_max, d_min)
-    new.f_mask                 = dc.f_mask.resolution_filter(d_max, d_min)
-    new.f_ordered_solvent      = dc.f_ordered_solvent.resolution_filter(d_max, d_min)
-    new.f_ordered_solvent_dist = dc.f_ordered_solvent_dist.resolution_filter(d_max, d_min)
-    new.n_ordered_water        = dc.n_ordered_water
-    new.b_ordered_water        = dc.b_ordered_water
+       fm_dc = dc.f_mask.deep_copy().resolution_filter(d_max, d_min)
+    new  = manager(
+           f_obs             = dc.f_obs.resolution_filter(d_max, d_min),
+           r_free_flags      = dc.r_free_flags.resolution_filter(d_max, d_min),
+           b_cart            = dc.b_cart,
+           k_sol             = dc.k_sol,
+           b_sol             = dc.b_sol,
+           sf_algorithm      = dc.sf_algorithm,
+           sf_cos_sin_table  = dc.sf_cos_sin_table,
+           target_name       = dc.target_name,
+           abcd              = abcd,
+           alpha_beta_params = dc.alpha_beta_params,
+           xray_structure    = xrs_dc,
+           f_calc            = fc_dc,
+           f_mask            = fm_dc,
+           mask_params       = dc.mask_params)
+    new.f_ordered_solvent      = \
+                           dc.f_ordered_solvent.resolution_filter(d_max, d_min)
+    new.f_ordered_solvent_dist = \
+                      dc.f_ordered_solvent_dist.resolution_filter(d_max, d_min)
+    new.n_ordered_water = dc.n_ordered_water
+    new.b_ordered_water = dc.b_ordered_water
     return new
 
   def apply_back_b_iso(self):
     b_iso = self.u_iso()
     b_cart = self.b_cart
     b_cart_new = [b_cart[0]-b_iso,b_cart[1]-b_iso,b_cart[2]-b_iso,
-                   b_cart[3],      b_cart[4],      b_cart[5]]
+                  b_cart[3],      b_cart[4],      b_cart[5]]
     self.b_cart = b_cart_new
     b_sol = self.k_sol_b_sol()[1] + b_iso
-    #if(b_sol > 80.0): b_sol = 80.0
-    #if(b_sol < 10.0): b_sol = 10.0
     self.b_sol = b_sol
     self.xray_structure.shift_us(b_shift = b_iso)
     self.xray_structure.tidy_us(u_min = 1.e-6)
-    self.f_calc = self.f_obs.structure_factors_from_scatterers(
-      xray_structure = self.xray_structure,
-      algorithm      = self.sf_algorithm,
-      cos_sin_table  = self.sf_cos_sin_table).f_calc()
+    self.update_xray_structure(xray_structure           = self.xray_structure,
+                               update_f_calc            = True,
+                               update_f_mask            = False,
+                               update_f_ordered_solvent = False,
+                               out                      = None)
 
   def set_f_ordered_solvent(self, params):
+    raise RuntimeError("Not implemented.")
     if(params.nu_fix_b_atoms is not None):
        self.n_ordered_water = params.nu_fix_n_atoms
        self.b_ordered_water = params.nu_fix_b_atoms
@@ -265,6 +305,15 @@ class manager(object):
        self.alpha_beta_params.n_water_atoms_absent = self.n_ordered_water
        self.alpha_beta_params.bf_atoms_absent = self.b_ordered_water
 
+  def _get_step(self, update_f_ordered_solvent = False):
+    if(self.mask_params is not None):
+       step = self.f_obs.d_min()/self.mask_params.grid_step_factor
+    else:
+       step = self.f_obs.d_min() / 4.0
+    if(step < 0.3): step = 0.3
+    step = min(0.8, step)
+    if(update_f_ordered_solvent): step = 0.3
+    return step
 
   def update_xray_structure(self,
                             xray_structure,
@@ -273,13 +322,7 @@ class manager(object):
                             update_f_ordered_solvent = False,
                             out = None):
     self.xray_structure = xray_structure
-    if(self.mask_params is not None):
-       step = self.f_obs.d_min()/self.mask_params.grid_step_factor
-    else:
-       step = self.f_obs.d_min() / 4.0
-    if(step < 0.3): step = 0.3
-    step = min(0.8, step)
-    if(update_f_ordered_solvent): step = 0.3
+    step = self._get_step(update_f_ordered_solvent = update_f_ordered_solvent)
     if(update_f_calc):
        global time_f_calc_atoms
        t1 = time.time()
@@ -321,21 +364,19 @@ class manager(object):
                  bulk_solvent_mask_obj.structure_factors(miller_set=self.f_obs)
        t2 = time.time()
        time_mask += (t2 - t1)
-    self.core = ext.core(f_obs  = self.f_obs.data(),
-                         f_calc = self.f_calc.data(),
-                         f_mask = self.f_mask.data(),
-                         b_cart = self.b_cart,
-                         k_sol  = self.k_sol,
-                         b_sol  = self.b_sol,
-                         hkl    = self.f_obs.indices(),
-                         uc     = self.f_obs.unit_cell(),
-                         ss     = self.ss)
+    self.core = set_core(f_calc       = self.f_calc,
+                         f_mask       = self.f_mask,
+                         b_cart       = self.b_cart,
+                         k_sol        = self.k_sol,
+                         b_sol        = self.b_sol,
+                         hkl          = self.hkl,
+                         uc           = self.uc,
+                         ss           = self.ss,
+                         work         = self.work,
+                         test         = self.test)
 
   def bulk_solvent_mask(self):
-    if(self.mask_params is not None):
-       step = self.f_obs.d_min()/self.mask_params.grid_step_factor
-    else:
-       step = self.f_obs.d_min() / 4.0
+    step = self._get_step()
     if(self.mask_params is not None):
        result = masks.bulk_solvent(
           xray_structure           = self.xray_structure,
@@ -508,67 +549,52 @@ class manager(object):
     assert flag in ("work", "test")
     if(flag == "work"):
        f_model = self.f_model_w()
-       if(self.target_name in ("ml","mlhl")):
-          if(alpha is None and beta is None):
+    else:
+       f_model = self.f_model_t()
+    if(self.target_name in ("ml","mlhl")):
+       if(alpha is None and beta is None):
+          if(flag == "work"):
              alpha, beta = self.alpha_beta_w()
           else:
-             assert alpha.data().size() == f_model.data().size()
-             assert beta.data().size() == f_model.data().size()
-          if(scale_ml is None):
-             if(self.alpha_beta_params is not None):
-                if(self.alpha_beta_params.method == "calc"):
-                   if(self.alpha_beta_params.fix_scale_for_calc_option is None):
-                      scale_ml = self.scale_ml()
-                   else:
-                      scale_ml=self.alpha_beta_params.fix_scale_for_calc_option
-                else:
-                   scale_ml = 1.0
-             else:
-                scale_ml = 1.0
-                #XXX
-          return self.target_functor_w(f_model,
-                                       #self.f_calc_fb_cart_w(),
-                                       alpha.data(),
-                                       beta.data(),
-                                       scale_ml,
-                                       compute_gradients)
-       if(self.target_name.count("ls") == 1):
-          alpha is None and beta is None
-          return self.target_functor_w(f_model, compute_gradients)
-    if(flag == "test"):
-       f_model = self.f_model_t()
-       if(self.target_name in ("ml","mlhl")):
-          if(alpha is None and beta is None):
              alpha, beta = self.alpha_beta_t()
-          else:
-             assert alpha.data().size() == f_model.data().size()
-             assert beta.data().size() == f_model.data().size()
-          if(scale_ml is None):
-             if(self.alpha_beta_params is not None):
-                if(self.alpha_beta_params.method == "calc"):
-                   if(self.alpha_beta_params.fix_scale_for_calc_option is None):
-                      scale_ml = self.scale_ml()
-                   else:
-                      scale_ml=self.alpha_beta_params.fix_scale_for_calc_option
+       else:
+          assert alpha.data().size() == f_model.data().size()
+          assert beta.data().size()  == f_model.data().size()
+       if(scale_ml is None):
+          if(self.alpha_beta_params is not None):
+             if(self.alpha_beta_params.method == "calc"):
+                if(self.alpha_beta_params.fix_scale_for_calc_option is None):
+                   scale_ml = self.scale_ml()
                 else:
-                   scale_ml = 1.0
+                   scale_ml=self.alpha_beta_params.fix_scale_for_calc_option
              else:
                 scale_ml = 1.0
-                #XXX
-          return self.target_functor_t(f_model,
-                                       #self.f_calc_fb_cart_w(),
+          else:
+             scale_ml = 1.0
+       if(flag == "work"):
+          return self.target_functor_w(f_model,
                                        alpha.data(),
                                        beta.data(),
                                        scale_ml,
                                        compute_gradients)
-       if(self.target_name.count("ls") == 1):
-          alpha is None and beta is None
+       else:
+          return self.target_functor_t(f_model,
+                                       alpha.data(),
+                                       beta.data(),
+                                       scale_ml,
+                                       compute_gradients)
+    if(self.target_name.count("ls") == 1):
+       alpha is None and beta is None
+       if(flag == "work"):
+          return self.target_functor_w(f_model, compute_gradients)
+       else:
           return self.target_functor_t(f_model, compute_gradients)
 
   def target_w(self, alpha=None, beta=None, scale_ml=None):
     global time_target
     t1 = time.time()
-    result = self.xray_target_functor_result(compute_gradients = False,
+    result = self.xray_target_functor_result(
+                                           compute_gradients = False,
                                            alpha             = alpha,
                                            beta              = beta,
                                            scale_ml          = scale_ml,
@@ -580,7 +606,8 @@ class manager(object):
   def target_t(self, alpha=None, beta=None, scale_ml=None):
     global time_target
     t1 = time.time()
-    result = self.xray_target_functor_result(compute_gradients = False,
+    result = self.xray_target_functor_result(
+                                           compute_gradients = False,
                                            alpha             = alpha,
                                            beta              = beta,
                                            scale_ml          = scale_ml,
@@ -609,16 +636,20 @@ class manager(object):
              tan_u_iso = True
              param = int(tan_b_iso_max)
        assert [site, u_iso, u_aniso].count(None) == 0
-       xrs = self.xray_structure.deep_copy_scatterers()
-       xray.set_scatterer_grad_flags(scatterers = xrs.scatterers(),
-                                     site       = site,
-                                     u_iso      = u_iso,
-                                     u_aniso    = u_aniso,
-                                     tan_u_iso  = tan_u_iso,
-                                     param      = param)
-    structure_factor_gradients = cctbx.xray.structure_factors.gradients(
-                                         miller_set    = self.f_obs_w(),
-                                         cos_sin_table = self.sf_cos_sin_table)
+       if(selection is not None):
+          xrs = self.xray_structure.deep_copy_scatterers()
+       else:
+          xrs = self.xray_structure
+       ##XXX very inefficient code:
+       #xray.set_scatterer_grad_flags(scatterers = xrs.scatterers(),
+       #                              site       = site,
+       #                              u_iso      = u_iso,
+       #                              u_aniso    = u_aniso,
+       #                              tan_u_iso  = tan_u_iso,
+       #                              param      = param)
+    #structure_factor_gradients = cctbx.xray.structure_factors.gradients(
+    #                                     miller_set    = self.f_obs_w,
+    #                                     cos_sin_table = self.sf_cos_sin_table)
     #XXX clear with target names
     if(self.target_name.count("ml") > 0 or self.target_name.count("lsm") > 0):
        if([alpha, beta].count(None) == 2):
@@ -640,25 +671,24 @@ class manager(object):
           u_iso_reinable_params = flex.tan(math.pi*
             (self.xray_structure.scatterers().extract_u_iso()/u_iso_max-1./2.))
        if(tan_b_iso_max == 0):
-          u_iso_reinable_params = None#flex.sqrt(
-                              #self.xray_structure.scatterers().extract_u_iso())
+          u_iso_reinable_params = None
     result = None
     if(u_aniso):
-       result = structure_factor_gradients(
-                    u_iso_reinable_params = None,
-                    d_target_d_f_calc  = xrtfr.derivatives() * self.core.fb_cart.select(~self.r_free_flags.data()),#self.fb_cart_w(),
-                    xray_structure     = xrs,
-                    n_parameters       = 0,
-                    miller_set         = self.f_obs_w(),
-                    algorithm          = self.sf_algorithm).d_target_d_u_cart()
+       result = self.structure_factor_gradients_w(
+                u_iso_reinable_params = None,
+                d_target_d_f_calc  = xrtfr.derivatives() * self.core.fb_cart_w,
+                xray_structure     = xrs,
+                n_parameters       = 0,
+                miller_set         = self.f_obs_w,
+                algorithm          = self.sf_algorithm).d_target_d_u_cart()
     else:
-       result = structure_factor_gradients(
-                         u_iso_reinable_params = u_iso_reinable_params,
-                         d_target_d_f_calc  = xrtfr.derivatives() * self.core.fb_cart.select(~self.r_free_flags.data()),#self.fb_cart_w(),
-                         xray_structure     = xrs,
-                         n_parameters       = xrs.n_parameters_XXX(),
-                         miller_set         = self.f_obs_w(),
-                         algorithm          = self.sf_algorithm)
+       result = self.structure_factor_gradients_w(
+                u_iso_reinable_params = u_iso_reinable_params,
+                d_target_d_f_calc  = xrtfr.derivatives() * self.core.fb_cart_w,
+                xray_structure     = xrs,
+                n_parameters       = xrs.n_parameters_XXX(),
+                miller_set         = self.f_obs_w,
+                algorithm          = self.sf_algorithm)
     t2 = time.time()
     time_gradient_wrt_atomic_parameters += (t2 - t1)
     return result
@@ -688,6 +718,8 @@ class manager(object):
     if(f_obs is not None):
        assert f_obs.data().size() == self.f_obs.data().size()
        self.f_obs = f_obs
+       self.f_obs_w = self.f_obs.select(self.work)
+       self.f_obs_t = self.f_obs.select(self.test)
     if(f_mask is not None):
       assert f_mask.data().size() == self.f_mask.data().size()
       self.f_mask = f_mask
@@ -708,22 +740,23 @@ class manager(object):
       assert sf_algorithm in ("fft", "direct")
       self.sf_algorithm = sf_algorithm
     if(target_name is not None):
-      assert target_name in self.target_names
+      assert target_name in target_names
       self.target_name = target_name
       self.setup_target_functors()
     if(abcd is not None):
       self.abcd = abcd
     if(alpha_beta_params is not None):
       self.alpha_beta_params = alpha_beta_params
-    self.core = ext.core(f_obs  = self.f_obs.data(),
-                         f_calc = self.f_calc.data(),
-                         f_mask = self.f_mask.data(),
-                         b_cart = self.b_cart,
-                         k_sol  = self.k_sol,
-                         b_sol  = self.b_sol,
-                         hkl    = self.f_obs.indices(),
-                         uc     = self.f_obs.unit_cell(),
-                         ss     = self.ss)
+    self.core = set_core(f_calc       = self.f_calc,
+                         f_mask       = self.f_mask,
+                         b_cart       = self.b_cart,
+                         k_sol        = self.k_sol,
+                         b_sol        = self.b_sol,
+                         hkl          = self.hkl,
+                         uc           = self.uc,
+                         ss           = self.ss,
+                         work         = self.work,
+                         test         = self.test)
     return self
 
   def f_ordered_solvent_w(self):
@@ -741,103 +774,35 @@ class manager(object):
       return self.f_ordered_solvent
 
   def f_bulk(self):
-    data = self.f_mask.data() * flex.exp(-self.ss * self.b_sol) * self.k_sol
-    return miller.array(miller_set = self.f_calc, data = data)
+    return miller.array(miller_set = self.f_calc, data = self.core.core.f_bulk)
 
   def f_bulk_w(self):
-    assert self.r_free_flags is not None
     if(self.r_free_flags.data().count(True) > 0):
-      return self.f_bulk().select(~self.r_free_flags.data())
+      return self.f_bulk().select(self.work)
     else:
       return self.f_bulk()
 
   def f_bulk_t(self):
-    assert self.r_free_flags is not None
     if(self.r_free_flags.data().count(True) > 0):
-      return self.f_bulk().select(self.r_free_flags.data())
+      return self.f_bulk().select(self.test)
     else:
       return self.f_bulk()
 
-  #def f_calc_fb_cart(self):
-  #  #return self.f_calc.array(data = self.f_model().data() * self.fb_cart())
-  #  return self.f_calc.array(data = self.f_model().data() )
-  #
-  #def f_calc_fb_cart_w(self):
-  #  assert self.r_free_flags is not None
-  #  if(self.r_free_flags.data().count(True) > 0):
-  #    return self.f_calc_fb_cart().select(~self.r_free_flags.data())
-  #  else:
-  #    return self.f_calc_fb_cart()
-  #
-  #def f_calc_fb_cart_t(self):
-  #  assert self.r_free_flags is not None
-  #  if(self.r_free_flags.data().count(True) > 0):
-  #    return self.f_calc_fb_cart().select(self.r_free_flags.data())
-  #  else:
-  #    return self.f_calc_fb_cart()
-
   def fb_cart(self):
-    #f_mod = xray.f_model(hkl       = self.f_calc.indices(),
-    #                     f_atoms   = self.f_calc.data(),
-    #                     f_mask    = self.f_mask.data(),
-    #                     unit_cell = self.f_calc.unit_cell(),
-    #                     k_overall = 2.0,
-    #                     u_star    = adptbx.u_cart_as_u_star(self.f_calc.unit_cell(),
-    #                                                         adptbx.b_as_u(self.b_cart)),
-    #                     k_sol     = self.k_sol,
-    #                     u_sol     = self.b_sol,
-    #                     f_part    = self.f_calc.data()*0.0,
-    #                     k_part    = 0.0,
-    #                     u_part    = 0.0)
-    #print dir(f_mod)
-    #assert 0
-    #result_ = f_mod.fb_cart()
-    result = bulk_solvent.fb_cart(self.b_cart,
-                                   self.f_calc.indices(),
-                                   self.f_calc.unit_cell())
-    #print flex.max(result),flex.min(result), flex.mean(result)
-    #print flex.max(result_),flex.min(result_), flex.mean(result_)
-    #print
-    return result
+    return self.core.core.fb_cart
 
   def fb_cart_w(self):
-    assert self.r_free_flags is not None
-    if(self.r_free_flags.data().count(True) > 0):
-      return self.fb_cart().select(~self.r_free_flags.data())
-    else:
-      return self.fb_cart()
+    return self.fb_cart().select(self.work)
 
   def fb_cart_t(self):
-    assert self.r_free_flags is not None
-    if(self.r_free_flags.data().count(True) > 0):
-      return self.fb_cart().select(self.r_free_flags.data())
-    else:
-      return self.fb_cart()
+    return self.fb_cart().select(self.test)
 
   def f_model(self):
     global time_fmodel
     t1 = time.time()
-    if(self.target_name in ["ml", "mlhl"]):
-       #eps = self.f_obs_t().epsilons().data().as_double()
-       #mul = self.f_obs_t().multiplicities().data().as_double()
-       fb_cart = self.fb_cart_w()
-       fo = self.f_obs_w().data()
-       fc = flex.abs(fb_cart * (self.f_calc_w().data() + self.f_bulk_w().data()))
-       #sc = math.sqrt(flex.sum(fo * fo * mul / eps) / \
-       #               flex.sum(fc * fc * mul / eps) )
-       sc = flex.sum(fo*fc) / flex.sum(fc*fc)
-       if(abs(sc-1.0) < 0.3): sc = 1.0
-    else: sc = 1.0
-    #fb_cart = self.fb_cart()
-    #if(self.f_ordered_solvent is None):
-    #   data = fb_cart * (self.f_calc.data() + self.f_bulk().data())
-    #else:
-    #   data = fb_cart * (self.f_calc.data() + self.f_bulk().data() + \
-    #                      self.f_ordered_solvent.data())
-    result = miller.array(miller_set = self.f_calc, data = self.core.f_model*sc)
+    result = miller.array(miller_set = self.f_calc, data = self.core.f_model)
     t2 = time.time()
     time_fmodel += (t2 - t1)
-    #return miller.array(miller_set = self.f_calc, data = data*sc)
     return result
 
   def f_model_scaled_with_k1(self):
@@ -853,18 +818,20 @@ class manager(object):
                         data       = self.scale_k1_w()*self.f_model_w().data())
 
   def f_model_w(self):
-    assert self.r_free_flags is not None
-    if(self.r_free_flags.data().count(True) > 0):
-      return self.f_model().select(~self.r_free_flags.data())
-    else:
-      return self.f_model()
+    global time_fmodel
+    t1 = time.time()
+    result = miller.array(miller_set= self.f_obs_w, data= self.core.f_model_w)
+    t2 = time.time()
+    time_fmodel += (t2 - t1)
+    return result
 
   def f_model_t(self):
-    assert self.r_free_flags is not None
-    if(self.r_free_flags.data().count(True) > 0):
-      return self.f_model().select(self.r_free_flags.data())
-    else:
-      return self.f_model()
+    global time_fmodel
+    t1 = time.time()
+    result = miller.array(miller_set= self.f_obs_t, data= self.core.f_model_t)
+    t2 = time.time()
+    time_fmodel += (t2 - t1)
+    return result
 
   def f_star_w_star_obj(self):
     #XXX why I use self.f_calc and not f_model ????????????????????????????????
@@ -912,7 +879,7 @@ class manager(object):
     return [ui,ui,ui,0.0,0.0,0.0]
 
   def r_work_in_lowest_resolution_bin(self, reflections_per_bin=200):
-    fo_w = self.f_obs_w()
+    fo_w = self.f_obs_w
     fc_w = self.f_model_w()
     if(fo_w.data().size() > reflections_per_bin):
        fo_w.setup_binner(reflections_per_bin = reflections_per_bin)
@@ -956,20 +923,6 @@ class manager(object):
     else:
       return self.f_calc
 
-  def f_obs_w(self):
-    assert self.r_free_flags is not None
-    if(self.r_free_flags.data().count(True) > 0):
-      return self.f_obs.select(~self.r_free_flags.data())
-    else:
-      return self.f_obs
-
-  def f_obs_t(self):
-    assert self.r_free_flags is not None
-    if(self.r_free_flags.data().count(True) > 0):
-      return self.f_obs.select(self.r_free_flags.data())
-    else:
-      return self.f_obs
-
   def k_sol_b_sol(self):
     return self.k_sol, self.b_sol
 
@@ -1001,13 +954,13 @@ class manager(object):
                     absent_atom_type = ab_params.absent_atom_type).alpha_beta()
          else:
             alpha, beta = max_like_non_uniform.alpha_beta(
-                  f_dist                   = self.f_ordered_solvent_dist,
-                  n_atoms_included         = ab_params.n_atoms_included,
-                  n_nonwater_atoms_absent  = ab_params.number_of_macromolecule_atoms_absent,
-                  n_water_atoms_absent     = ab_params.number_of_waters_absent,
-                  bf_atoms_absent          = ab_params.bf_atoms_absent,
-                  final_error              = ab_params.final_error,
-                  absent_atom_type         = ab_params.absent_atom_type)
+             f_dist                   = self.f_ordered_solvent_dist,
+             n_atoms_included         = ab_params.n_atoms_included,
+             n_nonwater_atoms_absent  = ab_params.number_of_macromolecule_atoms_absent,
+             n_water_atoms_absent     = ab_params.number_of_waters_absent,
+             bf_atoms_absent          = ab_params.bf_atoms_absent,
+             final_error              = ab_params.final_error,
+             absent_atom_type         = ab_params.absent_atom_type)
     else:
        alpha, beta = maxlik.alpha_beta_est_manager(
                                     f_obs           = self.f_obs,
@@ -1057,7 +1010,7 @@ class manager(object):
             ml_scale = 1.0
       else:
          ml_scale = 1.0
-      dummy = self.f_obs_w().deep_copy()
+      dummy = self.f_obs_w.deep_copy()
       return dummy.array(data = ftor(self.f_model_w(),
                                      alpha.data(),
                                      beta.data(),
@@ -1083,88 +1036,92 @@ class manager(object):
             ml_scale = 1.0
       else:
          ml_scale = 1.0
-      dummy = self.f_obs_w().deep_copy()
+      dummy = self.f_obs_w.deep_copy()
       return dummy.array(data = ftor(self.f_model_w(),
                                      alpha.data(),
                                      beta.data(),
                                      ml_scale,
                                      True).derivatives())
 
-  def r_work(self):
+  def r_work(self, d_min = None, d_max = None):
     global time_r_factors
     t1 = time.time()
-    fo = self.f_obs_w().data()
-    fc = self.f_model_w().data()
-    result = bulk_solvent.r_factor(fo,fc)
+    f_obs   = self.f_obs_w.data()
+    f_model = self.core.f_model_w
+    if([d_min, d_max].count(None) == 0):
+       keep = flex.bool(self.d_spacings_w.size(), True)
+       if (d_max): keep &= self.d_spacings_w <= d_max
+       if (d_min): keep &= self.d_spacings_w >= d_min
+       f_obs   = f_obs.select(keep)
+       f_model = f_model.select(keep)
+    result = bulk_solvent.r_factor(f_obs, f_model)
     t2 = time.time()
     time_r_factors += (t2 - t1)
     return result
 
-  def r_free(self):
+  def r_free(self, d_min = None, d_max = None):
     global time_r_factors
     t1 = time.time()
-    result = bulk_solvent.r_factor(self.f_obs_t().data(),
-                                   self.f_model_t().data())
+    f_obs   = self.f_obs_t.data()
+    f_model = self.core.f_model_t
+    if([d_min, d_max].count(None) == 0):
+       keep = flex.bool(self.d_spacings_t.size(), True)
+       if (d_max): keep &= self.d_spacings_t <= d_max
+       if (d_min): keep &= self.d_spacings_t >= d_min
+       f_obs   = f_obs.select(keep)
+       f_model = f_model.select(keep)
+    result = bulk_solvent.r_factor(f_obs, f_model)
     t2 = time.time()
     time_r_factors += (t2 - t1)
     return result
 
   def scale_k1(self):
     fo = self.f_obs.data()
-    fc = flex.abs(self.f_model().data())
+    fc = flex.abs(self.core.f_model)
     return flex.sum(fo*fc) / flex.sum(fc*fc)
 
   def scale_k1_w(self):
-    fo = self.f_obs_w().data()
-    fc = flex.abs(self.f_model_w().data())
+    fo = self.f_obs_w.data()
+    fc = flex.abs(self.core.f_model_w)
     return flex.sum(fo*fc) / flex.sum(fc*fc)
 
   def scale_k1_t(self):
-    fo = self.f_obs_t().data()
-    fc = flex.abs(self.f_model_t().data())
+    fo = self.f_obs_t.data()
+    fc = flex.abs(self.core.f_model_t)
     return flex.sum(fo*fc) / flex.sum(fc*fc)
 
   def scale_k2_w(self):
-    fo = self.f_obs_w().data()
-    fc = flex.abs(self.f_model_w().data())
+    fo = self.f_obs_w.data()
+    fc = flex.abs(self.core.f_model_w)
     return flex.sum(fo*fc) / flex.sum(fo*fo)
 
   def scale_k2_t(self):
-    fo = self.f_obs_t().data()
-    fc = flex.abs(self.f_model_t().data())
+    fo = self.f_obs_t.data()
+    fc = flex.abs(self.core.f_model_t)
     return flex.sum(fo*fc) / flex.sum(fo*fo)
 
   def scale_k3_w(self):
-    eps = self.f_obs_w().epsilons().data().as_double()
-    mul = self.f_obs_w().multiplicities().data().as_double()
-    fo = self.f_obs_w().data()
-    fc = flex.abs(self.f_model_w().data())
+    eps = self.f_obs_w.epsilons().data().as_double()
+    mul = self.f_obs_w.multiplicities().data().as_double()
+    fo = self.f_obs_w.data()
+    fc = flex.abs(self.core.f_model_w)
     return math.sqrt(flex.sum(fo * fo * mul / eps) / \
                      flex.sum(fc * fc * mul / eps) )
 
   def scale_k3_t(self):
-    eps = self.f_obs_t().epsilons().data().as_double()
-    mul = self.f_obs_t().multiplicities().data().as_double()
-    fo = self.f_obs_t().data()
-    fc = flex.abs(self.f_model_t().data())
+    eps = self.f_obs_t.epsilons().data().as_double()
+    mul = self.f_obs_t.multiplicities().data().as_double()
+    fo = self.f_obs_t.data()
+    fc = flex.abs(self.core.f_model_t)
     return math.sqrt(flex.sum(fo * fo * mul / eps) / \
                      flex.sum(fc * fc * mul / eps) )
-
-  def scale_k1_low_high(self, d = 6.0):
-    fo_l = self.f_obs.resolution_filter(d_min = 6.0, d_max = 999.9).data()
-    fo_h = self.f_obs.resolution_filter(d_min = 0.0, d_max = 6.0).data()
-    fm_l = flex.abs(self.f_model().resolution_filter(d_min = 6.0, d_max = 999.9).data())
-    fm_h = flex.abs(self.f_model().resolution_filter(d_min = 0.0, d_max = 6.0).data())
-    scale_l = flex.sum(fo_l*fm_l) / flex.sum(fm_l*fm_l)
-    scale_h = flex.sum(fo_h*fm_h) / flex.sum(fm_h*fm_h)
-    return scale_l, scale_h
 
   def scale_ml(self):
     #assert self.alpha_beta_params.method == "calc"
     alpha, beta = self.alpha_beta_w()
     scale_manager = bss.uaniso_ksol_bsol_scaling_minimizer(
                self.f_calc_w(),
-               self.f_obs_w(),
+               self.f_obs_w,
                self.f_mask_w(),
                k_initial = 0.,
                b_initial = 0.,
@@ -1186,14 +1143,13 @@ class manager(object):
     alpha, beta = self.alpha_beta()
     global time_foms
     t1 = time.time()
-    data = abs(self.f_model()).data()
     result = max_lik.fom_and_phase_error(
-                                   f_obs          = self.f_obs.data(),
-                                   f_model        = data,
-                                   alpha          = alpha.data(),
-                                   beta           = beta.data(),
-                                   space_group    = self.f_obs.space_group(),
-                                   miller_indices = self.f_obs.indices()).fom()
+                                  f_obs          = self.f_obs.data(),
+                                  f_model        = flex.abs(self.core.f_model),
+                                  alpha          = alpha.data(),
+                                  beta           = beta.data(),
+                                  space_group    = self.f_obs.space_group(),
+                                  miller_indices = self.hkl).fom()
     t2 = time.time()
     time_foms += (t2 - t1)
     return result
@@ -1202,14 +1158,13 @@ class manager(object):
     alpha, beta = self.alpha_beta()
     global time_phase_errors
     t1 = time.time()
-    data = abs(self.f_model()).data()
     result = max_lik.fom_and_phase_error(
-                           f_obs          = self.f_obs.data(),
-                           f_model        = data,
-                           alpha          = alpha.data(),
-                           beta           = beta.data(),
-                           space_group    = self.f_obs.space_group(),
-                           miller_indices = self.f_obs.indices()).phase_error()
+                                  f_obs          = self.f_obs.data(),
+                                  f_model        = flex.abs(self.core.f_model),
+                                  alpha          = alpha.data(),
+                                  beta           = beta.data(),
+                                  space_group    = self.f_obs.space_group(),
+                                  miller_indices = self.hkl).phase_error()
     t2 = time.time()
     time_phase_errors += (t2 - t1)
     return result
@@ -1222,7 +1177,6 @@ class manager(object):
     else:
       return pher
 
-
   def phase_errors_work(self):
     assert self.r_free_flags is not None
     pher = self.phase_errors()
@@ -1231,14 +1185,6 @@ class manager(object):
     else:
       return pher
 
-#  def phase_errors_test(self):
-#    assert self.r_free_flags is not None
-#    pher = self.phase_errors()
-#    if(self.r_free_flags.data().count(True) > 0):
-#      return pher.select(self.r_free_flags.data())
-#    else:
-#      return pher
-#
   def map_coefficients(self,
                        map_type          = "k*Fobs-n*Fmodel",
                        k                 = 1,
@@ -1386,29 +1332,33 @@ class manager(object):
     r_test     = n_as_s("%6.4f",self.r_free()    )
     scale_work = n_as_s("%7.4f",self.scale_k1_w())
     scale_test = n_as_s("%7.4f",self.scale_k1_t())
-    d_max, d_min = self.f_obs_w().d_max_min()
+    d_max, d_min = self.f_obs_w.d_max_min()
     d = 6.0
     if(d_max < d): d = d_max
     if(d_min > d): d = d_min
-    if(self.f_obs_w().resolution_filter(d_min = d, d_max = 999.9).data().size() > 0 and
-       self.f_obs_t().resolution_filter(d_min = d, d_max = 999.9).data().size() > 0):
-       fmodel_l = self.resolution_filter(d_min = d, d_max = 999.9)
+    if(self.f_obs_w.resolution_filter(d_min = d, d_max = 999.9).data().size() > 0 and
+       self.f_obs_t.resolution_filter(d_min = d, d_max = 999.9).data().size() > 0):
+       r_work_l = self.r_work(d_min = d, d_max = 999.9)
+       r_test_l = self.r_free(d_min = d, d_max = 999.9)
     else:
-       fmodel_l = None
-    if(self.f_obs_w().resolution_filter(d_min = 0.0, d_max = d).data().size() > 0 and
-       self.f_obs_t().resolution_filter(d_min = 0.0, d_max = d).data().size() > 0):
-       fmodel_h = self.resolution_filter(d_min = 0.0, d_max = d)
+       r_work_l = None
+       r_test_l = None
+    if(self.f_obs_w.resolution_filter(d_min = 0.0, d_max = d).data().size() > 0 and
+       self.f_obs_t.resolution_filter(d_min = 0.0, d_max = d).data().size() > 0):
+       r_work_h = self.r_work(d_min = 0.0, d_max = d)
+       r_test_h = self.r_free(d_min = 0.0, d_max = d)
     else:
-       fmodel_h = None
-    if(fmodel_l is not None):
-       r_work_l = n_as_s("%6.4f",fmodel_l.r_work())
-       r_test_l = n_as_s("%6.4f",fmodel_l.r_free())
+       r_work_h = None
+       r_test_h = None
+    if(r_work_l is not None and r_test_l is not None):
+       r_work_l = n_as_s("%6.4f",r_work_l)
+       r_test_l = n_as_s("%6.4f",r_test_l)
     else:
        r_work_l = n_as_s("%6.4f",0.0)
        r_test_l = n_as_s("%6.4f",0.0)
-    if(fmodel_h is not None):
-       r_work_h = n_as_s("%6.4f",fmodel_h.r_work())
-       r_test_h = n_as_s("%6.4f",fmodel_h.r_free())
+    if(r_work_h is not None and r_test_h is not None):
+       r_work_h = n_as_s("%6.4f",r_work_h)
+       r_test_h = n_as_s("%6.4f",r_test_h)
     else:
        r_work_h = n_as_s("%6.4f",0.0)
        r_test_h = n_as_s("%6.4f",0.0)
@@ -1524,12 +1474,10 @@ def statistics_in_resolution_bins(fmodel,
                                   out=None):
   if(out is None): out = sys.stdout
   d_max,d_min = fmodel.f_obs.d_max_min()
-  fo_t = fmodel.f_obs_t()
+  fo_t = fmodel.f_obs_t
   fc_t = fmodel.f_model_t()
-  fo_w = fmodel.f_obs_w()
+  fo_w = fmodel.f_obs_w
   fc_w = fmodel.f_model_w()
-  #f_calc_fb_cart_w = fmodel.f_calc_fb_cart_w()
-  #f_calc_fb_cart_t = fmodel.f_calc_fb_cart_t()
   alpha_w, beta_w = fmodel.alpha_beta_w()
   alpha_t, beta_t = fmodel.alpha_beta_t()
   if(fo_t.data().size() > reflections_per_bin):
@@ -1548,8 +1496,6 @@ def statistics_in_resolution_bins(fmodel,
   alpha_t.use_binning_of(fo_t)
   beta_w.use_binning_of(fo_t)
   beta_t.use_binning_of(fo_t)
-  #f_calc_fb_cart_w.use_binning_of(fo_t)
-  #f_calc_fb_cart_t.use_binning_of(fo_t)
   print >> out, "|"+"-"*77+"|"
   print >> out, "| Bin     Resolution   Compl.  No. Refl.    R-factors          Targets        |"
   print >> out, "|number     range              work test   work   test        work        test|"
@@ -1560,8 +1506,6 @@ def statistics_in_resolution_bins(fmodel,
     sel_fc_t = fc_t.select(sel_t)
     sel_fo_w = fo_w.select(sel_w)
     sel_fc_w = fc_w.select(sel_w)
-    #sel_f_calc_fb_cart_w=f_calc_fb_cart_w.select(sel_w)
-    #sel_f_calc_fb_cart_t=f_calc_fb_cart_t.select(sel_t)
     sel_alpha_t = alpha_t.select(sel_t)
     sel_beta_t  = beta_t.select(sel_t)
     sel_alpha_w = alpha_w.select(sel_w)
@@ -1575,13 +1519,11 @@ def statistics_in_resolution_bins(fmodel,
       target_t = xray_target_functor_t(sel_fc_t, False).target()
     elif(fmodel.target_name == "ml" or fmodel.target_name == "mlhl"):
       target_w = xray_target_functor_w(sel_fc_w,
-                                       #sel_f_calc_fb_cart_w,
                                        sel_alpha_w.data(),
                                        sel_beta_w.data(),
                                        1.0,
                                        False).target()
       target_t = xray_target_functor_t(sel_fc_t,
-                                       #sel_f_calc_fb_cart_t,
                                        sel_alpha_t.data(),
                                        sel_beta_t.data(),
                                        1.0,
@@ -1603,9 +1545,9 @@ def r_factors_in_resolution_bins(fmodel,
                                  out=None):
   if(out is None): out = sys.stdout
   d_max,d_min = fmodel.f_obs.d_max_min()
-  fo_t = fmodel.f_obs_t()
+  fo_t = fmodel.f_obs_t
   fc_t = fmodel.f_model_t()
-  fo_w = fmodel.f_obs_w()
+  fo_w = fmodel.f_obs_w
   fc_w = fmodel.f_model_w()
   if(fo_t.data().size() > reflections_per_bin):
     fo_t.setup_binner(reflections_per_bin = reflections_per_bin,
