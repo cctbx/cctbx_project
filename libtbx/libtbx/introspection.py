@@ -101,6 +101,10 @@ class virtual_memory_info(proc_file_reader):
     print >> out, prefix+"Resident set size:  ", fmt % rss
     print >> out, prefix+"Stack size:         ", fmt % sts
 
+  def show_if_available(self, out=None, prefix=""):
+    if (self.proc_status is not None):
+      self.show(out=out, prefix=prefix)
+
 try:
   _proc_meminfo = "/proc/meminfo"
 except AttributeError:
