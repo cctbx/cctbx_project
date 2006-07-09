@@ -1,11 +1,14 @@
 from cctbx.array_family import flex
 from cctbx import geometry_restraints
+from libtbx.utils import format_cpu_times
 from libtbx import adopt_init_args
 import sys, os, time
 from libtbx.test_utils import approx_equal
+from libtbx import introspection
 from cctbx import adptbx
 from stdlib import math
 from cctbx import xray
+import cctbx.xray.structure_factors.global_counters
 from mmtbx import bulk_solvent
 from mmtbx import max_lik
 
@@ -18,9 +21,16 @@ def show_times(out = None):
      print >> out, "Collect and process                      = %-7.2f" % time_collect_and_process
   return total
 
+def show_process_info(out):
+  print >> out, "\\/"*39
+  introspection.virtual_memory_info().show_if_available(out=out)
+  xray.structure_factors.global_counters.show(out=out)
+  print >> out, format_cpu_times()
+  print >> out, "/\\"*39
 
 def make_header(line, out=None):
   if (out is None): out = sys.stdout
+  show_process_info(out=out)
   header_len = 80
   line_len = len(line)
   #assert line_len <= header_len
@@ -56,6 +66,7 @@ def make_sub_header(text, out=None):
 
 def macro_cycle_header(macro_cycle, number_of_macro_cycles, out=None):
   if (out is None): out = sys.stdout
+  show_process_info(out=out)
   header_len = 80
   macro_cycle = str(macro_cycle)
   number_of_macro_cycles = str(number_of_macro_cycles)
