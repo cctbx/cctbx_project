@@ -337,6 +337,12 @@ class rec(object):
             (m[2]+m[6])/2.,
             (m[5]+m[7])/2.)
 
+  def as_mat3(self):
+    assert self.n == (3,3)
+    m = self.elems
+    return (m[0],m[1],m[2],m[3],m[4],m[5],m[6],m[7],m[8])
+
+
   def extract_block(self, stop, start=(0,0), step=(1,1)):
     assert 0 <= stop[0] <= self.n[0]
     assert 0 <= stop[1] <= self.n[1]
