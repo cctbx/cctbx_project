@@ -269,6 +269,21 @@ namespace {
           arg_("unit_cell"),
           arg_("rotation_matrix"),
           arg_("scatterers")));
+
+    def("apply_rigid_body_shift",
+      (af::shared<scitbx::vec3<double> >(*)(
+        af::const_ref<scitbx::vec3<double> > const&,
+        scitbx::mat3<double> const&,
+        scitbx::vec3<double> const&,
+        af::const_ref<double> const&,
+        uctbx::unit_cell const&,
+        af::const_ref<bool> const&)) apply_rigid_body_shift, (
+          arg_("sites_cart"),
+          arg_("rot"),
+          arg_("trans"),
+          arg_("atomic_weights"),
+          arg_("unit_cell"),
+          arg_("selection")));
   }
 
 }}} // namespace cctbx::xray::boost_python

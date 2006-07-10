@@ -11,7 +11,7 @@ from libtbx.test_utils import approx_equal, show_diff
 import random
 import pickle
 from cStringIO import StringIO
-import sys
+import sys, random
 
 random.seed(0)
 flex.set_random_seed(0)
@@ -344,6 +344,18 @@ C  pair count:   1       <<  0.0000,  0.0000,  0.1000>>
   assert approx_equal(xs.scatterers()[0].weight(), 0.0)
   xs.re_apply_symmetry(i_scatterer=0)
   assert approx_equal(xs.scatterers()[0].weight(), 1.0)
+  # apply_rigid_body_shift
+  sites_cart = xs.sites_cart()
+  sel = flex.bool()
+  for i in sites_cart:
+    sel.append( random.randrange(0,2) )
+  new_sites_frac = xs.apply_rigid_body_shift(
+                               sites_cart     = sites_cart,
+                               rot            = [1,2,3,4,5,6,7,8,9],
+                               trans          = [1,2,3],
+                               atomic_weights = flex.double(sel.size(), 1.25),
+                               unit_cell      = xs.unit_cell(),
+                               selection      = sel)
 
 def exercise_u_base():
   d_min = 9
