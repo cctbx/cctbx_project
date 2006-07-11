@@ -375,7 +375,6 @@ namespace scitbx { namespace af { namespace boost_python {
               uctbx::unit_cell const&,
               af::const_ref<bool> const&)) cctbx::xray::convert_to_anisotropic,
               (arg_("unit_cell"),arg_("selection")))
-
       .def("count_anisotropic", cctbx::xray::count_anisotropic)
       .def("count_anomalous", cctbx::xray::count_anomalous)
     ;

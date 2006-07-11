@@ -270,20 +270,27 @@ namespace {
           arg_("rotation_matrix"),
           arg_("scatterers")));
 
-    def("apply_rigid_body_shift",
-      (af::shared<scitbx::vec3<double> >(*)(
-        af::const_ref<scitbx::vec3<double> > const&,
-        scitbx::mat3<double> const&,
-        scitbx::vec3<double> const&,
-        af::const_ref<double> const&,
-        uctbx::unit_cell const&,
-        af::const_ref<bool> const&)) apply_rigid_body_shift, (
-          arg_("sites_cart"),
-          arg_("rot"),
-          arg_("trans"),
-          arg_("atomic_weights"),
-          arg_("unit_cell"),
-          arg_("selection")));
+    typedef return_value_policy<return_by_value> rbv;
+    class_<apply_rigid_body_shift<> >("apply_rigid_body_shift")
+      .def(init<af::const_ref<scitbx::vec3<double> > const&,
+                scitbx::mat3<double> const&,
+                scitbx::vec3<double> const&,
+                af::const_ref<double> const&,
+                uctbx::unit_cell const&,
+                af::const_ref<bool> const& >((arg_("sites_cart"),
+                                              arg_("rot"),
+                                              arg_("trans"),
+                                              arg_("atomic_weights"),
+                                              arg_("unit_cell"),
+                                              arg_("selection"))))
+      .add_property("new_sites_frac",  make_getter(
+                             &apply_rigid_body_shift<>::new_sites_frac, rbv()))
+      .add_property("new_sites_cart",  make_getter(
+                             &apply_rigid_body_shift<>::new_sites_cart, rbv()))
+      .add_property("center_of_mass",  make_getter(
+                             &apply_rigid_body_shift<>::center_of_mass, rbv()))
+    ;
+
   }
 
 }}} // namespace cctbx::xray::boost_python

@@ -264,42 +264,60 @@ namespace cctbx { namespace xray {
     return rot_scatterers;
   }
 
-  template <typename FloatType>
-  af::shared<scitbx::vec3<FloatType> > apply_rigid_body_shift(
-                        af::const_ref<scitbx::vec3<FloatType> > const& sites_cart,
-                        scitbx::mat3<FloatType> const& rot,
-                        scitbx::vec3<FloatType> const& trans,
-                        af::const_ref<FloatType> const& atomic_weights,
-                        uctbx::unit_cell const& unit_cell,
-                        af::const_ref<bool> const& selection)
-  {
-   af::shared<scitbx::vec3<FloatType> > new_sites_frac(
-                                               af::reserve(sites_cart.size()));
-   FloatType xcm = 0, ycm = 0, zcm = 0, weight = 0.0;
-   for(std::size_t i=0;i<sites_cart.size();i++) {
-       if(selection[i]) {
-          scitbx::vec3<FloatType> const& site_cart = sites_cart[i];
-          xcm += site_cart[0]*atomic_weights[i];
-          ycm += site_cart[1]*atomic_weights[i];
-          zcm += site_cart[2]*atomic_weights[i];
-          weight += atomic_weights[i];
-       }
-   }
-   scitbx::vec3<FloatType> center_of_mass(xcm/weight,ycm/weight,zcm/weight);
-   scitbx::vec3<FloatType> tcm = trans + center_of_mass;
-   for(std::size_t i=0;i<sites_cart.size();i++) {
-       if(selection[i]) {
-          new_sites_frac.push_back(unit_cell.fractionalization_matrix() *
-                               (rot * (sites_cart[i] - center_of_mass) + tcm));
+template <typename FloatType=double>
+class apply_rigid_body_shift
+{
+  public:
+    af::shared<scitbx::vec3<FloatType> > new_sites_frac;
+    af::shared<scitbx::vec3<FloatType> > new_sites_cart;
+    scitbx::vec3<FloatType> center_of_mass;
 
-       }
-       else {
-          new_sites_frac.push_back(
+    apply_rigid_body_shift() {}
+
+    apply_rigid_body_shift(
+                 af::const_ref<scitbx::vec3<FloatType> > const& sites_cart,
+                 scitbx::mat3<FloatType> const& rot,
+                 scitbx::vec3<FloatType> const& trans,
+                 af::const_ref<FloatType> const& atomic_weights,
+                 uctbx::unit_cell const& unit_cell,
+                 af::const_ref<bool> const& selection)
+    :
+    new_sites_frac(af::reserve(sites_cart.size())),
+    new_sites_cart(af::reserve(sites_cart.size())),
+    center_of_mass(0,0,0)
+    {
+      CCTBX_ASSERT(sites_cart.size() == atomic_weights.size());
+      CCTBX_ASSERT(sites_cart.size() == selection.size());
+      FloatType xcm = 0, ycm = 0, zcm = 0, weight = 0;
+      for(std::size_t i=0;i<sites_cart.size();i++) {
+          if(selection[i]) {
+             scitbx::vec3<FloatType> const& site_cart = sites_cart[i];
+             xcm += site_cart[0]*atomic_weights[i];
+             ycm += site_cart[1]*atomic_weights[i];
+             zcm += site_cart[2]*atomic_weights[i];
+             weight += atomic_weights[i];
+          }
+      }
+      center_of_mass=scitbx::vec3<FloatType>(xcm/weight,ycm/weight,zcm/weight);
+      scitbx::vec3<FloatType> tcm = trans + center_of_mass;
+      for(std::size_t i=0;i<sites_cart.size();i++) {
+          if(selection[i]) {
+             scitbx::vec3<FloatType> new_site_cart =
+                                  rot * (sites_cart[i] - center_of_mass) + tcm;
+             new_sites_frac.push_back(
+                         unit_cell.fractionalization_matrix() * new_site_cart);
+             new_sites_cart.push_back(new_site_cart);
+          }
+          else {
+             new_sites_cart.push_back(sites_cart[i]);
+             new_sites_frac.push_back(
                            unit_cell.fractionalization_matrix()*sites_cart[i]);
-       }
-   }
-   return new_sites_frac;
-  }
+          }
+      }
+    CCTBX_ASSERT(sites_cart.size() == new_sites_cart.size());
+    CCTBX_ASSERT(sites_cart.size() == new_sites_frac.size());
+    }
+};
 
 }} // namespace cctbx::xray
 

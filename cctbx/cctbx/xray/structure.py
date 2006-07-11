@@ -327,20 +327,19 @@ class structure(crystal.special_position_settings):
     return self._scatterers.extract_u_iso_or_u_equiv(
       unit_cell=self.unit_cell())
 
-  def apply_rigid_body_shift(self,
-                             sites_cart,
-                             rot,
-                             trans,
-                             selection,
-                             unit_cell,
-                             atomic_weights):
+  def apply_rigid_body_shift_obj(self,
+                                 sites_cart,
+                                 rot,
+                                 trans,
+                                 selection,
+                                 unit_cell,
+                                 atomic_weights):
     return ext.apply_rigid_body_shift(sites_cart     = sites_cart,
                                       rot            = rot,
                                       trans          = trans,
                                       atomic_weights = atomic_weights,
                                       unit_cell      = unit_cell,
                                       selection      = selection)
-
 
   def convert_to_isotropic(self):
     self._scatterers.convert_to_isotropic(unit_cell=self.unit_cell())

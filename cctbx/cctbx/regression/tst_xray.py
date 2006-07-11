@@ -349,7 +349,7 @@ C  pair count:   1       <<  0.0000,  0.0000,  0.1000>>
   sel = flex.bool()
   for i in sites_cart:
     sel.append( random.randrange(0,2) )
-  new_sites_frac = xs.apply_rigid_body_shift(
+  new_sites_frac = xs.apply_rigid_body_shift_obj(
                                sites_cart     = sites_cart,
                                rot            = [1,2,3,4,5,6,7,8,9],
                                trans          = [1,2,3],
