@@ -589,25 +589,28 @@ class rigid_body_minimizer(object):
         rotation_matrices.append(rot_obj.rot_mat())
         translation_vectors.append(self.t_min[i])
         rot_objs.append(rot_obj)
-    new_sites_frac = apply_transformation_(
-                                   xray_structure = self.fmodel.xray_structure,
-                                   sites_cart          = self.sites_cart,
-                                   rotation_matrices   = rotation_matrices,
-                                   translation_vectors = translation_vectors,
-                                   selections          = self.selections,
-                                   atomic_weights      = self.atomic_weights,
-                                   fixed_selection     = self.fixed_selection)
+    new_sites_frac, new_sites_cart, centers_of_mass = apply_transformation_(
+                              xray_structure      = self.fmodel.xray_structure,
+                              sites_cart          = self.sites_cart,
+                              rotation_matrices   = rotation_matrices,
+                              translation_vectors = translation_vectors,
+                              selections          = self.selections,
+                              atomic_weights      = self.atomic_weights,
+                              fixed_selection     = self.fixed_selection)
     tuxs = time.time()
     self.fmodel_copy.xray_structure.set_sites_frac(new_sites_frac)
     new_xrs = self.fmodel_copy.xray_structure
     self.fmodel_copy.update_xray_structure(xray_structure = new_xrs,
                                            update_f_calc  = True)
     time_fmodel_update_xray_structure += (time.time() - tuxs)
-    tg_obj = target_and_grads(fmodel     = self.fmodel_copy,
-                              alpha      = self.alpha,
-                              beta       = self.beta,
-                              rot_objs   = rot_objs,
-                              selections = self.selections)
+    tg_obj = target_and_grads(
+                   centers_of_mass = centers_of_mass,
+                   sites_cart      = new_sites_cart,
+                   fmodel          = self.fmodel_copy,
+                   alpha           = self.alpha,
+                   beta            = self.beta,
+                   rot_objs        = rot_objs,
+                   selections      = self.selections)
     self.f = tg_obj.target()
     self.g = self.pack( tg_obj.gradients_wrt_r(), tg_obj.gradients_wrt_t() )
     return self.f, self.g
@@ -623,20 +626,27 @@ def apply_transformation_(xray_structure,
   t1 = time.time()
   assert len(selections) == len(rotation_matrices)
   assert len(selections) == len(translation_vectors)
+  centers_of_mass = []
   for sel,rot,trans in zip(selections,rotation_matrices,translation_vectors):
-      new_sites_frac = xray_structure.apply_rigid_body_shift(
-                               sites_cart = sites_cart,
-                               rot = rot.as_mat3(),
-                               trans = trans,
-                               atomic_weights = atomic_weights,
-                               unit_cell = xray_structure.unit_cell(),
-                               selection = sel)
+      apply_rigid_body_shift_obj = xray_structure.apply_rigid_body_shift_obj(
+                                   sites_cart     = sites_cart,
+                                   rot            = rot.as_mat3(),
+                                   trans          = trans,
+                                   atomic_weights = atomic_weights,
+                                   unit_cell      = xray_structure.unit_cell(),
+                                   selection      = sel)
+      sites_cart = apply_rigid_body_shift_obj.new_sites_cart
+      centers_of_mass.append(apply_rigid_body_shift_obj.center_of_mass)
+  new_sites_frac = apply_rigid_body_shift_obj.new_sites_frac
+  new_sites_cart = apply_rigid_body_shift_obj.new_sites_cart
   if(fixed_selection is not None):
-    sites_fixed = xray_structure.sites_frac().select(fixed_selection)
-    new_sites_frac.set_selected(fixed_selection, sites_fixed)
+    sites_fixed_frac = xray_structure.sites_frac().select(fixed_selection)
+    new_sites_frac.set_selected(fixed_selection, sites_fixed_frac)
+    sites_fixed_cart = xray_structure.sites_cart().select(fixed_selection)
+    new_sites_cart.set_selected(fixed_selection, sites_fixed_cart)
   t2 = time.time()
   time_apply_transformation += (t2 - t1)
-  return new_sites_frac
+  return new_sites_frac, new_sites_cart, centers_of_mass
 
 def apply_transformation(xray_structure,
                          rotation_matrices,
@@ -664,7 +674,9 @@ def apply_transformation(xray_structure,
    return new_xrs
 
 class target_and_grads(object):
-  def __init__(self, fmodel,
+  def __init__(self, centers_of_mass,
+                     sites_cart,
+                     fmodel,
                      alpha,
                      beta,
                      rot_objs,
@@ -678,11 +690,8 @@ class target_and_grads(object):
     self.grads_wrt_r = []
     self.grads_wrt_t = []
     target_grads_wrt_xyz = flex.vec3_double(target_grads_wrt_xyz.packed())
-    for sel,rot_obj in zip(selections, rot_objs):
-        xrs = fmodel.xray_structure.select(sel)
-        cm_cart = xrs.center_of_mass()
-        sites_cart = xrs.sites_cart()
-        sites_cart_cm = sites_cart - cm_cart
+    for sel,rot_obj, cm in zip(selections, rot_objs, centers_of_mass):
+        sites_cart_cm = sites_cart.select(sel) - cm
         target_grads_wrt_xyz_sel = target_grads_wrt_xyz.select(sel)
         target_grads_wrt_r = matrix.sqr(
                     sites_cart_cm.transpose_multiply(target_grads_wrt_xyz_sel))
