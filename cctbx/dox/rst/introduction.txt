@@ -57,7 +57,7 @@ The SourceForge cctbx project currently contains these modules:
   Libraries for general scientific computing (i.e.
   libraries that are not specific to crystallographic applications):
   a family of high-level C++ array types, a fast Fourier transform
-  library, and a C++ port of the popular LBFGS conjugate gradient
+  library, and a C++ port of the popular L-BFGS quasi-Newton
   minimizer, all including Python_ bindings. These libraries are
   separated from the crystallographic code base to make them easily
   accessible for non-crystallographic application developers.
