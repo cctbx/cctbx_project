@@ -324,14 +324,6 @@ class manager(object):
        selections.append(flex.bool(fmodel.xray_structure.scatterers().size(),
                                                                          True))
     else: assert len(selections) > 0
-    fixed_selection = flex.bool(fmodel.xray_structure.scatterers().size(),
-                                     True)
-    sel = selections[0].deep_copy()
-    for s_i in selections:
-        sel = sel.set_selected(s_i, True)
-    fixed_selection = fixed_selection.set_selected(sel, False)
-    if(fixed_selection.count(False) == fixed_selection.size()):
-       fixed_selection=None
     self.total_rotation = []
     self.total_translation = []
     for item in selections:
@@ -397,7 +389,6 @@ class manager(object):
             minimized = rigid_body_minimizer(
                           fmodel                 = fmodel_copy,
                           selections             = selections,
-                          fixed_selection        = fixed_selection,
                           r_initial              = r_initial,
                           t_initial              = t_initial,
                           refine_r               = refine_r,
@@ -419,8 +410,7 @@ class manager(object):
                          xray_structure      = minimized.fmodel.xray_structure,
                          rotation_matrices   = rotation_matrices,
                          translation_vectors = translation_vectors,
-                         selections          = selections,
-                         fixed_selection     = fixed_selection)
+                         selections          = selections)
             fmodel_copy.update_xray_structure(xray_structure = new_xrs,
                                               update_f_calc  = True,
                                               update_f_mask  = True,
@@ -518,7 +508,6 @@ class rigid_body_minimizer(object):
   def __init__(self,
                fmodel,
                selections,
-               fixed_selection,
                r_initial,
                t_initial,
                refine_r,
@@ -532,7 +521,8 @@ class rigid_body_minimizer(object):
        self.alpha, self.beta = None, None
     self.fmodel_copy = self.fmodel.deep_copy()
     self.atomic_weights = self.fmodel.xray_structure.atomic_weights()
-    self.sites_cart = self.fmodel.xray_structure.sites_cart().deep_copy() #XXXXXXXXXXXXX
+    self.sites_cart = self.fmodel.xray_structure.sites_cart().deep_copy()
+    self.sites_frac = self.fmodel.xray_structure.sites_frac().deep_copy()
     self.n_groups = len(self.selections)
     assert self.n_groups > 0
     self.counter=0
@@ -592,11 +582,11 @@ class rigid_body_minimizer(object):
     new_sites_frac, new_sites_cart, centers_of_mass = apply_transformation_(
                               xray_structure      = self.fmodel.xray_structure,
                               sites_cart          = self.sites_cart,
+                              sites_frac          = self.sites_frac,
                               rotation_matrices   = rotation_matrices,
                               translation_vectors = translation_vectors,
                               selections          = self.selections,
-                              atomic_weights      = self.atomic_weights,
-                              fixed_selection     = self.fixed_selection)
+                              atomic_weights      = self.atomic_weights)
     tuxs = time.time()
     self.fmodel_copy.xray_structure.set_sites_frac(new_sites_frac)
     new_xrs = self.fmodel_copy.xray_structure
@@ -617,42 +607,38 @@ class rigid_body_minimizer(object):
 
 def apply_transformation_(xray_structure,
                           sites_cart,
+                          sites_frac,
                           rotation_matrices,
                           translation_vectors,
                           selections,
-                          atomic_weights,
-                          fixed_selection=None):
+                          atomic_weights):
   global time_apply_transformation
   t1 = time.time()
   assert len(selections) == len(rotation_matrices)
   assert len(selections) == len(translation_vectors)
   centers_of_mass = []
+  sites_cart = sites_cart.deep_copy()
+  sites_frac = sites_frac.deep_copy()
   for sel,rot,trans in zip(selections,rotation_matrices,translation_vectors):
       apply_rigid_body_shift_obj = xray_structure.apply_rigid_body_shift_obj(
                                    sites_cart     = sites_cart,
+                                   sites_frac     = sites_frac,
                                    rot            = rot.as_mat3(),
                                    trans          = trans,
                                    atomic_weights = atomic_weights,
                                    unit_cell      = xray_structure.unit_cell(),
                                    selection      = sel)
-      sites_cart = apply_rigid_body_shift_obj.new_sites_cart
+      sites_cart = apply_rigid_body_shift_obj.sites_cart
+      sites_frac = apply_rigid_body_shift_obj.sites_frac
       centers_of_mass.append(apply_rigid_body_shift_obj.center_of_mass)
-  new_sites_frac = apply_rigid_body_shift_obj.new_sites_frac
-  new_sites_cart = apply_rigid_body_shift_obj.new_sites_cart
-  if(fixed_selection is not None):
-    sites_fixed_frac = xray_structure.sites_frac().select(fixed_selection)
-    new_sites_frac.set_selected(fixed_selection, sites_fixed_frac)
-    sites_fixed_cart = xray_structure.sites_cart().select(fixed_selection)
-    new_sites_cart.set_selected(fixed_selection, sites_fixed_cart)
   t2 = time.time()
   time_apply_transformation += (t2 - t1)
-  return new_sites_frac, new_sites_cart, centers_of_mass
+  return sites_frac, sites_cart, centers_of_mass
 
 def apply_transformation(xray_structure,
                          rotation_matrices,
                          translation_vectors,
-                         selections,
-                         fixed_selection=None):
+                         selections):
    global time_apply_transformation
    t1 = time.time()
    assert len(selections) == len(rotation_matrices)
@@ -665,9 +651,6 @@ def apply_transformation(xray_structure,
        sites_cart_cm = sites_cart - cm_cart
        tmp = list(rot) * sites_cart_cm + trans + cm_cart
        new_sites.set_selected(sel, tmp)
-   if(fixed_selection is not None):
-     sites_fixed = xray_structure.sites_cart().select(fixed_selection)
-     new_sites.set_selected(fixed_selection, sites_fixed)
    new_xrs = xray_structure.replace_sites_cart(new_sites = new_sites)
    t2 = time.time()
    time_apply_transformation += (t2 - t1)

@@ -268,54 +268,43 @@ template <typename FloatType=double>
 class apply_rigid_body_shift
 {
   public:
-    af::shared<scitbx::vec3<FloatType> > new_sites_frac;
-    af::shared<scitbx::vec3<FloatType> > new_sites_cart;
     scitbx::vec3<FloatType> center_of_mass;
+    af::shared<scitbx::vec3<FloatType> > sites_cart;
+    af::shared<scitbx::vec3<FloatType> > sites_frac;
 
     apply_rigid_body_shift() {}
 
     apply_rigid_body_shift(
-                 af::const_ref<scitbx::vec3<FloatType> > const& sites_cart,
+                 af::shared<scitbx::vec3<FloatType> > sites_cart_,
+                 af::shared<scitbx::vec3<FloatType> > sites_frac_,
                  scitbx::mat3<FloatType> const& rot,
                  scitbx::vec3<FloatType> const& trans,
                  af::const_ref<FloatType> const& atomic_weights,
                  uctbx::unit_cell const& unit_cell,
-                 af::const_ref<bool> const& selection)
+                 af::const_ref<std::size_t> const& selection)
     :
-    new_sites_frac(af::reserve(sites_cart.size())),
-    new_sites_cart(af::reserve(sites_cart.size())),
-    center_of_mass(0,0,0)
+    center_of_mass(0,0,0), sites_cart(sites_cart_), sites_frac(sites_frac_)
     {
+      CCTBX_ASSERT(sites_cart.size() == sites_frac.size());
       CCTBX_ASSERT(sites_cart.size() == atomic_weights.size());
-      CCTBX_ASSERT(sites_cart.size() == selection.size());
       FloatType xcm = 0, ycm = 0, zcm = 0, weight = 0;
-      for(std::size_t i=0;i<sites_cart.size();i++) {
-          if(selection[i]) {
-             scitbx::vec3<FloatType> const& site_cart = sites_cart[i];
-             xcm += site_cart[0]*atomic_weights[i];
-             ycm += site_cart[1]*atomic_weights[i];
-             zcm += site_cart[2]*atomic_weights[i];
-             weight += atomic_weights[i];
-          }
+      for(std::size_t j=0;j<selection.size();j++) {
+          std::size_t i=selection[j];
+          scitbx::vec3<FloatType> const& site_cart = sites_cart[i];
+          xcm += site_cart[0]*atomic_weights[i];
+          ycm += site_cart[1]*atomic_weights[i];
+          zcm += site_cart[2]*atomic_weights[i];
+          weight += atomic_weights[i];
       }
       center_of_mass=scitbx::vec3<FloatType>(xcm/weight,ycm/weight,zcm/weight);
       scitbx::vec3<FloatType> tcm = trans + center_of_mass;
-      for(std::size_t i=0;i<sites_cart.size();i++) {
-          if(selection[i]) {
-             scitbx::vec3<FloatType> new_site_cart =
-                                  rot * (sites_cart[i] - center_of_mass) + tcm;
-             new_sites_frac.push_back(
-                         unit_cell.fractionalization_matrix() * new_site_cart);
-             new_sites_cart.push_back(new_site_cart);
-          }
-          else {
-             new_sites_cart.push_back(sites_cart[i]);
-             new_sites_frac.push_back(
-                           unit_cell.fractionalization_matrix()*sites_cart[i]);
-          }
+      for(std::size_t j=0;j<selection.size();j++) {
+          std::size_t i=selection[j];
+          scitbx::vec3<FloatType> new_site_cart =
+                               rot * (sites_cart[i] - center_of_mass) + tcm;
+          sites_cart[i] = new_site_cart;
+          sites_frac[i] = unit_cell.fractionalization_matrix() * new_site_cart;
       }
-    CCTBX_ASSERT(sites_cart.size() == new_sites_cart.size());
-    CCTBX_ASSERT(sites_cart.size() == new_sites_frac.size());
     }
 };
 
