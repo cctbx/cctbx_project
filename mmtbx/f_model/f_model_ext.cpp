@@ -6,8 +6,12 @@
 #include <boost/python/args.hpp>
 #include <mmtbx/f_model/f_model.h>
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
+#include <scitbx/boost_python/is_polymorphic_workaround.h>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/return_by_value.hpp>
+
+SCITBX_BOOST_IS_POLYMORPHIC_WORKAROUND(
+  mmtbx::f_model::ls_target_and_kbu_gradients<>)
 
 namespace mmtbx { namespace f_model {
 namespace {
