@@ -329,12 +329,14 @@ class structure(crystal.special_position_settings):
 
   def apply_rigid_body_shift_obj(self,
                                  sites_cart,
+                                 sites_frac,
                                  rot,
                                  trans,
                                  selection,
                                  unit_cell,
                                  atomic_weights):
     return ext.apply_rigid_body_shift(sites_cart     = sites_cart,
+                                      sites_frac     = sites_frac,
                                       rot            = rot,
                                       trans          = trans,
                                       atomic_weights = atomic_weights,

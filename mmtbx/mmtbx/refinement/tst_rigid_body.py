@@ -50,11 +50,22 @@ def test_1(fmodel, model):
                                                the = 0.0)
   dim = fmodel.xray_structure.scatterers().size()
   selections = [flex.bool(dim, True)]
-  new_xray_structure = mmtbx.refinement.rigid_body.apply_transformation(
-                         xray_structure      = model.xray_structure,
-                         rotation_matrices   = [rot_obj.rot_mat()],
-                         translation_vectors = [(2.5,2.5,2.5)],
-                         selections          = selections)
+  ss_ = []
+  for s in selections:
+    ss_.append(s.iselection())
+  selections = ss_
+  new_sites_frac, new_sites_cart, centers_of_mass = \
+                             mmtbx.refinement.rigid_body.apply_transformation_(
+                  xray_structure      = fmodel.xray_structure,
+                  sites_cart          = fmodel.xray_structure.sites_cart(),
+                  sites_frac          = fmodel.xray_structure.sites_frac(),
+                  rotation_matrices   = [rot_obj.rot_mat()],
+                  translation_vectors = [(2.5,2.5,2.5)],
+                  selections          = selections,
+                  atomic_weights      = fmodel.xray_structure.atomic_weights())
+  fmodel.xray_structure.set_sites_frac(new_sites_frac)
+  new_xray_structure = fmodel.xray_structure
+
   fmodel.update_xray_structure(xray_structure = new_xray_structure,
                                update_f_calc  = True)
   assert approx_equal(fmodel.r_work(), 0.52, 1.e-2)
@@ -75,11 +86,22 @@ def test_2(fmodel, model):
                                                the = 0.0)
   dim = fmodel.xray_structure.scatterers().size()
   selections = [flex.bool(dim, True)]
-  new_xray_structure = mmtbx.refinement.rigid_body.apply_transformation(
-                         xray_structure      = model.xray_structure,
-                         rotation_matrices   = [rot_obj.rot_mat()],
-                         translation_vectors = [(1.5,1.5,1.5)],
-                         selections          = selections)
+  ss_ = []
+  for s in selections:
+    ss_.append(s.iselection())
+  selections = ss_
+  new_sites_frac, new_sites_cart, centers_of_mass = \
+                             mmtbx.refinement.rigid_body.apply_transformation_(
+                  xray_structure      = fmodel.xray_structure,
+                  sites_cart          = fmodel.xray_structure.sites_cart(),
+                  sites_frac          = fmodel.xray_structure.sites_frac(),
+                  rotation_matrices   = [rot_obj.rot_mat()],
+                  translation_vectors = [(1.5,1.5,1.5)],
+                  selections          = selections,
+                  atomic_weights      = fmodel.xray_structure.atomic_weights())
+  fmodel.xray_structure.set_sites_frac(new_sites_frac)
+  new_xray_structure = fmodel.xray_structure
+
   fmodel.update_xray_structure(xray_structure = new_xray_structure,
                                update_f_calc  = True)
   assert approx_equal(fmodel.r_work(), 0.53, 1.e-2)
@@ -100,11 +122,21 @@ def test_3(fmodel, model):
                                                the = 0.0)
   dim = fmodel.xray_structure.scatterers().size()
   selections = [flex.bool(dim, True)]
-  new_xray_structure = mmtbx.refinement.rigid_body.apply_transformation(
-                         xray_structure      = model.xray_structure,
-                         rotation_matrices   = [rot_obj.rot_mat()],
-                         translation_vectors = [(0,0,0)],
-                         selections          = selections)
+  ss_ = []
+  for s in selections:
+    ss_.append(s.iselection())
+  selections = ss_
+  new_sites_frac, new_sites_cart, centers_of_mass = \
+                             mmtbx.refinement.rigid_body.apply_transformation_(
+                  xray_structure      = fmodel.xray_structure,
+                  sites_cart          = fmodel.xray_structure.sites_cart(),
+                  sites_frac          = fmodel.xray_structure.sites_frac(),
+                  rotation_matrices   = [rot_obj.rot_mat()],
+                  translation_vectors = [(0,0,0)],
+                  selections          = selections,
+                  atomic_weights      = fmodel.xray_structure.atomic_weights())
+  fmodel.xray_structure.set_sites_frac(new_sites_frac)
+  new_xray_structure = fmodel.xray_structure
   fmodel.update_xray_structure(xray_structure = new_xray_structure,
                                update_f_calc  = True)
   assert approx_equal(fmodel.r_work(), 0.0, 1.e-3)
@@ -125,11 +157,21 @@ def test_4(fmodel, model):
                                                the = 0.5)
   dim = fmodel.xray_structure.scatterers().size()
   selections = [flex.bool(dim, True)]
-  new_xray_structure = mmtbx.refinement.rigid_body.apply_transformation(
-                         xray_structure      = model.xray_structure,
-                         rotation_matrices   = [rot_obj.rot_mat()],
-                         translation_vectors = [(0,0,0)],
-                         selections          = selections)
+  ss_ = []
+  for s in selections:
+    ss_.append(s.iselection())
+  selections = ss_
+  new_sites_frac, new_sites_cart, centers_of_mass = \
+                             mmtbx.refinement.rigid_body.apply_transformation_(
+                  xray_structure      = fmodel.xray_structure,
+                  sites_cart          = fmodel.xray_structure.sites_cart(),
+                  sites_frac          = fmodel.xray_structure.sites_frac(),
+                  rotation_matrices   = [rot_obj.rot_mat()],
+                  translation_vectors = [(0,0,0)],
+                  selections          = selections,
+                  atomic_weights      = fmodel.xray_structure.atomic_weights())
+  fmodel.xray_structure.set_sites_frac(new_sites_frac)
+  new_xray_structure = fmodel.xray_structure
   fmodel.update_xray_structure(xray_structure = new_xray_structure,
                                update_f_calc  = True)
   assert approx_equal(fmodel.r_work(), 0.12, 1.e-2)
@@ -150,11 +192,21 @@ def test_5(fmodel, model):
                                                the = 0.5)
   dim = fmodel.xray_structure.scatterers().size()
   selections = [flex.bool(dim, True)]
-  new_xray_structure = mmtbx.refinement.rigid_body.apply_transformation(
-                         xray_structure      = model.xray_structure,
-                         rotation_matrices   = [rot_obj.rot_mat()],
-                         translation_vectors = [(1,1,1)],
-                         selections          = selections)
+  ss_ = []
+  for s in selections:
+    ss_.append(s.iselection())
+  selections = ss_
+  new_sites_frac, new_sites_cart, centers_of_mass = \
+                             mmtbx.refinement.rigid_body.apply_transformation_(
+                  xray_structure      = fmodel.xray_structure,
+                  sites_cart          = fmodel.xray_structure.sites_cart(),
+                  sites_frac          = fmodel.xray_structure.sites_frac(),
+                  rotation_matrices   = [rot_obj.rot_mat()],
+                  translation_vectors = [(1,1,1)],
+                  selections          = selections,
+                  atomic_weights      = fmodel.xray_structure.atomic_weights())
+  fmodel.xray_structure.set_sites_frac(new_sites_frac)
+  new_xray_structure = fmodel.xray_structure
   fmodel.update_xray_structure(xray_structure = new_xray_structure,
                                update_f_calc  = True)
   assert approx_equal(fmodel.r_work(), 0.51, 1.e-2)
@@ -187,6 +239,10 @@ def test_6(fmodel, model):
        sel1.append(False)
        sel2.append(True)
   selections = [sel1, sel2]
+  ss_ = []
+  for s in selections:
+    ss_.append(s.iselection())
+  selections = ss_
 
   rot_obj_1 = mmtbx.refinement.rigid_body.rb_mat(phi = 0.5,
                                                  psi = 0.5,
@@ -194,12 +250,17 @@ def test_6(fmodel, model):
   rot_obj_2 = mmtbx.refinement.rigid_body.rb_mat(phi = 0.3,
                                                  psi = 0.3,
                                                  the = 0.3)
-  new_xray_structure = mmtbx.refinement.rigid_body.apply_transformation(
-                         xray_structure      = model.xray_structure,
-                         rotation_matrices   = [rot_obj_1.rot_mat(),rot_obj_2.rot_mat()],
-                         translation_vectors = [(1,1,1),(1.2,1.2,1.2)],
-                         selections          = selections)
-
+  new_sites_frac, new_sites_cart, centers_of_mass = \
+                             mmtbx.refinement.rigid_body.apply_transformation_(
+                  xray_structure      = model.xray_structure,
+                  sites_cart          = model.xray_structure.sites_cart(),
+                  sites_frac          = model.xray_structure.sites_frac(),
+                  rotation_matrices   = [rot_obj_1.rot_mat(),rot_obj_2.rot_mat()],
+                  translation_vectors = [(1,1,1),(1.2,1.2,1.2)],
+                  selections          = selections,
+                  atomic_weights      = fmodel.xray_structure.atomic_weights())
+  fmodel.xray_structure.set_sites_frac(new_sites_frac)
+  new_xray_structure = fmodel.xray_structure
   fmodel.update_xray_structure(xray_structure = new_xray_structure,
                                update_f_calc  = True)
   assert approx_equal(fmodel.r_work(), 0.52, 1.e-1)
@@ -245,19 +306,19 @@ def run_tests(sf_algorithm = "fft"):
   fmodel.show_comprehensive(reflections_per_bin = 250,
                             max_number_of_bins  = 30)
 
-  #print "test 1: "
-  #test_1(fmodel = fmodel.deep_copy(), model  = model.deep_copy())
-  #if (not "--comprehensive" in sys.argv[1:]): return
-  #print "test 2: "
-  #test_2(fmodel = fmodel.deep_copy(), model  = model.deep_copy())
-  #print "test 3: "
-  #test_3(fmodel = fmodel.deep_copy(), model  = model.deep_copy())
-  #print "test 4: "
-  #test_4(fmodel = fmodel.deep_copy(), model  = model.deep_copy())
-  #print "test 5: "
-  #test_5(fmodel = fmodel.deep_copy(), model  = model.deep_copy())
-  #print "test 6: "
-  #test_6(fmodel = fmodel.deep_copy(), model  = model.deep_copy())
+  print "test 1: "
+  test_1(fmodel = fmodel.deep_copy(), model  = model.deep_copy())
+  if (not "--comprehensive" in sys.argv[1:]): return
+  print "test 2: "
+  test_2(fmodel = fmodel.deep_copy(), model  = model.deep_copy())
+  print "test 3: "
+  test_3(fmodel = fmodel.deep_copy(), model  = model.deep_copy())
+  print "test 4: "
+  test_4(fmodel = fmodel.deep_copy(), model  = model.deep_copy())
+  print "test 5: "
+  test_5(fmodel = fmodel.deep_copy(), model  = model.deep_copy())
+  print "test 6: "
+  test_6(fmodel = fmodel.deep_copy(), model  = model.deep_copy())
 
 
 def finite_differences_test(sf_algorithm = "direct"):
@@ -295,6 +356,11 @@ def finite_differences_test(sf_algorithm = "direct"):
                             phi = 0, psi = 0, the = 0, convention = convention)
       dim = fmodel.xray_structure.scatterers().size()
       selections = [flex.bool(dim, True)]
+      selections = [flex.bool(dim, True)]
+      ss_ = []
+      for s in selections:
+        ss_.append(s.iselection())
+      selections = ss_
       new_xray_structure = mmtbx.refinement.rigid_body.apply_transformation(
                        xray_structure      = model.xray_structure,
                        rotation_matrices   = [rot_obj.rot_mat()],
