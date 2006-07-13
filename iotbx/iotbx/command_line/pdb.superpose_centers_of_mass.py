@@ -208,13 +208,11 @@ def run(args, command_name="iotbx.pdb.superpose_centers_of_mass"):
   #
   # Transform atomic coordinates of "other."
   #
-  sites_frac_other \
-    = crystal_symmetry.unit_cell().fractionalization_matrix() \
-    * sites_carts[1]
+  sites_frac_other = crystal_symmetry.unit_cell().fractionalize(
+    sites_cart=sites_carts[1])
   sites_frac_other_superposed = sym_op * sites_frac_other
-  sites_cart_other_superposed \
-    = crystal_symmetry.unit_cell().orthogonalization_matrix() \
-    * sites_frac_other_superposed
+  sites_cart_other_superposed = crystal_symmetry.unit_cell().orthogonalize(
+    sites_frac=sites_frac_other_superposed)
   #
   # Write transformed coordinates.
   #

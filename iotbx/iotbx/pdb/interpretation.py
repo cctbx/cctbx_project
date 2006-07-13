@@ -332,9 +332,8 @@ class stage_1(object):
             [0,0,0]))))):
         sites_frac = self.scale_matrix[0] * self._sites_cart \
                    + self.scale_matrix[1]
-        self._sites_cart = \
-          self.crystal_symmetry.unit_cell().orthogonalization_matrix() \
-          * sites_frac
+        self._sites_cart = self.crystal_symmetry.unit_cell().orthogonalize(
+          sites_frac=sites_frac)
     return self._sites_cart
 
   def get_element_symbols(self, strip_symbols=False):
@@ -381,7 +380,7 @@ class stage_1(object):
     if (sites_cart is None):
       sites_cart = self.get_sites_cart()
     if (sites_frac is None):
-      sites_frac = result.unit_cell().fractionalization_matrix() * sites_cart
+      sites_frac = result.unit_cell().fractionalize(sites_cart=sites_cart)
     if (site_symmetry_table is not None):
       assert site_symmetry_table.indices().size() == sites_frac.size()
     if (scattering_types is None):
