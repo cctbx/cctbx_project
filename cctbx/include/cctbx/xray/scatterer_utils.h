@@ -290,6 +290,7 @@ class apply_rigid_body_shift
       FloatType xcm = 0, ycm = 0, zcm = 0, weight = 0;
       for(std::size_t j=0;j<selection.size();j++) {
           std::size_t i=selection[j];
+          CCTBX_ASSERT(i < sites_cart.size());
           scitbx::vec3<FloatType> const& site_cart = sites_cart[i];
           xcm += site_cart[0]*atomic_weights[i];
           ycm += site_cart[1]*atomic_weights[i];
@@ -303,6 +304,7 @@ class apply_rigid_body_shift
       scitbx::vec3<FloatType> tcm = trans + center_of_mass;
       for(std::size_t j=0;j<selection.size();j++) {
           std::size_t i=selection[j];
+          CCTBX_ASSERT(i < sites_cart.size());
           scitbx::vec3<FloatType> new_site_cart =
                                rot * (sites_cart[i] - center_of_mass) + tcm;
           sites_cart[i] = new_site_cart;
