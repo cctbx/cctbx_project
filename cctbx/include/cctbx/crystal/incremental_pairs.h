@@ -199,11 +199,10 @@ namespace cctbx { namespace crystal {
         CCTBX_ASSERT(site_symmetry_table.indices_const_ref().size()
                   == original_sites.size());
         reserve_additional(original_sites.size());
-        scitbx::mat3<FloatType>
-          frac = asu_mappings_->asu().unit_cell().fractionalization_matrix();
+        uctbx::unit_cell const& uc = asu_mappings_->asu().unit_cell();
         for(std::size_t i=0;i<original_sites.size();i++) {
           process_site_frac(
-            frac * original_sites[i], site_symmetry_table.get(i));
+            uc.fractionalize(original_sites[i]), site_symmetry_table.get(i));
         }
       }
 
@@ -212,10 +211,9 @@ namespace cctbx { namespace crystal {
         af::const_ref<scitbx::vec3<FloatType> > const& original_sites)
       {
         reserve_additional(original_sites.size());
-        scitbx::mat3<FloatType>
-          frac = asu_mappings_->asu().unit_cell().fractionalization_matrix();
+        uctbx::unit_cell const& uc = asu_mappings_->asu().unit_cell();
         for(std::size_t i=0;i<original_sites.size();i++) {
-          process_site_frac(frac * original_sites[i]);
+          process_site_frac(uc.fractionalize(original_sites[i]));
         }
       }
 

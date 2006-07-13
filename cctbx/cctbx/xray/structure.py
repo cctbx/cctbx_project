@@ -141,8 +141,8 @@ class structure(crystal.special_position_settings):
     cp = structure(self,
       scattering_type_registry=self._scattering_type_registry)
     new_scatterers = self._scatterers.deep_copy()
-    sites_frac_new = self.unit_cell().fractionalization_matrix()*new_sites
-    new_scatterers.set_sites(sites_frac_new)
+    new_scatterers.set_sites(
+      self.unit_cell().fractionalize(sites_cart=new_sites))
     cp._scatterers = new_scatterers
     cp._site_symmetry_table = self._site_symmetry_table.deep_copy()
     if(getattr(self, "scatterer_pdb_records", None) is not None):
@@ -165,14 +165,12 @@ class structure(crystal.special_position_settings):
 
   def translate(self, x=0, y=0, z=0):
     sites_cart = self.sites_cart()
-    sites_cart_size = sites_cart.size()
-    shift_vector = flex.vec3_double(sites_cart_size,[x,y,z])
-    sites_cart_new = sites_cart + shift_vector
     cp = structure(self,
       scattering_type_registry=self._scattering_type_registry)
     new_scatterers = self._scatterers.deep_copy()
-    sites_frac_new = self.unit_cell().fractionalization_matrix()*sites_cart_new
-    new_scatterers.set_sites(sites_frac_new)
+    new_scatterers.set_sites(
+      self.unit_cell().fractionalize(
+        sites_cart=sites_cart+flex.vec3_double(sites_cart.size(),[x,y,z])))
     cp._scatterers = new_scatterers
     cp._site_symmetry_table = self._site_symmetry_table.deep_copy()
     if(getattr(self, "scatterer_pdb_records", None) is not None):
@@ -209,8 +207,8 @@ class structure(crystal.special_position_settings):
     cp = structure(self,
       scattering_type_registry=self._scattering_type_registry)
     new_scatterers = self._scatterers.deep_copy()
-    sites_frac_new = self.unit_cell().fractionalization_matrix()*sites_cart_new
-    new_scatterers.set_sites(sites_frac_new)
+    new_scatterers.set_sites(
+      self.unit_cell().fractionalize(sites_cart=sites_cart_new))
     cp._scatterers = new_scatterers
     cp._site_symmetry_table = self._site_symmetry_table.deep_copy()
     if(getattr(self, "scatterer_pdb_records", None) is not None):
@@ -317,11 +315,10 @@ class structure(crystal.special_position_settings):
     self._scatterers.set_sites(sites_frac)
 
   def sites_cart(self):
-    return self.unit_cell().orthogonalization_matrix() * self.sites_frac()
+    return self.unit_cell().orthogonalize(sites_frac=self.sites_frac())
 
   def set_sites_cart(self, sites_cart):
-    self.set_sites_frac(
-      self.unit_cell().fractionalization_matrix() * sites_cart)
+    self.set_sites_frac(self.unit_cell().fractionalize(sites_cart=sites_cart))
 
   def extract_u_iso_or_u_equiv(self):
     return self._scatterers.extract_u_iso_or_u_equiv(
@@ -694,7 +691,7 @@ class structure(crystal.special_position_settings):
   def random_shift_sites(self, max_shift_cart=0.2):
     shifts = flex.vec3_double(
       (flex.random_double(self.scatterers().size()*3)*2-1) * max_shift_cart)
-    return self.apply_shift(self.unit_cell().fractionalization_matrix()*shifts)
+    return self.apply_shift(self.unit_cell().fractionalize(sites_cart=shifts))
 
   def sort(self, by_value="occupancy", reverse=False):
     assert by_value in ("occupancy",)

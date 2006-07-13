@@ -416,7 +416,8 @@ namespace cctbx { namespace xray { namespace structure_factors {
             ScattererType const& scatterer = scatterers[i];
             if (scatterer.flags.grad_site()) {
               scitbx::vec3<f_t> d_target_d_site_cart =
-                gr_refs.site[i] * unit_cell.fractionalization_matrix();
+                unit_cell.v_times_fractionalization_matrix_transpose(
+                  /* v */ gr_refs.site[i]);
               for(std::size_t j=0;j<3;j++) {
                 packed_.push_back(d_target_d_site_cart[j]);
               }

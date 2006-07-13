@@ -251,7 +251,7 @@ class manager(object):
           if (   bonded_distance_cutoff < 0
               or self.plain_pairs_radius is not None):
             unit_cell = self.crystal_symmetry.unit_cell()
-            sites_frac = unit_cell.fractionalization_matrix() * sites_cart
+            sites_frac = unit_cell.fractionalize(sites_cart=sites_cart)
           if (self.plain_pairs_radius is not None):
             self.update_plain_pair_sym_table(sites_frac=sites_frac)
           if (bonded_distance_cutoff < 0):

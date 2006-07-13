@@ -305,7 +305,7 @@ class special_position_settings(symmetry):
   def site_symmetry_table(self, sites_frac=None, sites_cart=None):
     assert (sites_frac is None) != (sites_cart is None)
     if (sites_frac is None):
-      sites_frac = self.unit_cell().fractionalization_matrix() * sites_cart
+      sites_frac = self.unit_cell().fractionalize(sites_cart=sites_cart)
     result = sgtbx.site_symmetry_table()
     result.process(
       unit_cell=self.unit_cell(),
@@ -327,8 +327,7 @@ class special_position_settings(symmetry):
     if (sites_frac is not None or sites_cart is not None):
       assert sites_frac is None or sites_cart is None
       if (sites_frac is None):
-        sites_frac = self.unit_cell().fractionalization_matrix() * sites_cart
-        del sites_cart
+        sites_frac = self.unit_cell().fractionalize(sites_cart=sites_cart)
       if (site_symmetry_table is None):
         site_symmetry_table = self.site_symmetry_table(sites_frac=sites_frac)
       asu_mappings.process_sites_frac(
@@ -498,7 +497,7 @@ class show_distances(object):
     asu_mappings = pair_asu_table.asu_mappings()
     unit_cell = asu_mappings.unit_cell()
     if (sites_frac is None):
-      sites_frac = unit_cell.fractionalization_matrix() * sites_cart
+      sites_frac = unit_cell.fractionalize(sites_cart=sites_cart)
     if (site_labels is None):
       label_len = len("%d" % (sites_frac.size()+1))
       label_fmt = "site_%%0%dd" % label_len
@@ -618,8 +617,8 @@ class _pair_sym_table(boost.python.injector, pair_sym_table):
 class _clustering_mix_in(object):
 
   def sites_cart(self):
-    return self.special_position_settings.unit_cell() \
-      .orthogonalization_matrix() * self.sites_frac
+    return self.special_position_settings.unit_cell().orthogonalize(
+      sites_frac=self.sites_frac)
 
   def tidy_index_groups_in_place(self):
     cluster_sizes = flex.size_t()
@@ -665,7 +664,7 @@ class incremental_clustering(_clustering_mix_in):
     self.special_position_settings = special_position_settings
     self.distance_cutoffs = distance_cutoffs
     unit_cell = special_position_settings.unit_cell()
-    sites_frac = unit_cell.fractionalization_matrix() * sites_cart
+    sites_frac = unit_cell.fractionalize(sites_cart=sites_cart)
     site_symmetry_table = special_position_settings.site_symmetry_table(
       sites_frac=sites_frac)
     if (not discard_special_positions):
@@ -778,7 +777,7 @@ class distance_based_clustering(_clustering_mix_in):
     self.special_position_settings = special_position_settings
     self.distance_cutoff = distance_cutoff
     unit_cell = special_position_settings.unit_cell()
-    sites_frac = unit_cell.fractionalization_matrix() * sites_cart
+    sites_frac = unit_cell.fractionalize(sites_cart=sites_cart)
     site_symmetry_table = special_position_settings.site_symmetry_table(
       sites_frac=sites_frac)
     if (not discard_special_positions):

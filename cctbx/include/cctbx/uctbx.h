@@ -193,8 +193,8 @@ namespace cctbx {
 
       //! Conversion of cartesian coordinates to fractional coordinates.
       template <class FloatType>
-      fractional<FloatType>
-      fractionalize(cartesian<FloatType> const& site_cart) const
+      scitbx::vec3<FloatType>
+      fractionalize(scitbx::vec3<FloatType> const& site_cart) const
       {
         // take advantage of the fact that frac_ is upper-triangular.
         return fractional<FloatType>(
@@ -208,8 +208,8 @@ namespace cctbx {
 
       //! Conversion of fractional coordinates to cartesian coordinates.
       template <class FloatType>
-      cartesian<FloatType>
-      orthogonalize(fractional<FloatType> const& site_frac) const
+      scitbx::vec3<FloatType>
+      orthogonalize(scitbx::vec3<FloatType> const& site_frac) const
       {
         // take advantage of the fact that orth_ is upper-triangular.
         return cartesian<FloatType>(
@@ -265,6 +265,24 @@ namespace cctbx {
           (*ri)[2] = orth_[8] * (*si)[2];
         }
         return result;
+      }
+
+      //! Optimized v * fractionalization_matrix().transpose()
+      /*! Not available in Python.
+       */
+      template <class FloatType>
+      scitbx::vec3<FloatType>
+      v_times_fractionalization_matrix_transpose(
+        scitbx::vec3<FloatType> const& v) const
+      {
+        // take advantage of the fact that frac_ is upper-triangular.
+        return fractional<FloatType>(
+            frac_[0] * v[0],
+            frac_[1] * v[0]
+          + frac_[4] * v[1],
+            frac_[2] * v[0]
+          + frac_[5] * v[1]
+          + frac_[8] * v[2]);
       }
 
       //! Length^2 of a vector of fractional coordinates.

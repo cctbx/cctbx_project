@@ -255,11 +255,11 @@ class _site_symmetry_table(boost.python.injector, ext.site_symmetry_table):
     return (self.indices(), self.table(), self.special_position_indices())
 
   def apply_symmetry_sites(self, unit_cell, sites_cart):
-    sites_frac = unit_cell.fractionalization_matrix() * sites_cart
+    sites_frac = unit_cell.fractionalize(sites_cart=sites_cart)
     for i_seq in self.special_position_indices():
       sites_frac[i_seq] = self.get(i_seq=i_seq).special_op() \
                         * sites_frac[i_seq]
-    return unit_cell.orthogonalization_matrix() * sites_frac
+    return unit_cell.orthogonalize(sites_frac=sites_frac)
 
   def show_special_position_shifts(self,
         special_position_settings,
@@ -287,9 +287,9 @@ class _site_symmetry_table(boost.python.injector, ext.site_symmetry_table):
         + "   Mult   Shift    Fractional coordinates"
       uc = special_position_settings.unit_cell()
       if (sites_frac_original is None):
-        sites_frac_original = uc.fractionalization_matrix()*sites_cart_original
+        sites_frac_original = uc.fractionalize(sites_cart=sites_cart_original)
       if (sites_frac_exact is None):
-        sites_frac_exact = uc.fractionalization_matrix()*sites_cart_exact
+        sites_frac_exact = uc.fractionalize(sites_cart=sites_cart_exact)
       for i_seq in self.special_position_indices():
         so = sites_frac_original[i_seq]
         se = sites_frac_exact[i_seq]
