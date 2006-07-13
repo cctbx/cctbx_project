@@ -40,7 +40,7 @@ def double_unique(g, h1, h2):
   h2 = [s for s in h2]
   # this is our final result
   result = []
-  # This dictionairy keeps track of equivalent symops
+  # This dictionary keeps track of equivalent symops
   done = {}
   #
   for a in g:
@@ -119,7 +119,6 @@ class double_unique_new(object):
         print >> out, "("+str(a)+")    ",
       print >> out
 
-
 def test_double_coset_decomposition():
   from  cctbx.sgtbx import subgroups
   from cctbx import sgtbx
@@ -135,7 +134,6 @@ def test_double_coset_decomposition():
 def run():
   test_double_coset_decomposition()
   print "OK"
-
 
 if (__name__ == "__main__"):
   run()
