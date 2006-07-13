@@ -789,4 +789,15 @@ namespace scitbx {
 
 } // namespace scitbx
 
+#if !defined(BOOST_NO_TEMPLATE_PARTIAL_SPECIALIZATION)
+
+namespace boost {
+  template <typename NumType>
+  struct has_trivial_destructor<scitbx::mat3<NumType> > {
+    static const bool value = ::boost::has_trivial_destructor<NumType>::value;
+  };
+}
+
+#endif
+
 #endif // SCITBX_MAT3_H
