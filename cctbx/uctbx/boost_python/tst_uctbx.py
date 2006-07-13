@@ -107,6 +107,10 @@ def exercise_frac_orth():
   assert approx_equal(
     u.orthogonalize((1/2., 2/3., 4/5.)), (1,2,4))
   assert approx_equal(
+    u.fractionalize(flex.vec3_double([(1,2,4)])), [(1/2., 2/3., 4/5.)])
+  assert approx_equal(
+    u.orthogonalize(flex.vec3_double([(1/2., 2/3., 4/5.)])), [(1,2,4)])
+  assert approx_equal(
     u.length((1/2.,2/3.,4/5.))**2, 1**2 + 2**2 + 4**2)
   assert approx_equal(
     u.distance((7/2.,8/3.,9/5.), (3,2,1))**2, 1**2 + 2**2 + 4**2)
@@ -120,6 +124,22 @@ def exercise_frac_orth():
   assert approx_equal(
     u.min_mod_short_distance(c, (3,2,1)),
     u.mod_short_distance((13/4.,8/3.,9/5.), (3,2,1)))
+  #
+  u = uctbx.unit_cell((13,17,19,83,111,95))
+  fm = matrix.sqr(u.fractionalization_matrix())
+  assert ",".join(["%.3g" % e for e in fm.elems]) \
+      == "0.0769,0.00673,0.029,0,0.059,-0.00578,0,0,0.0566"
+  om = matrix.sqr(u.orthogonalization_matrix())
+  assert ",".join(["%.3g" % e for e in om.elems]) \
+      == "13,-1.48,-6.81,0,16.9,1.73,0,0,17.7"
+  f = flex.vec3_double(flex.random_double(size=12)*2-1)
+  c = u.orthogonalize(sites_frac=f)
+  assert approx_equal(u.fractionalize(sites_cart=c), f)
+  for fi,ci in zip(f, c):
+    assert approx_equal(u.orthogonalize(site_frac=fi), ci)
+    assert approx_equal(u.fractionalize(site_cart=ci), fi)
+    assert approx_equal(om*matrix.col(fi), ci)
+    assert approx_equal(fm*matrix.col(ci), fi)
 
 def exercise_change_basis():
   u = uctbx.unit_cell(())

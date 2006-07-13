@@ -101,6 +101,16 @@ namespace {
           (cart_t(w_t::*)(frac_t const&) const)
           &w_t::orthogonalize, (
             arg_("site_frac")))
+        .def("fractionalize",
+          (af::shared<scitbx::vec3<double> >(w_t::*)(
+            af::const_ref<scitbx::vec3<double> > const&) const)
+              &w_t::fractionalize, (
+                arg_("sites_cart")))
+        .def("orthogonalize",
+          (af::shared<scitbx::vec3<double> >(w_t::*)(
+            af::const_ref<scitbx::vec3<double> > const&) const)
+              &w_t::orthogonalize, (
+                arg_("sites_frac")))
         .def("length",
           (double(w_t::*)(frac_t const&) const)
           &w_t::length, (
