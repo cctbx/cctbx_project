@@ -33,8 +33,8 @@ def exercise_structure():
   assert tuple(xs.special_position_indices()) == (0, 1)
   s = StringIO()
   xs.show_special_position_shifts(
-    sites_cart_original=cs.unit_cell().orthogonalization_matrix()
-                       *scatterers.extract_sites(),
+    sites_cart_original=cs.unit_cell().orthogonalize(
+      sites_frac=scatterers.extract_sites()),
     out=s,
     prefix="%^")
   assert s.getvalue() == """\

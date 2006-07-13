@@ -296,14 +296,17 @@ class apply_rigid_body_shift
           zcm += site_cart[2]*atomic_weights[i];
           weight += atomic_weights[i];
       }
-      center_of_mass=scitbx::vec3<FloatType>(xcm/weight,ycm/weight,zcm/weight);
+      if (weight != 0) {
+        center_of_mass = scitbx::vec3<FloatType>(
+          xcm/weight,ycm/weight,zcm/weight);
+      }
       scitbx::vec3<FloatType> tcm = trans + center_of_mass;
       for(std::size_t j=0;j<selection.size();j++) {
           std::size_t i=selection[j];
           scitbx::vec3<FloatType> new_site_cart =
                                rot * (sites_cart[i] - center_of_mass) + tcm;
           sites_cart[i] = new_site_cart;
-          sites_frac[i] = unit_cell.fractionalization_matrix() * new_site_cart;
+          sites_frac[i] = unit_cell.fractionalize(new_site_cart);
       }
     }
 };

@@ -92,7 +92,7 @@ class _unit_cell(boost.python.injector, ext.unit_cell):
     assert [sites_cart, sites_frac].count(None) == 1
     if (sites_frac is None):
       assert sites_cart.size() > 0
-      sites_frac = self.fractionalization_matrix() * sites_cart
+      sites_frac = self.fractionalize(sites_cart=sites_cart)
     else:
       assert sites_frac.size() > 0
     del sites_cart

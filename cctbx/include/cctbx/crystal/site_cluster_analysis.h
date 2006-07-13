@@ -290,11 +290,11 @@ namespace cctbx { namespace crystal {
         CCTBX_ASSERT(site_symmetry_table.indices_const_ref().size()
                   == original_sites.size());
         CCTBX_CRYSTAL_SITE_CLUSTER_ANALYSIS_CONSTRUCT_SELECTION
-        scitbx::mat3<FloatType>
-          frac = asu_mappings_->asu().unit_cell().fractionalization_matrix();
+        uctbx::unit_cell const& uc = asu_mappings_->asu().unit_cell();
         for(std::size_t i=0;i<original_sites.size();i++) {
           if (process_site_frac(
-                frac * original_sites[i], site_symmetry_table.get(i))) {
+                uc.fractionalize(original_sites[i]),
+                site_symmetry_table.get(i))) {
             result.push_back(i);
             if (result.size() == max_clusters) break;
           }
@@ -308,10 +308,9 @@ namespace cctbx { namespace crystal {
         std::size_t max_clusters=0)
       {
         CCTBX_CRYSTAL_SITE_CLUSTER_ANALYSIS_CONSTRUCT_SELECTION
-        scitbx::mat3<FloatType>
-          frac = asu_mappings_->asu().unit_cell().fractionalization_matrix();
+        uctbx::unit_cell const& uc = asu_mappings_->asu().unit_cell();
         for(std::size_t i=0;i<original_sites.size();i++) {
-          if (process_site_frac(frac * original_sites[i])) {
+          if (process_site_frac(uc.fractionalize(original_sites[i]))) {
             result.push_back(i);
             if (result.size() == max_clusters) break;
           }

@@ -55,7 +55,7 @@ namespace cctbx { namespace maptbx {
         fractional<FloatType> const& x_frac)
       {
         cartesian<FloatType> const & x_cart = am.process(x_frac).mappings().back()[0].mapped_site();
-        fractional<FloatType> new_x_frac = am.unit_cell().fractionalization_matrix() * x_cart;
+        fractional<FloatType> new_x_frac = am.unit_cell().fractionalize(x_cart);
         FloatType epsilon = scitbx::math::floating_point_epsilon<FloatType>::get() * 10;
         for ( std::size_t i=0; i<3; ++i )
           if ( std::abs(new_x_frac[i]) < epsilon )
@@ -200,7 +200,7 @@ namespace cctbx { namespace maptbx {
               lmap[i] = static_cast<FloatType>(map_index[i]) / grid_n[i];
             }
             cartesian<FloatType> const & xmap = am.process(lmap).mappings().back()[0].mapped_site();
-            fractional<FloatType> nxmap = am.unit_cell().fractionalization_matrix() * xmap;
+            fractional<FloatType> nxmap = am.unit_cell().fractionalize(xmap);
             for ( std::size_t i=0; i<3; ++i ) {
               if ( std::abs(nxmap[i]) < epsilon )
                 nxmap[i] = 0;

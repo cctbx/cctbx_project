@@ -23,7 +23,7 @@ class hexagonal_box(object):
 
   def __init__(self, hex_cell, vertices_cart):
     assert len(vertices_cart) > 0
-    vertices_hex = hex_cell.fractionalization_matrix() * vertices_cart
+    vertices_hex = hex_cell.fractionalize(sites_cart=vertices_cart)
     self.min = vertices_hex.min()
     self.max = vertices_hex.max()
     self.pivot = vertices_hex[flex.min_index(vertices_hex.dot())]
@@ -141,7 +141,7 @@ def hexagonal_close_packing_sampling(crystal_symmetry,
     point_distance=point_distance,
     buffer_thickness=buffer_thickness,
     all_twelve_neighbors=all_twelve_neighbors)
-  return crystal_symmetry.unit_cell().orthogonalization_matrix() * sites_frac
+  return crystal_symmetry.unit_cell().orthogonalize(sites_frac=sites_frac)
 
 def check_distances(sites_cart, point_distance, verbose):
   asu_mappings = non_crystallographic_asu_mappings(sites_cart=sites_cart)
@@ -212,8 +212,8 @@ def check_with_grid_tags(inp_symmetry, symmetry_flags,
     inp_tags = inp_symmetry.gridding(
       step=point_distance/2.,
       symmetry_flags=symmetry_flags).tags()
-    sites_frac_inp = inp_symmetry.unit_cell().fractionalization_matrix() \
-                   * sites_cart
+    sites_frac_inp = inp_symmetry.unit_cell().fractionalize(
+      sites_cart=sites_cart)
     rt = cb_op_inp_ref.c().as_double_array()
     sites_frac_ref = rt[:9] * sites_frac_inp
     sites_frac_ref += rt[9:]
@@ -249,8 +249,8 @@ def check_with_grid_tags(inp_symmetry, symmetry_flags,
     dump_pdb(
       file_name="tag_sites.pdb",
       crystal_symmetry=inp_symmetry,
-      sites_cart=inp_symmetry.unit_cell().orthogonalization_matrix()
-                *tag_sites_frac)
+      sites_cart=inp_symmetry.unit_cell().orthogonalize(
+        sites_frac=tag_sites_frac))
 
 def run_call_back(flags, space_group_info):
   crystal_symmetry = crystal.symmetry(

@@ -119,8 +119,8 @@ def exercise_direct_space_asu():
   assert list(asu_mappings.asu().is_inside_frac(
     sites_frac=sites_frac)) == [False, True]
   assert list(asu_mappings.asu().is_inside_cart(
-    sites_cart=asu_mappings.asu().unit_cell().orthogonalization_matrix()
-              *sites_frac)) == [False, True]
+    sites_cart=asu_mappings.asu().unit_cell().orthogonalize(
+      sites_frac=sites_frac))) == [False, True]
   assert asu_mappings.n_sites_in_asu_and_buffer() == 11
   mappings = asu_mappings.mappings()[0]
   assert len(mappings) == 5
@@ -969,7 +969,7 @@ i_seq: 1
   assert not show_diff(out.getvalue(), expected_out)
   assert incremental_pairs.cubicle_size_counts().items() == [(0,239), (1,6)]
   site_symmetry_table = incremental_pairs.asu_mappings().site_symmetry_table()
-  sites_cart = sps.unit_cell().orthogonalization_matrix() * sites_frac
+  sites_cart = sps.unit_cell().orthogonalize(sites_frac=sites_frac)
   for i_pass in xrange(4):
     ipv = sps.incremental_pairs(distance_cutoff=2)
     if   (i_pass == 0):

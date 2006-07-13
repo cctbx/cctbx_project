@@ -389,7 +389,7 @@ def exercise_box_frac_around_sites():
     sites_frac=sites_frac, buffer=buffer)
   assert approx_equal(min_, (0.26905989232414967, 0.10239322565748302, -0.2))
   assert approx_equal(max_, (0.73094010767585038, 0.8976067743425169, 0.2))
-  sites_cart = unit_cell.orthogonalization_matrix() * sites_frac
+  sites_cart = unit_cell.orthogonalize(sites_frac=sites_frac)
   min_, max_ = sites_cart.min(), sites_cart.max()
   min_ = unit_cell.fractionalize([m-buffer for m in min_])
   max_ = unit_cell.fractionalize([m+buffer for m in max_])
@@ -409,7 +409,7 @@ def exercise_box_frac_around_sites():
   for unit_cell_0 in unit_cells:
     for c_inv_r in c_inv_rs:
       unit_cell = unit_cell_0.change_basis(c_inv_r)
-      sites_frac = unit_cell.fractionalization_matrix() * sites_cart
+      sites_frac = unit_cell.fractionalize(sites_cart=sites_cart)
       min0, max0 = unit_cell.box_frac_around_sites(
         sites_cart=sites_cart)
       for x,y in zip(min0, max0): assert x < y

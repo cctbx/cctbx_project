@@ -94,11 +94,11 @@ namespace {
         .def("fractionalization_matrix", &w_t::fractionalization_matrix, ccr())
         .def("orthogonalization_matrix", &w_t::orthogonalization_matrix, ccr())
         .def("fractionalize",
-          (frac_t(w_t::*)(cart_t const&) const)
+          (scitbx::vec3<double>(w_t::*)(scitbx::vec3<double> const&) const)
           &w_t::fractionalize, (
             arg_("site_cart")))
         .def("orthogonalize",
-          (cart_t(w_t::*)(frac_t const&) const)
+          (scitbx::vec3<double>(w_t::*)(scitbx::vec3<double> const&) const)
           &w_t::orthogonalize, (
             arg_("site_frac")))
         .def("fractionalize",

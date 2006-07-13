@@ -74,7 +74,8 @@ namespace direct_space_asu {
         typedef cartesian<FloatType> c_t;
         f_t x_frac = get_point_in_plane();
         c_t x_cart = unit_cell.orthogonalize(x_frac);
-        c_t n_cart = (n * unit_cell.fractionalization_matrix()).normalize();
+        c_t n_cart = unit_cell.v_times_fractionalization_matrix_transpose(
+          /* v */ n).normalize();
         c_t y_cart = x_cart - n_cart * thickness;
         f_t y_frac = unit_cell.fractionalize(y_cart);
         return float_cut_plane(n, -n * y_frac);
@@ -149,10 +150,10 @@ namespace direct_space_asu {
       {
         af::shared<bool>
           result(sites_cart.size(), af::init_functor_null<bool>());
-        scitbx::mat3<FloatType> frac = unit_cell().fractionalization_matrix();
+        uctbx::unit_cell const& uc = unit_cell();
         bool* res = result.begin();
         for(std::size_t i=0;i<sites_cart.size();i++) {
-          *res++ = is_inside(frac * sites_cart[i]);
+          *res++ = is_inside(uc.fractionalize(sites_cart[i]));
         }
         return result;
       }
@@ -257,19 +258,18 @@ namespace direct_space_asu {
       void
       compute_box() const
       {
-        scitbx::mat3<FloatType> orth_mx = unit_cell_.orthogonalization_matrix();
         af::shared<scitbx::vec3<FloatType> > vertices_ = volume_vertices();
         af::const_ref<scitbx::vec3<FloatType> > vertices = vertices_.ref();
         CCTBX_ASSERT(vertices.size() >= 4);
         box_min_frac_ = box_max_frac_ = vertices[0];
-        box_min_cart_ = box_max_cart_ = orth_mx * vertices[0];
+        box_min_cart_ = box_max_cart_ = unit_cell_.orthogonalize(vertices[0]);
         for(std::size_t i=1;i<vertices.size();i++) {
           scitbx::vec3<FloatType> vertex = vertices[i];
           for(std::size_t j=0;j<3;j++) {
             scitbx::math::update_min(box_min_frac_[j], vertex[j]);
             scitbx::math::update_max(box_max_frac_[j], vertex[j]);
           }
-          vertex = orth_mx * vertex;
+          vertex = unit_cell_.orthogonalize(vertex);
           for(std::size_t j=0;j<3;j++) {
             scitbx::math::update_min(box_min_cart_[j], vertex[j]);
             scitbx::math::update_max(box_max_cart_[j], vertex[j]);
@@ -594,9 +594,10 @@ namespace direct_space_asu {
         af::const_ref<scitbx::vec3<FloatType> > const& original_sites,
         FloatType const& min_distance_sym_equiv=0.5)
       {
-        scitbx::mat3<FloatType> frac = unit_cell().fractionalization_matrix();
+        uctbx::unit_cell const& uc = unit_cell();
         for(std::size_t i=0;i<original_sites.size();i++) {
-          process(frac * original_sites[i], min_distance_sym_equiv);
+          process(
+            uc.fractionalize(original_sites[i]), min_distance_sym_equiv);
         }
         return *this;
       }
@@ -609,9 +610,10 @@ namespace direct_space_asu {
       {
         CCTBX_ASSERT(site_symmetry_table.indices_const_ref().size()
                   == original_sites.size());
-        scitbx::mat3<FloatType> frac = unit_cell().fractionalization_matrix();
+        uctbx::unit_cell const& uc = unit_cell();
         for(std::size_t i=0;i<original_sites.size();i++) {
-          process(frac * original_sites[i], site_symmetry_table.get(i));
+          process(
+            uc.fractionalize(original_sites[i]), site_symmetry_table.get(i));
         }
         return *this;
       }
