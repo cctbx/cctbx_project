@@ -753,7 +753,8 @@ public:
        int natex1=jc;
        // orthogonalization of the obtained coordinates
        for (int i = 0; i <natex1; i++) {
-            vec3<double> const& vo = uc.orthogonalization_matrix() * vec3<double> (xc1[i],yc1[i],zc1[i]);
+            vec3<double> const& vo = uc.orthogonalize(
+              vec3<double>(xc1[i],yc1[i],zc1[i]));
             xc1[i] = vo[0];
             yc1[i] = vo[1];
             zc1[i] = vo[2];
@@ -780,7 +781,7 @@ public:
            if(zf<0.0) iz=iz-1;
            zf=zf-iz;
            // coordinate orthogonalisation
-           vec3<double> const& vo = uc.orthogonalization_matrix() * vec3<double> (xf,yf,zf);
+           vec3<double> const& vo = uc.orthogonalize(vec3<double>(xf,yf,zf));
            xc2.push_back(vo[0]);
            yc2.push_back(vo[1]);
            zc2.push_back(vo[2]);
