@@ -196,7 +196,14 @@ namespace cctbx {
       fractional<FloatType>
       fractionalize(cartesian<FloatType> const& site_cart) const
       {
-        return frac_ * site_cart;
+        // take advantage of the fact that frac_ is upper-triangular.
+        return fractional<FloatType>(
+            frac_[0] * site_cart[0]
+          + frac_[1] * site_cart[1]
+          + frac_[2] * site_cart[2],
+            frac_[4] * site_cart[1]
+          + frac_[5] * site_cart[2],
+            frac_[8] * site_cart[2]);
       }
 
       //! Conversion of fractional coordinates to cartesian coordinates.
@@ -204,7 +211,60 @@ namespace cctbx {
       cartesian<FloatType>
       orthogonalize(fractional<FloatType> const& site_frac) const
       {
-        return orth_ * site_frac;
+        // take advantage of the fact that orth_ is upper-triangular.
+        return cartesian<FloatType>(
+            orth_[0] * site_frac[0]
+          + orth_[1] * site_frac[1]
+          + orth_[2] * site_frac[2],
+            orth_[4] * site_frac[1]
+          + orth_[5] * site_frac[2],
+            orth_[8] * site_frac[2]);
+      }
+
+      //! Conversion of cartesian coordinates to fractional coordinates.
+      template <typename FloatType>
+      af::shared<scitbx::vec3<FloatType> >
+      fractionalize(
+        af::const_ref<scitbx::vec3<FloatType> > const& sites_cart) const
+      {
+        af::shared<scitbx::vec3<FloatType> > result(
+          sites_cart.size(),
+          af::init_functor_null<scitbx::vec3<FloatType> >());
+        const scitbx::vec3<FloatType>* si = sites_cart.begin();
+        scitbx::vec3<FloatType>* ri = result.begin();
+        for(std::size_t i=0;i<sites_cart.size();i++,ri++,si++) {
+          // take advantage of the fact that frac_ is upper-triangular.
+          (*ri)[0] = frac_[0] * (*si)[0]
+                   + frac_[1] * (*si)[1]
+                   + frac_[2] * (*si)[2];
+          (*ri)[1] = frac_[4] * (*si)[1]
+                   + frac_[5] * (*si)[2];
+          (*ri)[2] = frac_[8] * (*si)[2];
+        }
+        return result;
+      }
+
+      //! Conversion of fractional coordinates to cartesian coordinates.
+      template <typename FloatType>
+      af::shared<scitbx::vec3<FloatType> >
+      orthogonalize(
+        af::const_ref<scitbx::vec3<FloatType> > const& sites_frac) const
+      {
+        af::shared<scitbx::vec3<FloatType> > result(
+          sites_frac.size(),
+          af::init_functor_null<scitbx::vec3<FloatType> >());
+        const scitbx::vec3<FloatType>* si = sites_frac.begin();
+        scitbx::vec3<FloatType>* ri = result.begin();
+        for(std::size_t i=0;i<sites_frac.size();i++,ri++,si++) {
+          // take advantage of the fact that orth_ is upper-triangular.
+          (*ri)[0] = orth_[0] * (*si)[0]
+                   + orth_[1] * (*si)[1]
+                   + orth_[2] * (*si)[2];
+          (*ri)[1] = orth_[4] * (*si)[1]
+                   + orth_[5] * (*si)[2];
+          (*ri)[2] = orth_[8] * (*si)[2];
+        }
+        return result;
       }
 
       //! Length^2 of a vector of fractional coordinates.
