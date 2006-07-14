@@ -13,7 +13,7 @@ from iotbx import crystal_symmetry_from_any
 import mmtbx.scaling
 from mmtbx.scaling import absolute_scaling
 from mmtbx.scaling import matthews, twin_analyses
-from mmtbx.scaling import basic_analyses
+from mmtbx.scaling import basic_analyses, pair_analyses
 from mmtbx.scaling import twin_detwin_data
 import libtbx.phil.command_line
 from cStringIO import StringIO
@@ -95,6 +95,21 @@ scaling.input {
      .type=float
      low_resolution=None
      .type=float
+
+     reference{
+       data{
+         file_name=None
+         .type = path
+         labels=None
+         .type=strings
+         unit_cell=None
+         .type=unit_cell
+         space_group=None
+         .type=space_group
+       }
+
+     }
+
    }
 
    optional
@@ -259,6 +274,11 @@ def run(command_name, args):
     log.register(label="log_buffer", file_object=string_buffer)
 
     print_banner(log)
+    print >> log, "#phil __OFF__"
+    print >> log, "  This cryptic code, together with the tags __ON__ and __OFF__"
+    print >> log, "  allows one to use the log file as an input file for xtriage."
+    print >> log, "  Try : mmtbx.xtriage  <logfile> to give it a try!"
+    print >> log
     print >> log, date_and_time()
     print >> log
     print >> log
@@ -357,13 +377,13 @@ def run(command_name, args):
       if params.scaling.input.xray_data.space_group is None:
         raise Sorry("""
 No space group info available.
-Use keyword 'space_group' to specify space group
+Use keyword 'xray_data.space_group' to specify space group
                     """ )
 
       if params.scaling.input.xray_data.unit_cell is None:
         raise Sorry("""
 No unit cell info available.
-Use keyword 'unit_cell' to specify unit_cell
+Use keyword 'xray_data.unit_cell' to specify unit_cell
                     """ )
 
 
@@ -408,8 +428,9 @@ Use keyword 'unit_cell' to specify unit_cell
       print >> log
       print >> log
       print >> log, "Effective parameters: "
+      print >> log, "#phil __ON__"
       new_params.show(out=log,expert_level=params.scaling.input.expert_level)
-
+      print >> log, "#phil __END__"
     crystal_symmetry = crystal.symmetry(
       unit_cell = params.scaling.input.xray_data.unit_cell,
       space_group_symbol = str(params.scaling.input.xray_data.space_group) )
@@ -495,6 +516,16 @@ Use keyword 'unit_cell' to specify unit_cell
 
       minimal_pass = True
       twin_pass = True
+      reference_pass = False
+
+      if params.scaling.input.xray_data.reference.data.file_name is not None:
+        reference_pass = True
+
+      ##########################################
+      ## Model support will come
+      ##if params.scaling.xray_data.reference.model is not None:
+      ##  reference_pass is True
+
 
       print >> log
       print >> log,"##----------------------------------------------------##"
@@ -553,6 +584,72 @@ Use keyword 'unit_cell' to specify unit_cell
             miller_calc=f_calc_miller,
             additional_parameters=params.scaling.input.parameters.misc_twin_parameters)
         #except: pass
+
+    if reference_pass:
+      # do the reference analyses
+
+      # first make a new xray data server
+      user_cell=None
+      user_group=None
+      if params.scaling.input.xray_data.reference.data.unit_cell is not None:
+        user_cell = params.scaling.input.xray_data.reference.data.unit_cell
+      if params.scaling.input.xray_data.reference.data.space_group is not None:
+        user_group = params.scaling.input.xray_data.reference.data.unit_group
+
+      reference_symmetry = None
+      if user_cell is not None:
+        if user_group is not None:
+          reference_symmetry= crystal.symmetry(
+            unit_cell=user_cell,
+            space_group=user_group
+            )
+      if reference_symmetry is None:
+        reference_symmetry = crystal_symmetry_from_any.extract_from(
+        file_name=params.scaling.input.xray_data.reference.data.file_name)
+
+      if reference_symmetry is None:
+        print >> log, "No reference unit cell and space group could be deduced"
+        raise Sorry("Please provide unit cell and space group for reference data")
+
+      xray_data_server =  reflection_file_utils.reflection_file_server(
+        crystal_symmetry = reference_symmetry,
+        force_symmetry = True,
+        reflection_files=[])
+
+
+
+      reference_array =  None
+      reference_array = xray_data_server.get_xray_data(
+        file_name = params.scaling.input.xray_data.reference.data.file_name,
+        labels = params.scaling.input.xray_data.reference.data.labels,
+        ignore_all_zeros = True,
+        parameter_scope = 'scaling.input.xray_data.reference.data',
+        parameter_name = 'labels'
+        )
+
+      info = reference_array.info()
+
+      reference_array = miller_array.map_to_asu()
+
+      reference_array = reference_array.select(
+        reference_array.indices() != (0,0,0))
+
+      reference_array = reference_array.select(
+        reference_array.data() > 0 )
+
+      if (reference_array.is_xray_intensity_array()):
+        reference_array = reference_array.f_sq_as_f()
+      elif (reference_array.is_complex_array()):
+        reference_array = abs(reference_array)
+
+      reference_analyses = pair_analyses.reindexing(
+        reference_array,
+        miller_array,
+        file_name=params.scaling.input.xray_data.file_name
+        )
+
+
+
 
     if params.scaling.input.optional.hklout is not None:
       if params.scaling.input.optional.twinning.action == "detwin":
