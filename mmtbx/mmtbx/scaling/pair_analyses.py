@@ -88,7 +88,7 @@ class reindexing(object):
       tmp_cc = tmp_set_a_nig.correlation(tmp_set_b_nig,
                                          assert_is_similar_symmetry=False )
       self.cc_values.append(  tmp_cc.coefficient()  )
-      self.matches.append( float(   tmp_set_a_nig.indices().size()  )/
+      self.matches.append( 100.0*float(   tmp_set_a_nig.indices().size()  )/
                            float(  self.set_a_nig.indices().size()  )   )
 
 
@@ -104,7 +104,7 @@ class reindexing(object):
       table_data.append(
         [self.nice_cb_ops[ii].as_hkl(),
          "%4.3f"%(self.cc_values[ii]),
-         "%4.3f"%(self.matches[ii]),
+         "%4.1f"%(self.matches[ii]),
          '   ']
         )
 
