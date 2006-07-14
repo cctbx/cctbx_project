@@ -932,7 +932,8 @@ class ml_murray_rust_with_ncs(object):
                twin_law,
                out,
                n_bins=10,
-               calc_data=None):
+               calc_data=None,
+               start_alpha=None):
     if out == None:
       out = sys.stdout
 
@@ -960,9 +961,14 @@ class ml_murray_rust_with_ncs(object):
                                                tmp_miller_array.unit_cell(),
                                                4 )
     self.n = 1+n_bins
-    self.x = flex.double([0])
+    self.x = flex.double([-3])
+    if start_alpha is not None:
+      if start_alpha > 0.45:
+        tmp = -math.log(self.twin_cap/start_alpha-1.0)
+        self.x = flex.double([tmp])
+
     for ii in xrange(n_bins):
-      self.x.append( 2.0 - ii/20.0 )
+      self.x.append( -1.0 - ii/20.0 )
 
     self.message()
 
@@ -1134,6 +1140,98 @@ class ml_murray_rust(object):
     print >> out, "   The estimated twin fraction is equal to %4.3f"%(self.estimated_alpha)
     print >> out
 
+
+class correlation_analyses(object):
+  def __init__(self,
+               miller_obs,
+               miller_calc,
+               twin_law,
+               d_weight=0.1,
+               out=None):
+    self.out=out
+    if self.out==None:
+      self.out = sys.stdout
+
+    self.twin_law=sgtbx.change_of_basis_op( twin_law )
+    self.twin_law= self.twin_law.new_denominators( r_den=miller_calc.space_group().r_den(),
+                                                   t_den=miller_calc.space_group().t_den() )
+
+    self.obs=miller_obs.deep_copy()
+    self.calc=miller_calc.deep_copy()
+    # the incomming data is normalized, normalize the calculated data as well please
+    normalizer = absolute_scaling.kernel_normalisation(
+        self.calc, auto_kernel=True)
+    self.calc = normalizer.normalised_miller.deep_copy()
+    self.calc = self.calc.select(self.calc.data()>0)
+    self.calc_part2 = self.calc.change_basis( self.twin_law )
+    self.calc_part2 = self.calc.customized_copy(
+      indices = self.calc_part2.indices(),
+      data = self.calc_part2.data(),
+      ).map_to_asu()
+
+
+    # make sure we have common sets of everything
+    self.calc, self.calc_part2 = self.calc.common_sets( self.calc_part2 )
+    self.obs,  self.calc = self.obs.common_sets( self.calc )
+    self.obs,  self.calc_part2 = self.obs.common_sets( self.calc_part2 )
+
+    self.d=d_weight
+
+    self.alpha = []
+    self.cc = []
+
+    print >> out, "Perfoming correlation analyses"
+    print >> out, "  The supplied calculated data is normalized and artificially twinned"
+    print >> out, "  Subsequently a correlation with the observed data is computed."
+    print >> out
+
+    if self.obs.data().size()>0:
+      for ii in xrange(50):
+        alpha=ii/100.0
+        self.alpha.append( alpha )
+        cc = self.twin_the_data_and_compute_cc(alpha)
+        self.cc.append(cc)
+    self.max_alpha, self.max_cc = self.find_maximum()
+    print >> out, "   Results: "
+    print >> out, "     Correlation : ", self.max_cc
+    print >> out, "     Estimated twin fraction : ", self.max_alpha
+    print >> out
+
+  def twin_the_data_and_compute_cc(self, alpha):
+    wx = self.obs.sigmas()
+    x = self.obs.data()
+    dd = self.obs.d_star_sq().data()
+    dd = flex.exp( -7.7*self.d*self.d*dd )
+    wy = 1.0-dd*dd
+    y = (1-alpha)*self.calc.data() + alpha*self.calc_part2.data()
+    y = dd*dd*y
+    w_tot = wx*wx + wy*wy
+    cc = self.weighted_cc( x,y,w_tot )
+    return(cc)
+
+  def weighted_cc(self,x,y,w):
+    tw = flex.sum( w )
+    meanx = flex.sum(w*x)/tw
+    meany = flex.sum(w*y)/tw
+    meanxx = flex.sum(w*x*x)/tw
+    meanyy = flex.sum(w*y*y)/tw
+    meanxy = flex.sum(w*x*y)/tw
+    top = meanxy-meanx*meany
+    bottom = math.sqrt(  (meanxx - meanx*meanx)*(meanyy - meany*meany) )
+    if math.fabs(bottom) > 0:
+      return top/bottom
+    else:
+      return 0.0
+
+  def find_maximum(self):
+    max_cc = flex.max( flex.double( self.cc ) )
+    max_alpha = flex.max_index( flex.double( self.cc ) )
+    max_alpha =  self.alpha[ max_alpha ]
+    return max_alpha, max_cc
+
+
+
+
 class twin_law_dependend_twin_tests(object):
   """Twin law dependent test results"""
   def __init__(self,
@@ -1163,6 +1261,13 @@ class twin_law_dependend_twin_tests(object):
 
     self.twin_completeness = tmp_detwin_object.completeness()
     self.results_available = False
+    self.h_test=None
+    self.britton_test=None
+    self.r_values=None
+    self.correlation=None
+    self.ml_murray_rust=None
+    self.ml_murry_rust_with_ncs=None
+
     if self.twin_completeness>0:
       self.results_available = True
 
@@ -1181,7 +1286,17 @@ class twin_law_dependend_twin_tests(object):
                                miller_calc,
                                out)
 
-      self.ml_murray_rust=None
+      if miller_calc is not None:
+        ## Magic number to control influence of hiugh resolutiuon reflections
+        d_weight=0.25
+        self.correlation = correlation_analyses(normalized_intensities,
+                                                miller_calc,
+                                                twin_law.operator,
+                                                d_weight,
+                                                out)
+
+
+
       if normalized_intensities.sigmas() is not None:
         self.ml_murray_rust = ml_murray_rust( normalized_intensities,
                                               twin_law.operator.as_double_array()[0:9],
@@ -1192,7 +1307,8 @@ class twin_law_dependend_twin_tests(object):
                                                                  twin_law.operator.as_double_array()[0:9],
                                                                  out,
                                                                  n_ncs_bins,
-                                                                 miller_calc)
+                                                                 miller_calc,
+                                                                 start_alpha=self.ml_murray_rust.estimated_alpha)
 
 
 
@@ -2059,6 +2175,7 @@ class twin_analyses(object):
                miller_calc=None,
                additional_parameters=None):
 
+    self.max_delta = 3.0
 
     symm_issue_table = [0.08, 75, 0.08, 75]
     perform_ncs_analyses=False
@@ -2112,7 +2229,7 @@ class twin_analyses(object):
 
     ## Determine possible twin laws
     print >> out, "Determining possible twin laws."
-    possible_twin_laws = twin_laws(miller_array)
+    possible_twin_laws = twin_laws(miller_array,lattice_symmetry_max_delta=self.max_delta)
     possible_twin_laws.show(out=out)
     ##-----------------------------
 
@@ -2272,7 +2389,7 @@ class twin_analyses(object):
     if self.n_twin_laws > 0:
       self.check_sg = symmetry_issues(
         miller_array,
-        3.0,
+        self.max_delta,
         out=out,
         scoring_function=symm_issue_table)
 
