@@ -362,11 +362,11 @@ class manager(object):
         sites_cart_1 = None
         sites_cart_2 = None
         if(len(d_mins) == 1):
-           n_rigid_body_macro_cycles = 2
+           n_rigid_body_macro_cycles = 1
         else:
-           n_rigid_body_macro_cycles = min(int(res),4)+1
-        for macro_cycle in range(1, n_rigid_body_macro_cycles):
-            if(macro_cycle != 1): print >> log
+           n_rigid_body_macro_cycles = min(int(res),4)
+        for i_macro_cycle in xrange(n_rigid_body_macro_cycles):
+            if(i_macro_cycle != 0): print >> log
             t_rbbss = time.time()
             max_shift = 0.0
             if([sites_cart_1, sites_cart_2].count(None) == 0):
@@ -380,7 +380,7 @@ class manager(object):
                                                     out     = log,
                                                     verbose = -1)
                line = "bulk solvent correction (and anisotropic scaling); " + \
-                      str("macro-cycle = %-3d"%macro_cycle).strip()
+                      str("macro-cycle = %-3d"%(i_macro_cycle+1)).strip()
                fmodel_copy.show_essential(header = line, out = log)
                if(fmodel_copy.f_obs.d_min() > 3.0):
                   bss.anisotropic_scaling=save_bss_anisotropic_scaling
@@ -425,7 +425,7 @@ class manager(object):
                       rw    = rwork,
                       rf    = rfree,
                       tw    = minimized.fmodel.target_w(),
-                      mc    = macro_cycle,
+                      mc    = i_macro_cycle+1,
                       it    = minimized.counter,
                       ct    = convergence_test,
                       out   = log)
@@ -539,12 +539,16 @@ class rigid_body_minimizer(object):
     self.n = self.x.size()
     self.minimizer = lbfgs.run(
                target_evaluator = self,
+               core_params = lbfgs.core_parameters(
+                    maxfev = 10,
+                    stpmin=1.e-5,
+                    stpmax=1.e2),
                termination_params = lbfgs.termination_parameters(
                     max_iterations = max_iterations),
                exception_handling_params = lbfgs.exception_handling_parameters(
                     ignore_line_search_failed_step_at_lower_bound = True)
                               )
-    self.compute_functional_and_gradients()
+    self.compute_functional_and_gradients(suppress_gradients=True)
     del self.x
 
   def pack(self, r, t):
@@ -564,7 +568,7 @@ class rigid_body_minimizer(object):
            self.t_min[j] = tuple(self.x)[i:i+self.dim_t]
            i += self.dim_t
 
-  def compute_functional_and_gradients(self):
+  def compute_functional_and_gradients(self, suppress_gradients=False):
     global time_fmodel_update_xray_structure
     self.unpack_x()
     self.counter += 1
@@ -600,9 +604,13 @@ class rigid_body_minimizer(object):
                    alpha           = self.alpha,
                    beta            = self.beta,
                    rot_objs        = rot_objs,
-                   selections      = self.selections)
+                   selections      = self.selections,
+                   suppress_gradients = suppress_gradients)
     self.f = tg_obj.target()
-    self.g = self.pack( tg_obj.gradients_wrt_r(), tg_obj.gradients_wrt_t() )
+    if (suppress_gradients):
+      self.g = None
+    else:
+      self.g = self.pack( tg_obj.gradients_wrt_r(), tg_obj.gradients_wrt_t() )
     return self.f, self.g
 
 def apply_transformation_(xray_structure,
@@ -663,13 +671,18 @@ class target_and_grads(object):
                      alpha,
                      beta,
                      rot_objs,
-                     selections):
+                     selections,
+                     suppress_gradients):
     global time_target_and_grads
     t1 = time.time()
+    self.f = fmodel.target_w(alpha = alpha, beta = beta)
+    if (suppress_gradients):
+      self.grads_wrt_r = None
+      self.grads_wrt_t = None
+      return
     target_grads_wrt_xyz = fmodel.gradient_wrt_atomic_parameters(site  = True,
                                                                  alpha = alpha,
                                                                  beta  = beta)
-    self.f = fmodel.target_w(alpha = alpha, beta = beta)
     self.grads_wrt_r = []
     self.grads_wrt_t = []
     target_grads_wrt_xyz = flex.vec3_double(target_grads_wrt_xyz.packed())
