@@ -380,7 +380,8 @@ def finite_differences_test(sf_algorithm = "direct"):
                                              alpha           = None,
                                              beta            = None,
                                              rot_objs        = [rot_obj],
-                                             selections      = selections)
+                                             selections      = selections,
+                                             suppress_gradients = False)
       assert approx_equal(tg_obj.target(),fmodel_copy.target_w())
       g_rot, g_transl = tg_obj.gradients_wrt_r(), tg_obj.gradients_wrt_t()
       fd_transl = fd_translation(fmodel_copy, e = 0.00001)

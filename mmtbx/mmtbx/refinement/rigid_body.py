@@ -8,6 +8,7 @@ from mmtbx.refinement import print_statistics
 import copy, time
 from libtbx.utils import Sorry
 from cctbx import xray
+from scitbx.python_utils.misc import user_plus_sys_time
 
 time_initialization          = 0.0
 time_apply_transformation    = 0.0
@@ -313,7 +314,8 @@ class manager(object):
     global time_initialization
     global time_rigid_body_bulk_solvent_and_scale
     global time_fmodel_update_xray_structure
-    t1 = time.time()
+    time_initialization   = user_plus_sys_time()
+    time_rigid_body_total = user_plus_sys_time()
     xray.set_scatterer_grad_flags(
                                scatterers = fmodel.xray_structure.scatterers(),
                                site       = True)
@@ -346,7 +348,7 @@ class manager(object):
     print >> log, "High resolution cutoffs for mz-protocol: ", \
                   [str("%.3f"%i) for i in d_mins]
     step_counter = 0
-    time_initialization += (time.time() - t1)
+    time_initialization = time_initialization.elapsed()
     for res in d_mins:
         xrs = fmodel_copy.xray_structure.deep_copy_scatterers()
         fmodel_copy = fmodel.resolution_filter(d_min = res)
@@ -441,7 +443,7 @@ class manager(object):
                                  update_f_calc  = True)
     time_fmodel_update_xray_structure += (time.time() - tuxs)
     self.fmodel = fmodel
-    time_rigid_body_total += (time.time() - t1)
+    time_rigid_body_total = time_rigid_body_total.elapsed()
 
   def rotation(self):
     return self.total_rotation
