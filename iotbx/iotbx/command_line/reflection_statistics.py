@@ -6,6 +6,7 @@ from cctbx import crystal
 from cctbx import sgtbx
 import cctbx.sgtbx.lattice_symmetry
 import cctbx.sgtbx.cosets
+from cctbx.crystal import reindex
 from cctbx.array_family import flex
 from libtbx.utils import Sorry
 from libtbx.itertbx import count
@@ -241,42 +242,24 @@ class array_cache(object):
         other,
         relative_length_tolerance,
         absolute_angle_tolerance):
-    c_inv_rs = self.minimum_cell_symmetry.unit_cell() \
-      .similarity_transformations(
-        other=other.minimum_cell_symmetry.unit_cell(),
-        relative_length_tolerance=relative_length_tolerance,
-        absolute_angle_tolerance=absolute_angle_tolerance)
-    min_bases_msd = None
-    similarity_cb_op = None
-    for c_inv_r in c_inv_rs:
-      c_inv = sgtbx.rt_mx(sgtbx.rot_mx(c_inv_r))
-      cb_op = sgtbx.change_of_basis_op(c_inv).inverse()
-      bases_msd = self.minimum_cell_symmetry.unit_cell() \
-        .bases_mean_square_difference(
-          other=cb_op.apply(other.minimum_cell_symmetry.unit_cell()))
-      if (min_bases_msd is None
-          or min_bases_msd > bases_msd):
-        min_bases_msd = bases_msd
-        similarity_cb_op = cb_op
-    if (similarity_cb_op is None): return []
-    common_lattice_group = sgtbx.space_group(self.lattice_group)
-    for s in other.lattice_group.build_derived_acentric_group() \
-               .change_basis(similarity_cb_op):
-      try: common_lattice_group.expand_smx(s)
-      except RuntimeError: return []
-    common_lattice_group.make_tidy()
-    result = []
-    for s in sgtbx.cosets.double_unique(
-               g=common_lattice_group,
-               h1=self.intensity_symmetry.space_group()
-                   .build_derived_acentric_group()
-                   .make_tidy(),
-               h2=other.intensity_symmetry.space_group()
-                   .build_derived_acentric_group()
-                   .change_basis(similarity_cb_op)
-                   .make_tidy()):
-      if (s.r().determinant() > 0):
-        result.append(sgtbx.change_of_basis_op(s) * similarity_cb_op)
+    #make crystal symmetries
+    self_xs = crystal.symmetry( unit_cell = self.input.unit_cell(),
+                                space_group = self.input.space_group() )
+    other_xs = crystal.symmetry( unit_cell = other.input.unit_cell(),
+                                space_group = other.input.space_group() )
+    # some downstream routines expect things to be in minimum cell
+    self_xs = self_xs.change_basis(
+      self_xs.change_of_basis_op_to_minimum_cell() )
+    other_xs = other_xs.change_basis(
+      other_xs.change_of_basis_op_to_minimum_cell() )
+
+    double_cosets = reindex.reindexing_operators(
+      self_xs,
+      other_xs,
+      relative_length_tolerance,
+      absolute_angle_tolerance,
+      self.input.anomalous_flag() )
+    result = double_cosets.combined_cb_ops()
     return result
 
   def combined_cb_op(self, other, cb_op):
