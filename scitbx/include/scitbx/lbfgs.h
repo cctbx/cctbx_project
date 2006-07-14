@@ -909,7 +909,9 @@ namespace lbfgs {
              recommended.
              Restriction: <code>m &gt; 0</code>.
 
-          @param maxfev Termination occurs when the number of evaluations
+          @param maxfev Maximum number of function evaluations
+             <b>per line search</b>.
+             Termination occurs when the number of evaluations
              of the objective function is at least <code>maxfev</code> by
              the end of an iteration.
 
@@ -990,7 +992,7 @@ namespace lbfgs {
       SizeType m() const { return m_; }
 
       /*! \brief Maximum number of evaluations of the objective function
-          (as passed to the constructor).
+          per line search (as passed to the constructor).
        */
       SizeType maxfev() const { return maxfev_; }
 
