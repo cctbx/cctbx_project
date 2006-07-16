@@ -1,14 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Sep: Refactored parts of cctbx/sgtbx/reference.h (rwgk)
-     2001 May: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
-     2001 Apr: Created, based on sglite/sgrefset.h (R.W. Grosse-Kunstleve)
- */
-
 #ifndef CCTBX_SGTBX_REFERENCE_SETTINGS_H
 #define CCTBX_SGTBX_REFERENCE_SETTINGS_H
 
@@ -17,28 +6,36 @@
 #include <scitbx/array_family/shared.h>
 #include <cctbx/import_scitbx_af.h>
 
-namespace cctbx { namespace sgtbx { namespace reference_settings {
+namespace cctbx { namespace sgtbx {
 
-  /* Hall symbols for the reference settings of the 230 crystallographic
-     space groups.
+/*! \brief Tables for the "reference settings" of the
+    230 crystallographic space groups.
+ */
+/*! The reference settings chosen are identical to those listed in
+    International Tables for Crystallography Vol. A. For the cases
+    where more than one setting is given in the International Tables,
+    the following choices have been made:
+      - For monoclinic space groups: unique axis b and cell choice 1.
+      - For space groups with two origin choices: origin choice 2.
+      - Rhombohedral space groups: hexagonal axes.
+ */
+namespace reference_settings {
 
-     The reference settings chosen are identical to those listed in
-     International Tables for Crystallography Vol. A. For the cases
-     where more than one setting is given in the International Tables,
-     the following choices have been made:
-       - For monoclinic space groups: unique axis b and cell choice 1.
-       - For space groups with two origin choices: origin choice 2.
-       - Rhombohedral space groups: hexagonal axes.
-   */
+  //! Hall symbols for the reference settings.
   const char*
   hall_symbol_table(std::size_t i);
 
-  /* Matrix group codes (Boisen & Gibbs, 1990, pp. 225-228)
-     corresponding to the reference settings above.
+  //! Hermann-Mauguin symbols for the reference settings.
+  const char*
+  hermann_mauguin_symbol_table(std::size_t i);
+
+  /*! \brief Matrix group codes (Boisen & Gibbs, 1990, pp. 225-228)
+      corresponding to the reference settings.
    */
   matrix_group::code
   const& matrix_group_code_table(std::size_t i);
 
+  //! Tables for the Euclidean and affine normalizers.
   namespace normalizer {
 
     struct addl_generators
@@ -47,9 +44,10 @@ namespace cctbx { namespace sgtbx { namespace reference_settings {
       const char* l2n; // operations which generate N from L
     };
 
-    /* Table of 'additional generators' of the Euclidean and affine
-       normalizers, corresponding to the reference settings above.
-       Reference: Int. Tab. Vol. A Section 15.3
+    /*! \brief Table of "additional generators" of the Euclidean and affine
+        normalizers for to the reference settings.
+     */
+    /*! Reference: Int. Tab. Vol. A Section 15.3
      */
     addl_generators const&
     addl_generators_table(std::size_t i);
@@ -74,6 +72,7 @@ namespace cctbx { namespace sgtbx { namespace reference_settings {
 
   } // namespace normalizer
 
+  //! Wyckoff tables.
   namespace wyckoff {
 
     struct raw_position

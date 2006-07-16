@@ -654,7 +654,11 @@ namespace cctbx { namespace sgtbx {
     space_group const& group,
     bool tidy_cb_op,
     int r_den, int t_den)
-    : group_(group), number_(0), cb_op_(r_den, t_den)
+  :
+    group_(group),
+    number_(0),
+    cb_op_(r_den, t_den),
+    cb_op_is_tidy_(tidy_cb_op)
   {
     matrix_group::code point_group = group_.point_group_type();
     matrix_group::code laue_group = point_group.laue_group_type();
@@ -796,9 +800,6 @@ namespace cctbx { namespace sgtbx {
         group_, point_group, number_,
         reference_cb_op, target_sg, target_generators, cb_op);
     }
-    else {
-      cb_op.mod_short_in_place();
-    }
 
     std::string::size_type par = hall_symbol.find(" (");
     if (par != std::string::npos) {
@@ -806,7 +807,7 @@ namespace cctbx { namespace sgtbx {
     }
 
     if (!cb_op.is_identity_op()) {
-      hall_symbol += " (" + cb_op.c_inv().as_xyz() + ")";
+      hall_symbol += " (" + cb_op.c_inv().mod_short().as_xyz() + ")";
     }
 
     if (tidy_cb_op) {
@@ -817,6 +818,54 @@ namespace cctbx { namespace sgtbx {
     }
 
     return hall_symbol;
+  }
+
+  std::string
+  space_group_type::universal_hermann_mauguin_symbol(bool tidy_cb_op) const
+  {
+    if (tidy_cb_op) {
+      if (uhm_symbol_tidy_true_.size() == 0) {
+        uhm_symbol_tidy_true_ = std::string(
+          reference_settings::hermann_mauguin_symbol_table(number_));
+        if (!cb_op_.is_identity_op()) {
+          if (cb_op_is_tidy_) {
+            uhm_symbol_tidy_true_
+              += " (" + cb_op_.c_inv().mod_short().as_xyz() + ")";
+          }
+          else {
+            space_group tab_sg(
+              reference_settings::hall_symbol_table(number_),
+              true, false, false, group_.t_den());
+            matrix_group::code point_group = tab_sg.point_group_type();
+            select_generators::standard target_generators(
+              tab_sg,
+              cb_op_.c().r().den(),
+              cb_op_.c().t().den(),
+              point_group);
+            target_generators.set_primitive();
+            change_of_basis_op cb_op = construct_cb_op_t::find_best_cb_op(
+              group_, point_group, number_,
+              cb_op_.identity_op(), tab_sg, target_generators, cb_op_);
+            if (!cb_op.is_identity_op()) {
+              uhm_symbol_tidy_true_
+                += " (" + cb_op.c_inv().mod_short().as_xyz() + ")";
+            }
+          }
+        }
+      }
+      return uhm_symbol_tidy_true_;
+    }
+    else {
+      if (uhm_symbol_tidy_false_.size() == 0) {
+        uhm_symbol_tidy_false_ = std::string(
+          reference_settings::hermann_mauguin_symbol_table(number_));
+        if (!cb_op_.is_identity_op()) {
+          uhm_symbol_tidy_false_
+            += " (" + cb_op_.c_inv().mod_short().as_xyz() + ")";
+        }
+      }
+      return uhm_symbol_tidy_false_;
+    }
   }
 
   std::string
@@ -840,11 +889,14 @@ namespace cctbx { namespace sgtbx {
     return space_group_type(*this);
   }
 
-  space_group_type::space_group_type(std::string const& symbol,
-                                     std::string const& table_id)
+  space_group_type::space_group_type(
+    std::string const& symbol,
+    std::string const& table_id,
+    bool tidy_cb_op)
   {
-    *this = space_group_type(space_group(space_group_symbols(
-      symbol, table_id)));
+    *this = space_group_type(
+      space_group(space_group_symbols(symbol, table_id)),
+      tidy_cb_op);
   }
 
   af::shared<rt_mx>
