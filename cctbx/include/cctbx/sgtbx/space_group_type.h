@@ -17,16 +17,19 @@ namespace cctbx { namespace sgtbx {
       //! Default constructor.
       /*! Equivalent to space_group_type(space_group())
        */
-      space_group_type() : number_(1) {}
+      space_group_type() : number_(1), cb_op_is_tidy_(true) {}
 
       //! Initializer using space group symbols.
       /*! Equivalent to
-          space_group_type(space_group(space_group_symbols(symbol, table_id)))
+          space_group_type(
+            space_group(space_group_symbols(symbol, table_id)),
+            tidy_cb_op)
        */
       explicit
       space_group_type(
         std::string const& symbol,
-        std::string const& table_id="");
+        std::string const& table_id="",
+        bool tidy_cb_op=true);
 
       //! Determines the space group type.
       /*! The algorithm for the determination of the space group
@@ -73,6 +76,10 @@ namespace cctbx { namespace sgtbx {
       //! Change-of-basis operator.
       change_of_basis_op const&
       cb_op() const { return cb_op_; }
+
+      //! Setting as passed to the constructor via tidy_cp_op.
+      bool
+      cb_op_is_tidy() const { return cb_op_is_tidy_; }
 
       //! Gets the additional generators of the Euclidean normalizer.
       /*! See International Tables for Crystallography Volume A,
@@ -174,6 +181,17 @@ namespace cctbx { namespace sgtbx {
       std::string
       hall_symbol(bool tidy_cb_op = true) const;
 
+      /*! \brief Builds a universal Hermann-Mauguin symbol for the given
+          symmetry operations.
+       */
+      /*! If tidy_cb_op == true, the returned symbol
+          is a reproducible representation of a
+          given setting that is independent of the order of
+          the symmetry operations.
+       */
+      std::string
+      universal_hermann_mauguin_symbol(bool tidy_cb_op = true) const;
+
       //! Determines conventional Hermann-Mauguin symbol or Hall symbol.
       /*! First, group().match_tabulated_settings() is called. If the given
           symmetry operations correspond to one of the 530 tabulated
@@ -188,12 +206,15 @@ namespace cctbx { namespace sgtbx {
       std::string
       lookup_symbol() const;
 
-    private:
+    protected:
       space_group group_;
       int number_;
       change_of_basis_op cb_op_;
+      bool cb_op_is_tidy_;
       mutable std::string hall_symbol_tidy_true_;
       mutable std::string hall_symbol_tidy_false_;
+      mutable std::string uhm_symbol_tidy_true_;
+      mutable std::string uhm_symbol_tidy_false_;
       mutable std::string lookup_symbol_;
   };
 

@@ -17,10 +17,18 @@ namespace {
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
       hall_symbol_overloads, hall_symbol, 0, 1)
 
+    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
+      universal_hermann_mauguin_symbol_overloads,
+      universal_hermann_mauguin_symbol,
+      0, 1)
+
     static boost::python::tuple
-    getinitargs(w_t const& o)
+    getinitargs(w_t const& self)
     {
-      return boost::python::make_tuple("Hall: " + o.hall_symbol());
+      return boost::python::make_tuple(
+        "Hall: " + self.hall_symbol(false),
+        "",
+        self.cb_op_is_tidy());
     }
 
     static void
@@ -30,9 +38,10 @@ namespace {
       typedef return_value_policy<copy_const_reference> ccr;
       typedef return_internal_reference<> rir;
       class_<w_t>("space_group_type")
-        .def(init<std::string const&, optional<std::string const&> >((
+        .def(init<std::string const&, optional<std::string const&, bool> >((
           arg_("symbol"),
-          arg_("table_id")="")))
+          arg_("table_id")="",
+          arg_("tidy_cb_op")=true)))
         .def(init<space_group const&, optional<bool, int, int> >((
           arg_("group"),
           arg_("tidy_cb_op")=true,
@@ -41,6 +50,7 @@ namespace {
         .def("group", &w_t::group, rir())
         .def("number", &w_t::number)
         .def("cb_op", &w_t::cb_op, ccr())
+        .def("cb_op_is_tidy", &w_t::cb_op_is_tidy)
         .def("addl_generators_of_euclidean_normalizer",
           &w_t::addl_generators_of_euclidean_normalizer, (
             arg_("flag_k2l"), arg_("flag_l2n")))
@@ -51,6 +61,10 @@ namespace {
         .def("change_of_hand_op", &w_t::change_of_hand_op)
         .def("hall_symbol", &w_t::hall_symbol, hall_symbol_overloads((
           arg_("tidy_cb_op")=true)))
+        .def("universal_hermann_mauguin_symbol",
+          &w_t::universal_hermann_mauguin_symbol,
+            universal_hermann_mauguin_symbol_overloads((
+              arg_("tidy_cb_op")=true)))
         .def("lookup_symbol", &w_t::lookup_symbol)
         .def_pickle(space_group_type_wrappers())
       ;

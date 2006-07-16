@@ -788,10 +788,13 @@ def exercise_space_group_type():
   assert t.cb_op().is_identity_op()
   t = space_group_type("P 2")
   assert t.hall_symbol() == " P 2y"
+  assert t.universal_hermann_mauguin_symbol() == "P 1 2 1"
   t = space_group_type("P 2", "a1983")
   assert t.hall_symbol() == " P 2y"
+  assert t.universal_hermann_mauguin_symbol() == "P 1 2 1"
   t = space_group_type("P 2", "i1952")
   assert t.hall_symbol() == " P 2y (z,x,y)"
+  assert t.universal_hermann_mauguin_symbol() == "P 1 2 1 (z,x,y)"
   t = space_group_type("P 3")
   assert len(t.addl_generators_of_euclidean_normalizer(0, 0)) == 0
   assert len(t.addl_generators_of_euclidean_normalizer(1, 0)) == 1
@@ -812,15 +815,37 @@ def exercise_space_group_type():
   assert str(space_group_type("P 31").change_of_hand_op().c()) == "-x,-y,-z"
   assert str(space_group_type("I41").change_of_hand_op().c()) == "-x+1/2,-y,-z"
   g = space_group(sgtbx.space_group_symbols("C c c a :1"))
+  t = sgtbx.space_group_type(group=g, tidy_cb_op=False)
+  assert not t.cb_op_is_tidy()
+  assert t.hall_symbol(tidy_cb_op=False) == "-C 2a 2ac (x+1/2,-y+1/4,-z-1/4)"
+  assert t.hall_symbol(tidy_cb_op=True) == "-C 2a 2ac (x+1/2,y-1/4,z+1/4)"
+  assert t.hall_symbol() == "-C 2a 2ac (x+1/2,y-1/4,z+1/4)"
+  assert t.universal_hermann_mauguin_symbol(tidy_cb_op=False) \
+      == "C c c a :2 (x+1/2,-y+1/4,-z-1/4)"
+  assert t.universal_hermann_mauguin_symbol(tidy_cb_op=True) \
+      == "C c c a :2 (x+1/2,y-1/4,z+1/4)"
+  assert t.universal_hermann_mauguin_symbol() \
+      == "C c c a :2 (x+1/2,y-1/4,z+1/4)"
+  p = pickle.dumps(t)
+  l = pickle.loads(p)
+  assert l.group() == t.group()
+  assert not l.cb_op_is_tidy()
   t = g.change_basis(g.z2p_op()).type()
-  assert t.hall_symbol() == "-C 2a 2ac (x-y-1/4,x+y-3/4,z+1/4)"
-  assert t.hall_symbol(1) == "-C 2a 2ac (x-y-1/4,x+y-3/4,z+1/4)"
-  assert t.hall_symbol(0) == "-C 2a 2ac (x-y-1/4,x+y+1/4,z+1/4)"
-  assert t.lookup_symbol() == "Hall: -C 2a 2ac (x-y-1/4,x+y-3/4,z+1/4)"
+  assert t.cb_op_is_tidy()
+  h = "-C 2a 2ac (x-y-1/4,x+y+1/4,z+1/4)"
+  assert t.hall_symbol() == h
+  assert t.hall_symbol(tidy_cb_op=True) == h
+  assert t.hall_symbol(tidy_cb_op=False) == h
+  u = "C c c a :2 (x-y-1/4,x+y+1/4,z+1/4)"
+  assert t.universal_hermann_mauguin_symbol() == u
+  assert t.universal_hermann_mauguin_symbol(tidy_cb_op=True) == u
+  assert t.universal_hermann_mauguin_symbol(tidy_cb_op=False) == u
+  assert t.lookup_symbol() == "Hall: -C 2a 2ac (x-y-1/4,x+y+1/4,z+1/4)"
   assert g.type().lookup_symbol() == "C c c a :1"
   p = pickle.dumps(t)
   l = pickle.loads(p)
-  assert t.group() == l.group()
+  assert l.group() == t.group()
+  assert l.cb_op_is_tidy()
 
 def exercise_phase_info():
   phase_info = sgtbx.phase_info
