@@ -183,6 +183,10 @@ class space_group_info(object):
       unit_cell=self.any_compatible_unit_cell(volume=volume),
       space_group_info=self)
 
+def reference_space_group_infos():
+  for number in xrange(1,230+1):
+    yield space_group_info(number=number)
+
 class _tr_vec(boost.python.injector, tr_vec):
 
   def as_rational(self):

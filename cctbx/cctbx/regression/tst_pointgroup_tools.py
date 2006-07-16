@@ -189,8 +189,7 @@ def test_extensively( this_chunk ):
 def test_reference_setting_choices():
   buffer = StringIO()
 
-  for sg in xrange(1,231):
-    space_group_info =sgtbx.space_group_info( sg )
+  for space_group_info in sgtbx.reference_space_group_infos():
     space_group = space_group_info.group()
 
     uc = space_group_info.any_compatible_unit_cell(volume=57*57*76)
