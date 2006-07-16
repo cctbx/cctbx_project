@@ -1,3 +1,5 @@
+from __future__ import generators
+
 import boost.python
 ext = boost.python.import_ext("scitbx_math_ext")
 from scitbx_math_ext import *
@@ -44,3 +46,8 @@ class _line_search_more_thuente_1994(
     print >> f, prefix+"info_meaning:", self.info_meaning
     print >> f, prefix+"stp:", self.stp
     print >> f, prefix+"nfev:", self.nfev
+
+class _unimodular_generator(boost.python.injector, ext.unimodular_generator):
+
+  def all(self):
+    while (not self.at_end()): yield self.next()

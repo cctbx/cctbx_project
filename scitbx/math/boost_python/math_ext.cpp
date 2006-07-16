@@ -35,6 +35,7 @@ namespace boost_python {
   void wrap_r3_rotation();
   void wrap_resample();
   void wrap_quadrature();
+  void wrap_unimodular_generator();
 
 namespace {
 
@@ -159,6 +160,7 @@ namespace {
     wrap_r3_rotation();
     wrap_resample();
     wrap_quadrature();
+    wrap_unimodular_generator();
 
     def("time_eigensystem_real_symmetric", time_eigensystem_real_symmetric);
 

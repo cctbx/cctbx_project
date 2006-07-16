@@ -18,6 +18,8 @@ from scitbx.math import chebyshev_fitter
 from scitbx.math import slatec_dgamma, slatec_dlngam
 from scitbx.array_family import flex
 from scitbx import matrix
+from scitbx.python_utils.misc import user_plus_sys_time
+from libtbx.itertbx import count
 from libtbx.test_utils import approx_equal, eps_eq
 import pickle
 from cStringIO import StringIO
@@ -1121,6 +1123,30 @@ def exercise_slatec_dbinom():
       " because n and/or m too big (nerr=3, level=2)"
   else: raise RuntimeError("Exception expected.")
 
+def exercise_unimodular_generator(forever):
+  ug = scitbx.math.unimodular_generator
+  g = ug(range=0)
+  assert g.at_end()
+  g = ug(range=1)
+  assert not g.at_end()
+  n = 0
+  while (not g.at_end()):
+    assert matrix.rec(g.next(), (3,3)).determinant() == 1
+    n += 1
+  assert n == 3480
+  assert ug(range=0).count() == 0
+  assert ug(range=1).count() == 3480
+  assert ug(range=2).count() == 67704
+  assert ug(range=3).count() == 640824
+  assert len(list(ug(range=1).all())) == 3480
+  for range in count():
+    timer = user_plus_sys_time()
+    n = ug(range=range).count()
+    print "unimodular range %d: count=%d, time=%.2f s" % (
+      range, n, timer.elapsed())
+    if (range == 4 and not forever):
+      break
+
 def run():
   exercise_floating_point_epsilon()
   exercise_euler_angles()
@@ -1141,7 +1167,9 @@ def run():
   exercise_cheb_family()
   exercise_slatec_dlngam()
   exercise_slatec_dbinom()
-  forever = "--Forever" in sys.argv[1:]
+  forever = "--forever" in sys.argv[1:]
+  exercise_unimodular_generator(
+    forever=forever and "--unimodular" in sys.argv[1:])
   while 1:
     exercise_minimum_covering_sphere()
     if (not forever): break

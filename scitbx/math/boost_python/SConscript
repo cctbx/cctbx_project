@@ -19,6 +19,7 @@ env.SharedLibrary(
     "line_search.cpp",
     "r3_rotation.cpp",
     "resample.cpp",
-    "quadrature.cpp"
+    "quadrature.cpp",
+    "unimodular_generator.cpp",
     ]
 )
