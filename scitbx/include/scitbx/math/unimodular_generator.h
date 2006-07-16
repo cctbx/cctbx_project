@@ -40,6 +40,17 @@ namespace scitbx { namespace math {
         return result;
       }
 
+      std::size_t
+      count()
+      {
+        std::size_t result = 0;
+        while (!at_end_) {
+          result++;
+          incr();
+        }
+        return result;
+      }
+
     private:
       void
       incr()
