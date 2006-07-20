@@ -249,9 +249,9 @@ class array_cache(object):
                                 space_group = other.input.space_group() )
     # some downstream routines expect things to be in minimum cell
     self_xs = self_xs.change_basis(
-      self_xs.change_of_basis_op_to_minimum_cell() )
+      self.change_of_basis_op_to_minimum_cell )
     other_xs = other_xs.change_basis(
-      other_xs.change_of_basis_op_to_minimum_cell() )
+      other.change_of_basis_op_to_minimum_cell )
 
     double_cosets = reindex.reindexing_operators(
       self_xs,
@@ -265,6 +265,7 @@ class array_cache(object):
   def combined_cb_op(self, other, cb_op):
     sc = self.change_of_basis_op_to_minimum_cell
     oc = other.change_of_basis_op_to_minimum_cell
+
     cb_op = cb_op.new_denominators(sc)
     best_choice = None
     best_choice_as_hkl = None
