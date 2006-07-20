@@ -1,4 +1,5 @@
 import sys
+from cctbx import sgtbx
 
 class left_decomposition(object):
 
@@ -53,8 +54,37 @@ def double_unique(g, h1, h2):
   return result
 
 
-class double_unique_new(object):
-  def __init__(self,g, h1, h2):
+def compare_cb_op_as_hkl(a, b):
+  if (len(a) < len(b)): return -1
+  if (len(a) > len(b)): return  1
+  return cmp(a, b)
+
+def construct_nice_cb_op(coset,
+                         sym_transform_1_to_2,
+                         to_niggli_1,
+                         to_niggli_2):
+  best_choice = None
+  best_choice_as_hkl = None
+  to_niggli_2 = to_niggli_2.new_denominators( to_niggli_1 )
+  sym_transform_1_to_2 = sym_transform_1_to_2.new_denominators( to_niggli_1 )
+
+  for coset_element in coset:
+    tmp_coset_element = sgtbx.change_of_basis_op(coset_element)
+    tmp_coset_element = tmp_coset_element.new_denominators( to_niggli_1 )
+    tmp_op = to_niggli_1.inverse() * (tmp_coset_element * sym_transform_1_to_2) * to_niggli_2
+    if ( (best_choice_as_hkl is None) or
+         (compare_cb_op_as_hkl( best_choice_as_hkl, tmp_op.as_hkl() ) >0 ) ):
+      best_choice = tmp_op
+      best_choice_as_hkl =  tmp_op.as_hkl()
+  assert best_choice is not None
+
+  tmptmp = sgtbx.change_of_basis_op(coset[0])
+
+  return best_choice
+
+
+class double_cosets(object):
+  def __init__(self,g, h1, h2, enforce_det_ge_1=True):
     """g is the supergroup
        h1 and h2 are subgroups
     """
@@ -83,6 +113,16 @@ class double_unique_new(object):
             if not self.is_in_coset( b, tmp_double_coset ):
               tmp_double_coset.append( b )
         self.double_cosets.append( tmp_double_coset )
+    if enforce_det_ge_1:
+      self.clear_up_cosets()
+
+
+  def clear_up_cosets(self):
+    temp_cosets = []
+    for cs in self.double_cosets:
+      if cs[0].r().determinant() > 0:
+        temp_cosets.append( cs )
+    self.double_cosets = temp_cosets
 
   def is_in_coset(self, a, coset_list):
     found_it=False
@@ -130,6 +170,8 @@ def test_double_coset_decomposition():
       for h2 in subgrs:
         tmp_new = double_unique_new(g, h1, h2)
         tmp_new.assert_no_duplicates()
+
+
 
 def run():
   test_double_coset_decomposition()
