@@ -190,7 +190,7 @@ def exercise_combine_symops_and_symbol():
       space_group_from_ops.expand_smx(s)
     combined = combine_symops_and_symbol(
       space_group_from_ops=space_group_from_ops,
-      space_group_symbol=symbols.extended_hermann_mauguin())
+      space_group_symbol=symbols.universal_hermann_mauguin())
     assert combined.group() == space_group
     if (symbols.extension() in ["R", "H"]):
       combined = combine_symops_and_symbol(
