@@ -214,8 +214,8 @@ def run(server_info, inp, status):
     symbols_match = sg.match_tabulated_settings()
     if (symbols_match.number() != 0):
       if (   symbols_inp is None
-          or    symbols_inp.extended_hermann_mauguin()
-             != symbols_match.extended_hermann_mauguin()):
+          or    symbols_inp.universal_hermann_mauguin()
+             != symbols_match.universal_hermann_mauguin()):
         print "Symmetry operations match:"
         show_symbols(symbols_match)
         print
@@ -226,7 +226,7 @@ def run(server_info, inp, status):
       print "Space group number:", sg_type.number()
       print "Conventional Hermann-Mauguin symbol:", \
         sgtbx.space_group_symbols(sg_type.number()) \
-        .extended_hermann_mauguin()
+        .universal_hermann_mauguin()
       print "Hall symbol:", sg_type.hall_symbol()
       print "Change-of-basis matrix:", sg_type.cb_op().c()
       print "               Inverse:", sg_type.cb_op().c_inv()

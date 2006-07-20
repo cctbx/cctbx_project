@@ -35,10 +35,10 @@ def run(server_info, inp, status):
       print "<td>(%d)<td>%s" % (
         symbols.number(), symbols.schoenflies())
       query = "target_module=explore_symmetry&sgsymbol=" \
-            + urllib.quote_plus(symbols.extended_hermann_mauguin())
+            + urllib.quote_plus(symbols.universal_hermann_mauguin())
       print ("<td><a href=\"%s\">%s</a>") % (
         server_info.script(query),
-        symbols.extended_hermann_mauguin())
+        symbols.universal_hermann_mauguin())
       print "<td>%s" % (symbols.hall(),)
       n_settings += 1
   print "</table>"

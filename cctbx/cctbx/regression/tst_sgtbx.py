@@ -3,8 +3,10 @@ import cctbx.sgtbx.bravais_types
 from cctbx.array_family import flex
 import scitbx.math
 from libtbx.test_utils import approx_equal
+from libtbx.utils import format_cpu_times
 import random
 import pickle
+import sys
 
 def exercise_space_group_info():
   i = sgtbx.space_group_info("P 1")
@@ -33,7 +35,7 @@ def exercise_space_group_info():
   assert str(i.change_of_basis_op_to_reference_setting().c()) == "-x,z,y"
   assert str(i.reference_setting()) == "C 1 2 1"
   assert str(i.as_reference_setting()) == "C 1 2 1"
-  assert str(i.primitive_setting()) == "Hall:  C 2y (-x+y,z,x+y)"
+  assert str(i.primitive_setting()) == "C 1 2 1 (-x+y,z,x+y)"
   asu = i.direct_space_asu()
   assert len(asu.facets) == 6
   assert sgtbx.space_group(asu.hall_symbol) == i.group()
@@ -77,6 +79,106 @@ def test_enantiomorphic_pairs():
                    (144, 145), (151, 153), (152, 154),
                    (169, 170), (171, 172), (178, 179), (180, 181),
                    (212, 213)]
+
+def exercise_monoclinic_cell_choices_core(space_group_number, verbose):
+  # transformation matrices for cell choices
+  # columns are basis vectors "new in terms of old"
+  # see Int. Tab. Vol. A, p. 22, Fig. 2.2.6.4.
+  b1 = (1, 0, 0,
+        0, 1, 0,
+        0, 0, 1)
+  b2 = (-1, 0, 1,
+         0, 1, 0,
+        -1, 0, 0)
+  b3 = (0, 0, -1,
+        0, 1,  0,
+        1, 0, -1)
+  flip = (0,  0, 1,
+          0, -1, 0,
+          1,  0, 0)
+  p3s = sgtbx.space_group("P 3*")
+  done = {}
+  ref = sgtbx.space_group_info(number=space_group_number)
+  ref_uhm = ref.type().universal_hermann_mauguin_symbol()
+  for i_fl,fl in enumerate([b1, flip]):
+    rfl = sgtbx.rot_mx(fl)
+    cfl = sgtbx.change_of_basis_op(sgtbx.rt_mx(rfl))
+    for i_rt,rt in enumerate(p3s):
+      rp3 = rt.r()
+      cp3 = sgtbx.change_of_basis_op(sgtbx.rt_mx(rp3))
+      for i_cs,cs in enumerate([b1,b2,b3]):
+        rcs = sgtbx.rot_mx(cs).inverse()
+        ccs = sgtbx.change_of_basis_op(sgtbx.rt_mx(rcs))
+        cb_all = cp3 * cfl * ccs
+        refcb = ref.change_basis(cb_all)
+        refcb2 = sgtbx.space_group_info(symbol=ref_uhm+"("+str(cb_all.c())+")")
+        assert refcb2.group() == refcb.group()
+        s = sgtbx.space_group_symbols(str(refcb))
+        q = s.qualifier()
+        hm = str(refcb)
+        if (0 or verbose): print hm, q, cb_all.c()
+        if (i_fl == 0):
+          assert q[0] == "bca"[i_rt]
+          if (len(q) == 2): assert q[1] == "123"[i_cs]
+        elif (q[0] == "-"):
+          assert q[1] == "bca"[i_rt]
+          if (len(q) == 3): assert q[2] == "123"[i_cs]
+        else:
+          assert q[0] == "bca"[i_rt]
+          if (len(q) == 2 and q[1] != "123"[i_cs]):
+            assert done[hm] == 1
+        done.setdefault(hm, 0)
+        done[hm] += 1
+  assert len(done) in [3, 9, 18]
+  assert done.values() == [18/len(done)]*len(done)
+  if (0 or verbose): print
+  return done
+
+def exercise_monoclinic_cell_choices(verbose=0):
+  done = {}
+  for space_group_number in xrange(3,16):
+    done.update(exercise_monoclinic_cell_choices_core(
+      space_group_number=space_group_number, verbose=verbose))
+  assert len(done) == 105
+  assert done.values().count(0) == 0
+  n = 0
+  for s in sgtbx.space_group_symbol_iterator():
+    if (s.number() < 3): continue
+    if (s.number() > 15): break
+    done[s.universal_hermann_mauguin()] = 0
+    n += 1
+  assert n == 105
+  assert done.values().count(0) == 105
+
+def exercise_orthorhombic_hm_qualifier_as_cb_symbol():
+  cb_symbols = {
+    "cab": "z,x,y",
+    "a-cb": "x,-z,y",
+    "-cba": "-z,y,x",
+    "bca": "y,z,x",
+    "ba-c": "y,x,-z"}
+  for sgsyms1 in sgtbx.space_group_symbol_iterator():
+    n = sgsyms1.number()
+    if (n < 16 or n > 74): continue
+    q = sgsyms1.qualifier()
+    if (len(q) == 0): continue
+    e = sgsyms1.extension()
+    if (e == "\0"): e = ""
+    ehm = sgtbx.space_group_symbols(
+      space_group_number=n, extension=e).universal_hermann_mauguin()
+    c = cb_symbols[q]
+    uhm = ehm + " ("+c+")"
+    sgsyms2 = sgtbx.space_group_symbols(symbol=uhm)
+    assert sgsyms2.change_of_basis_symbol() == c
+    assert sgsyms2.extension() == sgsyms1.extension()
+    assert sgsyms2.universal_hermann_mauguin() == uhm
+    g1 = sgtbx.space_group(space_group_symbols=sgsyms1)
+    g2 = sgtbx.space_group(space_group_symbols=sgsyms2)
+    assert g2 == g1
+    g2 = sgtbx.space_group(
+      sgtbx.space_group_symbols(symbol=ehm)).change_basis(
+        sgtbx.change_of_basis_op(sgtbx.rt_mx(c)))
+    assert g2 == g1
 
 def python_tensor_constraints(self, reciprocal_space):
   """row-reduced echelon form of coefficients
@@ -146,11 +248,13 @@ def exercise_tensor_constraints():
     exercise_tensor_constraints_core(crystal_symmetry)
     exercise_tensor_constraints_core(crystal_symmetry.minimum_cell())
 
-def run():
+def run(args):
   exercise_space_group_info()
   test_enantiomorphic_pairs()
+  exercise_monoclinic_cell_choices(verbose="--verbose" in args)
+  exercise_orthorhombic_hm_qualifier_as_cb_symbol()
   exercise_tensor_constraints()
-  print "OK"
+  print format_cpu_times()
 
 if (__name__ == "__main__"):
-  run()
+  run(sys.argv[1:])

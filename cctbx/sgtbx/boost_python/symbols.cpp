@@ -31,7 +31,9 @@ namespace {
         .def("qualifier", &w_t::qualifier, ccr())
         .def("hermann_mauguin", &w_t::hermann_mauguin, ccr())
         .def("extension", &w_t::extension)
-        .def("extended_hermann_mauguin", &w_t::extended_hermann_mauguin, ccr())
+        .def("change_of_basis_symbol", &w_t::change_of_basis_symbol, ccr())
+        .def("universal_hermann_mauguin",
+          &w_t::universal_hermann_mauguin, ccr())
         .def("hall", &w_t::hall, ccr())
         .def("point_group_type", &w_t::point_group_type)
         .def("laue_group_type", &w_t::laue_group_type)

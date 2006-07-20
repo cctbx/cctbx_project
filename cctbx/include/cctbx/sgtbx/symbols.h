@@ -246,19 +246,29 @@ namespace cctbx { namespace sgtbx {
       char
       extension() const { return extension_; }
 
-      //! Hermann-Mauguin symbol with extension appended (if any).
-      /*! If the extension is '\0' (the null character),
-          extended_hermann_mauguin() is equivalent to
-          hermann_mauguin(). Otherwise a colon and the one-character
-          extension is appended to the Hermann-Mauguin symbol.
+      //! Change-of-basis symbol part of universal Hermann-Mauguin symbol.
+      /*! The parentheses are not included. For example, if the universal
+          Hermann-Mauguin symbol is "P 3 (y,z,x)", the return value
+          is "y,z,x".
+       */
+      std::string const&
+      change_of_basis_symbol() { return change_of_basis_symbol_; }
+
+      /*! Hermann-Mauguin symbol with extension and change-of-basis
+          symbol appended (if any).
+       */
+      /*! If the extension is '\0' (the null character)
+          and the change-of-basis operator is the identity matrix,
+          universal_hermann_mauguin() is equivalent to
+          hermann_mauguin().
           <p>
-          The extended Hermann-Mauguin symbol uniquely identifies a
+          The universal Hermann-Mauguin symbol uniquely identifies a
           tabulated space group representation.
        */
       std::string const&
-      extended_hermann_mauguin() const
+      universal_hermann_mauguin() const
       {
-        return extended_hermann_mauguin_;
+        return universal_hermann_mauguin_;
       }
 
       //! Hall symbol.
@@ -314,11 +324,14 @@ namespace cctbx { namespace sgtbx {
       std::string qualifier_;
       std::string hermann_mauguin_;
       char        extension_;
-      std::string extended_hermann_mauguin_;
+      std::string change_of_basis_symbol_;
+      std::string universal_hermann_mauguin_;
       std::string hall_;
-      void set_all(const symbols::tables::main_symbol_dict_entry* entry,
-                   char work_extension,
-                   std::string const& std_table_id);
+      bool
+      set_all(
+        const symbols::tables::main_symbol_dict_entry* entry,
+        char work_extension,
+        std::string const& std_table_id);
       int hall_pass_through(std::string const& symbol);
       void clear();
   };

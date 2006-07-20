@@ -1,15 +1,18 @@
-import math
-import weakref
-import pickle
+from cctbx.sgtbx import subgroups
 from cctbx.array_family import flex
 from cctbx import sgtbx
 import cctbx.sgtbx.direct_space_asu
 from cctbx import uctbx
 from scitbx.python_utils import complex_math
-from libtbx.test_utils import approx_equal, not_approx_equal
+from libtbx.utils import format_cpu_times
+from libtbx.test_utils import approx_equal, not_approx_equal, show_diff
 import libtbx.load_env
+import random
+import math
+import weakref
+import pickle
+from cStringIO import StringIO
 import os
-from cctbx.sgtbx import subgroups
 
 def exercise_symbols():
   s = sgtbx.space_group_symbols("p 2")
@@ -18,7 +21,8 @@ def exercise_symbols():
   assert s.qualifier() == "b"
   assert s.hermann_mauguin() == "P 1 2 1"
   assert s.extension() == "\0"
-  assert s.extended_hermann_mauguin() == "P 1 2 1"
+  assert s.change_of_basis_symbol() == ""
+  assert s.universal_hermann_mauguin() == "P 1 2 1"
   assert s.hall() == " P 2y"
   s = sgtbx.space_group_symbols("p 2", "A")
   assert s.hall() == " P 2y"
@@ -35,6 +39,27 @@ def exercise_symbols():
   assert s.point_group_type() == "3"
   assert s.laue_group_type() == "-3"
   assert s.crystal_system() == "Trigonal"
+  o = StringIO()
+  for hm in ["P2(1)", "P3112", "P3212", "P6122", "P6522", "P6222", "P6422",
+             "Pnnn:1"]:
+    s = sgtbx.space_group_symbols("%s (z, x, y)" % hm)
+    assert s.change_of_basis_symbol() == "z,x,y"
+    assert s.universal_hermann_mauguin().endswith(" (z,x,y)")
+    print >> o, s.hall()
+  assert not show_diff(o.getvalue(), """\
+ P 2yb (z,x,y)
+ P 31 2 (z+1/3,x,y)
+ P 32 2 (z+1/6,x,y)
+ P 61 2 (z+5/12,x,y)
+ P 65 2 (z+1/12,x,y)
+ P 62 2 (z+1/3,x,y)
+ P 64 2 (z+1/6,x,y)
+ P 2 2 -1n (z,x,y)
+""")
+  s = sgtbx.space_group_symbols("P222(1)")
+  assert s.hall() == " P 2c 2"
+  s = sgtbx.space_group_symbols("P 31 1 2 (x,y,z-1/3)")
+  assert s.hall() == " P 31 2"
   symbols = {
     "  hall p 3  ": "p 3  ",
     " hall:   p 4": "p 4",
@@ -47,15 +72,15 @@ def exercise_symbols():
     assert sgtbx.space_group_symbols(symbol).hall() == hall, symbol
   i = sgtbx.space_group_symbol_iterator()
   assert id(i) == id(iter(i))
-  assert i.next().extended_hermann_mauguin() == "P 1"
-  assert i.next().extended_hermann_mauguin() == "P -1"
+  assert i.next().universal_hermann_mauguin() == "P 1"
+  assert i.next().universal_hermann_mauguin() == "P -1"
   assert len(tuple(i)) == 528
   i = sgtbx.space_group_symbol_iterator()
   n = 0
   for s in i:
     n += 1
-    hm = s.extended_hermann_mauguin()
-    assert sgtbx.space_group_symbols(hm).extended_hermann_mauguin() == hm
+    hm = s.universal_hermann_mauguin()
+    assert sgtbx.space_group_symbols(hm).universal_hermann_mauguin() == hm
   assert n == 530
   #
   short_symbols_i = [
@@ -96,6 +121,37 @@ def exercise_symbols():
         assert expected_short == short
         assert sgtbx.space_group_symbols(short, volume).hall() \
             == sgtbx.space_group_symbols(long, volume).hall()
+  #
+  s = sgtbx.space_group_symbols
+  try: s("(x,y,z)")
+  except RuntimeError, e:
+    assert str(e) == "cctbx Error: Space group symbol not recognized: (x,y,z)"
+  else: raise RuntimeError("Exception expected.")
+  try: s("P1 (h, k, l)")
+  except RuntimeError, e:
+    assert str(e) == "cctbx Error: Improper change-of-basis symbol: (h,k,l)"
+  else: raise RuntimeError("Exception expected.")
+  try: s("P3:2")
+  except RuntimeError, e:
+    assert str(e) == "cctbx Error: Space group symbol not recognized: P3:2"
+  else: raise RuntimeError("Exception expected.")
+  try: s(300)
+  except RuntimeError, e:
+    assert str(e) == "cctbx Error: Space group number out of range: 300"
+  else: raise RuntimeError("Exception expected.")
+  try: s(space_group_number=1, table_id="x")
+  except RuntimeError, e:
+    assert str(e) == "cctbx Error: table_id not recognized: x"
+  else: raise RuntimeError("Exception expected.")
+  for extension in ["1", ":1"]:
+    try: s(space_group_number=75, extension=extension)
+    except RuntimeError, e:
+      assert str(e) == "cctbx Error: Space group symbol not recognized: 75:1"
+    else: raise RuntimeError("Exception expected.")
+  try: s(space_group_number=75, extension="x")
+  except RuntimeError, e:
+    assert str(e) == "cctbx Error: Space group symbol not recognized: 75:x"
+  else: raise RuntimeError("Exception expected.")
 
 def exercise_tr_vec():
   tr_vec = sgtbx.tr_vec
@@ -840,12 +896,28 @@ def exercise_space_group_type():
   assert t.universal_hermann_mauguin_symbol() == u
   assert t.universal_hermann_mauguin_symbol(tidy_cb_op=True) == u
   assert t.universal_hermann_mauguin_symbol(tidy_cb_op=False) == u
-  assert t.lookup_symbol() == "Hall: -C 2a 2ac (x-y-1/4,x+y+1/4,z+1/4)"
+  assert t.lookup_symbol() == u
   assert g.type().lookup_symbol() == "C c c a :1"
   p = pickle.dumps(t)
   l = pickle.loads(p)
   assert l.group() == t.group()
   assert l.cb_op_is_tidy()
+  #
+  for s in sgtbx.space_group_symbol_iterator():
+    uhm_in = s.universal_hermann_mauguin() + " (z+1/4, x-1/4, y+3/4)"
+    g_out = sgtbx.space_group(sgtbx.space_group_symbols(uhm_in))
+    uhm_out = g_out.type().universal_hermann_mauguin_symbol()
+    if (uhm_out != uhm_in):
+      g_out2 = sgtbx.space_group(sgtbx.space_group_symbols(uhm_out))
+      assert g_out2 == g_out
+      uhm_out2 = g_out2.type().universal_hermann_mauguin_symbol()
+      assert uhm_out2 == uhm_out
+    g_out = g_out.change_basis(g_out.z2p_op()) # primitive setting
+    uhm_out = g_out.type().universal_hermann_mauguin_symbol()
+    g_out2 = sgtbx.space_group(sgtbx.space_group_symbols(uhm_out))
+    assert g_out2 == g_out
+    uhm_out2 = g_out2.type().universal_hermann_mauguin_symbol()
+    assert uhm_out2 == uhm_out
 
 def exercise_phase_info():
   phase_info = sgtbx.phase_info
@@ -1812,7 +1884,7 @@ def run():
   exercise_find_affine()
   exercise_search_symmetry()
   exercise_tensor_rank_2_constraints()
-  print "OK"
+  print format_cpu_times()
 
 if (__name__ == "__main__"):
   run()

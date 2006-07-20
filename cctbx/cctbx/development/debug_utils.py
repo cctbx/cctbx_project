@@ -14,7 +14,7 @@ def get_test_space_group_symbols(flag_AllSpaceGroups,
       libtbx.env.find_in_repositories("regression"), "settings.py"), namespace)
     return namespace["settings"]
   if (flag_AllSettings):
-    return [symbols.extended_hermann_mauguin()
+    return [symbols.universal_hermann_mauguin()
             for symbols in sgtbx.space_group_symbol_iterator()]
   if (flag_AllSpaceGroups):
     sg_numbers = xrange(1, 231)
@@ -27,7 +27,7 @@ def get_test_space_group_symbols(flag_AllSpaceGroups,
                   208, 209, 210, 211, 212, 213, 214)
   else:
     sg_numbers = (1,2,3,15,16,74,75,76,142,143,144,157,167,168,194,195,230)
-  return [sgtbx.space_group_symbols(n).extended_hermann_mauguin()
+  return [sgtbx.space_group_symbols(n).universal_hermann_mauguin()
           for n in sg_numbers] + ["Hall: -F 4 21 (1,5,3)"]
 
 def random_origin_shift(space_group_info, grid=12):
