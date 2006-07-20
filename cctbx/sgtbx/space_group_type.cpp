@@ -767,6 +767,17 @@ namespace cctbx { namespace sgtbx {
     throw CCTBX_INTERNAL_ERROR();
   }
 
+  namespace {
+
+    inline
+    std::string
+    change_of_basis_symbol(change_of_basis_op const& cb_op)
+    {
+      return " (" + cb_op.c_inv().mod_short().as_xyz() + ")";
+    }
+
+  }
+
   std::string
   space_group_type::hall_symbol(bool tidy_cb_op) const
   {
@@ -807,7 +818,7 @@ namespace cctbx { namespace sgtbx {
     }
 
     if (!cb_op.is_identity_op()) {
-      hall_symbol += " (" + cb_op.c_inv().mod_short().as_xyz() + ")";
+      hall_symbol += change_of_basis_symbol(cb_op);
     }
 
     if (tidy_cb_op) {
@@ -829,8 +840,7 @@ namespace cctbx { namespace sgtbx {
           reference_settings::hermann_mauguin_symbol_table(number_));
         if (!cb_op_.is_identity_op()) {
           if (cb_op_is_tidy_) {
-            uhm_symbol_tidy_true_
-              += " (" + cb_op_.c_inv().mod_short().as_xyz() + ")";
+            uhm_symbol_tidy_true_ += change_of_basis_symbol(cb_op_);
           }
           else {
             space_group tab_sg(
@@ -847,8 +857,7 @@ namespace cctbx { namespace sgtbx {
               group_, point_group, number_,
               cb_op_.identity_op(), tab_sg, target_generators, cb_op_);
             if (!cb_op.is_identity_op()) {
-              uhm_symbol_tidy_true_
-                += " (" + cb_op.c_inv().mod_short().as_xyz() + ")";
+              uhm_symbol_tidy_true_ += change_of_basis_symbol(cb_op);
             }
           }
         }
@@ -860,8 +869,7 @@ namespace cctbx { namespace sgtbx {
         uhm_symbol_tidy_false_ = std::string(
           reference_settings::hermann_mauguin_symbol_table(number_));
         if (!cb_op_.is_identity_op()) {
-          uhm_symbol_tidy_false_
-            += " (" + cb_op_.c_inv().mod_short().as_xyz() + ")";
+          uhm_symbol_tidy_false_ += change_of_basis_symbol(cb_op_);
         }
       }
       return uhm_symbol_tidy_false_;
@@ -874,10 +882,10 @@ namespace cctbx { namespace sgtbx {
     if (!lookup_symbol_.size()) {
       space_group_symbols symbols = group_.match_tabulated_settings();
       if (symbols.number() != 0) {
-        lookup_symbol_ = symbols.extended_hermann_mauguin();
+        lookup_symbol_ = symbols.universal_hermann_mauguin();
       }
       else {
-        lookup_symbol_ = "Hall: " + hall_symbol(true);
+        lookup_symbol_ = universal_hermann_mauguin_symbol();
       }
     }
     return lookup_symbol_;

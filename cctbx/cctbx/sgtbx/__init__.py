@@ -138,7 +138,7 @@ class space_group_info(object):
     for space_group_symbols in space_group_symbol_iterator():
       if (space_group_symbols.crystal_system() != reference_crystal_system):
         continue
-      other_sg = space_group(space_group_symbols.hall())
+      other_sg = space_group(space_group_symbols)
       if (other_sg.build_derived_reflection_intensity_group(
             anomalous_flag=anomalous_flag)
           == reference_reflection_intensity_group):

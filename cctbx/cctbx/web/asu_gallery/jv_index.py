@@ -56,7 +56,7 @@ class crystal_system_table(object):
     previous_point_group_type = None
     for space_group_number in xrange(1,231):
       space_group_symbols = sgtbx.space_group_symbols(space_group_number)
-      space_group = sgtbx.space_group(space_group_symbols.hall())
+      space_group = sgtbx.space_group(space_group_symbols)
       crystal_system = space_group.crystal_system()
       point_group_type = space_group.point_group_type()
       if (point_group_type != previous_point_group_type):

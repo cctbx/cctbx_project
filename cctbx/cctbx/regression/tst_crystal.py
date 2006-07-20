@@ -47,7 +47,7 @@ def exercise_symmetry():
   nc = xs.niggli_cell()
   assert nc.unit_cell().is_similar_to(
     uctbx.unit_cell((5, 5, 10.0885, 75.6522, 75.6522, 60)))
-  assert str(nc.space_group_info()) == "Hall:  R 3 (x+z,-y+z,-3*z)"
+  assert str(nc.space_group_info()) == "R 3 :h (x+z,-y+z,-3*z)"
   assert nc.unit_cell().is_niggli_cell()
   cn = nc.change_basis(cb.inverse())
   assert cn.unit_cell().is_similar_to(xs.unit_cell())

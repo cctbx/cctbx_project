@@ -12,9 +12,15 @@ namespace cctbx { namespace sgtbx {
 
   namespace {
 
-    void throw_symbol_not_recognized()
+    static const char* not_recognized = "Space group symbol not recognized: ";
+
+    inline
+    string
+    to_str(int value)
     {
-      throw error("Space group symbol not recognized.");
+      char buf[256];
+      sprintf(buf, "%d", value);
+      return string(buf);
     }
 
   }
@@ -180,9 +186,9 @@ namespace cctbx { namespace sgtbx {
       static const char* amcb = "a-cb";
     }
 
-    /* This tables corresponds to a table in the
+    /* This table corresponds to a table in the
        International Tables for Crystallography, Volume B, 2001.
-       The hall symbols were generated with the
+       The Hall symbols were generated with the
        STARTX module of the Xtal System of Crystallographic Programs,
        version 3.7 (http://xtal.crystal.uwa.edu.au/).
      */
@@ -752,7 +758,7 @@ namespace cctbx { namespace sgtbx {
   }
 
   // remove parentheses, e.g. "P2(1)2(1)2(1)" -> "P212121"
-  void remove_parentheses(string& work_symbol)
+  void remove_screw_component_parentheses(string& work_symbol)
   {
     static const int  rot_numbers[] = { 2, 3, 4, 6 };
     static const char rot_symbols[] = "2346";
@@ -772,6 +778,21 @@ namespace cctbx { namespace sgtbx {
         }
       }
     }
+  }
+
+  string
+  split_off_cb_symbol(string& work_symbol)
+  {
+    string result;
+    string::size_type sz = work_symbol.size();
+    if (sz != 0 && work_symbol[sz-1] == ')') {
+      string::size_type i = work_symbol.rfind("(");
+      if (i != string::npos && i >= 2) {
+        result = work_symbol.substr(i+1, sz-i-2);
+        work_symbol.resize(i);
+      }
+    }
+    return result;
   }
 
   string remove_spaces(string const& inp)
@@ -818,7 +839,7 @@ namespace cctbx { namespace sgtbx {
       else if (std_table_id == "A" || std_table_id == "A1983")
         std_table_id = "A1983";
       else
-        throw error("table_id not recognized.");
+        throw error("table_id not recognized: " + table_id);
     }
     return std_table_id;
   }
@@ -857,8 +878,7 @@ namespace cctbx { namespace sgtbx {
         }
       }
     }
-    throw_symbol_not_recognized();
-    return 0; // unreachable
+    return 0;
   }
 
   const tables::main_symbol_dict_entry*
@@ -866,7 +886,7 @@ namespace cctbx { namespace sgtbx {
                                       string const& std_table_id)
   {
     if (sg_number < 1 || sg_number > 230) {
-      throw error("Space group number out of range.");
+      throw error("Space group number out of range: " + to_str(sg_number));
     }
     if (sg_number < 3 || sg_number > 15) {
       const tables::main_symbol_dict_entry* entry;
@@ -878,12 +898,10 @@ namespace cctbx { namespace sgtbx {
     int i = 0;
     if (std_table_id == "I1952") i = 1;
     string mono_hm = tables::monoclinic_sg_number_as_hm_list[sg_number][i];
-    try {
-      return find_main_symbol_dict_entry(mono_hm);
-    }
-    catch (error const&) {
-      throw CCTBX_INTERNAL_ERROR();
-    }
+    const tables::main_symbol_dict_entry*
+      result = find_main_symbol_dict_entry(mono_hm);
+    CCTBX_ASSERT(result != 0);
+    return result;
   }
 
   const char* select_hall(const tables::main_symbol_dict_entry* entry,
@@ -912,31 +930,37 @@ namespace cctbx { namespace sgtbx {
         else if (work_extension == '2') return hall2;
       }
     }
-    throw_symbol_not_recognized();
-    return 0; // unreachable
+    return 0;
   }
 
   } // namespace symbols
 
   using namespace symbols;
 
-  void space_group_symbols::set_all(
+  bool
+  space_group_symbols::set_all(
     const tables::main_symbol_dict_entry* entry,
     char work_extension,
     string const& std_table_id)
   {
     const char* table_hall = select_hall(entry, work_extension, std_table_id);
+    if (table_hall == 0) return false;
     CCTBX_ASSERT(   work_extension == '\0'
                  || work_extension == '1' || work_extension == '2'
                  || work_extension == 'H' || work_extension == 'R');
-    number_          = entry->sg_number;
-    schoenflies_     = tables::schoenflies_list[entry->sg_number];
-    qualifier_       = string(entry->qualifier ? entry->qualifier : "");
+    number_ = entry->sg_number;
+    schoenflies_ = tables::schoenflies_list[entry->sg_number];
+    qualifier_ = string(entry->qualifier ? entry->qualifier : "");
     hermann_mauguin_ = entry->hermann_mauguin;
-    extension_       = work_extension;
-    if (extension_ == '\0') extended_hermann_mauguin_ = hermann_mauguin_;
-    else extended_hermann_mauguin_ = hermann_mauguin_ + " :" + extension_;
-    hall_            = table_hall;
+    extension_ = work_extension;
+    change_of_basis_symbol_ = "";
+    universal_hermann_mauguin_ = hermann_mauguin_;
+    if (extension_ != '\0') {
+      universal_hermann_mauguin_ += " :";
+      universal_hermann_mauguin_ += extension_;
+    }
+    hall_ = table_hall;
+    return true;
   }
 
   int space_group_symbols::hall_pass_through(string const& symbol)
@@ -967,7 +991,8 @@ namespace cctbx { namespace sgtbx {
     qualifier_ = "";
     hermann_mauguin_ = "";
     extension_ = '\0';
-    extended_hermann_mauguin_ = "";
+    change_of_basis_symbol_ = "";
+    universal_hermann_mauguin_ = "";
     hall_ = "";
   }
 
@@ -1005,10 +1030,20 @@ namespace cctbx { namespace sgtbx {
       if (hall_pass_through(symbol) != 0) return;
     }
     string work_symbol = pre_process_symbol(symbol);
-    char work_extension = strip_extension(work_symbol);
     work_symbol[0] = toupper(work_symbol[0]);
-    remove_parentheses(work_symbol);
-
+    remove_screw_component_parentheses(work_symbol);
+    rt_mx cb_mx(0);
+    std::string cb_mx_symbol = split_off_cb_symbol(work_symbol);
+    if (cb_mx_symbol.size() != 0) {
+      parse_string cb_op_parse_str(cb_mx_symbol);
+      rt_mx_from_xyz cb_mx_from_xyz(cb_op_parse_str, "\0", cb_r_den, cb_t_den);
+      if (cb_mx_from_xyz.have_hkl) {
+        throw error(
+          "Improper change-of-basis symbol: (" + cb_mx_symbol + ")");
+      }
+      cb_mx = rt_mx(cb_mx_from_xyz.r(), cb_mx_from_xyz.t());
+    }
+    char work_extension = strip_extension(work_symbol);
     const tables::main_symbol_dict_entry* entry = 0;
     int sg_no;
     char xtrac;
@@ -1030,8 +1065,40 @@ namespace cctbx { namespace sgtbx {
     if (entry == 0) {
       short_mono_hm_as_full_mono_hm(std_table_id, work_symbol);
       entry = find_main_symbol_dict_entry(work_symbol);
+      if (entry == 0) {
+        throw error(not_recognized + symbol);
+      }
     }
-    set_all(entry, work_extension, std_table_id);
+    if (!set_all(entry, work_extension, std_table_id)) {
+      throw error(not_recognized + symbol);
+    }
+    if (cb_mx.is_valid()) {
+      change_of_basis_symbol_ = cb_mx.as_xyz();
+      universal_hermann_mauguin_ += " (" + change_of_basis_symbol_ + ")";
+      cb_mx_symbol = split_off_cb_symbol(hall_);
+      if (cb_mx_symbol.size() != 0) {
+        hall_.resize(hall_.size()-1); // strip space
+        // All tabulated Hall symbol change-of-basis operators are of
+        // the form (0 0 i), with i = {1,2,4,5}
+        CCTBX_ASSERT(cb_mx_symbol.size() == 5);
+        CCTBX_ASSERT(cb_mx_symbol.substr(0, 4) == "0 0 ");
+        int t12;
+        switch (cb_mx_symbol[4]) {
+          case '1': t12 = 1; break;
+          case '2': t12 = 2; break;
+          case '4': t12 = 4; break;
+          case '5': t12 = 5; break;
+          default:
+            throw CCTBX_INTERNAL_ERROR();
+        }
+        cb_mx.t() += cb_mx.r().multiply(tr_vec(0,0,t12))
+          .new_denominator(cb_t_den);
+      }
+      cb_mx.mod_short_in_place();
+      if (!cb_mx.is_unit_mx()) {
+        hall_ += " (" + cb_mx.as_xyz() + ")";
+      }
+    }
   }
 
   space_group_symbols::space_group_symbols(
@@ -1045,13 +1112,19 @@ namespace cctbx { namespace sgtbx {
     if (work_symbol.size() != 0 && work_symbol[0] != ':') {
       work_symbol.insert(0, ":");
     }
+    string inp_work_symbol = work_symbol;
     char work_extension = strip_extension(work_symbol);
-    if (work_symbol.size() != 0) throw_symbol_not_recognized();
-
+    if (work_symbol.size() != 0) {
+      throw error(
+        not_recognized + to_str(space_group_number) + inp_work_symbol);
+    }
     const tables::main_symbol_dict_entry* entry = 0;
     entry = sg_number_to_main_symbol_dict_entry(
       space_group_number, std_table_id);
-    set_all(entry, work_extension, std_table_id);
+    if (!set_all(entry, work_extension, std_table_id)) {
+      throw error(
+        not_recognized + to_str(space_group_number) + inp_work_symbol);
+    }
   }
 
   space_group_symbols::space_group_symbols(
@@ -1059,7 +1132,9 @@ namespace cctbx { namespace sgtbx {
     char extension)
   {
     clear();
-    if (entry->sg_number) set_all(entry, extension, "");
+    if (entry->sg_number) {
+      CCTBX_ASSERT(set_all(entry, extension, ""));
+    }
   }
 
   matrix_group::code
