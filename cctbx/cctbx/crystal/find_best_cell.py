@@ -100,7 +100,7 @@ class alternative_find_best_cell(object):
     self.xs = self.xs.change_basis( tmp )
     self.unit_cell = self.xs.unit_cell()
     self.sg_info=self.sg_info.change_basis( tmp )
-    self.best_cb_op = self.best_cb_op*tmp
+    self.best_cb_op = tmp*self.best_cb_op
 
 
     # note that the order in which the operators are checked is important!
@@ -114,7 +114,7 @@ class alternative_find_best_cell(object):
                          sgtbx.change_of_basis_op( 'y,z,x' ) # this not for pxxy
                          ]
 
-    fix_flags = ['Ignore',0,2,1,None,None]
+    fix_flags = ['All',0,2,1,None,None]
 
     self.allowed_cb_ops = [sgtbx.change_of_basis_op( 'x,y,z' )]
     self.allowed_cb_ops_to_ref = [sgtbx.change_of_basis_op( 'x,y,z' )]
@@ -193,12 +193,14 @@ class alternative_find_best_cell(object):
           best_index = ii
           break
 
-    # A nasty fail safe. Try C 1 2 1
+    # Needed for cases like C 1 2 1
     if best_index == None:
       best_index = 0
 
-    self.best_cb_op = self.best_cb_op * self.allowed_cb_ops[ best_index ] * self.allowed_cb_ops_to_ref[ best_index ]
-
+    self.best_cb_op = (self.allowed_cb_ops_to_ref[ best_index ]*
+                       self.allowed_cb_ops[ best_index ] *
+                       self.best_cb_op)
+    
     self.best_xs = self.xs.change_basis( self.allowed_cb_ops[ best_index ] * self.allowed_cb_ops_to_ref[ best_index ] )
 
     self.best_cell = self.best_xs.unit_cell()
