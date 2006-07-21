@@ -200,7 +200,6 @@ class alternative_find_best_cell(object):
     self.best_cb_op = (self.allowed_cb_ops_to_ref[ best_index ]*
                        self.allowed_cb_ops[ best_index ] *
                        self.best_cb_op)
-    
     self.best_xs = self.xs.change_basis( self.allowed_cb_ops[ best_index ] * self.allowed_cb_ops_to_ref[ best_index ] )
 
     self.best_cell = self.best_xs.unit_cell()
