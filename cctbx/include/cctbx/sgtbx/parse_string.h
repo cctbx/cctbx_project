@@ -44,7 +44,14 @@ namespace cctbx { namespace sgtbx {
       explicit
       parse_string(std::string const& str)
       :
-        s_(str), pos_(0), marked_pos_(0)
+        s_(str
+#if defined(__GNUC__) && __GNUC__ == 3 \
+                      && (__GNUC_MINOR__ == 2 || __GNUC_MINOR__ == 3)
+              +"" // work around gcc 3.2 & 3.3 bug
+#endif
+                  ),
+        pos_(0),
+        marked_pos_(0)
       {}
 
       //! Returns the input string.
