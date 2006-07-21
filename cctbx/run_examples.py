@@ -6,6 +6,7 @@ def run():
   "$B/../exe_dev/cctbx.getting_started",
   "$B/../exe_dev/cctbx.sym_equiv_sites",
   "$D/cctbx/examples/getting_started.py",
+  ["$D/cctbx/examples/space_group_matrices.py", "P31"],
   "$D/cctbx/examples/analyze_adp.py",
   "$D/cctbx/examples/g_exp_i_partial_derivatives.py",
   "$D/cctbx/examples/tst_exp_i_alpha_derivatives.py",
