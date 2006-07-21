@@ -1,5 +1,5 @@
-import sys
 from cctbx import sgtbx
+import sys
 
 class left_decomposition(object):
 
@@ -53,7 +53,6 @@ def double_unique(g, h1, h2):
         done[str( b )] = None
   return result
 
-
 def compare_cb_op_as_hkl(a, b):
   if (len(a) < len(b)): return -1
   if (len(a) > len(b)): return  1
@@ -81,7 +80,6 @@ def construct_nice_cb_op(coset,
   tmptmp = sgtbx.change_of_basis_op(coset[0])
 
   return best_choice
-
 
 class double_cosets(object):
   def __init__(self,g, h1, h2, enforce_det_ge_1=True):
@@ -116,7 +114,6 @@ class double_cosets(object):
     if enforce_det_ge_1:
       self.clear_up_cosets()
 
-
   def clear_up_cosets(self):
     temp_cosets = []
     for cs in self.double_cosets:
@@ -139,7 +136,7 @@ class double_cosets(object):
         found_it = True
     return found_it
 
-  def assert_no_duplicates(self):
+  def have_duplicates(self):
     n_cosets = len(self.double_cosets)
     for ics in xrange(n_cosets):
       tmp_cs = self.double_cosets[ics]
@@ -148,7 +145,8 @@ class double_cosets(object):
           tmp_cs_2 = self.double_cosets[jcs]
           # now check each element of tmp_cs
           for hi in tmp_cs:
-            assert( not self.is_in_coset(hi, tmp_cs_2) )
+            if (self.is_in_coset(hi, tmp_cs_2)): return True
+    return False
 
   def show(self,out=None):
     if out == None:
@@ -161,17 +159,14 @@ class double_cosets(object):
 
 def test_double_coset_decomposition():
   from  cctbx.sgtbx import subgroups
-  from cctbx import sgtbx
   for space_group_number in xrange(17,44):
     parent_group_info = sgtbx.space_group_info(space_group_number)
     subgrs = subgroups.subgroups(parent_group_info).groups_parent_setting()
     g = parent_group_info.group()
     for h1 in subgrs:
       for h2 in subgrs:
-        tmp_new = double_unique_new(g, h1, h2)
-        tmp_new.assert_no_duplicates()
-
-
+        tmp_new = double_cosets(g, h1, h2)
+        assert not tmp_new.have_duplicates()
 
 def run():
   test_double_coset_decomposition()
