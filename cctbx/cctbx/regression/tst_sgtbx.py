@@ -179,6 +179,15 @@ def exercise_orthorhombic_hm_qualifier_as_cb_symbol():
       sgtbx.space_group_symbols(symbol=ehm)).change_basis(
         sgtbx.change_of_basis_op(sgtbx.rt_mx(c)))
     assert g2 == g1
+    g2 = sgtbx.space_group_info(
+      group=sgtbx.space_group(
+        sgtbx.space_group_symbols(symbol=ehm))).change_basis(c).group()
+    assert g2 == g1
+    cit = sgtbx.rt_mx(c).r().inverse().transpose().as_xyz()
+    g2 = sgtbx.space_group_info(
+      group=sgtbx.space_group(
+        sgtbx.space_group_symbols(symbol=ehm))).change_basis(cit).group()
+    assert g2 == g1
 
 def python_tensor_constraints(self, reciprocal_space):
   """row-reduced echelon form of coefficients
