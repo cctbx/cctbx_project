@@ -75,8 +75,10 @@ def exercise_int():
   assert hash(s) == hash(rational.int(4,3))
   assert hash(s) != hash(r)
   try: int(r)
-  except: pass
-  else: raise AssertionError, "Exception expected"
+  except RuntimeError, e:
+    assert str(e) == "boost.rational: as_int() conversion error:" \
+      " denominator is different from one."
+  else: raise RuntimeError("Exception expected")
   for n in xrange(-5,6):
     for d in xrange(1,10):
       r = rational.int(n, d)
