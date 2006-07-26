@@ -48,15 +48,19 @@ namespace {
     }
 
     static long
-    hash(w_t const& o) // XXX there must be a better way
+    hash(w_t const& o)
     {
-      int abs_num = o.numerator();
-      if (abs_num < 0) abs_num *= -1;
-      if (abs_num >= 32768 || o.denominator() > 32768) {
-        throw std::runtime_error(
-          "boost.rational: internal error in hash() function.");
+      // http://docs.python.org/ref/customization.html
+      // Python-2.4.3/Objects/intobject.c, int_hash()
+      long result;
+      if (o.denominator() == 1) {
+        result = o.numerator();
       }
-      return o.numerator() * 32768L + o.denominator();
+      else {
+        result = o.denominator() << 16 ^ o.numerator();
+      }
+      if (result == -1) result = -2;
+      return result;
     }
 
     static w_t
