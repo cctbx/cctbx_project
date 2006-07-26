@@ -10,23 +10,6 @@
 
 namespace {
 
-  class error : public std::exception
-  {
-    public:
-      explicit
-      error(std::string const& msg) throw() : msg_(msg) {}
-
-      virtual
-      ~error() throw() {}
-
-      virtual
-      const char*
-      what() const throw() { return msg_.c_str(); }
-
-    protected:
-      std::string msg_;
-  };
-
   struct rational_int_wrappers
   {
     typedef boost::rational<int> w_t;
@@ -35,7 +18,7 @@ namespace {
     as_int(w_t const& o)
     {
       if (o.denominator() != 1) {
-        throw error(
+        throw std::runtime_error(
           "boost.rational: as_int() conversion error:"
           " denominator is different from one.");
       }
@@ -70,7 +53,8 @@ namespace {
       int abs_num = o.numerator();
       if (abs_num < 0) abs_num *= -1;
       if (abs_num >= 32768 || o.denominator() > 32768) {
-        throw error("boost.rational: internal error in hash() function.");
+        throw std::runtime_error(
+          "boost.rational: internal error in hash() function.");
       }
       return o.numerator() * 32768L + o.denominator();
     }
