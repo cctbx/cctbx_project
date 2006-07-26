@@ -74,6 +74,12 @@ def exercise_int():
   s = rational.int(4,3)
   assert hash(s) == hash(rational.int(4,3))
   assert hash(s) != hash(r)
+  for n in xrange(-100,100):
+    assert hash(n) == hash(rational.int(n))
+    for d in xrange(1,8):
+      assert hash(rational.int(n,d)) == hash(rational.int(n,d))
+      assert hash(rational.int(n,d)) == hash(rational.int(3*n,3*d))
+      assert hash(rational.int(n,d)) == hash(rational.int(-3*n,-3*d))
   try: int(r)
   except RuntimeError, e:
     assert str(e) == "boost.rational: as_int() conversion error:" \
