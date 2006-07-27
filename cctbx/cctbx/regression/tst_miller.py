@@ -129,7 +129,7 @@ def exercise_generate_r_free_flag_on_lat_sym(sg_info):
       anomalous_flag=an_flag,
       d_min=8.0 )
 
-    free_flags = miller_set.generate_r_free_flags(max_delta=5.0)
+    free_flags = miller_set.generate_r_free_flags(use_lattice_symmetry=True)
     free_flags = free_flags.select( free_flags.data() )
     fake_data_in_lat_sym = free_flags.customized_copy( crystal_symmetry=full_xs,
                                                        indices = free_flags.indices(),
@@ -159,12 +159,7 @@ def exercise_generate_r_free_flags(verbose=0, use_lattice_symmetry=False):
         if (i_trial >= 5):
           trial_set = trial_set.select(
             flex.random_double(size=miller_set.indices().size()) < 0.8)
-
-      max_delta=None
-      if use_lattice_symmetry:
-        max_delta=90.0
-
-      flags = trial_set.generate_r_free_flags(max_delta=max_delta)
+      flags = trial_set.generate_r_free_flags(use_lattice_symmetry=use_lattice_symmetry)
       if (i_trial == 0):
         out = StringIO()
         flags.show_r_free_flags_info(out=out, prefix="$#")
@@ -200,7 +195,7 @@ def exercise_generate_r_free_flags(verbose=0, use_lattice_symmetry=False):
       flag_distances = isel[1:] - isel[:-1]
       assert flex.min(flag_distances) > 0
       assert flex.max(flag_distances) <= 20
-      flags = trial_set.generate_r_free_flags(max_free=10, max_delta=max_delta)
+      flags = trial_set.generate_r_free_flags(max_free=10, use_lattice_symmetry=use_lattice_symmetry)
       if (not anomalous_flag):
         assert flags.data().count(True) == 10
       else:

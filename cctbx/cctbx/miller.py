@@ -616,8 +616,11 @@ class set(crystal.symmetry):
     return self.select(
       self.sort_permutation(by_value=by_value, reverse=reverse))
 
-  def generate_r_free_flags(self, fraction=0.1, max_free=2000, max_delta=None):
-    if max_delta is None:
+  def generate_r_free_flags(self, fraction=0.1, max_free=2000, max_delta=5.0, use_lattice_symmetry=False):
+    if use_lattice_symmetry:
+      assert max_delta>=0
+
+    if not use_lattice_symmetry:
       return self.generate_r_free_flags_basic(fraction, max_free)
     else:
       return self.generate_r_free_flags_on_lattice_symmetry(fraction, max_free, max_delta)
