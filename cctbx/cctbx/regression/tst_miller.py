@@ -119,7 +119,30 @@ Completeness with d_max=infinity: 1
     p = s.random_phases_compatible_with_phase_restrictions(deg=deg).data()
     assert s.space_group().is_valid_phase((0,0,1), p[1], deg)
 
-def exercise_generate_r_free_flags(verbose=0):
+def exercise_generate_r_free_flag_on_lat_sym(sg_info):
+  for an_flag in [True,False]:
+    full_xs = sg_info.any_compatible_crystal_symmetry(volume=50*80*100)
+    low_xs = crystal.symmetry( unit_cell = full_xs.unit_cell(),
+                               space_group = sgtbx.space_group("P1") )
+    miller_set = miller.build_set(
+      crystal_symmetry=low_xs,
+      anomalous_flag=an_flag,
+      d_min=8.0 )
+
+    free_flags = miller_set.generate_r_free_flags(max_delta=5.0)
+    free_flags = free_flags.select( free_flags.data() )
+    fake_data_in_lat_sym = free_flags.customized_copy( crystal_symmetry=full_xs,
+                                                       indices = free_flags.indices(),
+                                                       data = flex.double(free_flags.indices().size(),2.0 ),
+                                                       sigmas = flex.double(free_flags.indices().size(),1.0 )
+                                                     )
+    fake_data_in_lat_sym = fake_data_in_lat_sym.merge_equivalents().array()
+    fake_data_in_p1 = fake_data_in_lat_sym.expand_to_p1()
+    assert fake_data_in_p1.indices().size()==free_flags.indices().size()
+    # note that this assert wil fail (unless you are lucky) if max_delta is set to None
+
+
+def exercise_generate_r_free_flags(verbose=0, use_lattice_symmetry=False):
   for anomalous_flag in [False, True]:
     miller_set = miller.build_set(
       crystal_symmetry=crystal.symmetry(
@@ -136,7 +159,12 @@ def exercise_generate_r_free_flags(verbose=0):
         if (i_trial >= 5):
           trial_set = trial_set.select(
             flex.random_double(size=miller_set.indices().size()) < 0.8)
-      flags = trial_set.generate_r_free_flags()
+
+      max_delta=None
+      if use_lattice_symmetry:
+        max_delta=90.0
+
+      flags = trial_set.generate_r_free_flags(max_delta=max_delta)
       if (i_trial == 0):
         out = StringIO()
         flags.show_r_free_flags_info(out=out, prefix="$#")
@@ -172,7 +200,7 @@ def exercise_generate_r_free_flags(verbose=0):
       flag_distances = isel[1:] - isel[:-1]
       assert flex.min(flag_distances) > 0
       assert flex.max(flag_distances) <= 20
-      flags = trial_set.generate_r_free_flags(max_free=10)
+      flags = trial_set.generate_r_free_flags(max_free=10, max_delta=max_delta)
       if (not anomalous_flag):
         assert flags.data().count(True) == 10
       else:
@@ -1138,10 +1166,12 @@ def run_call_back(flags, space_group_info):
   exercise_array_correlation(space_group_info)
   exercise_as_hendrickson_lattman(space_group_info)
   exercise_phase_integrals(space_group_info)
+  exercise_generate_r_free_flag_on_lat_sym(space_group_info)
 
 def run(args):
   exercise_set()
-  exercise_generate_r_free_flags(verbose="--verbose" in args)
+  exercise_generate_r_free_flags(use_lattice_symmetry=False, verbose="--verbose" in args)
+  exercise_generate_r_free_flags(use_lattice_symmetry=True, verbose="--verbose" in args)
   exercise_binner()
   exercise_array()
   exercise_crystal_gridding()
