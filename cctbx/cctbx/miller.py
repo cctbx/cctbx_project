@@ -8,6 +8,7 @@ from cctbx_miller_ext import *
 from cctbx import crystal
 from cctbx import maptbx
 from cctbx import sgtbx
+from cctbx.sgtbx import lattice_symmetry
 from cctbx import uctbx
 from cctbx.array_family import flex
 from scitbx import fftpack
@@ -615,7 +616,90 @@ class set(crystal.symmetry):
     return self.select(
       self.sort_permutation(by_value=by_value, reverse=reverse))
 
-  def generate_r_free_flags(self, fraction=0.1, max_free=2000):
+  def generate_r_free_flags(self, fraction=0.1, max_free=2000, max_delta=None):
+    if max_delta is None:
+      return self.generate_r_free_flags_basic(fraction, max_free)
+    else:
+      return self.generate_r_free_flags_on_lattice_symmetry(fraction, max_free, max_delta)
+
+
+  def generate_r_free_flags_on_lattice_symmetry(self,
+                                                fraction=0.10,
+                                                max_free=2000,
+                                                max_delta=5.0):
+    self.map_to_asu()
+    # the max_number of reflections is wrst the non anomalous set
+    n_original = self.indices().size()
+    n_non_ano = n_original
+    if self.anomalous_flag():
+      matches = self.match_bijvoet_mates()[1]
+      n_non_ano = matches.pairs().size() + matches.n_singles()
+    # make sure the data is unique
+    self.is_unique_set_under_symmetry()
+    if fraction is not None:
+      assert fraction > 0 and fraction < 0.5
+    if max_free is not None:
+      fraction = min( n_non_ano*fraction,
+                      max_free )/float(n_non_ano)
+
+    #first make a set of temporary flags
+    cb_op_to_niggli = self.change_of_basis_op_to_niggli_cell()
+    tmp_ma = self.change_basis( cb_op_to_niggli )
+    # please get the lattice symmetry of th niggli cell
+    lattice_group = lattice_symmetry.group(
+      tmp_ma.unit_cell(),
+      max_delta=max_delta)
+    lattice_xs = crystal.symmetry(unit_cell=tmp_ma.unit_cell(),
+                                  space_group=lattice_group,
+                                  assert_is_compatible_unit_cell=False)
+    # make some flags, and insert lattice symmetry
+    tmp_flags = tmp_ma.array().customized_copy(
+      crystal_symmetry = lattice_xs,
+      data = flex.double( tmp_ma.indices().size(), 0 ) ).map_to_asu()
+    # Carry out the merging please
+    tmp_flags = tmp_flags.merge_equivalents().array()
+    tmp_flags = tmp_flags.average_bijvoet_mates()
+    n_non_ano_lat_sym = tmp_flags.indices().size()
+    # now we can do the free r assignement in the lattice symmetry
+    n = tmp_flags.indices().size()
+    group_size = 1/(fraction)
+    assert group_size >= 2
+    result = flex.bool(n, False)
+    i_start = 0
+    for i_group in count(1):
+      i_end = min(n, iround(i_group*group_size) )
+      if (i_start == i_end):
+        break
+      if (i_end + 1 == n):
+        i_end += 1
+      assert i_end - i_start >= 2
+      result[random.randrange(i_start, i_end)] = True
+      i_start = i_end
+    # please sort the reflections by resolution
+    indices = tmp_flags.indices()
+    result = result.select(
+      indices=flex.sort_permutation(
+        data=tmp_flags.unit_cell().d_star_sq(indices), reverse=True),
+        reverse=True)
+
+    tmp_flags = tmp_flags.customized_copy(
+      data=result, sigmas=None)
+    # now expand to p1 please
+    tmp_flags = tmp_flags.expand_to_p1()
+    # now make it into the proper symmetry please
+    tmp_flags = tmp_flags.customized_copy(
+      crystal_symmetry = crystal.symmetry( unit_cell=tmp_ma.unit_cell(),
+                                           space_group=tmp_ma.space_group() )
+      )
+    tmp_flags = tmp_flags.merge_equivalents().array()
+    if self.anomalous_flag():
+      tmp_flags = tmp_flags.generate_bijvoet_mates()
+    tmp_flags = tmp_flags.change_basis( cb_op_to_niggli.inverse() ).map_to_asu()
+    tmp_flags = tmp_flags.common_set( self )
+    assert tmp_flags.indices().size() == n_original
+    return tmp_flags
+
+  def generate_r_free_flags_basic(self, fraction=0.1, max_free=2000):
     assert fraction > 0 and fraction < 0.5
     assert max_free is None or max_free > 0
     if (self.anomalous_flag()):
