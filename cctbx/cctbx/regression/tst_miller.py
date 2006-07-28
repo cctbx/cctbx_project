@@ -127,7 +127,7 @@ def exercise_generate_r_free_flag_on_lat_sym(sg_info):
     miller_set = miller.build_set(
       crystal_symmetry=low_xs,
       anomalous_flag=an_flag,
-      d_min=8.0 )
+      d_min=3.0 )
 
     free_flags = miller_set.generate_r_free_flags(use_lattice_symmetry=True)
     free_flags = free_flags.select( free_flags.data() )
@@ -140,6 +140,13 @@ def exercise_generate_r_free_flag_on_lat_sym(sg_info):
     fake_data_in_p1 = fake_data_in_lat_sym.expand_to_p1()
     assert fake_data_in_p1.indices().size()==free_flags.indices().size()
     # note that this assert wil fail (unless you are lucky) if max_delta is set to None
+
+    # also tcheck that the full symmetry doesn't do anything weerd
+    miller_set = miller.build_set(
+      crystal_symmetry=full_xs,
+      anomalous_flag=an_flag,
+      d_min=3.0 )
+    free_flags = miller_set.generate_r_free_flags(use_lattice_symmetry=True)
 
 
 def exercise_generate_r_free_flags(verbose=0, use_lattice_symmetry=False):
