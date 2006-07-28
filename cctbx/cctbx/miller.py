@@ -630,7 +630,6 @@ class set(crystal.symmetry):
                                                 fraction=0.10,
                                                 max_free=2000,
                                                 max_delta=5.0):
-    self.map_to_asu()
     # the max_number of reflections is wrst the non anomalous set
     n_original = self.indices().size()
     n_non_ano = n_original
@@ -698,7 +697,7 @@ class set(crystal.symmetry):
     if self.anomalous_flag():
       tmp_flags = tmp_flags.generate_bijvoet_mates()
     tmp_flags = tmp_flags.change_basis( cb_op_to_niggli.inverse() ).map_to_asu()
-    tmp_flags = tmp_flags.common_set( self )
+    tmp_flags = tmp_flags.common_set( self.map_to_asu() )
     assert tmp_flags.indices().size() == n_original
     return tmp_flags
 
