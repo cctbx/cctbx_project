@@ -233,6 +233,17 @@ class _rt_mx(boost.python.injector, rt_mx):
   def as_rational(self):
     return matrix.rt((self.r().as_rational(), self.t().as_rational()))
 
+  def as_4x4_rational(self):
+    r = self.r().as_rational().elems
+    t = self.t().as_rational().elems
+    zero = rational.int(0)
+    one = rational.int(1)
+    return matrix.rec((
+      r[0], r[1], r[2], t[0],
+      r[3], r[4], r[5], t[1],
+      r[6], r[7], r[8], t[2],
+      zero, zero, zero,  one), (4, 4))
+
 class _search_symmetry_flags(boost.python.injector, ext.search_symmetry_flags):
 
   def show_summary(self, f=None):

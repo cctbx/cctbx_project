@@ -33,15 +33,29 @@ namespace cctbx { namespace sgtbx {
       {}
 
       /*! \brief Initializes the change-of-basis operator with
-          matrix given as xyz or hkl string.
+          matrix given as xyz, hkl, or abc string.
        */
-      /*! The inverse matrix is computed by inversion.
-          An exception is thrown if the given matrix is not invertible.
+      /*! An exception is thrown if the given matrix is not invertible.
+          <p>
+          See also: constructor of class rt_mx
+          <p>
+          Not available in Python.
+       */
+      change_of_basis_op(
+        parse_string& symbol,
+        const char* stop_chars="",
+        int r_den=cb_r_den,
+        int t_den=cb_t_den);
+
+      /*! \brief Initializes the change-of-basis operator with
+          matrix given as xyz, hkl, or abc string.
+       */
+      /*! An exception is thrown if the given matrix is not invertible.
           <p>
           See also: constructor of class rt_mx
        */
       change_of_basis_op(
-        std::string const& str_xyz,
+        std::string const& symbol,
         const char* stop_chars="",
         int r_den=cb_r_den,
         int t_den=cb_t_den);
@@ -157,6 +171,16 @@ namespace cctbx { namespace sgtbx {
         c_inv_.mod_short_in_place();
       }
 
+      //! Applies modulus operation such that -t_den/2+1 < x <= t_den/2.
+      /*! The operation is applied to the elements of the
+          translation vectors of c() and c_inv().
+       */
+      change_of_basis_op
+      mod_short() const
+      {
+        return change_of_basis_op(c_.mod_short(), c_inv_.mod_short());
+      }
+
       //! c().r() * r * c_inv().r(), for r with rotation part denominator 1.
       /*! The rotation part denominator of the result is 1.
           <p>
@@ -262,17 +286,23 @@ namespace cctbx { namespace sgtbx {
           (rhs.c_inv() * c_inv()).new_denominators(c_inv()));
       }
 
-      //! Shorthand for: c().as_xyz(decimal, t_first, letters_xyz, separator)
+      //! Returns c() in xyz format.
+      /*! See also: rt_mx::as_xyz()
+       */
       std::string
       as_xyz(bool decimal=false,
              bool t_first=false,
-             const char* letters_xyz="xyz",
+             const char* symbol_letters="xyz",
              const char* separator=",") const
       {
-        return c_.as_xyz(decimal, t_first, letters_xyz, separator);
+        return c_.as_xyz(decimal, t_first, symbol_letters, separator);
       }
 
-      //! Shorthand for: c_inv().r().as_hkl(decimal, letters_hkl, separator)
+      //! Returns transpose of c_inv() in hkl format.
+      /*! c_inv.t() must be zero. An exception is thrown otherwise.
+          <p>
+          See also: rt_mx::as_xyz(), rot_mx::as_hkl()
+       */
       std::string
       as_hkl(
         bool decimal=false,
@@ -281,6 +311,31 @@ namespace cctbx { namespace sgtbx {
       {
         CCTBX_ASSERT(c_inv_.t().is_zero());
         return c_inv_.r().as_hkl(decimal, letters_hkl, separator);
+      }
+
+      //! Returns transpose of c_inv() in abc format.
+      /*! See also: rt_mx::as_xyz()
+       */
+      std::string
+      as_abc(bool decimal=false,
+             bool t_first=false,
+             const char* letters_abc="abc",
+             const char* separator=",") const
+      {
+        return rt_mx(c_inv_.r().transpose(), c_inv_.t())
+          .as_xyz(decimal, t_first, letters_abc, separator);
+      }
+
+      //! Returns abc format, or xyz if it is shorter than abc.
+      /*! See also: as_abc(), as_xyz()
+       */
+      std::string
+      symbol() const
+      {
+        std::string result = as_abc();
+        std::string alt = as_xyz();
+        if (result.size() > alt.size()) return alt;
+        return result;
       }
 
     private:

@@ -127,10 +127,6 @@ def exercise_symbols():
   except RuntimeError, e:
     assert str(e) == "cctbx Error: Space group symbol not recognized: (x,y,z)"
   else: raise RuntimeError("Exception expected.")
-  try: s("P1 (h, k, l)")
-  except RuntimeError, e:
-    assert str(e) == "cctbx Error: Improper change-of-basis symbol: (h,k,l)"
-  else: raise RuntimeError("Exception expected.")
   try: s("P3:2")
   except RuntimeError, e:
     assert str(e) == "cctbx Error: Space group symbol not recognized: P3:2"
@@ -152,6 +148,14 @@ def exercise_symbols():
   except RuntimeError, e:
     assert str(e) == "cctbx Error: Space group symbol not recognized: 75:x"
   else: raise RuntimeError("Exception expected.")
+  #
+  for cabc,cxyz in [("2/3a+1/3b+1/3c, -1/3a+1/3b+1/3c, -1/3a-2/3b+1/3c",
+                     "x+z,-x+y+z,-y+z"),
+                    ("-1/3a-2/3b+1/3c, 2/3a+1/3b+1/3c, -1/3a+1/3b+1/3c",
+                     "x+z,-x+y+z,-y+z")]:
+    symbols = s("R 3 m :h (%s)" % cabc)
+    assert str(sgtbx.space_group_info(group=sgtbx.space_group(symbols))) \
+        == "R 3 m :R"
 
 def exercise_tr_vec():
   tr_vec = sgtbx.tr_vec
@@ -540,7 +544,51 @@ def exercise_rt_mx():
   assert str(rt_mx("-x+y,y,-z")) == "-x+y,y,-z"
   assert str(rt_mx("-h,h+k,-l")) == "-x+y,y,-z"
   try: rt_mx("h,x,z")
-  except RuntimeError, e: assert str(e) == "cctbx Error: Parse error."
+  except RuntimeError, e:
+    assert not show_diff(str(e), """\
+cctbx Error: Parse error: mix of x,y,z and h,k,l notation:
+  h,x,z
+  __^""")
+  else: raise RuntimeError("Exception expected.")
+  try: rt_mx("")
+  except RuntimeError, e:
+    assert not show_diff(str(e), """\
+cctbx Error: Parse error: unexpected end of input:
+  \n\
+  ^""")
+  else: raise RuntimeError("Exception expected.")
+  try: rt_mx("x, ")
+  except RuntimeError, e:
+    assert not show_diff(str(e), """\
+cctbx Error: Parse error: unexpected end of input:
+  x, \n\
+  ___^""")
+  else: raise RuntimeError("Exception expected.")
+  try: rt_mx("x")
+  except RuntimeError, e:
+    assert not show_diff(str(e), """\
+cctbx Error: Parse error: not enough row expressions:
+  x
+  _^""")
+  else: raise RuntimeError("Exception expected.")
+  try: rt_mx("x,y,x,z")
+  except RuntimeError, e:
+    assert not show_diff(str(e), """\
+cctbx Error: Parse error: too many row expressions:
+  x,y,x,z
+  _____^""")
+  try: rt_mx("x++")
+  except RuntimeError, e:
+    assert not show_diff(str(e), """\
+cctbx Error: Parse error: unexpected character:
+  x++
+  __^""")
+  try: rt_mx("a, b, c")
+  except RuntimeError, e:
+    assert not show_diff(str(e), """\
+cctbx Error: Parse error: a,b,c notation not supported in this context:
+  a, b, c
+  ^""")
   else: raise RuntimeError("Exception expected.")
   #
   s = rt_mx("y-13/2,y-x+8/3,z+1/4")
@@ -599,8 +647,11 @@ def exercise_change_of_basis_op():
   c = change_of_basis_op("x+3/2,y-5/4,z+1/3")
   c.mod_positive_in_place()
   assert str(c.c()) == "x+1/2,y+3/4,z+1/3"
+  assert str(c.mod_short().c()) == "x+1/2,y-1/4,z+1/3"
+  assert str(c.mod_short().c_inv()) == "x+1/2,y+1/4,z-1/3"
   c.mod_short_in_place()
   assert str(c.c()) == "x+1/2,y-1/4,z+1/3"
+  assert str(c.c_inv()) == "x+1/2,y+1/4,z-1/3"
   c = change_of_basis_op("z,x,y")
   assert str(c.apply(rt_mx("-x,-y,z"))) == "x,-y,-z"
   xf = c((0.1,0.2,0.3))
@@ -617,11 +668,26 @@ def exercise_change_of_basis_op():
   s = pickle.dumps(c)
   l = pickle.loads(s)
   assert str(c.c()) == str(l.c())
-  c = change_of_basis_op("-x+y,y,-z")
-  assert c.as_xyz() == "-x+y,y,-z"
-  c = change_of_basis_op("-h,h+k,-l")
-  assert c.as_xyz() == "-x+y,y,-z"
-  assert c.as_hkl() == "-h,h+k,-l"
+  for s in ["-x+y,y,-z", "-h,h+k,-l", "-a,a+b,-c"]:
+    c = change_of_basis_op(s)
+    assert c.as_xyz() == "-x+y,y,-z"
+    assert c.as_hkl() == "-h,h+k,-l"
+    assert c.as_abc() == "-a,a+b,-c"
+  c = change_of_basis_op("-a+1/8,a+b-1/3,-c+2/3")
+  assert c.as_xyz() == "-x+y+11/24,y+1/3,-z+2/3"
+  assert c.as_abc() == "-a+1/8,a+b-1/3,-c+2/3"
+  assert c.inverse().as_xyz() == "-x+y+1/8,y-1/3,-z+2/3"
+  a = c.c().as_4x4_rational()
+  b = c.c_inv().as_4x4_rational()
+  assert str(a.elems).replace(" ","") \
+      == "(-1,1,0,11/24,0,1,0,1/3,0,0,-1,2/3,0,0,0,1)"
+  assert (a*b).elems == (1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1)
+  assert str(b.transpose().elems).replace(" ","") \
+      == "(-1,0,0,0,1,1,0,0,0,0,-1,0,1/8,-1/3,2/3,1)"
+  assert c.symbol() == "-a+1/8,a+b-1/3,-c+2/3"
+  assert c.inverse().symbol() == "-x+y+1/8,y-1/3,-z+2/3"
+  assert str(c) == c.symbol()
+  assert str(c.inverse()) == c.inverse().symbol()
 
 def exercise_space_group():
   tr_vec = sgtbx.tr_vec
@@ -828,12 +894,62 @@ def exercise_space_group():
   assert [str(s) for s in g.all_ops(-1, True)] == mod_s
   assert g.all_ops(0, False)[1].t().den() == sgtbx.sg_t_den
   assert g.all_ops(0, True)[1].t().den() == 3
-  g = space_group("-P 4 2")
   g = space_group("P 31")
   assert g.type().number() == 144
   p = pickle.dumps(g)
   l = pickle.loads(p)
   assert g == l
+  #
+  g = space_group("-P 4 2")
+  for c in ["c-1/3,a+1/4,b-1/8", "z-1/3,x+1/2,y-1/4"]:
+    c = sgtbx.change_of_basis_op(c)
+    for cc in [c.as_xyz(), c.as_abc()]:
+      h = space_group("-P 4 2 (%s)" % cc)
+      cc = sgtbx.change_of_basis_op(cc)
+      assert g.change_basis(cc) == h
+      assert h.change_basis(cc.inverse()) == g
+      for ccc in [cc.inverse().as_xyz(), cc.inverse().as_abc()]:
+        ccc = sgtbx.change_of_basis_op(ccc)
+        assert h.change_basis(ccc) == g
+  cxyz = "2/3*x-1/3*y-1/3*z,1/3*x+1/3*y-2/3*z,1/3*x+1/3*y+1/3*z"
+  chkl = "h-k,k-l,h+k+l"
+  cabc = "a-b,b-c,a+b+c"
+  for c in [cxyz, chkl, cabc]:
+    assert sgtbx.change_of_basis_op(c).as_xyz() == cxyz
+    assert sgtbx.change_of_basis_op(c).as_hkl() == chkl
+    assert sgtbx.change_of_basis_op(c).as_abc() == cabc
+  r = space_group("P 3* -2") # R 3 m :r
+  h = space_group('R 3 -2"') # R 3 m :h
+  for c in [cxyz, chkl, cabc]:
+    t = space_group("P 3* -2 (%s)" % c)
+    c = sgtbx.change_of_basis_op(c)
+    assert r.change_basis(c) == t
+    assert t == h
+    assert c.inverse().as_xyz() == "x+z,-x+y+z,-y+z"
+    assert c.inverse().as_hkl() \
+        == "2/3*h+1/3*k+1/3*l,-1/3*h+1/3*k+1/3*l,-1/3*h-2/3*k+1/3*l"
+    assert c.inverse().as_abc() \
+        == "2/3*a+1/3*b+1/3*c,-1/3*a+1/3*b+1/3*c,-1/3*a-2/3*b+1/3*c"
+    for ci in [c.inverse().as_xyz(),
+               c.inverse().as_hkl(),
+               c.inverse().as_abc()]:
+      t = space_group('R 3 -2" (%s)' % ci)
+      ci = sgtbx.change_of_basis_op(ci)
+      assert h.change_basis(ci) == t
+      assert t == r
+  #
+  try: space_group("-P 4 2 (p)")
+  except RuntimeError, e:
+    assert not show_diff(str(e), """\
+cctbx Error: Parse error: unexpected character:
+  -P 4 2 (p)
+  ________^""")
+  else: raise RuntimeError("Exception expected.")
+  try: space_group("-P 4 2 (x,x,x)")
+  except RuntimeError, e:
+    assert not show_diff(str(e), """\
+cctbx Error: Rotation matrix is not invertible.""")
+  else: raise RuntimeError("Exception expected.")
 
 def exercise_space_group_type():
   space_group = sgtbx.space_group
@@ -850,7 +966,7 @@ def exercise_space_group_type():
   assert t.universal_hermann_mauguin_symbol() == "P 1 2 1"
   t = space_group_type("P 2", "i1952")
   assert t.hall_symbol() == " P 2y (z,x,y)"
-  assert t.universal_hermann_mauguin_symbol() == "P 1 2 1 (z,x,y)"
+  assert t.universal_hermann_mauguin_symbol() == "P 1 2 1 (c,a,b)"
   t = space_group_type("P 3")
   assert len(t.addl_generators_of_euclidean_normalizer(0, 0)) == 0
   assert len(t.addl_generators_of_euclidean_normalizer(1, 0)) == 1
@@ -877,11 +993,11 @@ def exercise_space_group_type():
   assert t.hall_symbol(tidy_cb_op=True) == "-C 2a 2ac (x+1/2,y-1/4,z+1/4)"
   assert t.hall_symbol() == "-C 2a 2ac (x+1/2,y-1/4,z+1/4)"
   assert t.universal_hermann_mauguin_symbol(tidy_cb_op=False) \
-      == "C c c a :2 (x+1/2,-y+1/4,-z-1/4)"
+      == "C c c a :2 (a+1/2,-b+1/4,-c-1/4)"
   assert t.universal_hermann_mauguin_symbol(tidy_cb_op=True) \
-      == "C c c a :2 (x+1/2,y-1/4,z+1/4)"
+      == "C c c a :2 (a+1/2,b+1/4,c-1/4)"
   assert t.universal_hermann_mauguin_symbol() \
-      == "C c c a :2 (x+1/2,y-1/4,z+1/4)"
+      == "C c c a :2 (a+1/2,b+1/4,c-1/4)"
   p = pickle.dumps(t)
   l = pickle.loads(p)
   assert l.group() == t.group()
@@ -912,12 +1028,24 @@ def exercise_space_group_type():
       assert g_out2 == g_out
       uhm_out2 = g_out2.type().universal_hermann_mauguin_symbol()
       assert uhm_out2 == uhm_out
+    if (uhm_out.find("(") >= 0):
+      ehm, cb = uhm_out.split("(")
+      assert cb[-1] == ")"
+      g_out2 = sgtbx.space_group(sgtbx.space_group_symbols(ehm)) \
+        .change_basis(sgtbx.change_of_basis_op(cb[:-1]))
+      assert g_out2 == g_out
     g_out = g_out.change_basis(g_out.z2p_op()) # primitive setting
     uhm_out = g_out.type().universal_hermann_mauguin_symbol()
     g_out2 = sgtbx.space_group(sgtbx.space_group_symbols(uhm_out))
     assert g_out2 == g_out
     uhm_out2 = g_out2.type().universal_hermann_mauguin_symbol()
     assert uhm_out2 == uhm_out
+    if (uhm_out.find("(") >= 0):
+      ehm, cb = uhm_out.split("(")
+      assert cb[-1] == ")"
+      g_out2 = sgtbx.space_group(sgtbx.space_group_symbols(ehm)) \
+        .change_basis(sgtbx.change_of_basis_op(cb[:-1]))
+      assert g_out2 == g_out
 
 def exercise_phase_info():
   phase_info = sgtbx.phase_info

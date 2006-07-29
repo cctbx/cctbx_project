@@ -66,7 +66,7 @@ namespace cctbx { namespace sgtbx {
           the error.
        */
       rt_mx(
-        parse_string& str_xyz,
+        parse_string& symbol,
         const char* stop_chars="",
         int r_den=1,
         int t_den=sg_t_den);
@@ -78,7 +78,7 @@ namespace cctbx { namespace sgtbx {
           the error.
        */
       rt_mx(
-        std::string const& str_xyz,
+        std::string const& symbol,
         const char* stop_chars="",
         int r_den=1,
         int t_den=sg_t_den);
@@ -151,9 +151,9 @@ namespace cctbx { namespace sgtbx {
           E.g. "x+1/2,y,z" or "x+0.5,y,z".<br>
           The translation component can appear last or first.<br>
           E.g. "x+1/2,y,z" or "1/2+x,y,z".<br>
-          letters_xyz must contain three characters that are used to
+          symbol_letters must contain three characters that are used to
           represent x, y, and z, respectively. Typical examples are
-          letters_xyz = "xyz" or letters_xyz = "XYZ".
+          symbol_letters = "xyz" or symbol_letters = "XYZ".
           Other letters could be used, but the resulting symbolic
           expression cannot be translated back with the constructors
           above.<br>
@@ -164,12 +164,12 @@ namespace cctbx { namespace sgtbx {
       as_xyz(
         bool decimal=false,
         bool t_first=false,
-        const char* letters_xyz="xyz",
+        const char* symbol_letters="xyz",
         const char* separator=",") const
       {
         return scitbx::matrix::rational_as_xyz(
           3, 3, r_.num().begin(), r_.den(), t_.num().begin(), t_.den(),
-          decimal, t_first, letters_xyz, separator);
+          decimal, t_first, symbol_letters, separator);
       }
 
       //! Copy matrix elements to a plain array of int.
@@ -527,18 +527,22 @@ namespace cctbx { namespace sgtbx {
   }
 
   //! Parser for xyz expressions.
-  struct rt_mx_from_xyz : rt_mx
+  struct rt_mx_from_string : rt_mx
   {
     bool have_xyz;
     bool have_hkl;
+    bool have_abc;
 
-    rt_mx_from_xyz() {}
+    rt_mx_from_string() {}
 
-    rt_mx_from_xyz(
-      parse_string& str_xyz,
+    rt_mx_from_string(
+      parse_string& input,
       const char* stop_chars,
       int r_den,
-      int t_den);
+      int t_den,
+      bool enable_xyz,
+      bool enable_hkl,
+      bool enable_abc);
   };
 
   //! Analysis of the translation part of a rotation-translation matrix.

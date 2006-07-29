@@ -152,11 +152,11 @@ def exercise_monoclinic_cell_choices(verbose=0):
 
 def exercise_orthorhombic_hm_qualifier_as_cb_symbol():
   cb_symbols = {
-    "cab": "z,x,y",
-    "a-cb": "x,-z,y",
-    "-cba": "-z,y,x",
-    "bca": "y,z,x",
-    "ba-c": "y,x,-z"}
+    "cab": ["c,a,b", "z,x,y"],
+    "a-cb": ["a,-c,b", "x,-z,y"],
+    "-cba": ["-c,b,a", "-z,y,x"],
+    "bca": ["b,c,a", "y,z,x"],
+    "ba-c": ["b,a,-c", "y,x,-z"]}
   for sgsyms1 in sgtbx.space_group_symbol_iterator():
     n = sgsyms1.number()
     if (n < 16 or n > 74): continue
@@ -166,27 +166,39 @@ def exercise_orthorhombic_hm_qualifier_as_cb_symbol():
     if (e == "\0"): e = ""
     ehm = sgtbx.space_group_symbols(
       space_group_number=n, extension=e).universal_hermann_mauguin()
-    c = cb_symbols[q]
-    uhm = ehm + " ("+c+")"
-    sgsyms2 = sgtbx.space_group_symbols(symbol=uhm)
-    assert sgsyms2.change_of_basis_symbol() == c
+    cabc, cxyz = cb_symbols[q]
+    assert sgtbx.change_of_basis_op(cxyz).as_abc() == cabc
+    assert sgtbx.change_of_basis_op(cabc).as_xyz() == cxyz
+    uhm_xyz = ehm + " ("+cxyz+")"
+    sgsyms2 = sgtbx.space_group_symbols(symbol=uhm_xyz)
+    assert sgsyms2.change_of_basis_symbol() == cxyz
     assert sgsyms2.extension() == sgsyms1.extension()
-    assert sgsyms2.universal_hermann_mauguin() == uhm
+    assert sgsyms2.universal_hermann_mauguin() == uhm_xyz
     g1 = sgtbx.space_group(space_group_symbols=sgsyms1)
     g2 = sgtbx.space_group(space_group_symbols=sgsyms2)
     assert g2 == g1
     g2 = sgtbx.space_group(
       sgtbx.space_group_symbols(symbol=ehm)).change_basis(
-        sgtbx.change_of_basis_op(sgtbx.rt_mx(c)))
+        sgtbx.change_of_basis_op(sgtbx.rt_mx(cxyz)))
     assert g2 == g1
+    for c in [cxyz, cabc]:
+      g2 = sgtbx.space_group_info(
+        group=sgtbx.space_group(
+          sgtbx.space_group_symbols(symbol=ehm))).change_basis(c).group()
+      assert g2 == g1
+    cit = sgtbx.rt_mx(cxyz).r().inverse().transpose()
+    cit_xyz = cit.as_xyz()
     g2 = sgtbx.space_group_info(
       group=sgtbx.space_group(
-        sgtbx.space_group_symbols(symbol=ehm))).change_basis(c).group()
+        sgtbx.space_group_symbols(symbol=ehm))).change_basis(cit_xyz).group()
     assert g2 == g1
-    cit = sgtbx.rt_mx(c).r().inverse().transpose().as_xyz()
-    g2 = sgtbx.space_group_info(
-      group=sgtbx.space_group(
-        sgtbx.space_group_symbols(symbol=ehm))).change_basis(cit).group()
+    assert cit.as_xyz(False, "abc") == cabc
+    uhm_abc = ehm + " ("+cabc+")"
+    sgsyms2 = sgtbx.space_group_symbols(symbol=uhm_abc)
+    assert sgsyms2.change_of_basis_symbol() == cxyz
+    assert sgsyms2.extension() == sgsyms1.extension()
+    assert sgsyms2.universal_hermann_mauguin() == uhm_xyz
+    g2 = sgtbx.space_group(space_group_symbols=sgsyms2)
     assert g2 == g1
 
 def python_tensor_constraints(self, reciprocal_space):

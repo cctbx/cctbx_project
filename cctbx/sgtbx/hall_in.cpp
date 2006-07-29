@@ -365,23 +365,17 @@ namespace cctbx { namespace sgtbx {
       hall_symbol.skip();
       hall_symbol.set_mark();
       rt_mx v = rt_mx(parse_short_cb_op(hall_symbol, ")", cb_t_den), cb_r_den);
-      if (!v.is_valid()) {
+      if (v.is_valid()) {
+        cb_op = change_of_basis_op(v);
+      }
+      else {
         hall_symbol.go_to_mark();
-        v = rt_mx(hall_symbol, ")", cb_r_den, cb_t_den);
-        if (!v.is_valid()) {
-          throw error("Malformed change-of-basis operator.");
-        }
+        cb_op = change_of_basis_op(hall_symbol, ")", cb_r_den, cb_t_den);
       }
       while (hall::is_space(hall_symbol())) hall_symbol.skip();
       if (hall_symbol() != ')') {
         throw error(
           "Closing parenthesis expected after change-of-basis operator");
-      }
-      try {
-        cb_op = change_of_basis_op(v);
-      }
-      catch (error const&) {
-        throw error("Change-of-basis operator is not invertible.");
       }
       hall_symbol.skip();
     }

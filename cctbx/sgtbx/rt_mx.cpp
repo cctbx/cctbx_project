@@ -51,7 +51,15 @@ namespace cctbx { namespace sgtbx {
 
   namespace {
 
-    void throw_parse_error() { throw error("Parse error."); }
+    void
+    throw_parse_error(
+      parse_string const& input,
+      std::string const& info=": unexpected character")
+    {
+      throw error(
+        "Parse error" + info + ":\n"
+        + input.format_where_message(/* prefix */ "  "));
+    }
 
     int rationalize(double fVal, int& iVal, int den)
     {
@@ -68,15 +76,19 @@ namespace cctbx { namespace sgtbx {
 
   } // namespace <anonymous>
 
-  rt_mx_from_xyz::rt_mx_from_xyz(
-    parse_string& str_xyz,
+  rt_mx_from_string::rt_mx_from_string(
+    parse_string& input,
     const char* stop_chars,
     int r_den,
-    int t_den)
+    int t_den,
+    bool enable_xyz,
+    bool enable_hkl,
+    bool enable_abc)
   :
     rt_mx(r_den, t_den),
     have_xyz(false),
-    have_hkl(false)
+    have_hkl(false),
+    have_abc(false)
   {
     int Row    = 0;
     int Column = -1;
@@ -94,18 +106,18 @@ namespace cctbx { namespace sgtbx {
     const unsigned int P_XYZ   = 0x08u;
     const unsigned int P_Comma = 0x10u;
     unsigned int P_mode = P_Add | P_Value | P_XYZ;
-    for (;; str_xyz.skip())
+    for (;; input.skip())
     {
-      if (strchr(stop_chars, str_xyz()) || !isspace(str_xyz()))
+      if (strchr(stop_chars, input()) || !isspace(input()))
       {
-        switch (strchr(stop_chars, str_xyz()) ? '\0' : str_xyz())
+        switch (strchr(stop_chars, input()) ? '\0' : input())
         {
           case '_':
             break;
           case '+': Sign =  1; goto ProcessAdd;
           case '-': Sign = -1;
            ProcessAdd:
-            if ((P_mode & P_Add) == 0) throw_parse_error();
+            if ((P_mode & P_Add) == 0) throw_parse_error(input);
             if (Column >= 0) ValR[Column] += Value;
             else             ValT         += Value;
             Value = 0.;
@@ -115,13 +127,13 @@ namespace cctbx { namespace sgtbx {
             P_mode = P_Value | P_XYZ;
             break;
           case '*':
-            if ((P_mode & P_Mult) == 0) throw_parse_error();
+            if ((P_mode & P_Mult) == 0) throw_parse_error(input);
             Mult = 1;
             P_mode = P_Value | P_XYZ;
             break;
           case '/':
           case ':':
-            if ((P_mode & P_Mult) == 0) throw_parse_error();
+            if ((P_mode & P_Mult) == 0) throw_parse_error(input);
             Mult = -1;
             P_mode = P_Value;
             break;
@@ -136,19 +148,21 @@ namespace cctbx { namespace sgtbx {
           case '7':
           case '8':
           case '9':
-            if ((P_mode & P_Value) == 0) throw_parse_error();
+            if ((P_mode & P_Value) == 0) throw_parse_error(input);
             {
-            const char *beginptr = str_xyz.peek();
+            const char *beginptr = input.peek();
             char *endptr;
             double V = std::strtod(beginptr, &endptr);
-            if (endptr == beginptr) throw_parse_error();
-            str_xyz.skip((endptr-beginptr)-1);
+            if (endptr == beginptr) {
+              throw_parse_error(input);
+            }
+            input.skip((endptr-beginptr)-1);
             if (Sign == -1) { V = -V; Sign = 1; }
             if      (Mult ==  1)
               Value *= V;
             else if (Mult == -1) {
               if      (V     != 0.) Value /= V;
-              else if (Value != 0.) throw_parse_error();
+              else if (Value != 0.) throw_parse_error(input);
             }
             else
               Value = V;
@@ -168,17 +182,47 @@ namespace cctbx { namespace sgtbx {
           case 'k': Column = 1; have_hkl = true; goto Process_XYZ;
           case 'L':
           case 'l': Column = 2; have_hkl = true; goto Process_XYZ;
+          case 'A':
+          case 'a': Column = 0; have_abc = true; goto Process_XYZ;
+          case 'B':
+          case 'b': Column = 1; have_abc = true; goto Process_XYZ;
+          case 'C':
+          case 'c': Column = 2; have_abc = true; goto Process_XYZ;
            Process_XYZ:
-            if ((P_mode & P_XYZ) == 0) throw_parse_error();
-            if (have_xyz && have_hkl) throw_parse_error();
+            if (have_xyz && !enable_xyz) {
+              throw_parse_error(
+                input, ": x,y,z notation not supported in this context");
+            }
+            if (have_hkl && !enable_hkl) {
+              throw_parse_error(
+                input, ": h,k,l notation not supported in this context");
+            }
+            if (have_abc && !enable_abc) {
+              throw_parse_error(
+                input, ": a,b,c notation not supported in this context");
+            }
+            if (have_xyz && have_hkl) {
+              throw_parse_error(input, ": mix of x,y,z and h,k,l notation");
+            }
+            if (have_xyz && have_abc) {
+              throw_parse_error(input, ": mix of x,y,z and a,b,c notation");
+            }
+            if (have_hkl && have_abc) {
+              throw_parse_error(input, ": mix of h,k,l and a,b,c notation");
+            }
+            if ((P_mode & P_XYZ) == 0) throw_parse_error(input);
             if (!have_value) { Value = Sign; Sign = 1; }
             P_mode = P_Comma | P_Add | P_Mult;
             break;
           case ',':
           case ';':
-            if (Row == 2) throw_parse_error();
+            if (Row == 2) {
+              throw_parse_error(input, ": too many row expressions");
+            }
           case '\0':
-            if ((P_mode & P_Comma) == 0) throw_parse_error();
+            if ((P_mode & P_Comma) == 0) {
+              throw_parse_error(input, ": unexpected end of input");
+            }
             if (Column >= 0) ValR[Column] += Value;
             else             ValT         += Value;
             for(i=0;i<3;i++) {
@@ -200,21 +244,25 @@ namespace cctbx { namespace sgtbx {
             P_mode = P_Add | P_Value | P_XYZ;
             break;
           default:
-            throw_parse_error();
+            throw_parse_error(input);
         }
       }
-      if (strchr(stop_chars, str_xyz())) {
+      if (strchr(stop_chars, input())) {
         break;
       }
     }
-    if (Row != 3) throw_parse_error();
+    if (Row != 3) throw_parse_error(input, ": not enough row expressions");
   }
 
-  rt_mx::rt_mx(parse_string& str_xyz, const char* stop_chars,
+  rt_mx::rt_mx(parse_string& symbol, const char* stop_chars,
                int r_den, int t_den)
     : r_(0), t_(0)
   {
-    rt_mx_from_xyz result(str_xyz, stop_chars, r_den, t_den);
+    rt_mx_from_string result(
+      symbol, stop_chars, r_den, t_den,
+      /* enable_xyz */ true,
+      /* enable_hkl */ true,
+      /* enable_abc */ false);
     if (result.have_hkl) {
       CCTBX_ASSERT(result.t().is_zero());
       r_ = result.r().transpose();
@@ -223,12 +271,12 @@ namespace cctbx { namespace sgtbx {
     t_ = result.t();
   }
 
-  rt_mx::rt_mx(std::string const& str_xyz, const char* stop_chars,
+  rt_mx::rt_mx(std::string const& symbol, const char* stop_chars,
              int r_den, int t_den)
   : r_(0), t_(0)
   {
-    parse_string parse_str_xyz(str_xyz);
-    *this = rt_mx(parse_str_xyz, stop_chars, r_den, t_den);
+    parse_string parse_symbol(symbol);
+    *this = rt_mx(parse_symbol, stop_chars, r_den, t_den);
   }
 
   rt_mx::rt_mx(scitbx::mat3<double> const& r,

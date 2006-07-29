@@ -3,7 +3,7 @@
 namespace cctbx { namespace sgtbx {
 
   change_of_basis_op::change_of_basis_op(
-    std::string const& str_xyz,
+    parse_string& symbol,
     const char* stop_chars,
     int r_den,
     int t_den)
@@ -11,10 +11,17 @@ namespace cctbx { namespace sgtbx {
     c_(0, 0),
     c_inv_(0, 0)
   {
-    parse_string parse_str_xyz(str_xyz);
-    rt_mx_from_xyz result(parse_str_xyz, stop_chars, r_den, t_den);
+    rt_mx_from_string result(
+      symbol, stop_chars, r_den, t_den,
+      /* enable_xyz */ true,
+      /* enable_hkl */ true,
+      /* enable_abc */ true);
     if (result.have_hkl) {
       CCTBX_ASSERT(result.t().is_zero());
+      c_inv_ = rt_mx(result.r().transpose(), result.t());
+      c_ = c_inv_.inverse();
+    }
+    else if (result.have_abc) {
       c_inv_ = rt_mx(result.r().transpose(), result.t());
       c_ = c_inv_.inverse();
     }
@@ -22,6 +29,19 @@ namespace cctbx { namespace sgtbx {
       c_ = rt_mx(result);
       c_inv_ = c_.inverse();
     }
+  }
+
+  change_of_basis_op::change_of_basis_op(
+    std::string const& symbol,
+    const char* stop_chars,
+    int r_den,
+    int t_den)
+  :
+    c_(0, 0),
+    c_inv_(0, 0)
+  {
+    parse_string parse_symbol(symbol);
+    *this = change_of_basis_op(parse_symbol, stop_chars, r_den, t_den);
   }
 
   tr_vec change_of_basis_op::operator()(

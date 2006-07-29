@@ -146,11 +146,11 @@ namespace cctbx { namespace sgtbx {
         return *this;
       }
 
-      //! Shorthand for: expand_smx(rt_mx(str_xyz))
+      //! Shorthand for: expand_smx(rt_mx(smx_symbol))
       space_group&
-      expand_smx(std::string const& str_xyz)
+      expand_smx(std::string const& smx_symbol)
       {
-        expand_smx(rt_mx(str_xyz));
+        expand_smx(rt_mx(smx_symbol));
         return *this;
       }
 

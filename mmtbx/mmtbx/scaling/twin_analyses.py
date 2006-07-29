@@ -47,7 +47,7 @@ class twin_law_quality(object):
     self.twin_in_nig = xs.change_of_basis_op_to_niggli_cell().apply(
       twin_law)
     self.cb_op = sgtbx.change_of_basis_op(
-      str_xyz = self.twin_in_nig.r().as_xyz() )
+      symbol = self.twin_in_nig.r().as_xyz() )
 
     self.niggli_cell = self.xs_niggli.unit_cell()
     self.new_niggli_cell = self.cb_op.apply( self.niggli_cell )
