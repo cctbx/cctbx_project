@@ -311,21 +311,21 @@ namespace cctbx { namespace sgtbx {
       //! Conversion to a symbolic expression, e.g. "x,x-y,z".
       /*! Constants can be formatted as fractional or decimal numbers.<br>
           E.g. "1/2*x,y,z" or "0.5*x,y,z".<br>
-          letters_xyz must contain three characters that are used to
+          symbol_letters must contain three characters that are used to
           represent x, y, and z, respectively. Typical examples are
-          letters_xyz = "xyz" or letters_xyz = "XYZ".<br>
+          symbol_letters = "xyz" or symbol_letters = "XYZ".<br>
           separator is inserted between the terms for two rows.
           Typical strings used are separator = "," and separator = ", ".
        */
       std::string
       as_xyz(
         bool decimal=false,
-        const char* letters_xyz="xyz",
+        const char* symbol_letters="xyz",
         const char* separator=",") const
       {
         return scitbx::matrix::rational_as_xyz(
           3, 3, num_.begin(), den_, static_cast<const int*>(0), 0,
-          decimal, false, letters_xyz, separator);
+          decimal, false, symbol_letters, separator);
       }
 
       //! Shorthand for: transpose().as_xyz(decimal, letters_hkl, separator)

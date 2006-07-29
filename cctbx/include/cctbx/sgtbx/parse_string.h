@@ -62,6 +62,20 @@ namespace cctbx { namespace sgtbx {
       std::size_t
       where() const { return pos_; }
 
+      //! Support for formatting exceptions.
+      /*! Produces output of the form:
+            P x
+            __^
+       */
+      std::string
+      format_where_message(std::string const& prefix) const
+      {
+        std::string result = prefix + s_ + "\n" + prefix;
+        for(std::size_t i=0;i<pos_;i++) result += "_";
+        result += "^";
+        return result;
+      }
+
       //! For internal use only.
       char
       operator()() const { return s_[pos_]; }

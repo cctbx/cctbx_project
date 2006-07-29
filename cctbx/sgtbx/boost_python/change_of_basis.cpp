@@ -38,6 +38,8 @@ namespace {
       as_xyz_overloads, as_xyz, 0, 4)
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
       as_hkl_overloads, as_hkl, 0, 3)
+    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
+      as_abc_overloads, as_abc, 0, 3)
 
     static boost::python::tuple
     getinitargs(w_t const& o)
@@ -55,7 +57,7 @@ namespace {
           arg_("c"), arg_("c_inv"))))
         .def(init<rt_mx const&>((arg_("c"))))
         .def(init<std::string const&, optional<const char*, int, int> >((
-          arg_("str_xyz"),
+          arg_("symbol"),
           arg_("stop_chars"),
           arg_("r_den"),
           arg_("t_den"))))
@@ -75,6 +77,7 @@ namespace {
         .def("inverse", &w_t::inverse)
         .def("mod_positive_in_place", &w_t::mod_positive_in_place)
         .def("mod_short_in_place", &w_t::mod_short_in_place)
+        .def("mod_short", &w_t::mod_short)
         .def("apply",
           (rt_mx(w_t::*)(rt_mx const&) const)
           &w_t::apply, (arg_("s")))
@@ -96,12 +99,18 @@ namespace {
         .def("as_xyz", &w_t::as_xyz, as_xyz_overloads((
            arg_("decimal")=false,
            arg_("t_first")=false,
-           arg_("letters_xyz")="xyz",
+           arg_("symbol_letters")="xyz",
            arg_("separator")=",")))
         .def("as_hkl", &w_t::as_hkl, as_hkl_overloads((
            arg_("decimal")=false,
            arg_("letters_hkl")="hkl",
            arg_("separator")=",")))
+        .def("as_abc", &w_t::as_abc, as_abc_overloads((
+           arg_("decimal")=false,
+           arg_("letters_abc")="abc",
+           arg_("separator")=",")))
+        .def("symbol", &w_t::symbol)
+        .def("__str__", &w_t::symbol)
         .def_pickle(change_of_basis_op_wrappers())
       ;
     }

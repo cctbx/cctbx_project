@@ -61,12 +61,12 @@ namespace {
           arg_("t"),
           arg_("r_den")=1)))
         .def(init<parse_string&, optional<const char*, int, int> >((
-          arg_("str_xyz"),
+          arg_("symbol"),
           arg_("stop_chars")="",
           arg_("r_den")=1,
           arg_("t_den")=sg_t_den)))
         .def(init<std::string const&, optional<const char*, int, int> >((
-          arg_("str_xyz"),
+          arg_("symbol"),
           arg_("stop_chars")="",
           arg_("r_den")=1,
           arg_("t_den")=sg_t_den)))
@@ -88,7 +88,7 @@ namespace {
         .def("as_xyz", &w_t::as_xyz, as_xyz_overloads((
           arg_("decimal")=false,
           arg_("t_first")=false,
-          arg_("letters_xyz")="xyz",
+          arg_("symbol_letters")="xyz",
           arg_("separator")=",")))
         .def("__str__", str)
         .def("as_int_array", &w_t::as_int_array)

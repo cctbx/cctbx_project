@@ -88,7 +88,7 @@ namespace {
         .def("expand_smx", (space_group&(w_t::*)(rt_mx const&))
           &w_t::expand_smx, return_self<>(), (arg_("new_smx")))
         .def("expand_smx", (space_group&(w_t::*)(std::string const&))
-          &w_t::expand_smx, return_self<>(), (arg_("str_xyz")))
+          &w_t::expand_smx, return_self<>(), (arg_("smx_symbol")))
         .def("expand_conventional_centring_type",
           &w_t::expand_conventional_centring_type, (arg_("symbol")))
         .def("parse_hall_symbol",

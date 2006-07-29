@@ -72,7 +72,7 @@ namespace {
         .def("as_double", &w_t::as_double)
         .def("as_xyz", &w_t::as_xyz, as_xyz_overloads((
            arg_("decimal")=false,
-           arg_("letters_xyz")="xyz",
+           arg_("symbol_letters")="xyz",
            arg_("separator")=",")))
         .def("as_hkl", &w_t::as_hkl, as_hkl_overloads((
            arg_("decimal")=false,

@@ -5,6 +5,7 @@
 #include <cctbx/error.h>
 #include <cctbx/sgtbx/symbols.h>
 #include <cctbx/sgtbx/reference_settings.h>
+#include <cctbx/sgtbx/change_of_basis_op.h>
 
 using std::string;
 
@@ -1032,16 +1033,10 @@ namespace cctbx { namespace sgtbx {
     string work_symbol = pre_process_symbol(symbol);
     work_symbol[0] = toupper(work_symbol[0]);
     remove_screw_component_parentheses(work_symbol);
-    rt_mx cb_mx(0);
+    change_of_basis_op cb_op(0, 0);
     std::string cb_mx_symbol = split_off_cb_symbol(work_symbol);
     if (cb_mx_symbol.size() != 0) {
-      parse_string cb_op_parse_str(cb_mx_symbol);
-      rt_mx_from_xyz cb_mx_from_xyz(cb_op_parse_str, "\0", cb_r_den, cb_t_den);
-      if (cb_mx_from_xyz.have_hkl) {
-        throw error(
-          "Improper change-of-basis symbol: (" + cb_mx_symbol + ")");
-      }
-      cb_mx = rt_mx(cb_mx_from_xyz.r(), cb_mx_from_xyz.t());
+      cb_op = change_of_basis_op(cb_mx_symbol);
     }
     char work_extension = strip_extension(work_symbol);
     const tables::main_symbol_dict_entry* entry = 0;
@@ -1072,8 +1067,8 @@ namespace cctbx { namespace sgtbx {
     if (!set_all(entry, work_extension, std_table_id)) {
       throw error(not_recognized + symbol);
     }
-    if (cb_mx.is_valid()) {
-      change_of_basis_symbol_ = cb_mx.as_xyz();
+    if (cb_op.is_valid()) {
+      change_of_basis_symbol_ = cb_op.as_xyz();
       universal_hermann_mauguin_ += " (" + change_of_basis_symbol_ + ")";
       cb_mx_symbol = split_off_cb_symbol(hall_);
       if (cb_mx_symbol.size() != 0) {
@@ -1091,12 +1086,13 @@ namespace cctbx { namespace sgtbx {
           default:
             throw CCTBX_INTERNAL_ERROR();
         }
-        cb_mx.t() += cb_mx.r().multiply(tr_vec(0,0,t12))
-          .new_denominator(cb_t_den);
+        cb_op = change_of_basis_op(rt_mx(
+          cb_op.c().r(),
+          cb_op.c().t().plus(cb_op.c().r().multiply(tr_vec(0,0,t12,12)))));
       }
-      cb_mx.mod_short_in_place();
-      if (!cb_mx.is_unit_mx()) {
-        hall_ += " (" + cb_mx.as_xyz() + ")";
+      cb_op.mod_short_in_place();
+      if (!cb_op.is_identity_op()) {
+        hall_ += " (" + cb_op.as_xyz() + ")";
       }
     }
   }
