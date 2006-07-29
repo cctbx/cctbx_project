@@ -440,6 +440,7 @@ class Option:
         elif action == "callback":
             args = self.callback_args or ()
             kwargs = self.callback_kwargs or {}
+            if (opt[:2] == "--"): opt = "--" + opt[2:].replace("-","_")
             self.callback(self, opt, value, parser, *args, **kwargs)
         elif action == "help":
             parser.print_help()
