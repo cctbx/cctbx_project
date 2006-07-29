@@ -131,23 +131,24 @@ def exercise_generate_r_free_flag_on_lat_sym(sg_info):
 
     free_flags = miller_set.generate_r_free_flags(use_lattice_symmetry=True)
     free_flags = free_flags.select( free_flags.data() )
-    fake_data_in_lat_sym = free_flags.customized_copy( crystal_symmetry=full_xs,
-                                                       indices = free_flags.indices(),
-                                                       data = flex.double(free_flags.indices().size(),2.0 ),
-                                                       sigmas = flex.double(free_flags.indices().size(),1.0 )
+    fake_data_in_lat_sym = free_flags.customized_copy(
+      crystal_symmetry=full_xs,
+      indices = free_flags.indices(),
+      data = flex.double(free_flags.indices().size(),2.0 ),
+      sigmas = flex.double(free_flags.indices().size(),1.0 )
                                                      )
     fake_data_in_lat_sym = fake_data_in_lat_sym.merge_equivalents().array()
     fake_data_in_p1 = fake_data_in_lat_sym.expand_to_p1()
     assert fake_data_in_p1.indices().size()==free_flags.indices().size()
-    # note that this assert wil fail (unless you are lucky) if max_delta is set to None
+    # note that this assert will fail (unless you are lucky)
+    # if max_delta is set to None
 
-    # also tcheck that the full symmetry doesn't do anything weerd
+    # also check that the full symmetry doesn't do anything weird
     miller_set = miller.build_set(
       crystal_symmetry=full_xs,
       anomalous_flag=an_flag,
       d_min=3.0 )
     free_flags = miller_set.generate_r_free_flags(use_lattice_symmetry=True)
-
 
 def exercise_generate_r_free_flags(verbose=0, use_lattice_symmetry=False):
   for anomalous_flag in [False, True]:
