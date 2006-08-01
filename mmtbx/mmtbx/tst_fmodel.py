@@ -48,7 +48,7 @@ def test_1(xray_structure):
                                               sf_cos_sin_table  = sf_cos_sin_table,
                                               sf_algorithm      = sf_algorithm)
                       assert fmodel.f_obs.data().all_eq(f_obs.data())
-                      assert abs(fmodel.f_calc).data().all_eq(f_obs.data())
+                      assert abs(fmodel.f_calc()).data().all_eq(f_obs.data())
                       assert abs(fmodel.f_model()).data().all_eq(f_obs.data())
                       assert approx_equal(fmodel.r_work(), 0, 1.e-9)
                       assert approx_equal(fmodel.r_free(), 0, 1.e-9)
@@ -58,7 +58,7 @@ def test_1(xray_structure):
                       assert abs(fmodel.target_w()) < 1.e-9
                       assert abs(fmodel.target_t()) < 1.e-9
                       assert fmodel.k_sol_b_sol() == (0.0,0.0)
-                      assert fmodel.b_cart == [0,0,0,0,0,0]
+                      assert approx_equal(fmodel.b_cart(),[0,0,0,0,0,0])
                       assert fmodel.u_iso() == 0.0
                       assert fmodel.f_obs_w.data().all_eq(
                                                 f_obs.select(~flags.data()).data())
@@ -117,12 +117,12 @@ def test_1(xray_structure):
                                               sf_algorithm      = sf_algorithm)
                       fmodel.update(k_sol = 0.5, b_sol = 35.0)
                       assert fmodel.f_obs.data().all_eq(f_obs.data())
-                      assert abs(fmodel.f_calc).data().all_eq(f_obs.data())
+                      assert abs(fmodel.f_calc()).data().all_eq(f_obs.data())
                       assert fmodel.fb_cart().all_eq(1.0)
                       assert fmodel.fb_cart_w().all_eq(1.0)
                       assert fmodel.fb_cart_t().all_eq(1.0)
                       assert fmodel.k_sol_b_sol() == (0.5,35.0)
-                      assert fmodel.b_cart == [0,0,0,0,0,0]
+                      assert approx_equal(fmodel.b_cart(),[0,0,0,0,0,0])
                       assert fmodel.u_iso() == 0.0
                       assert fmodel.f_obs_w.data().all_eq(
                                                 f_obs.select(~flags.data()).data())
@@ -150,7 +150,7 @@ def test_1(xray_structure):
                                               sf_algorithm      = sf_algorithm)
                       fmodel = fmodel_.deep_copy()
                       assert fmodel.f_obs.data().all_eq(f_obs.data())
-                      assert abs(fmodel.f_calc).data().all_eq(f_obs.data())
+                      assert abs(fmodel.f_calc()).data().all_eq(f_obs.data())
                       assert abs(fmodel.f_model()).data().all_eq(f_obs.data())
                       assert approx_equal(fmodel.r_work(), 0, 1.e-9)
                       assert approx_equal(fmodel.r_free(), 0, 1.e-9)
@@ -160,7 +160,7 @@ def test_1(xray_structure):
                       assert abs(fmodel.target_w()) < 1.e-9
                       assert abs(fmodel.target_t()) < 1.e-9
                       assert fmodel.k_sol_b_sol() == (0.0,0.0)
-                      assert fmodel.b_cart == [0,0,0,0,0,0]
+                      assert approx_equal(fmodel.b_cart(),[0,0,0,0,0,0])
                       assert fmodel.u_iso() == 0.0
                       assert fmodel.f_obs_w.data().all_eq(
                                                 f_obs.select(~flags.data()).data())
@@ -238,7 +238,7 @@ def test_1(xray_structure):
                                 sf_algorithm      = sf_algorithm)
                       assert fmodel_1.f_obs.data().all_eq(fmodel_2.f_obs.data())
                       assert fmodel_1.r_free_flags.data().all_eq(fmodel_2.r_free_flags.data())
-                      assert abs(fmodel_1.f_calc).data().all_eq(abs(fmodel_2.f_calc).data())
+                      assert abs(fmodel_1.f_calc()).data().all_eq(abs(fmodel_2.f_calc()).data())
                       assert abs(fmodel_1.f_model()).data().all_eq(abs(fmodel_2.f_model()).data())
                       assert fmodel_1.fb_cart().all_eq(fmodel_2.fb_cart())
                       assert fmodel_1.fb_cart_w().all_eq(fmodel_2.fb_cart_w())
@@ -259,7 +259,7 @@ def test_1(xray_structure):
                       assert abs(fmodel_1.f_bulk_t()).data().all_eq(abs(fmodel_2.f_bulk_t()).data())
                       assert abs(fmodel_1.f_mask_w()).data().all_eq(abs(fmodel_2.f_mask_w()).data())
                       assert abs(fmodel_1.f_mask_t()).data().all_eq(abs(fmodel_2.f_mask_t()).data())
-                      assert abs(fmodel_1.f_mask).data().all_eq(abs(fmodel_1.f_mask).data())
+                      assert abs(fmodel_1.f_mask()).data().all_eq(abs(fmodel_1.f_mask()).data())
                       assert fmodel_1.figures_of_merit() .all_approx_equal(fmodel_2.figures_of_merit() )
                       assert fmodel_1.phase_errors()     .all_approx_equal(fmodel_2.phase_errors()     )
                       assert fmodel_1.phase_errors_work().all_approx_equal(fmodel_2.phase_errors_work())

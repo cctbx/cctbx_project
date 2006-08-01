@@ -64,9 +64,9 @@ def data_prep(f_calc, f_mask, ss,
     return k_sol, b_sol, b_cart, f_obs
 
 def assert_result(fmodel, k_sol, b_sol, b_cart, f_obs, r_free_flags, tk,tb,tu):
-    assert approx_equal(b_cart, fmodel.b_cart, tu)
-    assert approx_equal(k_sol,   fmodel.k_sol,   tk)
-    assert approx_equal(b_sol,   fmodel.b_sol,   tb)
+    assert approx_equal(b_cart,  fmodel.b_cart(), tu)
+    assert approx_equal(k_sol,   fmodel.k_sol(),   tk)
+    assert approx_equal(b_sol,   fmodel.b_sol(),   tb)
     r_work = bulk_solvent.r_factor(
                               f_obs.select(~fmodel.r_free_flags.data()).data(),
                               fmodel.f_model_w().data())

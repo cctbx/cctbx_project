@@ -63,9 +63,9 @@ def data_prep(f_calc, f_mask, ss,
     return k_sol, b_sol, b_cart, f_obs
 
 def assert_result(fmodel, k_sol, b_sol, b_cart, f_obs, r_free_flags, tk,tb,tu):
-    assert approx_equal(b_cart, fmodel.b_cart, tu)
-    assert approx_equal(k_sol,   fmodel.k_sol,   tk)
-    assert approx_equal(b_sol,   fmodel.b_sol,   tb)
+    assert approx_equal(b_cart,  fmodel.b_cart(), tu)
+    assert approx_equal(k_sol,   fmodel.k_sol(),    tk)
+    assert approx_equal(b_sol,   fmodel.b_sol(),    tb)
     r_work = bulk_solvent.r_factor(
                               f_obs.select(~fmodel.r_free_flags.data()).data(),
                               fmodel.f_model_w().data())
@@ -503,16 +503,16 @@ def exercise_9(fmodel,
 
     fmodel.update(alpha_beta_params = alpha_beta_parameters(),
                   f_obs             = f_obs,
-                  b_cart           = b_cart)
+                  b_cart            = b_cart)
     params = bss.solvent_and_scale_params()
-    params.bulk_solvent                  = True
+    params.bulk_solvent                             = True
     params.anisotropic_scaling                      = False
     params.statistical_solvent_model                = False
     params.k_sol_b_sol_grid_search                  = True
     params.minimization_k_sol_b_sol                 = True
-    params.minimization_b_cart                     = True
+    params.minimization_b_cart                      = True
     params.target                                   = "ls_wunit_k1"
-    params.symmetry_constraints_on_b_cart          = True
+    params.symmetry_constraints_on_b_cart           = True
     params.k_sol_max                                = 0.6
     params.k_sol_min                                = 0.1
     params.b_sol_max                                = 80.0
@@ -524,11 +524,11 @@ def exercise_9(fmodel,
     params.number_of_cycles_for_anisotropic_scaling = 5
     params.fix_k_sol                                = None
     params.fix_b_sol                                = None
-    params.fix_b_cart                              = None
+    params.fix_b_cart                               = None
     params.start_minimization_from_k_sol            = 0.35
     params.start_minimization_from_b_sol            = 46.0
-    params.start_minimization_from_b_cart          = [0,0,0,0,0,0]
-    params.apply_back_trace_of_b_cart              = False
+    params.start_minimization_from_b_cart           = [0,0,0,0,0,0]
+    params.apply_back_trace_of_b_cart               = False
 
     fmodel.update_solvent_and_scale(params = params)
     assert_result(fmodel, k_sol, b_sol, b_cart, f_obs, r_free_flags,
@@ -707,13 +707,13 @@ def exercise_12(fmodel):
               #   fmodel_copy.b_cart[3],fmodel_copy.b_cart[4],fmodel_copy.b_cart[5])
               tolerance = 1.e-4
               if(flag == False and approx_equal(b_cart, b_cart_1, out=None)):
-                 assert approx_equal(fmodel_copy.b_cart, b_cart, tolerance)
+                 assert approx_equal(fmodel_copy.b_cart(), b_cart, tolerance)
               if(flag == True and approx_equal(b_cart, b_cart_2, out=None)):
-                 assert approx_equal(fmodel_copy.b_cart, b_cart, tolerance)
+                 assert approx_equal(fmodel_copy.b_cart(), b_cart, tolerance)
               if(flag == False and approx_equal(b_cart, b_cart_2, out=None)):
-                 assert approx_equal(fmodel_copy.b_cart, b_cart, tolerance)
+                 assert approx_equal(fmodel_copy.b_cart(), b_cart, tolerance)
               if(flag == True and approx_equal(b_cart, b_cart_1, out=None)):
-                 for u2, ufm in zip(b_cart_2, fmodel_copy.b_cart):
+                 for u2, ufm in zip(b_cart_2, fmodel_copy.b_cart()):
                    if(abs(u2) < 1.e-6):
                       assert approx_equal(ufm, 0.0, tolerance)
   print "OK: uaniso constr.:  ",format_cpu_times()
@@ -759,7 +759,6 @@ def scale_from_ls(d_min = 2.2,
     shrink_truncation_radius=mask_parameters().shrink_truncation_radius,
     solvent_radius=mask_parameters().solvent_radius).structure_factors(
       miller_set=f_calc)
-
 ###
 ###>> METHOD: minimization & grid search
 ###

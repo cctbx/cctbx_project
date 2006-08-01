@@ -234,7 +234,7 @@ class refinement_monitor(object):
     self.targets_t       .append(fmodel.target_t()                )
     self.k_sols          .append(fmodel.k_sol_b_sol()[0]          )
     self.b_sols          .append(fmodel.k_sol_b_sol()[1]          )
-    self.b_anisos        .append(fmodel.b_cart                   )
+    self.b_anisos        .append(fmodel.b_cart()                  )
     if(target_weights is not None):
        self.wxcs            .append(target_weights.wx_xyz()          )
        self.wxus            .append(target_weights.wx_adp()          )
