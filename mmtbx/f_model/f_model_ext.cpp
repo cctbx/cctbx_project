@@ -25,13 +25,6 @@ namespace {
                                      self.f_bulk, self.fb_cart, self.ss);
   }
 
-  boost::python::tuple
-  getinitargs_(ls_target_and_kbu_gradients<> const& self)
-  {
-    return boost::python::make_tuple(self.d_target_d_ksol,
-                                     self.d_target_d_bsol, self.target);
-  }
-
   void init_module()
   {
     using namespace boost::python;
@@ -69,26 +62,6 @@ namespace {
       .enable_pickling()
       .def("__getinitargs__", getinitargs)
     ;
-
-    class_<ls_target_and_kbu_gradients<> >("ls_target_and_kbu_gradients")
-      .def(init<
-           core<double, std::complex<double> > const& ,
-           af::shared<double>        const& ,
-           bool const& ,
-           bool const& ,
-           bool const&  >((arg_("core"),
-                                          arg_("f_obs"),
-                                          arg_("calc_grad_u"),
-                                          arg_("calc_grad_ksol"),
-                                          arg_("calc_grad_bsol"))))
-      .add_property("d_target_d_ksol",  make_getter(&ls_target_and_kbu_gradients<>::d_target_d_ksol,  rbv()))
-      .add_property("d_target_d_bsol",  make_getter(&ls_target_and_kbu_gradients<>::d_target_d_bsol,  rbv()))
-      .add_property("target",  make_getter(&ls_target_and_kbu_gradients<>::target,  rbv()))
-      .enable_pickling()
-      .def("__getinitargs__", getinitargs_)
-    ;
-
-
   }
 
 } // namespace <anonymous>
