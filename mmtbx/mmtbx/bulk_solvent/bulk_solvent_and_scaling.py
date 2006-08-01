@@ -263,7 +263,7 @@ def aniso_scale_minimizer(fmodel, symm_constr, alpha=None, beta=None):
          fm            = fmodel.f_mask_w(),
          k_initial     = fmodel.k_sol_b_sol()[0],
          b_initial     = fmodel.k_sol_b_sol()[1],
-         u_initial     = fmodel.b_cart,
+         u_initial     = fmodel.b_cart(),
          scale_initial = 1.0,
          refine_k      = False,
          refine_b      = False,
@@ -296,7 +296,7 @@ def k_sol_b_sol_minimizer(fmodel):
          fm            = fmodel.f_mask_w(),
          k_initial     = fmodel.k_sol_b_sol()[0],
          b_initial     = fmodel.k_sol_b_sol()[1],
-         u_initial     = fmodel.b_cart,
+         u_initial     = fmodel.b_cart(),
          scale_initial = 1.0,
          refine_k      = True,
          refine_b      = True,
@@ -492,7 +492,7 @@ class bulk_solvent_and_scales(object):
        minimization_macro_cycles = \
                          range(1, params.number_of_minimization_macro_cycles+1)
        if(params.bulk_solvent):
-          assert abs(flex.max(flex.abs(fmodel.f_mask.data()))) > 1.e-3
+          assert abs(flex.max(flex.abs(fmodel.f_mask().data()))) > 1.e-3
        macro_cycles = range(1, params.number_of_macro_cycles+1)
        if(params.k_sol_b_sol_grid_search):
           k_sols =kb_range(params.k_sol_max,params.k_sol_min,params.k_sol_step)
@@ -506,8 +506,8 @@ class bulk_solvent_and_scales(object):
           fmodel.update(b_cart = params.fix_b_cart)
        if(to_do.count(False) == 2): macro_cycles = range(1,2)
        target = fmodel.target_w()
-       ksol   = fmodel.k_sol
-       bsol   = fmodel.b_sol
+       ksol   = fmodel.k_sol()
+       bsol   = fmodel.b_sol()
        grid_search_done = False
        for mc in macro_cycles:
            do_grid_search = (ksol<params.k_sol_min or ksol>params.k_sol_max or
@@ -548,12 +548,12 @@ class bulk_solvent_and_scales(object):
               #   h=m+str(mc)+": (ordered solvent) T= "+self.target_name
               #   self.show_k_sol_b_sol_b_cart_target(header = h, out = log)
        ### start ml optimization
-       if(abs(fmodel.k_sol) < 0.01 or abs(fmodel.b_sol) < 1.0):
+       if(abs(fmodel.k_sol()) < 0.01 or abs(fmodel.b_sol()) < 1.0):
           fmodel.update(k_sol = 0, b_sol = 0)
 
-       ksol = fmodel.k_sol
-       bsol = fmodel.b_sol
-       bcart= fmodel.b_cart
+       ksol = fmodel.k_sol()
+       bsol = fmodel.b_sol()
+       bcart= fmodel.b_cart()
        r_work = fmodel.r_work()
        if(params_target == "ml"):
           params.target = params_target
@@ -572,7 +572,7 @@ class bulk_solvent_and_scales(object):
              h=m+str(mc)+": apply back trace(b_cart): T= "+fmodel.target_name
              fmodel.show_k_sol_b_sol_b_cart_target(header = h, out = log)
        fmodel.update(target_name = fmodel_target)
-       if(abs(fmodel.k_sol) < 0.01 or abs(fmodel.b_sol) < 1.0):
+       if(abs(fmodel.k_sol()) < 0.01 or abs(fmodel.b_sol()) < 1.0):
           fmodel.update(k_sol = 0, b_sol = 0)
 
   def _set_f_ordered_solvent(self):
@@ -582,7 +582,7 @@ class bulk_solvent_and_scales(object):
     symm_constr = params.symmetry_constraints_on_b_cart
     u_cycles = range(1, params.number_of_cycles_for_anisotropic_scaling+1)
     r_start = fmodel.r_work()
-    u_start = fmodel.b_cart
+    u_start = fmodel.b_cart()
     for u_cycle in u_cycles:
         b_cart = aniso_scale_minimizer(fmodel      = fmodel,
                                         symm_constr = symm_constr)
@@ -593,7 +593,7 @@ class bulk_solvent_and_scales(object):
        print "   r_start = ", r_start
        print "   r_final = ", r_final
        print "   u_start = ", ["%9.3f"%u for u in u_start]
-       print "   u_final = ", ["%9.3f"%u for u in fmodel.b_cart]
+       print "   u_final = ", ["%9.3f"%u for u in fmodel.b_cart()]
        fmodel.update(b_cart = u_start)
 
   def _k_sol_b_sol_minimization_helper(self, params, fmodel):
