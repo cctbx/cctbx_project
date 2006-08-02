@@ -11,12 +11,12 @@
 #include <cctbx/miller/lookup_utils.h>
 #include <cctbx/uctbx.h>
 
-namespace cctbx { namespace xray { namespace f_model {
+namespace cctbx { namespace xray { namespace f_model_core_data {
 
  template<typename FloatType>
- class f_model_derivative_holder{
+ class f_model_core_data_derivative_holder{
  public:
-   f_model_derivative_holder():
+   f_model_core_data_derivative_holder():
    koverall_(0),
    ksol_(0),
    usol_(0),
@@ -38,7 +38,7 @@ namespace cctbx { namespace xray { namespace f_model {
    void upart(FloatType tmp ){ upart_=tmp; }
    void koverall(FloatType tmp ){ koverall_=tmp; }
    void ustar( scitbx::sym_mat3<FloatType> tmp ){ ustar_=tmp; }
-   void accumulate( f_model_derivative_holder<FloatType> other )
+   void accumulate( f_model_core_data_derivative_holder<FloatType> other )
    {
      koverall_ += other.koverall();
      ksol_  += other.ksol();
@@ -59,10 +59,10 @@ namespace cctbx { namespace xray { namespace f_model {
 
 
  template<typename FloatType>
- class f_model{
+ class f_model_core_data{
  public:
    // You want to use this constructor
-   f_model(
+   f_model_core_data(
       scitbx::af::const_ref<cctbx::miller::index<> >  const& hkl,           //1 indices for calculated data
       scitbx::af::const_ref<std::complex<FloatType> > const& f_atoms,       //2 f calc
       scitbx::af::const_ref<std::complex<FloatType> > const& f_mask,        //3 f bulk solvent
@@ -80,7 +80,11 @@ namespace cctbx { namespace xray { namespace f_model {
      k_sol_(k_sol),
      u_sol_(u_sol),
      k_part_(k_part),
-     u_part_(u_part)
+     u_part_(u_part),
+     recompute_aniso_(true),
+     recompute_bulk_(true),
+     recompute_part_(true),
+     recompute_total_(true)
      {
        CCTBX_ASSERT( hkl.size() > 0 );
        CCTBX_ASSERT( hkl.size() == f_atoms.size() );
@@ -91,6 +95,17 @@ namespace cctbx { namespace xray { namespace f_model {
        CCTBX_ASSERT( k_part >=0 );
        CCTBX_ASSERT( u_sol >= 0);
        CCTBX_ASSERT( u_part >= 0 );
+
+       if (k_overall_==0){
+         recompute_aniso_=false;
+       }
+       if (k_part_==0){
+         recompute_part_=false;
+       }
+       if (k_sol_==0){
+         recompute_bulk_=false;
+       }
+
 
        for (std::size_t ii=0; ii< hkl.size(); ii++){
          hkl_.push_back( hkl[ii] );
@@ -111,16 +126,16 @@ namespace cctbx { namespace xray { namespace f_model {
          d_star_sq_.push_back( unit_cell.d_star_sq(hkl[ii]) ) ;
          // init the scale and other arrays
          aniso_scale_.push_back( 1.0 );
-         log_part_aniso_scale_.push_back( 1.0 );
+         //log_part_aniso_scale_.push_back( 1.0 );
          bulk_scale_.push_back( 0.0 );
          part_scale_.push_back( 0.0 );
-         f_model_.push_back( std::complex<FloatType>(0,0) );
+         f_model_core_data_.push_back( std::complex<FloatType>(0,0) );
          // update all
          update_all( ii );
        }
      }
      /* or this one of course */
-     f_model(
+     f_model_core_data(
       scitbx::af::const_ref<cctbx::miller::index<> >  const& hkl,           //1 indices for calculated data
       scitbx::af::const_ref<std::complex<FloatType> > const& f_atoms,       //2 f calc
       scitbx::af::const_ref<std::complex<FloatType> > const& f_mask,        //3 f bulk solvent
@@ -138,7 +153,11 @@ namespace cctbx { namespace xray { namespace f_model {
      k_sol_(k_sol),
      u_sol_(u_sol),
      k_part_(k_part),
-     u_part_(u_part)
+     u_part_(u_part),
+     recompute_aniso_(true),
+     recompute_bulk_(true),
+     recompute_part_(true),
+     recompute_total_(true)
      {
        CCTBX_ASSERT( hkl.size() > 0 );
        CCTBX_ASSERT( hkl.size() == f_atoms.size() );
@@ -151,16 +170,26 @@ namespace cctbx { namespace xray { namespace f_model {
        CCTBX_ASSERT( u_sol >= 0);
        CCTBX_ASSERT( u_part >= 0 );
 
+       if (k_overall_==0){
+         recompute_aniso_=false;
+       }
+       if (k_part_==0){
+         recompute_part_=false;
+       }
+       if (k_sol_==0){
+         recompute_bulk_=false;
+       }
+
+
+
        for (std::size_t ii=0; ii< hkl.size(); ii++){
          hkl_.push_back( hkl[ii] );
          f_atoms_.push_back( f_atoms[ii] );
-
          if (f_mask.size()>0){
            f_mask_.push_back( f_mask[ii] );
          } else {
            f_mask_.push_back( std::complex<FloatType>(0,0) );
          }
-
          if (f_part.size()>0){
            f_part_.push_back( f_part[ii] );
          } else {
@@ -170,10 +199,10 @@ namespace cctbx { namespace xray { namespace f_model {
          d_star_sq_.push_back( d_star_sq[ii] ) ;
          // init the scale and other arrays
          aniso_scale_.push_back( 1.0 );
-         log_part_aniso_scale_.push_back( 1.0 );
+         //log_part_aniso_scale_.push_back( 1.0 );
          bulk_scale_.push_back( 0.0 );
          part_scale_.push_back( 0.0 );
-         f_model_.push_back( std::complex<FloatType>(0,0) );
+         f_model_core_data_.push_back( std::complex<FloatType>(0,0) );
          // update all
          update_all( ii );
        }
@@ -182,18 +211,137 @@ namespace cctbx { namespace xray { namespace f_model {
 
 
 
-     //-----------------------------
+       //-----------------------------
+
+
+     FloatType d_target_d_koverall(FloatType const& d_target_d_a,
+                                   FloatType const& d_target_d_b,
+                                   std::size_t const& ii )
+     {
+       if (recompute_aniso_){
+         compute_aniso_scale( ii );
+       }
+       if (recompute_bulk_){
+         compute_bulk_scale( ii );
+       }
+       if (recompute_part_){
+         compute_part_scale( ii );
+       }
+
+       FloatType va,vb,ua,ub,wa,wb,g1,g2,fa,fb;
+       ua=f_atoms_[ii].real();
+       ub=f_atoms_[ii].imag();
+       va=f_mask_[ii].real();
+       vb=f_mask_[ii].imag();
+       wa=f_part_[ii].real();
+       wb=f_part_[ii].imag();
+
+       g1=k_sol_*bulk_scale_[ii];
+       g2=k_part_*part_scale_[ii];
+
+       fa=(ua+g1*va+g2*wa);
+
+       fb=(ub+g1*vb+g2*wb);
+
+       FloatType tmp_a, tmp_b, result;
+
+       tmp_a = fa*aniso_scale_[ii];
+       tmp_b = fb*aniso_scale_[ii];
+       result = tmp_a*d_target_d_a + tmp_b*d_target_d_b;
+       return (result);
+     }
+
+
+     FloatType d_target_d_ksol(FloatType const& d_target_d_a,
+                               FloatType const& d_target_d_b,
+                               std::size_t const& ii )
+     {
+       if (recompute_aniso_){
+         compute_aniso_scale( ii );
+       }
+       if (recompute_bulk_){
+         compute_bulk_scale( ii );
+       }
+       if (recompute_part_){
+         compute_part_scale( ii );
+       }
+
+       FloatType va,vb,ua,ub,wa,wb,g1,g2,fa,fb;
+       ua=f_atoms_[ii].real();
+       ub=f_atoms_[ii].imag();
+       va=f_mask_[ii].real();
+       vb=f_mask_[ii].imag();
+       wa=f_part_[ii].real();
+       wb=f_part_[ii].imag();
+       g1=k_sol_*bulk_scale_[ii];
+       g2=k_part_*part_scale_[ii];
+       fa=(ua+g1*va+g2*wa);
+       fb=(ub+g1*vb+g2*wb);
+
+       FloatType tmp_a, tmp_b, result;
+       tmp_a = k_overall_*aniso_scale_[ii]*bulk_scale_[ii]*va;
+       tmp_b = k_overall_*aniso_scale_[ii]*bulk_scale_[ii]*vb;
+       result = tmp_a*d_target_d_a + tmp_b*d_target_d_b ;
+       return (result);
+     }
+
+     FloatType d_target_d_kpart(FloatType const& d_target_d_a,
+                                FloatType const& d_target_d_b,
+                                std::size_t const& ii )
+     {
+       if (recompute_aniso_){
+         compute_aniso_scale( ii );
+       }
+       if (recompute_bulk_){
+         compute_bulk_scale( ii );
+       }
+       if (recompute_part_){
+         compute_part_scale( ii );
+       }
+
+       FloatType va,vb,ua,ub,wa,wb,g1,g2,fa,fb;
+       ua=f_atoms_[ii].real();
+       ub=f_atoms_[ii].imag();
+       va=f_mask_[ii].real();
+       vb=f_mask_[ii].imag();
+       wa=f_part_[ii].real();
+       wb=f_part_[ii].imag();
+       g1=k_sol_*bulk_scale_[ii];
+       g2=k_part_*part_scale_[ii];
+       fa=(ua+g1*va+g2*wa);
+       fb=(ub+g1*vb+g2*wb);
+
+       FloatType tmp_a, tmp_b, result;
+       tmp_a = k_overall_*aniso_scale_[ii]*part_scale_[ii]*wa;
+       tmp_b = k_overall_*aniso_scale_[ii]*part_scale_[ii]*wb;
+       result = tmp_a*d_target_d_a + tmp_b*d_target_d_b ;
+       return (result);
+     }
+
+
+
+
 
      // This function compute the gradients for a single HKL
-     f_model_derivative_holder<FloatType>
+     f_model_core_data_derivative_holder<FloatType>
      d_target_d_all( FloatType const& d_target_d_a,
                      FloatType const& d_target_d_b,
                      std::size_t const& ii,
                      scitbx::af::const_ref<bool> const& gradient_flags)
      {
-       CCTBX_ASSERT( gradient_flags.size() == 6 );
 
-       f_model_derivative_holder<FloatType> tmp_derivs;
+       CCTBX_ASSERT( gradient_flags.size() == 6 );
+       if (recompute_aniso_){
+         compute_aniso_scale( ii );
+       }
+       if (recompute_bulk_){
+         compute_bulk_scale( ii );
+       }
+       if (recompute_part_){
+         compute_part_scale( ii );
+       }
+
+       f_model_core_data_derivative_holder<FloatType> tmp_derivs;
        FloatType va,vb,ua,ub,wa,wb,g1,g2,fa,fb;
        ua=f_atoms_[ii].real();
        ub=f_atoms_[ii].imag();
@@ -257,14 +405,12 @@ namespace cctbx { namespace xray { namespace f_model {
        return ( tmp_derivs );
      }
 
-
-
-     f_model_derivative_holder<FloatType>
+     f_model_core_data_derivative_holder<FloatType>
      d_target_d_all( scitbx::af::const_ref<FloatType> const& d_target_d_a,
                      scitbx::af::const_ref<FloatType> const& d_target_d_b,
                      scitbx::af::const_ref<bool> const& gradient_flags )
      {
-       f_model_derivative_holder<FloatType> result;
+       f_model_core_data_derivative_holder<FloatType> result;
        CCTBX_ASSERT( d_target_d_b.size()==hkl_.size() );
        CCTBX_ASSERT( d_target_d_a.size()==hkl_.size() );
        for (std::size_t ii=0;ii<hkl_.size();ii++){
@@ -277,11 +423,11 @@ namespace cctbx { namespace xray { namespace f_model {
      }
 
 
-     f_model_derivative_holder<FloatType>
+     f_model_core_data_derivative_holder<FloatType>
        d_target_d_all( scitbx::af::const_ref<std::complex<FloatType> > const& d_target_d_ab,
                        scitbx::af::const_ref<bool> const& gradient_flags )
      {
-       f_model_derivative_holder<FloatType> result;
+       f_model_core_data_derivative_holder<FloatType> result;
        CCTBX_ASSERT( d_target_d_ab.size()==hkl_.size() );
        for (std::size_t ii=0;ii<hkl_.size();ii++){
          result.accumulate( d_target_d_all(d_target_d_ab[ii].real(),
@@ -293,16 +439,16 @@ namespace cctbx { namespace xray { namespace f_model {
      }
 
 
-     f_model_derivative_holder<FloatType>
+     f_model_core_data_derivative_holder<FloatType>
        d_target_d_all( scitbx::af::const_ref<FloatType> const& d_target_d_fmodel,
                        scitbx::af::const_ref<bool> const& gradient_flags )
      {
-       f_model_derivative_holder<FloatType> result;
+       f_model_core_data_derivative_holder<FloatType> result;
        FloatType dfda, dfdb, fm, a, b;
        CCTBX_ASSERT( d_target_d_fmodel.size()==hkl_.size() );
        for (std::size_t ii=0;ii<hkl_.size();ii++){
-         a=f_model_[ii].real();
-         b=f_model_[ii].imag();
+         a=f_model_core_data_[ii].real();
+         b=f_model_core_data_[ii].imag();
          fm=std::sqrt(a*a+b*b);
          if ( fm>0 ){
            dfda=d_target_d_fmodel[ii]*a/fm;
@@ -323,9 +469,23 @@ namespace cctbx { namespace xray { namespace f_model {
      void refresh()
      {
        for (std::size_t ii=0;ii<hkl_.size();ii++){
-         compute_all_scales( ii );
-         compute_f_model( ii );
+         if (recompute_aniso_){
+           compute_aniso_scale( ii );
+         }
+         if (recompute_bulk_){
+           compute_bulk_scale( ii );
+         }
+         if (recompute_part_){
+           compute_part_scale( ii );
+         }
+         if (recompute_total_){
+           compute_f_model_core_data( ii );
+         }
        }
+       recompute_aniso_=false;
+       recompute_part_=false;
+       recompute_bulk_=false;
+       recompute_total_=false;
      }
 
      // reload sf's
@@ -335,6 +495,8 @@ namespace cctbx { namespace xray { namespace f_model {
        for (std::size_t ii=0;ii<hkl_.size();ii++){
          f_atoms_[ii]=new_f_atoms[ii];
        }
+       recompute_total_=true;
+
      }
      void renew_fmask( scitbx::af::const_ref< std::complex< FloatType> > const& new_f_mask)
      {
@@ -342,6 +504,7 @@ namespace cctbx { namespace xray { namespace f_model {
        for (std::size_t ii=0;ii<hkl_.size();ii++){
          f_mask_[ii]=new_f_mask[ii];
        }
+       recompute_total_=true;
      }
      void renew_fpart( scitbx::af::const_ref< std::complex< FloatType> > const& new_f_part)
      {
@@ -349,6 +512,7 @@ namespace cctbx { namespace xray { namespace f_model {
        for (std::size_t ii=0;ii<hkl_.size();ii++){
          f_part_[ii]=new_f_part[ii];
        }
+       recompute_total_=true;
      }
 
      // reload bulk solvent params
@@ -358,6 +522,8 @@ namespace cctbx { namespace xray { namespace f_model {
        CCTBX_ASSERT( new_k_overall > 0 );
        k_overall_= new_k_overall;
        u_star_ = new_u_star;
+       recompute_total_=true;
+       recompute_aniso_=true;
        refresh();
      }
 
@@ -368,6 +534,8 @@ namespace cctbx { namespace xray { namespace f_model {
        CCTBX_ASSERT( new_k_sol>=0 );
        k_sol_=new_k_sol;
        u_sol_=new_u_sol;
+       recompute_total_=true;
+       recompute_bulk_=true;
        refresh();
 
      }
@@ -379,6 +547,8 @@ namespace cctbx { namespace xray { namespace f_model {
        CCTBX_ASSERT( new_k_part>=0 );
        k_part_=new_k_part;
        u_part_=new_u_part;
+       recompute_total_=true;
+       recompute_part_=true;
        refresh();
      }
 
@@ -387,6 +557,9 @@ namespace cctbx { namespace xray { namespace f_model {
      {
        scitbx::af::shared< std::complex<FloatType> > result;
        for (std::size_t ii=0;ii<hkl_.size();ii++){
+         if (recompute_bulk_){
+           compute_bulk_scale(ii);
+         }
          result.push_back( f_mask_[ii]*k_sol_*bulk_scale_[ii] );
        }
        return ( result );
@@ -396,6 +569,9 @@ namespace cctbx { namespace xray { namespace f_model {
      {
        scitbx::af::shared< FloatType > result;
        for (std::size_t ii=0;ii<hkl_.size();ii++){
+         if (recompute_bulk_){
+           compute_bulk_scale(ii);
+         }
          result.push_back( k_sol_*bulk_scale_[ii] );
        }
        return ( result );
@@ -405,6 +581,9 @@ namespace cctbx { namespace xray { namespace f_model {
      {
        scitbx::af::shared< std::complex<FloatType> > result;
        for (std::size_t ii=0;ii<hkl_.size();ii++){
+         if (recompute_part_){
+           compute_part_scale(ii);
+         }
          result.push_back( f_part_[ii]*k_part_*part_scale_[ii] );
        }
        return ( result );
@@ -414,14 +593,20 @@ namespace cctbx { namespace xray { namespace f_model {
      {
        scitbx::af::shared< FloatType > result;
        for (std::size_t ii=0;ii<hkl_.size();ii++){
+         if (recompute_part_){
+           compute_part_scale(ii);
+         }
          result.push_back( k_part_*part_scale_[ii] );
        }
        return ( result );
      }
 
-     scitbx::af::shared<std::complex<FloatType> > get_f_model()
+     scitbx::af::shared<std::complex<FloatType> > get_f_model_core_data()
      {
-       return ( f_model_ ) ;
+       if (recompute_total_){
+         refresh();
+       }
+       return ( f_model_core_data_ ) ;
      }
 
 
@@ -429,15 +614,21 @@ namespace cctbx { namespace xray { namespace f_model {
      {
        scitbx::af::shared< FloatType > result;
        for (std::size_t ii=0;ii<hkl_.size();ii++){
+         if (recompute_aniso_){
+           compute_aniso_scale(ii);
+         }
          result.push_back( k_overall_*aniso_scale_[ii] );
        }
        return ( result );
      }
 
-     scitbx::af::shared< FloatType > fb_cart()
+     scitbx::af::shared< FloatType > fu_star()
      {
        scitbx::af::shared< FloatType > result;
        for (std::size_t ii=0;ii<hkl_.size();ii++){
+         if (recompute_aniso_){
+           compute_aniso_scale(ii);
+         }
          result.push_back( aniso_scale_[ii] );
        }
        return ( result );
@@ -479,35 +670,48 @@ namespace cctbx { namespace xray { namespace f_model {
      {
        return(hkl_);
      }
+
      //--------------
      void koverall(FloatType new_koverall){
        k_overall_=new_koverall;
+       recompute_total_=true;
      }
      void ksol(FloatType new_ksol)
      {
        k_sol_=new_ksol ;
+       recompute_total_=true;
      }
      void kpart(FloatType new_kpart)
      {
        k_part_=new_kpart;
+       recompute_total_=true;
      }
      void usol(FloatType new_usol)
      {
        u_sol_=new_usol;
+       recompute_bulk_=true;
+       recompute_total_=true;
+
      }
      void upart(FloatType new_upart)
      {
        u_part_=new_upart;
+       recompute_part_=true;
+       recompute_total_=true;
+
      }
      void ustar( scitbx::sym_mat3<FloatType> new_ustar)
      {
        u_star_=new_ustar;
+       recompute_aniso_=true;
+       recompute_total_=true;
+
      }
 
 
      //--------------------------------
-     // d_f_model_d_f_atoms
-     scitbx::af::shared<FloatType> d_f_model_d_f_atoms()
+     // d_f_model_core_data_d_f_atoms
+     scitbx::af::shared<FloatType> d_f_model_core_data_d_f_atoms()
      {
        return( overall_scale() );
      }
@@ -515,7 +719,7 @@ namespace cctbx { namespace xray { namespace f_model {
 
 
      // selection methods, takes in an iselection
-     f_model<FloatType> select( scitbx::af::const_ref<int> const& iselection) const
+     f_model_core_data<FloatType> select( scitbx::af::const_ref<int> const& iselection) const
      {
        scitbx::af::shared<std::complex<FloatType> > new_f_atoms;
        scitbx::af::shared<std::complex<FloatType> > new_f_mask;
@@ -535,14 +739,14 @@ namespace cctbx { namespace xray { namespace f_model {
          new_d_star_sq.push_back( d_star_sq_[iselection[ii]] );
        }
 
-       f_model<FloatType> new_f_model( new_hkl.const_ref(),
+       f_model_core_data<FloatType> new_f_model_core_data( new_hkl.const_ref(),
                                        new_f_atoms.const_ref(),
                                        new_f_mask.const_ref(),
                                        new_d_star_sq.const_ref(), // pass in a d_star_sq in stead of unit_cell
                                        k_overall_, u_star_,
                                        k_sol_, u_sol_,
                                        new_f_part.const_ref(), k_part_, u_part_);
-       return (new_f_model);
+       return (new_f_model_core_data);
      }
 
      scitbx::af::shared<FloatType> d_star_sq()
@@ -561,7 +765,6 @@ namespace cctbx { namespace xray { namespace f_model {
                 hkl_[ii][1]*(hkl_[ii][0]*u_star_[3]+hkl_[ii][1]*u_star_[1]+hkl_[ii][2]*u_star_[5]) +
                 hkl_[ii][2]*(hkl_[ii][0]*u_star_[4]+hkl_[ii][1]*u_star_[5]+hkl_[ii][2]*u_star_[2]) ;
       result *= -2.0*scitbx::constants::pi*scitbx::constants::pi;
-      log_part_aniso_scale_[ii] = result;
       result= std::exp(result);
       aniso_scale_[ii]=result;
 
@@ -584,23 +787,30 @@ namespace cctbx { namespace xray { namespace f_model {
     {
       // aniso scale
       FloatType result = 0;
-      result  = hkl_[ii][0]*(hkl_[ii][0]*u_star_[0]+hkl_[ii][1]*u_star_[3]+hkl_[ii][2]*u_star_[4]) +
-                hkl_[ii][1]*(hkl_[ii][0]*u_star_[3]+hkl_[ii][1]*u_star_[1]+hkl_[ii][2]*u_star_[5]) +
-                hkl_[ii][2]*(hkl_[ii][0]*u_star_[4]+hkl_[ii][1]*u_star_[5]+hkl_[ii][2]*u_star_[2]) ;
-      result *= -2.0*scitbx::constants::pi*scitbx::constants::pi;
-      result= std::exp(result);
-      aniso_scale_[ii]=result;
+      if (recompute_aniso_){
+        result  = hkl_[ii][0]*(hkl_[ii][0]*u_star_[0]+hkl_[ii][1]*u_star_[3]+hkl_[ii][2]*u_star_[4]) +
+                  hkl_[ii][1]*(hkl_[ii][0]*u_star_[3]+hkl_[ii][1]*u_star_[1]+hkl_[ii][2]*u_star_[5]) +
+                  hkl_[ii][2]*(hkl_[ii][0]*u_star_[4]+hkl_[ii][1]*u_star_[5]+hkl_[ii][2]*u_star_[2]) ;
+        result *= -2.0*scitbx::constants::pi*scitbx::constants::pi;
+        result= std::exp(result);
+        aniso_scale_[ii]=result;
+      }
       // bulk scale
-      bulk_scale_[ii] = std::exp(-u_sol_*d_star_sq_[ii]*2.0*scitbx::constants::pi*scitbx::constants::pi);
+      if (recompute_bulk_){
+        bulk_scale_[ii] = std::exp(-u_sol_*d_star_sq_[ii]*2.0*scitbx::constants::pi*scitbx::constants::pi);
+      }
       // partial scale
-      part_scale_[ii] = std::exp(-u_part_*d_star_sq_[ii]*2.0*scitbx::constants::pi*scitbx::constants::pi);
+      if (recompute_part_){
+        part_scale_[ii] = std::exp(-u_part_*d_star_sq_[ii]*2.0*scitbx::constants::pi*scitbx::constants::pi);
+      }
+
     }
 
     //-----------------
-    // compute f_model
-    void compute_f_model( std::size_t ii )
+    // compute f_model_core_data
+    void compute_f_model_core_data( std::size_t ii )
     {
-      f_model_[ii] = k_overall_*aniso_scale_[ii]*
+      f_model_core_data_[ii] = k_overall_*aniso_scale_[ii]*
         (                         f_atoms_[ii]
          + k_sol_*bulk_scale_[ii]*f_mask_[ii]
          + k_part_*part_scale_[ii]*f_part_[ii] );
@@ -610,7 +820,7 @@ namespace cctbx { namespace xray { namespace f_model {
     void update_all( std::size_t ii )
     {
       compute_all_scales( ii );
-      compute_f_model( ii );
+      compute_f_model_core_data( ii );
     }
 
 
@@ -626,7 +836,7 @@ namespace cctbx { namespace xray { namespace f_model {
     scitbx::af::shared< FloatType > bulk_scale_;
     scitbx::af::shared< FloatType > part_scale_;
 
-    scitbx::af::shared< std::complex<FloatType> > f_model_;
+    scitbx::af::shared< std::complex<FloatType> > f_model_core_data_;
 
     FloatType k_overall_;
     scitbx::sym_mat3<FloatType> u_star_;
@@ -635,12 +845,11 @@ namespace cctbx { namespace xray { namespace f_model {
     FloatType k_part_;
     FloatType u_part_;
 
-
-};
-
-
-
-
+    bool recompute_aniso_;
+    bool recompute_bulk_;
+    bool recompute_part_;
+    bool recompute_total_;
+ };
 
 
 
