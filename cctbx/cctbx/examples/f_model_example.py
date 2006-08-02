@@ -29,7 +29,7 @@ def f_model_example():
   # here f_atoms, f_mask and f_part are all the same
   # doens't make sense of course
   sfs = random_structure.structure_factors( False, 3.5,  ).f_calc()
-  f_model_structure_factors =  xray.f_model( hkl = sfs.indices(),
+  f_model_structure_factors =  xray.f_model_core_data( hkl = sfs.indices(),
                                              f_atoms= sfs.data(),
                                              f_mask = sfs.data(),
                                              unit_cell = sfs.unit_cell(),
@@ -52,17 +52,13 @@ def f_model_example():
   f_model_structure_factors.renew_partial_structure_scale_parameters(0.05,25.0)
 
   # is is also possible to reset the values term by term ratrher then grouped
-  # take care however that than a 'refresh' command is needed to redo some
-  # computations. If this is not done, the subsequent gradients will not
-  # be correct!
   f_model_structure_factors.ksol( 1.0 )
   f_model_structure_factors.usol( 3.0 )
   f_model_structure_factors.kpart( 1.0 )
   f_model_structure_factors.upart( 3.0 )
   f_model_structure_factors.koverall( 1.0 )
   f_model_structure_factors.ustar( (0,0,0,0,0,0) )
-  # this is the refresh command
-  f_model_structure_factors.refresh()
+  # the cached arrays of various scale factor as updated automatically.
 
   # Obtaining the current parameters
   ksol = f_model_structure_factors.ksol()
@@ -101,14 +97,13 @@ def f_model_example():
 
   dtdall = f_model_structure_factors.d_target_d_all(
     dtda, dtdb, gradient_flags)
-
-  # if desired (not likely) you can do it term by term.
+  # if desired (likely in c++, not in python) you can do it term by term.
   hkl_no=123
   dtdsingle = f_model_structure_factors.d_target_d_all(
     dtda[hkl_no], dtdb[hkl_no], hkl_no, gradient_flags)
 
   # the resulting gradients are delivered as a
-  # 'f_model_derivatiove_holder'
+  # 'f_model_derivative_holder'
   # it has methods both to set as well as to get items.
   #
   # getting the values
@@ -132,16 +127,9 @@ def f_model_example():
   #if desired, a selection can be made on the f_model object.
   #currently, only an integer selection is supported
   new_f_model_object = f_model_structure_factors.select( flex.int([1,2,3]) )
-  print new_f_model_object.f_model().size()
-
-
-
-
-
-
-
-
+  assert  new_f_model_object.f_model().size()==3
 
 
 if (__name__ == "__main__" ):
   f_model_example()
+  print "OK"

@@ -28,7 +28,7 @@ def compare_all(tmp1,tmp2):
   assert approx_equal( tmp1.ustar(), tmp2.ustar() )
 
 def tst_f_model_derivative_holder():
-  dinfo = xray.f_model_derivative_holder()
+  dinfo = xray.f_model_core_data_derivative_holder()
 
   dinfo.ksol(1)
   dinfo.usol(1)
@@ -53,7 +53,7 @@ def tst_f_model():
                           n_scatterers=310)
 
   sfs = tmp.structure_factors( False, 3.5,  ).f_calc()
-  f_mod = xray.f_model( hkl = sfs.indices(),
+  f_mod = xray.f_model_core_data( hkl = sfs.indices(),
                         f_atoms= sfs.data(),
                         f_mask = sfs.data(),
                         unit_cell = sfs.unit_cell(),
@@ -105,7 +105,7 @@ def tst_f_model():
   grads_ab = f_mod.d_target_d_all(dtda, dtdb,gradient_flags)
   compare_all(grads_ab,grads_f)
 
-  f_mod = xray.f_model( hkl = sfs.indices(),
+  f_mod = xray.f_model_core_data( hkl = sfs.indices(),
                         f_atoms= sfs.data(),
                         f_mask = sfs.data()*0.0,
                         unit_cell = sfs.unit_cell(),
@@ -165,7 +165,7 @@ def tst_f_model():
 
 
 
-  oldfm = xray.f_model( hkl = sfs.indices(),
+  oldfm = xray.f_model_core_data( hkl = sfs.indices(),
                         f_atoms= sfs.data(),
                         f_mask = sfs.data()*1.0,
                         unit_cell = sfs.unit_cell(),
@@ -179,7 +179,7 @@ def tst_f_model():
   h=0.0001
 
 
-  newfm = xray.f_model( hkl = sfs.indices(),
+  newfm = xray.f_model_core_data( hkl = sfs.indices(),
                         f_atoms= sfs.data(),
                         f_mask = sfs.data()*1.0,
                         unit_cell = sfs.unit_cell(),
@@ -258,5 +258,5 @@ def run():
 
 
 if (__name__ == "__main__"):
-  run()
+  ()
   print "OK"
