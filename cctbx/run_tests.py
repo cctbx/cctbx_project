@@ -4,6 +4,7 @@ import libtbx.load_env
 def run():
   tst_list = (
   "$D/math/boost_python/tst_math.py",
+  "$D/xray/boost_python/tst_f_model.py",
   "$D/array_family/boost_python/tst_flex.py",
   "$D/uctbx/boost_python/tst_uctbx.py",
   "$D/sgtbx/boost_python/tst_sgtbx.py",
