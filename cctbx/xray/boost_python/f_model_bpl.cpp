@@ -4,19 +4,19 @@
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
 
-namespace cctbx { namespace xray { namespace f_model { namespace boost_python {
+namespace cctbx { namespace xray { namespace f_model_core_data { namespace boost_python {
   namespace {
 
 
-    struct f_model_derivative_holder_wrappers
+    struct f_model_core_data_derivative_holder_wrappers
     {
-      typedef f_model_derivative_holder<double> w_t;
+      typedef f_model_core_data_derivative_holder<double> w_t;
 
       static void
       wrap()
       {
         using namespace boost::python;
-        class_<w_t>("f_model_derivative_holder")//, no_init)
+        class_<w_t>("f_model_core_data_derivative_holder")//, no_init)
           .def("ksol",(double(w_t::*)())  &w_t::ksol )
           .def("ksol",(void (w_t::*)(double))  &w_t::ksol )
 
@@ -45,16 +45,16 @@ namespace cctbx { namespace xray { namespace f_model { namespace boost_python {
 
 
 
-    struct f_model_wrappers
+    struct f_model_core_data_wrappers
     {
-      typedef f_model<double> w_t;
+      typedef f_model_core_data<double> w_t;
 
       static void
       wrap()
       {
         using namespace boost::python;
 
-        class_<w_t>("f_model", no_init)
+        class_<w_t>("f_model_core_data", no_init)
           .def(init<
                scitbx::af::const_ref< cctbx::miller::index<> > const&,  // 1 indices
                scitbx::af::const_ref< std::complex< double > > const&,  // 2 f_atmos
@@ -107,27 +107,27 @@ namespace cctbx { namespace xray { namespace f_model { namespace boost_python {
 
           // derivatives using gradientflags
           .def("d_target_d_all",
-               ( f_model_derivative_holder<double>(w_t::*)
+               ( f_model_core_data_derivative_holder<double>(w_t::*)
                  (double const&,
                   double const&,
                   std::size_t const&,
                   scitbx::af::const_ref<bool> const& )
                ) &w_t::d_target_d_all)
           .def("d_target_d_all",
-               ( f_model_derivative_holder<double>(w_t::*)
+               ( f_model_core_data_derivative_holder<double>(w_t::*)
                  (scitbx::af::const_ref<double> const&,
                   scitbx::af::const_ref<double> const&,
                   scitbx::af::const_ref<bool> const&)
                ) &w_t::d_target_d_all)
           /*
           .def("d_target_d_all",
-               ( f_model_derivative_holder<double>(w_t::*)
+               ( f_model_core_data_derivative_holder<double>(w_t::*)
                  (scitbx::af::const_ref<std::complex<double> > const&,
                   scitbx::af::const_ref<bool> const&)
                ) &w_t::d_target_d_all)
           */
           .def("d_target_d_all",
-               ( f_model_derivative_holder<double>(w_t::*)
+               ( f_model_core_data_derivative_holder<double>(w_t::*)
                  (scitbx::af::const_ref<double> const&,
                   scitbx::af::const_ref<bool> const&)
                  ) &w_t::d_target_d_all)
@@ -150,10 +150,10 @@ namespace cctbx { namespace xray { namespace f_model { namespace boost_python {
           .def("f_part", &w_t::f_part)
           .def("bulk_scale", &w_t::bulk_scale)
           .def("part_scale", &w_t::part_scale)
-          .def("f_model", &w_t::get_f_model)
+          .def("f_model", &w_t::get_f_model_core_data)
           .def("overall_scale", &w_t::overall_scale)
-          .def("fb_cart", &w_t::fb_cart)
-          .def("d_f_model_d_f_atoms", &w_t::d_f_model_d_f_atoms)
+          .def("fu_star", &w_t::fu_star)
+          .def("d_f_model_core_data_d_f_atoms", &w_t::d_f_model_core_data_d_f_atoms)
 
           .def("ustar", (scitbx::sym_mat3<double>(w_t::*)()) &w_t::ustar)
           .def("koverall",(double(w_t::*)()) &w_t::koverall)
@@ -182,10 +182,10 @@ namespace cctbx { namespace xray { namespace f_model { namespace boost_python {
 
   namespace boost_python {
 
-    void wrap_f_model()
+    void wrap_f_model_core_data()
     {
-      f_model::boost_python::f_model_wrappers::wrap();
-      f_model::boost_python::f_model_derivative_holder_wrappers::wrap();
+      f_model_core_data::boost_python::f_model_core_data_wrappers::wrap();
+      f_model_core_data::boost_python::f_model_core_data_derivative_holder_wrappers::wrap();
     }
 
   }
