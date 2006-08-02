@@ -9,6 +9,7 @@
 #include <scitbx/math/eigensystem.h>
 #include <scitbx/math/phase_error.h>
 #include <scitbx/math/resample.h>
+#include <scitbx/math/halton.h>
 #include <boost/python/module.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
@@ -36,6 +37,7 @@ namespace boost_python {
   void wrap_resample();
   void wrap_quadrature();
   void wrap_unimodular_generator();
+  void wrap_halton();
 
 namespace {
 
@@ -161,6 +163,7 @@ namespace {
     wrap_resample();
     wrap_quadrature();
     wrap_unimodular_generator();
+    wrap_halton();
 
     def("time_eigensystem_real_symmetric", time_eigensystem_real_symmetric);
 
