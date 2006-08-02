@@ -824,31 +824,31 @@ namespace cctbx { namespace xray { namespace f_model_core_data {
     }
 
 
-    scitbx::af::shared< cctbx::miller::index<> > hkl_;
-    scitbx::af::shared<std::complex<FloatType> > f_atoms_;
-    scitbx::af::shared<std::complex<FloatType> > f_mask_;
-    scitbx::af::shared<std::complex<FloatType> > f_part_;
+    mutable scitbx::af::shared< cctbx::miller::index<> > hkl_;
+    mutable scitbx::af::shared<std::complex<FloatType> > f_atoms_;
+    mutable scitbx::af::shared<std::complex<FloatType> > f_mask_;
+    mutable scitbx::af::shared<std::complex<FloatType> > f_part_;
 
-    scitbx::af::shared< FloatType > d_star_sq_;
+    mutable scitbx::af::shared< FloatType > d_star_sq_;
 
-    scitbx::af::shared< FloatType > aniso_scale_;
-    scitbx::af::shared< FloatType > log_part_aniso_scale_;
-    scitbx::af::shared< FloatType > bulk_scale_;
-    scitbx::af::shared< FloatType > part_scale_;
+    mutable scitbx::af::shared< FloatType > aniso_scale_;
+    mutable scitbx::af::shared< FloatType > log_part_aniso_scale_;
+    mutable scitbx::af::shared< FloatType > bulk_scale_;
+    mutable scitbx::af::shared< FloatType > part_scale_;
 
-    scitbx::af::shared< std::complex<FloatType> > f_model_core_data_;
+    mutable scitbx::af::shared< std::complex<FloatType> > f_model_core_data_;
 
-    FloatType k_overall_;
-    scitbx::sym_mat3<FloatType> u_star_;
-    FloatType k_sol_;
-    FloatType u_sol_;
-    FloatType k_part_;
-    FloatType u_part_;
+    mutable FloatType k_overall_;
+    mutable scitbx::sym_mat3<FloatType> u_star_;
+    mutable FloatType k_sol_;
+    mutable FloatType u_sol_;
+    mutable FloatType k_part_;
+    mutable FloatType u_part_;
 
-    bool recompute_aniso_;
-    bool recompute_bulk_;
-    bool recompute_part_;
-    bool recompute_total_;
+    mutable bool recompute_aniso_;
+    mutable bool recompute_bulk_;
+    mutable bool recompute_part_;
+    mutable bool recompute_total_;
  };
 
 
