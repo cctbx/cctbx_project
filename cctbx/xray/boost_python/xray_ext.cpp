@@ -15,7 +15,8 @@ namespace cctbx { namespace xray { namespace boost_python {
   void wrap_structure_factors_direct();
   void wrap_structure_factors_simple();
   void wrap_targets();
-  void wrap_f_model();
+  void wrap_f_model_core_data();
+  void wrap_twin_targets();
 
 namespace {
 
@@ -34,7 +35,8 @@ namespace {
     wrap_structure_factors_direct();
     wrap_structure_factors_simple();
     wrap_targets();
-    wrap_f_model();
+    wrap_f_model_core_data(); 
+    wrap_twin_targets();
   }
 
 } // namespace <anonymous>
