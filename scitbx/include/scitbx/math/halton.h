@@ -46,7 +46,7 @@ namespace halton {
     {
       std::vector<FloatType> result;
       for (int ii=0;ii<dimso_;ii++){
-        result.push_back( bases_[ii], n );
+        result.push_back( nth_given_base( bases_[ii], n) );
       }
       return( result  );
     }
