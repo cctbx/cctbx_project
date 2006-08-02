@@ -21,5 +21,6 @@ env.SharedLibrary(
     "resample.cpp",
     "quadrature.cpp",
     "unimodular_generator.cpp",
+    "halton.cpp",
     ]
 )
