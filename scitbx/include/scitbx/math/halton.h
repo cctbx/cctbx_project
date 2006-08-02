@@ -56,7 +56,7 @@ namespace halton {
     {
       scitbx::af::shared< std::vector< FloatType > > result;
       for (long ii=0;ii<n;ii++){
-        result.push_back( nth_all(n) );
+        result.push_back( nth_all(ii) );
       }
       return(result);
     }
