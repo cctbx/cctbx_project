@@ -10,7 +10,7 @@ Specifically:
 where x_n is the n-th halton sequence number.
 If we want to extend that range, take into account jacobians!
 i.e.:
-\int_{-a}^{a} f(y) dy \approx 2*a/n Sum f( (1-2.0*a)*x_n ) 
+\int_{-a}^{a} f(y) dy \approx 2*a/n Sum f( (1-2.0*a)*x_n )
 
 See also
 
@@ -24,14 +24,14 @@ def test_halton_sequence_1(n_points, high_limit=1.0):
   h_gen = sm.halton(1)
   result = 0.0
   for ii in xrange(n_points):
-    x = h_gen.nth_given_base(5, ii)*high_limit 
+    x = h_gen.nth_given_base(5, ii)*high_limit
     y = h_gen.nth_given_base(7, ii)*high_limit
     result += math.exp( float(-x - y) )
     tmp = ( math.exp(-2.0*high_limit) )*( math.exp(high_limit)-1.0 )**2.0
   result /= float(n_points)
   result *= high_limit*high_limit
   tmp = ( math.exp(-2.0*high_limit) )*( math.exp(high_limit)-1.0 )**2.0
-  assert approx_equal( result/tmp, 1.0 ,eps=1e-2) 
+  assert approx_equal( result/tmp, 1.0 ,eps=1e-2)
 
 
 def test_halton_sequence_2(n_points, high_limit=5.0):
@@ -50,7 +50,7 @@ def test_cube():
   start_values= (0.1, 10.0)
   assert approx_equal( start_values, square.next(), eps=1e-4 )
   for ii in xrange(24):
-    square.next() 
+    square.next()
   assert square.state()==25
   square.set_state(0)
   assert approx_equal( start_values, square.next(), eps=1e-4 )
@@ -63,5 +63,3 @@ def run():
 if (__name__ == "__main__"):
   run()
   print "OK"
-
-

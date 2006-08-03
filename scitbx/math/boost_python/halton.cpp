@@ -31,19 +31,19 @@ namespace {
     {
        using namespace boost::python;
        class_<w_t>("square_halton_sampling",no_init)
-	 .def(init<
-	      double const&,
-	      double const&,
-	      double const&,
-	      double const&>(( arg_("low_x"),
-			       arg_("high_x"),
-			       arg_("low_y"),
-			       arg_("high_y") )))
-	 .def("next", &w_t::next )
-	 .def("start", &w_t::start )
-	 .def("state", &w_t::state )
-	 .def("set_state", &w_t::set_state )
-	 ;		     
+         .def(init<
+              double const&,
+              double const&,
+              double const&,
+              double const&>(( arg_("low_x"),
+                               arg_("high_x"),
+                               arg_("low_y"),
+                               arg_("high_y") )))
+         .def("next", &w_t::next )
+         .def("start", &w_t::start )
+         .def("state", &w_t::state )
+         .def("set_state", &w_t::set_state )
+         ;
 
     }
 
