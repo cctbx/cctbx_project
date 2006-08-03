@@ -18,7 +18,7 @@ namespace halton {
     halton( int const& dimension)
     {
       SCITBX_ASSERT(dimension>0);
-      SCITBX_ASSERT(dimension<6); // the sequence is not suited for
+      SCITBX_ASSERT(dimension<=6); // the sequence is not suited for
                                   // high dimensions. The limit 6 is okai ...
       FloatType tmp_primes[] = {2,3,5,7,11,13};
       for (int ii=0;ii<dimension;ii++){
@@ -62,11 +62,66 @@ namespace halton {
     }
 
 
-
-
   protected:
     std::vector<FloatType> bases_;
     int dimso_;
+  };
+
+
+  template<typename FloatType>
+  class square_halton_sampling
+  {
+  public:
+    square_halton_sampling(
+      FloatType const& low_x,
+      FloatType const& high_x,
+      FloatType const& low_y,
+      FloatType const& high_y):
+      low_x_(low_x),
+      low_y_(low_y),
+      high_x_(high_x),
+      high_y_(high_y),
+      halton_(2),
+      state_(0)
+      {}
+
+    scitbx::af::tiny<FloatType,2>
+    next()
+    {
+      std::vector<FloatType> tmp;
+      tmp = halton_.nth_all(state_)  ;
+      state_++;
+      scitbx::af::tiny<FloatType,2> tmp_2(
+        low_x_ + (high_x_ - low_x_)*tmp[0],
+        low_y_ + (high_y_ - low_y_)*tmp[1]);
+      return( tmp_2 );
+    }
+    scitbx::af::tiny<FloatType,2>
+    start()
+    {
+      state_=0;
+      return ( next() );
+
+    }
+
+    int state()
+    {
+      return(state_);
+    }
+
+    int set_state(int n)
+    {
+      SCITBX_ASSERT(n>=0);
+      state_=n;
+    }
+
+  protected:
+    int state_;
+    FloatType low_x_;
+    FloatType low_y_;
+    FloatType high_x_;
+    FloatType high_y_;
+    halton<FloatType> halton_;
   };
 
 
