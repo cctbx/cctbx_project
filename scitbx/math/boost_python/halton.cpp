@@ -23,6 +23,34 @@ namespace {
     }
   };
 
+  struct square_halton_sampling_wrappers
+  {
+    typedef halton::square_halton_sampling<double> w_t;
+    static void
+    wrap()
+    {
+       using namespace boost::python;
+       class_<w_t>("square_halton_sampling",no_init)
+	 .def(init<
+	      double const&,
+	      double const&,
+	      double const&,
+	      double const&>(( arg_("low_x"),
+			       arg_("high_x"),
+			       arg_("low_y"),
+			       arg_("high_y") )))
+	 .def("next", &w_t::next )
+	 .def("start", &w_t::start )
+	 .def("state", &w_t::state )
+	 .def("set_state", &w_t::set_state )
+	 ;		     
+
+    }
+
+  };
+
+
+
 } // namespace <anonymous>
 
 namespace boost_python {
@@ -30,6 +58,7 @@ namespace boost_python {
   void wrap_halton()
   {
     halton_wrappers::wrap();
+    square_halton_sampling_wrappers::wrap();
   }
 
 }}} // namespace scitbx::math::boost_python

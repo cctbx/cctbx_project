@@ -45,14 +45,20 @@ def test_halton_sequence_2(n_points, high_limit=5.0):
   tmp = high_limit*high_limit*4.0*result/(float(n_points))
   assert approx_equal(tmp,1.0,eps=1e-2)
 
-def visualise(n=500):
-  h_gen=sm.halton(2)
-  for ii in xrange(n):
-    print h_gen.nth_given_base(2,ii), h_gen.nth_given_base(3,ii)
+def test_cube():
+  square = sm.square_halton_sampling(0.1, 0.8,  10.0, 80.0)
+  start_values= (0.1, 10.0)
+  assert approx_equal( start_values, square.next(), eps=1e-4 )
+  for ii in xrange(24):
+    square.next() 
+  assert square.state()==25
+  square.set_state(0)
+  assert approx_equal( start_values, square.next(), eps=1e-4 )
 
 def run():
   test_halton_sequence_1(1000,2)
   test_halton_sequence_2(1000,10)
+  test_cube()
 
 if (__name__ == "__main__"):
   run()
