@@ -109,7 +109,7 @@ namespace halton {
       return(state_);
     }
 
-    int set_state(int n)
+    void set_state(int n)
     {
       SCITBX_ASSERT(n>=0);
       state_=n;
