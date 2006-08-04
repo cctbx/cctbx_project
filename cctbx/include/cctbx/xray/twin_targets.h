@@ -107,7 +107,6 @@ namespace cctbx { namespace xray { namespace twin_targets {
         {
         scitbx::af::shared<FloatType> dtda(f_model.size(), 0 );
         scitbx::af::shared<FloatType> dtdb(f_model.size(), 0 );
-        CCTBX_ASSERT ( f_model.size() == calc_ori_lookup_table_.size() );
 
         FloatType aa,ba,ab,bb,obs,calc;
         FloatType t1,dqdaa,dqdba,dqdab,dqdbb;
@@ -146,7 +145,6 @@ namespace cctbx { namespace xray { namespace twin_targets {
       (scitbx::af::const_ref<std::complex<FloatType> > const& f_model){
         scitbx::af::shared<std::complex<FloatType> > result;
 
-        CCTBX_ASSERT ( f_model.size() == calc_ori_lookup_table_.size() );
         scitbx::af::tiny<scitbx::af::shared<FloatType>, 2 > derivs;
         derivs =  d_target_d_ab( f_model );
 
@@ -234,7 +232,6 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
         CCTBX_ASSERT( hkl_obs.size() > 0);
         CCTBX_ASSERT( hkl_obs.size() == f_obs.size() );
         CCTBX_ASSERT( (hkl_obs.size() == w_obs.size()) || (w_obs.size()==0) );
-
         cctbx::miller::lookup_utils::lookup_tensor<FloatType>
           tmp_lookup_object( hkl_calc, space_group, anomalous_flag  );
         int tmp_loc;
@@ -280,59 +277,56 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
         return( result );
       }
 
-
       scitbx::af::tiny<scitbx::af::shared<FloatType>, 2 > d_target_d_ab
       (scitbx::af::const_ref<std::complex<FloatType> > const& f_model) const
         {
-        scitbx::af::shared<FloatType> dtda(f_model.size(), 0 );
-        scitbx::af::shared<FloatType> dtdb(f_model.size(), 0 );
-        CCTBX_ASSERT ( f_model.size() == calc_ori_lookup_table_.size() );
+          scitbx::af::shared<FloatType> dtda(f_model.size(), 0 );
+          scitbx::af::shared<FloatType> dtdb(f_model.size(), 0 );
 
-        FloatType aa,ba,ab,bb,obs,calc;
-        FloatType t1,dqdaa,dqdba,dqdab,dqdbb;
-        FloatType dqdt1, dt1daa,dt1dba,dt1dab,dt1dbb;
+          FloatType aa,ba,ab,bb,obs,calc;
+          FloatType t1,dqdaa,dqdba,dqdab,dqdbb;
+          FloatType dqdt1, dt1daa,dt1dba,dt1dab,dt1dbb;
 
-        long calc_index_a, calc_index_b;
-        for (std::size_t ii=0;ii<f_obs_.size();ii++){
-          calc_index_a = calc_ori_lookup_table_[ ii ];
-          calc_index_b = calc_twin_lookup_table_[ ii ];
-          aa = f_model[calc_index_a].real();
-          ba = f_model[calc_index_a].imag();
-          ab = f_model[calc_index_b].real();
-          bb = f_model[calc_index_b].imag();
-          calc = std::sqrt( (1-alpha_)*(aa*aa + ba*ba) + alpha_*(ab*ab + bb*bb) );
-          obs = f_obs_[ii];
-          t1 = (obs-calc);
-          if (calc>0){
-            dt1daa = -aa*(1-alpha_)/calc;
-            dt1dba = -ba*(1-alpha_)/calc;
-            dt1dab = -ab*(alpha_)/calc;
-            dt1dbb = -bb*(alpha_)/calc;
-            dqdaa = 2.0*t1*dt1daa;
-            dqdba = 2.0*t1*dt1dba;
-            dqdab = 2.0*t1*dt1dab;
-            dqdbb = 2.0*t1*dt1dbb;
-          }else{
-            dqdaa = 0;
-            dqdba = 0;
-            dqdab = 0;
-            dqdbb = 0;
+          long calc_index_a, calc_index_b;
+          for (std::size_t ii=0;ii<f_obs_.size();ii++){
+            calc_index_a = calc_ori_lookup_table_[ ii ];
+            calc_index_b = calc_twin_lookup_table_[ ii ];
+            aa = f_model[calc_index_a].real();
+            ba = f_model[calc_index_a].imag();
+            ab = f_model[calc_index_b].real();
+            bb = f_model[calc_index_b].imag();
+            calc = std::sqrt( (1-alpha_)*(aa*aa + ba*ba) + alpha_*(ab*ab + bb*bb) );
+            obs = f_obs_[ii];
+            t1 = (obs-calc);
+            if (calc>0){
+              dt1daa = -aa*(1-alpha_)/calc;
+              dt1dba = -ba*(1-alpha_)/calc;
+              dt1dab = -ab*(alpha_)/calc;
+              dt1dbb = -bb*(alpha_)/calc;
+              dqdaa = 2.0*t1*dt1daa;
+              dqdba = 2.0*t1*dt1dba;
+              dqdab = 2.0*t1*dt1dab;
+              dqdbb = 2.0*t1*dt1dbb;
+            }else{
+              dqdaa = 0;
+              dqdba = 0;
+              dqdab = 0;
+              dqdbb = 0;
+            }
+            // place them in the correct positions please
+            dtda[ calc_index_a ] += dqdaa;
+            dtdb[ calc_index_a ] += dqdba;
+            dtda[ calc_index_b ] += dqdab;
+            dtdb[ calc_index_b ] += dqdbb;
           }
-          // place them in the correct positions please
-          dtda[ calc_index_a ] += dqdaa;
-          dtdb[ calc_index_a ] += dqdba;
-          dtda[ calc_index_b ] += dqdab;
-          dtdb[ calc_index_b ] += dqdbb;
+          scitbx::af::tiny<scitbx::af::shared<FloatType>,2> result(dtda,dtdb);
+          return( result  );
         }
-        scitbx::af::tiny<scitbx::af::shared<FloatType>,2> result(dtda,dtdb);
-        return( result  );
-      }
 
       scitbx::af::shared< std::complex<FloatType> > d_target_d_fmodel
       (scitbx::af::const_ref<std::complex<FloatType> > const& f_model){
         scitbx::af::shared<std::complex<FloatType> > result;
 
-        CCTBX_ASSERT ( f_model.size() == calc_ori_lookup_table_.size() );
         scitbx::af::tiny<scitbx::af::shared<FloatType>, 2 > derivs;
         derivs =  d_target_d_ab( f_model );
 
