@@ -1556,6 +1556,20 @@ phases are determined on the fly using the given step size.
     sum_we = flex.sum(w * e)
     return sum_we / sum_w * 180/math.pi
 
+  def mean_phase_error(self, phase_source):
+    assert self.data() is not None
+    if (isinstance(phase_source, array)):
+      assert flex.order(phase_source.indices(), self.indices()) == 0
+      phase_source = phase_source.data()
+    p1 = flex.arg(self.data())
+    assert isinstance(phase_source, flex.complex_double) or isinstance(phase_source, flex.double)
+    if (isinstance(phase_source, flex.complex_double)):
+      p2 = flex.arg(phase_source)
+    else:
+      p2 = phase_source
+    e = flex.mean(scitbx.math.phase_error(phi1=p1, phi2=p2))
+    return e * 180/math.pi
+
   def anomalous_differences(self):
     assert self.data() is not None
     assert self.observation_type() is None or self.is_xray_amplitude_array()
