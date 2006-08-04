@@ -361,8 +361,6 @@ class manager(object):
                                           update_f_calc  = True)
         time_fmodel_update_xray_structure += (time.time() - tuxs)
         rworks = flex.double()
-        sites_cart_1 = None
-        sites_cart_2 = None
         if(len(d_mins) == 1):
            n_rigid_body_macro_cycles = 1
         else:
@@ -370,11 +368,7 @@ class manager(object):
         for i_macro_cycle in xrange(n_rigid_body_macro_cycles):
             if(i_macro_cycle != 0): print >> log
             t_rbbss = time.time()
-            max_shift = 0.0
-            if([sites_cart_1, sites_cart_2].count(None) == 0):
-               max_shift = sites_cart_1.max_distance(sites_cart_2)
-            if(max_shift > max_shift_for_bss_update and bss is not None and
-               bulk_solvent_and_scale):
+            if(bss is not None and bulk_solvent_and_scale):
                if(fmodel_copy.f_obs.d_min() > 3.0):
                   save_bss_anisotropic_scaling = bss.anisotropic_scaling
                   bss.anisotropic_scaling=False
@@ -387,7 +381,6 @@ class manager(object):
                if(fmodel_copy.f_obs.d_min() > 3.0):
                   bss.anisotropic_scaling=save_bss_anisotropic_scaling
             time_rigid_body_bulk_solvent_and_scale += (time.time() - t_rbbss)
-            sites_cart_1 = fmodel_copy.xray_structure.sites_cart()
             minimized = rigid_body_minimizer(
                           fmodel                 = fmodel_copy,
                           selections             = selections,
@@ -417,7 +410,6 @@ class manager(object):
                                               update_f_calc  = True,
                                               update_f_mask  = True,
                                               out            = log)
-            sites_cart_2 = fmodel_copy.xray_structure.sites_cart()
             rwork = minimized.fmodel.r_work()
             rfree = minimized.fmodel.r_free()
             assert approx_equal(rwork, fmodel_copy.r_work())

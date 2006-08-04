@@ -21,6 +21,7 @@ from cctbx import adptbx
 from cctbx.development import random_structure
 import libtbx.load_env
 
+
 if (1): # fixed random seed to avoid rare failures
   random.seed(0)
   flex.set_random_seed(0)
@@ -41,12 +42,7 @@ class alpha_beta_parameters(object):
                      fix_scale_for_calc_option = 1.0):
     adopt_init_args(self, locals())
 
-class mask_parameters(object):
-  def __init__(self, solvent_radius = 1.0,
-                     shrink_truncation_radius = 1.0,
-                     grid_step_factor = 4.0,
-                     verbose = -1):
-    adopt_init_args(self, locals())
+mask_parameters = mmtbx.masks.mask_master_params.extract()
 
 #TEST-2-------------------------------------------------LS target
 def data_prep(f_calc, f_mask, ss,
@@ -657,7 +653,7 @@ def scale_from_ml(d_min = 2.2,
         f_obs          = f_calc.array(data=flex.double(f_calc.data().size(),1.0)),
         xray_structure = xray_structure,
         target_name    = "ml",
-        mask_params    = mask_parameters())
+        mask_params    = mask_parameters)
   fmodel.update_xray_structure(xray_structure = xray_structure,
                                update_f_calc = True,
                                update_f_mask = True,
@@ -665,8 +661,8 @@ def scale_from_ml(d_min = 2.2,
   f_mask = masks.bulk_solvent(
     xray_structure=xray_structure,
     grid_step=f_calc.d_min()/4,
-    shrink_truncation_radius=mask_parameters().shrink_truncation_radius,
-    solvent_radius=mask_parameters().solvent_radius).structure_factors(
+    shrink_truncation_radius=mask_parameters.shrink_truncation_radius,
+    solvent_radius=mask_parameters.solvent_radius).structure_factors(
       miller_set=f_calc)
 
 ###

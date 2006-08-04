@@ -220,7 +220,7 @@ def test_1(xray_structure):
                                               target_name       = "ls_wunit_k1",
                                               sf_cos_sin_table  = sf_cos_sin_table,
                                               sf_algorithm      = sf_algorithm)
-                      fmodel_1 = fmodel_.resolution_filter(d_max = d_max_, d_min = d_min_)
+                      fmodel_1 = fmodel_.resolution_filter(d_max = d_max_, d_min = d_min_, update_xray_structure=True)
                       if(fc is not None):
                          fc_ = fc.resolution_filter(d_max = d_max_, d_min = d_min_)
                          fm_ = f_mask.resolution_filter(d_max = d_max_, d_min = d_min_)

@@ -10,9 +10,6 @@
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/return_by_value.hpp>
 
-SCITBX_BOOST_IS_POLYMORPHIC_WORKAROUND(
-  mmtbx::f_model::ls_target_and_kbu_gradients<>)
-
 namespace mmtbx { namespace f_model {
 namespace {
 

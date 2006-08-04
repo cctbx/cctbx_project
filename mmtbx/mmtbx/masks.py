@@ -9,6 +9,20 @@ from scitbx import fftpack
 from scitbx import matrix
 import sys
 import iotbx.xplor.map
+import iotbx.phil
+
+mask_master_params = iotbx.phil.parse("""\
+  solvent_radius = 1.0
+    .type = float
+  shrink_truncation_radius = 1.0
+    .type = float
+  grid_step_factor = 4.0
+    .type = float
+  verbose = 1
+    .type = int
+  mean_shift_for_mask_update = 0.001
+    .type = float
+""")
 
 class bulk_solvent(around_atoms):
 
