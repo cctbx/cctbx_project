@@ -23,10 +23,13 @@ from stdlib import math
 from cctbx import xray
 from cctbx import adptbx
 import boost.python
+import mmtbx
+from libtbx.utils import Sorry
 ext = boost.python.import_ext("mmtbx_f_model_ext")
 
 time_bulk_solvent_and_scale         = 0.0
 time_mask                           = 0.0
+number_mask                         = 0
 time_f_calc_atoms                   = 0.0
 time_alpha_beta                     = 0.0
 time_target                         = 0.0
@@ -51,7 +54,8 @@ def show_times(out = None):
   print >> out, "Timing for general calculations:"
   print >> out, "  bulk_solvent_and_scale         = %-7.2f" % \
                                                     time_bulk_solvent_and_scale
-  print >> out, "  mask                           = %-7.2f" % time_mask
+  print >> out, "  mask                           = %-7.2f number of calls = %3d " % \
+                (time_mask,number_mask)
   print >> out, "  f_calc_atoms                   = %-7.2f" % time_f_calc_atoms
   print >> out, "  alpha_beta                     = %-7.2f" % time_alpha_beta
   print >> out, "  target                         = %-7.2f" % time_target
@@ -113,9 +117,9 @@ class manager(object):
                      xray_structure      = None,
                      f_mask              = None,
                      f_calc              = None,
-                     mask_params         = None):
-
-
+                     mask_params         = None,
+                     trust_xray_structure= False,
+                     update_xray_structure=True):
     self.f_obs               = f_obs
     self.r_free_flags        = r_free_flags
     self.sf_algorithm        = sf_algorithm
@@ -124,7 +128,10 @@ class manager(object):
     self.abcd                = abcd
     self.alpha_beta_params   = alpha_beta_params
     self.xray_structure      = xray_structure
-    self.mask_params         = mask_params
+    if(mask_params is not None):
+       self.mask_params = mask_params
+    else:
+       self.mask_params = mmtbx.masks.mask_master_params.extract()
     zero = flex.complex_double(self.f_obs.data().size(), 0.0)
     assert self.f_obs is not None
     assert self.f_obs.is_real_array()
@@ -156,14 +163,22 @@ class manager(object):
                         k_sol        = k_sol,
                         b_sol        = b_sol)
     else:
-       assert [f_calc, f_mask].count(None) == 2
-       self.update_xray_structure(xray_structure       = self.xray_structure,
-                                  update_f_calc        = True,
-                                  update_f_mask        = True,
-                                  force_update_f_mask  = True,
-                                  k_sol                = k_sol,
-                                  b_sol                = b_sol,
-                                  b_cart               = b_cart)
+       if(not trust_xray_structure):
+          assert [f_calc, f_mask].count(None) == 2
+       if(update_xray_structure):
+          self.update_xray_structure(xray_structure       = self.xray_structure,
+                                     update_f_calc        = True,
+                                     update_f_mask        = True,
+                                     force_update_f_mask  = True,
+                                     k_sol                = k_sol,
+                                     b_sol                = b_sol,
+                                     b_cart               = b_cart)
+       else:
+          self.update_core(f_calc       = f_calc,
+                           f_mask       = f_mask,
+                           b_cart       = b_cart,
+                           k_sol        = k_sol,
+                           b_sol        = b_sol)
     assert len(b_cart) == 6
     if(self.abcd is not None):
        assert self.abcd.indices().all_eq(self.f_obs.indices()) == 1
@@ -217,63 +232,56 @@ class manager(object):
        abcd = self.abcd.deep_copy()
     else:
        abcd = None
-    if(self.xray_structure is not None):
-       xrs_dc = self.xray_structure.deep_copy_scatterers()
-       fc_dc = None
-       fm_dc = None
+    if(self.xray_structure is None):
+       xrs = None
     else:
-       xrs_dc = None
-       fc_dc = self.f_calc().deep_copy()
-       fm_dc = self.f_mask().deep_copy()
-    new=manager(f_obs             = self.f_obs.deep_copy(),
-                r_free_flags      = self.r_free_flags.deep_copy(),
-                b_cart            = self.b_cart(),
-                f_mask            = fm_dc,
-                k_sol             = self.k_sol(),
-                b_sol             = self.b_sol(),
-                sf_algorithm      = self.sf_algorithm,
-                sf_cos_sin_table  = self.sf_cos_sin_table,
-                target_name       = self.target_name,
-                abcd              = abcd,
-                alpha_beta_params = self.alpha_beta_params,
-                xray_structure    = xrs_dc,
-                f_calc            = fc_dc,
-                mask_params       = self.mask_params)
+       xrs = self.xray_structure.deep_copy_scatterers()
+    new=manager(f_obs                 = self.f_obs.deep_copy(),
+                r_free_flags          = self.r_free_flags.deep_copy(),
+                b_cart                = self.b_cart(),
+                f_mask                = self.f_mask().deep_copy(),
+                k_sol                 = self.k_sol(),
+                b_sol                 = self.b_sol(),
+                sf_algorithm          = self.sf_algorithm,
+                sf_cos_sin_table      = self.sf_cos_sin_table,
+                target_name           = self.target_name,
+                abcd                  = abcd,
+                alpha_beta_params     = self.alpha_beta_params,
+                xray_structure        = xrs,
+                f_calc                = self.f_calc().deep_copy(),
+                mask_params           = self.mask_params,
+                trust_xray_structure  = True,
+                update_xray_structure = False)
     new.f_ordered_solvent      = self.f_ordered_solvent.deep_copy()
     new.f_ordered_solvent_dist = self.f_ordered_solvent_dist.deep_copy()
     new.n_ordered_water        = self.n_ordered_water
     new.b_ordered_water        = self.b_ordered_water
     return new
 
-  def resolution_filter(self, d_max = None, d_min = None):
+  def resolution_filter(self, d_max = None, d_min = None,
+                              update_xray_structure = False):
     dc = self.deep_copy()
     if(dc.abcd  is not None):
        abcd = dc.abcd.resolution_filter(d_max, d_min)
     else:
        abcd = None
-    if(dc.xray_structure is not None):
-       xrs_dc = dc.xray_structure.deep_copy_scatterers()
-       fc_dc = None
-       fm_dc = None
-    else:
-       xrs_dc = None
-       fc_dc = dc.f_calc().deep_copy().resolution_filter(d_max, d_min)
-       fm_dc = dc.f_mask().deep_copy().resolution_filter(d_max, d_min)
     new  = manager(
-           f_obs             = dc.f_obs.resolution_filter(d_max, d_min),
-           r_free_flags      = dc.r_free_flags.resolution_filter(d_max, d_min),
-           b_cart            = dc.b_cart(),
-           k_sol             = dc.k_sol(),
-           b_sol             = dc.b_sol(),
-           sf_algorithm      = dc.sf_algorithm,
-           sf_cos_sin_table  = dc.sf_cos_sin_table,
-           target_name       = dc.target_name,
-           abcd              = abcd,
-           alpha_beta_params = dc.alpha_beta_params,
-           xray_structure    = xrs_dc,
-           f_calc            = fc_dc,
-           f_mask            = fm_dc,
-           mask_params       = dc.mask_params)
+       f_obs                 = dc.f_obs.resolution_filter(d_max, d_min),
+       r_free_flags          = dc.r_free_flags.resolution_filter(d_max, d_min),
+       b_cart                = dc.b_cart(),
+       k_sol                 = dc.k_sol(),
+       b_sol                 = dc.b_sol(),
+       sf_algorithm          = dc.sf_algorithm,
+       sf_cos_sin_table      = dc.sf_cos_sin_table,
+       target_name           = dc.target_name,
+       abcd                  = abcd,
+       alpha_beta_params     = dc.alpha_beta_params,
+       xray_structure        = dc.xray_structure,
+       f_calc                = dc.f_calc().resolution_filter(d_max, d_min),
+       f_mask                = dc.f_mask().resolution_filter(d_max, d_min),
+       mask_params           = dc.mask_params,
+       trust_xray_structure  = True,
+       update_xray_structure = update_xray_structure)
     new.f_ordered_solvent      = \
                            dc.f_ordered_solvent.resolution_filter(d_max, d_min)
     new.f_ordered_solvent_dist = \
@@ -342,28 +350,22 @@ class manager(object):
        self.alpha_beta_params.bf_atoms_absent = self.b_ordered_water
 
   def _get_step(self, update_f_ordered_solvent = False):
-    if(self.mask_params is not None):
-       step = self.f_obs.d_min()/self.mask_params.grid_step_factor
-    else:
-       step = self.f_obs.d_min() / 4.0
+    step = self.f_obs.d_min()/self.mask_params.grid_step_factor
     if(step < 0.3): step = 0.3
     step = min(0.8, step)
     if(update_f_ordered_solvent): step = 0.3
     return step
 
-  #def _update_f_mask_flag(self, xray_structure, mean_shift):
-  #  sites_cart_1 = self.xray_structure.sites_cart()
-  #  sites_cart_2 = xray_structure.sites_cart()
-  #  atom_atom_distances = flex.sqrt((sites_cart_1 - sites_cart_2).dot())
-  #  max_shift   = flex.max(atom_atom_distances)
-  #  mean_shift_ = flex.mean(atom_atom_distances)
-  #  update_f_mask = False
-  #  if(mean_shift_ > mean_shift or max_shift > mean_shift_ * 3.0):
-  #     update_f_mask = True
-  #  #return update_f_mask
-  #  print "&"*80
-  #  print flex.mean(flex.abs(self.core.f_mask))
-  #  print
+  def _update_f_mask_flag(self, xray_structure, mean_shift):
+    sites_cart_1 = self.xray_structure.sites_cart()
+    sites_cart_2 = xray_structure.sites_cart()
+    if(sites_cart_1.size() != sites_cart_2.size()): return True
+    atom_atom_distances = flex.sqrt((sites_cart_1 - sites_cart_2).dot())
+    mean_shift_ = flex.mean(atom_atom_distances)
+    update_f_mask = False
+    if(mean_shift_ >= mean_shift):
+       update_f_mask = True
+    return update_f_mask
 
   def update_xray_structure(self,
                             xray_structure,
@@ -375,7 +377,13 @@ class manager(object):
                             k_sol                    = None,
                             b_sol                    = None,
                             b_cart                   = None):
-    #self._update_f_mask_flag(xray_structure, mean_shift = 0.3)
+    if(update_f_mask):
+       if(force_update_f_mask):
+          consider_mask_update = True
+       else:
+          consider_mask_update = self._update_f_mask_flag(
+                      xray_structure = xray_structure,
+                      mean_shift = self.mask_params.mean_shift_for_mask_update)
     self.xray_structure = xray_structure
     step = self._get_step(update_f_ordered_solvent = update_f_ordered_solvent)
     f_calc = None
@@ -398,19 +406,18 @@ class manager(object):
        nu_map = nu_manager.distribution_as_array()
        self.f_ordered_solvent_dist = nu_manager.fcalc_from_distribution()
     f_mask = None
-    if(update_f_mask):
-       global time_mask
+    if(update_f_mask and consider_mask_update):
+       global time_mask, number_mask
+       number_mask += 1
        t1 = time.time()
        if(update_f_ordered_solvent == False): nu_map = None
        bulk_solvent_mask_obj = self.bulk_solvent_mask()
        if (nu_map is not None):
          bulk_solvent_mask_obj.subtract_non_uniform_solvent_region_in_place(
                                                      non_uniform_mask = nu_map)
-       if (out is not None
-           and self.mask_params is not None
-           and self.mask_params.verbose > 0):
-         bulk_solvent_mask_obj.show_summary(out = out)
-       f_mask = bulk_solvent_mask_obj.structure_factors(miller_set=self.f_obs)
+       if(out is not None and self.mask_params.verbose > 0):
+          bulk_solvent_mask_obj.show_summary(out = out)
+       f_mask = bulk_solvent_mask_obj.structure_factors(miller_set= self.f_obs)
        t2 = time.time()
        time_mask += (t2 - t1)
     if([f_calc, f_mask].count(None) == 2): set_core_flag = False
@@ -426,15 +433,11 @@ class manager(object):
 
   def bulk_solvent_mask(self):
     step = self._get_step()
-    if(self.mask_params is not None):
-       result = masks.bulk_solvent(
+    result = masks.bulk_solvent(
           xray_structure           = self.xray_structure,
           grid_step                = step,
           solvent_radius           = self.mask_params.solvent_radius,
           shrink_truncation_radius = self.mask_params.shrink_truncation_radius)
-    else:
-       result = masks.bulk_solvent(xray_structure = self.xray_structure,
-                                   grid_step      = step)
     return result
 
   def update_solvent_and_scale(self, params = None, out = None, verbose=None):
@@ -1174,6 +1177,32 @@ class manager(object):
     return math.sqrt(flex.sum(fo * fo * mul / eps) / \
                      flex.sum(fc * fc * mul / eps) )
 
+  def r_overall_low_high(self, d = 6.0):
+    r_work = self.r_work()
+    d_max, d_min = self.f_obs_w.d_max_min()
+    if(d_max < d): d = d_max
+    if(d_min > d): d = d_min
+    n_low = self.f_obs_w.resolution_filter(d_min = d, d_max = 999.9).data().size()
+    if(n_low > 0):
+       r_work_l = self.r_work(d_min = d, d_max = 999.9)
+    else:
+       r_work_l = None
+    n_high = self.f_obs_w.resolution_filter(d_min = 0.0, d_max = d).data().size()
+    if(n_high > 0):
+       r_work_h = self.r_work(d_min = 0.0, d_max = d)
+    else:
+       r_work_h = None
+    if(r_work_l is not None):
+       r_work_l = r_work_l
+    else:
+       r_work_l = 0.0
+    if(r_work_h is not None):
+       r_work_h = r_work_h
+    else:
+       r_work_h = 0.0
+    return r_work, r_work_l, r_work_h, n_low, n_high
+
+
   def scale_ml(self):
     #assert self.alpha_beta_params.method == "calc"
     alpha, beta = self.alpha_beta_w()
@@ -1244,15 +1273,17 @@ class manager(object):
       return pher
 
   def map_coefficients(self,
-                       map_type          = "k*Fobs-n*Fmodel",
-                       k                 = 1,
-                       n                 = 1,
+                       map_type          = None,
+                       k                 = None,
+                       n                 = None,
                        w1                = None,
                        w2                = None):
     assert map_type in ("k*Fobs-n*Fmodel",
                         "2m*Fobs-D*Fmodel",
-                        "m*Fobs-D*Fmodel",
-                        "k*w1*Fobs-n*w2*Fmodel")
+                        "m*Fobs-D*Fmodel")
+    if(map_type == "k*Fobs-n*Fmodel"):
+       if([k,n].count(None) != 0):
+          raise Sorry("Map coefficients (k and n) must be provided.")
     f_model = self.f_model()
     if(map_type == "k*Fobs-n*Fmodel"):
        d_obs = miller.array(miller_set = f_model,
@@ -1293,8 +1324,6 @@ class manager(object):
       #    print >> f, "%5d%5d%5d %10.3f %10.3f" % (i[0], i[1], i[2], a, b)
       return miller.array(miller_set = f_model,
                           data       = d_obs.data() - d_model)
-    if(map_type == "k*w1*Fobs-n*w2*Fmodel"):
-      raise RuntimeError("Not implemented.")
 
   def electron_density_map(self,
                            map_type          = "k*Fobs-n*Fmodel",
