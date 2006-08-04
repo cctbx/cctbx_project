@@ -110,7 +110,7 @@ namespace cctbx { namespace xray { namespace twin_targets {
 
         FloatType aa,ba,ab,bb,obs,calc;
         FloatType t1,dqdaa,dqdba,dqdab,dqdbb;
-        FloatType dqdt1, dt1daa,dt1dba,dt1dab,dt1dbb;
+        FloatType dt1daa,dt1dba,dt1dab,dt1dbb;
 
         long calc_index_a, calc_index_b;
         for (std::size_t ii=0;ii<i_obs_.size();ii++){
@@ -285,7 +285,7 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
 
           FloatType aa,ba,ab,bb,obs,calc;
           FloatType t1,dqdaa,dqdba,dqdab,dqdbb;
-          FloatType dqdt1, dt1daa,dt1dba,dt1dab,dt1dbb;
+          FloatType dt1daa,dt1dba,dt1dab,dt1dbb;
 
           long calc_index_a, calc_index_b;
           for (std::size_t ii=0;ii<f_obs_.size();ii++){
@@ -405,7 +405,7 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
    {
       cctbx::miller::lookup_utils::lookup_tensor<FloatType> tmp_lookup(hkl_calc, space_group, anomalous_flag);
       obs_in_calc_lookup_ = tmp_lookup.find_hkl( hkl_obs );
-      int ht,kt,lt,tmp_location;
+      int tmp_location;
       for (long ii=0;ii<hkl_obs.size();ii++){
         CCTBX_ASSERT( obs_in_calc_lookup_[ii] >= 0 );
         cctbx::miller::index<> tmp_miller_index=twin_mate(hkl_obs[ii], twin_law);
@@ -422,7 +422,7 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
    {
      CCTBX_ASSERT( obs_size_ == i_obs.size() );
      CCTBX_ASSERT( calc_size_ == f_model.size() );
-     FloatType top=0,bottom=0,tmp_a,tmp_b, i_calc, tmp_location,tmp_twin_location;
+     FloatType top=0,bottom=0,tmp_a,tmp_b, i_calc, tmp_location;
      for (long ii=0;ii<obs_size_;ii++){
        tmp_location = obs_in_calc_lookup_[ii];
        tmp_a  = f_model[ tmp_location ].real();
@@ -455,7 +455,7 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
    {
      CCTBX_ASSERT( obs_size_ == i_obs.size() );
      CCTBX_ASSERT( calc_size_ == f_model.size() );
-     FloatType top=0,bottom=0,tmp_a,tmp_b, i_calc, tmp_location,tmp_twin_location;
+     FloatType top=0,bottom=0,tmp_a,tmp_b, i_calc, tmp_location;
      for (long ii=0;ii<obs_size_;ii++){
        tmp_location = obs_in_calc_lookup_[ii];
        tmp_a  = f_model[ tmp_location ].real();
@@ -488,7 +488,7 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
    {
      CCTBX_ASSERT( obs_size_ == f_obs.size() );
      CCTBX_ASSERT( calc_size_ == f_model.size() );
-     FloatType top=0,bottom=0,tmp_a,tmp_b, f_calc, tmp_location,tmp_twin_location;
+     FloatType top=0,bottom=0,tmp_a,tmp_b, f_calc, tmp_location;
      for (long ii=0;ii<obs_size_;ii++){
        tmp_location = obs_in_calc_lookup_[ii];
        tmp_a  = f_model[ tmp_location ].real();
@@ -521,7 +521,7 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
    {
      CCTBX_ASSERT( obs_size_ == f_obs.size() );
      CCTBX_ASSERT( calc_size_ == f_model.size() );
-     FloatType top=0,bottom=0,tmp_a,tmp_b, f_calc, tmp_location,tmp_twin_location;
+     FloatType top=0,bottom=0,tmp_a,tmp_b, f_calc, tmp_location;
      for (long ii=0;ii<obs_size_;ii++){
        tmp_location = obs_in_calc_lookup_[ii];
        tmp_a  = f_model[ tmp_location ].real();
