@@ -152,6 +152,7 @@ class manager(object):
     self.d_spacings_t = self.d_spacings.select(self.test)
     self.ss = 1./flex.pow2(self.d_spacings) / 4.
     if(self.xray_structure is None):
+       self.xray_structure_mask_cache = None
        assert [f_calc, f_mask].count(None) == 0
        assert f_mask.is_complex_array()
        assert f_calc.is_complex_array()
@@ -163,6 +164,8 @@ class manager(object):
                         k_sol        = k_sol,
                         b_sol        = b_sol)
     else:
+       self.xray_structure_mask_cache = \
+                                     self.xray_structure.deep_copy_scatterers()
        if(not trust_xray_structure):
           assert [f_calc, f_mask].count(None) == 2
        if(update_xray_structure):
@@ -357,15 +360,20 @@ class manager(object):
     return step
 
   def _update_f_mask_flag(self, xray_structure, mean_shift):
-    sites_cart_1 = self.xray_structure.sites_cart()
-    sites_cart_2 = xray_structure.sites_cart()
-    if(sites_cart_1.size() != sites_cart_2.size()): return True
-    atom_atom_distances = flex.sqrt((sites_cart_1 - sites_cart_2).dot())
-    mean_shift_ = flex.mean(atom_atom_distances)
-    update_f_mask = False
-    if(mean_shift_ >= mean_shift):
-       update_f_mask = True
-    return update_f_mask
+    if(self.xray_structure_mask_cache is None):
+       self.xray_structure_mask_cache = xray_structure.deep_copy_scatterers()
+       return True
+    else:
+       sites_cart_1 = self.xray_structure_mask_cache.sites_cart()
+       sites_cart_2 = xray_structure.sites_cart()
+       self.xray_structure_mask_cache = xray_structure.deep_copy_scatterers()
+       if(sites_cart_1.size() != sites_cart_2.size()): return True
+       atom_atom_distances = flex.sqrt((sites_cart_1 - sites_cart_2).dot())
+       mean_shift_ = flex.mean(atom_atom_distances)
+       update_f_mask = False
+       if(mean_shift_ >= mean_shift):
+          update_f_mask = True
+       return update_f_mask
 
   def update_xray_structure(self,
                             xray_structure,

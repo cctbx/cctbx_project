@@ -20,7 +20,7 @@ mask_master_params = iotbx.phil.parse("""\
     .type = float
   verbose = 1
     .type = int
-  mean_shift_for_mask_update = 0.001
+  mean_shift_for_mask_update = 0.1
     .type = float
 """)
 

@@ -406,7 +406,7 @@ def exercise_6(fmodel,
     fmodel.update_solvent_and_scale(params = params)
 
     assert_result(fmodel, k_sol, b_sol, b_cart, f_obs, r_free_flags,
-                  tk = 1.e-5, tb = 1.e-6, tu = 1.e-3)
+                  tk = 1.e-5, tb = 1.e-2, tu = 1.e-3)
     print "OK: ML fix_all 4:    ",format_cpu_times()
 
 def exercise_7(fmodel,
@@ -619,7 +619,7 @@ def exercise_11(fmodel,
         params.apply_back_trace_of_b_cart              = False
         fmodel_copy.update_solvent_and_scale(params = params)
         assert_result(fmodel_copy, k_sol, b_sol, b_cart, f_obs, r_free_flags,
-                      tk = 1.e-4, tb = 0.001, tu = 0.001)
+                      tk = 1.e-4, tb = 0.01, tu = 0.001)
     print "OK: closest to real: ",format_cpu_times()
 
 

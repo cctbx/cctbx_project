@@ -151,7 +151,7 @@ def exercise_1(fmodel,
 
     fmodel.update_solvent_and_scale(params = params)
     assert_result(fmodel, k_sol, b_sol, b_cart, f_obs, r_free_flags,
-                  tk = 0.00001, tb = 0.01, tu = 1.e-3)
+                  tk = 0.0001, tb = 0.1, tu = 1.e-3)
     print "OK: LS minimization: ",format_cpu_times()
 
 def exercise_2(fmodel,
@@ -402,7 +402,7 @@ def exercise_6(fmodel,
 
     fmodel.update_solvent_and_scale(params = params)
     assert_result(fmodel, k_sol, b_sol, b_cart, f_obs, r_free_flags,
-                  tk = 1.e-5, tb = 1.e-6, tu = 1.e-3)
+                  tk = 1.e-5, tb = 1.e-2, tu = 1.e-3)
     print "OK: LS fix_all 4:    ",format_cpu_times()
 
 def exercise_7(fmodel,
