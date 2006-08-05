@@ -272,9 +272,9 @@ def aniso_scale_minimizer(fmodel, symm_constr, alpha=None, beta=None):
          alpha         = alpha_data,
          beta          = beta_data,
          lbfgs_exception_handling_params = lbfgs.exception_handling_parameters(
-                         ignore_line_search_failed_step_at_lower_bound = False,
-                         ignore_line_search_failed_step_at_upper_bound = False,
-                         ignore_line_search_failed_maxfev              = False),
+                         ignore_line_search_failed_step_at_lower_bound = True,
+                         ignore_line_search_failed_step_at_upper_bound = True,
+                         ignore_line_search_failed_maxfev              = True),
          symmetry_constraints_on_b_cart = symm_constr).u_min
 
 
@@ -305,7 +305,9 @@ def k_sol_b_sol_minimizer(fmodel):
          alpha         = alpha_data,
          beta          = beta_data,
          lbfgs_exception_handling_params = lbfgs.exception_handling_parameters(
-                         ignore_line_search_failed_step_at_lower_bound = True),
+                         ignore_line_search_failed_step_at_lower_bound = True,
+                         ignore_line_search_failed_step_at_upper_bound = True,
+                         ignore_line_search_failed_maxfev              = True),
          symmetry_constraints_on_b_cart = False)
   return manager.k_min, manager.b_min
 
@@ -379,6 +381,10 @@ class uaniso_ksol_bsol_scaling_minimizer(object):
     ################################
     self.minimizer = lbfgs.run(
                              target_evaluator = self,
+                             core_params = lbfgs.core_parameters(
+                                               maxfev = 20, #Rfactor strongly depends on this number
+                                               stpmin = 1.e-10,
+                                               stpmax = 1.e10),
                              termination_params = lbfgs.termination_parameters(
                                   min_iterations = min_iterations,
                                   max_iterations = max_iterations),
