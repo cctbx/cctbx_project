@@ -1256,11 +1256,11 @@ class array(set):
     Takes in an intensity array (including negatives) and spits out amplitudes.
     The basic assumption is that
     P(Itrue) \propto exp(-(Itrue-Iobs)**2/(2*s))
-    where Itrue>=0 (positivity constraint on error free amplitudes)
-    for amplitudes, this results in
+    where Itrue>=0 (positivity constraint on error free amplitudes).
+    For amplitudes, this results in
     P(Ftrue) \propto 2 Ftrue exp( -(Ftrue**2-Iobs)**2/(2s) )
-    a Gaussian approximation is fitted to the Mode of this distribution.
-    An analitical solution exists and is implemented below.
+    A Gaussian approximation is fitted to the Mode of this distribution.
+    An analytical solution exists and is implemented below.
     This method does not require any Wilson statistics assumptions.
     """
 
@@ -1273,13 +1273,14 @@ class array(set):
     self = self.select( i_sigi > i_sig_level )
     det = flex.sqrt( self.data()*self.data() + 2.0*self.sigmas()*self.sigmas())
     f_saddle = flex.sqrt( (self.data()+det) / 2.0)
-    s_saddle = (1.0/(f_saddle*f_saddle)) + (self.data() + 3.0*det)/(self.sigmas()*self.sigmas() )
+    s_saddle = (1.0/(f_saddle*f_saddle)) + (self.data() + 3.0*det) \
+             / (self.sigmas()*self.sigmas() )
     s_saddle = flex.sqrt( 1.0/s_saddle )
 
-    result = self.customized_copy(data=f_saddle,
-                                  sigmas=s_saddle).set_observation_type( self.as_amplitude_array() )
+    result = self.customized_copy(
+      data=f_saddle,
+      sigmas=s_saddle).set_observation_type( self.as_amplitude_array() )
     return result
-
 
   def f_sq_as_f(self, tolerance=1.e-6):
     from cctbx import xray
