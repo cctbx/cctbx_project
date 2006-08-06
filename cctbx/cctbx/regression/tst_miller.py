@@ -119,6 +119,20 @@ Completeness with d_max=infinity: 1
     p = s.random_phases_compatible_with_phase_restrictions(deg=deg).data()
     assert s.space_group().is_valid_phase((0,0,1), p[1], deg)
 
+def exersize_enforce_positive_amplitudes():
+  from cctbx.xray import observation_types
+  xs = crystal.symmetry((3,4,5), "P 2 2 2")
+  mi = flex.miller_index(((1,-2,3), (0,0,-4)))
+  data = flex.double((-1,-2))
+  sigmas = flex.double((1,2))
+  ms = miller.set(xs, mi)
+  ma = miller.array(ms)
+  ma = miller.array(ms, data=data, sigmas=sigmas).set_observation_type(
+    observation_types.intensity() )
+  new_ma = ma.enforce_positive_amplitudes()
+  assert new_ma.data()[0]>0
+  assert new_ma.data()[1]>0
+
 def exercise_generate_r_free_flag_on_lat_sym(sg_info):
   for an_flag in [True,False]:
     full_xs = sg_info.any_compatible_crystal_symmetry(volume=50*80*100)
@@ -1175,6 +1189,7 @@ def run(args):
   exercise_set()
   exercise_generate_r_free_flags(use_lattice_symmetry=False, verbose="--verbose" in args)
   exercise_generate_r_free_flags(use_lattice_symmetry=True, verbose="--verbose" in args)
+  exersize_enforce_positive_amplitudes()
   exercise_binner()
   exercise_array()
   exercise_crystal_gridding()
