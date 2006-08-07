@@ -155,6 +155,10 @@ class MARImage(DetectorImageBase):
       rawdata = f.read(4)
       parameters['OMEGA_END'] = struct.unpack(format+'i',rawdata)[0]/1000.
 
+      if rotation_axis == 4: # rotation axis is phi
+        pass
+      elif rotation_axis == 1: # rotation about omega
+        parameters['OSC_START'] = parameters['OMEGA_START']
 
       f.seek(offset+668)
       rawdata = f.read(4)
