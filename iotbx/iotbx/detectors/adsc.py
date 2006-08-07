@@ -6,7 +6,7 @@ class ADSCImage(DetectorImageBase):
     DetectorImageBase.__init__(self,filename)
     self.vendortype = "ADSC"
 
-  def readHeader(self,maxlength=6144): # usually 1024 is OK; 6144 for ID19
+  def readHeader(self,maxlength=12288): # usually 1024 is OK; require 12288 for ID19
     if not self.parameters:
       rawdata = open(self.filename,"rb").read(maxlength)
       headeropen = rawdata.index("{")
