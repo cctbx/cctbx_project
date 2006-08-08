@@ -273,6 +273,23 @@ namespace{
   };
 
 
+  struct quick_log_ei0_wrapper
+  {
+    typedef twinning::quick_log_ei0<double> w_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      class_<w_t>("quick_log_ei0", no_init)
+        .def(init<int const& > ((arg_("n_points"))))
+        .def("log_ei0", &w_t::log_ei0)
+        .def("loop_for_timings", &w_t::loop_for_timings, (
+          arg_("number_of_iterations"), arg_("optimized")))
+        ;
+    }
+  };
+
 
   struct quick_ei0_wrapper
   {

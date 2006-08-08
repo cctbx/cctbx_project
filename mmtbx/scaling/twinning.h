@@ -126,6 +126,88 @@ namespace twinning {
 
 
   template<typename FloatType>
+  class quick_log_ei0{
+  public:
+    quick_log_ei0(int const& n_points)
+    {
+      SCITBX_ASSERT( n_points> 50 );   // we need at least 50 points i think, although 5000 is more realistic.
+      SCITBX_ASSERT( n_points< 50000); // no problems belwo 50000, did not check for larger values. most likely not needed
+      n_ = n_points;                   // a factor 5 in timings is gained over the full computation
+      FloatType t;
+      t_step_ = 1.0/static_cast<FloatType>(n_);
+      t_table_.reserve(n_);
+      log_ei0_table_.reserve(n_);
+      for (int ii=0;ii<n_-1;ii++){
+        t = ii*t_step_;
+        t_table_.push_back( t );
+        t = -t/(1-t) + scitbx::math::bessel::ln_of_i0( t/(1-t) );
+        log_ei0_table_.push_back( t );
+      }
+      t_table_.push_back(1.0);
+      log_ei0_table_.push_back( log_ei0_table_[ n_-2 ]/2.0 ); // i don't want a zero here
+    }
+
+    FloatType log_ei0( FloatType const& x )
+    {
+
+      FloatType t,xx;
+      xx = std::fabs(x);
+      t = xx/(1.0+xx);
+      if (t<0){
+        t=1e-13;
+      }
+      int t_bin_low, t_bin_high;
+      t_bin_low = int( std::floor( t*n_ ) );
+      t_bin_high = t_bin_low+1;
+
+      SCITBX_ASSERT( t >= 0);
+      SCITBX_ASSERT( t_bin_low>= 0);
+      FloatType f0 = log_ei0_table_[ t_bin_low ];
+      FloatType f1 = log_ei0_table_[ t_bin_high ];
+      FloatType t0 = t_table_[t_bin_low];
+      //FloatType t1 = t_table_[t_bin_high];
+      // linear interpolation
+      FloatType alpha = (t-t0)*n_;///(t1-t0);
+      FloatType result = f0*(1-alpha)+alpha*f1;
+      return( result );
+    }
+
+    FloatType
+    loop_for_timings(std::size_t number_of_iterations, bool optimized)
+    {
+      FloatType result = 0;
+      FloatType denom = static_cast<FloatType>(number_of_iterations / 10);
+      if (optimized) {
+        for (std::size_t i=0;i<number_of_iterations;i++) {
+          FloatType x = static_cast<FloatType>(i) / denom;
+          result += log_ei0(x);
+          result -= log_ei0(x);
+        }
+      }
+      else {
+        for (std::size_t i=0;i<number_of_iterations;i++) {
+          FloatType x = static_cast<FloatType>(i) / denom;
+          result += std::exp(-x)*scitbx::math::bessel::ln_of_i0(x);
+          result -= std::exp(-x)*scitbx::math::bessel::ln_of_i0(x);
+        }
+      }
+      return result;
+    }
+
+  protected:
+    scitbx::af::shared<FloatType> t_table_;
+    scitbx::af::shared<FloatType> log_ei0_table_;
+    int n_;
+    FloatType t_step_;
+    FloatType one_over_t_step;
+
+  };
+
+
+
+
+
+  template<typename FloatType>
   class quick_ei0{
   public:
     quick_ei0(int const& n_points)
