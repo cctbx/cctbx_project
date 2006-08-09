@@ -9,11 +9,14 @@
 #include <mmtbx/scaling/absolute_scaling.h>
 #include <mmtbx/scaling/relative_scaling.h>
 #include <mmtbx/scaling/twinning.h>
+#include <mmtbx/scaling/outlier.h>
 
 
 namespace mmtbx { namespace scaling {
 namespace boost_python{
 
+  // outlier detection  
+  void wrap_outlier();
   // twinnning related stuff
   void wrap_twinning();
   // relative scaling
@@ -300,10 +303,10 @@ namespace {
          arg_("kernel_width")));
 
 
-
+    //outlier detection
+    wrap_outlier();
     // twinning related stuff
     wrap_twinning();
-
     // relative scaling
     wrap_local_scaling_moment_based();
     wrap_local_scaling_ls_based();
