@@ -80,8 +80,8 @@ namespace mmtbx { namespace scaling { namespace outlier{
         // the level of the test is the allowed difference
         // in log likelihood gain over the observed log likelihood and
         // that for the posterior mode (the ml estimate of Fobs given
-        // alpha, beta and Fcalc.
-        // When thnigs were Gaussian, a level of 4.5 corresponds to
+        // alpha, beta and Fcalc).
+        // When things were Gaussian, a level of 4.5 corresponds to
         // discarding differences larger than 3 sigma
         //
         scitbx::af::shared<bool> flags;
