@@ -21,4 +21,5 @@ if (not env_etc.no_boost_python):
     source=["scaling_ext.cpp",
             "twinning_bpl.cpp",
             "relative_scaling_bpl.cpp",
+            "outlier_bpl.cpp",
             ])
