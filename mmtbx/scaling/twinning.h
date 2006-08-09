@@ -131,7 +131,7 @@ namespace twinning {
     quick_log_ei0(int const& n_points)
     {
       SCITBX_ASSERT( n_points> 50 );   // we need at least 50 points i think, although 5000 is more realistic.
-      SCITBX_ASSERT( n_points< 50000); // no problems belwo 50000, did not check for larger values. most likely not needed
+      SCITBX_ASSERT( n_points< 50000); // no problems below 50000, did not check for larger values. most likely not needed
       n_ = n_points;                   // a factor 5 in timings is gained over the full computation
       FloatType t;
       t_step_ = 1.0/static_cast<FloatType>(n_);
