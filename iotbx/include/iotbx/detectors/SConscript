@@ -1,0 +1,9 @@
+Import("env_etc")
+if (not env_etc.no_boost_python):
+  Import("env_iotbx_boost_python_ext")
+  env = env_iotbx_boost_python_ext.Copy()
+  env.Append(LIBPATH=["#lib"])
+  env.Prepend(LIBS=["scitbx_boost_python"])
+  env.SharedLibrary(
+    target="#lib/iotbx_detectors_bruker_ext",
+    source=["bruker_ext.cpp", "bruker.cpp"])
