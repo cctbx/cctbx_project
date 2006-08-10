@@ -4,3 +4,8 @@ env = env_iotbx_boost_python_ext.Copy()
 env.SharedLibrary(target="#lib/iotbx_detectors_ext", source=[
   "detectors_ext.cpp",
 ])
+
+env.SharedLibrary(target="#lib/iotbx_detectors_bruker_ext", source=[
+  "bruker_ext.cpp","bruker.cpp",
+])
+
