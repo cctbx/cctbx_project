@@ -964,8 +964,11 @@ class ml_murray_rust_with_ncs(object):
     self.x = flex.double([-3])
     if start_alpha is not None:
       if start_alpha > 0.45:
-        tmp = -math.log(self.twin_cap/start_alpha-1.0)
-        self.x = flex.double([tmp])
+         start_alpha = 0.40
+      if start_alpha <=0 :
+         start_alpha = 0.05
+      tmp = -math.log(self.twin_cap/start_alpha-1.0)
+      self.x = flex.double([tmp])
 
     for ii in xrange(n_bins):
       self.x.append( -1.0 - ii/20.0 )
