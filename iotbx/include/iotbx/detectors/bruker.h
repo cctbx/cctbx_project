@@ -1,5 +1,6 @@
 #ifndef IOTBX_DETECTORS_BRUKER_H
 #define IOTBX_DETECTORS_BRUKER_H
+#include <scitbx/array_family/boost_python/flex_fwd.h>
 
 /* brukccd.c from ccd2ipf.c, Stan Swanson, TAMU, 25 April 2006 */
 /* proteus.c conversion 033.26 */
@@ -9,7 +10,6 @@
 # include <string.h>
 
 #include <vector>
-#include <scitbx/array_family/boost_python/flex_fwd.h>
 #include <scitbx/array_family/flex_types.h>
 
 namespace iotbx { namespace detectors {
