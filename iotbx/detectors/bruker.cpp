@@ -29,15 +29,13 @@ int readline(char *ch, int max)
   } /* for */  ch[max] = z; return max; }
 
 int iotbx::detectors::bruker::v_read(const char *argv )
-{ int i,j,k,ku,ko,k4, err,m,n, hist[100], sump, summ;
-  int swab,ii,jj,kk,jx,ky,mm,nn, nhoriz, nvert, hoff,max,thresh;
+{ int i,j,k,ku,ko,k4, err,m,n;
+  int swab,ii,jj,kk,jx,ky,mm,nn, nhoriz, nvert,thresh;
   int nunder=0, n2over=0, n4over=0, lendata=1, lenunder=1,
     nrows=1024, ncols=1024, zeroff=0, form=0,hdrblks=15,hdrlines=96;
-        short s,sptp[3000], sptm[3000], delspt[3000];
         unsigned short bs;  unsigned char uc;
         /*      int bx = 1492, by = 1666 */
-        int  pd, md, pdo, mdo, zz;
-        double dsum, esum, rat;
+
       union { unsigned char b[2];  short s; unsigned short us; } u;
       union { unsigned char b[4];  int i; unsigned int ui; } u4;
   //NKS variables in Swanson's main moved to bruker header
@@ -45,7 +43,7 @@ int iotbx::detectors::bruker::v_read(const char *argv )
     angles[5],fullscale,d,
     cx1024,cy1024,cx512,cy512,pixpercm;
   int ixis,verbo=0,debug=0,qunder=0,nsat,offset=0;
-FILE *fi, *fc, *fo; char filename[60],infile[80],line[80],dettype[30];
+FILE *fi, *fc, *fo; char filename[60],line[80],dettype[30];
 
   //NKS removed input from command line
 
@@ -69,9 +67,6 @@ if (debug) {
     if (n>0) {  fc=fopen(filename,"w");
       if (fc==NULL) { printf(" open error (header out) \n");  }; };
 } /* if (debug) */
-
-  pd = md = pdo = mdo = zz = 0;   dsum = esum = 0.0;
-  for (j=0; j<100; j++) hist[j] = 0;
 
   /* look for format info, etc. in header lines... */
   nhoriz = nvert = 1024;  swab = -1;
@@ -308,7 +303,7 @@ while (nn>0) { if (nn<512) mm = nn; nn -= 512; ii=0;
    if (fi) err = fclose(fi);
    if (fc) err = fclose(fc);
    if (fo) err = fclose(fo);
-return(0);
+return(err);
 
 } /* main() */
 
