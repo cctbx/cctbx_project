@@ -54,8 +54,10 @@ namespace mmtbx { namespace scaling { namespace outlier{
           f_obs_posterior_mode_.push_back(0.0);
           f_obs_posterior_mode_log_likelihood_.push_back(0.0);
           f_obs_posterior_mode_snd_der_.push_back(0.0);
+          f_obs_fst_der_.push_back( fst_der(f_obs_[ii], ii)  );
+          f_obs_snd_der_.push_back( snd_der(f_obs_[ii], ii)  );
           // get the stuff please
-          newton_search(ii, 1.20, 1e-13, 1000);
+          newton_search(ii, 1.00, 1e-5, 5000);
         }
       }
 
@@ -74,14 +76,31 @@ namespace mmtbx { namespace scaling { namespace outlier{
         return ( f_obs_posterior_mode_);
       }
 
+      scitbx::af::shared<FloatType>
+      posterior_mode_snd_der(){
+        return(f_obs_posterior_mode_snd_der_);
+      }
+
+      scitbx::af::shared<FloatType>
+      f_obs_snd_der(){
+        return(f_obs_snd_der_);
+      }
+
+      scitbx::af::shared<FloatType>
+      f_obs_fst_der(){
+        return(f_obs_fst_der_);
+      }
+
+
+
       scitbx::af::shared<bool>
       flag_potential_outliers( FloatType level)
       {
         // the level of the test is the allowed difference
         // in log likelihood gain over the observed log likelihood and
         // that for the posterior mode (the ml estimate of Fobs given
-        // alpha, beta and Fcalc).
-        // When things were Gaussian, a level of 4.5 corresponds to
+        // alpha, beta and Fcalc.
+        // When thnigs were Gaussian, a level of 4.5 corresponds to
         // discarding differences larger than 3 sigma
         //
         scitbx::af::shared<bool> flags;
@@ -132,11 +151,11 @@ namespace mmtbx { namespace scaling { namespace outlier{
 
           // I don't want to overstep
           // allow a maximumstep size of
-          if (step>0.1*start_f_bar){
-            step=0.1*start_f_bar;
+          if (step>0.5*start_f_bar){
+            step=0.5*start_f_bar;
           }
-          if (step < -0.1*start_f_bar){
-            step=-0.1*start_f_bar;
+          if (step < -0.5*start_f_bar){
+            step=-0.5*start_f_bar;
           }
 
           f_bar = f_bar +step;
@@ -149,12 +168,14 @@ namespace mmtbx { namespace scaling { namespace outlier{
             converged=true;
           }
           if (count >= max_iter){
+            // std::cout << " PRELIMINAIRY CONVERGENCE   "<< delta << std::endl;
             converged=true;
           }
           count++;
           //std::cout << count <<" " << f_bar << " " << funct << " " << grad << "  " << -funct/grad << std::endl;
         }
 
+        grad  = snd_der(f_bar, ii);
         f_obs_posterior_mode_log_likelihood_[ii]=calc_log_likelihood(f_bar,ii);
         f_obs_posterior_mode_[ii]=f_bar;
         f_obs_posterior_mode_snd_der_[ii]=grad;
@@ -198,13 +219,13 @@ namespace mmtbx { namespace scaling { namespace outlier{
       calc_fst_der_centric( FloatType fo, int ii )
       {
         FloatType result;
-        FloatType eb=2.0*epsilon_[ii]*beta_[ii] + s_obs_[ii]*s_obs_[ii];
+        FloatType eb=epsilon_[ii]*beta_[ii];
         if (fo<=1e-13){
           fo=1e-13;
         }
-        FloatType x = 2.0*alpha_[ii]*fo*f_calc_[ii]/(eb);
-        FloatType m = std::tanh(x)*2.0*alpha_[ii]*f_calc_[ii]/(eb);;
-        result = -2.0*fo/eb + m;
+        FloatType x = alpha_[ii]*fo*f_calc_[ii]/(eb);
+        FloatType m = std::tanh(x)*alpha_[ii]*f_calc_[ii]/(eb);;
+        result = -fo/eb + m;
         return (result);
       }
 
@@ -222,24 +243,22 @@ namespace mmtbx { namespace scaling { namespace outlier{
         FloatType m = scitbx::math::bessel::i1_over_i0(x);
 
         result = - (1.0/(fo*fo))
-                 - (fo/eb)
-                 - (2*alpha_[ii]/eb)*m
-                 - (f_calc_[ii]*4.0*alpha_[ii]*alpha_[ii]/(eb*eb))*
-                      (1.0-m/x-m*m);
+                 - (2.0/eb)
+                 + (f_calc_[ii]*4.0*alpha_[ii]*alpha_[ii]/(eb*eb))*
+          (1.0-m/(2.0*x)-m*m);
         return (result);
       }
 
       inline FloatType calc_snd_der_centric( FloatType fo, int ii )
       {
-        FloatType result;
-        FloatType eb=2.0*epsilon_[ii]*beta_[ii] + s_obs_[ii]*s_obs_[ii];
+        FloatType result=0;
+        FloatType eb=epsilon_[ii]*beta_[ii];
         if (fo<=1e-13){
           fo=1e-13;
         }
-        FloatType x = 2.0*alpha_[ii]*fo*f_calc_[ii]/(eb);
+        FloatType x = alpha_[ii]*fo*f_calc_[ii]/(eb);
         FloatType m = std::tanh( x );
-        result = -(2.0/(eb)) -(2.0*alpha_[ii]*f_calc_[ii]/eb)*
-          (2.0*alpha_[ii]*f_calc_[ii]/eb)*(1-m*m);
+        result = -1.0/eb + alpha_[ii]*alpha_[ii]*f_calc_[ii]*f_calc_[ii]*(1.0-m*m)/(eb*eb);
         return (result);
       }
 
@@ -273,13 +292,13 @@ namespace mmtbx { namespace scaling { namespace outlier{
 
       inline FloatType centric_log_likelihood(FloatType fo, int ii){
         FloatType result;
-        FloatType eb=2.0*epsilon_[ii]*beta_[ii] + s_obs_[ii]*s_obs_[ii];
+        FloatType eb=epsilon_[ii]*beta_[ii];
         if (fo<=1e-13){
           fo=1e-13;
         }
-        FloatType x=2.0*alpha_[ii]*fo*f_calc_[ii]/eb;
-        FloatType exparg = (fo*fo + alpha_[ii]*alpha_[ii]*f_calc_[ii]*f_calc_[ii])/eb;
-        result = 0.5*std::log(2.0)-0.5*std::log(scitbx::constants::pi) - 0.5*std::log(0.5*eb)
+        FloatType x=alpha_[ii]*fo*f_calc_[ii]/eb;
+        FloatType exparg = (fo*fo + alpha_[ii]*alpha_[ii]*f_calc_[ii]*f_calc_[ii])/(2.0*eb);
+        result = 0.5*std::log(2.0)-0.5*std::log(scitbx::constants::pi) - 0.5*std::log(eb)
           -exparg + std::log(std::cosh(x));
         return(result);
       }
@@ -299,6 +318,8 @@ namespace mmtbx { namespace scaling { namespace outlier{
       scitbx::af::shared<FloatType> f_obs_posterior_mode_;
       scitbx::af::shared<FloatType> f_obs_posterior_mode_log_likelihood_;
       scitbx::af::shared<FloatType> f_obs_posterior_mode_snd_der_;
+      scitbx::af::shared<FloatType> f_obs_fst_der_;
+      scitbx::af::shared<FloatType> f_obs_snd_der_;
       mmtbx::scaling::twinning::quick_log_ei0<FloatType> log_ei0_;
 
   };
