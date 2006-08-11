@@ -1,13 +1,13 @@
+#include <iotbx/detectors/bruker.h>
 #include <stdexcept>
 #include <string>
 #include <iostream>
-#include <iotbx/detectors/bruker.h>
 
 iotbx::detectors::bruker::bruker(std::string filename):
   ccdata( 1024, std::vector<int>(1024,0) ),
-  v_ccbyte( 4096, 0),
-  v_ccshort( 4096, 0),
-  v_ccint( 4096, 0)
+  v_ccbyte( 4096, (unsigned char)0),
+  v_ccshort( 4096, (unsigned short)0),
+  v_ccint( 4096, (unsigned int)0)
 {
   v_alloc();
   v_read(filename.c_str());
