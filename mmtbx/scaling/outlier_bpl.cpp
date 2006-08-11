@@ -46,7 +46,10 @@ namespace{
         .def("log_likelihood", &w_t::log_likelihood)
         .def("posterior_mode_log_likelihood", &w_t::posterior_mode_log_likelihood)
         .def("posterior_mode", &w_t::posterior_mode)
+        .def("posterior_mode_snd_der", &w_t::posterior_mode_snd_der)
         .def("flag_potential_outliers", &w_t::flag_potential_outliers)
+        .def("f_obs_fst_der", &w_t::f_obs_fst_der)
+        .def("f_obs_snd_der", &w_t::f_obs_snd_der)
         ;
     }
 
