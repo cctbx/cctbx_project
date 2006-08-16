@@ -200,18 +200,18 @@ Wilson distribution.
     eps=1.0e-10
     zeros = flex.bool( ll_gain < eps )
     ll_gain = ll_gain.set_selected( zeros, eps )
-    ll_gain = self.miller_obs.customized_copy( data = ll_gain )
     #use the ll_gain to computew p values
     p_values = ll_gain*2.0
     p_values = erf( flex.sqrt(p_values/2.0) )
     p_values = 1.0 - flex.pow( p_values, float(p_values.size()) )
+
 
     # select on likelihood
     # flags = f_model_outlier_object.flag_potential_outliers( level/2.0  )
     # or it mihgt be better to do it on p value
     flags = flex.bool(p_values > level )
     flags = self.miller_obs.customized_copy( data = flags )
-
+    ll_gain = self.miller_obs.customized_copy( data = ll_gain )
     p_values = self.miller_obs.customized_copy( data = p_values )
     f_model = self.miller_obs.customized_copy( data = flex.abs(f_model.data() ) )
 
