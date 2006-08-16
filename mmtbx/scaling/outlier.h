@@ -8,6 +8,7 @@
 #include <cctbx/miller/sym_equiv.h>
 #include <scitbx/math/chebyshev.h>
 #include <mmtbx/scaling/twinning.h>
+#include <scitbx/math/quadrature.h>
 
 
 namespace mmtbx { namespace scaling { namespace outlier{
@@ -16,15 +17,22 @@ namespace mmtbx { namespace scaling { namespace outlier{
   template <typename FloatType>
   class likelihood_ratio_outlier_test{
   public:
-    likelihood_ratio_outlier_test(scitbx::af::const_ref<FloatType> const& f_obs,
-                                  scitbx::af::const_ref<FloatType> const& s_obs,
-                                  scitbx::af::const_ref<FloatType> const& f_calc,
-                                  scitbx::af::const_ref<FloatType> const& epsilon,
-                                  scitbx::af::const_ref<bool> const& centric,
-                                  scitbx::af::const_ref<FloatType> const& alpha,
-                                  scitbx::af::const_ref<FloatType> const& beta ):
+    likelihood_ratio_outlier_test(
+          scitbx::af::const_ref<FloatType> const& f_obs,
+          scitbx::af::const_ref<FloatType> const& s_obs,
+          scitbx::af::const_ref<FloatType> const& f_calc,
+          scitbx::af::const_ref<FloatType> const& epsilon,
+          scitbx::af::const_ref<bool> const& centric,
+          scitbx::af::const_ref<FloatType> const& alpha,
+          scitbx::af::const_ref<FloatType> const& beta ):
       log_ei0_(40000) // the exponentiated besseli0 function (  exp[-x]Io[x]  )
       {
+        /*
+        scitbx::math::quadrature::gauss_legendre_engine<FloatType>
+          gauss_legendre_(15);
+        x_ = gauss_legendre_.x();
+        w_ = gauss_legendre_.w();
+        */
         // make sure we have all equal sized arrays.
         SCITBX_ASSERT( f_obs.size() > 0 );
         SCITBX_ASSERT( f_calc.size() == f_obs.size() );
@@ -50,7 +58,8 @@ namespace mmtbx { namespace scaling { namespace outlier{
           alpha_.push_back( alpha[ii]  );
           beta_.push_back( beta[ii] );
           // push back some zero's please
-          f_obs_log_likelihood_.push_back(calc_log_likelihood(f_obs_[ii],ii) );
+          f_obs_log_likelihood_.push_back(
+            calc_log_likelihood(f_obs_[ii], ii) );
           f_obs_posterior_mode_.push_back(0.0);
           f_obs_posterior_mode_log_likelihood_.push_back(0.0);
           f_obs_posterior_mode_snd_der_.push_back(0.0);
@@ -91,8 +100,6 @@ namespace mmtbx { namespace scaling { namespace outlier{
         return(f_obs_fst_der_);
       }
 
-
-
       scitbx::af::shared<bool>
       flag_potential_outliers( FloatType level)
       {
@@ -106,7 +113,8 @@ namespace mmtbx { namespace scaling { namespace outlier{
         scitbx::af::shared<bool> flags;
         FloatType delta;
         for (int ii=0;ii<f_calc_.size();ii++){
-           delta = f_obs_posterior_mode_log_likelihood_[ii] - f_obs_log_likelihood_[ii];
+           delta = f_obs_posterior_mode_log_likelihood_[ii] -
+                   f_obs_log_likelihood_[ii];
            if (delta>level){
              flags.push_back( false );
            } else {
@@ -115,6 +123,7 @@ namespace mmtbx { namespace scaling { namespace outlier{
         }
         return( flags );
       }
+
 
   protected:
       // newton root finding
@@ -320,7 +329,13 @@ namespace mmtbx { namespace scaling { namespace outlier{
       scitbx::af::shared<FloatType> f_obs_posterior_mode_snd_der_;
       scitbx::af::shared<FloatType> f_obs_fst_der_;
       scitbx::af::shared<FloatType> f_obs_snd_der_;
+
+      //scitbx::af::shared<FloatType> f_obs_expected_log_likelihood_;
+
+
       mmtbx::scaling::twinning::quick_log_ei0<FloatType> log_ei0_;
+      //scitbx::af::shared<FloatType> x_;
+      //scitbx::af::shared<FloatType> w_;
 
   };
 
