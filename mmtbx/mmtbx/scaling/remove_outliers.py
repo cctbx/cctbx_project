@@ -2,7 +2,7 @@ import math
 from cctbx import maptbx
 from cctbx import miller
 from cctbx import crystal
-from cctbx import uctbx 
+from cctbx import uctbx
 from cctbx import sgtbx
 from cctbx import xray
 from cctbx import eltbx
@@ -18,7 +18,7 @@ import iotbx.phil
 from iotbx import reflection_file_reader
 from iotbx import reflection_file_utils
 from iotbx import crystal_symmetry_from_any
-from iotbx.pdb import xray_structure 
+from iotbx.pdb import xray_structure
 import mmtbx.scaling
 from mmtbx.scaling import absolute_scaling
 from mmtbx.scaling import matthews, twin_analyses
@@ -88,7 +88,7 @@ outlier_utils{
     model{
       file_name=None
       .type=path
-    }    
+    }
   }
   outlier_detection{
     protocol=basic *extreme model
@@ -98,7 +98,7 @@ outlier_utils{
         level=1E-6
         .type=float
       }
-      extreme_wilson{      
+      extreme_wilson{
         level=1E-1
        .type=float
       }
@@ -106,7 +106,7 @@ outlier_utils{
         level=5E-1
         .type=float
       }
-    }    
+    }
   }
   additional_parameters{
     free_flag_generation{
@@ -120,12 +120,12 @@ outlier_utils{
       .type=bool
     }
   }
-  
+
   output{
     logfile=outlier_tools.log
     .type=str
     hklout=None
-    .type=path    
+    .type=path
   }
 }
 """)
@@ -134,7 +134,7 @@ def print_help():
   print "No help available yet"
 
 
-def outlier_utils(args):
+def run(command_name, args):
   if len(args)==0:
     print_help()
   elif ( "--help" in args ):
@@ -163,7 +163,7 @@ def outlier_utils(args):
       if arg=="--quiet":
         arg_is_processed = True
       if (os.path.isfile(arg)): ## is this a file name?
-        # check if it is a phil file      
+        # check if it is a phil file
         try:
           command_line_params = iotbx.phil.parse(file_name=arg)
           if command_line_params is not None:
@@ -179,7 +179,7 @@ def outlier_utils(args):
             arg_is_processed = True
         except KeyboardInterrupt: raise
         except : pass
-        
+
       if not arg_is_processed:
         print >> log, "##----------------------------------------------##"
         print >> log, "## Unknown file or keyword:", arg
@@ -189,31 +189,31 @@ def outlier_utils(args):
 
     effective_params = master_params.fetch(sources=phil_objects)
     params = effective_params.extract()
-    
+
     # now get the unit cell from the pdb file
 
     hkl_xs = None
     if params.outlier_utils.input.xray_data.file_name is not None:
       hkl_xs = crystal_symmetry_from_any.extract_from(
-        file_name=params.outlier_utils.input.xray_data.file_name)    
+        file_name=params.outlier_utils.input.xray_data.file_name)
     pdb_xs = None
     if params.outlier_utils.input.model.file_name is not None:
       pdb_xs = crystal_symmetry_from_any.extract_from(
         file_name=params.outlier_utils.input.model.file_name)
-      
+
     phil_xs = crystal.symmetry(
       unit_cell=params.outlier_utils.input.unit_cell,
       space_group_info=params.outlier_utils.input.space_group  )
 
-    
+
     combined_xs = select_crystal_symmetry(
-      None,phil_xs, [pdb_xs],[hkl_xs])    
- 
+      None,phil_xs, [pdb_xs],[hkl_xs])
+
     # inject the unit cell and symmetry in the phil scope please
     params.outlier_utils.input.unit_cell = combined_xs.unit_cell()
     params.outlier_utils.input.space_group = \
-      sgtbx.space_group_info( group = combined_xs.space_group() )  
-    
+      sgtbx.space_group_info( group = combined_xs.space_group() )
+
     new_params =  master_params.format(python_object=params)
     new_params.show(out=log)
 
@@ -225,9 +225,9 @@ def outlier_utils(args):
       raise Sorry("Xray data not specified")
     if params.outlier_utils.input.model.file_name is None:
       print "PDB file not specified. Basic wilson outlier rejections only."
-    
-      
-    
+
+
+
     #-----------------------------------------------------------
     #
     # step 1: read in the reflection file
@@ -235,14 +235,14 @@ def outlier_utils(args):
     phil_xs = crystal.symmetry(
       unit_cell=params.outlier_utils.input.unit_cell,
       space_group_info=params.outlier_utils.input.space_group  )
-    
+
     xray_data_server =  reflection_file_utils.reflection_file_server(
       crystal_symmetry = phil_xs,
       force_symmetry = True,
       reflection_files=[])
-    
+
     miller_array = None
-    
+
     miller_array = xray_data_server.get_xray_data(
       file_name = params.outlier_utils.input.xray_data.file_name,
       labels = params.outlier_utils.input.xray_data.obs_labels,
@@ -250,7 +250,7 @@ def outlier_utils(args):
       parameter_scope = 'outlier_utils.input.xray_data',
       parameter_name = 'obs_labels'
       )
-        
+
     info = miller_array.info()
 
     miller_array = miller_array.map_to_asu()
@@ -263,9 +263,9 @@ def outlier_utils(args):
     if  miller_array.sigmas() is not None:
       miller_array = miller_array.select(
         miller_array.sigmas() > 0 )
-    
+
     if (miller_array.is_xray_intensity_array()):
-      miller_array = miller_array.f_sq_as_f()      
+      miller_array = miller_array.f_sq_as_f()
     elif (miller_array.is_complex_array()):
       miller_array = abs(miller_array)
 
@@ -276,7 +276,7 @@ def outlier_utils(args):
         miller_array )
       merged_anomalous=True
     miller_array = miller_array.map_to_asu()
-    
+
     # get the free reflections please
     free_flags = None
     if params.outlier_utils.input.xray_data.free_flags is None:
@@ -299,16 +299,16 @@ def outlier_utils(args):
         parameter_name = 'free_flags'
         )
 
-      if miller_array.anomalous_flag():
-        free_flags = free_flags.miller_array.average_bijvoet_mates()
-        merged_anomalous=True      
+      if free_flags.anomalous_flag():
+        free_flags = free_flags.average_bijvoet_mates()
+        merged_anomalous=True
       free_flags = free_flags.common_set( miller_array  )
       free_flags = free_flags.customized_copy(
         data = flex.bool( free_flags.data()== 1 ))
       free_flags = free_flags.common_set( miller_array ).map_to_asu()
       free_flags, miller_array = free_flags.common_sets( miller_array  )
-      
-    
+
+
     print >> log
     print >> log, "Summary info of observed data"
     print >> log, "============================="
@@ -316,7 +316,7 @@ def outlier_utils(args):
     if merged_anomalous:
       print >> log, "For outlier detection purposes, the Bijvoet pairs have been merged."
     print >> log
-    
+
     print >> log, "Constructing an outlier manager"
     print >> log, "==============================="
     print >> log
@@ -335,8 +335,8 @@ def outlier_utils(args):
     extreme_array = outlier_manager.extreme_wilson_outliers(
       p_extreme_wilson = params.outlier_utils.outlier_detection.parameters.\
                          extreme_wilson.level,
-      return_array = True) 
-    
+      return_array = True)
+
     #----------------------------------------------------------------
     # Step 2: get an xray structure from the PDB file
     #
@@ -352,29 +352,29 @@ def outlier_utils(args):
 
 
       # please make an f_model object for bulk solvent scaling etc etc
-    
+
       f_model_object = f_model.manager(
         f_obs = miller_array,
         r_free_flags = free_flags,
-        xray_structure = model )    
+        xray_structure = model )
       print >> log, "Bulk solvent scaling of the data"
       print >> log, "================================"
       print >> log, "Maximum likelihood bulk solvent scaling."
-      print >> log    
+      print >> log
       f_model_object.update_solvent_and_scale(out=log)
-      b_cart = f_model_object.b_cart() 
+      b_cart = f_model_object.b_cart()
       k_sol = f_model_object.k_sol()
-      b_sol = f_model_object.b_sol()    
+      b_sol = f_model_object.b_sol()
       ls_scale = 1.0/f_model_object.scale_k1()
       print >> log
       print >> log, "The observed data is scaled by a multiplier"
       print >> log, "equal to %5.2e"%(ls_scale)
       print >> log, "This brings the data to an approximate absolute scale."
-      
+
       # update the outlier object please
       outlier_manager.apply_scale_to_original_data( ls_scale)
       free_flags = free_flags.common_set( outlier_manager.miller_obs )
-      
+
       # redo the f model object please
       f_model_object = f_model.manager(
         f_obs = outlier_manager.miller_obs,
@@ -383,13 +383,13 @@ def outlier_utils(args):
       # reset the bulk solvent parameters please
       f_model_object.update_core(b_cart=b_cart,
                                  k_sol=k_sol,
-                                 b_sol=b_sol)    
+                                 b_sol=b_sol)
       f_model_data = f_model_object.f_model()
 
-      plot_out = StringIO()      
+      plot_out = StringIO()
       # get alphas and betas please
       alpha,beta = f_model_object.alpha_beta()
-      # get suspected outliers    
+      # get suspected outliers
       model_based_array = outlier_manager.model_based_outliers(
         f_model_data,
         alpha,
@@ -402,7 +402,7 @@ def outlier_utils(args):
     if params.outlier_utils.output.hklout is not None:
       if params.outlier_utils.outlier_detection.protocol == "model":
         if params.outlier_utils.input.model.file_name == None:
-          print >> log, "Model based rejections requested. No model was supplied." 
+          print >> log, "Model based rejections requested. No model was supplied."
           print >> log, "Switching to writing out rejections based on extreme value Wilson statistics."
           params.outlier_utils.outlier_detection.protocol="extreme"
 
@@ -413,13 +413,13 @@ def outlier_utils(args):
         print >> log, "protocol will be written out."
         output_array = basic_array
         new_set_of_free_flags = free_flags.common_set( basic_array )
-        
+
       if params.outlier_utils.outlier_detection.protocol == "extreme":
         print >> log, "Outliers found by the extreme value wilson statistics"
         print >> log, "protocol will be written out."
         output_array = extreme_array
         new_set_of_free_flags = free_flags.common_set( extreme_array )
-        
+
       if params.outlier_utils.outlier_detection.protocol == "model":
         print >> log, "Outliers found by the model based"
         print >> log, "protocol will be written out to the file:"
@@ -436,7 +436,7 @@ def outlier_utils(args):
         )
       mtz_dataset.mtz_object().write(
       file_name=params.outlier_utils.output.hklout)
-      
+
     if params.outlier_utils.output.logfile is not None:
       final_log = StringIO()
       print >> final_log, string_buffer.getvalue()
@@ -445,13 +445,11 @@ def outlier_utils(args):
       outfile = open( params.outlier_utils.output.logfile, 'w' )
       outfile.write( final_log.getvalue() )
       print >> log
-      print >> log, "A logfile named %s was created."%(        
+      print >> log, "A logfile named %s was created."%(
         params.outlier_utils.output.logfile)
       print >> log, "This logfile contains the screen output and"
       print >> log, "(possibly) some ccp4 style loggraph plots"
-      
-    
+
+
 if (__name__ == "__main__" ):
   outlier_utils(sys.argv[1:])
-      
-
