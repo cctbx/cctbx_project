@@ -961,6 +961,8 @@ def exercise_squaring_and_patterson_map(space_group_info,
   eb_map_sq = flex.pow2(eb_map)
   eb_sq = eb.structure_factors_from_map(eb_map_sq)
   mwpe = f_calc.mean_weighted_phase_error(eb_sq)
+  mpe = f_calc.mean_phase_error(f_calc.phases())
+  assert approx_equal(mpe, 0.0)
   if (0 or verbose):
     print "mean_weighted_phase_error: %.2f" % mwpe
   assert mwpe < 2
