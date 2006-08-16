@@ -13,7 +13,9 @@ from cctbx.geometry_restraints.lbfgs import lbfgs as cctbx_geometry_restraints_l
 import scitbx.lbfgs
 from libtbx.utils import Sorry
 from mmtbx.tls import tools
+from scitbx.python_utils.misc import user_plus_sys_time
 
+time_model_show = 0.0
 
 
 class manager(object):
@@ -43,6 +45,9 @@ class manager(object):
                                          xray_structure = self.xray_structure,
                                          value          = 0.0)
     self.anisotropic_flags = anisotropic_flags
+    if(self.anisotropic_flags is not None and self.anisotropic_flags.count(True) > 0):
+       self.xray_structure.convert_to_anisotropic(
+                                            selection = self.anisotropic_flags)
     #if(self.rigid_body_selections is not None):
     ##XXX BUG
     #   dim = self.xray_structure.scatterers().size()
@@ -169,6 +174,8 @@ class manager(object):
 
   def show_groups(self, rigid_body = None, tls = None,
                         out = None, text="Information about rigid groups"):
+    global time_model_show
+    timer = user_plus_sys_time()
     selections = None
     if(rigid_body is not None): selections = self.rigid_body_selections
     if(tls is not None): selections = self.tls_selections
@@ -203,26 +210,17 @@ class manager(object):
         print >> out, next % (i_seq+1, sites[start][0], b_isos[start],
           first.name, first.resName, first.resSeq, sites[final][0],
           b_isos[final], last.name, last.resName, last.resSeq)
-#XXX
-    #if(n_atoms != natoms_total):
-    #   print >> out, "|                                                                             |"
-    #   print >> out, "|                 *** Error in rigid groups definition ***                    |"
-    #   print >> out, "|                                                                             |"
-    #   print >> out, "| Total number of atoms in specified rigid groups does not equal to the total |"
-    #   print >> out, "| number of atoms in the model:                                               |"
-    #   print >> out, "| Atoms in model        = %-7d                                             |"%natoms_total
-    #   print >> out, "| Atoms in rigid groups = %-7d                                             |"%n_atoms
-    #   print >> out, "|"+"-"*77+"|"
-    #   raise Sorry("Error in rigid groups definition")
     print >> out, "|"+"-"*77+"|"
     print >> out
     out.flush()
-
+    time_model_show += timer.elapsed()
 
   def remove_solvent(self):
     self.update(selection = ~self.solvent_selection)
 
   def show_occupancy_statistics(self, out=None, text=""):
+    global time_model_show
+    timer = user_plus_sys_time()
     # XXX make this more complete and smart
     if(out is None): out = sys.stdout
     print >> out, "|-"+text+"-"*(80 - len("| "+text+"|") - 1)+"|"
@@ -247,6 +245,7 @@ class manager(object):
                      "occupancies < 0.1 = %-6d |"%(occ_max,occ_min,n_zeros)
     print >> out, "|"+"-"*77+"|"
     out.flush()
+    time_model_show += timer.elapsed()
 
   def write_pdb_file(self, out, crystal_symmetry = None, selection=None,
                      xray_structure = None):
@@ -381,6 +380,12 @@ class manager(object):
                   remove_atoms_selection[i_seq] = True
     self.update(selection = remove_atoms_selection)
 
+  def atoms_selection(self, scattering_type = None):
+    scattering_types = \
+                   self.xray_structure.scatterers().extract_scattering_types()
+    return (scattering_type == scattering_types)
+
+
   def remove_atom_with_i_seqs(self, i_seq = None, i_seqs = None):
     assert [i_seq, i_seqs].count(None) == 1
     remove_atom_selection = flex.bool(len(self.atom_attributes_list), True)
@@ -449,8 +454,6 @@ class manager(object):
                                        resSeq      = i_seq)
         self.atom_attributes_list.append(new_attr)
 
-  def build_hydrogens(self):
-    pass
 
   def scale_adp(self, scale_max, scale_min):
     b_isos = self.xray_structure.extract_u_iso_or_u_equiv() * math.pi**2*8
@@ -501,6 +504,8 @@ class manager(object):
                                 show = False,
                                 text = "",
                                 short = True):
+    global time_model_show
+    timer = user_plus_sys_time()
     if(other is not None):
        stereochemistry_statistics_obj = stereochemistry_statistics(
                              xray_structure         = self.xray_structure,
@@ -516,6 +521,7 @@ class manager(object):
                           restraints_manager_ref = self.restraints_manager_ini,
                           text                   = text)
     if(show): stereochemistry_statistics_obj.show(out = self.log,short = short)
+    time_model_show += timer.elapsed()
     return stereochemistry_statistics_obj
 
   def adp_statistics(self, iso_restraints,
@@ -524,6 +530,8 @@ class manager(object):
                            tan_b_iso_max= None,
                            show     = False,
                            text     = ""):
+    global time_model_show
+    timer = user_plus_sys_time()
     if(other is not None):
        adp_statistics_obj = adp_statistics(
                              xray_structure         = self.xray_structure,
@@ -548,8 +556,8 @@ class manager(object):
                           text                   = text)
     if(show == 1): adp_statistics_obj.show_short(out = self.log)
     if(show == 2): adp_statistics_obj.show(out = self.log)
+    time_model_show += timer.elapsed()
     return adp_statistics_obj
-
 
 
 class adp_statistics(object):

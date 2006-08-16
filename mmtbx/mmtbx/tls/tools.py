@@ -9,6 +9,7 @@ from libtbx.test_utils import approx_equal
 import copy
 from cctbx import adptbx
 from cctbx import xray
+from scitbx.python_utils.misc import user_plus_sys_time
 
 time_uanisos_from_tls                              = 0.0
 time_tls_from_uanisos                              = 0.0
@@ -17,6 +18,7 @@ time_split_u                                       = 0.0
 time_tls_from_u_cart                               = 0.0
 time_make_tlso_compatible_with_u_positive_definite = 0.0
 time_generate_tlsos                                = 0.0
+time_tls_total                                     = 0.0
 
 def show_times(out = None):
   if(out is None): out = sys.stdout
@@ -36,6 +38,8 @@ def show_times(out = None):
      print >> out, "  time_tls_from_u_cart                               = %-7.2f" % time_tls_from_u_cart
      print >> out, "  time_make_tlso_compatible_with_u_positive_definite = %-7.2f" % time_make_tlso_compatible_with_u_positive_definite
      print >> out, "  time_generate_tlsos                                = %-7.2f" % time_generate_tlsos
+     print >> out, "  sum_of_partial_contributions                       = %-7.2f" % total
+     print >> out, "  time_tls_total                                     = %-7.2f" % time_tls_total
   return total
 
 def tlso_as_pdb_header(tlsos, selection_strings, out = None):
@@ -325,6 +329,10 @@ class tls_xray_target_minimizer(object):
     self.x = self.pack(self.T_min, self.L_min, self.S_min, factor = self.factor)
     self.minimizer = lbfgs.run(
          target_evaluator = self,
+         core_params = lbfgs.core_parameters(
+                                               maxfev = 5,
+                                               stpmin = 1.e-10,
+                                               stpmax = 1.e10),
          termination_params = lbfgs.termination_parameters(
               min_iterations = max_iterations,
               max_calls = int(max_iterations*1.1)))
@@ -684,6 +692,8 @@ class tls_refinement(object):
                       eps = 1.e-6,
                       out = None,
                       macro_cycle = None):
+     global time_tls_total
+     timer = user_plus_sys_time()
      if(out is None): out = sys.stdout
      prefix = "TLS refinement:"
      fmodel.show_targets(text = prefix+" start model", out = out)
@@ -771,6 +781,7 @@ class tls_refinement(object):
      #    print "."*50
      #    print tlso.t
      #    print t_from_u_cart(u_cart.select(tls_selection), 1.e-6)
+     time_tls_total += timer.elapsed()
 
 
 def make_tlso_compatible_with_u_positive_definite(

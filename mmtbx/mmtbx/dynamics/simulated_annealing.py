@@ -27,6 +27,7 @@ def manager(simulated_annealing_params,
             mask_parameters,
             target_weights,
             macro_cycle,
+            wxnc_scale,
             tan_b_iso_max,
             monitor,
             fmodel,
@@ -39,10 +40,12 @@ def manager(simulated_annealing_params,
   minimized = mmtbx.refinement.minimization.lbfgs(
     restraints_manager       = model.restraints_manager,
     fmodel                   = fmodel,
+    model                    = model,
     lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
               max_iterations = refinement_parameters.max_number_of_iterations),
     wx                          = target_weights.wx_xyz(),
     wc                          = target_weights.wc(),
+    wxnc_scale                  = wxnc_scale,
     verbose                     = 0)
 
   minimized.show(text = "lbfgs minimization", out = out)

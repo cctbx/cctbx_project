@@ -25,46 +25,46 @@ from cctbx import adptbx
 import boost.python
 import mmtbx
 from libtbx.utils import Sorry
+from scitbx.python_utils.misc import user_plus_sys_time
 ext = boost.python.import_ext("mmtbx_f_model_ext")
 
 time_bulk_solvent_and_scale         = 0.0
 time_mask                           = 0.0
 number_mask                         = 0
-time_f_calc_atoms                   = 0.0
+time_f_calc                         = 0.0
 time_alpha_beta                     = 0.0
 time_target                         = 0.0
 time_gradient_wrt_atomic_parameters = 0.0
-time_fmodel                         = 0.0
+time_fmodel_core_data               = 0.0
 time_r_factors                      = 0.0
 time_phase_errors                   = 0.0
 time_foms                           = 0.0
+time_show                           = 0.0
 
 def show_times(out = None):
   if(out is None): out = sys.stdout
-  total = time_bulk_solvent_and_scale         +\
-          time_mask                           +\
-          time_f_calc_atoms                   +\
+  total = time_mask                           +\
+          time_f_calc                         +\
           time_alpha_beta                     +\
           time_target                         +\
           time_gradient_wrt_atomic_parameters +\
-          time_fmodel                         +\
+          time_fmodel_core_data               +\
           time_r_factors                      +\
           time_phase_errors                   +\
           time_foms
-  print >> out, "Timing for general calculations:"
-  print >> out, "  bulk_solvent_and_scale         = %-7.2f" % \
-                                                    time_bulk_solvent_and_scale
-  print >> out, "  mask                           = %-7.2f number of calls = %3d " % \
+  print >> out, "  Micro-tasks:"
+  print >> out, "    mask                           = %-7.2f number of calls = %3d " % \
                 (time_mask,number_mask)
-  print >> out, "  f_calc_atoms                   = %-7.2f" % time_f_calc_atoms
-  print >> out, "  alpha_beta                     = %-7.2f" % time_alpha_beta
-  print >> out, "  target                         = %-7.2f" % time_target
-  print >> out, "  gradient_wrt_atomic_parameters = %-7.2f" % \
+  print >> out, "    f_calc                         = %-7.2f" % time_f_calc
+  print >> out, "    alpha_beta                     = %-7.2f" % time_alpha_beta
+  print >> out, "    target                         = %-7.2f" % time_target
+  print >> out, "    gradient_wrt_atomic_parameters = %-7.2f" % \
                                             time_gradient_wrt_atomic_parameters
-  print >> out, "  fmodel                         = %-7.2f" % time_fmodel
-  print >> out, "  r_factors                      = %-7.2f" % time_r_factors
-  print >> out, "  phase_errors                   = %-7.2f" % time_phase_errors
-  print >> out, "  foms                           = %-7.2f" % time_foms
+  print >> out, "    fmodel                         = %-7.2f" % time_fmodel_core_data
+  print >> out, "    r_factors                      = %-7.2f" % time_r_factors
+  print >> out, "    phase_errors                   = %-7.2f" % time_phase_errors
+  print >> out, "    foms                           = %-7.2f" % time_foms
+  print >> out, "    TOTAL for micro-tasks          = %-7.2f" % total
   return total
 
 target_names = (
@@ -82,52 +82,60 @@ class set_core(object):
                      b_cart,
                      k_sol,
                      b_sol,
+                     overall_scale,
                      uc,
                      ss,
                      work,
                      test):
+    global time_fmodel_core_data
+    timer = user_plus_sys_time()
     adopt_init_args(self, locals())
     self.f_mask.indices().all_eq(self.f_calc.indices())
-    self.core = ext.core(f_calc = self.f_calc.data(),
-                         f_mask = self.f_mask.data(),
-                         b_cart = self.b_cart,
-                         k_sol  = self.k_sol,
-                         b_sol  = self.b_sol,
-                         hkl    = self.f_calc.indices(),
-                         uc     = self.uc,
-                         ss     = self.ss)
+    self.core = ext.core(f_calc        = self.f_calc.data(),
+                         f_mask        = self.f_mask.data(),
+                         b_cart        = self.b_cart,
+                         k_sol         = self.k_sol,
+                         b_sol         = self.b_sol,
+                         overall_scale = self.overall_scale,
+                         hkl           = self.f_calc.indices(),
+                         uc            = self.uc,
+                         ss            = self.ss)
     self.f_model   = miller.array(miller_set = self.f_calc,
                                   data       = self.core.f_model)
     self.f_model_w = self.f_model.select(self.work)
     self.f_model_t = self.f_model.select(self.test)
     self.fb_cart_w = self.core.fb_cart.select(self.work)
     self.fb_cart_t = self.core.fb_cart.select(self.test)
+    time_fmodel_core_data += timer.elapsed()
 
 class manager(object):
-  def __init__(self, f_obs               = None,
-                     r_free_flags        = None,
-                     b_cart              = [0.,0.,0.,0.,0.,0.],
-                     k_sol               = 0.0,
-                     b_sol               = 0.0,
-                     sf_algorithm        = "fft",
-                     sf_cos_sin_table    = True,
-                     target_name         = None,
-                     abcd                = None,
-                     alpha_beta_params   = None,
-                     xray_structure      = None,
-                     f_mask              = None,
-                     f_calc              = None,
-                     mask_params         = None,
-                     trust_xray_structure= False,
-                     update_xray_structure=True):
-    self.f_obs               = f_obs
-    self.r_free_flags        = r_free_flags
-    self.sf_algorithm        = sf_algorithm
-    self.sf_cos_sin_table    = sf_cos_sin_table
-    self.target_name         = target_name
-    self.abcd                = abcd
-    self.alpha_beta_params   = alpha_beta_params
-    self.xray_structure      = xray_structure
+  def __init__(self, f_obs                 = None,
+                     r_free_flags          = None,
+                     b_cart                = [0.,0.,0.,0.,0.,0.],
+                     k_sol                 = 0.0,
+                     b_sol                 = 0.0,
+                     sf_algorithm          = "fft",
+                     sf_cos_sin_table      = True,
+                     target_name           = None,
+                     abcd                  = None,
+                     alpha_beta_params     = None,
+                     xray_structure        = None,
+                     f_mask                = None,
+                     f_calc                = None,
+                     mask_params           = None,
+                     trust_xray_structure  = False,
+                     update_xray_structure = True,
+                     use_f_model_scaled    = False):
+    self.f_obs             = f_obs
+    self.r_free_flags      = r_free_flags
+    self.sf_algorithm      = sf_algorithm
+    self.sf_cos_sin_table  = sf_cos_sin_table
+    self.target_name       = target_name
+    self.abcd              = abcd
+    self.alpha_beta_params = alpha_beta_params
+    self.xray_structure    = xray_structure
+    self.overall_scale     = 1.0
+    self.use_f_model_scaled= use_f_model_scaled
     if(mask_params is not None):
        self.mask_params = mask_params
     else:
@@ -198,12 +206,12 @@ class manager(object):
           raise RuntimeError("Unknown target name: %s"%self.target_name)
        self.setup_target_functors()
 
-  def update_core(self, f_calc       = None,
-                        f_mask       = None,
-                        b_cart       = None,
-                        k_sol        = None,
-                        b_sol        = None,
-                        r_free_flags = None):
+  def update_core(self, f_calc        = None,
+                        f_mask        = None,
+                        b_cart        = None,
+                        k_sol         = None,
+                        b_sol         = None,
+                        r_free_flags  = None):
     if(f_calc is not None): f_calc_ = f_calc
     else: f_calc_ = self.f_calc()
     if(f_mask is not None): f_mask_ = f_mask
@@ -220,15 +228,16 @@ class manager(object):
     else:
        work = self.work
        test = self.test
-    self.core = set_core(f_calc = f_calc_,
-                         f_mask = f_mask_,
-                         b_cart = b_cart_,
-                         k_sol  = k_sol_,
-                         b_sol  = b_sol_,
-                         uc     = self.uc,
-                         ss     = self.ss,
-                         work   = work,
-                         test   = test)
+    self.core = set_core(f_calc        = f_calc_,
+                         f_mask        = f_mask_,
+                         b_cart        = b_cart_,
+                         k_sol         = k_sol_,
+                         b_sol         = b_sol_,
+                         overall_scale = self.overall_scale,
+                         uc            = self.uc,
+                         ss            = self.ss,
+                         work          = work,
+                         test          = test)
 
   def deep_copy(self):
     if(self.abcd is not None):
@@ -390,21 +399,20 @@ class manager(object):
           consider_mask_update = True
        else:
           consider_mask_update = self._update_f_mask_flag(
-                      xray_structure = xray_structure,
-                      mean_shift = self.mask_params.mean_shift_for_mask_update)
+                  xray_structure = xray_structure,
+                  mean_shift     = self.mask_params.mean_shift_for_mask_update)
     self.xray_structure = xray_structure
     step = self._get_step(update_f_ordered_solvent = update_f_ordered_solvent)
     f_calc = None
     if(update_f_calc):
-       global time_f_calc_atoms
-       t1 = time.time()
+       global time_f_calc
+       timer = user_plus_sys_time()
        assert self.xray_structure is not None
        f_calc = self.f_obs.structure_factors_from_scatterers(
                                xray_structure = self.xray_structure,
                                algorithm      = self.sf_algorithm,
                                cos_sin_table  = self.sf_cos_sin_table).f_calc()
-       t2 = time.time()
-       time_f_calc_atoms += (t2 - t1)
+       time_f_calc += timer.elapsed()
     if(update_f_ordered_solvent):
        nu_manager = max_like_non_uniform.ordered_solvent_distribution(
                                                structure = self.xray_structure,
@@ -417,7 +425,7 @@ class manager(object):
     if(update_f_mask and consider_mask_update):
        global time_mask, number_mask
        number_mask += 1
-       t1 = time.time()
+       timer = user_plus_sys_time()
        if(update_f_ordered_solvent == False): nu_map = None
        bulk_solvent_mask_obj = self.bulk_solvent_mask()
        if (nu_map is not None):
@@ -426,8 +434,7 @@ class manager(object):
        if(out is not None and self.mask_params.verbose > 0):
           bulk_solvent_mask_obj.show_summary(out = out)
        f_mask = bulk_solvent_mask_obj.structure_factors(miller_set= self.f_obs)
-       t2 = time.time()
-       time_mask += (t2 - t1)
+       time_mask += timer.elapsed()
     if([f_calc, f_mask].count(None) == 2): set_core_flag = False
     else: set_core_flag = True
     if(f_calc is None): f_calc = self.f_calc()
@@ -450,7 +457,7 @@ class manager(object):
 
   def update_solvent_and_scale(self, params = None, out = None, verbose=None):
     global time_bulk_solvent_and_scale
-    t1 = time.time()
+    timer = user_plus_sys_time()
     if(out is None): out = sys.stdout
     if(params is None):
        params = bss.solvent_and_scale_params()
@@ -458,8 +465,14 @@ class manager(object):
        params = bss.solvent_and_scale_params(params = params)
     if(verbose is not None): params.verbose=verbose
     bss.bulk_solvent_and_scales(fmodel = self, params = params, log = out)
-    t2 = time.time()
-    time_bulk_solvent_and_scale += (t2 - t1)
+    overall_scale = self.scale_k1_w()
+    if(self.use_f_model_scaled):
+       self.overall_scale = overall_scale
+       self.update_core()
+    elif(overall_scale < 0.01 or overall_scale > 100.0):
+       self.overall_scale = overall_scale
+       self.update_core()
+    time_bulk_solvent_and_scale += timer.elapsed()
 
   def setup_target_functors(self):
     if(self.target_name == "ml"):
@@ -652,28 +665,26 @@ class manager(object):
 
   def target_w(self, alpha=None, beta=None, scale_ml=None):
     global time_target
-    t1 = time.time()
+    timer = user_plus_sys_time()
     result = self.xray_target_functor_result(
                                            compute_gradients = False,
                                            alpha             = alpha,
                                            beta              = beta,
                                            scale_ml          = scale_ml,
                                            flag              = "work").target()
-    t2 = time.time()
-    time_target += (t2 - t1)
+    time_target += timer.elapsed()
     return result
 
   def target_t(self, alpha=None, beta=None, scale_ml=None):
     global time_target
-    t1 = time.time()
+    timer = user_plus_sys_time()
     result = self.xray_target_functor_result(
                                            compute_gradients = False,
                                            alpha             = alpha,
                                            beta              = beta,
                                            scale_ml          = scale_ml,
                                            flag              = "test").target()
-    t2 = time.time()
-    time_target += (t2 - t1)
+    time_target += timer.elapsed()
     return result
 
   def gradient_wrt_atomic_parameters(self, selection     = None,
@@ -685,7 +696,7 @@ class manager(object):
                                            tan_b_iso_max = None,
                                            u_iso_reinable_params = None):
     global time_gradient_wrt_atomic_parameters
-    t1 = time.time()
+    timer = user_plus_sys_time()
     xrs = self.xray_structure
     if([site, u_iso, u_aniso].count(True) > 0):
        tan_u_iso = False
@@ -749,8 +760,7 @@ class manager(object):
                 n_parameters       = xrs.n_parameters_XXX(),
                 miller_set         = self.f_obs_w,
                 algorithm          = self.sf_algorithm)
-    t2 = time.time()
-    time_gradient_wrt_atomic_parameters += (t2 - t1)
+    time_gradient_wrt_atomic_parameters += timer.elapsed()
     return result
 
   def update(self, f_calc              = None,
@@ -851,12 +861,7 @@ class manager(object):
     return self.fb_cart().select(self.test)
 
   def f_model(self):
-    global time_fmodel
-    t1 = time.time()
-    result = self.core.f_model
-    t2 = time.time()
-    time_fmodel += (t2 - t1)
-    return result
+    return self.core.f_model
 
   def f_model_scaled_with_k1(self):
     return miller.array(miller_set = self.f_obs,
@@ -871,20 +876,10 @@ class manager(object):
                         data       = self.scale_k1_w()*self.f_model_w().data())
 
   def f_model_w(self):
-    global time_fmodel
-    t1 = time.time()
-    result = self.core.f_model_w
-    t2 = time.time()
-    time_fmodel += (t2 - t1)
-    return result
+    return self.core.f_model_w
 
   def f_model_t(self):
-    global time_fmodel
-    t1 = time.time()
-    result = self.core.f_model_t
-    t2 = time.time()
-    time_fmodel += (t2 - t1)
-    return result
+    return self.core.f_model_t
 
   def f_star_w_star_obj(self):
     #XXX why I use self.f_calc and not f_model ????????????????????????????????
@@ -997,7 +992,7 @@ class manager(object):
 
   def alpha_beta(self):
     global time_alpha_beta
-    t1 = time.time()
+    timer = user_plus_sys_time()
     alpha, beta = None, None
     ab_params = self.alpha_beta_params
     if(self.alpha_beta_params is not None):
@@ -1037,8 +1032,7 @@ class manager(object):
                                     test_ref_in_bin = 200,
                                     flags           = self.r_free_flags.data(),
                                     interpolation   = False).alpha_beta()
-    t2 = time.time()
-    time_alpha_beta += (t2 - t1)
+    time_alpha_beta += timer.elapsed()
     return alpha, beta
 
   def alpha_beta_w(self):
@@ -1114,7 +1108,7 @@ class manager(object):
 
   def r_work(self, d_min = None, d_max = None):
     global time_r_factors
-    t1 = time.time()
+    timer = user_plus_sys_time()
     f_obs   = self.f_obs_w.data()
     f_model = self.core.f_model_w.data()
     if([d_min, d_max].count(None) == 0):
@@ -1124,13 +1118,12 @@ class manager(object):
        f_obs   = f_obs.select(keep)
        f_model = f_model.select(keep)
     result = bulk_solvent.r_factor(f_obs, f_model)
-    t2 = time.time()
-    time_r_factors += (t2 - t1)
+    time_r_factors += timer.elapsed()
     return result
 
   def r_free(self, d_min = None, d_max = None):
     global time_r_factors
-    t1 = time.time()
+    timer = user_plus_sys_time()
     f_obs   = self.f_obs_t.data()
     f_model = self.core.f_model_t.data()
     if([d_min, d_max].count(None) == 0):
@@ -1140,8 +1133,7 @@ class manager(object):
        f_obs   = f_obs.select(keep)
        f_model = f_model.select(keep)
     result = bulk_solvent.r_factor(f_obs, f_model)
-    t2 = time.time()
-    time_r_factors += (t2 - t1)
+    time_r_factors += timer.elapsed()
     return result
 
   def scale_k1(self):
@@ -1237,7 +1229,7 @@ class manager(object):
   def figures_of_merit(self):
     alpha, beta = self.alpha_beta()
     global time_foms
-    t1 = time.time()
+    timer = user_plus_sys_time()
     result = max_lik.fom_and_phase_error(
                            f_obs          = self.f_obs.data(),
                            f_model        = flex.abs(self.core.f_model.data()),
@@ -1245,14 +1237,13 @@ class manager(object):
                            beta           = beta.data(),
                            space_group    = self.f_obs.space_group(),
                            miller_indices = self.f_obs.indices()).fom()
-    t2 = time.time()
-    time_foms += (t2 - t1)
+    time_foms += timer.elapsed()
     return result
 
   def phase_errors(self):
     alpha, beta = self.alpha_beta()
     global time_phase_errors
-    t1 = time.time()
+    timer = user_plus_sys_time()
     result = max_lik.fom_and_phase_error(
                            f_obs          = self.f_obs.data(),
                            f_model        = flex.abs(self.core.f_model.data()),
@@ -1260,8 +1251,7 @@ class manager(object):
                            beta           = beta.data(),
                            space_group    = self.f_obs.space_group(),
                            miller_indices = self.f_obs.indices()).phase_error()
-    t2 = time.time()
-    time_phase_errors += (t2 - t1)
+    time_phase_errors += timer.elapsed()
     return result
 
   def phase_errors_test(self):
@@ -1355,6 +1345,8 @@ class manager(object):
                                          symmetry_flags    = symmetry_flags)
 
   def show_targets(self, out=None, text=""):
+    global time_show
+    timer = user_plus_sys_time()
     if(out is None): out = sys.stdout
     part1 = "|-"+text
     part2 = "-|"
@@ -1365,8 +1357,12 @@ class manager(object):
     n = 78 - len(str(part3)+"|")
     print >> out, part3, " "*n +"|"
     print >> out, "|" +"-"*77+"|"
+    out.flush()
+    time_show += timer.elapsed()
 
   def show(self, out=None):
+    global time_show
+    timer = user_plus_sys_time()
     if(out is None): out = sys.stdout
     print >> out, "f_calc          = ", self.f_calc()
     print >> out, "f_obs           = ", self.f_obs
@@ -1378,8 +1374,11 @@ class manager(object):
     print >> out, "sf_algorithm    = ", self.sf_algorithm
     print >> out, "target_name     = ", self.target_name
     out.flush()
+    time_show += timer.elapsed()
 
   def show_k_sol_b_sol_b_cart_target(self, header=None,target=None,out=None):
+    global time_show
+    timer = user_plus_sys_time()
     if(out is None): out = sys.stdout
     p = " "
     if(header is None): header = ""
@@ -1413,8 +1412,11 @@ class manager(object):
                   (a_mean, a_zero)+25*p+"|"
     print >> out, "|"+"-"*77+"|"
     out.flush()
+    time_show += timer.elapsed()
 
   def show_essential(self, header = None, out=None):
+    global time_show
+    timer = user_plus_sys_time()
     if(out is None): out = sys.stdout
     out.flush()
     p = " "
@@ -1514,6 +1516,7 @@ class manager(object):
     print >> out, line6
     print >> out, "|"+"-"*77+"|"
     out.flush()
+    time_show += timer.elapsed()
 
   def show_comprehensive(self, header = "",
                                reflections_per_bin = 200,
@@ -1567,6 +1570,8 @@ def statistics_in_resolution_bins(fmodel,
                                   reflections_per_bin,
                                   max_number_of_bins,
                                   out=None):
+  global time_show
+  timer = user_plus_sys_time()
   if(out is None): out = sys.stdout
   d_max,d_min = fmodel.f_obs.d_max_min()
   fo_t = fmodel.f_obs_t
@@ -1633,11 +1638,14 @@ def statistics_in_resolution_bins(fmodel,
       i_bin, d_range, ch, nw, nt, r_w, r_t, target_w, target_t)
   print >> out, "|"+"-"*77+"|"
   out.flush()
+  time_show += timer.elapsed()
 
 def r_factors_in_resolution_bins(fmodel,
                                  reflections_per_bin,
                                  max_number_of_bins,
                                  out=None):
+  global time_show
+  timer = user_plus_sys_time()
   if(out is None): out = sys.stdout
   d_max,d_min = fmodel.f_obs.d_max_min()
   fo_t = fmodel.f_obs_t
@@ -1674,12 +1682,15 @@ def r_factors_in_resolution_bins(fmodel,
     print >> out, "%3d: %s %6d %6d   %6.4f %6.4f" % (
       i_bin, d_range, nw, nt, r_w, r_t)
   out.flush()
+  time_show += timer.elapsed()
 
 
 def show_fom_phase_error_alpha_beta_in_bins(fmodel,
                                             reflections_per_bin,
                                             max_number_of_bins,
                                             out=None):
+  global time_show
+  timer = user_plus_sys_time()
   if(out is None): out = sys.stdout
   d_max,d_min = fmodel.f_obs.d_max_min()
   fom = fmodel.figures_of_merit()
@@ -1785,6 +1796,7 @@ def show_fom_phase_error_alpha_beta_in_bins(fmodel,
     print >> out, "|   number of beta <= 0.0: %6d |" % (bmz.count(True))
   print >> out, "|"+"-"*77+"|"
   out.flush()
+  time_show += timer.elapsed()
 
 def ls_ff_weights(f_obs, atom, B):
   d_star_sq_data = f_obs.d_star_sq().data()

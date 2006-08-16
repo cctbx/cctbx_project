@@ -7,6 +7,17 @@ from scitbx import lbfgs
 import copy, math
 from cctbx import adptbx
 from cctbx import xray
+from scitbx.python_utils.misc import user_plus_sys_time
+
+time_group_b_py  = 0.0
+
+def show_times(out = None):
+  if(out is None): out = sys.stdout
+  total = time_group_b_py
+  if(total > 0.01):
+     print >> out, "Group ADP refinement:"
+     print >> out, "  time_group_b_py                          = %-7.2f" % time_group_b_py
+  return total
 
 
 class manager(object):
@@ -19,6 +30,8 @@ class manager(object):
                      convergence_test         = True,
                      convergence_delta        = 0.00001,
                      log                      = None):
+    global time_group_b_py
+    timer = user_plus_sys_time()
     if(log is None): log = sys.stdout
     xray.set_scatterer_grad_flags(scatterers = fmodel.xray_structure.scatterers(),
                                   u_iso      = True)
@@ -85,6 +98,7 @@ class manager(object):
     fmodel.update_xray_structure(xray_structure = fmodel_copy.xray_structure,
                                  update_f_calc  = True)
     self.fmodel = fmodel
+    time_group_b_py += timer.elapsed()
 
   def rotation(self):
     return self.total_rotation
