@@ -22,11 +22,12 @@ class core
     scitbx::sym_mat3<FloatType>            b_cart;
     FloatType                              k_sol;
     FloatType                              b_sol;
+    FloatType                              overall_scale;
     af::const_ref<cctbx::miller::index<> > hkl;
     cctbx::uctbx::unit_cell                uc;
     af::shared<FloatType>                  ss, fb_cart;
     af::shared<ComplexType>                f_model, f_bulk;
-    mat3<FloatType> a;
+    mat3<FloatType>                        a;
 
     core() {}
 
@@ -35,16 +36,17 @@ class core
          scitbx::sym_mat3<FloatType>            const& b_cart_,
          FloatType                              const& k_sol_,
          FloatType                              const& b_sol_,
+         FloatType                              const& overall_scale_,
          af::const_ref<cctbx::miller::index<> > const& hkl_,
          cctbx::uctbx::unit_cell                const& uc_,
          af::shared<FloatType>                  const& ss_)
     :
-      f_calc(f_calc_), f_mask(f_mask_),   k_sol(k_sol_),
+      f_calc(f_calc_), f_mask(f_mask_), k_sol(k_sol_),
       b_sol(b_sol_), b_cart(b_cart_), hkl(hkl_),uc(uc_), ss(ss_),
       fb_cart(hkl_.size(), af::init_functor_null<FloatType>()),
       f_bulk(hkl_.size(), af::init_functor_null<ComplexType>()),
       f_model(hkl_.size(), af::init_functor_null<ComplexType>()),
-      a(uc_.fractionalization_matrix())
+      a(uc_.fractionalization_matrix()),overall_scale(overall_scale_)
     {
       MMTBX_ASSERT(f_calc.size() == f_mask.size());
       MMTBX_ASSERT(f_calc.size() == hkl.size()   );
@@ -57,15 +59,14 @@ class core
       ComplexType* f_calc__  = f_calc.begin();
       ComplexType* f_mask__  = f_mask.begin();
       for(std::size_t i=0; i < hkl.size(); i++) {
-          fb_cart_[i] = fb_cart_one_h(b_cart, hkl[i]);
+          fb_cart_[i] = fb_cart_one_h(hkl[i]);
           f_bulk_[i]  = f_bulk_one_h(f_mask__[i], ss__[i]);
           f_model_[i] = f_model_one_h(f_calc__[i], f_bulk_[i], fb_cart_[i]);
       }
     }
 
     protected:
-       FloatType fb_cart_one_h(sym_mat3<FloatType> const& b_cart,
-                               cctbx::miller::index<> const& h)
+       FloatType fb_cart_one_h(cctbx::miller::index<> const& h)
        {
            sym_mat3<double> u_star =
                                  sym_mat3<double> (b_cart).tensor_transform(a);
@@ -87,7 +88,7 @@ class core
                                  ComplexType const& f_bulk_h,
                                  FloatType   const& fb_cart_h)
        {
-           return fb_cart_h * (f_calc_h + f_bulk_h);
+           return overall_scale * fb_cart_h * (f_calc_h + f_bulk_h);
        }
 };
 

@@ -7,12 +7,15 @@ from libtbx import adopt_init_args
 from stdlib import math
 import sys, time
 from libtbx.test_utils import approx_equal
+from scitbx.python_utils.misc import user_plus_sys_time
 
+time_site_individual = 0.0
 
 class lbfgs(object):
 
   def __init__(self, restraints_manager,
                      fmodel,
+                     model,
                      wx,
                      wc,
                      lbfgs_termination_params=None,
@@ -25,13 +28,17 @@ class lbfgs(object):
                      fmodel_neutron = None,
                      wx_neutron = None,
                      neutron_scattering_dict = None,
-                     xray_scattering_dict = None):
+                     xray_scattering_dict = None,
+                     wxnc_scale = None):
+    global time_site_individual
+    timer = user_plus_sys_time()
     adopt_init_args(self, locals())
     self.neutron_refinement = (self.fmodel_neutron is not None and
                                self.wx_neutron is not None)
     if(self.neutron_refinement):
        assert self.neutron_scattering_dict is not None and \
               self.xray_scattering_dict is not None
+       assert wxnc_scale is not None
     self.xray_structure = self.fmodel.xray_structure
     xray.set_scatterer_grad_flags(scatterers = self.xray_structure.scatterers(),
                                   site       = True)
@@ -43,6 +50,7 @@ class lbfgs(object):
     self.eneutron_final = None
     self.r_work_start= self.fmodel.r_work()
     self.r_free_start= self.fmodel.r_free()
+    self.d_selection = self.model.atoms_selection(scattering_type = "D")
     if(self.neutron_refinement):
        self.r_work_start_neutron = self.fmodel_neutron.r_work()
        self.r_free_start_neutron = self.fmodel_neutron.r_free()
@@ -82,6 +90,7 @@ class lbfgs(object):
     self.compute_target(compute_gradients = False)
     del self._lock_for_line_search
     self.final_target_value = self.f
+    time_site_individual += timer.elapsed()
 
   def apply_shifts(self):
     apply_shifts_result = xray.ext.minimization_apply_shifts(
@@ -113,6 +122,10 @@ class lbfgs(object):
        sf = self.fmodel.gradient_wrt_atomic_parameters(
                                                   alpha = self.alpha_w,
                                                   beta  = self.beta_w).packed()
+       zz = flex.vec3_double(sf)
+       qq = zz.set_selected(self.d_selection, [0,0,0])
+       zz = qq.as_double()
+       sf = zz
        self.g = sf * self.wx
 
 
@@ -128,12 +141,16 @@ class lbfgs(object):
                                                scale_ml = self.scale_ml)
        if(self.eneutron_start is None):
           self.eneutron_start = self.eneutron_final
-       self.f += self.eneutron_final * self.wx_neutron
+       self.f += self.eneutron_final * self.wx_neutron * self.wxnc_scale
        if(compute_gradients):
           sf = self.fmodel_neutron.gradient_wrt_atomic_parameters(
                                           alpha = self.alpha_w_neutron,
                                           beta  = self.beta_w_neutron).packed()
-          self.g = self.g + sf * self.wx_neutron
+          zz = flex.vec3_double(sf)
+          qq = zz.set_selected(~self.d_selection, [0,0,0])
+          zz = qq.as_double()
+          sf = zz
+          self.g = self.g + sf * self.wx_neutron * self.wxnc_scale
 
 
     if(self.restraints_manager is not None and self.wc > 0.0):

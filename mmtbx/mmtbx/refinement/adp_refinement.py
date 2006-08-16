@@ -9,6 +9,21 @@ from cctbx import xray
 from libtbx.test_utils import approx_equal
 from libtbx.utils import Sorry
 
+from scitbx.python_utils.misc import user_plus_sys_time
+
+time_adp_refinement_py = 0.0
+time_set_flags         = 0.0
+
+def show_times(out = None):
+  if(out is None): out = sys.stdout
+  total = time_adp_refinement_py + \
+          time_set_flags
+  if(total > 0.01):
+     print >> out, "ADP refinement:"
+     print >> out, "  time spent in adp_refinement.py          = %-7.2f" % time_adp_refinement_py
+     print >> out, "  set_flags                                = %-7.2f" % time_set_flags
+  return total
+
 group_adp_master_params = iotbx.phil.parse("""\
   number_of_macro_cycles   = 1
     .type = int
@@ -35,9 +50,9 @@ tls_master_params = iotbx.phil.parse("""\
     .type = bool
   refine_S                    = True
     .type = bool
-  number_of_macro_cycles      = 1
+  number_of_macro_cycles      = 2
     .type = int
-  max_number_of_iterations    = 15
+  max_number_of_iterations    = 25
     .type = int
   start_tls_value             = None
     .type = float
@@ -130,7 +145,10 @@ class manager(object):
             fmodel_neutron            = None,
             wx_individual_neutron     = None,
             neutron_scattering_dict   = None,
-            xray_scattering_dict      = None):
+            xray_scattering_dict      = None,
+            wxnu_scale                = None):
+    global time_adp_refinement_py
+    timer = user_plus_sys_time()
     if(log is None): log = sys.stdout
     tan_u_iso = False
     param = 0
@@ -196,7 +214,7 @@ class manager(object):
     if(refine_adp_individual):
        print_statistics.make_sub_header(text= "Individual ADP refinement",
                                         out = log)
-       set_flags(xray_structure        = fmodel.xray_structure,
+       set_flags(xray_structure     = fmodel.xray_structure,
               anisotropic_flags     = anisotropic_flags,
               refine_adp_individual = refine_adp_individual,
               refine_adp_group      = refine_adp_group,
@@ -209,19 +227,21 @@ class manager(object):
            max_iterations = individual_adp_params.iso.max_number_of_iterations)
        fmodel.xray_structure.approx_equal(other = model.xray_structure)
        self.minimized = minimization_individual_adp.lbfgs(
-                          restraints_manager       = restraints_manager,
-                          fmodel                   = fmodel,
-                          lbfgs_termination_params = lbfgs_termination_params,
-                          wx                       = wx,
-                          wu                       = wu_individual,
-                          wilson_b                 = wilson_b,
-                          tan_b_iso_max            = tan_b_iso_max,
-                          iso_restraints           = adp_restraints_params.iso,
-                          verbose                  = 0,
-                          fmodel_neutron           = fmodel_neutron,
-                          wx_individual_neutron    = wx_individual_neutron,
-                          neutron_scattering_dict  = neutron_scattering_dict,
-                          xray_scattering_dict     = xray_scattering_dict)
+               restraints_manager       = restraints_manager,
+               fmodel                   = fmodel,
+               model                    = model,
+               lbfgs_termination_params = lbfgs_termination_params,
+               wx                       = wx,
+               wu                       = wu_individual,
+               wilson_b                 = wilson_b,
+               tan_b_iso_max            = tan_b_iso_max,
+               iso_restraints           = adp_restraints_params.iso,
+               verbose                  = 0,
+               fmodel_neutron           = fmodel_neutron,
+               wx_individual_neutron    = wx_individual_neutron,
+               neutron_scattering_dict  = neutron_scattering_dict,
+               xray_scattering_dict     = xray_scattering_dict,
+               wxnu_scale               = wxnu_scale)
        self.minimized.show(text = "LBFGS minimization", out  = log)
        fmodel.update_xray_structure(
                                 xray_structure = self.minimized.xray_structure,
@@ -249,25 +269,8 @@ class manager(object):
           number_of_macro_cycles   = group_adp_params.number_of_macro_cycles,
           log                      = log,
           tan_b_iso_max            = tan_b_iso_max)
-#    if(refine_tls):
-#       print_statistics.make_sub_header(text = "TLS refinement",
-#                                        out  = log)
-#       model.show_groups(tls = True, out = log)
-#       current_target_name = fmodel.target_name
-#       fmodel.update(target_name = "ls_wunit_k1")
-#       self.tls_refinement_manager = tools.tls_refinement(
-#          fmodel                      = fmodel,
-#          selections                  = tls_selections,
-#          refine_T                    = tls_params.refine_T,
-#          refine_L                    = tls_params.refine_L,
-#          refine_S                    = tls_params.refine_S,
-#          number_of_macro_cycles      = tls_params.number_of_macro_cycles,
-#          max_number_of_iterations    = tls_params.max_number_of_iterations,
-#          start_tls_value             = tls_params.start_tls_value,
-#          run_finite_differences_test = tls_params.run_finite_differences_test,
-#          eps                         = tls_params.eps,
-#          out                         = log)
-#       fmodel.update(target_name = current_target_name)
+    time_adp_refinement_py += timer.elapsed()
+
 
 def set_flags(xray_structure,
               anisotropic_flags,
@@ -278,6 +281,8 @@ def set_flags(xray_structure,
               tan_u_iso,
               param,
               offset):
+  global time_set_flags
+  timer = user_plus_sys_time()
   #XXX n_tls_groups Python loops over scatterers: highly inefficient.
   xrs = xray_structure
   ueq1 = xray_structure.extract_u_iso_or_u_equiv()
@@ -328,3 +333,4 @@ def set_flags(xray_structure,
   assert (u_iso < 0.0).count(True) == 0
   ueq2 = xray_structure.extract_u_iso_or_u_equiv()
   assert approx_equal(ueq1, ueq2)
+  time_set_flags += timer.elapsed()
