@@ -330,6 +330,9 @@ extreme value distribution of the chi-square distribution.
     centric_flags = self.miller_obs.centric_flags().select( ~flags.data() )
     if rogues.indices().size() > 0:
       if rogues.indices().size() < 500 :
+        if rogues.sigmas()==None:
+          sigmas = rogues.d_spacings().data()*0+10.0
+
         for hkl, d, fo, fc, llg, p, a, b, c, s, e in zip(
           rogues.indices(),
           rogues.d_spacings().data(),
@@ -340,7 +343,7 @@ extreme value distribution of the chi-square distribution.
           alpha_array.data(),
           beta_array.data(),
           centric_flags.data(),
-          rogues.sigmas(),
+          sigmas,
           rogues.epsilons().data().as_double() ):
 
           this_row = [str(hkl),
