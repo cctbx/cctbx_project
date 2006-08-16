@@ -108,7 +108,7 @@ lower than %s are flagged as possible outliers.
     print >> self.out
 
     if not return_array:
-      return all_flags.data()
+      return all_flags
     else:
       return self.miller_obs.select( all_flags.data() )
 
@@ -145,9 +145,10 @@ lower than %s are flagged as possible outliers.
 Outlier rejection based on extreme value Wilson statistics.
 -----------------------------------------------------------
 
-See some CCP4 newsletter fort details.
 Reflections whose normalized intensity have an associated p-value
 lower than %s are flagged as possible outliers.
+The p-value is obtained using extreme value distributions of the
+Wilson distribution.
     """%(p_extreme_wilson)
 
     log_string = self.make_log_wilson(log_string, all_flags ,all_p_values )
@@ -157,7 +158,7 @@ lower than %s are flagged as possible outliers.
     print >> self.out
 
     if not return_array:
-      return all_flags.data()
+      return all_flags
     else:
       return self.miller_obs.select( all_flags.data() )
 
@@ -225,6 +226,14 @@ Model based outlier rejection.
 
 Calculated amplitudes and estimated values of alpha and beta
 are used to compute the log-likelihood of the observed amplitude.
+The method is inspired by Read, Acta Cryst. (1999). D55, 1759-1764.
+Outliers are rejected on the basis of the assumption that the log
+likelihood differnce log[P(Fobs)]-log[P(Fmode)] is distributed
+according to a Chi-square distribution
+(see http://en.wikipedia.org/wiki/Likelihood-ratio_test ).
+The outlier threshold of the p-value relates to the p-value of the
+extreme value distribution of the chi-square distribution.
+
 """
 
     flags.map_to_asu()
@@ -259,7 +268,7 @@ are used to compute the log-likelihood of the observed amplitude.
     print >> self.out, tmp_log.getvalue()
 
     if not return_array:
-      return flags.data()
+      return flags
     else:
       assert flags.indices().all_eq(  self.miller_obs.indices() )
       return self.miller_obs.select( flags.data() )
