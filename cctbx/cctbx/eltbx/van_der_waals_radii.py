@@ -13,7 +13,7 @@
 class vdw(object):
   table = {
      "H":  1.20 ,
-     "D":  2.00 ,  # default 2.00 A
+     "D":  1.20 ,
      "He": 1.40 ,
      "Li": 1.82 ,
      "Be": 0.63 ,
