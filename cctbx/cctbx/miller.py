@@ -19,6 +19,7 @@ from scitbx.python_utils.misc import store, plural_s
 from libtbx.itertbx import count
 from libtbx.utils import Keep
 from libtbx import adopt_init_args
+from libtbx.utils import Sorry
 import random
 import math
 import types
@@ -632,6 +633,8 @@ class set(crystal.symmetry):
                                                 max_delta=5.0):
     # the max_number of reflections is wrst the non anomalous set
     n_original = self.indices().size()
+    if n_original<=0:
+      raise Sorry("An array of size zero is given for Free R flag generation")
     n_non_ano = n_original
     if self.anomalous_flag():
       matches = self.match_bijvoet_mates()[1]
@@ -643,7 +646,6 @@ class set(crystal.symmetry):
     if max_free is not None:
       fraction = min( n_non_ano*fraction,
                       max_free )/float(n_non_ano)
-
     #first make a set of temporary flags
     cb_op_to_niggli = self.change_of_basis_op_to_niggli_cell()
     tmp_ma = self.change_basis( cb_op_to_niggli )
