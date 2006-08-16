@@ -258,6 +258,11 @@ def run(command_name, args):
     miller_array = miller_array.select(
       miller_array.indices() != (0,0,0))
 
+    #we have to check if the sigma's make any sense at all
+    if not miller_array.sigmas_are_sensible():
+      miller_array = miller_array.customized_copy(
+        data = miller_array.data(),
+        sigmas=None).set_observation_type(miller_array)
     miller_array = miller_array.select(
       miller_array.data() > 0 )
     if  miller_array.sigmas() is not None:
@@ -302,11 +307,10 @@ def run(command_name, args):
       if free_flags.anomalous_flag():
         free_flags = free_flags.average_bijvoet_mates()
         merged_anomalous=True
-      free_flags = free_flags.common_set( miller_array  )
       free_flags = free_flags.customized_copy(
-        data = flex.bool( free_flags.data()== 1 ))
-      free_flags = free_flags.common_set( miller_array ).map_to_asu()
-      free_flags, miller_array = free_flags.common_sets( miller_array  )
+        data = flex.bool( free_flags.data() == 1 ))
+      free_flags = free_flags.map_to_asu()
+      free_flags = free_flags.common_set( miller_array )
 
 
     print >> log
