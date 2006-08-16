@@ -193,24 +193,24 @@ Wilson distribution.
     p_lik = f_model_outlier_object.posterior_mode_log_likelihood()
     s_der = f_model_outlier_object.posterior_mode_snd_der()
 
-    p_values = (p_lik-lik)*2.0
+    ll_gain = p_lik-lik
+    # The smallest vallue should be 0.
+    # sometimes, due to numerical issues, it comes out
+    # a wee bit negative. please repair that
+    eps=1.0e-10
+    zeros = flex.bool( ll_gain < eps )
+    ll_gain = ll_gain.set_selected( zeros, eps )
+    ll_gain = self.miller_obs.customized_copy( data = ll_gain )
+    #use the ll_gain to computew p values
+    p_values = ll_gain*2.0
     p_values = erf( flex.sqrt(p_values/2.0) )
     p_values = 1.0 - flex.pow( p_values, float(p_values.size()) )
 
     # select on likelihood
-    #flags = f_model_outlier_object.flag_potential_outliers( level/2.0  )
+    # flags = f_model_outlier_object.flag_potential_outliers( level/2.0  )
     # or it mihgt be better to do it on p value
     flags = flex.bool(p_values > level )
     flags = self.miller_obs.customized_copy( data = flags )
-    # The smallest vallue should be 0.
-    # sometimes, due to numerical issues, it comes out
-    # a wee bit negative. please repair that
-    ll_gain = p_lik-lik
-    eps=1.0e-10
-    zeros = flex.bool( ll_gain < eps )
-
-    ll_gain = ll_gain.set_selected( zeros, eps )
-    ll_gain = self.miller_obs.customized_copy( data = ll_gain )
 
     p_values = self.miller_obs.customized_copy( data = p_values )
     f_model = self.miller_obs.customized_copy( data = flex.abs(f_model.data() ) )
