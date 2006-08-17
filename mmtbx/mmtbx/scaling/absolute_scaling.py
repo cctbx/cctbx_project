@@ -5,6 +5,7 @@ from cctbx import uctbx
 from cctbx import adptbx
 from cctbx import sgtbx
 from cctbx import eltbx
+from cctbx.eltbx import xray_scattering
 from scitbx.math import chebyshev_lsq
 from scitbx.math import chebyshev_polynome
 from scitbx.math import chebyshev_lsq_fit
@@ -319,7 +320,7 @@ class scattering_information(object):
       self.sigma_tot_sq = flex.double( d_star_sq.size() )
       gaussians = {}
       for chemical_type, n_atoms in self.asu_contents.items():
-        gaussians[chemical_type] = eltbx.xray_scattering.wk1995(
+        gaussians[chemical_type] = xray_scattering.wk1995(
           chemical_type).fetch()
         f0 = gaussians[chemical_type].at_d_star_sq(d_star_sq)
         self.sigma_tot_sq += f0*f0*n_atoms
@@ -769,6 +770,8 @@ class kernel_normalisation(object):
       d_star_sq_array = self.d_star_sq_array,
       kernel_width = self.kernel_width
       )
+    self.mean_I_array = flex.log( self.mean_I_array  + 1e-13 )
+
     ## Fit a chebyshev polynome please
     normalizer_fit_lsq = chebyshev_lsq_fit.chebyshev_lsq_fit(
       n_term,
@@ -784,7 +787,7 @@ class kernel_normalisation(object):
     ## The data wil now be normalised using the
     ## chebyshev polynome we have just obtained
 
-    self.normalizer_for_miller_array =  self.normalizer.f(d_star_sq_hkl)
+    self.normalizer_for_miller_array =  flex.exp( self.normalizer.f(d_star_sq_hkl) )
 
     self.normalised_miller = None
     self.normalised_miller_dev_eps = None
