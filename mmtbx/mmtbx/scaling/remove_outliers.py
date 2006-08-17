@@ -99,11 +99,11 @@ outlier_utils{
         .type=float
       }
       extreme_wilson{
-        level=1E-1
+        level=0.01
        .type=float
       }
       model_based{
-        level=5E-1
+        level=0.01
         .type=float
       }
     }
@@ -131,7 +131,89 @@ outlier_utils{
 """)
 
 def print_help():
-  print "No help available yet"
+  print """
+usage: mmtbx.remove_outliers <options>
+
+Options are defined by the following phil scope:
+
+outlier_utils{
+  input{
+    unit_cell=None                   << Unit cell. Needed for CNS and SHELX formatted Fobs/Iobs files
+    space_group=None                 << space group.  Needed for CNS and SHELX formatted Fobs/Iobs files
+    xray_data{
+      file_name=None                 << reflection file in any format.
+      obs_labels=None                << The labels of the the observed labels (CNS and MTZ)
+      free_flags=None                << The labels of the Free Flags (CNS and MTZ)
+    }
+    model{
+      file_name=None                 << A PDB file of the model corresponding to the provided xray data
+    }
+  }
+  outlier_detection{
+    protocol=basic *extreme model    << outlier protocol. See below.
+    parameters{
+      basic_wilson{
+        level=1E-6                   << Outlier rejection level for protocol basic
+      }
+      extreme_wilson{
+        level=0.01                   << Outlier rejection level for protocol extreme
+      }
+      model_based{
+        level=0.01                   << outlier rejection level for protocol model
+      }
+    }
+  }
+  additional_parameters{
+    free_flag_generation{            << If no free flags are provided, they will be generated
+      fraction = 0.10                << Fraction of free flags
+      max_number = 2000              << Maximum number of free flags
+      lattice_symmetry_max_delta=5.0 << Lattice symmetry maximum delta (no need to touch this)
+      use_lattice_symmetry=true      << whether or not to use the lattice symmetry in free flag generation
+    }
+  }
+
+  output{
+    logfile=outlier_tools.log        << The output logfile. Has a copy of the screen dump and (possibly) added plots
+    hklout=None                      << an mtz file with observations that are not outliers according to the selected protocol
+  }
+}
+
+
+A basic run looks like:
+
+mmtbx.remove_outliers data.file=my_precious_data.mtz data.obs=FOBS data.free=TEST \
+                      model.file=my_baby.pdb proto=model hklout=new.mtz
+
+A short description of the 3 outlier protocols are described below
+
+1. protocol: basic
+   Outliers are reflection for which 1 - P(E^2=>E_obs^2) < level
+   For the default value, this results in (approximately) designating
+   reflections with E value larger then 3.8 as an outlier.
+    see Read, Acta Cryst. (1999). D55, 1759-1764 for details.
+
+2. protocol: extreme
+   Outliers are reflections for which 1 - [P(E^2=>E_obs^2)]^Nobs < level
+   Nobs is the number of observations. In this manner, the size of the dataset
+   is taken into account in the decision if something is an outlier.
+   The basic and extrenme protocol usually result in similar outliers.
+
+3. protocol: model
+   Calculated amplitudes and estimated values of alpha and beta
+   are used to compute the log-likelihood of the observed amplitude.
+   The method is inspired by Read, Acta Cryst. (1999). D55, 1759-1764.
+   Outliers are rejected on the basis of the assumption that the log
+   likelihood differnce log[P(Fmode)]-log[P(Fobs)] is distributed
+   according to a Chi-square distribution
+   (see http://en.wikipedia.org/wiki/Likelihood-ratio_test ).
+   The outlier threshold of relates to the p-value of the
+   extreme value distribution of the chi-square distribution.
+
+  """
+
+
+
+
 
 
 def run(command_name, args):
