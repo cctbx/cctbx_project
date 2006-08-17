@@ -54,6 +54,7 @@ class manager(object):
     #   for sel in self.rigid_body_selections:
     #       assert sel.size() == dim
 
+
   def setup_restraints_manager(self,
                                plain_pairs_radius = 5.0,
                                normalization      = True,
@@ -453,6 +454,8 @@ class manager(object):
                                        is_hetatm   = True,
                                        resSeq      = i_seq)
         self.atom_attributes_list.append(new_attr)
+    self.restraints_manager.geometry.update_plain_pair_sym_table(
+                                 sites_frac = self.xray_structure.sites_frac())
 
 
   def scale_adp(self, scale_max, scale_min):
