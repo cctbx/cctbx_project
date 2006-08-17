@@ -68,7 +68,7 @@ class outlier_manager(object):
 
   def basic_wilson_outliers(self,
                             p_basic_wilson=1E-6,
-                            return_array=False):
+                            return_data=False):
     p_acentric_single = 1.0 - (1.0 - flex.exp(-self.acentric_work.data() ))
     p_centric_single = 1.0 - erf(flex.sqrt(self.centric_work.data()/2.0) )
 
@@ -107,7 +107,7 @@ lower than %s are flagged as possible outliers.
     print >> self.out, log_string
     print >> self.out
 
-    if not return_array:
+    if not return_data:
       return all_flags
     else:
       return self.miller_obs.select( all_flags.data() )
@@ -115,7 +115,7 @@ lower than %s are flagged as possible outliers.
 
   def extreme_wilson_outliers(self,
                               p_extreme_wilson=1e-1,
-                              return_array=False):
+                              return_data=False):
 
     n_acentric = self.acentric_work.data().size()
     n_centric = self.centric_work.data().size()
@@ -157,17 +157,84 @@ Wilson distribution.
     print >> self.out, log_string
     print >> self.out
 
-    if not return_array:
+    if not return_data:
       return all_flags
     else:
       return self.miller_obs.select( all_flags.data() )
+
+  def beamstop_shadow_outliers(self,
+                               level=0.01,
+                               d_min=10.0,
+                               return_data=False):
+    # just make sure that things get to weerd
+    assert level <= 0.3
+    z_lim_ac = -math.log(1.0-level)
+
+    z_select_ac = flex.bool( self.work_obs.data() <
+                             z_lim_ac )
+
+    # a first order approximation of the NZ of centric is
+    # sqrt(2/pi)sqrt(z)
+    z_lim_c = level*level*math.pi/2.0
+
+    z_select_c = flex.bool( self.work_obs.data() <
+                             z_lim_c )
+
+    centric = self.work_obs.centric_flags()
+
+    d_select = flex.bool( self.work_obs.d_spacings().data().as_double() >
+                          d_min )
+
+    # final selection: all conditions must be full filled
+    # acentrics: centric:FALSE
+    #            z_select_ac:TRUE
+    #            d_select:TRUE
+    #  centrics: centric:TRUE
+    #            z_select_c:TRUE
+    #            d_select:TRUE
+    #
+    #  final = acentric is True OR centric is True
+    a_part = ~( (~z_select_ac or ~d_select) or (centric) )
+    c_part = ~( (~z_select_c or ~d_select) or (~centric) )
+    final_selection = ~(a_part or c_part)
+
+    final_selection = self.work_obs.customized_copy(
+      data = final_selection
+    )
+
+    log_message = """
+Possible outliers due to beamstop shadow
+----------------------------------------
+
+Reflection with normalized intensities lower than %4.3f (acentric)
+or %4.3f (centric) and an associated d-spacing lower than %3.1f
+are considered potential outliers.
+The rationale is that these reflection could potentially be in
+the shadow of the beamstop.
+     """%(z_lim_ac, z_lim_c, d_min)
+
+    final_selection = final_selection.map_to_asu()
+    self.miller_obs = self.miller_obs.map_to_asu()
+    final_selection = final_selection.common_set( self.miller_obs )
+    assert final_selection.indices().all_eq( self.miller_obs.indices() )
+    data = self.miller_obs.select( final_selection.data()
+                                   ).set_observation_type( self.miller_obs )
+
+    log_message = self.make_log_beam_stop( log_message,final_selection )
+    print >> self.out, log_message
+
+
+    if not return_data:
+      return final_selection
+    else:
+      return( data )
 
   def model_based_outliers(self,
                            f_model,
                            alpha,
                            beta,
                            level=15,
-                           return_array=True,
+                           return_data=False,
                            plot_out=None):
 
     self.miller_obs = self.miller_obs.map_to_asu()
@@ -267,7 +334,7 @@ extreme value distribution of the chi-square distribution.
 
     print >> self.out, tmp_log.getvalue()
 
-    if not return_array:
+    if not return_data:
       return flags
     else:
       assert flags.indices().all_eq(  self.miller_obs.indices() )
@@ -309,6 +376,44 @@ extreme value distribution of the chi-square distribution.
                                   postfix=' |')
     final = log_message +"\n" + table
     return final
+
+  def make_log_beam_stop(self,
+                         log_message, flags):
+    self.work_obs = self.work_obs.map_to_asu()
+    self.miller_obs = self.miller_obs.map_to_asu()
+    flags = flags.map_to_asu()
+
+    data = self.miller_obs.select( ~flags.data() )
+    evals = self.work_obs.select( ~flags.data() )
+
+
+
+    header = ("Index", "d-spacing", "F_obs","E-value", "centric")
+    table = "No outliers were found"
+    rows = []
+    if data.data().size() > 0:
+      for hkl, d, e, fobs, c in zip(data.indices(),
+                                    data.d_spacings().data(),
+                                    data.data(),
+                                    evals.data(),
+                                    data.centric_flags().data() ):
+        this_row = [str(hkl),
+                    "%4.2f"%(d),
+                    "%6.1f"%(fobs),
+                    "%4.2f"%( math.sqrt(e) ),
+                    str(c) ]
+        rows.append( this_row )
+
+      table = table_utils.format( [header]+rows,
+                                  comments=None,
+                                  has_header=True,
+                                  separate_rows=False,
+                                  prefix='| ',
+                                  postfix=' |')
+
+    final = log_message + "\n" + table +"\n \n"
+    return final
+
 
   def make_log_model(self,
                      log_message, flags,

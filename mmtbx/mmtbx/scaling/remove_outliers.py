@@ -100,8 +100,15 @@ outlier_utils{
       }
       extreme_wilson{
         level=0.01
-       .type=float
+        .type=float
       }
+      beamstop{
+        level=0.05
+        .type=float
+        d_min=10.0
+        .type=float
+      }
+
       model_based{
         level=0.01
         .type=float
@@ -416,12 +423,21 @@ def run(command_name, args):
     basic_array = outlier_manager.basic_wilson_outliers(
       p_basic_wilson = params.outlier_utils.outlier_detection.\
                        parameters.basic_wilson.level,
-      return_array = True)
+      return_data = True)
 
     extreme_array = outlier_manager.extreme_wilson_outliers(
       p_extreme_wilson = params.outlier_utils.outlier_detection.parameters.\
                          extreme_wilson.level,
-      return_array = True)
+      return_data = True)
+
+    beamstop_array = outlier_manager.beamstop_shadow_outliers(
+      level = params.outlier_utils.outlier_detection.parameters.\
+               beamstop.level,
+      d_min = params.outlier_utils.outlier_detection.parameters.\
+               beamstop.d_min,
+      return_data=True)
+
+
 
     #----------------------------------------------------------------
     # Step 2: get an xray structure from the PDB file
@@ -481,7 +497,7 @@ def run(command_name, args):
         alpha,
         beta,
         level=params.outlier_utils.outlier_detection.parameters.model_based.level,
-        return_array=True,
+        return_data=True,
         plot_out=plot_out)
 
     #check what needs to be put out please
