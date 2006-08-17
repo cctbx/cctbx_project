@@ -103,12 +103,11 @@ outlier_utils{
         .type=float
       }
       beamstop{
-        level=0.05
+        level=0.001
         .type=float
         d_min=10.0
         .type=float
       }
-
       model_based{
         level=0.01
         .type=float
@@ -511,20 +510,28 @@ def run(command_name, args):
       output_array = None
       print >> log
       if params.outlier_utils.outlier_detection.protocol == "basic":
-        print >> log, "Outliers found by the basic wilson statistics"
+        print >> log, "Non-outliers found by the basic wilson statistics"
         print >> log, "protocol will be written out."
         output_array = basic_array
         new_set_of_free_flags = free_flags.common_set( basic_array )
 
       if params.outlier_utils.outlier_detection.protocol == "extreme":
-        print >> log, "Outliers found by the extreme value wilson statistics"
+        print >> log, "Non-outliers found by the extreme value wilson statistics"
         print >> log, "protocol will be written out."
         output_array = extreme_array
         new_set_of_free_flags = free_flags.common_set( extreme_array )
 
       if params.outlier_utils.outlier_detection.protocol == "model":
-        print >> log, "Outliers found by the model based"
+        print >> log, "Non-outliers found by the model based"
         print >> log, "protocol will be written out to the file:"
+        print >> log, params.outlier_utils.output.hklout
+        print >> log
+        output_array = model_based_array
+        new_set_of_free_flags = free_flags.common_set( model_based_array )
+
+      if params.outlier_utils.outlier_detection.protocol == "beamstop":
+        print >> log, "Outliers found for the beamstop shadow"
+        print >> log, "problems detection protocol will be written to the file:"
         print >> log, params.outlier_utils.output.hklout
         print >> log
         output_array = model_based_array
@@ -537,7 +544,7 @@ def run(command_name, args):
         column_root_label = "Free_R_Flag"
         )
       mtz_dataset.mtz_object().write(
-      file_name=params.outlier_utils.output.hklout)
+        file_name=params.outlier_utils.output.hklout)
 
     if params.outlier_utils.output.logfile is not None:
       final_log = StringIO()

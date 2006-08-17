@@ -52,7 +52,7 @@ class outlier_manager(object):
       self.miller_obs = self.miller_obs.f_sq_as_f()
 
     #-----------------------
-    # These caklculations are needed for wilson based outlier rejection
+    # These calculations are needed for wilson based outlier rejection
     #
     # Normalize the data
     normalizer = absolute_scaling.kernel_normalisation(
@@ -166,23 +166,19 @@ Wilson distribution.
                                level=0.01,
                                d_min=10.0,
                                return_data=False):
-    # just make sure that things get to weerd
+
+    # just make sure that things don't get to weerd
     assert level <= 0.3
     z_lim_ac = -math.log(1.0-level)
-
-    z_select_ac = flex.bool( self.work_obs.data() <
+    z_select_ac = flex.bool( self.norma_work.data() <
                              z_lim_ac )
-
     # a first order approximation of the NZ of centric is
     # sqrt(2/pi)sqrt(z)
     z_lim_c = level*level*math.pi/2.0
-
-    z_select_c = flex.bool( self.work_obs.data() <
+    z_select_c = flex.bool( self.norma_work.data() <
                              z_lim_c )
-
-    centric = self.work_obs.centric_flags()
-
-    d_select = flex.bool( self.work_obs.d_spacings().data().as_double() >
+    centric = self.norma_work.centric_flags().data()
+    d_select = flex.bool( self.norma_work.d_spacings().data() >
                           d_min )
 
     # final selection: all conditions must be full filled
@@ -194,20 +190,43 @@ Wilson distribution.
     #            d_select:TRUE
     #
     #  final = acentric is True OR centric is True
-    a_part = ~( (~z_select_ac or ~d_select) or (centric) )
-    c_part = ~( (~z_select_c or ~d_select) or (~centric) )
-    final_selection = ~(a_part or c_part)
-
-    final_selection = self.work_obs.customized_copy(
-      data = final_selection
+    #  THIS SHOULD BE DONE WITH OPERATIONS ON FLEX ARRAYS
+    #  AM GETTING VERY CONFUSED HOWEVER!
+    #  THIS DIDN'T WORK :
+    #  a_part = ~(~z_select_ac or ~d_select)
+    #  a_part = ~( ~a_part or centric)
+    #  c_part = ~(~z_select_c  or ~d_select)
+    #  c_part = ~( ~c_part or ~centric)
+    #
+    #  final_selection = ~(a_part or c_part)
+    tmp_final = []
+    for zac, zc, ds, cf in zip(z_select_ac,
+                               z_select_c,
+                               d_select,
+                               centric):
+      if ds:
+        if cf:
+          if zc:
+            tmp_final.append( False )
+          else:
+            tmp_final.append( True )
+        if not cf:
+          if zac:
+            tmp_final.append( False )
+          else:
+            tmp_final.append( True )
+      else:
+        tmp_final.append( True )
+    tmp_final = flex.bool( tmp_final )
+    final_selection = self.norma_work.customized_copy(
+      data = tmp_final
     )
-
     log_message = """
 Possible outliers due to beamstop shadow
 ----------------------------------------
 
-Reflection with normalized intensities lower than %4.3f (acentric)
-or %4.3f (centric) and an associated d-spacing lower than %3.1f
+Reflection with normalized intensities lower than %4.3e (acentric)
+or %4.3e (centric) and an associated d-spacing lower than %3.1f
 are considered potential outliers.
 The rationale is that these reflection could potentially be in
 the shadow of the beamstop.
@@ -379,12 +398,15 @@ extreme value distribution of the chi-square distribution.
 
   def make_log_beam_stop(self,
                          log_message, flags):
-    self.work_obs = self.work_obs.map_to_asu()
+    self.norma_work = self.norma_work.map_to_asu()
     self.miller_obs = self.miller_obs.map_to_asu()
     flags = flags.map_to_asu()
 
+
+
+
     data = self.miller_obs.select( ~flags.data() )
-    evals = self.work_obs.select( ~flags.data() )
+    evals = self.norma_work.select( ~flags.data() )
 
 
 
@@ -392,24 +414,28 @@ extreme value distribution of the chi-square distribution.
     table = "No outliers were found"
     rows = []
     if data.data().size() > 0:
-      for hkl, d, e, fobs, c in zip(data.indices(),
-                                    data.d_spacings().data(),
-                                    data.data(),
-                                    evals.data(),
-                                    data.centric_flags().data() ):
-        this_row = [str(hkl),
-                    "%4.2f"%(d),
-                    "%6.1f"%(fobs),
-                    "%4.2f"%( math.sqrt(e) ),
-                    str(c) ]
-        rows.append( this_row )
+      if data.data().size() < 500 :
+        for hkl, d, fobs, e, c in zip(data.indices(),
+                                      data.d_spacings().data(),
+                                      data.data(),
+                                      evals.data(),
+                                      data.centric_flags().data() ):
+          this_row = [str(hkl),
+                      "%4.2f"%(d),
+                      "%6.1f"%(fobs),
+                      "%4.2f"%( math.sqrt(e) ),
+                      str(c) ]
+          rows.append( this_row )
 
-      table = table_utils.format( [header]+rows,
-                                  comments=None,
-                                  has_header=True,
-                                  separate_rows=False,
-                                  prefix='| ',
-                                  postfix=' |')
+        table = table_utils.format( [header]+rows,
+                                    comments=None,
+                                    has_header=True,
+                                    separate_rows=False,
+                                    prefix='| ',
+                                    postfix=' |')
+      else:
+        table = """Over 500 outliers have been found."""
+
 
     final = log_message + "\n" + table +"\n \n"
     return final
