@@ -252,7 +252,7 @@ the shadow of the beamstop.
                            f_model,
                            alpha,
                            beta,
-                           level=15,
+                           level=.01,
                            return_data=False,
                            plot_out=None):
 
