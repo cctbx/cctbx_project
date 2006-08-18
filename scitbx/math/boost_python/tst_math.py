@@ -1,7 +1,7 @@
 import scitbx.math
 from scitbx.math import euler_angles_as_matrix
 from scitbx.math import erf_verification, erf, erfc, erfcx
-from scitbx.math import bessel_i1_over_i0,bessel_i0,bessel_i1,bessel_ln_of_i0
+from scitbx.math import bessel_i1_over_i0,bessel_i0,bessel_i1,bessel_ln_of_i0, ei1, ei0
 from scitbx.math import bessel_inverse_i1_over_i0
 from scitbx.math import gamma_incomplete, gamma_incomplete_complement
 from scitbx.math import gamma_complete, exponential_integral_e1z
@@ -243,6 +243,17 @@ def exercise_bessel():
   while x <= 100.0:
     assert approx_equal(bessel_ln_of_i0(x),math.log(bessel_i0(x)))
     x+=0.01
+
+def exercise_eix():
+  x = flex.double( range(4000) )/20.0
+  expx = flex.exp( -x )
+  for xx, ex in zip(x,expx):
+    tmp_i0  = bessel_i0(xx)
+    tmp_i1  = bessel_i1(xx)
+    tmp_ei0 = ei0(xx)
+    tmp_ei1 = ei1(xx)
+    assert approx_equal(  tmp_i0*ex, tmp_ei0, eps=1e-3 )
+    assert approx_equal(  tmp_i1*ex, tmp_ei1, eps=1e-3 )
 
 
 
@@ -1148,6 +1159,7 @@ def exercise_unimodular_generator(forever):
       break
 
 def run():
+  exercise_eix()
   exercise_floating_point_epsilon()
   exercise_euler_angles()
   exercise_erf()
