@@ -155,6 +155,101 @@ namespace bessel {
     return bessel_lni0;
   }
 
+  template <typename FloatType>
+  FloatType
+  ei1(FloatType const& x)
+  {
+    // a quick and dirty approximation
+    FloatType t;
+    t = x/(1.0+x);
+    /*
+
+
+    Final set of parameters            Asymptotic Standard Error
+    =======================            ==========================
+
+    a               = 0.47735          +/- 0.0003554    (0.07446%)
+    b               = 0.175945         +/- 0.004666     (2.652%)
+    c               = -2.82479         +/- 0.02347      (0.831%)
+    d               = 8.74696          +/- 0.05844      (0.6681%)
+    e               = -14.2023         +/- 0.07694      (0.5417%)
+    f               = 10.9149          +/- 0.05134      (0.4704%)
+    g               = -3.14135         +/- 0.01368      (0.4356%)
+
+
+    correlation matrix of the fit parameters:
+
+                    a      b      c      d      e      f      g
+    a               1.000
+    b              -0.974  1.000
+    c               0.930 -0.988  1.000
+    d              -0.887  0.965 -0.993  1.000
+    e               0.847 -0.939  0.979 -0.996  1.000
+    f              -0.812  0.912 -0.962  0.986 -0.997  1.000
+    g               0.781 -0.887  0.943 -0.974  0.990 -0.998  1.000
+    gnuplot> f(x) = sqrt(1-x)*exp(x)*(x*(a+x*(b+x*(c+x*(d+x*(e+x*(f+g*x)))))))
+    */
+    FloatType a=  0.47735;
+    FloatType b=  0.175945;
+    FloatType c= -2.82479;
+    FloatType d=  8.74696;
+    FloatType e=-14.2023;
+    FloatType f= 10.9149;
+    FloatType g= -3.14135;
+
+    FloatType result;
+    result = std::sqrt(1-t)*std::exp(t)*(t*(a+t*(b+t*(c+t*(d+t*(e+t*(f+g*t)))))));
+    return result;
+  }
+
+
+  template <typename FloatType>
+  FloatType
+  ei0(FloatType const& x)
+  {
+    // A quick and dirty approximation
+    FloatType t;
+    t = x/(1.0+x);
+    /*
+      degrees of freedom (ndf) : 39
+      rms of residuals      (stdfit) = sqrt(WSSR/ndf)      : 0.000162321
+      variance of residuals (reduced chisquare) = WSSR/ndf : 2.6348e-08
+
+      Final set of parameters            Asymptotic Standard Error
+      =======================            ==========================
+
+      b               = -1.51857         +/- 0.002712     (0.1786%)
+      c               = 0.862203         +/- 0.01986      (2.304%)
+      d               = -1.11554         +/- 0.05248      (4.705%)
+      e               = 1.72229          +/- 0.05872      (3.41%)
+      f               = -0.804154        +/- 0.02353      (2.926%)
+
+
+      correlation matrix of the fit parameters:
+
+                      b      c      d      e      f
+      b               1.000
+      c              -0.973  1.000
+      d               0.922 -0.986  1.000
+      e              -0.868  0.956 -0.992  1.000
+      f               0.819 -0.923  0.973 -0.995  1.000
+      gnuplot> plot 'pp' using 2:3, f(x)
+      gnuplot>  f(x) = sqrt(1-x)*exp(x)*(1+x*(b+x*(c+x*(d+x*(e+f*x)))))
+    */
+
+    FloatType a=  1.0;
+    FloatType b= -1.51857;
+    FloatType c=  0.862203;
+    FloatType d= -1.11554;
+    FloatType e=  1.72229;
+    FloatType f= -0.804154;
+
+    FloatType result;
+    result = std::sqrt(1-t)*std::exp(t)*(a+t*(b+t*(c+t*(d+t*(e+f*t)))))  ;
+    return result;
+  }
+
+
 }}} // namespace scitbx::math::bessel
 
 #endif // SCITBX_MATH_BESSEL_H
