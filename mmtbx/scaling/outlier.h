@@ -27,6 +27,8 @@ namespace mmtbx { namespace scaling { namespace outlier{
           scitbx::af::const_ref<FloatType> const& beta ):
       log_ei0_(40000) // the exponentiated besseli0 function (  exp[-x]Io[x]  )
       {
+        FloatType min_beta=10.0;
+        FloatType min_alpha=1e-5;//
         /*
         scitbx::math::quadrature::gauss_legendre_engine<FloatType>
           gauss_legendre_(15);
@@ -55,8 +57,17 @@ namespace mmtbx { namespace scaling { namespace outlier{
           f_calc_.push_back( f_calc[ii] );
           epsilon_.push_back( epsilon[ii] );
           centric_.push_back( centric[ii] );
-          alpha_.push_back( alpha[ii]  );
-          beta_.push_back( beta[ii] );
+
+          if (alpha[ii]> min_alpha){
+            alpha_.push_back( alpha[ii]  );
+          } else {
+             alpha_.push_back( min_alpha  );
+          }
+          if (beta[ii]> min_beta){
+            beta_.push_back( beta[ii] );
+          } else{
+            beta_.push_back( min_beta );
+          }
           // push back some zero's please
           f_obs_log_likelihood_.push_back(
             calc_log_likelihood(f_obs_[ii], ii) );
@@ -65,8 +76,9 @@ namespace mmtbx { namespace scaling { namespace outlier{
           f_obs_posterior_mode_snd_der_.push_back(0.0);
           f_obs_fst_der_.push_back( fst_der(f_obs_[ii], ii)  );
           f_obs_snd_der_.push_back( snd_der(f_obs_[ii], ii)  );
+          mean_fo_.push_back( compute_mean_( ii ) );
           // get the stuff please
-          newton_search(ii, 1.00, 1e-5, 5000);
+          newton_search(ii, 0.50,  1e-5, 10000);
         }
       }
 
@@ -99,6 +111,12 @@ namespace mmtbx { namespace scaling { namespace outlier{
       f_obs_fst_der(){
         return(f_obs_fst_der_);
       }
+
+      scitbx::af::shared<FloatType>
+      mean_fobs(){
+        return( mean_fo_  );
+      }
+
 
       scitbx::af::shared<bool>
       flag_potential_outliers( FloatType level)
@@ -144,8 +162,8 @@ namespace mmtbx { namespace scaling { namespace outlier{
         FloatType funct, grad,delta,step;
         bool converged=false;
         int count=0;
-        start_f_bar = f_calc_[ii];
-        f_bar = f_calc_[ii]*start_fraction;
+        start_f_bar = mean_fo_[ii]*start_fraction;
+        f_bar = mean_fo_[ii]*start_fraction;
         f_bar_m1 = -1;
         f_bar_m2 = -1;
         while (!converged){
@@ -177,7 +195,15 @@ namespace mmtbx { namespace scaling { namespace outlier{
             converged=true;
           }
           if (count >= max_iter){
-            // std::cout << " PRELIMINAIRY CONVERGENCE   "<< delta << std::endl;
+            /*
+            std::cout << " PRELIMINAIRY CONVERGENCE   "
+                      << delta << " "
+                      << centric_[ii] << " " << f_calc_[ii] << " "
+                      << f_bar << " " << " " <<  f_bar_m1 << " " <<  f_bar_m2 << " "
+                      << mean_fo_[ii] <<  " "
+                      << alpha_[ii]   << " "
+                      << beta_[ii] << " " << std::endl;
+            */
             converged=true;
           }
           count++;
@@ -312,9 +338,33 @@ namespace mmtbx { namespace scaling { namespace outlier{
         return(result);
       }
 
+      inline FloatType compute_mean_( int ii ){
+        FloatType result, tmp;
+        if (centric_[ii]){
+          tmp = alpha_[ii]*f_calc_[ii]/std::sqrt(2.0*epsilon_[ii]*beta_[ii]);
+          result = std::exp(-tmp*tmp)*
+            std::sqrt(2.0*epsilon_[ii]*beta_[ii]/scitbx::constants::pi);
+          result = result + alpha_[ii]*f_calc_[ii]*scitbx::math::erf(tmp);
+        }
+        else {
+          FloatType x;
+          x = alpha_[ii]*f_calc_[ii]*alpha_[ii]*f_calc_[ii]/(
+            2.0*epsilon_[ii]*beta_[ii]);
 
+          result = (epsilon_[ii]*beta_[ii] +
+                    alpha_[ii]*alpha_[ii]*f_calc_[ii]*f_calc_[ii])*
+            scitbx::math::bessel::ei0(x);
 
+          result+= alpha_[ii]*alpha_[ii]*f_calc_[ii]*f_calc_[ii]*
+            scitbx::math::bessel::ei1(x);
 
+          result = result*0.5*std::sqrt(
+            scitbx::constants::pi/(epsilon_[ii]*beta_[ii]));
+
+        }
+        return result;
+
+      }
 
       scitbx::af::shared<FloatType> f_obs_;
       scitbx::af::shared<FloatType> s_obs_;
@@ -334,8 +384,7 @@ namespace mmtbx { namespace scaling { namespace outlier{
 
 
       mmtbx::scaling::twinning::quick_log_ei0<FloatType> log_ei0_;
-      //scitbx::af::shared<FloatType> x_;
-      //scitbx::af::shared<FloatType> w_;
+      scitbx::af::shared<FloatType> mean_fo_;
 
   };
 
