@@ -195,6 +195,17 @@ namespace {
           arg_("unit_cell"),
           arg_("u_shift")));
 
+    def("shift_us",
+      (void(*)(
+        af::ref<scatterer<> > const&,
+        uctbx::unit_cell const&,
+        double u_min,
+        af::const_ref<std::size_t> const&)) shift_us, (
+          arg_("scatterers"),
+          arg_("unit_cell"),
+          arg_("u_shift"),
+          arg_("selection")));
+
     def("apply_symmetry_sites",
       (void(*)(
         sgtbx::site_symmetry_table const&,

@@ -445,6 +445,25 @@ def exercise_xray_scatterer():
   xray.shift_us(scatterers=a, unit_cell=uc, u_shift=-10)
   assert approx_equal(a[0].u_star, x_u_star_orig)
   assert approx_equal(a[1].u_iso, 1)
+
+  scs = flex.xray_scatterer((
+    xray.scatterer("o", site=(0.01,0.02,0.1), u=0.1),
+    xray.scatterer("o", site=(0.02,0.02,0.2), u=0.2),
+    xray.scatterer("o", site=(0.03,0.02,0.3), u=0.3),
+    xray.scatterer("o", site=(0.04,0.02,0.4), u=0.4),
+    xray.scatterer("o", site=(0.05,0.02,0.4), u=0.5),
+    xray.scatterer("o", site=(0.1,0.2,0.3),   u=(0.1,0.2,0.3,-.04,0.5,-0.06)),
+    xray.scatterer("o", site=(0.3,0.4,0.5),   u=(0.4,0.5,0.6,-.05,0.2,-0.02))))
+  uisos = scs.extract_u_iso()
+  xray.shift_us(scatterers=scs, unit_cell=uc, u_shift=1,
+                selection = flex.size_t([1,3,5]))
+  assert approx_equal(scs[0].u_iso,  0.1) and approx_equal(scs[0].u_star, (-1.0, -1.0, -1.0, -1.0, -1.0, -1.0))
+  assert approx_equal(scs[1].u_iso,  1.2) and approx_equal(scs[1].u_star, (-1.0, -1.0, -1.0, -1.0, -1.0, -1.0))
+  assert approx_equal(scs[2].u_iso,  0.3) and approx_equal(scs[2].u_star, (-1.0, -1.0, -1.0, -1.0, -1.0, -1.0))
+  assert approx_equal(scs[3].u_iso,  1.4) and approx_equal(scs[3].u_star, (-1.0, -1.0, -1.0, -1.0, -1.0, -1.0))
+  assert approx_equal(scs[4].u_iso,  0.5) and approx_equal(scs[4].u_star, (-1.0, -1.0, -1.0, -1.0, -1.0, -1.0))
+  assert approx_equal(scs[5].u_iso, -1.0) and approx_equal(scs[5].u_star, (0.11, 0.21, 0.30591715976331357, -0.04, 0.5, -0.06))
+  assert approx_equal(scs[6].u_iso, -1.0) and approx_equal(scs[6].u_star, (0.40, 0.50, 0.59999999999999998, -0.05, 0.2, -0.02))
   a[0].fp = 3;
   a[1].fdp = 4;
   assert not show_diff(a[0].report_details(unit_cell=uc, prefix="&%"), """\
