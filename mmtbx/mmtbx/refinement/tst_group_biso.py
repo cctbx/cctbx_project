@@ -15,6 +15,7 @@ def calculate_fobs(resolution   = 1.0,
   f_calc = xray_structure.structure_factors(
                                         d_min          = resolution,
                                         anomalous_flag = False,
+                                        cos_sin_table  = False,
                                         algorithm      = sf_algorithm).f_calc()
   f_calc = abs(f_calc.structure_factors_from_scatterers(
                                      xray_structure = xray_structure).f_calc())
@@ -36,7 +37,7 @@ def calculate_fobs(resolution   = 1.0,
 def exercise_1(hkl = "enk_gbr.mtz"):
   pdb = libtbx.env.find_in_repositories(
                               relative_path="regression/pdb/enk_gbr_e.pdb", test=os.path.isfile)
-  opt0= "main.number_of_macro_cycles=3 main.refine_site=false"
+  opt0= "main.number_of_macro_cycles=3 main.refine_site=false sf_cos_sin_table=false"
   opt1= "main.target=ls main.refine_adp_individual=false"
   opt2= "output.write_maps=false output.write_map_coefficients=false" \
         " output.write_geo_file=true output.write_def_file=false"
@@ -50,7 +51,7 @@ def exercise_1(hkl = "enk_gbr.mtz"):
 def exercise_2(pdb = "enk_gbr_e.pdb", hkl = "enk_gbr.mtz"):
   pdb = libtbx.env.find_in_repositories(
                               relative_path="regression/pdb/enk_gbr_e.pdb", test=os.path.isfile)
-  opt0= "main.number_of_macro_cycles=3 main.refine_site=false"
+  opt0= "main.number_of_macro_cycles=3 main.refine_site=false sf_cos_sin_table=false"
   opt1= "main.target=ls main.refine_adp_individual=false"
   opt2= "output.write_maps=false output.write_map_coefficients=false" \
         " output.write_geo_file=true output.write_def_file=false"

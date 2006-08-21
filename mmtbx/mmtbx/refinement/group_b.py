@@ -22,9 +22,7 @@ def show_times(out = None):
 
 class manager(object):
   def __init__(self, fmodel,
-                     tan_b_iso_max            = 0,
                      selections               = None,
-                     u_initial                = None,
                      max_number_of_iterations = 50,
                      number_of_macro_cycles   = 5,
                      convergence_test         = True,
@@ -33,54 +31,55 @@ class manager(object):
     global time_group_b_py
     timer = user_plus_sys_time()
     if(log is None): log = sys.stdout
-    xray.set_scatterer_grad_flags(scatterers = fmodel.xray_structure.scatterers(),
-                                  u_iso      = True)
+    #XXX highly inefficient code
+    #save_set_use_u_iso_flags  = flex.bool()
+    #save_set_grad_u_iso_flags = flex.bool()
+    #for i_seq, sc in enumerate(fmodel.xray_structure.scatterers()):
+    #    save_set_use_u_iso_flags.append(sc.flags.use_u_iso())
+    #    save_set_grad_u_iso_flags.append(sc.flags.grad_u_iso())
+    #    sc.flags.set_use_u_iso(True)
+    #    sc.flags.set_grad_u_iso(True)
+    #    assert sc.u_iso != -1.0
+    xray.set_scatterer_grad_flags(
+                               scatterers = fmodel.xray_structure.scatterers(),
+                               u_iso      = True)
     if(selections is None):
        selections = []
        selections.append(flex.bool(fmodel.xray_structure.scatterers().size(),
                                                                          True))
     else: assert len(selections) > 0
-    if(u_initial is None):
-       u_initial = []
-       eps = math.pi**2*8
-       for sel in selections:
-           u = fmodel.xray_structure.select(sel).extract_u_iso_or_u_equiv()
-           u_initial.append(flex.mean(u))
+    u_initial = []
+    selections_ = []
+    for sel in selections:
+        u_initial.append(adptbx.b_as_u(0.0))
+        if(str(type(sel).__name__) == "bool"):
+           selections_.append(sel.iselection())
+        else:
+           selections_.append(sel)
+    selections = selections_
     fmodel_copy = fmodel.deep_copy()
     rworks = flex.double()
+    sc_start = fmodel.xray_structure.scatterers().deep_copy()
     minimized = None
     for macro_cycle in xrange(1,number_of_macro_cycles+1,1):
-        if(minimized is not None):
-          u = flex.double(minimized.u_min)
-          un_sel = u <= 0.0
-          up_sel = u >  0.0
-          up = u.select(up_sel)
-          u.set_selected(un_sel, flex.mean(up))
-          assert (u <= 0).count(True) == 0
-          u_initial = list(u)
+        if(minimized is not None): u_initial = minimized.u_min
         minimized = group_u_iso_minimizer(
                            fmodel                   = fmodel_copy,
+                           sc_start                 = sc_start,
                            selections               = selections,
                            u_initial                = u_initial,
-                           max_number_of_iterations = max_number_of_iterations,
-                           tan_b_iso_max            = tan_b_iso_max)
-        if(minimized is not None):
-          u = flex.double(minimized.u_min)
-          un_sel = u <= 0.0
-          up_sel = u >  0.0
-          up = u.select(up_sel)
-          u.set_selected(un_sel, flex.mean(up))
-          assert (u <= 0).count(True) == 0
-          u_initial = list(u)
-        new_xrs = apply_transformation(
-                         xray_structure = minimized.fmodel_copy.xray_structure,
-                         u              = u_initial,
-                         selections     = selections)
+                           max_number_of_iterations = max_number_of_iterations)
+        if(minimized is not None): u_initial = minimized.u_min
+        new_xrs = apply_transformation(xray_structure = fmodel.xray_structure,
+                                       u              = u_initial,
+                                       sc_start       = sc_start,
+                                       selections     = selections)
         fmodel_copy.update_xray_structure(xray_structure = new_xrs,
                                           update_f_calc  = True,
                                           out            = log)
         rwork = minimized.fmodel_copy.r_work()
         rfree = minimized.fmodel_copy.r_free()
+        assert approx_equal(rwork, fmodel_copy.r_work())
         self.show(f     = fmodel_copy.f_obs_w,
                   rw    = rwork,
                   rf    = rfree,
@@ -98,6 +97,12 @@ class manager(object):
     fmodel.update_xray_structure(xray_structure = fmodel_copy.xray_structure,
                                  update_f_calc  = True)
     self.fmodel = fmodel
+    ##XXX highly inefficient code
+    #for sc, uf, gf in zip(fmodel.xray_structure.scatterers(),
+    #                      save_set_use_u_iso_flags, save_set_grad_u_iso_flags):
+    #    sc.flags.set_use_u_iso(uf)
+    #    sc.flags.set_grad_u_iso(gf)
+    #    assert sc.u_iso != -1.0
     time_group_b_py += timer.elapsed()
 
   def rotation(self):
@@ -139,17 +144,13 @@ class manager(object):
 class group_u_iso_minimizer(object):
   def __init__(self,
                fmodel,
+               sc_start,
                selections,
                u_initial,
-               max_number_of_iterations,
-               tan_b_iso_max):
+               max_number_of_iterations):
     adopt_init_args(self, locals())
-    #self.tan_b_iso_max=0
-    if(self.fmodel.target_name in ["ml","lsm"]):
-       # XXX Looks like alpha & beta must be recalcuclated in line search,
-       # XXX       what I don't like
-       #self.alpha, self.beta = self.fmodel.alpha_beta_w()
-       self.alpha, self.beta = None, None
+    if(self.fmodel.target_name in ["ml","lsm", "mlhl"]):
+       self.alpha, self.beta = self.fmodel.alpha_beta_w()
     else:
        self.alpha, self.beta = None, None
     self.fmodel_copy = self.fmodel.deep_copy()
@@ -169,32 +170,24 @@ class group_u_iso_minimizer(object):
     del self.x
 
   def pack(self, u):
-    if(self.tan_b_iso_max > 0):
-       for i, ui in enumerate(u):
-           u[i] =math.tan(math.pi*(ui/adptbx.b_as_u(self.tan_b_iso_max)-1./2.))
     return flex.double(tuple(u))
 
   def unpack_x(self):
-    if(self.tan_b_iso_max > 0):
-       for i, ui in enumerate(self.x):
-           self.u_min[i] = adptbx.b_as_u(self.tan_b_iso_max)*(math.atan(ui)+\
-                                                            math.pi/2.)/math.pi
-    else:
-       self.u_min = tuple(self.x)
+    self.u_min = tuple(self.x)
 
   def compute_functional_and_gradients(self):
     self.unpack_x()
     self.counter += 1
     new_xrs = apply_transformation(xray_structure = self.fmodel.xray_structure,
                                    u              = self.u_min,
+                                   sc_start       = self.sc_start,
                                    selections     = self.selections)
     self.fmodel_copy.update_xray_structure(xray_structure = new_xrs,
                                            update_f_calc  = True)
     tg_obj = target_and_grads(fmodel        = self.fmodel_copy,
                               alpha         = self.alpha,
                               beta          = self.beta,
-                              selections    = self.selections,
-                              tan_b_iso_max = 0)
+                              selections    = self.selections)
     self.f = tg_obj.target()
     ##########################################################################
     # XXX works only if self.tan_b_iso_max=0 ???
@@ -233,25 +226,29 @@ class group_u_iso_minimizer(object):
 
 def apply_transformation(xray_structure,
                          u,
-                         selections):
+                         selections,
+                         sc_start):
   assert len(selections) == len(u)
-  new_us = xray_structure.scatterers().extract_u_iso()
+  new_sc = sc_start.deep_copy()
   for sel, ui in zip(selections, u):
-      new_us.set_selected( sel, ui )
-  return xray_structure.set_u_iso(values = new_us)
+      xray.shift_us(scatterers = new_sc,
+                    unit_cell  = xray_structure.unit_cell(),
+                    u_shift    = ui,
+                    selection  = sel)
+  xray_structure.replace_scatterers(new_sc)
+  return xray_structure
 
 class target_and_grads(object):
   def __init__(self, fmodel,
                      alpha,
                      beta,
-                     selections,
-                     tan_b_iso_max):
+                     selections):
     self.grads_wrt_u = []
     target_grads_wrt_adp = fmodel.gradient_wrt_atomic_parameters(
                                                  u_iso         = True,
                                                  alpha         = alpha,
                                                  beta          = beta,
-                                                 tan_b_iso_max = tan_b_iso_max)
+                                                 tan_b_iso_max = 0.0)
     target_grads_wrt_adp = target_grads_wrt_adp.packed()
     self.f = fmodel.target_w(alpha = alpha, beta = beta)
     for sel in selections:

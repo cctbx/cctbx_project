@@ -1053,6 +1053,34 @@ class manager(object):
     else:
       return alpha, beta
 
+  def model_error_ml(self):
+    ss = 1./flex.pow2(self.f_obs.d_spacings().data())
+    omega  = flex.double()
+    save_self_overall_scale = self.overall_scale
+    alpha, beta = maxlik.alpha_beta_est_manager(
+                                    f_obs           = self.f_obs,
+                                    f_calc          = self.f_model(),
+                                    test_ref_in_bin = 200,
+                                    flags           = self.r_free_flags.data(),
+                                    interpolation   = True).alpha_beta()
+    #self.overall_scale = self.scale_k3_w()
+    self.overall_scale = 1.0#self.scale_k3_w()
+    alpha = self.alpha_beta()[0].data()
+    for ae,ssi in zip(alpha,ss):
+      if(ae >  1.0): ae = 1.0
+      if(ae <= 0.0): ae = 1.e-6
+      coeff = -4./(math.pi**3*ssi)
+      #x = math.log(ae)
+      #print x
+      #y = x * coeff
+      #print y, coeff
+      #z = math.sqrt(y)
+      omega.append( math.sqrt( math.log(ae) * coeff ) )
+    #omega_ma  = miller.array(miller_set= self.f_obs,data= flex.double(omega))
+    self.overall_scale = save_self_overall_scale
+    return flex.mean(omega), flex.max(omega), flex.min(omega)
+
+
   def targets_w(self, alpha=None, beta=None):
   #XXX works only for MLHL target !!!
     assert self.target_functors is not None

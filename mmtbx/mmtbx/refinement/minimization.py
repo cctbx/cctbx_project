@@ -122,12 +122,12 @@ class lbfgs(object):
        sf = self.fmodel.gradient_wrt_atomic_parameters(
                                                   alpha = self.alpha_w,
                                                   beta  = self.beta_w).packed()
-       zz = flex.vec3_double(sf)
-       qq = zz.set_selected(self.d_selection, [0,0,0])
-       zz = qq.as_double()
-       sf = zz
+       if(self.neutron_refinement):
+          zz = flex.vec3_double(sf)
+          qq = zz.set_selected(self.d_selection, [0,0,0])
+          zz = qq.as_double()
+          sf = zz
        self.g = sf * self.wx
-
 
     if(self.neutron_refinement):
        self.xray_structure.scattering_type_registry(
@@ -146,11 +146,32 @@ class lbfgs(object):
           sf = self.fmodel_neutron.gradient_wrt_atomic_parameters(
                                           alpha = self.alpha_w_neutron,
                                           beta  = self.beta_w_neutron).packed()
-          zz = flex.vec3_double(sf)
-          qq = zz.set_selected(~self.d_selection, [0,0,0])
-          zz = qq.as_double()
-          sf = zz
+          if(self.neutron_refinement):
+             zz = flex.vec3_double(sf)
+             qq = zz.set_selected(~self.d_selection, [0,0,0])
+             zz = qq.as_double()
+             sf = zz
           self.g = self.g + sf * self.wx_neutron * self.wxnc_scale
+
+          #ii = 0
+          #tt = flex.vec3_double(self.g)
+          #rr = flex.vec3_double(sfn)
+          #for i, j, fd in zip(tt, rr, self.d_selection):
+          #  angle = flex.double(i).angle(flex.double(j), deg = True)
+          #  if(angle >= 90.0):
+          #     if(fd): tt[ii] = [0,0,0]
+          #     else:   rr[ii] = [0,0,0]
+          #  ii += 1
+          #self.g = tt.as_double() + rr.as_double() * self.wx_neutron * self.wxnc_scale
+
+    #if(compute_gradients):
+    #   angle = flex.double()
+    #   for i, j in zip(rr, tt):
+    #     angle.append( flex.double(i).angle(flex.double(j), deg = True) )
+    #   sel_del = (angle >= 90.0)
+    #   qq = flex.vec3_double(self.g)
+    #   qq = qq.set_selected(sel_del, [0,0,0])
+    #   self.g = qq.as_double()
 
 
     if(self.restraints_manager is not None and self.wc > 0.0):
