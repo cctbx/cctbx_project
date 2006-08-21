@@ -413,7 +413,9 @@ def run(command_name, args):
     print >> log, "==============================="
     print >> log
     outlier_manager = outlier_rejection.outlier_manager(
-      miller_array, out=log)
+      miller_array,
+      free_flags,
+      out=log)
 
     basic_array = None
     extreme_array = None
@@ -463,42 +465,12 @@ def run(command_name, args):
       print >> log, "Maximum likelihood bulk solvent scaling."
       print >> log
       f_model_object.update_solvent_and_scale(out=log)
-      b_cart = f_model_object.b_cart()
-      k_sol = f_model_object.k_sol()
-      b_sol = f_model_object.b_sol()
-      ls_scale = 1.0/f_model_object.scale_k1()
-      print >> log
-      print >> log, "The observed data is scaled by a multiplier"
-      print >> log, "equal to %5.2e"%(ls_scale)
-      print >> log, "This brings the data to an approximate absolute scale."
-
-      # update the outlier object please
-      outlier_manager.apply_scale_to_original_data( ls_scale)
-      free_flags = free_flags.common_set( outlier_manager.miller_obs )
-
-      # redo the f model object please
-      f_model_object = f_model.manager(
-        f_obs = outlier_manager.miller_obs,
-        r_free_flags = free_flags,
-        xray_structure = model)
-      # reset the bulk solvent parameters please
-      f_model_object.update_core(b_cart=b_cart,
-                                 k_sol=k_sol,
-                                 b_sol=b_sol)
-      f_model_data = f_model_object.f_model()
-
       plot_out = StringIO()
-      # get alphas and betas please
-      alpha,beta = f_model_object.alpha_beta()
-      # get suspected outliers
       model_based_array = outlier_manager.model_based_outliers(
-        f_model_data,
-        alpha,
-        beta,
+        f_model_object,
         level=params.outlier_utils.outlier_detection.parameters.model_based.level,
         return_data=True,
         plot_out=plot_out)
-
     #check what needs to be put out please
     if params.outlier_utils.output.hklout is not None:
       if params.outlier_utils.outlier_detection.protocol == "model":
