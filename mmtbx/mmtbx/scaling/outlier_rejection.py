@@ -26,11 +26,12 @@ import sys, os
 import math
 import string
 from cStringIO import StringIO
-
+import mmtbx.f_model
 
 class outlier_manager(object):
   def __init__(self,
                miller_obs,
+               r_free_flags,
                out=None):
     self.out=out
     if self.out is None:
@@ -50,6 +51,8 @@ class outlier_manager(object):
 
     if not self.miller_obs.is_xray_amplitude_array():
       self.miller_obs = self.miller_obs.f_sq_as_f()
+
+    self.r_free_flags = r_free_flags
 
     #-----------------------
     # These calculations are needed for wilson based outlier rejection
@@ -248,13 +251,29 @@ the shadow of the beamstop.
     else:
       return( data )
 
+
   def model_based_outliers(self,
-                           f_model,
-                           alpha,
-                           beta,
+                           fmodel_manager,
                            level=.01,
                            return_data=False,
                            plot_out=None):
+
+    # do some ls scaling please
+    ls_scale = fmodel_manager.scale_k1()
+    self.apply_scale_to_original_data( 1.0/ls_scale )
+
+    f_model_object = mmtbx.f_model.manager(
+      f_obs = self.miller_obs,
+      r_free_flags = self.r_free_flags,
+      xray_structure = fmodel_manager.xray_structure )
+    b_cart = fmodel_manager.b_cart()
+    k_sol = fmodel_manager.k_sol()
+    b_sol = fmodel_manager.b_sol()
+    f_model_object.update_core(b_cart=b_cart,
+                               k_sol=k_sol,
+                               b_sol=b_sol)
+    f_model = f_model_object.f_model()
+    alpha, beta = f_model_object.alpha_beta()
 
     self.miller_obs = self.miller_obs.map_to_asu()
     f_model = f_model.common_set(self.miller_obs).map_to_asu()
