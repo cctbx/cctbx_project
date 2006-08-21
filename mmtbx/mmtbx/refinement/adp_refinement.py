@@ -25,7 +25,7 @@ def show_times(out = None):
   return total
 
 group_adp_master_params = iotbx.phil.parse("""\
-  number_of_macro_cycles   = 1
+  number_of_macro_cycles   = 3
     .type = int
   max_number_of_iterations = 25
     .type = int
@@ -163,21 +163,21 @@ class manager(object):
     if(refine_tls):
        print_statistics.make_sub_header(text = "TLS refinement",
                                         out  = log)
-       if(macro_cycle == 1):
-          if((fmodel.r_work() > 0.3 and fmodel.r_free() > 0.3) and
-                                              fmodel.f_obs_w.d_min() > 2.65):
-             fmodel.xray_structure.convert_to_isotropic()
-             for sc in fmodel.xray_structure.scatterers():
-               sc.flags.set_tan_u_iso(True)
-               sc.flags.param = 300
-             group_b_manager = mmtbx.refinement.group_b.manager(
-                fmodel                   = fmodel,
-                selections               = tls_selections,
-                convergence_test         = group_adp_params.convergence_test,
-                max_number_of_iterations = 50,
-                number_of_macro_cycles   = 1,
-                log                      = log,
-                tan_b_iso_max            = 300.)
+       if(refine_adp_individual or refine_adp_group):
+          if(macro_cycle == 1):
+             gbr_selections = []
+             for s in tls_selections:
+                 gbr_selections.append(s.iselection())
+          else:
+             gbr_selections = group_adp_selections
+          group_b_manager = mmtbx.refinement.group_b.manager(
+             fmodel                   = fmodel,
+             selections               = gbr_selections,
+             convergence_test         = group_adp_params.convergence_test,
+             max_number_of_iterations = 50,
+             number_of_macro_cycles   = 1,
+             log                      = log)
+
        set_flags(xray_structure        = fmodel.xray_structure,
                  anisotropic_flags     = anisotropic_flags,
                  refine_adp_individual = refine_adp_individual,
@@ -267,8 +267,7 @@ class manager(object):
           convergence_test         = group_adp_params.convergence_test,
           max_number_of_iterations = group_adp_params.max_number_of_iterations,
           number_of_macro_cycles   = group_adp_params.number_of_macro_cycles,
-          log                      = log,
-          tan_b_iso_max            = tan_b_iso_max)
+          log                      = log)
     time_adp_refinement_py += timer.elapsed()
 
 
