@@ -9,6 +9,7 @@
 #include <scitbx/math/chebyshev.h>
 #include <mmtbx/scaling/twinning.h>
 #include <scitbx/math/quadrature.h>
+#include <scitbx/math/bessel.h>
 
 
 namespace mmtbx { namespace scaling { namespace outlier{
@@ -160,7 +161,7 @@ namespace mmtbx { namespace scaling { namespace outlier{
         FloatType f_bar, start_f_bar;;
         FloatType f_bar_m1, f_bar_m2;
         FloatType funct, grad,delta,step;
-        bool converged=false;
+        bool converged=false, use_mean=false;
         int count=0;
         start_f_bar = mean_fo_[ii]*start_fraction;
         f_bar = mean_fo_[ii]*start_fraction;
@@ -204,12 +205,17 @@ namespace mmtbx { namespace scaling { namespace outlier{
                       << alpha_[ii]   << " "
                       << beta_[ii] << " " << std::endl;
             */
+            use_mean=true;
             converged=true;
           }
           count++;
           //std::cout << count <<" " << f_bar << " " << funct << " " << grad << "  " << -funct/grad << std::endl;
-        }
 
+        }
+        if (use_mean){
+          //std::cout <<"using f_mean rather then mode"<< std::endl;
+          f_bar = mean_fo_[ii];
+        }
         grad  = snd_der(f_bar, ii);
         f_obs_posterior_mode_log_likelihood_[ii]=calc_log_likelihood(f_bar,ii);
         f_obs_posterior_mode_[ii]=f_bar;
@@ -387,6 +393,200 @@ namespace mmtbx { namespace scaling { namespace outlier{
       scitbx::af::shared<FloatType> mean_fo_;
 
   };
+
+
+
+
+  template<typename FloatType>
+  class sigmaa_estimator
+  {
+  public:
+    sigmaa_estimator( scitbx::af::const_ref<FloatType> const& e_obs,     //1
+                      scitbx::af::const_ref<FloatType> const& e_calc,    //2
+                      scitbx::af::const_ref<bool>      const& centric,   //4
+                      scitbx::af::const_ref<FloatType> const& d_star_sq, //6
+                      FloatType const& width )                           //7
+      :
+      current_h_(0.0),
+      width_(width)
+      {
+        SCITBX_ASSERT( e_obs.size() == e_calc.size() );
+        SCITBX_ASSERT( e_obs.size() == centric.size() );
+        SCITBX_ASSERT( e_obs.size() == d_star_sq.size() );
+        eps_=1e-5;
+        for (int ii=0;ii<e_obs.size();ii++){
+          SCITBX_ASSERT( e_obs[ii]> 0);
+          SCITBX_ASSERT( e_calc[ii]> 0);
+
+          e_obs_.push_back( e_obs[ii] );
+          e_calc_.push_back( e_calc[ii] );
+          centric_.push_back( centric[ii] ) ;
+          d_star_sq_.push_back( d_star_sq[ii] );
+          distance_.push_back(0.0);
+
+        }
+      }
+
+      FloatType target(FloatType const& h,
+                       FloatType const& sigmaa
+                      )
+      {
+        FloatType delta = h-current_h_;
+        if (delta<0){
+          delta = -delta;
+        }
+        if (delta > eps_){
+          current_h_ = h;
+          recompute_distance();
+        }
+        FloatType result=0, tmp_sigmaa=sigmaa;
+        if (sigmaa>1.0-eps_*eps_){
+          tmp_sigmaa = 1.0-eps_*eps_;
+        }
+        for (int ii=0;ii<e_obs_.size();ii++){
+          result += distance_[ii]*compute_single_target(ii,tmp_sigmaa);
+        }
+        return(result);
+      }
+
+      FloatType
+      dtarget(FloatType const& h,
+              FloatType const& sigmaa )
+      {
+        FloatType delta = h-current_h_;
+        if (delta<0){
+          delta = -delta;
+        }
+        if (delta > eps_){
+          current_h_ = h;
+          recompute_distance();
+        }
+
+        FloatType result=0, tmp_sigmaa=sigmaa;
+        if (sigmaa>1.0-eps_*eps_){
+          tmp_sigmaa = 1.0-eps_*eps_;
+        }
+        for (int ii=0;ii<e_obs_.size();ii++){
+          result += distance_[ii]*compute_single_dtarget(ii,tmp_sigmaa);
+        }
+
+        return(result);
+      }
+
+  protected:
+      //--------------------------
+
+      inline FloatType compute_single_target(int const& ii,
+                                             FloatType const& sigmaa)
+        {
+          if (centric_[ii]){
+            return( target_single_centric( ii, sigmaa) );
+          } else {
+            return( target_single_acentric( ii, sigmaa) );
+          }
+        };
+
+      inline FloatType target_single_acentric(int const& ii,
+                                              FloatType const& sigmaa
+                                             )
+      {
+        FloatType result,x;
+        x = sigmaa*2.0*e_obs_[ii]*e_calc_[ii]/(1.0-sigmaa*sigmaa);
+        result  = std::log(2.0)+std::log(e_obs_[ii])-std::log( 1.0-sigmaa*sigmaa );
+        result += -(e_obs_[ii]*e_obs_[ii] + sigmaa*sigmaa*e_calc_[ii]*e_calc_[ii])/
+          (1.0-sigmaa*sigmaa);
+        result += scitbx::math::bessel::ln_of_i0(x);
+        return(result);
+      }
+
+      inline FloatType target_single_centric(int const& ii,
+                                             FloatType const& sigmaa)
+      {
+        FloatType result,x,a1,a2,a3;
+        x = sigmaa*e_obs_[ii]*e_calc_[ii]/(1.0-sigmaa*sigmaa);
+        a1= (std::log(2.0) - std::log(scitbx::constants::pi) - std::log(1.0-sigmaa*sigmaa) )/2.0;
+        a2=-(e_obs_[ii]*e_obs_[ii] +
+             sigmaa*sigmaa*e_calc_[ii]*e_calc_[ii])/(2.0*(1.0-sigmaa*sigmaa));
+        if (x>40){
+          // a simple approximation to avoid problems
+          a3 = x*0.999921 - 0.65543;
+        } else {
+          a3 = std::log( std::cosh( x ) );
+        }
+        result = a1+a2+a3;
+        return(result);
+      }
+    //-----------------------------
+
+      FloatType compute_single_dtarget(int const& ii,
+                                              FloatType const& sigmaa)
+      {
+        if (centric_[ii]){
+          return( dtarget_single_centric(ii,sigmaa) );
+        } else {
+          return( dtarget_single_acentric(ii,sigmaa) );
+        }
+      }
+
+
+      FloatType dtarget_single_acentric( int const& ii,
+                                         FloatType const& sigmaa)
+      {
+        FloatType result=0, x,a1,a2,a3;
+        x=2.0*sigmaa*e_obs_[ii]*e_calc_[ii]/(sigmaa*sigmaa-1.0);
+        a1  = 2.0*sigmaa/(1-sigmaa*sigmaa);
+        a2 = -2.0*sigmaa*(e_obs_[ii]*e_obs_[ii] +
+                          e_calc_[ii]*e_calc_[ii])/((1.0-sigmaa*sigmaa )*(1.0-sigmaa*sigmaa ));
+        a3 = -2.0*e_obs_[ii]*e_calc_[ii]*(1+sigmaa*sigmaa)*
+          scitbx::math::bessel::i1_over_i0(x)/((1.0-sigmaa*sigmaa)*(1.0-sigmaa*sigmaa));
+        result = a1+a2+a3;
+        return(result);
+      }
+
+
+      FloatType dtarget_single_centric( int const& ii,
+                                        FloatType const& sigmaa)
+      {
+        FloatType result, x,a1,a2,a3;
+        x = e_obs_[ii]*e_calc_[ii]*sigmaa/(1.0-sigmaa*sigmaa);
+        a1=sigmaa/(1-sigmaa*sigmaa);;
+        a2=-sigmaa*(e_obs_[ii]*e_obs_[ii] +
+                    e_calc_[ii]*e_calc_[ii])/((1.0-sigmaa*sigmaa )*(1.0-sigmaa*sigmaa ));
+        a3= e_obs_[ii]*e_calc_[ii]*(1+sigmaa*sigmaa)*std::tanh(x)/((1.0-sigmaa*sigmaa)*(1.0-sigmaa*sigmaa));
+        result =  a1+a2+a3;
+        return(result);
+      }
+
+     //-----------------------------
+
+
+
+      inline void recompute_distance()
+        {
+          FloatType result;
+          for (int ii=0; ii<distance_.size();ii++){
+            result = current_h_- d_star_sq_[ii];
+            result = result/width_;
+            result = std::exp(-result*result/2.0);
+            distance_[ii]=result;
+          }
+        }
+
+
+      scitbx::af::shared<FloatType> e_obs_;
+      scitbx::af::shared<FloatType> e_calc_;
+      scitbx::af::shared<FloatType> centric_;
+      scitbx::af::shared<FloatType> d_star_sq_;
+      scitbx::af::shared<FloatType> distance_;
+
+      FloatType current_h_;
+      FloatType width_;
+      FloatType eps_;
+  };
+
+
+
+
 
 
 
