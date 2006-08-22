@@ -57,6 +57,53 @@ namespace{
 
   };
 
+
+  struct sigmaa_estimator_wrapper
+  {
+    typedef sigmaa_estimator<double> w_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+
+      class_<w_t>("sigmaa_estimator", no_init)
+        .def(init<
+             scitbx::af::const_ref< double >  const&, // 1 fobs
+             scitbx::af::const_ref< double >  const&, // 2 fcalc
+             scitbx::af::const_ref< bool >    const&, // 4 centric
+             scitbx::af::const_ref< double >  const&, // 6 d*sq
+             double                           const&> // 7 width
+             ((arg_("e_obs"),
+               arg_("e_calc"),
+               arg_("centric"),
+               arg_("d_star_sq"),
+               arg_("width")
+               )))
+        .def("target", &w_t::target,
+             (( arg_("d_star_sq"),
+                arg_("sigmaa")
+                ))
+             )
+        .def("dtarget", &w_t::dtarget,
+             (( arg_("d_star_sq"),
+                arg_("sigmaa")
+                ))
+             )
+
+
+        ;
+    }
+
+  };
+
+
+
+
+
+
+
+
 }} // namespace <anonymous>
 
 namespace boost_python{
@@ -64,6 +111,7 @@ namespace boost_python{
   void wrap_outlier()
   {
     mmtbx::scaling::outlier::likelihood_ratio_outlier_test_wrapper::wrap();
+    mmtbx::scaling::outlier::sigmaa_estimator_wrapper::wrap();
   }
 
 
