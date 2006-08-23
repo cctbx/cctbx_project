@@ -1,0 +1,161 @@
+from __future__ import division
+from cctbx import maptbx
+from cctbx import miller
+from cctbx import crystal
+from cctbx import sgtbx
+from cctbx import adptbx
+from mmtbx import scaling
+import cctbx.sgtbx.lattice_symmetry
+import cctbx.sgtbx.cosets
+from cctbx.array_family import flex
+from libtbx.utils import Sorry, date_and_time, multi_out
+from iotbx import reflection_file_reader
+from iotbx import reflection_file_utils
+from iotbx import crystal_symmetry_from_any
+from iotbx import data_plots
+import mmtbx.scaling
+from mmtbx.scaling import absolute_scaling, outlier_plots
+from scitbx.math import chebyshev_lsq
+from scitbx.math import chebyshev_polynome
+from scitbx.math import chebyshev_lsq_fit
+from scitbx.math import erf
+import libtbx.phil.command_line
+from libtbx import table_utils
+from scitbx.python_utils import easy_pickle
+import scitbx.lbfgs
+import sys, os
+import math
+import string
+from cStringIO import StringIO
+import mmtbx.f_model
+from scitbx.math import chebyshev_lsq
+from scitbx.math import chebyshev_polynome
+from scitbx.math import chebyshev_lsq_fit
+
+
+
+class sigmaa_point_estimator(object):
+  def __init__(self,
+               target_functor,
+               h):
+    self.functor = target_functor
+    self.h = h
+    self.f = None
+    self.x = flex.double( [-1.0] )
+    self.max = 1.0
+    term_parameters = scitbx.lbfgs.termination_parameters(
+      max_iterations = 1e6 )
+    self.minimizer = scitbx.lbfgs.run(target_evaluator=self,
+                                      termination_params=term_parameters)
+
+    self.sigmaa = self.max/(1.0+math.exp(-self.x[0]))
+
+  def compute_functional_and_gradients(self):
+    sigmaa = self.max/(1.0+math.exp(-self.x[0]))
+    # chain rule bit for sigmoidal function
+    dsdx = self.max*math.exp(-self.x[0])/(
+      (1.0+math.exp(-self.x[0]))**2.0 )
+    f = -self.functor.target(self.h,
+                             sigmaa)
+    g = -self.functor.dtarget(self.h,
+                              sigmaa)*dsdx
+    self.f = f
+    return f, flex.double([g])
+
+
+
+class sigmaa_estimator(object):
+  def __init__(self,
+               miller_obs,
+               miller_calc,
+               r_free_flags,
+               width=0.1,
+               n_points=20,
+               n_terms=13):
+    self.n_terms=n_terms
+    self.miller_obs = miller_obs.map_to_asu()
+    self.miller_calc = abs(miller_calc.map_to_asu())
+    self.r_free_flags = r_free_flags.map_to_asu()
+
+    assert self.r_free_flags.indices().all_eq(
+      self.miller_obs.indices() )
+
+    self.miller_calc = self.miller_calc.common_set(
+      self.miller_obs )
+    assert self.r_free_flags.indices().all_eq(
+      self.miller_calc.indices() )
+
+    assert self.miller_obs.is_real_array()
+
+
+    if self.miller_obs.is_xray_intensity_array():
+      self.miller_obs = self.miller_obs.f_sq_as_f()
+    assert self.miller_obs.is_xray_amplitude_array()
+    self.miller_calc = self.miller_calc.set_observation_type(
+      self.miller_obs)
+
+    self.width= 0.05
+
+    # get normalized data please
+    self.normalized_obs_f = absolute_scaling.kernel_normalisation(
+      self.miller_obs, auto_kernel=True)
+    self.normalized_obs =self.normalized_obs_f.normalised_miller
+
+    self.normalized_calc_f = absolute_scaling.kernel_normalisation(
+      self.miller_calc, auto_kernel=True)
+    self.normalized_calc =self.normalized_calc_f.normalised_miller
+
+    # get the 'free data'
+    self.free_norm_obs = self.normalized_obs.select( self.r_free_flags.data() )
+    self.free_norm_calc= self.normalized_calc.select( self.r_free_flags.data() )
+
+
+    self.sigma_target_functor = scaling.sigmaa_estimator(
+      e_obs     = self.free_norm_obs.data(),
+      e_calc    = self.free_norm_calc.data(),
+      centric   = self.free_norm_obs.centric_flags().data(),
+      d_star_sq = self.free_norm_obs.d_star_sq().data() ,
+      width=self.width)
+
+    d_star_sq_overall = self.miller_obs.d_star_sq().data()
+    """
+    for dd, mfs in zip( d_star_sq_overall, self.normalizer):
+      print dd, mfs
+    """
+    self.min_h = flex.min( d_star_sq_overall )*0.99
+    self.max_h = flex.max( d_star_sq_overall )*1.01
+    self.h_array = flex.double( range(n_points) )*(
+      self.max_h-self.min_h)/float(n_points-1.0)+self.min_h
+    self.sigmaa_array = flex.double([])
+
+    for h in self.h_array:
+      stimator = sigmaa_point_estimator(self.sigma_target_functor,
+                                        h)
+      self.sigmaa_array.append( stimator.sigmaa )
+
+      #now please fit a smooth  function to this bugger
+    fit_lsq = chebyshev_lsq_fit.chebyshev_lsq_fit(
+      self.n_terms,
+      self.h_array,
+      flex.log(self.sigmaa_array) )
+
+    cheb_pol = chebyshev_polynome(
+        self.n_terms,
+        self.min_h,
+        self.max_h,
+        fit_lsq.coefs)
+
+    self.sigmaa = flex.exp( cheb_pol.f( d_star_sq_overall ) )
+    self.alpha = self.sigmaa*flex.sqrt(
+      self.normalized_calc_f.normalizer_for_miller_array/
+      self.normalized_obs_f.normalizer_for_miller_array)
+    self.beta = (1.0-self.sigmaa*self.sigmaa)*\
+                self.normalized_calc_f.normalizer_for_miller_array
+
+    # make them into miller arrays
+    self.sigmaa = self.miller_obs.customized_copy(
+      data = self.sigmaa )
+    self.alpha = self.miller_obs.customized_copy(
+      data = self.alpha )
+    self.beta = self.miller_obs.customized_copy(
+      data = self.beta )
