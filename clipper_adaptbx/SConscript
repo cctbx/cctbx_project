@@ -4,6 +4,15 @@ Import("env_base", "env_etc")
 env_etc.clipper_dist = libtbx.env.dist_path("clipper")
 env_etc.clipper_include = env_etc.clipper_dist
 
+def patch_scons_env(env):
+  if (env_etc.compiler == "unix_gcc"):
+    opt = ["-fno-strict-aliasing"]
+    env.Append(
+      CXXFLAGS=opt,
+      SHCXXFLAGS=opt,
+      CCFLAGS=opt,
+      SHCCFLAGS=opt)
+
 env = env_base.Copy(
   CXXFLAGS=env_etc.cxxflags_base,
   SHCXXFLAGS=env_etc.cxxflags_base,
@@ -12,6 +21,7 @@ env = env_base.Copy(
   SHLINKFLAGS=env_etc.shlinkflags,
   LIBS=env_etc.libm,
 )
+patch_scons_env(env=env)
 env.Prepend(CPPPATH=[env_etc.clipper_include])
 
 if (env_etc.static_libraries): builder = env.StaticLibrary
@@ -80,6 +90,7 @@ if (hasattr(env_etc, "cctbx_include")):
   if (not env_etc.no_boost_python):
     Import("env_no_includes_boost_python_ext")
     env_clipper_boost_python_ext = env_no_includes_boost_python_ext.Copy()
+    patch_scons_env(env=env_clipper_boost_python_ext)
     env_etc.include_registry.append(
       env=env_clipper_boost_python_ext,
       paths=[
