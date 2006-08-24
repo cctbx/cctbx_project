@@ -2555,6 +2555,37 @@ t {
   assert extracted.t.c.__phil_path__() == "t.c"
   assert extracted.t.c.d.__phil_path__() == "t.c.d"
   #
+  try: extracted.z = 12
+  except AttributeError, e:
+    assert str(e) == """Assignment to non-existing attribute "z"
+  Please correct the attribute name, or to create
+  a new attribute, use: obj.__inject__(name, value)"""
+  else: raise RuntimeError("Exception expected.")
+  try: extracted.t.c.z = 13
+  except AttributeError, e:
+    assert str(e) == """Assignment to non-existing attribute "t.c.z"
+  Please correct the attribute name, or to create
+  a new attribute, use: obj.__inject__(name, value)"""
+  else: raise RuntimeError("Exception expected.")
+  extracted.__inject__("z", 14)
+  assert extracted.z == 14
+  del extracted.z
+  extracted.__inject__("z", 15)
+  assert extracted.z == 15
+  try: extracted.__inject__("z", 16)
+  except AttributeError, e:
+    assert str(e) == 'Attribute "z" exists already.'
+  else: raise RuntimeError("Exception expected.")
+  extracted.t.c.__inject__("z", 17)
+  assert extracted.t.c.z == 17
+  del extracted.t.c.z
+  extracted.t.c.__inject__("z", 18)
+  assert extracted.t.c.z == 18
+  try: extracted.t.c.__inject__("z", 19)
+  except AttributeError, e:
+    assert str(e) == 'Attribute "t.c.z" exists already.'
+  else: raise RuntimeError("Exception expected.")
+  #
   parameters = phil.parse(input_string="""\
 s.t.x {
   a=13

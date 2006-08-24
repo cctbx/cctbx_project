@@ -716,8 +716,8 @@ def scope_extract_call_proxy(full_path, words, cache):
     cache[call_expression] = call_proxy
   return call_proxy
 
-class scope_extract_attribute_error: pass
-class scope_extract_is_disabled: pass
+class scope_extract_attribute_error(object): pass
+class scope_extract_is_disabled(object): pass
 
 class scope_extract_list(list):
 
@@ -728,9 +728,9 @@ class scope_extract_list(list):
 class scope_extract(object):
 
   def __init__(self, name, parent, call):
-    self.__phil_name__ = name
-    self.__phil_parent__ = parent
-    self.__phil_call__ = call
+    object.__setattr__(self, "__phil_name__", name)
+    object.__setattr__(self, "__phil_parent__", parent)
+    object.__setattr__(self, "__phil_call__", call)
 
   def __phil_path__(self):
     if (   self.__phil_parent__ is None
@@ -739,6 +739,28 @@ class scope_extract(object):
       return self.__phil_name__
     return ".".join([self.__phil_parent__.__phil_path__(),
                      self.__phil_name__])
+
+  def __setattr__(self, name, value):
+    if (getattr(self, name, scope_extract_attribute_error)
+          is scope_extract_attribute_error):
+      pp = self.__phil_path__()
+      if (pp == ""): pp = name
+      else:          pp += "." + name
+      raise AttributeError(
+        'Assignment to non-existing attribute "%s"\n' % pp
+          + '  Please correct the attribute name, or to create\n'
+          + '  a new attribute, use: obj.__inject__(name, value)')
+    object.__setattr__(self, name, value)
+
+  def __inject__(self, name, value):
+    if (getattr(self, name, scope_extract_attribute_error)
+          is not scope_extract_attribute_error):
+      pp = self.__phil_path__()
+      if (pp == ""): pp = name
+      else:          pp += "." + name
+      raise AttributeError(
+        'Attribute "%s" exists already.' % pp)
+    object.__setattr__(self, name, value)
 
   def __phil_join__(self, other):
     for key,other_value in other.__dict__.items():
@@ -769,13 +791,13 @@ class scope_extract(object):
       if (node is scope_extract_attribute_error
           or not isinstance(value, scope_extract)
           or not isinstance(node, scope_extract)):
-        setattr(self, name, value)
+        object.__setattr__(self, name, value)
       else:
         node.__phil_join__(value)
     else:
       if (node is scope_extract_attribute_error):
         node = scope_extract_list(optional=optional)
-        setattr(self, name, node)
+        object.__setattr__(self, name, node)
       if (not value is scope_extract_is_disabled
           and (value is not None or optional is not True)):
         node.append(value)
