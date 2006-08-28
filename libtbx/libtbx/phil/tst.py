@@ -2559,13 +2559,13 @@ t {
   except AttributeError, e:
     assert str(e) == """Assignment to non-existing attribute "z"
   Please correct the attribute name, or to create
-  a new attribute, use: obj.__inject__(name, value)"""
+  a new attribute use: obj.__inject__(name, value)"""
   else: raise RuntimeError("Exception expected.")
   try: extracted.t.c.z = 13
   except AttributeError, e:
     assert str(e) == """Assignment to non-existing attribute "t.c.z"
   Please correct the attribute name, or to create
-  a new attribute, use: obj.__inject__(name, value)"""
+  a new attribute use: obj.__inject__(name, value)"""
   else: raise RuntimeError("Exception expected.")
   extracted.__inject__("z", 14)
   assert extracted.z == 14
