@@ -199,6 +199,43 @@ namespace cctbx { namespace xray { namespace {
     }
   }
 
+  void
+  adjust_u_iso(
+    af::ref<scatterer<> > const& self)
+  {
+    double u_mean = 0.0;
+    double b_min  = 0.5;
+    double b_max  = 500.0;
+    double min_factor = 5.0;
+    double max_factor = 3.0;
+    int counter = 0;
+    for(std::size_t i=0;i<self.size();i++) {
+      if(self[i].flags.use() && self[i].u_iso != -1.0) {
+         if(self[i].u_iso < 0.0) self[i].u_iso = 0.0;
+         u_mean = u_mean + self[i].u_iso;
+         counter = counter + 1;
+      }
+    }
+    u_mean = u_mean / counter;
+    double u_min = std::max(adptbx::b_as_u(b_min), u_mean / min_factor);
+    u_mean = 0.0;
+    counter = 0;
+    for(std::size_t i=0;i<self.size();i++) {
+      if(self[i].flags.use() && self[i].u_iso != -1.0) {
+         if(self[i].u_iso < u_min) self[i].u_iso = u_min;
+         u_mean = u_mean + self[i].u_iso;
+         counter = counter + 1;
+      }
+    }
+    u_mean = u_mean / counter;
+    double u_max = std::min(adptbx::b_as_u(b_max), u_mean * max_factor);
+    for(std::size_t i=0;i<self.size();i++) {
+      if(self[i].flags.use() && self[i].u_iso != -1.0) {
+         if(self[i].u_iso > u_max) self[i].u_iso = u_max;
+      }
+    }
+  }
+
   af::shared<scitbx::sym_mat3<double> >
   extract_u_star(af::const_ref<scatterer<> > const& self)
   {
@@ -352,6 +389,7 @@ namespace scitbx { namespace af { namespace boost_python {
       .def("extract_occupancies", cctbx::xray::extract_occupancies)
       .def("set_occupancies", cctbx::xray::set_occupancies,
         (arg_("occupancies")))
+      .def("adjust_u_iso", cctbx::xray::adjust_u_iso)
       .def("extract_u_iso", cctbx::xray::extract_u_iso)
       .def("extract_u_iso_or_u_equiv", cctbx::xray::extract_u_iso_or_u_equiv,
         (arg_("unit_cell")))
