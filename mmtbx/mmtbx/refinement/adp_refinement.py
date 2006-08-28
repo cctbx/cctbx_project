@@ -36,6 +36,8 @@ group_adp_master_params = iotbx.phil.parse("""\
   selection                = None
     .type=str
     .multiple=True
+  run_finite_differences_test = False
+    .type = bool
 """)
 
 tls_master_params = iotbx.phil.parse("""\
@@ -267,6 +269,7 @@ class manager(object):
           convergence_test         = group_adp_params.convergence_test,
           max_number_of_iterations = group_adp_params.max_number_of_iterations,
           number_of_macro_cycles   = group_adp_params.number_of_macro_cycles,
+          run_finite_differences_test = group_adp_params.run_finite_differences_test,
           log                      = log)
     time_adp_refinement_py += timer.elapsed()
 

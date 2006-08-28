@@ -22,24 +22,17 @@ def show_times(out = None):
 
 class manager(object):
   def __init__(self, fmodel,
-                     selections               = None,
-                     max_number_of_iterations = 50,
-                     number_of_macro_cycles   = 5,
-                     convergence_test         = True,
-                     convergence_delta        = 0.00001,
-                     log                      = None):
+                     selections                  = None,
+                     max_number_of_iterations    = 50,
+                     number_of_macro_cycles      = 5,
+                     convergence_test            = True,
+                     convergence_delta           = 0.00001,
+                     run_finite_differences_test = False,
+                     log                         = None):
     global time_group_b_py
     timer = user_plus_sys_time()
     if(log is None): log = sys.stdout
-    #XXX highly inefficient code
-    #save_set_use_u_iso_flags  = flex.bool()
-    #save_set_grad_u_iso_flags = flex.bool()
-    #for i_seq, sc in enumerate(fmodel.xray_structure.scatterers()):
-    #    save_set_use_u_iso_flags.append(sc.flags.use_u_iso())
-    #    save_set_grad_u_iso_flags.append(sc.flags.grad_u_iso())
-    #    sc.flags.set_use_u_iso(True)
-    #    sc.flags.set_grad_u_iso(True)
-    #    assert sc.u_iso != -1.0
+
     xray.set_scatterer_grad_flags(
                                scatterers = fmodel.xray_structure.scatterers(),
                                u_iso      = True)
@@ -64,11 +57,12 @@ class manager(object):
     for macro_cycle in xrange(1,number_of_macro_cycles+1,1):
         if(minimized is not None): u_initial = minimized.u_min
         minimized = group_u_iso_minimizer(
-                           fmodel                   = fmodel_copy,
-                           sc_start                 = sc_start,
-                           selections               = selections,
-                           u_initial                = u_initial,
-                           max_number_of_iterations = max_number_of_iterations)
+                     fmodel                      = fmodel_copy,
+                     sc_start                    = sc_start,
+                     selections                  = selections,
+                     u_initial                   = u_initial,
+                     max_number_of_iterations    = max_number_of_iterations,
+                     run_finite_differences_test = run_finite_differences_test)
         if(minimized is not None): u_initial = minimized.u_min
         new_xrs = apply_transformation(xray_structure = fmodel.xray_structure,
                                        u              = u_initial,
@@ -97,19 +91,7 @@ class manager(object):
     fmodel.update_xray_structure(xray_structure = fmodel_copy.xray_structure,
                                  update_f_calc  = True)
     self.fmodel = fmodel
-    ##XXX highly inefficient code
-    #for sc, uf, gf in zip(fmodel.xray_structure.scatterers(),
-    #                      save_set_use_u_iso_flags, save_set_grad_u_iso_flags):
-    #    sc.flags.set_use_u_iso(uf)
-    #    sc.flags.set_grad_u_iso(gf)
-    #    assert sc.u_iso != -1.0
     time_group_b_py += timer.elapsed()
-
-  def rotation(self):
-    return self.total_rotation
-
-  def translation(self):
-    return self.total_translation
 
   def show(self, f,
                  rw,
@@ -147,7 +129,8 @@ class group_u_iso_minimizer(object):
                sc_start,
                selections,
                u_initial,
-               max_number_of_iterations):
+               max_number_of_iterations,
+               run_finite_differences_test = False):
     adopt_init_args(self, locals())
     if(self.fmodel.target_name in ["ml","lsm", "mlhl"]):
        self.alpha, self.beta = self.fmodel.alpha_beta_w()
@@ -190,36 +173,50 @@ class group_u_iso_minimizer(object):
                               selections    = self.selections)
     self.f = tg_obj.target()
     ##########################################################################
-    # XXX works only if self.tan_b_iso_max=0 ???
-    #eps = 0.001
-    #new_xrs = apply_transformation(xray_structure = self.fmodel.xray_structure,
-    #                               u              = [self.u_min[0]+eps, self.u_min[1],self.u_min[2]],
-    #                               selections     = self.selections)
-    #self.fmodel_copy.update_xray_structure(xray_structure = new_xrs,
-    #                                       update_f_calc  = True)
-    #tg_obj = target_and_grads(fmodel        = self.fmodel_copy,
-    #                          alpha         = self.alpha,
-    #                          beta          = self.beta,
-    #                          selections    = self.selections,
-    #                          tan_b_iso_max = 0)
-    #t1 = tg_obj.target()
-    ##################
-    #new_xrs = apply_transformation(xray_structure = self.fmodel.xray_structure,
-    #                               u              = [self.u_min[0]-eps, self.u_min[1],self.u_min[2]],
-    #                               selections     = self.selections)
-    #self.fmodel_copy.update_xray_structure(xray_structure = new_xrs,
-    #                                       update_f_calc  = True)
-    #tg_obj = target_and_grads(fmodel        = self.fmodel_copy,
-    #                          alpha         = self.alpha,
-    #                          beta          = self.beta,
-    #                          selections    = self.selections,
-    #                          tan_b_iso_max = 0)
-    #t2 = tg_obj.target()
+    if(self.run_finite_differences_test):
+       eps = 0.000001
+       fmodel = self.fmodel_copy.deep_copy()
+       u = []
+       for i_seq, ui in enumerate(self.u_min):
+         if(i_seq == 0): ui += eps
+         u.append(ui)
+       new_xrs = apply_transformation(xray_structure = fmodel.xray_structure,
+                                      u              = u,
+                                      sc_start       = self.sc_start,
+                                      selections     = self.selections)
+       fmodel.update_xray_structure(xray_structure = new_xrs,
+                                    update_f_calc  = True)
+       tg_obj = target_and_grads(fmodel        = fmodel,
+                                 alpha         = self.alpha,
+                                 beta          = self.beta,
+                                 selections    = self.selections)
+       t1 = tg_obj.target()
+       #################
+       u = []
+       for i_seq, ui in enumerate(self.u_min):
+         if(i_seq == 0): ui -= eps
+         u.append(ui)
+       new_xrs = apply_transformation(xray_structure = fmodel.xray_structure,
+                                      u              = u,
+                                      sc_start       = self.sc_start,
+                                      selections     = self.selections)
+       fmodel.update_xray_structure(xray_structure = new_xrs,
+                                    update_f_calc  = True)
+       tg_obj = target_and_grads(fmodel        = fmodel,
+                                 alpha         = self.alpha,
+                                 beta          = self.beta,
+                                 selections    = self.selections)
+       t2 = tg_obj.target()
     ##########################################################################
     grads = tg_obj.gradients_wrt_u()
 
-    #print grads[0], (t1-t2)/(eps*2)
-    #print adptbx.u_as_b(self.u_min[0]), adptbx.u_as_b(self.u_min[1]), adptbx.u_as_b(self.u_min[2]), self.f
+    if(self.run_finite_differences_test):
+       compare = True
+       for ui in self.u_min:
+         ui = abs(adptbx.u_as_b(ui))
+         if(ui < 0.5 or ui > 70.0): compare = False
+       if(compare):
+          assert approx_equal(grads[0], (t1-t2)/(eps*2))
     self.g = flex.double(tuple(grads))
     return self.f, self.g
 

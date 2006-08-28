@@ -48,12 +48,6 @@ class manager(object):
     if(self.anisotropic_flags is not None and self.anisotropic_flags.count(True) > 0):
        self.xray_structure.convert_to_anisotropic(
                                             selection = self.anisotropic_flags)
-    #if(self.rigid_body_selections is not None):
-    ##XXX BUG
-    #   dim = self.xray_structure.scatterers().size()
-    #   for sel in self.rigid_body_selections:
-    #       assert sel.size() == dim
-
 
   def setup_restraints_manager(self,
                                plain_pairs_radius = 5.0,
