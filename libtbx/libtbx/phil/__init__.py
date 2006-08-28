@@ -749,7 +749,7 @@ class scope_extract(object):
       raise AttributeError(
         'Assignment to non-existing attribute "%s"\n' % pp
           + '  Please correct the attribute name, or to create\n'
-          + '  a new attribute, use: obj.__inject__(name, value)')
+          + '  a new attribute use: obj.__inject__(name, value)')
     object.__setattr__(self, name, value)
 
   def __inject__(self, name, value):
