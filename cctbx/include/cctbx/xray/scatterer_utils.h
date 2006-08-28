@@ -57,6 +57,21 @@ namespace cctbx { namespace xray {
 
   template <typename ScattererType>
   void
+  u_star_plus_u_iso(
+    af::ref<ScattererType> const& scatterers,
+    uctbx::unit_cell const& unit_cell)
+  {
+    typedef typename ScattererType::float_type float_type;
+    for(std::size_t i_seq=0;i_seq<scatterers.size();i_seq++) {
+      ScattererType& sc = scatterers[i_seq];
+      if (sc.flags.use_u_iso() && sc.flags.use_u_aniso()) {
+        sc.u_star += adptbx::u_iso_as_u_star(unit_cell, sc.u_iso);
+      }
+    }
+  }
+
+  template <typename ScattererType>
+  void
   shift_us(
     af::ref<ScattererType> const& scatterers,
     uctbx::unit_cell const& unit_cell,
