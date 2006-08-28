@@ -186,6 +186,13 @@ namespace {
           arg_("site_symmetry_table"),
           arg_("u_min")));
 
+    def("u_star_plus_u_iso",
+      (void(*)(
+        af::ref<scatterer<> > const&,
+        uctbx::unit_cell const&)) u_star_plus_u_iso, (
+          arg_("scatterers"),
+          arg_("unit_cell")));
+
     def("shift_us",
       (void(*)(
         af::ref<scatterer<> > const&,
