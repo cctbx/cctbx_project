@@ -150,18 +150,7 @@ class structure(crystal.special_position_settings):
     return cp
 
   def adjust_u_iso(self):
-    #XXX very bad things happen if some atoms have use_u_iso=False, fix this asap
-    #XXX Proper fix: push to C++ loop over scatterers and count only with use_... True
-    u_isos = self._scatterers.extract_u_iso()
-    sel = (u_isos <= 0.0)
-    u_isos.set_selected(sel, 0.0)
-    u_min = max(adptbx.b_as_u(0.5), flex.mean(u_isos) / 5.0)
-    sel = (u_isos < u_min)
-    u_isos.set_selected(sel, u_min)
-    u_max = min(adptbx.b_as_u(500.0), flex.mean(u_isos) * 3.0)
-    sel = (u_isos > u_max)
-    u_isos.set_selected(sel, u_max)
-    self._scatterers.set_u_iso(u_isos)
+    self._scatterers.adjust_u_iso()
 
   def translate(self, x=0, y=0, z=0):
     sites_cart = self.sites_cart()
@@ -278,7 +267,7 @@ class structure(crystal.special_position_settings):
     self.set_b_iso(values = b_iso_new)
 
   def b_iso_min_max_mean(self):
-    b_isos = self._scatterers.extract_u_iso()/adptbx.b_as_u(1)
+    b_isos = self.extract_u_iso_or_u_equiv()/adptbx.b_as_u(1)
     b_min  = flex.min(b_isos)
     b_max  = flex.max(b_isos)
     b_mean = flex.mean(b_isos)
