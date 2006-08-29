@@ -85,6 +85,7 @@ class lbfgs(object):
     del self._scatterers_start
     self.compute_target(compute_gradients = False, u_iso_reinable_params = None)
     self.final_target_value = self.f
+    self.xray_structure.tidy_us(u_min = 1.e-6)
     self.xray_structure.adjust_u_iso()
     time_adp_individual += timer.elapsed()
 

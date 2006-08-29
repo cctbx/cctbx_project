@@ -1063,22 +1063,19 @@ class manager(object):
                                     test_ref_in_bin = 200,
                                     flags           = self.r_free_flags.data(),
                                     interpolation   = True).alpha_beta()
-    #self.overall_scale = self.scale_k3_w()
-    self.overall_scale = 1.0#self.scale_k3_w()
+    self.overall_scale = self.scale_k3_w()
+    self.update_core()
     alpha = self.alpha_beta()[0].data()
     for ae,ssi in zip(alpha,ss):
       if(ae >  1.0): ae = 1.0
       if(ae <= 0.0): ae = 1.e-6
       coeff = -4./(math.pi**3*ssi)
-      #x = math.log(ae)
-      #print x
-      #y = x * coeff
-      #print y, coeff
-      #z = math.sqrt(y)
       omega.append( math.sqrt( math.log(ae) * coeff ) )
     #omega_ma  = miller.array(miller_set= self.f_obs,data= flex.double(omega))
     self.overall_scale = save_self_overall_scale
-    return flex.mean(omega), flex.max(omega), flex.min(omega)
+    self.update_core()
+    return flex.mean(omega)
+    #return flex.mean(omega), flex.max(omega), flex.min(omega)
 
 
   def targets_w(self, alpha=None, beta=None):
@@ -1542,6 +1539,9 @@ class manager(object):
     np = 79 - (len(line6) + 1)
     line6 = line6 + " "*np + "|"
     print >> out, line6
+    print >> out, "| "+"  "*38+"|"
+    print >> out, "| Maximum-likelihood estimate for coordinates uncertainty: "\
+                  "%5.2f A            |"%self.model_error_ml()
     print >> out, "|"+"-"*77+"|"
     out.flush()
     time_show += timer.elapsed()
