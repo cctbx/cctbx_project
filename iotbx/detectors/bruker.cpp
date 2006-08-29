@@ -30,7 +30,7 @@ int readline(char *ch, int max)
 
 int iotbx::detectors::bruker::v_read(const char *argv )
 { int i,j,k,ku,ko,k4, err,m,n;
-  int swab,ii,jj,kk,jx,ky,mm,nn, nhoriz, nvert,thresh;
+  int swab,ii,jj,kk,jx,ky,mm,nn, nhoriz, thresh;
   int nunder=0, n2over=0, n4over=0, lendata=1, lenunder=1,
     nrows=1024, ncols=1024, zeroff=0, form=0,hdrblks=15,hdrlines=96;
         unsigned short bs;  unsigned char uc;
@@ -69,7 +69,7 @@ if (debug) {
 } /* if (debug) */
 
   /* look for format info, etc. in header lines... */
-  nhoriz = nvert = 1024;  swab = -1;
+  nhoriz = 1024;  swab = -1;
   /* initialize to zero, will have nonzero value if line read */
   twoth=omega=phi=chi=angles[0]=0.0;
   distance=wavelen=alpha1=alpha2=pixsizemm=0.0;
@@ -88,7 +88,7 @@ if (debug) {
        printf(">>>>>pixel bytes data %d under %d\n",lendata,lenunder); }
   else if (strncmp(line,"NROWS  :",8)==0)
     { n = sscanf(line+8," %d",&nrows);
-          if (verbo) printf(">>>>rows  %d \n",nrows); nvert = nrows; }
+          if (verbo) printf(">>>>rows  %d \n",nrows); }
  else if (strncmp(line,"NCOLS  :",8)==0)
     { n = sscanf(line+8," %d",&ncols);
           if (verbo) printf(">>>>>columns  %d\n",ncols); nhoriz = ncols; }
