@@ -309,7 +309,6 @@ namespace mmtbx { namespace scaling { namespace outlier{
 
       FloatType calc_log_likelihood(FloatType fo, int ii )
       {
-        FloatType result=0;
         if (centric_[ii]){
           return( centric_log_likelihood(fo,ii) );
         } else {
