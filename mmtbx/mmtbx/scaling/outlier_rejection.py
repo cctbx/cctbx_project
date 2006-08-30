@@ -5,6 +5,7 @@ from cctbx import crystal
 from cctbx import sgtbx
 from cctbx import adptbx
 from mmtbx import scaling
+from mmtbx.scaling import sigmaa_estimation
 import cctbx.sgtbx.lattice_symmetry
 import cctbx.sgtbx.cosets
 from cctbx.array_family import flex
@@ -258,71 +259,57 @@ the shadow of the beamstop.
                            return_data=False,
                            plot_out=None):
 
+
+
     # do some ls scaling please
-    ls_scale = fmodel_manager.scale_k1()
-    self.apply_scale_to_original_data( 1.0/ls_scale )
+    #ls_scale = fmodel_manager.scale_k1()
+    #self.apply_scale_to_original_data( 1.0/ls_scale )
 
-    f_model_object = mmtbx.f_model.manager(
-      f_obs = self.miller_obs,
+    sigmaa_estimator = sigmaa_estimation.sigmaa_estimator(
+      miller_obs   = self.miller_obs,
+      miller_calc  = fmodel_manager.f_model(),
       r_free_flags = self.r_free_flags,
-      xray_structure = fmodel_manager.xray_structure )
-    b_cart = fmodel_manager.b_cart()
-    k_sol = fmodel_manager.k_sol()
-    b_sol = fmodel_manager.b_sol()
-    f_model_object.update_core(b_cart=b_cart,
-                               k_sol=k_sol,
-                               b_sol=b_sol)
-    f_model = f_model_object.f_model()
-    alpha, beta = f_model_object.alpha_beta()
+      auto_kernel  = True,
+      number       = 200,
+      n_points     = 20,
+      n_terms      = 13 )
 
-    self.miller_obs = self.miller_obs.map_to_asu()
-    f_model = f_model.common_set(self.miller_obs).map_to_asu()
-    alpha = alpha.common_set( f_model ).map_to_asu()
-    beta = beta.common_set( f_model ).map_to_asu()
-    # check if all is well
-    assert self.miller_obs.indices().all_eq( f_model.indices() )
-    assert self.miller_obs.indices().all_eq( alpha.indices() )
-    assert self.miller_obs.indices().all_eq( beta.indices() )
+    sigmaa_estimator.show(out=self.out)
+    sigmaa = sigmaa_estimator.sigmaa
+    obs_norm = abs(sigmaa_estimator.normalized_obs)
+    calc_norm = sigmaa_estimator.normalized_calc
 
     f_model_outlier_object = scaling.likelihood_ratio_outlier_test(
-      self.miller_obs.data(),
-      self.miller_obs.sigmas(),
-      flex.abs( f_model.data() ),
-      self.miller_obs.epsilons().data().as_double(),
-      self.miller_obs.centric_flags().data(),
-      alpha.data(),
-      beta.data()
+      obs_norm.data(),
+      None,
+      calc_norm.data(),
+      calc_norm.data()*0+1.0, # the data is prenormalized, all epsies are unity
+      obs_norm.centric_flags().data(),
+      sigmaa.data(),
+      1.0-sigmaa.data()*sigmaa.data()
       )
     modes = f_model_outlier_object.posterior_mode()
     lik = f_model_outlier_object.log_likelihood()
     p_lik = f_model_outlier_object.posterior_mode_log_likelihood()
     s_der = f_model_outlier_object.posterior_mode_snd_der()
 
-    ll_gain = p_lik-lik
+    ll_gain = f_model_outlier_object.standardized_likelihood()
+
     # The smallest vallue should be 0.
     # sometimes, due to numerical issues, it comes out
     # a wee bit negative. please repair that
     eps=1.0e-10
     zeros = flex.bool( ll_gain < eps )
-    ll_gain = ll_gain.set_selected( zeros, eps )
-    #use the ll_gain to computew p values
-    p_values = ll_gain*2.0
+    p_values = ll_gain
+    p_values = p_values.set_selected( zeros, eps )
     p_values = erf( flex.sqrt(p_values/2.0) )
     p_values = 1.0 - flex.pow( p_values, float(p_values.size()) )
 
-
-    # select on likelihood
-    # flags = f_model_outlier_object.flag_potential_outliers( level/2.0  )
-    # or it mihgt be better to do it on p value
-    flags = flex.bool(p_values > level )
-    flags = self.miller_obs.customized_copy( data = flags )
-    ll_gain = self.miller_obs.customized_copy( data = ll_gain )
+    # select on p-values
+    flags    = flex.bool(p_values > level )
+    flags    = self.miller_obs.customized_copy( data = flags )
+    ll_gain  = self.miller_obs.customized_copy( data = ll_gain )
     p_values = self.miller_obs.customized_copy( data = p_values )
-    f_model = self.miller_obs.customized_copy( data = flex.abs(f_model.data() ) )
-
-    s_der = f_model_outlier_object.posterior_mode_snd_der()
-    s_der = flex.sqrt(-1.0/s_der)
-    s_der = self.miller_obs.customized_copy( data = s_der )
 
     log_message = """
 
@@ -332,10 +319,11 @@ Model based outlier rejection.
 Calculated amplitudes and estimated values of alpha and beta
 are used to compute the log-likelihood of the observed amplitude.
 The method is inspired by Read, Acta Cryst. (1999). D55, 1759-1764.
-Outliers are rejected on the basis of the assumption that the log
-likelihood differnce log[P(Fobs)]-log[P(Fmode)] is distributed
-according to a Chi-square distribution
-(see http://en.wikipedia.org/wiki/Likelihood-ratio_test ).
+Outliers are rejected on the basis of the assumption that a scaled
+log likelihood differnce 2(log[P(Fobs)]-log[P(Fmode)])/Q\" is distributed
+according to a Chi-square distribution (Q\" is equal to the second
+derivative of the log likelihood function of the mode of the
+distribution).
 The outlier threshold of the p-value relates to the p-value of the
 extreme value distribution of the chi-square distribution.
 
@@ -344,30 +332,28 @@ extreme value distribution of the chi-square distribution.
     flags.map_to_asu()
     ll_gain.map_to_asu()
     p_values.map_to_asu()
-    s_der.map_to_asu()
 
     assert flags.indices().all_eq( self.miller_obs.indices() )
     assert ll_gain.indices().all_eq( self.miller_obs.indices() )
     assert p_values.indices().all_eq( self.miller_obs.indices() )
-    assert s_der.indices().all_eq( self.miller_obs.indices() )
 
     log_message = self.make_log_model( log_message,
                                        flags,
                                        ll_gain,
                                        p_values,
-                                       f_model,
-                                       alpha ,
-                                       beta,
+                                       obs_norm,
+                                       calc_norm,
+                                       sigmaa,
                                        plot_out)
     tmp_log=StringIO()
     print >> tmp_log, log_message
     # histogram of log likelihood gain values
     print >> tmp_log
-    print >> tmp_log, "The histoghram of 2(LL-gain) values is shown below."
-    print >> tmp_log, "  Note: 2(LL-gain) is approximately Chi-square distributed."
+    print >> tmp_log, "The histoghram of scaled (LL-gain) values is shown below."
+    print >> tmp_log, "  Note: scaled (LL-gain) is approximately Chi-square distributed."
     print >> tmp_log
-    print >> tmp_log, "  2(LL-gain)       Frequency"
-    histo = flex.histogram( (p_lik-lik)*2.0, 15 )
+    print >> tmp_log, "  scaled(LL-gain)  Frequency"
+    histo = flex.histogram( ll_gain.data(), 15 )
     histo.show(f=tmp_log,format_cutoffs='%7.3f')
 
     print >> self.out, tmp_log.getvalue()
@@ -381,7 +367,7 @@ extreme value distribution of the chi-square distribution.
   def apply_scale_to_original_data(self,scale_factor,d_min=None):
     self.miller_obs = self.miller_obs.customized_copy(
       data = self.miller_obs.data()*scale_factor
-      )
+      ).set_observation_type( self.miller_obs )
     if d_min is not None:
       self.miller_obs = self.miller_obs.resolution_filter(d_min = d_min)
 
@@ -461,19 +447,23 @@ extreme value distribution of the chi-square distribution.
 
 
   def make_log_model(self,
-                     log_message, flags,
-                     ll_gain, p_values,
-                     f_model,
-                     alpha, beta,plot_out=None):
-    header = ("Index", "d-spacing", "F_obs", "F_model", "2(LL-gain)", "p-value", "alpha", "beta", "centric")
+                     log_message,
+                     flags,
+                     ll_gain,
+                     p_values,
+                     e_obs,
+                     e_calc,
+                     sigmaa,
+                     plot_out=None):
+    header = ("Index", "d-spacing", "E_obs", "E_model", "Score", "p-value", "sigmaa", "centric")
     table="No outliers were found"
     rows = []
-    rogues = self.miller_obs.select( ~flags.data() )
-    p_array = p_values.select( ~flags.data() )
+    rogues   = e_obs.select( ~flags.data() )
+    p_array  = p_values.select( ~flags.data() )
     ll_array = ll_gain.select( ~flags.data() )
-    fc_array = f_model.select( ~flags.data() )
-    alpha_array = alpha.select( ~flags.data() )
-    beta_array = beta.select( ~flags.data() )
+    ec_array = e_calc.select( ~flags.data() )
+    sa_array = sigmaa.select( ~flags.data() )
+
 
 
 
@@ -484,37 +474,35 @@ extreme value distribution of the chi-square distribution.
         if rogues.sigmas()==None:
           sigmas = rogues.d_spacings().data()*0+10.0
 
-        for hkl, d, fo, fc, llg, p, a, b, c, s, e in zip(
+        for hkl, d, eo, ec, llg, p, sa, c, s, e in zip(
           rogues.indices(),
           rogues.d_spacings().data(),
           rogues.data(),
-          fc_array.data(),
+          ec_array.data(),
           ll_array.data(),
           p_array.data(),
-          alpha_array.data(),
-          beta_array.data(),
+          sa_array.data(),
           centric_flags.data(),
           sigmas,
           rogues.epsilons().data().as_double() ):
 
           this_row = [str(hkl),
                       "%4.2f"%(d),
-                      "%6.1f"%(fo),
-                      "%6.1f"%(fc),
-                      "%5.2f"%(2*llg),
+                      "%6.3f"%(eo),
+                      "%6.3f"%(ec),
+                      "%5.2f"%(llg),
                       "%5.3e"%(p),
-                      "%4.3f"%(a),
-                      "%5.3e"%(b),
+                      "%4.3f"%(sa),
                       str(c) ]
           rows.append( this_row )
 
           if plot_out is not None:
             outlier_plots.plotit(
-              fobs=fo,
+              fobs=eo,
               sigma=s,
-              fcalc=fc,
-              alpha=a,
-              beta=b,
+              fcalc=ec,
+              alpha=sa,
+              beta=1.0-sa*sa,
               epsilon=e,
               centric=c,
               out=plot_out,
