@@ -43,17 +43,18 @@ class sigmaa_point_estimator(object):
     self.f = None
     self.x = flex.double( [-1.0] )
     self.max = 0.99
+    self.min = 0.01
     term_parameters = scitbx.lbfgs.termination_parameters(
       max_iterations = 100 )
     self.minimizer = scitbx.lbfgs.run(target_evaluator=self,
                                       termination_params=term_parameters)
 
-    self.sigmaa = self.max/(1.0+math.exp(-self.x[0]))
+    self.sigmaa = self.min+(self.max-self.min)/(1.0+math.exp(-self.x[0]))
 
   def compute_functional_and_gradients(self):
-    sigmaa = self.max/(1.0+math.exp(-self.x[0]))
+    sigmaa = self.min+(self.max-self.min)/(1.0+math.exp(-self.x[0]))
     # chain rule bit for sigmoidal function
-    dsdx = self.max*math.exp(-self.x[0])/(
+    dsdx = (self.max-self.min)*math.exp(-self.x[0])/(
       (1.0+math.exp(-self.x[0]))**2.0 )
     f = -self.functor.target(self.h,
                              sigmaa)
