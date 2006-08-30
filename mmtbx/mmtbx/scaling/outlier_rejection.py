@@ -37,6 +37,9 @@ class outlier_manager(object):
     self.out=out
     if self.out is None:
       self.out=sys.stdout
+    if out == "silent":
+      self.out = StringIO()
+
     # the original miller array
     self.miller_obs = miller_obs
 
