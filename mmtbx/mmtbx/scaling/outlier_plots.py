@@ -46,7 +46,7 @@ def plotit(fobs,
   print >> out,"#centric      : ", centric
   mode = p_calc.posterior_mode()[0]
 
-  snd_der = math.sqrt(-1.0/ p_calc.posterior_mode_snd_der()[0] )
+  snd_der = math.sqrt(1.0/ math.fabs( p_calc.posterior_mode_snd_der()[0] )  )
   print >> out,"#A Gaussian approximation of the likelihood function"
   print >> out,"#could be constructed as follows with: "
   print >> out,"# exp[-(fobs-mode)**2/(2*stdev**2)] /(sqrt(2 pi) stdev)"
@@ -60,6 +60,9 @@ def plotit(fobs,
   print >> out,"#Log[P(mode)] : ",  p_calc.posterior_mode_log_likelihood()[0]
   print >> out,"#Their difference is:"
   print >> out,"#delta        : ",  p_calc.log_likelihood()[0]-p_calc.posterior_mode_log_likelihood()[0]
+  print >> out,"#"
+  mean_fobs = p_calc.mean_fobs()
+  print >> out,"#mean f_obs   : ", mean_fobs[0], "   (first moment)"
 
 
   low_limit = mode-snd_der*limit
