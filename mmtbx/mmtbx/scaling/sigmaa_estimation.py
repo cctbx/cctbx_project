@@ -44,7 +44,7 @@ class sigmaa_point_estimator(object):
     self.x = flex.double( [-1.0] )
     self.max = 1.0
     term_parameters = scitbx.lbfgs.termination_parameters(
-      max_iterations = 1e6 )
+      max_iterations = 100 )
     self.minimizer = scitbx.lbfgs.run(target_evaluator=self,
                                       termination_params=term_parameters)
 
@@ -69,7 +69,9 @@ class sigmaa_estimator(object):
                miller_obs,
                miller_calc,
                r_free_flags,
-               width=0.1,
+               width=None,
+               number=100,
+               auto_kernel=True,
                n_points=20,
                n_terms=13):
     self.n_terms=n_terms
@@ -94,21 +96,43 @@ class sigmaa_estimator(object):
     self.miller_calc = self.miller_calc.set_observation_type(
       self.miller_obs)
 
-    self.width= 0.05
+    # get the aparameters that determine the kernel width
+    self.width=width
+    self.number=number
+    self.auto_kernel=auto_kernel
 
     # get normalized data please
     self.normalized_obs_f = absolute_scaling.kernel_normalisation(
       self.miller_obs, auto_kernel=True)
-    self.normalized_obs =self.normalized_obs_f.normalised_miller
+    self.normalized_obs =self.normalized_obs_f.normalised_miller_dev_eps.f_sq_as_f()
 
     self.normalized_calc_f = absolute_scaling.kernel_normalisation(
       self.miller_calc, auto_kernel=True)
-    self.normalized_calc =self.normalized_calc_f.normalised_miller
+    self.normalized_calc =self.normalized_calc_f.normalised_miller_dev_eps.f_sq_as_f()
 
     # get the 'free data'
     self.free_norm_obs = self.normalized_obs.select( self.r_free_flags.data() )
     self.free_norm_calc= self.normalized_calc.select( self.r_free_flags.data() )
 
+
+    # now we have to determin the width of the kernel we will use
+    # use the same scheme as done for normalistion
+    ## get the d_star_sq_array and sort it
+    if self.auto_kernel:
+      assert self.width is None
+      assert self.number > 10 # be sensible please
+      d_star_sq_hkl = self.free_norm_obs.d_star_sq().data()
+      sort_permut = flex.sort_permutation(d_star_sq_hkl)
+
+      if self.number > d_star_sq_hkl.size():
+        self.number = d_star_sq_hkl.size()
+
+      self.width = d_star_sq_hkl[sort_permut[number]]-flex.min( d_star_sq_hkl )
+      assert self.width > 0
+
+    if not self.auto_kernel:
+      assert self.width is not None
+      assert self.width > 0
 
     self.sigma_target_functor = scaling.sigmaa_estimator(
       e_obs     = self.free_norm_obs.data(),
@@ -118,22 +142,19 @@ class sigmaa_estimator(object):
       width=self.width)
 
     d_star_sq_overall = self.miller_obs.d_star_sq().data()
-    """
-    for dd, mfs in zip( d_star_sq_overall, self.normalizer):
-      print dd, mfs
-    """
     self.min_h = flex.min( d_star_sq_overall )*0.99
     self.max_h = flex.max( d_star_sq_overall )*1.01
     self.h_array = flex.double( range(n_points) )*(
       self.max_h-self.min_h)/float(n_points-1.0)+self.min_h
     self.sigmaa_array = flex.double([])
 
+
     for h in self.h_array:
       stimator = sigmaa_point_estimator(self.sigma_target_functor,
                                         h)
       self.sigmaa_array.append( stimator.sigmaa )
 
-      #now please fit a smooth  function to this bugger
+    #now please fit a smooth  function to this bugger
     fit_lsq = chebyshev_lsq_fit.chebyshev_lsq_fit(
       self.n_terms,
       self.h_array,
@@ -144,6 +165,8 @@ class sigmaa_estimator(object):
         self.min_h,
         self.max_h,
         fit_lsq.coefs)
+
+    self.sigmaa_array = flex.exp( cheb_pol.f( self.h_array ) )
 
     self.sigmaa = flex.exp( cheb_pol.f( d_star_sq_overall ) )
     self.alpha = self.sigmaa*flex.sqrt(
@@ -159,3 +182,22 @@ class sigmaa_estimator(object):
       data = self.alpha )
     self.beta = self.miller_obs.customized_copy(
       data = self.beta )
+
+  def show(self, out=None):
+    if out is None:
+      out = sys.stdout
+    print >> out
+    print >> out, "SigmaA estimation summary"
+    print >> out, "-------------------------"
+    print >> out, "Kernel width  :  %6.2e"%(self.width)
+    print >> out, "First N       :  %i"%(self.number)
+    print >> out, "Auto kernel   : ", self.auto_kernel
+    print >> out, "No. of points :  %i"%(self.h_array.size())
+    print >> out, "No. of terms  :  %i"%(self.n_terms)
+    print >> out
+    print >> out, "1/d^2      d    sigmaA"
+    for h,sa in zip( self.h_array, self.sigmaa_array):
+      d = math.sqrt(1.0/h)
+      print >> out, "%5.4f   %5.2f   %4.3f"%(h,d,sa)
+    print >> out
+    print >> out
