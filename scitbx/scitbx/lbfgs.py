@@ -103,7 +103,7 @@ def run_c_plus_plus(target_evaluator,
         =termination_params.drop_convergence_test_iteration_coefficient)
   callback_after_step = getattr(target_evaluator, "callback_after_step", None)
   first_f = None
-  x_after_step = None
+  x_after_step = x.deep_copy()
   f, g = None, None
   try:
     while 1:
@@ -131,7 +131,7 @@ def run_c_plus_plus(target_evaluator,
         break
       if (not minimizer.run(x, f, g)): break
   except RuntimeError, e:
-    if (x is not None and x_after_step is not None):
+    if (x is not None):
       x.clear()
       x.extend(x_after_step)
     minimizer.error = str(e)
