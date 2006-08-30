@@ -770,7 +770,12 @@ class kernel_normalisation(object):
       d_star_sq_array = self.d_star_sq_array,
       kernel_width = self.kernel_width
       )
-    self.mean_I_array = flex.log( self.mean_I_array  + 1e-13 )
+    
+    assert flex.min( self.mean_I_array ) > 0    
+    prescale = 10000.0/flex.max( self.mean_I_array )
+    self.mean_I_array = self.mean_I_array*prescale
+    self.mean_I_array = flex.log( self.mean_I_array )
+
 
     ## Fit a chebyshev polynome please
     normalizer_fit_lsq = chebyshev_lsq_fit.chebyshev_lsq_fit(
@@ -786,9 +791,10 @@ class kernel_normalisation(object):
 
     ## The data wil now be normalised using the
     ## chebyshev polynome we have just obtained
+    self.mean_I_array = flex.exp( self.mean_I_array)/prescale
+    self.normalizer_for_miller_array =  flex.exp( self.normalizer.f(d_star_sq_hkl) )/prescale
 
-    self.normalizer_for_miller_array =  flex.exp( self.normalizer.f(d_star_sq_hkl) )
-
+    
     self.normalised_miller = None
     self.normalised_miller_dev_eps = None
 
