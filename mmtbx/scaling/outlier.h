@@ -236,12 +236,11 @@ namespace mmtbx { namespace scaling { namespace outlier{
           count++;
         }
 
-        FloatType grad,fstder;
+        FloatType grad;
         f_bar = x[0];
         if (f_bar < 0){
           f_bar = 0.0;
         }
-        fstder = fst_der( f_bar,ii );
         grad  = snd_der( f_bar, ii );
         FloatType tmp_rat = 2.0;
         if ( 1.0/std::sqrt(std::fabs(grad)) > tmp_rat*std_fo_[ii]){
@@ -368,9 +367,13 @@ namespace mmtbx { namespace scaling { namespace outlier{
           fo=1e-13;
         }
         FloatType x=2.0*alpha_[ii]*fo*f_calc_[ii]/eb;
-        FloatType exparg = (fo*fo + alpha_[ii]*alpha_[ii]*f_calc_[ii]*f_calc_[ii]);
-        exparg = exparg/eb;
-        result = std::log(2.0) + std::log(fo) - std::log(eb)  -exparg  + std::log( scitbx::math::bessel::i0(x) );
+        FloatType exparg; // = (fo*fo + alpha_[ii]*alpha_[ii]*f_calc_[ii]*f_calc_[ii]);
+        //exparg = exparg/eb;
+        //result = std::log(2.0) + std::log(fo) - std::log(eb)  -exparg  + std::log( scitbx::math::bessel::i0(x) );
+        //FloatType result2;
+	exparg = fo -  alpha_[ii]*f_calc_[ii];
+        exparg = exparg*exparg/eb;
+        result = std::log(2.0) + std::log(fo) - std::log(eb)  -exparg + std::log( scitbx::math::bessel::ei0(x));
         return (result);
       }
 
