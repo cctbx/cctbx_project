@@ -42,7 +42,7 @@ class sigmaa_point_estimator(object):
     self.h = h
     self.f = None
     self.x = flex.double( [-1.0] )
-    self.max = 1.0
+    self.max = 0.99
     term_parameters = scitbx.lbfgs.termination_parameters(
       max_iterations = 100 )
     self.minimizer = scitbx.lbfgs.run(target_evaluator=self,
