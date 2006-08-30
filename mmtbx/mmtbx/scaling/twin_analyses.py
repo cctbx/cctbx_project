@@ -1516,7 +1516,7 @@ class twin_results_interpretation(object):
           print >> self.twinning_verdict, \
             "a number of reasons for the departure of the intensity statistics from normality."
           print >> self.twinning_verdict, \
-            "Overmerging pseudo-symmetric or twinned data, intenisty to amplitude conversion problems"
+            "Overmerging pseudo-symmetric or twinned data, intensity to amplitude conversion problems"
           print >> self.twinning_verdict, \
             " as well as bad data quality might be possible reasons."
           print >> self.twinning_verdict, \
