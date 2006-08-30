@@ -10,11 +10,13 @@
 #include <mmtbx/scaling/twinning.h>
 #include <scitbx/math/quadrature.h>
 #include <scitbx/math/bessel.h>
-
+#include <scitbx/line_search/more_thuente_1994.h>
 
 namespace mmtbx { namespace scaling { namespace outlier{
 
   // Some model based outlier criteria are computed here
+  // This function is tested having in mind that
+  // alpha doesn't contain any scale factor.
   template <typename FloatType>
   class likelihood_ratio_outlier_test{
   public:
@@ -23,19 +25,12 @@ namespace mmtbx { namespace scaling { namespace outlier{
           scitbx::af::const_ref<FloatType> const& s_obs,
           scitbx::af::const_ref<FloatType> const& f_calc,
           scitbx::af::const_ref<FloatType> const& epsilon,
-          scitbx::af::const_ref<bool> const& centric,
+          scitbx::af::const_ref<bool>      const& centric,
           scitbx::af::const_ref<FloatType> const& alpha,
-          scitbx::af::const_ref<FloatType> const& beta ):
-      log_ei0_(40000) // the exponentiated besseli0 function (  exp[-x]Io[x]  )
+          scitbx::af::const_ref<FloatType> const& beta )
       {
-        FloatType min_beta=10.0;
-        FloatType min_alpha=1e-5;//
-        /*
-        scitbx::math::quadrature::gauss_legendre_engine<FloatType>
-          gauss_legendre_(15);
-        x_ = gauss_legendre_.x();
-        w_ = gauss_legendre_.w();
-        */
+        FloatType min_beta=1.0e-5;
+        FloatType min_alpha=1.0e-3;//
         // make sure we have all equal sized arrays.
         SCITBX_ASSERT( f_obs.size() > 0 );
         SCITBX_ASSERT( f_calc.size() == f_obs.size() );
@@ -78,8 +73,9 @@ namespace mmtbx { namespace scaling { namespace outlier{
           f_obs_fst_der_.push_back( fst_der(f_obs_[ii], ii)  );
           f_obs_snd_der_.push_back( snd_der(f_obs_[ii], ii)  );
           mean_fo_.push_back( compute_mean_( ii ) );
+          std_fo_.push_back( compute_sigma_( ii )  );
           // get the stuff please
-          newton_search(ii, 0.50,  1e-5, 10000);
+          newton_search(ii, 1.50,  1e-5, 500);
         }
       }
 
@@ -117,6 +113,11 @@ namespace mmtbx { namespace scaling { namespace outlier{
       mean_fobs(){
         return( mean_fo_  );
       }
+      scitbx::af::shared<FloatType>
+      std_fobs(){
+        return( std_fo_ );
+      }
+
 
 
       scitbx::af::shared<bool>
@@ -134,7 +135,7 @@ namespace mmtbx { namespace scaling { namespace outlier{
         for (int ii=0;ii<f_calc_.size();ii++){
            delta = f_obs_posterior_mode_log_likelihood_[ii] -
                    f_obs_log_likelihood_[ii];
-           if (delta>level){
+           if ( (delta)>level){
              flags.push_back( false );
            } else {
              flags.push_back( true );
@@ -144,83 +145,120 @@ namespace mmtbx { namespace scaling { namespace outlier{
       }
 
 
+      scitbx::af::shared<FloatType>
+      standardized_likelihood()
+      {
+        scitbx::af::shared<FloatType> result;
+        FloatType delta;
+        for (int ii=0;ii<f_obs_.size();ii++){
+           delta = f_obs_posterior_mode_log_likelihood_[ii] -
+                   f_obs_log_likelihood_[ii];
+           result.push_back( 2.0*(delta) );
+        }
+        return( result );
+      }
+
+
+
+
   protected:
-      // newton root finding
-      // see
-      // http://en.wikipedia.org/wiki/Newton%27s_method
-      // for details of the algorithm
-      // we use the updates
-      // x_(n+1) = x_n - f'(x_n)/f"(x_n)
-      // to find the maximum of a function
-      // (a simple line search basically)
       void newton_search(int ii,
                          FloatType start_fraction,
                          FloatType eps,
                          int max_iter)
       {
-        FloatType f_bar, start_f_bar;;
-        FloatType f_bar_m1, f_bar_m2;
-        FloatType funct, grad,delta,step;
-        bool converged=false, use_mean=false;
+        // do a proper more-thuente line search
+        FloatType eps_step=std_fo_[ii]/100.0, eps_delta=1e-9;
+        scitbx::line_search::more_thuente_1994<FloatType>
+          line_search_object;
+        line_search_object.gtol=0.15;
+        scitbx::af::shared<FloatType> xx, fp, sd;
+        xx.push_back(0);
+        scitbx::af::ref<FloatType> x = xx.ref();
+        fp.push_back(0);
+        sd.push_back(0);
+
+        FloatType f, fpp, step_length, f_bar, f_bar_last=-10, delta;
+        bool converged=false;
+        int code;
+
+        f_bar = mean_fo_[ii];
         int count=0;
-        start_f_bar = mean_fo_[ii]*start_fraction;
-        f_bar = mean_fo_[ii]*start_fraction;
-        f_bar_m1 = -1;
-        f_bar_m2 = -1;
         while (!converged){
-          // book keeping
-          f_bar_m1 = f_bar;
-          f_bar_m2 = f_bar_m1;
-          // function and gradient
-          funct = fst_der(f_bar, ii);
-          grad  = snd_der(f_bar, ii);
-          // newton step
-          step = - funct/grad;
-
-          // I don't want to overstep
-          // allow a maximumstep size of
-          if (step>0.5*start_f_bar){
-            step=0.5*start_f_bar;
-          }
-          if (step < -0.5*start_f_bar){
-            step=-0.5*start_f_bar;
-          }
-
-          f_bar = f_bar +step;
-          // convergence tests
-          delta = f_bar - f_bar_m2;
-          if (delta<0){
-            delta=-delta;
-          }
-          if (delta < eps){
+          // restart the line search
+          x[0]       =  f_bar;
+          f_bar_last =  f_bar;
+          f          = -calc_log_likelihood(x[0],ii);
+          fp[0]      = -fst_der(x[0],ii);
+          sd[0]      = -fp[0];
+          fpp        = -snd_der(x[0],ii);
+          //std::cout << "-------------" << std::endl;
+          ///std::cout << count << " " << x[0] << " " << f << " " << f_calc_[ii]
+          //        << " " << alpha_[ii] << " " << beta_[ii] << std::endl;
+          //std::cout << fp[0] << std::endl;
+          if  ( std::fabs(fp[0]) <= eps ){
             converged=true;
           }
-          if (count >= max_iter){
-            /*
-            std::cout << " PRELIMINAIRY CONVERGENCE   "
-                      << delta << " "
-                      << centric_[ii] << " " << f_calc_[ii] << " "
-                      << f_bar << " " << " " <<  f_bar_m1 << " " <<  f_bar_m2 << " "
-                      << mean_fo_[ii] <<  " "
-                      << alpha_[ii]   << " "
-                      << beta_[ii] << " " << std::endl;
-            */
-            use_mean=true;
+          if (fpp<=eps_step){
+            step_length = eps_step;
+          } else {
+            step_length = 1.0/fpp;
+          }
+          if (!converged){
+            code = line_search_object.start(x,
+                                            f,
+                                            fp.const_ref(),
+                                            sd,
+                                            step_length
+                                            );
+            if ( code == -1 ){
+              while ( line_search_object.info_code==-1 ){
+                f =-calc_log_likelihood( x[0], ii );
+                fp[0]= fst_der( x[0],ii );
+                code = line_search_object.next(x,
+                                               f,
+                                               fp.const_ref()
+                                               );
+              }
+            } else {
+              converged = true;
+            }
+          }
+
+          f_bar = x[0];
+          delta = std::fabs( f_bar - f_bar_last);
+          if (delta < eps_delta){
+            converged=true;
+          }
+          if (count>max_iter){
             converged=true;
           }
           count++;
-          //std::cout << count <<" " << f_bar << " " << funct << " " << grad << "  " << -funct/grad << std::endl;
+        }
 
+        FloatType grad,fstder;
+        f_bar = x[0];
+        if (f_bar < 0){
+          f_bar = 0.0;
         }
-        if (use_mean){
-          //std::cout <<"using f_mean rather then mode"<< std::endl;
-          f_bar = mean_fo_[ii];
+        fstder = fst_der( f_bar,ii );
+        grad  = snd_der( f_bar, ii );
+        FloatType tmp_rat = 2.0;
+        if ( 1.0/std::sqrt(std::fabs(grad)) > tmp_rat*std_fo_[ii]){
+          grad = std_fo_[ii];
+          grad = -1.0/(grad*grad);
         }
-        grad  = snd_der(f_bar, ii);
+        if ( grad > 0 ){
+          grad = std_fo_[ii];
+          grad = -1.0/(grad*grad);
+        }
+
         f_obs_posterior_mode_log_likelihood_[ii]=calc_log_likelihood(f_bar,ii);
         f_obs_posterior_mode_[ii]=f_bar;
         f_obs_posterior_mode_snd_der_[ii]=grad;
       }
+
+
 
       inline FloatType fst_der(FloatType fo, int ii)
       {
@@ -245,13 +283,15 @@ namespace mmtbx { namespace scaling { namespace outlier{
       calc_fst_der_acentric( FloatType fo, int ii)
       {
         FloatType result;
-        FloatType eb=epsilon_[ii]*beta_[ii] + s_obs_[ii]*s_obs_[ii];
+        FloatType eb=epsilon_[ii]*beta_[ii];
         if (fo<=1e-13){
           fo=1e-13;
         }
         FloatType x = 2.0*alpha_[ii]*fo*f_calc_[ii]/(eb);
+
         FloatType m = scitbx::math::bessel::i1_over_i0(x);
-        result = (1.0/fo) - (2.0*fo/eb) +(2*alpha_[ii]*f_calc_[ii]/eb)*m;
+
+        result = (1.0/fo) - (2.0*fo/eb) +(2.0*alpha_[ii]*f_calc_[ii]/eb)*m;
         return (result);
       }
 
@@ -265,6 +305,9 @@ namespace mmtbx { namespace scaling { namespace outlier{
           fo=1e-13;
         }
         FloatType x = alpha_[ii]*fo*f_calc_[ii]/(eb);
+        if (x<1e-13){
+          x=1e-13;
+        }
         FloatType m = std::tanh(x)*alpha_[ii]*f_calc_[ii]/(eb);;
         result = -fo/eb + m;
         return (result);
@@ -276,17 +319,19 @@ namespace mmtbx { namespace scaling { namespace outlier{
       calc_snd_der_acentric( FloatType fo, int ii)
       {
         FloatType result;
-        FloatType eb=epsilon_[ii]*beta_[ii] + s_obs_[ii]*s_obs_[ii];
+        FloatType eb=epsilon_[ii]*beta_[ii];
         if (fo<=1e-13){
           fo=1e-13;
         }
         FloatType x = 2.0*alpha_[ii]*fo*f_calc_[ii]/(eb);
         FloatType m = scitbx::math::bessel::i1_over_i0(x);
-
+        if (x<1e-13){
+          x = 1e-13;
+        }
         result = - (1.0/(fo*fo))
                  - (2.0/eb)
                  + (f_calc_[ii]*4.0*alpha_[ii]*alpha_[ii]/(eb*eb))*
-          (1.0-m/(2.0*x)-m*m);
+          (1.0-m/(x)-m*m);
         return (result);
       }
 
@@ -318,14 +363,14 @@ namespace mmtbx { namespace scaling { namespace outlier{
 
       inline FloatType acentric_log_likelihood(FloatType fo, int ii){
         FloatType result;
-        FloatType eb=epsilon_[ii]*beta_[ii] + s_obs_[ii]*s_obs_[ii];
+        FloatType eb=epsilon_[ii]*beta_[ii];
         if (fo<=1e-13){
           fo=1e-13;
         }
         FloatType x=2.0*alpha_[ii]*fo*f_calc_[ii]/eb;
-        FloatType exparg = (fo - alpha_[ii]*f_calc_[ii]);
-        exparg = exparg*exparg/eb;
-        result = std::log(fo) - std::log(eb)  -exparg + log_ei0_.log_ei0(x);
+        FloatType exparg = (fo*fo + alpha_[ii]*alpha_[ii]*f_calc_[ii]*f_calc_[ii]);
+        exparg = exparg/eb;
+        result = std::log(2.0) + std::log(fo) - std::log(eb)  -exparg  + std::log( scitbx::math::bessel::i0(x) );
         return (result);
       }
 
@@ -338,8 +383,15 @@ namespace mmtbx { namespace scaling { namespace outlier{
         }
         FloatType x=alpha_[ii]*fo*f_calc_[ii]/eb;
         FloatType exparg = (fo*fo + alpha_[ii]*alpha_[ii]*f_calc_[ii]*f_calc_[ii])/(2.0*eb);
+        FloatType tmp;
+        if (x>40){
+           tmp = x*0.999921 - 0.65543;
+        } else {
+           tmp = std::log( std::cosh(x) );
+        }
+
         result = 0.5*std::log(2.0)-0.5*std::log(scitbx::constants::pi) - 0.5*std::log(eb)
-          -exparg + std::log(std::cosh(x));
+          -exparg + tmp;
         return(result);
       }
 
@@ -371,6 +423,16 @@ namespace mmtbx { namespace scaling { namespace outlier{
 
       }
 
+      inline FloatType compute_sigma_( int ii )
+      {
+         // sigma^2 = epsilon_[ii] beta_[ii] + alpha_[ii]*f_calc_[ii] - mean_f_obs^2
+         FloatType result;
+         result = epsilon_[ii]*beta_[ii] + alpha_[ii]*alpha_[ii]*f_calc_[ii]*f_calc_[ii];
+         result = result - mean_fo_[ii]*mean_fo_[ii];
+         result = std::sqrt( result );
+         return(result);
+      }
+
       scitbx::af::shared<FloatType> f_obs_;
       scitbx::af::shared<FloatType> s_obs_;
       scitbx::af::shared<FloatType> f_calc_;
@@ -388,9 +450,8 @@ namespace mmtbx { namespace scaling { namespace outlier{
       //scitbx::af::shared<FloatType> f_obs_expected_log_likelihood_;
 
 
-      mmtbx::scaling::twinning::quick_log_ei0<FloatType> log_ei0_;
       scitbx::af::shared<FloatType> mean_fo_;
-
+      scitbx::af::shared<FloatType> std_fo_;
   };
 
 
@@ -414,8 +475,8 @@ namespace mmtbx { namespace scaling { namespace outlier{
         SCITBX_ASSERT( e_obs.size() == d_star_sq.size() );
         eps_=1e-5;
         for (int ii=0;ii<e_obs.size();ii++){
-          SCITBX_ASSERT( e_obs[ii]> 0);
-          SCITBX_ASSERT( e_calc[ii]> 0);
+          SCITBX_ASSERT( e_obs[ii]>= 0);
+          SCITBX_ASSERT( e_calc[ii]>= 0);
 
           e_obs_.push_back( e_obs[ii] );
           e_calc_.push_back( e_calc[ii] );

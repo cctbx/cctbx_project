@@ -51,7 +51,8 @@ namespace{
         .def("f_obs_fst_der", &w_t::f_obs_fst_der)
         .def("f_obs_snd_der", &w_t::f_obs_snd_der)
         .def("mean_fobs", &w_t::mean_fobs)
-
+        .def("std_fobs", &w_t::std_fobs)
+        .def("standardized_likelihood", &w_t::standardized_likelihood)
         ;
     }
 
