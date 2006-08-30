@@ -966,6 +966,21 @@ def exercise_random():
     flex.random_generator.setstate(state=state)
     r2 = flex.random_size_t(13)
     assert r2.all_eq(r1)
+  #
+  flex.set_random_seed(value=0)
+  assert approx_equal(flex.random_double_point_on_sphere(),
+    [-0.18280757808732773, -0.96904076208358081, -0.165955990594852])
+  assert approx_equal(flex.random_double_point_on_sphere(),
+    [-0.0069066582975913487, 0.020242159325144421, -0.99977125036531023])
+  assert approx_equal(flex.random_double_point_on_sphere(),
+    [0.59191534709710958, 0.38795698109618137, -0.70648821836577391])
+  a = matrix.col([0,0,0])
+  for i_trial in xrange(1000):
+    p = matrix.col(flex.random_double_point_on_sphere())
+    assert approx_equal(p.norm_sq(), 1.0)
+    a += p
+  a /= 1000
+  assert approx_equal(a, [0.0202650, -0.0375843, 0.0009599])
 
 def exercise_flex_vec3_double():
   flex.exercise_triple(flex.vec3_double, as_double=True)

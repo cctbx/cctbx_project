@@ -12,6 +12,8 @@
  */
 
 #include <scitbx/array_family/shared.h>
+#include <scitbx/vec3.h>
+#include <scitbx/constants.h>
 #include <boost/cstdint.hpp>
 #include <stdexcept>
 
@@ -305,6 +307,39 @@ namespace random {
           std::size_t j = static_cast<std::size_t>(generator_()) % size;
           std::swap(result[i], result[j]);
         }
+        return result;
+      }
+
+      //! Uniform random points on 3D sphere.
+      /*! http://cgafaq.info/wiki/Random_Points_On_Sphere (2006_08_30)
+          (probably by Colas Schretter)
+          Trig. method
+            This method works only in 3-space, but it is very fast. It
+            depends on the slightly counterintuitive fact (see proof
+            below) that each of the three coordinates is uniformly
+            distributed on [-1,1] (but the three are not independent,
+            obviously). Therefore, it suffices to choose one axis
+            (Z, say) and generate a uniformly distributed value on
+            that axis. This constrains the chosen point to lie on a
+            circle parallel to the X-Y plane, and the obvious trig
+            method may be used to obtain the remaining coordinates.
+
+              1. Choose z uniformly distributed in [-1,1].
+              2. Choose t uniformly distributed on [0, 2 p).
+              3. Let r = sqrt(1-z**2).
+              4. Let x = r * cos(t).
+              5. Let y = r * sin(t).
+       */
+      scitbx::vec3<double>
+      random_double_point_on_sphere()
+      {
+        vec3<double> result;
+        double z = 2 * random_double() - 1;
+        double t = constants::two_pi * random_double();
+        double r = std::sqrt(1-z*z);
+        result[0] = r * std::cos(t);
+        result[1] = r * std::sin(t);
+        result[2] = z;
         return result;
       }
 
