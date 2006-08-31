@@ -33,6 +33,7 @@ def run():
   "$D/math/boost_python/tst_gaussian.py",
   "$D/math/boost_python/tst_quadrature.py",
   "$D/math/boost_python/tst_halton.py",
+  "$D/scitbx/math/tst_euler_angles.py",
   "$D/scitbx/math/tst_superpose.py",
   "$D/scitbx/math/sieve_of_eratosthenes.py",
   "$D/include/scitbx/minpack/tst.py",
