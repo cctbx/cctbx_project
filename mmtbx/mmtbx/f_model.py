@@ -1054,27 +1054,46 @@ class manager(object):
       return alpha, beta
 
   def model_error_ml(self):
-    ss = 1./flex.pow2(self.f_obs.d_spacings().data())
-    omega  = flex.double()
-    save_self_overall_scale = self.overall_scale
-    alpha, beta = maxlik.alpha_beta_est_manager(
-                                    f_obs           = self.f_obs,
-                                    f_calc          = self.f_model(),
-                                    test_ref_in_bin = 200,
-                                    flags           = self.r_free_flags.data(),
-                                    interpolation   = True).alpha_beta()
-    self.overall_scale = self.scale_k3_w()
-    self.update_core()
-    alpha = self.alpha_beta()[0].data()
+    #XXX needs clean solution
+    try:
+      fmodel = self.resolution_filter(d_max = 6.0)
+      ss = 1./flex.pow2(fmodel.f_obs.d_spacings().data())
+      omega  = flex.double()
+      save_self_overall_scale = fmodel.overall_scale
+      alpha, beta = maxlik.alpha_beta_est_manager(
+                                      f_obs           = fmodel.f_obs,
+                                      f_calc          = fmodel.f_model(),
+                                      test_ref_in_bin = 200,
+                                      flags           = fmodel.r_free_flags.data(),
+                                      interpolation   = True).alpha_beta()
+    except:
+      fmodel = self
+      ss = 1./flex.pow2(fmodel.f_obs.d_spacings().data())
+      omega  = flex.double()
+      save_self_overall_scale = fmodel.overall_scale
+      alpha, beta = maxlik.alpha_beta_est_manager(
+                                      f_obs           = fmodel.f_obs,
+                                      f_calc          = fmodel.f_model(),
+                                      test_ref_in_bin = 200,
+                                      flags           = fmodel.r_free_flags.data(),
+                                      interpolation   = True).alpha_beta()
+
+    fmodel.overall_scale = fmodel.scale_k3_w()
+    fmodel.update_core()
+    alpha = fmodel.alpha_beta()[0].data()
     for ae,ssi in zip(alpha,ss):
       if(ae >  1.0): ae = 1.0
       if(ae <= 0.0): ae = 1.e-6
       coeff = -4./(math.pi**3*ssi)
       omega.append( math.sqrt( math.log(ae) * coeff ) )
     #omega_ma  = miller.array(miller_set= self.f_obs,data= flex.double(omega))
-    self.overall_scale = save_self_overall_scale
-    self.update_core()
-    return flex.mean(omega)
+    fmodel.overall_scale = save_self_overall_scale
+    fmodel.update_core()
+    omega_mean = flex.mean(omega)
+    #sel = (omega < omega_mean * 3.0) & (omega > omega_mean / 3.0)
+    #if(sel.count(True) > 0):
+    #   omega_mean = flex.mean(omega.select(sel))
+    return omega_mean
     #return flex.mean(omega), flex.max(omega), flex.min(omega)
 
 

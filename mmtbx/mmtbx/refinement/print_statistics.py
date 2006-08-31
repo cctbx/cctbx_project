@@ -208,7 +208,7 @@ class refinement_monitor(object):
     self.k3s_t           = []
     self.scale_ml        = []
     self.n_solv          = []
-    self.rba             = None
+    self.rigid_body_shift_accamulator             = None
 
   def collect(self, model,
                     fmodel,
@@ -346,7 +346,7 @@ class refinement_monitor(object):
     self.number_of_restraints= geom.number_of_restraints
     ###
     if(rigid_body_shift_accamulator is not None):
-       self.rba = rigid_body_shift_accamulator
+       self.rigid_body_shift_accamulator = rigid_body_shift_accamulator
     ###
     t2 = time.time()
     time_collect_and_process += (t2 - t1)
@@ -373,12 +373,12 @@ class refinement_monitor(object):
        print >> out, remark + "Isotropic ADP: distance_power: %5.2f" % self.params.adp_restraints.iso.distance_power
        print >> out, remark + "Isotropic ADP: average_power : %5.2f" % self.params.adp_restraints.iso.average_power
        #
-       if(self.rba is not None):
+       if(self.rigid_body_shift_accamulator is not None):
           print >> out, remark + "Information about total rigid body shift of selected groups:"
           print >> out, remark + "                          rotation (deg.)             "\
                      "   translation (A)      "
           i = 1
-          for r,t in zip(self.rba.rotations, self.rba.translations):
+          for r,t in zip(self.rigid_body_shift_accamulator.rotations, self.rigid_body_shift_accamulator.translations):
               part1 = "  group"+str("%5d:  "%i)
               part2 = str("%8.4f"%r[0])+" "+str("%8.4f"%r[1])+" "+str("%8.4f"%r[2])
               part3 = "     "

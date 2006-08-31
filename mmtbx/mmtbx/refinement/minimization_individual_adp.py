@@ -85,8 +85,10 @@ class lbfgs(object):
     del self._scatterers_start
     self.compute_target(compute_gradients = False, u_iso_reinable_params = None)
     self.final_target_value = self.f
-    self.xray_structure.tidy_us(u_min = 1.e-6)
+    self.xray_structure.tidy_us(u_min = 1.e-2)
     self.xray_structure.adjust_u_iso()
+    self.fmodel.update_xray_structure(xray_structure = self.xray_structure,
+                                      update_f_calc  = True)
     time_adp_individual += timer.elapsed()
 
   def apply_shifts(self):
