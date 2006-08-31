@@ -206,8 +206,8 @@ namespace cctbx { namespace xray { namespace {
     double u_mean = 0.0;
     double b_min  = 0.5;
     double b_max  = 500.0;
-    double min_factor = 5.0;
-    double max_factor = 3.0;
+    double min_factor = 8.0;
+    double max_factor = 6.0;
     int counter = 0;
     for(std::size_t i=0;i<self.size();i++) {
       if(self[i].flags.use() && self[i].u_iso != -1.0) {
