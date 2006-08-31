@@ -78,8 +78,9 @@ class manager(object):
                      secondary_map_cutoff        = 1.0,
                      peak_map_matching_tolerance = 2.0,
                      resolution_factor           = 1./4.,
-                     min_solv_macromol_dist      = 2.4,
+                     min_solv_macromol_dist      = 1.8,
                      max_solv_macromol_dist      = 6.0,
+                     min_solv_solv_dist          = 1.8,
                      max_number_of_peaks         = None,
                      solvent_pdb_file_name       = None,
                      filter_only                 = False,
@@ -264,7 +265,7 @@ class manager(object):
         for j,hj in zip(self.sites,self.heights):
             if(abs(hi-hj) > 1.e-3):
                d = self.xray_structure.unit_cell().distance(i,j)
-               if(d < self.min_solv_macromol_dist and d > 1.e-3):
+               if(d < self.min_solv_solv_dist and d > 1.e-3):
                   k = k + 1
                   if(hi > hj):
                      sel = heights == hj
