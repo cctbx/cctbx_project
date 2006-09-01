@@ -103,11 +103,13 @@ def run_c_plus_plus(target_evaluator,
         =termination_params.drop_convergence_test_iteration_coefficient)
   callback_after_step = getattr(target_evaluator, "callback_after_step", None)
   first_f = None
-  x_after_step = x.deep_copy()
+  x_after_step = None
   f, g = None, None
   try:
     while 1:
       f, g = target_evaluator.compute_functional_and_gradients()
+      if (x_after_step is None):
+        x_after_step = x.deep_copy()
       if (first_f is None):
         first_f = f
         if (not termination_params.traditional_convergence_test):
@@ -131,10 +133,13 @@ def run_c_plus_plus(target_evaluator,
         break
       if (not minimizer.run(x, f, g)): break
   except RuntimeError, e:
-    if (x is not None):
+    minimizer.error = str(e)
+    if (    x is not None
+        and x_after_step is not None
+        and minimizer.error.find(
+              "Rounding errors prevent further progress.") < 0):
       x.clear()
       x.extend(x_after_step)
-    minimizer.error = str(e)
     error_classification = exception_handling_params.filter(
       minimizer.error, x.size(), x, g)
     if (error_classification > 0):
