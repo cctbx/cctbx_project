@@ -27,6 +27,7 @@ def run():
   "$D/include/cctbx/adp_restraints/tst_ext.py",
   ["$D/cctbx/regression/tst_krivy_gruber.py", "--Quick"],
   "$D/cctbx/regression/tst_sgtbx.py",
+  "$D/cctbx/regression/tst_itvb_2001_table_a1427_hall_symbols.py",
   "$D/cctbx/regression/tst_space_group_type_tidy_cb_op_t.py",
   ["$D/cctbx/regression/tst_sgtbx_denominators.py", "P31"],
   "$D/cctbx/regression/tst_sgtbx_subgroups.py",
