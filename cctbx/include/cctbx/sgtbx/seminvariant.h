@@ -100,6 +100,72 @@ namespace cctbx { namespace sgtbx {
         return result;
       }
 
+      //! True only if all continuous shifts are principal.
+      /*! The three possible principal directions are
+          (1,0,0), (0,1,0), (0,0,1).
+       */
+      bool
+      continuous_shifts_are_principal() const
+      {
+        for(std::size_t i_ss=0;i_ss<size();i_ss++) {
+          ss_vec_mod const& ss = vec_mod_[i_ss];
+          if (ss.m == 0 // continuous shift
+              && ss.v != sg_vec3(1,0,0)
+              && ss.v != sg_vec3(0,1,0)
+              && ss.v != sg_vec3(0,0,1)) {
+            return false;
+          }
+        }
+        return true;
+      }
+
+      /*! \brief Flags indicating if a given direction is a continuous
+          allowed origin shift.
+       */
+      /*! Intended to be used only if continuous_shifts_are_principal(),
+          but this is enforced only if assert_principal == true.
+       */
+      af::tiny<bool, 3>
+      principal_continuous_shift_flags(bool assert_principal=true) const
+      {
+        if (assert_principal) {
+          CCTBX_ASSERT(continuous_shifts_are_principal());
+        }
+        af::tiny<bool, 3> result(false,false,false);
+        for(std::size_t i_ss=0;i_ss<size();i_ss++) {
+          ss_vec_mod const& ss = vec_mod_[i_ss];
+          if (ss.m != 0) continue;
+          for(std::size_t j=0;j<3;j++) {
+            if (ss.v[j]) result[j] = true;
+          }
+        }
+        return result;
+      }
+
+      /*! \brief Subtracts principal continuous allowed origin shifts.
+       */
+      /*! Intended to be used only if continuous_shifts_are_principal(),
+          but this is enforced only if assert_principal == true.
+       */
+      af::tiny<double, 3>
+      subtract_principal_continuous_shifts(
+        af::tiny<double, 3> const& translation,
+        bool assert_principal=true) const
+      {
+        if (assert_principal) {
+          CCTBX_ASSERT(continuous_shifts_are_principal());
+        }
+        af::tiny<double, 3> result = translation;
+        for(std::size_t i_ss=0;i_ss<size();i_ss++) {
+          ss_vec_mod const& ss = vec_mod_[i_ss];
+          if (ss.m != 0) continue;
+          for(std::size_t j=0;j<3;j++) {
+            if (ss.v[j]) result[j] = 0;
+          }
+        }
+        return result;
+      }
+
       //! Refines gridding starting with grid (1,1,1).
       /*! See also: refine_gridding()
        */

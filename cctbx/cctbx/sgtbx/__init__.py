@@ -102,7 +102,10 @@ class space_group_info(object):
     return cache._structure_seminvariants
 
   def reference_setting(self):
-    return space_group_info(symbol=self.type().number())
+    cache = self._space_group_info_cache
+    if (not hasattr(cache, "_reference_setting")):
+      cache._reference_setting = space_group_info(symbol=self.type().number())
+    return cache._reference_setting
 
   def change_of_basis_op_to_reference_setting(self):
     return self.type().cb_op()
@@ -129,8 +132,7 @@ class space_group_info(object):
 
   def reflection_intensity_equivalent_groups(self, anomalous_flag=True):
     result = []
-    cb_op = self.change_of_basis_op_to_reference_setting()
-    reference_group = self.change_basis(cb_op=cb_op).group()
+    reference_group = self.reference_setting().group()
     reference_crystal_system = reference_group.crystal_system()
     reference_reflection_intensity_group = reference_group \
       .build_derived_reflection_intensity_group(anomalous_flag=anomalous_flag)
@@ -142,7 +144,8 @@ class space_group_info(object):
       if (other_sg.build_derived_reflection_intensity_group(
             anomalous_flag=anomalous_flag)
           == reference_reflection_intensity_group):
-        result.append(other_sg.change_basis(cb_op.inverse()))
+        result.append(other_sg.change_basis(
+          self.change_of_basis_op_to_reference_setting().inverse()))
     return result
 
   def __str__(self):
@@ -155,6 +158,12 @@ class space_group_info(object):
     if (f is None): f = sys.stdout
     print >> f, "%s%s (No. %d)" % (
       prefix, str(self), self.type().number())
+
+  def subtract_continuous_allowed_origin_shifts(self, translation_frac):
+    cb_op = self.change_of_basis_op_to_reference_setting()
+    return cb_op.c_inv() * self.reference_setting().structure_seminvariants() \
+      .subtract_principal_continuous_shifts(
+        translation=cb_op.c() * translation_frac)
 
   def any_compatible_unit_cell(self, volume):
     sg_number = self.type().number()

@@ -1751,6 +1751,17 @@ def exercise_seminvariant():
   assert ss_discrete.vectors_and_moduli()[0].v == (1,0,0)
   assert ss_discrete.vectors_and_moduli()[1].m == 2
   assert ss_discrete.vectors_and_moduli()[1].v == (0,1,0)
+  assert ss.continuous_shifts_are_principal()
+  assert ss.principal_continuous_shift_flags() == (False,False,True)
+  assert approx_equal(
+    ss.subtract_principal_continuous_shifts(translation=[1,2,3]), [1,2,0])
+  ss = structure_seminvariants(space_group("P 3*"))
+  assert not ss.continuous_shifts_are_principal()
+  assert ss.principal_continuous_shift_flags(assert_principal=False) \
+      == (True,True,True)
+  assert approx_equal(
+    ss.subtract_principal_continuous_shifts(
+      translation=[1,2,3], assert_principal=False), [0,0,0])
 
 def exercise_lattice_symmetry():
   reduced_cell = uctbx.unit_cell((12,13,14,80,83,86))
