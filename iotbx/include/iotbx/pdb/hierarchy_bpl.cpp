@@ -8,9 +8,11 @@
 #include <boost/python/str.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/return_by_value.hpp>
+#include <boost/python/return_internal_reference.hpp>
 #include <boost/python/return_arg.hpp>
 #include <boost/python/copy_const_reference.hpp>
 #include <scitbx/boost_python/stl_map_as_dict.h>
+#include <scitbx/array_family/boost_python/shared_wrapper.h>
 #include <iotbx/pdb/hierarchy.h>
 
 namespace boost_python_meta_ext { struct holder {}; }
@@ -153,6 +155,7 @@ namespace {
     wrap()
     {
       using namespace boost::python;
+      typedef return_internal_reference<> rir;
       class_<w_t>("atom", no_init)
         .def(init<>())
         .def(init<residue const&, atom const&>((
@@ -206,6 +209,10 @@ namespace {
         .def("add_parent", &w_t::add_parent, (arg_("new_parent")))
         .def("is_alternative", &w_t::is_alternative)
       ;
+      {
+        scitbx::af::boost_python::shared_wrapper<w_t, rir>::wrap(
+          "af_shared_atom");
+      }
     }
   };
 
