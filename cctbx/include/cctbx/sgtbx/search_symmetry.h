@@ -189,7 +189,7 @@ namespace cctbx { namespace sgtbx {
       /*! \brief Flags indicating if a given direction is a continuous
           allowed origin shift.
        */
-      /*! \brief Union of continuous_shifts() != 0. Intended to
+      /*! Union of continuous_shifts() != 0. Intended to
           be used only if continuous_shifts_are_principal(), but
           this is enforced only if assert_principal == true.
        */
