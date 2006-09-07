@@ -8,6 +8,6 @@ proper_chemical_elements_caps = [
   "Tm", "Yb", "Lu", "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au",
   "Hg", "Tl", "Pb", "Bi", "Po", "At", "Rn", "Fr", "Ra", "Ac", "Th",
   "Pa", "U", "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md",
-  "No", "Lr"]
+  "No", "Lr", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg"]
 proper_chemical_elements_upper = [symbol.upper()
   for symbol in proper_chemical_elements_caps]
