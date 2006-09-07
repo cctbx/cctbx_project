@@ -193,6 +193,12 @@ class symmetry(object):
        unit_cell=unit_cell,
        space_group_info=space_group_info)
 
+  def subtract_continuous_allowed_origin_shifts(self, translation_cart):
+    uc = self.unit_cell()
+    return uc.orthogonalize(
+      self.space_group_info().subtract_continuous_allowed_origin_shifts(
+        translation_frac=uc.fractionalize(translation_cart)))
+
   def direct_space_asu(self):
     return self.space_group_info().direct_space_asu().define_metric(
       unit_cell=self.unit_cell())

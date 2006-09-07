@@ -56,6 +56,17 @@ def exercise_space_group_info():
       "P 21 21 21"]
   assert len(i.reflection_intensity_equivalent_groups(anomalous_flag=False)) \
       == 127
+  #
+  i = sgtbx.space_group_info(symbol="C 1 2 1")
+  assert str(i.change_of_basis_op_to_reference_setting().c()) == "x,y,z"
+  assert approx_equal(
+    i.subtract_continuous_allowed_origin_shifts(translation_frac=[1,2,3]),
+    [1,0,3])
+  i = sgtbx.space_group_info(symbol="B 2 1 1")
+  assert str(i.change_of_basis_op_to_reference_setting().c()) == "z,x,y"
+  assert approx_equal(
+    i.subtract_continuous_allowed_origin_shifts(translation_frac=[1,2,3]),
+    [0,2,3])
 
 def test_enantiomorphic_pairs():
   pairs = []
@@ -79,6 +90,21 @@ def test_enantiomorphic_pairs():
                    (144, 145), (151, 153), (152, 154),
                    (169, 170), (171, 172), (178, 179), (180, 181),
                    (212, 213)]
+
+def exercise_ss_continuous_shifts_are_principal():
+  for i in xrange(1, 231):
+    sgi = sgtbx.space_group_info(number=i)
+    ss = sgi.structure_seminvariants()
+    assert ss.continuous_shifts_are_principal()
+  for symbols in sgtbx.space_group_symbol_iterator():
+    sgi = sgtbx.space_group_info(group=sgtbx.space_group(
+      space_group_symbols=symbols))
+    ss = sgi.structure_seminvariants()
+    if (not ss.continuous_shifts_are_principal()):
+      assert symbols.universal_hermann_mauguin() in [
+        "R 3 :R",
+        "R 3 m :R",
+        "R 3 c :R"]
 
 def exercise_monoclinic_cell_choices_core(space_group_number, verbose):
   # transformation matrices for cell choices
@@ -272,6 +298,7 @@ def exercise_tensor_constraints():
 def run(args):
   exercise_space_group_info()
   test_enantiomorphic_pairs()
+  exercise_ss_continuous_shifts_are_principal()
   exercise_monoclinic_cell_choices(verbose="--verbose" in args)
   exercise_orthorhombic_hm_qualifier_as_cb_symbol()
   exercise_tensor_constraints()

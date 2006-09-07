@@ -1,8 +1,10 @@
 from cctbx import crystal
 from cctbx import sgtbx
 from cctbx import uctbx
+from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from cctbx.array_family import flex
+from scitbx import matrix
 from libtbx.test_utils import approx_equal
 import sys
 
@@ -88,6 +90,13 @@ def exercise_symmetry():
   asu_mappings = xs.asu_mappings(buffer_thickness=2.364)
   assert approx_equal(asu_mappings.buffer_thickness(), 2.364)
   assert approx_equal(xs.average_b_cart((1,2,3,4,5,6)), (1,2,3,0,5,0))
+  #
+  s = crystal.symmetry(
+    unit_cell=(10,20,30,90,90,80),
+    space_group_symbol="A 1 1 2")
+  assert approx_equal(
+    s.subtract_continuous_allowed_origin_shifts(translation_cart=[1,2,3]),
+    [1,2,0])
 
 def exercise_non_crystallographic_symmetry():
   sites_cart = flex.vec3_double(
@@ -162,15 +171,45 @@ def exercise_site_symmetry(space_group_info):
     testees.sort()
     assert " ".join(testees) == " ".join(references)
 
+def exercise_subtract_continuous_allowed_origin_shifts(
+      space_group_info,
+      use_niggli_cell,
+      n_elements=3):
+  structure = random_structure.xray_structure(
+    space_group_info,
+    elements=["Si"]*n_elements,
+    volume_per_atom=300,
+    min_distance=3.,
+    general_positions_only=False)
+  if (use_niggli_cell):
+    structure = structure.niggli_cell()
+  f_obs = abs(structure.structure_factors(
+    d_min=3, algorithm="direct").f_calc())
+  assert f_obs.indices().size() >= 10
+  transl = matrix.col(flex.random_double_point_on_sphere()) * 2.345
+  transl_no_cont = matrix.col(
+    structure.subtract_continuous_allowed_origin_shifts(
+      translation_cart=transl))
+  transl_cont = transl - transl_no_cont
+  structure_transl = structure.apply_shift(
+    shift=structure.unit_cell().fractionalize(transl_cont),
+    recompute_site_symmetries=True)
+  f_transl = abs(f_obs.structure_factors_from_scatterers(
+    xray_structure=structure_transl, algorithm="direct").f_calc())
+  assert approx_equal(f_transl.data(), f_obs.data())
+
 def run_call_back(flags, space_group_info):
   exercise_site_symmetry(space_group_info)
+  for use_niggli_cell in [False, True]:
+    exercise_subtract_continuous_allowed_origin_shifts(
+      space_group_info=space_group_info,
+      use_niggli_cell=use_niggli_cell)
 
 def run():
   exercise_symmetry()
   exercise_non_crystallographic_symmetry()
   exercise_special_position_settings()
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
-  print "OK"
 
 if (__name__ == "__main__"):
   run()
