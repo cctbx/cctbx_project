@@ -35,7 +35,7 @@ namespace {
     wrap_structure_factors_direct();
     wrap_structure_factors_simple();
     wrap_targets();
-    wrap_f_model_core_data(); 
+    wrap_f_model_core_data();
     wrap_twin_targets();
   }
 
