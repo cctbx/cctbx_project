@@ -210,8 +210,8 @@ namespace {
         .def("is_alternative", &w_t::is_alternative)
       ;
       {
-        scitbx::af::boost_python::shared_wrapper<w_t, rir>::wrap(
-          "af_shared_atom");
+        scitbx::af::boost_python::shared_wrapper<
+          atom, rir>::wrap("af_shared_atom");
       }
     }
   };
