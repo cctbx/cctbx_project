@@ -1945,7 +1945,7 @@ ATOM         CA  ASN     1
 ATOM         P   +U      2
 ATOM         O   HOH     3
 ATOM        CD   CD      4
-ATOM        S    SO4     5
+ATOM         S   SO4     5
 ATOM         N   ABC     6
 """))
   check_hierarchy(
@@ -1963,7 +1963,7 @@ model id=0 #chains=1
       residue name="CD  " seq=   4 icode=" " #atoms=1
          "CD  "
       residue name="SO4 " seq=   5 icode=" " #atoms=1
-         "S   "
+         " S  "
       residue name="ABC " seq=   6 icode=" " #atoms=1
          " N  "
 """,
@@ -1988,6 +1988,102 @@ model id=0 #chains=1
   assert get_class(name="CL ") == "common_element"
   assert get_class(name="ABC") == "other"
 
+def exercise_xray_structure_simple():
+  pdb_inp = pdb.input(
+    source_info=None,
+    lines=flex.split_lines("""\
+CRYST1   61.410   54.829   43.543  90.00  90.00  90.00 P 21 21 21    8
+ORIGX1      1.000000  0.000000  0.000000        0.00000
+ORIGX2      0.000000  1.000000  0.000000        0.00000
+ORIGX3      0.000000  0.000000  1.000000        0.00000
+SCALE1      0.016284  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.018239  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.022966        0.00000
+ATOM      1  N   GLN A   3      35.299  11.075  19.070  1.00 36.89           N
+ATOM      2  CA  GLN A   3      34.482   9.927  18.794  0.63 37.88           C
+ANISOU    2  CA  GLN A   3     7794   3221   3376  -1227   1064   2601       C
+ATOM      3  Q   GLN A   3      35.130   8.880  17.864  0.84 37.52           C
+ANISOU    3  Q   GLN A   3     7875   3041   3340   -981    727   2663       C
+ATOM      4  O   GLN A   3      34.548   7.819  17.724  1.00 38.54      STUV
+ATOM      5 1CB  GLN A   3      32.979  10.223  18.469  1.00 37.80
+HETATM    6 CA   ION B   1      32.360  11.092  17.308  0.92 35.96          CA
+HETATM    7 CA   ION B   2      30.822  10.665  17.190  1.00 36.87
+"""))
+  for use_scale_matrix_if_available in [False, True]:
+    xray_structure = pdb_inp.xray_structure_simple(
+      use_scale_matrix_if_available=use_scale_matrix_if_available)
+    out = StringIO()
+    xray_structure.show_summary(f=out)
+    assert not show_diff(out.getvalue(), """\
+Number of scatterers: 7
+At special positions: 0
+Unit cell: (61.41, 54.829, 43.543, 90, 90, 90)
+Space group: P 21 21 21 (No. 19)
+""")
+    out = StringIO()
+    xray_structure.show_scatterers(f=out)
+    assert not show_diff(out.getvalue(), """\
+Label, Scattering, Multiplicity, Coordinates, Occupancy, Uiso
+" N   GLN A   3 " N      4 ( 0.5748  0.2020  0.4380) 1.00 0.4672
+" CA  GLN A   3 " C      4 ( 0.5615  0.1811  0.4316) 0.63 0.4797
+     u_cart =  0.779  0.322  0.338 -0.123  0.106  0.260
+" Q   GLN A   3 " C      4 ( 0.5721  0.1620  0.4103) 0.84 0.4752
+     u_cart =  0.788  0.304  0.334 -0.098  0.073  0.266
+" O   GLN A   3 " segid="STUV" O      4 ( 0.5626  0.1426  0.4070) 1.00 0.4881
+"1CB  GLN A   3 " C      4 ( 0.5370  0.1865  0.4242) 1.00 0.4787
+"CA   ION B   1 " Ca     4 ( 0.5270  0.2023  0.3975) 0.92 0.4554
+"CA   ION B   2 " Ca     4 ( 0.5019  0.1945  0.3948) 1.00 0.4670
+""")
+  #
+  xray_structure = pdb_inp.xray_structure_simple(unit_cube=True)
+  out = StringIO()
+  xray_structure.show_summary(f=out)
+  assert not show_diff(out.getvalue(), """\
+Number of scatterers: 7
+At special positions: 0
+Unit cell: (1, 1, 1, 90, 90, 90)
+Space group: P 1 (No. 1)
+""")
+  out = StringIO()
+  xray_structure.show_scatterers(f=out)
+  assert not show_diff(out.getvalue(), """\
+Label, Scattering, Multiplicity, Coordinates, Occupancy, Uiso
+" N   GLN A   3 " N      1 (35.2990 11.0750 19.0700) 1.00 0.4672
+" CA  GLN A   3 " C      1 (34.4820  9.9270 18.7940) 0.63 0.4797
+     u_cart =  0.779  0.322  0.338 -0.123  0.106  0.260
+" Q   GLN A   3 " C      1 (35.1300  8.8800 17.8640) 0.84 0.4752
+     u_cart =  0.788  0.304  0.334 -0.098  0.073  0.266
+" O   GLN A   3 " segid="STUV" O      1 (34.5480  7.8190 17.7240) 1.00 0.4881
+"1CB  GLN A   3 " C      1 (32.9790 10.2230 18.4690) 1.00 0.4787
+"CA   ION B   1 " Ca     1 (32.3600 11.0920 17.3080) 0.92 0.4554
+"CA   ION B   2 " Ca     1 (30.8220 10.6650 17.1900) 1.00 0.4670
+""")
+  #
+  pdb_inp = pdb.input(
+    source_info=None,
+    lines=flex.split_lines("""\
+ATOM      1  N   GLN A   3      35.299  11.075  99.070  1.00 36.89      STUV A
+"""))
+  try:
+    pdb_inp.xray_structure_simple()
+  except RuntimeError, e:
+    assert not show_diff(str(e), """\
+Unknown chemical element type: PDB ATOM " N   GLN A   3 " segid="STUV" element=" A"
+  To resolve this problem, specify a chemical element type in
+  columns 77-78 of the PDB file, right justified (e.g. " C").""")
+  pdb_inp = pdb.input(
+    source_info=None,
+    lines=flex.split_lines("""\
+ATOM      1 1A   GLN A   3      35.299  11.075  99.070  1.00 36.89
+"""))
+  try:
+    pdb_inp.xray_structure_simple()
+  except RuntimeError, e:
+    assert not show_diff(str(e), """\
+Unknown chemical element type: PDB ATOM "1A   GLN A   3 " element="  "
+  To resolve this problem, specify a chemical element type in
+  columns 77-78 of the PDB file, right justified (e.g. " C").""")
+
 def exercise(args):
   forever = "--forever" in args
   while True:
@@ -2000,6 +2096,7 @@ def exercise(args):
     exercise_columns_73_76_evaluator()
     exercise_line_info_exceptions()
     exercise_pdb_input()
+    exercise_xray_structure_simple()
     if (not forever): break
   print format_cpu_times()
 
