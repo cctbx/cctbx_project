@@ -99,7 +99,8 @@ def exercise_2(eps = 1.e-6):
                                          xray_structure = xray_structure,
                                          algorithm      = sf_algorithm,
                                          cos_sin_table  = False).f_calc())
-  flags = f_obs.generate_r_free_flags(fraction=0.05, max_free=2000)
+  flags = f_obs.generate_r_free_flags(fraction=0.01, max_free=2000)
+
   fmodel = mmtbx.f_model.manager(xray_structure    = xray_structure,
                                  f_obs             = f_obs,
                                  r_free_flags      = flags,
