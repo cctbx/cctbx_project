@@ -2,7 +2,8 @@
 #define SCITBX_MATH_BESSEL_H
 
 #include <cmath>
-
+#include <scitbx/array_family/shared.h>
+#include <scitbx/array_family/ref.h>
 namespace scitbx { namespace math {
 
 //! Family of Bessel functions.
@@ -50,6 +51,19 @@ namespace bessel {
     return result;
   }
 
+  template <typename FloatType>
+  scitbx::af::shared<FloatType>
+  i1_over_i0( scitbx::af::const_ref<FloatType> const& x )
+  {
+    SCITBX_ASSERT( x.size()>0 );
+    scitbx::af::shared<FloatType> result;
+    for (int ii=0;ii<x.size();ii++){
+      result.push_back( i1_over_i0(x[ii]) );
+    }
+    return(result);
+  }
+
+
   //! Calculates the inverse function of the ratio I1(x)/I0(x).
   /*! Implementation based on clipper::Util::invsim() by Kevin Cowtan.
       Warning: for x > 10 the results are not very accurate.
@@ -75,6 +89,19 @@ namespace bessel {
     if (x >= 0.0) return  (((q1>0.0)? r1 : -r1) + ((q2>0.0)? r2 : -r2) - w);
                   return -(((q1>0.0)? r1 : -r1) + ((q2>0.0)? r2 : -r2) - w);
   }
+
+  template <typename FloatType>
+  scitbx::af::shared<FloatType>
+  inverse_i1_over_i0( scitbx::af::const_ref<FloatType> const& x )
+  {
+    SCITBX_ASSERT( x.size()>0 );
+    scitbx::af::shared<FloatType> result;
+    for (int ii=0;ii<x.size();ii++){
+      result.push_back( inverse_i1_over_i0(x[ii]) );
+    }
+    return(result);
+  }
+
 
   //! Calculates I0(x).
   template <typename FloatType>

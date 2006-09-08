@@ -110,8 +110,11 @@ namespace {
     def("erfcx", (double(*)(double const&)) erfcx);
 
     def("bessel_i1_over_i0", (double(*)(double const&)) bessel::i1_over_i0);
+    def("bessel_i1_over_i0", (scitbx::af::shared<double>(*)(scitbx::af::const_ref<double> const&)) bessel::i1_over_i0);
     def("bessel_inverse_i1_over_i0",
       (double(*)(double const&)) bessel::inverse_i1_over_i0);
+    def("inverse_bessel_i1_over_i0", (scitbx::af::shared<double>(*)(
+         scitbx::af::const_ref<double> const&)) bessel::inverse_i1_over_i0);
     def("bessel_i0", (double(*)(double const&)) bessel::i0);
     def("bessel_i1", (double(*)(double const&)) bessel::i1);
     def("bessel_ln_of_i0", (double(*)(double const&)) bessel::ln_of_i0);
