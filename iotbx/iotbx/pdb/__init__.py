@@ -1,13 +1,22 @@
-import cctbx.array_family.flex
+from cctbx.array_family import flex
 
 import boost.python
 ext = boost.python.import_ext("iotbx_pdb_ext")
 from iotbx_pdb_ext import *
 
 from iotbx.pdb.xray_structure import from_pdb as as_xray_structure
+from cctbx import eltbx
+from scitbx import matrix
 from scitbx.python_utils.math_utils import iround
 from libtbx.str_utils import show_string, show_sorted_by_counts
 import sys
+
+chemical_elements = ["%2s" % symbol
+  for symbol in eltbx.proper_chemical_elements_upper]
+chemical_elements.insert(1, " D")
+try: import sets
+except ImportError: pass
+else: chemical_elements = sets.Set(chemical_elements)
 
 def show_summary(
       file_name=None,
@@ -94,6 +103,17 @@ def show_summary(
       level_id_exception=level_id_exception)
   #
   return pdb_inp, hierarchy
+
+class _atom(boost.python.injector, ext.atom):
+
+  def determine_chemical_element_simple(self):
+    e = self.element
+    if (e in chemical_elements): return e
+    if (e == "  "):
+      n = self.name[:2]
+      if (n[0] in "0123456789"): n = " "+n[1]
+      if (n in chemical_elements): return n
+    return None
 
 hierarchy_level_ids = ["model", "chain", "conformer", "residue", "atom"]
 
@@ -182,6 +202,87 @@ class _input(boost.python.injector, ext.input):
       if (line.startswith("CRYST1")):
         return cryst1_interpretation.crystal_symmetry(cryst1_record=line)
 
+  def scale_matrix(self):
+    if (not hasattr(self, "_scale_matrix")):
+      source_info = self.source_info()
+      if (len(source_info) > 0): source_info = " (%s)" % source_info
+      self._scale_matrix = [[None]*9,[None]*3]
+      done = {}
+      for line in self.crystallographic_section():
+        if (line.startswith("SCALE") and line[5:6] in ["1", "2", "3"]):
+          r = read_scale_record(line=line, source_info=source_info)
+          for i_col,v in enumerate([r.sn1, r.sn2, r.sn3]):
+            self._scale_matrix[0][(r.n-1)*3+i_col] = v
+          self._scale_matrix[1][r.n-1] = r.un
+          done[r.n] = None
+      done = done.keys()
+      done.sort()
+      if (len(done) == 0):
+        self._scale_matrix = None
+      elif (done != [1,2,3]):
+        raise RuntimeError(
+          "Incomplete set of PDB SCALE records%s" % source_info)
+    return self._scale_matrix
+
+  def xray_structure_simple(self,
+        crystal_symmetry=None,
+        unit_cube=False,
+        use_scale_matrix_if_available=True):
+    from cctbx import xray
+    from cctbx import crystal
+    from cctbx import adptbx
+    assert crystal_symmetry is None or not unit_cube
+    if (crystal_symmetry is None and not unit_cube):
+      crystal_symmetry = self.crystal_symmetry_from_cryst1()
+    if (crystal_symmetry is None):
+      unit_cube = True
+      crystal_symmetry = crystal.symmetry(
+        unit_cell=(1,1,1,90,90,90),
+        space_group_symbol="P1")
+    assert isinstance(crystal_symmetry, crystal.symmetry)
+    if (not unit_cube):
+      uc = crystal_symmetry.unit_cell()
+      if (use_scale_matrix_if_available):
+        scale_matrix = self.scale_matrix()
+      else:
+        scale_matrix = None
+      if (scale_matrix is None):
+        frac = uc.fractionalize
+      else:
+        scale_r = matrix.sqr(scale_matrix[0])
+        scale_t = matrix.col(scale_matrix[1])
+    scatterers = flex.xray_scatterer()
+    for labels,atom in zip(self.input_atom_labels_list(), self.atoms()):
+      label = labels.pdb_format()
+      if (unit_cube):
+        site = atom.xyz
+      elif (scale_matrix is None):
+        site = frac(atom.xyz)
+      else:
+        site = (scale_r * matrix.col(atom.xyz) + scale_t).elems
+      if (atom.uij == (-1,-1,-1,-1,-1,-1)):
+        u = adptbx.b_as_u(atom.b)
+      elif (unit_cube):
+        u = atom.uij
+      else:
+        u = adptbx.u_cart_as_u_star(uc, atom.uij)
+      scattering_type = atom.determine_chemical_element_simple()
+      if (scattering_type is None):
+        raise RuntimeError(
+          'Unknown chemical element type: PDB ATOM %s element="%s"\n'
+            % (label, atom.element)
+          + "  To resolve this problem, specify a chemical element type in\n"
+          + '  columns 77-78 of the PDB file, right justified (e.g. " C").')
+      scatterers.append(xray.scatterer(
+        label=label,
+        site=site,
+        u=u,
+        occupancy=atom.occ,
+        scattering_type=scattering_type.strip().capitalize()))
+    return xray.structure(
+      crystal_symmetry=crystal_symmetry,
+      scatterers=scatterers)
+
 def format_cryst1_record(crystal_symmetry, z=None):
   # CRYST1
   #  7 - 15       Real(9.3)      a             a (Angstroms).
@@ -219,6 +320,30 @@ def format_scale_records(unit_cell=None,
     f[0], f[1], f[2], u[0],
     f[3], f[4], f[5], u[1],
     f[6], f[7], f[8], u[2])
+
+class read_scale_record:
+
+  def __init__(self, line, source_info=""):
+    try: self.n = int(line[5:6])
+    except ValueError: self.n = None
+    if (self.n not in [1,2,3]):
+      raise RuntimeError(
+        "Unknown PDB record %s%s" % (show_string(line[:6]), source_info))
+    values = []
+    for i in [10,20,30,45]:
+      fld = line[i:i+10]
+      if (len(fld.strip()) == 0):
+        value = 0
+      else:
+        try: value = float(fld)
+        except ValueError:
+          raise RuntimeError(
+            "Not a floating-point value, PDB record %s%s:\n" % (
+              show_string(line[:6]), source_info)
+            + "  " + line + "\n"
+            + "  %s%s" % (" "*i, "^"*10))
+      values.append(value)
+    self.sn1, self.sn2, self.sn3, self.un = values
 
 def format_atom_record(record_name="ATOM",
                        serial=0,
