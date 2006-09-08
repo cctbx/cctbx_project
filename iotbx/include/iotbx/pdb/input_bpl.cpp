@@ -55,8 +55,8 @@ namespace {
         .def("pdb_format", &w_t::pdb_format)
       ;
       {
-        scitbx::af::boost_python::shared_wrapper<w_t, rir>::wrap(
-          "af_shared_input_atom_labels");
+        scitbx::af::boost_python::shared_wrapper<
+          input_atom_labels, rir>::wrap("af_shared_input_atom_labels");
       }
     }
   };
