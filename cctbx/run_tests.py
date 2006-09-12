@@ -12,6 +12,7 @@ def run():
   "$D/include/cctbx/crystal/tst_ext.py",
   "$D/adptbx/boost_python/tst_adptbx.py",
   "$D/miller/boost_python/tst_miller.py",
+  "$D/eltbx/boost_python/tst_chemical_elements.py",
   "$D/eltbx/boost_python/tst_xray_scattering.py",
   "$D/eltbx/boost_python/tst_henke.py",
   "$D/eltbx/boost_python/tst_icsd_radii.py",
