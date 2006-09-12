@@ -29,9 +29,17 @@ def exercise_unsigned():
   assert list(s) == [0,3,4,5,6,7,8,11]
   d = pickle.dumps(s)
   l = pickle.loads(d)
+  assert list(l) == list(s)
+
+def exercise_stl_string():
+  s = set.stl_string(["a", "b", "c"])
+  d = pickle.dumps(s)
+  l = pickle.loads(d)
+  assert list(l) == list(s)
 
 def exercise():
   exercise_unsigned()
+  exercise_stl_string()
   print "OK"
 
 if (__name__ == "__main__"):

@@ -7,6 +7,7 @@ namespace {
   void init_module()
   {
     set_wrapper<unsigned>::wrap("unsigned");
+    set_wrapper<std::string>::wrap("stl_string");
   }
 
 }}}} // namespace scitbx::stl::boost_python::<anonymous>
