@@ -86,6 +86,19 @@ def exercise_atom():
   assert approx_equal(a.siguij, (.1,.2,.3,.6,.1,.9))
   assert a.hetero
   assert not a.is_alternative()
+  assert a.determine_chemical_element_simple() is None
+  a.name = "NA  "
+  a.element = " N"
+  assert a.determine_chemical_element_simple() == " N"
+  a.element = "CU"
+  assert a.determine_chemical_element_simple() == "CU"
+  a.element = "  "
+  assert a.determine_chemical_element_simple() == "NA"
+  a.name = " D"
+  assert a.determine_chemical_element_simple() == " D"
+  for d in "0123456789":
+    a.name = d+"H"
+    assert a.determine_chemical_element_simple() == " H"
   #
   r = pdb.residue()
   ac = pdb.atom(parent=r, other=a)
@@ -2006,7 +2019,7 @@ ATOM      3  Q   GLN A   3      35.130   8.880  17.864  0.84 37.52           C
 ANISOU    3  Q   GLN A   3     7875   3041   3340   -981    727   2663       C
 ATOM      4  O   GLN A   3      34.548   7.819  17.724  1.00 38.54      STUV
 ATOM      5 1CB  GLN A   3      32.979  10.223  18.469  1.00 37.80
-HETATM    6 CA   ION B   1      32.360  11.092  17.308  0.92 35.96          CA
+HETATM    6 CA   ION B   1      32.360  11.092  17.308  0.92 35.96          CA2+
 HETATM    7 CA   ION B   2      30.822  10.665  17.190  1.00 36.87
 """))
   for use_scale_matrix_if_available in [False, True]:
@@ -2031,11 +2044,11 @@ Label, Scattering, Multiplicity, Coordinates, Occupancy, Uiso
      u_cart =  0.788  0.304  0.334 -0.098  0.073  0.266
 " O   GLN A   3 " segid="STUV" O      4 ( 0.5626  0.1426  0.4070) 1.00 0.4881
 "1CB  GLN A   3 " C      4 ( 0.5370  0.1865  0.4242) 1.00 0.4787
-"CA   ION B   1 " Ca     4 ( 0.5270  0.2023  0.3975) 0.92 0.4554
+"CA   ION B   1 " Ca2+   4 ( 0.5270  0.2023  0.3975) 0.92 0.4554
 "CA   ION B   2 " Ca     4 ( 0.5019  0.1945  0.3948) 1.00 0.4670
 """)
   #
-  xray_structure = pdb_inp.xray_structure_simple(unit_cube=True)
+  xray_structure = pdb_inp.xray_structure_simple(unit_cube_pseudo_crystal=True)
   out = StringIO()
   xray_structure.show_summary(f=out)
   assert not show_diff(out.getvalue(), """\
@@ -2055,7 +2068,7 @@ Label, Scattering, Multiplicity, Coordinates, Occupancy, Uiso
      u_cart =  0.788  0.304  0.334 -0.098  0.073  0.266
 " O   GLN A   3 " segid="STUV" O      1 (34.5480  7.8190 17.7240) 1.00 0.4881
 "1CB  GLN A   3 " C      1 (32.9790 10.2230 18.4690) 1.00 0.4787
-"CA   ION B   1 " Ca     1 (32.3600 11.0920 17.3080) 0.92 0.4554
+"CA   ION B   1 " Ca2+   1 (32.3600 11.0920 17.3080) 0.92 0.4554
 "CA   ION B   2 " Ca     1 (30.8220 10.6650 17.1900) 1.00 0.4670
 """)
   #
@@ -2083,6 +2096,55 @@ ATOM      1 1A   GLN A   3      35.299  11.075  99.070  1.00 36.89
 Unknown chemical element type: PDB ATOM "1A   GLN A   3 " element="  "
   To resolve this problem, specify a chemical element type in
   columns 77-78 of the PDB file, right justified (e.g. " C").""")
+  pdb_inp = pdb.input(
+    source_info=None,
+    lines=flex.split_lines("""\
+ATOM      1  N   GLN A   3      35.299  11.075  99.070  1.00 36.89           B 5
+"""))
+  try:
+    pdb_inp.xray_structure_simple()
+  except RuntimeError, e:
+    assert not show_diff(str(e), '''\
+Unknown charge: PDB ATOM " N   GLN A   3 " element=" B" charge=" 5"''')
+  #
+  pdb_inp = pdb.input(
+    source_info=None,
+    lines=flex.split_lines("""\
+MODEL        1
+ATOM      1  N   GLN A   3      35.299  11.075  19.070  1.00 36.89
+ATOM      2  CA  GLN A   3      34.482   9.927  18.794  0.63 37.88
+ENDMDL
+MODEL        2
+ATOM      1  N   GLN A   3      25.299   1.075   9.070  0.54 26.89
+ATOM      2  CA  GLN A   3      24.482  -1.927   8.794  1.00 27.88
+ENDMDL
+"""))
+  xray_structure = pdb_inp.xray_structure_simple()
+  out = StringIO()
+  xray_structure.show_scatterers(f=out)
+  assert not show_diff(out.getvalue(), """\
+Label, Scattering, Multiplicity, Coordinates, Occupancy, Uiso
+" N   GLN A   3 " N      1 (35.2990 11.0750 19.0700) 1.00 0.4672
+" CA  GLN A   3 " C      1 (34.4820  9.9270 18.7940) 0.63 0.4798
+" N   GLN A   3 " N      1 (25.2990  1.0750  9.0700) 0.54 0.3406
+" CA  GLN A   3 " C      1 (24.4820 -1.9270  8.7940) 1.00 0.3531
+""")
+  xray_structures = pdb_inp.xray_structures_simple()
+  assert len(xray_structures) == 2
+  out = StringIO()
+  xray_structures[0].show_scatterers(f=out)
+  assert not show_diff(out.getvalue(), """\
+Label, Scattering, Multiplicity, Coordinates, Occupancy, Uiso
+" N   GLN A   3 " N      1 (35.2990 11.0750 19.0700) 1.00 0.4672
+" CA  GLN A   3 " C      1 (34.4820  9.9270 18.7940) 0.63 0.4798
+""")
+  out = StringIO()
+  xray_structures[1].show_scatterers(f=out)
+  assert not show_diff(out.getvalue(), """\
+Label, Scattering, Multiplicity, Coordinates, Occupancy, Uiso
+" N   GLN A   3 " N      1 (25.2990  1.0750  9.0700) 0.54 0.3406
+" CA  GLN A   3 " C      1 (24.4820 -1.9270  8.7940) 1.00 0.3531
+""")
 
 def exercise(args):
   forever = "--forever" in args

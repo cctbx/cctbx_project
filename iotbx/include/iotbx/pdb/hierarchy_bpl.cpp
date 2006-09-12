@@ -208,6 +208,8 @@ namespace {
         .def("parents", parents)
         .def("add_parent", &w_t::add_parent, (arg_("new_parent")))
         .def("is_alternative", &w_t::is_alternative)
+        .def("determine_chemical_element_simple",
+          &w_t::determine_chemical_element_simple)
       ;
       {
         scitbx::af::boost_python::shared_wrapper<
