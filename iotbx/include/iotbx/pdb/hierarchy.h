@@ -2,6 +2,7 @@
 #define IOTBX_PDB_HIERARCHY_H
 
 #include <iotbx/pdb/common_residue_names.h>
+#include <cctbx/eltbx/chemical_elements.h>
 #include <scitbx/array_family/shared.h>
 #include <scitbx/sym_mat3.h>
 #include <boost/shared_ptr.hpp>
@@ -410,6 +411,30 @@ namespace pdb {
 
       bool
       is_alternative() const { return data->is_alternative(); }
+
+      boost::optional<std::string>
+      determine_chemical_element_simple() const
+      {
+        std::set<std::string> const& chemical_elements
+          = cctbx::eltbx::chemical_elements::proper_and_isotopes_upper_set();
+        std::string e(data->element.elems);
+        std::string l;
+        if (e[0] == ' ') l = e[1];
+        else             l = e;
+        if (chemical_elements.find(l) != chemical_elements.end()) {
+          return boost::optional<std::string>(e);
+        }
+        if (e == "  ") {
+          std::string n(data->name.elems, 2);
+          if (std::isdigit(n[0])) n[0] = ' ';
+          if (n[0] == ' ') l = n[1];
+          else             l = n;
+          if (chemical_elements.find(l) != chemical_elements.end()) {
+            return boost::optional<std::string>(n);
+          }
+        }
+        return boost::optional<std::string>();
+      }
   };
 
   //! Residue attributes.
