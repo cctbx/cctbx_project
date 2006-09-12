@@ -23,5 +23,6 @@ BOOST_PYTHON_MODULE(boost_optional_ext)
   to_and_from_python<unsigned>();
   to_and_from_python<float>();
   to_and_from_python<double>();
+  to_and_from_python<std::string>();
   boost::python::def("exercise", exercise);
 }
