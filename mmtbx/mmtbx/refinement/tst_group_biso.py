@@ -79,19 +79,29 @@ def check_result():
 
 def run(args):
   random_seed = None
+  forever = False
   for arg in args:
     if (arg.startswith("--random_seed=")):
       random_seed = int(arg.split("=", 1)[1])
-  if (random_seed is None):
-    random_seed = flex.get_random_seed()
-  print "random_seed:", random_seed
-  sys.stdout.flush()
-  random.seed(random_seed)
-  flex.set_random_seed(value=random_seed)
-  calculate_fobs()
-  exercise_1()
-  exercise_2()
-  check_result()
+    if (arg.startswith("--forever")):
+      forever = True
+  if forever: assert random_seed is None
+  if random_seed is not None: assert forever == False
+  while 1:
+     if (random_seed is None):
+       random_seed = flex.get_random_seed()
+     print "random_seed:", random_seed
+     sys.stdout.flush()
+     random.seed(random_seed)
+     flex.set_random_seed(value=random_seed)
+     calculate_fobs()
+     exercise_1()
+     exercise_2()
+     check_result()
+     sys.stdout.flush()
+     if(not forever):
+       print "random_seed last used:", random_seed
+       break
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])
