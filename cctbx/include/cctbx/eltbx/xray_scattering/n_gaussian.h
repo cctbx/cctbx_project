@@ -10,7 +10,7 @@ namespace n_gaussian {
   table_size();
 
   std::size_t
-  table_index(std::string const& label);
+  table_index(std::string label);
 
   //! Entry in table of N-Gaussian approximations.
   class table_entry

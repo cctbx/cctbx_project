@@ -2077,6 +2077,9 @@ Label, Scattering, Multiplicity, Coordinates, Occupancy, Uiso
     lines=flex.split_lines("""\
 ATOM      1  N   GLN A   3      35.299  11.075  99.070  1.00 36.89      STUV A
 """))
+  xray_structure = pdb_inp.xray_structure_simple(
+    enable_scattering_type_unknown=True)
+  assert xray_structure.scatterers()[0].scattering_type == "unknown"
   try:
     pdb_inp.xray_structure_simple()
   except RuntimeError, e:
@@ -2084,11 +2087,15 @@ ATOM      1  N   GLN A   3      35.299  11.075  99.070  1.00 36.89      STUV A
 Unknown chemical element type: PDB ATOM " N   GLN A   3 " segid="STUV" element=" A"
   To resolve this problem, specify a chemical element type in
   columns 77-78 of the PDB file, right justified (e.g. " C").""")
+  else: raise RuntimeError("Exception expected.")
   pdb_inp = pdb.input(
     source_info=None,
     lines=flex.split_lines("""\
 ATOM      1 1A   GLN A   3      35.299  11.075  99.070  1.00 36.89
 """))
+  xray_structure = pdb_inp.xray_structure_simple(
+    enable_scattering_type_unknown=True)
+  assert xray_structure.scatterers()[0].scattering_type == "unknown"
   try:
     pdb_inp.xray_structure_simple()
   except RuntimeError, e:
@@ -2096,16 +2103,46 @@ ATOM      1 1A   GLN A   3      35.299  11.075  99.070  1.00 36.89
 Unknown chemical element type: PDB ATOM "1A   GLN A   3 " element="  "
   To resolve this problem, specify a chemical element type in
   columns 77-78 of the PDB file, right justified (e.g. " C").""")
+  else: raise RuntimeError("Exception expected.")
   pdb_inp = pdb.input(
     source_info=None,
     lines=flex.split_lines("""\
 ATOM      1  N   GLN A   3      35.299  11.075  99.070  1.00 36.89           B 5
 """))
+  xray_structure = pdb_inp.xray_structure_simple(
+    enable_scattering_type_unknown=True)
+  assert xray_structure.scatterers()[0].scattering_type == "unknown"
   try:
     pdb_inp.xray_structure_simple()
   except RuntimeError, e:
     assert not show_diff(str(e), '''\
 Unknown charge: PDB ATOM " N   GLN A   3 " element=" B" charge=" 5"''')
+  else: raise RuntimeError("Exception expected.")
+  pdb_inp = pdb.input(
+    source_info=None,
+    lines=flex.split_lines("""\
+ATOM      1  N   GLN A   3      35.299  11.075  99.070  1.00 36.89          CS3-
+"""))
+  xray_structure = pdb_inp.xray_structure_simple()
+  assert xray_structure.scatterers()[0].scattering_type == "Cs"
+  xray_structure = pdb_inp.xray_structure_simple(
+    scattering_type_exact=True,
+    enable_scattering_type_unknown=True)
+  assert xray_structure.scatterers()[0].scattering_type == "unknown"
+  out = StringIO()
+  xray_structure.scattering_type_registry().show(out=out)
+  assert not show_diff(out.getvalue(), """\
+Number of scattering types: 1
+  Type     Number    sf(0)   Gaussians
+   unknown     1      None      None
+  sf(0) = scattering factor at diffraction angle 0.
+""")
+  try:
+    pdb_inp.xray_structure_simple(scattering_type_exact=True)
+  except RuntimeError, e:
+    assert not show_diff(str(e), '''\
+Unknown scattering type: PDB ATOM " N   GLN A   3 " element="CS" charge="3-"''')
+  else: raise RuntimeError("Exception expected.")
   #
   pdb_inp = pdb.input(
     source_info=None,
@@ -2145,6 +2182,17 @@ Label, Scattering, Multiplicity, Coordinates, Occupancy, Uiso
 " N   GLN A   3 " N      1 (25.2990  1.0750  9.0700) 0.54 0.3406
 " CA  GLN A   3 " C      1 (24.4820 -1.9270  8.7940) 1.00 0.3531
 """)
+  #
+  pdb_inp = pdb.input(
+    source_info=None,
+    lines=flex.split_lines("""\
+ATOM    369 PEAK PEAK    1      61.114  12.134   8.619  1.00 20.00      PEAK
+ATOM    504 SITE SITE    2      67.707   2.505  14.951  1.00 20.00      SITE
+"""))
+  xray_structure = pdb_inp.xray_structure_simple()
+  assert xray_structure.scattering_type_registry().type_index_pairs_as_dict() \
+      == {"const": 0}
+  assert list(xray_structure.scattering_type_registry().unique_counts) == [2]
 
 def exercise(args):
   forever = "--forever" in args

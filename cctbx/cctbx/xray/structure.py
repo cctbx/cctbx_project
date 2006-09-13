@@ -416,7 +416,7 @@ class structure(crystal.special_position_settings):
         or d_min is not None
         or table is not None
         or types_without_a_scattering_contribution is not None):
-      new_dict = {"const": eltbx.xray_scattering.gaussian(1) }
+      new_dict = {"const": eltbx.xray_scattering.gaussian(1)}
       old_dict = {}
       if (self._scattering_type_registry is not None):
         ugs = self._scattering_type_registry.unique_gaussians_as_list()
@@ -436,20 +436,20 @@ class structure(crystal.special_position_settings):
       for t_undef in self._scattering_type_registry.unassigned_types():
         val = new_dict.get(t_undef, None)
         if (val is None):
-          try:
+          std_lbl = eltbx.xray_scattering.get_standard_label(
+            label=t_undef, exact=True, optional=True)
+          if (std_lbl is not None):
             if (table == "it1992"):
-              val = eltbx.xray_scattering.it1992(t_undef, True).fetch()
+              val = eltbx.xray_scattering.it1992(std_lbl, True).fetch()
             elif (table == "wk1995"):
-              val = eltbx.xray_scattering.wk1995(t_undef, True).fetch()
+              val = eltbx.xray_scattering.wk1995(std_lbl, True).fetch()
             else:
-              if (t_undef == "D"): t = "H"
-              else:                t = t_undef
               val = eltbx.xray_scattering.n_gaussian_table_entry(
-                t, d_min, 0).gaussian()
-          except RuntimeError:
-            val = old_dict.get(t_undef, None)
-            if (val is None): raise
-        self._scattering_type_registry.assign(t_undef, val)
+                std_lbl, d_min, 0).gaussian()
+        if (val is None):
+          val = old_dict.get(t_undef, None)
+        if (val is not None):
+          self._scattering_type_registry.assign(t_undef, val)
       self._scattering_type_registry_is_out_of_date = False
     return self._scattering_type_registry
 
@@ -715,12 +715,12 @@ class structure(crystal.special_position_settings):
     from cctbx.eltbx import tiny_pse
     result = flex.double()
     for scatterer in self.scatterers():
-      scattering_type = scatterer.scattering_type
-      try:
-        label = eltbx.xray_scattering.wk1995(scattering_type, 1).label()
-      except RuntimeError:
-        raise RuntimeError("Unknown atomic weight: " + scattering_type)
-      result.append(tiny_pse.table(label).weight())
+      std_lbl = eltbx.xray_scattering.get_standard_label(
+        label=scatterer.scattering_type, exact=True, optional=True)
+      if (std_lbl is None):
+        raise RuntimeError(
+          "Unknown atomic weight: " + scatterer.scattering_type)
+      result.append(tiny_pse.table(std_lbl).weight())
     return result
 
   def center_of_mass(self, atomic_weights=None):

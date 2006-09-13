@@ -38,7 +38,7 @@ def run(file_name, args, cutoff, params,
       continue
     results = {}
     results["fit_parameters"] = params
-    wk = xray_scattering.wk1995(element, 1)
+    wk = xray_scattering.wk1995(element, True)
     if (element != "O2-"):
       entry = tab.entries[element]
       null_fit = scitbx.math.gaussian.fit(

@@ -20,7 +20,8 @@ class scatterer(ext.scatterer):
     if   (b is not None): u = adptbx.b_as_u(b)
     elif (u is None): u = 0
     if (scattering_type is None):
-      scattering_type = eltbx.xray_scattering.wk1995(label, 0).label()
+      scattering_type = eltbx.xray_scattering.get_standard_label(
+        label=label, exact=False)
     ext.scatterer.__init__(
       self, label, site, u, occupancy, scattering_type, fp, fdp)
 

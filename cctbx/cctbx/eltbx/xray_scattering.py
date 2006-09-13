@@ -19,7 +19,7 @@ class _gaussian(boost.python.injector, ext.gaussian):
 def best_approximation(scattering_type):
   if (scattering_type == "const"):
     return gaussian(1)
-  return wk1995(scattering_type, 1).fetch()
+  return wk1995(scattering_type, True).fetch()
 
 class two_gaussian_agarwal_isaacs(object):
   source="ccp4/lib/data/atomsf.lib Revision 1.4, Thu Feb 13 14:10:58 1997 UTC"

@@ -30,6 +30,13 @@ namespace cctbx { namespace xray {
         return type_index_pairs.size();
       }
 
+      bool
+      has_key(std::string const& scattering_type) const
+      {
+        return (   type_index_pairs.find(scattering_type)
+                != type_index_pairs.end());
+      }
+
       std::size_t
       process(std::string const& scattering_type)
       {
@@ -141,7 +148,8 @@ namespace cctbx { namespace xray {
                 pair++) {
             std::size_t ui = pair->second;
             if (ugs[ui]) continue;
-            ugs[ui] = eltbx::xray_scattering::it1992(pair->first, 1).fetch();
+            ugs[ui] = eltbx::xray_scattering::it1992(
+              pair->first, true).fetch();
           }
         }
         else {
@@ -151,7 +159,8 @@ namespace cctbx { namespace xray {
                 pair++) {
             std::size_t ui = pair->second;
             if (ugs[ui]) continue;
-            ugs[ui] = eltbx::xray_scattering::wk1995(pair->first, 1).fetch();
+            ugs[ui] = eltbx::xray_scattering::wk1995(
+              pair->first, true).fetch();
           }
         }
       }

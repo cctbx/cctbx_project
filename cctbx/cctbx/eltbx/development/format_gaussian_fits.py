@@ -37,7 +37,6 @@ def expected_labels(kissel_dir):
   result = []
   if (kissel_dir is None):
     for wk in xray_scattering.wk1995_iterator():
-      if (wk.label() in ["H'", "D", "Siv"]): continue
       result.append(wk.label())
   else:
     for atomic_number in xrange(1,100):
