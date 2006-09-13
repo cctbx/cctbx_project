@@ -2018,6 +2018,23 @@ namespace iotbx { namespace pdb {
         return i_seqs_alternative_group_without_blank_altloc_;
       }
 
+      std::map<std::string, unsigned>
+      atom_element_counts() const
+      {
+        std::map<std::string, unsigned> result;
+        std::map<str2, unsigned> counts;
+        const atom* atoms_end = atoms_.end();
+        for(const atom* a=atoms_.begin();a!=atoms_end;a++) {
+          counts[a->data->element]++;
+        }
+        for(std::map<str2, unsigned>::const_iterator
+              i=counts.begin();
+              i!=counts.end();i++) {
+          result[i->first.elems] = i->second;
+        }
+        return result;
+      }
+
     protected:
       std::string source_info_;
       record_type_counts_t record_type_counts_;

@@ -6,6 +6,7 @@
 #include <boost/python/return_by_value.hpp>
 #include <boost/python/return_internal_reference.hpp>
 #include <boost/python/dict.hpp>
+#include <scitbx/boost_python/stl_map_as_dict.h>
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
 #include <iotbx/pdb/input.h>
 
@@ -79,6 +80,13 @@ namespace {
       return result;
     }
 
+    static
+    boost::python::dict
+    atom_element_counts_as_dict(w_t const& self)
+    {
+      return scitbx::boost_python::stl_map_as_dict(self.atom_element_counts());
+    }
+
     static void
     wrap()
     {
@@ -138,6 +146,7 @@ namespace {
           &w_t::i_seqs_alternative_group_with_blank_altloc, rbv())
         .def("i_seqs_alternative_group_without_blank_altloc",
           &w_t::i_seqs_alternative_group_without_blank_altloc, rbv())
+        .def("atom_element_counts", atom_element_counts_as_dict)
       ;
     }
   };

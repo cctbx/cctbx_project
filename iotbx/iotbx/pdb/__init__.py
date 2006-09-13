@@ -38,6 +38,11 @@ def show_summary(
   print >> out, prefix+"    residues:  ", fmt % overall_counts.n_residues
   print >> out, prefix+"    atoms:     ", fmt % overall_counts.n_atoms
   #
+  c = pdb_inp.atom_element_counts()
+  print >> out, prefix+"  number of atom element types: %d"%len(c)
+  print >> out, prefix+"  histogram of atom element frequency:"
+  show_sorted_by_counts(c.items(), out=out, prefix=prefix+"    ")
+  #
   c = overall_counts.residue_name_classes
   print >> out, prefix+"  residue name classes:"
   show_sorted_by_counts(c.items(), out=out, prefix=prefix+"    ")
@@ -214,7 +219,6 @@ class _input(boost.python.injector, ext.input):
         use_scale_matrix_if_available=True,
         scattering_type_exact=False,
         enable_scattering_type_unknown=False,
-        atom_element_q_substitute=None,
         atom_names_scattering_type_const
           =default_atom_names_scattering_type_const):
     return self.xray_structures_simple(
@@ -224,7 +228,6 @@ class _input(boost.python.injector, ext.input):
       use_scale_matrix_if_available=use_scale_matrix_if_available,
       scattering_type_exact=scattering_type_exact,
       enable_scattering_type_unknown=enable_scattering_type_unknown,
-      atom_element_q_substitute=atom_element_q_substitute,
       atom_names_scattering_type_const=atom_names_scattering_type_const)[0]
 
   def xray_structures_simple(self,
@@ -234,7 +237,6 @@ class _input(boost.python.injector, ext.input):
         use_scale_matrix_if_available=True,
         scattering_type_exact=False,
         enable_scattering_type_unknown=False,
-        atom_element_q_substitute=None,
         atom_names_scattering_type_const
           =default_atom_names_scattering_type_const):
     from cctbx import xray
@@ -291,11 +293,8 @@ class _input(boost.python.injector, ext.input):
         u = atom.uij
       else:
         u = adptbx.u_cart_as_u_star(uc, atom.uij)
-      if (atom_element_q_substitute is not None
-          and atom.element == " Q"):
-        scattering_type = atom_element_q_substitute
-      elif (atom_names_scattering_type_const is not None
-            and atom.name in atom_names_scattering_type_const):
+      if (atom_names_scattering_type_const is not None
+          and atom.name in atom_names_scattering_type_const):
         scattering_type = "const"
       else:
         chemical_element = atom.determine_chemical_element_simple()

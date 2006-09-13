@@ -532,6 +532,7 @@ def exercise_pdb_input():
     assert pdb_inp.number_of_chains_with_altloc_mix() == 0
     assert pdb_inp.i_seqs_alternative_group_with_blank_altloc().size() == 0
     assert pdb_inp.i_seqs_alternative_group_without_blank_altloc().size() == 0
+    assert pdb_inp.atom_element_counts() == {}
     pdb_inp = pdb.input(
       source_info="file/name",
       lines=flex.split_lines("""\
@@ -1663,6 +1664,7 @@ END
   assert pdb_inp.number_of_chains_with_altloc_mix() == 1
   assert list(pdb_inp.i_seqs_alternative_group_with_blank_altloc()) == [5,6,7]
   assert list(pdb_inp.i_seqs_alternative_group_without_blank_altloc()) == [0,2]
+  assert pdb_inp.atom_element_counts() == {"  ": 8}
   assert not show_diff(pdb_inp.have_altloc_mix_message(prefix="="), '''\
 =mix of alternative groups with and without blank altlocs:
 =  alternative group with blank altloc:
@@ -1759,6 +1761,9 @@ ENDMDL
 %#    alt. conf.: 1
 %#    residues:   3
 %#    atoms:      4
+%#  number of atom element types: 1
+%#  histogram of atom element frequency:
+%#    "  " 4
 %#  residue name classes:
 %#    "common_amino_acid" 3
 %#  number of chain ids: 1
@@ -2022,6 +2027,7 @@ ATOM      5 1CB  GLN A   3      32.979  10.223  18.469  1.00 37.80
 HETATM    6 CA   ION B   1      32.360  11.092  17.308  0.92 35.96          CA2+
 HETATM    7 CA   ION B   2      30.822  10.665  17.190  1.00 36.87
 """))
+  assert pdb_inp.atom_element_counts() == {" C": 2, "  ": 3, " N": 1, "CA": 1}
   for use_scale_matrix_if_available in [False, True]:
     xray_structure = pdb_inp.xray_structure_simple(
       use_scale_matrix_if_available=use_scale_matrix_if_available)
