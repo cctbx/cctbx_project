@@ -319,6 +319,10 @@ class structure(crystal.special_position_settings):
   def set_sites_cart(self, sites_cart):
     self.set_sites_frac(self.unit_cell().fractionalize(sites_cart=sites_cart))
 
+  def extract_u_cart_or_u_cart_plus_u_iso(self):
+    return self._scatterers.extract_u_cart_or_u_cart_plus_u_iso(
+      unit_cell=self.unit_cell())
+
   def extract_u_iso_or_u_equiv(self):
     return self._scatterers.extract_u_iso_or_u_equiv(
       unit_cell=self.unit_cell())
@@ -729,8 +733,9 @@ class structure(crystal.special_position_settings):
     return self.sites_cart().mean_weighted(weights=atomic_weights)
 
 
-  def show_scatterer_flags_summary(self):
+  def show_scatterer_flags_summary(self, out=None):
     #XXX move to C++ (after anisotropic_flag is gone)
+    if (out is None): out = sys.stdout
     n_use            = 0
     n_use_u_iso      = 0
     n_use_u_aniso    = 0
@@ -752,17 +757,17 @@ class structure(crystal.special_position_settings):
         if(sc.flags.grad_fp()       ): n_grad_fp        += 1
         if(sc.flags.grad_fdp()      ): n_grad_fdp       += 1
         if(sc.anisotropic_flag      ): n_anisotropic_flag += 1
-    print "n_use            = ", n_use
-    print "n_use_u_iso      = ", n_use_u_iso
-    print "n_use_u_aniso    = ", n_use_u_aniso
-    print "n_grad_site      = ", n_grad_site
-    print "n_grad_u_iso     = ", n_grad_u_iso
-    print "n_grad_u_aniso   = ", n_grad_u_aniso
-    print "n_grad_occupancy = ", n_grad_occupancy
-    print "n_grad_fp        = ", n_grad_fp
-    print "n_grad_fdp       = ", n_grad_fdp
-    print "n_anisotropic_flag = ", n_anisotropic_flag
-    print "total number of scatterers = ", self.scatterers().size()
+    print >> out, "n_use            = ", n_use
+    print >> out, "n_use_u_iso      = ", n_use_u_iso
+    print >> out, "n_use_u_aniso    = ", n_use_u_aniso
+    print >> out, "n_grad_site      = ", n_grad_site
+    print >> out, "n_grad_u_iso     = ", n_grad_u_iso
+    print >> out, "n_grad_u_aniso   = ", n_grad_u_aniso
+    print >> out, "n_grad_occupancy = ", n_grad_occupancy
+    print >> out, "n_grad_fp        = ", n_grad_fp
+    print >> out, "n_grad_fdp       = ", n_grad_fdp
+    print >> out, "n_anisotropic_flag = ", n_anisotropic_flag
+    print >> out, "total number of scatterers = ", self.scatterers().size()
 
   def n_parameters(self):
     #XXX move to C++ (after anisotropic_flag is gone)

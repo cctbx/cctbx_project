@@ -258,8 +258,14 @@ class manager(object):
     sites_cart  = xrs.sites_cart()
     scatterers  = xrs.scatterers()
     occupancies = scatterers.extract_occupancies()
-    u_carts     = scatterers.extract_u_cart(xrs.unit_cell())
+    #u_carts     = scatterers.extract_u_cart(xrs.unit_cell())
+    u_carts = scatterers.extract_u_cart_or_u_cart_plus_u_iso(xrs.unit_cell())
     u_isos      = xrs.extract_u_iso_or_u_equiv()
+    #print
+    #epis = 8*math.pi**2
+    #for ui,ua in zip(u_isos, u_carts):
+    #  print ui*epis, (ua[0]+ua[1]+ua[2])*epis/3
+    #print
     scat_types  = scatterers.extract_scattering_types()
     #XXX high duplication
     if(selection is None):
