@@ -1,10 +1,11 @@
 from iotbx import pdb
 from cctbx.array_family import flex
-import time, math,os,sys
 from libtbx.test_utils import approx_equal
-from libtbx import introspection
 import libtbx.load_env
-
+import random
+import time
+import math
+import sys, os
 
 def calculate_fobs(resolution   = 1.0,
                    sf_algorithm = "direct"):
@@ -76,13 +77,21 @@ def check_result():
   assert approx_equal(r1,r2, 0.001)
   assert r1 < 0.01 and r2 < 0.01
 
-
-def run():
+def run(args):
+  random_seed = None
+  for arg in args:
+    if (arg.startswith("--random_seed=")):
+      random_seed = int(arg.split("=", 1)[1])
+  if (random_seed is None):
+    random_seed = flex.get_random_seed()
+  print "random_seed:", random_seed
+  sys.stdout.flush()
+  random.seed(random_seed)
+  flex.set_random_seed(value=random_seed)
   calculate_fobs()
   exercise_1()
   exercise_2()
   check_result()
-  os.system("rm -rf *.geo *.mtz *.log ref1* ref2*")
 
 if (__name__ == "__main__"):
-  run()
+  run(sys.argv[1:])
