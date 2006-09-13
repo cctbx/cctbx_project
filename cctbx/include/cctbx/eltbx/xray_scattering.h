@@ -3,10 +3,100 @@
 
 #include <cctbx/eltbx/basic.h>
 #include <cctbx/eltbx/xray_scattering/gaussian.h>
+#include <boost/optional.hpp>
 #include <boost/config.hpp>
+#include <stdexcept>
 #include <ctype.h>
 
 namespace cctbx { namespace eltbx { namespace xray_scattering {
+
+  static const char *standard_labels[] = {
+    "H", "D", "T",
+    "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne", "Na", "Mg", "Al",
+    "Si", "P", "S", "Cl", "Ar", "K", "Ca", "Sc", "Ti", "V", "Cr", "Mn",
+    "Fe", "Co", "Ni", "Cu", "Zn", "Ga", "Ge", "As", "Se", "Br", "Kr",
+    "Rb", "Sr", "Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag",
+    "Cd", "In", "Sn", "Sb", "Te", "I", "Xe", "Cs", "Ba", "La", "Ce",
+    "Pr", "Nd", "Pm", "Sm", "Eu", "Gd", "Tb", "Dy", "Ho", "Er", "Tm",
+    "Yb", "Lu", "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg",
+    "Tl", "Pb", "Bi", "Po", "At", "Rn", "Fr", "Ra", "Ac", "Th", "Pa",
+    "U", "Np", "Pu", "Am", "Cm", "Bk", "Cf",
+    "H1-", "D1-", "T1-",
+    "Li1+", "Be2+", "Cval", "O1-", "O2-", "F1-", "Na1+", "Mg2+",
+    "Al3+", "Sival", "Si4+", "Cl1-", "K1+", "Ca2+", "Sc3+", "Ti2+",
+    "Ti3+", "Ti4+", "V2+", "V3+", "V5+", "Cr2+", "Cr3+", "Mn2+",
+    "Mn3+", "Mn4+", "Fe2+", "Fe3+", "Co2+", "Co3+", "Ni2+", "Ni3+",
+    "Cu1+", "Cu2+", "Zn2+", "Ga3+", "Ge4+", "Br1-", "Rb1+", "Sr2+",
+    "Y3+", "Zr4+", "Nb3+", "Nb5+", "Mo3+", "Mo5+", "Mo6+", "Ru3+",
+    "Ru4+", "Rh3+", "Rh4+", "Pd2+", "Pd4+", "Ag1+", "Ag2+", "Cd2+",
+    "In3+", "Sn2+", "Sn4+", "Sb3+", "Sb5+", "I1-", "Cs1+", "Ba2+",
+    "La3+", "Ce3+", "Ce4+", "Pr3+", "Pr4+", "Nd3+", "Pm3+", "Sm3+",
+    "Eu2+", "Eu3+", "Gd3+", "Tb3+", "Dy3+", "Ho3+", "Er3+", "Tm3+",
+    "Yb2+", "Yb3+", "Lu3+", "Hf4+", "Ta5+", "W6+", "Os4+", "Ir3+",
+    "Ir4+", "Pt2+", "Pt4+", "Au1+", "Au3+", "Hg1+", "Hg2+", "Tl1+",
+    "Tl3+", "Pb2+", "Pb4+", "Bi3+", "Bi5+", "Ra2+", "Ac3+", "Th4+",
+    "U3+", "U4+", "U6+", "Np3+", "Np4+", "Np6+", "Pu3+", "Pu4+",
+    "Pu6+", 0
+  };
+
+  inline
+  bool
+  is_reserved_scattering_type_label(
+    std::string const& label)
+  {
+    if (label == "const") return true;
+    if (label == "unknown") return true;
+    return false;
+  }
+
+  inline
+  void
+  throw_if_reserved_scattering_type_label(
+    std::string const& label)
+  {
+    if (is_reserved_scattering_type_label(label)) {
+      throw std::runtime_error(
+        "Reserved scattering type label: \""+label+"\"");
+    }
+  }
+
+  inline
+  boost::optional<std::string>
+  get_standard_label(
+    std::string const& label,
+    bool exact=false,
+    bool optional=false)
+  {
+    if (label == "const") return boost::optional<std::string>(label);
+    std::string work_label = basic::strip_label(label, exact);
+    const char* result = 0;
+    int m = 0;
+    for (const char **std_lbl = standard_labels; *std_lbl; std_lbl++) {
+      int i = basic::match_labels(work_label, *std_lbl);
+      if (i < 0 /* exact match */) {
+        return boost::optional<std::string>(*std_lbl);
+      }
+      if (i > m && !isdigit((*std_lbl)[i-1])) {
+        m = i;
+        result = *std_lbl;
+      }
+    }
+    if (exact || result == 0) {
+      if (optional) return boost::optional<std::string>();
+      throw std::runtime_error(
+        "Unknown scattering type label: \"" + label + "\"");
+    }
+    return boost::optional<std::string>(result);
+  }
+
+  inline
+  std::string
+  replace_hydrogen_isotype_labels(std::string standard_label)
+  {
+    if      (standard_label == "D"   || standard_label == "T"  ) return "H";
+    else if (standard_label == "D1-" || standard_label == "T1-") return "H1-";
+    return standard_label;
+  }
 
   namespace detail {
 
@@ -79,29 +169,20 @@ namespace cctbx { namespace eltbx { namespace xray_scattering {
   :
     table_(table), entry_(0)
   {
-    if (label == "const") {
-      throw error("Reserved scattering type label: const");
-    }
-    std::string work_label = basic::strip_label(label, exact);
-    int m = 0;
+    throw_if_reserved_scattering_type_label(label);
+    std::string std_lbl = replace_hydrogen_isotype_labels(
+      *get_standard_label(label, exact));
     for (const detail::raw_table_entry<N>* entry = table_raw;
          entry->label;
          entry++) {
-      int i = basic::match_labels(work_label, entry->label);
-      if (i < 0) {
-        if (entry->c == detail::undefined) {
-          throw error("Analytical approximation for given label not known.");
-        }
+      if (entry->label == std_lbl) {
         entry_ = entry;
-        return;
-      }
-      if (i > m && !isdigit(entry->label[i - 1])) {
-        m = i;
-        entry_ = entry;
+        break;
       }
     }
-    if (exact || !entry_) {
-      throw error("Unknown scattering type label: " + std::string(label));
+    if (entry_ == 0) {
+      throw std::runtime_error(
+        "Unknown scattering type label: \"" + label + "\"");
     }
   }
 
@@ -110,12 +191,7 @@ namespace cctbx { namespace eltbx { namespace xray_scattering {
   void
   base<N>::next_entry()
   {
-    if (is_valid()) {
-      for(;;) {
-        entry_++;
-        if (entry_->c != detail::undefined) break;
-      }
-    }
+    if (is_valid()) entry_++;
   }
 
   //! Coefficients for the Analytical Approximation to the Scattering Factor.

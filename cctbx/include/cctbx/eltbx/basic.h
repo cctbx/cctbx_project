@@ -1,14 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2001 Jul: Merged from CVS branch sgtbx_special_pos (rwgk)
-     2001 May: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
-     2001 Apr: SourceForge release (R.W. Grosse-Kunstleve)
- */
-
 #ifndef CCTBX_ELTBX_BASIC_H
 #define CCTBX_ELTBX_BASIC_H
 
@@ -33,8 +22,6 @@ namespace cctbx {
       stops at whitespace, second digit, or the characters "+" or "-".
       Lower case letters are converted to upper case.<br>
       "na+" is converted to "NA1+", i.e. "1" is implicit.<br>
-      "Ca+2" is converted to "CA2+", i.e. "+" or "-" are moved
-        before the digit.<br>
       "Si4+A" is converted to "SI4+".
       <p>
       If exact == true, copying must stop at a whitespace or

@@ -135,7 +135,6 @@ def run(gaussian_fit_pickle_file_names):
   present = []
   missing = []
   for wk in xray_scattering.wk1995_iterator():
-    if (wk.label() in ["H'","D","Siv"]): continue
     try:
       fit_group = fits.all[wk.label()]
     except:

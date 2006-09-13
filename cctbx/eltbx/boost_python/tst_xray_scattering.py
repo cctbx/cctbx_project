@@ -5,6 +5,28 @@ import pickle
 import math
 import string
 
+def exercise_basic():
+  std_labels = xray_scattering.standard_labels_list()
+  assert len(std_labels) == 216
+  assert std_labels[:4] == ["H", "D", "T", "He"]
+  assert std_labels[-1] == "Pu6+"
+  for l in std_labels:
+    assert xray_scattering.get_standard_label(
+      label=l, exact=True, optional=False) == l
+  assert xray_scattering.get_standard_label(label="na+") == "Na1+"
+  assert xray_scattering.get_standard_label(label="na+") == "Na1+"
+  assert xray_scattering.get_standard_label(label="o-") == "O1-"
+  assert xray_scattering.get_standard_label(label="SI4+A") == "Si4+"
+  assert xray_scattering.get_standard_label(label="SI1+") == "Si"
+  assert xray_scattering.get_standard_label(label="SI1+",
+    exact=True, optional=True) is None
+  try:
+    xray_scattering.get_standard_label(label="SI1+",
+      exact=True, optional=False)
+  except RuntimeError, e:
+    assert str(e) == 'Unknown scattering type label: "SI1+"'
+  else: raise RuntimeError("Exception expected.")
+
 def exercise_gaussian():
   g = xray_scattering.gaussian(0)
   assert g.n_terms() == 0
@@ -137,13 +159,13 @@ def exercise_it1992():
   assert approx_equal(g.at_stol_sq(1./9), 2.26575563201)
   assert approx_equal(g.at_stol(1./9), 4.93537567523)
   assert approx_equal(g.at_d_star_sq(1./9), 4.04815863088)
-  e = xray_scattering.it1992("yb2+", 1)
+  e = xray_scattering.it1992("yb2+", True)
   assert e.label() == "Yb2+"
   g = e.fetch()
   assert approx_equal(g.array_of_a()[0], 28.1209)
   assert approx_equal(g.array_of_b()[3], 20.3900)
   assert approx_equal(g.c(), 3.70983)
-  e = xray_scattering.it1992("  YB3+")
+  e = xray_scattering.it1992("  yB3+")
   assert e.label() == "Yb3+"
   g = e.fetch()
   assert approx_equal(g.array_of_a()[0], 27.8917)
@@ -152,9 +174,9 @@ def exercise_it1992():
     n += 1
     if (n == 215):
       assert e.label() == "Cf"
-    d = xray_scattering.it1992(e.label(), 1)
+    d = xray_scattering.it1992(e.label(), True)
     assert d.label() == e.label()
-  assert n == 215
+  assert n == 212
   i = xray_scattering.it1992_iterator()
   j = iter(i)
   assert i is j
@@ -173,13 +195,13 @@ def exercise_wk1995():
   assert approx_equal(g.at_stol_sq(1./9), 2.26895371584)
   assert approx_equal(g.at_stol(1./9), 4.93735084739)
   assert approx_equal(g.at_d_star_sq(1./9), 4.04679561237)
-  e = xray_scattering.wk1995("yb2+", 1)
+  e = xray_scattering.wk1995("yb2+", True)
   assert e.label() == "Yb2+"
   g = e.fetch()
   assert approx_equal(g.array_of_a()[0], 28.443794)
   assert approx_equal(g.array_of_b()[4], 0.001463)
   assert approx_equal(g.c(), -23.214935)
-  e = xray_scattering.wk1995("  YB3+")
+  e = xray_scattering.wk1995("  yB3+")
   assert e.label() == "Yb3+"
   g = e.fetch()
   assert approx_equal(g.array_of_a()[0], 28.191629)
@@ -188,9 +210,9 @@ def exercise_wk1995():
     n += 1
     if (n == 215):
       assert e.label() == "Pu6+"
-    d = xray_scattering.wk1995(e.label(), 1)
+    d = xray_scattering.wk1995(e.label(), True)
     assert d.label() == e.label()
-  assert n == 215
+  assert n == 212
   i = xray_scattering.wk1995_iterator()
   j = iter(i)
   assert i is j
@@ -202,7 +224,18 @@ def ensure_common_symbols():
   lbl_wk = []
   for e in xray_scattering.wk1995_iterator(): lbl_wk.append(e.label())
   lbl_wk.sort()
-  assert lbl_it == lbl_wk
+  assert lbl_wk == lbl_it
+  lbl_ng = []
+  for i_entry in xrange(xray_scattering.n_gaussian_table_size()):
+    lbl_ng.append(xray_scattering.n_gaussian_table_entry(i_entry, 6).label())
+  lbl_ng.sort()
+  assert lbl_ng == lbl_it
+  #
+  for label in xray_scattering.standard_labels_list():
+    it = xray_scattering.it1992(label, True).fetch()
+    wk = xray_scattering.wk1995(label, True).fetch()
+    ng = xray_scattering.n_gaussian_table_entry(label, 0, 0).gaussian()
+    assert approx_equal(wk.at_stol(0)/it.at_stol(0), 1, 5.e-3)
 
 def ensure_correct_element_symbol():
   from cctbx.eltbx import tiny_pse
@@ -219,6 +252,7 @@ def ensure_correct_element_symbol():
     assert tiny_pse.table(l.upper()).symbol() == s
 
 def run():
+  exercise_basic()
   exercise_gaussian()
   exercise_n_gaussian()
   exercise_it1992()

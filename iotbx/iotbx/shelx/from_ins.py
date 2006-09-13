@@ -8,7 +8,8 @@ import math
 import sys
 from cctbx import crystal
 from cctbx import adptbx
-from cctbx.eltbx.xray_scattering import wk1995
+from cctbx import eltbx
+import cctbx.eltbx.xray_scattering
 from iotbx.shelx import crystal_symmetry_from_ins
 
 def from_ins(file_name=None, ins_records=None,
@@ -53,8 +54,8 @@ def from_ins(file_name=None, ins_records=None,
         site      = record.coordinates,
         b         = record.tempFactor + record_next.tempFactor,
         occupancy = record.occupancy,
-        scattering_type = wk1995(
-          dict_allowed_atoms[record.name_id], 1).label())
+        scattering_type = eltbx.xray_scattering.get_standard_label(
+          dict_allowed_atoms[record.name_id], exact=True))
       scatterer = scatterer.customized_copy(
         u=adptbx.u_cif_as_u_star(structure.unit_cell(), b))
       structure.add_scatterer(scatterer)
@@ -70,8 +71,8 @@ def from_ins(file_name=None, ins_records=None,
         site      = record.coordinates,
         u         = u_iso,
         occupancy = record.occupancy,
-        scattering_type = wk1995(
-          dict_allowed_atoms[record.name_id], 1).label())
+        scattering_type = eltbx.xray_scattering.get_standard_label(
+          dict_allowed_atoms[record.name_id], exact=True))
       structure.add_scatterer(scatterer)
   if(u_iso_negative == 1): if_u_iso_negative(structure)
   return structure
@@ -227,7 +228,8 @@ class ins_record(object):
     atom_rec_length = len(atom_rec_items)
     self.dict_sfac_content = {}
     for i in range(1,atom_rec_length,1):
-       self.dict_sfac_content[i] = wk1995(atom_rec_items[i]).label()
+       self.dict_sfac_content[i] = eltbx.xray_scattering.get_standard_label(
+         atom_rec_items[i])
        assert self.dict_sfac_content[i] == atom_rec_items[i]
 
 def collect_records(raw_records):

@@ -35,6 +35,7 @@ def run(args):
       crystal_symmetry=command_line.symmetry,
       force_symmetry=command_line.options.force_symmetry)
     structure.show_summary()
+    structure.scattering_type_registry().show(show_gaussians=False)
     if (command_line.options.verbose):
       structure.show_scatterers()
     all_structures.append(structure)

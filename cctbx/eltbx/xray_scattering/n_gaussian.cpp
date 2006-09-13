@@ -1,6 +1,8 @@
 #include <cctbx/eltbx/xray_scattering/n_gaussian.h>
 #include <cctbx/eltbx/xray_scattering/n_gaussian_raw.h>
+#include <cctbx/eltbx/xray_scattering.h>
 #include <cctbx/error.h>
+#include <stdexcept>
 
 namespace cctbx { namespace eltbx { namespace xray_scattering {
 namespace n_gaussian {
@@ -9,15 +11,18 @@ namespace n_gaussian {
   table_size() { return raw::get_table_size(); }
 
   std::size_t
-  table_index(std::string const& label)
+  table_index(std::string label)
   {
+    throw_if_reserved_scattering_type_label(label);
+    label = replace_hydrogen_isotype_labels(label);
     std::size_t i_entry = 0;
     const char** lbl=raw::get_labels();
     for(;*lbl;lbl++,i_entry++) {
       if (label == *lbl) break;
     }
     if (*lbl == 0) {
-      throw error("Not in table of N-Gaussian approximations: " + label);
+      throw std::runtime_error(
+        "Not in table of N-Gaussian approximations: \"" + label + "\"");
     }
     return i_entry;
   }
@@ -79,7 +84,7 @@ namespace n_gaussian {
           }
         }
       }
-      throw error("No suitable N-Gaussian approximation.");
+      throw std::runtime_error("No suitable N-Gaussian approximation.");
     }
   }
 

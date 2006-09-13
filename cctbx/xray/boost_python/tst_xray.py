@@ -508,8 +508,12 @@ def exercise_scattering_type_registry():
   assert len(reg.unique_gaussians_as_list()) == 0
   assert reg.unique_counts.size() == 0
   assert reg.size() == 0
+  assert not reg.has_key("const")
+  assert not reg.has_key("unknown")
   assert reg.process(scattering_type="const") == 0
   assert reg.size() == 1
+  assert reg.has_key("const")
+  assert not reg.has_key("unknown")
   assert reg.type_index_pairs_as_dict() == {"const": 0}
   assert list(reg.unique_counts) == [1]
   scatterers = flex.xray_scatterer((

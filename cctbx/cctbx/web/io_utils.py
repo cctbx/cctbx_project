@@ -48,12 +48,12 @@ def read_scatterer(flds, default_b_iso=3.0):
       float(flds[1])
     except:
       offs = 2
-      scatterer.scattering_type = eltbx.xray_scattering.wk1995(
-        flds[1], True).label()
+      scatterer.scattering_type = eltbx.xray_scattering.get_standard_label(
+        label=flds[1], exact=True)
     else:
       offs = 1
-      scatterer.scattering_type = eltbx.xray_scattering.wk1995(
-        flds[0], False).label()
+      scatterer.scattering_type = eltbx.xray_scattering.get_standard_label(
+        label=flds[0], exact=False)
     site = flds[offs : offs + 3]
     for i in xrange(3):
       site[i] = float(site[i])

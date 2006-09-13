@@ -158,6 +158,8 @@ class _hierarchy(boost.python.injector, ext.hierarchy):
                 raise RuntimeError(
                   "parent residue not in list of atom parents")
 
+default_atom_names_scattering_type_const = ["PEAK", "SITE"]
+
 class _input(boost.python.injector, ext.input):
 
   def have_altloc_mix_message(self, prefix=""):
@@ -210,20 +212,31 @@ class _input(boost.python.injector, ext.input):
         crystal_symmetry=None,
         unit_cube_pseudo_crystal=False,
         use_scale_matrix_if_available=True,
-        atom_element_q_substitute=None):
+        scattering_type_exact=False,
+        enable_scattering_type_unknown=False,
+        atom_element_q_substitute=None,
+        atom_names_scattering_type_const
+          =default_atom_names_scattering_type_const):
     return self.xray_structures_simple(
       one_structure_for_each_model=False,
       crystal_symmetry=crystal_symmetry,
       unit_cube_pseudo_crystal=unit_cube_pseudo_crystal,
       use_scale_matrix_if_available=use_scale_matrix_if_available,
-      atom_element_q_substitute=atom_element_q_substitute)[0]
+      scattering_type_exact=scattering_type_exact,
+      enable_scattering_type_unknown=enable_scattering_type_unknown,
+      atom_element_q_substitute=atom_element_q_substitute,
+      atom_names_scattering_type_const=atom_names_scattering_type_const)[0]
 
   def xray_structures_simple(self,
         one_structure_for_each_model=True,
         crystal_symmetry=None,
         unit_cube_pseudo_crystal=False,
         use_scale_matrix_if_available=True,
-        atom_element_q_substitute=None):
+        scattering_type_exact=False,
+        enable_scattering_type_unknown=False,
+        atom_element_q_substitute=None,
+        atom_names_scattering_type_const
+          =default_atom_names_scattering_type_const):
     from cctbx import xray
     from cctbx import crystal
     from cctbx import eltbx
@@ -281,29 +294,43 @@ class _input(boost.python.injector, ext.input):
       if (atom_element_q_substitute is not None
           and atom.element == " Q"):
         scattering_type = atom_element_q_substitute
-        scattering_type = eltbx.xray_scattering.wk1995(
-          atom_element_q_substitute, True).label()
+      elif (atom_names_scattering_type_const is not None
+            and atom.name in atom_names_scattering_type_const):
+        scattering_type = "const"
       else:
-        scattering_type = atom.determine_chemical_element_simple()
-        if (scattering_type is None):
+        chemical_element = atom.determine_chemical_element_simple()
+        if (chemical_element is None
+            and not enable_scattering_type_unknown):
           raise RuntimeError(
             'Unknown chemical element type: PDB ATOM %s element="%s"\n'
               % (label, atom.element)
             + "  To resolve this problem, specify a chemical element type in\n"
             + '  columns 77-78 of the PDB file, right justified (e.g. " C").')
         if (atom.charge != "  " and atom.charge[0] == " "):
-          raise RuntimeError(
-            'Unknown charge: PDB ATOM %s element="%s" charge="%s"'
-              % (label, atom.element, atom.charge))
-        scattering_type += atom.charge
-        scattering_type = eltbx.xray_scattering.wk1995(
-          scattering_type, False).label()
+          if (not enable_scattering_type_unknown):
+            raise RuntimeError(
+              'Unknown charge: PDB ATOM %s element="%s" charge="%s"'
+                % (label, atom.element, atom.charge))
+          chemical_element = None
+        if (chemical_element is not None):
+          chemical_element += atom.charge
+          scattering_type = eltbx.xray_scattering.get_standard_label(
+            label=chemical_element, exact=scattering_type_exact, optional=True)
+        else:
+          scattering_type = None
+        if (scattering_type is None):
+          if (not enable_scattering_type_unknown):
+            raise RuntimeError(
+              'Unknown scattering type: PDB ATOM %s element="%s" charge="%s"'
+                % (label, atom.element, atom.charge))
+          else:
+            scattering_type = "unknown"
       scatterers.append(xray.scatterer(
         label=label,
         site=site,
         u=u,
         occupancy=atom.occ,
-        scattering_type=scattering_type.strip().capitalize()))
+        scattering_type=scattering_type))
     result.append(xray.structure(
       crystal_symmetry=crystal_symmetry,
       scatterers=scatterers))

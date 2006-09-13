@@ -16,11 +16,11 @@ class sdb_site(object):
     adopt_init_args(self, locals())
 
   def as_xray_scatterer(self, unit_cell=None):
-    scattering_type = None
-    try: scattering_type = eltbx.xray_scattering.wk1995(self.type).label()
-    except RuntimeError:
-      try: scattering_type = eltbx.xray_scattering.wk1995(self.segid).label()
-      except RuntimeError: pass
+    scattering_type = eltbx.xray_scattering.get_standard_label(
+      label=self.type, exact=False, optional=True)
+    if (scattering_type is None):
+      scattering_type = eltbx.xray_scattering.get_standard_label(
+        label=self.segid, exact=False, optional=True)
     if (scattering_type is None): scattering_type = "unknown"
     site = (self.x, self.y, self.z)
     if (unit_cell is not None): site = unit_cell.fractionalize(site)

@@ -17,7 +17,6 @@ def run(file_name, table_of_gaussians, cutoff,
   tab = itvc_section61_io.read_table6111(file_name)
   for wk in xray_scattering.wk1995_iterator():
     label = wk.label()
-    if (label in ["H'", "D", "Siv"]): continue
     if (not label in tab.entries):
       print "Warning: missing scatterer:", label
   stols = cctbx.eltbx.gaussian_fit.international_tables_stols

@@ -76,6 +76,7 @@ namespace {
         .def("unique_gaussians_as_list", unique_gaussians_as_list)
         .add_property("unique_counts", make_getter(&w_t::unique_counts, rbv()))
         .def("size", &w_t::size)
+        .def("has_key", &w_t::has_key, (arg_("scattering_type")))
         .def("process",
           (std::size_t(w_t::*)(
             std::string const&)) &w_t::process, (

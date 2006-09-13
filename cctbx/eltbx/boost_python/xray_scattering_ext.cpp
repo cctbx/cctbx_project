@@ -3,6 +3,8 @@
 #include <boost/python/module.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/def.hpp>
+#include <boost/python/args.hpp>
+#include <boost/python/overloads.hpp>
 #include <boost/python/tuple.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
@@ -10,12 +12,21 @@
 #include <cctbx/eltbx/xray_scattering.h>
 #include <cctbx/eltbx/xray_scattering/n_gaussian.h>
 #include <scitbx/boost_python/iterator_wrappers.h>
+#include <scitbx/boost_python/array_as_list.h>
 #include <boost_adaptbx/optional_conversions.h>
 
 namespace cctbx { namespace eltbx { namespace xray_scattering {
 namespace boost_python {
 
 namespace {
+
+  boost::python::object
+  standard_labels_list()
+  {
+    static boost::python::object result = scitbx::boost_python::array_as_list(
+      standard_labels, sizeof(standard_labels) / sizeof(char*) - 1);
+    return result;
+  }
 
   struct gaussian_wrappers
   {
@@ -124,9 +135,19 @@ namespace {
     }
   };
 
+  BOOST_PYTHON_FUNCTION_OVERLOADS(
+    get_standard_label_overloads, get_standard_label, 1, 3)
+
   void init_module()
   {
     using namespace boost::python;
+
+    def("standard_labels_list", standard_labels_list);
+    def("get_standard_label", get_standard_label,
+      get_standard_label_overloads((
+        arg_("label"),
+        arg_("exact")=false,
+        arg_("optional")=false)));
 
     gaussian_wrappers::wrap();
 
