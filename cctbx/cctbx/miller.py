@@ -626,6 +626,10 @@ class set(crystal.symmetry):
     else:
       return self.generate_r_free_flags_on_lattice_symmetry(fraction, max_free, lattice_symmetry_max_delta)
 
+  def crystal_symmetry(self):
+    return crystal.symmetry(
+      unit_cell = self.unit_cell(),
+      space_group_info = self.space_group_info())
 
   def generate_r_free_flags_on_lattice_symmetry(self,
                                                 fraction=0.10,

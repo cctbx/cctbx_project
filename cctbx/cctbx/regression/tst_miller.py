@@ -345,6 +345,10 @@ def exercise_array():
   ma = miller.array(ms, data)
   s = StringIO()
   ma.show_array(f=s, prefix=": ")
+  assert approx_equal(xs.unit_cell().parameters(),
+                      ma.crystal_symmetry().unit_cell().parameters())
+  assert xs.space_group().type().lookup_symbol() == \
+         ma.crystal_symmetry().space_group().type().lookup_symbol()
   assert s.getvalue() == """\
 : (1, -2, 3) 1.0
 : (0, 0, -4) 2.0
