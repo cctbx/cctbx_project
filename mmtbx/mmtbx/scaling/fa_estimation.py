@@ -294,9 +294,9 @@ class naive_fa_estimation(object):
 
     ## perform normalisation
     normalizer_iso = absolute_scaling.kernel_normalisation(
-      self.iso, auto_kernel=True, n_term=options.n_terms)
+      self.iso, auto_kernel=True, n_term=options.number_of_terms_in_normalisation_curve)
     normalizer_ano = absolute_scaling.kernel_normalisation(
-      self.ano, auto_kernel=True, n_term=options.n_terms)
+      self.ano, auto_kernel=True, n_term=options.number_of_terms_in_normalisation_curve)
 
     self.fa = self.iso.customized_copy(
       data = flex.sqrt( self.iso.data()*self.iso.data()\
