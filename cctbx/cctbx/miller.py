@@ -704,7 +704,11 @@ class set(crystal.symmetry):
       tmp_flags = tmp_flags.generate_bijvoet_mates()
     tmp_flags = tmp_flags.change_basis( cb_op_to_niggli.inverse() ).map_to_asu()
     tmp_flags = tmp_flags.common_set( self.map_to_asu() )
-    assert tmp_flags.indices().size() == n_original
+    tmp_flags = tmp_flags.customized_copy(
+      indices = self.indices(),
+      data = tmp_flags.data() )
+    tmp_flags = tmp_flags.common_set( self )
+    assert tmp_flags.indices().all_eq( self.indices() )
     return tmp_flags
 
   def generate_r_free_flags_basic(self, fraction=0.1, max_free=2000):
