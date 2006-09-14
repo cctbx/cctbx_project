@@ -203,7 +203,8 @@ wrapper_held_type
 polymorphism2_auto_ptr
 stl_iterator
 voidptr
-crossmod_opaque_a,crossmod_opaque_b,crossmod_opaque
+crossmod_opaque_a,crossmod_opaque_a,crossmod_opaque
+crossmod_opaque_b,crossmod_opaque_b,crossmod_opaque
 """ % disabled)
     Import("env_boost_python_ext")
     test_dir = libtbx.env.under_dist("boost", "libs/python/test")
