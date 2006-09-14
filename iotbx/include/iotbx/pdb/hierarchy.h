@@ -12,6 +12,7 @@
 #include <boost/cstdint.hpp>
 #include <vector>
 #include <string>
+#include <ctype.h>
 
 namespace iotbx {
 
@@ -426,7 +427,7 @@ namespace pdb {
         }
         if (e == "  ") {
           std::string n(data->name.elems, 2);
-          if (std::isdigit(n[0])) n[0] = ' ';
+          if (isdigit(n[0])) n[0] = ' ';
           if (n[0] == ' ') l = n[1];
           else             l = n;
           if (chemical_elements.find(l) != chemical_elements.end()) {
