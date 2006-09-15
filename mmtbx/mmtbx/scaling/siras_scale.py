@@ -144,7 +144,7 @@ def run(args):
     new_params = master_params.format(python_object=params)
     print >> log, "Effective parameters"
     print >> log, "#phil __ON__"
-    new_params.show(out=log,expert_level=0)
+    new_params.show(out=log,expert_level=effective_params.expert_level)
     print >> log, "#phil __END__"
     print >> log
 
