@@ -2127,7 +2127,7 @@ Unknown charge: PDB ATOM " N   GLN A   3 " element=" B" charge=" 5"''')
   pdb_inp = pdb.input(
     source_info=None,
     lines=flex.split_lines("""\
-ATOM      1  N   GLN A   3      35.299  11.075  99.070  1.00 36.89          CS3-
+ATOM      1  N   GLN A   3      35.299  11.075  99.070  1.00 36.89          Cs3-
 """))
   xray_structure = pdb_inp.xray_structure_simple()
   assert xray_structure.scatterers()[0].scattering_type == "Cs"
@@ -2147,7 +2147,7 @@ Number of scattering types: 1
     pdb_inp.xray_structure_simple(scattering_type_exact=True)
   except RuntimeError, e:
     assert not show_diff(str(e), '''\
-Unknown scattering type: PDB ATOM " N   GLN A   3 " element="CS" charge="3-"''')
+Unknown scattering type: PDB ATOM " N   GLN A   3 " element="Cs" charge="3-"''')
   else: raise RuntimeError("Exception expected.")
   #
   pdb_inp = pdb.input(
@@ -2199,6 +2199,78 @@ ATOM    504 SITE SITE    2      67.707   2.505  14.951  1.00 20.00      SITE
   assert xray_structure.scattering_type_registry().type_index_pairs_as_dict() \
       == {"const": 0}
   assert list(xray_structure.scattering_type_registry().unique_counts) == [2]
+  #
+  pdb_inp = pdb.input(
+    source_info=None,
+    lines=flex.split_lines("""\
+"""))
+  assert pdb_inp.xray_structure_simple().scatterers().size() == 0
+  assert len(pdb_inp.xray_structures_simple()) == 1
+  pdb_inp = pdb.input(
+    source_info=None,
+    lines=flex.split_lines("""\
+MODEL        1
+ENDMDL
+"""))
+  assert pdb_inp.xray_structure_simple().scatterers().size() == 0
+  assert len(pdb_inp.xray_structures_simple()) == 1
+  pdb_inp = pdb.input(
+    source_info=None,
+    lines=flex.split_lines("""\
+MODEL        1
+ENDMDL
+MODEL        2
+ENDMDL
+"""))
+  assert pdb_inp.xray_structure_simple().scatterers().size() == 0
+  assert len(pdb_inp.xray_structures_simple()) == 2
+  pdb_inp = pdb.input(
+    source_info=None,
+    lines=flex.split_lines("""\
+MODEL        1
+ATOM      1  N   GLN A   3      35.299  11.075  99.070  1.00 36.89           O-2
+ENDMDL
+MODEL        2
+ENDMDL
+"""))
+  assert pdb_inp.xray_structure_simple().scatterers().size() == 1
+  xray_structures = pdb_inp.xray_structures_simple()
+  assert len(xray_structures) == 2
+  assert xray_structures[0].scatterers().size() == 1
+  assert xray_structures[1].scatterers().size() == 0
+  assert xray_structures[0].scatterers()[0].scattering_type == "O2-"
+  pdb_inp = pdb.input(
+    source_info=None,
+    lines=flex.split_lines("""\
+MODEL        1
+ENDMDL
+MODEL        2
+ATOM      1  N   GLN A   3      35.299  11.075  99.070  1.00 36.89          Fe+3
+ENDMDL
+"""))
+  assert pdb_inp.xray_structure_simple().scatterers().size() == 1
+  xray_structures = pdb_inp.xray_structures_simple()
+  assert len(xray_structures) == 2
+  assert xray_structures[0].scatterers().size() == 0
+  assert xray_structures[1].scatterers().size() == 1
+  assert xray_structures[1].scatterers()[0].scattering_type == "Fe3+"
+  pdb_inp = pdb.input(
+    source_info=None,
+    lines=flex.split_lines("""\
+ATOM      1  N   GLN A   3      35.299  11.075  19.070  1.00 36.89           N
+ATOM      2  CA  GLN A   3      34.482   9.927  18.794  0.63 37.88           C0
+ATOM      3  C   GLN A   3      35.130   8.880  17.864  0.84 37.52           C 0
+ATOM      4  O   GLN A   3      34.548   7.819  17.724  1.00 38.54           O00
+ATOM      5 1CB  GLN A   3      32.979  10.223  18.469  1.00 37.80           C 1
+HETATM    6 CA   ION B   1      32.360  11.092  17.308  0.92 35.96           X
+HETATM    7 CA   ION B   2      30.822  10.665  17.190  1.00 36.87          FE4+
+ATOM      8  O   MET A   5       6.215  22.789  24.067  1.00  0.00            -2
+"""))
+  assert [scatterer.scattering_type
+    for scatterer in pdb_inp.xray_structure_simple(
+      scattering_type_exact=True,
+      enable_scattering_type_unknown=True).scatterers()] \
+        == ["N", "C", "C", "O", "unknown", "unknown", "unknown", "O2-"]
 
 def exercise(args):
   forever = "--forever" in args

@@ -5,7 +5,7 @@ ext = boost.python.import_ext("iotbx_pdb_ext")
 from iotbx_pdb_ext import *
 
 from iotbx.pdb.xray_structure import from_pdb as as_xray_structure
-from scitbx import matrix
+import scitbx.stl.set
 from scitbx.python_utils.math_utils import iround
 from libtbx.str_utils import show_string, show_sorted_by_counts
 from libtbx.itertbx import count
@@ -241,9 +241,6 @@ class _input(boost.python.injector, ext.input):
           =default_atom_names_scattering_type_const):
     from cctbx import xray
     from cctbx import crystal
-    from cctbx import eltbx
-    import cctbx.eltbx.xray_scattering
-    from cctbx import adptbx
     assert crystal_symmetry is None or not unit_cube_pseudo_crystal
     if (crystal_symmetry is None and not unit_cube_pseudo_crystal):
       crystal_symmetry = self.crystal_symmetry_from_cryst1()
@@ -254,85 +251,34 @@ class _input(boost.python.injector, ext.input):
       crystal_symmetry = crystal.symmetry(
         unit_cell=(1,1,1,90,90,90),
         space_group_symbol="P1")
+    unit_cell = crystal_symmetry.unit_cell()
+    scale_r = (0,0,0,0,0,0,0,0,0)
+    scale_t = (0,0,0)
     if (not unit_cube_pseudo_crystal):
-      uc = crystal_symmetry.unit_cell()
       if (use_scale_matrix_if_available):
         scale_matrix = self.scale_matrix()
       else:
         scale_matrix = None
-      if (scale_matrix is None):
-        frac = uc.fractionalize
-      else:
-        scale_r = matrix.sqr(scale_matrix[0])
-        scale_t = matrix.col(scale_matrix[1])
+      if (scale_matrix is not None):
+        scale_r = scale_matrix[0]
+        scale_t = scale_matrix[1]
     result = []
-    scatterers = flex.xray_scatterer()
-    model_indices = list(self.model_indices())
-    model_indices.reverse()
-    model_index = model_indices.pop()
-    for i_atom,labels,atom in zip(count(),
-                                  self.input_atom_labels_list(),
-                                  self.atoms()):
-      if (i_atom == model_index):
-        if (one_structure_for_each_model):
-          result.append(xray.structure(
-            crystal_symmetry=crystal_symmetry,
-            scatterers=scatterers))
-          scatterers = flex.xray_scatterer()
-        model_index = model_indices.pop()
-      label = labels.pdb_format()
-      if (unit_cube_pseudo_crystal):
-        site = atom.xyz
-      elif (scale_matrix is None):
-        site = frac(atom.xyz)
-      else:
-        site = (scale_r * matrix.col(atom.xyz) + scale_t).elems
-      if (atom.uij == (-1,-1,-1,-1,-1,-1)):
-        u = adptbx.b_as_u(atom.b)
-      elif (unit_cube_pseudo_crystal):
-        u = atom.uij
-      else:
-        u = adptbx.u_cart_as_u_star(uc, atom.uij)
-      if (atom_names_scattering_type_const is not None
-          and atom.name in atom_names_scattering_type_const):
-        scattering_type = "const"
-      else:
-        chemical_element = atom.determine_chemical_element_simple()
-        if (chemical_element is None
-            and not enable_scattering_type_unknown):
-          raise RuntimeError(
-            'Unknown chemical element type: PDB ATOM %s element="%s"\n'
-              % (label, atom.element)
-            + "  To resolve this problem, specify a chemical element type in\n"
-            + '  columns 77-78 of the PDB file, right justified (e.g. " C").')
-        if (atom.charge != "  " and atom.charge[0] == " "):
-          if (not enable_scattering_type_unknown):
-            raise RuntimeError(
-              'Unknown charge: PDB ATOM %s element="%s" charge="%s"'
-                % (label, atom.element, atom.charge))
-          chemical_element = None
-        if (chemical_element is not None):
-          chemical_element += atom.charge
-          scattering_type = eltbx.xray_scattering.get_standard_label(
-            label=chemical_element, exact=scattering_type_exact, optional=True)
-        else:
-          scattering_type = None
-        if (scattering_type is None):
-          if (not enable_scattering_type_unknown):
-            raise RuntimeError(
-              'Unknown scattering type: PDB ATOM %s element="%s" charge="%s"'
-                % (label, atom.element, atom.charge))
-          else:
-            scattering_type = "unknown"
-      scatterers.append(xray.scatterer(
-        label=label,
-        site=site,
-        u=u,
-        occupancy=atom.occ,
-        scattering_type=scattering_type))
-    result.append(xray.structure(
-      crystal_symmetry=crystal_symmetry,
-      scatterers=scatterers))
+    if (atom_names_scattering_type_const is None):
+      atom_names_scattering_type_const = []
+    loop = xray_structures_simple_extension(
+      self,
+      one_structure_for_each_model,
+      unit_cube_pseudo_crystal,
+      scattering_type_exact,
+      enable_scattering_type_unknown,
+      scitbx.stl.set.stl_string(atom_names_scattering_type_const),
+      unit_cell,
+      scale_r,
+      scale_t)
+    while (loop.next()):
+      result.append(xray.structure(
+        crystal_symmetry=crystal_symmetry,
+        scatterers=loop.scatterers))
     return result
 
 def format_cryst1_record(crystal_symmetry, z=None):

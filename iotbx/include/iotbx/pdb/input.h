@@ -90,6 +90,12 @@ namespace iotbx { namespace pdb {
       return true;
     }
 
+    void
+    skip_to_last()
+    {
+      if (i != i_end) i = i_end-1;
+    }
+
     protected:
       const ElementType* i_end;
       const ElementType* i;
@@ -1053,6 +1059,7 @@ namespace iotbx { namespace pdb {
     altloc() const { return *labels.altloc_begin(); }
   };
 
+  inline
   scitbx::auto_array<i_seq_input_atom_labels>
   sort_input_atom_labels(
     const pdb::input_atom_labels* input_atom_labels_list,
@@ -1072,6 +1079,7 @@ namespace iotbx { namespace pdb {
     return result;
   }
 
+  inline
   atom
   process_atom_record(pdb::line_info& line_info, bool hetero)
   {
@@ -1106,6 +1114,7 @@ namespace iotbx { namespace pdb {
       hetero);
   }
 
+  inline
   void
   process_sigatm_record(
     pdb::line_info& line_info,
@@ -1121,6 +1130,7 @@ namespace iotbx { namespace pdb {
     input_atom_labels.check_equivalence(line_info);
   }
 
+  inline
   void
   process_anisou_record(
     pdb::line_info& line_info,
@@ -1143,6 +1153,7 @@ namespace iotbx { namespace pdb {
     input_atom_labels.check_equivalence(line_info);
   }
 
+  inline
   void
   process_siguij_record(
     pdb::line_info& line_info,

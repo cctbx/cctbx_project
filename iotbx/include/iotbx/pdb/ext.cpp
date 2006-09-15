@@ -4,6 +4,7 @@ namespace iotbx { namespace pdb { namespace boost_python {
 
   void wrap_hierarchy();
   void wrap_input();
+  void wrap_xray_structure();
 
 namespace {
 
@@ -11,6 +12,7 @@ namespace {
   {
     wrap_hierarchy();
     wrap_input();
+    wrap_xray_structure();
   }
 
 }}}} // namespace iotbx::pdb::boost_python::<anonymous>
