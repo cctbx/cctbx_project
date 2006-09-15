@@ -171,10 +171,10 @@ class sigmaa_estimator(object):
 
     self.sigmaa = flex.exp( cheb_pol.f( d_star_sq_overall ) )
     self.alpha = self.sigmaa*flex.sqrt(
-      self.normalized_calc_f.normalizer_for_miller_array/
-      self.normalized_obs_f.normalizer_for_miller_array)
+      self.normalized_obs_f.normalizer_for_miller_array/
+      self.normalized_calc_f.normalizer_for_miller_array)
     self.beta = (1.0-self.sigmaa*self.sigmaa)*\
-                self.normalized_calc_f.normalizer_for_miller_array
+                self.normalized_obs_f.normalizer_for_miller_array
     # make them into miller arrays
     self.sigmaa = self.miller_obs.customized_copy(
       data = self.sigmaa )
