@@ -6,4 +6,8 @@ if (not env_etc.no_boost_python):
   env.Prepend(LIBS=["scitbx_boost_python"])
   env.SharedLibrary(
     target="#lib/iotbx_pdb_ext",
-    source=["ext.cpp", "input_bpl.cpp", "hierarchy_bpl.cpp"])
+    source=[
+      "ext.cpp",
+      "hierarchy_bpl.cpp",
+      "input_bpl.cpp",
+      "xray_structure_bpl.cpp"])

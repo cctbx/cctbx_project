@@ -420,8 +420,14 @@ namespace pdb {
           = cctbx::eltbx::chemical_elements::proper_and_isotopes_upper_set();
         std::string e(data->element.elems);
         std::string l;
-        if (e[0] == ' ') l = e[1];
-        else             l = e;
+        if (e[0] == ' ') {
+          l = e[1];
+        }
+        else {
+          e[1] = toupper(e[1]); // first character must be upper case, but
+                                // second character may be upper or lower case
+          l = e;
+        }
         if (chemical_elements.find(l) != chemical_elements.end()) {
           return boost::optional<std::string>(e);
         }

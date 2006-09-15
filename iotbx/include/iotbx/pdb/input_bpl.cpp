@@ -93,7 +93,7 @@ namespace {
       using namespace boost::python;
       typedef return_value_policy<return_by_value> rbv;
       typedef return_internal_reference<> rir;
-      class_<w_t>("input", no_init)
+      class_<w_t, boost::shared_ptr<input> >("input", no_init)
         .def(init<
           std::string const&>((
             arg_("file_name"))))
@@ -154,7 +154,6 @@ namespace {
   void
   wrap_all()
   {
-    using namespace boost::python;
     columns_73_76_evaluator_wrappers::wrap();
     input_atom_labels_wrappers::wrap();
     input_wrappers::wrap();
