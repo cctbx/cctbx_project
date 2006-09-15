@@ -314,7 +314,7 @@ def twin_map_utils(args):
         twin_law = twin_law.operator,
         out=log)
       print >> log, "--- bulk solvent scaling ---"
-      twin_model.update_bulk_solvent_parameters(local_sol=False)
+      twin_model.update_bulk_solvent_parameters()
       twin_model.r_values()
       twin_model.target()
       tfofc,wtfofc,grad = twin_model.map_coefficients(False)
