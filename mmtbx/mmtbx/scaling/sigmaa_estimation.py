@@ -175,7 +175,6 @@ class sigmaa_estimator(object):
       self.normalized_obs_f.normalizer_for_miller_array)
     self.beta = (1.0-self.sigmaa*self.sigmaa)*\
                 self.normalized_calc_f.normalizer_for_miller_array
-
     # make them into miller arrays
     self.sigmaa = self.miller_obs.customized_copy(
       data = self.sigmaa )
@@ -183,6 +182,20 @@ class sigmaa_estimator(object):
       data = self.alpha )
     self.beta = self.miller_obs.customized_copy(
       data = self.beta )
+
+    # now only FOM's need to be computed
+    tmp_x = self.sigmaa.data()*self.normalized_calc.data()*self.normalized_obs.data()
+    tmp_x = tmp_x / (1.0-self.sigmaa.data()*self.sigmaa.data())
+    centric_fom = flex.tanh( tmp_x )
+    acentric_fom = scitbx.math.bessel_i1_over_i0( 2.0*tmp_x )
+    # we need to make sure centric and acentrics are not mixed up ...
+    centrics = self.sigmaa.centric_flags().data()
+    centric_fom  = centric_fom.set_selected( ~centrics, 0 )
+    acentric_fom = acentric_fom.set_selected( centrics, 0 )
+    final_fom =  centric_fom + acentric_fom
+    self.fom = self.sigmaa.customized_copy(data=final_fom)
+
+
 
   def show(self, out=None):
     if out is None:
