@@ -475,12 +475,16 @@ class grid_bulk_solvent_scaler(object):
                                                  u_star=False,
                                                  k_overall=True,
                                                  twin_fraction=False)
-    #self.initial_scale_and_twin_fraction()
     de = de_bulk_solvent_scaler(
                self.start_scaling_parameters,
                self.best_twin_fraction,
                self.target_evaluator,
                self.f_model_core_data)
+    self.start_scaling_parameters = de.scaling_parameters
+    self.start_twin_fraction = de.twin_fraction_object
+    self.best_scaling_parameters = de.scaling_parameters
+    self.best_twin_fraction = de.twin_fraction_object
+
 
 
   def print_it(self,
@@ -752,6 +756,8 @@ class twin_model_manager(object):
       self.scaling_parameters,
       self.twin_fraction_object,
       n_trials=1000)
+    self.scaling_parameters = self.bss.start_scaling_parameters
+    self.twin_fraction_object = self.bss.best_twin_fraction
     ###
     print "Making r-value objects"
     self.r_work_object = xray.hemihedral_r_values(
@@ -794,21 +800,22 @@ class twin_model_manager(object):
   def update_bulk_solvent_parameters(self,
                                      bulk_solvent_parameters=None,
                                      twin_fraction_parameters=None,
-                                     local_sol=False):
+                                     refine=False,
+                                     grid_search=False
+                                     ):
     if bulk_solvent_parameters is not None:
       self.scaling_parameters = bulk_solvent_parameters
+      self.bss.start_scaling_parameters = self.scaling_parameters
     if twin_fraction_parameters is not None:
+      self.bss.start_twin_fraction = self.twin_fraction_object
       self.twin_fraction_object = twin_fraction_parameters
-    if ([bulk_solvent_parameters,twin_fraction_parameters]).count(None)>0:
-      if not local_sol:
-        self.bss.grid_search()
-      else:
-        self.bss.scale_it()
-    else:
+    if grid_search:
+      self.bss.grid_search()
+    if refine:
       self.bss.scale_it()
 
-    self.twin_fraction_object = self.bss.start_twin_fraction
-    self.scaling_parameters = self.bss.start_scaling_parameters
+    self.twin_fraction_object = self.bss.best_twin_fraction
+    self.scaling_parameters = self.bss.best_scaling_parameters
 
     self.target_evaluator.alpha( self.twin_fraction_object.twin_fraction )
     self.free_target_evaluator.alpha( self.twin_fraction_object.twin_fraction )
