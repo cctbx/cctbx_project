@@ -1,51 +1,58 @@
 from scitbx.array_family import flex
-#This is a python implementation of differential evolution
-#It assumes an evaluator class is passed in that has the following
-#functionality
-#data members:
-# n              :: The number of parameters
-# domain         :: a  list [(low,high)]*n
-#                   with approximate upper and lower limits for each parameter
-# x              :: a place holder for a final solution
-#
-# also a function called 'target' is needed.
-# This function should take a parameter vector as input and return a the function to be minimized.
-#
-# The code below was implemented on the basis of the following sources of information:
-# 1. http://www.icsi.berkeley.edu/~storn/code.html
-# 2. http://www.daimi.au.dk/~krink/fec05/articles/JV_ComparativeStudy_CEC04.pdf
-# 3. http://ocw.mit.edu/NR/rdonlyres/Sloan-School-of-Management/15-099Fall2003/A40397B9-E8FB-4B45-A41B-D1F69218901F/0/ses2_storn_price.pdf
-#
-#
-# The developers of the differential evolution method have this advice:
-# (taken from ref. 1)
-#
-# If you are going to optimize your own objective function with DE,
-# try the following settings for the input file first: Choose method
-# e.g. DE/rand/1/exp, set the number of parents NP to 10 times the
-# number of parameters, select weighting factor F=0.8 and crossover
-# constant CR=0.9. Make sure that you initialize your parameter vectors
-# by exploiting their full numerical range, i.e. if a parameter is allowed
-# to exhibit values in the range [-100, 100] it's a good idea to pick the
-# initial values from this range instead of unnecessarily restricting diversity.
-# If you experience misconvergence you usually have to increase the value for NP,
-# but often you only have to adjust F to be a little lower or higher than 0.8.
-# If you increase NP and simultaneously lower F a little, convergence is more likely
-# to occur but generally takes longer, i.e. DE is getting more robust (there is always
-# a convergence speed/robustness tradeoff).
-#
-
 class differential_evolution_optimizer(object):
+  """
+This is a python implementation of differential evolution
+It assumes an evaluator class is passed in that has the following
+functionality
+data members:
+ n              :: The number of parameters
+ domain         :: a  list [(low,high)]*n
+                   with approximate upper and lower limits for each parameter
+ x              :: a place holder for a final solution
+
+ also a function called 'target' is needed.
+ This function should take a parameter vector as input and return a the function to be minimized.
+
+ The code below was implemented on the basis of the following sources of information:
+ 1. http://www.icsi.berkeley.edu/~storn/code.html
+ 2. http://www.daimi.au.dk/~krink/fec05/articles/JV_ComparativeStudy_CEC04.pdf
+ 3. http://ocw.mit.edu/NR/rdonlyres/Sloan-School-of-Management/15-099Fall2003/A40397B9-E8FB-4B45-A41B-D1F69218901F/0/ses2_storn_price.pdf
+
+
+ The developers of the differential evolution method have this advice:
+ (taken from ref. 1)
+
+ If you are going to optimize your own objective function with DE,
+ try the following settings for the input file first: Choose method
+ e.g. DE/rand/1/exp, set the number of parents NP to 10 times the
+ number of parameters, select weighting factor F=0.8 and crossover
+ constant CR=0.9. Make sure that you initialize your parameter vectors
+ by exploiting their full numerical range, i.e. if a parameter is allowed
+ to exhibit values in the range [-100, 100] it's a good idea to pick the
+ initial values from this range instead of unnecessarily restricting diversity.
+ If you experience misconvergence you usually have to increase the value for NP,
+ but often you only have to adjust F to be a little lower or higher than 0.8.
+ If you increase NP and simultaneously lower F a little, convergence is more likely
+ to occur but generally takes longer, i.e. DE is getting more robust (there is always
+ a convergence speed/robustness tradeoff).
+
+ Note: NP is called population size in the routine below.)
+  """
+
   def __init__(self,
                evaluator,
                population_size=50,
                f=0.8,
                cr=0.9,
-               eps=1e-14,
+               eps=1e-2,
                n_cross=1,
                max_iter=10000,
                monitor_cycle=200,
-               out=None):
+               out=None,
+               show_progress=False,
+               show_progress_nth_cycle=25):
+    self.show_progress=show_progress
+    self.show_progress_nth_cycle=show_progress_nth_cycle
     self.evaluator = evaluator
     self.population_size = population_size
     self.f = f
@@ -63,6 +70,13 @@ class differential_evolution_optimizer(object):
     self.best_score = flex.min( self.scores )
     self.best_vector = self.population[ flex.min_index( self.scores ) ]
     self.evaluator.x = self.best_vector
+    if self.show_progress:
+      self.evaluator.print_status(
+            flex.min(self.scores),
+            flex.mean(self.scores),
+            self.population[ flex.min_index( self.scores ) ],
+            'Final')
+
 
   def optimize(self):
     # initialise the population please
@@ -75,13 +89,27 @@ class differential_evolution_optimizer(object):
     while not converged:
       self.evolve()
       location = flex.min_index( self.scores )
-      #print count, flex.mean(self.scores), flex.min(self.scores) #list( self.population[location] )
+      if self.show_progress:
+        if count%self.show_progress_nth_cycle==0:
+          # make here a call to a custom print_status function in the evaluator function
+          # the function signature should be (min_target, mean_target, best vector)
+          self.evaluator.print_status(
+            flex.min(self.scores),
+            flex.mean(self.scores),
+            self.population[ flex.min_index( self.scores ) ],
+            count)
+
       count += 1
       if count%self.monitor_cycle==0:
         if (monitor_score-flex.min(self.scores) ) < self.eps:
           converged = True
         else:
          monitor_score = flex.min(self.scores)
+      rd = (flex.mean(self.scores) - flex.min(self.scores) )
+      rd = rd*rd/(flex.min(self.scores)*flex.min(self.scores))
+      if ( rd < self.eps ):
+        converged = True
+
 
       if count>=self.max_iter:
         converged =True
