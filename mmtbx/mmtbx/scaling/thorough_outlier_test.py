@@ -14,9 +14,7 @@ import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
 from mmtbx.scaling import outlier_rejection
 from cctbx.xray import observation_types
-
-space_groups = ( "P 1", "P -1", "C 1 2/c 1","P 2 2 2","I m m a",
-                 "P 4","I 41/a c d :2","P 3","I 4/m c m (a+b-1/6,-a+b,c+1/4)")
+from cctbx.development import debug_utils
 
 
 def exercise(d_min            = 3.5,
@@ -26,10 +24,10 @@ def exercise(d_min            = 3.5,
              sf_algorithm     = "fft",
              sf_cos_sin_table = False,
              anomalous_flag   = False,
-             scattering_table = "it1992"):
-
+             scattering_table = "it1992", 
+             space_group_info = None):
+  space_groups = [ str(space_group_info) ]
   for sg in space_groups:
-      print "SG = ", sg
       ### get random structure
       xray_structure = random_structure.xray_structure(
                           space_group_info       = sgtbx.space_group_info(sg),
@@ -106,5 +104,12 @@ def exercise(d_min            = 3.5,
                      print "model_based_outliers = ", o_sel.data().count(True), o_sel.data().count(False)
 
 
+def run_call_back(flags, space_group_info):
+  exercise(space_group_info=space_group_info) 
+
+def run():
+  debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
+
+
 if (__name__ == "__main__"):
-  exercise()
+  run()
