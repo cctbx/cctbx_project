@@ -140,24 +140,28 @@ namespace cctbx { namespace xray { namespace twin_targets { namespace boost_pyth
         .def("r_intensity_abs", &w_t::r_intensity_abs,
              ( arg_("f_obs"),
                arg_("f_model"),
+               arg_("selection"),
                arg_("twin_fraction")
              )
             )
         .def("r_intensity_sq", &w_t::r_intensity_sq,
              ( arg_("f_obs"),
                arg_("f_model"),
+               arg_("selection"),
                arg_("twin_fraction")
              )
             )
         .def("r_amplitude_abs", &w_t::r_amplitude_abs,
              ( arg_("f_obs"),
                arg_("f_model"),
+               arg_("selection"),
                arg_("twin_fraction")
              )
             )
         .def("r_amplitude_sq", &w_t::r_amplitude_sq,
              ( arg_("f_obs"),
                arg_("f_model"),
+               arg_("selection"),
                arg_("twin_fraction")
              )
             )
