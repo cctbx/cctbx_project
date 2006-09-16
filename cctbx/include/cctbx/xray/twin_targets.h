@@ -423,7 +423,7 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
    {
      CCTBX_ASSERT( obs_size_  == i_obs.size() );
      CCTBX_ASSERT( calc_size_ == f_model.size() );
-     CCTBX_ASSERT( (obs_size_ == selection.size()) or (selection.size()==0)  );
+     CCTBX_ASSERT( (obs_size_ == selection.size()) || (selection.size()==0)  );
 
      FloatType top=0,bottom=0,tmp_a,tmp_b, i_calc, tmp_location;
      bool use;
@@ -466,7 +466,7 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
    {
      CCTBX_ASSERT( obs_size_ == i_obs.size() );
      CCTBX_ASSERT( calc_size_ == f_model.size() );
-     CCTBX_ASSERT( (obs_size_ == selection.size()) or (selection.size()==0)  );
+     CCTBX_ASSERT( (obs_size_ == selection.size()) || (selection.size()==0)  );
 
      FloatType top=0,bottom=0,tmp_a,tmp_b, i_calc, tmp_location;
      bool use;
@@ -509,7 +509,7 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
    {
      CCTBX_ASSERT( obs_size_ == f_obs.size() );
      CCTBX_ASSERT( calc_size_ == f_model.size() );
-     CCTBX_ASSERT( (obs_size_ == selection.size()) or (selection.size()==0)  );
+     CCTBX_ASSERT( (obs_size_ == selection.size()) || (selection.size()==0)  );
 
      FloatType top=0,bottom=0,tmp_a,tmp_b, f_calc, tmp_location;
      bool use;
@@ -552,7 +552,7 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
    {
      CCTBX_ASSERT( obs_size_ == f_obs.size() );
      CCTBX_ASSERT( calc_size_ == f_model.size() );
-     CCTBX_ASSERT( (obs_size_ == selection.size()) or (selection.size()==0)  );
+     CCTBX_ASSERT( (obs_size_ == selection.size()) || (selection.size()==0)  );
      FloatType top=0,bottom=0,tmp_a,tmp_b, f_calc, tmp_location;
      bool use;
      for (long ii=0;ii<obs_size_;ii++){
