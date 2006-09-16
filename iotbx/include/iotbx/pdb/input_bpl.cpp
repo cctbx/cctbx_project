@@ -152,7 +152,7 @@ namespace {
   };
 
   void
-  wrap_all()
+  wrap_input_impl()
   {
     columns_73_76_evaluator_wrappers::wrap();
     input_atom_labels_wrappers::wrap();
@@ -164,6 +164,6 @@ namespace {
 namespace boost_python {
 
   void
-  wrap_input() { wrap_all(); }
+  wrap_input() { wrap_input_impl(); }
 
 }}} // namespace iotbx::pdb::boost_python
