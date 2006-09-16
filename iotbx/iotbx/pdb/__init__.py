@@ -251,6 +251,8 @@ class _input(boost.python.injector, ext.input):
       crystal_symmetry = crystal.symmetry(
         unit_cell=(1,1,1,90,90,90),
         space_group_symbol="P1")
+    assert crystal_symmetry.unit_cell() is not None
+    assert crystal_symmetry.space_group_info() is not None
     unit_cell = crystal_symmetry.unit_cell()
     scale_r = (0,0,0,0,0,0,0,0,0)
     scale_t = (0,0,0)
