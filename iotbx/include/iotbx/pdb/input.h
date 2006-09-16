@@ -353,6 +353,7 @@ namespace iotbx { namespace pdb {
     {
       columns_73_76_dict_t atom_columns_73_76_dict;
       columns_73_76_dict_t other_columns_73_76_dict;
+      af::tiny<char, 4> header_idcode(' ', ' ', ' ', ' ');
       for(const std::string* line=lines.begin();line!=lines.end();line++) {
         if (line->size() < 6) continue;
         const char* line_data = line->data();
@@ -361,6 +362,15 @@ namespace iotbx { namespace pdb {
           || is_record_type("HETATM", line_data));
         if (is_atom_or_hetatm_record) {
           number_of_atom_and_hetatm_lines++;
+        }
+        if (is_record_type("HEADER", line_data)) {
+          if (line->size() < 66) continue;
+          const char* l = line_data + 62;
+          char* h = header_idcode.begin();
+          *h++ = *l++;
+          *h++ = *l++;
+          *h++ = *l++;
+          *h   = *l  ;
         }
         if (line->size() < 80) continue;
         if (line_data[79] == ' ') continue;
@@ -389,14 +399,23 @@ namespace iotbx { namespace pdb {
         finding = "Blank columns 73-76 on ATOM and HETATM records.";
         return;
       }
-      if (   atom_columns_73_76_dict.size() == 1
-          && other_columns_73_76_dict.size() == 1) {
+      if (atom_columns_73_76_dict.size() == 1) {
         columns_73_76_t const& a = atom_columns_73_76_dict.begin()->first;
-        columns_73_76_t const& o = other_columns_73_76_dict.begin()->first;
-        if (a.all_eq(o) && a[0] != ' ' && a[3] != ' ') {
-          finding = "Exactly one common label in columns 73-76.";
-          is_old_style = true;
-          return;
+        if (a[0] != ' ' && a[3] != ' ') {
+          if (other_columns_73_76_dict.size() == 0) {
+            if (a.all_eq(header_idcode)) {
+              is_old_style = true;
+            }
+          }
+          if (other_columns_73_76_dict.size() == 1) {
+            if (a.all_eq(other_columns_73_76_dict.begin()->first)) {
+              is_old_style = true;
+            }
+          }
+          if (is_old_style) {
+            finding = "Exactly one common label in columns 73-76.";
+            return;
+          }
         }
       }
       unsigned sum_counts_common_four_character_field = 0;
@@ -423,7 +442,6 @@ namespace iotbx { namespace pdb {
       }
       if (sum_counts_common_four_character_field == 0) {
         finding = "No common label in columns 73-76.";
-        is_old_style = false;
         return;
       }
       // Compare first three characters only.
