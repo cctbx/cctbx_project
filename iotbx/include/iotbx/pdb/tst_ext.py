@@ -417,6 +417,17 @@ def exercise_columns_73_76_evaluator():
     cpp_eval = pdb.columns_73_76_evaluator(lines=lines)
     assert cpp_eval.finding == py_eval.finding
     assert cpp_eval.is_old_style == py_eval.is_old_style
+  #
+  lines = flex.split_lines("""\
+HEADER    HYDROLASE(METALLOPROTEINASE)            17-NOV-93   1THL
+ATOM      1  N   ILE     1       9.581  51.813  -0.720  1.00 31.90      1THL 158
+ATOM      2  CA  ILE     1       8.335  52.235  -0.041  1.00 52.95      1THL 159
+ATOM      3  C   ILE     1       7.959  53.741   0.036  1.00 26.88      1THL 160
+END
+""")
+  cpp_eval = pdb.columns_73_76_evaluator(lines=lines)
+  assert cpp_eval.finding == "Exactly one common label in columns 73-76."
+  assert cpp_eval.is_old_style
 
 def exercise_line_info_exceptions():
   pdb.input(source_info=None, lines=flex.std_string(["ATOM"]))
