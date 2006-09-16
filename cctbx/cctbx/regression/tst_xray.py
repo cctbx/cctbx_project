@@ -358,6 +358,19 @@ C  pair count:   1       <<  0.0000,  0.0000,  0.1000>>
                                atomic_weights = flex.double(sel.size(), 1.25),
                                unit_cell      = xs.unit_cell(),
                                selection      = sel.iselection())
+  #
+  xs = xray.structure(
+    crystal_symmetry=crystal.symmetry(
+      unit_cell=(20,30,40,90,90,90),
+      space_group_symbol="P222"))
+  bs = xs.orthorhombic_unit_cell_around_centered_scatterers(buffer_size=3.5)
+  assert str(bs.unit_cell()) == "(3.5, 3.5, 3.5, 90, 90, 90)"
+  xs.add_scatterer(xray.scatterer(label="S1", site=[0.1,0.2,-0.3]))
+  bs = xs.orthorhombic_unit_cell_around_centered_scatterers(buffer_size=3.5)
+  assert str(bs.unit_cell()) == "(7, 7, 7, 90, 90, 90)"
+  xs.add_scatterer(xray.scatterer(label="S1", site=[-0.1,-0.2,0.3]))
+  bs = xs.orthorhombic_unit_cell_around_centered_scatterers(buffer_size=3.5)
+  assert str(bs.unit_cell()) == "(11, 19, 31, 90, 90, 90)"
 
 def exercise_u_base():
   d_min = 9
