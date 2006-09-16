@@ -36,7 +36,7 @@ namespace {
   };
 
   void
-  wrap_all()
+  wrap_xray_structure_impl()
   {
     xray_structures_simple_extension_wrappers::wrap();
   }
@@ -46,6 +46,6 @@ namespace {
 namespace boost_python {
 
   void
-  wrap_xray_structure() { wrap_all(); }
+  wrap_xray_structure() { wrap_xray_structure_impl(); }
 
 }}} // namespace iotbx::pdb::boost_python
