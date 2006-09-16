@@ -639,7 +639,11 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
        // do similar stuff for calculated data
        for (std::size_t ii=0;ii<hkl_calc.size();ii++){
          tmp_loc = tmp_calc.find_hkl( twin_mate(hkl_calc[ii],twin_law) );
-         CCTBX_ASSERT( tmp_loc >=0 );
+         //if this hkl_calc is observed
+         if (  (tmp_obs.find_hkl( hkl_calc[ii] )>0) ||
+               (tmp_obs.find_hkl(twin_mate(hkl_calc[ii],twin_law))>=0) ){
+           CCTBX_ASSERT( tmp_loc >=0 );
+         }
          calc_to_twin_calc_.push_back( tmp_loc );
        }
 
