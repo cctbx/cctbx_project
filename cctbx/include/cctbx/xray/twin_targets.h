@@ -418,7 +418,7 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
 
    FloatType r_intensity_abs( scitbx::af::const_ref<FloatType> const& i_obs,
                               scitbx::af::const_ref< std::complex<FloatType> > const& f_model,
-			      scitbx::af::const_ref<bool> const& selection,
+                              scitbx::af::const_ref<bool> const& selection,
                               FloatType const& twin_fraction )
    {
      CCTBX_ASSERT( obs_size_  == i_obs.size() );
@@ -427,24 +427,24 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
 
      FloatType top=0,bottom=0,tmp_a,tmp_b, i_calc, tmp_location;
      bool use;
-     for (long ii=0;ii<obs_size_;ii++){ 
-       use = true;      
+     for (long ii=0;ii<obs_size_;ii++){
+       use = true;
        if (selection.size()>0){
-	   use = selection[ii];
+           use = selection[ii];
        }
-       if (use){       
-	 tmp_location = obs_in_calc_lookup_[ii];
-	 tmp_a  = f_model[ tmp_location ].real();
-	 tmp_b  = f_model[ tmp_location ].imag();
-	 i_calc = (tmp_a*tmp_a + tmp_b*tmp_b)*(1-twin_fraction);
-	 
-	 tmp_location = twin_related_obs_in_calc_lookup_[ii];
-	 tmp_a  = f_model[ tmp_location ].real();
-	 tmp_b  = f_model[ tmp_location ].imag();
-	 i_calc+= (tmp_a*tmp_a + tmp_b*tmp_b)*twin_fraction;
-	 
-	 top+= std::fabs( i_calc - i_obs[ii]  );
-	 bottom+= std::fabs(i_obs[ii]);	 
+       if (use){
+         tmp_location = obs_in_calc_lookup_[ii];
+         tmp_a  = f_model[ tmp_location ].real();
+         tmp_b  = f_model[ tmp_location ].imag();
+         i_calc = (tmp_a*tmp_a + tmp_b*tmp_b)*(1-twin_fraction);
+
+         tmp_location = twin_related_obs_in_calc_lookup_[ii];
+         tmp_a  = f_model[ tmp_location ].real();
+         tmp_b  = f_model[ tmp_location ].imag();
+         i_calc+= (tmp_a*tmp_a + tmp_b*tmp_b)*twin_fraction;
+
+         top+= std::fabs( i_calc - i_obs[ii]  );
+         bottom+= std::fabs(i_obs[ii]);
        }
      }
 
@@ -461,34 +461,34 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
 
    FloatType r_intensity_sq( scitbx::af::const_ref<FloatType> const& i_obs,
                              scitbx::af::const_ref< std::complex<FloatType> > const& f_model,
-			     scitbx::af::const_ref<bool> const& selection,
+                             scitbx::af::const_ref<bool> const& selection,
                              FloatType const& twin_fraction )
    {
      CCTBX_ASSERT( obs_size_ == i_obs.size() );
-     CCTBX_ASSERT( calc_size_ == f_model.size() );    
+     CCTBX_ASSERT( calc_size_ == f_model.size() );
      CCTBX_ASSERT( (obs_size_ == selection.size()) or (selection.size()==0)  );
 
      FloatType top=0,bottom=0,tmp_a,tmp_b, i_calc, tmp_location;
      bool use;
-     for (long ii=0;ii<obs_size_;ii++){  
-       use = true;            
+     for (long ii=0;ii<obs_size_;ii++){
+       use = true;
        if (selection.size()>0){
-	   use = selection[ii];
+           use = selection[ii];
        }
        if (use){
-	 tmp_location = obs_in_calc_lookup_[ii];
-	 tmp_a  = f_model[ tmp_location ].real();
-	 tmp_b  = f_model[ tmp_location ].imag();
-	 i_calc = (tmp_a*tmp_a + tmp_b*tmp_b)*(1-twin_fraction);
-	 
-	 tmp_location = twin_related_obs_in_calc_lookup_[ii];
-	 tmp_a  = f_model[ tmp_location ].real();
-	 tmp_b  = f_model[ tmp_location ].imag();
-	 i_calc+= (tmp_a*tmp_a + tmp_b*tmp_b)*twin_fraction;
-	 
-	 top+= (i_calc-i_obs[ii])*(i_calc-i_obs[ii]);
-	 bottom+= i_obs[ii]*i_obs[ii];
-       }       
+         tmp_location = obs_in_calc_lookup_[ii];
+         tmp_a  = f_model[ tmp_location ].real();
+         tmp_b  = f_model[ tmp_location ].imag();
+         i_calc = (tmp_a*tmp_a + tmp_b*tmp_b)*(1-twin_fraction);
+
+         tmp_location = twin_related_obs_in_calc_lookup_[ii];
+         tmp_a  = f_model[ tmp_location ].real();
+         tmp_b  = f_model[ tmp_location ].imag();
+         i_calc+= (tmp_a*tmp_a + tmp_b*tmp_b)*twin_fraction;
+
+         top+= (i_calc-i_obs[ii])*(i_calc-i_obs[ii]);
+         bottom+= i_obs[ii]*i_obs[ii];
+       }
      }
 
      FloatType result=0.0;
@@ -503,35 +503,35 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
 
 
    FloatType r_amplitude_abs( scitbx::af::const_ref<FloatType> const& f_obs,
-			      scitbx::af::const_ref< std::complex<FloatType> > const& f_model,
-			      scitbx::af::const_ref<bool> const& selection,
-			      FloatType const& twin_fraction )
+                              scitbx::af::const_ref< std::complex<FloatType> > const& f_model,
+                              scitbx::af::const_ref<bool> const& selection,
+                              FloatType const& twin_fraction )
    {
      CCTBX_ASSERT( obs_size_ == f_obs.size() );
-     CCTBX_ASSERT( calc_size_ == f_model.size() );     
+     CCTBX_ASSERT( calc_size_ == f_model.size() );
      CCTBX_ASSERT( (obs_size_ == selection.size()) or (selection.size()==0)  );
 
      FloatType top=0,bottom=0,tmp_a,tmp_b, f_calc, tmp_location;
      bool use;
-     for (long ii=0;ii<obs_size_;ii++){       
-       use = true;              
+     for (long ii=0;ii<obs_size_;ii++){
+       use = true;
        if (selection.size()>0){
-	   use = selection[ii];
+           use = selection[ii];
        }
        if (use){
-	 tmp_location = obs_in_calc_lookup_[ii];
-	 tmp_a  = f_model[ tmp_location ].real();
-	 tmp_b  = f_model[ tmp_location ].imag();
-	 f_calc = (tmp_a*tmp_a + tmp_b*tmp_b)*(1.0-twin_fraction);
-	 
-	 tmp_location = twin_related_obs_in_calc_lookup_[ii];
-	 tmp_a  = f_model[ tmp_location ].real();
-	 tmp_b  = f_model[ tmp_location ].imag();
-	 f_calc+= (tmp_a*tmp_a + tmp_b*tmp_b)*twin_fraction;
-	 
-	 top+= std::fabs( std::sqrt(f_calc)-f_obs[ii] );
-	 bottom+= f_obs[ii]; // allways positive anyway
-       }       
+         tmp_location = obs_in_calc_lookup_[ii];
+         tmp_a  = f_model[ tmp_location ].real();
+         tmp_b  = f_model[ tmp_location ].imag();
+         f_calc = (tmp_a*tmp_a + tmp_b*tmp_b)*(1.0-twin_fraction);
+
+         tmp_location = twin_related_obs_in_calc_lookup_[ii];
+         tmp_a  = f_model[ tmp_location ].real();
+         tmp_b  = f_model[ tmp_location ].imag();
+         f_calc+= (tmp_a*tmp_a + tmp_b*tmp_b)*twin_fraction;
+
+         top+= std::fabs( std::sqrt(f_calc)-f_obs[ii] );
+         bottom+= f_obs[ii]; // allways positive anyway
+       }
      }
 
      FloatType result=0.0;
@@ -547,7 +547,7 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
 
    FloatType r_amplitude_sq( scitbx::af::const_ref<FloatType> const& f_obs,
                              scitbx::af::const_ref< std::complex<FloatType> > const& f_model,
-			     scitbx::af::const_ref<bool> const& selection,
+                             scitbx::af::const_ref<bool> const& selection,
                              FloatType const& twin_fraction )
    {
      CCTBX_ASSERT( obs_size_ == f_obs.size() );
@@ -556,23 +556,23 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
      FloatType top=0,bottom=0,tmp_a,tmp_b, f_calc, tmp_location;
      bool use;
      for (long ii=0;ii<obs_size_;ii++){
-       use = true;              
+       use = true;
        if (selection.size()>0){
-	   use = selection[ii];
+           use = selection[ii];
        }
        if (use){
-	 tmp_location = obs_in_calc_lookup_[ii];
-	 tmp_a  = f_model[ tmp_location ].real();
-	 tmp_b  = f_model[ tmp_location ].imag();
-	 f_calc = (tmp_a*tmp_a + tmp_b*tmp_b)*(1-twin_fraction);
-	 
-	 tmp_location = twin_related_obs_in_calc_lookup_[ii];
-	 tmp_a  = f_model[ tmp_location ].real();
-	 tmp_b  = f_model[ tmp_location ].imag();
-	 f_calc+= (tmp_a*tmp_a + tmp_b*tmp_b)*twin_fraction;
-	 
-	 top+= (std::sqrt(f_calc)-f_obs[ii])*(std::sqrt(f_calc)-f_obs[ii]);
-	 bottom+= f_obs[ii]*f_obs[ii];
+         tmp_location = obs_in_calc_lookup_[ii];
+         tmp_a  = f_model[ tmp_location ].real();
+         tmp_b  = f_model[ tmp_location ].imag();
+         f_calc = (tmp_a*tmp_a + tmp_b*tmp_b)*(1-twin_fraction);
+
+         tmp_location = twin_related_obs_in_calc_lookup_[ii];
+         tmp_a  = f_model[ tmp_location ].real();
+         tmp_b  = f_model[ tmp_location ].imag();
+         f_calc+= (tmp_a*tmp_a + tmp_b*tmp_b)*twin_fraction;
+
+         top+= (std::sqrt(f_calc)-f_obs[ii])*(std::sqrt(f_calc)-f_obs[ii]);
+         bottom+= f_obs[ii]*f_obs[ii];
        }
      }
 
@@ -613,7 +613,7 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
        CCTBX_ASSERT( (hkl_obs.size() <= hkl_calc.size()) || (hkl_calc.size()==0) );
        obs_size_  = hkl_obs.size();
        calc_size_ = hkl_calc.size();
- 
+
        cctbx::miller::lookup_utils::lookup_tensor<FloatType> tmp_obs(hkl_obs, space_group, anomalous_flag);
        cctbx::miller::lookup_utils::lookup_tensor<FloatType> tmp_calc(hkl_calc, space_group, anomalous_flag);
        long tmp_loc;
@@ -702,7 +702,7 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
        CCTBX_ASSERT( i_obs.size() == sig_obs.size() );
        CCTBX_ASSERT( f_model.size() == calc_size_ );
        CCTBX_ASSERT( i_obs.size() == obs_size_ );
-       
+
        scitbx::af::shared<FloatType> detwinned_i;
        scitbx::af::shared<FloatType> detwinned_s;
 
@@ -727,7 +727,7 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
 
          frac1 = c_a * (1-twin_fraction) / ( c_a*(1.0-twin_fraction) + c_b*twin_fraction );
          frac2 = c_a * twin_fraction / ( c_b*(1.0-twin_fraction) + c_a*twin_fraction );
-	 
+
          n_i = o_a*frac1 + o_b*frac2;
          n_s = std::sqrt( s_a*s_a*frac1*frac1 + s_b*s_b*frac2*frac2 );
 
