@@ -845,3 +845,14 @@ class structure(crystal.special_position_settings):
 
   def rms_difference(self, other):
     return self.sites_cart().rms_difference(other.sites_cart())
+
+  def orthorhombic_unit_cell_around_centered_scatterers(self, buffer_size):
+    sites_cart = self.sites_cart()
+    sites_cart -= [x-buffer_size for x in sites_cart.min()]
+    result = structure(
+      crystal_symmetry=crystal.symmetry(
+        unit_cell=[buffer_size+x for x in sites_cart.max()],
+        space_group_symbol="P1"),
+      scatterers=self.scatterers())
+    result.set_sites_cart(sites_cart)
+    return result
