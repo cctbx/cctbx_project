@@ -120,6 +120,7 @@ def exercise(space_group_info,
              assert approx_equal(flex.min(diff) , 0.0, tolerance)
              assert approx_equal(flex.mean(diff), 0.0, tolerance)
              assert approx_equal(flex.max(diff) , 0.0, tolerance)
+             fmodel.model_error_ml()
 
 
 def run_call_back(flags, space_group_info):
