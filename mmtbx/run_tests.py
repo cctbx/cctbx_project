@@ -15,6 +15,7 @@ def run():
   "$D/mmtbx/monomer_library/tst_motif.py",
   "$D/mmtbx/monomer_library/tst_selection.py",
   "$D/mmtbx/monomer_library/tst_tyr_from_gly_and_bnz.py",
+  "$D/mmtbx/monomer_library/tst_pdb_interpretation.py",
   "$D/mmtbx/hydrogens/build_hydrogens.py",
   "$D/mmtbx/max_lik/tst_maxlik.py",
   "$D/masks/tst_masks.py",
