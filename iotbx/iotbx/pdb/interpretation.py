@@ -362,8 +362,9 @@ class stage_1(object):
     if (    unknown_scattering_type_substitute is not None
         and unknown_scattering_type_substitute not in ["", "?"]):
       try:
-        unknown_scattering_type_substitute = eltbx.xray_scattering.it1992(
-          unknown_scattering_type_substitute, True).label()
+        unknown_scattering_type_substitute \
+          = eltbx.xray_scattering.get_standard_label(
+              label=unknown_scattering_type_substitute)
       except:
         raise RuntimeError(
             'unknown_scattering_type_substitute="%s"'
@@ -399,8 +400,8 @@ class stage_1(object):
           scattering_type = scattering_type[1:]
         exact_scattering_type = False
       try:
-        scattering_type = eltbx.xray_scattering.it1992(
-          scattering_type, exact_scattering_type).label()
+        scattering_type = eltbx.xray_scattering.get_standard_label(
+          label=scattering_type, exact=exact_scattering_type)
       except RuntimeError:
         if (unknown_scattering_type_substitute is None):
           raise RuntimeError("Unknown scattering type: %s" % str(atom))
