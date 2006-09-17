@@ -9,6 +9,19 @@
 #include <boost/python/overloads.hpp>
 #include <boost/python/args.hpp>
 
+
+#include <cctbx/boost_python/flex_fwd.h>
+
+#include <boost/python/module.hpp>
+#include <boost/python/class.hpp>
+#include <boost/python/def.hpp>
+#include <boost/python/args.hpp>
+#include <mmtbx/tls/tls.h>
+#include <scitbx/array_family/boost_python/shared_wrapper.h>
+#include <boost/python/return_value_policy.hpp>
+#include <boost/python/return_by_value.hpp>
+
+
 namespace cctbx { namespace maptbx { namespace boost_python {
 
   void wrap_grid_tags();
@@ -44,6 +57,36 @@ namespace {
     wrap_mappers();
     wrap_basic_map();
     wrap_real_space_refinement();
+
+
+    using namespace boost::python;
+    typedef boost::python::arg arg_;
+    class_<grid_points_in_sphere_around_atom_and_distances>("grid_points_in_sphere_around_atom_and_distances",
+                           init<cctbx::uctbx::unit_cell const&,
+                                af::const_ref<double, af::c_grid<3> > const&,
+                                double const&,
+                                double const&,
+                                vec3<double> const& >(
+                                   (arg_("unit_cell"),
+                                                         arg_("data"),
+                                                         arg_("radius"),
+                                                         arg_("shell"),
+                                                         arg_("site_frac"))))
+      .def("data_at_grid_points", &grid_points_in_sphere_around_atom_and_distances::data_at_grid_points)
+      .def("distances", &grid_points_in_sphere_around_atom_and_distances::distances)
+    ;
+    class_<one_gaussian_peak_approximation>("one_gaussian_peak_approximation",
+                           init<af::const_ref<double> const&,
+                                af::const_ref<double> const& >(
+                                                         (arg_("data_at_grid_points"),
+                                                         arg_("distances"))))
+      .def("a_real_space", &one_gaussian_peak_approximation::a_real_space)
+      .def("b_real_space", &one_gaussian_peak_approximation::b_real_space)
+      .def("a_reciprocal_space", &one_gaussian_peak_approximation::a_reciprocal_space)
+      .def("b_reciprocal_space", &one_gaussian_peak_approximation::b_reciprocal_space)
+      .def("gof", &one_gaussian_peak_approximation::gof)
+    ;
+
 
     def("copy",
       (af::versa<float, af::flex_grid<> >(*)

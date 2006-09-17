@@ -5,6 +5,9 @@
 #include <cctbx/uctbx.h>
 #include <scitbx/array_family/accessors/c_grid.h>
 
+using scitbx::vec3;
+namespace af=scitbx::af;
+
 namespace cctbx { namespace maptbx {
 
 //! Fortran-like nearest integer.
@@ -55,6 +58,156 @@ af::versa<double, af::c_grid<3> > box_map_averaging(
     }}}
     return new_data;
 }
+
+
+class grid_points_in_sphere_around_atom_and_distances {
+public:
+  grid_points_in_sphere_around_atom_and_distances(
+                           cctbx::uctbx::unit_cell const& uc,
+                           af::const_ref<double, af::c_grid<3> > const& data,
+                           double const& rad,
+                           double const& shell,
+                           vec3<double> const& site_frac)
+  {
+    int nx = data.accessor()[0];
+    int ny = data.accessor()[1];
+    int nz = data.accessor()[2];
+    double distsq;
+    int mx,my,mz,kx,ky,kz;
+    double abc = uc.parameters()[0]*uc.parameters()[1]*uc.parameters()[2];
+    double uc_volume_over_abc = uc.volume() / abc;
+    double sin_alpha = std::sin(scitbx::deg_as_rad(uc.parameters()[3]));
+    double sin_beta  = std::sin(scitbx::deg_as_rad(uc.parameters()[4]));
+    double sin_gamma = std::sin(scitbx::deg_as_rad(uc.parameters()[5]));
+    double ascale = uc_volume_over_abc / sin_alpha;
+    double bscale = uc_volume_over_abc / sin_beta;
+    double cscale = uc_volume_over_abc / sin_gamma;
+    double as = uc.parameters()[0]/ascale;
+    double bs = uc.parameters()[1]/bscale;
+    double cs = uc.parameters()[2]/cscale;
+    double xshell = shell/uc.parameters()[0]/ascale;
+    double yshell = shell/uc.parameters()[1]/bscale;
+    double zshell = shell/uc.parameters()[2]/cscale;
+    double mr1= uc.metrical_matrix()[0]; //a*a;
+    double mr2= uc.metrical_matrix()[3]; //a*b*cos(gamma)
+    double mr3= uc.metrical_matrix()[4]; //a*c*cos(beta)
+    double mr5= uc.metrical_matrix()[1]; //b*b
+    double mr6= uc.metrical_matrix()[5]; //c*b*cos(alpha)
+    double mr9= uc.metrical_matrix()[2]; //c*c
+    double tmr2 = mr2*2.0; //2*a*b*cos(gamma);
+    double tmr3 = mr3*2.0; //2*a*c*cos(beta);
+    double tmr6 = mr6*2.0; //2*b*c*cos(alpha);
+    double xL = -xshell;
+    double xR = 1.0+xshell;
+    double yL = -yshell;
+    double yR = 1.0+yshell;
+    double zL = -zshell;
+    double zR = 1.0+zshell;
+    double xf = site_frac[0];
+    double yf = site_frac[1];
+    double zf = site_frac[2];
+    double radsq = rad * rad;
+    bool close_to_au=(xf>=xL||xf<=xR)&&(yf>=yL||yf<=yR)&&(zf>=zL||zf<=zR);
+    if(close_to_au) {
+       double coas = rad/as;
+       double cobs = rad/bs;
+       double cocs = rad/cs;
+       int x1box = nint( nx*(xf-coas) ) - 1;
+       int x2box = nint( nx*(xf+coas) ) + 1;
+       int y1box = nint( ny*(yf-cobs) ) - 1;
+       int y2box = nint( ny*(yf+cobs) ) + 1;
+       int z1box = nint( nz*(zf-cocs) ) - 1;
+       int z2box = nint( nz*(zf+cocs) ) + 1;
+       for(kx = x1box; kx <= x2box; kx++) {
+       //for(kx = 0; kx < nx; kx++) {
+           double xn=xf-double(kx)/nx;
+           for(ky = y1box; ky <= y2box; ky++) {
+           //for(ky = 0; ky < ny; ky++) {
+               double yn=yf-double(ky)/ny;
+               for(kz = z1box; kz <= z2box; kz++) {
+               //for(kz = 0; kz < nz; kz++) {
+                   double zn=zf-double(kz)/nz;
+                   distsq=mr1*xn*xn+mr5*yn*yn+mr9*zn*zn+
+                                              tmr2*xn*yn+tmr3*xn*zn+tmr6*yn*zn;
+                   if(distsq <= radsq) {
+                   //if(1) {
+                      mx = cctbx::math::mod_positive(kx, nx);
+                      my = cctbx::math::mod_positive(ky, ny);
+                      mz = cctbx::math::mod_positive(kz, nz);
+                      //double rho = 2.0 * std::exp (- 3.0 * distsq );
+                      data_at_grid_points_.push_back(data(mx,my,mz));
+                      //data_at_grid_points_.push_back(rho);
+                      distances_.push_back(std::sqrt(distsq));
+                   }
+               }
+           }
+       }
+    }
+  }
+  af::shared<double> data_at_grid_points() { return data_at_grid_points_; }
+  af::shared<double> distances() { return distances_; }
+protected:
+  af::shared<double> data_at_grid_points_;
+  af::shared<double> distances_;
+};
+
+class one_gaussian_peak_approximation {
+public:
+  one_gaussian_peak_approximation(
+                              af::const_ref<double> const& data_at_grid_points,
+                              af::const_ref<double> const& distances)
+  {
+           double p=0.0, q=0.0, r=0.0, s=0.0;
+           int n = 0;
+           int number_of_points = data_at_grid_points.size();
+           for(int i = 0; i < number_of_points; i++) {
+            if(distances[i] > 1.e-4 && data_at_grid_points[i] > 0.0) {
+             n = n + 1;
+              double data_i = data_at_grid_points[i];
+              double distance_i = distances[i];
+              double distance_i_sq = distance_i*distance_i;
+               p=p+std::log(data_i);
+               q=q+distance_i_sq;
+               r=r+(distance_i_sq*distance_i_sq);
+               s=s+distance_i_sq*std::log(data_i);
+      }
+    }
+    double alpha_opt = (p-s*q/r) / (double(n)-q*q/r);
+    a_real_space_ = std::exp( alpha_opt );
+           b_real_space_ = 1/r*(alpha_opt*q - s);
+
+           double tmp = b_real_space_/scitbx::constants::pi;
+           double pi_sq = scitbx::constants::pi*scitbx::constants::pi;
+           a_reciprocal_space_ = a_real_space_/std::sqrt(tmp*tmp*tmp);
+           b_reciprocal_space_ = pi_sq/b_real_space_*4; //      not deja divise par 4 !!!
+           double num = 0.0;
+           double denum = 0.0;
+           for(int i = 0; i < number_of_points; i++) {
+            if(distances[i] > 1.e-4 && data_at_grid_points[i] > 0.0) {
+              double data_i = data_at_grid_points[i];
+              double distance_i = distances[i];
+              double distance_i_sq = distance_i*distance_i;
+              double data_i_approx =
+                              a_real_space_ * std::exp(-b_real_space_*distance_i_sq);
+               num=num+std::abs(data_i-data_i_approx);
+               denum=denum+data_i_approx;
+      }
+    }
+    gof_ = num/denum*100.;
+  }
+  double a_real_space() { return a_real_space_; }
+  double b_real_space() { return b_real_space_; }
+  double a_reciprocal_space() { return a_reciprocal_space_; }
+  double b_reciprocal_space() { return b_reciprocal_space_; }
+  double gof() { return gof_; }
+protected:
+  double a_real_space_;
+  double b_real_space_;
+  double a_reciprocal_space_;
+  double b_reciprocal_space_;
+  double gof_;
+};
+
 
   template <typename DataType>
   af::shared<DataType>
