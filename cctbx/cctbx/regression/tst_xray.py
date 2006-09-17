@@ -177,6 +177,7 @@ Number of scattering types: 2
   reg = ys.scattering_type_registry()
   assert reg.type_index_pairs_as_dict() == {"Si": 0, "O": 1}
   assert list(reg.unique_indices(scatterers=ys.scatterers())) == [0,1]
+  assert reg.type_count_dict() == {"Si": 1, "O": 1}
   #
   am = xs.asu_mappings(buffer_thickness=1)
   assert am.mappings().size() == xs.scatterers().size()
