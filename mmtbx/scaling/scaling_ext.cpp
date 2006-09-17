@@ -15,7 +15,7 @@
 namespace mmtbx { namespace scaling {
 namespace boost_python{
 
-  // outlier detection  
+  // outlier detection
   void wrap_outlier();
   // twinnning related stuff
   void wrap_twinning();

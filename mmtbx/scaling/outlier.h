@@ -371,7 +371,7 @@ namespace mmtbx { namespace scaling { namespace outlier{
         //exparg = exparg/eb;
         //result = std::log(2.0) + std::log(fo) - std::log(eb)  -exparg  + std::log( scitbx::math::bessel::i0(x) );
         //FloatType result2;
-	exparg = fo -  alpha_[ii]*f_calc_[ii];
+        exparg = fo -  alpha_[ii]*f_calc_[ii];
         exparg = exparg*exparg/eb;
         result = std::log(2.0) + std::log(fo) - std::log(eb)  -exparg + std::log( scitbx::math::bessel::ei0(x));
         return (result);

@@ -1,4 +1,4 @@
-from mmtbx.scaling import remove_outliers 
+from mmtbx.scaling import remove_outliers
 import sys
 
 if (__name__ == "__main__"):
