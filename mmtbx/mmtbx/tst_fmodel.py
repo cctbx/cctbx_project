@@ -97,6 +97,7 @@ def test_1(xray_structure):
                       assert fmodel.f_ordered_solvent.data().all_eq(0)
                       assert fmodel.f_ordered_solvent_w().data().all_eq(0)
                       assert fmodel.f_ordered_solvent_t().data().all_eq(0)
+                      fmodel.model_error_ml()
                       ###
                       ### instantiate fmodel only + update ksol & bsol
                       ###
@@ -135,6 +136,7 @@ def test_1(xray_structure):
                       assert fmodel.f_ordered_solvent.data().all_eq(0)
                       assert fmodel.f_ordered_solvent_w().data().all_eq(0)
                       assert fmodel.f_ordered_solvent_t().data().all_eq(0)
+                      fmodel.model_error_ml()
                       ###
                       ### instantiate fmodel only, then use deep_copy
                       ###
@@ -199,6 +201,7 @@ def test_1(xray_structure):
                       assert fmodel.f_ordered_solvent.data().all_eq(0)
                       assert fmodel.f_ordered_solvent_w().data().all_eq(0)
                       assert fmodel.f_ordered_solvent_t().data().all_eq(0)
+                      fmodel.model_error_ml()
                       ###
                       ### instantiate fmodel only, then use resolution_filter
                       ###
@@ -279,6 +282,8 @@ def test_1(xray_structure):
                       assert fmodel_1.f_ordered_solvent.data()    .all_eq(fmodel_2.f_ordered_solvent.data()    )
                       assert fmodel_1.f_ordered_solvent_w().data().all_eq(fmodel_2.f_ordered_solvent_w().data())
                       assert fmodel_1.f_ordered_solvent_t().data().all_eq(fmodel_2.f_ordered_solvent_t().data())
+                      fmodel_1.model_error_ml()
+                      fmodel_2.model_error_ml()
 
 def run():
   n_elements = 70

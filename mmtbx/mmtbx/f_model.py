@@ -1054,29 +1054,33 @@ class manager(object):
       return alpha, beta
 
   def model_error_ml(self):
-    #XXX needs clean solution
+    #XXX needs clean solution / one more unfinished project
     try:
       fmodel = self.resolution_filter(d_max = 6.0)
       ss = 1./flex.pow2(fmodel.f_obs.d_spacings().data())
       omega  = flex.double()
       save_self_overall_scale = fmodel.overall_scale
       alpha, beta = maxlik.alpha_beta_est_manager(
-                                      f_obs           = fmodel.f_obs,
-                                      f_calc          = fmodel.f_model(),
-                                      test_ref_in_bin = 200,
-                                      flags           = fmodel.r_free_flags.data(),
-                                      interpolation   = True).alpha_beta()
+                      f_obs           = fmodel.f_obs,
+                      f_calc          = fmodel.f_model(),
+                      test_ref_in_bin = self.alpha_beta_params.test_ref_in_bin,
+                      flags           = fmodel.r_free_flags.data(),
+                      interpolation   = True).alpha_beta()
     except:
       fmodel = self
       ss = 1./flex.pow2(fmodel.f_obs.d_spacings().data())
       omega  = flex.double()
       save_self_overall_scale = fmodel.overall_scale
+      print
+      print fmodel.f_obs.data().size(),fmodel.f_model().data().size()
+      print self.f_obs.data().size(),  self.f_model().data().size()
+      print
       alpha, beta = maxlik.alpha_beta_est_manager(
-                                      f_obs           = fmodel.f_obs,
-                                      f_calc          = fmodel.f_model(),
-                                      test_ref_in_bin = 200,
-                                      flags           = fmodel.r_free_flags.data(),
-                                      interpolation   = True).alpha_beta()
+                      f_obs           = fmodel.f_obs,
+                      f_calc          = fmodel.f_model(),
+                      test_ref_in_bin = self.alpha_beta_params.test_ref_in_bin,
+                      flags           = fmodel.r_free_flags.data(),
+                      interpolation   = True).alpha_beta()
 
     fmodel.overall_scale = fmodel.scale_k3_w()
     fmodel.update_core()
