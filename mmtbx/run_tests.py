@@ -26,6 +26,7 @@ def run():
   "$D/mmtbx/examples/f_model_manager.py",
   "$D/mmtbx/bulk_solvent/tst_bulk_solvent_and_scaling_ls.py",
   "$D/mmtbx/bulk_solvent/tst_bulk_solvent_and_scaling_ml.py",
+  "$D/mmtbx/alignment.py"
   )
 
   build_dir = libtbx.env.under_build("mmtbx")
