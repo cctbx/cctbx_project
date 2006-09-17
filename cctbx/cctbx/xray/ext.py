@@ -8,6 +8,13 @@ import sys
 class _scattering_type_registry(
         boost.python.injector, scattering_type_registry):
 
+  def type_count_dict(self):
+    result = {}
+    unique_counts = list(self.unique_counts)
+    for t,i in self.type_index_pairs_as_dict().items():
+      result[t] = unique_counts[i]
+    return result
+
   def sorted_type_index_pairs(self, heaviest_first=True):
     ugs = self.unique_gaussians_as_list()
     pairs = []
