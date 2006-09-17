@@ -1055,7 +1055,7 @@ class manager(object):
 
   def model_error_ml(self):
     #XXX needs clean solution / one more unfinished project
-    if(self.alpha_beta_params.test_ref_in_bin is None):
+    if(self.alpha_beta_params is None):
        test_ref_in_bin = 200
     else:
        test_ref_in_bin = self.alpha_beta_params.test_ref_in_bin
