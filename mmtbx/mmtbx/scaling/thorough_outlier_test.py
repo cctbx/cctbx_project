@@ -24,7 +24,7 @@ def exercise(d_min            = 3.5,
              sf_algorithm     = "fft",
              sf_cos_sin_table = False,
              anomalous_flag   = False,
-             scattering_table = "it1992", 
+             scattering_table = "it1992",
              space_group_info = None):
   space_groups = [ str(space_group_info) ]
   for sg in space_groups:
@@ -105,7 +105,7 @@ def exercise(d_min            = 3.5,
 
 
 def run_call_back(flags, space_group_info):
-  exercise(space_group_info=space_group_info) 
+  exercise(space_group_info=space_group_info)
 
 def run():
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
