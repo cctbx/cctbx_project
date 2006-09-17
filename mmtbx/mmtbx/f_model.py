@@ -1055,6 +1055,10 @@ class manager(object):
 
   def model_error_ml(self):
     #XXX needs clean solution / one more unfinished project
+    if(self.alpha_beta_params.test_ref_in_bin is None):
+       test_ref_in_bin = 200
+    else:
+       test_ref_in_bin = self.alpha_beta_params.test_ref_in_bin
     try:
       fmodel = self.resolution_filter(d_max = 6.0)
       ss = 1./flex.pow2(fmodel.f_obs.d_spacings().data())
@@ -1063,7 +1067,7 @@ class manager(object):
       alpha, beta = maxlik.alpha_beta_est_manager(
                       f_obs           = fmodel.f_obs,
                       f_calc          = fmodel.f_model(),
-                      test_ref_in_bin = self.alpha_beta_params.test_ref_in_bin,
+                      test_ref_in_bin = test_ref_in_bin,
                       flags           = fmodel.r_free_flags.data(),
                       interpolation   = True).alpha_beta()
     except:
@@ -1078,7 +1082,7 @@ class manager(object):
       alpha, beta = maxlik.alpha_beta_est_manager(
                       f_obs           = fmodel.f_obs,
                       f_calc          = fmodel.f_model(),
-                      test_ref_in_bin = self.alpha_beta_params.test_ref_in_bin,
+                      test_ref_in_bin = test_ref_in_bin,
                       flags           = fmodel.r_free_flags.data(),
                       interpolation   = True).alpha_beta()
 
