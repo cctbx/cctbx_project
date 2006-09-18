@@ -255,6 +255,89 @@ Example usage:
 
 """
 
+class xtriage_analyses(object):
+  def __init__(self,
+               miller_obs,
+               miller_calc = None,
+               miller_ref  = None,
+               parameters  = None,
+               text_out    = None,
+               plot_out    = None):
+    self.miller_obs  = miller_obs   # array of observed data, should be intensity or amplitude
+    self.miller_calc = miller_calc  # array if calculated data, need to be given
+    self.miller_ref  = miller_ref   # array with 'reference' data, need not be given.
+                                    # A reference set is for instance a data set with an alternative indexing scheme
+    self.text_out    = text_out     # An object with a write method, such as a multi out or StringIO.
+                                    # If None, sys.stdout will be used
+    self.plot_out    = plot_out     # as above. This will contain some ccp4 style plots. If None, no plots will be made
+
+    self.params = parameters        # this should be a phil object like the master_params define on the top of this file
+    if self.params is None:         # if nothing specified, defaults are used
+      self.params = master_params.fetch(sources=[])
+      self.params = self.params.extract()
+
+    print >> self.text_out
+    print >> self.text_out,"##----------------------------------------------------##"
+    print >> self.text_out,"##                    Basic statistics                ##"
+    print >> self.text_out,"##----------------------------------------------------##"
+    # Do the basic analyses first please
+    self.basic_results = basic_analyses.basic_analyses(
+       self.miller_obs,
+       self.params,
+       out=self.text_out,
+       out_plot=self.plot_out)
+    # outliers are removed, make a new copy
+    self.miller_obs = self.basic_results.miller_array.deep_copy()
+    self.normalised_array = self.basic_results.normalised_miller.deep_copy()
+    self.params =  self.basic_results.phil_object
+
+    print >> self.text_out
+    print >> self.text_out,"##----------------------------------------------------##"
+    print >> self.text_out,"##                   Twinning Analyses                ##"
+    print >> self.text_out,"##----------------------------------------------------##"
+    print >> self.text_out
+    print >> self.text_out
+    print >> self.text_out
+
+    #Do the twinning analyses
+    ## resolution check
+    if (flex.min(self.miller_obs.d_spacings().data())
+        > self.params.scaling.input.parameters.misc_twin_parameters.twin_test_cuts.high_resolution):
+      self.params.scaling.input.xray_data.resolution = flex.min(miller_array.d_spacings().data())
+
+    default_high_reso_limit_wilson_ratio = \
+      self.params.scaling.input.parameters.misc_twin_parameters.twin_test_cuts.high_resolution
+    if default_high_reso_limit_wilson_ratio is None:
+      default_high_reso_limit_wilson_ratio = 0.0
+
+    d_star_sq_high_limit = default_high_reso_limit_wilson_ratio
+    d_star_sq_high_limit = 1.0/((d_star_sq_high_limit+1e-6)**2.0)
+
+    default_low_reso_limit_wilson_ratio = \
+      self.params.scaling.input.parameters.misc_twin_parameters.twin_test_cuts.low_resolution
+
+
+    d_star_sq_low_limit = default_low_reso_limit_wilson_ratio
+    d_star_sq_low_limit = 1.0/((d_star_sq_low_limit+1e-6)**2.0)
+
+    self.twin_results = twin_analyses.twin_analyses(
+      self.miller_obs,
+      d_star_sq_low_limit=d_star_sq_low_limit,
+      d_star_sq_high_limit=d_star_sq_high_limit,
+      normalise=True,
+      out=self.text_out,
+      out_plots=self.plot_out,
+      miller_calc=self.miller_calc,
+      additional_parameters=self.params.scaling.input.parameters.misc_twin_parameters)
+
+    if miller_ref is not None:
+      self.reference_analyses = pair_analyses.reindexing(
+        self.miller_ref,
+        self.miller_obs,
+        file_name=self.params.scaling.input.xray_data.file_name
+      )
+
+
 def run(command_name, args):
 
   if len(args)==0:
@@ -291,6 +374,7 @@ def run(command_name, args):
     reflection_file = None
 
     for arg in args:
+      print phil_objects
       command_line_params = None
       arg_is_processed = False
       if arg == '--quiet':
@@ -339,9 +423,6 @@ def run(command_name, args):
         print >> log, "##----------------------------------------------##"
         print >> log
         raise Sorry("Unknown file format or phil command: %s" % arg)
-
-
-
 
     effective_params = master_params.fetch(sources=phil_objects)
     params = effective_params.extract()
@@ -484,9 +565,6 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
                                                    data=miller_array.data(),
                                                    sigmas=None ).set_observation_type( miller_array )
 
-    print miller_array.sigmas()
-
-
     ## Check if Fcalc label is available
     f_calc_miller = None
     if params.scaling.input.xray_data.calc_labels is not None:
@@ -504,88 +582,8 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
     twin_results = None
 
 
-
-
-    if (miller_array.is_real_array()):
-      print >> log
-      print >> log
-      print >> log, "Symmetry, cell and reflection file content summary"
-      print >> log
-      miller_array.set_info(info=info)
-      miller_array.show_comprehensive_summary(f=log)
-
-      minimal_pass = True
-      twin_pass = True
-      reference_pass = False
-
-      if params.scaling.input.xray_data.reference.data.file_name is not None:
-        reference_pass = True
-
-      ##########################################
-      ## Model support will come
-      ##if params.scaling.xray_data.reference.model is not None:
-      ##  reference_pass is True
-
-
-      print >> log
-      print >> log,"##----------------------------------------------------##"
-      print >> log,"##                    Basic statistics                ##"
-      print >> log,"##----------------------------------------------------##"
-      if minimal_pass: ## this is a bit silly as it always should happen
-
-        basic_results = basic_analyses.basic_analyses(
-          miller_array,
-          params,
-          out=log,
-          out_plot=string_buffer_plots,
-          verbose=verbose)
-        miller_array = basic_results.miller_array.deep_copy()
-        normalised_array = basic_results.normalised_miller.deep_copy()
-        params =  basic_results.phil_object
-
-      if twin_pass:
-        print >> log
-        print >> log,"##----------------------------------------------------##"
-        print >> log,"##                   Twinning Analyses                ##"
-        print >> log,"##----------------------------------------------------##"
-        print >> log
-
-        print >> log
-        print >> log
-      ## resolution check
-        if (flex.min(miller_array.d_spacings().data())
-            > params.scaling.input.parameters.misc_twin_parameters.twin_test_cuts.high_resolution):
-          params.scaling.input.xray_data.resolution = \
-             flex.min(miller_array.d_spacings().data())
-
-        default_high_reso_limit_wilson_ratio = \
-           params.scaling.input.parameters.misc_twin_parameters.twin_test_cuts.high_resolution
-        if default_high_reso_limit_wilson_ratio is None:
-          default_high_reso_limit_wilson_ratio = 0.0
-
-        d_star_sq_high_limit = default_high_reso_limit_wilson_ratio
-        d_star_sq_high_limit = 1.0/((d_star_sq_high_limit+1e-6)**2.0)
-
-        default_low_reso_limit_wilson_ratio = \
-          params.scaling.input.parameters.misc_twin_parameters.twin_test_cuts.low_resolution
-
-
-        d_star_sq_low_limit = default_low_reso_limit_wilson_ratio
-        d_star_sq_low_limit = 1.0/((d_star_sq_low_limit+1e-6)**2.0)
-        #try:
-        twin_results = twin_analyses.twin_analyses(
-            miller_array,
-            d_star_sq_low_limit=d_star_sq_low_limit,
-            d_star_sq_high_limit=d_star_sq_high_limit,
-            normalise=True,
-            out=log,
-            out_plots=string_buffer_plots,
-            verbose=verbose,
-            miller_calc=f_calc_miller,
-            additional_parameters=params.scaling.input.parameters.misc_twin_parameters)
-        #except: pass
-
-    if reference_pass:
+    reference_array = None
+    if params.scaling.input.xray_data.reference.data.file_name is not None:
       # do the reference analyses
 
       # first make a new xray data server
@@ -616,8 +614,6 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
         force_symmetry = True,
         reflection_files=[])
 
-
-
       reference_array =  None
       reference_array = xray_data_server.get_xray_data(
         file_name = params.scaling.input.xray_data.reference.data.file_name,
@@ -642,14 +638,27 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
       elif (reference_array.is_complex_array()):
         reference_array = abs(reference_array)
 
-      reference_analyses = pair_analyses.reindexing(
-        reference_array,
-        miller_array,
-        file_name=params.scaling.input.xray_data.file_name
-        )
+    if (miller_array.is_real_array()):
+      print >> log
+      print >> log
+      print >> log, "Symmetry, cell and reflection file content summary"
+      print >> log
+      miller_array.set_info(info=info)
+      miller_array.show_comprehensive_summary(f=log)
 
+      minimal_pass = True
+      twin_pass = True
+      reference_pass = False
 
+      if params.scaling.input.xray_data.reference.data.file_name is not None:
+        reference_pass = True
 
+      xtriage_results = xtriage_analyses(miller_obs  = miller_array,
+                                         miller_calc = f_calc_miller,
+                                         miller_ref  = reference_array,
+                                         parameters  = params,
+                                         text_out    = log,
+                                         plot_out    = string_buffer )
 
     if params.scaling.input.optional.hklout is not None:
       if params.scaling.input.optional.twinning.action == "detwin":
