@@ -5,9 +5,6 @@
 #include <cctbx/uctbx.h>
 #include <scitbx/array_family/accessors/c_grid.h>
 
-using scitbx::vec3;
-namespace af=scitbx::af;
-
 namespace cctbx { namespace maptbx {
 
 //! Fortran-like nearest integer.
@@ -67,7 +64,7 @@ public:
                            af::const_ref<double, af::c_grid<3> > const& data,
                            double const& rad,
                            double const& shell,
-                           vec3<double> const& site_frac)
+                           scitbx::vec3<double> const& site_frac)
   {
     int nx = data.accessor()[0];
     int ny = data.accessor()[1];

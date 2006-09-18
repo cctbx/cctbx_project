@@ -54,7 +54,7 @@ namespace {
                                 af::const_ref<double, af::c_grid<3> > const&,
                                 double const&,
                                 double const&,
-                                vec3<double> const& >(
+                                scitbx::vec3<double> const& >(
                                    (arg_("unit_cell"),
                                                          arg_("data"),
                                                          arg_("radius"),
