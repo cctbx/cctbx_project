@@ -4,7 +4,7 @@ import boost.python
 ext = boost.python.import_ext("iotbx_pdb_ext")
 from iotbx_pdb_ext import *
 
-from iotbx.pdb.xray_structure import from_pdb as as_xray_structure
+import scitbx.array_family.shared
 import scitbx.stl.set
 from scitbx.python_utils.math_utils import iround
 from libtbx.str_utils import show_string, show_sorted_by_counts
@@ -215,8 +215,11 @@ class _input(boost.python.injector, ext.input):
 
   def xray_structure_simple(self,
         crystal_symmetry=None,
+        weak_symmetry=False,
         unit_cube_pseudo_crystal=False,
+        fractional_coordinates=False,
         use_scale_matrix_if_available=True,
+        min_distance_sym_equiv=0.5,
         scattering_type_exact=False,
         enable_scattering_type_unknown=False,
         atom_names_scattering_type_const
@@ -224,8 +227,11 @@ class _input(boost.python.injector, ext.input):
     return self.xray_structures_simple(
       one_structure_for_each_model=False,
       crystal_symmetry=crystal_symmetry,
+      weak_symmetry=weak_symmetry,
       unit_cube_pseudo_crystal=unit_cube_pseudo_crystal,
+      fractional_coordinates=fractional_coordinates,
       use_scale_matrix_if_available=use_scale_matrix_if_available,
+      min_distance_sym_equiv=min_distance_sym_equiv,
       scattering_type_exact=scattering_type_exact,
       enable_scattering_type_unknown=enable_scattering_type_unknown,
       atom_names_scattering_type_const=atom_names_scattering_type_const)[0]
@@ -233,7 +239,10 @@ class _input(boost.python.injector, ext.input):
   def xray_structures_simple(self,
         one_structure_for_each_model=True,
         crystal_symmetry=None,
+        weak_symmetry=False,
         unit_cube_pseudo_crystal=False,
+        fractional_coordinates=False,
+        min_distance_sym_equiv=0.5,
         use_scale_matrix_if_available=True,
         scattering_type_exact=False,
         enable_scattering_type_unknown=False,
@@ -242,8 +251,14 @@ class _input(boost.python.injector, ext.input):
     from cctbx import xray
     from cctbx import crystal
     assert crystal_symmetry is None or not unit_cube_pseudo_crystal
-    if (crystal_symmetry is None and not unit_cube_pseudo_crystal):
-      crystal_symmetry = self.crystal_symmetry_from_cryst1()
+    if (not unit_cube_pseudo_crystal):
+      cryst1_symmetry = self.crystal_symmetry_from_cryst1()
+      if (crystal_symmetry is None):
+        crystal_symmetry = cryst1_symmetry
+      elif (cryst1_symmetry is not None):
+        crystal_symmetry = cryst1_symmetry.join_symmetry(
+          other_symmetry=crystal_symmetry,
+          force=not weak_symmetry)
     if (crystal_symmetry is None
         or (    crystal_symmetry.unit_cell() is None
             and crystal_symmetry.space_group_info() is None)):
@@ -259,6 +274,16 @@ class _input(boost.python.injector, ext.input):
     if (not unit_cube_pseudo_crystal):
       if (use_scale_matrix_if_available):
         scale_matrix = self.scale_matrix()
+        if (scale_matrix is not None):
+          # Avoid subtle inconsistencies due to rounding errors.
+          # 1.e-6 is the precision of the values on the SCALE records.
+          if (max([abs(s-f) for s,f in zip(
+                     scale_matrix[0],
+                     unit_cell.fractionalization_matrix())]) < 1.e-6):
+            if (scale_matrix[1] != [0,0,0]):
+              scale_matrix[0] = unit_cell.fractionalization_matrix()
+            else:
+              scale_matrix = None
       else:
         scale_matrix = None
       if (scale_matrix is not None):
@@ -271,15 +296,18 @@ class _input(boost.python.injector, ext.input):
       self,
       one_structure_for_each_model,
       unit_cube_pseudo_crystal,
+      fractional_coordinates,
       scattering_type_exact,
       enable_scattering_type_unknown,
       scitbx.stl.set.stl_string(atom_names_scattering_type_const),
       unit_cell,
       scale_r,
       scale_t)
+    special_position_settings = crystal_symmetry.special_position_settings(
+      min_distance_sym_equiv=min_distance_sym_equiv)
     while (loop.next()):
       result.append(xray.structure(
-        crystal_symmetry=crystal_symmetry,
+        special_position_settings=special_position_settings,
         scatterers=loop.scatterers))
     return result
 

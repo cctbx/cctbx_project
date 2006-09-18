@@ -499,9 +499,11 @@ def exercise_xray_structure(use_u_aniso, verbose=0):
         res_name=res_name)
       if (0 or verbose):
         sys.stdout.write(pdb_file)
-      structure_read = iotbx.pdb.as_xray_structure(
-        file_iterator=StringIO(pdb_file),
-        fractional_coordinates=fractional_coordinates)
+      structure_read = iotbx.pdb.input(
+        source_info=None,
+        lines=flex.std_string(pdb_file.splitlines())).xray_structure_simple(
+          fractional_coordinates=fractional_coordinates,
+          use_scale_matrix_if_available=False)
       f_read = abs(f_abs.structure_factors_from_scatterers(
         xray_structure=structure_read, algorithm="direct").f_calc())
       regression = flex.linear_regression(f_abs.data(), f_read.data())

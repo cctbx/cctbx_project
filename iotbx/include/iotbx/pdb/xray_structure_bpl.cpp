@@ -25,6 +25,7 @@ namespace {
                bool,
                bool,
                bool,
+               bool,
                std::set<std::string> const&,
                cctbx::uctbx::unit_cell const&,
                scitbx::mat3<double> const&,

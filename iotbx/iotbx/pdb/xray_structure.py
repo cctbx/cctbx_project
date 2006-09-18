@@ -1,18 +1,14 @@
 import iotbx.pdb
-from iotbx.pdb import parser
-from iotbx.pdb import cryst1_interpretation
-from iotbx.pdb import scattering_type_interpr
 from cctbx import xray
-from cctbx import crystal
-from cctbx.eltbx import tiny_pse
 from cctbx import adptbx
-from cctbx.array_family import flex
 from cStringIO import StringIO
 
-def xray_structure_as_pdb_file(self, remark=None, remarks=[],
-                                     fractional_coordinates=False,
-                                     res_name=None,
-                                     connect=None):
+def as_pdb_file(self,
+      remark,
+      remarks,
+      fractional_coordinates,
+      res_name,
+      connect):
   if (remark is not None):
     remarks.insert(0, remark)
   s = StringIO()
@@ -75,112 +71,3 @@ def xray_structure_as_pdb_file(self, remark=None, remarks=[],
       print >> s, l
   print >> s, "END"
   return s.getvalue()
-
-xray.structure.as_pdb_file = xray_structure_as_pdb_file
-
-def from_pdb(file_name=None, file_iterator=None, pdb_records=None,
-             crystal_symmetry=None, force_symmetry=False,
-             ignore_atom_element_q=True,
-             scan_atom_element_columns=True,
-             fractional_coordinates=False,
-             min_distance_sym_equiv=0.5,
-             keep_scatterer_pdb_records=False):
-  assert [file_name, file_iterator, pdb_records].count(None) == 2
-  if (pdb_records is None):
-    if (file_iterator is None):
-      file_iterator = open(file_name)
-    pdb_records = parser.collect_records(
-      raw_records=file_iterator,
-      ignore_master=True)
-  cryst1_symmetry = None
-  for record in pdb_records:
-    if (record.record_name.startswith("CRYST1")):
-      try:
-        cryst1_symmetry = cryst1_interpretation.crystal_symmetry(
-          cryst1_record=record)
-      except: pass
-      break
-  if (cryst1_symmetry is not None):
-    crystal_symmetry = cryst1_symmetry.join_symmetry(
-      other_symmetry=crystal_symmetry,
-      force=force_symmetry)
-  assert crystal_symmetry is not None, "Unknown crystal symmetry."
-  assert crystal_symmetry.unit_cell() is not None, "Unknown unit cell."
-  assert crystal_symmetry.space_group_info() is not None,"Unknown space group."
-  if (scan_atom_element_columns):
-    have_useful_atom_element_columns = (
-      scattering_type_interpr.scan_atom_element_columns(pdb_records)
-        .n_uninterpretable == 0)
-  else:
-    have_useful_atom_element_columns = None
-  structure = xray.structure(
-    special_position_settings=crystal.special_position_settings(
-      crystal_symmetry=crystal_symmetry,
-      min_distance_sym_equiv=min_distance_sym_equiv))
-  scatterer = None
-  scatterer_pdb_record = None
-  if (keep_scatterer_pdb_records):
-    scatterer_pdb_records = []
-  prev_record = None
-  for record in pdb_records:
-    if (record.record_name in ("ATOM", "HETATM")):
-      if (scatterer is not None):
-        try: structure.add_scatterer(scatterer)
-        except RuntimeError, e:
-          raise RuntimeError("%s%s" % (prev_record.error_prefix(), str(e)))
-        if (keep_scatterer_pdb_records):
-          scatterer_pdb_records.append(scatterer_pdb_record)
-      if (ignore_atom_element_q
-          and (record.element == " Q" or record.name[1] == "Q")):
-        scatterer = None
-        scatterer_pdb_record = None
-      else:
-        if (fractional_coordinates):
-          site=record.coordinates
-        else:
-          site=structure.unit_cell().fractionalize(record.coordinates)
-        scatterer = xray.scatterer(
-          label="%s%03d" % (record.name, record.serial),
-          site=site,
-          b=record.tempFactor,
-          occupancy=record.occupancy,
-          scattering_type=scattering_type_interpr.from_pdb_atom_record(
-            record, have_useful_atom_element_columns))
-        scatterer_pdb_record = record
-    elif (record.record_name == "SIGATM"):
-      if (not prev_record.record_name in ("ATOM", "HETATM")):
-        record.raise_FormatError(
-          "SIGATM record without preceeding ATOM or HETATM record.")
-      if (prev_record.raw[7:27] != record.raw[7:27]):
-        record.raise_FormatError(
-          "SIGATM record does not match preceeding %s record."
-            % prev_record.record_name)
-    elif (record.record_name == "ANISOU"):
-      if (not prev_record.record_name in ("ATOM", "HETATM", "SIGATM")):
-        record.raise_FormatError(
-          "ANISOU record without preceeding ATOM or HETATM record.")
-      if (prev_record.raw[7:27] != record.raw[7:27]):
-        record.raise_FormatError(
-          "ANISOU record does not match preceeding %s record."
-            % prev_record.record_name)
-      if (scatterer is not None):
-        scatterer = scatterer.customized_copy(
-          u=adptbx.u_cart_as_u_star(structure.unit_cell(), record.Ucart))
-    elif (scatterer is not None):
-      try: structure.add_scatterer(scatterer)
-      except RuntimeError, e:
-        raise RuntimeError("%s%s" % (prev_record.error_prefix(), str(e)))
-      if (keep_scatterer_pdb_records):
-        scatterer_pdb_records.append(scatterer_pdb_record)
-      scatterer = None
-      scatterer_pdb_record = None
-    prev_record = record
-  if (scatterer is not None):
-    try: structure.add_scatterer(scatterer)
-    except RuntimeError, e:
-      raise RuntimeError("%s%s" % (prev_record.error_prefix(), str(e)))
-    if (keep_scatterer_pdb_records):
-      scatterer_pdb_records.append(scatterer_pdb_record)
-  if (keep_scatterer_pdb_records):
-    structure.scatterer_pdb_records = scatterer_pdb_records
-  return structure

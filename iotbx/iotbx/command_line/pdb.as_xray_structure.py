@@ -1,5 +1,3 @@
-#! /usr/bin/env python
-
 from iotbx import pdb
 from iotbx.option_parser import iotbx_option_parser
 from libtbx import easy_pickle
@@ -10,10 +8,10 @@ def run(args):
     usage="iotbx.pdb.as_xray_structure [options] pdb_file ...",
     description="Example: iotbx.pdb.as_xray_structure pdb1ab1.ent")
     .enable_symmetry_comprehensive()
-    .option(None, "--force_symmetry",
+    .option(None, "--weak_symmetry",
       action="store_true",
       default=False,
-      help="symmetry on command line is stronger than symmetry found in files")
+      help="symmetry on command line is weaker than symmetry found in files")
     .option("-v", "--verbose",
       action="store_true",
       default=False,
@@ -30,10 +28,9 @@ def run(args):
   for file_name in command_line.args:
     print "file_name:", file_name
     sys.stdout.flush()
-    structure = pdb.as_xray_structure(
-      file_name=file_name,
+    structure = pdb.input(file_name=file_name).xray_structure_simple(
       crystal_symmetry=command_line.symmetry,
-      force_symmetry=command_line.options.force_symmetry)
+      weak_symmetry=command_line.options.weak_symmetry)
     structure.show_summary()
     structure.scattering_type_registry().show(show_gaussians=False)
     if (command_line.options.verbose):
@@ -51,7 +48,8 @@ def run(args):
       pickle_file_name += ".pickle"
     if (len(all_structures) == 1):
       all_structures = all_structures[0]
-    print
+    else:
+      print
     print "Writing all xray structures to file:", pickle_file_name
     easy_pickle.dump(pickle_file_name, all_structures)
     print

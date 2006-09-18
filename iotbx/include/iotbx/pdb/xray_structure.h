@@ -13,6 +13,7 @@ namespace iotbx { namespace pdb {
     protected:
       boost::shared_ptr<input> self_;
       bool unit_cube_pseudo_crystal_;
+      bool fractional_coordinates_;
       bool scattering_type_exact_;
       bool enable_scattering_type_unknown_;
       std::set<std::string> atom_names_scattering_type_const_;
@@ -27,6 +28,7 @@ namespace iotbx { namespace pdb {
         boost::shared_ptr<input> const& self,
         bool one_structure_for_each_model,
         bool unit_cube_pseudo_crystal,
+        bool fractional_coordinates,
         bool scattering_type_exact,
         bool enable_scattering_type_unknown,
         std::set<std::string> const& atom_names_scattering_type_const,
@@ -36,6 +38,7 @@ namespace iotbx { namespace pdb {
       :
         self_(self),
         unit_cube_pseudo_crystal_(unit_cube_pseudo_crystal),
+        fractional_coordinates_(fractional_coordinates),
         scattering_type_exact_(scattering_type_exact),
         enable_scattering_type_unknown_(enable_scattering_type_unknown),
         atom_names_scattering_type_const_(atom_names_scattering_type_const),
@@ -51,6 +54,7 @@ namespace iotbx { namespace pdb {
         atom(self_->atoms().begin()),
         scatterer("", cctbx::fractional<>(0,0,0), 0, 0, "", 0, 0)
       {
+        CCTBX_ASSERT(!use_scale_matrix || !fractional_coordinates);
         if (!one_structure_for_each_model) model_range.skip_to_last();
       }
 
@@ -76,7 +80,7 @@ namespace iotbx { namespace pdb {
           scatterers.reserve(model_range.size);
           for(;i_atom!=model_range.end;i_atom++,ial++,atom++) {
             scatterer.label = ial->pdb_format();
-            if (unit_cube_pseudo_crystal_) {
+            if (unit_cube_pseudo_crystal_ || fractional_coordinates_) {
               scatterer.site = atom->data->xyz;
             }
             else if (!use_scale_matrix) {
