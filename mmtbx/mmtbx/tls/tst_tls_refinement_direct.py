@@ -19,7 +19,7 @@ def run(n_macro_cycles):
   if (pdb_file is None):
     print "Skipping run(): input file not available"
     return
-  xray_structure = pdb.as_xray_structure(file_name = pdb_file)
+  xray_structure = pdb.input(file_name=pdb_file).xray_structure_simple()
   stage_1 = pdb.interpretation.stage_1(file_name   = pdb_file)
   xray_structure.show_summary()
 

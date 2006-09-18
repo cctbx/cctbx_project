@@ -638,7 +638,7 @@ def scale_from_ml(d_min = 2.2,
   if (pdb_file is None):
     print "Skipping scale_from_ml(): input file not available"
     return
-  xray_structure = pdb.as_xray_structure(pdb_file)
+  xray_structure = pdb.input(file_name=pdb_file).xray_structure_simple()
   f_calc = xray_structure.structure_factors(d_min = d_min,
                                        anomalous_flag = False).f_calc()
   ss = 1./flex.pow2(f_calc.d_spacings().data()) / 4.

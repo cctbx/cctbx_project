@@ -11,7 +11,7 @@ def calculate_fobs(resolution   = 1.0,
                    sf_algorithm = "direct"):
   pdb_file = libtbx.env.find_in_repositories(
                               relative_path="regression/pdb/enk_gbr.pdb", test=os.path.isfile)
-  xray_structure = pdb.as_xray_structure(pdb_file)
+  xray_structure = pdb.input(file_name=pdb_file).xray_structure_simple()
   xray_structure.scattering_type_registry(table = "wk1995")
   f_calc = xray_structure.structure_factors(
                                         d_min          = resolution,
