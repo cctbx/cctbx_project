@@ -5,22 +5,10 @@
 #include <cctbx/maptbx/eight_point_interpolation.h>
 #include <scitbx/boost_python/utils.h>
 #include <boost/python/module.hpp>
+#include <boost/python/class.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/overloads.hpp>
 #include <boost/python/args.hpp>
-
-
-#include <cctbx/boost_python/flex_fwd.h>
-
-#include <boost/python/module.hpp>
-#include <boost/python/class.hpp>
-#include <boost/python/def.hpp>
-#include <boost/python/args.hpp>
-#include <mmtbx/tls/tls.h>
-#include <scitbx/array_family/boost_python/shared_wrapper.h>
-#include <boost/python/return_value_policy.hpp>
-#include <boost/python/return_by_value.hpp>
-
 
 namespace cctbx { namespace maptbx { namespace boost_python {
 
