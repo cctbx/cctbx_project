@@ -835,7 +835,7 @@ class set(crystal.symmetry):
                              mandatory_factors=None,
                              max_prime=5,
                              assert_shannon_sampling=True):
-    if (d_min is None): d_min = self.d_min()
+    if (d_min is None and grid_step is None): d_min = self.d_min()
     return maptbx.crystal_gridding(
       unit_cell=self.unit_cell(),
       d_min=d_min,
