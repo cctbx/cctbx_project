@@ -856,3 +856,17 @@ class structure(crystal.special_position_settings):
       scatterers=self.scatterers())
     result.set_sites_cart(sites_cart)
     return result
+
+  def as_pdb_file(self,
+        remark=None,
+        remarks=[],
+        fractional_coordinates=False,
+        res_name=None,
+        connect=None):
+    import iotbx.pdb.xray_structure
+    return iotbx.pdb.xray_structure.as_pdb_file(
+      self=self,
+      remark=remark,
+      remarks=remarks,
+      fractional_coordinates=fractional_coordinates,
+      res_name=res_name, connect=connect)
