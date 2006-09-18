@@ -142,6 +142,9 @@ class group_u_iso_minimizer(object):
     self.u_min = copy.deepcopy(self.u_initial)
     self.x = self.pack(self.u_min)
     self.n = self.x.size()
+    if (run_finite_differences_test):
+      self.buffer_ana = []
+      self.buffer_fin = []
     self.minimizer = lbfgs.run(
                target_evaluator = self,
                termination_params = lbfgs.termination_parameters(
@@ -151,6 +154,15 @@ class group_u_iso_minimizer(object):
                               )
     self.compute_functional_and_gradients()
     del self.x
+    if (run_finite_differences_test):
+      print "analytical gradients:", self.buffer_ana
+      print "finite differences:  ", self.buffer_fin
+      if (len(self.buffer_ana) >= 3):
+        corr = flex.linear_correlation(
+          flex.double(self.buffer_ana),
+          flex.double(self.buffer_fin))
+        assert corr.is_well_defined()
+        assert corr.coefficient() > 1-1.e-5
 
   def pack(self, u):
     return flex.double(tuple(u))
@@ -174,7 +186,7 @@ class group_u_iso_minimizer(object):
     self.f = tg_obj.target()
     ##########################################################################
     if(self.run_finite_differences_test):
-       eps = 0.000001
+       eps = 1.e-5
        fmodel = self.fmodel_copy.deep_copy()
        u = []
        for i_seq, ui in enumerate(self.u_min):
@@ -216,8 +228,9 @@ class group_u_iso_minimizer(object):
          ui = abs(adptbx.u_as_b(ui))
          if(ui < 0.5 or ui > 70.0): compare = False
        if(compare):
-          assert approx_equal(grads[0], (t1-t2)/(eps*2))
-    self.g = flex.double(tuple(grads))
+          self.buffer_ana.append(grads[0])
+          self.buffer_fin.append((t1-t2)/(eps*2))
+    self.g = flex.double(grads)
     return self.f, self.g
 
 
