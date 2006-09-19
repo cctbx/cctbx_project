@@ -22,6 +22,19 @@ def exercise_scatterer():
   assert xray.scatterer(scattering_type="x").element_symbol() is None
 
 def exercise_structure():
+  cs1 = crystal.symmetry((10, 20, 30, 90, 90, 90), "P 1")
+  sp1 = crystal.special_position_settings(cs1)
+  scatterers1 = flex.xray_scatterer((
+    xray.scatterer("o", (0.5, 0, 0)),
+    xray.scatterer("c", (0, 0, 0))))
+  xs1 = xray.structure(sp1, scatterers1)
+  cs2 = crystal.symmetry((10, 20, 30, 90, 90, 90), "P 1")
+  sp2 = crystal.special_position_settings(cs2)
+  scatterers1 = flex.xray_scatterer((
+    xray.scatterer("o", (0, 0, 0)),
+    xray.scatterer("c", (0,   0, .5))))
+  xs2 = xray.structure(sp1, scatterers1)
+  assert approx_equal(list(xs1.distances(other = xs2)), [5,15])
   cs = crystal.symmetry((5.01, 5.01, 5.47, 90, 90, 120), "P 62 2 2")
   sp = crystal.special_position_settings(cs)
   scatterers = flex.xray_scatterer((
