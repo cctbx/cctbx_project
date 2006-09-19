@@ -36,22 +36,29 @@ class error_swap(object):
   def __init__(self,
                miller_obs,
                miller_calc,
+               miller_mock,
                n_reso_bins=25,
                n_e_bins = 20,
                thres=3.0):
     self.miller_obs = miller_obs
     self.miller_calc = miller_calc
+    self.miller_mock = miller_mock
 
     # take a common set to avoid possible problems
     self.miller_calc = self.miller_calc.common_set( self.miller_obs )
+    self.miller_mock = self.miller_mock.common_set( self.miller_obs )
+
 
     # we need to normalise the data, both fobs and fcalc
     norma_obs_obj = absolute_scaling.kernel_normalisation( self.miller_obs,auto_kernel=True )
     norma_calc_obj = absolute_scaling.kernel_normalisation( self.miller_calc,auto_kernel=True )
-    self.norma_obs  = norma_obs_obj.normalised_miller_dev_eps.f_sq_as_f()           # normaliuzed data (dived by eps)
-    self.norma_calc = norma_calc_obj.normalised_miller_dev_eps.f_sq_as_f()          # as above, forcalculated data
+    norma_mock_obj = absolute_scaling.kernel_normalisation( self.miller_mock,auto_kernel=True )
+    self.norma_obs  = norma_obs_obj.normalised_miller_dev_eps.f_sq_as_f()           # normalized data (dived by eps)
+    self.norma_calc = norma_calc_obj.normalised_miller_dev_eps.f_sq_as_f()          # as above, for calculated data
+    self.norma_mock = norma_mock_obj.normalised_miller_dev_eps.f_sq_as_f()          # as above, for mock data
     self.norma_obs_const =  norma_obs_obj.normalizer_for_miller_array   # the divisor (no eps)
-    self.norma_calc_const = norma_calc_obj.normalizer_for_miller_array # as above
+    self.norma_calc_const = norma_calc_obj.normalizer_for_miller_array  # as above
+    self.norma_mock_const = norma_mock_obj.normalizer_for_miller_array  # as above
 
     self.thres = thres
 
@@ -60,9 +67,12 @@ class error_swap(object):
     # first set up a binner please
     self.miller_obs.setup_binner(n_bins = self.n_reso_bins )
     self.miller_calc.use_binner_of( self.miller_obs )
+    self.miller_mock.use_binner_of( self.miller_obs )
     self.norma_obs.use_binner_of( self.miller_obs )
-    self.new_norma_obs = self.norma_obs.deep_copy().set_observation_type( self.norma_obs )
     self.norma_calc.use_binner_of( self.miller_calc )
+    self.norma_mock.use_binner_of( self.miller_mock )
+
+    self.new_norma_obs = self.norma_obs.deep_copy().set_observation_type( self.norma_obs )
 
     self.new_obs = None
     self.swap_it()
@@ -80,16 +90,18 @@ class error_swap(object):
       selection = self.norma_obs.binner().bin_indices() == ibin
       tmp_norm_obs = self.norma_obs.select( selection )
       tmp_norm_calc = self.norma_calc.select( selection )
+      tmp_norm_mock = self.norma_mock.select( selection )
       # we now have a set of e values, send both arrays of to another routine
       new_e,new_se = self.do_something_clever( tmp_norm_obs.data(),
                                                tmp_norm_obs.sigmas(),
-                                               tmp_norm_calc.data() )
+                                               tmp_norm_calc.data(),
+                                               tmp_norm_mock.data() )
       self.new_norma_obs = self.norma_obs.customized_copy(
         data = self.norma_obs.data().set_selected(selection,new_e),
         sigmas = self.norma_obs.sigmas().set_selected(selection,new_se)
       )
 
-  def do_something_clever(self,obs,sobs,calc):
+  def do_something_clever(self,obs,sobs,calc,mock):
     # first get the sort order
     # sort on the calculated data please
     sort_order = flex.sort_permutation( calc )
@@ -98,8 +110,9 @@ class error_swap(object):
     sorted_obs  = obs.select(sort_order)
     sorted_sobs = sobs.select(sort_order)
     sorted_calc = calc.select(sort_order)
+    sorted_mock = mock.select(sort_order)
 
-    log_calc = flex.log(sorted_calc)
+    log_calc = flex.log(sorted_mock)
     deltas   = flex.log(sorted_obs) - flex.log(sorted_calc)
 
     old_deltas = deltas.deep_copy()
@@ -216,6 +229,10 @@ simul_utils{
       file_name=None
       .type=path
     }
+    mock_model{
+      file_name=None
+      .type=path
+    }
   }
   output{
     logfile=simul.log
@@ -233,7 +250,7 @@ mmtbx.simulate_data:
 Allows one to quickly simulate data 'experimental' data with similar
 Fobs-Fcalc distribution as in the given model/data pair.
 
-The keywords are sumarized below:
+The keywords are sumarized below and should be self explanatory:
 
 simul_utils{
   input{
@@ -246,12 +263,33 @@ simul_utils{
     model{
       file_name=None
     }
+    mock_model{
+      file_name=None
+    }
   }
   output{
     logfile=simul.log
     hklout=simul.mtz
   }
+}
 
+The main purpose of this file is to generate data with errors that look real.
+This is what is done:
+1. The pdb file 'model.file_name' is scaled to the observed data 'xray_data.file_name'
+   (Fcalc and Fobs are now available and on the same scale)
+2. Structure factors are computed for 'mock_model.file_name' with same bulk solvent
+   parameters as 'model.file_name' (call this Fmock)
+3a. For each resolution bin, generate about 20 E value bins.
+3b. In each E value bin, compute ratio=Fobs/Fcalc (or log Fobs - log Fcalc so you will)
+3c. make a random permuation of these ratios log differences (call this array random_ratio)
+3d. Fmockobs = F_mock*random_ratio
+4.  Write out Fmockobs
+
+The data generated in this manner has similar F/sigF (the sigmas are permuted along with the ratios)
+and R value properties.
+
+If no mock model is supplied, the model will be the mock model.
+The mock model is supposed to be in the same unit cell/spacegroup (this is enforced).
 
   """
 
@@ -435,13 +473,39 @@ def simul_utils(args):
     f_model_object.update_solvent_and_scale(out=log)
     fmodel = abs( f_model_object.f_model() ).set_observation_type( miller_array )
 
+    mockfmodel = None
+    if params.simul_utils.input.mock_model.file_name is not None:
+      print >> log, "Reading in mock model"
+      print >> log, "====================="
+      mock_model = xray_structure.from_pdb(
+        file_name=params.simul_utils.input.mock_model.file_name,
+        crystal_symmetry=phil_xs,
+        force_symmetry=True)
+      mock_f_model = f_model.manager(
+        f_obs = miller_array,
+        r_free_flags = free_flags,
+        xray_structure = mock_model )
+
+      mock_f_model.update(
+        k_sol  = f_model_object.k_sol() ,
+        b_sol  = f_model_object.b_sol() ,
+        b_cart = f_model_object.b_cart()
+      )
+      mockfmodel = abs( mock_f_model.f_model() ).set_observation_type( miller_array )
+    else:
+      mockfmodel = fmodel.deep_copy()
+
+
+
+
     print >> log, "Making new data"
     print >> log, "==============="
     print >> log
     print >> log
 
     new_data_builder = error_swap( miller_array,
-                                   fmodel )
+                                   fmodel,
+                                   mockfmodel )
     new_data = new_data_builder.new_obs
     # we now have to write the data actually
 
