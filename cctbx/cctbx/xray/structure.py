@@ -225,19 +225,26 @@ class structure(crystal.special_position_settings):
        raise RuntimeError("models must be exactly aligned and of equal size.")
     return flex.mean(flex.sqrt((s1 - s2).dot()))
 
+  def distances(self, other):
+    s1 = self.sites_cart()
+    s2 = other.sites_cart()
+    if(s1.size() != s2.size()):
+       raise RuntimeError("models must be exactly aligned and of equal size.")
+    return flex.sqrt((s1 - s2).dot())
+
   def max_distance(self, other):
     s1 = self.sites_cart()
     s2 = other.sites_cart()
     if(s1.size() != s2.size()):
        raise RuntimeError("models must be exactly aligned and of equal size.")
-    return flex.max(flex.sqrt((s1 - s2).dot()))
+    return flex.max(self.distances(other = other))
 
   def min_distance(self, other):
     s1 = self.sites_cart()
     s2 = other.sites_cart()
     if(s1.size() != s2.size()):
        raise RuntimeError("models must be exactly aligned and of equal size.")
-    return flex.min(flex.sqrt((s1 - s2).dot()))
+    return flex.min(self.distances(other = other))
 
   def randomize_adp(self, random_u_iso_scale=1.0, random_u_cart_scale=1.0):
     for sc in self._scatterers:
