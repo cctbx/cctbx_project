@@ -18,7 +18,7 @@ import iotbx.phil
 from iotbx import reflection_file_reader
 from iotbx import reflection_file_utils
 from iotbx import crystal_symmetry_from_any
-from iotbx.pdb import xray_structure
+from iotbx import pdb
 import mmtbx.scaling
 from mmtbx.scaling import absolute_scaling
 from mmtbx.scaling import matthews, twin_analyses
@@ -449,10 +449,9 @@ def simul_utils(args):
     #--------------------------------------------------------------------
     # Step 2: get an xray structure from the PDB file
     #
-    model = xray_structure.from_pdb(
-      file_name=params.simul_utils.input.model.file_name,
-      crystal_symmetry=phil_xs,
-      force_symmetry=True)
+    model = pdb.input(file_name=params.simul_utils.input.model.file_name).xray_structure_simple(
+                      crystal_symmetry=phil_xs,
+                      )
     print >> log, "Atomic model summary"
     print >> log, "===================="
     model.show_summary()
@@ -477,10 +476,10 @@ def simul_utils(args):
     if params.simul_utils.input.mock_model.file_name is not None:
       print >> log, "Reading in mock model"
       print >> log, "====================="
-      mock_model = xray_structure.from_pdb(
-        file_name=params.simul_utils.input.mock_model.file_name,
-        crystal_symmetry=phil_xs,
-        force_symmetry=True)
+      print >> log
+      print >> log
+      mock_model = pdb.input(file_name=params.simul_utils.input.mock_model.file_name).xray_structure_simple(
+                             crystal_symmetry=phil_xs)
       mock_f_model = f_model.manager(
         f_obs = miller_array,
         r_free_flags = free_flags,
