@@ -1,3 +1,5 @@
+from scitbx.array_family import flex
+from libtbx import easy_pickle
 import libtbx.load_env
 import array
 from math import floor
@@ -37,11 +39,7 @@ class NDimTable:
             else: ndt.doWrap.append(False)
             ndt.wBin.append((ndt.maxVal[i] - ndt.minVal[i]) / ndt.nBins[i])
         #print ndt.minVal, ndt.maxVal, ndt.nBins, ndt.doWrap, ndt.wBin
-        nEntries = 1
-        for i in range(ndt.nDim): nEntries *= ndt.nBins[i]
-        ndt.lookupTable = array.array('f') # 4-byte floats
-        # This appears to be the only way of setting the initial size of the array??
-        for i in range(nEntries): ndt.lookupTable.append(0)
+        ndt.lookupTable = flex.float(flex.grid(ndt.nBins), 0)
         if re.search(r'first', infile.readline()): valueFirst = True
         else: valueFirst = False
         #print valueFirst
@@ -95,12 +93,17 @@ class NDimTable:
         else: return iBin
 
 def run():
-  rotamer_data_dir = libtbx.env.find_in_repositories("rotamer_data")
-  ndt = NDimTable.createFromText(os.path.join(
-    rotamer_data_dir, "rota500-lys.data"))
-  # Lys takes 10 sec in Java from text, 47 sec in Python
-  #ndt = NDimTable.createFromNDFT("/Users/ian/javadev/chiropraxis/resource/chiropraxis/rotarama/lys.ndft")
-  # binary format is > 10x faster in Java
+  pickle_file = "/var/tmp/rota500-lys.pickle"
+  if (not os.path.isfile(pickle_file)):
+    rotamer_data_dir = libtbx.env.find_in_repositories("rotamer_data")
+    ndt = NDimTable.createFromText(os.path.join(
+      rotamer_data_dir, "rota500-lys.data"))
+    # Lys takes 10 sec in Java from text, 47 sec in Python
+    #ndt = NDimTable.createFromNDFT("/Users/ian/javadev/chiropraxis/resource/chiropraxis/rotarama/lys.ndft")
+    # binary format is > 10x faster in Java
+    easy_pickle.dump(file_name=pickle_file, obj=ndt)
+  else:
+    ndt = easy_pickle.load(file_name=pickle_file)
 
 if (__name__ == "__main__"):
   run()
