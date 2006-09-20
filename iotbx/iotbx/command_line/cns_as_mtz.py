@@ -1,6 +1,7 @@
 import iotbx.cns.reflection_reader
 from iotbx.option_parser import iotbx_option_parser
 import sys, os
+from iotbx import mtz
 
 def run(args):
   if (len(args) == 0): args = ["--help"]
@@ -44,6 +45,24 @@ def run(args):
     file_handle=open(cns_file_name, "r"))
   if (not command_line.options.quiet):
     reflection_file.show_summary()
+  miller_arrays = reflection_file.as_miller_arrays(
+                                             crystal_symmetry=crystal_symmetry)
+  mtz_dataset = None
+  for miller_array in miller_arrays:
+    if (mtz_dataset is None):
+      mtz_dataset = miller_array.as_mtz_dataset(
+        column_root_label=miller_array.info().labels[0])
+    else:
+      mtz_dataset.add_miller_array(
+        miller_array=miller_array,
+        column_root_label=miller_array.info().labels[0])
+  mtz_object = mtz_dataset.mtz_object()
+  mtz_object.show_summary()
+  if(cns_file_name.count(".") == 1):
+     mtz_file_name = cns_file_name[:cns_file_name.index(".")]
+  mtz_file_name += ".mtz"
+  print "Writing MTZ file: ",mtz_file_name
+  mtz_object.write(mtz_file_name)
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])
