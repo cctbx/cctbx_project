@@ -527,7 +527,7 @@ def exercise_9(fmodel,
 
     fmodel.update_solvent_and_scale(params = params)
     assert_result(fmodel, k_sol, b_sol, b_cart, f_obs, r_free_flags,
-                  tk = 1.e-3, tb = 1.e-3, tu = 1.e-6)
+                  tk = 1.e-3, tb = 2.e-3, tu = 1.e-6)
     print "OK: exercise_9:      ",format_cpu_times()
 
 def exercise_10(fmodel,
@@ -568,7 +568,7 @@ def exercise_10(fmodel,
 
     fmodel.update_solvent_and_scale(params = params)
     assert_result(fmodel, k_sol, b_sol, b_cart, f_obs, r_free_flags,
-                  tk = 1.e-6, tb = 1.e-2, tu = 1.e-6)
+                  tk = 3.e-6, tb = 1.e-2, tu = 1.e-6)
     print "OK: exercise_10:     ",format_cpu_times()
 
 def exercise_11(fmodel,
