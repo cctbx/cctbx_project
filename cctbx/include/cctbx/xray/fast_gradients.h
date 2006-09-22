@@ -31,7 +31,7 @@ namespace cctbx { namespace xray {
           FloatType const& u_iso,
           FloatType const& u_extra)
         :
-          base_t(exp_table, gaussian, fp, fdp, w, u_iso, u_extra),
+          base_t(exp_table, gaussian, fp, fdp, w, u_iso, u_extra, true),
           i_const_term(gaussian.n_terms())
         {
           //if (scf.grad_u_iso() || scf.grad_occupancy() || scf.grad_fp() || scf.grad_fdp()) {
@@ -83,7 +83,7 @@ namespace cctbx { namespace xray {
           scitbx::sym_mat3<FloatType> const& u_cart,
           FloatType const& u_extra)
         :
-          base_t(exp_table, gaussian, fp, fdp, w, u_cart, u_extra),
+          base_t(exp_table, gaussian, fp, fdp, w, u_cart, u_extra, true),
           i_const_term(gaussian.n_terms())
         {
          //XXX re-think this (I mean "use_u_" usage) ?

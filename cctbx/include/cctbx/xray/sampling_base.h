@@ -224,7 +224,8 @@ namespace cctbx { namespace xray {
           FloatType const& fdp,
           FloatType const& w,
           FloatType const& u_iso,
-          FloatType const& u_extra)
+          FloatType const& u_extra,
+          bool gradient_calculations=false)
         :
           exp_table_(&exp_table),
           anisotropic_flag_(false),
@@ -238,13 +239,21 @@ namespace cctbx { namespace xray {
               w * ti.a, ti.b + b_incl_extra,
               as_real_[i], bs_real_[i]);
           }
-          isotropic_3d_gaussian_fourier_transform(
-            w * (gaussian.c() + fp), b_incl_extra,
-            as_real_[i], bs_real_[i]);
-          if (as_real_[i] != 0) n_rho_real_terms++;
-          isotropic_3d_gaussian_fourier_transform(
-            w * fdp, b_incl_extra,
-            as_imag_, bs_imag_);
+          FloatType c_fp = gaussian.c() + fp;
+          if (c_fp != 0 || gradient_calculations) {
+            isotropic_3d_gaussian_fourier_transform(
+              w * c_fp, b_incl_extra,
+              as_real_[i], bs_real_[i]);
+            n_rho_real_terms++;
+          }
+          if (fdp != 0 || gradient_calculations) {
+            isotropic_3d_gaussian_fourier_transform(
+              w * fdp, b_incl_extra,
+              as_imag_, bs_imag_);
+          }
+          else {
+            as_imag_ = 0;
+          }
         }
 
         gaussian_fourier_transformed(
@@ -254,7 +263,8 @@ namespace cctbx { namespace xray {
           FloatType const& fdp,
           FloatType const& w,
           scitbx::sym_mat3<FloatType> const& u_cart,
-          FloatType const& u_extra)
+          FloatType const& u_extra,
+          bool gradient_calculations=false)
         :
           exp_table_(&exp_table),
           anisotropic_flag_(true),
@@ -267,15 +277,23 @@ namespace cctbx { namespace xray {
               w * ti.a, compose_anisotropic_b_all(ti.b, u_extra, u_cart),
               as_real_[i], aniso_bs_real_[i]);
           }
-          anisotropic_3d_gaussian_fourier_transform(
-            w * (gaussian.c() + fp),
-            compose_anisotropic_b_all(0, u_extra, u_cart),
-            as_real_[i], aniso_bs_real_[i]);
-          if (as_real_[i] != 0) n_rho_real_terms++;
-          anisotropic_3d_gaussian_fourier_transform(
-            w * fdp,
-            compose_anisotropic_b_all(0, u_extra, u_cart),
-            as_imag_, aniso_bs_imag_);
+          FloatType c_fp = gaussian.c() + fp;
+          if (c_fp != 0 || gradient_calculations) {
+            anisotropic_3d_gaussian_fourier_transform(
+              w * c_fp,
+              compose_anisotropic_b_all(0, u_extra, u_cart),
+              as_real_[i], aniso_bs_real_[i]);
+            n_rho_real_terms++;
+          }
+          if (fdp != 0 || gradient_calculations) {
+            anisotropic_3d_gaussian_fourier_transform(
+              w * fdp,
+              compose_anisotropic_b_all(0, u_extra, u_cart),
+              as_imag_, aniso_bs_imag_);
+          }
+          else {
+            as_imag_ = 0;
+          }
         }
 
         FloatType
@@ -343,6 +361,7 @@ namespace cctbx { namespace xray {
         FloatType
         rho_imag(DistanceType const& d_or_d_sq) const
         {
+          if (as_imag_ == 0) return 0;
           return as_imag_ * exp_term(d_or_d_sq);
         }
 
@@ -533,9 +552,6 @@ namespace cctbx { namespace xray {
       u_min() const { return u_min_; }
 
       FloatType
-      ave_u_iso_or_equiv() const { return ave_u_iso_or_equiv_; }
-
-      FloatType
       wing_cutoff() const { return wing_cutoff_; }
 
       FloatType
@@ -611,7 +627,6 @@ namespace cctbx { namespace xray {
       std::size_t n_anomalous_scatterers_;
       bool anomalous_flag_;
       FloatType u_min_;
-      FloatType ave_u_iso_or_equiv_;
       FloatType u_extra_;
       FloatType rho_cutoff_;
       FloatType max_d_sq_upper_bound_;
@@ -657,7 +672,6 @@ namespace cctbx { namespace xray {
     n_anomalous_scatterers_(0),
     anomalous_flag_(false),
     u_min_(-1),
-    ave_u_iso_or_equiv_(-1),
     u_extra_(-1),
     rho_cutoff_(1),
     max_d_sq_upper_bound_(unit_cell.shortest_vector_sq()),
@@ -666,7 +680,7 @@ namespace cctbx { namespace xray {
     sum_sampling_box_n_points_(0),
     max_sampling_box_edges_(0,0,0)
   {
-    CCTBX_ASSERT(u_base > 0);
+    CCTBX_ASSERT(u_base >= 0);
     scitbx::mat3<FloatType> orth_mx = unit_cell_.orthogonalization_matrix();
     if (orth_mx[3] != 0 || orth_mx[6] != 0 || orth_mx[7] != 0) {
       throw error(
@@ -678,9 +692,6 @@ namespace cctbx { namespace xray {
     }
     u_radius_cache_.reserve(scatterers.size());
     u_cart_cache_.reserve(scatterers.size());
-    FloatType sum_w = 0;
-    FloatType sum_w_gaussian_a = 0;
-    FloatType sum_w_u_equiv = 0;
     bool have_u_min = false;
     for(std::size_t i_seq=0;i_seq<scatterers.size();i_seq++) {
       XrayScattererType const& scatterer = scatterers[i_seq];
@@ -694,8 +705,6 @@ namespace cctbx { namespace xray {
       if (scatterer.fdp != 0) {
         n_anomalous_scatterers_++;
       }
-      sum_w += w;
-      sum_w_gaussian_a += w * gaussian_a;
       FloatType u_min=0.;
       if (scatterer.flags.use_u_aniso()) {
         scitbx::sym_mat3<FloatType>
@@ -710,14 +719,10 @@ namespace cctbx { namespace xray {
           u_cart_eigenvalues = adptbx::eigenvalues(u_cart_cache_.back());
         u_radius_cache_.push_back(af::max(u_cart_eigenvalues));
         u_min = af::min(u_cart_eigenvalues);
-        sum_w_u_equiv += w * std::max(static_cast<FloatType>(0),
-          adptbx::u_cart_as_u_iso(u_cart_cache_.back()));
       }
       else if (scatterer.flags.use_u_iso()) {
         u_radius_cache_.push_back(scatterer.u_iso);
         u_min = scatterer.u_iso;
-        sum_w_u_equiv += w * std::max(static_cast<FloatType>(0),
-          scatterer.u_iso);
       }
       else {
         u_radius_cache_.push_back(0);
@@ -731,17 +736,50 @@ namespace cctbx { namespace xray {
         u_min_ = std::min(u_min_, u_min);
       }
     }
+    CCTBX_ASSERT(n_contributing_scatterers_ == u_radius_cache_.size());
     if (have_u_min) {
       u_extra_ = u_base_ - u_min_;
     }
-    if (sum_w != 0) {
-      ave_u_iso_or_equiv_ = sum_w_u_equiv / sum_w;
-      rho_cutoff_ = detail::isotropic_3d_gaussian_fourier_transform(
-        sum_w_gaussian_a / sum_w,
-        adptbx::u_as_b(ave_u_iso_or_equiv_ + u_extra_)) * wing_cutoff_;
+    // determine rho_cutoff as average rho(0) * wing_cutoff
+    {
+      // exp function is not actually called by gaussian_ft.rho_real_0() below.
+      detail::exponent_table<FloatType> exp_table(0);
+      FloatType sum_abs_rho_real_0 = 0;
+      typename u_radius_cache_t::const_iterator u_radius =
+        u_radius_cache_.begin();
+      typename u_cart_cache_t::const_iterator u_cart =
+        u_cart_cache_.begin();
+      detail::gaussian_fourier_transformed<FloatType> gaussian_ft;
+      for(std::size_t i_seq=0;i_seq<scatterers.size();i_seq++) {
+        XrayScattererType const& scatterer = scatterers[i_seq];
+        FloatType w = scatterer.weight();
+        if (w == 0) continue;
+        eltbx::xray_scattering::gaussian const&
+          gaussian = scattering_type_registry.gaussian_not_optional(
+            scatterer.scattering_type);
+        if (scatterer.flags.use_u_aniso()) {
+          u_radius++;
+          gaussian_ft = detail::gaussian_fourier_transformed<FloatType>(
+            exp_table,
+            gaussian, scatterer.fp, scatterer.fdp, w,
+            *u_cart++, u_extra_);
+        }
+        else {
+          gaussian_ft = detail::gaussian_fourier_transformed<FloatType>(
+            exp_table,
+            gaussian, scatterer.fp, scatterer.fdp, w,
+            *u_radius++, u_extra_);
+        }
+        sum_abs_rho_real_0 += scitbx::fn::absolute(gaussian_ft.rho_real_0());
+      }
+      CCTBX_ASSERT(u_radius == u_radius_cache_.end());
+      CCTBX_ASSERT(u_cart == u_cart_cache_.end());
+      if (sum_abs_rho_real_0 != 0) {
+        rho_cutoff_ = sum_abs_rho_real_0 / n_contributing_scatterers_
+                    * wing_cutoff_;
+      }
     }
     CCTBX_ASSERT(rho_cutoff_ > 0);
-    CCTBX_ASSERT(n_contributing_scatterers_ == u_radius_cache_.size());
   }
 
 }} // namespace cctbx::xray
