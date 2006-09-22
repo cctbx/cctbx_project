@@ -35,6 +35,12 @@ def select_crystal_symmetry(
       from_parameter_file,
       from_coordinate_files,
       from_reflection_files):
+
+  tmp = [from_command_line, from_parameter_file]+from_coordinate_files \
+        +from_reflection_files
+  if tmp.count(None)==len(tmp):
+    raise Sorry("No unit cell or symmetry information available. Check input")
+
   result = crystal.symmetry(
     unit_cell=None,
     space_group_info=None)
@@ -106,10 +112,59 @@ twin_utils{
 """)
 
 def print_help():
-  print "No help available yet"
+  print """
+
+mmtbx.twin_map_utils
+--------------------
+
+A command line utility to compute map coefficients for twinned data.
+Bulk solvent parameters and twin fractions are determined automatically.
+If no twin law is specified, map coefficents for all twin laws will
+be computed.
+
+The keywords are sumarized below:
+
+twin_utils{
+  input{
+    unit_cell=None
+    space_group=None
+    xray_data{
+      file_name=None
+      obs_labels=None
+      free_flag=None
+      }
+    model{
+      file_name=None
+      }
+  }
+  parameters{
+    twinning{
+      twin_law=None
+      max_delta=3.0
+    }
+  }
+  output{
+    logfile=twin_tools.log
+    map_coeffs_root=MAP_COEFFS
+  }
+}
+
+A typical run looks like this:
+
+mmtbx.twin_map_utils data.file=mydata.mtz model.file=mymodel.pdb \\
+  obs_labels=FP,SIGFP free_flag=TEST
+
+If no unit cell is specified, the unit cell of the reflection
+file or the model will be used.
 
 
-def twin_map_utils(args):
+"""
+
+
+def run(command_name,args):
+  print
+  log=sys.stdout
+  params=None
   if len(args)==0:
     print_help()
   elif ( "--help" in args ):
@@ -173,9 +228,12 @@ def twin_map_utils(args):
     pdb_xs = crystal_symmetry_from_any.extract_from(
       file_name=params.twin_utils.input.model.file_name)
 
-    phil_xs = crystal.symmetry(
-      unit_cell=params.twin_utils.input.unit_cell,
-      space_group_info=params.twin_utils.input.space_group  )
+    phil_xs=None
+    if ([params.twin_utils.input.unit_cell,
+         params.twin_utils.input.space_group]).count(None)<2:
+      phil_xs = crystal.symmetry(
+        unit_cell=params.twin_utils.input.unit_cell,
+        space_group_info=params.twin_utils.input.space_group  )
 
 
     combined_xs = select_crystal_symmetry(
@@ -332,15 +390,16 @@ def twin_map_utils(args):
       print "writing %s for twin law %s"%(name,operator_hkl)
       mtz_dataset.mtz_object().write(
         file_name=name)
-  print >> log
-  print >> log
-  print >> log, "All done "
-  print >> log
-  logfile = open(params.twin_utils.output.logfile,'w')
-  print >> logfile,  string_buffer.getvalue()
+
+    print >> log
+    print >> log
+    print >> log, "All done "
+    print >> log
+    logfile = open(params.twin_utils.output.logfile,'w')
+    print >> logfile,  string_buffer.getvalue()
 
 
 
 
 if (__name__ == "__main__" ):
-  twin_map_utils(sys.argv[1:])
+  run(sys.argv[0],sys.argv[1:])
