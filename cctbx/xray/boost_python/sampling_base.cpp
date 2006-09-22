@@ -27,7 +27,6 @@ namespace {
         .def("u_base", &w_t::u_base)
         .def("u_extra", &w_t::u_extra)
         .def("u_min", &w_t::u_min)
-        .def("ave_u_iso_or_equiv", &w_t::ave_u_iso_or_equiv)
         .def("wing_cutoff", &w_t::wing_cutoff)
         .def("exp_table_one_over_step_size",
           &w_t::exp_table_one_over_step_size)
