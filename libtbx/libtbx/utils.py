@@ -1,4 +1,5 @@
 from __future__ import division
+import glob
 import time
 import atexit
 import traceback
@@ -7,6 +8,15 @@ import sys, os
 windows_device_names = """\
 CON PRN AUX NUL COM1 COM2 COM3 COM4 COM5 COM6 COM7 COM8 COM9
 LPT1 LPT2 LPT3 LPT4 LPT5 LPT6 LPT7 LPT8 LPT9""".split()
+
+def copy_file(source, target):
+  assert os.path.isfile(source)
+  open(target, "wb").write(open(source, "rb").read())
+
+def remove_files(pattern):
+  for path in glob.glob(pattern):
+    if (os.path.isfile(path)):
+      os.remove(path)
 
 class group_args(object):
 
