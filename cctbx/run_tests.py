@@ -37,6 +37,7 @@ def run():
   "$D/cctbx/regression/tst_sgtbx_site_constraints.py",
   "$D/cctbx/regression/tst_reflection_statistics.py",
   "$D/cctbx/regression/tst_sgtbx_harker.py",
+  "$D/cctbx/regression/tst_twin_target.py",
   "$D/cctbx/sgtbx/symbol_confidence.py",
   "$D/cctbx/sgtbx/bravais_types.py",
   "$D/cctbx/regression/tst_miller_lookup_utils.py",
