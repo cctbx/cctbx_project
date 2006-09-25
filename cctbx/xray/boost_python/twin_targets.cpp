@@ -174,6 +174,12 @@ namespace cctbx { namespace xray { namespace twin_targets { namespace boost_pyth
     };
 
 
+
+
+
+
+
+
    struct hemihedral_detwinner_wrappers
    {
      typedef hemihedral_detwinner<double> w_t;
@@ -201,8 +207,6 @@ namespace cctbx { namespace xray { namespace twin_targets { namespace boost_pyth
         result = self.detwin_with_model_data(i_obs,sig_obs,f_model,twin_fraction);
         return boost::python::make_tuple( result[0], result[1] );
       }
-
-
 
 
      static void
@@ -239,11 +243,49 @@ namespace cctbx { namespace xray { namespace twin_targets { namespace boost_pyth
 
 
 
-  }
+   struct single_twin_likelihood_wrappers
+   {
+     typedef single_twin_likelihood<double> w_t;
+     static void wrap()
+     {
+       using namespace boost::python;
+       class_<w_t>("single_twin_likelihood", no_init)
+         .def(init<
+              double const&, double const&,
+              double const&, double const&,
+              double const&, double const&,
+              double const&, double const&,
+              bool   const&, bool   const&,
+              double const&, double const&,
+              double const&, int    const&
+              >
+              ((arg_("i_obs1"),  arg_("s_obs1"),
+                arg_("i_obs2"),  arg_("s_obs2"),
+                arg_("f_calc1"), arg_("f_calc2"),
+                arg_("eps1"),    arg_("eps2"),
+                arg_("centric1"),arg_("centric2"),
+                arg_("alpha"),   arg_("beta"),
+                arg_("twin_fraction"), arg_("n_quad")
+                ))
+              )
+         .def("log_p" , &w_t::log_p)
+         .def("d_log_p_d_f", &w_t::d_log_p_d_f)
+         .def("dd_log_p_dd_f", &w_t::dd_log_p_dd_f)
+         ;
+     }
+
+
+   };
 
 
 
-}} // namespace cctbx::xray
+
+
+
+
+
+
+  }}} // namespace cctbx::xray
 
   namespace boost_python {
 
@@ -253,6 +295,7 @@ namespace cctbx { namespace xray { namespace twin_targets { namespace boost_pyth
       twin_targets::boost_python::least_squares_hemihedral_twinning_on_f_wrappers::wrap();
       twin_targets::boost_python::hemihedral_r_values_wrappers::wrap();
       twin_targets::boost_python::hemihedral_detwinner_wrappers::wrap();
+      twin_targets::boost_python::single_twin_likelihood_wrappers::wrap();
     }
 
   }

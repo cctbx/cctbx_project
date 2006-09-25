@@ -7,11 +7,15 @@
 #include <complex>
 #include <cmath>
 #include <scitbx/math/bessel.h>
+#include <scitbx/math/quadrature.h>
+#include <scitbx/math/erf.h>
+#include <scitbx/line_search/more_thuente_1994.h>
 #include <cctbx/hendrickson_lattman.h>
 #include <cctbx/miller/lookup_utils.h>
 #include <cctbx/uctbx.h>
 #include <cctbx/xray/f_model.h>
 #include <scitbx/math/halton.h>
+
 
 namespace cctbx { namespace xray { namespace twin_targets {
 
@@ -754,7 +758,399 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
   };
 
 
+  template<typename FloatType>
+  class single_twin_likelihood
+  {
+  public:
+    single_twin_likelihood( FloatType const& i_obs1,  FloatType const& s_obs1,
+                            FloatType const& i_obs2,  FloatType const& s_obs2,
+                            FloatType const& f_calc1, FloatType const& f_calc2,
+                            FloatType const& eps1,    FloatType const& eps2,
+                            bool      const& centric1,bool      const& centric2,
+                            FloatType const& a,       FloatType const& b,
+                            FloatType const& tf,      int       const& n_quad
+                           )
+      {
+        n_quad_ = n_quad;
+        io1_=i_obs1;
+        so1_=s_obs1;
+        io2_=i_obs2;
+        so2_=s_obs2;
+        fc1_=f_calc1;
+        fc2_=f_calc2;
+        a_=a;
+        b_=b;
+        e1_=eps1;
+        e2_=eps2;
+        centric1_=centric1;
+        centric2_=centric2;
+        tf_=tf;
 
+        // quadrature needed for numerical integration
+        scitbx::math::quadrature::gauss_legendre_engine<FloatType> tmp_gle(n_quad_);
+        x_quad_ = tmp_gle.x();
+        w_quad_ = tmp_gle.w();
+      }
+
+    FloatType log_p(FloatType f1,FloatType f2){
+      FloatType result;
+      result = log_likelihood_single(io1_,io2_,so1_,so2_,
+                                     f1,f2,fc1_,fc2_,tf_,
+                                     centric1_,centric2_,
+                                     a_,b_,e1_,e2_);
+      return(result);
+    }
+
+
+    scitbx::af::tiny<FloatType,2>
+    d_log_p_d_f(FloatType f1, FloatType f2)
+    {
+      scitbx::af::tiny<FloatType,2> result(0,0);
+      result = first_der_single(io1_, io2_,
+                                so1_, so2_,
+                                f1,   f2,
+                                fc1_, fc2_,
+                                tf_,
+                                centric1_,centric2_,
+                                a_,   b_,
+                                e1_,  e2_);
+      return(result);
+    }
+
+    scitbx::af::tiny<FloatType,3>
+    dd_log_p_dd_f(FloatType f1, FloatType f2)
+    {
+      scitbx::af::tiny<FloatType,3> result(0,0,0);
+      result = snd_der_single(io1_, io2_,
+                              so1_, so2_,
+                              f1,   f2,
+                              fc1_, fc2_,
+                              tf_,
+                              centric1_,centric2_,
+                              a_,   b_,
+                              e1_,  e2_);
+      return(result);
+    }
+
+  protected:
+    FloatType log_likelihood_single(FloatType io1, FloatType io2,
+                                    FloatType so1, FloatType so2,
+                                    FloatType f1,  FloatType f2,
+                                    FloatType fc1, FloatType fc2,
+                                    FloatType tf,
+                                    bool centric1, bool centric2,
+                                    FloatType a,   FloatType b,
+                                    FloatType eps1, FloatType eps2)
+    {
+      float pm1=0, pm2=0, o12=0;
+      if (centric1){
+        pm1 = centric_log_likelihood_model(f1,fc1,a,b,eps1);
+      } else{
+        pm1 = acentric_log_likelihood_model(f1,fc1,a,b,eps1);
+      }
+
+      if (centric2){
+        pm2 = centric_log_likelihood_model(f2,fc2,a,b,eps2);
+      } else {
+        pm2 = acentric_log_likelihood_model(f2,fc2,a,b,eps2);
+      }
+
+      o12 = q(io1,io2,so1,so2,f1,f2,tf);
+      return( pm1+pm2+o12 );
+    }
+
+    scitbx::af::tiny<FloatType,2>
+    first_der_single(FloatType io1, FloatType io2,
+                     FloatType so1, FloatType so2,
+                     FloatType f1,  FloatType f2,
+                     FloatType fc1, FloatType fc2,
+                     FloatType tf,
+                     bool centric1, bool centric2,
+                     FloatType a,   FloatType b,
+                     FloatType eps1,FloatType eps2)
+    {
+      scitbx::af::tiny<FloatType,2> result(0,0);
+      FloatType result1=0,result2=0;
+
+      if (centric1){
+        result1 = calc_fst_der_centric_model(f1,fc1,a,b,eps1);
+      } else {
+        result1 = calc_fst_der_acentric_model(f1,fc1,a,b,eps1);
+      }
+
+      if (centric2){
+        result2 = calc_fst_der_centric_model(f2,fc2,a,b,eps2);
+      } else {
+        result2 = calc_fst_der_acentric_model(f2,fc2,a,b,eps2);
+      }
+
+      result1 += dq1(io1,io2,so1,so2,f1,f2,tf);
+      result2 += dq2(io1,io2,so1,so2,f1,f2,tf);
+
+      result[0]=result1;
+      result[1]=result2;
+      return( result );
+    }
+
+
+    scitbx::af::tiny<FloatType,3>
+    snd_der_single(FloatType io1, FloatType io2,
+                   FloatType so1, FloatType so2,
+                   FloatType f1,  FloatType f2,
+                   FloatType fc1, FloatType fc2,
+                   FloatType tf,
+                   bool centric1, bool centric2,
+                   FloatType a,   FloatType b,
+                   FloatType eps1,FloatType eps2)
+    {
+      scitbx::af::tiny<FloatType,3> result(0,0,0);
+      FloatType result11=0,result22=0, result12=0;
+
+      if (centric1){
+        result11 = calc_snd_der_centric_model(f1,fc1,a,b,eps1);
+      } else {
+        result11 = calc_snd_der_acentric_model(f1,fc1,a,b,eps1);
+      }
+
+      if (centric2){
+        result22 = calc_snd_der_centric_model(f2,fc2,a,b,eps2);
+      } else {
+        result22 = calc_snd_der_acentric_model(f2,fc2,a,b,eps2);
+      }
+
+      result11 += dq11(io1,io2,so1,so2,f1,f2,tf);
+      result22 += dq22(io1,io2,so1,so2,f1,f2,tf);
+      result12  = dq12(so1,so2,f1,f2,tf);
+
+      result[0]=result11;
+      result[1]=result22;
+      result[2]=result12;
+      return( result );
+    }
+
+   inline FloatType q(FloatType io1, FloatType io2,
+                      FloatType so1, FloatType so2,
+                      FloatType f1,  FloatType f2,
+                      FloatType tf)
+   {
+     FloatType result=0,norma,tmp1,tmp2;
+     norma=2.0*scitbx::constants::pi*so1*so2;
+     FloatType ic1, ic2;
+     ic1=(1-tf)*f1*f1+tf*f2*f2;
+     ic2=(1-tf)*f2*f2+tf*f1*f1;
+     tmp1=-(io1-ic1)*(io1-ic1)/(2.0*so1*so1);
+     tmp2=-(io2-ic2)*(io2-ic2)/(2.0*so2*so2);
+     result = -std::log(norma)+tmp1+tmp2;
+     return( result );
+   }
+
+   inline FloatType dq1(FloatType io1, FloatType io2,
+                        FloatType so1, FloatType so2,
+                        FloatType f1,  FloatType f2,
+                        FloatType tf)
+   {
+     FloatType result=0,norma,tmp1,tmp2;
+     norma=2.0*scitbx::constants::pi*so1*so2;
+     FloatType ic1, ic2;
+     ic1=(1-tf)*f1*f1+tf*f2*f2;
+     ic2=(1-tf)*f2*f2+tf*f1*f1;
+     tmp1=2*(io1-ic1)*(1-tf)*f1/(so1*so1);
+     tmp2=2*(io2-ic2)*tf*f1/(so2*so2);
+     result = tmp1+tmp2;
+     return( result );
+   }
+
+   inline FloatType dq2(FloatType io1, FloatType io2,
+                        FloatType so1, FloatType so2,
+                        FloatType f1,  FloatType f2,
+                        FloatType tf)
+   {
+     FloatType result=0,norma,tmp1,tmp2;
+     norma=2.0*scitbx::constants::pi*so1*so2;
+     FloatType ic1, ic2;
+     ic1=(1-tf)*f1*f1+tf*f2*f2;
+     ic2=(1-tf)*f2*f2+tf*f1*f1;
+     tmp1=2*(io1-ic1)*tf*f2/(so1*so1);
+     tmp2=2*(io2-ic2)*(1-tf)*f2/(so2*so2);
+     result = tmp1+tmp2;
+     return( result );
+   }
+
+
+   inline FloatType dq11(FloatType io1, FloatType io2,
+                         FloatType so1, FloatType so2,
+                         FloatType f1,  FloatType f2,
+                         FloatType tf)
+   {
+     FloatType result=0,tmp1,tmp2;
+     tmp1= -2.0*(-1+tf)*(io1+3*f1*f1*(-1+tf)-f2*f2*tf)/(so1*so1);
+     tmp2=  2.0*tf*(io2+f2*f2*(-1+tf)-3*f1*f1*tf)/(so2*so2);
+     result = tmp1+tmp2;
+     return( result );
+   }
+
+
+   inline FloatType dq22(FloatType io1, FloatType io2,
+                         FloatType so1, FloatType so2,
+                         FloatType f1,  FloatType f2,
+                         FloatType tf)
+   {
+     FloatType result=0,tmp1,tmp2;
+     tmp1= -2.0*(-1+tf)*(io2+3*f2*f2*(-1+tf)-f1*f1*tf)/(so2*so2);
+     tmp2=  2.0*tf*(io1+f1*f1*(-1+tf)-3*f2*f2*tf)/(so1*so1);
+     result = tmp1+tmp2;
+     return( result );
+   }
+
+
+   inline FloatType dq12(FloatType so1, FloatType so2,
+                         FloatType f1,  FloatType f2,
+                         FloatType tf)
+   {
+     FloatType result;
+     result = 4*f1*f2*(so1*so1+so2*so2)*(-1+tf)*tf/(so1*so1*so2*so2 );
+     return( result );
+   }
+
+   inline FloatType acentric_log_likelihood_model(FloatType fo, FloatType fc, FloatType a, FloatType b, FloatType e){
+      FloatType result;
+      FloatType eb=e*b;
+      if (fo<=1e-13){
+        fo=1e-13;
+      }
+      FloatType x=2.0*a*fo*fc/eb;
+      FloatType exparg; // = (fo*fo + alpha_[ii]*alpha_[ii]*f_calc_[ii]*f_calc_[ii]);
+      //exparg = exparg/eb;
+      //result = std::log(2.0) + std::log(fo) - std::log(eb)  -exparg  + std::log( scitbx::math::bessel::i0(x) );
+      //FloatType result2;
+      exparg = fo -  a*fc;
+      exparg = exparg*exparg/eb;
+      result = std::log(2.0) + std::log(fo) - std::log(eb)  -exparg + std::log( scitbx::math::bessel::ei0(x));
+      return (result);
+    }
+
+
+    inline FloatType centric_log_likelihood_model(FloatType fo,  FloatType fc, FloatType a, FloatType b, FloatType e){
+      FloatType result;
+      FloatType eb=e*b;
+      if (fo<=1e-13){
+        fo=1e-13;
+      }
+      FloatType x=a*fo*fc/eb;
+      FloatType exparg = (fo*fo + a*a*fc*fc)/(2.0*eb);
+      FloatType tmp;
+      if (x>40){
+         tmp = x*0.999921 - 0.65543;
+      } else {
+         tmp = std::log( std::cosh(x) );
+      }
+
+      result = 0.5*std::log(2.0)-0.5*std::log(scitbx::constants::pi) - 0.5*std::log(eb)
+        -exparg + tmp;
+      return(result);
+    }
+
+    //--------------------------------------------------------------
+    // compute the first derivative of the loglikelihood function
+    inline FloatType
+    calc_fst_der_acentric_model( FloatType fo, FloatType fc, FloatType a, FloatType b, FloatType e)
+    {
+      FloatType result;
+      FloatType eb=e*b;
+      if (fo<=1e-13){
+        fo=1e-13;
+      }
+      FloatType x = 2.0*a*fo*fc/(eb);
+
+      FloatType m = scitbx::math::bessel::i1_over_i0(x);
+
+      result = (1.0/fo) - (2.0*fo/eb) +(2.0*a*fc/eb)*m;
+      return (result);
+    }
+
+    // derivative of centrics
+    inline FloatType
+    calc_fst_der_centric_model( FloatType fo, FloatType fc, FloatType a, FloatType b, FloatType e)
+    {
+      FloatType result;
+      FloatType eb=e*b;
+      if (fo<=1e-13){
+        fo=1e-13;
+      }
+      FloatType x = a*fo*fc/(eb);
+      if (x<1e-13){
+        x=1e-13;
+      }
+      FloatType m = std::tanh(x)*a*fc/(eb);;
+      result = -fo/eb + m;
+      return (result);
+    }
+
+    // second derivatives
+    inline FloatType
+    calc_snd_der_acentric_model( FloatType fo, FloatType fc, FloatType a, FloatType b, FloatType e)
+    {
+      FloatType result;
+      FloatType eb=e*b;
+      if (fo<=1e-13){
+        fo=1e-13;
+      }
+      FloatType x = 2.0*a*fo*fc/(eb);
+      FloatType m = scitbx::math::bessel::i1_over_i0(x);
+      if (x<1e-13){
+        x = 1e-13;
+      }
+      result = - (1.0/(fo*fo))
+               - (2.0/eb)
+               + (fc*4.0*a*a/(eb*eb))*
+        (1.0-m/(x)-m*m);
+      return (result);
+    }
+
+    inline FloatType calc_snd_der_centric_model( FloatType fo, FloatType fc, FloatType a, FloatType b, FloatType e )
+    {
+      FloatType result=0;
+      FloatType eb=e*b;
+      if (fo<=1e-13){
+        fo=1e-13;
+      }
+      FloatType x = a*fo*fc/(eb);
+      FloatType m = std::tanh( x );
+      result = -1.0/eb + a*a*fc*fc*(1.0-m*m)/(eb*eb);
+      return (result);
+    }
+
+
+    // the computation of the mean can be used as a good starting point for maximisation of the (partial) likelihood
+    inline FloatType compute_mean_model( FloatType fo, FloatType fc, FloatType a, FloatType b, FloatType e, bool centric  ){
+      FloatType result, tmp;
+      if (centric){
+        tmp = a*fc/std::sqrt(2.0*e*b);
+        result = std::exp(-tmp*tmp)*std::sqrt(2.0*e*b/scitbx::constants::pi);
+        result = result + a*fc*scitbx::math::erf(tmp);
+      }
+      else {
+        FloatType x;
+        x = a*fc*a*fc/(2.0*e*b);
+        result = (e*b + a*a*fc*fc)*scitbx::math::bessel::ei0(x);
+        result+= a*a*fc*fc*scitbx::math::bessel::ei1(x);
+        result = result*0.5*std::sqrt(scitbx::constants::pi/(e*b));
+      }
+      return result;
+
+    }
+    //--------------------------------------------------------------
+    FloatType io1_, so1_;
+    FloatType io2_, so2_;
+    FloatType fc1_, fc2_;
+    FloatType a_, b_, e1_, e2_,tf_;
+    bool centric1_, centric2_;
+    int n_quad_;
+    scitbx::af::shared<FloatType> x_quad_;
+    scitbx::af::shared<FloatType> w_quad_;
+
+
+  };
 
 
 }}}
