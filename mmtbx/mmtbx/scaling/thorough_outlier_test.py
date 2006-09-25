@@ -96,7 +96,7 @@ def exercise(d_min            = 3.5,
                   for b_sol in [60, 80]:
                      fmodel.update(k_sol = k_sol, b_sol = b_sol)
                      #print "   scale = %12.6f mean_error = %3.1f deleted = %3.1f r_work = %6.4f "% \
-                         (scale, error, fraction, fmodel.r_work()), k_sol, b_sol
+                     #   (scale, error, fraction, fmodel.r_work()), k_sol, b_sol
                      a,b = fmodel.alpha_beta()
                      o_sel =  om.model_based_outliers(fmodel_manager = fmodel)
                      n_out = o_sel.data().count(False)
