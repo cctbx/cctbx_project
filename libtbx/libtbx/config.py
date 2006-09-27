@@ -985,8 +985,8 @@ class environment:
       sys.path.insert(0, path)
     for module in self.module_list:
       module.process_libtbx_refresh_py()
-    self.process_exe()
     self.write_python_and_show_path_duplicates()
+    self.process_exe()
     self.write_command_version_duplicates()
 
   def get_module(self, name, must_exist=True):
