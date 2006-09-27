@@ -96,6 +96,20 @@ def exercise_c_grid_conversions(verbose=0):
   assert a.all() == rt.use_const_ref_c_grid_3(a).all()
   assert a.accessor().all() == rt.use_const_ref_c_grid_padded_3(a).all()
   assert a.accessor().all() == rt.use_const_ref_c_grid_padded_3(a).focus()
+  a = flex.double(flex.grid((2, 3, 5)).set_focus((2, 3, 4)))
+  assert a.accessor().all() == rt.use_const_ref_c_grid_padded_3(a).all()
+  assert a.accessor().focus() == rt.use_const_ref_c_grid_padded_3(a).focus()
+  assert a.is_0_based()
+  assert a.is_padded()
+  b = flex.double(flex.grid((1,2,3), (4,6,8)))
+  assert not b.is_0_based()
+  assert not b.is_padded()
+  for c in [a,b]:
+    try: rt.use_const_ref_c_grid_3(c)
+    except KeyboardInterrupt: raise
+    except Exception, e:
+      assert str(e).startswith("Python argument types in")
+    else: raise RuntimeError("Boost.Python.ArgumentError expected.")
   if (verbose): print 'OK'
 
 def exercise_to_tuple(verbose=0):

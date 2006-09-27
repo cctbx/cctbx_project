@@ -28,6 +28,7 @@ namespace scitbx { namespace af {
         index_type(af::adapt(flex_g.all()))
       {
         SCITBX_ASSERT(flex_g.is_0_based());
+        SCITBX_ASSERT(!flex_g.is_padded());
       }
 
       af::flex_grid<>
@@ -93,6 +94,7 @@ namespace scitbx { namespace af {
         index_type(af::adapt(flex_g.all()))
       {
         SCITBX_ASSERT(flex_g.is_0_based());
+        SCITBX_ASSERT(!flex_g.is_padded());
       }
 
       af::flex_grid<>
@@ -172,6 +174,7 @@ namespace scitbx { namespace af {
         index_type(af::adapt(flex_g.all()))
       {
         SCITBX_ASSERT(flex_g.is_0_based());
+        SCITBX_ASSERT(!flex_g.is_padded());
       }
 
       af::flex_grid<>
