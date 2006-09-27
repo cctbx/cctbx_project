@@ -112,6 +112,11 @@ def exercise(space_group_info, const_gaussian, negative_gaussian,
     force_complex=force_complex,
     sampled_density_must_be_positive=sampled_density_must_be_positive,
     tolerance_positive_definite=1.e-5)
+  focus = sampled_density.real_map_unpadded().focus()
+  all   = sampled_density.real_map_unpadded().all()
+  last  = sampled_density.real_map_unpadded().last()
+  assert approx_equal(focus, last)
+  assert approx_equal(all, last)
   assert sampled_density.anomalous_flag() == (anomalous_flag or force_complex)
   if (0 or verbose):
     print "const_gaussian:", const_gaussian

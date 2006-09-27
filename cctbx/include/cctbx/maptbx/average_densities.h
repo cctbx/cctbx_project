@@ -70,6 +70,7 @@ public:
     int ny = data.accessor()[1];
     int nz = data.accessor()[2];
     double distsq;
+    double grid_step = uc.parameters()[3] / nx;
     int mx,my,mz,kx,ky,kz;
     double abc = uc.parameters()[0]*uc.parameters()[1]*uc.parameters()[2];
     double uc_volume_over_abc = uc.volume() / abc;
@@ -116,18 +117,14 @@ public:
        int z1box = nint( nz*(zf-cocs) ) - 1;
        int z2box = nint( nz*(zf+cocs) ) + 1;
        for(kx = x1box; kx <= x2box; kx++) {
-       //for(kx = 0; kx < nx; kx++) {
            double xn=xf-double(kx)/nx;
            for(ky = y1box; ky <= y2box; ky++) {
-           //for(ky = 0; ky < ny; ky++) {
                double yn=yf-double(ky)/ny;
                for(kz = z1box; kz <= z2box; kz++) {
-               //for(kz = 0; kz < nz; kz++) {
                    double zn=zf-double(kz)/nz;
                    distsq=mr1*xn*xn+mr5*yn*yn+mr9*zn*zn+
                                               tmr2*xn*yn+tmr3*xn*zn+tmr6*yn*zn;
                    if(distsq <= radsq) {
-                   //if(1) {
                       mx = cctbx::math::mod_positive(kx, nx);
                       my = cctbx::math::mod_positive(ky, ny);
                       mz = cctbx::math::mod_positive(kz, nz);
@@ -140,11 +137,29 @@ public:
            }
        }
     }
+    //
+    double tolerance = grid_step/25. ;
+    for(std::size_t i = 0; i <= data_at_grid_points_.size(); i++) {
+        double dist = distances_[i];
+        double data_ave = data_at_grid_points_[i];
+        int counter = 1;
+        for(std::size_t j = 0; j <= data_at_grid_points_.size(); j++) {
+            if(distances_[j]<dist+tolerance && distances_[j]>dist-tolerance && i!=j && std::abs(distances_[i]-distances_[j]) > 1.e-6) {
+               counter++;
+               data_ave = data_ave + data_at_grid_points_[j];
+//               if (distances_[j] < 0.00001)
+//std::cout<<data_at_grid_points_[i]<<" "<<data_at_grid_points_[j]<<" "<<counter<<" "<<data_ave/counter<<" "<<distances_[j]<<" "<<i<<" "<<j<<dist<<std::endl;
+            }
+        }
+        data_at_grid_points_averaged_.push_back(data_ave / counter);
+    }
+    //
   }
   af::shared<double> data_at_grid_points() { return data_at_grid_points_; }
+  af::shared<double> data_at_grid_points_averaged() { return data_at_grid_points_averaged_; }
   af::shared<double> distances() { return distances_; }
 protected:
-  af::shared<double> data_at_grid_points_;
+  af::shared<double> data_at_grid_points_, data_at_grid_points_averaged_;
   af::shared<double> distances_;
 };
 
@@ -154,55 +169,94 @@ public:
                               af::const_ref<double> const& data_at_grid_points,
                               af::const_ref<double> const& distances)
   {
-           double p=0.0, q=0.0, r=0.0, s=0.0;
-           int n = 0;
-           int number_of_points = data_at_grid_points.size();
-           for(int i = 0; i < number_of_points; i++) {
-            if(distances[i] > 1.e-4 && data_at_grid_points[i] > 0.0) {
-             n = n + 1;
-              double data_i = data_at_grid_points[i];
-              double distance_i = distances[i];
-              double distance_i_sq = distance_i*distance_i;
+    af::shared<double> distances_for_negative_data_at_grid_points;
+    for(int i = 0; i < data_at_grid_points.size(); i++) {
+      if(data_at_grid_points[i] < 0.0) {
+        distances_for_negative_data_at_grid_points.push_back(distances[i]);
+      }
+    }
+    first_zero_radius_ = af::max(distances);
+    if(distances_for_negative_data_at_grid_points.size() > 0) {
+       first_zero_radius_ =
+         af::min(distances_for_negative_data_at_grid_points.const_ref())-1.e-3;
+    }
+    double increment = 0.01;
+    gof_opt_ = 1.e+10;
+    for(radius_ = 0.1; radius_ <= first_zero_radius_; radius_ = radius_+increment) {
+        double p=0.0, q=0.0, r=0.0, s=0.0;
+        int n = 0;
+        int number_of_points = data_at_grid_points.size();
+        for(int i = 0; i < number_of_points; i++) {
+            if(data_at_grid_points[i] > 0.0 && distances[i] <= radius_) {
+               n = n + 1;
+               double data_i = data_at_grid_points[i];
+               double distance_i = distances[i];
+               double distance_i_sq = distance_i*distance_i;
                p=p+std::log(data_i);
                q=q+distance_i_sq;
                r=r+(distance_i_sq*distance_i_sq);
                s=s+distance_i_sq*std::log(data_i);
-      }
-    }
-    double alpha_opt = (p-s*q/r) / (double(n)-q*q/r);
-    a_real_space_ = std::exp( alpha_opt );
-           b_real_space_ = 1/r*(alpha_opt*q - s);
+            }
+        }
+        double alpha_opt = (p-s*q/r) / (double(n)-q*q/r);
+        a_real_space_ = std::exp( alpha_opt );
+        b_real_space_ = 1./r*(alpha_opt*q - s);
 
-           double tmp = b_real_space_/scitbx::constants::pi;
-           double pi_sq = scitbx::constants::pi*scitbx::constants::pi;
-           a_reciprocal_space_ = a_real_space_/std::sqrt(tmp*tmp*tmp);
-           b_reciprocal_space_ = pi_sq/b_real_space_*4; //      not deja divise par 4 !!!
-           double num = 0.0;
-           double denum = 0.0;
-           for(int i = 0; i < number_of_points; i++) {
-            if(distances[i] > 1.e-4 && data_at_grid_points[i] > 0.0) {
-              double data_i = data_at_grid_points[i];
-              double distance_i = distances[i];
-              double distance_i_sq = distance_i*distance_i;
-              double data_i_approx =
-                              a_real_space_ * std::exp(-b_real_space_*distance_i_sq);
-               num=num+std::abs(data_i-data_i_approx);
-               denum=denum+data_i_approx;
-      }
+        double tmp = b_real_space_/scitbx::constants::pi;
+        double pi_sq = scitbx::constants::pi*scitbx::constants::pi;
+        a_reciprocal_space_ = a_real_space_/std::sqrt(tmp*tmp*tmp);
+        b_reciprocal_space_ = pi_sq/b_real_space_*4; //      not deja divise par 4 !!!
+        double num = 0.0;
+        double denum = 0.0;
+        for(int i = 0; i < number_of_points; i++) {
+            if(data_at_grid_points[i] > 0.0 && distances[i] <= first_zero_radius_) {
+               double data_i = data_at_grid_points[i];
+               double distance_i = distances[i];
+               double distance_i_sq = distance_i*distance_i;
+               double data_i_approx =
+                            a_real_space_ * std::exp(-b_real_space_*distance_i_sq);
+                num=num+std::abs(data_i-data_i_approx);
+                denum=denum+data_i;
+            }
+        }
+        gof_ = num/denum*100.;
+        //std::cout<<radius_<<" "<<gof_<<std::endl;
+        if(gof_ < gof_opt_) {
+           gof_opt_ = gof_;
+           radius_opt_ = radius_;
+           a_real_space_opt_ = a_real_space_;
+           b_real_space_opt_ = b_real_space_;
+           a_reciprocal_space_opt_ = a_reciprocal_space_;
+           b_reciprocal_space_opt_ = b_reciprocal_space_;
+        }
     }
-    gof_ = num/denum*100.;
+    gof_atzero_ = gof_;
+    radius_atzero_ = radius_;
+    a_real_space_atzero_ = a_real_space_;
+    b_real_space_atzero_ = b_real_space_;
+    a_reciprocal_space_atzero_ = a_reciprocal_space_;
+    b_reciprocal_space_atzero_ = b_reciprocal_space_;
   }
-  double a_real_space() { return a_real_space_; }
-  double b_real_space() { return b_real_space_; }
-  double a_reciprocal_space() { return a_reciprocal_space_; }
-  double b_reciprocal_space() { return b_reciprocal_space_; }
-  double gof() { return gof_; }
+  double a_real_space_opt() { return a_real_space_opt_; }
+  double b_real_space_opt() { return b_real_space_opt_; }
+  double a_reciprocal_space_opt() { return a_reciprocal_space_opt_; }
+  double b_reciprocal_space_opt() { return b_reciprocal_space_opt_; }
+  double gof_opt() { return gof_opt_; }
+  double radius_opt() { return radius_opt_; }
+  double a_real_space_atzero() { return a_real_space_atzero_; }
+  double b_real_space_atzero() { return b_real_space_atzero_; }
+  double a_reciprocal_space_atzero() { return a_reciprocal_space_atzero_; }
+  double b_reciprocal_space_atzero() { return b_reciprocal_space_atzero_; }
+  double gof_atzero() { return gof_atzero_; }
+  double radius_atzero() { return radius_atzero_; }
+  double first_zero_radius() { return first_zero_radius_; }
 protected:
-  double a_real_space_;
-  double b_real_space_;
-  double a_reciprocal_space_;
-  double b_reciprocal_space_;
-  double gof_;
+  double a_real_space_,a_real_space_opt_,a_real_space_atzero_;
+  double b_real_space_,b_real_space_opt_,b_real_space_atzero_;
+  double a_reciprocal_space_,a_reciprocal_space_opt_,a_reciprocal_space_atzero_;
+  double b_reciprocal_space_,b_reciprocal_space_opt_,b_reciprocal_space_atzero_;
+  double gof_,gof_opt_,gof_atzero_;
+  double radius_, radius_opt_, radius_atzero_, first_zero_radius_;
 };
 
 

@@ -100,3 +100,12 @@ class _scattering_type_registry(
     for t,i in self.type_index_pairs_as_dict().items():
       result[t] = ugs[i]
     return result
+
+class _sampled_model_density(
+        boost.python.injector, sampled_model_density):
+
+  def real_map_unpadded(self):
+    from cctbx import maptbx
+    result = self.real_map()
+    if (not result.is_padded()): return result
+    return maptbx.copy(result, flex.grid(result.focus()))

@@ -2429,6 +2429,14 @@ class fft_map(maptbx.crystal_gridding):
   def statistics(self):
     return maptbx.statistics(self.real_map())
 
+  def apply_volume_scaling(self):
+    scale = 1./self.unit_cell().volume()
+    if (not self.anomalous_flag()):
+      self._real_map *= scale
+    else:
+      self._complex_map *= scale
+    return self
+
   def apply_sigma_scaling(self):
     statistics = self.statistics()
     if (not self.anomalous_flag()):
