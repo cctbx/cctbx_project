@@ -14,7 +14,7 @@ class iotbx_option_parser(option_parser):
     self.symmetry_callback = symmetry_callback()
     self.chunk_callback = chunk_callback()
 
-  def format_help (self, formatter=None):
+  def format_help(self, formatter=None):
     if formatter is None:
       formatter = self.formatter
     result = []
