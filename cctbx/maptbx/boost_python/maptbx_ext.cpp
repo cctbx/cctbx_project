@@ -61,18 +61,28 @@ namespace {
                                                          arg_("shell"),
                                                          arg_("site_frac"))))
       .def("data_at_grid_points", &grid_points_in_sphere_around_atom_and_distances::data_at_grid_points)
+      .def("data_at_grid_points_averaged",
+           &grid_points_in_sphere_around_atom_and_distances::data_at_grid_points_averaged)
       .def("distances", &grid_points_in_sphere_around_atom_and_distances::distances)
     ;
     class_<one_gaussian_peak_approximation>("one_gaussian_peak_approximation",
                            init<af::const_ref<double> const&,
                                 af::const_ref<double> const& >(
-                                                         (arg_("data_at_grid_points"),
-                                                         arg_("distances"))))
-      .def("a_real_space", &one_gaussian_peak_approximation::a_real_space)
-      .def("b_real_space", &one_gaussian_peak_approximation::b_real_space)
-      .def("a_reciprocal_space", &one_gaussian_peak_approximation::a_reciprocal_space)
-      .def("b_reciprocal_space", &one_gaussian_peak_approximation::b_reciprocal_space)
-      .def("gof", &one_gaussian_peak_approximation::gof)
+                                       (arg_("data_at_grid_points"),
+                                        arg_("distances"))))
+      .def("a_real_space_opt", &one_gaussian_peak_approximation::a_real_space_opt)
+      .def("b_real_space_opt", &one_gaussian_peak_approximation::b_real_space_opt)
+      .def("a_reciprocal_space_opt", &one_gaussian_peak_approximation::a_reciprocal_space_opt)
+      .def("b_reciprocal_space_opt", &one_gaussian_peak_approximation::b_reciprocal_space_opt)
+      .def("gof_opt", &one_gaussian_peak_approximation::gof_opt)
+      .def("radius_opt", &one_gaussian_peak_approximation::radius_opt)
+      .def("a_real_space_atzero", &one_gaussian_peak_approximation::a_real_space_atzero)
+      .def("b_real_space_atzero", &one_gaussian_peak_approximation::b_real_space_atzero)
+      .def("a_reciprocal_space_atzero", &one_gaussian_peak_approximation::a_reciprocal_space_atzero)
+      .def("b_reciprocal_space_atzero", &one_gaussian_peak_approximation::b_reciprocal_space_atzero)
+      .def("gof_atzero", &one_gaussian_peak_approximation::gof_atzero)
+      .def("radius_atzero", &one_gaussian_peak_approximation::radius_atzero)
+      .def("first_zero_radius", &one_gaussian_peak_approximation::first_zero_radius)
     ;
 
 
