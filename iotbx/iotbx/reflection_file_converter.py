@@ -61,7 +61,7 @@ def run(args, simply_return_all_miller_arrays=False):
       default=2000,
       type="int",
       help="Maximum number of free reflections (default: 2000).",
-      metavar="FLOAT")
+      metavar="INT")
     .option(None, "--change_of_basis",
       action="store",
       type="string",
