@@ -855,10 +855,26 @@ class structure(crystal.special_position_settings):
 
   def orthorhombic_unit_cell_around_centered_scatterers(self, buffer_size):
     sites_cart = self.sites_cart()
-    sites_cart -= [x-buffer_size for x in sites_cart.min()]
+    sites_cart_min = sites_cart.min()
+    abc = [2*buffer_size+a-i for i,a in zip(sites_cart_min,sites_cart.max())]
+    sites_cart += [buffer_size-i for i in sites_cart_min]
     result = structure(
       crystal_symmetry=crystal.symmetry(
-        unit_cell=[buffer_size+x for x in sites_cart.max()],
+        unit_cell=abc,
+        space_group_symbol="P1"),
+      scatterers=self.scatterers())
+    result.set_sites_cart(sites_cart)
+    return result
+
+  def cubic_unit_cell_around_centered_scatterers(self, buffer_size):
+    sites_cart = self.sites_cart()
+    sites_cart_min = sites_cart.min()
+    span = [a-i for i,a in zip(sites_cart_min, sites_cart.max())]
+    a = max(span) + 2 * buffer_size
+    sites_cart += [(a-s)/2-i for i,s in zip(sites_cart_min, span)]
+    result = structure(
+      crystal_symmetry=crystal.symmetry(
+        unit_cell=[a,a,a],
         space_group_symbol="P1"),
       scatterers=self.scatterers())
     result.set_sites_cart(sites_cart)
