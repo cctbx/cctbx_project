@@ -3,6 +3,7 @@ import libtbx.load_env
 
 def run():
   tst_list = (
+  "$D/mmtbx/real_space/tst.py",
   "$D/mmtbx/refinement/tst_rigid_body.py",
   "$D/mmtbx/tst_model.py",
   "$D/mmtbx/tst_fmodel.py",
