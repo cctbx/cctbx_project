@@ -62,12 +62,14 @@ def exercise_1(grid_step,
   data_exact = around_atom_obj.data()
   dist_exact = around_atom_obj.distances()
   approx_obj = maptbx.one_gaussian_peak_approximation(
-                                           data_at_grid_points = data_exact,
-                                           distances           = dist_exact)
-  assert approx_equal(approx_obj.a_reciprocal_space_opt(), 6.0, 1.e-3)
-  assert approx_equal(approx_obj.b_reciprocal_space_opt(), 3.0, 1.e-3)
-  assert approx_obj.gof_opt() < 0.3
-  assert approx_obj.radius_opt() < radius
+                                           data_at_grid_points    = data_exact,
+                                           distances              = dist_exact,
+                                           use_weights            = False,
+                                           optimize_cutoff_radius = True)
+  assert approx_equal(approx_obj.a_reciprocal_space(), 6.0, 1.e-3)
+  assert approx_equal(approx_obj.b_reciprocal_space(), 3.0, 1.e-3)
+  assert approx_obj.gof() < 0.3
+  assert approx_obj.cutoff_radius() < radius
 
 def exercise_2(grid_step,
                radius,
@@ -103,12 +105,14 @@ def exercise_2(grid_step,
   data_exact = around_atom_obj.data()
   dist_exact = around_atom_obj.distances()
   approx_obj = maptbx.one_gaussian_peak_approximation(
-                                           data_at_grid_points = data_exact,
-                                           distances           = dist_exact)
-  assert approx_equal(approx_obj.a_reciprocal_space_opt(), 6.0, 1.e-2)
-  assert approx_equal(approx_obj.b_reciprocal_space_opt(), 3.0, 1.e-2)
-  assert approx_obj.gof_opt() < 0.3
-  assert approx_obj.radius_opt() < radius
+                                           data_at_grid_points    = data_exact,
+                                           distances              = dist_exact,
+                                           use_weights            = False,
+                                           optimize_cutoff_radius = True)
+  assert approx_equal(approx_obj.a_reciprocal_space(), 6.0, 1.e-2)
+  assert approx_equal(approx_obj.b_reciprocal_space(), 3.0, 1.e-2)
+  assert approx_obj.gof() < 0.3
+  assert approx_obj.cutoff_radius() < radius
 
 def exercise_3(grid_step,
                radius,
@@ -148,12 +152,14 @@ def exercise_3(grid_step,
   data = around_atom_obj_.data()
   dist = around_atom_obj_.distances()
   approx_obj_ = maptbx.one_gaussian_peak_approximation(
-                                                  data_at_grid_points = data,
-                                                  distances           = dist)
-  assert approx_equal(approx_obj_.a_reciprocal_space_opt(), 6.0, 0.1)
-  assert approx_equal(approx_obj_.b_reciprocal_space_opt(), 3.0, 0.01)
-  assert approx_obj_.gof_opt() < 0.6
-  assert approx_obj_.radius_opt() < radius
+                                                data_at_grid_points    = data,
+                                                distances              = dist,
+                                                use_weights            = False,
+                                                optimize_cutoff_radius = True)
+  assert approx_equal(approx_obj_.a_reciprocal_space(), 6.0, 0.1)
+  assert approx_equal(approx_obj_.b_reciprocal_space(), 3.0, 0.01)
+  assert approx_obj_.gof() < 0.6
+  assert approx_obj_.cutoff_radius() < radius
 
 def exercise_4(grid_step,
                radius,
@@ -162,6 +168,8 @@ def exercise_4(grid_step,
                b,
                d_min,
                volume_per_atom,
+               use_weights,
+               optimize_cutoff_radius,
                scatterer_chemical_type = "C"):
   xray_structure = random_structure.xray_structure(
                         space_group_info       = sgtbx.space_group_info("P 1"),
@@ -198,12 +206,14 @@ def exercise_4(grid_step,
   data = around_atom_obj_.data()
   dist = around_atom_obj_.distances()
   approx_obj_ = maptbx.one_gaussian_peak_approximation(
-                                                  data_at_grid_points = data,
-                                                  distances           = dist)
-  assert approx_equal(approx_obj_.a_reciprocal_space_opt(), 6.0, 0.1)
-  assert approx_equal(approx_obj_.b_reciprocal_space_opt(), 3.0, 0.1)
-  assert approx_obj_.gof_opt() < 1.0
-  assert approx_obj_.radius_opt() < radius
+                               data_at_grid_points    = data,
+                               distances              = dist,
+                               use_weights            = use_weights,
+                               optimize_cutoff_radius = optimize_cutoff_radius)
+  assert approx_equal(approx_obj_.a_reciprocal_space(), 6.0, 0.1)
+  assert approx_equal(approx_obj_.b_reciprocal_space(), 3.0, 0.1)
+  assert approx_obj_.gof() < 1.0
+  assert approx_obj_.cutoff_radius() < radius
 
 def run():
   for site in ([0,0,0], [0.1,0.1,0.1], [6,6,6], [3,3,3], [-0.1,0.1,-0.1],
@@ -239,7 +249,19 @@ def run():
                  a            = 6.0,
                  b            = 3.0,
                  d_min        = 0.08,
-                 volume_per_atom = volume_per_atom)
+                 volume_per_atom = volume_per_atom,
+                 use_weights            = False,
+                 optimize_cutoff_radius = True)
+  for use_weights, optimize_cutoff_radius in zip([True,False], [True,True]):
+      exercise_4(grid_step    = 0.1,
+                 radius       = 0.9,
+                 shell        = 0.0,
+                 a            = 6.0,
+                 b            = 3.0,
+                 d_min        = 0.08,
+                 volume_per_atom = 300,
+                 use_weights            = use_weights,
+                 optimize_cutoff_radius = optimize_cutoff_radius)
 
 if (__name__ == "__main__"):
     run()
