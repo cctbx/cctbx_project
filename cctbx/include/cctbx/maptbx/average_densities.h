@@ -4,6 +4,7 @@
 
 #include <cctbx/uctbx.h>
 #include <scitbx/array_family/accessors/c_grid.h>
+#include <scitbx/math/utils.h>
 
 namespace cctbx { namespace maptbx {
 
@@ -110,12 +111,12 @@ public:
        double coas = rad/as;
        double cobs = rad/bs;
        double cocs = rad/cs;
-       int x1box = nint( nx*(xf-coas) ) - 1;
-       int x2box = nint( nx*(xf+coas) ) + 1;
-       int y1box = nint( ny*(yf-cobs) ) - 1;
-       int y2box = nint( ny*(yf+cobs) ) + 1;
-       int z1box = nint( nz*(zf-cocs) ) - 1;
-       int z2box = nint( nz*(zf+cocs) ) + 1;
+       int x1box = scitbx::math::nearest_integer( nx*(xf-coas) ) - 1;
+       int x2box = scitbx::math::nearest_integer( nx*(xf+coas) ) + 1;
+       int y1box = scitbx::math::nearest_integer( ny*(yf-cobs) ) - 1;
+       int y2box = scitbx::math::nearest_integer( ny*(yf+cobs) ) + 1;
+       int z1box = scitbx::math::nearest_integer( nz*(zf-cocs) ) - 1;
+       int z2box = scitbx::math::nearest_integer( nz*(zf+cocs) ) + 1;
        for(kx = x1box; kx <= x2box; kx++) {
            double xn=xf-double(kx)/nx;
            for(ky = y1box; ky <= y2box; ky++) {
@@ -163,102 +164,177 @@ protected:
   af::shared<double> distances_;
 };
 
+class find_gaussian_parameters {
+public:
+  find_gaussian_parameters() {}
+  find_gaussian_parameters(af::const_ref<double> const& data_at_grid_points,
+                           af::const_ref<double> const& distances,
+                           double const& cutoff_radius,
+                           double const& allowed_region_radius,
+                           double weight_power)
+  {
+    CCTBX_ASSERT(cutoff_radius <= allowed_region_radius);
+    double max_distances = af::max(distances);
+    CCTBX_ASSERT(cutoff_radius <= max_distances &&
+                 allowed_region_radius <= max_distances);
+    double p=0.0, q=0.0, r=0.0, s=0.0, t=0.0;
+    int n = 0;
+    int number_of_points = data_at_grid_points.size();
+    for(int i = 0; i < number_of_points; i++) {
+        if(data_at_grid_points[i] > 0.0 && distances[i] <= cutoff_radius) {
+           n = n + 1;
+           double data_i = data_at_grid_points[i];
+           double distance_i = distances[i];
+           double distance_i_sq = distance_i*distance_i;
+           double pow_distance_i = std::pow(distance_i, weight_power);
+           double log_of_data_i = std::log(data_i);
+           if(pow_distance_i < 1.e-9) pow_distance_i = 1.0;
+           p=p+log_of_data_i/pow_distance_i;
+           q=q+distance_i_sq/pow_distance_i;
+           r=r+(distance_i_sq*distance_i_sq)/pow_distance_i;
+           s=s+distance_i_sq*log_of_data_i/pow_distance_i;
+           t=t+1.0/pow_distance_i;
+        }
+    }
+    double alpha_opt = (p-s*q/r) / (t-q*q/r);
+    a_real_space_ = std::exp( alpha_opt );
+    b_real_space_ = 1./r*(alpha_opt*q - s);
+    double tmp = b_real_space_/scitbx::constants::pi;
+    double pi_sq = scitbx::constants::pi*scitbx::constants::pi;
+    a_reciprocal_space_ = a_real_space_/std::sqrt(tmp*tmp*tmp);
+    b_reciprocal_space_ = pi_sq/b_real_space_*4; // not deja divise par 4 !!!
+    double num = 0.0;
+    double denum = 0.0;
+    for(int i = 0; i < number_of_points; i++) {
+        if(data_at_grid_points[i]>0.0 && distances[i]<=allowed_region_radius) {
+           double data_i = data_at_grid_points[i];
+           double distance_i = distances[i];
+           double distance_i_sq = distance_i*distance_i;
+           double data_i_approx =
+                        a_real_space_ * std::exp(-b_real_space_*distance_i_sq);
+            num=num+std::abs(data_i-data_i_approx);
+            denum=denum+data_i;
+        }
+    }
+    gof_ = num/denum*100.;
+  }
+  double a_real_space() { return a_real_space_; }
+  double b_real_space() { return b_real_space_; }
+  double a_reciprocal_space() { return a_reciprocal_space_; }
+  double b_reciprocal_space() { return b_reciprocal_space_; }
+  double gof() { return gof_; }
+protected:
+  double a_real_space_,b_real_space_,a_reciprocal_space_,b_reciprocal_space_;
+  double gof_;
+};
+
 class one_gaussian_peak_approximation {
 public:
   one_gaussian_peak_approximation(
                               af::const_ref<double> const& data_at_grid_points,
+                              af::const_ref<double> const& distances,
+                              bool const& use_weights,
+                              bool const& optimize_cutoff_radius)
+  {
+    first_zero_radius_ =find_first_zero_radius(data_at_grid_points, distances);
+    double radius_increment = 0.01, weight_power = 0.0, weight_increment =0.05;
+    weight_power_ = -1;
+    cutoff_radius_ = -1;
+    gof_ = 999.;
+    if(use_weights && optimize_cutoff_radius) {
+       for(double c_radius = 0.1; c_radius <= first_zero_radius_;
+                                        c_radius = c_radius+radius_increment) {
+       for(double w_power=0.0;w_power<=10.0;w_power=w_power+weight_increment) {
+           find_gaussian_parameters fgp_obj(data_at_grid_points,
+                                            distances,
+                                            c_radius,
+                                            first_zero_radius_,
+                                            w_power);
+           if(fgp_obj.gof() < gof_) {
+              gof_           = fgp_obj.gof();
+              weight_power_  = w_power;
+              cutoff_radius_ = c_radius;
+              fgp_obj_       = fgp_obj;
+           }
+       }}
+
+    }
+    else if(use_weights && !optimize_cutoff_radius) {
+       for(double w_power=0.0;w_power<=20.0;w_power=w_power+weight_increment) {
+           find_gaussian_parameters fgp_obj(data_at_grid_points,
+                                            distances,
+                                            first_zero_radius_,
+                                            first_zero_radius_,
+                                            w_power);
+           if(fgp_obj.gof() < gof_) {
+              gof_           = fgp_obj.gof();
+              weight_power_  = w_power;
+              cutoff_radius_ = first_zero_radius_;
+              fgp_obj_       = fgp_obj;
+           }
+       }
+    }
+    else if(optimize_cutoff_radius && !use_weights) {
+       for(double c_radius = 0.1; c_radius <= first_zero_radius_;
+                                        c_radius = c_radius+radius_increment) {
+           find_gaussian_parameters fgp_obj(data_at_grid_points,
+                                            distances,
+                                            c_radius,
+                                            first_zero_radius_,
+                                            0.0);
+           if(fgp_obj.gof() < gof_) {
+              gof_           = fgp_obj.gof();
+              cutoff_radius_ = c_radius;
+              fgp_obj_       = fgp_obj;
+           }
+       }
+    }
+    else {
+       find_gaussian_parameters fgp_obj(data_at_grid_points,
+                                        distances,
+                                        first_zero_radius_,
+                                        first_zero_radius_,
+                                        0.0);
+       gof_           = fgp_obj.gof();
+       cutoff_radius_ = first_zero_radius_;
+       fgp_obj_       = fgp_obj;
+    }
+  }
+  double find_first_zero_radius(
+                              af::const_ref<double> const& data_at_grid_points,
                               af::const_ref<double> const& distances)
   {
+    double shift = 1.e-3;
     af::shared<double> distances_for_negative_data_at_grid_points;
     for(int i = 0; i < data_at_grid_points.size(); i++) {
       if(data_at_grid_points[i] < 0.0) {
         distances_for_negative_data_at_grid_points.push_back(distances[i]);
       }
     }
-    first_zero_radius_ = af::max(distances);
+    double result = af::max(distances);
     if(distances_for_negative_data_at_grid_points.size() > 0) {
-       first_zero_radius_ =
-         af::min(distances_for_negative_data_at_grid_points.const_ref())-1.e-3;
+       result =
+         af::min(distances_for_negative_data_at_grid_points.const_ref())-shift;
     }
-    double increment = 0.01;
-    gof_opt_ = 1.e+10;
-    for(radius_ = 0.1; radius_ <= first_zero_radius_; radius_ = radius_+increment) {
-        double p=0.0, q=0.0, r=0.0, s=0.0;
-        int n = 0;
-        int number_of_points = data_at_grid_points.size();
-        for(int i = 0; i < number_of_points; i++) {
-            if(data_at_grid_points[i] > 0.0 && distances[i] <= radius_) {
-               n = n + 1;
-               double data_i = data_at_grid_points[i];
-               double distance_i = distances[i];
-               double distance_i_sq = distance_i*distance_i;
-               p=p+std::log(data_i);
-               q=q+distance_i_sq;
-               r=r+(distance_i_sq*distance_i_sq);
-               s=s+distance_i_sq*std::log(data_i);
-            }
-        }
-        double alpha_opt = (p-s*q/r) / (double(n)-q*q/r);
-        a_real_space_ = std::exp( alpha_opt );
-        b_real_space_ = 1./r*(alpha_opt*q - s);
-
-        double tmp = b_real_space_/scitbx::constants::pi;
-        double pi_sq = scitbx::constants::pi*scitbx::constants::pi;
-        a_reciprocal_space_ = a_real_space_/std::sqrt(tmp*tmp*tmp);
-        b_reciprocal_space_ = pi_sq/b_real_space_*4; //      not deja divise par 4 !!!
-        double num = 0.0;
-        double denum = 0.0;
-        for(int i = 0; i < number_of_points; i++) {
-            if(data_at_grid_points[i] > 0.0 && distances[i] <= first_zero_radius_) {
-               double data_i = data_at_grid_points[i];
-               double distance_i = distances[i];
-               double distance_i_sq = distance_i*distance_i;
-               double data_i_approx =
-                            a_real_space_ * std::exp(-b_real_space_*distance_i_sq);
-                num=num+std::abs(data_i-data_i_approx);
-                denum=denum+data_i;
-            }
-        }
-        gof_ = num/denum*100.;
-        //std::cout<<radius_<<" "<<gof_<<std::endl;
-        if(gof_ < gof_opt_) {
-           gof_opt_ = gof_;
-           radius_opt_ = radius_;
-           a_real_space_opt_ = a_real_space_;
-           b_real_space_opt_ = b_real_space_;
-           a_reciprocal_space_opt_ = a_reciprocal_space_;
-           b_reciprocal_space_opt_ = b_reciprocal_space_;
-        }
-    }
-    gof_atzero_ = gof_;
-    radius_atzero_ = radius_;
-    a_real_space_atzero_ = a_real_space_;
-    b_real_space_atzero_ = b_real_space_;
-    a_reciprocal_space_atzero_ = a_reciprocal_space_;
-    b_reciprocal_space_atzero_ = b_reciprocal_space_;
+    return result;
   }
-  double a_real_space_opt() { return a_real_space_opt_; }
-  double b_real_space_opt() { return b_real_space_opt_; }
-  double a_reciprocal_space_opt() { return a_reciprocal_space_opt_; }
-  double b_reciprocal_space_opt() { return b_reciprocal_space_opt_; }
-  double gof_opt() { return gof_opt_; }
-  double radius_opt() { return radius_opt_; }
-  double a_real_space_atzero() { return a_real_space_atzero_; }
-  double b_real_space_atzero() { return b_real_space_atzero_; }
-  double a_reciprocal_space_atzero() { return a_reciprocal_space_atzero_; }
-  double b_reciprocal_space_atzero() { return b_reciprocal_space_atzero_; }
-  double gof_atzero() { return gof_atzero_; }
-  double radius_atzero() { return radius_atzero_; }
-  double first_zero_radius() { return first_zero_radius_; }
+  double a_real_space()       { return fgp_obj_.a_real_space(); }
+  double b_real_space()       { return fgp_obj_.b_real_space(); }
+  double a_reciprocal_space() { return fgp_obj_.a_reciprocal_space(); }
+  double b_reciprocal_space() { return fgp_obj_.b_reciprocal_space(); }
+  double gof()
+  {
+   CCTBX_ASSERT(gof_ == fgp_obj_.gof());
+   return gof_;
+  }
+  double cutoff_radius()      { return cutoff_radius_; }
+  double weight_power()       { return weight_power_; }
+  double first_zero_radius()  { return first_zero_radius_; }
 protected:
-  double a_real_space_,a_real_space_opt_,a_real_space_atzero_;
-  double b_real_space_,b_real_space_opt_,b_real_space_atzero_;
-  double a_reciprocal_space_,a_reciprocal_space_opt_,a_reciprocal_space_atzero_;
-  double b_reciprocal_space_,b_reciprocal_space_opt_,b_reciprocal_space_atzero_;
-  double gof_,gof_opt_,gof_atzero_;
-  double radius_, radius_opt_, radius_atzero_, first_zero_radius_;
+  double a_real_space_,b_real_space_,a_reciprocal_space_,b_reciprocal_space_;
+  double gof_, cutoff_radius_, weight_power_, first_zero_radius_;
+  find_gaussian_parameters fgp_obj_;
 };
-
 
   template <typename DataType>
   af::shared<DataType>
