@@ -67,21 +67,20 @@ namespace {
     ;
     class_<one_gaussian_peak_approximation>("one_gaussian_peak_approximation",
                            init<af::const_ref<double> const&,
-                                af::const_ref<double> const& >(
+                                af::const_ref<double> const&,
+                                bool const&,
+                                bool const& >(
                                        (arg_("data_at_grid_points"),
-                                        arg_("distances"))))
-      .def("a_real_space_opt", &one_gaussian_peak_approximation::a_real_space_opt)
-      .def("b_real_space_opt", &one_gaussian_peak_approximation::b_real_space_opt)
-      .def("a_reciprocal_space_opt", &one_gaussian_peak_approximation::a_reciprocal_space_opt)
-      .def("b_reciprocal_space_opt", &one_gaussian_peak_approximation::b_reciprocal_space_opt)
-      .def("gof_opt", &one_gaussian_peak_approximation::gof_opt)
-      .def("radius_opt", &one_gaussian_peak_approximation::radius_opt)
-      .def("a_real_space_atzero", &one_gaussian_peak_approximation::a_real_space_atzero)
-      .def("b_real_space_atzero", &one_gaussian_peak_approximation::b_real_space_atzero)
-      .def("a_reciprocal_space_atzero", &one_gaussian_peak_approximation::a_reciprocal_space_atzero)
-      .def("b_reciprocal_space_atzero", &one_gaussian_peak_approximation::b_reciprocal_space_atzero)
-      .def("gof_atzero", &one_gaussian_peak_approximation::gof_atzero)
-      .def("radius_atzero", &one_gaussian_peak_approximation::radius_atzero)
+                                        arg_("distances"),
+                                        arg_("use_weights"),
+                                        arg_("optimize_cutoff_radius"))))
+      .def("a_real_space", &one_gaussian_peak_approximation::a_real_space)
+      .def("b_real_space", &one_gaussian_peak_approximation::b_real_space)
+      .def("a_reciprocal_space", &one_gaussian_peak_approximation::a_reciprocal_space)
+      .def("b_reciprocal_space", &one_gaussian_peak_approximation::b_reciprocal_space)
+      .def("gof", &one_gaussian_peak_approximation::gof)
+      .def("cutoff_radius", &one_gaussian_peak_approximation::cutoff_radius)
+      .def("weight_power", &one_gaussian_peak_approximation::weight_power)
       .def("first_zero_radius", &one_gaussian_peak_approximation::first_zero_radius)
     ;
 
