@@ -3374,6 +3374,43 @@ Error interpreting command line argument as parameter definition:
     assert str(e) == 'Parameter definition has no effect: "bar {}"'
   else: raise RuntimeError("Exception expected.")
 
+def exercise_choice_multi_plus_support():
+  master_params = libtbx.phil.parse("""\
+  u = a b c
+    .type = choice(multi=True)
+    .optional = False
+  """)
+  # argument_interpreter used only for convenience
+  # (i.e. it is not exercised here)
+  cai = libtbx.phil.command_line.argument_interpreter(
+    master_params=master_params)
+  for arg,expected_result in [
+        ("u=a", "u = *a b c"),
+        ("u=b", "u = a *b c"),
+        ("u=c", "u = a b *c"),
+        ("u=a+b", "u = *a *b c"),
+        ("u=b +c", "u = a *b *c"),
+        ("u=a+ c", "u = *a b *c"),
+        ("u=a + b +c", "u = *a *b *c"),
+        ("u=+a + b +c", "u = *a *b *c"),
+        ("u=+a ++ b +c", "u = a b c"),
+        ("u=a + b + *c", "u = a b *c"),
+        ("u=a + b + 'c'", "u = a b c")]:
+    work_params = master_params.fetch(source=cai.process(arg=arg))
+    assert not show_diff(work_params.as_str(), expected_result+"\n")
+  for arg,err in [("u=a+d", "d"), ("u=e + b", "e")]:
+    try: master_params.fetch(source=cai.process(arg=arg))
+    except Sorry, e:
+      assert str(e) == "Not a possible choice for u: %s" \
+        " (command line argument, line 1)" % err
+    else: raise RuntimeError("Exception expected.")
+  for val in ["++a", "a++", "a++b", "a+b+"]:
+    try: master_params.fetch(source=cai.process(arg="u="+val))
+    except Sorry, e:
+      assert str(e) == "Not a possible choice for u: %s" \
+        " (command line argument, line 1)" % val
+    else: raise RuntimeError("Exception expected.")
+
 def exercise_scope_call():
   try: phil.parse("""\
 s
@@ -3579,6 +3616,7 @@ def exercise():
   exercise_choice_exceptions()
   exercise_scope_call()
   exercise_command_line()
+  exercise_choice_multi_plus_support()
   print "OK"
 
 if (__name__ == "__main__"):

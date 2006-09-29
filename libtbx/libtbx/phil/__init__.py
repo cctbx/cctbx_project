@@ -255,20 +255,45 @@ class choice_converters(object):
       if (word.value.startswith("*")): value = word.value[1:]
       else: value = word.value
       flags[value] = False
+    have_quote_or_star = False
+    have_plus = False
     for word in source_words:
-      if (word.value.startswith("*")):
-        value = word.value[1:]
-        flag = True
+      if (word.quote_token is not None or word.value.startswith("*")):
+        have_quote_or_star = True
+        break
+      if (word.value.find("+") >= 0):
+        have_plus = True
+    process_plus = False
+    if (not have_quote_or_star and have_plus):
+      values = "".join([word.value for word in source_words]).split("+")
+      for value in values[1:]:
+        if (len(value.strip()) == 0):
+          break
       else:
-        value = word.value
-        if (len(source_words) == 1):
+        process_plus = True
+    if (process_plus):
+      for word in source_words:
+        for value in word.value.split("+"):
+          if (len(value) == 0): continue
+          if (value not in flags):
+            raise Sorry("Not a possible choice for %s: %s%s" % (
+              master.full_path(), value, word.where_str()))
+          flags[value] = True
+    else:
+      for word in source_words:
+        if (word.value.startswith("*")):
+          value = word.value[1:]
           flag = True
         else:
-          flag = False
-      if (flag and value not in flags):
-        raise Sorry("Not a possible choice for %s: %s%s" % (
-          master.full_path(), str(word), word.where_str()))
-      flags[value] = flag
+          value = word.value
+          if (len(source_words) == 1):
+            flag = True
+          else:
+            flag = False
+        if (flag and value not in flags):
+          raise Sorry("Not a possible choice for %s: %s%s" % (
+            master.full_path(), str(word), word.where_str()))
+        flags[value] = flag
     words = []
     for word in master.words:
       if (word.value.startswith("*")): value = word.value[1:]
