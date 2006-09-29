@@ -832,6 +832,71 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
       return(result);
     }
 
+    FloatType num_integrate(FloatType fm1, FloatType s1, FloatType fm2, FloatType s2, FloatType sigma_level)
+    {
+
+
+
+      FloatType mid1, span1, a1, b1;
+      FloatType mid2, span2, a2, b2;
+      mid1=fm1;
+      mid2=fm2;
+      span1=s1*sigma_level;
+      span2=s2*sigma_level;
+      FloatType tmp_max;
+      tmp_max = log_p( fm1, fm2 );
+
+      // make sure we do not pass zero
+      a1 = fm1-span1;
+      if (a1<0){
+        a1 = 0;
+        b1 = fm1+span1;
+        fm1 = (a1+b1)/2.0;
+        span1 = fm1;
+      }
+      a2 = fm2-span2;
+      if (a2<0){
+        a2 = 0;
+        b2 = fm1+span1;
+        fm2 = (a2+b2)/2.0;
+        span2 = fm2;
+      }
+
+      FloatType y1,y2, result1,result2,tmp;
+      result1=0;
+      for (int ii=0;ii<n_quad_;ii++){
+        y1 = x_quad_[ii]*span1 + mid1;
+        result2=0;
+        for (int jj=0;jj<n_quad_;jj++){
+          y2       = x_quad_[jj]*span2 + mid2;
+          tmp      = std::exp( log_p( y1, y2 )-tmp_max );
+          result2 += tmp*w_quad_[jj];
+        }
+        result2 = result2*span2;
+        result1+= result2*w_quad_[ii];
+      }
+
+      result1 = result1*span1;
+      result1 = std::exp(tmp_max)*result1;
+      return( result1 );
+    }
+
+    FloatType laplace_integrate(FloatType fm1, FloatType fm2)
+    {
+      // first we need the second derivatives
+      scitbx::af::tiny<FloatType,3> snd_der;
+      snd_der = dd_log_p_dd_f(fm1,fm2);
+      FloatType det, result;
+      det = snd_der[0]*snd_der[1]-snd_der[2]*snd_der[2];
+      det = std::fabs(det);
+      result=std::exp( log_p(fm1,fm2) )*scitbx::constants::pi*2.0/std::sqrt(det);
+      return result;
+    }
+
+
+
+
+
   protected:
     FloatType log_likelihood_single(FloatType io1, FloatType io2,
                                     FloatType so1, FloatType so2,
