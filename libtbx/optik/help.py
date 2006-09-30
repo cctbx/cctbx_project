@@ -127,7 +127,7 @@ class HelpFormatter:
 
     def format_description(self, description):
         if description:
-            return self._format_text(description) + "\n"
+            return description # self._format_text(description) + "\n"
         else:
             return ""
 
