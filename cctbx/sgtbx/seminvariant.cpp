@@ -1,13 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Sep: Refactored (rwgk)
-     2001 Sep: start port of sglite/sgss.c (R.W. Grosse-Kunstleve)
- */
-
 #include <cctbx/sgtbx/seminvariant.h>
 #include <cctbx/sgtbx/select_generators.h>
 #include <cctbx/sgtbx/smith_normal_form.h>

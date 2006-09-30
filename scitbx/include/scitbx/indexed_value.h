@@ -1,13 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2003 Jan: Moved from cctbx to scitbx (rwgk)
-     2002 Jun: Created, fragment from cctbx/maps/peak_search.h (rwgk)
- */
-
 #ifndef SCITBX_INDEXED_VALUE_H
 #define SCITBX_INDEXED_VALUE_H
 

@@ -1,13 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Oct: Generalized cctbx/sgtbx/mod.h (rwgk)
-     2002 Sep: Fragment from cctbx/sgtbx/math.h (rwgk)
- */
-
 #ifndef CCTBX_MATH_MOD_H
 #define CCTBX_MATH_MOD_H
 

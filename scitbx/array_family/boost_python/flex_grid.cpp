@@ -1,13 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Aug: Copied from cctbx/arraytbx/flexmodule.cpp (rwgk)
-     2002 Aug: Created, based on sharedmodule.cpp, shared_bpl.h (rwgk)
- */
-
 #include <boost/python/tuple.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/overloads.hpp>

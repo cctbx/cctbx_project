@@ -1,12 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Oct: Refactored parts of miller/miller_lib.cpp (rwgk)
- */
-
 #include <cctbx/miller/sym_equiv.h>
 #include <cctbx/sgtbx/miller_ops.h>
 #include <cctbx/sgtbx/reciprocal_space_reference_asu.h>

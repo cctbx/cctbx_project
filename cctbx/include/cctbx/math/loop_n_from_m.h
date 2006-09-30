@@ -1,14 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Sep: Renamed loops.h -> loop_n_from_m.h (rwgk)
-     2002 Mar: Created (parts of cctbx/loops.h) (rwgk)
-     2002 Jan: Created (parts of cctbx/sgtbx/utils.h) (R.W. Grosse-Kunstleve)
- */
-
 #ifndef CCTBX_MATH_LOOP_N_FROM_M_H
 #define CCTBX_MATH_LOOP_N_FROM_M_H
 
