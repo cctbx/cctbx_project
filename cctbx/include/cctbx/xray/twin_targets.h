@@ -1014,8 +1014,7 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
                         FloatType f1,  FloatType f2,
                         FloatType tf)
    {
-     FloatType result=0,norma,tmp1,tmp2;
-     norma=2.0*scitbx::constants::pi*so1*so2;
+     FloatType result=0,tmp1,tmp2;
      FloatType ic1, ic2;
      ic1=(1-tf)*f1*f1+tf*f2*f2;
      ic2=(1-tf)*f2*f2+tf*f1*f1;
@@ -1030,8 +1029,7 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
                         FloatType f1,  FloatType f2,
                         FloatType tf)
    {
-     FloatType result=0,norma,tmp1,tmp2;
-     norma=2.0*scitbx::constants::pi*so1*so2;
+     FloatType result=0,tmp1,tmp2;
      FloatType ic1, ic2;
      ic1=(1-tf)*f1*f1+tf*f2*f2;
      ic2=(1-tf)*f2*f2+tf*f1*f1;
