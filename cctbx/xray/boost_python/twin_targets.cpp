@@ -271,8 +271,8 @@ namespace cctbx { namespace xray { namespace twin_targets { namespace boost_pyth
          .def("log_p" , &w_t::log_p)
          .def("d_log_p_d_f", &w_t::d_log_p_d_f)
          .def("dd_log_p_dd_f", &w_t::dd_log_p_dd_f)
-	 .def("num_integrate", &w_t::num_integrate)
-	 .def("laplace_integrate", &w_t::laplace_integrate)	 
+         .def("num_integrate", &w_t::num_integrate)
+         .def("laplace_integrate", &w_t::laplace_integrate)
          ;
      }
 
