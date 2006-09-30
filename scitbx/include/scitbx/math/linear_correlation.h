@@ -1,12 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Dec: Created (R.W. Grosse-Kunstleve)
- */
-
 #ifndef SCITBX_MATH_LINEAR_CORRELATION_H
 #define SCITBX_MATH_LINEAR_CORRELATION_H
 

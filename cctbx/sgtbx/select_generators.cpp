@@ -1,13 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Sep: Refactored (rwgk)
-     2001 Sep: created from fragments in type.cpp, seminvariant.cpp (rwgk)
- */
-
 #include <cctbx/sgtbx/select_generators.h>
 #include <cctbx/sgtbx/rot_mx_info.h>
 

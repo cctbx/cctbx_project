@@ -1,12 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2003 Jun: Created based on triplet.cpp (Ralf W. Grosse-Kunstleve)
- */
-
 #include <boost/python/class.hpp>
 #include <cctbx/dmtbx/triplet_phase_relation.h>
 #include <scitbx/boost_python/container_conversions.h>

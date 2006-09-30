@@ -1,14 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Aug: Copy from cctbx/fftbx (rwgk)
-     2002 Apr: resurrected (was adaptors.h) to restore performance (rwgk)
-     2001 Nov: fftbx started, based on fftpack41 (rwgk)
- */
-
 #ifndef SCITBX_FFTPACK_DETAIL_REF_H
 #define SCITBX_FFTPACK_DETAIL_REF_H
 

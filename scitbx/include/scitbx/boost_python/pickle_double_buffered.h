@@ -1,14 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Aug: Fragments from cctbx/arraytbx/flex_picklers.cpp (rwgk)
-     2002 Aug: Fragments from cctbx/misc/bpl_utils.cpp (R.W. Grosse-Kunstleve)
-     2002 Aug: Created, based on shared_picklers.cpp (R.W. Grosse-Kunstleve)
- */
-
 #ifndef SCITBX_BOOST_PYTHON_PICKLE_DOUBLE_BUFFERED_H
 #define SCITBX_BOOST_PYTHON_PICKLE_DOUBLE_BUFFERED_H
 

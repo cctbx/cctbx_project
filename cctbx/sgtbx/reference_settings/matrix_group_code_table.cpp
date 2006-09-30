@@ -1,13 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Sep: Refactored parts of cctbx/sgtbx/reference.h
-               and normalizers.cpp (rwgk)
- */
-
 #include <cctbx/sgtbx/reference_settings.h>
 
 namespace cctbx { namespace sgtbx { namespace reference_settings {

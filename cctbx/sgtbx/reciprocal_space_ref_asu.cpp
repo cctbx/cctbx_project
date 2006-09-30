@@ -1,18 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Sep: Renamed miller_ref_asu.cpp -> reciprocal_space_ref_asu.cpp
-     2002 Jul: split of miller_asu.cpp (R.W. Grosse-Kunstleve)
-     2001 Oct: Redesign: AsymIndex (rwgk)
-     2001 Sep: SpaceGroupType -> SpaceGroupInfo (R.W. Grosse-Kunstleve)
-     2001 Aug: Redesign of Kevin Cowtan's implementation for the
-               handling of CCP4 reciprocal-space asymmetric units.
-               Motivation: implementation of MillerIndexGenerator (rwgk).
- */
-
 #include <cctbx/sgtbx/reciprocal_space_reference_asu.h>
 
 namespace cctbx { namespace sgtbx { namespace reciprocal_space {
