@@ -140,11 +140,11 @@ public:
     }
     //
     double tolerance = grid_step/25. ;
-    for(std::size_t i = 0; i <= data_at_grid_points_.size(); i++) {
+    for(std::size_t i = 0; i < data_at_grid_points_.size(); i++) {
         double dist = distances_[i];
         double data_ave = data_at_grid_points_[i];
         int counter = 1;
-        for(std::size_t j = 0; j <= data_at_grid_points_.size(); j++) {
+        for(std::size_t j = 0; j < data_at_grid_points_.size(); j++) {
             if(distances_[j]<dist+tolerance && distances_[j]>dist-tolerance && i!=j && std::abs(distances_[i]-distances_[j]) > 1.e-6) {
                counter++;
                data_ave = data_ave + data_at_grid_points_[j];
