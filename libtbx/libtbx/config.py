@@ -624,8 +624,11 @@ class environment:
 
   def write_bin_sh_dispatcher(self, source_file, target_file):
     f = open(target_file, "w")
-    print >> f, '#! /bin/sh'
-    print >> f, '# LIBTBX_DISPATCHER DO NOT EDIT'
+    if (source_file is not None):
+      print >> f, '#! /bin/sh'
+      print >> f, '# LIBTBX_DISPATCHER DO NOT EDIT'
+    else:
+      print >> f, '# LIBTBX_DISPATCHER_HEAD DO NOT EDIT'
     print >> f, 'unset PYTHONHOME'
     print >> f, 'LIBTBX_BUILD="%s"' % self.build_path
     print >> f, 'export LIBTBX_BUILD'
@@ -653,33 +656,35 @@ class environment:
     if (precall_commands is not None):
       for line in precall_commands:
         print >> f, line
-    for line in source_specific_dispatcher_include(
-                  pattern="LIBTBX_PRE_DISPATCHER_INCLUDE_SH",
-                  source_file=source_file):
-      print >> f, line
+    if (source_file is not None):
+      for line in source_specific_dispatcher_include(
+                    pattern="LIBTBX_PRE_DISPATCHER_INCLUDE_SH",
+                    source_file=source_file):
+        print >> f, line
     for line in self.dispatcher_include():
       print >> f, line
-    for line in source_specific_dispatcher_include(
-                  pattern="LIBTBX_POST_DISPATCHER_INCLUDE_SH",
-                  source_file=source_file):
-      print >> f, line
-    start_python = False
-    cmd = ""
-    if (source_file.lower().endswith(".py")):
-      cmd += " '"+self.python_exe+"'"
-      if (len(source_specific_dispatcher_include(
-                pattern="LIBTBX_START_PYTHON",
-                source_file=source_file)) > 3):
-        start_python = True
-    if (not start_python):
-      cmd += " '"+source_file+"'"
-    print >> f, 'if [ -n "$LIBTBX__VALGRIND_FLAG__" ]; then'
-    print >> f, "  exec $LIBTBX_VALGRIND"+cmd, '"$@"'
-    print >> f, "elif [ $# -eq 0 ]; then"
-    print >> f, "  exec"+cmd
-    print >> f, "else"
-    print >> f, "  exec"+cmd, '"$@"'
-    print >> f, "fi"
+    if (source_file is not None):
+      for line in source_specific_dispatcher_include(
+                    pattern="LIBTBX_POST_DISPATCHER_INCLUDE_SH",
+                    source_file=source_file):
+        print >> f, line
+      start_python = False
+      cmd = ""
+      if (source_file.lower().endswith(".py")):
+        cmd += " '"+self.python_exe+"'"
+        if (len(source_specific_dispatcher_include(
+                  pattern="LIBTBX_START_PYTHON",
+                  source_file=source_file)) > 3):
+          start_python = True
+      if (not start_python):
+        cmd += " '"+source_file+"'"
+      print >> f, 'if [ -n "$LIBTBX__VALGRIND_FLAG__" ]; then'
+      print >> f, "  exec $LIBTBX_VALGRIND"+cmd, '"$@"'
+      print >> f, "elif [ $# -eq 0 ]; then"
+      print >> f, "  exec"+cmd
+      print >> f, "else"
+      print >> f, "  exec"+cmd, '"$@"'
+      print >> f, "fi"
     f.close()
     os.chmod(target_file, 0755)
 
@@ -742,6 +747,13 @@ class environment:
     self.write_dispatcher(
       source_file=source_file,
       target_file=self.under_build("bin/"+target_file))
+
+  def write_lib_dispatcher_head(self, target_file="lib/dispatcher_head.sh"):
+    if (os.name == "nt"): return
+    print "   ", target_file
+    self.write_bin_sh_dispatcher(
+      source_file=None,
+      target_file=self.under_build(target_file))
 
   def write_setpaths_sh(self, suffix):
     setpaths = unix_setpaths(self, "sh", suffix)
@@ -971,6 +983,7 @@ class environment:
   def refresh(self):
     self.assemble_pythonpath()
     self.write_setpath_files()
+    self.write_lib_dispatcher_head()
     self.pickle()
     if (self.is_ready_for_build()):
       self.write_SConstruct()
