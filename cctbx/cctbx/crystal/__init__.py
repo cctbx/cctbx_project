@@ -249,6 +249,51 @@ class symmetry(object):
       u_star_tolerance=u_star_tolerance,
       assert_min_distance_sym_equiv=assert_min_distance_sym_equiv)
 
+def select_crystal_symmetry(
+      from_command_line,
+      from_parameter_file,
+      from_coordinate_files,
+      from_reflection_files):
+  """Select/construct a crystal symmetry from a list of various options"""
+  tmp = [from_command_line, from_parameter_file]+from_coordinate_files \
+        +from_reflection_files
+  if tmp.count(None)==len(tmp):
+    raise AssertionError("No unit cell and symmetry information supplied")
+
+  result = symmetry(
+    unit_cell=None,
+    space_group_info=None)
+  if (from_command_line is not None):
+    result = result.join_symmetry(
+      other_symmetry=from_command_line, force=False)
+  if (from_parameter_file is not None):
+    result = result.join_symmetry(
+      other_symmetry=from_parameter_file, force=False)
+  if (result.unit_cell() is None):
+    for crystal_symmetry in from_reflection_files:
+      unit_cell = crystal_symmetry.unit_cell()
+      if (unit_cell is not None):
+        result = symmetry(
+          unit_cell=unit_cell,
+          space_group_info=result.space_group_info(),
+          assert_is_compatible_unit_cell=False)
+        break
+  for crystal_symmetry in from_coordinate_files:
+    result = result.join_symmetry(other_symmetry=crystal_symmetry, force=False)
+  if (result.space_group_info() is None):
+    for crystal_symmetry in from_reflection_files:
+      space_group_info = crystal_symmetry.space_group_info()
+      if (space_group_info is not None):
+        result = symmetry(
+          unit_cell=result.unit_cell(),
+          space_group_info=space_group_info,
+          assert_is_compatible_unit_cell=False)
+        break
+  return result
+
+
+
+
 def non_crystallographic_symmetry(
       sites_cart=None,
       sites_cart_min=None,
