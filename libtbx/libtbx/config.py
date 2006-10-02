@@ -329,8 +329,16 @@ class environment:
   def under_build(self, path):
     return libtbx.path.norm_join(self.build_path, path)
 
-  def under_dist(self, module_name, path):
-    return libtbx.path.norm_join(self.module_dist_paths[module_name], path)
+  def under_dist(self, module_name, path, default=KeyError, test=None):
+    if (default is KeyError):
+      result = libtbx.path.norm_join(self.module_dist_paths[module_name], path)
+    else:
+      mdp = self.module_dist_paths.get(module_name)
+      if (mdp is None): return default
+      result = libtbx.path.norm_join(mdp, path)
+    if (test is None or test(result)):
+      return result
+    return None
 
   def dist_path(self, module_name, default=KeyError):
     if (default is KeyError):
@@ -439,10 +447,10 @@ class environment:
         test=os.path.isdir,
         optional=True):
     for path in self.repository_paths:
-      dist_path = self.abs_path_clean(
+      result = self.abs_path_clean(
         libtbx.path.norm_join(path, relative_path))
-      if (test(dist_path)):
-        return dist_path
+      if (test is None or test(result)):
+        return result
     if (not optional):
       self.raise_sorry_not_found_in_repositories(
         message="Cannot locate: %s" % show_string(relative_path))
