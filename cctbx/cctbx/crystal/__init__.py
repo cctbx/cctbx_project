@@ -250,10 +250,10 @@ class symmetry(object):
       assert_min_distance_sym_equiv=assert_min_distance_sym_equiv)
 
 def select_crystal_symmetry(
-      from_command_line,
-      from_parameter_file,
-      from_coordinate_files,
-      from_reflection_files):
+      from_command_line     = None,
+      from_parameter_file   = None,
+      from_coordinate_files = [None],
+      from_reflection_files = [None]):
   """Select/construct a crystal symmetry from a list of various options"""
   tmp = [from_command_line, from_parameter_file]+from_coordinate_files \
         +from_reflection_files
