@@ -98,6 +98,34 @@ def exercise_symmetry():
     s.subtract_continuous_allowed_origin_shifts(translation_cart=[1,2,3]),
     [1,2,0])
 
+def exercise_select_crystal_symmetry():
+  xs1 = crystal.symmetry(unit_cell   = "23,30,40,90,90,90",
+                         space_group = "P212121" )
+  xs2 = crystal.symmetry(unit_cell   = "20,30,40,90,90,90",
+                         space_group = "P222" )
+  resulting_symmetry = crystal.select_crystal_symmetry( from_command_line     = None,
+                                                        from_parameter_file   = None,
+                                                        from_coordinate_files = [xs1],
+                                                        from_reflection_files = [xs2] )
+  assert list( xs2.unit_cell().parameters()  ) == list( resulting_symmetry.unit_cell().parameters() )
+  resulting_symmetry = crystal.select_crystal_symmetry( from_command_line     = None,
+                                                        from_parameter_file   = None,
+                                                        from_coordinate_files = [xs2],
+                                                        from_reflection_files = [xs1] )
+  assert list( xs1.unit_cell().parameters()  ) == list( resulting_symmetry.unit_cell().parameters() )
+
+  resulting_symmetry = None
+  try:
+    resulting_symmetry = crystal.select_crystal_symmetry( from_command_line     = None,
+                                                          from_parameter_file   = None,
+                                                          from_coordinate_files = [None],
+                                                          from_reflection_files = [None] )
+  except AssertionError ,e :
+    assert str(e)=="No unit cell and symmetry information supplied"
+  else: raise RuntimeError("Exception expected.")
+
+
+
 def exercise_non_crystallographic_symmetry():
   sites_cart = flex.vec3_double(
     [(0.28730079491792732, 0.14711550696452974, 0.13031757579425293),
@@ -209,6 +237,7 @@ def run():
   exercise_symmetry()
   exercise_non_crystallographic_symmetry()
   exercise_special_position_settings()
+  exercise_select_crystal_symmetry()
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
 
 if (__name__ == "__main__"):
