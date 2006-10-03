@@ -27,18 +27,20 @@ namespace {
                            double const&,
                            bool,
                            bool,
-                           double const&> >(
+                           double const&,
+                           bool> >(
           (arg_("unit_cell"),
            arg_("scatterers"),
            arg_("scattering_type_registry"),
            arg_("fft_n_real"),
            arg_("fft_m_real"),
-           arg_("u_base"),
-           arg_("wing_cutoff"),
-           arg_("exp_table_one_over_step_size"),
-           arg_("force_complex"),
-           arg_("sampled_density_must_be_positive"),
-           arg_("tolerance_positive_definite"))))
+           arg_("u_base")=0.25,
+           arg_("wing_cutoff")=1.e-3,
+           arg_("exp_table_one_over_step_size")=-100,
+           arg_("force_complex")=false,
+           arg_("sampled_density_must_be_positive")=false,
+           arg_("tolerance_positive_definite")=1.e-5,
+           arg_("use_u_base_as_u_extra")=false)))
         .def("real_map", &w_t::real_map)
         .def("complex_map", &w_t::complex_map)
         .def("eliminate_u_extra_and_normalize",
