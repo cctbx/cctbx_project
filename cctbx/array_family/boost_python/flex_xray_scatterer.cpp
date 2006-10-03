@@ -368,6 +368,18 @@ namespace cctbx { namespace xray { namespace {
     }
   }
 
+  void
+  convert_to_anisotropic(
+    af::ref<scatterer<> > const& self,
+    uctbx::unit_cell const& unit_cell,
+    af::const_ref<std::size_t> const& selection)
+  {
+    for(std::size_t j=0;j<selection.size();j++) {
+      std::size_t i=selection[j];
+        self[i].convert_to_anisotropic(unit_cell);
+    }
+  }
+
   std::size_t
   count_anisotropic(af::const_ref<scatterer<> > const& self)
   {
@@ -448,6 +460,12 @@ namespace scitbx { namespace af { namespace boost_python {
               uctbx::unit_cell const&,
               af::const_ref<bool> const&)) cctbx::xray::convert_to_anisotropic,
               (arg_("unit_cell"),arg_("selection")))
+      .def("convert_to_anisotropic", (void(*)(
+              af::ref<cctbx::xray::scatterer<> > const&,
+              uctbx::unit_cell const&,
+              af::const_ref<std::size_t> const&)) cctbx::xray::convert_to_anisotropic,
+              (arg_("unit_cell"),arg_("selection")))
+
       .def("count_anisotropic", cctbx::xray::count_anisotropic)
       .def("count_anomalous", cctbx::xray::count_anomalous)
     ;

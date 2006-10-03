@@ -169,7 +169,8 @@ class manager(object):
           if(macro_cycle == 1):
              gbr_selections = []
              for s in tls_selections:
-                 gbr_selections.append(s.iselection())
+                 #gbr_selections.append(s.iselection())
+                 gbr_selections.append(s)
           else:
              gbr_selections = group_adp_selections
           group_b_manager = mmtbx.refinement.group_b.manager(
