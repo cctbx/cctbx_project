@@ -607,9 +607,11 @@ class environment:
       'LD_PRELOAD="%s"' % os.pathsep.join(ld_preload),
       'export LD_PRELOAD']
 
-  def dispatcher_include(self):
-    if (not hasattr(self, "_dispatcher_include")):
-      self._dispatcher_include = []
+  def dispatcher_include(self, where):
+    assert where in ["at_start", "before_command"]
+    if (not hasattr(self, "_dispatcher_include_at_start")):
+      self._dispatcher_include_at_start = []
+      self._dispatcher_include_before_command = []
       for file_name in os.listdir(self.build_path):
         path = self.under_build(file_name)
         if (not os.path.isfile(path)): continue
@@ -617,10 +619,30 @@ class environment:
             and file_name.endswith(".sh")):
           try: lines = open(path).read().splitlines()
           except IOError, e: raise Sorry(str(e))
-          lines.insert(0, "# included from %s" % path)
-          highlight_dispatcher_include_lines(lines)
-          self._dispatcher_include.extend(lines)
-    return self._dispatcher_include
+          lines_at_start = []
+          lines_before_command = []
+          buffer = lines_before_command
+          for line in lines:
+            l = " ".join(line.split()).lower()
+            if (l.startswith("#include ")):
+              l = "# " + l[1:]
+            if   (l == "# include at start"):
+              buffer = lines_at_start
+            elif (l == "# include before command"):
+              buffer = lines_before_command
+            else:
+              buffer.append(line)
+          for buffer,target in [(lines_at_start,
+                                 self._dispatcher_include_at_start),
+                                (lines_before_command,
+                                 self._dispatcher_include_before_command)]:
+            if (len(buffer) == 0): continue
+            buffer.insert(0, "# included from %s" % path)
+            highlight_dispatcher_include_lines(buffer)
+            target.extend(buffer)
+    if (where == "at_start"):
+      return self._dispatcher_include_at_start
+    return self._dispatcher_include_before_command
 
   def write_bin_sh_dispatcher(self, source_file, target_file):
     f = open(target_file, "w")
@@ -632,6 +654,8 @@ class environment:
     print >> f, 'unset PYTHONHOME'
     print >> f, 'LIBTBX_BUILD="%s"' % self.build_path
     print >> f, 'export LIBTBX_BUILD'
+    for line in self.dispatcher_include(where="at_start"):
+      print >> f, line
     essentials = [("PYTHONPATH", self.pythonpath)]
     essentials.append((ld_library_path_var_name(), [self.lib_path]))
     essentials.append(("PATH", [self.bin_path]))
@@ -661,7 +685,7 @@ class environment:
                     pattern="LIBTBX_PRE_DISPATCHER_INCLUDE_SH",
                     source_file=source_file):
         print >> f, line
-    for line in self.dispatcher_include():
+    for line in self.dispatcher_include(where="before_command"):
       print >> f, line
     if (source_file is not None):
       for line in source_specific_dispatcher_include(
