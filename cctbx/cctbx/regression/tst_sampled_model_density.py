@@ -111,7 +111,8 @@ def exercise(space_group_info, const_gaussian, negative_gaussian,
     exp_table_one_over_step_size=exp_table_one_over_step_size,
     force_complex=force_complex,
     sampled_density_must_be_positive=sampled_density_must_be_positive,
-    tolerance_positive_definite=1.e-5)
+    tolerance_positive_definite=1.e-5,
+    use_u_base_as_u_extra=False)
   focus = sampled_density.real_map_unpadded().focus()
   all   = sampled_density.real_map_unpadded().all()
   last  = sampled_density.real_map_unpadded().last()

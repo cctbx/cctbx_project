@@ -537,7 +537,8 @@ namespace cctbx { namespace xray {
         FloatType const& u_base,
         FloatType const& wing_cutoff,
         FloatType const& exp_table_one_over_step_size,
-        FloatType const& tolerance_positive_definite);
+        FloatType const& tolerance_positive_definite,
+        bool use_u_base_as_u_extra=false);
 
       uctbx::unit_cell const&
       unit_cell() { return unit_cell_; }
@@ -660,7 +661,8 @@ namespace cctbx { namespace xray {
     FloatType const& u_base,
     FloatType const& wing_cutoff,
     FloatType const& exp_table_one_over_step_size,
-    FloatType const& tolerance_positive_definite)
+    FloatType const& tolerance_positive_definite,
+    bool use_u_base_as_u_extra)
   :
     unit_cell_(unit_cell),
     n_scatterers_passed_(scatterers.size()),
@@ -738,7 +740,13 @@ namespace cctbx { namespace xray {
     }
     CCTBX_ASSERT(n_contributing_scatterers_ == u_radius_cache_.size());
     if (have_u_min) {
-      u_extra_ = u_base_ - u_min_;
+      if (!use_u_base_as_u_extra) {
+        u_extra_ = u_base_ - u_min_;
+      }
+      else {
+        u_extra_ = u_base_;
+        u_base_ += u_min_;
+      }
     }
     // determine rho_cutoff as average rho(0) * wing_cutoff
     {

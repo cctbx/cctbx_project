@@ -37,7 +37,8 @@ namespace cctbx { namespace xray {
         FloatType const& exp_table_one_over_step_size=-100,
         bool force_complex=false,
         bool sampled_density_must_be_positive=false,
-        FloatType const& tolerance_positive_definite=1.e-5);
+        FloatType const& tolerance_positive_definite=1.e-5,
+        bool use_u_base_as_u_extra=false);
 
       real_map_type
       real_map() { return real_map_; }
@@ -76,11 +77,13 @@ namespace cctbx { namespace xray {
     FloatType const& exp_table_one_over_step_size,
     bool force_complex,
     bool sampled_density_must_be_positive,
-    FloatType const& tolerance_positive_definite)
+    FloatType const& tolerance_positive_definite,
+    bool use_u_base_as_u_extra)
   :
     base_t(unit_cell, scatterers, scattering_type_registry,
            u_base, wing_cutoff,
-           exp_table_one_over_step_size, tolerance_positive_definite)
+           exp_table_one_over_step_size, tolerance_positive_definite,
+           use_u_base_as_u_extra)
   {
     FloatType* map_begin;
     if (this->n_anomalous_scatterers_ == 0 && !force_complex) {
