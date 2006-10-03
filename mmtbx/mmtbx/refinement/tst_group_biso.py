@@ -38,12 +38,12 @@ def calculate_fobs(resolution   = 1.0,
 def exercise_1(hkl = "enk_gbr.mtz"):
   pdb = libtbx.env.find_in_repositories(
                               relative_path="regression/pdb/enk_gbr_e.pdb", test=os.path.isfile)
-  opt0= "main.number_of_macro_cycles=3 main.refine_site=false sf_cos_sin_table=false"
-  opt1= "main.target=ls main.refine_adp_individual=false group_b_iso.run_finite_differences_test=true"
+  opt0= "main.number_of_macro_cycles=3 strategy=group_adp sf_cos_sin_table=false"
+  opt1= "main.target=ls group_b_iso.run_finite_differences_test=true"
   opt2= "output.write_maps=false output.write_map_coefficients=false" \
         " output.write_geo_file=true output.write_def_file=false"
   opt3= "output.write_eff_file=false output.write_refined_mtz_file=false"
-  opt4= "main.refine_adp_group=true group_b_iso.one_residue_one_group=true"
+  opt4= "group_b_iso.one_residue_one_group=true"
   opt5= "main.sf_algorithm=direct scattering_table=wk1995 --overwrite"
   opt6= "refinement.input.xray_data.labels=FOBS main.bulk_solvent_and_scale=false  output.prefix=ref1"
   cmd = " ".join(["phenix.refine", pdb, hkl, opt0, opt1, opt2, opt3, opt4, opt5, opt6])
@@ -52,12 +52,12 @@ def exercise_1(hkl = "enk_gbr.mtz"):
 def exercise_2(pdb = "enk_gbr_e.pdb", hkl = "enk_gbr.mtz"):
   pdb = libtbx.env.find_in_repositories(
                               relative_path="regression/pdb/enk_gbr_e.pdb", test=os.path.isfile)
-  opt0= "main.number_of_macro_cycles=3 main.refine_site=false sf_cos_sin_table=false"
-  opt1= "main.target=ls main.refine_adp_individual=false group_b_iso.run_finite_differences_test=true"
+  opt0= "main.number_of_macro_cycles=3 strategy=group_adp sf_cos_sin_table=false"
+  opt1= "main.target=ls group_b_iso.run_finite_differences_test=true"
   opt2= "output.write_maps=false output.write_map_coefficients=false" \
         " output.write_geo_file=true output.write_def_file=false"
   opt3= "output.write_eff_file=false output.write_refined_mtz_file=false"
-  opt4= "main.refine_adp_group=true group_b_iso.one_residue_one_group=false"
+  opt4= "group_b_iso.one_residue_one_group=false"
   opt5= "main.sf_algorithm=direct scattering_table=wk1995 --overwrite"
   opt6= "refinement.input.xray_data.labels=FOBS main.bulk_solvent_and_scale=false"
   opt7= "group_b_iso.selection="+""""chain A" """ +" group_b_iso.selection="+""""chain B" """

@@ -359,7 +359,7 @@ class refinement_monitor(object):
     if(not self.short):
        print >> out, remark + "*"*72
        print >> out, remark + "Refinement target            :  %s"   % self.target_name
-       if(self.params.main.rigid_body):
+       if("rigid_body" in self.params.refine.strategy):
           print >> out, remark + "Rigid body refinement target :  %s"   % self.params.rigid_body.target
        print >> out, remark + "Number of atoms              : %7d"   % self.natoms
        print >> out, remark + "Number of geometry restraints: %7d"   % self.number_of_restraints

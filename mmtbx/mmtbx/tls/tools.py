@@ -530,19 +530,36 @@ def split_u(xray_structure, tls_selections, offset):
       if u_iso_min >= offset_:
         u_iso_min = u_iso_min - offset_
       t = adptbx.u_iso_as_u_star(uc, u_iso_min)
-      for i_seq, sc in enumerate(xray_structure.scatterers()):
-          if(tls_selection[i_seq]):
-             assert sc.u_iso == u_iso[i_seq]
-             u_iso_new = sc.u_iso - u_iso_min
-             assert u_iso_new >= 0.0
-             sc.u_iso = u_iso_new
-             if(sc.u_star == (-1.0,-1.0,-1.0,-1.0,-1.0,-1.0)):
-                sc.u_star = t
-             else:
-                x = flex.double(sc.u_star)
-                y = flex.double(t)
-                z = list(x + y)
-                sc.u_star = z
+#      for i_seq, sc in enumerate(xray_structure.scatterers()):
+#          if(tls_selection[i_seq]):
+#             assert sc.u_iso == u_iso[i_seq]
+#             u_iso_new = sc.u_iso - u_iso_min
+#             assert u_iso_new >= 0.0
+#             sc.u_iso = u_iso_new
+#             if(sc.u_star == (-1.0,-1.0,-1.0,-1.0,-1.0,-1.0)):
+#                sc.u_star = t
+#             else:
+#                x = flex.double(sc.u_star)
+#                y = flex.double(t)
+#                z = list(x + y)
+#                sc.u_star = z
+      for i_seq in tls_selection:
+          sc = xray_structure.scatterers()[i_seq]
+          assert sc.u_iso == u_iso[i_seq]
+          u_iso_new = sc.u_iso - u_iso_min
+          assert u_iso_new >= 0.0
+          sc.u_iso = u_iso_new
+          if(sc.u_star == (-1.0,-1.0,-1.0,-1.0,-1.0,-1.0)):
+             sc.u_star = t
+          else:
+             x = flex.double(sc.u_star)
+             y = flex.double(t)
+             z = list(x + y)
+             sc.u_star = z
+
+
+
+
   u_iso = xray_structure.scatterers().extract_u_iso()
   assert (u_iso < 0.0).count(True) == 0
   t2 = time.time()
