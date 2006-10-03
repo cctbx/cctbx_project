@@ -9,7 +9,7 @@ from cctbx import adptbx
 from cctbx.development import random_structure
 from cctbx.array_family import flex
 import scitbx.math
-from libtbx.test_utils import show_diff
+from libtbx.test_utils import approx_equal, show_diff
 import libtbx.load_env
 from cStringIO import StringIO
 import sys, os
@@ -510,8 +510,9 @@ def exercise_xray_structure(use_u_aniso, verbose=0):
       assert regression.is_well_defined()
       if (0 or verbose):
         regression.show_summary()
-      assert abs(regression.slope()-1) < 1.e-2
-      assert abs(regression.y_intercept()) < 0.1
+      assert approx_equal(regression.slope(), 1, eps=1.e-2)
+      assert approx_equal(
+        regression.y_intercept(), 0, eps=flex.max(f_abs.data())*0.01)
 
 def write_icosahedron():
   for level in xrange(3):
