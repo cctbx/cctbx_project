@@ -607,39 +607,64 @@ class environment:
       'LD_PRELOAD="%s"' % os.pathsep.join(ld_preload),
       'export LD_PRELOAD']
 
+  def write_dispatcher_include_template(self):
+    if (os.name == "nt"): return
+    print "    dispatcher_include_template.sh"
+    f = open(self.under_build("dispatcher_include_template.sh"), "w")
+    print >> f, "# include at start"
+    print >> f, "#   Commands to be executed at the start of the"
+    print >> f, "#   auto-generated dispatchers in bin."
+    print >> f, "#"
+    print >> f, "# include before command"
+    print >> f, "#   Commands to be executed before the target command"
+    print >> f, "#   is called by the auto-generated dispatchers in bin."
+    print >> f, "#"
+    print >> f, "# To see how the dispatchers work, look at an example:"
+    print >> f, "#   %s" % show_string(self.under_build("bin/libtbx.help"))
+    print >> f, "#"
+    f.close()
+
+  def reset_dispatcher_include_cache(self):
+    self._dispatcher_include_at_start = []
+    self._dispatcher_include_before_command = []
+    include_files = []
+    for file_name in os.listdir(self.build_path):
+      path = self.under_build(file_name)
+      if (not os.path.isfile(path)): continue
+      if (    file_name.startswith("dispatcher_include")
+          and file_name.endswith(".sh")
+          and file_name != "dispatcher_include_template.sh"):
+        include_files.append(path)
+    include_files.sort()
+    for path in include_files:
+      print "Processing: %s" % show_string(path)
+      try: lines = open(path).read().splitlines()
+      except IOError, e: raise Sorry(str(e))
+      lines_at_start = []
+      lines_before_command = []
+      buffer = lines_before_command
+      for line in lines:
+        l = " ".join(line.split()).lower()
+        if (l.startswith("#include ")):
+          l = "# " + l[1:]
+        if   (l == "# include at start"):
+          buffer = lines_at_start
+        elif (l == "# include before command"):
+          buffer = lines_before_command
+        else:
+          buffer.append(line)
+      for buffer,target in [(lines_at_start,
+                             self._dispatcher_include_at_start),
+                            (lines_before_command,
+                             self._dispatcher_include_before_command)]:
+        if (len(buffer) == 0): continue
+        buffer.insert(0, "# included from %s" % path)
+        highlight_dispatcher_include_lines(buffer)
+        target.extend(buffer)
+
   def dispatcher_include(self, where):
     assert where in ["at_start", "before_command"]
-    if (not hasattr(self, "_dispatcher_include_at_start")):
-      self._dispatcher_include_at_start = []
-      self._dispatcher_include_before_command = []
-      for file_name in os.listdir(self.build_path):
-        path = self.under_build(file_name)
-        if (not os.path.isfile(path)): continue
-        if (    file_name.startswith("dispatcher_include")
-            and file_name.endswith(".sh")):
-          try: lines = open(path).read().splitlines()
-          except IOError, e: raise Sorry(str(e))
-          lines_at_start = []
-          lines_before_command = []
-          buffer = lines_before_command
-          for line in lines:
-            l = " ".join(line.split()).lower()
-            if (l.startswith("#include ")):
-              l = "# " + l[1:]
-            if   (l == "# include at start"):
-              buffer = lines_at_start
-            elif (l == "# include before command"):
-              buffer = lines_before_command
-            else:
-              buffer.append(line)
-          for buffer,target in [(lines_at_start,
-                                 self._dispatcher_include_at_start),
-                                (lines_before_command,
-                                 self._dispatcher_include_before_command)]:
-            if (len(buffer) == 0): continue
-            buffer.insert(0, "# included from %s" % path)
-            highlight_dispatcher_include_lines(buffer)
-            target.extend(buffer)
+    assert hasattr(self, "_dispatcher_include_at_start")
     if (where == "at_start"):
       return self._dispatcher_include_at_start
     return self._dispatcher_include_before_command
@@ -651,6 +676,26 @@ class environment:
       print >> f, '# LIBTBX_DISPATCHER DO NOT EDIT'
     else:
       print >> f, '# LIBTBX_DISPATCHER_HEAD DO NOT EDIT'
+      print >> f, '#'
+      print >> f, '# This file is intended to be sourced from other scripts.'
+      print >> f, '# It is like the dispatcher scripts in the bin directory,'
+      print >> f, '# but only sets up the environment without calling a'
+      print >> f, '# command at the end.'
+    print >> f, '#'
+    print >> f, '# To customize this auto-generated script create'
+    print >> f, '#'
+    print >> f, '#   dispatcher_include*.sh'
+    print >> f, '#'
+    print >> f, '# files in %s and run' % show_string(self.build_path)
+    print >> f, '#'
+    print >> f, '#   libtbx.refresh'
+    print >> f, '#'
+    print >> f, '# to re-generate the dispatchers.'
+    print >> f, '#'
+    print >> f, '# See also:'
+    print >> f, '#   %s' \
+      % show_string(self.under_build("dispatcher_include_template.sh"))
+    print >> f, '#'
     print >> f, 'unset PYTHONHOME'
     print >> f, 'LIBTBX_BUILD="%s"' % self.build_path
     print >> f, 'export LIBTBX_BUILD'
@@ -772,7 +817,7 @@ class environment:
       source_file=source_file,
       target_file=self.under_build("bin/"+target_file))
 
-  def write_lib_dispatcher_head(self, target_file="lib/dispatcher_head.sh"):
+  def write_lib_dispatcher_head(self, target_file="dispatcher_head.sh"):
     if (os.name == "nt"): return
     print "   ", target_file
     self.write_bin_sh_dispatcher(
@@ -908,7 +953,7 @@ class environment:
         print fmt % (label, dist_path)
         label = ""
 
-  def write_setpath_files(self):
+  def show_build_options_and_module_listing(self):
     print 'Python: %s "%s"' % (sys.version.split()[0], sys.executable)
     if (self.is_ready_for_build()):
       self.build_options.report()
@@ -925,7 +970,8 @@ class environment:
           print " ", module_name
         print "***********************************"
       remove_or_rename(self.under_build("SConstruct"))
-    print 'Creating files in build directory:\n  "%s"' % self.build_path
+
+  def write_setpath_files(self):
     for suffix in ["", "_all", "_debug"]:
       if (hasattr(os, "symlink")):
         self.write_setpaths_sh(suffix)
@@ -1006,8 +1052,12 @@ class environment:
 
   def refresh(self):
     self.assemble_pythonpath()
-    self.write_setpath_files()
+    self.show_build_options_and_module_listing()
+    self.reset_dispatcher_include_cache()
+    print 'Creating files in build directory:\n  "%s"' % self.build_path
+    self.write_dispatcher_include_template()
     self.write_lib_dispatcher_head()
+    self.write_setpath_files()
     self.pickle()
     if (self.is_ready_for_build()):
       self.write_SConstruct()
