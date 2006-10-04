@@ -350,8 +350,16 @@ class structure(crystal.special_position_settings):
                                       unit_cell      = unit_cell,
                                       selection      = selection)
 
-  def convert_to_isotropic(self):
-    self._scatterers.convert_to_isotropic(unit_cell=self.unit_cell())
+  def set_adp_refinement_flags(self, anisotropic_flags, tan_u_iso, param):
+    self._scatterers.set_adp_refinement_flags(
+                                           anisotropic_flags, tan_u_iso, param)
+
+  def convert_to_isotropic(self, selection=None):
+    if(selection is None):
+       self._scatterers.convert_to_isotropic(unit_cell=self.unit_cell())
+    else:
+       self._scatterers.convert_to_isotropic(unit_cell=self.unit_cell(),
+                                             selection=selection)
 
   def convert_to_anisotropic(self, selection=None):
     if(selection is None):
