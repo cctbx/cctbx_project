@@ -13,7 +13,7 @@ namespace scitbx { namespace math {
 namespace resample{
 
   //! resampling class
-  template <typename FloatType = double>
+  template <typename FloatType>
   class non_parametric_bootstrap
   {
     public:
