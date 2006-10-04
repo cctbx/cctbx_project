@@ -15,7 +15,7 @@ namespace {
 
   struct non_parametric_bootstrap_wrappers
   {
-    typedef resample::non_parametric_bootstrap<> w_t;
+    typedef resample::non_parametric_bootstrap<double> w_t;
 
     static void
     wrap()
@@ -40,7 +40,7 @@ namespace {
 
   struct non_parametric_bootstrap_as_int_wrappers
   {
-    typedef resample::non_parametric_bootstrap_as_int<> w_t;
+    typedef resample::non_parametric_bootstrap_as_int<std::size_t> w_t;
 
     static void
     wrap()
