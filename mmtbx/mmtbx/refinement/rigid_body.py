@@ -643,7 +643,7 @@ def apply_transformation(xray_structure,
                          selections):
    assert len(selections) == len(rotation_matrices)
    assert len(selections) == len(translation_vectors)
-   new_sites = flex.vec3_double(xray_structure.scatterers().size())
+   new_sites = xray_structure.sites_cart()
    for sel,rot,trans in zip(selections,rotation_matrices,translation_vectors):
        xrs = xray_structure.select(sel)
        cm_cart = xrs.center_of_mass()

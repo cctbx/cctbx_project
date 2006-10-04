@@ -29,8 +29,6 @@ group_adp_master_params = iotbx.phil.parse("""\
     .type = int
   max_number_of_iterations = 25
     .type = int
-  one_residue_one_group    = True
-    .type = bool
   convergence_test         = False
     .type = bool
   selection                = None
@@ -169,7 +167,6 @@ class manager(object):
           if(macro_cycle == 1):
              gbr_selections = []
              for s in tls_selections:
-                 #gbr_selections.append(s.iselection())
                  gbr_selections.append(s)
           else:
              gbr_selections = group_adp_selections
@@ -311,21 +308,24 @@ def set_flags(xray_structure,
      for tls_selection in tls_selections:
          xray_structure.convert_to_anisotropic(selection = tls_selection)
   elif(refine_adp_individual):
-     for anisotropic_flag, sc in zip(anisotropic_flags, xrs.scatterers()):
-         if(anisotropic_flag):
-            sc.flags.set_use_u_aniso(True)
-            sc.flags.set_grad_u_aniso(True)
-            sc.flags.set_use_u_iso(False)
-            sc.flags.set_grad_u_iso(False)
-            assert sc.u_star != (-1.0,-1.0,-1.0,-1.0,-1.0,-1.0)
-         else:
-            sc.flags.set_use_u_aniso(False)
-            sc.flags.set_grad_u_aniso(False)
-            sc.flags.set_use_u_iso(True)
-            sc.flags.set_grad_u_iso(True)
-            sc.flags.set_tan_u_iso(tan_u_iso)
-            sc.flags.param = param
-            assert sc.u_iso != -1.0
+     xrs.set_adp_refinement_flags(anisotropic_flags = anisotropic_flags,
+                                  tan_u_iso         = tan_u_iso,
+                                  param             = param)
+     #for anisotropic_flag, sc in zip(anisotropic_flags, xrs.scatterers()):
+     #    if(anisotropic_flag):
+     #       sc.flags.set_use_u_aniso(True)
+     #       sc.flags.set_grad_u_aniso(True)
+     #       sc.flags.set_use_u_iso(False)
+     #       sc.flags.set_grad_u_iso(False)
+     #       assert sc.u_star != (-1.0,-1.0,-1.0,-1.0,-1.0,-1.0)
+     #    else:
+     #       sc.flags.set_use_u_aniso(False)
+     #       sc.flags.set_grad_u_aniso(False)
+     #       sc.flags.set_use_u_iso(True)
+     #       sc.flags.set_grad_u_iso(True)
+     #       sc.flags.set_tan_u_iso(tan_u_iso)
+     #       sc.flags.param = param
+     #       assert sc.u_iso != -1.0
   elif(refine_adp_group):
      #XXX Do this convertion only for gbr selected atoms.
      xray_structure.convert_to_isotropic()
