@@ -336,11 +336,51 @@ namespace cctbx { namespace xray { namespace {
   }
 
   void
+  set_adp_refinement_flags(
+    af::ref<scatterer<> > const& self,
+    af::const_ref<bool> const& anisotropic_flags,
+    bool const& tan_u_iso,
+    int const& param)
+  {
+    for(std::size_t i=0;i<anisotropic_flags.size();i++) {
+      if(anisotropic_flags[i]) {
+         self[i].flags.set_use_u_aniso(true);
+         self[i].flags.set_grad_u_aniso(true);
+         self[i].flags.set_use_u_iso(false);
+         self[i].flags.set_grad_u_iso(false);
+         CCTBX_ASSERT(
+                self[i].u_star != scitbx::sym_mat3<double>(-1,-1,-1,-1,-1,-1));
+      }
+      else {
+         self[i].flags.set_use_u_aniso(false);
+         self[i].flags.set_grad_u_aniso(false);
+         self[i].flags.set_use_u_iso(true);
+         self[i].flags.set_grad_u_iso(true);
+         self[i].flags.set_tan_u_iso(tan_u_iso);
+         self[i].flags.param = param;
+         CCTBX_ASSERT(self[i].u_iso != -1.0);
+      }
+    }
+  }
+
+  void
   convert_to_isotropic(
     af::ref<scatterer<> > const& self,
     uctbx::unit_cell const& unit_cell)
   {
     for(std::size_t i=0;i<self.size();i++) {
+      self[i].convert_to_isotropic(unit_cell);
+    }
+  }
+
+  void
+  convert_to_isotropic(
+    af::ref<scatterer<> > const& self,
+    uctbx::unit_cell const& unit_cell,
+    af::const_ref<std::size_t> const& selection)
+  {
+    for(std::size_t j=0;j<selection.size();j++) {
+      std::size_t i=selection[j];
       self[i].convert_to_isotropic(unit_cell);
     }
   }
@@ -376,7 +416,7 @@ namespace cctbx { namespace xray { namespace {
   {
     for(std::size_t j=0;j<selection.size();j++) {
       std::size_t i=selection[j];
-        self[i].convert_to_anisotropic(unit_cell);
+      self[i].convert_to_anisotropic(unit_cell);
     }
   }
 
@@ -449,8 +489,15 @@ namespace scitbx { namespace af { namespace boost_python {
         (arg_("unit_cell")))
       .def("set_u_cart", cctbx::xray::set_u_cart,
         (arg_("unit_cell"), arg_("u_cart")))
-      .def("convert_to_isotropic", cctbx::xray::convert_to_isotropic,
-        (arg_("unit_cell")))
+      .def("convert_to_isotropic", (void(*)(
+              af::ref<cctbx::xray::scatterer<> > const&,
+              uctbx::unit_cell const&)) cctbx::xray::convert_to_isotropic,
+              (arg_("unit_cell")))
+      .def("convert_to_isotropic", (void(*)(
+              af::ref<cctbx::xray::scatterer<> > const&,
+              uctbx::unit_cell const&,
+              af::const_ref<std::size_t> const&)) cctbx::xray::convert_to_isotropic,
+              (arg_("unit_cell"),arg_("selection")))
       .def("convert_to_anisotropic", (void(*)(
               af::ref<cctbx::xray::scatterer<> > const&,
               uctbx::unit_cell const&)) cctbx::xray::convert_to_anisotropic,
@@ -465,7 +512,12 @@ namespace scitbx { namespace af { namespace boost_python {
               uctbx::unit_cell const&,
               af::const_ref<std::size_t> const&)) cctbx::xray::convert_to_anisotropic,
               (arg_("unit_cell"),arg_("selection")))
-
+      .def("set_adp_refinement_flags", (void(*)(
+              af::ref<cctbx::xray::scatterer<> > const&,
+              af::const_ref<bool> const&,
+              bool const&,
+              int const& )) cctbx::xray::set_adp_refinement_flags,
+              (arg_("anisotropic_flags"),arg_("tan_u_iso"),arg_("param")))
       .def("count_anisotropic", cctbx::xray::count_anisotropic)
       .def("count_anomalous", cctbx::xray::count_anomalous)
     ;
