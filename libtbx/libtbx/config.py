@@ -1241,7 +1241,8 @@ class module:
           print "*"*len(msg)
         return
     target_file = self.name + target_file_name_infix
-    if (file_name_lower != "main.py"):
+    if (not file_name_lower.startswith("main.")
+         or file_name_lower.count(".") != 1):
       target_file += "." + os.path.splitext(file_name)[0]
     self.env.write_dispatcher_in_bin(
       source_file=source_file,
