@@ -1,7 +1,10 @@
 #ifndef SCITBX_MATH_QUADRATURE
 #define SCITBX_MATH_QUADRATURE
 
-#include <iostream>
+#include <scitbx/array_family/tiny.h>
+#include <scitbx/array_family/shared.h>
+#include <scitbx/array_family/ref.h>
+
 
 namespace scitbx{
 namespace math{
@@ -472,7 +475,8 @@ namespace quadrature{
 
 
 
-  // here we determine roots of lagueree polynomes needed for 1d integration over the interval [-1,1]
+  // here we determine roots of lagueree polynomes needed for 1d
+  // integration over the interval [-1,1]
   template<typename FloatType>
   class gauss_legendre_engine{
   public:
@@ -641,10 +645,10 @@ namespace quadrature{
             x_.push_back( x );
             w_.push_back( 2.0/(w*w) );
           }
-          for (int ii=0;ii<m;ii++){
-            x_.push_back( -x_[ii] );
-            w_.push_back(  w_[ii] );
-          }
+        }
+        for (int ii=0;ii<m;ii++){
+          x_.push_back( -x_[ii] );
+          w_.push_back(  w_[ii] );
         }
       }
 
