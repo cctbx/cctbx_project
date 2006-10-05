@@ -707,6 +707,8 @@ namespace quadrature{
     void
     fillit()
     {
+      SCITBX_ASSERT(x_.size() == n_);
+      SCITBX_ASSERT(w_.size() == n_);
       for (int ii=0;ii<n_;ii++){
         w_exp_x_squared_.push_back( w_[ii]*std::exp( x_[ii]*x_[ii] ) );
       }
