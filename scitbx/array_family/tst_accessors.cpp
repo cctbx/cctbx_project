@@ -1,6 +1,7 @@
 #include <scitbx/array_family/flex_types.h>
 #include <scitbx/array_family/accessors/c_grid.h>
 #include <scitbx/array_family/accessors/c_grid_padded.h>
+#include <scitbx/math/utils.h> // exercise unsigned_product_leads_to_overflow
 #include <iostream>
 
 using namespace scitbx;
@@ -373,6 +374,30 @@ int main(int /*argc*/, char* /*argv*/[])
       check_true(__LINE__, a(j) == i);
       check_true(__LINE__, a(j[0],j[1],j[2]) == i);
     }
+  }
+  {
+    af::c_grid<3, unsigned> u(1, 2, 3);
+    af::c_grid<3, std::size_t> s(1, 2, 3);
+    check_false(__LINE__,
+      math::unsigned_product_leads_to_overflow(u.begin(), 3));
+    check_false(__LINE__,
+      math::unsigned_product_leads_to_overflow(s.begin(), 3));
+    if (sizeof(unsigned) == 4) {
+      u = af::c_grid<3, unsigned>(2101, 1358, 2653);
+    }
+    else {
+      u = af::c_grid<3, unsigned>(2101*1358, 1358*2653, 2653*2101);
+    }
+    if (sizeof(std::size_t) == 4) {
+      s = af::c_grid<3, std::size_t>(2101, 1358, 2653);
+    }
+    else {
+      s = af::c_grid<3, std::size_t>(2101*1358, 1358*2653, 2653*2101);
+    }
+    check_true(__LINE__,
+      math::unsigned_product_leads_to_overflow(u.begin(), 3));
+    check_true(__LINE__,
+      math::unsigned_product_leads_to_overflow(s.begin(), 3));
   }
 
   std::cout << "Total OK: " << ok_counter << std::endl;

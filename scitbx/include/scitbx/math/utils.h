@@ -99,6 +99,26 @@ namespace scitbx { namespace math {
     return float_int_conversions<double,int>::nearest_integer(x);
   }
 
+  template <typename UnsignedIntType, typename SizeType>
+  bool
+  unsigned_product_leads_to_overflow(
+    UnsignedIntType* a,
+    SizeType n)
+  {
+    // The author (rwgk) is not certain if this implementation works
+    // under all circumstances.
+    UnsignedIntType p = a[0];
+    for(SizeType i=1;i<n;i++) {
+      UnsignedIntType pp = p;
+      p *= a[i];
+      if (p == 0) return false;
+      if (p < pp) return true;
+      if (p / a[i] != pp) return true;
+      if (p - pp != pp * (a[i]-1)) return true;
+    }
+    return false;
+  }
+
 }} // namespace scitbx::math
 
 #endif // SCITBX_MATH_UTILS_H
