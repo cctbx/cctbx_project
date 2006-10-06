@@ -31,6 +31,10 @@
 #include <scitbx/array_family/tiny.h>
 #include <scitbx/array_family/type_traits.h>
 
+#if defined(SCITBX_ARRAY_FAMILY_SHARED_PLAIN_USE_STD_ALLOCATOR)
+#include <memory>
+#endif
+
 namespace scitbx { namespace af {
 
   struct weak_ref_flag {};
@@ -38,6 +42,7 @@ namespace scitbx { namespace af {
   namespace detail {
     const std::size_t global_max_size(static_cast<std::size_t>(-1));
   }
+
 
   class sharing_handle {
     public:
@@ -54,15 +59,27 @@ namespace scitbx { namespace af {
       explicit
       sharing_handle(std::size_t const& sz)
         : use_count(1), weak_count(0), size(0), capacity(sz),
+#if defined(SCITBX_ARRAY_FAMILY_SHARED_PLAIN_USE_STD_ALLOCATOR)
+          data(alloc_.allocate(sz))
+#else
           data(new char[sz])
+#endif
       {}
 
       ~sharing_handle() {
+#if defined(SCITBX_ARRAY_FAMILY_SHARED_PLAIN_USE_STD_ALLOCATOR)
+        if (data) alloc_.deallocate(data, capacity);
+#else
         delete[] data;
+#endif
       }
 
       void deallocate() {
+#if defined(SCITBX_ARRAY_FAMILY_SHARED_PLAIN_USE_STD_ALLOCATOR)
+        alloc_.deallocate(data, capacity);
+#else
         delete[] data;
+#endif
         capacity = 0;
         data = 0;
       }
@@ -80,6 +97,9 @@ namespace scitbx { namespace af {
       char* data;
 
     private:
+#if defined(SCITBX_ARRAY_FAMILY_SHARED_PLAIN_USE_STD_ALLOCATOR)
+      std::allocator<char> alloc_;
+#endif
       sharing_handle(sharing_handle const&);
       sharing_handle& operator=(sharing_handle const&);
   };
@@ -299,6 +319,10 @@ namespace scitbx { namespace af {
           new_this.m_incr_size(1);
         }
         else {
+          // The next call is known to lead to a segmentation fault under
+          // RedHat 8.0 if there is not enough memory (observed with
+          // ElementType = std::vector<vector_element> and
+          // struct vector_element { unsigned i; unsigned j; };).
           std::uninitialized_fill_n(new_this.end(), n, x);
           new_this.m_incr_size(n);
         }
