@@ -303,7 +303,7 @@ class xtriage_analyses(object):
     ## resolution check
     if (flex.min(self.miller_obs.d_spacings().data())
         > self.params.scaling.input.parameters.misc_twin_parameters.twin_test_cuts.high_resolution):
-      self.params.scaling.input.xray_data.resolution = flex.min(miller_array.d_spacings().data())
+      self.params.scaling.input.xray_data.high_resolution = flex.min(self.miller_obs.d_spacings().data())
 
     default_high_reso_limit_wilson_ratio = \
       self.params.scaling.input.parameters.misc_twin_parameters.twin_test_cuts.high_resolution
