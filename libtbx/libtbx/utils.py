@@ -206,6 +206,14 @@ class buffered_indentor(indentor):
       indentor.write(self, block)
     self.buffer = []
 
+class null_out(object):
+
+  def isatty(self): return False
+  def close(self): pass
+  def flush(self): pass
+  def write(self, str): pass
+  def writelines(self, sequence): pass
+
 class multi_out(object):
 
   def __init__(self):
