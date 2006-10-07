@@ -172,7 +172,7 @@ namespace cctbx { namespace xray { namespace {
       if (self[i].flags.use_u_aniso()) {
         CCTBX_ASSERT(
            self[i].u_star != scitbx::sym_mat3<double>(-1,-1,-1,-1,-1,-1));
-        u_cart_ += adptbx::u_star_as_u_iso(unit_cell, self[i].u_star);
+        u_cart_ += adptbx::u_star_as_u_cart(unit_cell, self[i].u_star);
       }
       if (self[i].flags.use_u_iso()) {
         if(self[i].u_star != scitbx::sym_mat3<double>(-1,-1,-1,-1,-1,-1)) {
@@ -335,32 +335,26 @@ namespace cctbx { namespace xray { namespace {
     }
   }
 
-  void
-  set_adp_refinement_flags(
-    af::ref<scatterer<> > const& self,
-    af::const_ref<bool> const& anisotropic_flags,
-    bool const& tan_u_iso,
-    int const& param)
+  af::shared<bool>
+  extract_use_u_iso(
+    af::const_ref<scatterer<> > const& self)
   {
-    for(std::size_t i=0;i<anisotropic_flags.size();i++) {
-      if(anisotropic_flags[i]) {
-         self[i].flags.set_use_u_aniso(true);
-         self[i].flags.set_grad_u_aniso(true);
-         self[i].flags.set_use_u_iso(false);
-         self[i].flags.set_grad_u_iso(false);
-         CCTBX_ASSERT(
-                self[i].u_star != scitbx::sym_mat3<double>(-1,-1,-1,-1,-1,-1));
-      }
-      else {
-         self[i].flags.set_use_u_aniso(false);
-         self[i].flags.set_grad_u_aniso(false);
-         self[i].flags.set_use_u_iso(true);
-         self[i].flags.set_grad_u_iso(true);
-         self[i].flags.set_tan_u_iso(tan_u_iso);
-         self[i].flags.param = param;
-         CCTBX_ASSERT(self[i].u_iso != -1.0);
-      }
+    af::shared<bool> result(af::reserve(self.size()));
+    for(std::size_t i=0;i<self.size();i++) {
+      result.push_back(self[i].flags.use_u_iso());
     }
+    return result;
+  }
+
+  af::shared<bool>
+  extract_use_u_aniso(
+    af::const_ref<scatterer<> > const& self)
+  {
+    af::shared<bool> result(af::reserve(self.size()));
+    for(std::size_t i=0;i<self.size();i++) {
+      result.push_back(self[i].flags.use_u_aniso());
+    }
+    return result;
   }
 
   void
@@ -475,6 +469,8 @@ namespace scitbx { namespace af { namespace boost_python {
         (arg_("occupancies")))
       .def("adjust_u_iso", cctbx::xray::adjust_u_iso)
       .def("extract_u_iso", cctbx::xray::extract_u_iso)
+      .def("extract_use_u_iso", cctbx::xray::extract_use_u_iso)
+      .def("extract_use_u_aniso", cctbx::xray::extract_use_u_aniso)
       .def("extract_u_iso_or_u_equiv", cctbx::xray::extract_u_iso_or_u_equiv,
         (arg_("unit_cell")))
       .def("extract_u_cart_or_u_cart_plus_u_iso",
@@ -512,12 +508,6 @@ namespace scitbx { namespace af { namespace boost_python {
               uctbx::unit_cell const&,
               af::const_ref<std::size_t> const&)) cctbx::xray::convert_to_anisotropic,
               (arg_("unit_cell"),arg_("selection")))
-      .def("set_adp_refinement_flags", (void(*)(
-              af::ref<cctbx::xray::scatterer<> > const&,
-              af::const_ref<bool> const&,
-              bool const&,
-              int const& )) cctbx::xray::set_adp_refinement_flags,
-              (arg_("anisotropic_flags"),arg_("tan_u_iso"),arg_("param")))
       .def("count_anisotropic", cctbx::xray::count_anisotropic)
       .def("count_anomalous", cctbx::xray::count_anomalous)
     ;

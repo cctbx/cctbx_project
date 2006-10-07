@@ -23,7 +23,7 @@ class manager(object):
                      rigid_body_selections = None,
                      group_b_selections    = None,
                      tls_selections        = None,
-                     anisotropic_flags     = None,
+                     #anisotropic_flags     = None,
                      log = None):
     self.log = log
     self.restraints_manager = None
@@ -44,10 +44,10 @@ class manager(object):
        self.tlsos = tools.generate_tlsos(selections     = self.tls_selections,
                                          xray_structure = self.xray_structure,
                                          value          = 0.0)
-    self.anisotropic_flags = anisotropic_flags
-    if(self.anisotropic_flags is not None and self.anisotropic_flags.count(True) > 0):
-       self.xray_structure.convert_to_anisotropic(
-                                            selection = self.anisotropic_flags)
+    #self.anisotropic_flags = anisotropic_flags
+    #if(self.anisotropic_flags is not None and self.anisotropic_flags.count(True) > 0):
+    #   self.xray_structure.convert_to_anisotropic(
+    #                                        selection = self.anisotropic_flags)
 
   def setup_restraints_manager(self,
                                plain_pairs_radius = 5.0,
@@ -71,7 +71,7 @@ class manager(object):
                   rigid_body_selections = None,
                   group_b_selections    = None,
                   tls_selections        = None,
-                  anisotropic_flags     = None,
+                  #anisotropic_flags     = None,
                   log                   = self.log)
     selection = flex.bool(self.xray_structure.scatterers().size(), True)
     # XXX not a deep copy
@@ -100,8 +100,8 @@ class manager(object):
        new.tls_selections = []
        for item in self.tls_selections:
            new.tls_selections.append(item.deep_copy())
-    if(self.anisotropic_flags is not None):
-       new.anisotropic_flags = self.anisotropic_flags.deep_copy()
+    #if(self.anisotropic_flags is not None):
+    #   new.anisotropic_flags = self.anisotropic_flags.deep_copy()
     return new
 
   def _solvent_selection(self):
@@ -130,7 +130,7 @@ class manager(object):
     rigid_body_selections = []
     group_b_selections    = []
     tls_selections = []
-    anisotropic_flags = None
+    #anisotropic_flags = None
     new_solvent_selection = flex.bool()
     for attr, solsel, sel in zip(self.atom_attributes_list,
                                  self.solvent_selection,
@@ -149,9 +149,9 @@ class manager(object):
        for s in self.tls_selections:
            tls_selections.append(s.select(selection))
     self.tls_selections = tls_selections
-    if(self.anisotropic_flags is not None):
-       anisotropic_flags = self.anisotropic_flags.select(selection)
-    self.anisotropic_flags = anisotropic_flags
+    #if(self.anisotropic_flags is not None):
+    #   anisotropic_flags = self.anisotropic_flags.select(selection)
+    #self.anisotropic_flags = anisotropic_flags
     if(self.group_b_selections is not None):
        for s in self.group_b_selections:
            group_b_selections.append(s.select(selection))
@@ -258,14 +258,8 @@ class manager(object):
     sites_cart  = xrs.sites_cart()
     scatterers  = xrs.scatterers()
     occupancies = scatterers.extract_occupancies()
-    #u_carts     = scatterers.extract_u_cart(xrs.unit_cell())
     u_carts = scatterers.extract_u_cart_or_u_cart_plus_u_iso(xrs.unit_cell())
     u_isos      = xrs.extract_u_iso_or_u_equiv()
-    #print
-    #epis = 8*math.pi**2
-    #for ui,ua in zip(u_isos, u_carts):
-    #  print ui*epis, (ua[0]+ua[1]+ua[2])*epis/3
-    #print
     scat_types  = scatterers.extract_scattering_types()
     #XXX high duplication
     if(selection is None):
@@ -412,7 +406,7 @@ class manager(object):
 
     self.xray_structure = self.xray_structure.concatenate(sol)
 
-    self.anisotropic_flags.extend(flex.bool(sol.scatterers().size(), False))
+    #self.anisotropic_flags.extend(flex.bool(sol.scatterers().size(), False))
 
     # XXX TODO NCS restraints
     # XXX RALF: throw exception if self.reduced_solvent_selection affects NCS
@@ -538,7 +532,7 @@ class manager(object):
     if(other is not None):
        adp_statistics_obj = adp_statistics(
                              xray_structure         = self.xray_structure,
-                             anisotropic_flags      = self.anisotropic_flags,
+                             #anisotropic_flags      = self.anisotropic_flags,
                              xray_structure_ref     = other.xray_structure,
                              restraints_manager     = self.restraints_manager,
                              restraints_manager_ref = other.restraints_manager,
@@ -549,7 +543,7 @@ class manager(object):
     else:
        adp_statistics_obj = adp_statistics(
                           xray_structure         = self.xray_structure,
-                          anisotropic_flags      = self.anisotropic_flags,
+                          #anisotropic_flags      = self.anisotropic_flags,
                           xray_structure_ref     = self.xray_structure_ini,
                           restraints_manager     = self.restraints_manager,
                           restraints_manager_ref = self.restraints_manager_ini,
@@ -567,7 +561,7 @@ class adp_statistics(object):
   def __init__(self,
                xray_structure,
                xray_structure_ref,
-               anisotropic_flags,
+               #anisotropic_flags,
                restraints_manager,
                restraints_manager_ref,
                iso_restraints,
@@ -659,11 +653,11 @@ class adp_statistics(object):
       low_cutoff_1 = high_cutoff_1
       low_cutoff_2 = high_cutoff_2
     print >> out, "| "+"- "*38+"|"
-    p0 = "| Number of anisotropically refinable ADP = "
-    p1 = str("%d"%self.anisotropic_flags.count(True))
-    p2 = " out of "+str("%d"%self.anisotropic_flags.size())+" total"
-    n = 79 - len(p0+p1+p2+"|")
-    print >> out, p0+p1+p2+" "*n+"|"
+    #p0 = "| Number of anisotropically refinable ADP = "
+    #p1 = str("%d"%self.anisotropic_flags.count(True))
+    #p2 = " out of "+str("%d"%self.anisotropic_flags.size())+" total"
+    #n = 79 - len(p0+p1+p2+"|")
+    #print >> out, p0+p1+p2+" "*n+"|"
     print >> out, "|"+"-"*77+"|"
     print >> out
     out.flush()
@@ -698,11 +692,11 @@ class adp_statistics(object):
     print >> out, "| number of B > 100.0: %-6d"%self.n_100_ref,"        | ",\
                   "number of B > 100.0: %-6d          |"%self.n_100
     print >> out, "| "+"  "*38+"|"
-    p0 = "| Number of anisotropically refinable ADP = "
-    p1 = str("%d"%self.anisotropic_flags.count(True))
-    p2 = " out of "+str("%d"%self.anisotropic_flags.size())+" total"
-    n = 79 - len(p0+p1+p2+"|")
-    print >> out, p0+p1+p2+" "*n+"|"
+    #p0 = "| Number of anisotropically refinable ADP = "
+    #p1 = str("%d"%self.anisotropic_flags.count(True))
+    #p2 = " out of "+str("%d"%self.anisotropic_flags.size())+" total"
+    #n = 79 - len(p0+p1+p2+"|")
+    #print >> out, p0+p1+p2+" "*n+"|"
     print >> out, "|"+"-"*77+"|"
     print >> out
     out.flush()

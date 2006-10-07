@@ -316,6 +316,12 @@ class structure(crystal.special_position_settings):
   def sites_frac(self):
     return self._scatterers.extract_sites()
 
+  def use_u_iso(self):
+    return self._scatterers.extract_use_u_iso()
+
+  def use_u_aniso(self):
+    return self._scatterers.extract_use_u_aniso()
+
   def set_sites_frac(self, sites_frac):
     assert sites_frac.size() == self._scatterers.size()
     self._scatterers.set_sites(sites_frac)
@@ -349,10 +355,6 @@ class structure(crystal.special_position_settings):
                                       atomic_weights = atomic_weights,
                                       unit_cell      = unit_cell,
                                       selection      = selection)
-
-  def set_adp_refinement_flags(self, anisotropic_flags, tan_u_iso, param):
-    self._scatterers.set_adp_refinement_flags(
-                                           anisotropic_flags, tan_u_iso, param)
 
   def convert_to_isotropic(self, selection=None):
     if(selection is None):
