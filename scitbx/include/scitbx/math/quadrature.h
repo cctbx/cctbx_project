@@ -475,7 +475,7 @@ namespace quadrature{
 
 
 
-  // here we determine roots of lagueree polynomes needed for 1d
+  // here we determine roots of legendre polynomes needed for 1d
   // integration over the interval [-1,1]
   template<typename FloatType>
   class gauss_legendre_engine{
