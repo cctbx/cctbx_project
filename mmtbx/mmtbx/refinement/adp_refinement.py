@@ -12,16 +12,13 @@ from libtbx.utils import Sorry
 from scitbx.python_utils.misc import user_plus_sys_time
 
 time_adp_refinement_py = 0.0
-time_set_flags         = 0.0
 
 def show_times(out = None):
   if(out is None): out = sys.stdout
-  total = time_adp_refinement_py + \
-          time_set_flags
+  total = time_adp_refinement_py
   if(total > 0.01):
      print >> out, "ADP refinement:"
      print >> out, "  time spent in adp_refinement.py          = %-7.2f" % time_adp_refinement_py
-     print >> out, "  set_flags                                = %-7.2f" % time_set_flags
   return total
 
 group_adp_master_params = iotbx.phil.parse("""\
@@ -31,17 +28,11 @@ group_adp_master_params = iotbx.phil.parse("""\
     .type = int
   convergence_test         = False
     .type = bool
-  selection                = None
-    .type=str
-    .multiple=True
   run_finite_differences_test = False
     .type = bool
 """)
 
 tls_master_params = iotbx.phil.parse("""\
-  selection                   = None
-    .type=str
-    .multiple=True
   one_residue_one_group       = None
     .type = bool
   refine_T                    = True
@@ -69,8 +60,6 @@ tls_master_params = iotbx.phil.parse("""\
 """)
 
 individual_adp_master_params = iotbx.phil.parse("""\
-  convert_to_isotropic = True
-    .type = bool
   iso {
     max_number_of_iterations = 25
       .type = int
@@ -90,10 +79,6 @@ individual_adp_master_params = iotbx.phil.parse("""\
       scale_min       = 10.0
         .type = float
     }
-  }
-  aniso {
-    selection = None
-      .type=str
   }
 """)
 
@@ -125,7 +110,7 @@ class manager(object):
             self,
             fmodel,
             model,
-            anisotropic_flags,
+            force_all_to_be_refined_isotropically,
             group_adp_selections      = None,
             group_adp_params          = group_adp_master_params.extract(),
             tls_selections            = None,
@@ -170,6 +155,9 @@ class manager(object):
                  gbr_selections.append(s)
           else:
              gbr_selections = group_adp_selections
+          xray.set_scatterer_grad_flags(
+                               scatterers = fmodel.xray_structure.scatterers(),
+                               u_iso      = True)
           group_b_manager = mmtbx.refinement.group_b.manager(
              fmodel                   = fmodel,
              selections               = gbr_selections,
@@ -177,19 +165,13 @@ class manager(object):
              max_number_of_iterations = 50,
              number_of_macro_cycles   = 1,
              log                      = log)
-
-       set_flags(xray_structure        = fmodel.xray_structure,
-                 anisotropic_flags     = anisotropic_flags,
-                 refine_adp_individual = refine_adp_individual,
-                 refine_adp_group      = refine_adp_group,
-                 tls_selections        = tls_selections,
-                 refine_tls            = refine_tls,
-                 tan_u_iso             = tan_u_iso,
-                 param                 = param,
-                 offset                = offset)
+       xray.set_scatterer_grad_flags(
+                               scatterers = fmodel.xray_structure.scatterers(),
+                               u_aniso    = True)
        model.show_groups(tls = True, out = log)
        current_target_name = fmodel.target_name
        fmodel.update(target_name = "ls_wunit_k1")
+       tools.split_u(fmodel.xray_structure, tls_selections, offset)
        self.tls_refinement_manager = tools.tls_refinement(
           fmodel                      = fmodel,
           model                       = model,
@@ -206,42 +188,37 @@ class manager(object):
           macro_cycle = macro_cycle)
        fmodel.update(target_name = current_target_name)
        fmodel.update_xray_structure(
-                   xray_structure = self.tls_refinement_manager.fmodel.xray_structure,
-                   update_f_calc  = True,
-                   out            = log)
+            xray_structure = self.tls_refinement_manager.fmodel.xray_structure,
+            update_f_calc  = True,
+            out            = log)
        model.xray_structure = fmodel.xray_structure
 
     if(refine_adp_individual):
        print_statistics.make_sub_header(text= "Individual ADP refinement",
                                         out = log)
-       set_flags(xray_structure     = fmodel.xray_structure,
-              anisotropic_flags     = anisotropic_flags,
-              refine_adp_individual = refine_adp_individual,
-              refine_adp_group      = refine_adp_group,
-              tls_selections        = tls_selections,
-              refine_tls            = refine_tls,
-              tan_u_iso             = tan_u_iso,
-              param                 = param,
-              offset                = offset)
+       xray.set_scatterer_grad_flags(
+                      scatterers = fmodel.xray_structure.scatterers(),
+                      u_iso      = True,
+                      u_aniso    = (not force_all_to_be_refined_isotropically))
        lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
            max_iterations = individual_adp_params.iso.max_number_of_iterations)
        fmodel.xray_structure.approx_equal(other = model.xray_structure)
        self.minimized = minimization_individual_adp.lbfgs(
-               restraints_manager       = restraints_manager,
-               fmodel                   = fmodel,
-               model                    = model,
-               lbfgs_termination_params = lbfgs_termination_params,
-               wx                       = wx,
-               wu                       = wu_individual,
-               wilson_b                 = wilson_b,
-               tan_b_iso_max            = tan_b_iso_max,
-               iso_restraints           = adp_restraints_params.iso,
-               verbose                  = 0,
-               fmodel_neutron           = fmodel_neutron,
-               wx_individual_neutron    = wx_individual_neutron,
-               neutron_scattering_dict  = neutron_scattering_dict,
-               xray_scattering_dict     = xray_scattering_dict,
-               wxnu_scale               = wxnu_scale)
+                          restraints_manager       = restraints_manager,
+                          fmodel                   = fmodel,
+                          model                    = model,
+                          lbfgs_termination_params = lbfgs_termination_params,
+                          wx                       = wx,
+                          wu                       = wu_individual,
+                          wilson_b                 = wilson_b,
+                          tan_b_iso_max            = tan_b_iso_max,
+                          iso_restraints           = adp_restraints_params.iso,
+                          verbose                  = 0,
+                          fmodel_neutron           = fmodel_neutron,
+                          wx_individual_neutron    = wx_individual_neutron,
+                          neutron_scattering_dict  = neutron_scattering_dict,
+                          xray_scattering_dict     = xray_scattering_dict,
+                          wxnu_scale               = wxnu_scale)
        self.minimized.show(text = "LBFGS minimization", out  = log)
        fmodel.update_xray_structure(
                                 xray_structure = self.minimized.xray_structure,
@@ -252,15 +229,9 @@ class manager(object):
     if(refine_adp_group):
        print_statistics.make_sub_header(text= "group isotropic ADP refinement",
                                         out = log)
-       set_flags(xray_structure        = fmodel.xray_structure,
-              anisotropic_flags     = anisotropic_flags,
-              refine_adp_individual = refine_adp_individual,
-              refine_adp_group      = refine_adp_group,
-              tls_selections        = tls_selections,
-              refine_tls            = refine_tls,
-              tan_u_iso             = tan_u_iso,
-              param                 = param,
-              offset                = offset)
+       xray.set_scatterer_grad_flags(
+                               scatterers = fmodel.xray_structure.scatterers(),
+                               u_iso      = True)
        group_b_manager = mmtbx.refinement.group_b.manager(
           fmodel                   = fmodel,
           selections               = group_adp_selections,
@@ -270,70 +241,3 @@ class manager(object):
           run_finite_differences_test = group_adp_params.run_finite_differences_test,
           log                      = log)
     time_adp_refinement_py += timer.elapsed()
-
-
-def set_flags(xray_structure,
-              anisotropic_flags,
-              refine_adp_individual,
-              refine_adp_group,
-              tls_selections,
-              refine_tls,
-              tan_u_iso,
-              param,
-              offset):
-  global time_set_flags
-  timer = user_plus_sys_time()
-  #XXX n_tls_groups Python loops over scatterers: highly inefficient.
-  xrs = xray_structure
-  ueq1 = xray_structure.extract_u_iso_or_u_equiv()
-  xray.set_scatterer_grad_flags(scatterers = xrs.scatterers()) #set all false
-  if(refine_adp_individual and refine_tls):
-     if(anisotropic_flags.count(True) > 0):
-        raise Sorry(
-           "Simultaneous TLS and individual anisotropic ADP refinement "\
-           "is not implemented.")
-     u_iso = xrs.scatterers().extract_u_iso()
-     if((u_iso < 0.0).count(True) > 0):
-        raise Sorry("All u_iso must be > 0 at this step.")
-     tools.split_u(xray_structure, tls_selections, offset)
-     for sc in xrs.scatterers():
-         sc.flags.set_use_u_iso(True)
-         sc.flags.set_grad_u_iso(True)
-         sc.flags.set_tan_u_iso(tan_u_iso)
-         sc.flags.param = param
-         assert sc.u_iso != -1.0
-         if(sc.u_star != (-1.0,-1.0,-1.0,-1.0,-1.0,-1.0)):
-            sc.flags.set_use_u_aniso(True)
-  elif(refine_tls):
-     for tls_selection in tls_selections:
-         xray_structure.convert_to_anisotropic(selection = tls_selection)
-  elif(refine_adp_individual):
-     xrs.set_adp_refinement_flags(anisotropic_flags = anisotropic_flags,
-                                  tan_u_iso         = tan_u_iso,
-                                  param             = param)
-     #for anisotropic_flag, sc in zip(anisotropic_flags, xrs.scatterers()):
-     #    if(anisotropic_flag):
-     #       sc.flags.set_use_u_aniso(True)
-     #       sc.flags.set_grad_u_aniso(True)
-     #       sc.flags.set_use_u_iso(False)
-     #       sc.flags.set_grad_u_iso(False)
-     #       assert sc.u_star != (-1.0,-1.0,-1.0,-1.0,-1.0,-1.0)
-     #    else:
-     #       sc.flags.set_use_u_aniso(False)
-     #       sc.flags.set_grad_u_aniso(False)
-     #       sc.flags.set_use_u_iso(True)
-     #       sc.flags.set_grad_u_iso(True)
-     #       sc.flags.set_tan_u_iso(tan_u_iso)
-     #       sc.flags.param = param
-     #       assert sc.u_iso != -1.0
-  elif(refine_adp_group):
-     #XXX Do this convertion only for gbr selected atoms.
-     xray_structure.convert_to_isotropic()
-  else:
-     raise Sorry("None of refine_adp_individual, refine_adp_group, "\
-                 "refine_tls is defined.")
-  u_iso = xray_structure.extract_u_iso_or_u_equiv()
-  assert (u_iso < 0.0).count(True) == 0
-  ueq2 = xray_structure.extract_u_iso_or_u_equiv()
-  assert approx_equal(ueq1, ueq2)
-  time_set_flags += timer.elapsed()

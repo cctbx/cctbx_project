@@ -32,7 +32,6 @@ class manager(object):
     global time_group_b_py
     timer = user_plus_sys_time()
     if(log is None): log = sys.stdout
-
     xray.set_scatterer_grad_flags(
                                scatterers = fmodel.xray_structure.scatterers(),
                                u_iso      = True)

@@ -93,26 +93,28 @@ namespace cctbx { namespace crystal {
                 double weight = 1./one_over_weight;
                 double u1 = u_isos[i_seq];
                 double u2 = u_isos[j_seq];
-                double sum = u1 + u2;
-                if (sum >= min_u_sum) {
-                  double ave_pow = std::pow(sum/2, average_power);
-                  CCTBX_ASSERT(ave_pow != 0);
-                  double u_diff = u1 - u2;
-                  double u_diff_sq = u_diff * u_diff;
-                  number_of_restraints++;
-                  residual_sum += (weight * u_diff_sq / ave_pow);
-                  if (compute_gradients) {
-                    double mem1 = 2.* u_diff / ave_pow;
-                    CCTBX_ASSERT(sum * ave_pow != 0);
-                    double mem2 = average_power * u_diff_sq / (sum * ave_pow);
-                    gradients[i_seq] += weight * (mem1 - mem2);
-                    gradients[j_seq] += weight * (-mem1 - mem2);
-                  }
-                  if (collect) {
-                    u_i.push_back(u1);
-                    u_j.push_back(u2);
-                    r_ij.push_back(dist);
-                  }
+                if(u1 >= 0.0 && u2 >= 0) {
+                   double sum = u1 + u2;
+                   if (sum >= min_u_sum) {
+                     double ave_pow = std::pow(sum/2, average_power);
+                     CCTBX_ASSERT(ave_pow != 0);
+                     double u_diff = u1 - u2;
+                     double u_diff_sq = u_diff * u_diff;
+                     number_of_restraints++;
+                     residual_sum += (weight * u_diff_sq / ave_pow);
+                     if (compute_gradients) {
+                       double mem1 = 2.* u_diff / ave_pow;
+                       CCTBX_ASSERT(sum * ave_pow != 0);
+                       double mem2 = average_power * u_diff_sq / (sum*ave_pow);
+                       gradients[i_seq] += weight * (mem1 - mem2);
+                       gradients[j_seq] += weight * (-mem1 - mem2);
+                     }
+                     if (collect) {
+                       u_i.push_back(u1);
+                       u_j.push_back(u2);
+                       r_ij.push_back(dist);
+                     }
+                   }
                 }
               }
             }

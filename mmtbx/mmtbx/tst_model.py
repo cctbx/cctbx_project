@@ -22,11 +22,8 @@ def exercise():
                                        file_name                 = pdb_file,
                                        raw_records               = None,
                                        force_symmetry            = True)
-  anisotropic_flags = flex.bool(
-                processed_pdb_file.xray_structure().scatterers().size(), False)
   ###
-  mol = mmtbx.model.manager(processed_pdb_file = processed_pdb_file,
-                            anisotropic_flags=anisotropic_flags)
+  mol = mmtbx.model.manager(processed_pdb_file = processed_pdb_file)
   mol.setup_restraints_manager()
   mol_copy = mol.deep_copy()
   assert mol.number_of_ordered_solvent_molecules() == 9
@@ -42,8 +39,7 @@ def exercise():
   mol.geometry_statistics(other = mol, show = True)
 
 
-  mol_other = mmtbx.model.manager(processed_pdb_file = processed_pdb_file,
-                                  anisotropic_flags=anisotropic_flags)
+  mol_other = mmtbx.model.manager(processed_pdb_file = processed_pdb_file)
   mol_other.setup_restraints_manager()
 
 
