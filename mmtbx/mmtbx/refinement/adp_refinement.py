@@ -165,6 +165,7 @@ class manager(object):
              max_number_of_iterations = 50,
              number_of_macro_cycles   = 1,
              log                      = log)
+       # XXX u_aniso = True ONLY for TLS groups, and not all
        xray.set_scatterer_grad_flags(
                                scatterers = fmodel.xray_structure.scatterers(),
                                u_aniso    = True)

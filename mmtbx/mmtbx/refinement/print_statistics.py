@@ -30,7 +30,7 @@ def show_process_info(out):
 
 def make_header(line, out=None):
   if (out is None): out = sys.stdout
-  show_process_info(out=out)
+  #show_process_info(out=out)
   header_len = 80
   line_len = len(line)
   #assert line_len <= header_len
@@ -66,7 +66,7 @@ def make_sub_header(text, out=None):
 
 def macro_cycle_header(macro_cycle, number_of_macro_cycles, out=None):
   if (out is None): out = sys.stdout
-  show_process_info(out=out)
+  #show_process_info(out=out)
   header_len = 80
   macro_cycle = str(macro_cycle)
   number_of_macro_cycles = str(number_of_macro_cycles)

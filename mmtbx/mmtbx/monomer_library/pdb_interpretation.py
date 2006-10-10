@@ -2139,21 +2139,22 @@ class process(object):
         hard_minimum_nonbonded_distance,
         n_below_hard_minimum_nonbonded_distance))
 
-  def xray_structure(self):
+  def xray_structure(self, show_summary = True):
+    log = self.log
     if (    self.all_chain_proxies.sites_cart is not None
         and self.all_chain_proxies.special_position_settings is not None
         and self._xray_structure is None):
       self._xray_structure = self.all_chain_proxies.extract_xray_structure()
       self._xray_structure.scattering_type_registry(
         types_without_a_scattering_contribution=["?"])
-      if (self.log is not None):
-        self._xray_structure.show_summary(f=self.log, prefix="  ")
+      if (log is not None and show_summary):
+        self._xray_structure.show_summary(f = log, prefix="  ")
         self._xray_structure.show_special_position_shifts(
           sites_cart_original=self.all_chain_proxies.sites_cart,
-          out=self.log, prefix="  ")
+          out= log, prefix="  ")
         self._xray_structure.scattering_type_registry().show(
-          show_gaussians=False, out=self.log, prefix="  ")
-        flush_log(self.log)
+          show_gaussians=False, out = log, prefix="  ")
+        flush_log(log)
     return self._xray_structure
 
 def run(
