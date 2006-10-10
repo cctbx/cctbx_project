@@ -130,7 +130,6 @@ class manager(object):
     rigid_body_selections = []
     group_b_selections    = []
     tls_selections = []
-    #anisotropic_flags = None
     new_solvent_selection = flex.bool()
     for attr, solsel, sel in zip(self.atom_attributes_list,
                                  self.solvent_selection,
@@ -149,9 +148,6 @@ class manager(object):
        for s in self.tls_selections:
            tls_selections.append(s.select(selection))
     self.tls_selections = tls_selections
-    #if(self.anisotropic_flags is not None):
-    #   anisotropic_flags = self.anisotropic_flags.select(selection)
-    #self.anisotropic_flags = anisotropic_flags
     if(self.group_b_selections is not None):
        for s in self.group_b_selections:
            group_b_selections.append(s.select(selection))
