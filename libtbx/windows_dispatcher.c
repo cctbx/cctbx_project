@@ -5,6 +5,9 @@
 #include <string.h>
 #include <ctype.h>
 
+/* Unique strings generated with: libtbx.obfuscate
+ */
+
 static const char* /* WINDOWS_DISPATCHER interleaved with random digits */
 unique_pattern = "0W6I0N6D0O2W8S5_0D0I8S1P4A3T6C4H9E4R7";
 
@@ -14,6 +17,10 @@ libtbx_build = "LIBTBX_BUILD="
 "_3L0I2B2T9B4X2_8B5U5I5L2D4_3L0I2B2T9B4X2_8B5U5I5L2D4_3L0I2B2T9B4X2_8B5U5I5L2D"
 "4_3L0I2B2T9B4X2_8B5U5I5L2D4_3L0I2B2T9B4X2_8B5U5I5L2D4_3L0I2B2T9B4X2_8B5U5I5L2"
 "D4_3L0I2B2T9B4X2_8B5U5I5";
+
+static char* /* LIBTBX_DISPATCHER_NAME interleaved with random digits */
+libtbx_dispatcher_name = "LIBTBX_DISPATCHER_NAME="
+"6L6I7B2T3B2X5_6D8I7S0P2A0T5C8H1E8R3_1N0A9M9E5_6L6I7B2T3B2X5_6D8I7S0P2A0T5C8H";
 
 static char* /* PYTHON_EXECUTABLE interleaved with random digits */
 python_executable =
@@ -130,6 +137,7 @@ main(int argc, char *const argv[])
   _putenv("PYTHONHOME=");
   _putenv("PYTHONCASEOK=1");
   _putenv(libtbx_build);
+  _putenv(libtbx_dispatcher_name);
   prepend_path_element(argv[0], "PYTHONPATH", pythonpath);
   prepend_path_element(argv[0], "PATH", main_path);
   extended_argv = malloc_certain(argv[0], (argc + 2) * sizeof(char*));

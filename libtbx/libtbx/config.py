@@ -699,6 +699,11 @@ class environment:
     print >> f, 'unset PYTHONHOME'
     print >> f, 'LIBTBX_BUILD="%s"' % self.build_path
     print >> f, 'export LIBTBX_BUILD'
+    if (source_file is not None):
+      dispatcher_name = os.path.basename(target_file)
+      assert dispatcher_name.find('"') < 0
+      print >> f, 'LIBTBX_DISPATCHER_NAME="%s"' % os.path.basename(target_file)
+      print >> f, 'export LIBTBX_DISPATCHER_NAME'
     for line in self.dispatcher_include(where="at_start"):
       print >> f, line
     essentials = [("PYTHONPATH", self.pythonpath)]
@@ -757,9 +762,10 @@ class environment:
     f.close()
     os.chmod(target_file, 0755)
 
-  def windows_dispatcher(self, command_path,
+  def windows_dispatcher(self, command_path, dispatcher_name,
         unique_pattern="0W6I0N6D0O2W8S5_0D0I8S1P4A3T6C4H9E4R7",
         libtbx_build="3L0I2B2T9B4X2_8B5U5I5L2D4",
+        libtbx_dispatcher_name="6L6I7B2T3B2X5_6D8I7S0P2A0T5C8H1E8R3_1N0A9M9E",
         python_executable="5P2Y5T7H2O5N8_0E7X9E7C8U6T4A9B9L5E3",
         pythonpath="2P0Y1T7H3O2N7P7A2T5H8",
         main_path="1M5A1I0N4_8P7A0T9H9",
@@ -778,6 +784,7 @@ class environment:
       self.windows_dispatcher_unique_pattern = unique_pattern
       for place_holder,actual_value in [
            (libtbx_build, self.build_path),
+           (libtbx_dispatcher_name, dispatcher_name),
            (python_executable, self.python_exe),
            (pythonpath, os.pathsep.join(self.pythonpath)),
            (main_path, os.pathsep.join([self.bin_path, self.lib_path]))]:
@@ -796,7 +803,9 @@ class environment:
 
   def write_win32_dispatcher(self, source_file, target_file):
     open(target_file, "wb").write(
-      self.windows_dispatcher(command_path=source_file))
+      self.windows_dispatcher(
+        command_path=source_file,
+        dispatcher_name=os.path.basename(target_file)))
 
   def write_dispatcher(self, source_file, target_file):
     if (os.name == "nt"):
