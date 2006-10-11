@@ -134,23 +134,29 @@ scaling.input {
 """)
 
 
-def print_banner(out=None):
+def print_banner(appl, out=None):
   if out is None:
     out=sys.stdout
-  print >> out, "#############################################################"
-  print >> out, "##                        mmtbx.xtriage                    ##"
-  print >> out, "##                                                         ##"
-  print >> out, "##      P.H. Zwart, R.W. Grosse-Kunstleve & P.D. Adams     ##"
-  print >> out, "##                                                         ##"
-  print >> out, "#############################################################"
+  hashes = "#############################################################"
+  def print_centered(s):
+    b = max(0, len(hashes) - len(s) - 4)
+    l = int(b / 2)
+    r = b - l
+    print >> out, "##%s%s%s##" % (" "*l, s, " "*r)
+  print >> out, hashes
+  print_centered(appl)
+  print_centered("")
+  print_centered("P.H. Zwart, R.W. Grosse-Kunstleve & P.D. Adams")
+  print_centered("")
+  print >> out, hashes
 
 
-def print_help():
+def print_help(appl):
   print """
 ----------------------------------------------------------------------------------------------------------------------------
-Usage: mmtbx.xtriage file_name=myfile.sca <options>
+Usage: %(appl)s file_name=myfile.sca <options>
 
-mmtbx.xtriage performs a variety of twinning and related test on the given
+%(appl)s performs a variety of twinning and related test on the given
 x-ray data set. See CCP4 newletter number 42, July 2005 for more information.
 (http://www.ccp4.ac.uk/newsletters/newsletter42/newsletter42.pdf)
 
@@ -163,7 +169,7 @@ The program options are summarized below
          * n_copies_per_asu :: Number of copies in the ASU.
 
    These keywords control the determination of the absolute scale.
-   If the number of residues/bases is not specified, a solvent content of 50% is assumed.
+   If the number of residues/bases is not specified, a solvent content of 50%% is assumed.
 
 
 2. scope: parameters.misc_twin_parameters.missing_symmetry
@@ -238,22 +244,22 @@ The program options are summarized below
 Example usage:
 
   The commands
-    mmtbx.xtriage xray_data.file_name=my_refl.mtz
-    mmtbx.xtriage file_name=my_refl.mtz
-    mmtbx.xtriage file=my_refl.mtz
-    mmtbx.xtriage my_refl.mtz
+    %(appl)s xray_data.file_name=my_refl.mtz
+    %(appl)s file_name=my_refl.mtz
+    %(appl)s file=my_refl.mtz
+    %(appl)s my_refl.mtz
   are equivalent.
 
   The commands
-    mmtbx.xtriage my_refl.mtz obs=F_HG,SIGF_HG data.high=2.0 log=log.log perform=True
-    mmtbx.xtriage my_refl.mtz obs=HG data.high=2.0 log=log.log perform=True
+    %(appl)s my_refl.mtz obs=F_HG,SIGF_HG data.high=2.0 log=log.log perform=True
+    %(appl)s my_refl.mtz obs=HG data.high=2.0 log=log.log perform=True
   are equivalent if the substring 'HG' is unique in the mtz file. If the labels contain character such as
   '(', use quoation marks: obs='F_HG(+)'.
 
 
 -----------------------------------------------------------------------------------------------------------------------------
 
-"""
+""" % vars()
 
 class xtriage_analyses(object):
   def __init__(self,
@@ -340,14 +346,8 @@ class xtriage_analyses(object):
 
 def run(command_name, args):
 
-  if len(args)==0:
-    print_help()
-  elif ( "--help" in args ):
-    print_help()
-  elif ( "--h" in args ):
-    print_help()
-  elif ("-h" in args ):
-    print_help()
+  if (len(args)==0 or "--help" in args or "--h" in args or "-h" in args):
+    print_help(appl=command_name)
   else:
     log = multi_out()
     if (not "--quiet" in args):
@@ -356,11 +356,11 @@ def run(command_name, args):
     string_buffer_plots = StringIO()
     log.register(label="log_buffer", file_object=string_buffer)
 
-    print_banner(log)
+    print_banner(appl=command_name, out=log)
     print >> log, "#phil __OFF__"
     print >> log, "  This cryptic code, together with the tags __ON__ and __OFF__"
     print >> log, "  allows one to use the log file as an input file for xtriage."
-    print >> log, "  Try : mmtbx.xtriage  <logfile> to give it a try!"
+    print >> log, "  Try : %s  <logfile> to give it a try!" % command_name
     print >> log
     print >> log, date_and_time()
     print >> log
