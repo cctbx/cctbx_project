@@ -41,9 +41,24 @@ def exercise_2(eps = 1.e-6):
   for string in ["chain A", "chain B", "chain C"]:
       selections.append(processed_pdb_file.all_chain_proxies.selection(
                                                               string = string))
+################
+  geometry = processed_pdb_file.geometry_restraints_manager(
+                                                    show_energies      = False,
+                                                    plain_pairs_radius = 5.0)
+  restraints_manager = mmtbx.restraints.manager(geometry      = geometry,
+                                                normalization = False)
+  selection = flex.bool(xray_structure.scatterers().size(), True)
+  restraints_manager_ini = mmtbx.restraints.manager(
+                                  geometry      = geometry.select(selection),
+                                  normalization = False)
+  aal= processed_pdb_file.all_chain_proxies.stage_1.atom_attributes_list
   model = mmtbx.model.manager(
-                  tls_selections        = selections,
-                  processed_pdb_file    = processed_pdb_file)
+             tls_selections         = selections,
+             restraints_manager     = restraints_manager,
+             restraints_manager_ini = restraints_manager_ini,
+             xray_structure         = xray_structure,
+             atom_attributes_list   = aal)
+################
 ###> Get TLS <-> Ucart
   T_initial = []
   L_initial = []

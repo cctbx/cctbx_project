@@ -286,9 +286,25 @@ def run_tests(sf_algorithm = "fft"):
                             file_name      = pdb_file,
                             raw_records    = None,
                             force_symmetry = True)
-  model = mmtbx.model.manager(processed_pdb_file = processed_pdb_file)
+################
+  geometry = processed_pdb_file.geometry_restraints_manager(
+                                                    show_energies      = False,
+                                                    plain_pairs_radius = 5.0)
+  restraints_manager = mmtbx.restraints.manager(geometry      = geometry,
+                                                normalization = False)
+  xray_structure = processed_pdb_file.xray_structure()
+  selection = flex.bool(xray_structure.scatterers().size(), True)
+  restraints_manager_ini = mmtbx.restraints.manager(
+                                  geometry      = geometry.select(selection),
+                                  normalization = False)
+  aal= processed_pdb_file.all_chain_proxies.stage_1.atom_attributes_list
+  model = mmtbx.model.manager(
+             restraints_manager     = restraints_manager,
+             restraints_manager_ini = restraints_manager_ini,
+             xray_structure         = xray_structure,
+             atom_attributes_list   = aal)
   model.xray_structure.scattering_type_registry(table = "wk1995")
-  model.setup_restraints_manager()
+################
   dummy = model.xray_structure.structure_factors(algorithm = sf_algorithm,
                                                  d_min     = 2.0).f_calc()
   f_obs = abs(dummy.structure_factors_from_scatterers(
@@ -331,9 +347,25 @@ def finite_differences_test(sf_algorithm = "direct"):
                             file_name      = pdb_file,
                             raw_records    = None,
                             force_symmetry = True)
-  model = mmtbx.model.manager(processed_pdb_file = processed_pdb_file)
+################
+  geometry = processed_pdb_file.geometry_restraints_manager(
+                                                    show_energies      = False,
+                                                    plain_pairs_radius = 5.0)
+  restraints_manager = mmtbx.restraints.manager(geometry      = geometry,
+                                                normalization = False)
+  xray_structure = processed_pdb_file.xray_structure()
+  selection = flex.bool(xray_structure.scatterers().size(), True)
+  restraints_manager_ini = mmtbx.restraints.manager(
+                                  geometry      = geometry.select(selection),
+                                  normalization = False)
+  aal= processed_pdb_file.all_chain_proxies.stage_1.atom_attributes_list
+  model = mmtbx.model.manager(
+             restraints_manager     = restraints_manager,
+             restraints_manager_ini = restraints_manager_ini,
+             xray_structure         = xray_structure,
+             atom_attributes_list   = aal)
   model.xray_structure.scattering_type_registry(table = "wk1995")
-  model.setup_restraints_manager()
+################
   dummy = model.xray_structure.structure_factors(algorithm = sf_algorithm,
                                                  d_min     = 1.0).f_calc()
   f_obs = abs(dummy.structure_factors_from_scatterers(

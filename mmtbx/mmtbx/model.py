@@ -19,21 +19,22 @@ time_model_show = 0.0
 
 
 class manager(object):
-  def __init__(self, processed_pdb_file,
+  def __init__(self, restraints_manager,
+                     restraints_manager_ini,
+                     xray_structure,
+                     atom_attributes_list,
                      rigid_body_selections = None,
                      group_b_selections    = None,
                      tls_selections        = None,
-                     #anisotropic_flags     = None,
                      log = None):
     self.log = log
-    self.restraints_manager = None
-    self.processed_pdb_file = processed_pdb_file
-    self.xray_structure = \
-                     processed_pdb_file.xray_structure().deep_copy_scatterers()
+    self.restraints_manager = restraints_manager
+    self.restraints_manager_ini = restraints_manager_ini
+    #self.processed_pdb_file = processed_pdb_file
+    self.xray_structure = xray_structure.deep_copy_scatterers()
     self.xray_structure_ini = self.xray_structure.deep_copy_scatterers()
     self.crystal_symmetry = self.xray_structure.crystal_symmetry()
-    self.atom_attributes_list = \
-           processed_pdb_file.all_chain_proxies.stage_1.atom_attributes_list[:]
+    self.atom_attributes_list = atom_attributes_list[:]
     self.solvent_selection = self._solvent_selection()
     self.solvent_selection_ini = self._solvent_selection()
     self.locked = False
@@ -44,34 +45,32 @@ class manager(object):
        self.tlsos = tools.generate_tlsos(selections     = self.tls_selections,
                                          xray_structure = self.xray_structure,
                                          value          = 0.0)
-    #self.anisotropic_flags = anisotropic_flags
-    #if(self.anisotropic_flags is not None and self.anisotropic_flags.count(True) > 0):
-    #   self.xray_structure.convert_to_anisotropic(
-    #                                        selection = self.anisotropic_flags)
 
-  def setup_restraints_manager(self,
-                               plain_pairs_radius = 5.0,
-                               normalization      = True,
-                               show_energies      = False):
-    self.restraints_manager = mmtbx.restraints.manager(
-           geometry      = self.processed_pdb_file.geometry_restraints_manager(
-                                      show_energies      = show_energies,
-                                      plain_pairs_radius = plain_pairs_radius),
-           normalization = normalization)
-    if(not self.locked):
-       selection = flex.bool(self.xray_structure_ini.scatterers().size(), True)
-       self.restraints_manager_ini = mmtbx.restraints.manager(
-            geometry      = self.restraints_manager.geometry.select(selection),
-            ncs_groups    = self.restraints_manager.ncs_groups,
-            normalization = self.restraints_manager.normalization)
-       self.locked = True
+  #def setup_restraints_manager(self,
+  #                             plain_pairs_radius = 5.0,
+  #                             normalization      = True,
+  #                             show_energies      = False):
+  #  self.restraints_manager = mmtbx.restraints.manager(
+  #         geometry      = self.processed_pdb_file.geometry_restraints_manager(
+  #                                    show_energies      = show_energies,
+  #                                    plain_pairs_radius = plain_pairs_radius),
+  #         normalization = normalization)
+  #  if(not self.locked):
+  #     selection = flex.bool(self.xray_structure_ini.scatterers().size(), True)
+  #     self.restraints_manager_ini = mmtbx.restraints.manager(
+  #          geometry      = self.restraints_manager.geometry.select(selection),
+  #          ncs_groups    = self.restraints_manager.ncs_groups,
+  #          normalization = self.restraints_manager.normalization)
+  #     self.locked = True
 
   def deep_copy(self):
-    new = manager(processed_pdb_file    = self.processed_pdb_file,
+    new = manager(restraints_manager    = self.restraints_manager,
+                  restraints_manager_ini= self.restraints_manager_ini,
+                  xray_structure        = self.xray_structure,
+                  atom_attributes_list  = self.atom_attributes_list,
                   rigid_body_selections = None,
                   group_b_selections    = None,
                   tls_selections        = None,
-                  #anisotropic_flags     = None,
                   log                   = self.log)
     selection = flex.bool(self.xray_structure.scatterers().size(), True)
     # XXX not a deep copy
@@ -87,7 +86,6 @@ class manager(object):
     new.xray_structure_ini   = self.xray_structure_ini.deep_copy_scatterers()
     new.atom_attributes_list = self.atom_attributes_list[:]
     new.solvent_selection    = self.solvent_selection.deep_copy()
-    new.locked               = self.locked
     if(self.rigid_body_selections is not None):
        new.rigid_body_selections = []
        for item in self.rigid_body_selections:
@@ -100,8 +98,6 @@ class manager(object):
        new.tls_selections = []
        for item in self.tls_selections:
            new.tls_selections.append(item.deep_copy())
-    #if(self.anisotropic_flags is not None):
-    #   new.anisotropic_flags = self.anisotropic_flags.deep_copy()
     return new
 
   def _solvent_selection(self):
