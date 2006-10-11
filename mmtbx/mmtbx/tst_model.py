@@ -22,9 +22,28 @@ def exercise():
                                        file_name                 = pdb_file,
                                        raw_records               = None,
                                        force_symmetry            = True)
-  ###
-  mol = mmtbx.model.manager(processed_pdb_file = processed_pdb_file)
-  mol.setup_restraints_manager()
+################
+  geometry = processed_pdb_file.geometry_restraints_manager(
+                                                    show_energies      = False,
+                                                    plain_pairs_radius = 5.0)
+  restraints_manager = mmtbx.restraints.manager(geometry      = geometry,
+                                                normalization = False)
+  xray_structure = processed_pdb_file.xray_structure()
+  selection = flex.bool(xray_structure.scatterers().size(), True)
+  restraints_manager_ini = mmtbx.restraints.manager(
+                                  geometry      = geometry.select(selection),
+                                  normalization = False)
+  aal= processed_pdb_file.all_chain_proxies.stage_1.atom_attributes_list
+  mol = mmtbx.model.manager(
+             restraints_manager     = restraints_manager,
+             restraints_manager_ini = restraints_manager_ini,
+             xray_structure         = xray_structure,
+             atom_attributes_list   = aal)
+  mol.xray_structure.scattering_type_registry(table = "wk1995")
+################
+
+
+
   mol_copy = mol.deep_copy()
   assert mol.number_of_ordered_solvent_molecules() == 9
   mol.write_pdb_file(out = open("test_model_out.pdb","w"))
@@ -38,10 +57,25 @@ def exercise():
   mol.geometry_statistics(show = True)
   mol.geometry_statistics(other = mol, show = True)
 
-
-  mol_other = mmtbx.model.manager(processed_pdb_file = processed_pdb_file)
-  mol_other.setup_restraints_manager()
-
+################
+  geometry = processed_pdb_file.geometry_restraints_manager(
+                                                    show_energies      = False,
+                                                    plain_pairs_radius = 5.0)
+  restraints_manager = mmtbx.restraints.manager(geometry      = geometry,
+                                                normalization = False)
+  xray_structure = processed_pdb_file.xray_structure()
+  selection = flex.bool(xray_structure.scatterers().size(), True)
+  restraints_manager_ini = mmtbx.restraints.manager(
+                                  geometry      = geometry.select(selection),
+                                  normalization = False)
+  aal= processed_pdb_file.all_chain_proxies.stage_1.atom_attributes_list
+  mol_other = mmtbx.model.manager(
+             restraints_manager     = restraints_manager,
+             restraints_manager_ini = restraints_manager_ini,
+             xray_structure         = xray_structure,
+             atom_attributes_list   = aal)
+  mol_other.xray_structure.scattering_type_registry(table = "wk1995")
+################
 
   mol_other.geometry_statistics(show = True)
   print
