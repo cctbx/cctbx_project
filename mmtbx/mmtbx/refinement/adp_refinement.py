@@ -65,14 +65,6 @@ individual_adp_master_params = iotbx.phil.parse("""\
       .type = int
     automatic_randomization_if_all_equal = True
       .type = bool
-    shake_biso               = None
-      .type = float
-    set_biso                 = None
-      .type = float
-    set_biso_random          = False
-      .type = bool
-    set_biso_to_wilson_b     = False
-      .type = bool
     scaling {
       scale_max       = 3.0
         .type = float
