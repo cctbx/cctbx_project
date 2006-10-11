@@ -119,6 +119,8 @@ namespace {
           &w_t::miscellaneous_features_section, rbv())
         .def("crystallographic_section", &w_t::crystallographic_section, rbv())
         .def("input_atom_labels_list", &w_t::input_atom_labels_list, rbv())
+        .def("atom_serial_number_strings",
+          &w_t::atom_serial_number_strings, rbv())
         .def("atoms", &w_t::atoms, rbv())
         .def("model_numbers", &w_t::model_numbers, rbv())
         .def("model_indices", &w_t::model_indices, rbv())

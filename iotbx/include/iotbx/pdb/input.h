@@ -893,6 +893,16 @@ namespace iotbx { namespace pdb {
     }
 
     static
+    af::tiny<char, 5>
+    extract_serial_number_string(
+      pdb::line_info& line_info)
+    {
+      af::tiny<char, 5> result;
+      extract(line_info,6,5,result.begin());
+      return result;
+    }
+
+    static
     void
     extract(
       pdb::line_info& line_info,
@@ -1425,6 +1435,9 @@ namespace iotbx { namespace pdb {
         input_atom_labels_list_.reserve(
             input_atom_labels_list_.size()
           + columns_73_76_eval.number_of_atom_and_hetatm_lines);
+        atom_serial_number_strings_.reserve(
+            atom_serial_number_strings_.size()
+          + columns_73_76_eval.number_of_atom_and_hetatm_lines);
         atoms_.reserve(
             atoms_.size()
           + columns_73_76_eval.number_of_atom_and_hetatm_lines);
@@ -1456,9 +1469,13 @@ namespace iotbx { namespace pdb {
           if      (record_type_info.id == record_type::atom__) {
             if (model_record_oversight.atom_is_allowed_here()) {
               input_atom_labels_list_.push_back(input_atom_labels(line_info));
+              atom_serial_number_strings_.push_back(std::string(
+                input_atom_labels::extract_serial_number_string(
+                  line_info).begin(), 5));
               atoms_.push_back(process_atom_record(line_info,/*hetero*/false));
               if (line_info.error_occured()) {
                 input_atom_labels_list_.pop_back();
+                atom_serial_number_strings_.pop_back();
                 atoms_.pop_back();
               }
               else {
@@ -1475,9 +1492,13 @@ namespace iotbx { namespace pdb {
           else if (record_type_info.id == record_type::hetatm) {
             if (model_record_oversight.atom_is_allowed_here()) {
               input_atom_labels_list_.push_back(input_atom_labels(line_info));
+              atom_serial_number_strings_.push_back(std::string(
+                input_atom_labels::extract_serial_number_string(
+                  line_info).begin(), 5));
               atoms_.push_back(process_atom_record(line_info,/*hetero*/true));
               if (line_info.error_occured()) {
                 input_atom_labels_list_.pop_back();
+                atom_serial_number_strings_.pop_back();
                 atoms_.pop_back();
               }
               else {
@@ -1666,6 +1687,9 @@ namespace iotbx { namespace pdb {
 
       af::shared<input_atom_labels> const&
       input_atom_labels_list() const { return input_atom_labels_list_; }
+
+      af::shared<std::string> const&
+      atom_serial_number_strings() const { return atom_serial_number_strings_;}
 
       af::shared<atom> const&
       atoms() const { return atoms_; }
@@ -2077,6 +2101,7 @@ namespace iotbx { namespace pdb {
       af::shared<std::string> miscellaneous_features_section_;
       af::shared<std::string> crystallographic_section_;
       af::shared<input_atom_labels> input_atom_labels_list_;
+      af::shared<std::string> atom_serial_number_strings_;
       af::shared<atom>        atoms_;
       af::shared<int>         model_numbers_;
       af::shared<std::size_t> model_indices_;
