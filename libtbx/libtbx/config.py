@@ -805,7 +805,7 @@ class environment:
     open(target_file, "wb").write(
       self.windows_dispatcher(
         command_path=source_file,
-        dispatcher_name=os.path.basename(target_file)))
+        dispatcher_name=os.path.splitext(os.path.basename(target_file))[0]))
 
   def write_dispatcher(self, source_file, target_file):
     if (os.name == "nt"):
