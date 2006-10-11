@@ -313,14 +313,14 @@ class array_cache(object):
         reflections_per_bin=reflections_per_bin,
         n_bins=n_bins)
 
-def run(args):
+def run(args, command_name="iotbx.reflection_statistics"):
   print "Command line arguments:",
   for arg in args: print arg,
   print
   print
   command_line = (iotbx_option_parser(
-    usage="iotbx.reflection_statistics [options] reflection_file [...]",
-    description="Example: iotbx.reflection_statistics data1.mtz data2.sca")
+    usage=command_name+" [options] reflection_file [...]",
+    description="Example: %s data1.mtz data2.sca" % command_name)
     .enable_symmetry_comprehensive()
     .option(None, "--weak_symmetry",
       action="store_true",

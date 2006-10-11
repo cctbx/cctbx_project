@@ -143,11 +143,11 @@ def get_emma_model(file_name, crystal_symmetry):
     pass
   raise RuntimeError("Coordinate file %s: unknown format." % file_name)
 
-def run(args):
+def run(args, command_name="iotbx.emma"):
   command_line = (iotbx_option_parser(
-    usage="iotbx.emma [options]"
+    usage=command_name + " [options]"
          +" reference_coordinates other_coordinates",
-    description="Example: iotbx.emma model1.pdb model2.sdb")
+    description="Example: %s model1.pdb model2.sdb" % command_name)
     .enable_symmetry_comprehensive()
     .option(None, "--tolerance",
       action="store",
