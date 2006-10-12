@@ -275,6 +275,9 @@ class xtriage_analyses(object):
                                     # A reference set is for instance a data set with an alternative indexing scheme
     self.text_out    = text_out     # An object with a write method, such as a multi out or StringIO.
                                     # If None, sys.stdout will be used
+    if self.text_out == "silent":   # if "silent", a StringIO object will be used
+     self.text_out = StringIO()     # and all output is supressed
+
     self.plot_out    = plot_out     # as above. This will contain some ccp4 style plots. If None, no plots will be made
 
     self.params = parameters        # this should be a phil object like the master_params define on the top of this file
@@ -625,7 +628,7 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
 
       info = reference_array.info()
 
-      reference_array = miller_array.map_to_asu()
+      reference_array = reference_array.map_to_asu()
 
       reference_array = reference_array.select(
         reference_array.indices() != (0,0,0))
