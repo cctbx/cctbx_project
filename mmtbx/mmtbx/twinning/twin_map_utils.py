@@ -236,7 +236,7 @@ def run(command_name,args):
         space_group_info=params.twin_utils.input.space_group  )
 
 
-    combined_xs = select_crystal_symmetry(
+    combined_xs = crystal.select_crystal_symmetry(
       None,phil_xs, [pdb_xs],[hkl_xs])
 
     # inject the unit cell and symmetry in the phil scope please
@@ -335,7 +335,7 @@ def run(command_name,args):
       crystal_symmetry=phil_xs)
     print >> log, "Atomic model summary"
     print >> log, "===================="
-    model.show_summary()
+    model.show_summary(f=log)
     print >> log
 
 
@@ -350,7 +350,7 @@ def run(command_name,args):
     print >> log
     print >> log, "Preliminary data analyses"
     print >> log, "=========================="
-    twin_laws.show()
+    twin_laws.show(out=log)
 
 
     #---------
@@ -371,9 +371,14 @@ def run(command_name,args):
         twin_law = twin_law.operator,
         out=log)
       print >> log, "--- bulk solvent scaling ---"
-      twin_model.update_bulk_solvent_parameters()
+      twin_model.update_bulk_solvent_parameters(de_search=True,
+                                                refine=False)
+
       twin_model.r_values()
       twin_model.target()
+      twin_model.twin_fraction_scan()
+
+
       tfofc,wtfofc,grad = twin_model.map_coefficients(False)
 
       mtz_dataset = tfofc.as_mtz_dataset(
