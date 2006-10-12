@@ -17,6 +17,7 @@ from mmtbx.scaling import basic_analyses, pair_analyses
 from mmtbx.scaling import twin_detwin_data
 import libtbx.phil.command_line
 from cStringIO import StringIO
+from libtbx.utils import null_out
 from scitbx.python_utils import easy_pickle
 import sys, os
 
@@ -276,7 +277,7 @@ class xtriage_analyses(object):
     self.text_out    = text_out     # An object with a write method, such as a multi out or StringIO.
                                     # If None, sys.stdout will be used
     if self.text_out == "silent":   # if "silent", a StringIO object will be used
-     self.text_out = StringIO()     # and all output is supressed
+     self.text_out = null_out       # and all output is supressed
 
     self.plot_out    = plot_out     # as above. This will contain some ccp4 style plots. If None, no plots will be made
 
@@ -595,14 +596,13 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
       if params.scaling.input.xray_data.reference.data.unit_cell is not None:
         user_cell = params.scaling.input.xray_data.reference.data.unit_cell
       if params.scaling.input.xray_data.reference.data.space_group is not None:
-        user_group = params.scaling.input.xray_data.reference.data.unit_group
-
+        user_group = params.scaling.input.xray_data.reference.data.space_group
       reference_symmetry = None
       if user_cell is not None:
         if user_group is not None:
           reference_symmetry= crystal.symmetry(
             unit_cell=user_cell,
-            space_group=user_group
+            space_group=user_group.group()
             )
       if reference_symmetry is None:
         reference_symmetry = crystal_symmetry_from_any.extract_from(
