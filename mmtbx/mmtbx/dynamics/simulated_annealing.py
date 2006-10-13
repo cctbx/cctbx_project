@@ -39,6 +39,7 @@ def manager(simulated_annealing_params,
                    "lbfgs minimization: before simulated annealing", out = out)
   minimized = mmtbx.refinement.minimization.lbfgs(
     restraints_manager       = model.restraints_manager,
+    refine_xyz               = True,
     fmodel                   = fmodel,
     model                    = model,
     lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
@@ -48,7 +49,7 @@ def manager(simulated_annealing_params,
     wxnc_scale                  = wxnc_scale,
     verbose                     = 0)
 
-  minimized.show(text = "lbfgs minimization", out = out)
+  minimized.collector.show(text = "lbfgs minimization", out = out)
   fmodel.update_xray_structure(xray_structure           = model.xray_structure,
                                update_f_calc            = True,
                                update_f_mask            = False,
