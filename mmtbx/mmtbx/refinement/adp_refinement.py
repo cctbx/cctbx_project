@@ -1,6 +1,5 @@
 from cctbx.array_family import flex
 import iotbx.phil
-from mmtbx.refinement import minimization_individual_adp
 from mmtbx.refinement import minimization
 import mmtbx.refinement.group_b
 from mmtbx.tls import tools
@@ -197,7 +196,6 @@ class manager(object):
        lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
            max_iterations = individual_adp_params.iso.max_number_of_iterations)
        fmodel.xray_structure.approx_equal(other = model.xray_structure)
-       #self.minimized = minimization_individual_adp.lbfgs(
        self.minimized = minimization.lbfgs(
                           restraints_manager       = restraints_manager,
                           fmodel                   = fmodel,
