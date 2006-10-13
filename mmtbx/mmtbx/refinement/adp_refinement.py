@@ -1,6 +1,7 @@
 from cctbx.array_family import flex
 import iotbx.phil
 from mmtbx.refinement import minimization_individual_adp
+from mmtbx.refinement import minimization
 import mmtbx.refinement.group_b
 from mmtbx.tls import tools
 from mmtbx.refinement import print_statistics
@@ -120,7 +121,7 @@ class manager(object):
             macro_cycle               = None,
             log                       = None,
             fmodel_neutron            = None,
-            wx_individual_neutron     = None,
+            wn                        = None,
             neutron_scattering_dict   = None,
             xray_scattering_dict      = None,
             wxnu_scale                = None):
@@ -196,10 +197,13 @@ class manager(object):
        lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
            max_iterations = individual_adp_params.iso.max_number_of_iterations)
        fmodel.xray_structure.approx_equal(other = model.xray_structure)
-       self.minimized = minimization_individual_adp.lbfgs(
+       #self.minimized = minimization_individual_adp.lbfgs(
+       self.minimized = minimization.lbfgs(
                           restraints_manager       = restraints_manager,
                           fmodel                   = fmodel,
                           model                    = model,
+                          f_a_to_be_r_i = force_all_to_be_refined_isotropically,
+                          refine_adp               = True,
                           lbfgs_termination_params = lbfgs_termination_params,
                           wx                       = wx,
                           wu                       = wu_individual,
@@ -208,11 +212,11 @@ class manager(object):
                           iso_restraints           = adp_restraints_params.iso,
                           verbose                  = 0,
                           fmodel_neutron           = fmodel_neutron,
-                          wx_individual_neutron    = wx_individual_neutron,
+                          wn                       = wn,
                           neutron_scattering_dict  = neutron_scattering_dict,
                           xray_scattering_dict     = xray_scattering_dict,
                           wxnu_scale               = wxnu_scale)
-       self.minimized.show(text = "LBFGS minimization", out  = log)
+       self.minimized.collector.show(text = "LBFGS minimization", out  = log)
        fmodel.update_xray_structure(
                                 xray_structure = self.minimized.xray_structure,
                                 update_f_calc  = True,
