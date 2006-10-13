@@ -150,17 +150,7 @@ class structure(crystal.special_position_settings):
     return cp
 
   def adjust_u_iso(self):
-    #u_isos = self._scatterers.extract_u_iso()
-    #sel = (u_isos <= 0.0)
-    #u_isos.set_selected(sel, 0.0)
-    #u_min = max(adptbx.b_as_u(0.5), flex.mean(u_isos) / 5.0)
-    #sel = (u_isos < u_min)
-    #u_isos.set_selected(sel, u_min)
-    #u_max = min(adptbx.b_as_u(500.0), flex.mean(u_isos) * 3.0)
-    #sel = (u_isos > u_max)
-    #u_isos.set_selected(sel, u_max)
-    #self._scatterers.set_u_iso(u_isos)
-           self._scatterers.adjust_u_iso()
+    self._scatterers.adjust_u_iso()
 
   def translate(self, x=0, y=0, z=0):
     sites_cart = self.sites_cart()
@@ -273,6 +263,12 @@ class structure(crystal.special_position_settings):
   #    raise RuntimeError("set_b_iso_random: all scatterers must be isotropic.")
   #  b_iso_new = flex.random_double(s.size())*100.
   #  self.set_b_iso(values = b_iso_new)
+
+  def randomize_occupancies(self, selection=None):
+    s = self._scatterers
+    q_new = flex.random_double(s.size())*2.
+    if(selection is None):
+       s.set_occupancies(q_new)
 
   def set_b_iso_random(self, allow_mixed=False, b_min=10., b_max=35.):
     s = self._scatterers
