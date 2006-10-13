@@ -14,7 +14,8 @@ import cctbx.crystal
 from cctbx import sgtbx
 from cctbx import uctbx
 from cctbx.array_family import flex
-from libtbx.str_utils import overwrite_at, contains_one_of
+from libtbx.str_utils import show_string, overwrite_at, contains_one_of
+from libtbx.utils import Sorry
 from libtbx import adopt_init_args
 import warnings
 import sys, os
@@ -161,6 +162,20 @@ def format_min_max(func, values):
   if (len(result) > 12): result = "%12.4E" % value
   return result
 
+show_column_data_format_keywords = [
+  "human_readable",
+  "machine_readable",
+  "spreadsheet"]
+
+def tidy_show_column_data_format_keyword(input):
+  if (input is None): return show_column_data_format_keywords[0]
+  input = input.lower()
+  for k in show_column_data_format_keywords:
+    if (input.startswith(k[0])): return k
+  raise Sorry(
+      "Column data format keyword not recognized: %s\n" % show_string(input)
+    + "  Valid keywords are: %s" % ", ".join(show_column_data_format_keywords))
+
 class _object(boost.python.injector, ext.object):
 
   def space_group_info(self):
@@ -267,9 +282,19 @@ class _object(boost.python.injector, ext.object):
             print >> out, p+(format % tuple(fields)).rstrip()
     return self
 
-  def show_column_data(self, out=None):
-    if (out is None): out = sys.stdout
+  def _show_column_data_preparation(self):
     miller_indices = self.extract_miller_indices()
+    labels = []
+    pairs = []
+    for column in self.columns():
+      if (column.label() in ["H", "K", "L"]): continue
+      labels.append(column.label())
+      pairs.append((column.extract_values(), column.selection_valid()))
+    return miller_indices, labels, pairs
+
+  def show_column_data_human_readable(self, out=None):
+    if (out is None): out = sys.stdout
+    miller_indices, labels, pairs = self._show_column_data_preparation()
     if (miller_indices.size() == 0):
       h_width = 1
     else:
@@ -277,12 +302,6 @@ class _object(boost.python.injector, ext.object):
         miller_indices.as_vec3_double().as_double()))+.5))
     h_format = " ".join(["%%%dd" % h_width]*3)
     h_blank = " "*(h_width*3+2)
-    labels = []
-    pairs = []
-    for column in self.columns():
-      if (column.label() in ["H", "K", "L"]): continue
-      labels.append(column.label())
-      pairs.append((column.extract_values(), column.selection_valid()))
     def show_labels():
       print >> out, h_blank,
       for i,label in enumerate(labels):
@@ -314,6 +333,40 @@ class _object(boost.python.injector, ext.object):
       n_data_lines += 1
     print >> out, "-"*79
     return self
+
+  def show_column_data_machine_readable(self, out=None):
+    if (out is None): out = sys.stdout
+    miller_indices, labels, pairs = self._show_column_data_preparation()
+    print "Machine readable colum data:"
+    print "Number of columns:", len(labels)
+    print "Column labels (one per line):"
+    for label in labels:
+      print label
+    print "Number of Miller indices:", miller_indices.size()
+    print "Column data (HKL followed by data):"
+    for iref,h in enumerate(miller_indices):
+      print >> out, " ".join([str(i) for i in h])
+      for i,(data,selection) in enumerate(pairs):
+        if (selection[iref]): print >> out, "%.7g" % data[iref]
+        else:                 print >> out, "None"
+    print "End of column data."
+    return self
+
+  def show_column_data_spreadsheet(self, out=None):
+    if (out is None): out = sys.stdout
+    miller_indices, labels, pairs = self._show_column_data_preparation()
+    print ",".join([label.replace(",","_") for label in ["H","K","L"]+labels])
+    for iref,h in enumerate(miller_indices):
+      row = [str(i) for i in h]
+      for i,(data,selection) in enumerate(pairs):
+        if (selection[iref]): row.append("%.7g" % data[iref])
+        else:                 row.append("")
+      print ",".join(row)
+    return self
+
+  def show_column_data(self, out=None, format="human_readable"):
+    assert format in show_column_data_format_keywords
+    return getattr(self, "show_column_data_"+format)(out=out)
 
   def change_basis_in_place(self,
         cb_op,
