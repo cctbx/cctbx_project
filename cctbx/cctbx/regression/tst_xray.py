@@ -317,6 +317,13 @@ C  pair count:   1       <<  0.0000,  0.0000,  0.1000>>
   b_iso_values = flex.double([7,9])
   xs.set_b_iso(values = b_iso_values)
   assert approx_equal(xs.scatterers().extract_u_iso()/adptbx.b_as_u(1), b_iso_values)
+  # randomize_occupancies()
+  occ1 = xs.scatterers().extract_occupancies()
+  xs.randomize_occupancies()
+  occ2 = xs.scatterers().extract_occupancies()
+  assert abs(flex.mean(occ1-occ2)) > 0.01
+  assert abs(occ1[0]-occ1[1]) < 1.e-6
+  assert abs(occ2[0]-occ2[1]) > 0.01
   # exercise shake_b_iso()
   xs.shake_b_iso(deviation = 10)
   results = [[7.7,9.9],[7.7,8.1],[6.3,9.9],[6.3,8.1]]
