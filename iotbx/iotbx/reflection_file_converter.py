@@ -99,7 +99,7 @@ def run(args, simply_return_all_miller_arrays=False):
     .option(None,"--massage_intensities",
       action="store_true",
       default=False,
-      help="'Treat' negative intensities to get a positive amplitude. |Fnew| = sqrt((Io+sqrt(Io**2 +2sigma**2))/2.0). Requiers intensities as input and the flags --mtz, --write_mtz_amplitudes and --mtz_root_label.")
+      help="'Treat' negative intensities to get a positive amplitude. |Fnew| = sqrt((Io+sqrt(Io**2 +2sigma**2))/2.0). Requires intensities as input and the flags --mtz, --write_mtz_amplitudes and --mtz_root_label.")
     .option(None, "--scale_max",
       action="store",
       type="float",
