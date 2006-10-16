@@ -23,6 +23,10 @@ class group_args(object):
   def __init__(self, **keyword_arguments):
     self.__dict__.update(keyword_arguments)
 
+def plural_s(n):
+  if (n == 1): return n, ""
+  return n, "s"
+
 def flat_list(nested_list):
   result = []
   if (hasattr(nested_list, "__len__")):
@@ -89,6 +93,86 @@ def date_and_time():
     offs = -time.timezone
   return time.strftime("Date %Y-%m-%d Time %H:%M:%S", localtime) \
        + " %s %+03d%02d" % (tzname, offs//3600, offs//60%60)
+
+class user_plus_sys_time(object):
+
+  def __init__(self):
+    self.t = self.get()
+
+  def get(self):
+    t = os.times()
+    return t[0] + t[1]
+
+  def elapsed(self):
+    t = self.get()
+    d = t - self.t
+    return d
+
+  def delta(self):
+    t = self.get()
+    d = t - self.t
+    self.t = t
+    return d
+
+class time_log(object):
+
+  def __init__(self, label):
+    self.label = label
+    self.accumulation = 0
+    self.n = 0
+    self.delta = 0
+    self.timer = None
+
+  def start(self):
+    self.timer = user_plus_sys_time()
+    return self
+
+  def stop(self):
+    self.delta = self.timer.delta()
+    self.timer = None
+    self.accumulation += self.delta
+    self.n += 1
+
+  def average(self):
+    return self.accumulation / max(1,self.n)
+
+  def log(self):
+    self.stop()
+    return self.report()
+
+  def log_elapsed(self, local_label):
+    return "time_log: %s: %.2f elapsed %s" % (
+      self.label, self.timer.elapsed(), local_label)
+
+  legend = "time_log: label: n accumulation delta average"
+
+  def report(self):
+    assert self.timer is None
+    return "time_log: %s: %d %.2f %.3g %.3g" % (
+      self.label, self.n, self.accumulation,
+      self.delta, self.average())
+
+def human_readable_time(time_in_seconds):
+  time_units = time_in_seconds
+  time_unit = "seconds"
+  if (time_units > 120):
+    time_units /= 60
+    time_unit = "minutes"
+    if (time_units > 120):
+      time_units /= 60
+      time_unit = "hours"
+      if (time_units > 48):
+        time_units /= 24
+        time_unit = "days"
+  return time_units, time_unit
+
+def human_readable_time_as_seconds(time_units, time_unit):
+  if (isinstance(time_units, str)): time_units = float(time_units)
+  if (time_unit == "seconds"): return time_units
+  if (time_unit == "minutes"): return time_units*60
+  if (time_unit == "hours"): return time_units*60*60
+  if (time_unit == "days"): return time_units*60*60*24
+  raise RuntimeError("Unknown time_unit: %s" % time_unit)
 
 def format_cpu_times(show_micro_seconds_per_tick=True):
   t = os.times()
