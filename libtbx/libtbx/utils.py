@@ -100,6 +100,41 @@ def format_cpu_times(show_micro_seconds_per_tick=True):
       result += " micro-seconds/tick: %.3f" % ((t[0]+t[1])/python_ticker*1.e6)
   return result
 
+class show_times:
+
+  def __init__(self, time_start, out=None):
+    if (time_start == "now"):
+      self.time_start = time.time()
+    else:
+      self.time_start = -(0-time_start) # be sure time_start is a number
+    self.out = out
+
+  def __call__(self):
+    out = self.out
+    if (out is None): out = sys.stdout
+    t = os.times()
+    usr_plus_sys = t[0] + t[1]
+    try: ticks = sys.gettickeraccumulation()
+    except: ticks = None
+    s = "usr+sys time: %.2f seconds" % usr_plus_sys
+    if (ticks is not None):
+      s += ", ticks: %d" % ticks
+      if (ticks != 0):
+        s += ", micro-seconds/tick: %.3f" % (usr_plus_sys*1.e6/ticks)
+    print >> out, s
+    wall_clock_time = time.time() - self.time_start
+    print >> out, "wall clock time:",
+    if (wall_clock_time < 120):
+      print >> out, "%.2f seconds" % wall_clock_time
+    else:
+      m = int(wall_clock_time / 60 + 1.e-6)
+      s = wall_clock_time - m * 60
+      print >> out, "%d minutes %.2f seconds (%.2f seconds total)" % (
+        m, s, wall_clock_time)
+
+def show_times_at_exit(time_start="now", out=None):
+  atexit.register(show_times(time_start=time_start, out=out))
+
 class host_and_user:
 
   def __init__(self):
