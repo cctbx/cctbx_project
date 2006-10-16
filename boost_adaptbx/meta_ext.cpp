@@ -208,5 +208,5 @@ BOOST_PYTHON_MODULE(boost_python_meta_ext)
   using namespace boost::python;
   def("platform_info", platform_info);
   def("sizeof_void_ptr", sizeof_void_ptr);
-  class_<boost_python_meta_ext::holder>("holder");
+  class_<boost_python_meta_ext::holder>("holder").enable_pickling();
 }
