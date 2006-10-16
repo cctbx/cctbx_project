@@ -66,8 +66,12 @@ class pair_info(object):
 
 class target_db(object):
 
-  def __init__(self, file_name):
+  def __init__(self, file_name, file_name_during_write=None):
     self.file_name = file_name
+    if (file_name_during_write is None):
+      self.file_name_during_write = self.file_name + ".new"
+    else:
+      self.file_name_during_write = self.file_name_during_write
     if (self.file_name is None
         or not os.path.exists(self.file_name)):
       self.pair_infos = {}
@@ -76,7 +80,10 @@ class target_db(object):
 
   def write(self):
     assert self.file_name is not None
-    easy_pickle.dump(file_name=self.file_name, obj=self.pair_infos)
+    easy_pickle.dump(file_name=self.file_name_during_write, obj=self.pair_infos)
+    if (os.path.exists(self.file_name)):
+      os.remove(self.file_name)
+    os.rename(self.file_name_during_write, self.file_name)
 
   def pair_info(self, source_path, target_path):
     result = self.pair_infos.get(target_path)
