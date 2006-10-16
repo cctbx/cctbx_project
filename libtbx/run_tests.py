@@ -7,6 +7,7 @@ def run():
   "$D/libtbx/tst_utils.py",
   "$D/libtbx/str_utils.py",
   "$D/libtbx/table_utils.py",
+  "$D/libtbx/tst_dlite.py",
   "$D/libtbx/phil/tst_tokenizer.py",
   "$D/libtbx/phil/tst.py",
   )
