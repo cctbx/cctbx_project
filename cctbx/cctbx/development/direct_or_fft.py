@@ -4,7 +4,7 @@ from cctbx import miller
 from cctbx import crystal
 from cctbx.development import debug_utils
 from cctbx.array_family import flex
-from scitbx.python_utils.misc import user_plus_sys_time
+from libtbx.utils import user_plus_sys_time
 import sys
 
 def dummy_structure(space_group_info, volume, n_scatterers):

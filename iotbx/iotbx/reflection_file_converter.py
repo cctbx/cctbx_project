@@ -8,8 +8,7 @@ from iotbx.option_parser import iotbx_option_parser
 from cctbx import crystal
 from cctbx import sgtbx
 from cctbx.array_family import flex
-from scitbx.python_utils.misc import plural_s
-from libtbx.utils import Sorry, date_and_time
+from libtbx.utils import Sorry, date_and_time, plural_s
 import os
 
 def run(args, simply_return_all_miller_arrays=False):

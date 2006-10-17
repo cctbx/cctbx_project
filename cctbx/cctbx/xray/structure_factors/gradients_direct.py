@@ -4,7 +4,7 @@ from cctbx.xray.structure_factors.misc import expensive_function_call_message
 from cctbx.xray.structure_factors import global_counters
 from cctbx.xray import ext
 from cctbx import adptbx
-from scitbx.python_utils.misc import user_plus_sys_time
+from libtbx.utils import user_plus_sys_time
 
 class gradients_direct(gradients_base):
 

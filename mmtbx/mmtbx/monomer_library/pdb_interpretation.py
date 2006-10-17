@@ -11,9 +11,8 @@ from cctbx import crystal
 import cctbx.crystal.coordination_sequences
 from cctbx.array_family import flex
 from scitbx.python_utils import dicts
-from scitbx.python_utils.misc import user_plus_sys_time, plural_s
 from libtbx.str_utils import show_string
-from libtbx.utils import flat_list, Sorry
+from libtbx.utils import flat_list, Sorry, user_plus_sys_time, plural_s
 from cStringIO import StringIO
 import string
 import sys

@@ -3,7 +3,7 @@ from cctbx.eltbx import tiny_pse
 from cctbx.array_family import flex
 import cctbx.eltbx.gaussian_fit
 import scitbx.math.gaussian
-from scitbx.python_utils.misc import line_feeder
+from libtbx.utils import line_feeder
 from libtbx.optparse_wrapper import OptionParser
 from libtbx import adopt_init_args
 import sys, os

@@ -3,7 +3,7 @@ from cctbx.xray.structure_factors import global_counters
 from cctbx.xray import ext
 from cctbx import miller
 from cctbx import maptbx
-from scitbx.python_utils.misc import user_plus_sys_time
+from libtbx.utils import user_plus_sys_time
 
 class from_scatterers_fft(managed_calculation_base):
 

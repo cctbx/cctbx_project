@@ -15,9 +15,9 @@ from scitbx import fftpack
 import scitbx.math
 from scitbx.python_utils.math_utils import iround
 from scitbx.python_utils import complex_math
-from scitbx.python_utils.misc import store, plural_s
+from scitbx.python_utils.misc import store
 from libtbx.itertbx import count
-from libtbx.utils import Keep
+from libtbx.utils import Keep, plural_s
 from libtbx import adopt_init_args
 from libtbx.utils import Sorry
 import random

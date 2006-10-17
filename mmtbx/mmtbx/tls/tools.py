@@ -9,7 +9,7 @@ from libtbx.test_utils import approx_equal
 import copy
 from cctbx import adptbx
 from cctbx import xray
-from scitbx.python_utils.misc import user_plus_sys_time
+from libtbx.utils import user_plus_sys_time
 
 time_uanisos_from_tls                              = 0.0
 time_tls_from_uanisos                              = 0.0

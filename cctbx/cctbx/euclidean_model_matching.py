@@ -3,8 +3,8 @@ from cctbx import sgtbx
 from cctbx.array_family import flex
 from scitbx import matrix
 from scitbx.python_utils import list_algebra
-from scitbx.python_utils.misc import user_plus_sys_time
 from scitbx.python_utils import dicts
+from libtbx.utils import user_plus_sys_time
 from libtbx import adopt_init_args
 import sys, math
 

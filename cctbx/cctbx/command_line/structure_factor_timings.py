@@ -3,7 +3,7 @@ from cctbx import eltbx
 from cctbx import miller
 from cctbx.array_family import flex
 import iotbx.pdb
-from scitbx.python_utils.misc import user_plus_sys_time
+from libtbx.utils import user_plus_sys_time
 from libtbx import easy_pickle
 import sys
 

@@ -7,7 +7,7 @@ from scitbx import lbfgs
 import copy, math
 from cctbx import adptbx
 from cctbx import xray
-from scitbx.python_utils.misc import user_plus_sys_time
+from libtbx.utils import user_plus_sys_time
 
 time_group_b_py  = 0.0
 
