@@ -11,9 +11,8 @@ from iotbx import pdb
 from cctbx import geometry_restraints
 from cctbx.geometry_restraints.lbfgs import lbfgs as cctbx_geometry_restraints_lbfgs
 import scitbx.lbfgs
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, user_plus_sys_time
 from mmtbx.tls import tools
-from scitbx.python_utils.misc import user_plus_sys_time
 
 time_model_show = 0.0
 

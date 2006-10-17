@@ -8,7 +8,7 @@ from mmtbx.refinement import print_statistics
 import copy, time
 from libtbx.utils import Sorry
 from cctbx import xray
-from scitbx.python_utils.misc import user_plus_sys_time
+from libtbx.utils import user_plus_sys_time
 
 time_initialization          = 0.0
 time_apply_transformation    = 0.0

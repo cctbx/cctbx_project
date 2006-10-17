@@ -3,7 +3,7 @@ from cctbx.xray.structure_factors.manager import default_cos_sin_table
 from cctbx.xray.structure_factors import global_counters
 from cctbx.xray import ext
 from cctbx import miller
-from scitbx.python_utils.misc import user_plus_sys_time
+from libtbx.utils import user_plus_sys_time
 
 class from_scatterers_direct(managed_calculation_base):
 

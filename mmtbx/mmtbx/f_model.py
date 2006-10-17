@@ -24,8 +24,8 @@ from cctbx import xray
 from cctbx import adptbx
 import boost.python
 import mmtbx
-from libtbx.utils import Sorry
-from scitbx.python_utils.misc import user_plus_sys_time
+from libtbx.utils import Sorry, user_plus_sys_time
+
 ext = boost.python.import_ext("mmtbx_f_model_ext")
 
 time_bulk_solvent_and_scale         = 0.0

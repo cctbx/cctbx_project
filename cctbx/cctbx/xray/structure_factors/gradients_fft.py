@@ -7,7 +7,7 @@ from cctbx import maptbx
 from cctbx import adptbx
 from cctbx.array_family import flex
 from scitbx import matrix
-from scitbx.python_utils.misc import user_plus_sys_time
+from libtbx.utils import user_plus_sys_time
 
 class gradients_fft(gradients_base):
 

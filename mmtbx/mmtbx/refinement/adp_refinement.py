@@ -7,9 +7,7 @@ from mmtbx.refinement import print_statistics
 import scitbx.lbfgs
 from cctbx import xray
 from libtbx.test_utils import approx_equal
-from libtbx.utils import Sorry
-
-from scitbx.python_utils.misc import user_plus_sys_time
+from libtbx.utils import Sorry, user_plus_sys_time
 
 time_adp_refinement_py = 0.0
 

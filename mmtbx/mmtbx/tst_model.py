@@ -1,6 +1,6 @@
 from cctbx.array_family import flex
 import math, time, sys, os
-from scitbx.python_utils.misc import adopt_init_args
+from libtbx import adopt_init_args
 from libtbx.test_utils import approx_equal
 import mmtbx.model
 from libtbx import introspection

@@ -204,7 +204,7 @@ def exercise_combine_symops_and_symbol():
         assert combined.group() == space_group
 
 def quick_test(file_name):
-  from scitbx.python_utils.misc import user_plus_sys_time
+  from libtbx.utils import user_plus_sys_time
   t = user_plus_sys_time()
   s = reader(file_name)
   print "Time read:", t.delta()

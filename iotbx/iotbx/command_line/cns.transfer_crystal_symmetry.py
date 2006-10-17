@@ -2,9 +2,8 @@ from iotbx import cns
 import iotbx.cns.space_group_symbols
 from iotbx.misc import detect_binary_file
 from iotbx import crystal_symmetry_from_any
-from scitbx.python_utils.misc import plural_s
 from libtbx.str_utils import show_string
-from libtbx.utils import Sorry, Usage
+from libtbx.utils import Sorry, Usage, plural_s
 import sys, os
 
 def run(args):

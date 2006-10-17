@@ -1,7 +1,7 @@
 import cctbx.eltbx.xray_scattering
 from cctbx import eltbx
 from cctbx.array_family import flex
-from scitbx.python_utils.misc import plural_s
+from libtbx.utils import plural_s
 import math
 
 mean_number_of_atoms_per_amino_acid = {'C': 5, 'N': 3, 'O': 1}

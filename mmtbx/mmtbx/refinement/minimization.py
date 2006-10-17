@@ -7,7 +7,7 @@ from libtbx import adopt_init_args
 from stdlib import math
 import sys, time
 from libtbx.test_utils import approx_equal
-from scitbx.python_utils.misc import user_plus_sys_time
+from libtbx.utils import user_plus_sys_time
 
 time_site_individual = 0.0
 
