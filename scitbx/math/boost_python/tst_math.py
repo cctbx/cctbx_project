@@ -18,7 +18,7 @@ from scitbx.math import chebyshev_fitter
 from scitbx.math import slatec_dgamma, slatec_dlngam
 from scitbx.array_family import flex
 from scitbx import matrix
-from scitbx.python_utils.misc import user_plus_sys_time
+from libtbx.utils import user_plus_sys_time
 from libtbx.itertbx import count
 from libtbx.test_utils import approx_equal, eps_eq
 import pickle
