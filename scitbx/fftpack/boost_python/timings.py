@@ -1,6 +1,6 @@
 from scitbx import fftpack
 from scitbx.array_family import flex
-from scitbx.python_utils.misc import time_log
+from libtbx.utils import time_log
 import random
 import sys
 
