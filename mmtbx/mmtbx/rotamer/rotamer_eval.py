@@ -1,7 +1,9 @@
 import libtbx.load_env # required by PHENIX to set environment
 
-from n_dim_table import NDimTable
+from mmtbx.rotamer.n_dim_table import NDimTable
 from libtbx import easy_pickle
+from libtbx import dlite
+from libtbx.utils import Sorry
 import os
 
 
@@ -39,13 +41,23 @@ class RotamerEval:
             rotamer_data_dir = libtbx.env.find_in_repositories("rotarama_data")
             if rotamer_data_dir is None:
                 rotamer_data_dir = libtbx.env.find_in_repositories(os.path.join("ext_ref_files", "rotarama_data"))
+            if rotamer_data_dir is None:
+                raise Sorry(
+                    "Can't find ext_ref_files/rotarama_data/\n"
+                    "  Please run\n"
+                    "    svn co svn://quiddity.biochem.duke.edu:21/phenix/rotarama_data\n"
+                    "  to resolve this problem.\n")
+            target_db = dlite.target_db(os.path.join(rotamer_data_dir, "rotarama.dlite"))
             for aa, aafile in aminoAcids.items():
-                #print "Loading %s ..." % aa
                 data_file = os.path.join(rotamer_data_dir, "rota500-"+aafile+".data")
                 pickle_file = os.path.join(rotamer_data_dir, "rota500-"+aafile+".pickle")
-                if not os.path.isfile(pickle_file):
-                    ndt = NDimTable.createFromText(data_file)
-                    easy_pickle.dump(file_name=pickle_file, obj=ndt)
+                pair_info = target_db.pair_info(data_file, pickle_file)
+                if not os.path.isfile(pickle_file) or pair_info.needs_update:
+                    raise Sorry(
+                        "ext_ref_files/rotarama_data/*.pickle files are missing or out of date.\n"
+                        "  Please run\n"
+                        "    mmtbx.rebuild_rotarama_cache\n"
+                        "  to resolve this problem.\n")
                 else:
                     ndt = easy_pickle.load(file_name=pickle_file)
                 aaTables[aa] = ndt
