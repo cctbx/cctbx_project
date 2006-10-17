@@ -68,10 +68,10 @@ class target_db(object):
 
   def __init__(self, file_name, file_name_during_write=None):
     self.file_name = file_name
-    if (file_name_during_write is None):
+    if (file_name_during_write is None and self.file_name is not None):
       self.file_name_during_write = self.file_name + ".new"
     else:
-      self.file_name_during_write = self.file_name_during_write
+      self.file_name_during_write = file_name_during_write
     if (self.file_name is None
         or not os.path.exists(self.file_name)):
       self.pair_infos = {}
