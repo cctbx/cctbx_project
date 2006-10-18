@@ -9,6 +9,16 @@ windows_device_names = """\
 CON PRN AUX NUL COM1 COM2 COM3 COM4 COM5 COM6 COM7 COM8 COM9
 LPT1 LPT2 LPT3 LPT4 LPT5 LPT6 LPT7 LPT8 LPT9""".split()
 
+def getenv_bool(variable_name, default=False):
+  value = os.environ.get(variable_name, None)
+  if (value is None): return default
+  value_lower = value.lower()
+  if (value_lower not in ["false", "true"]):
+    raise Sorry(
+      'Environment variable %s must be "True" or "False"'
+      ' (current value: "%s").' % (variable_name, value))
+  return (value_lower == "true")
+
 def copy_file(source, target):
   assert os.path.isfile(source)
   open(target, "wb").write(open(source, "rb").read())
