@@ -7,7 +7,7 @@ from mmtbx.rotamer.n_dim_table import NDimTable
 from mmtbx.rotamer import rotamer_eval
 import sys
 
-def run(args):
+def run():
     rotamer_data_dir = rotamer_eval.find_rotamer_data_dir()
     print "Processing data files in %s:" % show_string(rotamer_data_dir)
     target_db = rotamer_eval.open_rotarama_dlite(
@@ -35,4 +35,4 @@ def run(args):
     print format_cpu_times()
 
 if __name__ == "__main__":
-    run(sys.argv[1:])
+    run()
