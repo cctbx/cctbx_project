@@ -1,11 +1,49 @@
-import libtbx.load_env # required by PHENIX to set environment
-
+import libtbx.load_env
 from mmtbx.rotamer.n_dim_table import NDimTable
 from libtbx import easy_pickle
 from libtbx import dlite
 from libtbx.utils import Sorry
 import os
 
+def find_rotamer_data_dir():
+  result = libtbx.env.find_in_repositories("rotarama_data")
+  if result is None:
+    result = libtbx.env.find_in_repositories(
+      os.path.join("ext_ref_files", "rotarama_data"))
+    if result is None:
+      raise Sorry("""\
+Can't find ext_ref_files/rotarama_data/ directory:
+  Please run
+    svn co svn://quiddity.biochem.duke.edu:21/phenix/rotarama_data
+  to resolve this problem.""")
+  return result
+
+def open_rotarama_dlite(rotamer_data_dir=None):
+  if (rotamer_data_dir is None):
+    rotamer_data_dir = find_rotamer_data_dir()
+  return dlite.target_db(os.path.join(rotamer_data_dir, "rotarama.dlite"))
+
+# maps aa name to file name
+aminoAcids = {
+    'arg' : 'arg',
+    'asn' : 'asn',
+    'asp' : 'asp',
+    'cys' : 'cys',
+    'gln' : 'gln',
+    'glu' : 'glu',
+    'his' : 'his',
+    'ile' : 'ile',
+    'leu' : 'leu',
+    'lys' : 'lys',
+    'met' : 'met',
+    'phe' : 'phetyr',
+    'pro' : 'pro',
+    'ser' : 'ser',
+    'thr' : 'thr',
+    'trp' : 'trp',
+    'tyr' : 'phetyr',
+    'val' : 'val',
+}
 
 class RotamerEval:
 
@@ -16,53 +54,23 @@ class RotamerEval:
     def __init__(self):
         aaTables = RotamerEval.aaTables # for convenience
         if len(aaTables) == 0:
-            #print "need to load"
-            # maps aa name to file name
-            aminoAcids = {
-                'arg' : 'arg',
-                'asn' : 'asn',
-                'asp' : 'asp',
-                'cys' : 'cys',
-                'gln' : 'gln',
-                'glu' : 'glu',
-                'his' : 'his',
-                'ile' : 'ile',
-                'leu' : 'leu',
-                'lys' : 'lys',
-                'met' : 'met',
-                'phe' : 'phetyr',
-                'pro' : 'pro',
-                'ser' : 'ser',
-                'thr' : 'thr',
-                'trp' : 'trp',
-                'tyr' : 'phetyr',
-                'val' : 'val',
-            }
-            rotamer_data_dir = libtbx.env.find_in_repositories("rotarama_data")
-            if rotamer_data_dir is None:
-                rotamer_data_dir = libtbx.env.find_in_repositories(os.path.join("ext_ref_files", "rotarama_data"))
-            if rotamer_data_dir is None:
-                raise Sorry(
-                    "Can't find ext_ref_files/rotarama_data/\n"
-                    "  Please run\n"
-                    "    svn co svn://quiddity.biochem.duke.edu:21/phenix/rotarama_data\n"
-                    "  to resolve this problem.\n")
-            target_db = dlite.target_db(os.path.join(rotamer_data_dir, "rotarama.dlite"))
+            rotamer_data_dir = find_rotamer_data_dir()
+            target_db = open_rotarama_dlite(rotamer_data_dir=rotamer_data_dir)
             for aa, aafile in aminoAcids.items():
-                data_file = os.path.join(rotamer_data_dir, "rota500-"+aafile+".data")
-                pickle_file = os.path.join(rotamer_data_dir, "rota500-"+aafile+".pickle")
-                pair_info = target_db.pair_info(data_file, pickle_file)
-                if not os.path.isfile(pickle_file) or pair_info.needs_update:
+                data_file = "rota500-"+aafile+".data"
+                pickle_file = "rota500-"+aafile+".pickle"
+                pair_info = target_db.pair_info(
+                  source_path=data_file,
+                  target_path=pickle_file,
+                  path_prefix=rotamer_data_dir)
+                if pair_info.needs_update:
                     raise Sorry(
                         "ext_ref_files/rotarama_data/*.pickle files are missing or out of date.\n"
                         "  Please run\n"
                         "    mmtbx.rebuild_rotarama_cache\n"
                         "  to resolve this problem.\n")
-                else:
-                    ndt = easy_pickle.load(file_name=pickle_file)
-                aaTables[aa] = ndt
-        else:
-            pass #print "already loaded"
+                aaTables[aa] = easy_pickle.load(file_name=os.path.join(
+                  rotamer_data_dir, pair_info.target.path))
 
     def evaluate(self, aaName, chiAngles):
         '''Evaluates the specified rotamer from 0.0 (worst) to 1.0 (best).
@@ -74,9 +82,6 @@ class RotamerEval:
             return RotamerEval.aaTables[aaName].valueAt(chiAngles)
         else:
             return None
-
-
-
 
 def run():
     r = RotamerEval()
