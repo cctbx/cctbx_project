@@ -981,6 +981,10 @@ def exercise_random():
     a += p
   a /= 1000
   assert approx_equal(a, [0.0202650, -0.0375843, 0.0009599])
+  #
+  assert list(flex.random_bool(size=3, threshold=0.5)) == [False, True, False]
+  assert list(flex.random_bool(size=3, threshold=0)) == [False, False, False]
+  assert list(flex.random_bool(size=3, threshold=1)) == [True, True, True]
 
 def exercise_flex_vec3_double():
   flex.exercise_triple(flex.vec3_double, as_double=True)

@@ -230,7 +230,8 @@ namespace random {
       {
         af::shared<std::size_t> result(
           size, af::init_functor_null<std::size_t>());
-        for(std::size_t i=0;i<size;i++) result[i] = random_size_t();
+        std::size_t* r = result.begin();
+        for(std::size_t i=0;i<size;i++) *r++ = random_size_t();
         return result;
       }
 
@@ -242,9 +243,8 @@ namespace random {
       {
         af::shared<std::size_t> result(
           size, af::init_functor_null<std::size_t>());
-        for(std::size_t i=0;i<size;i++) {
-          result[i] = random_size_t() % modulus;
-        }
+        std::size_t* r = result.begin();
+        for(std::size_t i=0;i<size;i++) *r++ = random_size_t() % modulus;
         return result;
       }
 
@@ -275,9 +275,8 @@ namespace random {
       random_double(std::size_t size)
       {
         af::shared<double> result(size, af::init_functor_null<double>());
-        for(std::size_t i=0;i<size;i++) {
-          result[i] = random_double();
-        }
+        double* r = result.begin();
+        for(std::size_t i=0;i<size;i++) *r++ = random_double();
         return result;
       }
 
@@ -288,9 +287,18 @@ namespace random {
       random_double(std::size_t size, double factor)
       {
         af::shared<double> result(size, af::init_functor_null<double>());
-        for(std::size_t i=0;i<size;i++) {
-          result[i] = random_double() * factor;
-        }
+        double* r = result.begin();
+        for(std::size_t i=0;i<size;i++) *r++ = random_double() * factor;
+        return result;
+      }
+
+      //! \brief Array of results: random_double() < threshold
+      af::shared<bool>
+      random_bool(std::size_t size, double threshold)
+      {
+        af::shared<bool> result(size, af::init_functor_null<bool>());
+        bool *r = result.begin();
+        for(std::size_t i=0;i<size;i++) *r++ = random_double() < threshold;
         return result;
       }
 
@@ -300,12 +308,12 @@ namespace random {
       {
         af::shared<std::size_t> result(
           size, af::init_functor_null<std::size_t>());
-        for(std::size_t i=0;i<size;i++) {
-          result[i] = i;
-        }
+        std::size_t* r = result.begin();
+        for(std::size_t i=0;i<size;i++) *r++ = i;
+        r = result.begin();
         for(std::size_t i=0;i<size;i++) {
           std::size_t j = static_cast<std::size_t>(generator_()) % size;
-          std::swap(result[i], result[j]);
+          std::swap(r[i], r[j]);
         }
         return result;
       }

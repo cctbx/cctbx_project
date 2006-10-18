@@ -43,6 +43,7 @@ def export_to(target_module_name):
     "set_random_seed",
     "random_size_t",
     "random_double",
+    "random_bool",
     "random_permutation",
     "random_double_point_on_sphere",
     "py_object",
@@ -103,6 +104,7 @@ def set_random_seed(value):
 
 random_size_t = random_generator.random_size_t
 random_double = random_generator.random_double
+random_bool = random_generator.random_bool
 random_permutation = random_generator.random_permutation
 random_double_point_on_sphere = random_generator.random_double_point_on_sphere
 

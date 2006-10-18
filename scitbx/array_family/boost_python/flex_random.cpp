@@ -38,6 +38,8 @@ namespace {
         .def("random_double",
           (af::shared<double>(w_t::*)(std::size_t, double))
             &w_t::random_double, (arg_("size"), arg_("factor")))
+        .def("random_bool", &w_t::random_bool, (
+          arg_("size"), arg_("threshold")))
         .def("random_permutation", &w_t::random_permutation, (arg_("size")))
         .def("random_double_point_on_sphere",
           &w_t::random_double_point_on_sphere)
