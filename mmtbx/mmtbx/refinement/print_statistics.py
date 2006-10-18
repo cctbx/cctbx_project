@@ -1,6 +1,6 @@
 from cctbx.array_family import flex
 from cctbx import geometry_restraints
-from libtbx.utils import format_cpu_times
+from libtbx.utils import format_cpu_times, getenv_bool
 from libtbx import adopt_init_args
 import sys, os, time
 from libtbx.test_utils import approx_equal
@@ -11,6 +11,9 @@ from cctbx import xray
 import cctbx.xray.structure_factors.global_counters
 from mmtbx import bulk_solvent
 from mmtbx import max_lik
+
+enable_show_process_info = getenv_bool(
+  "MMTBX_PRINT_STATISTICS_ENABLE_SHOW_PROCESS_INFO")
 
 time_collect_and_process = 0.0
 
@@ -30,7 +33,8 @@ def show_process_info(out):
 
 def make_header(line, out=None):
   if (out is None): out = sys.stdout
-  #show_process_info(out=out)
+  if (enable_show_process_info):
+    show_process_info(out=out)
   header_len = 80
   line_len = len(line)
   #assert line_len <= header_len
