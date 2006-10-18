@@ -545,6 +545,15 @@ def exercise_pdb_input():
     assert pdb_inp.i_seqs_alternative_group_with_blank_altloc().size() == 0
     assert pdb_inp.i_seqs_alternative_group_without_blank_altloc().size() == 0
     assert pdb_inp.atom_element_counts() == {}
+    assert pdb_inp.extract_atom_xyz().size() == 0
+    assert pdb_inp.extract_atom_sigxyz().size() == 0
+    assert pdb_inp.extract_atom_occ().size() == 0
+    assert pdb_inp.extract_atom_sigocc().size() == 0
+    assert pdb_inp.extract_atom_b().size() == 0
+    assert pdb_inp.extract_atom_sigb().size() == 0
+    assert pdb_inp.extract_atom_uij().size() == 0
+    assert pdb_inp.extract_atom_siguij().size() == 0
+    assert pdb_inp.extract_atom_hetero().size() == 0
     pdb_inp = pdb.input(
       source_info="file/name",
       lines=flex.split_lines("""\
@@ -2033,15 +2042,58 @@ SCALE2      0.000000  0.018239  0.000000        0.00000
 SCALE3      0.000000  0.000000  0.022966        0.00000
 ATOM      1  N   GLN A   3      35.299  11.075  19.070  1.00 36.89           N
 ATOM      2  CA  GLN A   3      34.482   9.927  18.794  0.63 37.88           C
+SIGATM    2  CA  GLN A   3       1.200   2.300   3.400  0.04  0.05           C
 ANISOU    2  CA  GLN A   3     7794   3221   3376  -1227   1064   2601       C
 ATOM      3  Q   GLN A   3      35.130   8.880  17.864  0.84 37.52           C
 ANISOU    3  Q   GLN A   3     7875   3041   3340   -981    727   2663       C
+SIGUIJ    3  Q   GLN A   3       75     41     40     -1      7     63       C
 ATOM      4  O   GLN A   3      34.548   7.819  17.724  1.00 38.54      STUV
 ATOM      5 1CB  GLN A   3      32.979  10.223  18.469  1.00 37.80
 HETATM    6 CA   ION B   1      32.360  11.092  17.308  0.92 35.96          CA2+
 HETATM    7 CA   ION B   2      30.822  10.665  17.190  1.00 36.87
 """))
   assert pdb_inp.atom_element_counts() == {" C": 2, "  ": 3, " N": 1, "CA": 1}
+  assert approx_equal(pdb_inp.extract_atom_xyz(), [
+    (35.299,11.075,19.070),
+    (34.482,9.927,18.794),
+    (35.130,8.880,17.864),
+    (34.548,7.819,17.724),
+    (32.979,10.223,18.469),
+    (32.360,11.092,17.308),
+    (30.822,10.665,17.190)])
+  assert approx_equal(pdb_inp.extract_atom_sigxyz(), [
+    (0,0,0),
+    (1.2,2.3,3.4),
+    (0,0,0),
+    (0,0,0),
+    (0,0,0),
+    (0,0,0),
+    (0,0,0)])
+  assert approx_equal(pdb_inp.extract_atom_occ(),
+    [1.00,0.63,0.84,1.00,1.00,0.92,1.00])
+  assert approx_equal(pdb_inp.extract_atom_sigocc(),
+    [0,0.04,0,0,0,0,0])
+  assert approx_equal(pdb_inp.extract_atom_b(),
+    [36.89,37.88,37.52,38.54,37.80,35.96,36.87])
+  assert approx_equal(pdb_inp.extract_atom_sigb(),
+    [0,0.05,0,0,0,0,0])
+  assert approx_equal(pdb_inp.extract_atom_uij(), [
+    (-1,-1,-1,-1,-1,-1),
+    (0.7794, 0.3221, 0.3376, -0.1227, 0.1064, 0.2601),
+    (0.7875, 0.3041, 0.3340, -0.0981, 0.0727, 0.2663),
+    (-1,-1,-1,-1,-1,-1),
+    (-1,-1,-1,-1,-1,-1),
+    (-1,-1,-1,-1,-1,-1),
+    (-1,-1,-1,-1,-1,-1)])
+  assert approx_equal(pdb_inp.extract_atom_siguij(), [
+    (-1,-1,-1,-1,-1,-1),
+    (-1,-1,-1,-1,-1,-1),
+    (0.0075, 0.0041, 0.0040, -0.0001, 0.0007, 0.0063),
+    (-1,-1,-1,-1,-1,-1),
+    (-1,-1,-1,-1,-1,-1),
+    (-1,-1,-1,-1,-1,-1),
+    (-1,-1,-1,-1,-1,-1)])
+  assert list(pdb_inp.extract_atom_hetero()) == [5,6]
   for use_scale_matrix_if_available in [False, True]:
     xray_structure = pdb_inp.xray_structure_simple(
       use_scale_matrix_if_available=use_scale_matrix_if_available)
