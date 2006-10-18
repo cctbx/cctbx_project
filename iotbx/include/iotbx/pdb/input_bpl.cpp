@@ -149,6 +149,15 @@ namespace {
         .def("i_seqs_alternative_group_without_blank_altloc",
           &w_t::i_seqs_alternative_group_without_blank_altloc, rbv())
         .def("atom_element_counts", atom_element_counts_as_dict)
+        .def("extract_atom_xyz", &w_t::extract_atom_xyz)
+        .def("extract_atom_sigxyz", &w_t::extract_atom_sigxyz)
+        .def("extract_atom_occ", &w_t::extract_atom_occ)
+        .def("extract_atom_sigocc", &w_t::extract_atom_sigocc)
+        .def("extract_atom_b", &w_t::extract_atom_b)
+        .def("extract_atom_sigb", &w_t::extract_atom_sigb)
+        .def("extract_atom_uij", &w_t::extract_atom_uij)
+        .def("extract_atom_siguij", &w_t::extract_atom_siguij)
+        .def("extract_atom_hetero", &w_t::extract_atom_hetero)
       ;
     }
   };

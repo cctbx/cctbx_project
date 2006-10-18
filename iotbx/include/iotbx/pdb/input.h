@@ -2088,6 +2088,41 @@ namespace iotbx { namespace pdb {
         return result;
       }
 
+#define IOTBX_PDB_INPUT_EXTRACT_ATOM_ATTR(attr, attr_type) \
+      af::shared<attr_type > \
+      extract_atom_##attr() const \
+      { \
+        af::shared<attr_type > result( \
+          atoms_.size(), af::init_functor_null<attr_type >()); \
+        attr_type* r = result.begin(); \
+        const atom* atoms_end = atoms_.end(); \
+        for(const atom* a=atoms_.begin();a!=atoms_end;a++) { \
+          *r++ = a->data->attr; \
+        } \
+        return result; \
+      }
+
+      IOTBX_PDB_INPUT_EXTRACT_ATOM_ATTR(xyz, vec3)
+      IOTBX_PDB_INPUT_EXTRACT_ATOM_ATTR(sigxyz, vec3)
+      IOTBX_PDB_INPUT_EXTRACT_ATOM_ATTR(occ, double)
+      IOTBX_PDB_INPUT_EXTRACT_ATOM_ATTR(sigocc, double)
+      IOTBX_PDB_INPUT_EXTRACT_ATOM_ATTR(b, double)
+      IOTBX_PDB_INPUT_EXTRACT_ATOM_ATTR(sigb, double)
+      IOTBX_PDB_INPUT_EXTRACT_ATOM_ATTR(uij, sym_mat3)
+      IOTBX_PDB_INPUT_EXTRACT_ATOM_ATTR(siguij, sym_mat3)
+
+      af::shared<std::size_t>
+      extract_atom_hetero() const
+      {
+        af::shared<std::size_t> result;
+        const atom* atoms_end = atoms_.end();
+        std::size_t i_seq = 0;
+        for(const atom* a=atoms_.begin();a!=atoms_end;a++,i_seq++) {
+          if (a->data->hetero) result.push_back(i_seq);
+        }
+        return result;
+      }
+
     protected:
       std::string source_info_;
       record_type_counts_t record_type_counts_;
