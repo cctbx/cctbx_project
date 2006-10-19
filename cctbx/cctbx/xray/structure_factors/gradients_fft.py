@@ -8,6 +8,7 @@ from cctbx import adptbx
 from cctbx.array_family import flex
 from scitbx import matrix
 from libtbx.utils import user_plus_sys_time
+from libtbx import introspection
 
 class gradients_fft(gradients_base):
 
@@ -53,6 +54,7 @@ class gradients_fft(gradients_base):
       sampled_density_must_be_positive=
         manager.sampled_density_must_be_positive())
     time_sampling = time_sampling.elapsed()
+    introspection.virtual_memory_info().update_max()
     manager.estimate_time_fft.register(
       n_scatterers=xray_structure.scatterers().size(),
       n_miller_indices=miller_set.indices().size(),
