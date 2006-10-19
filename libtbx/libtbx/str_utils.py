@@ -25,6 +25,21 @@ def show_string(s):
   if (s.find("'") < 0): return "'"+s+"'"
   return '"'+s.replace('"','\\"')+'"'
 
+def prefix_each_line_suffix(prefix, lines_as_one_string, suffix, rstrip=True):
+  def do_rstip(s): return s.rstrip()
+  def do_nothing(s): return s
+  if (rstrip): do = do_rstip
+  else:        do = do_nothing
+  return "\n".join([do(prefix+line+suffix)
+    for line in lines_as_one_string.splitlines()])
+
+def prefix_each_line(prefix, lines_as_one_string, rstrip=True):
+  return prefix_each_line_suffix(
+    prefix=prefix,
+    lines_as_one_string=lines_as_one_string,
+    suffix="",
+    rstrip=rstrip)
+
 def show_sorted_by_counts(
       label_count_pairs,
       reverse=True,
@@ -97,6 +112,21 @@ def exercise():
   assert show_string("a'c") == '"a\'c"'
   assert show_string('a"c') == "'a\"c'"
   assert show_string('\'"c') == '"\'\\"c"'
+  assert prefix_each_line(prefix="^", lines_as_one_string="""\
+hello
+world""") == """\
+^hello
+^world"""
+  assert prefix_each_line_suffix(prefix="^", lines_as_one_string="""\
+hello
+world""", suffix=" ") == """\
+^hello
+^world"""
+  assert prefix_each_line_suffix(prefix="^", lines_as_one_string="""\
+hello
+world""", suffix=" ", rstrip=False) == """\
+^hello%s
+^world """ % " "
   out = StringIO()
   assert show_sorted_by_counts(
     label_count_pairs=[("b", 3), ("a", 3), ("c", -2)],
