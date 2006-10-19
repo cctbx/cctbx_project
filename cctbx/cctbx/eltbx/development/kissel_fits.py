@@ -6,7 +6,7 @@ import cctbx.eltbx.gaussian_fit
 from cctbx.array_family import flex
 from scitbx.python_utils.math_utils import ifloor, iround
 from libtbx.utils import user_plus_sys_time
-from libtbx.optparse_wrapper import OptionParser
+from libtbx.option_parser import OptionParser
 from libtbx import easy_pickle
 import sys, os
 

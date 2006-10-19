@@ -2,7 +2,7 @@ from iotbx import crystal_symmetry_from_any
 from cctbx import crystal
 from cctbx import sgtbx
 from cctbx import uctbx
-from libtbx.optparse_wrapper import option_parser, OptionError, make_option
+from libtbx.option_parser import option_parser, OptionError, make_option
 
 class iotbx_option_parser(option_parser):
 

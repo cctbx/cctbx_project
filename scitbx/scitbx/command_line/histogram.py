@@ -1,5 +1,5 @@
 from scitbx.array_family import flex
-from libtbx.optparse_wrapper import option_parser
+from libtbx.option_parser import option_parser
 import sys
 
 def process_file(file_object, n_slots, format_cutoffs):
