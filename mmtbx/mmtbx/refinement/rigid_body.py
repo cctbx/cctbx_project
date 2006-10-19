@@ -141,7 +141,7 @@ class rb_mat_euler(object):
      rm = matrix.sqr((r11,r12,r13, r21,r22,r23, r31,r32,r33))
      return rm
 
-class rigid_body_shift_accamulator(object):
+class rigid_body_shift_accumulator(object):
 
    def __init__(self, euler_angle_convention):
      self.euler_angle_convention = euler_angle_convention
