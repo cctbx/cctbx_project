@@ -4,6 +4,7 @@ import cctbx.geometry_restraints.energies
 from cctbx import crystal
 from cctbx.array_family import flex
 from scitbx.python_utils.misc import store
+from libtbx import introspection
 from libtbx import adopt_init_args
 import sys
 
@@ -292,6 +293,7 @@ class manager(object):
           nonbonded_types=self.nonbonded_types,
           nonbonded_distance_cutoff_plus_buffer
             =current_nonbonded_distance_cutoff_plus_buffer)
+        introspection.virtual_memory_info().update_max()
         if (self._pair_proxies.nonbonded_proxies is None):
           break
         self.adjusted_nonbonded_distance_cutoff = \
@@ -331,6 +333,7 @@ class manager(object):
     pair_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
     pair_asu_table.add_all_pairs(distance_cutoff=self.plain_pairs_radius)
     self.plain_pair_sym_table=pair_asu_table.extract_pair_sym_table()
+    introspection.virtual_memory_info().update_max()
 
   def energies_sites(self,
         sites_cart,
