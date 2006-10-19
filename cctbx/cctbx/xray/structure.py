@@ -91,30 +91,28 @@ class structure(crystal.special_position_settings):
         assert approx_equal(b1, b2)
       assert approx_equal(i1.c(), i2.c())
 
-  def set_u_iso(self, value=None, values=None, allow_mixed=False):
+  def set_u_iso(self, value = None, values = None, selection = None):
     assert [value, values].count(None) == 1
     s = self._scatterers
-    if (not allow_mixed and s.count_anisotropic() > 0):
-      raise RuntimeError("set_u_iso: all scatterers must be isotropic.")
-    if (value is not None):
-      s.set_u_iso(flex.double(s.size(), value))
+    if(selection is None): selection = flex.bool(s.size(), True)
+    else:                  assert selection.size() == s.size()
+    if(value is not None):
+       s.set_u_iso(flex.double(s.size(), value), selection)
     else:
-      assert values.size() == s.size()
-      s.set_u_iso(values)
+       assert values.size() == s.size()
+       s.set_u_iso(values, selection)
     return self
 
-  def set_b_iso(self, value=None, values=None, allow_mixed=False):
+  def set_b_iso(self, value = None, values = None, selection = None):
     assert [value, values].count(None) == 1
     s = self._scatterers
-    if (not allow_mixed and s.count_anisotropic() > 0):
-      raise RuntimeError("set_b_iso: all scatterers must be isotropic.")
-    if (value is not None):
-      s.set_u_iso(flex.double(s.size(), adptbx.b_as_u(value)))
+    if(value is not None):
+       self.set_u_iso(value = adptbx.b_as_u(value), selection = selection)
     else:
       assert values.size() == s.size()
       b_iso = values
       u_iso_values = b_iso*adptbx.b_as_u(1)
-      s.set_u_iso(u_iso_values)
+      self.set_u_iso(values = u_iso_values, selection = selection)
 
   def random_remove_sites_selection(self, fraction):
     scatterers_size = self._scatterers.size()
@@ -166,83 +164,43 @@ class structure(crystal.special_position_settings):
       cp.scatterer_pdb_records = self.scatterer_pdb_records
     return cp
 
-  def shake_sites(self, mean_error):
-    tolerance = 0.00005
-    sites_cart = self.sites_cart()
-    sites_cart_size = sites_cart.size()
-    current_mean_error = 0.0
-    tolerance_scale = 1./5
-    if(mean_error >= 0.1 and mean_error < 1.0):
-       left  = mean_error - mean_error*0.1
-       right = mean_error + mean_error*0.3
-    elif(mean_error >= 1.0 and mean_error <= 3.0):
-       left  = mean_error - mean_error*0.1
-       right = mean_error + mean_error*1.0
-    elif(abs(mean_error-0.0) < 1.e-3):
-       return self
-    else:
-       raise RuntimeError("mean_error requested is too big or too small")
-    while abs(mean_error - current_mean_error) > tolerance:
-      two_left = 2.0 * left
-      shift_xyz = (flex.random_double(sites_cart_size*3) - 0.5) * two_left
-      sites_cart_new = sites_cart + flex.vec3_double(shift_xyz)
-      left += tolerance * tolerance_scale
-      #current_mean_error = sites_cart.rms_difference(sites_cart_new)
-      # not the same in my definition
-      current_mean_error = \
-                      flex.mean(flex.sqrt((sites_cart - sites_cart_new).dot()))
-      if(left >= right):
-        raise RuntimeError("mean_error is not achieved within specified range")
-    cp = structure(self,
-      scattering_type_registry=self._scattering_type_registry)
-    new_scatterers = self._scatterers.deep_copy()
-    new_scatterers.set_sites(
-      self.unit_cell().fractionalize(sites_cart=sites_cart_new))
-    cp._scatterers = new_scatterers
-    cp._site_symmetry_table = self._site_symmetry_table.deep_copy()
-    if(getattr(self, "scatterer_pdb_records", None) is not None):
-      cp.scatterer_pdb_records = self.scatterer_pdb_records
-    #assert abs(sites_cart.rms_difference(cp.sites_cart())-mean_error) <= \
-    #                                                                  tolerance
-    assert abs(flex.mean(flex.sqrt((sites_cart - sites_cart_new).dot()))- \
-                                                       mean_error) <= tolerance
-    return cp
+  def mean_distance(self, other, selection = None):
+    return flex.mean( self.distances(other = other, selection = selection) )
 
-  def mean_distance(self, other):
-    s1 = self.sites_cart()
-    s2 = other.sites_cart()
+  def distances(self, other, selection = None):
+    if(selection is None): selection = flex.bool(self._scatterers.size(), True)
+    s1 = self.sites_cart().select(selection)
+    s2 = other.sites_cart().select(selection)
     if(s1.size() != s2.size()):
-       raise RuntimeError("models must be exactly aligned and of equal size.")
-    return flex.mean(flex.sqrt((s1 - s2).dot()))
-
-  def distances(self, other):
-    s1 = self.sites_cart()
-    s2 = other.sites_cart()
-    if(s1.size() != s2.size()):
-       raise RuntimeError("models must be exactly aligned and of equal size.")
+       raise RuntimeError("Models must of equal size.")
     return flex.sqrt((s1 - s2).dot())
 
   def max_distance(self, other):
-    s1 = self.sites_cart()
-    s2 = other.sites_cart()
-    if(s1.size() != s2.size()):
-       raise RuntimeError("models must be exactly aligned and of equal size.")
-    return flex.max(self.distances(other = other))
+    return flex.max( self.distances(other = other, selection = selection) )
 
   def min_distance(self, other):
-    s1 = self.sites_cart()
-    s2 = other.sites_cart()
-    if(s1.size() != s2.size()):
-       raise RuntimeError("models must be exactly aligned and of equal size.")
-    return flex.min(self.distances(other = other))
+    return flex.min( self.distances(other = other, selection = selection) )
 
-  def randomize_adp(self, random_u_iso_scale=1.0, random_u_cart_scale=1.0):
-    for sc in self._scatterers:
-        if(sc.flags.use()):
-           if(sc.flags.use_u_iso()):
-              u_iso = random.random() * random_u_iso_scale
-              sc.u_iso = u_iso
-           if(sc.flags.use_u_aniso()):
+  def shake_adp(self, b_max=None, b_min=None, spread=10.0,
+             keep_anisotropic=False, random_u_cart_scale=1.0, selection=None):
+    assert [b_max, b_min].count(None) in [0,2]
+    if([b_max, b_min].count(None) == 0): assert spread == 0.0
+    if([b_max, b_min].count(None) == 2):
+       u_isos = self._scatterers.extract_u_iso().select(self.use_u_iso())
+       b_mean = adptbx.u_as_b(flex.mean(u_isos))
+       b_max = int(b_mean + spread)
+       b_min = int(max(0.0, b_mean - spread))
+    assert b_min <= b_max
+    if(selection is not None):
+       assert selection.size() == self._scatterers.size()
+    else:
+       selection = flex.bool(self._scatterers.size(), True)
+    for sc, sel in zip(self._scatterers, selection):
+        if(sel and sc.flags.use()):
+           if(sc.flags.use_u_iso() and b_min != b_max):
+              r = random.randrange(b_min, b_max, 1)
+              sc.u_iso=adptbx.b_as_u(r)
+           if(sc.flags.use_u_aniso() and not keep_anisotropic):
               site_symmetry = sc.apply_symmetry(self.unit_cell(),
                                                 self.space_group(),
                                                 self.min_distance_sym_equiv())
@@ -257,27 +215,61 @@ class structure(crystal.special_position_settings):
                  eigenvalues = adptbx.eigenvalues(u_cart)
                  if(min(eigenvalues) > 0.001): break
 
-  #def set_b_iso_random(self, allow_mixed=False):
-  #  s = self._scatterers
-  #  if (not allow_mixed and s.count_anisotropic() > 0):
-  #    raise RuntimeError("set_b_iso_random: all scatterers must be isotropic.")
-  #  b_iso_new = flex.random_double(s.size())*100.
-  #  self.set_b_iso(values = b_iso_new)
+  def shake_adp_if_all_equal(self, b_iso_tolerance = 1.0):
+    performed = False
+    if(self.use_u_aniso().count(True) == 0):
+       u_isos = self.extract_u_iso_or_u_equiv()
+       b_max  = adptbx.u_as_b(flex.max(u_isos))
+       b_min  = adptbx.u_as_b(flex.min(u_isos))
+       b_mean = adptbx.u_as_b(flex.mean(u_isos))
+       if(abs(b_max - b_mean) <= b_iso_tolerance and
+                                       abs(b_min - b_mean) <= b_iso_tolerance):
+          self.shake_adp()
+          performed = True
+    return performed
 
-  def randomize_occupancies(self, selection=None):
+  def shake_occupancies(self, selection = None):
     s = self._scatterers
     q_new = flex.random_double(s.size())*2.
     if(selection is None):
        s.set_occupancies(q_new)
+    else:
+       assert selection.size() == s.size()
+       s.set_occupancies(q_new, selection)
 
-  def set_b_iso_random(self, allow_mixed=False, b_min=10., b_max=35.):
-    s = self._scatterers
-    if (not allow_mixed and s.count_anisotropic() > 0):
-      raise RuntimeError("set_b_iso_random: all scatterers must be isotropic.")
-    b_iso_new = flex.double()
-    for si in s:
-      b_iso_new.append(random.randrange(b_min,b_max,1))
-    self.set_b_iso(values = b_iso_new)
+  def shake_sites(self, mean_error, selection = None):
+    tolerance = 0.0001
+    if(mean_error < tolerance): return
+    sites_cart_original = self.sites_cart()
+    if(selection is None):
+       selection = flex.bool(sites_cart_original.size(), True)
+    else:
+       assert selection.size() == sites_cart_original.size()
+    current_mean_error = 0.0
+    counter = 0
+    scale = 1.0
+    collector = flex.double()
+
+    sites_cart = self.sites_cart().select(selection)
+    sites_cart_size = sites_cart.size()
+    while abs(mean_error - current_mean_error) > tolerance and counter < 10000:
+      counter += 1
+      shift_xyz=(flex.random_double(sites_cart_size*3)-0.5)*mean_error*2*scale
+      sites_cart_new = sites_cart + flex.vec3_double(shift_xyz)
+      current_mean_error = \
+                      flex.mean(flex.sqrt((sites_cart - sites_cart_new).dot()))
+      collector.append(current_mean_error)
+      if(counter % 10 == 0):
+         if(flex.mean(collector) < mean_error): scale += 0.001
+         else: scale -= 0.001
+         if(scale <= 0.0): scale = 0.1
+         if(scale >= 2.0): scale = 2.0
+         collector = flex.double()
+    assert abs(flex.mean(flex.sqrt((sites_cart - sites_cart_new).dot()))- \
+                                                       mean_error) <= tolerance
+    sites_cart_original = sites_cart_original.set_selected(
+                                                     selection, sites_cart_new)
+    self.set_sites_cart(sites_cart = sites_cart_original)
 
   def b_iso_min_max_mean(self):
     b_isos = self._scatterers.extract_u_iso()/adptbx.b_as_u(1)
@@ -285,26 +277,6 @@ class structure(crystal.special_position_settings):
     b_max  = flex.max(b_isos)
     b_mean = flex.mean(b_isos)
     return b_min, b_max, b_mean
-
-  def shake_b_iso(self, deviation, allow_mixed=False):
-    assert deviation >= 0.0 and deviation <= 100.0
-    s = self._scatterers
-    if (not allow_mixed and s.count_anisotropic() > 0):
-      raise RuntimeError("shake_b_iso: all scatterers must be isotropic.")
-    b_isos = s.extract_u_iso()/adptbx.b_as_u(1)
-    shift_abs = b_isos * deviation/100.
-    r_set = flex.random_double(s.size())-0.5
-    b_iso_shifted = flex.double()
-    for i in xrange(s.size()):
-      if(r_set[i] >= 0): sign = 1.0
-      if(r_set[i] <  0): sign =-1.0
-      shift = shift_abs[i] * sign
-      new_value = b_isos[i] + shift
-      if(new_value > 0.0):
-        b_iso_shifted.append(new_value)
-      else:
-        b_iso_shifted.append(b_isos[i])
-    self.set_b_iso(values = b_iso_shifted)
 
   def n_undefined_multiplicities(self):
     return ext.n_undefined_multiplicities(self._scatterers)
@@ -335,6 +307,19 @@ class structure(crystal.special_position_settings):
   def extract_u_iso_or_u_equiv(self):
     return self._scatterers.extract_u_iso_or_u_equiv(
       unit_cell=self.unit_cell())
+
+  def apply_rigid_body_shift(self, rot, trans, selection = None):
+    if(selection is None):
+       selection = flex.bool(self._scatterers.size(), True).iselection()
+    rbs_obj = self.apply_rigid_body_shift_obj(
+                                        sites_cart     = self.sites_cart(),
+                                        sites_frac     = self.sites_frac(),
+                                        rot            = rot,
+                                        trans          = trans,
+                                        selection      = selection,
+                                        unit_cell      = self.unit_cell(),
+                                        atomic_weights = self.atomic_weights())
+    self.set_sites_frac(sites_frac = rbs_obj.sites_frac)
 
   def apply_rigid_body_shift_obj(self,
                                  sites_cart,

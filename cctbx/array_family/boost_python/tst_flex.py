@@ -137,7 +137,7 @@ def exercise_flex_xray_scatterer():
   assert approx_equal(a.extract_u_iso(), (0.0, -1.0, -1.0))
   assert approx_equal(a.extract_u_iso_or_u_equiv(unit_cell=uc),
     (0.0, 258, 236+1/3.))
-  a.set_u_iso(u_iso=flex.double((3,4,5)))
+  a.set_u_iso(u_iso=flex.double((3,4,5)), selection=flex.bool(a.size(), True))
   assert approx_equal(a.extract_u_iso(), (3,-1,-1))
   assert approx_equal(a.extract_u_iso_or_u_equiv(unit_cell=uc),
     (3, 258, 236+1/3.))
