@@ -161,7 +161,9 @@ class any_reflection_file(object):
         result.append(miller_array.customized_copy(
           crystal_symmetry=miller_array.join_symmetry(
             other_symmetry=crystal_symmetry,
-            force=force_symmetry)).set_info(info))
+            force=force_symmetry))
+              .set_info(info)
+              .set_observation_type(miller_array.observation_type()))
       return result
     result = self._file_content.as_miller_arrays(
       crystal_symmetry=crystal_symmetry,
