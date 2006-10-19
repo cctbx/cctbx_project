@@ -80,6 +80,8 @@ class option_parser(OptionParser):
       show_defaults_callback=self.show_defaults_callback,
       chunk_callback=self.chunk_callback)
 
+libtbx_option_parser = option_parser
+
 class processed_options(object):
 
   def __init__(self, parser, options, args,
