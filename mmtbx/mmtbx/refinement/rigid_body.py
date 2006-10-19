@@ -143,7 +143,8 @@ class rb_mat_euler(object):
 
 class rigid_body_shift_accamulator(object):
 
-   def __init__(self):
+   def __init__(self, euler_angle_convention):
+     self.euler_angle_convention = euler_angle_convention
      self.rotations = []
      self.translations = []
 
@@ -171,6 +172,7 @@ class rigid_body_shift_accamulator(object):
        out=out,
        prefix="",
        frame="|",
+       euler_angle_convention=self.euler_angle_convention,
        rotations=self.rotations,
        translations=self.translations)
      print >> out, "|"+"-"*77+"|"
@@ -482,6 +484,7 @@ class manager(object):
       out=out,
       prefix="",
       frame="|",
+      euler_angle_convention=self.euler_angle_convention,
       rotations=r_mat,
       translations=t_vec)
     print >> out, "|" +"-"*77+"|"

@@ -1,8 +1,12 @@
 from cctbx.array_family import flex
 from cctbx import geometry_restraints
+import scitbx.math
+from scitbx import matrix
 from libtbx.utils import format_cpu_times, getenv_bool
 from libtbx import adopt_init_args
 import sys, os, time
+from libtbx.str_utils import prefix_each_line_suffix
+from libtbx.itertbx import count
 from libtbx.test_utils import approx_equal
 from libtbx import introspection
 from cctbx import adptbx
@@ -142,21 +146,26 @@ def show_rigid_body_rotations_and_translations(
       out,
       prefix,
       frame,
+      euler_angle_convention,
       rotations,
       translations):
-  print >> out, (prefix + frame
-    + "                         rotation (deg.)             "
-    + "   translation (A)      " + frame).rstrip()
-  i = 1
-  for r,t in zip(rotations, translations):
-    part1 = frame + " group"+str("%5d:  "%i)
-    part2 = str("%8.4f"%r[0])+" "+str("%8.4f"%r[1])+" "+str("%8.4f"%r[2])
-    part3 = "     "
-    part4 = str("%8.4f"%t[0])+" "+str("%8.4f"%t[1])+" "+str("%8.4f"%t[2])
-    n = 78 - len(part1 + part2 + part3 + part4)
-    part5 = " "*n + frame
-    print >> out, (prefix + part1 + part2 + part3 + part4 + part5).rstrip()
-    i += 1
+  assert euler_angle_convention in ["xyz", "zyz"]
+  euler_angles_as_matrix = getattr(
+    scitbx.math.euler_angles, euler_angle_convention+"_matrix")
+  print >> out, prefix_each_line_suffix(
+    prefix=prefix+frame, lines_as_one_string=
+"                            rotation (deg)                 translation (A)   "
+"\n"
+"                         %s              total           xyz          total "
+      % euler_angle_convention, suffix=frame)
+  for i,r,t in zip(count(1), rotations, translations):
+    r_total = abs(scitbx.math.r3_rotation_axis_and_angle_from_matrix(
+      r=euler_angles_as_matrix(*r)).angle(deg=True))
+    t_total = abs(matrix.col(t))
+    print >> out, (prefix + frame +
+      " group %4d: %8.3f %8.3f %8.3f %7.2f  %6.2f %6.2f %6.2f %6.2f "
+        % tuple([i] + list(r) + [r_total] + list(t) + [t_total])
+      + frame).rstrip()
 
 class refinement_monitor(object):
   def __init__(self, params,
@@ -405,6 +414,8 @@ class refinement_monitor(object):
             out=out,
             prefix=remark,
             frame=" ",
+            euler_angle_convention
+              =self.rigid_body_shift_accamulator.euler_angle_convention,
             rotations=self.rigid_body_shift_accamulator.rotations,
             translations=self.rigid_body_shift_accamulator.translations)
     #
