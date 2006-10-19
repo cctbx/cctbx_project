@@ -1,5 +1,5 @@
 import libtbx.phil
-from libtbx.optparse_wrapper import option_parser
+from libtbx.option_parser import option_parser
 import sys
 
 def run(args, command_name="libtbx.phil", converter_registry=None):

@@ -1,6 +1,6 @@
 from __future__ import generators
 import libtbx.path
-from libtbx.optparse_wrapper import option_parser
+from libtbx.option_parser import option_parser
 from libtbx.str_utils import show_string
 from libtbx.utils import Sorry
 from libtbx import adopt_init_args
