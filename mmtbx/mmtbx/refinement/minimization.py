@@ -36,7 +36,8 @@ class lbfgs(object):
                      neutron_scattering_dict  = None,
                      xray_scattering_dict     = None,
                      wxnc_scale               = None,
-                     wxnu_scale               = None):
+                     wxnu_scale               = None,
+                     selection                = None):
     global time_site_individual
     timer = user_plus_sys_time()
     adopt_init_args(self, locals())
@@ -147,7 +148,7 @@ class lbfgs(object):
     self.stereochemistry_residuals = None
     if(self.neutron_refinement):
        self.xray_structure.scattering_type_registry(
-                                    custom_dict = self.xray_scattering_dict)
+                                       custom_dict = self.xray_scattering_dict)
     self.fmodel.update_xray_structure(xray_structure = self.xray_structure,
                                       update_f_calc  = True)
     ex = self.fmodel.target_w(alpha    = self.alpha_w,
@@ -160,12 +161,10 @@ class lbfgs(object):
                         alpha                 = self.alpha_w,
                         beta                  = self.beta_w,
                         u_iso_reinable_params = u_iso_reinable_params).packed()
-       # XXX this was used as best strategy for AR refinement
-       #if(self.neutron_refinement and self.refine_xyz):
-       #   zz = flex.vec3_double(sf)
-       #   qq = zz.set_selected(self.d_selection, [0,0,0])
-       #   zz = qq.as_double()
-       #   sf = zz
+       if(self.selection is not None):
+          sf_v3d = flex.vec3_double(sf)
+          sf_v3d_sel = sf_v3d.set_selected(self.selection, [0,0,0])
+          sf = sf_v3d_sel.as_double()
        self.g = sf * self.wx
 
     if(self.neutron_refinement):
@@ -184,12 +183,8 @@ class lbfgs(object):
                         alpha                 = self.alpha_w_neutron,
                         beta                  = self.beta_w_neutron,
                         u_iso_reinable_params = u_iso_reinable_params).packed()
-          # XXX this was used as best strategy for AR refinement
-          #if(self.neutron_refinement and self.refine_xyz):
-          #   zz = flex.vec3_double(sf)
-          #   qq = zz.set_selected(~self.d_selection, [0,0,0])
-          #   zz = qq.as_double()
-          #   sf = zz
+          if(self.selection is not None):
+             sf = sf.set_selected(self.selection, 0.0)
           self.g = self.g + sf * self.wn
 
           ii = 0
@@ -225,15 +220,6 @@ class lbfgs(object):
                ii += 1
              self.g = tt + rr * self.wn
 
-    #if(compute_gradients):
-    #   angle = flex.double()
-    #   for i, j in zip(rr, tt):
-    #     angle.append( flex.double(i).angle(flex.double(j), deg = True) )
-    #   sel_del = (angle >= 90.0)
-    #   qq = flex.vec3_double(self.g)
-    #   qq = qq.set_selected(sel_del, [0,0,0])
-    #   self.g = qq.as_double()
-
     if(self.refine_xyz and self.restraints_manager is not None and self.wr > 0.0):
        self.stereochemistry_residuals = self.restraints_manager.energies_sites(
                        sites_cart        = self.xray_structure.sites_cart(),
@@ -244,10 +230,13 @@ class lbfgs(object):
        self.collector.collect(er = er)
        self.f += er * self.wr
        if(compute_gradients):
+          sgc = self.stereochemistry_residuals.gradients
+          if(self.selection is not None):
+             sgc = sgc.set_selected(self.selection, [0,0,0])
           xray.minimization.add_gradients(
-             scatterers     = self.xray_structure.scatterers(),
-             xray_gradients = self.g,
-             site_gradients = self.stereochemistry_residuals.gradients*self.wr)
+                             scatterers     = self.xray_structure.scatterers(),
+                             xray_gradients = self.g,
+                             site_gradients = sgc*self.wr)
 
     if(self.refine_adp and self.restraints_manager.geometry is not None
                         and self.wr > 0.0 and self.iso_restraints is not None):
@@ -262,10 +251,13 @@ class lbfgs(object):
        self.collector.collect(er = er)
        self.f += er * self.wr
        if(compute_gradients):
+          sgu = energies_adp_iso.gradients
+          if(self.selection is not None):
+             sgu = sgu.set_selected(self.selection, 0.0)
           xray.minimization.add_gradients(
                         scatterers      = self.xray_structure.scatterers(),
                         xray_gradients  = self.g,
-                        u_iso_gradients = energies_adp_iso.gradients * self.wr)
+                        u_iso_gradients = sgu * self.wr)
 
   def callback_after_step(self, minimizer):
     self._lock_for_line_search = False

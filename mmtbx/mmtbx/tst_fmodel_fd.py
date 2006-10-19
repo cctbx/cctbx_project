@@ -77,21 +77,22 @@ def exercise(space_group_info,
                                     algorithm      = sf_algorithm,
                                     cos_sin_table  = sf_cos_sin_table).f_calc()
       f_obs = abs(f_obs_comp)
-      flags = f_obs.generate_r_free_flags(fraction = 0.4,
+      flags = f_obs.generate_r_free_flags(fraction = 0.1,
                                           max_free = 99999999)
       #flags = flags.array(data = flex.bool(f_obs.data().size(), False))
-      xray_structure = xray_structure.shake_sites(mean_error = 0.1)
+      xrs = xray_structure.deep_copy_scatterers()
+      xrs.shake_sites(mean_error = 0.3)
       for target in mmtbx.f_model.target_names:
           #XXX Must find out why ml-tolerance is so BIG.
           if(target == "ml"): tolerance = 1.5
-          else: tolerance = 1.e-9
+          else: tolerance = 1.e-6
           if(target != "mlhl"):
              print "  ",target
              xray.set_scatterer_grad_flags(
-                                      scatterers = xray_structure.scatterers(),
+                                      scatterers = xrs.scatterers(),
                                       site       = True)
              fmodel = mmtbx.f_model.manager(
-                                          xray_structure    = xray_structure,
+                                          xray_structure    = xrs,
                                           f_obs             = f_obs,
                                           r_free_flags      = flags,
                                           target_name       = target,
@@ -100,7 +101,7 @@ def exercise(space_group_info,
                                           k_sol             = k_sol,
                                           b_sol             = b_sol,
                                           b_cart            = b_cart)
-             fmodel.update_xray_structure(xray_structure = xray_structure,
+             fmodel.update_xray_structure(xray_structure = xrs,
                                           update_f_calc = True,
                                           update_f_mask = True)
              if(0):
@@ -117,9 +118,9 @@ def exercise(space_group_info,
              gfd = finite_differences_site(cartesian_flag = True,
                                            fmodel = fmodel)
              diff = (gs - gfd).as_double()
-             assert approx_equal(flex.min(diff) , 0.0, tolerance)
-             assert approx_equal(flex.mean(diff), 0.0, tolerance)
-             assert approx_equal(flex.max(diff) , 0.0, tolerance)
+             assert approx_equal(abs(flex.min(diff) ), 0.0, tolerance)
+             assert approx_equal(abs(flex.mean(diff)), 0.0, tolerance)
+             assert approx_equal(abs(flex.max(diff) ), 0.0, tolerance)
              fmodel.model_error_ml()
 
 
