@@ -4,6 +4,7 @@ from cctbx.xray import ext
 from cctbx import miller
 from cctbx import maptbx
 from libtbx.utils import user_plus_sys_time
+from libtbx import introspection
 
 class from_scatterers_fft(managed_calculation_base):
 
@@ -51,6 +52,7 @@ class from_scatterers_fft(managed_calculation_base):
       miller_set.indices(),
       self._f_calc_data)
     time_apply_u_extra = time_apply_u_extra.elapsed()
+    introspection.virtual_memory_info().update_max()
     manager.estimate_time_fft.register(
       n_scatterers=xray_structure.scatterers().size(),
       n_miller_indices=miller_set.indices().size(),
