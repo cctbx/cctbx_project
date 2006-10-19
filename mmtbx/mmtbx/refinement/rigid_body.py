@@ -164,24 +164,17 @@ class rigid_body_shift_accamulator(object):
      self.translations = new_translations
 
    def show(self, out = None):
-     if(out is None): out = sys.stdout
+     if (out is None): out = sys.stdout
      print >> out, "|-rigid body shift (total)------------------------------"\
                    "----------------------|"
-     print >> out, "|                         rotation (deg.)             "\
-                  "   translation (A)      |"
-     i = 1
-     for r,t in zip(self.rotations, self.translations):
-         part1 = "| group"+str("%5d:  "%i)
-         part2 = str("%8.4f"%r[0])+" "+str("%8.4f"%r[1])+" "+str("%8.4f"%r[2])
-         part3 = "     "
-         part4 = str("%8.4f"%t[0])+" "+str("%8.4f"%t[1])+" "+str("%8.4f"%t[2])
-         n = 78 - len(part1 + part2 + part3 + part4)
-         part5 = " "*n+"|"
-         print >> out, part1 + part2 + part3 + part4 + part5
-         i += 1
+     print_statistics.show_rigid_body_rotations_and_translations(
+       out=out,
+       prefix="",
+       frame="|",
+       rotations=self.rotations,
+       translations=self.translations)
      print >> out, "|"+"-"*77+"|"
      print >> out
-
 
 class rb_mat(object):
 
@@ -485,18 +478,12 @@ class manager(object):
     n = 78 - len(rw+rf+tw)
     end = " "*n+"|"
     print >> out, rw+rf+tw+end
-    print >> out, "|                         rotation (deg.)             "\
-                  "   translation (A)      |"
-    i = 1
-    for r,t in zip(r_mat,t_vec):
-        part1 = "| group"+str("%5d:  "%i)
-        part2 = str("%8.4f"%r[0])+" "+str("%8.4f"%r[1])+" "+str("%8.4f"%r[2])
-        part3 = "     "
-        part4 = str("%8.4f"%t[0])+" "+str("%8.4f"%t[1])+" "+str("%8.4f"%t[2])
-        n = 78 - len(part1 + part2 + part3 + part4)
-        part5 = " "*n+"|"
-        print >> out, part1 + part2 + part3 + part4 + part5
-        i += 1
+    print_statistics.show_rigid_body_rotations_and_translations(
+      out=out,
+      prefix="",
+      frame="|",
+      rotations=r_mat,
+      translations=t_vec)
     print >> out, "|" +"-"*77+"|"
 
 class rigid_body_minimizer(object):
