@@ -143,7 +143,8 @@ class refinement_monitor(object):
   def __init__(self, params,
                      model_ref = None,
                      out=None,
-                     short=False):
+                     short=False,
+                     call_back_after_collect=None):
     adopt_init_args(self, locals())
     if (self.out is None): self.out = sys.stdout
     self.model_ini = None
@@ -354,6 +355,8 @@ class refinement_monitor(object):
     ###
     t2 = time.time()
     time_collect_and_process += (t2 - t1)
+    if (self.call_back_after_collect is not None):
+      self.call_back_after_collect(monitor=self, model=model, fmodel=fmodel)
 
   def show(self, out=None, remark=""):
     global time_collect_and_process
