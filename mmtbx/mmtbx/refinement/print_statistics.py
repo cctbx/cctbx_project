@@ -1,6 +1,6 @@
 from cctbx.array_family import flex
 from cctbx import geometry_restraints
-import scitbx.math
+import scitbx.math.euler_angles
 from scitbx import matrix
 from libtbx.utils import format_cpu_times, getenv_bool
 from libtbx import adopt_init_args
