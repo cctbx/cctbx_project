@@ -3,7 +3,7 @@ from iotbx.pdb import crystal_symmetry_from_pdb
 from mmtbx.monomer_library import pdb_interpretation
 from mmtbx.monomer_library import server
 import iotbx.pdb
-from iotbx.option_parser import iotbx_option_parser
+from iotbx.option_parser import option_parser
 from cctbx import xray
 from cctbx import miller
 from cctbx import crystal

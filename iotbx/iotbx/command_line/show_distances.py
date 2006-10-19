@@ -4,7 +4,7 @@ from cctbx import crystal
 from iotbx.kriber import strudat
 from iotbx import pdb
 import iotbx.pdb.interpretation
-from iotbx.option_parser import iotbx_option_parser
+from iotbx.option_parser import option_parser
 import sys
 
 def display(
@@ -34,7 +34,7 @@ def display(
     print
 
 def run(args):
-  command_line = (iotbx_option_parser(
+  command_line = (option_parser(
     usage="iotbx.show_distances [options] studat_file [...]",
     description="Example: iotbx.show_distances strudat --tag=SOD")
     .option(None, "--tag",

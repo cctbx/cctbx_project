@@ -7,12 +7,12 @@ from cctbx import sgtbx
 from cctbx.sgtbx import subgroups
 from cctbx.sgtbx import lattice_symmetry
 from cctbx.sgtbx import bravais_types
-from iotbx.option_parser import iotbx_option_parser
+from iotbx.option_parser import option_parser
 from scitbx.array_family import flex
 import sys
 
 def run(args):
-  command_line = (iotbx_option_parser(
+  command_line = (option_parser(
     usage="iotbx.lattice_symmetry [options] [centring_type_symbol]",
     description="Example: iotbx.lattice_symmetry"
                +" --unit_cell=12,12,12.1,89,90,92 F")

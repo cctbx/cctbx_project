@@ -1,5 +1,5 @@
 import scitbx.math as sm
-from iotbx.option_parser import iotbx_option_parser
+from iotbx.option_parser import option_parser
 from scitbx.array_family import flex
 import sys, os
 from libtbx.utils import Sorry
@@ -124,7 +124,7 @@ def plotit(fobs,
   data_plots.plot_data_loggraph(ccp4_loggraph_plot,out)
 
 def run(args):
-  command_line = (iotbx_option_parser(
+  command_line = (option_parser(
     usage="mmtbx.p-plotter [options]",
     description="produces a gnuplot plot")
                   .option(None, "--fobs",

@@ -8,7 +8,7 @@ from iotbx.shelx import hklf as shelx_hklf
 from iotbx.xds.read_ascii import reader as xds_ascii_reader
 from iotbx.solve.fpfm_reader import reader as solve_fpfm_reader
 from iotbx import crystal_symmetry_from_any
-from iotbx.option_parser import iotbx_option_parser
+from iotbx.option_parser import option_parser
 from cctbx import miller
 from cctbx import crystal
 from cctbx import sgtbx
@@ -242,7 +242,7 @@ def collect_arrays(
   return result
 
 def run(args):
-  command_line = (iotbx_option_parser(
+  command_line = (option_parser(
     usage="iotbx.reflection_file_reader [options] reflection_file ...",
     description="Example: iotbx.reflection_file_reader w1.sca w2.mtz w3.cns")
     .enable_symmetry_comprehensive()

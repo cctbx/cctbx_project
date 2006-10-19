@@ -1,5 +1,5 @@
 from iotbx import mtz
-from iotbx.option_parser import iotbx_option_parser
+from iotbx.option_parser import option_parser
 from cctbx import sgtbx
 from cctbx import uctbx
 from cctbx.array_family import flex
@@ -1232,7 +1232,7 @@ min & max values of detector coords (pixels): [86.0, 87.0, 88.0, 89.0, 90.0, 91.
       assert dataset.n_batches() == [5,7][dataset.id()]
 
 def exercise():
-  command_line = (iotbx_option_parser()
+  command_line = (option_parser()
     .option(None, "--verbose",
       action="store_true")
     .option(None, "--forever",
