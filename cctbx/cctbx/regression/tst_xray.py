@@ -11,7 +11,8 @@ from libtbx.test_utils import approx_equal, show_diff
 import random
 import pickle
 from cStringIO import StringIO
-import sys, random
+import sys, random, math
+from mmtbx.refinement import rigid_body
 
 random.seed(0)
 flex.set_random_seed(0)
@@ -303,7 +304,71 @@ C  pair count:   2       <<  0.0200,  0.0000,  0.1000>>
 C  pair count:   1       <<  0.0000,  0.0000,  0.1000>>
   C:   0.0000             (  0.0000,  0.0000,  0.1000)
 """
-  # exercise set_b_iso()
+### shake_adp()
+  cs = crystal.symmetry((5.01, 6.01, 5.47, 60, 80, 120), "P1")
+  sp = crystal.special_position_settings(cs)
+  scatterers = flex.xray_scatterer([xray.scatterer("o")]*100)
+  selection = flex.bool()
+  for sc in scatterers:
+    sc.u_iso = 1.0 * random.random()
+    sc.u_star = (1.0* random.random(), 2.0* random.random(),
+                 3.0* random.random(), 4.0* random.random(),
+                 5.0* random.random(), 6.0* random.random())
+    sc.flags.set_use_u_iso(   random.choice((0,1)) )
+    sc.flags.set_use_u_aniso( random.choice((0,1)) )
+    selection.append(random.choice((0,1)))
+  xs = xray.structure(sp, scatterers)
+  for sel in [None, selection]:
+      for b_min, b_max, spread in zip([None,10.0], [None,20.0], [10.0,0.0]):
+          for keep_anisotropic in [True, False]:
+            xs_mod = xs.deep_copy_scatterers()
+            xs_mod.shake_adp(keep_anisotropic = keep_anisotropic,
+                b_max = b_max, b_min = b_min, selection=sel, spread = spread)
+            if(sel is None): sel = flex.bool(xs.scatterers().size(), True)
+            for sc,sc_mod,s in zip(xs.scatterers(),xs_mod.scatterers(),sel):
+                assert sc.flags.use_u_iso()   == sc_mod.flags.use_u_iso()
+                assert sc.flags.use_u_aniso() == sc_mod.flags.use_u_aniso()
+                if(sc.flags.use_u_iso() and s):
+                   assert abs(sc.u_iso - sc_mod.u_iso) > 1.e-4
+                else:
+                   assert approx_equal(sc.u_iso, sc_mod.u_iso)
+                if(keep_anisotropic):
+                   assert approx_equal(sc.u_star, sc_mod.u_star)
+                else:
+                   if(sc.flags.use_u_aniso() and s):
+                      a = flex.double(sc.u_star)
+                      b = flex.double(sc_mod.u_star)
+                      assert abs(flex.mean(a-b)) > 1.e-2
+                   else:
+                      assert approx_equal(sc.u_star, sc_mod.u_star)
+### shake_occupancies()
+  cs = crystal.symmetry((5.01, 6.01, 5.47, 60, 80, 120), "P1")
+  sp = crystal.special_position_settings(cs)
+  scatterers = flex.xray_scatterer([xray.scatterer("o")]*100)
+  selection = flex.bool()
+  for sc in scatterers:
+    sc.occupancy = random.random()
+    selection.append(random.choice((0,1)))
+  xs = xray.structure(sp, scatterers)
+  for sel in [None, selection]:
+      xs_mod = xs.deep_copy_scatterers()
+      xs_mod.shake_occupancies(selection = sel)
+      if(sel is None): sel = flex.bool(xs.scatterers().size(), True)
+      for sc, sc_mod, s in zip(xs.scatterers(),xs_mod.scatterers(), sel):
+          if(s):
+             assert abs(sc.occupancy - sc_mod.occupancy) > 1.e-4
+          else:
+             assert approx_equal(sc.occupancy, sc_mod.occupancy)
+### shake_adp_if_all_equal()
+  cs = crystal.symmetry((5.01, 6.01, 5.47, 60, 80, 120), "P1")
+  sp = crystal.special_position_settings(cs)
+  scatterers = flex.xray_scatterer([xray.scatterer("o", u=0.5)]*100)
+  xs = xray.structure(sp, scatterers)
+  xs_mod = xs.deep_copy_scatterers()
+  xs_mod.shake_adp_if_all_equal()
+  for sc, sc_mod in zip(xs.scatterers(), xs_mod.scatterers()):
+    assert abs(sc.u_iso - sc_mod.u_iso) > 0.001
+# exercise set_b_iso()
   cs = crystal.symmetry((5.01, 6.01, 5.47, 60, 80, 120), "P1")
   sp = crystal.special_position_settings(cs)
   scatterers = flex.xray_scatterer((
@@ -317,20 +382,9 @@ C  pair count:   1       <<  0.0000,  0.0000,  0.1000>>
   b_iso_values = flex.double([7,9])
   xs.set_b_iso(values = b_iso_values)
   assert approx_equal(xs.scatterers().extract_u_iso()/adptbx.b_as_u(1), b_iso_values)
-  # randomize_occupancies()
-  occ1 = xs.scatterers().extract_occupancies()
-  xs.randomize_occupancies()
-  occ2 = xs.scatterers().extract_occupancies()
-  assert abs(flex.mean(occ1-occ2)) > 0.01
-  assert abs(occ1[0]-occ1[1]) < 1.e-6
-  assert abs(occ2[0]-occ2[1]) > 0.01
-  # exercise shake_b_iso()
-  xs.shake_b_iso(deviation = 10)
-  results = [[7.7,9.9],[7.7,8.1],[6.3,9.9],[6.3,8.1]]
-  result = flex.to_list(xs.scatterers().extract_u_iso()/adptbx.b_as_u(1))
-  assert result in results
   #
-  xs.scatterers().set_u_iso(flex.double([0.1,0.2]))
+  xs.scatterers().set_u_iso(flex.double([0.1,0.2]),
+                                       flex.bool(xs.scatterers().size(), True))
   assert xs.scatterers().count_anisotropic() == 0
   xs.convert_to_anisotropic()
   assert xs.scatterers().count_anisotropic() == 2
@@ -339,19 +393,30 @@ C  pair count:   1       <<  0.0000,  0.0000,  0.1000>>
   xs.convert_to_isotropic()
   assert xs.scatterers().count_anisotropic() == 0
   assert approx_equal(xs.scatterers().extract_u_iso(), [0.1,0.2])
-  ### shake_sites
+### shake_sites
+  selection_ = flex.bool([random.choice((0,1)) for i in xrange(500)])
   xs = random_structure.xray_structure(
                                space_group_info = sgtbx.space_group_info("P1"),
-                               elements         = ["N"]*100,
+                               elements         = ["N"]*500,
                                unit_cell        = (10, 20, 30, 70, 80, 120))
-  errors = [0.1,0.5,1.5,3.0]
-  for error in errors:
-    xs_shaked = xs.shake_sites(mean_error = error)
-    sites_cart_xs        = xs.sites_cart()
-    sites_cart_xs_shaked = xs_shaked.sites_cart()
-    mean_err = flex.mean(
-      flex.sqrt((sites_cart_xs - sites_cart_xs_shaked).dot()))
-    assert approx_equal(error, mean_err, 0.00005)
+  errors = [0.0, 0.01, 0.1, 0.5, 1.5, 3.0, 10.0]
+  for selection in [None, selection_]:
+      for error in errors:
+        xs_shaked = xs.deep_copy_scatterers()
+        xs_shaked.shake_sites(mean_error = error, selection = selection)
+        sites_cart_xs        = xs.sites_cart()
+        sites_cart_xs_shaked = xs_shaked.sites_cart()
+        if(selection is None): selection=flex.bool(xs.scatterers().size(),True)
+        mean_err = flex.mean(
+          flex.sqrt((sites_cart_xs.select(selection) -
+                     sites_cart_xs_shaked.select(selection)).dot()))
+        assert approx_equal(error, mean_err, 0.0001)
+        dummy = ~selection
+        if(dummy.count(True) > 0):
+           mean_err_fixed = flex.mean(
+             flex.sqrt((sites_cart_xs.select(~selection) -
+                        sites_cart_xs_shaked.select(~selection)).dot()))
+           assert approx_equal(mean_err_fixed, 0.0)
   ### random remove sites
   for fraction in xrange(1, 99+1, 10):
     fraction /= 100.
@@ -365,20 +430,31 @@ C  pair count:   1       <<  0.0000,  0.0000,  0.1000>>
   assert approx_equal(xs.scatterers()[0].weight(), 0.0)
   xs.re_apply_symmetry(i_scatterer=0)
   assert approx_equal(xs.scatterers()[0].weight(), 1.0)
-  # apply_rigid_body_shift
-  sites_cart = xs.sites_cart()
-  sites_frac = xs.sites_frac()
-  sel = flex.bool()
-  for i in sites_cart:
-    sel.append( random.randrange(0,2) )
-  new_sites_frac = xs.apply_rigid_body_shift_obj(
-                               sites_cart     = sites_cart,
-                               sites_frac     = sites_frac,
-                               rot            = [1,2,3,4,5,6,7,8,9],
-                               trans          = [1,2,3],
-                               atomic_weights = flex.double(sel.size(), 1.25),
-                               unit_cell      = xs.unit_cell(),
-                               selection      = sel.iselection())
+# apply_rigid_body_shift
+  selection_=flex.bool([random.choice((0,1)) for i in xrange(100)]).iselection()
+  xs = random_structure.xray_structure(
+                               space_group_info = sgtbx.space_group_info("P1"),
+                               elements         = ["N"]*100,
+                               unit_cell        = (10, 20, 30, 70, 80, 120))
+  for selection in [None, selection_]:
+      for r in [[1.,2.,3.], [0.,0.,0.]]:
+          xs_mod = xs.deep_copy_scatterers()
+          xs_mod.apply_rigid_body_shift(
+                              rot       = rigid_body.rb_mat(0, 0, 0).rot_mat(),
+                              trans     = [r[0],r[1],r[2]],
+                              selection = selection)
+          d = math.sqrt(r[0]**2+r[1]**2+r[2]**2)
+          assert approx_equal(
+                    d, xs.mean_distance(other = xs_mod, selection = selection))
+  selection_=flex.bool([random.choice((0,1)) for i in xrange(100)])
+  xs_mod = xs.deep_copy_scatterers()
+  xs_mod.apply_rigid_body_shift(
+                      rot       = rigid_body.rb_mat(1., 2., 3.).rot_mat(),
+                      trans     = [1., 2., 3.],
+                      selection = selection_.iselection())
+  assert xs.mean_distance(other = xs_mod, selection = selection_) > 1.0
+  assert approx_equal(
+                xs.mean_distance(other = xs_mod, selection = ~selection_), 0.0)
   #
   xs = xray.structure(
     crystal_symmetry=crystal.symmetry(

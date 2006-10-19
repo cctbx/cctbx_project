@@ -142,6 +142,21 @@ namespace cctbx { namespace xray { namespace {
     }
   }
 
+  void
+  set_occupancies(
+    af::ref<scatterer<> > const& scatterers,
+    af::const_ref<double> const& occupancies,
+    af::const_ref<bool> const& selection)
+  {
+    CCTBX_ASSERT(scatterers.size() == occupancies.size());
+    CCTBX_ASSERT(scatterers.size() == selection.size());
+    for(std::size_t i=0;i<scatterers.size();i++) {
+      if(selection[i]) {
+         scatterers[i].occupancy = occupancies[i];
+      }
+    }
+  }
+
   af::shared<double>
   extract_u_iso(
     af::const_ref<scatterer<> > const& self)
@@ -221,12 +236,14 @@ namespace cctbx { namespace xray { namespace {
   void
   set_u_iso(
     af::ref<scatterer<> > const& self,
-    af::const_ref<double> const& u_iso)
+    af::const_ref<double> const& u_iso,
+    af::const_ref<bool> const& selection)
   {
     CCTBX_ASSERT(self.size() == u_iso.size());
+    CCTBX_ASSERT(self.size() == selection.size());
     for(std::size_t i=0;i<self.size();i++) {
-      if (self[i].flags.use_u_iso()) {
-        self[i].u_iso = u_iso[i];
+      if(self[i].flags.use_u_iso() && selection[i]) {
+         self[i].u_iso = u_iso[i];
       }
     }
   }
@@ -465,8 +482,15 @@ namespace scitbx { namespace af { namespace boost_python {
       .def("set_sites", cctbx::xray::set_sites,
         (arg_("sites")))
       .def("extract_occupancies", cctbx::xray::extract_occupancies)
-      .def("set_occupancies", cctbx::xray::set_occupancies,
-        (arg_("occupancies")))
+      .def("set_occupancies", (void(*)(
+              af::ref<cctbx::xray::scatterer<> > const&,
+              af::const_ref<double> const&)) cctbx::xray::set_occupancies,
+              (arg_("occupancies")))
+      .def("set_occupancies", (void(*)(
+              af::ref<cctbx::xray::scatterer<> > const&,
+              af::const_ref<double> const&,
+              af::const_ref<bool> const&)) cctbx::xray::set_occupancies,
+              (arg_("occupancies"),arg_("selection")))
       .def("adjust_u_iso", cctbx::xray::adjust_u_iso)
       .def("extract_u_iso", cctbx::xray::extract_u_iso)
       .def("extract_use_u_iso", cctbx::xray::extract_use_u_iso)
@@ -477,7 +501,7 @@ namespace scitbx { namespace af { namespace boost_python {
                               cctbx::xray::extract_u_cart_or_u_cart_plus_u_iso,
         (arg_("unit_cell")))
       .def("set_u_iso", cctbx::xray::set_u_iso,
-        (arg_("u_iso")))
+        (arg_("u_iso"),arg_("selection")))
       .def("extract_u_star", cctbx::xray::extract_u_star)
       .def("set_u_star", cctbx::xray::set_u_star,
         (arg_("u_star")))

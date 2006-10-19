@@ -324,7 +324,7 @@ def exercise(verbose=0):
         if (0 or verbose):
           manager.plain_pair_sym_table.show()
   #
-  xray_structure.scatterers().set_u_iso(flex.double([
+  xray_structure.set_u_iso(values=flex.double([
     0.77599982480241358, 0.38745781137212021, 0.20667558236418682,
     0.99759840171302094, 0.8917287406687805, 0.64780251325379845,
     0.24878590382983534, 0.59480621182194615, 0.58695637792905142,
