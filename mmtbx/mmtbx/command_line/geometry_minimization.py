@@ -8,7 +8,7 @@ import cctbx.geometry_restraints.lbfgs
 import scitbx.lbfgs
 from libtbx.str_utils import show_string
 from libtbx.utils import Sorry
-from iotbx.option_parser import iotbx_option_parser
+from iotbx.option_parser import option_parser
 import sys, os
 
 class lbfgs(geometry_restraints.lbfgs.lbfgs):
@@ -88,7 +88,7 @@ def write_pymol_commands(file_name, commands):
   print
 
 def run(args, this_command="mmtbx.geometry_minimization"):
-  command_line = (iotbx_option_parser(
+  command_line = (option_parser(
     usage=this_command+" [options] pdb_file [output_pdb_file]")
     .enable_symmetry_comprehensive()
     .option(None, "--max_iterations",

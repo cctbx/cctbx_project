@@ -2,12 +2,12 @@ from iotbx import crystal_symmetry_from_any
 from cctbx import crystal
 from cctbx import sgtbx
 from cctbx import uctbx
-from libtbx.option_parser import option_parser, OptionError, make_option
+from libtbx.option_parser import libtbx_option_parser, OptionError, make_option
 
-class iotbx_option_parser(option_parser):
+class option_parser(libtbx_option_parser):
 
   def __init__(self, usage=None, description=None, more_help=None):
-    option_parser.__init__(self,
+    libtbx_option_parser.__init__(self,
       usage=usage, description=description, more_help=more_help)
     self.symmetry_callback = symmetry_callback()
 
@@ -71,10 +71,12 @@ class iotbx_option_parser(option_parser):
     return self
 
   def process(self, args=None, nargs=None, min_nargs=None, max_nargs=None):
-    result = option_parser.process(self,
+    result = libtbx_option_parser.process(self,
       args=args, nargs=nargs, min_nargs=min_nargs, max_nargs=max_nargs)
     result.symmetry = self.symmetry_callback.get()
     return result
+
+iotbx_option_parser = option_parser
 
 class symmetry_callback(object):
 

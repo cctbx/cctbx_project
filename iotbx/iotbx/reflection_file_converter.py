@@ -4,7 +4,7 @@ import iotbx.scalepack.merge
 import iotbx.shelx.hklf
 from iotbx import reflection_file_reader
 from iotbx import reflection_file_utils
-from iotbx.option_parser import iotbx_option_parser
+from iotbx.option_parser import option_parser
 from cctbx import crystal
 from cctbx import sgtbx
 from cctbx.array_family import flex
@@ -12,7 +12,7 @@ from libtbx.utils import Sorry, date_and_time, plural_s
 import os
 
 def run(args, simply_return_all_miller_arrays=False):
-  command_line = (iotbx_option_parser(
+  command_line = (option_parser(
     usage="iotbx.reflection_file_converter [options] reflection_file ...",
     description="Example: iotbx.reflection_file_converter w1.sca --mtz .")
     .enable_symmetry_comprehensive()

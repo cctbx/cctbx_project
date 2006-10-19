@@ -6,7 +6,7 @@ from iotbx.pdb import crystal_symmetry_from_pdb
 from iotbx.cns import sdb_reader
 from iotbx.shelx import from_ins
 from iotbx.kriber import strudat
-from iotbx.option_parser import iotbx_option_parser
+from iotbx.option_parser import option_parser
 from cctbx import euclidean_model_matching as emma
 from cctbx import crystal
 from libtbx.itertbx import count
@@ -144,7 +144,7 @@ def get_emma_model(file_name, crystal_symmetry):
   raise RuntimeError("Coordinate file %s: unknown format." % file_name)
 
 def run(args, command_name="iotbx.emma"):
-  command_line = (iotbx_option_parser(
+  command_line = (option_parser(
     usage=command_name + " [options]"
          +" reference_coordinates other_coordinates",
     description="Example: %s model1.pdb model2.sdb" % command_name)

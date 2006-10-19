@@ -2,7 +2,7 @@ from cctbx import sgtbx
 from cctbx.sgtbx import pointgroup_tools as pgt
 from cctbx.sgtbx import sub_lattice_tools as slt
 from cctbx import crystal
-from iotbx.option_parser import iotbx_option_parser
+from iotbx.option_parser import option_parser
 from libtbx.utils import Sorry, date_and_time, multi_out
 from cStringIO import StringIO
 
@@ -88,7 +88,7 @@ EOF
 
 def run(args, command_name="iotbx.explore_metric_symmetry"):
   command_line = (
-    iotbx_option_parser(
+    option_parser(
     usage=command_name+" [options]",
     description="""\
 Explore Metric Symmetry. A list of possible unit cells and spacegroups is

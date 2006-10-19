@@ -1,5 +1,5 @@
 from iotbx import mtz
-from iotbx.option_parser import iotbx_option_parser
+from iotbx.option_parser import option_parser
 import sys, os
 
 def process(file_name, show_column_data, column_data_format, show_batches):
@@ -36,7 +36,7 @@ def walk_callback(arg, top, names):
 
 def run(args, command_name="iotbx.mtz.dump"):
   if (len(args) == 0): args = ["--help"]
-  command_line = (iotbx_option_parser(
+  command_line = (option_parser(
     usage=command_name+" [options] file_name [...]")
     .option("-v", "--verbose",
       action="store_true",

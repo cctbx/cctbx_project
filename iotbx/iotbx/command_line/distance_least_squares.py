@@ -1,10 +1,10 @@
 from cctbx.geometry_restraints import distance_least_squares
 from iotbx.kriber import strudat
-from iotbx.option_parser import iotbx_option_parser
+from iotbx.option_parser import option_parser
 import sys
 
 def run(args, distance_cutoff=3.5):
-  command_line = (iotbx_option_parser(
+  command_line = (option_parser(
     usage="iotbx.distance_least_squares [options] studat_file [...]",
     description="Example: iotbx.distance_least_squares strudat --tag=SOD")
     .option(None, "--tag",

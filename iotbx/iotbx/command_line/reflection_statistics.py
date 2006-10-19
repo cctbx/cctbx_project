@@ -1,5 +1,5 @@
 from iotbx import reflection_file_reader
-from iotbx.option_parser import iotbx_option_parser
+from iotbx.option_parser import option_parser
 from cctbx import maptbx
 from cctbx import miller
 from cctbx import crystal
@@ -318,7 +318,7 @@ def run(args, command_name="iotbx.reflection_statistics"):
   for arg in args: print arg,
   print
   print
-  command_line = (iotbx_option_parser(
+  command_line = (option_parser(
     usage=command_name+" [options] reflection_file [...]",
     description="Example: %s data1.mtz data2.sca" % command_name)
     .enable_symmetry_comprehensive()

@@ -1,11 +1,11 @@
 import iotbx.cns.reflection_reader
-from iotbx.option_parser import iotbx_option_parser
+from iotbx.option_parser import option_parser
 import sys, os
 from iotbx import mtz
 
 def run(args):
   if (len(args) == 0): args = ["--help"]
-  command_line = (iotbx_option_parser(
+  command_line = (option_parser(
     usage="iotbx.cns_as_mtz [options] cns_file",
     description="Example: iotbx.cns_as_mtz scale.hkl")
     .enable_symmetry_comprehensive()

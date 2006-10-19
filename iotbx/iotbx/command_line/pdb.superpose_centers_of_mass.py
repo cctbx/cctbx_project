@@ -1,7 +1,7 @@
 from iotbx import pdb
 import iotbx.pdb.interpretation
 from iotbx import phil
-from iotbx.option_parser import iotbx_option_parser
+from iotbx.option_parser import option_parser
 from cctbx import euclidean_model_matching
 from cctbx import sgtbx
 from cctbx.array_family import flex
@@ -41,7 +41,7 @@ crystal_symmetry {
 
 def run(args, command_name="iotbx.pdb.superpose_centers_of_mass"):
   if (len(args) == 0): args = ["--help"]
-  command_line = (iotbx_option_parser(
+  command_line = (option_parser(
     usage=
       "%s [options] [reference_file] [other_file] [parameter_file]" %
        command_name)

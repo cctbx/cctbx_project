@@ -1,10 +1,10 @@
 from iotbx import pdb
-from iotbx.option_parser import iotbx_option_parser
+from iotbx.option_parser import option_parser
 from libtbx import easy_pickle
 import sys, os
 
 def run(args):
-  command_line = (iotbx_option_parser(
+  command_line = (option_parser(
     usage="iotbx.pdb.as_xray_structure [options] pdb_file ...",
     description="Example: iotbx.pdb.as_xray_structure pdb1ab1.ent")
     .enable_symmetry_comprehensive()

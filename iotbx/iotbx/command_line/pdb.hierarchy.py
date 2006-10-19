@@ -1,12 +1,12 @@
 from iotbx import pdb
-from iotbx.option_parser import iotbx_option_parser
+from iotbx.option_parser import option_parser
 from libtbx.str_utils import show_string
 from libtbx.utils import Sorry
 import sys, os
 
 def run(args):
   if (len(args) == 0): args = ["--help"]
-  command_line = (iotbx_option_parser(
+  command_line = (option_parser(
     usage="iotbx.pdb.hierarchy file...")
     .option(None, "--details",
       action="store",
