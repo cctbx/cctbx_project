@@ -138,6 +138,25 @@ def write_pdb_header(out,
    monitor.print_items(f = out, remark = remark)
    out.flush()
 
+def show_rigid_body_rotations_and_translations(
+      out,
+      prefix,
+      frame,
+      rotations,
+      translations):
+  print >> out, (prefix + frame
+    + "                         rotation (deg.)             "
+    + "   translation (A)      " + frame).rstrip()
+  i = 1
+  for r,t in zip(rotations, translations):
+    part1 = frame + " group"+str("%5d:  "%i)
+    part2 = str("%8.4f"%r[0])+" "+str("%8.4f"%r[1])+" "+str("%8.4f"%r[2])
+    part3 = "     "
+    part4 = str("%8.4f"%t[0])+" "+str("%8.4f"%t[1])+" "+str("%8.4f"%t[2])
+    n = 78 - len(part1 + part2 + part3 + part4)
+    part5 = " "*n + frame
+    print >> out, (prefix + part1 + part2 + part3 + part4 + part5).rstrip()
+    i += 1
 
 class refinement_monitor(object):
   def __init__(self, params,
@@ -382,18 +401,12 @@ class refinement_monitor(object):
        #
        if(self.rigid_body_shift_accamulator is not None):
           print >> out, remark + "Information about total rigid body shift of selected groups:"
-          print >> out, remark + "                          rotation (deg.)             "\
-                     "   translation (A)      "
-          i = 1
-          for r,t in zip(self.rigid_body_shift_accamulator.rotations, self.rigid_body_shift_accamulator.translations):
-              part1 = "  group"+str("%5d:  "%i)
-              part2 = str("%8.4f"%r[0])+" "+str("%8.4f"%r[1])+" "+str("%8.4f"%r[2])
-              part3 = "     "
-              part4 = str("%8.4f"%t[0])+" "+str("%8.4f"%t[1])+" "+str("%8.4f"%t[2])
-              n = 78 - len(part1 + part2 + part3 + part4)
-              part5 = " "*n+" "
-              print >> out, remark + part1 + part2 + part3 + part4 + part5
-              i += 1
+          show_rigid_body_rotations_and_translations(
+            out=out,
+            prefix=remark,
+            frame=" ",
+            rotations=self.rigid_body_shift_accamulator.rotations,
+            translations=self.rigid_body_shift_accamulator.translations)
     #
     #
     if(self.short):
