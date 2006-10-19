@@ -241,7 +241,7 @@ class refinement_monitor(object):
     self.k3s_t           = []
     self.scale_ml        = []
     self.n_solv          = []
-    self.rigid_body_shift_accamulator             = None
+    self.rigid_body_shift_accumulator             = None
 
   def collect(self, model,
                     fmodel,
@@ -249,7 +249,7 @@ class refinement_monitor(object):
                     tan_b_iso_max,
                     wilson_b = None,
                     target_weights = None,
-                    rigid_body_shift_accamulator = None):
+                    rigid_body_shift_accumulator = None):
     global time_collect_and_process
     t1 = time.time()
     fmodel.xray_structure.approx_equal(other = model.xray_structure)
@@ -378,8 +378,8 @@ class refinement_monitor(object):
     self.target_name         = fmodel.target_name
     self.number_of_restraints= geom.number_of_restraints
     ###
-    if(rigid_body_shift_accamulator is not None):
-       self.rigid_body_shift_accamulator = rigid_body_shift_accamulator
+    if(rigid_body_shift_accumulator is not None):
+       self.rigid_body_shift_accumulator = rigid_body_shift_accumulator
     ###
     t2 = time.time()
     time_collect_and_process += (t2 - t1)
@@ -408,16 +408,16 @@ class refinement_monitor(object):
        print >> out, remark + "Isotropic ADP: distance_power: %5.2f" % self.params.adp_restraints.iso.distance_power
        print >> out, remark + "Isotropic ADP: average_power : %5.2f" % self.params.adp_restraints.iso.average_power
        #
-       if(self.rigid_body_shift_accamulator is not None):
+       if(self.rigid_body_shift_accumulator is not None):
           print >> out, remark + "Information about total rigid body shift of selected groups:"
           show_rigid_body_rotations_and_translations(
             out=out,
             prefix=remark,
             frame=" ",
             euler_angle_convention
-              =self.rigid_body_shift_accamulator.euler_angle_convention,
-            rotations=self.rigid_body_shift_accamulator.rotations,
-            translations=self.rigid_body_shift_accamulator.translations)
+              =self.rigid_body_shift_accumulator.euler_angle_convention,
+            rotations=self.rigid_body_shift_accumulator.rotations,
+            translations=self.rigid_body_shift_accumulator.translations)
     #
     #
     if(self.short):
