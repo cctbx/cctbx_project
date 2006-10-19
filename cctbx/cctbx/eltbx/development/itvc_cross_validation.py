@@ -1,6 +1,6 @@
 from cctbx.eltbx.development import itvc_section61_io
 from cctbx.eltbx.gaussian_fit import international_tables_stols
-from libtbx.optparse_wrapper import OptionParser
+from libtbx.option_parser import OptionParser
 import sys
 
 def show_differences_if_any(label, stols, y0, y1):

@@ -3,7 +3,7 @@ from cctbx.eltbx.development.format_gaussian_fits import expected_labels
 from cctbx.eltbx.gaussian_fit import international_tables_stols
 import scitbx.math.gaussian
 from cctbx.array_family import flex
-from libtbx.optparse_wrapper import OptionParser
+from libtbx.option_parser import OptionParser
 from libtbx import easy_pickle
 
 def pick_nicest_fit(fit_0, fit_1):

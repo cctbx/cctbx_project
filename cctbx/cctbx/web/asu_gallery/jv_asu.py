@@ -6,7 +6,7 @@ from cctbx.sgtbx.direct_space_asu import reference_table
 from cctbx.sgtbx.direct_space_asu import facet_analysis
 from cctbx import sgtbx
 from scitbx import matrix
-from libtbx.optparse_wrapper import OptionParser
+from libtbx.option_parser import OptionParser
 import urllib
 import math
 import sys, os

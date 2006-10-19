@@ -2,7 +2,7 @@ from cctbx.eltbx.development import itvc_section61_io
 from cctbx.eltbx.development import kissel_io
 import cctbx.eltbx.gaussian_fit
 from cctbx.array_family import flex
-from libtbx.optparse_wrapper import OptionParser
+from libtbx.option_parser import OptionParser
 import cStringIO as StringIO
 import sys, os
 

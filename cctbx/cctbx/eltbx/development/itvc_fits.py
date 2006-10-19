@@ -5,7 +5,7 @@ from cctbx.eltbx import xray_scattering
 import scitbx.math.gaussian_fit
 import cctbx.eltbx.gaussian_fit
 from cctbx.array_family import flex
-from libtbx.optparse_wrapper import OptionParser
+from libtbx.option_parser import OptionParser
 from libtbx.utils import user_plus_sys_time
 from libtbx import easy_pickle
 import sys, os

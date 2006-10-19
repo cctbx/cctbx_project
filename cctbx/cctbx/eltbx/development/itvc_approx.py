@@ -3,7 +3,7 @@ from cctbx.eltbx import xray_scattering
 import scitbx.math.gaussian_fit
 import cctbx.eltbx.gaussian_fit
 from cctbx.array_family import flex
-from libtbx.optparse_wrapper import OptionParser
+from libtbx.option_parser import OptionParser
 import sys, os
 
 def run(file_name, table_of_gaussians, cutoff,
