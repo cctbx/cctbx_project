@@ -76,6 +76,10 @@ except AttributeError:
 
 class virtual_memory_info(proc_file_reader):
 
+  max_virtual_memory_size = 0
+  max_resident_set_size = 0
+  max_stack_size = 0
+
   def __init__(self):
     try:
       self.proc_status = open(_proc_status).read()
@@ -83,27 +87,55 @@ class virtual_memory_info(proc_file_reader):
       self.proc_status = None
 
   def virtual_memory_size(self):
-    return self.get_bytes('VmSize:')
+    result = self.get_bytes('VmSize:')
+    virtual_memory_info.max_virtual_memory_size = max(
+    virtual_memory_info.max_virtual_memory_size, result)
+    return result
 
   def resident_set_size(self):
-    return self.get_bytes('VmRSS:')
+    result = self.get_bytes('VmRSS:')
+    virtual_memory_info.max_resident_set_size = max(
+    virtual_memory_info.max_resident_set_size, result)
+    return result
 
   def stack_size(self):
-    return self.get_bytes('VmStk:')
+    result = self.get_bytes('VmStk:')
+    virtual_memory_info.max_stack_size = max(
+    virtual_memory_info.max_stack_size, result)
+    return result
 
-  def show(self, out=None, prefix=""):
+  def update_max(self):
+    if (self.proc_status is not None):
+      self.virtual_memory_size()
+      self.resident_set_size()
+      self.stack_size()
+
+  def show(self, out=None, prefix="", show_max=False):
     if (out is None): out = sys.stdout
     vms = size_as_string_with_commas(self.virtual_memory_size())
     rss = size_as_string_with_commas(self.resident_set_size())
     sts = size_as_string_with_commas(self.stack_size())
     fmt = "%%%ds" % max(len(vms), len(rss), len(sts))
-    print >> out, prefix+"Virtual memory size:", fmt % vms
-    print >> out, prefix+"Resident set size:  ", fmt % rss
-    print >> out, prefix+"Stack size:         ", fmt % sts
+    lvms = prefix + "Virtual memory size:"
+    lrss = prefix + "Resident set size:  "
+    lsts = prefix + "Stack size:         "
+    if (not show_max):
+      print >> out, lvms, fmt % vms
+      print >> out, lrss, fmt % rss
+      print >> out, lsts, fmt % sts
+    else:
+      vmi = virtual_memory_info
+      max_vms = size_as_string_with_commas(vmi.max_virtual_memory_size)
+      max_rss = size_as_string_with_commas(vmi.max_resident_set_size)
+      max_sts = size_as_string_with_commas(vmi.max_stack_size)
+      max_fmt = "%%%ds" % max(len(max_vms), len(max_rss), len(max_sts))
+      print >> out, lvms, fmt % vms, "  approx. max:", max_fmt % max_vms
+      print >> out, lrss, fmt % rss, "  approx. max:", max_fmt % max_rss
+      print >> out, lsts, fmt % sts, "  approx. max:", max_fmt % max_sts
 
-  def show_if_available(self, out=None, prefix=""):
+  def show_if_available(self, out=None, prefix="", show_max=False):
     if (self.proc_status is not None):
-      self.show(out=out, prefix=prefix)
+      self.show(out=out, prefix=prefix, show_max=show_max)
 
 try:
   _proc_meminfo = "/proc/meminfo"
@@ -138,6 +170,10 @@ if (__name__ == "__main__"):
     return varnames()
   assert exercise_varnames(1,2,3) == ("a", "b", "c")
   virtual_memory_info().show()
+  buffer = [0]*1000000
+  virtual_memory_info().update_max()
+  del buffer
+  virtual_memory_info().show(show_max=True)
   machine_memory_info().show()
   assert str(caller_location()).find("introspection") > 0
   print "OK"
