@@ -820,6 +820,10 @@ class manager(object):
       self.abcd = abcd
     if(alpha_beta_params is not None):
       self.alpha_beta_params = alpha_beta_params
+    if(xray_structure is not None):
+       self.update_xray_structure(xray_structure = xray_structure,
+                                  update_f_mask  = True,
+                                  update_f_calc  = True)
     return self
 
   def f_ordered_solvent_w(self):
@@ -1473,81 +1477,32 @@ class manager(object):
     out.flush()
     p = " "
     if(header is None): header = ""
-    line_len = len("|-"+"|"+header)
+    d_max, d_min = self.f_obs.d_max_min()
+    line1 = "---(resolution: "
+    line2 = n_as_s("%6.2f",d_min)
+    line3 = n_as_s("%6.2f",d_max)
+    line4 = " - "
+    line5 = " A)"
+    tl = header+line1+line2+line4+line3+line5
+    line_len = len("|-"+"|"+tl)
     fill_len = 80-line_len-1
-    print >> out, "|-"+header+"-"*(fill_len)+"|"
+    print >> out, "|-"+tl+"-"*(fill_len)+"|"
     print >> out, "| "+"  "*38+"|"
-    r_work     = n_as_s("%6.4f",self.r_work()    )
-    r_test     = n_as_s("%6.4f",self.r_free()    )
-    scale_work = n_as_s("%7.4f",self.scale_k1_w())
-    scale_test = n_as_s("%7.4f",self.scale_k1_t())
-    d_max, d_min = self.f_obs_w.d_max_min()
-    d = 6.0
-    if(d_max < d): d = d_max
-    if(d_min > d): d = d_min
-    if(self.f_obs_w.resolution_filter(d_min = d, d_max = 999.9).data().size() > 0 and
-       self.f_obs_t.resolution_filter(d_min = d, d_max = 999.9).data().size() > 0):
-       r_work_l = self.r_work(d_min = d, d_max = 999.9)
-       r_test_l = self.r_free(d_min = d, d_max = 999.9)
-    else:
-       r_work_l = None
-       r_test_l = None
-    if(self.f_obs_w.resolution_filter(d_min = 0.0, d_max = d).data().size() > 0 and
-       self.f_obs_t.resolution_filter(d_min = 0.0, d_max = d).data().size() > 0):
-       r_work_h = self.r_work(d_min = 0.0, d_max = d)
-       r_test_h = self.r_free(d_min = 0.0, d_max = d)
-    else:
-       r_work_h = None
-       r_test_h = None
-    if(r_work_l is not None and r_test_l is not None):
-       r_work_l = n_as_s("%6.4f",r_work_l)
-       r_test_l = n_as_s("%6.4f",r_test_l)
-    else:
-       r_work_l = n_as_s("%6.4f",0.0)
-       r_test_l = n_as_s("%6.4f",0.0)
-    if(r_work_h is not None and r_test_h is not None):
-       r_work_h = n_as_s("%6.4f",r_work_h)
-       r_test_h = n_as_s("%6.4f",r_test_h)
-    else:
-       r_work_h = n_as_s("%6.4f",0.0)
-       r_test_h = n_as_s("%6.4f",0.0)
-    k_sol = n_as_s("%6.2f",self.k_sol())
-    b_sol = n_as_s("%7.2f",self.b_sol())
+    r_work = n_as_s("%6.4f",self.r_work()    )
+    r_free = n_as_s("%6.4f",self.r_free()    )
+    scale  = n_as_s("%6.3f",self.scale_k1_w())
+    k_sol  = n_as_s("%4.2f",self.k_sol())
+    b_sol  = n_as_s("%6.2f",self.b_sol())
     b0,b1,b2,b3,b4,b5 = n_as_s("%7.2f",self.b_cart())
-    b_iso = n_as_s("%7.2f",self.u_iso())
-    try:    target_work = n_as_s("%13.6E",self.target_w())
+    b_iso  = n_as_s("%7.2f",self.u_iso())
+    err    = n_as_s("%6.2f",self.model_error_ml())
+    try:    target_work = n_as_s("%.6g",self.target_w())
     except: target_work = str(None)
-    try:    target_test = n_as_s("%13.6E",self.target_t())
-    except: target_test = str(None)
-    rr = self.f_obs.resolution_range()
-    all_data = \
-       "| all "+"["+n_as_s("%5.1f",rr[0])+"-"+n_as_s("%5.2f",rr[1])+"]"
-    high_resolution = \
-       "high resolution "+"["+n_as_s("%5.1f",d)+"-"+n_as_s("%5.2f",rr[1])+"]"
-    low_resolution = \
-       "low resolution "+"["+n_as_s("%5.1f",rr[0])+"-"+n_as_s("%5.2f",d)+"]"
-    line = all_data+"  "+high_resolution+"  "+low_resolution
+    line = "| r_work= "+r_work+"   r_free= "+r_free+"   ksol= "+k_sol+\
+           "   Bsol= "+b_sol+"   scale= "+scale
     np = 79 - (len(line) + 1)
-    line1 = line + " "*np + "|"
-    print >> out, line1
-    line2s1 = "| r_work = "+r_work
-    line2s2 = line2s1+" "*(line1.index("h")-len(line2s1))+"r_work = "+r_work_h
-    line2 = line2s2+" "*(line1.index("low")-len(line2s2))+"r_work = "+r_work_l
-    np = 79 - (len(line2) + 1)
-    line2 = line2 + " "*np + "|"
-    print >> out, line2
-    line2s1 = "| r_free = "+r_test
-    line2s2 = line2s1+" "*(line1.index("h")-len(line2s1))+"r_free = "+r_test_h
-    line2 = line2s2+" "*(line1.index("low")-len(line2s2))+"r_free = "+r_test_l
-    np = 79 - (len(line2) + 1)
-    line2 = line2 + " "*np + "|"
-    print >> out, line2
-    print >> out, "| "+"  "*38+"|"
-    line3 = "| scale (work) = "+scale_work+"  scale (free) = "+scale_test+\
-            "  ksol = "+k_sol+"  Bsol = "+b_sol
-    np = 79 - (len(line3) + 1)
-    line3 = line3 + " "*np + "|"
-    print >> out, line3
+    if(np < 0): np = 0
+    print >> out, line + p*np + "|"
     print >> out, "| "+"  "*38+"|"
     print >> out, "| overall anisotropic scale matrix (Cartesian basis):    "\
                   "                     |"
@@ -1561,14 +1516,11 @@ class manager(object):
     line5 = line5 + " "*np + "|"
     print >> out, line5
     print >> out, "| "+"  "*38+"|"
-    line6 = "| Target "+self.target_name+":  work = "+target_work+"  free = "+\
-            target_test
+    line6="| Target ("+self.target_name+")= "+target_work+\
+          " | ML estimate for coordinates error: "+err+" A"
     np = 79 - (len(line6) + 1)
     line6 = line6 + " "*np + "|"
     print >> out, line6
-    print >> out, "| "+"  "*38+"|"
-    print >> out, "| Maximum-likelihood estimate for coordinates uncertainty: "\
-                  "%5.2f A            |"%self.model_error_ml()
     print >> out, "|"+"-"*77+"|"
     out.flush()
     time_show += timer.elapsed()
@@ -1779,10 +1731,10 @@ def show_fom_phase_error_alpha_beta_in_bins(fmodel,
   print >> out, "|and distribution parameters alpha and beta" \
                   " (Acta Cryst. (1995). A51, 880-887)|"
   print >> out, "|"+" "*77+"|"
-  print >> out, "| Bin     Resolution      No. Refl.   FOM   Phase error    "\
-                " Alpha        Beta |"
-  print >> out, "|  #        range        work  test        work      test  "\
-                "                   |"
+  print >> out, "| Bin     Resolution      No. Refl.   FOM   Phase error   "\
+                " Alpha        Beta  |"
+  print >> out, "|  #        range        work  test        work    test  "\
+                "                     |"
   for i_bin in test_set.binner().range_used():
     sel = mi_fom.binner().selection(i_bin)
     sel_work = mi_per_work.binner().selection(i_bin)
@@ -1806,7 +1758,7 @@ def show_fom_phase_error_alpha_beta_in_bins(fmodel,
     assert nt+nw == sel_mi_b.data().size()
     d_range = mi_fom.binner().bin_legend(i_bin=i_bin, show_bin_number=False,\
                                          show_counts=False)
-    print >> out, "|%3d: %s%6d%6d%6.3f%8.3f%8.3f%8.3f%12.3f |" % (
+    print >> out, "|%3d: %s%6d%6d%6.2f%7.2f%7.2f%9.2f%14.2f|" % (
       i_bin,d_range,nw,nt,sel_mi_fom_ave,sel_mi_per_work_ave,\
       sel_mi_per_test_ave,sel_mi_a_ave,sel_mi_b_ave)
   alpha_min  = flex.min(alpha.data())
@@ -1824,19 +1776,16 @@ def show_fom_phase_error_alpha_beta_in_bins(fmodel,
   per_min_test    = flex.min(phase_errors_test)
   per_max_test    = flex.max(phase_errors_test)
   per_mean_test   = flex.mean(phase_errors_test)
-  print >> out, \
-    "|alpha:            min = %12.4f max = %12.4f mean = %12.4f  |" % \
-      (alpha_min, alpha_max, alpha_mean)
-  print >> out, \
-    "|beta:             min = %12.4f max = %12.4f mean = %12.4f  |" % \
-      (beta_min, beta_max, beta_mean)
-  print >> out, \
-    "|figures of merit: min = %12.4f max = %12.4f mean = %12.4f  |" % \
-      (fom_min, fom_max, fom_mean)
-  print >> out,"|phase err.(work): min =%13.4f max =%13.4f mean =%13.4f  |" % \
-      (per_min_work, per_max_work, per_mean_work)
-  print >> out,"|phase err.(test): min =%13.4f max =%13.4f mean =%13.4f  |" % \
-      (per_min_test, per_max_test, per_mean_test)
+  print >>out, "|alpha:            min =%12.2f max =%16.2f mean =%13.2f|"%\
+                                       (alpha_min,    alpha_max,    alpha_mean)
+  print >>out, "|beta:             min =%12.2f max =%16.2f mean =%13.2f|"%\
+                                        (beta_min,     beta_max,     beta_mean)
+  print >>out, "|figures of merit: min =%12.2f max =%16.2f mean =%13.2f|"%\
+                                         (fom_min,      fom_max,      fom_mean)
+  print >>out, "|phase err.(work): min =%12.2f max =%16.2f mean =%13.2f|"%\
+                                    (per_min_work, per_max_work, per_mean_work)
+  print >>out, "|phase err.(test): min =%12.2f max =%16.2f mean =%13.2f|"%\
+                                    (per_min_test, per_max_test, per_mean_test)
   if(alpha_min <= 0.0):
     print >> out, "| *** f_model warning: there are some alpha <= 0.0 ***" \
       "                        |"

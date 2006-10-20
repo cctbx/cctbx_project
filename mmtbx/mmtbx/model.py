@@ -788,11 +788,11 @@ class stereochemistry_statistics(object):
                          data    = flex.abs(nonbonded_distances_2))
     print >> out, "|-----------------------------------------------------------------------------|"
     print >> out, "|                 Histograms for start / current models of                    |"
-    print >> out, "|                        |                          |                         |"
+    print >> out, "|                       |                           |                         |"
     print >> out, "|        deviations from ideal values for           |                         |"
-    print >> out, "|                        |                          |                         |"
-    print >> out, "| bonds                  | angles                   | nonbonded contacts      |"
-    print >> out, "|                        |                          |                         |"
+    print >> out, "|                       |                           |                         |"
+    print >> out, "| bonds                 |angles                     |nonbonded contacts       |"
+    print >> out, "|                       |                           |                         |"
     show_6_histograms(h_1, h_2, h_3, h_4, h_5, h_6, n_slots = n_slots, out=out)
     print >> out, "|"+"-"*77+"|"
     out.flush()
@@ -883,7 +883,7 @@ def show_4_histograms(h_1, h_2, h_3, h_4, n_slots, out):
   out.flush()
 
 def show_6_histograms(h_1, h_2, h_3, h_4, h_5, h_6, n_slots, out):
-  format = "|%5.3f-%5.3f: %5d/%5d|%6.2f-%6.2f: %5d/%5d|%5.2f-%5.2f: %5d/%5d |"
+  format = "|%4.2f-%4.2f:%6d/%6d|%6.2f-%6.2f:%6d/%6d|%4.2f-%4.2f:%6d/%6d  |"
   lc_1 = h_1.data_min()
   lc_2 = h_2.data_min()
   lc_3 = h_3.data_min()

@@ -10,6 +10,7 @@ from scitbx import matrix
 import sys
 import iotbx.xplor.map
 import iotbx.phil
+from libtbx import introspection
 
 mask_master_params = iotbx.phil.parse("""\
   solvent_radius = 1.0
@@ -53,6 +54,7 @@ class bulk_solvent(around_atoms):
        gridding_n_real=gridding_n_real,
        solvent_radius=solvent_radius,
        shrink_truncation_radius=shrink_truncation_radius)
+     introspection.virtual_memory_info().update_max()
 
   def show_summary(self, out=None):
     if (out is None): out = sys.stdout
