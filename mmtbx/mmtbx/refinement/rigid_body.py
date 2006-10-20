@@ -300,7 +300,6 @@ class manager(object):
                      convergence_delta       = 0.00001,
                      use_only_low_resolution = False,
                      bulk_solvent_and_scale  = True,
-                     max_shift_for_bss_update= 0.0,
                      bss                     = None,
                      euler_angle_convention  = "xyz",
                      log                     = None):
@@ -338,17 +337,28 @@ class manager(object):
     d_mins = setup_search_range(f = fmodel_copy.f_obs_w, nref_min = nref_min)
     if(use_only_low_resolution):
        if(len(d_mins) > 1): d_mins = d_mins[:-1]
-    print >> log, "High resolution cutoffs for mz-protocol: ", \
-                  [str("%.3f"%i) for i in d_mins]
+    line = " ".join(["High resolution cutoffs for mz-protocol:"]+
+                                              [str("%5.2f"%i) for i in d_mins])
+    print_statistics.make_sub_header(line, out = log)
     step_counter = 0
     time_initialization += timer_rigid_body_total.elapsed()
+    fmodel.show_essential(header = "rigid body start", out = log)
+    print >> log
+    self.show(f     = fmodel_copy.f_obs_w,
+              r_mat = self.total_rotation,
+              t_vec = self.total_translation,
+              mc    = 0,
+              it    = 0.0,
+              ct    = convergence_test,
+              out   = log)
     for res in d_mins:
         xrs = fmodel_copy.xray_structure.deep_copy_scatterers()
         fmodel_copy = fmodel.resolution_filter(d_min = res)
         d_max_min = fmodel_copy.f_obs_w.d_max_min()
-        line = "Refinement at resolution: "+str("%7.1f"%d_max_min[0]).strip()+\
-               " - "+str("%6.1f"%d_max_min[1]).strip()
-        print_statistics.make_sub_header(line, out=log)
+        line = "Refinement at resolution: "+\
+                 str("%7.1f"%d_max_min[0]).strip()+" - "+\
+                 str("%6.1f"%d_max_min[1]).strip()
+        print_statistics.make_sub_header(line, out = log)
         timer_uxs = user_plus_sys_time()
         fmodel_copy.update_xray_structure(xray_structure = xrs,
                                           update_f_calc  = True)
@@ -359,7 +369,6 @@ class manager(object):
         else:
            n_rigid_body_macro_cycles = min(int(res),4)
         for i_macro_cycle in xrange(n_rigid_body_macro_cycles):
-            if(i_macro_cycle != 0): print >> log
             if(bss is not None and bulk_solvent_and_scale):
                if(fmodel_copy.f_obs.d_min() > 3.0):
                   save_bss_anisotropic_scaling = bss.anisotropic_scaling
@@ -369,9 +378,6 @@ class manager(object):
                                                     out     = log,
                                                     verbose = -1)
                time_rbbss += timer_rbbss.elapsed()
-               line = "bulk solvent correction (and anisotropic scaling); " + \
-                      str("macro-cycle = %-3d"%(i_macro_cycle+1)).strip()
-               fmodel_copy.show_essential(header = line, out = log)
                if(fmodel_copy.f_obs.d_min() > 3.0):
                   bss.anisotropic_scaling=save_bss_anisotropic_scaling
             minimized = rigid_body_minimizer(
@@ -408,16 +414,14 @@ class manager(object):
             rwork = minimized.fmodel.r_work()
             rfree = minimized.fmodel.r_free()
             assert approx_equal(rwork, fmodel_copy.r_work())
-            self.show(f     = fmodel_copy.f_obs_w,
-                      r_mat = self.total_rotation,
-                      t_vec = self.total_translation,
-                      rw    = rwork,
-                      rf    = rfree,
-                      tw    = minimized.fmodel.target_w(),
-                      mc    = i_macro_cycle+1,
-                      it    = minimized.counter,
-                      ct    = convergence_test,
-                      out   = log)
+            if(i_macro_cycle == n_rigid_body_macro_cycles-1):
+               self.show(f     = fmodel_copy.f_obs_w,
+                         r_mat = self.total_rotation,
+                         t_vec = self.total_translation,
+                         mc    = i_macro_cycle+1,
+                         it    = minimized.counter,
+                         ct    = convergence_test,
+                         out   = log)
             if(convergence_test):
                rworks.append(rwork)
                if(rworks.size() > 1):
@@ -426,9 +430,13 @@ class manager(object):
                      break
         step_counter += 1
     timer_uxs = user_plus_sys_time()
-    fmodel.update_xray_structure(xray_structure = fmodel_copy.xray_structure,
-                                 update_f_mask  = True,
-                                 update_f_calc  = True)
+    fmodel.update(xray_structure = fmodel_copy.xray_structure,
+                  k_sol          = fmodel_copy.k_sol(),
+                  b_sol          = fmodel_copy.b_sol(),
+                  b_cart         = fmodel_copy.b_cart())
+    print >> log
+    fmodel.show_essential(header = "rigid body end", out = log)
+    print >> log
     time_fmodel_update_xray_structure += timer_uxs.elapsed()
     self.fmodel = fmodel
     time_rigid_body_total += timer_rigid_body_total.elapsed()
@@ -442,9 +450,6 @@ class manager(object):
   def show(self, f,
                  r_mat,
                  t_vec,
-                 rw,
-                 rf,
-                 tw,
                  mc,
                  it,
                  ct,
@@ -455,9 +460,9 @@ class manager(object):
     mc = str(mc)
     it = str(it)
     if(self.euler_angle_convention == "zyz"):
-       part1 = "|-rigid body refinement: Euler angles zyz (macro cycle = "
+       part1 = "|-Euler angles zyz (macro cycle = "
     else:
-       part1 = "|-rigid body refinement: Euler angles xyz (macro cycle = "
+       part1 = "|-Euler angles xyz (macro cycle = "
     part2 = "; iterations = "
     n = 77 - len(part1 + part2 + mc + it)
     part3 = ")"+"-"*n+"|"
@@ -474,12 +479,6 @@ class manager(object):
     n = 78 - len(part1+d_max+part2+d_min+part3+nref+part4)
     part5 = " "*n+"|"
     print >> out, part1+d_max+part2+d_min+part3+nref+part4+part5
-    rw = "| r_work = "+str("%.6f"%rw)
-    rf = " r_free = "+str("%.6f"%rf)
-    tw = " target = "+str("%.6f"%tw)
-    n = 78 - len(rw+rf+tw)
-    end = " "*n+"|"
-    print >> out, rw+rf+tw+end
     print_statistics.show_rigid_body_rotations_and_translations(
       out=out,
       prefix="",
