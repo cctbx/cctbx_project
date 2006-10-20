@@ -3,18 +3,21 @@
 import sys, os
 
 def int_or_none(v):
-  if (v is None): return None
+  if (v is None or v == "undefined"): return None
   return int(v)
 
+def arch():
+  return os.environ.get("SGE_ARCH")
+
 def job_id():
-  return int_or_none(os.environ.get("JOB_ID", None))
+  return int_or_none(os.environ.get("JOB_ID"))
 
 class task_info:
 
   def __init__(self):
-    self.first = int_or_none(os.environ.get("SGE_TASK_FIRST", None))
-    self.last = int_or_none(os.environ.get("SGE_TASK_LAST", None))
-    self.id = int_or_none(os.environ.get("SGE_TASK_ID", None))
+    self.first = int_or_none(os.environ.get("SGE_TASK_FIRST"))
+    self.last = int_or_none(os.environ.get("SGE_TASK_LAST"))
+    self.id = int_or_none(os.environ.get("SGE_TASK_ID"))
     assert [self.first, self.last, self.id].count(None) in [0, 3]
 
   def show(self, out=None):
