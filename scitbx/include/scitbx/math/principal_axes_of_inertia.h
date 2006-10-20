@@ -8,6 +8,7 @@ namespace scitbx { namespace math {
 
   namespace detail {
 
+    inline 
     std::string
     report_negative_weight(
       double weight,
