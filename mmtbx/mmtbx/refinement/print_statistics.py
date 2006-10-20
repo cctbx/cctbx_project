@@ -30,7 +30,7 @@ def show_times(out = None):
 
 def show_process_info(out):
   print >> out, "\\/"*39
-  introspection.virtual_memory_info().show_if_available(out=out)
+  introspection.virtual_memory_info().show_if_available(out=out, show_max=True)
   xray.structure_factors.global_counters.show(out=out)
   print >> out, format_cpu_times()
   print >> out, "/\\"*39
