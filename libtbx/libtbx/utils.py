@@ -21,6 +21,8 @@ def getenv_bool(variable_name, default=False):
 
 def copy_file(source, target):
   assert os.path.isfile(source)
+  if (os.path.isdir(target)):
+    target = os.path.join(target, os.path.basename(source))
   open(target, "wb").write(open(source, "rb").read())
 
 def remove_files(pattern):
