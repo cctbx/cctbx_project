@@ -6,6 +6,25 @@
 namespace scitbx { namespace matrix {
 
   template <typename T>
+  af::shared<T>
+  copy_column(
+    af::const_ref<T, af::c_grid<2> > const& self,
+    unsigned i_column)
+  {
+    unsigned n_rows = self.accessor()[0];
+    unsigned n_columns = self.accessor()[1];
+    SCITBX_ASSERT(i_column < n_columns);
+    af::shared<T> result(n_rows, af::init_functor_null<T>());
+    T* r = result.begin();
+    const T* s = &self[i_column];
+    for(;n_rows>0;n_rows--) {
+      *r++ = *s;
+      s += n_columns;
+    }
+    return result;
+  }
+
+  template <typename T>
   af::versa<T, af::c_grid<2> >
   copy_block(
     af::const_ref<T, af::c_grid<2> > const& self,
