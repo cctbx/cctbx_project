@@ -306,6 +306,12 @@ namespace boost_python {
         (void(*)(
           ref<double, c_grid<2> > const&))
             matrix::copy_lower_to_upper_triangle_in_place)
+      .def("matrix_copy_column",
+        (shared<double>(*)(
+          const_ref<double, c_grid<2> > const&,
+          unsigned))
+            matrix::copy_column, (
+              arg_("i_column")))
       .def("matrix_copy_block",
         (versa<double, c_grid<2> >(*)(
           const_ref<double, c_grid<2> > const&,

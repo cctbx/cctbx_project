@@ -2016,6 +2016,27 @@ def exercise_matrix_move():
           assert list(u) == list(b.matrix_upper_triangle_as_packed_u())
           u.matrix_packed_u_swap_rows_and_columns_in_place(i=i, j=j)
           assert list(u) == list(b0.matrix_upper_triangle_as_packed_u())
+  #
+  for n_columns in xrange(1,4):
+    a = flex.double(flex.grid(0, n_columns))
+    b = a.matrix_copy_column(i_column=0)
+    assert b.size() == 0
+  a = flex.double([[1]])
+  b = a.matrix_copy_column(i_column=0)
+  assert list(b) == [1]
+  a = flex.double([[1,2]])
+  b = a.matrix_copy_column(i_column=0)
+  assert list(b) == [1]
+  b = a.matrix_copy_column(i_column=1)
+  assert list(b) == [2]
+  a = flex.double([[1],[2]])
+  b = a.matrix_copy_column(i_column=0)
+  assert list(b) == [1,2]
+  a = flex.double([[1,2],[3,4]])
+  b = a.matrix_copy_column(i_column=0)
+  assert list(b) == [1,3]
+  b = a.matrix_copy_column(i_column=1)
+  assert list(b) == [2,4]
 
 def exercise_matrix_inversion_in_place():
   m = flex.double()
