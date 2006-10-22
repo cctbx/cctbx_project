@@ -36,6 +36,28 @@ namespace scitbx {
         }
       }
 
+      //! Histogram using user-defined data_min(), data_max().
+      template <typename DataType>
+      histogram(
+        af::const_ref<DataType> const& data,
+        DataType const& data_min,
+        DataType const& data_max,
+        std::size_t n_slots=1000,
+        ValueType const& relative_tolerance=1.e-4)
+      :
+        data_min_(data_min),
+        data_max_(data_max),
+        slot_width_(0),
+        slots_(n_slots),
+        n_out_of_slot_range_(0)
+      {
+        SCITBX_ASSERT(data_max > data_min);
+        SCITBX_ASSERT(n_slots > 0);
+        if (data.size() == 0) return;
+        slot_width_ = (data_max_ - data_min_) / slots_.size();
+        assign_to_slots(data, relative_tolerance);
+      }
+
       //! Histogram using slots of other.
       template <typename DataType>
       histogram(
@@ -49,23 +71,14 @@ namespace scitbx {
         slots_(other.slots_.size()),
         n_out_of_slot_range_(0)
       {
-        ValueType width_tolerance = slot_width_ * relative_tolerance;
-        for(std::size_t i=0;i<data.size();i++) {
-          if (   data[i] < data_min_ - width_tolerance
-              || data[i] > data_max_ + width_tolerance) {
-            n_out_of_slot_range_++;
-          }
-          else {
-            assign_to_slot(static_cast<ValueType>(data[i] - data_min_));
-          }
-        }
+        assign_to_slots(data, relative_tolerance);
       }
 
-      //! Minimum value in data array passed to the constructor.
+      //! Minimum slot cutoff.
       ValueType
       data_min() const { return data_min_; }
 
-      //! Maximum value in data array passed to the constructor.
+      //! Maximum slot cutoff.
       ValueType
       data_max() const { return data_max_; }
 
@@ -95,7 +108,7 @@ namespace scitbx {
         return data_min_ + i * slot_width_ + slot_width_ * relative_tolerance;
       }
 
-    private:
+    protected:
       void
       assign_to_slot(ValueType const& d)
       {
@@ -105,6 +118,24 @@ namespace scitbx {
           if (i_slot >= slots_.size()) i_slot = slots_.size() - 1;
         }
         slots_[i_slot]++;
+      }
+
+      template <typename DataType>
+      void
+      assign_to_slots(
+        af::const_ref<DataType> const& data,
+        ValueType const& relative_tolerance)
+      {
+        ValueType width_tolerance = slot_width_ * relative_tolerance;
+        for(std::size_t i=0;i<data.size();i++) {
+          if (   data[i] < data_min_ - width_tolerance
+              || data[i] > data_max_ + width_tolerance) {
+            n_out_of_slot_range_++;
+          }
+          else {
+            assign_to_slot(static_cast<ValueType>(data[i] - data_min_));
+          }
+        }
       }
 
       ValueType data_min_;

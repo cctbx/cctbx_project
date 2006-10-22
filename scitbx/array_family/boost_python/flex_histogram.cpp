@@ -27,6 +27,17 @@ namespace scitbx { namespace af { namespace boost_python { namespace {
                   optional<std::size_t> >((
           arg_("data"),
           arg_("n_slots")=1000)))
+        .def(init<af::const_ref<double> const&,
+                  double const&,
+                  double const&,
+                  optional<
+                    std::size_t,
+                    double const&> >((
+          arg_("data"),
+          arg_("data_min"),
+          arg_("data_max"),
+          arg_("n_slots")=1000,
+          arg_("relative_tolerance")=1.e-4)))
         .def(init<w_t const&,
                   af::const_ref<double> const&,
                   optional<double const&> >((

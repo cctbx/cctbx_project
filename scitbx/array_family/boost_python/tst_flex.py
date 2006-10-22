@@ -1092,6 +1092,17 @@ def exercise_histogram():
 *11.4 - 15.2: 4
 *15.2 - 19: 7
 """
+  hy = flex.histogram(
+    data=y, data_min=2, data_max=10, n_slots=4, relative_tolerance=1.e-4)
+  s = StringIO()
+  hy.show(f=s, prefix="&")
+  assert s.getvalue() == """\
+&2 - 4: 2
+&4 - 6: 2
+&6 - 8: 2
+&8 - 10: 3
+"""
+  assert hy.n_out_of_slot_range() == 17
 
 def simple_linear_regression(x_obs, y_obs, w_obs):
   assert len(x_obs) == len(y_obs)
