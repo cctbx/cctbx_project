@@ -198,8 +198,11 @@ def format_cpu_times(show_micro_seconds_per_tick=True):
 
 class show_times:
 
-  def __init__(self, time_start, out=None):
-    if (time_start == "now"):
+  def __init__(self, time_start=None, out=None):
+    if (time_start is None):
+      t = os.times()
+      self.time_start = time.time() - (t[0] + t[1])
+    elif (time_start == "now"):
       self.time_start = time.time()
     else:
       self.time_start = -(0-time_start) # be sure time_start is a number
@@ -228,7 +231,7 @@ class show_times:
       print >> out, "%d minutes %.2f seconds (%.2f seconds total)" % (
         m, s, wall_clock_time)
 
-def show_times_at_exit(time_start="now", out=None):
+def show_times_at_exit(time_start=None, out=None):
   atexit.register(show_times(time_start=time_start, out=out))
 
 class host_and_user:
