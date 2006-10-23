@@ -4,8 +4,6 @@ import libtbx.load_env
 import time
 import sys, os
 
-time_start = time.time()
-
 def find_scons_engine_path():
   join = os.path.join
   isdir = os.path.isdir
@@ -40,7 +38,7 @@ def run():
       "  It may be necessary to rename the unpacked distribution, e.g.:",
       "    mv scons-0.96.1 scons"])
     raise Sorry("\n".join(msg))
-  show_times_at_exit(time_start=time_start)
+  show_times_at_exit()
   SCons.Script.main()
 
 if (__name__ == "__main__"):
