@@ -317,10 +317,12 @@ class server(process_cif_mixin):
     else:
       result = None
     if (result is not None):
+      result.file_name = file_name
       self.comp_comp_id_dict[comp_id] = result
     else:
       result = self.comp_comp_id_dict.get(comp_id)
       if (result is not None):
+        result.file_name = file_name
         self.comp_comp_id_dict[std_comp_id] = result
       else:
         or_std_comp_id = ""
