@@ -159,12 +159,14 @@ def show_rigid_body_rotations_and_translations(
 "                         %s              total           xyz          total "
       % euler_angle_convention, suffix=frame)
   for i,r,t in zip(count(1), rotations, translations):
+    r = list(r)
+    r.reverse()
     r_total = abs(scitbx.math.r3_rotation_axis_and_angle_from_matrix(
       r=euler_angles_as_matrix(*r)).angle(deg=True))
     t_total = abs(matrix.col(t))
     print >> out, (prefix + frame +
       " group %4d: %8.3f %8.3f %8.3f %7.2f  %6.2f %6.2f %6.2f %6.2f "
-        % tuple([i] + list(r) + [r_total] + list(t) + [t_total])
+        % tuple([i] + r + [r_total] + list(t) + [t_total])
       + frame).rstrip()
 
 class refinement_monitor(object):
