@@ -509,6 +509,8 @@ def exercise_principal_axes_of_inertia():
     es = pai.eigensystem()
     assert approx_equal(es.values(), [0,0,0])
     assert approx_equal(es.vectors(), [1,0,0,0,1,0,0,0,1])
+    assert pai.distance_to_inertia_ellipsoid_surface(
+      unit_direction=(1,0,0)) == 0
   for i_trial in xrange(10):
     if (i_trial == 0):
       center_of_mass = [0,0,0]
@@ -524,6 +526,10 @@ def exercise_principal_axes_of_inertia():
     assert approx_equal(es.values(), [36,36,36])
     if (i_trial == 0):
       assert approx_equal(es.vectors(), [1,0,0,0,1,0,0,0,1])
+    assert approx_equal(pai.distance_to_inertia_ellipsoid_surface(
+      unit_direction=(1,0,0)), 36)
+    assert pai.distance_to_inertia_ellipsoid_surface(
+      unit_direction=(0,0,0)) == 0
   for i_trial in xrange(10):
     if (i_trial == 0):
       center_of_mass = [0,0,0]
@@ -583,6 +589,73 @@ def exercise_principal_axes_of_inertia():
     paiw = principal_axes_of_inertia(points=points, weights=weights)
     assert approx_equal(paip.center_of_mass(), paiw.center_of_mass())
     assert approx_equal(paip.inertia_tensor(), paiw.inertia_tensor())
+
+def explore_inertia_tensor_properties(n_trials=10):
+  points = flex.vec3_double([
+    (-1,0,0),
+    (1,0,0),
+    (0,-1,0),
+    (0,1,0),
+    (0,0,-1),
+    (0,0,1)])
+  weights = flex.double([2,2,3,3,7,7])
+  pai = scitbx.math.principal_axes_of_inertia(
+    points=points,
+    weights=weights)
+  es = pai.eigensystem()
+  #
+  mt = flex.mersenne_twister(seed=0)
+  for i_trial in xrange(n_trials):
+    rot_axis = matrix.col(mt.random_double_point_on_sphere())
+    rot_angle = 10 + mt.random_double() * 77
+    rot_matrix = scitbx.math.r3_rotation_axis_and_angle_as_matrix(
+      axis=rot_axis, angle=rot_angle, deg=True)
+    #
+    rot_points = rot_matrix * points
+    rot_pai = scitbx.math.principal_axes_of_inertia(
+      points=rot_points,
+      weights=weights)
+    rot_es = rot_pai.eigensystem()
+    #
+    c = matrix.sqr(rot_matrix).inverse()
+    e = matrix.sym(sym_mat3=rot_pai.inertia_tensor())
+    # this proves the transformation law for the inertia tensor
+    assert approx_equal(
+      (c * e * c.transpose()).as_sym_mat3(),
+      pai.inertia_tensor())
+    #
+    for j_trial in xrange(n_trials):
+      v = matrix.col(mt.random_double_point_on_sphere())
+      rot_v = matrix.sqr(rot_matrix) * v
+      #
+      # most intuitive approach (for rwgk)
+      def es_distance_to_ellipsoid_surface(es, v):
+        assert min(es.values()) > 0
+        a,b,c = es.values()
+        x,y,z = matrix.sqr(es.vectors()) * v # transform v to eigenvector basis
+        # http://mathworld.wolfram.com/Ellipsoid.html
+        f = 1/math.sqrt(x*x/(a*a)+y*y/(b*b)+z*z/(c*c))
+        return f
+      #
+      # alternative approach without involving the eigensystem
+      def it_distance_to_ellipsoid_surface(inertia_tensor, v):
+        iv = matrix.sym(sym_mat3=inertia_tensor).inverse() * v
+        return 1/math.sqrt(iv.dot(iv))
+      #
+      # proves that the intuitive approach works
+      d0 = es_distance_to_ellipsoid_surface(es, v)
+      d = es_distance_to_ellipsoid_surface(rot_es, rot_v)
+      # proves that the alternative approach yields the same results
+      assert approx_equal(d, d0)
+      d = it_distance_to_ellipsoid_surface(pai.inertia_tensor(), v)
+      assert approx_equal(d, d0)
+      d = it_distance_to_ellipsoid_surface(rot_pai.inertia_tensor(), rot_v)
+      assert approx_equal(d, d0)
+      # exercise C++ implementation
+      d = pai.distance_to_inertia_ellipsoid_surface(unit_direction=v)
+      assert approx_equal(d, d0)
+      d = rot_pai.distance_to_inertia_ellipsoid_surface(unit_direction=rot_v)
+      assert approx_equal(d, d0)
 
 def exercise_phase_error():
   for deg in [False, True]:
@@ -1171,6 +1244,7 @@ def run():
   exercise_eigensystem()
   exercise_golay()
   exercise_principal_axes_of_inertia()
+  explore_inertia_tensor_properties()
   exercise_phase_error()
   exercise_row_echelon()
   exercise_tensor_rank_2()

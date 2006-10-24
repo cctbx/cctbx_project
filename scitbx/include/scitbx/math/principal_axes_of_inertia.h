@@ -121,6 +121,23 @@ namespace scitbx { namespace math {
       //! Eigenvectors and eigenvalues of inertia_tensor().
       math::eigensystem::real_symmetric<FloatType> const&
       eigensystem() const { return eigensystem_; }
+
+      //! Distance from center of inertia tensor ellipsoid to its surface.
+      /*! unit_direction must be a vector of length 1. This is not checked
+          to minimize the runtime overhead.
+          If the inertia tensor is degenerate the result is 0.
+       */
+      FloatType
+      distance_to_inertia_ellipsoid_surface(
+        vec3<FloatType> const& unit_direction) const
+      {
+        FloatType d = inertia_tensor_.determinant();
+        if (d == static_cast<FloatType>(0)) return 0;
+        FloatType denom = (  inertia_tensor_.co_factor_matrix_transposed()
+                           * unit_direction).length();
+        if (denom == static_cast<FloatType>(0)) return 0;
+        return d / denom;
+      }
   };
 
 }} // namespace scitbx::math
