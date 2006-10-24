@@ -298,6 +298,8 @@ class detect_pseudo_translations(object):
                height_cut=0.0,
                distance_cut=15.0,
                p_value_cut=0.05,
+               completeness_cut=0.75,
+               cut_radius=3.5,
                out=None,verbose=0):
     if out is None:
       out=sys.stdout
@@ -307,10 +309,11 @@ class detect_pseudo_translations(object):
     work_array = miller_array.resolution_filter(low_limit,high_limit)
     work_array = work_array.select(work_array.data()>0).set_observation_type(
       miller_array)
-    if work_array.indices().size()<20:
+
+    if miller_array.completeness()<completeness_cut:
       print >> out
       print >> out," WARNING: "
-      print >> out,"  There are only %2.0f reflections between %3.1f and %3.1f A."%(
+      print >> out,"  The completeness is only %2.0f between %3.1f and %3.1f A."%(
         work_array.indices().size(), low_limit, high_limit)
       print >> out,"  This might not be enough to obtain a good estimate"
       print >> out,"  of the presence or absense of pseudo translational"
@@ -335,15 +338,28 @@ class detect_pseudo_translations(object):
       print >> out, " ##  the presence of translational NCS"
       everything_okai = False
 
+
+    self.xs = crystal.symmetry(unit_cell=miller_array.unit_cell(),
+                               space_group=miller_array.space_group())
+
     if everything_okai:
 
 
       patterson_map = work_array.patterson_map(
         symmetry_flags=maptbx.use_space_group_symmetry).apply_sigma_scaling()
 
-      peak_list = patterson_map.tags().peak_search(
-        map=patterson_map.real_map(),
-        parameters=maptbx.peak_search_parameters())
+      peak_search_parameters = maptbx.peak_search_parameters(
+        peak_search_level=1,
+        interpolate=True,
+        min_distance_sym_equiv=1e-4,
+        general_positions_only=False,
+        effective_resolution=None,
+        min_cross_distance=cut_radius)
+
+      cluster_analysis = patterson_map.peak_search(
+        parameters=peak_search_parameters)
+
+      peak_list = cluster_analysis.all(max_clusters=1000)
 
       max_height = peak_list.heights()[0]
 
@@ -402,7 +418,6 @@ class detect_pseudo_translations(object):
         if verbose > 0:
           self.show(out)
 
-
   def guesstimate_mod_hkl(self):
     tmp_mod_h = 1.0/(self.high_peak_xyz[0]+1.0e-6)
     tmp_mod_k = 1.0/(self.high_peak_xyz[1]+1.0e-6)
@@ -431,6 +446,8 @@ class detect_pseudo_translations(object):
     else:
       result=0.0
     return result
+
+
 
   def show(self,out=None):
     if out is None:
@@ -1573,6 +1590,13 @@ class twin_results_interpretation(object):
         else:
           print >> self.twinning_verdict,\
             "As the symmetry is suspected to be incorrect, it is advicable to reconsider data processing."
+          if self.twin_results.patterson_p_value <= self.patterson_p_cut:
+            print >> self.twinning_verdict,\
+                     "Note however that the presence of translational NCS (and possible rotational pseudo"
+            print >> self.twinning_verdict,\
+                     "symmetry parallel to the twin axis) can make the detection of twinning difficult."
+            print >> self.twinning_verdict,\
+                     "Trying various space group and twinning hypothesis in structure refinement might provide an answer"
           print >> self.twinning_verdict,\
             " "
 
@@ -2455,5 +2479,4 @@ def twin_analyses_brief(miller_array,
         twinned = True
     if (twin_results.twin_summary.twin_results.maha_l<=cut_off):
         twinned = False
-
   return(twinned)
