@@ -8,6 +8,7 @@ import cctbx.eltbx.xray_scattering
 from cctbx import adptbx
 from cctbx import eltbx
 from cctbx.array_family import flex
+import scitbx.math
 from scitbx import matrix
 from stdlib import math
 import types
@@ -730,6 +731,12 @@ class structure(crystal.special_position_settings):
       atomic_weights = self.atomic_weights()
     return self.sites_cart().mean_weighted(weights=atomic_weights)
 
+  def principal_axes_of_inertia(self, atomic_weights=None):
+    if (atomic_weights is None):
+      atomic_weights = self.atomic_weights()
+    return scitbx.math.principal_axes_of_inertia(
+      points=self.sites_cart(),
+      weights=atomic_weights)
 
   def show_scatterer_flags_summary(self, out=None):
     #XXX move to C++ (after anisotropic_flag is gone)

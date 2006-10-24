@@ -114,6 +114,14 @@ def exercise_structure():
   assert approx_equal(ys.center_of_mass(), (0,0,0))
   ys = xray.structure(xs)
   assert ys.atomic_weights().size() == 0
+  pa1 = xs.principal_axes_of_inertia()
+  pa2 = xs.principal_axes_of_inertia(atomic_weights=aw)
+  assert approx_equal(pa1.center_of_mass(), pa2.center_of_mass())
+  assert approx_equal(pa1.inertia_tensor(), pa2.inertia_tensor())
+  assert approx_equal(pa1.center_of_mass(), (1.335228, 1.071897, 2.815899))
+  assert approx_equal(pa1.inertia_tensor(),
+    (169.46094427548525, 76.773803949363497, 93.746443127965918,
+     7.0265499590972862, -6.3547480051846588, 84.304420337921911))
   ys = xray.structure(sp, scatterers)
   ys.scatterers()[1].occupancy = 0.5
   assert approx_equal(ys.scatterers()[1].weight(),0.25)
