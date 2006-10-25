@@ -310,11 +310,11 @@ class detect_pseudo_translations(object):
     work_array = work_array.select(work_array.data()>0).set_observation_type(
       miller_array)
 
-    if miller_array.completeness()<completeness_cut:
+    if work_array.completeness()<completeness_cut:
       print >> out
       print >> out," WARNING: "
-      print >> out,"  The completeness is only %2.0f between %3.1f and %3.1f A."%(
-        work_array.indices().size(), low_limit, high_limit)
+      print >> out,"  The completeness is only %3.2f between %3.1f and %3.1f A."%(
+        work_array.completeness(), low_limit, high_limit)
       print >> out,"  This might not be enough to obtain a good estimate"
       print >> out,"  of the presence or absense of pseudo translational"
       print >> out,"  symmetry."

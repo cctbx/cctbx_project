@@ -569,6 +569,8 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
                                                    data=miller_array.data(),
                                                    sigmas=None ).set_observation_type( miller_array )
 
+    miller_array = miller_array.eliminate_sys_absent(integral_only=True, log=log)
+
     ## Check if Fcalc label is available
     f_calc_miller = None
     if params.scaling.input.xray_data.calc_labels is not None:
@@ -582,6 +584,8 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
       if not f_calc_miller.is_real_array():
         f_calc_miller = f_calc_miller.customized_copy(
           data = flex.abs( f_calc_miller.data() ) ).set_observation_type(f_calc_miller  )
+
+      f_calc_miller = f_calc_miller.eliminate_sys_absent(integral_only=True, log=log)
 
     twin_results = None
 
@@ -640,6 +644,8 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
         reference_array = reference_array.f_sq_as_f()
       elif (reference_array.is_complex_array()):
         reference_array = abs(reference_array)
+
+      reference_array = reference_array.eliminate_sys_absent(integral_only=True, log=log)
 
     if (miller_array.is_real_array()):
       print >> log
