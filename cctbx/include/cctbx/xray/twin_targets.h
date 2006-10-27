@@ -251,7 +251,9 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
           CCTBX_ASSERT( tmp_loc >= 0 );
           calc_ori_lookup_table_.push_back( tmp_loc );
           tmp_loc = tmp_lookup_object.find_hkl( twin_mate( hkl_obs[ii],twin_law ) );
-          CCTBX_ASSERT( tmp_loc >= 0 );
+          CCTBX_ASSERT( tmp_loc >= 0 ); // If this assertion fails, it means that a twin related calculated miler index is not
+                                        // in the list of calculated / model indices. This could indicate that
+                                        // the free set chosen doesn't have the symmetry of the lattice.
           calc_twin_lookup_table_ .push_back( tmp_loc );
 
 
