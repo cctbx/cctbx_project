@@ -6,6 +6,7 @@
 #include <scitbx/array_family/shared.h>
 #include <scitbx/array_family/accessors/c_grid.h>
 #include <scitbx/sym_mat3.h>
+#include <scitbx/sym_mat2.h>
 #include <boost/scoped_array.hpp>
 
 namespace scitbx { namespace math { namespace eigensystem {
@@ -225,6 +226,10 @@ namespace scitbx { namespace math { namespace eigensystem {
         scitbx::sym_mat3<FloatType> const& m,
         FloatType epsilon=1.e-10);
 
+      real_symmetric(
+        scitbx::sym_mat2<FloatType> const& m,
+        FloatType epsilon=1.e-10);
+
       //! The list of eigenvectors.
       af::versa<FloatType, af::c_grid<2> >
       vectors() const { return vectors_; }
@@ -301,6 +306,24 @@ namespace scitbx { namespace math { namespace eigensystem {
       epsilon);
   }
 
+  template <typename FloatType>
+  real_symmetric<FloatType>::real_symmetric(
+    scitbx::sym_mat2<FloatType> const& m,
+    FloatType epsilon)
+  {
+    FloatType a[3];
+    a[0] = m(0,0);
+    a[1] = m(1,0);
+    a[2] = m(1,1);
+    vectors_.resize(af::c_grid<2>(2, 2));
+    values_.resize(2);
+    detail::real_symmetric_given_lower_triangle(
+      a,
+      std::size_t(2),
+      vectors_.begin(),
+      values_.begin(),
+      epsilon);
+  }
 }}} // namespace scitbx::math::eigensystem
 
 #endif // SCITBX_MATH_EIGENSYSTEM_H

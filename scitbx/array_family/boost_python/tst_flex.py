@@ -1058,6 +1058,77 @@ def exercise_flex_vec3_double():
   assert a.add_selected(indices=i, values=v) is a
   assert approx_equal(a, [(7,4,-3), (-2,3,4), (-1,13,5)])
 
+def exercise_flex_vec2_double():
+  #flex.exercise_triple(flex.vec2_double, as_double=True)
+  a = flex.vec2_double(((1,2), (-2,3), (3,4)))
+  assert approx_equal(a.min(), (-2.0,2.0))
+  assert approx_equal(a.max(), (3.0,4.0))
+  assert approx_equal(a.sum(), (2.0,9.0))
+  assert approx_equal(a.mean(), (2.0/3,9.0/3))
+  weights = flex.double([1,1,1])
+  assert approx_equal(a.mean_weighted(weights=weights), (2.0/3,9.0/3))
+  weights = flex.double([2,3,5])
+  assert approx_equal(a.mean_weighted(weights=weights), (1.1,3.3))
+  a += (10,20)
+  assert approx_equal(tuple(a), ((11,22), (8,23), (13,24)))
+  assert approx_equal(tuple(a+(20,30)), ((31,52),(28,53),(33,54)))
+  assert approx_equal(tuple(a+a),
+    ((2*11,2*22), (2*8,2*23), (2*13,2*24)))
+  a -= (10,20)
+  assert approx_equal(tuple(a), ((1,2), (-2,3), (3,4)))
+  b = a.deep_copy()
+  b *= 3
+  assert approx_equal(tuple(b), ((3,6), (-6,9), (9,12)))
+  b += a
+  assert approx_equal(tuple(b), ((4,8), (-8,12), (12,16)))
+  assert approx_equal(tuple(a-(20,30)),
+    ((-19,-28),(-22,-27),(-17,-26)))
+  assert tuple(a-a) == ((0,0),(0,0),(0,0))
+  a += (10,20)
+  assert approx_equal(tuple(a*2), ((22,44), (16,46), (26,48)))
+  assert approx_equal(tuple(-3*a),
+    ((-33,-66), (-24,-69), (-39,-72)))
+  assert approx_equal(a/flex.double([1,-2,3]),
+    [(11,22), (-4,-11.5), (4+1/3.,8)])
+  assert approx_equal(tuple(a*(-1,1,0,-1)),
+    ((-11,-11),(-8,-15),(-13,-11)))
+  assert approx_equal(tuple((-1,0,1,-1)*a),
+    ((-11,-11),(-8,-15),(-13,-11)))
+  x = flex.double([1,2,3])
+  y = flex.double([4,5,6])
+  a = flex.vec2_double(x,y)
+  assert approx_equal(tuple(a), ((1,4), (2,5), (3,6)))
+  assert approx_equal(tuple(a.dot(a)), (17,29,45))
+  assert approx_equal(tuple(a.dot()), (17,29,45))
+  b = flex.vec2_double(y,x)
+  assert approx_equal(
+    a.max_distance(b)**2,
+    max(flex.vec2_double(a.as_double()-b.as_double()).dot()))
+  assert approx_equal(a.sum_sq(), 91)
+  assert approx_equal(a.sum_sq(), flex.sum_sq(a.as_double()))
+  assert approx_equal(a.norm(), math.sqrt(91.))
+  assert approx_equal(a.rms_difference(b), math.sqrt(flex.mean((a-b).dot())))
+  assert approx_equal(a.rms_difference(b), b.rms_difference(a))
+  assert approx_equal(a.rms_difference(a), 0)
+  assert approx_equal(b.rms_difference(b), 0)
+  assert approx_equal(a.rms_length(), math.sqrt(flex.mean(a.dot())))
+  assert approx_equal((a-a).rms_length(), 0)
+  for i_trial in xrange(10):
+    for n in [7,10,13]:
+      sites_1 = flex.vec2_double(flex.random_double(n*2)*5)
+      sites_2 = flex.vec2_double(flex.random_double(n*2)*7)
+      m1 = matrix.rec(sites_1.as_double(), (sites_1.size(), 2))
+      m2 = matrix.rec(sites_2.as_double(), (sites_2.size(), 2))
+      assert approx_equal(
+        sites_1.transpose_multiply(sites_2),
+        m1.transpose()*m2)
+  #
+  a = flex.vec3_double([(1,2,5), (-2,3,4), (3,4,3)])
+  i = flex.size_t([0,2])
+  v = flex.vec3_double([(6,2,-8), (-4,9,2)])
+  assert a.add_selected(indices=i, values=v) is a
+  assert approx_equal(a, [(7,4,-3), (-2,3,4), (-1,13,5)])
+
 def exercise_histogram():
   x = flex.double(xrange(20))
   h = flex.histogram(data=x)
@@ -2286,6 +2357,7 @@ def run(iterations):
     exercise_random()
     exercise_sort()
     exercise_flex_vec3_double()
+    exercise_flex_vec2_double()
     exercise_histogram()
     exercise_linear_regression()
     exercise_linear_correlation()

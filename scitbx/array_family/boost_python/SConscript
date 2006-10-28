@@ -24,6 +24,7 @@ env_scitbx_boost_python_ext.SharedLibrary(
   "flex_mean_and_variance.cpp",
   "flex_linear_interpolation.cpp",
   "flex_vec3_double.cpp",
+  "flex_vec2_double.cpp",
   "loops.cpp",
 ])
 
