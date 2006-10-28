@@ -373,9 +373,14 @@ C  pair count:   1       <<  0.0000,  0.0000,  0.1000>>
   scatterers = flex.xray_scatterer([xray.scatterer("o", u=0.5)]*100)
   xs = xray.structure(sp, scatterers)
   xs_mod = xs.deep_copy_scatterers()
-  xs_mod.shake_adp_if_all_equal()
-  for sc, sc_mod in zip(xs.scatterers(), xs_mod.scatterers()):
-    assert abs(sc.u_iso - sc_mod.u_iso) > 0.001
+  assert xs_mod.shake_adp_if_all_equal()
+  assert not xs.scatterers().extract_u_iso().all_eq(
+    xs_mod.scatterers().extract_u_iso())
+  xs.scatterers()[3].u_iso = 0.1
+  xs_mod = xs.deep_copy_scatterers()
+  assert not xs_mod.shake_adp_if_all_equal()
+  assert xs.scatterers().extract_u_iso().all_eq(
+    xs_mod.scatterers().extract_u_iso())
 # exercise set_b_iso()
   cs = crystal.symmetry((5.01, 6.01, 5.47, 60, 80, 120), "P1")
   sp = crystal.special_position_settings(cs)
