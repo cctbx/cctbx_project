@@ -52,8 +52,10 @@ def exercise_2(eps = 1.e-6):
                                   geometry      = geometry.select(selection),
                                   normalization = False)
   aal= processed_pdb_file.all_chain_proxies.stage_1.atom_attributes_list
+  class refinement_flags: pass
+  refinement_flags.adp_tls = selections
   model = mmtbx.model.manager(
-             tls_selections         = selections,
+             refinement_flags       = refinement_flags,
              restraints_manager     = restraints_manager,
              restraints_manager_ini = restraints_manager_ini,
              xray_structure         = xray_structure,

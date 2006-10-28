@@ -267,11 +267,12 @@ class rb_mat(object):
      rm = matrix.sqr((r11,r12,r13, r21,r22,r23, r31,r32,r33))
      return rm
 
-def setup_search_range(f, nref_min):
+def setup_resolution_range(f, nref_min, high_resolution, low_high_res_limit,
+                           max_low_high_res_limit):
   d_spacings = f.d_spacings().data()
   d_max, d_min = flex.max(d_spacings), flex.min(d_spacings)
   if(f.data().size() > nref_min):
-     d_min_end = max(2.0, d_min)
+     d_min_end = max(high_resolution, d_min)
      nref = 0
      d_max_start = d_max
      while nref <= nref_min:
@@ -280,10 +281,10 @@ def setup_search_range(f, nref_min):
      if(abs(d_max_start - d_min_end) < 1.0):
         return [d_min_end,]
      else:
-        if(d_max_start < 7.0):
-           return [d_max_start, d_min_end]
+        if(d_max_start >= max_low_high_res_limit):
+           return [max_low_high_res_limit, low_high_res_limit, d_min_end]
         else:
-           return [d_max_start, 6.0, d_min_end]
+           return [min(low_high_res_limit,d_max_start), d_min_end]
   else:
      return [d_min,]
 
@@ -300,6 +301,9 @@ class manager(object):
                      convergence_delta       = 0.00001,
                      use_only_low_resolution = False,
                      bulk_solvent_and_scale  = True,
+                     high_resolution         = 2.0,
+                     low_high_res_limit      = 6.0,
+                     max_low_high_res_limit  = 8.0,
                      bss                     = None,
                      euler_angle_convention  = "xyz",
                      log                     = None):
@@ -334,7 +338,12 @@ class manager(object):
     fmodel_copy = fmodel.deep_copy()
     if(fmodel_copy.mask_params is not None):
        fmodel_copy.mask_params.verbose = -1
-    d_mins = setup_search_range(f = fmodel_copy.f_obs_w, nref_min = nref_min)
+    d_mins = setup_resolution_range(
+                               f                      = fmodel_copy.f_obs_w,
+                               nref_min               = nref_min,
+                               high_resolution        = high_resolution,
+                               low_high_res_limit     = low_high_res_limit,
+                               max_low_high_res_limit = max_low_high_res_limit)
     if(use_only_low_resolution):
        if(len(d_mins) > 1): d_mins = d_mins[:-1]
     line = " ".join(["High resolution cutoffs for mz-protocol:"]+

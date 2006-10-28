@@ -86,7 +86,11 @@ def exercise(target_functor, space_group_info, anomalous_flag,
     target_functor=target_functor(f_obs),
     xray_structure=structure_shake,
     occupancy_penalty=occupancy_penalty,
-    structure_factor_algorithm="direct")
+    structure_factor_algorithm="direct",
+    refine_xyz = gradient_flags.site,
+    refine_adp = (gradient_flags.u_iso | gradient_flags.u_aniso),
+    refine_occ = gradient_flags.occupancy,
+    selection = flex.bool(structure_shake.scatterers().size(), True))
   if (0 or verbose):
       print "first:", minimizer.first_target_value
       print "final:", minimizer.final_target_value
