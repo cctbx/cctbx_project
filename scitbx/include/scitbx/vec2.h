@@ -24,7 +24,7 @@ namespace scitbx {
       vec2() {}
       //! All elements are initialized with e.
       vec2(NumType const& e)
-        : base_type(e, e, e)
+        : base_type(e, e)
       {}
       //! Constructor.
       vec2(NumType const& e0, NumType const& e1)
@@ -601,4 +601,4 @@ namespace boost {
 
 #endif
 
-#endif // SCITBX_VEC3_H
+#endif // SCITBX_VEC2_H

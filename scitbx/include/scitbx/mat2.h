@@ -238,7 +238,7 @@ namespace scitbx {
       scale(af::tiny_plain<NumType,2> const& v)
       {
         for(std::size_t i=0;i<4;) {
-          for(std::size_t j=0;j<3;j++,i++) {
+          for(std::size_t j=0;j<2;j++,i++) {
             this->elems[i] *= v[j];
           }
         }
