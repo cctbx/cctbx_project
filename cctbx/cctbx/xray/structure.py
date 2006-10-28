@@ -151,6 +151,12 @@ class structure(crystal.special_position_settings):
   def adjust_u_iso(self):
     self._scatterers.adjust_u_iso()
 
+  def adjust_occupancy(self):
+    occ = self._scatterers.extract_occupancies()
+    sel = (occ > 1.5) | (occ <= 0.0)
+    occ = occ.set_selected(sel, 1.0)
+    self._scatterers.set_occupancies(occ)
+
   def translate(self, x=0, y=0, z=0):
     sites_cart = self.sites_cart()
     cp = structure(self,
@@ -199,7 +205,7 @@ class structure(crystal.special_position_settings):
     for sc, sel in zip(self._scatterers, selection):
         if(sel and sc.flags.use()):
            if(sc.flags.use_u_iso() and b_min != b_max):
-              r = random.randrange(b_min, b_max, 1)
+              r = max(0, random.randrange(b_min, b_max, 1) + random.random())
               sc.u_iso=adptbx.b_as_u(r)
            if(sc.flags.use_u_aniso() and not keep_anisotropic):
               site_symmetry = sc.apply_symmetry(self.unit_cell(),

@@ -12,15 +12,22 @@ from cctbx import adptbx
 def add_gradients(
       scatterers,
       xray_gradients,
-      site_gradients=None,
-      u_iso_gradients=None,
-      occupancy_gradients=None):
-  ext.minimization_add_gradients(
-    scatterers=scatterers,
-    xray_gradients=xray_gradients,
-    site_gradients=site_gradients,
-    u_iso_gradients=u_iso_gradients,
-    occupancy_gradients=occupancy_gradients)
+      site_gradients      = None,
+      u_iso_gradients     = None,
+      occupancy_gradients = None,
+      refine_xyz          = None,
+      refine_adp          = None,
+      refine_occ          = None,
+      selection           = None):
+  ext.minimization_add_gradients(scatterers          = scatterers,
+                                 xray_gradients      = xray_gradients,
+                                 site_gradients      = site_gradients,
+                                 u_iso_gradients     = u_iso_gradients,
+                                 occupancy_gradients = occupancy_gradients,
+                                 refine_xyz          = refine_xyz,
+                                 refine_adp          = refine_adp,
+                                 refine_occ          = refine_occ,
+                                 selection           = selection)
 
 class occupancy_penalty_exp(object):
 
@@ -53,7 +60,11 @@ class lbfgs(object):
                      correct_special_position_tolerance=1.e-2,
                      cos_sin_table=True,
                      structure_factor_algorithm=None,
-                     verbose=0):
+                     verbose=0,
+                     refine_xyz = False,
+                     refine_adp = False,
+                     refine_occ = False,
+                     selection  = None):
     adopt_init_args(self, locals())
     self.scatterer_grad_flags_counts = ext.scatterer_grad_flags_counts(
                                               self.xray_structure.scatterers())
@@ -86,7 +97,11 @@ class lbfgs(object):
     apply_shifts_result = ext.minimization_apply_shifts(
       unit_cell=self.xray_structure.unit_cell(),
       scatterers=self._scatterers_start,
-      shifts=self.x)
+      shifts=self.x,
+      refine_xyz = self.refine_xyz,
+      refine_adp = self.refine_adp,
+      refine_occ = self.refine_occ,
+      selection  = self.selection)
     shifted_scatterers = apply_shifts_result.shifted_scatterers
     site_symmetry_table = self.xray_structure.site_symmetry_table()
     for i_seq in site_symmetry_table.special_position_indices():
@@ -134,7 +149,11 @@ class lbfgs(object):
       add_gradients(
         scatterers=self.xray_structure.scatterers(),
         xray_gradients=self.g,
-        occupancy_gradients=g)
+        occupancy_gradients=g,
+        refine_xyz = self.refine_xyz,
+        refine_adp = self.refine_adp,
+        refine_occ = self.refine_occ,
+        selection  = self.selection)
       del g
     if (self.verbose > 1):
       print "xray.minimization line search: f,rms(g):",

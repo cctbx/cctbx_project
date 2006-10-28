@@ -595,11 +595,12 @@ class bulk_solvent_and_scales(object):
         fmodel.update(b_cart = b_cart)
     r_final = fmodel.r_work()
     if(r_final - r_start > 0.01):
-       print "Warning: r went up after anisotropic scaling:"
-       print "   r_start = ", r_start
-       print "   r_final = ", r_final
-       print "   u_start = ", ["%9.3f"%u for u in u_start]
-       print "   u_final = ", ["%9.3f"%u for u in fmodel.b_cart()]
+       # XXX reproduce and fix
+       #print "Warning: r went up after anisotropic scaling:"
+       #print "   r_start = ", r_start
+       #print "   r_final = ", r_final
+       #print "   u_start = ", ["%9.3f"%u for u in u_start]
+       #print "   u_final = ", ["%9.3f"%u for u in fmodel.b_cart()]
        fmodel.update(b_cart = u_start)
 
   def _k_sol_b_sol_minimization_helper(self, params, fmodel):

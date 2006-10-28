@@ -17,11 +17,14 @@ from cctbx import adptbx
 import libtbx.load_env
 import iotbx.xplor.map
 from scitbx import matrix
+from libtbx.test_utils import approx_equal
 
-def get_manager(fmodel, solvent_selection, log = None, params = None):
+
+def get_manager(fmodel, model, solvent_selection, log = None, params = None):
   if(params is not None):
      return manager(
        fmodel                             = fmodel,
+       model                              = model,
        solvent_selection                  = solvent_selection,
        b_iso_min                          = params.b_iso_min,
        b_iso_max                          = params.b_iso_max,
@@ -59,6 +62,7 @@ def get_manager(fmodel, solvent_selection, log = None, params = None):
 
 class manager(object):
   def __init__(self, fmodel,
+                     model,
                      solvent_selection,
                      b_iso_min                   = 1.0,
                      b_iso_max                   = 50.0,
@@ -117,9 +121,9 @@ class manager(object):
     if(self.verbose > 0): self.show_current_state(header = "Final model:")
 
   def check_existing_solvent(self):
-    scatterers = self.xray_structure.scatterers()
+    scatterers      = self.xray_structure.scatterers()
     non_solvent_sel = self.solvent_selection.select(~self.solvent_selection)
-    solvent_sel = self.solvent_selection.select(self.solvent_selection)
+    solvent_sel     = self.solvent_selection.select(self.solvent_selection)
     non_solvent_scatterers = scatterers.select(~self.solvent_selection)
     solvent_scatterers = scatterers.select(self.solvent_selection)
     occupancies = solvent_scatterers.extract_occupancies()
@@ -137,8 +141,13 @@ class manager(object):
                                        xrs, solvent_scatterers.extract_sites())
     ############################
     new_solvent_sel &= sel_by_dist
-    self.reduced_solvent_selection = flex.bool(non_solvent_sel.size(),True)
-    self.reduced_solvent_selection.extend(new_solvent_sel)
+    ###
+    reduce_original_sel = (~self.solvent_selection) | flex.bool(
+                            size = scatterers.size(),
+                            iselection = flex.size_t(xrange(scatterers.size()))
+                                         .select(self.solvent_selection)
+                                         .select(new_solvent_sel))
+    ###
     new_solvent_scatterers = solvent_scatterers.select(new_solvent_sel)
     non_solvent_sel.extend(new_solvent_sel.select(new_solvent_sel))
     self.solvent_selection = non_solvent_sel
@@ -150,6 +159,10 @@ class manager(object):
                                                (self.b_iso_min,self.b_iso_max,\
                                          self.occupancy_min,self.occupancy_max)
        self.show_current_state(header= "Initial solvent selection with "+st)
+    ########
+    self.model.update(selection = reduce_original_sel)
+    ###
+    assert approx_equal(self.solvent_selection, self.model.solvent_selection)
 
   def show_current_state(self, header):
     out = self.log
@@ -406,6 +419,7 @@ class manager(object):
   def update_xray_structure(self):
     self.xray_structure = \
                    self.xray_structure.concatenate(self.solvent_xray_structure)
+    self.model.refinement_flags.inflate(size = self.sites.size())
 
 def show_histogram(data = None,
                    n_slots = None):

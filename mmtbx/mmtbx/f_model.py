@@ -1079,10 +1079,6 @@ class manager(object):
       ss = 1./flex.pow2(fmodel.f_obs.d_spacings().data())
       omega  = flex.double()
       save_self_overall_scale = fmodel.overall_scale
-      #print
-      #print fmodel.f_obs.data().size(),fmodel.f_model().data().size()
-      #print self.f_obs.data().size(),  self.f_model().data().size()
-      #print
       alpha, beta = maxlik.alpha_beta_est_manager(
                       f_obs           = fmodel.f_obs,
                       f_calc          = fmodel.f_model(),
@@ -1496,7 +1492,7 @@ class manager(object):
     b0,b1,b2,b3,b4,b5 = n_as_s("%7.2f",self.b_cart())
     b_iso  = n_as_s("%7.2f",self.u_iso())
     err    = n_as_s("%6.2f",self.model_error_ml())
-    try:    target_work = n_as_s("%.6g",self.target_w())
+    try:    target_work = n_as_s("%.4g",self.target_w())
     except: target_work = str(None)
     line = "| r_work= "+r_work+"   r_free= "+r_free+"   ksol= "+k_sol+\
            "   Bsol= "+b_sol+"   scale= "+scale

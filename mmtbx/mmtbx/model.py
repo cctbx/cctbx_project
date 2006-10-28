@@ -22,54 +22,33 @@ class manager(object):
                      restraints_manager_ini,
                      xray_structure,
                      atom_attributes_list,
-                     rigid_body_selections = None,
-                     group_b_selections    = None,
-                     tls_selections        = None,
+                     refinement_flags = None,
                      log = None):
     self.log = log
     self.restraints_manager = restraints_manager
     self.restraints_manager_ini = restraints_manager_ini
-    #self.processed_pdb_file = processed_pdb_file
     self.xray_structure = xray_structure.deep_copy_scatterers()
     self.xray_structure_ini = self.xray_structure.deep_copy_scatterers()
     self.crystal_symmetry = self.xray_structure.crystal_symmetry()
     self.atom_attributes_list = atom_attributes_list[:]
+    self.refinement_flags = refinement_flags
     self.solvent_selection = self._solvent_selection()
     self.solvent_selection_ini = self._solvent_selection()
     self.locked = False
-    self.rigid_body_selections = rigid_body_selections
-    self.group_b_selections = group_b_selections
-    self.tls_selections = tls_selections
-    if(self.tls_selections is not None):
-       self.tlsos = tools.generate_tlsos(selections     = self.tls_selections,
-                                         xray_structure = self.xray_structure,
-                                         value          = 0.0)
 
-  #def setup_restraints_manager(self,
-  #                             plain_pairs_radius = 5.0,
-  #                             normalization      = True,
-  #                             show_energies      = False):
-  #  self.restraints_manager = mmtbx.restraints.manager(
-  #         geometry      = self.processed_pdb_file.geometry_restraints_manager(
-  #                                    show_energies      = show_energies,
-  #                                    plain_pairs_radius = plain_pairs_radius),
-  #         normalization = normalization)
-  #  if(not self.locked):
-  #     selection = flex.bool(self.xray_structure_ini.scatterers().size(), True)
-  #     self.restraints_manager_ini = mmtbx.restraints.manager(
-  #          geometry      = self.restraints_manager.geometry.select(selection),
-  #          ncs_groups    = self.restraints_manager.ncs_groups,
-  #          normalization = self.restraints_manager.normalization)
-  #     self.locked = True
+    if(self.refinement_flags is not None and [self.refinement_flags,
+                                self.refinement_flags.adp_tls].count(None)==0):
+       self.tlsos = tools.generate_tlsos(
+                                selections     = self.refinement_flags.adp_tls,
+                                xray_structure = self.xray_structure,
+                                value          = 0.0)
 
   def deep_copy(self):
     new = manager(restraints_manager    = self.restraints_manager,
                   restraints_manager_ini= self.restraints_manager_ini,
                   xray_structure        = self.xray_structure,
                   atom_attributes_list  = self.atom_attributes_list,
-                  rigid_body_selections = None,
-                  group_b_selections    = None,
-                  tls_selections        = None,
+                  refinement_flags      = self.refinement_flags,
                   log                   = self.log)
     selection = flex.bool(self.xray_structure.scatterers().size(), True)
     # XXX not a deep copy
@@ -85,25 +64,15 @@ class manager(object):
     new.xray_structure_ini   = self.xray_structure_ini.deep_copy_scatterers()
     new.atom_attributes_list = self.atom_attributes_list[:]
     new.solvent_selection    = self.solvent_selection.deep_copy()
-    if(self.rigid_body_selections is not None):
-       new.rigid_body_selections = []
-       for item in self.rigid_body_selections:
-           new.rigid_body_selections.append(item.deep_copy())
-    if(self.group_b_selections is not None):
-       new.group_b_selections = []
-       for item in self.group_b_selections:
-           new.group_b_selections.append(item.deep_copy())
-    if(self.tls_selections is not None):
-       new.tls_selections = []
-       for item in self.tls_selections:
-           new.tls_selections.append(item.deep_copy())
+    if(self.refinement_flags is not None):
+       new.refinement_flags     = self.refinement_flags.select(selection)
     return new
 
   def _solvent_selection(self):
     labels = self.xray_structure.scatterers().extract_labels()
-    res_name_tags = ["HOH","SOL","SOLV","WAT","DOD"]
-    atom_name_tags = ["O","OH2","H","H1","H2"]
-    element_tags = ["O","H"]
+    res_name_tags = ["HOH","SOL","SOLV","WAT","DOD","TIP3"]
+    atom_name_tags = ["O","OH2","H","H1","H2","D"]
+    element_tags = ["O","H","D"]
     result = flex.bool()
     for a in self.atom_attributes_list:
         element = (a.element).strip()
@@ -122,9 +91,6 @@ class manager(object):
   def update(self, selection):
     self.xray_structure.select_inplace(selection)
     new_atom_attributes_list = []
-    rigid_body_selections = []
-    group_b_selections    = []
-    tls_selections = []
     new_solvent_selection = flex.bool()
     for attr, solsel, sel in zip(self.atom_attributes_list,
                                  self.solvent_selection,
@@ -135,18 +101,6 @@ class manager(object):
     assert len(new_atom_attributes_list) == \
                                         self.xray_structure.scatterers().size()
     self.atom_attributes_list = new_atom_attributes_list
-    if(self.rigid_body_selections is not None):
-       for s in self.rigid_body_selections:
-           rigid_body_selections.append(s.select(selection))
-    self.rigid_body_selections = rigid_body_selections
-    if(self.tls_selections is not None):
-       for s in self.tls_selections:
-           tls_selections.append(s.select(selection))
-    self.tls_selections = tls_selections
-    if(self.group_b_selections is not None):
-       for s in self.group_b_selections:
-           group_b_selections.append(s.select(selection))
-    self.group_b_selections = group_b_selections
     self.solvent_selection = new_solvent_selection
     self.xray_structure.scattering_type_registry()
     if(self.restraints_manager is not None):
@@ -154,6 +108,8 @@ class manager(object):
                geometry      = self.restraints_manager.geometry.select(selection),
                ncs_groups    = self.restraints_manager.ncs_groups,
                normalization = self.restraints_manager.normalization)
+    if(self.refinement_flags is not None):
+       self.refinement_flags = self.refinement_flags.select(selection)
 
   def number_of_ordered_solvent_molecules(self):
     return self.solvent_selection.count(True)
@@ -163,9 +119,11 @@ class manager(object):
     global time_model_show
     timer = user_plus_sys_time()
     selections = None
-    if(rigid_body is not None): selections = self.rigid_body_selections
-    if(tls is not None): selections = self.tls_selections
-    if(self.rigid_body_selections is None and self.tls_selections is None): return
+    if(rigid_body is not None):
+       selections = self.refinement_flags.sites_rigid_body
+    if(tls is not None): selections = self.refinement_flags.adp_tls
+    if(self.refinement_flags.sites_rigid_body is None and
+                                 self.refinement_flags.adp_tls is None): return
     assert selections is not None
     if (out is None): out = sys.stdout
     print >> out
@@ -273,7 +231,7 @@ class manager(object):
            else: charge = atom.charge
            print >> out, pdb.format_atom_record(
                                     record_name = atom.record_name(),
-                                    serial      = i_seq,
+                                    serial      = i_seq+1,
                                     name        = name,
                                     altLoc      = altLoc,
                                     resName     = atom.resName,
@@ -288,7 +246,7 @@ class manager(object):
                                     charge      = charge)
            if(scatterers[i_seq].flags.use_u_aniso()):
               print >> out, pdb.format_anisou_record(
-                                    serial      = i_seq,
+                                    serial      = i_seq+1,
                                     name        = name,
                                     altLoc      = altLoc,
                                     resName     = atom.resName,
@@ -321,7 +279,7 @@ class manager(object):
               else: charge = atom.charge
               print >> out, pdb.format_atom_record(
                                     record_name = atom.record_name(),
-                                    serial      = i_seq,
+                                    serial      = i_seq+1,
                                     name        = name,
                                     altLoc      = altLoc,
                                     resName     = atom.resName,
@@ -336,7 +294,7 @@ class manager(object):
                                     charge      = charge)
               if(scatterers[i_seq].flags.use_u_aniso()):
                  print >> out, pdb.format_anisou_record(
-                                    serial      = i_seq,
+                                    serial      = i_seq+1,
                                     name        = name,
                                     altLoc      = altLoc,
                                     resName     = atom.resName,
@@ -387,21 +345,28 @@ class manager(object):
                             atom_name    = None,
                             residue_name = None,
                             chain_id     = None):
-    self.remove_solvent()
-    mac = xray_structure.select(~solvent_selection)
+    #self.remove_solvent()
+    #mac = xray_structure.select(~solvent_selection)
     sol = xray_structure.select(solvent_selection)
-    assert mac.scatterers().size() == self.xray_structure.scatterers().size()
-    atom_atom_distances = \
-              flex.sqrt(mac.difference_vectors_cart(self.xray_structure).dot())
-    assert approx_equal(flex.mean_default(atom_atom_distances,0), 0)
+    #assert mac.scatterers().size() == self.xray_structure.scatterers().size()
+    #atom_atom_distances = \
+    #          flex.sqrt(mac.difference_vectors_cart(self.xray_structure).dot())
+    #assert approx_equal(flex.mean_default(atom_atom_distances,0), 0)
+    #
+    #self.xray_structure = self.xray_structure.concatenate(sol)
+    #
+    #self.xray_structure.approx_equal(other = xray_structure)
 
-    self.xray_structure = self.xray_structure.concatenate(sol)
-
-    #self.anisotropic_flags.extend(flex.bool(sol.scatterers().size(), False))
-
+    self.xray_structure = xray_structure
+    self.solvent_selection = solvent_selection
+    new_atom_attributes_list = []
+    for attr, sel in zip(self.atom_attributes_list, ~self.solvent_selection):
+        if(sel):
+           new_atom_attributes_list.append(attr)
+    self.atom_attributes_list = new_atom_attributes_list
     # XXX TODO NCS restraints
     # XXX RALF: throw exception if self.reduced_solvent_selection affects NCS
-    geometry = self.restraints_manager.geometry
+    geometry = self.restraints_manager.geometry.select(~self.solvent_selection)
     number_of_new_solvent = sol.scatterers().size()
     if(geometry.model_indices is None):
        model_indices = None
@@ -441,6 +406,8 @@ class manager(object):
         self.atom_attributes_list.append(new_attr)
     self.restraints_manager.geometry.update_plain_pair_sym_table(
                                  sites_frac = self.xray_structure.sites_frac())
+    assert len(self.atom_attributes_list) == \
+                                        self.xray_structure.scatterers().size()
 
 
   def scale_adp(self, scale_max, scale_min):

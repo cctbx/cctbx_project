@@ -46,6 +46,7 @@ class lbfgs(object):
     self.xray_structure = self.fmodel.xray_structure
     if(refine_xyz): self.wr = wc
     if(refine_adp): self.wr = wu
+    if(refine_occ): self.wr = None
     del self.wc, self.wu
     if(f_a_to_be_r_i is None):
        f_a_to_be_r_i = False
@@ -125,10 +126,24 @@ class lbfgs(object):
     time_site_individual += timer.elapsed()
 
   def apply_shifts(self):
+    selection = None
+    if(self.refine_occ):
+       if(self.model.refinement_flags.occupancies_individual is not None):
+          selection = self.model.refinement_flags.occupancies_individual[0]
+    if(self.refine_xyz):
+      if(self.model.refinement_flags.sites_individual is not None):
+         selection = self.model.refinement_flags.sites_individual[0]
+    if(self.refine_adp):
+       if(self.model.refinement_flags.adp_individual is not None):
+         selection = self.model.refinement_flags.adp_individual[0]
     apply_shifts_result = xray.ext.minimization_apply_shifts(
                               unit_cell      = self.xray_structure.unit_cell(),
                               scatterers     = self._scatterers_start,
-                              shifts         = self.x)
+                              shifts         = self.x,
+                              refine_xyz     = self.refine_xyz,
+                              refine_adp     = self.refine_adp,
+                              refine_occ     = self.refine_occ,
+                              selection      = selection)
     scatterers_shifted = apply_shifts_result.shifted_scatterers
     if(self.refine_xyz):
        site_symmetry_table = self.xray_structure.site_symmetry_table()
@@ -144,7 +159,18 @@ class lbfgs(object):
        return None
 
   def compute_target(self, compute_gradients, u_iso_reinable_params):
-    if(self.refine_adp): self.xray_structure.adjust_u_iso()
+    selection = None
+    if(self.refine_occ):
+       if(self.model.refinement_flags.occupancies_individual is not None):
+          selection = self.model.refinement_flags.occupancies_individual[0]
+    if(self.refine_xyz):
+      if(self.model.refinement_flags.sites_individual is not None):
+         selection = self.model.refinement_flags.sites_individual[0]
+    if(self.refine_adp):
+       self.xray_structure.adjust_u_iso()
+       if(self.model.refinement_flags.adp_individual is not None):
+         selection = self.model.refinement_flags.adp_individual[0]
+    #if(self.refine_occ): self.xray_structure.adjust_occupancy()
     self.stereochemistry_residuals = None
     if(self.neutron_refinement):
        self.xray_structure.scattering_type_registry(
@@ -236,7 +262,11 @@ class lbfgs(object):
           xray.minimization.add_gradients(
                              scatterers     = self.xray_structure.scatterers(),
                              xray_gradients = self.g,
-                             site_gradients = sgc*self.wr)
+                             site_gradients = sgc*self.wr,
+                             refine_xyz     = self.refine_xyz,
+                             refine_adp     = self.refine_adp,
+                             refine_occ     = self.refine_occ,
+                             selection      = selection)
 
     if(self.refine_adp and self.restraints_manager.geometry is not None
                         and self.wr > 0.0 and self.iso_restraints is not None):
@@ -257,7 +287,11 @@ class lbfgs(object):
           xray.minimization.add_gradients(
                         scatterers      = self.xray_structure.scatterers(),
                         xray_gradients  = self.g,
-                        u_iso_gradients = sgu * self.wr)
+                        u_iso_gradients = sgu * self.wr,
+                        refine_xyz     = self.refine_xyz,
+                        refine_adp     = self.refine_adp,
+                        refine_occ     = self.refine_occ,
+                        selection      = selection)
 
   def callback_after_step(self, minimizer):
     self._lock_for_line_search = False
