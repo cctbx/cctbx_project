@@ -13,6 +13,7 @@ namespace {
   struct principal_axes_of_inertia_wrappers
   {
     typedef principal_axes_of_inertia<> w_t;
+    typedef principal_axes_of_inertia_2d<> w_t_2d;
 
     static void
     wrap()
@@ -30,6 +31,18 @@ namespace {
         .def("eigensystem", &w_t::eigensystem, rir())
         .def("distance_to_inertia_ellipsoid_surface",
           &w_t::distance_to_inertia_ellipsoid_surface, (
+            arg_("unit_direction")))
+      ;
+      class_<w_t_2d>("principal_axes_of_inertia_2d", no_init)
+        .def(init<af::const_ref<vec2<double> > const&>((arg_("points"))))
+        .def(init<af::const_ref<vec2<double> > const&,
+                  af::const_ref<double> const&>(
+          (arg_("points"), arg_("weights"))))
+        .def("center_of_mass", &w_t_2d::center_of_mass, ccr())
+        .def("inertia_tensor", &w_t_2d::inertia_tensor, ccr())
+        .def("eigensystem", &w_t_2d::eigensystem, rir())
+        .def("distance_to_inertia_ellipsoid_surface",
+          &w_t_2d::distance_to_inertia_ellipsoid_surface, (
             arg_("unit_direction")))
       ;
     }
