@@ -423,7 +423,7 @@ C  pair count:   1       <<  0.0000,  0.0000,  0.1000>>
         mean_err = flex.mean(
           flex.sqrt((sites_cart_xs.select(selection) -
                      sites_cart_xs_shaked.select(selection)).dot()))
-        assert approx_equal(error, mean_err, 0.0001)
+        assert approx_equal(error, mean_err, 0.001)
         dummy = ~selection
         if(dummy.count(True) > 0):
            mean_err_fixed = flex.mean(

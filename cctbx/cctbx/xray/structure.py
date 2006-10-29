@@ -245,7 +245,7 @@ class structure(crystal.special_position_settings):
        s.set_occupancies(q_new, selection)
 
   def shake_sites(self, mean_error, selection = None):
-    tolerance = 0.0001
+    tolerance = 0.001
     if(mean_error < tolerance): return
     sites_cart_original = self.sites_cart()
     if(selection is None):
