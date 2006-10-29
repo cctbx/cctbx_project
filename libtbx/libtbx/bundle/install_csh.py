@@ -33,16 +33,18 @@ set python_exe=None
 set build_mode=release
 
 if ("`uname`" == "Darwin") then
-  set python_exe="/Library/Frameworks/Python.framework/Versions/2.3/bin/python"
-  if (! -x "$python_exe") then
-    set python_exe="/System$python_exe"
-  endif
-  "$python_exe" -V
-  if ($status != 0) then
-    echo "Under Mac OS 10 Python 2.3 must be pre-installed."
-    echo "Please refer to the following web page for more information:"
-    echo "http://cci.lbl.gov/cctbx_build/mac_os_x_notes.html"
-    exit 1
+  if ("`uname -p`" == "powerpc") then
+    set python_exe="/Library/Frameworks/Python.framework/Versions/2.3/bin/python"
+    if (! -x "$python_exe") then
+      set python_exe="/System$python_exe"
+    endif
+    "$python_exe" -V
+    if ($status != 0) then
+      echo "Under Power Macintosh OS 10 Python 2.3 must be pre-installed."
+      echo "Please refer to the following web page for more information:"
+      echo "http://cci.lbl.gov/cctbx_build/mac_os_x_notes.html"
+      exit 1
+    endif
   endif
 endif
 
