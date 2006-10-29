@@ -16,8 +16,8 @@ type %(bundle)s_sources\TAG
 echo.
 echo Trying to find Python:
 cd %(bundle)s_build
-if not exist python\python.exe goto try_plain_python
-set python=python\python
+if not exist base\python\python.exe goto try_plain_python
+set python=base\python\python
 call "%%python%%" -V
 if %%errorlevel%% == 0 goto have_python
 :try_plain_python

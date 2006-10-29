@@ -48,8 +48,8 @@ endif
 
 if ($have_sources == 0) then
 
-  if (-d "$build/python") then
-    set python_exe="$build/python/bin/python"
+  if (-d "$build/base") then
+    set python_exe="$build/base/bin/python"
   endif
   if ($prefer_usr_bin_python) then
     if ("$python_exe" == None && -x /usr/bin/python) then
@@ -113,10 +113,10 @@ else
 
       echo "Trying to find a pre-installed Python:"
       set python_exe=None
-      if (-x "$build/python/bin/python") then
-        "$build/python/bin/python" -V |& head -1
+      if (-x "$build/base/bin/python") then
+        "$build/base/bin/python" -V |& head -1
         if ($status == 0) then
-          set python_exe="$build/python/bin/python"
+          set python_exe="$build/base/bin/python"
         endif
       endif
       if ("$python_exe" == None) then
@@ -169,12 +169,12 @@ else
       echo "Configuring Python"
       if ("X`uname`" == "XHP-UX") then
         # tested with HP aC++/ANSI C B3910B A.06.06 [Nov 7 2005]
-        env CC=cc CXX="aCC -mt" BASECFLAGS="+DD64 -mt" LDFLAGS="+DD64 -lxnet" ./configure --without-gcc --prefix="$build/python" >& "$py_install_log"
+        env CC=cc CXX="aCC -mt" BASECFLAGS="+DD64 -mt" LDFLAGS="+DD64 -lxnet" ./configure --without-gcc --prefix="$build/base" >& "$py_install_log"
         if (-f pyconfig.h) then
           grep -v _POSIX_C_SOURCE pyconfig.h > zz; mv zz pyconfig.h
         endif
       else
-        ./configure --prefix="$build/python" >& "$py_install_log"
+        ./configure --prefix="$build/base" >& "$py_install_log"
       endif
       echo "Compiling Python. This may take a while."
       make >>& "$py_install_log"
@@ -182,7 +182,7 @@ else
       make install >>& "$py_install_log"
       echo "Done installing Python."
       cd "$install_root"
-      set python_exe="$build/python/bin/python"
+      set python_exe="$build/base/bin/python"
       "$python_exe" -V
       if ($status != 0) then
         echo "ERROR: Python installation failed."
