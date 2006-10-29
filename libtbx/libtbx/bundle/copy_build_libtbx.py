@@ -23,7 +23,7 @@ def copy_lib_and_exe_files(target_root_dir, dirname, names):
       create_target_dir = False
     shutil.copy(src, dest)
 
-def copy_python_files(target_root_dir, dirname, names):
+def copy_base_files(target_root_dir, dirname, names):
   create_target_dir = True
   for file_name in names:
     name = file_name.lower()
@@ -42,7 +42,7 @@ def run(target_root):
   abs_target_root = os.path.normpath(os.path.abspath(target_root))
   for sub_dir,visitor in (("lib", copy_lib_and_exe_files),
                           ("exe", copy_lib_and_exe_files),
-                          ("python", copy_python_files)):
+                          ("base", copy_base_files)):
     source_dir = libtbx.env.under_build(sub_dir)
     if (os.path.isdir(source_dir)):
       target_dir = libtbx.path.norm_join(abs_target_root, sub_dir)
