@@ -153,7 +153,7 @@ namespace fftpack {
       //! Access to the pre-computed "twiddle factors."
       af::shared<real_type> wa() const
       {
-        return WA_;
+        return wa_;
       }
 
       /*! \brief In-place "forward" Fourier transformation of a
@@ -204,75 +204,75 @@ namespace fftpack {
   // FUTURE: move out of class body
   {
     if (n_ < 2) return;
-    real_type* C = seq_begin;
-    real_type* CH = &(*(CH_.begin()));
-    const real_type* WA = &(*(WA_.begin()));
-    bool NA = false;
-    std::size_t L1 = 1;
-    std::size_t IW = 0;
-    for (std::size_t K1 = 0; K1 < factors_.size(); K1++) {
-      std::size_t IP = factors_[K1];
-      std::size_t L2 = IP*L1;
-      std::size_t IDO = n_/L2;
-      std::size_t IDOT = IDO+IDO;
-      std::size_t IDL1 = IDOT*L1;
-      if (IP == 4) {
-        std::size_t IX2 = IW+IDOT;
-        std::size_t IX3 = IX2+IDOT;
-        if (!NA) {
-          pass4(tag, IDOT,L1,C,CH,WA+IW,WA+IX2,WA+IX3);
+    real_type* c = seq_begin;
+    real_type* ch = &(*(ch_.begin()));
+    const real_type* wa = &(*(wa_.begin()));
+    bool na = false;
+    std::size_t l1 = 1;
+    std::size_t iw = 0;
+    for (std::size_t k1 = 0; k1 < factors_.size(); k1++) {
+      std::size_t ip = factors_[k1];
+      std::size_t l2 = ip*l1;
+      std::size_t ido = n_/l2;
+      std::size_t idot = ido+ido;
+      std::size_t idl1 = idot*l1;
+      if (ip == 4) {
+        std::size_t ix2 = iw+idot;
+        std::size_t ix3 = ix2+idot;
+        if (!na) {
+          pass4(tag, idot,l1,c,ch,wa+iw,wa+ix2,wa+ix3);
         }
         else {
-          pass4(tag, IDOT,L1,CH,C,WA+IW,WA+IX2,WA+IX3);
+          pass4(tag, idot,l1,ch,c,wa+iw,wa+ix2,wa+ix3);
         }
-        NA = !NA;
+        na = !na;
       }
-      else if (IP == 2) {
-        if (!NA) {
-          pass2(tag, IDOT,L1,C,CH,WA+IW);
+      else if (ip == 2) {
+        if (!na) {
+          pass2(tag, idot,l1,c,ch,wa+iw);
         }
         else {
-          pass2(tag, IDOT,L1,CH,C,WA+IW);
+          pass2(tag, idot,l1,ch,c,wa+iw);
         }
-        NA = !NA;
+        na = !na;
       }
-      else if (IP == 3) {
-        std::size_t IX2 = IW+IDOT;
-        if (!NA) {
-          pass3(tag, IDOT,L1,C,CH,WA+IW,WA+IX2);
+      else if (ip == 3) {
+        std::size_t ix2 = iw+idot;
+        if (!na) {
+          pass3(tag, idot,l1,c,ch,wa+iw,wa+ix2);
         }
         else {
-          pass3(tag, IDOT,L1,CH,C,WA+IW,WA+IX2);
+          pass3(tag, idot,l1,ch,c,wa+iw,wa+ix2);
         }
-        NA = !NA;
+        na = !na;
       }
-      else if (IP == 5) {
-        std::size_t IX2 = IW+IDOT;
-        std::size_t IX3 = IX2+IDOT;
-        std::size_t IX4 = IX3+IDOT;
-        if (!NA) {
-          pass5(tag, IDOT,L1,C,CH,WA+IW,WA+IX2,WA+IX3,WA+IX4);
+      else if (ip == 5) {
+        std::size_t ix2 = iw+idot;
+        std::size_t ix3 = ix2+idot;
+        std::size_t ix4 = ix3+idot;
+        if (!na) {
+          pass5(tag, idot,l1,c,ch,wa+iw,wa+ix2,wa+ix3,wa+ix4);
         }
         else {
-          pass5(tag, IDOT,L1,CH,C,WA+IW,WA+IX2,WA+IX3,WA+IX4);
+          pass5(tag, idot,l1,ch,c,wa+iw,wa+ix2,wa+ix3,wa+ix4);
         }
-        NA = !NA;
+        na = !na;
       }
       else {
-        bool NAC;
-        if (!NA) {
-          passg(tag, NAC, IDOT,IP,L1,IDL1,IW,C,CH,WA);
+        bool nac;
+        if (!na) {
+          passg(tag, nac, idot,ip,l1,idl1,iw,c,ch,wa);
         }
         else {
-          passg(tag, NAC, IDOT,IP,L1,IDL1,IW,CH,C,WA);
+          passg(tag, nac, idot,ip,l1,idl1,iw,ch,c,wa);
         }
-        if (NAC) NA = !NA;
+        if (nac) na = !na;
       }
-      L1 = L2;
-      IW = IW+(IP-1)*IDOT;
+      l1 = l2;
+      iw = iw+(ip-1)*idot;
     }
-    if (NA) {
-      std::copy(CH, CH + 2 * n_, seq_begin);
+    if (na) {
+      std::copy(ch, ch + 2 * n_, seq_begin);
     }
   }
     private:
@@ -291,40 +291,40 @@ namespace fftpack {
       }
 
       // Scratch space.
-      af::shared<real_type> WA_;
-      af::shared<real_type> CH_;
+      af::shared<real_type> wa_;
+      af::shared<real_type> ch_;
 
       // Codelets for prime factors 2,3,4,5 and a general transform.
 
       template <class Tag>
       void pass2(select_sign<Tag>,
-                 std::size_t IDO,
-                 std::size_t L1,
-                 real_type* CC_begin,
-                 real_type* CH_begin,
-                 const real_type* WA1)
+                 std::size_t ido,
+                 std::size_t l1,
+                 real_type* cc_begin,
+                 real_type* ch_begin,
+                 const real_type* wa1)
   // FUTURE: move out of class body
   {
-    dim3 CC(CC_begin, IDO, 2, L1);
-    dim3 CH(CH_begin, IDO, L1, 2);
-    if (IDO == 2) {
-      for (std::size_t K = 0; K < L1; K++) {
-        CH(0,K,0) = CC(0,0,K) + CC(0,1,K);
-        CH(1,K,0) = CC(1,0,K) + CC(1,1,K);
-        CH(0,K,1) = CC(0,0,K) - CC(0,1,K);
-        CH(1,K,1) = CC(1,0,K) - CC(1,1,K);
+    dim3 cc(cc_begin, ido, 2, l1);
+    dim3 ch(ch_begin, ido, l1, 2);
+    if (ido == 2) {
+      for (std::size_t k = 0; k < l1; k++) {
+        ch(0,k,0) = cc(0,0,k) + cc(0,1,k);
+        ch(1,k,0) = cc(1,0,k) + cc(1,1,k);
+        ch(0,k,1) = cc(0,0,k) - cc(0,1,k);
+        ch(1,k,1) = cc(1,0,k) - cc(1,1,k);
       }
     }
     else {
-      for (std::size_t K = 0; K < L1; K++) {
-        for (std::size_t I0 = 0; I0 < IDO; I0 += 2) {
-          std::size_t I1 = I0 + 1;
-          CH(I0,K,0) = CC(I0,0,K) + CC(I0,1,K);
-          CH(I1,K,0) = CC(I1,0,K) + CC(I1,1,K);
-          real_type TR2 = CC(I0,0,K) - CC(I0,1,K);
-          real_type TI2 = CC(I1,0,K) - CC(I1,1,K);
-          CH(I0,K,1) = select_sign<Tag>::plusminus(WA1[I0]*TR2,WA1[I1]*TI2);
-          CH(I1,K,1) = select_sign<Tag>::minusplus(WA1[I0]*TI2,WA1[I1]*TR2);
+      for (std::size_t k = 0; k < l1; k++) {
+        for (std::size_t i0 = 0; i0 < ido; i0 += 2) {
+          std::size_t i1 = i0 + 1;
+          ch(i0,k,0) = cc(i0,0,k) + cc(i0,1,k);
+          ch(i1,k,0) = cc(i1,0,k) + cc(i1,1,k);
+          real_type tr2 = cc(i0,0,k) - cc(i0,1,k);
+          real_type ti2 = cc(i1,0,k) - cc(i1,1,k);
+          ch(i0,k,1) = select_sign<Tag>::plusminus(wa1[i0]*tr2,wa1[i1]*ti2);
+          ch(i1,k,1) = select_sign<Tag>::minusplus(wa1[i0]*ti2,wa1[i1]*tr2);
         }
       }
     }
@@ -332,53 +332,53 @@ namespace fftpack {
 
       template <class Tag>
       void pass3(select_sign<Tag>,
-                 std::size_t IDO,
-                 std::size_t L1,
-                 real_type* CC_begin,
-                 real_type* CH_begin,
-                 const real_type* WA1,
-                 const real_type* WA2)
+                 std::size_t ido,
+                 std::size_t l1,
+                 real_type* cc_begin,
+                 real_type* ch_begin,
+                 const real_type* wa1,
+                 const real_type* wa2)
   // FUTURE: move out of class body
   {
-    dim3 CC(CC_begin, IDO, 3, L1);
-    dim3 CH(CH_begin, IDO, L1, 3);
-    real_type TAUI = select_sign<Tag>::unaryminusplus(cos30_);
-    if (IDO == 2) {
-      for (std::size_t K = 0; K < L1; K++) {
-        real_type TR2 = CC(0,1,K) + CC(0,2,K);
-        real_type TI2 = CC(1,1,K) + CC(1,2,K);
-        real_type CR2 = CC(0,0,K) - one_half_ * TR2;
-        real_type CI2 = CC(1,0,K) - one_half_ * TI2;
-        real_type CR3 = TAUI * (CC(0,1,K) - CC(0,2,K));
-        real_type CI3 = TAUI * (CC(1,1,K) - CC(1,2,K));
-        CH(0,K,0) = CC(0,0,K) + TR2;
-        CH(1,K,0) = CC(1,0,K) + TI2;
-        CH(0,K,1) = CR2 - CI3;
-        CH(1,K,1) = CI2 + CR3;
-        CH(0,K,2) = CR2 + CI3;
-        CH(1,K,2) = CI2 - CR3;
+    dim3 cc(cc_begin, ido, 3, l1);
+    dim3 ch(ch_begin, ido, l1, 3);
+    real_type taui = select_sign<Tag>::unaryminusplus(cos30_);
+    if (ido == 2) {
+      for (std::size_t k = 0; k < l1; k++) {
+        real_type tr2 = cc(0,1,k) + cc(0,2,k);
+        real_type ti2 = cc(1,1,k) + cc(1,2,k);
+        real_type cr2 = cc(0,0,k) - one_half_ * tr2;
+        real_type ci2 = cc(1,0,k) - one_half_ * ti2;
+        real_type cr3 = taui * (cc(0,1,k) - cc(0,2,k));
+        real_type ci3 = taui * (cc(1,1,k) - cc(1,2,k));
+        ch(0,k,0) = cc(0,0,k) + tr2;
+        ch(1,k,0) = cc(1,0,k) + ti2;
+        ch(0,k,1) = cr2 - ci3;
+        ch(1,k,1) = ci2 + cr3;
+        ch(0,k,2) = cr2 + ci3;
+        ch(1,k,2) = ci2 - cr3;
       }
     }
     else {
-      for (std::size_t K = 0; K < L1; K++) {
-        for (std::size_t I0 = 0; I0 < IDO; I0 += 2) {
-          std::size_t I1 = I0 + 1;
-          real_type TR2 = CC(I0,1,K) + CC(I0,2,K);
-          real_type TI2 = CC(I1,1,K) + CC(I1,2,K);
-          real_type CR2 = CC(I0,0,K) - one_half_ * TR2;
-          real_type CI2 = CC(I1,0,K) - one_half_ * TI2;
-          real_type CR3 = TAUI * (CC(I0,1,K) - CC(I0,2,K));
-          real_type CI3 = TAUI * (CC(I1,1,K) - CC(I1,2,K));
-          real_type DR2 = CR2 - CI3;
-          real_type DI2 = CI2 + CR3;
-          real_type DR3 = CR2 + CI3;
-          real_type DI3 = CI2 - CR3;
-          CH(I0,K,0) = CC(I0,0,K) + TR2;
-          CH(I1,K,0) = CC(I1,0,K) + TI2;
-          CH(I0,K,1) = select_sign<Tag>::plusminus(WA1[I0]*DR2,WA1[I1]*DI2);
-          CH(I1,K,1) = select_sign<Tag>::minusplus(WA1[I0]*DI2,WA1[I1]*DR2);
-          CH(I0,K,2) = select_sign<Tag>::plusminus(WA2[I0]*DR3,WA2[I1]*DI3);
-          CH(I1,K,2) = select_sign<Tag>::minusplus(WA2[I0]*DI3,WA2[I1]*DR3);
+      for (std::size_t k = 0; k < l1; k++) {
+        for (std::size_t i0 = 0; i0 < ido; i0 += 2) {
+          std::size_t i1 = i0 + 1;
+          real_type tr2 = cc(i0,1,k) + cc(i0,2,k);
+          real_type ti2 = cc(i1,1,k) + cc(i1,2,k);
+          real_type cr2 = cc(i0,0,k) - one_half_ * tr2;
+          real_type ci2 = cc(i1,0,k) - one_half_ * ti2;
+          real_type cr3 = taui * (cc(i0,1,k) - cc(i0,2,k));
+          real_type ci3 = taui * (cc(i1,1,k) - cc(i1,2,k));
+          real_type dr2 = cr2 - ci3;
+          real_type di2 = ci2 + cr3;
+          real_type dr3 = cr2 + ci3;
+          real_type di3 = ci2 - cr3;
+          ch(i0,k,0) = cc(i0,0,k) + tr2;
+          ch(i1,k,0) = cc(i1,0,k) + ti2;
+          ch(i0,k,1) = select_sign<Tag>::plusminus(wa1[i0]*dr2,wa1[i1]*di2);
+          ch(i1,k,1) = select_sign<Tag>::minusplus(wa1[i0]*di2,wa1[i1]*dr2);
+          ch(i0,k,2) = select_sign<Tag>::plusminus(wa2[i0]*dr3,wa2[i1]*di3);
+          ch(i1,k,2) = select_sign<Tag>::minusplus(wa2[i0]*di3,wa2[i1]*dr3);
         }
       }
     }
@@ -386,67 +386,67 @@ namespace fftpack {
 
       template <class Tag>
       void pass4(select_sign<Tag>,
-                 std::size_t IDO,
-                 std::size_t L1,
-                 real_type* CC_begin,
-                 real_type* CH_begin,
-                 const real_type* WA1,
-                 const real_type* WA2,
-                 const real_type* WA3)
+                 std::size_t ido,
+                 std::size_t l1,
+                 real_type* cc_begin,
+                 real_type* ch_begin,
+                 const real_type* wa1,
+                 const real_type* wa2,
+                 const real_type* wa3)
   // FUTURE: move out of class body
   {
-    dim3 CC(CC_begin, IDO, 4, L1);
-    dim3 CH(CH_begin, IDO, L1, 4);
-    if (IDO == 2) {
-      for (std::size_t K = 0; K < L1; K++) {
-        real_type TR1 = CC(0,0,K)-CC(0,2,K);
-        real_type TI1 = CC(1,0,K)-CC(1,2,K);
-        real_type TR2 = CC(0,0,K)+CC(0,2,K);
-        real_type TI2 = CC(1,0,K)+CC(1,2,K);
-        real_type TR3 = CC(0,1,K)+CC(0,3,K);
-        real_type TI3 = CC(1,1,K)+CC(1,3,K);
+    dim3 cc(cc_begin, ido, 4, l1);
+    dim3 ch(ch_begin, ido, l1, 4);
+    if (ido == 2) {
+      for (std::size_t k = 0; k < l1; k++) {
+        real_type tr1 = cc(0,0,k)-cc(0,2,k);
+        real_type ti1 = cc(1,0,k)-cc(1,2,k);
+        real_type tr2 = cc(0,0,k)+cc(0,2,k);
+        real_type ti2 = cc(1,0,k)+cc(1,2,k);
+        real_type tr3 = cc(0,1,k)+cc(0,3,k);
+        real_type ti3 = cc(1,1,k)+cc(1,3,k);
         real_type
-        TR4 = select_sign<Tag>::unaryplusminus(CC(1,1,K)-CC(1,3,K));
+        tr4 = select_sign<Tag>::unaryplusminus(cc(1,1,k)-cc(1,3,k));
         real_type
-        TI4 = select_sign<Tag>::unaryplusminus(CC(0,3,K)-CC(0,1,K));
-        CH(0,K,0) = TR2+TR3;
-        CH(1,K,0) = TI2+TI3;
-        CH(0,K,1) = TR1+TR4;
-        CH(1,K,1) = TI1+TI4;
-        CH(0,K,2) = TR2-TR3;
-        CH(1,K,2) = TI2-TI3;
-        CH(0,K,3) = TR1-TR4;
-        CH(1,K,3) = TI1-TI4;
+        ti4 = select_sign<Tag>::unaryplusminus(cc(0,3,k)-cc(0,1,k));
+        ch(0,k,0) = tr2+tr3;
+        ch(1,k,0) = ti2+ti3;
+        ch(0,k,1) = tr1+tr4;
+        ch(1,k,1) = ti1+ti4;
+        ch(0,k,2) = tr2-tr3;
+        ch(1,k,2) = ti2-ti3;
+        ch(0,k,3) = tr1-tr4;
+        ch(1,k,3) = ti1-ti4;
       }
     }
     else {
-      for (std::size_t K = 0; K < L1; K++) {
-        for (std::size_t I0 = 0; I0 < IDO; I0 += 2) {
-          std::size_t I1 = I0 + 1;
-          real_type TR1 = CC(I0,0,K)-CC(I0,2,K);
-          real_type TI1 = CC(I1,0,K)-CC(I1,2,K);
-          real_type TR2 = CC(I0,0,K)+CC(I0,2,K);
-          real_type TI2 = CC(I1,0,K)+CC(I1,2,K);
-          real_type TR3 = CC(I0,1,K)+CC(I0,3,K);
-          real_type TI3 = CC(I1,1,K)+CC(I1,3,K);
+      for (std::size_t k = 0; k < l1; k++) {
+        for (std::size_t i0 = 0; i0 < ido; i0 += 2) {
+          std::size_t i1 = i0 + 1;
+          real_type tr1 = cc(i0,0,k)-cc(i0,2,k);
+          real_type ti1 = cc(i1,0,k)-cc(i1,2,k);
+          real_type tr2 = cc(i0,0,k)+cc(i0,2,k);
+          real_type ti2 = cc(i1,0,k)+cc(i1,2,k);
+          real_type tr3 = cc(i0,1,k)+cc(i0,3,k);
+          real_type ti3 = cc(i1,1,k)+cc(i1,3,k);
           real_type
-          TR4 = select_sign<Tag>::unaryplusminus(CC(I1,1,K)-CC(I1,3,K));
+          tr4 = select_sign<Tag>::unaryplusminus(cc(i1,1,k)-cc(i1,3,k));
           real_type
-          TI4 = select_sign<Tag>::unaryplusminus(CC(I0,3,K)-CC(I0,1,K));
-          real_type CR3 = TR2-TR3;
-          real_type CI3 = TI2-TI3;
-          real_type CR2 = TR1+TR4;
-          real_type CR4 = TR1-TR4;
-          real_type CI2 = TI1+TI4;
-          real_type CI4 = TI1-TI4;
-          CH(I0,K,0) = TR2+TR3;
-          CH(I1,K,0) = TI2+TI3;
-          CH(I0,K,1) = select_sign<Tag>::plusminus(WA1[I0]*CR2,WA1[I1]*CI2);
-          CH(I1,K,1) = select_sign<Tag>::minusplus(WA1[I0]*CI2,WA1[I1]*CR2);
-          CH(I0,K,2) = select_sign<Tag>::plusminus(WA2[I0]*CR3,WA2[I1]*CI3);
-          CH(I1,K,2) = select_sign<Tag>::minusplus(WA2[I0]*CI3,WA2[I1]*CR3);
-          CH(I0,K,3) = select_sign<Tag>::plusminus(WA3[I0]*CR4,WA3[I1]*CI4);
-          CH(I1,K,3) = select_sign<Tag>::minusplus(WA3[I0]*CI4,WA3[I1]*CR4);
+          ti4 = select_sign<Tag>::unaryplusminus(cc(i0,3,k)-cc(i0,1,k));
+          real_type cr3 = tr2-tr3;
+          real_type ci3 = ti2-ti3;
+          real_type cr2 = tr1+tr4;
+          real_type cr4 = tr1-tr4;
+          real_type ci2 = ti1+ti4;
+          real_type ci4 = ti1-ti4;
+          ch(i0,k,0) = tr2+tr3;
+          ch(i1,k,0) = ti2+ti3;
+          ch(i0,k,1) = select_sign<Tag>::plusminus(wa1[i0]*cr2,wa1[i1]*ci2);
+          ch(i1,k,1) = select_sign<Tag>::minusplus(wa1[i0]*ci2,wa1[i1]*cr2);
+          ch(i0,k,2) = select_sign<Tag>::plusminus(wa2[i0]*cr3,wa2[i1]*ci3);
+          ch(i1,k,2) = select_sign<Tag>::minusplus(wa2[i0]*ci3,wa2[i1]*cr3);
+          ch(i0,k,3) = select_sign<Tag>::plusminus(wa3[i0]*cr4,wa3[i1]*ci4);
+          ch(i1,k,3) = select_sign<Tag>::minusplus(wa3[i0]*ci4,wa3[i1]*cr4);
         }
       }
     }
@@ -454,88 +454,88 @@ namespace fftpack {
 
       template <class Tag>
       void pass5(select_sign<Tag>,
-                 std::size_t IDO,
-                 std::size_t L1,
-                 real_type* CC_begin,
-                 real_type* CH_begin,
-                 const real_type* WA1,
-                 const real_type* WA2,
-                 const real_type* WA3,
-                 const real_type* WA4)
+                 std::size_t ido,
+                 std::size_t l1,
+                 real_type* cc_begin,
+                 real_type* ch_begin,
+                 const real_type* wa1,
+                 const real_type* wa2,
+                 const real_type* wa3,
+                 const real_type* wa4)
   // FUTURE: move out of class body
   {
-    dim3 CC(CC_begin, IDO, 5, L1);
-    dim3 CH(CH_begin, IDO, L1, 5);
-    real_type TI11 = select_sign<Tag>::unaryminusplus(cos18_);
-    real_type TI12 = select_sign<Tag>::unaryminusplus(sin36_);
-    if (IDO == 2) {
-      for (std::size_t K = 0; K < L1; K++) {
-        real_type TR2 = CC(0,1,K)+CC(0,4,K);
-        real_type TI2 = CC(1,1,K)+CC(1,4,K);
-        real_type TR3 = CC(0,2,K)+CC(0,3,K);
-        real_type TI3 = CC(1,2,K)+CC(1,3,K);
-        real_type TR4 = CC(0,2,K)-CC(0,3,K);
-        real_type TI4 = CC(1,2,K)-CC(1,3,K);
-        real_type TR5 = CC(0,1,K)-CC(0,4,K);
-        real_type TI5 = CC(1,1,K)-CC(1,4,K);
-        real_type CR2 = CC(0,0,K)+sin18_*TR2-cos36_*TR3;
-        real_type CI2 = CC(1,0,K)+sin18_*TI2-cos36_*TI3;
-        real_type CR3 = CC(0,0,K)-cos36_*TR2+sin18_*TR3;
-        real_type CI3 = CC(1,0,K)-cos36_*TI2+sin18_*TI3;
-        real_type CR5 = TI11*TR5+TI12*TR4;
-        real_type CI5 = TI11*TI5+TI12*TI4;
-        real_type CR4 = TI12*TR5-TI11*TR4;
-        real_type CI4 = TI12*TI5-TI11*TI4;
-        CH(0,K,0) = CC(0,0,K)+TR2+TR3;
-        CH(1,K,0) = CC(1,0,K)+TI2+TI3;
-        CH(0,K,1) = CR2-CI5;
-        CH(1,K,1) = CI2+CR5;
-        CH(0,K,2) = CR3-CI4;
-        CH(1,K,2) = CI3+CR4;
-        CH(0,K,3) = CR3+CI4;
-        CH(1,K,3) = CI3-CR4;
-        CH(0,K,4) = CR2+CI5;
-        CH(1,K,4) = CI2-CR5;
+    dim3 cc(cc_begin, ido, 5, l1);
+    dim3 ch(ch_begin, ido, l1, 5);
+    real_type ti11 = select_sign<Tag>::unaryminusplus(cos18_);
+    real_type ti12 = select_sign<Tag>::unaryminusplus(sin36_);
+    if (ido == 2) {
+      for (std::size_t k = 0; k < l1; k++) {
+        real_type tr2 = cc(0,1,k)+cc(0,4,k);
+        real_type ti2 = cc(1,1,k)+cc(1,4,k);
+        real_type tr3 = cc(0,2,k)+cc(0,3,k);
+        real_type ti3 = cc(1,2,k)+cc(1,3,k);
+        real_type tr4 = cc(0,2,k)-cc(0,3,k);
+        real_type ti4 = cc(1,2,k)-cc(1,3,k);
+        real_type tr5 = cc(0,1,k)-cc(0,4,k);
+        real_type ti5 = cc(1,1,k)-cc(1,4,k);
+        real_type cr2 = cc(0,0,k)+sin18_*tr2-cos36_*tr3;
+        real_type ci2 = cc(1,0,k)+sin18_*ti2-cos36_*ti3;
+        real_type cr3 = cc(0,0,k)-cos36_*tr2+sin18_*tr3;
+        real_type ci3 = cc(1,0,k)-cos36_*ti2+sin18_*ti3;
+        real_type cr5 = ti11*tr5+ti12*tr4;
+        real_type ci5 = ti11*ti5+ti12*ti4;
+        real_type cr4 = ti12*tr5-ti11*tr4;
+        real_type ci4 = ti12*ti5-ti11*ti4;
+        ch(0,k,0) = cc(0,0,k)+tr2+tr3;
+        ch(1,k,0) = cc(1,0,k)+ti2+ti3;
+        ch(0,k,1) = cr2-ci5;
+        ch(1,k,1) = ci2+cr5;
+        ch(0,k,2) = cr3-ci4;
+        ch(1,k,2) = ci3+cr4;
+        ch(0,k,3) = cr3+ci4;
+        ch(1,k,3) = ci3-cr4;
+        ch(0,k,4) = cr2+ci5;
+        ch(1,k,4) = ci2-cr5;
       }
     }
     else {
-      for (std::size_t K = 0; K < L1; K++) {
-        for (std::size_t I0 = 0; I0 < IDO; I0 += 2) {
-          std::size_t I1 = I0 + 1;
-          real_type TR2 = CC(I0,1,K)+CC(I0,4,K);
-          real_type TI2 = CC(I1,1,K)+CC(I1,4,K);
-          real_type TR3 = CC(I0,2,K)+CC(I0,3,K);
-          real_type TI3 = CC(I1,2,K)+CC(I1,3,K);
-          real_type TR4 = CC(I0,2,K)-CC(I0,3,K);
-          real_type TI4 = CC(I1,2,K)-CC(I1,3,K);
-          real_type TR5 = CC(I0,1,K)-CC(I0,4,K);
-          real_type TI5 = CC(I1,1,K)-CC(I1,4,K);
-          real_type CR2 = CC(I0,0,K)+sin18_*TR2-cos36_*TR3;
-          real_type CI2 = CC(I1,0,K)+sin18_*TI2-cos36_*TI3;
-          real_type CR3 = CC(I0,0,K)-cos36_*TR2+sin18_*TR3;
-          real_type CI3 = CC(I1,0,K)-cos36_*TI2+sin18_*TI3;
-          real_type CR4 = TI12*TR5-TI11*TR4;
-          real_type CI4 = TI12*TI5-TI11*TI4;
-          real_type CR5 = TI11*TR5+TI12*TR4;
-          real_type CI5 = TI11*TI5+TI12*TI4;
-          real_type DR3 = CR3-CI4;
-          real_type DR4 = CR3+CI4;
-          real_type DI3 = CI3+CR4;
-          real_type DI4 = CI3-CR4;
-          real_type DR5 = CR2+CI5;
-          real_type DR2 = CR2-CI5;
-          real_type DI5 = CI2-CR5;
-          real_type DI2 = CI2+CR5;
-          CH(I0,K,0) = CC(I0,0,K)+TR2+TR3;
-          CH(I1,K,0) = CC(I1,0,K)+TI2+TI3;
-          CH(I0,K,1) = select_sign<Tag>::plusminus(WA1[I0]*DR2,WA1[I1]*DI2);
-          CH(I1,K,1) = select_sign<Tag>::minusplus(WA1[I0]*DI2,WA1[I1]*DR2);
-          CH(I0,K,2) = select_sign<Tag>::plusminus(WA2[I0]*DR3,WA2[I1]*DI3);
-          CH(I1,K,2) = select_sign<Tag>::minusplus(WA2[I0]*DI3,WA2[I1]*DR3);
-          CH(I0,K,3) = select_sign<Tag>::plusminus(WA3[I0]*DR4,WA3[I1]*DI4);
-          CH(I1,K,3) = select_sign<Tag>::minusplus(WA3[I0]*DI4,WA3[I1]*DR4);
-          CH(I0,K,4) = select_sign<Tag>::plusminus(WA4[I0]*DR5,WA4[I1]*DI5);
-          CH(I1,K,4) = select_sign<Tag>::minusplus(WA4[I0]*DI5,WA4[I1]*DR5);
+      for (std::size_t k = 0; k < l1; k++) {
+        for (std::size_t i0 = 0; i0 < ido; i0 += 2) {
+          std::size_t i1 = i0 + 1;
+          real_type tr2 = cc(i0,1,k)+cc(i0,4,k);
+          real_type ti2 = cc(i1,1,k)+cc(i1,4,k);
+          real_type tr3 = cc(i0,2,k)+cc(i0,3,k);
+          real_type ti3 = cc(i1,2,k)+cc(i1,3,k);
+          real_type tr4 = cc(i0,2,k)-cc(i0,3,k);
+          real_type ti4 = cc(i1,2,k)-cc(i1,3,k);
+          real_type tr5 = cc(i0,1,k)-cc(i0,4,k);
+          real_type ti5 = cc(i1,1,k)-cc(i1,4,k);
+          real_type cr2 = cc(i0,0,k)+sin18_*tr2-cos36_*tr3;
+          real_type ci2 = cc(i1,0,k)+sin18_*ti2-cos36_*ti3;
+          real_type cr3 = cc(i0,0,k)-cos36_*tr2+sin18_*tr3;
+          real_type ci3 = cc(i1,0,k)-cos36_*ti2+sin18_*ti3;
+          real_type cr4 = ti12*tr5-ti11*tr4;
+          real_type ci4 = ti12*ti5-ti11*ti4;
+          real_type cr5 = ti11*tr5+ti12*tr4;
+          real_type ci5 = ti11*ti5+ti12*ti4;
+          real_type dr3 = cr3-ci4;
+          real_type dr4 = cr3+ci4;
+          real_type di3 = ci3+cr4;
+          real_type di4 = ci3-cr4;
+          real_type dr5 = cr2+ci5;
+          real_type dr2 = cr2-ci5;
+          real_type di5 = ci2-cr5;
+          real_type di2 = ci2+cr5;
+          ch(i0,k,0) = cc(i0,0,k)+tr2+tr3;
+          ch(i1,k,0) = cc(i1,0,k)+ti2+ti3;
+          ch(i0,k,1) = select_sign<Tag>::plusminus(wa1[i0]*dr2,wa1[i1]*di2);
+          ch(i1,k,1) = select_sign<Tag>::minusplus(wa1[i0]*di2,wa1[i1]*dr2);
+          ch(i0,k,2) = select_sign<Tag>::plusminus(wa2[i0]*dr3,wa2[i1]*di3);
+          ch(i1,k,2) = select_sign<Tag>::minusplus(wa2[i0]*di3,wa2[i1]*dr3);
+          ch(i0,k,3) = select_sign<Tag>::plusminus(wa3[i0]*dr4,wa3[i1]*di4);
+          ch(i1,k,3) = select_sign<Tag>::minusplus(wa3[i0]*di4,wa3[i1]*dr4);
+          ch(i0,k,4) = select_sign<Tag>::plusminus(wa4[i0]*dr5,wa4[i1]*di5);
+          ch(i1,k,4) = select_sign<Tag>::minusplus(wa4[i0]*di5,wa4[i1]*dr5);
         }
       }
     }
@@ -543,140 +543,140 @@ namespace fftpack {
 
       template <class Tag>
       void passg(select_sign<Tag>,
-                 bool& NAC,
-                 std::size_t IDO,
-                 std::size_t IP,
-                 std::size_t L1,
-                 std::size_t IDL1,
-                 std::size_t IW,
-                 real_type* CC_begin,
-                 real_type* CH_begin,
-                 const real_type* WA)
+                 bool& nac,
+                 std::size_t ido,
+                 std::size_t ip,
+                 std::size_t l1,
+                 std::size_t idl1,
+                 std::size_t iw,
+                 real_type* cc_begin,
+                 real_type* ch_begin,
+                 const real_type* wa)
   // FUTURE: move out of class body
   {
-    dim3 CC(CC_begin, IDO, IP, L1);
-    dim3 C1(CC_begin, IDO, L1, IP);
-    dim2 C2(CC_begin, IDL1, IP);
-    dim3 CH(CH_begin, IDO, L1, IP);
-    dim2 CH2(CH_begin, IDL1, IP);
-    std::size_t IDOT = IDO/2;
-    std::size_t IPPH = (IP+1)/2;
-    std::size_t IDP = IP*IDO;
-    if (IDO >= L1) {
-      for (std::size_t J = 1; J < IPPH; J++) {
-        std::size_t JC = IP-J;
-        for (std::size_t K = 0; K < L1; K++) {
-          for (std::size_t I = 0; I < IDO; I++) {
-            CH(I,K,J) = CC(I,J,K)+CC(I,JC,K);
-            CH(I,K,JC) = CC(I,J,K)-CC(I,JC,K);
+    dim3 cc(cc_begin, ido, ip, l1);
+    dim3 c1(cc_begin, ido, l1, ip);
+    dim2 c2(cc_begin, idl1, ip);
+    dim3 ch(ch_begin, ido, l1, ip);
+    dim2 ch2(ch_begin, idl1, ip);
+    std::size_t idot = ido/2;
+    std::size_t ipph = (ip+1)/2;
+    std::size_t idp = ip*ido;
+    if (ido >= l1) {
+      for (std::size_t j = 1; j < ipph; j++) {
+        std::size_t jc = ip-j;
+        for (std::size_t k = 0; k < l1; k++) {
+          for (std::size_t i = 0; i < ido; i++) {
+            ch(i,k,j) = cc(i,j,k)+cc(i,jc,k);
+            ch(i,k,jc) = cc(i,j,k)-cc(i,jc,k);
           }
         }
       }
-      for (std::size_t K = 0; K < L1; K++) {
-        for (std::size_t I = 0; I < IDO; I++) {
-          CH(I,K,0) = CC(I,0,K);
+      for (std::size_t k = 0; k < l1; k++) {
+        for (std::size_t i = 0; i < ido; i++) {
+          ch(i,k,0) = cc(i,0,k);
         }
       }
     }
     else {
-      for (std::size_t J = 1; J < IPPH; J++) {
-        std::size_t JC = IP-J;
-        for (std::size_t I = 0; I < IDO; I++) {
-          for (std::size_t K = 0; K < L1; K++) {
-            CH(I,K,J) = CC(I,J,K)+CC(I,JC,K);
-            CH(I,K,JC) = CC(I,J,K)-CC(I,JC,K);
+      for (std::size_t j = 1; j < ipph; j++) {
+        std::size_t jc = ip-j;
+        for (std::size_t i = 0; i < ido; i++) {
+          for (std::size_t k = 0; k < l1; k++) {
+            ch(i,k,j) = cc(i,j,k)+cc(i,jc,k);
+            ch(i,k,jc) = cc(i,j,k)-cc(i,jc,k);
           }
         }
       }
-      for (std::size_t I = 0; I < IDO; I++) {
-        for (std::size_t K = 0; K < L1; K++) {
-          CH(I,K,0) = CC(I,0,K);
+      for (std::size_t i = 0; i < ido; i++) {
+        for (std::size_t k = 0; k < l1; k++) {
+          ch(i,k,0) = cc(i,0,k);
         }
       }
     }
-    std::size_t IDL = 0;
-    for (std::size_t L = 1; L < IPPH; L++) {
-      std::size_t LC = IP-L;
-      for (std::size_t IK = 0; IK < IDL1; IK++) {
-        C2(IK,L) = CH2(IK,0)+WA[IW+IDL]*CH2(IK,1);
-        C2(IK,LC) = select_sign<Tag>::unaryminusplus(
-                                         WA[IW+IDL+1]*CH2(IK,IP-1));
+    std::size_t idl = 0;
+    for (std::size_t l = 1; l < ipph; l++) {
+      std::size_t lc = ip-l;
+      for (std::size_t ik = 0; ik < idl1; ik++) {
+        c2(ik,l) = ch2(ik,0)+wa[iw+idl]*ch2(ik,1);
+        c2(ik,lc) = select_sign<Tag>::unaryminusplus(
+                                         wa[iw+idl+1]*ch2(ik,ip-1));
       }
-      std::size_t IDLJ = IDL;
-      IDL += IDO;
-      for (std::size_t J = 2; J < IPPH; J++) {
-        std::size_t JC = IP-J;
-        IDLJ += IDL;
-        if (IDLJ >= IDP) IDLJ = IDLJ-IDP;
-        real_type WAR = WA[IW+IDLJ];
-        real_type WAI = WA[IW+IDLJ+1];
-        for (std::size_t IK = 0; IK < IDL1; IK++) {
-          C2(IK,L) = C2(IK,L)+WAR*CH2(IK,J);
-          C2(IK,LC) = select_sign<Tag>::minusplus(C2(IK,LC),WAI*CH2(IK,JC));
+      std::size_t idlj = idl;
+      idl += ido;
+      for (std::size_t j = 2; j < ipph; j++) {
+        std::size_t jc = ip-j;
+        idlj += idl;
+        if (idlj >= idp) idlj = idlj-idp;
+        real_type war = wa[iw+idlj];
+        real_type wai = wa[iw+idlj+1];
+        for (std::size_t ik = 0; ik < idl1; ik++) {
+          c2(ik,l) = c2(ik,l)+war*ch2(ik,j);
+          c2(ik,lc) = select_sign<Tag>::minusplus(c2(ik,lc),wai*ch2(ik,jc));
         }
       }
     }
-    std::size_t J;
-    for (J = 1; J < IPPH; J++) {
-      for (std::size_t IK = 0; IK < IDL1; IK++) {
-         CH2(IK,0) += CH2(IK,J);
+    std::size_t j;
+    for (j = 1; j < ipph; j++) {
+      for (std::size_t ik = 0; ik < idl1; ik++) {
+         ch2(ik,0) += ch2(ik,j);
       }
     }
-    for (J = 1; J < IPPH; J++) {
-      std::size_t JC = IP-J;
-      for (std::size_t IK0 = 0; IK0 < IDL1; IK0 += 2) {
-        std::size_t IK1 = IK0 + 1;
-        CH2(IK0,J) = C2(IK0,J)-C2(IK1,JC);
-        CH2(IK0,JC) = C2(IK0,J)+C2(IK1,JC);
-        CH2(IK1,J) = C2(IK1,J)+C2(IK0,JC);
-        CH2(IK1,JC) = C2(IK1,J)-C2(IK0,JC);
+    for (j = 1; j < ipph; j++) {
+      std::size_t jc = ip-j;
+      for (std::size_t ik0 = 0; ik0 < idl1; ik0 += 2) {
+        std::size_t ik1 = ik0 + 1;
+        ch2(ik0,j) = c2(ik0,j)-c2(ik1,jc);
+        ch2(ik0,jc) = c2(ik0,j)+c2(ik1,jc);
+        ch2(ik1,j) = c2(ik1,j)+c2(ik0,jc);
+        ch2(ik1,jc) = c2(ik1,j)-c2(ik0,jc);
       }
     }
-    if (IDO == 2) {
-      NAC = true;
+    if (ido == 2) {
+      nac = true;
       return;
     }
-    std::copy(CH_begin, CH_begin + IDL1, CC_begin);
-    for (J = 1; J < IP; J++) {
-      for (std::size_t K = 0; K < L1; K++) {
-        C1(0,K,J) = CH(0,K,J);
-        C1(1,K,J) = CH(1,K,J);
+    std::copy(ch_begin, ch_begin + idl1, cc_begin);
+    for (j = 1; j < ip; j++) {
+      for (std::size_t k = 0; k < l1; k++) {
+        c1(0,k,j) = ch(0,k,j);
+        c1(1,k,j) = ch(1,k,j);
       }
     }
-    if (IDOT <= L1) {
-      std::size_t IDIJ = 2;
-      for (std::size_t J = 1; J < IP; J++) {
-        for (std::size_t I0 = 2; I0 < IDO; I0 += 2) {
-          std::size_t I1 = I0 + 1;
-          for (std::size_t K = 0; K < L1; K++) {
-            C1(I0,K,J) = select_sign<Tag>::plusminus(
-              WA[IW+IDIJ]*CH(I0,K,J),WA[IW+IDIJ+1]*CH(I1,K,J));
-            C1(I1,K,J) = select_sign<Tag>::minusplus(
-              WA[IW+IDIJ]*CH(I1,K,J),WA[IW+IDIJ+1]*CH(I0,K,J));
+    if (idot <= l1) {
+      std::size_t idij = 2;
+      for (std::size_t j = 1; j < ip; j++) {
+        for (std::size_t i0 = 2; i0 < ido; i0 += 2) {
+          std::size_t i1 = i0 + 1;
+          for (std::size_t k = 0; k < l1; k++) {
+            c1(i0,k,j) = select_sign<Tag>::plusminus(
+              wa[iw+idij]*ch(i0,k,j),wa[iw+idij+1]*ch(i1,k,j));
+            c1(i1,k,j) = select_sign<Tag>::minusplus(
+              wa[iw+idij]*ch(i1,k,j),wa[iw+idij+1]*ch(i0,k,j));
           }
-          IDIJ += 2;
+          idij += 2;
         }
-        IDIJ += 2;
+        idij += 2;
       }
     }
     else {
-      std::size_t IDJ = 2;
-      for (std::size_t J = 1; J < IP; J++) {
-        for (std::size_t K = 0; K < L1; K++) {
-          std::size_t IDIJ = IDJ;
-          for (std::size_t I0 = 2; I0 < IDO; I0 += 2) {
-            std::size_t I1 = I0 + 1;
-            C1(I0,K,J) = select_sign<Tag>::plusminus(
-              WA[IW+IDIJ]*CH(I0,K,J),WA[IW+IDIJ+1]*CH(I1,K,J));
-            C1(I1,K,J) = select_sign<Tag>::minusplus(
-              WA[IW+IDIJ]*CH(I1,K,J),WA[IW+IDIJ+1]*CH(I0,K,J));
-            IDIJ += 2;
+      std::size_t idj = 2;
+      for (std::size_t j = 1; j < ip; j++) {
+        for (std::size_t k = 0; k < l1; k++) {
+          std::size_t idij = idj;
+          for (std::size_t i0 = 2; i0 < ido; i0 += 2) {
+            std::size_t i1 = i0 + 1;
+            c1(i0,k,j) = select_sign<Tag>::plusminus(
+              wa[iw+idij]*ch(i0,k,j),wa[iw+idij+1]*ch(i1,k,j));
+            c1(i1,k,j) = select_sign<Tag>::minusplus(
+              wa[iw+idij]*ch(i1,k,j),wa[iw+idij+1]*ch(i0,k,j));
+            idij += 2;
           }
         }
-        IDJ += IDO;
+        idj += ido;
       }
     }
-    NAC = false;
+    nac = false;
     return;
   }
   };
@@ -684,7 +684,7 @@ namespace fftpack {
   template <typename RealType,
             typename ComplexType>
   complex_to_complex<RealType, ComplexType>::complex_to_complex(std::size_t n)
-    : factorization(n, false), WA_(2 * n), CH_(2 * n)
+    : factorization(n, false), wa_(2 * n), ch_(2 * n)
   {
     if (n_ < 2) return;
     // Precompute constants for real_type.
@@ -697,35 +697,35 @@ namespace fftpack {
     cos36_ = std::cos(deg_as_rad(36));
     // Computation of the sin and cos terms.
     // Based on the second part of fftpack41/cffti1.f.
-    real_type* WA = &(*(WA_.begin()));
-    real_type ARGH = two_pi_ / real_type(n_);
-    std::size_t I = 0;
-    std::size_t L1 = 1;
-    for (std::size_t K1 = 0; K1 < factors_.size(); K1++) {
-      std::size_t IP = factors_[K1];
-      std::size_t LD = 0;
-      std::size_t L2 = L1 * IP;
-      std::size_t IDOT = 2 * (n_ / L2) + 2;
-      for (std::size_t J = 0; J < IP - 1; J++) {
-        std::size_t I1 = I;
-        WA[I  ] = real_type(1);
-        WA[I+1] = real_type(0);
-        LD += L1;
-        std::size_t FI = 0;
-        real_type ARGLD = real_type(LD) * ARGH;
-        for (std::size_t II = 4; II <= IDOT; II += 2) {
-          I += 2;
-          FI++;
-          real_type ARG = real_type(FI) * ARGLD;
-          WA[I  ] = std::cos(ARG);
-          WA[I+1] = std::sin(ARG);
+    real_type* wa = &(*(wa_.begin()));
+    real_type argh = two_pi_ / real_type(n_);
+    std::size_t i = 0;
+    std::size_t l1 = 1;
+    for (std::size_t k1 = 0; k1 < factors_.size(); k1++) {
+      std::size_t ip = factors_[k1];
+      std::size_t ld = 0;
+      std::size_t l2 = l1 * ip;
+      std::size_t idot = 2 * (n_ / l2) + 2;
+      for (std::size_t j = 0; j < ip - 1; j++) {
+        std::size_t i1 = i;
+        wa[i  ] = real_type(1);
+        wa[i+1] = real_type(0);
+        ld += l1;
+        std::size_t fi = 0;
+        real_type argld = real_type(ld) * argh;
+        for (std::size_t ii = 4; ii <= idot; ii += 2) {
+          i += 2;
+          fi++;
+          real_type arg = real_type(fi) * argld;
+          wa[i  ] = std::cos(arg);
+          wa[i+1] = std::sin(arg);
         }
-        if (IP > 5) {
-          WA[I1  ] = WA[I  ];
-          WA[I1+1] = WA[I+1];
+        if (ip > 5) {
+          wa[i1  ] = wa[i  ];
+          wa[i1+1] = wa[i+1];
         }
       }
-      L1 = L2;
+      l1 = l2;
     }
   }
 
