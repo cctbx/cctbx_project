@@ -9,182 +9,182 @@ namespace scitbx { namespace fftpack {
                   ComplexType>::forward_compressed(real_type* seq_begin)
   {
     if (n_ < 2) return;
-    real_type* C = seq_begin;
-    real_type* CH = &(*(CH_.begin()));
-    const real_type* WA = &(*(WA_.begin()));
-    std::size_t IDL1;
-    std::size_t IDO;
-    std::size_t IP;
-    std::size_t IW;
-    std::size_t IX2;
-    std::size_t IX3;
-    std::size_t IX4;
-    std::size_t KH;
-    std::size_t L1;
-    std::size_t L2;
-    std::size_t NA;
-    NA = 1;
-    L2 = n_;
-    IW = n_;
-    for (std::size_t K1 = 1; K1 <= factors_.size(); K1++) {
-      KH = factors_.size()-K1;
-      IP = factors_[KH+3-2-1];
-      L1 = L2/IP;
-      IDO = n_/L2;
-      IDL1 = IDO*L1;
-      IW = IW-(IP-1)*IDO;
-      NA = 1-NA;
-      if (IP == 4) {
-        IX2 = IW+IDO;
-        IX3 = IX2+IDO;
-        if (NA == 0) {
-          passf4(IDO,L1,C,CH,WA+IW-1,WA+IX2-1,WA+IX3-1);
+    real_type* c = seq_begin;
+    real_type* ch = &(*(ch_.begin()));
+    const real_type* wa = &(*(wa_.begin()));
+    std::size_t idl1;
+    std::size_t ido;
+    std::size_t ip;
+    std::size_t iw;
+    std::size_t ix2;
+    std::size_t ix3;
+    std::size_t ix4;
+    std::size_t kh;
+    std::size_t l1;
+    std::size_t l2;
+    std::size_t na;
+    na = 1;
+    l2 = n_;
+    iw = n_;
+    for (std::size_t k1 = 1; k1 <= factors_.size(); k1++) {
+      kh = factors_.size()-k1;
+      ip = factors_[kh+3-2-1];
+      l1 = l2/ip;
+      ido = n_/l2;
+      idl1 = ido*l1;
+      iw = iw-(ip-1)*ido;
+      na = 1-na;
+      if (ip == 4) {
+        ix2 = iw+ido;
+        ix3 = ix2+ido;
+        if (na == 0) {
+          passf4(ido,l1,c,ch,wa+iw-1,wa+ix2-1,wa+ix3-1);
         }
         else {
-          passf4(IDO,L1,CH,C,WA+IW-1,WA+IX2-1,WA+IX3-1);
+          passf4(ido,l1,ch,c,wa+iw-1,wa+ix2-1,wa+ix3-1);
         }
       }
-      else if (IP == 2) {
-        if (NA == 0) {
-          passf2(IDO,L1,C,CH,WA+IW-1);
+      else if (ip == 2) {
+        if (na == 0) {
+          passf2(ido,l1,c,ch,wa+iw-1);
         }
         else {
-          passf2(IDO,L1,CH,C,WA+IW-1);
+          passf2(ido,l1,ch,c,wa+iw-1);
         }
       }
-      else if (IP == 3) {
-        IX2 = IW+IDO;
-        if (NA == 0) {
-          passf3(IDO,L1,C,CH,WA+IW-1,WA+IX2-1);
+      else if (ip == 3) {
+        ix2 = iw+ido;
+        if (na == 0) {
+          passf3(ido,l1,c,ch,wa+iw-1,wa+ix2-1);
         }
         else {
-          passf3(IDO,L1,CH,C,WA+IW-1,WA+IX2-1);
+          passf3(ido,l1,ch,c,wa+iw-1,wa+ix2-1);
         }
       }
-      else if (IP == 5) {
-        IX2 = IW+IDO;
-        IX3 = IX2+IDO;
-        IX4 = IX3+IDO;
-        if (NA == 0) {
-          passf5(IDO,L1,C,CH,WA+IW-1,WA+IX2-1,WA+IX3-1,WA+IX4-1);
+      else if (ip == 5) {
+        ix2 = iw+ido;
+        ix3 = ix2+ido;
+        ix4 = ix3+ido;
+        if (na == 0) {
+          passf5(ido,l1,c,ch,wa+iw-1,wa+ix2-1,wa+ix3-1,wa+ix4-1);
         }
         else {
-          passf5(IDO,L1,CH,C,WA+IW-1,WA+IX2-1,WA+IX3-1,WA+IX4-1);
+          passf5(ido,l1,ch,c,wa+iw-1,wa+ix2-1,wa+ix3-1,wa+ix4-1);
         }
       }
       else {
-        if (IDO == 1) NA = 1-NA;
-        if (NA == 0) {
-          passfg(IDO,IP,L1,IDL1,C,C,C,CH,CH,WA+IW-1);
-          NA = 1;
+        if (ido == 1) na = 1-na;
+        if (na == 0) {
+          passfg(ido,ip,l1,idl1,c,c,c,ch,ch,wa+iw-1);
+          na = 1;
         }
         else {
-          passfg(IDO,IP,L1,IDL1,CH,CH,CH,C,C,WA+IW-1);
-          NA = 0;
+          passfg(ido,ip,l1,idl1,ch,ch,ch,c,c,wa+iw-1);
+          na = 0;
         }
       }
-      L2 = L1;
+      l2 = l1;
     }
-    if (NA == 1) return;
-    for (std::size_t I = 1; I <= n_; I++) {
-      C[I-1] = CH[I-1];
+    if (na == 1) return;
+    for (std::size_t i = 1; i <= n_; i++) {
+      c[i-1] = ch[i-1];
     }
   }
 
   template <typename RealType, typename ComplexType>
   void
   real_to_complex<RealType,
-                  ComplexType>::passf2(std::size_t IDO,
-                                       std::size_t L1,
-                                       real_type* CC_begin,
-                                       real_type* CH_begin,
-                                       const real_type* WA1)
+                  ComplexType>::passf2(std::size_t ido,
+                                       std::size_t l1,
+                                       real_type* cc_begin,
+                                       real_type* ch_begin,
+                                       const real_type* wa1)
   {
-    dim3 CC(CC_begin, IDO, L1, 2);
-    dim3 CH(CH_begin, IDO, 2, L1);
-    std::size_t IC;
-    real_type TI2;
-    real_type TR2;
-    std::size_t K;
-    for (K = 0; K < L1; K++) {
-      CH(0,0,K) = CC(0,K,0)+CC(0,K,1);
-      CH(IDO-1,1,K) = CC(0,K,0)-CC(0,K,1);
+    dim3 cc(cc_begin, ido, l1, 2);
+    dim3 ch(ch_begin, ido, 2, l1);
+    std::size_t ic;
+    real_type ti2;
+    real_type tr2;
+    std::size_t k;
+    for (k = 0; k < l1; k++) {
+      ch(0,0,k) = cc(0,k,0)+cc(0,k,1);
+      ch(ido-1,1,k) = cc(0,k,0)-cc(0,k,1);
     }
-    if (IDO < 2) return;
-    if (IDO > 2) {
-      for (std::size_t K = 0; K < L1; K++) {
-        for (std::size_t I0 = 1; I0 < IDO-1; I0 += 2) {
-          std::size_t I1 = I0 + 1;
-          IC = IDO-I1;
-          TR2 = WA1[I0-1]*CC(I0,K,1)+WA1[I0]*CC(I1,K,1);
-          TI2 = WA1[I0-1]*CC(I1,K,1)-WA1[I0]*CC(I0,K,1);
-          CH(I1,0,K) = CC(I1,K,0)+TI2;
-          CH(IC,1,K) = TI2-CC(I1,K,0);
-          CH(I0,0,K) = CC(I0,K,0)+TR2;
-          CH(IC-1,1,K) = CC(I0,K,0)-TR2;
+    if (ido < 2) return;
+    if (ido > 2) {
+      for (std::size_t k = 0; k < l1; k++) {
+        for (std::size_t i0 = 1; i0 < ido-1; i0 += 2) {
+          std::size_t i1 = i0 + 1;
+          ic = ido-i1;
+          tr2 = wa1[i0-1]*cc(i0,k,1)+wa1[i0]*cc(i1,k,1);
+          ti2 = wa1[i0-1]*cc(i1,k,1)-wa1[i0]*cc(i0,k,1);
+          ch(i1,0,k) = cc(i1,k,0)+ti2;
+          ch(ic,1,k) = ti2-cc(i1,k,0);
+          ch(i0,0,k) = cc(i0,k,0)+tr2;
+          ch(ic-1,1,k) = cc(i0,k,0)-tr2;
         }
       }
-      if (IDO % 2 != 0) return;
+      if (ido % 2 != 0) return;
     }
-    for (K = 0; K < L1; K++) {
-      CH(0,1,K) = -CC(IDO-1,K,1);
-      CH(IDO-1,0,K) = CC(IDO-1,K,0);
+    for (k = 0; k < l1; k++) {
+      ch(0,1,k) = -cc(ido-1,k,1);
+      ch(ido-1,0,k) = cc(ido-1,k,0);
     }
   }
 
   template <typename RealType, typename ComplexType>
   void
   real_to_complex<RealType,
-                  ComplexType>::passf3(std::size_t IDO,
-                                       std::size_t L1,
-                                       real_type* CC_begin,
-                                       real_type* CH_begin,
-                                       const real_type* WA1,
-                                       const real_type* WA2)
+                  ComplexType>::passf3(std::size_t ido,
+                                       std::size_t l1,
+                                       real_type* cc_begin,
+                                       real_type* ch_begin,
+                                       const real_type* wa1,
+                                       const real_type* wa2)
   {
-    dim3 CC(CC_begin, IDO, L1, 3);
-    dim3 CH(CH_begin, IDO, 3, L1);
-    real_type CI2;
-    real_type CR2;
-    real_type DI2;
-    real_type DI3;
-    real_type DR2;
-    real_type DR3;
-    std::size_t IC;
-    real_type TI2;
-    real_type TI3;
-    real_type TR2;
-    real_type TR3;
-    const real_type TAUR = -.5;
-    const real_type TAUI = -TAUR * std::sqrt(real_type(3));
-    std::size_t K;
-    for (K = 0; K < L1; K++) {
-      CR2 = CC(0,K,1)+CC(0,K,2);
-      CH(0,0,K) = CC(0,K,0)+CR2;
-      CH(0,2,K) = TAUI*(CC(0,K,2)-CC(0,K,1));
-      CH(IDO-1,1,K) = CC(0,K,0)+TAUR*CR2;
+    dim3 cc(cc_begin, ido, l1, 3);
+    dim3 ch(ch_begin, ido, 3, l1);
+    real_type ci2;
+    real_type cr2;
+    real_type di2;
+    real_type di3;
+    real_type dr2;
+    real_type dr3;
+    std::size_t ic;
+    real_type ti2;
+    real_type ti3;
+    real_type tr2;
+    real_type tr3;
+    const real_type taur = -.5;
+    const real_type taui = -taur * std::sqrt(real_type(3));
+    std::size_t k;
+    for (k = 0; k < l1; k++) {
+      cr2 = cc(0,k,1)+cc(0,k,2);
+      ch(0,0,k) = cc(0,k,0)+cr2;
+      ch(0,2,k) = taui*(cc(0,k,2)-cc(0,k,1));
+      ch(ido-1,1,k) = cc(0,k,0)+taur*cr2;
     }
-    if (IDO == 1) return;
-    for (K = 0; K < L1; K++) {
-      for (std::size_t I0 = 1; I0 < IDO-1; I0 += 2) {
-        std::size_t I1 = I0 + 1;
-        IC = IDO-I1;
-        DR2 = WA1[I0-1]*CC(I0,K,1)+WA1[I0]*CC(I1,K,1);
-        DI2 = WA1[I0-1]*CC(I1,K,1)-WA1[I0]*CC(I0,K,1);
-        DR3 = WA2[I0-1]*CC(I0,K,2)+WA2[I0]*CC(I1,K,2);
-        DI3 = WA2[I0-1]*CC(I1,K,2)-WA2[I0]*CC(I0,K,2);
-        CR2 = DR2+DR3;
-        CI2 = DI2+DI3;
-        CH(I0,0,K) = CC(I0,K,0)+CR2;
-        CH(I1,0,K) = CC(I1,K,0)+CI2;
-        TR2 = CC(I0,K,0)+TAUR*CR2;
-        TI2 = CC(I1,K,0)+TAUR*CI2;
-        TR3 = TAUI*(DI2-DI3);
-        TI3 = TAUI*(DR3-DR2);
-        CH(I0,2,K) = TR2+TR3;
-        CH(IC-1,1,K) = TR2-TR3;
-        CH(I1,2,K) = TI2+TI3;
-        CH(IC,1,K) = TI3-TI2;
+    if (ido == 1) return;
+    for (k = 0; k < l1; k++) {
+      for (std::size_t i0 = 1; i0 < ido-1; i0 += 2) {
+        std::size_t i1 = i0 + 1;
+        ic = ido-i1;
+        dr2 = wa1[i0-1]*cc(i0,k,1)+wa1[i0]*cc(i1,k,1);
+        di2 = wa1[i0-1]*cc(i1,k,1)-wa1[i0]*cc(i0,k,1);
+        dr3 = wa2[i0-1]*cc(i0,k,2)+wa2[i0]*cc(i1,k,2);
+        di3 = wa2[i0-1]*cc(i1,k,2)-wa2[i0]*cc(i0,k,2);
+        cr2 = dr2+dr3;
+        ci2 = di2+di3;
+        ch(i0,0,k) = cc(i0,k,0)+cr2;
+        ch(i1,0,k) = cc(i1,k,0)+ci2;
+        tr2 = cc(i0,k,0)+taur*cr2;
+        ti2 = cc(i1,k,0)+taur*ci2;
+        tr3 = taui*(di2-di3);
+        ti3 = taui*(dr3-dr2);
+        ch(i0,2,k) = tr2+tr3;
+        ch(ic-1,1,k) = tr2-tr3;
+        ch(i1,2,k) = ti2+ti3;
+        ch(ic,1,k) = ti3-ti2;
       }
     }
   }
@@ -192,181 +192,181 @@ namespace scitbx { namespace fftpack {
   template <typename RealType, typename ComplexType>
   void
   real_to_complex<RealType,
-                  ComplexType>::passf4(std::size_t IDO,
-                                       std::size_t L1,
-                                       real_type* CC_begin,
-                                       real_type* CH_begin,
-                                       const real_type* WA1,
-                                       const real_type* WA2,
-                                       const real_type* WA3)
+                  ComplexType>::passf4(std::size_t ido,
+                                       std::size_t l1,
+                                       real_type* cc_begin,
+                                       real_type* ch_begin,
+                                       const real_type* wa1,
+                                       const real_type* wa2,
+                                       const real_type* wa3)
   {
-    dim3 CC(CC_begin, IDO, L1, 4);
-    dim3 CH(CH_begin, IDO, 4, L1);
-    real_type CI2;
-    real_type CI3;
-    real_type CI4;
-    real_type CR2;
-    real_type CR3;
-    real_type CR4;
-    std::size_t IC;
-    real_type TI1;
-    real_type TI2;
-    real_type TI3;
-    real_type TI4;
-    real_type TR1;
-    real_type TR2;
-    real_type TR3;
-    real_type TR4;
-    const real_type HSQT2 = real_type(.5) * std::sqrt(real_type(2));
-    std::size_t K;
-    for (K = 0; K < L1; K++) {
-      TR1 = CC(0,K,1)+CC(0,K,3);
-      TR2 = CC(0,K,0)+CC(0,K,2);
-      CH(0,0,K) = TR1+TR2;
-      CH(IDO-1,3,K) = TR2-TR1;
-      CH(IDO-1,1,K) = CC(0,K,0)-CC(0,K,2);
-      CH(0,2,K) = CC(0,K,3)-CC(0,K,1);
+    dim3 cc(cc_begin, ido, l1, 4);
+    dim3 ch(ch_begin, ido, 4, l1);
+    real_type ci2;
+    real_type ci3;
+    real_type ci4;
+    real_type cr2;
+    real_type cr3;
+    real_type cr4;
+    std::size_t ic;
+    real_type ti1;
+    real_type ti2;
+    real_type ti3;
+    real_type ti4;
+    real_type tr1;
+    real_type tr2;
+    real_type tr3;
+    real_type tr4;
+    const real_type hsqt2 = real_type(.5) * std::sqrt(real_type(2));
+    std::size_t k;
+    for (k = 0; k < l1; k++) {
+      tr1 = cc(0,k,1)+cc(0,k,3);
+      tr2 = cc(0,k,0)+cc(0,k,2);
+      ch(0,0,k) = tr1+tr2;
+      ch(ido-1,3,k) = tr2-tr1;
+      ch(ido-1,1,k) = cc(0,k,0)-cc(0,k,2);
+      ch(0,2,k) = cc(0,k,3)-cc(0,k,1);
     }
-    if (IDO < 2) return;
-    if (IDO > 2) {
-      for (std::size_t K = 0; K < L1; K++) {
-        for (std::size_t I0 = 1; I0 < IDO-1; I0 += 2) {
-          std::size_t I1 = I0 + 1;
-          IC = IDO-I1;
-          CR2 = WA1[I0-1]*CC(I0,K,1)+WA1[I0]*CC(I1,K,1);
-          CI2 = WA1[I0-1]*CC(I1,K,1)-WA1[I0]*CC(I0,K,1);
-          CR3 = WA2[I0-1]*CC(I0,K,2)+WA2[I0]*CC(I1,K,2);
-          CI3 = WA2[I0-1]*CC(I1,K,2)-WA2[I0]*CC(I0,K,2);
-          CR4 = WA3[I0-1]*CC(I0,K,3)+WA3[I0]*CC(I1,K,3);
-          CI4 = WA3[I0-1]*CC(I1,K,3)-WA3[I0]*CC(I0,K,3);
-          TR1 = CR2+CR4;
-          TR4 = CR4-CR2;
-          TI1 = CI2+CI4;
-          TI4 = CI2-CI4;
-          TI2 = CC(I1,K,0)+CI3;
-          TI3 = CC(I1,K,0)-CI3;
-          TR2 = CC(I0,K,0)+CR3;
-          TR3 = CC(I0,K,0)-CR3;
-          CH(I0,0,K) = TR1+TR2;
-          CH(IC-1,3,K) = TR2-TR1;
-          CH(I1,0,K) = TI1+TI2;
-          CH(IC,3,K) = TI1-TI2;
-          CH(I0,2,K) = TI4+TR3;
-          CH(IC-1,1,K) = TR3-TI4;
-          CH(I1,2,K) = TR4+TI3;
-          CH(IC,1,K) = TR4-TI3;
+    if (ido < 2) return;
+    if (ido > 2) {
+      for (std::size_t k = 0; k < l1; k++) {
+        for (std::size_t i0 = 1; i0 < ido-1; i0 += 2) {
+          std::size_t i1 = i0 + 1;
+          ic = ido-i1;
+          cr2 = wa1[i0-1]*cc(i0,k,1)+wa1[i0]*cc(i1,k,1);
+          ci2 = wa1[i0-1]*cc(i1,k,1)-wa1[i0]*cc(i0,k,1);
+          cr3 = wa2[i0-1]*cc(i0,k,2)+wa2[i0]*cc(i1,k,2);
+          ci3 = wa2[i0-1]*cc(i1,k,2)-wa2[i0]*cc(i0,k,2);
+          cr4 = wa3[i0-1]*cc(i0,k,3)+wa3[i0]*cc(i1,k,3);
+          ci4 = wa3[i0-1]*cc(i1,k,3)-wa3[i0]*cc(i0,k,3);
+          tr1 = cr2+cr4;
+          tr4 = cr4-cr2;
+          ti1 = ci2+ci4;
+          ti4 = ci2-ci4;
+          ti2 = cc(i1,k,0)+ci3;
+          ti3 = cc(i1,k,0)-ci3;
+          tr2 = cc(i0,k,0)+cr3;
+          tr3 = cc(i0,k,0)-cr3;
+          ch(i0,0,k) = tr1+tr2;
+          ch(ic-1,3,k) = tr2-tr1;
+          ch(i1,0,k) = ti1+ti2;
+          ch(ic,3,k) = ti1-ti2;
+          ch(i0,2,k) = ti4+tr3;
+          ch(ic-1,1,k) = tr3-ti4;
+          ch(i1,2,k) = tr4+ti3;
+          ch(ic,1,k) = tr4-ti3;
         }
       }
-      if (IDO % 2 != 0) return;
+      if (ido % 2 != 0) return;
     }
-    for (K = 0; K < L1; K++) {
-      TI1 = -HSQT2*(CC(IDO-1,K,1)+CC(IDO-1,K,3));
-      TR1 = HSQT2*(CC(IDO-1,K,1)-CC(IDO-1,K,3));
-      CH(IDO-1,0,K) = TR1+CC(IDO-1,K,0);
-      CH(IDO-1,2,K) = CC(IDO-1,K,0)-TR1;
-      CH(0,1,K) = TI1-CC(IDO-1,K,2);
-      CH(0,3,K) = TI1+CC(IDO-1,K,2);
+    for (k = 0; k < l1; k++) {
+      ti1 = -hsqt2*(cc(ido-1,k,1)+cc(ido-1,k,3));
+      tr1 = hsqt2*(cc(ido-1,k,1)-cc(ido-1,k,3));
+      ch(ido-1,0,k) = tr1+cc(ido-1,k,0);
+      ch(ido-1,2,k) = cc(ido-1,k,0)-tr1;
+      ch(0,1,k) = ti1-cc(ido-1,k,2);
+      ch(0,3,k) = ti1+cc(ido-1,k,2);
     }
   }
 
   template <typename RealType, typename ComplexType>
   void
   real_to_complex<RealType,
-                  ComplexType>::passf5(std::size_t IDO,
-                                       std::size_t L1,
-                                       real_type* CC_begin,
-                                       real_type* CH_begin,
-                                       const real_type* WA1,
-                                       const real_type* WA2,
-                                       const real_type* WA3,
-                                       const real_type* WA4)
+                  ComplexType>::passf5(std::size_t ido,
+                                       std::size_t l1,
+                                       real_type* cc_begin,
+                                       real_type* ch_begin,
+                                       const real_type* wa1,
+                                       const real_type* wa2,
+                                       const real_type* wa3,
+                                       const real_type* wa4)
   {
-    dim3 CC(CC_begin, IDO, L1, 5);
-    dim3 CH(CH_begin, IDO, 5, L1);
-    real_type CI2;
-    real_type CI3;
-    real_type CI4;
-    real_type CI5;
-    real_type CR2;
-    real_type CR3;
-    real_type CR4;
-    real_type CR5;
-    real_type DI2;
-    real_type DI3;
-    real_type DI4;
-    real_type DI5;
-    real_type DR2;
-    real_type DR3;
-    real_type DR4;
-    real_type DR5;
-    std::size_t IC;
-    real_type TI2;
-    real_type TI3;
-    real_type TI4;
-    real_type TI5;
-    real_type TR2;
-    real_type TR3;
-    real_type TR4;
-    real_type TR5;
+    dim3 cc(cc_begin, ido, l1, 5);
+    dim3 ch(ch_begin, ido, 5, l1);
+    real_type ci2;
+    real_type ci3;
+    real_type ci4;
+    real_type ci5;
+    real_type cr2;
+    real_type cr3;
+    real_type cr4;
+    real_type cr5;
+    real_type di2;
+    real_type di3;
+    real_type di4;
+    real_type di5;
+    real_type dr2;
+    real_type dr3;
+    real_type dr4;
+    real_type dr5;
+    std::size_t ic;
+    real_type ti2;
+    real_type ti3;
+    real_type ti4;
+    real_type ti5;
+    real_type tr2;
+    real_type tr3;
+    real_type tr4;
+    real_type tr5;
     // sin(18 deg)
-    const real_type TR11 =  .309016994374947424102293417182819058860154589903;
+    const real_type tr11 =  .309016994374947424102293417182819058860154589903;
     // cos(18 deg)
-    const real_type TI11 =  .951056516295153572116439333379382143405698634126;
+    const real_type ti11 =  .951056516295153572116439333379382143405698634126;
     // -cos(36 deg)
-    const real_type TR12 = -.809016994374947424102293417182819058860154589903;
+    const real_type tr12 = -.809016994374947424102293417182819058860154589903;
     // sin(36 deg)
-    const real_type TI12 =  .587785252292473129168705954639072768597652437643;
-    std::size_t K;
-    for (K = 0; K < L1; K++) {
-      CR2 = CC(0,K,4)+CC(0,K,1);
-      CI5 = CC(0,K,4)-CC(0,K,1);
-      CR3 = CC(0,K,3)+CC(0,K,2);
-      CI4 = CC(0,K,3)-CC(0,K,2);
-      CH(0,0,K) = CC(0,K,0)+CR2+CR3;
-      CH(IDO-1,1,K) = CC(0,K,0)+TR11*CR2+TR12*CR3;
-      CH(0,2,K) = TI11*CI5+TI12*CI4;
-      CH(IDO-1,3,K) = CC(0,K,0)+TR12*CR2+TR11*CR3;
-      CH(0,4,K) = TI12*CI5-TI11*CI4;
+    const real_type ti12 =  .587785252292473129168705954639072768597652437643;
+    std::size_t k;
+    for (k = 0; k < l1; k++) {
+      cr2 = cc(0,k,4)+cc(0,k,1);
+      ci5 = cc(0,k,4)-cc(0,k,1);
+      cr3 = cc(0,k,3)+cc(0,k,2);
+      ci4 = cc(0,k,3)-cc(0,k,2);
+      ch(0,0,k) = cc(0,k,0)+cr2+cr3;
+      ch(ido-1,1,k) = cc(0,k,0)+tr11*cr2+tr12*cr3;
+      ch(0,2,k) = ti11*ci5+ti12*ci4;
+      ch(ido-1,3,k) = cc(0,k,0)+tr12*cr2+tr11*cr3;
+      ch(0,4,k) = ti12*ci5-ti11*ci4;
     }
-    if (IDO == 1) return;
-    for (K = 0; K < L1; K++) {
-      for (std::size_t I0 = 1; I0 < IDO-1; I0 += 2) {
-        std::size_t I1 = I0 + 1;
-        IC = IDO-I1;
-        DR2 = WA1[I0-1]*CC(I0,K,1)+WA1[I0]*CC(I1,K,1);
-        DI2 = WA1[I0-1]*CC(I1,K,1)-WA1[I0]*CC(I0,K,1);
-        DR3 = WA2[I0-1]*CC(I0,K,2)+WA2[I0]*CC(I1,K,2);
-        DI3 = WA2[I0-1]*CC(I1,K,2)-WA2[I0]*CC(I0,K,2);
-        DR4 = WA3[I0-1]*CC(I0,K,3)+WA3[I0]*CC(I1,K,3);
-        DI4 = WA3[I0-1]*CC(I1,K,3)-WA3[I0]*CC(I0,K,3);
-        DR5 = WA4[I0-1]*CC(I0,K,4)+WA4[I0]*CC(I1,K,4);
-        DI5 = WA4[I0-1]*CC(I1,K,4)-WA4[I0]*CC(I0,K,4);
-        CR2 = DR2+DR5;
-        CI5 = DR5-DR2;
-        CR5 = DI2-DI5;
-        CI2 = DI2+DI5;
-        CR3 = DR3+DR4;
-        CI4 = DR4-DR3;
-        CR4 = DI3-DI4;
-        CI3 = DI3+DI4;
-        CH(I0,0,K) = CC(I0,K,0)+CR2+CR3;
-        CH(I1,0,K) = CC(I1,K,0)+CI2+CI3;
-        TR2 = CC(I0,K,0)+TR11*CR2+TR12*CR3;
-        TI2 = CC(I1,K,0)+TR11*CI2+TR12*CI3;
-        TR3 = CC(I0,K,0)+TR12*CR2+TR11*CR3;
-        TI3 = CC(I1,K,0)+TR12*CI2+TR11*CI3;
-        TR5 = TI11*CR5+TI12*CR4;
-        TI5 = TI11*CI5+TI12*CI4;
-        TR4 = TI12*CR5-TI11*CR4;
-        TI4 = TI12*CI5-TI11*CI4;
-        CH(I0,2,K) = TR2+TR5;
-        CH(IC-1,1,K) = TR2-TR5;
-        CH(I1,2,K) = TI2+TI5;
-        CH(IC,1,K) = TI5-TI2;
-        CH(I0,4,K) = TR3+TR4;
-        CH(IC-1,3,K) = TR3-TR4;
-        CH(I1,4,K) = TI3+TI4;
-        CH(IC,3,K) = TI4-TI3;
+    if (ido == 1) return;
+    for (k = 0; k < l1; k++) {
+      for (std::size_t i0 = 1; i0 < ido-1; i0 += 2) {
+        std::size_t i1 = i0 + 1;
+        ic = ido-i1;
+        dr2 = wa1[i0-1]*cc(i0,k,1)+wa1[i0]*cc(i1,k,1);
+        di2 = wa1[i0-1]*cc(i1,k,1)-wa1[i0]*cc(i0,k,1);
+        dr3 = wa2[i0-1]*cc(i0,k,2)+wa2[i0]*cc(i1,k,2);
+        di3 = wa2[i0-1]*cc(i1,k,2)-wa2[i0]*cc(i0,k,2);
+        dr4 = wa3[i0-1]*cc(i0,k,3)+wa3[i0]*cc(i1,k,3);
+        di4 = wa3[i0-1]*cc(i1,k,3)-wa3[i0]*cc(i0,k,3);
+        dr5 = wa4[i0-1]*cc(i0,k,4)+wa4[i0]*cc(i1,k,4);
+        di5 = wa4[i0-1]*cc(i1,k,4)-wa4[i0]*cc(i0,k,4);
+        cr2 = dr2+dr5;
+        ci5 = dr5-dr2;
+        cr5 = di2-di5;
+        ci2 = di2+di5;
+        cr3 = dr3+dr4;
+        ci4 = dr4-dr3;
+        cr4 = di3-di4;
+        ci3 = di3+di4;
+        ch(i0,0,k) = cc(i0,k,0)+cr2+cr3;
+        ch(i1,0,k) = cc(i1,k,0)+ci2+ci3;
+        tr2 = cc(i0,k,0)+tr11*cr2+tr12*cr3;
+        ti2 = cc(i1,k,0)+tr11*ci2+tr12*ci3;
+        tr3 = cc(i0,k,0)+tr12*cr2+tr11*cr3;
+        ti3 = cc(i1,k,0)+tr12*ci2+tr11*ci3;
+        tr5 = ti11*cr5+ti12*cr4;
+        ti5 = ti11*ci5+ti12*ci4;
+        tr4 = ti12*cr5-ti11*cr4;
+        ti4 = ti12*ci5-ti11*ci4;
+        ch(i0,2,k) = tr2+tr5;
+        ch(ic-1,1,k) = tr2-tr5;
+        ch(i1,2,k) = ti2+ti5;
+        ch(ic,1,k) = ti5-ti2;
+        ch(i0,4,k) = tr3+tr4;
+        ch(ic-1,3,k) = tr3-tr4;
+        ch(i1,4,k) = ti3+ti4;
+        ch(ic,3,k) = ti4-ti3;
       }
     }
   }
@@ -374,209 +374,209 @@ namespace scitbx { namespace fftpack {
   template <typename RealType, typename ComplexType>
   void
   real_to_complex<RealType,
-                  ComplexType>::passfg(std::size_t IDO,
-                                       std::size_t IP,
-                                       std::size_t L1,
-                                       std::size_t IDL1,
-                                       real_type* CC_begin,
-                                       real_type* C1_begin,
-                                       real_type* C2_begin,
-                                       real_type* CH_begin,
-                                       real_type* CH2_begin,
-                                       const real_type* WA)
+                  ComplexType>::passfg(std::size_t ido,
+                                       std::size_t ip,
+                                       std::size_t l1,
+                                       std::size_t idl1,
+                                       real_type* cc_begin,
+                                       real_type* c1_begin,
+                                       real_type* c2_begin,
+                                       real_type* ch_begin,
+                                       real_type* ch2_begin,
+                                       const real_type* wa)
   {
-    dim3 CC(CC_begin, IDO, IP, L1);
-    dim3 C1(C1_begin, IDO, L1, IP);
-    dim2 C2(C2_begin, IDL1, IP);
-    dim3 CH(CH_begin, IDO, L1, IP);
-    dim2 CH2(CH2_begin, IDL1, IP);
-    real_type AI1;
-    real_type AI2;
-    real_type AR1;
-    real_type AR1H;
-    real_type AR2;
-    real_type AR2H;
-    real_type DC2;
-    real_type DCP;
-    real_type DS2;
-    real_type DSP;
-    std::size_t IC;
-    std::size_t IDIJ;
-    std::size_t IPPH;
-    std::size_t IS;
-    std::size_t J2;
-    std::size_t JC;
-    std::size_t LC;
-    std::size_t NBD;
-    const real_type TPI = real_type(8) * std::atan(real_type(1));
-    real_type ARG = TPI / real_type(IP);
-    DCP = std::cos(ARG);
-    DSP = std::sin(ARG);
-    IPPH = (IP+1)/2;
-    NBD = (IDO-1)/2;
-    if (IDO == 1) {
-      for (std::size_t IK = 0; IK < IDL1; IK++) {
-        C2(IK,0) = CH2(IK,0);
+    dim3 cc(cc_begin, ido, ip, l1);
+    dim3 c1(c1_begin, ido, l1, ip);
+    dim2 c2(c2_begin, idl1, ip);
+    dim3 ch(ch_begin, ido, l1, ip);
+    dim2 ch2(ch2_begin, idl1, ip);
+    real_type ai1;
+    real_type ai2;
+    real_type ar1;
+    real_type ar1h;
+    real_type ar2;
+    real_type ar2h;
+    real_type dc2;
+    real_type dcp;
+    real_type ds2;
+    real_type dsp;
+    std::size_t ic;
+    std::size_t idij;
+    std::size_t ipph;
+    std::size_t is;
+    std::size_t j2;
+    std::size_t jc;
+    std::size_t lc;
+    std::size_t nbd;
+    const real_type tpi = real_type(8) * std::atan(real_type(1));
+    real_type arg = tpi / real_type(ip);
+    dcp = std::cos(arg);
+    dsp = std::sin(arg);
+    ipph = (ip+1)/2;
+    nbd = (ido-1)/2;
+    if (ido == 1) {
+      for (std::size_t ik = 0; ik < idl1; ik++) {
+        c2(ik,0) = ch2(ik,0);
       }
     }
     else {
-      for (std::size_t IK = 0; IK < IDL1; IK++) {
-        CH2(IK,0) = C2(IK,0);
+      for (std::size_t ik = 0; ik < idl1; ik++) {
+        ch2(ik,0) = c2(ik,0);
       }
-      for (std::size_t J = 1; J < IP; J++) {
-        for (std::size_t K = 0; K < L1; K++) {
-          CH(0,K,J) = C1(0,K,J);
+      for (std::size_t j = 1; j < ip; j++) {
+        for (std::size_t k = 0; k < l1; k++) {
+          ch(0,k,j) = c1(0,k,j);
         }
       }
-      if (NBD <= L1) {
-        IS = 0;
-        for (std::size_t J = 1; J < IP; J++) {
-          IDIJ = IS;
-          for (std::size_t I0 = 1; I0 < IDO-1; I0 += 2) {
-            std::size_t I1 = I0 + 1;
-            for (std::size_t K = 0; K < L1; K++) {
-              CH(I0,K,J) = WA[IDIJ]*C1(I0,K,J)+WA[IDIJ+1]*C1(I1,K,J);
-              CH(I1,K,J) = WA[IDIJ]*C1(I1,K,J)-WA[IDIJ+1]*C1(I0,K,J);
+      if (nbd <= l1) {
+        is = 0;
+        for (std::size_t j = 1; j < ip; j++) {
+          idij = is;
+          for (std::size_t i0 = 1; i0 < ido-1; i0 += 2) {
+            std::size_t i1 = i0 + 1;
+            for (std::size_t k = 0; k < l1; k++) {
+              ch(i0,k,j) = wa[idij]*c1(i0,k,j)+wa[idij+1]*c1(i1,k,j);
+              ch(i1,k,j) = wa[idij]*c1(i1,k,j)-wa[idij+1]*c1(i0,k,j);
             }
-            IDIJ += 2;
+            idij += 2;
           }
-          IS += IDO;
+          is += ido;
         }
       }
       else {
-        IS = 0;
-        for (std::size_t J = 1; J < IP; J++) {
-          for (std::size_t K = 0; K < L1; K++) {
-            IDIJ = IS;
-            for (std::size_t I0 = 1; I0 < IDO-1; I0 += 2) {
-              std::size_t I1 = I0 + 1;
-              CH(I0,K,J) = WA[IDIJ]*C1(I0,K,J)+WA[IDIJ+1]*C1(I1,K,J);
-              CH(I1,K,J) = WA[IDIJ]*C1(I1,K,J)-WA[IDIJ+1]*C1(I0,K,J);
-              IDIJ = IDIJ+2;
+        is = 0;
+        for (std::size_t j = 1; j < ip; j++) {
+          for (std::size_t k = 0; k < l1; k++) {
+            idij = is;
+            for (std::size_t i0 = 1; i0 < ido-1; i0 += 2) {
+              std::size_t i1 = i0 + 1;
+              ch(i0,k,j) = wa[idij]*c1(i0,k,j)+wa[idij+1]*c1(i1,k,j);
+              ch(i1,k,j) = wa[idij]*c1(i1,k,j)-wa[idij+1]*c1(i0,k,j);
+              idij = idij+2;
             }
           }
-          IS += IDO;
+          is += ido;
         }
       }
-      if (NBD >= L1) {
-        for (std::size_t J = 1; J < IPPH; J++) {
-          JC = IP-J;
-          for (std::size_t K = 0; K < L1; K++) {
-            for (std::size_t I0 = 1; I0 < IDO-1; I0 += 2) {
-              std::size_t I1 = I0 + 1;
-              C1(I0,K,J) = CH(I0,K,J)+CH(I0,K,JC);
-              C1(I0,K,JC) = CH(I1,K,J)-CH(I1,K,JC);
-              C1(I1,K,J) = CH(I1,K,J)+CH(I1,K,JC);
-              C1(I1,K,JC) = CH(I0,K,JC)-CH(I0,K,J);
+      if (nbd >= l1) {
+        for (std::size_t j = 1; j < ipph; j++) {
+          jc = ip-j;
+          for (std::size_t k = 0; k < l1; k++) {
+            for (std::size_t i0 = 1; i0 < ido-1; i0 += 2) {
+              std::size_t i1 = i0 + 1;
+              c1(i0,k,j) = ch(i0,k,j)+ch(i0,k,jc);
+              c1(i0,k,jc) = ch(i1,k,j)-ch(i1,k,jc);
+              c1(i1,k,j) = ch(i1,k,j)+ch(i1,k,jc);
+              c1(i1,k,jc) = ch(i0,k,jc)-ch(i0,k,j);
             }
           }
         }
       }
       else {
-        for (std::size_t J = 1; J < IPPH; J++) {
-          JC = IP-J;
-          for (std::size_t I0 = 1; I0 < IDO-1; I0 += 2) {
-            std::size_t I1 = I0 + 1;
-            for (std::size_t K = 0; K < L1; K++) {
-              C1(I0,K,J) = CH(I0,K,J)+CH(I0,K,JC);
-              C1(I0,K,JC) = CH(I1,K,J)-CH(I1,K,JC);
-              C1(I1,K,J) = CH(I1,K,J)+CH(I1,K,JC);
-              C1(I1,K,JC) = CH(I0,K,JC)-CH(I0,K,J);
+        for (std::size_t j = 1; j < ipph; j++) {
+          jc = ip-j;
+          for (std::size_t i0 = 1; i0 < ido-1; i0 += 2) {
+            std::size_t i1 = i0 + 1;
+            for (std::size_t k = 0; k < l1; k++) {
+              c1(i0,k,j) = ch(i0,k,j)+ch(i0,k,jc);
+              c1(i0,k,jc) = ch(i1,k,j)-ch(i1,k,jc);
+              c1(i1,k,j) = ch(i1,k,j)+ch(i1,k,jc);
+              c1(i1,k,jc) = ch(i0,k,jc)-ch(i0,k,j);
             }
           }
         }
       }
     }
-    std::size_t J;
-    for (J = 1; J < IPPH; J++) {
-      JC = IP-J;
-      for (std::size_t K = 0; K < L1; K++) {
-        C1(0,K,J) = CH(0,K,J)+CH(0,K,JC);
-        C1(0,K,JC) = CH(0,K,JC)-CH(0,K,J);
+    std::size_t j;
+    for (j = 1; j < ipph; j++) {
+      jc = ip-j;
+      for (std::size_t k = 0; k < l1; k++) {
+        c1(0,k,j) = ch(0,k,j)+ch(0,k,jc);
+        c1(0,k,jc) = ch(0,k,jc)-ch(0,k,j);
       }
     }
-    AR1 = 1.;
-    AI1 = 0.;
-    for (std::size_t L = 1; L < IPPH; L++) {
-      LC = IP-L;
-      AR1H = DCP*AR1-DSP*AI1;
-      AI1 = DCP*AI1+DSP*AR1;
-      AR1 = AR1H;
-      for (std::size_t IK = 0; IK < IDL1; IK++) {
-        CH2(IK,L) = C2(IK,0)+AR1*C2(IK,1);
-        CH2(IK,LC) = AI1*C2(IK,IP-1);
+    ar1 = 1.;
+    ai1 = 0.;
+    for (std::size_t l = 1; l < ipph; l++) {
+      lc = ip-l;
+      ar1h = dcp*ar1-dsp*ai1;
+      ai1 = dcp*ai1+dsp*ar1;
+      ar1 = ar1h;
+      for (std::size_t ik = 0; ik < idl1; ik++) {
+        ch2(ik,l) = c2(ik,0)+ar1*c2(ik,1);
+        ch2(ik,lc) = ai1*c2(ik,ip-1);
       }
-      DC2 = AR1;
-      DS2 = AI1;
-      AR2 = AR1;
-      AI2 = AI1;
-      for (std::size_t J = 2; J < IPPH; J++) {
-        JC = IP-J;
-        AR2H = DC2*AR2-DS2*AI2;
-        AI2 = DC2*AI2+DS2*AR2;
-        AR2 = AR2H;
-        for (std::size_t IK = 0; IK < IDL1; IK++) {
-          CH2(IK,L) = CH2(IK,L)+AR2*C2(IK,J);
-          CH2(IK,LC) = CH2(IK,LC)+AI2*C2(IK,JC);
+      dc2 = ar1;
+      ds2 = ai1;
+      ar2 = ar1;
+      ai2 = ai1;
+      for (std::size_t j = 2; j < ipph; j++) {
+        jc = ip-j;
+        ar2h = dc2*ar2-ds2*ai2;
+        ai2 = dc2*ai2+ds2*ar2;
+        ar2 = ar2h;
+        for (std::size_t ik = 0; ik < idl1; ik++) {
+          ch2(ik,l) = ch2(ik,l)+ar2*c2(ik,j);
+          ch2(ik,lc) = ch2(ik,lc)+ai2*c2(ik,jc);
         }
       }
     }
-    for (J = 1; J < IPPH; J++) {
-      for (std::size_t IK = 0; IK < IDL1; IK++) {
-        CH2(IK,0) = CH2(IK,0)+C2(IK,J);
+    for (j = 1; j < ipph; j++) {
+      for (std::size_t ik = 0; ik < idl1; ik++) {
+        ch2(ik,0) = ch2(ik,0)+c2(ik,j);
       }
     }
-    if (IDO >= L1) {
-      for (std::size_t K = 0; K < L1; K++) {
-        for (std::size_t I = 0; I < IDO; I++) {
-          CC(I,0,K) = CH(I,K,0);
+    if (ido >= l1) {
+      for (std::size_t k = 0; k < l1; k++) {
+        for (std::size_t i = 0; i < ido; i++) {
+          cc(i,0,k) = ch(i,k,0);
         }
       }
     }
     else {
-      for (std::size_t I = 0; I < IDO; I++) {
-        for (std::size_t K = 0; K < L1; K++) {
-          CC(I,0,K) = CH(I,K,0);
+      for (std::size_t i = 0; i < ido; i++) {
+        for (std::size_t k = 0; k < l1; k++) {
+          cc(i,0,k) = ch(i,k,0);
         }
       }
     }
-    for (J = 1; J < IPPH; J++) {
-      JC = IP-J;
-      J2 = J+J;
-      for (std::size_t K = 0; K < L1; K++) {
-        CC(IDO-1,J2-1,K) = CH(0,K,J);
-        CC(0,J2,K) = CH(0,K,JC);
+    for (j = 1; j < ipph; j++) {
+      jc = ip-j;
+      j2 = j+j;
+      for (std::size_t k = 0; k < l1; k++) {
+        cc(ido-1,j2-1,k) = ch(0,k,j);
+        cc(0,j2,k) = ch(0,k,jc);
       }
     }
-    if (IDO == 1) return;
-    if (NBD >= L1) {
-      for (std::size_t J = 1; J < IPPH; J++) {
-        JC = IP-J;
-        J2 = J+J;
-        for (std::size_t K = 0; K < L1; K++) {
-          for (std::size_t I0 = 1; I0 < IDO-1; I0 += 2) {
-            std::size_t I1 = I0 + 1;
-            IC = IDO-I1;
-            CC(I0,J2,K) = CH(I0,K,J)+CH(I0,K,JC);
-            CC(IC-1,J2-1,K) = CH(I0,K,J)-CH(I0,K,JC);
-            CC(I1,J2,K) = CH(I1,K,J)+CH(I1,K,JC);
-            CC(IC,J2-1,K) = CH(I1,K,JC)-CH(I1,K,J);
+    if (ido == 1) return;
+    if (nbd >= l1) {
+      for (std::size_t j = 1; j < ipph; j++) {
+        jc = ip-j;
+        j2 = j+j;
+        for (std::size_t k = 0; k < l1; k++) {
+          for (std::size_t i0 = 1; i0 < ido-1; i0 += 2) {
+            std::size_t i1 = i0 + 1;
+            ic = ido-i1;
+            cc(i0,j2,k) = ch(i0,k,j)+ch(i0,k,jc);
+            cc(ic-1,j2-1,k) = ch(i0,k,j)-ch(i0,k,jc);
+            cc(i1,j2,k) = ch(i1,k,j)+ch(i1,k,jc);
+            cc(ic,j2-1,k) = ch(i1,k,jc)-ch(i1,k,j);
           }
         }
       }
     }
     else {
-      for (std::size_t J = 1; J < IPPH; J++) {
-        JC = IP-J;
-        J2 = J+J;
-        for (std::size_t I0 = 1; I0 < IDO-1; I0 += 2) {
-          std::size_t I1 = I0 + 1;
-          IC = IDO-I1;
-          for (std::size_t K = 0; K < L1; K++) {
-            CC(I0,J2,K) = CH(I0,K,J)+CH(I0,K,JC);
-            CC(IC-1,J2-1,K) = CH(I0,K,J)-CH(I0,K,JC);
-            CC(I1,J2,K) = CH(I1,K,J)+CH(I1,K,JC);
-            CC(IC,J2-1,K) = CH(I1,K,JC)-CH(I1,K,J);
+      for (std::size_t j = 1; j < ipph; j++) {
+        jc = ip-j;
+        j2 = j+j;
+        for (std::size_t i0 = 1; i0 < ido-1; i0 += 2) {
+          std::size_t i1 = i0 + 1;
+          ic = ido-i1;
+          for (std::size_t k = 0; k < l1; k++) {
+            cc(i0,j2,k) = ch(i0,k,j)+ch(i0,k,jc);
+            cc(ic-1,j2-1,k) = ch(i0,k,j)-ch(i0,k,jc);
+            cc(i1,j2,k) = ch(i1,k,j)+ch(i1,k,jc);
+            cc(ic,j2-1,k) = ch(i1,k,jc)-ch(i1,k,j);
           }
         }
       }

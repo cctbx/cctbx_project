@@ -73,7 +73,7 @@ namespace scitbx { namespace fftpack {
       //! Access to the n_real() pre-computed "twiddle factors."
       af::shared<real_type> wa() const
       {
-        return WA_;
+        return wa_;
       }
 
       /*! \brief In-place "forward" Fourier transformation of a
@@ -105,86 +105,86 @@ namespace scitbx { namespace fftpack {
       }
     private:
       std::size_t n_complex_;
-      af::shared<real_type> WA_;
-      af::shared<real_type> CH_;
+      af::shared<real_type> wa_;
+      af::shared<real_type> ch_;
       void forward_adaptor(complex_type* seq_begin);
       void forward_adaptor(real_type* seq_begin);
       void backward_adaptor(complex_type* seq_begin);
       void backward_adaptor(real_type* seq_begin);
       void forward_compressed(real_type* seq_begin);
       void backward_compressed(real_type* seq_begin);
-      void passf2(std::size_t IDO,
-                  std::size_t L1,
-                  real_type* CC_start,
-                  real_type* CH_start,
-                  const real_type* WA1);
-      void passf3(std::size_t IDO,
-                  std::size_t L1,
-                  real_type* CC_start,
-                  real_type* CH_start,
-                  const real_type* WA1,
-                  const real_type* WA2);
-      void passf4(std::size_t IDO,
-                  std::size_t L1,
-                  real_type* CC_start,
-                  real_type* CH_start,
-                  const real_type* WA1,
-                  const real_type* WA2,
-                  const real_type* WA3);
-      void passf5(std::size_t IDO,
-                  std::size_t L1,
-                  real_type* CC_start,
-                  real_type* CH_start,
-                  const real_type* WA1,
-                  const real_type* WA2,
-                  const real_type* WA3,
-                  const real_type* WA4);
-      void passfg(std::size_t IDO,
-                  std::size_t IP,
-                  std::size_t L1,
-                  std::size_t IDL1,
-                  real_type* CC_start,
-                  real_type* C1_start,
-                  real_type* C2_start,
-                  real_type* CH_start,
-                  real_type* CH2_start,
-                  const real_type* WA);
-      void passb2(std::size_t IDO,
-                  std::size_t L1,
-                  real_type* CC_start,
-                  real_type* CH_start,
-                  const real_type* WA1);
-      void passb3(std::size_t IDO,
-                  std::size_t L1,
-                  real_type* CC_start,
-                  real_type* CH_start,
-                  const real_type* WA1,
-                  const real_type* WA2);
-      void passb4(std::size_t IDO,
-                  std::size_t L1,
-                  real_type* CC_start,
-                  real_type* CH_start,
-                  const real_type* WA1,
-                  const real_type* WA2,
-                  const real_type* WA3);
-      void passb5(std::size_t IDO,
-                  std::size_t L1,
-                  real_type* CC_start,
-                  real_type* CH_start,
-                  const real_type* WA1,
-                  const real_type* WA2,
-                  const real_type* WA3,
-                  const real_type* WA4);
-      void passbg(std::size_t IDO,
-                  std::size_t IP,
-                  std::size_t L1,
-                  std::size_t IDL1,
-                  real_type* CC_start,
-                  real_type* C1_start,
-                  real_type* C2_start,
-                  real_type* CH_start,
-                  real_type* CH2_start,
-                  const real_type* WA);
+      void passf2(std::size_t ido,
+                  std::size_t l1,
+                  real_type* cc_start,
+                  real_type* ch_start,
+                  const real_type* wa1);
+      void passf3(std::size_t ido,
+                  std::size_t l1,
+                  real_type* cc_start,
+                  real_type* ch_start,
+                  const real_type* wa1,
+                  const real_type* wa2);
+      void passf4(std::size_t ido,
+                  std::size_t l1,
+                  real_type* cc_start,
+                  real_type* ch_start,
+                  const real_type* wa1,
+                  const real_type* wa2,
+                  const real_type* wa3);
+      void passf5(std::size_t ido,
+                  std::size_t l1,
+                  real_type* cc_start,
+                  real_type* ch_start,
+                  const real_type* wa1,
+                  const real_type* wa2,
+                  const real_type* wa3,
+                  const real_type* wa4);
+      void passfg(std::size_t ido,
+                  std::size_t ip,
+                  std::size_t l1,
+                  std::size_t idl1,
+                  real_type* cc_start,
+                  real_type* c1_start,
+                  real_type* c2_start,
+                  real_type* ch_start,
+                  real_type* ch2_start,
+                  const real_type* wa);
+      void passb2(std::size_t ido,
+                  std::size_t l1,
+                  real_type* cc_start,
+                  real_type* ch_start,
+                  const real_type* wa1);
+      void passb3(std::size_t ido,
+                  std::size_t l1,
+                  real_type* cc_start,
+                  real_type* ch_start,
+                  const real_type* wa1,
+                  const real_type* wa2);
+      void passb4(std::size_t ido,
+                  std::size_t l1,
+                  real_type* cc_start,
+                  real_type* ch_start,
+                  const real_type* wa1,
+                  const real_type* wa2,
+                  const real_type* wa3);
+      void passb5(std::size_t ido,
+                  std::size_t l1,
+                  real_type* cc_start,
+                  real_type* ch_start,
+                  const real_type* wa1,
+                  const real_type* wa2,
+                  const real_type* wa3,
+                  const real_type* wa4);
+      void passbg(std::size_t ido,
+                  std::size_t ip,
+                  std::size_t l1,
+                  std::size_t idl1,
+                  real_type* cc_start,
+                  real_type* c1_start,
+                  real_type* c2_start,
+                  real_type* ch_start,
+                  real_type* ch2_start,
+                  const real_type* wa);
   };
 
   template <typename RealType, typename ComplexType>
@@ -192,40 +192,40 @@ namespace scitbx { namespace fftpack {
                   ComplexType>::real_to_complex(std::size_t n_real)
     : factorization(n_real, true),
       n_complex_(n_complex_from_n_real(n_real)),
-      WA_(n_real),
-      CH_(n_real)
+      wa_(n_real),
+      ch_(n_real)
   {
     // Computation of the sin and cos terms.
     // Based on the second part of fftpack41/rffti1.f.
     if (n_ < 2) return;
-    real_type* WA = &(*(WA_.begin()));
-    const real_type TPI = real_type(8) * std::atan(real_type(1));
-    real_type ARGH = TPI / real_type(n_);
-    std::size_t IS = 0;
-    std::size_t NFM1 = factors_.size()-1;
-    std::size_t L1 = 1;
-    if (NFM1 == 0) return;
-    for (std::size_t K1 = 0; K1 < NFM1; K1++) {
-      std::size_t IP = factors_[K1];
-      std::size_t LD = 0;
-      std::size_t L2 = L1*IP;
-      std::size_t IDO = n_/L2;
-      std::size_t IPM = IP-1;
-      for (std::size_t J = 1; J <= IPM; J++) {
-        LD = LD+L1;
-        std::size_t I = IS;
-        real_type ARGLD = real_type(LD)*ARGH;
-        real_type FI = 0.;
-        for (std::size_t II = 3; II <= IDO; II += 2) {
-          I = I+2;
-          FI = FI+1.;
-          real_type ARG = FI*ARGLD;
-          WA[I-1-1] = std::cos(ARG);
-          WA[I-1] = std::sin(ARG);
+    real_type* wa = &(*(wa_.begin()));
+    const real_type tpi = real_type(8) * std::atan(real_type(1));
+    real_type argh = tpi / real_type(n_);
+    std::size_t is = 0;
+    std::size_t nfm1 = factors_.size()-1;
+    std::size_t l1 = 1;
+    if (nfm1 == 0) return;
+    for (std::size_t k1 = 0; k1 < nfm1; k1++) {
+      std::size_t ip = factors_[k1];
+      std::size_t ld = 0;
+      std::size_t l2 = l1*ip;
+      std::size_t ido = n_/l2;
+      std::size_t ipm = ip-1;
+      for (std::size_t j = 1; j <= ipm; j++) {
+        ld = ld+l1;
+        std::size_t i = is;
+        real_type argld = real_type(ld)*argh;
+        real_type fi = 0.;
+        for (std::size_t ii = 3; ii <= ido; ii += 2) {
+          i = i+2;
+          fi = fi+1.;
+          real_type arg = fi*argld;
+          wa[i-1-1] = std::cos(arg);
+          wa[i-1] = std::sin(arg);
         }
-        IS = IS+IDO;
+        is = is+ido;
       }
-      L1 = L2;
+      l1 = l2;
     }
   }
 

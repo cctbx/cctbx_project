@@ -21,9 +21,9 @@ namespace scitbx { namespace fftpack {
           transforms.
        */
       factorization(std::size_t n, bool real_to_complex);
-      //! Access the N that was passed to the constructor.
+      //! Access the n that was passed to the constructor.
       std::size_t n() const { return n_; }
-      //! Access the factors of N.
+      //! Access the factors of n.
       af::shared<int> factors() const { return factors_; }
     protected:
       std::size_t n_;
