@@ -49,23 +49,6 @@ def python_include_path(must_exist=True):
       % include_path)
   return include_path
 
-def python_api_from_process(include_must_exist=True):
-  try: return str(sys.api_version) # Python 2.3 or higher
-  except AttributeError: pass
-  include_path = python_include_path(must_exist=include_must_exist)
-  if (not os.path.isdir(include_path)): return "UNKNOWN"
-  modsupport_h = open(libtbx.path.norm_join(
-    include_path, "modsupport.h")).readlines()
-  python_api_version = None
-  for line in modsupport_h:
-    if (line.startswith("#define")):
-      flds = line.split()
-      if (len(flds) == 3 and flds[1] == "PYTHON_API_VERSION"):
-        python_api_version = flds[2]
-        break
-  assert python_api_version is not None
-  return python_api_version
-
 def ld_library_path_var_name():
   if (os.name == "nt"):
     return "PATH"
@@ -238,7 +221,7 @@ class environment:
     self.build_path = build_path
     self._shortpath_bat = None
     self.build_path = self.abs_path_clean(build_path)
-    self.manage_python_api_version()
+    self.manage_python_version_major_minor()
     self.reset_dispatcher_support()
     self.set_derived_paths()
     if (os.name == "nt"):
@@ -255,26 +238,26 @@ class environment:
     self.scons_dist_path = None
     self.pythonpath = []
 
-  def manage_python_api_version(self):
-    self.python_api_version = python_api_from_process(include_must_exist=False)
+  def raise_python_version_incompatible(self, prev_pvmm=None):
+    if (prev_pvmm is None):
+      prev_pvmm = "%d.%d" % self.python_version_major_minor
+    raise Sorry("Python version incompatible with this build:\n"
+      + "  Build directory: %s\n" % show_string(self.build_path)
+      + "  Python version used initially: %s\n" % prev_pvmm
+      + "  Python version in use now:     %d.%d" % sys.version_info[:2])
+
+  def manage_python_version_major_minor(self):
     path = os.path.join(self.build_path, "lib")
     if (not os.path.isdir(path)):
       os.makedirs(path)
-    path = os.path.join(path, "PYTHON_API_VERSION")
+    path = os.path.join(path, "PYTHON_VERSION_MAJOR_MINOR")
+    pvmm = "%d.%d" % self.python_version_major_minor
     if (not os.path.isfile(path)):
-      prev_python_api_version = "UNKNOWN"
+      print >> open(path, "w"), pvmm
     else:
-      prev_python_api_version = open(path).read().strip()
-      if (prev_python_api_version != self.python_api_version):
-        if (prev_python_api_version != "UNKNOWN"):
-          raise Sorry(
-            "Incompatible Python API's\n"
-            "  Current version:        %s\n"
-            "  Used to build binaries: %s" % (
-              self.python_api_version,
-              prev_python_api_version))
-    if (prev_python_api_version != self.python_api_version):
-      print >> open(path, "w"), self.python_api_version
+      prev_pvmm = open(path).read().strip()
+      if (prev_pvmm != pvmm):
+        self.raise_python_version_incompatible(prev_pvmm=prev_pvmm)
 
   def reset_dispatcher_support(self):
     self._shortpath_bat = None
@@ -1499,9 +1482,7 @@ def unpickle():
   libtbx_env = open(os.path.join(build_path, "libtbx_env"), "rb")
   env = pickle.load(libtbx_env)
   if (env.python_version_major_minor != sys.version_info[:2]):
-    raise Sorry("Python version incompatible with this build.\n"
-     + "  Version used to configure: %d.%d\n" % env.python_version_major_minor
-     + "  Version used now: %d.%d" % sys.version_info[:2])
+    env.raise_python_version_incompatible()
   return env
 
 def warm_start(args):
