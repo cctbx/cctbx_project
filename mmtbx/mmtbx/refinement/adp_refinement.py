@@ -138,23 +138,23 @@ class manager(object):
     if(refine_tls):
        print_statistics.make_sub_header(text = "TLS refinement",
                                         out  = log)
-       if(refine_adp_individual or refine_adp_group):
-          if(macro_cycle == 1):
-             gbr_selections = []
-             for s in tls_selections:
-                 gbr_selections.append(s)
-          else:
-             gbr_selections = group_adp_selections
-          xray.set_scatterer_grad_flags(
-                               scatterers = fmodel.xray_structure.scatterers(),
-                               u_iso      = True)
-          group_b_manager = mmtbx.refinement.group_b.manager(
-             fmodel                   = fmodel,
-             selections               = gbr_selections,
-             convergence_test         = group_adp_params.convergence_test,
-             max_number_of_iterations = 50,
-             number_of_macro_cycles   = 1,
-             log                      = log)
+       #if(refine_adp_individual or refine_adp_group):
+       if(macro_cycle == 1):
+          gbr_selections = []
+          for s in tls_selections:
+              gbr_selections.append(s)
+       else:
+          gbr_selections = group_adp_selections
+       xray.set_scatterer_grad_flags(
+                            scatterers = fmodel.xray_structure.scatterers(),
+                            u_iso      = True)
+       group_b_manager = mmtbx.refinement.group_b.manager(
+          fmodel                   = fmodel,
+          selections               = gbr_selections,
+          convergence_test         = group_adp_params.convergence_test,
+          max_number_of_iterations = 50,
+          number_of_macro_cycles   = 1,
+          log                      = log)
        # XXX u_aniso = True ONLY for TLS groups, and not all
        xray.set_scatterer_grad_flags(
                                scatterers = fmodel.xray_structure.scatterers(),

@@ -539,7 +539,8 @@ class rigid_body_minimizer(object):
                termination_params = lbfgs.termination_parameters(
                     max_iterations = max_iterations),
                exception_handling_params = lbfgs.exception_handling_parameters(
-                    ignore_line_search_failed_step_at_lower_bound = True)
+                    ignore_line_search_failed_step_at_lower_bound = True,
+                    ignore_line_search_failed_step_at_upper_bound = True)
                               )
     self.compute_functional_and_gradients(suppress_gradients=True)
     del self.x
@@ -549,10 +550,12 @@ class rigid_body_minimizer(object):
     for ri,ti in zip(r,t):
         if(self.refine_r): v += list(ri)
         if(self.refine_t): v += list(ti)
+    print list(flex.double(tuple(v)))
     return flex.double(tuple(v))
 
   def unpack_x(self):
     i = 0
+    print list(self.x)
     for j in xrange(self.n_groups):
         if(self.refine_r):
            self.r_min[j] = tuple(self.x)[i:i+self.dim_r]
