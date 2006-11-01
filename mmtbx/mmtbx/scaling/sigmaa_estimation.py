@@ -46,8 +46,14 @@ class sigmaa_point_estimator(object):
     self.min = 0.01
     term_parameters = scitbx.lbfgs.termination_parameters(
       max_iterations = 100 )
+    # the parametrisation as a sigmoid makes things difficult at the edges
+    exception_handling_parameters = scitbx.lbfgs.exception_handling_parameters(
+      ignore_line_search_failed_step_at_lower_bound=True,
+      ignore_line_search_failed_step_at_upper_bound=True)
+
     self.minimizer = scitbx.lbfgs.run(target_evaluator=self,
-                                      termination_params=term_parameters)
+                                      termination_params=term_parameters,
+                                      exception_handling_params=exception_handling_parameters)
 
     self.sigmaa = self.min+(self.max-self.min)/(1.0+math.exp(-self.x[0]))
 
@@ -74,7 +80,7 @@ class sigmaa_estimator(object):
                number=100,
                auto_kernel=True,
                n_points=20,
-               n_terms=13):
+               n_terms=11):
     self.n_terms=n_terms
     self.miller_obs = miller_obs.map_to_asu()
     self.miller_calc = abs(miller_calc.map_to_asu())
@@ -115,6 +121,8 @@ class sigmaa_estimator(object):
     self.free_norm_obs = self.normalized_obs.select( self.r_free_flags.data() )
     self.free_norm_calc= self.normalized_calc.select( self.r_free_flags.data() )
 
+    if self.free_norm_obs.data().size() <= 0:
+      raise Sorry("No free reflections, I will give up now")
 
     # now we have to determin the width of the kernel we will use
     # use the same scheme as done for normalistion
@@ -126,9 +134,9 @@ class sigmaa_estimator(object):
       sort_permut = flex.sort_permutation(d_star_sq_hkl)
 
       if self.number > d_star_sq_hkl.size():
-        self.number = d_star_sq_hkl.size()
+        self.number = d_star_sq_hkl.size()-1
 
-      self.width = d_star_sq_hkl[sort_permut[number]]-flex.min( d_star_sq_hkl )
+      self.width = d_star_sq_hkl[sort_permut[self.number]]-flex.min( d_star_sq_hkl )
       assert self.width > 0
 
     if not self.auto_kernel:
