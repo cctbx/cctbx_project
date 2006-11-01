@@ -163,6 +163,10 @@ class residue(object):
     return self.chain.conformer.model.stage_1.atom_attributes_list[
       self.iselection[0]].resName
 
+  def id(self):
+    return self.chain.conformer.model.stage_1.atom_attributes_list[
+      self.iselection[0]].residue_id()
+
 class stage_1(object):
 
   def __init__(self, file_name=None, raw_records=None):
