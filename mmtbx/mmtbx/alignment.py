@@ -150,7 +150,7 @@ class align:
   # returns a pair of strings
   # if local, how does caller know coordinates? return (i,j) too?
 
-  def extract_alignment(self):
+  def extract_alignment(self, return_traceback=False):
     (M,D,I,E) = (self.M,self.D,self.I,self.E)
     (m,n) = (self.m,self.n)
 
@@ -172,7 +172,7 @@ class align:
         elif E[i][j]==0: traceback += 'm'; i -= 1; j -= 1
       (F,G) = (self.A[i:p+1],self.B[j:q+1]) # sub-sequences
     traceback = self.reverse(traceback)
-    print traceback
+    #print traceback
 
     (r,s) = ("","")
     (u,v) = (0,0)
@@ -181,7 +181,10 @@ class align:
       if a=='i': r += '-';          s += G[v]; v += 1
       if a=='m': r += F[u]; u += 1; s += G[v]; v += 1
 
-    return (r,s)
+    if not return_traceback:
+      return (r,s)
+    else:
+      return(r,s,traceback)
 
   def reverse(self,s):
     foo = ""
@@ -219,7 +222,7 @@ def dayhoff(a,b):
 
 def ident_matches(alignment):
   matches = ""
-  (a,b) = alignment
+  (a,b) = alignment[0:2]
   for i in xrange(len(a)):
     if a[i]==b[i]: matches += "|"
     else: matches += ' '
@@ -227,7 +230,7 @@ def ident_matches(alignment):
 
 def dayhoff_matches(alignment):
   matches = ""
-  (a,b) = alignment
+  (a,b) = alignment[0:2]
   for i in xrange(len(a)):
     if a[i]==b[i]: matches += "|"
     elif dayhoff(a[i],b[i])>0: matches += '*'
@@ -240,7 +243,8 @@ def exercise():
   obj = align(A,B,verbose=True)
 
   print "score=%0.1f" % obj.score()
-  alignment = obj.extract_alignment()
+  alignment = obj.extract_alignment(return_traceback=True)
+  print alignment[2]
   print alignment[0]
   print ident_matches(alignment)
   print alignment[1]
@@ -252,7 +256,9 @@ def exercise():
 
   print "\n1rra vs. 1bli"
   print "score=%0.1f" % obj.score()
-  alignment = obj.extract_alignment()
+  alignment = obj.extract_alignment(return_traceback=True)
+
+  print alignment[2]
   print alignment[0]
   print dayhoff_matches(alignment)
   print alignment[1]
