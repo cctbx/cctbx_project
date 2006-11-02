@@ -220,6 +220,36 @@ def dayhoff(a,b):
   if i==-1 or j==-1: return 0 # should be mean value?
   return mdm78[i][j]
 
+def blosum50(a,b):
+  AAs = "ABCDEFGHIKLMNPQRSTVWXYZ"
+  mtrx =  \
+   [ [  5 , -2 , -1 , -2 , -1  , -3 ,  0 , -2 , -1 , -1 ,  -2 , -1 , -1 , -1 , -1 ,  -2 ,  1 ,  0 ,  0 , -3 ,  -1 , -2 , -1 ],\
+     [ -2 ,  5 , -3 ,  5 ,  1  , -4 , -1 ,  0 , -4 ,  0 ,  -4 , -3 ,  4 , -2 ,  0 ,  -1 ,  0 ,  0 , -4 , -5 ,  -1 , -3 ,  2 ],\
+     [ -1 , -3 , 13 , -4 , -3  , -2 , -3 , -3 , -2 , -3 ,  -2 , -2 , -2 , -4 , -3 ,  -4 , -1 , -1 , -1 , -5 ,  -2 , -3 , -3 ],\
+     [ -2 ,  5 , -4 ,  8 ,  2  , -5 , -1 , -1 , -4 , -1 ,  -4 , -4 ,  2 , -1 ,  0 ,  -2 ,  0 , -1 , -4 , -5 ,  -1 , -3 ,  1 ],\
+     [ -1 ,  1 , -3 ,  2 ,  6  , -3 , -3 ,  0 , -4 ,  1 ,  -3 , -2 ,  0 , -1 ,  2 ,   0 , -1 , -1 , -3 , -3 ,  -1 , -2 ,  5 ],\
+     [ -3 , -4 , -2 , -5 , -3  ,  8 , -4 , -1 ,  0 , -4 ,   1 ,  0 , -4 , -4 , -4 ,  -3 , -3 , -2 , -1 ,  1 ,  -2 ,  4 , -4 ],\
+     [  0 , -1 , -3 , -1 , -3  , -4 ,  8 , -2 , -4 , -2 ,  -4 , -3 ,  0 , -2 , -2 ,  -3 ,  0 , -2 , -4 , -3 ,  -2 , -3 , -2 ],\
+     [ -2 ,  0 , -3 , -1 ,  0  , -1 , -2 , 10 , -4 ,  0 ,  -3 , -1 ,  1 , -2 ,  1 ,   0 , -1 , -2 , -4 , -3 ,  -1 ,  2 ,  0 ],\
+     [ -1 , -4 , -2 , -4 , -4  ,  0 , -4 , -4 ,  5 , -3 ,   2 ,  2 , -3 , -3 , -3 ,  -4 , -3 , -1 ,  4 , -3 ,  -1 , -1 , -3 ],\
+     [ -1 ,  0 , -3 , -1 ,  1  , -4 , -2 ,  0 , -3 ,  6 ,  -3 , -2 ,  0 , -1 ,  2 ,   3 ,  0 , -1 , -3 , -3 ,  -1 , -2 ,  1 ],\
+     [ -2 , -4 , -2 , -4 , -3  ,  1 , -4 , -3 ,  2 , -3 ,   5 ,  3 , -4 , -4 , -2 ,  -3 , -3 , -1 ,  1 , -2 ,  -1 , -1 , -3 ],\
+     [ -1 , -3 , -2 , -4 , -2  ,  0 , -3 , -1 ,  2 , -2 ,   3 ,  7 , -2 , -3 ,  0 ,  -2 , -2 , -1 ,  1 , -1 ,  -1 ,  0 , -1 ],\
+     [ -1 ,  4 , -2 ,  2 ,  0  , -4 ,  0 ,  1 , -3 ,  0 ,  -4 , -2 ,  7 , -2 ,  0 ,  -1 ,  1 ,  0 , -3 , -4 ,  -1 , -2 ,  0 ],\
+     [ -1 , -2 , -4 , -1 , -1  , -4 , -2 , -2 , -3 , -1 ,  -4 , -3 , -2 , 10 , -1 ,  -3 , -1 , -1 , -3 , -4 ,  -2 , -3 , -1 ],\
+     [ -1 ,  0 , -3 ,  0 ,  2  , -4 , -2 ,  1 , -3 ,  2 ,  -2 ,  0 ,  0 , -1 ,  7 ,   1 ,  0 , -1 , -3 , -1 ,  -1 , -1 ,  4 ],\
+     [ -2 , -1 , -4 , -2 ,  0  , -3 , -3 ,  0 , -4 ,  3 ,  -3 , -2 , -1 , -3 ,  1 ,   7 , -1 , -1 , -3 , -3 ,  -1 , -1 ,  0 ],\
+     [  1 ,  0 , -1 ,  0 , -1  , -3 ,  0 , -1 , -3 ,  0 ,  -3 , -2 ,  1 , -1 ,  0 ,  -1 ,  5 ,  2 , -2 , -4 ,  -1 , -2 ,  0 ],\
+     [  0 ,  0 , -1 , -1 , -1  , -2 , -2 , -2 , -1 , -1 ,  -1 , -1 ,  0 , -1 , -1 ,  -1 ,  2 ,  5 ,  0 , -3 ,   0 , -2 , -1 ],\
+     [  0 , -4 , -1 , -4 , -3  , -1 , -4 , -4 ,  4 , -3 ,   1 ,  1 , -3 , -3 , -3 ,  -3 , -2 ,  0 ,  5 , -3 ,  -1 , -1 , -3 ],\
+     [ -3 , -5 , -5 , -5 , -3  ,  1 , -3 , -3 , -3 , -3 ,  -2 , -1 , -4 , -4 , -1 ,  -3 , -4 , -3 , -3 , 15 ,  -3 ,  2 , -2 ],\
+     [ -1 , -1 , -2 , -1 , -1  , -2 , -2 , -1 , -1 , -1 ,  -1 , -1 , -1 , -2 , -1 ,  -1 , -1 ,  0 , -1 , -3 ,  -1 , -1 , -1 ],\
+     [ -2 , -3 , -3 , -3 , -2  ,  4 , -3 ,  2 , -1 , -2 ,  -1 ,  0 , -2 , -3 , -1 ,  -1 , -2 , -2 , -1 ,  2 ,  -1 ,  8 , -2 ],\
+     [ -1 ,  2 , -3 ,  1 ,  5  , -4 , -2 ,  0 , -3 ,  1 ,  -3  ,-1 ,  0 , -1 ,  4 ,   0 ,  0 , -1 , -3 , -2 ,  -1 , -2 ,  5 ] ]
+  (i,j) = (AAs.find(a),AAs.find(b))
+  if i==-1 or j==-1: return 0 # should be mean value?
+  return mtrx[i][j]
+
 def ident_matches(alignment):
   matches = ""
   (a,b) = alignment[0:2]
@@ -237,6 +267,94 @@ def dayhoff_matches(alignment):
     else: matches += ' '
   return matches
 
+def matches(alignment, matrix, similar_level=0):
+  matches = ""
+  (a,b) = alignment[0:2]
+  for i in xrange(len(a)):
+    if a[i]==b[i]: matches += "|"
+    elif matrix(a[i],b[i])>0: matches += '*'
+    else: matches += ' '
+  return matches
+
+def pretty_print(alignment,
+                 matches,
+                 out=None,
+                 block_size=20,
+                 n_block=1,
+                 top_name="reference",
+                 bottom_name="query",
+                 short_comment = None):
+  if out == None:
+    out = sys.stdout
+
+  top_str = (top_name+" "*8)[0:8]
+  bot_str = (bottom_name+" "*8)[0:8]
+  ruler = ""
+  count=0
+  for ii in xrange(n_block):
+    for jj in xrange(block_size):
+      count += 1
+      ruler += "%s"%( count%10 )
+    ruler+="     "
+  print >> out
+  print >> out
+  if short_comment is not None:
+    print >> out, short_comment
+    print >> out
+  print >> out, "              "+ruler
+  print >> out
+
+  done=False
+  n=len(alignment[0])
+  count=0
+  while not done:
+    # top
+    offset=count*block_size*n_block
+
+    # top
+    print >> out, top_str+"     ",
+    for ii in xrange(n_block):
+      start=offset+ii*block_size
+      stop=offset+(ii+1)*block_size
+      if stop > n:
+        stop = n
+      if start < n:
+        tmp=alignment[0][start:stop]
+        print >> out, tmp, "   ",
+    print >> out
+
+    #middle
+    print >> out, "             ",
+    for ii in xrange(n_block):
+      start=offset+ii*block_size
+      stop=offset+(ii+1)*block_size
+      if stop > n:
+        stop = n
+      if start < n:
+        tmp=matches[start:stop]
+        print >> out, tmp, "   ",
+    count += 1
+    print >> out
+
+    # bottom
+    print >> out, bot_str+"     ",
+    for ii in xrange(n_block):
+      start=offset+ii*block_size
+      stop=offset+(ii+1)*block_size
+      if stop > n:
+        stop = n
+      if start < n:
+        tmp=alignment[1][start:stop]
+        print >> out, tmp, "   ",
+    print >> out
+    print >> out
+    print >> out
+    if count*block_size*n_block>n:
+      done=True
+
+  return out
+
+
 def exercise():
   A = "AAAGGTT"
   B = "AAATT"
@@ -252,9 +370,9 @@ def exercise():
   # 1rra vs. 1bli
   A = "AESSADKFKRQHMDTEGPSKSSPTYCNQMMKRQGMTKGSCKPVNTFVHEPLEDVQAICSQGQVTCKNGRNNCHKSSSTLRITDCRLKGSSKYPNCDYTTTDSQKHIIIACDGNPYVPVHFDASV"
   B = "DNSRYTHFLTQHYDAKPQGRDDRYCESIMRRRGLTSPCKDINTFIHGNKRSIKAICENKNGNPHRENLRISKSSFQVTTCKLHGGSPWPPCQYRATAGFRNVVVACENGLPVHLDQSIFRRP"
-  obj = align(A,B,gop=150,gep=20,sim=dayhoff,style=align.LOCAL)
+  obj = align(A,B,gop=150,gep=20,sim=dayhoff,style=align.GLOBAL)
 
-  print "\n1rra vs. 1bli"
+  print "\n1rra vs. 1bli; GLOBAL allignment; mdm78"
   print "score=%0.1f" % obj.score()
   alignment = obj.extract_alignment(return_traceback=True)
 
@@ -262,6 +380,61 @@ def exercise():
   print alignment[0]
   print dayhoff_matches(alignment)
   print alignment[1]
+
+
+  # 1rra vs. 1bli
+  A = "AESSADKFKRQHMDTEGPSKSSPTYCNQMMKRQGMTKGSCKPVNTFVHEPLEDVQAICSQGQVTCKNGRNNCHKSSSTLRITDCRLKGSSKYPNCDYTTTDSQKHIIIACDGNPYVPVHFDASV"
+  B = "DNSRYTHFLTQHYDAKPQGRDDRYCESIMRRRGLTSPCKDINTFIHGNKRSIKAICENKNGNPHRENLRISKSSFQVTTCKLHGGSPWPPCQYRATAGFRNVVVACENGLPVHLDQSIFRRP"
+  obj = align(A,B,gop=150,gep=20,sim=dayhoff,style=align.LOCAL)
+
+  print "\n1rra vs. 1bli; LOCAL allignment; mdm78"
+  print "score=%0.1f" % obj.score()
+  alignment = obj.extract_alignment(return_traceback=True)
+
+  print alignment[2]
+  print alignment[0]
+  print dayhoff_matches(alignment)
+  print alignment[1]
+
+
+
+  # 1rra vs. 1bli
+  A = "AESSADKFKRQHMDTEGPSKSSPTYCNQMMKRQGMTKGSCKPVNTFVHEPLEDVQAICSQGQVTCKNGRNNCHKSSSTLRITDCRLKGSSKYPNCDYTTTDSQKHIIIACDGNPYVPVHFDASV"
+  B = "DNSRYTHFLTQHYDAKPQGRDDRYCESIMRRRGLTSPCKDINTFIHGNKRSIKAICENKNGNPHRENLRISKSSFQVTTCKLHGGSPWPPCQYRATAGFRNVVVACENGLPVHLDQSIFRRP"
+  obj = align(A,B,gop=10,gep=2,sim=blosum50,style=align.GLOBAL)
+
+  print "\n1rra vs. 1bli; GLOBAL allignment; blosum50"
+  print "score=%0.1f" % obj.score()
+  alignment = obj.extract_alignment(return_traceback=True)
+
+  print alignment[2]
+  print alignment[0]
+  print matches(alignment, blosum50, 0)
+  print alignment[1]
+
+  # 1rra vs. 1bli
+  A = "AESSADKFKRQHMDTEGPSKSSPTYCNQMMKRQGMTKGSCKPVNTFVHEPLEDVQAICSQGQVTCKNGRNNCHKSSSTLRITDCRLKGSSKYPNCDYTTTDSQKHIIIACDGNPYVPVHFDASV"
+  B = "DNSRYTHFLTQHYDAKPQGRDDRYCESIMRRRGLTSPCKDINTFIHGNKRSIKAICENKNGNPHRENLRISKSSFQVTTCKLHGGSPWPPCQYRATAGFRNVVVACENGLPVHLDQSIFRRP"
+  obj = align(A,B,gop=10,gep=2,sim=blosum50,style=align.LOCAL)
+
+  print "\n1rra vs. 1bli; LOCAL allignment; blosum50"
+  print "score=%0.1f" % obj.score()
+  alignment = obj.extract_alignment(return_traceback=True)
+
+  print alignment[2]
+  print alignment[0]
+  print matches(alignment, blosum50, 0)
+  print alignment[1]
+
+  print
+  pretty_print(alignment = alignment[0:2],
+               matches = matches(alignment, blosum50, 0),
+               out = None,
+               block_size = 50,
+               n_block = 1,
+               top_name = "1rra",
+               bottom_name = "1bli",
+               short_comment = """pretty_print is pretty pretty""")
 
   print "OK" # necessary for auto_build checking
 
