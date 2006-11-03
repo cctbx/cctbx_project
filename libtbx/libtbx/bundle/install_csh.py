@@ -349,8 +349,13 @@ endif
 
 no_suitable_python_exe:
 
+if ("$required_python_version" == "None") then
+  set pyv=""
+else
+  set pyv=" (version $required_python_version)"
+endif
 echo ""
-echo "Sorry: Cannot find a suitable Python interpreter."
+echo "Sorry: Cannot find a suitable Python interpreter$pyv."
 echo ""
 if ($mac_os_version != "None") then
   echo "  Please install a Python framework, e.g. using python-*-macosx.dmg"
