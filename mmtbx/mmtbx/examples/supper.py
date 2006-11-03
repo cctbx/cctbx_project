@@ -80,7 +80,6 @@ def allign_sites( reference_sequence_coords,
 
   assert len(reference_sequence_coords) == len(aligned_sequence_coords)
   assert len(reference_sequence_coords) == len(matches)
-
   n = len(reference_sequence_coords)
   #loop over the alignement
   match_id=["|","*"]
@@ -154,16 +153,16 @@ def run(args):
   alignment_object = None
   if params.supper.alignment_type == "local":
     alignment_object = alignment.align(
-      moving_seq,
       fixed_seq,
+      moving_seq,
       gop=20,gep=2,
       sim=alignment.blosum50,
       style=alignment.align.LOCAL  )
 
   if params.supper.alignment_type == "global":
     alignment_object = alignment.align(
-      moving_seq,
       fixed_seq,
+      moving_seq,
       gop=20,gep=2,
       sim=alignment.blosum50,
       style=alignment.align.GLOBAL )
