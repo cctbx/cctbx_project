@@ -53,6 +53,8 @@ if ("`uname`" == "Darwin") then
   limit stacksize 8192k
 endif
 
+set aborted="Installation aborted."
+
 set number_of_cpus=None
 set python_exe=None
 
@@ -141,7 +143,7 @@ def_prompt_number_of_cpus:
       echo "Not a number!"
       if ($counter > 2) then
         echo "Giving up."
-        echo "Installation aborted."
+        echo "$aborted"
         exit 1
       endif
       echo "Please try again."
@@ -279,6 +281,20 @@ if ($mac_os_version != "None") then
 
 endif
 
+set trial_python_exe="$build/base/bin/python"
+if (-e "$trial_python_exe") then
+  set try_python_rtnpt=try_python_bb_return
+  goto def_try_python_exe
+  try_python_bb_return:
+  if ("$python_version" == "None") then
+    echo "Sorry: The installer is not suitable for this platform."
+    echo "$aborted"
+    exit 1
+  endif
+  set python_exe="$trial_python_exe"
+  goto have_python_exe
+endif
+#
 set trial_python_exe="python"
 set try_python_rtnpt=try_python_return
 goto def_try_python_exe
@@ -300,9 +316,9 @@ endif
 #
 if ("$required_python_version" != "None") then
   set trial_python_exe="/usr/local/bin/python$required_python_version"
-  set try_python_rtnpt=try_usr_local_bin_python_return
+  set try_python_rtnpt=try_ulb_python_return
   goto def_try_python_exe
-  try_usr_local_bin_python_return:
+  try_ulb_python_return:
   if ("$python_version" != "None") then
     set python_exe="$trial_python_exe"
     goto have_python_exe
@@ -311,9 +327,9 @@ endif
 #
 if ("$required_python_version" == "None") then
   set trial_python_exe="/usr/bin/python"
-  set try_python_rtnpt=try_usr_bin_python_return
+  set try_python_rtnpt=try_ub_python_return
   goto def_try_python_exe
-  try_usr_bin_python_return:
+  try_ub_python_return:
   if ("$python_version" != "None" && $ok_minimum_python_version) then
     set python_exe="$trial_python_exe"
     goto have_python_exe
@@ -322,9 +338,9 @@ endif
 #
 if ("$required_python_version" != "None") then
   set trial_python_exe="/usr/bin/python$required_python_version"
-  set try_python_rtnpt=try_usr_bin_pythonv_return
+  set try_python_rtnpt=try_ub_pythonv_return
   goto def_try_python_exe
-  try_usr_bin_pythonv_return:
+  try_ub_pythonv_return:
   if ("$python_version" != "None") then
     set python_exe="$trial_python_exe"
     goto have_python_exe
@@ -352,7 +368,7 @@ else
 endif
 echo "    $0 some/path/bin/python$n"
 echo ""
-echo "Installation aborted."
+echo "$aborted"
 exit 1
 
 have_python_exe:
