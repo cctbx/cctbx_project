@@ -48,6 +48,8 @@ def exercise_rotation():
       other_kcs = tuple(kcs) * other_cs
       rms_kcs = reference.rms_difference(other_kcs)
       assert approx_equal(rms_kcs, rms_ks)
+
+  #degenerate systems
   reference = flex.vec3_double([])
   kc = kabsch_rotation(reference, reference)
   assert approx_equal(kc.elems * reference, reference)
@@ -109,8 +111,9 @@ def exercise(method):
       s = least_squares_fit(reference, other, method)
       assert approx_equal(reference, s.other_sites_best_fit())
       c = random_rotation()
-      other_other = tuple(c)*other
       s = least_squares_fit(reference, tuple(c)*other, method)
+      if method == "kearsley": # Kabsch fails in special cases
+        assert approx_equal(s.r.determinant(), 1)
       assert approx_equal(reference, s.other_sites_best_fit())
 
 if (__name__ == "__main__"):
