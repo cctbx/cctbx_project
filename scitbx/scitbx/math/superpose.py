@@ -18,19 +18,14 @@ def kearsley_rotation(reference_sites, other_sites):
   assert reference_sites.size() == other_sites.size()
   m = reference_sites - other_sites
   p = reference_sites + other_sites
-  #extract the x y and z coords using dot products
+  #extract the x y and z coords using dot products,
+  #I did not see any other easy way of obtaining this info.
   dx=flex.vec3_double( [(1.0,0.0,0.0)]*reference_sites.size() )
   dy=flex.vec3_double( [(0.0,1.0,0.0)]*reference_sites.size() )
   dz=flex.vec3_double( [(0.0,0.0,1.0)]*reference_sites.size() )
-
-  xm = m.dot( dx )
-  ym = m.dot( dy )
-  zm = m.dot( dz )
-
-  xp = p.dot( dx )
-  yp = p.dot( dy )
-  zp = p.dot( dz )
-
+  xm = m.dot( dx ); ym = m.dot( dy ); zm = m.dot( dz )
+  xp = p.dot( dx ); yp = p.dot( dy ); zp = p.dot( dz )
+  # make matrix elements
   a11 = flex.sum( xm*xm + ym*ym + zm*zm )
   a12 = flex.sum( yp*zm - ym*zp )
   a13 = flex.sum( xm*zp - xp*zm )
@@ -41,35 +36,31 @@ def kearsley_rotation(reference_sites, other_sites):
   a33 = flex.sum( xp*xp + zp*zp + ym*ym )
   a34 = flex.sum( ym*zm - yp*zp )
   a44 = flex.sum( xp*xp + yp*yp + zm*zm )
-
+  #setup a 4*4 matrix
   grid = flex.grid(4,4)
-
   mtrx = flex.double( grid )
-
+  #fil the elements
   mtrx[(0,0)] = a11; mtrx[(0,1)] = a12; mtrx[(0,2)] = a13; mtrx[(0,3)] = a14
   mtrx[(1,0)] = a12; mtrx[(1,1)] = a22; mtrx[(1,2)] = a23; mtrx[(1,3)] = a24
   mtrx[(2,0)] = a13; mtrx[(2,1)] = a23; mtrx[(2,2)] = a33; mtrx[(2,3)] = a34
   mtrx[(3,0)] = a14; mtrx[(3,1)] = a24; mtrx[(3,2)] = a34; mtrx[(3,3)] = a44
-
   # get the eigenvectors of this matrix please
   eigs = eigensystem.real_symmetric( mtrx )
-  # Note that rms = sqrt(eigs.values()[3]/n_sites)
+  # Note that rms = sqrt(eigs.values()[3]/n_sites)!
   #
-  # The values below form a unit quaternion
+  # The values of the eigenvector with the smallest eigenvalue
+  # form a unit quaternion
   q1 = eigs.vectors()[12]
   q2 = eigs.vectors()[13]
   q3 = eigs.vectors()[14]
   q4 = eigs.vectors()[15]
-  # make a rotation matrix out of it
+  # make a rotation matrix out of it for our convenience.
   a11 = q1*q1 + q2*q2 - q3*q3 - q4*q4
   a22 = q1*q1 + q3*q3 - q2*q2 - q4*q4
   a33 = q1*q1 + q4*q4 - q2*q2 - q3*q3
-  a12 = 2.0*(q2*q3+q1*q4)
-  a21 = 2.0*(q2*q3-q1*q4)
-  a13 = 2.0*(q2*q4-q1*q3)
-  a31 = 2.0*(q2*q4+q1*q3)
-  a23 = 2.0*(q3*q4+q1*q2)
-  a32 = 2.0*(q3*q4-q1*q2)
+  a12 = 2.0*(q2*q3+q1*q4); a21 = 2.0*(q2*q3-q1*q4)
+  a13 = 2.0*(q2*q4-q1*q3); a31 = 2.0*(q2*q4+q1*q3)
+  a23 = 2.0*(q3*q4+q1*q2); a32 = 2.0*(q3*q4-q1*q2)
   r = matrix.sqr( [a11,a12,a13,a21,a22,a23,a31,a32,a33] )
   # done
   return r
