@@ -1,7 +1,8 @@
 # written by Tom Ioerger (http://faculty.cs.tamu.edu/ioerger)
 # send comments or suggestions to ioerger@cs.tamu.edu
 
-import sys,types
+from libtbx import adopt_init_args
+import sys, types
 
 # This implementation is based on the ideas in Gotoh (1982; JMB, 162:705-708),
 #   which runs in quadratic time O(MN), i.e. product of sequence lengths.
@@ -13,8 +14,8 @@ import sys,types
 
 # options/parameters:
 #   gap weights:
-#     affine gap costs: cost = gop + gep*length
-#     gop = gap open penalty
+#     affine gap costs: cost = gap_opening_penalty + gap_extension_penalty*length
+#     gop = gap opening penalty
 #     gep = gap extension penalty
 #   similarity matrices:
 #     identity by default, Dayhoff (1978) matrix (like pam250) provided
@@ -24,40 +25,49 @@ import sys,types
 # (1,1) represents (A[0],B[0])
 # edge entries (i,0) and (0,j) represent initial gaps
 
-# sim parameter can be:
-#   a pair of (match score,mismatch score), e.g. sim=(1,-0.5)
+# similarity parameter can be:
+#   a pair of (match score,mismatch score), e.g. similarity=(1,-0.5)
 #   a function that takes a pair and returns score
-#   default is identity: sim=(1,0)
+#   default is identity: similarity=(1,0)
 
-# default gap weights: gop=1, gep=1 (appropriate for identity sim)
-# suggestion for dayhoff: gop=150, gep=20
+# default gap weights (appropriate for identity similarity):
+#   gap_opening_penalty = 1
+#   gap_extension_penalty = 1
+# suggestion for dayhoff:
+#   gap_opening_penalty = 150
+#   gap_extension_penalty = 20
 #   log-likelihoods, scaled up by a factor of 10, with mean=0
 #   so gaps cost approx 1.5+0.22*len per "match"
 
 class align:
 
-  # for specifying alignment styles, e.g. align(...,style=align.LOCAL)
-  LOCAL       = 1 # Smith/Waterman
-  GLOBAL      = 2 # Needleman/Wunsch (default)
-  NO_END_GAPS = 3 # like NW, except end gaps don't count
-
-  def __init__(self,A,B,gop=1,gep=1,sim=(1,0),style=GLOBAL,verbose=False):
-    (self.sim,self.style) = (sim,style)
-    (self.A,self.B) = (A,B)
-    (m,n) = (self.m,self.n) = (len(A),len(B))
-    (self.gop,self.gep) = (gop,gep)
+  def __init__(self,
+        seq_a,
+        seq_b,
+        style="global",
+        gap_opening_penalty=1,
+        gap_extension_penalty=1,
+        similarity=(1,0)):
+    assert style in ["global", "local", "no_end_gaps"]
+    adopt_init_args(self, locals())
+    A,B = seq_a, seq_b
+    m,n = self.m,self.n = len(A),len(B)
+    if (isinstance(similarity, tuple)):
+      eval_similarity = self.eval_similarity_tuple
+    else:
+      eval_similarity = similarity
 
     # Mij is score of align of A[1..i] with B[1..j] ending in a match
     # Dij is score of align of A[1..i] with B[1..j] ending in a deletion (Ai,gap)
     # Iij is score of align of A[1..i] with B[1..j] ending in an insertion (gap,Bj)
     # E is direction matrix: -1=del, 0=match, +1=ins
-    M = self.make_array(m+1,n+1)
-    D = self.make_array(m+1,n+1)
-    I = self.make_array(m+1,n+1)
-    E = self.make_array(m+1,n+1)
+    M = self.make_matrix(m+1,n+1)
+    D = self.make_matrix(m+1,n+1)
+    I = self.make_matrix(m+1,n+1)
+    E = self.make_matrix(m+1,n+1)
 
     # initialize the matrices
-    if style==self.GLOBAL:
+    if style=="global":
       for i in range(1,m+1): M[i][0] = -self.gap(i)
       for i in range(1,n+1): M[0][i] = -self.gap(i)
       M[0][0] = 0
@@ -68,13 +78,13 @@ class align:
       for j in range(1,n+1):
 
         if i==1: D[i][j] = M[i-1][j]-self.gap(1)
-        else: D[i][j] = max(M[i-1][j]-self.gap(1),D[i-1][j]-gep)
+        else: D[i][j] = max(M[i-1][j]-self.gap(1),D[i-1][j]-gap_extension_penalty)
 
         if j==1: I[i][j] = M[i][j-1]-self.gap(1)
-        else: I[i][j] = max(M[i][j-1]-self.gap(1),I[i][j-1]-gep)
+        else: I[i][j] = max(M[i][j-1]-self.gap(1),I[i][j-1]-gap_extension_penalty)
 
-        M[i][j] = max(M[i-1][j-1]+self.eval_sim(A[i-1],B[j-1],sim),D[i][j],I[i][j])
-        if style==self.LOCAL: M[i][j] = max(M[i][j],0)
+        M[i][j] = max(M[i-1][j-1]+eval_similarity(A[i-1],B[j-1]),D[i][j],I[i][j])
+        if style=="local": M[i][j] = max(M[i][j],0)
 
         if M[i][j]==D[i][j]: E[i][j] = 1    # deletion, i.e. of A[i]
         elif M[i][j]==I[i][j]: E[i][j] = -1 # insertion, i.e. of B[j]
@@ -82,34 +92,34 @@ class align:
 
     (self.M,self.D,self.I,self.E) = (M,D,I,E)
 
-    if verbose==True:
-      print "D"; self.print_array(D)
-      print "I"; self.print_array(I)
-      print "M"; self.print_array(M)
-      print "E"; self.print_array(E)
+  def eval_similarity_tuple(self, a, b):
+    if (a == b): return self.similarity[0]
+    return self.similarity[1]
 
-  def eval_sim(self,a,b,sim):
-    if isinstance(sim,tuple):
-      if a==b: return sim[0]
-      return sim[1]
-    elif isinstance(sim,types.FunctionType):
-      return sim(a,b)
+  def gap(self,i):
+    return self.gap_opening_penalty+i*self.gap_extension_penalty
 
-  def gap(self,i): return self.gop+i*self.gep
+  def show_matrix(self, data, label=None, out=None):
+    if (out is None): out = sys.stdout
+    if (label is not None):
+      print >> out, label
+    for a in '  '+self.seq_b: print >> out, "%5c" % a,
+    print >> out
+    seq = ' '+self.seq_a
+    for i,row in enumerate(data):
+      print >> out, "%5c" % seq[i],
+      for x in row: print >> out, "%5.1f" % x,
+      print >> out
 
-  # num digits?
+  def show_matrices(self, out=None):
+    for label, data in [("D", self.D),
+                        ("I", self.I),
+                        ("M", self.M),
+                        ("E", self.E)]:
+      self.show_matrix(data=data, label=label)
+    return self
 
-  def print_array(self,R):
-    for a in '  '+self.B: print "%5c" % a,
-    print
-    seq = ' '+self.A
-    for i in xrange(len(R)):
-      row = R[i]
-      print "%5c" % seq[i],
-      for x in row: print "%5.1f" % x,
-      print
-
-  def make_array(self,m,n):
+  def make_matrix(self,m,n):
     R = []
     for i in xrange(m):
       R.append([0]*n)
@@ -120,10 +130,10 @@ class align:
     return self.M[i][j]
 
   def endpt(self):
-    if self.style==self.GLOBAL:
+    if self.style=="global":
       return (self.m,self.n)
 
-    elif self.style==self.LOCAL:
+    elif self.style=="local":
       (best,ii,jj) = (self.M[0][0],0,0)
       for i in xrange(self.m+1):
         for j in xrange(self.n+1):
@@ -156,23 +166,22 @@ class align:
 
     traceback = ""
     (i,j) = self.endpt()
-    if self.style==self.GLOBAL:
+    if self.style=="global":
       while i>0 and j>0:
         if E[i][j]==-1: traceback += 'i'; j -= 1
         elif E[i][j]==1: traceback += 'd'; i -= 1
         elif E[i][j]==0: traceback += 'm'; i -= 1; j -= 1
       while i>0: traceback += 'd'; i -= 1
       while j>0: traceback += 'i'; j -= 1
-      (F,G) = (self.A,self.B)
+      (F,G) = (self.seq_a,self.seq_b)
     else:
       (p,q) = (i,j)
       while M[i][j]>0:
         if E[i][j]==-1: traceback += 'i'; j -= 1
         elif E[i][j]==1: traceback += 'd'; i -= 1
         elif E[i][j]==0: traceback += 'm'; i -= 1; j -= 1
-      (F,G) = (self.A[i:p+1],self.B[j:q+1]) # sub-sequences
+      (F,G) = (self.seq_a[i:p+1],self.seq_b[j:q+1]) # sub-sequences
     traceback = self.reverse(traceback)
-    #print traceback
 
     (r,s) = ("","")
     (u,v) = (0,0)
@@ -186,22 +195,21 @@ class align:
     else:
       return(r,s,traceback)
 
-
   def extract_alignment_coordinates(self):
     (M,D,I,E) = (self.M,self.D,self.I,self.E)
     (m,n) = (self.m,self.n)
 
     traceback = ""
     (i,j) = self.endpt()
-    if self.style==self.GLOBAL:
+    if self.style=="global":
       while i>0 and j>0:
         if E[i][j]==-1: traceback += 'i'; j -= 1
         elif E[i][j]==1: traceback += 'd'; i -= 1
         elif E[i][j]==0: traceback += 'm'; i -= 1; j -= 1
       while i>0: traceback += 'd'; i -= 1
       while j>0: traceback += 'i'; j -= 1
-      (F,G) = (self.A,self.B)
-      (F,G) = ( range(len(self.A)), range(len(self.B)) )
+      (F,G) = (self.seq_a,self.seq_b)
+      (F,G) = ( range(len(self.seq_a)), range(len(self.seq_b)) )
     else:
       (p,q) = (i,j)
       while M[i][j]>0:
@@ -210,7 +218,6 @@ class align:
         elif E[i][j]==0: traceback += 'm'; i -= 1; j -= 1
       (F,G) = ( range(i,p+1),range(j,q+1) )# sub-sequences
     traceback = self.reverse(traceback)
-    #print traceback
 
     (r,s) = ([],[])
     (u,v) = (0,0)
@@ -319,8 +326,8 @@ def pretty_print(alignment,
                  n_block=1,
                  top_name="reference",
                  bottom_name="query",
-                 short_comment = None):
-  if out == None:
+                 comment = None):
+  if out is None:
     out = sys.stdout
 
   top_str = (top_name+" "*8)[0:8]
@@ -334,9 +341,8 @@ def pretty_print(alignment,
     ruler+="     "
   print >> out
   print >> out
-  if short_comment is not None:
-    print >> out, short_comment
-    print >> out
+  if comment is not None:
+    print >> out, comment
   print >> out, "              "+ruler
   print >> out
 
@@ -384,7 +390,6 @@ def pretty_print(alignment,
         print >> out, tmp, "   ",
     print >> out
     print >> out
-    print >> out
     if count*block_size*n_block>n:
       done=True
 
@@ -399,7 +404,8 @@ def exercise_similarity_scores():
 def exercise():
   A = "AAAGGTT"
   B = "AAATT"
-  obj = align(A,B,verbose=True)
+  obj = align(A,B)
+  obj.show_matrices()
 
   print "score=%0.1f" % obj.score()
   alignment = obj.extract_alignment(return_traceback=True)
@@ -411,7 +417,7 @@ def exercise():
   # 1rra vs. 1bli
   A = "AESSADKFKRQHMDTEGPSKSSPTYCNQMMKRQGMTKGSCKPVNTFVHEPLEDVQAICSQGQVTCKNGRNNCHKSSSTLRITDCRLKGSSKYPNCDYTTTDSQKHIIIACDGNPYVPVHFDASV"
   B = "DNSRYTHFLTQHYDAKPQGRDDRYCESIMRRRGLTSPCKDINTFIHGNKRSIKAICENKNGNPHRENLRISKSSFQVTTCKLHGGSPWPPCQYRATAGFRNVVVACENGLPVHLDQSIFRRP"
-  obj = align(A,B,gop=150,gep=20,sim=dayhoff,style=align.GLOBAL)
+  obj = align(A,B,gap_opening_penalty=150,gap_extension_penalty=20,similarity=dayhoff,style="global")
 
   print "\n1rra vs. 1bli; GLOBAL allignment; mdm78"
   print "score=%0.1f" % obj.score()
@@ -426,7 +432,7 @@ def exercise():
   # 1rra vs. 1bli
   A = "AESSADKFKRQHMDTEGPSKSSPTYCNQMMKRQGMTKGSCKPVNTFVHEPLEDVQAICSQGQVTCKNGRNNCHKSSSTLRITDCRLKGSSKYPNCDYTTTDSQKHIIIACDGNPYVPVHFDASV"
   B = "DNSRYTHFLTQHYDAKPQGRDDRYCESIMRRRGLTSPCKDINTFIHGNKRSIKAICENKNGNPHRENLRISKSSFQVTTCKLHGGSPWPPCQYRATAGFRNVVVACENGLPVHLDQSIFRRP"
-  obj = align(A,B,gop=150,gep=20,sim=dayhoff,style=align.LOCAL)
+  obj = align(A,B,gap_opening_penalty=150,gap_extension_penalty=20,similarity=dayhoff,style="local")
 
   print "\n1rra vs. 1bli; LOCAL allignment; mdm78"
   print "score=%0.1f" % obj.score()
@@ -442,7 +448,7 @@ def exercise():
   # 1rra vs. 1bli
   A = "AESSADKFKRQHMDTEGPSKSSPTYCNQMMKRQGMTKGSCKPVNTFVHEPLEDVQAICSQGQVTCKNGRNNCHKSSSTLRITDCRLKGSSKYPNCDYTTTDSQKHIIIACDGNPYVPVHFDASV"
   B = "DNSRYTHFLTQHYDAKPQGRDDRYCESIMRRRGLTSPCKDINTFIHGNKRSIKAICENKNGNPHRENLRISKSSFQVTTCKLHGGSPWPPCQYRATAGFRNVVVACENGLPVHLDQSIFRRP"
-  obj = align(A,B,gop=10,gep=2,sim=blosum50,style=align.GLOBAL)
+  obj = align(A,B,gap_opening_penalty=10,gap_extension_penalty=2,similarity=blosum50,style="global")
 
   print "\n1rra vs. 1bli; GLOBAL allignment; blosum50"
   print "score=%0.1f" % obj.score()
@@ -456,7 +462,7 @@ def exercise():
   # 1rra vs. 1bli
   A = "AESSADKFKRQHMDTEGPSKSSPTYCNQMMKRQGMTKGSCKPVNTFVHEPLEDVQAICSQGQVTCKNGRNNCHKSSSTLRITDCRLKGSSKYPNCDYTTTDSQKHIIIACDGNPYVPVHFDASV"
   B = "DNSRYTHFLTQHYDAKPQGRDDRYCESIMRRRGLTSPCKDINTFIHGNKRSIKAICENKNGNPHRENLRISKSSFQVTTCKLHGGSPWPPCQYRATAGFRNVVVACENGLPVHLDQSIFRRP"
-  obj = align(A,B,gop=10,gep=2,sim=blosum50,style=align.LOCAL)
+  obj = align(A,B,gap_opening_penalty=10,gap_extension_penalty=2,similarity=blosum50,style="local")
 
   print "\n1rra vs. 1bli; LOCAL allignment; blosum50"
   print "score=%0.1f" % obj.score()
@@ -474,7 +480,7 @@ def exercise():
                n_block = 1,
                top_name = "1rra",
                bottom_name = "1bli",
-               short_comment = """pretty_print is pretty pretty""")
+               comment = """pretty_print is pretty pretty""")
 
   print "OK" # necessary for auto_build checking
 
