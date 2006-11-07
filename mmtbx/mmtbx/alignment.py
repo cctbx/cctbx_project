@@ -12,23 +12,17 @@ import sys, types
 # based on maximizing similarity (rather than minimizing distance)
 # give gap weights as positive; they will be subtracted
 
-# options/parameters:
-#   gap weights:
-#     affine gap costs: cost = gap_opening_penalty + gap_extension_penalty*length
-#     gop = gap opening penalty
-#     gep = gap extension penalty
-#   similarity matrices:
-#     identity by default, Dayhoff (1978) matrix (like pam250) provided
-#     or arbitrary similarity function specified by user
+# similarity matrices:
+#   identity by default
+#   Dayhoff (1978) matrix (like pam250)
+#   blosum50
+#   or arbitrary similarity function specified by user
+# See the definitions of dayhoff(), blosum50() for example
+# similarity functions.
 
 # matrices go from (0,0) to (M,N) inclusive; M,N are lengths of A,B
 # (1,1) represents (A[0],B[0])
 # edge entries (i,0) and (0,j) represent initial gaps
-
-# similarity parameter can be:
-#   a pair of (match score,mismatch score), e.g. similarity=(1,-0.5)
-#   a function that takes a pair and returns score
-#   default is identity: similarity=(1,0)
 
 # default gap weights (appropriate for identity similarity):
 #   gap_opening_penalty = 1
@@ -39,7 +33,7 @@ import sys, types
 #   log-likelihoods, scaled up by a factor of 10, with mean=0
 #   so gaps cost approx 1.5+0.22*len per "match"
 
-class align:
+class align(object):
 
   def __init__(self,
         seq_a,
@@ -47,15 +41,21 @@ class align:
         style="global",
         gap_opening_penalty=1,
         gap_extension_penalty=1,
-        similarity=(1,0)):
+        similarity_function="identity"):
     assert style in ["global", "local", "no_end_gaps"]
+    if (   similarity_function is None
+        or similarity_function == "identity"):
+      similarity_function = identity
+    elif (similarity_function == "dayhoff"):
+      similarity_function = dayhoff
+    elif (similarity_function == "blosum50"):
+      similarity_function = blosum50
+    elif (isinstance(similarity_function, str)):
+      raise RuntimeError(
+        'Unknown similarity_function: "%s"' % similarity_function)
     adopt_init_args(self, locals())
     A,B = seq_a, seq_b
     m,n = self.m,self.n = len(A),len(B)
-    if (isinstance(similarity, tuple)):
-      eval_similarity = self.eval_similarity_tuple
-    else:
-      eval_similarity = similarity
 
     # Mij is score of align of A[1..i] with B[1..j] ending in a match
     # Dij is score of align of A[1..i] with B[1..j] ending in a deletion (Ai,gap)
@@ -68,8 +68,8 @@ class align:
 
     # initialize the matrices
     if style=="global":
-      for i in range(1,m+1): M[i][0] = -self.gap(i)
-      for i in range(1,n+1): M[0][i] = -self.gap(i)
+      for i in range(1,m+1): M[i][0] = -self.gap_cost(i)
+      for i in range(1,n+1): M[0][i] = -self.gap_cost(i)
       M[0][0] = 0
     # else (LOCAL, NO_END_GAPS) whole matrix initialized to 0 by default
 
@@ -77,13 +77,13 @@ class align:
     for i in range(1,m+1):
       for j in range(1,n+1):
 
-        if i==1: D[i][j] = M[i-1][j]-self.gap(1)
-        else: D[i][j] = max(M[i-1][j]-self.gap(1),D[i-1][j]-gap_extension_penalty)
+        if i==1: D[i][j] = M[i-1][j]-self.gap_cost(1)
+        else: D[i][j] = max(M[i-1][j]-self.gap_cost(1),D[i-1][j]-gap_extension_penalty)
 
-        if j==1: I[i][j] = M[i][j-1]-self.gap(1)
-        else: I[i][j] = max(M[i][j-1]-self.gap(1),I[i][j-1]-gap_extension_penalty)
+        if j==1: I[i][j] = M[i][j-1]-self.gap_cost(1)
+        else: I[i][j] = max(M[i][j-1]-self.gap_cost(1),I[i][j-1]-gap_extension_penalty)
 
-        M[i][j] = max(M[i-1][j-1]+eval_similarity(A[i-1],B[j-1]),D[i][j],I[i][j])
+        M[i][j] = max(M[i-1][j-1]+similarity_function(A[i-1],B[j-1]),D[i][j],I[i][j])
         if style=="local": M[i][j] = max(M[i][j],0)
 
         if M[i][j]==D[i][j]: E[i][j] = 1    # deletion, i.e. of A[i]
@@ -92,12 +92,14 @@ class align:
 
     (self.M,self.D,self.I,self.E) = (M,D,I,E)
 
-  def eval_similarity_tuple(self, a, b):
-    if (a == b): return self.similarity[0]
-    return self.similarity[1]
+  def gap_cost(self, width):
+    return self.gap_opening_penalty + width * self.gap_extension_penalty
 
-  def gap(self,i):
-    return self.gap_opening_penalty+i*self.gap_extension_penalty
+  def make_matrix(self,m,n):
+    R = []
+    for i in xrange(m):
+      R.append([0]*n)
+    return R
 
   def show_matrix(self, data, label=None, out=None):
     if (out is None): out = sys.stdout
@@ -118,12 +120,6 @@ class align:
                         ("E", self.E)]:
       self.show_matrix(data=data, label=label)
     return self
-
-  def make_matrix(self,m,n):
-    R = []
-    for i in xrange(m):
-      R.append([0]*n)
-    return R
 
   def score(self):
     (i,j) = self.endpt()
@@ -150,88 +146,182 @@ class align:
         if self.M[i][j]>best: (best,ii,jj) = (self.M[i][j],i,j)
       return (ii,jj)
 
-  # if GLOBAL, traceback must go from corner to corner
-  #   (though there may be end gaps - still have to search edges)
-  # if LOCAL, search for best-scoring end pair anywhere in the matrix,
-  #   trace back to entry where score=0 (also use 0 in max)
-  # if NO_END_GAPS: like global but initialize rows to 0, truncate terminal gaps,
-  #   do NOT take max of each matrix entry with 0
-
-  # returns a pair of strings
-  # if local, how does caller know coordinates? return (i,j) too?
-
-  def extract_alignment(self, return_traceback=False):
+  def extract_alignment(self):
+    # if GLOBAL, match_codes must go from corner to corner
+    #   (though there may be end gaps - still have to search edges)
+    # if LOCAL, search for best-scoring end pair anywhere in the matrix,
+    #   trace back to entry where score=0 (also use 0 in max)
+    # if NO_END_GAPS: like global but initialize rows to 0,
+    #   truncate terminal gaps, do NOT take max of each matrix entry with 0
     (M,D,I,E) = (self.M,self.D,self.I,self.E)
     (m,n) = (self.m,self.n)
 
-    traceback = ""
+    match_codes = []
+    mcap = match_codes.append
     (i,j) = self.endpt()
     if self.style=="global":
       while i>0 and j>0:
-        if E[i][j]==-1: traceback += 'i'; j -= 1
-        elif E[i][j]==1: traceback += 'd'; i -= 1
-        elif E[i][j]==0: traceback += 'm'; i -= 1; j -= 1
-      while i>0: traceback += 'd'; i -= 1
-      while j>0: traceback += 'i'; j -= 1
-      (F,G) = (self.seq_a,self.seq_b)
+        if E[i][j]==-1: mcap('i'); j -= 1
+        elif E[i][j]==1: mcap('d'); i -= 1
+        elif E[i][j]==0: mcap('m'); i -= 1; j -= 1
+      while i>0: mcap('d'); i -= 1
+      while j>0: mcap('i'); j -= 1
+      F,G = range(len(self.seq_a)), range(len(self.seq_b))
     else:
       (p,q) = (i,j)
       while M[i][j]>0:
-        if E[i][j]==-1: traceback += 'i'; j -= 1
-        elif E[i][j]==1: traceback += 'd'; i -= 1
-        elif E[i][j]==0: traceback += 'm'; i -= 1; j -= 1
-      (F,G) = (self.seq_a[i:p+1],self.seq_b[j:q+1]) # sub-sequences
-    traceback = self.reverse(traceback)
+        if E[i][j]==-1: mcap('i'); j -= 1
+        elif E[i][j]==1: mcap('d'); i -= 1
+        elif E[i][j]==0: mcap('m'); i -= 1; j -= 1
+      F,G = range(i,p+1),range(j,q+1) # sub-sequences
+    match_codes.reverse()
+    match_codes = "".join(match_codes)
 
-    (r,s) = ("","")
-    (u,v) = (0,0)
-    for a in traceback:
-      if a=='d': r += F[u]; u += 1; s += '-'
-      if a=='i': r += '-';          s += G[v]; v += 1
-      if a=='m': r += F[u]; u += 1; s += G[v]; v += 1
+    sa,sb = [], []
+    ia,ib = [], []
+    u, v = 0, 0
+    for a in match_codes:
+      if a=='d':
+        i = F[u]
+        u += 1
+        ia.append(i)
+        sa.append(self.seq_a[i])
+        ib.append(None)
+        sb.append('-')
+      elif a=='i':
+        ia.append(None)
+        sa.append('-')
+        i = G[v]
+        v += 1
+        ib.append(i)
+        sb.append(self.seq_b[i])
+      elif a=='m':
+        i = F[u]
+        u += 1
+        ia.append(i)
+        sa.append(self.seq_a[i])
+        i = G[v]
+        v += 1
+        ib.append(i)
+        sb.append(self.seq_b[i])
 
-    if not return_traceback:
-      return (r,s)
-    else:
-      return(r,s,traceback)
+    return alignment(
+      similarity_function=self.similarity_function,
+      a="".join(sa), b="".join(sb),
+      i_seqs_a=ia, i_seqs_b=ib,
+      match_codes=match_codes)
 
-  def extract_alignment_coordinates(self):
-    (M,D,I,E) = (self.M,self.D,self.I,self.E)
-    (m,n) = (self.m,self.n)
+class alignment(object):
 
-    traceback = ""
-    (i,j) = self.endpt()
-    if self.style=="global":
-      while i>0 and j>0:
-        if E[i][j]==-1: traceback += 'i'; j -= 1
-        elif E[i][j]==1: traceback += 'd'; i -= 1
-        elif E[i][j]==0: traceback += 'm'; i -= 1; j -= 1
-      while i>0: traceback += 'd'; i -= 1
-      while j>0: traceback += 'i'; j -= 1
-      (F,G) = (self.seq_a,self.seq_b)
-      (F,G) = ( range(len(self.seq_a)), range(len(self.seq_b)) )
-    else:
-      (p,q) = (i,j)
-      while M[i][j]>0:
-        if E[i][j]==-1: traceback += 'i'; j -= 1
-        elif E[i][j]==1: traceback += 'd'; i -= 1
-        elif E[i][j]==0: traceback += 'm'; i -= 1; j -= 1
-      (F,G) = ( range(i,p+1),range(j,q+1) )# sub-sequences
-    traceback = self.reverse(traceback)
+  def __init__(self,
+        similarity_function,
+        a, b,
+        i_seqs_a, i_seqs_b,
+        match_codes):
+    adopt_init_args(self, locals())
 
-    (r,s) = ([],[])
-    (u,v) = (0,0)
-    for a in traceback:
-      if a=='d': r.append(F[u]); u += 1; s.append('-')
-      if a=='i': r.append('-');          s.append(G[v]); v += 1
-      if a=='m': r.append(F[u]); u += 1; s.append(G[v]); v += 1
+  def matches(self, similarity_function=None, is_similar_threshold=0):
+    if (similarity_function is None):
+      similarity_function = self.similarity_function
+    result = []
+    ap = result.append
+    for a,b in zip(self.a, self.b):
+      if (a == b):
+        ap("|")
+      elif (similarity_function(a, b) > is_similar_threshold):
+        ap("*")
+      else:
+        ap(" ")
+    return "".join(result)
 
-    return (r,s)
+  def identity_matches(self):
+    return self.matches(similarity_function=identity)
 
-  def reverse(self,s):
-    foo = ""
-    for i in xrange(len(s)): foo += s[-i-1]
-    return foo
+  def dayhoff_matches(self, is_similar_threshold=0):
+    return self.matches(
+      similarity_function=dayhoff,
+      is_similar_threshold=is_similar_threshold)
+
+  def blosum50_matches(self, is_similar_threshold=0):
+    return self.matches(
+      similarity_function=blosum50,
+      is_similar_threshold=is_similar_threshold)
+
+  def pretty_print(self,
+        matches=None,
+        out=None,
+        block_size=20,
+        n_block=1,
+        top_name="reference",
+        bottom_name="query",
+        comment = None):
+    if (matches is None): matches = self.matches()
+    if (out is None): out = sys.stdout
+
+    top_str = (top_name+" "*8)[0:8]
+    bot_str = (bottom_name+" "*8)[0:8]
+    ruler = ""
+    count=0
+    for ii in xrange(n_block):
+      for jj in xrange(block_size):
+        count += 1
+        ruler += "%s"%( count%10 )
+      ruler+="     "
+    print >> out
+    print >> out
+    if comment is not None:
+      print >> out, comment
+    print >> out, "              "+ruler
+    print >> out
+
+    done=False
+    n=len(self.a)
+    count=0
+    while not done:
+      # top
+      offset=count*block_size*n_block
+
+      # top
+      print >> out, top_str+"     ",
+      for ii in xrange(n_block):
+        start=offset+ii*block_size
+        stop=offset+(ii+1)*block_size
+        if stop > n:
+          stop = n
+        if start < n:
+          tmp=self.a[start:stop]
+          print >> out, tmp, "   ",
+      print >> out
+
+      #middle
+      print >> out, "             ",
+      for ii in xrange(n_block):
+        start=offset+ii*block_size
+        stop=offset+(ii+1)*block_size
+        if stop > n:
+          stop = n
+        if start < n:
+          tmp=matches[start:stop]
+          print >> out, tmp, "   ",
+      count += 1
+      print >> out
+
+      # bottom
+      print >> out, bot_str+"     ",
+      for ii in xrange(n_block):
+        start=offset+ii*block_size
+        stop=offset+(ii+1)*block_size
+        if stop > n:
+          stop = n
+        if start < n:
+          tmp=self.b[start:stop]
+          print >> out, tmp, "   ",
+      print >> out
+      print >> out
+      if count*block_size*n_block>n:
+        done=True
+
+    return out
 
 # amino acid similarity scores from Dayhoff's 1978 paper; like PAM250?
 dayhoff_mdm78_similarity_scores = [
@@ -256,13 +346,7 @@ dayhoff_mdm78_similarity_scores = [
   [-58,-78,-68,-70,  4,-70,-28,-51,-35,-18,-42,-42,-56,-48, 22,-25,-52,-62,173, -2],
   [-35,  3,-43,-43, 70,-52, -1, -9,-44, -9,-24,-21,-49,-40,-42,-28,-27,-25, -2,101]]
 
-def dayhoff(a,b):
-  AAs = "ACDEFGHIKLMNPQRSTVWY"
-  (i,j) = (AAs.find(a),AAs.find(b))
-  if i==-1 or j==-1: return 0 # should be mean value?
-  return dayhoff_mdm78_similarity_scores[i][j]
-
-blosum50_similarity_scores =[
+blosum50_similarity_scores = [
   [ 5,-2,-1,-2,-1,-3, 0,-2,-1,-1,-2,-1,-1,-1,-1,-2, 1, 0, 0,-3,-1,-2,-1],
   [-2, 5,-3, 5, 1,-4,-1, 0,-4, 0,-4,-3, 4,-2, 0,-1, 0, 0,-4,-5,-1,-3, 2],
   [-1,-3,13,-4,-3,-2,-3,-3,-2,-3,-2,-2,-2,-4,-3,-4,-1,-1,-1,-5,-2,-3,-3],
@@ -287,113 +371,20 @@ blosum50_similarity_scores =[
   [-2,-3,-3,-3,-2, 4,-3, 2,-1,-2,-1, 0,-2,-3,-1,-1,-2,-2,-1, 2,-1, 8,-2],
   [-1, 2,-3, 1, 5,-4,-2, 0,-3, 1,-3,-1, 0,-1, 4, 0, 0,-1,-3,-2,-1,-2, 5]]
 
+def identity(a, b):
+  return int(a == b)
+
+def dayhoff(a,b):
+  AAs = "ACDEFGHIKLMNPQRSTVWY"
+  (i,j) = (AAs.find(a),AAs.find(b))
+  if i==-1 or j==-1: return 0 # should be mean value?
+  return dayhoff_mdm78_similarity_scores[i][j]
+
 def blosum50(a,b):
   AAs = "ABCDEFGHIKLMNPQRSTVWXYZ"
   (i,j) = (AAs.find(a),AAs.find(b))
   if i==-1 or j==-1: return 0 # should be mean value?
   return blosum50_similarity_scores[i][j]
-
-def ident_matches(alignment):
-  matches = ""
-  (a,b) = alignment[0:2]
-  for i in xrange(len(a)):
-    if a[i]==b[i]: matches += "|"
-    else: matches += ' '
-  return matches
-
-def dayhoff_matches(alignment):
-  matches = ""
-  (a,b) = alignment[0:2]
-  for i in xrange(len(a)):
-    if a[i]==b[i]: matches += "|"
-    elif dayhoff(a[i],b[i])>0: matches += '*'
-    else: matches += ' '
-  return matches
-
-def matches(alignment, matrix, similar_level=0):
-  matches = ""
-  (a,b) = alignment[0:2]
-  for i in xrange(len(a)):
-    if a[i]==b[i]: matches += "|"
-    elif matrix(a[i],b[i])>0: matches += '*'
-    else: matches += ' '
-  return matches
-
-def pretty_print(alignment,
-                 matches,
-                 out=None,
-                 block_size=20,
-                 n_block=1,
-                 top_name="reference",
-                 bottom_name="query",
-                 comment = None):
-  if out is None:
-    out = sys.stdout
-
-  top_str = (top_name+" "*8)[0:8]
-  bot_str = (bottom_name+" "*8)[0:8]
-  ruler = ""
-  count=0
-  for ii in xrange(n_block):
-    for jj in xrange(block_size):
-      count += 1
-      ruler += "%s"%( count%10 )
-    ruler+="     "
-  print >> out
-  print >> out
-  if comment is not None:
-    print >> out, comment
-  print >> out, "              "+ruler
-  print >> out
-
-  done=False
-  n=len(alignment[0])
-  count=0
-  while not done:
-    # top
-    offset=count*block_size*n_block
-
-    # top
-    print >> out, top_str+"     ",
-    for ii in xrange(n_block):
-      start=offset+ii*block_size
-      stop=offset+(ii+1)*block_size
-      if stop > n:
-        stop = n
-      if start < n:
-        tmp=alignment[0][start:stop]
-        print >> out, tmp, "   ",
-    print >> out
-
-    #middle
-    print >> out, "             ",
-    for ii in xrange(n_block):
-      start=offset+ii*block_size
-      stop=offset+(ii+1)*block_size
-      if stop > n:
-        stop = n
-      if start < n:
-        tmp=matches[start:stop]
-        print >> out, tmp, "   ",
-    count += 1
-    print >> out
-
-    # bottom
-    print >> out, bot_str+"     ",
-    for ii in xrange(n_block):
-      start=offset+ii*block_size
-      stop=offset+(ii+1)*block_size
-      if stop > n:
-        stop = n
-      if start < n:
-        tmp=alignment[1][start:stop]
-        print >> out, tmp, "   ",
-    print >> out
-    print >> out
-    if count*block_size*n_block>n:
-      done=True
-
-  return out
 
 def exercise_similarity_scores():
   from scitbx.array_family import flex
@@ -407,80 +398,80 @@ def exercise():
   obj = align(A,B)
   obj.show_matrices()
 
-  print "score=%0.1f" % obj.score()
-  alignment = obj.extract_alignment(return_traceback=True)
-  print alignment[2]
-  print alignment[0]
-  print ident_matches(alignment)
-  print alignment[1]
+  print "score=%.1f" % obj.score()
+  alignment = obj.extract_alignment()
+  print alignment.match_codes
+  print alignment.a
+  print alignment.identity_matches()
+  print alignment.b
 
   # 1rra vs. 1bli
   A = "AESSADKFKRQHMDTEGPSKSSPTYCNQMMKRQGMTKGSCKPVNTFVHEPLEDVQAICSQGQVTCKNGRNNCHKSSSTLRITDCRLKGSSKYPNCDYTTTDSQKHIIIACDGNPYVPVHFDASV"
   B = "DNSRYTHFLTQHYDAKPQGRDDRYCESIMRRRGLTSPCKDINTFIHGNKRSIKAICENKNGNPHRENLRISKSSFQVTTCKLHGGSPWPPCQYRATAGFRNVVVACENGLPVHLDQSIFRRP"
-  obj = align(A,B,gap_opening_penalty=150,gap_extension_penalty=20,similarity=dayhoff,style="global")
+  obj = align(A,B,gap_opening_penalty=150,gap_extension_penalty=20,similarity_function=dayhoff,style="global")
 
   print "\n1rra vs. 1bli; GLOBAL allignment; mdm78"
-  print "score=%0.1f" % obj.score()
-  alignment = obj.extract_alignment(return_traceback=True)
+  print "score=%.1f" % obj.score()
+  alignment = obj.extract_alignment()
 
-  print alignment[2]
-  print alignment[0]
-  print dayhoff_matches(alignment)
-  print alignment[1]
+  print alignment.match_codes
+  print alignment.a
+  print alignment.dayhoff_matches()
+  print alignment.b
 
 
   # 1rra vs. 1bli
   A = "AESSADKFKRQHMDTEGPSKSSPTYCNQMMKRQGMTKGSCKPVNTFVHEPLEDVQAICSQGQVTCKNGRNNCHKSSSTLRITDCRLKGSSKYPNCDYTTTDSQKHIIIACDGNPYVPVHFDASV"
   B = "DNSRYTHFLTQHYDAKPQGRDDRYCESIMRRRGLTSPCKDINTFIHGNKRSIKAICENKNGNPHRENLRISKSSFQVTTCKLHGGSPWPPCQYRATAGFRNVVVACENGLPVHLDQSIFRRP"
-  obj = align(A,B,gap_opening_penalty=150,gap_extension_penalty=20,similarity=dayhoff,style="local")
+  obj = align(A,B,gap_opening_penalty=150,gap_extension_penalty=20,similarity_function="dayhoff",style="local")
 
   print "\n1rra vs. 1bli; LOCAL allignment; mdm78"
-  print "score=%0.1f" % obj.score()
-  alignment = obj.extract_alignment(return_traceback=True)
+  print "score=%.1f" % obj.score()
+  alignment = obj.extract_alignment()
 
-  print alignment[2]
-  print alignment[0]
-  print dayhoff_matches(alignment)
-  print alignment[1]
+  print alignment.match_codes
+  print alignment.a
+  print alignment.dayhoff_matches()
+  print alignment.b
 
 
 
   # 1rra vs. 1bli
   A = "AESSADKFKRQHMDTEGPSKSSPTYCNQMMKRQGMTKGSCKPVNTFVHEPLEDVQAICSQGQVTCKNGRNNCHKSSSTLRITDCRLKGSSKYPNCDYTTTDSQKHIIIACDGNPYVPVHFDASV"
   B = "DNSRYTHFLTQHYDAKPQGRDDRYCESIMRRRGLTSPCKDINTFIHGNKRSIKAICENKNGNPHRENLRISKSSFQVTTCKLHGGSPWPPCQYRATAGFRNVVVACENGLPVHLDQSIFRRP"
-  obj = align(A,B,gap_opening_penalty=10,gap_extension_penalty=2,similarity=blosum50,style="global")
+  obj = align(A,B,gap_opening_penalty=10,gap_extension_penalty=2,similarity_function=blosum50,style="global")
 
   print "\n1rra vs. 1bli; GLOBAL allignment; blosum50"
-  print "score=%0.1f" % obj.score()
-  alignment = obj.extract_alignment(return_traceback=True)
+  print "score=%.1f" % obj.score()
+  alignment = obj.extract_alignment()
 
-  print alignment[2]
-  print alignment[0]
-  print matches(alignment, blosum50, 0)
-  print alignment[1]
+  print alignment.match_codes
+  print alignment.a
+  print alignment.matches()
+  print alignment.b
 
   # 1rra vs. 1bli
   A = "AESSADKFKRQHMDTEGPSKSSPTYCNQMMKRQGMTKGSCKPVNTFVHEPLEDVQAICSQGQVTCKNGRNNCHKSSSTLRITDCRLKGSSKYPNCDYTTTDSQKHIIIACDGNPYVPVHFDASV"
   B = "DNSRYTHFLTQHYDAKPQGRDDRYCESIMRRRGLTSPCKDINTFIHGNKRSIKAICENKNGNPHRENLRISKSSFQVTTCKLHGGSPWPPCQYRATAGFRNVVVACENGLPVHLDQSIFRRP"
-  obj = align(A,B,gap_opening_penalty=10,gap_extension_penalty=2,similarity=blosum50,style="local")
+  obj = align(A,B,gap_opening_penalty=10,gap_extension_penalty=2,similarity_function="blosum50",style="local")
 
   print "\n1rra vs. 1bli; LOCAL allignment; blosum50"
-  print "score=%0.1f" % obj.score()
-  alignment = obj.extract_alignment(return_traceback=True)
+  print "score=%.1f" % obj.score()
+  alignment = obj.extract_alignment()
 
-  print alignment[2]
-  print alignment[0]
-  print matches(alignment, blosum50, 0)
-  print alignment[1]
+  print alignment.match_codes
+  print alignment.a
+  print alignment.matches(similarity_function=blosum50, is_similar_threshold=0)
+  print alignment.b
   print
-  pretty_print(alignment = alignment[0:2],
-               matches = matches(alignment, blosum50, 0),
-               out = None,
-               block_size = 50,
-               n_block = 1,
-               top_name = "1rra",
-               bottom_name = "1bli",
-               comment = """pretty_print is pretty pretty""")
+  alignment.pretty_print(
+    matches = None,
+    out = None,
+    block_size = 50,
+    n_block = 1,
+    top_name = "1rra",
+    bottom_name = "1bli",
+    comment = """pretty_print is pretty pretty""")
 
   print "OK" # necessary for auto_build checking
 

@@ -39,8 +39,9 @@ def extract_sequence_and_sites(pdb_input):
     residues = chain.conformers()[0].residues()
     for ires in selected_residues:
       resi = residues[ires]
-      single = mmtbx.amino_acid_codes.one_letter_given_three_letter[
-        resi.name[0:3] ]
+      resn = resi.name[0:3]
+      if (resn == "MSE"): resn = "MET"
+      single = mmtbx.amino_acid_codes.one_letter_given_three_letter[resn]
       seq.append(single)
       use=False
       xyz = (0,0,0)
@@ -52,27 +53,6 @@ def extract_sequence_and_sites(pdb_input):
       sites.append(xyz)
       use_sites.append(use)
   return "".join(seq), sites, use_sites
-
-def align_sites(
-      reference_sequence_coords,
-      aligned_sequence_coords,
-      matches,
-      reference_sites,
-      aligned_sites,
-      reference_use_flags,
-      aligned_use_flags):
-  assert len(reference_sequence_coords) == len(aligned_sequence_coords)
-  assert len(reference_sequence_coords) == len(matches)
-  fixed_sites = flex.vec3_double()
-  moving_sites = flex.vec3_double()
-  for r,a,m in zip(reference_sequence_coords,
-                   aligned_sequence_coords,
-                   matches):
-    if (m not in ["|", "*"]): continue
-    if (reference_use_flags[r] and aligned_use_flags[a]):
-      fixed_sites.append(reference_sites[r])
-      moving_sites.append(aligned_sites[a])
-  return fixed_sites, moving_sites
 
 def run(args, command_name="mmtbx.super"):
   if (len(args) == 0):
@@ -129,32 +109,37 @@ Missing file name for %(what)s structure:
   working_params.show()
   print
   print "#phil __OFF__"
+  print
 
+  print "Reading fixed structure:", params.super.fixed
   fixed_pdb = iotbx.pdb.input(file_name=params.super.fixed)
+  print
+  print "Reading moving structure:", params.super.moving
+  moving_pdb = iotbx.pdb.input(file_name=params.super.moving)
+  print
+
   fixed_seq, fixed_sites, fixed_site_flags = extract_sequence_and_sites(
     pdb_input=fixed_pdb)
-  moving_pdb = iotbx.pdb.input(file_name=params.super.moving)
   moving_seq, moving_sites, moving_site_flags = extract_sequence_and_sites(
     pdb_input=moving_pdb)
 
-  similarity_function = {
-    "blosum50": mmtbx.alignment.blosum50,
-    "dayhoff": mmtbx.alignment.dayhoff}[params.super.similarity_matrix]
-  alignment_object = mmtbx.alignment.align(
+  print "Computing sequence alignment..."
+  align_obj = mmtbx.alignment.align(
     seq_a=fixed_seq,
     seq_b=moving_seq,
     gap_opening_penalty=params.super.gap_opening_penalty,
     gap_extension_penalty=params.super.gap_extension_penalty,
-    similarity=similarity_function,
+    similarity_function=params.super.similarity_matrix,
     style=params.super.alignment_style)
+  print "done."
+  print
 
-  alignment = alignment_object.extract_alignment()
-  matches = mmtbx.alignment.matches(alignment, similarity_function)
+  alignment = align_obj.extract_alignment()
+  matches = alignment.matches()
   equal = matches.count("|")
   similar = matches.count("*")
-  total = len(alignment[0]) - alignment[0].count("-")
-  mmtbx.alignment.pretty_print(
-    alignment=alignment,
+  total = len(alignment.a) - alignment.a.count("-")
+  alignment.pretty_print(
     matches=matches,
     block_size=50,
     n_block=1,
@@ -170,23 +155,24 @@ The sequence similarity (fraction of | and * symbols) is %4.1f%%
 of the aligned length of the fixed molecule sequence.
 """ % (100.*equal/max(1,total), 100.*(equal+similar)/max(1,total)))
 
-  fixed_coor, moving_coor = alignment_object.extract_alignment_coordinates()
-  fixed_sites_sel, moving_sites_sel = align_sites(
-    reference_sequence_coords=fixed_coor,
-    aligned_sequence_coords=moving_coor,
-    matches=matches,
-    reference_sites=fixed_sites,
-    aligned_sites=moving_sites,
-    reference_use_flags=fixed_site_flags,
-    aligned_use_flags=moving_site_flags)
+  fixed_sites_sel = flex.vec3_double()
+  moving_sites_sel = flex.vec3_double()
+  for ia,ib,m in zip(alignment.i_seqs_a, alignment.i_seqs_b, matches):
+    if (m not in ["|", "*"]): continue
+    if (fixed_site_flags[ia] and moving_site_flags[ib]):
+      fixed_sites_sel.append(fixed_sites[ia])
+      moving_sites_sel.append(moving_sites[ib])
 
+  print "Performing least-squares superposition of C-alpha atom pairs:"
+  print "  Number of C-alpha atoms pairs in matching residues"
+  print "  indicated by | or * above:", fixed_sites_sel.size()
+  if (fixed_sites_sel.size() == 0):
+    raise Sorry("No matching C-alpha atoms.")
   lsq_fit = superpose.least_squares_fit(
     reference_sites=fixed_sites_sel,
     other_sites=moving_sites_sel)
   rmsd = fixed_sites_sel.rms_difference(lsq_fit.other_sites_best_fit())
-  print "Matching residues pairs indicated by | or * in the alignment"
-  print "above have been used in a least squares superposition."
-  print "The rsmd between the aligned C-alpha atoms is: %.3f" % rmsd
+  print "  RSMD between the aligned C-alpha atoms: %.3f" % rmsd
   print
 
   print "Writing moved pdb to file: %s" % params.super.moved
