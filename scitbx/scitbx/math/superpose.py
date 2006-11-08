@@ -1,7 +1,3 @@
-"""
-Based on a prototype by Erik McKee and Reetal K. Pai.
-"""
-
 from scitbx.math import eigensystem
 from scitbx import matrix
 from stdlib import math
@@ -9,11 +5,10 @@ from scitbx.array_family import flex
 
 def kearsley_rotation(reference_sites, other_sites):
   """
-  Kearsley, Acta Cryst 1989, A45, 208--210.
+  Kearsley, S.K. (1989). Acta Cryst. A45, 208-210.
   On the orthogonal transformation used for structural comparison
 
-  This algorithm is supposedly more stable than the Kabsch algorithm.
-  Added by PHZ, Nov 3rd, 2006.
+  Added by Peter H. Zwart, Nov 3rd, 2006.
   """
   assert reference_sites.size() == other_sites.size()
   m = reference_sites - other_sites
@@ -65,11 +60,17 @@ def kearsley_rotation(reference_sites, other_sites):
   # done
   return r
 
-
 def kabsch_rotation(reference_sites, other_sites):
   """
 Kabsch, W. (1976). Acta Cryst. A32, 922-923.
 A solution for the best rotation to relate two sets of vectors
+
+Based on a prototype by Erik McKee and Reetal K. Pai.
+
+This implementation does not handle degenerate situations correctly
+(e.g. if all atoms are on a line or plane) and should therefore not
+be used in applications. It is retained here for development purposes
+only.
   """
   assert reference_sites.size() == other_sites.size()
   sts = matrix.sqr(other_sites.transpose_multiply(reference_sites))
@@ -90,9 +91,9 @@ A solution for the best rotation to relate two sets of vectors
 
 class least_squares_fit(object):
 
-  def __init__(self, reference_sites, other_sites,method="kearsley"):
-    assert method in ["kearsley","kabsch"]
-
+  def __init__(self, reference_sites, other_sites, method="kearsley"):
+    assert method in [None, "kearsley", "kabsch"]
+    if (method is None): method = "kearsley"
     self.reference_sites = reference_sites
     self.other_sites = other_sites
     self.reference_shift = reference_sites.mean()
@@ -106,7 +107,6 @@ class least_squares_fit(object):
       self.r = kabsch_rotation(
         reference_sites-self.reference_shift,
         other_sites-self.other_shift)
-
     self.t = matrix.col(self.reference_shift) \
            - self.r * matrix.col(self.other_shift)
 
