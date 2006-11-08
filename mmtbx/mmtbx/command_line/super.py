@@ -17,7 +17,7 @@ super {
     .type = str
   moved = "moved.pdb"
     .type = str
-  alignment_style = *global local
+  alignment_style = *local global
     .type = choice
   gap_opening_penalty = 20
     .type = float
