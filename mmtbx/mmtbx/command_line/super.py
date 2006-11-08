@@ -43,10 +43,10 @@ def extract_sequence_and_sites(pdb_input):
       if (resn == "MSE"): resn = "MET"
       single = mmtbx.amino_acid_codes.one_letter_given_three_letter[resn]
       seq.append(single)
-      use=False
+      use = False
       xyz = (0,0,0)
       for atom in resi.atoms():
-        if (atom.name ==" CA "):
+        if (atom.name == " CA "):
           xyz = atom.xyz
           use = True
           break
@@ -80,8 +80,7 @@ def run(args, command_name="mmtbx.super"):
       try: command_line_params = argument_interpreter.process(arg=arg)
       except KeyboardInterrupt: raise
       except: raise Sorry("Unknown file or keyword: %s" % arg)
-      else:
-        phil_objects.append(command_line_params)
+      else: phil_objects.append(command_line_params)
 
   working_params = master_params.fetch(sources=phil_objects)
   params = working_params.extract()
