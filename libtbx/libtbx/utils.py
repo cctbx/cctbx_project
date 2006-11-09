@@ -196,6 +196,18 @@ def format_cpu_times(show_micro_seconds_per_tick=True):
       result += " micro-seconds/tick: %.3f" % ((t[0]+t[1])/python_ticker*1.e6)
   return result
 
+def show_total_time(
+      out=None,
+      show_micro_seconds_per_bytecode_instruction=True):
+  if (out == None): out = sys.stdout
+  total_time = user_plus_sys_time().get()
+  try: python_ticker = sys.gettickeraccumulation()
+  except AttributeError: pass
+  else:
+    print >> out, "Time per interpreted Python bytecode instruction:",
+    print >> out, "%.3f micro seconds" % (total_time / python_ticker * 1.e6)
+  print >> out, "Total CPU time: %.2f %s" % human_readable_time(total_time)
+
 class show_times:
 
   def __init__(self, time_start=None, out=None):
@@ -437,3 +449,34 @@ class import_python_object:
     self.path_elements = path_elements
     self.module_path = module_path
     self.module = module
+
+class input_with_prompt(object):
+
+  def __init__(self, prompt, tracebacklimit=0):
+    try: import readline
+    except: pass
+    try: self.previous_tracebacklimit = sys.tracebacklimit
+    except: self.previous_tracebacklimit = None
+    if (tracebacklimit is not None):
+      sys.tracebacklimit = tracebacklimit
+    self.input = raw_input(prompt)
+
+  def __del__(self):
+    if (self.previous_tracebacklimit is None):
+      del sys.tracebacklimit
+    else:
+      sys.tracebacklimit = self.previous_tracebacklimit
+
+def exercise():
+  from libtbx.test_utils import approx_equal
+  time_in_seconds = 1.1
+  for i_trial in xrange(55):
+    time_in_seconds = time_in_seconds**1.1
+    time_units, time_unit = human_readable_time(
+      time_in_seconds=time_in_seconds)
+    assert approx_equal(
+      human_readable_time_as_seconds(time_units, time_unit), time_in_seconds)
+  print "OK"
+
+if (__name__ == "__main__"):
+  exercise()

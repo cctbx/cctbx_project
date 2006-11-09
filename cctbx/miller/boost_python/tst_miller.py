@@ -5,7 +5,7 @@ from cctbx import sgtbx
 from cctbx import miller
 from cctbx.array_family import flex
 import scitbx.math
-from scitbx.python_utils.complex_math import polar
+from libtbx.complex_math import polar
 from libtbx.test_utils import approx_equal
 
 def exercise_sym_equiv():

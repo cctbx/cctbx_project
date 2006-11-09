@@ -9,7 +9,7 @@ from cctbx.development import debug_utils
 from cctbx.array_family import flex
 import cctbx
 import scitbx.math
-from scitbx.python_utils import complex_math
+from libtbx import complex_math
 from libtbx.test_utils import approx_equal, not_approx_equal, show_diff
 from cStringIO import StringIO
 import pickle

@@ -11,7 +11,7 @@ import scitbx.math
 from libtbx.test_utils import approx_equal
 from libtbx.utils import format_cpu_times
 from boost import rational
-from scitbx.python_utils.math_utils import ifloor
+from libtbx.math_utils import ifloor
 from cStringIO import StringIO
 
 def divisor(n, pairs=False):

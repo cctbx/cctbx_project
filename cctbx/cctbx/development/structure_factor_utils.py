@@ -1,6 +1,6 @@
 from cctbx.array_family import flex
-from scitbx.python_utils.complex_math import abs_arg
 import scitbx.math
+from libtbx.complex_math import abs_arg
 from libtbx import adopt_init_args
 import math
 

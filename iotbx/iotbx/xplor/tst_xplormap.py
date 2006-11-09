@@ -4,7 +4,7 @@ from cctbx import sgtbx
 from cctbx import uctbx
 from cctbx.array_family import flex
 from cctbx.development import random_structure
-from scitbx.python_utils.math_utils import iround
+from libtbx.math_utils import iround
 from libtbx.test_utils import approx_equal, eps_eq
 import libtbx.load_env
 import sys, os

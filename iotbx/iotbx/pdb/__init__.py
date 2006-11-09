@@ -6,7 +6,7 @@ from iotbx_pdb_ext import *
 
 import scitbx.array_family.shared
 import scitbx.stl.set
-from scitbx.python_utils.math_utils import iround
+from libtbx.math_utils import iround
 from libtbx.str_utils import show_string, show_sorted_by_counts
 from libtbx.itertbx import count
 import sys

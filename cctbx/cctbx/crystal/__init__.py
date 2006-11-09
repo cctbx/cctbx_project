@@ -905,7 +905,7 @@ class distance_based_clustering(_clustering_mix_in):
 
 def cluster_erosion(sites_cart, box_size, fraction_to_be_retained):
   from scitbx import matrix
-  from scitbx.python_utils.math_utils import iceil
+  from libtbx.math_utils import iceil
   lower_left = matrix.col(sites_cart.min())
   upper_right = matrix.col(sites_cart.max())
   sites_span = upper_right - lower_left
