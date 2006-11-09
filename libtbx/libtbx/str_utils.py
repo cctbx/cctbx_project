@@ -96,6 +96,29 @@ def line_breaker(string, width):
     if (i_block_start < len(string)):
       yield string[i_block_start:]
 
+class line_feeder(object):
+
+  def __init__(self, f):
+    self.f = iter(f)
+    self.eof = False
+
+  def __iter__(self):
+    return self
+
+  def next(self):
+    if (not self.eof):
+      try:
+        return self.f.next()[:-1]
+      except StopIteration:
+        self.eof = True
+    return ""
+
+  def next_non_empty(self):
+    while 1:
+      result = self.next()
+      if (self.eof or len(result.strip()) != 0):
+        return result
+
 def exercise():
   from libtbx.test_utils import show_diff
   from cStringIO import StringIO

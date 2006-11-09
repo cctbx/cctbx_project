@@ -1,4 +1,4 @@
-from scitbx.python_utils import complex_math
+from libtbx import complex_math
 from cctbx.web import io_utils
 from cctbx.web import cgi_utils
 

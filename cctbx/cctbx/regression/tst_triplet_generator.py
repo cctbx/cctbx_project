@@ -3,7 +3,7 @@ from cctbx import dmtbx
 from cctbx import maptbx
 from cctbx import miller
 from scitbx import fftpack
-from scitbx.python_utils import complex_math
+from libtbx import complex_math
 import scitbx.math
 from cctbx.array_family import flex
 from cctbx.development import random_structure

@@ -6,7 +6,7 @@ from cctbx.development import make_cns_input
 from cctbx.development import random_structure
 from cctbx.regression.tst_miller import generate_random_hl
 from iotbx.cns import reflection_reader
-from scitbx.python_utils.complex_math import abs_arg
+from libtbx.complex_math import abs_arg
 from libtbx.test_utils import approx_equal
 import random
 import sys, os

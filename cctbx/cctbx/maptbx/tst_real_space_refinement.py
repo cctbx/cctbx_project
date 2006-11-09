@@ -5,7 +5,7 @@ from cctbx import crystal
 from cctbx import maptbx
 from cctbx.maptbx.real_space_refinement import lbfgs
 from cctbx import uctbx
-from scitbx.python_utils.math_utils import ifloor, iceil
+from libtbx.math_utils import ifloor, iceil
 from libtbx.test_utils import approx_equal
 from libtbx.utils import format_cpu_times
 from cStringIO import StringIO

@@ -6,8 +6,8 @@ from cctbx import uctbx
 from cctbx.array_family import flex
 from cctbx.development import debug_utils
 from scitbx import matrix
-from scitbx.python_utils.math_utils import ifloor, iceil
 import iotbx.pdb
+from libtbx.math_utils import ifloor, iceil
 from libtbx.test_utils import approx_equal
 from libtbx.itertbx import count
 import time

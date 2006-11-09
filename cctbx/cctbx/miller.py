@@ -13,8 +13,8 @@ from cctbx import uctbx
 from cctbx.array_family import flex
 from scitbx import fftpack
 import scitbx.math
-from scitbx.python_utils.math_utils import iround
-from scitbx.python_utils import complex_math
+from libtbx.math_utils import iround
+from libtbx import complex_math
 from scitbx.python_utils.misc import store
 from libtbx.itertbx import count
 from libtbx.utils import Keep, plural_s

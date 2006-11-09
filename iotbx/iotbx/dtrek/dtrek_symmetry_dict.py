@@ -4,7 +4,7 @@
    usage: python dtrek_symmetry_dict.py DTREK_SPACEGROUP_FILE
 """
 
-from scitbx.python_utils.misc import line_feeder
+from libtbx.str_utils import line_feeder
 from cctbx import sgtbx
 import sys
 import pprint
