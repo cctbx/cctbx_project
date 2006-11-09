@@ -1,13 +1,35 @@
-# written by Tom Ioerger (http://faculty.cs.tamu.edu/ioerger)
-# send comments or suggestions to ioerger@cs.tamu.edu
+"""
+Written by Tom Ioerger (http://faculty.cs.tamu.edu/ioerger).
+Send comments or suggestions to: ioerger@cs.tamu.edu
+
+This implementation provides algorithms for aligning two protein
+sequences, where each sequence is represented as a string of one-letter
+amino-acid codes. The implementation is based on the ideas of Gotoh
+(1982) and runs in quadratic time O(M*N), where M and N are the
+sequence lengths. It does both global (Needleman & Wunsch, 1970) and
+local (Smith & Waterman, 1981) alignments, assuming affine (linear) gap
+penalties (for which default gap-cost parameters may be changed by the
+user). Alignments are based on maximizing similarity. Similarity scores
+between amino acids are specified via symmetric matrices. Similarity
+matrices of Dayhoff (1978) and BLOSUM50 (Henikoff & Henikoff (1992),
+http://en.wikipedia.org/wiki/BLOSUM) are provided. User-supplied
+matrices are also supported (this feature also enables alignment of
+non-amino-acid sequences).
+
+Dayhoff, M.O. (1978).
+Atlas of Protein Sequence and Structure, Vol. 5 suppl. 3, 345-352.
+
+Gotoh, O. (1982). J. Mol. Biol. 162, 705-708.
+
+Henikoff & Henikoff (1992). PNAS 89, 10915-10919
+
+Needleman, S. & Wunsch, C. (1970). J. Mol. Biol. 48(3), 443-53.
+
+Smith, T.F. & Waterman M.S. (1981). J. Mol. Biol. 147, 195-197.
+"""
 
 from libtbx import adopt_init_args
 import sys, types
-
-# This implementation is based on the ideas in Gotoh (1982; JMB, 162:705-708),
-#   which runs in quadratic time O(MN), i.e. product of sequence lengths.
-# It does both global (Needleman/Wunsch) and local (Smith/Waterman) alignments.
-# See usage examples at the end of this file.
 
 # based on maximizing similarity (rather than minimizing distance)
 # give gap weights as positive; they will be subtracted
