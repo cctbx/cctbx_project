@@ -15,8 +15,6 @@
 #include <cctbx/uctbx.h>
 #include <cctbx/xray/f_model.h>
 #include <scitbx/math/halton.h>
-#include <iostream>
-
 
 namespace cctbx { namespace xray { namespace twin_targets {
 
@@ -231,7 +229,7 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
       ):
       space_group_( space_group ),
       twin_law_(twin_law),
-      eps(1e-10),
+      eps_(1e-10),
       alpha_(alpha)
       {
         CCTBX_ASSERT( (alpha >=0) && (alpha<=0.50) );
