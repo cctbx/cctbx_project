@@ -15,6 +15,7 @@
 #include <cctbx/uctbx.h>
 #include <cctbx/xray/f_model.h>
 #include <scitbx/math/halton.h>
+#include <iostream>
 
 
 namespace cctbx { namespace xray { namespace twin_targets {
@@ -230,6 +231,7 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
       ):
       space_group_( space_group ),
       twin_law_(twin_law),
+      eps(1e-10),
       alpha_(alpha)
       {
         CCTBX_ASSERT( (alpha >=0) && (alpha<=0.50) );
@@ -252,8 +254,8 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
           calc_ori_lookup_table_.push_back( tmp_loc );
           tmp_loc = tmp_lookup_object.find_hkl( twin_mate( hkl_obs[ii],twin_law ) );
           CCTBX_ASSERT( tmp_loc >= 0 ); // If this assertion fails, it means that a twin related calculated miler index is not
-                                        // in the list of calculated / model indices. This could indicate that
-                                        // the free set chosen doesn't have the symmetry of the lattice.
+                                        // in the list of calculated / model indices. This definently should not happen!
+
           calc_twin_lookup_table_ .push_back( tmp_loc );
 
 
@@ -288,7 +290,6 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
         {
           scitbx::af::shared<FloatType> dtda(f_model.size(), 0 );
           scitbx::af::shared<FloatType> dtdb(f_model.size(), 0 );
-
           FloatType aa,ba,ab,bb,obs,calc;
           FloatType t1,dqdaa,dqdba,dqdab,dqdbb;
           FloatType dt1daa,dt1dba,dt1dab,dt1dbb;
@@ -304,7 +305,7 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
             calc = std::sqrt( (1-alpha_)*(aa*aa + ba*ba) + alpha_*(ab*ab + bb*bb) );
             obs = f_obs_[ii];
             t1 = (obs-calc);
-            if (calc>0){
+            if (calc>eps){
               dt1daa = -aa*(1-alpha_)/calc;
               dt1dba = -ba*(1-alpha_)/calc;
               dt1dab = -ab*(alpha_)/calc;
@@ -361,7 +362,7 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
           calc= std::sqrt( (1-alpha_)*ia + alpha_*ib );
           t1 = obs-calc;
           dtda=0;
-          if (calc>0){
+          if (calc>eps){
             dtda = -0.5*(ia-ib)/calc;
           }
           result += -2.0*t1*dtda;
@@ -387,7 +388,7 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
       scitbx::mat3<FloatType> twin_law_;
       cctbx::sgtbx::space_group space_group_;
 
-      //scitbx::af::shared<cctbx::miller::index<> > hkl_calc_;
+      FloatType eps_;
       FloatType alpha_;
 
       scitbx::af::shared<long> calc_ori_lookup_table_;
