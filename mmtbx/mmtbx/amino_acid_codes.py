@@ -12,6 +12,7 @@ one_letter_given_three_letter = {
 "LEU": "L",
 "LYS": "K",
 "MET": "M",
+"MSE": "M",
 "PHE": "F",
 "PRO": "P",
 "SER": "S",
