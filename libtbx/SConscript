@@ -335,6 +335,7 @@ else:
       -DBOOST_DISABLE_THREADS
     """)
     env_etc.ccflags_base = Split("""
+      -fPIC
     """)
     if (libtbx.env.build_options.optimization):
       opts = ["-DNDEBUG", "-O", "-tpp2", "-ip", "-ftz"]
@@ -362,6 +363,7 @@ else:
       -DBOOST_DISABLE_THREADS
     """)
     env_etc.ccflags_base = Split("""
+      -fPIC
     """)
     if (libtbx.env.build_options.optimization):
       opts = ["-DNDEBUG", "-O2"]
@@ -390,6 +392,7 @@ else:
       -DBOOST_DISABLE_THREADS
     """)
     env_etc.ccflags_base = Split("""
+      -fPIC
     """)
     if (libtbx.env.build_options.optimization):
       opts = ["-DNDEBUG", "-O2"]
@@ -461,6 +464,7 @@ else:
       -DBOOST_DISABLE_THREADS
     """)
     env_etc.ccflags_base = Split("""
+      -fPIC
       -w
     """)
     cxx_version = os.popen("c++ -dumpversion").read().strip()
