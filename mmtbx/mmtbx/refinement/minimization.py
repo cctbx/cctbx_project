@@ -38,12 +38,14 @@ class lbfgs(object):
                      wxnc_scale               = None,
                      wxnu_scale               = None,
                      selection                = None):
+    # XXX remove selection from above
     global time_site_individual
     timer = user_plus_sys_time()
     adopt_init_args(self, locals())
     assert [refine_xyz, refine_adp, refine_occ].count(False) == 2
     assert [refine_xyz, refine_adp, refine_occ].count(True)  == 1
     self.xray_structure = self.fmodel.xray_structure
+    self.xray_structure.tidy_us()
     if(refine_xyz): self.wr = wc
     if(refine_adp): self.wr = wu
     if(refine_occ): self.wr = None
@@ -89,7 +91,6 @@ class lbfgs(object):
     if(self.fmodel.alpha_beta_params.method == "est"):
        self.scale_ml = 1.0
     self.f_obs_w = self.fmodel.f_obs_w
-    self.xray_structure.tidy_us(u_min = 1.e-2)
     self.target_name = self.fmodel.target_name
     assert self.target_name in ("ml","mlhl") or self.target_name.count("ls") == 1
     if(self.target_name in ("ml","mlhl", "lsm")):
@@ -115,6 +116,9 @@ class lbfgs(object):
     self._lock_for_line_search = False
     self.compute_target(compute_gradients = False,u_iso_reinable_params = None)
     del self._lock_for_line_search
+    self.xray_structure.tidy_us()
+    self.fmodel.update_xray_structure(xray_structure = self.xray_structure,
+                                      update_f_calc  = True)
     self.collector.collect(et   = self.f,
                            iter = self.minimizer.iter(),
                            nfun = self.minimizer.nfun(),
@@ -167,7 +171,6 @@ class lbfgs(object):
       if(self.model.refinement_flags.sites_individual is not None):
          selection = self.model.refinement_flags.sites_individual[0]
     if(self.refine_adp):
-       self.xray_structure.adjust_u_iso()
        if(self.model.refinement_flags.adp_individual is not None):
          selection = self.model.refinement_flags.adp_individual[0]
     #if(self.refine_occ): self.xray_structure.adjust_occupancy()
