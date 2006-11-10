@@ -303,7 +303,7 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
             calc = std::sqrt( (1-alpha_)*(aa*aa + ba*ba) + alpha_*(ab*ab + bb*bb) );
             obs = f_obs_[ii];
             t1 = (obs-calc);
-            if (calc>eps){
+            if (calc>eps_){
               dt1daa = -aa*(1-alpha_)/calc;
               dt1dba = -ba*(1-alpha_)/calc;
               dt1dab = -ab*(alpha_)/calc;
@@ -360,7 +360,7 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
           calc= std::sqrt( (1-alpha_)*ia + alpha_*ib );
           t1 = obs-calc;
           dtda=0;
-          if (calc>eps){
+          if (calc>eps_){
             dtda = -0.5*(ia-ib)/calc;
           }
           result += -2.0*t1*dtda;
