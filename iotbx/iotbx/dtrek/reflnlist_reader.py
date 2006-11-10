@@ -142,9 +142,12 @@ class reflnlist(object):
       assert "fSigmaI+" in self.column_dict
       assert "fIntensity-" in self.column_dict
       assert "fSigmaI-" in self.column_dict
-      assert crystal_symmetry.space_group_info() is not None
+      if (crystal_symmetry.space_group_info() is None):
+        space_group = sgtbx.space_group() # P 1
+      else:
+        space_group = crystal_symmetry.space_group()
       ac = dtrek_ext.anomalous_combined(
-        crystal_symmetry.space_group(),
+        space_group,
         self.miller_indices,
         self.column_dict["fIntensity+"],
         self.column_dict["fSigmaI+"],
