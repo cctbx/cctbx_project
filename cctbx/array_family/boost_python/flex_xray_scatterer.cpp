@@ -222,7 +222,7 @@ namespace cctbx { namespace xray { namespace {
         u_iso_ += adptbx::u_star_as_u_iso(unit_cell, self[i].u_star);
       }
       if (self[i].flags.use_u_iso()) {
-        CCTBX_ASSERT(self[i].u_iso >= 0.);
+        //CCTBX_ASSERT(self[i].u_iso >= 0.);
         u_iso_ += self[i].u_iso;
       }
       if (!self[i].flags.use_u_iso() && !self[i].flags.use_u_aniso()) {

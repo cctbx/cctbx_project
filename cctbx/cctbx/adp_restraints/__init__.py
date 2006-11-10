@@ -33,7 +33,7 @@ class energies_iso(scitbx.restraints.energies):
     unit_cell = xray_structure.unit_cell()
     if(use_u_local_only):
        u_isos = xray_structure.scatterers().extract_u_iso()
-       assert (u_isos < 0.0).count(True) == 0
+       #assert (u_isos < 0.0).count(True) == 0
     else:
        u_isos = xray_structure.extract_u_iso_or_u_equiv()
     energies = crystal.adp_iso_local_sphere_restraints_energies(

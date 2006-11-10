@@ -611,12 +611,14 @@ class structure(crystal.special_position_settings):
         unit_cell=self.unit_cell(),
         u_cart_tolerance=u_cart_tolerance)
 
-  def tidy_us(self, u_min):
+  def tidy_us(self, u_min = 1.e-6, u_max = adptbx.b_as_u(350.0)):
+    assert u_min < u_max
     ext.tidy_us(
       scatterers=self._scatterers,
       unit_cell=self.unit_cell(),
       site_symmetry_table=self._site_symmetry_table,
-      u_min=u_min)
+      u_min=u_min,
+      u_max=u_max)
 
   def shift_us(self, u_shift=None, b_shift=None):
     assert [u_shift, b_shift].count(None) == 1
