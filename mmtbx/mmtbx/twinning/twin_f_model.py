@@ -800,7 +800,7 @@ class twin_model_manager(object):
 
     #setup the binners if this has not been done yet
     if self.f_obs_array.binner() is None:
-      self.f_obs_array.setup_binner(reflections_per_bin=n_refl_bin)
+      self.f_obs_array.setup_binner( reflections_per_bin=n_refl_bin )
 
     self.f_obs_array_work.use_binning_of( self.f_obs_array )
     self.f_obs_array_free.use_binning_of( self.f_obs_array )
@@ -818,6 +818,7 @@ class twin_model_manager(object):
         grid_step=f_obs_array.d_min()/4.0 )
 
     #-------------------
+    self.miller_set = None
     self.f_atoms = None
     self.miller_set = None
     print "updating f atoms"
@@ -915,7 +916,11 @@ class twin_model_manager(object):
       anomalous_flag = self.f_obs_array.anomalous_flag(),
       twin_law       = self.twin_law.as_double_array()[0:9] )
 
-
+  def f_model(self):
+    tmp_f_model = self.f_atoms.customized_copy(
+      data = self.data_core.f_model()
+    )
+    return tmp_f_model
 
 
   def update_bulk_solvent_parameters(self,
@@ -959,9 +964,23 @@ class twin_model_manager(object):
 
   def update_f_atoms(self):
     """Get f calc from the xray structure"""
-    tmp = self.xray_structure.structure_factors(
-      anomalous_flag=self.f_obs_array.anomalous_flag(),
-      d_min = self.f_obs_array.d_min()*self.d_min_fudge )
+    if self.miller_set is None:
+      point_group_symmetry =  crystal.symmetry(
+        space_group = self.xs.space_group().build_derived_point_group(),
+        unit_cell = self.xs.unit_cell() )
+
+      self.miller_set = miller.build_set(
+        crystal_symmetry = point_group_symmetry,
+        anomalous_flag = self.f_obs_array.anomalous_flag(),
+        d_min = self.f_obs_array.d_min()*self.d_min_fudge )
+
+      self.miller_set = self.miller_set.customized_copy(
+        crystal_symmetry = self.xs
+        )
+
+    tmp = self.miller_set.structure_factors_from_scatterers(
+      xray_structure = self.xray_structure )
+
     self.f_atoms = tmp.f_calc()
     if self.miller_set is None:
       self.miller_set = tmp.miller_set()
