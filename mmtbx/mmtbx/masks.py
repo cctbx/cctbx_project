@@ -13,9 +13,9 @@ import iotbx.phil
 from libtbx import introspection
 
 mask_master_params = iotbx.phil.parse("""\
-  solvent_radius = 1.0
+  solvent_radius = 1.11
     .type = float
-  shrink_truncation_radius = 1.0
+  shrink_truncation_radius = 0.9
     .type = float
   grid_step_factor = 4.0
     .type = float

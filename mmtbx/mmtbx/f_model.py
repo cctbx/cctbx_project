@@ -455,6 +455,55 @@ class manager(object):
           shrink_truncation_radius = self.mask_params.shrink_truncation_radius)
     return result
 
+  def optimize_mask_and_update_solvent_and_scale(
+                                self, params = None, out = None, verbose=-1):
+    rw = self.r_work()
+    r_solv_   = self.mask_params.solvent_radius
+    r_shrink_ = self.mask_params.shrink_truncation_radius
+    if(verbose > 0):
+       self.show_mask_optimization_statistics(prefix="Mask optimization start",
+                                              out   = out)
+    for r_solv in [0.8, 1.0, 1.2, 1.4]:
+        for r_shrink in [0.8, 1.0, 1.2, 1.4]:
+          self.mask_params.solvent_radius = r_solv
+          self.mask_params.shrink_truncation_radius = r_shrink
+          self.update_xray_structure(
+                                xray_structure           = self.xray_structure,
+                                update_f_calc            = False,
+                                update_f_mask            = True,
+                                update_f_ordered_solvent = False,
+                                force_update_f_mask      = True,
+                                out                      = None)
+          self.update_solvent_and_scale(params=params, out=None, verbose=-1)
+          rw_ = self.r_work()
+          if(rw_ < rw):
+             rw = rw_
+             r_solv_ = r_solv
+             r_shrink_ = r_shrink
+    self.mask_params.solvent_radius = r_solv_
+    self.mask_params.shrink_truncation_radius = r_shrink_
+    self.update_xray_structure(xray_structure           = self.xray_structure,
+                               update_f_calc            = False,
+                               update_f_mask            = True,
+                               update_f_ordered_solvent = False,
+                               force_update_f_mask      = True,
+                               out                      = None)
+    self.update_solvent_and_scale(params = params, out = out, verbose = -1)
+    if(verbose > 0):
+       self.show_mask_optimization_statistics(prefix="Mask optimization final",
+                                              out   = out)
+
+  def show_mask_optimization_statistics(self, prefix="", out=None):
+    if(out is None): out = sys.stdout
+    line_len = len("|-"+"|"+prefix)
+    fill_len = 80-line_len-1
+    print >> out, "|-"+prefix+"-"*(fill_len)+"|"
+    print >> out, "| r_work= %6.4f     r_free= %6.4f     Rad_solv= %4.2f     Rad_shrink= %4.2f   |"%\
+     (self.r_work(), self.r_free(), self.mask_params.solvent_radius,
+     self.mask_params.shrink_truncation_radius)
+    print >> out, "|"+"-"*77+"|"
+    print >> out
+
   def update_solvent_and_scale(self, params = None, out = None, verbose=None):
     global time_bulk_solvent_and_scale
     timer = user_plus_sys_time()
