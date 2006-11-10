@@ -286,7 +286,7 @@ Number of scattering types: 2
   assert approx_equal(xs2.scatterers()[i].site, (0.2, 0.4, 0.7))
   assert list(xs2.is_positive_definite_u()) == [False]*5
   assert list(xs2.is_positive_definite_u(u_cart_tolerance=0)) == [True]*5
-  xs2.tidy_us(u_min=1)
+  xs2.tidy_us(u_min=1,u_max=888)
   assert approx_equal(xs2.scatterers().extract_u_iso(), [1]*5)
   xs2.shift_us(u_shift=2)
   assert approx_equal(xs2.scatterers().extract_u_iso(), [3]*5)
