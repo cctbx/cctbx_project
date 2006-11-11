@@ -283,7 +283,8 @@ class monomer_mapping(object):
     stage_1 = self.pdb_residue.chain.conformer.model.stage_1
     atom = stage_1.atom_attributes_list[self.pdb_residue.iselection[0]]
     self.residue_name = atom.resName
-    self.monomer = mon_lib_srv.get_comp_comp_id(self.residue_name)
+    self.monomer = mon_lib_srv.get_comp_comp_id(
+      self.residue_name, hide_mon_lib_dna_rna_cif=True)
     if (self.monomer is not None):
       self._get_mappings(mon_lib_srv=mon_lib_srv)
       if (self.monomer.chem_comp.group == "rna_dna_placeholder"):

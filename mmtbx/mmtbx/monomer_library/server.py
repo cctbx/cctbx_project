@@ -10,7 +10,7 @@ import copy
 import os
 
 try: import sets
-except ImportError: pass # XXX Python 2.2 compatibility
+except ImportError: sets = None # XXX Python 2.2 compatibility
 else: windows_device_names = sets.Set(windows_device_names)
 
 cns_dna_rna_residue_names = {
@@ -20,6 +20,10 @@ cns_dna_rna_residue_names = {
   "THY": "T",
   "URI": "U"
 }
+
+mon_lib_dna_rna_cif = ["AD", "AR", "CD", "CR", "GD", "GR", "TD", "UR"]
+if (sets is not None):
+  mon_lib_dna_rna_cif = sets.Set(mon_lib_dna_rna_cif)
 
 class MonomerLibraryServerError(RuntimeError): pass
 
@@ -281,9 +285,11 @@ class server(process_cif_mixin):
       self.mod_mod_id_list.append(mod_mod_id)
       self.mod_mod_id_dict[mod_mod_id.chem_mod.id] = mod_mod_id
 
-  def get_comp_comp_id(self, comp_id):
+  def get_comp_comp_id(self, comp_id, hide_mon_lib_dna_rna_cif=False):
     comp_id = comp_id.strip().upper()
     if (len(comp_id) == 0): return None
+    if (hide_mon_lib_dna_rna_cif and comp_id in mon_lib_dna_rna_cif):
+      return None
     if (self.translate_cns_dna_rna_residue_names):
       comp_id = cns_dna_rna_residue_names.get(comp_id, comp_id)
     try: return self.comp_comp_id_dict[comp_id]
