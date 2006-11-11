@@ -19,7 +19,8 @@ def exercise():
         comp_id = comp_id[:3]
       if (comp_id.upper() != comp_id):
         print "Mixed case:", os.path.join(first_char, node)
-      comp_comp_id = srv.get_comp_comp_id(comp_id=comp_id)
+      comp_comp_id = srv.get_comp_comp_id(
+        comp_id=comp_id, hide_mon_lib_dna_rna_cif=False)
       if (comp_comp_id is None):
         print "Error instantiating comp_comp_id %s (%s)" % (
           comp_id, os.path.join(sub_dir, node))
