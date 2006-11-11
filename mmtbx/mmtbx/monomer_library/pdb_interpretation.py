@@ -283,8 +283,7 @@ class monomer_mapping(object):
     stage_1 = self.pdb_residue.chain.conformer.model.stage_1
     atom = stage_1.atom_attributes_list[self.pdb_residue.iselection[0]]
     self.residue_name = atom.resName
-    self.monomer = mon_lib_srv.get_comp_comp_id(
-      self.residue_name, hide_mon_lib_dna_rna_cif=True)
+    self.monomer = mon_lib_srv.get_comp_comp_id(self.residue_name)
     if (self.monomer is not None):
       self._get_mappings(mon_lib_srv=mon_lib_srv)
       if (self.monomer.chem_comp.group == "rna_dna_placeholder"):
@@ -293,7 +292,8 @@ class monomer_mapping(object):
         else:
           second_character = "r"
         self.monomer = mon_lib_srv.get_comp_comp_id(
-          self.monomer.chem_comp.id[0]+second_character)
+          self.monomer.chem_comp.id[0]+second_character,
+          hide_mon_lib_dna_rna_cif=False)
         self._get_mappings(mon_lib_srv=mon_lib_srv)
       self._set_incomplete_info()
       self.chem_mod_ids = []
@@ -603,8 +603,10 @@ def get_lib_link(mon_lib_srv, m_i, m_j):
   if (m_i.monomer.is_water() or m_j.monomer.is_water()): return None
   comp_id_1 = m_i.monomer.chem_comp.id
   comp_id_2 = m_j.monomer.chem_comp.id
-  comp_1 = mon_lib_srv.get_comp_comp_id(comp_id_1)
-  comp_2 = mon_lib_srv.get_comp_comp_id(comp_id_2)
+  comp_1 = mon_lib_srv.get_comp_comp_id(
+    comp_id_1, hide_mon_lib_dna_rna_cif=False)
+  comp_2 = mon_lib_srv.get_comp_comp_id(
+    comp_id_2, hide_mon_lib_dna_rna_cif=False)
   group_1 = comp_1.chem_comp.group
   group_2 = comp_2.chem_comp.group
   atom_dicts = [None, m_i.monomer_atom_dict, m_j.monomer_atom_dict]

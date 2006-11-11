@@ -42,7 +42,8 @@ def exercise():
     for row in list_cif.cif["comp_list"]["chem_comp"]:
       if (quick and random.random() < 0.95): continue
       if (verbose): print "id:", row["id"]
-      comp_comp_id = srv.get_comp_comp_id(row["id"])
+      comp_comp_id = srv.get_comp_comp_id(
+        comp_id=row["id"], hide_mon_lib_dna_rna_cif=False)
       if (comp_comp_id is None):
         print "Error instantiating comp_comp_id(%s)" % row["id"]
       else:
@@ -68,7 +69,8 @@ def exercise():
     for row in list_cif.cif["comp_list"]["chem_comp"]:
       if (quick and random.random() < 0.95): continue
       if (verbose): print "id:", row["id"]
-      comp_comp_id = srv.get_comp_comp_id(row["id"])
+      comp_comp_id = srv.get_comp_comp_id(
+        comp_id=row["id"], hide_mon_lib_dna_rna_cif=False)
       check_chem_comp(cif_types.chem_comp(**row), comp_comp_id)
     if ("--pickle" in sys.argv[1:]):
       easy_pickle.dump("mon_lib.pickle", srv)
@@ -84,8 +86,10 @@ def exercise():
     comp.apply_mod(mod).show()
   if (False or default_switch):
     for base_code in ["A", "C", "G"]:
-      rna_atoms = srv.get_comp_comp_id(base_code+"r").atom_dict()
-      dna_atoms = srv.get_comp_comp_id(base_code+"d").atom_dict()
+      rna_atoms = srv.get_comp_comp_id(
+        base_code+"r", hide_mon_lib_dna_rna_cif=False).atom_dict()
+      dna_atoms = srv.get_comp_comp_id(
+        base_code+"d", hide_mon_lib_dna_rna_cif=False).atom_dict()
       for as,bs,c in [(rna_atoms,dna_atoms,"d"), (dna_atoms,rna_atoms,"r")]:
         for a in as.keys():
           b = bs.get(a, None)
@@ -94,7 +98,8 @@ def exercise():
   if (False or default_switch):
     for row in list_cif.cif["comp_list"]["chem_comp"]:
       if (quick and random.random() < 0.95): continue
-      comp_comp_id = srv.get_comp_comp_id(row["id"])
+      comp_comp_id = srv.get_comp_comp_id(
+        row["id"], hide_mon_lib_dna_rna_cif=False)
       if (comp_comp_id is not None):
         if (comp_comp_id.classification == "peptide"):
           print comp_comp_id.chem_comp.id, comp_comp_id.chem_comp.name,
@@ -123,7 +128,8 @@ def exercise():
   if (False or default_switch):
     for row in list_cif.cif["comp_list"]["chem_comp"]:
       if (quick and random.random() < 0.95): continue
-      comp_comp_id = srv.get_comp_comp_id(row["id"])
+      comp_comp_id = srv.get_comp_comp_id(
+        row["id"], hide_mon_lib_dna_rna_cif=False)
       if (comp_comp_id is not None):
         planes = comp_comp_id.get_planes()
         for plane in planes:
@@ -141,7 +147,8 @@ def exercise():
       is_standard_aa = row["id"] in standard_amino_acids
       if (1 and not is_standard_aa):
         continue
-      comp_comp_id = srv.get_comp_comp_id(row["id"])
+      comp_comp_id = srv.get_comp_comp_id(
+        row["id"], hide_mon_lib_dna_rna_cif=False)
       if (is_standard_aa):
         assert comp_comp_id is not None
         assert comp_comp_id.chem_comp.group.strip() == "L-peptide"

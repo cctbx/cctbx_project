@@ -40,7 +40,6 @@ def extract_sequence_and_sites(pdb_input):
     for ires in selected_residues:
       resi = residues[ires]
       resn = resi.name[0:3]
-      if (resn == "MSE"): resn = "MET"
       single = mmtbx.amino_acid_codes.one_letter_given_three_letter[resn]
       seq.append(single)
       use = False

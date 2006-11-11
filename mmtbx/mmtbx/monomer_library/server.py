@@ -285,7 +285,7 @@ class server(process_cif_mixin):
       self.mod_mod_id_list.append(mod_mod_id)
       self.mod_mod_id_dict[mod_mod_id.chem_mod.id] = mod_mod_id
 
-  def get_comp_comp_id(self, comp_id, hide_mon_lib_dna_rna_cif=False):
+  def get_comp_comp_id(self, comp_id, hide_mon_lib_dna_rna_cif=True):
     comp_id = comp_id.strip().upper()
     if (len(comp_id) == 0): return None
     if (hide_mon_lib_dna_rna_cif and comp_id in mon_lib_dna_rna_cif):
@@ -341,8 +341,8 @@ class server(process_cif_mixin):
 
   def _create_rna_dna_placeholders(self):
     for base_code in ["A", "C", "G"]:
-      rna = self.get_comp_comp_id(base_code+"r")
-      dna = self.get_comp_comp_id(base_code+"d")
+      rna = self.get_comp_comp_id(base_code+"r",hide_mon_lib_dna_rna_cif=False)
+      dna = self.get_comp_comp_id(base_code+"d",hide_mon_lib_dna_rna_cif=False)
       chem_comp = cif_types.chem_comp(
         id=base_code+"?",
         three_letter_code=None,
