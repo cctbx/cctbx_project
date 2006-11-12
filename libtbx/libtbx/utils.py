@@ -371,8 +371,9 @@ class multi_out(object):
     atexit.register(self._atexit)
 
   def _atexit(self):
-    for f,a in zip(self.file_objects, self.atexit_send_to):
-      if (a is not None): a.write(f.getvalue())
+    if (not self.closed):
+      for f,a in zip(self.file_objects, self.atexit_send_to):
+        if (a is not None): a.write(f.getvalue())
 
   def register(self, label, file_object, atexit_send_to=None):
     assert not self.closed
@@ -399,6 +400,8 @@ class multi_out(object):
 
   def close(self):
     for file_object in self.file_objects:
+      if (file_object is sys.__stdout__): continue
+      if (file_object is sys.__stderr__): continue
       file_object.close()
     self.closed = True
 
