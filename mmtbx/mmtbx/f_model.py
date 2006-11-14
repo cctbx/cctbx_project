@@ -740,6 +740,7 @@ class manager(object):
                                            site          = False,
                                            u_iso         = False,
                                            u_aniso       = False,
+                                           occupancy     = False,
                                            alpha         = None,
                                            beta          = None,
                                            tan_b_iso_max = None,
@@ -747,7 +748,7 @@ class manager(object):
     global time_gradient_wrt_atomic_parameters
     timer = user_plus_sys_time()
     xrs = self.xray_structure
-    if([site, u_iso, u_aniso].count(True) > 0):
+    if([site, u_iso, u_aniso, occupancy].count(True) > 0):
        tan_u_iso = False
        param = 0
        if(u_iso):

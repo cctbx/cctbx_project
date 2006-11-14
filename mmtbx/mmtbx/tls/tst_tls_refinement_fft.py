@@ -141,7 +141,7 @@ def exercise_2(eps = 1.e-6):
           number_of_macro_cycles   = 100
           max_number_of_iterations = 50
 
-  for start_tls_value in [0.0, tlsosA, None]:
+  for start_tls_value in [None]:#[0.0, tlsosA, None]:
   #for start_tls_value in [None]:
       print " \n "+str(start_tls_value) + " \n "
       fmodel_cp = fmodel.deep_copy()

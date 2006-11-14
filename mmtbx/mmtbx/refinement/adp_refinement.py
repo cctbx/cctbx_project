@@ -1,7 +1,7 @@
 from cctbx.array_family import flex
 import iotbx.phil
 from mmtbx.refinement import minimization
-import mmtbx.refinement.group_b
+import mmtbx.refinement.group
 from mmtbx.tls import tools
 from mmtbx.refinement import print_statistics
 import scitbx.lbfgs
@@ -138,7 +138,6 @@ class manager(object):
     if(refine_tls):
        print_statistics.make_sub_header(text = "TLS refinement",
                                         out  = log)
-       #if(refine_adp_individual or refine_adp_group):
        if(macro_cycle == 1):
           gbr_selections = []
           for s in tls_selections:
@@ -148,12 +147,13 @@ class manager(object):
        xray.set_scatterer_grad_flags(
                             scatterers = fmodel.xray_structure.scatterers(),
                             u_iso      = True)
-       group_b_manager = mmtbx.refinement.group_b.manager(
+       group_b_manager = mmtbx.refinement.group.manager(
           fmodel                   = fmodel,
           selections               = gbr_selections,
           convergence_test         = group_adp_params.convergence_test,
           max_number_of_iterations = 50,
           number_of_macro_cycles   = 1,
+          refine_adp               = True,
           log                      = log)
        # XXX u_aniso = True ONLY for TLS groups, and not all
        xray.set_scatterer_grad_flags(
@@ -225,12 +225,13 @@ class manager(object):
        xray.set_scatterer_grad_flags(
                                scatterers = fmodel.xray_structure.scatterers(),
                                u_iso      = True)
-       group_b_manager = mmtbx.refinement.group_b.manager(
+       group_b_manager = mmtbx.refinement.group.manager(
           fmodel                   = fmodel,
           selections               = group_adp_selections,
           convergence_test         = group_adp_params.convergence_test,
           max_number_of_iterations = group_adp_params.max_number_of_iterations,
           number_of_macro_cycles   = group_adp_params.number_of_macro_cycles,
           run_finite_differences_test = group_adp_params.run_finite_differences_test,
+          refine_adp               = True,
           log                      = log)
     time_adp_refinement_py += timer.elapsed()
