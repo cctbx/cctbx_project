@@ -317,6 +317,24 @@ unused: 10.0715 -         [0/0]
     assert str(e).startswith(
       "cctbx.miller.binning instances are not picklable.")
   else: raise RuntimeError("Exception expected.")
+  #
+  expected_counts = iter([
+    [0,1,0], [0,1,0], [0,1,0],
+    [0,1,1,0], [0,2,0], [0,2,0], [0,2,0],
+    [0,1,1,1,0], [0,2,1,0], [0,3,0], [0,3,0], [0,3,0],
+    [0,1,1,1,1,0], [0,2,2,0], [0,4,0], [0,4,0], [0,4,0], [0,4,0],
+    [0,1,1,1,1,1,0], [0,2,1,2,0], [0,3,2,0], [0,5,0], [0,5,0], [0,5,0], [0,5,0]
+  ])
+  for n in xrange(1,6):
+    set2 = set1.select(flex.size_t(xrange(n)))
+    for reflections_per_bin in range(1,n+1) + [n+1, n*10]:
+      set2.setup_binner_counting_sorted(reflections_per_bin=reflections_per_bin)
+      assert list(set2.binner().counts()) == expected_counts.next()
+  set1.setup_binner_counting_sorted(
+    d_max=16,
+    d_min=11,
+    reflections_per_bin=3)
+  assert list(set1.binner().counts()) == [2,3,2,1]
 
 def exercise_crystal_gridding():
   crystal_symmetry = crystal.symmetry(

@@ -952,8 +952,10 @@ class set(crystal.symmetry):
     ## step) or setting everything by hand
 
     if auto_binning:
-      d_max=flex.min( self.d_spacings().data() )
-      d_min=flex.max( self.d_spacings().data() )
+      d_spacings = self.d_spacings().data()
+      d_max=flex.min(d_spacings)
+      d_min=flex.max(d_spacings)
+      del d_spacings
       if d_star_sq_step is None:
         d_star_sq_step = 0.004 ## Default of 0.004 seems to be reasonable
 
@@ -963,6 +965,39 @@ class set(crystal.symmetry):
                   d_min,
                   d_max,
                   d_star_sq_step)
+    self._binner = binner(bng, self)
+    return self.binner()
+
+  def setup_binner_counting_sorted(self,
+        d_max=0,
+        d_min=0,
+        reflections_per_bin=None,
+        d_tolerance=1.e-10):
+    assert d_max >= 0
+    assert d_min >= 0
+    assert isinstance(reflections_per_bin, int)
+    assert reflections_per_bin > 0
+    assert d_tolerance > 0
+    assert d_tolerance < 0.5
+    d_star_sq = self.d_star_sq().data()
+    if (d_max > 0):
+      d_star_sq = d_star_sq.select(d_star_sq >= 1./d_max**2)
+    if (d_min > 0):
+      d_star_sq = d_star_sq.select(d_star_sq < 1./d_min**2)
+    assert d_star_sq.size() > 0
+    n_bins = max(1, iround(d_star_sq.size() / float(reflections_per_bin)))
+    reflections_per_bin = d_star_sq.size() / float(n_bins)
+    d_star_sq = d_star_sq.select(flex.sort_permutation(d_star_sq))
+    limits = flex.double()
+    limits.reserve(n_bins+1)
+    limits.append(max(0, d_star_sq[0] * (1-d_tolerance)))
+    m = d_star_sq.size()-1
+    for i_bin in xrange(1, n_bins):
+      i = iround(i_bin * reflections_per_bin)
+      limits.append(d_star_sq[i] * (1-d_tolerance))
+      if (i == m): break
+    limits.append(d_star_sq[-1] * (1+d_tolerance))
+    bng = binning(self.unit_cell(), limits)
     self._binner = binner(bng, self)
     return self.binner()
 
