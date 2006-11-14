@@ -746,6 +746,23 @@ namespace cctbx {
     return is_positive_definite(eigenvalues(adp), tolerance);
   }
 
+  /*! \brief True if adp is positive definite, else False.
+   */
+  /*! Tests if all eigenvalues(adp) are >= -tolerance.
+   */
+  template <typename FloatType>
+  af::shared<bool>
+  is_positive_definite(
+    af::const_ref<sym_mat3<FloatType> > const& adp,
+    FloatType const& tolerance)
+  {
+    af::shared<bool> result((af::reserve(adp.size())));
+    for(std::size_t i=0;i<adp.size();i++) {
+        result.push_back(is_positive_definite(eigenvalues(adp[i]), tolerance));
+    }
+    return result;
+  }
+
   //! Modifies u_cart such that all eigenvalues are >= u_min and <= u_max.
   /*! u_max is used only if it is greater than zero.
    */

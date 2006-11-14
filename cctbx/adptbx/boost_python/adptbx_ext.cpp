@@ -192,6 +192,11 @@ namespace {
       (bool(*)(sym_mat3<double> const&)) is_positive_definite);
     def("is_positive_definite",
       (bool(*)(sym_mat3<double> const&, double const&)) is_positive_definite);
+
+    def("is_positive_definite",
+      (af::shared<bool>(*)(af::const_ref<sym_mat3<double> > const&,
+                                         double const&)) is_positive_definite);
+
     def("eigenvalue_filtering",
       (sym_mat3<double>(*)(
         sym_mat3<double> const&, double const&, double const&))
