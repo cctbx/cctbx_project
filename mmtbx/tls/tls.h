@@ -220,7 +220,7 @@ public:
          }
          diffs.push_back(diff*2.);
     }
-    d_target_d_tls  d_target_d_tls_manager(sites, origin, diffs, false, false);
+    d_target_d_tls  d_target_d_tls_manager(sites, origin, diffs, true, false);
     gT = d_target_d_tls_manager.grad_T();
     gL = d_target_d_tls_manager.grad_L();
     gS = d_target_d_tls_manager.grad_S();

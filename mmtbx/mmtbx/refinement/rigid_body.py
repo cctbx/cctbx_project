@@ -268,10 +268,10 @@ class rb_mat(object):
      return rm
 
 def setup_resolution_range(f, nref_min, high_resolution, low_high_res_limit,
-                           max_low_high_res_limit):
+                           max_low_high_res_limit, protocol):
   d_spacings = f.d_spacings().data()
   d_max, d_min = flex.max(d_spacings), flex.min(d_spacings)
-  if(f.data().size() > nref_min):
+  if(f.data().size() > nref_min and protocol == "multiple_zones"):
      d_min_end = max(high_resolution, d_min)
      nref = 0
      d_max_start = d_max
@@ -299,13 +299,13 @@ class manager(object):
                      max_iterations          = 50,
                      convergence_test        = True,
                      convergence_delta       = 0.00001,
-                     use_only_low_resolution = False,
                      bulk_solvent_and_scale  = True,
                      high_resolution         = 2.0,
                      low_high_res_limit      = 6.0,
                      max_low_high_res_limit  = 8.0,
                      bss                     = None,
                      euler_angle_convention  = "xyz",
+                     protocol                = None,
                      log                     = None):
     global time_rigid_body_total
     global time_initialization
@@ -316,6 +316,8 @@ class manager(object):
                                scatterers = fmodel.xray_structure.scatterers(),
                                site       = True)
     self.euler_angle_convention = euler_angle_convention
+    if(protocol not in ["one_zone","multiple_zones"]):
+       raise Sorry("Wrong rigid body refinement protocol: %s"%str(protocol))
     if(log is None): log = sys.stdout
     if(selections is None):
        selections = []
@@ -343,12 +345,11 @@ class manager(object):
                                nref_min               = nref_min,
                                high_resolution        = high_resolution,
                                low_high_res_limit     = low_high_res_limit,
-                               max_low_high_res_limit = max_low_high_res_limit)
-    if(use_only_low_resolution):
-       if(len(d_mins) > 1): d_mins = d_mins[:-1]
-    line = " ".join(["High resolution cutoffs for mz-protocol:"]+
+                               max_low_high_res_limit = max_low_high_res_limit,
+                               protocol               = protocol)
+    line = "".join(["High resolution cutoffs for mz-protocol:"]+
                                               [str("%5.2f"%i) for i in d_mins])
-    print_statistics.make_sub_header(line, out = log)
+    print >> log, "\n",line,"\n"
     step_counter = 0
     time_initialization += timer_rigid_body_total.elapsed()
     fmodel.show_essential(header = "rigid body start", out = log)
