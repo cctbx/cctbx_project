@@ -120,6 +120,34 @@ namespace cctbx { namespace xray {
 
   template <typename ScattererType>
   void
+  shift_occupancies(
+    af::ref<ScattererType> const& scatterers,
+    double q_shift,
+    af::const_ref<std::size_t> const& selection)
+  {
+    typedef typename ScattererType::float_type float_type;
+    for(std::size_t j=0;j<selection.size();j++) {
+      std::size_t i_seq=selection[j];
+      ScattererType& sc = scatterers[i_seq];
+      sc.occupancy = sc.occupancy + q_shift;
+    }
+  }
+
+  template <typename ScattererType>
+  void
+  shift_occupancies(
+    af::ref<ScattererType> const& scatterers,
+    double q_shift)
+  {
+    typedef typename ScattererType::float_type float_type;
+    for(std::size_t i=0;i<scatterers.size();i++) {
+      ScattererType& sc = scatterers[i];
+      sc.occupancy = sc.occupancy + q_shift;
+    }
+  }
+
+  template <typename ScattererType>
+  void
   apply_symmetry_sites(
     sgtbx::site_symmetry_table const& site_symmetry_table,
     af::ref<ScattererType> const& scatterers)

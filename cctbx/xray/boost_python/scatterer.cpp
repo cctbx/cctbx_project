@@ -114,6 +114,10 @@ namespace {
             double const&)) &w_t::shift_u, (
           arg_("unit_cell"),
           arg_("u_shift")))
+        .def("shift_occupancy",
+          (void(w_t::*)(
+            double const&)) &w_t::shift_occupancy, (
+          arg_("q_shift")))
         .def("apply_symmetry",
           (sgtbx::site_symmetry(w_t::*)(
              uctbx::unit_cell const&,
@@ -216,6 +220,22 @@ namespace {
           arg_("unit_cell"),
           arg_("u_shift"),
           arg_("selection")));
+
+    def("shift_occupancies",
+      (void(*)(
+        af::ref<scatterer<> > const&,
+        double,
+        af::const_ref<std::size_t> const&)) shift_occupancies, (
+          arg_("scatterers"),
+          arg_("q_shift"),
+          arg_("selection")));
+
+    def("shift_occupancies",
+      (void(*)(
+        af::ref<scatterer<> > const&,
+        double)) shift_occupancies, (
+          arg_("scatterers"),
+          arg_("q_shift")));
 
     def("apply_symmetry_sites",
       (void(*)(
