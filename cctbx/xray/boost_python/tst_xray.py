@@ -461,6 +461,11 @@ def exercise_xray_scatterer():
   uisos = scs.extract_u_iso()
   xray.shift_us(scatterers=scs, unit_cell=uc, u_shift=1,
                 selection = flex.size_t([1,3,5]))
+  xray.shift_occupancies(scatterers=scs, q_shift=2.5,
+                         selection = flex.size_t([1,3,5]))
+  assert approx_equal(scs.extract_occupancies(), [1.0, 3.5, 1.0, 3.5, 1.0, 3.5, 1.0])
+  xray.shift_occupancies(scatterers=scs, q_shift=1.0)
+  assert approx_equal(scs.extract_occupancies(), [2.0, 4.5, 2.0, 4.5, 2.0, 4.5, 2.0])
   assert approx_equal(scs[0].u_iso,  0.1) and approx_equal(scs[0].u_star, (-1.0, -1.0, -1.0, -1.0, -1.0, -1.0))
   assert approx_equal(scs[1].u_iso,  1.2) and approx_equal(scs[1].u_star, (-1.0, -1.0, -1.0, -1.0, -1.0, -1.0))
   assert approx_equal(scs[2].u_iso,  0.3) and approx_equal(scs[2].u_star, (-1.0, -1.0, -1.0, -1.0, -1.0, -1.0))

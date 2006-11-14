@@ -292,6 +292,13 @@ Number of scattering types: 2
   assert approx_equal(xs2.scatterers().extract_u_iso(), [3]*5)
   xs2.shift_us(b_shift=-adptbx.u_as_b(2))
   assert approx_equal(xs2.scatterers().extract_u_iso(), [1]*5)
+  xs2.scatterers().set_occupancies(flex.double(xs2.scatterers().size(), 1.0))
+  xs2.shift_occupancies(q_shift = 1.0)
+  assert approx_equal(xs2.scatterers().extract_occupancies(),
+                      [2.0, 2.0, 2.0, 2.0, 2.0])
+  xs2.shift_occupancies(q_shift = -1.0, selection = flex.size_t([0,3]))
+  assert approx_equal(xs2.scatterers().extract_occupancies(),
+                      [1.0, 2.0, 2.0, 1.0, 2.0])
   xs2.apply_symmetry_sites()
   assert approx_equal(xs2.scatterers()[i].site, (0, 0, 0.7))
   xs2.apply_symmetry_u_stars()

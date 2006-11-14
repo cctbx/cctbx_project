@@ -629,6 +629,15 @@ class structure(crystal.special_position_settings):
       unit_cell=self.unit_cell(),
       u_shift=u_shift)
 
+  def shift_occupancies(self, q_shift, selection=None):
+    if(selection is not None):
+       ext.shift_occupancies(scatterers = self._scatterers,
+                             q_shift    = q_shift,
+                             selection  = selection)
+    else:
+       ext.shift_occupancies(scatterers = self._scatterers,
+                             q_shift    = q_shift)
+
   def apply_symmetry_sites(self):
     ext.apply_symmetry_sites(
       site_symmetry_table=self._site_symmetry_table,

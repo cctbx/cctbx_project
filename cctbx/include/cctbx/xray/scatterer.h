@@ -297,6 +297,13 @@ namespace xray {
         }
       }
 
+      //! Changes occupancy in place by adding q_shift.
+      void
+      shift_occupancy(FloatType const& q_shift)
+      {
+        occupancy += q_shift;
+      }
+
       /*! \brief Computes multiplicity(), weight_without_occupancy(),
           weight() and symmetry-averaged anisotropic displacement parameters.
        */
