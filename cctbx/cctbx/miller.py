@@ -990,13 +990,19 @@ class set(crystal.symmetry):
     d_star_sq = d_star_sq.select(flex.sort_permutation(d_star_sq))
     limits = flex.double()
     limits.reserve(n_bins+1)
-    limits.append(max(0, d_star_sq[0] * (1-d_tolerance)))
+    if (d_max > 0):
+      limits.append(1./d_max**2)
+    else:
+      limits.append(max(0, d_star_sq[0] * (1-d_tolerance)))
     m = d_star_sq.size()-1
     for i_bin in xrange(1, n_bins):
       i = iround(i_bin * reflections_per_bin)
       limits.append(d_star_sq[i] * (1-d_tolerance))
       if (i == m): break
-    limits.append(d_star_sq[-1] * (1+d_tolerance))
+    if (d_min > 0):
+      limits.append(1./d_min**2)
+    else:
+      limits.append(d_star_sq[-1] * (1+d_tolerance))
     bng = binning(self.unit_cell(), limits)
     self._binner = binner(bng, self)
     return self.binner()
