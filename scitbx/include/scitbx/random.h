@@ -11,9 +11,8 @@
  *
  */
 
+#include <scitbx/math/r3_rotation.h>
 #include <scitbx/array_family/shared.h>
-#include <scitbx/vec3.h>
-#include <scitbx/constants.h>
 #include <boost/cstdint.hpp>
 #include <stdexcept>
 
@@ -349,6 +348,15 @@ namespace random {
         result[1] = r * std::sin(t);
         result[2] = z;
         return result;
+      }
+
+      scitbx::mat3<double>
+      random_double_r3_rotation_matrix()
+      {
+        return math::r3_rotation::axis_and_angle_as_matrix(
+          random_double_point_on_sphere(),
+          constants::two_pi * random_double(),
+          /* deg */ false);
       }
 
       af::shared<std::size_t>

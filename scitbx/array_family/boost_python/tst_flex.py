@@ -985,6 +985,14 @@ def exercise_random():
   assert list(flex.random_bool(size=3, threshold=0.5)) == [False, True, False]
   assert list(flex.random_bool(size=3, threshold=0)) == [False, False, False]
   assert list(flex.random_bool(size=3, threshold=1)) == [True, True, True]
+  #
+  assert approx_equal(flex.random_double_r3_rotation_matrix(),
+    [0.67535081411285913, 0.68786315670369047, -0.26598036680689918,
+     -0.17555488553786935, 0.50022835881402294, 0.84791041460876915,
+     0.7162972567592899, -0.52594283595069846, 0.45858736710822368])
+  for i_trial in xrange(100):
+    assert approx_equal(
+      matrix.sqr(flex.random_double_r3_rotation_matrix()).determinant(), 1)
 
 def exercise_flex_vec3_double():
   flex.exercise_triple(flex.vec3_double, as_double=True)

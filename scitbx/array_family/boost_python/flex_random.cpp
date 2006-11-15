@@ -43,6 +43,8 @@ namespace {
         .def("random_permutation", &w_t::random_permutation, (arg_("size")))
         .def("random_double_point_on_sphere",
           &w_t::random_double_point_on_sphere)
+        .def("random_double_r3_rotation_matrix",
+          &w_t::random_double_r3_rotation_matrix)
         .def("getstate", &w_t::getstate)
         .def("setstate", &w_t::setstate, (arg_("state")))
       ;
