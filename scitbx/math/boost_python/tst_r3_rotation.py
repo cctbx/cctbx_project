@@ -1,5 +1,6 @@
 import scitbx.math
 from scitbx import matrix
+from scitbx.array_family import flex
 from libtbx.utils import format_cpu_times
 from libtbx.test_utils import approx_equal
 from stdlib import math
@@ -57,6 +58,12 @@ def exercise(axis_range=2, angle_max_division=12, angle_min_power=-30):
                     min_axis_length=1+1.e-5)
                 except RuntimeError: pass
                 else: raise RuntimeError("Exception expected.")
+  #
+  for i_trial in xrange(100):
+    r = flex.random_double_r3_rotation_matrix()
+    from_matrix = scitbx.math.r3_rotation_axis_and_angle_from_matrix(r=r)
+    rr = from_matrix.as_matrix()
+    assert approx_equal(rr, r)
   #
   print format_cpu_times()
 
