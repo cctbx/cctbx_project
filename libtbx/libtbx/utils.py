@@ -1,4 +1,5 @@
 from __future__ import division
+from libtbx import sge_utils
 import glob
 import time
 import atexit
@@ -226,7 +227,7 @@ class show_times:
     t = os.times()
     usr_plus_sys = t[0] + t[1]
     try: ticks = sys.gettickeraccumulation()
-    except: ticks = None
+    except AttributeError: ticks = None
     s = "usr+sys time: %.2f seconds" % usr_plus_sys
     if (ticks is not None):
       s += ", ticks: %d" % ticks
@@ -242,6 +243,9 @@ class show_times:
       s = wall_clock_time - m * 60
       print >> out, "%d minutes %.2f seconds (%.2f seconds total)" % (
         m, s, wall_clock_time)
+    out_flush = getattr(out, "flush", None)
+    if (out_flush is not None):
+      out_flush()
 
 def show_times_at_exit(time_start=None, out=None):
   atexit.register(show_times(time_start=time_start, out=out))
@@ -256,6 +260,12 @@ class host_and_user:
     self.processor_architecture = os.environ.get("PROCESSOR_ARCHITECTURE")
     self.user = os.environ.get("USER")
     self.username = os.environ.get("USERNAME")
+    getpid = getattr(os, "getpid", None)
+    if (getpid is None):
+      self.pid = None
+    else:
+      self.pid = getpid()
+    self.sge_info = sge_utils.info()
 
   def show(self, out=None, prefix=""):
     if (out is None): out = sys.stdout
@@ -277,6 +287,9 @@ class host_and_user:
     if (    self.username is not None
         and self.username != self.user):
       print >> out, prefix + "USERNAME =", self.username
+    if (self.pid is not None):
+      print >> out, prefix + "PID =", self.pid
+    self.sge_info.show(out=out, prefix=prefix)
 
 def _indentor_write_loop(write_method, indent, incomplete_line, lines):
   for line in lines:
@@ -472,6 +485,7 @@ class input_with_prompt(object):
 
 def exercise():
   from libtbx.test_utils import approx_equal
+  host_and_user().show(prefix="### ")
   time_in_seconds = 1.1
   for i_trial in xrange(55):
     time_in_seconds = time_in_seconds**1.1

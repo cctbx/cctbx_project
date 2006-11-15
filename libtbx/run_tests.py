@@ -4,6 +4,7 @@ import libtbx.load_env
 def run():
   tst_list = (
   "$D/libtbx/introspection.py",
+  "$D/libtbx/sge_utils.py",
   "$D/libtbx/tst_utils.py",
   "$D/libtbx/utils.py",
   "$D/libtbx/math_utils.py",
