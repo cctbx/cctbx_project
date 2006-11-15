@@ -930,6 +930,32 @@ def exercise_array_2(space_group_info):
           data=vfy_data).adopt_set(ave)
         assert vfy.correlation(ave).coefficient() > 1-1.e-6
 
+def exercise_complete_array():
+  crystal_symmetry = crystal.symmetry((2.1,3,4), "P 2 2 2")
+  set = miller.build_set(
+    crystal_symmetry=crystal_symmetry,
+    anomalous_flag=False,
+    d_min=1)
+  ni = set.indices().size()
+  for sigmas in [None, flex.random_double(ni)]:
+    array = set.array(
+      data=flex.random_double(size=set.indices().size()),
+      sigmas=sigmas)
+    compl = array.complete_array()
+    assert compl.indices().all_eq(array.indices())
+    sel = flex.random_permutation(size=ni)[:(ni*2)//3]
+    selected = array.select(sel)
+    compl = selected.complete_array(d_min=1)
+    assert compl.indices().size() == array.size()
+    new_data_sel = compl.data() >= 0
+    assert new_data_sel.count(True) == sel.size()
+    if (sigmas is None):
+      assert compl.sigmas() is None
+    else:
+      new_sigmas_sel = compl.sigmas() >= 0
+      assert new_sigmas_sel.count(True) == sel.size()
+      assert new_sigmas_sel.all_eq(new_data_sel)
+
 def exercise_fft_map():
   xs = crystal.symmetry((3,4,5), "P 2 2 2")
   mi = flex.miller_index(((1,-2,3), (0,0,-4)))
@@ -1216,6 +1242,7 @@ def run(args):
   exercise_enforce_positive_amplitudes()
   exercise_binner()
   exercise_array()
+  exercise_complete_array()
   exercise_crystal_gridding()
   exercise_fft_map()
   exercise_map_correlation()

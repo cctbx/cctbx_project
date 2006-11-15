@@ -483,17 +483,19 @@ class set(crystal.symmetry):
       i)
     return set(self, i, self.anomalous_flag())
 
-  def complete_set(self, d_min_tolerance=1.e-6, d_max=None):
+  def complete_set(self, d_min_tolerance=1.e-6, d_min=None, d_max=None):
     assert self.anomalous_flag() in (False, True)
     if (self.indices().size() == 0):
       return set(
         crystal_symmetry=self,
         anomalous_flag=self.anomalous_flag(),
         indices=flex.miller_index())
+    if (d_min is None): d_min = self.d_min()
+    if (d_min_tolerance is not None): d_min *= (1-d_min_tolerance)
     return build_set(
       crystal_symmetry=self,
       anomalous_flag=self.anomalous_flag(),
-      d_min=self.d_min()*(1-d_min_tolerance),
+      d_min=d_min,
       d_max=d_max)
 
   def completeness(self, use_binning=False, d_min_tolerance=1.e-6,
@@ -1301,7 +1303,6 @@ class array(set):
         result = False
     return result
 
-
   def enforce_positive_amplitudes(self,i_sig_level=-4.0):
     """
     Takes in an intensity array (including negatives) and spits out amplitudes.
@@ -1421,6 +1422,31 @@ class array(set):
       sigmas.set_selected(
         pairs.column(0), self.sigmas().select(pairs.column(1)))
     return other.array(data=data, sigmas=sigmas)
+
+  def complete_array(self,
+        d_min_tolerance=1.e-6,
+        d_min=None,
+        d_max=None,
+        new_data_value=-1,
+        new_sigmas_value=-1):
+    cs = self.complete_set(
+      d_min_tolerance=d_min_tolerance, d_min=d_min, d_max=d_max)
+    matches = match_indices(self.indices(), cs.indices())
+    assert matches.singles(0).size() == 0
+    i = self.indices()
+    d = self.data()
+    if (d is not None): d = d.deep_copy()
+    s = self.sigmas()
+    if (s is not None): s = s.deep_copy()
+    ms = matches.singles(1)
+    n = ms.size()
+    if (n == 0):
+      i = i.deep_copy()
+    else:
+      i = i.concatenate(cs.indices().select(ms))
+      if (d is not None): d.resize(d.size()+n, new_data_value)
+      if (s is not None): s.resize(s.size()+n, new_sigmas_value)
+    return self.customized_copy(indices=i, data=d, sigmas=s)
 
   def sort_permutation(self, by_value="resolution", reverse=False):
     assert reverse in (False, True)
