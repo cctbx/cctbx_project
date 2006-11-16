@@ -220,7 +220,7 @@ def run(n=10):
                     initial_rms=0.02,
                     max_level=0.03,
                     minimum_size=1)
-  tmp.show()
+  #tmp.show()
   assert len(tmp.matches)==2
   assert approx_equal(tmp.matches[0][3],0,eps=1e-5)
   assert approx_equal(tmp.matches[0][4],n,eps=1e-5)
