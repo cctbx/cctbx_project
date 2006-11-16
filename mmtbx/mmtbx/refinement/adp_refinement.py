@@ -222,9 +222,6 @@ class manager(object):
     if(refine_adp_group):
        print_statistics.make_sub_header(text= "group isotropic ADP refinement",
                                         out = log)
-       xray.set_scatterer_grad_flags(
-                               scatterers = fmodel.xray_structure.scatterers(),
-                               u_iso      = True)
        group_b_manager = mmtbx.refinement.group.manager(
           fmodel                   = fmodel,
           selections               = group_adp_selections,

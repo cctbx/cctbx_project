@@ -173,6 +173,8 @@ class alpha_beta_est_manager(object):
        self.fo_test_sets.append(sel_f_obs_test.data())
        self.fm_test_sets.append(sel_f_calc_test.data())
        self.indices_sets.append(sel_f_obs_test.indices())
+    for a,b,c in zip(self.fo_test_sets, self.fm_test_sets, self.indices_sets):
+      assert a.size() == b.size() == c.size() != 0
     obj = max_lik.alpha_beta_est(fo_test     = self.fo_test_sets,
                                  fm_test     = self.fm_test_sets,
                                  indices     = self.indices_sets,

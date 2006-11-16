@@ -41,6 +41,14 @@ master_params = iotbx.phil.parse("""\
     .type = float
   b_sol_min = 10.0
     .type = float
+  k_sol_grid_search_max = 0.6
+    .type = float
+  k_sol_grid_search_min = 0.0
+    .type = float
+  b_sol_grid_search_max = 80.0
+    .type = float
+  b_sol_grid_search_min = 10.0
+    .type = float
   k_sol_step = 0.05
     .type = float
   b_sol_step = 5.0
@@ -116,14 +124,18 @@ class solvent_and_scale_params(object):
     prefix = "solvent_and_scale_params: "
     if(1):#(self.overwrite is not None):
        #o = self.overwrite
-       self.bulk_solvent         = o.bulk_solvent
+       self.bulk_solvent                    = o.bulk_solvent
        self.anisotropic_scaling             = o.anisotropic_scaling
-       self.statistical_solvent       = o.statistical_solvent
+       self.statistical_solvent             = o.statistical_solvent
        self.k_sol_b_sol_grid_search         = o.k_sol_b_sol_grid_search
        self.minimization_k_sol_b_sol        = o.minimization_k_sol_b_sol
-       self.minimization_b_cart            = o.minimization_b_cart
+       self.minimization_b_cart             = o.minimization_b_cart
        self.target                          = o.target
-       self.symmetry_constraints_on_b_cart = o.symmetry_constraints_on_b_cart
+       self.symmetry_constraints_on_b_cart  = o.symmetry_constraints_on_b_cart
+       self.k_sol_grid_search_max           = o.k_sol_grid_search_max
+       self.k_sol_grid_search_min           = o.k_sol_grid_search_min
+       self.b_sol_grid_search_max           = o.b_sol_grid_search_max
+       self.b_sol_grid_search_min           = o.b_sol_grid_search_min
        self.k_sol_max                       = o.k_sol_max
        self.k_sol_min                       = o.k_sol_min
        self.b_sol_max                       = o.b_sol_max
@@ -177,12 +189,16 @@ class solvent_and_scale_params(object):
           self.b_sol_min  = None
           self.k_sol_step = None
           self.b_sol_step = None
+          self.k_sol_grid_search_max = None
+          self.k_sol_grid_search_min = None
+          self.b_sol_grid_search_max = None
+          self.b_sol_grid_search_min = None
           self.start_minimization_from_k_sol = None
           self.start_minimization_from_b_sol = None
        elif(self.k_sol_b_sol_grid_search == True):
-          assert self.k_sol_max > self.k_sol_min
+          assert self.k_sol_grid_search_max > self.k_sol_grid_search_min
           assert self.k_sol_step > 0.0
-          assert self.b_sol_max > self.b_sol_min
+          assert self.b_sol_grid_search_max > self.b_sol_grid_search_min
           assert self.b_sol_step > 0.0
           self.start_minimization_from_k_sol = None
           self.start_minimization_from_b_sol = None
@@ -202,6 +218,10 @@ class solvent_and_scale_params(object):
        self.b_sol_min                                = None
        self.k_sol_step                               = None
        self.b_sol_step                               = None
+       self.k_sol_grid_search_max = None
+       self.k_sol_grid_search_min = None
+       self.b_sol_grid_search_max = None
+       self.b_sol_grid_search_min = None
        self.fix_k_sol                                = None
        self.fix_b_sol                                = None
        self.start_minimization_from_k_sol            = None
@@ -501,8 +521,12 @@ class bulk_solvent_and_scales(object):
           assert abs(flex.max(flex.abs(fmodel.f_mask().data()))) > 1.e-3
        macro_cycles = range(1, params.number_of_macro_cycles+1)
        if(params.k_sol_b_sol_grid_search):
-          k_sols =kb_range(params.k_sol_max,params.k_sol_min,params.k_sol_step)
-          b_sols =kb_range(params.b_sol_max,params.b_sol_min,params.b_sol_step)
+          k_sols = kb_range(params.k_sol_grid_search_max,
+                            params.k_sol_grid_search_min,
+                            params.k_sol_step)
+          b_sols = kb_range(params.b_sol_grid_search_max,
+                            params.b_sol_grid_search_min,
+                            params.b_sol_step)
        if(params.verbose > 0):
           fmodel.show_k_sol_b_sol_b_cart_target(header = m + str(0)+\
                              " (start) target= "+fmodel.target_name, out = log)
@@ -516,8 +540,10 @@ class bulk_solvent_and_scales(object):
        bsol   = fmodel.b_sol()
        grid_search_done = False
        for mc in macro_cycles:
-           do_grid_search = (ksol<params.k_sol_min or ksol>params.k_sol_max or
-                             bsol<params.b_sol_min or ksol>params.b_sol_max)
+           do_grid_search = (ksol <= params.k_sol_grid_search_min or
+                             ksol >= params.k_sol_grid_search_max or
+                             bsol <= params.b_sol_grid_search_min or
+                             ksol >= params.b_sol_grid_search_max)
            if(params.k_sol_b_sol_grid_search and do_grid_search and
                                                          not grid_search_done):
               grid_search_done = True
@@ -619,40 +645,8 @@ class bulk_solvent_and_scales(object):
        if(b1 <= b2): bsol = params.b_sol_min
     fmodel.update(k_sol = ksol, b_sol = bsol)
     r_end = fmodel.r_work()
-    if(r_end - r_start > 0.01):
+    if(r_end - r_start > 0.005):
        fmodel.update(k_sol = ksol_orig, b_sol = bsol_orig)
-
-
-  #def _optimize_fmask(self):
-  #  if(self.k_sol == 0.0):
-  #     flag_1 = False
-  #     flag_2 = True
-  #  else:
-  #     flag_1 = True
-  #     flag_2 = False
-  #  if(0 and flag_1):
-  #     r_start = self.r_free()
-  #     fmodel = self.deep_copy()
-  #     step = self.f_obs.d_min()/self.mask_params.grid_step_factor
-  #     for r_solv in (0.8,0.9,1.0,1.1,1.2,1.3,1.4):
-  #         for r_shrink in (0.8,0.9,1.0,1.1,1.2,1.3,1.4):
-  #             bulk_solvent_mask = masks.bulk_solvent(
-  #                xray_structure           = self.xray_structure,
-  #                grid_step                = step,
-  #                solvent_radius           = r_solv,
-  #                shrink_truncation_radius = r_shrink)
-  #             f_mask = bulk_solvent_mask.structure_factors(miller_set=self.f_obs)
-  #             fmodel.update(f_mask = f_mask)
-  #             r = fmodel.r_free()
-  #             if(r < r_start):
-  #                r_start = r
-  #                self.mask_params.solvent_radius = r_solv
-  #                self.mask_params.shrink_truncation_radius = r_shrink
-  #                self.f_mask = self.f_mask.array(data = f_mask.data())
-  #                assert fmodel.r_work() == self.r_work()
-  #                if(self.mask_params is not None and self.mask_params.verbose > 0):
-  #                   print r
-  #                   bulk_solvent_mask.show_summary()
 
 def kb_range(x_max, x_min, step):
   x_range = []

@@ -436,6 +436,8 @@ class refinement_monitor(object):
        print >> out, remark + "1_wat: ordered solvent update (add / remove)                            "
        print >> out, remark + "1_rbr: rigid body refinement                                            "
        print >> out, remark + "1_gbr: group B-factor refinement                                        "
+       print >> out, remark + "1_occ: refinement of individual occupancies                             "
+       print >> out, remark + "1_gor: refinement of grouped occupancies                                "
        print >> out, remark + separator
     #
     #
