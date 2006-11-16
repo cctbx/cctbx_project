@@ -65,11 +65,11 @@ def exercise_2(hkl = "enk_gor.mtz"):
   os.system(cmd)
 
 def check_result():
-  for st in open("ref1_001.pdb","r").read().splitlines():
+  for st in open("occ_ref1_001.pdb","r").read().splitlines():
     if(st.count("REMARK Final: r_work =")==1):
        st = st.split()
        r1 = float(st[4])
-  for st in open("ref2_001.pdb","r").read().splitlines():
+  for st in open("occ_ref2_001.pdb","r").read().splitlines():
     if(st.count("REMARK Final: r_work =")==1):
        st = st.split()
        r2 = float(st[4])
