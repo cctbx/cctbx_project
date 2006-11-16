@@ -16,6 +16,7 @@
 #include <cctbx/xray/f_model.h>
 #include <scitbx/math/halton.h>
 
+
 namespace cctbx { namespace xray { namespace twin_targets {
 
   template<typename FloatType>
@@ -38,6 +39,72 @@ namespace cctbx { namespace xray { namespace twin_targets {
           cctbx::miller::index<> hkl_twin(ht,kt,lt);
           return( hkl_twin );
   }
+
+
+  template<typename FloatType>
+  class twin_completion{
+  public:
+    twin_completion( scitbx::af::const_ref< cctbx::miller::index<> > const& hkl,
+                     sgtbx::space_group                              const& space_group,
+                     bool                                            const& anomalous_flag,
+                     scitbx::mat3<FloatType>                         const& twin_law ):
+      space_group_( space_group ),
+      twin_law_(twin_law),
+      ori_lookup_table_(hkl,space_group,anomalous_flag)
+      {
+        CCTBX_ASSERT( hkl.size() > 0 );
+        for (int ii=0; ii<hkl.size(); ii++){
+          hkl_.push_back( hkl[ii] );
+          twin_hkl_.push_back( twin_mate( hkl[ii], twin_law ) );
+        }
+
+      }
+
+      scitbx::af::shared< cctbx::miller::index<> > twin_complete()
+      {
+        scitbx::af::shared< cctbx::miller::index<> > tmp;
+        for (int ii=0;ii<hkl_.size();ii++){
+          tmp.push_back( hkl_[ii] );
+          if (ori_lookup_table_.find_hkl( twin_hkl_[ii] ) < 0){
+            tmp.push_back( twin_hkl_[ii] );
+          }
+        }
+        return(tmp);
+      }
+
+      bool check_free_flags(scitbx::af::const_ref< bool > const& flags )
+      {
+        CCTBX_ASSERT( flags.size() == hkl_.size() );
+        bool all_is_okai=true;
+        // loop over all flags
+        bool ori,twin;
+        int tmp_loc;
+        for (int ii=0; ii<hkl_.size();ii++){
+          ori = flags[ii];
+          tmp_loc = ori_lookup_table_.find_hkl( twin_hkl_[ii] );
+          if (tmp_loc >= 0){
+            twin = flags[ tmp_loc ];
+            if (ori != twin ){ // they are not equal. This is a problem
+              return (false);
+            }
+          }
+        }
+        return( true );
+      }
+
+
+
+
+
+
+  protected:
+    scitbx::mat3<FloatType> twin_law_;
+    cctbx::sgtbx::space_group space_group_;
+    scitbx::af::shared<cctbx::miller::index<> > hkl_;
+    scitbx::af::shared<cctbx::miller::index<> > twin_hkl_;
+    cctbx::miller::lookup_utils::lookup_tensor<FloatType> ori_lookup_table_;
+  };
+
 
 
   template<typename FloatType> class least_squares_hemihedral_twinning_on_i{
@@ -251,9 +318,9 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
           CCTBX_ASSERT( tmp_loc >= 0 );
           calc_ori_lookup_table_.push_back( tmp_loc );
           tmp_loc = tmp_lookup_object.find_hkl( twin_mate( hkl_obs[ii],twin_law ) );
+
           CCTBX_ASSERT( tmp_loc >= 0 ); // If this assertion fails, it means that a twin related calculated miler index is not
                                         // in the list of calculated / model indices. This definently should not happen!
-
           calc_twin_lookup_table_ .push_back( tmp_loc );
 
 
@@ -645,10 +712,10 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
        for (std::size_t ii=0;ii<hkl_calc.size();ii++){
          tmp_loc = tmp_calc.find_hkl( twin_mate(hkl_calc[ii],twin_law) );
          //if this hkl_calc is observed
-         if (  (tmp_obs.find_hkl( hkl_calc[ii] )>0) ||
-               (tmp_obs.find_hkl(twin_mate(hkl_calc[ii],twin_law))>=0) ){
-           CCTBX_ASSERT( tmp_loc >=0 );
-         }
+         //if (  (tmp_obs.find_hkl( hkl_calc[ii] )>0) ||
+         //      (tmp_obs.find_hkl( twin_mate(hkl_calc[ii],twin_law))>=0) ){
+         //  CCTBX_ASSERT( tmp_loc >=0 );
+         // }
          calc_to_twin_calc_.push_back( tmp_loc );
        }
 
