@@ -47,6 +47,12 @@ the best course of action"""
     if out is None:
       out = sys.stdout
     count=1
+    print >> out, "%i invariant-like domains have been found. "% len(self.matches)
+    if len(self.matches)>0:
+      print >> out, "Listing transformations below."
+    else:
+      print "Change settings in improve results."
+
     for item in self.matches:
       r = item[1]
       t = item[2]
@@ -58,7 +64,7 @@ the best course of action"""
       print >> out
       print >> out, t.mathematica_form(label="t", format="%8.5f")
       print >> out
-      print >> out, "rmsd: %4.2f; number of sites: %i"%(rmsd,n)
+      print >> out, "rmsd: %5.3f; number of sites: %i"%(rmsd,n)
       print >> out
       count += 1
 
