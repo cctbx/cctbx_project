@@ -279,8 +279,7 @@ def apply_transformation(xray_structure,
                        selection  = sel)
       if(refine_occ):
          xray.shift_occupancies(scatterers = new_sc,
-                                unit_cell  = xray_structure.unit_cell(),
-                                u_shift    = pari,
+                                q_shift    = pari,
                                 selection  = sel)
   xray_structure.replace_scatterers(new_sc)
   return xray_structure
