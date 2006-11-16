@@ -777,18 +777,11 @@ class twin_model_manager(object):
                twin_law=None,
                start_fraction=0.1,
                n_refl_bin=2000,
-               d_min_fudge=0.95):
+               max_bins=20):
     self.out = out
     if self.out is None:
       self.out = sys.stdout
     self.twin_fraction_object = twin_fraction_object(twin_fraction=start_fraction)
-    self.d_min_fudge = d_min_fudge # this fudge is to make sure that all twin
-                            # related reflections of the observed data are there.
-                            # when twinnnig is pseudo merohedral, the twin related hkl's
-                            # do not lie at exactly the same d spacing
-                            # by making a slightly larger set of f_calc, one assures that
-                            # all is well (in principle)
-                            # it also takes care of certain round of errors in making an initial list of hkl's
     self.twin_law=twin_law
     self.twin_fraction=start_fraction
     assert (self.twin_law is not None)
@@ -800,7 +793,10 @@ class twin_model_manager(object):
 
     #setup the binners if this has not been done yet
     if self.f_obs_array.binner() is None:
-      self.f_obs_array.setup_binner( reflections_per_bin=n_refl_bin )
+      if self.f_obs_array.indices().size()/float(n_refl_bin) > max_bins:
+        self.f_obs_array.setup_binner(n_bins = max_bins)
+      else:
+        self.f_obs_array.setup_binner( reflections_per_bin=n_refl_bin )
 
     self.f_obs_array_work.use_binning_of( self.f_obs_array )
     self.f_obs_array_free.use_binning_of( self.f_obs_array )
@@ -965,19 +961,16 @@ class twin_model_manager(object):
   def update_f_atoms(self):
     """Get f calc from the xray structure"""
     if self.miller_set is None:
-      point_group_symmetry =  crystal.symmetry(
-        space_group = self.xs.space_group().build_derived_point_group(),
-        unit_cell = self.xs.unit_cell() )
-
-      self.miller_set = miller.build_set(
-        crystal_symmetry = point_group_symmetry,
-        anomalous_flag = self.f_obs_array.anomalous_flag(),
-        d_min = self.f_obs_array.d_min()*self.d_min_fudge )
-
-      self.miller_set = self.miller_set.customized_copy(
-        crystal_symmetry = self.xs
-        )
-
+      completion = xray.twin_completion( self.f_obs_array.indices(),
+                                         self.xs.space_group(),
+                                         self.f_obs_array.anomalous_flag(),
+                                         self.twin_law.as_double_array()[0:9] )
+      indices = completion.twin_complete()
+      self.miller_set = miller.set(
+        crystal_symmetry = self.xs,
+        indices =indices,
+        anomalous_flag = self.f_obs_array.anomalous_flag() ).map_to_asu()
+      assert self.miller_set.is_unique_set_under_symmetry()
     tmp = self.miller_set.structure_factors_from_scatterers(
       xray_structure = self.xray_structure )
 
