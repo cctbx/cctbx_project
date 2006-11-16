@@ -32,6 +32,7 @@ def run():
   "$D/mmtbx/bulk_solvent/tst_bulk_solvent_and_scaling_ls.py",
   "$D/mmtbx/bulk_solvent/tst_bulk_solvent_and_scaling_ml.py",
   "$D/mmtbx/alignment.py"
+  "$D/mmtbx/invariant_domain.py"
   )
 
   build_dir = libtbx.env.under_build("mmtbx")
