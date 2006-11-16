@@ -13,6 +13,7 @@
 #include <cctbx/hendrickson_lattman.h>
 #include <cctbx/miller/lookup_utils.h>
 #include <cctbx/uctbx.h>
+#include <cctbx/miller/asu.h>
 #include <cctbx/xray/f_model.h>
 #include <scitbx/math/halton.h>
 
@@ -50,6 +51,7 @@ namespace cctbx { namespace xray { namespace twin_targets {
                      scitbx::mat3<FloatType>                         const& twin_law ):
       space_group_( space_group ),
       twin_law_(twin_law),
+      anomalous_flag_(anomalous_flag),
       ori_lookup_table_(hkl,space_group,anomalous_flag)
       {
         CCTBX_ASSERT( hkl.size() > 0 );
@@ -65,12 +67,21 @@ namespace cctbx { namespace xray { namespace twin_targets {
         scitbx::af::shared< cctbx::miller::index<> > tmp;
         for (int ii=0;ii<hkl_.size();ii++){
           tmp.push_back( hkl_[ii] );
-          if (ori_lookup_table_.find_hkl( twin_hkl_[ii] ) < 0){
-            tmp.push_back( twin_hkl_[ii] );
-          }
+          tmp.push_back( twin_hkl_[ii] );
         }
-        return(tmp);
+        scitbx::af::shared< std::size_t > unique;
+        unique = cctbx::miller::unique_under_symmetry_selection(
+          sgtbx::space_group_type( space_group_ ),
+          anomalous_flag_,
+          tmp.const_ref() );
+
+        scitbx::af::shared< cctbx::miller::index<> > unique_index;
+        for (int ii=0;ii<unique.size();ii++){
+          unique_index.push_back( tmp[ unique[ii] ] );
+        }
+        return(unique_index);
       }
+
 
       bool check_free_flags(scitbx::af::const_ref< bool > const& flags )
       {
@@ -99,6 +110,7 @@ namespace cctbx { namespace xray { namespace twin_targets {
 
   protected:
     scitbx::mat3<FloatType> twin_law_;
+    bool anomalous_flag_;
     cctbx::sgtbx::space_group space_group_;
     scitbx::af::shared<cctbx::miller::index<> > hkl_;
     scitbx::af::shared<cctbx::miller::index<> > twin_hkl_;
