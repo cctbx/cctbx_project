@@ -18,6 +18,41 @@ SCITBX_BOOST_IS_POLYMORPHIC_WORKAROUND(
 namespace cctbx { namespace xray { namespace twin_targets { namespace boost_python {
   namespace {
 
+
+
+
+    struct twin_completion_wrappers
+    {
+      typedef twin_completion<double> w_t;
+      static void
+      wrap()
+      {
+        using namespace boost::python;
+
+        class_<w_t>("twin_completion", no_init)
+          .def(init< scitbx::af::const_ref< cctbx::miller::index<> > const&,
+                     sgtbx::space_group const&,
+                     bool const&,
+                     scitbx::mat3<double> const& >
+               (( arg_("hkl"),
+                  arg_("space_group"),
+                  arg_("anomalous_flag"),
+                  arg_("twin_law") )))
+          .def("twin_complete", &w_t::twin_complete )
+          .def("check_free_flags", &w_t::check_free_flags)
+          ;
+      }
+
+
+    };
+
+
+
+
+
+
+
+
     struct least_squares_hemihedral_twinning_on_i_wrappers
     {
       typedef least_squares_hemihedral_twinning_on_i<double> w_t;
@@ -297,6 +332,7 @@ namespace cctbx { namespace xray { namespace twin_targets { namespace boost_pyth
 
     void wrap_twin_targets()
     {
+      twin_targets::boost_python::twin_completion_wrappers::wrap();
       twin_targets::boost_python::least_squares_hemihedral_twinning_on_i_wrappers::wrap();
       twin_targets::boost_python::least_squares_hemihedral_twinning_on_f_wrappers::wrap();
       twin_targets::boost_python::hemihedral_r_values_wrappers::wrap();
