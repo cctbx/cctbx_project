@@ -193,10 +193,10 @@ def exercise_4(grid_step,
   fft_map = f_calc.fft_map(grid_step = grid_step, symmetry_flags = None)
   fft_map = fft_map.apply_volume_scaling()
   site_frac = xray_structure.sites_frac()
-  r = abs(abs(flex.max(fft_map.real_map_unpadded()))-\
-    abs(fft_map.real_map_unpadded().value_at_closest_grid_point(site_frac[0])))/\
-    abs(flex.max(fft_map.real_map_unpadded())) * 100.0
-  assert r < 10.
+  m = fft_map.real_map_unpadded()
+  amm = abs(flex.max(m))
+  r = abs(amm-abs(m.value_at_closest_grid_point(site_frac[0]))) / amm
+  assert r < 0.15, r
   around_atom_obj_ = mmtbx.real_space.around_atom(
                             unit_cell = xray_structure.unit_cell(),
                             map_data  = fft_map.real_map_unpadded(),
