@@ -353,10 +353,18 @@ namespace random {
       scitbx::mat3<double>
       random_double_r3_rotation_matrix()
       {
+        /* Results are not predictable if the calls of
+           random_double_point_on_sphere() and random_double()
+           are inlined into the axis_and_angle_as_matrix()
+           constructor. This is because the compiler can generate
+           code that evaluates the arguments in any order. To avoid
+           this ambiguity, axis and angle are assigned to intermediate
+           variables.
+         */
+        scitbx::vec3<double> axis = random_double_point_on_sphere();
+        double angle = constants::two_pi * random_double();
         return math::r3_rotation::axis_and_angle_as_matrix(
-          random_double_point_on_sphere(),
-          constants::two_pi * random_double(),
-          /* deg */ false);
+          axis, angle, /* deg */ false);
       }
 
       af::shared<std::size_t>
