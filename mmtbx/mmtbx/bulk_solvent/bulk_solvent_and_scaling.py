@@ -645,7 +645,7 @@ class bulk_solvent_and_scales(object):
        if(b1 <= b2): bsol = params.b_sol_min
     fmodel.update(k_sol = ksol, b_sol = bsol)
     r_end = fmodel.r_work()
-    if(r_end - r_start > 0.005):
+    if(r_end - r_start > 0.01):
        fmodel.update(k_sol = ksol_orig, b_sol = bsol_orig)
 
 def kb_range(x_max, x_min, step):
