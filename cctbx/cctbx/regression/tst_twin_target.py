@@ -446,8 +446,49 @@ def tst_single_likelihood(centric=False,
     plot_function( tmp_1 )
 
 
+def tst_twin_completion():
+  uc = uctbx.unit_cell( "40,40,70,90,90,90" )
+  xs = crystal.symmetry( unit_cell=uc, space_group="P1" )
+  miller_set = miller.build_set( crystal_symmetry=xs,
+                                 anomalous_flag=False,
+                                 d_min=3.0 ).map_to_asu()
+  select = flex.bool( miller_set.indices().size(), True )
+  select[300]=False
+  miller_set_mod = miller_set.select( select )
+  # make sure we threw away a reflection
+  assert not miller_set_mod.indices().all_eq(  miller_set.indices() )
+  checker = xray.twin_completion(
+    miller_set_mod.indices(),
+    xs.space_group(),
+    False,
+    [0,1,0,1,0,0,0,0,-1]
+    )
+  new_hkl = checker.twin_complete()
+  miller_set_mod = miller_set_mod.customized_copy(
+    indices=new_hkl)
+  miller_set_mod = miller_set_mod.map_to_asu()
+  a,b = miller_set_mod.common_sets(  miller_set )
+  assert  a.indices().size() == miller_set_mod.indices().size()
+  assert  a.indices().size() == miller_set.indices().size()
+  assert  miller_set_mod.is_unique_set_under_symmetry()
+
+  checker = xray.twin_completion(
+    miller_set.indices(),
+    xs.space_group(),
+    False,
+    [0,1,0,1,0,0,0,0,-1]
+    )
+
+  basic_flags = miller_set.generate_r_free_flags_basic()
+  lattice_flags = miller_set.generate_r_free_flags_on_lattice_symmetry()
+
+  assert not checker.check_free_flags( basic_flags.data() ) # this should give False
+  assert checker.check_free_flags( lattice_flags.data() )   # this should give True
+
 
 def run():
+  tst_twin_completion()
+
   tst_ls_on_i()
   tst_ls_on_f()
 
