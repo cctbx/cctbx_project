@@ -51,7 +51,7 @@ def run(args, command_name="iotbx.mtz.dump"):
       help="Valid keywords are: %s."
              % ", ".join(mtz.show_column_data_format_keywords)
           +" Human readable is the default. The format keywords can be"
-          +" abbreviated (e.g. -f=s).")
+          +" abbreviated (e.g. -f s).")
     .option("-b", "--show_batches",
       action="store_true")
     .option(None, "--walk",
