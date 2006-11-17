@@ -244,7 +244,10 @@ def exercise():
   pyexe = sys.executable
   if (pyexe.find(" ") < 0):
     if (os.environ.has_key("PYTHONPATH")):
-      del os.environ["PYTHONPATH"]
+      if (not hasattr(os, "unsetenv")):
+        os.environ["PYTHONPATH"] = ""
+      else:
+        del os.environ["PYTHONPATH"]
     if (os.name == "nt"):
       result = fully_buffered(command="set").raise_if_errors()
     elif (os.path.isfile("/usr/bin/printenv")):
@@ -254,7 +257,7 @@ def exercise():
     if (result is not None):
       if (verbose): print result.stdout_lines
       for line in result.stdout_lines:
-        assert not line.startswith("PYTHONPATH")
+        assert not line.startswith("PYTHONPATH") or line == "PYTHONPATH="
     result = fully_buffered(command="%s -V" % pyexe)
     if (verbose): print result.stderr_lines
     assert result.stderr_lines == ["Python " + sys.version.split()[0]]
