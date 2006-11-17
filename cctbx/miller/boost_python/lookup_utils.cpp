@@ -30,6 +30,7 @@ namespace{
                  >((arg_("miller_indices"),
                     arg_("space_group"),
                     arg_("anomalous_flag") )))
+        .def("n_duplicates", &w_t::n_duplicates)
         .def("find_hkl", (long(w_t::*)(cctbx::miller::index<> const&))
              &w_t::find_hkl)
         .def("find_hkl", (scitbx::af::shared< long >(w_t::*)
