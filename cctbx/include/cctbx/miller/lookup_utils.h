@@ -16,7 +16,6 @@
 #include <map>
 #include <vector>
 
-
 namespace cctbx { namespace miller{
 namespace lookup_utils{
 
@@ -40,6 +39,7 @@ namespace lookup_utils{
     sgtype_(space_group_),
     asu_choice_(sgtype_),
     hkl_lookup_(),
+    n_duplicates_( 0 ),
     anomalous_flag_(anomalous_flag)
     {
       for (unsigned ii=0;ii<hkl.size();ii++){
@@ -48,8 +48,23 @@ namespace lookup_utils{
                                          hkl[ii]);
         cctbx::miller::index_table_layout_adaptor asu_target_hkl;
         asu_target_hkl = asumap.one_column(anomalous_flag_);
-        hkl_lookup_[ asu_target_hkl.h()  ] = ii;
+
+        lookup_map_type::const_iterator l = hkl_lookup_.find( asu_target_hkl.h() );
+        if (l == hkl_lookup_.end()) { // not in list
+          hkl_lookup_[ asu_target_hkl.h()  ] = ii;
+        } else {
+          n_duplicates_++;
+        }
+        // checking if we can find it back would be shear paranoia
+        //l = hkl_lookup_.find( asu_target_hkl.h() );
+        //CCTBX_ASSERT( l  != hkl_lookup_.end() );
       }
+    }
+
+    long
+    n_duplicates()
+    {
+       return( n_duplicates_ );
     }
 
     long
@@ -62,7 +77,6 @@ namespace lookup_utils{
                                        target_hkl);
       cctbx::miller::index_table_layout_adaptor asu_target_hkl;
       asu_target_hkl = asumap.one_column(anomalous_flag_);
-
       lookup_map_type::const_iterator
         l = hkl_lookup_.find( asu_target_hkl.h() );
       if (l == hkl_lookup_.end()) {
@@ -78,7 +92,7 @@ namespace lookup_utils{
     find_hkl( scitbx::af::const_ref<cctbx::miller::index<> >
               const& target_hkl )
     {
-      scitbx::af::shared< long > permutation_table(target_hkl.size(),-1);
+      scitbx::af::shared< long > permutation_table( target_hkl.size(), -1 );
       for (unsigned ii=0;ii<target_hkl.size();ii++){
         permutation_table[ii] = find_hkl(target_hkl[ii]);
       }
@@ -86,6 +100,7 @@ namespace lookup_utils{
     }
 
     protected:
+    int n_duplicates_;
     cctbx::sgtbx::space_group space_group_;
     cctbx::sgtbx::space_group_type sgtype_;
     cctbx::sgtbx::reciprocal_space::asu asu_choice_;
