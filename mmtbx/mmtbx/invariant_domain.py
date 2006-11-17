@@ -1,9 +1,4 @@
-import iotbx.phil
-import libtbx.phil.command_line
-from libtbx.utils import Sorry
-from mmtbx import amino_acid_codes
-from mmtbx import alignment
-import sys, os, math
+import sys
 from iotbx import pdb
 from cctbx.array_family import flex
 from scitbx.math import euler_angles_as_matrix
@@ -11,14 +6,12 @@ from scitbx.math import superpose, matrix
 import random
 from libtbx.test_utils import approx_equal
 
-
-
 class find_domain(object):
   """This class tries to find pseudo invariant domain given a set of sites.
-It requiers an empirical parameter named max_level to be set to a sensible
-value. For large movements, havingf this value set to 2.5 is probably okai.
+It requires an empirical parameter named max_level to be set to a sensible
+value. For large movements, having this value set to 2.5 is probably okai.
 If the movements are more subtle, more problem dedicated software might be
-the best course of action"""
+the best course of action."""
 
   def __init__(self,
                set_a,
@@ -204,8 +197,7 @@ the best course of action"""
           element=atom.element,
           charge=atom.charge)
 
-
-def run(n=10):
+def exercise_core(n=10, verbose=0):
   # make two random sets of sites please
   c = euler_angles_as_matrix([random.uniform(0,360) for i in xrange(3)])
   set_1 = flex.vec3_double(flex.random_double(n*3)*10-2)
@@ -220,15 +212,20 @@ def run(n=10):
                     initial_rms=0.02,
                     max_level=0.03,
                     minimum_size=1)
-  #tmp.show()
+  if (verbose):
+    tmp.show()
   assert len(tmp.matches)==2
   assert approx_equal(tmp.matches[0][3],0,eps=1e-5)
   assert approx_equal(tmp.matches[0][4],n,eps=1e-5)
 
-if( __name__ == "__main__"):
-  run(4)
-  run(10)
-  run(20)
-  run(100)
-  run(200)
+def exercise():
+  if (1): # fixed random seed to avoid rare failures
+    random.seed(0)
+    flex.set_random_seed(0)
+  verbose = "--verbose" in sys.argv[1:]
+  for n in [4,10,20,100,200]:
+    exercise_core(n=n, verbose=verbose)
   print "OK"
+
+if( __name__ == "__main__"):
+  exercise()
