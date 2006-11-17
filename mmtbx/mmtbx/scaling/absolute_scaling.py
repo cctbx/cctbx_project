@@ -699,12 +699,16 @@ class kernel_normalisation(object):
                n_term=23,
                d_star_sq_low=None,
                d_star_sq_high=None,
-               auto_kernel=False):
+               auto_kernel=False,
+               number_of_sorted_reflections_for_auto_kernel=50):
     ## Autokernel is either False, true or a specific integer
     if kernel_width is None:
       assert (auto_kernel is not False)
     if auto_kernel is not False:
       assert (kernel_width==None)
+
+    assert miller_array.size()>0
+
 
     ## intensity arrays please
     work_array = None
@@ -743,12 +747,12 @@ class kernel_normalisation(object):
       sort_permut = flex.sort_permutation(d_star_sq_hkl)
       ##
       if auto_kernel==True:
-        number=50
+        number=number_of_sorted_reflections_for_auto_kernel
       else:
         number=int(auto_kernel)
 
       if number > d_star_sq_hkl.size():
-        number = d_star_sq_hkl.size()
+        number = d_star_sq_hkl.size()-1
 
       self.kernel_width = d_star_sq_hkl[sort_permut[number]]-d_star_sq_low
       assert self.kernel_width > 0
