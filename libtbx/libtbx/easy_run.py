@@ -1,8 +1,4 @@
-try:
-  import subprocess
-except ImportError, e:
-  if (str(e) != "No module named subprocess"): raise
-  subprocess = None
+import subprocess_with_fixes as subprocess
 import os
 
 class fully_buffered_base(object):
@@ -105,14 +101,14 @@ class fully_buffered_subprocess(fully_buffered_base):
       stderr = subprocess.STDOUT
     else:
       stderr = subprocess.PIPE
-    p = Popen(
+    p = subprocess.Popen(
       args=command,
       shell=True,
       bufsize=bufsize,
       stdin=subprocess.PIPE,
       stdout=subprocess.PIPE,
       stderr=stderr,
-      universal_newlines=True, # splitlines takes care of this
+      universal_newlines=True,
       close_fds=not subprocess.mswindows)
     o, e = p.communicate(input=stdin_lines)
     self.stdout_lines = o.splitlines()
@@ -122,109 +118,7 @@ class fully_buffered_subprocess(fully_buffered_base):
       self.stderr_lines = e.splitlines()
     self.return_code = p.returncode
 
-if (subprocess is None):
-  fully_buffered = fully_buffered_simple
-else:
-  fully_buffered = fully_buffered_subprocess
-
-  class Popen(subprocess.Popen):
-    if (not subprocess.mswindows):
-      def _communicate(self, input):
-            """Copy of Python 2.5 subprocess.py with patch to fix O(N**2)
-               problem:
---- subprocess.py.orig  2006-09-20 11:26:11.000000000 -0700
-+++ subprocess.py       2006-11-16 11:57:30.000000000 -0800
-@@ -1105,6 +1105,7 @@
-                 read_set.append(self.stderr)
-                 stderr = []
-
-+            input_done = 0
-             while read_set or write_set:
-                 rlist, wlist, xlist = select.select(read_set, write_set, [])
-
-@@ -1112,9 +1113,10 @@
-                     # When select has indicated that the file is writable,
-                     # we can write up to PIPE_BUF bytes without risk
-                     # blocking.  POSIX defines PIPE_BUF >= 512
--                    bytes_written = os.write(self.stdin.fileno(), input[:512])
--                    input = input[bytes_written:]
--                    if not input:
-+                    bytes_written = os.write(self.stdin.fileno(),
-+                                             input[input_done:input_done+512])
-+                    input_done += bytes_written
-+                    if input_done >= len(input):
-                         self.stdin.close()
-                         write_set.remove(self.stdin)
-
-            """
-            from subprocess import select
-            read_set = []
-            write_set = []
-            stdout = None # Return
-            stderr = None # Return
-
-            if self.stdin:
-                # Flush stdio buffer.  This might block, if the user has
-                # been writing to .stdin in an uncontrolled fashion.
-                self.stdin.flush()
-                if input:
-                    write_set.append(self.stdin)
-                else:
-                    self.stdin.close()
-            if self.stdout:
-                read_set.append(self.stdout)
-                stdout = []
-            if self.stderr:
-                read_set.append(self.stderr)
-                stderr = []
-
-            input_done = 0
-            while read_set or write_set:
-                rlist, wlist, xlist = select.select(read_set, write_set, [])
-
-                if self.stdin in wlist:
-                    # When select has indicated that the file is writable,
-                    # we can write up to PIPE_BUF bytes without risk
-                    # blocking.  POSIX defines PIPE_BUF >= 512
-                    bytes_written = os.write(self.stdin.fileno(),
-                                             input[input_done:input_done+512])
-                    input_done += bytes_written
-                    if input_done >= len(input):
-                        self.stdin.close()
-                        write_set.remove(self.stdin)
-
-                if self.stdout in rlist:
-                    data = os.read(self.stdout.fileno(), 1024)
-                    if data == "":
-                        self.stdout.close()
-                        read_set.remove(self.stdout)
-                    stdout.append(data)
-
-                if self.stderr in rlist:
-                    data = os.read(self.stderr.fileno(), 1024)
-                    if data == "":
-                        self.stderr.close()
-                        read_set.remove(self.stderr)
-                    stderr.append(data)
-
-            # All data exchanged.  Translate lists into strings.
-            if stdout is not None:
-                stdout = ''.join(stdout)
-            if stderr is not None:
-                stderr = ''.join(stderr)
-
-            # Translate newlines, if requested.  We cannot let the file
-            # object do the translation: It is based on stdio, which is
-            # impossible to combine with select (unless forcing no
-            # buffering).
-            if self.universal_newlines and hasattr(file, 'newlines'):
-                if stdout:
-                    stdout = self._translate_newlines(stdout)
-                if stderr:
-                    stderr = self._translate_newlines(stderr)
-
-            self.wait()
-            return (stdout, stderr)
+fully_buffered = fully_buffered_subprocess
 
 def go(command, stdin_lines=None):
   return fully_buffered(
