@@ -8,6 +8,7 @@ import os
 class fully_buffered_base(object):
 
   def raise_if_errors(self):
+    assert not self.join_stdout_stderr
     if (len(self.stderr_lines) != 0):
       msg = ["child process stderr output:"]
       msg.append("  command: " + repr(self.command))
@@ -42,21 +43,30 @@ class fully_buffered_base(object):
 class fully_buffered_simple(fully_buffered_base):
   """\
 Executes command, sends stdin_lines (str or sequence), then reads
-stdout_lines first, stderr_lines second.
+stdout_lines first, stderr_lines second (if join_stdout_stderr
+is False).
 
 The constructor may deadlock if the I/O buffers are too small to allow
 the blocking write and reads in the given sequence. Specifically,
 stdin_lines may be too big, or there may be too many stderr_lines,
-but there can be any number of stdout_lines. Tested under Linux,
-Mac OS X, Windows XP, IRIX, Tru64 Unix. The tests below are known
-to work portably with stdin_lines up to 1000000, stderr_lines up
-to 500. I.e. this simple implementation should cover most practical
-situations.
+but there can be any number of stdout_lines. The tests below are
+known to work under Mac OS X, Windows XP, IRIX, and Tru64 Unix with
+stdin_lines up to 1000000, stderr_lines up to 500. I.e. this simple
+implementation should cover most practical situations.
   """
 
-  def __init__(self, command, stdin_lines=None, bufsize=-1):
+  def __init__(self,
+        command,
+        stdin_lines=None,
+        join_stdout_stderr=False,
+        bufsize=-1):
     self.command = command
-    child_stdin, child_stdout, child_stderr = os.popen3(command, "t", bufsize)
+    self.join_stdout_stderr = join_stdout_stderr
+    if (join_stdout_stderr):
+      child_stdin, child_stdout = os.popen4(command, "t", bufsize)
+      child_stderr = None
+    else:
+      child_stdin, child_stdout, child_stderr = os.popen3(command,"t",bufsize)
     if (stdin_lines is not None):
       if (not isinstance(stdin_lines, str)):
         stdin_lines = os.linesep.join(stdin_lines)
@@ -65,7 +75,10 @@ situations.
       child_stdin.write(stdin_lines)
     child_stdin.close()
     self.stdout_lines = child_stdout.read().splitlines()
-    self.stderr_lines = child_stderr.read().splitlines()
+    if (child_stderr is not None):
+      self.stderr_lines = child_stderr.read().splitlines()
+    else:
+      self.stderr_lines = []
     child_stdout.close()
     child_stderr.close()
     self.return_code = None
@@ -73,8 +86,13 @@ situations.
 class fully_buffered_subprocess(fully_buffered_base):
   "This implementation is supposed to never block."
 
-  def __init__(self, command, stdin_lines=None, bufsize=-1):
+  def __init__(self,
+        command,
+        stdin_lines=None,
+        join_stdout_stderr=False,
+        bufsize=-1):
     self.command = command
+    self.join_stdout_stderr = join_stdout_stderr
     if (not isinstance(command, str)):
       command = subprocess.list2cmdline(command)
     if (stdin_lines is not None):
@@ -82,17 +100,25 @@ class fully_buffered_subprocess(fully_buffered_base):
         stdin_lines = os.linesep.join(stdin_lines)
         if (len(stdin_lines) != 0):
           stdin_lines += os.linesep
+    if (join_stdout_stderr):
+      stderr = subprocess.STDOUT
+    else:
+      stderr = subprocess.PIPE
     p = Popen(
       args=command,
       shell=True,
       bufsize=bufsize,
       stdin=subprocess.PIPE,
       stdout=subprocess.PIPE,
-      stderr=subprocess.PIPE,
+      stderr=stderr,
       universal_newlines=True, # splitlines takes care of this
       close_fds=not subprocess.mswindows)
-    self.stdout_lines, self.stderr_lines = [buf.splitlines()
-      for buf in p.communicate(input=stdin_lines)]
+    o, e = p.communicate(input=stdin_lines)
+    self.stdout_lines = o.splitlines()
+    if (join_stdout_stderr):
+      self.stderr_lines = []
+    else:
+      self.stderr_lines = e.splitlines()
     self.return_code = p.returncode
 
 if (subprocess is None):
@@ -199,124 +225,144 @@ else:
             self.wait()
             return (stdout, stderr)
 
-def exercise():
+def go(command, stdin_lines=None):
+  return fully_buffered(
+    command=command,
+    stdin_lines=stdin_lines,
+    join_stdout_stderr=True)
+
+def exercise(args=None):
   import sys
-  verbose = "--verbose" in sys.argv[1:]
+  if (args is None): args = sys.argv[1:]
+  verbose = "--verbose" in args
+  #
+  if ("--simple" in args):
+    fb = fully_buffered_simple
+  else:
+    fb = fully_buffered
   #
   for command in ["echo hello world", ("echo", "hello", "world")]:
-    result = fully_buffered(command=command).raise_if_errors()
-    if (verbose): print result.stdout_lines
-    assert result.stdout_lines == ["hello world"]
+    for result in [fb(command=command).raise_if_errors(),
+                   go(command=command)]:
+      if (verbose): print result.stdout_lines
+      assert result.stdout_lines == ["hello world"]
   #
   if (os.path.isfile("/bin/ls")):
     for command in ["/bin/ls /bin", ("/bin/ls", "/bin")]:
-      result = fully_buffered(command=command).raise_if_errors()
+      result = fb(command=command).raise_if_errors()
       if (verbose): print result.stdout_lines
       assert "ls" in result.stdout_lines
   if (os.path.isfile("/usr/bin/wc")):
     for command in ["/usr/bin/wc -l", ("/usr/bin/wc", "-l")]:
-      result = fully_buffered(command=command).raise_if_errors()
+      result = fb(command=command).raise_if_errors()
       if (verbose): print result.stdout_lines
       assert [s.strip() for s in result.stdout_lines] == ["0"]
-      result = fully_buffered(command=command, stdin_lines=["hello"]) \
+      result = fb(command=command, stdin_lines=["hello"]) \
         .raise_if_errors()
       if (verbose): print result.stdout_lines
       assert [s.strip() for s in result.stdout_lines] == ["1"]
-      result = fully_buffered(command=command, stdin_lines=["hello", "world"])\
+      result = fb(command=command, stdin_lines=["hello", "world"]) \
         .raise_if_errors()
       if (verbose): print result.stdout_lines
       assert [s.strip() for s in result.stdout_lines] == ["2"]
-      result = fully_buffered(
-        command=command, stdin_lines="hello\nworld\nbye\n") \
+      result = fb(command=command, stdin_lines="hello\nworld\nbye\n") \
         .raise_if_errors()
       if (verbose): print result.stdout_lines
       assert [s.strip() for s in result.stdout_lines] == ["3"]
   #
   if (os.name == "nt"):
-    result = fully_buffered(command="dir /?").raise_if_errors()
+    result = fb(command="dir /?").raise_if_errors()
     if (verbose): print result.stdout_lines
     assert len(result.stdout_lines) > 0
     windir = os.environ.get("windir", None)
     if (windir is not None and windir.find(" ") < 0):
-      result = fully_buffered(command="dir "+windir).raise_if_errors()
+      result = fb(command="dir "+windir).raise_if_errors()
       if (verbose): print result.stdout_lines
       assert len(result.stdout_lines) > 0
+  #
   pyexe = sys.executable
-  if (pyexe.find(" ") < 0):
-    if (os.environ.has_key("PYTHONPATH")):
-      if (not hasattr(os, "unsetenv")):
-        os.environ["PYTHONPATH"] = ""
-      else:
-        del os.environ["PYTHONPATH"]
-    if (os.name == "nt"):
-      result = fully_buffered(command="set").raise_if_errors()
-    elif (os.path.isfile("/usr/bin/printenv")):
-      result = fully_buffered(command="/usr/bin/printenv").raise_if_errors()
+  assert pyexe.count('"') == 0
+  pyexe = '"' + pyexe + '"'
+  if (os.name == "nt"):
+    pyexe = "call " + pyexe
+  #
+  if (os.environ.has_key("PYTHONPATH")):
+    if (not hasattr(os, "unsetenv")):
+      os.environ["PYTHONPATH"] = ""
     else:
-      result = None
-    if (result is not None):
-      if (verbose): print result.stdout_lines
-      for line in result.stdout_lines:
-        assert not line.startswith("PYTHONPATH") or line == "PYTHONPATH="
-    result = fully_buffered(command="%s -V" % pyexe)
-    if (verbose): print result.stderr_lines
-    assert result.stderr_lines == ["Python " + sys.version.split()[0]]
-    result = fully_buffered(
-      command='%s -c "print 3+4"' % pyexe).raise_if_errors()
+      del os.environ["PYTHONPATH"]
+  if (os.name == "nt"):
+    result = fb(command="set").raise_if_errors()
+  elif (os.path.isfile("/usr/bin/printenv")):
+    result = fb(command="/usr/bin/printenv").raise_if_errors()
+  else:
+    result = None
+  if (result is not None):
     if (verbose): print result.stdout_lines
-    assert result.stdout_lines == ["7"]
-    command = command = pyexe \
-      + ' -c "import sys; print len(sys.stdin.read().splitlines())"'
-    result = fully_buffered(command=command).raise_if_errors()
-    if (verbose): print result.stdout_lines
-    assert result.stdout_lines == ["0"]
-    result = fully_buffered(command=command, stdin_lines=["hello"]) \
-      .raise_if_errors()
-    if (verbose): print result.stdout_lines
-    assert result.stdout_lines == ["1"]
-    result = fully_buffered(command=command, stdin_lines=["hello", "world"]) \
-      .raise_if_errors()
-    if (verbose): print result.stdout_lines
-    assert result.stdout_lines == ["2"]
-    result = fully_buffered(
-      command=command, stdin_lines="hello\nworld\nbye\n") \
-      .raise_if_errors()
-    if (verbose): print result.stdout_lines
-    if ("--quick" in sys.argv[1:]):
-      n_lines_o = 10000
-    else:
-      n_lines_o = 1000000
-    if (subprocess is None):
-      n_lines_e = 500 # Windows blocks if this value is greater than 701
-    else:
-      n_lines_e = 10000
-    assert result.stdout_lines == ["3"]
-    result = fully_buffered(
-      command=command, stdin_lines=[str(i) for i in xrange(n_lines_o)]) \
-      .raise_if_errors()
-    if (verbose): print result.stdout_lines
-    assert result.stdout_lines == [str(n_lines_o)]
-    cat_command = command = pyexe \
-      + ' -c "import sys; sys.stdout.write(sys.stdin.read())"'
-    result = fully_buffered(
-      command=command, stdin_lines=[str(i) for i in xrange(n_lines_o)]) \
-      .raise_if_errors()
-    if (verbose): print result.stdout_lines[:5], result.stdout_lines[-5:]
-    assert len(result.stdout_lines) == n_lines_o
-    assert result.stdout_lines[:5] == ["0","1","2","3","4"]
-    assert result.stdout_lines[-5:] == [str(s)
-      for s in xrange(n_lines_o-5, n_lines_o)]
-    command = pyexe \
-      + ' -c "import sys; sys.stderr.write(sys.stdin.read())"'
-    result = fully_buffered(
-      command=command, stdin_lines=[str(i) for i in xrange(n_lines_e,0,-1)])
-    assert len(result.stdout_lines) == 0
-    if (verbose): print result.stderr_lines[:5], result.stderr_lines[-5:]
-    assert len(result.stderr_lines) == n_lines_e
-    assert result.stderr_lines[:5] == [str(s)
-      for s in xrange(n_lines_e, n_lines_e-5, -1)]
-    assert result.stderr_lines[-5:] == ["5","4","3","2","1"]
-    command = pyexe + "; ".join((''' -c "\
+    for line in result.stdout_lines:
+      assert not line.startswith("PYTHONPATH") or line == "PYTHONPATH="
+  #
+  result = fb(command="%s -V" % pyexe).raise_if_output()
+  if (verbose): print result.stderr_lines
+  assert result.stderr_lines == ["Python " + sys.version.split()[0]]
+  result = go(command="%s -V" % pyexe)
+  if (verbose): print result.stdout_lines
+  assert result.stdout_lines == ["Python " + sys.version.split()[0]]
+  result = fb(
+    command='%s -c "print 3+4"' % pyexe).raise_if_errors()
+  if (verbose): print result.stdout_lines
+  assert result.stdout_lines == ["7"]
+  command = command = pyexe \
+    + ' -c "import sys; print len(sys.stdin.read().splitlines())"'
+  result = fb(command=command).raise_if_errors()
+  if (verbose): print result.stdout_lines
+  assert result.stdout_lines == ["0"]
+  result = fb(command=command, stdin_lines=["hello"]) \
+    .raise_if_errors()
+  if (verbose): print result.stdout_lines
+  assert result.stdout_lines == ["1"]
+  result = fb(command=command, stdin_lines=["hello", "world"]) \
+    .raise_if_errors()
+  if (verbose): print result.stdout_lines
+  assert result.stdout_lines == ["2"]
+  result = fb(command=command, stdin_lines="hello\nworld\nbye\n") \
+    .raise_if_errors()
+  if (verbose): print result.stdout_lines
+  if ("--quick" in args):
+    n_lines_o = 10000
+  else:
+    n_lines_o = 1000000
+  if (fb is fully_buffered_simple):
+    n_lines_e = 500 # Windows blocks if this value is greater than 701
+  else:
+    n_lines_e = 10000
+  assert result.stdout_lines == ["3"]
+  result = fb(
+    command=command, stdin_lines=[str(i) for i in xrange(n_lines_o)]) \
+    .raise_if_errors()
+  if (verbose): print result.stdout_lines
+  assert result.stdout_lines == [str(n_lines_o)]
+  cat_command = command = pyexe \
+    + ' -c "import sys; sys.stdout.write(sys.stdin.read())"'
+  result = fb(
+    command=command, stdin_lines=[str(i) for i in xrange(n_lines_o)]) \
+    .raise_if_errors()
+  if (verbose): print result.stdout_lines[:5], result.stdout_lines[-5:]
+  assert len(result.stdout_lines) == n_lines_o
+  assert result.stdout_lines[:5] == ["0","1","2","3","4"]
+  assert result.stdout_lines[-5:] == [str(s)
+    for s in xrange(n_lines_o-5, n_lines_o)]
+  command = pyexe \
+    + ' -c "import sys; sys.stderr.write(sys.stdin.read())"'
+  result = fb(
+    command=command, stdin_lines=[str(i) for i in xrange(n_lines_e,0,-1)])
+  assert len(result.stdout_lines) == 0
+  if (verbose): print result.stderr_lines[:5], result.stderr_lines[-5:]
+  assert len(result.stderr_lines) == n_lines_e
+  assert result.stderr_lines[:5] == [str(s)
+    for s in xrange(n_lines_e, n_lines_e-5, -1)]
+  assert result.stderr_lines[-5:] == ["5","4","3","2","1"]
+  command = pyexe + "; ".join((''' -c "\
 import sys, os
 lines = sys.stdin.read()
 sys.stdout.write(lines)
@@ -326,20 +372,26 @@ lines.reverse()
 nl = chr(%d)
 sys.stderr.write(nl.join(lines)+nl)
 sys.stderr.flush()"''' % (n_lines_e, ord("\n"))).splitlines())
-    result = fully_buffered(
-      command=command, stdin_lines=[str(i) for i in xrange(n_lines_o)])
-    if (verbose): print result.stdout_lines[:5], result.stdout_lines[-5:]
-    if (verbose): print result.stderr_lines[:5], result.stderr_lines[-5:]
-    assert len(result.stdout_lines) == n_lines_o
-    assert result.stdout_lines[:5] == ["0","1","2","3","4"]
-    assert result.stdout_lines[-5:] == [str(s)
-      for s in xrange(n_lines_o-5, n_lines_o)]
-    assert len(result.stderr_lines) == n_lines_e
-    assert result.stderr_lines[:5] == [str(s)
-      for s in xrange(n_lines_e-1, n_lines_e-6, -1)]
-    assert result.stderr_lines[-5:] == ["4","3","2","1","0"]
+  result = fb(
+    command=command, stdin_lines=[str(i) for i in xrange(n_lines_o)])
+  if (verbose): print result.stdout_lines[:5], result.stdout_lines[-5:]
+  if (verbose): print result.stderr_lines[:5], result.stderr_lines[-5:]
+  assert len(result.stdout_lines) == n_lines_o
+  assert result.stdout_lines[:5] == ["0","1","2","3","4"]
+  assert result.stdout_lines[-5:] == [str(s)
+    for s in xrange(n_lines_o-5, n_lines_o)]
+  assert len(result.stderr_lines) == n_lines_e
+  assert result.stderr_lines[:5] == [str(s)
+    for s in xrange(n_lines_e-1, n_lines_e-6, -1)]
+  assert result.stderr_lines[-5:] == ["4","3","2","1","0"]
+  result = go(
+    command=command, stdin_lines=[str(i) for i in xrange(n_lines_o)])
+  if (verbose): print result.stdout_lines[:5], result.stdout_lines[-5:]
+  assert len(result.stdout_lines) == n_lines_o + n_lines_e
+  assert result.stdout_lines[:5] == ["0","1","2","3","4"]
+  assert result.stdout_lines[-5:] == ["4","3","2","1","0"]
   #
-  try: fully_buffered(command="C68649356116218352").raise_if_errors()
+  try: fb(command="C68649356116218352").raise_if_errors()
   except RuntimeError, e:
     if (verbose): print e
     assert str(e).startswith("child process stderr output:\n")
@@ -347,7 +399,7 @@ sys.stderr.flush()"''' % (n_lines_e, ord("\n"))).splitlines())
   #
   for n in [10,11,12,13]:
     try:
-      fully_buffered(
+      fb(
         command=cat_command,
         stdin_lines=[str(i) for i in xrange(n)]).raise_if_output()
     except RuntimeError, e:
@@ -359,14 +411,14 @@ sys.stderr.flush()"''' % (n_lines_e, ord("\n"))).splitlines())
         assert str(e).endswith("remaining 3 lines omitted.")
     else: raise RuntimeError("Exception expected.")
   #
-  fully_buffered(command=cat_command).raise_if_errors_or_output()
+  fb(command=cat_command).raise_if_errors_or_output()
   #
-  result = fully_buffered(command=["nslookup", "localhost"])
+  result = fb(command=["nslookup", "localhost"])
   if (verbose):
     print result.stdout_lines
     print result.stderr_lines
   #
-  while ("--forever" in sys.argv[1:]): pass
+  while ("--forever" in args): pass
   #
   print "OK"
 
