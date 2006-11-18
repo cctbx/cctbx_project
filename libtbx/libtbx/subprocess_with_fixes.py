@@ -1004,8 +1004,12 @@ class Popen(object):
 
                     # Close pipe fds.  Make sure we don't close the same
                     # fd more than once, or standard fds.
-                    for fd in set((p2cread, c2pwrite, errwrite))-set((0,1,2)):
-                        if fd: os.close(fd)
+                    fd_skip = {0:0, 1:0, 2:0}
+                    for fd in [p2cread, c2pwrite, errwrite]:
+                        if fd in fd_skip: continue
+                        os.close(fd)
+                        fd_skip[fd] = 0
+                    del fd_skip
 
                     # Close all other fds, if asked for
                     if close_fds:
