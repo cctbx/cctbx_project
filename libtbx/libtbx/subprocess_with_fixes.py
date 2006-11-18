@@ -1107,6 +1107,7 @@ class Popen(object):
                 read_set.append(self.stderr)
                 stderr = []
 
+            input_done = 0
             while read_set or write_set:
                 rlist, wlist, xlist = select.select(read_set, write_set, [])
 
@@ -1114,9 +1115,10 @@ class Popen(object):
                     # When select has indicated that the file is writable,
                     # we can write up to PIPE_BUF bytes without risk
                     # blocking.  POSIX defines PIPE_BUF >= 512
-                    bytes_written = os.write(self.stdin.fileno(), input[:512])
-                    input = input[bytes_written:]
-                    if not input:
+                    bytes_written = os.write(self.stdin.fileno(),
+                                             input[input_done:input_done+512])
+                    input_done += bytes_written
+                    if input_done >= len(input):
                         self.stdin.close()
                         write_set.remove(self.stdin)
 
