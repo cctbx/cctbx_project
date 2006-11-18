@@ -80,7 +80,8 @@ implementation should cover most practical situations.
     else:
       self.stderr_lines = []
     child_stdout.close()
-    child_stderr.close()
+    if (child_stderr is not None):
+      child_stderr.close()
     self.return_code = None
 
 class fully_buffered_subprocess(fully_buffered_base):
@@ -243,6 +244,7 @@ def exercise(args=None):
   #
   for command in ["echo hello world", ("echo", "hello", "world")]:
     for result in [fb(command=command).raise_if_errors(),
+                   fb(command=command, join_stdout_stderr=True),
                    go(command=command)]:
       if (verbose): print result.stdout_lines
       assert result.stdout_lines == ["hello world"]
