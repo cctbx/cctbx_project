@@ -150,6 +150,13 @@ namespace {
 #if defined(__INTEL_COMPILER)
     result += "__INTEL_COMPILER = " + to_str(__INTEL_COMPILER) + nl;
 #endif
+#if defined(__INTEL_COMPILER_BUILD_DATE)
+    result += "__INTEL_COMPILER_BUILD_DATE = "
+            + to_str(__INTEL_COMPILER_BUILD_DATE) + nl;
+#endif
+#if defined(__ICC)
+    result += "__ICC = " + to_str(__ICC) + nl;
+#endif
 #if defined(__LP64__)
     result += "__LP64__ = " + to_str(__LP64__) + nl;
 #endif
