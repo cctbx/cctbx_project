@@ -4,6 +4,7 @@ from libtbx.option_parser import option_parser
 from libtbx.str_utils import show_string
 from libtbx.utils import Sorry
 from libtbx import adopt_init_args
+from libtbx import easy_run
 import shutil
 import pickle
 from cStringIO import StringIO
@@ -12,31 +13,39 @@ import sys, os
 
 def get_hostname():
   try: import socket
+  except KeyboardInterrupt: raise
   except: return None
   try: return socket.gethostname()
+  except KeyboardInterrupt: raise
   except: return None
 
 def get_ldd_output(target=None):
   if (target is None): target = sys.executable
-  return os.popen4("ldd '%s'" % target, "r")[1].read()
+  return easy_run.go(command="ldd '%s'" % target).stdout_lines
 
 def get_hp_ux_acc_version():
-  version = os.popen4("aCC -V", "r")[1].read().strip().split()
+  run_out = easy_run.go(command="aCC -V").stdout_lines
+  version = run_out
+  if (len(version) > 0):
+    version = version[0].strip().split()
   # aCC: HP aC++/ANSI C B3910B A.06.01 [Jan 05 2005]
   if (len(version) >= 6 and version[5].startswith("A.")):
     return version[5]
-  sys.tracebacklimit = 0
-  raise RuntimeError("Unknown C++ compiler (aCC -V).")
+  raise Sorry(
+    "\n  ".join(["Unknown C++ compiler (aCC -V):"] + run_out))
 
 def get_mipspro_version():
-  version = os.popen4("CC -version", "r")[1].read().strip().split()
+  run_out = easy_run.go(command="CC -version").stdout_lines
+  version = run_out
+  if (len(version) > 0):
+    version = version[0].strip().split()
   if (version[:3] == "MIPSpro Compilers: Version ".split()):
     if (version[3].startswith("7.3")):
       return "73"
     elif (version[3].startswith("7.4")):
       return "74"
-  sys.tracebacklimit = 0
-  raise RuntimeError("Unknown MIPSpro compiler (CC -version).")
+  raise Sorry(
+    "\n  ".join(["Unknown MIPSpro compiler (CC -version):"] + run_out))
 
 def python_include_path(must_exist=True):
   if (sys.platform == "win32"):
@@ -281,8 +290,10 @@ class environment:
     if (self._shortpath_bat is None):
       self._shortpath_bat = self.under_build("shortpath.bat")
       assert os.path.exists(self._shortpath_bat)
-    return os.popen('call "%s" "%s"' %
-      (self._shortpath_bat, abs_path), "r").readline().rstrip()
+    return easy_run.fully_buffered(
+      command='call "%s" "%s"' % (self._shortpath_bat, abs_path)) \
+        .raise_if_errors() \
+        .stdout_lines[0].rstrip()
 
   def abs_path_clean(self, path):
     abs_path = os.path.normpath(os.path.abspath(path))
@@ -567,11 +578,14 @@ class environment:
         if (not os.path.isdir(os.path.dirname(path_libirc_so))):
           os.makedirs(os.path.dirname(path_libirc_so))
         if (not os.path.isfile(path_libirc_so)):
-          cmd = "%s -shared -o %s %s" % (
-            path_icc, path_libirc_so, path_libirc_a)
+          cmd = '%s -shared -o %s %s' % (
+            show_string(path_icc),
+            show_string(path_libirc_so),
+            show_string(path_libirc_a))
           print cmd
-          sys.stdout.flush()
-          os.system(cmd)
+          sys.stdout.write("\n".join(
+            easy_run.fully_buffered(command=cmd).raise_if_errors()
+              .stdout_lines))
         ld_preload.append(path_libirc_so)
     path_libunwind_so = None
     best_version = None
