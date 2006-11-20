@@ -46,11 +46,11 @@ namespace {
   };
 
   template <typename ValueType>
-  struct map_to_asu_wrappers
+  struct map_to_asu_no_bool
   {
     static
     void
-    no_bool(
+    wrapper(
       sgtbx::space_group_type const& sg_type,
       bool anomalous_flag,
       af::ref<index<> > const& miller_indices,
@@ -58,10 +58,14 @@ namespace {
     {
       map_to_asu(sg_type, anomalous_flag, miller_indices, data);
     }
+  };
 
+  template <typename ValueType>
+  struct map_to_asu_with_bool
+  {
     static
     void
-    with_bool(
+    wrapper(
       sgtbx::space_group_type const& sg_type,
       bool anomalous_flag,
       af::ref<index<> > const& miller_indices,
@@ -84,10 +88,10 @@ namespace {
                bool,
                af::ref<index<> > const&))
       map_to_asu);
-    def("map_to_asu", map_to_asu_wrappers<double>::no_bool);
-    def("map_to_asu", map_to_asu_wrappers<double>::with_bool);
-    def("map_to_asu", map_to_asu_wrappers<std::complex<double> >::no_bool);
-    def("map_to_asu", map_to_asu_wrappers<hendrickson_lattman<> >::no_bool);
+    def("map_to_asu", map_to_asu_no_bool<double>::wrapper);
+    def("map_to_asu", map_to_asu_with_bool<double>::wrapper);
+    def("map_to_asu", map_to_asu_no_bool<std::complex<double> >::wrapper);
+    def("map_to_asu", map_to_asu_no_bool<hendrickson_lattman<> >::wrapper);
     def("is_unique_set_under_symmetry", is_unique_set_under_symmetry, (
       arg_("space_group_type"),
       arg_("anomalous_flag"),
