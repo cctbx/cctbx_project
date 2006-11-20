@@ -545,6 +545,7 @@ class environment:
           and sys.platform == "linux2"
           and os.path.isfile("/etc/redhat-release")):
         try: red_hat_linux_release = open("/etc/redhat-release").readline()
+        except KeyboardInterrupt: raise
         except: pass
         else:
           if (    red_hat_linux_release.startswith("Red Hat Linux release")
@@ -554,55 +555,8 @@ class environment:
               '  LD_ASSUME_KERNEL=2.4.1',
               '  export LD_ASSUME_KERNEL',
               'fi'])
-      if (os.name == "posix" and self.build_options.compiler == "icc"):
-        addl_lines = self.create_posix_icc_ld_preload()
-        if (addl_lines is None):
-          raise Sorry("Cannot determine LD_PRELOAD for icc.")
-        lines.extend(addl_lines)
       self._dispatcher_precall_commands = lines
     return self._dispatcher_precall_commands
-
-  def create_posix_icc_ld_preload(self):
-    path_icc = libtbx.path.full_command_path("icc")
-    if (path_icc is None): return None
-    path_lib = os.sep.join(path_icc.split(os.sep)[:-2] + ["lib"])
-    if (not os.path.isdir(path_lib)): return None
-    ld_preload = []
-    path_libirc_a = os.path.join(path_lib, "libirc.a")
-    path_libirc_so = os.path.join(path_lib, "libirc.so")
-    if (os.path.isfile(path_libirc_so)):
-      ld_preload.append(path_libirc_so)
-    else:
-      if (os.path.isfile(path_libirc_a)):
-        path_libirc_so = self.under_build("lib/libirc.so")
-        if (not os.path.isdir(os.path.dirname(path_libirc_so))):
-          os.makedirs(os.path.dirname(path_libirc_so))
-        if (not os.path.isfile(path_libirc_so)):
-          cmd = '%s -shared -o %s %s' % (
-            show_string(path_icc),
-            show_string(path_libirc_so),
-            show_string(path_libirc_a))
-          print cmd
-          sys.stdout.write("\n".join(
-            easy_run.fully_buffered(command=cmd).raise_if_errors()
-              .stdout_lines))
-        ld_preload.append(path_libirc_so)
-    path_libunwind_so = None
-    best_version = None
-    for file_name in os.listdir(path_lib):
-      if (file_name.startswith("libunwind.so.")):
-        try: version = int(file_name.split(".")[2])
-        except: version = None
-        if (version is not None):
-          if (best_version is None or version > best_version):
-            path_libunwind_so = os.path.join(path_lib, file_name)
-            best_version = version
-    if (path_libunwind_so is not None):
-      ld_preload.append(path_libunwind_so)
-    if (len(ld_preload) == 0): return None
-    return [
-      'LD_PRELOAD="%s"' % os.pathsep.join(ld_preload),
-      'export LD_PRELOAD']
 
   def write_dispatcher_include_template(self):
     if (os.name == "nt"): return
