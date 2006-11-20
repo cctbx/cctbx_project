@@ -1,4 +1,5 @@
 from libtbx.command_line import create_unzipsfx
+from libtbx import easy_run
 import libtbx.path
 import sys, os
 
@@ -30,7 +31,7 @@ def run(args):
     cmd += " " + addl
   cmd += " < autorun"
   print cmd
-  os.system(cmd)
+  easy_run.fully_buffered(command=cmd).raise_if_errors().show_stdout()
   create_unzipsfx.create(zip_file_name=zip_file_name)
 
 if (__name__ == "__main__"):
