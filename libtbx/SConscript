@@ -92,7 +92,6 @@ supported_compilers = (
   "sunos_CC",
   "unix_gcc",
   "unix_ecc",
-  "unix_icc",
   "unix_icpc",
   "tru64_cxx",
   "hp_ux11_aCC",
@@ -339,34 +338,6 @@ else:
     """)
     if (libtbx.env.build_options.optimization):
       opts = ["-DNDEBUG", "-O", "-tpp2", "-ip", "-ftz"]
-    else:
-      opts = ["-O0"]
-    if (libtbx.env.build_options.debug_symbols):
-      opts.insert(0, "-g")
-    env_etc.cxxflags_base.extend(opts)
-    env_etc.ccflags_base.extend(opts)
-    env_etc.shlinkflags = "-shared"
-    env_etc.shlinkflags_bpl = env_etc.shlinkflags
-  elif (env_etc.compiler == "unix_icc"):
-    env_etc.static_libraries = 0
-    env_etc.static_bpl = 0
-    env_base.Replace(
-      CC="icc",
-      SHCC="icc",
-      CXX="icc",
-      LINK="icc",
-      SHCXX="icc",
-      SHLINK="icc",
-    )
-    env_etc.cxxflags_base = Split("""
-      -fPIC
-      -DBOOST_DISABLE_THREADS
-    """)
-    env_etc.ccflags_base = Split("""
-      -fPIC
-    """)
-    if (libtbx.env.build_options.optimization):
-      opts = ["-DNDEBUG", "-O2"]
     else:
       opts = ["-O0"]
     if (libtbx.env.build_options.debug_symbols):
