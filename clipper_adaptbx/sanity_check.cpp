@@ -10,22 +10,26 @@ show_as_unsigned(const char* label, FloatType const& x)
 {
   std::cout << label << std::endl;
   std::cout << "  value: " << x << std::endl;
-  if (sizeof(FloatType) ==     sizeof(unsigned int)) {
-    printf("  int(%u):  0x%x", sizeof(unsigned int),
-                                   *((unsigned int *)(&x)));
+  if (sizeof(FloatType) == sizeof(unsigned int)) {
+    printf("  int(%u):  0x%x",
+      static_cast<unsigned>(sizeof(unsigned int)),
+      *((unsigned int *)(&x)));
   }
-  else if (sizeof(FloatType) ==  sizeof(unsigned long)) {
-    printf("  int(%u):  0x%lxL", sizeof(unsigned long),
-                                     *((unsigned long *)(&x)));
+  else if (sizeof(FloatType) == sizeof(unsigned long)) {
+    printf("  int(%u):  0x%lxL",
+      static_cast<unsigned>(sizeof(unsigned long)),
+      *((unsigned long *)(&x)));
   }
 #if !defined(__osf__)
-  else if (sizeof(FloatType) ==     sizeof(unsigned long long)) {
+  else if (sizeof(FloatType) == sizeof(unsigned long long)) {
 #if defined(_MSC_VER)
-    printf("  int(%u):  0x%I64xLL", sizeof(unsigned long long),
+    printf("  int(%u):  0x%I64xLL",
+      sizeof(unsigned long long),
 #else
-    printf("  int(%u):  0x%llxLL",  sizeof(unsigned long long),
+    printf("  int(%u):  0x%llxLL",
+      static_cast<unsigned>(sizeof(unsigned long long)),
 #endif
-                                        *((unsigned long long *)(&x)));
+      *((unsigned long long *)(&x)));
   }
 #endif
   else {
