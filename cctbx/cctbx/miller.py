@@ -636,7 +636,9 @@ class set(crystal.symmetry):
   def generate_r_free_flags_on_lattice_symmetry(self,
                                                 fraction=0.10,
                                                 max_free=2000,
-                                                max_delta=5.0):
+                                                max_delta=5.0,
+                                                return_integer_array=False,
+                                                n_partitions=None):
     # the max_number of reflections is wrst the non anomalous set
     n_original = self.indices().size()
     if n_original<=0:
@@ -649,9 +651,18 @@ class set(crystal.symmetry):
     self.is_unique_set_under_symmetry()
     if fraction is not None:
       assert fraction > 0 and fraction < 0.5
+      assert n_partitions is None
+      assert return_integer_array is False
     if max_free is not None:
+      assert fraction is not None
       fraction = min( n_non_ano*fraction,
                       max_free )/float(n_non_ano)
+      assert n_partitions is None
+      assert return_integer_array is False
+    if return_integer_array:
+      assert fraction is None
+      assert max_free is None
+      assert n_partitions > 1
     #first make a set of temporary flags
     cb_op_to_niggli = self.change_of_basis_op_to_niggli_cell()
     tmp_ma = self.change_basis( cb_op_to_niggli )
@@ -672,19 +683,30 @@ class set(crystal.symmetry):
     n_non_ano_lat_sym = tmp_flags.indices().size()
     # now we can do the free r assignement in the lattice symmetry
     n = tmp_flags.indices().size()
-    group_size = 1/(fraction)
-    assert group_size >= 2
-    result = flex.bool(n, False)
-    i_start = 0
-    for i_group in count(1):
-      i_end = min(n, iround(i_group*group_size) )
-      if (i_start == i_end):
-        break
-      if (i_end + 1 == n):
-        i_end += 1
-      assert i_end - i_start >= 2
-      result[random.randrange(i_start, i_end)] = True
-      i_start = i_end
+    result = None
+    if not return_integer_array:
+      group_size = 1/(fraction)
+      assert group_size >= 2
+      result = flex.bool(n, False)
+      i_start = 0
+      for i_group in count(1):
+        i_end = min(n, iround(i_group*group_size) )
+        if (i_start == i_end):
+          break
+        if (i_end + 1 == n):
+          i_end += 1
+        assert i_end - i_start >= 2
+        result[random.randrange(i_start, i_end)] = True
+        i_start = i_end
+    else:
+      result = flex.size_t()
+      n_times = int(n/n_partitions)+1
+      for ii in xrange(n_times):
+        tmp = flex.random_double( n_partitions )
+        tmp = flex.sort_permutation( tmp )
+        result.extend( tmp )
+      result = flex.int( list(result[0:n]) )
+
     # please sort the reflections by resolution
     indices = tmp_flags.indices()
     result = result.select(
