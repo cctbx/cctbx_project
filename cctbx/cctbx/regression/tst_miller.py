@@ -164,6 +164,24 @@ def exercise_generate_r_free_flag_on_lat_sym(sg_info):
       d_min=3.0 )
     free_flags = miller_set.generate_r_free_flags(use_lattice_symmetry=True)
 
+    # check the generatiuon of integer flags please
+    integer_flags = miller_set.generate_r_free_flags_on_lattice_symmetry(
+      fraction=None,
+      max_free=None,
+      return_integer_array=True,
+      n_partitions=3
+    )
+    assert approx_equal(
+      float(integer_flags.data().size())/integer_flags.data().count( 0 ),3,eps=0.1 )
+    assert approx_equal(
+      float(integer_flags.data().size())/integer_flags.data().count( 1 ),3,eps=0.1 )
+    assert approx_equal(
+      float(integer_flags.data().size())/integer_flags.data().count( 2 ),3,eps=0.1 )
+    assert ( integer_flags.data().count( 3 ) == 0 )
+
+
+
+
 def exercise_generate_r_free_flags(verbose=0, use_lattice_symmetry=False):
   for anomalous_flag in [False, True]:
     miller_set = miller.build_set(
