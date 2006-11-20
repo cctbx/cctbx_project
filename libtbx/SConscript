@@ -1,5 +1,6 @@
 import libtbx.load_env
 import libtbx.config
+from libtbx import easy_run
 from libtbx.path import norm_join, full_command_path
 import sys, os
 
@@ -200,7 +201,9 @@ else:
       static_exe = None
     env_etc.shlinkflags = "-shared -expect_unresolved 'Py*'" \
                         + " -expect_unresolved '_Py*'"
-    for line in os.popen4("strings /usr/bin/ld")[1].read().splitlines():
+    for line in easy_run.fully_buffered(command="strings /usr/bin/ld") \
+                  .raise_if_errors() \
+                  .stdout_lines:
       if (line == "lock_registry"):
         env_etc.shlinkflags += " -Wl,-lock_registry"
         break
@@ -438,7 +441,9 @@ else:
       -fPIC
       -w
     """)
-    cxx_version = os.popen("c++ -dumpversion").read().strip()
+    cxx_version = easy_run.fully_buffered(command="c++ -dumpversion") \
+      .raise_if_errors() \
+      .stdout_lines[0].strip()
     cxx_major = cxx_version.split(".")[:1]
     if (len(cxx_major) == 1):
       try: cxx_major = int(cxx_major[0])
@@ -484,7 +489,9 @@ else:
       -w
       -DBOOST_DISABLE_THREADS
     """)
-    cxx_version = os.popen("c++ -dumpversion").read().strip()
+    cxx_version = easy_run.fully_buffered(command="c++ -dumpversion") \
+      .raise_if_errors() \
+      .stdout_lines[0].strip()
     cxx_major = cxx_version.split(".")[:1]
     if (len(cxx_major) == 1):
       try: cxx_major = int(cxx_major[0])

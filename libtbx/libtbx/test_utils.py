@@ -1,3 +1,4 @@
+from libtbx import easy_run
 import difflib
 from stdlib import math
 import sys
@@ -41,7 +42,7 @@ def run_tests(build_dir, dist_dir, tst_list):
     cmd += cmd_args
     print cmd
     sys.stdout.flush()
-    os.system(cmd)
+    easy_run.call(command=cmd)
     print
     sys.stderr.flush()
     sys.stdout.flush()
