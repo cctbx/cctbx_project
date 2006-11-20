@@ -1,5 +1,5 @@
 import subprocess_with_fixes as subprocess
-import os
+import sys, os
 
 class fully_buffered_base(object):
 
@@ -35,6 +35,11 @@ class fully_buffered_base(object):
     self.raise_if_errors()
     self.raise_if_output()
     return self
+
+  def show_stdout(self, out=None, prefix=""):
+    if (out is None): out = sys.stdout
+    for line in self.stdout_lines:
+      print >> out, prefix+line
 
 class fully_buffered_simple(fully_buffered_base):
   """\
@@ -126,7 +131,11 @@ def go(command, stdin_lines=None):
     stdin_lines=stdin_lines,
     join_stdout_stderr=True)
 
+def call(command):
+  return subprocess.call(args=command, shell=True)
+
 def exercise(args=None):
+  from cStringIO import StringIO
   import sys
   if (args is None): args = sys.argv[1:]
   verbose = "--verbose" in args
@@ -224,6 +233,7 @@ def exercise(args=None):
   result = fb(command=command, stdin_lines="hello\nworld\nbye\n") \
     .raise_if_errors()
   if (verbose): print result.stdout_lines
+  assert result.stdout_lines == ["3"]
   if ("--quick" in args):
     n_lines_o = 10000
   else:
@@ -232,7 +242,6 @@ def exercise(args=None):
     n_lines_e = 500 # Windows blocks if this value is greater than 701
   else:
     n_lines_e = 10000
-  assert result.stdout_lines == ["3"]
   result = fb(
     command=command, stdin_lines=[str(i) for i in xrange(n_lines_o)]) \
     .raise_if_errors()
@@ -240,6 +249,16 @@ def exercise(args=None):
   assert result.stdout_lines == [str(n_lines_o)]
   cat_command = command = pyexe \
     + ' -c "import sys; sys.stdout.write(sys.stdin.read())"'
+  result = fb(command=command, stdin_lines="hello\nworld\nbye\n") \
+    .raise_if_errors()
+  s = StringIO()
+  result.show_stdout(out=s, prefix=">:")
+  if (verbose): sys.stdout.write(s.getvalue())
+  assert s.getvalue() == """\
+>:hello
+>:world
+>:bye
+"""
   result = fb(
     command=command, stdin_lines=[str(i) for i in xrange(n_lines_o)]) \
     .raise_if_errors()
