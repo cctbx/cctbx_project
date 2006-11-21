@@ -93,6 +93,7 @@ supported_compilers = (
   "sunos_CC",
   "unix_gcc",
   "unix_ecc",
+  "unix_icc",
   "unix_icpc",
   "tru64_cxx",
   "hp_ux11_aCC",
@@ -104,6 +105,9 @@ if (not env_etc.compiler in supported_compilers):
   sys.tracebacklimit = 0
   raise RuntimeError("Unknown platform/compiler: %s. Choices are: %s" % (
     env_etc.compiler, ", ".join(supported_compilers)))
+if (env_etc.compiler == "unix_icpc"):
+  # backward compatibility for CCP4
+  env_etc.compiler = "unix_icc"
 
 static_exe = libtbx.env.build_options.static_exe
 
@@ -349,8 +353,7 @@ else:
     env_etc.ccflags_base.extend(opts)
     env_etc.shlinkflags = "-shared"
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
-  elif (env_etc.compiler == "unix_icpc"):
-    # support for CCP4 build, submitted by Charles Ballard
+  elif (env_etc.compiler == "unix_icc"):
     env_etc.static_libraries = 0
     env_etc.static_bpl = 0
     env_base.Replace(
