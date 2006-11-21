@@ -8,7 +8,7 @@ env_etc.include_registry.append(
 envlm = env.Copy(
   LIBS=env_etc.libm
 )
-if (env_etc.compiler != "unix_icpc"):
+if (env_etc.compiler != "unix_icc"):
   env_wd = env
   envlm_wd = envlm
 else:
