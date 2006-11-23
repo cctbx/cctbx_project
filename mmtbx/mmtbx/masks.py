@@ -44,8 +44,12 @@ class bulk_solvent(around_atoms):
      atom_radii = flex.double()
      # XXX use scattering dictionary and set_selected
      for scatterer in xray_structure.scatterers():
-       atom_radii.append(
-         van_der_waals_radii.vdw.table[scatterer.element_symbol()])
+       try:
+         atom_radii.append(
+           van_der_waals_radii.vdw.table[scatterer.element_symbol()])
+       except Exception, e:
+         raise RuntimeError,\
+               "scatterer.element_symbol()= %s"%str(scatterer.element_symbol())
      around_atoms.__init__(self,
        unit_cell=xray_structure.unit_cell(),
        space_group_order_z=xray_structure.space_group().order_z(),
