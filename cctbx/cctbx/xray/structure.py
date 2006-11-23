@@ -151,10 +151,12 @@ class structure(crystal.special_position_settings):
   def adjust_u_iso(self):
     self._scatterers.adjust_u_iso()
 
-  def adjust_occupancy(self):
+  def adjust_occupancy(self, occ_max, occ_min):
     occ = self._scatterers.extract_occupancies()
-    sel = (occ > 1.5) | (occ <= 0.0)
-    occ = occ.set_selected(sel, 1.0)
+    sel = (occ >= occ_max)
+    occ = occ.set_selected(sel, occ_max)
+    sel = (occ <= occ_min)
+    occ = occ.set_selected(sel, occ_min)
     self._scatterers.set_occupancies(occ)
 
   def translate(self, x=0, y=0, z=0):

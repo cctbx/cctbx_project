@@ -37,7 +37,9 @@ class lbfgs(object):
                      xray_scattering_dict     = None,
                      wxnc_scale               = None,
                      wxnu_scale               = None,
-                     selection                = None):
+                     selection                = None,
+                     occupancy_max            = None,
+                     occupancy_min            = None):
     # XXX remove selection from above
     global time_site_individual
     timer = user_plus_sys_time()
@@ -117,6 +119,9 @@ class lbfgs(object):
     self.compute_target(compute_gradients = False,u_iso_reinable_params = None)
     del self._lock_for_line_search
     self.xray_structure.tidy_us()
+    if(refine_occ):
+       self.xray_structure.adjust_occupancy(occ_max = occupancy_max,
+                                            occ_min = occupancy_min)
     self.fmodel.update_xray_structure(xray_structure = self.xray_structure,
                                       update_f_calc  = True)
     self.collector.collect(et   = self.f,
