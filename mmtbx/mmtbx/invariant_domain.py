@@ -181,7 +181,7 @@ the best course of action."""
                                  pdb_inp.atoms() ):
         r = self.matches[index][1]
         t = self.matches[index][2]
-        print >> file, iotbx.pdb.format_atom_record(
+        print >> file, pdb.format_atom_record(
           record_name={False: "ATOM", True: "HETATM"}[atom.hetero],
           serial=int(ser),
           name=lbl.name(),
