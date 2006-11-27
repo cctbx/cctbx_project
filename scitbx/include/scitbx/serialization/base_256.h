@@ -219,15 +219,14 @@ namespace scitbx { namespace serialization { namespace base_256 {
 
   namespace floating_point {
 
-    template <typename T>
     struct decomposition
     {
       decomposition(double x)
       {
-        f = static_cast<T>(std::frexp(x, &e));
+        f = std::frexp(x, &e);
       }
 
-      T f;
+      double f;
       int e;
     };
 
@@ -244,9 +243,9 @@ namespace scitbx { namespace serialization { namespace base_256 {
         *u_buf0 = 128;
         value = -value;
       }
-      decomposition<T> v(value);
-      for(unsigned i=0;i<sizeof(T);i++) {
-        v.f = static_cast<T>(std::ldexp(v.f, 8)); // v.f *= 256;
+      decomposition v(value);
+      for(unsigned i=0;i<sizeof(double);i++) {
+        v.f = std::ldexp(v.f, 8); // v.f *= 256;
         int d = static_cast<int>(v.f);
         SCITBX_ASSERT(d < 256);
         *u_buf++ = static_cast<unsigned char>(d);
@@ -262,8 +261,7 @@ namespace scitbx { namespace serialization { namespace base_256 {
     {
       from_string(const char* buf)
       :
-        end(buf),
-        value(0)
+        end(buf)
       {
         const unsigned char*
           u_end = reinterpret_cast<const unsigned char*>(end);
@@ -273,20 +271,22 @@ namespace scitbx { namespace serialization { namespace base_256 {
         int len = *u_end & 0x7FU;
 #endif
         if (len == 0) {
+          value = 0;
           end++;
           return;
         }
         const unsigned char*
           u_buf = reinterpret_cast<const unsigned char*>(buf);
         u_end += len-1;
+        double vd = 0;
         for(;;) {
-          value += static_cast<T>(*u_end--);
-          value = static_cast<T>(std::ldexp(value, -8)); // value /= 256;
+          vd += static_cast<double>(*u_end--);
+          vd = std::ldexp(vd, -8); // vd /= 256;
           if (u_end == u_buf) break;
         }
-        if (*u_buf > 128) value = -value;
         base_256::from_string<int> e_proxy(buf + len);
-        value = static_cast<T>(std::ldexp(value, e_proxy.value));
+        value = static_cast<T>(std::ldexp(vd, e_proxy.value));
+        if (*u_buf > 128) value = -value;
         end = e_proxy.end;
       }
 
