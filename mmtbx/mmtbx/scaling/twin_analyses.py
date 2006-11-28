@@ -1514,7 +1514,7 @@ class twin_results_interpretation(object):
           print >> self.twinning_verdict, \
             "be the reason for the departure of the intensity statistics from normality."
           print >> self.twinning_verdict, \
-            "It might be worthwhile carrying refinement with a twin specific target function."
+            "It might be worthwhile carrying out refinement with a twin specific target function."
           self.twinning_short=True
           if not self.twin_results.input_point_group == self.twin_results.suspected_point_group:
             print >> self.twinning_verdict
