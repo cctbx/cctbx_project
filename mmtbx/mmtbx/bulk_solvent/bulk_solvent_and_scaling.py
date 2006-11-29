@@ -351,6 +351,8 @@ class uaniso_ksol_bsol_scaling_minimizer(object):
                max_iterations=50,
                lbfgs_exception_handling_params = None,
                symmetry_constraints_on_b_cart = False,
+               u_min_max = 1000.,
+               u_min_min =-1000.,
                k_sol_max = 10.,
                k_sol_min =-10.,
                b_sol_max = 500.,
@@ -443,6 +445,8 @@ class uaniso_ksol_bsol_scaling_minimizer(object):
 
   def compute_functional_and_gradients(self):
     self.unpack_x()
+    self.u_min = tuple([max(self.u_min_min, min(self.u_min_max, v))
+      for v in self.u_min])
     if(self.b_min > self.b_sol_max): self.b_min = self.b_sol_max
     if(self.b_min < self.b_sol_min): self.b_min = self.b_sol_min
     if(self.k_min > self.k_sol_max): self.b_min = self.k_sol_max
