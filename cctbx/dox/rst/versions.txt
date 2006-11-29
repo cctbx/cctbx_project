@@ -32,13 +32,17 @@ cctbx links
 
   - `IUCr Computing Commission No. 5, 2005/01 <http://cci.lbl.gov/publications/download/iucrcompcomm_jan2005.pdf>`_
 
-  - `IUCr Computing Commission No. 6, 2005/09 <http://iucrcomputing.ccp14.ac.uk/iucr-top/comm/ccom/newsletters/2005sep/index.html>`_ (see also: `Tutorials Siena 2005 IUCr Crystallographic Computing School <siena2005/>`_)
+  - `IUCr Computing Commission No. 6, 2005/09 <http://iucrcomputing.ccp14.ac.uk/iucr-top/comm/ccom/newsletters/2005sep/>`_ (see also: `Tutorials Siena 2005 IUCr Crystallographic Computing School <siena2005/>`_)
+
+  - `IUCr Computing Commission No. 7, 2006/11 <http://iucrcomputing.ccp14.ac.uk/iucr-top/comm/ccom/newsletters/2006nov/>`_
 
   - `CCP4 newsletter No. 42, Summer 2005: The Phenix refinement framework <http://www.ccp4.ac.uk/newsletters/newsletter42/articles/Afonine_GrosseKunstleve_Adams_18JUL2005.doc>`_
 
   - `CCP4 newsletter No. 42, Summer 2005: Characterization of X-ray data sets <http://www.ccp4.ac.uk/newsletters/newsletter42/articles/CCP4_2005_PHZ_RWGK_PDA.doc>`_
 
   - `CCP4 newsletter No. 43, Winter 2005: Xtriage and Fest: automatic assessment of X-ray data and substructure structure factor estimation <http://www.ccp4.ac.uk/newsletters/newsletter43/articles/PHZ_RWGK_PDA.pdf>`_
+
+  - `CCP4 newsletter No. 44, Summer 2006: Exploring Metric Symmetry <http://www.ccp4.ac.uk/newsletters/newsletter44/articles/explore_metric_symmetry.html>`_
 
 - Notes by Michael Hohn:
 
