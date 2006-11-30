@@ -1,6 +1,11 @@
 import subprocess_with_fixes as subprocess
 import sys, os
 
+def _show_lines(lines, out, prefix):
+  if (out is None): out = sys.stdout
+  for line in lines:
+    print >> out, prefix+line
+
 class fully_buffered_base(object):
 
   def raise_if_errors(self):
@@ -36,10 +41,11 @@ class fully_buffered_base(object):
     self.raise_if_output()
     return self
 
+  def show_stderr(self, out=None, prefix=""):
+    _show_lines(lines=self.stderr_lines, out=out, prefix=prefix)
+
   def show_stdout(self, out=None, prefix=""):
-    if (out is None): out = sys.stdout
-    for line in self.stdout_lines:
-      print >> out, prefix+line
+    _show_lines(lines=self.stdout_lines, out=out, prefix=prefix)
 
 class fully_buffered_simple(fully_buffered_base):
   """\
@@ -247,6 +253,18 @@ def exercise(args=None):
     .raise_if_errors()
   if (verbose): print result.stdout_lines
   assert result.stdout_lines == [str(n_lines_o)]
+  command = pyexe \
+    + ' -c "import sys; sys.stderr.write(sys.stdin.read())"'
+  result = fb(command=command, stdin_lines="Hello\nWorld\nBye\n") \
+    .raise_if_output()
+  s = StringIO()
+  result.show_stderr(out=s, prefix="%(")
+  if (verbose): sys.stdout.write(s.getvalue())
+  assert s.getvalue() == """\
+%(Hello
+%(World
+%(Bye
+"""
   cat_command = command = pyexe \
     + ' -c "import sys; sys.stdout.write(sys.stdin.read())"'
   result = fb(command=command, stdin_lines="hello\nworld\nbye\n") \
