@@ -20,6 +20,9 @@ def getenv_bool(variable_name, default=False):
       ' (current value: "%s").' % (variable_name, value))
   return (value_lower == "true")
 
+def file_size(file_name):
+  return os.stat(file_name).st_size
+
 def copy_file(source, target):
   assert os.path.isfile(source)
   if (os.path.isdir(target)):
