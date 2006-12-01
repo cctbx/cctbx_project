@@ -126,7 +126,6 @@ af::flex_int ReadDIP(const std::string& filename,
   af::flex_int z(af::flex_grid<>(size1,size2));
 
   int* begin = z.begin();
-  std::size_t sz = z.size();
 
   if (endian_swap_required) {
 

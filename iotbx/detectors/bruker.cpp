@@ -125,7 +125,7 @@ if (debug) {
           if (verbo) printf(">>>>>oscillation range  %g \n",oscrange); }
  else if (strncmp(line,"CCDPARM:",8)==0)
     { n = sscanf(line+8," %lg %lg %lg %lg %lg",&d,&d,&d,&d,&fullscale);
-      saturate = fullscale;
+      saturate = (int)fullscale;
           if (verbo) printf(">>>>>fullscale  %g \n",fullscale); }
  else if (strncmp(line,"DETTYPE:",8)==0)
     { n = sscanf(line+8," %s %lg %lg",dettype,&pixpercm,&delta);
@@ -314,7 +314,6 @@ iotbx::detectors::bruker::linearintdata() {
   scitbx::af::flex_int z(scitbx::af::flex_grid<>(ccdata.size(),ccdata.size()));
 
   int* begin = z.begin();
-  std::size_t sz = z.size();
 
   for (int i = 0 ; i < ccdata.size(); ++i) {
     begin = std::copy(ccdata[i].begin(), ccdata[i].end(), begin);
