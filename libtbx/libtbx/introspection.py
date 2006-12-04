@@ -76,6 +76,7 @@ except AttributeError:
 
 class virtual_memory_info(proc_file_reader):
 
+  have_vmpeak = False
   max_virtual_memory_size = 0
   max_resident_set_size = 0
   max_stack_size = 0
@@ -85,6 +86,14 @@ class virtual_memory_info(proc_file_reader):
       self.proc_status = open(_proc_status).read()
     except IOError:
       self.proc_status = None
+
+  def virtual_memory_peak_size(self):
+    result = self.get_bytes('VmPeak:')
+    if (result is not None):
+      virtual_memory_info.have_vmpeak = True
+    virtual_memory_info.max_virtual_memory_size = max(
+    virtual_memory_info.max_virtual_memory_size, result)
+    return result
 
   def virtual_memory_size(self):
     result = self.get_bytes('VmSize:')
@@ -106,6 +115,7 @@ class virtual_memory_info(proc_file_reader):
 
   def update_max(self):
     if (self.proc_status is not None):
+      self.virtual_memory_peak_size()
       self.virtual_memory_size()
       self.resident_set_size()
       self.stack_size()
@@ -124,12 +134,17 @@ class virtual_memory_info(proc_file_reader):
       print >> out, lrss, fmt % rss
       print >> out, lsts, fmt % sts
     else:
+      self.virtual_memory_peak_size()
       vmi = virtual_memory_info
       max_vms = size_as_string_with_commas(vmi.max_virtual_memory_size)
       max_rss = size_as_string_with_commas(vmi.max_resident_set_size)
       max_sts = size_as_string_with_commas(vmi.max_stack_size)
       max_fmt = "%%%ds" % max(len(max_vms), len(max_rss), len(max_sts))
-      print >> out, lvms, fmt % vms, "  approx. max:", max_fmt % max_vms
+      if (vmi.have_vmpeak):
+        vms_what_max = "    exact max:"
+      else:
+        vms_what_max = "  approx. max:"
+      print >> out, lvms, fmt % vms, vms_what_max,     max_fmt % max_vms
       print >> out, lrss, fmt % rss, "  approx. max:", max_fmt % max_rss
       print >> out, lsts, fmt % sts, "  approx. max:", max_fmt % max_sts
 
