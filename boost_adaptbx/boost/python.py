@@ -1,5 +1,14 @@
 import sys
 
+python_libstdcxx_so = None
+if (sys.platform.startswith("linux")):
+  from libtbx import easy_run
+  for line in easy_run.fully_buffered(
+                command='/usr/bin/ldd "%s"' % sys.executable).stdout_lines:
+    if (line.strip().startswith("libstdc++.so")):
+      python_libstdcxx_so = line.split()[0]
+      break
+
 def import_ext(name):
   components = name.split(".")
   if (len(components) > 1):
@@ -17,6 +26,20 @@ def import_ext(name):
     mod = getattr(mod, comp)
   if (previous_dlopenflags is not None):
     sys.setdlopenflags(previous_dlopenflags)
+  if (python_libstdcxx_so is not None):
+    mod_file = getattr(mod, "__file__", None)
+    if (mod_file is not None):
+      for line in easy_run.fully_buffered(
+                    command='/usr/bin/ldd "%s"' % mod_file).stdout_lines:
+        if (line.strip().startswith("libstdc++.so")):
+          mod_libstdcxx_so = line.split()[0]
+          if (mod_libstdcxx_so != python_libstdcxx_so):
+            raise SystemError("""\
+FATAL: libstdc++.so mismatch:
+  %s: %s
+  %s: %s""" % (sys.executable, python_libstdcxx_so,
+               mod_file, mod_libstdcxx_so))
+          break
   return mod
 
 ext = import_ext("boost_python_meta_ext")
