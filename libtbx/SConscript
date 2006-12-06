@@ -46,6 +46,17 @@ env_etc.darwin_framework_path = darwin_framework_path
 env_etc.include_registry = libtbx.config.include_registry() \
   .scan_boost(flag=libtbx.env.build_options.scan_boost)
 
+def disable_strict_aliasing(env):
+  if (env_etc.compiler in ["unix_gcc", "darwin_c++", "darwin_gcc"]):
+    opt = ["-fno-strict-aliasing"]
+    env.Append(
+      CXXFLAGS=opt,
+      SHCXXFLAGS=opt,
+      CCFLAGS=opt,
+      SHCCFLAGS=opt)
+
+env_etc.disable_strict_aliasing = disable_strict_aliasing
+
 compiler = libtbx.env.build_options.compiler
 if (sys.platform == "win32"):
   env_etc.compiler = "win32_cl"
