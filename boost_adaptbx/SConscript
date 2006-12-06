@@ -73,6 +73,7 @@ if (not env_etc.no_boost_python):
   env.Append(CXXFLAGS=env_etc.cxxflags_bpl_defines_base)
   env.Append(CXXFLAGS="-DBOOST_PYTHON_SOURCE")
   env.Replace(LINKFLAGS=env_etc.shlinkflags)
+  env_etc.disable_strict_aliasing(env=env)
   env_etc.include_registry.append(
     env=env,
     paths=[env_etc.boost_include, env_etc.python_include])
