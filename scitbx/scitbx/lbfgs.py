@@ -165,10 +165,7 @@ def run_c_plus_plus(target_evaluator,
     minimizer.error = str(e)
     if (log is not None):
       print >> log, "lbfgs minimizer exception:", str(e)
-    if (    x is not None
-        and x_after_step is not None
-        and minimizer.error.find(
-              "Rounding errors prevent further progress.") < 0):
+    if (x_after_step is not None):
       x.clear()
       x.extend(x_after_step)
     error_classification = exception_handling_params.filter(
