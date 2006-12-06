@@ -315,13 +315,25 @@ def exercise_misc():
     assert str(e).find("SCITBX_ASSERT(grid.size_1d() == a.size())") > 0
   else: raise RuntimeError("Exception expected.")
 
-def exercise_1d_slicing_core(a, numeric_version=""):
-  assert tuple(a[:]) == (1,2,3,4,5)
+def exercise_1d_slicing_core(a):
+  if (tuple(a[:]) != ()):
+    assert tuple(a[:]) == (1,2,3,4,5)
+    assert tuple(a[0:]) == (1,2,3,4,5)
+    assert tuple(a[1:]) == (2,3,4,5)
+    assert tuple(a[-2:]) == (4,5)
+    assert tuple(a[-1:]) == (5,)
+  else:
+    # Numeric slicing appears to be broken in some versions (24.2)
+    assert hasattr(a, "typecode") # assert is Numeric array
+    assert tuple(a[0:]) == ()
+    assert tuple(a[1:]) == ()
+    assert tuple(a[-2:]) == ()
+    assert tuple(a[-1:]) == ()
   assert tuple(a[::]) == (1,2,3,4,5)
-  assert tuple(a[0:]) == (1,2,3,4,5)
-  assert tuple(a[1:]) == (2,3,4,5)
-  assert tuple(a[-2:]) == (4,5)
-  assert tuple(a[-1:]) == (5,)
+  assert tuple(a[0::]) == (1,2,3,4,5)
+  assert tuple(a[1::]) == (2,3,4,5)
+  assert tuple(a[-2::]) == (4,5)
+  assert tuple(a[-1::]) == (5,)
   assert tuple(a[-6::]) == (1,2,3,4,5) # Numeric-21.0 a[-6:] is different
   assert tuple(a[-7::]) == (1,2,3,4,5) # Numeric-21.0 a[-7:] is different
   assert tuple(a[:-1]) == (1,2,3,4)
@@ -350,8 +362,8 @@ def exercise_1d_slicing_core(a, numeric_version=""):
   assert tuple(a[-1::-2]) == (5,3,1)
   assert tuple(a[-1:1:-2]) == (5,3)
   assert tuple(a[-1:2:-2]) == (5,)
-  if (not numeric_version.startswith("24.")):
-    assert tuple(a[3:3:0]) == ()
+  try: tuple(a[3:3:0]) == ()
+  except ValueError, e: assert str(e) == "slice step can not be zero"
 
 def exercise_1d_slicing():
   exercise_1d_slicing_core(flex.int((1,2,3,4,5)))
@@ -361,7 +373,7 @@ def exercise_1d_slicing():
     pass
   else:
     print "Testing compatibility with Numeric slicing...",
-    exercise_1d_slicing_core(Numeric.array((1,2,3,4,5)), Numeric.__version__)
+    exercise_1d_slicing_core(Numeric.array((1,2,3,4,5)))
     print "OK"
   assert list(flex.slice_indices(5, slice(10))) == [0,1,2,3,4]
   assert list(flex.slice_indices(5, slice(0))) == []
