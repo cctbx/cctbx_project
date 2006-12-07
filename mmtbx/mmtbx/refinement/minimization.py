@@ -122,6 +122,9 @@ class lbfgs(object):
     if(refine_occ):
        self.xray_structure.adjust_occupancy(occ_max = occupancy_max,
                                             occ_min = occupancy_min)
+    if(self.neutron_refinement):
+       self.xray_structure.scattering_type_registry(
+                                       custom_dict = self.xray_scattering_dict)
     self.fmodel.update_xray_structure(xray_structure = self.xray_structure,
                                       update_f_calc  = True)
     self.collector.collect(et   = self.f,
@@ -130,6 +133,11 @@ class lbfgs(object):
                            rxw  = self.fmodel.r_work(),
                            rxf  = self.fmodel.r_free())
     if(self.neutron_refinement):
+       self.xray_structure.scattering_type_registry(
+                                    custom_dict = self.neutron_scattering_dict)
+       self.fmodel_neutron.update_xray_structure(
+                                         xray_structure = self.xray_structure,
+                                         update_f_calc  = True)
        self.collector.collect(rnw = self.fmodel_neutron.r_work(),
                               rnf = self.fmodel_neutron.r_free())
     time_site_individual += timer.elapsed()

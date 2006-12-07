@@ -162,7 +162,7 @@ class alpha_beta_est_manager(object):
     if(self.flags.count(1) == 0):
       self.f_obs_test  = self.f_obs.select(~self.flags)
       self.f_calc_test = self.f_calc.select(~self.flags)
-    self.f_obs_test.setup_binner(reflections_per_bin= self.test_ref_in_bin)
+    self.f_obs_test.setup_binner_counting_sorted(reflections_per_bin= self.test_ref_in_bin)
     self.fo_test_sets = []
     self.fm_test_sets = []
     self.indices_sets = []
