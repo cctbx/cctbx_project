@@ -168,17 +168,17 @@ keys_other = ["phase_meas",
 possible_keys = keys_indices + keys_f_obs + keys_sf_obs + keys_i_obs + \
                 keys_si_obs + keys_status + keys_other
 
-tw_flags = ["1","1.","1.0","1.00","1.000","1.0000","-1","-1.","-1.0","-1.00",
-            "-1.000","0","0.0","0.","0.00","0.000","0.0000","x","o","f","-",
-            ">","<","h","l","O","F"]
+ccp4_range = range(-99,-1)+ range(2,100)
+tw_flags_num = ["1","1.","1.0","1.00","1.000","1.0000","-1","-1.","-1.0","-1.00",
+            "-1.000","0","0.0","0.","0.00","0.000","0.0000"]+ \
+    [str(i) for i in ccp4_range] + ccp4_range + \
+    [str("%.1f"%i) for i in ccp4_range]+[str("%.2f"%i) for i in ccp4_range]+\
+    [str("%.3f"%i) for i in ccp4_range]+[str("%.1f"%i)[:-1] for i in ccp4_range]
+
 cif_flags = ["x","o","f","-",">","<","h","l","O","F"]
 
-ccp4_range = range(-99,-1)+ range(2,100)
+tw_flags_all = tw_flags_num + cif_flags
 
-tw_flags_all = tw_flags + [str(i) for i in ccp4_range] + ccp4_range + \
-    [str("%.1f"%i) for i in ccp4_range]+[str("%.2f"%i) for i in ccp4_range]
-
-pseudo = ["o","O","1","1.0", 0.0, 0, "0", "0.0", 1.0, 1]
 ###############################################################################
 mon_lib_srv = monomer_library.server.server()
 ener_lib    = monomer_library.server.ener_lib()
@@ -261,17 +261,28 @@ def get_fmodel_object(xray_structure, f_obs, r_free_flags, pdb, hkl, out):
   return fmodel
 
 def update_solvent_and_scale_helper(fmodel, params, low_res = 6.0,
-                                                           sigma_cutoff = 2.0):
+                              sigma_cutoff = 2.0, out=None,pdb=None, hkl=None):
+  proceed = True
+  r_work, r_free = None,None
   f_obs = fmodel.f_obs
   selection = f_obs.all_selection()
   selection &= f_obs.d_spacings().data() <= low_res
   selection &= (f_obs.data() > f_obs.sigmas()*sigma_cutoff)
   selection &= (f_obs.d_star_sq().data() > 0)
-  fmodel = fmodel.select(selection = selection)
-  fmodel.update(k_sol=0, b_sol=0, b_cart=[0,0,0,0,0,0])
-  fmodel.update_solvent_and_scale(params = params, verbose = -1)
-  r_work = fmodel.r_work()*100
-  r_free = fmodel.r_free()*100
+  try:
+    assert selection.count(True) > 0
+  except Exception, e:
+    print >> out, "ERROR_(No_rflections_left after sigma and resolutions cutoff:", pdb[-11:], hkl[:-4]
+    proceed = False
+  if(proceed):
+     try:
+       fmodel = fmodel.select(selection = selection)
+       fmodel.update(k_sol=0, b_sol=0, b_cart=[0,0,0,0,0,0])
+       fmodel.update_solvent_and_scale(params = params, verbose = -1)
+       r_work = fmodel.r_work()*100
+       r_free = fmodel.r_free()*100
+     except Exception, e:
+       print >> out, "ERROR_(update_solvent_and_scale2):", pdb[-11:], hkl[:-4]
   return r_work, r_free
 
 def update_solvent_and_scale(fmodel, pdb, hkl, out):
@@ -279,16 +290,15 @@ def update_solvent_and_scale(fmodel, pdb, hkl, out):
     status = None
     params = bss.solvent_and_scale_params()
     params.b_sol_min=0.0
-    params.b_sol_max=300.0
+    params.b_sol_max=200.0
     params.k_sol_min=0.0
-    params.k_sol_max=3.0
-    params.anisotropic_scaling=False
+    params.k_sol_max=1.5
     fmodel.update_solvent_and_scale(params = params, verbose = -1)
     r_work = fmodel.r_work()*100
     r_free = fmodel.r_free()*100
     rwrf_delta = 1.5
     if(fmodel.f_obs.d_min() < 1.2): rwrf_delta = 0.5
-    if(r_work > r_free or abs(r_work - r_free) <= rwrf_delta or r_work > 40.0):
+    if(r_work > r_free or abs(r_work - r_free) <= rwrf_delta or r_work > 45.0):
        status = "bad"
     else:
        status = "good"
@@ -299,56 +309,53 @@ def update_solvent_and_scale(fmodel, pdb, hkl, out):
     fmodel = None
   convert_to_intensities = False
   convert_to_amplitudes  = False
-  try:
-    if([status, fmodel].count(None) == 0 and status == "bad"):
-       fmodel_dc = fmodel.deep_copy()
-       rw, rf = update_solvent_and_scale_helper(fmodel = fmodel_dc,
-                                                               params = params)
-       check = (rw>rf or abs(rw-rf) <= rwrf_delta or rw > 40. or abs(r_work-rw) <= 5.)
-       if(check): status = "bad"
-       else:      status = "good"
-    if([status, fmodel].count(None) == 0 and status == "bad"):
-       fmodel_dc = fmodel.deep_copy()
-       f_obs = fmodel_dc.f_obs
-       f_obs = f_obs.set_observation_type(observation_type = None)
-       f_obs = f_obs.f_sq_as_f()
-       fmodel_dc.update(f_obs = f_obs)
-       rw, rf = update_solvent_and_scale_helper(fmodel = fmodel_dc,
-                                                               params = params)
-       check = (rw>rf or abs(rw-rf) <= rwrf_delta or rw > 40. or abs(r_work-rw) <= 5.)
-       if(check): status = "bad"
-       else:
-          status = "good"
-          convert_to_amplitudes = True
-    if([status, fmodel].count(None) == 0 and status == "bad"):
-       fmodel_dc = fmodel.deep_copy()
-       f_obs = fmodel_dc.f_obs
-       f_obs = f_obs.set_observation_type(observation_type = None)
-       f_obs = f_obs.f_as_f_sq()
-       fmodel_dc.update(f_obs = f_obs)
-       rw, rf = update_solvent_and_scale_helper(fmodel = fmodel_dc,
-                                                               params = params)
-       check = (rw>rf or abs(rw-rf) <= rwrf_delta or rw > 40. or abs(r_work-rw) <= 5.)
-       if(check): status = "bad"
-       else:
-          status = "good"
-          convert_to_intensities = True
-    if(status == "good" and
-              [convert_to_intensities, convert_to_amplitudes].count(True) > 0):
-       fmodel.f_obs.set_observation_type(observation_type = None)
-       if(convert_to_intensities):
-          fmodel.update(k_sol=0, b_sol=0, b_cart=[0,0,0,0,0,0],
-                                              f_obs = fmodel.f_obs.f_as_f_sq())
-       if(convert_to_amplitudes):
-          fmodel.update(k_sol=0, b_sol=0, b_cart=[0,0,0,0,0,0],
-                                              f_obs = fmodel.f_obs.f_sq_as_f())
-       fmodel.f_obs.set_observation_type_xray_amplitude()
-       fmodel.update_solvent_and_scale(params = params, verbose = -1)
-  except KeyboardInterrupt: raise
-  except:
-    print >> out, "ERROR_(update_solvent_and_scale2): %s"%pdb[-11:], hkl[:-4]
-    status = None
-    fmodel = None
+  if([status, fmodel].count(None) == 0 and status == "bad"):
+     fmodel_dc = fmodel.deep_copy()
+     rw, rf = update_solvent_and_scale_helper(fmodel = fmodel_dc,
+                                                             params = params, out=out,pdb=pdb,hkl=hkl)
+     if([rw, rf].count(None) > 0): return None, None
+     check = (rw>rf or abs(rw-rf) <= rwrf_delta or rw > 45. or abs(r_work-rw) <= 5.)
+     if(check): status = "bad"
+     else:      status = "good"
+  if([status, fmodel].count(None) == 0 and status == "bad"):
+     fmodel_dc = fmodel.deep_copy()
+     f_obs = fmodel_dc.f_obs
+     f_obs = f_obs.set_observation_type(observation_type = None)
+     f_obs = f_obs.f_sq_as_f()
+     fmodel_dc.update(f_obs = f_obs)
+     rw, rf = update_solvent_and_scale_helper(fmodel = fmodel_dc,
+                                                             params = params, out=out,pdb=pdb,hkl=hkl)
+     if([rw, rf].count(None) > 0): return None, None
+     check = (rw>rf or abs(rw-rf) <= rwrf_delta or rw > 45. or abs(r_work-rw) <= 5.)
+     if(check): status = "bad"
+     else:
+        status = "good"
+        convert_to_amplitudes = True
+  if([status, fmodel].count(None) == 0 and status == "bad"):
+     fmodel_dc = fmodel.deep_copy()
+     f_obs = fmodel_dc.f_obs
+     f_obs = f_obs.set_observation_type(observation_type = None)
+     f_obs = f_obs.f_as_f_sq()
+     fmodel_dc.update(f_obs = f_obs)
+     rw, rf = update_solvent_and_scale_helper(fmodel = fmodel_dc,
+                                                             params = params, out=out,pdb=pdb,hkl=hkl)
+     if([rw, rf].count(None) > 0): return None, None
+     check = (rw>rf or abs(rw-rf) <= rwrf_delta or rw > 45. or abs(r_work-rw) <= 5.)
+     if(check): status = "bad"
+     else:
+        status = "good"
+        convert_to_intensities = True
+  if(status == "good" and
+            [convert_to_intensities, convert_to_amplitudes].count(True) > 0):
+     fmodel.f_obs.set_observation_type(observation_type = None)
+     if(convert_to_intensities):
+        fmodel.update(k_sol=0, b_sol=0, b_cart=[0,0,0,0,0,0],
+                                            f_obs = fmodel.f_obs.f_as_f_sq())
+     if(convert_to_amplitudes):
+        fmodel.update(k_sol=0, b_sol=0, b_cart=[0,0,0,0,0,0],
+                                            f_obs = fmodel.f_obs.f_sq_as_f())
+     fmodel.f_obs.set_observation_type_xray_amplitude()
+     fmodel.update_solvent_and_scale(params = params, verbose = -1)
   if(status == "bad"):
      print >> out, "ERROR_(status=bad): %s"%pdb[-11:], hkl[:-4]
      status = None
@@ -390,8 +397,6 @@ def one_run(pdb, hkl, error_out):
 def get_array_of_r_free_flags(proceed, flags, cs, indices, pdb, err):
   pdb = pdb[-11:]
   flag_values = []
-  guess_others = 0
-  has_zero = False
   guess_cif = 0
   cif_selection = None
   result_flags = flex.int()
@@ -405,40 +410,36 @@ def get_array_of_r_free_flags(proceed, flags, cs, indices, pdb, err):
   if(proceed):
      for item in flag_values:
          if(item in cif_flags): guess_cif += 1
-         else:                  guess_others += 1
-     if(guess_cif > 0 and guess_others > 0):
-        if(len(flag_values)==2 and flag_values[0] in pseudo and flag_values[1] in pseudo):
-           guess_cif = 0
-        else:
-          print >> err, "Wrong combination of r-free flags: ", flag_values, pdb
-          proceed = False
      if(guess_cif > 0):
         cif_selection = flex.bool()
      for item in flags:
-         if(guess_others > 0):
-            item = item.strip()
+         item = item.strip()
+         if(guess_cif == 0):
             if(str(item) in ["o","O"]): item = 0
             result_flags.append(int(float(item)))
          if(guess_cif > 0):
             if(item in ["f","F"]):
-                  result_flags.append(1)
-                  cif_selection.append(True)
+               result_flags.append(1)
+               cif_selection.append(True)
             elif(item in ["o","O"]):
-                  result_flags.append(0)
-                  cif_selection.append(True)
+               result_flags.append(0)
+               cif_selection.append(True)
             elif(item in ["-","x"]):
-                  result_flags.append(0)
-                  cif_selection.append(False)
+               result_flags.append(0)
+               cif_selection.append(False)
+            elif(item in tw_flags_num):
+               result_flags.append(int(float(item)))
+               cif_selection.append(True)
             else:
-                  result_flags.append(0)
-                  cif_selection.append(True)
+               result_flags.append(0)
+               cif_selection.append(True)
      try:
        flags_mi = miller.set(
                    crystal_symmetry = cs,
                    indices          = indices).array(data = result_flags)
      except Exception, e:
        proceed = False
-       print >> err, "Cannot setup miller array with r-free flags: ",pdb,str(e)
+       print >> err, "Cannot_setup miller array with r-free flags: ",pdb,str(e)
      if(proceed):
         try:
           test_flag_value = reflection_file_utils.get_r_free_flags_scores(
@@ -449,9 +450,9 @@ def get_array_of_r_free_flags(proceed, flags, cs, indices, pdb, err):
           else: proceed = False
         except Exception, e:
           proceed = False
-          print >> err, "Cannot score r-free flags: ", pdb,str(e)
+          print >> err, "Cannot_score r-free flags1: ", pdb,str(e)
         if(test_flag_value is None):
-           print >> err, "Cannot score r-free flags: ", pdb
+           print >> err, "Cannot_score r-free flags2: ", pdb
   return result_flags, cif_selection, proceed
 
 def compose_and_write_mtz(indices, data, sigmas, flags, cif_selection, pdb,
@@ -489,14 +490,14 @@ def compose_and_write_mtz(indices, data, sigmas, flags, cif_selection, pdb,
           miller_array.set_observation_type_xray_intensity()
      except Exception, e:
        proceed = False
-       print >> err, "Cannot setup miller array: ", pdb, str(e)
+       print >> err, "Cannot_setup miller array: ", pdb, str(e)
      if(proceed):
         try:
           mtz_dataset = miller_array.as_mtz_dataset(
                                           column_root_label = observation_type)
         except Exception, e:
           proceed = False
-          print >> err, "Cannot write MTZ file= ", str(e), pdb
+          print >> err, "Cannot_write MTZ file= ", str(e), pdb
         if(proceed):
            mtz_dataset.add_miller_array(
                           miller_array      = miller_array.array(data = flags),
@@ -521,7 +522,10 @@ def run(args):
     cs = crystal_symmetry_from_any.extract_from(pdb)
   except Exception, e:
     proceed = False
-    print >> err, "Cannot extract crystal symmetry: ", str(e), pdb
+    print >> err, "Cannot_extract_crystal symmetry: ", str(e), pdb
+  if(cs is None):
+     proceed = False
+     print >> err, "Cannot_extract_crystal symmetry: ", pdb
   #
   # getting keys
   #
@@ -599,7 +603,7 @@ def run(args):
                n_t += 1
             if(key not in possible_keys):
                proceed = False
-               print >> err, "Unknown key= ", key,  keys_updated, hkl
+               print >> err, "Unknown_key= ", key,  keys_updated, hkl
                break
         if(n_t > 1 and proceed):
            print >> err, "Multiple CV sets: ", keys_updated, hkl
