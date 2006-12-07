@@ -128,9 +128,13 @@ class refinery:
 
     self.i_or_f_nat =  self.native.data()
     self.sig_nat = self.native.sigmas()
+    if self.sig_nat is None:
+      self.sig_nat = self.i_or_f_nat*0 + 1
 
     self.i_or_f_der = self.derivative.data()
     self.sig_der = self.derivative.sigmas()
+    if self.sig_der is None:
+      self.sig_der = self.i_or_f_der*0+1
 
     self.unit_cell = self.native.unit_cell()
 
@@ -321,6 +325,10 @@ class ls_rel_scale_driver(object):
 
     self.derivative = scaling.absolute_scaling.anisotropic_correction(
       self.derivative,self.p_scale,self.u_star )
+
+    self.scaled_original_derivative = self.derivative.deep_copy().set_observation_type(
+      self.derivative )
+
 
     tmp_nat, tmp_der = self.native.common_sets(self.derivative)
 
