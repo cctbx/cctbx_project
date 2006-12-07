@@ -305,6 +305,7 @@ class manager(object):
                      max_low_high_res_limit  = 8.0,
                      bss                     = None,
                      euler_angle_convention  = "xyz",
+                     lbfgs_maxfev            = 10,
                      protocol                = None,
                      log                     = None):
     global time_rigid_body_total
@@ -398,7 +399,8 @@ class manager(object):
                           refine_r               = refine_r,
                           refine_t               = refine_t,
                           max_iterations         = max_iterations,
-                          euler_angle_convention = self.euler_angle_convention)
+                          euler_angle_convention = self.euler_angle_convention,
+                          lbfgs_maxfev           = lbfgs_maxfev)
             rotation_matrices = []
             translation_vectors = []
             for i in xrange(len(selections)):
@@ -507,7 +509,8 @@ class rigid_body_minimizer(object):
                refine_r,
                refine_t,
                max_iterations,
-               euler_angle_convention = "xyz"):
+               euler_angle_convention = "xyz",
+               lbfgs_maxfev = 10):
     adopt_init_args(self, locals())
     if(self.fmodel.target_name in ["ml","lsm"]):
        self.alpha, self.beta = self.fmodel.alpha_beta_w()
@@ -534,9 +537,7 @@ class rigid_body_minimizer(object):
     self.minimizer = lbfgs.run(
                target_evaluator = self,
                core_params = lbfgs.core_parameters(
-                    maxfev = 10,
-                    stpmin=1.e-5,
-                    stpmax=1.e2),
+                    maxfev = lbfgs_maxfev),
                termination_params = lbfgs.termination_parameters(
                     max_iterations = max_iterations),
                exception_handling_params = lbfgs.exception_handling_parameters(
