@@ -6,8 +6,11 @@
 #include <boost/python/args.hpp>
 #include <mmtbx/tls/tls.h>
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
+#include <scitbx/boost_python/is_polymorphic_workaround.h>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/return_by_value.hpp>
+
+SCITBX_BOOST_IS_POLYMORPHIC_WORKAROUND(mmtbx::tls::common)
 
 namespace mmtbx { namespace tls {
 namespace {
@@ -104,20 +107,15 @@ namespace {
                                 sym_mat3<double> const&,
                                 optional<double> >())
       .def("t", &common::t)
-      .def("branch_0"  , &common::get_branch_0)
-      .def("branch_1"  , &common::get_branch_1)
-      .def("branch_2"  , &common::get_branch_2)
-      .def("branch_3"  , &common::get_branch_3)
-      .def("branch_1_1", &common::get_branch_1_1)
-      .def("branch_1_2", &common::get_branch_1_2)
-      .def("branch_3_1", &common::get_branch_3_1)
-      .def("branch_3_2", &common::get_branch_3_2)
-      .def("branch_3_3_1", &common::get_branch_3_3_1)
-      .def("branch_3_3_2", &common::get_branch_3_3_2)
-      .def("branch_3_3_3", &common::get_branch_3_3_3)
-      .def("branch_2_1", &common::get_branch_2_1)
-      .def("branch_2_2", &common::get_branch_2_2)
-      .def("branch_2_3", &common::get_branch_2_3)
+      .def("branch_0",       &common::get_branch_0)
+      .def("branch_1",       &common::get_branch_1)
+      .def("branch_1_1",     &common::get_branch_1_1)
+      .def("branch_1_2",     &common::get_branch_1_2)
+      .def("branch_1_2_1",   &common::get_branch_1_2_1)
+      .def("branch_1_2_2",   &common::get_branch_1_2_2)
+      .def("branch_1_2_3",   &common::get_branch_1_2_3)
+      .def("branch_1_2_3_1", &common::get_branch_1_2_3_1)
+      .def("branch_1_2_3_2", &common::get_branch_1_2_3_2)
    ;
    //def("t_from_u_cart",t_from_u_cart)
    //;
