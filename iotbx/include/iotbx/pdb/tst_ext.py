@@ -2021,6 +2021,11 @@ model id=0 #chains=1
         "common_small_molecule": 1,
         "other": 1}))
   #
+  assert "HIS " in pdb.common_residue_names_amino_acid
+  assert "GUA " in pdb.common_residue_names_rna_dna
+  assert "HOH " in pdb.common_residue_names_water
+  assert "SO4 " in pdb.common_residue_names_small_molecule
+  assert " FE " in pdb.common_residue_names_element
   get_class = pdb.common_residue_names_get_class
   assert get_class(name="ALA") == "common_amino_acid"
   assert get_class(name="  U") == "common_rna_dna"
