@@ -8,6 +8,7 @@ if (not env_etc.no_boost_python):
     target="#lib/iotbx_pdb_ext",
     source=[
       "ext.cpp",
+      "common_residue_names_bpl.cpp",
       "hierarchy_bpl.cpp",
       "input_bpl.cpp",
       "xray_structure_bpl.cpp"])
