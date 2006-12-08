@@ -2,12 +2,12 @@ from cctbx import miller
 from cctbx.array_family import flex
 from libtbx.str_utils import show_string
 
-def miller_array_export_as_cns_hkl(self,
+def export_as_cns_hkl(self,
       file_object,
-      file_name=None,
-      info=[],
-      array_names=None,
-      r_free_flags=None):
+      file_name,
+      info,
+      array_names,
+      r_free_flags):
   out = file_object
   if (file_name): print >> out, "{ file:", file_name, "}"
   if (self.info() is not None):
@@ -75,5 +75,3 @@ def miller_array_export_as_cns_hkl(self,
     fmt = array_names[0] + "= " + fmt
     for h,d in zip(self.indices(),self.data()):
       print >> out, "INDEx %d %d %d" % h, fmt % d
-
-miller.array.export_as_cns_hkl = miller_array_export_as_cns_hkl
