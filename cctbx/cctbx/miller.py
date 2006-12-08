@@ -2244,6 +2244,20 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
       sharpening=sharpening,
       origin_peak_removal=origin_peak_removal)
 
+  def export_as_cns_hkl(self,
+        file_object,
+        file_name=None,
+        info=[],
+        array_names=None,
+        r_free_flags=None):
+    from iotbx.cns.miller_array import export_as_cns_hkl as implementation
+    implementation(self,
+      file_object=file_object,
+      file_name=file_name,
+      info=info,
+      array_names=array_names,
+      r_free_flags=r_free_flags)
+
   def as_mtz_dataset(self,
         column_root_label,
         column_types=None,
