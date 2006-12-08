@@ -21,6 +21,16 @@ namespace scitbx { namespace boost_python {
     return result;
   }
 
+  template <typename ElementType>
+  boost::python::object
+  null_terminated_array_as_list(
+    const ElementType* array)
+  {
+    std::size_t array_size = 0;
+    while(array[array_size]) array_size++;
+    return array_as_list(array, array_size);
+  }
+
 }} // scitbx::boost_python
 
 #endif // SCITBX_BOOST_PYTHON_ARRAY_AS_LIST_H
