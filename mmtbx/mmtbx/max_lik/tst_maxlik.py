@@ -99,10 +99,10 @@ def test_1():
 
   assert alpha.data().size() == beta.data().size()
   assert alpha.data().size() == f_obs.size()
-  assert approx_equal(flex.min(alpha.data()),0.91035000711)
-  assert approx_equal(flex.max(alpha.data()),1.07104387776)
-  assert approx_equal(flex.min(beta.data()) ,21.7374310013)
-  assert approx_equal(flex.max(beta.data()) ,4222.81104745)
+  assert approx_equal(flex.min(alpha.data()), 0.910295266959)
+  assert approx_equal(flex.max(alpha.data()), 1.02768359617)
+  assert approx_equal(flex.min(beta.data()), 25.102802573)
+  assert approx_equal(flex.max(beta.data()), 4657.05405099)
 # *********************************************************TEST = 3
   alpha, beta = maxlik.alpha_beta_calc(
                     f   = f_obs,
