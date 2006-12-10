@@ -1,9 +1,10 @@
-#include <iotbx/pdb/common_residue_names.h>
-#include <scitbx/boost_python/array_as_list.h>
 #include <boost/python/def.hpp>
 #include <boost/python/args.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
+
+#include <iotbx/pdb/common_residue_names.h>
+#include <scitbx/boost_python/array_as_list.h>
 
 namespace iotbx { namespace pdb {
 namespace {
