@@ -798,13 +798,6 @@ class common {
        else return x;
      }
 
-     double zero_vec(vec3<double> x)
-     {
-       for(int i=0; i<3; i++) {
-           if(std::abs(x[i]) < small) x[i] = 0.0;
-       }
-     }
-
     sym_mat3<double> t() const { return t_; }
     bool branch_0,branch_1,branch_1_1,branch_1_2,branch_1_2_1,branch_1_2_2;
     bool branch_1_2_3,branch_1_2_3_1,branch_1_2_3_2;
