@@ -56,9 +56,10 @@ def get_manager(fmodel, model, solvent_selection, log = None, params = None):
        interpolate                 = params.peak_search.interpolate,
        min_distance_sym_equiv      = params.peak_search.min_distance_sym_equiv,
        general_positions_only      = params.peak_search.general_positions_only,
-       min_cross_distance          = params.peak_search.min_cross_distance)
+       min_cross_distance          = params.peak_search.min_cross_distance,
+       params                      = params)
   else:
-     return manager(fmodel, solvent_selection)
+     return manager(fmodel, solvent_selection, params = params)
 
 class manager(object):
   def __init__(self, fmodel,
@@ -96,7 +97,8 @@ class manager(object):
                      interpolate                 = True,
                      min_distance_sym_equiv      = 1.e-6,
                      general_positions_only      = False,
-                     min_cross_distance          = 2.0):
+                     min_cross_distance          = 2.0,
+                     params                      = None):
     adopt_init_args(self, locals())
     if (self.log is None): self.log = sys.stdout
     self.xray_structure = self.fmodel.xray_structure.deep_copy_scatterers()
@@ -121,6 +123,8 @@ class manager(object):
     if(self.verbose > 0): self.show_current_state(header = "Final model:")
 
   def check_existing_solvent(self):
+    #for sc, s in zip(self.xray_structure.scatterers(), self.model.solvent_selection):
+    #  print sc.element_symbol(), s
     scatterers      = self.xray_structure.scatterers()
     non_solvent_sel = self.solvent_selection.select(~self.solvent_selection)
     solvent_sel     = self.solvent_selection.select(self.solvent_selection)
@@ -160,13 +164,24 @@ class manager(object):
                                          self.occupancy_min,self.occupancy_max)
        self.show_current_state(header= "Initial solvent selection with "+st)
     ########
+
     self.model.update(selection = reduce_original_sel)
+    #############
+    self.xray_structure = self.model.xray_structure.deep_copy_scatterers()
+    self.solvent_selection = self.model.solvent_selection.deep_copy()
+    #################
+
     ###
+    #for sc1, s1, sc2, s2, aal in zip(self.xray_structure.scatterers(), self.solvent_selection,
+    #         self.model.xray_structure.scatterers(), self.model.solvent_selection, self.model.atom_attributes_list):
+    #    print sc1.element_symbol(), s1, sc2.element_symbol(), s2, aal
+
     assert approx_equal(self.solvent_selection, self.model.solvent_selection)
 
   def show_current_state(self, header):
     out = self.log
     scatterers = self.xray_structure.scatterers()
+    print scatterers.size(), self.solvent_selection.size()
     non_solvent_scatterers = scatterers.select(~self.solvent_selection)
     solvent_scatterers     = scatterers.select(self.solvent_selection)
     q_solv = solvent_scatterers.extract_occupancies()
@@ -417,9 +432,14 @@ class manager(object):
                                scatterers                = new_scatterers)
 
   def update_xray_structure(self):
-    self.xray_structure = \
-                   self.xray_structure.concatenate(self.solvent_xray_structure)
-    self.model.refinement_flags.inflate(size = self.sites.size())
+    self.model.add_solvent(
+                      solvent_selection      = self.solvent_selection,
+                      solvent_xray_structure = self.solvent_xray_structure,
+                      residue_name           = self.params.output_residue_name,
+                      atom_name              = self.params.output_atom_name,
+                      chain_id               = self.params.output_chain_id)
+    self.xray_structure = self.model.xray_structure
+    self.solvent_selection = self.model.solvent_selection
 
 def show_histogram(data = None,
                    n_slots = None):

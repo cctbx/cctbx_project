@@ -25,6 +25,12 @@ class manager(object):
                      refinement_flags = None,
                      log = None):
     self.log = log
+    #print "|:"*40
+    #for a,b in zip(xray_structure.scatterers(), atom_attributes_list):
+    #    print a.element_symbol(), b
+    #print "|:"*40
+    #assert 0
+
     self.restraints_manager = restraints_manager
     self.restraints_manager_ini = restraints_manager_ini
     self.xray_structure = xray_structure.deep_copy_scatterers()
@@ -72,7 +78,7 @@ class manager(object):
     labels = self.xray_structure.scatterers().extract_labels()
     res_name_tags = ["HOH","SOL","SOLV","WAT","DOD","TIP3"]
     atom_name_tags = ["O","OH2","H","H1","H2","D"]
-    element_tags = ["O","H","D"]
+    element_tags = ["O","H","D",""]
     result = flex.bool()
     for a in self.atom_attributes_list:
         element = (a.element).strip()
@@ -340,34 +346,40 @@ class manager(object):
            remove_atom_selection[i_seq_i] = False
     self.update(selection = remove_atom_selection)
 
-  def replace_solvent(self, xray_structure,
-                            solvent_selection,
-                            atom_name    = None,
-                            residue_name = None,
-                            chain_id     = None):
-    #self.remove_solvent()
-    #mac = xray_structure.select(~solvent_selection)
-    sol = xray_structure.select(solvent_selection)
-    #assert mac.scatterers().size() == self.xray_structure.scatterers().size()
-    #atom_atom_distances = \
-    #          flex.sqrt(mac.difference_vectors_cart(self.xray_structure).dot())
-    #assert approx_equal(flex.mean_default(atom_atom_distances,0), 0)
-    #
-    #self.xray_structure = self.xray_structure.concatenate(sol)
-    #
-    #self.xray_structure.approx_equal(other = xray_structure)
-
-    self.xray_structure = xray_structure
-    self.solvent_selection = solvent_selection
-    new_atom_attributes_list = []
-    for attr, sel in zip(self.atom_attributes_list, ~self.solvent_selection):
-        if(sel):
-           new_atom_attributes_list.append(attr)
-    self.atom_attributes_list = new_atom_attributes_list
+  def add_solvent(self, solvent_xray_structure,
+                        solvent_selection,
+                        atom_name    = "O",
+                        residue_name = "HOH",
+                        chain_id     = "S"):
+    resSeqs = flex.int()
+    for aa in self.atom_attributes_list:
+        if(aa.chainID.strip() == chain_id.strip()):
+           resSeqs.append(int(aa.resSeq))
+    if(resSeqs.size() > 0):
+       i_seq = flex.max(resSeqs)
+    else:
+       i_seq = 0
+    self.xray_structure = \
+                        self.xray_structure.concatenate(solvent_xray_structure)
+    self.refinement_flags.inflate(
+                             size = solvent_xray_structure.scatterers().size())
+    new_atom_name = atom_name.strip()
+    if(len(new_atom_name) < 4): new_atom_name = " " + new_atom_name
+    while(len(new_atom_name) < 4): new_atom_name = new_atom_name+" "
+    #i_seq = solvent_xray_structure.scatterers().size()
+    for sc in solvent_xray_structure.scatterers():
+        i_seq += 1
+        new_attr = pdb.atom.attributes(name        = new_atom_name,
+                                       resName     = residue_name,
+                                       chainID     = chain_id,
+                                       element     = sc.element_symbol(),
+                                       is_hetatm   = True,
+                                       resSeq      = i_seq)
+        self.atom_attributes_list.append(new_attr)
     # XXX TODO NCS restraints
     # XXX RALF: throw exception if self.reduced_solvent_selection affects NCS
-    geometry = self.restraints_manager.geometry.select(~self.solvent_selection)
-    number_of_new_solvent = sol.scatterers().size()
+    geometry = self.restraints_manager.geometry
+    number_of_new_solvent = solvent_xray_structure.scatterers().size()
     if(geometry.model_indices is None):
        model_indices = None
     else:
@@ -380,30 +392,15 @@ class manager(object):
            n_additional_sites  = number_of_new_solvent,
            model_indices       = model_indices,
            conformer_indices   = conformer_indices,
-           site_symmetry_table = sol.site_symmetry_table(),
+           site_symmetry_table = solvent_xray_structure.site_symmetry_table(),
            nonbonded_types     = flex.std_string(number_of_new_solvent, "OH2"))
     self.restraints_manager = mmtbx.restraints.manager(
                          geometry      = geometry,
                          ncs_groups    = self.restraints_manager.ncs_groups,
                          normalization = self.restraints_manager.normalization)
     self.solvent_selection = solvent_selection
-    if(atom_name is None):
-       new_atom_name = " O  "
-    else:
-       new_atom_name = atom_name.strip()
-       if(len(new_atom_name) < 4): new_atom_name = " " + new_atom_name
-       while(len(new_atom_name) < 4):
-          new_atom_name = new_atom_name+" "
-    for i_seq, sc in enumerate(sol.scatterers()):
-        if(residue_name is None): residue_name = "HOH"
-        if(chain_id is None):     chain_id = "S"
-        new_attr = pdb.atom.attributes(name        = new_atom_name,
-                                       resName     = residue_name,
-                                       chainID     = chain_id,
-                                       element     = sc.element_symbol(),
-                                       is_hetatm   = True,
-                                       resSeq      = i_seq)
-        self.atom_attributes_list.append(new_attr)
+
+
     self.restraints_manager.geometry.update_plain_pair_sym_table(
                                  sites_frac = self.xray_structure.sites_frac())
     assert len(self.atom_attributes_list) == \
