@@ -624,38 +624,43 @@ def run(args):
         if(proceed):
            for st in lines:
               if(st == ''): break
-              st = st.split()
-              if(indices.size() > 0 and len(st) != len(keys_updated)):
-                 break
-              if(len(st) == len(keys_updated)):
-                 try:
-                   try_h = st[h_i].replace("-","").strip().isdigit()
-                   try_k = st[k_i].replace("-","").strip().isdigit()
-                   try_l = st[l_i].replace("-","").strip().isdigit()
-                   is_digits = try_h and try_k and try_l
-                   h_ = int(st[h_i])
-                   k_ = int(st[k_i])
-                   l_ = int(st[l_i])
-                   if(f_i is not None): data_ = float(st[f_i])
-                   else:                data_ = float(st[i_i])
-                 except:
-                   is_digits = False
-                 if(is_digits and [h_,k_,l_].count(0)<3):
-                    indices.append([h_, k_, l_])
-                    data.append(data_)
-                    if(sf_i is not None):
-                       assert f_i is not None
-                       try:
-                         sigmas.append(float(st[sf_i]))
-                       except:
-                         proceed = False
-                    elif(si_i is not None):
-                       assert i_i is not None
-                       try:
-                         sigmas.append(float(st[si_i]))
-                       except:
-                         proceed = False
-                    flags_.append(st[t_i])
+              if(proceed):
+                 st = st.split()
+                 if(indices.size() > 0 and len(st) != len(keys_updated)):
+                    break
+                 if(len(st) == len(keys_updated)):
+                    try:
+                      try_h = st[h_i].replace("-","").strip().isdigit()
+                      try_k = st[k_i].replace("-","").strip().isdigit()
+                      try_l = st[l_i].replace("-","").strip().isdigit()
+                      is_digits = try_h and try_k and try_l
+                      h_ = int(st[h_i])
+                      k_ = int(st[k_i])
+                      l_ = int(st[l_i])
+                      if(f_i is not None): data_ = float(st[f_i])
+                      else:                data_ = float(st[i_i])
+                    except:
+                      is_digits = False
+                    if(is_digits and [h_,k_,l_].count(0)<3):
+                       if(abs(h_)>10000 or abs(k_)>10000 or abs(l_)>10000):
+                          proceed = False
+                       indices.append([h_, k_, l_])
+                       data.append(data_)
+                       if(sf_i is not None):
+                          assert f_i is not None
+                          try:
+                            sigmas.append(float(st[sf_i]))
+                          except:
+                            proceed = False
+                       elif(si_i is not None):
+                          assert i_i is not None
+                          try:
+                            sigmas.append(float(st[si_i]))
+                          except:
+                            proceed = False
+                       flags_.append(st[t_i])
+           if(not proceed):
+              print >> err, "Could not get column data (hkl,fo,flags,sigma): ", hkl
            if(indices.size() == 0 or data.size() == 0 or len(flags_) == 0):
               proceed = False
            if(indices.size() > 0 and proceed):
