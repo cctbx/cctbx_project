@@ -1,6 +1,7 @@
 import libtbx.load_env
 from libtbx.str_utils import show_string
 import md5
+import string
 import sys, os
 Import("env_base", "env_etc")
 env_etc.boost_dist = libtbx.env.dist_path("boost")
@@ -88,22 +89,27 @@ if (not env_etc.no_boost_python):
     env.Prepend(SHLINKFLAGS=[
       "g++", "-F"+env_etc.darwin_framework_path(), "-framework", "Python"])
 
-  jamfile_path = libtbx.env.under_dist("boost", "libs/python/build/Jamfile")
-  jamfile_all =   open(str(jamfile_path), "r").read()
-  jam_rhs = jamfile_all.split("local sources =")[1]
-  jam_middle = jam_rhs.split(";")[0]
-  jamfile_lines = jam_middle.split("\n")
-  jamfile_lines = [line.strip() for line in jamfile_lines]
-  while (jamfile_lines.count("") > 0):
-    jamfile_lines.remove("")
   bpl_dll_sources = []
   prefix = "#"+os.path.join(
     os.path.basename(env_etc.boost_dist), "libs", "python", "src")
+  jamfile_path = libtbx.env.under_dist("boost", "libs/python/build/Jamfile.v2")
+  jamfile_lines = iter(open(jamfile_path).read().splitlines())
+  error_msg = "Unexpected file content: %s" % show_string(jamfile_path)
   for line in jamfile_lines:
-    if (line.endswith("builtin_converters.cpp")):
-      bpl_dll_sources.append("#boost_adaptbx/builtin_converters.cpp")
-    else:
-      bpl_dll_sources.append(os.path.join(prefix, line))
+    if (line.strip() == "lib boost_python"):
+      for line in jamfile_lines:
+        line = line.strip()
+        if (line == ";"): break
+        if (line == "" or line[0] not in string.letters): continue
+        if (line.endswith("builtin_converters.cpp")):
+          bpl_dll_sources.append("#boost_adaptbx/builtin_converters.cpp")
+        else:
+          bpl_dll_sources.append(os.path.join(prefix, line))
+      else:
+        raise RuntimeError(error_msg)
+      break
+  else:
+    raise RuntimeError(error_msg)
   assert len(bpl_dll_sources) > 0
   #
   builtin_converters_cpp = libtbx.env.under_dist(
@@ -126,18 +132,17 @@ if (not env_etc.no_boost_python):
   else:
     env.SharedLibrary(target="#lib/boost_python", source=bpl_dll_sources)
   if (int(ARGUMENTS.get("boost_python_tests", 0))):
-    jamfile_path = libtbx.env.under_dist("boost", "libs/python/test/Jamfile")
-    jamfile = " ".join(
-      [line.rstrip() for line in open(jamfile_path).readlines()])
+    jamfile_path = libtbx.env.under_dist("boost","libs/python/test/Jamfile.v2")
+    jamfile = "\n".join(open(jamfile_path).read().splitlines())
     m = md5.new()
     m.update(jamfile)
-    # based on boost/libs/python/test/Jamfile revision 1.92
-    jamfile_md5 = "7361df1ab608d875807039a64a3ed55c"
+    # based on boost/libs/python/test/Jamfile.v2 revision 1.22
+    jamfile_md5 = "bcf0f4ea89c68d9c6adba15b5280e1c0"
     if (m.hexdigest() != jamfile_md5):
-      print "***************************************************"
-      print "Warning: boost/libs/python/test/Jamfile has changed"
+      print "******************************************************"
+      print "Warning: boost/libs/python/test/Jamfile.v2 has changed"
       print "New md5 signature:", m.hexdigest()
-      print "***************************************************"
+      print "******************************************************"
     if (env_etc.compiler in ["irix_CC", "tru64_cxx"]):
       disabled = "#"
     else:
