@@ -795,20 +795,30 @@ class set(crystal.symmetry):
     del sel_sm
     return self.array(data=result_full)
 
-  def show_r_free_flags_info(self, n_bins=10, out=None, prefix=""):
+  def show_r_free_flags_info(self,
+        n_bins=10,
+        binner_range="used",
+        out=None,
+        prefix=""):
     assert self.is_bool_array()
+    assert binner_range in ["used", "all"]
     print >> out, prefix + "Number of work/free reflections by resolution:"
     if (n_bins is not None):
       self.setup_binner(n_bins=n_bins)
     else:
       assert self.binner() is not None
-    for i_bin in self.binner().range_used():
+    n_works = []
+    n_frees = []
+    fmt = None
+    for i_bin in getattr(self.binner(), "range_"+binner_range)():
       sel = self.binner().selection(i_bin)
       flags = self.data().select(sel)
       n_free = flags.count(True)
       n_work = flags.size() - n_free
+      n_works.append(n_work)
+      n_frees.append(n_free)
       legend = self.binner().bin_legend(i_bin)
-      if (i_bin == 1):
+      if (fmt is None):
         width = max(4, len(str(self.indices().size())))
         fmt = "%%%ds" % width
         print >> out, prefix + " ", " "*len(legend), \
@@ -821,6 +831,7 @@ class set(crystal.symmetry):
     print >> out, prefix + " ", (
       "%%%ds"%len(legend))%"overall", fmt%n_work, fmt%n_free, \
       "%5.1f%%" % (100.*n_free/max(1,n_work+n_free))
+    return n_works, n_frees
 
   def random_phases_compatible_with_phase_restrictions(self, deg=False):
     random_phases = flex.random_double(size=self.size())-0.5
@@ -948,7 +959,6 @@ class set(crystal.symmetry):
                    n_bins=0):
     assert auto_binning or reflections_per_bin != 0 or n_bins != 0
     assert auto_binning or (reflections_per_bin == 0 or n_bins == 0)
-
     if (auto_binning):
       if (reflections_per_bin == 0): reflections_per_bin = 200
       if (n_bins == 0): n_bins = 8
@@ -960,8 +970,8 @@ class set(crystal.symmetry):
     assert n_bins > 0
     assert self.unit_cell() is not None
     assert self.indices().size() > 0 or d_min > 0
-    bng = binning(self.unit_cell(), n_bins, self.indices(), d_max, d_min)
-    self._binner = binner(bng, self)
+    self.use_binning(
+      binning=binning(self.unit_cell(), n_bins, self.indices(), d_max, d_min))
     return self.binner()
 
   def setup_binner_d_star_sq_step(self,
@@ -984,13 +994,11 @@ class set(crystal.symmetry):
         d_star_sq_step = 0.004 ## Default of 0.004 seems to be reasonable
 
     assert (d_star_sq_step>0.0)
-    bng = binning(self.unit_cell(),
-                  self.indices(),
-                  d_min,
-                  d_max,
-                  d_star_sq_step)
-    self._binner = binner(bng, self)
-    return self.binner()
+    return self.use_binning(binning=binning(self.unit_cell(),
+      self.indices(),
+      d_min,
+      d_max,
+      d_star_sq_step))
 
   def setup_binner_counting_sorted(self,
         d_max=0,
@@ -1015,7 +1023,7 @@ class set(crystal.symmetry):
     limits = flex.double()
     limits.reserve(n_bins+1)
     if (d_max > 0):
-      limits.append(1./d_max**2)
+      limits.append(1./d_max**2 * (1-d_tolerance))
     else:
       limits.append(max(0, d_star_sq[0] * (1-d_tolerance)))
     m = d_star_sq.size()-1
@@ -1024,22 +1032,25 @@ class set(crystal.symmetry):
       limits.append(d_star_sq[i] * (1-d_tolerance))
       if (i == m): break
     if (d_min > 0):
-      limits.append(1./d_min**2)
+      limits.append(1./d_min**2 * (1+d_tolerance))
     else:
       limits.append(d_star_sq[-1] * (1+d_tolerance))
-    bng = binning(self.unit_cell(), limits)
-    self._binner = binner(bng, self)
-    return self.binner()
+    return self.use_binning(binning=binning(self.unit_cell(), limits))
 
   def binner(self):
     return self._binner
 
+  def use_binning(self, binning):
+    self._binner = binner(binning, self)
+    return self._binner
+
   def use_binning_of(self, other):
-    self._binner = binner(other.binner(), self)
+    return self.use_binning(binning=other.binner())
 
   def use_binner_of(self, other):
     assert self.indices().all_eq(other.indices())
     self._binner = other._binner
+    return self._binner
 
   def clear_binner(self):
     self._binner = None
