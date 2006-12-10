@@ -180,6 +180,7 @@ namespace {
 #endif
 #undef P
 #define P(T) result += "sizeof(" #T ") = " + to_str(sizeof(T)) + nl;
+    P(bool)
     P(short)
     P(int)
     P(long)
