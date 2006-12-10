@@ -1,5 +1,6 @@
 "Sun Grid Engine utilities"
 
+from __future__ import generators
 import sys, os
 
 def int_or_none(v):
@@ -34,6 +35,15 @@ class task_info(object):
     if (self.first is None): return 1, 0
     assert self.first == 1
     return self.last, self.id-1
+
+  def skip_loop_iteration(self):
+    return skip_loop_iteration(*self.as_n_i_pair())
+
+def skip_loop_iteration(n, i):
+  j = 0
+  while True:
+    yield (j % n != i)
+    j += 1
 
 class info(task_info):
 
