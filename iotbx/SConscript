@@ -26,15 +26,10 @@ Export("mtz_env")
 
 if (not env_etc.no_boost_python):
   Import("env_no_includes_boost_python_ext")
-
   env_iotbx_boost_python_ext = env_no_includes_boost_python_ext.Copy()
-  env_iotbx_boost_python_ext.Replace(
-    SHCXXFLAGS=env_etc.cxxflags_base)
-
   env_etc.include_registry.append(
     env=env_iotbx_boost_python_ext,
     paths=env_etc.iotbx_common_includes + [env_etc.python_include])
-
   Export("env_iotbx_boost_python_ext")
 
   SConscript("iotbx/SConscript")
