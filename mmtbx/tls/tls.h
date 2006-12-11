@@ -489,7 +489,7 @@ class common {
         vec3<double> g2 = n_eigensystem.vectors(1);
         vec3<double> g3 = n_eigensystem.vectors(2);
         double tmp = g3 * (m * g3);
-        if(tmp > 0.0 and std::abs(tmp) < small) tmp = 0.0;
+        if(tmp > 0.0 && std::abs(tmp) < small) tmp = 0.0;
         double tmp2 = std::abs(nyu[1]);
         if(std::abs(tmp2) < small) tmp2 = 0.0;
         if(tmp2 > 0 && std::abs(myu[2]) < small && tmp > 0) {
