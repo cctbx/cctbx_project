@@ -114,18 +114,17 @@ def run_c_plus_plus(target_evaluator,
       iteration_coefficient
         =termination_params.drop_convergence_test_iteration_coefficient)
   callback_after_step = getattr(target_evaluator, "callback_after_step", None)
-  first_f = None
-  x_after_step = None
+  f_min, x_min = None, None
   f, g = None, None
   try:
     while 1:
       f, g = target_evaluator.compute_functional_and_gradients()
-      if (x_after_step is None):
-        x_after_step = x.deep_copy()
-      if (first_f is None):
-        first_f = f
+      if (f_min is None):
         if (not termination_params.traditional_convergence_test):
           is_converged(f)
+        f_min, x_min = f, x.deep_copy()
+      elif (f_min > f):
+        f_min, x_min = f, x.deep_copy()
       if (log is not None):
         print >> log, "lbfgs minimizer.run():" \
           " f=%.6g, |g|=%.6g, x_min=%.6g, x_mean=%.6g, x_max=%.6g" % (
@@ -133,7 +132,6 @@ def run_c_plus_plus(target_evaluator,
       if (minimizer.run(x, f, g)): continue
       if (log is not None):
         print >> log, "lbfgs minimizer step"
-      x_after_step = x.deep_copy()
       if (callback_after_step is not None):
         if (callback_after_step(minimizer) is True):
           if (log is not None):
@@ -165,9 +163,9 @@ def run_c_plus_plus(target_evaluator,
     minimizer.error = str(e)
     if (log is not None):
       print >> log, "lbfgs minimizer exception:", str(e)
-    if (x_after_step is not None):
+    if (x_min is not None):
       x.clear()
-      x.extend(x_after_step)
+      x.extend(x_min)
     error_classification = exception_handling_params.filter(
       minimizer.error, x.size(), x, g)
     if (error_classification > 0):
