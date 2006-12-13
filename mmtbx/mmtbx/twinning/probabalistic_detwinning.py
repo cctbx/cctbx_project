@@ -187,8 +187,7 @@ def test_detwin():
   s2=12
   a=0.5
   tmp = detwin( i1,s1,i2,s2,a)
-  print tmp.xm, tmp.ym
-
+  assert approx_equal([tmp.xm, tmp.ym], [61.6048502913, 61.6038732295])
 
 def run():
   test_detwin()
