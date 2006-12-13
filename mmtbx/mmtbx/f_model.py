@@ -11,6 +11,7 @@ from mmtbx import masks
 from cctbx import xray
 from mmtbx import max_lik
 from mmtbx.max_lik import maxlik
+from mmtbx.scaling.sigmaa_estimation import sigmaa_estimator
 from mmtbx.refinement import print_statistics
 from cctbx.eltbx.xray_scattering import wk1995
 from mmtbx.max_lik import max_like_non_uniform
@@ -1082,14 +1083,29 @@ class manager(object):
     ab_params = self.alpha_beta_params
     if(self.alpha_beta_params is not None):
        assert self.alpha_beta_params.method in ("est", "calc")
-       if(self.alpha_beta_params.method == "est"):
-          alpha, beta = maxlik.alpha_beta_est_manager(
-           f_obs           = self.f_obs,
-           f_calc          = self.f_model(),
-           test_ref_in_bin = self.alpha_beta_params.test_ref_in_bin,
-           flags           = self.r_free_flags.data(),
-           interpolation   = self.alpha_beta_params.interpolation).alpha_beta()
-       if(self.alpha_beta_params.method == "calc"):
+       assert self.alpha_beta_params.estimation_algorithm in [
+         "analytical", "iterative"]
+       if (self.alpha_beta_params.method == "est"):
+         if (self.alpha_beta_params.estimation_algorithm == "analytical"):
+           alpha, beta = maxlik.alpha_beta_est_manager(
+             f_obs           = self.f_obs,
+             f_calc          = self.f_model(),
+             test_ref_in_bin = self.alpha_beta_params.test_ref_in_bin,
+             flags           = self.r_free_flags.data(),
+             interpolation   = self.alpha_beta_params.interpolation) \
+               .alpha_beta()
+         else:
+           p = self.alpha_beta_params.sigmaa_estimator
+           alpha, beta = sigmaa_estimator(
+             miller_obs=self.f_obs,
+             miller_calc=self.f_model(),
+             r_free_flags=self.r_free_flags,
+             width=p.gaussian_kernel_width_as_d_star_sq,
+             number=p.gaussian_kernel_width_as_number_of_low_resolution_test_set_reflections,
+             auto_kernel=p.auto_gaussian_kernel,
+             n_points=p.number_of_sigmaa_sampling_points,
+             n_terms=p.number_of_chebyshev_terms).alpha_beta()
+       else:
          check = flex.max(flex.abs(self.f_ordered_solvent_dist.data()))
          if(check < 1.e-9):
             n_atoms_missed = ab_params.number_of_macromolecule_atoms_absent + \
@@ -1140,36 +1156,55 @@ class manager(object):
 
   def model_error_ml(self):
     #XXX needs clean solution / one more unfinished project
-    if(self.alpha_beta_params is None):
-       test_ref_in_bin = 200
+    if (self.alpha_beta_params is None):
+      test_ref_in_bin = 200
+      estimation_algorithm = "analytical"
     else:
-       test_ref_in_bin = self.alpha_beta_params.test_ref_in_bin
-    try:
-      fmodel = self.resolution_filter(d_max = 6.0)
+      test_ref_in_bin = self.alpha_beta_params.test_ref_in_bin
+      estimation_algorithm = self.alpha_beta_params.estimation_algorithm
+    assert estimation_algorithm in ["analytical", "iterative"]
+    est_exceptions = []
+    for fmodel in [
+          self.resolution_filter(d_max=6.0),
+          self]:
       ss = 1./flex.pow2(fmodel.f_obs.d_spacings().data())
-      omega  = flex.double()
-      save_self_overall_scale = fmodel.overall_scale
-      alpha, beta = maxlik.alpha_beta_est_manager(
-                      f_obs           = fmodel.f_obs,
-                      f_calc          = fmodel.f_model(),
-                      test_ref_in_bin = test_ref_in_bin,
-                      flags           = fmodel.r_free_flags.data(),
-                      interpolation   = True).alpha_beta()
-    except:
-      fmodel = self
-      ss = 1./flex.pow2(fmodel.f_obs.d_spacings().data())
-      omega  = flex.double()
-      save_self_overall_scale = fmodel.overall_scale
-      alpha, beta = maxlik.alpha_beta_est_manager(
-                      f_obs           = fmodel.f_obs,
-                      f_calc          = fmodel.f_model(),
-                      test_ref_in_bin = test_ref_in_bin,
-                      flags           = fmodel.r_free_flags.data(),
-                      interpolation   = True).alpha_beta()
-
+      if (estimation_algorithm == "analytical"):
+        try:
+          alpha, beta = maxlik.alpha_beta_est_manager(
+            f_obs           = fmodel.f_obs,
+            f_calc          = fmodel.f_model(),
+            test_ref_in_bin = test_ref_in_bin,
+            flags           = fmodel.r_free_flags.data(),
+            interpolation   = True).alpha_beta()
+          break
+        except KeyboardInterrupt: raise
+        except Exception, e: est_exceptions.append(str(e))
+      else:
+        p = self.alpha_beta_params.sigmaa_estimator
+        try:
+          alpha, beta = sigmaa_estimator(
+            miller_obs=fmodel.f_obs,
+            miller_calc=fmodel.f_model(),
+            r_free_flags=fmodel.r_free_flags,
+            width=p.gaussian_kernel_width_as_d_star_sq,
+            number=p.gaussian_kernel_width_as_number_of_low_resolution_test_set_reflections,
+            auto_kernel=p.auto_gaussian_kernel,
+            n_points=p.number_of_sigmaa_sampling_points,
+            n_terms=p.number_of_chebyshev_terms).alpha_beta()
+          break
+        except KeyboardInterrupt: raise
+        except Exception, e: est_exceptions.append(str(e))
+    else:
+      raise RuntimeError(
+        "Failure estimating alpha, beta coefficients:\n"
+        + est_exceptions[0] + "\n"
+        + "  " + "-"*77 + "\n"
+        + est_exceptions[1])
+    save_self_overall_scale = fmodel.overall_scale
     fmodel.overall_scale = fmodel.scale_k3_w()
     fmodel.update_core()
     alpha = fmodel.alpha_beta()[0].data()
+    omega = flex.double()
     for ae,ssi in zip(alpha,ss):
       if(ae >  1.0): ae = 1.0
       if(ae <= 0.0): ae = 1.e-6

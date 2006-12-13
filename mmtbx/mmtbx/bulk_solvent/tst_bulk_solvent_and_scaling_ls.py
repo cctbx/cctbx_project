@@ -33,6 +33,7 @@ class alpha_beta_parameters(object):
                      final_error      = 0.0,
                      absent_atom_type = "O",
                      method           = "est",
+                     estimation_algorithm = "analytical",
                      verbose          = -1,
                      expert_mode      = False,
                      interpolation    = False,

@@ -1,38 +1,13 @@
 from __future__ import division
-from cctbx import maptbx
-from cctbx import miller
-from cctbx import crystal
-from cctbx import sgtbx
-from cctbx import adptbx
-from mmtbx import scaling
-import cctbx.sgtbx.lattice_symmetry
-import cctbx.sgtbx.cosets
+from mmtbx.scaling import absolute_scaling
+from mmtbx.scaling import ext
 from cctbx.array_family import flex
-from libtbx.utils import Sorry, date_and_time, multi_out
-from iotbx import reflection_file_reader
-from iotbx import reflection_file_utils
-from iotbx import crystal_symmetry_from_any
-from iotbx import data_plots
-import mmtbx.scaling
-from mmtbx.scaling import absolute_scaling, outlier_plots
-from scitbx.math import chebyshev_lsq
-from scitbx.math import chebyshev_polynome
-from scitbx.math import chebyshev_lsq_fit
-from scitbx.math import erf
-import libtbx.phil.command_line
-from libtbx import table_utils
-from scitbx.python_utils import easy_pickle
 import scitbx.lbfgs
-import sys, os
-import math
-import string
-from cStringIO import StringIO
-import mmtbx.f_model
-from scitbx.math import chebyshev_lsq
 from scitbx.math import chebyshev_polynome
 from scitbx.math import chebyshev_lsq_fit
-
-
+from libtbx.utils import Sorry
+import math
+import sys, os
 
 class sigmaa_point_estimator(object):
   def __init__(self,
@@ -143,7 +118,7 @@ class sigmaa_estimator(object):
       assert self.width is not None
       assert self.width > 0
 
-    self.sigma_target_functor = scaling.sigmaa_estimator(
+    self.sigma_target_functor = ext.sigmaa_estimator(
       e_obs     = self.free_norm_obs.data(),
       e_calc    = self.free_norm_calc.data(),
       centric   = self.free_norm_obs.centric_flags().data(),
@@ -163,7 +138,7 @@ class sigmaa_estimator(object):
                                         h)
       self.sigmaa_array.append( stimator.sigmaa )
 
-    #now please fit a smooth  function to this bugger
+    # fit a smooth function
     fit_lsq = chebyshev_lsq_fit.chebyshev_lsq_fit(
       self.n_terms,
       self.h_array,
@@ -184,12 +159,9 @@ class sigmaa_estimator(object):
     self.beta = (1.0-self.sigmaa*self.sigmaa)*\
                 self.normalized_obs_f.normalizer_for_miller_array
     # make them into miller arrays
-    self.sigmaa = self.miller_obs.customized_copy(
-      data = self.sigmaa )
-    self.alpha = self.miller_obs.customized_copy(
-      data = self.alpha )
-    self.beta = self.miller_obs.customized_copy(
-      data = self.beta )
+    self.sigmaa = self.miller_obs.array(data=self.sigmaa)
+    self.alpha = self.miller_obs.array(data=self.alpha)
+    self.beta = self.miller_obs.array(data=self.beta)
 
     # now only FOM's need to be computed
     tmp_x = self.sigmaa.data()*self.normalized_calc.data()*self.normalized_obs.data()
@@ -203,7 +175,8 @@ class sigmaa_estimator(object):
     final_fom =  centric_fom + acentric_fom
     self.fom = self.sigmaa.customized_copy(data=final_fom)
 
-
+  def alpha_beta(self):
+    return self.alpha, self.beta
 
   def show(self, out=None):
     if out is None:
