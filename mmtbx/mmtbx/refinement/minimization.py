@@ -85,6 +85,9 @@ class lbfgs(object):
                               rxf = self.fmodel.r_free())
     # XXX
     self.d_selection = self.model.atoms_selection(scattering_type = "D")
+    self.h_selection = self.model.atoms_selection(scattering_type = "H")
+    self.hd_selection = self.d_selection | self.h_selection
+
     if(self.fmodel.alpha_beta_params.method == "calc"):
        if(self.fmodel.alpha_beta_params.fix_scale_for_calc_option == None):
           self.scale_ml = self.fmodel.scale_ml()
@@ -207,6 +210,14 @@ class lbfgs(object):
           sf_v3d = flex.vec3_double(sf)
           sf_v3d_sel = sf_v3d.set_selected(self.selection, [0,0,0])
           sf = sf_v3d_sel.as_double()
+       #XXX do not count grads for H or D:
+       if(self.hd_selection.count(True) > 0):
+          if(self.refine_xyz):
+             sf_v3d = flex.vec3_double(sf)
+             sf_v3d_sel = sf_v3d.set_selected(self.hd_selection, [0,0,0])
+             sf = sf_v3d_sel.as_double()
+          if(self.refine_adp):
+             sf = sf.set_selected(self.hd_selection, 0.0)
        self.g = sf * self.wx
 
     if(self.neutron_refinement):
@@ -300,6 +311,8 @@ class lbfgs(object):
           sgu = energies_adp_iso.gradients
           if(self.selection is not None):
              sgu = sgu.set_selected(self.selection, 0.0)
+          if(self.hd_selection.count(True) > 0):
+             sgu = sgu.set_selected(self.hd_selection, 0.0)
           xray.minimization.add_gradients(
                         scatterers      = self.xray_structure.scatterers(),
                         xray_gradients  = self.g,
