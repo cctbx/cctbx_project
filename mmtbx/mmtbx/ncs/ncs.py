@@ -136,9 +136,10 @@ class ncs:
   def ncs_groups(self):
     return self._ncs_groups
 
-  def read_from_resolve(self,file_name,source_info=""): 
-    print "Reading NCS matrices from resolve file: ",file_name
-    if source_info: print " based on ",source_info
+  def read_from_resolve(self,file_name,source_info="",log=None): 
+    if not log: log=sys.stdout
+    print >>log,"Reading NCS matrices from resolve file: ",file_name
+    if source_info: print >>log," based on ",source_info
       
     self.source_info=source_info
     if not os.path.isfile(file_name):
@@ -248,8 +249,6 @@ class ncs:
   def display_all (self,log=None):
     if log==None: 
       log=sys.stdout
-    else:
-      print "Summary of NCS written to:",log.name
     count=0
     text=""
     for ncs_group in self._ncs_groups:
@@ -260,28 +259,34 @@ class ncs:
     return text
 
 
-  def format_all_for_resolve(self,log=None,quiet=False):
+  def format_all_for_resolve(self,log=None,quiet=False,out=None):
+    if out==None: 
+       out=sys.stdout
+
     if log==None: 
       log=sys.stdout
     else:
-      print "\n\nNCS operators written in format for resolve to:",log.name
+      print >>log,"\n\nNCS operators written in format for resolve to:",out.name
     all_text=""
     for ncs_group in self._ncs_groups:
       text=ncs_group.format_for_resolve()
-      if not quiet: log.write("\n"+text+"\n\n")
+      if not quiet: out.write("\n"+text+"\n\n")
       all_text+="\n"+text
     return all_text
 
-  def format_all_for_phenix_refine(self,log=None,quiet=False):
+  def format_all_for_phenix_refine(self,log=None,quiet=False,out=None):
+    if out==None: 
+      out=sys.stdout
     if log==None: 
       log=sys.stdout
     else:
-      print "NCS operators written in format for phenix.refine to:",log.name
+      print>>log,\
+       "NCS operators written in format for phenix.refine to:",out.name
     all_text=""
     for ncs_group in self._ncs_groups:
       text=ncs_group.format_for_ncs()
       if text:
-        if not quiet: log.write("\n"+text+"\n\n")
+        if not quiet: out.write("\n"+text+"\n\n")
         all_text+="\n"+text
     return all_text
 
