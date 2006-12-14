@@ -138,6 +138,9 @@ def go(command, stdin_lines=None):
     join_stdout_stderr=True)
 
 def call(command):
+  for s in [sys.stdout, sys.stderr]:
+    flush = getattr(s, "flush", None)
+    if (flush is not None): flush()
   return subprocess.call(args=command, shell=True)
 
 def exercise(args=None):
