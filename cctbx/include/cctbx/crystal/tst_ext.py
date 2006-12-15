@@ -1078,6 +1078,48 @@ site_cluster_analysis::discard_last() failure. Potential problems are:
       max_clusters=1)
     assert list(selection) == [0]
 
+def exercise_neighbors_max_memory():
+  assert crystal.neighbors_max_memory_allocation_get() != 0
+  mm = crystal.neighbors_max_memory_allocation_get()
+  crystal.neighbors_max_memory_allocation_set(number_of_bytes=10)
+  assert crystal.neighbors_max_memory_allocation_get() == 10
+  crystal.neighbors_max_memory_allocation_set(number_of_bytes=0)
+  assert crystal.neighbors_max_memory_allocation_get() == 0
+  crystal.neighbors_max_memory_allocation_set(number_of_bytes=mm)
+  assert crystal.neighbors_max_memory_allocation_get() == mm
+  #
+  sites_cart = flex.vec3_double([(1,2,3), (2,3,4)])
+  def fast_pair_generator_init():
+    asu_mappings = crystal.direct_space_asu.non_crystallographic_asu_mappings(
+      sites_cart=sites_cart)
+    crystal.neighbors_fast_pair_generator(
+      asu_mappings=asu_mappings,
+      distance_cutoff=3)
+  fast_pair_generator_init() # just to make sure it works
+  if (1 and mm < 333333*666666*999999):
+    sites_cart.append((1.e6,2.e6,3.e6))
+    try: fast_pair_generator_init()
+    except RuntimeError, e:
+      assert str(e).startswith("Excessive number of cubicles:")
+    else: raise RuntimeError("Exception expected.")
+    sites_cart.pop_back()
+  if (1):
+    crystal.neighbors_max_memory_allocation_set(number_of_bytes=3*6*9)
+    sites_cart.append((10,20,30))
+    try: fast_pair_generator_init()
+    except RuntimeError, e:
+      assert not show_diff(str(e), """\
+Estimated memory allocation for cubicles exceeds max_number_of_bytes:
+  This may be due to unreasonable parameters:
+    cubicle_edge=3
+    space_span=(9,18,27)
+    n_cubicles=(3,6,9)
+    max_number_of_bytes=162""")
+    else: raise RuntimeError("Exception expected.")
+    crystal.neighbors_max_memory_allocation_set(number_of_bytes=mm)
+    fast_pair_generator_init()
+    sites_cart.pop_back()
+
 def run():
   exercise_direct_space_asu()
   exercise_pair_tables()
@@ -1085,6 +1127,7 @@ def run():
   exercise_coordination_sequences_shell_asu_tables()
   exercise_symmetry()
   exercise_incremental_pairs_and_site_cluster_analysis()
+  exercise_neighbors_max_memory()
   print "OK"
 
 if (__name__ == "__main__"):
