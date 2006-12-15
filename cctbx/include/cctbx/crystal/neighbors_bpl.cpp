@@ -1,6 +1,7 @@
 #include <cctbx/boost_python/flex_fwd.h>
 
 #include <boost/python/class.hpp>
+#include <boost/python/def.hpp>
 #include <boost/python/args.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
@@ -93,6 +94,11 @@ namespace boost_python {
 
   void wrap_neighbors()
   {
+    using namespace boost::python;
+    def("neighbors_max_memory_allocation_set",
+      neighbors::max_memory_allocation_set, (arg_("number_of_bytes")));
+    def("neighbors_max_memory_allocation_get",
+      neighbors::max_memory_allocation_get);
     neighbors::simple_pair_generator_wrappers::wrap();
     neighbors::fast_pair_generator_wrappers::wrap();
   }
