@@ -208,6 +208,11 @@ def exercise_generate_r_free_flags(verbose=0, use_lattice_symmetry=False):
         assert len(lines) == 13
         for line in lines:
           assert line.startswith("$#")
+        accu = flags.r_free_flags_accumulation()
+        assert accu.reflection_counts.size() == accu.free_fractions.size()
+        if (verbose):
+          print "r_free_flags_accumulation:", \
+            zip(accu.reflection_counts, accu.free_fractions)
       if (not anomalous_flag):
         if (i_trial < 5):
           assert flags.indices().size() == 145

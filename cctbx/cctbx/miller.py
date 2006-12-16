@@ -17,7 +17,7 @@ from libtbx.math_utils import iround
 from libtbx import complex_math
 from scitbx.python_utils.misc import store
 from libtbx.itertbx import count
-from libtbx.utils import Keep, plural_s
+from libtbx.utils import Keep, plural_s, group_args
 from libtbx import adopt_init_args
 from libtbx.utils import Sorry
 import random
@@ -832,6 +832,20 @@ class set(crystal.symmetry):
       "%%%ds"%len(legend))%"overall", fmt%n_work, fmt%n_free, \
       "%5.1f%%" % (100.*n_free/max(1,n_work+n_free))
     return n_works, n_frees
+
+  def r_free_flags_accumulation(self):
+    assert self.is_bool_array()
+    rc = flex.size_t(1, 0)
+    ff = flex.double(1, 0)
+    d = self.data()
+    n = d.size()
+    c = 0
+    for i,f in enumerate(d):
+      if (f):
+        c += 1
+        rc.append(i+1)
+        ff.append(c/n)
+    return group_args(reflection_counts=rc, free_fractions=ff)
 
   def random_phases_compatible_with_phase_restrictions(self, deg=False):
     random_phases = flex.random_double(size=self.size())-0.5
