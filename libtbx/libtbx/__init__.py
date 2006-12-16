@@ -1,7 +1,7 @@
 import libtbx.forward_compatibility
 import sys, os
 
-if (sys.api_version >= 1013):
+if (getattr(sys, "api_version", 0) >= 1013):
 
   class dict_with_default_0(dict):
 
