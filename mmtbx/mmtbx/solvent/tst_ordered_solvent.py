@@ -57,9 +57,9 @@ def evaluate(pdb_file,
 
 def exercise_1(pdb_file):
   pdb = libtbx.env.find_in_repositories(
-        relative_path="regression/pdb/"+pdb_file, test=os.path.isfile)
+        relative_path="phenix_regression/pdb/"+pdb_file, test=os.path.isfile)
   hkl = libtbx.env.find_in_repositories(
-        relative_path="regression/reflection_files/lysozyme.pdb_fcalc_fft_wk1995_resolution_1.8.cv", \
+        relative_path="phenix_regression/reflection_files/lysozyme.pdb_fcalc_fft_wk1995_resolution_1.8.cv", \
         test=os.path.isfile)
   print pdb,hkl
   output_file_prefix = pdb_file[:-4]

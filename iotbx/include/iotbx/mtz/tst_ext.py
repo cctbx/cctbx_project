@@ -42,7 +42,7 @@ def exercise_basic():
   assert mtz_object.n_crystals() == 0
   assert mtz_object.n_active_crystals() == 0
   file_name = libtbx.env.find_in_repositories(
-    relative_path="regression/reflection_files/dano.mtz",
+    relative_path="phenix_regression/reflection_files/dano.mtz",
     test=os.path.isfile)
   if (file_name is None):
     print "Skipping dano.mtz test: input file not available"

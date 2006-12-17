@@ -70,7 +70,7 @@ def exercise_rigid_bond_test():
   System for Windows)
   """
   ins_file = libtbx.env.find_in_repositories(
-    relative_path="regression/pdb/enk_11i.res", test=os.path.isfile)
+    relative_path="phenix_regression/pdb/enk_11i.res", test=os.path.isfile)
   if (ins_file is None):
     print "Skipping exercise_rigid_bond_test(): input file not available"
     return

@@ -183,9 +183,10 @@ def exercise_interpretation(verbose=0, quick=True):
     ("HEADER    ----         05-FAB-94                  XX-XXX-XX   xxxx",
       None)]:
     assert pdb.interpretation.header_year(record=record) == expected_year
-  pdb_dir = libtbx.env.find_in_repositories("regression/pdb")
+  pdb_dir = libtbx.env.find_in_repositories("phenix_regression/pdb")
   if (pdb_dir is None):
-    print "Skipping exercise_interpretation(): regression/pdb not available"
+    print "Skipping exercise_interpretation():" \
+      " phenix_regression/pdb not available"
     return
   for file_name in os.listdir(pdb_dir):
     if (    not file_name.endswith(".pdb")

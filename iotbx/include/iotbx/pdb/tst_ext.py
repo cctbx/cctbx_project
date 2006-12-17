@@ -404,7 +404,7 @@ def check_hierarchy(
     == sum(overall_counts.residue_names.values())
 
 def exercise_columns_73_76_evaluator():
-  pdb_dir = libtbx.env.find_in_repositories("regression/pdb")
+  pdb_dir = libtbx.env.find_in_repositories("phenix_regression/pdb")
   if (pdb_dir is None):
     print "Skipping exercise_columns_73_76_evaluator():" \
           " input files not available"

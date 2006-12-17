@@ -10,7 +10,7 @@ import sys, os
 def calculate_fobs(resolution   = 1.0,
                    sf_algorithm = "direct"):
   pdb_file = libtbx.env.find_in_repositories(
-                              relative_path="regression/pdb/enk_gbr.pdb", test=os.path.isfile)
+                              relative_path="phenix_regression/pdb/enk_gbr.pdb", test=os.path.isfile)
   xray_structure = pdb.input(file_name=pdb_file).xray_structure_simple()
   xray_structure.scattering_type_registry(table = "wk1995")
   f_calc = xray_structure.structure_factors(
@@ -37,7 +37,7 @@ def calculate_fobs(resolution   = 1.0,
 
 def exercise_1(hkl = "enk_gbr.mtz"):
   pdb = libtbx.env.find_in_repositories(
-                              relative_path="regression/pdb/enk_gbr_e.pdb", test=os.path.isfile)
+                              relative_path="phenix_regression/pdb/enk_gbr_e.pdb", test=os.path.isfile)
   opt0= "main.number_of_macro_cycles=3 strategy=group_adp sf_cos_sin_table=false"
   opt1= "main.target=ls group_b_iso.run_finite_differences_test=true"
   opt2= "output.write_maps=false output.write_map_coefficients=false" \
@@ -51,7 +51,7 @@ def exercise_1(hkl = "enk_gbr.mtz"):
 
 def exercise_2(pdb = "enk_gbr_e.pdb", hkl = "enk_gbr.mtz"):
   pdb = libtbx.env.find_in_repositories(
-                              relative_path="regression/pdb/enk_gbr_e.pdb", test=os.path.isfile)
+                              relative_path="phenix_regression/pdb/enk_gbr_e.pdb", test=os.path.isfile)
   opt0= "main.number_of_macro_cycles=3 strategy=group_adp sf_cos_sin_table=false"
   opt1= "main.target=ls group_b_iso.run_finite_differences_test=true"
   opt2= "output.write_maps=false output.write_map_coefficients=false" \

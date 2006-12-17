@@ -360,7 +360,7 @@ def exercise(args):
   mon_lib_srv = monomer_library.server.server()
   ener_lib = monomer_library.server.ener_lib()
   ncs_dir = libtbx.env.find_in_repositories(
-    relative_path="regression/ncs",
+    relative_path="phenix_regression/ncs",
     test=os.path.isdir)
   if (ncs_dir is None):
     print "Skipping exercise(): input files not available"

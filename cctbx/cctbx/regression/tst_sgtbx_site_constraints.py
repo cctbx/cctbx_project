@@ -140,7 +140,7 @@ def process_zeolite_atlas(args):
       action="store_true")
   ).process(args=args)
   atlas_file = libtbx.env.find_in_repositories(
-    relative_path="regression/misc/strudat_zeolite_atlas",
+    relative_path="phenix_regression/misc/strudat_zeolite_atlas",
     test=os.path.isfile)
   if (atlas_file is None):
     print "Skipping process_zeolite_atlas(): input file not available"

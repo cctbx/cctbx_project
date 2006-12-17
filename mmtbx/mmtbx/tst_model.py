@@ -15,7 +15,7 @@ def exercise():
   mon_lib_srv = monomer_library.server.server()
   ener_lib = monomer_library.server.ener_lib()
   pdb_file = libtbx.env.find_in_repositories(
-                   relative_path="regression/pdb/enk.pdb", test=os.path.isfile)
+                   relative_path="phenix_regression/pdb/enk.pdb", test=os.path.isfile)
   processed_pdb_file = monomer_library.pdb_interpretation.process(
                                        mon_lib_srv               = mon_lib_srv,
                                        ener_lib                  = ener_lib,
