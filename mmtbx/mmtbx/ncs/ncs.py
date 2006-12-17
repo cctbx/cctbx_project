@@ -62,7 +62,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     for id,residue_ranges in zip (group,residue_range_list):
      count+=1
      if count==1:
-       text="refinement.ncs_restraint_group { \n"
+       text="refinement.ncs.restraint_group { \n"
        text+="reference = chain "+str(id)
      else:
        text+="selection = chain "+str(id)
