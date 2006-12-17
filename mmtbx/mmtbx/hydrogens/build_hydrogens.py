@@ -780,7 +780,7 @@ if (__name__ == "__main__"):
     run(sys.argv[1])
   else:
     pdb_dir = libtbx.env.find_in_repositories(
-      relative_path="regression/hydrogens",
+      relative_path="phenix_regression/hydrogens",
       test=os.path.isdir)
     if (pdb_dir is None):
       print "Skipping build_hydrogens.run(): input files not available"

@@ -38,7 +38,7 @@ xray
 end
   """
   return libtbx.env.find_in_repositories(
-    relative_path="regression/misc/cns.map", test=os.path.isfile)
+    relative_path="phenix_regression/misc/cns.map", test=os.path.isfile)
 
 def read_xplor(file_name):
   a = iotbx.xplor.map.reader(file_name=file_name)

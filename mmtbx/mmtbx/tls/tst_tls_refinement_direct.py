@@ -15,7 +15,7 @@ from libtbx.test_utils import approx_equal
 
 def run(n_macro_cycles):
   pdb_file = libtbx.env.find_in_repositories(
-    relative_path="regression/pdb/phe_abc_tlsanl_out.pdb", test=os.path.isfile)
+    relative_path="phenix_regression/pdb/phe_abc_tlsanl_out.pdb", test=os.path.isfile)
   if (pdb_file is None):
     print "Skipping run(): input file not available"
     return

@@ -725,7 +725,7 @@ def scale_from_ls(d_min = 2.2,
                 test_7 = True,
                 test_8 = True):
   pdb_file = libtbx.env.find_in_repositories(
-    relative_path="regression/pdb/2ERL.pdb", test=os.path.isfile)
+    relative_path="phenix_regression/pdb/2ERL.pdb", test=os.path.isfile)
   if (pdb_file is None):
     print "Skipping scale_from_ml(): input file not available"
     return

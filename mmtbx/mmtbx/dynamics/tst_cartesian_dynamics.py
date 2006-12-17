@@ -20,7 +20,7 @@ def exercise(test_00 = True,
   try: ener_lib = server.ener_lib()
   except server.MonomerLibraryServerError: return
   pdb_file = libtbx.env.find_in_repositories(
-    relative_path="regression/pdb/phe.pdb", test=os.path.isfile)
+    relative_path="phenix_regression/pdb/phe.pdb", test=os.path.isfile)
   if (pdb_file is None):
     print "Skipping exercise(): input file not available"
     return
@@ -101,7 +101,7 @@ def exercise(test_00 = True,
 #
   if (test_03):
     pdb_file = libtbx.env.find_in_repositories(
-      relative_path="regression/pdb/2ERL_noH.pdb", test=os.path.isfile)
+      relative_path="phenix_regression/pdb/2ERL_noH.pdb", test=os.path.isfile)
     if (pdb_file is None):
       print "Skipping test_03: input file not available"
       test_03 = False

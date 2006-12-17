@@ -10,7 +10,7 @@ import sys, os
 
 def exercise_with_zeolite(verbose):
   atlas_file = libtbx.env.find_in_repositories(
-    relative_path="regression/misc/strudat_zeolite_atlas",
+    relative_path="phenix_regression/misc/strudat_zeolite_atlas",
     test=os.path.isfile)
   if (atlas_file is None):
     print "Skipping exercise_with_zeolite(): input file not available"

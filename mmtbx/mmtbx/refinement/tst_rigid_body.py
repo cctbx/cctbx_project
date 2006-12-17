@@ -285,7 +285,7 @@ def test_6(fmodel, model):
 
 def run_tests(sf_algorithm = "fft"):
   pdb_file = libtbx.env.find_in_repositories(
-        relative_path="regression/pdb/lys_rigid_body.pdb", test=os.path.isfile)
+        relative_path="phenix_regression/pdb/lys_rigid_body.pdb", test=os.path.isfile)
   processed_pdb_file = monomer_library.pdb_interpretation.process(
                             mon_lib_srv    = monomer_library.server.server(),
                             ener_lib       = monomer_library.server.ener_lib(),
@@ -346,7 +346,7 @@ def run_tests(sf_algorithm = "fft"):
 def finite_differences_test(sf_algorithm = "direct"):
   print "finite_differences_test: "
   pdb_file = libtbx.env.find_in_repositories(
-        relative_path="regression/pdb/enk_rbr.pdb", test=os.path.isfile)
+        relative_path="phenix_regression/pdb/enk_rbr.pdb", test=os.path.isfile)
   processed_pdb_file = monomer_library.pdb_interpretation.process(
                             mon_lib_srv    = monomer_library.server.server(),
                             ener_lib       = monomer_library.server.ener_lib(),

@@ -9,7 +9,7 @@ import sys, os
 
 def run():
   pdb_file_name = libtbx.env.find_in_repositories(
-        relative_path="regression/pdb/adp_restraints.pdb", test=os.path.isfile)
+        relative_path="phenix_regression/pdb/adp_restraints.pdb", test=os.path.isfile)
   processed_pdb_file = pdb_interpretation.process(
                                mon_lib_srv = monomer_library.server.server(),
                                ener_lib    = monomer_library.server.ener_lib(),

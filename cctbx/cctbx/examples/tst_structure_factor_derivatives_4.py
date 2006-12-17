@@ -180,7 +180,7 @@ def run_call_back(flags,
       strudat_entries = strudat_contents.entries
     else:
       atlas_file = libtbx.env.find_in_repositories(
-        relative_path="regression/misc/strudat_zeolite_atlas",
+        relative_path="phenix_regression/misc/strudat_zeolite_atlas",
         test=os.path.isfile)
       assert atlas_file is not None
       strudat_contents = strudat.read_all_entries(open(atlas_file))
