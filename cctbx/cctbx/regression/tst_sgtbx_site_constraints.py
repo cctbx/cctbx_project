@@ -2,6 +2,7 @@ from iotbx.kriber import strudat
 from iotbx.option_parser import iotbx_option_parser
 from cctbx.array_family import flex
 from scitbx import matrix
+from libtbx.utils import format_cpu_times
 from libtbx.test_utils import approx_equal
 import libtbx.load_env
 from cStringIO import StringIO
@@ -131,6 +132,30 @@ def exercise(structure, out):
     assert approx_equal(curvs_ana, curvs_fin)
   print >> out
 
+def exercise_shake_sites_in_place(structure):
+  for target_rms_difference in [0.7, 1.0, 1.3]:
+    for selection in [None,
+                      flex.random_bool(
+                        size=structure.scatterers().size(), threshold=0.5)]:
+      shaken = structure.deep_copy_scatterers()
+      try:
+        shaken.shake_sites_in_place(
+          target_rms_difference=target_rms_difference,
+          selection=selection)
+      except RuntimeError, e:
+        if (selection is not None):
+          if (selection.count(True) == 0):
+            assert str(e) == "No scatterers selected."
+          else:
+            assert str(e) \
+                == "All selected scatterers are fixed on special positions."
+        else:
+          assert str(e) \
+              == "All scatterers are fixed on special positions."
+      else:
+        assert approx_equal(
+          structure.rms_difference(shaken), target_rms_difference)
+
 def process_zeolite_atlas(args):
   command_line = (iotbx_option_parser()
     .option(None, "--tag",
@@ -157,10 +182,11 @@ def process_zeolite_atlas(args):
         continue
     print >> out, "strudat tag:", entry.tag
     exercise(structure=structure, out=out)
+    exercise_shake_sites_in_place(structure=structure)
 
 def run():
   process_zeolite_atlas(sys.argv[1:])
-  print "OK"
+  print format_cpu_times()
 
 if (__name__ == "__main__"):
   run()

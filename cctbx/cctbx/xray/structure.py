@@ -14,6 +14,7 @@ from stdlib import math
 import types
 import sys
 import random
+from libtbx.utils import count_max
 from libtbx.test_utils import approx_equal
 
 class structure(crystal.special_position_settings):
@@ -279,6 +280,59 @@ class structure(crystal.special_position_settings):
     sites_cart_original = sites_cart_original.set_selected(
                                                      selection, sites_cart_new)
     self.set_sites_cart(sites_cart = sites_cart_original)
+
+  def shake_sites_in_place(self, target_rms_difference, selection=None):
+    assert target_rms_difference >= 0
+    if (target_rms_difference == 0): return
+    assert self._scatterers.size() > 0
+    site_symmetry_table = self._site_symmetry_table
+    assert site_symmetry_table.indices().size() == self._scatterers.size()
+    if (selection is not None):
+      assert selection.size() == self._scatterers.size()
+      n_variable = selection.count(True)
+      if (n_variable == 0):
+        raise RuntimeError("No scatterers selected.")
+      if (site_symmetry_table.special_position_indices().size() != 0):
+        selection = selection.deep_copy()
+      all = " selected"
+    else:
+      n_variable = self._scatterers.size()
+      if (site_symmetry_table.special_position_indices().size() != 0):
+        selection = flex.bool(n_variable, True)
+      all = ""
+    for i in site_symmetry_table.special_position_indices():
+      if (site_symmetry_table.get(i)
+            .site_constraints()
+               .n_independent_params() == 0):
+        if (selection[i]):
+          selection[i] = False
+          n_variable -= 1
+    if (n_variable == 0):
+      raise RuntimeError(
+        "All%s scatterers are fixed on special positions." % all)
+    if (n_variable == self._scatterers.size()):
+      selection_fixed = None
+    else:
+      selection_fixed = (~selection).iselection()
+    del selection
+    scatterers = self._scatterers
+    frac = self.unit_cell().fractionalize
+    orth = self.unit_cell().orthogonalize
+    for i in count_max(assert_less_than=10):
+      shifts_cart = flex.vec3_double(flex.random_double(
+        size=self._scatterers.size()*3, factor=2) - 1)
+      if (selection_fixed is not None):
+        shifts_cart.set_selected(selection_fixed, (0,0,0))
+      for i in site_symmetry_table.special_position_indices():
+        site_frac_orig = matrix.col(scatterers[i].site)
+        site_frac = site_symmetry_table.get(i).special_op() \
+                  * (site_frac_orig + matrix.col(frac(shifts_cart[i])))
+        shifts_cart[i] = orth(matrix.col(site_frac) - site_frac_orig)
+      rms = shifts_cart.rms_length()
+      if (rms > 1.e-6): break # to avoid numerical problems
+    shifts_cart *= (target_rms_difference / rms)
+    self.set_sites_frac(
+      self.sites_frac() + self.unit_cell().fractionalize(shifts_cart))
 
   def b_iso_min_max_mean(self):
     b_isos = self._scatterers.extract_u_iso()/adptbx.b_as_u(1)
