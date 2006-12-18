@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import generators
 from libtbx import sge_utils
 import glob
 import time
@@ -485,6 +486,13 @@ class input_with_prompt(object):
       del sys.tracebacklimit
     else:
       sys.tracebacklimit = self.previous_tracebacklimit
+
+def count_max(assert_less_than):
+  i = 0
+  while True:
+    yield None
+    i += 1
+    assert i < assert_less_than
 
 def exercise():
   from libtbx.test_utils import approx_equal
