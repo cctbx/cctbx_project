@@ -247,40 +247,6 @@ class structure(crystal.special_position_settings):
        assert selection.size() == s.size()
        s.set_occupancies(q_new, selection)
 
-  def shake_sites(self, mean_error, selection = None):
-    tolerance = 0.001
-    if(mean_error < tolerance): return
-    sites_cart_original = self.sites_cart()
-    if(selection is None):
-       selection = flex.bool(sites_cart_original.size(), True)
-    else:
-       assert selection.size() == sites_cart_original.size()
-    current_mean_error = 0.0
-    counter = 0
-    scale = 1.0
-    collector = flex.double()
-
-    sites_cart = self.sites_cart().select(selection)
-    sites_cart_size = sites_cart.size()
-    while abs(mean_error - current_mean_error) > tolerance and counter < 10000:
-      counter += 1
-      shift_xyz=(flex.random_double(sites_cart_size*3)-0.5)*mean_error*2*scale
-      sites_cart_new = sites_cart + flex.vec3_double(shift_xyz)
-      current_mean_error = \
-                      flex.mean(flex.sqrt((sites_cart - sites_cart_new).dot()))
-      collector.append(current_mean_error)
-      if(counter % 10 == 0):
-         if(flex.mean(collector) < mean_error): scale += 0.001
-         else: scale -= 0.001
-         if(scale <= 0.0): scale = 0.1
-         if(scale >= 2.0): scale = 2.0
-         collector = flex.double()
-    assert abs(flex.mean(flex.sqrt((sites_cart - sites_cart_new).dot()))- \
-                                                       mean_error) <= tolerance
-    sites_cart_original = sites_cart_original.set_selected(
-                                                     selection, sites_cart_new)
-    self.set_sites_cart(sites_cart = sites_cart_original)
-
   def coordinate_degrees_of_freedom_counts(self, selection=None):
     assert selection is None or selection.size() == self._scatterers.size()
     site_symmetry_table = self._site_symmetry_table
