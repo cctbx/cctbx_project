@@ -424,8 +424,7 @@ C  pair count:   1       <<  0.0000,  0.0000,  0.1000>>
       for error in errors:
         xs_shaked = xs.deep_copy_scatterers()
         xs_shaked.shake_sites_in_place(
-          target_difference=error,
-          target_difference_type="mean_distance",
+          mean_distance=error,
           selection=selection)
         sites_cart_xs        = xs.sites_cart()
         sites_cart_xs_shaked = xs_shaked.sites_cart()
