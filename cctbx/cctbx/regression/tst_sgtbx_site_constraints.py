@@ -133,14 +133,15 @@ def exercise(structure, out):
   print >> out
 
 def exercise_shake_sites_in_place(structure):
-  for target_rms_difference in [0.7, 1.0, 1.3]:
+  for target_difference in [0.7, 1.0, 1.3]:
     for selection in [None,
                       flex.random_bool(
                         size=structure.scatterers().size(), threshold=0.5)]:
       shaken = structure.deep_copy_scatterers()
       try:
         shaken.shake_sites_in_place(
-          target_rms_difference=target_rms_difference,
+          target_difference=target_difference,
+          target_difference_type="rms",
           selection=selection)
       except RuntimeError, e:
         if (selection is not None):
@@ -154,7 +155,17 @@ def exercise_shake_sites_in_place(structure):
               == "All scatterers are fixed on special positions."
       else:
         assert approx_equal(
-          structure.rms_difference(shaken), target_rms_difference)
+          structure.rms_difference(shaken), target_difference)
+        #
+        shaken = structure.deep_copy_scatterers()
+        shaken.shake_sites_in_place(
+          target_difference=target_difference,
+          target_difference_type="mean_distance",
+          selection=selection)
+        assert approx_equal(
+          flex.mean(flex.sqrt((  structure.sites_cart()
+                               - shaken.sites_cart()).dot())),
+          target_difference)
 
 def process_zeolite_atlas(args):
   command_line = (iotbx_option_parser()

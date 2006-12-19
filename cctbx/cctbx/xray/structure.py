@@ -281,9 +281,13 @@ class structure(crystal.special_position_settings):
                                                      selection, sites_cart_new)
     self.set_sites_cart(sites_cart = sites_cart_original)
 
-  def shake_sites_in_place(self, target_rms_difference, selection=None):
-    assert target_rms_difference >= 0
-    if (target_rms_difference == 0): return
+  def shake_sites_in_place(self,
+        target_difference,
+        target_difference_type="rms",
+        selection=None):
+    assert target_difference >= 0
+    assert target_difference_type in ["rms", "mean_distance"]
+    if (target_difference == 0): return
     assert self._scatterers.size() > 0
     site_symmetry_table = self._site_symmetry_table
     assert site_symmetry_table.indices().size() == self._scatterers.size()
@@ -328,9 +332,12 @@ class structure(crystal.special_position_settings):
         site_frac = site_symmetry_table.get(i).special_op() \
                   * (site_frac_orig + matrix.col(frac(shifts_cart[i])))
         shifts_cart[i] = orth(matrix.col(site_frac) - site_frac_orig)
-      rms = shifts_cart.rms_length()
-      if (rms > 1.e-6): break # to avoid numerical problems
-    shifts_cart *= (target_rms_difference / rms)
+      if (target_difference_type == "rms"):
+        difference = shifts_cart.rms_length()
+      else:
+        difference = flex.mean(flex.sqrt(shifts_cart.dot()))
+      if (difference > 1.e-6): break # to avoid numerical problems
+    shifts_cart *= (target_difference / difference)
     self.set_sites_frac(
       self.sites_frac() + self.unit_cell().fractionalize(shifts_cart))
 
