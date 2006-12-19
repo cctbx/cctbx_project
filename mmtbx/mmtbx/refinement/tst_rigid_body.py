@@ -379,7 +379,7 @@ def finite_differences_test(sf_algorithm = "direct"):
                                          algorithm      = sf_algorithm,
                                          cos_sin_table  = False).f_calc())
   flags = f_obs.array(data = flex.bool(f_obs.data().size(), False))
-  model.xray_structure.shake_sites(mean_error = 0.1)
+  model.xray_structure.shake_sites_in_place(rms_difference=0.1)
   fmodel = mmtbx.f_model.manager(xray_structure    = model.xray_structure,
                                  f_obs             = f_obs,
                                  r_free_flags      = flags,
