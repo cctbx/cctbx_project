@@ -316,37 +316,32 @@ class structure(crystal.special_position_settings):
       n_variable = selection.count(True)
       if (n_variable == 0):
         raise RuntimeError("No scatterers selected.")
-      if (site_symmetry_table.special_position_indices().size() != 0):
-        selection = selection.deep_copy()
       all = " selected"
     else:
       n_variable = self._scatterers.size()
-      if (site_symmetry_table.special_position_indices().size() != 0):
-        selection = flex.bool(n_variable, True)
       all = ""
+    selection_fixed = flex.size_t()
     for i in site_symmetry_table.special_position_indices():
       if (site_symmetry_table.get(i)
             .site_constraints()
                .n_independent_params() == 0):
-        if (selection[i]):
-          selection[i] = False
-          n_variable -= 1
+        if (selection is None or selection[i]):
+          selection_fixed.append(i)
+    n_variable -= selection_fixed.size()
     if (n_variable == 0):
       raise RuntimeError(
         "All%s scatterers are fixed on special positions." % all)
     if (n_variable == self._scatterers.size()):
-      selection_fixed = None
-    else:
-      selection_fixed = (~selection).iselection()
-    del selection
+      selection = None
     scatterers = self._scatterers
     frac = self.unit_cell().fractionalize
     orth = self.unit_cell().orthogonalize
     for i in count_max(assert_less_than=10):
       shifts_cart = flex.vec3_double(flex.random_double(
         size=self._scatterers.size()*3, factor=2) - 1)
-      if (selection_fixed is not None):
-        shifts_cart.set_selected(selection_fixed, (0,0,0))
+      if (selection is not None):
+        shifts_cart.set_selected(~selection, (0,0,0))
+      shifts_cart.set_selected(selection_fixed, (0,0,0))
       for i in site_symmetry_table.special_position_indices():
         site_frac_orig = matrix.col(scatterers[i].site)
         site_frac = site_symmetry_table.get(i).special_op() \
