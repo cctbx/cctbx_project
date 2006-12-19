@@ -133,10 +133,19 @@ def exercise(structure, out):
   print >> out
 
 def exercise_shake_sites_in_place(structure):
-  for target_difference in [0.7, 1.0, 1.3]:
+  for target_difference in [0, 0.7, 1.0, 1.3]:
     for selection in [None,
                       flex.random_bool(
                         size=structure.scatterers().size(), threshold=0.5)]:
+      if (target_difference == 0): # the structure is not changed in this case
+        n_variable = 1 # any value except 0 (the flex.sum() below must be 0)
+      else:
+        if (selection is None):
+          n_variable = structure.scatterers().size()
+        else:
+          n_variable = selection.count(True)
+        n_variable -= structure.coordinate_degrees_of_freedom_counts(
+          selection=selection)[0]
       shaken = structure.deep_copy_scatterers()
       try:
         shaken.shake_sites_in_place(
@@ -155,7 +164,9 @@ def exercise_shake_sites_in_place(structure):
               == "All scatterers are fixed on special positions."
       else:
         assert approx_equal(
-          structure.rms_difference(shaken), target_difference)
+          (flex.sum((  structure.sites_cart()
+                     - shaken.sites_cart()).dot()) / n_variable) ** 0.5,
+          target_difference)
         #
         shaken = structure.deep_copy_scatterers()
         shaken.shake_sites_in_place(
@@ -163,8 +174,8 @@ def exercise_shake_sites_in_place(structure):
           target_difference_type="mean_distance",
           selection=selection)
         assert approx_equal(
-          flex.mean(flex.sqrt((  structure.sites_cart()
-                               - shaken.sites_cart()).dot())),
+          flex.sum(flex.sqrt((  structure.sites_cart()
+                              - shaken.sites_cart()).dot())) / n_variable,
           target_difference)
 
 def process_zeolite_atlas(args):
