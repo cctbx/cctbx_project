@@ -82,7 +82,7 @@ def exercise(d_min            = 3.5,
                 xrs_dc = xray_structure.deep_copy_scatterers()
                 sel = xrs_dc.random_remove_sites_selection(fraction = fraction)
                 xrs_dc = xrs_dc.select(sel)
-                xrs_dc.shake_sites(mean_error = error)
+                xrs_dc.shake_sites_in_place(rms_difference=error)
                 xrs_dc.scattering_type_registry(table = scattering_table)
 
                 fmodel = mmtbx.f_model.manager(xray_structure    = xrs_dc,
