@@ -149,8 +149,7 @@ def exercise_shake_sites_in_place(structure):
       shaken = structure.deep_copy_scatterers()
       try:
         shaken.shake_sites_in_place(
-          target_difference=target_difference,
-          target_difference_type="rms",
+          rms_difference=target_difference,
           selection=selection)
       except RuntimeError, e:
         if (selection is not None):
@@ -170,8 +169,7 @@ def exercise_shake_sites_in_place(structure):
         #
         shaken = structure.deep_copy_scatterers()
         shaken.shake_sites_in_place(
-          target_difference=target_difference,
-          target_difference_type="mean_distance",
+          mean_distance=target_difference,
           selection=selection)
         assert approx_equal(
           flex.sum(flex.sqrt((  structure.sites_cart()

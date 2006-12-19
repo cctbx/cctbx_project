@@ -302,11 +302,16 @@ class structure(crystal.special_position_settings):
     return result
 
   def shake_sites_in_place(self,
-        target_difference,
-        target_difference_type="rms",
+        rms_difference=None,
+        mean_distance=None,
         selection=None):
-    assert target_difference >= 0
-    assert target_difference_type in ["rms", "mean_distance"]
+    assert [rms_difference, mean_distance].count(None) == 1
+    if (rms_difference is not None):
+      assert rms_difference >= 0
+      target_difference = rms_difference
+    else:
+      assert mean_distance >= 0
+      target_difference = mean_distance
     if (target_difference == 0): return
     assert self._scatterers.size() > 0
     site_symmetry_table = self._site_symmetry_table
@@ -347,7 +352,7 @@ class structure(crystal.special_position_settings):
         site_frac = site_symmetry_table.get(i).special_op() \
                   * (site_frac_orig + matrix.col(frac(shifts_cart[i])))
         shifts_cart[i] = orth(matrix.col(site_frac) - site_frac_orig)
-      if (target_difference_type == "rms"):
+      if (rms_difference is not None):
         difference = (flex.sum(shifts_cart.dot()) / n_variable) ** 0.5
       else:
         difference = flex.sum(flex.sqrt(shifts_cart.dot())) / n_variable
