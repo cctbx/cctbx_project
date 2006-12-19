@@ -281,6 +281,26 @@ class structure(crystal.special_position_settings):
                                                      selection, sites_cart_new)
     self.set_sites_cart(sites_cart = sites_cart_original)
 
+  def coordinate_degrees_of_freedom_counts(self, selection=None):
+    assert selection is None or selection.size() == self._scatterers.size()
+    site_symmetry_table = self._site_symmetry_table
+    assert site_symmetry_table.indices().size() == self._scatterers.size()
+    result = {
+      0: 0,
+      1: 0,
+      2: 0,
+      3: -site_symmetry_table.special_position_indices().size()}
+    if (selection is None):
+      result[3] += self._scatterers.size()
+    else:
+      result[3] += selection.count(True)
+    for i in site_symmetry_table.special_position_indices():
+      if (selection is None or selection[i]):
+        result[site_symmetry_table
+                 .get(i).site_constraints()
+                   .n_independent_params()] += 1
+    return result
+
   def shake_sites_in_place(self,
         target_difference,
         target_difference_type="rms",
@@ -333,9 +353,9 @@ class structure(crystal.special_position_settings):
                   * (site_frac_orig + matrix.col(frac(shifts_cart[i])))
         shifts_cart[i] = orth(matrix.col(site_frac) - site_frac_orig)
       if (target_difference_type == "rms"):
-        difference = shifts_cart.rms_length()
+        difference = (flex.sum(shifts_cart.dot()) / n_variable) ** 0.5
       else:
-        difference = flex.mean(flex.sqrt(shifts_cart.dot()))
+        difference = flex.sum(flex.sqrt(shifts_cart.dot())) / n_variable
       if (difference > 1.e-6): break # to avoid numerical problems
     shifts_cart *= (target_difference / difference)
     self.set_sites_frac(
