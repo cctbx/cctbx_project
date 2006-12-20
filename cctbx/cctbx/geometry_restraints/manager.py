@@ -26,7 +26,8 @@ class manager(object):
         dihedral_proxies=None,
         chirality_proxies=None,
         planarity_proxies=None,
-        plain_pairs_radius=None):
+        plain_pairs_radius=None,
+        max_reasonable_bond_distance=None):
     if (site_symmetry_table is not None): assert crystal_symmetry is not None
     if (bond_params_table is not None and site_symmetry_table is not None):
       assert bond_params_table.size() == site_symmetry_table.indices().size()
@@ -242,6 +243,12 @@ class manager(object):
                     pair_sym_table=shell_sym_table,
                     sites_cart=sites_cart),
                   default=0))
+            if (self.max_reasonable_bond_distance is not None
+                and   bonded_distance_cutoff
+                    > self.max_reasonable_bond_distance):
+              raise RuntimeError(
+                "Bond distance > max_reasonable_bond_distance: %.6g > %.6g" % (
+                  bonded_distance_cutoff, self.max_reasonable_bond_distance))
             bonded_distance_cutoff *= (1 + bonded_distance_cutoff_epsilon)
             asu_mappings = \
               crystal.direct_space_asu.non_crystallographic_asu_mappings(
