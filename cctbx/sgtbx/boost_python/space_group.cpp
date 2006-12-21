@@ -70,16 +70,16 @@ namespace {
           arg_("pedantic")=false,
           arg_("no_centring_type_symbol")=false,
           arg_("no_expand")=false,
-          arg_("t_den=sg_t_den"))))
+          arg_("t_den")=sg_t_den)))
         .def(init<std::string const&, optional<bool, bool, bool, int> >((
           arg_("hall_symbol"),
           arg_("pedantic")=false,
           arg_("no_centring_type_symbol")=false,
           arg_("no_expand")=false,
-          arg_("t_den=sg_t_den"))))
+          arg_("t_den")=sg_t_den)))
         .def(init<space_group_symbols const&, optional<int> >((
           arg_("space_group_symbols"),
-          arg_("t_den=sg_t_den"))))
+          arg_("t_den")=sg_t_den)))
         .def(init<space_group const&>((arg_("other"))))
         .def("reset", &w_t::reset, reset_overloads((arg_("t_den")=sg_t_den)))
         .def("expand_ltr", &w_t::expand_ltr, return_self<>(), (arg_("new_t")))
