@@ -17,7 +17,7 @@ class sigmaa_point_estimator(object):
     self.h = h
     self.f = None
     self.x = flex.double( [-1.0] )
-    self.max = 0.99
+    self.max = 0.97
     self.min = 0.01
     term_parameters = scitbx.lbfgs.termination_parameters(
       max_iterations = 100 )
@@ -101,17 +101,17 @@ class sigmaa_estimator(object):
 
     # now we have to determin the width of the kernel we will use
     # use the same scheme as done for normalistion
-    ## get the d_star_sq_array and sort it
+    ## get the d_star_cubed_array and sort it
     if self.auto_kernel:
       assert self.width is None
       assert self.number > 10 # be sensible please
-      d_star_sq_hkl = self.free_norm_obs.d_star_sq().data()
-      sort_permut = flex.sort_permutation(d_star_sq_hkl)
+      d_star_cubed_hkl = self.free_norm_obs.d_star_cubed().data()
+      sort_permut = flex.sort_permutation(d_star_cubed_hkl)
 
-      if self.number > d_star_sq_hkl.size():
-        self.number = d_star_sq_hkl.size()-1
+      if self.number > d_star_cubed_hkl.size():
+        self.number = d_star_cubed_hkl.size()-1
 
-      self.width = d_star_sq_hkl[sort_permut[self.number]]-flex.min( d_star_sq_hkl )
+      self.width = d_star_cubed_hkl[sort_permut[self.number]]-flex.min( d_star_cubed_hkl )
       assert self.width > 0
 
     if not self.auto_kernel:
@@ -122,12 +122,12 @@ class sigmaa_estimator(object):
       e_obs     = self.free_norm_obs.data(),
       e_calc    = self.free_norm_calc.data(),
       centric   = self.free_norm_obs.centric_flags().data(),
-      d_star_sq = self.free_norm_obs.d_star_sq().data() ,
+      d_star_cubed = self.free_norm_obs.d_star_cubed().data() ,
       width=self.width)
 
-    d_star_sq_overall = self.miller_obs.d_star_sq().data()
-    self.min_h = flex.min( d_star_sq_overall )*0.99
-    self.max_h = flex.max( d_star_sq_overall )*1.01
+    d_star_cubed_overall = self.miller_obs.d_star_cubed().data()
+    self.min_h = flex.min( d_star_cubed_overall )*0.99
+    self.max_h = flex.max( d_star_cubed_overall )*1.01
     self.h_array = flex.double( range(n_points) )*(
       self.max_h-self.min_h)/float(n_points-1.0)+self.min_h
     self.sigmaa_array = flex.double([])
@@ -152,7 +152,7 @@ class sigmaa_estimator(object):
 
     self.sigmaa_array = flex.exp( cheb_pol.f( self.h_array ) )
 
-    self.sigmaa = flex.exp( cheb_pol.f( d_star_sq_overall ) )
+    self.sigmaa = flex.exp( cheb_pol.f( d_star_cubed_overall ) )
     self.alpha = self.sigmaa*flex.sqrt(
       self.normalized_obs_f.normalizer_for_miller_array/
       self.normalized_calc_f.normalizer_for_miller_array)
@@ -190,9 +190,9 @@ class sigmaa_estimator(object):
     print >> out, "No. of points :  %i"%(self.h_array.size())
     print >> out, "No. of terms  :  %i"%(self.n_terms)
     print >> out
-    print >> out, "1/d^2      d    sigmaA"
+    print >> out, "1/d^3      d    sigmaA"
     for h,sa in zip( self.h_array, self.sigmaa_array):
-      d = math.sqrt(1.0/h)
+      d = (1.0/h)**(1/3)
       print >> out, "%5.4f   %5.2f   %4.3f"%(h,d,sa)
     print >> out
     print >> out
