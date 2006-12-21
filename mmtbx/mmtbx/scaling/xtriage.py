@@ -542,6 +542,13 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
 
     info = miller_array.info()
 
+    if not miller_array.is_real_array():
+      miller_array = abs( miller_array )
+      from cctbx.xray import observation_types
+      miller_array = miller_array.set_observation_type( observation_types.amplitude() )
+
+
+
     miller_array = miller_array.map_to_asu()
 
     miller_array = miller_array.select(
@@ -646,6 +653,9 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
         reference_array = abs(reference_array)
 
       reference_array = reference_array.eliminate_sys_absent(integral_only=True, log=log)
+
+    if (not miller_array.is_real_array() ):
+      miller_array = abs(miller_array)
 
     if (miller_array.is_real_array()):
       print >> log
