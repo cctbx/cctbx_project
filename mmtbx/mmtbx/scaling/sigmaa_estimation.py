@@ -55,7 +55,7 @@ class sigmaa_estimator(object):
                number=100,
                auto_kernel=True,
                n_points=20,
-               n_terms=11):
+               n_terms=5):
     self.n_terms=n_terms
     self.miller_obs = miller_obs.map_to_asu()
     self.miller_calc = abs(miller_calc.map_to_asu())
@@ -152,13 +152,14 @@ class sigmaa_estimator(object):
         fit_lsq.coefs)
 
     self.sigmaa_array = 1.0/(1.0 + flex.exp(-reparam_sa) )
+    self.sigmaa = 1.0/(1.0 + flex.exp(-cheb_pol.f(d_star_cubed_overall)) )
 
-    self.sigmaa = 1.0/(1.0 + flex.exp(cheb_pol.f(d_star_cubed_overall)) )
     self.alpha = self.sigmaa*flex.sqrt(
       self.normalized_obs_f.normalizer_for_miller_array/
       self.normalized_calc_f.normalizer_for_miller_array)
     self.beta = (1.0-self.sigmaa*self.sigmaa)*\
                 self.normalized_obs_f.normalizer_for_miller_array
+
     # make them into miller arrays
     self.sigmaa = self.miller_obs.array(data=self.sigmaa)
     self.alpha = self.miller_obs.array(data=self.alpha)
