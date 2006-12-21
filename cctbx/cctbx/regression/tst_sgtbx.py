@@ -13,6 +13,12 @@ def exercise_space_group_info():
   assert i.type().number() == 1
   i = sgtbx.space_group_info("P -1")
   assert i.type().number() == 2
+  i = sgtbx.space_group_info("P 2", "I", space_group_t_den=24)
+  assert str(i) == "P 1 1 2"
+  assert i.group().t_den() == 24
+  i = sgtbx.space_group_info("P32 (a,b,3c)", space_group_t_den=36)
+  assert str(i) == "P 32 (a,b,3*c)"
+  assert i.group().t_den() == 36
   i = sgtbx.space_group_info("P 2", "I")
   assert str(i) == "P 1 1 2"
   i = sgtbx.space_group_info("P 2", "a")
