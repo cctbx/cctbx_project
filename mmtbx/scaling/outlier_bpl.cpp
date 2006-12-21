@@ -70,24 +70,24 @@ namespace{
 
       class_<w_t>("sigmaa_estimator", no_init)
         .def(init<
-             scitbx::af::const_ref< double >  const&, // 1 fobs
-             scitbx::af::const_ref< double >  const&, // 2 fcalc
-             scitbx::af::const_ref< bool >    const&, // 4 centric
-             scitbx::af::const_ref< double >  const&, // 6 d*sq
-             double                           const&> // 7 width
+             scitbx::af::const_ref< double >  const&,
+             scitbx::af::const_ref< double >  const&,
+             scitbx::af::const_ref< bool >    const&,
+             scitbx::af::const_ref< double >  const&,
+             double                           const&>
              ((arg_("e_obs"),
                arg_("e_calc"),
                arg_("centric"),
-               arg_("d_star_sq"),
+               arg_("d_star_cubed"),
                arg_("width")
                )))
         .def("target", &w_t::target,
-             (( arg_("d_star_sq"),
+             (( arg_("d_star_cubed"),
                 arg_("sigmaa")
                 ))
              )
         .def("dtarget", &w_t::dtarget,
-             (( arg_("d_star_sq"),
+             (( arg_("d_star_cubed"),
                 arg_("sigmaa")
                 ))
              )

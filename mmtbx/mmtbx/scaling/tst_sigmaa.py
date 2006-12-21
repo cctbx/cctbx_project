@@ -33,14 +33,14 @@ from libtbx.test_utils import approx_equal
 def tst_sigmaa():
   eo = flex.double([1])
   ec = flex.double([1.2])
-  dss = flex.double([0.5])
+  dsc = flex.double([0.5])
   centric = flex.bool( [False] )
 
   tmp_a = scaling.sigmaa_estimator(
     e_obs     = eo,
     e_calc    = ec,
     centric   = centric,
-    d_star_sq = dss,
+    d_star_cubed = dsc,
     width=0.1)
   # number obtained from mathematica
   assert approx_equal(tmp_a.target(0.5, 0.5), -0.272899, eps=1e-4 )
@@ -49,7 +49,7 @@ def tst_sigmaa():
     e_obs     = eo,
     e_calc    = ec,
     centric   = ~centric,
-    d_star_sq = dss,
+    d_star_cubed = dsc,
     width=0.1)
   # number obtained from mathematica
   assert approx_equal(tmp_c.target(0.5, 0.5), -0.697863,  eps=1e-4 )

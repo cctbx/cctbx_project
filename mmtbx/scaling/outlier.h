@@ -464,18 +464,19 @@ namespace mmtbx { namespace scaling { namespace outlier{
   class sigmaa_estimator
   {
   public:
-    sigmaa_estimator( scitbx::af::const_ref<FloatType> const& e_obs,     //1
-                      scitbx::af::const_ref<FloatType> const& e_calc,    //2
-                      scitbx::af::const_ref<bool>      const& centric,   //4
-                      scitbx::af::const_ref<FloatType> const& d_star_sq, //6
-                      FloatType const& width )                           //7
+    sigmaa_estimator( scitbx::af::const_ref<FloatType> const& e_obs,
+                      scitbx::af::const_ref<FloatType> const& e_calc,
+                      scitbx::af::const_ref<bool>      const& centric,
+                      scitbx::af::const_ref<FloatType> const& d_star_cubed,
+                      FloatType const& width )
       :
       current_h_(0.0),
       width_(width)
       {
+        SCITBX_ASSERT(width > 0);
         SCITBX_ASSERT( e_obs.size() == e_calc.size() );
         SCITBX_ASSERT( e_obs.size() == centric.size() );
-        SCITBX_ASSERT( e_obs.size() == d_star_sq.size() );
+        SCITBX_ASSERT( e_obs.size() == d_star_cubed.size() );
         eps_=1e-5;
         for (int ii=0;ii<e_obs.size();ii++){
           SCITBX_ASSERT( e_obs[ii]>= 0);
@@ -484,7 +485,7 @@ namespace mmtbx { namespace scaling { namespace outlier{
           e_obs_.push_back( e_obs[ii] );
           e_calc_.push_back( e_calc[ii] );
           centric_.push_back( centric[ii] ) ;
-          d_star_sq_.push_back( d_star_sq[ii] );
+          d_star_cubed_.push_back( d_star_cubed[ii] );
           distance_.push_back(0.0);
 
         }
@@ -628,7 +629,7 @@ namespace mmtbx { namespace scaling { namespace outlier{
         {
           FloatType result;
           for (int ii=0; ii<distance_.size();ii++){
-            result = current_h_- d_star_sq_[ii];
+            result = current_h_- d_star_cubed_[ii];
             result = result/width_;
             result = std::exp(-result*result/2.0);
             distance_[ii]=result;
@@ -639,7 +640,7 @@ namespace mmtbx { namespace scaling { namespace outlier{
       scitbx::af::shared<FloatType> e_obs_;
       scitbx::af::shared<FloatType> e_calc_;
       scitbx::af::shared<FloatType> centric_;
-      scitbx::af::shared<FloatType> d_star_sq_;
+      scitbx::af::shared<FloatType> d_star_cubed_;
       scitbx::af::shared<FloatType> distance_;
 
       FloatType current_h_;
