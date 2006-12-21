@@ -28,20 +28,33 @@ class space_group_info(object):
 
   __safe_for_unpickling__ = True
 
-  def __init__(self, symbol=None, table_id=None, group=None, number=None):
+  def __init__(self,
+        symbol=None,
+        table_id=None,
+        group=None,
+        number=None,
+        space_group_t_den=None):
     assert [symbol, group, number].count(None) >= 2
     if (number is not None):
       symbol = str(number)
     if (symbol is None):
       assert table_id is None
+      if (space_group_t_den is not None):
+        assert space_group_t_den == group.t_den()
       self._group = group
     else:
       assert group is None
       if (table_id is None):
-        self._group = space_group(space_group_symbols(symbol))
+        symbols = space_group_symbols(symbol)
       else:
         if (isinstance(symbol, int)): symbol = str(symbol)
-        self._group = space_group(space_group_symbols(symbol, table_id))
+        symbols = space_group_symbols(symbol, table_id)
+      if (space_group_t_den is None):
+        self._group = space_group(
+          space_group_symbols=symbols)
+      else:
+        self._group = space_group(
+          space_group_symbols=symbols, t_den=space_group_t_den)
     if (self._group is not None):
       self._group.make_tidy()
     self._space_group_info_cache = empty()
