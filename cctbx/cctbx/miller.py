@@ -406,6 +406,10 @@ class set(crystal.symmetry):
     return array(
       self, self.unit_cell().d_star_sq(self.indices()))
 
+  def d_star_cubed(self):
+    return array(
+      self, flex.pow(self.unit_cell().d_star_sq(self.indices()), 3/2))
+
   def d_spacings(self):
     return array(
       self, self.unit_cell().d(self.indices()))
