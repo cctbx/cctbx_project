@@ -17,7 +17,7 @@ class sigmaa_point_estimator(object):
     self.h = h
     self.f = None
     self.x = flex.double( [-1.0] )
-    self.max = 0.97
+    self.max = 0.99
     self.min = 0.01
     term_parameters = scitbx.lbfgs.termination_parameters(
       max_iterations = 100 )
@@ -139,10 +139,11 @@ class sigmaa_estimator(object):
       self.sigmaa_array.append( stimator.sigmaa )
 
     # fit a smooth function
+    reparam_sa = -flex.log( 1.0/self.sigmaa_array -1.0 )
     fit_lsq = chebyshev_lsq_fit.chebyshev_lsq_fit(
       self.n_terms,
       self.h_array,
-      flex.log(self.sigmaa_array) )
+      reparam_sa )
 
     cheb_pol = chebyshev_polynome(
         self.n_terms,
@@ -150,9 +151,9 @@ class sigmaa_estimator(object):
         self.max_h,
         fit_lsq.coefs)
 
-    self.sigmaa_array = flex.exp( cheb_pol.f( self.h_array ) )
+    self.sigmaa_array = 1.0/(1.0 + flex.exp(-reparam_sa) )
 
-    self.sigmaa = flex.exp( cheb_pol.f( d_star_cubed_overall ) )
+    self.sigmaa = 1.0/(1.0 + flex.exp(cheb_pol.f(d_star_cubed_overall)) )
     self.alpha = self.sigmaa*flex.sqrt(
       self.normalized_obs_f.normalizer_for_miller_array/
       self.normalized_calc_f.normalizer_for_miller_array)
