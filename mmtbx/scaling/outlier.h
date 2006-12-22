@@ -505,6 +505,13 @@ namespace mmtbx { namespace scaling { namespace outlier{
         }
       }
 
+      FloatType
+      sum_weights(FloatType const& h)
+      {
+        update_current_h(h);
+        return scitbx::af::sum(distance_.const_ref());
+      }
+
       FloatType target(FloatType const& h,
                        FloatType const& sigmaa
                       )

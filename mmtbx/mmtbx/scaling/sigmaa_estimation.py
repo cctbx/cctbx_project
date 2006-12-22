@@ -68,7 +68,8 @@ class sigmaa_estimator(object):
                kernel_width_d_star_cubed=None,
                kernel_in_bin_centers=False,
                n_sampling_points=20,
-               n_chebyshev_terms=10):
+               n_chebyshev_terms=10,
+               use_sampling_sum_weights=False):
     assert [kernel_width_free_reflections, kernel_width_d_star_cubed].count(None) == 1
     self.miller_obs = miller_obs.map_to_asu()
     self.miller_calc = abs(miller_calc.map_to_asu())
@@ -134,25 +135,38 @@ class sigmaa_estimator(object):
       self.h_array = flex.double( range(n_sampling_points) )*(
         self.max_h-self.min_h)/float(n_sampling_points-1.0)+self.min_h
     assert self.h_array.size() == n_sampling_points
-    self.sigmaa_array = flex.double([])
+    self.sigmaa_array = flex.double()
+    self.sigmaa_array.reserve(self.h_array.size())
+    self.sum_weights = flex.double()
+    self.sum_weights.reserve(self.h_array.size())
 
     for h in self.h_array:
       stimator = sigmaa_point_estimator(self.sigma_target_functor, h)
       self.sigmaa_array.append( stimator.sigmaa )
+      self.sum_weights.append(
+        self.sigma_target_functor.sum_weights(d_star_cubed=h))
 
     # fit a smooth function
     reparam_sa = -flex.log( 1.0/self.sigmaa_array -1.0 )
+    if (use_sampling_sum_weights):
+      w_obs = self.sum_weights
+      if (0): # XXX
+        max_w = flex.max(w_obs)
+        if (max_w > 1): w_obs = w_obs / max_w
+      w_obs = flex.sqrt(w_obs)
+    else:
+      w_obs = None
     fit_lsq = chebyshev_lsq_fit.chebyshev_lsq_fit(
-      self.n_chebyshev_terms,
-      self.h_array,
-      reparam_sa )
+      n_terms=self.n_chebyshev_terms,
+      x_obs=self.h_array,
+      y_obs=reparam_sa,
+      w_obs=w_obs)
 
     cheb_pol = chebyshev_polynome(
         self.n_chebyshev_terms,
         self.min_h,
         self.max_h,
         fit_lsq.coefs)
-
     self.sigmaa_array = 1.0/(1.0 + flex.exp(-reparam_sa) )
     self.sigmaa = 1.0/(1.0 + flex.exp(-cheb_pol.f(d_star_cubed_overall)) )
 
@@ -197,9 +211,9 @@ class sigmaa_estimator(object):
     print >> out, "Number of sampling points : ", self.h_array.size()
     print >> out, "Number of Chebyshev terms : ", self.n_chebyshev_terms
     print >> out
-    print >> out, "1/d^3      d    sigmaA"
-    for h,sa in zip( self.h_array, self.sigmaa_array):
+    print >> out, "1/d^3      d    sigmaA  sum weights"
+    for h,sa,w in zip( self.h_array, self.sigmaa_array, self.sum_weights ):
       d = (1.0/h)**(1/3)
-      print >> out, "%5.4f   %5.2f   %4.3f"%(h,d,sa)
+      print >> out, "%5.4f   %5.2f   %4.3f  %.6g"%(h,d,sa,w)
     print >> out
     print >> out

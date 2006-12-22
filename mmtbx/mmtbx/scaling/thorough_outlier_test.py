@@ -16,6 +16,9 @@ from mmtbx.scaling import outlier_rejection
 from cctbx.xray import observation_types
 from cctbx.development import debug_utils
 
+if (1):
+  random.seed(0)
+  flex.set_random_seed(value=0)
 
 def exercise(d_min            = 3.5,
              k_sol            = 0.3,
