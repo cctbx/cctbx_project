@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx.array_family import flex
 from mmtbx import scaling
 from mmtbx.scaling import absolute_scaling
@@ -21,6 +22,8 @@ import math
 import sys
 from iotbx import data_plots
 from libtbx import table_utils
+
+
 
 
 class obliquity(object):
@@ -310,6 +313,9 @@ class detect_pseudo_translations(object):
     work_array = work_array.select(work_array.data()>0).set_observation_type(
       miller_array)
 
+    self.space_group = miller_array.space_group()
+    self.unit_cell = miller_array.unit_cell()
+
     if work_array.completeness()<completeness_cut:
       print >> out
       print >> out," WARNING: "
@@ -417,6 +423,63 @@ class detect_pseudo_translations(object):
           self.guesstimate_mod_hkl()
         if verbose > 0:
           self.show(out)
+        self.suggest_new_space_groups()
+
+  def suggest_new_space_groups(self,t_den=60,out=None):
+    if out is None:
+      out=sys.stdout
+
+    symops = []
+    sgs = []
+    with_operator = []
+    new_cell = []
+
+    for peak in self.suspected_peaks:
+      if peak[2] < self.p_value_cut:
+        xyz = peak[0]
+        dx = self.closest_rational( xyz[0] )
+        dy = self.closest_rational( xyz[1] )
+        dz = self.closest_rational( xyz[2] )
+        additional_symop = None
+        if ([dx,dy,dz]).count(None)==0:
+          additional_symop = "x%s, y%s, z%s"%(
+            dx, dy, dz )
+          if additional_symop is not None:
+            symops.append( additional_symop )
+
+    tmp_space_group = sgtbx.space_group_info( group=self.space_group )
+    tmp_space_group = sgtbx.space_group_info( str(tmp_space_group), space_group_t_den=t_den)
+    for so in symops:
+      new_tmp_sg = tmp_space_group.group().make_tidy()
+      smx = sgtbx.rt_mx( so )
+      smx = smx.new_denominators( new_tmp_sg.r_den(), new_tmp_sg.t_den() )
+      new_tmp_sg.expand_smx( smx )
+      sg_str = str( sgtbx.space_group_info( group = new_tmp_sg,  space_group_t_den=t_den  ) )
+      to_ref_set = sgtbx.space_group_info(
+        group = new_tmp_sg,  space_group_t_den=t_den  ).change_of_basis_op_to_reference_setting()
+      if sg_str not in sgs:
+        sgs.append( sg_str )
+        with_operator.append( so )
+        new_cell.append( self.unit_cell.change_basis( to_ref_set.c_inv().r().as_double() ) )
+    if len(symops)>0:
+      print >> out
+      print >> out, " If the observed pseudo translationals are crystallographic"
+      print >> out, " the following spacegroups and unit cells are possible: "
+      print >> out
+      print >> out, " %s                %s         %s  "%("space group", "operator", "unit cell of reference setting")
+
+      for sg,op,uc in zip(sgs,with_operator,new_cell):
+        print >> out, " %20s  %20s  (%5.2f, %5.2f, %5.2f,  %5.2f, %5.2f, %5.2f)"%(
+          sg,
+          op,
+          uc.parameters()[0],
+          uc.parameters()[1],
+          uc.parameters()[2],
+          uc.parameters()[3],
+          uc.parameters()[4],
+          uc.parameters()[5] )
+      print >> out
+
 
   def guesstimate_mod_hkl(self):
     tmp_mod_h = 1.0/(self.high_peak_xyz[0]+1.0e-6)
@@ -447,6 +510,39 @@ class detect_pseudo_translations(object):
       result=0.0
     return result
 
+  def closest_rational(self, fraction, eps=0.001,return_text=True):
+    tmp_fraction = abs(fraction)
+    sign = "+"
+    if fraction < 0:
+      sign = "-"
+
+    num = None
+    den = None
+    den_list = [2,3,4,5,6]
+    fraction_trials = []
+    min_del=10.0
+    best_frac=None
+    for trial_den in den_list:
+      start_num=0
+      if trial_den > 2:
+        start_num = 1
+      for trial_num in xrange(start_num,trial_den):
+        tmp = (sign, trial_num, trial_den)
+        tmp_frac = trial_num/trial_den
+        delta = abs(tmp_frac - fraction )
+        if delta < min_del:
+          best_frac = tmp
+          min_del = float( delta )
+    result = None
+    if min_del < eps:
+      if return_text:
+        if best_frac[1]==0:
+          result = ""
+        else:
+          result = "%s%s/%s"%(best_frac[0],best_frac[1],best_frac[2])
+      else:
+        result = best_frac
+    return result
 
 
   def show(self,out=None):
@@ -489,7 +585,7 @@ class detect_pseudo_translations(object):
 
         if self.suspected_peaks[ii][2] > self.p_value_cut:
           break
-
+      self.suggest_new_space_groups(out=out)
 
 class wilson_moments(object):
   def __init__(self,
@@ -801,7 +897,7 @@ class britton_test(object):
     m = flex.sum(x*x)- N*mean_x*mean_x
     b = covar_xy/(var_x+1.0e-6)
     a = mean_y - b*mean_x
-    correlation = covar_xy/(math.sqrt(var_x*var_y)+1.0e-6)
+    correlation = covar_xy/(math.sqrt(abs(var_x*var_y))+1.0e-6)
     return [-a/(b+1.0e-6) ,  correlation, a, b]
 
 
