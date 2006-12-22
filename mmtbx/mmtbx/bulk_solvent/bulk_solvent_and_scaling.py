@@ -584,9 +584,6 @@ class bulk_solvent_and_scales(object):
               #   h=m+str(mc)+": (ordered solvent) T= "+self.target_name
               #   self.show_k_sol_b_sol_b_cart_target(header = h, out = log)
        ### start ml optimization
-       if(abs(fmodel.k_sol()) < 0.01 or abs(fmodel.b_sol()) < 1.0):
-          fmodel.update(k_sol = 0, b_sol = 0)
-
        ksol = fmodel.k_sol()
        bsol = fmodel.b_sol()
        bcart= fmodel.b_cart()
@@ -608,8 +605,8 @@ class bulk_solvent_and_scales(object):
              h=m+str(mc)+": apply back trace(b_cart): T= "+fmodel.target_name
              fmodel.show_k_sol_b_sol_b_cart_target(header = h, out = log)
        fmodel.update(target_name = fmodel_target)
-       if(abs(fmodel.k_sol()) < 0.01 or abs(fmodel.b_sol()) < 1.0):
-          fmodel.update(k_sol = 0, b_sol = 0)
+    if(abs(fmodel.k_sol()) < 0.01):
+       fmodel.update(k_sol = 0.0, b_sol = 0.0)
 
   def _set_f_ordered_solvent(self):
     pass
