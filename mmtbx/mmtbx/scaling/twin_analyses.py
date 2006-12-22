@@ -423,7 +423,6 @@ class detect_pseudo_translations(object):
           self.guesstimate_mod_hkl()
         if verbose > 0:
           self.show(out)
-        self.suggest_new_space_groups()
 
   def suggest_new_space_groups(self,t_den=60,out=None):
     if out is None:
