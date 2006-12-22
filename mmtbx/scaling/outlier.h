@@ -471,13 +471,14 @@ namespace mmtbx { namespace scaling { namespace outlier{
                       FloatType const& width )
       :
       current_h_(0.0),
-      width_(width)
+      width_(width),
+      eps_(1e-5),
+      sigmaa_upper_bound_(1-eps_*eps_)
       {
         SCITBX_ASSERT(width > 0);
         SCITBX_ASSERT( e_obs.size() == e_calc.size() );
         SCITBX_ASSERT( e_obs.size() == centric.size() );
         SCITBX_ASSERT( e_obs.size() == d_star_cubed.size() );
-        eps_=1e-5;
         for (int ii=0;ii<e_obs.size();ii++){
           SCITBX_ASSERT( e_obs[ii]>= 0);
           SCITBX_ASSERT( e_calc[ii]>= 0);
@@ -491,9 +492,8 @@ namespace mmtbx { namespace scaling { namespace outlier{
         }
       }
 
-      FloatType target(FloatType const& h,
-                       FloatType const& sigmaa
-                      )
+      void
+      update_current_h(FloatType const& h)
       {
         FloatType delta = h-current_h_;
         if (delta<0){
@@ -503,12 +503,17 @@ namespace mmtbx { namespace scaling { namespace outlier{
           current_h_ = h;
           recompute_distance();
         }
-        FloatType result=0, tmp_sigmaa=sigmaa;
-        if (sigmaa>1.0-eps_*eps_){
-          tmp_sigmaa = 1.0-eps_*eps_;
-        }
+      }
+
+      FloatType target(FloatType const& h,
+                       FloatType const& sigmaa
+                      )
+      {
+        update_current_h(h);
+        FloatType result=0;
         for (int ii=0;ii<e_obs_.size();ii++){
-          result += distance_[ii]*compute_single_target(ii,tmp_sigmaa);
+          result += distance_[ii] * compute_single_target(
+            ii, std::min(sigmaa, sigmaa_upper_bound_));
         }
         return(result);
       }
@@ -517,23 +522,12 @@ namespace mmtbx { namespace scaling { namespace outlier{
       dtarget(FloatType const& h,
               FloatType const& sigmaa )
       {
-        FloatType delta = h-current_h_;
-        if (delta<0){
-          delta = -delta;
-        }
-        if (delta > eps_){
-          current_h_ = h;
-          recompute_distance();
-        }
-
-        FloatType result=0, tmp_sigmaa=sigmaa;
-        if (sigmaa>1.0-eps_*eps_){
-          tmp_sigmaa = 1.0-eps_*eps_;
-        }
+        update_current_h(h);
+        FloatType result=0;
         for (int ii=0;ii<e_obs_.size();ii++){
-          result += distance_[ii]*compute_single_dtarget(ii,tmp_sigmaa);
+          result += distance_[ii] * compute_single_dtarget(
+            ii, std::min(sigmaa, sigmaa_upper_bound_));
         }
-
         return(result);
       }
 
@@ -646,6 +640,7 @@ namespace mmtbx { namespace scaling { namespace outlier{
       FloatType current_h_;
       FloatType width_;
       FloatType eps_;
+      FloatType sigmaa_upper_bound_;
   };
 
 
