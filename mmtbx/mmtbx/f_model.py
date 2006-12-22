@@ -1100,11 +1100,9 @@ class manager(object):
              miller_obs=self.f_obs,
              miller_calc=self.f_model(),
              r_free_flags=self.r_free_flags,
-             width=p.gaussian_kernel_width_as_d_star_sq,
-             number=p.gaussian_kernel_width_as_number_of_low_resolution_test_set_reflections,
-             auto_kernel=p.auto_gaussian_kernel,
-             n_points=p.number_of_sigmaa_sampling_points,
-             n_terms=p.number_of_chebyshev_terms).alpha_beta()
+             kernel_width_free_reflections=p.kernel_width_free_reflections,
+             n_sampling_points=p.number_of_sampling_points,
+             n_chebyshev_terms=p.number_of_chebyshev_terms).alpha_beta()
        else:
          check = flex.max(flex.abs(self.f_ordered_solvent_dist.data()))
          if(check < 1.e-9):
@@ -1186,11 +1184,9 @@ class manager(object):
             miller_obs=fmodel.f_obs,
             miller_calc=fmodel.f_model(),
             r_free_flags=fmodel.r_free_flags,
-            width=p.gaussian_kernel_width_as_d_star_sq,
-            number=p.gaussian_kernel_width_as_number_of_low_resolution_test_set_reflections,
-            auto_kernel=p.auto_gaussian_kernel,
-            n_points=p.number_of_sigmaa_sampling_points,
-            n_terms=p.number_of_chebyshev_terms).alpha_beta()
+            kernel_width_free_reflections=p.kernel_width_free_reflections,
+            n_sampling_points=p.number_of_sampling_points,
+            n_chebyshev_terms=p.number_of_chebyshev_terms).alpha_beta()
           break
         except KeyboardInterrupt: raise
         except Exception, e: est_exceptions.append(str(e))

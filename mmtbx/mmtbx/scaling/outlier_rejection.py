@@ -272,10 +272,9 @@ the shadow of the beamstop.
       miller_obs   = self.miller_obs,
       miller_calc  = fmodel_manager.f_model(),
       r_free_flags = self.r_free_flags,
-      auto_kernel  = True,
-      number       = 200,
-      n_points     = 20,
-      n_terms      = 13 )
+      kernel_width_free_reflections = 200,
+      n_sampling_points = 20,
+      n_chebyshev_terms = 13 )
 
     sigmaa_estimator.show(out=self.out)
     sigmaa = sigmaa_estimator.sigmaa

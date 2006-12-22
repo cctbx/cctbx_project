@@ -5,6 +5,7 @@ from cctbx.array_family import flex
 import scitbx.lbfgs
 from scitbx.math import chebyshev_polynome
 from scitbx.math import chebyshev_lsq_fit
+from libtbx.math_utils import iround
 from libtbx.utils import Sorry
 import math
 import sys, os
@@ -44,22 +45,37 @@ class sigmaa_point_estimator(object):
     self.f = f
     return f, flex.double([g])
 
-
+def sigmaa_estimator_kernel_width_d_star_cubed(
+      r_free_flags,
+      kernel_width_free_reflections):
+  assert kernel_width_free_reflections > 0
+  n_refl = r_free_flags.size()
+  n_free = r_free_flags.data().count(True)
+  n_refl_per_bin = kernel_width_free_reflections
+  if (n_free != 0):
+    n_refl_per_bin *= n_refl / n_free
+  n_refl_per_bin = min(n_refl, iround(n_refl_per_bin))
+  n_bins = max(1, n_refl / max(1, n_refl_per_bin))
+  dsc_min, dsc_max = [dss**(3/2) for dss in r_free_flags.min_max_d_star_sq()]
+  return (dsc_max - dsc_min) / n_bins
 
 class sigmaa_estimator(object):
   def __init__(self,
                miller_obs,
                miller_calc,
                r_free_flags,
-               width=None,
-               number=100,
-               auto_kernel=True,
-               n_points=20,
-               n_terms=5):
-    self.n_terms=n_terms
+               kernel_width_free_reflections=None,
+               kernel_width_d_star_cubed=None,
+               n_sampling_points=20,
+               n_chebyshev_terms=10):
+    assert [kernel_width_free_reflections, kernel_width_d_star_cubed].count(None) == 1
     self.miller_obs = miller_obs.map_to_asu()
     self.miller_calc = abs(miller_calc.map_to_asu())
     self.r_free_flags = r_free_flags.map_to_asu()
+    self.kernel_width_free_reflections = kernel_width_free_reflections
+    self.kernel_width_d_star_cubed = kernel_width_d_star_cubed
+    self.n_sampling_points = n_sampling_points
+    self.n_chebyshev_terms = n_chebyshev_terms
 
     assert self.r_free_flags.indices().all_eq(
       self.miller_obs.indices() )
@@ -71,17 +87,11 @@ class sigmaa_estimator(object):
 
     assert self.miller_obs.is_real_array()
 
-
     if self.miller_obs.is_xray_intensity_array():
       self.miller_obs = self.miller_obs.f_sq_as_f()
     assert self.miller_obs.is_xray_amplitude_array()
     self.miller_calc = self.miller_calc.set_observation_type(
       self.miller_obs)
-
-    # get the aparameters that determine the kernel width
-    self.width=width
-    self.number=number
-    self.auto_kernel=auto_kernel
 
     # get normalized data please
     self.normalized_obs_f = absolute_scaling.kernel_normalisation(
@@ -97,56 +107,40 @@ class sigmaa_estimator(object):
     self.free_norm_calc= self.normalized_calc.select( self.r_free_flags.data() )
 
     if self.free_norm_obs.data().size() <= 0:
-      raise Sorry("No free reflections, I will give up now")
+      raise RuntimeError("No free reflections.")
 
-    # now we have to determin the width of the kernel we will use
-    # use the same scheme as done for normalistion
-    ## get the d_star_cubed_array and sort it
-    if self.auto_kernel:
-      assert self.width is None
-      assert self.number > 10 # be sensible please
-      d_star_cubed_hkl = self.free_norm_obs.d_star_cubed().data()
-      sort_permut = flex.sort_permutation(d_star_cubed_hkl)
-
-      if self.number >= d_star_cubed_hkl.size():
-        self.number = d_star_cubed_hkl.size()-1
-
-      self.width = d_star_cubed_hkl[sort_permut[self.number]]-flex.min( d_star_cubed_hkl )
-      assert self.width > 0
-
-    if not self.auto_kernel:
-      assert self.width is not None
-      assert self.width > 0
+    if (self.kernel_width_d_star_cubed is None):
+      self.kernel_width_d_star_cubed=sigmaa_estimator_kernel_width_d_star_cubed(
+        r_free_flags=self.r_free_flags,
+        kernel_width_free_reflections=self.kernel_width_free_reflections)
 
     self.sigma_target_functor = ext.sigmaa_estimator(
       e_obs     = self.free_norm_obs.data(),
       e_calc    = self.free_norm_calc.data(),
       centric   = self.free_norm_obs.centric_flags().data(),
       d_star_cubed = self.free_norm_obs.d_star_cubed().data() ,
-      width=self.width)
+      width=self.kernel_width_d_star_cubed)
 
     d_star_cubed_overall = self.miller_obs.d_star_cubed().data()
     self.min_h = flex.min( d_star_cubed_overall )*0.99
     self.max_h = flex.max( d_star_cubed_overall )*1.01
-    self.h_array = flex.double( range(n_points) )*(
-      self.max_h-self.min_h)/float(n_points-1.0)+self.min_h
+    self.h_array = flex.double( range(n_sampling_points) )*(
+      self.max_h-self.min_h)/float(n_sampling_points-1.0)+self.min_h
     self.sigmaa_array = flex.double([])
 
-
     for h in self.h_array:
-      stimator = sigmaa_point_estimator(self.sigma_target_functor,
-                                        h)
+      stimator = sigmaa_point_estimator(self.sigma_target_functor, h)
       self.sigmaa_array.append( stimator.sigmaa )
 
     # fit a smooth function
     reparam_sa = -flex.log( 1.0/self.sigmaa_array -1.0 )
     fit_lsq = chebyshev_lsq_fit.chebyshev_lsq_fit(
-      self.n_terms,
+      self.n_chebyshev_terms,
       self.h_array,
       reparam_sa )
 
     cheb_pol = chebyshev_polynome(
-        self.n_terms,
+        self.n_chebyshev_terms,
         self.min_h,
         self.max_h,
         fit_lsq.coefs)
@@ -154,6 +148,8 @@ class sigmaa_estimator(object):
     self.sigmaa_array = 1.0/(1.0 + flex.exp(-reparam_sa) )
     self.sigmaa = 1.0/(1.0 + flex.exp(-cheb_pol.f(d_star_cubed_overall)) )
 
+    assert flex.min(self.sigmaa) >= 0
+    assert flex.max(self.sigmaa) <= 1
     self.alpha = self.sigmaa*flex.sqrt(
       self.normalized_obs_f.normalizer_for_miller_array/
       self.normalized_calc_f.normalizer_for_miller_array)
@@ -186,11 +182,12 @@ class sigmaa_estimator(object):
     print >> out
     print >> out, "SigmaA estimation summary"
     print >> out, "-------------------------"
-    print >> out, "Kernel width  :  %6.2e"%(self.width)
-    print >> out, "First N       :  %i"%(self.number)
-    print >> out, "Auto kernel   : ", self.auto_kernel
-    print >> out, "No. of points :  %i"%(self.h_array.size())
-    print >> out, "No. of terms  :  %i"%(self.n_terms)
+    print >> out, "Kernel width d* cubed     :  %.6g" % \
+      self.kernel_width_d_star_cubed
+    print >> out, "Kernel width free refl.   : ", \
+      self.kernel_width_free_reflections
+    print >> out, "Number of sampling points : ", self.h_array.size()
+    print >> out, "Number of Chebyshev terms : ", self.n_chebyshev_terms
     print >> out
     print >> out, "1/d^3      d    sigmaA"
     for h,sa in zip( self.h_array, self.sigmaa_array):
