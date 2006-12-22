@@ -470,7 +470,7 @@ namespace mmtbx { namespace scaling { namespace outlier{
                       scitbx::af::const_ref<FloatType> const& d_star_cubed,
                       FloatType const& width )
       :
-      current_h_(0.0),
+      current_h_(-1),
       width_(width),
       eps_(1e-5),
       sigmaa_upper_bound_(1-eps_*eps_)
