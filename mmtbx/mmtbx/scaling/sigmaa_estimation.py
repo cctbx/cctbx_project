@@ -89,7 +89,8 @@ class sigmaa_estimator(object):
 
     if self.miller_obs.is_xray_intensity_array():
       self.miller_obs = self.miller_obs.f_sq_as_f()
-    assert self.miller_obs.is_xray_amplitude_array()
+    assert self.miller_obs.observation_type() is None or \
+           self.miller_obs.is_xray_amplitude_array()
     self.miller_calc = self.miller_calc.set_observation_type(
       self.miller_obs)
 
