@@ -312,9 +312,9 @@ def update_solvent_and_scale(fmodel, pdb, hkl, out):
   if([status, fmodel].count(None) == 0 and status == "bad"):
      fmodel_dc = fmodel.deep_copy()
      rw, rf = update_solvent_and_scale_helper(fmodel = fmodel_dc,
-                                                             params = params, out=out,pdb=pdb,hkl=hkl)
+                                      params = params, out=out,pdb=pdb,hkl=hkl)
      if([rw, rf].count(None) > 0): return None, None
-     check = (rw>rf or abs(rw-rf) <= rwrf_delta or rw > 45. or abs(r_work-rw) <= 5.)
+     check = (rw>rf or abs(rw-rf) <= rwrf_delta or rw > 45.)
      if(check): status = "bad"
      else:      status = "good"
   if([status, fmodel].count(None) == 0 and status == "bad"):
@@ -324,7 +324,7 @@ def update_solvent_and_scale(fmodel, pdb, hkl, out):
      f_obs = f_obs.f_sq_as_f()
      fmodel_dc.update(f_obs = f_obs)
      rw, rf = update_solvent_and_scale_helper(fmodel = fmodel_dc,
-                                                             params = params, out=out,pdb=pdb,hkl=hkl)
+                                      params = params, out=out,pdb=pdb,hkl=hkl)
      if([rw, rf].count(None) > 0): return None, None
      check = (rw>rf or abs(rw-rf) <= rwrf_delta or rw > 45. or abs(r_work-rw) <= 5.)
      if(check): status = "bad"
@@ -338,7 +338,7 @@ def update_solvent_and_scale(fmodel, pdb, hkl, out):
      f_obs = f_obs.f_as_f_sq()
      fmodel_dc.update(f_obs = f_obs)
      rw, rf = update_solvent_and_scale_helper(fmodel = fmodel_dc,
-                                                             params = params, out=out,pdb=pdb,hkl=hkl)
+                                      params = params, out=out,pdb=pdb,hkl=hkl)
      if([rw, rf].count(None) > 0): return None, None
      check = (rw>rf or abs(rw-rf) <= rwrf_delta or rw > 45. or abs(r_work-rw) <= 5.)
      if(check): status = "bad"
