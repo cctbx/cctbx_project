@@ -108,7 +108,7 @@ class sigmaa_estimator(object):
       d_star_cubed_hkl = self.free_norm_obs.d_star_cubed().data()
       sort_permut = flex.sort_permutation(d_star_cubed_hkl)
 
-      if self.number > d_star_cubed_hkl.size():
+      if self.number >= d_star_cubed_hkl.size():
         self.number = d_star_cubed_hkl.size()-1
 
       self.width = d_star_cubed_hkl[sort_permut[self.number]]-flex.min( d_star_cubed_hkl )
