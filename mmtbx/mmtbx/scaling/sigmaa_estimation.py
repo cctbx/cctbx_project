@@ -66,6 +66,7 @@ class sigmaa_estimator(object):
                r_free_flags,
                kernel_width_free_reflections=None,
                kernel_width_d_star_cubed=None,
+               kernel_in_bin_centers=False,
                n_sampling_points=20,
                n_chebyshev_terms=10):
     assert [kernel_width_free_reflections, kernel_width_d_star_cubed].count(None) == 1
@@ -74,7 +75,6 @@ class sigmaa_estimator(object):
     self.r_free_flags = r_free_flags.map_to_asu()
     self.kernel_width_free_reflections = kernel_width_free_reflections
     self.kernel_width_d_star_cubed = kernel_width_d_star_cubed
-    self.n_sampling_points = n_sampling_points
     self.n_chebyshev_terms = n_chebyshev_terms
 
     assert self.r_free_flags.indices().all_eq(
@@ -122,10 +122,17 @@ class sigmaa_estimator(object):
       width=self.kernel_width_d_star_cubed)
 
     d_star_cubed_overall = self.miller_obs.d_star_cubed().data()
-    self.min_h = flex.min( d_star_cubed_overall )*0.99
-    self.max_h = flex.max( d_star_cubed_overall )*1.01
-    self.h_array = flex.double( range(n_sampling_points) )*(
-      self.max_h-self.min_h)/float(n_sampling_points-1.0)+self.min_h
+    self.min_h = flex.min( d_star_cubed_overall )
+    self.max_h = flex.max( d_star_cubed_overall )
+    if (kernel_in_bin_centers):
+      self.h_array = flex.double( xrange(1,n_sampling_points*2,2) )*(
+        self.max_h-self.min_h)/(n_sampling_points*2)+self.min_h
+    else:
+      self.min_h *= 0.99
+      self.max_h *= 1.01
+      self.h_array = flex.double( range(n_sampling_points) )*(
+        self.max_h-self.min_h)/float(n_sampling_points-1.0)+self.min_h
+    assert self.h_array.size() == n_sampling_points
     self.sigmaa_array = flex.double([])
 
     for h in self.h_array:
