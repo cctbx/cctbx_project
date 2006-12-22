@@ -42,6 +42,7 @@ def tst_sigmaa():
     centric   = centric,
     d_star_cubed = dsc,
     width=0.1)
+  assert approx_equal(tmp_a.sum_weights(d_star_cubed=0.5), 1)
   # number obtained from mathematica
   assert approx_equal(tmp_a.target(0.5, 0.5), -0.272899, eps=1e-4 )
 
@@ -51,6 +52,7 @@ def tst_sigmaa():
     centric   = ~centric,
     d_star_cubed = dsc,
     width=0.1)
+  assert approx_equal(tmp_a.sum_weights(d_star_cubed=0.5), 1)
   # number obtained from mathematica
   assert approx_equal(tmp_c.target(0.5, 0.5), -0.697863,  eps=1e-4 )
 

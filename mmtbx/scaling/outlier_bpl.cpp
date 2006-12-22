@@ -81,6 +81,10 @@ namespace{
                arg_("d_star_cubed"),
                arg_("width")
                )))
+        .def("sum_weights", &w_t::sum_weights,
+             ( arg_("d_star_cubed")
+               )
+             )
         .def("target", &w_t::target,
              (( arg_("d_star_cubed"),
                 arg_("sigmaa")
