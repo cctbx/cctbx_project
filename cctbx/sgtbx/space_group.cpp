@@ -233,7 +233,6 @@ namespace cctbx { namespace sgtbx {
   space_group_symbols
   space_group::match_tabulated_settings() const
   {
-    CCTBX_ASSERT(cb_t_den % t_den() == 0);
     matrix_group::code point_group = point_group_type();
     space_group tidy_sg = *this;
     tidy_sg.make_tidy();

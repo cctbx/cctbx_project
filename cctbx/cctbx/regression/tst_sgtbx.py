@@ -73,6 +73,59 @@ def exercise_space_group_info():
   assert approx_equal(
     i.subtract_continuous_allowed_origin_shifts(translation_frac=[1,2,3]),
     [0,2,3])
+  #
+  for f in xrange(1,12+1):
+    sg_t_den = sgtbx.sg_t_den * f
+    cb_r_den = sgtbx.cb_r_den * f
+    cb_t_den = sgtbx.cb_t_den * f
+    #
+    sg_i = sgtbx.space_group_info(symbol="P 21 21 21")
+    t = sg_i.type()
+    assert sg_i.type(tidy_cb_op=True) is t
+    assert sg_i.type(tidy_cb_op=False) is not t
+    if (f != 1):
+      t = sg_i.type()
+      c = t.cb_op().c()
+      assert c.r().den() == sgtbx.cb_r_den
+      assert c.t().den() == sgtbx.cb_t_den
+      for t_den in [cb_t_den, None]:
+        if (t_den is not None):
+          tt = sg_i.type(t_den=t_den)
+          assert tt is not t
+        else:
+          assert sg_i.type(t_den=t_den) is tt
+        c = tt.cb_op().c()
+        assert c.r().den() == sgtbx.cb_r_den
+        assert c.t().den() == cb_t_den
+      for r_den in [cb_r_den, None]:
+        if (r_den is not None):
+          tr = sg_i.type(r_den=r_den)
+          assert tr is not tt
+        else:
+          sg_i.type(r_den=r_den) is tr
+        c = tr.cb_op().c()
+        assert c.r().den() == cb_r_den
+        assert c.t().den() == cb_t_den
+    #
+    sg_i = sgtbx.space_group_info(
+      symbol="P 21 21 21",
+      space_group_t_den=sg_t_den)
+    sgx = sgtbx.space_group(sg_i.group())
+    rt_mx = sgtbx.rt_mx("x+1/2,y+1/2,z")
+    rt_mx = rt_mx.new_denominators(sgx.r_den(), sgx.t_den())
+    sgx.expand_smx(rt_mx)
+    sgx_i = sgtbx.space_group_info(group=sgx)
+    assert str(sgx_i) == "C 2 2 21 (a-1/4,b,c)"
+    t = sgx_i.type()
+    c = t.cb_op().c()
+    assert c.r().den() == cb_r_den
+    assert c.t().den() == cb_t_den
+    for r_den,t_den in [(None, None),
+                        (cb_r_den, None),
+                        (None, cb_t_den),
+                        (cb_r_den, cb_t_den)]:
+      assert sgx_i.type(r_den=r_den, t_den=t_den) is t
+    assert sgx_i.type(tidy_cb_op=False, r_den=r_den, t_den=t_den) is not t
 
 def test_enantiomorphic_pairs():
   pairs = []
