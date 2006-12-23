@@ -76,8 +76,37 @@ def example():
     output_logfile.write(f.getvalue())
 
 
+def another_example(np=41,nt=5):
+  x = flex.double( range(np) )/(np-1)
+  y = 0.99*flex.exp(-x*x*0.5)
+  y = -flex.log(1.0/y-1)
+  w = y*y/1.0
+  d = (flex.random_double(np)-0.5)*w
+  y_obs = y+d
 
+  y = 1.0/( 1.0 + flex.exp(-y) )
+
+  fit_w = chebyshev_lsq_fit.chebyshev_lsq_fit(nt,
+                                              x,
+                                              y_obs,
+                                              w )
+  fit_w_f = chebyshev_polynome(
+    nt, fit_w.low_limit, fit_w.high_limit, fit_w.coefs)
+
+
+  fit_nw = chebyshev_lsq_fit.chebyshev_lsq_fit(nt,
+                                              x,
+                                              y_obs)
+  fit_nw_f = chebyshev_polynome(
+    nt, fit_nw.low_limit, fit_nw.high_limit, fit_nw.coefs)
+  print
+  print "Coefficients from weighted lsq"
+  print list( fit_w.coefs )
+  print "Coefficients from non-weighted lsq"
+  print list( fit_nw.coefs )
+  assert flex.max( fit_nw.coefs-fit_w.coefs) > 0
 
 
 if (__name__ == "__main__"):
   example()
+  another_example()
