@@ -673,8 +673,8 @@ namespace cctbx { namespace sgtbx {
     {
       CCTBX_ASSERT(run_away_counter++ < 10);
 
-      change_of_basis_op addl_cb_op = work_sg.z2p_op();
-      cb_op_.update(addl_cb_op.new_denominators(r_den, t_den));
+      change_of_basis_op addl_cb_op = work_sg.z2p_op(r_den, t_den);
+      cb_op_.update(addl_cb_op);
       work_sg = z_point_group_sg.change_basis(cb_op_);
       CCTBX_ASSERT(work_sg.n_ltr() == 1);
 
