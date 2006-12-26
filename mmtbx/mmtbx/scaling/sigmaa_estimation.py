@@ -149,11 +149,7 @@ class sigmaa_estimator(object):
     # fit a smooth function
     reparam_sa = -flex.log( 1.0/self.sigmaa_array -1.0 )
     if (use_sampling_sum_weights):
-      w_obs = self.sum_weights
-      if (0): # XXX
-        max_w = flex.max(w_obs)
-        if (max_w > 1): w_obs = w_obs / max_w
-      w_obs = flex.sqrt(w_obs)
+      w_obs = flex.sqrt(self.sum_weights)
     else:
       w_obs = None
     fit_lsq = chebyshev_lsq_fit.chebyshev_lsq_fit(
@@ -167,8 +163,9 @@ class sigmaa_estimator(object):
         self.min_h,
         self.max_h,
         fit_lsq.coefs)
-    self.sigmaa_array = 1.0/(1.0 + flex.exp(-reparam_sa) )
-    self.sigmaa = 1.0/(1.0 + flex.exp(-cheb_pol.f(d_star_cubed_overall)) )
+    def reverse_reparam(values): return 1.0/(1.0 + flex.exp(-values))
+    self.sigmaa_fitted = reverse_reparam(cheb_pol.f(self.h_array))
+    self.sigmaa = reverse_reparam(cheb_pol.f(d_star_cubed_overall))
 
     assert flex.min(self.sigmaa) >= 0
     assert flex.max(self.sigmaa) <= 1
@@ -211,9 +208,17 @@ class sigmaa_estimator(object):
     print >> out, "Number of sampling points : ", self.h_array.size()
     print >> out, "Number of Chebyshev terms : ", self.n_chebyshev_terms
     print >> out
-    print >> out, "1/d^3      d    sigmaA  sum weights"
-    for h,sa,w in zip( self.h_array, self.sigmaa_array, self.sum_weights ):
-      d = (1.0/h)**(1/3)
-      print >> out, "%5.4f   %5.2f   %4.3f  %.6g"%(h,d,sa,w)
+    print >> out, "1/d^3      d    sum weights  sigmaA   fitted    diff"
+    for h,w,sa,saf in zip(
+          self.h_array,
+          self.sum_weights,
+          self.sigmaa_array,
+          self.sigmaa_fitted):
+      if (h == 0):
+        d = " "*7
+      else:
+        d = "%7.4f" % (1.0/h)**(1/3)
+      print >> out, "%5.4f  %s  %8.2f   %7.4f  %7.4f  %7.4f" % (
+        h,d,w,sa,saf,saf-sa)
     print >> out
     print >> out
