@@ -1102,7 +1102,8 @@ class manager(object):
              r_free_flags=self.r_free_flags,
              kernel_width_free_reflections=p.kernel_width_free_reflections,
              n_sampling_points=p.number_of_sampling_points,
-             n_chebyshev_terms=p.number_of_chebyshev_terms).alpha_beta()
+             n_chebyshev_terms=p.number_of_chebyshev_terms,
+             use_sampling_sum_weights=p.use_sampling_sum_weights).alpha_beta()
        else:
          check = flex.max(flex.abs(self.f_ordered_solvent_dist.data()))
          if(check < 1.e-9):
@@ -1186,7 +1187,8 @@ class manager(object):
             r_free_flags=fmodel.r_free_flags,
             kernel_width_free_reflections=p.kernel_width_free_reflections,
             n_sampling_points=p.number_of_sampling_points,
-            n_chebyshev_terms=p.number_of_chebyshev_terms).alpha_beta()
+            n_chebyshev_terms=p.number_of_chebyshev_terms,
+            use_sampling_sum_weights=p.use_sampling_sum_weights).alpha_beta()
           break
         except KeyboardInterrupt: raise
         except Exception, e: est_exceptions.append(str(e))
