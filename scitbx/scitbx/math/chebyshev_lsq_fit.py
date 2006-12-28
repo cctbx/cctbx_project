@@ -6,6 +6,20 @@ from scitbx.math import chebyshev_base
 import math
 
 
+def chebyshev_nodes(n,
+                    low=-1,
+                    high=1,
+                    include_limits=False):
+  x = flex.double( range(n) )+1
+  x = (2.0*x-1.0)/n
+  x = x*math.pi/2.0
+  x = -flex.cos(x)
+  if include_limits:
+    span = (flex.max(x)-flex.min(x))/2.0
+    x = x/span
+  x = 0.5*(low+high) + 0.5*(high-low)*x
+  return(x)
+
 class chebyshev_lsq_fit(object):
   def __init__(self,
                n_terms,
@@ -21,9 +35,13 @@ class chebyshev_lsq_fit(object):
     self.free_flags = free_flags
     if self.free_flags is None:
       self.free_flags = flex.bool(x_obs.size(), True)
-    self.w_obs = flex.double(x_obs.size(), 1.0)
+
+    self.w_obs = None
     if w_obs is not None:
       self.w_obs = w_obs
+    else:
+      self.w_obs = flex.double(x_obs.size(), 1.0)
+
     self.x = flex.double(n_terms, 0)
     if randomise:
       self.x = (flex.random_double(n_terms)-0.5)*10.0
