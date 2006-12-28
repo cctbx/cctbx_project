@@ -14,6 +14,7 @@ import sys, os
 
 builtin_int = __builtins__["int"]
 builtin_long = __builtins__["long"]
+builtin_max = __builtins__["max"]
 
 def bool_md5(self):
   result = md5.new()
@@ -76,6 +77,45 @@ def max_default(values, default):
 def mean_default(values, default):
   if (values.size() == 0): return default
   return mean(values)
+
+def _format_none(format):
+  return " " * builtin_max(0, len(format % 0) - 4) + "None"
+
+def _format_min(values, format):
+  if (values.size() == 0): return _format_none(format)
+  return format % min(values)
+
+def _format_max(values, format):
+  if (values.size() == 0): return _format_none(format)
+  return format % max(values)
+
+def _format_mean(values, format):
+  if (values.size() == 0): return _format_none(format)
+  return format % mean(values)
+
+class _min_max_mean_double(boost.python.injector, ext.min_max_mean_double):
+
+  def show(self, out=None, prefix="", format="%.6g"):
+    if (out is None): out = sys.stdout
+    print >> out, prefix + "n:", self.n
+    def f(v):
+      if (format is None): return str(v)
+      if (v is None): return _format_none(format)
+      return format % v
+    print >> out, prefix + "min: ", f(self.min)
+    print >> out, prefix + "max: ", f(self.max)
+    print >> out, prefix + "mean:", f(self.mean)
+
+  def as_tuple(self):
+    return (self.min, self.max, self.mean)
+
+def _min_max_mean_double_init(self):
+  return min_max_mean_double(values=self)
+
+double.min_max_mean = _min_max_mean_double_init
+double.format_min = _format_min
+double.format_max = _format_max
+double.format_mean = _format_mean
 
 def select(sequence, permutation=None, flags=None):
   result = []
