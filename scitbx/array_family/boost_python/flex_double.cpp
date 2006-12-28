@@ -298,6 +298,17 @@ namespace boost_python {
         arg_("n_digits")=0)))
     ;
 
+    typedef return_value_policy<return_by_value> rbv;
+    typedef af::min_max_mean<double> mmm;
+    class_<mmm>("min_max_mean_double", no_init)
+      .def(init<af::const_ref<double> const&>((arg_("values"))))
+      .def_readonly("n", &mmm::n)
+      .add_property("min", make_getter(&mmm::min, rbv()))
+      .add_property("max", make_getter(&mmm::max, rbv()))
+      .add_property("sum", make_getter(&mmm::sum, rbv()))
+      .add_property("mean", make_getter(&mmm::mean, rbv()))
+    ;
+
     def("extract_double_attributes", extract_double_attributes,
       (arg_("array"), arg_("attribute_name"), arg_("none_substitute")));
 

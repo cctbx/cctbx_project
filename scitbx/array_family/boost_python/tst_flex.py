@@ -1,7 +1,7 @@
 from scitbx.array_family import flex
 from scitbx.python_utils import command_line
 from scitbx import matrix
-from libtbx.test_utils import approx_equal, not_approx_equal
+from libtbx.test_utils import approx_equal, not_approx_equal, show_diff
 from cStringIO import StringIO
 import pickle
 import cPickle
@@ -832,6 +832,53 @@ def exercise_functions():
   x = flex.double([-6.3,7.2])
   assert approx_equal(flex.fmod(x, 5), [-1.3, 2.2])
   assert approx_equal(flex.fmod_positive(x, 5), [3.7, 2.2])
+  #
+  values = flex.double()
+  stats = values.min_max_mean()
+  assert stats.min is None
+  assert stats.max is None
+  assert stats.mean is None
+  for format in ["%.6g", None]:
+    s = StringIO()
+    stats.show(out=s, prefix="values ", format=format)
+    assert not show_diff(s.getvalue(), """\
+values n: 0
+values min:  None
+values max:  None
+values mean: None
+""")
+  s = StringIO()
+  stats.show(out=s, format="%6.2f")
+  assert not show_diff(s.getvalue(), """\
+n: 0
+min:    None
+max:    None
+mean:   None
+""")
+  values = flex.double([4,2,-6,14,-7,5])
+  stats = values.min_max_mean()
+  assert stats.n == 6
+  assert approx_equal(stats.min, -7)
+  assert approx_equal(stats.max, 14)
+  assert approx_equal(stats.sum, 12)
+  assert approx_equal(stats.mean, 2)
+  for format,p0 in [("%.6g", ""), (None, ".0")]:
+    s = StringIO()
+    stats.show(out=s, format=format)
+    assert not show_diff(s.getvalue(), """\
+n: 6
+min:  -7%s
+max:  14%s
+mean: 2%s
+""" % (p0,p0,p0))
+  s = StringIO()
+  stats.show(out=s, format="%6.2f")
+  assert not show_diff(s.getvalue(), """\
+n: 6
+min:   -7.00
+max:   14.00
+mean:   2.00
+""")
 
 def exercise_complex_functions():
   c = 1+2j

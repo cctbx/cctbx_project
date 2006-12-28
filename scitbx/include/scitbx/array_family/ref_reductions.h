@@ -3,6 +3,7 @@
 
 #include <scitbx/array_family/ref.h>
 #include <scitbx/array_family/misc_functions.h>
+#include <boost/optional.hpp>
 
 namespace scitbx { namespace af {
 
@@ -199,6 +200,39 @@ namespace scitbx { namespace af {
     }
     return sum_vvw / sum_w;
   }
+
+  template <typename ElementType>
+  struct min_max_mean
+  {
+    min_max_mean() {}
+
+    template <typename AccessorType>
+    min_max_mean(const_ref<ElementType, AccessorType> const& values)
+    :
+      n(values.size())
+    {
+      if (n == 0) return;
+      ElementType min_v = values[0];
+      ElementType max_v = min_v;
+      ElementType sum_v = min_v;
+      for(std::size_t i=1;i<values.size();i++) {
+        ElementType const& vi = values[i];
+        if (vi < min_v) min_v = vi;
+        if (max_v < vi) max_v = vi;
+        sum_v += vi;
+      }
+      min = min_v;
+      max = max_v;
+      sum = sum_v;
+      mean = sum_v / values.size();
+    }
+
+    std::size_t n;
+    boost::optional<ElementType> min;
+    boost::optional<ElementType> max;
+    boost::optional<ElementType> sum;
+    boost::optional<ElementType> mean;
+  };
 
   template <typename ElementType, typename AccessorType>
   bool
