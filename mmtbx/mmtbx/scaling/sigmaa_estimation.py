@@ -67,6 +67,7 @@ class sigmaa_estimator(object):
                kernel_width_free_reflections=None,
                kernel_width_d_star_cubed=None,
                kernel_in_bin_centers=False,
+               kernel_on_chebyshev_nodes=True,
                n_sampling_points=20,
                n_chebyshev_terms=10,
                use_sampling_sum_weights=False):
@@ -126,14 +127,21 @@ class sigmaa_estimator(object):
     d_star_cubed_overall = self.miller_obs.d_star_cubed().data()
     self.min_h = flex.min( d_star_cubed_overall )
     self.max_h = flex.max( d_star_cubed_overall )
+    self.h_array = None
     if (kernel_in_bin_centers):
       self.h_array = flex.double( xrange(1,n_sampling_points*2,2) )*(
         self.max_h-self.min_h)/(n_sampling_points*2)+self.min_h
     else:
       self.min_h *= 0.99
       self.max_h *= 1.01
-      self.h_array = flex.double( range(n_sampling_points) )*(
-        self.max_h-self.min_h)/float(n_sampling_points-1.0)+self.min_h
+      if kernel_on_chebyshev_nodes:
+        self.h_array = chebyshev_lsq_fit.chebyshev_nodes(
+          n_sampling_points,
+          self.min_h,
+          self.max_h,True)
+      else:
+        self.h_array = flex.double( range(n_sampling_points) )*(
+          self.max_h-self.min_h)/float(n_sampling_points-1.0)+self.min_h
     assert self.h_array.size() == n_sampling_points
     self.sigmaa_array = flex.double()
     self.sigmaa_array.reserve(self.h_array.size())
