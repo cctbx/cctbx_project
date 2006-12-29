@@ -451,6 +451,30 @@ namespace cctbx { namespace xray { namespace {
     return result;
   }
 
+  af::shared<scatterer<> >
+  sites_mod_positive(af::shared<scatterer<> > const& self)
+  {
+    af::shared<scatterer<> > result = self.deep_copy();
+    scatterer<>* sc = result.begin();
+    const scatterer<>* sc_end = result.end();
+    for(scatterer<>* sc=result.begin();sc!=sc_end;sc++) {
+      sc->site = sc->site.mod_positive();
+    }
+    return result;
+  }
+
+  af::shared<scatterer<> >
+  sites_mod_short(af::shared<scatterer<> > const& self)
+  {
+    af::shared<scatterer<> > result = self.deep_copy();
+    scatterer<>* sc = result.begin();
+    const scatterer<>* sc_end = result.end();
+    for(scatterer<>* sc=result.begin();sc!=sc_end;sc++) {
+      sc->site = sc->site.mod_short();
+    }
+    return result;
+  }
+
 }}} // namespace cctbx::xray::<anonymous>
 
 namespace scitbx { namespace af { namespace boost_python {
@@ -534,6 +558,8 @@ namespace scitbx { namespace af { namespace boost_python {
               (arg_("unit_cell"),arg_("selection")))
       .def("count_anisotropic", cctbx::xray::count_anisotropic)
       .def("count_anomalous", cctbx::xray::count_anomalous)
+      .def("sites_mod_positive", cctbx::xray::sites_mod_positive)
+      .def("sites_mod_short", cctbx::xray::sites_mod_short)
     ;
   }
 

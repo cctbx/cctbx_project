@@ -184,6 +184,17 @@ def exercise_flex_xray_scatterer():
   assert a.count_anisotropic() == 0
   a.convert_to_anisotropic(unit_cell=unit_cell)
   assert a.count_anisotropic() == 3
+  m = a.sites_mod_positive()
+  assert approx_equal(m.extract_sites(), [
+    (0.9,0.8,0.7),
+    (0.8,0.7,0.6),
+    (0.7,0.6,0.5)])
+  m[2].site = (0.7,0.6,1.4) # to avoid +-0.5 ambiguity
+  m = m.sites_mod_short()
+  assert approx_equal(m.extract_sites(), [
+    (-0.1,-0.2,-0.3),
+    (-0.2,-0.3,-0.4),
+    (-0.3,-0.4,0.4)])
 
 def run():
   exercise_flex_miller_index()

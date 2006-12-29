@@ -743,6 +743,18 @@ class structure(crystal.special_position_settings):
         append_number_to_labels=append_number_to_labels),
       scattering_type_registry=self._scattering_type_registry)
 
+  def sites_mod_positive(self):
+    return structure(
+      special_position_settings=self,
+      scatterers=self.scatterers().sites_mod_positive(),
+      scattering_type_registry=self._scattering_type_registry)
+
+  def sites_mod_short(self):
+    return structure(
+      special_position_settings=self,
+      scatterers=self.scatterers().sites_mod_short(),
+      scattering_type_registry=self._scattering_type_registry)
+
   def apply_shift(self, shift, recompute_site_symmetries=False):
     shifted_scatterers = self.scatterers().deep_copy()
     shifted_scatterers.set_sites(shifted_scatterers.extract_sites() + shift)
