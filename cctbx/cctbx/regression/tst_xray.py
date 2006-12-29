@@ -276,6 +276,10 @@ Number of scattering types: 2
   assert xs2.scatterers().size() == 16
   assert approx_equal(xs2.scatterers()[0].site, (0.1, 0.02, 0))
   assert approx_equal(xs2.scatterers()[4].site, (0.1, 0, 0))
+  sx = ys.sites_mod_positive()
+  assert approx_equal(sx.scatterers()[1].site, (0.197,0.803,0.8333333))
+  sx = ys.sites_mod_short()
+  assert approx_equal(sx.scatterers()[1].site, (0.197,-0.197,-0.1666667))
   xs1.scatterers().set_occupancies(flex.random_double(size=5))
   xs2 = xs1.sort(by_value="occupancy")
   assert xs2.special_position_indices().size() == 2
