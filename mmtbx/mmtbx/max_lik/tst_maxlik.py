@@ -80,7 +80,7 @@ def test_1():
   alpha, beta = maxlik.alpha_beta_est_manager(
                     f_obs  = f_obs,
                     f_calc = f_calc,
-                    test_ref_in_bin = 1000,
+                    free_reflections_per_bin = 1000,
                     flags = flags,
                     interpolation = False).alpha_beta()
 
@@ -93,7 +93,7 @@ def test_1():
 # *********************************************************TEST = 2
   alpha, beta = maxlik.alpha_beta_est_manager(f_obs  = f_obs,
                                       f_calc = f_calc,
-                                      test_ref_in_bin = 50,
+                                      free_reflections_per_bin = 50,
                                       flags = flags,
                                       interpolation = False).alpha_beta()
 
@@ -220,7 +220,7 @@ def test_2():
       alpha, beta = maxlik.alpha_beta_est_manager(
                         f_obs           = f_obs,
                         f_calc          = f_calc,
-                        test_ref_in_bin = f_obs.data().size(),
+                        free_reflections_per_bin = f_obs.data().size(),
                         flags           = flags,
                         interpolation   = False).alpha_beta()
 
@@ -234,7 +234,7 @@ def test_2():
       alpha, beta = maxlik.alpha_beta_est_manager(
                         f_obs           = f_obs,
                         f_calc          = f_calc,
-                        test_ref_in_bin = f_obs.data().size(),
+                        free_reflections_per_bin = f_obs.data().size(),
                         flags           = flags,
                         interpolation   = True).alpha_beta()
 
@@ -250,7 +250,7 @@ def test_2():
                         f_obs           = miller.array(miller_set = f_obs,
                                                        data       = f_obs.data() * scale),
                         f_calc          = f_calc,
-                        test_ref_in_bin = 200,
+                        free_reflections_per_bin = 200,
                         flags           = flags,
                         interpolation   = False).alpha_beta()
 
@@ -265,7 +265,7 @@ def test_2():
                         f_obs           = miller.array(miller_set = f_obs,
                                                        data       = f_obs.data() * scale),
                         f_calc          = f_calc,
-                        test_ref_in_bin = 200,
+                        free_reflections_per_bin = 200,
                         flags           = flags,
                         interpolation   = True).alpha_beta()
 
@@ -281,7 +281,7 @@ def test_2():
                         f_obs           = miller.array(miller_set = f_obs,
                                                        data       = f_obs.data() * scale),
                         f_calc          = f_calc,
-                        test_ref_in_bin = 200,
+                        free_reflections_per_bin = 200,
                         flags           = flex.bool(f_obs.data().size(), True),
                         interpolation   = False).alpha_beta()
 
@@ -296,7 +296,7 @@ def test_2():
                         f_obs           = miller.array(miller_set = f_obs,
                                                        data       = f_obs.data() * scale),
                         f_calc          = f_calc,
-                        test_ref_in_bin = 200,
+                        free_reflections_per_bin = 200,
                         flags           = flex.bool(f_obs.data().size(), True),
                         interpolation   = True).alpha_beta()
 
@@ -312,7 +312,7 @@ def test_2():
                         f_obs           = miller.array(miller_set = f_obs,
                                                        data       = f_obs.data() * scale),
                         f_calc          = f_calc,
-                        test_ref_in_bin = 200,
+                        free_reflections_per_bin = 200,
                         flags           = flex.bool(f_obs.data().size(), False),
                         interpolation   = False).alpha_beta()
 
@@ -327,7 +327,7 @@ def test_2():
                         f_obs           = miller.array(miller_set = f_obs,
                                                        data       = f_obs.data() * scale),
                         f_calc          = f_calc,
-                        test_ref_in_bin = 200,
+                        free_reflections_per_bin = 200,
                         flags           = flex.bool(f_obs.data().size(), False),
                         interpolation   = True).alpha_beta()
 

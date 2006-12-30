@@ -130,7 +130,7 @@ class alpha_beta_est_manager(object):
 
   def __init__(self,f_obs,
                     f_calc,
-                    test_ref_in_bin,
+                    free_reflections_per_bin,
                     flags,
                     interpolation):
     adopt_init_args(self, locals())
@@ -145,8 +145,8 @@ class alpha_beta_est_manager(object):
     #         likelihood function;
     # f_calc - array of calculated magnitude values
     # f_obs  - array of experimental magnitude values
-    # test_ref_in_bin - minimal number of reflections in given resolution zone
-    #                    used for alpha,beta calculation
+    # free_reflections_per_bin - minimal number of reflections in given
+    #                    resolution zone used for alpha,beta calculation
     # V.Lunin & T.Skovoroda. Acta Cryst. (1995). A51, 880-887
     # P.Afonine, V.Lunin & A.Urzhumtsev.(2003).J.Appl.Cryst.36,158-159
     #
@@ -155,15 +155,15 @@ class alpha_beta_est_manager(object):
     assert self.f_calc.indices().all_eq(self.f_obs.indices()) == 1
     self.f_calc = abs(self.f_calc)
     if(self.flags.count(1) > 0):
-      if test_ref_in_bin > flags.count(1):
-         self.test_ref_in_bin = flags.count(1)
+      if free_reflections_per_bin > flags.count(1):
+         self.free_reflections_per_bin = flags.count(1)
       self.f_obs_test  = self.f_obs.select(self.flags)
       self.f_calc_test = self.f_calc.select(self.flags)
     if(self.flags.count(1) == 0):
       self.f_obs_test  = self.f_obs.select(~self.flags)
       self.f_calc_test = self.f_calc.select(~self.flags)
-    self.f_obs_test.setup_binner_counting_sorted(reflections_per_bin= self.test_ref_in_bin)
-    #self.f_obs_test.setup_binner(reflections_per_bin= self.test_ref_in_bin)
+    self.f_obs_test.setup_binner_counting_sorted(
+      reflections_per_bin= self.free_reflections_per_bin)
     self.fo_test_sets = []
     self.fm_test_sets = []
     self.indices_sets = []
@@ -227,7 +227,7 @@ class alpha_beta_est_manager(object):
 class alpha_beta(object):
   def __init__(self, f_obs            = None,
                      f_calc           = None,
-                     test_ref_in_bin  = None,
+                     free_reflections_per_bin = None,
                      flags            = None,
                      verbose          = None,
                      n_atoms_absent   = None,
@@ -247,11 +247,11 @@ class alpha_beta(object):
       assert self.flags.size() == self.f_obs.data().size()
       assert self.f_calc.indices().all_eq(self.f_obs.indices()) == 1
       self.alpha, self.beta = alpha_beta_est_manager(
-                                   f_obs           = self.f_obs,
-                                   f_calc          = abs(self.f_calc),
-                                   test_ref_in_bin = self.test_ref_in_bin,
-                                   flags           = self.flags,
-                                   interpolation   = self.interpolation).alpha_beta()
+        f_obs           = self.f_obs,
+        f_calc          = abs(self.f_calc),
+        free_reflections_per_bin = self.free_reflections_per_bin,
+        flags           = self.flags,
+        interpolation   = self.interpolation).alpha_beta()
     if (self.method == "calc"):
       assert self.f_obs is not None or self.f_calc is not None
       if (self.f_obs is not None): f = self.f_obs
@@ -271,7 +271,7 @@ class alpha_beta(object):
       assert self.interpolation    is not None
       assert self.f_obs            is not None
       assert self.f_calc           is not None
-      assert self.test_ref_in_bin  is not None
+      assert self.free_reflections_per_bin is not None
       assert self.flags            is not None
       assert self.n_atoms_absent   is not None
       assert self.n_atoms_included is not None
@@ -289,11 +289,11 @@ class alpha_beta(object):
                                     final_error      = self.final_error,
                                     absent_atom_type = self.absent_atom_type).alpha_beta()
       self.alpha_est, self.beta_est = alpha_beta_est(
-                                   f_obs           = self.f_obs,
-                                   f_calc          = abs(self.f_calc),
-                                   test_ref_in_bin = self.test_ref_in_bin,
-                                   flags           = self.flags,
-                                   interpolation   = self.interpolation).alpha_beta()#self.verbose).alpha_beta()
+        f_obs           = self.f_obs,
+        f_calc          = abs(self.f_calc),
+        free_reflections_per_bin = self.free_reflections_per_bin,
+        flags           = self.flags,
+        interpolation   = self.interpolation).alpha_beta()
       alpha_calc_ma = miller.array(miller_set= self.f_obs,data= self.alpha_calc)
       beta_calc_ma  = miller.array(miller_set= self.f_obs,data= self.beta_calc)
       alpha_est_ma  = miller.array(miller_set= self.f_obs,data= self.alpha_est)
@@ -328,7 +328,8 @@ class alpha_beta(object):
         alpha_est_ma_test= alpha_est_ma.select(~self.flags)
         beta_est_ma_test= beta_est_ma.select(~self.flags)
 
-      alpha_calc_ma_test.setup_binner(reflections_per_bin = self.test_ref_in_bin)
+      alpha_calc_ma_test.setup_binner(
+        reflections_per_bin = self.free_reflections_per_bin)
       beta_calc_ma_test.use_binning_of(alpha_calc_ma_test)
       alpha_est_ma_test.use_binning_of(alpha_calc_ma_test)
       beta_est_ma_test.use_binning_of(alpha_calc_ma_test)

@@ -48,7 +48,7 @@ def exercise(space_group_info,
    if(1):
      alpha, beta = maxlik.alpha_beta_est(f_obs  = f_obs,
                                       f_calc = f_calc,
-                                      test_ref_in_bin = 50,
+                                      free_reflections_per_bin = 50,
                                       flags = flags).alpha_beta(
                                                show_summary=True)
 

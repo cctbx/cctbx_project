@@ -29,7 +29,7 @@ if (1): # fixed random seed to avoid rare failures
 
 
 class alpha_beta_parameters(object):
-  def __init__(self, test_ref_in_bin  = 200,
+  def __init__(self, free_reflections_per_bin = 200,
                      n_atoms_absent   = 325,
                      n_atoms_included = 0,
                      bf_atoms_absent  = 25.0,
