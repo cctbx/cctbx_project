@@ -181,7 +181,6 @@ class manager(object):
   def show_current_state(self, header):
     out = self.log
     scatterers = self.xray_structure.scatterers()
-    print scatterers.size(), self.solvent_selection.size()
     non_solvent_scatterers = scatterers.select(~self.solvent_selection)
     solvent_scatterers     = scatterers.select(self.solvent_selection)
     q_solv = solvent_scatterers.extract_occupancies()
