@@ -857,14 +857,14 @@ class manager(object):
     #assert self.test_count_true != 0
 
   def determine_n_bins(self,
-        free_refl_per_bin,
+        free_reflections_per_bin,
         max_n_bins=None,
         min_n_bins=3,
         min_refl_per_bin=100):
-    assert free_refl_per_bin > 0
+    assert free_reflections_per_bin > 0
     n_refl = self.test.size()
     n_free = self.test_count_true
-    n_refl_per_bin = free_refl_per_bin
+    n_refl_per_bin = free_reflections_per_bin
     if (n_free != 0):
       n_refl_per_bin *= n_refl / n_free
     n_refl_per_bin = min(n_refl, iround(n_refl_per_bin))
@@ -1043,11 +1043,12 @@ class manager(object):
     ui = self.u_iso()
     return [ui,ui,ui,0.0,0.0,0.0]
 
-  def r_work_in_lowest_resolution_bin(self, free_refl_per_bin=100):
+  def r_work_in_lowest_resolution_bin(self, free_reflections_per_bin=100):
     fo_w = self.f_obs_w
     fc_w = self.f_model_w()
     fo_w.setup_binner(
-      n_bins=self.determine_n_bins(free_refl_per_bin=free_refl_per_bin))
+      n_bins=self.determine_n_bins(
+        free_reflections_per_bin=free_reflections_per_bin))
     fo_w.use_binning_of(fo_w)
     fc_w.use_binning_of(fo_w)
     r = []
@@ -1115,7 +1116,8 @@ class manager(object):
            alpha, beta = maxlik.alpha_beta_est_manager(
              f_obs           = self.f_obs,
              f_calc          = self.f_model(),
-             test_ref_in_bin = self.alpha_beta_params.test_ref_in_bin,
+             free_reflections_per_bin
+               = self.alpha_beta_params.free_reflections_per_bin,
              flags           = self.r_free_flags.data(),
              interpolation   = self.alpha_beta_params.interpolation) \
                .alpha_beta()
@@ -1154,7 +1156,7 @@ class manager(object):
        alpha, beta = maxlik.alpha_beta_est_manager(
                                     f_obs           = self.f_obs,
                                     f_calc          = self.f_model(),
-                                    test_ref_in_bin = 200,
+                                    free_reflections_per_bin = 200,
                                     flags           = self.r_free_flags.data(),
                                     interpolation   = False).alpha_beta()
     time_alpha_beta += timer.elapsed()
@@ -1181,10 +1183,10 @@ class manager(object):
   def model_error_ml(self):
     #XXX needs clean solution / one more unfinished project
     if (self.alpha_beta_params is None):
-      test_ref_in_bin = 200
+      free_reflections_per_bin = 200
       estimation_algorithm = "analytical"
     else:
-      test_ref_in_bin = self.alpha_beta_params.test_ref_in_bin
+      free_reflections_per_bin=self.alpha_beta_params.free_reflections_per_bin
       estimation_algorithm = self.alpha_beta_params.estimation_algorithm
     assert estimation_algorithm in ["analytical", "iterative"]
     est_exceptions = []
@@ -1197,7 +1199,7 @@ class manager(object):
           alpha, beta = maxlik.alpha_beta_est_manager(
             f_obs           = fmodel.f_obs,
             f_calc          = fmodel.f_model(),
-            test_ref_in_bin = test_ref_in_bin,
+            free_reflections_per_bin = free_reflections_per_bin,
             flags           = fmodel.r_free_flags.data(),
             interpolation   = True).alpha_beta()
           break
@@ -1661,55 +1663,56 @@ class manager(object):
     time_show += timer.elapsed()
 
   def show_comprehensive(self, header = "",
-                               free_refl_per_bin = 100,
+                               free_reflections_per_bin = 100,
                                max_number_of_bins  = 30,
                                out=None):
     if(out is None): out = sys.stdout
     self.show_essential(header = header, out = out)
     print >> out
     self.statistics_in_resolution_bins(
-                                     free_refl_per_bin = free_refl_per_bin,
-                                     max_number_of_bins  = max_number_of_bins,
-                                     out                 = out)
+      free_reflections_per_bin = free_reflections_per_bin,
+      max_number_of_bins  = max_number_of_bins,
+      out                 = out)
     print >> out
     self.show_fom_phase_error_alpha_beta_in_bins(
-                                     free_refl_per_bin = free_refl_per_bin,
-                                     max_number_of_bins  = max_number_of_bins,
-                                     out                 = out)
+      free_reflections_per_bin = free_reflections_per_bin,
+      max_number_of_bins  = max_number_of_bins,
+      out                 = out)
 
-  def statistics_in_resolution_bins(self, free_refl_per_bin = 100,
+  def statistics_in_resolution_bins(self, free_reflections_per_bin = 100,
                                           max_number_of_bins  = 30,
                                           out=None):
     statistics_in_resolution_bins(
       fmodel          = self,
       target_functors = self.target_functors,
-      free_refl_per_bin = free_refl_per_bin,
+      free_reflections_per_bin = free_reflections_per_bin,
       max_number_of_bins  = max_number_of_bins,
       out=out)
 
-  def r_factors_in_resolution_bins(self, free_refl_per_bin = 100,
+  def r_factors_in_resolution_bins(self, free_reflections_per_bin = 100,
                                           max_number_of_bins  = 30,
                                           out=None):
     if(out is None): out = sys.stdout
     r_factors_in_resolution_bins(
       fmodel              = self,
-      free_refl_per_bin = free_refl_per_bin,
+      free_reflections_per_bin = free_reflections_per_bin,
       max_number_of_bins  = max_number_of_bins,
       out=out)
 
-  def show_fom_phase_error_alpha_beta_in_bins(self, free_refl_per_bin = 100,
-                                                    max_number_of_bins  = 30,
-                                                    out=None):
+  def show_fom_phase_error_alpha_beta_in_bins(self,
+        free_reflections_per_bin = 100,
+        max_number_of_bins = 30,
+        out=None):
     if(out is None): out = sys.stdout
     show_fom_phase_error_alpha_beta_in_bins(
       fmodel              = self,
-      free_refl_per_bin = free_refl_per_bin,
+      free_reflections_per_bin = free_reflections_per_bin,
       max_number_of_bins  = max_number_of_bins,
       out=out)
 
 def statistics_in_resolution_bins(fmodel,
                                   target_functors,
-                                  free_refl_per_bin,
+                                  free_reflections_per_bin,
                                   max_number_of_bins,
                                   out=None):
   global time_show
@@ -1722,7 +1725,7 @@ def statistics_in_resolution_bins(fmodel,
   alpha_w, beta_w = fmodel.alpha_beta_w()
   alpha_t, beta_t = fmodel.alpha_beta_t()
   fo_t.setup_binner(n_bins=fmodel.determine_n_bins(
-    free_refl_per_bin=free_refl_per_bin,
+    free_reflections_per_bin=free_reflections_per_bin,
     max_n_bins=max_number_of_bins))
   fc_t.use_binning_of(fo_t)
   fo_w.use_binning_of(fo_t)
@@ -1790,7 +1793,7 @@ def statistics_in_resolution_bins(fmodel,
   time_show += timer.elapsed()
 
 def r_factors_in_resolution_bins(fmodel,
-                                 free_refl_per_bin,
+                                 free_reflections_per_bin,
                                  max_number_of_bins,
                                  out=None):
   global time_show
@@ -1801,7 +1804,7 @@ def r_factors_in_resolution_bins(fmodel,
   fo_w = fmodel.f_obs_w
   fc_w = fmodel.f_model_w()
   fo_t.setup_binner(n_bins=fmodel.determine_n_bins(
-    free_refl_per_bin=free_refl_per_bin,
+    free_reflections_per_bin=free_reflections_per_bin,
     max_n_bins=max_number_of_bins))
   fo_w.use_binning_of(fo_t)
   fc_t.use_binning_of(fo_t)
@@ -1828,7 +1831,7 @@ def r_factors_in_resolution_bins(fmodel,
 
 
 def show_fom_phase_error_alpha_beta_in_bins(fmodel,
-                                            free_refl_per_bin,
+                                            free_reflections_per_bin,
                                             max_number_of_bins,
                                             out=None):
   global time_show
@@ -1836,7 +1839,7 @@ def show_fom_phase_error_alpha_beta_in_bins(fmodel,
   if(out is None): out = sys.stdout
   mi_fom = fmodel.f_obs.array(data = fmodel.figures_of_merit())
   mi_fom.setup_binner(n_bins=fmodel.determine_n_bins(
-    free_refl_per_bin=free_refl_per_bin))
+    free_reflections_per_bin=free_reflections_per_bin))
   phase_errors_work = fmodel.phase_errors_work()
   phase_errors_test = fmodel.phase_errors_test()
   alpha, beta = fmodel.alpha_beta()

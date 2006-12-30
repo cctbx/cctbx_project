@@ -215,7 +215,7 @@ def test_5(fmodel, model):
                                update_f_calc  = True)
   assert approx_equal(fmodel.r_work(), 0.51, 1.e-2)
   assert approx_equal(fmodel.r_free(), 0.52, 1.e-2)
-  fmodel.show_comprehensive(free_refl_per_bin = 250,
+  fmodel.show_comprehensive(free_reflections_per_bin = 250,
                             max_number_of_bins  = 30)
 
   rb = mmtbx.refinement.rigid_body.manager(fmodel           = fmodel,
@@ -224,7 +224,7 @@ def test_5(fmodel, model):
                                            refine_t         = True,
                                            convergence_test = True,
                                            protocol         = "multiple_zones")
-  fmodel.show_comprehensive(free_refl_per_bin = 250,
+  fmodel.show_comprehensive(free_reflections_per_bin = 250,
                             max_number_of_bins  = 30)
   assert approx_equal(rb.translation()[0], [-1.0,-1.0,-1.0], 1.e-4)
   assert approx_equal(rb.rotation()[0], [-0.5,-0.5,-0.5], 1.e-1)
@@ -325,7 +325,7 @@ def run_tests(sf_algorithm = "fft"):
                                  sf_cos_sin_table  = False,
                                  #target_name       = "ml",
                                  sf_algorithm      = sf_algorithm)
-  fmodel.show_comprehensive(free_refl_per_bin = 250,
+  fmodel.show_comprehensive(free_reflections_per_bin = 250,
                             max_number_of_bins  = 30)
 
   print "test 1: "
