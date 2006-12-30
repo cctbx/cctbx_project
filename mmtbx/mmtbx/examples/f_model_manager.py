@@ -55,8 +55,8 @@ def run():
   print f_model_manager.r_free()
 
   f_model_manager.r_factors_in_resolution_bins(
-    reflections_per_bin = 100,
-    max_number_of_bins  = 10)
+    free_refl_per_bin = 100,
+    max_number_of_bins = 10)
 
   f_model_manager.update(
     k_sol = 1.2,
@@ -66,8 +66,8 @@ def run():
   f_bulk = f_model_manager.f_bulk()
 
   f_model_manager.show_fom_phase_error_alpha_beta_in_bins(
-    reflections_per_bin = 100,
-    max_number_of_bins  = 10)
+    free_refl_per_bin = 100,
+    max_number_of_bins = 10)
 
   fft_map = f_model_manager.electron_density_map(
     map_type = "2m*Fobs-D*Fmodel")

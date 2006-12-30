@@ -25,6 +25,7 @@ from cctbx import xray
 from cctbx import adptbx
 import boost.python
 import mmtbx
+from libtbx.math_utils import iround
 from libtbx.utils import Sorry, user_plus_sys_time
 
 ext = boost.python.import_ext("mmtbx_f_model_ext")
@@ -128,7 +129,7 @@ class manager(object):
                      update_xray_structure = True,
                      use_f_model_scaled    = False):
     self.f_obs             = f_obs
-    self.r_free_flags      = r_free_flags
+    self.r_free_flags      = None
     self.sf_algorithm      = sf_algorithm
     self.sf_cos_sin_table  = sf_cos_sin_table
     self.target_name       = target_name
@@ -144,12 +145,9 @@ class manager(object):
     zero = flex.complex_double(self.f_obs.data().size(), 0.0)
     assert self.f_obs is not None
     assert self.f_obs.is_real_array()
-    if(self.r_free_flags is not None):
-       assert self.r_free_flags.indices().all_eq(self.f_obs.indices())
-    self.work = ~self.r_free_flags.data()
-    self.test =  self.r_free_flags.data()
-    if(self.work.count(True) == 0): self.work = ~self.work
-    if(self.test.count(True) == 0): self.test = ~self.test
+    if(r_free_flags is not None):
+       assert r_free_flags.indices().all_eq(self.f_obs.indices())
+       self.update_r_free_flags(r_free_flags)
     self.f_obs_w = self.f_obs.select(self.work)
     self.f_obs_t = self.f_obs.select(self.test)
     self.structure_factor_gradients_w = cctbx.xray.structure_factors.gradients(
@@ -845,6 +843,38 @@ class manager(object):
     time_gradient_wrt_atomic_parameters += timer.elapsed()
     return result
 
+  def update_r_free_flags(self, r_free_flags):
+    assert r_free_flags.indices().size() == self.f_obs.indices().size()
+    self.r_free_flags = r_free_flags
+    self.work = ~r_free_flags.data()
+    self.test =  r_free_flags.data()
+    if (self.work.count(True) == 0): self.work = ~self.work # XXX BAD
+    if (self.test.count(True) == 0): self.test = ~self.test # XXX BAD
+    self.work_count_true = self.work.count(True)
+    self.test_count_true = self.test.size() - self.work_count_true
+    self.test_count_true = self.test.count(True) # XXX BAD
+    #assert self.work_count_true != 0 XXX fails some tests
+    #assert self.test_count_true != 0
+
+  def determine_n_bins(self,
+        free_refl_per_bin,
+        max_n_bins=None,
+        min_n_bins=3,
+        min_refl_per_bin=100):
+    assert free_refl_per_bin > 0
+    n_refl = self.test.size()
+    n_free = self.test_count_true
+    n_refl_per_bin = free_refl_per_bin
+    if (n_free != 0):
+      n_refl_per_bin *= n_refl / n_free
+    n_refl_per_bin = min(n_refl, iround(n_refl_per_bin))
+    result = max(1, n_refl / max(1, n_refl_per_bin))
+    if (min_n_bins is not None):
+      result = max(result, min(min_n_bins, iround(n_refl / min_refl_per_bin)))
+    if (max_n_bins is not None):
+      result = min(max_n_bins, result)
+    return result
+
   def update(self, f_calc              = None,
                    f_obs               = None,
                    f_mask              = None,
@@ -878,10 +908,7 @@ class manager(object):
                  self.f_ordered_solvent.data().size()
        self.f_ordered_solvent = f_ordered_solvent
     if(r_free_flags is not None):
-      assert r_free_flags.indices().size() == self.f_obs.indices().size()
-      self.r_free_flags = r_free_flags
-      self.work = ~self.r_free_flags.data()
-      self.test =  self.r_free_flags.data()
+      self.update_r_free_flags(r_free_flags)
       self.update_core(r_free_flags = r_free_flags)
     if(b_cart is not None):
       try: assert b_cart.size() == 6
@@ -1016,13 +1043,11 @@ class manager(object):
     ui = self.u_iso()
     return [ui,ui,ui,0.0,0.0,0.0]
 
-  def r_work_in_lowest_resolution_bin(self, reflections_per_bin=200):
+  def r_work_in_lowest_resolution_bin(self, free_refl_per_bin=100):
     fo_w = self.f_obs_w
     fc_w = self.f_model_w()
-    if(fo_w.data().size() > reflections_per_bin):
-       fo_w.setup_binner(reflections_per_bin = reflections_per_bin)
-    else:
-       fo_w.setup_binner(reflections_per_bin = fo_w.data().size())
+    fo_w.setup_binner(
+      n_bins=self.determine_n_bins(free_refl_per_bin=free_refl_per_bin))
     fo_w.use_binning_of(fo_w)
     fc_w.use_binning_of(fo_w)
     r = []
@@ -1636,76 +1661,69 @@ class manager(object):
     time_show += timer.elapsed()
 
   def show_comprehensive(self, header = "",
-                               reflections_per_bin = 200,
+                               free_refl_per_bin = 100,
                                max_number_of_bins  = 30,
                                out=None):
     if(out is None): out = sys.stdout
     self.show_essential(header = header, out = out)
     print >> out
     self.statistics_in_resolution_bins(
-                                     reflections_per_bin = reflections_per_bin,
+                                     free_refl_per_bin = free_refl_per_bin,
                                      max_number_of_bins  = max_number_of_bins,
                                      out                 = out)
     print >> out
     self.show_fom_phase_error_alpha_beta_in_bins(
-                                     reflections_per_bin = reflections_per_bin,
+                                     free_refl_per_bin = free_refl_per_bin,
                                      max_number_of_bins  = max_number_of_bins,
                                      out                 = out)
 
-  def statistics_in_resolution_bins(self, reflections_per_bin = 200,
+  def statistics_in_resolution_bins(self, free_refl_per_bin = 100,
                                           max_number_of_bins  = 30,
                                           out=None):
     statistics_in_resolution_bins(
       fmodel          = self,
       target_functors = self.target_functors,
-      reflections_per_bin = reflections_per_bin,
+      free_refl_per_bin = free_refl_per_bin,
       max_number_of_bins  = max_number_of_bins,
       out=out)
 
-  def r_factors_in_resolution_bins(self, reflections_per_bin = 200,
+  def r_factors_in_resolution_bins(self, free_refl_per_bin = 100,
                                           max_number_of_bins  = 30,
                                           out=None):
     if(out is None): out = sys.stdout
     r_factors_in_resolution_bins(
       fmodel              = self,
-      reflections_per_bin = reflections_per_bin,
+      free_refl_per_bin = free_refl_per_bin,
       max_number_of_bins  = max_number_of_bins,
       out=out)
 
-  def show_fom_phase_error_alpha_beta_in_bins(self, reflections_per_bin = 200,
+  def show_fom_phase_error_alpha_beta_in_bins(self, free_refl_per_bin = 100,
                                                     max_number_of_bins  = 30,
                                                     out=None):
     if(out is None): out = sys.stdout
     show_fom_phase_error_alpha_beta_in_bins(
       fmodel              = self,
-      reflections_per_bin = reflections_per_bin,
+      free_refl_per_bin = free_refl_per_bin,
       max_number_of_bins  = max_number_of_bins,
       out=out)
 
 def statistics_in_resolution_bins(fmodel,
                                   target_functors,
-                                  reflections_per_bin,
+                                  free_refl_per_bin,
                                   max_number_of_bins,
                                   out=None):
   global time_show
   timer = user_plus_sys_time()
   if(out is None): out = sys.stdout
-  d_max,d_min = fmodel.f_obs.d_max_min()
   fo_t = fmodel.f_obs_t
   fc_t = fmodel.f_model_t()
   fo_w = fmodel.f_obs_w
   fc_w = fmodel.f_model_w()
   alpha_w, beta_w = fmodel.alpha_beta_w()
   alpha_t, beta_t = fmodel.alpha_beta_t()
-  if(fo_t.data().size() > reflections_per_bin):
-    fo_t.setup_binner(reflections_per_bin = reflections_per_bin,
-                      d_max = d_max, d_min = d_min)
-  else:
-    fo_t.setup_binner(reflections_per_bin = fo_t.data().size(),
-                      d_max = d_max, d_min = d_min)
-  if(len(fo_t.binner().range_used()) > max_number_of_bins):
-    fo_t.setup_binner(n_bins = max_number_of_bins,
-                      d_max = d_max, d_min = d_min)
+  fo_t.setup_binner(n_bins=fmodel.determine_n_bins(
+    free_refl_per_bin=free_refl_per_bin,
+    max_n_bins=max_number_of_bins))
   fc_t.use_binning_of(fo_t)
   fo_w.use_binning_of(fo_t)
   fc_w.use_binning_of(fo_t)
@@ -1735,54 +1753,61 @@ def statistics_in_resolution_bins(fmodel,
       target_w = xray_target_functor_w(sel_fc_w, False).target()
       target_t = xray_target_functor_t(sel_fc_t, False).target()
     elif(fmodel.target_name == "ml" or fmodel.target_name == "mlhl"):
-      target_w = xray_target_functor_w(sel_fc_w,
-                                       sel_alpha_w.data(),
-                                       sel_beta_w.data(),
-                                       1.0,
-                                       False).target()
-      target_t = xray_target_functor_t(sel_fc_t,
-                                       sel_alpha_t.data(),
-                                       sel_beta_t.data(),
-                                       1.0,
-                                       False).target()
-    r_w = bulk_solvent.r_factor(sel_fo_w.data(), sel_fc_w.data())
-    r_t = bulk_solvent.r_factor(sel_fo_t.data(), sel_fc_t.data())
-    nt = sel_fo_t.data().size()
+      if (sel_fc_w.indices().size() != 0):
+        target_w = "%11.5g" % xray_target_functor_w(
+          sel_fc_w,
+          sel_alpha_w.data(),
+          sel_beta_w.data(),
+          1.0,
+          False).target()
+      else:
+        target_w = "%11s" % "None"
+      if (sel_fc_t.indices().size() != 0):
+        target_t = "%11.5g" % xray_target_functor_t(
+          sel_fc_t,
+          sel_alpha_t.data(),
+          sel_beta_t.data(),
+          1.0,
+          False).target()
+      else:
+        target_t = "%11s" % "None"
     nw = sel_fo_w.data().size()
+    nt = sel_fo_t.data().size()
+    if (nw != 0):
+      r_w = "%6.4f" % bulk_solvent.r_factor(sel_fo_w.data(), sel_fc_w.data())
+    else:
+      r_w = "  None"
+    if (nt != 0):
+      r_t = "%6.4f" % bulk_solvent.r_factor(sel_fo_t.data(), sel_fc_t.data())
+    else:
+      r_t = "  None"
     d_range = fo_t.binner().bin_legend(
       i_bin=i_bin, show_bin_number=False, show_counts=False)
-    print >> out, "|%3d: %s %4.2f %6d %4d %6.4f %6.4f %11.4E %11.4E|" % (
+    print >> out, "|%3d: %-17s %4.2f %6d %4d %s %s %s %s|" % (
       i_bin, d_range, ch, nw, nt, r_w, r_t, target_w, target_t)
   print >> out, "|"+"-"*77+"|"
   out.flush()
   time_show += timer.elapsed()
 
 def r_factors_in_resolution_bins(fmodel,
-                                 reflections_per_bin,
+                                 free_refl_per_bin,
                                  max_number_of_bins,
                                  out=None):
   global time_show
   timer = user_plus_sys_time()
   if(out is None): out = sys.stdout
-  d_max,d_min = fmodel.f_obs.d_max_min()
   fo_t = fmodel.f_obs_t
   fc_t = fmodel.f_model_t()
   fo_w = fmodel.f_obs_w
   fc_w = fmodel.f_model_w()
-  if(fo_t.data().size() > reflections_per_bin):
-    fo_t.setup_binner(reflections_per_bin = reflections_per_bin,
-                      d_max = d_max, d_min = d_min)
-  else:
-    fo_t.setup_binner(reflections_per_bin = fo_t.data().size(),
-                      d_max = d_max, d_min = d_min)
-  if(len(fo_t.binner().range_used()) > max_number_of_bins):
-    fo_t.setup_binner(n_bins = max_number_of_bins,
-                      d_max = d_max, d_min = d_min)
+  fo_t.setup_binner(n_bins=fmodel.determine_n_bins(
+    free_refl_per_bin=free_refl_per_bin,
+    max_n_bins=max_number_of_bins))
   fo_w.use_binning_of(fo_t)
   fc_t.use_binning_of(fo_t)
   fc_w.use_binning_of(fo_t)
-  print >> out, " Bin     Resolution       No. Refl.      R-factors      "
-  print >> out, "number     range         work   test     work   test    "
+  print >> out, " Bin     Resolution       No. Refl.      R-factors"
+  print >> out, "number     range         work   test     work   test"
   for i_bin in fo_t.binner().range_used():
     sel_t = fo_t.binner().selection(i_bin)
     sel_w = fo_w.binner().selection(i_bin)
@@ -1796,45 +1821,29 @@ def r_factors_in_resolution_bins(fmodel,
     nw = sel_fo_w.data().size()
     d_range = fo_t.binner().bin_legend(
       i_bin=i_bin, show_bin_number=False, show_counts=False)
-    print >> out, "%3d: %s %6d %6d   %6.4f %6.4f" % (
+    print >> out, "%3d: %-17s %6d %6d   %6.4f %6.4f" % (
       i_bin, d_range, nw, nt, r_w, r_t)
   out.flush()
   time_show += timer.elapsed()
 
 
 def show_fom_phase_error_alpha_beta_in_bins(fmodel,
-                                            reflections_per_bin,
+                                            free_refl_per_bin,
                                             max_number_of_bins,
                                             out=None):
   global time_show
   timer = user_plus_sys_time()
   if(out is None): out = sys.stdout
-  d_max,d_min = fmodel.f_obs.d_max_min()
-  fom = fmodel.figures_of_merit()
+  mi_fom = fmodel.f_obs.array(data = fmodel.figures_of_merit())
+  mi_fom.setup_binner(n_bins=fmodel.determine_n_bins(
+    free_refl_per_bin=free_refl_per_bin))
   phase_errors_work = fmodel.phase_errors_work()
   phase_errors_test = fmodel.phase_errors_test()
-  mi_a, mi_b = fmodel.alpha_beta()
-  alpha, beta = mi_a, mi_b
-  mi_fom = fmodel.f_obs.array(data = fom)
+  alpha, beta = fmodel.alpha_beta()
   mi_per_work = fmodel.f_obs_w.array(data = phase_errors_work)
   mi_per_test = fmodel.f_obs_t.array(data = phase_errors_test)
-  mi_f   = fmodel.r_free_flags
-  test_set = mi_f.select(fmodel.r_free_flags.data())
-  if(test_set.data().size() > reflections_per_bin):
-     test_set.setup_binner(reflections_per_bin = reflections_per_bin,
-                           d_max = d_max, d_min = d_min)
-  else:
-     test_set.setup_binner(reflections_per_bin = test_set.data().size(),
-                           d_max = d_max, d_min = d_min)
-  if(len(test_set.binner().range_used()) > max_number_of_bins):
-     test_set.setup_binner(n_bins = max_number_of_bins,
-                           d_max = d_max, d_min = d_min)
-  mi_per_test.use_binning_of(test_set)
-  mi_per_work.use_binning_of(test_set)
-  mi_fom.use_binning_of(test_set)
-  mi_a.use_binning_of(test_set)
-  mi_b.use_binning_of(test_set)
-  mi_f.use_binning_of(test_set)
+  mi_per_test.use_binning_of(mi_fom)
+  mi_per_work.use_binning_of(mi_fom)
   print >> out, "|"+"-"*77+"|"
   print >> out, "|R-free likelihood based estimates for figures of merit," \
                   " absolute phase error,|"
@@ -1845,65 +1854,42 @@ def show_fom_phase_error_alpha_beta_in_bins(fmodel,
                 " Alpha        Beta  |"
   print >> out, "|  #        range        work  test        work    test  "\
                 "                     |"
-  for i_bin in test_set.binner().range_used():
-    sel = mi_fom.binner().selection(i_bin)
-    sel_work = mi_per_work.binner().selection(i_bin)
-    sel_test = mi_per_test.binner().selection(i_bin)
-    sel_mi_fom = mi_fom.select(sel)
-    sel_mi_per_work = mi_per_work.select(sel_work)
-    sel_mi_per_test = mi_per_test.select(sel_test)
-    sel_mi_a   = mi_a.select(sel)
-    sel_mi_b   = mi_b.select(sel)
-    sel_mi_f   = mi_f.select(sel)
-    sel_mi_fom_ave = flex.mean(sel_mi_fom.data())
-    sel_mi_per_work_data = sel_mi_per_work.data()
-    sel_mi_per_test_data = sel_mi_per_test.data()
-    assert sel_mi_per_work_data.size() >= sel_mi_per_test_data.size()
-    sel_mi_per_work_ave = flex.mean(sel_mi_per_work_data)
-    sel_mi_per_test_ave = flex.mean(sel_mi_per_test_data)
-    sel_mi_a_ave   = flex.mean(sel_mi_a.data())
-    sel_mi_b_ave   = flex.mean(sel_mi_b.data())
-    nt = sel_mi_f.data().count(True)
-    nw = sel_mi_f.data().count(False)
-    assert nt+nw == sel_mi_b.data().size()
-    d_range = mi_fom.binner().bin_legend(i_bin=i_bin, show_bin_number=False,\
-                                         show_counts=False)
-    print >> out, "|%3d: %s%6d%6d%6.2f%7.2f%7.2f%9.2f%14.2f|" % (
-      i_bin,d_range,nw,nt,sel_mi_fom_ave,sel_mi_per_work_ave,\
-      sel_mi_per_test_ave,sel_mi_a_ave,sel_mi_b_ave)
-  alpha_min  = flex.min(alpha.data())
-  beta_min   = flex.min(beta.data())
-  alpha_max  = flex.max(alpha.data())
-  beta_max   = flex.max(beta.data())
-  alpha_mean = flex.mean(alpha.data())
-  beta_mean  = flex.mean(beta.data())
-  fom_min    = flex.min(fom)
-  fom_max    = flex.max(fom)
-  fom_mean   = flex.mean(fom)
-  per_min_work    = flex.min(phase_errors_work)
-  per_max_work    = flex.max(phase_errors_work)
-  per_mean_work   = flex.mean(phase_errors_work)
-  per_min_test    = flex.min(phase_errors_test)
-  per_max_test    = flex.max(phase_errors_test)
-  per_mean_test   = flex.mean(phase_errors_test)
+  for i_bin in mi_fom.binner().range_used():
+    sel = mi_fom.binner().selection(i_bin).iselection()
+    sel_work = mi_per_work.binner().selection(i_bin).iselection()
+    sel_test = mi_per_test.binner().selection(i_bin).iselection()
+    assert sel.size() == sel_work.size() + sel_test.size()
+    print >> out, "|%3d: %-17s%6d%6d%s%s%s%s%s|" % (
+      i_bin,
+      mi_fom.binner().bin_legend(
+        i_bin=i_bin, show_bin_number=False, show_counts=False),
+      sel_work.size(),
+      sel_test.size(),
+      mi_fom.data().select(sel).format_mean("%6.2f"),
+      mi_per_work.data().select(sel_work).format_mean("%7.2f"),
+      mi_per_test.data().select(sel_test).format_mean("%7.2f"),
+      alpha.data().select(sel).format_mean("%9.2f"),
+      beta.data().select(sel).format_mean("%14.2f"))
+  alpha_stats = alpha.data().min_max_mean()
+  beta_stats = beta.data().min_max_mean()
   print >>out, "|alpha:            min =%12.2f max =%16.2f mean =%13.2f|"%\
-                                       (alpha_min,    alpha_max,    alpha_mean)
+    alpha_stats.as_tuple()
   print >>out, "|beta:             min =%12.2f max =%16.2f mean =%13.2f|"%\
-                                        (beta_min,     beta_max,     beta_mean)
+    beta_stats.as_tuple()
   print >>out, "|figures of merit: min =%12.2f max =%16.2f mean =%13.2f|"%\
-                                         (fom_min,      fom_max,      fom_mean)
+    mi_fom.data().min_max_mean().as_tuple()
   print >>out, "|phase err.(work): min =%12.2f max =%16.2f mean =%13.2f|"%\
-                                    (per_min_work, per_max_work, per_mean_work)
+    phase_errors_work.min_max_mean().as_tuple()
   print >>out, "|phase err.(test): min =%12.2f max =%16.2f mean =%13.2f|"%\
-                                    (per_min_test, per_max_test, per_mean_test)
-  if(alpha_min <= 0.0):
+    phase_errors_test.min_max_mean().as_tuple()
+  if(alpha_stats.min <= 0.0):
     print >> out, "| *** f_model warning: there are some alpha <= 0.0 ***" \
       "                        |"
     amz = alpha.data() <= 0.0
     print >> out, "|                      number of alpha <= 0.0: %6d" \
       "                         |" % (amz.count(True))
     bmz = beta.data() <= 0.0
-  if(beta_min <= 0.0):
+  if(beta_stats.min <= 0.0):
     print >> out, "| *** f_model warning: there are some beta <= 0.0 ***" \
       "                         |"
     bmz = beta.data() <= 0.0
