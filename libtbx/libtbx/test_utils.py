@@ -139,6 +139,38 @@ def eps_eq(a1, a2, eps=1.e-6, out=Default, prefix=""):
 def not_eps_eq(a1, a2, eps=1.e-6):
   return not eps_eq(a1, a2, eps, None)
 
+def is_below_limit(value, limit, eps=1.e-6, info_low_eps=None, out=Default):
+  if (value < limit + eps):
+    if (info_low_eps is not None and value < limit - info_low_eps):
+      if (out is not None):
+        if (out is Default): out = sys.stdout
+        print >> out, "INFO LOW VALUE:", \
+          "is_below_limit(value=%s, limit=%s, info_low_eps=%s)" % (
+            str(value), str(limit), str(info_low_eps))
+    return True
+  if (out is not None):
+    if (out is Default): out = sys.stdout
+    print >> out, "ERROR:", \
+      "is_below_limit(value=%s, limit=%s, eps=%s)" % (
+        str(value), str(limit), str(eps))
+  return False
+
+def is_above_limit(value, limit, eps=1.e-6, info_high_eps=None, out=Default):
+  if (value > limit - eps):
+    if (info_high_eps is not None and value > limit + info_high_eps):
+      if (out is not None):
+        if (out is Default): out = sys.stdout
+        print >> out, "INFO HIGH VALUE:", \
+          "is_above_limit(value=%s, limit=%s, info_high_eps=%s)" % (
+            str(value), str(limit), str(info_high_eps))
+    return True
+  if (out is not None):
+    if (out is Default): out = sys.stdout
+    print >> out, "ERROR:", \
+      "is_above_limit(value=%s, limit=%s, eps=%s)" % (
+        str(value), str(limit), str(eps))
+  return False
+
 def show_diff(a, b, selections=None):
   if (selections is not None):
     a_lines = a.splitlines(1)
@@ -243,6 +275,28 @@ $%    imag
 $%    3
 $%    3
 $%
+""")
+  assert is_below_limit(value=5, limit=10, eps=2)
+  out = StringIO()
+  assert is_below_limit(value=5, limit=10, eps=2, info_low_eps=1, out=out)
+  assert not show_diff(out.getvalue(), """\
+INFO LOW VALUE: is_below_limit(value=5, limit=10, info_low_eps=1)
+""")
+  out = StringIO()
+  assert not is_below_limit(value=15, limit=10, eps=2, out=out)
+  assert not show_diff(out.getvalue(), """\
+ERROR: is_below_limit(value=15, limit=10, eps=2)
+""")
+  assert is_above_limit(value=10, limit=5, eps=2)
+  out = StringIO()
+  assert is_above_limit(value=10, limit=5, eps=2, info_high_eps=1, out=out)
+  assert not show_diff(out.getvalue(), """\
+INFO HIGH VALUE: is_above_limit(value=10, limit=5, info_high_eps=1)
+""")
+  out = StringIO()
+  assert not is_above_limit(value=10, limit=15, eps=2, out=out)
+  assert not show_diff(out.getvalue(), """\
+ERROR: is_above_limit(value=10, limit=15, eps=2)
 """)
 
 if (__name__ == "__main__"):
