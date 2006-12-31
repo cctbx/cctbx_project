@@ -1,3 +1,4 @@
+#! /usr/bin/env python
 import sys, os, re, string
 from libtbx.utils import Sorry
  # hierarchy:  there can be any number of ncs groups.
@@ -9,6 +10,7 @@ from libtbx.utils import Sorry
  #  for rota_matr in group.rota_matrices(): returns rota matrices
  #  for trans_orth in group.translations_orth(): returns translation matrices
 
+
 class ncs_group:  # one group of NCS operators and center and where it applies
   def __init__(self, ncs_rota_matr=None, center_orth=None, trans_orth=None,
       chain_residue_id=None,source_of_ncs_info=None,rmsd_list=None,
@@ -19,7 +21,12 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     self._centers=center_orth
     self._translations_orth=trans_orth
     self._rota_matrices=ncs_rota_matr
-    self._n_ncs_oper=len(self._centers)
+    if self._centers is not None:
+      self._n_ncs_oper=len(self._centers)
+    elif self._rmsd_list is not None:
+      self._n_ncs_oper=len(self._rmsd_list)
+    else:
+      self._n_ncs_oper=0
     self._source_of_ncs_info=source_of_ncs_info
     self._cc=cc
 
@@ -31,10 +38,10 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     if self._chain_residue_id:
       text+="\nID of chain/residue where these apply: "+\
          str(self._chain_residue_id)
-    if self._rmsd_list:
+    if self._rmsd_list and self._chain_residue_id:
       text+="\nRMSD (A) from chain "+str(self._chain_residue_id[0][0])+':'+\
        str(self._rmsd_list)
-    if self._residues_in_common_list:
+    if self._residues_in_common_list and self._chain_residue_id:
       text+="\nNumber of residues matching chain "+\
           str(self._chain_residue_id[0][0])+':'+\
            str(self._residues_in_common_list)
@@ -45,6 +52,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
 
     for center,trans_orth,ncs_rota_matr in zip (
        self._centers, self._translations_orth,self._rota_matrices):
+      if center is None: continue
       i+=1
       text+="\n\nOPERATOR "+str(i)
       text+="\nCENTER: "+" %8.4f  %8.4f  %8.4f" %tuple(center)
@@ -52,9 +60,72 @@ class ncs_group:  # one group of NCS operators and center and where it applies
       text+="\nROTA 2: "+" %8.4f  %8.4f  %8.4f" %tuple(ncs_rota_matr[3:6])
       text+="\nROTA 3: "+" %8.4f  %8.4f  %8.4f" %tuple(ncs_rota_matr[6:9])
       text+="\nTRANS:  "+" %8.4f  %8.4f  %8.4f" %tuple(trans_orth)
+    text+="\n"
     return text
 
-  def format_for_ncs(self):
+  def format_group_specification(self):
+    if not self._chain_residue_id or len(self._chain_residue_id)<2:
+      return ""
+
+    # Need to test for existence because we might have operators or
+    # chain specifications but not both
+
+    if self._chain_residue_id is not None:
+      [group,residue_range_list] = self._chain_residue_id
+    else:
+      group=self.n_ncs_oper*[None]
+      residue_range_list=self.n_ncs_oper*[None]
+
+    if self._centers is not None:
+      [centers, translations_orth,rota_matrices]=\
+         [self._centers, self._translations_orth,self._rota_matrices]
+    else:
+      centers=self.n_ncs_oper*[None]
+      translations_orth=self.n_ncs_oper*[None]
+      rota_matrices=self.n_ncs_oper*[None]
+
+    if self._rmsd_list is not None:
+       rmsd_list=self._rmsd_list
+    else:
+      rmsd_list=self.n_ncs_oper*[None]
+
+    if self._residues_in_common_list is not None:
+       residues_in_common_list=self._residues_in_common_list
+    else:
+      residues_in_common_list=self.n_ncs_oper*[None]
+
+    text="\nnew_ncs_group\n"
+    if self._cc is not None: text+="NCS_CC "+str(self._cc)+"\n"
+
+    count=0
+    for id,residue_ranges, center,trans_orth,ncs_rota_matr, \
+        rmsd,common in zip (
+        group,residue_range_list,
+        centers, translations_orth,rota_matrices,
+        rmsd_list,residues_in_common_list):
+     count+=1
+     text+='new_operator\n'
+     if center is not None:
+       for j in xrange(3):
+         text+="\nrota_matrix "+" %8.4f  %8.4f  %8.4f" %tuple(
+          ncs_rota_matr[j*3:j*3+3])
+       text+="\ntran_orth  "+" %8.4f  %8.4f  %8.4f" %tuple(trans_orth)
+       text+="\n"
+       text+="\ncenter_orth "+" %8.4f  %8.4f  %8.4f" %tuple(center)
+       text+="\n"
+
+     if id is not None: text+="CHAIN "+str(id)+ "\n"
+     if rmsd is not None: text+="RMSD "+str(rmsd)+ "\n"
+     if common is not None: text+="MATCHING "+str(common)+ "\n"
+
+     if residue_ranges is not None and residue_ranges:
+       for residue_range in residue_ranges:
+         text+="  RESSEQ "
+         text+=str(residue_range[0])+":"+str(residue_range[1])+" \n"
+       text+="\n"
+    return text
+
+  def format_for_phenix_refine(self):
     if not self._chain_residue_id or len(self._chain_residue_id)<2:
       return ""
     [group,residue_range_list] = self._chain_residue_id
@@ -78,6 +149,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
        text+=" ) \n"
     text+= "} \n"
     return text
+
   def format_for_resolve(self):
     text="new_ncs_group"
     for center,trans_orth,ncs_rota_matr in zip (
@@ -131,42 +203,106 @@ class ncs_group:  # one group of NCS operators and center and where it applies
 
 class ncs:
   def __init__(self):
-    self._ncs_groups=[]  # each group is a set of NCS operators and centers
+    self._ncs_groups=[]  # each group is an ncs_group object
+    self.source_info=None
 
   def ncs_groups(self):
     return self._ncs_groups
 
-  def read_from_resolve(self,file_name,source_info="",log=None):
+  def read_ncs(self,file_name,source_info="",log=None):
     if not log: log=sys.stdout
-    print >>log,"Reading NCS matrices from resolve file: ",file_name
-    if source_info: print >>log," based on ",source_info
-    self.source_info=source_info
+    print >>log,"Reading NCS information from: ",file_name
+    if source_info:
+       print >>log," based on ",source_info
+       self.source_info=source_info
+    else:
+       self.source_info=file_name
     if not os.path.isfile(file_name):
       raise Sorry("The file "+str(file_name)+" does not seem to exist?")
     self.init_ncs_group()
+
     for line in open(file_name).readlines():
-      if not line: continue
-      if re.search('new_ncs_group',string.lower(line)): # start new group
-        if self._n_ncs_oper > 0:
-          self.save_ncs_group()
-      elif re.search('rota_matrix',string.lower(line)): # read set of rota
-        if self._rota_matrix and len(self._rota_matrix)>2:
+      if not line : continue
+      spl=string.split(line)
+      if len(spl)<1: continue
+      key=string.lower(spl[0])
+      if key=='transformations' and len(spl)>1 and \
+         string.lower(spl[1])=='formatted':  # start all over!
+         self._ncs_groups=[]
+         self.init_ncs_group()
+      elif key=='new_ncs_group': # start new group
+        self.save_existing_group_info()
+      # NOTE: new operator signified by rota_matrix or new_operator
+      elif key=='new_operator':
+        self.save_oper()
+      elif key=='rota_matrix': # read set of rota
+        if self._rota_matrix and \
+            len(self._rota_matrix)==3 or len(self._rota_matrix)==0:
           self.save_oper()
         set=self.get_3_values_after_key(line)
         self._rota_matrix.append(set)
-      elif re.search('tran_orth',string.lower(line)): # read translation
-        set=self.get_3_values_after_key(line)
-        self._trans=set
-      elif re.search('center_orth',string.lower(line)): # read translation
-        set=self.get_3_values_after_key(line)
-        self._center=set
+      elif key=='tran_orth': # read translation
+        self._trans=self.get_3_values_after_key(line)
+      elif key=='center_orth': # read translation
+        self._center=self.get_3_values_after_key(line)
+      elif key=='ncs_cc': # read  cc
+        self._cc=self.get_1_value_after_key(line)
+      elif key=='chain':
+        self._chain=self.get_1_char_after_key(line)
+      elif key=='resseq':
+        self._resseq_list.append(self.get_res_range_after_key(line))
+      elif key=='rmsd':
+        self._rmsd=self.get_1_value_after_key(line)
+      elif key=='matching':
+        self._residues_in_common=self.get_1_value_after_key(line)
+      elif key=='source_info':
+        self.source_info=self.get_1_char_after_key(line)
+
       else:
         pass
 
-    if self._trans:
-      self.save_oper()
-    if self._n_ncs_oper > 0:
-      self.save_ncs_group()
+    self.save_existing_group_info()
+
+  def save_existing_group_info(self):
+
+        self.save_oper()
+        if self._n_ncs_oper > 0:  # save last-read ncs group.
+          self.save_ncs_group()
+
+
+  def get_res_range_after_key(self,line):
+    spl=string.split(string.replace(line,':',' '))
+    if  len(spl)<3:
+      raise Sorry("Cannot interpret this NCS file"+"\n"+str(line))
+    start,end=None,None
+    try:
+      start=string.atoi(spl[1])
+      end=string.atoi(spl[2])
+    except:
+      raise Sorry("Cannot interpret this NCS file"+"\n"+str(line))
+    return [start,end]
+
+  def get_1_char_after_key(self,line):
+    spl=string.split(line)
+    if  len(spl)<2:
+      raise Sorry("Cannot interpret this NCS file"+"\n"+str(line))
+    char=None
+    try:
+      char=spl[1]
+    except:
+      raise Sorry("Cannot interpret this NCS file"+"\n"+str(line))
+    return char
+
+  def get_1_value_after_key(self,line):
+    spl=string.split(line)
+    if  len(spl)<2:
+      raise Sorry("Cannot interpret this NCS file"+"\n"+str(line))
+    cc=None
+    try:
+      cc=string.atof(spl[1])
+    except:
+      raise Sorry("Cannot interpret this NCS file"+"\n"+str(line))
+    return cc
 
   def get_3_values_after_key(self,line):
     spl=string.split(line)
@@ -186,24 +322,52 @@ class ncs:
      self._ncs_rota_matr=[]
      self._ncs_center_orth=[]
      self.init_oper()
+     self._rmsd_list=[]
+     self._residues_in_common_list=[]
+     self._cc=None
+     self._chain_residue_id=[]
+
+     self._list_of_resseq_list=[]
+     self._group=[]
 
   def init_oper(self):
      self._rota_matrix=[]
      self._trans=None
      self._center=None
+     self._rmsd=None
+     self._residues_in_common=None
+     self._resseq_list=[]
+     self._chain=None
 
   def save_oper(self):
-     self._n_ncs_oper+=1
+     # decide if there is anything to save:
+
+     have_oper=True
      for item in (self._trans,self._rota_matrix,self._center):
        if not item:
+          have_oper=False
+     if self._rota_matrix and len(self._rota_matrix)!=3:
           raise Sorry("Cannot interpret this NCS file")
-       if len(self._rota_matrix)!=3:
-          raise Sorry("Cannot interpret this NCS file")
-     from scitbx import matrix
-     self._ncs_trans_orth.append(matrix.col(self._trans))
-     self._ncs_rota_matr.append(matrix.sqr(
-      self._rota_matrix[0]+self._rota_matrix[1]+self._rota_matrix[2] ))
-     self._ncs_center_orth.append(matrix.col(self._center))
+     have_something=False
+     if have_oper or self._rmsd or self._residues_in_common:
+       have_something=True
+     if not have_something: return
+     self._n_ncs_oper+=1
+     if have_oper:
+       from scitbx import matrix
+       self._ncs_trans_orth.append(matrix.col(self._trans))
+       self._ncs_rota_matr.append(matrix.sqr(
+         self._rota_matrix[0]+self._rota_matrix[1]+self._rota_matrix[2] ))
+       self._ncs_center_orth.append(matrix.col(self._center))
+     else:
+       self._ncs_trans_orth.append(None)
+       self._ncs_rota_matr.append(None)
+       self._ncs_center_orth.append(None)
+     self._rmsd_list.append(self._rmsd)
+     self._residues_in_common_list.append(self._residues_in_common)
+     self._list_of_resseq_list.append(self._resseq_list)
+     self._group.append(self._chain)
+
      self.init_oper()
 
   def import_ncs_group(self,ncs_rota_matr=None,
@@ -231,18 +395,29 @@ class ncs:
      self._ncs_groups.append(ncs_group_object)
 
   def save_ncs_group(self):
-     # check that everything is here:
-     for list in [self._ncs_trans_orth,self._ncs_rota_matr,self._ncs_center_orth]:
-        if len(list) != self._n_ncs_oper:
+     # check that there is something  here:
+     have_something=False
+     for list in [self._ncs_trans_orth,
+         self._ncs_rota_matr,self._ncs_center_orth,
+         self._residues_in_common_list,self._rmsd_list]:
+        if list is not None and self._n_ncs_oper and \
+           len(list) != self._n_ncs_oper:
           raise Sorry("The NCS operators in this file appear incomplete?")
-
+        if list is not None and len(list)<2:
+          raise Sorry("The NCS operators in this file appear incomplete?")
+        if list is not None: have_something=True
+     if not have_something: return
+     self._chain_residue_id=[self._group,self._list_of_resseq_list]
      ncs_group_object=ncs_group(
        ncs_rota_matr=self._ncs_rota_matr,
        center_orth=self._ncs_center_orth,
        trans_orth=self._ncs_trans_orth,
-       source_of_ncs_info=self.source_info)
+       source_of_ncs_info=self.source_info,
+       rmsd_list=self._rmsd_list,
+       residues_in_common_list=self._residues_in_common_list,
+       chain_residue_id=self._chain_residue_id,
+       cc=self._cc)
      self._ncs_groups.append(ncs_group_object)
-
      self.init_ncs_group()
 
   def display_all (self,log=None):
@@ -257,6 +432,34 @@ class ncs:
     log.write(text)
     return text
 
+
+  def format_all_for_group_specification(self,log=None,quiet=True,out=None,
+       file=None):
+    if file is not None:
+       out=open(file,'w')
+    if out==None:
+       out=sys.stdout
+    if log==None:
+      log=sys.stdout
+    else:
+      print >>log,"NCS written as ncs object information to:"\
+        ,out.name
+    all_text=""
+    text="Summary of NCS information\n"
+    import time,os
+    text+=time.ctime()+"\n"
+    text+=os.getcwd()+"\n\n"
+    if self.source_info is not None:
+      text+="Source of NCS info: "+str(self.source_info)+"\n"
+    if not self._ncs_groups:
+      text+="No NCS found\n"
+    if out is not None or not quiet: out.write("\n"+text+"\n\n")
+    for ncs_group in self._ncs_groups:
+      text=ncs_group.format_group_specification()
+      if out is not None or not quiet: out.write("\n"+text+"\n\n")
+      all_text+="\n"+text
+    all_text+="\n"
+    return all_text
 
   def format_all_for_resolve(self,log=None,quiet=False,out=None):
     if out==None:
@@ -282,7 +485,7 @@ class ncs:
        "NCS operators written in format for phenix.refine to:",out.name
     all_text=""
     for ncs_group in self._ncs_groups:
-      text= ncs_group.format_for_ncs()
+      text= ncs_group.format_for_phenix_refine()
       if text:
         if not quiet: out.write("\n"+text+"\n\n")
         all_text+="\n"+text
@@ -304,3 +507,90 @@ class ncs:
     if n>0:
       cc_all=cc_all/float(n)
     return cc_all
+test_ncs_info="""
+
+new_ncs_group
+NCS_CC 0.92
+new_operator
+
+rota_matrix    1.0000    0.0000    0.0000
+rota_matrix    0.0000    1.0000    0.0000
+rota_matrix    0.0000    0.0000    1.0000
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth   30.2920   -2.8923   16.6160
+CHAIN A
+RMSD 0.2
+MATCHING 12.0
+  RESSEQ 1:26
+
+new_operator
+
+rota_matrix   -0.9971    0.0424   -0.0635
+rota_matrix   -0.0297   -0.9816   -0.1889
+rota_matrix   -0.0703   -0.1864    0.9800
+tran_orth    70.9461    5.2622    3.7549
+
+center_orth   39.8735    3.8824   16.7239
+CHAIN B
+RMSD 0.1
+MATCHING 15.0
+  RESSEQ 101:126
+
+
+
+new_ncs_group
+NCS_CC 0.95
+new_operator
+
+rota_matrix    1.0000    0.0000    0.0000
+rota_matrix    0.0000    1.0000    0.0000
+rota_matrix    0.0000    0.0000    1.0000
+tran_orth     0.0000    0.0000    0.0001
+
+center_orth   31.2920   -2.8923   16.6160
+CHAIN A
+RMSD 0.6
+MATCHING 13.0
+  RESSEQ 1:25
+
+new_operator
+
+rota_matrix   -0.9970    0.0424   -0.0635
+rota_matrix   -0.0297   -0.9816   -0.1889
+rota_matrix   -0.0703   -0.1864    0.9800
+tran_orth    70.9461    5.2622    3.7549
+
+center_orth   38.8735    3.8824   16.7239
+CHAIN B
+RMSD 0.5
+MATCHING 11.0
+  RESSEQ 101:124
+
+
+"""
+if __name__=="__main__":
+  log=sys.stdout
+  args=sys.argv[1:]
+  if 'exercise' in args:
+    file='TEST.NCS'
+    f=open(file,'w')
+    f.write(test_ncs_info)
+    f.close()
+    ncs_object=ncs()
+    ncs_object.read_ncs(file,source_info=file)
+    ncs_object.display_all()
+    file2='TEST2.NCS'
+    text=ncs_object.format_all_for_group_specification(file=file2)
+
+    if not text or text != test_ncs_info:
+     print "NOT OK ...please compare TEST.NCS (std) vs TEST2.NCS (output)"
+    else:
+     print "OK"
+  elif len(args)>0 and args[0] and os.path.isfile(args[0]):
+    ncs_object=ncs()
+    ncs_object.read_ncs(args[0],source_info=args[0])
+    ncs_object.display_all()
+    if 1:
+      file2='OUTPUT.NCS'
+      text=ncs_object.format_all_for_group_specification(file=file2)
