@@ -74,9 +74,11 @@ class reindexing(object):
 
     self.cc_values = []
     self.matches = []
-
-    self.analyse()
-    self.select_and_transform()
+    if len(self.nice_cb_ops)>0:
+      self.analyse()
+      self.select_and_transform()
+    else:
+      print >> self.out, "No simple reindexing relation found between unit cells"
 
   def analyse(self):
     table_data=[]
