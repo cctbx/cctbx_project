@@ -50,39 +50,43 @@ class reindexing_operators(object):
           or min_bases_msd > bases_msd):
         min_bases_msd = bases_msd
         self.similarity_cb_op = cb_op
-    # if nothing is found, return an empty array
-    if (self.similarity_cb_op is None): return []
+    # if nothing is found, do not continue
+    self.double_cosets = None
+    if (self.similarity_cb_op is not None):
+      # make the common lattice group please
+      common_lattice_group = lat_sym_1
+      for s in lat_sym_2.build_derived_acentric_group().change_basis(
+        self.similarity_cb_op ):
+        try: common_lattice_group.expand_smx(s)
+        except RunTimeError:
+          common_lattice_group=None
+      if  common_lattice_group is not None:
+        common_lattice_group.make_tidy()
 
-    # make the common lattice group please
-    common_lattice_group = lat_sym_1
-    for s in lat_sym_2.build_derived_acentric_group().change_basis(
-      self.similarity_cb_op ):
-      try: common_lattice_group.expand_smx(s)
-      except RunTimeError: return []
-    common_lattice_group.make_tidy()
+        h1 = int_sym_1.build_derived_acentric_group().make_tidy()
+        h2 = int_sym_2.build_derived_acentric_group().change_basis( self.similarity_cb_op ).make_tidy()
 
-    h1 = int_sym_1.build_derived_acentric_group().make_tidy()
-    h2 = int_sym_2.build_derived_acentric_group().change_basis( self.similarity_cb_op ).make_tidy()
-
-    # do the double coset decomposition
-    self.double_cosets = cosets.double_cosets( common_lattice_group,
-                                               h1,
-                                               h2,
-                                               )
+        # do the double coset decomposition
+        self.double_cosets = cosets.double_cosets( common_lattice_group,
+                                                   h1,
+                                                   h2,
+                                                   )
   def cb_ops_in_niggli_setting(self):
     result=[]
-    for coset in self.double_cosets.double_cosets:
-      result.append( sgtbx.change_of_basis_op(coset[0])*self.similarity_cb_op )
+    if self.double_cosets is not None:
+      for coset in self.double_cosets.double_cosets:
+        result.append( sgtbx.change_of_basis_op(coset[0])*self.similarity_cb_op )
     return result
 
   def combined_cb_ops(self):
     results = []
+    if self.double_cosets is not None:
     # now we need to make a combined operator wrt the incomming cell
-    for coset in self.double_cosets.double_cosets:
-      r =cosets.construct_nice_cb_op(coset,
-                                     self.similarity_cb_op,
-                                     self.cb_op_to_n_1 ,
+      for coset in self.double_cosets.double_cosets:
+        r =cosets.construct_nice_cb_op(coset,
+                                       self.similarity_cb_op,
+                                       self.cb_op_to_n_1 ,
                                      self.cb_op_to_n_2 )
-      results.append( r )
+        results.append( r )
     #and return it
     return( results )
