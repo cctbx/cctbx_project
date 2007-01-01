@@ -136,9 +136,10 @@ class sigmaa_estimator(object):
       self.max_h *= 1.01
       if kernel_on_chebyshev_nodes:
         self.h_array = chebyshev_lsq_fit.chebyshev_nodes(
-          n_sampling_points,
-          self.min_h,
-          self.max_h,True)
+          n=n_sampling_points,
+          low=self.min_h,
+          high=self.max_h,
+          include_limits=True)
       else:
         self.h_array = flex.double( range(n_sampling_points) )*(
           self.max_h-self.min_h)/float(n_sampling_points-1.0)+self.min_h
