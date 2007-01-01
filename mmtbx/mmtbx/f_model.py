@@ -1043,7 +1043,7 @@ class manager(object):
     ui = self.u_iso()
     return [ui,ui,ui,0.0,0.0,0.0]
 
-  def r_work_in_lowest_resolution_bin(self, free_reflections_per_bin=100):
+  def r_work_in_lowest_resolution_bin(self, free_reflections_per_bin=140):
     fo_w = self.f_obs_w
     fc_w = self.f_model_w()
     fo_w.setup_binner(
@@ -1128,6 +1128,7 @@ class manager(object):
              miller_calc=self.f_model(),
              r_free_flags=self.r_free_flags,
              kernel_width_free_reflections=p.kernel_width_free_reflections,
+             kernel_on_chebyshev_nodes=p.kernel_on_chebyshev_nodes,
              n_sampling_points=p.number_of_sampling_points,
              n_chebyshev_terms=p.number_of_chebyshev_terms,
              use_sampling_sum_weights=p.use_sampling_sum_weights).alpha_beta()
@@ -1156,7 +1157,7 @@ class manager(object):
        alpha, beta = maxlik.alpha_beta_est_manager(
                                     f_obs           = self.f_obs,
                                     f_calc          = self.f_model(),
-                                    free_reflections_per_bin = 200,
+                                    free_reflections_per_bin = 140,
                                     flags           = self.r_free_flags.data(),
                                     interpolation   = False).alpha_beta()
     time_alpha_beta += timer.elapsed()
@@ -1183,7 +1184,7 @@ class manager(object):
   def model_error_ml(self):
     #XXX needs clean solution / one more unfinished project
     if (self.alpha_beta_params is None):
-      free_reflections_per_bin = 200
+      free_reflections_per_bin = 140
       estimation_algorithm = "analytical"
     else:
       free_reflections_per_bin=self.alpha_beta_params.free_reflections_per_bin
@@ -1213,6 +1214,7 @@ class manager(object):
             miller_calc=fmodel.f_model(),
             r_free_flags=fmodel.r_free_flags,
             kernel_width_free_reflections=p.kernel_width_free_reflections,
+            kernel_on_chebyshev_nodes=p.kernel_on_chebyshev_nodes,
             n_sampling_points=p.number_of_sampling_points,
             n_chebyshev_terms=p.number_of_chebyshev_terms,
             use_sampling_sum_weights=p.use_sampling_sum_weights).alpha_beta()
@@ -1663,7 +1665,7 @@ class manager(object):
     time_show += timer.elapsed()
 
   def show_comprehensive(self, header = "",
-                               free_reflections_per_bin = 100,
+                               free_reflections_per_bin = 140,
                                max_number_of_bins  = 30,
                                out=None):
     if(out is None): out = sys.stdout
@@ -1679,7 +1681,7 @@ class manager(object):
       max_number_of_bins  = max_number_of_bins,
       out                 = out)
 
-  def statistics_in_resolution_bins(self, free_reflections_per_bin = 100,
+  def statistics_in_resolution_bins(self, free_reflections_per_bin = 140,
                                           max_number_of_bins  = 30,
                                           out=None):
     statistics_in_resolution_bins(
@@ -1689,7 +1691,7 @@ class manager(object):
       max_number_of_bins  = max_number_of_bins,
       out=out)
 
-  def r_factors_in_resolution_bins(self, free_reflections_per_bin = 100,
+  def r_factors_in_resolution_bins(self, free_reflections_per_bin = 140,
                                           max_number_of_bins  = 30,
                                           out=None):
     if(out is None): out = sys.stdout
@@ -1700,7 +1702,7 @@ class manager(object):
       out=out)
 
   def show_fom_phase_error_alpha_beta_in_bins(self,
-        free_reflections_per_bin = 100,
+        free_reflections_per_bin = 140,
         max_number_of_bins = 30,
         out=None):
     if(out is None): out = sys.stdout
