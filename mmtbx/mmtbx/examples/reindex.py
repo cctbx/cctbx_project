@@ -353,11 +353,9 @@ def reindex_utils(args):
     if params.reindex_utils.parameters.action=="reindex":
       #----------------------------------------------------------------
       # step 3: get the reindex laws
-      xs           = crystal.symmetry(unit_cell = model.unit_cell(),
-                                      space_group = model.space_group() )
-      to_niggli    = xs.change_of_basis_op_to_niggli_cell()
-      to_reference = xs.change_of_basis_op_to_reference_setting()
-      to_inverse   = xs.change_of_basis_op_to_inverse_hand()
+      to_niggli    = phil_xs.change_of_basis_op_to_niggli_cell()
+      to_reference = phil_xs.change_of_basis_op_to_reference_setting()
+      to_inverse   = phil_xs.change_of_basis_op_to_inverse_hand()
       cb_op = None
       if (params.reindex_utils.parameters.reindex.standard_laws == "niggli"):
         cb_op = to_niggli
@@ -366,7 +364,7 @@ def reindex_utils(args):
       if (params.reindex_utils.parameters.reindex.standard_laws == "invert"):
         cb_op = to_inverse
       if (params.reindex_utils.parameters.reindex.standard_laws == "user_supplied"):
-        cb_op = sgtbx.change_of_basis_op( params.reindex_utils.parameters.reindex.law )
+        cb_op = sgtbx.change_of_basis_op( params.reindex_utils.parameters.reindex.user_supplied_law )
 
       if cb_op is None:
         raise Sorry("No change of basis operation is supplied.")
