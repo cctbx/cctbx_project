@@ -13,46 +13,91 @@ from iotbx import reflection_file_reader
 from iotbx import reflection_file_utils
 from iotbx import crystal_symmetry_from_any
 from iotbx.pdb import xray_structure
+from iotbx import pdb
 import libtbx.phil.command_line
 from cStringIO import StringIO
 from scitbx.python_utils import easy_pickle
+import mmtbx.model
 import sys, os
 
-def select_crystal_symmetry(
-      from_command_line,
-      from_parameter_file,
-      from_coordinate_files,
-      from_reflection_files):
-  result = crystal.symmetry(
-    unit_cell=None,
-    space_group_info=None)
-  if (from_command_line is not None):
-    result = result.join_symmetry(
-      other_symmetry=from_command_line, force=False)
-  if (from_parameter_file is not None):
-    result = result.join_symmetry(
-      other_symmetry=from_parameter_file, force=False)
-  if (result.unit_cell() is None):
-    for crystal_symmetry in from_reflection_files:
-      unit_cell = crystal_symmetry.unit_cell()
-      if (unit_cell is not None):
-        result = crystal.symmetry(
-          unit_cell=unit_cell,
-          space_group_info=result.space_group_info(),
-          assert_is_compatible_unit_cell=False)
-        break
-  for crystal_symmetry in from_coordinate_files:
-    result = result.join_symmetry(other_symmetry=crystal_symmetry, force=False)
-  if (result.space_group_info() is None):
-    for crystal_symmetry in from_reflection_files:
-      space_group_info = crystal_symmetry.space_group_info()
-      if (space_group_info is not None):
-        result = crystal.symmetry(
-          unit_cell=result.unit_cell(),
-          space_group_info=space_group_info,
-          assert_is_compatible_unit_cell=False)
-        break
+def chain_name_modifier(chain_id, increment):
+  ids=["A","B","C","D","E","F","G","H","I","J","K",
+       "L","M","N","O","P","Q","R","S","T","U","V",
+       "W","X","Y","Z","0","1","2","3","4","5","6",
+       "7","8","9"]
+  result=chain_id
+  if chain_id in ids:
+    new_index = (ids.index( chain_id ) + increment)%len(ids)
+    result = ids[new_index]
   return result
+
+
+def write_as_pdb_file( input_xray_structure = None,
+                       input_crystal_symmetry = None,
+                       input_pdb = None,
+                       out = None,
+                       chain_id_increment=5,
+                       additional_remark=None,
+                       ):
+  assert chain_id_increment is not None
+  if out is None:
+    out = sys.stdout
+
+  xs = input_crystal_symmetry
+  if xs is None:
+    xs = crystal.symmetry( unit_cell = input_xray_structure.unit_cell(),
+                           space_group = input_xray_structure.space_group() )
+
+
+  sg_info_object = sgtbx.space_group_info(group=xs.space_group() )
+  if additional_remark is not None:
+    print >> out, "REMARK     %s"%(additional_remark)
+  print >> out, "REMARK    SYMMETRY: %s"%( str(sg_info_object) )
+  print >> out, pdb.format_cryst1_record(
+    crystal_symmetry = xs )
+  print >> out, pdb.format_scale_records(
+    unit_cell = xs.unit_cell() )
+
+
+  for serial, label, atom, xyz in zip(input_pdb.atom_serial_number_strings(),
+                                      input_pdb.input_atom_labels_list(),
+                                      input_pdb.atoms(),
+                                      input_xray_structure.sites_cart(),
+                                      ):
+    print >> out, iotbx.pdb.format_atom_record(
+      record_name={False: "ATOM", True: "HETATM"}[atom.hetero],
+      serial=int(serial),
+      name=label.name(),
+      altLoc=label.altloc(),
+      resName=label.resname(),
+      resSeq=label.resseq,
+      chainID=chain_name_modifier(label.chain(),chain_id_increment),
+      iCode=label.icode(),
+      site=xyz,
+      occupancy=atom.occ,
+      tempFactor=atom.b,
+      segID=atom.segid,
+      element=atom.element,
+      charge=atom.charge)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -190,10 +235,7 @@ def reindex_utils(args):
 
     effective_params = master_params.fetch(sources=phil_objects)
     params = effective_params.extract()
-    """
-    new_params =  master_params.format(python_object=params)
-    new_params.show(out=log)
-    """
+
     # now get the unit cell from the pdb file
 
     hkl_xs = crystal_symmetry_from_any.extract_from(
@@ -206,7 +248,7 @@ def reindex_utils(args):
       space_group_info=params.reindex_utils.input.space_group  )
 
 
-    combined_xs = select_crystal_symmetry(
+    combined_xs = crystal.select_crystal_symmetry(
       None,phil_xs, [pdb_xs],[hkl_xs])
 
     # inject the unit cell and symmetry in the phil scope please
@@ -280,10 +322,8 @@ def reindex_utils(args):
     #----------------------------------------------------------------
     # Step 2: get an xray structure from the PDB file
     #
-    model = xray_structure.from_pdb(
-      file_name=params.reindex_utils.input.model.file_name,
-      crystal_symmetry=phil_xs,
-      force_symmetry=True)
+    pdb_model = pdb.input(file_name=params.reindex_utils.input.model.file_name)
+    model = pdb_model.xray_structure_simple(crystal_symmetry=phil_xs)
     print >> log, "Atomic model summary"
     print >> log, "===================="
     model.show_summary()
@@ -313,7 +353,9 @@ def reindex_utils(args):
 
     print >> log, "Supplied reindexing law:"
     print >> log, "========================"
-    print >> log, cb_op.as_hkl()
+    print >> log, "hkl notation: ", cb_op.as_hkl()
+    print >> log, "xyz notation: ", cb_op.as_xyz()
+    print >> log, "abc notation: ", cb_op.as_abc()
 
 
     #----------------------------------------------------------------
@@ -346,11 +388,17 @@ def reindex_utils(args):
       file_name=params.reindex_utils.output.hklout)
 
     #step 5b: write the new pdb file
-    print >> log, "writing pdb file with name %s"%(params.reindex_utils.output.xyzout)
-    pdb = new_model.as_pdb_file()
     pdb_file = open( params.reindex_utils.output.xyzout, 'w')
-    print >> pdb_file, pdb
+    print >> log, "Wring pdb file to: %s"%(params.reindex_utils.output.xyzout)
+    write_as_pdb_file( input_pdb = pdb_model,
+                       input_xray_structure = new_model,
+                       out = pdb_file,
+                       chain_id_increment=0,
+                       additional_remark = "GENERATED BY PHENIX.REINDEX")
+
     pdb_file.close()
+
+
 
     #write the logfile
     logger = open( params.reindex_utils.output.logfile, 'w')
