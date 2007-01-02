@@ -17,6 +17,7 @@ from iotbx import pdb
 import libtbx.phil.command_line
 from cStringIO import StringIO
 from scitbx.python_utils import easy_pickle
+from scitbx.math import matrix
 import mmtbx.model
 import sys, os
 
@@ -120,12 +121,23 @@ reindex_utils{
     }
   }
   parameters{
+    action = *reindex operator
+    .type=choice
+    chain_id_increment = 0
+    .type=int
     reindex{
       standard_laws = niggli *reference_setting invert user_supplied
       .type=choice
       user_supplied_law='h,k,l'
       .type=str
     }
+    apply_operator{
+      standard_operators = *user_supplied
+      .type=choice
+      user_supplied_operator="x,y,z"
+      .type=str
+    }
+
   }
   output{
     logfile=reindex.log
@@ -159,9 +171,15 @@ reindex_utils{
     }
   }
   parameters{
-    reindex{
+    action = *reindex operator
+    chain_id_increment = 0
+    reindex {
       standard_laws = niggli *reference_setting invert user_supplied
-      user_supplied_law='h,k,l'
+      user_supplied_law = "h,k,l"
+    }
+    apply_operator {
+      standard_operators = *user_supplied
+      user_supplied_operator = "x,y,z"
     }
   }
   output{
@@ -236,12 +254,15 @@ def reindex_utils(args):
     effective_params = master_params.fetch(sources=phil_objects)
     params = effective_params.extract()
 
-    # now get the unit cell from the pdb file
-
-    hkl_xs = crystal_symmetry_from_any.extract_from(
-      file_name=params.reindex_utils.input.xray_data.file_name)
-    pdb_xs = crystal_symmetry_from_any.extract_from(
-      file_name=params.reindex_utils.input.model.file_name)
+    # now get the unit cell from the files
+    hkl_xs = None
+    pdb_xs = None
+    if params.reindex_utils.input.xray_data.file_name is not None:
+      hkl_xs = crystal_symmetry_from_any.extract_from(
+        file_name=params.reindex_utils.input.xray_data.file_name)
+    if params.reindex_utils.input.model.file_name is not None:
+      pdb_xs = crystal_symmetry_from_any.extract_from(
+        file_name=params.reindex_utils.input.model.file_name)
 
     phil_xs = crystal.symmetry(
       unit_cell=params.reindex_utils.input.unit_cell,
@@ -265,138 +286,168 @@ def reindex_utils(args):
       raise Sorry("unit cell not specified")
     if params.reindex_utils.input.space_group is None:
       raise Sorry("space group not specified")
-    if params.reindex_utils.input.xray_data.file_name is None:
-      raise Sorry("Xray data not specified")
-    if params.reindex_utils.input.model.file_name is None:
-      raise Sorry("pdb file with  model not specified")
 
     #-----------------------------------------------------------
     #
     # step 1: read in the reflection file
     #
-    phil_xs = crystal.symmetry(
-      unit_cell=params.reindex_utils.input.unit_cell,
-      space_group_info=params.reindex_utils.input.space_group  )
-
-    xray_data_server =  reflection_file_utils.reflection_file_server(
-      crystal_symmetry = phil_xs,
-      force_symmetry = True,
-      reflection_files=[])
-
     miller_array = None
+    if  params.reindex_utils.input.xray_data.file_name is not None:
+      phil_xs = crystal.symmetry(
+        unit_cell=params.reindex_utils.input.unit_cell,
+        space_group_info=params.reindex_utils.input.space_group  )
 
-    miller_array = xray_data_server.get_xray_data(
-      file_name = params.reindex_utils.input.xray_data.file_name,
-      labels = params.reindex_utils.input.xray_data.labels,
-      ignore_all_zeros = True,
-      parameter_scope = 'reindex_utils.input.xray_data',
-      parameter_name = 'labels'
-      )
+      xray_data_server =  reflection_file_utils.reflection_file_server(
+        crystal_symmetry = phil_xs,
+        force_symmetry = True,
+        reflection_files=[])
 
-    info = miller_array.info()
+      miller_array = xray_data_server.get_xray_data(
+        file_name = params.reindex_utils.input.xray_data.file_name,
+        labels = params.reindex_utils.input.xray_data.labels,
+        ignore_all_zeros = True,
+        parameter_scope = 'reindex_utils.input.xray_data',
+        parameter_name = 'labels'
+        )
 
-    miller_array = miller_array.map_to_asu()
+      info = miller_array.info()
 
-    miller_array = miller_array.select(
-      miller_array.indices() != (0,0,0))
+      miller_array = miller_array.map_to_asu()
 
-    miller_array = miller_array.select(
-      miller_array.data() > 0 )
-    if  miller_array.sigmas() is not None:
       miller_array = miller_array.select(
-        miller_array.sigmas() > 0 )
+        miller_array.indices() != (0,0,0))
 
-    if (miller_array.is_xray_intensity_array()):
-      miller_array = miller_array.f_sq_as_f()
-    elif (miller_array.is_complex_array()):
-      miller_array = abs(miller_array)
+      miller_array = miller_array.select(
+        miller_array.data() > 0 )
+      if  miller_array.sigmas() is not None:
+        miller_array = miller_array.select(
+          miller_array.sigmas() > 0 )
 
-    miller_array.set_info(info)
-    print >> log
-    print >> log, "Summary info of observed data"
-    print >> log, "============================="
-    miller_array.show_summary(f=log)
-    print >> log
+      if (miller_array.is_xray_intensity_array()):
+        miller_array = miller_array.f_sq_as_f()
+      elif (miller_array.is_complex_array()):
+        miller_array = abs(miller_array)
+
+      miller_array.set_info(info)
+      print >> log
+      print >> log, "Summary info of observed data"
+      print >> log, "============================="
+      miller_array.show_summary(f=log)
+      print >> log
 
 
     #----------------------------------------------------------------
     # Step 2: get an xray structure from the PDB file
     #
-    pdb_model = pdb.input(file_name=params.reindex_utils.input.model.file_name)
-    model = pdb_model.xray_structure_simple(crystal_symmetry=phil_xs)
-    print >> log, "Atomic model summary"
-    print >> log, "===================="
-    model.show_summary()
-    print >> log
+    pdb_model = None
+
+    if params.reindex_utils.input.model.file_name is not None:
+      pdb_model = pdb.input(file_name=params.reindex_utils.input.model.file_name)
+      model = pdb_model.xray_structure_simple(crystal_symmetry=phil_xs)
+      print >> log, "Atomic model summary"
+      print >> log, "===================="
+      model.show_summary()
+      print >> log
 
 
-    #----------------------------------------------------------------
-    # step 3: get the reindex laws
+    if params.reindex_utils.parameters.action=="reindex":
+      #----------------------------------------------------------------
+      # step 3: get the reindex laws
+      xs           = crystal.symmetry(unit_cell = model.unit_cell(),
+                                      space_group = model.space_group() )
+      to_niggli    = xs.change_of_basis_op_to_niggli_cell()
+      to_reference = xs.change_of_basis_op_to_reference_setting()
+      to_inverse   = xs.change_of_basis_op_to_inverse_hand()
+      cb_op = None
+      if (params.reindex_utils.parameters.reindex.standard_laws == "niggli"):
+        cb_op = to_niggli
+      if (params.reindex_utils.parameters.reindex.standard_laws == "reference_setting"):
+        cb_op = to_reference
+      if (params.reindex_utils.parameters.reindex.standard_laws == "invert"):
+        cb_op = to_inverse
+      if (params.reindex_utils.parameters.reindex.standard_laws == "user_supplied"):
+        cb_op = sgtbx.change_of_basis_op( params.reindex_utils.parameters.reindex.law )
 
-    xs           = crystal.symmetry(unit_cell = model.unit_cell(),
-                                    space_group = model.space_group() )
-    to_niggli    = xs.change_of_basis_op_to_niggli_cell()
-    to_reference = xs.change_of_basis_op_to_reference_setting()
-    to_inverse   = xs.change_of_basis_op_to_inverse_hand()
-    cb_op = None
-    if (params.reindex_utils.parameters.reindex.standard_laws == "niggli"):
-      cb_op = to_niggli
-    if (params.reindex_utils.parameters.reindex.standard_laws == "reference_setting"):
-      cb_op = to_reference
-    if (params.reindex_utils.parameters.reindex.standard_laws == "invert"):
-      cb_op = to_inverse
-    if (params.reindex_utils.parameters.reindex.standard_laws == "user_supplied"):
-      cb_op = sgtbx.change_of_basis_op( params.reindex_utils.parameters.reindex.law )
+      if cb_op is None:
+        raise Sorry("No change of basis operation is supplied.")
 
-    if cb_op is None:
-      raise Sorry("No change of basis operation is supplied.")
+      print >> log, "Supplied reindexing law:"
+      print >> log, "========================"
+      print >> log, "hkl notation: ", cb_op.as_hkl()
+      print >> log, "xyz notation: ", cb_op.as_xyz()
+      print >> log, "abc notation: ", cb_op.as_abc()
+      #----------------------------------------------------------------
+      # step 4: do the reindexing
+      #
+      # step 4a: first do the miller array object
+      new_miller_array = None
+      if miller_array is not None:
+        new_miller_array = miller_array.change_basis( cb_op )
+      #
+      # step 4b: the xray structure
+      new_model = None
+      if pdb_model is not None:
+        new_model = model.change_basis( cb_op )
 
-    print >> log, "Supplied reindexing law:"
-    print >> log, "========================"
-    print >> log, "hkl notation: ", cb_op.as_hkl()
-    print >> log, "xyz notation: ", cb_op.as_xyz()
-    print >> log, "abc notation: ", cb_op.as_abc()
+      #----------------------------------------------------------------
+      # step 5a: write the new mtz file
+      print >> log
+      print >> log, "The data and model have been reindexed"
+      print >> log, "--------------------------------------"
+      print >> log
+      print >> log, "Writing output files...."
+      if miller_array is not None:
+        print >> log, "writing mtz file with name %s"%(params.reindex_utils.output.hklout)
+        mtz_dataset = new_miller_array.as_mtz_dataset(
+          column_root_label="FOBS")
+        """
+        #This is how to add (possibly) a free r flag column that has been reindexed as well
+        mtz_dataset = mtz_dataset.add_miller_array(
+        miller_array = new_set_of_free_flags,
+        column_root_label = "Free_R_Flag"
+        )
+        """
+        mtz_dataset.mtz_object().write(
+          file_name=params.reindex_utils.output.hklout)
+
+      #step 5b: write the new pdb file
+      if new_model is not None:
+        pdb_file = open( params.reindex_utils.output.xyzout, 'w')
+        print >> log, "Wring pdb file to: %s"%(params.reindex_utils.output.xyzout)
+        write_as_pdb_file( input_pdb = pdb_model,
+                           input_xray_structure = new_model,
+                           out = pdb_file,
+                           chain_id_increment=0,
+                           additional_remark = "GENERATED BY PHENIX.REINDEX")
+
+        pdb_file.close()
+      if ( [miller_array,new_model]).count(None)==2:
+        print >>log, "No input reflection of coordinate files have been given"
+
+    if params.reindex_utils.parameters.action=="operator":
+      rt_mx = sgtbx.rt_mx(
+        params.reindex_utils.parameters.apply_operator.user_supplied_operator )
+      sites = model.sites_frac()
+      new_sites = flex.vec3_double()
+      for site in sites:
+        new_site = rt_mx.r()*matrix.col(site)
+        new_site = flex.double(new_site)+flex.double( rt_mx.t().as_double() )
+        new_sites.push_back( tuple(new_site) )
+      model.set_sites_frac( new_sites )
+      # write the new [pdb file please
+      pdb_file = open( params.reindex_utils.output.xyzout, 'w')
+      print >> log, "Wring pdb file to: %s"%(params.reindex_utils.output.xyzout)
+      write_as_pdb_file( input_pdb = pdb_model,
+                         input_xray_structure = model,
+                         out = pdb_file,
+                         chain_id_increment = params.reindex_utils.parameters.chain_id_increment,
+                         additional_remark = "GENERATED BY PHENIX")
+
+      pdb_file.close()
 
 
-    #----------------------------------------------------------------
-    # step 4: do the reindexing
-    #
-    # step 4a: first do the miller array object
-    new_miller_array = miller_array.change_basis( cb_op )
-    #
-    # step 4b: the xray structure
-    new_model = model.change_basis( cb_op )
 
-    #----------------------------------------------------------------
-    # step 5a: write the new mtz file
-    print >> log
-    print >> log, "The data and model have been reindexed"
-    print >> log, "--------------------------------------"
-    print >> log
-    print >> log, "Writing output files...."
-    print >> log, "writing mtz file with name %s"%(params.reindex_utils.output.hklout)
-    mtz_dataset = new_miller_array.as_mtz_dataset(
-      column_root_label="FOBS")
-    """
-    #This is how to add (possibly) a free r flag column that has been reindexed as well
-    mtz_dataset = mtz_dataset.add_miller_array(
-      miller_array = new_set_of_free_flags,
-      column_root_label = "Free_R_Flag"
-      )
-    """
-    mtz_dataset.mtz_object().write(
-      file_name=params.reindex_utils.output.hklout)
 
-    #step 5b: write the new pdb file
-    pdb_file = open( params.reindex_utils.output.xyzout, 'w')
-    print >> log, "Wring pdb file to: %s"%(params.reindex_utils.output.xyzout)
-    write_as_pdb_file( input_pdb = pdb_model,
-                       input_xray_structure = new_model,
-                       out = pdb_file,
-                       chain_id_increment=0,
-                       additional_remark = "GENERATED BY PHENIX.REINDEX")
-
-    pdb_file.close()
 
 
 
