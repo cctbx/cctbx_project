@@ -72,6 +72,47 @@ namespace cctbx { namespace geometry_restraints {
     af::tiny<unsigned, 2> i_seqs;
   };
 
+  //! Grouping of bond_simple_proxy and symmetry operation (rt_mx_ji).
+  struct bond_sym_proxy : bond_params
+  {
+    //! Default constructor. Some data members are not initialized!
+    bond_sym_proxy() {}
+
+    //! Constructor.
+    bond_sym_proxy(
+      af::tiny<unsigned, 2> const& i_seqs_,
+      sgtbx::rt_mx const& rt_mx_ji_,
+      double distance_ideal_,
+      double weight_)
+    :
+      bond_params(distance_ideal_, weight_),
+      i_seqs(i_seqs_),
+      rt_mx_ji(rt_mx_ji_)
+    {}
+
+    //! Constructor.
+    /*! Not available in Python.
+     */
+    bond_sym_proxy(
+      af::tiny<unsigned, 2> const& i_seqs_,
+      sgtbx::rt_mx const& rt_mx_ji_,
+      bond_params const& params)
+    :
+      bond_params(params),
+      i_seqs(i_seqs_),
+      rt_mx_ji(rt_mx_ji_)
+    {}
+
+    //! Indices into array of sites.
+    af::tiny<unsigned, 2> i_seqs;
+
+    //! Symmetry operation to be applied to i_seqs[1].
+    /*! The bond is between sites_frac[i_seqs[0]] and
+        rt_mx_ji * sites_frac[i_seqs[1]].
+     */
+    sgtbx::rt_mx rt_mx_ji;
+  };
+
   //! Grouping of asu_mapping_index_pair and bond_params.
   struct bond_asu_proxy : bond_params, asu_mapping_index_pair
   {
@@ -144,6 +185,27 @@ namespace cctbx { namespace geometry_restraints {
           CCTBX_ASSERT(i_seq < sites_cart.size());
           sites[i] = sites_cart[i_seq];
         }
+        init_distance_model();
+      }
+
+      /*! \brief Coordinates are copied from sites_cart according to
+          proxy.i_seqs and proxy.rt_mx_ji, parameters are copied from
+          proxy.
+       */
+      bond(
+        uctbx::unit_cell const& unit_cell,
+        af::const_ref<scitbx::vec3<double> > const& sites_cart,
+        bond_sym_proxy const& proxy)
+      :
+        bond_params(proxy.distance_ideal, proxy.weight)
+      {
+        for(int i=0;i<2;i++) {
+          std::size_t i_seq = proxy.i_seqs[i];
+          CCTBX_ASSERT(i_seq < sites_cart.size());
+          sites[i] = sites_cart[i_seq];
+        }
+        sites[1] = unit_cell.orthogonalize(
+          proxy.rt_mx_ji * unit_cell.fractionalize(sites[1]));
         init_distance_model();
       }
 
