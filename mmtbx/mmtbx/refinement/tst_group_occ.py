@@ -42,7 +42,7 @@ def exercise_1(hkl = "enk_gor.mtz"):
   opt1= "main.target=ls ls_target_names.target_name=ls_wunit_kunit group_occupancy.run_finite_differences_test=true"
   opt2= "output.write_maps=false output.write_map_coefficients=false" \
         " output.write_geo_file=true output.write_def_file=false "
-  opt3= "output.write_eff_file=false output.write_refined_mtz_file=false"
+  opt3= "output.write_eff_file=false "
   opt4= "one_occupancy_group_per_residue=true "
   opt5= "main.sf_algorithm=direct scattering_table=wk1995 --overwrite"
   opt6= "refinement.input.xray_data.labels=FOBS main.bulk_solvent_and_scale=false  output.prefix=occ_ref1"
@@ -56,7 +56,7 @@ def exercise_2(hkl = "enk_gor.mtz"):
   opt1= "main.target=ls ls_target_names.target_name=ls_wunit_kunit group_occupancy.run_finite_differences_test=true"
   opt2= "output.write_maps=false output.write_map_coefficients=false" \
         " output.write_geo_file=true output.write_def_file=false "
-  opt3= "output.write_eff_file=false output.write_refined_mtz_file=false"
+  opt3= "output.write_eff_file=false "
   opt5= "main.sf_algorithm=direct scattering_table=wk1995 --overwrite"
   opt6= "refinement.input.xray_data.labels=FOBS main.bulk_solvent_and_scale=false"
   opt7= "occupancies.group="+""""chain A" """+" occupancies.group="+""""chain B" """

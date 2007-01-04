@@ -1712,6 +1712,40 @@ class manager(object):
       max_number_of_bins  = max_number_of_bins,
       out=out)
 
+  def dump(self, out = None):
+    if(out is None): out = sys.stdout
+    print >> out, "k_sol    = %10.4f"%self.k_sol()
+    print >> out, "b_sol    = %10.4f"%self.b_sol()
+    print >> out, "scale_k1 = %10.4f"%self.scale_k1()
+    b0,b1,b2,b3,b4,b5 = n_as_s("%7.4f",self.b_cart())
+    c=","
+    print >>out,"(B11,B22,B33,B12,B13,B23) = ("+b0+c+b1+c+b2+c+b3+c+b4+c+b5+")"
+    f_model            = self.f_model()
+    f_model_amplitudes = f_model.amplitudes().data()
+    f_model_phases     = f_model.phases(deg=True).data()
+    f_calc_amplitudes  = self.f_calc().amplitudes().data()
+    f_calc_phases      = self.f_calc().phases(deg=True).data()
+    f_mask_amplitudes  = self.f_mask().amplitudes().data()
+    f_mask_phases      = self.f_mask().phases(deg=True).data()
+    fom                = self.figures_of_merit()
+    alpha, beta        = [item.data() for item in self.alpha_beta()]
+    f_obs              = self.f_obs.data()
+    flags              = self.r_free_flags.data()
+    indices            = self.f_obs.indices()
+    resolution         = self.f_obs.d_spacings().data()
+    format="inde= %5d%5d%5d Fobs= %10.3f Fcalc= %10.3f %9.3f Fmask= %10.3f %9.3f"\
+           " Fmodel= %10.3f %9.3f fom= %5.3f alpha= %8.4f beta= %12.4f"\
+           " R-free-flags= %1d resol= %7.3f"
+    for ind, f_obs_i, f_calc_amplitudes_i, f_calc_phases_i, f_mask_amplitudes_i,\
+        f_mask_phases_i, f_model_amplitudes_i, f_model_phases_i, fom_i, alpha_i,\
+        beta_i, flags_i, resolution_i in zip(indices, f_obs, f_calc_amplitudes, \
+        f_calc_phases, f_mask_amplitudes, f_mask_phases, f_model_amplitudes,    \
+        f_model_phases, fom, alpha, beta, flags, resolution):
+        print >> out, format%(ind[0], ind[1], ind[2], f_obs_i,
+          f_calc_amplitudes_i, f_calc_phases_i, f_mask_amplitudes_i,
+          f_mask_phases_i, f_model_amplitudes_i, f_model_phases_i, fom_i,
+          alpha_i, beta_i, flags_i, resolution_i)
+
 def statistics_in_resolution_bins(fmodel,
                                   target_functors,
                                   free_reflections_per_bin,
