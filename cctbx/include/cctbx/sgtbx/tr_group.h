@@ -35,6 +35,9 @@ namespace cctbx { namespace sgtbx {
 
       int t_den() const { return elems_[0].den(); }
 
+      bool
+      contains(tr_vec const& t) const;
+
       bool operator==(tr_group const& rhs)
       {
         return this->elems_ == rhs.elems_;

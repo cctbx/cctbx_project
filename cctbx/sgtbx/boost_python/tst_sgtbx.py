@@ -754,6 +754,9 @@ def exercise_space_group():
   g.expand_smx("-x,-y,-z")
   assert g.order_z() == 4
   assert not g.is_tidy()
+  for s in g:
+    assert g.contains(smx=s)
+  assert not g.contains(smx=sgtbx.rt_mx("y,z,x"))
   for z,n in (("P",1), ("a",2), ("B",2),("c",2), ("I",2), ("r",3), ("F",4)):
     g.reset()
     g.expand_conventional_centring_type(z)

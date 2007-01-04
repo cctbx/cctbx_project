@@ -357,6 +357,29 @@ def exercise_tensor_constraints():
     exercise_tensor_constraints_core(crystal_symmetry)
     exercise_tensor_constraints_core(crystal_symmetry.minimum_cell())
 
+def exercise_space_group_contains():
+  for symbols in sgtbx.space_group_symbol_iterator():
+    g = sgtbx.space_group(symbols.hall())
+    for s in g:
+      assert g.contains(s)
+  rnd = random.Random(0)
+  n_c = 0
+  n_nc = 0
+  for symbol in sgtbx.bravais_types.centric:
+    g = sgtbx.space_group_info(symbol=symbol, space_group_t_den=144).group()
+    for s in g.change_basis(sgtbx.change_of_basis_op("x+1/12,y-1/12,z+1/12")):
+      if (rnd.random() < 0.9): continue # avoid long runtime
+      gc = sgtbx.space_group(g)
+      gc.expand_smx(s)
+      if (gc.order_z() == g.order_z()):
+        assert g.contains(s)
+        n_c += 1
+      else:
+        assert not g.contains(s)
+        n_nc += 1
+  assert n_c == 13, n_c
+  assert n_nc == 50, n_nc
+
 def run(args):
   exercise_space_group_info()
   test_enantiomorphic_pairs()
@@ -364,6 +387,7 @@ def run(args):
   exercise_monoclinic_cell_choices(verbose="--verbose" in args)
   exercise_orthorhombic_hm_qualifier_as_cb_symbol()
   exercise_tensor_constraints()
+  exercise_space_group_contains()
   print format_cpu_times()
 
 if (__name__ == "__main__"):

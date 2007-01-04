@@ -117,6 +117,7 @@ namespace {
         .def("__getitem__", getitem)
         .def("make_tidy", &w_t::make_tidy, return_self<>())
         .def("is_tidy", &w_t::is_tidy)
+        .def("contains", &w_t::contains, (arg_("smx")))
         .def("__eq__", &w_t::operator==)
         .def("__ne__", &w_t::operator!=)
         .def("conventional_centring_type_symbol",

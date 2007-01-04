@@ -179,6 +179,26 @@ namespace cctbx { namespace sgtbx {
   }
 
   bool
+  space_group::contains(rt_mx const& smx) const
+  {
+    CCTBX_ASSERT(smx.r().den() == r_den());
+    CCTBX_ASSERT(smx.t().den() == t_den());
+    rot_mx const& r = smx.r();
+    for(std::size_t i=0;i<n_smx();i++) {
+      if (smx_[i].r() == r) {
+        return ltr_.contains(smx_[i].t() - smx.t());
+      }
+    }
+    rot_mx minus_r = -smx.r();
+    for(std::size_t i=0;i<n_smx();i++) {
+      if (smx_[i].r() == minus_r) {
+        return ltr_.contains(smx_[i].t() + smx.t() - inv_t_);
+      }
+    }
+    return false;
+  }
+
+  bool
   space_group::operator==(space_group const& rhs) const
   {
     CCTBX_ASSERT(r_den() == rhs.r_den());
