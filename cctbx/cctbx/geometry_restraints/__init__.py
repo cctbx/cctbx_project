@@ -17,6 +17,14 @@ nonbonded_radius_table = scitbx.stl.map.stl_string_double
 nonbonded_distance_table = scitbx.stl.map.stl_string_stl_map_stl_string_double
 nonbonded_distance_dict = scitbx.stl.map.stl_string_double
 
+def weight_as_sigma(weight):
+  if (weight <= 0): return 0
+  return 1/weight**0.5
+
+def sigma_as_weight(sigma):
+  if (sigma <= 0): return 0
+  return 1/sigma**2
+
 def angle_delta_deg(angle_1, angle_2, periodicity=1):
   half_period = 180./max(1,periodicity)
   d = math.fmod(angle_2-angle_1, 2*half_period)
