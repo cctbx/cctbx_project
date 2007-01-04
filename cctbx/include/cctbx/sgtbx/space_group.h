@@ -335,6 +335,10 @@ namespace cctbx { namespace sgtbx {
       bool
       is_tidy() const { return is_tidy_; }
 
+      //! Tests if smx modulo 1 is an operation of the group.
+      bool
+      contains(rt_mx const& smx) const;
+
       //! Tests for equality.
       /*! Internally, make_tidy() is used, followed by essentially a
           byte-wise comparison of the objects.<br>

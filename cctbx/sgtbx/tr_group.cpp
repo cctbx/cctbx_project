@@ -4,6 +4,14 @@
 
 namespace cctbx { namespace sgtbx {
 
+  bool
+  tr_group::contains(tr_vec const& t) const
+  {
+    if (!t.is_valid()) return false;
+    return (   std::find(elems_.begin(), elems_.end(), t.mod_positive())
+            != elems_.end());
+  }
+
   bool tr_group::add(tr_vec const& new_t)
   {
     if (!new_t.is_valid()) return false;
