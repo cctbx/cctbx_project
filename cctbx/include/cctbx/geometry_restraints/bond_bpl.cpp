@@ -37,6 +37,17 @@ namespace {
   struct bond_params_table_wrappers
   {
     static void
+    update(
+      bond_params_table& self,
+      unsigned i_seq,
+      unsigned j_seq,
+      bond_params const& params)
+    {
+      if (i_seq <= j_seq) self[i_seq][j_seq] = params;
+      else                self[j_seq][i_seq] = params;
+    }
+
+    static void
     wrap()
     {
       using namespace boost::python;
@@ -45,6 +56,11 @@ namespace {
         "bond_params_dict");
       scitbx::af::boost_python::shared_wrapper<bond_params_dict, rir>::wrap(
         "bond_params_table")
+        .def("update", update, (
+          arg_("self"),
+          arg_("i_seq"),
+          arg_("j_seq"),
+          arg_("params")))
         .def("proxy_select",
           (bond_params_table(*)(
             af::const_ref<bond_params_dict> const&,
@@ -81,6 +97,31 @@ namespace {
         scitbx::af::boost_python::shared_wrapper<bond_simple_proxy, rir>::wrap(
           "shared_bond_simple_proxy");
       }
+    }
+  };
+
+  struct bond_sym_proxy_wrappers
+  {
+    typedef bond_sym_proxy w_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      typedef return_value_policy<return_by_value> rbv;
+      class_<w_t, bases<bond_params> >("bond_sym_proxy", no_init)
+        .def(init<
+          af::tiny<unsigned, 2> const&,
+          sgtbx::rt_mx const&,
+          double,
+          double>(
+            (arg_("i_seqs"),
+             arg_("rt_mx_ji"),
+             arg_("distance_ideal"),
+             arg_("weight"))))
+        .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
+        .def_readonly("rt_mx_ji", &w_t::rt_mx_ji)
+      ;
     }
   };
 
@@ -123,6 +164,10 @@ namespace {
         .def(init<af::const_ref<scitbx::vec3<double> > const&,
                   bond_simple_proxy const&>(
           (arg_("sites_cart"), arg_("proxy"))))
+        .def(init<uctbx::unit_cell const&,
+                  af::const_ref<scitbx::vec3<double> > const&,
+                  bond_sym_proxy const&>(
+          (arg_("unit_cell"), arg_("sites_cart"), arg_("proxy"))))
         .def(init<af::const_ref<scitbx::vec3<double> > const&,
                   asu_mappings const&,
                   bond_asu_proxy const&>(
@@ -146,6 +191,7 @@ namespace {
     bond_params_wrappers::wrap();
     bond_params_table_wrappers::wrap();
     bond_simple_proxy_wrappers::wrap();
+    bond_sym_proxy_wrappers::wrap();
     bond_asu_proxy_wrappers::wrap();
     bond_wrappers::wrap();
     def("extract_bond_params", extract_bond_params, (

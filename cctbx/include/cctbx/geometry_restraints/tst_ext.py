@@ -2,6 +2,7 @@ from cctbx.array_family import flex
 from cctbx import geometry_restraints
 from cctbx import crystal
 from cctbx import sgtbx
+from cctbx import uctbx
 from cctbx.crystal import direct_space_asu
 from scitbx import matrix
 from scitbx import stl
@@ -56,6 +57,20 @@ def exercise_bond():
   rest = t.proxy_remove(
     selection=flex.bool([True,True]+[False]*8+[True]+[False]*3))
   assert [p.size() for p in rest] == [1]+[0]*13
+  #
+  p = geometry_restraints.bond_params(distance_ideal=2.8, weight=2)
+  assert t[3].size() == 0
+  t.update(i_seq=4, j_seq=3, params=p)
+  assert t[3].size() == 1
+  assert approx_equal(t[3][4].distance_ideal, 2.8)
+  p = geometry_restraints.bond_params(distance_ideal=3.8, weight=3)
+  t.update(i_seq=3, j_seq=5, params=p)
+  assert t[3].size() == 2
+  assert approx_equal(t[3][5].distance_ideal, 3.8)
+  p = geometry_restraints.bond_params(distance_ideal=1.8, weight=4)
+  t.update(i_seq=3, j_seq=4, params=p)
+  assert t[3].size() == 2
+  assert approx_equal(t[3][4].distance_ideal, 1.8)
   #
   p = geometry_restraints.bond_simple_proxy(
     i_seqs=[1,0],
@@ -124,6 +139,26 @@ def exercise_bond():
     proxies=proxies,
     gradient_array=None)
   assert approx_equal(residual_sum, 2*0.0583982925824)
+  #
+  p = geometry_restraints.bond_sym_proxy(
+    i_seqs=[1,0],
+    rt_mx_ji=sgtbx.rt_mx("-y,z,x"),
+    distance_ideal=3.5,
+    weight=1)
+  assert p.i_seqs == (1,0)
+  assert str(p.rt_mx_ji) == "-y,z,x"
+  assert approx_equal(p.distance_ideal, 3.5)
+  assert approx_equal(p.weight, 1)
+  unit_cell = uctbx.unit_cell([15,25,30,90,90,90])
+  sites_cart = flex.vec3_double([[1,2,3],[2,3,4]])
+  b = geometry_restraints.bond(
+    unit_cell=unit_cell,
+    sites_cart=sites_cart,
+    proxy=p)
+  assert approx_equal(b.sites, [(2,3,4),(-1.2,2.5,2)])
+  assert approx_equal(b.distance_ideal, 3.5)
+  assert approx_equal(b.weight, 1)
+  assert approx_equal(b.distance_model**2, 14.49)
   #
   sites_cart = flex.vec3_double([[1,2,3],[2,3,4]])
   asu_mappings = direct_space_asu.non_crystallographic_asu_mappings(
