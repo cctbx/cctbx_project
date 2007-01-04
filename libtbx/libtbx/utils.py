@@ -55,13 +55,16 @@ def flat_list(nested_list):
 
 class Keep: pass
 
+disable_tracebacklimit = False
+
 class Sorry(Exception):
   # trick to get just "Sorry" instead of "libtbx.utils.Sorry"
   __module__ = "exceptions"
 
   def __init__(self, *args, **keyword_args):
-    self.previous_tracebacklimit = getattr(sys, "tracebacklimit", None)
-    sys.tracebacklimit = 0
+    if (not disable_tracebacklimit):
+      self.previous_tracebacklimit = getattr(sys, "tracebacklimit", None)
+      sys.tracebacklimit = 0
     Exception.__init__(self, *args, **keyword_args)
 
   def __str__(self):
@@ -72,11 +75,13 @@ class Sorry(Exception):
     self.reset_tracebacklimit()
 
   def reset_tracebacklimit(self):
-    if (hasattr(sys, "tracebacklimit")):
+    if (not disable_tracebacklimit and hasattr(sys, "tracebacklimit")):
       if (self.previous_tracebacklimit is None):
         del sys.tracebacklimit
       else:
         sys.tracebacklimit = self.previous_tracebacklimit
+
+disable_tracebacklimit = getenv_bool("LIBTBX_DISABLE_TRACEBACKLIMIT")
 
 class Usage(Sorry):
   # trick to get just "Sorry" instead of "libtbx.utils.Sorry"
