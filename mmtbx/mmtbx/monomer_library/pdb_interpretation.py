@@ -9,10 +9,12 @@ from cctbx import geometry_restraints
 import cctbx.geometry_restraints.manager
 from cctbx import crystal
 import cctbx.crystal.coordination_sequences
+from cctbx import sgtbx
 from cctbx.array_family import flex
 from scitbx.python_utils import dicts
 from libtbx.str_utils import show_string
 from libtbx.utils import flat_list, Sorry, user_plus_sys_time, plural_s
+from libtbx.utils import format_exception
 from cStringIO import StringIO
 import string
 import sys
@@ -57,6 +59,28 @@ master_params = iotbx.phil.parse("""\
     max_fraction_of_distances_below_threshold = 0.1
       .type = float
   }
+""")
+
+geometry_restraints_edits = iotbx.phil.parse("""\
+bond
+  .optional = True
+  .multiple = True
+{
+  action = *add delete change
+    .type = choice
+  atom_selection_1 = None
+    .type = str
+  atom_selection_2 = None
+    .type = str
+  symmetry_operation = None
+    .help = "The bond is between atom_1 and symmetry_operation * atom_2,"
+            " with atom_1 and atom_2 given in fractional coordinates."
+    .type = str
+  distance_ideal = None
+    .type = float
+  sigma = None
+    .type = float
+}
 """)
 
 def flush_log(log):
@@ -1801,13 +1825,14 @@ class build_all_chain_proxies(object):
       return False
     return True
 
-  def selection(self, string):
-    return self.stage_1.selection_cache().selection(
+  def selection(self, string, cache=None):
+    if (cache is None): cache = self.stage_1.selection_cache()
+    return cache.selection(
       string=string,
       callback=self._selection_callback)
 
-  def iselection(self, string):
-    return self.selection(string=string).iselection()
+  def iselection(self, string, cache=None):
+    return self.selection(string=string, cache=cache).iselection()
 
   def create_disulfides(self,
         disulfide_distance_cutoff,
@@ -1875,10 +1900,122 @@ class build_all_chain_proxies(object):
         print >> log
     return pair_sym_table, max_distance_model
 
+  def phil_atom_selection(self, cache, scope_extract, attr):
+    string = getattr(scope_extract, attr)
+    try: return self.selection(string=string, cache=cache)
+    except KeyboardInterrupt: raise
+    except Exception: fe = format_exception()
+    parameter_name = ".".join([scope_extract.__phil_path__(), attr])
+    raise Sorry('Invalid atom selection:\n  %s="%s"\n  (%s)' % (
+      parameter_name, string, fe))
+
+  def process_geometry_restraints_edits(self, sel_cache, edits, log):
+    result = []
+    bonds = []
+    for bond in edits.bond:
+      if (   bond.action != "add"
+          or bond.atom_selection_1 is not None
+          or bond.atom_selection_2 is not None
+          or bond.symmetry_operation is not None
+          or bond.distance_ideal is not None
+          or bond.sigma is not None):
+        bonds.append(bond)
+    if (len(bonds) == 0): return result
+    del edits.bond[:]
+    edits.bond.extend(bonds)
+    print >> log, "  Custom bonds:"
+    aal = self.stage_1.atom_attributes_list
+    unit_cell = self.special_position_settings.unit_cell()
+    space_group = self.special_position_settings.space_group()
+    max_bond_length = unit_cell.shortest_vector_sq()**0.5
+    n_excessive = 0
+    sel_attrs = ["atom_selection_"+n for n in ["1", "2"]]
+    for bond in bonds:
+      def show_atom_selections():
+        for attr in sel_attrs:
+          print >> log, "      %s = %s" % (
+            attr, show_string(getattr(bond, attr, None)))
+      if (bond.distance_ideal is None):
+        print >> log, "    Warning: Ignoring bond with distance_ideal = None:"
+        show_atom_selections()
+      elif (bond.distance_ideal <= 0):
+        print >> log, "    Warning: Ignoring bond with distance_ideal <= 0:"
+        show_atom_selections()
+        print >> log, "      distance_ideal = %.6g" % bond.distance_ideal
+      elif (bond.sigma is None):
+        print >> log, "    Warning: Ignoring bond with sigma = None:"
+        show_atom_selections()
+        print >> log, "      distance_ideal = %.6g" % bond.distance_ideal
+      elif (bond.sigma is None or bond.sigma <= 0):
+        print >> log, "    Warning: Ignoring bond with sigma <= 0:"
+        show_atom_selections()
+        print >> log, "      distance_ideal = %.6g" % bond.distance_ideal
+        print >> log, "      sigma = %.6g" % bond.sigma
+      elif (bond.action != "add"):
+        raise Sorry("%s.action = %s not implemented." % (
+          bond.__phil_path__(), bond.action))
+      else:
+        i_seqs = []
+        for attr in sel_attrs:
+          iselection = self.phil_atom_selection(
+            cache=sel_cache,
+            scope_extract=bond,
+            attr=attr).iselection()
+          if (iselection.size() != 1):
+            atom_sel = getattr(bond, attr)
+            if (iselection.size() == 0):
+              raise Sorry("No atom selected: %s" % show_string(atom_sel))
+            raise Sorry(
+              "More than one atom selected: %s\n"
+              "  Number of selected atoms: %d" % (
+                show_string(atom_sel), iselection.size()))
+          i_seqs.append(iselection[0])
+        if (bond.symmetry_operation is None):
+          s = "x,y,z"
+        else:
+          s = bond.symmetry_operation
+        rt_mx_ji = sgtbx.rt_mx(symbol=s, t_den=space_group.t_den())
+        p = geometry_restraints.bond_sym_proxy(
+          i_seqs=i_seqs,
+          distance_ideal=bond.distance_ideal,
+          weight=geometry_restraints.sigma_as_weight(sigma=bond.sigma),
+          rt_mx_ji=rt_mx_ji)
+        result.append(p)
+        b = geometry_restraints.bond(
+          unit_cell=unit_cell,
+          sites_cart=self.sites_cart,
+          proxy=p)
+        print >> log, "    bond:"
+        for i in [0,1]:
+          print >> log, "      atom %d:" % (i+1), aal[p.i_seqs[i]].pdb_format()
+        print >> log, "      symmetry operation:", str(p.rt_mx_ji)
+        if (not space_group.contains(smx=p.rt_mx_ji)):
+          raise Sorry(
+            'The bond symmetry operation "%s" is not compatible'
+            ' with space group %s.' % (
+              str(p.rt_mx_ji),
+              self.special_position_settings.space_group_info()
+                .symbol_and_number()))
+        print >> log, "      distance_model: %7.3f" % b.distance_model
+        print >> log, "      distance_ideal: %7.3f" % b.distance_ideal
+        print >> log, "      ideal - model:  %7.3f" % b.delta
+        print >> log, "      sigma: %.6g" % \
+          geometry_restraints.weight_as_sigma(weight=b.weight)
+        if (b.distance_model > max_bond_length):
+          print >> log, "      *** WARNING: EXCESSIVE BOND LENGTH. ***"
+          n_excessive += 1
+    if (n_excessive != 0):
+      raise Sorry(
+        "Custom bonds with excessive length: %d\n"
+        "  Please check the log file for details." % n_excessive)
+    print >> log, "    Total number of custom bonds:", len(result)
+    return result
+
   def construct_geometry_restraints_manager(self,
         ener_lib,
         disulfide_link,
         plain_pairs_radius=None,
+        edits=None,
         log=None):
     assert self.special_position_settings is not None
     timer = user_plus_sys_time()
@@ -1937,15 +2074,28 @@ class build_all_chain_proxies(object):
     for sym_pair in disulfide_sym_table.iterator():
       i_seq = self.cystein_sulphur_i_seqs[sym_pair.i_seq]
       j_seq = self.cystein_sulphur_i_seqs[sym_pair.j_seq]
-      params = geometry_restraints.bond_params(
-        distance_ideal=disulfide_bond.value_dist,
-        weight=1/disulfide_bond.value_dist_esd**2)
-      if (i_seq <= j_seq): bond_params_table[i_seq][j_seq] = params
-      else:                bond_params_table[j_seq][i_seq] = params
+      bond_params_table.update(
+        i_seq=i_seq,
+        j_seq=j_seq,
+        params=geometry_restraints.bond_params(
+          distance_ideal=disulfide_bond.value_dist,
+          weight=1/disulfide_bond.value_dist_esd**2))
       bond_asu_table.add_pair(
         i_seq=i_seq,
         j_seq=j_seq,
         rt_mx_ji=sym_pair.rt_mx_ji)
+    #
+    if (edits is not None):
+      bond_sym_proxies = self.process_geometry_restraints_edits(
+        sel_cache=sel_cache, edits=edits, log=log)
+      for proxy in bond_sym_proxies:
+        if (proxy.weight <= 0): continue
+        i_seq, j_seq = proxy.i_seqs
+        bond_params_table.update(i_seq=i_seq, j_seq=j_seq, params=proxy)
+        bond_asu_table.add_pair(
+          i_seq=i_seq,
+          j_seq=j_seq,
+          rt_mx_ji=proxy.rt_mx_ji)
     #
     shell_asu_tables = crystal.coordination_sequences.shell_asu_tables(
       pair_asu_table=bond_asu_table,
@@ -2031,6 +2181,7 @@ class process(object):
 
   def geometry_restraints_manager(self,
         plain_pairs_radius=None,
+        edits=None,
         show_energies=True,
         hard_minimum_bond_distance_model=0.001):
     if (    self.all_chain_proxies.sites_cart is not None
@@ -2041,6 +2192,7 @@ class process(object):
             ener_lib=self.ener_lib,
             disulfide_link=self.mon_lib_srv.link_link_id_dict["SS"],
             plain_pairs_radius=plain_pairs_radius,
+            edits=edits,
             log=self.log)
       if (self.log is not None):
         print >> self.log, \
