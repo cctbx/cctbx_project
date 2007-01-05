@@ -189,6 +189,7 @@ namespace cctbx { namespace sgtbx {
         return ltr_.contains(smx_[i].t() - smx.t());
       }
     }
+    if (!is_centric()) return false;
     rot_mx minus_r = -smx.r();
     for(std::size_t i=0;i<n_smx();i++) {
       if (smx_[i].r() == minus_r) {
