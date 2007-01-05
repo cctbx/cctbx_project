@@ -409,11 +409,13 @@ def group_obs_sigma(real_arrays):
   done = {}
   i = real_arrays.get("iobs")
   if (i is not None):
-    s = real_arrays.get("sigi")
-    if (s is not None and i.indices.all_eq(s.indices)):
-      result.append((i,s,"i"))
-      done[i.name] = None
-      done[s.name] = None
+    for name in ["sigi", "sigmai", "sigiobs"]:
+      s = real_arrays.get(name)
+      if (s is not None and i.indices.all_eq(s.indices)):
+        result.append((i,s,"i"))
+        done[i.name] = None
+        done[s.name] = None
+        break
   for name,f in real_arrays.items():
     if (f.name in done): continue
     rest = None
