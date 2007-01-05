@@ -358,6 +358,11 @@ def exercise_tensor_constraints():
     exercise_tensor_constraints_core(crystal_symmetry.minimum_cell())
 
 def exercise_space_group_contains():
+  g = sgtbx.space_group("P 2")
+  for s in ["x,y,z", "-x,-y,z", "-x+1,-y-2,z+3"]:
+    assert g.contains(sgtbx.rt_mx(s))
+  for s in ["x,y,-z", "x+1/2,y,z"]:
+    assert not g.contains(sgtbx.rt_mx(s))
   for symbols in sgtbx.space_group_symbol_iterator():
     g = sgtbx.space_group(symbols.hall())
     for s in g:
