@@ -81,3 +81,28 @@ class energies_iso(scitbx.restraints.energies):
       if (compute_gradients):
         self.gradients = self.gradients + w * g_wilson
     self.finalize_target_and_gradients()
+
+class adp_aniso_restraints(object):
+  def __init__(self, xray_structure, restraints_manager, weight):
+    unit_cell = xray_structure.unit_cell()
+    self.number_of_restraints = 0
+    self.target = 0.0
+    self.gradients = flex.sym_mat3_double(xray_structure.scatterers().size())
+    u_star = xray_structure.scatterers().extract_u_star()
+    for proxy in restraints_manager.geometry.pair_proxies().bond_proxies.simple:
+      i,j = proxy.i_seqs
+      u_i = u_star[i]
+      u_j = u_star[j]
+      g_i = flex.double(self.gradients[i])
+      g_j = flex.double(self.gradients[j])
+      for i_seq in xrange(6):
+        diff = u_i[i_seq] - u_j[i_seq]
+        self.target += diff**2
+        g_i[i_seq] +=  2.0 * diff
+        g_j[i_seq] += -2.0 * diff
+        self.number_of_restraints += 1
+      self.gradients[i] = list(g_i)
+      self.gradients[j] = list(g_j)
+    self.target *= weight
+    for i_seq, g in enumerate(self.gradients):
+        self.gradients[i_seq] = list(flex.double(g)*weight)

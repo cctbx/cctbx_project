@@ -139,6 +139,7 @@ namespace cctbx { namespace xray { namespace minimization {
     af::ref<FloatType> const& xray_gradients,
     af::const_ref<scitbx::vec3<FloatType> > const& site_gradients,
     af::const_ref<FloatType> const& u_iso_gradients,
+    af::const_ref<scitbx::sym_mat3<FloatType> > const& u_aniso_gradients,
     af::const_ref<FloatType> const& occupancy_gradients,
     bool const& refine_xyz,
     bool const& refine_adp,
@@ -175,7 +176,14 @@ namespace cctbx { namespace xray { namespace minimization {
           }
         }
         if(sc.flags.grad_u_aniso() && sc.flags.use_u_aniso()) {
-          next_xray_gradients(6);
+          //next_xray_gradients(6);
+          FloatType* xg = next_xray_gradients(6);
+          if (u_aniso_gradients.size() != 0) {
+            scitbx::sym_mat3<FloatType> const& gu = u_aniso_gradients[i_sc];
+            for(std::size_t i=0;i<6;i++) xg[i] += gu[i];
+          }
+          //
+
         }
         if(sc.flags.grad_occupancy()) {
           double scale = 0.0;

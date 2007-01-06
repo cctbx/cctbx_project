@@ -233,6 +233,26 @@ namespace cctbx { namespace xray { namespace {
     return result;
   }
 
+  af::shared<scitbx::vec3<double> >
+  u_cart_eigenvalues(
+    af::ref<scatterer<> > const& self,
+    uctbx::unit_cell const& unit_cell)
+  {
+    af::shared<scitbx::vec3<double> > result(af::reserve(self.size()));
+    for(std::size_t i=0;i<self.size();i++) {
+        scitbx::sym_mat3<double> u_cart;
+        if(self[i].u_star != scitbx::sym_mat3<double>(-1,-1,-1,-1,-1,-1)) {
+           u_cart = adptbx::u_star_as_u_cart(unit_cell, self[i].u_star);
+        }
+        else {
+           CCTBX_ASSERT(self[i].u_iso >= 0.);
+           u_cart = adptbx::u_iso_as_u_cart(self[i].u_iso);
+        }
+        result.push_back( adptbx::eigenvalues(u_cart) );
+    }
+    return result;
+  }
+
   void
   set_u_iso(
     af::ref<scatterer<> > const& self,
@@ -520,6 +540,8 @@ namespace scitbx { namespace af { namespace boost_python {
       .def("extract_use_u_iso", cctbx::xray::extract_use_u_iso)
       .def("extract_use_u_aniso", cctbx::xray::extract_use_u_aniso)
       .def("extract_u_iso_or_u_equiv", cctbx::xray::extract_u_iso_or_u_equiv,
+        (arg_("unit_cell")))
+      .def("u_cart_eigenvalues", cctbx::xray::u_cart_eigenvalues,
         (arg_("unit_cell")))
       .def("extract_u_cart_or_u_cart_plus_u_iso",
                               cctbx::xray::extract_u_cart_or_u_cart_plus_u_iso,
