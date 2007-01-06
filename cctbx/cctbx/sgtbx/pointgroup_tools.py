@@ -149,9 +149,7 @@ class sub_super_point_group_relations(object):
         # check if the other symops generate the same sg please
         for check_ops,check_item in zip(self.symops,
                                         range(len(self.symops))):
-          check_again_sg = sgtbx.space_group( check_sg )
-          check_again_sg.expand_smx(check_ops.new_denominators(r_den,t_den))
-          if (check_again_sg == check_sg):
+          if (check_sg.contains(check_ops.new_denominators(r_den,t_den))):
             # add symop to list if it is not in there yet
             if not (check_ops in tmp_symop):
               tmp_symop.append( check_ops )
