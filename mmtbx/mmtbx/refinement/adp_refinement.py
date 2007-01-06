@@ -187,10 +187,10 @@ class manager(object):
     if(refine_adp_individual):
        print_statistics.make_sub_header(text= "Individual ADP refinement",
                                         out = log)
-       xray.set_scatterer_grad_flags(
-                      scatterers = fmodel.xray_structure.scatterers(),
-                      u_iso      = True,
-                      u_aniso    = (not force_all_to_be_refined_isotropically))
+       #xray.set_scatterer_grad_flags(
+       #               scatterers = fmodel.xray_structure.scatterers(),
+       #               u_iso      = True,
+       #               u_aniso    = (not force_all_to_be_refined_isotropically))
        lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
            max_iterations = individual_adp_params.iso.max_number_of_iterations)
        fmodel.xray_structure.approx_equal(other = model.xray_structure)

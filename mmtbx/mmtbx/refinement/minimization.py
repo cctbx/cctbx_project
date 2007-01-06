@@ -8,6 +8,7 @@ from stdlib import math
 import sys, time
 from libtbx.test_utils import approx_equal
 from libtbx.utils import user_plus_sys_time
+import cctbx.adp_restraints
 
 time_site_individual = 0.0
 
@@ -307,6 +308,20 @@ class lbfgs(object):
        er = energies_adp_iso.target
        self.collector.collect(er = er)
        self.f += er * self.wr
+
+
+       #adp_ro = cctbx.adp_restraints.adp_aniso_restraints(
+       #                           xray_structure     = self.xray_structure,
+       #                           restraints_manager = self.restraints_manager,
+       #                           weight             = self.wr)
+       #at = adp_ro.target
+       #self.f += at
+       #self.collector.collect(er = at / self.wr)
+
+       #self.fd(xray_structure     = self.xray_structure,
+       #        restraints_manager = self.restraints_manager,
+       #        weight             = self.wr)
+
        if(compute_gradients):
           sgu = energies_adp_iso.gradients
           if(self.selection is not None):
@@ -321,6 +336,17 @@ class lbfgs(object):
                         refine_adp     = self.refine_adp,
                         refine_occ     = self.refine_occ,
                         selection      = selection)
+
+          #####################################################################
+          #xray.minimization.add_gradients(
+          #              scatterers      = self.xray_structure.scatterers(),
+          #              xray_gradients  = self.g,
+          #              u_aniso_gradients = adp_ro.gradients,
+          #              refine_xyz     = self.refine_xyz,
+          #              refine_adp     = self.refine_adp,
+          #              refine_occ     = self.refine_occ,
+          #              selection      = selection)
+          #####################################################################
 
   def callback_after_step(self, minimizer):
     self._lock_for_line_search = False
@@ -337,6 +363,38 @@ class lbfgs(object):
       print "xray.minimization line search: f,rms(g):",
       print self.f, math.sqrt(flex.mean_sq(self.g))
     return self.f, self.g
+
+  def fd(self, xray_structure, restraints_manager, weight, eps=1.e-2):
+    adp_ro = adp_aniso_restraints(xray_structure     = xray_structure,
+                                  restraints_manager = restraints_manager,
+                                  weight             = weight)
+    g = adp_ro.gradients
+
+    xrs1 = xray_structure.deep_copy_scatterers()
+    xrs2 = xray_structure.deep_copy_scatterers()
+    sc1  = xrs1.scatterers()
+    sc2  = xrs2.scatterers()
+    us1 = sc1.extract_u_star()
+    us2 = sc1.extract_u_star()
+
+    m1 = flex.double(us1[0])
+    m2 = flex.double(us2[0])
+    m1[0] = m1[0] - eps
+    m2[0] = m2[0] + eps
+
+    us1[0] = list(m1)
+    us2[0] = list(m2)
+
+    sc1.set_u_star(us1)
+    sc2.set_u_star(us2)
+
+    adp_ro1 = adp_aniso_restraints(xray_structure     = xrs1,
+                                   restraints_manager = restraints_manager,
+                                   weight             = weight)
+    adp_ro2 = adp_aniso_restraints(xray_structure     = xrs2,
+                                   restraints_manager = restraints_manager,
+                                   weight             = weight)
+    print (adp_ro2.target - adp_ro1.target)/(2*eps), g[0][0]
 
 class minimization_history(object):
   def __init__(self, wx = None,
