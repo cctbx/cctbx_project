@@ -166,7 +166,7 @@ wait()
 communicate(input=None)
     Interact with process: Send data to stdin.  Read data from stdout
     and stderr, until end-of-file is reached.  Wait for process to
-    terminate.  The optional stdin argument should be a string to be
+    terminate.  The optional input argument should be a string to be
     sent to the child process, or None, if no data should be sent to
     the child.
 
@@ -1004,12 +1004,12 @@ class Popen(object):
 
                     # Close pipe fds.  Make sure we don't close the same
                     # fd more than once, or standard fds.
-                    fd_skip = {None:0, 0:0, 1:0, 2:0}
-                    for fd in [p2cread, c2pwrite, errwrite]:
-                        if fd in fd_skip: continue
-                        os.close(fd)
-                        fd_skip[fd] = 0
-                    del fd_skip
+                    if p2cread and p2cread not in (0,):
+                        os.close(p2cread)
+                    if c2pwrite and c2pwrite not in (p2cread, 1):
+                        os.close(c2pwrite)
+                    if errwrite and errwrite not in (p2cread, c2pwrite, 2):
+                        os.close(errwrite)
 
                     # Close all other fds, if asked for
                     if close_fds:
@@ -1111,7 +1111,7 @@ class Popen(object):
                 read_set.append(self.stderr)
                 stderr = []
 
-            input_done = 0
+            input_offset = 0
             while read_set or write_set:
                 rlist, wlist, xlist = select.select(read_set, write_set, [])
 
@@ -1119,10 +1119,9 @@ class Popen(object):
                     # When select has indicated that the file is writable,
                     # we can write up to PIPE_BUF bytes without risk
                     # blocking.  POSIX defines PIPE_BUF >= 512
-                    bytes_written = os.write(self.stdin.fileno(),
-                                             input[input_done:input_done+512])
-                    input_done += bytes_written
-                    if input_done >= len(input):
+                    bytes_written = os.write(self.stdin.fileno(), buffer(input, input_offset, 512))
+                    input_offset += bytes_written
+                    if input_offset >= len(input):
                         self.stdin.close()
                         write_set.remove(self.stdin)
 
