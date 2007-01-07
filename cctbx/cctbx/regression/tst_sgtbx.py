@@ -4,7 +4,6 @@ from cctbx.array_family import flex
 import scitbx.math
 from libtbx.test_utils import approx_equal
 from libtbx.utils import format_cpu_times
-import random
 import pickle
 import sys
 
@@ -367,13 +366,13 @@ def exercise_space_group_contains():
     g = sgtbx.space_group(symbols.hall())
     for s in g:
       assert g.contains(s)
-  rnd = random.Random(0)
+  rnd = flex.mersenne_twister(seed=0)
   n_c = 0
   n_nc = 0
   for symbol in sgtbx.bravais_types.centric:
     g = sgtbx.space_group_info(symbol=symbol, space_group_t_den=144).group()
     for s in g.change_basis(sgtbx.change_of_basis_op("x+1/12,y-1/12,z+1/12")):
-      if (rnd.random() < 0.9): continue # avoid long runtime
+      if (rnd.random_double() < 0.9): continue # avoid long runtime
       gc = sgtbx.space_group(g)
       gc.expand_smx(s)
       if (gc.order_z() == g.order_z()):
@@ -382,8 +381,8 @@ def exercise_space_group_contains():
       else:
         assert not g.contains(s)
         n_nc += 1
-  assert n_c == 13, n_c
-  assert n_nc == 50, n_nc
+  assert n_c == 11, n_c
+  assert n_nc == 53, n_nc
 
 def run(args):
   exercise_space_group_info()
