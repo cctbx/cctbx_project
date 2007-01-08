@@ -26,6 +26,15 @@ KR MO LU CR OS GD TB LA F AR AG HO GA CE W SE RU RE PR IR EU AL V TE SB PD
 """.split()
 
 master_params = iotbx.phil.parse("""\
+  apply_cif_modification
+    .optional = True
+    .multiple = True
+  {
+    data_mod = None
+      .type = str
+    residue_selection = None
+      .type = str
+  }
   link_distance_cutoff = 3
     .type=float
     .optional=False
@@ -298,6 +307,7 @@ class monomer_mapping(object):
 
   def __init__(self,
         mon_lib_srv,
+        apply_cif_modifications,
         i_conformer,
         conformer_label,
         pdb_residue):
@@ -319,8 +329,13 @@ class monomer_mapping(object):
           self.monomer.chem_comp.id[0]+second_character,
           hide_mon_lib_dna_rna_cif=False)
         self._get_mappings(mon_lib_srv=mon_lib_srv)
-      self._set_incomplete_info()
       self.chem_mod_ids = []
+      for apply_data_mod in apply_cif_modifications.get(
+            atom.residue_and_model_labels(), []):
+        self.apply_mod(
+          mon_lib_srv=mon_lib_srv,
+          mod_mod_id=mon_lib_srv.mod_mod_id_dict[apply_data_mod])
+      self._set_incomplete_info()
       self.is_terminus = None
       self.monomer.set_classification()
       if (self.incomplete_info is None):
@@ -1137,6 +1152,7 @@ class build_chain_proxies(object):
   def __init__(self,
         mon_lib_srv,
         ener_lib,
+        apply_cif_modifications,
         link_distance_cutoff,
         stage_1,
         sites_cart,
@@ -1200,6 +1216,7 @@ class build_chain_proxies(object):
       break_block_identifier = break_block_identifiers[residue.iselection[0]]
       mm = monomer_mapping(
         mon_lib_srv=mon_lib_srv,
+        apply_cif_modifications=apply_cif_modifications,
         i_conformer=i_conformer,
         conformer_label=conformer.altLoc,
         pdb_residue=residue)
@@ -1594,6 +1611,7 @@ class build_all_chain_proxies(object):
     else:
       special_position_indices = \
         self.site_symmetry_table().special_position_indices()
+    self.process_apply_cif_modification(mon_lib_srv=mon_lib_srv, log=log)
     models = self.stage_1.get_models_and_conformers()
     if (log is not None):
       print >> log, "  Number of models:", len(models)
@@ -1649,6 +1667,7 @@ class build_all_chain_proxies(object):
           chain_proxies = build_chain_proxies(
             mon_lib_srv=mon_lib_srv,
             ener_lib=ener_lib,
+            apply_cif_modifications=self.apply_cif_modifications,
             link_distance_cutoff=self.params.link_distance_cutoff,
             stage_1=self.stage_1,
             sites_cart=self.sites_cart,
@@ -1833,6 +1852,35 @@ class build_all_chain_proxies(object):
 
   def iselection(self, string, cache=None):
     return self.selection(string=string, cache=cache).iselection()
+
+  def process_apply_cif_modification(self, mon_lib_srv, log):
+    self.apply_cif_modifications = {}
+    sel_cache = None
+    aal = self.stage_1.atom_attributes_list
+    for apply in self.params.apply_cif_modification:
+      if (apply.data_mod is None): continue
+      print >> log, "  apply_cif_modification:"
+      print >> log, "    data_mod:", apply.data_mod
+      mod = mon_lib_srv.mod_mod_id_dict.get(apply.data_mod)
+      if (mod is None):
+        print >> log
+        raise Sorry(
+          "Missing cif modification: data_mod_%s\n" % apply.data_mod
+          + "  Please check for spelling errors or specify the file name\n"
+          + "  with the modification as an additional argument.")
+      print >> log, "    residue_selection:", apply.residue_selection
+      if (sel_cache is None):
+        sel_cache = self.stage_1.selection_cache()
+      iselection = self.phil_atom_selection(
+        cache=sel_cache,
+        scope_extract=apply,
+        attr="residue_selection").iselection()
+      unique_residue_keys = {}
+      for i_seq in iselection:
+        unique_residue_keys[aal[i_seq].residue_and_model_labels()] = None
+      for key in unique_residue_keys:
+        self.apply_cif_modifications.setdefault(key, []).append(
+          apply.data_mod)
 
   def create_disulfides(self,
         disulfide_distance_cutoff,
