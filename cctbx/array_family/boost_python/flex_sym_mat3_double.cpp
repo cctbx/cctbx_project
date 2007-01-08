@@ -3,6 +3,7 @@
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
 #include <scitbx/boost_python/pickle_single_buffered.h>
 #include <boost/python/make_constructor.hpp>
+#include <boost/python/return_arg.hpp>
 
 namespace scitbx { namespace boost_python { namespace pickle_single_buffered {
 
@@ -73,10 +74,19 @@ namespace scitbx { namespace af { namespace boost_python {
       return result;
     }
 
+    void
+    imul_a_scalar(
+      af::ref<sym_mat3<double> > const& a,
+      double f)
+    {
+      for(std::size_t i=0;i<a.size();i++) a[i] *= f;
+    }
+
   } // namespace <anonymous>
 
   void wrap_flex_sym_mat3_double()
   {
+    using namespace boost::python;
     typedef flex_wrapper<sym_mat3<double> > f_w;
     f_w::plain("sym_mat3_double")
       .def_pickle(flex_pickle_single_buffered<sym_mat3<double>,
@@ -85,6 +95,7 @@ namespace scitbx { namespace af { namespace boost_python {
       .def("as_double", as_double)
       .def("__add__", f_w::add_a_a)
       .def("__sub__", f_w::sub_a_a)
+      .def("__imul__", imul_a_scalar, return_self<>())
     ;
   }
 

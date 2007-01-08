@@ -27,6 +27,8 @@ def exercise_flex_sym_mat3_double():
   b = flex.sym_mat3_double([(7,4,-8,2,4,3), (6,2,0,3,5,1)])
   assert approx_equal(a+b, [(8,6,-5,6,9,9), (8,5,4,8,11,8)])
   assert approx_equal(a-b, [(-6,-2,11,2,1,3), (-4,1,4,2,1,6)])
+  b *= 3
+  assert approx_equal(b, [(21,12,-24,6,12,9), (18,6,0,9,15,3)])
 
 def exercise_flex_hendrickson_lattman():
   a = flex.hendrickson_lattman()
