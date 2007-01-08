@@ -37,6 +37,11 @@ class labels(object):
       self.name, self.altLoc, self.resName, self.chainID,
       self.resSeq, self.iCode, self.segID, self.MODELserial]])
 
+  def residue_and_model_labels(self):
+    return ",".join([str(id) for id in [
+      self.resName, self.chainID,
+      self.resSeq, self.iCode, self.segID, self.MODELserial]])
+
   def residue_labels(self):
     return ",".join([str(id) for id in [
       self.resName, self.chainID,
