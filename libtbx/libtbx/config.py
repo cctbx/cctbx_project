@@ -1200,6 +1200,9 @@ class module:
           print msg
           print "*"*len(msg)
         return
+    if (file_name == "ipython.py" and self.name == "libtbx"):
+      try: import IPython
+      except ImportError: return
     target_file = self.name + target_file_name_infix
     if (not file_name_lower.startswith("main.")
          or file_name_lower.count(".") != 1):
