@@ -349,13 +349,13 @@ class cns_reflection_file(object):
 
   def _as_miller_array(self, crystal_symmetry, miller_indices,
                              data, sigmas=None, obs_type=None):
-    result = miller.array(
-      miller_set=miller.set(
-        crystal_symmetry=crystal_symmetry,
-        indices=miller_indices,
-        anomalous_flag=self.anomalous),
-      data=data,
-      sigmas=sigmas)
+    result = miller.set(
+      crystal_symmetry=crystal_symmetry,
+      indices=miller_indices,
+      anomalous_flag=self.anomalous)
+    if (self.anomalous is None):
+      result = result.auto_anomalous()
+    result = result.array(data=data, sigmas=sigmas)
     if (obs_type is not None):
       assert obs_type in ("f", "i")
       if (obs_type == "f"):
