@@ -951,10 +951,15 @@ class environment:
 
   def write_python_and_show_path_duplicates(self):
     module_names = {}
+    have_ipython = False
     for file_name in os.listdir(self.bin_path):
       if (file_name.startswith(".")): continue
       file_name_lower = file_name.lower()
-      if (file_name_lower.startswith("libtbx.")): continue
+      if (file_name_lower.startswith("libtbx.")):
+        if (   file_name_lower == "libtbx.ipython"
+            or file_name_lower.startswith("libtbx.ipython.")):
+          have_ipython = True
+        continue
       if (   file_name_lower == "python"
           or file_name_lower.startswith("python.")): continue
       module_names[file_name.split(".")[0]] = None
@@ -963,7 +968,9 @@ class environment:
       self.write_dispatcher_in_bin(
         source_file=self.python_exe,
         target_file=module_name+".python")
-    for command in ["show_build_path", "show_dist_paths"]:
+    commands = ["show_build_path", "show_dist_paths"]
+    if (have_ipython): commands.append("ipython")
+    for command in commands:
       source_file = self.under_dist(
         "libtbx", "libtbx/command_line/"+command+".py")
       for module_name in module_names:
