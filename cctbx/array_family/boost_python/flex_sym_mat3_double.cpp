@@ -1,11 +1,11 @@
 #include <cctbx/boost_python/flex_fwd.h>
 
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
-#include <scitbx/boost_python/pickle_single_buffered.h>
+#include <scitbx/serialization/single_buffered.h>
 #include <boost/python/make_constructor.hpp>
 #include <boost/python/return_arg.hpp>
 
-namespace scitbx { namespace boost_python { namespace pickle_single_buffered {
+namespace scitbx { namespace serialization { namespace single_buffered {
 
   inline
   char* to_string(char* start, sym_mat3<double> const& value)
@@ -31,7 +31,7 @@ namespace scitbx { namespace boost_python { namespace pickle_single_buffered {
     const char* end;
   };
 
-}}} // namespace scitbx::boost_python::pickle_single_buffered
+}}} // namespace scitbx::serialization::single_buffered
 
 #include <scitbx/array_family/boost_python/flex_pickle_single_buffered.h>
 
