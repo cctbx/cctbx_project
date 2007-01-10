@@ -14,7 +14,7 @@ from cctbx.array_family import flex
 from scitbx.python_utils import dicts
 from libtbx.str_utils import show_string
 from libtbx.utils import flat_list, Sorry, user_plus_sys_time, plural_s
-from libtbx.utils import format_exception
+from libtbx.utils import format_exception, group_args
 from cStringIO import StringIO
 import string
 import sys
@@ -33,6 +33,17 @@ master_params = iotbx.phil.parse("""\
     data_mod = None
       .type = str
     residue_selection = None
+      .type = str
+  }
+  apply_cif_link
+    .optional = True
+    .multiple = True
+  {
+    data_link = None
+      .type = str
+    residue_selection_1 = None
+      .type = str
+    residue_selection_2 = None
       .type = str
   }
   link_distance_cutoff = 3
@@ -308,6 +319,7 @@ class monomer_mapping(object):
   def __init__(self,
         mon_lib_srv,
         apply_cif_modifications,
+        apply_cif_links_labels_mm_dict,
         i_conformer,
         conformer_label,
         pdb_residue):
@@ -316,6 +328,7 @@ class monomer_mapping(object):
     self.pdb_residue = pdb_residue
     stage_1 = self.pdb_residue.chain.conformer.model.stage_1
     atom = stage_1.atom_attributes_list[self.pdb_residue.iselection[0]]
+    labels = atom.residue_and_model_labels()
     self.residue_name = atom.resName
     self.monomer = mon_lib_srv.get_comp_comp_id(self.residue_name)
     if (self.monomer is not None):
@@ -330,8 +343,7 @@ class monomer_mapping(object):
           hide_mon_lib_dna_rna_cif=False)
         self._get_mappings(mon_lib_srv=mon_lib_srv)
       self.chem_mod_ids = []
-      for apply_data_mod in apply_cif_modifications.get(
-            atom.residue_and_model_labels(), []):
+      for apply_data_mod in apply_cif_modifications.get(labels, []):
         self.apply_mod(
           mon_lib_srv=mon_lib_srv,
           mod_mod_id=mon_lib_srv.mod_mod_id_dict[apply_data_mod])
@@ -340,6 +352,8 @@ class monomer_mapping(object):
       self.monomer.set_classification()
       if (self.incomplete_info is None):
         self.resolve_unexpected(mon_lib_srv=mon_lib_srv)
+    if (labels in apply_cif_links_labels_mm_dict):
+      apply_cif_links_labels_mm_dict[labels] = self
 
   def _get_mappings(self, mon_lib_srv):
     self.monomer_atom_dict = atom_dict = self.monomer.atom_dict()
@@ -1153,6 +1167,8 @@ class build_chain_proxies(object):
         mon_lib_srv,
         ener_lib,
         apply_cif_modifications,
+        apply_cif_links,
+        apply_cif_links_labels_mm_dict,
         link_distance_cutoff,
         stage_1,
         sites_cart,
@@ -1208,6 +1224,11 @@ class build_chain_proxies(object):
     planarities_with_less_than_four_sites = dicts.with_default_value(0)
     n_unresolved_non_hydrogen_planarities = 0
     n_planarities_discarded_because_of_special_positions = 0
+    n_unresolved_apply_cif_link_bonds = 0
+    n_unresolved_apply_cif_link_angles = 0
+    n_unresolved_apply_cif_link_dihedrals = 0
+    n_unresolved_apply_cif_link_chiralities = 0
+    n_unresolved_apply_cif_link_planarities = 0
     break_block_identifiers = stage_1.get_break_block_identifiers()
     prev_break_block_identifier = None
     mm = None
@@ -1217,6 +1238,7 @@ class build_chain_proxies(object):
       mm = monomer_mapping(
         mon_lib_srv=mon_lib_srv,
         apply_cif_modifications=apply_cif_modifications,
+        apply_cif_links_labels_mm_dict=apply_cif_links_labels_mm_dict,
         i_conformer=i_conformer,
         conformer_label=conformer.altLoc,
         pdb_residue=residue)
@@ -1403,6 +1425,69 @@ class build_chain_proxies(object):
       prev_break_block_identifier = break_block_identifier
       prev_mm = mm
       prev_mm.lib_link = None
+    #
+    for apply in apply_cif_links:
+      mms = []
+      for labels in apply.labels_pair:
+        mms.append(apply_cif_links_labels_mm_dict[labels])
+      if (mms.count(None) == 0):
+        apply.was_used = True
+        for labels in apply.labels_pair:
+          apply_cif_links_labels_mm_dict[labels] = None
+        link = mon_lib_srv.link_link_id_dict[apply.data_link]
+        link_resolution = add_bond_proxies(
+          counters=counters(label="apply_cif_link_bond"),
+          m_i=mms[0],
+          m_j=mms[1],
+          bond_list=link.bond_list,
+          bond_simple_proxy_registry=geometry_proxy_registries.bond_simple,
+          sites_cart=sites_cart,
+          distance_cutoff=link_distance_cutoff)
+        n_bond_proxies_already_assigned_to_first_conformer \
+          += link_resolution.counters.already_assigned_to_first_conformer
+        n_unresolved_apply_cif_link_bonds \
+          += link_resolution.counters.unresolved_non_hydrogen
+        link_resolution = add_angle_proxies(
+          counters=counters(label="apply_cif_link_angle"),
+          m_i=mms[0],
+          m_j=mms[1],
+          angle_list=link.angle_list,
+          angle_proxy_registry=geometry_proxy_registries.angle,
+          special_position_indices=special_position_indices)
+        n_unresolved_apply_cif_link_angles \
+          += link_resolution.counters.unresolved_non_hydrogen
+        link_resolution = add_dihedral_proxies(
+          counters=counters(label="apply_cif_link_dihedral"),
+          m_i=mms[0],
+          m_j=mms[1],
+          tor_list=link.tor_list,
+          dihedral_proxy_registry=geometry_proxy_registries.dihedral,
+          special_position_indices=special_position_indices,
+          sites_cart=sites_cart,
+          chem_link_id=link.chem_link.id)
+        n_unresolved_apply_cif_link_dihedrals \
+          += link_resolution.counters.unresolved_non_hydrogen
+        link_ids[link_resolution.chem_link_id] += 1
+        link_resolution = add_chirality_proxies(
+          counters=counters(label="apply_cif_link_chirality"),
+          m_i=mms[0],
+          m_j=mms[1],
+          chir_list=link.chir_list,
+          chirality_proxy_registry=geometry_proxy_registries.chirality,
+          special_position_indices=special_position_indices,
+          lib_link=link)
+        n_unresolved_apply_cif_link_chiralities \
+          += link_resolution.counters.unresolved_non_hydrogen
+        link_resolution = add_planarity_proxies(
+          counters=counters(label="apply_cif_link_planarity"),
+          m_i=mms[0],
+          m_j=mms[1],
+          plane_list=link.get_planes(),
+          planarity_proxy_registry=geometry_proxy_registries.planarity,
+          special_position_indices=special_position_indices)
+        n_unresolved_apply_cif_link_planarities \
+          += link_resolution.counters.unresolved_non_hydrogen
+    #
     if (is_unique_model and log is not None):
       print >> log, "        Number of residues, atoms: %d, %d" % (
         len(chain.residues),
@@ -1503,6 +1588,26 @@ class build_chain_proxies(object):
         print >> log, \
           "          bond proxies already assigned to first conformer:", \
           n_bond_proxies_already_assigned_to_first_conformer
+      if (n_unresolved_apply_cif_link_bonds > 0):
+        print >> log, \
+          "          Unresolved apply_cif_link bonds:", \
+          n_unresolved_apply_cif_link_bonds
+      if (n_unresolved_apply_cif_link_angles > 0):
+        print >> log, \
+          "          Unresolved apply_cif_link angles:", \
+          n_unresolved_apply_cif_link_angles
+      if (n_unresolved_apply_cif_link_dihedrals > 0):
+        print >> log, \
+          "          Unresolved apply_cif_link dihedrals:", \
+          n_unresolved_apply_cif_link_dihedrals
+      if (n_unresolved_apply_cif_link_chiralities > 0):
+        print >> log, \
+          "          Unresolved apply_cif_link chiralities:", \
+          n_unresolved_apply_cif_link_chiralities
+      if (n_unresolved_apply_cif_link_planarities > 0):
+        print >> log, \
+          "          Unresolved apply_cif_link planarities:", \
+          n_unresolved_apply_cif_link_planarities
     self.n_duplicate_atoms = len(duplicate_atoms)
 
 class geometry_restraints_proxy_registries(object):
@@ -1612,6 +1717,7 @@ class build_all_chain_proxies(object):
       special_position_indices = \
         self.site_symmetry_table().special_position_indices()
     self.process_apply_cif_modification(mon_lib_srv=mon_lib_srv, log=log)
+    self.process_apply_cif_link(mon_lib_srv=mon_lib_srv, log=log)
     models = self.stage_1.get_models_and_conformers()
     if (log is not None):
       print >> log, "  Number of models:", len(models)
@@ -1668,6 +1774,8 @@ class build_all_chain_proxies(object):
             mon_lib_srv=mon_lib_srv,
             ener_lib=ener_lib,
             apply_cif_modifications=self.apply_cif_modifications,
+            apply_cif_links=self.apply_cif_links,
+            apply_cif_links_labels_mm_dict=self.apply_cif_links_labels_mm_dict,
             link_distance_cutoff=self.params.link_distance_cutoff,
             stage_1=self.stage_1,
             sites_cart=self.sites_cart,
@@ -1688,6 +1796,11 @@ class build_all_chain_proxies(object):
           self.n_duplicate_atoms += chain_proxies.n_duplicate_atoms
           del chain_proxies
           flush_log(log)
+    for apply in self.apply_cif_links:
+      if (not apply.was_used):
+        raise RuntimeError(
+          "Unused apply_cif_link: %s %s" % (
+            apply.data_link, str(apply.labels_pair)))
     self.geometry_proxy_registries.discard_tables()
     self.scattering_type_registry.discard_tables()
     self.nonbonded_energy_type_registry.discard_tables()
@@ -1881,6 +1994,62 @@ class build_all_chain_proxies(object):
       for key in unique_residue_keys:
         self.apply_cif_modifications.setdefault(key, []).append(
           apply.data_mod)
+
+  def process_apply_cif_link(self, mon_lib_srv, log):
+    self.apply_cif_links = []
+    self.apply_cif_links_labels_mm_dict = {}
+    sel_cache = None
+    aal = self.stage_1.atom_attributes_list
+    for apply in self.params.apply_cif_link:
+      if (apply.data_link is None): continue
+      print >> log, "  apply_cif_link:"
+      print >> log, "    data_link:", apply.data_link
+      link = mon_lib_srv.link_link_id_dict.get(apply.data_link)
+      if (link is None):
+        print >> log
+        raise Sorry(
+          "Missing cif link: data_link_%s\n" % apply.data_link
+          + "  Please check for spelling errors or specify the file name\n"
+          + "  with the link as an additional argument.")
+      mod_ids = []
+      for mod_attr in ["mod_id_1", "mod_id_2"]:
+        mod_id = getattr(link.chem_link, mod_attr)
+        if (mod_id == ""): mod_id = None
+        mod_ids.append(mod_id)
+        if (mod_id is not None):
+          print >> log, "      %s:" % mod_attr, mod_id
+          mod = mon_lib_srv.mod_mod_id_dict.get(mod_id)
+          if (mod is None):
+            print >> log
+            raise Sorry(
+              "Missing cif modification: data_mod_%s\n" % mod_id
+              + "  Please check for spelling errors or specify the file name\n"
+              + "  with the modification as an additional argument.")
+      sel_attrs = ["residue_selection_"+n for n in ["1", "2"]]
+      labels_pair = []
+      for attr in sel_attrs:
+        print >> log, "    %s:" % attr, getattr(apply, attr)
+        if (sel_cache is None):
+          sel_cache = self.stage_1.selection_cache()
+        iselection = self.phil_atom_selection(
+          cache=sel_cache,
+          scope_extract=apply,
+          attr=attr).iselection()
+        unique_residue_keys = {}
+        for i_seq in iselection:
+          unique_residue_keys[aal[i_seq].residue_and_model_labels()] = None
+        if (len(unique_residue_keys) != 1):
+          raise Sorry("Not exactly one residue selected.") # XXX models?
+        labels_pair.append(unique_residue_keys.keys()[0])
+      for labels,mod_id in zip(labels_pair, mod_ids):
+        if (mod_id is not None):
+          self.apply_cif_modifications.setdefault(labels, []).append(mod_id)
+      self.apply_cif_links.append(group_args(
+        labels_pair=labels_pair,
+        data_link=apply.data_link,
+        was_used=False))
+      for labels in labels_pair:
+        self.apply_cif_links_labels_mm_dict[labels] = None
 
   def create_disulfides(self,
         disulfide_distance_cutoff,
