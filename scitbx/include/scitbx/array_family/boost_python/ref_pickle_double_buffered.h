@@ -24,8 +24,8 @@ namespace pickle_double_buffered {
   struct from_string
   : scitbx::boost_python::pickle_double_buffered::from_string
   {
-    from_string(PyObject* str_obj)
-    : scitbx::boost_python::pickle_double_buffered::from_string(str_obj)
+    from_string(const char* str_ptr)
+    : scitbx::boost_python::pickle_double_buffered::from_string(str_ptr)
     {}
 
     using
