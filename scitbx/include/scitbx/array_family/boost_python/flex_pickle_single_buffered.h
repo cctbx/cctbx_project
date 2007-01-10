@@ -1,11 +1,11 @@
 #ifndef SCITBX_ARRAY_FAMILY_BOOST_PYTHON_FLEX_PICKLE_SINGLE_BUFFERED_H
 #define SCITBX_ARRAY_FAMILY_BOOST_PYTHON_FLEX_PICKLE_SINGLE_BUFFERED_H
 
-#include <scitbx/type_holder.h>
-#include <scitbx/boost_python/pickle_single_buffered.h>
 #include <boost/python/tuple.hpp>
 #include <boost/python/extract.hpp>
 #include <boost/python/detail/api_placeholder.hpp>
+#include <scitbx/serialization/single_buffered.h>
+#include <scitbx/type_holder.h>
 
 namespace scitbx { namespace af { namespace boost_python {
 
@@ -19,7 +19,7 @@ namespace scitbx { namespace af { namespace boost_python {
         str_obj = PyString_FromStringAndSize(
           0, static_cast<int>(str_capacity + 100)); // extra space for safety
         str_begin = PyString_AS_STRING(str_obj);
-        str_end = scitbx::boost_python::pickle_single_buffered::to_string(
+        str_end = scitbx::serialization::single_buffered::to_string(
           str_begin, a_size);
       };
 
@@ -55,7 +55,7 @@ namespace scitbx { namespace af { namespace boost_python {
       template <typename ValueType>
       ValueType get_value(type_holder<ValueType>)
       {
-        scitbx::boost_python::pickle_single_buffered::from_string<ValueType>
+        scitbx::serialization::single_buffered::from_string<ValueType>
           proxy(str_ptr);
         str_ptr = proxy.end;
         return proxy.value;
@@ -143,7 +143,7 @@ namespace scitbx { namespace af { namespace boost_python {
       detail::getstate_manager mgr(a.size(), SizePerElement);
       for(std::size_t i=0;i<a.size();i++) {
         mgr.advance(
-          scitbx::boost_python::pickle_single_buffered::to_string(
+          scitbx::serialization::single_buffered::to_string(
             mgr.str_end, a[i]));
       }
       return boost::python::make_tuple(

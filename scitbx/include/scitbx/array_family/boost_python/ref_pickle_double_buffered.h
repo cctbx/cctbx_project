@@ -1,14 +1,12 @@
 #include <scitbx/array_family/ref.h>
-#include <scitbx/boost_python/pickle_double_buffered.h>
+#include <scitbx/serialization/double_buffered.h>
 
 namespace scitbx { namespace af { namespace boost_python {
 namespace pickle_double_buffered {
 
-  struct to_string
-  : scitbx::boost_python::pickle_double_buffered::to_string
+  struct to_string : scitbx::serialization::double_buffered::to_string
   {
-    using
-      scitbx::boost_python::pickle_double_buffered::to_string::operator<<;
+    using scitbx::serialization::double_buffered::to_string::operator<<;
 
     template <typename ElementType,
               typename AccessorType>
@@ -21,15 +19,13 @@ namespace pickle_double_buffered {
     }
   };
 
-  struct from_string
-  : scitbx::boost_python::pickle_double_buffered::from_string
+  struct from_string : scitbx::serialization::double_buffered::from_string
   {
     from_string(const char* str_ptr)
-    : scitbx::boost_python::pickle_double_buffered::from_string(str_ptr)
+    : scitbx::serialization::double_buffered::from_string(str_ptr)
     {}
 
-    using
-      scitbx::boost_python::pickle_double_buffered::from_string::operator>>;
+    using scitbx::serialization::double_buffered::from_string::operator>>;
 
     template <typename ElementType>
     from_string& operator>>(ref<ElementType> val)

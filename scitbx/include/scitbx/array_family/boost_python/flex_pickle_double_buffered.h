@@ -1,18 +1,18 @@
 #ifndef SCITBX_ARRAY_FAMILY_BOOST_PYTHON_FLEX_PICKLE_DOUBLE_BUFFERED_H
 #define SCITBX_ARRAY_FAMILY_BOOST_PYTHON_FLEX_PICKLE_DOUBLE_BUFFERED_H
 
-#include <scitbx/boost_python/pickle_double_buffered.h>
 #include <boost/python/tuple.hpp>
 #include <boost/python/extract.hpp>
 #include <boost/python/detail/api_placeholder.hpp>
+#include <scitbx/serialization/double_buffered.h>
 
 namespace scitbx { namespace af { namespace boost_python {
 
   template <typename ElementType,
             typename DoubleBufferedToString
-              = scitbx::boost_python::pickle_double_buffered::to_string,
+              = scitbx::serialization::double_buffered::to_string,
             typename DoubleBufferedFromString
-              = scitbx::boost_python::pickle_double_buffered::from_string>
+              = scitbx::serialization::double_buffered::from_string>
   struct flex_pickle_double_buffered : boost::python::pickle_suite
   {
     static

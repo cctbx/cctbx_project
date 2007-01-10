@@ -1,15 +1,10 @@
-#ifndef SCITBX_BOOST_PYTHON_PICKLE_DOUBLE_BUFFERED_H
-#define SCITBX_BOOST_PYTHON_PICKLE_DOUBLE_BUFFERED_H
+#ifndef SCITBX_SERIALIZATION_DOUBLE_BUFFERED_H
+#define SCITBX_SERIALIZATION_DOUBLE_BUFFERED_H
 
-#include <stdio.h>
-#include <complex>
-#include <scitbx/error.h>
+#include <scitbx/serialization/single_buffered.h>
 #include <scitbx/type_holder.h>
-#include <scitbx/boost_python/pickle_single_buffered.h>
 
-namespace scitbx { namespace boost_python { namespace pickle_double_buffered {
-
-  namespace base_256 = serialization::base_256;
+namespace scitbx { namespace serialization { namespace double_buffered {
 
   struct to_string
   {
@@ -117,7 +112,7 @@ namespace scitbx { namespace boost_python { namespace pickle_double_buffered {
     template <typename ValueType>
     ValueType get_value(type_holder<ValueType>)
     {
-      pickle_single_buffered::from_string<ValueType> proxy(str_ptr);
+      single_buffered::from_string<ValueType> proxy(str_ptr);
       str_ptr = proxy.end;
       return proxy.value;
     }
@@ -191,6 +186,6 @@ namespace scitbx { namespace boost_python { namespace pickle_double_buffered {
 
   };
 
-}}} // namespace scitbx::boost_python::pickle_double_buffered
+}}} // namespace scitbx::serialization::double_buffered
 
-#endif // SCITBX_BOOST_PYTHON_PICKLE_DOUBLE_BUFFERED_H
+#endif // SCITBX_SERIALIZATION_DOUBLE_BUFFERED_H

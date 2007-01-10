@@ -1,12 +1,10 @@
-#ifndef SCITBX_BOOST_PYTHON_PICKLE_SINGLE_BUFFERED_H
-#define SCITBX_BOOST_PYTHON_PICKLE_SINGLE_BUFFERED_H
+#ifndef SCITBX_SERIALIZATION_SINGLE_BUFFERED_H
+#define SCITBX_SERIALIZATION_SINGLE_BUFFERED_H
 
 #include <scitbx/serialization/base_256.h>
 #include <complex>
 
-namespace scitbx { namespace boost_python { namespace pickle_single_buffered {
-
-  namespace base_256 = serialization::base_256;
+namespace scitbx { namespace serialization { namespace single_buffered {
 
   template <typename ValueType>
   struct from_string {};
@@ -199,6 +197,6 @@ namespace scitbx { namespace boost_python { namespace pickle_single_buffered {
     std::string value;
   };
 
-}}} // namespace scitbx::boost_python::pickle_single_buffered
+}}} // namespace scitbx::serialization::single_buffered
 
-#endif // SCITBX_BOOST_PYTHON_PICKLE_SINGLE_BUFFERED_H
+#endif // SCITBX_SERIALIZATION_SINGLE_BUFFERED_H
