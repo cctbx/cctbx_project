@@ -205,6 +205,10 @@ class ncs:
   def __init__(self):
     self._ncs_groups=[]  # each group is an ncs_group object
     self.source_info=None
+    self._ncs_read=False
+
+  def ncs_read(self):
+    return self._ncs_read
 
   def ncs_groups(self):
     return self._ncs_groups
@@ -221,6 +225,7 @@ class ncs:
       raise Sorry("The file "+str(file_name)+" does not seem to exist?")
     self.init_ncs_group()
 
+    read_something=False
     for line in open(file_name).readlines():
       if not line : continue
       spl=string.split(line)
@@ -257,11 +262,14 @@ class ncs:
         self._residues_in_common=self.get_1_value_after_key(line)
       elif key=='source_info':
         self.source_info=self.get_1_char_after_key(line)
-
+      elif len(spl)==3 and spl[0]=='No' and spl[1]=='NCS' and spl[2]=='found':
+        read_something=True
       else:
         pass
 
     self.save_existing_group_info()
+    if read_something or len(self._ncs_groups) > 0:
+      self._ncs_read=True
 
   def save_existing_group_info(self):
 
@@ -429,6 +437,7 @@ class ncs:
       count+=1
       text+="\n\nGROUP "+str(count)
       text+=ncs_group.display_summary()
+    text+="\n\n"
     log.write(text)
     return text
 
@@ -450,7 +459,7 @@ class ncs:
     text+=time.ctime()+"\n"
     text+=os.getcwd()+"\n\n"
     if self.source_info is not None:
-      text+="Source of NCS info: "+str(self.source_info)+"\n"
+      text+="source_info "+str(self.source_info)+"\n"
     if not self._ncs_groups:
       text+="No NCS found\n"
     if out is not None or not quiet: out.write("\n"+text+"\n\n")
@@ -491,6 +500,12 @@ class ncs:
         all_text+="\n"+text
     return all_text
 
+  def add_source_info(self,source_info):
+    if self.source_info is None:
+       self.source_info=str(source_info)
+    else:
+       self.source_info+=str(source_info)
+
   def add_cc_list(self,cc_list):
    if len(self._ncs_groups) != len(cc_list):
      raise Sorry("Number of NCS groups does not match length of cc_list...")
@@ -506,7 +521,16 @@ class ncs:
         n+=1
     if n>0:
       cc_all=cc_all/float(n)
+    else:
+      cc_all=None
     return cc_all
+  def max_operators(self):
+    n_max=0
+    for ncs_group in self._ncs_groups:
+      if ncs_group.n_ncs_oper()>n_max:
+        n_max=ncs_group.n_ncs_oper()
+    return n_max
+
 test_ncs_info="""
 
 new_ncs_group
