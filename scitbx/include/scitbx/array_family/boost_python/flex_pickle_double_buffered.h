@@ -34,7 +34,7 @@ namespace scitbx { namespace af { namespace boost_python {
       flex_grid<> a_accessor = boost::python::extract<flex_grid<> >(
         state[0])();
       PyObject* py_str = boost::python::object(state[1]).ptr();
-      DoubleBufferedFromString inp(py_str);
+      DoubleBufferedFromString inp(PyString_AsString(py_str));
       std::size_t a_capacity;
       inp >> a_capacity;
       shared_plain<ElementType> b = a.as_base_array();

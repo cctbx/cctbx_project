@@ -41,8 +41,8 @@ namespace {
 
   struct from_string : pickle_double_buffered::from_string
   {
-    from_string(PyObject* str_obj)
-    : pickle_double_buffered::from_string(str_obj)
+    from_string(const char* str_ptr)
+    : pickle_double_buffered::from_string(str_ptr)
     {
       *this >> version;
       CCTBX_ASSERT(version == 2);

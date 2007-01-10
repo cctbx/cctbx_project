@@ -103,10 +103,8 @@ namespace scitbx { namespace boost_python { namespace pickle_double_buffered {
   {
     const char* str_ptr;
 
-    from_string(){}
-
-    from_string(PyObject* str_obj)
-    : str_ptr(PyString_AsString(str_obj))
+    from_string(const char* str_ptr_)
+    : str_ptr(str_ptr_)
     {
       SCITBX_ASSERT(str_ptr != 0);
     }
