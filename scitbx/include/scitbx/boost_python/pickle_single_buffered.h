@@ -35,6 +35,36 @@ namespace scitbx { namespace boost_python { namespace pickle_single_buffered {
 
   inline
   char*
+  to_string(char* start, short const& value)
+  {
+    return base_256::to_string(start, value);
+  }
+
+  template <>
+  struct from_string<short> : base_256::from_string<short>
+  {
+    from_string(const char* start)
+    : base_256::from_string<short>(start)
+    {}
+  };
+
+  inline
+  char*
+  to_string(char* start, unsigned short const& value)
+  {
+    return base_256::to_string(start, value);
+  }
+
+  template <>
+  struct from_string<unsigned short> : base_256::from_string<unsigned short>
+  {
+    from_string(const char* start)
+    : base_256::from_string<unsigned short>(start)
+    {}
+  };
+
+  inline
+  char*
   to_string(char* start, int const& value)
   {
     return base_256::to_string(start, value);

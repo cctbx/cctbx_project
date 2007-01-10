@@ -22,6 +22,20 @@ namespace scitbx { namespace boost_python { namespace pickle_double_buffered {
       return *this;
     }
 
+    to_string& operator<<(short const& val)
+    {
+      char buf[64];
+      buffer.append(buf, base_256::to_string(buf, val));
+      return *this;
+    }
+
+    to_string& operator<<(unsigned short const& val)
+    {
+      char buf[64];
+      buffer.append(buf, base_256::to_string(buf, val));
+      return *this;
+    }
+
     to_string& operator<<(int const& val)
     {
       char buf[64];
@@ -89,6 +103,8 @@ namespace scitbx { namespace boost_python { namespace pickle_double_buffered {
   {
     const char* str_ptr;
 
+    from_string(){}
+
     from_string(PyObject* str_obj)
     : str_ptr(PyString_AsString(str_obj))
     {
@@ -117,6 +133,18 @@ namespace scitbx { namespace boost_python { namespace pickle_double_buffered {
     from_string& operator>>(bool& val)
     {
       val = get_value(type_holder<bool>());
+      return *this;
+    }
+
+    from_string& operator>>(short& val)
+    {
+      val = get_value(type_holder<short>());
+      return *this;
+    }
+
+    from_string& operator>>(unsigned short& val)
+    {
+      val = get_value(type_holder<unsigned short>());
       return *this;
     }
 
