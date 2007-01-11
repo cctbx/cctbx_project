@@ -631,15 +631,16 @@ unused: 1.0000 -        [ 0/0 ]  0 0.0000
   su = ma + ma
   assert approx_equal(tuple(su.data()), tuple(ma.data() * 2))
   assert approx_equal(tuple(su.sigmas()), tuple(ma.sigmas() * math.sqrt(2)))
-  s = ma.f_as_f_sq()
-  v = s.f_sq_as_f()
-  assert approx_equal(tuple(ma.data()), tuple(v.data()))
-  assert not_approx_equal(tuple(ma.sigmas()), tuple(v.sigmas()))
-  s = miller.array(ma, ma.data()).f_as_f_sq()
-  v = s.f_sq_as_f()
-  assert approx_equal(tuple(ma.data()), tuple(v.data()))
-  assert s.sigmas() is None
-  assert v.sigmas() is None
+  for algorithm in ["xtal_3_7", "crystals"]:
+    s = ma.f_as_f_sq()
+    v = s.f_sq_as_f(algorithm=algorithm)
+    assert approx_equal(tuple(ma.data()), tuple(v.data()))
+    assert not_approx_equal(tuple(ma.sigmas()), tuple(v.sigmas()))
+    s = miller.array(ma, ma.data()).f_as_f_sq()
+    v = s.f_sq_as_f(algorithm=algorithm)
+    assert approx_equal(tuple(ma.data()), tuple(v.data()))
+    assert s.sigmas() is None
+    assert v.sigmas() is None
   ma = miller.array(ms)
   s = ma[:]
   assert s.data() is None

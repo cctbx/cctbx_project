@@ -249,18 +249,25 @@ def exercise_scatterer_flags_counts():
 def exercise_conversions():
   d = flex.double((10,-1))
   s = flex.double((1,2))
-  r = xray.array_f_sq_as_f(d, s)
-  r = xray.array_f_sq_as_f(d, s, 1.e-6)
-  assert approx_equal(tuple(r.f), (3.1622777, 0))
-  assert approx_equal(tuple(r.sigma_f), (0.1543471, 1.4142136))
-  r = xray.array_f_sq_as_f(d)
-  assert approx_equal(tuple(r.f), (3.1622777, 0))
+  r = xray.array_f_sq_as_f_xtal_3_7(d, s)
+  r = xray.array_f_sq_as_f_xtal_3_7(d, s, 1.e-6)
+  assert approx_equal(r.f, (3.1622777, 0))
+  assert approx_equal(r.sigma_f, (0.1543471, 1.4142136))
+  r = xray.array_f_sq_as_f_xtal_3_7(d)
+  assert approx_equal(r.f, (3.1622777, 0))
+  assert r.sigma_f.size() == 0
+  r = xray.array_f_sq_as_f_crystals(d, s)
+  r = xray.array_f_sq_as_f_crystals(d, s, 1.e-6)
+  assert approx_equal(r.f, (3.1622777, -1))
+  assert approx_equal(r.sigma_f, (0.1581139, 2))
+  r = xray.array_f_sq_as_f_crystals(d)
+  assert approx_equal(r.f, (3.1622777, -1))
   assert r.sigma_f.size() == 0
   r = xray.array_f_as_f_sq(d, s)
-  assert approx_equal(tuple(r.f_sq), (100, 1))
-  assert approx_equal(tuple(r.sigma_f_sq), (20, -4))
+  assert approx_equal(r.f_sq, (100, 1))
+  assert approx_equal(r.sigma_f_sq, (20, -4))
   r = xray.array_f_as_f_sq(d)
-  assert approx_equal(tuple(r.f_sq), (100, 1))
+  assert approx_equal(r.f_sq, (100, 1))
   assert r.sigma_f_sq.size() == 0
 
 def exercise_gradient_flags():
