@@ -19,6 +19,7 @@ from scitbx.python_utils.misc import store
 from libtbx.itertbx import count
 from libtbx.utils import Keep, plural_s, group_args
 from libtbx import adopt_init_args
+from libtbx.str_utils import show_string
 from libtbx.utils import Sorry
 import random
 import math
@@ -1385,17 +1386,26 @@ class array(set):
       sigmas=s_saddle).set_observation_type( self.as_amplitude_array() )
     return result
 
-  def f_sq_as_f(self, tolerance=1.e-6):
-    from cctbx import xray
-    assert self.observation_type() is None or self.is_xray_intensity_array()
-    if (self.sigmas() is None):
-      result = array(self, xray.array_f_sq_as_f(self.data()).f)
-    else:
-      r = xray.array_f_sq_as_f(self.data(), self.sigmas(), tolerance)
-      result = array(self, r.f, r.sigma_f)
-    if (self.is_xray_intensity_array()):
-      result.set_observation_type_xray_amplitude()
-    return result
+  def f_sq_as_f(self, algorithm="xtal_3_7", tolerance=1.e-6):
+     from cctbx import xray
+     assert self.observation_type() is None or  self.is_xray_intensity_array()
+     converters = {
+       "xtal_3_7": xray.array_f_sq_as_f_xtal_3_7,
+       "crystals": xray.array_f_sq_as_f_crystals}
+     converter = converters.get(algorithm)
+     if (converter is None):
+       raise RuntimeError(
+         "Unknown f_sq_as_f algorithm=%s\n" % show_string(algorithm)
+         + "  Possible choices are: "
+         + ", ".join([show_string(s) for s in converters.keys()]))
+     if (self.sigmas() is None):
+       result = array(self, converter(self.data()).f)
+     else:
+       r = converter(self.data(), self.sigmas(), tolerance)
+       result = array(self, r.f, r.sigma_f)
+     if (self.is_xray_intensity_array()):
+       result.set_observation_type_xray_amplitude()
+     return result
 
   def f_as_f_sq(self):
     from cctbx import xray
