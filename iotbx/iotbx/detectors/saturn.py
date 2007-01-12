@@ -26,7 +26,7 @@ class SaturnImage(ADSCImage):
 
       self.parameters={}
       for tag,search,datatype in [
-          ('CCD_IMAGE_SATURATION','SATURATED_VALUE',int),
+          ('CCD_IMAGE_SATURATION','SATURATED_VALUE',float),
           ('HEADER_BYTES','HEADER_BYTES',int),
           ('BitmapSize','BitmapSize',int),
           ('SIZE1','SIZE1',int),
