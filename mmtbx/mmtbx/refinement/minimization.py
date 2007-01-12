@@ -26,7 +26,6 @@ class lbfgs(object):
                      refine_adp               = False,
                      refine_occ               = False,
                      lbfgs_termination_params = None,
-                     f_a_to_be_r_i            = None,
                      use_fortran              = False,
                      verbose                  = 0,
                      iso_restraints           = None,
@@ -53,16 +52,20 @@ class lbfgs(object):
     if(refine_adp): self.wr = wu
     if(refine_occ): self.wr = None
     del self.wc, self.wu
-    if(f_a_to_be_r_i is None):
-       f_a_to_be_r_i = False
-    else:
-       # XXX temorary: while we do not have aniso restraints
-       f_a_to_be_r_i = not f_a_to_be_r_i
-    xray.set_scatterer_grad_flags(scatterers = self.xray_structure.scatterers(),
-                                  site       = refine_xyz,
-                                  u_iso      = refine_adp,
-                                  u_aniso    = f_a_to_be_r_i,
-                                  occupancy  = refine_occ)
+    if(refine_xyz):
+       xray.set_selected_scatterer_grad_flags(
+                  scatterers = self.xray_structure.scatterers(),
+                  site       = self.model.refinement_flags.sites_individual[0])
+    if(refine_occ):
+       xray.set_selected_scatterer_grad_flags(
+            scatterers = self.xray_structure.scatterers(),
+            occupancy  = self.model.refinement_flags.occupancies_individual[0])
+    if(refine_adp):
+       xray.set_selected_scatterer_grad_flags(
+            scatterers = self.xray_structure.scatterers(),
+            u_iso  = self.model.refinement_flags.adp_individual_iso[0],
+            u_aniso= self.model.refinement_flags.adp_individual_aniso[0])
+
     self.neutron_refinement = (self.fmodel_neutron is not None and
                                self.wn is not None)
     if(self.neutron_refinement):
@@ -155,8 +158,11 @@ class lbfgs(object):
       if(self.model.refinement_flags.sites_individual is not None):
          selection = self.model.refinement_flags.sites_individual[0]
     if(self.refine_adp):
-       if(self.model.refinement_flags.adp_individual is not None):
-         selection = self.model.refinement_flags.adp_individual[0]
+       if(self.model.refinement_flags.adp_individual_iso is not None):
+         selection = self.model.refinement_flags.adp_individual_iso[0]
+       if(self.model.refinement_flags.adp_individual_aniso is not None):
+         selection = selection | \
+                     self.model.refinement_flags.adp_individual_aniso[0]
     apply_shifts_result = xray.ext.minimization_apply_shifts(
                               unit_cell      = self.xray_structure.unit_cell(),
                               scatterers     = self._scatterers_start,
@@ -188,8 +194,11 @@ class lbfgs(object):
       if(self.model.refinement_flags.sites_individual is not None):
          selection = self.model.refinement_flags.sites_individual[0]
     if(self.refine_adp):
-       if(self.model.refinement_flags.adp_individual is not None):
-         selection = self.model.refinement_flags.adp_individual[0]
+       if(self.model.refinement_flags.adp_individual_iso is not None):
+         selection = self.model.refinement_flags.adp_individual_iso[0]
+       if(self.model.refinement_flags.adp_individual_aniso is not None):
+         selection = selection | \
+                     self.model.refinement_flags.adp_individual_aniso[0]
     #if(self.refine_occ): self.xray_structure.adjust_occupancy()
     self.stereochemistry_residuals = None
     if(self.neutron_refinement):
@@ -309,14 +318,12 @@ class lbfgs(object):
        self.collector.collect(er = er)
        self.f += er * self.wr
 
-
-       #adp_ro = cctbx.adp_restraints.adp_aniso_restraints(
-       #                           xray_structure     = self.xray_structure,
-       #                           restraints_manager = self.restraints_manager,
-       #                           weight             = self.wr)
-       #at = adp_ro.target
-       #self.f += at
-       #self.collector.collect(er = at / self.wr)
+       #energies_adp_aniso = self.restraints_manager.energies_adp_aniso(
+       #             xray_structure    = self.xray_structure,
+       #             compute_gradients = compute_gradients)
+       #er = energies_adp_aniso.target
+       #self.collector.collect(er = er)
+       #self.f += er * self.wr
 
        #self.fd(xray_structure     = self.xray_structure,
        #        restraints_manager = self.restraints_manager,
@@ -338,14 +345,16 @@ class lbfgs(object):
                         selection      = selection)
 
           #####################################################################
+          #energies_adp_aniso.gradients *= self.wr
           #xray.minimization.add_gradients(
           #              scatterers      = self.xray_structure.scatterers(),
           #              xray_gradients  = self.g,
-          #              u_aniso_gradients = adp_ro.gradients,
+          #              u_aniso_gradients = energies_adp_aniso.gradients,
           #              refine_xyz     = self.refine_xyz,
           #              refine_adp     = self.refine_adp,
           #              refine_occ     = self.refine_occ,
           #              selection      = selection)
+          #energies_adp_aniso.gradients = None # just for safety
           #####################################################################
 
   def callback_after_step(self, minimizer):

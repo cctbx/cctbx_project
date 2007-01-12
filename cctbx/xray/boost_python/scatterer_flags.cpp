@@ -143,6 +143,21 @@ namespace {
           arg_("fdp")=false,
           arg_("tan_u_iso")=false,
           arg_("param")=0));
+    def("set_selected_scatterer_grad_flags",(void
+      (*)(scitbx::af::ref<scatterer<> > const&,
+          scitbx::af::ref<bool> const&,
+          scitbx::af::ref<bool> const&,
+          scitbx::af::ref<bool> const&,
+          scitbx::af::ref<bool> const&,
+          scitbx::af::ref<bool> const&,
+          scitbx::af::ref<bool> const&)) set_selected_scatterer_grad_flags<scatterer<> >,
+         (arg_("scatterers"),
+          arg_("site"),
+          arg_("u_iso"),
+          arg_("u_aniso"),
+          arg_("occupancy"),
+          arg_("fp"),
+          arg_("fdp")));
   }
 
 }}} // namespace cctbx::xray::boost_python

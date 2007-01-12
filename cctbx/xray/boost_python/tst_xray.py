@@ -1335,6 +1335,54 @@ def exercise_minimization_add_gradients():
     refine_occ=True,
     selection = flex.bool(scatterers.size(), True))
   assert approx_equal(xray_gradients, [2,1])
+  #
+  gradient_flags = xray.ext.gradient_flags(
+    False, False, True, False, False, False, False, False)
+  xray.set_scatterer_grad_flags(scatterers = scatterers,
+                                site       = gradient_flags.site,
+                                u_iso      = gradient_flags.u_iso,
+                                u_aniso    = gradient_flags.u_aniso,
+                                occupancy  = gradient_flags.occupancy,
+                                fp         = gradient_flags.fp,
+                                fdp        = gradient_flags.fdp)
+  xray_gradients = flex.double(xrange(6))
+  xray.ext.minimization_add_gradients(
+    scatterers=scatterers,
+    xray_gradients=xray_gradients,
+    site_gradients=None,
+    u_iso_gradients=None,
+    u_aniso_gradients=flex.sym_mat3_double([(0,0,0,0,0,0),(1,-1,-4,-7,12,-3)]),
+    occupancy_gradients=None,
+    refine_xyz=True,
+    refine_adp=True,
+    refine_occ=True,
+    selection = flex.bool(scatterers.size(), True))
+  assert approx_equal(xray_gradients,
+    [1, 0, -2, -4, 16, 2])
+  #
+  gradient_flags = xray.ext.gradient_flags(
+    True, False, True, False, False, False, False, False)
+  xray.set_scatterer_grad_flags(scatterers = scatterers,
+                                site       = gradient_flags.site,
+                                u_iso      = gradient_flags.u_iso,
+                                u_aniso    = gradient_flags.u_aniso,
+                                occupancy  = gradient_flags.occupancy,
+                                fp         = gradient_flags.fp,
+                                fdp        = gradient_flags.fdp)
+  xray_gradients = flex.double(xrange(12))
+  xray.ext.minimization_add_gradients(
+    scatterers=scatterers,
+    xray_gradients=xray_gradients,
+    site_gradients=flex.vec3_double([(1,-2,3),(-4,-5,6)]),
+    u_iso_gradients=None,
+    u_aniso_gradients=flex.sym_mat3_double([(0,0,0,0,0,0),(1,-1,-4,-7,12,-3)]),
+    occupancy_gradients=None,
+    refine_xyz=True,
+    refine_adp=True,
+    refine_occ=True,
+    selection = flex.bool(scatterers.size(), True))
+  assert approx_equal(xray_gradients,
+    [1,-1,5,-1,-1,11,7, 6, 4, 2, 22, 8])
 
 def exercise_asu_mappings():
   from cctbx.development import random_structure

@@ -152,6 +152,8 @@ namespace cctbx { namespace xray { namespace minimization {
               || site_gradients.size() == scatterers.size());
     CCTBX_ASSERT(u_iso_gradients.size() == 0
               || u_iso_gradients.size() == scatterers.size());
+    CCTBX_ASSERT(u_aniso_gradients.size() == 0
+              || u_aniso_gradients.size() == scatterers.size());
     CCTBX_ASSERT(occupancy_gradients.size() == 0
               || occupancy_gradients.size() == scatterers.size());
     scitbx::af::block_iterator<FloatType> next_xray_gradients(
@@ -176,14 +178,11 @@ namespace cctbx { namespace xray { namespace minimization {
           }
         }
         if(sc.flags.grad_u_aniso() && sc.flags.use_u_aniso()) {
-          //next_xray_gradients(6);
           FloatType* xg = next_xray_gradients(6);
           if (u_aniso_gradients.size() != 0) {
             scitbx::sym_mat3<FloatType> const& gu = u_aniso_gradients[i_sc];
             for(std::size_t i=0;i<6;i++) xg[i] += gu[i];
           }
-          //
-
         }
         if(sc.flags.grad_occupancy()) {
           double scale = 0.0;
