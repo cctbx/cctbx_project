@@ -1,13 +1,15 @@
 /* The main purpose of this module is to provide access to the
-   Boost.Python metaclass via meta_ext.empty.__class__.
+   Boost.Python metaclass.
    See also:
      boost/libs/python/doc/tutorial/doc/quickstart.txt, keyword injector
      boost.python.injector (boost/python.py)
  */
 
 #include <boost/python/module.hpp>
+#include <boost/python/docstring_options.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
+#include <boost/python/args.hpp>
 #include <boost/cstdint.hpp>
 
 namespace {
@@ -217,4 +219,9 @@ BOOST_PYTHON_MODULE(boost_python_meta_ext)
   def("platform_info", platform_info);
   def("sizeof_void_ptr", sizeof_void_ptr);
   class_<boost_python_meta_ext::holder>("holder").enable_pickling();
+  class_<docstring_options, boost::noncopyable>("docstring_options", no_init)
+    .def(init<bool, bool>((
+      arg_("show_user_defined"),
+      arg_("show_signatures"))))
+  ;
 }
