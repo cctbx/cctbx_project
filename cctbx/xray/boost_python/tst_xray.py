@@ -917,11 +917,7 @@ def exercise_minimization_apply_shifts():
       == [1, 1, 1, 2, 4, 5, 6, 1, 1, 1, 3, 3, 3, 3, 3, 3, 4, 5, 6]
   shifts = flex.double(19, 0.001)
   shifted_scatterers = xray.ext.minimization_apply_shifts(
-    uc, scatterers, shifts,
-    refine_xyz=True,
-    refine_adp=True,
-    refine_occ=True,
-    selection = flex.bool(scatterers.size(), True)).shifted_scatterers
+    uc, scatterers, shifts).shifted_scatterers
   for a,b in zip(scatterers, shifted_scatterers):
     assert a.scattering_type == b.scattering_type
     assert a.site != b.site
@@ -938,11 +934,7 @@ def exercise_minimization_apply_shifts():
   shifted_scatterers = xray.ext.minimization_apply_shifts(
     unit_cell=uc,
     scatterers=shifted_scatterers,
-    shifts=shifts,
-    refine_xyz=True,
-    refine_adp=True,
-    refine_occ=True,
-    selection = flex.bool(scatterers.size(), True)).shifted_scatterers
+    shifts=shifts).shifted_scatterers
   for a,b in zip(scatterers, shifted_scatterers):
     assert a.scattering_type == b.scattering_type
     assert approx_equal(a.site, b.site)
@@ -964,11 +956,7 @@ def exercise_minimization_apply_shifts():
   assert [int(x) for x in s] == [1]*6
   shifts = flex.double((-1,2,-3,4,-5,-6))
   shifted_scatterers = xray.ext.minimization_apply_shifts(
-    uc, scatterers, shifts,
-    refine_xyz=True,
-    refine_adp=True,
-    refine_occ=True,
-    selection = flex.bool(scatterers.size(), True)).shifted_scatterers
+    uc, scatterers, shifts).shifted_scatterers
   assert approx_equal(
     shifted_scatterers[0].site,
     (0.01-1/20.,0.02+2/20.,0.3-3/23.))
@@ -988,11 +976,7 @@ def exercise_minimization_apply_shifts():
   assert [int(x) for x in s] == [2]
   shifts = flex.double(1, -10)
   shifted_scatterers = xray.ext.minimization_apply_shifts(
-    uc, scatterers, shifts,
-    refine_xyz=True,
-    refine_adp=True,
-    refine_occ=True,
-    selection = flex.bool(scatterers.size(), True)).shifted_scatterers
+    uc, scatterers, shifts).shifted_scatterers
   assert approx_equal(shifted_scatterers[0].u_iso, -10)
   f = xray.ext.gradient_flags(
     False, False, True, False, False, False, False, False)
@@ -1007,11 +991,7 @@ def exercise_minimization_apply_shifts():
   assert [int(x) for x in s] == [3]*6
   shifts = flex.double(6, -100)
   shifted_scatterers = xray.ext.minimization_apply_shifts(
-    uc, scatterers, shifts,
-    refine_xyz=True,
-    refine_adp=True,
-    refine_occ=True,
-    selection = flex.bool(scatterers.size(), True)).shifted_scatterers
+    uc, scatterers, shifts).shifted_scatterers
   assert not_approx_equal(shifted_scatterers[1].u_star,
     [u_ij-100 for u_ij in scatterers[1].u_star])
   f = xray.ext.gradient_flags(
@@ -1027,11 +1007,7 @@ def exercise_minimization_apply_shifts():
   assert [int(x) for x in s] == [4]*2
   shifts = flex.double(2, -10)
   shifted_scatterers = xray.ext.minimization_apply_shifts(
-    uc, scatterers, shifts,
-    refine_xyz=True,
-    refine_adp=True,
-    refine_occ=True,
-    selection = flex.bool(scatterers.size(), True)).shifted_scatterers
+    uc, scatterers, shifts).shifted_scatterers
   for i in xrange(2):
     assert approx_equal(shifted_scatterers[i].occupancy, -9)
   f = xray.ext.gradient_flags(
@@ -1047,11 +1023,7 @@ def exercise_minimization_apply_shifts():
   assert [int(x) for x in s] == [5]*2
   shifts = flex.double(2, -10)
   shifted_scatterers = xray.ext.minimization_apply_shifts(
-    uc, scatterers, shifts,
-    refine_xyz=True,
-    refine_adp=True,
-    refine_occ=True,
-    selection = flex.bool(scatterers.size(), True)).shifted_scatterers
+    uc, scatterers, shifts\).shifted_scatterers
   assert approx_equal(shifted_scatterers[0].fp, -11)
   assert shifted_scatterers[1].fp == -10
   for i in xrange(2):
@@ -1069,33 +1041,21 @@ def exercise_minimization_apply_shifts():
   assert [int(x) for x in s] == [6]*2
   shifts = flex.double((2,3))
   shifted_scatterers = xray.ext.minimization_apply_shifts(
-    uc, scatterers, shifts,
-    refine_xyz=True,
-    refine_adp=True,
-    refine_occ=True,
-    selection = flex.bool(scatterers.size(), True)).shifted_scatterers
+    uc, scatterers, shifts).shifted_scatterers
   assert shifted_scatterers[0].fp == -1
   assert approx_equal(shifted_scatterers[0].fdp, 4)
   assert shifted_scatterers[1].fp == 0
   assert shifted_scatterers[1].fdp == 3
   shifts = flex.double(1)
   try:
-    xray.ext.minimization_apply_shifts(uc, scatterers, shifts,
-     refine_xyz=True,
-     refine_adp=True,
-     refine_occ=True,
-     selection = flex.bool(scatterers.size(), True))
+    xray.ext.minimization_apply_shifts(uc, scatterers, shifts)
   except Exception, e:
     assert str(e) == "scitbx Error: Array of shifts is too small."
   else:
     raise RuntimeError("Exception expected.")
   shifts = flex.double(3)
   try:
-    xray.ext.minimization_apply_shifts(uc, scatterers, shifts,
-     refine_xyz=True,
-     refine_adp=True,
-     refine_occ=True,
-     selection = flex.bool(scatterers.size(), True))
+    xray.ext.minimization_apply_shifts(uc, scatterers, shifts)
   except Exception, e:
     assert str(e) == "cctbx Error: Array of shifts is too large."
   else:
@@ -1125,11 +1085,7 @@ def exercise_minimization_add_gradients():
     site_gradients=geometry_restraints_site_gradients,
     u_iso_gradients=None,
     u_aniso_gradients=None,
-    occupancy_gradients=None,
-    refine_xyz=True,
-    refine_adp=True,
-    refine_occ=True,
-    selection = flex.bool(scatterers.size(), True))
+    occupancy_gradients=None)
   assert approx_equal(xray_gradients,
     [1,-1,5,-1,-1,11])
   gradient_flags = xray.ext.gradient_flags(
@@ -1148,11 +1104,7 @@ def exercise_minimization_add_gradients():
     site_gradients=geometry_restraints_site_gradients,
     u_iso_gradients=None,
     u_aniso_gradients=None,
-    occupancy_gradients=None,
-    refine_xyz=True,
-    refine_adp=True,
-    refine_occ=True,
-    selection = flex.bool(scatterers.size(), True))
+    occupancy_gradients=None)
   assert approx_equal(xray_gradients,
     [1,-1,5,3,4,5,6,3,3,15,10,11,12,13,14,15,16,17,18])
   gradient_flags = xray.ext.gradient_flags(
@@ -1171,11 +1123,7 @@ def exercise_minimization_add_gradients():
     site_gradients=geometry_restraints_site_gradients,
     u_iso_gradients=None,
     u_aniso_gradients=None,
-    occupancy_gradients=None,
-    refine_xyz=True,
-    refine_adp=True,
-    refine_occ=True,
-    selection = flex.bool(scatterers.size(), True))
+    occupancy_gradients=None)
   assert approx_equal(xray_gradients,
     [1,-1,5,3,4,5,6,3,3,15,10,11,12])
   gradient_flags = xray.ext.gradient_flags(
@@ -1194,11 +1142,7 @@ def exercise_minimization_add_gradients():
     site_gradients=geometry_restraints_site_gradients,
     u_iso_gradients=None,
     u_aniso_gradients=None,
-    occupancy_gradients=None,
-    refine_xyz=True,
-    refine_adp=True,
-    refine_occ=True,
-    selection = flex.bool(scatterers.size(), True))
+    occupancy_gradients=None)
   assert approx_equal(xray_gradients,
     [1,-1,5,3,4,1,1,13,8,9,10,11,12,13,14,15])
   site_gradients = xray.ext.minimization_extract_site_gradients(
@@ -1223,11 +1167,7 @@ def exercise_minimization_add_gradients():
     site_gradients=None,
     u_iso_gradients=u_iso_gradients,
     u_aniso_gradients=None,
-    occupancy_gradients=None,
-    refine_xyz=True,
-    refine_adp=True,
-    refine_occ=True,
-    selection = flex.bool(scatterers.size(), True))
+    occupancy_gradients=None)
   assert approx_equal(xray_gradients, [4])
   gradient_flags = xray.ext.gradient_flags(
     True, True, True, True, True, True, False, False)
@@ -1245,11 +1185,7 @@ def exercise_minimization_add_gradients():
     site_gradients=None,
     u_iso_gradients=u_iso_gradients,
     u_aniso_gradients=None,
-    occupancy_gradients=None,
-    refine_xyz=True,
-    refine_adp=True,
-    refine_occ=True,
-    selection = flex.bool(scatterers.size(), True))
+    occupancy_gradients=None)
   assert approx_equal(xray_gradients,
     [0,1,2,6,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18])
   gradient_flags = xray.ext.gradient_flags(
@@ -1268,11 +1204,7 @@ def exercise_minimization_add_gradients():
     site_gradients=None,
     u_iso_gradients=u_iso_gradients,
     u_aniso_gradients=None,
-    occupancy_gradients=None,
-    refine_xyz=True,
-    refine_adp=True,
-    refine_occ=True,
-    selection = flex.bool(scatterers.size(), True))
+    occupancy_gradients=None)
   assert approx_equal(xray_gradients,
     [0,1,2,6,4,5,6,7,8,9,10,11,12])
   gradient_flags = xray.ext.gradient_flags(
@@ -1291,11 +1223,7 @@ def exercise_minimization_add_gradients():
     site_gradients=None,
     u_iso_gradients=u_iso_gradients,
     u_aniso_gradients=None,
-    occupancy_gradients=None,
-    refine_xyz=True,
-    refine_adp=True,
-    refine_occ=True,
-    selection = flex.bool(scatterers.size(), True))
+    occupancy_gradients=None)
   assert approx_equal(xray_gradients,
     [3,1,2,3,4,5,6,7,8,9,10])
   #
@@ -1316,11 +1244,7 @@ def exercise_minimization_add_gradients():
     site_gradients=None,
     u_iso_gradients=None,
     u_aniso_gradients=None,
-    occupancy_gradients=occupancy_gradients,
-    refine_xyz=True,
-    refine_adp=True,
-    refine_occ=True,
-    selection = flex.bool(scatterers.size(), True))
+    occupancy_gradients=occupancy_gradients)
   assert approx_equal(xray_gradients, [4,6])
   xray_gradients = flex.double([2,1])
   xray.ext.minimization_add_gradients(
@@ -1329,11 +1253,7 @@ def exercise_minimization_add_gradients():
     site_gradients=None,
     u_iso_gradients=None,
     u_aniso_gradients=None,
-    occupancy_gradients=None,
-    refine_xyz=True,
-    refine_adp=True,
-    refine_occ=True,
-    selection = flex.bool(scatterers.size(), True))
+    occupancy_gradients=None)
   assert approx_equal(xray_gradients, [2,1])
   #
   gradient_flags = xray.ext.gradient_flags(
@@ -1352,11 +1272,7 @@ def exercise_minimization_add_gradients():
     site_gradients=None,
     u_iso_gradients=None,
     u_aniso_gradients=flex.sym_mat3_double([(0,0,0,0,0,0),(1,-1,-4,-7,12,-3)]),
-    occupancy_gradients=None,
-    refine_xyz=True,
-    refine_adp=True,
-    refine_occ=True,
-    selection = flex.bool(scatterers.size(), True))
+    occupancy_gradients=None)
   assert approx_equal(xray_gradients,
     [1, 0, -2, -4, 16, 2])
   #
@@ -1376,11 +1292,7 @@ def exercise_minimization_add_gradients():
     site_gradients=flex.vec3_double([(1,-2,3),(-4,-5,6)]),
     u_iso_gradients=None,
     u_aniso_gradients=flex.sym_mat3_double([(0,0,0,0,0,0),(1,-1,-4,-7,12,-3)]),
-    occupancy_gradients=None,
-    refine_xyz=True,
-    refine_adp=True,
-    refine_occ=True,
-    selection = flex.bool(scatterers.size(), True))
+    occupancy_gradients=None)
   assert approx_equal(xray_gradients,
     [1,-1,5,-1,-1,11,7, 6, 4, 2, 22, 8])
 

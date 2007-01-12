@@ -150,27 +150,10 @@ class lbfgs(object):
     time_site_individual += timer.elapsed()
 
   def apply_shifts(self):
-    selection = None
-    if(self.refine_occ):
-       if(self.model.refinement_flags.occupancies_individual is not None):
-          selection = self.model.refinement_flags.occupancies_individual[0]
-    if(self.refine_xyz):
-      if(self.model.refinement_flags.sites_individual is not None):
-         selection = self.model.refinement_flags.sites_individual[0]
-    if(self.refine_adp):
-       if(self.model.refinement_flags.adp_individual_iso is not None):
-         selection = self.model.refinement_flags.adp_individual_iso[0]
-       if(self.model.refinement_flags.adp_individual_aniso is not None):
-         selection = selection | \
-                     self.model.refinement_flags.adp_individual_aniso[0]
     apply_shifts_result = xray.ext.minimization_apply_shifts(
                               unit_cell      = self.xray_structure.unit_cell(),
                               scatterers     = self._scatterers_start,
-                              shifts         = self.x,
-                              refine_xyz     = self.refine_xyz,
-                              refine_adp     = self.refine_adp,
-                              refine_occ     = self.refine_occ,
-                              selection      = selection)
+                              shifts         = self.x)
     scatterers_shifted = apply_shifts_result.shifted_scatterers
     if(self.refine_xyz):
        site_symmetry_table = self.xray_structure.site_symmetry_table()
@@ -186,20 +169,6 @@ class lbfgs(object):
        return None
 
   def compute_target(self, compute_gradients, u_iso_reinable_params):
-    selection = None
-    if(self.refine_occ):
-       if(self.model.refinement_flags.occupancies_individual is not None):
-          selection = self.model.refinement_flags.occupancies_individual[0]
-    if(self.refine_xyz):
-      if(self.model.refinement_flags.sites_individual is not None):
-         selection = self.model.refinement_flags.sites_individual[0]
-    if(self.refine_adp):
-       if(self.model.refinement_flags.adp_individual_iso is not None):
-         selection = self.model.refinement_flags.adp_individual_iso[0]
-       if(self.model.refinement_flags.adp_individual_aniso is not None):
-         selection = selection | \
-                     self.model.refinement_flags.adp_individual_aniso[0]
-    #if(self.refine_occ): self.xray_structure.adjust_occupancy()
     self.stereochemistry_residuals = None
     if(self.neutron_refinement):
        self.xray_structure.scattering_type_registry(
@@ -299,11 +268,7 @@ class lbfgs(object):
           xray.minimization.add_gradients(
                              scatterers     = self.xray_structure.scatterers(),
                              xray_gradients = self.g,
-                             site_gradients = sgc*self.wr,
-                             refine_xyz     = self.refine_xyz,
-                             refine_adp     = self.refine_adp,
-                             refine_occ     = self.refine_occ,
-                             selection      = selection)
+                             site_gradients = sgc*self.wr)
 
     if(self.refine_adp and self.restraints_manager.geometry is not None
                         and self.wr > 0.0 and self.iso_restraints is not None):
@@ -338,22 +303,14 @@ class lbfgs(object):
           xray.minimization.add_gradients(
                         scatterers      = self.xray_structure.scatterers(),
                         xray_gradients  = self.g,
-                        u_iso_gradients = sgu * self.wr,
-                        refine_xyz     = self.refine_xyz,
-                        refine_adp     = self.refine_adp,
-                        refine_occ     = self.refine_occ,
-                        selection      = selection)
+                        u_iso_gradients = sgu * self.wr)
 
           #####################################################################
           #energies_adp_aniso.gradients *= self.wr
           #xray.minimization.add_gradients(
           #              scatterers      = self.xray_structure.scatterers(),
           #              xray_gradients  = self.g,
-          #              u_aniso_gradients = energies_adp_aniso.gradients,
-          #              refine_xyz     = self.refine_xyz,
-          #              refine_adp     = self.refine_adp,
-          #              refine_occ     = self.refine_occ,
-          #              selection      = selection)
+          #              u_aniso_gradients = energies_adp_aniso.gradients)
           #energies_adp_aniso.gradients = None # just for safety
           #####################################################################
 
