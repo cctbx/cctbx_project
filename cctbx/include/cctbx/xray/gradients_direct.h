@@ -323,7 +323,6 @@ namespace cctbx { namespace xray { namespace structure_factors {
         if (n_parameters != 0) {
           packed_.reserve(n_parameters);
         }
-        //std::cout<< packed_.size() << " =1= " << n_parameters << std::endl;
         if (grad_flags_counts.site != 0) {
           d_target_d_site_frac_.resize(
             scatterers.size(), scitbx::vec3<f_t>(0,0,0));
@@ -412,7 +411,6 @@ namespace cctbx { namespace xray { namespace structure_factors {
         }
         if (n_parameters != 0) {
           BOOST_STATIC_ASSERT(packing_order_convention == 2);
-          //std::cout<< packed_.size() << " =11= " << n_parameters << std::endl;
           for(std::size_t i=0;i<scatterers.size();i++) {
             ScattererType const& scatterer = scatterers[i];
             if (scatterer.flags.grad_site()) {
@@ -452,7 +450,6 @@ namespace cctbx { namespace xray { namespace structure_factors {
               packed_.push_back(gr_refs.fdp[i]);
             }
           }
-          //std::cout<< packed_.size() << " =2= " << n_parameters << std::endl;
           CCTBX_ASSERT(packed_.size() == n_parameters);
           d_target_d_site_frac_ = af::shared<scitbx::vec3<f_t> >();
           d_target_d_u_iso_ = af::shared<f_t>();
