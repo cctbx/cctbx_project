@@ -22,18 +22,10 @@ namespace cctbx { namespace xray { namespace boost_python {
         .def(init<
           uctbx::unit_cell const&,
           af::const_ref<scatterer<> > const&,
-          af::const_ref<double> const&,
-          bool const&,
-          bool const&,
-          bool const&,
-          af::const_ref<bool> const& >((
+          af::const_ref<double> const& >((
             arg_("unit_cell"),
             arg_("scatterers"),
-            arg_("shifts"),
-            arg_("refine_xyz"),
-            arg_("refine_adp"),
-            arg_("refine_occ"),
-            arg_("selection"))))
+            arg_("shifts"))))
         .add_property("shifted_scatterers",
           make_getter(&w_t::shifted_scatterers, rbv()))
         .add_property("u_iso_reinable_params",
@@ -74,22 +66,14 @@ namespace cctbx { namespace xray { namespace boost_python {
         af::const_ref<scitbx::vec3<double> > const&,
         af::const_ref<double> const&,
         af::const_ref<scitbx::sym_mat3<double> > const&,
-        af::const_ref<double> const&,
-        bool const&,
-        bool const&,
-        bool const&,
-        af::const_ref<bool> const&))
+        af::const_ref<double> const&))
           minimization::add_gradients, (
       arg_("scatterers"),
       arg_("xray_gradients"),
       arg_("site_gradients"),
       arg_("u_iso_gradients"),
       arg_("u_aniso_gradients"),
-      arg_("occupancy_gradients"),
-      arg_("refine_xyz"),
-      arg_("refine_adp"),
-      arg_("refine_occ"),
-      arg_("selection")));
+      arg_("occupancy_gradients")));
     def("minimization_extract_site_gradients",
       (af::shared<scitbx::vec3<double> >(*)(
         af::const_ref<scatterer<> > const&,
