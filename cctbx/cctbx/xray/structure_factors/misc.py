@@ -21,3 +21,4 @@ def quality_factor_from_any(d_min=None,
 expensive_function_call_message = (
     "Programming problem: Calling this function is expensive."
   + " Please assign the result to an intermediate variable.")
+
