@@ -532,8 +532,9 @@ def run(args):
   if(hkl.count(".Z") == 1 and proceed):
      os.system("cp "+ hkl + " .")
      hkl = hkl[-13:]
-     os.system("$HOME/uncompress " + hkl) # to work on BSGC-2
-     #os.system("gunzip " + hkl)
+     #os.system("$HOME/uncompress " + hkl) # to work on BSGC-2
+     os.system("gunzip " + hkl)
+     print hkl
      ifo = open(hkl[:-2], "r")
      lines = ifo.readlines()
      ifo.close()
@@ -556,7 +557,7 @@ def run(args):
         if(lock_0 and lock_1):
            keys.append(st)
         if(len(keys) > 0 and st.startswith("loop_")):
-           print >> err, "Multiple keys: ", hkl
+           print >> err, "Multiple keys: ", hkl, keys
            keys = []
            proceed = False
            break
