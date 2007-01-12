@@ -100,7 +100,6 @@ class manager(object):
             self,
             fmodel,
             model,
-            force_all_to_be_refined_isotropically,
             group_adp_selections      = None,
             group_adp_params          = group_adp_master_params.extract(),
             tls_selections            = None,
@@ -187,10 +186,6 @@ class manager(object):
     if(refine_adp_individual):
        print_statistics.make_sub_header(text= "Individual ADP refinement",
                                         out = log)
-       #xray.set_scatterer_grad_flags(
-       #               scatterers = fmodel.xray_structure.scatterers(),
-       #               u_iso      = True,
-       #               u_aniso    = (not force_all_to_be_refined_isotropically))
        lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
            max_iterations = individual_adp_params.iso.max_number_of_iterations)
        fmodel.xray_structure.approx_equal(other = model.xray_structure)
@@ -198,7 +193,6 @@ class manager(object):
                           restraints_manager       = restraints_manager,
                           fmodel                   = fmodel,
                           model                    = model,
-                          f_a_to_be_r_i = force_all_to_be_refined_isotropically,
                           refine_adp               = True,
                           lbfgs_termination_params = lbfgs_termination_params,
                           wx                       = wx,

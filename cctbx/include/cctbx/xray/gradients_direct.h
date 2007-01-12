@@ -412,6 +412,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
         }
         if (n_parameters != 0) {
           BOOST_STATIC_ASSERT(packing_order_convention == 2);
+          //std::cout<< packed_.size() << " =11= " << n_parameters << std::endl;
           for(std::size_t i=0;i<scatterers.size();i++) {
             ScattererType const& scatterer = scatterers[i];
             if (scatterer.flags.grad_site()) {
@@ -439,9 +440,11 @@ namespace cctbx { namespace xray { namespace structure_factors {
                  }
                }
              }
-            if (grad_flags_counts.occupancy != 0) {
+            if (scatterer.flags.grad_occupancy()) {
               packed_.push_back(gr_refs.occupancy[i]);
             }
+            // XXX use scatterer flags and not grad_flags_counts.
+            // XXX what's below may not work if selected part is refining
             if (grad_flags_counts.fp != 0) {
               packed_.push_back(gr_refs.fp[i]);
             }

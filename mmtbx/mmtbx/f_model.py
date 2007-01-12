@@ -1760,9 +1760,10 @@ def statistics_in_resolution_bins(fmodel,
   fc_w = fmodel.f_model_w()
   alpha_w, beta_w = fmodel.alpha_beta_w()
   alpha_t, beta_t = fmodel.alpha_beta_t()
-  fo_t.setup_binner(n_bins=fmodel.determine_n_bins(
+  fmodel.f_obs.setup_binner(n_bins=fmodel.determine_n_bins(
     free_reflections_per_bin=free_reflections_per_bin,
     max_n_bins=max_number_of_bins))
+  fo_t.use_binning_of(fmodel.f_obs)
   fc_t.use_binning_of(fo_t)
   fo_w.use_binning_of(fo_t)
   fc_w.use_binning_of(fo_t)
@@ -1776,6 +1777,8 @@ def statistics_in_resolution_bins(fmodel,
   for i_bin in fo_t.binner().range_used():
     sel_t = fo_t.binner().selection(i_bin)
     sel_w = fo_w.binner().selection(i_bin)
+    sel_all = fmodel.f_obs.binner().selection(i_bin)
+    sel_fo_all = fmodel.f_obs.select(sel_all)
     sel_fo_t = fo_t.select(sel_t)
     sel_fc_t = fc_t.select(sel_t)
     sel_fo_w = fo_w.select(sel_w)
@@ -1786,7 +1789,7 @@ def statistics_in_resolution_bins(fmodel,
     sel_beta_w  = beta_w.select(sel_w)
     xray_target_functor_w = target_functors.target_functor_w(selection = sel_w)
     xray_target_functor_t = target_functors.target_functor_t(selection = sel_t)
-    d_max_,d_min_ = sel_fo_t.d_max_min()
+    d_max_,d_min_ = sel_fo_all.d_max_min()
     ch = fmodel.f_obs.resolution_filter(d_min= d_min_,d_max= d_max_).completeness(d_max = d_max_)
     if(fmodel.target_name.count("ls") == 1):
       target_w = xray_target_functor_w(sel_fc_w, False).target()

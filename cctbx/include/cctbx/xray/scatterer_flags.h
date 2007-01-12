@@ -270,6 +270,69 @@ namespace cctbx { namespace xray {
     }
   }
 
+  template <typename ScattererType>
+  void
+  set_selected_scatterer_grad_flags(
+                    scitbx::af::ref<ScattererType> const& scatterers,
+                    scitbx::af::ref<bool> const& site,
+                    scitbx::af::ref<bool> const& u_iso,
+                    scitbx::af::ref<bool> const& u_aniso,
+                    scitbx::af::ref<bool> const& occupancy,
+                    scitbx::af::ref<bool> const& fp,
+                    scitbx::af::ref<bool> const& fdp)
+  {
+    CCTBX_ASSERT(scatterers.size() == site.size()      || site.size()     ==0);
+    CCTBX_ASSERT(scatterers.size() == u_iso.size()     || u_iso.size()    ==0);
+    CCTBX_ASSERT(scatterers.size() == u_aniso.size()   || u_aniso.size()  ==0);
+    CCTBX_ASSERT(scatterers.size() == occupancy.size() || occupancy.size()==0);
+    CCTBX_ASSERT(scatterers.size() == fp.size()        || fp.size()       ==0);
+    CCTBX_ASSERT(scatterers.size() == fdp.size()       || fdp.size()      ==0);
+    for(std::size_t i=0;i<scatterers.size();i++) {
+        ScattererType& sc = scatterers[i];
+        if(sc.flags.use()) {
+           if(site.size() != 0) {
+              sc.flags.set_grad_site(site[i]);
+           }
+           else {
+              sc.flags.set_grad_site(false);
+           }
+           if(sc.flags.use_u_iso() && u_iso.size() != 0) {
+              sc.flags.set_grad_u_iso(u_iso[i]);
+              CCTBX_ASSERT(sc.u_iso != -1.0);
+           }
+           else {
+              sc.flags.set_grad_u_iso(false);
+           }
+           if(sc.flags.use_u_aniso() && u_aniso.size() != 0) {
+              sc.flags.set_grad_u_aniso(u_aniso[i]);
+              CCTBX_ASSERT(
+                     sc.u_star != scitbx::sym_mat3<double>(-1,-1,-1,-1,-1,-1));
+           }
+           else {
+              sc.flags.set_grad_u_aniso(false);
+           }
+           if(occupancy.size() !=0) {
+              sc.flags.set_grad_occupancy(occupancy[i]);
+           }
+           else {
+              sc.flags.set_grad_occupancy(false);
+           }
+           if(fp.size() != 0) {
+              sc.flags.set_grad_fp(fp[i]);
+           }
+           else {
+              sc.flags.set_grad_fp(false);
+           }
+           if(fdp.size() != 0) {
+              sc.flags.set_grad_fdp(fdp[i]);
+           }
+           else {
+              sc.flags.set_grad_fdp(false);
+           }
+        }
+    }
+  }
+
 }} // namespace cctbx::xray
 
 #endif // CCTBX_XRAY_SCATTERER_FLAGS_H

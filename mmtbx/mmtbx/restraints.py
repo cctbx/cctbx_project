@@ -102,3 +102,25 @@ class manager(object):
           chain_rule_scale = 1.0
        result.gradients = result.gradients * chain_rule_scale
     return result
+
+  def energies_adp_aniso(self,
+        xray_structure,
+        compute_gradients=False,
+        gradients=None):
+    result = scitbx.restraints.energies(
+      compute_gradients=compute_gradients,
+      gradients=gradients,
+      gradients_size=xray_structure.scatterers().size(),
+      gradients_factory=flex.sym_mat3_double,
+      normalization=self.normalization)
+    if (self.geometry is None):
+      result.geometry = None
+    else:
+      result.geometry = cctbx.adp_restraints.energies_aniso(
+        geometry_restraints_manager=self.geometry,
+        xray_structure=xray_structure,
+        compute_gradients=compute_gradients,
+        gradients=result.gradients)
+      result += result.geometry
+    result.finalize_target_and_gradients()
+    return result
