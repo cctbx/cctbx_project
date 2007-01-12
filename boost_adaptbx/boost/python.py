@@ -1,4 +1,4 @@
-import sys
+import sys, os
 
 python_libstdcxx_so = None
 if (sys.platform.startswith("linux")):
@@ -61,3 +61,22 @@ class injector(object):
               continue
             setattr(b,k,v)
       return type.__init__(self, name, bases, dict)
+
+def process_docstring_options(env_var="BOOST_ADAPTBX_DOCSTRING_OPTIONS"):
+  from_env = os.environ.get(env_var)
+  if (from_env is None): return None
+  try:
+    return eval(
+      "docstring_options(%s)" % from_env,
+      {},
+      {"docstring_options": ext.docstring_options})
+  except KeyboardInterrupt: raise
+  except Exception, e:
+    from libtbx.str_utils import show_string
+    raise RuntimeError(
+      "Error processing %s=%s\n" % (env_var, show_string(from_env))
+      + "  Exception: %s\n" % str(e)
+      + "  Valid example:\n"
+      + '    %s="show_user_defined=True,show_signatures=False"' % env_var)
+
+docstring_options = process_docstring_options()
