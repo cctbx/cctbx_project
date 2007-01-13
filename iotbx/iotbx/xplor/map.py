@@ -33,6 +33,7 @@ from cctbx import miller
 from cctbx import maptbx
 from cctbx import uctbx
 from cctbx.array_family import flex
+import sys
 
 class gridding(object):
 
@@ -100,6 +101,23 @@ class reader(object):
       self.data = ext_reader.data
       self.average = ext_reader.average
       self.standard_deviation = ext_reader.standard_deviation
+
+  def show_summary(self, out=None, prefix=""):
+    if (out is None): out = sys.stdout
+    print >> out, prefix+"Title lines:", len(self.title_lines)
+    for line in self.title_lines:
+      print >> out, prefix+"  "+line.rstrip()
+    g = self.gridding
+    print >> out, prefix+"Gridding:"
+    print >> out, prefix+"  n:    ", g.n
+    print >> out, prefix+"  first:", g.first
+    print >> out, prefix+"  last: ", g.last
+    print >> out, prefix+"Total number of data points:", self.data.size()
+    stats = maptbx.statistics(self.data)
+    print >> out, prefix+"  min:   %.6g" % stats.min()
+    print >> out, prefix+"  max:   %.6g" % stats.max()
+    print >> out, prefix+"  mean:  %.6g" % stats.mean()
+    print >> out, prefix+"  sigma: %.6g" % stats.sigma()
 
 def writer(file_name, title_lines, unit_cell, gridding,
            data, is_p1_cell=False,

@@ -5,8 +5,9 @@ from cctbx import uctbx
 from cctbx.array_family import flex
 from cctbx.development import random_structure
 from libtbx.math_utils import iround
-from libtbx.test_utils import approx_equal, eps_eq
+from libtbx.test_utils import approx_equal, eps_eq, show_diff
 import libtbx.load_env
+from cStringIO import StringIO
 import sys, os
 
 def exercise_map_gridding():
@@ -70,6 +71,23 @@ def read_xplor(file_name):
   assert approx_equal(stats.max(), 0.27233)
   assert approx_equal(stats.mean(), -0.363687)
   assert approx_equal(stats.sigma(), 0.20679)
+  s = StringIO()
+  a.show_summary(out=s, prefix="$")
+  assert not show_diff(s.getvalue(), """\
+$Title lines: 3
+$   REMARKS FILENAME="cns.map"
+$   REMARKS DATE:15-May-2004  02:15:56       created by user: rwgk
+$   REMARKS VERSION:1.1
+$Gridding:
+$  n:     (24, 24, 40)
+$  first: (1, -4, -6)
+$  last:  (10, 0, -3)
+$Total number of data points: 200
+$  min:   -0.78098
+$  max:   0.27233
+$  mean:  -0.363687
+$  sigma: 0.20679
+""")
   return a
 
 def write_xplor(map, file_name):
