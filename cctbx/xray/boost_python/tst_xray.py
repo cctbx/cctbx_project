@@ -1023,7 +1023,7 @@ def exercise_minimization_apply_shifts():
   assert [int(x) for x in s] == [5]*2
   shifts = flex.double(2, -10)
   shifted_scatterers = xray.ext.minimization_apply_shifts(
-    uc, scatterers, shifts\).shifted_scatterers
+    uc, scatterers, shifts).shifted_scatterers
   assert approx_equal(shifted_scatterers[0].fp, -11)
   assert shifted_scatterers[1].fp == -10
   for i in xrange(2):
