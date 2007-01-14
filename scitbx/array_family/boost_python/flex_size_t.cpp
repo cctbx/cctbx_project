@@ -1,5 +1,6 @@
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
 #include <scitbx/array_family/boost_python/flex_pickle_single_buffered.h>
+#include <scitbx/array_family/boost_python/range_wrappers.h>
 #include <scitbx/array_family/counts.h>
 #include <scitbx/array_family/selections.h>
 #include <scitbx/stl/map_fwd.h>
@@ -58,6 +59,8 @@ namespace {
       .def("next_permutation", next_permutation)
       .def("inverse_permutation", inverse_permutation)
     ;
+    range_wrappers<std::size_t, long, range_args::unsigned_check>::wrap(
+      "size_t_range");
   }
 
 }}} // namespace scitbx::af::boost_python

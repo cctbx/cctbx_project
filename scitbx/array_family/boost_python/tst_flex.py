@@ -233,6 +233,33 @@ def exercise_flex_constructors():
       assert str(e) == \
         "argument must be a Python list or tuple of lists or tuples."
     else: raise RuntimeError("Exception expected.")
+  #
+  assert list(flex.int_range(stop=3)) == range(3)
+  assert list(flex.int_range(start=1, stop=3)) == range(1, 3)
+  assert list(flex.int_range(start=1, stop=5, step=2)) == range(1, 5, 2)
+  for start in range(-5,6):
+    for stop in range(-5,6):
+      for step in range(-5,6):
+        if (step == 0): continue
+        args = (start,stop,step)
+        assert list(flex.int_range(*args)) == range(*args)
+        assert list(flex.long_range(*args)) == range(*args)
+        assert approx_equal(flex.double_range(*args), range(*args))
+        assert approx_equal(flex.float_range(*args), range(*args))
+  assert list(flex.size_t_range(stop=3)) == range(3)
+  assert list(flex.size_t_range(start=8, stop=3, step=-1)) == range(8, 3, -1)
+  try: flex.int_range(0, 0, 0)
+  except RuntimeError, e:
+    assert str(e) == "range step argument must not be zero."
+  else: raise RuntimeError("Exception expected.")
+  try: flex.size_t_range(-1, 0, 1)
+  except RuntimeError, e:
+    assert str(e) == "range start argument must not be negative."
+  else: raise RuntimeError("Exception expected.")
+  try: flex.size_t_range(0, -1, 1)
+  except RuntimeError, e:
+    assert str(e) == "range stop argument must not be negative."
+  else: raise RuntimeError("Exception expected.")
 
 def exercise_misc():
   f = flex.double((1,2,3))
