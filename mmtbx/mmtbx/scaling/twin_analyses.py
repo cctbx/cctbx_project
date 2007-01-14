@@ -424,7 +424,7 @@ class detect_pseudo_translations(object):
         if verbose > 0:
           self.show(out)
 
-  def suggest_new_space_groups(self,t_den=60,out=None):
+  def suggest_new_space_groups(self,t_den=120,out=None):
     if out is None:
       out=sys.stdout
 
@@ -509,7 +509,7 @@ class detect_pseudo_translations(object):
       result=0.0
     return result
 
-  def closest_rational(self, fraction, eps=0.001,return_text=True):
+  def closest_rational(self, fraction, eps=0.01,return_text=True):
     tmp_fraction = abs(fraction)
     sign = "+"
     if fraction < 0:
@@ -528,7 +528,7 @@ class detect_pseudo_translations(object):
       for trial_num in xrange(start_num,trial_den):
         tmp = (sign, trial_num, trial_den)
         tmp_frac = trial_num/trial_den
-        delta = abs(tmp_frac - fraction )
+        delta = abs(tmp_frac - tmp_fraction )
         if delta < min_del:
           best_frac = tmp
           min_del = float( delta )
