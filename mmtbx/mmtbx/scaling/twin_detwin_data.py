@@ -19,6 +19,69 @@ from cStringIO import StringIO
 from scitbx.python_utils import easy_pickle
 import sys, os
 
+class twin_data(object):
+  def __init__(self,
+               miller_array,
+               phil_block,
+               out=None):
+    if out is None:
+      out=sys.stdout
+
+    print >> out, "Artifically twinning the data"
+    print >> out
+
+    self.miller_array = miller_array.deep_copy().set_observation_type(
+      miller_array ).map_to_asu()
+
+    self.twin_law = phil_block.scaling.input.optional.twinning.twin_law
+    assert (self.twin_law is not None)
+    self.twin_law=sgtbx.rt_mx(self.twin_law, r_den=24,t_den=288 )
+    if self.twin_law.r().determinant() != 1:
+      raise Sorry("The determinant of the provided twin law is not equal to unity")
+    self.alpha = phil_block.scaling.input.optional.twinning.fraction
+    assert (self.alpha is not None)
+    assert self.alpha<0.5
+    assert self.alpha>=0.0
+
+    self.mtzout = phil_block.scaling.input.optional.hklout
+    assert (self.mtzout is not None)
+
+    # make sure we have intensities
+    if self.miller_array.is_real_array():
+      if not self.miller_array.is_xray_intensity_array():
+        self.miller_array = self.miller_array.f_as_f_sq()
+    assert self.miller_array.is_xray_intensity_array()
+
+    cb_op = sgtbx.change_of_basis_op( self.twin_law )
+
+    self.new_miller = self.miller_array.change_basis( cb_op ).map_to_asu()
+
+    xa,xb = self.miller_array.common_sets( self.new_miller )
+
+    new_data = (1.0-self.alpha)*xa.data() + self.alpha*xb.data()
+    xa = xa.customized_copy(data=new_data,
+                            sigmas=new_data/100.0)
+
+    mtz_dataset = xa.as_mtz_dataset(
+      column_root_label='I_TWIN')
+    mtz_dataset.mtz_object().write(
+      file_name=phil_block.scaling.input.optional.hklout)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 class detwin_data(object):
