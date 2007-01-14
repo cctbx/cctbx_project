@@ -1,5 +1,6 @@
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
 #include <scitbx/array_family/boost_python/flex_pickle_single_buffered.h>
+#include <scitbx/array_family/boost_python/range_wrappers.h>
 #include <scitbx/array_family/counts.h>
 #include <scitbx/stl/map_fwd.h>
 #include <boost/python/args.hpp>
@@ -16,6 +17,7 @@ namespace scitbx { namespace af { namespace boost_python {
       .def("counts", counts<long, std::map<long, long> >::limited, (
         arg_("max_keys")))
     ;
+    range_wrappers<long, long>::wrap("long_range");
   }
 
 }}} // namespace scitbx::af::boost_python

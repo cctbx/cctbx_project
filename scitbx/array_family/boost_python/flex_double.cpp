@@ -1,5 +1,6 @@
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
 #include <scitbx/array_family/boost_python/flex_pickle_single_buffered.h>
+#include <scitbx/array_family/boost_python/range_wrappers.h>
 #include <scitbx/math/utils.h>
 #include <boost/python/args.hpp>
 #include <boost/python/overloads.hpp>
@@ -297,6 +298,7 @@ namespace boost_python {
         arg_("self"),
         arg_("n_digits")=0)))
     ;
+    range_wrappers<double, long>::wrap("double_range");
 
     typedef return_value_policy<return_by_value> rbv;
     typedef af::min_max_mean<double> mmm;
