@@ -818,9 +818,11 @@ class basic_intensity_statistics:
     self.outlier = possible_outliers(absolute_miller)
     self.new_miller = self.outlier.remove_outliers(absolute_miller)
 
-    self.ijsco = ice_ring_checker(self.d_star_sq,
-                                  self.completeness,
-                                  self.z_scores)
+    self.ijsco = None
+    if flex.min( self.d_star_sq ) > 0.01:
+      self.ijsco = ice_ring_checker(self.d_star_sq,
+                                    self.completeness,
+                                    self.z_scores)
     self.show(out,out_plot)
 
   def show(self,out=None, out_plot=None,z_level=4.5):
@@ -883,7 +885,8 @@ class basic_intensity_statistics:
     ## outlier analyses
     self.outlier.show(out)
     ## ice ring results are reported here
-    self.ijsco.show(out)
+    if self.ijsco is not None:
+      self.ijsco.show(out)
 
     ## say something about the anomalous data is it is available
     if self.meas_data is not None:
