@@ -42,6 +42,15 @@ def print_trace(frame, event, arg):
   return print_trace
 
 def start_print_trace():
+  if ("pydoc" in sys.modules):
+    from cStringIO import StringIO
+    s = StringIO()
+    show_stack(out=s)
+    for line in s.getvalue().splitlines():
+      if (line.find("pydoc.py") >= 0 and line.endswith(" cli")):
+        print "libtbx.introspection.start_print_trace():" \
+          " pydoc.cli() detected: no tracing"
+        return
   sys.settrace(print_trace)
 
 def stop_print_trace():
