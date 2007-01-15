@@ -35,6 +35,7 @@ class basic_analyses(object):
       print >> out
       print >> out
       print >> out, "Matthews coefficient and Solvent content statistics"
+
     n_copies_solc = 1.0
     matthews_results =matthews.matthews_rupp(
       miller_array = miller_array,
@@ -117,10 +118,24 @@ class basic_analyses(object):
     b_trace_average = (b_cart_observed[0]+
                        b_cart_observed[1]+
                        b_cart_observed[2])/3.0
+    b_trace_min = b_cart_observed[0]
+    if  b_cart_observed[1] <b_trace_min: b_trace_min=b_cart_observed[1]
+    if  b_cart_observed[2] <b_trace_min: b_trace_min=b_cart_observed[2]
 
-    b_cart_aniso_removed = [ -b_trace_average,
-                             -b_trace_average,
-                             -b_trace_average,
+    if phil_object.scaling.input.optional.aniso.use_trace_min:
+       print>>out, "Using minimum component of ",b_trace_min," as minimum b"
+       b_use=b_trace_min
+    elif phil_object.scaling.input.optional.aniso.b_overall is not None:
+       b_use=phil_object.scaling.input.optional.aniso.b_overall
+       print>>out, "Using input value of ",b_use," as minimum b"
+
+    else:
+       b_use=b_trace_average
+       print >>out,"Using average component of ",b_trace_average," as minimum b"
+
+    b_cart_aniso_removed = [ -b_use,
+                             -b_use,
+                             -b_use,
                              0,
                              0,
                              0]
@@ -135,6 +150,21 @@ class basic_analyses(object):
       self.no_aniso_array,0.0,u_star_aniso_removed)
     self.no_aniso_array = self.no_aniso_array.set_observation_type(
       miller_array )
+
+    ## write out this miller array as sca if directed to do so:
+    output_file=phil_object.scaling.input.optional.hklout
+    if output_file is not None and \
+     phil_object.scaling.input.optional.aniso.action=="remove_aniso":
+      if phil_object.scaling.input.optional.hklout_type == "sca":
+        import iotbx.scalepack.merge
+        iotbx.scalepack.merge.write(
+            file_name=output_file,miller_array=self.no_aniso_array)
+      elif phil_object.scaling.input.optional.hklout_type == "mtz":
+        mtz_dataset = self.no_aniso_array.as_mtz_dataset(
+            column_root_label='F_aniso')
+        mtz_dataset.mtz_object().write(output_file)
+      print>>out, "Wrote aniso-corrected data to ",output_file
+
 
     ## Make normalised structure factors please
     normalistion = absolute_scaling.kernel_normalisation(
