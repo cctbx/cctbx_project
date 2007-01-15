@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 import sys, os, re, string
 from libtbx.utils import Sorry
- # hierarchy:  there can be any number of ncs groups.
+ # hierarchy:  there can be any number of ncs groups.  test version
  #   each group has a set of NCS operators and centers and may apply
  #      to a part of the structure.
  #  for group in ncs.ncs_groups(): returns list of groups
