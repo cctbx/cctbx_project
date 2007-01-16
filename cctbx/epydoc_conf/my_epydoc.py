@@ -11,7 +11,7 @@ Generate the epydoc documentation specified by the given configuration file.
 
 Instructions for documentation writers
 
-When a pure Python class A uses the Boost.Python wrapping of a C++ class B, 
+When a pure Python class A uses the Boost.Python wrapping of a C++ class B,
 the docstring of A should feature a link to the doxygen-generated
 documentation of B. That link shall be written as e.g.
   U{least_squares_residual<CCTBX_DOXYGEN_DOC_ROOT/
@@ -22,12 +22,14 @@ advantage of to break long lines nicely).
 This relies on two requirements on the part of the C++ documentation writers:
 (a) the doxygen configuration file is assumed to be at ../dox/Doxyfile w.r.t
 this script;
-(b) the C++ documentation root directory and the Python documentation root
+(b) the C++ documentation root directory is given by the HTML_OUTPUT
+configuration entry in the doxyfile;
+(c) the C++ documentation root directory and the Python documentation root
 directory will be in the same directory on the server.
 """
 
 import sys, os.path
-if os.path.exists(os.path.join(sys.path[0], 'epydoc.py')): 
+if os.path.exists(os.path.join(sys.path[0], 'epydoc.py')):
   del sys.path[0]
 
 import epydoc.cli
@@ -52,5 +54,3 @@ for root, dirs, files in os.walk(output_dir):
     for li in fin:
       fout.write(li.replace('http://CCTBX_DOXYGEN_DOC_ROOT/', cpp_doc))
     os.rename(tmp, f)
-
-    
