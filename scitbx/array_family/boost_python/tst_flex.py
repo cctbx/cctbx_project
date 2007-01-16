@@ -2432,6 +2432,24 @@ def exercise_py_object():
   a[(1,1)] = -4
   assert a.data() == [-10,-1,-2,-3,-4,-5]
 
+def exercise_condense_as_ranges():
+  a = flex.int([])
+  assert flex.condense_as_ranges(integer_array=a) == []
+  a = flex.int([3])
+  assert flex.condense_as_ranges(integer_array=a) == [(3,)]
+  a = flex.int([3,4])
+  assert flex.condense_as_ranges(integer_array=a) == [(3,4)]
+  a = flex.int([3,4,5])
+  assert flex.condense_as_ranges(integer_array=a) == [(3,5)]
+  a = flex.int([-1,3,4,5])
+  assert flex.condense_as_ranges(integer_array=a) == [(-1,),(3,5)]
+  a = flex.int([-3,-2,-1,0,1,3,4,5])
+  assert flex.condense_as_ranges(integer_array=a) == [(-3,1),(3,5)]
+  a = flex.int([3,4,5,7])
+  assert flex.condense_as_ranges(integer_array=a) == [(3,5),(7,)]
+  a = flex.int([3,4,5,7,8,9,10])
+  assert flex.condense_as_ranges(integer_array=a) == [(3,5),(7,10)]
+
 def run(iterations):
   i = 0
   while (iterations == 0 or i < iterations):
@@ -2469,6 +2487,7 @@ def run(iterations):
     exercise_pickle_double_buffered()
     pickle_large_arrays(max_exp=2, verbose=0)
     exercise_py_object()
+    exercise_condense_as_ranges()
     i += 1
 
 if (__name__ == "__main__"):
