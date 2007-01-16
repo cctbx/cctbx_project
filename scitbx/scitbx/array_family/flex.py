@@ -39,6 +39,7 @@ def export_to(target_module_name):
     "max_default",
     "mean_default",
     "select",
+    "condense_as_ranges",
     "get_random_seed",
     "random_generator",
     "set_random_seed",
@@ -129,6 +130,28 @@ def select(sequence, permutation=None, flags=None):
       if (f): result.append(s)
   return result
 
+def condense_as_ranges(integer_array):
+  if (len(integer_array) == 0): return []
+  result = []
+  i_start = integer_array[0]
+  n = 1
+  def store_range():
+    if (n == 1):
+      result.append((i_start,))
+    else:
+      result.append((i_start, i_start+n-1))
+  for i in integer_array[1:]:
+    if (i == i_start + n):
+      n += 1
+    else:
+      store_range()
+      i_start = i
+      n = 1
+  store_range()
+  return result
+
+if (__name__ == "__main__"):
+  run(sys.argv[1:])
 def get_random_seed():
   try:
     result = builtin_long(os.getpid() * (2**16)) \
