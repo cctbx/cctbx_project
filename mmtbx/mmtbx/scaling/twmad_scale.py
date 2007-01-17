@@ -115,6 +115,7 @@ def run(args):
     ## By default, the native cell and symmetry are used
     ## as reference
     crystal_symmetry_nat = None
+    print params.scaling.input.xray_data.wavelength1.file_name
     crystal_symmetry_nat = crystal_symmetry_from_any.extract_from(
       file_name=params.scaling.input.xray_data.wavelength1.file_name)
 

@@ -118,15 +118,32 @@ scaling.input {
    {
      hklout = None
      .type=path
+     hklout_type=*mtz sca
+     .type=choice
+     do_analyses=True
+     .type=bool
+     aniso{
+       action=remove_aniso *None
+       .type=choice
+       final_b=*eigen_min eigen_mean user_b_iso
+       .type=choice
+       b_iso=None
+       .type=float
+     }
+     outlier{
+       action=*extreme_value basic None
+       .type=choice
+       p_value=1e-2
+       .type=float
+     }
      twinning{
-       action=detwin *None
+       action=detwin twin *None
        .type=choice
        twin_law=None
        .type=str
        fraction=None
        .type=float
      }
-
    }
    expert_level=1
    .type=int
@@ -229,14 +246,18 @@ The program options are summarized below
 
 
 7. scope: optional
-   keys: * hklout :: output mtz file
-         * twinning.action :: Whether to detwin the data
-         * twinning.twin_law :: using this twin law (h,k,l or x,y,z notation)
+   keys: * hklout :: output mtz or sca file
+         * hklout_type :: sca or mtz
+         * aniso.action:: remove_aniso or not (Not compatible with detwinning)
+         * aniso.use_trace_min: scale with minimum component of trace of b
+                                instead of average
+         * twinning.action :: Whether to twin, detwin or leave the data alone (do nothing)
+         * twinning.twin_law :: using this twin law (h,k,l or  a,b,c or x,y,z notation)
          * twinning.fraction :: The detwinning fraction.
          * b_value :: the resulting Wilson B value
 
    The output mtz file contains an anisotropy corrected mtz file, with suspected outliers removed.
-   The data is put scaled and has the specified Wilson B value.
+   The data is scaled and has the specified Wilson B value.
    These options have an associated expert level of 10, and are not shown by default. Specification
    of the expert level on the command line as 'level=100' will show all available options.
 
@@ -657,6 +678,10 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
     if (not miller_array.is_real_array() ):
       miller_array = abs(miller_array)
 
+    # make sure we hold on to the 'raw' data for later usage is desired
+    raw_data = miller_array.deep_copy()
+
+
     if (miller_array.is_real_array()):
       print >> log
       print >> log
@@ -684,6 +709,11 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
         twin_detwin_data.detwin_data(miller_array,
                                      params,
                                      log)
+
+      if params.scaling.input.optional.twinning.action == "twin":
+        twin_detwin_data.twin_data(miller_array,
+                                   params,
+                                   log)
 
     ## Append the CCP4i plots to the log StringIO object if desired
     if params.scaling.input.parameters.reporting.ccp4_style_graphs:

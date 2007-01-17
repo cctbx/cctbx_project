@@ -69,21 +69,6 @@ class twin_data(object):
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 class detwin_data(object):
   def __init__(self,
                miller_array,
@@ -157,3 +142,21 @@ class detwin_data(object):
       column_root_label='I_DETWIN')
     mtz_dataset.mtz_object().write(
       file_name=phil_block.scaling.input.optional.hklout)
+
+
+
+class massage_data(object):
+  def __init__(self,
+               miller_array,
+               parameters):
+    self.params=parameters
+    self.miller_array=miller_array
+
+
+
+
+
+
+
+
+

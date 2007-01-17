@@ -22,8 +22,9 @@ from mmtbx.scaling import pre_scale
 from mmtbx.scaling import make_param
 import sys, os
 
-
 from mmtbx.scaling import fa_estimation
+from mmtbx.scaling import random_omit
+
 
 
 params_generator = make_param.phil_lego()
@@ -224,6 +225,17 @@ def run(args):
     mtz_dataset.mtz_object().write(
       file_name=params.scaling.input.output.hklout)
 
+    print dir(params.scaling.input)
+    if params.scaling.input.omit.perform_omit:
+      print >> log
+      print >> log, "writing omit files"
+      print >> log, "------------------"
+      print >> log
+      omit_object = random_omit.random_omit_data(
+        delta_gen.abs_delta_f,
+        params.scaling.input.omit )
+      omit_object.write_datasets()
+      
 
 
 
