@@ -127,8 +127,8 @@ class basic_analyses(object):
     elif phil_object.scaling.input.optional.aniso.final_b == "eigen_mean" :
        b_use=flex.mean(aniso_scale_and_b.eigen_values)
     elif phil_object.scaling.input.optional.aniso.final_b == "use_b_iso":
-       assert phil_object.scaling.input.optional.b_iso is not None
-       b_use=phil_object.scaling.input.optional.b_iso
+       assert phil_object.scaling.input.optional.aniso.b_iso is not None
+       b_use=phil_object.scaling.input.optional.aniso.b_iso
     else:
        b_use = 30
 
