@@ -32,42 +32,6 @@ from cStringIO import StringIO
 from scitbx.python_utils import easy_pickle
 import sys, os
 
-def select_crystal_symmetry(
-      from_command_line,
-      from_parameter_file,
-      from_coordinate_files,
-      from_reflection_files):
-  result = crystal.symmetry(
-    unit_cell=None,
-    space_group_info=None)
-  if (from_command_line is not None):
-    result = result.join_symmetry(
-      other_symmetry=from_command_line, force=False)
-  if (from_parameter_file is not None):
-    result = result.join_symmetry(
-      other_symmetry=from_parameter_file, force=False)
-  if (result.unit_cell() is None):
-    for crystal_symmetry in from_reflection_files:
-      unit_cell = crystal_symmetry.unit_cell()
-      if (unit_cell is not None):
-        result = crystal.symmetry(
-          unit_cell=unit_cell,
-          space_group_info=result.space_group_info(),
-          assert_is_compatible_unit_cell=False)
-        break
-  for crystal_symmetry in from_coordinate_files:
-    result = result.join_symmetry(other_symmetry=crystal_symmetry, force=False)
-  if (result.space_group_info() is None):
-    for crystal_symmetry in from_reflection_files:
-      space_group_info = crystal_symmetry.space_group_info()
-      if (space_group_info is not None):
-        result = crystal.symmetry(
-          unit_cell=result.unit_cell(),
-          space_group_info=space_group_info,
-          assert_is_compatible_unit_cell=False)
-        break
-  return result
-
 
 
 master_params = iotbx.phil.parse("""\
@@ -233,6 +197,7 @@ def run(command_name, args):
     print_help()
   else:
     log = multi_out()
+    plot_out = None
     if (not "--quiet" in args):
       log.register(label="stdout", file_object=sys.stdout)
     string_buffer = StringIO()
@@ -277,6 +242,13 @@ def run(command_name, args):
 
     effective_params = master_params.fetch(sources=phil_objects)
     params = effective_params.extract()
+    if not os.path.exists( params.outlier_utils.input.xray_data.file_name ) :
+      raise Sorry("File %s can not be found"%(params.outlier_utils.input.xray_data.file_name) )
+    if params.outlier_utils.input.model.file_name is not None:
+      if not os.path.exists( params.outlier_utils.input.model.file_name ):
+        raise Sorry("File %s can not be found"%(params.outlier_utils.input.model.file_name) )
+
+
 
     # now get the unit cell from the pdb file
 
@@ -293,8 +265,11 @@ def run(command_name, args):
       unit_cell=params.outlier_utils.input.unit_cell,
       space_group_info=params.outlier_utils.input.space_group  )
 
+    phil_xs.show_summary()
+    hkl_xs.show_summary()
 
-    combined_xs = select_crystal_symmetry(
+
+    combined_xs = crystal.select_crystal_symmetry(
       None,phil_xs, [pdb_xs],[hkl_xs])
 
     # inject the unit cell and symmetry in the phil scope please
@@ -516,11 +491,12 @@ def run(command_name, args):
       mtz_dataset.mtz_object().write(
         file_name=params.outlier_utils.output.hklout)
 
-    if params.outlier_utils.output.logfile is not None:
+    if (params.outlier_utils.output.logfile is not None):
       final_log = StringIO()
       print >> final_log, string_buffer.getvalue()
       print >> final_log
-      print >> final_log, plot_out.getvalue()
+      if plot_out is not None:
+        print >> final_log, plot_out.getvalue()
       outfile = open( params.outlier_utils.output.logfile, 'w' )
       outfile.write( final_log.getvalue() )
       print >> log
