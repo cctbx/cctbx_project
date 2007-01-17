@@ -122,16 +122,15 @@ class basic_analyses(object):
     if  b_cart_observed[1] <b_trace_min: b_trace_min=b_cart_observed[1]
     if  b_cart_observed[2] <b_trace_min: b_trace_min=b_cart_observed[2]
 
-    if phil_object.scaling.input.optional.aniso.use_trace_min:
-       print>>out, "Using minimum component of ",b_trace_min," as minimum b"
-       b_use=b_trace_min
-    elif phil_object.scaling.input.optional.aniso.b_overall is not None:
-       b_use=phil_object.scaling.input.optional.aniso.b_overall
-       print>>out, "Using input value of ",b_use," as minimum b"
-
+    if phil_object.scaling.input.optional.aniso.final_b == "eigen_min":
+       b_use=aniso_scale_and_b.eigen_values[2]
+    elif phil_object.scaling.input.optional.aniso.final_b == "eigen_mean" :
+       b_use=flex.mean(aniso_scale_and_b.eigen_values)
+    elif phil_object.scaling.input.optional.aniso.final_b == "use_b_iso":
+       assert phil_object.scaling.input.optional.b_iso is not None
+       b_use=phil_object.scaling.input.optional.b_iso
     else:
-       b_use=b_trace_average
-       print >>out,"Using average component of ",b_trace_average," as minimum b"
+       b_use = 30
 
     b_cart_aniso_removed = [ -b_use,
                              -b_use,
@@ -151,6 +150,7 @@ class basic_analyses(object):
     self.no_aniso_array = self.no_aniso_array.set_observation_type(
       miller_array )
 
+    """
     ## write out this miller array as sca if directed to do so:
     output_file=phil_object.scaling.input.optional.hklout
     if output_file is not None and \
@@ -164,7 +164,7 @@ class basic_analyses(object):
             column_root_label='F_aniso')
         mtz_dataset.mtz_object().write(output_file)
       print>>out, "Wrote aniso-corrected data to ",output_file
-
+    """
 
     ## Make normalised structure factors please
     normalistion = absolute_scaling.kernel_normalisation(
