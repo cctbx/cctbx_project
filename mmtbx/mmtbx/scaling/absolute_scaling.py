@@ -9,6 +9,8 @@ from cctbx.eltbx import xray_scattering
 from scitbx.math import chebyshev_lsq
 from scitbx.math import chebyshev_polynome
 from scitbx.math import chebyshev_lsq_fit
+from scitbx.math import matrix
+from scitbx.math import eigensystem
 from libtbx.utils import Sorry
 import scitbx.lbfgs
 import math
@@ -608,6 +610,11 @@ class ml_aniso_absolute_scaling(object):
                                          self.u_star))
         self.u_cif = adptbx.u_star_as_u_cif(self.unit_cell,
                                             self.u_star)
+        #get eigenvalues of B-cart
+        eigen = eigensystem.real_symmetric( self.b_cart )
+        self.eigen_values = eigen.values()
+        self.eigen_vectors = eigen.vectors()
+
         del self.x
         del self.f_obs
         del self.sigma_f_obs
@@ -662,6 +669,12 @@ class ml_aniso_absolute_scaling(object):
     g = self.pack(g_full_exact)
     return f, g
 
+  def format_it(self,x,format="%3.2f"):
+    xx = format%(x)
+    if x > 0:
+      xx = " "+xx
+    return(xx)
+
 
   def show(self,
            out=None,
@@ -683,9 +696,27 @@ class ml_aniso_absolute_scaling(object):
       print >> out,"%12.2f," %(self.u_cif[1]),"%5.2f" %(self.u_cif[5])
       print >> out,"%19.2f"  %(self.u_cif[2])
       print >> out
+      print >> out, "Eigen analyses of B-cart:"
+      print >> out, "                 Value   Vector"
+      print >> out, "Eigenvector 1 : %s  (%s, %s, %s)"%(self.format_it(self.eigen_values[0],"%5.3f"),
+                                                        self.format_it(self.eigen_vectors[0]),
+                                                        self.format_it(self.eigen_vectors[1]),
+                                                        self.format_it(self.eigen_vectors[2]))
+      print >> out, "Eigenvector 2 : %s  (%s, %s, %s)"%(self.format_it(self.eigen_values[1],"%5.3f"),
+                                                        self.format_it(self.eigen_vectors[3]),
+                                                        self.format_it(self.eigen_vectors[4]),
+                                                        self.format_it(self.eigen_vectors[5]))
+      print >> out, "Eigenvector 3 : %s  (%s, %s, %s)"%(self.format_it(self.eigen_values[2],"%5.3f"),
+                                                        self.format_it(self.eigen_vectors[6]),
+                                                        self.format_it(self.eigen_vectors[7]),
+                                                        self.format_it(self.eigen_vectors[8]))
+      print >> out
       print >> out,"ML estimate of  -log of scale factor of %s:" \
              % str(self.info)
       print >> out,"%5.2f" %(self.p_scale)
+
+
+
 
 
 

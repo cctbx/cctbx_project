@@ -139,6 +139,23 @@ outlier_level_wilson=1e-6
 }
 """
 
+    self.omit="""omit
+.expert_level=__EXPERT_LEVEL__
+{
+   perform_omit=True
+   .type=bool
+   fraction=0.15
+   .type=float
+   max_number=1e5
+   .type=int
+   number_of_sets=100
+   .type=int
+   root_name='omit_'
+   .type=str     
+}
+"""
+
+
   def add_wavelength_info(self):
     tmp= """
     use_anomalous=True
@@ -183,9 +200,13 @@ outlier_level_wilson=1e-6
     scaler = scaler.replace( 'ls loc *ls_and_loc None',
                               '*loc None' )
     output = self.output
-
+ 
+    omit = self.omit
+    omit = omit.replace('__EXPERT_LEVEL__',
+                        '1' )
+    
     result = outer_level.replace('__REPLACE__',
-                                 basic+data+scaler+output)
+                                 basic+data+scaler+omit+output)
     return result
 
   def default_sir(self):
