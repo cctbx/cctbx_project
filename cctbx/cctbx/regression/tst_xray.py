@@ -357,7 +357,7 @@ C  pair count:   1       <<  0.0000,  0.0000,  0.1000>>
                    if(sc.flags.use_u_aniso() and s):
                       a = flex.double(sc.u_star)
                       b = flex.double(sc_mod.u_star)
-                      assert abs(flex.mean(a-b)) > 1.e-2
+                      assert abs(flex.mean(a-b))*100./abs(flex.mean(a)) > 0.1
                    else:
                       assert approx_equal(sc.u_star, sc_mod.u_star)
 ### shake_occupancies()

@@ -37,10 +37,8 @@ class lbfgs(object):
                      xray_scattering_dict     = None,
                      wxnc_scale               = None,
                      wxnu_scale               = None,
-                     selection                = None,
                      occupancy_max            = None,
                      occupancy_min            = None):
-    # XXX remove selection from above
     global time_site_individual
     timer = user_plus_sys_time()
     adopt_init_args(self, locals())
@@ -77,14 +75,22 @@ class lbfgs(object):
        if(refine_adp):
           assert wxnu_scale is not None
           self.wn *= wxnu_scale
-       self.collector = minimization_history(
-                                         wx= self.wx, wn= self.wn, wr= self.wr)
+       self.collector = minimization_history(wx = self.wx,
+                                             wn = self.wn,
+                                             wr = self.wr,
+                                             refine_xyz = self.refine_xyz,
+                                             refine_adp = self.refine_adp,
+                                             refine_occ = self.refine_occ)
        self.collector.collect(rnw = self.fmodel_neutron.r_work(),
                               rnf = self.fmodel_neutron.r_free(),
                               rxw = self.fmodel.r_work(),
                               rxf = self.fmodel.r_free())
     else:
-       self.collector = minimization_history(wx = self.wx, wr = self.wr)
+       self.collector = minimization_history(wx = self.wx,
+                                             wr = self.wr,
+                                             refine_xyz = self.refine_xyz,
+                                             refine_adp = self.refine_adp,
+                                             refine_occ = self.refine_occ)
        self.collector.collect(rxw = self.fmodel.r_work(),
                               rxf = self.fmodel.r_free())
     # XXX
@@ -185,10 +191,6 @@ class lbfgs(object):
                         alpha                 = self.alpha_w,
                         beta                  = self.beta_w,
                         u_iso_reinable_params = u_iso_reinable_params).packed()
-       if(self.selection is not None):
-          sf_v3d = flex.vec3_double(sf)
-          sf_v3d_sel = sf_v3d.set_selected(self.selection, [0,0,0])
-          sf = sf_v3d_sel.as_double()
        #XXX do not count grads for H or D:
        if(self.hd_selection.count(True) > 0):
           if(self.refine_xyz):
@@ -215,8 +217,6 @@ class lbfgs(object):
                         alpha                 = self.alpha_w_neutron,
                         beta                  = self.beta_w_neutron,
                         u_iso_reinable_params = u_iso_reinable_params).packed()
-          if(self.selection is not None):
-             sf = sf.set_selected(self.selection, 0.0)
           self.g = self.g + sf * self.wn
 
           ii = 0
@@ -263,8 +263,6 @@ class lbfgs(object):
        self.f += er * self.wr
        if(compute_gradients):
           sgc = self.stereochemistry_residuals.gradients
-          if(self.selection is not None):
-             sgc = sgc.set_selected(self.selection, [0,0,0])
           xray.minimization.add_gradients(
                              scatterers     = self.xray_structure.scatterers(),
                              xray_gradients = self.g,
@@ -272,47 +270,43 @@ class lbfgs(object):
 
     if(self.refine_adp and self.restraints_manager.geometry is not None
                         and self.wr > 0.0 and self.iso_restraints is not None):
-       energies_adp_iso = self.restraints_manager.energies_adp_iso(
-                    xray_structure    = self.xray_structure,
-                    parameters        = self.iso_restraints,
-                    wilson_b          = self.wilson_b,
-                    tan_b_iso_max     = self.tan_b_iso_max,
-                    use_u_local_only  = self.iso_restraints.use_u_local_only,
-                    compute_gradients = compute_gradients)
-       er = energies_adp_iso.target
-       self.collector.collect(er = er)
-       self.f += er * self.wr
-
-       #energies_adp_aniso = self.restraints_manager.energies_adp_aniso(
-       #             xray_structure    = self.xray_structure,
-       #             compute_gradients = compute_gradients)
-       #er = energies_adp_aniso.target
-       #self.collector.collect(er = er)
-       #self.f += er * self.wr
-
-       #self.fd(xray_structure     = self.xray_structure,
-       #        restraints_manager = self.restraints_manager,
-       #        weight             = self.wr)
+       if(self.model.refinement_flags.adp_individual_aniso[0].count(True) == 0):
+          energies_adp_iso = self.restraints_manager.energies_adp_iso(
+                       xray_structure    = self.xray_structure,
+                       parameters        = self.iso_restraints,
+                       wilson_b          = self.wilson_b,
+                       tan_b_iso_max     = self.tan_b_iso_max,
+                       use_u_local_only  = self.iso_restraints.use_u_local_only,
+                       compute_gradients = compute_gradients)
+          er = energies_adp_iso.target
+          self.collector.collect(er = er)
+          self.f += er * self.wr
+       else:
+          energies_adp_aniso = self.restraints_manager.energies_adp_aniso(
+                       xray_structure    = self.xray_structure,
+                       compute_gradients = compute_gradients)
+          er = energies_adp_aniso.target
+          self.collector.collect(er = er)
+          self.f += er * self.wr
 
        if(compute_gradients):
-          sgu = energies_adp_iso.gradients
-          if(self.selection is not None):
-             sgu = sgu.set_selected(self.selection, 0.0)
-          if(self.hd_selection.count(True) > 0):
-             sgu = sgu.set_selected(self.hd_selection, 0.0)
-          xray.minimization.add_gradients(
-                        scatterers      = self.xray_structure.scatterers(),
-                        xray_gradients  = self.g,
-                        u_iso_gradients = sgu * self.wr)
-
-          #####################################################################
-          #energies_adp_aniso.gradients *= self.wr
-          #xray.minimization.add_gradients(
-          #              scatterers      = self.xray_structure.scatterers(),
-          #              xray_gradients  = self.g,
-          #              u_aniso_gradients = energies_adp_aniso.gradients)
-          #energies_adp_aniso.gradients = None # just for safety
-          #####################################################################
+          if(self.model.refinement_flags.adp_individual_aniso[0].count(True) == 0):
+             sgu = energies_adp_iso.gradients
+             if(self.hd_selection.count(True) > 0):
+                sgu = sgu.set_selected(self.hd_selection, 0.0)
+             xray.minimization.add_gradients(
+                           scatterers      = self.xray_structure.scatterers(),
+                           xray_gradients  = self.g,
+                           u_iso_gradients = sgu * self.wr)
+          else:
+             ####################################################################
+             energies_adp_aniso.gradients_aniso *= self.wr
+             xray.minimization.add_gradients(
+                           scatterers      = self.xray_structure.scatterers(),
+                           xray_gradients  = self.g,
+                           u_aniso_gradients = energies_adp_aniso.gradients_aniso)
+             energies_adp_aniso.gradients = None # just for safety
+             ####################################################################
 
   def callback_after_step(self, minimizer):
     self._lock_for_line_search = False
@@ -363,11 +357,14 @@ class lbfgs(object):
     print (adp_ro2.target - adp_ro1.target)/(2*eps), g[0][0]
 
 class minimization_history(object):
-  def __init__(self, wx = None,
-                     wn = None,
-                     wr = None,
-                     iter = None,
-                     nfun = None):
+  def __init__(self, wx        = None,
+                     wn        = None,
+                     wr        = None,
+                     iter      = None,
+                     nfun      = None,
+                     refine_xyz=False,
+                     refine_adp=False,
+                     refine_occ=False):
     adopt_init_args(self, locals())
     self.ex = []
     self.en = []
@@ -465,12 +462,24 @@ class minimization_history(object):
        nr = "+ wnc"+" "*abs(len("+ wnc")-len(wn)-3)+\
                             "* Eneutron "+" "*abs(len("* Eneutron ")-len(en)-3)
     else: nr = ""
+    if(self.refine_xyz):
+       wrestrx = "= wxc"
+       wrestr  = "+ wc "
+       energy  = "* Echem "
+    elif(self.refine_adp):
+       wrestrx = "= wxu"
+       wrestr  = "+ wu "
+       energy  = "* Eadp "
+    else:
+       wrestrx = "=    "
+       wrestr  = "     "
+       energy  = "       "
     h = "| T_start "+" "*abs(len("T_start")-len(et))+\
-        "= wxc"+" "*abs(len("= wxc")-len(wx)-3)+\
+        wrestrx+" "*abs(len(wrestrx)-len(wx)-3)+\
         "* Exray "+" "*abs(len("* Exray ")-len(ex)-3)+\
         nr+\
-        "+ wc "+" "*abs(len("+ wc ")-len(wc)-3)+\
-        "* Echem "+" "*abs(len("* Echem ")-len(ec)-3)
+        wrestr+" "*abs(len(wrestr)-len(wc)-3)+\
+        energy+" "*abs(len(energy)-len(ec)-3)
     print >> out, h + " "*(78-len(h))+"|"
     if(not neutron_refinement):
        format = "| %s = %s * %s + %s * %s"
@@ -490,11 +499,11 @@ class minimization_history(object):
     else: nr = ""
     print >> out, "|"+"-"*77+"|"
     h = "| T_final "+" "*abs(len("T_final")-len(et))+\
-        "= wxc"+" "*abs(len("= wxc")-len(wx)-3)+\
+        wrestrx+" "*abs(len(wrestrx)-len(wx)-3)+\
         "* Exray "+" "*abs(len("* Exray ")-len(ex)-3)+\
         nr+\
-        "+ wc "+" "*abs(len("+ wc ")-len(wc)-3)+\
-        "* Echem "+" "*abs(len("* Echem ")-len(ec)-3)
+        wrestr+" "*abs(len(wrestr)-len(wc)-3)+\
+        energy+" "*abs(len(energy)-len(ec)-3)
     print >> out, h + " "*(78-len(h))+"|"
     if(not neutron_refinement):
        format = "| %s = %s * %s + %s * %s"
@@ -510,9 +519,12 @@ class minimization_history(object):
     out.flush()
 
   def nn(self, x):
-    x = str(x)
+    if(x is not None): x = "%15.7f"%x
+    x = str(x).strip()
     try:
-      result = x[:len(x[:x.index(".")])+5]
+      if(x is not None): x = "%15.6f"%float(x)
+      x = str(x).strip()
+      result = x[:len(x[:x.index(".")])+7]
       while len(result) < 8: result += "0"
     except: result = "undef"
     return result

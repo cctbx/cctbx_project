@@ -102,7 +102,7 @@ namespace cctbx { namespace xray { namespace minimization {
            sc.u_star = adptbx::u_cart_as_u_star(unit_cell, u_cart);
          }
         if(sc.flags.grad_occupancy()) {
-           sc.occupancy += next_shifts();//*scale;
+           sc.occupancy += next_shifts();
         }
         if(sc.flags.grad_fp()) {
            sc.fp += next_shifts();
@@ -200,19 +200,12 @@ namespace cctbx { namespace xray { namespace minimization {
       scitbx::vec3<FloatType> grsg;
       for(std::size_t i=0;i<3;i++) grsg[i] = xg[i];
       result.push_back(grsg);
-
-      //if (!sc.anisotropic_flag) {
-      //if (!sc.flags.use_u_aniso()) {
-        //if (sc.flags.grad_u_iso()) {
-        if (sc.flags.grad_u_iso() && sc.flags.use_u_iso()) {
-          next_xray_gradients();
-        }
-      //}
-      //else {
-        if (sc.flags.grad_u_aniso() && sc.flags.use_u_aniso()) {
-          next_xray_gradients(6);
-        }
-      //}
+      if (sc.flags.grad_u_iso() && sc.flags.use_u_iso()) {
+        next_xray_gradients();
+      }
+      if (sc.flags.grad_u_aniso() && sc.flags.use_u_aniso()) {
+        next_xray_gradients(6);
+      }
       if (sc.flags.grad_occupancy()) {
         next_xray_gradients();
       }

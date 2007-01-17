@@ -11,9 +11,9 @@ import math
 mtps = -2 * math.pi**2
 mtpss = mtps**2
 
-def random_rotate_ellipsoid(u_cart):
+def random_rotate_ellipsoid(u_cart, r_min = 0, r_max = 360):
   c = scitbx.math.euler_angles_as_matrix(
-    [random.uniform(0,360) for i in xrange(3)], deg=True).elems
+    [random.uniform(r_min,r_max) for i in xrange(3)], deg=True).elems
   return c_u_c_transpose(c, u_cart)
 
 def random_u_cart(u_scale=1, u_min=0):
