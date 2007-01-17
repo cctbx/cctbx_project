@@ -191,15 +191,16 @@ class structure(crystal.special_position_settings):
   def min_distance(self, other):
     return flex.min( self.distances(other = other, selection = selection) )
 
-  def shake_adp(self, b_max=None, b_min=None, spread=10.0,
+  def shake_adp(self, b_max=None, b_min=None, spread=10.0, aniso_spread=0.1,
              keep_anisotropic=False, random_u_cart_scale=1.0, selection=None):
     assert [b_max, b_min].count(None) in [0,2]
     if([b_max, b_min].count(None) == 0): assert spread == 0.0
     if([b_max, b_min].count(None) == 2):
        u_isos = self._scatterers.extract_u_iso().select(self.use_u_iso())
-       b_mean = adptbx.u_as_b(flex.mean(u_isos))
-       b_max = int(b_mean + spread)
-       b_min = int(max(0.0, b_mean - spread))
+       if(u_isos.size() > 0):
+          b_mean = adptbx.u_as_b(flex.mean(u_isos))
+          b_max = int(b_mean + spread)
+          b_min = int(max(0.0, b_mean - spread))
     assert b_min <= b_max
     if(selection is not None):
        assert selection.size() == self._scatterers.size()
@@ -211,19 +212,17 @@ class structure(crystal.special_position_settings):
               r = max(0, random.randrange(b_min, b_max, 1) + random.random())
               sc.u_iso=adptbx.b_as_u(r)
            if(sc.flags.use_u_aniso() and not keep_anisotropic):
-              site_symmetry = sc.apply_symmetry(self.unit_cell(),
-                                                self.space_group(),
-                                                self.min_distance_sym_equiv())
-              run_away_counter = 0
-              while 1:
-                 run_away_counter += 1
-                 assert run_away_counter < 100
-                 u_cart = adptbx.random_u_cart(u_scale = random_u_cart_scale)
-                 sc.u_star = site_symmetry.average_u_star(
-                             adptbx.u_cart_as_u_star(self.unit_cell(), u_cart))
-                 u_cart = adptbx.u_star_as_u_cart(self.unit_cell(), sc.u_star)
-                 eigenvalues = adptbx.eigenvalues(u_cart)
-                 if(min(eigenvalues) > 0.001): break
+              #u_cart = adptbx.u_star_as_u_cart(self.unit_cell(), sc.u_star)
+              #u_cart = adptbx.random_rotate_ellipsoid(u_cart = u_cart, r_min=0,r_max=360)
+              #sc.u_star = adptbx.u_cart_as_u_star(self.unit_cell(), u_cart)
+              m = sc.u_star
+              m = [m[0]+m[0]*random.choice((-aniso_spread,aniso_spread)),
+                   m[1]+m[1]*random.choice((-aniso_spread,aniso_spread)),
+                   m[2]+m[2]*random.choice((-aniso_spread,aniso_spread)),
+                   m[3]+m[3]*random.choice((-aniso_spread,aniso_spread)),
+                   m[4]+m[4]*random.choice((-aniso_spread,aniso_spread)),
+                   m[5]+m[5]*random.choice((-aniso_spread,aniso_spread))]
+              sc.u_star = m
 
   def shake_adp_if_all_equal(self, b_iso_tolerance = 1.0):
     performed = False
@@ -863,6 +862,24 @@ class structure(crystal.special_position_settings):
         if(sc.flags.grad_occupancy()): result_ +=1
         if(sc.flags.grad_fp()       ): result_ +=1
         if(sc.flags.grad_fdp()      ): result_ +=1
+    return result_
+
+  def n_grad_u_iso(self):
+    # XXX move to c++
+    result_ = 0
+    for sc in self.scatterers():
+        if(sc.flags.grad_u_iso()):
+          assert sc.flags.use_u_iso() == True
+          result_ +=1
+    return result_
+
+  def n_grad_u_aniso(self):
+    #XXX move to C++
+    result_ = 0
+    for sc in self.scatterers():
+        if(sc.flags.grad_u_aniso()):
+           assert sc.flags.use_u_aniso() == True
+           result_ +=6
     return result_
 
   def n_parameters_XXX(self):

@@ -107,20 +107,28 @@ class manager(object):
         xray_structure,
         compute_gradients=False,
         gradients=None):
-    result = scitbx.restraints.energies(
-      compute_gradients=compute_gradients,
-      gradients=gradients,
-      gradients_size=xray_structure.scatterers().size(),
-      gradients_factory=flex.sym_mat3_double,
-      normalization=self.normalization)
-    if (self.geometry is None):
-      result.geometry = None
-    else:
-      result.geometry = cctbx.adp_restraints.energies_aniso(
-        geometry_restraints_manager=self.geometry,
-        xray_structure=xray_structure,
-        compute_gradients=compute_gradients,
-        gradients=result.gradients)
-      result += result.geometry
-    result.finalize_target_and_gradients()
+    #result = scitbx.restraints.energies(
+    #  compute_gradients=compute_gradients,
+    #  gradients=gradients,
+    #  gradients_size=xray_structure.scatterers().size(),
+    #  #gradients_factory=flex.sym_mat3_double,
+    #  gradients_factory=flex.double,
+    #  normalization=self.normalization)
+    #if (self.geometry is None):
+    #  result.geometry = None
+    #else:
+    #  result.geometry = cctbx.adp_restraints.energies_aniso(
+    #    geometry_restraints_manager=self.geometry,
+    #    xray_structure=xray_structure,
+    #    compute_gradients=compute_gradients,
+    #    gradients=result.gradients)
+    #  result += result.geometry
+    #result.finalize_target_and_gradients()
+
+    result = cctbx.adp_restraints.adp_aniso_restraints(
+        restraints_manager = self.geometry,
+        xray_structure = xray_structure,
+        #compute_gradients=compute_gradients,
+        #gradients=result.gradients
+        )
     return result

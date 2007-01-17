@@ -403,10 +403,7 @@ class uaniso_ksol_bsol_scaling_minimizer(object):
     ################################
     self.minimizer = lbfgs.run(
                              target_evaluator = self,
-                             core_params = lbfgs.core_parameters(
-                                               maxfev = 20, #Rfactor strongly depends on this number
-                                               stpmin = 1.e-10,
-                                               stpmax = 1.e10),
+                             core_params = lbfgs.core_parameters(),
                              termination_params = lbfgs.termination_parameters(
                                   min_iterations = min_iterations,
                                   max_iterations = max_iterations),
@@ -556,6 +553,12 @@ class bulk_solvent_and_scales(object):
                       fmodel.update(k_sol = ksol_, b_sol = bsol_)
                       target_ = fmodel.target_w()
                       if(target_ < target):
+                         if(params.minimization_b_cart):
+                            self._b_cart_minimizer_helper(params   = params,
+                                                          fmodel   = fmodel,
+                                                          out      = log,
+                                                          n_cycles = 1)
+                         target_ = fmodel.target_w()
                          target = target_
                          ksol = ksol_
                          bsol = bsol_
@@ -569,7 +572,7 @@ class bulk_solvent_and_scales(object):
                  h=m+str(mc)+": k & b: minimization; T= "+fmodel.target_name
                  fmodel.show_k_sol_b_sol_b_cart_target(header = h, out = log)
            if(params.minimization_b_cart):
-              self._b_cart_minimizer_helper(params, fmodel)
+              self._b_cart_minimizer_helper(params = params, fmodel = fmodel, out = log)
               if(params.verbose > 0):
                  h=m+str(mc)+": anisotropic scale; T= "+fmodel.target_name
                  fmodel.show_k_sol_b_sol_b_cart_target(header = h, out = log)
@@ -599,6 +602,16 @@ class bulk_solvent_and_scales(object):
                     fmodel.show_k_sol_b_sol_b_cart_target(header=h, out = log)
           if(fmodel.alpha_beta_params is not None):
              fmodel.alpha_beta_params.interpolation = save_interpolation_flag
+          r_work_final = fmodel.r_work()
+          if(r_work_final - r_work > 0.001):
+             print >> log, "***Strategy manager: r-work went up after ML ksol, bsol minimization:"
+             print >> log, "   r_start = ", r_work
+             print >> log, "   r_final = ", r_work_final
+             print >> log, "   start k_sol, b_sol = %8.4f %8.4f"%(ksol,bsol)
+             print >> log, "   final k_sol, b_sol = %8.4f %8.4f"%(fmodel.k_sol(),fmodel.b_sol())
+             fmodel.update(k_sol = ksol, b_sol = bsol)
+             print >> log, "   recovering previous step..."
+             print >> log, "   r_final = ", fmodel.r_work()
        if(params.apply_back_trace_of_b_cart and abs(fmodel.u_iso()) > 0.0):
           fmodel.apply_back_b_iso()
           if(params.verbose > 0):
@@ -611,24 +624,28 @@ class bulk_solvent_and_scales(object):
   def _set_f_ordered_solvent(self):
     pass
 
-  def _b_cart_minimizer_helper(self, params, fmodel):
+  def _b_cart_minimizer_helper(self, params, fmodel, out, n_cycles=None):
     symm_constr = params.symmetry_constraints_on_b_cart
-    u_cycles = range(1, params.number_of_cycles_for_anisotropic_scaling+1)
+    if(n_cycles is None):
+       u_cycles = range(1, params.number_of_cycles_for_anisotropic_scaling+1)
+    else:
+       u_cycles = range(1, n_cycles+1)
     r_start = fmodel.r_work()
     u_start = fmodel.b_cart()
     for u_cycle in u_cycles:
         b_cart = aniso_scale_minimizer(fmodel      = fmodel,
-                                        symm_constr = symm_constr)
+                                       symm_constr = symm_constr)
         fmodel.update(b_cart = b_cart)
     r_final = fmodel.r_work()
-    if(r_final - r_start > 0.01):
-       # XXX reproduce and fix
-       #print "Warning: r went up after anisotropic scaling:"
-       #print "   r_start = ", r_start
-       #print "   r_final = ", r_final
-       #print "   u_start = ", ["%9.3f"%u for u in u_start]
-       #print "   u_final = ", ["%9.3f"%u for u in fmodel.b_cart()]
+    if(r_final - r_start > 0.001):
+       print >> out, "***Strategy manager: r-work went up after anisotropic scaling:"
+       print >> out, "   r_start = ", r_start
+       print >> out, "   r_final = ", r_final
+       print >> out, "   u_start = ", ["%9.3f"%u for u in u_start]
+       print >> out, "   u_final = ", ["%9.3f"%u for u in fmodel.b_cart()]
        fmodel.update(b_cart = u_start)
+       print >> out, "   recovering previous step..."
+       print >> out, "   r_final = ", fmodel.r_work()
 
   def _k_sol_b_sol_minimization_helper(self, params, fmodel):
     ksol_orig, bsol_orig = fmodel.k_sol_b_sol()
