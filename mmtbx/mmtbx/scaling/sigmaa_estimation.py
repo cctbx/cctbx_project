@@ -26,11 +26,9 @@ class sigmaa_point_estimator(object):
     exception_handling_parameters = scitbx.lbfgs.exception_handling_parameters(
       ignore_line_search_failed_step_at_lower_bound=True,
       ignore_line_search_failed_step_at_upper_bound=True)
-
     self.minimizer = scitbx.lbfgs.run(target_evaluator=self,
                                       termination_params=term_parameters,
                                       exception_handling_params=exception_handling_parameters)
-
     self.sigmaa = self.min+(self.max-self.min)/(1.0+math.exp(-self.x[0]))
 
   def compute_functional_and_gradients(self):
@@ -38,12 +36,10 @@ class sigmaa_point_estimator(object):
     # chain rule bit for sigmoidal function
     dsdx = (self.max-self.min)*math.exp(-self.x[0])/(
       (1.0+math.exp(-self.x[0]))**2.0 )
-    f = -self.functor.target(self.h,
-                             sigmaa)
-    g = -self.functor.dtarget(self.h,
-                              sigmaa)*dsdx
-    self.f = f
-    return f, flex.double([g])
+    f,g = self.functor.target_and_gradient( self.h,
+                                             sigmaa)
+    self.f = -f
+    return -f, flex.double([-g*dsdx])
 
 def sigmaa_estimator_kernel_width_d_star_cubed(
       r_free_flags,
@@ -70,31 +66,37 @@ class sigmaa_estimator(object):
                kernel_on_chebyshev_nodes=True,
                n_sampling_points=20,
                n_chebyshev_terms=10,
-               use_sampling_sum_weights=False):
+               use_sampling_sum_weights=False,
+               make_checks_and_clean_up=True):
     assert [kernel_width_free_reflections, kernel_width_d_star_cubed].count(None) == 1
-    self.miller_obs = miller_obs.map_to_asu()
-    self.miller_calc = abs(miller_calc.map_to_asu())
-    self.r_free_flags = r_free_flags.map_to_asu()
+
+    self.miller_obs = miller_obs
+    self.miller_calc = abs(miller_calc)
+    self.r_free_flags = r_free_flags
     self.kernel_width_free_reflections = kernel_width_free_reflections
     self.kernel_width_d_star_cubed = kernel_width_d_star_cubed
     self.n_chebyshev_terms = n_chebyshev_terms
 
-    assert self.r_free_flags.indices().all_eq(
-      self.miller_obs.indices() )
+    if make_checks_and_clean_up:
+      self.miller_obs = self.miller_obs.map_to_asu()
+      self.miller_calc = self.miller_calc.map_to_asu()
+      self.r_free_flags = self.r_free_flags.map_to_asu()
+      assert self.r_free_flags.indices().all_eq(
+        self.miller_obs.indices() )
+      self.miller_calc = self.miller_calc.common_set(
+        self.miller_obs )
+      assert self.r_free_flags.indices().all_eq(
+        self.miller_calc.indices() )
+      assert self.miller_obs.is_real_array()
 
-    self.miller_calc = self.miller_calc.common_set(
-      self.miller_obs )
-    assert self.r_free_flags.indices().all_eq(
-      self.miller_calc.indices() )
+      if self.miller_obs.is_xray_intensity_array():
+        self.miller_obs = self.miller_obs.f_sq_as_f()
+      assert self.miller_obs.observation_type() is None or \
+             self.miller_obs.is_xray_amplitude_array()
 
-    assert self.miller_obs.is_real_array()
-
-    if self.miller_obs.is_xray_intensity_array():
-      self.miller_obs = self.miller_obs.f_sq_as_f()
-    assert self.miller_obs.observation_type() is None or \
-           self.miller_obs.is_xray_amplitude_array()
-    self.miller_calc = self.miller_calc.set_observation_type(
-      self.miller_obs)
+    if self.miller_calc.observation_type() is None:
+      self.miller_calc = self.miller_calc.set_observation_type(
+        self.miller_obs)
 
     # get normalized data please
     self.normalized_obs_f = absolute_scaling.kernel_normalisation(
@@ -175,33 +177,39 @@ class sigmaa_estimator(object):
     def reverse_reparam(values): return 1.0/(1.0 + flex.exp(-values))
     self.sigmaa_fitted = reverse_reparam(cheb_pol.f(self.h_array))
     self.sigmaa = reverse_reparam(cheb_pol.f(d_star_cubed_overall))
-
     assert flex.min(self.sigmaa) >= 0
     assert flex.max(self.sigmaa) <= 1
-    self.alpha = self.sigmaa*flex.sqrt(
-      self.normalized_obs_f.normalizer_for_miller_array/
-      self.normalized_calc_f.normalizer_for_miller_array)
-    self.beta = (1.0-self.sigmaa*self.sigmaa)*\
-                self.normalized_obs_f.normalizer_for_miller_array
-
-    # make them into miller arrays
     self.sigmaa = self.miller_obs.array(data=self.sigmaa)
-    self.alpha = self.miller_obs.array(data=self.alpha)
-    self.beta = self.miller_obs.array(data=self.beta)
 
-    # now only FOM's need to be computed
-    tmp_x = self.sigmaa.data()*self.normalized_calc.data()*self.normalized_obs.data()
-    tmp_x = tmp_x / (1.0-self.sigmaa.data()*self.sigmaa.data())
-    centric_fom = flex.tanh( tmp_x )
-    acentric_fom = scitbx.math.bessel_i1_over_i0( 2.0*tmp_x )
-    # we need to make sure centric and acentrics are not mixed up ...
-    centrics = self.sigmaa.centric_flags().data()
-    centric_fom  = centric_fom.set_selected( ~centrics, 0 )
-    acentric_fom = acentric_fom.set_selected( centrics, 0 )
-    final_fom =  centric_fom + acentric_fom
-    self.fom = self.sigmaa.customized_copy(data=final_fom)
+
+    self.alpha = None
+    self.beta = None
+    self.fom = None
+
+  def fom(self):
+    if self.fom is None:
+      tmp_x = self.sigmaa.data()*self.normalized_calc.data()*self.normalized_obs.data()
+      tmp_x = tmp_x / (1.0-self.sigmaa.data()*self.sigmaa.data())
+      centric_fom = flex.tanh( tmp_x )
+      acentric_fom = scitbx.math.bessel_i1_over_i0( 2.0*tmp_x )
+      # we need to make sure centric and acentrics are not mixed up ...
+      centrics = self.sigmaa.centric_flags().data()
+      centric_fom  = centric_fom.set_selected( ~centrics, 0 )
+      acentric_fom = acentric_fom.set_selected( centrics, 0 )
+      final_fom =  centric_fom + acentric_fom
+      self.fom = self.sigmaa.customized_copy(data=final_fom)
+    return self.fom
 
   def alpha_beta(self):
+    if self.alpha is None:
+      self.alpha = self.sigmaa*flex.sqrt(
+        self.normalized_obs_f.normalizer_for_miller_array/
+        self.normalized_calc_f.normalizer_for_miller_array)
+      self.beta = (1.0-self.sigmaa*self.sigmaa)*\
+                  self.normalized_obs_f.normalizer_for_miller_array
+      self.alpha = self.miller_obs.array(data=self.alpha)
+      self.beta = self.miller_obs.array(data=self.beta)
+
     return self.alpha, self.beta
 
   def show(self, out=None):
