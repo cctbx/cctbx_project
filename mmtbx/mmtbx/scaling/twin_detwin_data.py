@@ -1,3 +1,42 @@
+"""
+The following phil scope is expected for the massage_data class:
+     hklout = None
+     hklout_type=mtz sca *mtz_or_sca
+     label_extension="massaged"
+     aniso{
+       action=*remove_aniso None
+       final_b=*eigen_min eigen_mean user_b_iso
+       b_iso=None
+     }
+     outlier{
+       action=*extreme basic beamstop None
+       parameters{
+         basic_wilson{
+          level=1E-6
+         }
+         extreme_wilson{
+           level=0.01
+         }
+         beamstop{
+           level=0.001
+           d_min=10.0
+         }
+       }
+     }
+     symmetry{
+       action=detwin twin *None
+       twinning_parameters{
+         twin_law=None
+         fraction=None
+       }
+     }
+   }
+
+"""
+
+
+
+
 from cctbx import maptbx
 from cctbx import miller
 from cctbx import crystal
@@ -20,6 +59,57 @@ from libtbx.utils import null_out
 from cStringIO import StringIO
 from scitbx.python_utils import easy_pickle
 import sys, os
+
+
+master_params = iotbx.phil.parse("""
+     hklout = None
+     .type=path
+     hklout_type=mtz sca *mtz_or_sca
+     .type=choice
+     label_extension="massaged"
+     .type=str
+     aniso{
+       action=*remove_aniso None
+       .type=choice
+       final_b=*eigen_min eigen_mean user_b_iso
+       .type=choice
+       b_iso=None
+       .type=float
+     }
+     outlier{
+       action=*extreme basic beamstop None
+       .type=choice
+       parameters{
+         basic_wilson{
+          level=1E-6
+          .type=float
+         }
+         extreme_wilson{
+           level=0.01
+           .type=float
+         }
+         beamstop{
+           level=0.001
+           .type=float
+           d_min=10.0
+           .type=float
+         }
+       }
+     }
+     symmetry{
+       action=detwin twin *None
+       .type=choice
+       twinning_parameters{
+         twin_law=None
+         .type=str
+         fraction=None
+         .type=float
+       }
+     }
+   
+  """)
+
+
 
 class twin_data(object):
   def __init__(self,
