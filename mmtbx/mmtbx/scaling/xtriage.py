@@ -118,7 +118,7 @@ scaling.input {
    {
      hklout = None
      .type=path
-     hklout_type=*mtz sca
+     hklout_type=mtz sca *mtz_or_sca
      .type=choice
      do_analyses=True
      .type=bool
@@ -131,18 +131,34 @@ scaling.input {
        .type=float
      }
      outlier{
-       action=*extreme_value basic None
+       action=*extreme basic beamstop None
        .type=choice
-       p_value=1e-2
-       .type=float
+       parameters{
+         basic_wilson{
+          level=1E-6
+          .type=float
+         }
+         extreme_wilson{
+           level=0.01
+           .type=float
+         }
+         beamstop{
+           level=0.001
+           .type=float
+           d_min=10.0
+           .type=float
+         }
+       }
      }
-     twinning{
+     symmetry{
        action=detwin twin *None
        .type=choice
-       twin_law=None
-       .type=str
-       fraction=None
-       .type=float
+       twinning_parameters{
+         twin_law=None
+         .type=str
+         fraction=None
+         .type=float
+       }
      }
    }
    expert_level=1
@@ -705,15 +721,12 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
                                          plot_out    = string_buffer )
 
     if params.scaling.input.optional.hklout is not None:
-      if params.scaling.input.optional.twinning.action == "detwin":
-        twin_detwin_data.detwin_data(miller_array,
-                                     params,
-                                     log)
 
-      if params.scaling.input.optional.twinning.action == "twin":
-        twin_detwin_data.twin_data(miller_array,
-                                   params,
-                                   log)
+      massage_object = twin_detwin_data.massage_data(
+        miller_array=raw_data,
+        parameters=params.scaling.input.optional,
+        out=log)
+      massage_object.write_data()
 
     ## Append the CCP4i plots to the log StringIO object if desired
     if params.scaling.input.parameters.reporting.ccp4_style_graphs:
