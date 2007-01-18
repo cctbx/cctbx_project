@@ -176,18 +176,21 @@ class sigmaa_estimator(object):
         fit_lsq.coefs)
     def reverse_reparam(values): return 1.0/(1.0 + flex.exp(-values))
     self.sigmaa_fitted = reverse_reparam(cheb_pol.f(self.h_array))
-    self.sigmaa = reverse_reparam(cheb_pol.f(d_star_cubed_overall))
-    assert flex.min(self.sigmaa) >= 0
-    assert flex.max(self.sigmaa) <= 1
-    self.sigmaa = self.miller_obs.array(data=self.sigmaa)
+    self.sigmaa_miller_array = reverse_reparam(cheb_pol.f(d_star_cubed_overall))
+    assert flex.min(self.sigmaa_miller_array) >= 0
+    assert flex.max(self.sigmaa_miller_array) <= 1
+    self.sigmaa_miller_array = self.miller_obs.array(data=self.sigmaa_miller_array)
 
 
     self.alpha = None
     self.beta = None
-    self.fom = None
+    self.fom_array = None
+
+  def sigmaa(self):
+    return self.sigmaa_miller_array
 
   def fom(self):
-    if self.fom is None:
+    if self.fom_array is None:
       tmp_x = self.sigmaa.data()*self.normalized_calc.data()*self.normalized_obs.data()
       tmp_x = tmp_x / (1.0-self.sigmaa.data()*self.sigmaa.data())
       centric_fom = flex.tanh( tmp_x )
@@ -197,8 +200,8 @@ class sigmaa_estimator(object):
       centric_fom  = centric_fom.set_selected( ~centrics, 0 )
       acentric_fom = acentric_fom.set_selected( centrics, 0 )
       final_fom =  centric_fom + acentric_fom
-      self.fom = self.sigmaa.customized_copy(data=final_fom)
-    return self.fom
+      self.fom_array = self.sigmaa.customized_copy(data=final_fom)
+    return self.fom_array
 
   def alpha_beta(self):
     if self.alpha is None:
