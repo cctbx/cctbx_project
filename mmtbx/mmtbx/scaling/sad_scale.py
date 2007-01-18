@@ -235,7 +235,7 @@ def run(args):
         delta_gen.abs_delta_f,
         params.scaling.input.omit )
       omit_object.write_datasets()
-      
+
 
 
 

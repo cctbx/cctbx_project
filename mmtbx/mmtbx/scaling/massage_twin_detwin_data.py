@@ -106,7 +106,7 @@ master_params = iotbx.phil.parse("""
          .type=float
        }
      }
-   
+
   """)
 
 
