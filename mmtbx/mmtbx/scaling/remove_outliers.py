@@ -55,7 +55,7 @@ outlier_utils{
     }
   }
   outlier_detection{
-    protocol=basic *extreme model
+    protocol=basic *extreme beamstop model
     .type=choice
     parameters{
       basic_wilson{
@@ -120,7 +120,7 @@ outlier_utils{
     }
   }
   outlier_detection{
-    protocol=basic *extreme model    << outlier protocol. See below.
+    protocol=basic *extreme beamstop model   << outlier protocol. See below.
     parameters{
       basic_wilson{
         level=1E-6                   << Outlier rejection level for protocol basic
