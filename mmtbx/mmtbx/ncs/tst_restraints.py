@@ -39,7 +39,7 @@ def finite_difference_site_gradients(
 
 def exercise_two_models_with_holes(processed_pdb):
   selection_strings=["chain A", "chain B", "chain C", "chain D"]
-  group = ncs.restraints.group(
+  group = ncs.restraints.group.from_atom_selections(
     processed_pdb=processed_pdb,
     reference_selection_string=None,
     selection_strings=selection_strings,
@@ -215,7 +215,7 @@ Y$  " C   THR D   6 ":   10.80 -   10.99 =  -0.1925
         (None,1.234),
         (0.1,None)]:
     groups.members.append(
-      ncs.restraints.group(
+      ncs.restraints.group.from_atom_selections(
         processed_pdb=processed_pdb,
         reference_selection_string=None,
         selection_strings=selection_strings,
@@ -381,7 +381,7 @@ def exercise(args):
         ener_lib=ener_lib,
         file_name=os.path.join(ncs_dir, file_name),
         log=log)
-      group = ncs.restraints.group(
+      group = ncs.restraints.group.from_atom_selections(
         processed_pdb=processed_pdb,
         reference_selection_string=None,
         selection_strings=["chain A", "chain B"],
@@ -400,7 +400,7 @@ def exercise(args):
       file_name=os.path.join(ncs_dir, "no_match.pdb"),
       log=log)
     try:
-      ncs.restraints.group(
+      ncs.restraints.group.from_atom_selections(
         processed_pdb=processed_pdb,
         reference_selection_string=None,
         selection_strings=["chain A", "chain B"],
@@ -413,7 +413,7 @@ NCS restraints selections do not produce any pairs of matching atoms:
       Other selection: "chain B"''')
     else: raise RuntimeError("Exception expected.")
     try:
-      ncs.restraints.group(
+      ncs.restraints.group.from_atom_selections(
         processed_pdb=processed_pdb,
         reference_selection_string=None,
         selection_strings=["chain A", "chain C"],
