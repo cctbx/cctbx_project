@@ -116,56 +116,13 @@ scaling.input {
    optional
    .expert_level=10
    {
-     hklout = None
-     .type=path
-     hklout_type=mtz sca *mtz_or_sca
-     .type=choice
-     label_extension="massaged"
-     .type=str
-     aniso{
-       action=*remove_aniso None
-       .type=choice
-       final_b=*eigen_min eigen_mean user_b_iso
-       .type=choice
-       b_iso=None
-       .type=float
-     }
-     outlier{
-       action=*extreme basic beamstop None
-       .type=choice
-       parameters{
-         basic_wilson{
-          level=1E-6
-          .type=float
-         }
-         extreme_wilson{
-           level=0.01
-           .type=float
-         }
-         beamstop{
-           level=0.001
-           .type=float
-           d_min=10.0
-           .type=float
-         }
-       }
-     }
-     symmetry{
-       action=detwin twin *None
-       .type=choice
-       twinning_parameters{
-         twin_law=None
-         .type=str
-         fraction=None
-         .type=float
-       }
-     }
+     include scope mmtbx.scaling.twin_detwin_data.master_params
    }
    expert_level=1
    .type=int
    .expert_level=10
 }
-""")
+""", process_includes=True)
 
 
 def print_banner(appl, out=None):
@@ -263,17 +220,26 @@ The program options are summarized below
 
 7. scope: optional
    keys: * hklout :: output mtz or sca file
-         * hklout_type :: sca or mtz
-         * aniso.action:: remove_aniso or not (Not compatible with detwinning)
-         * aniso.use_trace_min: scale with minimum component of trace of b
-                                instead of average
-         * twinning.action :: Whether to twin, detwin or leave the data alone (do nothing)
-         * twinning.twin_law :: using this twin law (h,k,l or  a,b,c or x,y,z notation)
-         * twinning.fraction :: The detwinning fraction.
-         * b_value :: the resulting Wilson B value
+         * hklout_type :: sca, mtz or mtz_or_sca.
+                          mtz_or_sca auto detects the format on the basis of the extension of hklout.
+         * aniso.action :: remove_aniso or not
+         * aniso.final_b :: the final b after anisotropy correction.
+                            Choices are the mean or smallest eigenvalue of B-cart.
+                            A user supplied B-value can be chosen as well by selection user_b_iso
+                            and specifying aniso.b_iso
+         * symmetry.action :: Whether to twin, detwin or leave the data alone (do nothing)
+         * symmetry.twinning_parameters.twin_law :: using this twin law (h,k,l or  a,b,c or x,y,z notation)
+         * twinning.twinning_parameters.fraction :: The detwinning fraction.
+         * outlier.action :: what type of outlier rejection to perform.
+                             extreme: uses extreme value statistics
+                             basic: uses normal wilson statistics
+                             beamstop: only rejects very weak low resolution reflections
+                             specific parameters can be set in the outlier.parameters scope.
+                             Defaults should be fine.
 
-   The output mtz file contains an anisotropy corrected mtz file, with suspected outliers removed.
-   The data is scaled and has the specified Wilson B value.
+   This section controls a set of processes that allows the user to perform outlier rejection,
+   anisotropy correction and twinning/detwinning. It is not dependent on the results from the xtriage
+   analyses.
    These options have an associated expert level of 10, and are not shown by default. Specification
    of the expert level on the command line as 'level=100' will show all available options.
 
@@ -283,8 +249,6 @@ Example usage:
 
   The commands
     %(appl)s xray_data.file_name=my_refl.mtz
-    %(appl)s file_name=my_refl.mtz
-    %(appl)s file=my_refl.mtz
     %(appl)s my_refl.mtz
   are equivalent.
 
@@ -415,7 +379,6 @@ def run(command_name, args):
     reflection_file = None
 
     for arg in args:
-      print phil_objects
       command_line_params = None
       arg_is_processed = False
       if arg == '--quiet':
@@ -459,11 +422,11 @@ def run(command_name, args):
 
 
       if not arg_is_processed:
-        print >> log, "##----------------------------------------------##"
+        print >> log, "##--------------------------------------------------------------------##"
         print >> log, "## Unknown phil-file or phil-command:", arg
-        print >> log, "##----------------------------------------------##"
+        print >> log, "##--------------------------------------------------------------------##"
         print >> log
-        raise Sorry("Unknown file format or phil command: %s" % arg)
+        #raise Sorry("Unknown file format or phil command: %s" % arg)
 
     effective_params = master_params.fetch(sources=phil_objects)
     params = effective_params.extract()
