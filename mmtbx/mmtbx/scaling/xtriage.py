@@ -14,7 +14,7 @@ import mmtbx.scaling
 from mmtbx.scaling import absolute_scaling
 from mmtbx.scaling import matthews, twin_analyses
 from mmtbx.scaling import basic_analyses, pair_analyses
-from mmtbx.scaling import twin_detwin_data
+from mmtbx.scaling import massage_twin_detwin_data
 import libtbx.phil.command_line
 from cStringIO import StringIO
 from libtbx.utils import null_out
@@ -116,7 +116,7 @@ scaling.input {
    optional
    .expert_level=10
    {
-     include scope mmtbx.scaling.twin_detwin_data.master_params
+     include scope mmtbx.scaling.massage_twin_detwin_data.master_params
    }
    expert_level=1
    .type=int
@@ -685,7 +685,7 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
 
     if params.scaling.input.optional.hklout is not None:
 
-      massage_object = twin_detwin_data.massage_data(
+      massage_object = massage_twin_detwin_data.massage_data(
         miller_array=raw_data,
         parameters=params.scaling.input.optional,
         out=log)
