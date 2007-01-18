@@ -14,7 +14,7 @@ from cctbx.array_family import flex
 from scitbx.python_utils import dicts
 from libtbx.str_utils import show_string
 from libtbx.utils import flat_list, Sorry, user_plus_sys_time, plural_s
-from libtbx.utils import format_exception, group_args
+from libtbx.utils import format_exception, group_args, buffered_indentor
 from cStringIO import StringIO
 import string
 import sys
@@ -2527,6 +2527,57 @@ class process(object):
           show_gaussians=False, out = log, prefix="  ")
         flush_log(log)
     return self._xray_structure
+
+  def show_selected_atoms(self,
+        selection,
+        header_lines=None,
+        out=None,
+        prefix=""):
+    atom_attributes_list = self.all_chain_proxies.stage_1.atom_attributes_list
+    assert selection.size() == len(atom_attributes_list)
+    if (out is None): out = sys.stdout
+    buffer_main = buffered_indentor(file_object=out, indent=prefix)
+    if (header_lines is not None):
+      for line in header_lines:
+        print >> buffer_main, line
+    selection = selection.deep_copy()
+    for i_model,model in enumerate(self.all_chain_proxies.processed_models):
+      buffer_model = buffer_main.shift_right()
+      print >> buffer_model, "Model %d," % (i_model+1), \
+        "PDB serial number:", model.serial
+      for i_conformer,conformer in enumerate(model.conformers):
+        buffer_conformer = buffer_model.shift_right()
+        print >> buffer_conformer, "Conformer %d," % (i_conformer+1), \
+          "PDB altLoc:", show_string(conformer.altLoc)
+        for i_chain,chain in enumerate(conformer.chains):
+          buffer_chain = buffer_conformer.shift_right()
+          print >> buffer_chain, "Chain %d," % (i_chain+1), \
+            "PDB chainID: %s," % show_string(chain.chainID), \
+            "segID: %s" % show_string(chain.segID)
+          for mm in chain.monomer_mapping_summaries():
+            i_seqs = mm.all_associated_i_seqs()
+            if (selection.select(i_seqs).count(True) > 0):
+              buffer_residue = buffer_chain.shift_right()
+              print >> buffer_residue, \
+                '"' + atom_attributes_list[i_seqs[0]].pdb_format()[6:]
+              for i_seq in i_seqs:
+                buffer_atom = buffer_residue.shift_right()
+                if (selection[i_seq]):
+                  selection[i_seq] = False
+                  print >> buffer_atom, \
+                    atom_attributes_list[i_seq].pdb_format()[:6]+'"'
+                  buffer_atom.write_buffer()
+
+  def show_atoms_without_ncs_restraints(self,
+        ncs_restraints_groups,
+        out=None,
+        prefix=""):
+    self.show_selected_atoms(
+      selection=~ncs_restraints_groups.selection_restrained(
+        n_seq=len(self.all_chain_proxies.stage_1.atom_attributes_list)),
+      header_lines=["Atoms without NCS restraints:"],
+      out=out,
+      prefix=prefix)
 
 def run(
       args,

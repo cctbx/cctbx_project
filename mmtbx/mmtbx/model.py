@@ -110,10 +110,8 @@ class manager(object):
     self.solvent_selection = new_solvent_selection
     self.xray_structure.scattering_type_registry()
     if(self.restraints_manager is not None):
-       self.restraints_manager = mmtbx.restraints.manager(
-               geometry      = self.restraints_manager.geometry.select(selection),
-               ncs_groups    = self.restraints_manager.ncs_groups,
-               normalization = self.restraints_manager.normalization)
+      self.restraints_manager = self.restraints_manager.select(
+        selection=selection)
     if(self.refinement_flags is not None):
        self.refinement_flags = self.refinement_flags.select(selection)
 

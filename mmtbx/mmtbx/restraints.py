@@ -14,6 +14,20 @@ class manager(object):
     self.ncs_groups = ncs_groups
     self.normalization = normalization
 
+  def select(self, selection):
+    if (self.geometry is None):
+      geometry = None
+    else:
+      geometry = self.geometry.select(selection=selection)
+    if (self.ncs_groups is None):
+      ncs_groups = None
+    else:
+      ncs_groups = self.ncs_groups.select(selection=selection)
+    return manager(
+      geometry=geometry,
+      ncs_groups=ncs_groups,
+      normalization=self.normalization)
+
   def energies_sites(self,
         sites_cart,
         geometry_flags=None,
