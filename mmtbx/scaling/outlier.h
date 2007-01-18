@@ -473,7 +473,10 @@ namespace mmtbx { namespace scaling { namespace outlier{
       current_h_(-1),
       width_(width),
       eps_(1e-5),
-      sigmaa_upper_bound_(1-eps_*eps_)
+      sigmaa_upper_bound_(1-eps_*eps_),
+      log_two_(std::log(2.0)),
+      log_two_minus_log_pi_( std::log(2.0)-std::log(scitbx::constants::pi) )
+
       {
         SCITBX_ASSERT(width > 0);
         SCITBX_ASSERT( e_obs.size() == e_calc.size() );
@@ -482,15 +485,19 @@ namespace mmtbx { namespace scaling { namespace outlier{
         for (int ii=0;ii<e_obs.size();ii++){
           SCITBX_ASSERT( e_obs[ii]>= 0);
           SCITBX_ASSERT( e_calc[ii]>= 0);
-
-          e_obs_.push_back( e_obs[ii] );
-          e_calc_.push_back( e_calc[ii] );
-          centric_.push_back( centric[ii] ) ;
-          d_star_cubed_.push_back( d_star_cubed[ii] );
-          distance_.push_back(0.0);
-
+          shrd_e_obs_.push_back( e_obs[ii] );
+          shrd_e_calc_.push_back( e_calc[ii] );
+          shrd_centric_.push_back( centric[ii] ) ;
+          shrd_d_star_cubed_.push_back( d_star_cubed[ii] );
+          shrd_distance_.push_back(0.0);
         }
-      }
+
+        e_obs_  = shrd_e_obs_.const_ref();
+        e_calc_ = shrd_e_calc_.const_ref();
+        centric_= shrd_centric_.const_ref();
+        d_star_cubed_ = shrd_d_star_cubed_.const_ref();
+        distance_ = shrd_distance_.const_ref();
+       }
 
       void
       update_current_h(FloatType const& h)
@@ -509,7 +516,7 @@ namespace mmtbx { namespace scaling { namespace outlier{
       sum_weights(FloatType const& h)
       {
         update_current_h(h);
-        return scitbx::af::sum(distance_.const_ref());
+        return scitbx::af::sum(distance_);
       }
 
       FloatType target(FloatType const& h,
@@ -538,8 +545,99 @@ namespace mmtbx { namespace scaling { namespace outlier{
         return(result);
       }
 
+      scitbx::af::tiny<FloatType,2> target_and_gradient( FloatType const& h,
+                                                         FloatType const& sigmaa )
+        {
+          scitbx::af::tiny<FloatType,2> result, tmp;
+          result[0]=0;
+          result[1]=0;
+          update_current_h(h);
+          for (int ii=0;ii<e_obs_.size();ii++){
+            tmp = compute_single_target_and_gradient(ii,sigmaa);
+            result[0]+=distance_[ii] *tmp[0];
+            result[1]+=distance_[ii] *tmp[1];
+          }
+          return result;
+        }
+
+
   protected:
       //--------------------------
+
+
+      scitbx::af::tiny<FloatType,2> compute_single_target_and_gradient(int const& ii,
+                                                                       FloatType sigmaa)
+        {
+          if (centric_[ii]){
+            return( target_and_gradient_single_centric( ii, sigmaa) );
+          } else {
+            return( target_and_gradient_single_acentric( ii, sigmaa) );
+          }
+        }
+
+      scitbx::af::tiny<FloatType,2> target_and_gradient_single_acentric(int const& ii,
+                                                                        FloatType sigmaa)
+        {
+          scitbx::af::tiny<FloatType,2> result;
+          FloatType target,grad,x,a1,a2,a3,tmp0,tmp1,tmp2,eos,ecs,eoc;
+          //precompute some stuff
+          eos=e_obs_[ii]*e_obs_[ii];
+          ecs=e_calc_[ii]*e_calc_[ii];
+          eoc=e_obs_[ii]*e_calc_[ii];
+          tmp0=sigmaa*sigmaa;
+          tmp1=1.0/(1.0-tmp0);
+          tmp2=tmp1*tmp1;
+          x = sigmaa*2.0*eoc*tmp1;
+          // target part
+          target  = log_two_ + std::log(e_obs_[ii]) + std::log( tmp1 );
+          target += -(eos + tmp0*ecs)*tmp1;
+          target += scitbx::math::bessel::ln_of_i0(x);
+          // gradient part
+          a1  = 2.0*sigmaa*tmp1;
+          a2 = -2.0*sigmaa*(eos + ecs)*tmp2;
+          a3 = -2.0*eoc*(1.0+tmp0)*scitbx::math::bessel::i1_over_i0(-x)*tmp2;
+          grad = a1+a2+a3;
+          result[0]=target;
+          result[1]=grad;
+          return (result);
+        }
+
+      scitbx::af::tiny<FloatType,2> target_and_gradient_single_centric(int const& ii,
+                                                                       FloatType sigmaa)
+        {
+          scitbx::af::tiny<FloatType,2> result;
+          FloatType target,grad,x,a1,a2,a3,tmp0,tmp1,tmp2,eos,ecs,eoc;
+          //precompute some stuff
+          eos=e_obs_[ii]*e_obs_[ii];
+          ecs=e_calc_[ii]*e_calc_[ii];
+          eoc=e_obs_[ii]*e_calc_[ii];
+          tmp0=sigmaa*sigmaa;
+          tmp1=1.0/(1.0-tmp0);
+          tmp2=tmp1*tmp1;
+          x = sigmaa*eoc*tmp1;
+          a1= (log_two_minus_log_pi_ + std::log(tmp1) );
+          a2=-(eos+tmp0*ecs)*tmp1;
+          if (x>40){
+            // a simple approximation to avoid problems
+            a3 = x*0.999921 - 0.65543;
+          } else {
+            a3 = std::log( std::cosh( x ) );
+          }
+          target = (a1+a2)/2.0+a3;
+          // gradient part
+          a1=sigmaa*tmp1;
+          a2=-sigmaa*(eos+ecs)*tmp2;
+          a3=eoc*(1+tmp0)*std::tanh(x)*tmp2;
+          grad=a1+a2+a3;
+          result[0]=target;
+          result[1]=grad;
+          return(result);
+        }
+
+
+
+
+
 
       inline FloatType compute_single_target(int const& ii,
                                              FloatType const& sigmaa)
@@ -633,21 +731,29 @@ namespace mmtbx { namespace scaling { namespace outlier{
             result = current_h_- d_star_cubed_[ii];
             result = result/width_;
             result = std::exp(-result*result/2.0);
-            distance_[ii]=result;
+            shrd_distance_[ii]=result;
           }
         }
 
 
-      scitbx::af::shared<FloatType> e_obs_;
-      scitbx::af::shared<FloatType> e_calc_;
-      scitbx::af::shared<FloatType> centric_;
-      scitbx::af::shared<FloatType> d_star_cubed_;
-      scitbx::af::shared<FloatType> distance_;
+      scitbx::af::const_ref<FloatType> e_obs_;
+      scitbx::af::const_ref<FloatType> e_calc_;
+      scitbx::af::const_ref<FloatType> centric_;
+      scitbx::af::const_ref<FloatType> d_star_cubed_;
+      scitbx::af::const_ref<FloatType> distance_;
+
+      scitbx::af::shared<FloatType> shrd_e_obs_;
+      scitbx::af::shared<FloatType> shrd_e_calc_;
+      scitbx::af::shared<FloatType> shrd_centric_;
+      scitbx::af::shared<FloatType> shrd_d_star_cubed_;
+      scitbx::af::shared<FloatType> shrd_distance_;
 
       FloatType current_h_;
       FloatType width_;
       FloatType eps_;
       FloatType sigmaa_upper_bound_;
+      FloatType log_two_;
+      FloatType log_two_minus_log_pi_;
   };
 
 
