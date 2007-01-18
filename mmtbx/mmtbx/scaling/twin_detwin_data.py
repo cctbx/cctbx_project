@@ -136,7 +136,7 @@ class massage_data(object):
                n_bases=0):
 
     self.params=parameters
-    self.miller_array=miller_array
+    self.miller_array=miller_array.deep_copy().set_observation_type(miller_array)
     self.out = out
     if self.out is None:
       self.out = sys.stdout
@@ -179,7 +179,7 @@ class massage_data(object):
       ## I do things in two steps, but can easely be done in 1 step
       ## just for clarity, thats all.
       self.no_aniso_array = absolute_scaling.anisotropic_correction(
-        miller_array_new,0.0,aniso_scale_and_b.u_star )
+        self.miller_array,0.0,aniso_scale_and_b.u_star )
       self.no_aniso_array = absolute_scaling.anisotropic_correction(
         self.no_aniso_array,0.0,u_star_aniso_removed)
       self.no_aniso_array = self.no_aniso_array.set_observation_type(
@@ -240,6 +240,9 @@ class massage_data(object):
       self.final_array = detwinner.detwin_it(alpha=self.params.symmetry.twinning_parameters.fraction)
 
     assert self.final_array is not None
+
+  def return_data(self):
+    return self.final_array
 
   def write_data(self):
     ## write out this miller array as sca if directed to do so:
