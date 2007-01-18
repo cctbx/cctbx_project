@@ -14,6 +14,7 @@ import scitbx.stl
 from libtbx.str_utils import show_string
 from libtbx.itertbx import count
 from libtbx.utils import Sorry
+from libtbx import adopt_init_args
 import sys
 
 class selection_properties(object):
@@ -259,7 +260,7 @@ class pair_lists_generator(object):
 
 class group(object):
 
-  def __init__(self,
+  def from_atom_selections(
         processed_pdb,
         reference_selection_string,
         selection_strings,
@@ -270,12 +271,22 @@ class group(object):
       processed_pdb=processed_pdb,
       reference_selection_string=reference_selection_string,
       selection_strings=selection_strings)
-    self.registry = g.registry
-    self.selection_strings = g.selection_strings
-    self.selection_pairs = g.registry.selection_pairs()
-    self.coordinate_sigma = coordinate_sigma
-    self.b_factor_weight = b_factor_weight
-    self.u_average_min = u_average_min
+    return group(
+      selection_strings=g.selection_strings,
+      registry=g.registry,
+      coordinate_sigma=coordinate_sigma,
+      b_factor_weight=b_factor_weight,
+      u_average_min=u_average_min)
+  from_atom_selections = staticmethod(from_atom_selections)
+
+  def __init__(self,
+        selection_strings,
+        registry,
+        coordinate_sigma,
+        b_factor_weight,
+        u_average_min):
+      adopt_init_args(self, locals())
+      self.selection_pairs = registry.selection_pairs()
 
   def select(self, selection):
     raise RuntimeError("Not implemented.")
