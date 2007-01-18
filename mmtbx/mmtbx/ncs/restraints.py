@@ -266,7 +266,6 @@ class group(object):
         coordinate_sigma,
         b_factor_weight,
         u_average_min=1.e-6):
-    self.processed_pdb = processed_pdb
     g = pair_lists_generator(
       processed_pdb=processed_pdb,
       reference_selection_string=reference_selection_string,
@@ -356,13 +355,8 @@ class _energies_adp_iso(scitbx.restraints.energies):
     self.u_isos_count = u_isos_count
     self.u_isos_average = u_isos_average
 
-  def show_differences_to_average(self, site_labels=None, out=None, prefix=""):
+  def show_differences_to_average(self, site_labels, out=None, prefix=""):
     if (out is None): out = sys.stdout
-    if (site_labels is None):
-      site_labels = [
-        atom.pdb_format() for atom in
-          self.group.processed_pdb.all_chain_proxies.stage_1
-            .atom_attributes_list]
     assert len(site_labels) == self.u_isos.size()
     max_label_size = 1
     for label in site_labels:
@@ -388,7 +382,6 @@ class _operators(object):
 
   def __init__(self, group, sites_cart):
     self.group = group
-    sites_cart = self._sites_cart(sites_cart)
     self.matrices = []
     for pair in self.group.selection_pairs:
       superposition = superpose.least_squares_fit(
@@ -403,7 +396,6 @@ class _operators(object):
         prefix=""):
     if (out is None): out = sys.stdout
     selection_strings = self.group.selection_strings
-    sites_cart = self._sites_cart(sites_cart)
     for i_op,pair,mx in zip(
           count(1),
           self.group.selection_pairs,
@@ -432,13 +424,6 @@ class _operators(object):
         prefix + "  RMS difference with respect to the reference: %8.6f" % (
           flex.mean(d_sq)**0.5)
 
-  def _sites_cart(self, sites_cart):
-    stage_1 = self.group.processed_pdb.all_chain_proxies.stage_1
-    if (sites_cart is None):
-      sites_cart = stage_1.get_sites_cart()
-    assert sites_cart.size() == len(stage_1.atom_attributes_list)
-    return sites_cart
-
   def energies_sites(self,
         sites_cart,
         compute_gradients=True,
@@ -446,7 +431,7 @@ class _operators(object):
         sites_average=None):
     return _energies_sites(
       operators=self,
-      sites_cart=self._sites_cart(sites_cart),
+      sites_cart=sites_cart,
       compute_gradients=compute_gradients,
       gradients=gradients,
       sites_average=sites_average)
@@ -522,13 +507,8 @@ class _energies_sites(scitbx.restraints.energies):
     if (self.gradients is not None):
       return (2 * self.weight) * diff
 
-  def show_distances_to_average(self, site_labels=None, out=None, prefix=""):
+  def show_distances_to_average(self, site_labels, out=None, prefix=""):
     if (out is None): out = sys.stdout
-    if (site_labels is None):
-      site_labels = [
-        atom.pdb_format() for atom in
-          self.operators.group.processed_pdb.all_chain_proxies.stage_1
-            .atom_attributes_list]
     assert len(site_labels) == self.sites_cart.size()
     max_label_size = 1
     for label in site_labels:
@@ -600,7 +580,7 @@ class groups(object):
 
   def show_adp_iso_differences_to_average(self,
          u_isos,
-         site_labels=None,
+         site_labels,
          out=None,
          prefix=""):
     for i_group,group in enumerate(self.members):
@@ -664,7 +644,7 @@ class groups(object):
 
   def show_sites_distances_to_average(self,
          sites_cart,
-         site_labels=None,
+         site_labels,
          out=None,
          prefix=""):
     for i_group,group in enumerate(self.members):

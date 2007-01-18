@@ -46,9 +46,9 @@ def exercise_two_models_with_holes(processed_pdb):
     coordinate_sigma=0.05,
     b_factor_weight=0.4321)
   sites_cart = processed_pdb.all_chain_proxies.stage_1.get_sites_cart()
-  ncs_operators = group.operators(sites_cart=None)
+  ncs_operators = group.operators(sites_cart=sites_cart)
   out = StringIO()
-  ncs_operators.show(sites_cart=None, out=out, prefix="{*")
+  ncs_operators.show(sites_cart=sites_cart, out=out, prefix="{*")
   assert not show_diff(out.getvalue(), """\
 {*NCS operator 1:
 {*  Reference selection: "chain A"
@@ -100,7 +100,7 @@ def exercise_two_models_with_holes(processed_pdb):
 {*  RMS difference with respect to the reference: 0.724248
 """)
   energies_sites_no_gradients = ncs_operators.energies_sites(
-    sites_cart=None, compute_gradients=False)
+    sites_cart=sites_cart, compute_gradients=False)
   assert energies_sites_no_gradients.number_of_restraints == 114
   assert eps_eq(energies_sites_no_gradients.residual_sum, 7173.85077391)
   assert eps_eq(energies_sites_no_gradients.target, 7173.85077391)
@@ -108,7 +108,7 @@ def exercise_two_models_with_holes(processed_pdb):
   assert eps_eq(energies_sites_no_gradients.rms_with_respect_to_average,
     [0.41634839722020417, 0.36587351734294055,
      0.40045430793729697, 0.39662478265194723])
-  energies_sites = ncs_operators.energies_sites(sites_cart=None)
+  energies_sites = ncs_operators.energies_sites(sites_cart=sites_cart)
   assert energies_sites_no_gradients.number_of_restraints \
       == energies_sites.number_of_restraints
   assert energies_sites_no_gradients.residual_sum \
@@ -118,8 +118,12 @@ def exercise_two_models_with_holes(processed_pdb):
   assert eps_eq(energies_sites.gradients.norm(), 3397.62130783)
   assert eps_eq(energies_sites.rms_with_respect_to_average,
    energies_sites_no_gradients.rms_with_respect_to_average)
+  site_labels = [
+    atom.pdb_format() for atom in
+      processed_pdb.all_chain_proxies.stage_1.atom_attributes_list]
   out = StringIO()
-  energies_sites.show_distances_to_average(out=out, prefix="#^")
+  energies_sites.show_distances_to_average(
+    site_labels=site_labels, out=out, prefix="#^")
   assert not show_diff(out.getvalue(), """\
 #^NCS selection: "chain A"
 #^                     Distance to NCS average
@@ -166,7 +170,8 @@ def exercise_two_models_with_holes(processed_pdb):
   assert eps_eq(energies_adp_iso.rms_with_respect_to_average,
                 eng.rms_with_respect_to_average)
   out = StringIO()
-  energies_adp_iso.show_differences_to_average(out=out, prefix="Y$")
+  energies_adp_iso.show_differences_to_average(
+    site_labels=site_labels, out=out, prefix="Y$")
   assert not show_diff(out.getvalue().replace(" 7.66 = ", " 7.65 = "), """\
 Y$NCS selection: "chain A"
 Y$                       B-iso   NCS ave  Difference
@@ -250,7 +255,7 @@ Y$  " C   THR D   6 ":   10.80 -   10.99 =  -0.1925
   assert energies_sites.rms_with_respect_to_averages[1] is None
   out = StringIO()
   groups.show_adp_iso_differences_to_average(
-    u_isos=u_isos, out=out, prefix="W@")
+    u_isos=u_isos, site_labels=site_labels, out=out, prefix="W@")
   assert not show_diff(out.getvalue(), """\
 W@NCS restraint group 1:
 W@  weight: 0.4321
@@ -263,7 +268,7 @@ W@NCS restraint group 3:
 W@  b_factor_weight: None  =>  restraints disabled
 """, selections=[range(5),range(-3,0)])
   out = StringIO()
-  groups.show_operators(sites_cart=None, out=out, prefix="K&")
+  groups.show_operators(sites_cart=sites_cart, out=out, prefix="K&")
   assert not show_diff(out.getvalue(), """\
 K&NCS restraint group 1:
 K&  NCS operator 1:
@@ -281,7 +286,8 @@ K&      0.988659 - 1.132195: 3
 K&    RMS difference with respect to the reference: 0.724248
 """, selections=[range(3),range(15,21),range(-3,0)])
   out = StringIO()
-  groups.show_sites_distances_to_average(sites_cart=None, out=out, prefix="[")
+  groups.show_sites_distances_to_average(
+    sites_cart=sites_cart, site_labels=site_labels, out=out, prefix="[")
   assert not show_diff(out.getvalue(), """\
 [NCS restraint group 1:
 [  coordinate_sigma: 0.05
