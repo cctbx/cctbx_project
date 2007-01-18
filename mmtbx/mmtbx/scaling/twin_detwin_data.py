@@ -263,7 +263,6 @@ class massage_data(object):
         base_label = "I"
       if self.final_array.is_xray_amplitude_array():
         base_label = "F"
-      print self.final_array.observation_type()
-      mtz_dataset = self.no_aniso_array.as_mtz_dataset(
-        column_root_label=base_label+'massaged')
+      mtz_dataset = self.final_array.as_mtz_dataset(
+        column_root_label=base_label+self.params.label_extension)
       mtz_dataset.mtz_object().write(output_file)

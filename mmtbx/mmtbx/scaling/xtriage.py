@@ -120,8 +120,8 @@ scaling.input {
      .type=path
      hklout_type=mtz sca *mtz_or_sca
      .type=choice
-     do_analyses=True
-     .type=bool
+     label_extension="massaged"
+     .type=str
      aniso{
        action=remove_aniso *None
        .type=choice
