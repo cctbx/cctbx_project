@@ -95,8 +95,11 @@ namespace{
                 arg_("sigmaa")
                 ))
              )
-
-
+        .def("target_and_gradient", &w_t::target_and_gradient,
+             (( arg_("d_star_cubed"),
+                arg_("sigmaa")
+                ))
+             )
         ;
     }
 
