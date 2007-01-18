@@ -123,7 +123,7 @@ scaling.input {
      label_extension="massaged"
      .type=str
      aniso{
-       action=remove_aniso *None
+       action=*remove_aniso None
        .type=choice
        final_b=*eigen_min eigen_mean user_b_iso
        .type=choice
