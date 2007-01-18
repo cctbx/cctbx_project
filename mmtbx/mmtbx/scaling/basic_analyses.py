@@ -150,22 +150,7 @@ class basic_analyses(object):
     self.no_aniso_array = self.no_aniso_array.set_observation_type(
       miller_array )
 
-    """
-    ## write out this miller array as sca if directed to do so:
-    output_file=phil_object.scaling.input.optional.hklout
-    if output_file is not None and \
-     phil_object.scaling.input.optional.aniso.action=="remove_aniso":
-      if phil_object.scaling.input.optional.hklout_type == "sca":
-        import iotbx.scalepack.merge
-        iotbx.scalepack.merge.write(
-            file_name=output_file,miller_array=self.no_aniso_array)
-      elif phil_object.scaling.input.optional.hklout_type == "mtz":
-        mtz_dataset = self.no_aniso_array.as_mtz_dataset(
-            column_root_label='F_aniso')
-        mtz_dataset.mtz_object().write(output_file)
-      print>>out, "Wrote aniso-corrected data to ",output_file
-    """
-
+ 
     ## Make normalised structure factors please
     normalistion = absolute_scaling.kernel_normalisation(
       self.no_aniso_array,auto_kernel=True)
