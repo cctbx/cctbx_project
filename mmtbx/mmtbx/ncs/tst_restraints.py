@@ -303,8 +303,12 @@ K&    RMS difference with respect to the reference: 0.724248
 [    " C   THR D   6 ":   0.4045
 """, selections=[range(6),range(124,133),range(-1,0)])
   #
+  selection = groups.selection_restrained()
+  assert selection.size() == 132
+  assert selection.count(True) == 112
   out = StringIO()
-  groups.show_unrestrained_atoms(out=out, prefix="%&")
+  processed_pdb.show_atoms_without_ncs_restraints(
+    ncs_restraints_groups=groups, out=out, prefix="%&")
   assert not show_diff(out.getvalue(), """\
 %&Atoms without NCS restraints:
 %&  Model 1, PDB serial number: 1

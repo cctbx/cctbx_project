@@ -13,7 +13,7 @@ from scitbx import matrix
 import scitbx.stl
 from libtbx.str_utils import show_string
 from libtbx.itertbx import count
-from libtbx.utils import Sorry, buffered_indentor
+from libtbx.utils import Sorry
 import sys
 
 class selection_properties(object):
@@ -277,6 +277,9 @@ class group(object):
     self.coordinate_sigma = coordinate_sigma
     self.b_factor_weight = b_factor_weight
     self.u_average_min = u_average_min
+
+  def select(self, selection):
+    raise RuntimeError("Not implemented.")
 
   def operators(self, sites_cart):
     return _operators(group=self, sites_cart=sites_cart)
@@ -560,6 +563,12 @@ class groups(object):
       self.members = members
     self.operators = None
 
+  def select(self, selection):
+    members = []
+    for group in self.members:
+      members.append(group.select(selection=selection))
+    return groups(members=members)
+
   def energies_adp_iso(self,
         u_isos,
         average_power,
@@ -676,44 +685,17 @@ class groups(object):
           prefix+"  coordinate_sigma: %s  =>  restraints disabled" % (
             str(group.coordinate_sigma))
 
-  def show_unrestrained_atoms(self, out=None, prefix=""):
-    if (out is None): out = sys.stdout
-    all_chain_proxies = None
+  def selection_restrained(self, n_seq=None):
+    if (n_seq is None):
+      n_seq = -1
+      for group in self.members:
+        for pair in group.selection_pairs:
+          for sel in pair:
+            n_seq = max(n_seq, flex.max(sel))
+      n_seq += 1
+    result = flex.bool(n_seq, False)
     for group in self.members:
-      if (all_chain_proxies is None):
-        all_chain_proxies = group.processed_pdb.all_chain_proxies
-        atom_attributes_list = all_chain_proxies.stage_1.atom_attributes_list
-        to_display = flex.bool(len(atom_attributes_list), True)
-      else:
-        assert all_chain_proxies is group.processed_pdb.all_chain_proxies
       for pair in group.selection_pairs:
         for sel in pair:
-          to_display.set_selected(sel, False)
-    buffer_main = buffered_indentor(file_object=out, indent=prefix)
-    print >> buffer_main, "Atoms without NCS restraints:"
-    for i_model,model in enumerate(all_chain_proxies.processed_models):
-      buffer_model = buffer_main.shift_right()
-      print >> buffer_model, "Model %d," % (i_model+1), \
-        "PDB serial number:", model.serial
-      for i_conformer,conformer in enumerate(model.conformers):
-        buffer_conformer = buffer_model.shift_right()
-        print >> buffer_conformer, "Conformer %d," % (i_conformer+1), \
-          "PDB altLoc:", show_string(conformer.altLoc)
-        for i_chain,chain in enumerate(conformer.chains):
-          buffer_chain = buffer_conformer.shift_right()
-          print >> buffer_chain, "Chain %d," % (i_chain+1), \
-            "PDB chainID: %s," % show_string(chain.chainID), \
-            "segID: %s" % show_string(chain.segID)
-          for mm in chain.monomer_mapping_summaries():
-            i_seqs = mm.all_associated_i_seqs()
-            if (to_display.select(i_seqs).count(True) > 0):
-              buffer_residue = buffer_chain.shift_right()
-              print >> buffer_residue, \
-                '"' + atom_attributes_list[i_seqs[0]].pdb_format()[6:]
-              for i_seq in i_seqs:
-                buffer_atom = buffer_residue.shift_right()
-                if (to_display[i_seq]):
-                  to_display[i_seq] = False
-                  print >> buffer_atom, \
-                    atom_attributes_list[i_seq].pdb_format()[:6]+'"'
-                  buffer_atom.write_buffer()
+          result.set_selected(sel, True)
+    return result
