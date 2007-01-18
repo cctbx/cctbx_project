@@ -46,6 +46,11 @@ def tst_sigmaa():
   # number obtained from mathematica
   assert approx_equal(tmp_a.target(0.5, 0.5), -0.272899, eps=1e-4 )
 
+  assert approx_equal(tmp_a.target_and_gradient(0.5,0.5)[0], tmp_a.target(0.5, 0.5) )
+  assert approx_equal(tmp_a.target_and_gradient(0.5,0.5)[1], tmp_a.dtarget(0.5, 0.5) )
+
+
+
   tmp_c = scaling.sigmaa_estimator(
     e_obs     = eo,
     e_calc    = ec,
@@ -55,6 +60,13 @@ def tst_sigmaa():
   assert approx_equal(tmp_a.sum_weights(d_star_cubed=0.5), 1)
   # number obtained from mathematica
   assert approx_equal(tmp_c.target(0.5, 0.5), -0.697863,  eps=1e-4 )
+
+  assert approx_equal(tmp_c.target_and_gradient(0.5,0.5)[0], tmp_c.target(0.5, 0.5) )
+  assert approx_equal(tmp_c.target_and_gradient(0.5,0.5)[1], tmp_c.dtarget(0.5, 0.5) )
+
+
+
+
 
   h=0.5
   d=0.000001
