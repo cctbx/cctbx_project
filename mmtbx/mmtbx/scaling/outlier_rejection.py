@@ -273,7 +273,7 @@ the shadow of the beamstop.
       n_chebyshev_terms = 13 )
 
     sigmaa_estimator.show(out=self.out)
-    sigmaa = sigmaa_estimator.sigmaa
+    sigmaa = sigmaa_estimator.sigmaa()
     obs_norm = abs(sigmaa_estimator.normalized_obs)
     calc_norm = sigmaa_estimator.normalized_calc
 
