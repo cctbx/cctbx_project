@@ -22,6 +22,7 @@ from scitbx.math import chebyshev_lsq_fit
 from scitbx.math import erf
 import libtbx.phil.command_line
 from libtbx import table_utils
+from libtbx.utils import null_out
 from scitbx.python_utils import easy_pickle
 import sys, os
 import math
@@ -38,7 +39,7 @@ class outlier_manager(object):
     if self.out is None:
       self.out=sys.stdout
     if out == "silent":
-      self.out = StringIO()
+      self.out = null_out()
 
     # the original miller array
     self.miller_obs = miller_obs
@@ -262,12 +263,7 @@ the shadow of the beamstop.
                            return_data=False,
                            plot_out=None):
 
-
-
-    # do some ls scaling please
-    #ls_scale = fmodel_manager.scale_k1()
-    #self.apply_scale_to_original_data( 1.0/ls_scale )
-
+    assert  self.r_free_flags is not None
     sigmaa_estimator = sigmaa_estimation.sigmaa_estimator(
       miller_obs   = self.miller_obs,
       miller_calc  = fmodel_manager.f_model(),
