@@ -151,7 +151,7 @@ outlier_level_wilson=1e-6
    number_of_sets=100
    .type=int
    root_name='omit_'
-   .type=str     
+   .type=str
 }
 """
 
@@ -200,11 +200,11 @@ outlier_level_wilson=1e-6
     scaler = scaler.replace( 'ls loc *ls_and_loc None',
                               '*loc None' )
     output = self.output
- 
+
     omit = self.omit
     omit = omit.replace('__EXPERT_LEVEL__',
                         '1' )
-    
+
     result = outer_level.replace('__REPLACE__',
                                  basic+data+scaler+omit+output)
     return result

@@ -150,7 +150,7 @@ class basic_analyses(object):
     self.no_aniso_array = self.no_aniso_array.set_observation_type(
       miller_array )
 
- 
+
     ## Make normalised structure factors please
     normalistion = absolute_scaling.kernel_normalisation(
       self.no_aniso_array,auto_kernel=True)
