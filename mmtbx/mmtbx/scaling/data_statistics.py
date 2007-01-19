@@ -760,7 +760,7 @@ class basic_intensity_statistics:
     ## Set up some arrays for plotting and analyses purposes
     self.d_star_sq = d_star_sq
 
-    self.mean_I_normalisation = normalisation.normalizer.f(self.d_star_sq)
+    self.mean_I_normalisation = flex.exp(normalisation.normalizer.f(self.d_star_sq))
     self.mean_I_obs_data = flex.double(
       mean_observed_intensity.data[1:len(mean_observed_intensity.data)-1])
 
