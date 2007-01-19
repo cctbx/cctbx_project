@@ -25,13 +25,18 @@ from mmtbx.scaling import matthews, twin_analyses
 from mmtbx.scaling import basic_analyses, pair_analyses
 from mmtbx.scaling import twin_detwin_data, sigmaa_estimation
 from mmtbx import masks
+from mmtbx import max_lik
+from mmtbx.max_lik import maxlik
 from libtbx import table_utils
+from libtbx.utils import Sorry, user_plus_sys_time
 import scitbx.lbfgs
 import libtbx.phil.command_line
 from cStringIO import StringIO
 from scitbx.python_utils import easy_pickle
 from scitbx import differential_evolution
 import sys, os, math, time
+
+
 
 class twin_fraction_object(object):
   """provides methods for derivatives and
@@ -94,7 +99,7 @@ class scaling_parameters_object(object):
       k_part    = object.k_part
       u_part    = object.u_part
       u_star    = object.u_star
-    # this is complete paranoia, making casts just to ensure that one always obtains 2 unique objects
+    # this is complete paranoia,. Trying to ensure that one always obtains 2 unique objects.
     self.k_overall = float(k_overall)
     self.u_part = float(u_part)
     self.k_sol = float(k_sol)
@@ -188,7 +193,6 @@ class scaling_parameters_object(object):
     tmp =  list( flex.double(tmp)/self.vrwgk )
     return tmp
 
-
   # derivatives of refinable parameter wrst to target
   def d_t_d_k_overall_ref(self,dtdp):
     return self.k_overall*dtdp
@@ -225,17 +229,11 @@ class scaling_parameters_object(object):
     print >> out, "u_part    : %5.2e"%(self.u_part)
     print >> out
 
-class mask_parameter_object(object):
-  def __init__(self,
-               gridding_n_real=None,
-               grid_step=None,
-               solvent_radius=1.0,
-               shrink_truncation_radius=1.0):
-    assert ( [gridding_n_real, grid_step] ).count(None) is 1
-    self.gridding_n_real=gridding_n_real
-    self.grid_step=grid_step
-    self.solvent_radius=solvent_radius
-    self.shrink_truncation_radius=shrink_truncation_radius
+
+  def deep_copy(self):
+    new = scaling_parameters_object(object=self)
+    return new
+
 
 
 def get_initial_scale(miller_obs,
@@ -367,8 +365,6 @@ class bulk_solvent_scaler(object):
     self.minimizer = scitbx.lbfgs.run(
       target_evaluator=self,
       termination_params=term_parameters)
-
-
 
   def update_x(self):
     # this is only need when starting,
@@ -766,24 +762,34 @@ class bulk_solvent_scaling_manager(object):
     self.twin_fraction.twin_fraction  = self.best_twin_fraction.twin_fraction
 
 
+
+
+
+
 class twin_model_manager(object):
   def __init__(self,
-               f_obs_array=None,
-               free_array=None,
-               xray_structure=None,
-               scaling_parameters=None,
-               mask_parameters=None,
-               out=None,
-               twin_law=None,
-               start_fraction=0.1,
-               n_refl_bin=2000,
-               max_bins=20):
+               f_obs_array        = None,
+               free_array         = None,
+               xray_structure     = None,
+               scaling_parameters = None,
+               mask_params        = None,
+               out                = None,
+               twin_law           = None,
+               start_fraction     = 0.1,
+               n_refl_bin         = 2000,
+               max_bins           = 20,
+               sf_algorithm       = "fft",
+               sf_cos_sin_table   = True,
+               perform_local_scaling = False):
     self.out = out
     if self.out is None:
       self.out = sys.stdout
     self.twin_fraction_object = twin_fraction_object(twin_fraction=start_fraction)
     self.twin_law=twin_law
     self.twin_fraction=start_fraction
+
+    self.perform_local_scaling = perform_local_scaling
+
     assert (self.twin_law is not None)
     self.f_obs_array = f_obs_array.map_to_asu()
     self.free_array = free_array.map_to_asu()
@@ -808,20 +814,21 @@ class twin_model_manager(object):
     if self.scaling_parameters is None:
       self.scaling_parameters = scaling_parameters_object(self.xs)
 
-    self.mask_parameters = mask_parameters
-    if self.mask_parameters is None:
-      self.mask_parameters = mask_parameter_object(
-        grid_step=f_obs_array.d_min()/4.0 )
+    self.mask_parameters=None
+    if mask_params is not None:
+      self.mask_parameters = mask_params
+    else:
+      self.mask_params = mmtbx.masks.mask_master_params.extract()
+
 
     #-------------------
     self.miller_set = None
     self.f_atoms = None
     self.miller_set = None
     print "updating f atoms"
-    self.update_f_atoms()
+    self.f_atoms = self.compute_f_atoms()
 
     #-------------------
-    self.mask = None
     self.f_mask = None
     print "updating mask"
     self.update_f_mask()
@@ -912,6 +919,18 @@ class twin_model_manager(object):
       anomalous_flag = self.f_obs_array.anomalous_flag(),
       twin_law       = self.twin_law.as_double_array()[0:9] )
 
+    print "Making atomic parameter gradient engine"
+    self.sf_algorithm = sf_algorithm
+    self.sf_cos_sin_table = sf_cos_sin_table
+    self.structure_factor_gradients_w = cctbx.xray.structure_factors.gradients(
+      miller_set    = self.miller_set,
+      cos_sin_table = self.sf_cos_sin_table)
+
+    self.sigmaa_object_cache = None
+    self.update_sigmaa_object = True
+
+
+
   def f_model(self):
     tmp_f_model = self.f_atoms.customized_copy(
       data = self.data_core.f_model()
@@ -919,14 +938,14 @@ class twin_model_manager(object):
     return tmp_f_model
 
 
-  def update_bulk_solvent_parameters(self,
-                                     bulk_solvent_parameters=None,
-                                     twin_fraction_parameters=None,
-                                     refine=False,
-                                     grid_search=False,
-                                     initialise=False,
-                                     de_search=False,
-                                     ):
+  def update_solvent_and_scale(self,
+                               bulk_solvent_parameters=None,
+                               twin_fraction_parameters=None,
+                               refine=False,
+                               grid_search=False,
+                               initialise=False,
+                               de_search=False,
+                               ):
     if initialise:
       self.bss.initial_scale_and_twin_fraction()
       self.scaling_parameters = self.bss.best_scaling_parameters
@@ -958,45 +977,172 @@ class twin_model_manager(object):
     self.data_core.usol( self.scaling_parameters.u_sol )
 
 
-  def update_f_atoms(self):
+  def update_core(self,
+                  f_calc        = None,
+                  f_mask        = None,
+                  f_part        = None,
+                  b_cart        = None,
+                  k_sol         = None,
+                  b_sol         = None,
+                  u_sol         = None,
+                  twin_fraction = None,
+                  r_free_flags  = None):
+    if f_calc is not None:
+      self.data_core.renew_fatoms( f_calc.data() )
+      self.f_atoms = f_calc
+    else:
+      self.data_core.renew_fatoms( self.f_atoms.data() )
+
+    if f_mask is not None:
+      self.data_core.renew_fmask( f_mask.data() )
+      self.f_mask = f_mask
+    else:
+      self.data_core.renew_fmask( self.f_mask.data() )
+
+    if f_part is not None:
+      self.data_core.renew_fpart( f_part.calc() )
+      self.f_partial = f_part
+    else:
+      if self.f_partial is not None:
+        self.data_core.renew_fpart( self.f_partial.data() )
+
+    assert ([u_sol,b_sol]).count(None)>1
+
+    if b_sol is not None:
+      u_sol = adptbx.b_as_u( b_sol )
+    if u_sol is not None:
+      self.data_core.usol( u_sol )
+      self.scaling_parameters.u_sol = u_sol
+    if u_sol is None:
+       self.data_core.usol( self.scaling_parameters.u_sol )
+
+    if k_sol is not None:
+      self.data_core.ksol( k_sol )
+      self.scaling_parameters.k_sol = k_sol
+    else:
+      self.data_core.ksol( self.scaling_parameters.k_sol )
+
+
+  def deep_copy(self):
+    new = twin_model_manager(
+      f_obs_array=self.f_obs_array.deep_copy(),
+      free_array=self.free_array.deep_copy(),
+      xray_structure=self.xray_structure,
+      scaling_parameters=self.scaling_parameters.deep_copy(),
+      mask_params=self.mask_parameters,
+      out=self.out,
+      twin_law=self.twin_law)
+    return new
+
+
+  def construct_miller_set(self):
+    completion = xray.twin_completion( self.f_obs_array.indices(),
+                                       self.xs.space_group(),
+                                       self.f_obs_array.anomalous_flag(),
+                                       self.twin_law.as_double_array()[0:9] )
+    indices = completion.twin_complete()
+    miller_set = miller.set(
+      crystal_symmetry = self.xs,
+      indices =indices,
+      anomalous_flag = self.f_obs_array.anomalous_flag() ).map_to_asu()
+    assert miller_set.is_unique_set_under_symmetry()
+    return miller_set
+
+
+  def compute_f_atoms(self):
     """Get f calc from the xray structure"""
     if self.miller_set is None:
-      completion = xray.twin_completion( self.f_obs_array.indices(),
-                                         self.xs.space_group(),
-                                         self.f_obs_array.anomalous_flag(),
-                                         self.twin_law.as_double_array()[0:9] )
-      indices = completion.twin_complete()
-      self.miller_set = miller.set(
-        crystal_symmetry = self.xs,
-        indices =indices,
-        anomalous_flag = self.f_obs_array.anomalous_flag() ).map_to_asu()
-      assert self.miller_set.is_unique_set_under_symmetry()
+      self.miller_set = self.construct_miller_set()
     tmp = self.miller_set.structure_factors_from_scatterers(
       xray_structure = self.xray_structure )
-
-    self.f_atoms = tmp.f_calc()
-    if self.miller_set is None:
-      self.miller_set = tmp.miller_set()
+    f_atoms = tmp.f_calc()
+    return f_atoms
 
 
-  def update_f_mask(self):
-    self.mask = masks.bulk_solvent(
-      xray_structure=self.xray_structure,
-      gridding_n_real=self.mask_parameters.gridding_n_real,
-      grid_step=self.mask_parameters.grid_step,
-      solvent_radius=self.mask_parameters.solvent_radius,
-      shrink_truncation_radius=self.mask_parameters.shrink_truncation_radius)
 
-    self.f_mask = self.mask.structure_factors( self.miller_set )
+  def _get_step(self):
+    step = self.f_obs_array.d_min()/self.mask_params.grid_step_factor
+    if(step < 0.3): step = 0.3
+    step = min(0.8, step)
+    return step
+
+  def _update_f_mask_flag(self, xray_structure, mean_shift):
+    if(self.xray_structure_mask_cache is None):
+       self.xray_structure_mask_cache = xray_structure.deep_copy_scatterers()
+       return True
+    else:
+       sites_cart_1 = self.xray_structure_mask_cache.sites_cart()
+       sites_cart_2 = xray_structure.sites_cart()
+       self.xray_structure_mask_cache = xray_structure.deep_copy_scatterers()
+       if(sites_cart_1.size() != sites_cart_2.size()): return True
+       atom_atom_distances = flex.sqrt((sites_cart_1 - sites_cart_2).dot())
+       mean_shift_ = flex.mean(atom_atom_distances)
+       update_f_mask = False
+       if(mean_shift_ >= mean_shift):
+          update_f_mask = True
+       return update_f_mask
 
 
   def update_xray_structure(self,
                             xray_structure,
-                            update_mask=False):
-    self.xray_structure=xray_structure
-    self.update_f_atoms()
-    if update_mask:
-      self.update_f_mask()
+                            update_f_calc            = False,
+                            update_f_mask            = False,
+                            force_update_f_mask      = False,
+                            k_sol                    = None,
+                            b_sol                    = None,
+                            b_cart                   = None):
+    consider_mask_update = None
+    set_core_flag=True
+    if(update_f_mask):
+      if(force_update_f_mask):
+        consider_mask_update = True
+      else:
+        consider_mask_update = self._update_f_mask_flag(
+          xray_structure = xray_structure,
+          mean_shift     = self.mask_params.mean_shift_for_mask_update)
+
+    self.xray_structure = xray_structure
+
+    step = self._get_step()
+    f_calc = None
+    f_mask = None
+    if(update_f_calc):
+       assert self.xray_structure is not None
+       self.f_atoms = self.compute_f_atoms()
+    if(update_f_mask and consider_mask_update):
+       number_mask += 1
+       bulk_solvent_mask_obj = self.bulk_solvent_mask()
+       f_mask = bulk_solvent_mask_obj.structure_factors(miller_set=self.miller_set)
+
+    if([f_calc, f_mask].count(None) == 2):
+      set_core_flag = False
+    if(f_calc is None):
+      f_calc = self.f_atoms
+    if(f_mask is None):
+      f_mask = self.f_mask
+    if(set_core_flag):
+      self.update_core(f_calc = f_calc,
+                       f_mask = f_mask,
+                       b_cart = b_cart,
+                       k_sol  = k_sol,
+                       b_sol  = b_sol)
+
+
+
+  def bulk_solvent_mask(self):
+    step = self._get_step()
+    result = masks.bulk_solvent(
+          xray_structure           = self.xray_structure,
+          grid_step                = step,
+          solvent_radius           = self.mask_params.solvent_radius,
+          shrink_truncation_radius = self.mask_params.shrink_truncation_radius)
+    return result
+
+
+  def update_f_mask(self):
+    mask = self.bulk_solvent_mask()
+    self.f_mask = mask.structure_factors( self.miller_set )
+
 
   def r_values(self, table=True):
     r_abs_work_f_overall = self.r_work_object.r_amplitude_abs(
@@ -1074,6 +1220,17 @@ tf is the twin fractrion and Fo is an observed amplitude."""%(r_abs_work_f_overa
     else:
       return r_abs_work_f_overall, r_abs_free_f_overall
 
+  def r_work(self):
+    w,f = self.r_values(False)
+    return w
+
+  def r_free(self):
+    w,f = self.r_values(False)
+    return f
+
+
+
+
   def twin_fraction_scan(self, n=10):
     """for each twin fraction, compute the target value and r value"""
     print >> self.out
@@ -1087,7 +1244,7 @@ tf is the twin fractrion and Fo is an observed amplitude."""%(r_abs_work_f_overa
     rows = []
     for tf in trail_twin_fractions:
       tmp_twin_fraction = twin_fraction_object( tf )
-      self.update_bulk_solvent_parameters( twin_fraction_parameters =  tmp_twin_fraction )
+      self.update_solvent_and_scale( twin_fraction_parameters =  tmp_twin_fraction )
       rw,rf = self.r_values(table=False)
       ttw,ttf = self.target(print_it=False)
       tmp = [ "%4.3f"%(tf),
@@ -1110,7 +1267,7 @@ tf is the twin fractrion and Fo is an observed amplitude."""%(r_abs_work_f_overa
     print >> self.out,  "------------------------------------------------------------------"
     print >> self.out
     print >> self.out
-    self.update_bulk_solvent_parameters( twin_fraction_parameters =  current_twin_fraction )
+    self.update_solvent_and_scale( twin_fraction_parameters =  current_twin_fraction )
 
 
 
@@ -1132,9 +1289,48 @@ tf is the twin fractrion and Fo is an observed amplitude."""%(r_abs_work_f_overa
       return(tmp_w,tmp_f)
 
 
-  def map_coefficients(self, apply_weight=True):
-    print >> self.out
-    print >> self.out, "--------------- Constructing map coefficients ---------------"
+  def gradient_wrt_atomic_parameters(self,
+                                     selection     = None,
+                                     site          = False,
+                                     u_iso         = False,
+                                     u_aniso       = False,
+                                     occupancy     = False,
+                                     alpha         = None,
+                                     beta          = None,
+                                     tan_b_iso_max = None,
+                                     u_iso_refinable_params = None):
+
+    xrs = self.xray_structure
+    if(selection is not None):
+       xrs = xrs.select(selection)
+    # please compute dTarget/d(A_tot,B_tot)
+    dtdab_model = self.target_evaluator.d_target_d_f_model(
+      self.core_data.f_model()  )
+    # chain rule it to dTarget/d(A_atom,B_atom); the multiplier is the scale factor.
+    dtdab_atoms = dtdab_model*self.core_data.d_f_model_core_data_d_f_atoms()
+
+    result = None
+    if(u_aniso):
+       result = self.structure_factor_gradients_w(
+                u_iso_reinable_params = None,
+                d_target_d_f_calc  = dtdab_atoms,
+                xray_structure     = xrs,
+                n_parameters       = 0,
+                miller_set         = self.miller_set,
+                algorithm          = self.sf_algorithm).d_target_d_u_cart()
+    else:
+       result = self.structure_factor_gradients_w(
+                u_iso_reinable_params = u_iso_reinable_params,
+                d_target_d_f_calc  = dtdab_atoms,
+                xray_structure     = xrs,
+                n_parameters       = xrs.n_parameters_XXX(),
+                miller_set         = self.f_obs_w,
+                algorithm          = self.sf_algorithm)
+    time_gradient_wrt_atomic_parameters += timer.elapsed()
+    return result
+
+
+  def detwin_data(self, perform_local_scaling=True, ):
     #first make a detwinned fobs
     tmp_i_obs = self.f_obs_array.f_as_f_sq()
     dt_iobs, dt_isigma = self.full_detwinner.detwin_with_model_data(
@@ -1147,56 +1343,142 @@ tf is the twin fractrion and Fo is an observed amplitude."""%(r_abs_work_f_overa
       sigmas = dt_isigma ).set_observation_type( tmp_i_obs )
     dt_f_obs = tmp_i_obs.f_sq_as_f()
 
-    # get the proper set of fmodel data please
     tmp_f_model = self.f_atoms.customized_copy(
       data = self.data_core.f_model() ).common_set(
-        dt_f_obs )
+      dt_f_obs )
     tmp_abs_f_model = tmp_f_model.customized_copy(
       data = flex.abs( tmp_f_model.data()) ).set_observation_type( dt_f_obs )
-    # we now have to perform a scaling of the detwinned data to the calculated data
-    # we will use a no-nonsense local scalnig implemented elsewheer
-    print >> self.out
-    print >> self.out, "Local scaling of detwinned data with model data"
-    print >> self.out
-    local_scaler = relative_scaling.local_scaling_driver(
-      miller_native=tmp_abs_f_model,
-      miller_derivative=dt_f_obs,
-      use_intensities=False,
-      local_scaling_dict={'local_nikonov':True, 'local_moment':False, 'local_lsq':False} )
+    if perform_local_scaling: # do local scaling against fmodel
+      local_scaler = relative_scaling.local_scaling_driver(
+        miller_native=tmp_abs_f_model,
+        miller_derivative=dt_f_obs,
+        use_intensities=False,
+        local_scaling_dict={'local_nikonov':True, 'local_moment':False, 'local_lsq':False} )
+      dt_f_obs = dt_f_obs.customized_copy(
+        data =  dt_f_obs.data()*local_scaler.local_scaler.get_scales()
+        ).set_observation_type( dt_f_obs )
 
-    dt_f_obs = dt_f_obs.customized_copy(
-      data =  dt_f_obs.data()*local_scaler.local_scaler.get_scales()
-      ).set_observation_type( tmp_i_obs )
+    return dt_f_obs, tmp_f_model
 
-    m = None
-    alpha_d = None
-    twofofc_map = None
-    fofc_map = None
+  def sigmaa_object(self, detwinned_data=None, f_model_data=None, forced_update=False):
+    assert ( [detwinned_data,f_model_data] ).count(None) != 1
+    if (detwinned_data is None) or forced_update:
+      self.update_sigmaa_object = True
+      detwinned_data,f_model = self.detwin_data(
+        perform_local_scaling=self.perform_local_scaling)
+    if self.update_sigmaa_object:
+      self.sigmaa_object_cache = sigmaa_estimation.sigmaa_estimator(
+        miller_obs   = detwinned_data,
+        miller_calc  = f_model,
+        r_free_flags = self.free_array,
+        kernel_width_free_reflections=200 )
+    return self.sigmaa_object_cache
 
-    # get coefficients for a gradient map please
-    gradients = self.target_evaluator.d_target_d_fmodel(
-      self.data_core.f_model() )
+  def alpha_beta(self):
+    sigmaa_object = self.sigmaa_object()
+    return sigmaa_object.alpha_beta()
 
-    gradients = self.f_atoms.customized_copy(
-      data = -flex.conj(gradients) ).common_set( dt_f_obs )
+  def alpha_beta_w(self):
+    a,b = self.alpha_beta()
+    a = a.select( self.free_flags )
+    b = b.select( self.free_flags )
+    return a,b
 
-    sigmaa_object = sigmaa_estimation.sigmaa_estimator(
-      miller_obs   = dt_f_obs,
-      miller_calc  = tmp_f_model,
-      r_free_flags = self.free_array )
-    print >> self.out
-    print >> self.out, " Sigma estimation on detwinned data using model info. "
-    sigmaa_object.show(out=self.out)
-    d = sigmaa_object.alpha
-    m = sigmaa_object.fom
+  def alpha_beta_f(self):
+    a,b = self.alpha_beta()
+    a = a.select( ~self.free_flags )
+    b = b.select( ~self.free_flags )
+    return a,b
 
-    wtwofofc_map = dt_f_obs.customized_copy(
-      data=2.0*m.data()*dt_f_obs.data()-d.data()*flex.abs(tmp_f_model.data()) )
-    twofofc_map = dt_f_obs.customized_copy(
-      data=2.0*dt_f_obs.data()-flex.abs(tmp_f_model.data()) )
+  def figures_of_merit(self):
+    sigmaa_object = self.sigmaa_object()
+    return sigmaa_object.fom()
 
-    # phase transfers
-    twofofc_map = twofofc_map.phase_transfer( tmp_f_model )
-    wtwofofc_map = wtwofofc_map.phase_transfer( tmp_f_model )
-    print >> self.out, "-------------------------------------------------------------"
-    return twofofc_map, wtwofofc_map, gradients
+  def figures_of_merit_w(self):
+    fom = self.figures_of_merit().select(
+      self.self.free_flags)
+    return fom
+  def figures_of_merit_t(self):
+    fom = self.figures_of_merit().select(
+      ~self.self.free_flags)
+    return fom
+
+  def phase_errors(self):
+    sigmaa_object = self.sigmaa_object()
+    return sigmaa_object.phase_errors()
+
+  def phase_errors_work(self):
+    pher = self.phase_errors().select(self.self.free_flags)
+    return pher
+  def phase_errors_test(self):
+    pher = self.phase_errors().select(~self.self.free_flags)
+    return pher
+
+  def map_coefficients(self,
+                       map_type = None,
+                       k        = None,
+                       n        = None,
+                       w1       = None,
+                       w2       = None
+                       ):
+    assert map_type in ("k*Fobs-n*Fmodel",
+                        "2m*Fobs-D*Fmodel",
+                        "m*Fobs-D*Fmodel",
+                        "gradient"
+                        )
+
+    if map_type is not "gradient":
+      dt_f_obs, f_model = self.detwin_data(perform_local_scaling=self.perform_local_scaling)
+      result = None
+      if map_type == "k*Fobs-n*Fmodel":
+        if ([k,n]).count(None) > 0:
+          raise Sorry("Map coefficients (k and n) must be provided to generate detwinned maps")
+        result = dt_f_obs.data()*k - abs(f_model).data()*n
+        assert result is not None
+      else:
+        sigmaa_object = self.sigmaa_object()
+        m = sigmaa_object.fom().data()
+        d = sigmaa_object.alpha_beta()[0].data()
+        print m, d
+        if map_type == "m*Fobs-D*Fmodel":
+          result = dt_f_obs.data()*m - abs(f_model).data()*d
+        if map_type == "2m*Fobs-D*Fmodel":
+          result = dt_f_obs.data()*m*2 - abs(f_model).data()*d
+        assert result is not None
+      assert result != None
+      result = dt_f_obs.customized_copy( data = result, sigmas=None )
+      result = result.phase_transfer( f_model )
+      return result
+
+    else:
+      # get coefficients for a gradient map please
+      gradients = self.target_evaluator.d_target_d_fmodel(
+        self.data_core.f_model() )
+
+      gradients = self.f_atoms.customized_copy(
+        data = -flex.conj(gradients) ).common_set( self.f_obs_array )
+
+      return gradients
+
+  def electron_density_map(self,
+                           map_type          = "k*Fobs-n*Fmodel",
+                           k                 = 1,
+                           n                 = 1,
+                           w1                = None,
+                           w2                = None,
+                           resolution_factor = 1/3.,
+                           symmetry_flags = None):
+
+    assert map_type in ("k*Fobs-n*Fmodel",
+                        "2m*Fobs-D*Fmodel",
+                        "m*Fobs-D*Fmodel",
+                        "gradient")
+
+    return self.map_coefficients(
+      map_type          = map_type,
+      k                 = k,
+      n                 = n,
+      w1                = w1,
+      w2                = w2).fft_map(
+         resolution_factor = resolution_factor,
+         symmetry_flags    = symmetry_flags)
