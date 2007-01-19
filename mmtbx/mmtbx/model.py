@@ -374,8 +374,6 @@ class manager(object):
                                        is_hetatm   = True,
                                        resSeq      = i_seq)
         self.atom_attributes_list.append(new_attr)
-    # XXX TODO NCS restraints
-    # XXX RALF: throw exception if self.reduced_solvent_selection affects NCS
     geometry = self.restraints_manager.geometry
     number_of_new_solvent = solvent_xray_structure.scatterers().size()
     if(geometry.model_indices is None):
@@ -396,6 +394,9 @@ class manager(object):
                          geometry      = geometry,
                          ncs_groups    = self.restraints_manager.ncs_groups,
                          normalization = self.restraints_manager.normalization)
+    if (self.restraints_manager.ncs_groups is not None):
+      self.restraints_manager.ncs_groups.register_additional_isolated_sites(
+        number=number_of_new_solvent)
     self.solvent_selection = solvent_selection
 
 

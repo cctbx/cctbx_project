@@ -288,8 +288,16 @@ class group(object):
       adopt_init_args(self, locals())
       self.selection_pairs = registry.selection_pairs()
 
+  def register_additional_isolated_sites(self, number):
+    self.registry.register_additional_isolated_sites(number=number)
+
   def select(self, selection):
-    raise RuntimeError("Not implemented.")
+    return group(
+      selection_strings=self.selection_strings,
+      registry=self.registry.proxy_select(selection),
+      coordinate_sigma=self.coordinate_sigma,
+      b_factor_weight=self.b_factor_weight,
+      u_average_min=self.u_average_min)
 
   def operators(self, sites_cart):
     return _operators(group=self, sites_cart=sites_cart)
@@ -553,6 +561,10 @@ class groups(object):
     else:
       self.members = members
     self.operators = None
+
+  def register_additional_isolated_sites(self, number):
+    for group in self.members:
+      group.register_additional_isolated_sites(number=number)
 
   def select(self, selection):
     members = []
