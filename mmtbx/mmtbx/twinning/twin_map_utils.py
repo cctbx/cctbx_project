@@ -24,55 +24,12 @@ from mmtbx.scaling import absolute_scaling
 from mmtbx.scaling import matthews, twin_analyses
 from mmtbx.scaling import basic_analyses, pair_analyses
 from mmtbx.scaling import twin_detwin_data
+from mmtbx import f_model
 import libtbx.phil.command_line
 from mmtbx.twinning import twin_f_model
 from cStringIO import StringIO
 from scitbx.python_utils import easy_pickle
 import sys, os
-
-def select_crystal_symmetry(
-      from_command_line,
-      from_parameter_file,
-      from_coordinate_files,
-      from_reflection_files):
-
-  tmp = [from_command_line, from_parameter_file]+from_coordinate_files \
-        +from_reflection_files
-  if tmp.count(None)==len(tmp):
-    raise Sorry("No unit cell or symmetry information available. Check input")
-
-  result = crystal.symmetry(
-    unit_cell=None,
-    space_group_info=None)
-  if (from_command_line is not None):
-    result = result.join_symmetry(
-      other_symmetry=from_command_line, force=False)
-  if (from_parameter_file is not None):
-    result = result.join_symmetry(
-      other_symmetry=from_parameter_file, force=False)
-  if (result.unit_cell() is None):
-    for crystal_symmetry in from_reflection_files:
-      unit_cell = crystal_symmetry.unit_cell()
-      if (unit_cell is not None):
-        result = crystal.symmetry(
-          unit_cell=unit_cell,
-          space_group_info=result.space_group_info(),
-          assert_is_compatible_unit_cell=False)
-        break
-  for crystal_symmetry in from_coordinate_files:
-    result = result.join_symmetry(other_symmetry=crystal_symmetry, force=False)
-  if (result.space_group_info() is None):
-    for crystal_symmetry in from_reflection_files:
-      space_group_info = crystal_symmetry.space_group_info()
-      if (space_group_info is not None):
-        result = crystal.symmetry(
-          unit_cell=result.unit_cell(),
-          space_group_info=space_group_info,
-          assert_is_compatible_unit_cell=False)
-        break
-  return result
-
-
 
 master_params = iotbx.phil.parse("""\
 twin_utils{
@@ -97,7 +54,7 @@ twin_utils{
   parameters{
     twinning{
       twin_law=None
-      .type=None
+      .type=str
       max_delta=3.0
       .type=float
     }
@@ -106,6 +63,8 @@ twin_utils{
     logfile=twin_tools.log
     .type=str
     map_coeffs_root=MAP_COEFFS
+    .type=str
+    obs_and_calc="obs_and_calc.mtz"
     .type=str
   }
 }
@@ -299,6 +258,9 @@ def run(command_name,args):
 
     miller_array.set_info(info)
 
+    if miller_array.anomalous_flag():
+      miller_array = miller_array.average_bijvoet_mates()
+
     free_flags = None
     if params.twin_utils.input.xray_data.free_flag is not None:
       free_flags = xray_data_server.get_xray_data(
@@ -319,14 +281,14 @@ def run(command_name,args):
       free_flags = miller_array.generate_r_free_flags(use_lattice_symmetry=True)
 
 
-
-
     print >> log
     print >> log, "Summary info of observed data"
     print >> log, "============================="
     miller_array.show_summary(f=log)
     print >> log
 
+    if miller_array.indices().size() == 0:
+      raise Sorry("No data available")
 
     #----------------------------------------------------------------
     # Step 2: get an xray structure from the PDB file
@@ -361,6 +323,12 @@ def run(command_name,args):
     print >> log, "======================================================================="
     twin_models = []
     operator_count = 0
+
+    if params.twin_utils.parameters.twinning.twin_law is not None:
+      tmp_law = sgtbx.rt_mx( params.twin_utils.parameters.twinning.twin_law )
+      tmp_law = twin_analyses.twin_law(tmp_law,None,None,None,None,None)
+      twin_laws.operators = [ tmp_law ]
+
     for twin_law in twin_laws.operators:
       operator_count += 1
       operator_hkl = sgtbx.change_of_basis_op( twin_law.operator ).as_hkl()
@@ -370,16 +338,19 @@ def run(command_name,args):
         xray_structure=model,
         twin_law = twin_law.operator,
         out=log)
-      print >> log, "--- bulk solvent scaling ---"
-      twin_model.update_bulk_solvent_parameters(de_search=True,
-                                                refine=False)
 
+
+
+
+      print >> log, "--- bulk solvent scaling ---"
+      twin_model.update_solvent_and_scale(de_search=True,
+                                          refine=False)
       twin_model.r_values()
       twin_model.target()
       twin_model.twin_fraction_scan()
-
-
-      tfofc,wtfofc,grad = twin_model.map_coefficients(False)
+      tfofc  = twin_model.map_coefficients(map_type="k*Fobs-n*Fmodel",k=2,n=1)
+      wtfofc = twin_model.map_coefficients(map_type="2m*Fobs-D*Fmodel" )
+      grad   = twin_model.map_coefficients(map_type="gradient" )
 
       mtz_dataset = tfofc.as_mtz_dataset(
         column_root_label="2FOFC")
@@ -395,6 +366,50 @@ def run(command_name,args):
       print "writing %s for twin law %s"%(name,operator_hkl)
       mtz_dataset.mtz_object().write(
         file_name=name)
+
+      if params.twin_utils.output.obs_and_calc is not None:
+        # i want also a Fobs and Fmodel combined dataset please
+        mtz_dataset = miller_array.as_mtz_dataset(
+          column_root_label="FOBS")
+        mtz_dataset = mtz_dataset.add_miller_array(
+          miller_array = twin_model.f_model(),
+          column_root_label="FMODEL")
+        name = params.twin_utils.output.obs_and_calc
+        mtz_dataset.mtz_object().write(
+          file_name=name)
+
+
+    if len(twin_laws.operators)==0:
+      print >> log
+      print >> log, "No twin laws were found"
+      print >> log, "Performing maximum likelihood based bulk solvent scaling"
+      f_model_object = f_model.manager(
+        f_obs = miller_array,
+        r_free_flags = free_flags,
+        xray_structure = model )
+      f_model_object.update_solvent_and_scale(out=log)
+      tfofc =  f_model_object.map_coefficients(map_type="2m*Fobs-D*Fmodel")
+      fofc = f_model_object.map_coefficients(map_type="m*Fobs-D*Fmodel")
+      mtz_dataset = tfofc.as_mtz_dataset(
+        column_root_label="FWT")
+      mtz_dataset = mtz_dataset.add_miller_array(
+        miller_array = fofc,
+        column_root_label = "DELFWT"
+      )
+      name = params.twin_utils.output.map_coeffs_root+"_ML.mtz"
+      mtz_dataset.mtz_object().write(
+        file_name=name)
+
+      if params.twin_utils.output.obs_and_calc is not None:
+        # i want also a Fobs and Fmodel combined dataset please
+        mtz_dataset = miller_array.as_mtz_dataset(
+          column_root_label="FOBS")
+        mtz_dataset = mtz_dataset.add_miller_array(
+          miller_array = f_model_object.f_model(),
+          column_root_label="FMODEL")
+        name = params.twin_utils.output.obs_and_calc
+        mtz_dataset.mtz_object().write(
+          file_name=name)
 
     print >> log
     print >> log
