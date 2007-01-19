@@ -44,6 +44,28 @@ namespace scitbx { namespace af {
   }
 
   template <typename IntType>
+  struct reindexing_given_bool_selection
+  {
+    IntType n_selected;
+    af::shared<IntType> array;
+
+    reindexing_given_bool_selection() {}
+
+    reindexing_given_bool_selection(
+      af::const_ref<bool> const& selection)
+    :
+      n_selected(0),
+      array(selection.size(), selection.size())
+    {
+      IntType* array_begin = array.begin();
+      for(std::size_t i=0;i<selection.size();i++) {
+        if (!selection[i]) continue;
+        array_begin[i] = n_selected++;
+      }
+    }
+  };
+
+  template <typename IntType>
   af::shared<IntType>
   reindexing_array(
     std::size_t selectee_size,
@@ -66,7 +88,7 @@ namespace scitbx { namespace af {
   {
     std::size_t selectee_size = self.size();
     af::shared<std::size_t>
-      reindexing_array = scitbx::af::reindexing_array(
+      reindexing_array = af::reindexing_array(
         selectee_size, iselection);
     std::size_t* reindexing_array_begin = reindexing_array.begin();
     af::shared<MapType> result((af::reserve(iselection.size())));
