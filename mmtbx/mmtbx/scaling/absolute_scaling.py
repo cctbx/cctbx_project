@@ -726,8 +726,8 @@ class kernel_normalisation(object):
   def __init__(self,
                miller_array,
                kernel_width=None,
-               n_bins=200,
-               n_term=23,
+               n_bins=23,
+               n_term=13,
                d_star_sq_low=None,
                d_star_sq_high=None,
                auto_kernel=False,
@@ -791,9 +791,11 @@ class kernel_normalisation(object):
     ## Making the d_star_sq_array
     assert (n_bins>1) ## assure that there are more then 1 bins for interpolation
 
-    d_star_sq_range = d_star_sq_high-d_star_sq_low
-    self.d_star_sq_array = flex.double(range(n_bins))/float(n_bins)
-    self.d_star_sq_array = self.d_star_sq_array*d_star_sq_range+d_star_sq_low
+    self.d_star_sq_array = chebyshev_lsq_fit.chebyshev_nodes(
+          n=n_bins,
+          low=d_star_sq_low,
+          high=d_star_sq_high,
+          include_limits=True)
 
     ## Now get the average intensity please
     ##
@@ -805,19 +807,13 @@ class kernel_normalisation(object):
       d_star_sq_array = self.d_star_sq_array,
       kernel_width = self.kernel_width
       )
-
     assert flex.min( self.mean_I_array ) > 0
-    prescale = 10000.0/flex.max( self.mean_I_array )
-    self.mean_I_array = self.mean_I_array*prescale
     self.mean_I_array = flex.log( self.mean_I_array )
-
-
     ## Fit a chebyshev polynome please
     normalizer_fit_lsq = chebyshev_lsq_fit.chebyshev_lsq_fit(
       n_term,
       self.d_star_sq_array,
       self.mean_I_array )
-
     self.normalizer = chebyshev_polynome(
       n_term,
       d_star_sq_low,
@@ -826,9 +822,8 @@ class kernel_normalisation(object):
 
     ## The data wil now be normalised using the
     ## chebyshev polynome we have just obtained
-    self.mean_I_array = flex.exp( self.mean_I_array)/prescale
-    self.normalizer_for_miller_array =  flex.exp( self.normalizer.f(d_star_sq_hkl) )/prescale
-
+    self.mean_I_array = flex.exp( self.mean_I_array)
+    self.normalizer_for_miller_array =  flex.exp( self.normalizer.f(d_star_sq_hkl) )
 
     self.normalised_miller = None
     self.normalised_miller_dev_eps = None
