@@ -6,7 +6,9 @@ from libtbx.utils import format_cpu_times
 
 def exercise_pair_registry_basic():
   registry = ncs.restraints.pair_registry(30, 3)
+  assert registry.number_of_additional_isolated_sites == 0
   selection_pairs = registry.selection_pairs()
+  assert len(selection_pairs) == 2
   assert zip(*selection_pairs[0]) == []
   assert zip(*selection_pairs[1]) == []
   assert registry.enter(i_seq=0, j_seq=10, j_ncs=2) == 1
@@ -18,6 +20,57 @@ def exercise_pair_registry_basic():
   assert len(selection_pairs) == 2
   assert zip(*selection_pairs[0]) == [(0, 20), (1, 21)]
   assert zip(*selection_pairs[1]) == [(0, 10)]
+  selection = flex.bool(30, False)
+  sel_registry = registry.proxy_select(selection=selection)
+  selection_pairs = sel_registry.selection_pairs()
+  assert len(selection_pairs) == 2
+  assert zip(*selection_pairs[0]) == []
+  assert zip(*selection_pairs[1]) == []
+  selection = flex.bool(30, True)
+  sel_registry = registry.proxy_select(selection=selection)
+  selection_pairs = sel_registry.selection_pairs()
+  assert len(selection_pairs) == 2
+  assert zip(*selection_pairs[0]) == [(0, 20), (1, 21)]
+  assert zip(*selection_pairs[1]) == [(0, 10)]
+  selection[0] = False
+  sel_registry = registry.proxy_select(selection=selection)
+  selection_pairs = sel_registry.selection_pairs()
+  assert len(selection_pairs) == 2
+  assert zip(*selection_pairs[0]) == [(0, 20)]
+  assert zip(*selection_pairs[1]) == []
+  selection[0] = True
+  selection[1] = False
+  sel_registry = registry.proxy_select(selection=selection)
+  selection_pairs = sel_registry.selection_pairs()
+  assert len(selection_pairs) == 2
+  assert zip(*selection_pairs[0]) == [(0, 19)]
+  assert zip(*selection_pairs[1]) == [(0, 9)]
+  selection[1] = True
+  selection[2] = False
+  selection[4] = False
+  sel_registry = registry.proxy_select(selection=selection)
+  selection_pairs = sel_registry.selection_pairs()
+  assert len(selection_pairs) == 2
+  assert zip(*selection_pairs[0]) == [(0, 18),(1,19)]
+  assert zip(*selection_pairs[1]) == [(0, 8)]
+  registry.register_additional_isolated_sites(number=10)
+  assert registry.number_of_additional_isolated_sites == 10
+  registry.register_additional_isolated_sites(number=3)
+  assert registry.number_of_additional_isolated_sites == 13
+  selection.resize(43, False)
+  sel_registry = registry.proxy_select(selection=selection)
+  assert sel_registry.number_of_additional_isolated_sites == 0
+  selection[35] = True
+  sel_registry = registry.proxy_select(selection=selection)
+  assert sel_registry.number_of_additional_isolated_sites == 1
+  selection[38] = True
+  selection[42] = True
+  sel_registry = registry.proxy_select(selection=selection)
+  assert sel_registry.number_of_additional_isolated_sites == 3
+  selection_pairs = sel_registry.selection_pairs()
+  assert len(selection_pairs) == 2
+  assert zip(*selection_pairs[0]) == [(0, 18),(1,19)]
+  assert zip(*selection_pairs[1]) == [(0, 8)]
 
 def adp_iso_residual_sum(weight, average_power, u_isos):
   n = u_isos.size()

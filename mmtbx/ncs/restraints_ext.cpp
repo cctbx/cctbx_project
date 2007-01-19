@@ -3,6 +3,7 @@
 #include <boost/python/module.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
+#include <boost/python/register_ptr_to_python.hpp>
 #include <mmtbx/ncs/restraints.h>
 #include <scitbx/boost_python/container_conversions.h>
 
@@ -25,18 +26,25 @@ namespace {
     wrap()
     {
       using namespace boost::python;
-      class_<w_t>("pair_registry", no_init)
+      class_<w_t, boost::noncopyable>("pair_registry", no_init)
         .def(init<unsigned, unsigned>((arg_("n_seq"), arg_("n_ncs"))))
+        .def_readonly("number_of_additional_isolated_sites",
+          &w_t::number_of_additional_isolated_sites)
+        .def("register_additional_isolated_sites",
+          &w_t::register_additional_isolated_sites, (arg_("number")))
         .def("enter", &w_t::enter, (
-          (arg_("i_seq"), arg_("j_seq"), arg_("j_ncs"))))
+          arg_("i_seq"), arg_("j_seq"), arg_("j_ncs")))
+        .def("proxy_select", &w_t::proxy_select, (
+          arg_("selection")))
         .def("selection_pairs", &w_t::selection_pairs)
         .def("adp_iso_residual_sum", &w_t::adp_iso_residual_sum, (
-          (arg_("weight"),
-           arg_("average_power"),
-           arg_("u_isos"),
-           arg_("u_average_min"),
-           arg_("gradients"))))
+          arg_("weight"),
+          arg_("average_power"),
+          arg_("u_isos"),
+          arg_("u_average_min"),
+          arg_("gradients")))
       ;
+      register_ptr_to_python<std::auto_ptr<pair_registry> >();
     }
   };
 

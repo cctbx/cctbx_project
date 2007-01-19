@@ -360,6 +360,15 @@ K&    RMS difference with respect to the reference: 0.724248
 %&        "SER D   4 "
 %&          " CA C"
 """)
+  #
+  for group in groups.members:
+    assert group.registry.number_of_additional_isolated_sites == 0
+  groups.register_additional_isolated_sites(number=10)
+  for group in groups.members:
+    assert group.registry.number_of_additional_isolated_sites == 10
+  groups.register_additional_isolated_sites(number=3)
+  for group in groups.members:
+    assert group.registry.number_of_additional_isolated_sites == 13
 
 def exercise(args):
   verbose = "--verbose" in args

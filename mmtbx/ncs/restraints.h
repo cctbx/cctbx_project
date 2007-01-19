@@ -1,8 +1,8 @@
 #ifndef MMTBX_NCS_RESTRAINTS_H
 #define MMTBX_NCS_RESTRAINTS_H
 
-#include <scitbx/array_family/shared.h>
 #include <mmtbx/error.h>
+#include <scitbx/array_family/selections.h>
 #include <map>
 #include <vector>
 
@@ -10,18 +10,26 @@ namespace mmtbx { namespace ncs { namespace restraints {
 
   namespace af = scitbx::af;
 
-  struct pair_registry
+  struct pair_registry : boost::noncopyable
   {
     typedef std::map<unsigned, unsigned> table_entry_t;
     typedef std::vector<table_entry_t> table_t;
     table_t table_;
     std::vector<unsigned> counts_;
+    unsigned number_of_additional_isolated_sites;
 
     pair_registry(unsigned n_seq, unsigned n_ncs)
     :
       table_(n_seq),
-      counts_(n_ncs, 0)
+      counts_(n_ncs, 0),
+      number_of_additional_isolated_sites(0)
     {}
+
+    void
+    register_additional_isolated_sites(unsigned number)
+    {
+      number_of_additional_isolated_sites += number;
+    }
 
     int
     enter(unsigned i_seq, unsigned j_seq, unsigned j_ncs)
@@ -41,6 +49,46 @@ namespace mmtbx { namespace ncs { namespace restraints {
       }
       if (tab_ij->second != j_ncs) return -tab_ij->second;
       return 0;
+    }
+
+    std::auto_ptr<pair_registry>
+    proxy_select(af::const_ref<bool> const& selection) const
+    {
+      MMTBX_ASSERT(   selection.size()
+                   == table_.size() + number_of_additional_isolated_sites);
+      unsigned n_seq = static_cast<unsigned>(table_.size());
+      af::reindexing_given_bool_selection<unsigned> reindexing(
+        af::const_ref<bool>(selection.begin(), n_seq));
+      std::auto_ptr<pair_registry> result(
+        new pair_registry(reindexing.n_selected, counts_.size()));
+      unsigned* result_counts = &*result->counts_.begin();
+      unsigned* reindexing_array_begin = reindexing.array.begin();
+      for(unsigned i_seq=0;i_seq<n_seq;i_seq++) {
+        unsigned result_i_seq = reindexing_array_begin[i_seq];
+        if (result_i_seq == n_seq) continue;
+        table_entry_t& result_tab_i = result->table_[result_i_seq];
+        table_t::const_iterator tab_i = table_.begin() + i_seq;
+        table_entry_t::const_iterator tab_ij_end = tab_i->end();
+        for(table_entry_t::const_iterator
+              tab_ij=tab_i->begin();
+              tab_ij!=tab_ij_end;
+              tab_ij++) {
+          unsigned result_j_seq = reindexing_array_begin[tab_ij->first];
+          if (result_j_seq == n_seq) continue;
+          unsigned j_ncs = tab_ij->second;
+          result_tab_i[result_j_seq] = j_ncs;
+          result_counts[j_ncs]++;
+        }
+      }
+      unsigned n = 0;
+      for(unsigned
+            i_seq=n_seq;
+            i_seq<n_seq+number_of_additional_isolated_sites;
+            i_seq++) {
+        if (selection[i_seq]) n++;
+      }
+      result->number_of_additional_isolated_sites = n;
+      return result;
     }
 
     std::vector<af::tiny<af::shared<std::size_t>, 2> >
@@ -81,8 +129,11 @@ namespace mmtbx { namespace ncs { namespace restraints {
       double u_average_min,
       af::ref<double> const& gradients)
     {
-      CCTBX_ASSERT(u_isos.size() == table_.size());
-      CCTBX_ASSERT(gradients.size() == 0 || gradients.size() == table_.size());
+      CCTBX_ASSERT(   u_isos.size()
+                   == table_.size() + number_of_additional_isolated_sites);
+      CCTBX_ASSERT(   gradients.size() == 0
+                   ||    gradients.size()
+                      == table_.size() + number_of_additional_isolated_sites);
       unsigned n_ncs = counts_.size();
       std::vector<unsigned> i_seq_buffer;
       i_seq_buffer.reserve(n_ncs);
