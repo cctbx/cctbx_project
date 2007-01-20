@@ -21,7 +21,6 @@ import scitbx.math as sm
 from mmtbx.scaling import absolute_scaling, relative_scaling
 from mmtbx.scaling import matthews, twin_analyses
 from mmtbx.scaling import basic_analyses, pair_analyses
-from mmtbx.scaling import twin_detwin_data, sigmaa_estimation
 from mmtbx import masks
 from libtbx import table_utils
 import scitbx.lbfgs
