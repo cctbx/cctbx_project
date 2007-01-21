@@ -40,7 +40,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
          str(self._chain_residue_id)
     if self._rmsd_list and self._chain_residue_id:
       text+="\nRMSD (A) from chain "+str(self._chain_residue_id[0][0])+':'+\
-       str(self._rmsd_list)
+       self.print_list(self._rmsd_list)
     if self._residues_in_common_list and self._chain_residue_id:
       text+="\nNumber of residues matching chain "+\
           str(self._chain_residue_id[0][0])+':'+\
@@ -200,6 +200,29 @@ class ncs_group:  # one group of NCS operators and center and where it applies
   def rota_matrices(self):
     return self._rota_matrices
 
+  def print_list(self,list_of_real):
+    text=""
+    for number in list_of_real:
+     text+="  "+str(self.round(number,2))
+    return text
+
+  def round(self,value,n_digit):  # round off value to n_digit digits
+    if type(value) == type(1):
+       return self.round(float(value),n_digit)
+    if type(value) != type(1.0):
+       return self.round(0.0,1)
+
+    if n_digit == 0:
+      rounder=1
+    else:
+      rounder=10**n_digit
+    if value >= 0:
+      rounded=float(int(0.5+value*rounder))/rounder
+    else:
+      value1=-1.*value
+      rounded=float(int(0.5+value1*rounder))/rounder
+      rounded=-1.*rounded
+    return rounded
 
 class ncs:
   def __init__(self):
@@ -427,6 +450,7 @@ class ncs:
        cc=self._cc)
      self._ncs_groups.append(ncs_group_object)
      self.init_ncs_group()
+
 
   def display_all (self,log=None):
     if log==None:
