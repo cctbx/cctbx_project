@@ -201,28 +201,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     return self._rota_matrices
 
   def print_list(self,list_of_real):
-    text=""
-    for number in list_of_real:
-     text+="  "+str(self.round(number,2))
-    return text
-
-  def round(self,value,n_digit):  # round off value to n_digit digits
-    if type(value) == type(1):
-       return self.round(float(value),n_digit)
-    if type(value) != type(1.0):
-       return self.round(0.0,1)
-
-    if n_digit == 0:
-      rounder=1
-    else:
-      rounder=10**n_digit
-    if value >= 0:
-      rounded=float(int(0.5+value*rounder))/rounder
-    else:
-      value1=-1.*value
-      rounded=float(int(0.5+value1*rounder))/rounder
-      rounded=-1.*rounded
-    return rounded
+    return "  ".join(["%.2f" % number for number in list_of_real])
 
 class ncs:
   def __init__(self):
