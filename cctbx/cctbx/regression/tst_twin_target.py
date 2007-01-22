@@ -4,24 +4,16 @@ from cctbx import miller
 from cctbx import xray
 from cctbx import sgtbx
 from cctbx import uctbx
-from mmtbx import scaling
-from libtbx.test_utils import approx_equal
-from mmtbx.scaling import absolute_scaling
-from mmtbx.scaling import twin_analyses as t_a
+from cctbx.development import random_structure as rs
 from scitbx import differential_evolution as de
-
-from scitbx.python_utils import random_transform
+import scitbx.lbfgs
+from libtbx.test_utils import approx_equal
+from libtbx.utils import format_cpu_times
 import random
 import math
-import sys
-from cStringIO import StringIO
-from cctbx.development import random_structure as rs
-import scitbx.lbfgs
-
 
 random.seed(0)
 flex.set_random_seed(0)
-
 
 def tst_ls_on_i():
   tmp = rs.xray_structure(sgtbx.space_group_info( 'P4' ),
@@ -540,8 +532,6 @@ def run():
   tst_single_likelihood(False,0.44,0.6)
   tst_single_likelihood(False,0.44,0.8)
 
-
-
 if (__name__ == "__main__"):
   run()
-  print "OK"
+  print format_cpu_times()
