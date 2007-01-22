@@ -12,7 +12,6 @@ import random
 import pickle
 from cStringIO import StringIO
 import sys, random, math
-from mmtbx.refinement import rigid_body
 
 if (1):
   random.seed(0)
@@ -471,7 +470,7 @@ C  pair count:   1       <<  0.0000,  0.0000,  0.1000>>
       for r in [[1.,2.,3.], [0.,0.,0.]]:
           xs_mod = xs.deep_copy_scatterers()
           xs_mod.apply_rigid_body_shift(
-                              rot       = rigid_body.rb_mat(0, 0, 0).rot_mat(),
+                              rot       = (1,0,0,0,1,0,0,0,1),
                               trans     = [r[0],r[1],r[2]],
                               selection = selection)
           d = math.sqrt(r[0]**2+r[1]**2+r[2]**2)
@@ -480,9 +479,9 @@ C  pair count:   1       <<  0.0000,  0.0000,  0.1000>>
   selection_=flex.bool([random.choice((0,1)) for i in xrange(100)])
   xs_mod = xs.deep_copy_scatterers()
   xs_mod.apply_rigid_body_shift(
-                      rot       = rigid_body.rb_mat(1., 2., 3.).rot_mat(),
-                      trans     = [1., 2., 3.],
-                      selection = selection_.iselection())
+    rot=(0.999,-0.017,0.035,0.019,0.998,-0.052,-0.033,0.052,0.998),
+    trans=[1., 2., 3.],
+    selection=selection_.iselection())
   assert xs.mean_distance(other = xs_mod, selection = selection_) > 1.0
   assert approx_equal(
                 xs.mean_distance(other = xs_mod, selection = ~selection_), 0.0)
