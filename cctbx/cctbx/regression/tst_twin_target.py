@@ -477,6 +477,10 @@ def tst_twin_completion():
   assert not checker.check_free_flags( basic_flags.data() ) # this should give False
   assert checker.check_free_flags( lattice_flags.data() )   # this should give True
 
+  selection_array = checker.get_free_model_selection( lattice_flags.indices(), lattice_flags.data() )
+  assert selection_array.all_eq( lattice_flags.data()  )
+
+
 
 def run():
   tst_twin_completion()
