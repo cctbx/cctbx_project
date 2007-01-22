@@ -40,6 +40,7 @@ namespace cctbx { namespace xray { namespace twin_targets { namespace boost_pyth
                   arg_("twin_law") )))
           .def("twin_complete", &w_t::twin_complete )
           .def("check_free_flags", &w_t::check_free_flags)
+          .def("get_free_model_selection", &w_t::get_free_model_selection)
           ;
       }
 
@@ -247,6 +248,17 @@ namespace cctbx { namespace xray { namespace twin_targets { namespace boost_pyth
         return boost::python::make_tuple( result[0], result[1] );
       }
 
+      static boost::python::tuple
+      detwin_with_abs_model_data(w_t const& self,
+                             scitbx::af::const_ref<double> const& i_obs,
+                             scitbx::af::const_ref<double> const& sig_obs,
+                             scitbx::af::const_ref<double> const& f_model,
+                             double const& twin_fraction)
+      {
+        scitbx::af::tiny<scitbx::af::shared<double>, 2> result;
+        result = self.detwin_with_model_data(i_obs,sig_obs,f_model,twin_fraction);
+        return boost::python::make_tuple( result[0], result[1] );
+      }
 
      static void
      wrap()
@@ -276,6 +288,13 @@ namespace cctbx { namespace xray { namespace twin_targets { namespace boost_pyth
                arg_("f_model"),
                arg_("twin_fraction")
              ) )
+       .def("detwin_with_abs_model_data", detwin_with_abs_model_data,
+             ( arg_("i_obs"),
+               arg_("sigma_obs"),
+               arg_("f_model"),
+               arg_("twin_fraction")
+             ) )
+
          ;
      }
    };
