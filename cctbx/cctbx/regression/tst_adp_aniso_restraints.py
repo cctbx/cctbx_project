@@ -1,7 +1,6 @@
 import libtbx.load_env
 import sys, os
 from cctbx.array_family import flex
-from mmtbx.monomer_library import pdb_interpretation
 from cStringIO import StringIO
 import cctbx.adp_restraints
 from cctbx import xray
@@ -92,6 +91,11 @@ def fd(xray_structure, restraints_manager, eps=1.e-2):
 
 
 def run():
+  try: from mmtbx.monomer_library import pdb_interpretation
+  except ImportError:
+    print "Skipping run():", \
+      "mmtbx.monomer_library.pdb_interpretation not available"
+    return
   file_name = "phe_tst_adp_aniso_restraints.pdb"
   open(file_name, "w").write(phe_pdb)
   out = StringIO()
