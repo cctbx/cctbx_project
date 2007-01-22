@@ -15,7 +15,7 @@ When a pure Python class A uses the Boost.Python wrapping of a C++ class B,
 the docstring of A should feature a link to the doxygen-generated
 documentation of B. That link shall be written as e.g.
   U{DOXYCLASS:scitbx::lbfgs::minimizer}
-and will give 
+and will give
 <a href="../c_plus_plus/classscitbx_1_1lbfgs_1_1drop__convergence__test.html">
 class scitbx::lbfgs::minimizer</a>
 The other magic keyword is DOXYSTRUCT for struct instead of class.
@@ -52,19 +52,19 @@ def repl(m):
   if href:
     return "%s%s/%s%s.html" % (
       href,
-      cpp_doc, 
+      cpp_doc,
       klass,
       name.replace('_', '__').replace('::', '_1_1'),
     )
   else:
     return "%s %s" % (klass, name)
-    
+
 for root, dirs, files in os.walk(output_dir):
   for f in [ os.path.join(root,f) for f in fnmatch.filter(files, '*.html') ]:
     tmp = '%s.tmp' % f
     fin = open(f)
     fout = open(tmp, 'w')
-    for li in fin: 
+    for li in fin:
       li = doxypat.sub(repl, li)
       fout.write(li)
     os.rename(tmp, f)
