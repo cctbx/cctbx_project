@@ -16,6 +16,7 @@ import sys
 import random
 from libtbx.utils import count_max
 from libtbx.test_utils import approx_equal
+from libtbx.itertbx import count
 
 class structure(crystal.special_position_settings):
 
@@ -206,15 +207,14 @@ class structure(crystal.special_position_settings):
        assert selection.size() == self._scatterers.size()
     else:
        selection = flex.bool(self._scatterers.size(), True)
-    for sc, sel in zip(self._scatterers, selection):
+    is_special_position = self.site_symmetry_table().is_special_position
+    for i_seq,sc,sel in zip(count(), self._scatterers, selection):
         if(sel and sc.flags.use()):
            if(sc.flags.use_u_iso() and b_min != b_max):
               r = max(0, random.randrange(b_min, b_max, 1) + random.random())
               sc.u_iso=adptbx.b_as_u(r)
            if(sc.flags.use_u_aniso() and not keep_anisotropic):
-              #u_cart = adptbx.u_star_as_u_cart(self.unit_cell(), sc.u_star)
-              #u_cart = adptbx.random_rotate_ellipsoid(u_cart = u_cart, r_min=0,r_max=360)
-              #sc.u_star = adptbx.u_cart_as_u_star(self.unit_cell(), u_cart)
+              assert not is_special_position(i_seq=i_seq) # XXX not implemented
               m = sc.u_star
               m = [m[0]+m[0]*random.choice((-aniso_spread,aniso_spread)),
                    m[1]+m[1]*random.choice((-aniso_spread,aniso_spread)),
