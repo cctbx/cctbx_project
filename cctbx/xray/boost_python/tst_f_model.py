@@ -1,19 +1,10 @@
 from cctbx.array_family import flex
-from cctbx import crystal
-from cctbx import miller
 from cctbx import xray
 from cctbx import sgtbx
-from cctbx import uctbx
-from mmtbx import scaling
 from libtbx.test_utils import approx_equal
-from mmtbx.scaling import absolute_scaling
-from mmtbx.scaling import twin_analyses as t_a
 
-from scitbx.python_utils import random_transform
 import random
 import math
-import sys
-from cStringIO import StringIO
 from cctbx.development import random_structure as rs
 
 random.seed(0)
@@ -48,7 +39,6 @@ def tst_f_model_derivative_holder():
 
 def tst_f_model(this_hkl=123):
   tmp = rs.xray_structure(sgtbx.space_group_info( 'P1' ),
-                          #uctbx.unit_cell('20,20,20,90,90,90'),
                           elements=['C']*310,
                           n_scatterers=310)
 

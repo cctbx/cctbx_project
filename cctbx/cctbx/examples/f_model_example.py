@@ -1,21 +1,7 @@
 from cctbx.array_family import flex
-from cctbx import crystal
-from cctbx import miller
 from cctbx import xray
 from cctbx import sgtbx
-from cctbx import uctbx
-from mmtbx import scaling
-from libtbx.test_utils import approx_equal
-from mmtbx.scaling import absolute_scaling
-from mmtbx.scaling import twin_analyses as t_a
-
-from scitbx.python_utils import random_transform
-import random
-import math
-import sys
-from cStringIO import StringIO
 from cctbx.development import random_structure as rs
-
 
 def f_model_example():
   """ This example illustrates the use of the f_model class"""
