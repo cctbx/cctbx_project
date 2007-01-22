@@ -103,6 +103,32 @@ namespace cctbx { namespace xray { namespace twin_targets {
         return( true );
       }
 
+      scitbx::af::shared<bool>  get_free_model_selection(scitbx::af::const_ref< cctbx::miller::index<> > hkl_calc,
+                                                         scitbx::af::const_ref< bool > const& flags )
+      {
+        // Declare an array with results
+        scitbx::af::shared<bool> result(hkl_calc.size(),0);
+        int index;
+        for( int ii=0;ii<hkl_calc.size();ii++){
+          index = ori_lookup_table_.find_hkl( hkl_calc[ii] );
+          if (index < 0 ){
+            index = ori_lookup_table_.find_hkl( twin_mate(hkl_calc[ii], twin_law_) );
+          }
+          if (index < 0){
+            // this means that neither hkl_calc or its twin mate is in the observed data
+            // this means that in all reasonability, it is a 'free' reflection. Free reflections are marked as 'True'
+            result[ii]=true;
+          }
+          else{
+            CCTBX_ASSERT( index < flags.size() );
+            result[ii] = flags[index];
+          }
+        }
+        return(result);
+      }
+
+
+
 
 
 
@@ -329,14 +355,16 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
           tmp_loc = tmp_lookup_object.find_hkl( hkl_obs[ii] );
           CCTBX_ASSERT( tmp_loc >= 0 );
           calc_ori_lookup_table_.push_back( tmp_loc );
+          //--------------------------------------------------------------------------------------//
+          //-- calc_ori_lookup[ ii ] -> jj :: ii: obs index ii has index equal to calc index jj --//
+          //--------------------------------------------------------------------------------------//
           tmp_loc = tmp_lookup_object.find_hkl( twin_mate( hkl_obs[ii],twin_law ) );
-
           CCTBX_ASSERT( tmp_loc >= 0 ); // If this assertion fails, it means that a twin related calculated miler index is not
                                         // in the list of calculated / model indices. This definently should not happen!
           calc_twin_lookup_table_ .push_back( tmp_loc );
-
-
-
+          //----------------------------------------------------------------------------------------------------//
+          //-- calc_twin_lookup[ ii ] -> jj :: ii: obs index ii has twin related index equal to calc index jj --//
+          //----------------------------------------------------------------------------------------------------//
         }
         CCTBX_ASSERT( hkl_obs.size() <= hkl_calc.size() );
       }
@@ -373,8 +401,11 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
 
           long calc_index_a, calc_index_b;
           for (std::size_t ii=0;ii<f_obs_.size();ii++){
-            calc_index_a = calc_ori_lookup_table_[ ii ];
-            calc_index_b = calc_twin_lookup_table_[ ii ];
+            calc_index_a = calc_ori_lookup_table_[ ii ]; // we try to find calculated indices. They are complete.
+            calc_index_b = calc_twin_lookup_table_[ ii ];//  we try to find calculated indices. They are complete.
+            CCTBX_ASSERT( calc_index_a >-1 );
+            CCTBX_ASSERT( calc_index_b >-1 );
+
             aa = f_model[calc_index_a].real();
             ba = f_model[calc_index_a].imag();
             ab = f_model[calc_index_b].real();
@@ -778,6 +809,50 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
       scitbx::af::tiny< scitbx::af::shared<FloatType>, 2> result( i_detwin, s_detwin );
 
       return( result );
+    }
+
+
+    scitbx::af::tiny< scitbx::af::shared<FloatType>, 2 >
+    detwin_with_model_data(scitbx::af::const_ref<FloatType> const& i_obs,
+                           scitbx::af::const_ref<FloatType> const& sig_obs,
+                           scitbx::af::const_ref<FloatType> const& f_model,
+                           FloatType const& twin_fraction) const
+    {
+       CCTBX_ASSERT( i_obs.size() == sig_obs.size() );
+       CCTBX_ASSERT( f_model.size() == calc_size_ );
+       CCTBX_ASSERT( i_obs.size() == obs_size_ );
+
+       scitbx::af::shared<FloatType> detwinned_i;
+       scitbx::af::shared<FloatType> detwinned_s;
+
+       FloatType o_a, s_a, o_b, s_b, c_a, c_b, frac1, frac2, n_i, n_s;
+       int loc_twin_obs, loc_calc, loc_twin_calc;
+       for (std::size_t ii=0;ii<i_obs.size();ii++){
+         loc_twin_obs = obs_to_twin_obs_[ ii ];
+         loc_calc = obs_to_calc_[ ii ];
+         loc_twin_calc = obs_to_twin_calc_[ ii ];
+         o_a = i_obs[ii];
+         o_b = i_obs[ loc_twin_obs ];
+         s_a = sig_obs[ii];
+         s_b = sig_obs[ loc_twin_obs ];
+
+         c_a = f_model[ loc_calc ];
+         c_a = c_a*c_a;
+
+         c_b = f_model[ loc_twin_calc ];
+         c_b = c_b*c_b;
+
+         frac1 = c_a * (1-twin_fraction) / ( c_a*(1.0-twin_fraction) + c_b*twin_fraction );
+         frac2 = c_a * twin_fraction / ( c_b*(1.0-twin_fraction) + c_a*twin_fraction );
+
+         n_i = o_a*frac1 + o_b*frac2;
+         n_s = std::sqrt( s_a*s_a*frac1*frac1 + s_b*s_b*frac2*frac2 );
+
+         detwinned_i.push_back( n_i );
+         detwinned_s.push_back( n_s );
+       }
+       scitbx::af::tiny< scitbx::af::shared<FloatType>, 2 > result( detwinned_i, detwinned_s );
+       return( result );
     }
 
 
