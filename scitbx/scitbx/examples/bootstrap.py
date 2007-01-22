@@ -1,6 +1,6 @@
 import scitbx.lbfgs
 import scitbx.math
-from cctbx.array_family import flex
+from scitbx.array_family import flex
 import math
 
 """
