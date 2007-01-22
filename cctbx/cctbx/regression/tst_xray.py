@@ -7,15 +7,16 @@ from cctbx import adptbx
 import cctbx.eltbx.xray_scattering
 from cctbx import eltbx
 from cctbx.array_family import flex
-from libtbx.test_utils import approx_equal, show_diff
+from libtbx.test_utils import approx_equal, is_above_limit, show_diff
 import random
 import pickle
 from cStringIO import StringIO
 import sys, random, math
 from mmtbx.refinement import rigid_body
 
-random.seed(0)
-flex.set_random_seed(0)
+if (1):
+  random.seed(0)
+  flex.set_random_seed(0)
 
 def exercise_scatterer():
   assert xray.scatterer(scattering_type="Cval").element_symbol() == "C"
@@ -328,14 +329,14 @@ C  pair count:   1       <<  0.0000,  0.0000,  0.1000>>
   sp = crystal.special_position_settings(cs)
   scatterers = flex.xray_scatterer([xray.scatterer("o")]*100)
   selection = flex.bool()
+  rd = flex.mersenne_twister(seed=0).random_double
   for sc in scatterers:
-    sc.u_iso = 1.0 * random.random()
-    sc.u_star = (1.0* random.random(), 2.0* random.random(),
-                 3.0* random.random(), 4.0* random.random(),
-                 5.0* random.random(), 6.0* random.random())
-    sc.flags.set_use_u_iso(   random.choice((0,1)) )
-    sc.flags.set_use_u_aniso( random.choice((0,1)) )
-    selection.append(random.choice((0,1)))
+    sc.u_iso = 1.0 * rd()
+    sc.u_star = (1.0 * rd(), 2.0 * rd(), 3.0 * rd(),
+                 4.0 * rd(), 5.0 * rd(), 6.0 * rd())
+    sc.flags.set_use_u_iso(rd() > 0.5)
+    sc.flags.set_use_u_aniso(rd() > 0.5)
+    selection.append(rd() > 0.5)
   xs = xray.structure(sp, scatterers)
   for sel in [None, selection]:
       for b_min, b_max, spread in zip([None,10.0], [None,20.0], [10.0,0.0]):
@@ -357,7 +358,11 @@ C  pair count:   1       <<  0.0000,  0.0000,  0.1000>>
                    if(sc.flags.use_u_aniso() and s):
                       a = flex.double(sc.u_star)
                       b = flex.double(sc_mod.u_star)
-                      assert abs(flex.mean(a-b))*100./abs(flex.mean(a)) > 0.1
+                      # quick-and-dirty test, likely to fail if random seed
+                      # is changed
+                      assert is_above_limit(
+                        value=abs(flex.mean(a-b))/abs(flex.mean(a)),
+                        limit=0.0005)
                    else:
                       assert approx_equal(sc.u_star, sc_mod.u_star)
 ### shake_occupancies()
@@ -742,7 +747,6 @@ def run():
   exercise_structure()
   exercise_u_base()
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
-  print "OK"
 
 if (__name__ == "__main__"):
   run()
