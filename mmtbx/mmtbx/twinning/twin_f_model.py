@@ -798,6 +798,8 @@ class twin_model_manager(object):
     self.f_obs_array_free = self.f_obs_array.select( self.free_array.data() )
 
     #setup the binners if this has not been done yet
+    self.max_bins = max_bins
+    self.n_refl_bin = n_refl_bin
     if self.f_obs_array.binner() is None:
       if self.f_obs_array.indices().size()/float(n_refl_bin) > max_bins:
         self.f_obs_array.setup_binner(n_bins = max_bins)
@@ -814,9 +816,9 @@ class twin_model_manager(object):
     if self.scaling_parameters is None:
       self.scaling_parameters = scaling_parameters_object(self.xs)
 
-    self.mask_parameters=None
+    self.mask_params=None
     if mask_params is not None:
-      self.mask_parameters = mask_params
+      self.mask_params = mask_params
     else:
       self.mask_params = mmtbx.masks.mask_master_params.extract()
 
@@ -824,23 +826,26 @@ class twin_model_manager(object):
     #-------------------
     self.miller_set = None
     self.f_atoms = None
+    self.free_flags_for_f_atoms = None
     self.miller_set = None
     print "updating f atoms"
     self.f_atoms = self.compute_f_atoms()
 
+
+
     #-------------------
-    self.f_mask = None
+    self.f_mask_array = None
     print "updating mask"
     self.update_f_mask()
     #-------------------
-    self.f_partial = None
+    self.f_partial_array = None
 
     #-------------------
     print "make data core"
     self.data_core = xray.f_model_core_data(
       hkl = self.f_atoms.indices(),
       f_atoms= self.f_atoms.data(),
-      f_mask = self.f_mask.data(),
+      f_mask = self.f_mask_array.data(),
       unit_cell = self.f_atoms.unit_cell(),
       k_overall=self.scaling_parameters.k_overall,
       u_star=self.scaling_parameters.u_star,
@@ -929,6 +934,58 @@ class twin_model_manager(object):
     self.sigmaa_object_cache = None
     self.update_sigmaa_object = True
 
+  def deep_copy(self):
+    new_object = twin_model_manager(
+      f_obs_array        = self.f_obs_array.deep_copy(),
+      free_array         = self.free_array.deep_copy(),
+      xray_structure     = self.xray_structure,
+      scaling_parameters = self.scaling_parameters.deep_copy(),
+      mask_params        = self.mask_params,
+      out                = self.out,
+      twin_law           = self.twin_law,
+      start_fraction     = self.twin_fraction,
+      n_refl_bin         = self.n_refl_bin,
+      max_bins           = self.max_bins,
+      sf_algorithm       = self.sf_algorithm,
+      sf_cos_sin_table   = self.sf_cos_sin_table,
+      perform_local_scaling = self.perform_local_scaling)
+    return new_object
+
+  def resolution_filter(self,d_max=None,d_min=None):
+    dc = self.deep_copy()
+    new_object = twin_model_manager(
+      f_obs_array        = dc.f_obs_array.resolution_filter(d_max,d_min) ,
+      free_array         = dc.free_array.resolution_filter(d_max,d_min),
+      xray_structure     = dc.xray_structure,
+      scaling_parameters = dc.scaling_parameters.deep_copy(),
+      mask_params        = dc.mask_params,
+      out                = dc.out,
+      twin_law           = dc.twin_law,
+      start_fraction     = dc.twin_fraction,
+      n_refl_bin         = dc.n_refl_bin,
+      max_bins           = dc.max_bins,
+      sf_algorithm       = dc.sf_algorithm,
+      sf_cos_sin_table   = dc.sf_cos_sin_table,
+      perform_local_scaling = dc.perform_local_scaling)
+    return new_object
+
+  def select(self, selection):
+    dc = self.deep_copy()
+    new_object = twin_model_manager(
+      f_obs_array        = dc.f_obs_array.select(selection) ,
+      free_array         = dc.free_array.selection(selection),
+      xray_structure     = dc.xray_structure,
+      scaling_parameters = dc.scaling_parameters.deep_copy(),
+      mask_params        = dc.mask_params,
+      out                = dc.out,
+      twin_law           = dc.twin_law,
+      start_fraction     = dc.twin_fraction,
+      n_refl_bin         = dc.n_refl_bin,
+      max_bins           = dc.max_bins,
+      sf_algorithm       = dc.sf_algorithm,
+      sf_cos_sin_table   = dc.sf_cos_sin_table,
+      perform_local_scaling = dc.perform_local_scaling)
+    return new_object
 
 
   def f_model(self):
@@ -936,6 +993,28 @@ class twin_model_manager(object):
       data = self.data_core.f_model()
     )
     return tmp_f_model
+
+  def f_model_w(self):
+    tmp = self.f_model()
+    return tmp.select(~self.free_flags_for_f_atoms.data() )
+
+  def f_model_t(self):
+    tmp = self.f_model()
+    return tmp.select( self.free_flags_for_f_atoms.data() )
+
+  def f_calc(self):
+    if self.f_atoms is None:
+      self.f_atoms = self.compute_f_atoms()
+    return self.f_atoms
+
+  def f_calc_w(self):
+    tmp = self.f_calc()
+    return tmp.select(~self.free_flags_for_f_atoms.data() )
+
+  def f_calc_t(self):
+    tmp = self.f_calc()
+    return tmp.select( self.free_flags_for_f_atoms.data() )
+
 
 
   def update_solvent_and_scale(self,
@@ -995,16 +1074,16 @@ class twin_model_manager(object):
 
     if f_mask is not None:
       self.data_core.renew_fmask( f_mask.data() )
-      self.f_mask = f_mask
+      self.f_mask_array = f_mask
     else:
       self.data_core.renew_fmask( self.f_mask.data() )
 
     if f_part is not None:
       self.data_core.renew_fpart( f_part.calc() )
-      self.f_partial = f_part
+      self.f_partial_array = f_part
     else:
-      if self.f_partial is not None:
-        self.data_core.renew_fpart( self.f_partial.data() )
+      if self.f_partial_array is not None:
+        self.data_core.renew_fpart( self.f_partial_array.data() )
 
     assert ([u_sol,b_sol]).count(None)>1
 
@@ -1023,19 +1102,7 @@ class twin_model_manager(object):
       self.data_core.ksol( self.scaling_parameters.k_sol )
 
 
-  def deep_copy(self):
-    new = twin_model_manager(
-      f_obs_array=self.f_obs_array.deep_copy(),
-      free_array=self.free_array.deep_copy(),
-      xray_structure=self.xray_structure,
-      scaling_parameters=self.scaling_parameters.deep_copy(),
-      mask_params=self.mask_parameters,
-      out=self.out,
-      twin_law=self.twin_law)
-    return new
-
-
-  def construct_miller_set(self):
+  def construct_miller_set(self, return_free_f_atoms_array=False):
     completion = xray.twin_completion( self.f_obs_array.indices(),
                                        self.xs.space_group(),
                                        self.f_obs_array.anomalous_flag(),
@@ -1045,14 +1112,23 @@ class twin_model_manager(object):
       crystal_symmetry = self.xs,
       indices =indices,
       anomalous_flag = self.f_obs_array.anomalous_flag() ).map_to_asu()
+
     assert miller_set.is_unique_set_under_symmetry()
-    return miller_set
+    if not return_free_f_atoms_array:
+      return miller_set
+    else:
+      free_array_for_f_atoms = completion.get_free_model_selection(
+        miller_set.indices(),
+        self.free_array.data() )
+      return miller_set, free_array_for_f_atoms
+
+
 
 
   def compute_f_atoms(self):
     """Get f calc from the xray structure"""
     if self.miller_set is None:
-      self.miller_set = self.construct_miller_set()
+      self.miller_set, self.free_flags_for_f_atoms = self.construct_miller_set(True)
     tmp = self.miller_set.structure_factors_from_scatterers(
       xray_structure = self.xray_structure )
     f_atoms = tmp.f_calc()
@@ -1141,7 +1217,7 @@ class twin_model_manager(object):
 
   def update_f_mask(self):
     mask = self.bulk_solvent_mask()
-    self.f_mask = mask.structure_factors( self.miller_set )
+    self.f_mask_array = mask.structure_factors( self.miller_set )
 
 
   def r_values(self, table=True):
@@ -1371,7 +1447,9 @@ tf is the twin fractrion and Fo is an observed amplitude."""%(r_abs_work_f_overa
         miller_obs   = detwinned_data,
         miller_calc  = f_model,
         r_free_flags = self.free_array,
-        kernel_width_free_reflections=200 )
+        kernel_width_free_reflections=200,
+        )
+      self.sigmaa_object_cache.show(out=self.out)
     return self.sigmaa_object_cache
 
   def alpha_beta(self):
@@ -1439,7 +1517,6 @@ tf is the twin fractrion and Fo is an observed amplitude."""%(r_abs_work_f_overa
         sigmaa_object = self.sigmaa_object()
         m = sigmaa_object.fom().data()
         d = sigmaa_object.alpha_beta()[0].data()
-        print m, d
         if map_type == "m*Fobs-D*Fmodel":
           result = dt_f_obs.data()*m - abs(f_model).data()*d
         if map_type == "2m*Fobs-D*Fmodel":
@@ -1482,3 +1559,80 @@ tf is the twin fractrion and Fo is an observed amplitude."""%(r_abs_work_f_overa
       w2                = w2).fft_map(
          resolution_factor = resolution_factor,
          symmetry_flags    = symmetry_flags)
+
+  def u_star(self):
+    return self.data_core.ustar()
+
+  def u_cart(self):
+    tmp = self.u_star()
+    tmp = adptbx.u_star_as_u_cart(self.unit_cell,tmp)
+
+  def b_cart(self):
+    b_cart = adptbx.u_as_b( self.u_cart() )
+    return b_cart
+
+  def b_iso(self):
+    b_cart = self.b_cart()
+    return (b_cart[0]+b_cart[1]+b_cart[2])/3.0
+
+  def u_iso(self):
+    u_cart = self.u_cart()
+    return (u_cart[0]+u_cart[1]+u_cart[2])/3.0
+
+  def u_iso_as_u_cart(self):
+    ui = self.u_iso()
+    return [ui,ui,ui,0.0,0.0,0.0]
+
+  def k_sol(self):
+    return self.data_core.ksol()
+
+  def u_sol(self):
+    return self.data_core.usol()
+
+  def b_sol(self):
+    return adptbx.u_as_b( self.u_sol() )
+
+  def k_sol_b_sol(self):
+    return self.k_sol(), self.b_sol()
+
+  def k_sol_u_sol(self):
+    return self.k_sol(), self.u_sol()
+
+
+  def f_mask(self):
+    return self.f_mask_array
+
+  def f_mask_w(self):
+    return self.f_mask().select(~self.free_flags_for_f_atoms.data() )
+
+  def f_mask_t(self):
+    return self.f_mask().select( self.free_flags_for_f_atoms.data() )
+
+  def f_bulk(self):
+    tmp = self.data_core.f_bulk()
+    tmp = self.f_mask_array.customized_copy(
+      data = tmp ).set_observation_type( self.f_mask_array )
+    return tmp
+
+  def f_bulk_t(self):
+    tmp = self.f_bulk()
+    return tmp.select( self.free_flags_for_f_atoms.data() )
+
+  def f_bulk_w(self):
+    tmp = self.f_bulk()
+    return tmp.select(~self.free_flags_for_f_atoms.data() )
+
+  def fb_bulk(self):
+    tmp = self.data_core.f_bulk()
+    multi = self.data_core.overall_scale()
+    tmp = self.f_mask_array.customized_copy(
+      data = tmp*multi ).set_observation_type( self.f_mask_array )
+    return tmp
+
+  def fb_bulk_t(self):
+    tmp = self.f_bulk()
+    return tmp.select( self.free_flags_for_f_atoms.data() )
+
+  def fb_bulk_w(self):
+    tmp = self.f_bulk()
+    return tmp.select(~self.free_flags_for_f_atoms.data() )
