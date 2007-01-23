@@ -201,7 +201,10 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     return self._rota_matrices
 
   def print_list(self,list_of_real):
-    return "  ".join(["%.2f" % number for number in list_of_real])
+    try: 
+      return "  ".join(["%.2f" % number for number in list_of_real])
+    except:
+      return ""
 
 class ncs:
   def __init__(self):
