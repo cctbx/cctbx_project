@@ -3338,6 +3338,7 @@ foo.limit = 4
 bar.max = 2
 """
   assert itpr_bar.process(arg="max=5").as_str() == "bar.max = 5\n"
+  assert itpr_bar.process(arg="ax=5").as_str() == "bar.max = 5\n"
   try: assert itpr_neutral.process(arg="max=5")
   except Sorry, e:
     assert str(e) == """\
