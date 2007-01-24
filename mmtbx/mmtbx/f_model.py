@@ -393,7 +393,7 @@ class manager(object):
 
   def _get_step(self, update_f_ordered_solvent = False):
     step = self.f_obs.d_min()/self.mask_params.grid_step_factor
-    if(step < 0.3): step = 0.3
+    if(step < 0.2): step = 0.2
     step = min(0.8, step)
     if(update_f_ordered_solvent): step = 0.3
     return step
@@ -859,7 +859,7 @@ class manager(object):
   def determine_n_bins(self,
         free_reflections_per_bin,
         max_n_bins=None,
-        min_n_bins=3,
+        min_n_bins=1,
         min_refl_per_bin=100):
     assert free_reflections_per_bin > 0
     n_refl = self.test.size()
