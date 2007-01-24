@@ -141,7 +141,8 @@ namespace scitbx {
       NumType
       trace() const
       {
-        return af::sum(diagonal());
+        mat3 const& m = *this;
+        return m[0] + m[4] + m[8];
       }
 
       //! Return determinant.
