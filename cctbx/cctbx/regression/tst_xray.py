@@ -360,8 +360,9 @@ C  pair count:   1       <<  0.0000,  0.0000,  0.1000>>
                       # quick-and-dirty test, likely to fail if random seed
                       # is changed
                       assert is_above_limit(
-                        value=abs(flex.mean(a-b))/abs(flex.mean(a)),
-                        limit=0.0005)
+                        value=flex.max(flex.abs((a-b))), limit=0.1)
+                      assert is_above_limit(
+                        value=flex.min(flex.abs((a-b))), limit=0.001)
                    else:
                       assert approx_equal(sc.u_star, sc_mod.u_star)
 ### shake_occupancies()
