@@ -201,10 +201,28 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     return self._rota_matrices
 
   def print_list(self,list_of_real):
-    try: 
-      return "  ".join(["%.2f" % number for number in list_of_real])
-    except:
-      return ""
+    text=""
+    for number in list_of_real:
+     text+="  "+str(self.round(number,2))
+    return text
+
+  def round(self,value,n_digit):  # round off value to n_digit digits
+    if type(value) == type(1):
+       return self.round(float(value),n_digit)
+    if type(value) != type(1.0):
+       return self.round(0.0,1)
+
+    if n_digit == 0:
+      rounder=1
+    else:
+      rounder=10**n_digit
+    if value >= 0:
+      rounded=float(int(0.5+value*rounder))/rounder
+    else:
+      value1=-1.*value
+      rounded=float(int(0.5+value1*rounder))/rounder
+      rounded=-1.*rounded
+    return rounded
 
 class ncs:
   def __init__(self):
@@ -530,6 +548,21 @@ class ncs:
     else:
       cc_all=None
     return cc_all
+
+  def overall_rmsd(self):
+    rmsd_all=0.
+    n=0
+    for ncs_group in self._ncs_groups:
+      if ncs_group.rmsd_list() is not None:
+        for rmsd in ncs_group.rmsd_list():
+          rmsd_all+=rmsd
+          n+=1
+    if n>0:
+      rmsd_all=rmsd_all/float(n)
+    else:
+      rmsd_all=None
+    return rmsd_all
+
   def max_operators(self):
     n_max=0
     for ncs_group in self._ncs_groups:
