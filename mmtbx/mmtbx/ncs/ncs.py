@@ -586,7 +586,7 @@ center_orth   30.2920   -2.8923   16.6160
 CHAIN A
 RMSD 0.2
 MATCHING 12.0
-  RESSEQ 1:26
+  RESSEQ 1:26 
 
 new_operator
 
@@ -599,7 +599,7 @@ center_orth   39.8735    3.8824   16.7239
 CHAIN B
 RMSD 0.1
 MATCHING 15.0
-  RESSEQ 101:126
+  RESSEQ 101:126 
 
 
 
@@ -616,7 +616,7 @@ center_orth   31.2920   -2.8923   16.6160
 CHAIN A
 RMSD 0.6
 MATCHING 13.0
-  RESSEQ 1:25
+  RESSEQ 1:25 
 
 new_operator
 
@@ -629,7 +629,7 @@ center_orth   38.8735    3.8824   16.7239
 CHAIN B
 RMSD 0.5
 MATCHING 11.0
-  RESSEQ 101:124
+  RESSEQ 101:124 
 
 
 """
@@ -649,6 +649,9 @@ if __name__=="__main__":
 
     if not text or text != test_ncs_info:
      print "NOT OK ...please compare TEST.NCS (std) vs TEST2.NCS (output)"
+     ff=open('txt.dat','w')
+     ff.write(text)
+     ff.close()
     else:
      print "OK"
   elif len(args)>0 and args[0] and os.path.isfile(args[0]):
