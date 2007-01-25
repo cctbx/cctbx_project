@@ -555,8 +555,9 @@ class ncs:
     for ncs_group in self._ncs_groups:
       if ncs_group.rmsd_list() is not None:
         for rmsd in ncs_group.rmsd_list():
-          rmsd_all+=rmsd
-          n+=1
+          if rmsd:
+            rmsd_all+=rmsd
+            n+=1
     if n>0:
       rmsd_all=rmsd_all/float(n)
     else:
