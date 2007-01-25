@@ -1427,13 +1427,27 @@ class build_chain_proxies(object):
       prev_mm.lib_link = None
     #
     for apply in apply_cif_links:
+      if (apply.was_used): continue
       mms = []
       for labels in apply.labels_pair:
         mms.append(apply_cif_links_labels_mm_dict[labels])
       if (mms.count(None) == 0):
         apply.was_used = True
-        for labels in apply.labels_pair:
-          apply_cif_links_labels_mm_dict[labels] = None
+        def raise_if_corrupt(link_resolution):
+          counters = link_resolution.counters
+          if (counters.corrupt_monomer_library_definitions != 0):
+            raise Sorry(
+              "Error processing %s:\n" % counters.label
+              + "  data_link: %s\n" % show_string(apply.data_link)
+              + "  residue 1: %s\n" % apply.labels_pair[0]
+              + "  residue 2: %s\n" % apply.labels_pair[1]
+              + "  Possible problems giving rise to this error include:\n"
+              + "    - residue selections in apply_cif_link block swapped\n"
+              + "    - corrupt CIF link definition\n"
+              + "    - corrupt or missing CIF modifications associated with"
+                  " this link\n"
+              + "  If none of this applies, send email to:\n"
+              + "    bugs@phenix-online.org")
         link = mon_lib_srv.link_link_id_dict[apply.data_link]
         link_resolution = add_bond_proxies(
           counters=counters(label="apply_cif_link_bond"),
@@ -1443,6 +1457,7 @@ class build_chain_proxies(object):
           bond_simple_proxy_registry=geometry_proxy_registries.bond_simple,
           sites_cart=sites_cart,
           distance_cutoff=link_distance_cutoff)
+        raise_if_corrupt(link_resolution)
         n_bond_proxies_already_assigned_to_first_conformer \
           += link_resolution.counters.already_assigned_to_first_conformer
         n_unresolved_apply_cif_link_bonds \
@@ -1454,6 +1469,7 @@ class build_chain_proxies(object):
           angle_list=link.angle_list,
           angle_proxy_registry=geometry_proxy_registries.angle,
           special_position_indices=special_position_indices)
+        raise_if_corrupt(link_resolution)
         n_unresolved_apply_cif_link_angles \
           += link_resolution.counters.unresolved_non_hydrogen
         link_resolution = add_dihedral_proxies(
@@ -1465,6 +1481,7 @@ class build_chain_proxies(object):
           special_position_indices=special_position_indices,
           sites_cart=sites_cart,
           chem_link_id=link.chem_link.id)
+        raise_if_corrupt(link_resolution)
         n_unresolved_apply_cif_link_dihedrals \
           += link_resolution.counters.unresolved_non_hydrogen
         link_ids[link_resolution.chem_link_id] += 1
@@ -1476,6 +1493,7 @@ class build_chain_proxies(object):
           chirality_proxy_registry=geometry_proxy_registries.chirality,
           special_position_indices=special_position_indices,
           lib_link=link)
+        raise_if_corrupt(link_resolution)
         n_unresolved_apply_cif_link_chiralities \
           += link_resolution.counters.unresolved_non_hydrogen
         link_resolution = add_planarity_proxies(
@@ -1485,6 +1503,7 @@ class build_chain_proxies(object):
           plane_list=link.get_planes(),
           planarity_proxy_registry=geometry_proxy_registries.planarity,
           special_position_indices=special_position_indices)
+        raise_if_corrupt(link_resolution)
         n_unresolved_apply_cif_link_planarities \
           += link_resolution.counters.unresolved_non_hydrogen
     #
@@ -1978,7 +1997,7 @@ class build_all_chain_proxies(object):
       if (mod is None):
         print >> log
         raise Sorry(
-          "Missing cif modification: data_mod_%s\n" % apply.data_mod
+          "Missing CIF modification: data_mod_%s\n" % apply.data_mod
           + "  Please check for spelling errors or specify the file name\n"
           + "  with the modification as an additional argument.")
       print >> log, "    residue_selection:", apply.residue_selection
@@ -2008,7 +2027,7 @@ class build_all_chain_proxies(object):
       if (link is None):
         print >> log
         raise Sorry(
-          "Missing cif link: data_link_%s\n" % apply.data_link
+          "Missing CIF link: data_link_%s\n" % apply.data_link
           + "  Please check for spelling errors or specify the file name\n"
           + "  with the link as an additional argument.")
       mod_ids = []
@@ -2022,7 +2041,7 @@ class build_all_chain_proxies(object):
           if (mod is None):
             print >> log
             raise Sorry(
-              "Missing cif modification: data_mod_%s\n" % mod_id
+              "Missing CIF modification: data_mod_%s\n" % mod_id
               + "  Please check for spelling errors or specify the file name\n"
               + "  with the modification as an additional argument.")
       sel_attrs = ["residue_selection_"+n for n in ["1", "2"]]
