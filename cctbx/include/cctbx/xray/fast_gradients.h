@@ -370,7 +370,7 @@ namespace cctbx { namespace xray {
       void
       sampling(
         af::const_ref<XrayScattererType> const& scatterers,
-        af::const_ref<FloatType> const& u_iso_reinable_params,
+        af::const_ref<FloatType> const& u_iso_refinable_params,
         xray::scattering_type_registry const& scattering_type_registry,
         sgtbx::site_symmetry_table const& site_symmetry_table,
         af::const_ref<FloatType, accessor_type> const&
@@ -380,7 +380,7 @@ namespace cctbx { namespace xray {
       {
         this->map_accessor_ = ft_d_target_d_f_calc.accessor();
         sampling_(
-          scatterers, u_iso_reinable_params,
+          scatterers, u_iso_refinable_params,
           scattering_type_registry, site_symmetry_table,
           ft_d_target_d_f_calc.begin(), 0,
           n_parameters, sampled_density_must_be_positive);
@@ -389,7 +389,7 @@ namespace cctbx { namespace xray {
       void
       sampling(
         af::const_ref<XrayScattererType> const& scatterers,
-        af::const_ref<FloatType> const& u_iso_reinable_params,
+        af::const_ref<FloatType> const& u_iso_refinable_params,
         xray::scattering_type_registry const& scattering_type_registry,
         sgtbx::site_symmetry_table const& site_symmetry_table,
         af::const_ref<std::complex<FloatType>, accessor_type> const&
@@ -399,7 +399,7 @@ namespace cctbx { namespace xray {
       {
         this->map_accessor_ = ft_d_target_d_f_calc.accessor();
         sampling_(
-          scatterers, u_iso_reinable_params,
+          scatterers, u_iso_refinable_params,
           scattering_type_registry, site_symmetry_table,
           0, ft_d_target_d_f_calc.begin(),
           n_parameters, sampled_density_must_be_positive);
@@ -455,7 +455,7 @@ namespace cctbx { namespace xray {
       void
       sampling_(
         af::const_ref<XrayScattererType> const& scatterers,
-        af::const_ref<FloatType> const& u_iso_reinable_params,
+        af::const_ref<FloatType> const& u_iso_refinable_params,
         xray::scattering_type_registry const& scattering_type_registry,
         sgtbx::site_symmetry_table const& site_symmetry_table,
         const FloatType* ft_d_target_d_f_calc_real,
@@ -470,7 +470,7 @@ namespace cctbx { namespace xray {
   fast_gradients<FloatType, XrayScattererType>::
   sampling_(
     af::const_ref<XrayScattererType> const& scatterers,
-    af::const_ref<FloatType> const& u_iso_reinable_params,
+    af::const_ref<FloatType> const& u_iso_refinable_params,
     xray::scattering_type_registry const& scattering_type_registry,
     sgtbx::site_symmetry_table const& site_symmetry_table,
     const FloatType* ft_d_target_d_f_calc_real,
@@ -483,7 +483,7 @@ namespace cctbx { namespace xray {
     CCTBX_ASSERT(scatterers.size() == this->n_scatterers_passed_);
     cctbx::xray::scatterer_grad_flags_counts grad_flags_counts(scatterers);
     if(grad_flags_counts.tan_u_iso != 0 && grad_flags_counts.u_iso != 0) {
-      CCTBX_ASSERT(u_iso_reinable_params.size() == scatterers.size());
+      CCTBX_ASSERT(u_iso_refinable_params.size() == scatterers.size());
     }
     if (this->n_anomalous_scatterers_ != 0) {
       this->anomalous_flag_ = true;
@@ -665,8 +665,8 @@ namespace cctbx { namespace xray {
             if (scatterer.flags.tan_u_iso() && scatterer.flags.param > 0) {
               FloatType pi = scitbx::constants::pi;
               FloatType u_iso_max = adptbx::b_as_u(scatterer.flags.param);
-              packed_.push_back(u_iso_max/pi/(1.+u_iso_reinable_params[i_seq]*
-                  u_iso_reinable_params[i_seq])*adptbx::u_as_b(gr_b_iso));
+              packed_.push_back(u_iso_max/pi/(1.+u_iso_refinable_params[i_seq]*
+                  u_iso_refinable_params[i_seq])*adptbx::u_as_b(gr_b_iso));
             }
             else {
               packed_.push_back(adptbx::u_as_b(gr_b_iso));
@@ -699,7 +699,7 @@ namespace cctbx { namespace xray {
             FloatType pi = scitbx::constants::pi;
             FloatType u_iso_max = adptbx::b_as_u(scatterer.flags.param);
             d_target_d_u_iso_.push_back(u_iso_max/pi/(1.+
-                u_iso_reinable_params[i_seq]*u_iso_reinable_params[i_seq])
+                u_iso_refinable_params[i_seq]*u_iso_refinable_params[i_seq])
                 *adptbx::u_as_b(gr_b_iso));
           }
           else {

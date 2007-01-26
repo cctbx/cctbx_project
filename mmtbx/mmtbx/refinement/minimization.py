@@ -129,7 +129,7 @@ class lbfgs(object):
     self.apply_shifts()
     del self._scatterers_start
     self._lock_for_line_search = False
-    self.compute_target(compute_gradients = False,u_iso_reinable_params = None)
+    self.compute_target(compute_gradients = False,u_iso_refinable_params = None)
     del self._lock_for_line_search
     self.xray_structure.tidy_us()
     if(refine_occ):
@@ -170,11 +170,11 @@ class lbfgs(object):
                 site_frac        = scatterers_shifted[i_seq].site)
     self.xray_structure.replace_scatterers(scatterers = scatterers_shifted)
     if(self.refine_adp):
-       return apply_shifts_result.u_iso_reinable_params
+       return apply_shifts_result.u_iso_refinable_params
     else:
        return None
 
-  def compute_target(self, compute_gradients, u_iso_reinable_params):
+  def compute_target(self, compute_gradients, u_iso_refinable_params):
     self.stereochemistry_residuals = None
     if(self.neutron_refinement):
        self.xray_structure.scattering_type_registry(
@@ -190,7 +190,7 @@ class lbfgs(object):
        sf = self.fmodel.gradient_wrt_atomic_parameters(
                         alpha                 = self.alpha_w,
                         beta                  = self.beta_w,
-                        u_iso_reinable_params = u_iso_reinable_params).packed()
+                        u_iso_refinable_params = u_iso_refinable_params).packed()
        #XXX do not count grads for H or D:
        if(self.hd_selection.count(True) > 0):
           if(self.refine_xyz):
@@ -216,7 +216,7 @@ class lbfgs(object):
           sf = self.fmodel_neutron.gradient_wrt_atomic_parameters(
                         alpha                 = self.alpha_w_neutron,
                         beta                  = self.beta_w_neutron,
-                        u_iso_reinable_params = u_iso_reinable_params).packed()
+                        u_iso_refinable_params = u_iso_refinable_params).packed()
           self.g = self.g + sf * self.wn
 
           ii = 0
@@ -315,9 +315,9 @@ class lbfgs(object):
       print self.f,minimizer.iter(),minimizer.nfun()
 
   def compute_functional_and_gradients(self):
-    u_iso_reinable_params = self.apply_shifts()
+    u_iso_refinable_params = self.apply_shifts()
     self.compute_target(compute_gradients     = True,
-                        u_iso_reinable_params = u_iso_reinable_params)
+                        u_iso_refinable_params = u_iso_refinable_params)
     self.collector.collect(et = self.f)
     if (self.verbose > 1):
       print "xray.minimization line search: f,rms(g):",

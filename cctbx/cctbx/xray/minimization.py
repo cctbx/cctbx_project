@@ -97,7 +97,7 @@ class lbfgs(object):
         site_frac=shifted_scatterers[i_seq].site,
         tolerance=self.correct_special_position_tolerance)
     self.xray_structure.replace_scatterers(scatterers=shifted_scatterers)
-    return apply_shifts_result.u_iso_reinable_params
+    return apply_shifts_result.u_iso_refinable_params
 
   def compute_target(self, compute_gradients):
     self.f_calc = self.structure_factors_from_scatterers(
@@ -109,7 +109,7 @@ class lbfgs(object):
       compute_gradients)
 
   def compute_functional_and_gradients(self):
-    u_iso_reinable_params = self.apply_shifts()
+    u_iso_refinable_params = self.apply_shifts()
     self.compute_target(compute_gradients=True)
     self.f = self.target_result.target()
     if (self.first_target_value is None):
@@ -121,7 +121,7 @@ class lbfgs(object):
         self.f += self.occupancy_penalty.functional(occupancy=occupancy)
     self.g = self.structure_factor_gradients(
       xray_structure=self.xray_structure,
-      u_iso_reinable_params=u_iso_reinable_params,
+      u_iso_refinable_params=u_iso_refinable_params,
       miller_set=self.target_functor.f_obs(),
       d_target_d_f_calc=self.target_result.derivatives(),
       n_parameters=self.x.size(),

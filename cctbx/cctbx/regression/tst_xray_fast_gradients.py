@@ -146,7 +146,7 @@ class resampling(crystal.symmetry):
       fourier_coefficients=coeff)
 
   def __call__(self, xray_structure,
-                     u_iso_reinable_params,
+                     u_iso_refinable_params,
                      dp,
                      n_parameters,
                      verbose=0):
@@ -178,7 +178,7 @@ class resampling(crystal.symmetry):
         print
     result.sampling(
       scatterers=xray_structure.scatterers(),
-      u_iso_reinable_params=u_iso_reinable_params,
+      u_iso_refinable_params=u_iso_refinable_params,
       scattering_type_registry=xray_structure.scattering_type_registry(),
       site_symmetry_table=xray_structure.site_symmetry_table(),
       ft_d_target_d_f_calc=gradient_map,
@@ -240,14 +240,14 @@ def site(structure_ideal, d_min, f_obs, verbose=0):
                                 fdp        = gradient_flags.fdp)
   sfd = xray.structure_factors.gradients_direct(
     xray_structure=sh.structure_shifted,
-    u_iso_reinable_params=None,
+    u_iso_refinable_params=None,
     miller_set=f_obs,
     d_target_d_f_calc=ls.derivatives(),
     n_parameters=0)
   re = resampling(miller_set=f_obs)
   map0 = re(
     xray_structure=sh.structure_shifted,
-    u_iso_reinable_params=None,
+    u_iso_refinable_params=None,
     dp=miller.array(miller_set=f_obs, data=ls.derivatives()),
     n_parameters=0,
     verbose=verbose)
@@ -328,14 +328,14 @@ def u_iso(structure_ideal, d_min, f_obs, tan_u_iso, verbose=0):
   if(grad_flags_counts.n_parameters() > 0):
      sfd = xray.structure_factors.gradients_direct(
        xray_structure=sh.structure_shifted,
-       u_iso_reinable_params=u_iso_refinable_params,
+       u_iso_refinable_params=u_iso_refinable_params,
        miller_set=f_obs,
        d_target_d_f_calc=ls.derivatives(),
        n_parameters=0)
      re = resampling(miller_set=f_obs)
      map0 = re(
        xray_structure=sh.structure_shifted,
-       u_iso_reinable_params=u_iso_refinable_params,
+       u_iso_refinable_params=u_iso_refinable_params,
        dp=miller.array(miller_set=f_obs, data=ls.derivatives()),
        n_parameters=0,
        verbose=verbose)
@@ -392,14 +392,14 @@ def u_iso(structure_ideal, d_min, f_obs, tan_u_iso, verbose=0):
             scatterer.u_star =(-999.,-999.,-999.,-999.,-999.,-999.)
      sfd = xray.structure_factors.gradients_direct(
        xray_structure=sh.structure_shifted,
-       u_iso_reinable_params=u_iso_refinable_params,
+       u_iso_refinable_params=u_iso_refinable_params,
        miller_set=f_obs,
        d_target_d_f_calc=ls.derivatives(),
        n_parameters=0)
      re = resampling(miller_set=f_obs)
      map0 = re(
        xray_structure=sh.structure_shifted,
-       u_iso_reinable_params=u_iso_refinable_params,
+       u_iso_refinable_params=u_iso_refinable_params,
        dp=miller.array(miller_set=f_obs, data=ls.derivatives()),
        n_parameters=0,
        verbose=verbose)
@@ -487,7 +487,7 @@ def u_star(structure_ideal, d_min, f_obs, verbose=0):
        print "use_u_aniso              ", cntr_use_u_aniso,cntr_grad_u_aniso
      sfd = xray.structure_factors.gradients_direct(
        xray_structure=sh.structure_shifted,
-       u_iso_reinable_params=None,
+       u_iso_refinable_params=None,
        miller_set=f_obs,
        d_target_d_f_calc=ls.derivatives(),
        n_parameters= 0
@@ -495,7 +495,7 @@ def u_star(structure_ideal, d_min, f_obs, verbose=0):
      re = resampling(miller_set=f_obs)
      map0 = re(
        xray_structure=sh.structure_shifted,
-       u_iso_reinable_params=None,
+       u_iso_refinable_params=None,
        dp=miller.array(miller_set=f_obs, data=ls.derivatives()),
        n_parameters= 0,
        verbose=verbose)
@@ -548,7 +548,7 @@ def u_star(structure_ideal, d_min, f_obs, verbose=0):
             scatterer.u_star =(-999.,-999.,-999.,-999.,-999.,-999.)
      sfd = xray.structure_factors.gradients_direct(
        xray_structure=sh.structure_shifted,
-       u_iso_reinable_params=None,
+       u_iso_refinable_params=None,
        miller_set=f_obs,
        d_target_d_f_calc=ls.derivatives(),
        n_parameters= 0
@@ -556,7 +556,7 @@ def u_star(structure_ideal, d_min, f_obs, verbose=0):
      re = resampling(miller_set=f_obs)
      map0 = re(
        xray_structure=sh.structure_shifted,
-       u_iso_reinable_params=None,
+       u_iso_refinable_params=None,
        dp=miller.array(miller_set=f_obs, data=ls.derivatives()),
        n_parameters= 0,
        verbose=verbose)
@@ -618,14 +618,14 @@ def occupancy(structure_ideal, d_min, f_obs, verbose=0):
                                 fdp        = gradient_flags.fdp)
   sfd = xray.structure_factors.gradients_direct(
     xray_structure=sh.structure_shifted,
-    u_iso_reinable_params=None,
+    u_iso_refinable_params=None,
     miller_set=f_obs,
     d_target_d_f_calc=ls.derivatives(),
     n_parameters=0)
   re = resampling(miller_set=f_obs)
   map0 = re(
     xray_structure=sh.structure_shifted,
-    u_iso_reinable_params=None,
+    u_iso_refinable_params=None,
     dp=miller.array(miller_set=f_obs, data=ls.derivatives()),
     n_parameters=0,
     verbose=verbose)
@@ -671,14 +671,14 @@ def fp(structure_ideal, d_min, f_obs, verbose=0):
                                 fdp        = gradient_flags.fdp)
   sfd = xray.structure_factors.gradients_direct(
     xray_structure=sh.structure_shifted,
-    u_iso_reinable_params=None,
+    u_iso_refinable_params=None,
     miller_set=f_obs,
     d_target_d_f_calc=ls.derivatives(),
     n_parameters=0)
   re = resampling(miller_set=f_obs)
   map0 = re(
     xray_structure=sh.structure_shifted,
-    u_iso_reinable_params=None,
+    u_iso_refinable_params=None,
     dp=miller.array(miller_set=f_obs, data=ls.derivatives()),
     n_parameters=0,
     verbose=verbose)
@@ -724,14 +724,14 @@ def fdp(structure_ideal, d_min, f_obs, verbose=0):
                                 fdp        = gradient_flags.fdp)
   sfd = xray.structure_factors.gradients_direct(
     xray_structure=sh.structure_shifted,
-    u_iso_reinable_params=None,
+    u_iso_refinable_params=None,
     miller_set=f_obs,
     d_target_d_f_calc=ls.derivatives(),
     n_parameters=0)
   re = resampling(miller_set=f_obs)
   map0 = re(
     xray_structure=sh.structure_shifted,
-    u_iso_reinable_params=None,
+    u_iso_refinable_params=None,
     dp=miller.array(miller_set=f_obs, data=ls.derivatives()),
     n_parameters=0,
     verbose=verbose)
@@ -788,7 +788,7 @@ def exercise_packed(structure_ideal, f_obs,
   if (n_parameters > 0):
     sfd = xray.structure_factors.gradients_direct(
       xray_structure=sh.structure_shifted,
-      u_iso_reinable_params=u_iso_refinable_params,
+      u_iso_refinable_params=u_iso_refinable_params,
       miller_set=f_obs,
       d_target_d_f_calc=ls.derivatives(),
       n_parameters=n_parameters)
@@ -796,7 +796,7 @@ def exercise_packed(structure_ideal, f_obs,
     re = resampling(miller_set=f_obs)
     map0 = re(
       xray_structure=sh.structure_shifted,
-      u_iso_reinable_params=u_iso_refinable_params,
+      u_iso_refinable_params=u_iso_refinable_params,
       dp=miller.array(miller_set=f_obs, data=ls.derivatives()),
       n_parameters=n_parameters,
       verbose=verbose)
@@ -848,14 +848,14 @@ def exercise_gradient_manager(structure_ideal, f_obs,
     assert n_parameters == sh.structure_shifted.n_parameters_XXX()
   gd = grad_manager(
     xray_structure=sh.structure_shifted,
-    u_iso_reinable_params=None,
+    u_iso_refinable_params=None,
     miller_set=f_obs,
     d_target_d_f_calc=ls.derivatives(),
     n_parameters=n_parameters,
     algorithm="direct")
   gf = grad_manager(
     xray_structure=sh.structure_shifted,
-    u_iso_reinable_params=None,
+    u_iso_refinable_params=None,
     miller_set=f_obs,
     d_target_d_f_calc=ls.derivatives(),
     n_parameters=n_parameters,

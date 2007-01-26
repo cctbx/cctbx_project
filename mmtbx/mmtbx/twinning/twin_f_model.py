@@ -1388,7 +1388,7 @@ tf is the twin fractrion and Fo is an observed amplitude."""%(r_abs_work_f_overa
     result = None
     if(u_aniso):
        result = self.structure_factor_gradients_w(
-                u_iso_reinable_params = None,
+                u_iso_refinable_params = None,
                 d_target_d_f_calc  = dtdab_atoms,
                 xray_structure     = xrs,
                 n_parameters       = 0,
@@ -1396,7 +1396,7 @@ tf is the twin fractrion and Fo is an observed amplitude."""%(r_abs_work_f_overa
                 algorithm          = self.sf_algorithm).d_target_d_u_cart()
     else:
        result = self.structure_factor_gradients_w(
-                u_iso_reinable_params = u_iso_reinable_params,
+                u_iso_refinable_params = u_iso_refinable_params,
                 d_target_d_f_calc  = dtdab_atoms,
                 xray_structure     = xrs,
                 n_parameters       = xrs.n_parameters_XXX(),
