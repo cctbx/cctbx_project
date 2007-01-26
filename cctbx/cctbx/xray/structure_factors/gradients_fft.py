@@ -67,7 +67,7 @@ class gradients_fft(gradients_base):
     global_counters.gradients_fft.process(time_all.elapsed())
 
   def _gradient_map_coeff(self):
-    coeff = self.miller_set().array(data=flex.conj(self.d_target_d_f_calc()))
+    coeff = self.miller_set().array(data=self.d_target_d_f_calc().deep_copy())
     multiplier = (  self.manager().unit_cell().volume()
                   / matrix.row(self.manager().rfft().n_real()).product()
                   * self.manager().space_group().n_ltr())
