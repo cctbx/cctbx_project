@@ -11,6 +11,7 @@ def run():
   ["$D/mmtbx/tst_fmodel_fd.py", "P31"],
   "$D/ncs/tst_restraints.py",
   "$D/mmtbx/ncs/tst_restraints.py",
+  ["$D/mmtbx/ncs/ncs.py", "exercise"],
   "$D/mmtbx/regression/tst_adp_restraints.py",
   "$D/mmtbx/scaling/tst_scaling.py",
   "$D/mmtbx/scaling/tst_outlier.py",
