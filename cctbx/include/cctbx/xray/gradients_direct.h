@@ -66,8 +66,8 @@ namespace cctbx { namespace xray { namespace structure_factors {
           c_t term = cos_sin.get(hrx + ht);
           if (scatterer.flags.grad_site()) {
             c_t f = f0_fp_fdp_w * term;
-            f_t c = -d_target_d_f_calc.imag() * f.real()
-                    -d_target_d_f_calc.real() * f.imag();
+            f_t c = d_target_d_f_calc.imag() * f.real()
+                  - d_target_d_f_calc.real() * f.imag();
             if (i) c *= -1;
             for(std::size_t i=0;i<3;i++) {
               dtds_term[i] += g.hr[i] * c;
@@ -85,7 +85,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
         if (scatterer.flags.grad_u_aniso() && scatterer.flags.use_u_aniso()) {
           c_t f = f0_fp_fdp_w * sum_inv;
           f_t c = d_target_d_f_calc.real() * f.real()
-                - d_target_d_f_calc.imag() * f.imag();
+                + d_target_d_f_calc.imag() * f.imag();
           d_target_d_u_star += dw_coeff * c;
         }
         const_h_sum += sum_inv;
@@ -182,7 +182,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
         if (gf_u_iso || scatterer.flags.grad_occupancy()) {
           c_t t = sf.const_h_sum * sf.f0_fp_fdp;
           f_t d = d_target_d_f_calc.real() * t.real()
-                - d_target_d_f_calc.imag() * t.imag();
+                + d_target_d_f_calc.imag() * t.imag();
           d *= scatterer.weight_without_occupancy();
           if (gf_u_iso) {
             gr_refs.u_iso[i_sc] += d * scatterer.occupancy * d_star_sq;
@@ -195,11 +195,11 @@ namespace cctbx { namespace xray { namespace structure_factors {
           c_t f = sf.const_h_sum * scatterer.weight();
           if (scatterer.flags.grad_fp()) {
             gr_refs.fp[i_sc] += d_target_d_f_calc.real() * f.real()
-                              - d_target_d_f_calc.imag() * f.imag();
+                              + d_target_d_f_calc.imag() * f.imag();
           }
           if (scatterer.flags.grad_fdp()) {
-            gr_refs.fdp[i_sc] -= d_target_d_f_calc.imag() * f.real()
-                               + d_target_d_f_calc.real() * f.imag();
+            gr_refs.fdp[i_sc] += d_target_d_f_calc.imag() * f.real()
+                               - d_target_d_f_calc.real() * f.imag();
           }
         }
       }

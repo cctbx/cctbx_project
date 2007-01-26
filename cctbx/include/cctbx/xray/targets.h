@@ -161,7 +161,7 @@ namespace cctbx { namespace xray { namespace targets {
       target_ += w * delta * delta;
       if (compute_derivatives && abs_fcalc != 0) {
         derivatives_[i] = -2. * scale_factor_ * w * delta
-                        / (sum_w_fobs2 * abs_fcalc) * std::conj(fcalc[i]);
+                        / (sum_w_fobs2 * abs_fcalc) * fcalc[i];
       }
     }
     target_ /= sum_w_fobs2;
@@ -276,7 +276,7 @@ namespace cctbx { namespace xray { namespace targets {
           FobsValueType factor_deriv =
               (y - sum_y / sum_w) * correlation_ / y2yy
             - (x - sum_x / sum_w) / correlation_denom;
-          derivatives_[i] = std::conj(fcalc[i]) * two_w * factor_deriv;
+          derivatives_[i] = fcalc[i] * two_w * factor_deriv;
         }
       }
     }
@@ -526,8 +526,8 @@ double d_maximum_likelihood_target_one_h_over_k(double fo,
       int c = static_cast<int>(cs[i]);
       target_ += maximum_likelihood_target_one_h(fo,fc,a,b,k,e,c);
       if(compute_derivatives) {
-        derivatives_[i] = d_maximum_likelihood_target_one_h_over_fc(fo,fcalc[i],
-            a,b,k,e,c) * (1./ fobs.size());
+        derivatives_[i] = std::conj(d_maximum_likelihood_target_one_h_over_fc(
+          fo,fcalc[i],a,b,k,e,c)) * (1./ fobs.size());
       }
     }
     target_ /= fobs.size();
@@ -810,7 +810,7 @@ mlhl_d_target_dfcalc_one_h(
       target_ += tmp1;
       targets_[i_h] = tmp1;
       if(compute_derivatives) {
-        derivatives_[i_h] = mlhl_d_target_dfcalc_one_h(
+        derivatives_[i_h] = std::conj(mlhl_d_target_dfcalc_one_h(
           fo,
           fc,
           pc,
@@ -825,7 +825,7 @@ mlhl_d_target_dfcalc_one_h(
           &*cos_sin_table.begin(),
           n_steps,
           step_for_integration,
-          &*workspace.begin()) * (1./ fobs.size());
+          &*workspace.begin())) * (1./ fobs.size());
       }
     } // end loop over reflections
     target_ /= fobs.size();
@@ -876,7 +876,7 @@ public:
           target_ += w[i] * delta * delta;
           if(compute_derivatives && fc_abs != 0) {
              derivatives_[i] = -2. * scale_ * w[i] * delta
-                        / (sum_w_fo_sq * fc_abs) * std::conj(fc[i]);
+                        / (sum_w_fo_sq * fc_abs) * fc[i];
           }
        }
        target_ /= sum_w_fo_sq;
@@ -933,7 +933,7 @@ public:
           target_ += w[i] * delta * delta;
           if(compute_derivatives && fc_abs != 0) {
              derivatives_[i] = -2. * w[i] * delta
-                        / (sum_w_fo_sq * fc_abs) * std::conj(fc[i]);
+                        / (sum_w_fo_sq * fc_abs) * fc[i];
           }
        }
        target_ /= sum_w_fo_sq;
