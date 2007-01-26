@@ -186,7 +186,7 @@ def exercise(target_functor, parameter_name, space_group_info,
   grad_flags_counts = xray.scatterer_grad_flags_counts(structure.scatterers())
   sf = xray.structure_factors.gradients_direct(
     xray_structure=structure,
-    u_iso_reinable_params=None,
+    u_iso_refinable_params=None,
     miller_set=f_obs,
     d_target_d_f_calc=target_result.derivatives(),
     n_parameters=0)
@@ -229,7 +229,7 @@ def exercise(target_functor, parameter_name, space_group_info,
         u_iso_refinable_params.append(value)
     sf = xray.structure_factors.gradients_direct(
       xray_structure=structure,
-      u_iso_reinable_params = u_iso_refinable_params,
+      u_iso_refinable_params = u_iso_refinable_params,
       miller_set=f_obs,
       d_target_d_f_calc=target_result.derivatives(),
       n_parameters=0)

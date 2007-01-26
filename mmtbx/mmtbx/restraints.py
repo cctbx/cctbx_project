@@ -73,7 +73,7 @@ class manager(object):
         wilson_b=None,
         compute_gradients=False,
         tan_b_iso_max=None,
-        u_iso_reinable_params=None,
+        u_iso_refinable_params=None,
         gradients=None):
     result = scitbx.restraints.energies(
       compute_gradients=compute_gradients,
@@ -107,11 +107,11 @@ class manager(object):
        #XXX highly inefficient code: do something asap by adopting new scatters flags
        if(tan_b_iso_max is not None and tan_b_iso_max != 0):
           u_iso_max = adptbx.b_as_u(tan_b_iso_max)
-          if(u_iso_reinable_params is not None):
-             chain_rule_scale = u_iso_max / math.pi / (flex.pow2(u_iso_reinable_params)+1.0)
+          if(u_iso_refinable_params is not None):
+             chain_rule_scale = u_iso_max / math.pi / (flex.pow2(u_iso_refinable_params)+1.0)
           else:
-             u_iso_reinable_params = flex.tan(math.pi*(xray_structure.scatterers().extract_u_iso()/u_iso_max-1./2.))
-             chain_rule_scale = u_iso_max / math.pi / (flex.pow2(u_iso_reinable_params)+1.0)
+             u_iso_refinable_params = flex.tan(math.pi*(xray_structure.scatterers().extract_u_iso()/u_iso_max-1./2.))
+             chain_rule_scale = u_iso_max / math.pi / (flex.pow2(u_iso_refinable_params)+1.0)
        else:
           chain_rule_scale = 1.0
        result.gradients = result.gradients * chain_rule_scale

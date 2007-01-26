@@ -774,7 +774,7 @@ class manager(object):
                                            alpha         = None,
                                            beta          = None,
                                            tan_b_iso_max = None,
-                                           u_iso_reinable_params = None):
+                                           u_iso_refinable_params = None):
     global time_gradient_wrt_atomic_parameters
     timer = user_plus_sys_time()
     xrs = self.xray_structure
@@ -815,18 +815,18 @@ class manager(object):
                                             beta              = beta,
                                             scale_ml          = None,
                                             flag              = "work")
-    if(u_iso and u_iso_reinable_params is None):
+    if(u_iso and u_iso_refinable_params is None):
        # XXX here is not clean too
        if(tan_b_iso_max != 0):
           u_iso_max = adptbx.b_as_u(tan_b_iso_max)
-          u_iso_reinable_params = flex.tan(math.pi*
+          u_iso_refinable_params = flex.tan(math.pi*
             (self.xray_structure.scatterers().extract_u_iso()/u_iso_max-1./2.))
        if(tan_b_iso_max == 0):
-          u_iso_reinable_params = None
+          u_iso_refinable_params = None
     result = None
     if(u_aniso):
        result = self.structure_factor_gradients_w(
-                u_iso_reinable_params = None,
+                u_iso_refinable_params = None,
                 d_target_d_f_calc  = xrtfr.derivatives() * self.core.fb_cart_w,
                 xray_structure     = xrs,
                 n_parameters       = 0,
@@ -834,7 +834,7 @@ class manager(object):
                 algorithm          = self.sf_algorithm).d_target_d_u_cart()
     else:
        result = self.structure_factor_gradients_w(
-                u_iso_reinable_params = u_iso_reinable_params,
+                u_iso_refinable_params = u_iso_refinable_params,
                 d_target_d_f_calc  = xrtfr.derivatives() * self.core.fb_cart_w,
                 xray_structure     = xrs,
                 n_parameters       = xrs.n_parameters_XXX(),

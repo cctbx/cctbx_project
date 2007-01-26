@@ -220,7 +220,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
         sgtbx::space_group const& space_group,
         af::const_ref<miller::index<> > const& miller_indices,
         af::const_ref<ScattererType> const& scatterers,
-        af::const_ref<float_type> const& u_iso_reinable_params,
+        af::const_ref<float_type> const& u_iso_refinable_params,
         xray::scattering_type_registry const& scattering_type_registry,
         sgtbx::site_symmetry_table const& site_symmetry_table,
         af::const_ref<std::complex<float_type> > const& d_target_d_f_calc,
@@ -228,7 +228,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
       {
         math::cos_sin_exact<float_type> cos_sin;
         compute(cos_sin, unit_cell, space_group, miller_indices,
-                scatterers, u_iso_reinable_params,
+                scatterers, u_iso_refinable_params,
                 scattering_type_registry, site_symmetry_table,
                 d_target_d_f_calc, n_parameters);
       }
@@ -239,14 +239,14 @@ namespace cctbx { namespace xray { namespace structure_factors {
         sgtbx::space_group const& space_group,
         af::const_ref<miller::index<> > const& miller_indices,
         af::const_ref<ScattererType> const& scatterers,
-        af::const_ref<float_type> const& u_iso_reinable_params,
+        af::const_ref<float_type> const& u_iso_refinable_params,
         xray::scattering_type_registry const& scattering_type_registry,
         sgtbx::site_symmetry_table const& site_symmetry_table,
         af::const_ref<std::complex<float_type> > const& d_target_d_f_calc,
         std::size_t n_parameters=0)
       {
         compute(cos_sin, unit_cell, space_group, miller_indices,
-                scatterers, u_iso_reinable_params,
+                scatterers, u_iso_refinable_params,
                 scattering_type_registry, site_symmetry_table,
                 d_target_d_f_calc, n_parameters);
       }
@@ -307,7 +307,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
         sgtbx::space_group const& space_group,
         af::const_ref<miller::index<> > const& miller_indices,
         af::const_ref<ScattererType> const& scatterers,
-        af::const_ref<float_type> const& u_iso_reinable_params,
+        af::const_ref<float_type> const& u_iso_refinable_params,
         xray::scattering_type_registry const& scattering_type_registry,
         sgtbx::site_symmetry_table const& site_symmetry_table,
         af::const_ref<std::complex<float_type> > const& d_target_d_f_calc,
@@ -316,7 +316,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
         CCTBX_ASSERT(d_target_d_f_calc.size() == miller_indices.size());
         cctbx::xray::scatterer_grad_flags_counts grad_flags_counts(scatterers);
         if(grad_flags_counts.tan_u_iso != 0 && grad_flags_counts.u_iso != 0) {
-          CCTBX_ASSERT(u_iso_reinable_params.size() == scatterers.size());
+          CCTBX_ASSERT(u_iso_refinable_params.size() == scatterers.size());
         }
         CCTBX_ASSERT(grad_flags_counts.n_parameters() != 0);
         typedef float_type f_t;
@@ -399,8 +399,8 @@ namespace cctbx { namespace xray { namespace structure_factors {
               f_t pi = scitbx::constants::pi;
               f_t u_iso_max = adptbx::b_as_u(
                                       static_cast<f_t>(scatterer.flags.param));
-              (*d_t_d_u) *= u_iso_max/pi/(1.+u_iso_reinable_params[i]*
-                                             u_iso_reinable_params[i]);
+              (*d_t_d_u) *= u_iso_max/pi/(1.+u_iso_refinable_params[i]*
+                                             u_iso_refinable_params[i]);
             }
           }
         }

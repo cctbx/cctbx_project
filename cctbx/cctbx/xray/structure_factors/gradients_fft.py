@@ -14,7 +14,7 @@ class gradients_fft(gradients_base):
 
   def __init__(self, manager,
                      xray_structure,
-                     u_iso_reinable_params,
+                     u_iso_refinable_params,
                      miller_set,
                      d_target_d_f_calc,
                      n_parameters):
@@ -46,7 +46,7 @@ class gradients_fft(gradients_base):
     time_sampling = user_plus_sys_time()
     self._results.sampling(
       scatterers=xray_structure.scatterers(),
-      u_iso_reinable_params=u_iso_reinable_params,
+      u_iso_refinable_params=u_iso_refinable_params,
       scattering_type_registry=xray_structure.scattering_type_registry(),
       site_symmetry_table=xray_structure.site_symmetry_table(),
       ft_d_target_d_f_calc=gradient_map,
