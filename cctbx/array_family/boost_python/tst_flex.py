@@ -104,6 +104,13 @@ def exercise_flex_xray_scatterer():
   a[2].flags.param = -234
   p = pickle.dumps(a)
   b = pickle.loads(p)
+  a_ = a.deep_copy()
+  assert a_.n_grad_u_iso() == a_.n_grad_u_aniso() == 0
+  a_[0].flags.set_grad_u_iso(state=True)
+  a_[1].flags.set_grad_u_aniso(state=True)
+  a_[2].flags.set_grad_u_aniso(state=True)
+  assert a_.n_grad_u_iso() == 1
+  assert a_.n_grad_u_aniso() == 2
   for i,ai in enumerate(a):
     bi = b[i]
     assert ai.label == bi.label

@@ -59,7 +59,7 @@ def test_1(xray_structure):
                       assert abs(fmodel.target_t()) < 1.e-9
                       assert fmodel.k_sol_b_sol() == (0.0,0.0)
                       assert approx_equal(fmodel.b_cart(),[0,0,0,0,0,0])
-                      assert fmodel.u_iso() == 0.0
+                      assert fmodel.b_iso() == 0.0
                       assert fmodel.f_obs_w.data().all_eq(
                                                 f_obs.select(~flags.data()).data())
                       assert fmodel.f_obs_t.data().all_eq(
@@ -124,7 +124,7 @@ def test_1(xray_structure):
                       assert fmodel.fb_cart_t().all_eq(1.0)
                       assert fmodel.k_sol_b_sol() == (0.5,35.0)
                       assert approx_equal(fmodel.b_cart(),[0,0,0,0,0,0])
-                      assert fmodel.u_iso() == 0.0
+                      assert fmodel.b_iso() == 0.0
                       assert fmodel.f_obs_w.data().all_eq(
                                                 f_obs.select(~flags.data()).data())
                       assert fmodel.f_obs_t.data().all_eq(
@@ -163,7 +163,7 @@ def test_1(xray_structure):
                       assert abs(fmodel.target_t()) < 1.e-9
                       assert fmodel.k_sol_b_sol() == (0.0,0.0)
                       assert approx_equal(fmodel.b_cart(),[0,0,0,0,0,0])
-                      assert fmodel.u_iso() == 0.0
+                      assert fmodel.b_iso() == 0.0
                       assert fmodel.f_obs_w.data().all_eq(
                                                 f_obs.select(~flags.data()).data())
                       assert fmodel.f_obs_t.data().all_eq(

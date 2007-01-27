@@ -157,6 +157,32 @@ namespace cctbx { namespace xray { namespace {
     }
   }
 
+  int
+  n_grad_u_iso(
+    af::const_ref<scatterer<> > const& self)
+  {
+    int result = 0;
+    for(std::size_t i=0;i<self.size();i++) {
+        if(self[i].flags.use_u_iso() && self[i].flags.grad_u_iso()) {
+           result++;
+        }
+    }
+    return result;
+  }
+
+  int
+  n_grad_u_aniso(
+    af::const_ref<scatterer<> > const& self)
+  {
+    int result = 0;
+    for(std::size_t i=0;i<self.size();i++) {
+        if(self[i].flags.use_u_aniso() && self[i].flags.grad_u_aniso()) {
+           result++;
+        }
+    }
+    return result;
+  }
+
   af::shared<double>
   extract_u_iso(
     af::const_ref<scatterer<> > const& self)
@@ -536,6 +562,8 @@ namespace scitbx { namespace af { namespace boost_python {
               af::const_ref<bool> const&)) cctbx::xray::set_occupancies,
               (arg_("occupancies"),arg_("selection")))
       .def("adjust_u_iso", cctbx::xray::adjust_u_iso)
+      .def("n_grad_u_iso", cctbx::xray::n_grad_u_iso)
+      .def("n_grad_u_aniso", cctbx::xray::n_grad_u_aniso)
       .def("extract_u_iso", cctbx::xray::extract_u_iso)
       .def("extract_use_u_iso", cctbx::xray::extract_use_u_iso)
       .def("extract_use_u_aniso", cctbx::xray::extract_use_u_aniso)

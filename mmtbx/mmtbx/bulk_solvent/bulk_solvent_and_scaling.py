@@ -581,7 +581,7 @@ class bulk_solvent_and_scales(object):
               #if(params.verbose > 0):
               #   h=m+str(mc)+": (ordered solvent) T= "+self.target_name
               #   self.show_k_sol_b_sol_b_cart_target(header = h, out = log)
-           if(params.apply_back_trace_of_b_cart and abs(fmodel.u_iso()) > 0.0):
+           if(params.apply_back_trace_of_b_cart and abs(fmodel.b_iso()) > 0.0):
               fmodel.apply_back_b_iso()
               if(params.verbose > 0):
                  h=m+str(mc)+": apply back trace(b_cart): T= "+fmodel.target_name
@@ -612,7 +612,7 @@ class bulk_solvent_and_scales(object):
              fmodel.update(k_sol = ksol, b_sol = bsol)
              print >> log, "   recovering previous step..."
              print >> log, "   r_final = ", fmodel.r_work()
-       if(params.apply_back_trace_of_b_cart and abs(fmodel.u_iso()) > 0.0):
+       if(params.apply_back_trace_of_b_cart and abs(fmodel.b_iso()) > 0.0):
           fmodel.apply_back_b_iso()
           if(params.verbose > 0):
              h=m+str(mc)+": apply back trace(b_cart): T= "+fmodel.target_name
