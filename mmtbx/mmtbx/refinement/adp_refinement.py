@@ -114,7 +114,8 @@ class manager(object):
             wn                        = None,
             neutron_scattering_dict   = None,
             xray_scattering_dict      = None,
-            wxnu_scale                = None):
+            wxnu_scale                = None,
+            h_params                  = None):
     global time_adp_refinement_py
     timer = user_plus_sys_time()
     if(log is None): log = sys.stdout
@@ -199,7 +200,8 @@ class manager(object):
                           wn                       = wn,
                           neutron_scattering_dict  = neutron_scattering_dict,
                           xray_scattering_dict     = xray_scattering_dict,
-                          wxnu_scale               = wxnu_scale)
+                          wxnu_scale               = wxnu_scale,
+                          h_params                 = h_params)
        self.minimized.collector.show(text = "LBFGS minimization", out  = log)
        fmodel.update_xray_structure(
                                 xray_structure = self.minimized.xray_structure,
