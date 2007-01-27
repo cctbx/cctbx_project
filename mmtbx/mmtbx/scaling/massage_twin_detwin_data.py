@@ -251,7 +251,7 @@ class massage_data(object):
         b_use=aniso_scale_and_b.eigen_values[2]
       elif self.params.aniso.final_b == "eigen_mean" :
         b_use=flex.mean(aniso_scale_and_b.eigen_values)
-      elif self.params.aniso.final_b == "use_b_iso":
+      elif self.params.aniso.final_b == "user_b_iso":
         assert self.params.aniso.b_iso is not None
         b_use=self.params.aniso.b_iso
       else:
