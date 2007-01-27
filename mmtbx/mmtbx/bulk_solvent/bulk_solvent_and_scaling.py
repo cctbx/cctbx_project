@@ -37,7 +37,7 @@ master_params = iotbx.phil.parse("""\
     .type = float
   k_sol_min = 0.0
     .type = float
-  b_sol_max = 80.0
+  b_sol_max = 150.0
     .type = float
   b_sol_min = 10.0
     .type = float
@@ -45,7 +45,7 @@ master_params = iotbx.phil.parse("""\
     .type = float
   k_sol_grid_search_min = 0.0
     .type = float
-  b_sol_grid_search_max = 80.0
+  b_sol_grid_search_max = 100.0
     .type = float
   b_sol_grid_search_min = 10.0
     .type = float
@@ -53,7 +53,7 @@ master_params = iotbx.phil.parse("""\
     .type = float
   b_sol_step = 5.0
     .type = float
-  number_of_macro_cycles = 2
+  number_of_macro_cycles = 3
     .type = int
   number_of_minimization_macro_cycles = 3
     .type = int
@@ -261,7 +261,8 @@ class solvent_and_scale_params(object):
        fix_flag = [self.nu_fix_n_atoms,self.nu_fix_b_atoms].count(None)
        assert fix_flag == 2 or fix_flag == 0
 
-def aniso_scale_minimizer(fmodel, symm_constr, alpha=None, beta=None):
+def aniso_scale_minimizer(fmodel, symm_constr, alpha=None, beta=None,
+                                                          max_iterations=None):
   if(fmodel.target_name == "ml"):
      if([alpha,beta].count(None) == 2):
         alpha, beta = fmodel.alpha_beta_w()
@@ -291,6 +292,7 @@ def aniso_scale_minimizer(fmodel, symm_constr, alpha=None, beta=None):
          refine_scale  = False,
          alpha         = alpha_data,
          beta          = beta_data,
+         max_iterations= max_iterations,
          lbfgs_exception_handling_params = lbfgs.exception_handling_parameters(
                          ignore_line_search_failed_step_at_lower_bound = True,
                          ignore_line_search_failed_step_at_upper_bound = True,
@@ -358,6 +360,7 @@ class uaniso_ksol_bsol_scaling_minimizer(object):
                b_sol_max = 500.,
                b_sol_min =-500.):
     adopt_init_args(self, locals())
+    self.xxx = 0
     assert self.fc.indices().all_eq(self.fm.indices()) == 1
     assert self.fc.indices().all_eq(self.fo.indices()) == 1
     self.gradient_flags = [self.refine_k,self.refine_b,self.refine_u]
@@ -539,26 +542,17 @@ class bulk_solvent_and_scales(object):
        target = fmodel.target_w()
        ksol   = fmodel.k_sol()
        bsol   = fmodel.b_sol()
-       grid_search_done = False
        for mc in macro_cycles:
-           do_grid_search = (ksol <= params.k_sol_grid_search_min or
-                             ksol >= params.k_sol_grid_search_max or
-                             bsol <= params.b_sol_grid_search_min or
-                             ksol >= params.b_sol_grid_search_max)
-           if(params.k_sol_b_sol_grid_search and do_grid_search and
-                                                         not grid_search_done):
-              grid_search_done = True
+           target = fmodel.target_w()
+           ksol   = fmodel.k_sol()
+           bsol   = fmodel.b_sol()
+           b_cart = fmodel.b_cart()
+           if(params.k_sol_b_sol_grid_search):
               for ksol_ in k_sols:
                   for bsol_ in b_sols:
                       fmodel.update(k_sol = ksol_, b_sol = bsol_)
                       target_ = fmodel.target_w()
                       if(target_ < target):
-                         if(params.minimization_b_cart):
-                            self._b_cart_minimizer_helper(params   = params,
-                                                          fmodel   = fmodel,
-                                                          out      = log,
-                                                          n_cycles = 1)
-                         target_ = fmodel.target_w()
                          target = target_
                          ksol = ksol_
                          bsol = bsol_
@@ -572,7 +566,8 @@ class bulk_solvent_and_scales(object):
                  h=m+str(mc)+": k & b: minimization; T= "+fmodel.target_name
                  fmodel.show_k_sol_b_sol_b_cart_target(header = h, out = log)
            if(params.minimization_b_cart):
-              self._b_cart_minimizer_helper(params = params, fmodel = fmodel, out = log)
+              self._b_cart_minimizer_helper(params = params, fmodel = fmodel,
+                                                                     out = log)
               if(params.verbose > 0):
                  h=m+str(mc)+": anisotropic scale; T= "+fmodel.target_name
                  fmodel.show_k_sol_b_sol_b_cart_target(header = h, out = log)
@@ -586,6 +581,11 @@ class bulk_solvent_and_scales(object):
               #if(params.verbose > 0):
               #   h=m+str(mc)+": (ordered solvent) T= "+self.target_name
               #   self.show_k_sol_b_sol_b_cart_target(header = h, out = log)
+           if(params.apply_back_trace_of_b_cart and abs(fmodel.u_iso()) > 0.0):
+              fmodel.apply_back_b_iso()
+              if(params.verbose > 0):
+                 h=m+str(mc)+": apply back trace(b_cart): T= "+fmodel.target_name
+                 fmodel.show_k_sol_b_sol_b_cart_target(header = h, out = log)
        ### start ml optimization
        ksol = fmodel.k_sol()
        bsol = fmodel.b_sol()
@@ -624,7 +624,8 @@ class bulk_solvent_and_scales(object):
   def _set_f_ordered_solvent(self):
     pass
 
-  def _b_cart_minimizer_helper(self, params, fmodel, out, n_cycles=None):
+  def _b_cart_minimizer_helper(self, params, fmodel, out, n_cycles=None,
+                                                          max_iterations=None):
     symm_constr = params.symmetry_constraints_on_b_cart
     if(n_cycles is None):
        u_cycles = range(1, params.number_of_cycles_for_anisotropic_scaling+1)
@@ -634,7 +635,8 @@ class bulk_solvent_and_scales(object):
     u_start = fmodel.b_cart()
     for u_cycle in u_cycles:
         b_cart = aniso_scale_minimizer(fmodel      = fmodel,
-                                       symm_constr = symm_constr)
+                                       symm_constr = symm_constr,
+                                       max_iterations = max_iterations)
         fmodel.update(b_cart = b_cart)
     r_final = fmodel.r_work()
     if(r_final - r_start > 0.001):
