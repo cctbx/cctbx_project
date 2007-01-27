@@ -22,15 +22,10 @@ class manager(object):
                      restraints_manager_ini,
                      xray_structure,
                      atom_attributes_list,
+                     dbe_xray_structure = None,
                      refinement_flags = None,
                      log = None):
     self.log = log
-    #print "|:"*40
-    #for a,b in zip(xray_structure.scatterers(), atom_attributes_list):
-    #    print a.element_symbol(), b
-    #print "|:"*40
-    #assert 0
-
     self.restraints_manager = restraints_manager
     self.restraints_manager_ini = restraints_manager_ini
     self.xray_structure = xray_structure.deep_copy_scatterers()
@@ -40,7 +35,14 @@ class manager(object):
     self.refinement_flags = refinement_flags
     self.solvent_selection = self._solvent_selection()
     self.solvent_selection_ini = self._solvent_selection()
-    self.locked = False
+    # DBE related
+    self.dbe_xray_structure = dbe_xray_structure
+    self.use_dbe = False
+    self.dbe_selection = None
+    self.use_dbe_true_ = None
+    self.use_dbe_false_ = None
+    self.inflated = False
+    self.dbe_added = False
 
     if(self.refinement_flags is not None and [self.refinement_flags,
                                 self.refinement_flags.adp_tls].count(None)==0):
@@ -74,6 +76,91 @@ class manager(object):
        new.refinement_flags     = self.refinement_flags.select(selection)
     return new
 
+  def add_dbe(self):
+    if(not self.dbe_added):
+       self.use_dbe = True
+       dbe_size = self.dbe_xray_structure.scatterers().size()
+       tail = flex.bool(dbe_size, True)
+       tail_false = flex.bool(dbe_size, False)
+       self.dbe_selection = flex.bool(
+                       self.xray_structure.scatterers().size(),False)
+       self.dbe_selection.extend(tail)
+       self.solvent_selection.extend(tail_false)
+       self.xray_structure.concatenate_inplace(other = self.dbe_xray_structure)
+       print >> self.log, "Scattering dictionary for combined xray_structure:"
+       self.xray_structure.scattering_type_registry().show()
+       self.xray_structure_ini.concatenate_inplace(
+                                               other = self.dbe_xray_structure)
+       self.dbe_added = True
+
+  def use_dbe_false(self):
+    self.use_dbe_true_ = False
+    self.use_dbe_false_ = True
+    self.refinement_flags = self.old_refinement_flags
+    if(not self.inflated):
+       self.refinement_flags.inflate(
+              size = self.dbe_xray_structure.scatterers().size(), flag = False)
+       self.inflated = True
+
+  def use_dbe_true(self):
+    self.old_refinement_flags = self.refinement_flags.deep_copy()
+    assert self.dbe_xray_structure is not None
+    if(self.use_dbe_false_ is None):
+       self.add_dbe()
+    self.use_dbe_true_ = True
+    self.use_dbe_false_ = False
+    #
+    self.refinement_flags.individual_sites       = True
+    self.refinement_flags.rigid_body             = False
+    self.refinement_flags.individual_adp         = True
+    self.refinement_flags.group_adp              = False
+    self.refinement_flags.tls                    = False
+    self.refinement_flags.individual_occupancies = True
+    self.refinement_flags.group_occupancies      = False
+    self.refinement_flags.sites_individual       = [self.dbe_selection]
+    self.refinement_flags.sites_rigid_body       = None
+    self.refinement_flags.adp_individual_iso     = [self.dbe_selection]
+    self.refinement_flags.adp_individual_aniso   = [self.dbe_selection]
+    self.refinement_flags.adp_group              = None
+    self.refinement_flags.adp_tls                = None
+    self.refinement_flags.occupancies_individual = [self.dbe_selection]
+    self.refinement_flags.occupancies_group      = None
+
+  def write_dbe_pdb_file(self, out = None):
+    if(out is None):
+       out = sys.stdout
+    sites_cart = self.xray_structure.select(self.dbe_selection).sites_cart()
+    for i_seq, sc in enumerate(self.xray_structure.select(self.dbe_selection).scatterers()):
+        print >> out, pdb.format_atom_record(
+                                    record_name = "HETATM",
+                                    serial      = i_seq+1,
+                                    name        = sc.label,
+                                    resName     = "DBE",
+                                    resSeq      = i_seq+1,
+                                    site        = sites_cart[i_seq],
+                                    occupancy   = sc.occupancy,
+                                    tempFactor  = adptbx.u_as_b(sc.u_iso),
+                                    element     = sc.label)
+
+  def restraints_manager_energies_sites(self,
+                                        sites_cart           = None,
+                                        geometry_flags       = None,
+                                        compute_gradients    = False,
+                                        gradients            = None,
+                                        disable_asu_cache    = False,
+                                        lock_for_line_search = False):
+    if(sites_cart is None): sites_cart = self.xray_structure.sites_cart()
+    if(self.use_dbe and self.dbe_selection is not None and
+                                           self.dbe_selection.count(True) > 0):
+       sites_cart = sites_cart.select(~self.dbe_selection)
+    return self.restraints_manager.energies_sites(
+                                   sites_cart           = sites_cart,
+                                   geometry_flags       = geometry_flags,
+                                   compute_gradients    = compute_gradients,
+                                   gradients            = gradients,
+                                   disable_asu_cache    = disable_asu_cache,
+                                   lock_for_line_search = lock_for_line_search)
+
   def _solvent_selection(self):
     labels = self.xray_structure.scatterers().extract_labels()
     res_name_tags = ["HOH","SOL","SOLV","WAT","DOD","TIP3"]
@@ -92,7 +179,10 @@ class manager(object):
     return result
 
   def xray_structure_macromolecule(self):
-    return self.xray_structure.select(~self.solvent_selection)
+    sel = self.solvent_selection
+    if(self.use_dbe): sel = sel | self.dbe_selection
+    result = self.xray_structure.select(~sel)
+    return result
 
   def update(self, selection):
     self.xray_structure.select_inplace(selection)
@@ -426,6 +516,8 @@ class manager(object):
                           xray_structure_ref     = self.xray_structure_ini,
                           restraints_manager     = self.restraints_manager,
                           restraints_manager_ref = self.restraints_manager_ini,
+                          use_dbe                = self.use_dbe,
+                          dbe_selection          = self.dbe_selection,
                           text                   = "start")
     sites_cart = self.xray_structure.sites_cart()
     first_target_value = None
@@ -444,6 +536,8 @@ class manager(object):
                           xray_structure_ref     = self.xray_structure_ini,
                           restraints_manager     = self.restraints_manager,
                           restraints_manager_ref = self.restraints_manager_ini,
+                          use_dbe                = self.use_dbe,
+                          dbe_selection          = self.dbe_selection,
                           text                   = "final")
     assert approx_equal(first_target_value, sso_start.target)
     assert approx_equal(minimized.final_target_value, sso_end.target)
@@ -463,6 +557,8 @@ class manager(object):
                              xray_structure_ref     = other.xray_structure,
                              restraints_manager     = self.restraints_manager,
                              restraints_manager_ref = other.restraints_manager,
+                             use_dbe                = self.use_dbe,
+                             dbe_selection          = self.dbe_selection,
                              text                   = text)
     else:
        stereochemistry_statistics_obj = stereochemistry_statistics(
@@ -470,6 +566,8 @@ class manager(object):
                           xray_structure_ref     = self.xray_structure_ini,
                           restraints_manager     = self.restraints_manager,
                           restraints_manager_ref = self.restraints_manager_ini,
+                          use_dbe                = self.use_dbe,
+                          dbe_selection          = self.dbe_selection,
                           text                   = text)
     if(show): stereochemistry_statistics_obj.show(out = self.log,short = short)
     time_model_show += timer.elapsed()
@@ -493,6 +591,8 @@ class manager(object):
                              iso_restraints         = iso_restraints,
                              wilson_b               = wilson_b,
                              tan_b_iso_max          = tan_b_iso_max,
+                             use_dbe                = self.use_dbe,
+                             dbe_selection          = self.dbe_selection,
                              text                   = text)
     else:
        adp_statistics_obj = adp_statistics(
@@ -504,6 +604,8 @@ class manager(object):
                           iso_restraints         = iso_restraints,
                           tan_b_iso_max          = tan_b_iso_max,
                           wilson_b               = wilson_b,
+                          use_dbe                = self.use_dbe,
+                          dbe_selection          = self.dbe_selection,
                           text                   = text)
     if(show == 1): adp_statistics_obj.show_short(out = self.log)
     if(show == 2): adp_statistics_obj.show(out = self.log)
@@ -521,8 +623,13 @@ class adp_statistics(object):
                iso_restraints,
                wilson_b = None,
                tan_b_iso_max = None,
+               use_dbe=None,
+               dbe_selection=None,
                text = ""):
     adopt_init_args(self, locals())
+    if(self.use_dbe):
+       xray_structure = xray_structure.select(~self.dbe_selection)
+       xray_structure_ref = xray_structure_ref.select(~self.dbe_selection)
     energies_adp_iso = restraints_manager.energies_adp_iso(
                                             xray_structure    = xray_structure,
                                             parameters        = iso_restraints,
@@ -661,6 +768,8 @@ class stereochemistry_statistics(object):
                xray_structure_ref,
                restraints_manager,
                restraints_manager_ref,
+               use_dbe,
+               dbe_selection,
                text=""):
     adopt_init_args(self, locals())
     self.a_target, self.a_mean, self.a_max, self.a_min = 0.,0.,0.,0.
@@ -673,12 +782,20 @@ class stereochemistry_statistics(object):
     self.delta_model_mean = 0.
     self.delta_model_max = 0.
     self.delta_model_min = 0.
-    self.energies_sites_ref = self.restraints_manager_ref.energies_sites(
-                      sites_cart        = self.xray_structure_ref.sites_cart(),
-                      compute_gradients = True)
-    self.energies_sites = self.restraints_manager.energies_sites(
-                          sites_cart        = self.xray_structure.sites_cart(),
-                          compute_gradients = True)
+    if(self.use_dbe):
+       self.energies_sites_ref = self.restraints_manager_ref.energies_sites(
+         sites_cart        = self.xray_structure_ref.sites_cart().select(~self.dbe_selection),
+         compute_gradients = True)
+       self.energies_sites = self.restraints_manager.energies_sites(
+         sites_cart        = self.xray_structure.sites_cart().select(~self.dbe_selection),
+         compute_gradients = True)
+    else:
+       self.energies_sites_ref = self.restraints_manager_ref.energies_sites(
+                         sites_cart        = self.xray_structure_ref.sites_cart(),
+                         compute_gradients = True)
+       self.energies_sites = self.restraints_manager.energies_sites(
+                             sites_cart        = self.xray_structure.sites_cart(),
+                             compute_gradients = True)
     self.esg      = self.energies_sites.geometry
     self.esg_ref  = self.energies_sites_ref.geometry
     self.b_target = self.esg.bond_residual_sum
