@@ -114,7 +114,9 @@ def exercise_scatterer_flags():
 
 def exercise_set_scatterer_grad_flags():
   x = xray.scatterer("c", site=(0.1,0.2,0.3), occupancy=0.0, u=(0,0,0,0,0,0))
+  y = xray.scatterer("c", site=(0.1,0.2,0.3), occupancy=0.0, u=1.0)
   scatterers = flex.xray_scatterer(10, x)
+  scatterers.extend(flex.xray_scatterer(10, y))
   for scatterer in scatterers:
       assert scatterer.flags.grad_site()      == False
       assert scatterer.flags.grad_u_iso()     == False
@@ -134,6 +136,8 @@ def exercise_set_scatterer_grad_flags():
       assert scatterer.flags.grad_fdp()       == False
       assert scatterer.flags.tan_u_iso()      == False
       assert scatterer.flags.param            == 0
+  cn1 = 0
+  cn2 = 0
   for site in [True, False]:
     for u_iso in [True, False]:
       for u_aniso in [True, False]:
@@ -153,13 +157,20 @@ def exercise_set_scatterer_grad_flags():
                                                   param      = param)
                     for scatterer in scatterers:
                         assert scatterer.flags.grad_site()      == site
-                        #assert scatterer.flags.grad_u_iso()     == u_iso #XXX
-                        #assert scatterer.flags.grad_u_aniso()   == u_aniso #XXX
+                        if(scatterer.flags.use_u_iso()):
+                           assert scatterer.flags.grad_u_iso()     == u_iso
+                           assert scatterer.flags.grad_u_aniso()   == False
+                           cn1+=1
+                        if(scatterer.flags.use_u_aniso()):
+                           assert scatterer.flags.grad_u_iso()     == False
+                           assert scatterer.flags.grad_u_aniso()   == u_aniso
+                           cn2+=1
                         assert scatterer.flags.grad_occupancy() == occupancy
                         assert scatterer.flags.grad_fp()        == fp
                         assert scatterer.flags.grad_fdp()       == fdp
-                        #assert scatterer.flags.tan_u_iso()      == tan_u_iso
                         assert scatterer.flags.param            == param
+  assert cn1 != 0
+  assert cn2 != 0
   xray.set_scatterer_grad_flags(scatterers = scatterers)
   for scatterer in scatterers:
       assert scatterer.flags.grad_site()      == False
@@ -221,6 +232,58 @@ def exercise_set_scatterer_grad_flags():
           else:
              assert sc0.u_iso == -1.0
              assert sc0.u_star == (0.5,0.5,0.5,0.5,0.5,0.5)
+
+def exercise_set_selected_scatterer_grad_flags():
+  x = xray.scatterer("c", site=(0.1,0.2,0.3), occupancy=0.0, u=(0,0,0,0,0,0))
+  y = xray.scatterer("c", site=(0.1,0.2,0.3), occupancy=0.0, u=1.0)
+  scatterers = flex.xray_scatterer(10, x)
+  scatterers.extend(flex.xray_scatterer(10, y))
+  sel = flex.bool(11, True)
+  sel.extend(flex.bool(9, False))
+  for scatterer in scatterers:
+      assert scatterer.flags.grad_site()      == False
+      assert scatterer.flags.grad_u_iso()     == False
+      assert scatterer.flags.grad_u_aniso()   == False
+      assert scatterer.flags.grad_occupancy() == False
+      assert scatterer.flags.grad_fp()        == False
+      assert scatterer.flags.grad_fdp()       == False
+      assert scatterer.flags.tan_u_iso()      == False
+      assert scatterer.flags.param            == 0
+  xray.set_scatterer_grad_flags(scatterers = scatterers)
+  for scatterer in scatterers:
+      assert scatterer.flags.grad_site()      == False
+      assert scatterer.flags.grad_u_iso()     == False
+      assert scatterer.flags.grad_u_aniso()   == False
+      assert scatterer.flags.grad_occupancy() == False
+      assert scatterer.flags.grad_fp()        == False
+      assert scatterer.flags.grad_fdp()       == False
+      assert scatterer.flags.tan_u_iso()      == False
+      assert scatterer.flags.param            == 0
+  cn1 = 0
+  cn2 = 0
+  xray.set_selected_scatterer_grad_flags(
+                                scatterers = scatterers,
+                                site       = sel,
+                                u_iso      = sel,
+                                u_aniso    = sel,
+                                occupancy  = sel,
+                                fp         = sel,
+                                fdp        = sel)
+  for i_seq, scatterer in enumerate(scatterers):
+      assert scatterer.flags.grad_site()         == sel[i_seq]
+      if(scatterer.flags.use_u_iso()):
+         assert scatterer.flags.grad_u_iso()     == sel[i_seq]
+         assert scatterer.flags.grad_u_aniso()   == False
+         cn1+=1
+      if(scatterer.flags.use_u_aniso()):
+         assert scatterer.flags.grad_u_iso()     == False
+         assert scatterer.flags.grad_u_aniso()   == sel[i_seq]
+         cn2+=1
+      assert scatterer.flags.grad_occupancy() == sel[i_seq]
+      assert scatterer.flags.grad_fp()        == sel[i_seq]
+      assert scatterer.flags.grad_fdp()       == sel[i_seq]
+  assert cn1 != 0
+  assert cn2 != 0
 
 def exercise_scatterer_flags_counts():
   x = xray.scatterer("c", site=(0.1,0.2,0.3), occupancy=0.0, u=(0,0,0,0,0,0))
@@ -1442,6 +1505,7 @@ def exercise_ls_target_with_scale_k2():
 
 def run():
   exercise_scatterer_flags()
+  exercise_set_selected_scatterer_grad_flags()
   exercise_set_scatterer_grad_flags()
   exercise_scatterer_flags_counts()
   exercise_xray_scatterer()

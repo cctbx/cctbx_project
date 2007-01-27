@@ -527,6 +527,29 @@ def exercise_u_base():
       quality_factor,
       xray.structure_factors.quality_factor_from_any(
         quality_factor=quality_factor))
+  #
+  cs = crystal.symmetry((10, 20, 30, 90, 90, 90), "P 1")
+  sp = crystal.special_position_settings(cs)
+  uc = cs.unit_cell()
+  scatterers = flex.xray_scatterer((
+    xray.scatterer("o", site=(0.5, 0, 0),u=1.0),
+    xray.scatterer("o", site=(0.5, 1.0, 0),u=0.1),
+    xray.scatterer("o", site=(0.5, 1.0, 10),u=0.7),
+    xray.scatterer("n", site=(0.5,-1.0, 0),u=adptbx.u_cart_as_u_star(uc,(1,2,3,0,0,0))),
+    xray.scatterer("c", site=(0, 0, 0),u=adptbx.u_cart_as_u_star(uc,(-1,-2,-3,0,0,0)))))
+  xs = xray.structure(sp, scatterers)
+  assert xs.n_grad_u_iso()==0
+  assert xs.n_grad_u_aniso()==0
+  xray.set_scatterer_grad_flags(scatterers = xs.scatterers(),
+                                u_iso      = True,
+                                u_aniso    = True)
+  assert xs.n_grad_u_iso()==3
+  assert xs.n_grad_u_aniso()==2
+  assert xs.use_u_iso().count(True) == 3
+  assert xs.use_u_aniso().count(True) == 2
+  answer = [(1.0, 1.0, 1.0), (0.1, 0.1, 0.1), (0.7, 0.7, 0.7), (3., 2., 1.),
+                                                               (-1., -2., -3.)]
+  assert approx_equal(answer, list(xs.scatterers().u_cart_eigenvalues(uc)))
 
 def exercise_from_scatterers_direct(space_group_info,
                                     element_type,

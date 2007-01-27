@@ -333,7 +333,7 @@ class manager(object):
     return new
 
   def apply_back_b_iso(self):
-    b_iso = self.u_iso()
+    b_iso = self.b_iso()
     b_cart = self.b_cart()
     b_cart_new = [b_cart[0]-b_iso,b_cart[1]-b_iso,b_cart[2]-b_iso,
                   b_cart[3],      b_cart[4],      b_cart[5]]
@@ -1035,13 +1035,9 @@ class manager(object):
   def b_cart(self):
     return self.core.core.b_cart
 
-  def u_iso(self):
+  def b_iso(self):
     b_cart = self.b_cart()
     return (b_cart[0]+b_cart[1]+b_cart[2])/3.0
-
-  def u_iso_as_b_cart(self):
-    ui = self.u_iso()
-    return [ui,ui,ui,0.0,0.0,0.0]
 
   def r_work_in_lowest_resolution_bin(self, free_reflections_per_bin=140):
     fo_w = self.f_obs_w
@@ -1598,7 +1594,7 @@ class manager(object):
                   (k_sol, b_sol, target_w, r_work) + 5*p+"|"
     print >> out, "| B(11,22,33,12,13,23)=%9.4f%9.4f%9.4f%9.4f%9.4f%9.4f |" % \
                   (u0,u1,u2,u3,u4,u5)
-    print >> out, "| trace(B) = (B11 + B22 + B33)/3 = %-10.3f                                 |"%self.u_iso()
+    print >> out, "| trace(B) = (B11 + B22 + B33)/3 = %-10.3f                                 |"%self.b_iso()
     if(flex.mean(flex.abs(self.f_ordered_solvent.data())) > 1.e-6):
        print >> out, "| n_ordered_solv=%6d b_ordered_solv=%7.2f b_mean=%7.2f " \
                   "n_atoms=%7d |" % (self.n_ordered_water,\
@@ -1633,7 +1629,7 @@ class manager(object):
     k_sol  = n_as_s("%4.2f",self.k_sol())
     b_sol  = n_as_s("%6.2f",self.b_sol())
     b0,b1,b2,b3,b4,b5 = n_as_s("%7.2f",self.b_cart())
-    b_iso  = n_as_s("%7.2f",self.u_iso())
+    b_iso  = n_as_s("%7.2f",self.b_iso())
     err    = n_as_s("%6.2f",self.model_error_ml())
     try:    target_work = n_as_s("%.4g",self.target_w())
     except: target_work = str(None)
