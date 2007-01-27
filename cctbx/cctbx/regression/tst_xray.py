@@ -742,7 +742,60 @@ def run_call_back(flags, space_group_info):
     exercise_f_obs_minus_xray_structure_f_calc(
       space_group_info=space_group_info)
 
+def exercise_concatenate_inplace():
+  cs = crystal.symmetry((10, 20, 30, 90, 90, 90), "P 1")
+  sp = crystal.special_position_settings(cs)
+  scatterers = flex.xray_scatterer((
+    xray.scatterer("o", (0.5, 0, 0)),
+    xray.scatterer("c", (0, 0, 0))))
+  xs = xray.structure(sp, scatterers)
+  #
+  custom_gaussians = {
+    "X1": eltbx.xray_scattering.gaussian(
+      [1], [2], 0),
+    "Z1": eltbx.xray_scattering.gaussian(
+      (1,2), (3,5), 0),
+  }
+  new_scatterers = flex.xray_scatterer()
+  new_scatterers.append(xray.scatterer(
+    label = "X1", scattering_type = "X1", site=(1,2,3), u=1.1, occupancy=0.5))
+  new_scatterers.append(xray.scatterer(
+    label = "Z1", scattering_type = "Z1", site=(4,5,6), u=9.1, occupancy=1.5))
+  xs1 = xray.structure(sp, new_scatterers)
+  xs1.scattering_type_registry(custom_dict=custom_gaussians)
+  ##
+  out = StringIO()
+  xs.concatenate_inplace(other = xs1)
+  xs.scattering_type_registry().show(out=out)
+  expected_result = \
+  """Number of scattering types: 4
+  Type Number    sf(0)   Gaussians
+   O       1      8.00       6
+   C       1      6.00       6
+   Z1      1      3.00       2
+   X1      1      1.00       1
+  sf(0) = scattering factor at diffraction angle 0.
+"""
+  assert out.getvalue() == expected_result
+  #
+  out = sys.stdout
+  sys.stdout = StringIO()
+  try:
+    custom_gaussians = {"C": eltbx.xray_scattering.gaussian([1],[2], 0)}
+    new_scatterers = flex.xray_scatterer()
+    new_scatterers.append(xray.scatterer(
+       label = "C", scattering_type = "C", site=(7,8,9), u=0.1, occupancy=1.1))
+    xs1 = xray.structure(sp, new_scatterers)
+    xs1.scattering_type_registry(custom_dict = custom_gaussians)
+    xs.concatenate_inplace(other = xs1)
+    xs.scattering_type_registry().show()
+  except Exception, e: pass
+  assert str(e) == "Cannot concatenate: conflicting scatterers"
+  sys.stdout = out
+  print "concatenate inplace: OK"
+
 def run():
+  exercise_concatenate_inplace()
   exercise_scatterer()
   exercise_structure()
   exercise_u_base()

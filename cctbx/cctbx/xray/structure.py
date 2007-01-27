@@ -18,6 +18,18 @@ from libtbx.utils import count_max
 from libtbx.test_utils import approx_equal
 from libtbx.itertbx import count
 
+class scattering_type_registry_params(object):
+  def __init__(self,
+               custom_dict = None,
+               d_min       = None,
+               table       = None,
+               types_without_a_scattering_contribution = None):
+    self.custom_dict = custom_dict
+    self.d_min       = d_min
+    self.table       = table
+    self.types_without_a_scattering_contribution = \
+                                        types_without_a_scattering_contribution
+
 class structure(crystal.special_position_settings):
 
   def __init__(self,
@@ -39,7 +51,7 @@ class structure(crystal.special_position_settings):
       self.add_scatterers(
         scatterers=scatterers,
         site_symmetry_table=site_symmetry_table)
-    self.u_cart_group = None
+    self.scattering_type_registry_params = None
 
   def _copy_constructor(self, other):
     crystal.special_position_settings._copy_constructor(
@@ -224,7 +236,7 @@ class structure(crystal.special_position_settings):
                    m[5]+m[5]*random.choice((-aniso_spread,aniso_spread))]
               sc.u_star = m
 
-  def shake_adp_if_all_equal(self, b_iso_tolerance = 1.0):
+  def shake_adp_if_all_equal(self, b_iso_tolerance = 0.1):
     performed = False
     if(self.use_u_aniso().count(True) == 0):
        u_isos = self.extract_u_iso_or_u_equiv()
@@ -473,6 +485,13 @@ class structure(crystal.special_position_settings):
         or d_min is not None
         or table is not None
         or types_without_a_scattering_contribution is not None):
+      self.scattering_type_registry_params = \
+          scattering_type_registry_params(
+             custom_dict = custom_dict,
+             d_min       = d_min,
+             table       = table,
+             types_without_a_scattering_contribution = \
+               types_without_a_scattering_contribution)
       new_dict = {"const": eltbx.xray_scattering.gaussian(1)}
       old_dict = {}
       if (self._scattering_type_registry is not None):
@@ -578,6 +597,39 @@ class structure(crystal.special_position_settings):
       site_symmetry_table=other._site_symmetry_table)
     return result
 
+  def concatenate_inplace(self, other):
+    d1 = self.scattering_type_registry().as_type_gaussian_dict()
+    d2 = other.scattering_type_registry().as_type_gaussian_dict()
+    for key1, item1 in zip(d1.keys(), d1.items()):
+      for key2, item2 in zip(d2.keys(), d2.items()):
+        if(key1 == key2):
+          i1 = item1[1]
+          i2 = item2[1]
+          problem_flag = False
+          for a1, a2 in zip(i1.array_of_a(), i2.array_of_a()):
+            if(not approx_equal(a1, a2)): problem_flag = True
+          for b1, b2 in zip(i1.array_of_b(), i2.array_of_b()):
+            if(not approx_equal(b1, b2)): problem_flag = True
+          if(not approx_equal(i1.c(), i2.c())): problem_flag = True
+          if(problem_flag):
+            raise RuntimeError("Cannot concatenate: conflicting scatterers")
+    self.add_scatterers(scatterers          = other._scatterers,
+                        site_symmetry_table = other._site_symmetry_table)
+    strp1 = self.scattering_type_registry_params
+    strp2 = other.scattering_type_registry_params
+    self.scattering_type_registry(
+      custom_dict = strp1.custom_dict,
+      d_min       = strp1.d_min,
+      table       = strp1.table,
+      types_without_a_scattering_contribution = \
+                                 strp1.types_without_a_scattering_contribution)
+    self.scattering_type_registry(
+      custom_dict = strp2.custom_dict,
+      d_min       = strp2.d_min,
+      table       = strp2.table,
+      types_without_a_scattering_contribution = \
+                                 strp2.types_without_a_scattering_contribution)
+
   def replace_scatterers(self, scatterers, site_symmetry_table="existing"):
     if (site_symmetry_table == "existing"):
       site_symmetry_table = self._site_symmetry_table
@@ -659,7 +711,7 @@ class structure(crystal.special_position_settings):
         unit_cell=self.unit_cell(),
         u_cart_tolerance=u_cart_tolerance)
 
-  def tidy_us(self, u_min = 1.e-6, u_max = adptbx.b_as_u(350.0)):
+  def tidy_us(self, u_min = 1.e-6, u_max = adptbx.b_as_u(550.0)):
     assert u_min < u_max
     ext.tidy_us(
       scatterers=self._scatterers,
@@ -853,7 +905,6 @@ class structure(crystal.special_position_settings):
 
   def n_parameters(self):
     #XXX move to C++ (after anisotropic_flag is gone)
-
     result_ = 0
     for sc in self.scatterers():
         if(sc.flags.grad_site()     ): result_ +=3
