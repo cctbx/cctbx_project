@@ -3217,13 +3217,13 @@ y=*a b
   py_params.x = "c"
   try: master.format(py_params)
   except RuntimeError, e:
-    assert str(e) == "Not a valid choice: x=c"
+    assert str(e) == "Invalid choice: x=c"
   else: raise RuntimeError("Exception expected.")
   py_params.x = "b"
   py_params.y = "c"
   try: master.format(py_params)
   except RuntimeError, e:
-    assert str(e) == "Not a valid choice: y=c"
+    assert str(e) == "Invalid choice: y=c"
   else: raise RuntimeError("Exception expected.")
   master = phil.parse(input_string="""\
 x=*a a
@@ -3234,6 +3234,25 @@ x=*a a
   except RuntimeError, e:
     assert str(e) \
         == "Improper master choice definition: x = *a a (input line 1)"
+  else: raise RuntimeError("Exception expected.")
+  #
+  master = phil.parse(input_string="""\
+x=*a b
+  .type=choice(multi=True)
+y=a b
+  .type=choice(multi=True)
+  .optional=True
+""")
+  py_params = master.extract()
+  py_params.x = ["a", "c", "d"]
+  try: master.format(py_params)
+  except RuntimeError, e:
+    assert str(e) == "Invalid choice(multi=True): x=['c', 'd']"
+  else: raise RuntimeError("Exception expected.")
+  py_params.x = []
+  try: master.format(py_params)
+  except RuntimeError, e:
+    assert str(e) == "Empty list for mandatory choice(multi=True): x"
   else: raise RuntimeError("Exception expected.")
 
 def exercise_type_constructors():

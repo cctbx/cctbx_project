@@ -222,8 +222,14 @@ class choice_converters(object):
     return result
 
   def as_words(self, python_object, master):
+    assert not self.multi or python_object is not None
+    if (self.multi):
+      use_flags = dict([(value, False) for value in python_object])
     n_choices = 0
     if (python_object is not None):
+      def raise_improper_master():
+        raise RuntimeError("Improper master choice definition: %s%s" % (
+          master.as_str().rstrip(), master.words[0].where_str()))
       words = []
       for word in master.words:
         if (word.value.startswith("*")): value = word.value[1:]
@@ -232,19 +238,32 @@ class choice_converters(object):
           if (value == python_object):
             value = "*" + value
             n_choices += 1
-            if (n_choices > 1):
-              raise RuntimeError("Improper master choice definition: %s%s" % (
-                master.as_str().rstrip(), master.words[0].where_str()))
+            if (n_choices > 1): raise_improper_master()
         else:
-          if (value in python_object):
+          if (value in use_flags):
+            if (use_flags[value]): raise_improper_master()
+            use_flags[value] = True
             value = "*" + value
             n_choices += 1
         words.append(tokenizer.word(
           value=value, quote_token=word.quote_token))
-    if (n_choices == 0
-        and (not master.optional or python_object is not None)):
-      raise RuntimeError("Not a valid choice: %s=%s" % (
-        master.full_path(), str(python_object)))
+    if (not self.multi):
+      if (n_choices == 0
+          and (not master.optional or python_object is not None)):
+        raise RuntimeError("Invalid choice: %s=%s" % (
+          master.full_path(), str(python_object)))
+    else:
+      unused = []
+      for value,use_flag in use_flags.items():
+        if (not use_flag): unused.append(value)
+      n = len(unused)
+      if (n != 0):
+        raise RuntimeError("Invalid %s: %s=%s" % (
+          str(self), master.full_path(), str(unused)))
+      if (n_choices == 0 and not master.optional):
+        raise RuntimeError(
+          "Empty list for mandatory %s: %s" % (
+            str(self), master.full_path()))
     if (python_object is None):
       return [tokenizer.word(value="None")]
     return words
