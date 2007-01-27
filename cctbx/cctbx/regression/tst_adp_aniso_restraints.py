@@ -8,8 +8,8 @@ from cctbx import adptbx
 from libtbx.test_utils import approx_equal
 
 phe_pdb = """\
-CRYST1   25.000   35.000   45.000  80.00 70.00 100.00 P 1           1
-remark CRYST1    4.000    5.000    7.000  80.00 70.00 100.00 P 1           1 XXX this brakes the test: round-off errors?
+remark CRYST1   25.000   35.000   45.000  80.00 70.00 100.00 P 1           1
+CRYST1    4.000    5.000    7.000  80.00 70.00 100.00 P 1           1
 ATOM      1  CB  PHE A   1       7.767   5.853   7.671  1.00 15.00           C
 ATOM      2  CG  PHE A   1       6.935   5.032   8.622  1.00 44.21           C
 ANISOU    2  CG  PHE A   1     4894   5943   5958    725   -324    -10       C
@@ -31,10 +31,11 @@ END
 """
 
 def fd(xray_structure, restraints_manager, eps=1.e-2):
+    uc = xray_structure.unit_cell()
     adp_ro = cctbx.adp_restraints.adp_aniso_restraints(
                                        xray_structure     = xray_structure,
                                        restraints_manager = restraints_manager)
-    g_aniso = adp_ro.gradients_aniso
+    g_aniso = adp_ro.gradients_aniso_cart
     g_iso = adp_ro.gradients_iso
     for i_seq, scatterer in enumerate(xray_structure.scatterers()):
         fl = scatterer.flags
@@ -46,16 +47,16 @@ def fd(xray_structure, restraints_manager, eps=1.e-2):
                xrs2 = xray_structure.deep_copy_scatterers()
                sc1  = xrs1.scatterers()
                sc2  = xrs2.scatterers()
-               us1 = sc1.extract_u_star()
-               us2 = sc1.extract_u_star()
+               us1 = sc1.extract_u_cart(uc)
+               us2 = sc1.extract_u_cart(uc)
                m1 = flex.double(us1[i_seq])
                m2 = flex.double(us2[i_seq])
                m1[i_ind] = m1[i_ind] - eps
                m2[i_ind] = m2[i_ind] + eps
                us1[i_seq] = list(m1)
                us2[i_seq] = list(m2)
-               sc1.set_u_star(us1)
-               sc2.set_u_star(us2)
+               sc1.set_u_cart(uc, us1)
+               sc2.set_u_cart(uc, us2)
                adp_ro1 = cctbx.adp_restraints.adp_aniso_restraints(
                                        xray_structure     = xrs1,
                                        restraints_manager = restraints_manager)
@@ -114,9 +115,9 @@ def run():
   adp_rm = cctbx.adp_restraints.adp_aniso_restraints(
                                            xray_structure     = xray_structure,
                                            restraints_manager = geo)
-  assert approx_equal(flex.mean(adp_rm.gradients_iso), 5.03916799769e-07)
-  assert approx_equal(flex.mean(adp_rm.gradients_aniso.as_double()), -0.00016415246372)
-  assert approx_equal(adp_rm.target, 2.269800)
+  assert approx_equal(flex.mean(adp_rm.gradients_iso), 0.713756592583)
+  assert approx_equal(flex.mean(adp_rm.gradients_aniso_cart.as_double()), -0.118959432097)
+  assert approx_equal(adp_rm.target, 8.97112989232)
   fd(xray_structure = xray_structure, restraints_manager = geo, eps=1.e-4)
   os.system("rm -rf %s"%file_name)
 
