@@ -29,6 +29,7 @@ def manager(simulated_annealing_params,
             macro_cycle,
             wxnc_scale,
             tan_b_iso_max,
+            h_params,
             monitor,
             fmodel,
             model,
@@ -47,6 +48,7 @@ def manager(simulated_annealing_params,
     wx                          = target_weights.wx_xyz(),
     wc                          = target_weights.wc(),
     wxnc_scale                  = wxnc_scale,
+    h_params                    = h_params,
     verbose                     = 0)
 
   minimized.collector.show(text = "lbfgs minimization", out = out)

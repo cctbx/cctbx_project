@@ -38,7 +38,8 @@ class lbfgs(object):
                      wxnc_scale               = None,
                      wxnu_scale               = None,
                      occupancy_max            = None,
-                     occupancy_min            = None):
+                     occupancy_min            = None,
+                     h_params                 = None):
     global time_site_individual
     timer = user_plus_sys_time()
     adopt_init_args(self, locals())
@@ -50,20 +51,33 @@ class lbfgs(object):
     if(refine_adp): self.wr = wu
     if(refine_occ): self.wr = None
     del self.wc, self.wu
+    self.d_selection = self.model.atoms_selection(scattering_type = "D")
+    self.h_selection = self.model.atoms_selection(scattering_type = "H")
+    self.hd_selection = self.d_selection | self.h_selection
     if(refine_xyz):
+       site = self.model.refinement_flags.sites_individual[0]
+       if(self.h_params.riding):
+          site = site.set_selected(self.hd_selection, False)
        xray.set_selected_scatterer_grad_flags(
                   scatterers = self.xray_structure.scatterers(),
-                  site       = self.model.refinement_flags.sites_individual[0])
+                  site       = site)
     if(refine_occ):
+       occupancy  = self.model.refinement_flags.occupancies_individual[0]
+       if(self.h_params.riding):
+          occupancy = occupancy.set_selected(self.hd_selection, False)
        xray.set_selected_scatterer_grad_flags(
             scatterers = self.xray_structure.scatterers(),
-            occupancy  = self.model.refinement_flags.occupancies_individual[0])
+            occupancy  = occupancy)
     if(refine_adp):
+       u_iso  = self.model.refinement_flags.adp_individual_iso[0]
+       u_aniso= self.model.refinement_flags.adp_individual_aniso[0]
+       if(self.h_params.riding):
+          u_iso   = u_iso.set_selected(self.hd_selection, False)
+          u_aniso = u_aniso.set_selected(self.hd_selection, False)
        xray.set_selected_scatterer_grad_flags(
             scatterers = self.xray_structure.scatterers(),
-            u_iso  = self.model.refinement_flags.adp_individual_iso[0],
-            u_aniso= self.model.refinement_flags.adp_individual_aniso[0])
-
+            u_iso      = u_iso,
+            u_aniso    = u_aniso)
     self.neutron_refinement = (self.fmodel_neutron is not None and
                                self.wn is not None)
     if(self.neutron_refinement):
@@ -93,10 +107,6 @@ class lbfgs(object):
                                              refine_occ = self.refine_occ)
        self.collector.collect(rxw = self.fmodel.r_work(),
                               rxf = self.fmodel.r_free())
-    # XXX
-    self.d_selection = self.model.atoms_selection(scattering_type = "D")
-    self.h_selection = self.model.atoms_selection(scattering_type = "H")
-    self.hd_selection = self.d_selection | self.h_selection
 
     if(self.fmodel.alpha_beta_params.method == "calc"):
        if(self.fmodel.alpha_beta_params.fix_scale_for_calc_option == None):
@@ -192,13 +202,13 @@ class lbfgs(object):
                         beta                  = self.beta_w,
                         u_iso_refinable_params = u_iso_refinable_params).packed()
        #XXX do not count grads for H or D:
-       if(self.hd_selection.count(True) > 0):
-          if(self.refine_xyz):
-             sf_v3d = flex.vec3_double(sf)
-             sf_v3d_sel = sf_v3d.set_selected(self.hd_selection, [0,0,0])
-             sf = sf_v3d_sel.as_double()
-          if(self.refine_adp):
-             sf = sf.set_selected(self.hd_selection, 0.0)
+       #if(self.hd_selection.count(True) > 0):
+       #   if(self.refine_xyz):
+       #      sf_v3d = flex.vec3_double(sf)
+       #      sf_v3d_sel = sf_v3d.set_selected(self.hd_selection, [0,0,0])
+       #      sf = sf_v3d_sel.as_double()
+       #   if(self.refine_adp):
+       #      sf = sf.set_selected(self.hd_selection, 0.0)
        self.g = sf * self.wx
 
     if(self.neutron_refinement):
@@ -253,9 +263,9 @@ class lbfgs(object):
              self.g = tt + rr * self.wn
 
     if(self.refine_xyz and self.restraints_manager is not None and self.wr > 0.0):
-       self.stereochemistry_residuals = self.restraints_manager.energies_sites(
-                       sites_cart        = self.xray_structure.sites_cart(),
-                       compute_gradients = compute_gradients,
+       self.stereochemistry_residuals = self.model.restraints_manager_energies_sites(
+                       sites_cart           = self.xray_structure.sites_cart(),
+                       compute_gradients    = compute_gradients,
                        lock_for_line_search = self._lock_for_line_search)
        self._lock_for_line_search = True
        er = self.stereochemistry_residuals.target
@@ -292,20 +302,24 @@ class lbfgs(object):
        if(compute_gradients):
           if(self.model.refinement_flags.adp_individual_aniso[0].count(True) == 0):
              sgu = energies_adp_iso.gradients
-             if(self.hd_selection.count(True) > 0):
-                sgu = sgu.set_selected(self.hd_selection, 0.0)
+             #if(self.hd_selection.count(True) > 0):
+             #   sgu = sgu.set_selected(self.hd_selection, 0.0)
              xray.minimization.add_gradients(
                            scatterers      = self.xray_structure.scatterers(),
                            xray_gradients  = self.g,
                            u_iso_gradients = sgu * self.wr)
           else:
              ####################################################################
-             energies_adp_aniso.gradients_aniso *= self.wr
+             energies_adp_aniso.gradients_aniso_star *= self.wr
+             if(energies_adp_aniso.gradients_iso is not None):
+                energies_adp_aniso.gradients_iso *= self.wr
              xray.minimization.add_gradients(
                            scatterers      = self.xray_structure.scatterers(),
                            xray_gradients  = self.g,
-                           u_aniso_gradients = energies_adp_aniso.gradients_aniso)
-             energies_adp_aniso.gradients = None # just for safety
+                           u_aniso_gradients = energies_adp_aniso.gradients_aniso_star,
+                           u_iso_gradients   = energies_adp_aniso.gradients_iso)
+             energies_adp_aniso.gradients_aniso_star = None # just for safety
+             energies_adp_aniso.gradients_iso = None
              ####################################################################
 
   def callback_after_step(self, minimizer):
@@ -323,38 +337,6 @@ class lbfgs(object):
       print "xray.minimization line search: f,rms(g):",
       print self.f, math.sqrt(flex.mean_sq(self.g))
     return self.f, self.g
-
-  def fd(self, xray_structure, restraints_manager, weight, eps=1.e-2):
-    adp_ro = adp_aniso_restraints(xray_structure     = xray_structure,
-                                  restraints_manager = restraints_manager,
-                                  weight             = weight)
-    g = adp_ro.gradients
-
-    xrs1 = xray_structure.deep_copy_scatterers()
-    xrs2 = xray_structure.deep_copy_scatterers()
-    sc1  = xrs1.scatterers()
-    sc2  = xrs2.scatterers()
-    us1 = sc1.extract_u_star()
-    us2 = sc1.extract_u_star()
-
-    m1 = flex.double(us1[0])
-    m2 = flex.double(us2[0])
-    m1[0] = m1[0] - eps
-    m2[0] = m2[0] + eps
-
-    us1[0] = list(m1)
-    us2[0] = list(m2)
-
-    sc1.set_u_star(us1)
-    sc2.set_u_star(us2)
-
-    adp_ro1 = adp_aniso_restraints(xray_structure     = xrs1,
-                                   restraints_manager = restraints_manager,
-                                   weight             = weight)
-    adp_ro2 = adp_aniso_restraints(xray_structure     = xrs2,
-                                   restraints_manager = restraints_manager,
-                                   weight             = weight)
-    print (adp_ro2.target - adp_ro1.target)/(2*eps), g[0][0]
 
 class minimization_history(object):
   def __init__(self, wx        = None,
