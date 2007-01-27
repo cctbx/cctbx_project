@@ -56,9 +56,10 @@ class ncs_group:  # one group of NCS operators and center and where it applies
       i+=1
       text+="\n\nOPERATOR "+str(i)
       text+="\nCENTER: "+" %8.4f  %8.4f  %8.4f" %tuple(center)
-      text+="\n\nROTA 1: "+" %8.4f  %8.4f  %8.4f" %tuple(ncs_rota_matr[0:3])
-      text+="\nROTA 2: "+" %8.4f  %8.4f  %8.4f" %tuple(ncs_rota_matr[3:6])
-      text+="\nROTA 3: "+" %8.4f  %8.4f  %8.4f" %tuple(ncs_rota_matr[6:9])
+      r = ncs_rota_matr.elems
+      text+="\n\nROTA 1: "+" %8.4f  %8.4f  %8.4f" %tuple(r[0:3])
+      text+="\nROTA 2: "+" %8.4f  %8.4f  %8.4f" %tuple(r[3:6])
+      text+="\nROTA 3: "+" %8.4f  %8.4f  %8.4f" %tuple(r[6:9])
       text+="\nTRANS:  "+" %8.4f  %8.4f  %8.4f" %tuple(trans_orth)
     text+="\n"
     return text
@@ -108,7 +109,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
      if center is not None:
        for j in xrange(3):
          text+="\nrota_matrix "+" %8.4f  %8.4f  %8.4f" %tuple(
-          ncs_rota_matr[j*3:j*3+3])
+          ncs_rota_matr.elems[j*3:j*3+3])
        text+="\ntran_orth  "+" %8.4f  %8.4f  %8.4f" %tuple(trans_orth)
        text+="\n"
        text+="\ncenter_orth "+" %8.4f  %8.4f  %8.4f" %tuple(center)
