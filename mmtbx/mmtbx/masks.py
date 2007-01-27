@@ -43,17 +43,23 @@ class bulk_solvent(around_atoms):
          step= self.grid_step).n_real()
      atom_radii = flex.double()
      # XXX use scattering dictionary and set_selected
-     for scatterer in xray_structure.scatterers():
+     selection = flex.size_t()
+     for i_seq, scatterer in enumerate(xray_structure.scatterers()):
        try:
          atom_radii.append(
            van_der_waals_radii.vdw.table[scatterer.element_symbol()])
-       except Exception, e:
-         raise RuntimeError,\
-               "scatterer.element_symbol()= %s"%str(scatterer.element_symbol())
+       except:
+         selection.append(i_seq)
+     sites_frac = xray_structure.sites_frac()
+     if(selection.size() > 0):
+        print "WARNING: Number of atoms with unknown van der Waals rad.:", \
+                                                               selection.size()
+        selection_bool = flex.bool(sites_frac.size(), selection)
+        sites_frac = sites_frac.select(~selection_bool)
      around_atoms.__init__(self,
        unit_cell=xray_structure.unit_cell(),
        space_group_order_z=xray_structure.space_group().order_z(),
-       sites_frac=xray_structure.sites_frac(),
+       sites_frac=sites_frac,
        atom_radii=atom_radii,
        gridding_n_real=gridding_n_real,
        solvent_radius=solvent_radius,
