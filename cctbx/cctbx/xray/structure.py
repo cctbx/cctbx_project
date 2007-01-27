@@ -432,6 +432,7 @@ class structure(crystal.special_position_settings):
     nnpd = ipd.count(False)
     beq = (self.extract_u_iso_or_u_equiv() * epis).select(sel_used)
     bisos = (self.scatterers().extract_u_iso() * epis).select(use_u_iso)
+    if(bisos.size() == 0): bisos = beq
     part1 = "|-"+text
     part2 = "-|"
     n = 79 - len(part1+part2)
