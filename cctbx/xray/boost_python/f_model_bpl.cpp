@@ -64,9 +64,9 @@ namespace cctbx { namespace xray { namespace f_model_core_data { namespace boost
                scitbx::sym_mat3< double > const&,                       // 8 u star
                double const&,                                           // 9 bs scale
                double const&,                                           // 0 bs u
-               scitbx::af::const_ref< std::complex< double > > const&,  // 1 f_mask
-               double const&,                                           // 2 bs scale
-               double const&                                            // 3 bs u
+               scitbx::af::const_ref< std::complex< double > > const&,  // 1 f_part
+               double const&,                                           // 2 part scale
+               double const&                                            // 3 part u
                >
                ((arg_("hkl"),
                  arg_("f_atoms"),
@@ -89,9 +89,9 @@ namespace cctbx { namespace xray { namespace f_model_core_data { namespace boost
                scitbx::sym_mat3< double > const&,                       // 8 u star
                double const&,                                           // 9 bs scale
                double const&,                                           // 0 bs b
-               scitbx::af::const_ref< std::complex< double > > const&,  // 1 f_mask
-               double const&,                                           // 2 bs scale
-               double const&                                            // 3 bs b
+               scitbx::af::const_ref< std::complex< double > > const&,  // 1 f_part
+               double const&,                                           // 2 part scale
+               double const&                                            // 3 part b
                >
                ((arg_("hkl"),
                  arg_("f_atoms"),
@@ -136,7 +136,7 @@ namespace cctbx { namespace xray { namespace f_model_core_data { namespace boost
           // updating variables
           .def("refresh", &w_t::refresh)
           .def("renew_fatoms", &w_t::renew_fatoms)
-          .def("renew_fmask", &w_t::renew_fatoms)
+          .def("renew_fmask", &w_t::renew_fmask)
           .def("renew_fpart", &w_t::renew_fpart)
           .def("renew_overall_scale_parameters",
                &w_t::renew_overall_scale_parameters)
