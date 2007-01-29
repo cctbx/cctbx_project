@@ -257,7 +257,7 @@ namespace cctbx { namespace xray { namespace twin_targets {
         derivs =  d_target_d_ab( f_model );
 
         for (std::size_t ii=0;ii<f_model.size();ii++){
-          std::complex<FloatType> tmp(derivs[0][ii],-derivs[1][ii] );
+          std::complex<FloatType> tmp(derivs[0][ii],derivs[1][ii] );
           result.push_back( tmp );
         }
         return result;
@@ -446,7 +446,7 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
         derivs =  d_target_d_ab( f_model );
 
         for (std::size_t ii=0;ii<f_model.size();ii++){
-          std::complex<FloatType> tmp(derivs[0][ii],-derivs[1][ii] );
+          std::complex<FloatType> tmp(derivs[0][ii],derivs[1][ii] );
           result.push_back( tmp );
         }
         return result;
