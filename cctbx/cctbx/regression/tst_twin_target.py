@@ -55,7 +55,7 @@ def tst_ls_on_i():
                          derivs_ab[0],
                          derivs_ab[1]):
     assert approx_equal( cmplx.real, da, eps=1e-5)
-    assert approx_equal( cmplx.imag, -db, eps=1e-5)
+    assert approx_equal( cmplx.imag, db, eps=1e-5)
 
   for alpha in flex.double(range(50))/100.0:
     #----------------------------------------------------------------
