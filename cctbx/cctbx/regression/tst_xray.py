@@ -22,6 +22,64 @@ def exercise_scatterer():
   assert xray.scatterer(scattering_type="si+4").element_symbol() == "Si"
   assert xray.scatterer(scattering_type="x").element_symbol() is None
 
+def exercise_anomalous_scatterer_group():
+  scatterers = flex.xray_scatterer(
+    [xray.scatterer(scattering_type=scattering_type)
+      for scattering_type in ["S", "AU", "C", "S"]])
+  groups = [
+    xray.anomalous_scatterer_group(
+      iselection=flex.size_t([1]),
+      f_prime=-3,
+      f_double_prime=4,
+      fix=[]),
+    xray.anomalous_scatterer_group(
+      iselection=flex.size_t([0,3]),
+      f_prime=-1,
+      f_double_prime=2,
+      fix=["f_double_prime", "f_prime"],
+      selection_string="name S")
+  ]
+  assert groups[0].labels_fixed() == []
+  assert groups[1].labels_fixed() == ["f_prime", "f_double_prime"]
+  for i_pass in [0,1]:
+    s = StringIO()
+    for group in groups:
+      group.show_summary(out=s, prefix="{.")
+    assert not show_diff(s.getvalue(), """\
+{.Anomalous scatterer group:
+{.  Number of selected scatterers: 1
+{.  f_prime:        -3
+{.  f_double_prime: 4
+{.  fix: None
+{.Anomalous scatterer group:
+{.  Selection: "name S"
+{.  Number of selected scatterers: 2
+{.  f_prime:        -1
+{.  f_double_prime: 2
+{.  fix: f_prime f_double_prime
+""")
+    for group in groups:
+      group.copy_to_scatterers_in_place(scatterers=scatterers)
+      group.extract_from_scatterers_in_place(scatterers=scatterers)
+  scatterers[1].fp = -4
+  scatterers[1].fdp = 5
+  group = groups[0]
+  group.extract_from_scatterers_in_place(scatterers=scatterers)
+  assert approx_equal(group.f_prime, -4)
+  assert approx_equal(group.f_double_prime, 5)
+  scatterers[0].fdp = 3
+  try: groups[1].extract_from_scatterers_in_place(scatterers=scatterers)
+  except RuntimeError, e:
+    assert str(e) == """\
+Anomalous scatterer group with significantly different f_double_prime:
+  Selection: "name S"
+  Number of selected scatterers: 2
+  f_double_prime min:  2
+  f_double_prime max:  3
+  f_double_prime mean: 2.5
+  tolerance: 0.0001"""
+  else: raise RuntimeError("Exception expected.")
+
 def exercise_structure():
   cs1 = crystal.symmetry((10, 20, 30, 90, 90, 90), "P 1")
   sp1 = crystal.special_position_settings(cs1)
@@ -820,6 +878,7 @@ def exercise_concatenate_inplace():
 def run():
   exercise_concatenate_inplace()
   exercise_scatterer()
+  exercise_anomalous_scatterer_group()
   exercise_structure()
   exercise_u_base()
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
