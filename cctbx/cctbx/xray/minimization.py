@@ -46,6 +46,17 @@ class occupancy_penalty_exp(object):
     return -s*self.penalty_factor*math.exp(-s*occupancy*self.penalty_factor)
 
 class lbfgs(object):
+  """
+  A minimisation of a function of the free parameters of a X-ray structure,
+  relying on the LBFGS algorithm.
+
+  That function is represented by a functor object f which should abide to the
+  following interface
+    - B{f.f_obs()}
+    - B{f(f_calc, compute_derivatives)}
+  in the manner of L{cctbx.xray.target_functors.least_squares_residual}
+  or L{cctbx.xray.target_functors.intensity_correlation}
+  """
 
   def __init__(self, target_functor, xray_structure,
                      occupancy_penalty=None,
@@ -55,6 +66,33 @@ class lbfgs(object):
                      cos_sin_table=True,
                      structure_factor_algorithm=None,
                      verbose=0):
+    """
+    @type target_functor: any object like f
+    @param target_functor: the numerical function of the structure to minimise
+    @type xray_structure: cctbx.xray.structure
+    @param xray_structure: the structure the target_functor is calculated for
+    @type occupancy_penalty: ??
+    @param occupancy_penalty: ??
+    @type lbfgs_termination_params: like
+    L{scitbx.lbfgs.termination_parameters}
+    @param lbfgs_termination_params: the bunch of parameters used to decide
+    where to stop the minimisation
+    @type lbfgs_core_params: like L{scitbx.lbfgs.core_parameters}
+    @param lbfgs_core_params: the bunch of parameters for the numerical core
+    of the lbfgs algorithm
+    @type correct_special_position_tolerance: number
+    @param correct_special_position_tolerance: ??
+    @type cos_sin_table: bool
+    @param cos_sin_table: whether to use tabulated cosines and sines in
+    structure factor computations
+    @type structure_factor_algorithm: string
+    @param structure_factor_algorithm: the name of the method to be used to
+    compute structure factors; it must be one of those provided by the factory
+    L{cctbx.xray.structure_factors.from_scatterers}
+    @param verbose: a flag specifying the verbosity of the log printed out
+    during the minimisation process; 0 means silent whereas positive numbers
+    print an increasing amount of information
+    """
     adopt_init_args(self, locals())
     self.scatterer_grad_flags_counts = ext.scatterer_grad_flags_counts(
                                               self.xray_structure.scatterers())

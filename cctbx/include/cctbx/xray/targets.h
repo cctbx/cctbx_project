@@ -10,7 +10,10 @@
 #include <cctbx/hendrickson_lattman.h>
 
 
-namespace cctbx { namespace xray { namespace targets {
+namespace cctbx { namespace xray {
+
+/// X-ray target function of structure factors namespace
+namespace targets {
   namespace detail {
 
     template <typename FobsValueType,
@@ -71,14 +74,38 @@ namespace cctbx { namespace xray { namespace targets {
 
   } // namespace detail
 
+
+  /// A functor representing a least-squares residual.
+  /**
+  The least-square residual is defined as
+  \f[
+    \frac
+    {\sum_i w_i \left( F_{o,i} - k \left| F_{c,i} \right| \right)^2}
+    {\sum_i w_i F_{o,i}^2}
+  \f]
+   where \f$F_{o,i}\f$ is the i-th observed F whereas \f$F_{c,i}\f$ is the calculated F
+   corresponding to \f$F_{o,i}\f$.
+   It also features the weights \f$\{w_i\}\f$ and the scale factor \f$k\f$.
+  */
   template <typename FobsValueType = double,
             typename WeightValueType = FobsValueType,
             typename FcalcValueType = std::complex<FobsValueType> >
   class least_squares_residual
   {
     public:
+      /// Construct an uninitialised object.
       least_squares_residual() {}
 
+      /// Construct a weighted least-squares residual.
+      /**
+      @param f_obs  a reference to the array containing the observed F's
+      @param weights  a reference to the array containing the weights
+      @param f_calc  a reference to the array containing the calculated F's
+      @param compute_derivative  whether to compute the derivatives of the residual
+      w.r.t. the \f$F_{c,i}\f$
+      @param scale_factor  the scale factor k; if 0 then k is computed
+
+      */
       least_squares_residual(
         af::const_ref<FobsValueType> const& fobs,
         af::const_ref<WeightValueType> const& weights,
@@ -91,6 +118,8 @@ namespace cctbx { namespace xray { namespace targets {
         init(fobs, weights, fcalc, compute_derivatives);
       }
 
+      /// Construct an unit weights least-square residual.
+      /** Same as the other constructor but with all weights equal to unity */
       least_squares_residual(
         af::const_ref<FobsValueType> const& fobs,
         af::const_ref<FcalcValueType> const& fcalc,
@@ -103,12 +132,18 @@ namespace cctbx { namespace xray { namespace targets {
              fcalc, compute_derivatives);
       }
 
+      /// The scale factor
       FobsValueType
       scale_factor() const { return scale_factor_; }
 
+      /// The value of the residual
       FobsValueType
       target() const { return target_; }
 
+      /// The vector of derivatives
+      /** with respect to of the residual w.r.t. \f$F_{c,i}\f$ and only if the object
+      was constructed with the flag compute_derivatives==true
+      */
       af::shared<FcalcValueType>
       derivatives() const
       {

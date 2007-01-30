@@ -229,11 +229,34 @@ class ls_k2(object):
                                   scale               = self._scale_factor)
 
 class least_squares_residual(object):
+  """ A least-square residual functor. """
 
   def __init__(self, f_obs,
                      weights               = None,
                      use_sigmas_as_weights = False,
                      scale_factor          = 0):
+    """
+    Construct a least-square residuals
+
+    S{sum} w[i] ( f_obs.data[i] - k abs(f_calc.data[i]) )^2
+    / S{sum} w[i] f_obs.data[i]^2
+
+    where
+      - the sums are over the indices i of the reflections,
+      - f_calc is to be passed to the __call__ method,
+      - the weights w and the scale factor k are discussed below.
+
+    @type f_obs: real miller.array
+    @param f_obs: the observed reflections, with F and sigma(F)
+    respectively in f_obs.data() and f_obs.sigmas()
+    @type weights: flex.double
+    @param weights: the weights w or None in which case w = 1
+    @type use_sigmas_as_weights: bool
+    @param use_sigmas_as_weights: whether to use w = 1/f_obs.sigmas()^2
+    @type scale_factor: number
+    @param scale_factor: the scale factor k is not null, otherwise k will
+    be computed as a by-product by the __call__ method
+    """
     adopt_init_args(self, locals(), hide=True)
     assert self._weights is None or self._use_sigmas_as_weights == False
     if (self._use_sigmas_as_weights):
@@ -242,15 +265,33 @@ class least_squares_residual(object):
       self._weights = 1 / sigmas_squared
 
   def f_obs(self):
+    """ The f_obs passed to the constructor """
     return self._f_obs
 
   def weights(self):
+    """ The weights w """
     return self._weights
 
   def use_sigmas_as_weights(self):
+    """ The flag with the same name passed to the constructor """
     return self._use_sigmas_as_weights
 
   def __call__(self, f_calc, compute_derivatives):
+    """
+    Compute the least-squares residual value and perhaps its derivatives
+    wrt to the calculated structure factor F_c of the i-th reflection
+    @type f_calc: complex miller.array
+    @param f_calc: f_calc.data()[i] constains F_c for the i-th reflection
+    in f_obs()
+    @type compute_derivatives: bool
+    @param compute_derivatives: whether to compute the derivatives of the
+    least square residual or not
+    @rtype: Boost.Python binding of
+    U{least_squares_residual<CCTBX_DOXYGEN_DOC_ROOT
+    /classcctbx_1_1xray_1_1targets_1_1least__squares__residual.html>}
+    @return: An object holding the residual value, derivatives and scale
+    factor
+    """
     assert f_calc.unit_cell().is_similar_to(
            self.f_obs().unit_cell())
     assert f_calc.space_group() == self.f_obs().space_group()
