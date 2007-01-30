@@ -3,6 +3,7 @@
 #include <cctbx/xray/targets.h>
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
+#include <boost/python/docstring_options.hpp>
 
 namespace cctbx { namespace xray { namespace targets { namespace boost_python {
 
@@ -16,7 +17,11 @@ namespace {
     wrap()
     {
       using namespace boost::python;
-      class_<w_t>("targets_least_squares_residual", no_init)
+      class_<w_t>("targets_least_squares_residual",
+                  "Boost.Python wrapping of the C++ class"
+                  "U{least_squares_residual<c_plus_plus/"
+                  "classcctbx_1_1xray_1_1targets_1_1least__squares__residual.html>}",
+                  no_init)
         .def(init<af::const_ref<double> const&,
                   af::const_ref<double> const&,
                   af::const_ref<std::complex<double> > const&,
