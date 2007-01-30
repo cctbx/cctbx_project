@@ -122,7 +122,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
      if residue_ranges is not None and residue_ranges:
        for residue_range in residue_ranges:
          text+="  RESSEQ "
-         text+=str(residue_range[0])+":"+str(residue_range[1])+" \n"
+         text+=str(residue_range[0])+":"+str(residue_range[1])+"\n"
        text+="\n"
     return text
 
@@ -587,7 +587,7 @@ center_orth   30.2920   -2.8923   16.6160
 CHAIN A
 RMSD 0.2
 MATCHING 12.0
-  RESSEQ 1:26 
+  RESSEQ 1:26
 
 new_operator
 
@@ -600,7 +600,7 @@ center_orth   39.8735    3.8824   16.7239
 CHAIN B
 RMSD 0.1
 MATCHING 15.0
-  RESSEQ 101:126 
+  RESSEQ 101:126
 
 
 
@@ -617,7 +617,7 @@ center_orth   31.2920   -2.8923   16.6160
 CHAIN A
 RMSD 0.6
 MATCHING 13.0
-  RESSEQ 1:25 
+  RESSEQ 1:25
 
 new_operator
 
@@ -630,7 +630,7 @@ center_orth   38.8735    3.8824   16.7239
 CHAIN B
 RMSD 0.5
 MATCHING 11.0
-  RESSEQ 101:124 
+  RESSEQ 101:124
 
 
 """
