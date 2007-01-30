@@ -96,9 +96,10 @@ def _format_mean(values, format):
 
 class _min_max_mean_double(boost.python.injector, ext.min_max_mean_double):
 
-  def show(self, out=None, prefix="", format="%.6g"):
+  def show(self, out=None, prefix="", format="%.6g", show_n=True):
     if (out is None): out = sys.stdout
-    print >> out, prefix + "n:", self.n
+    if (show_n):
+      print >> out, prefix + "n:", self.n
     def f(v):
       if (format is None): return str(v)
       if (v is None): return _format_none(format)
