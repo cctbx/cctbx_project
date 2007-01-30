@@ -2136,14 +2136,24 @@ class build_all_chain_proxies(object):
         print >> log
     return pair_sym_table, max_distance_model
 
-  def phil_atom_selection(self, cache, scope_extract, attr):
+  def phil_atom_selection(self,
+        cache,
+        scope_extract,
+        attr,
+        raise_if_empty_selection=True):
+    def parameter_name():
+      return ".".join([scope_extract.__phil_path__(), attr])
     string = getattr(scope_extract, attr)
-    try: return self.selection(string=string, cache=cache)
+    try: result = self.selection(string=string, cache=cache)
     except KeyboardInterrupt: raise
-    except Exception: fe = format_exception()
-    parameter_name = ".".join([scope_extract.__phil_path__(), attr])
-    raise Sorry('Invalid atom selection:\n  %s="%s"\n  (%s)' % (
-      parameter_name, string, fe))
+    except Exception:
+      fe = format_exception()
+      raise Sorry('Invalid atom selection:\n  %s=%s\n  (%s)' % (
+        parameter_name(), show_string(string), fe))
+    if (raise_if_empty_selection and result.count(True) == 0):
+      raise Sorry('Empty atom selection:\n  %s=%s' % (
+        parameter_name(), show_string(string)))
+    return result
 
   def process_geometry_restraints_edits(self, sel_cache, edits, log):
     result = []
